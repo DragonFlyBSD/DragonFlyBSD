@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.8 2004/03/15 20:23:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.9 2004/04/25 04:04:59 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -68,7 +68,7 @@ static volatile struct callout *nextsoftcheck;	/* Next callout to checked. */
  * George Varghese, published in a technical report entitled "Redesigning
  * the BSD Callout and Timer Facilities" and modified slightly for inclusion
  * in FreeBSD by Justin T. Gibbs.  The original work on the data structures
- * used in this implementation was published by G.Varghese and A. Lauck in
+ * used in this implementation was published by G. Varghese and T. Lauck in
  * the paper "Hashed and Hierarchical Timing Wheels: Data Structures for
  * the Efficient Implementation of a Timer Facility" in the Proceedings of
  * the 11th ACM Annual Symposium on Operating Systems Principles,
