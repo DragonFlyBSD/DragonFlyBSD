@@ -45,7 +45,7 @@
  *      Created file
  *
  * $FreeBSD: src/sys/sys/timex.h,v 1.12.2.1 2001/04/22 11:19:39 jhay Exp $
- * $DragonFly: src/sys/sys/timex.h,v 1.4 2004/01/30 05:42:18 dillon Exp $
+ * $DragonFly: src/sys/sys/timex.h,v 1.5 2004/02/06 03:20:47 rob Exp $
  */
 /*
  * This header file defines the Network Time Protocol (NTP) interfaces
@@ -218,7 +218,7 @@ struct timex {
 	long	stbcnt;		/* stability limit exceeded (ro) */
 };
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 
 #ifdef _KERNEL
 
@@ -234,6 +234,6 @@ int	ntp_gettime (struct ntptimeval *);
 __END_DECLS
 #endif /* _KERNEL */
 
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly__ */
 
 #endif /* !_SYS_TIMEX_H_ */

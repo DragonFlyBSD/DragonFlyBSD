@@ -25,13 +25,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/device_port.h,v 1.1.2.1 2000/10/29 11:05:45 non Exp $
- * $DragonFly: src/sys/sys/device_port.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/device_port.h,v 1.3 2004/02/06 03:20:47 rob Exp $
  */
 
 #if defined(__NetBSD__)
 # include <sys/device.h>
-#elif defined(__FreeBSD__)
-# if __FreeBSD_version >= 400001
+#elif defined(__DragonFly__)
+# if __DragonFly_version >= 100000
 #  include <sys/module.h>
 #  include <sys/bus.h>
 # else
@@ -48,11 +48,11 @@
 # define DEVPORT_DEVNAME(dev)		(dev).dv_xname
 # define DEVPORT_DEVUNIT(dev)		(dev).dv_unit
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 /*
  * FreeBSD (compatibility for struct device)
  */
-#if __FreeBSD_version >= 400001
+#if __DragonFly_version >= 100000
 # define DEVPORT_DEVICE			device_t
 # define DEVPORT_DEVNAME(dev)		device_get_name(dev)
 # define DEVPORT_DEVUNIT(dev)		device_get_unit(dev)
@@ -82,7 +82,7 @@
 /*
  * PC-Card device driver (compatibility for struct pccard_devinfo *)
  */
-#if __FreeBSD_version >= 400001
+#if __DragonFly_version >= 100000
 # define DEVPORT_PDEVICE		device_t
 # define DEVPORT_PDEVUNIT(pdev)		device_get_unit(pdev)
 # define DEVPORT_PDEVFLAGS(pdev)	device_get_flags(pdev)
@@ -112,5 +112,5 @@
 # endif
 #endif
 
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly */
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mtio.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/mtio.h,v 1.20.2.2 2001/01/22 18:02:47 mjacob Exp $
- * $DragonFly: src/sys/sys/mtio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/mtio.h,v 1.3 2004/02/06 03:20:47 rob Exp $
  */
 
 #ifndef	_SYS_MTIO_H_
@@ -65,7 +65,7 @@ struct mtop {
 #define MTCACHE		8	/* enable controller cache */
 #define MTNOCACHE	9	/* disable controller cache */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 /* Set block size for device. If device is a variable size dev		*/
 /* a non zero parameter will change the device to a fixed block size	*/
 /* device with block size set to that of the parameter passed in.	*/
@@ -108,7 +108,7 @@ struct mtop {
 #define	MTIO_DSREG_UNL	45	/* Unloading */
 #define	MTIO_DSREG_LD	46	/* Loading */
 
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /* structure for MTIOCGET - mag tape get status command */
 
@@ -125,7 +125,7 @@ struct mtget {
 	 * more accurate count.
 	 */
 	short	mt_resid;	/* residual count */
-#if defined (__FreeBSD__)
+#if defined (__DragonFly__)
 	daddr_t mt_blksiz;	/* presently operating blocksize */
 	daddr_t mt_density;	/* presently operating density */
 	u_int32_t mt_comp;	/* presently operating compression */
