@@ -25,6 +25,8 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ *
+ * $DragonFly: src/include/rpcsvc/nis_tags.h,v 1.2 2004/02/25 15:12:54 joerg Exp $
  */
 
 /*
@@ -43,10 +45,6 @@
 
 /* From: #pragma ident	"@(#)nis_tags.h	1.10	94/05/03 SMI" */
 /* from file: zns_tags.h	1.7 Copyright (c) 1990 Sun Microsystems */
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
 
 #ifndef ORIGINAL_DECLS
 #define		NIS_DIR "data"
@@ -129,9 +127,5 @@ extern "C" {
 #define	IMPMEM_GROUPS  1	/* Implicit Membership allowed 	*/
 #define	RECURS_GROUPS  2	/* Recursive Groups allowed 	*/
 #define	NEGMEM_GROUPS  4	/* Negative Groups allowed	*/
-
-#ifdef	__cplusplus
-}
-#endif
 
 #endif	/* _RPCSVC_NIS_TAGS_H */
