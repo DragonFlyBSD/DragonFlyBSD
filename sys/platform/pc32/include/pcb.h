@@ -35,7 +35,7 @@
  *
  *	from: @(#)pcb.h	5.10 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pcb.h,v 1.32.2.1 2001/08/15 01:23:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/pcb.h,v 1.7 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _I386_PCB_H_
@@ -86,7 +86,7 @@ struct pcb {
 
 #ifdef _KERNEL
 
-void	savectx __P((struct pcb *));
+void	savectx (struct pcb *);
 #endif
 
 #endif /* _I386_PCB_H_ */

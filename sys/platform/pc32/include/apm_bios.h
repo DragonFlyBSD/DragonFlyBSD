@@ -13,7 +13,7 @@
  * Aug, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/include/apm_bios.h,v 1.27.2.2 2002/04/12 16:47:00 bmah Exp $
- * $DragonFly: src/sys/platform/pc32/include/apm_bios.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/apm_bios.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef	_MACHINE_APM_BIOS_H_
@@ -145,7 +145,7 @@
 /* C definitions */
 struct apmhook {
 	struct apmhook	*ah_next;
-	int		(*ah_fun) __P((void *ah_arg));
+	int		(*ah_fun) (void *ah_arg);
 	void		*ah_arg;
 	const char	*ah_name;
 	int		ah_order;

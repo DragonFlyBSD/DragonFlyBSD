@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.5 2003/07/24 01:41:24 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.6 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -248,13 +248,13 @@ extern struct soft_segment_descriptor gdt_segs[];
 extern struct gate_descriptor *idt;
 extern union descriptor ldt[NLDT];
 
-void	lgdt		__P((struct region_descriptor *rdp));
-void	lidt		__P((struct region_descriptor *rdp));
-void	lldt		__P((u_short sel));
-void	sdtossd		__P((struct segment_descriptor *sdp,
-			     struct soft_segment_descriptor *ssdp));
-void	ssdtosd		__P((struct soft_segment_descriptor *ssdp,
-			     struct segment_descriptor *sdp));
+void	lgdt		(struct region_descriptor *rdp);
+void	lidt		(struct region_descriptor *rdp);
+void	lldt		(u_short sel);
+void	sdtossd		(struct segment_descriptor *sdp,
+			     struct soft_segment_descriptor *ssdp);
+void	ssdtosd		(struct soft_segment_descriptor *ssdp,
+			     struct segment_descriptor *sdp);
 #endif /* _KERNEL */
 
 #endif /* !_MACHINE_SEGMENTS_H_ */

@@ -32,7 +32,7 @@
  *
  *	from: @(#)inode.h	7.17 (Berkeley) 5/8/91
  * $FreeBSD: src/sys/i386/boot/dosboot/inode.h,v 1.7 1999/12/29 04:32:51 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/inode.h,v 1.3 2003/08/01 17:46:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/inode.h,v 1.4 2003/08/26 21:42:17 rob Exp $
  */
 
 #ifndef _UFS_INODE_H_
@@ -171,57 +171,57 @@ struct ufid {
 /*
  * Prototypes for UFS vnode operations
  */
-int ufs_lookup __P((struct vnode *vp, struct nameidata *ndp, struct proc *p));
-int ufs_create __P((struct nameidata *ndp, struct vattr *vap, struct proc *p));
-int ufs_mknod __P((struct nameidata *ndp, struct vattr *vap, struct ucred *cred,
-	struct proc *p));
-int ufs_open __P((struct vnode *vp, int mode, struct ucred *cred,
-	struct proc *p));
-int ufs_close __P((struct vnode *vp, int fflag, struct ucred *cred,
-	struct proc *p));
-int ufs_access __P((struct vnode *vp, int mode, struct ucred *cred,
-	struct proc *p));
-int ufs_getattr __P((struct vnode *vp, struct vattr *vap, struct ucred *cred,
-	struct proc *p));
-int ufs_setattr __P((struct vnode *vp, struct vattr *vap, struct ucred *cred,
-	struct proc *p));
-int ufs_read __P((struct vnode *vp, struct uio *uio, int ioflag,
-	struct ucred *cred));
-int ufs_write __P((struct vnode *vp, struct uio *uio, int ioflag,
-	struct ucred *cred));
-int ufs_ioctl __P((struct vnode *vp, int command, caddr_t data, int fflag,
-	struct ucred *cred, struct proc *p));
-int ufs_select __P((struct vnode *vp, int which, int fflags, struct ucred *cred,
-	struct proc *p));
-int ufs_mmap __P((struct vnode *vp, int fflags, struct ucred *cred,
-	struct proc *p));
-int ufs_fsync __P((struct vnode *vp, int fflags, struct ucred *cred,
-	int waitfor, struct proc *p));
-int ufs_seek __P((struct vnode *vp, off_t oldoff, off_t newoff,
-	struct ucred *cred));
-int ufs_remove __P((struct nameidata *ndp, struct proc *p));
-int ufs_link __P((struct vnode *vp, struct nameidata *ndp, struct proc *p));
-int ufs_rename __P((struct nameidata *fndp, struct nameidata *tdnp,
-	struct proc *p));
-int ufs_mkdir __P((struct nameidata *ndp, struct vattr *vap, struct proc *p));
-int ufs_rmdir __P((struct nameidata *ndp, struct proc *p));
-int ufs_symlink __P((struct nameidata *ndp, struct vattr *vap, char *target,
-	struct proc *p));
-int ufs_readdir __P((struct vnode *vp, struct uio *uio, struct ucred *cred,
-	int *eofflagp));
-int ufs_readlink __P((struct vnode *vp, struct uio *uio, struct ucred *cred));
-int ufs_abortop __P((struct nameidata *ndp));
-int ufs_inactive __P((struct vnode *vp, struct proc *p));
-int ufs_reclaim __P((struct vnode *vp));
-int ufs_lock __P((struct vnode *vp));
-int ufs_unlock __P((struct vnode *vp));
-int ufs_bmap __P((struct vnode *vp, daddr_t bn, struct vnode **vpp,
-	daddr_t *bnp));
-int ufs_strategy __P((struct buf *bp));
-void ufs_print __P((struct vnode *vp));
-int ufs_islocked __P((struct vnode *vp));
-int ufs_advlock __P((struct vnode *vp, caddr_t id, int op, struct flock *fl,
-	int flags));
+int ufs_lookup (struct vnode *vp, struct nameidata *ndp, struct proc *p);
+int ufs_create (struct nameidata *ndp, struct vattr *vap, struct proc *p);
+int ufs_mknod (struct nameidata *ndp, struct vattr *vap, struct ucred *cred,
+	struct proc *p);
+int ufs_open (struct vnode *vp, int mode, struct ucred *cred,
+	struct proc *p);
+int ufs_close (struct vnode *vp, int fflag, struct ucred *cred,
+	struct proc *p);
+int ufs_access (struct vnode *vp, int mode, struct ucred *cred,
+	struct proc *p);
+int ufs_getattr (struct vnode *vp, struct vattr *vap, struct ucred *cred,
+	struct proc *p);
+int ufs_setattr (struct vnode *vp, struct vattr *vap, struct ucred *cred,
+	struct proc *p);
+int ufs_read (struct vnode *vp, struct uio *uio, int ioflag,
+	struct ucred *cred);
+int ufs_write (struct vnode *vp, struct uio *uio, int ioflag,
+	struct ucred *cred);
+int ufs_ioctl (struct vnode *vp, int command, caddr_t data, int fflag,
+	struct ucred *cred, struct proc *p);
+int ufs_select (struct vnode *vp, int which, int fflags, struct ucred *cred,
+	struct proc *p);
+int ufs_mmap (struct vnode *vp, int fflags, struct ucred *cred,
+	struct proc *p);
+int ufs_fsync (struct vnode *vp, int fflags, struct ucred *cred,
+	int waitfor, struct proc *p);
+int ufs_seek (struct vnode *vp, off_t oldoff, off_t newoff,
+	struct ucred *cred);
+int ufs_remove (struct nameidata *ndp, struct proc *p);
+int ufs_link (struct vnode *vp, struct nameidata *ndp, struct proc *p);
+int ufs_rename (struct nameidata *fndp, struct nameidata *tdnp,
+	struct proc *p);
+int ufs_mkdir (struct nameidata *ndp, struct vattr *vap, struct proc *p);
+int ufs_rmdir (struct nameidata *ndp, struct proc *p);
+int ufs_symlink (struct nameidata *ndp, struct vattr *vap, char *target,
+	struct proc *p);
+int ufs_readdir (struct vnode *vp, struct uio *uio, struct ucred *cred,
+	int *eofflagp);
+int ufs_readlink (struct vnode *vp, struct uio *uio, struct ucred *cred);
+int ufs_abortop (struct nameidata *ndp);
+int ufs_inactive (struct vnode *vp, struct proc *p);
+int ufs_reclaim (struct vnode *vp);
+int ufs_lock (struct vnode *vp);
+int ufs_unlock (struct vnode *vp);
+int ufs_bmap (struct vnode *vp, daddr_t bn, struct vnode **vpp,
+	daddr_t *bnp);
+int ufs_strategy (struct buf *bp);
+void ufs_print (struct vnode *vp);
+int ufs_islocked (struct vnode *vp);
+int ufs_advlock (struct vnode *vp, caddr_t id, int op, struct flock *fl,
+	int flags);
 
 extern void blkfree(struct inode *, daddr_t, off_t);
 extern void ifree(struct inode *, ino_t, int);
@@ -235,7 +235,7 @@ extern int realloccg(struct inode *, off_t, daddr_t, int, int, struct buf **);
 extern int ialloc(struct inode *, ino_t, int, struct ucred *, struct inode **);
 extern daddr_t blkpref(struct inode *, daddr_t, int, daddr_t *);
 extern u_long hashalloc(struct inode *, int, long, int, 
-			u_long (*)(struct inode *, int, long, int));
+			u_long (*)(struct inode *, int, long, int);
 extern daddr_t fragextend(struct inode *, int, long, int, int);
 extern daddr_t alloccg(struct inode *, int, daddr_t, int);
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.7 2003/07/12 16:55:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.8 2003/08/26 21:42:19 rob Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -212,14 +212,14 @@ inthand_t
 #endif /* SMP */
 
 void	call_fast_unpend(int irq);
-void	isa_defaultirq __P((void));
-int	isa_nmi __P((int cd));
-int	icu_setup __P((int intr, inthand2_t *func, void *arg, 
-		       u_int *maskptr, int flags));
-int	icu_unset __P((int intr, inthand2_t *handler));
-int	update_intr_masks __P((void));
+void	isa_defaultirq (void);
+int	isa_nmi (int cd);
+int	icu_setup (int intr, inthand2_t *func, void *arg, 
+		       u_int *maskptr, int flags);
+int	icu_unset (int intr, inthand2_t *handler);
+int	update_intr_masks (void);
 
-intrmask_t splq __P((intrmask_t mask));
+intrmask_t splq (intrmask_t mask);
 
 #define	INTR_FAST		0x00000001 /* fast interrupt handler */
 #define INTR_EXCL		0x00010000 /* excl. intr, default is shared */

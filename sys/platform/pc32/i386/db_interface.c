@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.5 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/db_interface.c,v 1.6 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 static jmp_buf *db_nofault = 0;
 extern jmp_buf	db_jmpbuf;
 
-extern void	gdb_handle_exception __P((db_regs_t *, int, int));
+extern void	gdb_handle_exception (db_regs_t *, int, int);
 
 int	db_active;
 db_regs_t ddb_regs;

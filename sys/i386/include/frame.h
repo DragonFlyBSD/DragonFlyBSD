@@ -35,7 +35,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/frame.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/frame.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_FRAME_H_
@@ -156,8 +156,8 @@ struct clockframe {
 	int	cf_ss;
 };
 
-int	kdb_trap __P((int, int, struct trapframe *));
-extern  int (*pmath_emulate) __P((struct trapframe *));
+int	kdb_trap (int, int, struct trapframe *);
+extern  int (*pmath_emulate) (struct trapframe *);
 
 #define	INTR_TO_TRAPFRAME(frame) ((struct trapframe *)&(frame)->if_fs)
 

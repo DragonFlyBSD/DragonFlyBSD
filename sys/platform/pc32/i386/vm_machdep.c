@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.23 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.24 2003/08/26 21:42:18 rob Exp $
  */
 
 #include "use_npx.h"
@@ -91,9 +91,9 @@
 #include <bus/isa/i386/isa.h>
 #endif
 
-static void	cpu_reset_real __P((void));
+static void	cpu_reset_real (void);
 #ifdef SMP
-static void	cpu_reset_proxy __P((void));
+static void	cpu_reset_proxy (void);
 static u_int	cpu_reset_proxyid;
 static volatile u_int	cpu_reset_proxy_active;
 #endif
@@ -236,7 +236,7 @@ cpu_fork(p1, p2, flags)
 void
 cpu_set_fork_handler(p, func, arg)
 	struct proc *p;
-	void (*func) __P((void *));
+	void (*func) (void *);
 	void *arg;
 {
 	/*

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.33 2003/08/25 19:50:28 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.34 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -103,16 +103,16 @@
 #include <sys/msgport2.h>
 #include <sys/thread2.h>
 
-int (*pmath_emulate) __P((struct trapframe *));
+int (*pmath_emulate) (struct trapframe *);
 
-extern void trap __P((struct trapframe frame));
-extern int trapwrite __P((unsigned addr));
-extern void syscall2 __P((struct trapframe frame));
-extern void sendsys2 __P((struct trapframe frame));
+extern void trap (struct trapframe frame);
+extern int trapwrite (unsigned addr);
+extern void syscall2 (struct trapframe frame);
+extern void sendsys2 (struct trapframe frame);
 
-static int trap_pfault __P((struct trapframe *, int, vm_offset_t));
-static void trap_fatal __P((struct trapframe *, vm_offset_t));
-void dblfault_handler __P((void));
+static int trap_pfault (struct trapframe *, int, vm_offset_t);
+static void trap_fatal (struct trapframe *, vm_offset_t);
+void dblfault_handler (void);
 
 extern inthand_t IDTVEC(syscall);
 
@@ -284,7 +284,7 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 
 #ifdef DEVICE_POLLING
 extern u_int32_t poll_in_trap;
-extern int ether_poll __P((int count));
+extern int ether_poll (int count);
 #endif /* DEVICE_POLLING */
 
 /*

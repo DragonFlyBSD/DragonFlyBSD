@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.8 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.9 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -103,8 +103,8 @@ static int rand_bolt;
 static caddr_t	zbuf;
 
 MALLOC_DEFINE(M_MEMDESC, "memdesc", "memory range descriptors");
-static int mem_ioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
-static int random_ioctl __P((dev_t, u_long, caddr_t, int, struct thread *));
+static int mem_ioctl (dev_t, u_long, caddr_t, int, struct thread *);
+static int random_ioctl (dev_t, u_long, caddr_t, int, struct thread *);
 
 struct mem_range_softc mem_range_softc;
 

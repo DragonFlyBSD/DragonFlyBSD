@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.10 2003/08/25 19:50:29 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.11 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -106,8 +106,8 @@
 extern char	btext[];
 extern char	etext[];
 
-void	fork_trampoline __P((void));
-void	fork_return __P((struct proc *, struct trapframe));
+void	fork_trampoline (void);
+void	fork_return (struct proc *, struct trapframe);
 #endif
 
 #endif /* !_MACHINE_CPU_H_ */

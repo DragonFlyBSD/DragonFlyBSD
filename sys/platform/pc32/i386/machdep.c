@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.34 2003/08/25 19:50:28 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.35 2003/08/26 21:42:18 rob Exp $
  */
 
 #include "use_apm.h"
@@ -120,18 +120,18 @@
 #include <sys/ptrace.h>
 #include <machine/sigframe.h>
 
-extern void init386 __P((int first));
-extern void dblfault_handler __P((void));
+extern void init386 (int first);
+extern void dblfault_handler (void);
 
 extern void printcpuinfo(void);	/* XXX header file */
 extern void finishidentcpu(void);
 extern void panicifcpuunsupported(void);
 extern void initializecpu(void);
 
-static void cpu_startup __P((void *));
+static void cpu_startup (void *);
 #ifndef CPU_DISABLE_SSE
-static void set_fpregs_xmm __P((struct save87 *, struct savexmm *));
-static void fill_fpregs_xmm __P((struct savexmm *, struct save87 *));
+static void set_fpregs_xmm (struct save87 *, struct savexmm *);
+static void fill_fpregs_xmm (struct savexmm *, struct save87 *);
 #endif /* CPU_DISABLE_SSE */
 #ifdef DIRECTIO
 extern void ffs_rawread_setup(void);

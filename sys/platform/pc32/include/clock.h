@@ -4,7 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.3 2003/08/03 11:51:25 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.4 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
@@ -32,19 +32,19 @@ extern int	apic_8254_intr;
  */
 struct clockframe;
 
-int	acquire_timer0 __P((int rate,
-			    void (*function)(struct clockframe *frame)));
-int	acquire_timer2 __P((int mode));
-int	release_timer0 __P((void));
-int	release_timer2 __P((void));
+int	acquire_timer0 (int rate,
+			    void (*function)(struct clockframe *frame));
+int	acquire_timer2 (int mode);
+int	release_timer0 (void);
+int	release_timer2 (void);
 #ifndef PC98
-int	rtcin __P((int val));
+int	rtcin (int val);
 #else
-int	acquire_timer1 __P((int mode));
-int	release_timer1 __P((void));
+int	acquire_timer1 (int mode);
+int	release_timer1 (void);
 #endif
-int	sysbeep __P((int pitch, int period));
-void	timer_restore __P((void));
+int	sysbeep (int pitch, int period);
+void	timer_restore (void);
 
 #endif /* _KERNEL */
 

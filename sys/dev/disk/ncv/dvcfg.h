@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/dvcfg.h,v 1.2.6.1 2000/08/03 01:01:19 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ncv/dvcfg.h,v 1.4 2003/08/26 21:42:18 rob Exp $ */
 /*	$NetBSD$	*/
 /*
  * [NetBSD for NEC PC98 series]
@@ -51,7 +51,7 @@ struct dvcfg_hwsel {
 
 #define	DVCFG_HWSEL_SZ(array)	(sizeof(array) / sizeof(dvcfg_hw_t))
 
-static __inline dvcfg_hw_t dvcfg_hw __P((struct dvcfg_hwsel *, u_int));
+static __inline dvcfg_hw_t dvcfg_hw (struct dvcfg_hwsel *, u_int);
 
 static __inline dvcfg_hw_t
 dvcfg_hw(selp, num)

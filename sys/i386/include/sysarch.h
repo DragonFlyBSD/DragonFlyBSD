@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/sysarch.h,v 1.13.2.2 2002/10/07 17:17:28 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/sysarch.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/sysarch.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -72,14 +72,14 @@ union descriptor;
 struct dbreg;
 
 __BEGIN_DECLS
-int i386_get_ldt __P((int, union descriptor *, int));
-int i386_set_ldt __P((int, union descriptor *, int));
-int i386_get_ioperm __P((unsigned int, unsigned int *, int *));
-int i386_set_ioperm __P((unsigned int, unsigned int, int));
-int i386_vm86 __P((int, void *));
-int i386_set_watch __P((int watchnum, unsigned int watchaddr, int size,
-                        int access, struct dbreg * d));
-int i386_clr_watch __P((int watchnum, struct dbreg * d));
+int i386_get_ldt (int, union descriptor *, int);
+int i386_set_ldt (int, union descriptor *, int);
+int i386_get_ioperm (unsigned int, unsigned int *, int *);
+int i386_set_ioperm (unsigned int, unsigned int, int);
+int i386_vm86 (int, void *);
+int i386_set_watch (int watchnum, unsigned int watchaddr, int size,
+                        int access, struct dbreg * d);
+int i386_clr_watch (int watchnum, struct dbreg * d);
 __END_DECLS
 #endif
 

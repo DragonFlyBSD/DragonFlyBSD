@@ -32,7 +32,7 @@
  *
  *	@(#)ptrace.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/ptrace.h,v 1.9 1999/12/29 04:33:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/ptrace.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ptrace.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_PTRACE_H_
@@ -49,7 +49,7 @@
 #define PT_SETDBREGS    (PT_FIRSTMACH + 6)
 
 #ifdef _KERNEL
-int	ptrace_read_u_check __P((struct proc *p, vm_offset_t off, size_t len));
+int	ptrace_read_u_check (struct proc *p, vm_offset_t off, size_t len);
 #endif
 
 #endif

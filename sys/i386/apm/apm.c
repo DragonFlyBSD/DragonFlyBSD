@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.5 2003/07/21 05:50:39 dillon Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.6 2003/08/26 21:42:17 rob Exp $
  */
 
 #include <sys/param.h>
@@ -47,12 +47,12 @@
 #include <i386/apm/apm.h>
 
 /* Used by the apm_saver screen saver module */
-int apm_display __P((int newstate));
+int apm_display (int newstate);
 struct apm_softc apm_softc;
 
-static void apm_resume __P((void));
+static void apm_resume (void);
 static int apm_bioscall(void);
-static int apm_check_function_supported __P((u_int version, u_int func));
+static int apm_check_function_supported (u_int version, u_int func);
 
 static u_long	apm_version;
 
@@ -467,7 +467,7 @@ apm_default_suspend(void *arg)
 	return 0;
 }
 
-static int apm_record_event __P((struct apm_softc *, u_int));
+static int apm_record_event (struct apm_softc *, u_int);
 static void apm_processevent(void);
 
 static u_int apm_op_inprog = 0;

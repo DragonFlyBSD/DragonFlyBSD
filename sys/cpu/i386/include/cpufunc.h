@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpufunc.h,v 1.7 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -623,51 +623,51 @@ load_dr7(u_int sel)
 
 #else /* !__GNUC__ */
 
-int	breakpoint	__P((void));
-u_int	bsfl		__P((u_int mask));
-u_int	bsrl		__P((u_int mask));
-void	cpu_disable_intr __P((void));
-void	do_cpuid	__P((u_int ax, u_int *p));
-void	cpu_enable_intr	__P((void));
-u_char	inb		__P((u_int port));
-u_int	inl		__P((u_int port));
-void	insb		__P((u_int port, void *addr, size_t cnt));
-void	insl		__P((u_int port, void *addr, size_t cnt));
-void	insw		__P((u_int port, void *addr, size_t cnt));
-void	invd		__P((void));
-void	invlpg		__P((u_int addr));
-void	invltlb		__P((void));
-u_short	inw		__P((u_int port));
-u_int	loadandclear	__P((u_int *addr));
-void	outb		__P((u_int port, u_char data));
-void	outl		__P((u_int port, u_int data));
-void	outsb		__P((u_int port, void *addr, size_t cnt));
-void	outsl		__P((u_int port, void *addr, size_t cnt));
-void	outsw		__P((u_int port, void *addr, size_t cnt));
-void	outw		__P((u_int port, u_short data));
-u_int	rcr2		__P((void));
-u_int64_t rdmsr		__P((u_int msr));
-u_int64_t rdpmc		__P((u_int pmc));
-u_int64_t rdtsc		__P((void));
-u_int	read_eflags	__P((void));
-void	wbinvd		__P((void));
-void	write_eflags	__P((u_int ef));
-void	wrmsr		__P((u_int msr, u_int64_t newval));
-u_int	rfs		__P((void));
-u_int	rgs		__P((void));
-void	load_fs		__P((u_int sel));
-void	load_gs		__P((u_int sel));
+int	breakpoint	(void);
+u_int	bsfl		(u_int mask);
+u_int	bsrl		(u_int mask);
+void	cpu_disable_intr (void);
+void	do_cpuid	(u_int ax, u_int *p);
+void	cpu_enable_intr	(void);
+u_char	inb		(u_int port);
+u_int	inl		(u_int port);
+void	insb		(u_int port, void *addr, size_t cnt);
+void	insl		(u_int port, void *addr, size_t cnt);
+void	insw		(u_int port, void *addr, size_t cnt);
+void	invd		(void);
+void	invlpg		(u_int addr);
+void	invltlb		(void);
+u_short	inw		(u_int port);
+u_int	loadandclear	(u_int *addr);
+void	outb		(u_int port, u_char data);
+void	outl		(u_int port, u_int data);
+void	outsb		(u_int port, void *addr, size_t cnt);
+void	outsl		(u_int port, void *addr, size_t cnt);
+void	outsw		(u_int port, void *addr, size_t cnt);
+void	outw		(u_int port, u_short data);
+u_int	rcr2		(void);
+u_int64_t rdmsr		(u_int msr);
+u_int64_t rdpmc		(u_int pmc);
+u_int64_t rdtsc		(void);
+u_int	read_eflags	(void);
+void	wbinvd		(void);
+void	write_eflags	(u_int ef);
+void	wrmsr		(u_int msr, u_int64_t newval);
+u_int	rfs		(void);
+u_int	rgs		(void);
+void	load_fs		(u_int sel);
+void	load_gs		(u_int sel);
 
 #endif	/* __GNUC__ */
 
-void	load_cr0	__P((u_int cr0));
-void	load_cr3	__P((u_int cr3));
-void	load_cr4	__P((u_int cr4));
-void	ltr		__P((u_short sel));
-u_int	rcr0		__P((void));
-u_int	rcr3		__P((void));
-u_int	rcr4		__P((void));
-void    reset_dbregs    __P((void));
+void	load_cr0	(u_int cr0);
+void	load_cr3	(u_int cr3);
+void	load_cr4	(u_int cr4);
+void	ltr		(u_short sel);
+u_int	rcr0		(void);
+u_int	rcr3		(void);
+u_int	rcr4		(void);
+void    reset_dbregs    (void);
 __END_DECLS
 
 #endif /* !_MACHINE_CPUFUNC_H_ */

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.6 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/smp.h,v 1.7 2003/08/26 21:42:18 rob Exp $
  *
  */
 
@@ -45,19 +45,19 @@ extern int current_postcode;  /** XXX currently in mp_machdep.c */
 extern int			bootMP_size;
 
 /* functions in mpboot.s */
-void	bootMP			__P((void));
+void	bootMP			(void);
 
 /* global data in apic_vector.s */
 extern volatile u_int		stopped_cpus;
 extern volatile u_int		started_cpus;
 
 extern volatile u_int		checkstate_probed_cpus;
-extern void (*cpustop_restartfunc) __P((void));
+extern void (*cpustop_restartfunc) (void);
 
 /* functions in apic_ipl.s */
-void	apic_eoi		__P((void));
-u_int	io_apic_read		__P((int, int));
-void	io_apic_write		__P((int, int, u_int));
+void	apic_eoi		(void);
+u_int	io_apic_read		(int, int);
+void	io_apic_write		(int, int, u_int);
 
 /* global data in mp_machdep.c */
 extern int			bsp_apic_ready;
@@ -85,70 +85,70 @@ extern u_int			all_cpus;
 extern struct pcb		stoppcbs[];
 
 /* functions in mp_machdep.c */
-u_int	mp_bootaddress		__P((u_int));
-int	mp_probe		__P((void));
-void	mp_start		__P((void));
-void	mp_announce		__P((void));
-u_int	isa_apic_mask		__P((u_int));
-int	isa_apic_irq		__P((int));
-int	pci_apic_irq		__P((int, int, int));
-int	apic_irq		__P((int, int));
-int	next_apic_irq		__P((int));
-int	undirect_isa_irq	__P((int));
-int	undirect_pci_irq	__P((int));
-int	apic_bus_type		__P((int));
-int	apic_src_bus_id		__P((int, int));
-int	apic_src_bus_irq	__P((int, int));
-int	apic_int_type		__P((int, int));
-int	apic_trigger		__P((int, int));
-int	apic_polarity		__P((int, int));
-void	assign_apic_irq		__P((int apic, int intpin, int irq));
-void	revoke_apic_irq		__P((int irq));
-void	bsp_apic_configure	__P((void));
-void	init_secondary		__P((void));
-int	stop_cpus		__P((u_int));
-void	ap_init			__P((void));
-int	restart_cpus		__P((u_int));
+u_int	mp_bootaddress		(u_int);
+int	mp_probe		(void);
+void	mp_start		(void);
+void	mp_announce		(void);
+u_int	isa_apic_mask		(u_int);
+int	isa_apic_irq		(int);
+int	pci_apic_irq		(int, int, int);
+int	apic_irq		(int, int);
+int	next_apic_irq		(int);
+int	undirect_isa_irq	(int);
+int	undirect_pci_irq	(int);
+int	apic_bus_type		(int);
+int	apic_src_bus_id		(int, int);
+int	apic_src_bus_irq	(int, int);
+int	apic_int_type		(int, int);
+int	apic_trigger		(int, int);
+int	apic_polarity		(int, int);
+void	assign_apic_irq		(int apic, int intpin, int irq);
+void	revoke_apic_irq		(int irq);
+void	bsp_apic_configure	(void);
+void	init_secondary		(void);
+int	stop_cpus		(u_int);
+void	ap_init			(void);
+int	restart_cpus		(u_int);
 #ifdef BETTER_CLOCK 
-void	forward_statclock	__P((int pscnt));
-void	forward_hardclock	__P((int pscnt));
+void	forward_statclock	(int pscnt);
+void	forward_hardclock	(int pscnt);
 #endif /* BETTER_CLOCK */
-void	forward_signal		__P((struct proc *));
-void	forward_roundrobin	__P((void));
+void	forward_signal		(struct proc *);
+void	forward_roundrobin	(void);
 #ifdef	APIC_INTR_REORDER
-void	set_lapic_isrloc	__P((int, int));
+void	set_lapic_isrloc	(int, int);
 #endif /* APIC_INTR_REORDER */
-void	smp_rendezvous_action	__P((void));
-void	smp_rendezvous		__P((void (*)(void *), 
+void	smp_rendezvous_action	(void);
+void	smp_rendezvous		(void (*)(void *), 
 				     void (*)(void *),
 				     void (*)(void *),
-				     void *arg));
+				     void *arg);
 
 /* global data in mpapic.c */
 extern volatile lapic_t		lapic;
 extern volatile ioapic_t	**ioapic;
 
 /* functions in mpapic.c */
-void	apic_dump		__P((char*));
-void	apic_initialize		__P((void));
-void	imen_dump		__P((void));
-int	apic_ipi		__P((int, int, int));
-int	selected_apic_ipi	__P((u_int, int, int));
-int	io_apic_setup		__P((int));
-void	io_apic_setup_intpin	__P((int, int));
-void	io_apic_set_id		__P((int, int));
-int	io_apic_get_id		__P((int));
-int	ext_int_setup		__P((int, int));
+void	apic_dump		(char*);
+void	apic_initialize		(void);
+void	imen_dump		(void);
+int	apic_ipi		(int, int, int);
+int	selected_apic_ipi	(u_int, int, int);
+int	io_apic_setup		(int);
+void	io_apic_setup_intpin	(int, int);
+void	io_apic_set_id		(int, int);
+int	io_apic_get_id		(int);
+int	ext_int_setup		(int, int);
 
 #if defined(READY)
-void	clr_io_apic_mask24	__P((int, u_int32_t));
-void	set_io_apic_mask24	__P((int, u_int32_t));
+void	clr_io_apic_mask24	(int, u_int32_t);
+void	set_io_apic_mask24	(int, u_int32_t);
 #endif /* READY */
 
-void	set_apic_timer		__P((int));
-int	read_apic_timer		__P((void));
-void	u_sleep			__P((int));
-void	cpu_send_ipiq		__P((int));
+void	set_apic_timer		(int);
+int	read_apic_timer		(void);
+void	u_sleep			(int);
+void	cpu_send_ipiq		(int);
 
 /* global data in init_smp.c */
 extern int			invltlb_ok;

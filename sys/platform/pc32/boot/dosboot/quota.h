@@ -35,7 +35,7 @@
  *
  *	from: @(#)quota.h	7.9 (Berkeley) 2/22/91
  * $FreeBSD: src/sys/i386/boot/dosboot/quota.h,v 1.6 1999/12/29 04:32:51 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/quota.h,v 1.3 2003/07/03 18:35:26 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/quota.h,v 1.4 2003/08/26 21:42:17 rob Exp $
  */
 
 #ifndef _QUOTA_
@@ -202,7 +202,7 @@ void dqflush(struct vnode *);
 #include "cdefs.h"
 
 __BEGIN_DECLS
-int	quotactl __P((const char *, int, int, void *));
+int	quotactl (const char *, int, int, void *);
 __END_DECLS
 
 #endif /* _KERNEL */

@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/disklabe.h,v 1.8 1999/12/29 04:32:50 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/disklabe.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/disklabe.h,v 1.3 2003/08/26 21:42:17 rob Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -377,14 +377,14 @@ extern struct dos_partition dos_partitions[NDOSPART];
 #ifdef KERNEL
 struct dkbad;
 
-u_int	 dkcksum __P((struct disklabel *));
-int	writedisklabel __P((dev_t dev, void (*strat)(), struct disklabel *lp));
-char *	readdisklabel __P((dev_t dev, void (*strat)(), struct disklabel *lp, struct dos_partition *dp, struct dkbad *bdp));
-int	setdisklabel __P((struct disklabel *olp, struct disklabel *nlp, u_long openmask));
-void	disksort __P((struct buf *ap, struct buf *bp));
-void	 diskerr __P((struct buf *, char *, char *, int, int, struct disklabel *));
+u_int	 dkcksum (struct disklabel *);
+int	writedisklabel (dev_t dev, void (*strat)(), struct disklabel *lp);
+char *	readdisklabel (dev_t dev, void (*strat)(), struct disklabel *lp, struct dos_partition *dp, struct dkbad *bdp);
+int	setdisklabel (struct disklabel *olp, struct disklabel *nlp, u_long openmask);
+void	disksort (struct buf *ap, struct buf *bp);
+void	 diskerr (struct buf *, char *, char *, int, int, struct disklabel *);
 #ifdef __i386
-char *	readMBRtolabel __P(( dev_t dev , void (*strat)(), register struct disklabel *lp, struct dos_partition *dp, int *cyl));
+char *	readMBRtolabel ( dev_t dev , void (*strat)(), register struct disklabel *lp, struct dos_partition *dp, int *cyl);
 #endif
 #endif
 
@@ -393,7 +393,7 @@ char *	readMBRtolabel __P(( dev_t dev , void (*strat)(), register struct disklab
 #include "cdefs.h"
 
 __BEGIN_DECLS
-struct disklabel *getdiskbyname __P((const char *));
+struct disklabel *getdiskbyname (const char *);
 __END_DECLS
 
 #endif

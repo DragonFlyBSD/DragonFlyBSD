@@ -32,7 +32,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/endian.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/endian.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_
@@ -61,10 +61,10 @@
 #endif
 
 __BEGIN_DECLS
-unsigned long	htonl __P((unsigned long));
-unsigned short	htons __P((unsigned short));
-unsigned long	ntohl __P((unsigned long));
-unsigned short	ntohs __P((unsigned short));
+unsigned long	htonl (unsigned long);
+unsigned short	htons (unsigned short);
+unsigned long	ntohl (unsigned long);
+unsigned short	ntohs (unsigned short);
 __END_DECLS
 
 #define __word_swap_long(x) \

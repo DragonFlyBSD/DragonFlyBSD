@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.12 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.13 2003/08/26 21:42:19 rob Exp $
  */
 
 #include "opt_cpu.h"
@@ -109,21 +109,21 @@
 
 #else	/* not __GNUC__ */
 
-void	fldcw		__P((caddr_t addr));
-void	fnclex		__P((void));
-void	fninit		__P((void));
-void	fnop		__P((void));
-void	fnsave		__P((caddr_t addr));
-void	fnstcw		__P((caddr_t addr));
-void	fnstsw		__P((caddr_t addr));
-void	fp_divide_by_0	__P((void));
-void	frstor		__P((caddr_t addr));
+void	fldcw		(caddr_t addr);
+void	fnclex		(void);
+void	fninit		(void);
+void	fnop		(void);
+void	fnsave		(caddr_t addr);
+void	fnstcw		(caddr_t addr);
+void	fnstsw		(caddr_t addr);
+void	fp_divide_by_0	(void);
+void	frstor		(caddr_t addr);
 #ifndef CPU_DISABLE_SSE
-void	fxsave		__P((caddr_t addr));
-void	fxrstor		__P((caddr_t addr));
+void	fxsave		(caddr_t addr);
+void	fxrstor		(caddr_t addr);
 #endif
-void	start_emulating	__P((void));
-void	stop_emulating	__P((void));
+void	start_emulating	(void);
+void	stop_emulating	(void);
 
 #endif	/* __GNUC__ */
 
@@ -139,16 +139,16 @@ void	stop_emulating	__P((void));
 
 typedef u_char bool_t;
 
-static	int	npx_attach	__P((device_t dev));
-	void	npx_intr	__P((void *));
-static	void	npx_identify	__P((driver_t *driver, device_t parent));
-static	int	npx_probe	__P((device_t dev));
-static	int	npx_probe1	__P((device_t dev));
-static	void	fpusave		__P((union savefpu *));
-static	void	fpurstor	__P((union savefpu *));
+static	int	npx_attach	(device_t dev);
+	void	npx_intr	(void *);
+static	void	npx_identify	(driver_t *driver, device_t parent);
+static	int	npx_probe	(device_t dev);
+static	int	npx_probe1	(device_t dev);
+static	void	fpusave		(union savefpu *);
+static	void	fpurstor	(union savefpu *);
 #ifdef I586_CPU
-static	long	timezero	__P((const char *funcname,
-				     void (*func)(volatile void *buf, size_t len)));
+static	long	timezero	(const char *funcname,
+				     void (*func)(volatile void *buf, size_t len));
 #endif /* I586_CPU */
 
 int	hw_float;		/* XXX currently just alias for npx_exists */
@@ -947,7 +947,7 @@ fpurstor(addr)
 static long
 timezero(funcname, func)
 	const char *funcname;
-	void (*func) __P((volatile void *buf, size_t len));
+	void (*func) (volatile void *buf, size_t len);
 
 {
 	void *buf;

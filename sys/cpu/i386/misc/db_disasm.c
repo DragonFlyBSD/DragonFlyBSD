@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_disasm.c,v 1.23.2.1 2001/07/29 22:48:37 kris Exp $
- * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/misc/db_disasm.c,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -862,13 +862,13 @@ static const int db_lengths[] = {
 	(loc) += (size);
 
 static db_addr_t
-		db_disasm_esc __P((db_addr_t loc, int inst, int short_addr,
-				   int size, const char *seg));
-static void	db_print_address __P((const char *seg, int size,
-				      struct i_addr *addrp));
+		db_disasm_esc (db_addr_t loc, int inst, int short_addr,
+				   int size, const char *seg);
+static void	db_print_address (const char *seg, int size,
+				      struct i_addr *addrp);
 static db_addr_t
-		db_read_address __P((db_addr_t loc, int short_addr,
-				     int regmodrm, struct i_addr *addrp));
+		db_read_address (db_addr_t loc, int short_addr,
+				     int regmodrm, struct i_addr *addrp);
 
 /*
  * Read address at location and return updated location.

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/perfmon.h,v 1.7 1999/12/29 04:33:04 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/perfmon.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/perfmon.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -103,15 +103,15 @@ struct pmc_tstamp {
 /*
  * Intra-kernel interface to performance monitoring counters
  */
-void	perfmon_init  __P((void));
-int	perfmon_avail __P((void));
-int	perfmon_setup __P((int, unsigned int));
-int	perfmon_get   __P((int, unsigned int *));
-int	perfmon_fini  __P((int));
-int	perfmon_start __P((int));
-int	perfmon_stop  __P((int));
-int	perfmon_read  __P((int, quad_t *));
-int	perfmon_reset __P((int));
+void	perfmon_init  (void);
+int	perfmon_avail (void);
+int	perfmon_setup (int, unsigned int);
+int	perfmon_get   (int, unsigned int *);
+int	perfmon_fini  (int);
+int	perfmon_start (int);
+int	perfmon_stop  (int);
+int	perfmon_read  (int, quad_t *);
+int	perfmon_reset (int);
 
 #endif /* _KERNEL */
 

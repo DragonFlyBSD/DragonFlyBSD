@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/pmap.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/pmap.h,v 1.4 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -252,14 +252,14 @@ extern char *ptvmmap;		/* poor name! */
 extern vm_offset_t virtual_avail;
 extern vm_offset_t virtual_end;
 
-void	pmap_bootstrap __P(( vm_offset_t, vm_offset_t));
-pmap_t	pmap_kernel __P((void));
-void	*pmap_mapdev __P((vm_offset_t, vm_size_t));
-void	pmap_unmapdev __P((vm_offset_t, vm_size_t));
-unsigned *pmap_pte __P((pmap_t, vm_offset_t)) __pure2;
-vm_page_t pmap_use_pt __P((pmap_t, vm_offset_t));
+void	pmap_bootstrap ( vm_offset_t, vm_offset_t);
+pmap_t	pmap_kernel (void);
+void	*pmap_mapdev (vm_offset_t, vm_size_t);
+void	pmap_unmapdev (vm_offset_t, vm_size_t);
+unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;
+vm_page_t pmap_use_pt (pmap_t, vm_offset_t);
 #ifdef SMP
-void	pmap_set_opt __P((void));
+void	pmap_set_opt (void);
 #endif
 
 #endif /* _KERNEL */

@@ -34,7 +34,7 @@
  *	from:		@(#)in_cksum.c	1.3 (Berkeley) 1/19/91
  *	from: Id: in_cksum.c,v 1.8 1995/12/03 18:35:19 bde Exp
  * $FreeBSD: src/sys/i386/include/in_cksum.h,v 1.7.2.2 2002/07/02 04:03:04 jdp Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/in_cksum.h,v 1.3 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/in_cksum.h,v 1.4 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_IN_CKSUM_H_
@@ -110,7 +110,7 @@ in_pseudo(u_int sum, u_int b, u_int c)
 }
 
 #else
-u_int in_cksum_hdr __P((const struct ip *));
+u_int in_cksum_hdr (const struct ip *);
 #define	in_cksum_update(ip) \
 	do { \
 		int __tmpsum; \

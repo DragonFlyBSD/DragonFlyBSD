@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.10 2003/07/30 00:19:13 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.11 2003/08/26 21:42:18 rob Exp $
  *
  */
 
@@ -72,12 +72,12 @@
 
 
 #ifdef USER_LDT
-static int i386_get_ldt	__P((struct proc *, char *, int *));
-static int i386_set_ldt	__P((struct proc *, char *, int *));
+static int i386_get_ldt	(struct proc *, char *, int *);
+static int i386_set_ldt	(struct proc *, char *, int *);
 #endif
-static int i386_get_ioperm	__P((struct proc *, char *));
-static int i386_set_ioperm	__P((struct proc *, char *));
-int i386_extend_pcb	__P((struct proc *));
+static int i386_get_ioperm	(struct proc *, char *);
+static int i386_set_ioperm	(struct proc *, char *);
+int i386_extend_pcb	(struct proc *);
 
 /*
  * sysarch_args(int op, char *params)

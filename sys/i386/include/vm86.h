@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/vm86.h,v 1.13 1999/09/02 20:59:50 luoqi Exp $
- * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vm86.h,v 1.3 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_VM86_H_
@@ -149,17 +149,17 @@ extern	int in_vm86call;
 extern 	int vm86paddr;
 
 struct proc;
-extern	int vm86_emulate __P((struct vm86frame *));
-extern	int vm86_sysarch __P((struct proc *, char *));
-extern void vm86_trap __P((struct vm86frame *));
-extern 	int vm86_intcall __P((int, struct vm86frame *));
-extern 	int vm86_datacall __P((int, struct vm86frame *, struct vm86context *));
-extern void vm86_initialize __P((void));
-extern vm_offset_t vm86_getpage __P((struct vm86context *, int));
-extern vm_offset_t vm86_addpage __P((struct vm86context *, int, vm_offset_t));
-extern int vm86_getptr __P((struct vm86context *, vm_offset_t,
-				u_short *, u_short *));
+extern	int vm86_emulate (struct vm86frame *);
+extern	int vm86_sysarch (struct proc *, char *);
+extern void vm86_trap (struct vm86frame *);
+extern 	int vm86_intcall (int, struct vm86frame *);
+extern 	int vm86_datacall (int, struct vm86frame *, struct vm86context *);
+extern void vm86_initialize (void);
+extern vm_offset_t vm86_getpage (struct vm86context *, int);
+extern vm_offset_t vm86_addpage (struct vm86context *, int, vm_offset_t);
+extern int vm86_getptr (struct vm86context *, vm_offset_t,
+				u_short *, u_short *);
 
-extern vm_offset_t vm86_getaddr __P((struct vm86context *, u_short, u_short));
+extern vm_offset_t vm86_getaddr (struct vm86context *, u_short, u_short);
 
 #endif /* _MACHINE_VM86_H_ */

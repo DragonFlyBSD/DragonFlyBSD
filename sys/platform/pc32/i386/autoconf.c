@@ -35,7 +35,7 @@
  *
  *	from: @(#)autoconf.c	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/autoconf.c,v 1.146.2.2 2001/06/07 06:05:58 dd Exp $
- * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.9 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/autoconf.c,v 1.10 2003/08/26 21:42:18 rob Exp $
  */
 
 /*
@@ -91,12 +91,12 @@
 device_t isa_bus_device = 0;
 #endif
 
-static void	configure_first __P((void *));
-static void	configure __P((void *));
-static void	configure_final __P((void *));
+static void	configure_first (void *);
+static void	configure (void *);
+static void	configure_final (void *);
 
 #if defined(FFS) && defined(FFS_ROOT)
-static void	setroot __P((void));
+static void	setroot (void);
 #endif
 
 #if defined(NFS) && defined(NFS_ROOT)

@@ -32,7 +32,7 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.3 2003/07/20 04:20:32 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.4 2003/08/26 21:42:18 rob Exp $
  */
 
 #ifndef _MACHINE_PROFILE_H_
@@ -116,15 +116,15 @@ typedef	u_int	fptrdiff_t;
 
 #ifdef _KERNEL
 
-void	mcount __P((uintfptr_t frompc, uintfptr_t selfpc));
+void	mcount (uintfptr_t frompc, uintfptr_t selfpc);
 
 #ifdef GUPROF
 struct gmonparam;
 
-void	nullfunc_loop_profiled __P((void));
-void	nullfunc_profiled __P((void));
-void	startguprof __P((struct gmonparam *p));
-void	stopguprof __P((struct gmonparam *p));
+void	nullfunc_loop_profiled (void);
+void	nullfunc_profiled (void);
+void	startguprof (struct gmonparam *p);
+void	stopguprof (struct gmonparam *p);
 #else
 #define	startguprof(p)
 #define	stopguprof(p)
@@ -137,12 +137,12 @@ void	stopguprof __P((struct gmonparam *p));
 __BEGIN_DECLS
 #ifdef __GNUC__
 #ifdef __ELF__
-void	mcount __P((void)) __asm(".mcount");
+void	mcount (void) __asm(".mcount");
 #else
-void	mcount __P((void)) __asm("mcount");
+void	mcount (void) __asm("mcount");
 #endif
 #endif
-static void	_mcount __P((uintfptr_t frompc, uintfptr_t selfpc));
+static void	_mcount (uintfptr_t frompc, uintfptr_t selfpc);
 __END_DECLS
 
 #endif /* _KERNEL */
@@ -152,11 +152,11 @@ __END_DECLS
 extern int	cputime_bias;
 
 __BEGIN_DECLS
-int	cputime __P((void));
-void	empty_loop __P((void));
-void	mexitcount __P((uintfptr_t selfpc));
-void	nullfunc __P((void));
-void	nullfunc_loop __P((void));
+int	cputime (void);
+void	empty_loop (void);
+void	mexitcount (uintfptr_t selfpc);
+void	nullfunc (void);
+void	nullfunc_loop (void);
 __END_DECLS
 #endif
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/icu.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/icu.h,v 1.4 2003/08/26 21:42:19 rob Exp $
  */
 
 /*
@@ -48,8 +48,8 @@
 
 #ifndef	LOCORE
 
-void	INTREN			__P((u_int));
-void	INTRDIS			__P((u_int));
+void	INTREN			(u_int);
+void	INTRDIS			(u_int);
 
 #endif /* LOCORE */
 

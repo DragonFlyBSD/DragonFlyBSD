@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/boot/dosboot/types.h,v 1.6 1999/12/29 04:32:52 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/types.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/types.h,v 1.3 2003/08/26 21:42:17 rob Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -86,7 +86,7 @@ typedef	unsigned short	uid_t;		/* user id */
  */
 #ifndef KERNEL
 __BEGIN_DECLS
-off_t	 lseek __P((int, off_t, int));
+off_t	 lseek (int, off_t, int);
 __END_DECLS
 #endif
 

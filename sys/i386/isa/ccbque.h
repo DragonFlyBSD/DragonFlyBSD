@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ccbque.h,v 1.3.6.2 2000/10/21 07:44:24 nyan Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.3 2003/07/26 19:07:48 rob Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ccbque.h,v 1.4 2003/08/26 21:42:19 rob Exp $
  */
 /*
  * Common command control queue funcs.
@@ -50,9 +50,9 @@ struct CCBTYPE##que {							\
 	u_int flags;							\
 };									\
 									\
-void DEV##_init_ccbque __P((int));					\
-struct CCBTYPE *DEV##_get_ccb __P((void));				\
-void DEV##_free_ccb __P((struct CCBTYPE *));
+void DEV##_init_ccbque (int);					\
+struct CCBTYPE *DEV##_get_ccb (void);				\
+void DEV##_free_ccb (struct CCBTYPE *);
 
 /* (II)  static allocated memory */
 #define GENERIC_CCB_STATIC_ALLOC(DEV, CCBTYPE)				\

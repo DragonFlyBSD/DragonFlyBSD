@@ -33,7 +33,7 @@
  *	@(#)dirent.h	5.18 (Berkeley) 2/23/91
  *
  * $FreeBSD: src/sys/i386/boot/dosboot/dirent.h,v 1.2 1999/12/29 04:32:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/dirent.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/dirent.h,v 1.3 2003/08/26 21:42:17 rob Exp $
  */
 
 #ifndef _DIRENT_H_
@@ -92,17 +92,17 @@ typedef struct _dirdesc {
 #include "cdefs.h"
 
 __BEGIN_DECLS
-DIR *opendir __P((const char *));
-struct dirent *readdir __P((DIR *));
-void rewinddir __P((DIR *));
-int closedir __P((DIR *));
+DIR *opendir (const char *);
+struct dirent *readdir (DIR *);
+void rewinddir (DIR *);
+int closedir (DIR *);
 #ifndef _POSIX_SOURCE
-long telldir __P((const DIR *));
-void seekdir __P((DIR *, long));
-int scandir __P((const char *, struct dirent ***,
-    int (*)(struct dirent *), int (*)(const void *, const void *)));
-int alphasort __P((const void *, const void *));
-int getdirentries __P((int, char *, int, long *));
+long telldir (const DIR *);
+void seekdir (DIR *, long);
+int scandir (const char *, struct dirent ***,
+    int (*)(struct dirent *), int (*)(const void *, const void *));
+int alphasort (const void *, const void *);
+int getdirentries (int, char *, int, long *);
 #endif /* not POSIX */
 __END_DECLS
 

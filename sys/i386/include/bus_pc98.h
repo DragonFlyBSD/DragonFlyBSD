@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/bus_pc98.h,v 1.8.2.5 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/i386/include/Attic/bus_pc98.h,v 1.3 2003/08/07 21:17:22 dillon Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/bus_pc98.h,v 1.4 2003/08/26 21:42:18 rob Exp $ */
 /*	$NecBSD: busio.h,v 3.25.4.2.2.1 2000/06/12 03:53:08 honda Exp $	*/
 /*	$NetBSD: bus.h,v 1.12 1997/10/01 08:25:15 fvdl Exp $	*/
 
@@ -76,7 +76,7 @@ struct resource;
 /*
  * bus space tag
  */
-#define	_PASCAL_CALL	__P((void))
+#define	_PASCAL_CALL	(void)
 
 #define	_BUS_SPACE_CALL_FUNCS_TAB(NAME,TYPE,BWN) \
 	NAME##_space_read_##BWN##, 				\
@@ -216,28 +216,28 @@ void i386_memio_free(bus_space_tag_t t, bus_space_handle_t bsh,
  */
 #define	_BUS_ACCESS_METHODS_PROTO(TYPE,BWN) \
 	static __inline TYPE bus_space_read_##BWN 			\
-	__P((bus_space_tag_t, bus_space_handle_t, bus_size_t offset));	\
+	(bus_space_tag_t, bus_space_handle_t, bus_size_t offset);	\
 	static __inline void bus_space_read_multi_##BWN			\
-	__P((bus_space_tag_t, bus_space_handle_t,			\
-	     bus_size_t, TYPE *, size_t));				\
+	(bus_space_tag_t, bus_space_handle_t,			\
+	     bus_size_t, TYPE *, size_t);				\
 	static __inline void bus_space_read_region_##BWN		\
-	__P((bus_space_tag_t, bus_space_handle_t,			\
-	     bus_size_t, TYPE *, size_t));				\
+	(bus_space_tag_t, bus_space_handle_t,			\
+	     bus_size_t, TYPE *, size_t);				\
 	static __inline void bus_space_write_##BWN			\
-	__P((bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE));	\
+	(bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE);	\
 	static __inline void bus_space_write_multi_##BWN		\
-	__P((bus_space_tag_t, bus_space_handle_t,			\
-	     bus_size_t, const TYPE *, size_t));			\
+	(bus_space_tag_t, bus_space_handle_t,			\
+	     bus_size_t, const TYPE *, size_t);			\
 	static __inline void bus_space_write_region_##BWN		\
-	__P((bus_space_tag_t, bus_space_handle_t,			\
-	     bus_size_t, const TYPE *, size_t));			\
+	(bus_space_tag_t, bus_space_handle_t,			\
+	     bus_size_t, const TYPE *, size_t);			\
 	static __inline void bus_space_set_multi_##BWN			\
-	__P((bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE, size_t));\
+	(bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE, size_t);\
 	static __inline void bus_space_set_region_##BWN			\
-	__P((bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE, size_t));\
+	(bus_space_tag_t, bus_space_handle_t, bus_size_t, TYPE, size_t);\
 	static __inline void bus_space_copy_region_##BWN		\
-	__P((bus_space_tag_t, bus_space_handle_t, bus_size_t,		\
-	     bus_space_handle_t, bus_size_t, size_t));
+	(bus_space_tag_t, bus_space_handle_t, bus_size_t,		\
+	     bus_space_handle_t, bus_size_t, size_t);
 
 _BUS_ACCESS_METHODS_PROTO(u_int8_t,1)
 _BUS_ACCESS_METHODS_PROTO(u_int16_t,2)
