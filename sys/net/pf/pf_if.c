@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.2 2004/09/19 23:54:02 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.3 2004/09/28 16:22:41 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -142,9 +142,9 @@ pfi_initialize(void)
 	}
 	pfi_dummy = pfi_if_create("notyet", pfi_self,
 	    PFI_IFLAG_GROUP | PFI_IFLAG_DYNAMIC);
-	pfi_attach_cookie = EVENTHANDLER_REGISTER(ifnet_arrival_event,
+	pfi_attach_cookie = EVENTHANDLER_REGISTER(ifnet_attach_event,
 	    pfi_attach_ifnet_event, NULL, EVENTHANDLER_PRI_ANY);
-	pfi_detach_cookie = EVENTHANDLER_REGISTER(ifnet_departure_event,
+	pfi_detach_cookie = EVENTHANDLER_REGISTER(ifnet_detach_event,
 	    pfi_detach_ifnet_event, NULL, EVENTHANDLER_PRI_ANY);
 	pfi_clone_cookie = EVENTHANDLER_REGISTER(if_clone_event,
 	    pfi_attach_clone_event, NULL, EVENTHANDLER_PRI_ANY);
@@ -156,8 +156,8 @@ pfi_cleanup(void)
 	struct pfi_kif *p, key;
 	struct ifnet *ifp;
 
-	EVENTHANDLER_DEREGISTER(ifnet_arrival_event, pfi_attach_cookie);
-	EVENTHANDLER_DEREGISTER(ifnet_departure_event, pfi_detach_cookie);
+	EVENTHANDLER_DEREGISTER(ifnet_attach_event, pfi_attach_cookie);
+	EVENTHANDLER_DEREGISTER(ifnet_detach_event, pfi_detach_cookie);
 	EVENTHANDLER_DEREGISTER(if_clone_event, pfi_clone_cookie);
 
 	/* release PFI_IFLAG_INSTANCE */
