@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.28 2005/01/27 02:30:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.29 2005/01/27 10:25:19 okumoto Exp $
  */
 
 /*
@@ -213,3 +213,33 @@ Buf_AppendRange(Buffer *bp, const char str[], const char *end)
 	Buf_AddBytes(bp, end - str, str);
 }
 
+/**
+ * Convert newlines in buffer to spaces.  The trailing newline is
+ * removed.
+ */
+void
+Buf_StripNewlines(Buffer *bp)
+{
+	char *ptr = bp->end;
+
+	/*
+	 * If there is anything in the buffer, remove the last
+	 * newline character.
+	 */
+	if (ptr != bp->buf) {
+		if (*(ptr - 1) == '\n') {
+			/* shorten buffer */
+			*(ptr - 1) = '\0';
+			--bp->end;
+		}
+		--ptr;
+	}
+
+	/* Convert newline characters to a space characters.  */
+	while (ptr != bp->buf) {
+		if (*ptr == '\n') {
+			*ptr = ' ';
+		}
+		--ptr;
+	}
+}

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.46 2005/01/27 02:30:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.47 2005/01/27 10:25:19 okumoto Exp $
  */
 
 /*-
@@ -1550,7 +1550,11 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 		case 's':
 		    if (tstr[1] == 'h' && (tstr[2] == endc || tstr[2] == ':')) {
 			const char *error;
-			newStr = Cmd_Exec(str, &error);
+			{
+			    Buffer *buf = Cmd_Exec(str, &error);
+			    newStr = Buf_GetAll(buf, NULL);
+			    Buf_Destroy(buf, FALSE);
+			}
 			if (error)
 			    Error(error, str);
 			cp = tstr + 2;
