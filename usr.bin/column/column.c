@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/column/column.c,v 1.4.6.2 2001/08/02 01:34:19 obrien Exp $
- * $DragonFly: src/usr.bin/column/column.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
+ * $DragonFly: src/usr.bin/column/column.c,v 1.5 2005/01/16 04:28:00 cpressey Exp $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)column.c	8.4 (Berkeley) 5/4/95
@@ -63,7 +63,7 @@ int entries;			/* number of records */
 int eval;			/* exit value */
 int maxlength;			/* longest record */
 char **list;			/* array of pointers to records */
-char *separator = "\t ";	/* field separator for table option */
+const char *separator = "\t ";	/* field separator for table option */
 
 int
 main(int argc, char **argv)
