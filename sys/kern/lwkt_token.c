@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.3 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.4 2004/02/18 16:31:37 joerg Exp $
  */
 
 #ifdef _KERNEL
@@ -277,7 +277,7 @@ lwkt_regettoken(lwkt_token_t tok)
 #endif
 	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
 	    lwkt_wait_ipiq(dcpu, seq);
-#ifdef INVARIATNS
+#ifdef INVARIANTS
 	    if (token_debug)
 		printf("REQR%d ", tok->t_cpu->gd_cpuid);
 #endif
