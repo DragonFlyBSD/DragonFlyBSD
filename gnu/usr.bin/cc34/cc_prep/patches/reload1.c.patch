@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/reload1.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/reload1.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/reload1.c	2004-06-18 23:08:13.000000000 +0200
-+++ reload1.c	2004-06-18 23:34:14.000000000 +0200
+diff -u ../gcc.orig/reload1.c reload1.c
+--- ../gcc.orig/reload1.c	2004-06-19 22:27:13.000000000 +0200
++++ reload1.c	2004-06-20 01:16:04.000000000 +0200
 @@ -43,6 +43,7 @@
  #include "toplev.h"
  #include "except.h"

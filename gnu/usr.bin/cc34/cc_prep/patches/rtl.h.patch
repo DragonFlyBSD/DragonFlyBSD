@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/rtl.h.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/rtl.h.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/rtl.h	2004-06-18 23:08:13.000000000 +0200
-+++ rtl.h	2004-06-18 23:36:04.000000000 +0200
+diff -u ../gcc.orig/rtl.h rtl.h
+--- ../gcc.orig/rtl.h	2004-06-19 22:27:13.000000000 +0200
++++ rtl.h	2004-06-20 01:16:05.000000000 +0200
 @@ -473,6 +473,18 @@
  			     __FUNCTION__);				\
     _rtx; })

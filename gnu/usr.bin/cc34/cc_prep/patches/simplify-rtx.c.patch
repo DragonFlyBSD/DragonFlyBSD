@@ -1,8 +1,9 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/simplify-rtx.c	2004-06-18 23:08:13.000000000 +0200
-+++ simplify-rtx.c	2004-06-18 23:38:36.000000000 +0200
-@@ -2252,6 +2252,7 @@
+diff -u ../gcc.orig/simplify-rtx.c simplify-rtx.c
+--- ../gcc.orig/simplify-rtx.c	2004-06-19 22:27:14.000000000 +0200
++++ simplify-rtx.c	2004-06-20 01:16:05.000000000 +0200
+@@ -2286,6 +2286,7 @@
    int n_ops = 2, input_ops = 2, input_consts = 0, n_consts;
    int first, changed;
    int i, j;
@@ -10,7 +11,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.1 2004
  
    memset (ops, 0, sizeof ops);
  
-@@ -2277,6 +2278,10 @@
+@@ -2311,6 +2312,10 @@
  	  switch (this_code)
  	    {
  	    case PLUS:
@@ -21,7 +22,7 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.1 2004
  	    case MINUS:
  	      if (n_ops == 7)
  		return NULL_RTX;
-@@ -2438,11 +2443,24 @@
+@@ -2472,11 +2477,24 @@
        && GET_CODE (ops[n_ops - 1].op) == CONST_INT
        && CONSTANT_P (ops[n_ops - 2].op))
      {
@@ -51,28 +52,62 @@ $DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/simplify-rtx.c.patch,v 1.1 2004
      }
  
    /* Count the number of CONSTs that we generated.  */
-@@ -2460,6 +2478,25 @@
+@@ -2494,6 +2512,59 @@
  	  || (n_ops + n_consts == input_ops && n_consts <= input_consts)))
      return NULL_RTX;
  
-+      if (!flag_propolice_protection)
-+	{
-+	  rtx value = ops[n_ops - 1].op;
-+	  if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
-+	    value = neg_const_int (mode, value);
-+	  ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, INTVAL (value));
-+	  n_ops--;
-+	}
-+      /* The stack protector keeps the addressing style of a local variable,
-+	 so it doesn't use neg_const_int function not to change
-+	 the offset value.  */
-+      else {
-+	HOST_WIDE_INT value = INTVAL (ops[n_ops - 1].op);
-+	if (ops[n_ops - 1].neg ^ ops[n_ops - 2].neg)
-+	  value = -value;
-+	ops[n_ops - 2].op = plus_constant (ops[n_ops - 2].op, value);
-+	n_ops--;
-+      }
++  if (flag_propolice_protection)
++    {
++      /* keep the addressing style of local variables
++	 as (plus (virtual_stack_vars_rtx) (CONST_int x)).
++	 For the case array[r-1],
++	 converts from (+ (+VFP c1) (+r -1)) to (SET R (+VFP c1)) (+ R (+r -1)).
++
++	 This loop finds ops[i] which is the register for the frame
++	 addressing, Then, makes the frame addressing using the register and
++	 the constant of ops[n_ops - 1].  */
++      for (i = 0; i < n_ops; i++)
++#ifdef FRAME_GROWS_DOWNWARD
++	if (ops[i].op == virtual_stack_vars_rtx)
++#else
++	if (ops[i].op == virtual_stack_vars_rtx
++	    || ops[i].op == frame_pointer_rtx)
++#endif
++	  {
++	    if (GET_CODE (ops[n_ops - 1].op) == CONST_INT)
++	      {
++		HOST_WIDE_INT value = INTVAL (ops[n_ops - 1].op);
++		if (value >= fp_offset)
++		  {
++		    ops[i].op = plus_constant (ops[i].op, value);
++		    n_ops--;
++		  }
++		else
++		  {
++		    if (!force
++			&& (n_ops + 1 + n_consts > input_ops
++			    || (n_ops + 1 + n_consts == input_ops
++				&& n_consts <= input_consts)))
++		      return NULL_RTX;
++		    ops[n_ops - 1].op = GEN_INT (value-fp_offset);
++		    ops[i].op = plus_constant (ops[i].op, fp_offset);
++		  }
++	      }
++	    /* keep the following address pattern;
++	       (1) buf[BUFSIZE] is the first assigned variable.
++	       (+ (+ fp -BUFSIZE) BUFSIZE)
++	       (2) ((+ (+ fp 1) r) -1).  */
++	    else if (fp_offset != 0)
++	      return NULL_RTX;
++	    /* keep the (+ fp 0) pattern for the following case;
++	       (1) buf[i]: i: REG, buf: (+ fp 0) in !FRAME_GROWS_DOWNWARD
++	       (2) argument: the address is (+ fp 0).  */
++	    else if (fp_offset == 0)
++	      return NULL_RTX;
++
++	    break;
++	  }
++    }
 +
    /* Put a non-negated operand first, if possible.  */
  

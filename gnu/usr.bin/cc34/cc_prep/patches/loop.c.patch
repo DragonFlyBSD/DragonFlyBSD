@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/loop.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/loop.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/loop.c	2004-06-18 23:08:12.000000000 +0200
-+++ loop.c	2004-06-18 23:30:01.000000000 +0200
+diff -u ../gcc.orig/loop.c loop.c
+--- ../gcc.orig/loop.c	2004-06-19 22:27:13.000000000 +0200
++++ loop.c	2004-06-20 01:16:04.000000000 +0200
 @@ -6513,6 +6513,14 @@
    if (GET_CODE (*mult_val) == USE)
      *mult_val = XEXP (*mult_val, 0);

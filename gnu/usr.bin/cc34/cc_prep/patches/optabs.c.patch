@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/optabs.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/optabs.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/optabs.c	2004-06-18 23:08:12.000000000 +0200
-+++ optabs.c	2004-06-18 23:30:52.000000000 +0200
+diff -u ../gcc.orig/optabs.c optabs.c
+--- ../gcc.orig/optabs.c	2004-06-19 22:27:13.000000000 +0200
++++ optabs.c	2004-06-20 01:16:04.000000000 +0200
 @@ -678,6 +678,26 @@
    if (target)
      target = protect_from_queue (target, 1);

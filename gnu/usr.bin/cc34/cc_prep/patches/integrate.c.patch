@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/integrate.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/integrate.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/integrate.c	2004-06-18 23:08:11.000000000 +0200
-+++ integrate.c	2004-06-18 23:28:25.000000000 +0200
+diff -u ../gcc.orig/integrate.c integrate.c
+--- ../gcc.orig/integrate.c	2004-06-19 22:27:12.000000000 +0200
++++ integrate.c	2004-06-20 01:16:04.000000000 +0200
 @@ -393,6 +393,10 @@
    /* These args would always appear unused, if not for this.  */
    TREE_USED (copy) = 1;

@@ -1,7 +1,8 @@
-$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/explow.c.patch,v 1.1 2004/06/19 10:30:08 joerg Exp $
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/explow.c.patch,v 1.2 2004/06/20 00:10:52 joerg Exp $
 
---- ../gcc.orig/explow.c	2004-06-18 23:08:11.000000000 +0200
-+++ explow.c	2004-06-18 23:18:11.000000000 +0200
+diff -u ../gcc.orig/explow.c explow.c
+--- ../gcc.orig/explow.c	2004-06-19 22:27:11.000000000 +0200
++++ explow.c	2004-06-20 01:16:04.000000000 +0200
 @@ -84,7 +84,8 @@
    rtx tem;
    int all_constant = 0;
