@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.5 2004/09/15 16:33:09 joerg Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.6 2005/02/15 19:08:06 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -164,14 +164,14 @@ acpi_printcpu(void)
 }
 
 #define WAKECODE_FIXUP(offset, type, val) do	{		\
-	void	**addr;						\
-	addr = (void **)(sc->acpi_wakeaddr + offset);		\
-	(type *)*addr = val;					\
+	type	*addr;						\
+	addr = (type *)(sc->acpi_wakeaddr + offset);		\
+	*addr = val;						\
 } while (0)
 
 #define WAKECODE_BCOPY(offset, type, val) do	{		\
-	void	**addr;						\
-	addr = (void **)(sc->acpi_wakeaddr + offset);		\
+	void	*addr;						\
+	addr = (void *)(sc->acpi_wakeaddr + offset);		\
 	bcopy(&(val), addr, sizeof(type));			\
 } while (0)
 
