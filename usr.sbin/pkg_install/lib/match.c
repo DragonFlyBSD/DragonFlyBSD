@@ -16,8 +16,8 @@
  *
  * Routines used to query installed packages.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/match.c,v 1.2.2.8 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/match.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/match.c,v 1.19 2004/06/29 19:06:42 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/match.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -36,14 +36,15 @@ struct store {
     char **store;
 };
 
-static int rex_match(const char *, const char *);
+static int rex_match(const char *, const char *, int);
+static int csh_match(const char *, const char *, int);
 struct store *storecreate(struct store *);
 static int storeappend(struct store *, const char *);
-static int fname_cmp(const FTSENT **, const FTSENT **);
+static int fname_cmp(const FTSENT * const *, const FTSENT * const *);
 
 /*
  * Function to query names of installed packages.
- * MatchType	- one of MATCH_ALL, MATCH_REGEX, MATCH_GLOB;
+ * MatchType	- one of MATCH_ALL, MATCH_EREGEX, MATCH_REGEX, MATCH_GLOB, MATCH_NGLOB;
  * patterns	- NULL-terminated list of glob or regex patterns
  *		  (could be NULL for MATCH_ALL);
  * retval	- return value (could be NULL if you don't want/need
@@ -61,7 +62,7 @@ matchinstalled(match_t MatchType, char **patterns, int *retval)
     static struct store *store = NULL;
     FTS *ftsp;
     FTSENT *f;
-    Boolean *lmatched;
+    Boolean *lmatched = NULL;
 
     store = storecreate(store);
     if (store == NULL) {
@@ -107,22 +108,11 @@ matchinstalled(match_t MatchType, char **patterns, int *retval)
 		    matched = f->fts_name;
 		else 
 		    for (i = 0; patterns[i]; i++) {
-			switch (MatchType) {
-			case MATCH_REGEX:
-			    errcode = rex_match(patterns[i], f->fts_name);
-			    if (errcode == 1) {
-				matched = f->fts_name;
-				errcode = 0;
-			    }
-			    break;
-			case MATCH_GLOB:
-			    if (fnmatch(patterns[i], f->fts_name, 0) == 0) {
-				matched = f->fts_name;
-				lmatched[i] = TRUE;
-			    }
-			    break;
-			default:
-			    break;
+			errcode = pattern_match(MatchType, patterns[i], f->fts_name);
+			if (errcode == 1) {
+			    matched = f->fts_name;
+			    lmatched[i] = TRUE;
+			    errcode = 0;
 			}
 			if (matched != NULL || errcode != 0)
 			    break;
@@ -150,6 +140,96 @@ matchinstalled(match_t MatchType, char **patterns, int *retval)
 	return NULL;
     else
 	return store->store;
+}
+
+int
+pattern_match(match_t MatchType, char *pattern, const char *pkgname)
+{
+    int errcode = 0;
+    const char *fname = pkgname;
+    char basefname[PATH_MAX];
+    char condchar = '\0';
+    char *condition;
+
+    /* do we have an appended condition? */
+    condition = strpbrk(pattern, "<>=");
+    if (condition) {
+	const char *ch;
+	/* yes, isolate the pattern from the condition ... */
+	if (condition > pattern && condition[-1] == '!')
+	    condition--;
+	condchar = *condition;
+	*condition = '\0';
+	/* ... and compare the name without version */
+	ch = strrchr(fname, '-');
+	if (ch && ch - fname < PATH_MAX) {
+	    strlcpy(basefname, fname, ch - fname + 1);
+	    fname = basefname;
+	}
+    }
+
+    switch (MatchType) {
+    case MATCH_EREGEX:
+    case MATCH_REGEX:
+	errcode = rex_match(pattern, fname, MatchType == MATCH_EREGEX ? 1 : 0);
+	break;
+    case MATCH_NGLOB:
+    case MATCH_GLOB:
+	errcode = (csh_match(pattern, fname, 0) == 0) ? 1 : 0;
+	break;
+    case MATCH_EXACT:
+	errcode = (strcmp(pattern, fname) == 0) ? 1 : 0;
+	break;
+    case MATCH_ALL:
+	errcode = 1;
+	break;
+    default:
+	break;
+    }
+
+    /* loop over all appended conditions */
+    while (condition) {
+	/* restore the pattern */
+	*condition = condchar;
+	/* parse the condition (fun with bits) */
+	if (errcode == 1) {
+	    char *nextcondition;
+	    /* compare version numbers */
+	    int match = 0;
+	    if (*++condition == '=') {
+		match = 2;
+		condition++;
+	    }
+	    switch(condchar) {
+	    case '<':
+		match |= 1;
+		break;
+	    case '>':
+		match |= 4;
+		break;
+	    case '=':
+		match |= 2;
+		break;
+	    case '!':
+		match = 5;
+		break;
+	    }
+	    /* isolate the version number from the next condition ... */
+	    nextcondition = strpbrk(condition, "<>=!");
+	    if (nextcondition) {
+		condchar = *nextcondition;
+		*nextcondition = '\0';
+	    }
+	    /* and compare the versions (version_cmp removes the filename for us) */
+	    if ((match & (1 << (version_cmp(pkgname, condition) + 1))) == 0)
+		errcode = 0;
+	    condition = nextcondition;
+	} else {
+	    break;
+	}
+    }
+
+    return errcode;
 }
 
 /*
@@ -192,10 +272,8 @@ matchbyorigin(const char *origin, int *retval)
 	snprintf(tmp, PATH_MAX, "%s/%s", tmp, CONTENTS_FNAME);
 	fp = fopen(tmp, "r");
 	if (fp == NULL) {
-	    warn("%s", tmp);
-	    if (retval != NULL)
-		*retval = 1;
-	    return NULL;
+	    warnx("the package info for package '%s' is corrupt", installed[i]);
+	    continue;
 	}
 
 	cmd = -1;
@@ -211,7 +289,7 @@ matchbyorigin(const char *origin, int *retval)
 		continue;
 	    cmd = plist_cmd(tmp + 1, &cp);
 	    if (cmd == PLIST_ORIGIN) {
-		if (strcmp(origin, cp) == 0)
+		if (csh_match(origin, cp, FNM_PATHNAME) == 0)
 		    storeappend(store, installed[i]);
 		break;
 	    }
@@ -228,23 +306,25 @@ matchbyorigin(const char *origin, int *retval)
 }
 
 /*
- * Return TRUE if the specified package is installed,
- * or FALSE otherwise.
+ * 
+ * Return 1 if the specified package is installed,
+ * 0 if not, and -1 if an error occured.
  */
 int
 isinstalledpkg(const char *name)
 {
     char buf[FILENAME_MAX];
+    char buf2[FILENAME_MAX];
 
     snprintf(buf, sizeof(buf), "%s/%s", LOG_DIR, name);
     if (!isdir(buf) || access(buf, R_OK) == FAIL)
-	return FALSE;
+	return 0;
 
-    snprintf(buf, sizeof(buf), "%s/%s", buf, CONTENTS_FNAME);
-    if (!isfile(buf) || access(buf, R_OK) == FAIL)
-	return FALSE;
+    snprintf(buf2, sizeof(buf2), "%s/%s", buf, CONTENTS_FNAME);
+    if (!isfile(buf2) || access(buf2, R_OK) == FAIL)
+	return -1;
 
-    return TRUE;
+    return 1;
 }
 
 /*
@@ -253,7 +333,7 @@ isinstalledpkg(const char *name)
  * engine reported an error (usually invalid syntax).
  */
 static int
-rex_match(const char *pattern, const char *pkgname)
+rex_match(const char *pattern, const char *pkgname, int extended)
 {
     char errbuf[128];
     int errcode;
@@ -262,7 +342,7 @@ rex_match(const char *pattern, const char *pkgname)
 
     retval = 0;
 
-    errcode = regcomp(&rex, pattern, REG_BASIC | REG_NOSUB);
+    errcode = regcomp(&rex, pattern, (extended ? REG_EXTENDED : REG_BASIC) | REG_NOSUB);
     if (errcode == 0)
 	errcode = regexec(&rex, pkgname, 0, NULL, 0);
 
@@ -277,6 +357,99 @@ rex_match(const char *pattern, const char *pkgname)
     regfree(&rex);
 
     return retval;
+}
+
+/*
+ * Match string by a csh-style glob pattern. Returns 0 on
+ * match and FNM_NOMATCH otherwise, to be compatible with
+ * fnmatch(3).
+ */
+static int
+csh_match(const char *pattern, const char *string, int flags)
+{
+    int ret = FNM_NOMATCH;
+
+
+    const char *nextchoice = pattern;
+    const char *current = NULL;
+
+    int prefixlen = -1;
+    int currentlen = 0;
+
+    int level = 0;
+
+    do {
+	const char *pos = nextchoice;
+	const char *postfix = NULL;
+
+	Boolean quoted = FALSE;
+
+	nextchoice = NULL;
+
+	do {
+	    const char *eb;
+	    if (!*pos) {
+		postfix = pos;
+	    } else if (quoted) {
+		quoted = FALSE;
+	    } else {
+		switch (*pos) {
+		case '{':
+		    ++level;
+		    if (level == 1) {
+			current = pos+1;
+			prefixlen = pos-pattern;
+		    }
+		    break;
+		case ',':
+		    if (level == 1 && !nextchoice) {
+			nextchoice = pos+1;
+			currentlen = pos-current;
+		    }
+		    break;
+		case '}':
+		    if (level == 1) {
+			postfix = pos+1;
+			if (!nextchoice)
+			    currentlen = pos-current;
+		    }
+		    level--;
+		    break;
+		case '[':
+		    eb = pos+1;
+		    if (*eb == '!' || *eb == '^')
+			eb++;
+		    if (*eb == ']')
+			eb++;
+		    while(*eb && *eb != ']')
+			eb++;
+		    if (*eb)
+			pos=eb;
+		    break;
+		case '\\':
+		    quoted = TRUE;
+		    break;
+		default:
+		    ;
+		}
+	    }
+	    pos++;
+	} while (!postfix);
+
+	if (current) {
+	    char buf[FILENAME_MAX];
+	    snprintf(buf, sizeof(buf), "%.*s%.*s%s", prefixlen, pattern, currentlen, current, postfix);
+	    ret = csh_match(buf, string, flags);
+	    if (ret) {
+		current = nextchoice;
+		level = 1;
+	    } else
+		current = NULL;
+	} else
+	    ret = fnmatch(pattern, string, flags);
+    } while (current);
+
+    return ret;
 }
 
 /*
@@ -336,7 +509,7 @@ storeappend(struct store *store, const char *item)
 }
 
 static int
-fname_cmp(const FTSENT **a, const FTSENT **b)
+fname_cmp(const FTSENT * const *a, const FTSENT * const *b)
 {
     return strcmp((*a)->fts_name, (*b)->fts_name);
 }

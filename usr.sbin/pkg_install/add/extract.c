@@ -16,38 +16,38 @@
  *
  * This is the package extraction code for the add module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.25.2.6 2002/08/31 18:45:32 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.42 2004/07/28 07:19:15 kan Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.3 2004/07/30 04:46:12 dillon Exp $
  */
 
+#include <ctype.h>
 #include <err.h>
 #include "lib.h"
 #include "add.h"
 
 
-#define STARTSTRING "tar cf - "
-#define TOOBIG(str) (((int)strlen(str) + FILENAME_MAX + where_count > maxargs) \
-		|| ((int)strlen(str) + FILENAME_MAX + perm_count > maxargs))
+#define STARTSTRING "/usr/bin/tar cf -"
+#define TOOBIG(str) \
+    (((int)strlen(str) + FILENAME_MAX + where_count > maxargs) ||\
+	((int)strlen(str) + FILENAME_MAX + perm_count > maxargs))
 
 #define PUSHOUT(todir) /* push out string */ \
-        if (where_count > (int)sizeof(STARTSTRING)-1) { \
-		    strcat(where_args, "|tar --unlink -xpf - -C "); \
-		    strcat(where_args, todir); \
-		    if (system(where_args)) { \
-	                cleanup(0); \
-		        errx(2, \
-			    "%s: can not invoke %ld byte tar pipeline: %s", \
-			     __func__, \
-			     (long)strlen(where_args), where_args); \
-		    } \
-		    strcpy(where_args, STARTSTRING); \
-		    where_count = sizeof(STARTSTRING)-1; \
+    if (where_count > (int)sizeof(STARTSTRING)-1) { \
+	strcat(where_args, "|/usr/bin/tar --unlink -xpf - -C "); \
+	strcat(where_args, todir); \
+	if (system(where_args)) { \
+	    cleanup(0); \
+	    errx(2, "%s: can not invoke %ld byte tar pipeline: %s", \
+		 __func__, (long)strlen(where_args), where_args); \
 	} \
-	if (perm_count) { \
-		    apply_perms(todir, perm_args); \
-		    perm_args[0] = 0;\
-		    perm_count = 0; \
-	}
+	strcpy(where_args, STARTSTRING); \
+	where_count = sizeof(STARTSTRING)-1; \
+    } \
+    if (perm_count) { \
+	apply_perms(todir, perm_args); \
+	perm_args[0] = 0;\
+	perm_count = 0; \
+    }
 
 static void
 rollback(const char *name, const char *home, PackingList start, PackingList stop)
@@ -74,6 +74,28 @@ rollback(const char *name, const char *home, PackingList start, PackingList stop
 		dir = home;
 	}
     }
+}
+
+#define add_char(buf, len, pos, ch) do {\
+    if ((pos) < (len)) { \
+        buf[(pos)] = (ch); \
+        buf[(pos) + 1] = '\0'; \
+    } \
+    ++(pos); \
+} while (0)
+
+static int
+add_arg(char *buf, int len, const char *str)
+{
+    int i = 0;
+
+    add_char(buf, len, i, ' ');
+    for (; *str != '\0'; ++str) {
+	if (!isalnum(*str) && *str != '/' && *str != '.' && *str != '-')
+	    add_char(buf, len, i, '\\');
+	add_char(buf, len, i, *str);
+    }
+    return (i);
 }
 
 void
@@ -109,7 +131,7 @@ extract_plist(const char *home, Package *pkg)
     Group = NULL;
     Mode = NULL;
     last_file = NULL;
-    (const char *)Directory = home;
+    Directory = (char *)home;
 
     /* Do it */
     while (p) {
@@ -129,11 +151,6 @@ extract_plist(const char *home, Package *pkg)
 	    if (!Fake) {
 		char try[FILENAME_MAX];
 
-		if (strrchr(p->name,'\'')) {
-		  cleanup(0);
-		  errx(2, "%s: Bogus filename \"%s\"", __func__, p->name);
-		}
-		
 		/* first try to rename it into place */
 		snprintf(try, FILENAME_MAX, "%s/%s", Directory, p->name);
 		if (fexists(try)) {
@@ -157,8 +174,8 @@ extract_plist(const char *home, Package *pkg)
 		    if (p->name[0] == '/' || TOOBIG(p->name)) {
 			PUSHOUT(Directory);
 		    }
-		    add_count = snprintf(&perm_args[perm_count], maxargs - perm_count, "'%s' ", p->name);
-		    if (add_count < 0 || add_count > maxargs - perm_count) {
+		    add_count = add_arg(&perm_args[perm_count], maxargs - perm_count, p->name);
+		    if (add_count < 0 || add_count >= maxargs - perm_count) {
 			cleanup(0);
 			errx(2, "%s: oops, miscounted strings!", __func__);
 		    }
@@ -177,16 +194,14 @@ extract_plist(const char *home, Package *pkg)
 		    else if (p->name[0] == '/' || TOOBIG(p->name)) {
 			PUSHOUT(Directory);
 		    }
-		    add_count = snprintf(&where_args[where_count], maxargs - where_count, " '%s'", p->name);
-		    if (add_count < 0 || add_count > maxargs - where_count) {
+		    add_count = add_arg(&where_args[where_count], maxargs - where_count, p->name);
+		    if (add_count < 0 || add_count >= maxargs - where_count) {
 			cleanup(0);
 			errx(2, "%s: oops, miscounted strings!", __func__);
 		    }
 		    where_count += add_count;
-		    add_count = snprintf(&perm_args[perm_count],
-					 maxargs - perm_count,
-					 "'%s' ", p->name);
-		    if (add_count < 0 || add_count > maxargs - perm_count) {
+		    add_count = add_arg(&perm_args[perm_count], maxargs - perm_count, p->name);
+		    if (add_count < 0 || add_count >= maxargs - perm_count) {
 			cleanup(0);
 			errx(2, "%s: oops, miscounted strings!", __func__);
 		    }
@@ -207,7 +222,7 @@ extract_plist(const char *home, Package *pkg)
 		Directory = p->name;
 	    }
 	    else
-		(const char *)Directory = home;
+		Directory = (char *)home;
 	    break;
 
 	case PLIST_CMD:
@@ -222,7 +237,7 @@ extract_plist(const char *home, Package *pkg)
 		errx(2, "%s: no directory specified for '%s' command",
 		    __func__, p->name);
 	    }
-	    format_cmd(cmd, p->name, Directory, last_file);
+	    format_cmd(cmd, FILENAME_MAX, p->name, Directory, last_file);
 	    PUSHOUT(Directory);
 	    if (Verbose)
 		printf("extract: execute '%s'\n", cmd);

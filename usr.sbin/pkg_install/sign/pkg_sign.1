@@ -1,6 +1,6 @@
-.\" $FreeBSD: src/usr.sbin/pkg_install/sign/pkg_sign.1,v 1.1.2.5 2002/06/21 16:42:20 charnier Exp $
-.\" $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pkg_sign.1,v 1.2 2003/06/17 04:29:59 dillon Exp $
+.\" $FreeBSD: src/usr.sbin/pkg_install/sign/pkg_sign.1,v 1.7 2004/07/02 23:12:53 ru Exp $
 .\" $OpenBSD: pkg_sign.1,v 1.6 2000/04/15 02:15:20 aaron Exp $
+.\" $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pkg_sign.1,v 1.3 2004/07/30 04:46:14 dillon Exp $
 .\"
 .\" Copyright (c) 1999 Marc Espie.
 .\"
@@ -104,7 +104,8 @@ For
 the signing key or verification certificate may be
 specified with the
 .Fl k
-option.  If not specified, packages are signed or verified with the
+option.
+If not specified, packages are signed or verified with the
 default keys and certificates documented below.
 .Pp
 If
@@ -156,8 +157,9 @@ The gzip file uses a very early version of package signing that was
 substantially slower.
 .El
 .Sh BUGS
+The
 .Xr pgp 1
-is an ill-designed program, which is hard to interface with.
+utility is an ill-designed program, which is hard to interface with.
 For instance, the `separate signing scheme' it pretends to offer is
 useless, as it can't be used with pipes, so that
 .Nm pgp_sign

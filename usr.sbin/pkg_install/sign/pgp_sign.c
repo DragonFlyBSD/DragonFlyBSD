@@ -1,4 +1,3 @@
-/* $OpenBSD: pgp_sign.c,v 1.1 1999/10/04 21:46:29 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.
  *
@@ -27,12 +26,14 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_sign.c,v 1.1.2.3 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_sign.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $OpenBSD: pgp_sign.c,v 1.1 1999/10/04 21:46:29 espie Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_sign.c,v 1.5 2004/06/29 19:06:42 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_sign.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>

@@ -17,8 +17,8 @@
  * Routines used to do various operations with dependencies
  * among installed packages.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/deps.c,v 1.1.2.8 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/deps.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/deps.c,v 1.11 2004/06/29 18:59:19 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/deps.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -96,7 +96,7 @@ chkifdepends(const char *pkgname1, const char *pkgname2)
 
     errcode = 0;
     /* Check that pkgname2 is actually installed */
-    if (!isinstalledpkg(pkgname2))
+    if (isinstalledpkg(pkgname2) <= 0)
 	goto exit;
 
     errcode = requiredby(pkgname2, &rb_list, FALSE, TRUE);
@@ -152,7 +152,7 @@ requiredby(const char *pkgname, struct reqr_by_head **list, Boolean strict, Bool
 	free(rb_entry);
     }
 
-    if (!isinstalledpkg(pkgname)) {
+    if (isinstalledpkg(pkgname) <= 0) {
 	if (strict == TRUE)
 	    warnx("no such package '%s' installed", pkgname);
 	return -1;
@@ -172,7 +172,7 @@ requiredby(const char *pkgname, struct reqr_by_head **list, Boolean strict, Bool
     while (fgets(fbuf, sizeof(fbuf), fp) != NULL) {
 	if (fbuf[strlen(fbuf) - 1] == '\n')
 	    fbuf[strlen(fbuf) - 1] = '\0';
-	if (filter == TRUE && !isinstalledpkg(fbuf)) {
+	if (filter == TRUE && isinstalledpkg(fbuf) <= 0) {
 	    if (strict == TRUE)
 		warnx("package '%s' is recorded in the '%s' but isn't "
 		      "actually installed", fbuf, fname);

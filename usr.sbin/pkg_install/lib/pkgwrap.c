@@ -14,8 +14,8 @@
  * Maxim Sobolev
  * 8 September 2002
  *
- * $FreeBSD: /repoman/r/ncvs/src/usr.sbin/pkg_install/lib/pkgwrap.c,v 1.1.6.1 2003/08/11 09:22:04 kris Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/pkgwrap.c,v 1.1 2003/11/19 15:19:45 hmp Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/pkgwrap.c,v 1.1 2002/09/09 19:43:30 sobomax Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/pkgwrap.c,v 1.2 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"

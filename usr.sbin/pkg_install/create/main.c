@@ -7,20 +7,21 @@
  *
  * This is the create module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/create/main.c,v 1.21.2.7 2002/05/29 18:31:11 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/create/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/create/main.c,v 1.35 2004/06/29 18:56:59 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/create/Attic/main.c,v 1.4 2004/07/30 04:46:12 dillon Exp $
  */
 
 #include <err.h>
 #include "lib.h"
 #include "create.h"
 
-static char Options[] = "YNOhjvyzf:p:P:c:d:i:I:k:K:r:t:X:D:m:s:o:b:";
+static char Options[] = "YNOhjvyzf:p:P:C:c:d:i:I:k:K:r:t:X:D:m:s:S:o:b:";
 
 char	*Prefix		= NULL;
 char	*Comment        = NULL;
 char	*Desc		= NULL;
 char	*SrcDir		= NULL;
+char	*BaseDir	= NULL;
 char	*Display	= NULL;
 char	*Install	= NULL;
 char	*PostInstall	= NULL;
@@ -31,6 +32,7 @@ char	*Require	= NULL;
 char	*ExcludeFrom	= NULL;
 char	*Mtree		= NULL;
 char	*Pkgdeps	= NULL;
+char	*Conflicts	= NULL;
 char	*Origin		= NULL;
 char	*InstalledPkg	= NULL;
 char	PlayPen[FILENAME_MAX];
@@ -73,8 +75,16 @@ main(int argc, char **argv)
 	    SrcDir = optarg;
 	    break;
 
+	case 'S':
+	    BaseDir = optarg;
+	    break;
+
 	case 'f':
 	    Contents = optarg;
+	    break;
+
+	case 'C':
+	    Conflicts = optarg;
 	    break;
 
 	case 'c':
@@ -193,12 +203,13 @@ main(int argc, char **argv)
 static void
 usage()
 {
-    fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n",
-"usage: pkg_create [-YNOhvy] [-P pkgs] [-p prefix] [-f contents] [-i iscript]",
-"                  [-I piscript] [-k dscript] [-K pdscript] [-r rscript] ",
-"                  [-t template] [-X excludefile] [-D displayfile] ",
-"                  [-m mtreefile] [-o origin] -c comment -d description ",
-"                  -f packlist pkg-filename",
-"       pkg_create [-YNhvy] -b pkg-name [pkg-filename]");
+    fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+"usage: pkg_create [-YNOhvyz] [-P pkgs] [-C conflicts] [-p prefix] ",
+"                  [-i iscript] [-I piscript] [-k dscript] [-K pdscript] ",
+"                  [-r rscript] [-t template] [-X excludefile] ",
+"                  [-D displayfile] [-m mtreefile] [-o origin] ",
+"                  [-s srcdir] [-S basedir] ",
+"                  -c comment -d description -f packlist pkg-filename",
+"       pkg_create [-YNhvyz] -b pkg-name [pkg-filename]");
     exit(1);
 }

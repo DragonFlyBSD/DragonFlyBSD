@@ -1,6 +1,3 @@
-/* $FreeBSD: src/usr.sbin/pkg_install/delete/delete.h,v 1.5.2.2 2001/10/03 07:46:02 sobomax Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/delete/Attic/delete.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
-
 /*
  * FreeBSD install - a package for the installation and maintainance
  * of non-core utilities.
@@ -19,6 +16,8 @@
  *
  * Include and define various things wanted by the delete command.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/delete/delete.h,v 1.8 2004/06/29 19:06:41 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/delete.h,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #ifndef _INST_DELETE_H_INCLUDE
@@ -28,7 +27,6 @@ extern char	*Prefix;
 extern Boolean	CleanDirs;
 extern Boolean	Interactive;
 extern Boolean	NoDeInstall;
-extern Boolean	Force;
 extern Boolean	Recursive;
 extern char	*Directory;
 extern char	*PkgName;

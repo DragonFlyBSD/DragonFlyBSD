@@ -1,4 +1,3 @@
-/* $OpenBSD: sha1.c,v 1.1 1999/10/04 21:46:29 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.
  *
@@ -27,16 +26,18 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/sign/sha1.c,v 1.1.2.3 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/sha1.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $OpenBSD: sha1.c,v 1.1 1999/10/04 21:46:29 espie Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/sha1.c,v 1.5 2004/06/29 19:06:42 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/sha1.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
  */
 
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <openssl/sha.h>
+#include <sha.h>
 #include "stand.h"
 #include "gzip.h"
 #include "extern.h"
@@ -66,9 +67,9 @@ sha1_build_checksum(result, n)
 {
 	size_t length;
 
-	sprintf(result, "SHA1 (%s) = ", n->id);
+	snprintf(result, BUFSIZE-2*SHA_DIGEST_LENGTH-1, SHA1_TEMPLATE, n->id);
 	length = strlen(result);
-	SHA1_Final(result + length, &n->context);
+	SHA1_End(&n->context, result + length);
 	strcat(result, "\n");
 	free(n);	
 	return length;
@@ -167,9 +168,8 @@ retrieve_sha1_marker(filename, sign, userid)
 	FILE *f;
 	char buffer[1024];
 	char result[BUFSIZE];
-	ssize_t length;
+	ssize_t length = -1;
 	struct sha1_checker *checker;
-	struct signature *old;
 
 	*sign = NULL;
 	if (userid == NULL)
@@ -181,8 +181,13 @@ retrieve_sha1_marker(filename, sign, userid)
 	n = malloc(sizeof *n);
 	if (n == NULL) 
 		return 0;
-	n->data = (char *)userid;
-	n->length = strlen(n->data)+1;
+	n->length = strlen(userid)+1;
+	n->data = malloc(n->length);
+	if (n->data == NULL) {
+		free(n);
+		return 0;
+	}
+	memcpy(n->data, userid, n->length);
 	n->type = TAG_SHA1;
 	memcpy(n->tag, sha1tag, sizeof sha1tag);
 	sign_fill_tag(n);
@@ -208,8 +213,9 @@ retrieve_sha1_marker(filename, sign, userid)
 	 * Calculate the SHA1 of the remaining data and write it to stderr.
 	 */
 	checker = new_sha1_checker(&h, *sign, NULL, NULL, filename);
-	while ((length = fread(buffer, 1, sizeof buffer, f)) > 0)
-		sha1_add(checker, buffer, length);
+	if (checker) 
+		while ((length = fread(buffer, 1, sizeof buffer, f)) > 0)
+			sha1_add(checker, buffer, length);
 	if (fclose(f) != 0 || length == -1) {
 		warn("Problem checksumming %s", filename);
 		*sign = n->next;

@@ -1,6 +1,3 @@
-/* $FreeBSD: src/usr.sbin/pkg_install/info/info.h,v 1.11.2.10 2002/08/02 11:09:05 sobomax Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/info/Attic/info.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
-
 /*
  * FreeBSD install - a package for the installation and maintainance
  * of non-core utilities.
@@ -19,6 +16,8 @@
  *
  * Include and define various things wanted by the info command.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/info/info.h,v 1.27 2004/06/29 18:54:47 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/info.h,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #ifndef _INST_INFO_H_INCLUDE
@@ -34,22 +33,25 @@
 #define MAXNAMESIZE  20
 #endif
 
-#define	SHOW_COMMENT	0x0001
-#define SHOW_DESC	0x0002
-#define SHOW_PLIST	0x0004
-#define SHOW_INSTALL	0x0008
-#define SHOW_DEINSTALL	0x0010
-#define SHOW_REQUIRE	0x0020
-#define SHOW_PREFIX	0x0040
-#define SHOW_INDEX	0x0080
-#define SHOW_FILES	0x0100
-#define SHOW_DISPLAY	0x0200
-#define SHOW_REQBY	0x0400
-#define SHOW_MTREE	0x0800
-#define SHOW_SIZE	0x1000
-#define SHOW_ORIGIN	0x2000
-#define SHOW_CKSUM	0x4000
-#define SHOW_FMTREV	0x8000
+#define SHOW_COMMENT	0x00001
+#define SHOW_DESC	0x00002
+#define SHOW_PLIST	0x00004
+#define SHOW_INSTALL	0x00008
+#define SHOW_DEINSTALL	0x00010
+#define SHOW_REQUIRE	0x00020
+#define SHOW_PREFIX	0x00040
+#define SHOW_INDEX	0x00080
+#define SHOW_FILES	0x00100
+#define SHOW_DISPLAY	0x00200
+#define SHOW_REQBY	0x00400
+#define SHOW_MTREE	0x00800
+#define SHOW_SIZE	0x01000
+#define SHOW_ORIGIN	0x02000
+#define SHOW_CKSUM	0x04000
+#define SHOW_FMTREV	0x08000
+#define SHOW_PTREV	0x10000
+#define SHOW_DEPEND	0x20000
+#define SHOW_PKGNAME	0x40000
 
 struct which_entry {
     TAILQ_ENTRY(which_entry) next;
@@ -61,6 +63,8 @@ TAILQ_HEAD(which_head, which_entry);
 
 extern int Flags;
 extern Boolean Quiet;
+extern Boolean QUIET;
+extern Boolean UseBlkSz;
 extern char *InfoPrefix;
 extern char PlayPen[];
 extern char *CheckPkg;

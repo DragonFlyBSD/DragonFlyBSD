@@ -52,5 +52,5 @@ libraries on OpenBSD 2.7 and FreeBSD 5.0, your mileage may vary.
 --
 
 	Wes Peters, Dec 2000
-	$FreeBSD: src/usr.sbin/pkg_install/sign/README,v 1.1.2.1 2001/03/05 03:43:53 wes Exp $
-	$DragonFly: src/usr.sbin/pkg_install/sign/Attic/README,v 1.2 2003/06/17 04:29:59 dillon Exp $
+	$FreeBSD: src/usr.sbin/pkg_install/sign/README,v 1.1 2001/02/06 06:46:42 wes Exp $
+	$DragonFly: src/usr.sbin/pkg_install/sign/Attic/README,v 1.3 2004/07/30 04:46:14 dillon Exp $

@@ -16,8 +16,8 @@
  *
  * General packing list routines.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.29.2.10 2002/08/31 19:38:55 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.3 2003/11/19 15:17:29 hmp Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.48 2004/07/28 07:19:15 kan Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -204,7 +204,7 @@ plist_cmd(const char *s, char **arg)
 	++cp, ++sp;
     }
     if (arg)
-	(const char *)*arg = sp;
+	*arg = (char *)sp;
     if (!strcmp(cmd, "cwd"))
 	return PLIST_CWD;
     else if (!strcmp(cmd, "srcdir"))
@@ -276,8 +276,9 @@ read_plist(Package *pkg, FILE *fp)
 	}
 	cmd = plist_cmd(pline + 1, &cp);
 	if (cmd == FAIL) {
-	    cleanup(0);
-	    errx(2, "%s: bad command '%s'", __func__, pline);
+	    warnx("%s: unknown command '%s' (package tools out of date?)",
+		__func__, pline);
+	    goto bottom;
 	}
 	if (*cp == '\0') {
 	    cp = NULL;
@@ -431,7 +432,7 @@ delete_package(Boolean ign_err, Boolean nukedirs, Package *pkg)
 	    break;
 
 	case PLIST_UNEXEC:
-	    format_cmd(tmp, p->name, Where, last_file);
+	    format_cmd(tmp, FILENAME_MAX, p->name, Where, last_file);
 	    if (Verbose)
 		printf("Execute '%s'\n", tmp);
 	    if (!Fake && system(tmp)) {

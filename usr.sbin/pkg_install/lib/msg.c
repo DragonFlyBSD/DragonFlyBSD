@@ -16,8 +16,8 @@
  *
  * Miscellaneous message routines.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/msg.c,v 1.12.2.4 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/msg.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/msg.c,v 1.16 2002/04/01 09:39:07 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/msg.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"

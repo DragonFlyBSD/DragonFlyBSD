@@ -17,19 +17,21 @@
  *
  * This is the info module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.22.2.14 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.46 2004/06/29 18:59:18 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
 #include "info.h"
 #include <err.h>
 
-static char Options[] = "acdDe:fgGhiIkl:LmoO:pqrRst:vVW:x";
+static char Options[] = "abcdDe:EfgGhiIjkl:LmoO:pPqQrRst:vVW:xX";
 
 int	Flags		= 0;
 match_t	MatchType	= MATCH_GLOB;
 Boolean Quiet		= FALSE;
+Boolean QUIET		= FALSE;
+Boolean UseBlkSz	= FALSE;
 char *InfoPrefix	= (char *)(uintptr_t)"";
 char PlayPen[FILENAME_MAX];
 char *CheckPkg		= NULL;
@@ -61,11 +63,19 @@ main(int argc, char **argv)
 	    MatchType = MATCH_ALL;
 	    break;
 
+	case 'b':
+	    UseBlkSz = TRUE;
+	    break;
+
 	case 'v':
 	    Verbose = TRUE;
 	    /* Reasonable definition of 'everything' */
 	    Flags = SHOW_COMMENT | SHOW_DESC | SHOW_PLIST | SHOW_INSTALL |
 		SHOW_DEINSTALL | SHOW_REQUIRE | SHOW_DISPLAY | SHOW_MTREE;
+	    break;
+
+	case 'E':
+	    Flags |= SHOW_PKGNAME;
 	    break;
 
 	case 'I':
@@ -104,12 +114,16 @@ main(int argc, char **argv)
 	    Flags |= SHOW_INSTALL;
 	    break;
 
+	case 'j':
+	    Flags |= SHOW_REQUIRE;
+	    break;
+
 	case 'k':
 	    Flags |= SHOW_DEINSTALL;
 	    break;
 
 	case 'r':
-	    Flags |= SHOW_REQUIRE;
+	    Flags |= SHOW_DEPEND;
 	    break;
 
 	case 'R':
@@ -150,12 +164,21 @@ main(int argc, char **argv)
 	    Quiet = TRUE;
 	    break;
 
+	case 'Q':
+	    Quiet = TRUE;
+	    QUIET = TRUE;
+	    break;
+
 	case 't':
 	    strlcpy(PlayPen, optarg, sizeof(PlayPen));
 	    break;
 
 	case 'x':
 	    MatchType = MATCH_REGEX;
+	    break;
+
+	case 'X':
+	    MatchType = MATCH_EREGEX;
 	    break;
 
 	case 'e':
@@ -176,6 +199,10 @@ main(int argc, char **argv)
 		break;
 	    }
 
+	case 'P':
+	    Flags = SHOW_PTREV;
+	    break;
+
 	case 'h':
 	case '?':
 	default:
@@ -187,6 +214,13 @@ main(int argc, char **argv)
     argc -= optind;
     argv += optind;
 
+    if (Flags & SHOW_PTREV) {
+	if (!Quiet)
+	    printf("Package tools revision: ");
+	printf("%d\n", PKG_INSTALL_VERSION);
+	exit(0);
+    }
+
     /* Set some reasonable defaults */
     if (!Flags)
 	Flags = SHOW_COMMENT | SHOW_DESC | SHOW_REQBY;
@@ -197,7 +231,7 @@ main(int argc, char **argv)
 	 * Don't try to apply heuristics if arguments are regexs or if
 	 * the argument refers to an existing file.
 	 */
-	if (MatchType != MATCH_REGEX && !isfile(*argv))
+	if (MatchType != MATCH_REGEX && MatchType != MATCH_EREGEX && !isfile(*argv))
 	    while ((pkgs_split = strrchr(*argv, (int)'/')) != NULL) {
 		*pkgs_split++ = '\0';
 		/*
@@ -227,10 +261,10 @@ static void
 usage()
 {
     fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n",
-	"usage: pkg_info [-cdDfGiIkLmopqrRsvVx] [-e package] [-l prefix]",
-	"                [-t template] [pkg-name ...]",
-	"       pkg_info [-q] -W filename",
-	"       pkg_info [-q] -O origin",
-	"       pkg_info -a [flags]");
+	"usage: pkg_info [-bcdDEfgGiIjkLmopPqQrRsvVxX] [-e package] [-l prefix]",
+	"                [-t template] -a | pkg-name ...",
+	"       pkg_info [-qQ] -W filename",
+	"       pkg_info [-qQ] -O origin",
+	"       pkg_info");
     exit(1);
 }

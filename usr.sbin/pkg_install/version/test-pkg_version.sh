@@ -29,12 +29,12 @@
 # Regression testing for pkg_version
 # Originally from an idea by "Akinori MUSHA" <knu@iDaemons.org>
 #
-# $FreeBSD: src/usr.sbin/pkg_install/version/test-pkg_version.sh,v 1.1.2.5 2002/06/03 15:34:59 bmah Exp $
-# $DragonFly: src/usr.sbin/pkg_install/version/Attic/test-pkg_version.sh,v 1.2 2003/06/17 04:30:00 dillon Exp $
+# $FreeBSD: src/usr.sbin/pkg_install/version/test-pkg_version.sh,v 1.5 2004/06/29 18:52:13 eik Exp $
+# $DragonFly: src/usr.sbin/pkg_install/version/Attic/test-pkg_version.sh,v 1.3 2004/07/30 04:46:14 dillon Exp $
 #
 
 ECHO=echo
-PKG_VERSION=./pkg_version.pl
+PKG_VERSION=./pkg_version
 
 test-pv ( ) { \
     setvar v1 $1
@@ -74,3 +74,22 @@ test-pv 1.5 "<" 1.5.0.1 portrevision
 test-pv 00.01.01,1 ">" 99.12.31 portepoch
 test-pv 0.0.1_1,2 ">" 0.0.1,2 portrevision/portepoch
 test-pv 0.0.1_1,3 ">" 0.0.1_2,2 portrevision/portepoch
+
+test-pv 2.0 ">" 2.a2 number/letter
+test-pv 3 "=" 3.0 equality
+test-pv 4a "<" 4a0 letter/zero
+test-pv 10a1b2 "=" 10a1.b2 separator
+
+test-pv 7pl "=" 7.pl patchevel
+test-pv 8.0.a "=" 8.0alpha alpha
+test-pv 9.b3.0 "=" 9beta3 beta
+test-pv 10.pre7 "=" 10pre7.0 pre
+test-pv 11.r "=" 11.rc rc
+
+test-pv 12pl "<" 12alpha alpha/patchevel
+test-pv 13.* "<" 13.pl star/patchevel
+
+test-pv 1.0.0+2003.09.06 "=" 1.0+2003.09.06 plus/multiple
+test-pv 1.0.1+2003.09.06 ">" 1.0+2003.09.06 plus/multiple
+test-pv 1.0.0+2003.09.06 "<" 1.0+2003.09.06_1 plus/portrevision
+test-pv 1.0.1+2003.09.06 ">" 1.0+2003.09.06_1 plus/portrevision

@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/sign/x509.c,v 1.1.2.2 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/x509.c,v 1.3 2004/06/19 20:38:22 joerg Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/x509.c,v 1.4 2004/06/29 19:06:42 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/x509.c,v 1.4 2004/07/30 04:46:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -89,7 +89,6 @@ new_x509_checker(h, sign, userid, envp, filename)
     	FILE * fp;
 	struct x509_checker * me;
 	char certfile[PATH_MAX + 1] = CERTFILE;
-	char * cp;
 	X509 * x509;
 
 	assert(sign->type == TAG_X509);
@@ -139,7 +138,7 @@ new_x509_checker(h, sign, userid, envp, filename)
 	if (verbose)
 	    printf("Loading certificates from %s:\n", certfile);
 
-	while (x509 = PEM_read_X509(fp, NULL, NULL, 0))	{
+	while ((x509 = PEM_read_X509(fp, NULL, NULL, 0)))	{
 	    sk_X509_push(me->certs, x509);
 
 	    switch (EVP_PKEY_type(X509_get_pubkey(x509)->type))
@@ -283,11 +282,10 @@ retrieve_x509_marker(filename, sign, userid)
 	int sig_len = 4096;
 	unsigned char * sig_buf;
 	EVP_MD_CTX md_ctx;
-	EVP_MD * md_type;
+	const EVP_MD * md_type;
 	EVP_PKEY * pkey;
 
 	char keyfile[PATH_MAX + 1] = KEYFILE;
-	char * kp;
 
 	key_from_name(keyfile, userkey);
 

@@ -16,8 +16,8 @@
  *
  * Miscellaneous string utilities.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/str.c,v 1.6.2.6 2003/06/09 17:02:31 lioux Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/str.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/str.c,v 1.15 2003/05/26 17:12:22 lioux Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/str.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -41,7 +41,7 @@ get_dash_string(char **str)
     char *s = *str;
 
     if (*s == '-')
-	*str = copy_string_plus_newline(s + 1);
+	*str = copy_string_adds_newline(s + 1);
     else
 	*str = fileGetContents(s);
     return *str;
@@ -56,7 +56,7 @@ copy_string(const char *str)
 
 /* Rather Obvious but adds a trailing \n newline */
 char *
-copy_string_plus_newline(const char *str)
+copy_string_adds_newline(const char *str)
 {
     if (str == NULL) {
 	return (NULL);

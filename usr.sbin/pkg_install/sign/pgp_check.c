@@ -1,4 +1,3 @@
-/* $OpenBSD: pgp_check.c,v 1.2 1999/10/07 16:30:32 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.
  *
@@ -27,8 +26,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_check.c,v 1.1.2.2 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_check.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $OpenBSD: pgp_check.c,v 1.2 1999/10/07 16:30:32 espie Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_check.c,v 1.2 2002/04/01 09:39:07 obrien Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_check.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
  */
 
 #include <stdio.h>

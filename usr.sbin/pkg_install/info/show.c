@@ -16,8 +16,8 @@
  *
  * Various display routines for the info module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/info/show.c,v 1.14.2.14 2003/06/09 16:59:43 lioux Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/show.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/info/show.c,v 1.37 2003/05/26 17:06:05 lioux Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/show.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -166,6 +166,10 @@ show_plist(const char *title, Package *plist, plist_t type, Boolean showall)
 		"\tdependency origin: %s\n", p->name);
 	    break;
 
+	case PLIST_CONFLICTS:
+	    printf(Quiet ? "@conflicts %s\n" : "Conflicts: %s\n", p->name);
+	    break;
+
 	case PLIST_MTREE:
 	    printf(Quiet ? "@mtree %s\n" : "\tPackage mtree file: %s\n", p->name);
 	    break;
@@ -277,7 +281,10 @@ show_size(const char *title, Package *plist)
     if (!Quiet)
 	printf("%lu\t(%s)\n", howmany(size, blksize), descr);
     else
-	printf("%lu\n", size);
+	if (UseBlkSz)
+		printf("%lu\n", howmany(size, blksize));
+	else
+		printf("%lu\n", size);
 }
 
 /* Show files that don't match the recorded checksum */

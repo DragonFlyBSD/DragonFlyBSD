@@ -1,4 +1,5 @@
 /*
+ *
  * FreeBSD install - a package for the installation and maintainance
  * of non-core utilities.
  *
@@ -16,8 +17,8 @@
  *
  * This is the delete module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.17.2.8 2002/08/20 06:35:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.26 2004/06/29 18:54:47 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -26,7 +27,7 @@
 #include "lib.h"
 #include "delete.h"
 
-static char Options[] = "adDfGhinp:rvx";
+static char Options[] = "adDfGhinp:rvxX";
 
 char	*Prefix		= NULL;
 Boolean	CleanDirs	= FALSE;
@@ -84,6 +85,10 @@ main(int argc, char **argv)
 
 	case 'x':
 	    MatchType = MATCH_REGEX;
+	    break;
+
+	case 'X':
+	    MatchType = MATCH_EREGEX;
 	    break;
 
 	case 'i':
@@ -149,7 +154,7 @@ static void
 usage()
 {
     fprintf(stderr, "%s\n%s\n",
-	"usage: pkg_delete [-dDfGinrvx] [-p prefix] pkg-name ...",
+	"usage: pkg_delete [-dDfGinrvxX] [-p prefix] pkg-name ...",
 	"       pkg_delete -a [flags]");
     exit(1);
 }

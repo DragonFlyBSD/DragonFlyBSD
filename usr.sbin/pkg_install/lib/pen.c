@@ -16,8 +16,8 @@
  *
  * Routines for managing the "play pen".
  *
- * $FreeBSD: src/usr.sbin/pkg_install/lib/pen.c,v 1.31.2.7 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/pen.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/lib/pen.c,v 1.42 2004/07/28 16:03:13 stefanf Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/pen.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include "lib.h"
@@ -111,7 +111,7 @@ make_playpen(char *pen, off_t sz)
 
     if (Verbose) {
 	if (sz)
-	    fprintf(stderr, "Requested space: %d bytes, free space: %qd bytes in %s\n", (int)sz, (long long)min_free(pen), pen);
+	    fprintf(stderr, "Requested space: %d bytes, free space: %lld bytes in %s\n", (int)sz, (long long)min_free(pen), pen);
     }
 
     if (min_free(pen) < sz) {
@@ -155,7 +155,7 @@ leave_playpen()
 	Previous[0] = '\0';
     }
     if (PenLocation[0]) {
-	if (PenLocation[0] == '/' && vsystem("rm -rf %s", PenLocation))
+	if (PenLocation[0] == '/' && vsystem("/bin/rm -rf %s", PenLocation))
 	    warnx("couldn't remove temporary dir '%s'", PenLocation);
 	popPen(PenLocation);
     }

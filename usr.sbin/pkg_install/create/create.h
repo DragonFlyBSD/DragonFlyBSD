@@ -1,6 +1,3 @@
-/* $FreeBSD: src/usr.sbin/pkg_install/create/create.h,v 1.15.2.5 2002/05/29 18:31:11 obrien Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/create/Attic/create.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
-
 /*
  * FreeBSD install - a package for the installation and maintainance
  * of non-core utilities.
@@ -19,6 +16,8 @@
  *
  * Include and define various things wanted by the create command.
  *
+ * $FreeBSD: src/usr.sbin/pkg_install/create/create.h,v 1.24 2004/06/29 19:06:41 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/create/Attic/create.h,v 1.3 2004/07/30 04:46:12 dillon Exp $
  */
 
 #ifndef _INST_CREATE_H_INCLUDE
@@ -35,9 +34,11 @@ extern char	*PostDeInstall;
 extern char	*Contents;
 extern char	*Require;
 extern char	*SrcDir;
+extern char	*BaseDir;
 extern char	*ExcludeFrom;
 extern char	*Mtree;
 extern char	*Pkgdeps;
+extern char	*Conflicts;
 extern char	*Origin;
 extern char	*InstalledPkg;
 extern char	PlayPen[];
@@ -47,8 +48,8 @@ extern int	PlistOnly;
 enum zipper {NONE, GZIP, BZIP, BZIP2 };
 extern enum zipper	Zipper;
 
+void		add_cksum(Package *, PackingList, const char *);
 void		check_list(const char *, Package *);
-int		pkg_perform(char **);
 void		copy_plist(const char *, Package *);
 
 #endif	/* _INST_CREATE_H_INCLUDE */

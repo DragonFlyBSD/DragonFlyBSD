@@ -17,8 +17,8 @@
  *
  * This is the add module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.29.2.20 2002/10/08 05:35:46 bmah Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.6 2004/05/28 20:30:18 drhodus Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.59 2004/07/28 07:19:15 kan Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.7 2004/07/30 04:46:12 dillon Exp $
  */
 
 #include <err.h>
@@ -27,9 +27,10 @@
 #include "lib.h"
 #include "add.h"
 
-static char Options[] = "hvIRfnrp:SMt:";
+static char Options[] = "hvIRfnrp:SMt:C:";
 
 char	*Prefix		= NULL;
+char	*Chroot		= NULL;
 Boolean	NoInstall	= FALSE;
 Boolean	NoRecord	= FALSE;
 Boolean Remote		= FALSE;
@@ -38,6 +39,7 @@ char	*Mode		= NULL;
 char	*Owner		= NULL;
 char	*Group		= NULL;
 char	*PkgName	= NULL;
+char	*PkgAddCmd	= NULL;
 char	*Directory	= NULL;
 char	FirstPen[FILENAME_MAX];
 add_mode_t AddMode	= NORMAL;
@@ -51,7 +53,6 @@ struct {
 	int hiver;	/* Highest version number to match */
 	const char *directory;	/* Directory it lives in */
 } releases[] = {
-	{ 0, 9999999, "/packages-4-stable" },
 	{ 410000, 410000, "/packages-4.1-release" },
 	{ 420000, 420000, "/packages-4.2-release" },
 	{ 430000, 430000, "/packages-4.3-release" },
@@ -60,9 +61,18 @@ struct {
 	{ 460000, 460001, "/packages-4.6-release" },
 	{ 460002, 460099, "/packages-4.6.2-release" },
 	{ 470000, 470099, "/packages-4.7-release" },
+	{ 480000, 480099, "/packages-4.8-release" },
+	{ 490000, 490099, "/packages-4.9-release" },
+	{ 491000, 491099, "/packages-4.10-release" },
+	{ 492000, 492099, "/packages-4.11-release" },
+	{ 500000, 500099, "/packages-5.0-release" },
+	{ 501000, 501099, "/packages-5.1-release" },
+	{ 502000, 502009, "/packages-5.2-release" },
+	{ 502010, 502099, "/packages-5.2.1-release" },
+	{ 503000, 503099, "/packages-5.3-release" },
 	{ 300000, 399000, "/packages-3-stable" },
 	{ 400000, 499000, "/packages-4-stable" },
-	{ 510000, 599000, "/packages-5-stable" },
+	{ 502100, 599000, "/packages-5-current" },
 	{ 0, 9999999, "/packages-current" },
 	{ 0, 0, NULL }
 };
@@ -79,6 +89,12 @@ main(int argc, char **argv)
     char **start;
     char *cp, *packagesite = NULL, *remotepkg = NULL, *ptr;
     static char temppackageroot[MAXPATHLEN];
+    static char pkgaddpath[MAXPATHLEN];
+
+    if (*argv[0] != '/' && strchr(argv[0], '/') != NULL)
+	PkgAddCmd = realpath(argv[0], pkgaddpath);
+    else
+	PkgAddCmd = argv[0];
 
     start = argv;
     while ((ch = getopt(argc, argv, Options)) != -1) {
@@ -125,6 +141,10 @@ main(int argc, char **argv)
 	    AddMode = MASTER;
 	    break;
 
+	case 'C':
+	    Chroot = optarg;
+	    break;
+
 	case 'h':
 	case '?':
 	default:
@@ -157,12 +177,17 @@ main(int argc, char **argv)
 		if (!((ptr = strrchr(remotepkg, '.')) && ptr[1] == 't' && 
 			(ptr[2] == 'b' || ptr[2] == 'g') && ptr[3] == 'z' &&
 			!ptr[4]))
-		    if (strlcat(remotepkg, ".tgz", sizeof(temppackageroot))
-			>= sizeof(temppackageroot))
+		    if (strlcat(remotepkg,
+#if defined(__FreeBSD_version) && __FreeBSD_version >= 500039
+			".tbz",
+#else
+			".tgz",
+#endif
+			sizeof(temppackageroot)) >= sizeof(temppackageroot))
 			errx(1, "package name too long");
     	    }
 	    if (!strcmp(*argv, "-"))	/* stdin? */
-		(const char *)pkgs[ch] = "-";
+		pkgs[ch] = (char *)"-";
 	    else if (isURL(*argv)) {  	/* preserve URLs */
 		if (strlcpy(pkgnames[ch], *argv, sizeof(pkgnames[ch]))
 		    >= sizeof(pkgnames[ch]))
@@ -204,6 +229,11 @@ main(int argc, char **argv)
     else if (ch > 1 && AddMode == MASTER) {
 	warnx("only one package name may be specified with master mode");
 	usage();
+    }
+    /* Perform chroot if requested */
+    if (Chroot != NULL) {
+	if (chroot(Chroot))
+	    errx(1, "chroot to %s failed", Chroot);
     }
     /* Make sure the sub-execs we invoke get found */
     setenv("PATH", 
@@ -249,10 +279,12 @@ getpackagesite(void)
     if (strlcat(sitepath, "/packages", sizeof(sitepath))
 	>= sizeof(sitepath))
 	return NULL;
-/*
+
+#if 0
     uname(&u);
     if (strlcat(sitepath, u.machine, sizeof(sitepath)) >= sizeof(sitepath))
 	return NULL;
+#endif
 
     reldate = getosreldate();
     for(i = 0; releases[i].directory != NULL; i++) {
@@ -263,7 +295,6 @@ getpackagesite(void)
 	    break;
 	}
     }
-*/
 
     if (strlcat(sitepath, "/Latest/", sizeof(sitepath)) >= sizeof(sitepath))
 	return NULL;
@@ -276,7 +307,7 @@ static void
 usage()
 {
     fprintf(stderr, "%s\n%s\n",
-		"usage: pkg_add [-vInrfRMS] [-t template] [-p prefix]",
-		"               pkg-name [pkg-name ...]");
+	"usage: pkg_add [-vInrfRMS] [-t template] [-p prefix] [-C chrootdir]",
+	"               pkg-name [pkg-name ...]");
     exit(1);
 }

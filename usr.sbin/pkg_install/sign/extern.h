@@ -1,6 +1,3 @@
-/* $FreeBSD: src/usr.sbin/pkg_install/sign/extern.h,v 1.1.2.2 2001/05/17 12:33:39 sobomax Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/extern.h,v 1.3 2003/11/03 19:31:39 eirikn Exp $ */
-/* $OpenBSD: extern.h,v 1.3 1999/10/07 16:30:32 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.
  *
@@ -28,6 +25,10 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $OpenBSD: extern.h,v 1.3 1999/10/07 16:30:32 espie Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/sign/extern.h,v 1.2 2001/05/17 10:12:45 sobomax Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/extern.h,v 1.4 2004/07/30 04:46:14 dillon Exp $
  */
 
 /*
@@ -46,17 +47,17 @@ extern int quiet;
 extern char *userkey;
 
 /* common.c */
-extern int read_header_and_diagnose(FILE *file, \
+extern int read_header_and_diagnose (FILE *file, \
 	/*@out@*/struct mygzip_header *h, /*@null@*/struct signature **sign, \
 	const char *filename);
-extern int reap(pid_t pid);
+extern int reap (pid_t pid);
 
 /* sign.c */
-extern int sign(/*@observer@*/const char *filename, int type, \
+extern int sign (/*@observer@*/const char *filename, int type, \
 	/*@null@*/const char *userid, char *envp[]);
 
 /* check.c */
-extern int check_signature(/*@dependent@*/FILE *file, \
+extern int check_signature (/*@dependent@*/FILE *file, \
 	/*@null@*/const char *userid, char *envp[], \
 	/*@observer@*/const char *filename);
 
@@ -73,29 +74,29 @@ typedef /*@observer@*/char *pchar;
 /* sha1.c */
 #define SHA1_DB_NAME	"/var/db/pkg/SHA1"
 
-extern void *new_sha1_checker(struct mygzip_header *h, \
+extern void *new_sha1_checker (struct mygzip_header *h, \
 	struct signature *sign, const char *userid, char *envp[], \
 	const char *filename);
 
-extern void sha1_add(void *arg, const char *buffer, \
+extern void sha1_add (void *arg, const char *buffer, \
 	size_t length);
 
-extern int sha1_sign_ok(void *arg);
+extern int sha1_sign_ok (void *arg);
 
-extern int retrieve_sha1_marker(const char *filename, \
+extern int retrieve_sha1_marker (const char *filename, \
 	struct signature **sign, const char *userid);
 
 /* x509.c */
 #define X509_DB_NAME	"/var/db/pkg/X509"
 
-extern void *new_x509_checker(struct mygzip_header *h, \
+extern void *new_x509_checker (struct mygzip_header *h, \
 	struct signature *sign, const char *userid, char *envp[], \
 	const char *filename);
 
-extern void x509_add(void *arg, const char *buffer, \
+extern void x509_add (void *arg, const char *buffer, \
 	size_t length);
 
-extern int x509_sign_ok(void *arg);
+extern int x509_sign_ok (void *arg);
 
-extern int retrieve_x509_marker(const char *filename, \
+extern int retrieve_x509_marker (const char *filename, \
 	struct signature **sign, const char *userid);

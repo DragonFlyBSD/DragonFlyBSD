@@ -1,8 +1,16 @@
-# $FreeBSD: src/usr.sbin/pkg_install/version/Makefile,v 1.5.2.5 2001/09/21 16:54:17 bmah Exp $
-# $DragonFly: src/usr.sbin/pkg_install/version/Attic/Makefile,v 1.2 2003/06/17 04:29:59 dillon Exp $
+# $FreeBSD: src/usr.sbin/pkg_install/version/Makefile,v 1.14 2004/06/29 19:06:42 eik Exp $
+# $DragonFly: src/usr.sbin/pkg_install/version/Attic/Makefile,v 1.3 2004/07/30 04:46:14 dillon Exp $
 
-SCRIPTS=	pkg_version.pl
-MAN=		pkg_version.1
+PROG=	pkg_version
+SRCS=	main.c perform.c
+
+CFLAGS+= ${DEBUG} -I${.CURDIR}/../lib
+
+WARNS?=	6
+WFORMAT?=	1
+
+DPADD=	${LIBINSTALL} ${LIBFETCH} ${LIBMD}
+LDADD=	${LIBINSTALL} -lfetch -lmd
 
 test:
 	./test-pkg_version.sh

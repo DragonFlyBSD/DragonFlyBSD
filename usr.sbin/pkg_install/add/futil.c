@@ -16,8 +16,8 @@
  *
  * Miscellaneous file access utilities.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/add/futil.c,v 1.9.2.4 2002/08/20 06:35:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/futil.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/add/futil.c,v 1.14 2004/06/29 19:06:41 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/futil.c,v 1.3 2004/07/30 04:46:12 dillon Exp $
  */
 
 #include <err.h>
@@ -49,7 +49,7 @@ make_hierarchy(char *dir)
 	    }
 	}
 	else {
-	    if (vsystem("mkdir %s", dir)) {
+	    if (vsystem("/bin/mkdir %s", dir)) {
 		if (cp2)
 		    *cp2 = '/';
 		return FAIL;
@@ -77,20 +77,20 @@ apply_perms(const char *dir, const char *arg)
 	cd_to = dir;
 
     if (Mode)
-	if (vsystem("cd %s && chmod -R %s %s", cd_to, Mode, arg))
+	if (vsystem("cd %s && /bin/chmod -R %s %s", cd_to, Mode, arg))
 	    warnx("couldn't change modes of '%s' to '%s'", arg, Mode);
     if (Owner && Group) {
-	if (vsystem("cd %s && chown -R %s:%s %s", cd_to, Owner, Group, arg))
+	if (vsystem("cd %s && /usr/sbin/chown -R %s:%s %s", cd_to, Owner, Group, arg))
 	    warnx("couldn't change owner/group of '%s' to '%s:%s'",
 		   arg, Owner, Group);
 	return;
     }
     if (Owner) {
-	if (vsystem("cd %s && chown -R %s %s", cd_to, Owner, arg))
+	if (vsystem("cd %s && /usr/sbin/chown -R %s %s", cd_to, Owner, arg))
 	    warnx("couldn't change owner of '%s' to '%s'", arg, Owner);
 	return;
     } else if (Group)
-	if (vsystem("cd %s && chgrp -R %s %s", cd_to, Group, arg))
+	if (vsystem("cd %s && /usr/bin/chgrp -R %s %s", cd_to, Group, arg))
 	    warnx("couldn't change group of '%s' to '%s'", arg, Group);
 }
 

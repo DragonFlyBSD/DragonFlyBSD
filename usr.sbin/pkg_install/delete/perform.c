@@ -16,8 +16,8 @@
  *
  * This is the main body of the delete module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/delete/perform.c,v 1.22.2.12 2003/02/28 13:58:14 des Exp $
- * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/delete/perform.c,v 1.41 2004/06/29 19:06:41 eik Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/perform.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
  */
 
 #include <err.h>
@@ -63,6 +63,7 @@ pkg_perform(char **pkgs)
 	    case MATCH_ALL:
 		warnx("no packages installed");
 		return 0;
+	    case MATCH_EREGEX:
 	    case MATCH_REGEX:
 		warnx("no packages match pattern(s)");
 		return 1;
@@ -123,6 +124,7 @@ pkg_do(char *pkg)
     char *deporigin, **depnames, home[FILENAME_MAX];
     PackingList p;
     int i, len;
+    int isinstalled;
     /* support for separate pre/post install scripts */
     int new_m = 0;
     const char *pre_script = DEINSTALL_FNAME;
@@ -139,17 +141,32 @@ pkg_do(char *pkg)
     if (Plist.head)
 	free_plist(&Plist);
 
-    if (!isinstalledpkg(pkg)) {
+    sprintf(LogDir, "%s/%s", LOG_DIR, pkg);
+
+    isinstalled = isinstalledpkg(pkg);
+    if (isinstalled == 0) {
 	warnx("no such package '%s' installed", pkg);
 	return 1;
+    } else if (isinstalled < 0) {
+	warnx("the package info for package '%s' is corrupt%s",
+	      pkg, Force ? " (but I'll delete it anyway)" : " (use -f to force removal)");
+	if (!Force)
+	    return 1;
+    	if (!Fake) {
+	    if (vsystem("%s -rf %s", REMOVE_CMD, LogDir)) {
+    		warnx("couldn't remove log entry in %s, deinstall failed", LogDir);
+	    } else {
+    		warnx("couldn't completely deinstall package '%s',\n"
+		      "only the log entry in %s was removed", pkg, LogDir);
+	    }
+	}
+	return 0;
     }
 
     if (!getcwd(home, FILENAME_MAX)) {
 	cleanup(0);
 	errx(2, "%s: unable to get current working directory!", __func__);
     }
-
-    sprintf(LogDir, "%s/%s", LOG_DIR, pkg);
 
     if (chdir(LogDir) == FAIL) {
 	warnx("unable to change directory to %s! deinstall failed", LogDir);
@@ -206,7 +223,7 @@ pkg_do(char *pkg)
     if (fexists(REQUIRE_FNAME)) {
 	if (Verbose)
 	    printf("Executing 'require' script.\n");
-	vsystem("chmod +x %s", REQUIRE_FNAME);	/* be sure */
+	vsystem("/bin/chmod +x %s", REQUIRE_FNAME);	/* be sure */
 	if (vsystem("./%s %s DEINSTALL", REQUIRE_FNAME, pkg)) {
 	    warnx("package %s fails requirements %s", pkg,
 		   Force ? "" : "- not deleted");
@@ -236,12 +253,36 @@ pkg_do(char *pkg)
 	if (Fake)
 	    printf("Would execute de-install script at this point.\n");
 	else {
-	    vsystem("chmod +x %s", pre_script);	/* make sure */
+	    vsystem("/bin/chmod +x %s", pre_script);	/* make sure */
 	    if (vsystem("./%s %s %s", pre_script, pkg, pre_arg)) {
 		warnx("deinstall script returned error status");
 		if (!Force)
 		    return 1;
 	    }
+	}
+    }
+
+    for (p = Plist.head; p ; p = p->next) {
+	if (p->type != PLIST_PKGDEP)
+	    continue;
+	deporigin = (p->next->type == PLIST_DEPORIGIN) ? p->next->name :
+							 NULL;
+	if (Verbose) {
+	    printf("Trying to remove dependency on package '%s'", p->name);
+	    if (deporigin != NULL)
+		printf(" with '%s' origin", deporigin);
+	    printf(".\n");
+	}
+	if (!Fake) {
+	    depnames = (deporigin != NULL) ? matchbyorigin(deporigin, NULL) :
+					     NULL;
+	    if (depnames == NULL) {
+		depnames = alloca(sizeof(*depnames) * 2);
+		depnames[0] = p->name;
+		depnames[1] = NULL;
+	    }
+	    for (i = 0; depnames[i] != NULL; i++)
+		undepend(depnames[i], pkg);
 	}
     }
 
@@ -269,7 +310,7 @@ pkg_do(char *pkg)
  	if (Fake)
  	    printf("Would execute post-deinstall script at this point.\n");
  	else {
- 	    vsystem("chmod +x %s", post_script);	/* make sure */
+ 	    vsystem("/bin/chmod +x %s", post_script);	/* make sure */
  	    if (vsystem("./%s %s %s", post_script, pkg, post_arg)) {
  		warnx("post-deinstall script returned error status");
  		if (!Force)
@@ -289,30 +330,6 @@ pkg_do(char *pkg)
 	    warnx("couldn't remove log entry in %s, deinstall failed", LogDir);
 	    if (!Force)
 		return 1;
-	}
-    }
-
-    for (p = Plist.head; p ; p = p->next) {
-	if (p->type != PLIST_PKGDEP)
-	    continue;
-	deporigin = (p->next->type == PLIST_DEPORIGIN) ? p->next->name :
-							 NULL;
-	if (Verbose) {
-	    printf("Trying to remove dependency on package '%s'", p->name);
-	    if (deporigin != NULL)
-		printf(" with '%s' origin", deporigin);
-	    printf(".\n");
-	}
-	if (!Fake) {
-	    depnames = (deporigin != NULL) ? matchbyorigin(deporigin, NULL) :
-					     NULL;
-	    if (depnames == NULL) {
-		depnames = alloca(sizeof(*depnames) * 2);
-		depnames[0] = p->name;
-		depnames[1] = NULL;
-	    }
-	    for (i = 0; depnames[i] != NULL; i++)
-		undepend(depnames[i], pkg);
 	}
     }
     return 0;

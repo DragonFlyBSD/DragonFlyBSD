@@ -16,8 +16,8 @@
  *
  * This is the main body of the add module.
  *
- * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.57.2.15 2002/09/25 23:22:13 bmah Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.3 2003/11/19 15:17:29 hmp Exp $
+ * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.77 2004/07/28 16:03:13 stefanf Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.4 2004/07/30 04:46:12 dillon Exp $
  */
 
 #include <err.h>
@@ -136,7 +136,7 @@ pkg_do(char *pkg)
 	    }
 	    Home = make_playpen(playpen, sb.st_size * 4);
 	    if (!Home)
-		errx(1, "unable to make playpen for %qd bytes", (long long)sb.st_size * 4);
+		errx(1, "unable to make playpen for %lld bytes", (long long)sb.st_size * 4);
 	    where_to = Home;
 	    /* Since we can call ourselves recursively, keep notes on where we came from */
 	    if (!getenv("_TOP"))
@@ -166,7 +166,7 @@ pkg_do(char *pkg)
 		    if (!isdir(p->name) && !Fake) {
 			if (Verbose)
 			    printf("Desired prefix of %s does not exist, creating..\n", p->name);
-			vsystem("mkdir -p %s", p->name);
+			vsystem("/bin/mkdir -p %s", p->name);
 			if (chdir(p->name) == -1) {
 			    warn("unable to change directory to '%s'", p->name);
 			    goto bomb;
@@ -190,7 +190,7 @@ pkg_do(char *pkg)
 	     */
 
 	    if (!extract && !inPlace && min_free(playpen) < sb.st_size * 4) {
-		warnx("projected size of %qd exceeds available free space.\n"
+		warnx("projected size of %lld exceeds available free space.\n"
 "Please set your PKG_TMPDIR variable to point to a location with more\n"
 		       "free space and try again", (long long)sb.st_size * 4);
 		warnx("not extracting %s\ninto %s, sorry!",
@@ -242,7 +242,7 @@ pkg_do(char *pkg)
      * See if we're already registered either with the same name (the same
      * version) or some other version with the same origin.
      */
-    if ((isinstalledpkg(Plist.name) ||
+    if ((isinstalledpkg(Plist.name) > 0 ||
          matchbyorigin(Plist.origin, NULL) != NULL) && !Force) {
 	warnx("package '%s' or its older version already installed",
 	      Plist.name);
@@ -253,19 +253,18 @@ pkg_do(char *pkg)
     /* Now check the packing list for conflicts */
     for (p = Plist.head; p != NULL; p = p->next) {
 	if (p->type == PLIST_CONFLICTS) {
+	    int i;
 	    conflict[0] = strdup(p->name);
 	    conflict[1] = NULL;
 	    matched = matchinstalled(MATCH_GLOB, conflict, &errcode);
 	    free(conflict[0]);
-	    if (errcode == 0 && matched != NULL) {
-		int i;
+	    if (errcode == 0 && matched != NULL)
 		for (i = 0; matched[i] != NULL; i++)
-		    if (isinstalledpkg(matched[i])) {
+		    if (isinstalledpkg(matched[i]) > 0) {
 			warnx("package '%s' conflicts with %s", Plist.name,
 				matched[i]);
 			conflictsfound = 1;
 		    }
-	    }
 
 	    continue;
 	}
@@ -292,7 +291,7 @@ pkg_do(char *pkg)
 		printf(" with '%s' origin", deporigin);
 	    printf(".\n");
 	}
-	if (!isinstalledpkg(p->name) &&
+	if (isinstalledpkg(p->name) <= 0 &&
 	    !(deporigin != NULL && matchbyorigin(deporigin, NULL) != NULL)) {
 	    char path[FILENAME_MAX], *cp = NULL;
 
@@ -302,7 +301,11 @@ pkg_do(char *pkg)
 
 		    ext = strrchr(pkg_fullname, '.');
 		    if (ext == NULL)
+#if defined(__FreeBSD_version) && __FreeBSD_version >= 500039
+			ext = ".tbz";
+#else
 			ext = ".tgz";
+#endif
 		    snprintf(path, FILENAME_MAX, "%s/%s%s", getenv("_TOP"), p->name, ext);
 		    if (fexists(path))
 			cp = path;
@@ -311,7 +314,7 @@ pkg_do(char *pkg)
 		    if (cp) {
 			if (Verbose)
 			    printf("Loading it from %s.\n", cp);
-			if (vsystem("pkg_add %s'%s'", Verbose ? "-v " : "", cp)) {
+			if (vsystem("%s %s'%s'", PkgAddCmd, Verbose ? "-v " : "", cp)) {
 			    warnx("autoload of dependency '%s' failed%s",
 				cp, Force ? " (proceeding anyway)" : "!");
 			    if (!Force)
@@ -334,7 +337,7 @@ pkg_do(char *pkg)
 			if (!Force)
 			    ++code;
 		    }
-		    else if (vsystem("(pwd; cat +CONTENTS) | pkg_add %s-S", Verbose ? "-v " : "")) {
+		    else if (vsystem("(pwd; /bin/cat +CONTENTS) | %s %s-S", PkgAddCmd, Verbose ? "-v " : "")) {
 			warnx("pkg_add of dependency '%s' failed%s",
 				p->name, Force ? " (proceeding anyway)" : "!");
 			if (!Force)
@@ -365,7 +368,7 @@ pkg_do(char *pkg)
 
     /* Look for the requirements file */
     if (fexists(REQUIRE_FNAME)) {
-	vsystem("chmod +x %s", REQUIRE_FNAME);	/* be sure */
+	vsystem("/bin/chmod +x %s", REQUIRE_FNAME);	/* be sure */
 	if (Verbose)
 	    printf("Running requirements file first for %s..\n", Plist.name);
 	if (!Fake && vsystem("./%s %s INSTALL", REQUIRE_FNAME, Plist.name)) {
@@ -398,7 +401,7 @@ pkg_do(char *pkg)
 
     /* If we're really installing, and have an installation file, run it */
     if (!NoInstall && fexists(pre_script)) {
-	vsystem("chmod +x %s", pre_script);	/* make sure */
+	vsystem("/bin/chmod +x %s", pre_script);	/* make sure */
 	if (Verbose)
 	    printf("Running pre-install for %s..\n", Plist.name);
 	if (!Fake && vsystem("./%s %s %s", pre_script, Plist.name, pre_arg)) {
@@ -427,7 +430,7 @@ pkg_do(char *pkg)
 
     /* Run the installation script one last time? */
     if (!NoInstall && fexists(post_script)) {
-	vsystem("chmod +x %s", post_script);	/* make sure */
+	vsystem("/bin/chmod +x %s", post_script);	/* make sure */
 	if (Verbose)
 	    printf("Running post-install for %s..\n", Plist.name);
 	if (!Fake && vsystem("./%s %s %s", post_script, Plist.name, post_arg)) {
@@ -457,7 +460,7 @@ pkg_do(char *pkg)
 	    goto success;	/* close enough for government work */
 	}
 	/* Make sure pkg_info can read the entry */
-	vsystem("chmod a+rx %s", LogDir);
+	vsystem("/bin/chmod a+rx %s", LogDir);
 	move_file(".", DESC_FNAME, LogDir);
 	move_file(".", COMMENT_FNAME, LogDir);
 	if (fexists(INSTALL_FNAME))
