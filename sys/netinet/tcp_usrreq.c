@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.21 2004/04/28 08:00:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.22 2004/05/08 02:38:36 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -349,6 +349,7 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 	}
 	if (error == 0)
 		tp->t_state = TCPS_LISTEN;
+	in_pcbinswildcardhash(inp);
 	COMMON_END(PRU_LISTEN);
 }
 #endif /* INET6 */
