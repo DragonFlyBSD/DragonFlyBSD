@@ -9,7 +9,7 @@
  * 03-23-04 added centering, scroll delay (cap)
  *
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
- * $DragonFly: src/games/grdc/grdc.c,v 1.4 2004/03/25 23:55:13 cpressey Exp $
+ * $DragonFly: src/games/grdc/grdc.c,v 1.5 2005/03/15 20:53:39 dillon Exp $
  */
 
 #include <err.h>
@@ -56,7 +56,7 @@ int
 main(int argc, char **argv)
 {
 	int i, s, k;
-	int n;
+	int n = 0;
 	int ch;
 	int scrol;
 	int forever = 1;

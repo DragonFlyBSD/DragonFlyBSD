@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worm/worm.c,v 1.9 1999/12/07 02:01:27 billf Exp $
- * $DragonFly: src/games/worm/worm.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
+ * $DragonFly: src/games/worm/worm.c,v 1.4 2005/03/15 20:53:40 dillon Exp $
  */
 
 /*
@@ -89,9 +89,7 @@ void suspend (int);
 void wake (int);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv) 
 {
 	char ch;
 
@@ -174,25 +172,23 @@ char chr;
 	waddch(tv, chr);
 }
 
-void
-leave(sig)
-int sig;
+void 
+leave(__unused int sig) 
 {
 	endwin();
 	exit(0);
 }
 
 void
-wake(sig)
-int sig;
+wake(__unused int sig) 
 {
 	signal(SIGALRM, wake);
 	fflush(stdout);
 	process(lastch);
 }
 
-long
-rnd(range)
+long 
+rnd(int range) 
 {
 	return random() % range;
 }
@@ -283,8 +279,8 @@ char ch;
 		alarm(1);
 }
 
-void
-crash()
+void 
+crash(void) 
 {
 	sleep(2);
 	clear();
@@ -295,9 +291,8 @@ crash()
 	leave(0);
 }
 
-void
-suspend(sig)
-int sig;
+void 
+suspend(__unused int sig) 
 {
 	move(LINES-1, 0);
 	refresh();
@@ -310,8 +305,8 @@ int sig;
 	setup();
 }
 
-void
-setup()
+void 
+setup(void) 
 {
 	clear();
 	refresh();

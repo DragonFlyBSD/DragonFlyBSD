@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wump.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
- * $DragonFly: src/games/wump/wump.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
+ * $DragonFly: src/games/wump/wump.c,v 1.4 2005/03/15 20:53:43 dillon Exp $
  */
 
 /*
@@ -128,9 +128,7 @@ void 	wump_kill(void);
 int 	wump_nearby(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv) 
 {
 	int c;
 

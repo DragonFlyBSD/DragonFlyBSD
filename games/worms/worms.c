@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worms.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worms/worms.c,v 1.8.2.1 2000/12/04 10:36:17 alex Exp $
- * $DragonFly: src/games/worms/worms.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
+ * $DragonFly: src/games/worms/worms.c,v 1.4 2005/03/15 20:53:42 dillon Exp $
  */
 
 /*
@@ -174,9 +174,7 @@ void	 onsig (int);
 void	nomem(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv) 
 {
 	int x, y, h, n;
 	struct worm *w;
@@ -324,10 +322,7 @@ main(argc, argv)
 	}
 }
 
-void
-onsig(signo)
-	int signo;
-{
+void onsig(__unused int signo) {
 	sig_caught = 1;
 }
 

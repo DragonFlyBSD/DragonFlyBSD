@@ -7,7 +7,7 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.4 2003/11/12 14:53:52 eirikn Exp $
+ * $DragonFly: src/games/bs/bs.c,v 1.5 2005/03/15 20:53:37 dillon Exp $
  */
 
 #include <assert.h>
@@ -60,14 +60,14 @@
 #define PXBASE	3
 #define PY(y)	(PYBASE + (y))
 #define PX(x)	(PXBASE + (x)*3)
-#define pgoto(y, x)	(void)move(PY(y), PX(x))
+#define pgoto(y, x)	move(PY(y), PX(x))
 
 /* how to position us on cpu board */
 #define CYBASE	3
 #define CXBASE	48
 #define CY(y)	(CYBASE + (y))
 #define CX(x)	(CXBASE + (x)*3)
-#define cgoto(y, x)	(void)move(CY(y), CX(x))
+#define cgoto(y, x)	move(CY(y), CX(x))
 
 #define ONBOARD(x, y)	(x >= 0 && x < BWIDTH && y >= 0 && y < BDEPTH)
 
@@ -102,34 +102,33 @@ static int yincr[8] = {0,  1,  1,  1,  0, -1, -1, -1};
 static int curx = (BWIDTH / 2);
 static int cury = (BDEPTH / 2);
 
-typedef struct
-{
-    char *name;		/* name of the ship type */
-    unsigned int hits;	/* how many times has this ship been hit? */
-    char symbol;	/* symbol for game purposes */
-    char length;	/* length of ship */
-    char x, y;		/* coordinates of ship start point */
-    enum directions dir;/* direction of `bow' */
-    bool placed;	/* has it been placed on the board? */
+typedef struct {
+    char *name;				/* name of the ship type */
+    char hits;				/* how many times has this ship been hit? */
+    char symbol;			/* symbol for game purposes */
+    char length;			/* length of ship */
+    char x, y;				/* coordinates of ship start point */
+    enum directions dir;	/* direction of `bow' */
+    bool placed;			/* has it been placed on the board? */
 }
 ship_t;
 
 ship_t plyship[SHIPTYPES] =
 {
-    { carrier,	0, 'A', 5},
-    { battle,	0, 'B', 4},
-    { destroy,	0, 'D', 3},
-    { sub,	0, 'S', 3},
-    { ptboat,	0, 'P', 2},
+    { carrier,	0, 'A', 5, 0, 0, E, FALSE},
+    { battle,	0, 'B', 4, 0, 0, E, FALSE},
+    { destroy,	0, 'D', 3, 0, 0, E, FALSE},
+    { sub,		0, 'S', 3, 0, 0, E, FALSE},
+    { ptboat,	0, 'P', 2, 0, 0, E, FALSE},
 };
 
 ship_t cpuship[SHIPTYPES] =
 {
-    { carrier,	0, 'A', 5},
-    { battle,	0, 'B', 4},
-    { destroy,	0, 'D', 3},
-    { sub,	0, 'S', 3},
-    { ptboat,	0, 'P', 2},
+    { carrier,	0, 'A', 5, 0, 0, E, FALSE},
+    { battle,	0, 'B', 4, 0, 0, E, FALSE},
+    { destroy,	0, 'D', 3, 0, 0, E, FALSE},
+    { sub,		0, 'S', 3, 0, 0, E, FALSE},
+    { ptboat,	0, 'P', 2, 0, 0, E, FALSE},
 };
 
 /* "Hits" board, and main board. */
@@ -140,82 +139,85 @@ static int plywon=0, cpuwon=0;		/* How many games has each won? */
 
 static int salvo, blitz, closepack;
 
-#define	PR	(void)addstr
+#define	PR	addstr
 
 static bool checkplace (int, ship_t *, int);
 static int getcoord (int);
 int playagain (void);
 
-static void uninitgame(sig)
 /* end the game, either normally or due to signal */
-int	sig;
-{
+static void uninitgame(void) {
     clear();
-    (void)refresh();
-    (void)resetterm();
-    (void)echo();
-    (void)endwin();
+    refresh();
+    resetterm();
+    echo();
+    endwin();
     exit(0);
 }
 
-static void announceopts()
-/* announce which game options are enabled */
+static void
+sighandler(__unused int sig) 
 {
-    if (salvo || blitz || closepack)
-    {
-	(void) printw("Playing optional game (");
-	if (salvo)
-	    (void) printw("salvo, ");
-	else
-	    (void) printw("nosalvo, ");
-	if (blitz)
-	    (void) printw("blitz ");
-	else
-	    (void) printw("noblitz, ");
-	if (closepack)
-	    (void) printw("closepack)");
-	else
-	    (void) printw("noclosepack)");
-    }
-    else
-	(void) printw(
-	"Playing standard game (noblitz, nosalvo, noclosepack)");
+	uninitgame();
 }
 
-static void intro()
+/* announce which game options are enabled */
+static void
+announceopts(void) 
+{
+    printw("Playing %s game (", (salvo || blitz || closepack) ?
+			"optional" : "standard");
+	
+	if (salvo)
+	    printw("salvo, ");
+	else
+	    printw("nosalvo, ");
+
+	if (blitz)
+	    printw("blitz, ");
+	else
+	    printw("noblitz, ");
+
+	if (closepack)
+	    printw("closepack)");
+	else
+	    printw("noclosepack)");
+}
+
+static void
+intro(void) 
 {
     char *tmpname;
 
     srandomdev();
 
     tmpname = getlogin();
-    (void) signal(SIGINT,uninitgame);
-    (void) signal(SIGINT,uninitgame);
-    (void) signal(SIGIOT,uninitgame);		/* for assert(3) */
+    signal(SIGINT,sighandler);
+    signal(SIGINT,sighandler);
+    signal(SIGIOT,sighandler);		/* for assert(3) */
     if(signal(SIGQUIT,SIG_IGN) != SIG_IGN)
-	(void)signal(SIGQUIT,uninitgame);
+		signal(SIGQUIT,sighandler);
 
-    if(tmpname != '\0')
-    {
-	(void)strcpy(name,tmpname);
-	name[0] = toupper(name[0]);
-    }
-    else
-	(void)strcpy(name,dftname);
+    if(tmpname != '\0') {
+		strcpy(name,tmpname);
+		name[0] = toupper(name[0]);
+    } else {
+		strcpy(name,dftname);
+	}
 
-    (void)initscr();
+    initscr();
 #ifdef KEY_MIN
     keypad(stdscr, TRUE);
 #endif /* KEY_MIN */
-    (void)saveterm();
-    (void)nonl();
-    (void)cbreak();
-    (void)noecho();
+    saveterm();
+    nonl();
+    cbreak();
+    noecho();
 
 #ifdef PENGUIN
-    (void)clear();
-    (void)mvaddstr(4,29,"Welcome to Battleship!");
-    (void)move(8,0);
+    clear();
+    mvaddstr(4,29,"Welcome to Battleship!");
+    move(8,0);
     PR("                                                  \\\n");
     PR("                           \\                     \\ \\\n");
     PR("                          \\ \\                   \\ \\ \\_____________\n");
@@ -227,8 +229,8 @@ static void intro()
     PR("            \\                                                     /\n");
     PR("             \\___________________________________________________/\n");
 
-    (void) mvaddstr(22,27,"Hit any key to continue..."); (void)refresh();
-    (void) getch();
+    mvaddstr(22,27,"Hit any key to continue..."); refresh();
+    getch();
 #endif /* PENGUIN */
 
 #ifdef A_COLOR
@@ -246,154 +248,151 @@ static void intro()
 
 }
 
-/* VARARGS1 */
-static void prompt(n, f, s)
 /* print a message at the prompt line */
-int n;
-char *f, *s;
+static void
+prompt(int n, const char *f, ...) 
 {
-    (void) move(PROMPTLINE + n, 0);
-    (void) clrtoeol();
-    (void) printw(f, s);
-    (void) refresh();
+    char buf[COLWIDTH + 1];
+    va_list ap;
+
+    va_start(ap, f);
+    move(PROMPTLINE + n, 0);
+    clrtoeol();
+    vsnprintf(buf, COLWIDTH + 1, f, ap);
+    printw("%s", buf);
+    refresh();
+    va_end(ap);
 }
 
-static void error(s)
-char *s;
+static void
+error(const char *s) 
 {
-    (void) move(PROMPTLINE + 2, 0);
-    (void) clrtoeol();
-    if (s)
-    {
-	(void) addstr(s);
-	(void) beep();
+    move(PROMPTLINE + 2, 0);
+    clrtoeol();
+    if (s) {
+		addstr(s);
+		beep();
     }
 }
 
-static void placeship(b, ss, vis)
-int b;
-ship_t *ss;
-int vis;
+static void
+placeship(int b, ship_t *ss, int vis) 
 {
     int l;
 
-    for(l = 0; l < ss->length; ++l)
-    {
-	int newx = ss->x + l * xincr[ss->dir];
-	int newy = ss->y + l * yincr[ss->dir];
+    for(l = 0; l < ss->length; ++l) {
+		int newx = ss->x + l * xincr[ss->dir];
+		int newy = ss->y + l * yincr[ss->dir];
 
-	board[b][newx][newy] = ss->symbol;
-	if (vis)
-	{
-	    pgoto(newy, newx);
-	    (void) addch((chtype)ss->symbol);
-	}
+		board[b][newx][newy] = ss->symbol;
+		if (vis) {
+	    	pgoto(newy, newx);
+	    	addch((chtype)ss->symbol);
+		}
     }
     ss->hits = 0;
 }
 
-static int rnd(n)
-int n;
+static int
+rnd(int n) 
 {
     return(random() % n);
 }
 
-static void randomplace(b, ss)
 /* generate a valid random ship placement into px,py */
-int b;
-ship_t *ss;
+static void
+randomplace(int b, ship_t *ss) 
 {
     int bwidth = BWIDTH - ss->length;
     int bdepth = BDEPTH - ss->length;
 
     do {
-	ss->y = rnd(bdepth);
-	ss->x = rnd(bwidth);
-	ss->dir = rnd(2) ? E : S;
-    } while
-	(!checkplace(b, ss, FALSE));
+		ss->y = rnd(bdepth);
+		ss->x = rnd(bwidth);
+		ss->dir = rnd(2) ? E : S;
+    } while (!checkplace(b, ss, FALSE));
 }
 
-static void initgame()
+static void
+initgame(void) 
 {
     int i, j, unplaced;
     ship_t *ss;
 
-    (void) clear();
-    (void) mvaddstr(0,35,"BATTLESHIPS");
-    (void) move(PROMPTLINE + 2, 0);
+    clear();
+    mvaddstr(0,35,"BATTLESHIPS");
+    move(PROMPTLINE + 2, 0);
     announceopts();
 
     bzero(board, sizeof(char) * BWIDTH * BDEPTH * 2);
     bzero(hits, sizeof(char) * BWIDTH * BDEPTH * 2);
-    for (i = 0; i < SHIPTYPES; i++)
-    {
-	ss = cpuship + i;
-	ss->x = ss->y = ss->dir = ss->hits = ss->placed = 0;
-	ss = plyship + i;
-	ss->x = ss->y = ss->dir = ss->hits = ss->placed = 0;
+    for (i = 0; i < SHIPTYPES; i++) {
+		ss = cpuship + i;
+		ss->x = ss->y = ss->dir = ss->hits = ss->placed = 0;
+		ss = plyship + i;
+		ss->x = ss->y = ss->dir = ss->hits = ss->placed = 0;
     }
 
     /* draw empty boards */
-    (void) mvaddstr(PYBASE - 2, PXBASE + 5, "Main Board");
-    (void) mvaddstr(PYBASE - 1, PXBASE - 3,numbers);
+    mvaddstr(PYBASE - 2, PXBASE + 5, "Main Board");
+    mvaddstr(PYBASE - 1, PXBASE - 3,numbers);
     for(i=0; i < BDEPTH; ++i)
     {
-	(void) mvaddch(PYBASE + i, PXBASE - 3, i + 'A');
+	mvaddch(PYBASE + i, PXBASE - 3, i + 'A');
 #ifdef A_COLOR
 	if (has_colors())
 	    attron(COLOR_PAIR(COLOR_BLUE));
 #endif /* A_COLOR */
-	(void) addch(' ');
+	addch(' ');
 	for (j = 0; j < BWIDTH; j++)
-	    (void) addstr(" . ");
+	    addstr(" . ");
 #ifdef A_COLOR
 	attrset(0);
 #endif /* A_COLOR */
-	(void) addch(' ');
-	(void) addch(i + 'A');
+	addch(' ');
+	addch(i + 'A');
     }
-    (void) mvaddstr(PYBASE + BDEPTH, PXBASE - 3,numbers);
-    (void) mvaddstr(CYBASE - 2, CXBASE + 7,"Hit/Miss Board");
-    (void) mvaddstr(CYBASE - 1, CXBASE - 3, numbers);
+    mvaddstr(PYBASE + BDEPTH, PXBASE - 3,numbers);
+    mvaddstr(CYBASE - 2, CXBASE + 7,"Hit/Miss Board");
+    mvaddstr(CYBASE - 1, CXBASE - 3, numbers);
     for(i=0; i < BDEPTH; ++i)
     {
-	(void) mvaddch(CYBASE + i, CXBASE - 3, i + 'A');
+	mvaddch(CYBASE + i, CXBASE - 3, i + 'A');
 #ifdef A_COLOR
 	if (has_colors())
 	    attron(COLOR_PAIR(COLOR_BLUE));
 #endif /* A_COLOR */
-	(void) addch(' ');
+	addch(' ');
 	for (j = 0; j < BWIDTH; j++)
-	    (void) addstr(" . ");
+	    addstr(" . ");
 #ifdef A_COLOR
 	attrset(0);
 #endif /* A_COLOR */
-	(void) addch(' ');
-	(void) addch(i + 'A');
+	addch(' ');
+	addch(i + 'A');
     }
 
-    (void) mvaddstr(CYBASE + BDEPTH,CXBASE - 3,numbers);
+    mvaddstr(CYBASE + BDEPTH,CXBASE - 3,numbers);
 
-    (void) mvprintw(HYBASE,  HXBASE,
+    mvprintw(HYBASE,  HXBASE,
 		    "To position your ships: move the cursor to a spot, then");
-    (void) mvprintw(HYBASE+1,HXBASE,
+    mvprintw(HYBASE+1,HXBASE,
 		    "type the first letter of a ship type to select it, then");
-    (void) mvprintw(HYBASE+2,HXBASE,
+    mvprintw(HYBASE+2,HXBASE,
 		    "type a direction ([hjkl] or [4862]), indicating how the");
-    (void) mvprintw(HYBASE+3,HXBASE,
+    mvprintw(HYBASE+3,HXBASE,
 		    "ship should be pointed. You may also type a ship letter");
-    (void) mvprintw(HYBASE+4,HXBASE,
+    mvprintw(HYBASE+4,HXBASE,
 		    "followed by `r' to position it randomly, or type `R' to");
-    (void) mvprintw(HYBASE+5,HXBASE,
+    mvprintw(HYBASE+5,HXBASE,
 		    "place all remaining ships randomly.");
 
-    (void) mvaddstr(MYBASE,   MXBASE, "Aiming keys:");
-    (void) mvaddstr(SYBASE,   SXBASE, "y k u    7 8 9");
-    (void) mvaddstr(SYBASE+1, SXBASE, " \\|/      \\|/ ");
-    (void) mvaddstr(SYBASE+2, SXBASE, "h-+-l    4-+-6");
-    (void) mvaddstr(SYBASE+3, SXBASE, " /|\\      /|\\ ");
-    (void) mvaddstr(SYBASE+4, SXBASE, "b j n    1 2 3");
+    mvaddstr(MYBASE,   MXBASE, "Aiming keys:");
+    mvaddstr(SYBASE,   SXBASE, "y k u    7 8 9");
+    mvaddstr(SYBASE+1, SXBASE, " \\|/      \\|/ ");
+    mvaddstr(SYBASE+2, SXBASE, "h-+-l    4-+-6");
+    mvaddstr(SYBASE+3, SXBASE, " /|\\      /|\\ ");
+    mvaddstr(SYBASE+4, SXBASE, "b j n    1 2 3");
 
     /* have the computer place ships */
     for(ss = cpuship; ss < cpuship + SHIPTYPES; ss++)
@@ -421,7 +420,7 @@ static void initgame()
 	    (!strchr(docked, c));
 
 	if (c == 'R')
-	    (void) ungetch('R');
+	    ungetch('R');
 	else
 	{
 	    /* map that into the corresponding symbol */
@@ -440,8 +439,8 @@ static void initgame()
 
 	if (c == FF)
 	{
-	    (void)clearok(stdscr, TRUE);
-	    (void)refresh();
+	    clearok(stdscr, TRUE);
+	    refresh();
 	}
 	else if (c == 'r')
 	{
@@ -491,25 +490,25 @@ static void initgame()
 
     turn = rnd(2);
 
-    (void) mvprintw(HYBASE,  HXBASE,
+    mvprintw(HYBASE,  HXBASE,
 		    "To fire, move the cursor to your chosen aiming point   ");
-    (void) mvprintw(HYBASE+1,  HXBASE,
+    mvprintw(HYBASE+1,  HXBASE,
 		    "and strike any key other than a motion key.            ");
-    (void) mvprintw(HYBASE+2,  HXBASE,
+    mvprintw(HYBASE+2,  HXBASE,
 		    "                                                       ");
-    (void) mvprintw(HYBASE+3,  HXBASE,
+    mvprintw(HYBASE+3,  HXBASE,
 		    "                                                       ");
-    (void) mvprintw(HYBASE+4,  HXBASE,
+    mvprintw(HYBASE+4,  HXBASE,
 		    "                                                       ");
-    (void) mvprintw(HYBASE+5,  HXBASE,
+    mvprintw(HYBASE+5,  HXBASE,
 		    "                                                       ");
 
-    (void) prompt(0, "Press any key to start...");
-    (void) getch();
+    prompt(0, "Press any key to start...");
+    getch();
 }
 
-static int getcoord(atcpu)
-int atcpu;
+static int
+getcoord(int atcpu) 
 {
     int ny, nx, c;
 
@@ -517,17 +516,17 @@ int atcpu;
 	cgoto(cury,curx);
     else
 	pgoto(cury, curx);
-    (void)refresh();
+    refresh();
     for (;;)
     {
 	if (atcpu)
 	{
-	    (void) mvprintw(CYBASE + BDEPTH+1, CXBASE+11, "(%d, %c)", curx, 'A'+cury);
+	    mvprintw(CYBASE + BDEPTH+1, CXBASE+11, "(%d, %c)", curx, 'A'+cury);
 	    cgoto(cury, curx);
 	}
 	else
 	{
-	    (void) mvprintw(PYBASE + BDEPTH+1, PXBASE+11, "(%d, %c)", curx, 'A'+cury);
+	    mvprintw(PYBASE + BDEPTH+1, PXBASE+11, "(%d, %c)", curx, 'A'+cury);
 	    pgoto(cury, curx);
 	}
 
@@ -583,14 +582,14 @@ int atcpu;
 	    break;
 	case FF:
 	    nx = curx; ny = cury;
-	    (void)clearok(stdscr, TRUE);
-	    (void)refresh();
+	    clearok(stdscr, TRUE);
+	    refresh();
 	    break;
 	default:
 	    if (atcpu)
-		(void) mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11, "      ");
+		mvaddstr(CYBASE + BDEPTH + 1, CXBASE + 11, "      ");
 	    else
-		(void) mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11, "      ");
+		mvaddstr(PYBASE + BDEPTH + 1, PXBASE + 11, "      ");
 	    return(c);
 	}
 
@@ -599,87 +598,81 @@ int atcpu;
     }
 }
 
-static int collidecheck(b, y, x)
 /* is this location on the selected zboard adjacent to a ship? */
-int b;
-int y, x;
+static int
+collidecheck(int b, int y, int x) 
 {
     int	collide;
 
     /* anything on the square */
     if ((collide = IS_SHIP(board[b][x][y])) != 0)
-	return(collide);
+		return(collide);
 
     /* anything on the neighbors */
-    if (!closepack)
-    {
-	int i;
+    if (!closepack) {
+		int i;
 
-	for (i = 0; i < 8; i++)
-	{
-	    int xend, yend;
+		for (i = 0; i < 8; i++) {
+	    	int xend, yend;
+	
+	    	yend = y + yincr[i];
+	    	xend = x + xincr[i];
+	    	if (ONBOARD(xend, yend))
+			collide += IS_SHIP(board[b][xend][yend]);
+		}
+   	}
 
-	    yend = y + yincr[i];
-	    xend = x + xincr[i];
-	    if (ONBOARD(xend, yend))
-		collide += IS_SHIP(board[b][xend][yend]);
-	}
-    }
     return(collide);
 }
 
-static bool checkplace(b, ss, vis)
-int b;
-ship_t *ss;
-int vis;
+static bool
+checkplace(int b, ship_t *ss, int vis) 
 {
     int l, xend, yend;
 
     /* first, check for board edges */
     xend = ss->x + ss->length * xincr[ss->dir];
     yend = ss->y + ss->length * yincr[ss->dir];
-    if (!ONBOARD(xend, yend))
-    {
-	if (vis)
-	    switch(rnd(3))
-	    {
-	    case 0:
-		error("Ship is hanging from the edge of the world");
-		break;
-	    case 1:
-		error("Try fitting it on the board");
-		break;
-	    case 2:
-		error("Figure I won't find it if you put it there?");
-		break;
+    if (!ONBOARD(xend, yend)) {
+		if (vis) {
+	    	switch(rnd(3)) {
+	    		case 0:
+					error("Ship is hanging from the edge of the world");
+					break;
+	    		case 1:
+					error("Try fitting it on the board");
+					break;
+	    		case 2:
+					error("Figure I won't find it if you put it there?");
+					break;
+			}
 	    }
-	return(0);
+		return(0);
     }
 
-    for(l = 0; l < ss->length; ++l)
-    {
-	if(collidecheck(b, ss->y+l*yincr[ss->dir], ss->x+l*xincr[ss->dir]))
-	{
-	    if (vis)
-		switch(rnd(3))
-		{
-		    case 0:
-			error("There's already a ship there");
-			break;
-		    case 1:
-			error("Collision alert!  Aaaaaagh!");
-			break;
-		    case 2:
-			error("Er, Admiral, what about the other ship?");
-			break;
-		    }
-	    return(FALSE);
+    for(l = 0; l < ss->length; ++l) {
+		if(collidecheck(b, ss->y+l*yincr[ss->dir], ss->x+l*xincr[ss->dir])) {
+	    	if (vis) {
+				switch(rnd(3)) {
+		    		case 0:
+						error("There's already a ship there");
+						break;
+		    		case 1:
+						error("Collision alert!  Aaaaaagh!");
+						break;
+		    		case 2:
+						error("Er, Admiral, what about the other ship?");
+						break;
+		    		}
+				}
+	    	return(FALSE);
 	    }
 	}
     return(TRUE);
 }
 
-static int awinna()
+static int
+awinna(void)
 {
     int i, j;
     ship_t *ss;
@@ -696,9 +689,9 @@ static int awinna()
     return(-1);
 }
 
-static ship_t *hitship(x, y)
 /* a hit on the targeted ship */
-int x, y;
+static ship_t *
+hitship(int x, int y) 
 {
     ship_t *sb, *ss;
     char sym;
@@ -711,75 +704,73 @@ int x, y;
     for(ss = sb; ss < sb + SHIPTYPES; ++ss)
 	if(ss->symbol == sym)
 	{
-	    if (++ss->hits < ss->length)	/* still afloat? */
-		return((ship_t *)NULL);
-	    else				/* sunk! */
-	    {
+	    if (++ss->hits < ss->length) {	/* still afloat? */
+			return((ship_t *)NULL);
+	    } else { /* sunk */
 		int i, j;
 
-		if (!closepack)
-		    for (j = -1; j <= 1; j++)
-		    {
-			int bx = ss->x + j * xincr[(ss->dir + 2) % 8];
-			int by = ss->y + j * yincr[(ss->dir + 2) % 8];
-
-			for (i = -1; i <= ss->length; ++i)
-			{
-			    int x, y;
-
-			    x = bx + i * xincr[ss->dir];
-			    y = by + i * yincr[ss->dir];
-			    if (ONBOARD(x, y))
-			    {
-				hits[turn][x][y] = MARK_MISS;
-				if (turn % 2 == PLAYER)
-				{
-				    cgoto(y, x);
+		if (!closepack) {
+		    for (j = -1; j <= 1; j++) {
+				int bx = ss->x + j * xincr[(ss->dir + 2) % 8];
+				int by = ss->y + j * yincr[(ss->dir + 2) % 8];
+	
+				for (i = -1; i <= ss->length; ++i) {
+			    	int cx, cy;
+	
+			    	cx = bx + i * xincr[ss->dir];
+			    	cy = by + i * yincr[ss->dir];
+			    	if (ONBOARD(cx, cy)) {
+						hits[turn][cx][cy] = MARK_MISS;
+						if (turn % 2 == PLAYER) {
+				    		cgoto(cy, cx);
 #ifdef A_COLOR
-				    if (has_colors())
-					attron(COLOR_PAIR(COLOR_GREEN));
+				    		if (has_colors())
+								attron(COLOR_PAIR(COLOR_GREEN));
 #endif /* A_COLOR */
-				    (void)addch(MARK_MISS);
+	
+				    		addch(MARK_MISS);
 #ifdef A_COLOR
-				    attrset(0);
+				    		attrset(0);
 #endif /* A_COLOR */
+						}
+			    	}
 				}
-			    }
-			}
-		    }
+	    	}
+		}
 
 		for (i = 0; i < ss->length; ++i)
 		{
-		    int x = ss->x + i * xincr[ss->dir];
-		    int y = ss->y + i * yincr[ss->dir];
+		    int dx = ss->x + i * xincr[ss->dir];
+		    int dy = ss->y + i * yincr[ss->dir];
 
-		    hits[turn][x][y] = ss->symbol;
+		    hits[turn][dx][dy] = ss->symbol;
 		    if (turn % 2 == PLAYER)
 		    {
-			cgoto(y, x);
-			(void) addch(ss->symbol);
+			cgoto(dy, dx);
+			addch(ss->symbol);
 		    }
 		}
 
-		(void) move(oldy, oldx);
+		move(oldy, oldx);
 		return(ss);
 	    }
 	}
-    (void) move(oldy, oldx);
+    move(oldy, oldx);
     return((ship_t *)NULL);
 }
 
-static int plyturn()
+static int
+plyturn(void) 
 {
     ship_t *ss;
     bool hit;
-    char *m;
+    char const *m;
 
     m = NULL;
     prompt(1, "Where do you want to shoot? ");
     for (;;)
     {
-	(void) getcoord(COMPUTER);
+	getcoord(COMPUTER);
 	if (hits[PLAYER][curx][cury])
 	{
 	    prompt(1, "You shelled this spot already! Try again.");
@@ -799,7 +790,7 @@ static int plyturn()
 	    attron(COLOR_PAIR(COLOR_GREEN));
     }
 #endif /* A_COLOR */
-    (void) addch((chtype)hits[PLAYER][curx][cury]);
+    addch((chtype)hits[PLAYER][curx][cury]);
 #ifdef A_COLOR
     attrset(0);
 #endif /* A_COLOR */
@@ -825,42 +816,42 @@ static int plyturn()
 	    m = " You'll pick up survivors from my %s, I hope...!";
 	    break;
 	}
-	(void)printw(m, ss->name);
-	(void)beep();
+	printw(m, ss->name);
+	beep();
 	return(awinna() == -1);
     }
     return(hit);
 }
 
-static int sgetc(s)
-char *s;
+static int
+sgetc(const char *s) 
 {
-    char *s1;
+    const char *s1;
     int ch;
 
-    (void)refresh();
-    for(;;)
-    {
-	ch = getch();
-	if (islower(ch))
-	    ch = toupper(ch);
-	if (ch == CTRLC)
-	    uninitgame();
-	for (s1=s; *s1 && ch != *s1; ++s1)
-	    continue;
-	if (*s1)
-	{
-	    (void) addch((chtype)ch);
-	    (void)refresh();
-	    return(ch);
-	    }
+    refresh();
+    for(;;) {
+		ch = getch();
+		if (islower(ch))
+	    	ch = toupper(ch);
+
+		if (ch == CTRLC)
+	    	uninitgame();
+
+		for (s1=s; *s1 && ch != *s1; ++s1)
+	    	continue;
+
+		if (*s1) {
+	    	addch((chtype)ch);
+	    	refresh();
+	    	return(ch);
+	   	}
 	}
 }
 
-
-static void randomfire(px, py)
 /* random-fire routine -- implements simple diagonal-striping strategy */
-int	*px, *py;
+static void
+randomfire(int *px, int *py) 
 {
     static int turncount = 0;
     static int srchstep = BEGINSTEP;
@@ -918,22 +909,22 @@ int	*px, *py;
 #define S_HIT	1
 #define S_SUNK	-1
 
-static bool cpufire(x, y)
 /* fire away at given location */
-int	x, y;
+static bool
+cpufire(int x, int y) 
 {
     bool hit, sunk;
     ship_t *ss;
 
     ss = NULL;
     hits[COMPUTER][x][y] = (hit = (board[PLAYER][x][y])) ? MARK_HIT : MARK_MISS;
-    (void) mvprintw(PROMPTLINE, 0,
+    mvprintw(PROMPTLINE, 0,
 	"I shoot at %c%d. I %s!", y + 'A', x, hit ? "hit" : "miss");
     ss = hitship(x, y);
     sunk = hit && ss;
     if (sunk)
-	(void) printw(" I've sunk your %s", ss->name);
-    (void)clrtoeol();
+	printw(" I've sunk your %s", ss->name);
+    clrtoeol();
 
     pgoto(y, x);
 #ifdef A_COLOR
@@ -944,7 +935,7 @@ int	x, y;
 	    attron(COLOR_PAIR(COLOR_GREEN));
     }
 #endif /* A_COLOR */
-    (void)addch((chtype)(hit ? SHOWHIT : SHOWSPLASH));
+    addch((chtype)(hit ? SHOWHIT : SHOWSPLASH));
 #ifdef A_COLOR
     attrset(0);
 #endif /* A_COLOR */
@@ -957,7 +948,8 @@ int	x, y;
  * unstructuredness below. The five labels are states which need to be held
  * between computer turns.
  */
-static bool cputurn()
+static bool
+cputurn(void) 
 {
 #define POSSIBLE(x, y)	(ONBOARD(x, y) && !hits[COMPUTER][x][y])
 #define RANDOM_FIRE	0
@@ -1067,43 +1059,47 @@ static bool cputurn()
     /* check for continuation and/or winner */
     if (salvo)
     {
-	(void)refresh();
-	(void)sleep(1);
+	refresh();
+	sleep(1);
     }
     if (awinna() != -1)
 	return(FALSE);
 
 #ifdef DEBUG
-    (void) mvprintw(PROMPTLINE + 2, 0,
+    mvprintw(PROMPTLINE + 2, 0,
 		    "New state %d, x=%d, y=%d, d=%d",
 		    next, x, y, d);
 #endif /* DEBUG */
     return(hit);
 }
 
-int
-playagain()
+int 
+playagain(void) 
 {
     int j;
     ship_t *ss;
 
-    for (ss = cpuship; ss < cpuship + SHIPTYPES; ss++)
-	for(j = 0; j < ss->length; j++)
-	{
-	    cgoto(ss->y + j * yincr[ss->dir], ss->x + j * xincr[ss->dir]);
-	    (void)addch((chtype)ss->symbol);
+    for (ss = cpuship; ss < cpuship + SHIPTYPES; ss++) {
+		for(j = 0; j < ss->length; j++) {
+	    	cgoto(ss->y + j * yincr[ss->dir], ss->x + j * xincr[ss->dir]);
+	    	addch((chtype)ss->symbol);
+		}
 	}
 
-    if(awinna())
-	++cpuwon;
-    else
-	++plywon;
+    if(awinna()) {
+		++cpuwon;
+    } else {
+		++plywon;
+	}
+
     j = 18 + strlen(name);
-    if(plywon >= 10)
-	++j;
-    if(cpuwon >= 10)
-	++j;
-    (void) mvprintw(1,(COLWIDTH-j)/2,
+    if(plywon >= 10) {
+		++j;
+    } else if(cpuwon >= 10) {
+		++j;
+	}
+    
+	mvprintw(1,(COLWIDTH-j)/2,
 		    "%s: %d     Computer: %d",name,plywon,cpuwon);
 
     prompt(2, (awinna()) ? "Want to be humiliated again, %s [yn]? "
@@ -1111,63 +1107,20 @@ playagain()
     return(sgetc("YN") == 'Y');
 }
 
-static void do_options(c,op)
-int c;
-char *op[];
+static void
+usage(void) 
 {
-    int i;
-
-    if (c > 1)
-    {
-	for (i=1; i<c; i++)
-	{
-	    switch(op[i][0])
-	    {
-	    default:
-	    case '?':
-		(void) fprintf(stderr, "Usage: battle [-s | -b] [-c]\n");
-		(void) fprintf(stderr, "\tWhere the options are:\n");
-		(void) fprintf(stderr, "\t-s : play a salvo game\n");
-		(void) fprintf(stderr, "\t-b : play a blitz game\n");
-		(void) fprintf(stderr, "\t-c : ships may be adjacent\n");
+		fprintf(stderr, "Usage: battle [-s | -b] [-c]\n");
+		fprintf(stderr, "\tWhere the options are:\n");
+		fprintf(stderr, "\t-s : salvo     - One shot per ship in play\n");
+		fprintf(stderr, "\t-b : blitz     - Fire until you miss\n");
+		fprintf(stderr, "\t-c : closepack - Ships may be adjacent\n");
+		fprintf(stderr, "Blitz and Salvo are mutually exclusive\n");
 		exit(1);
-		break;
-	    case '-':
-		switch(op[i][1])
-		{
-		case 'b':
-		    blitz = 1;
-		    if (salvo == 1)
-		    {
-			(void) fprintf(stderr,
-				"Bad Arg: -b and -s are mutually exclusive\n");
-			exit(1);
-		    }
-		    break;
-		case 's':
-		    salvo = 1;
-		    if (blitz == 1)
-		    {
-			(void) fprintf(stderr,
-				"Bad Arg: -s and -b are mutually exclusive\n");
-			exit(1);
-		    }
-		    break;
-		case 'c':
-		    closepack = 1;
-		    break;
-		default:
-		    (void) fprintf(stderr,
-			    "Bad arg: type \"%s ?\" for usage message\n", op[0]);
-		    exit(1);
-		}
-	    }
-	}
-    }
 }
 
-static int scount(who)
-int who;
+static int
+scount(int who) 
 {
     int i, shots;
     ship_t *sp;
@@ -1188,60 +1141,66 @@ int who;
 }
 
 int
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char **argv) 
 {
-    /* revoke */
-    setgid(getgid());
+	int ch;
 
-    do_options(argc, argv);
+	/* revoke */
+	setgid(getgid());
+
+	while ((ch = getopt(argc, argv, "bsc")) != -1) {
+		switch (ch) {
+			case 'b':
+				blitz = 1;
+				break;
+			case 's':
+				salvo = 1;
+				break;
+			case 'c':
+				closepack = 1;
+				break;
+			case '?':
+			default:
+				usage();
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	
+	if (blitz && salvo)
+		usage();
 
     intro();
-    do {
-	initgame();
-	while(awinna() == -1)
-	{
-	    if (!blitz)
-	    {
-		if (!salvo)
-		{
-	    	    if(turn)
-			(void) cputurn();
-		    else
-			(void) plyturn();
-		}
-		else
-		{
-		    int i;
 
-		    i = scount(turn);
-		    while (i--)
-		    {
-			if (turn)
-			{
-			    if (cputurn() && awinna() != -1)
-				i = 0;
+	do {
+		initgame();
+		while(awinna() == -1) {
+			if (blitz) {
+				while(turn ? cputurn() : plyturn())
+					continue;
+			} else if (salvo) {
+				int i;
+		
+		   		i = scount(turn);
+		   		while (i--) {
+					if (turn) {
+		   				if (cputurn() && awinna() != -1)
+						i = 0;
+					} else {
+		   				if (plyturn() && awinna() != -1)
+						i = 0;
+					}
+		   		}
+			} else {	/* Normal game */
+				if(turn)
+					cputurn();
+		   		else
+					plyturn();
 			}
-			else
-			{
-			    if (plyturn() && awinna() != -1)
-				i = 0;
-			}
-		    }
+	   		turn = OTHER;
 		}
-	    }
-	    else
-	    	while(turn ? cputurn() : plyturn())
-		    continue;
-	    turn = OTHER;
-	}
-    } while
-	(playagain());
+	} while (playagain());
+
     uninitgame();
-    /*NOTREACHED*/
     exit(0);
-    /*NOTREACHED*/
 }
-
-/* bs.c ends here */
