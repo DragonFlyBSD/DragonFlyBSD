@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.7 2004/02/14 21:12:38 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.8 2004/03/09 15:00:06 hmp Exp $
  */
 
 #define        DEB(x)
@@ -847,7 +847,7 @@ realloc_dynamic_table(void)
 		free(ipfw_dyn_v, M_IPFW);
 	for (;;) {
 		ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof(ipfw_dyn_rule *),
-		       M_IPFW, M_NOWAIT | M_ZERO);
+		       M_IPFW, M_WAITOK | M_ZERO);
 		if (ipfw_dyn_v != NULL || curr_dyn_buckets <= 2)
 			break;
 		curr_dyn_buckets /= 2;
@@ -878,7 +878,7 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	}
 	i = hash_packet(id);
 
-	r = malloc(sizeof *r, M_IPFW, M_NOWAIT | M_ZERO);
+	r = malloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
 	if (r == NULL) {
 		printf ("sorry cannot allocate state\n");
 		return NULL;
@@ -1984,7 +1984,7 @@ add_rule(struct ip_fw **head, struct ip_fw *input_rule)
 	if (*head == NULL && input_rule->rulenum != IPFW_DEFAULT_RULE)
 		return (EINVAL);
 
-	rule = malloc(l, M_IPFW, M_NOWAIT | M_ZERO);
+	rule = malloc(l, M_IPFW, M_WAITOK | M_ZERO);
 	if (rule == NULL)
 		return (ENOSPC);
 
@@ -2494,7 +2494,7 @@ ipfw_ctl(struct sockopt *sopt)
 		 * how much room is needed, do not bother filling up the
 		 * buffer, just jump to the sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_WAITOK);
+		buf = malloc(size, M_TEMP, M_NOWAIT);
 		if (buf == 0) {
 			splx(s);
 			error = ENOBUFS;

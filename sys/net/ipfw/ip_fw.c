@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.6 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.7 2004/03/09 15:00:06 hmp Exp $
  */
 
 #define        DEB(x)
@@ -850,14 +850,14 @@ add_dyn_rule(struct ipfw_flow_id *id, u_int8_t dyn_type, struct ip_fw *rule)
 	    if (ipfw_dyn_v != NULL)
 		free(ipfw_dyn_v, M_IPFW);
 	    ipfw_dyn_v = malloc(curr_dyn_buckets * sizeof r,
-                   M_IPFW, M_DONTWAIT | M_ZERO);
+                   M_IPFW, M_WAITOK | M_ZERO);
 	    if (ipfw_dyn_v == NULL)
 		return NULL; /* failed ! */
 	}
     }
     i = hash_packet(id);
 
-    r = malloc(sizeof *r, M_IPFW, M_NOWAIT | M_ZERO);
+    r = malloc(sizeof *r, M_IPFW, M_WAITOK | M_ZERO);
     if (r == NULL) {
 	printf ("sorry cannot allocate state\n");
 	return NULL ;
@@ -1631,7 +1631,7 @@ add_entry(struct ip_fw_head *head, struct ip_fw *rule)
 	u_short nbr = 0;
 	int s;
 
-	ftmp = malloc(sizeof *ftmp, M_IPFW, M_NOWAIT | M_ZERO);
+	ftmp = malloc(sizeof *ftmp, M_IPFW, M_WAITOK | M_ZERO);
 	if (!ftmp)
 		return (ENOSPC);
 	bcopy(rule, ftmp, sizeof(*ftmp));
@@ -1953,7 +1953,7 @@ ip_fw_ctl(struct sockopt *sopt)
 		 * bother filling up the buffer, just jump to the
 		 * sooptcopyout.
 		 */
-		buf = malloc(size, M_TEMP, M_WAITOK);
+		buf = malloc(size, M_TEMP, M_NOWAIT);
 		if (buf == 0) {
 		    splx(s);
 		    error = ENOBUFS;
