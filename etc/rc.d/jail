@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/jail,v 1.4 2003/05/05 15:38:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/jail,v 1.2 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/jail,v 1.3 2004/09/17 00:08:54 joerg Exp $
 #
 
 # PROVIDE: jail
@@ -22,28 +22,28 @@ jail_start()
 	echo -n ' set_hostname_allowed='
 	if checkyesno jail_set_hostname_allow ; then 
 		echo -n 'YES'
-		${SYSCTL_W} 1>/dev/null security.jail.set_hostname_allowed=1
+		${SYSCTL_W} 1>/dev/null jail.set_hostname_allowed=1
 	else
 		echo -n 'NO'
-		${SYSCTL_W} 1>/dev/null security.jail.set_hostname_allowed=0
+		${SYSCTL_W} 1>/dev/null jail.set_hostname_allowed=0
 	fi
 
 	echo -n ' unixiproute_only='
 	if checkyesno jail_socket_unixiproute_only ; then 
 		echo -n 'YES'
-		${SYSCTL_W} 1>/dev/null security.jail.socket_unixiproute_only=1
+		${SYSCTL_W} 1>/dev/null jail.socket_unixiproute_only=1
 	else
 		echo -n 'NO'
-		${SYSCTL_W} 1>/dev/null security.jail.socket_unixiproute_only=0
+		${SYSCTL_W} 1>/dev/null jail.socket_unixiproute_only=0
 	fi
 
 	echo -n ' sysvipc_allow='
 	if checkyesno jail_sysvipc_allow ; then
 		echo -n 'YES'
-		${SYSCTL_W} 1>/dev/null security.jail.sysvipc_allowed=1
+		${SYSCTL_W} 1>/dev/null jail.sysvipc_allowed=1
 	else
 		echo -n 'NO'
-		${SYSCTL_W} 1>/dev/null security.jail.sysvipc_allowed=0
+		${SYSCTL_W} 1>/dev/null jail.sysvipc_allowed=0
 	fi
 	echo '.'
 
