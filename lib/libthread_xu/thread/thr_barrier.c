@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrier.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.3 2005/03/23 11:21:02 davidxu Exp $
  */
 
 #include <errno.h>
@@ -92,7 +92,7 @@ _pthread_barrier_wait(pthread_barrier_t *barrier)
 		/* Current thread is lastest thread */
 		bar->b_waiters = 0;
 		bar->b_cycle++;
-		_thr_umtx_wake(&bar->b_cycle, INT_MAX);
+		_thr_umtx_wake(&bar->b_cycle, bar->b_count);
 		THR_UMTX_UNLOCK(curthread, &bar->b_lock);
 		ret = PTHREAD_BARRIER_SERIAL_THREAD;
 	} else {
