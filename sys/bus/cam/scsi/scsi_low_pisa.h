@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low_pisa.h,v 1.2.2.2 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.h,v 1.4 2004/02/11 17:46:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.h,v 1.5 2004/09/17 01:50:06 joerg Exp $	*/
 /*	$NecBSD: scsi_low_pisa.h,v 1.3 1999/04/15 01:35:57 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -35,14 +35,6 @@
 #ifndef	_SCSI_LOW_PISA_H_
 #define	_SCSI_LOW_PISA_H_
 
-#ifdef	__NetBSD__
-int scsi_low_activate_pisa (pisa_device_handle_t);
-int scsi_low_deactivate_pisa (pisa_device_handle_t);
-int scsi_low_notify_pisa (pisa_device_handle_t, pisa_event_t);
-#endif	/* __NetBSD__ */
-
-#ifdef	__DragonFly__
 int scsi_low_activate_pisa (struct scsi_low_softc *, int);
 int scsi_low_deactivate_pisa (struct scsi_low_softc *);
-#endif	/* __DragonFly__ */
 #endif	/* !_SCSI_LOW_PISA_H_ */
