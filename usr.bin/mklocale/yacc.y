@@ -36,7 +36,7 @@
  *
  * @(#)yacc.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/mklocale/yacc.y,v 1.6.2.3 2003/06/03 21:15:48 ache Exp $
- * $DragonFly: src/usr.bin/mklocale/yacc.y,v 1.3 2004/07/22 14:30:07 hmp Exp $
+ * $DragonFly: src/usr.bin/mklocale/yacc.y,v 1.4 2004/10/29 06:03:21 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -45,7 +45,7 @@
 
 #include <ctype.h>
 #include <err.h>
-#include <rune.h>
+#include <runetype.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,7 +94,6 @@ void add_map(rune_map *, rune_list *, unsigned long);
 %token	<i>	LIST
 %token	<str>	VARIABLE
 %token		ENCODING
-%token		INVALID
 %token	<str>	STRING
 
 %type	<list>	list
@@ -117,6 +116,9 @@ entry	:	ENCODING STRING
 		      strcmp($2, "UTF2") &&
 		      strcmp($2, "UTF-8") &&
 		      strcmp($2, "EUC") &&
+		      strcmp($2, "GBK") &&
+		      strcmp($2, "GB18030") &&
+		      strcmp($2, "GB2312") &&
 		      strcmp($2, "BIG5") &&
 		      strcmp($2, "MSKanji"))
 			warnx("ENCODING %s is not supported by libc", $2);
@@ -125,10 +127,6 @@ entry	:	ENCODING STRING
 		{ new_locale.variable_len = strlen($1) + 1;
 		  new_locale.variable = malloc(new_locale.variable_len);
 		  strcpy((char *)new_locale.variable, $1);
-		}
-	|	INVALID RUNE
-		{ warnx("the INVALID keyword is deprecated");
-		  new_locale.invalid_rune = $2;
 		}
 	|	LIST list
 		{ set_map(&types, $2, $1); }
@@ -260,7 +258,6 @@ main(int ac, char *av[])
 	mapupper.map[x] = x;
 	maplower.map[x] = x;
     }
-    new_locale.invalid_rune = _INVALID_RUNE;
     memcpy(new_locale.magic, _RUNE_MAGIC_1, sizeof(new_locale.magic));
 
     yyparse();
@@ -604,8 +601,6 @@ dump_tables()
 	fprintf(stderr, "Error: DIGIT range is too small in the single byte area\n");
 	exit(1);
     }
-
-    new_locale.invalid_rune = htonl(new_locale.invalid_rune);
 
     /*
      * Fill in our tables.  Do this in network order so that

@@ -34,9 +34,9 @@
 .\"
 .\"	@(#)mklocale.1	8.2 (Berkeley) 4/18/94
 .\" $FreeBSD: src/usr.bin/mklocale/mklocale.1,v 1.7.2.5 2003/02/24 23:04:39 trhodes Exp $
-.\" $DragonFly: src/usr.bin/mklocale/mklocale.1,v 1.2 2003/06/17 04:29:29 dillon Exp $
+.\" $DragonFly: src/usr.bin/mklocale/mklocale.1,v 1.3 2004/10/29 06:03:21 asmodai Exp $
 .\"
-.Dd April 18, 1994
+.Dd August 21, 2004
 .Dt MKLOCALE 1
 .Os
 .Sh NAME
@@ -151,6 +151,34 @@ encoding as used by several
 vendors of
 .Ux
 systems.
+.It Dv GB18030
+PRC national standard for encoding of Chinese text.
+.It Dv GB2312
+Older PRC national standard for encoding Chinese text.
+.It Dv GBK
+A widely used encoding method for Chinese text,
+backwards compatible with GB\ 2312-1980.
+.It Dv MSKanji
+The method of encoding Japanese used by Microsoft,
+loosely based on JIS.
+Also known as
+.Dq "Shift JIS"
+and
+.Dq SJIS .
+.It Dv NONE
+No translation and the default.
+.It Dv UTF2
+(obsolete)
+.Dq "Universal character set Transformation Format"
+adopted from
+.Tn "Plan 9 from Bell Labs" .
+.It Dv UTF-8
+The
+.Dv UTF-8
+transformation format of
+.Tn ISO
+10646
+as defined by RFC 2279.
 .El
 .It Dv VARIABLE
 This keyword must be followed by a single tab or space character,
@@ -161,10 +189,6 @@ encoding requires variable data.
 See
 .Xr euc 4
 for further details.
-.It Dv INVALID
-A single
-.Dv RUNE
-follows and is used as the invalid rune for this locale.
 .El
 .Pp
 The following keywords may appear multiple times and have the following
@@ -249,14 +273,29 @@ Defines runes which are ideograms, printable and graphic.
 Defines runes which are special characters, printable and graphic.
 .It Dv PHONOGRAM
 Defines runes which are phonograms, printable and graphic.
+.It Dv SWIDTH0
+Defines runes with display width 0.
+.It Dv SWIDTH1
+Defines runes with display width 1.
+.It Dv SWIDTH2
+Defines runes with display width 2.
+.It Dv SWIDTH3
+Defines runes with display width 3.
 .El
+.Pp
+If no display width explicitly defined, width 1 assumed
+for printable runes by default.
 .Sh SEE ALSO
 .Xr colldef 1 ,
-.Xr mbrune 3 ,
-.Xr rune 3 ,
 .Xr setlocale 3 ,
-.Xr euc 4 ,
-.Xr utf2 4
+.Xr wcwidth 3 ,
+.Xr big5 5 ,
+.Xr euc 5 ,
+.Xr gb18030 5 ,
+.Xr gb2312 5 ,
+.Xr gbk 5 ,
+.Xr mskanji 5 ,
+.Xr utf8 5
 .Sh BUGS
 The
 .Nm
