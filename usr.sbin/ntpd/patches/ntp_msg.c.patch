@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp_msg.c.patch,v 1.2 2004/11/09 21:29:34 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp_msg.c.patch,v 1.3 2005/02/28 21:34:48 joerg Exp $
 
 --- ntp_msg.c.orig	2004-11-09 22:18:03.000000000 +0100
 +++ ntp_msg.c	2004-11-09 22:18:28.000000000 +0100
@@ -11,12 +11,3 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp_msg.c.patch,v 1.2 2004/11/09 21:
  {
  	char		 buf[NTP_MSGSIZE];
  	char		*p;
-@@ -117,7 +117,7 @@
- 	p += sizeof(msg->xmttime.fraction);
- 
- 	if (sa != NULL)
--		sa_len = SA_LEN(sa);
-+		sa_len = sa->sa_len;
- 	else
- 		sa_len = 0;
- 
