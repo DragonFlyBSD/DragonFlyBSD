@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.info.mk,v 1.57.2.7 2003/05/21 13:00:46 ru Exp $
-# $DragonFly: src/share/mk/bsd.info.mk,v 1.3 2004/03/22 20:58:15 dillon Exp $
+# $DragonFly: src/share/mk/bsd.info.mk,v 1.4 2005/01/06 01:20:01 swildner Exp $
 #
 # The include file <bsd.info.mk> handles installing GNU (tech)info files.
 # Texinfo is a documentation system that uses a single source
@@ -101,7 +101,13 @@ DVIPS2ASCII?=	dvips2ascii
 		${TEX} ${.IMPSRC} </dev/null
 
 .texinfo.latin1 .texi.latin1:
-	perl -npe 's/(^\s*\\input\s+texinfo\s+)/$$1\n@tex\n\\global\\hsize=120mm\n@end tex\n\n/' ${.IMPSRC} >> ${.IMPSRC:T:R}-la.texi
+	echo 's/^( *\\input +texinfo *)/\1\' >${.IMPSRC:T:R}-la.sed
+	echo '@tex\' >>${.IMPSRC:T:R}-la.sed
+	echo '\\global\\hsize=120mm\' >>${.IMPSRC:T:R}-la.sed
+	echo '@end tex\' >>${.IMPSRC:T:R}-la.sed
+	echo '\' >>${.IMPSRC:T:R}-la.sed
+	echo '/' >>${.IMPSRC:T:R}-la.sed
+	sed -Ef ${.IMPSRC:T:R}-la.sed ${.IMPSRC} >>${.IMPSRC:T:R}-la.texi
 	TEXINPUTS=${.CURDIR}:${SRCDIR}:$$TEXINPUTS \
 		${TEX} ${.IMPSRC:T:R}-la.texi </dev/null
 # Run again to resolve cross references.
@@ -166,7 +172,7 @@ ${INFO}.texi: ${SRCS}
 .for _f in aux cp fn ky log out pg toc tp vr dvi
 CLEANFILES+=	${INFO:S/$/.${_f}/} ${INFO:S/$/-la.${_f}/}
 .endfor
-CLEANFILES+=	${INFO:S/$/-la.texi/}
+CLEANFILES+=	${INFO:S/$/-la.texi/} ${INFO:S/$/-la.sed/}
 .endif
 
 .if ${FORMATS:Mhtml}
