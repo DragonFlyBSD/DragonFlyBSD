@@ -1,21 +1,23 @@
 # $FreeBSD: src/gnu/lib/libreadline/readline/doc/Makefile,v 1.2.2.1 2000/07/06 23:11:11 ache Exp $
-# $DragonFly: src/gnu/lib/libreadline/readline/doc/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/lib/libreadline/readline/doc/Attic/Makefile,v 1.3 2004/10/23 16:58:53 joerg Exp $
 
-SRCDIR= ${.CURDIR}/../../../../../contrib/libreadline/doc
+RELATIVE=	../
+.include "../../Makefile.inc"
+SRCDIR=		${RLDIR}/doc
 
-INFO = readline rluserman
+INFO=	readline rluserman
 
-INFOSECTION= "Programming & development tools."
-INFOENTRY_readline= "* Readline: (readline).		The GNU Readline library"
-INFOENTRY_rluserman= "* Readline: (readline).       The GNU readline library API"
+INFOSECTION=		"Programming & development tools."
+INFOENTRY_readline=	"* Readline: (readline).		The GNU Readline library"
+INFOENTRY_rluserman=	"* Readline: (readline).		The GNU readline library API"
 
-CLEANFILES += readline.texinfo
+CLEANFILES += readline.texi 
 
-readline.info: rlman.texinfo rltech.texinfo rluser.texinfo manvers.texinfo
+readline.info: rlman.texi rltech.texi rluser.texi version.texi rluserman.texi
 
-readline.texinfo: rlman.texinfo
-	cp ${SRCDIR}/rlman.texinfo ${.TARGET}
+readline.texi: rlman.texi
+	cp ${SRCDIR}/rlman.texi ${.TARGET}
 
-rluserman.info: rluser.texinfo manvers.texinfo
+rluserman.info: rluser.texi version.texi
 
 .include <bsd.info.mk>
