@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bioscd.c,v 1.5 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/bioscd.c,v 1.4 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/bioscd.c,v 1.5 2004/09/09 03:47:08 joerg Exp $
  */
 /*
  * BIOS CD device handling for CD's that have been booted off of via no
@@ -90,8 +90,6 @@ static int nbcinfo = 0;
 static int	bc_read(int unit, daddr_t dblk, int blks, caddr_t dest);
 static int	bc_init(void);
 static int	bc_strategy(void *devdata, int flag, daddr_t dblk,
-		    size_t size, char *buf, size_t *rsize);
-static int	bc_realstrategy(void *devdata, int flag, daddr_t dblk,
 		    size_t size, char *buf, size_t *rsize);
 static int	bc_open(struct open_file *f, ...);
 static int	bc_close(struct open_file *f);

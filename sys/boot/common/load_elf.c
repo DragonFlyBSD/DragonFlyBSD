@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load_elf.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/load_elf.c,v 1.4 2004/09/09 03:47:08 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -619,7 +619,7 @@ __elfN(parse_modmetadata)(struct preloaded_file *fp, elf_file_t ef)
 	__elfN(reloc_ptr)(fp, ef, v, &md, sizeof(md));
 #else
 	md.md_cval += ef->off;
-	md.md_data += ef->off;
+	md.md_data = (uint8_t *)md.md_data + ef->off;
 #endif
 #endif
 	p += sizeof(Elf_Addr);

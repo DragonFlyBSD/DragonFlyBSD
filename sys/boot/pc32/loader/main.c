@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.7 2004/07/19 23:30:38 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.8 2004/09/09 03:47:08 joerg Exp $
  */
 
 /*
@@ -131,7 +131,6 @@ WDEBUG(char c)
 
 #endif
 
-static void nop(void) { }
 int
 main(void)
 {

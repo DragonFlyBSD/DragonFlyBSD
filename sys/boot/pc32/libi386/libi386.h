@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/libi386.h,v 1.16 2003/05/01 03:56:29 peter Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/libi386.h,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/libi386.h,v 1.4 2004/09/09 03:47:08 joerg Exp $
  */
 
 
@@ -94,7 +94,7 @@ extern u_int32_t	bios_basemem;				/* base memory in bytes */
 extern u_int32_t	bios_extmem;				/* extended memory in bytes */
 extern vm_offset_t	memtop;
 
-void	biosacpi_detect();
+void	biosacpi_detect(void);
 
 void	gateA20(void);
 
