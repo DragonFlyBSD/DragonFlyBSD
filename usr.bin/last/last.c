@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/last/last.c,v 1.10.6.11 2002/11/02 23:00:26 mux Exp $
- * $DragonFly: src/usr.bin/last/last.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/last/last.c,v 1.5 2004/09/14 00:13:36 drhodus Exp $
  *
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)last.c	8.2 (Berkeley) 4/2/94
@@ -499,7 +499,7 @@ dateconv(char *arg)
                 t->tm_year = ATOI2(arg);
                 t->tm_year *= 100;
                 yearset = 1;
-                /* FALLTHOUGH */
+                /* FALLTHROUGH */
         case 10:                	/* YYMMDDhhmm */
                 if (yearset) {
                         yearset = ATOI2(arg);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/touch/touch.c,v 1.11.2.2 2002/07/28 06:52:15 eric Exp $
- * $DragonFly: src/usr.bin/touch/touch.c,v 1.7 2004/09/05 00:05:10 dillon Exp $
+ * $DragonFly: src/usr.bin/touch/touch.c,v 1.8 2004/09/14 00:13:36 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -202,7 +202,7 @@ stime_arg1(const char *arg, struct timeval *tvp)
 		t->tm_year = ATOI2(arg);
 		t->tm_year *= 100;
 		yearset = 1;
-		/* FALLTHOUGH */
+		/* FALLTHROUGH */
 	case 10:			/* YYMMDDhhmm */
 		if (yearset) {
 			yearset = ATOI2(arg);
