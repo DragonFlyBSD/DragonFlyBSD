@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.7 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.8 2004/07/17 09:43:05 joerg Exp $
  *
  */
 
@@ -387,7 +387,8 @@ iso88025_input(struct ifnet *ifp, struct iso88025_header *th, struct mbuf *m)
 
 	ifp->if_ibytes += m->m_pkthdr.len + sizeof(*th);
 	if (th->iso88025_dhost[0] & 1) {
-		if (bcmp((caddr_t)etherbroadcastaddr, (caddr_t)th->iso88025_dhost, sizeof(etherbroadcastaddr)) == 0)
+		if (bcmp(ifp->if_broadcastaddr, th->iso88025_dhost,
+			 ifp->if_addrlen) == 0)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;

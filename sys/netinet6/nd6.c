@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.6 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.7 2004/07/17 09:43:06 joerg Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -2048,12 +2048,7 @@ nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt, struct mbuf *m,
 						 desten);
 			return(1);
 		case IFT_IEEE1394:
-			/*
-			 * netbsd can use if_broadcastaddr, but we don't do so
-			 * to reduce # of ifdef.
-			 */
-			for (i = 0; i < ifp->if_addrlen; i++)
-				desten[i] = ~0;
+			bcopy(ifp->if_broadcastaddr, desten, ifp->if_addrlen); 
 			return(1);
 		case IFT_ARCNET:
 			*desten = 0;

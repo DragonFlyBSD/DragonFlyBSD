@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.13 2004/07/02 17:42:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.14 2004/07/17 09:43:05 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3071,7 +3071,7 @@ tulip_addr_filter(
 	 * receiving every multicast.
 	 */
 	if ((sc->tulip_flags & TULIP_ALLMULTI) == 0) {
-	    hash = tulip_mchash(etherbroadcastaddr);
+	    hash = tulip_mchash(sc->tulip_if.if_broadcastaddr);
 #if BYTE_ORDER == BIG_ENDIAN
 	    sp[hash >> 4] |= bswap32(1 << (hash & 0xF));
 #else

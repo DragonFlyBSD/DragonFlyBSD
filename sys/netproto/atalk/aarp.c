@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.11 2004/06/02 14:43:02 eirikn Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.12 2004/07/17 09:43:06 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -56,10 +56,6 @@ static struct aarptab	aarptab[AARPTAB_SIZE];
 #define AARPT_AGE	(60 * 1)
 #define AARPT_KILLC	20
 #define AARPT_KILLI	3
-
-# if !defined( __DragonFly__ )
-extern u_char			etherbroadcastaddr[6];
-# endif __DragonFly__
 
 static u_char atmulticastaddr[ 6 ] = {
     0x09, 0x00, 0x07, 0xff, 0xff, 0xff,
@@ -180,8 +176,8 @@ aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
 	ea->aarp_spnode = AA_SAT( aa )->sat_addr.s_node;
 	ea->aarp_tpnode = sat->sat_addr.s_node;
     } else {
-	bcopy((caddr_t)etherbroadcastaddr, (caddr_t)eh->ether_dhost,
-		sizeof( eh->ether_dhost ));
+	bcopy(ac->ac_if.if_broadcastaddr, eh->ether_dhost,
+	      ac->ac_if.if_addrlen);
 	eh->ether_type = htons( ETHERTYPE_AARP );
 
 	ea->aarp_spa = AA_SAT( aa )->sat_addr.s_node;
@@ -221,8 +217,7 @@ aarpresolve( ac, m, destsat, desten )
 	    bcopy( (caddr_t)atmulticastaddr, (caddr_t)desten,
 		    sizeof( atmulticastaddr ));
 	} else {
-	    bcopy( (caddr_t)etherbroadcastaddr, (caddr_t)desten,
-		    sizeof( etherbroadcastaddr ));
+	    bcopy(ac->ac_if.if_broadcastaddr, desten, ac->ac_if.if_addrlen);
 	}
 	return( 1 );
     }
@@ -594,8 +589,8 @@ aarpprobe( void *arg )
 		sizeof( ea->aarp_tpnet ));
 	ea->aarp_spnode = ea->aarp_tpnode = AA_SAT( aa )->sat_addr.s_node;
     } else {
-	bcopy((caddr_t)etherbroadcastaddr, (caddr_t)eh->ether_dhost,
-		sizeof( eh->ether_dhost ));
+	bcopy(ac->ac_if.if_broadcastaddr, eh->ether_dhost,
+	      ac->ac_if.if_addrlen);
 	eh->ether_type = htons( ETHERTYPE_AARP );
 	ea->aarp_spa = ea->aarp_tpa = AA_SAT( aa )->sat_addr.s_node;
     }

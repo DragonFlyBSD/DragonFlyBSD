@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.12 2004/06/02 14:42:48 eirikn Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.13 2004/07/17 09:43:05 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1466,8 +1466,8 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 #endif
 
 			/*if (ifp->if_flags & IFF_PROMISC) {*/
-				if (bcmp(th->iso88025_dhost, etherbroadcastaddr
-				    , sizeof(th->iso88025_dhost))) {
+				if (bcmp(th->iso88025_dhost, ifp->if_broadcastaddr,
+					 ifp->if_addrlen)) {
 					if ((bcmp(th->iso88025_dhost + 1, sc->arpcom.ac_enaddr + 1, ISO88025_ADDR_LEN - 1)) ||
 					    ((th->iso88025_dhost[0] & 0x7f) != sc->arpcom.ac_enaddr[0])) {
 						m_freem(m0);

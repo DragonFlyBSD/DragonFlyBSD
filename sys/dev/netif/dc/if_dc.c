@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.14 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.15 2004/07/17 09:43:05 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -1117,7 +1117,7 @@ void dc_setfilt_21143(sc)
 	}
 
 	if (ifp->if_flags & IFF_BROADCAST) {
-		h = dc_crc_le(sc, (caddr_t)&etherbroadcastaddr);
+		h = dc_crc_le(sc, ifp->if_broadcastaddr);
 		sp[h >> 4] |= 1 << (h & 0xF);
 	}
 

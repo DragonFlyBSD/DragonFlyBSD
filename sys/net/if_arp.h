@@ -32,7 +32,7 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/if_arp.h,v 1.3 2003/08/27 02:03:19 dillon Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.4 2004/07/17 09:43:05 joerg Exp $
  */
 
 #ifndef _NET_IF_ARP_H_
@@ -117,11 +117,6 @@ struct	arpcom {
 	void	*ac_netgraph;		/* ng_ether(4) netgraph node info */
 };
 
-#endif
-
-#ifdef _KERNEL
-extern u_char	etherbroadcastaddr[6];
-extern u_char	arcbroadcastaddr;
 #endif
 
 #endif /* !_NET_IF_ARP_H_ */

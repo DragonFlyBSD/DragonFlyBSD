@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.11 2004/07/02 17:42:16 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.12 2004/07/17 09:43:05 joerg Exp $
  *
  */
 
@@ -386,11 +386,7 @@ cue_setmulti(struct cue_softc *sc)
 	 * so we can receive broadcast frames.
  	 */
 	if (ifp->if_flags & IFF_BROADCAST) {
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		h = cue_mchash(ifp->if_broadcastaddr);
-#else
-		h = cue_mchash(etherbroadcastaddr);
-#endif
 		sc->cue_mctab[h >> 3] |= 1 << (h & 0x7);
 	}
 

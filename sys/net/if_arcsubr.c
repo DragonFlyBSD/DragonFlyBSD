@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.8 2004/06/02 14:42:57 eirikn Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.9 2004/07/17 09:43:05 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -94,6 +94,8 @@ static int arc_resolvemulti (struct ifnet *, struct sockaddr **,
 #define SIN(s)	((struct sockaddr_in *)s)
 #define SIPX(s)	((struct sockaddr_ipx *)s)
 
+const uint8_t	arcbroadcastaddr[1] = {0};
+
 /*
  * ARCnet output routine.
  * Encapsulate a packet of type family for the local net.
@@ -151,7 +153,7 @@ arc_output(ifp, m, dst, rt0)
 		 * For now, use the simple IP addr -> ARCnet addr mapping
 		 */
 		if (m->m_flags & (M_BCAST|M_MCAST))
-			adst = arcbroadcastaddr; /* ARCnet broadcast address */
+			adst = ifp->if_broadcastaddr[0];
 		else if (ifp->if_flags & IFF_NOARP)
 			adst = ntohl(SIN(dst)->sin_addr.s_addr) & 0xFF;
 		else if (!arpresolve(ifp, rt, m, dst, &adst, rt0))
@@ -178,7 +180,7 @@ arc_output(ifp, m, dst, rt0)
 		adst = SIPX(dst)->sipx_addr.x_host.c_host[5];
 		atype = ARCTYPE_IPX;
 		if (adst == 0xff)
-			adst = arcbroadcastaddr;
+			adst = ifp->if_broadcastaddr[0];
 		break;
 #endif
 
@@ -547,7 +549,7 @@ arc_input(ifp, m)
 	ah = mtod(m, struct arc_header *);
 	/* does this belong to us? */
 	if ((ifp->if_flags & IFF_PROMISC) == 0
-	    && ah->arc_dhost != arcbroadcastaddr
+	    && ah->arc_dhost != ifp->if_broadcastaddr[0]
 	    && ah->arc_dhost != ARC_LLADDR(ifp)) {
 		m_freem(m);
 		return;
@@ -555,7 +557,7 @@ arc_input(ifp, m)
 
 	ifp->if_ibytes += m->m_pkthdr.len;
 
-	if (ah->arc_dhost == arcbroadcastaddr) {
+	if (ah->arc_dhost == ifp->if_broadcastaddr[0]) {
 		m->m_flags |= M_BCAST|M_MCAST;
 		ifp->if_imcasts++;
 	}
@@ -649,6 +651,7 @@ arc_ifattach(ifp, lla)
 	if_attach(ifp);
 	ifp->if_type = IFT_ARCNET;
 	ifp->if_addrlen = 1;
+	ifp->if_broadcastaddr = arcbroadcastaddr;
 	ifp->if_hdrlen = ARC_HDRLEN;
 	ifp->if_mtu = 1500;
 	ifp->if_resolvemulti = arc_resolvemulti;
@@ -795,7 +798,7 @@ arc_resolvemulti(ifp, llsa, sa)
 		* No mapping needed. Just check that it's a valid MC address.
 		*/
 		sdl = (struct sockaddr_dl *)sa;
-		if (*LLADDR(sdl) != arcbroadcastaddr)
+		if (*LLADDR(sdl) != ifp->if_broadcastaddr[0])
 			return EADDRNOTAVAIL;
 		*llsa = 0;
 		return 0;

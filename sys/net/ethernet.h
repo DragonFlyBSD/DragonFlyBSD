@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.6 2004/07/04 23:15:48 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.7 2004/07/17 09:43:05 joerg Exp $
  *
  */
 
@@ -74,6 +74,8 @@ struct	ether_header {
 struct	ether_addr {
 	u_char octet[ETHER_ADDR_LEN];
 };
+
+extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 
 /*
  *  NOTE: 0x0000-0x05DC (0..1500) are generally IEEE 802.3 length fields.

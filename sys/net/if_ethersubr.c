@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.16 2004/07/03 13:10:10 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.17 2004/07/17 09:43:05 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -122,7 +122,10 @@ struct bdg_softc *ifp2sc;
 
 static	int ether_resolvemulti(struct ifnet *, struct sockaddr **,
 		struct sockaddr *);
-u_char	etherbroadcastaddr[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN] = {
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
 #define senderr(e) do { error = (e); goto bad;} while (0)
 #define IFP2AC(IFP) ((struct arpcom *)IFP)
 
@@ -674,8 +677,8 @@ ether_demux(ifp, eh, m)
 		return;
 	}
 	if (eh->ether_dhost[0] & 1) {
-		if (bcmp((caddr_t)etherbroadcastaddr, (caddr_t)eh->ether_dhost,
-			 sizeof(etherbroadcastaddr)) == 0)
+		if (bcmp(ifp->if_broadcastaddr, eh->ether_dhost,
+			 ifp->if_addrlen) == 0)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;
@@ -816,7 +819,8 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 	struct sockaddr_dl *sdl;
 
 	ifp->if_type = IFT_ETHER;
-	ifp->if_addrlen = 6;
+	ifp->if_addrlen = ETHER_ADDR_LEN;
+	ifp->if_broadcastaddr = etherbroadcastaddr;
 	ifp->if_hdrlen = 14;
 	if_attach(ifp);
 	ifp->if_mtu = ETHERMTU;

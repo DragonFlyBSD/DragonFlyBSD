@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.9 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.10 2004/07/17 09:43:05 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -59,6 +59,7 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
+#include <net/ethernet.h>
 #endif
 #ifdef INET6
 #include <netinet6/nd6.h>
@@ -397,8 +398,8 @@ fddi_input(ifp, fh, m)
 	getmicrotime(&ifp->if_lastchange);
 	ifp->if_ibytes += m->m_pkthdr.len + sizeof (*fh);
 	if (fh->fddi_dhost[0] & 1) {
-		if (bcmp((caddr_t)fddibroadcastaddr, (caddr_t)fh->fddi_dhost,
-		    sizeof(fddibroadcastaddr)) == 0)
+		if (bcmp(ifp->if_broadcastaddr, fh->fddi_dhost,
+			 ifp->if_addrlen) == 0)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;
@@ -528,6 +529,7 @@ fddi_ifattach(ifp)
 
 	ifp->if_type = IFT_FDDI;
 	ifp->if_addrlen = 6;
+	ifp->if_broadcastaddr = fddibroadcastaddr;
 	ifp->if_hdrlen = 21;
 	ifp->if_mtu = FDDIMTU;
 	ifp->if_resolvemulti = fddi_resolvemulti;

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.13 2004/07/02 17:42:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.14 2004/07/17 09:43:05 joerg Exp $
  */
 
 /*
@@ -533,6 +533,7 @@ static void
 le_multi_filter(
     le_softc_t *sc)
 {
+    struct ifnet *ifp = &sc->le_ac.ac_if;
     struct ifmultiaddr *ifma;
 
     MEMSET(sc->le_mctbl, 0, (sc->le_mcmask + 1) / 8);
@@ -543,13 +544,13 @@ le_multi_filter(
     }
     sc->le_flags &= ~IFF_MULTICAST;
     /* if (interface has had an address assigned) { */
-	le_multi_op(sc, etherbroadcastaddr, TRUE);
+	le_multi_op(sc, ifp->if_broadcastaddr, TRUE);
 	sc->le_flags |= LE_BRDCSTONLY|IFF_MULTICAST;
     /* } */
 
     sc->le_flags |= IFF_MULTICAST;
 
-    for (ifma = sc->le_ac.ac_if.if_multiaddrs.lh_first; ifma;
+    for (ifma = ifp->if_multiaddrs.lh_first; ifma;
 	 ifma = ifma->ifma_link.le_next) {
 	    if (ifma->ifma_addr->sa_family != AF_LINK)
 		    continue;
