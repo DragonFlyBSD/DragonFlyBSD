@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.5 2004/03/10 17:54:16 dillon Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.6 2004/07/20 02:59:18 hmp Exp $
  */
 
 #include <ctype.h>
@@ -243,14 +243,13 @@ what_opt(char *str, u_long *p)
 int
 config(struct vndisk *vnp)
 {
-	char *dev, *file, *oarg;
-	int flags, status;
-	struct vn_ioctl vnio;
-	int rv;
-	char *rdev;
+	char *dev, *file, *rdev, *oarg;
 	FILE *f;
+	struct vn_ioctl vnio;
+	int flags, pgsize, rv, status;
 	u_long l;
-	int pgsize = getpagesize();
+	
+	pgsize = getpagesize();
 
 	status = rv = 0;
 
