@@ -23,8 +23,8 @@
  * any improvements or extensions that they make and grant Carnegie Mellon
  * the rights to redistribute these changes.
  *
- * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.6 2004/02/03 07:13:10 rob Exp $
+ * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.12 2003/11/20 08:24:33 des Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.7 2004/02/10 13:27:55 hmp Exp $
  */
 
 #include <sys/disklabel.h>
@@ -1433,6 +1433,11 @@ sanitize_partition(partp)
     if (start % dos_sectors == 0 && (start + size) % dos_sectors == 0)
 	return (1);
 
+    if (start == 0) {
+	    warnx("WARNING: partition overlaps with partition table");
+	    if (ok("Correct this automatically?"))
+		    start = dos_sectors;
+    }
     if (start % dos_sectors != 0)
 	warnx("WARNING: partition does not start on a head boundary");
     if ((start  +size) % dos_sectors != 0)
