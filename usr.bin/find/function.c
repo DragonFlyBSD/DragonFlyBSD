@@ -35,7 +35,7 @@
  *
  * @(#)function.c  8.10 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/function.c,v 1.52 2004/07/29 03:33:55 tjr Exp $
- * $DragonFly: src/usr.bin/find/function.c,v 1.5 2005/02/13 23:49:53 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/function.c,v 1.6 2005/02/14 00:39:04 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -1158,7 +1158,7 @@ c_perm(OPTION *option, char ***argvp)
 int
 f_print(PLAN *plan __unused, FTSENT *entry)
 {
-	(void)puts(entry->fts_path);
+	puts(entry->fts_path);
 	return 1;
 }
 

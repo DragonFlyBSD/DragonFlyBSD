@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/find/main.c,v 1.15 2003/06/14 13:00:21 markm Exp $
- * $DragonFly: src/usr.bin/find/main.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/main.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -74,9 +74,9 @@ main(int argc, char *argv[])
 	char **p, **start;
 	int Hflag, Lflag, ch;
 
-	(void)setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
-	(void)time(&now);	/* initialize the time-of-day */
+	time(&now);	/* initialize the time-of-day */
 
 	p = start = argv;
 	Hflag = Lflag = 0;
@@ -153,7 +153,7 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 "usage: find [-H | -L | -P] [-EXdsx] [-f file] [file ...] [expression]\n");
 	exit(1);
 }

@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/usr.bin/find/misc.c,v 1.7 2003/06/14 13:00:21 markm Exp $
- * $DragonFly: src/usr.bin/find/misc.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/misc.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -84,11 +84,11 @@ queryuser(char *argv[])
 {
 	int ch, first, nl;
 
-	(void)fprintf(stderr, "\"%s", *argv);
+	fprintf(stderr, "\"%s", *argv);
 	while (*++argv)
-		(void)fprintf(stderr, " %s", *argv);
-	(void)fprintf(stderr, "\"? ");
-	(void)fflush(stderr);
+		fprintf(stderr, " %s", *argv);
+	fprintf(stderr, "\"? ");
+	fflush(stderr);
 
 	first = ch = getchar();
 	for (nl = 0;;) {
@@ -102,8 +102,8 @@ queryuser(char *argv[])
 	}
 
 	if (!nl) {
-		(void)fprintf(stderr, "\n");
-		(void)fflush(stderr);
+		fprintf(stderr, "\n");
+		fflush(stderr);
 	}
         return (first == 'y');
 }

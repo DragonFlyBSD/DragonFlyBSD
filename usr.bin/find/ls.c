@@ -32,7 +32,7 @@
  *
  * @(#)ls.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/find/ls.c,v 1.17 2004/01/20 09:27:03 des Exp $
- * $DragonFly: src/usr.bin/find/ls.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/ls.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <langinfo.h>
 #include <pwd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -62,22 +63,22 @@ printlong(char *name, char *accpath, struct stat *sb)
 {
 	char modep[15];
 
-	(void)printf("%6lu %8"PRId64" ", (u_long) sb->st_ino, sb->st_blocks);
-	(void)strmode(sb->st_mode, modep);
-	(void)printf("%s %3u %-*s %-*s ", modep, sb->st_nlink, MAXLOGNAME - 1,
+	printf("%6lu %8"PRId64" ", (u_long) sb->st_ino, sb->st_blocks);
+	strmode(sb->st_mode, modep);
+	printf("%s %3u %-*s %-*s ", modep, sb->st_nlink, MAXLOGNAME - 1,
 	    user_from_uid(sb->st_uid, 0), MAXLOGNAME - 1,
 	    group_from_gid(sb->st_gid, 0));
 
 	if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode))
-		(void)printf("%3d, %3d ", major(sb->st_rdev),
+		printf("%3d, %3d ", major(sb->st_rdev),
 		    minor(sb->st_rdev));
 	else
-		(void)printf("%8"PRId64" ", sb->st_size);
+		printf("%8"PRId64" ", sb->st_size);
 	printtime(sb->st_mtime);
-	(void)printf("%s", name);
+	printf("%s", name);
 	if (S_ISLNK(sb->st_mode))
 		printlink(accpath);
-	(void)putchar('\n');
+	putchar('\n');
 }
 
 static void
@@ -115,5 +116,5 @@ printlink(char *name)
 		return;
 	}
 	path[lnklen] = '\0';
-	(void)printf(" -> %s", path);
+	printf(" -> %s", path);
 }

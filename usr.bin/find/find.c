@@ -35,7 +35,7 @@
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
  * $FreeBSD: src/usr.bin/find/find.c,v 1.17 2004/05/28 17:17:15 eik Exp $
- * $DragonFly: src/usr.bin/find/find.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/find.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -175,7 +175,9 @@ find_execute(PLAN *plan, char *paths[])
 	PLAN *p;
 	int rval;
 
-	tree = fts_open(paths, ftsoptions, (issort ? find_compare : NULL));
+	tree = fts_open(paths, ftsoptions,
+	    (int (*)(const FTSENT **, const FTSENT **))
+	    (issort ? find_compare : NULL));
 	if (tree == NULL)
 		err(1, "ftsopen");
 
@@ -197,7 +199,7 @@ find_execute(PLAN *plan, char *paths[])
 		case FTS_DNR:
 		case FTS_ERR:
 		case FTS_NS:
-			(void)fflush(stdout);
+			fflush(stdout);
 			warnx("%s: %s",
 			    entry->fts_path, strerror(entry->fts_errno));
 			rval = 1;
@@ -209,7 +211,7 @@ find_execute(PLAN *plan, char *paths[])
 		}
 #define	BADCH	" \t\n\\'\""
 		if (isxargs && strpbrk(entry->fts_path, BADCH)) {
-			(void)fflush(stdout);
+			fflush(stdout);
 			warnx("%s: illegal path", entry->fts_path);
 			rval = 1;
 			continue;
