@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.21 2005/02/04 02:55:40 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.22 2005/03/05 18:29:24 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -43,10 +43,6 @@
 #include <sys/bus.h>
 #include <sys/thread.h>
 #include <sys/thread2.h>
-
-#ifdef PC98
-#include <pc98/pc98/pc98_machdep.h>	/* geometry translation */
-#endif
 
 #include <machine/clock.h>
 #include <machine/ipl.h>
@@ -2854,21 +2850,6 @@ xpt_action(union ccb *start_ccb)
 			start_ccb->ccb_h.status = CAM_REQ_CMP;
 			break;
 		}
-#ifdef PC98
-		/*
-		 * In a PC-98 system, geometry translation depens on
-		 * the "real" device geometry obtained from mode page 4.
-		 * SCSI geometry translation is performed in the
-		 * initialization routine of the SCSI BIOS and the result
-		 * stored in host memory.  If the translation is available
-		 * in host memory, use it.  If not, rely on the default
-		 * translation the device driver performs.
-		 */
-		if (scsi_da_bios_params(&start_ccb->ccg) != 0) {
-			start_ccb->ccb_h.status = CAM_REQ_CMP;
-			break;
-		}
-#endif
 		sim = start_ccb->ccb_h.path->bus->sim;
 		(*(sim->sim_action))(sim, start_ccb);
 		break;
