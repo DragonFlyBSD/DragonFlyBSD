@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.4 2004/07/12 03:41:55 drhodus Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.5 2004/07/22 11:52:33 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -104,7 +104,7 @@ static int f_singlecol;		/* use single column output */
        int f_slash;		/* similar to f_type, but only for dirs */
        int f_sortacross;	/* sort across rows, not down columns */ 
        int f_statustime;	/* use time of last mode change */
-       int f_stream;		/* stream the output, separate with commas */
+static int f_stream;		/* stream the output, separate with commas */
 static int f_timesort;		/* sort by time vice name */
        int f_type;		/* add type character for non-regular files */
 static int f_whiteout;		/* show whiteout entries */
