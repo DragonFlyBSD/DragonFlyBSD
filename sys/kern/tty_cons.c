@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.10 2003/11/24 20:46:01 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.11 2004/04/20 01:52:22 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -265,7 +265,7 @@ console_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
 	int error;
 
-	switch(msg->am_lmsg.ms_cmd) {
+	switch(msg->am_lmsg.ms_cmd.cm_op) {
 	case CDEV_CMD_OPEN:
 		error = cnopen(
 			    msg->am_open.msg.dev,

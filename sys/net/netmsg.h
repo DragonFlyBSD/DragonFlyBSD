@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/net/netmsg.h,v 1.1 2004/03/06 02:36:25 hsu Exp $
+ * $DragonFly: src/sys/net/netmsg.h,v 1.2 2004/04/20 01:52:26 dillon Exp $
  */
 
 #ifndef _NETMSG_H_
@@ -38,14 +38,12 @@
  */
 struct netmsg_pru_abort {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_abort_fn_t	nm_prufn;
     struct socket	*nm_so;
 };
 
 struct netmsg_pru_accept {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_accept_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	**nm_nam;
@@ -53,7 +51,6 @@ struct netmsg_pru_accept {
 
 struct netmsg_pru_attach {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_attach_fn_t	nm_prufn;
     struct socket	*nm_so;
     int			nm_proto;
@@ -62,7 +59,6 @@ struct netmsg_pru_attach {
 
 struct netmsg_pru_bind {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_bind_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	*nm_nam;
@@ -71,7 +67,6 @@ struct netmsg_pru_bind {
 
 struct netmsg_pru_connect {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_connect_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	*nm_nam;
@@ -80,7 +75,6 @@ struct netmsg_pru_connect {
 
 struct netmsg_pru_connect2 {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_connect2_fn_t	nm_prufn;
     struct socket	*nm_so1;
     struct socket	*nm_so2;
@@ -88,7 +82,6 @@ struct netmsg_pru_connect2 {
 
 struct netmsg_pru_control {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_control_fn_t	nm_prufn;
     struct socket	*nm_so;
     u_long		nm_cmd;
@@ -99,21 +92,18 @@ struct netmsg_pru_control {
 
 struct netmsg_pru_detach {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_detach_fn_t	nm_prufn;
     struct socket	*nm_so;
 };
 
 struct netmsg_pru_disconnect {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_disconnect_fn_t	nm_prufn;
     struct socket	*nm_so;
 };
 
 struct netmsg_pru_listen {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_listen_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct thread	*nm_td;
@@ -121,7 +111,6 @@ struct netmsg_pru_listen {
 
 struct netmsg_pru_peeraddr {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_peeraddr_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	**nm_nam;
@@ -129,7 +118,6 @@ struct netmsg_pru_peeraddr {
 
 struct netmsg_pru_rcvd {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_rcvd_fn_t	nm_prufn;
     struct socket	*nm_so;
     int			nm_flags;
@@ -137,7 +125,6 @@ struct netmsg_pru_rcvd {
 
 struct netmsg_pru_rcvoob {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_rcvoob_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct mbuf		*nm_m;
@@ -146,7 +133,6 @@ struct netmsg_pru_rcvoob {
 
 struct netmsg_pru_send {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_send_fn_t	nm_prufn;
     struct socket	*nm_so;
     int			nm_flags;
@@ -158,7 +144,6 @@ struct netmsg_pru_send {
 
 struct netmsg_pru_sense {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_sense_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct stat		*nm_stat;
@@ -166,14 +151,12 @@ struct netmsg_pru_sense {
 
 struct netmsg_pru_shutdown {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_shutdown_fn_t	nm_prufn;
     struct socket	*nm_so;
 };
 
 struct netmsg_pru_sockaddr {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_sockaddr_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	**nm_nam;
@@ -181,7 +164,6 @@ struct netmsg_pru_sockaddr {
 
 struct netmsg_pru_sosend {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_sosend_fn_t	nm_prufn;
     struct socket	*nm_so;
     struct sockaddr	*nm_addr;
@@ -194,7 +176,6 @@ struct netmsg_pru_sosend {
 
 struct netmsg_pru_soreceive {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_soreceive_fn_t	nm_prufn;
     struct sockaddr	*nm_addr;
     struct socket	*nm_so;
@@ -207,7 +188,6 @@ struct netmsg_pru_soreceive {
 
 struct netmsg_pru_sopoll {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     pru_sopoll_fn_t	nm_prufn;
     struct socket	*nm_so;
     int			nm_events;

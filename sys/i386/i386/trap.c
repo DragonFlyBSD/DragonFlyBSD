@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.49 2004/04/10 20:55:20 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.50 2004/04/20 01:52:17 dillon Exp $
  */
 
 /*
@@ -1282,7 +1282,8 @@ syscall2(struct trapframe frame)
 	 * results are returned.  Since edx is loaded from fds[1] when the 
 	 * system call returns we pre-set it here.
 	 */
-	lwkt_initmsg_rp(&args.lmsg, &td->td_msgport, code);
+	lwkt_initmsg(&args.lmsg, &td->td_msgport, 0,
+			lwkt_cmd_op(code), lwkt_cmd_op_none);
 	args.sysmsg_copyout = NULL;
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
@@ -1532,8 +1533,9 @@ sendsys2(struct trapframe frame)
 	 * Initialize the kernel message from the copied-in data and
 	 * pull in appropriate flags from the userland message.
 	 */
-	lwkt_initmsg_rp(&sysun->lmsg, &td->td_msgport, 
-	    sysun->nosys.usrmsg.umsg.ms_cmd);
+	lwkt_initmsg(&sysun->lmsg, &td->td_msgport, 0,
+			sysun->nosys.usrmsg.umsg.ms_cmd,
+			lwkt_cmd_op_none);
 	sysun->sysmsg_copyout = NULL;
 	sysun->lmsg.opaque.ms_umsg = umsg;
 	sysun->lmsg.ms_flags |= sysun->nosys.usrmsg.umsg.ms_flags & MSGF_ASYNC;
@@ -1542,7 +1544,7 @@ sendsys2(struct trapframe frame)
 	 * Extract the system call number, lookup the system call, and
 	 * set the default return value.
 	 */
-	code = (u_int)sysun->lmsg.ms_cmd;
+	code = (u_int)sysun->lmsg.ms_cmd.cm_op;
 	if (code >= p->p_sysent->sv_size) {
 		error = ENOSYS;
 		goto bad1;

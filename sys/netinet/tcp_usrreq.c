@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.15 2004/04/13 07:10:34 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.16 2004/04/20 01:52:28 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -700,7 +700,6 @@ struct pr_usrreqs tcp6_usrreqs = {
 
 struct netmsg_tcp_connect {
 	struct lwkt_msg		nm_lmsg;
-	netisr_fn_t		nm_handler;
 	struct tcpcb		*nm_tp;
 	struct sockaddr_in	*nm_sin;
 	struct sockaddr_in	*nm_ifsin;
@@ -771,15 +770,20 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	return (0);
 }
 
-static void
-tcp_connect_handler(struct netmsg *msg0)
+#if defined(SMP)
+
+static int
+tcp_connect_handler(lwkt_msg_t lmsg)
 {
-	struct netmsg_tcp_connect *msg = (struct netmsg_tcp_connect *)msg0;
+	struct netmsg_tcp_connect *msg = (void *)lmsg;
 	int error;
 
 	error = tcp_connect_oncpu(msg->nm_tp, msg->nm_sin, msg->nm_ifsin);
-	lwkt_replymsg(&msg0->nm_lmsg, error);
+	lwkt_replymsg(lmsg, error);
+	return(EASYNC);
 }
+
+#endif
 
 /*
  * Common subroutine to open a TCP connection to remote host specified
@@ -799,7 +803,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in *if_sin;
 	int error;
 	boolean_t didbind = FALSE;
-#ifdef SMP
+#if defined(SMP)
 	lwkt_port_t port;
 #endif
 
@@ -819,7 +823,7 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 	if (error)
 		return (error);
 
-#ifdef SMP
+#if defined(SMP)
 	port = tcp_addrport(sin->sin_addr.s_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr ?
 		inp->inp_laddr.s_addr : if_sin->sin_addr.s_addr,
@@ -838,8 +842,9 @@ tcp_connect(struct tcpcb *tp, struct sockaddr *nam, struct thread *td)
 			}
 			return (ENOMEM);
 		}
-		lwkt_initmsg(&msg->nm_lmsg, CMD_NETMSG_ONCPU);
-		msg->nm_handler = tcp_connect_handler;
+		lwkt_initmsg(&msg->nm_lmsg, &curthread->td_msgport, 0,
+			lwkt_cmd_func(tcp_connect_handler),
+			lwkt_cmd_op_none);
 		msg->nm_tp = tp;
 		msg->nm_sin = sin;
 		msg->nm_ifsin = if_sin;

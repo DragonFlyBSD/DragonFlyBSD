@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.26 2004/04/18 20:05:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.27 2004/04/20 01:52:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -794,17 +794,17 @@ tcp_drain_oncpu(struct inpcbhead *head)
 #ifdef SMP
 struct netmsg_tcp_drain {
 	struct lwkt_msg		nm_lmsg;
-	netisr_fn_t		nm_handler;
 	struct inpcbhead	*nm_head;
 };
 
-static void
-tcp_drain_handler(struct netmsg *msg0)
+static int
+tcp_drain_handler(lwkt_msg_t lmsg)
 {
-	struct netmsg_tcp_drain *nm = (struct netmsg_tcp_drain *)msg0;
+	struct netmsg_tcp_drain *nm = (void *)lmsg;
 
 	tcp_drain_oncpu(nm->nm_head);
-	lwkt_replymsg(&msg0->nm_lmsg, 0);
+	lwkt_replymsg(lmsg, 0);
+	return(EASYNC);
 }
 #endif
 
@@ -837,9 +837,9 @@ tcp_drain()
 			    M_LWKTMSG, M_NOWAIT);
 			if (!msg)
 				continue;
-			lwkt_initmsg_rp(&msg->nm_lmsg, &netisr_afree_rport,
-			    CMD_NETMSG_ONCPU);
-			msg->nm_handler = tcp_drain_handler;
+			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+				lwkt_cmd_func(tcp_drain_handler),
+				lwkt_cmd_op_none);
 			msg->nm_head = &tcbinfo[cpu].listhead;
 			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 		}

@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.16 2004/04/15 00:50:05 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.17 2004/04/20 01:52:24 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -26,6 +26,18 @@ typedef struct lwkt_port	*lwkt_port_t;
 typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
 
 /*
+ * LWKT command message operator type.  This type holds a message's
+ * 'command'.  The command format is opaque to the LWKT messaging system,
+ * meaning that it is specific to whatever convention the API chooses.
+ * By convention lwkt_cmd_t is passed by value and is expected to
+ * efficiently fit into a machine register.
+ */
+typedef union lwkt_cmd {
+    int		cm_op;
+    int		(*cm_func)(lwkt_msg_t msg);
+} lwkt_cmd_t;
+
+/*
  * The standard message and port structure for communications between
  * threads.  See kern/lwkt_msgport.c for documentation on how messages and
  * ports work.
@@ -44,10 +56,14 @@ typedef TAILQ_HEAD(lwkt_msg_queue, lwkt_msg) lwkt_msg_queue;
  * a forwarding or reply op).  An abort may cause a reply to be delayed
  * until the abort catches up to it.
  *
- * Finally, note that an abort can requeue a message to its current target
- * port after the message has been pulled off of it, so you CANNOT use
- * ms_node for your own purposes after you have pulled a message request
- * off its port.
+ * Messages which support an abort will have MSGF_ABORTABLE set, indicating
+ * that the ms_abort field has been initialized.  An abort will cause a
+ * message to be requeued to the target port so the target sees the same
+ * message twice:  once during initial processing of the message, and a
+ * second time to process the abort request.  lwkt_getport() will detect
+ * the requeued abort and will copy ms_abort into ms_cmd before returning
+ * the requeued message the second time.  This makes target processing a 
+ * whole lot less complex.
  *
  * NOTE! 64-bit-align this structure.
  */
@@ -61,7 +77,8 @@ typedef struct lwkt_msg {
     lwkt_port_t ms_target_port;		/* current target or relay port */
     lwkt_port_t	ms_reply_port;		/* async replies returned here */
     lwkt_port_t ms_abort_port;		/* abort chasing port */
-    int		ms_cmd;			/* message command */
+    lwkt_cmd_t	ms_cmd;			/* message command operator */
+    lwkt_cmd_t	ms_abort;		/* message abort operator */
     int		ms_flags;		/* message flags */
 #define ms_copyout_start	ms_msgsize
     int		ms_msgsize;		/* size of message */
@@ -85,14 +102,15 @@ typedef struct lwkt_msg {
 #define MSGF_REPLY1	0x0002		/* asynch message has been returned */
 #define MSGF_QUEUED	0x0004		/* message has been queued sanitychk */
 #define MSGF_ASYNC	0x0008		/* sync/async hint */
-#define MSGF_ABORTED	0x0010		/* message was aborted flag */
+#define MSGF_ABORTED	0x0010		/* indicate pending abort */
 #define MSGF_PCATCH	0x0020		/* catch proc signal while waiting */
 #define MSGF_REPLY2	0x0040		/* reply processed by rport cpu */
+#define MSGF_ABORTABLE	0x0080		/* message supports abort */
+#define MSGF_RETRIEVED	0x0100		/* message retrieved on target */
 
 #define MSG_CMD_CDEV	0x00010000
 #define MSG_CMD_VFS	0x00020000
 #define MSG_CMD_SYSCALL	0x00030000
-#define MSG_CMD_NETMSG	0x00040000
 #define MSG_SUBCMD_MASK	0x0000FFFF
 
 #ifdef _KERNEL

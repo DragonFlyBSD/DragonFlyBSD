@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.19 2004/04/15 00:50:03 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.20 2004/04/20 01:52:22 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -99,7 +99,8 @@ static void lwkt_putport_remote(lwkt_msg_t msg);
  *
  *	The message's ms_cmd must be initialized and its ms_flags must
  *	be zero'd out.  lwkt_sendmsg() will initialize the ms_abort_port
- *	(abort chasing port).
+ *	(abort chasing port).  If abort is supported, ms_abort must also be
+ *	initialized.
  *
  *	NOTE: you cannot safely request an abort until lwkt_sendmsg() returns
  *	to the caller.
@@ -110,7 +111,8 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
     int error;
 
     msg->ms_flags |= MSGF_ASYNC;
-    msg->ms_flags &= ~(MSGF_REPLY1 | MSGF_REPLY2 | MSGF_QUEUED);
+    msg->ms_flags &= ~(MSGF_REPLY1 | MSGF_REPLY2 | MSGF_QUEUED | \
+			MSGF_ABORTED | MSGF_RETRIEVED);
     KKASSERT(msg->ms_reply_port != NULL);
     msg->ms_abort_port = msg->ms_reply_port;
     if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
@@ -132,7 +134,8 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
  *
  *	The message's ms_cmd must be initialized, and its ms_flags must be
  *	at least zero'd out.  lwkt_domsg() will initialize the message's
- *	ms_abort_port (abort chasing port).
+ *	ms_abort_port (abort chasing port).  If abort is supported, ms_abort
+ *	must also be initialized.
  *
  *	NOTE: you cannot safely request an abort until lwkt_domsg() blocks.
  *	XXX this probably needs some work.
@@ -142,7 +145,8 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
 {
     int error;
 
-    msg->ms_flags &= ~(MSGF_ASYNC | MSGF_REPLY1 | MSGF_REPLY2 | MSGF_QUEUED);
+    msg->ms_flags &= ~(MSGF_ASYNC | MSGF_REPLY1 | MSGF_REPLY2 | \
+			MSGF_QUEUED | MSGF_ABORTED | MSGF_RETRIEVED);
     KKASSERT(msg->ms_reply_port != NULL);
     msg->ms_abort_port = msg->ms_reply_port;
     if ((error = lwkt_beginmsg(port, msg)) == EASYNC) {
@@ -185,8 +189,49 @@ lwkt_initport(lwkt_port_t port, thread_t td)
  *	Note that once a message has been dequeued it is subject to being
  *	requeued via an IPI based abort request if it is not marked MSGF_DONE.
  *
+ *	If the message has been aborted we have to guarentee that abort 
+ *	semantics are properly followed.   The target port will always see
+ *	the original message at least once, and if it does not reply the 
+ *	message before looping on its message port again it will then see
+ *	the message again with ms_cmd set to ms_abort.
+ *
  *	The calling thread MUST own the port.
  */
+
+static __inline
+void
+_lwkt_pullmsg(lwkt_port_t port, lwkt_msg_t msg)
+{
+    if ((msg->ms_flags & MSGF_ABORTED) == 0) {
+	/*
+	 * normal case, remove and return the message.
+	 */
+	TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
+	msg->ms_flags = (msg->ms_flags & ~MSGF_QUEUED) | MSGF_RETRIEVED;
+    } else {
+	if (msg->ms_flags & MSGF_RETRIEVED) {
+	    /*
+	     * abort case, message already returned once, remvoe and
+	     * return the aborted message a second time after setting
+	     * ms_cmd to ms_abort.
+	     */
+	    TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
+	    msg->ms_flags &= ~MSGF_QUEUED;
+	    msg->ms_cmd = msg->ms_abort;
+	} else {
+	    /*
+	     * abort case, abort races initial message retrieval.  The
+	     * message is returned normally but not removed from the 
+	     * queue.  On the next loop the 'aborted' message will be
+	     * dequeued and returned.  Note that if the caller replies
+	     * to the message it will be dequeued (the abort becomes a
+	     * NOP).
+	     */
+	    msg->ms_flags |= MSGF_RETRIEVED;
+	}
+    }
+}
+
 void *
 lwkt_getport(lwkt_port_t port)
 {
@@ -195,10 +240,8 @@ lwkt_getport(lwkt_port_t port)
     KKASSERT(port->mp_td == curthread);
 
     crit_enter_quick(port->mp_td);
-    if ((msg = TAILQ_FIRST(&port->mp_msgq)) != NULL) {
-	TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags &= ~MSGF_QUEUED;
-    }
+    if ((msg = TAILQ_FIRST(&port->mp_msgq)) != NULL)
+	_lwkt_pullmsg(port, msg);
     crit_exit_quick(port->mp_td);
     return(msg);
 }
@@ -209,7 +252,7 @@ lwkt_getport(lwkt_port_t port)
  *
  * The message is being returned to the specified port.  The port is
  * owned by the mp_td thread.  If we are on the same cpu as the mp_td
- * thread we can trivially queue the message to the messageq and schedule
+ * thread we can trivially queue the message to the reply port and schedule
  * the target thread, otherwise we have to send an ipi message to the
  * correct cpu.
  *
@@ -225,8 +268,8 @@ _lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg, int force)
 
     if (force || td->td_gd == mycpu) {
 	/*
-	 * If an abort is racing us we cannot queue the reply now, the
-	 * abort code will have to do it when it catches up.
+	 * We can only reply the message if the abort has caught up with us,
+	 * or if no abort was issued (same case).
 	 */
 	if (msg->ms_abort_port == port) {
 	    KKASSERT((msg->ms_flags & MSGF_QUEUED) == 0);
@@ -256,15 +299,21 @@ lwkt_replyport_remote(lwkt_msg_t msg)
  * Note that the lwkt_replymsg() inline has already set MSGF_REPLY1 and
  * entered a critical section for us.
  */
+
 void
 lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
+    crit_enter();
+    msg->ms_flags |= MSGF_REPLY1;
     if (msg->ms_flags & MSGF_ASYNC) {
 	/*
 	 * An abort may have caught up to us while we were processing the
-	 * message.  If this occured we have to dequeue the message before
-	 * we can reply it.  If an abort occurs after we reply the MSGF_REPLY1
-	 * flag will prevent it from being queued to the target port.
+	 * message.  If this occured we have to dequeue the message from the
+	 * target port in the context of our current cpu before we can
+	 * finish replying it.
+	 *
+	 * If an abort occurs after we reply the MSGF_REPLY1 flag will
+	 * prevent it from being requeued to the target port.
 	 */
 	if (msg->ms_flags & MSGF_QUEUED) {
 	    KKASSERT(msg->ms_flags & MSGF_ABORTED);
@@ -273,10 +322,16 @@ lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	}
 	_lwkt_replyport(port, msg, 0);
     } else {
+	/*
+	 * Synchronously executed messages cannot be aborted and are just
+	 * marked done.  YYY MSGF_DONE should already be set, change flag set
+	 * to KKASSERT.
+	 */
 	msg->ms_flags |= MSGF_DONE;
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(port->mp_td);
     }
+    crit_exit();
 }
 
 /*
@@ -350,6 +405,7 @@ lwkt_forwardmsg(lwkt_port_t port, lwkt_msg_t msg)
 	TAILQ_REMOVE(&msg->ms_target_port->mp_msgq, msg, ms_node);
 	msg->ms_flags &= ~MSGF_QUEUED;
     }
+    msg->ms_flags &= ~MSGF_RETRIEVED;
     if ((error = port->mp_putport(port, msg)) != EASYNC)
 	lwkt_replymsg(msg, error);
     crit_exit();
@@ -376,12 +432,13 @@ lwkt_abortmsg(lwkt_msg_t msg)
     thread_t td;
 
     /*
-     * A critical section protects us from reply IPIs on this cpu.  If
-     * the message is marked done it has already been completely processed
-     * and replied before we caled lwkt_abortmsg().
+     * A critical section protects us from reply IPIs on this cpu.   We 
+     * can only abort messages that have not yet completed (DONE), are not
+     * in the midst of being replied (REPLY1), and which support the
+     * abort function (ABORTABLE).
      */
     crit_enter();
-    if ((msg->ms_flags & MSGF_DONE) == 0) {
+    if ((msg->ms_flags & (MSGF_DONE|MSGF_REPLY1|MSGF_ABORTABLE)) == MSGF_ABORTABLE) {
 	/*
 	 * Chase the message.  If REPLY1 is set the message has been replied
 	 * all the way back to the originator, otherwise it is sitting on
@@ -450,7 +507,9 @@ lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
     if (msg->ms_flags & MSGF_REPLY2) {
 	/*
 	 * If REPLY2 is set we must have chased it all the way back to
-	 * the reply port.  We become responsible for 
+	 * the reply port, but the replyport code has not queued the message
+	 * (because it was waiting for the abort to catch up).  We become
+	 * responsible for queueing the message to the reply port.
 	 */
 	KKASSERT((msg->ms_flags & MSGF_QUEUED) == 0);
 	KKASSERT(port == msg->ms_reply_port);
@@ -459,10 +518,21 @@ lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(port->mp_td);
     } else if ((msg->ms_flags & (MSGF_QUEUED|MSGF_REPLY1)) == 0) {
+	/*
+	 * Abort on the target port.  The message has not yet been replied
+	 * and must be requeued to the target port.
+	 */
 	msg->ms_flags |= MSGF_ABORTED | MSGF_QUEUED;
 	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(port->mp_td);
+    } else if ((msg->ms_flags & MSGF_REPLY1) == 0) {
+	/*
+	 * The message has not yet been retrieved by the target port, set
+	 * MSGF_ABORTED so the target port can requeue the message abort after
+	 * retrieving it.
+	 */
+	msg->ms_flags |= MSGF_ABORTED;
     }
 }
 
@@ -474,7 +544,8 @@ lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
  *	returns NULL.
  *
  *	If msg is non-NULL, block until the requested message has been returned
- *	to the port then dequeue and return it.
+ *	to the port then dequeue and return it.  DO NOT USE THIS TO WAIT FOR
+ *	INCOMING REQUESTS, ONLY USE THIS TO WAIT FOR REPLIES.
  *
  *	Note that the API does not currently support multiple threads waiting
  * 	on a port.  By virtue of owning the port it is controlled by our
@@ -497,22 +568,19 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 	    } while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL);
 	    port->mp_flags &= ~MSGPORTF_WAITING;
 	}
-	TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags &= ~MSGF_QUEUED;
+	_lwkt_pullmsg(port, msg);
     } else {
 	/*
-	 * If the message is marked done but not queued it has already been
-	 * pulled off the port and returned and we do not have to do anything.
-	 * Otherwise we do not own the message have to wait for message
-	 * completion.  Beware of cpu races if MSGF_DONE is not found to be
-	 * set!
+	 * If a message is not marked done, or if it is queued, we have work
+	 * to do.  Note that MSGF_DONE is always set in the context of the
+	 * reply port's cpu.
 	 */
-	if ((msg->ms_flags & (MSGF_DONE|MSGF_REPLY1)) != MSGF_DONE) {
+	if ((msg->ms_flags & (MSGF_DONE|MSGF_QUEUED)) != MSGF_DONE) {
 	    /*
 	     * We must own the reply port to safely mess with it's contents.
 	     */
 	    port = msg->ms_reply_port;
-	    KKASSERT(port->mp_td == curthread);
+	    KKASSERT(port->mp_td == td);
 
 	    if ((msg->ms_flags & MSGF_DONE) == 0) {
 		port->mp_flags |= MSGPORTF_WAITING; /* saved by the BGL */

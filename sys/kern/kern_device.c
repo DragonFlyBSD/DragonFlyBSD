@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.8 2004/03/06 19:40:28 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.9 2004/04/20 01:52:22 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -61,6 +61,10 @@ static int cdevsw_putport(lwkt_port_t port, lwkt_msg_t msg);
  *
  * Don't worry too much about optimizing this code, the critical devices
  * will implement their own port messaging functions directly.
+ *
+ * YYY NOTE: ms_cmd can now hold a function pointer, should this code be
+ * converted from an integer op to a function pointer with a flag to
+ * indicate legacy operation?
  */
 static void
 init_default_cdevsw_port(lwkt_port_t port)
@@ -81,7 +85,7 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
      * If queueable then officially queue the message
      */
     if (port->mp_td) {
-	int mask = (1 << (msg->am_lmsg.ms_cmd & MSG_SUBCMD_MASK));
+	int mask = (1 << (msg->am_lmsg.ms_cmd.cm_op & MSG_SUBCMD_MASK));
 	if (csw->d_autoq & mask) 
 	    return(lwkt_beginmsg(port, &msg->am_lmsg));
     }
@@ -90,7 +94,7 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
      * Run the device switch function synchronously in the context of the
      * caller and return a synchronous error code (anything not EASYNC).
      */
-    switch(msg->am_lmsg.ms_cmd) {
+    switch(msg->am_lmsg.ms_cmd.cm_op) {
     case CDEV_CMD_OPEN:
 	error = csw->old_open(
 		    msg->am_open.msg.dev,
@@ -188,7 +192,7 @@ _init_cdevmsg(dev_t dev, cdevmsg_t msg, int cmd)
 {
     struct cdevsw *csw;
 
-    lwkt_initmsg(&msg->msg, cmd);
+    lwkt_initmsg_simple(&msg->msg, cmd);
     msg->dev = dev;
     msg->csw = csw = _devsw(dev);
     if (csw != NULL) {			/* YYY too hackish */

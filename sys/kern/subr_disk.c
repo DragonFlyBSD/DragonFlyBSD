@@ -45,7 +45,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.8 2004/02/18 06:59:15 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.9 2004/04/20 01:52:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -220,7 +220,7 @@ disk_putport(lwkt_port_t port, lwkt_msg_t lmsg)
 	cdevallmsg_t msg = (cdevallmsg_t)lmsg;
 	int error;
 
-	switch(msg->am_lmsg.ms_cmd) {
+	switch(msg->am_lmsg.ms_cmd.cm_op) {
 	case CDEV_CMD_OPEN:
 		error = diskopen(
 			    msg->am_open.msg.dev,

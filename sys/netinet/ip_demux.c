@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.18 2004/04/10 00:10:42 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.19 2004/04/20 01:52:28 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -258,26 +258,26 @@ tcp_cport(int cpu)
 /*
  * We must construct a custom putport function (which runs in the context
  * of the message originator)
+ *
  * Our custom putport must check for self-referential messages, which can
  * occur when the so_upcall routine is called (e.g. nfs).  Self referential
- * messages are simply executed synchronously.
+ * messages are executed synchronously.  However, we must panic if the message
+ * is not marked DONE on completion because the self-referential case cannot
+ * block without deadlocking.
  */
 static int
 netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
 {
-    /*
-     * If it's a synchronous message for the same thread,
-     * execute it directly.
-     */
-    if (!(lmsg->ms_flags & MSGF_ASYNC) && port->mp_td == curthread) {
-	struct netmsg *msg = (struct netmsg *)lmsg;
+    int error;
 
-	msg->nm_handler(msg);
+    if ((lmsg->ms_flags & MSGF_ASYNC) == 0 && port->mp_td == curthread) {
+	error = lmsg->ms_cmd.cm_func(lmsg);
+	if (error == EASYNC && (lmsg->ms_flags & MSGF_DONE) == 0)
+	    panic("netmsg_put_port: self-referential deadlock on netport");
+	return(error);
     } else {
-        lwkt_default_putport(port, lmsg);
+	return(lwkt_default_putport(port, lmsg));
     }
-
-    return (EASYNC);
 }
 
 void

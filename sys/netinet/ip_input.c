@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.18 2004/04/13 00:14:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.19 2004/04/20 01:52:28 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -331,25 +331,24 @@ transport_processing_oncpu(struct mbuf *m, int hlen, struct ip *ip,
 
 struct netmsg_transport_packet {
 	struct lwkt_msg		nm_lmsg;
-	netisr_fn_t		nm_handler;
 	struct mbuf		*nm_mbuf;
 	int			nm_hlen;
 	boolean_t		nm_hasnexthop;
 	struct sockaddr_in	nm_nexthop;
 };
 
-static void
-transport_processing_handler(struct netmsg *msg0)
+static int
+transport_processing_handler(lwkt_msg_t lmsg)
 {
-	struct netmsg_transport_packet *msg =
-	    (struct netmsg_transport_packet *)msg0;
+	struct netmsg_transport_packet *msg = (void *)lmsg;
 	struct sockaddr_in *nexthop;
 	struct ip *ip;
 
 	ip = mtod(msg->nm_mbuf, struct ip *);
 	nexthop = msg->nm_hasnexthop ? &msg->nm_nexthop : NULL;
 	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip, nexthop);
-	lwkt_replymsg(&msg0->nm_lmsg, 0);
+	lwkt_replymsg(lmsg, 0);
+	return(EASYNC);
 }
 
 static void
@@ -995,9 +994,10 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		    M_LWKTMSG, M_NOWAIT);
 		if (!msg)
 			goto bad;
-		lwkt_initmsg_rp(&msg->nm_lmsg, &netisr_afree_rport,
-		    CMD_NETMSG_ONCPU);
-		msg->nm_handler = transport_processing_handler;
+
+		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+			lwkt_cmd_func(transport_processing_handler),
+			lwkt_cmd_op_none);
 		msg->nm_mbuf = m;
 		msg->nm_hlen = hlen;
 		msg->nm_hasnexthop = (args.next_hop != NULL);

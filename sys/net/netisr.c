@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.12 2004/04/17 00:46:28 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.13 2004/04/20 01:52:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,7 @@ netmsg_service_loop(void *arg)
     struct netmsg *msg;
 
     while ((msg = lwkt_waitport(&curthread->td_msgport, NULL)))
-	msg->nm_handler(msg);
+	msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
 }
 
 /*
@@ -103,9 +103,9 @@ netisr_queue(int num, struct mbuf *m)
     /* use better message allocation system with limits later XXX JH */
     pmsg = malloc(sizeof(struct netmsg_packet), M_LWKTMSG, M_WAITOK);
 
-    lwkt_initmsg_rp(&pmsg->nm_lmsg, &netisr_afree_rport, CMD_NETMSG_NEWPKT);
+    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
+		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
     pmsg->nm_packet = m;
-    pmsg->nm_handler = ni->ni_handler;
     lwkt_sendmsg(port, &pmsg->nm_lmsg);
     return (0);
 }
@@ -163,7 +163,7 @@ schednetisr(int num)
     if (!(pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT)))
 	return;
 
-    lwkt_initmsg_rp(&pmsg->nm_lmsg, &netisr_afree_rport, CMD_NETMSG_POLL);
-    pmsg->nm_handler = ni->ni_handler;
+    lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
+		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
     lwkt_sendmsg(port, &pmsg->nm_lmsg);
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket2.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_socket2.c,v 1.55.2.17 2002/08/31 19:04:55 dwmalone Exp $
- * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.9 2004/04/10 00:48:06 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket2.c,v 1.10 2004/04/20 01:52:22 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -292,9 +292,8 @@ sb_lock(sb)
 }
 
 /*
- * Wakeup processes waiting on a socket buffer.
- * Do asynchronous notification via SIGIO
- * if the socket has the SS_ASYNC flag set.
+ * Wakeup processes waiting on a socket buffer.  Do asynchronous notification
+ * via SIGIO if the socket has the SS_ASYNC flag set.
  */
 void
 sowakeup(so, sb)
@@ -321,13 +320,11 @@ sowakeup(so, sb)
 
 		TAILQ_FOREACH_MUTABLE(msg, &selinfo->si_mlist, nm_list, nmsg) {
 			if (msg->nm_predicate((struct netmsg *)msg)) {
-				struct lwkt_msg *lmsg = &msg->nm_lmsg;
-
-				lwkt_replymsg(lmsg, lmsg->ms_error);
 				TAILQ_REMOVE(&selinfo->si_mlist, msg, nm_list);
+				lwkt_replymsg(&msg->nm_lmsg, 
+						msg->nm_lmsg.ms_error);
 			}
 		}
-
 		if (TAILQ_EMPTY(&sb->sb_sel.si_mlist))
 			sb->sb_flags &= ~SB_MEVENT;
 	}

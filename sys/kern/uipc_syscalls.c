@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.31 2004/04/10 10:01:54 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.32 2004/04/20 01:52:22 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -73,6 +73,9 @@
 #include <vm/vm_extern.h>
 #include <sys/file2.h>
 #include <sys/signalvar.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 /*
  * System call interface to the socket abstraction.
@@ -370,6 +373,24 @@ accept(struct accept_args *uap)
 	return (error);
 }
 
+/*
+ * Returns TRUE if predicate satisfied.
+ */
+static boolean_t
+soconnected_predicate(struct netmsg *msg0)
+{
+	struct netmsg_so_notify *msg = (struct netmsg_so_notify *)msg0;
+	struct socket *so = msg->nm_so;
+
+	/* check predicate */
+	if (!(so->so_state & SS_ISCONNECTING) || so->so_error != 0) {
+		msg->nm_lmsg.ms_error = so->so_error;
+		return (TRUE);
+	}
+
+	return (FALSE);
+}
+
 int
 kern_connect(int s, struct sockaddr *sa)
 {
@@ -394,17 +415,25 @@ kern_connect(int s, struct sockaddr *sa)
 		error = EINPROGRESS;
 		goto done;
 	}
-	s = splnet();
-	while ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
-		error = tsleep((caddr_t)&so->so_timeo, PCATCH, "connec", 0);
-		if (error)
-			break;
+	if ((so->so_state & SS_ISCONNECTING) && so->so_error == 0) {
+		struct netmsg_so_notify msg;
+		lwkt_port_t port;
+
+		port = so->so_proto->pr_mport(so, sa);
+		lwkt_initmsg(&msg.nm_lmsg, 
+			    &curthread->td_msgport,
+			    MSGF_PCATCH | MSGF_ABORTABLE,
+			    lwkt_cmd_func(netmsg_so_notify),
+			    lwkt_cmd_func(netmsg_so_notify_abort));
+		msg.nm_predicate = soconnected_predicate;
+		msg.nm_so = so;
+		msg.nm_etype = NM_REVENT;
+		error = lwkt_domsg(port, &msg.nm_lmsg);
 	}
 	if (error == 0) {
 		error = so->so_error;
 		so->so_error = 0;
 	}
-	splx(s);
 bad:
 	so->so_state &= ~SS_ISCONNECTING;
 	if (error == ERESTART)

@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.14 2004/04/10 09:35:34 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.15 2004/04/20 01:52:26 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -89,18 +89,15 @@ typedef boolean_t (*msg_predicate_fn_t)(struct netmsg *);
  */
 struct netmsg {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
 };
 
 struct netmsg_packet {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     struct mbuf		*nm_packet;
 };
 
 struct netmsg_pr_ctloutput {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
     int			(*nm_prfn) (struct socket *, struct sockopt *);
     struct socket	*nm_so;
     struct sockopt	*nm_sopt;
@@ -108,13 +105,11 @@ struct netmsg_pr_ctloutput {
 
 struct netmsg_pr_timeout {
     struct lwkt_msg	nm_lmsg;
-    netisr_fn_t		nm_handler;
-    void		(*nm_prfn) (void);
+    int			(*nm_prfn) (void);
 };
 
 struct netmsg_so_notify {
     struct lwkt_msg			nm_lmsg;
-    netisr_fn_t				nm_handler;
     msg_predicate_fn_t			nm_predicate;
     struct socket			*nm_so;
     int					nm_etype;  /* receive or send event */
@@ -128,39 +123,31 @@ struct netmsg_so_notify {
  * for dispatching pr_ functions,
  * until they can be converted to message-passing
  */
-void netmsg_pr_dispatcher(struct netmsg *);
+int netmsg_pru_abort(lwkt_msg_t);
+int netmsg_pru_accept(lwkt_msg_t);
+int netmsg_pru_attach(lwkt_msg_t);
+int netmsg_pru_bind(lwkt_msg_t);
+int netmsg_pru_connect(lwkt_msg_t);
+int netmsg_pru_connect2(lwkt_msg_t);
+int netmsg_pru_control(lwkt_msg_t);
+int netmsg_pru_detach(lwkt_msg_t);
+int netmsg_pru_disconnect(lwkt_msg_t);
+int netmsg_pru_listen(lwkt_msg_t);
+int netmsg_pru_peeraddr(lwkt_msg_t);
+int netmsg_pru_rcvd(lwkt_msg_t);
+int netmsg_pru_rcvoob(lwkt_msg_t);
+int netmsg_pru_send(lwkt_msg_t);
+int netmsg_pru_sense(lwkt_msg_t);
+int netmsg_pru_shutdown(lwkt_msg_t);
+int netmsg_pru_sockaddr(lwkt_msg_t);
 
-#define CMD_NETMSG_NEWPKT		(MSG_CMD_NETMSG | 0x0001)
-#define CMD_NETMSG_POLL			(MSG_CMD_NETMSG | 0x0002)
+int netmsg_pru_sopoll(lwkt_msg_t);
 
-#define CMD_NETMSG_PRU_ABORT		(MSG_CMD_NETMSG | 0x0003)
-#define CMD_NETMSG_PRU_ACCEPT		(MSG_CMD_NETMSG | 0x0004)
-#define CMD_NETMSG_PRU_ATTACH		(MSG_CMD_NETMSG | 0x0005)
-#define CMD_NETMSG_PRU_BIND		(MSG_CMD_NETMSG | 0x0006)
-#define CMD_NETMSG_PRU_CONNECT		(MSG_CMD_NETMSG | 0x0007)
-#define CMD_NETMSG_PRU_CONNECT2		(MSG_CMD_NETMSG | 0x0008)
-#define CMD_NETMSG_PRU_CONTROL		(MSG_CMD_NETMSG | 0x0009)
-#define CMD_NETMSG_PRU_DETACH		(MSG_CMD_NETMSG | 0x000a)
-#define CMD_NETMSG_PRU_DISCONNECT	(MSG_CMD_NETMSG | 0x000b)
-#define CMD_NETMSG_PRU_LISTEN		(MSG_CMD_NETMSG | 0x000c)
-#define CMD_NETMSG_PRU_PEERADDR		(MSG_CMD_NETMSG | 0x000d)
-#define CMD_NETMSG_PRU_RCVD		(MSG_CMD_NETMSG | 0x000e)
-#define CMD_NETMSG_PRU_RCVOOB		(MSG_CMD_NETMSG | 0x000f)
-#define CMD_NETMSG_PRU_SEND		(MSG_CMD_NETMSG | 0x0010)
-#define CMD_NETMSG_PRU_SENSE		(MSG_CMD_NETMSG | 0x0011)
-#define CMD_NETMSG_PRU_SHUTDOWN		(MSG_CMD_NETMSG | 0x0012)
-#define CMD_NETMSG_PRU_SOCKADDR		(MSG_CMD_NETMSG | 0x0013)
-#define CMD_NETMSG_PRU_SOSEND		(MSG_CMD_NETMSG | 0x0014)
-#define CMD_NETMSG_PRU_SORECEIVE	(MSG_CMD_NETMSG | 0x0015)
-#define CMD_NETMSG_PRU_SOPOLL		(MSG_CMD_NETMSG | 0x0016)
+int netmsg_pr_ctloutput(lwkt_msg_t);
+int netmsg_pr_timeout(lwkt_msg_t);
 
-#define CMD_NETMSG_PR_CTLOUTPUT		(MSG_CMD_NETMSG | 0x0017)
-#define CMD_NETMSG_PR_TIMEOUT		(MSG_CMD_NETMSG | 0x0018)
-
-#define	CMD_NETMSG_ONCPU		(MSG_CMD_NETMSG | 0x0019)
-#define	CMD_NETMSG_NOTIFY		(MSG_CMD_NETMSG | 0x0020)
-
-void msg_notify_handler(struct netmsg *);
+int netmsg_so_notify(lwkt_msg_t);
+int netmsg_so_notify_abort(lwkt_msg_t);
 
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 
