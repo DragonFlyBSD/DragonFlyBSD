@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/sig.c,v 1.15.2.1 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/sig.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/sig.c,v 1.3 2004/09/14 00:35:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -66,7 +66,7 @@ sig_signal(int sig, sig_type fn)
 {
   sig_type Result;
 
-  if (sig <= 0 || sig > NSIG) {
+  if (sig <= 0 || sig >= NSIG) {
     /* Oops - we must be a bit out of date (too many sigs ?) */
     log_Printf(LogALERT, "Eeek! %s:%d: I must be out of date!\n",
 	      __FILE__, __LINE__);
