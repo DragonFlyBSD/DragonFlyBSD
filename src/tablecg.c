@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.17 2004/03/01 18:19:06 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.18 2004/03/01 19:48:25 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -136,8 +136,7 @@ main(int ac, char **av)
      * search engines assume they should not since cgi = dynamic
      */
     strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
-    printf("Expires: %s\n", buf);
-    printf("\r\n");
+    printf("Expires: %s\r\n", buf);
 
     if (FilePath == NULL) {
 	fprintf(stderr, "%s: no file specified\n", av[0]);
