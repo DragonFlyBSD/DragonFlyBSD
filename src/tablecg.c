@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.11 2004/02/01 04:27:03 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.12 2004/02/12 14:28:11 justin Exp $
  */
 
 #include <sys/types.h>
@@ -185,6 +185,7 @@ main(int ac, char **av)
     else
 	printf("<TITLE>DragonFly</TITLE>\n");
 
+    printf("<link href=\"/favicon.ico\" rel=\"shortcut icon\">\n");
     printf("<LINK REL=\"stylesheet\" HREF=\"/stylesheet.css\" TYPE=\"text/css\">");
     printf("</HEAD>\n");
     printf("<BODY>\n");
