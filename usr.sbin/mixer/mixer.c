@@ -11,7 +11,7 @@
  * ditto for my modifications (John-Mark Gurney, 1997)
  *
  * $FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $
- * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.3 2004/01/06 08:35:42 asmodai Exp $
+ * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.4 2004/04/15 12:38:02 joerg Exp $
  */
 
 #include <err.h>
@@ -31,6 +31,7 @@ const char *defaultdev = "/dev/mixer";
 void usage(int devmask, int recmask);
 int res_name(const char *name, int mask);
 void print_recsrc(int recsrc);
+void print_recsrc_short(int recsrc);
 
 void
 usage(int devmask, int recmask)
@@ -77,16 +78,33 @@ void
 print_recsrc(int recsrc)
 {
 	int i, n = 0;
-	fprintf(stderr, "Recording source: ");
+	printf("Recording source: ");
 
 	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
 		if ((1 << i) & recsrc) {
 			if (n)
-				fprintf(stderr, ", ");
-			fprintf(stderr, "%s", names[i]);
+				printf(", ");
+			printf("%s", names[i]);
 			n = 1;
 		}
-	fprintf(stderr, "\n");
+	printf("\n");
+}
+
+void print_recsrc_short(int recsrc)
+{
+	int i, first;
+
+	first = 1;
+
+	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
+		if ((1 << i) & recsrc) {
+			if (first) {
+				printf("=%s ", names[i]);
+				first = 0;
+			} else 
+				printf("+%s ", names[i]);
+		}
+	}
 }
 
 int
@@ -147,11 +165,14 @@ main(int argc, char *argv[])
 				printf("Mixer %-8s is currently set to %3d:%d\n", 
 						names[i], LEFT(mset), RIGHT(mset));
 		}
-		if(shortflag && isatty(STDOUT_FILENO))
-			printf("\n");
 		if (ioctl(fd, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
 			err(1, "SOUND_MIXER_READ_RECSRC");
-		print_recsrc(recsrc);
+		if (shortflag) {
+			print_recsrc_short(recsrc);
+			if (isatty(STDOUT_FILENO))
+				printf("\n");
+		} else
+			print_recsrc(recsrc);
 		exit(0);
 	}
 
