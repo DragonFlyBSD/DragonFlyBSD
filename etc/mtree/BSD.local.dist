@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
-# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.10 2004/09/27 19:27:03 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.11 2004/09/27 19:37:31 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -542,7 +542,7 @@
             ..
             ro_RO.UTF-8
             ..
-            ru_RU.CP1252
+            ru_RU.CP1251
             ..
             ru_RU.CP866
             ..
