@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.45 2005/03/02 19:39:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.46 2005/03/12 11:29:33 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2185,10 +2185,10 @@ Shell_Init(void)
 	 * default one... Both the absolute path and the last component
 	 * must be set. The last component is taken from the 'name' field
 	 * of the default shell description pointed-to by commandShell.
-	 * All default shells are located in _PATH_DEFSHELLDIR.
+	 * All default shells are located in PATH_DEFSHELLDIR.
 	 */
 	shellName = commandShell->name;
-	shellPath = str_concat(_PATH_DEFSHELLDIR, shellName, STR_ADDSLASH);
+	shellPath = str_concat(PATH_DEFSHELLDIR, shellName, STR_ADDSLASH);
     }
 }
 

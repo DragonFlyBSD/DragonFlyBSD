@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.59 2005/03/12 10:17:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.60 2005/03/12 11:29:33 okumoto Exp $
  */
 
 /*-
@@ -481,7 +481,7 @@ main(int argc, char **argv)
 	char *cp = NULL, *start;
 
 					/* avoid faults on read-only strings */
-	static char syspath[] = _PATH_DEFSYSPATH;
+	static char syspath[] = PATH_DEFSYSPATH;
 
 	{
 	/*
@@ -660,9 +660,9 @@ main(int argc, char **argv)
 	 *
 	 *	1. MAKEOBJDIRPREFIX`cwd`
 	 *	2. MAKEOBJDIR
-	 *	3. _PATH_OBJDIR.${MACHINE}
-	 *	4. _PATH_OBJDIR
-	 *	5. _PATH_OBJDIRPREFIX`cwd`
+	 *	3. PATH_OBJDIR.${MACHINE}
+	 *	4. PATH_OBJDIR
+	 *	5. PATH_OBJDIRPREFIX`cwd`
 	 *
 	 * If one of the first two fails, use the current directory.
 	 * If the remaining three all fail, use the current directory.
@@ -674,8 +674,8 @@ main(int argc, char **argv)
 	 */
 	if (!(pathp = getenv("MAKEOBJDIRPREFIX"))) {
 		if (!(path = getenv("MAKEOBJDIR"))) {
-			path = _PATH_OBJDIR;
-			pathp = _PATH_OBJDIRPREFIX;
+			path = PATH_OBJDIR;
+			pathp = PATH_OBJDIRPREFIX;
 			snprintf(mdpath, MAXPATHLEN, "%s.%s",
 					path, machine);
 			if (!(objdir = chdir_verify_path(mdpath, obpath)))
@@ -767,9 +767,9 @@ main(int argc, char **argv)
 		Lst sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode *ln;
 
-		Dir_Expand(_PATH_DEFSYSMK, &sysIncPath, &sysMkPath);
+		Dir_Expand(PATH_DEFSYSMK, &sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
-			Fatal("make: no system rules (%s).", _PATH_DEFSYSMK);
+			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		ln = Lst_Find(&sysMkPath, NULL, ReadMakefile);
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
