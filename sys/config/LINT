@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.19 2004/01/15 16:20:06 drhodus Exp $
+# $DragonFly: src/sys/config/LINT,v 1.20 2004/02/06 15:31:58 hmp Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1559,7 +1559,8 @@ device		sbc0	at isa? port 0x220 irq 5 drq 1 flags 0x15
 device		gusc0	at isa? port 0x220 irq 5 drq 1 flags 0x13
 
 # Not controlled by `snd'
-device		pca0 at isa? port IO_TIMER1
+# XXX-Hiten The pca driver needs to readded back into LINT!
+# device		pca0 at isa? port IO_TIMER1
 
 #
 # Miscellaneous hardware:
