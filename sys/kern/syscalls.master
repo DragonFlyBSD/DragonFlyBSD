@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.9 2003/11/21 05:29:04 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.10 2004/01/18 12:31:08 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -617,5 +617,11 @@
 452	STD	BSD	{ int varsym_list(int level, char *buf, int maxsize, int *marker); }
 453	STD	BSD	{ int upc_register(struct upcall *upc, void *ctxfunc, void *func, void *data); }
 454	STD	BSD	{ int upc_control(int cmd, int upcid, void *data); }
-
-
+455	STD	BSD	{ int caps_sys_service(const char *name, uid_t uid, gid_t gid, int upcid, int flags); }
+456	STD	BSD	{ int caps_sys_client(const char *name, uid_t uid, gid_t gid, int upcid, int flags); }
+457	STD	BSD	{ int caps_sys_close(int portid); }
+458	STD	BSD	{ off_t caps_sys_put(int portid, void *msg, int msgsize); }
+459	STD	BSD	{ int caps_sys_reply(int portid, void *msg, int msgsize, off_t msgcid); }
+460	STD	BSD	{ int caps_sys_get(int portid, void *msg, int maxsize, struct caps_msgid *msgid, struct caps_cred *ccr); }
+461	STD	BSD	{ int caps_sys_wait(int portid, void *msg, int maxsize, struct caps_msgid *msgid, struct caps_cred *ccr); }
+462	STD	BSD	{ int caps_sys_abort(int portid, off_t msgcid, int flags); }
