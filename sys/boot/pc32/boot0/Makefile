@@ -1,13 +1,11 @@
 # $FreeBSD: src/sys/boot/i386/boot0/Makefile,v 1.17 2002/09/17 01:48:54 peter Exp $
-# $DragonFly: src/sys/boot/pc32/boot0/Makefile,v 1.3 2003/11/10 06:08:34 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/boot0/Makefile,v 1.4 2004/07/18 23:39:59 dillon Exp $
 
 PROG=		boot0
 NOMAN=
 STRIP=
 BINDIR?=	/boot
 BINMODE=	444
-
-M4?=	m4
 
 # The default set of flags compiled into boot0.  This enables update (writing
 # the modified boot0 back to disk after running so that the selection made is
@@ -28,9 +26,9 @@ boot0: boot0.o
 	${LD} -N -e start -Ttext ${BOOT_BOOT0_ORG} -o boot0.out boot0.o
 	objcopy -S -O binary boot0.out ${.TARGET}
 
-boot0.o: boot0.s
-	${AS} ${AFLAGS} --defsym FLAGS=${BOOT_BOOT0_FLAGS} \
-		--defsym TICKS=${BOOT_BOOT0_TICKS} ${.IMPSRC} -o ${.TARGET}
+boot0.o: boot0.S
+	${CC} -c -DFLAGS=${BOOT_BOOT0_FLAGS} -DTICKS=${BOOT_BOOT0_TICKS} \
+		${AFLAGS} ${.IMPSRC} -o ${.TARGET}
 
 CLEANFILES+= boot0.out boot0.o
 

@@ -1,30 +1,22 @@
-//
-// Copyright (c) 1998 Robert Nordier
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms are freely
-// permitted provided that the above copyright notice and this
-// paragraph and the following disclaimer are duplicated in all
-// such forms.
-//
-// This software is provided "AS IS" and without any express or
-// implied warranties, including, without limitation, the implied
-// warranties of merchantability and fitness for a particular
-// purpose.
-//
+/*
+ * Copyright (c) 1998 Robert Nordier
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are freely
+ * permitted provided that the above copyright notice and this
+ * paragraph and the following disclaimer are duplicated in all
+ * such forms.
+ *
+ * This software is provided "AS IS" and without any express or
+ * implied warranties, including, without limitation, the implied
+ * warranties of merchantability and fitness for a particular
+ * purpose.
+ *
+ * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.5 2004/07/18 23:40:01 dillon Exp $
+ */
 
-// $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
-// $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.4 2004/03/04 00:06:58 dillon Exp $
-
-// Memory Locations
-		.set MEM_REL,0x700		// Relocation address
-		.set MEM_ARG,0x900		// Arguments
-		.set MEM_ORG,0x7c00		// Origin
-		.set MEM_BUF,0x8c00		// Load area
-		.set MEM_BTX,0x9000		// BTX start
-		.set MEM_JMP,0x9010		// BTX entry point
-		.set MEM_USR,0xa000		// Client start
-		.set BDA_BOOT,0x472		// Boot howto flag
+#include "../bootasm.h"
 	
 // Partition Constants 
 		.set PRT_OFF,0x1be		// Partition offset
@@ -37,8 +29,8 @@
 // Misc. Constants
 		.set SIZ_PAG,0x1000		// Page size
 		.set SIZ_SEC,0x200		// Sector size
-
 		.set NSECT,0x10
+
 		.globl start
 		.globl xread
 		.code16

@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.10 2004/06/27 08:00:46 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.11 2004/07/18 23:40:01 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -31,6 +31,7 @@
 
 #include "boot2.h"
 #include "lib.h"
+#include "../bootasm.h"
 
 #define SECOND		18	/* Circa that many ticks in a second. */
 
@@ -61,7 +62,6 @@
 #define PATH_BOOT3	"/boot/loader"
 #define PATH_KERNEL	"/kernel"
 
-#define ARGS		0x900
 #define NDEV		3
 #define MEM_BASE	0x12
 #define MEM_EXT 	0x15
@@ -221,10 +221,10 @@ main(void)
 
     dmadat = (void *)(roundup2(__base + (int32_t)&_end, 0x10000) - __base);
     v86.ctl = V86_FLAGS;
-    dsk.drive = *(uint8_t *)PTOV(ARGS);
+    dsk.drive = *(uint8_t *)PTOV(MEM_ARG);
     dsk.type = dsk.drive & DRV_HARD ? TYPE_AD : TYPE_FD;
     dsk.unit = dsk.drive & DRV_MASK;
-    dsk.slice = *(uint8_t *)PTOV(ARGS + 1) + 1;
+    dsk.slice = *(uint8_t *)PTOV(MEM_ARG + 1) + 1;
     bootinfo.bi_version = BOOTINFO_VERSION;
     bootinfo.bi_size = sizeof(bootinfo);
     bootinfo.bi_basemem = 0;	/* XXX will be filled by loader or kernel */

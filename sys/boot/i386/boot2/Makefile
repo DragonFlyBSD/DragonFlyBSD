@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/boot2/Makefile,v 1.47 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.6 2004/04/10 12:07:20 joerg Exp $
+# $DragonFly: src/sys/boot/i386/boot2/Attic/Makefile,v 1.7 2004/07/18 23:40:01 dillon Exp $
 
 PROG=		boot2
 NOMAN=
@@ -62,9 +62,9 @@ boot1: boot1.out
 boot1.out: boot1.o
 	${LD} ${LDFLAGS} -e start -Ttext ${ORG1} -o ${.TARGET} boot1.o
 
-boot1.o: boot1.s
-	${CPP} ${CFLAGS} ${.IMPSRC} | \
-	    ${AS} ${AFLAGS} --defsym FLAGS=${B1FLAGS} -o ${.TARGET}
+boot1.o: boot1.S
+	${CC} ${CFLAGS} -DFLAGS=${B1FLAGS} ${AFLAGS} \
+		${.IMPSRC} -o ${.TARGET} -c
 
 boot2.o: boot2.c ${.CURDIR}/../../common/ufsread.c
 	${CC} ${CFLAGS} -S -o boot2.s.tmp ${.IMPSRC}
@@ -98,11 +98,10 @@ boot2.out: boot2.o sio.o
 
 boot2.o: boot2.h
 
-sio.o: sio.s
-	${AS} ${AFLAGS} --defsym SIOPRT=${BOOT_COMCONSOLE_PORT} \
-		--defsym SIOFMT=${B2SIOFMT} \
-		--defsym SIOSPD=${BOOT_COMCONSOLE_SPEED} \
-		${.IMPSRC} -o ${.TARGET}
+sio.o: sio.S
+	${CC} -DSIOPRT=${BOOT_COMCONSOLE_PORT} -DSIOFMT=${B2SIOFMT} \
+		-DSIOSPD=${BOOT_COMCONSOLE_SPEED} \
+		${AFLAGS} ${.IMPSRC} -o ${.TARGET} -c
 
 install:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE} \

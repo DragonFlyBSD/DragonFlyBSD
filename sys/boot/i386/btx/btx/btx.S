@@ -1,43 +1,32 @@
-#
-# Copyright (c) 1998 Robert Nordier
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms are freely
-# permitted provided that the above copyright notice and this
-# paragraph and the following disclaimer are duplicated in all
-# such forms.
-#
-# This software is provided "AS IS" and without any express or
-# implied warranties, including, without limitation, the implied
-# warranties of merchantability and fitness for a particular
-# purpose.
-#
+/*
+ * Copyright (c) 1998 Robert Nordier
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are freely
+ * permitted provided that the above copyright notice and this
+ * paragraph and the following disclaimer are duplicated in all
+ * such forms.
+ *
+ * This software is provided "AS IS" and without any express or
+ * implied warranties, including, without limitation, the implied
+ * warranties of merchantability and fitness for a particular
+ * purpose.
+ *
+ * $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
+ * $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.5 2004/07/18 23:40:04 dillon Exp $
+ */
 
-# $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
-# $DragonFly: src/sys/boot/i386/btx/btx/Attic/btx.S,v 1.4 2004/06/24 23:31:06 dillon Exp $
+#include "../../bootasm.h"
 
-#
-# Memory layout.
-#
-		.set MEM_BTX,0x1000		# Start of BTX memory
-		.set MEM_ESP0,0x1800		# Supervisor stack
-		.set MEM_BUF,0x1800		# Scratch buffer
-		.set MEM_ESP1,0x1e00		# Link stack
-		.set MEM_IDT,0x1e00		# IDT
-		.set MEM_TSS,0x1f98		# TSS
-		.set MEM_MAP,0x2000		# I/O bit map
-		.set MEM_DIR,0x4000		# Page directory
-		.set MEM_TBL,0x5000		# Page tables
-		.set MEM_ORG,0x9000		# BTX code
-		.set MEM_USR,0xa000		# Start of user memory
-#
-# Paging control.
-#
+		/*
+		 * Paging control.
+		 */
 		.set PAG_SIZ,0x1000		# Page size
 		.set PAG_CNT,0x1000		# Pages to map
-#
-# Segment selectors.
-#
+
+		/*
+		 * Segment selectors.
+		 */
 		.set SEL_SCODE,0x8		# Supervisor code
 		.set SEL_SDATA,0x10		# Supervisor data
 		.set SEL_RCODE,0x18		# Real mode code
@@ -45,93 +34,96 @@
 		.set SEL_UCODE,0x28|3		# User code
 		.set SEL_UDATA,0x30|3		# User data
 		.set SEL_TSS,0x38		# TSS
-#
-# Task state segment fields.
-#
+
+		/*
+		 * Task state segment fields.
+		 */
 		.set TSS_ESP0,0x4		# PL 0 ESP
 		.set TSS_SS0,0x8		# PL 0 SS
 		.set TSS_ESP1,0xc		# PL 1 ESP
 		.set TSS_MAP,0x66		# I/O bit map base
-#
-# System calls.
-#
+
+		/*
+		 * System calls.
+		 */
 		.set SYS_EXIT,0x0		# Exit
 		.set SYS_EXEC,0x1		# Exec
-#
-# V86 constants.
-#
+
+		/*
+		 * V86 constants.
+		 */
 		.set V86_FLG,0x208eff		# V86 flag mask
 		.set V86_STK,0x400		# V86 stack allowance
-#
-# Dump format control bytes.
-#
+
+		/*
+		 * Dump format control bytes.
+		 */
 		.set DMP_X16,0x1		# Word
 		.set DMP_X32,0x2		# Long
 		.set DMP_MEM,0x4		# Memory
 		.set DMP_EOL,0x8		# End of line
-#
-# Screen defaults and assumptions.
-#
+
+		/*
+		 * Screen defaults and assumptions.
+		 */
 		.set SCR_MAT,0x7		# Mode/attribute
 		.set SCR_COL,0x50		# Columns per row
 		.set SCR_ROW,0x19		# Rows per screen
-#
-# BIOS Data Area locations.
-#
-		.set BDA_MEM,0x413		# Free memory
-		.set BDA_KEYFLAGS,0x417		# Keyboard shift-state flags
-		.set BDA_SCR,0x449		# Video mode
-		.set BDA_POS,0x450		# Cursor position
-		.set BDA_BOOT,0x472		# Boot howto flag
-#
-# Derivations, for brevity.
-#
-		.set _ESP0H,MEM_ESP0>>0x8	# Byte 1 of ESP0
-		.set _ESP1H,MEM_ESP1>>0x8	# Byte 1 of ESP1
-		.set _TSSIO,MEM_MAP-MEM_TSS	# TSS I/O base
-		.set _TSSLM,MEM_DIR-MEM_TSS-1	# TSS limit
-		.set _IDTLM,MEM_TSS-MEM_IDT-1	# IDT limit
-#
-# Code segment.
-#
+
+		/*
+		 * Derivations, for brevity.
+		 */
+		.set _ESP0H,MEM_BTX_ESP0>>0x8	# Byte 1 of ESP0
+		.set _ESP1H,MEM_BTX_ESP1>>0x8	# Byte 1 of ESP1
+		.set _TSSIO,MEM_BTX_MAP-MEM_BTX_TSS	# TSS I/O base
+		.set _TSSLM,MEM_BTX_DIR-MEM_BTX_TSS-1	# TSS limit
+		.set _IDTLM,MEM_BTX_TSS-MEM_BTX_IDT-1	# IDT limit
+
+		/*
+		 * Code segment.
+		 */
 		.globl start
 		.code16
 start:						# Start of code
-#
-# BTX header.
-#
+
+		/*
+		 * BTX header.
+		 */
 btx_hdr:	.byte 0xeb			# Machine ID
 		.byte 0xe			# Header size
 		.ascii "BTX"			# Magic
 		.byte 0x1			# Major version
 		.byte 0x1			# Minor version
 		.byte BTX_FLAGS			# Flags
-		.word PAG_CNT-MEM_ORG>>0xc	# Paging control
+		.word PAG_CNT-MEM_BTX_ORG>>0xc	# Paging control
 		.word break-start		# Text size
 		.long 0x0			# Entry address
-#
-# Initialization routine.
-#
+
+		/*
+		 * Initialization routine.
+		 */
 init:		cli				# Disable interrupts
 		xor %ax,%ax			# Zero/segment
 		mov %ax,%ss			# Set up
-		mov $MEM_ESP0,%sp		#  stack
+		mov $MEM_BTX_ESP0,%sp		#  stack
 		mov %ax,%es			# Address
 		mov %ax,%ds			#  data
 		pushl $0x2			# Clear
 		popfl				#  flags
-#
-# Initialize memory.
-#
-		mov $MEM_IDT,%di		# Memory to initialize
-		mov $(MEM_ORG-MEM_IDT)/2,%cx	# Words to zero
+
+		/*
+		 * Initialize memory.
+		 */
+		mov $MEM_BTX_IDT,%di		# Memory to initialize
+		mov $(MEM_BTX_ORG-MEM_BTX_IDT)/2,%cx	# Words to zero
 		push %di			# Save
 		rep				# Zero-fill
 		stosw				#  memory
 		pop %di				# Restore
-#
-# Create IDT.
-#
+
+		/*
+		 * Create IDT.
+		 */
 		mov $idtctl,%si			# Control string
 init.1: 	lodsb				# Get entry
 		cbw				#  count
@@ -152,39 +144,41 @@ init.2: 	shr %bx				# Handle this int?
 init.3: 	lea 0x8(%di),%di		# Next entry
 		loop init.2			# Till set done
 		jmp init.1			# Continue
-#
-# Initialize TSS.
-#
+
+		/*
+		 * Initialize TSS.
+		 */
 init.4: 	movb $_ESP0H,TSS_ESP0+1(%di)	# Set ESP0
 		movb $SEL_SDATA,TSS_SS0(%di)	# Set SS0
 		movb $_ESP1H,TSS_ESP1+1(%di)	# Set ESP1
 		movb $_TSSIO,TSS_MAP(%di)	# Set I/O bit map base
-ifdef(`PAGING',`
-#
-# Create page directory.
-#
+#ifdef PAGING
+		/*
+		 * Create page directory.
+		 */
 		xor %edx,%edx			# Page
 		mov $PAG_SIZ>>0x8,%dh		#  size
 		xor %eax,%eax			# Zero
-		mov $MEM_DIR,%di		# Page directory
+		mov $MEM_BTX_DIR,%di		# Page directory
 		mov $PAG_CNT>>0xa,%cl		# Entries
-		mov $MEM_TBL|0x7,%ax	 	# First entry
+		mov $MEM_BTX_TBL|0x7,%ax 	# First entry
 init.5: 	stosl				# Write entry
 		add %dx,%ax			# To next
 		loop init.5			# Till done
-#
-# Create page tables.
-#
-		mov $MEM_TBL,%di		# Page table
+
+		/*
+		 * Create page tables.
+		 */
+		mov $MEM_BTX_TBL,%di		# Page table
 		mov $PAG_CNT>>0x8,%ch		# Entries
 		xor %ax,%ax			# Start address
 init.6: 	mov $0x7,%al			# Set U:W:P flags
 		cmp btx_hdr+0x8,%cx	 	# Standard user page?
 		jb init.7			# Yes
-		cmp $PAG_CNT-MEM_BTX>>0xc,%cx	# BTX memory?
+		cmp $PAG_CNT-MEM_BTX_START>>0xc,%cx	# BTX memory?
 		jae init.7			# No or first page
 		and $~0x2,%al			# Clear W flag
-		cmp $PAG_CNT-MEM_USR>>0xc,%cx	# User page zero?
+		cmp $PAG_CNT-MEM_BTX_USR>>0xc,%cx	# User page zero?
 		jne init.7			# No
 		testb $0x80,btx_hdr+0x7		# Unmap it?
 		jz init.7			# No
@@ -192,37 +186,38 @@ init.6: 	mov $0x7,%al			# Set U:W:P flags
 init.7: 	stosl				# Set entry
 		add %edx,%eax			# Next address
 		loop init.6			# Till done
-')
-#
-# Bring up the system.
-#
+#endif
+		/*
+		 * Bring up the system.
+		 */
 		mov $0x2820,%bx			# Set protected mode
 		callw setpic			#  IRQ offsets
 		lidt idtdesc	 		# Set IDT
-ifdef(`PAGING',`
+#ifdef PAGING
 		xor %eax,%eax			# Set base
-		mov $MEM_DIR>>0x8,%ah		#  of page
+		mov $MEM_BTX_DIR>>0x8,%ah		#  of page
 		mov %eax,%cr3			#  directory
-')
+#endif
 		lgdt gdtdesc	 		# Set GDT
 		mov %cr0,%eax			# Switch to protected
-ifdef(`PAGING',`
+#ifdef PAGING
 		or $0x80000001,%eax             #  mode and enable paging
-',`
+#else
 		or $0x01,%eax			#  mode
-')
+#endif
 		mov %eax,%cr0			#  
 		ljmp $SEL_SCODE,$init.8		# To 32-bit code
 		.code32
 init.8: 	xorl %ecx,%ecx			# Zero
 		movb $SEL_SDATA,%cl		# To 32-bit
 		movw %cx,%ss			#  stack
-#
-# Launch user task.
-#
+
+		/*
+		 * Launch user task.
+		 */
 		movb $SEL_TSS,%cl		# Set task
 		ltr %cx				#  register
-		movl $MEM_USR,%edx		# User base address
+		movl $MEM_BTX_USR,%edx		# User base address
 		movzwl %ss:BDA_MEM,%eax 	# Get free memory
 		shll $0xa,%eax			# To bytes
 		subl $0x1000,%eax		# Less arg space
@@ -241,35 +236,39 @@ init.8: 	xorl %ecx,%ecx			# Zero
 		movb $0x7,%cl			# Set remaining
 init.9:		push $0x0			#  general
 		loop init.9			#  registers
-ifdef(`BTX_SERIAL',`
+#ifdef BTX_SERIAL
 		call sio_init			# setup the serial console
-')
+#endif
 		popa				#  and initialize
 		popl %es			# Initialize
 		popl %ds			#  user
 		popl %fs			#  segment
 		popl %gs			#  registers
 		iret				# To user mode
-#
-# Exit routine.
-#
+
+		/*
+		 * Exit routine.
+		 */
 exit:		cli				# Disable interrupts
-		movl $MEM_ESP0,%esp		# Clear stack
-#
-# Turn off paging.
-#
+		movl $MEM_BTX_ESP0,%esp		# Clear stack
+
+		/*
+		 * Turn off paging.
+		 */
 		movl %cr0,%eax			# Get CR0
 		andl $~0x80000000,%eax		# Disable
 		movl %eax,%cr0			#  paging
 		xorl %ecx,%ecx			# Zero
 		movl %ecx,%cr3			# Flush TLB
-#
-# Restore the GDT in case we caught a kernel trap.
-#
+
+		/*
+		 * Restore the GDT in case we caught a kernel trap.
+		 */
 		lgdt gdtdesc	 		# Set GDT
-#
-# To 16 bits.
-#
+
+		/*
+		 * To 16 bits.
+		 */
 		ljmpw $SEL_RCODE,$exit.1	# Reload CS
 		.code16
 exit.1: 	mov $SEL_RDATA,%cl		# 16-bit selector
@@ -278,9 +277,10 @@ exit.1: 	mov $SEL_RDATA,%cl		# 16-bit selector
 		mov %cx,%es			#  remaining
 		mov %cx,%fs			#  segment
 		mov %cx,%gs			#  registers
-#
-# To real-address mode.
-#
+
+		/*
+		 * To real-address mode.
+		 */
 		dec %ax				# Switch to
 		mov %eax,%cr0			#  real mode
 		ljmp $0x0,$exit.2		# Reload CS
@@ -290,17 +290,19 @@ exit.2: 	xor %ax,%ax			# Real mode segment
 		mov $0x7008,%bx			# Set real mode
 		callw setpic			#  IRQ offsets
 		lidt ivtdesc	 		# Set IVT
-#
-# Reboot or await reset.
-#
+
+		/*
+		 * Reboot or await reset.
+		 */
 		sti				# Enable interrupts
 		testb $0x1,btx_hdr+0x7		# Reboot?
 exit.3:		jz exit.3			# No
 		movw $0x1234, BDA_BOOT		# Do a warm boot
 		ljmp $0xf000,$0xfff0		# reboot the machine
-#
-# Set IRQ offsets by reprogramming 8259A PICs.
-#
+
+		/*
+		 * Set IRQ offsets by reprogramming 8259A PICs.
+		 */
 setpic: 	in $0x21,%al			# Save master
 		push %ax			#  IMR
 		in $0xa1,%al			# Save slave
@@ -325,13 +327,15 @@ setpic: 	in $0x21,%al			# Save master
 		outb %al,$0x21			#  IMR
 		retw				# To caller
 		.code32
-#
-# Initiate return from V86 mode to user mode.
-#
+
+		/*
+		 * Initiate return from V86 mode to user mode.
+		 */
 inthlt: 	hlt				# To supervisor mode
-#
-# Exception jump table.
-#
+
+		/*
+		 * Exception jump table.
+		 */
 intx00: 	push $0x0			# Int 0x0: #DE
 		jmp ex_noc			# Divide error
 		push $0x1			# Int 0x1: #DB
@@ -360,20 +364,23 @@ intx00: 	push $0x0			# Int 0x0: #DE
 		jmp except			# Page fault
 intx10: 	push $0x10			# Int 0x10: #MF
 		jmp ex_noc			# Floating-point error
-#
-# Handle #GP exception.
-#
+
+		/*
+		 * Handle #GP exception.
+		 */
 ex_v86: 	testb $0x2,0x12(%esp,1) 	# V86 mode?
 		jz except			# No
 		jmp v86mon			# To monitor
-#
-# Save a zero error code.
-#
+
+		/*
+		 * Save a zero error code.
+		 */
 ex_noc: 	pushl (%esp,1)			# Duplicate int no
 		movb $0x0,0x4(%esp,1)		# Fake error code
-#
-# Handle exception.
-#
+
+		/*
+		 * Handle exception.
+		 */
 except: 	cld				# String ops inc
 		pushl %ds			# Save
 		pushl %es			#  most
@@ -401,7 +408,7 @@ except.2:	push $SEL_SDATA			# Set up
 		popl %es			#  data
 		movl %esp,%ebx			# Stack frame
 		movl $dmpfmt,%esi		# Dump format string
-		movl $MEM_BUF,%edi		# Buffer
+		movl $MEM_BTX_BUF,%edi		# Buffer
 		pushl %edi			# Dump to
 		call dump			#  buffer
 		popl %esi			#  and
@@ -419,19 +426,20 @@ except.2:	push $SEL_SDATA			# Set up
 except.2a:	jmp exit			# Exit
 except.3:	leal 0x8(%esp,1),%esp		# Discard err, int no
 		iret				# From interrupt
-#
-# Return to user mode from V86 mode.
-#
+
+		/*
+		 * Return to user mode from V86 mode.
+		 */
 intrtn: 	cld				# String ops inc
 		pushl %ds			# Address
 		popl %es			#  data
 		leal 0x3c(%ebp),%edx		# V86 Segment registers
-		movl MEM_TSS+TSS_ESP1,%esi	# Link stack pointer
+		movl MEM_BTX_TSS+TSS_ESP1,%esi	# Link stack pointer
 		lodsl				# INT_V86 args pointer
 		movl %esi,%ebx			# Saved exception frame
 		testl %eax,%eax 		# INT_V86 args?
 		jz intrtn.2			# No
-		movl $MEM_USR,%edi		# User base
+		movl $MEM_BTX_USR,%edi		# User base
 		movl 0x1c(%esi),%ebx		# User ESP
 		movl %eax,(%edi,%ebx,1) 	# Restore to user stack
 		leal 0x8(%edi,%eax,1),%edi	# Arg segment registers
@@ -453,7 +461,7 @@ intrtn.2:	movl %edx,%esi			# Segment registers
 		movb $0x5,%cl			#  frame to
 		rep				#  supervisor
 		movsl				#  stack
-		movl %esi,MEM_TSS+TSS_ESP1	# Link stack pointer
+		movl %esi,MEM_BTX_TSS+TSS_ESP1	# Link stack pointer
 		popa				# Restore
 		leal 0x8(%esp,1),%esp		# Discard err, int no
 		popl %es			# Restore
@@ -461,9 +469,10 @@ intrtn.2:	movl %edx,%esi			# Segment registers
 		popl %fs			#  segment
 		popl %gs			#  registers
 		iret				# To user mode
-#
-# V86 monitor.
-#
+
+		/*
+		 * V86 monitor.
+		 */
 v86mon: 	cld				# String ops inc
 		pushl $SEL_SDATA		# Set up for
 		popl %ds			#  flat addressing
@@ -527,93 +536,103 @@ v86mon.7:	subl %edi,%esi			# From linear
 		popa				# Restore
 		leal 0x8(%esp,1),%esp		# Discard int no, error
 		iret				# To V86 mode
-#
-# Emulate MOV EAX,CR0.
-#
+
+		/*
+		 * Emulate MOV EAX,CR0.
+		 */
 v86mov: 	movl %cr0,%eax			# CR0 to
 		movl %eax,0x1c(%ebp)		#  saved EAX
 		incl %esi			# Adjust IP
-#
-# Return from emulating a 0x0f prefixed instruction
-#
+
+		/*
+		 * Return from emulating a 0x0f prefixed instruction
+		 */
 v86preret:	incl %esi			# Adjust IP
 		jmp v86mon.7			# Finish up
-#
-# Emulate WBINVD
-#
+
+		/*
+		 * Emulate WBINVD
+		 */
 v86wbinvd:	wbinvd				# Write back and invalidate
 						#  cache
 		jmp v86preret			# Finish up
-#
-# Emulate WRMSR
-#
-v86wrmsr:	movl 0x18(%ebp),%ecx		# Get user's %ecx (MSR to write)
+		/*
+		 * Emulate WRMSR
+		 */
+v86wrmsr:	movl 0x18(%ebp),%ecx		# Get users %ecx (MSR to write)
 		movl 0x14(%ebp),%edx		# Load the value
 		movl 0x1c(%ebp),%eax		#  to write
 		wrmsr				# Write MSR
 		jmp v86preret			# Finish up
-#
-# Emulate RDMSR
-#
+
+		/*
+		 * Emulate RDMSR
+		 */
 v86rdmsr:	movl 0x18(%ebp),%ecx		# MSR to read
 		rdmsr				# Read the MSR
 		movl %eax,0x1c(%ebp)		# Return the value of
 		movl %edx,0x14(%ebp)		#  the MSR to the user
 		jmp v86preret			# Finish up
-#
-# Emulate CLI.
-#
+
+		/*
+		 * Emulate CLI.
+		 */
 v86cli: 	andb $~0x2,0x31(%ebp)		# Clear IF
 		jmp v86mon.7			# Finish up
-#
-# Emulate STI.
-#
+
+		/*
+		 * Emulate STI.
+		 */
 v86sti: 	orb $0x2,0x31(%ebp)		# Set IF
 		jmp v86mon.7			# Finish up
-#
-# Emulate PUSHF/PUSHFD.
-#
+
+		/*
+		 * Emulate PUSHF/PUSHFD.
+		 */
 v86pushf:	subl %ecx,%ebx			# Adjust SP
 		cmpb $0x4,%cl			# 32-bit
 		je v86pushf.1			# Yes
-		data16				# 16-bit
+		data16				# 16-bit (STDALONE ON PURPOSE)
 v86pushf.1:	movl %edx,(%ebx)		# Save flags
 		jmp v86mon.6			# Finish up
-#
-# Emulate IRET/IRETD.
-#
+
+		/*
+		 * Emulate IRET/IRETD.
+		 */
 v86iret:	movzwl (%ebx),%esi		# Load V86 IP
 		movzwl 0x2(%ebx),%edi		# Load V86 CS
 		leal 0x4(%ebx),%ebx		# Adjust SP
 		movl %edi,0x2c(%ebp)		# Save V86 CS
 		xorl %edi,%edi			# No ESI adjustment
-#
-# Emulate POPF/POPFD (and remainder of IRET/IRETD).
-#
+
+		/*
+		 * Emulate POPF/POPFD (and remainder of IRET/IRETD).
+		 */
 v86popf:	cmpb $0x4,%cl			# 32-bit?
 		je v86popf.1			# Yes
 		movl %edx,%eax			# Initialize
-		data16				# 16-bit
+		data16				# 16-bit (STDALONE ON PURPOSE)
 v86popf.1:	movl (%ebx),%eax		# Load flags
 		addl %ecx,%ebx			# Adjust SP
 		andl $V86_FLG,%eax		# Merge
 		andl $~V86_FLG,%edx		#  the
 		orl %eax,%edx			#  flags
 		jmp v86mon.5			# Finish up
-#
-# trap int 15, function 87
-# reads %es:%si from saved registers on stack to find a GDT containing
-# source and destination locations
-# reads count of words from saved %cx
-# returns success by setting %ah to 0
-#
+
+		/*
+		 * trap int 15, function 87
+		 * reads %es:%si from saved registers on stack to find a 
+		 * GDT containing source and destination locations reads
+		 * count of words from saved %cx returns success by
+		 * setting %ah to 0
+		 */
 int15_87:	pushl %eax			# Save 
 		pushl %ebx			#  some information 
 		pushl %esi			#  onto the stack.
 		pushl %edi
 		xorl %eax,%eax			# clean EAX 
 		xorl %ebx,%ebx			# clean EBX 
-		movl 0x4(%ebp),%esi		# Get user's ESI
+		movl 0x4(%ebp),%esi		# Get users ESI
 		movl 0x3C(%ebp),%ebx		# store ES
 		movw %si,%ax			# store SI
 		shll $0x4,%ebx			# Make it a seg.
@@ -632,7 +651,7 @@ int15_87:	pushl %eax			# Save
 		popl %es			# es = ds
 		pushl %ecx			# stash ECX
 		xorl %ecx,%ecx			# highw of ECX is clear
-		movw 0x18(%ebp),%cx		# Get user's ECX
+		movw 0x18(%ebp),%cx		# Get users ECX
 		shll $0x1,%ecx			# Convert from num words to num
 						#  bytes
 		rep				# repeat...
@@ -647,26 +666,27 @@ int15_87:	pushl %eax			# Save
 		andb $0xfe,%dl			# clear CF
 		jmp v86mon.5			# Finish up
 
-#
-# Reboot the machine by setting the reboot flag and exiting
-#
+		/*
+		 * Reboot the machine by setting the reboot flag and exiting
+		 */
 reboot:		orb $0x1,btx_hdr+0x7		# Set the reboot flag
 		jmp exit			# Terminate BTX and reboot
 
-#
-# Emulate INT imm8... also make sure to check if it's int 15/87
-#
+		/*
+		 * Emulate INT imm8... also make sure to check if it's
+		 * int 15/87
+		 */
 v86intn:	lodsb				# Get int no
 		cmpb $0x19,%al			# is it int 19?
 		je reboot			#  yes, reboot the machine
 		cmpb $0x15,%al			# is it int 15?
 		jne v86intn.3			#  no, skip parse
 		pushl %eax                      # stash EAX
-		movl 0x1c(%ebp),%eax		# user's saved EAX
+		movl 0x1c(%ebp),%eax		# users saved EAX
 		cmpb $0x87,%ah			# is it the memcpy subfunction?
 		jne v86intn.1			#  no, keep checking
 		popl %eax			# get the stack straight
-		jmp int15_87			# it's our cue
+		jmp int15_87			# its our cue
 v86intn.1:	cmpw $0x4f53,%ax		# is it the delete key callout?
 		jne v86intn.2			#  no, handle the int normally
 		movb BDA_KEYFLAGS,%al		# get the shift key state
@@ -689,9 +709,10 @@ v86intn.3:	subl %edi,%esi			# From
 		xorl %edi,%edi			# No ESI adjustment
 		andb $~0x1,%dh			# Clear TF
 		jmp v86mon.5			# Finish up
-#
-# Hardware interrupt jump table.
-#
+
+		/*
+		 * Hardware interrupt jump table.
+		 */
 intx20: 	push $0x8			# Int 0x20: IRQ0
 		jmp int_hw			# V86 int 0x8
 		push $0x9			# Int 0x21: IRQ1
@@ -724,9 +745,10 @@ intx20: 	push $0x8			# Int 0x20: IRQ0
 		jmp int_hw			# V86 int 0x76
 		push $0x77			# Int 0x2f: IRQ15
 		jmp int_hw			# V86 int 0x77
-#
-# Reflect hardware interrupts.
-#
+
+		/*
+		 * Reflect hardware interrupts.
+		 */
 int_hw: 	testb $0x2,0xe(%esp,1)		# V86 mode?
 		jz intusr			# No
 		pushl $SEL_SDATA		# Address
@@ -753,14 +775,16 @@ int_hw: 	testb $0x2,0xe(%esp,1)		# V86 mode?
 		popl %ebp			#  saved
 		popl %eax			#  registers
 		iret				# To V86 mode
-#
-# Invoke V86 interrupt from user mode, with arguments.
-#
+
+		/*
+		 * Invoke V86 interrupt from user mode, with arguments.
+		 */
 intx31: 	stc				# Have btx_v86
 		pushl %eax			# Missing int no
-#
-# Invoke V86 interrupt from user mode.
-#
+
+		/*
+		 * Invoke V86 interrupt from user mode.
+		 */
 intusr: 	std				# String ops dec
 		pushl %eax			# Expand
 		pushl %eax			#  stack
@@ -775,7 +799,7 @@ intusr: 	std				# String ops dec
 		popl %ds			#  to
 		pushl %ds			#  address
 		popl %es			#  data
-		movl $MEM_USR,%ebx		# User base
+		movl $MEM_BTX_USR,%ebx		# User base
 		movl %ebx,%edx			#  address
 		jc intusr.1			# If btx_v86
 		xorl %edx,%edx			# Control flags
@@ -783,7 +807,7 @@ intusr: 	std				# String ops dec
 intusr.1:	leal 0x50(%esp,1),%esi		# Base of frame
 		pushl %esi			# Save
 		addl -0x4(%esi),%ebx		# User ESP
-		movl MEM_TSS+TSS_ESP1,%edi	# Link stack pointer
+		movl MEM_BTX_TSS+TSS_ESP1,%edi	# Link stack pointer
 		leal -0x4(%edi),%edi		# Adjust for push
 		xorl %ecx,%ecx			# Zero
 		movb $0x5,%cl			# Push exception
@@ -803,7 +827,7 @@ intusr.1:	leal 0x50(%esp,1),%esi		# Base of frame
 		movl 0x4(%edx),%eax		# Get int no/address
 		movzwl 0x2(%edx),%edx		# Get control flags
 intusr.2:	movl %ebp,(%edi)		# Push btx_v86 and
-		movl %edi,MEM_TSS+TSS_ESP1	#  save link stack ptr
+		movl %edi,MEM_BTX_TSS+TSS_ESP1	#  save link stack ptr
 		popl %edi			# Base of frame
 		xchgl %eax,%ebp 		# Save intno/address
 		movl 0x48(%esp,1),%eax		# Get flags
@@ -845,9 +869,10 @@ intusr.5:	movl %eax,%ecx			# Save
 		leal 0x10(%esp,1),%esp		# Discard seg regs
 		popa				# Restore
 		iret				# To V86 mode
-#
-# System Call.
-#
+
+		/*
+		 * System Call.
+		 */
 intx30: 	cmpl $SYS_EXEC,%eax		# Exec system call?
 		jne intx30.1			# No
 		pushl %ss			# Set up
@@ -856,25 +881,26 @@ intx30: 	cmpl $SYS_EXEC,%eax		# Exec system call?
 		popl %ds			#  registers
 		pushl %ds			#  for the
 		popl %fs			#  program
-		pushl %fs			#  we're
+		pushl %fs			#  were
 		popl %gs			#  invoking
-		movl $MEM_USR,%eax		# User base address
+		movl $MEM_BTX_USR,%eax		# User base address
 		addl 0xc(%esp,1),%eax		# Change to user
 		leal 0x4(%eax),%esp		#  stack
-ifdef(`PAGING',`
+#ifdef PAGING
 		movl %cr0,%eax			# Turn
 		andl $~0x80000000,%eax		#  off
 		movl %eax,%cr0			#  paging
 		xorl %eax,%eax			# Flush
 		movl %eax,%cr3			#  TLB
-')
+#endif
 		popl %eax			# Call
 		call *%eax			#  program
 intx30.1:	orb $0x1,%ss:btx_hdr+0x7	# Flag reboot
 		jmp exit			# Exit
-#
-# Dump structure [EBX] to [EDI], using format string [ESI].
-#
+
+		/*
+		 * Dump structure [EBX] to [EDI], using format string [ESI].
+		 */
 dump.0: 	stosb				# Save char
 dump:		lodsb				# Load char
 		testb %al,%al			# End of string?
@@ -883,7 +909,7 @@ dump:		lodsb				# Load char
 		jz dump.0			# No
 		movb %al,%ch			# Save control
 		movb $'=',%al			# Append
-		stosb				#  '='
+		stosb				#  "="
 		lodsb				# Get offset
 		pushl %esi			# Save
 		movsbl %al,%esi 		# To
@@ -943,9 +969,10 @@ dump.8: 	popl %esi			# Restore
 dump.9: 	jmp dump.0			# Continue
 dump.10:	stosb				# Terminate string
 		ret				# To caller
-#
-# Convert EAX, AX, or AL to hex, saving the result to [EDI].
-#
+
+		/*
+		 * Convert EAX, AX, or AL to hex, saving the result to [EDI].
+		 */
 hex32:		pushl %eax			# Save
 		shrl $0x10,%eax 		# Do upper
 		call hex16			#  16
@@ -963,21 +990,23 @@ hex8.1: 	andb $0xf,%al			# Get lower 4
 		orb $0x20,%al			# To lower case
 		stosb				# Save char
 		ret				# (Recursive)
-#
-# Output zero-terminated string [ESI] to the console.
-#
+
+		/*
+		 * Output zero-terminated string [ESI] to the console.
+		 */
 putstr.0:	call putchr			# Output char
 putstr: 	lodsb				# Load char
 		testb %al,%al			# End of string?
 		jnz putstr.0			# No
 		ret				# To caller
-ifdef(`BTX_SERIAL',`
+#ifdef BTX_SERIAL
 		.set SIO_PRT,SIOPRT		# Base port
 		.set SIO_FMT,SIOFMT		# 8N1
 		.set SIO_DIV,(115200/SIOSPD)	# 115200 / SPD
 
-# void sio_init(void)
-
+		/* 
+		 * void sio_init(void) 
+		 */
 sio_init:	movw $SIO_PRT+0x3,%dx		# Data format reg
 		movb $SIO_FMT|0x80,%al		# Set format
 		outb %al,(%dx)			#  and DLAB
@@ -993,15 +1022,17 @@ sio_init:	movw $SIO_PRT+0x3,%dx		# Data format reg
 		outb %al,(%dx)			#  DTR
 		incl %edx			# Line status reg
 
-# void sio_flush(void)
-
+		/*
+		 * void sio_flush(void)
+		 */
 sio_flush.0:	call sio_getc.1 		# Get character
 sio_flush:	call sio_ischar 		# Check for character
 		jnz sio_flush.0 		# Till none
 		ret				# To caller
 
-# void sio_putc(int c)
-
+		/*
+		 * void sio_putc(int c)
+		 */
 sio_putc:	movw $SIO_PRT+0x5,%dx		# Line status reg
 		xor %ecx,%ecx			# Timeout
 		movb $0x40,%ch			#  counter
@@ -1014,25 +1045,27 @@ sio_putc.1:	inb (%dx),%al			# Transmitter
 		outb %al,(%dx)			# Write character
 sio_putc.2:	ret $0x4			# To caller
 
-# int sio_getc(void)
-
+		/*
+		 * int sio_getc(void)
+		 */
 sio_getc:	call sio_ischar 		# Character available?
 		jz sio_getc			# No
 sio_getc.1:	subb $0x5,%dl			# Receiver buffer reg
 		inb (%dx),%al			# Read character
 		ret				# To caller
 
-# int sio_ischar(void)
-
+		/*
+		 * int sio_ischar(void)
+		 */
 sio_ischar:	movw $SIO_PRT+0x5,%dx		# Line status register
 		xorl %eax,%eax			# Zero
 		inb (%dx),%al			# Received data
 		andb $0x1,%al			#  ready?
 		ret				# To caller
 
-#
-# Output character AL to the serial console.
-#
+		/*
+		 * Output character AL to the serial console.
+		 */
 putchr: 	pusha				# Save
 		cmpb $10, %al			# is it a newline?
 		jne putchr.1			#  no?, then leave
@@ -1044,10 +1077,10 @@ putchr.1:	pushl %eax			# Push the character
 		call sio_putc			# Output the character
 		popa				# Restore
 		ret				# To caller
-',`
-#
-# Output character AL to the console.
-#
+#else
+		/*
+		 * Output character AL to the console.
+		 */
 putchr: 	pusha				# Save
 		xorl %ecx,%ecx			# Zero for loops
 		movb $SCR_MAT,%ah		# Mode/attribute
@@ -1086,30 +1119,31 @@ putchr.3:	cmpb $SCR_ROW,%dh		# Beyond screen?
 putchr.4:	movw %dx,(%ebx) 		# Update position
 		popa				# Restore
 		ret				# To caller
-')
+#endif
 
+		/*
+		 * Global descriptor table.
+		 */
 		.p2align 4
-#
-# Global descriptor table.
-#
 gdt:		.word 0x0,0x0,0x0,0x0		# Null entry
 		.word 0xffff,0x0,0x9a00,0xcf	# SEL_SCODE
 		.word 0xffff,0x0,0x9200,0xcf	# SEL_SDATA
 		.word 0xffff,0x0,0x9a00,0x0	# SEL_RCODE
 		.word 0xffff,0x0,0x9200,0x0	# SEL_RDATA
-		.word 0xffff,MEM_USR,0xfa00,0xcf# SEL_UCODE
-		.word 0xffff,MEM_USR,0xf200,0xcf# SEL_UDATA
-		.word _TSSLM,MEM_TSS,0x8900,0x0 # SEL_TSS
+		.word 0xffff,MEM_BTX_USR,0xfa00,0xcf# SEL_UCODE
+		.word 0xffff,MEM_BTX_USR,0xf200,0xcf# SEL_UDATA
+		.word _TSSLM,MEM_BTX_TSS,0x8900,0x0 # SEL_TSS
 gdt.1:
-#
-# Pseudo-descriptors.
-#
+		/*
+		 * Pseudo-descriptors.
+		 */
 gdtdesc:	.word gdt.1-gdt-1,gdt,0x0	# GDT
-idtdesc:	.word _IDTLM,MEM_IDT,0x0	# IDT
+idtdesc:	.word _IDTLM,MEM_BTX_IDT,0x0	# IDT
 ivtdesc:	.word 0x400-0x0-1,0x0,0x0	# IVT
-#
-# IDT construction control string.
-#
+
+		/*
+		 * IDT construction control string.
+		 */
 idtctl: 	.byte 0x10,  0x8e		# Int 0x0-0xf
 		.word 0x7dfb,intx00		#  (exceptions)
 		.byte 0x10,  0x8e		# Int 0x10
@@ -1121,9 +1155,10 @@ idtctl: 	.byte 0x10,  0x8e		# Int 0x0-0xf
 		.byte 0x2,   0xee		# Int 0x31-0x32
 		.word 0x1,   intx31		#  (V86, null)
 		.byte 0x0			# End of string
-#
-# Dump format string.
-#
+
+		/*
+		 * Dump format string.
+		 */
 dmpfmt: 	.byte '\n'			# "\n"
 		.ascii "int"			# "int="
 		.byte 0x80|DMP_X32,	   0x40 # "00000000  "
@@ -1167,8 +1202,9 @@ dmpfmt: 	.byte '\n'			# "\n"
 		.ascii "ss:esp" 		# "ss:esp="
 		.byte 0x80|DMP_MEM|DMP_EOL,0x0	# "00 00 ... 00 00\n"
 		.asciz "BTX halted\n"		# End
-#
-# End of BTX memory.
-#
+
+		/*
+		 * End of BTX memory.
+		 */
 		.p2align 4
 break:
