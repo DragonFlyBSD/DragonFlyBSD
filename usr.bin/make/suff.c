@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.42 2005/03/12 11:07:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.43 2005/03/12 11:25:16 okumoto Exp $
  */
 
 /*-
@@ -125,7 +125,7 @@ static int sNum = 0;
 /*
  * Structure describing an individual suffix.
  */
-typedef struct _Suff {
+typedef struct Suff {
 	char	*name;		/* The suffix itself */
 	int	nameLen;	/* Length of the suffix */
 	short	flags;		/* Type of suffix */
@@ -143,11 +143,11 @@ typedef struct _Suff {
 /*
  * Structure used in the search for implied sources.
  */
-typedef struct _Src {
+typedef struct Src {
 	char	*file;		/* The file to look for */
 	char	*pref;		/* Prefix from which file was formed */
 	Suff	*suff;		/* The suffix on the file */
-	struct _Src *parent;	/* The Src for which this is a source */
+	struct Src *parent;	/* The Src for which this is a source */
 	GNode	*node;		/* The node describing the file */
 	int	children;	/* Count of existing children (so we don't free
 				 * this thing too early or never nuke it) */

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/GNode.h,v 1.2 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/GNode.h,v 1.3 2005/03/12 11:25:16 okumoto Exp $
  */
 
 #ifndef GNode_h_39503bf2
@@ -44,7 +44,7 @@
 #include "sprite.h"
 #include "lst.h"
 
-struct _Suff;
+struct Suff;
 
 /*
  * The structure for an individual graph node. Each node has several
@@ -156,7 +156,7 @@ typedef struct GNode {
 	 * Suffix for the node (determined by Suff_FindDeps and opaque to
 	 * everyone but the Suff module)
 	 */
-	struct _Suff	*suffix;
+	struct Suff	*suffix;
 } GNode;
 
 #endif /* GNode_h_39503bf2 */
