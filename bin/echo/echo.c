@@ -33,29 +33,27 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)echo.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/echo/echo.c,v 1.8.2.1 2001/08/01 02:33:32 obrien Exp $
- * $DragonFly: src/bin/echo/echo.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/echo/echo.c,v 1.7 2005/01/28 16:53:38 liamfoy Exp $
  */
+#include <sys/types.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /* ARGSUSED */
 int
 main(int argc __unused, char **argv)
 {
-	int nflag;
+	int nflag = 0;
 
 	/* This utility may NOT do getopt(3) option parsing. */
 	if (*++argv && !strcmp(*argv, "-n")) {
 		++argv;
 		nflag = 1;
 	}
-	else
-		nflag = 0;
 
 	while (argv[0]) {
-		int len = strlen(argv[0]);
+		size_t len = strlen(argv[0]);
 
 		if (len >= 2 && !argv[1] && argv[0][len - 2] == '\\' && argv[0][len - 1] == 'c') {
 			argv[0][len - 2] = '\0';
