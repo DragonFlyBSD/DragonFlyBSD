@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.3 2004/04/22 04:35:45 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -274,9 +274,7 @@ ipflow_slowtimo(
 }
 
 void
-ipflow_create(
-	const struct route *ro,
-	struct mbuf *m)
+ipflow_create(const struct route *ro, struct mbuf *m)
 {
 	const struct ip *const ip = mtod(m, struct ip *);
 	struct ipflow *ipf;
@@ -298,8 +296,8 @@ ipflow_create(
 		if (ipflow_inuse == IPFLOW_MAX) {
 			ipf = ipflow_reap();
 		} else {
-			ipf = (struct ipflow *) malloc(sizeof(*ipf), M_IPFLOW,
-						       M_NOWAIT);
+			ipf = malloc(sizeof(*ipf), M_IPFLOW, 
+					M_INTWAIT | M_NULLOK);
 			if (ipf == NULL)
 				return;
 			ipflow_inuse++;

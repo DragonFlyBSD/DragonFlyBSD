@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.9 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.10 2004/04/22 04:35:45 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -853,13 +853,7 @@ in_addmulti(ap, ifp)
 
 	/* XXX - if_addmulti uses M_WAITOK.  Can this really be called
 	   at interrupt time?  If so, need to fix if_addmulti. XXX */
-	inm = (struct in_multi *)malloc(sizeof(*inm), M_IPMADDR, M_NOWAIT);
-	if (inm == NULL) {
-		splx(s);
-		return (NULL);
-	}
-
-	bzero(inm, sizeof *inm);
+	inm = malloc(sizeof(*inm), M_IPMADDR, M_WAITOK | M_ZERO);
 	inm->inm_addr = *ap;
 	inm->inm_ifp = ifp;
 	inm->inm_ifma = ifma;

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.11 2004/03/04 01:02:05 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.12 2004/04/22 04:35:45 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -599,7 +599,7 @@ syncache_socket(sc, lso)
 		inp->inp_flags |= oinp->inp_flags & INP_CONTROLOPTS;
 		if (oinp->in6p_outputopts)
 			inp->in6p_outputopts =
-			    ip6_copypktopts(oinp->in6p_outputopts, M_NOWAIT);
+			    ip6_copypktopts(oinp->in6p_outputopts, M_INTWAIT);
 		inp->in6p_route = sc->sc_route6;
 		sc->sc_route6.ro_rt = NULL;
 

@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.18 2004/04/18 20:05:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.19 2004/04/22 04:35:45 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -976,7 +976,7 @@ in_pcbinsporthash(struct inpcb *inp)
 	/* If none exists, malloc one and tack it on. */
 	if (phd == NULL) {
 		MALLOC(phd, struct inpcbport *, sizeof(struct inpcbport),
-		    M_PCB, M_NOWAIT);
+		    M_PCB, M_INTWAIT | M_NULLOK);
 		if (phd == NULL)
 			return (ENOBUFS); /* XXX */
 		phd->phd_port = inp->inp_lport;
