@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.21 2004/04/22 04:26:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.22 2004/04/24 01:40:34 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -1008,6 +1008,8 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 		ip->ip_off = htons(ip->ip_off);
 		ip->ip_len = htons(ip->ip_len);
 		port = ip_mport(m);
+		if (port == NULL)
+			goto bad;
 		ip->ip_len = ntohs(ip->ip_len);
 		ip->ip_off = ntohs(ip->ip_off);
 
