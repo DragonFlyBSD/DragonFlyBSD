@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/test/caps/server.c,v 1.4 2004/03/06 22:15:00 dillon Exp $
+ * $DragonFly: src/test/caps/server.c,v 1.5 2004/08/24 13:45:54 drhodus Exp $
  */
 #include <sys/types.h>
 #include <sys/time.h>
@@ -22,6 +22,10 @@ main(int ac, char **av)
     count = 0;
 
     cid = caps_sys_service("test", getuid(), getgid(), 0, CAPF_ANYCLIENT);
+    if (cid == -1) {
+	perror("caps_sys_service");
+	exit(1);
+    }
     printf("cid = %d\n", cid);
     if (cid < 0)
 	return(0);
