@@ -32,7 +32,7 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_dma.h,v 1.3.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/Attic/isa_dma.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/Attic/isa_dma.h,v 1.3 2003/08/27 11:42:34 rob Exp $
  */
 
 #ifndef _I386_ISA_ISA_DMA_H_
@@ -44,14 +44,14 @@
 #define ISADMA_WRITE	0
 #define ISADMA_RAW	0x00080000
 
-void	isa_dmacascade __P((int chan));
-void	isa_dmadone __P((int flags, caddr_t addr, int nbytes, int chan));
-void	isa_dmainit __P((int chan, u_int bouncebufsize));
-void	isa_dmastart __P((int flags, caddr_t addr, u_int nbytes, int chan));
-int	isa_dma_acquire __P((int chan));
-void	isa_dma_release __P((int chan));
-int	isa_dmastatus __P((int chan));
-int	isa_dmastop __P((int chan));
+void	isa_dmacascade (int chan);
+void	isa_dmadone (int flags, caddr_t addr, int nbytes, int chan);
+void	isa_dmainit (int chan, u_int bouncebufsize);
+void	isa_dmastart (int flags, caddr_t addr, u_int nbytes, int chan);
+int	isa_dma_acquire (int chan);
+void	isa_dma_release (int chan);
+int	isa_dmastatus (int chan);
+int	isa_dmastop (int chan);
 #endif
 
 #endif /* !_I386_ISA_ISA_DMA_H_ */

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/alpha/boot1/boot1.c,v 1.7.2.1 2000/10/28 01:03:33 gallatin Exp $
- * $DragonFly: src/sys/boot/alpha/boot1/Attic/boot1.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/alpha/boot1/Attic/boot1.c,v 1.3 2003/08/27 11:42:33 rob Exp $
  * From	$NetBSD: bootxx.c,v 1.4 1997/09/06 14:08:29 drochner Exp $ 
  */
 
@@ -231,7 +231,7 @@ main()
     char *name = "/boot/loader";
     char *p;
     char filename[512];
-    void (*entry) __P((void));
+    void (*entry) (void);
     u_long start, freq;
     int	i;
 

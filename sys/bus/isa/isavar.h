@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.4 2003/08/27 11:42:34 rob Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -152,14 +152,14 @@ extern void	 isa_wrap_old_drivers(void);
 #endif
 extern void	isa_probe_children(device_t dev);
 
-extern void	isa_dmacascade __P((int chan));
-extern void	isa_dmadone __P((int flags, caddr_t addr, int nbytes, int chan));
-extern void	isa_dmainit __P((int chan, u_int bouncebufsize));
-extern void	isa_dmastart __P((int flags, caddr_t addr, u_int nbytes, int chan));
-extern int	isa_dma_acquire __P((int chan));
-extern void	isa_dma_release __P((int chan));
-extern int	isa_dmastatus __P((int chan));
-extern int	isa_dmastop __P((int chan));
+extern void	isa_dmacascade (int chan);
+extern void	isa_dmadone (int flags, caddr_t addr, int nbytes, int chan);
+extern void	isa_dmainit (int chan, u_int bouncebufsize);
+extern void	isa_dmastart (int flags, caddr_t addr, u_int nbytes, int chan);
+extern int	isa_dma_acquire (int chan);
+extern void	isa_dma_release (int chan);
+extern int	isa_dmastatus (int chan);
+extern int	isa_dmastop (int chan);
 
 #ifdef PC98
 #include <machine/bus.h>

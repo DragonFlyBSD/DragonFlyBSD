@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcivar.h,v 1.1.2.6 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcivar.h,v 1.3 2003/08/27 11:42:34 rob Exp $
  *
  */
 
@@ -83,9 +83,9 @@ typedef struct fwohci_softc {
 #endif
 } fwohci_softc_t;
 
-void fwohci_intr __P((void *arg));
-int fwohci_init __P((struct fwohci_softc *, device_t));
-void fwohci_reset __P((struct fwohci_softc *, device_t));
-int fwohci_detach __P((struct fwohci_softc *, device_t));
-int fwohci_resume __P((struct fwohci_softc *, device_t));
-int fwohci_stop __P((struct fwohci_softc *, device_t dev));
+void fwohci_intr (void *arg);
+int fwohci_init (struct fwohci_softc *, device_t);
+void fwohci_reset (struct fwohci_softc *, device_t);
+int fwohci_detach (struct fwohci_softc *, device_t);
+int fwohci_resume (struct fwohci_softc *, device_t);
+int fwohci_stop (struct fwohci_softc *, device_t dev);

@@ -32,7 +32,7 @@
  *
  *      from: @(#)cdefs.h       8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/cdefs.h,v 1.5 1999/08/28 00:43:21 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/cdefs.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/cdefs.h,v 1.3 2003/08/27 11:42:34 rob Exp $
  */
 
 #ifndef _CDEFS_H_
@@ -54,18 +54,10 @@
  * strings produced by the __STRING macro, but this only works with ANSI C.
  */
 #if defined(__STDC__) || defined(__cplusplus)
-#if defined(__P)
-#undef __P
-#endif  /* defined(__P) */
-#define __P(protos)     protos          /* full-blown ANSI C */
 #define __CONCAT(x,y)   x ## y
 #define __STRING(x)     #x
 
 #else   /* !(__STDC__ || __cplusplus) */
-#if defined(__P)
-#undef __P
-#endif  /* defined(__P) */
-#define __P(protos)     ()              /* traditional C preprocessor */
 #define __CONCAT(x,y)   x/**/y
 #define __STRING(x)     "x"
 
