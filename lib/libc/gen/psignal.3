@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)psignal.3	8.2 (Berkeley) 2/27/95
 .\" $FreeBSD: src/lib/libc/gen/psignal.3,v 1.10.2.5 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/psignal.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/psignal.3,v 1.3 2003/10/14 23:13:05 dillon Exp $
 .\"
 .Dd February 27, 1995
 .Dt PSIGNAL 3
@@ -41,6 +41,7 @@
 .Nm strsignal ,
 .Nm sys_siglist ,
 .Nm sys_signame
+.Nm sys_nsig
 .Nd system signal messages
 .Sh LIBRARY
 .Lb libc
@@ -50,6 +51,7 @@
 .Fn psignal "unsigned sig" "const char *s"
 .Vt extern const char * const sys_siglist[] ;
 .Vt extern const char * const sys_signame[] ;
+.Vt extern const int sys_nsig ;
 .In string.h
 .Ft "char *"
 .Fn strsignal "int sig"
@@ -97,12 +99,23 @@ is used similarly and
 contains short, lower-case abbreviations for signals
 which are useful for recognizing signal names
 in user input.
-The defined variable
-.Dv NSIG
+The external variable
+.Va sys_nsig
 contains a count of the strings in
 .Va sys_siglist
 and
 .Va sys_signame .
+Note that the defined variable
+.Dv NSIG
+will typically be the same as
+.Va sys_nsig ,
+but might be different due to newer or older kernels and newer or 
+older libc libraries.  For maximum portability you must use
+.Va sys_nsig
+to limit-check the above arrays.  Additionally, you should check
+for
+.Dv NULL
+array entries and generate a generic signal name in those cases.
 .Sh SEE ALSO
 .Xr sigaction 2 ,
 .Xr perror 3 ,
