@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.59 2005/02/04 23:32:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.60 2005/02/06 23:17:16 okumoto Exp $
  */
 
 /*-
@@ -144,9 +144,7 @@ static Var *VarCreate(const char [], const char [], int);
 static void VarDestroy(Var *, Boolean);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
 			   VarPattern *);
-static char *VarModify(char *,
-		       Boolean (*)(const char *, Boolean, Buffer *, void *),
-		       void *);
+static char *VarModify(char *, VarModifyProc *, void *);
 static int VarPrintVar(void *, void *);
 
 /*-
@@ -608,8 +606,7 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  *-----------------------------------------------------------------------
  */
 static char *
-VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *),
-    void *datum)
+VarModify(char *str, VarModifyProc *modProc, void *datum)
 {
     Buffer  	  *buf;	    	    /* Buffer for the new string */
     Boolean 	  addSpace; 	    /* TRUE if need to add a space to the
