@@ -23,27 +23,40 @@
     Manual installation of DragonFly onto an HD involve the following sequence
     of commands.  You must be familiar with BSD style UNIX systems to do
     installations manually.  The primary IDE hard drive is typically 'ad0'
-    and DragonFly is typically installed onto the first slice (ad0s1).
-    SCSI disks are named 'da[0-9]'.
+    and DragonFly is typically installed onto the first free slice
+    (ad0s1 if disk is empty, ad0s2 if your first slice contains
+    another OS, etc).  Be careful to substitute the correct partition name
+    in the steps below.
 
-
-	# This COMPLETELY WIPES and repartitions your hard drive.  Sometimes
-	# old boot blocks can interfere with the initialization process, which
-	# is why we zero-out the start of the disk before running fdisk.
+	# OPTIONAL STEP: If your disk is already partitioned and you
+	# have a spare primary partition on which you want to install
+	# Dragonfly, skip this step.  However, sometimes old boot
+	# blocks or cruft in the boot area can interfere with the
+	# initialization process.  A cure is to zero out the start of
+	# the disk before running fdisk.
+	#
+	# WARNING: This COMPLETELY WIPES and repartitions your hard drive.
 	#
 	dd if=/dev/zero of=/dev/ad0 bs=32k count=16
 	fdisk -IB ad0
 
+	# If you didn't zero the disk as above, but have a spare slice
+	# whose partition type you want to change to UFS, use fdisk(8)
+
+
 	# This installs boot blocks onto the HD and verifies their 
 	# installation.  See note just above the 'reboot' below for
-	# things to try if it does not boot from your HD.
+	# things to try if it does not boot from your HD.  If you
+	# already have a multi-OS bootloader installed you can skip
+	# this step.
 	#
 	boot0cfg -B ad0
 	boot0cfg -v ad0
 
-	# This creates an initial label on the first slice of the HD.  If
+	# This creates an initial label on the chosen slice of the HD.  If
 	# you have problems booting you could try wiping the first 32 blocks
-	# of the slice with dd and then reinstalling the label
+	# of the slice with dd and then reinstalling the label.  Replace
+	# 'ad0s1' with the chosen slice.
 	#
 	# dd if=/dev/zero of=/dev/ad0s1 bs=32k count=16
 	disklabel -B -r -w ad0s1 auto
@@ -64,7 +77,9 @@
 	disklabel -e ad0s1
 
 	# Newfs (format) the various filesystems.  Softupdates is not 
-	# normally enabled on the root filesystem.
+	# normally enabled on the root filesystem because large kernel or
+	# world installs/upgrades can run it out of space due to softupdate's
+	# delayed bitmap freeing code.
 	#
 	newfs /dev/ad0s1a
 	newfs -U /dev/ad0s1d
@@ -115,7 +130,8 @@
 
     Once you've duplicated the CD onto your HD you have to make some edits
     so the system boots properly from your HD.  Primarily you must remove
-    or edit /mnt/boot/loader.conf
+    or edit /mnt/boot/loader.conf, which exists on the CD to tell the kernel
+    to mount the CD's root partition.
 
 	# Remove /mnt/boot/loader.conf so the kernel does not try to
 	# obtain the root filesystem from the CD, and remove the other
@@ -135,14 +151,14 @@
     all the pending data to your HD.  Either unmount the HD partitions
     or type reboot.
 
-    WHAT TO TRY IF IT WONT BOOT FROM YOUR HD.  There are a couple of things
-    to try.  If you can select CHS or LBA mode in your BIOS, try changing the
-    mode to LBA.  If that doesn't work boot from the CD again and use 
-    boot0cfg to turn on packet mode (boot0cfg -o packet ad0).
-
 	# reboot
 	reboot
 	(remove CD when convenient, be careful of the CD drawer closing on you)
+
+    WHAT TO TRY IF THE SYSTEM WILL NOT BOOT FROM YOUR HD.  There are a
+    couple of things to try.  If you can select CHS or LBA mode in your BIOS,
+    try changing the mode to LBA.  If that doesn't work boot from the CD
+    again and use boot0cfg to turn on packet mode (boot0cfg -o packet ad0).
 
     Once you have a working HD based system you can clean up /etc/rc.conf
     to enable things like cron, sendmail, setup your networking, and so
@@ -221,5 +237,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.9 2004/01/27 18:28:22 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.10 2004/03/10 06:35:22 dillon Exp $
 
