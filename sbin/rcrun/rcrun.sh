@@ -2,7 +2,7 @@
 #
 # rcng command
 #
-# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.1 2003/12/11 23:56:05 dillon Exp $
+# $DragonFly: src/sbin/rcrun/rcrun.sh,v 1.2 2003/12/12 00:00:10 dillon Exp $
 
 OS=`sysctl -n kern.ostype`
 
@@ -15,6 +15,9 @@ dostart()
 	case X`varsym -s -q rcng_$i` in
 	Xrunning*)
 	    echo "$i has already been started"
+	    ;;
+	Xdisabled*)
+	    echo "$i is currently disabled"
 	    ;;
 	*)
 	    _return=0

@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.6 2003/12/11 23:56:42 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.7 2003/12/12 00:00:09 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -597,7 +597,7 @@ run_rc_command()
 					#
 	if [ -n "${rcvar}" -a "$rc_arg" != "rcvar" ]; then
 		if ! checkyesno ${rcvar}; then
-			set_provide_list $rc_arg 0
+			set_provide_list $rc_arg 2
 			return 0
 		fi
 	fi
