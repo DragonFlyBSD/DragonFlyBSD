@@ -1,0 +1,95 @@
+/*
+ * pipe2.c
+ *
+ * $DragonFly: src/test/sysperf/pipe2.c,v 1.1 2004/03/28 09:21:53 dillon Exp $
+ */
+
+#include "blib.h"
+#include <sys/resource.h>
+
+#define LOOPS	((int)(1000000LL * 16384 / bytes / divisor))
+
+int
+main(int ac, char **av)
+{
+    long long count = 0;
+    long long max;
+    char c;
+    int j;
+    int bytes;
+    int divisor;
+    int fds[2];
+    char *buf;
+    char *ptr;
+
+    if (ac == 1) {
+	fprintf(stderr, "%s blocksize[k,m]\n", av[0]);
+	exit(1);
+    }
+    bytes = strtol(av[1], &ptr, 0);
+    if (*ptr == 'k' || *ptr == 'K') {
+	bytes *= 1024;
+    } else if (*ptr == 'm' || *ptr == 'M') {
+	bytes *= 1024 * 1024;
+    } else if (*ptr) {
+	fprintf(stderr, "Illegal numerical suffix: %s\n", ptr);
+	exit(1);
+    }
+    if (bytes <= 0 || bytes > 32 * 1024 * 1024) {
+	fprintf(stderr, 
+	    "valid byte range: 0-32m (k,m suffixes for KB and MB)\n");
+	exit(1);
+    }
+
+    /*
+     * Tiny block sizes, try to take into account overhead.
+     */
+    if (bytes < 4096)
+	divisor = 4096 / bytes;
+    else
+	divisor = 1;
+
+    if ((buf = malloc(bytes)) == NULL) {
+	perror("malloc");
+	exit(1);
+    }
+
+    bzero(buf, bytes);
+
+    printf("tests one-way pipe using direct-write buffer\n");
+    if (pipe(fds)) {
+	perror("pipe");
+	exit(1);
+    }
+    if (fork() == 0) {
+	/*
+	 * child process
+	 */
+	close(fds[0]);
+	while (read(fds[1], buf, bytes) > 0)
+		;
+	_exit(0);
+    } else {
+	/* 
+	 * parent process.
+	 */
+	setpriority(PRIO_PROCESS, getpid(), -20);
+	close(fds[1]);
+	write(fds[0], buf, bytes);	/* prime the caches */
+	start_timing();
+	for (j = LOOPS; j; --j) {
+	    if (write(fds[0], buf, bytes) != bytes) {
+		perror("write");
+		exit(1);
+	    }
+	}
+	close(fds[0]);
+	while(wait(NULL) >= 0);
+	stop_timing(LOOPS, "full duplex pipe / %dK bufs:", bytes / 1024);
+	printf("datarate: %5.2f MBytes/sec\n",
+		(double)LOOPS * bytes * 1000000.0 / 
+		(1024.0 * 1024.0 * get_timing()));
+    }
+    return(0);
+}
+
