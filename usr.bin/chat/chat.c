@@ -76,7 +76,7 @@
  *
  *
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.21 2003/10/31 06:22:03 kientzle Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.10 2004/12/31 23:30:27 cpressey Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.11 2005/01/01 00:13:49 cpressey Exp $
  */
 
 #include <sys/cdefs.h>
@@ -104,17 +104,6 @@
 #ifndef O_NONBLOCK
 #define O_NONBLOCK	O_NDELAY
 #endif
-
-/*************** Micro getopt() *********************************************/
-#define	OPTION(c,v)	(_O&2&&**v?*(*v)++:!c||_O&4?0:(!(_O&1)&& \
-				(--c,++v),_O=4,c&&**v=='-'&&v[0][1]?*++*v=='-'\
-				&&!v[0][1]?(--c,++v,0):(_O=2,*(*v)++):0))
-#define	OPTARG(c,v)	(_O&2?**v||(++v,--c)?(_O=1,--c,*v++): \
-				(_O=4,(char*)0):(char*)0)
-#define	ARG(c,v)	(c?(--c,*v++):(char*)0)
-
-static int _O = 0;		/* Internal state */
-/*************** Micro getopt() *********************************************/
 
 #define	MAX_ABORTS		50
 #define	MAX_REPORTS		50
@@ -212,22 +201,33 @@ int
 main(int argc, char *argv[])
 {
     int option;
-    char *arg;
 
     tzset();
 
-    while ((option = OPTION(argc, argv)) != 0) {
+    while ((option = getopt(argc, argv, "ef:r:sSt:T:U:vV")) != -1) {
 	switch (option) {
 	case 'e':
 	    ++echo;
 	    break;
 
-	case 'v':
-	    ++verbose;
+	case 'f':
+	    if (chat_file != NULL)
+		free(chat_file);
+	    chat_file = copy_of(optarg);
 	    break;
 
-	case 'V':
-	    ++Verbose;
+	case 'r':
+	    if (report_fp != NULL)
+		fclose(report_fp);
+	    if (report_file != NULL)
+		free(report_file);
+	    report_file = copy_of(optarg);
+	    report_fp = fopen(report_file, "a");
+	    if (report_fp != NULL) {
+		if (verbose)
+		    fprintf(report_fp, "Opening \"%s\"...\n", report_file);
+	    } else
+		fatal(2, "cannot open \"%s\" for appending", report_file);
 	    break;
 
 	case 's':
@@ -238,47 +238,28 @@ main(int argc, char *argv[])
 	    to_log = 0;
 	    break;
 
-	case 'f':
-	    if ((arg = OPTARG(argc, argv)) != NULL)
-		    chat_file = copy_of(arg);
-	    else
-		usage();
-	    break;
-
 	case 't':
-	    if ((arg = OPTARG(argc, argv)) != NULL)
-		timeout = atoi(arg);
-	    else
-		usage();
-	    break;
-
-	case 'r':
-	    arg = OPTARG (argc, argv);
-	    if (arg) {
-		if (report_fp != NULL)
-		    fclose (report_fp);
-		report_file = copy_of (arg);
-		report_fp   = fopen (report_file, "a");
-		if (report_fp != NULL) {
-		    if (verbose)
-			fprintf (report_fp, "Opening \"%s\"...\n",
-				 report_file);
-		}
-	    }
+	    timeout = atoi(optarg);
 	    break;
 
 	case 'T':
-	    if ((arg = OPTARG(argc, argv)) != NULL)
-		phone_num = copy_of(arg);
-	    else
-		usage();
+	    if (phone_num != NULL)
+		free(phone_num);
+	    phone_num = copy_of(optarg);
 	    break;
 
 	case 'U':
-	    if ((arg = OPTARG(argc, argv)) != NULL)
-		phone_num2 = copy_of(arg);
-	    else
-		usage();
+	    if (phone_num2 != NULL)
+		free(phone_num2);
+	    phone_num2 = copy_of(optarg);
+	    break;
+
+	case 'v':
+	    ++verbose;
+	    break;
+
+	case 'V':
+	    ++Verbose;
 	    break;
 
 	default:
@@ -286,6 +267,10 @@ main(int argc, char *argv[])
 	    break;
 	}
     }
+
+    argc -= optind;
+    argv += optind;
+
 /*
  * Default the report file to the stderr location
  */
@@ -301,20 +286,25 @@ main(int argc, char *argv[])
 	    setlogmask(LOG_UPTO(LOG_WARNING));
     }
 
-    init();
-    
     if (chat_file != NULL) {
-	arg = ARG(argc, argv);
-	if (arg != NULL)
+	if (*argv != NULL)
 	    usage();
-	else
-	    do_file (chat_file);
+	else {
+            init();
+	    do_file(chat_file);
+	}
     } else {
-	while ((arg = ARG(argc, argv)) != NULL) {
-	    chat_expect(arg);
+	init();
+	while (*argv != NULL && argc > 0) {
+	    chat_expect(*argv);
+	    argv++;
+	    argc--;
 
-	    if ((arg = ARG(argc, argv)) != NULL)
-		chat_send(arg);
+	    if (*argv != NULL && argc > 0) {
+		chat_send(*argv);
+		argv++;
+		argc--;
+	    }
 	}
     }
 
