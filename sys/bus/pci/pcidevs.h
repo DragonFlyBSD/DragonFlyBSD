@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.2 2004/11/13 23:04:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.3 2004/12/14 16:08:39 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.1 2004/02/19 20:46:15 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.3 2004/12/14 16:04:04 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -1685,6 +1685,7 @@
 #define	PCI_PRODUCT_INTEL_E7505_AGP	0x2552		/* E7505 MCH Host-to-AGP Bridge */
 #define	PCI_PRODUCT_INTEL_E7505_HI_B1	0x2553		/* E7505 MCH HI_B PCI-to-PCI */
 #define	PCI_PRODUCT_INTEL_E7505_HI_B2	0x2554		/* E7505 MCH HI_B PCI-to-PCI Error Reporting */
+#define	PCI_PRODUCT_INTEL_E7205_MC	0x255d		/* E7205 Memory Controller Hub */
 #define	PCI_PRODUCT_INTEL_82845G_DRAM	0x2560		/* 82845G/GL DRAM Controller / Host-Hub I/F Bridge */
 #define	PCI_PRODUCT_INTEL_82845G_AGP	0x2561		/* 82845G/GL Host-to-AGP Bridge */
 #define	PCI_PRODUCT_INTEL_82845G_IGD	0x2562		/* 82845G/GL Integrated Graphics Device */
@@ -1694,6 +1695,12 @@
 #define	PCI_PRODUCT_INTEL_82801EB_HPB	0x2573		/* 82801EB Hub-to-PCI Bridge */
 #define	PCI_PRODUCT_INTEL_82875P_HB	0x2578		/* 82875P Host */
 #define	PCI_PRODUCT_INTEL_82875P_AGP	0x2579		/* 82875P AGP */
+#define	PCI_PRODUCT_INTEL_915G_DRAM	0x2580		/* 915G/P/GV DRAM Controller */
+#define	PCI_PRODUCT_INTEL_915G_PCIE	0x2581		/* 915G/P/GV Host-to-PCI Express Bridge */
+#define	PCI_PRODUCT_INTEL_82801FB_LPC	0x2640		/* 82801FB/FR LPC Interface Bridge */
+#define	PCI_PRODUCT_INTEL_82801FB_UHCI	0x265b		/* 82801FB/FR/FW/FRW USB UHCI Controller */
+#define	PCI_PRODUCT_INTEL_82801FB_EHCI	0x265c		/* 82801FB/FR/FW/FRW USB EHCI Controller */
+#define	PCI_PRODUCT_INTEL_82801FB_SMB	0x266a		/* 82801FB/FR/FW/FRW SMBus Controller */
 #define	PCI_PRODUCT_INTEL_31244	0x3200		/* 31244 Serial ATA Controller */
 #define	PCI_PRODUCT_INTEL_82855PM_DDR	0x3340		/* 82855PM MCH Host Controller */
 #define	PCI_PRODUCT_INTEL_82855PM_AGP	0x3341		/* 82855PM Host-to-AGP Bridge */

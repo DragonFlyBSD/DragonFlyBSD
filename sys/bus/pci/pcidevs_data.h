@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.2 2004/11/13 23:04:12 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.3 2004/12/14 16:08:40 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.1 2004/02/19 20:46:15 joerg Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.3 2004/12/14 16:04:04 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -5195,6 +5195,12 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    "E7505 MCH HI_B PCI-to-PCI Error Reporting",
 	},
 	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_E7205_MC,
+	    0,
+	    "Intel",
+	    "E7205 Memory Controller Hub",
+	},
+	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82845G_DRAM,
 	    0,
 	    "Intel",
@@ -5247,6 +5253,42 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Intel",
 	    "82875P AGP",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_915G_DRAM,
+	    0,
+	    "Intel",
+	    "915G/P/GV DRAM Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_915G_PCIE,
+	    0,
+	    "Intel",
+	    "915G/P/GV Host-to-PCI Express Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_LPC,
+	    0,
+	    "Intel",
+	    "82801FB/FR LPC Interface Bridge",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_UHCI,
+	    0,
+	    "Intel",
+	    "82801FB/FR/FW/FRW USB UHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_EHCI,
+	    0,
+	    "Intel",
+	    "82801FB/FR/FW/FRW USB EHCI Controller",
+	},
+	{
+	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_82801FB_SMB,
+	    0,
+	    "Intel",
+	    "82801FB/FR/FW/FRW SMBus Controller",
 	},
 	{
 	    PCI_VENDOR_INTEL, PCI_PRODUCT_INTEL_31244,
