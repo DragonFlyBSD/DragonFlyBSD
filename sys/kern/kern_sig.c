@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.21 2003/10/13 18:12:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.22 2003/10/13 21:16:42 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1002,14 +1002,6 @@ psignal(p, sig)
 	}
 	SIGADDSET(p->p_siglist, sig);
 
-	if (prop & SA_CKPT && action == SIG_DFL) {
-		SIGDELSET(p->p_siglist, sig);		
-		if (ckpt_func) 
-			ckpt_func(p);
-		if (prop & SA_KILL) 
-			SIGADDSET(p->p_siglist, SIGKILL);		
-	}
-
 	/*
 	 * Defer further processing for signals which are held,
 	 * except that stopped processes must be continued by SIGCONT.
@@ -1275,6 +1267,16 @@ issignal(p)
 #endif
 				break;		/* == ignore */
 			}
+
+			/*
+			 * Handle the in-kernel checkpoint action
+			 */
+			if (prop & SA_CKPT) {
+				if (ckpt_func)
+					ckpt_func(p);
+				break;
+			}
+
 			/*
 			 * If there is a pending stop signal to process
 			 * with default action, stop here,
