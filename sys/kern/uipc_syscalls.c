@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.18 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.19 2003/10/08 03:21:26 daver Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1352,12 +1352,11 @@ sendfile(struct sendfile_args *uap)
 	 */
 	fp = holdfp(fdp, uap->fd, FREAD);
 	if (fp == NULL) {
-		error = EBADF;
-		goto done;
+		return (EBADF);
 	}
 	if (fp->f_type != DTYPE_VNODE) {
-		error = EINVAL;
-		goto done;
+		fdrop(fp, td);
+		return (EINVAL);
 	}
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
