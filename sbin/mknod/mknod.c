@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknod.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/mknod/mknod.c,v 1.13 2000/01/06 17:51:46 obrien Exp $
- * $DragonFly: src/sbin/mknod/mknod.c,v 1.4 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/mknod/mknod.c,v 1.5 2005/01/01 23:09:57 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -61,7 +61,7 @@ usage(void)
 }
 
 static u_long
-id(char *name, char *type)
+id(char *name, const char *type)
 {
 	u_long val;
 	char *ep;
@@ -132,8 +132,8 @@ main(int argc, char **argv)
 		errx(1, "%s: non-numeric minor number", argv[4]);
 	range_error |= errno;
 	dev = makedev(mymajor, myminor);
-	if (range_error || major(dev) != (u_int) mymajor ||
-	    minor(dev) != (u_int) myminor)
+	if (range_error || major(dev) != mymajor ||
+	    minor(dev) != myminor)
 		errx(1, "major or minor number too large");
 
 	uid = gid = -1;
