@@ -1,7 +1,7 @@
 /*
  * pipe2.c
  *
- * $DragonFly: src/test/sysperf/pipe2.c,v 1.4 2004/04/28 00:08:55 dillon Exp $
+ * $DragonFly: src/test/sysperf/pipe2.c,v 1.5 2004/04/29 16:05:21 dillon Exp $
  */
 
 #include "blib.h"
@@ -64,10 +64,21 @@ main(int ac, char **av)
 	/*
 	 * child process
 	 */
+	int n;
+	int i;
+
 	close(fds[0]);
 	buf += (bytes + PAGE_MASK) & ~PAGE_MASK;
-	while (read(fds[1], buf, bytes) > 0)
-		;
+	i = 0;
+	for (;;) {
+	    n = read(fds[1], buf + i, bytes - i);
+	    if (n <= 0)
+		break;
+	    if (n + i == bytes)
+		i = 0;
+	    else
+		i += n;
+	}
 	_exit(0);
     } else {
 	/* 
@@ -93,7 +104,7 @@ main(int ac, char **av)
 	    if ((j & 31) == 0 && stop_timing(0, NULL))
 		break;
 	}
-	loops = j * 5 + 1;
+	loops = j * 2 + 1;
 	usleep(1000000 / 10);
 	start_timing();
 
