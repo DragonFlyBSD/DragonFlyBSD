@@ -23,10 +23,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.2 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.3 2004/05/06 18:09:29 dillon Exp $
  */
 
 /*
+ * WARNING!  THE SYSTIMER MODULE DOES NOT OPERATE OR DISPATCH WITH THE
+ * MP LOCK HELD.  ALL CODE USING THIS MODULE MUST BE MP-SAFE.
+ *
  * This code implements a fine-grained per-cpu system timer which is
  * ultimately based on a hardware timer.  The hardware timer abstraction
  * is sufficiently disconnected from this code to support both per-cpu
