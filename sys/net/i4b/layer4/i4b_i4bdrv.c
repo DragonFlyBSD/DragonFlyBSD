@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.10 2004/05/19 22:53:00 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -325,7 +325,6 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
 		return(ENODEV);
 
 	x = splimp();
-	IF_LOCK(&i4b_rdqueue);
 	while(IF_QEMPTY(&i4b_rdqueue))
 	{
 		readflag = 1;
@@ -336,14 +335,12 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
 		error = tsleep((caddr_t) &i4b_rdqueue, PCATCH, "bird", 0);
 #endif
 		if (error != 0) {
-			IF_UNLOCK(&i4b_rdqueue);
 			splx(x);
 			return error;
 		}
 	}
 
-	_IF_DEQUEUE(&i4b_rdqueue, m);
-	IF_UNLOCK(&i4b_rdqueue);
+	IF_DEQUEUE(&i4b_rdqueue, m);
 
 	splx(x);
 		
@@ -1005,17 +1002,15 @@ i4bputqueue(struct mbuf *m)
 
 	x = splimp();
 	
-	IF_LOCK(&i4b_rdqueue);
-	if(_IF_QFULL(&i4b_rdqueue))
+	if(IF_QFULL(&i4b_rdqueue))
 	{
 		struct mbuf *m1;
-		_IF_DEQUEUE(&i4b_rdqueue, m1);
+		IF_DEQUEUE(&i4b_rdqueue, m1);
 		i4b_Dfreembuf(m1);
 		NDBGL4(L4_ERR, "ERROR, queue full, removing entry!");
 	}
 
-	_IF_ENQUEUE(&i4b_rdqueue, m);
-	IF_UNLOCK(&i4b_rdqueue);
+	IF_ENQUEUE(&i4b_rdqueue, m);
 
 	splx(x);	
 
@@ -1048,17 +1043,15 @@ i4bputqueue_hipri(struct mbuf *m)
 
 	x = splimp();
 	
-	IF_LOCK(&i4b_rdqueue);
-	if(_IF_QFULL(&i4b_rdqueue))
+	if(IF_QFULL(&i4b_rdqueue))
 	{
 		struct mbuf *m1;
-		_IF_DEQUEUE(&i4b_rdqueue, m1);
+		IF_DEQUEUE(&i4b_rdqueue, m1);
 		i4b_Dfreembuf(m1);
 		NDBGL4(L4_ERR, "ERROR, queue full, removing entry!");
 	}
 
-	_IF_PREPEND(&i4b_rdqueue, m);
-	IF_UNLOCK(&i4b_rdqueue);
+	IF_PREPEND(&i4b_rdqueue, m);
 
 	splx(x);	
 

@@ -37,7 +37,7 @@
  *      $Id: i4b_ihfc_l1if.c,v 1.10 2000/09/19 13:50:36 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.6 2004/09/16 04:45:49 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_l1if.c,v 1.7 2005/01/23 13:47:24 joerg Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -128,7 +128,7 @@ ihfc_ph_data_req(int unit, struct mbuf *m, int freeflag)
 
 	if (freeflag == MBUF_DONTFREE)	m = m_copypacket(m, MB_DONTWAIT);
 
-	if (!_IF_QFULL(&S_IFQUEUE) && m)
+	if (!IF_QFULL(&S_IFQUEUE) && m)
 	{
 		IF_ENQUEUE(&S_IFQUEUE, m);
 
@@ -303,7 +303,7 @@ ihfc_putmbuf (ihfc_sc_t *sc, u_char chan, struct mbuf *m)
 				S_BDRVLINK->bch_activity(S_BDRVLINK->unit, ACT_RX);
 			}
 
-			if (!_IF_QFULL(&S_IFQUEUE))
+			if (!IF_QFULL(&S_IFQUEUE))
 			{
 				S_BYTES += m->m_len;
 				IF_ENQUEUE(&S_IFQUEUE, m);

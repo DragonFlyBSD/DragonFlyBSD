@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.12 2004/09/16 04:36:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.13 2005/01/23 13:47:24 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -1134,8 +1134,7 @@ ipr_tx_queue_empty(int unit)
 #endif
 		x = 1;
 
-		IF_LOCK(isdn_linktab[unit]->tx_queue);
-		if(_IF_QFULL(isdn_linktab[unit]->tx_queue))
+		if(IF_QFULL(isdn_linktab[unit]->tx_queue))
 		{
 			NDBGL4(L4_IPRDBG, "ipr%d: tx queue full!", unit);
 			m_freem(m);
@@ -1146,10 +1145,9 @@ ipr_tx_queue_empty(int unit)
 
 			sc->sc_if.if_opackets++;
 
-			_IF_ENQUEUE(isdn_linktab[unit]->tx_queue, m);
+			IF_ENQUEUE(isdn_linktab[unit]->tx_queue, m);
 
 		}
-		IF_UNLOCK(isdn_linktab[unit]->tx_queue);
 	}
 
 	if(x)

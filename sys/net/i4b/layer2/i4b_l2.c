@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.5 2004/09/16 04:36:32 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
@@ -162,7 +162,7 @@ int i4b_dl_data_req(int unit, struct mbuf *m)
 		case ST_MULTIFR:
 		case ST_TIMREC:
 		
-		        if(_IF_QFULL(&l2sc->i_queue))
+		        if(IF_QFULL(&l2sc->i_queue))
 		        {
 		        	NDBGL2(L2_ERROR, "i_queue full!!");
 		        	i4b_Dfreembuf(m);

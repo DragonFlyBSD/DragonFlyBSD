@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.10 2004/05/19 22:53:00 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -296,13 +296,12 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 		unit = outunit;			
 	}
 
-	IF_LOCK(&trace_queue[unit]);
-	if(_IF_QFULL(&trace_queue[unit]))
+	if(IF_QFULL(&trace_queue[unit]))
 	{
 		struct mbuf *m1;
 
 		x = SPLI4B();
-		_IF_DEQUEUE(&trace_queue[unit], m1);
+		IF_DEQUEUE(&trace_queue[unit], m1);
 		splx(x);		
 
 		i4b_Bfreembuf(m1);
@@ -319,8 +318,7 @@ get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf)
 
 	x = SPLI4B();
 	
-	_IF_ENQUEUE(&trace_queue[unit], m);
-	IF_UNLOCK(&trace_queue[unit]);
+	IF_ENQUEUE(&trace_queue[unit], m);
 	
 	if(device_state[unit] & ST_WAITDATA)
 	{
@@ -422,7 +420,6 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 
 	x = SPLI4B();
 	
-	IF_LOCK(&trace_queue[unit]);
 	while(IF_QEMPTY(&trace_queue[unit]) && (device_state[unit] & ST_ISOPEN))
 	{
 		device_state[unit] |= ST_WAITDATA;
@@ -438,14 +435,12 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 #endif                                                                                               
 		{
 			device_state[unit] &= ~ST_WAITDATA;
-			IF_UNLOCK(&trace_queue[unit]);
 			splx(x);
 			return(error);
 		}
 	}
 
-	_IF_DEQUEUE(&trace_queue[unit], m);
-	IF_UNLOCK(&trace_queue[unit]);
+	IF_DEQUEUE(&trace_queue[unit], m);
 
 	if(m && m->m_len)
 		error = uiomove(m->m_data, m->m_len, uio);

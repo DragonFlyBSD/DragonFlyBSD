@@ -30,7 +30,7 @@
  *	$Id: i4b_util.c,v 1.26 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_util.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_util.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_util.c,v 1.5 2005/01/23 13:47:24 joerg Exp $
  *
  *      last edit-date: [Mon May 29 16:55:35 2000]
  *
@@ -183,7 +183,7 @@ i4b_invoke_retransmission(l2_softc_t *l2sc, int nr)
 
 		if((l2sc->ua_num != UA_EMPTY) && (l2sc->vs == l2sc->ua_num))
 		{
-			if(_IF_QFULL(&l2sc->i_queue))
+			if(IF_QFULL(&l2sc->i_queue))
 			{
 				NDBGL2(L2_ERROR, "ERROR, I-queue full!");
 			}

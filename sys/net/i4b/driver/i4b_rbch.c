@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.12 2004/09/16 04:36:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.13 2005/01/23 13:47:24 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -467,7 +467,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 			CRIT_END;
 			return(EWOULDBLOCK);
 		}
-		if(_IF_QFULL(isdn_linktab[unit]->tx_queue) && (sc->sc_devstate & ST_ISOPEN)) {
+		if(IF_QFULL(isdn_linktab[unit]->tx_queue) && (sc->sc_devstate & ST_ISOPEN)) {
 			CRIT_END;
 			return(EWOULDBLOCK);
 	}
@@ -499,7 +499,7 @@ i4brbchwrite(dev_t dev, struct uio * uio, int ioflag)
 			tsleep((caddr_t) &rbch_softc[unit], PCATCH, "xrbch", (hz*1));
 		}
 
-		while(_IF_QFULL(isdn_linktab[unit]->tx_queue) && (sc->sc_devstate & ST_ISOPEN))
+		while(IF_QFULL(isdn_linktab[unit]->tx_queue) && (sc->sc_devstate & ST_ISOPEN))
 		{
 			sc->sc_devstate |= ST_WRWAITEMPTY;
 
@@ -687,7 +687,7 @@ i4brbchpoll(dev_t dev, int events, struct thread *td)
 	 
 	if((events & (POLLOUT|POLLWRNORM)) &&
 	   (sc->sc_devstate & ST_CONNECTED) &&
-	   !_IF_QFULL(isdn_linktab[unit]->tx_queue))
+	   !IF_QFULL(isdn_linktab[unit]->tx_queue))
 	{
 		revents |= (events & (POLLOUT|POLLWRNORM));
 	}
@@ -756,7 +756,7 @@ i4brbchselect(dev_t dev, int rw, struct thread *td)
 				break;
 
 			case FWRITE:
-				if(!_IF_QFULL(isdn_linktab[unit]->rx_queue))
+				if(!IF_QFULL(isdn_linktab[unit]->rx_queue))
 				{
 					splx(s);
 					return(1);

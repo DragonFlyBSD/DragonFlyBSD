@@ -26,7 +26,7 @@
  *		The AVM ISDN controllers' Low Level Interface.
  *
  * $FreeBSD: src/sys/i4b/capi/iavc/iavc_lli.c,v 1.2.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.5 2004/04/16 15:40:21 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/iavc/iavc_lli.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -202,7 +202,7 @@ int iavc_register(capi_softc_t *capi_sc, int applid, int nchan)
     p = amcc_put_word(p, 8);
     p = amcc_put_word(p, 2048);
 
-    _IF_ENQUEUE(&sc->sc_txq, m);
+    IF_ENQUEUE(&sc->sc_txq, m);
 
     iavc_start_tx(sc);
 
@@ -230,7 +230,7 @@ int iavc_release(capi_softc_t *capi_sc, int applid)
     p = amcc_put_byte(p, SEND_RELEASE);
     p = amcc_put_word(p, applid);
 
-    _IF_ENQUEUE(&sc->sc_txq, m);
+    IF_ENQUEUE(&sc->sc_txq, m);
 
     iavc_start_tx(sc);
     return 0;
@@ -249,12 +249,8 @@ int iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
 	return (ENXIO);
     }
 
-    if (_IF_QFULL(&sc->sc_txq)) {
-#if defined (__FreeBSD__) && __FreeBSD__ > 4
-	_IF_DROP(&sc->sc_txq);
-#else
+    if (IF_QFULL(&sc->sc_txq)) {
 	IF_DROP(&sc->sc_txq);
-#endif
 
 	printf("iavc%d: tx overflow, message dropped\n", sc->sc_unit);
 
@@ -262,7 +258,7 @@ int iavc_send(capi_softc_t *capi_sc, struct mbuf *m)
 	i4b_Dfreembuf(m);
 
     } else {
-	_IF_ENQUEUE(&sc->sc_txq, m);
+	IF_ENQUEUE(&sc->sc_txq, m);
 
 	iavc_start_tx(sc);
     }
@@ -305,7 +301,7 @@ static int iavc_send_init(iavc_softc_t *sc)
     p = amcc_put_word(p, sc->sc_unit);
 
     s = SPLI4B();
-    _IF_ENQUEUE(&sc->sc_txq, m);
+    IF_ENQUEUE(&sc->sc_txq, m);
 
     iavc_start_tx(sc);
 
@@ -422,7 +418,7 @@ static int iavc_receive_start(iavc_softc_t *sc, u_int8_t *dmabuf)
     p = amcc_put_byte(p, 0);
     p = amcc_put_byte(p, SEND_POLLACK);
     
-    _IF_PREPEND(&sc->sc_txq, m);
+    IF_PREPEND(&sc->sc_txq, m);
 
     NDBGL4(L4_IAVCDBG, "iavc%d: blocked = %d, state = %d",
 		sc->sc_unit, sc->sc_blocked, sc->sc_state);
@@ -723,7 +719,7 @@ static void iavc_start_tx(iavc_softc_t *sc)
 
     /* Else, see if we have messages to send. */
 
-    _IF_DEQUEUE(&sc->sc_txq, m);
+    IF_DEQUEUE(&sc->sc_txq, m);
     if (!m) {
 	return;
     }

@@ -25,7 +25,7 @@
  * capi/capi_msgs.c	The CAPI i4b message handlers.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_msgs.c,v 1.1.2.2 2001/12/10 10:28:25 hm Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.5 2004/04/16 15:40:20 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_msgs.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -775,8 +775,8 @@ void capi_data_b3_ind(capi_softc_t *sc, struct mbuf *m_in)
 	} else {
 	    /* Telephony drivers use rx_queue */
 
-	    if (!_IF_QFULL(&sc->sc_bchan[bch].rx_queue)) {
-		_IF_ENQUEUE(&sc->sc_bchan[bch].rx_queue, m_in->m_next);
+	    if (!IF_QFULL(&sc->sc_bchan[bch].rx_queue)) {
+		IF_ENQUEUE(&sc->sc_bchan[bch].rx_queue, m_in->m_next);
 		sc->sc_bchan[bch].rxcount += m_in->m_next->m_len;
 		m_in->m_next = NULL; /* driver frees */
 	    }

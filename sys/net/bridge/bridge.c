@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.11 2004/09/15 19:29:35 joerg Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.12 2005/01/23 13:47:24 joerg Exp $
  */
 
 /*
@@ -1023,7 +1023,7 @@ forward:
 	 * up and running, is not the source interface, and belongs to
 	 * the same cluster as the 'real_dst', then send here.
 	 */
-	if ( BDG_USED(ifp) && !BDG_MUTED(ifp) && !_IF_QFULL(&ifp->if_snd)  &&
+	if ( BDG_USED(ifp) && !BDG_MUTED(ifp) && !IF_QFULL(&ifp->if_snd)  &&
 	     (ifp->if_flags & (IFF_UP|IFF_RUNNING)) == (IFF_UP|IFF_RUNNING) &&
 	     ifp != src && BDG_SAMECLUSTER(ifp, real_dst) )
 	    last = ifp ;

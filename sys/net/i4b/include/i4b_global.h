@@ -28,7 +28,7 @@
  *	--------------------------------------
  *
  * $FreeBSD: src/sys/i4b/include/i4b_global.h,v 1.6.2.2 2002/07/07 10:17:10 hm Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.4 2005/01/23 13:47:24 joerg Exp $
  *
  *	last edit-date: [Sun Jul  7 12:11:35 2002]
  *
@@ -44,25 +44,6 @@
 /*-------------------------------------------------*/
 /* hide SMP changes in FreeBSD 5.x-current for 4.x */
 /*-------------------------------------------------*/
-
-#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ <= 4)
-
-#define IF_LOCK(a)
-#define IF_UNLOCK(a)
-
-#ifndef _IF_QFULL
-#define _IF_QFULL(a)		IF_QFULL((a))
-#endif
-
-#define _IF_ENQUEUE(a, b)	IF_ENQUEUE((a), (b))
-#define _IF_DEQUEUE(a, b)	IF_DEQUEUE((a), (b))
-#define _IF_PREPEND(a, b)	IF_PREPEND((a), (b))
-
-/* get back DELAY() */
-
-#include <machine/clock.h>
-
-#endif
 
 #if defined(__FreeBSD__) && __FreeBSD__ >= 5
 /*

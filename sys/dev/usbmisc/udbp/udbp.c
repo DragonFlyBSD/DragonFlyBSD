@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.3 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.4 2005/01/23 13:47:24 joerg Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -744,16 +744,13 @@ ng_udbp_rcvdata(hook_p hook, item_p item)
 		xmitq_p = (&sc->xmitq);
 	}
 	s = splusb();
-	IF_LOCK(xmitq_p);
-	if (_IF_QFULL(xmitq_p)) {
-		_IF_DROP(xmitq_p);
-		IF_UNLOCK(xmitq_p);
+	if (IF_QFULL(xmitq_p)) {
+		IF_DROP(xmitq_p);
 		splx(s);
 		error = ENOBUFS;
 		goto bad;
 	}
-	_IF_ENQUEUE(xmitq_p, m);
-	IF_UNLOCK(xmitq_p);
+	IF_ENQUEUE(xmitq_p, m);
 	if (!(sc->flags & OUT_BUSY))
 		udbp_setup_out_transfer(sc);
 	splx(s);

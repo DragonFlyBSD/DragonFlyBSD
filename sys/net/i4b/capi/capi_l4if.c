@@ -25,7 +25,7 @@
  * capi/capi_l4if.c	The CAPI i4b L4/device interface.
  *
  * $FreeBSD: src/sys/i4b/capi/capi_l4if.c,v 1.1.2.1 2001/08/10 14:08:34 obrien Exp $
- * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.5 2004/04/16 15:40:20 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/capi/capi_l4if.c,v 1.6 2005/01/23 13:47:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -155,7 +155,7 @@ int capi_start_tx(capi_softc_t *sc, int chan)
     struct mbuf *m_b3;
     int sent = 0;
 
-    _IF_DEQUEUE(&sc->sc_bchan[chan].tx_queue, m_b3);
+    IF_DEQUEUE(&sc->sc_bchan[chan].tx_queue, m_b3);
     while (m_b3) {
 	struct mbuf *m = m_b3->m_next;
 

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.9 2004/05/19 22:53:00 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.10 2005/01/23 13:47:24 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -446,7 +446,6 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 	if(func == FUNCTEL)
 	{
 		s = splimp();
-		IF_LOCK(sc->isdn_linktab->rx_queue);
 
 		while((sc->devstate & ST_ISOPEN)        &&
 		      (sc->devstate & ST_CONNECTED)	&&
@@ -467,7 +466,6 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 #endif						
 			{
 				sc->devstate &= ~ST_RDWAITDATA;
-				IF_UNLOCK(sc->isdn_linktab->rx_queue);
 				splx(s);
 				return(error);
 			}
@@ -475,21 +473,18 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 	
 		if(!(sc->devstate & ST_ISOPEN))
 		{
-			IF_UNLOCK(sc->isdn_linktab->rx_queue);
 			splx(s);
 			return(EIO);
 		}
 	
 		if(!(sc->devstate & ST_CONNECTED))
 		{
-			IF_UNLOCK(sc->isdn_linktab->rx_queue);
 			splx(s);
 			return(EIO);
 		}
 		
 	
-		_IF_DEQUEUE(sc->isdn_linktab->rx_queue, m);
-		IF_UNLOCK(sc->isdn_linktab->rx_queue);
+		IF_DEQUEUE(sc->isdn_linktab->rx_queue, m);
 		
 		if(m && m->m_len > 0)
 		{
@@ -584,8 +579,7 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 		}
 			
 		sc->devstate &= ~ST_TONE;		
-		IF_LOCK(sc->isdn_linktab->tx_queue);
-		while((_IF_QFULL(sc->isdn_linktab->tx_queue)) &&
+		while((IF_QFULL(sc->isdn_linktab->tx_queue)) &&
 		      (sc->devstate & ST_ISOPEN))
 		{
 			sc->devstate |= ST_WRWAITEMPTY;
@@ -600,12 +594,10 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 #endif					
 			{
 				sc->devstate &= ~ST_WRWAITEMPTY;
-				IF_UNLOCK(sc->isdn_linktab->tx_queue);
 				splx(s);
 				return(error);
 			}
 		}
-		IF_UNLOCK(sc->isdn_linktab->tx_queue);
 	
 		if(!(sc->devstate & ST_ISOPEN))
 		{
@@ -763,7 +755,7 @@ i4btelpoll(dev_t dev, int events, struct thread *td)
 		if((events & (POLLOUT|POLLWRNORM))	&&
 			(sc->devstate & ST_CONNECTED)	&&
 			(sc->isdn_linktab != NULL)	&&
-			(!_IF_QFULL(sc->isdn_linktab->tx_queue)))
+			(!IF_QFULL(sc->isdn_linktab->tx_queue)))
 		{
 			NDBGL4(L4_TELDBG, "i4btel%d, POLLOUT", unit);
 			revents |= (events & (POLLOUT|POLLWRNORM));
@@ -854,7 +846,7 @@ i4btelsel(dev_t dev, int rw, struct thread *td)
 		}
 		else if (rw == FWRITE)
 		{
-			if (!_IF_QFULL(sc->isdn_linktab->tx_queue))
+			if (!IF_QFULL(sc->isdn_linktab->tx_queue))
 			{
 				NDBGL4(L4_TELDBG, "i4btel%d, FWRITE", unit);
 				splx(s);

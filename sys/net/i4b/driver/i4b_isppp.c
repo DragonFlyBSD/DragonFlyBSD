@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.10 2004/09/16 04:36:30 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -380,8 +380,7 @@ i4bisppp_start(struct ifnet *ifp)
 
 		microtime(&ifp->if_lastchange);
 
-		IF_LOCK(isdn_linktab[unit]->tx_queue);
-		if(_IF_QFULL(isdn_linktab[unit]->tx_queue))
+		if(IF_QFULL(isdn_linktab[unit]->tx_queue))
 		{
 			NDBGL4(L4_ISPDBG, "isp%d, tx queue full!", unit);
 			m_freem(m);
@@ -394,9 +393,8 @@ i4bisppp_start(struct ifnet *ifp)
 			sc->sc_outb += m->m_pkthdr.len;
 			sc->sc_if.if_opackets++;
 
-			_IF_ENQUEUE(isdn_linktab[unit]->tx_queue, m);
+			IF_ENQUEUE(isdn_linktab[unit]->tx_queue, m);
 		}
-		IF_UNLOCK(isdn_linktab[unit]->tx_queue);
 	}
 	isdn_linktab[unit]->bch_tx_start(isdn_linktab[unit]->unit,
 					 isdn_linktab[unit]->channel);

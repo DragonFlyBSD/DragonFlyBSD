@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.20 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.21 2005/01/23 13:47:24 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -214,6 +214,7 @@ typedef void if_init_f_t (void *);
 #define	IF_QFULL(ifq)		((ifq)->ifq_len >= (ifq)->ifq_maxlen)
 #define	IF_DROP(ifq)		((ifq)->ifq_drops++)
 #define	IF_QLEN(ifq)		((ifq)->ifq_len)
+#define	IF_QEMPTY(ifq)		(IF_QLEN(ifq) == 0)
 #define	IF_ENQUEUE(ifq, m) { \
 	(m)->m_nextpkt = 0; \
 	if ((ifq)->ifq_tail == 0) \
@@ -254,11 +255,6 @@ typedef void if_init_f_t (void *);
 
 #ifdef _KERNEL
 
-/*
- * #define _IF_QFULL for compatibility with -current
- */
-#define	_IF_QFULL(ifq)				IF_QFULL(ifq)
-
 #define IF_HANDOFF(ifq, m, ifp)			if_handoff(ifq, m, ifp, 0)
 #define IF_HANDOFF_ADJ(ifq, m, ifp, adj)	if_handoff(ifq, m, ifp, adj)
 
@@ -289,11 +285,11 @@ if_handoff(struct ifqueue *ifq, struct mbuf *m, struct ifnet *ifp, int adjust)
 
 #define	IFQ_ENQUEUE(ifq, m, err)					\
 do {									\
-	if (_IF_QFULL(ifq)) {						\
+	if (IF_QFULL(ifq)) {						\
 		m_freem(m);						\
 		(err) = ENOBUFS;					\
 	} else {							\
-		_IF_ENQUEUE(ifq, m);					\
+		IF_ENQUEUE(ifq, m);					\
 		(err) = 0;						\
 	}								\
 	if (err)							\
