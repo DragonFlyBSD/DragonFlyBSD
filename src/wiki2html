@@ -1,13 +1,13 @@
 #!/bin/sh
 #
-# $DragonFly: site/src/wiki2html,v 1.1 2005/01/15 08:39:26 dillon Exp $
+# $DragonFly: site/src/wiki2html,v 1.2 2005/01/15 08:48:34 dillon Exp $
 
 cat << EOF
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/src/wiki2html,v 1.1 2005/01/15 08:39:26 dillon Exp $
+# \$DragonFly\$
 
-$TITLE(DragonFly Frequently Asked Questions)
+\$TITLE(DragonFly Frequently Asked Questions)
 
 EOF
 
@@ -23,5 +23,5 @@ sed	-e '1,/<!-- start content -->/d' \
         -e 's,^<div class="editsection" style="float:right;margin-left:5px;">.*<\/div>,,' \
         -e 's/<h1>/<b>/g' \
         -e 's/<\/h1>/<\/b>/g' \
-	-e 's,dfwiki/index.php/DragonFly_FAQ_\([^"]*\)",main/FAQ_\1.cgi",'
+	-e 's,dfwiki/index.php/DragonFly_FAQ\([^"]*\)",main/FAQ\1.cgi",g'
 
