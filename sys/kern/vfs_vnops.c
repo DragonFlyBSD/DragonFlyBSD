@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.26 2004/11/22 00:53:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.27 2004/11/24 08:37:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -152,11 +152,23 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		nd->nl_flags |= NLC_CREATE;
 		bwillwrite();
 		error = nlookup(nd);
-		if (error)
-			return (error);
+	} else {
+		/*
+		 * NORMAL OPEN FILE CASE
+		 */
+		error = nlookup(nd);
+	}
 
-		ncp = nd->nl_ncp;
+	if (error)
+		return (error);
+	ncp = nd->nl_ncp;
 
+	/*
+	 * split case to allow us to re-resolve and retry the ncp in case
+	 * we get ESTALE.
+	 */
+again:
+	if (fmode & O_CREAT) {
 		if (ncp->nc_vp == NULL) {
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
@@ -181,22 +193,14 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		/*
-		 * NORMAL OPEN FILE CASE
-		 */
-		error = nlookup(nd);
-		if (error)
-			return (error);
-
-		ncp = nd->nl_ncp;
-
 		error = cache_vget(ncp, cred, LK_EXCLUSIVE, &vp);
 		if (error)
 			return (error);
 	}
 
 	/*
-	 * We have a locked vnode now.
+	 * We have a locked vnode and ncp now.  Note that the ncp will
+	 * be cleaned up by the caller if nd->nl_ncp is left intact.
 	 */
 	if (vp->v_type == VLNK) {
 		error = EMLINK;
@@ -214,16 +218,42 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 				goto bad;
 			}
 			error = vn_writechk(vp);
-			if (error)
+			if (error) {
+				/*
+				 * Special stale handling, re-resolve the
+				 * vnode.
+				 */
+				if (error == ESTALE) {
+					vput(vp);
+					vp = NULL;
+					cache_setunresolved(ncp);
+					error = cache_resolve(ncp, cred);
+					if (error == 0)
+						goto again;
+				}
 				goto bad;
+			}
 			mode |= VWRITE;
 		}
 		if (fmode & FREAD)
 			mode |= VREAD;
 		if (mode) {
 		        error = VOP_ACCESS(vp, mode, cred, td);
-			if (error)
+			if (error) {
+				/*
+				 * Special stale handling, re-resolve the
+				 * vnode.
+				 */
+				if (error == ESTALE) {
+					vput(vp);
+					vp = NULL;
+					cache_setunresolved(ncp);
+					error = cache_resolve(ncp, cred);
+					if (error == 0)
+						goto again;
+				}
 				goto bad;
+			}
 		}
 	}
 	if (fmode & O_TRUNC) {

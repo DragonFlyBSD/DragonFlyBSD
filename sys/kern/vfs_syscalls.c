@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.47 2004/11/23 04:03:26 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.48 2004/11/24 08:37:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1608,6 +1608,7 @@ kern_access(struct nlookupdata *nd, int aflags)
 
 	if ((error = nlookup(nd)) != 0)
 		return (error);
+retry:
 	error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &vp);
 	if (error)
 		return (error);
@@ -1623,6 +1624,20 @@ kern_access(struct nlookupdata *nd, int aflags)
 			flags |= VEXEC;
 		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
 			error = VOP_ACCESS(vp, flags, nd->nl_cred, td);
+
+		/*
+		 * If the file handle is stale we have to re-resolve the
+		 * entry.  This is a hack at the moment.
+		 */
+		if (error == ESTALE) {
+			cache_setunresolved(nd->nl_ncp);
+			error = cache_resolve(nd->nl_ncp, nd->nl_cred);
+			if (error == 0) {
+				vput(vp);
+				vp = NULL;
+				goto retry;
+			}
+		}
 	}
 	vput(vp);
 	return (error);
@@ -1655,6 +1670,7 @@ kern_stat(struct nlookupdata *nd, struct stat *st)
 
 	if ((error = nlookup(nd)) != 0)
 		return (error);
+again:
 	if ((vp = nd->nl_ncp->nc_vp) == NULL)
 		return (ENOENT);
 
@@ -1662,6 +1678,19 @@ kern_stat(struct nlookupdata *nd, struct stat *st)
 	if ((error = vget(vp, LK_SHARED, td)) != 0)
 		return (error);
 	error = vn_stat(vp, st, td);
+
+	/*
+	 * If the file handle is stale we have to re-resolve the entry.  This
+	 * is a hack at the moment.
+	 */
+	if (error == ESTALE) {
+		cache_setunresolved(nd->nl_ncp);
+		error = cache_resolve(nd->nl_ncp, nd->nl_cred);
+		if (error == 0) {
+			vput(vp);
+			goto again;
+		}
+	}
 	vput(vp);
 	return (error);
 }
