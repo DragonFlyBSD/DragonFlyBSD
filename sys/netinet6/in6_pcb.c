@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.4 2003/06/25 03:56:04 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.5 2003/07/20 00:41:28 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -623,7 +623,7 @@ in6_pcbdetach(inp)
 	ip_freemoptions(inp->inp_moptions);
 
 	inp->inp_vflag = 0;
-	zfreei(ipi->ipi_zone, inp);
+	zfree(ipi->ipi_zone, inp);
 }
 
 /*
