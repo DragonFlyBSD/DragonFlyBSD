@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.12 2004/06/27 19:40:14 dillon Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.13 2004/07/03 13:10:10 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -371,6 +371,8 @@ int	ether_output(struct ifnet *,
 	   struct mbuf *, struct sockaddr *, struct rtentry *);
 int	ether_output_frame(struct ifnet *, struct mbuf *);
 int	ether_ioctl(struct ifnet *, int, caddr_t);
+uint32_t	ether_crc32_le(const uint8_t *, size_t);
+uint32_t	ether_crc32_be(const uint8_t *, size_t);
 
 int	if_addmulti(struct ifnet *, struct sockaddr *, struct ifmultiaddr **);
 int	if_allmulti(struct ifnet *, int);

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.15 2004/07/02 17:42:21 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.16 2004/07/03 13:10:10 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -1045,4 +1045,78 @@ ether_resolvemulti(ifp, llsa, sa)
 		 */
 		return EAFNOSUPPORT;
 	}
+}
+
+#if 0
+/*
+ * This is for reference.  We have a table-driven version
+ * of the little-endian crc32 generator, which is faster
+ * than the double-loop.
+ */
+uint32_t
+ether_crc32_le(const uint8_t *buf, size_t len)
+{
+	uint32_t c, crc, carry;
+	size_t i, j;
+
+	crc = 0xffffffffU;	/* initial value */
+
+	for (i = 0; i < len; i++) {
+		c = buf[i];
+		for (j = 0; j < 8; j++) {
+			carry = ((crc & 0x01) ? 1 : 0) ^ (c & 0x01);
+			crc >>= 1;
+			c >>= 1;
+			if (carry)
+				crc = (crc ^ ETHER_CRC_POLY_LE);
+		}
+	}
+
+	return(crc);
+}
+#else
+uint32_t
+ether_crc32_le(const uint8_t *buf, size_t len)
+{
+	static const uint32_t crctab[] = {
+		0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+		0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+		0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+		0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+	};
+	uint32_t crc;
+	size_t i;
+
+	crc = 0xffffffffU;	/* initial value */
+
+	for (i = 0; i < len; i++) {
+		crc ^= buf[i];
+		crc = (crc >> 4) ^ crctab[crc & 0xf];
+		crc = (crc >> 4) ^ crctab[crc & 0xf];
+	}
+
+	return(crc);
+}
+#endif
+
+uint32_t
+ether_crc32_be(const uint8_t *buf, size_t len)
+{
+	uint32_t c, crc, carry;
+	size_t i, j;
+
+	crc = 0xffffffffU;	/* initial value */
+
+	for (i = 0; i < len; i++) {
+		c = buf[i];
+		for (j = 0; j < 8; j++) {
+			carry = ((crc & 0x80000000U) ? 1 : 0) ^ (c & 0x01);
+			crc <<= 1;
+			c >>= 1;
+			if (carry)
+				crc = (crc ^ ETHER_CRC_POLY_BE) | carry;
+		}
+	}
+
+	return(crc);
 }

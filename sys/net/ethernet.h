@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.4 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.5 2004/07/03 13:10:10 joerg Exp $
  *
  */
 
@@ -44,6 +44,12 @@
  */
 #define	ETHER_IS_VALID_LEN(foo)	\
 	((foo) >= ETHER_MIN_LEN && (foo) <= ETHER_MAX_LEN)
+
+/*
+ * Ethernet CRC32 polynomials (big- and little-endian verions).
+ */
+#define	ETHER_CRC_POLY_LE	0xedb88320
+#define	ETHER_CRC_POLY_BE	0x04c11db6
 
 /*
  * Structure of a 10Mb/s Ethernet header.
