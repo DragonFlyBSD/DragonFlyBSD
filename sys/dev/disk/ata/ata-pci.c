@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.13 2004/03/02 21:03:46 drhodus Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.14 2004/06/17 16:51:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -511,8 +511,14 @@ ata_pci_attach(device_t dev)
     case 0x746d1022: /* AMD 8111 default setup */
     case 0x01bc10de: /* NVIDIA nForce default setup */
     case 0x006510de: /* NVIDIA nForce2 default setup */
-	/* set prefetch, postwrite */
-	pci_write_config(dev, 0x41, pci_read_config(dev, 0x41, 1) | 0xf0, 1);
+	/*
+	 * set prefetch, postwrite.  Note: do not set this mode on VIA
+	 * chipsets, it causes problems on newer chips and ATAPI devices.
+	 */
+	if ((type & 0xFFFF) != 0x1106) {
+		pci_write_config(dev, 0x41, 
+				pci_read_config(dev, 0x41, 1) | 0xf0, 1);
+	}
 
 	/* set fifo configuration half'n'half */
 	pci_write_config(dev, 0x43, 
