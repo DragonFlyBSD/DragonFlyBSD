@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.7 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/nexus.c,v 1.8 2004/02/21 19:12:39 joerg Exp $
  */
 
 /*
@@ -534,6 +534,7 @@ nexus_setup_intr(device_t bus, device_t child, struct resource *irq,
 
 	driver = device_get_driver(child);
 	switch (flags & ~INTR_FAST) {
+	case INTR_TYPE_AV:
 	case INTR_TYPE_TTY:
 		mask = &tty_imask;
 		break;
