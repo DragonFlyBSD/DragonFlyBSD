@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.6 2004/03/02 20:55:10 drhodus Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.7 2004/03/12 03:23:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -276,20 +276,9 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_accept_tio *atio;
 
-		atio = (struct ccb_accept_tio*)malloc(sizeof(*atio), M_DEVBUF,
-						      M_NOWAIT);
-		if (atio == NULL) {
-			status = CAM_RESRC_UNAVAIL;
-			break;
-		}
+		atio = malloc(sizeof(*atio), M_DEVBUF, M_INTWAIT);
 
 		atio->ccb_h.ccb_descr = targbhallocdescr();
-
-		if (atio->ccb_h.ccb_descr == NULL) {
-			free(atio, M_DEVBUF);
-			status = CAM_RESRC_UNAVAIL;
-			break;
-		}
 
 		xpt_setup_ccb(&atio->ccb_h, periph->path, /*priority*/1);
 		atio->ccb_h.func_code = XPT_ACCEPT_TARGET_IO;
@@ -321,13 +310,7 @@ targbhenlun(struct cam_periph *periph)
 	for (i = 0; i < MAX_ACCEPT; i++) {
 		struct ccb_immed_notify *inot;
 
-		inot = (struct ccb_immed_notify*)malloc(sizeof(*inot), M_DEVBUF,
-						        M_NOWAIT);
-
-		if (inot == NULL) {
-			status = CAM_RESRC_UNAVAIL;
-			break;
-		}
+		inot = malloc(sizeof(*inot), M_DEVBUF, M_INTWAIT);
 
 		xpt_setup_ccb(&inot->ccb_h, periph->path, /*priority*/1);
 		inot->ccb_h.func_code = XPT_IMMED_NOTIFY;
@@ -411,14 +394,7 @@ targbhctor(struct cam_periph *periph, void *arg)
 	cpi = (struct ccb_pathinq *)arg;
 
 	/* Allocate our per-instance private storage */
-	softc = (struct targbh_softc *)malloc(sizeof(*softc),
-					      M_DEVBUF, M_NOWAIT);
-	if (softc == NULL) {
-		printf("targctor: unable to malloc softc\n");
-		return (CAM_REQ_CMP_ERR);
-	}
-
-	bzero(softc, sizeof(*softc));
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&softc->pending_queue);
 	TAILQ_INIT(&softc->work_queue);
 	softc->accept_tio_list = NULL;
@@ -724,19 +700,10 @@ targbhallocdescr()
 	struct targbh_cmd_desc* descr;
 
 	/* Allocate the targbh_descr structure */
-	descr = (struct targbh_cmd_desc *)malloc(sizeof(*descr),
-					       M_DEVBUF, M_NOWAIT);
-	if (descr == NULL)
-		return (NULL);
-
-	bzero(descr, sizeof(*descr));
+	descr = malloc(sizeof(*descr), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	/* Allocate buffer backing store */
-	descr->backing_store = malloc(MAX_BUF_SIZE, M_DEVBUF, M_NOWAIT);
-	if (descr->backing_store == NULL) {
-		free(descr, M_DEVBUF);
-		return (NULL);
-	}
+	descr->backing_store = malloc(MAX_BUF_SIZE, M_DEVBUF, M_INTWAIT);
 	descr->max_size = MAX_BUF_SIZE;
 	return (descr);
 }

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_sim.c,v 1.3 1999/08/28 00:40:42 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.4 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_sim.c,v 1.5 2004/03/12 03:23:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,11 @@ cam_simq_free(struct cam_devq *devq)
 	cam_devq_free(devq);
 }
 
+/*
+ * cam_sim_alloc() may potentially be called from an interrupt (?) but
+ * unexpected things happen to the system if malloc() returns NULL so we
+ * use M_INTWAIT anyway.
+ */
 struct cam_sim *
 cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 	      const char *sim_name, void *softc, u_int32_t unit,
@@ -60,33 +65,19 @@ cam_sim_alloc(sim_action_func sim_action, sim_poll_func sim_poll,
 {
 	struct cam_sim *sim;
 
-	/*
-	 * If this is the xpt layer creating a sim, then it's OK
-	 * to wait for an allocation.
-	 *
-	 * XXX Should we pass in a flag to indicate that wait is OK?
-	 */
-	if (strcmp(sim_name, "xpt") == 0)
-		sim = (struct cam_sim *)malloc(sizeof(struct cam_sim),
-					       M_DEVBUF, M_WAITOK);
-	else
-		sim = (struct cam_sim *)malloc(sizeof(struct cam_sim),
-					       M_DEVBUF, M_NOWAIT);
-
-	if (sim != NULL) {
-		sim->sim_action = sim_action;
-		sim->sim_poll = sim_poll;
-		sim->sim_name = sim_name;
-		sim->softc = softc;
-		sim->path_id = CAM_PATH_ANY;
-		sim->unit_number = unit;
-		sim->bus_id = 0;	/* set in xpt_bus_register */
-		sim->max_tagged_dev_openings = max_tagged_dev_transactions;
-		sim->max_dev_openings = max_dev_transactions;
-		sim->flags = 0;
-		callout_handle_init(&sim->c_handle);
-		sim->devq = queue;
-	}
+	sim = malloc(sizeof(struct cam_sim), M_DEVBUF, M_INTWAIT);
+	sim->sim_action = sim_action;
+	sim->sim_poll = sim_poll;
+	sim->sim_name = sim_name;
+	sim->softc = softc;
+	sim->path_id = CAM_PATH_ANY;
+	sim->unit_number = unit;
+	sim->bus_id = 0;	/* set in xpt_bus_register */
+	sim->max_tagged_dev_openings = max_tagged_dev_transactions;
+	sim->max_dev_openings = max_dev_transactions;
+	sim->flags = 0;
+	callout_handle_init(&sim->c_handle);
+	sim->devq = queue;
 
 	return (sim);
 }

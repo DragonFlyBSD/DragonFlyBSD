@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.5 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.6 2004/03/12 03:23:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -954,7 +954,7 @@ targgetccb(struct targ_softc *softc, xpt_opcode type, int priority)
 	int ccb_len;
 
 	ccb_len = targccblen(type);
-	MALLOC(ccb, union ccb *, ccb_len, M_TARG, M_WAITOK);
+	MALLOC(ccb, union ccb *, ccb_len, M_TARG, M_INTWAIT);
 	CAM_DEBUG(softc->path, CAM_DEBUG_PERIPH, ("getccb %p\n", ccb));
 
 	xpt_setup_ccb(&ccb->ccb_h, softc->path, priority);
@@ -997,8 +997,8 @@ targgetdescr(struct targ_softc *softc)
 {
 	struct targ_cmd_descr *descr;
 
-	MALLOC(descr, struct targ_cmd_descr *, sizeof(*descr), M_TARG,
-	       M_WAITOK);
+	MALLOC(descr, struct targ_cmd_descr *, sizeof(*descr),
+		M_TARG, M_INTWAIT);
 	descr->mapinfo.num_bufs_used = 0;
 	return (descr);
 }

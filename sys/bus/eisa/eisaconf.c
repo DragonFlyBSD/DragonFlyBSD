@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/eisa/eisaconf.c,v 1.55 2000/01/14 07:13:57 peter Exp $
- * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/eisa/eisaconf.c,v 1.4 2004/03/12 03:24:43 dillon Exp $
  */
 
 #include "opt_eisa.h"
@@ -105,11 +105,8 @@ mainboard_probe(device_t dev)
 	if (eisa_get_slot(dev) != 0)
 		return (ENXIO);
 
-	idstring = (char *)malloc(8 + sizeof(" (System Board)") + 1,
-				  M_DEVBUF, M_NOWAIT);
-	if (idstring == NULL) {
-		panic("Eisa probe unable to malloc");
-	}
+	idstring = malloc(8 + sizeof(" (System Board)") + 1,
+			    M_DEVBUF, M_INTWAIT);
 	sprintf(idstring, "%c%c%c%03x%01x (System Board)",
 		EISA_MFCTR_CHAR0(id),
 		EISA_MFCTR_CHAR1(id),
@@ -173,16 +170,9 @@ eisa_probe(device_t dev)
 		devices_found++;
 
 		/* Prepare an eisa_device_node for this slot */
-		e_dev = (struct eisa_device *)malloc(sizeof(*e_dev),
-						     M_DEVBUF, M_NOWAIT);
-		if (!e_dev) {
-			device_printf(dev, "cannot malloc eisa_device");
-			break; /* Try to attach what we have already */
-		}
-		bzero(e_dev, sizeof(*e_dev));
+		e_dev = malloc(sizeof(*e_dev), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 		e_dev->id = eisa_id;
-
 		e_dev->ioconf.slot = slot; 
 
 		/* Initialize our lists of reserved addresses */
@@ -514,11 +504,7 @@ eisa_add_intr(device_t dev, int irq, int trigger)
 	struct eisa_device *e_dev = device_get_ivars(dev);
 	struct irq_node *irq_info;
  
-	irq_info = (struct irq_node *)malloc(sizeof(*irq_info), M_DEVBUF,
-					     M_NOWAIT);
-	if (irq_info == NULL)
-		return (1);
-
+	irq_info = malloc(sizeof(*irq_info), M_DEVBUF, M_INTWAIT);
 	irq_info->irq_no = irq;
 	irq_info->irq_trigger = trigger;
 	irq_info->idesc = NULL;
@@ -532,11 +518,7 @@ eisa_add_resvaddr(struct eisa_device *e_dev, struct resvlist *head, u_long base,
 {
 	resvaddr_t *reservation;
 
-	reservation = (resvaddr_t *)malloc(sizeof(resvaddr_t),
-					   M_DEVBUF, M_NOWAIT);
-	if(!reservation)
-		return (ENOMEM);
-
+	reservation = malloc(sizeof(resvaddr_t), M_DEVBUF, M_INTWAIT);
 	reservation->addr = base;
 	reservation->size = size;
 	reservation->flags = flags;

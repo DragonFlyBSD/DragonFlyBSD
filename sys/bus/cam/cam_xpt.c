@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.9 2004/01/30 05:42:09 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.10 2004/03/12 03:23:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1359,15 +1359,8 @@ xpt_init(dummy)
 	/*
 	 * Register a callback for when interrupts are enabled.
 	 */
-	xpt_config_hook =
-	    (struct intr_config_hook *)malloc(sizeof(struct intr_config_hook),
-					      M_TEMP, M_NOWAIT | M_ZERO);
-	if (xpt_config_hook == NULL) {
-		printf("xpt_init: Cannot malloc config hook "
-		       "- failing attach\n");
-		return;
-	}
-
+	xpt_config_hook = malloc(sizeof(struct intr_config_hook),
+				  M_TEMP, M_INTWAIT | M_ZERO);
 	xpt_config_hook->ich_func = xpt_config;
 	if (config_intrhook_establish(xpt_config_hook) != 0) {
 		free (xpt_config_hook, M_TEMP);
@@ -3190,13 +3183,8 @@ xpt_action(union ccb *start_ccb)
 				cur_entry->event_enable = csa->event_enable;
 			}
 		} else {
-			cur_entry = malloc(sizeof(*cur_entry), M_DEVBUF,
-					   M_NOWAIT);
-			if (cur_entry == NULL) {
-				splx(s);
-				csa->ccb_h.status = CAM_RESRC_UNAVAIL;
-				break;
-			}
+			cur_entry = malloc(sizeof(*cur_entry), 
+					    M_DEVBUF, M_INTWAIT);
 			cur_entry->event_enable = csa->event_enable;
 			cur_entry->callback_arg = csa->callback_arg;
 			cur_entry->callback = csa->callback;
@@ -3791,12 +3779,7 @@ xpt_create_path(struct cam_path **new_path_ptr, struct cam_periph *perph,
 	struct	   cam_path *path;
 	cam_status status;
 
-	path = (struct cam_path *)malloc(sizeof(*path), M_DEVBUF, M_NOWAIT);
-
-	if (path == NULL) {
-		status = CAM_RESRC_UNAVAIL;
-		return(status);
-	}
+	path = malloc(sizeof(*path), M_DEVBUF, M_INTWAIT);
 	status = xpt_compile_path(path, perph, path_id, target_id, lun_id);
 	if (status != CAM_REQ_CMP) {
 		free(path, M_DEVBUF);
@@ -4070,15 +4053,9 @@ xpt_bus_register(struct cam_sim *sim, u_int32_t bus)
 	int s;
 
 	sim->bus_id = bus;
-	new_bus = (struct cam_eb *)malloc(sizeof(*new_bus),
-					  M_DEVBUF, M_NOWAIT);
-	if (new_bus == NULL) {
-		/* Couldn't satisfy request */
-		return (CAM_RESRC_UNAVAIL);
-	}
+	new_bus = malloc(sizeof(*new_bus), M_DEVBUF, M_INTWAIT);
 
 	if (strcmp(sim->sim_name, "xpt") != 0) {
-
 		sim->path_id =
 		    xptpathid(sim->sim_name, sim->unit_number, sim->bus_id);
 	}
@@ -4564,7 +4541,7 @@ xpt_alloc_ccb()
 {
 	union ccb *new_ccb;
 
-	new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_WAITOK);
+	new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
 	return (new_ccb);
 }
 
@@ -4593,11 +4570,7 @@ xpt_get_ccb(struct cam_ed *device)
 
 	s = splsoftcam();
 	if ((new_ccb = (union ccb *)ccb_freeq.slh_first) == NULL) {
-		new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_NOWAIT);
-                if (new_ccb == NULL) {
-			splx(s);
-			return (NULL);
-		}
+		new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
 		callout_handle_init(&new_ccb->ccb_h.timeout_ch);
 		SLIST_INSERT_HEAD(&ccb_freeq, &new_ccb->ccb_h,
 				  xpt_links.sle);
@@ -4615,6 +4588,10 @@ xpt_release_bus(struct cam_eb *bus)
 	int s;
 
 	s = splcam();
+#ifdef XPT_DEBUG_RELEASE
+	printf("xpt_release_bus(%p): %d %p\n", 
+		bus, bus->refcount, TAILQ_FIRST(&bus->et_entries));
+#endif
 	if ((--bus->refcount == 0)
 	 && (TAILQ_FIRST(&bus->et_entries) == NULL)) {
 		TAILQ_REMOVE(&xpt_busses, bus, links);
@@ -4629,35 +4606,33 @@ static struct cam_et *
 xpt_alloc_target(struct cam_eb *bus, target_id_t target_id)
 {
 	struct cam_et *target;
+	struct cam_et *cur_target;
 
-	target = (struct cam_et *)malloc(sizeof(*target), M_DEVBUF, M_NOWAIT);
-	if (target != NULL) {
-		struct cam_et *cur_target;
+	target = malloc(sizeof(*target), M_DEVBUF, M_INTWAIT);
 
-		TAILQ_INIT(&target->ed_entries);
-		target->bus = bus;
-		target->target_id = target_id;
-		target->refcount = 1;
-		target->generation = 0;
-		timevalclear(&target->last_reset);
-		/*
-		 * Hold a reference to our parent bus so it
-		 * will not go away before we do.
-		 */
-		bus->refcount++;
+	TAILQ_INIT(&target->ed_entries);
+	target->bus = bus;
+	target->target_id = target_id;
+	target->refcount = 1;
+	target->generation = 0;
+	timevalclear(&target->last_reset);
+	/*
+	 * Hold a reference to our parent bus so it
+	 * will not go away before we do.
+	 */
+	bus->refcount++;
 
-		/* Insertion sort into our bus's target list */
-		cur_target = TAILQ_FIRST(&bus->et_entries);
-		while (cur_target != NULL && cur_target->target_id < target_id)
-			cur_target = TAILQ_NEXT(cur_target, links);
+	/* Insertion sort into our bus's target list */
+	cur_target = TAILQ_FIRST(&bus->et_entries);
+	while (cur_target != NULL && cur_target->target_id < target_id)
+		cur_target = TAILQ_NEXT(cur_target, links);
 
-		if (cur_target != NULL) {
-			TAILQ_INSERT_BEFORE(cur_target, target, links);
-		} else {
-			TAILQ_INSERT_TAIL(&bus->et_entries, target, links);
-		}
-		bus->generation++;
+	if (cur_target != NULL) {
+		TAILQ_INSERT_BEFORE(cur_target, target, links);
+	} else {
+		TAILQ_INSERT_TAIL(&bus->et_entries, target, links);
 	}
+	bus->generation++;
 	return (target);
 }
 
@@ -4667,6 +4642,11 @@ xpt_release_target(struct cam_eb *bus, struct cam_et *target)
 	int s;
 
 	s = splcam();
+#ifdef XPT_DEBUG_RELEASE
+	printf("xpt_release_target(%p,%p): %d %p\n", 
+		bus, target, 
+		target->refcount, TAILQ_FIRST(&target->ed_entries));
+#endif
 	if ((--target->refcount == 0)
 	 && (TAILQ_FIRST(&target->ed_entries) == NULL)) {
 		TAILQ_REMOVE(&bus->et_entries, target, links);
@@ -4692,8 +4672,7 @@ xpt_alloc_device(struct cam_eb *bus, struct cam_et *target, lun_id_t lun_id)
 	if (status != CAM_REQ_CMP) {
 		device = NULL;
 	} else {
-		device = (struct cam_ed *)malloc(sizeof(*device),
-						 M_DEVBUF, M_NOWAIT);
+		device = malloc(sizeof(*device), M_DEVBUF, M_INTWAIT);
 	}
 
 	if (device != NULL) {
@@ -4768,6 +4747,12 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 	int s;
 
 	s = splcam();
+#ifdef XPT_DEBUG_RELEASE
+	printf("xpt_release_device(%p,%p,%p): %d %08x\n", 
+		bus, target, device,
+		device->refcount, device->flags);
+#endif
+
 	if ((--device->refcount == 0)
 	 && ((device->flags & CAM_DEV_UNCONFIGURED) != 0)) {
 		struct cam_devq *devq;
@@ -4776,9 +4761,11 @@ xpt_release_device(struct cam_eb *bus, struct cam_et *target,
 		 || device->send_ccb_entry.pinfo.index != CAM_UNQUEUED_INDEX)
 			panic("Removing device while still queued for ccbs");
 
-		if ((device->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0)
-				untimeout(xpt_release_devq_timeout, device,
-					  device->c_handle);
+		if ((device->flags & CAM_DEV_REL_TIMEOUT_PENDING) != 0) {
+			device->flags &= ~CAM_DEV_REL_TIMEOUT_PENDING;
+			untimeout(xpt_release_devq_timeout, device,
+				  device->c_handle);
+		}
 
 		TAILQ_REMOVE(&target->ed_entries, device,links);
 		target->generation++;
@@ -4915,7 +4902,7 @@ xpt_scan_bus(struct cam_periph *periph, union ccb *request_ccb)
 
 		/* Save some state for use while we probe for devices */
 		scan_info = (xpt_scan_bus_info *)
-		    malloc(sizeof(xpt_scan_bus_info), M_TEMP, M_WAITOK);
+		    malloc(sizeof(xpt_scan_bus_info), M_TEMP, M_INTWAIT);
 		scan_info->request_ccb = request_ccb;
 		scan_info->cpi = &work_ccb->cpi;
 
@@ -5150,21 +5137,8 @@ xpt_scan_lun(struct cam_periph *periph, struct cam_path *path,
 	}
 
 	if (request_ccb == NULL) {
-		request_ccb = malloc(sizeof(union ccb), M_TEMP, M_NOWAIT);
-		if (request_ccb == NULL) {
-			xpt_print_path(path);
-			printf("xpt_scan_lun: can't allocate CCB, can't "
-			       "continue\n");
-			return;
-		}
-		new_path = malloc(sizeof(*new_path), M_TEMP, M_NOWAIT);
-		if (new_path == NULL) {
-			xpt_print_path(path);
-			printf("xpt_scan_lun: can't allocate path, can't "
-			       "continue\n");
-			free(request_ccb, M_TEMP);
-			return;
-		}
+		request_ccb = malloc(sizeof(union ccb), M_TEMP, M_INTWAIT);
+		new_path = malloc(sizeof(*new_path), M_TEMP, M_INTWAIT);
 		status = xpt_compile_path(new_path, xpt_periph,
 					  path->bus->path_id,
 					  path->target->target_id,
@@ -5235,13 +5209,7 @@ proberegister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = (probe_softc *)malloc(sizeof(*softc), M_TEMP, M_NOWAIT);
-
-	if (softc == NULL) {
-		printf("proberegister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return(CAM_REQ_CMP_ERR);
-	}
+	softc = malloc(sizeof(*softc), M_TEMP, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&softc->request_ccbs);
 	TAILQ_INSERT_TAIL(&softc->request_ccbs, &request_ccb->ccb_h,
 			  periph_links.tqe);
@@ -5389,25 +5357,19 @@ probestart(struct cam_periph *periph, union ccb *start_ccb)
 		mode_buf_len = sizeof(struct scsi_mode_header_6)
 			     + sizeof(struct scsi_mode_blk_desc)
 			     + sizeof(struct scsi_control_page);
-		mode_buf = malloc(mode_buf_len, M_TEMP, M_NOWAIT);
-		if (mode_buf != NULL) {
-	                scsi_mode_sense(csio,
-					/*retries*/4,
-					probedone,
-					MSG_SIMPLE_Q_TAG,
-					/*dbd*/FALSE,
-					SMS_PAGE_CTRL_CURRENT,
-					SMS_CONTROL_MODE_PAGE,
-					mode_buf,
-					mode_buf_len,
-					SSD_FULL_SIZE,
-					/*timeout*/60000);
-			break;
-		}
-		xpt_print_path(periph->path);
-		printf("Unable to mode sense control page - malloc failure\n");
-		softc->action = PROBE_SERIAL_NUM;
-		/* FALLTHROUGH */
+		mode_buf = malloc(mode_buf_len, M_TEMP, M_INTWAIT);
+		scsi_mode_sense(csio,
+				/*retries*/4,
+				probedone,
+				MSG_SIMPLE_Q_TAG,
+				/*dbd*/FALSE,
+				SMS_PAGE_CTRL_CURRENT,
+				SMS_CONTROL_MODE_PAGE,
+				mode_buf,
+				mode_buf_len,
+				SSD_FULL_SIZE,
+				/*timeout*/60000);
+		break;
 	}
 	case PROBE_SERIAL_NUM:
 	{
@@ -5419,12 +5381,9 @@ probestart(struct cam_periph *periph, union ccb *start_ccb)
 		device->serial_num = NULL;
 		device->serial_num_len = 0;
 
-		if ((device->quirk->quirks & CAM_QUIRK_NOSERIAL) == 0)
-			serial_buf = (struct scsi_vpd_unit_serial_number *)
-				malloc(sizeof(*serial_buf), M_TEMP,
-					M_NOWAIT | M_ZERO);
-
-		if (serial_buf != NULL) {
+		if ((device->quirk->quirks & CAM_QUIRK_NOSERIAL) == 0) {
+			serial_buf = malloc(sizeof(*serial_buf), M_TEMP,
+					    M_INTWAIT | M_ZERO);
 			scsi_inquiry(csio,
 				     /*retries*/4,
 				     probedone,
@@ -5637,17 +5596,13 @@ probedone(struct cam_periph *periph, union ccb *done_ccb)
 
 			have_serialnum = 1;
 			path->device->serial_num =
-				(u_int8_t *)malloc((serial_buf->length + 1),
-						   M_DEVBUF, M_NOWAIT);
-			if (path->device->serial_num != NULL) {
-				bcopy(serial_buf->serial_num,
-				      path->device->serial_num,
-				      serial_buf->length);
-				path->device->serial_num_len =
-				    serial_buf->length;
-				path->device->serial_num[serial_buf->length]
-				    = '\0';
-			}
+				malloc((serial_buf->length + 1),
+				       M_DEVBUF, M_INTWAIT);
+			bcopy(serial_buf->serial_num,
+			      path->device->serial_num,
+			      serial_buf->length);
+			path->device->serial_num_len = serial_buf->length;
+			path->device->serial_num[serial_buf->length] = '\0';
 		} else if (cam_periph_error(done_ccb, 0,
 					    SF_RETRY_UA|SF_NO_PRINT,
 					    &softc->saved_ccb) == ERESTART) {

@@ -13,7 +13,7 @@
  * functioning of this software in any circumstances.
  *
  * $FreeBSD: src/sys/cam/cam_extend.c,v 1.3 1999/08/28 00:40:39 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_extend.c,v 1.4 2004/03/12 03:23:13 dillon Exp $
  */
 /*
  * XXX XXX XXX XXX  We should get DEVFS working so that we
@@ -40,10 +40,7 @@ struct extend_array
 static void *
 cam_extend_alloc(size_t s)
 {
-	void *p = malloc(s, M_DEVBUF, M_NOWAIT);
-	if (!p)
-		panic("extend_alloc: malloc failed.");
-	return p;
+	return(malloc(s, M_DEVBUF, M_INTWAIT));
 }
 
 static void

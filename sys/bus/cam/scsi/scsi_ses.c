@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.7 2003/11/09 02:22:33 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.8 2004/03/12 03:23:19 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -124,7 +124,7 @@ static int safte_set_objstat(ses_softc_t *, ses_objstat *, int);
 #define	SES_DLOG		if (0) ses_log
 #endif
 #define	SES_VLOG		if (bootverbose) ses_log
-#define	SES_MALLOC(amt)		malloc(amt, M_DEVBUF, M_NOWAIT)
+#define	SES_MALLOC(amt)		malloc(amt, M_DEVBUF, M_INTWAIT)
 #define	SES_FREE(ptr, amt)	free(ptr, M_DEVBUF)
 #define	MEMZERO			bzero
 #define	MEMCPY(dest, src, amt)	bcopy(src, dest, amt)
@@ -344,13 +344,7 @@ sesregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof (struct ses_softc), M_DEVBUF, M_NOWAIT);
-	if (softc == NULL) {
-		printf("sesregister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return (CAM_REQ_CMP_ERR);
-	}
-	bzero(softc, sizeof (struct ses_softc));
+	softc = malloc(sizeof (struct ses_softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	periph->softc = softc;
 	softc->periph = periph;
 

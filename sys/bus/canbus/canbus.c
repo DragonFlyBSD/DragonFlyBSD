@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/canbus.c,v 1.3.2.1 2003/02/10 13:11:51 nyan Exp $
- * $DragonFly: src/sys/bus/canbus/Attic/canbus.c,v 1.3 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/canbus/Attic/canbus.c,v 1.4 2004/03/12 03:23:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -245,9 +245,7 @@ canbus_add_child(device_t bus, int order, const char *name, int unit)
 	child = device_add_child_ordered(bus, order, name, unit);
 
 	cbdev = malloc(
-	    sizeof(struct canbus_device), M_CANBUSDEV, M_NOWAIT | M_ZERO);
-	if (!cbdev)
-		return (0);
+	    sizeof(struct canbus_device), M_CANBUSDEV, M_INTWAIT | M_ZERO);
 
 	resource_list_init(&cbdev->cbdev_resources);
 	device_set_ivars(child, cbdev);

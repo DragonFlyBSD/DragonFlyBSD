@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.8 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.9 2004/03/12 03:23:19 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1450,14 +1450,7 @@ saregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = (struct sa_softc *)malloc(sizeof (*softc), M_DEVBUF, M_NOWAIT);
-	if (softc == NULL) {
-		printf("saregister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return (CAM_REQ_CMP_ERR);
-	}
-
-	bzero(softc, sizeof(*softc));
+	softc = malloc(sizeof (*softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	softc->scsi_rev = SID_ANSI_REV(&cgd->inq_data);
 	softc->state = SA_STATE_NORMAL;
 	softc->fileno = (daddr_t) -1;
@@ -1928,15 +1921,7 @@ samount(struct cam_periph *periph, int oflags, dev_t dev)
 		 * blocksize on tape is and don't expect to really
 		 * read a full record.
 		 */
-		rblim = (struct  scsi_read_block_limits_data *)
-		    malloc(8192, M_TEMP, M_WAITOK);
-		if (rblim == NULL) {
-			xpt_print_path(ccb->ccb_h.path);
-			printf("no memory for test read\n");
-			xpt_release_ccb(ccb);
-			error = ENOMEM;
-			goto exit;
-		}
+		rblim = malloc(8192, M_TEMP, M_INTWAIT);
 
 		if ((softc->quirks & SA_QUIRK_NODREAD) == 0) {
 			scsi_sa_read_write(&ccb->csio, 0, sadone,
@@ -2554,8 +2539,7 @@ retry:
 			mode_buffer_len += sizeof (sa_comp_t);
 	}
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_WAITOK);
-	bzero(mode_buffer, mode_buffer_len);
+	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 	mode_hdr = (struct scsi_mode_header_6 *)mode_buffer;
 	mode_blk = (struct scsi_mode_blk_desc *)&mode_hdr[1];
 
@@ -2735,7 +2719,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 
 	softc = (struct sa_softc *)periph->softc;
 
-	ccomp = malloc(sizeof (sa_comp_t), M_TEMP, M_WAITOK);
+	ccomp = malloc(sizeof (sa_comp_t), M_TEMP, M_INTWAIT);
 
 	/*
 	 * Since it doesn't make sense to set the number of blocks, or
@@ -2758,8 +2742,7 @@ sasetparams(struct cam_periph *periph, sa_params params_to_set,
 	if (params_to_set & SA_PARAM_COMPRESSION)
 		mode_buffer_len += sizeof (sa_comp_t);
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_WAITOK);
-	bzero(mode_buffer, mode_buffer_len);
+	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 
 	mode_hdr = (struct scsi_mode_header_6 *)mode_buffer;
 	mode_blk = (struct scsi_mode_blk_desc *)&mode_hdr[1];

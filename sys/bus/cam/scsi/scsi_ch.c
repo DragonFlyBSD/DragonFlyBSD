@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.6 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.7 2004/03/12 03:23:19 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -378,15 +378,7 @@ chregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = (struct ch_softc *)malloc(sizeof(*softc),M_DEVBUF,M_NOWAIT);
-
-	if (softc == NULL) {
-		printf("chregister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return(CAM_REQ_CMP_ERR);
-	}
-
-	bzero(softc, sizeof(*softc));
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	softc->state = CH_STATE_PROBE;
 	periph->softc = softc;
 	cam_extend_set(chperiphs, periph->unit_number, periph);
@@ -542,14 +534,7 @@ chstart(struct cam_periph *periph, union ccb *start_ccb)
 				  sizeof(struct scsi_mode_blk_desc) +
 				 sizeof(struct page_element_address_assignment);
 
-		mode_buffer = malloc(mode_buffer_len, M_TEMP, M_NOWAIT);
-
-		if (mode_buffer == NULL) {
-			printf("chstart: couldn't malloc mode sense data\n");
-			break;
-		}
-		bzero(mode_buffer, mode_buffer_len);
-
+		mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 		/*
 		 * Get the element address assignment page.
 		 */
@@ -1124,7 +1109,7 @@ chgetelemstatus(struct cam_periph *periph,
 	 * we can allocate enough storage for all of them.  We assume
 	 * that the first one can fit into 1k.
 	 */
-	data = (caddr_t)malloc(1024, M_DEVBUF, M_WAITOK);
+	data = (caddr_t)malloc(1024, M_DEVBUF, M_INTWAIT);
 
 	ccb = cam_periph_getccb(periph, /*priority*/ 1);
 
@@ -1161,7 +1146,7 @@ chgetelemstatus(struct cam_periph *periph,
 	 * device.
 	 */
 	free(data, M_DEVBUF);
-	data = (caddr_t)malloc(size, M_DEVBUF, M_WAITOK);
+	data = (caddr_t)malloc(size, M_DEVBUF, M_INTWAIT);
 
 	scsi_read_element_status(&ccb->csio,
 				 /* retries */ 1,
@@ -1196,7 +1181,7 @@ chgetelemstatus(struct cam_periph *periph,
 
 	user_data = (struct changer_element_status *)
 		malloc(avail * sizeof(struct changer_element_status),
-		       M_DEVBUF, M_WAITOK | M_ZERO);
+		       M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	desc = (struct read_element_status_descriptor *)((uintptr_t)data +
 		sizeof(struct read_element_status_header) +
@@ -1377,14 +1362,7 @@ chgetparams(struct cam_periph *periph)
 	 */
 	mode_buffer_len = sizeof(struct scsi_mode_sense_data);
 
-	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_NOWAIT);
-
-	if (mode_buffer == NULL) {
-		printf("chgetparams: couldn't malloc mode sense data\n");
-		return(ENOSPC);
-	}
-
-	bzero(mode_buffer, mode_buffer_len);
+	mode_buffer = malloc(mode_buffer_len, M_TEMP, M_INTWAIT | M_ZERO);
 
 	if (softc->quirks & CH_Q_NO_DBD)
 		dbd = FALSE;

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_queue.c,v 1.5 1999/08/28 00:40:41 peter Exp $
- * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_queue.c,v 1.4 2004/03/12 03:23:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,13 +51,8 @@ camq_alloc(int size)
 {
 	struct camq *camq;
 
-	camq = (struct camq *)malloc(sizeof(*camq), M_DEVBUF, M_NOWAIT);
-	if (camq != NULL) {
-		if (camq_init(camq, size) != 0) {
-			free(camq, M_DEVBUF);
-			camq = NULL;
-		}
-	}
+	camq = malloc(sizeof(*camq), M_DEVBUF, M_INTWAIT);
+	camq_init(camq, size);
 	return (camq);
 }
 	
@@ -67,15 +62,13 @@ camq_init(struct camq *camq, int size)
 	bzero(camq, sizeof(*camq));
 	camq->array_size = size;
 	if (camq->array_size != 0) {
-		camq->queue_array = (cam_pinfo**)malloc(size*sizeof(cam_pinfo*),
-							M_DEVBUF, M_NOWAIT);
-		if (camq->queue_array == NULL) {
-			printf("camq_init: - cannot malloc array!\n");
-			return (1);
-		}
+		camq->queue_array = malloc(size * sizeof(cam_pinfo *), 
+					M_DEVBUF, M_INTWAIT);
 		/*
 		 * Heap algorithms like everything numbered from 1, so
 		 * offset our pointer into the heap array by one element.
+		 *
+		 * XXX this is a really dumb idea.
 		 */
 		camq->queue_array--;
 	}
@@ -120,12 +113,8 @@ camq_resize(struct camq *queue, int new_size)
 		panic("camq_resize: New queue size can't accomodate "
 		      "queued entries.");
 #endif
-	new_array = (cam_pinfo **)malloc(new_size * sizeof(cam_pinfo *),
-					 M_DEVBUF, M_NOWAIT);
-	if (new_array == NULL) {
-		/* Couldn't satisfy request */
-		return (CAM_RESRC_UNAVAIL);
-	}
+	new_array = malloc(new_size * sizeof(cam_pinfo *), M_DEVBUF, M_INTWAIT);
+
 	/*
 	 * Heap algorithms like everything numbered from 1, so
 	 * remember that our pointer into the heap array is offset
@@ -209,16 +198,8 @@ cam_devq_alloc(int devices, int openings)
 {
 	struct cam_devq *devq;
 
-	devq = (struct cam_devq *)malloc(sizeof(*devq), M_DEVBUF, M_NOWAIT);
-	if (devq == NULL) {
-		printf("cam_devq_alloc: - cannot malloc!\n");
-		return (NULL);
-	}
-	if (cam_devq_init(devq, devices, openings) != 0) {
-		free(devq, M_DEVBUF);
-		return (NULL);		
-	}
-	
+	devq = malloc(sizeof(*devq), M_DEVBUF, M_INTWAIT);
+	cam_devq_init(devq, devices, openings);
 	return (devq);
 }
 
@@ -226,13 +207,8 @@ int
 cam_devq_init(struct cam_devq *devq, int devices, int openings)
 {
 	bzero(devq, sizeof(*devq));
-	if (camq_init(&devq->alloc_queue, devices) != 0) {
-		return (1);
-	}
-	if (camq_init(&devq->send_queue, devices) != 0) {
-		camq_fini(&devq->alloc_queue);
-		return (1);
-	}
+	camq_init(&devq->alloc_queue, devices);
+	camq_init(&devq->send_queue, devices);
 	devq->alloc_openings = openings;
 	devq->alloc_active = 0;
 	devq->send_openings = openings;
@@ -266,16 +242,8 @@ cam_ccbq_alloc(int openings)
 {
 	struct cam_ccbq *ccbq;
 
-	ccbq = (struct cam_ccbq *)malloc(sizeof(*ccbq), M_DEVBUF, M_NOWAIT);
-	if (ccbq == NULL) {
-		printf("cam_ccbq_alloc: - cannot malloc!\n");
-		return (NULL);
-	}
-	if (cam_ccbq_init(ccbq, openings) != 0) {
-		free(ccbq, M_DEVBUF);
-		return (NULL);		
-	}
-	
+	ccbq = malloc(sizeof(*ccbq), M_DEVBUF, M_INTWAIT);
+	cam_ccbq_init(ccbq, openings);
 	return (ccbq);
 }
 
@@ -323,9 +291,7 @@ int
 cam_ccbq_init(struct cam_ccbq *ccbq, int openings)
 {
 	bzero(ccbq, sizeof(*ccbq));
-	if (camq_init(&ccbq->queue, openings) != 0) {
-		return (1);
-	}
+	camq_init(&ccbq->queue, openings);
 	ccbq->devq_openings = openings;
 	ccbq->dev_openings = openings;	
 	TAILQ_INIT(&ccbq->active_ccbs);

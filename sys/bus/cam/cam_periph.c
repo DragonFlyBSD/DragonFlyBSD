@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.7 2004/01/30 05:42:09 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.8 2004/03/12 03:23:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,11 +105,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 		return (CAM_REQ_INVALID);
 	}
 	
-	periph = (struct cam_periph *)malloc(sizeof(*periph), M_DEVBUF,
-					     M_NOWAIT);
-
-	if (periph == NULL)
-		return (CAM_RESRC_UNAVAIL);
+	periph = malloc(sizeof(*periph), M_DEVBUF, M_INTWAIT);
 	
 	init_level++;
 

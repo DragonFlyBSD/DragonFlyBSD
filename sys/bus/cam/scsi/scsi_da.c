@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.13 2004/02/16 19:43:28 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.14 2004/03/12 03:23:19 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -537,9 +537,7 @@ daopen(dev_t dev, int flags, int fmt, struct thread *td)
 		struct scsi_read_capacity_data *rcap;
 		union  ccb *ccb;
 
-		rcap = (struct scsi_read_capacity_data *)malloc(sizeof(*rcap),
-								M_TEMP,
-								M_WAITOK);
+		rcap = malloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
 		
 		ccb = cam_periph_getccb(periph, /*priority*/1);
 		scsi_read_capacity(&ccb->csio,
@@ -1218,15 +1216,7 @@ daregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = (struct da_softc *)malloc(sizeof(*softc),M_DEVBUF,M_NOWAIT);
-
-	if (softc == NULL) {
-		printf("daregister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return(CAM_REQ_CMP_ERR);
-	}
-
-	bzero(softc, sizeof(*softc));
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = DA_STATE_PROBE;
 	bufq_init(&softc->buf_queue);
@@ -1434,14 +1424,7 @@ dastart(struct cam_periph *periph, union ccb *start_ccb)
 		struct ccb_scsiio *csio;
 		struct scsi_read_capacity_data *rcap;
 
-		rcap = (struct scsi_read_capacity_data *)malloc(sizeof(*rcap),
-								M_TEMP,
-								M_NOWAIT);
-		if (rcap == NULL) {
-			printf("dastart: Couldn't malloc read_capacity data\n");
-			/* da_free_periph??? */
-			break;
-		}
+		rcap = malloc(sizeof(*rcap), M_TEMP, M_INTWAIT | M_ZERO);
 		csio = &start_ccb->csio;
 		scsi_read_capacity(csio,
 				   /*retries*/4,

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.7 2004/02/11 17:46:33 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.8 2004/03/12 03:23:19 dillon Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -390,7 +390,7 @@ scsi_low_translate_error_code(cb, tp)
  * SCSI INTERFACE (XS)
  **************************************************************/
 #define	SCSI_LOW_MINPHYS		0x10000
-#define	SCSI_LOW_MALLOC(size)		malloc((size), M_DEVBUF, M_NOWAIT)
+#define	SCSI_LOW_MALLOC(size)		malloc((size), M_DEVBUF, M_INTWAIT)
 #define	SCSI_LOW_FREE(pt)		free((pt), M_DEVBUF)
 #define	SCSI_LOW_ALLOC_CCB(flags)	scsi_low_get_ccb((flags))
 #define	SCSI_LOW_XS_POLL_HZ		1000
@@ -880,7 +880,7 @@ scsi_low_target_open(link, cf)
 /**************************************************************
  * SCSI INTERFACE (CAM)
  **************************************************************/
-#define	SCSI_LOW_MALLOC(size)		malloc((size), M_DEVBUF, M_NOWAIT)
+#define	SCSI_LOW_MALLOC(size)		malloc((size), M_DEVBUF, M_INTWAIT)
 #define	SCSI_LOW_FREE(pt)		free((pt), M_DEVBUF)
 #define	SCSI_LOW_ALLOC_CCB(flags)	scsi_low_get_ccb()
 
@@ -959,7 +959,7 @@ scsi_low_rescan_bus_cam(slp)
 	struct scsi_low_softc *slp;
 {
   	struct cam_path *path;
-	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_WAITOK);
+	union ccb *ccb = malloc(sizeof(union ccb), M_DEVBUF, M_INTWAIT);
 	cam_status status;
 
 	bzero(ccb, sizeof(union ccb));

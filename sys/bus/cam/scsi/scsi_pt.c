@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.7 2003/08/07 21:16:45 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.8 2004/03/12 03:23:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -332,15 +332,7 @@ ptctor(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = (struct pt_softc *)malloc(sizeof(*softc),M_DEVBUF,M_NOWAIT);
-
-	if (softc == NULL) {
-		printf("daregister: Unable to probe new device. "
-		       "Unable to allocate softc\n");				
-		return(CAM_REQ_CMP_ERR);
-	}
-
-	bzero(softc, sizeof(*softc));
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	softc->state = PT_STATE_NORMAL;
 	bufq_init(&softc->buf_queue);
