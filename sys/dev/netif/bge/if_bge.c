@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.23 2004/07/29 08:46:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.24 2004/09/14 22:31:01 joerg Exp $
  *
  */
 
@@ -1658,6 +1658,7 @@ bge_attach(dev)
 	unit = device_get_unit(dev);
 	sc->bge_dev = dev;
 	sc->bge_unit = unit;
+	callout_init(&sc->bge_stat_timer);
 
 	/*
 	 * Map control/status registers.
@@ -1891,7 +1892,6 @@ bge_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, ether_addr);
-	callout_handle_init(&sc->bge_stat_ch);
 
 fail:
 	splx(s);
@@ -2241,7 +2241,7 @@ bge_intr(xsc)
 		status = CSR_READ_4(sc, BGE_MAC_STS);
 		if (status & BGE_MACSTAT_MI_INTERRUPT) {
 			sc->bge_link = 0;
-			untimeout(bge_tick, sc, sc->bge_stat_ch);
+			callout_stop(&sc->bge_stat_timer);
 			bge_tick(sc);
 			/* Clear the interrupt */
 			CSR_WRITE_4(sc, BGE_MAC_EVT_ENB,
@@ -2274,11 +2274,11 @@ bge_intr(xsc)
 			if (!(status & (BGE_MACSTAT_PORT_DECODE_ERROR|
 			    BGE_MACSTAT_MI_COMPLETE))) {
 				sc->bge_link = 0;
-				untimeout(bge_tick, sc, sc->bge_stat_ch);
+				callout_stop(&sc->bge_stat_timer);
 				bge_tick(sc);
 			}
 			sc->bge_link = 0;
-			untimeout(bge_tick, sc, sc->bge_stat_ch);
+			callout_stop(&sc->bge_stat_timer);
 			bge_tick(sc);
 			/* Clear the interrupt */
 			CSR_WRITE_4(sc, BGE_MAC_STS, BGE_MACSTAT_SYNC_CHANGED|
@@ -2328,7 +2328,7 @@ bge_tick(xsc)
 		bge_stats_update_regs(sc);
 	else
 		bge_stats_update(sc);
-	sc->bge_stat_ch = timeout(bge_tick, sc, hz);
+	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 	if (sc->bge_link) {
 		splx(s);
 		return;
@@ -2690,9 +2690,7 @@ bge_init(xsc)
 
 	splx(s);
 
-	sc->bge_stat_ch = timeout(bge_tick, sc, hz);
-
-	return;
+	callout_reset(&sc->bge_stat_timer, hz, bge_tick, sc);
 }
 
 /*
@@ -2913,7 +2911,7 @@ bge_stop(sc)
 	if (!sc->bge_tbi)
 		mii = device_get_softc(sc->bge_miibus);
 
-	untimeout(bge_tick, sc, sc->bge_stat_ch);
+	callout_stop(&sc->bge_stat_timer);
 
 	/*
 	 * Disable all of the receiver blocks
