@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.50 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.51 2005/01/31 21:11:26 okumoto Exp $
  */
 
 /*-
@@ -797,34 +797,37 @@ main(int argc, char **argv)
 	 * <directory>:<directory>:<directory>...
 	 */
 	if (Var_Exists("VPATH", VAR_CMD)) {
-		char *vpath, savec;
 		/*
 		 * GCC stores string constants in read-only memory, but
 		 * Var_Subst will want to write this thing, so store it
 		 * in an array
 		 */
 		static char VPATH[] = "${VPATH}";
+		Buffer	*buf;
+		char	*vpath;
+		char	savec;
 
-		{
-		    Buffer *buf;
-		    buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
-		    vpath = Buf_GetAll(buf, NULL);
-		    Buf_Destroy(buf, FALSE);
-		}
-		path = vpath;
+		buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
+
+		vpath = Buf_GetAll(buf, NULL);
 		do {
-			/* skip to end of directory */
-			for (cp = path; *cp != ':' && *cp != '\0'; cp++)
+			char *ptr;
+
+			/* skip to end of directory name */
+			for (ptr = vpath; *ptr != ':' && *ptr != '\0'; ptr++)
 				continue;
+
 			/* Save terminator character so know when to stop */
-			savec = *cp;
-			*cp = '\0';
+			savec = *ptr;
+			*ptr = '\0';
+
 			/* Add directory to search path */
-			Dir_AddDir(&dirSearchPath, path);
-			*cp = savec;
-			path = cp + 1;
-		} while (savec == ':');
-		free(vpath);
+			Dir_AddDir(&dirSearchPath, vpath);
+
+			vpath = ptr + 1;
+		} while (savec != '\0');
+
+		Buf_Destroy(buf, TRUE);
 	}
 
 	/*
@@ -837,37 +840,18 @@ main(int argc, char **argv)
 	if (DEBUG(GRAPH1))
 		Targ_PrintGraph(1);
 
-	/* print the values of any variables requested by the user */
-	if (!Lst_IsEmpty(&variables)) {
-		LstNode *ln;
-
-		for (ln = Lst_First(&variables); ln != NULL;
-		    ln = Lst_Succ(ln)) {
-			char *value;
-			if (expandVars) {
-				p1 = emalloc(strlen(Lst_Datum(ln)) + 1 + 3);
-				/* This sprintf is safe, because of the malloc above */
-				sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
-				{
-				    Buffer *buf;
-				    buf = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
-				    value = Buf_GetAll(buf, NULL);
-				    Buf_Destroy(buf, FALSE);
-				}
-			} else {
-				value = Var_Value(Lst_Datum(ln),
-						  VAR_GLOBAL, &p1);
-			}
-			printf("%s\n", value ? value : "");
-			if (p1)
-				free(p1);
-		}
-	} else {
-
+	if (Lst_IsEmpty(&variables)) {
 		/*
-		 * Have now read the entire graph and need to make a list of targets
-		 * to create. If none was given on the command line, we consult the
-		 * parsing module to find the main target(s) to create.
+		 * Since the user has not requested that any variables
+		 * be printed, we can build targets.
+		 *
+		 * Someone please tell me what the following comment
+		 * means? <max>
+		 *
+		 * Have now read the entire graph and need to make
+		 * a list of targets to create. If none was given
+		 * on the command line, we consult the parsing
+		 * module to find the main target(s) to create.
 		 */
 		Lst targs = Lst_Initializer(targs);
 
@@ -876,12 +860,22 @@ main(int argc, char **argv)
 		else
 			Targ_FindList(&targs, &create, TARG_CREATE);
 
-		if (!compatMake) {
+		if (compatMake) {
 			/*
-			 * Initialize job module before traversing the graph, now that
-			 * any .BEGIN and .END targets have been read.  This is done
-			 * only if the -q flag wasn't given (to prevent the .BEGIN from
-			 * being executed should it exist).
+			 * Compat_Init will take care of creating
+			 * all the targets as well as initializing
+			 * the module.
+			 */
+			Compat_Run(&targs);
+			outOfDate = 0;
+		} else {
+			/*
+			 * Initialize job module before traversing
+			 * the graph, now that any .BEGIN and .END
+			 * targets have been read.  This is done
+			 * only if the -q flag wasn't given (to
+			 * prevent the .BEGIN from being executed
+			 * should it exist).
 			 */
 			if (!queryFlag) {
 				Job_Init(maxJobs);
@@ -890,15 +884,40 @@ main(int argc, char **argv)
 
 			/* Traverse the graph, checking on all the targets */
 			outOfDate = Make_Run(&targs);
-		} else {
-			/*
-			 * Compat_Init will take care of creating all the targets as
-			 * well as initializing the module.
-			 */
-			Compat_Run(&targs);
-			outOfDate = 0;
 		}
 		Lst_Destroy(&targs, NOFREE);
+
+	} else {
+		/*
+		 * Print the values of any variables requested by
+		 * the user.
+		 */
+		LstNode *n;
+
+		for (n = Lst_First(&variables); n != NULL; n = Lst_Succ(n)) {
+			const char	*name = Lst_Datum(n);
+			if (expandVars) {
+				Buffer		*buf;
+				char		*v;
+				char		*value;
+
+				v = emalloc(strlen(name) + 1 + 3);
+				sprintf(v, "${%s}", name);
+
+				buf = Var_Subst(NULL, v, VAR_GLOBAL, FALSE);
+				value = Buf_GetAll(buf, NULL);
+				printf("%s\n", value);
+
+				Buf_Destroy(buf, FALSE);
+				free(v);
+			} else {
+				char	*value;
+				value = Var_Value(name, VAR_GLOBAL, &p1);
+				printf("%s\n", value ? value : "");
+				if (p1)
+					free(p1);
+			}
+		}
 	}
 
 	Lst_Destroy(&variables, free);
