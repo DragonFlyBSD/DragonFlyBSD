@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.1 2004/09/14 18:03:42 justin Exp $ -->
+<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.2 2004/09/16 19:33:52 justin Exp $ -->
 
 <!DOCTYPE ARTICLE PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
 <!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
@@ -160,18 +160,18 @@
     <title>Getting to a Desktop</title>
     
     <para>The two major requirements to get a "desktop" computer is installing 
-    X Windows, and installing a window environment.</para>
+    XFree86, and installing a window environment.</para>
     
     <sect2>
     
-    <title>X Windows</title>
-    <para>The easiest way to get X Windows installed is to add the package:</para>
+    <title>XFree86 </title>
+    <para>The easiest way to get XFree86 installed is to add the package:</para>
     
     <informalexample>
       <screen>&prompt.root; <userinput>pkg_add -r XFree86</userinput></screen>
     </informalexample>
     
-    <para>It is possible, as <username>root</username>, to have X probe your hardware and build a 
+    <para>It is possible, as <username>root</username>, to have it probe your hardware and build a 
     suitable configuration file for your machine.</para>
     
     <informalexample>
@@ -186,24 +186,27 @@
     It may be useful to know the video card chipset and the hsync and vsync of the 
     monitor being used.</para>
     
-    <para>Once the XF86Config.new file is created, try starting X with that 
+    <para>Once the XF86Config.new file is created, try starting XFree86 with that 
     as the config file.</para>
     
     <informalexample>
       <screen>&prompt.root; <userinput>XFree86 -xf86config XF86Config.new</userinput></screen>
     </informalexample>
     
-    <para>Assuming all goes well, this will place you in a minimal X environment, using 
+    <para>Assuming all goes well, this will place you in a minimal environment, using 
     the program twm for layout.  You'll see several xterms on the screen, from which   
     <keycombo><keycap>Ctrl</keycap><keycap>Alt</keycap><keycap>Backspace</keycap></keycombo>
     will exit you back out.  If everything does not go well - 
     the screen goes blank, or is garbled - 
     <keycombo><keycap>Ctrl</keycap><keycap>Alt</keycap><keycap>Backspace</keycap></keycombo>
-    will end X and you can modify the config file (see man XF86Config) and check the log 
-    from X's startup in <filename>/var/log/XFree86.0.log</filename>.</para>
+    will end your session and you can modify the config file (see man XF86Config) and check the log 
+    from XFree86's startup in <filename>/var/log/XFree86.0.log</filename>.</para>
     
-    <para>Note: It is possible to use the new x.org instead of XFree86.  Commands should be 
-    similar, such as xf86cfg being replaced with xorgcfg.</para>
+    <para>Note: XFree86 is a program that implements a protocol called X11.  
+      This means that it is possible for other programs to provide the same 
+      services as long as they conform to the standard.  Therefore, it is i
+      possible to use the new x.org instead of XFree86.  Commands should be 
+      similar, such as xf86cfg being replaced with xorgcfg.</para>
     
     <note><para>Mouse wheel support: Look for a section 
       called "InputDevice" in your XF86Config file which includes the 
@@ -216,7 +219,7 @@ Option      "ZAxisMapping" "4 5"</programlisting>
       using your mouse wheel.</para></note>  
     
     <para>Once the configuration file is working satisfactorily, copy it to a location where 
-    X will be able to see it by default.
+    XFree86 will be able to see it by default.
 
     <informalexample>
 <screen>&prompt.root; <userinput>mkdir /etc/X11</userinput> (if it already doesn't exist)
