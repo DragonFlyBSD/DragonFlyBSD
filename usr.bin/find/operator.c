@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/find/operator.c,v 1.5.6.1 2001/05/06 09:53:22 phk Exp $
- * $DragonFly: src/usr.bin/find/operator.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/find/operator.c,v 1.4 2004/07/09 19:11:20 drhodus Exp $
  *
  * @(#)operator.c	8.1 (Berkeley) 6/6/93
  */
@@ -172,7 +172,7 @@ not_squish(PLAN *plan)
 
 	tail = result = NULL;
 
-	while (next = yanknode(&plan)) {
+	while ((next = yanknode(&plan))) {
 		/*
 		 * if we encounter a ( expression ) then look for nots in
 		 * the expr subplan.
