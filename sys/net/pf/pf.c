@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.2 2004/11/30 16:02:21 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -2108,7 +2108,7 @@ pf_get_translation(struct pf_pdesc *pd, struct mbuf *m, int off, int direction,
 					    saddr, pd->af);
 				break;
 			case PF_IN:
-				if (r->rpool.cur->addr.type == PF_ADDR_DYNIFTL){
+				if (r->src.addr.type == PF_ADDR_DYNIFTL){
 					if (pd->af == AF_INET) {
 						if (r->src.addr.p.dyn->
 						    pfid_acnt4 < 1)
