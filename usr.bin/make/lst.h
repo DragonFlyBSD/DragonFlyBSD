@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.7 2004/11/12 22:42:36 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.8 2004/11/24 07:11:33 dillon Exp $
  */
 
 /*-
@@ -49,9 +49,7 @@
 #define	_LST_H_
 
 #include	<sys/param.h>
-#ifdef __STDC__
 #include	<stdlib.h>
-#endif
 #include	"sprite.h"
 
 /*

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.11 2004/11/14 20:05:25 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.12 2004/11/24 07:11:33 dillon Exp $
  */
 
 /*-
@@ -86,8 +86,9 @@
 
 #include <stdio.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <err.h>
 #include "make.h"
 #include "hash.h"
 #include "dir.h"

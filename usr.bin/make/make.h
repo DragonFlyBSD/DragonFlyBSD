@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.10 2004/11/14 20:05:25 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.11 2004/11/24 07:11:33 dillon Exp $
  */
 
 /*-
@@ -52,11 +52,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <err.h>
-
-#if !defined(MAKE_BOOTSTRAP) && defined(BSD4_4)
-# include <sys/cdefs.h>
-#endif
 
 #include <stdlib.h>
 #include <unistd.h>
