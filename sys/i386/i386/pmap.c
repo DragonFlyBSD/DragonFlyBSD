@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.21 2003/08/31 17:24:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.22 2003/09/02 20:11:34 dillon Exp $
  */
 
 /*
@@ -96,6 +96,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/user.h>
+#include <sys/thread2.h>
 
 #include <machine/cputypes.h>
 #include <machine/md_var.h>
@@ -235,10 +236,12 @@ pmap_kmem_choose(vm_offset_t addr)
 }
 
 /*
- *	Routine:	pmap_pte
- *	Function:
- *		Extract the page table entry associated
- *		with the given map/virtual_address pair.
+ * pmap_pte:
+ *
+ *	Extract the page table entry associated with the given map/virtual
+ *	pair.
+ *
+ *	This function may NOT be called from an interrupt.
  */
 PMAP_INLINE unsigned *
 pmap_pte(pmap_t pmap, vm_offset_t va)
@@ -257,13 +260,16 @@ pmap_pte(pmap_t pmap, vm_offset_t va)
 }
 
 /*
- * Super fast pmap_pte routine best used when scanning
- * the pv lists.  This eliminates many coarse-grained
- * invltlb calls.  Note that many of the pv list
- * scans are across different pmaps.  It is very wasteful
- * to do an entire invltlb for checking a single mapping.
+ * pmap_pte_quick:
+ *
+ *	Super fast pmap_pte routine best used when scanning the pv lists.
+ *	This eliminates many course-grained invltlb calls.  Note that many of
+ *	the pv list scans are across different pmaps and it is very wasteful
+ *	to do an entire invltlb when checking a single mapping.
+ *
+ *	Should only be called while splvm() is held or from a critical
+ *	section.
  */
-
 static unsigned * 
 pmap_pte_quick(pmap_t pmap, vm_offset_t va)
 {
@@ -627,16 +633,19 @@ pmap_TLB_invalidate_all(pmap_t pmap)
 }
 
 static unsigned *
-get_ptbase(pmap)
-	pmap_t pmap;
+get_ptbase(pmap_t pmap)
 {
 	unsigned frame = (unsigned) pmap->pm_pdir[PTDPTDI] & PG_FRAME;
+	struct globaldata *gd = mycpu;
 
 	/* are we current address space or kernel? */
 	if (pmap == kernel_pmap || frame == (((unsigned) PTDpde) & PG_FRAME)) {
 		return (unsigned *) PTmap;
 	}
+
 	/* otherwise, we are alternate address space */
+	KKASSERT(gd->gd_intr_nesting_level == 0 && (gd->gd_curthread->td_flags & TDF_INTTHREAD) == 0);
+
 	if (frame != (((unsigned) APTDpde) & PG_FRAME)) {
 		APTDpde = (pd_entry_t) (frame | PG_RW | PG_V);
 #if defined(SMP)
@@ -650,10 +659,12 @@ get_ptbase(pmap)
 }
 
 /*
- *	Routine:	pmap_extract
- *	Function:
- *		Extract the physical page address associated
- *		with the given map/virtual_address pair.
+ * pmap_extract:
+ *
+ *	Extract the physical page address associated with the map/VA pair.
+ *
+ *	This function may not be called from an interrupt if the pmap is
+ *	not kernel_pmap.
  */
 vm_offset_t 
 pmap_extract(pmap_t pmap, vm_offset_t va)
@@ -1555,7 +1566,12 @@ pmap_remove_pte(struct pmap *pmap, unsigned *ptq, vm_offset_t va)
 }
 
 /*
- * Remove a single page from a process address space
+ * pmap_remove_page:
+ *
+ *	Remove a single page from a process address space.
+ *
+ *	This function may not be called from an interrupt if the pmap is
+ *	not kernel_pmap.
  */
 static void
 pmap_remove_page(struct pmap *pmap, vm_offset_t va)
@@ -1563,28 +1579,28 @@ pmap_remove_page(struct pmap *pmap, vm_offset_t va)
 	unsigned *ptq;
 
 	/*
-	 * if there is no pte for this address, just skip it!!!
+	 * if there is no pte for this address, just skip it!!!  Otherwise
+	 * get a local va for mappings for this pmap and remove the entry.
 	 */
-	if (*pmap_pde(pmap, va) == 0) {
-		return;
+	if (*pmap_pde(pmap, va) != 0) {
+		ptq = get_ptbase(pmap) + i386_btop(va);
+		if (*ptq) {
+			(void) pmap_remove_pte(pmap, ptq, va);
+			pmap_TLB_invalidate(pmap, va);
+		}
 	}
-
-	/*
-	 * get a local va for mappings for this pmap.
-	 */
-	ptq = get_ptbase(pmap) + i386_btop(va);
-	if (*ptq) {
-		(void) pmap_remove_pte(pmap, ptq, va);
-		pmap_TLB_invalidate(pmap, va);
-	}
-	return;
 }
 
 /*
+ * pmap_remopve:
+ *
  *	Remove the given range of addresses from the specified map.
  *
  *	It is assumed that the start and end are properly
  *	rounded to the page size.
+ *
+ *	This function may not be called from an interrupt if the pmap is
+ *	not kernel_pmap.
  */
 void
 pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
@@ -1676,16 +1692,12 @@ pmap_remove(struct pmap *pmap, vm_offset_t sva, vm_offset_t eva)
 }
 
 /*
- *	Routine:	pmap_remove_all
- *	Function:
- *		Removes this physical page from
- *		all physical maps in which it resides.
- *		Reflects back modify bits to the pager.
+ * pmap_remove_all:
  *
- *	Notes:
- *		Original versions of this routine were very
- *		inefficient because they iteratively called
- *		pmap_remove (slow...)
+ *	Removes this physical page from all physical maps in which it resides.
+ *	Reflects back modify bits to the pager.
+ *
+ *	This routine may not be called from an interrupt.
  */
 
 static void
@@ -1747,8 +1759,13 @@ pmap_remove_all(vm_page_t m)
 }
 
 /*
- *	Set the physical protection on the
- *	specified range of this map as requested.
+ * pmap_protect:
+ *
+ *	Set the physical protection on the specified range of this map
+ *	as requested.
+ *
+ *	This function may not be called from an interrupt if the map is
+ *	not the kernel_pmap.
  */
 void
 pmap_protect(pmap_t pmap, vm_offset_t sva, vm_offset_t eva, vm_prot_t prot)
@@ -2556,17 +2573,22 @@ pmap_kernel(void)
 }
 
 /*
- *	pmap_zero_page zeros the specified hardware page by mapping 
- *	the page into KVM and using bzero to clear its contents.
+ * pmap_zero_page:
+ *
+ *	Zero the specified PA by mapping the page into KVM and clearing its
+ *	contents.
+ *
+ *	This function may be called from an interrupt and no locking is
+ *	required.
  */
 void
 pmap_zero_page(vm_offset_t phys)
 {
 	struct mdglobaldata *gd = mdcpu;
 
+	crit_enter();
 	if (*(int *)gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-
 	*(int *)gd->gd_CMAP3 =
 		    PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
 	cpu_invlpg(gd->gd_CADDR3);
@@ -2577,13 +2599,15 @@ pmap_zero_page(vm_offset_t phys)
 	else
 #endif
 		bzero(gd->gd_CADDR3, PAGE_SIZE);
-
 	*(int *) gd->gd_CMAP3 = 0;
+	crit_exit();
 }
 
 /*
- *	pmap_zero_page_area zeros the specified hardware page by mapping 
- *	the page into KVM and using bzero to clear its contents.
+ * pmap_zero_page:
+ *
+ *	Zero part of a physical page by mapping it into memory and clearing
+ *	its contents with bzero.
  *
  *	off and size may not cover an area beyond a single hardware page.
  */
@@ -2592,9 +2616,9 @@ pmap_zero_page_area(vm_offset_t phys, int off, int size)
 {
 	struct mdglobaldata *gd = mdcpu;
 
+	crit_enter();
 	if (*(int *) gd->gd_CMAP3)
 		panic("pmap_zero_page: CMAP3 busy");
-
 	*(int *) gd->gd_CMAP3 = PG_V | PG_RW | (phys & PG_FRAME) | PG_A | PG_M;
 	cpu_invlpg(gd->gd_CADDR3);
 
@@ -2604,21 +2628,23 @@ pmap_zero_page_area(vm_offset_t phys, int off, int size)
 	else
 #endif
 		bzero((char *)gd->gd_CADDR3 + off, size);
-
 	*(int *) gd->gd_CMAP3 = 0;
+	crit_exit();
 }
 
 /*
- *	pmap_copy_page copies the specified (machine independent)
- *	page by mapping the page into virtual memory and using
- *	bcopy to copy the page, one machine dependent page at a
- *	time.
+ * pmap_copy_page:
+ *
+ *	Copy the physical page from the source PA to the target PA.
+ *	This function may be called from an interrupt.  No locking
+ *	is required.
  */
 void
 pmap_copy_page(vm_offset_t src, vm_offset_t dst)
 {
 	struct mdglobaldata *gd = mdcpu;
 
+	crit_enter();
 	if (*(int *) gd->gd_CMAP1)
 		panic("pmap_copy_page: CMAP1 busy");
 	if (*(int *) gd->gd_CMAP2)
@@ -2634,6 +2660,7 @@ pmap_copy_page(vm_offset_t src, vm_offset_t dst)
 
 	*(int *) gd->gd_CMAP1 = 0;
 	*(int *) gd->gd_CMAP2 = 0;
+	crit_exit();
 }
 
 
