@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.7 2004/06/27 08:01:06 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.8 2004/06/27 21:26:40 dillon Exp $
  */
 
 #include <stand.h>
@@ -62,10 +62,29 @@ struct console comconsole = {
     comc_ischar
 };
 
+/*
+ * Probe for a comconsole.  If the comport is not mapped at boot time (which
+ * is often true on laptops), don't try to access it.  If we can't clear 
+ * the input fifo, don't try to access it later.
+ *
+ * Normally the stage-2 bootloader will do this detection and hand us
+ * appropriate flags, but some bootloaders (pxe, cdboot) load the loader
+ * directly so we have to check again here.
+ */
 static void
 comc_probe(struct console *cp)
 {
-    /* XXX check the BIOS equipment list? */
+    int i;
+
+    if (inb(COMPORT + com_lsr) == 0xFF)
+	return;
+    for (i = 255; i >= 0; --i) {
+	if (comc_ischar() == 0)
+	    break;
+        inb(COMPORT + com_data);
+    }
+    if (i < 0)
+	return;
     cp->c_flags |= (C_PRESENTIN | C_PRESENTOUT);
 }
 
