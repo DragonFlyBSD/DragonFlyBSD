@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.3 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.4 2004/01/13 18:31:58 joerg Exp $
  */
 
 /*
@@ -57,6 +57,7 @@
 #include <vm/pmap.h>
 #include <machine/pmap.h>
 
+#include <machine/nexusvar.h>
 #include <machine/resource.h>
 #ifdef APIC_IO
 #include <machine/smp.h>
@@ -73,6 +74,7 @@
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
 struct nexus_device {
 	struct resource_list	nx_resources;
+	int			nx_pcibus;
 };
 
 #define DEVTONX(dev)	((struct nexus_device *)device_get_ivars(dev))
@@ -87,6 +89,8 @@ static device_t nexus_add_child(device_t bus, int order, const char *name,
 				int unit);
 static	struct resource *nexus_alloc_resource(device_t, device_t, int, int *,
 					      u_long, u_long, u_long, u_int);
+static	int nexus_read_ivar(device_t, device_t, int, uintptr_t *);
+static	int nexus_write_ivar(device_t, device_t, int, uintptr_t);
 static	int nexus_activate_resource(device_t, device_t, int, int,
 				    struct resource *);
 static	int nexus_deactivate_resource(device_t, device_t, int, int,
@@ -113,8 +117,8 @@ static device_method_t nexus_methods[] = {
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	nexus_print_child),
 	DEVMETHOD(bus_add_child,	nexus_add_child),
-	DEVMETHOD(bus_read_ivar,	bus_generic_read_ivar),
-	DEVMETHOD(bus_write_ivar,	bus_generic_write_ivar),
+	DEVMETHOD(bus_read_ivar,	nexus_read_ivar),
+	DEVMETHOD(bus_write_ivar,	nexus_write_ivar),
 	DEVMETHOD(bus_alloc_resource,	nexus_alloc_resource),
 	DEVMETHOD(bus_release_resource,	nexus_release_resource),
 	DEVMETHOD(bus_activate_resource, nexus_activate_resource),
@@ -262,7 +266,7 @@ nexus_print_all_resources(device_t dev)
 	struct resource_list *rl = &ndev->nx_resources;
 	int retval = 0;
 
-	if (SLIST_FIRST(rl))
+	if (SLIST_FIRST(rl) || ndev->nx_pcibus != -1)
 		retval += printf(" at");
 	
 	retval += resource_list_print_type(rl, "port", SYS_RES_IOPORT, "%#lx");
@@ -275,10 +279,13 @@ nexus_print_all_resources(device_t dev)
 static int
 nexus_print_child(device_t bus, device_t child)
 {
+	struct	nexus_device *ndev = DEVTONX(child);
 	int retval = 0;
 
 	retval += bus_print_child_header(bus, child);
 	retval += nexus_print_all_resources(child);
+	if (ndev->nx_pcibus != -1)
+		retval += printf(" pcibus %d", ndev->nx_pcibus);
 	retval += printf(" on motherboard\n");
 
 	return (retval);
@@ -294,6 +301,7 @@ nexus_add_child(device_t bus, int order, const char *name, int unit)
 	if (!ndev)
 		return(0);
 	resource_list_init(&ndev->nx_resources);
+	ndev->nx_pcibus = -1;
 
 	child = device_add_child_ordered(bus, order, name, unit); 
 
@@ -301,6 +309,36 @@ nexus_add_child(device_t bus, int order, const char *name, int unit)
 	device_set_ivars(child, ndev);
 
 	return(child);
+}
+
+static int
+nexus_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
+{
+	struct nexus_device *ndev = DEVTONX(child);
+	
+	switch (which) {
+	case NEXUS_IVAR_PCIBUS:
+		*result = ndev->nx_pcibus;
+		break;
+	default:
+		return ENOENT;
+	}
+	return 0;
+}
+
+static int
+nexus_write_ivar(device_t dev, device_t child, int which, uintptr_t value)
+{
+	struct nexus_device *ndev = DEVTONX(child);
+	
+	switch (which) {
+	case NEXUS_IVAR_PCIBUS:
+		ndev->nx_pcibus = value;
+		break;
+	default:
+		return ENOENT;
+	}
+	return 0;
 }
 
 /*
