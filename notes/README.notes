@@ -1,0 +1,30 @@
+Author:	DragonFly Documentation Team
+Title:	Using The ``doc/notes'' Folder
+$DragonFly: doc/notes/README.notes,v 1.1.1.1 2004/04/02 09:36:23 hmp Exp $
+-----------------------------------------------------------------------
+
+This folder (doc/notes) is for all developers who dread writing proper
+documentation.
+
+In here simple place a .txt file describing your work (new functions, API
+changes, etc) on all fronts.  The texts will be put in their respective
+'book' later on.
+
+See it as a pass-through interface to the documentation people on this
+project.
+
+Please use the following format for describing the meta information
+of your .txt file, the <tab> stands for a Tab character; the full meta block
+that should be in the file is within the %%%'s (but don't put the %%% in
+your .txt file):
+
+%%%
+Author:<tab><your-name>
+Title:<tab><title-of-your-document>
+$DragonFly: doc/notes/README.notes,v 1.1.1.1 2004/04/02 09:36:23 hmp Exp $
+-----------------------------------------------------------------------
+%%%%
+
+NOTE: Please write documentation of any new kernel functions that are
+added, or any major API changes that are made.  The documentation team
+will take care of markup if you are not SGML-savvy.

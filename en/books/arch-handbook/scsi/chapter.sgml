@@ -1,0 +1,1983 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/scsi/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:11 hmp Exp $
+-->
+
+<chapter id="scsi">
+  <title>Common Access Method SCSI Controllers</title>
+
+  <para><emphasis>This chapter was written by &a.babkin;
+    Modifications for the handbook made by
+    &a.murray;.</emphasis></para>
+
+  <sect1 id="scsi-synopsis">
+    <title>Synopsis</title>
+
+    <para>This document assumes that the reader has a general
+      understanding of device drivers in FreeBSD and of the SCSI
+      protocol.  Much of the information in this document was
+      extracted from the drivers:</para>
+
+     <itemizedlist>
+
+       <listitem><para>ncr (<filename>/sys/pci/ncr.c</filename>) by
+         Wolfgang Stanglmeier and Stefan Esser</para></listitem>
+
+       <listitem><para>sym (<filename>/sys/dev/sym/sym_hipd.c</filename>) by
+         Gerard Roudier</para></listitem> 
+
+       <listitem><para>aic7xxx
+         (<filename>/sys/dev/aic7xxx/aic7xxx.c</filename>) by Justin
+         T. Gibbs</para></listitem>
+
+     </itemizedlist>
+
+   <para>and from the CAM code itself (by Justing T. Gibbs, see
+     <filename>/sys/cam/*</filename>).  When some solution looked the
+     most logical and was essentially verbatim extracted from the code
+     by Justin Gibbs, I marked it as <quote>recommended</quote>.</para>
+
+   <para>The document is illustrated with examples in
+     pseudo-code. Although sometimes the examples have many details
+     and look like real code, it is still pseudo-code.  It was written
+     to demonstrate the concepts in an understandable way.  For a real
+     driver other approaches may be more modular and efficient.  It
+     also abstracts from the hardware details, as well as issues that
+     would cloud the demonstrated concepts or that are supposed to be
+     described in the other chapters of the developers handbook. Such
+     details are commonly shown as calls to functions with descriptive
+     names, comments or pseudo-statements. Fortunately real life
+     full-size examples with all the details can be found in the real
+     drivers.</para>
+
+  </sect1>
+
+  <sect1 id="scsi-general">
+    <title>General architecture</title>
+
+    <para>CAM stands for Common Access Method. It is a generic way to
+      address the I/O buses in a SCSI-like way. This allows a
+      separation of the generic device drivers from the drivers
+      controlling the I/O bus: for example the disk driver becomes able
+      to control disks on both SCSI, IDE, and/or any other bus so the
+      disk driver portion does not have to be rewritten (or copied and
+      modified) for every new I/O bus. Thus the two most important
+      active entities are:</para>
+
+    <itemizedlist>
+      <listitem><para><emphasis>Peripheral Modules</emphasis> -  a
+        driver for peripheral devices (disk, tape, CDROM,
+        etc.)</para></listitem>
+      <listitem><para><emphasis>SCSI Interface Modules </emphasis>(SIM)
+        - a Host Bus Adapter drivers for connecting to an I/O bus such
+        as SCSI or IDE.</para></listitem>
+    </itemizedlist>
+
+    <para>A peripheral driver receives requests from the OS, converts
+      them to a sequence of SCSI commands and passes these SCSI
+      commands to a SCSI Interface Module. The SCSI Interface Module
+      is responsible for passing these commands to the actual hardware
+      (or if the actual hardware is not SCSI but, for example, IDE
+      then also converting the SCSI commands to the native commands of
+      the hardware).</para>
+
+    <para>Because we are interested in writing a SCSI adapter driver
+      here, from this point on we will consider everything from the
+      SIM standpoint.</para>
+
+    <para>A typical SIM driver needs to include the following
+      CAM-related header files:</para>
+
+<programlisting>#include &lt;cam/cam.h&gt;
+#include &lt;cam/cam_ccb.h&gt;
+#include &lt;cam/cam_sim.h&gt;
+#include &lt;cam/cam_xpt_sim.h&gt;
+#include &lt;cam/cam_debug.h&gt;
+#include &lt;cam/scsi/scsi_all.h&gt;</programlisting>
+
+    <para>The first thing each SIM driver must do is register itself
+      with the CAM subsystem. This is done during the driver's
+      <function>xxx_attach()</function> function (here and further
+      xxx_ is used to denote the unique driver name prefix). The
+      <function>xxx_attach()</function> function itself is called by
+      the system bus auto-configuration code which we do not describe
+      here.</para>
+
+    <para>This is achieved in multiple steps: first it is necessary to
+      allocate the queue of requests associated with this SIM:</para>
+
+<programlisting>    struct cam_devq *devq;
+
+    if(( devq = cam_simq_alloc(SIZE) )==NULL) {
+        error; /* some code to handle the error */
+    }</programlisting>
+
+    <para>Here SIZE is the size of the queue to be allocated, maximal
+      number of requests it could contain. It is the number of requests
+      that the SIM driver can handle in parallel on one SCSI
+      card. Commonly it can be calculated as:</para>
+
+<programlisting>SIZE = NUMBER_OF_SUPPORTED_TARGETS * MAX_SIMULTANEOUS_COMMANDS_PER_TARGET</programlisting>
+
+    <para>Next we create a descriptor of our SIM:</para>
+
+<programlisting>    struct cam_sim *sim;
+
+    if(( sim = cam_sim_alloc(action_func, poll_func, driver_name,
+            softc, unit, max_dev_transactions, 
+            max_tagged_dev_transactions, devq) )==NULL) {
+        cam_simq_free(devq);
+        error; /* some code to handle the error */
+    }</programlisting>
+
+    <para>Note that if we are not able to create a SIM descriptor we
+      free the <structname>devq</structname> also because we can do
+      nothing else with it and we want to conserve memory.</para>
+
+    <para>If a SCSI card has multiple SCSI buses on it then each bus
+      requires its own <structname>cam_sim</structname>
+      structure.</para>
+
+    <para>An interesting question is what to do if a SCSI card has
+      more than one SCSI bus, do we need one
+      <structname>devq</structname> structure per card or per SCSI
+      bus?  The answer given in the comments to the CAM code is:
+      either way, as the driver's author prefers.</para>
+
+    <para>The arguments are:
+      <itemizedlist>
+
+        <listitem><para><function>action_func</function> - pointer to
+          the driver's <function>xxx_action</function> function.
+	  <funcSynopsis><funcPrototype>
+	  <funcDef>static void
+            <function>xxx_action</function>
+	  </funcDef>
+	    <paramdef>
+	      <parameter>struct cam_sim *sim</parameter>,
+  	      <parameter>union ccb *ccb</parameter>
+	    </paramdef>
+	  </funcPrototype></funcSynopsis>
+	  </para></listitem>
+
+        <listitem><para><function>poll_func</function> - pointer to
+          the driver's <function>xxx_poll()</function>
+	  <funcSynopsis><funcPrototype>
+	  <funcDef>static void
+	    <function>xxx_poll</function>
+	  </funcDef>
+	    <paramdef>
+	      <parameter>struct cam_sim *sim</parameter>
+	    </paramdef>
+	  </funcPrototype></funcSynopsis>
+	  </para></listitem>
+
+        <listitem><para>driver_name - the name of the actual driver,
+          such as <quote>ncr</quote> or <quote>wds</quote>.</para></listitem>
+
+        <listitem><para><structName>softc</structName> - pointer to the
+          driver's internal descriptor for this SCSI card. This
+          pointer will be used by the driver in future to get private
+          data.</para></listitem>
+
+        <listitem><para>unit - the controller unit number, for example
+          for controller <quote>wds0</quote> this number will be
+          0</para></listitem>
+
+        <listitem><para>max_dev_transactions - maximal number of
+          simultaneous transactions per SCSI target in the non-tagged
+          mode. This value will be almost universally equal to 1, with
+          possible exceptions only for the non-SCSI cards. Also the
+          drivers that hope to take advantage by preparing one
+          transaction while another one is executed may set it to 2
+          but this does not seem to be worth the
+          complexity.</para></listitem>
+
+        <listitem><para>max_tagged_dev_transactions - the same thing,
+          but in the tagged mode.  Tags are the SCSI way to initiate
+          multiple transactions on a device: each transaction is
+          assigned a unique tag and the transaction is sent to the
+          device. When the device completes some transaction it sends
+          back the result together with the tag so that the SCSI
+          adapter (and the driver) can tell which transaction was
+          completed. This argument is also known as the maximal tag
+          depth. It depends on the abilities of the SCSI
+          adapter.</para></listitem>
+      </itemizedlist>
+    </para>
+
+    <para>Finally we register the SCSI buses associated with our SCSI
+      adapter:</para>
+
+<programlisting>    if(xpt_bus_register(sim, bus_number) != CAM_SUCCESS) {
+        cam_sim_free(sim, /*free_devq*/ TRUE);
+        error; /* some code to handle the error */
+    }</programlisting>
+
+    <para>If there is one <structName>devq</structName> structure per
+      SCSI bus (i.e. we consider a card with multiple buses as
+      multiple cards with one bus each) then the bus number will
+      always be 0, otherwise each bus on the SCSI card should be get a
+      distinct number. Each bus needs its own separate structure
+      cam_sim.</para>
+
+    <para>After that our controller is completely hooked to the CAM
+      system. The value of <structName>devq</structName> can be
+      discarded now: sim will be passed as an argument in all further
+      calls from CAM and devq can be derived from it.</para>
+
+    <para>CAM provides the framework for such asynchronous
+      events. Some events originate from the lower levels (the SIM
+      drivers), some events originate from the peripheral drivers,
+      some events originate from the CAM subsystem itself.  Any driver
+      can register callbacks for some types of the asynchronous
+      events, so that it would be notified if these events
+      occur.</para>
+
+    <para>A typical example of such an event is a device reset. Each
+      transaction and event identifies the devices to which it applies
+      by the means of <quote>path</quote>. The target-specific events normally
+      occur during a transaction with this device. So the path from
+      that transaction may be re-used to report this event (this is
+      safe because the event path is copied in the event reporting
+      routine but not deallocated nor passed anywhere further). Also
+      it is safe to allocate paths dynamically at any time including
+      the interrupt routines, although that incurs certain overhead,
+      and a possible problem with this approach is that there may be
+      no free memory at that time.  For a bus reset event we need to
+      define a wildcard path including all devices on the bus.  So we
+      can create the path for the future bus reset events in advance
+      and avoid problems with the future memory shortage:</para>
+
+<programlisting>    struct cam_path *path;
+
+    if(xpt_create_path(&amp;path, /*periph*/NULL,
+                cam_sim_path(sim), CAM_TARGET_WILDCARD,
+                CAM_LUN_WILDCARD) != CAM_REQ_CMP) {
+        xpt_bus_deregister(cam_sim_path(sim));
+        cam_sim_free(sim, /*free_devq*/TRUE);
+        error; /* some code to handle the error */
+    }
+
+    softc->wpath = path;
+    softc->sim = sim;</programlisting>
+
+    <para>As you can see the path includes:</para>
+
+    <itemizedlist>
+      <listitem><para>ID of the peripheral driver (NULL here because we have
+        none)</para></listitem>
+
+      <listitem><para>ID of the SIM driver
+        (<function>cam_sim_path(sim)</function>)</para></listitem>
+
+      <listitem><para>SCSI target number of the device (CAM_TARGET_WILDCARD
+        means <quote>all devices</quote>)</para></listitem>
+
+      <listitem><para>SCSI LUN number of the subdevice (CAM_LUN_WILDCARD means
+        <quote>all LUNs</quote>)</para></listitem>
+    </itemizedlist>
+
+    <para>If the driver can not allocate this path it will not be able to
+      work normally, so in that case we dismantle that SCSI
+      bus.</para>
+
+    <para>And we save the path pointer in the
+      <structName>softc</structName> structure for future use. After
+      that we save the value of sim (or we can also discard it on the
+      exit from <function>xxx_probe()</function> if we wish).</para>
+
+    <para>That is all for a minimalistic initialization. To do things
+      right there is one more issue left. </para>
+
+    <para>For a SIM driver there is one particularly interesting
+      event: when a target device is considered lost. In this case
+      resetting the SCSI negotiations with this device may be a good
+      idea. So we register a callback for this event with CAM. The
+      request is passed to CAM by requesting CAM action on a CAM
+      control block for this type of request:</para>
+
+<programlisting>    struct ccb_setasync csa;
+
+    xpt_setup_ccb(&amp;csa.ccb_h, path, /*priority*/5);
+    csa.ccb_h.func_code = XPT_SASYNC_CB;
+    csa.event_enable = AC_LOST_DEVICE;
+    csa.callback = xxx_async;
+    csa.callback_arg = sim;
+    xpt_action((union ccb *)&amp;csa);</programlisting>
+
+    <para>Now we take a look at the <function>xxx_action()</function>
+      and <function>xxx_poll()</function> driver entry points.</para>
+
+    <para>
+    <funcSynopsis><funcPrototype>
+      <funcDef>static void
+      <function>xxx_action</function>
+      </funcDef>
+      <paramdef>
+        <parameter>struct cam_sim *sim</parameter>,
+        <parameter>union ccb *ccb</parameter>
+      </paramdef>
+    </funcPrototype></funcSynopsis>
+    </para>
+
+    <para>Do some action on request of the CAM subsystem. Sim
+      describes the SIM for the request, CCB is the request
+      itself. CCB stands for <quote>CAM Control Block</quote>. It is a union of
+      many specific instances, each describing arguments for some type
+      of transactions. All of these instances share the CCB header
+      where the common part of arguments is stored.</para>
+
+    <para>CAM supports the SCSI controllers working in both initiator
+      (<quote>normal</quote>) mode and target (simulating a SCSI device) mode. Here
+      we only consider the part relevant to the initiator mode.</para>
+
+    <para>There are a few function and macros (in other words,
+      methods) defined to access the public data in the struct sim:</para>
+
+    <itemizedlist>
+      <listitem><para><function>cam_sim_path(sim)</function> - the
+      path ID (see above)</para></listitem>
+
+      <listitem><para><function>cam_sim_name(sim)</function> - the
+      name of the sim</para></listitem>
+
+      <listitem><para><function>cam_sim_softc(sim)</function> - the
+      pointer to the softc (driver private data)
+      structure</para></listitem>
+
+      <listitem><para><function> cam_sim_unit(sim)</function> - the
+      unit number</para></listitem>
+
+      <listitem><para><function> cam_sim_bus(sim)</function> - the bus
+      ID</para></listitem>
+    </itemizedlist>
+
+    <para>To identify the device, <function>xxx_action()</function> can
+      get the unit number and pointer to its structure softc using
+      these functions.</para>
+
+    <para>The type of request is stored in
+      <structField>ccb-&gt;ccb_h.func_code</structField>. So generally
+      <function>xxx_action()</function> consists of a big
+      switch:</para>
+
+<programlisting>    struct xxx_softc *softc = (struct xxx_softc *) cam_sim_softc(sim);
+    struct ccb_hdr *ccb_h = &amp;ccb->ccb_h;
+    int unit = cam_sim_unit(sim);
+    int bus = cam_sim_bus(sim);
+
+    switch(ccb_h->func_code) {
+    case ...:
+        ...
+    default:
+        ccb_h->status = CAM_REQ_INVALID;
+        xpt_done(ccb);
+        break;
+    }</programlisting>
+
+    <para>As can be seen from the default case (if an unknown command
+      was received) the return code of the command is set into
+      <structField>ccb-&gt;ccb_h.status</structField> and the completed
+      CCB is returned back to CAM by calling
+      <function>xpt_done(ccb)</function>. </para>
+
+    <para><function>xpt_done()</function> does not have to be called
+      from <function>xxx_action()</function>: For example an I/O
+      request may be enqueued inside the SIM driver and/or its SCSI
+      controller.  Then when the device would post an interrupt
+      signaling that the processing of this request is complete
+      <function>xpt_done()</function> may be called from the interrupt
+      handling routine.</para>
+
+    <para>Actually, the CCB status is not only assigned as a return
+      code but a CCB has some status all the time. Before CCB is
+      passed to the <function>xxx_action()</function> routine it gets
+      the status CCB_REQ_INPROG meaning that it is in progress.  There
+      are a surprising number of status values defined in
+      <filename>/sys/cam/cam.h</filename> which should be able to
+      represent the status of a request in great detail.  More
+      interesting yet, the status is in fact a <quote>bitwise or</quote> of an
+      enumerated status value (the lower 6 bits) and possible
+      additional flag-like bits (the upper bits).  The enumerated
+      values will be discussed later in more detail.  The summary of
+      them can be found in the Errors Summary section.  The possible
+      status flags are:</para>
+
+    <itemizedlist>
+
+      <listitem><para><emphasis>CAM_DEV_QFRZN</emphasis> - if the
+        SIM driver gets a serious error (for example, the device does
+        not respond to the selection or breaks the SCSI protocol) when
+        processing a CCB it should freeze the request queue by calling
+        <function>xpt_freeze_simq()</function>, return the other
+        enqueued but not processed yet CCBs for this device back to
+        the CAM queue, then set this flag for the troublesome CCB and
+        call <function>xpt_done()</function>. This flag causes the CAM
+        subsystem to unfreeze the queue after it handles the
+        error.</para></listitem>
+
+      <listitem><para><emphasis>CAM_AUTOSNS_VALID</emphasis> - if
+        the device returned an error condition and the flag
+        CAM_DIS_AUTOSENSE is not set in CCB the SIM driver must
+        execute the REQUEST SENSE command automatically to extract the
+        sense (extended error information) data from the device. If
+        this attempt was successful the sense data should be saved in
+        the CCB and this flag set.</para></listitem>
+
+      <listitem><para><emphasis>CAM_RELEASE_SIMQ</emphasis> - like
+        CAM_DEV_QFRZN but used in case there is some problem (or
+        resource shortage) with the SCSI controller itself. Then all
+        the future requests to the controller should be stopped by
+        <function>xpt_freeze_simq()</function>.  The controller queue
+        will be restarted after the SIM driver overcomes the shortage
+        and informs CAM by returning some CCB with this flag
+        set.</para></listitem>
+
+      <listitem><para><emphasis>CAM_SIM_QUEUED</emphasis> - when SIM
+        puts a CCB into its request queue this flag should be set (and
+        removed when this CCB gets dequeued before being returned back
+        to CAM). This flag is not used anywhere in the CAM code now,
+        so its purpose is purely diagnostic.</para></listitem>
+
+    </itemizedlist>
+
+    <para>The function <function>xxx_action()</function> is not
+      allowed to sleep, so all the synchronization for resource access
+      must be done using SIM or device queue freezing.  Besides the
+      aforementioned flags the CAM subsystem provides functions
+      <function>xpt_release_simq()</function> and
+      <function>xpt_release_devq()</function> to unfreeze the queues
+      directly, without passing a CCB to CAM.</para>
+
+    <para>The CCB header contains the following fields:</para>
+
+    <itemizedlist>
+
+      <listitem><para><emphasis>path</emphasis> - path ID for the
+      request</para></listitem>
+
+      <listitem><para><emphasis>target_id</emphasis> - target device
+      ID for the request</para></listitem>
+
+      <listitem><para><emphasis>target_lun</emphasis> - LUN ID of
+      the target device</para></listitem>
+
+      <listitem><para><emphasis>timeout</emphasis> - timeout
+      interval for this command, in milliseconds</para></listitem>
+
+      <listitem><para><emphasis>timeout_ch</emphasis> - a
+      convenience place for the SIM driver to store the timeout handle
+      (the CAM subsystem itself does not make any assumptions about
+      it)</para></listitem>
+
+      <listitem><para><emphasis>flags</emphasis> - various bits of
+      information about the request spriv_ptr0, spriv_ptr1 - fields
+      reserved for private use by the SIM driver (such as linking to
+      the SIM queues or SIM private control blocks); actually, they
+      exist as unions: spriv_ptr0 and spriv_ptr1 have the type (void
+      *), spriv_field0 and spriv_field1 have the type unsigned long,
+      sim_priv.entries[0].bytes and sim_priv.entries[1].bytes are byte
+      arrays of the size consistent with the other incarnations of the
+      union and sim_priv.bytes is one array, twice
+      bigger.</para></listitem>
+
+    </itemizedlist>
+
+    <para>The recommended way of using the SIM private fields of CCB
+      is to define some meaningful names for them and use these
+      meaningful names in the driver, like:</para>
+
+<programlisting>#define ccb_some_meaningful_name    sim_priv.entries[0].bytes
+#define ccb_hcb spriv_ptr1 /* for hardware control block */</programlisting>
+
+    <para>The most common initiator mode requests are:</para>
+    <itemizedlist>
+      <listitem><para><emphasis>XPT_SCSI_IO</emphasis> - execute an
+      I/O transaction</para>
+
+      <para>The instance <quote>struct ccb_scsiio csio</quote> of the union ccb is
+        used to transfer the arguments. They are:</para>
+
+      <itemizedlist>
+        <listitem><para><emphasis>cdb_io</emphasis> - pointer to
+          the SCSI command buffer or the buffer
+  	  itself</para></listitem>
+
+	<listitem><para><emphasis>cdb_len</emphasis> - SCSI
+	  command length</para></listitem>
+
+	<listitem><para><emphasis>data_ptr</emphasis> - pointer to
+	  the data buffer (gets a bit complicated if scatter/gather is
+	  used)</para></listitem>
+
+	<listitem><para><emphasis>dxfer_len</emphasis> - length of
+	  the data to transfer</para></listitem>
+
+	<listitem><para><emphasis>sglist_cnt</emphasis> - counter
+	  of the scatter/gather segments</para></listitem>
+
+	<listitem><para><emphasis>scsi_status</emphasis> - place
+	  to return the SCSI status</para></listitem>
+
+	<listitem><para><emphasis>sense_data</emphasis> - buffer
+          for the SCSI sense information if the command returns an
+          error (the SIM driver is supposed to run the REQUEST SENSE
+          command automatically in this case if the CCB flag
+          CAM_DIS_AUTOSENSE is not set)</para></listitem>
+
+	<listitem><para><emphasis>sense_len</emphasis> - the
+          length of that buffer (if it happens to be higher than size
+          of sense_data the SIM driver must silently assume the
+          smaller value) resid, sense_resid - if the transfer of data
+          or SCSI sense returned an error these are the returned
+          counters of the residual (not transferred) data. They do not
+          seem to be especially meaningful, so in a case when they are
+          difficult to compute (say, counting bytes in the SCSI
+          controller's FIFO buffer) an approximate value will do as
+          well. For a successfully completed transfer they must be set
+          to zero.</para></listitem>
+
+	<listitem><para><emphasis>tag_action</emphasis> - the kind
+	  of tag to use:
+	  
+	  <itemizedlist>
+	  <listitem><para>CAM_TAG_ACTION_NONE - do not use tags for this
+	  transaction</para></listitem>
+	  <listitem><para>MSG_SIMPLE_Q_TAG, MSG_HEAD_OF_Q_TAG,
+	  MSG_ORDERED_Q_TAG - value equal to the appropriate tag
+	  message (see /sys/cam/scsi/scsi_message.h); this gives only
+	  the tag type, the SIM driver must assign the tag value
+	  itself</para></listitem>
+	  </itemizedlist>
+
+	  </para></listitem>
+
+      </itemizedlist>
+
+      <para>The general logic of handling this request is the
+        following:</para>
+
+      <para>The first thing to do is to check for possible races, to
+        make sure that the command did not get aborted when it was
+        sitting in the queue:</para>
+
+<programlisting>    struct ccb_scsiio *csio = &amp;ccb->csio;
+
+    if ((ccb_h->status &amp; CAM_STATUS_MASK) != CAM_REQ_INPROG) {
+        xpt_done(ccb);
+        return;
+    }</programlisting>
+
+      <para>Also we check that the device is supported at all by our
+        controller:</para>
+
+<programlisting>    if(ccb_h->target_id > OUR_MAX_SUPPORTED_TARGET_ID
+    || cch_h->target_id == OUR_SCSI_CONTROLLERS_OWN_ID) {
+        ccb_h->status = CAM_TID_INVALID;
+        xpt_done(ccb);
+        return;
+    }
+    if(ccb_h->target_lun > OUR_MAX_SUPPORTED_LUN) {
+        ccb_h->status = CAM_LUN_INVALID;
+        xpt_done(ccb);
+        return;
+    }</programlisting>
+
+      <para>Then allocate whatever data structures (such as
+        card-dependent hardware control block) we need to process this
+        request. If we ca not then freeze the SIM queue and remember
+        that we have a pending operation, return the CCB back and ask
+        CAM to re-queue it. Later when the resources become available
+        the SIM queue must be unfrozen by returning a ccb with the
+        CAM_SIMQ_RELEASE bit set in its status. Otherwise, if all went
+        well, link the CCB with the hardware control block (HCB) and
+        mark it as queued.</para>
+
+<programlisting>    struct xxx_hcb *hcb = allocate_hcb(softc, unit, bus);
+
+    if(hcb == NULL) {
+        softc->flags |= RESOURCE_SHORTAGE;
+        xpt_freeze_simq(sim, /*count*/1);
+        ccb_h->status = CAM_REQUEUE_REQ;
+        xpt_done(ccb);
+        return;
+    }
+
+    hcb->ccb = ccb; ccb_h->ccb_hcb = (void *)hcb;
+    ccb_h->status |= CAM_SIM_QUEUED;</programlisting>
+
+      <para>Extract the target data from CCB into the hardware control
+        block. Check if we are asked to assign a tag and if yes then
+        generate an unique tag and build the SCSI tag messages. The
+        SIM driver is also responsible for negotiations with the
+        devices to set the maximal mutually supported bus width,
+        synchronous rate and offset.</para>
+
+<programlisting>    hcb->target = ccb_h->target_id; hcb->lun = ccb_h->target_lun;
+    generate_identify_message(hcb);
+    if( ccb_h->tag_action != CAM_TAG_ACTION_NONE )
+        generate_unique_tag_message(hcb, ccb_h->tag_action);
+    if( !target_negotiated(hcb) )
+        generate_negotiation_messages(hcb);</programlisting>
+
+      <para>Then set up the SCSI command. The command storage may be
+        specified in the CCB in many interesting ways, specified by
+        the CCB flags.  The command buffer can be contained in CCB or
+        pointed to, in the latter case the pointer may be physical or
+        virtual. Since the hardware commonly needs physical address we
+        always convert the address to the physical one.</para>
+
+      <para>A NOT-QUITE RELATED NOTE: Normally this is done by a call
+        to vtophys(), but for the PCI device (which account for most
+        of the SCSI controllers now) drivers' portability to the Alpha
+        architecture the conversion must be done by vtobus() instead
+        due to special Alpha quirks.  [IMHO it would be much better to
+        have two separate functions, vtop() and ptobus() then vtobus()
+        would be a simple superposition of them.]  In case if a
+        physical address is requested it is OK to return the CCB with
+        the status CAM_REQ_INVALID, the current drivers do that.  But
+        it is also possible to compile the Alpha-specific piece of
+        code, as in this example (there should be a more direct way to
+        do that, without conditional compilation in the drivers). If
+        necessary a physical address can be also converted or mapped
+        back to a virtual address but with big pain, so we do not do
+        that.</para>
+
+<programlisting>    if(ccb_h->flags &amp; CAM_CDB_POINTER) {
+        /* CDB is a pointer */
+        if(!(ccb_h->flags &amp; CAM_CDB_PHYS)) {
+            /* CDB pointer is virtual */
+            hcb->cmd = vtobus(csio->cdb_io.cdb_ptr);
+        } else {
+            /* CDB pointer is physical */
+#if defined(__alpha__)
+            hcb->cmd = csio->cdb_io.cdb_ptr | alpha_XXX_dmamap_or ;
+#else
+            hcb->cmd = csio->cdb_io.cdb_ptr ;
+#endif
+        }
+    } else {
+        /* CDB is in the ccb (buffer) */
+        hcb->cmd = vtobus(csio->cdb_io.cdb_bytes);
+    }
+    hcb->cmdlen = csio->cdb_len;</programlisting>
+
+      <para>Now it is time to set up the data. Again, the data storage
+        may be specified in the CCB in many interesting ways,
+        specified by the CCB flags.  First we get the direction of the
+        data transfer. The simplest case is if there is no data to
+        transfer:</para>
+
+<programlisting>    int dir = (ccb_h->flags &amp; CAM_DIR_MASK);
+
+    if (dir == CAM_DIR_NONE)
+        goto end_data;</programlisting>
+
+      <para>Then we check if the data is in one chunk or in a
+        scatter-gather list, and the addresses are physical or
+        virtual. The SCSI controller may be able to handle only a
+        limited number of chunks of limited length.  If the request
+        hits this limitation we return an error. We use a special
+        function to return the CCB to handle in one place the HCB
+        resource shortages. The functions to add chunks are
+        driver-dependent, and here we leave them without detailed
+        implementation. See description of the SCSI command (CDB)
+        handling for the details on the address-translation issues.
+        If some variation is too difficult or impossible to implement
+        with a particular card it is OK to return the status
+        CAM_REQ_INVALID. Actually, it seems like the scatter-gather
+        ability is not used anywhere in the CAM code now. But at least
+        the case for a single non-scattered virtual buffer must be
+        implemented, it is actively used by CAM.</para>
+
+<programlisting>    int rv;
+    
+    initialize_hcb_for_data(hcb);
+
+    if((!(ccb_h->flags &amp; CAM_SCATTER_VALID)) { 
+        /* single buffer */
+        if(!(ccb_h->flags &amp; CAM_DATA_PHYS)) {
+            rv = add_virtual_chunk(hcb, csio->data_ptr, csio->dxfer_len, dir);
+            }
+        } else {
+            rv = add_physical_chunk(hcb, csio->data_ptr, csio->dxfer_len, dir);
+        }
+    } else {
+        int i;
+        struct bus_dma_segment *segs;
+        segs = (struct bus_dma_segment *)csio->data_ptr;
+
+        if ((ccb_h->flags &amp; CAM_SG_LIST_PHYS) != 0) {
+            /* The SG list pointer is physical */
+            rv = setup_hcb_for_physical_sg_list(hcb, segs, csio->sglist_cnt);
+        } else if (!(ccb_h->flags &amp; CAM_DATA_PHYS)) {
+            /* SG buffer pointers are virtual */
+            for (i = 0; i < csio->sglist_cnt; i++) {
+                rv = add_virtual_chunk(hcb, segs[i].ds_addr, 
+                    segs[i].ds_len, dir);
+                if (rv != CAM_REQ_CMP)
+                    break;
+            }
+        } else {
+            /* SG buffer pointers are physical */
+            for (i = 0; i < csio->sglist_cnt; i++) {
+                rv = add_physical_chunk(hcb, segs[i].ds_addr, 
+                    segs[i].ds_len, dir);
+                if (rv != CAM_REQ_CMP)
+                    break;
+            }
+        }
+    }
+    if(rv != CAM_REQ_CMP) {
+        /* we expect that add_*_chunk() functions return CAM_REQ_CMP
+         * if they added a chunk successfully, CAM_REQ_TOO_BIG if
+         * the request is too big (too many bytes or too many chunks),
+         * CAM_REQ_INVALID in case of other troubles
+         */
+        free_hcb_and_ccb_done(hcb, ccb, rv);
+        return;
+    }
+    end_data:</programlisting>
+
+    <para>If disconnection is disabled for this CCB we pass this
+      information to the hcb:</para>
+
+<programlisting>    if(ccb_h->flags &amp; CAM_DIS_DISCONNECT)
+        hcb_disable_disconnect(hcb);</programlisting>
+
+    <para>If the controller is able to run REQUEST SENSE command all
+      by itself then the value of the flag CAM_DIS_AUTOSENSE should
+      also be passed to it, to prevent automatic REQUEST SENSE if the
+      CAM subsystem does not want it.</para>
+
+    <para>The only thing left is to set up the timeout, pass our hcb
+      to the hardware and return, the rest will be done by the
+      interrupt handler (or timeout handler).</para>
+
+<programlisting>    ccb_h->timeout_ch = timeout(xxx_timeout, (caddr_t) hcb, 
+        (ccb_h->timeout * hz) / 1000); /* convert milliseconds to ticks */
+    put_hcb_into_hardware_queue(hcb);
+    return;</programlisting>
+
+    <para>And here is a possible implementation of the function
+    returning CCB:</para>
+
+<programlisting>    static void
+    free_hcb_and_ccb_done(struct xxx_hcb *hcb, union ccb *ccb, u_int32_t status)
+    {
+        struct xxx_softc *softc = hcb->softc;
+
+        ccb->ccb_h.ccb_hcb = 0;
+        if(hcb != NULL) {
+            untimeout(xxx_timeout, (caddr_t) hcb, ccb->ccb_h.timeout_ch);
+            /* we're about to free a hcb, so the shortage has ended */
+            if(softc->flags &amp; RESOURCE_SHORTAGE)  {
+                softc->flags &amp;= ~RESOURCE_SHORTAGE;
+                status |= CAM_RELEASE_SIMQ;
+            }
+            free_hcb(hcb); /* also removes hcb from any internal lists */
+        }
+        ccb->ccb_h.status = status | 
+            (ccb->ccb_h.status &amp; ~(CAM_STATUS_MASK|CAM_SIM_QUEUED));
+        xpt_done(ccb);
+    }</programlisting>
+    </listitem>
+
+    <listitem><para><emphasis>XPT_RESET_DEV</emphasis> - send the SCSI <quote>BUS
+    DEVICE RESET</quote> message to a device</para>
+
+    <para>There is no data transferred in CCB except the header and
+      the most interesting argument of it is target_id. Depending on
+      the controller hardware a hardware control block just like for
+      the XPT_SCSI_IO request may be constructed (see XPT_SCSI_IO
+      request description) and sent to the controller or the SCSI
+      controller may be immediately programmed to send this RESET
+      message to the device or this request may be just not supported
+      (and return the status CAM_REQ_INVALID).  Also on completion of
+      the request all the disconnected transactions for this target
+      must be aborted (probably in the interrupt routine).</para>
+
+    <para>Also all the current negotiations for the target are lost on
+      reset, so they might be cleaned too. Or they clearing may be
+      deferred, because anyway the target would request re-negotiation
+      on the next transaction.</para></listitem>
+
+    <listitem><para><emphasis>XPT_RESET_BUS</emphasis> - send the RESET signal
+      to the SCSI bus</para>
+
+    <para>No arguments are passed in the CCB, the only interesting
+      argument is the SCSI bus indicated by the struct sim
+      pointer.</para>
+
+    <para>A minimalistic implementation would forget the SCSI
+      negotiations for all the devices on the bus and return the
+      status CAM_REQ_CMP.</para>
+
+    <para>The proper implementation would in addition actually reset
+      the SCSI bus (possible also reset the SCSI controller) and mark
+      all the CCBs being processed, both those in the hardware queue
+      and those being disconnected, as done with the status
+      CAM_SCSI_BUS_RESET. Like:</para>
+
+<programlisting>    int targ, lun;
+    struct xxx_hcb *h, *hh;
+    struct ccb_trans_settings neg;
+    struct cam_path *path;
+
+    /* The SCSI bus reset may take a long time, in this case its completion
+     * should be checked by interrupt or timeout. But for simplicity
+     * we assume here that it is really fast.
+     */
+    reset_scsi_bus(softc);
+
+    /* drop all enqueued CCBs */
+    for(h = softc->first_queued_hcb; h != NULL; h = hh) {
+        hh = h->next;
+        free_hcb_and_ccb_done(h, h->ccb, CAM_SCSI_BUS_RESET);
+    }
+
+    /* the clean values of negotiations to report */
+    neg.bus_width = 8;
+    neg.sync_period = neg.sync_offset = 0;
+    neg.valid = (CCB_TRANS_BUS_WIDTH_VALID
+        | CCB_TRANS_SYNC_RATE_VALID | CCB_TRANS_SYNC_OFFSET_VALID);
+
+    /* drop all disconnected CCBs and clean negotiations  */
+    for(targ=0; targ <= OUR_MAX_SUPPORTED_TARGET; targ++) {
+        clean_negotiations(softc, targ);
+
+        /* report the event if possible */
+        if(xpt_create_path(&amp;path, /*periph*/NULL,
+                cam_sim_path(sim), targ,
+                CAM_LUN_WILDCARD) == CAM_REQ_CMP) {
+            xpt_async(AC_TRANSFER_NEG, path, &amp;neg);
+            xpt_free_path(path);
+        }
+
+        for(lun=0; lun <= OUR_MAX_SUPPORTED_LUN; lun++) 
+            for(h = softc->first_discon_hcb[targ][lun]; h != NULL; h = hh) {
+                hh=h->next;
+                free_hcb_and_ccb_done(h, h->ccb, CAM_SCSI_BUS_RESET);
+            }
+    }
+
+    ccb->ccb_h.status = CAM_REQ_CMP;
+    xpt_done(ccb);
+
+    /* report the event */
+    xpt_async(AC_BUS_RESET, softc->wpath, NULL);
+    return;</programlisting>
+
+    <para>Implementing the SCSI bus reset as a function may be a good
+      idea because it would be re-used by the timeout function as a
+      last resort if the things go wrong.</para></listitem>
+
+    <listitem><para><emphasis>XPT_ABORT</emphasis> - abort the specified
+      CCB</para>
+
+    <para>The arguments are transferred in the instance <quote>struct
+      ccb_abort cab</quote> of the union ccb. The only argument field in it
+      is:</para>
+
+    <para><emphasis>abort_ccb</emphasis> - pointer to the CCB to be
+      aborted</para>
+
+    <para>If the abort is not supported just return the status
+      CAM_UA_ABORT.  This is also the easy way to minimally implement
+      this call, return CAM_UA_ABORT in any case.</para>
+
+    <para>The hard way is to implement this request honestly. First
+      check that abort applies to a SCSI transaction:</para>
+
+<programlisting>    struct ccb *abort_ccb;
+    abort_ccb = ccb->cab.abort_ccb;
+
+    if(abort_ccb->ccb_h.func_code != XPT_SCSI_IO) {
+        ccb->ccb_h.status = CAM_UA_ABORT;
+        xpt_done(ccb);
+        return;
+    }</programlisting>
+
+    <para>Then it is necessary to find this CCB in our queue. This can
+      be done by walking the list of all our hardware control blocks
+      in search for one associated with this CCB:</para>
+
+<programlisting>    struct xxx_hcb *hcb, *h;
+
+    hcb = NULL;
+
+    /* We assume that softc->first_hcb is the head of the list of all
+     * HCBs associated with this bus, including those enqueued for 
+     * processing, being processed by hardware and disconnected ones.
+     */
+    for(h = softc->first_hcb; h != NULL; h = h->next) {
+        if(h->ccb == abort_ccb) {
+            hcb = h;
+            break;
+        }
+    }
+
+    if(hcb == NULL) {
+        /* no such CCB in our queue */
+        ccb->ccb_h.status = CAM_PATH_INVALID; 
+        xpt_done(ccb);
+        return;
+    }
+
+    hcb=found_hcb;</programlisting>
+
+    <para>Now we look at the current processing status of the HCB. It
+      may be either sitting in the queue waiting to be sent to the
+      SCSI bus, being transferred right now, or disconnected and
+      waiting for the result of the command, or actually completed by
+      hardware but not yet marked as done by software.  To make sure
+      that we do not get in any races with hardware we mark the HCB as
+      being aborted, so that if this HCB is about to be sent to the
+      SCSI bus the SCSI controller will see this flag and skip
+      it.</para>
+
+<programlisting>    int hstatus;
+
+    /* shown as a function, in case special action is needed to make
+     * this flag visible to hardware 
+     */
+    set_hcb_flags(hcb, HCB_BEING_ABORTED);
+
+    abort_again:
+
+    hstatus = get_hcb_status(hcb);
+    switch(hstatus) {
+    case HCB_SITTING_IN_QUEUE:
+        remove_hcb_from_hardware_queue(hcb);
+        /* FALLTHROUGH */
+    case HCB_COMPLETED:
+        /* this is an easy case */
+        free_hcb_and_ccb_done(hcb, abort_ccb, CAM_REQ_ABORTED);
+        break;</programlisting>
+
+    <para>If the CCB is being transferred right now we would like to
+      signal to the SCSI controller in some hardware-dependent way
+      that we want to abort the current transfer. The SCSI controller
+      would set the SCSI ATTENTION signal and when the target responds
+      to it send an ABORT message. We also reset the timeout to make
+      sure that the target is not sleeping forever.  If the command
+      would not get aborted in some reasonable time like 10 seconds
+      the timeout routine would go ahead and reset the whole SCSI bus.
+      Because the command will be aborted in some reasonable time we
+      can just return the abort request now as successfully completed,
+      and mark the aborted CCB as aborted (but not mark it as done
+      yet).</para>
+
+<programlisting>    case HCB_BEING_TRANSFERRED:
+        untimeout(xxx_timeout, (caddr_t) hcb, abort_ccb->ccb_h.timeout_ch);
+        abort_ccb->ccb_h.timeout_ch = 
+            timeout(xxx_timeout, (caddr_t) hcb, 10 * hz);
+        abort_ccb->ccb_h.status = CAM_REQ_ABORTED;
+        /* ask the controller to abort that HCB, then generate
+         * an interrupt and stop
+         */
+        if(signal_hardware_to_abort_hcb_and_stop(hcb) < 0) {
+            /* oops, we missed the race with hardware, this transaction
+             * got off the bus before we aborted it, try again */
+            goto abort_again;
+        }
+
+        break;</programlisting>
+
+    <para>If the CCB is in the list of disconnected then set it up as
+      an abort request and re-queue it at the front of hardware
+      queue. Reset the timeout and report the abort request to be
+      completed.</para>
+
+<programlisting>    case HCB_DISCONNECTED:
+        untimeout(xxx_timeout, (caddr_t) hcb, abort_ccb->ccb_h.timeout_ch);
+        abort_ccb->ccb_h.timeout_ch = 
+            timeout(xxx_timeout, (caddr_t) hcb, 10 * hz);
+        put_abort_message_into_hcb(hcb);
+        put_hcb_at_the_front_of_hardware_queue(hcb);
+        break;
+    }
+    ccb->ccb_h.status = CAM_REQ_CMP;
+    xpt_done(ccb);
+    return;</programlisting>
+
+    <para>That is all for the ABORT request, although there is one more
+      issue.  Because the ABORT message cleans all the ongoing
+      transactions on a LUN we have to mark all the other active
+      transactions on this LUN as aborted.  That should be done in the
+      interrupt routine, after the transaction gets aborted.</para>
+
+    <para>Implementing the CCB abort as a function may be quite a good
+      idea, this function can be re-used if an I/O transaction times
+      out. The only difference would be that the timed out transaction
+      would return the status CAM_CMD_TIMEOUT for the timed out
+      request. Then the case XPT_ABORT would be small, like
+      that:</para>
+
+<programlisting>    case XPT_ABORT:
+        struct ccb *abort_ccb;
+        abort_ccb = ccb->cab.abort_ccb;
+
+        if(abort_ccb->ccb_h.func_code != XPT_SCSI_IO) {
+            ccb->ccb_h.status = CAM_UA_ABORT;
+            xpt_done(ccb);
+            return;
+        }
+        if(xxx_abort_ccb(abort_ccb, CAM_REQ_ABORTED) < 0)
+            /* no such CCB in our queue */
+            ccb->ccb_h.status = CAM_PATH_INVALID; 
+        else
+            ccb->ccb_h.status = CAM_REQ_CMP;
+        xpt_done(ccb);
+        return;</programlisting>
+    </listitem>
+
+    <listitem><para><emphasis>XPT_SET_TRAN_SETTINGS</emphasis> - explicitly
+      set values of SCSI transfer settings</para>
+
+    <para>The arguments are transferred in the instance <quote>struct ccb_trans_setting cts</quote> 
+of the union ccb:</para>
+
+    <itemizedlist>
+      <listitem><para><emphasis>valid</emphasis> - a bitmask showing
+      which settings should be updated:</para></listitem>
+
+      <listitem><para><emphasis>CCB_TRANS_SYNC_RATE_VALID</emphasis>
+      - synchronous transfer rate</para></listitem>
+
+      <listitem><para><emphasis>CCB_TRANS_SYNC_OFFSET_VALID</emphasis>
+      - synchronous offset</para></listitem>
+
+      <listitem><para><emphasis>CCB_TRANS_BUS_WIDTH_VALID</emphasis>
+      - bus width</para></listitem>
+
+      <listitem><para><emphasis>CCB_TRANS_DISC_VALID</emphasis> -
+      set enable/disable disconnection</para></listitem> 
+
+      <listitem><para><emphasis>CCB_TRANS_TQ_VALID</emphasis> - set
+      enable/disable tagged queuing</para></listitem> 
+
+      <listitem><para><emphasis>flags</emphasis> - consists of two
+      parts, binary arguments and identification of
+      sub-operations.  The binary arguments are:</para>
+      <itemizedlist>
+        <listitem><para><emphasis>CCB_TRANS_DISC_ENB</emphasis> - enable disconnection</para></listitem>
+	<listitem><para><emphasis>CCB_TRANS_TAG_ENB</emphasis> -
+	enable tagged queuing</para></listitem>
+      </itemizedlist>
+      </listitem>
+
+      <listitem><para>the sub-operations are:</para>
+      <itemizedlist>
+        <listitem><para><emphasis>CCB_TRANS_CURRENT_SETTINGS</emphasis>
+        - change the current negotiations</para></listitem>
+
+	<listitem><para><emphasis>CCB_TRANS_USER_SETTINGS</emphasis>
+        - remember the desired user values sync_period, sync_offset -
+        self-explanatory, if sync_offset==0 then the asynchronous mode
+        is requested bus_width - bus width, in bits (not
+        bytes)</para></listitem>
+      </itemizedlist>
+      </listitem>
+
+    </itemizedlist>
+
+    <para>Two sets of negotiated parameters are supported, the user
+      settings and the current settings. The user settings are not
+      really used much in the SIM drivers, this is mostly just a piece
+      of memory where the upper levels can store (and later recall)
+      its ideas about the parameters.  Setting the user parameters
+      does not cause re-negotiation of the transfer rates. But when
+      the SCSI controller does a negotiation it must never set the
+      values higher than the user parameters, so it is essentially the
+      top boundary.</para>
+
+    <para>The current settings are, as the name says,
+      current. Changing them means that the parameters must be
+      re-negotiated on the next transfer.  Again, these <quote>new current
+      settings</quote> are not supposed to be forced on the device, just they
+      are used as the initial step of negotiations.  Also they must be
+      limited by actual capabilities of the SCSI controller: for
+      example, if the SCSI controller has 8-bit bus and the request
+      asks to set 16-bit wide transfers this parameter must be
+      silently truncated to 8-bit transfers before sending it to the
+      device.</para>
+
+    <para>One caveat is that the bus width and synchronous parameters
+      are per target while the disconnection and tag enabling
+      parameters are per lun.</para>
+
+    <para>The recommended implementation is to keep 3 sets of
+      negotiated (bus width and synchronous transfer)
+      parameters:</para>
+
+    <itemizedlist>
+      <listitem><para><emphasis>user</emphasis> - the user set, as
+      above</para></listitem>
+
+      <listitem><para><emphasis>current</emphasis> - those actually
+      in effect</para></listitem>
+
+      <listitem><para><emphasis>goal</emphasis> - those requested by
+      setting of the <quote>current</quote> parameters</para></listitem>
+    </itemizedlist>
+
+    <para>The code looks like:</para>
+
+<programlisting>    struct ccb_trans_settings *cts;
+    int targ, lun;
+    int flags;
+
+    cts = &amp;ccb->cts;
+    targ = ccb_h->target_id;
+    lun = ccb_h->target_lun;
+    flags = cts->flags;
+    if(flags &amp; CCB_TRANS_USER_SETTINGS) {
+        if(flags &amp; CCB_TRANS_SYNC_RATE_VALID)
+            softc->user_sync_period[targ] = cts->sync_period;
+        if(flags &amp; CCB_TRANS_SYNC_OFFSET_VALID)
+            softc->user_sync_offset[targ] = cts->sync_offset;
+        if(flags &amp; CCB_TRANS_BUS_WIDTH_VALID)
+            softc->user_bus_width[targ] = cts->bus_width;
+
+        if(flags &amp; CCB_TRANS_DISC_VALID) {
+            softc->user_tflags[targ][lun] &amp;= ~CCB_TRANS_DISC_ENB;
+            softc->user_tflags[targ][lun] |= flags &amp; CCB_TRANS_DISC_ENB;
+        }
+        if(flags &amp; CCB_TRANS_TQ_VALID) {
+            softc->user_tflags[targ][lun] &amp;= ~CCB_TRANS_TQ_ENB;
+            softc->user_tflags[targ][lun] |= flags &amp; CCB_TRANS_TQ_ENB;
+        }
+    }
+    if(flags &amp; CCB_TRANS_CURRENT_SETTINGS) {
+        if(flags &amp; CCB_TRANS_SYNC_RATE_VALID)
+            softc->goal_sync_period[targ] = 
+                max(cts->sync_period, OUR_MIN_SUPPORTED_PERIOD);
+        if(flags &amp; CCB_TRANS_SYNC_OFFSET_VALID)
+            softc->goal_sync_offset[targ] = 
+                min(cts->sync_offset, OUR_MAX_SUPPORTED_OFFSET);
+        if(flags &amp; CCB_TRANS_BUS_WIDTH_VALID)
+            softc->goal_bus_width[targ] = min(cts->bus_width, OUR_BUS_WIDTH);
+
+        if(flags &amp; CCB_TRANS_DISC_VALID) {
+            softc->current_tflags[targ][lun] &amp;= ~CCB_TRANS_DISC_ENB;
+            softc->current_tflags[targ][lun] |= flags &amp; CCB_TRANS_DISC_ENB;
+        }
+        if(flags &amp; CCB_TRANS_TQ_VALID) {
+            softc->current_tflags[targ][lun] &amp;= ~CCB_TRANS_TQ_ENB;
+            softc->current_tflags[targ][lun] |= flags &amp; CCB_TRANS_TQ_ENB;
+        }
+    }
+    ccb->ccb_h.status = CAM_REQ_CMP;
+    xpt_done(ccb);
+    return;</programlisting>
+
+    <para>Then when the next I/O request will be processed it will
+      check if it has to re-negotiate, for example by calling the
+      function target_negotiated(hcb).  It can be implemented like
+      this:</para>
+
+<programlisting>    int
+    target_negotiated(struct xxx_hcb *hcb)
+    {
+        struct softc *softc = hcb->softc;
+        int targ = hcb->targ;
+
+        if( softc->current_sync_period[targ] != softc->goal_sync_period[targ]
+        || softc->current_sync_offset[targ] != softc->goal_sync_offset[targ]
+        || softc->current_bus_width[targ] != softc->goal_bus_width[targ] )
+            return 0; /* FALSE */
+        else
+            return 1; /* TRUE */
+    }</programlisting>
+
+    <para>After the values are re-negotiated the resulting values must
+      be assigned to both current and goal parameters, so for future
+      I/O transactions the current and goal parameters would be the
+      same and <function>target_negotiated()</function> would return
+      TRUE. When the card is initialized (in
+      <function>xxx_attach()</function>) the current negotiation
+      values must be initialized to narrow asynchronous mode, the goal
+      and current values must be initialized to the maximal values
+      supported by controller.</para></listitem>
+
+    <listitem><para><emphasis>XPT_GET_TRAN_SETTINGS</emphasis> - get values of
+    SCSI transfer settings</para>
+
+    <para>This operations is the reverse of
+      XPT_SET_TRAN_SETTINGS. Fill up the CCB instance <quote>struct
+      ccb_trans_setting cts</quote> with data as requested by the flags
+      CCB_TRANS_CURRENT_SETTINGS or CCB_TRANS_USER_SETTINGS (if both
+      are set then the existing drivers return the current
+      settings). Set all the bits in the valid field.</para></listitem>
+
+    <listitem><para><emphasis>XPT_CALC_GEOMETRY</emphasis> - calculate logical
+      (BIOS) geometry of the disk</para>
+
+    <para>The arguments are transferred in the instance <quote>struct
+      ccb_calc_geometry ccg</quote> of the union ccb:</para>
+
+    <itemizedlist>
+
+      <listitem><para><emphasis>block_size</emphasis> - input, block
+      (A.K.A sector) size in bytes</para></listitem>
+
+      <listitem><para><emphasis>volume_size</emphasis> - input,
+      volume size in bytes</para></listitem>
+
+      <listitem><para><emphasis>cylinders</emphasis> - output,
+      logical cylinders</para></listitem>
+
+      <listitem><para><emphasis>heads</emphasis> - output, logical
+      heads</para></listitem>
+
+      <listitem><para><emphasis>secs_per_track</emphasis> - output,
+      logical sectors per track</para></listitem>
+
+    </itemizedlist>
+
+    <para>If the returned geometry differs much enough from what the
+      SCSI controller BIOS thinks and a disk on this SCSI controller
+      is used as bootable the system may not be able to boot. The
+      typical calculation example taken from the aic7xxx driver
+      is:</para>
+
+<programlisting>    struct    ccb_calc_geometry *ccg;
+    u_int32_t size_mb;
+    u_int32_t secs_per_cylinder;
+    int   extended;
+
+    ccg = &amp;ccb->ccg;
+    size_mb = ccg->volume_size
+        / ((1024L * 1024L) / ccg->block_size);
+    extended = check_cards_EEPROM_for_extended_geometry(softc);
+
+    if (size_mb > 1024 &amp;&amp; extended) {
+        ccg->heads = 255;
+        ccg->secs_per_track = 63;
+    } else {
+        ccg->heads = 64;
+        ccg->secs_per_track = 32;
+    }
+    secs_per_cylinder = ccg->heads * ccg->secs_per_track;
+    ccg->cylinders = ccg->volume_size / secs_per_cylinder;
+    ccb->ccb_h.status = CAM_REQ_CMP;
+    xpt_done(ccb);
+    return;</programlisting>
+
+    <para>This gives the general idea, the exact calculation depends
+      on the quirks of the particular BIOS. If BIOS provides no way
+      set the <quote>extended translation</quote> flag in EEPROM this flag should
+      normally be assumed equal to 1. Other popular geometries
+      are:</para>
+
+<programlisting>    128 heads, 63 sectors - Symbios controllers
+    16 heads, 63 sectors - old controllers</programlisting>
+
+    <para>Some system BIOSes and SCSI BIOSes fight with each other
+      with variable success, for example a combination of Symbios
+      875/895 SCSI and Phoenix BIOS can give geometry 128/63 after
+      power up and 255/63 after a hard reset or soft reboot.</para>
+    </listitem>
+
+    <listitem><para><emphasis>XPT_PATH_INQ</emphasis> - path inquiry, in other
+      words get the SIM driver and SCSI controller (also known as HBA
+      - Host Bus Adapter) properties</para>
+
+    <para>The properties are returned in the instance <quote>struct
+ccb_pathinq cpi</quote> of the union ccb:</para>
+
+    <itemizedlist>
+
+      <listitem><para>version_num - the SIM driver version number, now
+      all drivers use 1</para></listitem>
+
+      <listitem><para>hba_inquiry - bitmask of features supported by
+      the controller:</para></listitem>
+
+      <listitem><para>PI_MDP_ABLE - supports MDP message (something
+      from SCSI3?)</para></listitem>
+
+      <listitem><para>PI_WIDE_32 - supports 32 bit wide
+      SCSI</para></listitem>
+
+      <listitem><para>PI_WIDE_16 - supports 16 bit wide
+      SCSI</para></listitem>
+
+      <listitem><para>PI_SDTR_ABLE - can negotiate synchronous
+      transfer rate</para></listitem>
+
+      <listitem><para>PI_LINKED_CDB - supports linked
+      commands</para></listitem>
+
+      <listitem><para>PI_TAG_ABLE - supports tagged
+      commands</para></listitem>
+
+      <listitem><para>PI_SOFT_RST - supports soft reset alternative
+        (hard reset and soft reset are mutually exclusive within a
+        SCSI bus)</para></listitem>
+
+      <listitem><para>target_sprt - flags for target mode support, 0
+        if unsupported</para></listitem>
+
+      <listitem><para>hba_misc - miscellaneous controller
+        features:</para></listitem>
+
+      <listitem><para>PIM_SCANHILO - bus scans from high ID to low
+        ID</para></listitem>
+
+      <listitem><para>PIM_NOREMOVE - removable devices not included in
+        scan</para></listitem>
+
+      <listitem><para>PIM_NOINITIATOR - initiator role not
+        supported</para></listitem>
+
+      <listitem><para>PIM_NOBUSRESET - user has disabled initial BUS
+        RESET</para></listitem>
+
+      <listitem><para>hba_eng_cnt - mysterious HBA engine count,
+        something related to compression, now is always set to
+        0</para></listitem>
+
+      <listitem><para>vuhba_flags - vendor-unique flags, unused
+        now</para></listitem>
+
+      <listitem><para>max_target - maximal supported target ID (7 for
+        8-bit bus, 15 for 16-bit bus, 127 for Fibre
+        Channel)</para></listitem>
+
+      <listitem><para>max_lun - maximal supported LUN ID (7 for older
+        SCSI controllers, 63 for newer ones)</para></listitem>
+
+      <listitem><para>async_flags - bitmask of installed Async
+        handler, unused now</para></listitem>
+
+      <listitem><para>hpath_id - highest Path ID in the subsystem,
+        unused now</para></listitem>
+
+      <listitem><para>unit_number - the controller unit number,
+        cam_sim_unit(sim)</para></listitem>
+
+      <listitem><para>bus_id - the bus number,
+        cam_sim_bus(sim)</para></listitem>
+
+      <listitem><para>initiator_id - the SCSI ID of the controller
+        itself</para></listitem>
+
+      <listitem><para>base_transfer_speed - nominal transfer speed in
+        KB/s for asynchronous narrow transfers, equals to 3300 for
+        SCSI</para></listitem>
+
+      <listitem><para>sim_vid - SIM driver's vendor id, a
+        zero-terminated string of maximal length SIM_IDLEN including
+        the terminating zero</para></listitem>
+
+      <listitem><para>hba_vid - SCSI controller's vendor id, a
+        zero-terminated string of maximal length HBA_IDLEN including
+        the terminating zero</para></listitem>
+
+      <listitem><para>dev_name - device driver name, a zero-terminated
+        string of maximal length DEV_IDLEN including the terminating
+        zero, equal to cam_sim_name(sim)</para></listitem>
+
+    </itemizedlist>
+
+    <para>The recommended way of setting the string fields is using
+    strncpy, like:</para>
+
+<programlisting>    strncpy(cpi->dev_name, cam_sim_name(sim), DEV_IDLEN);</programlisting>
+
+    <para>After setting the values set the status to CAM_REQ_CMP and mark the
+CCB as done.</para>
+    </listitem>
+    </itemizedlist>
+
+  </sect1>
+
+  <sect1 id="scsi-polling">
+    <title>Polling</title>
+
+    <funcSynopsis><funcPrototype>
+    <funcDef>static void
+      <function>xxx_poll</function>
+    </funcDef>
+    <paramdef>
+      <parameter>struct cam_sim *sim</parameter>
+    </paramdef>
+    </funcPrototype></funcSynopsis>
+
+    <para>The poll function is used to simulate the interrupts when
+      the interrupt subsystem is not functioning (for example, when
+      the system has crashed and is creating the system dump). The CAM
+      subsystem sets the proper interrupt level before calling the
+      poll routine. So all it needs to do is to call the interrupt
+      routine (or the other way around, the poll routine may be doing
+      the real action and the interrupt routine would just call the
+      poll routine). Why bother about a separate function then?
+      Because of different calling conventions. The
+      <function>xxx_poll</function> routine gets the struct cam_sim
+      pointer as its argument when the PCI interrupt routine by common
+      convention gets pointer to the struct
+      <structName>xxx_softc</structName> and the ISA interrupt routine
+      gets just the device unit number. So the poll routine would
+      normally look as:</para>
+
+<programlisting>static void 
+xxx_poll(struct cam_sim *sim)
+{
+    xxx_intr((struct xxx_softc *)cam_sim_softc(sim)); /* for PCI device */
+}</programlisting>
+
+    <para>or</para>
+
+<programlisting>static void 
+xxx_poll(struct cam_sim *sim)
+{
+    xxx_intr(cam_sim_unit(sim)); /* for ISA device */
+}</programlisting>
+
+  </sect1>
+
+  <sect1 id="scsi-async">
+    <title>Asynchronous Events</title>
+
+    <para>If an asynchronous event callback has been set up then the
+      callback function should be defined.</para>
+
+<programlisting>static void
+ahc_async(void *callback_arg, u_int32_t code, struct cam_path *path, void *arg)</programlisting>
+
+    <itemizedlist>
+      <listitem><para>callback_arg - the value supplied when registering the
+      callback</para></listitem>
+
+      <listitem><para>code - identifies the type of event</para></listitem>
+
+      <listitem><para>path - identifies the devices to which the event
+      applies</para></listitem>
+
+      <listitem><para>arg - event-specific argument</para></listitem>
+    </itemizedlist>
+
+    <para>Implementation for a single type of event, AC_LOST_DEVICE,
+      looks like:</para>
+
+<programlisting>    struct xxx_softc *softc;
+    struct cam_sim *sim;
+    int targ;
+    struct ccb_trans_settings neg;
+
+    sim = (struct cam_sim *)callback_arg;
+    softc = (struct xxx_softc *)cam_sim_softc(sim);
+    switch (code) {
+    case AC_LOST_DEVICE:
+        targ = xpt_path_target_id(path);
+        if(targ <= OUR_MAX_SUPPORTED_TARGET) {
+            clean_negotiations(softc, targ);
+            /* send indication to CAM */
+            neg.bus_width = 8;
+            neg.sync_period = neg.sync_offset = 0;
+            neg.valid = (CCB_TRANS_BUS_WIDTH_VALID
+                | CCB_TRANS_SYNC_RATE_VALID | CCB_TRANS_SYNC_OFFSET_VALID);
+            xpt_async(AC_TRANSFER_NEG, path, &amp;neg);
+        }
+        break;
+    default:
+        break;
+    }</programlisting>
+
+  </sect1>
+
+  <sect1 id="scsi-interrupts">
+    <title>Interrupts</title>
+
+    <para>The exact type of the interrupt routine depends on the type
+      of the peripheral bus (PCI, ISA and so on) to which the SCSI
+      controller is connected.</para>
+
+    <para>The interrupt routines of the SIM drivers run at the
+      interrupt level splcam. So <function>splcam()</function> should
+      be used in the driver to synchronize activity between the
+      interrupt routine and the rest of the driver (for a
+      multiprocessor-aware driver things get yet more interesting but
+      we ignore this case here). The pseudo-code in this document
+      happily ignores the problems of synchronization. The real code
+      must not ignore them. A simple-minded approach is to set
+      <function>splcam()</function> on the entry to the other routines
+      and reset it on return thus protecting them by one big critical
+      section. To make sure that the interrupt level will be always
+      restored a wrapper function can be defined, like:</para>
+
+<programlisting>    static void 
+    xxx_action(struct cam_sim *sim, union ccb *ccb)
+    {
+        int s;
+        s = splcam();
+        xxx_action1(sim, ccb);
+        splx(s);
+    }
+
+    static void 
+    xxx_action1(struct cam_sim *sim, union ccb *ccb)
+    {
+        ... process the request ...
+    }</programlisting>
+
+    <para>This approach is simple and robust but the problem with it
+      is that interrupts may get blocked for a relatively long time
+      and this would negatively affect the system's performance. On
+      the other hand the functions of the <function>spl()</function>
+      family have rather high overhead, so vast amount of tiny
+      critical sections may not be good either.</para>
+
+    <para>The conditions handled by the interrupt routine and the
+      details depend very much on the hardware. We consider the set of
+      <quote>typical</quote> conditions.</para>
+
+    <para>First, we check if a SCSI reset was encountered on the bus
+      (probably caused by another SCSI controller on the same SCSI
+      bus). If so we drop all the enqueued and disconnected requests,
+      report the events and re-initialize our SCSI controller. It is
+      important that during this initialization the controller will not
+      issue another reset or else two controllers on the same SCSI bus
+      could ping-pong resets forever.  The case of fatal controller
+      error/hang could be handled in the same place, but it will
+      probably need also sending RESET signal to the SCSI bus to reset
+      the status of the connections with the SCSI devices.</para>
+
+<programlisting>    int fatal=0;
+    struct ccb_trans_settings neg;
+    struct cam_path *path;
+
+    if( detected_scsi_reset(softc)
+    || (fatal = detected_fatal_controller_error(softc)) ) {
+        int targ, lun;
+        struct xxx_hcb *h, *hh;
+
+        /* drop all enqueued CCBs */
+        for(h = softc->first_queued_hcb; h != NULL; h = hh) {
+            hh = h->next;
+            free_hcb_and_ccb_done(h, h->ccb, CAM_SCSI_BUS_RESET);
+        }
+
+        /* the clean values of negotiations to report */
+        neg.bus_width = 8;
+        neg.sync_period = neg.sync_offset = 0;
+        neg.valid = (CCB_TRANS_BUS_WIDTH_VALID
+            | CCB_TRANS_SYNC_RATE_VALID | CCB_TRANS_SYNC_OFFSET_VALID);
+
+        /* drop all disconnected CCBs and clean negotiations  */
+        for(targ=0; targ <= OUR_MAX_SUPPORTED_TARGET; targ++) {
+            clean_negotiations(softc, targ);
+
+            /* report the event if possible */
+            if(xpt_create_path(&amp;path, /*periph*/NULL,
+                    cam_sim_path(sim), targ,
+                    CAM_LUN_WILDCARD) == CAM_REQ_CMP) {
+                xpt_async(AC_TRANSFER_NEG, path, &amp;neg);
+                xpt_free_path(path);
+            }
+
+            for(lun=0; lun <= OUR_MAX_SUPPORTED_LUN; lun++) 
+                for(h = softc->first_discon_hcb[targ][lun]; h != NULL; h = hh) {
+                    hh=h->next;
+                    if(fatal)
+                        free_hcb_and_ccb_done(h, h->ccb, CAM_UNREC_HBA_ERROR);
+                    else
+                        free_hcb_and_ccb_done(h, h->ccb, CAM_SCSI_BUS_RESET);
+                }
+        }
+
+        /* report the event */
+        xpt_async(AC_BUS_RESET, softc->wpath, NULL);
+
+        /* re-initialization may take a lot of time, in such case
+         * its completion should be signaled by another interrupt or
+         * checked on timeout - but for simplicity we assume here that
+         * it is really fast
+         */
+        if(!fatal) {
+            reinitialize_controller_without_scsi_reset(softc); 
+        } else {
+            reinitialize_controller_with_scsi_reset(softc); 
+        }
+        schedule_next_hcb(softc);
+        return;
+    }</programlisting>
+
+    <para>If interrupt is not caused by a controller-wide condition
+      then probably something has happened to the current hardware
+      control block. Depending on the hardware there may be other
+      non-HCB-related events, we just do not consider them here.  Then
+      we analyze what happened to this HCB:</para>
+
+<programlisting>    struct xxx_hcb *hcb, *h, *hh;
+    int hcb_status, scsi_status;
+    int ccb_status;
+    int targ;
+    int lun_to_freeze;
+
+    hcb = get_current_hcb(softc);
+    if(hcb == NULL) {
+        /* either stray interrupt or something went very wrong
+         * or this is something hardware-dependent
+         */
+        handle as necessary;
+        return;
+    }
+
+    targ = hcb->target;
+    hcb_status = get_status_of_current_hcb(softc);</programlisting>
+
+    <para>First we check if the HCB has completed and if so we check
+      the returned SCSI status.</para>
+
+<programlisting>    if(hcb_status == COMPLETED) {
+        scsi_status = get_completion_status(hcb);</programlisting>
+
+    <para>Then look if this status is related to the REQUEST SENSE
+      command and if so handle it in a simple way.</para>
+
+<programlisting>        if(hcb->flags &amp; DOING_AUTOSENSE) {
+            if(scsi_status == GOOD) { /* autosense was successful */
+                hcb->ccb->ccb_h.status |= CAM_AUTOSNS_VALID;
+                free_hcb_and_ccb_done(hcb, hcb->ccb, CAM_SCSI_STATUS_ERROR);
+            } else {
+        autosense_failed:
+                free_hcb_and_ccb_done(hcb, hcb->ccb, CAM_AUTOSENSE_FAIL);
+            }
+            schedule_next_hcb(softc);
+            return;
+        }</programlisting>
+
+    <para>Else the command itself has completed, pay more attention to
+      details.  If auto-sense is not disabled for this CCB and the
+      command has failed with sense data then run REQUEST SENSE
+      command to receive that data.</para>
+
+<programlisting>        hcb->ccb->csio.scsi_status = scsi_status;
+        calculate_residue(hcb);
+
+        if( (hcb->ccb->ccb_h.flags &amp; CAM_DIS_AUTOSENSE)==0
+        &amp;&amp; ( scsi_status == CHECK_CONDITION 
+                || scsi_status == COMMAND_TERMINATED) ) {
+            /* start auto-SENSE */
+            hcb->flags |= DOING_AUTOSENSE;
+            setup_autosense_command_in_hcb(hcb);
+            restart_current_hcb(softc);
+            return;
+        }
+        if(scsi_status == GOOD)
+            free_hcb_and_ccb_done(hcb, hcb->ccb, CAM_REQ_CMP);
+        else
+            free_hcb_and_ccb_done(hcb, hcb->ccb, CAM_SCSI_STATUS_ERROR);
+        schedule_next_hcb(softc);
+        return;
+    }</programlisting>
+
+    <para>One typical thing would be negotiation events: negotiation
+      messages received from a SCSI target (in answer to our
+      negotiation attempt or by target's initiative) or the target is
+      unable to negotiate (rejects our negotiation messages or does
+      not answer them).</para>
+
+<programlisting>    switch(hcb_status) {
+    case TARGET_REJECTED_WIDE_NEG:
+        /* revert to 8-bit bus */
+        softc->current_bus_width[targ] = softc->goal_bus_width[targ] = 8;
+        /* report the event */
+        neg.bus_width = 8; 
+        neg.valid = CCB_TRANS_BUS_WIDTH_VALID;
+        xpt_async(AC_TRANSFER_NEG, hcb->ccb.ccb_h.path_id, &amp;neg);
+        continue_current_hcb(softc);
+        return;
+    case TARGET_ANSWERED_WIDE_NEG:
+        {
+            int wd;
+
+            wd = get_target_bus_width_request(softc);
+            if(wd <= softc->goal_bus_width[targ]) { 
+                /* answer is acceptable */
+                softc->current_bus_width[targ] = 
+                softc->goal_bus_width[targ] = neg.bus_width = wd;
+
+                /* report the event */
+                neg.valid = CCB_TRANS_BUS_WIDTH_VALID;
+                xpt_async(AC_TRANSFER_NEG, hcb->ccb.ccb_h.path_id, &amp;neg);
+            } else {
+                prepare_reject_message(hcb);
+            }
+        }
+        continue_current_hcb(softc);
+        return;
+    case TARGET_REQUESTED_WIDE_NEG:
+        {
+            int wd;
+
+            wd = get_target_bus_width_request(softc);
+            wd = min (wd, OUR_BUS_WIDTH);
+            wd = min (wd, softc->user_bus_width[targ]);
+
+            if(wd != softc->current_bus_width[targ]) {
+                /* the bus width has changed */
+                softc->current_bus_width[targ] = 
+                softc->goal_bus_width[targ] = neg.bus_width = wd;
+
+                /* report the event */
+                neg.valid = CCB_TRANS_BUS_WIDTH_VALID;
+                xpt_async(AC_TRANSFER_NEG, hcb->ccb.ccb_h.path_id, &amp;neg);
+            }
+            prepare_width_nego_rsponse(hcb, wd);
+        }
+        continue_current_hcb(softc);
+        return;
+    }</programlisting>
+
+    <para>Then we handle any errors that could have happened during
+      auto-sense in the same simple-minded way as before. Otherwise we
+      look closer at the details again.</para>
+
+<programlisting>    if(hcb->flags &amp; DOING_AUTOSENSE)
+        goto autosense_failed;
+
+    switch(hcb_status) {</programlisting>
+
+    <para>The next event we consider is unexpected disconnect. Which
+      is considered normal after an ABORT or BUS DEVICE RESET message
+      and abnormal in other cases.</para>
+
+<programlisting>    case UNEXPECTED_DISCONNECT:
+        if(requested_abort(hcb)) {
+            /* abort affects all commands on that target+LUN, so 
+             * mark all disconnected HCBs on that target+LUN as aborted too
+             */
+            for(h = softc->first_discon_hcb[hcb->target][hcb->lun]; 
+                    h != NULL; h = hh) {
+                hh=h->next;
+                free_hcb_and_ccb_done(h, h->ccb, CAM_REQ_ABORTED);
+            }
+            ccb_status = CAM_REQ_ABORTED;
+        } else if(requested_bus_device_reset(hcb)) {
+            int lun;
+
+            /* reset affects all commands on that target, so 
+             * mark all disconnected HCBs on that target+LUN as reset
+             */
+
+            for(lun=0; lun <= OUR_MAX_SUPPORTED_LUN; lun++) 
+                for(h = softc->first_discon_hcb[hcb->target][lun]; 
+                        h != NULL; h = hh) {
+                    hh=h->next;
+                    free_hcb_and_ccb_done(h, h->ccb, CAM_SCSI_BUS_RESET);
+                }
+
+            /* send event */
+            xpt_async(AC_SENT_BDR, hcb->ccb->ccb_h.path_id, NULL);
+
+            /* this was the CAM_RESET_DEV request itself, it is completed */
+            ccb_status = CAM_REQ_CMP; 
+        } else {
+            calculate_residue(hcb);
+            ccb_status = CAM_UNEXP_BUSFREE; 
+            /* request the further code to freeze the queue */
+            hcb->ccb->ccb_h.status |= CAM_DEV_QFRZN;
+            lun_to_freeze = hcb->lun;
+        }
+        break;</programlisting>
+
+    <para>If the target refuses to accept tags we notify CAM about
+      that and return back all commands for this LUN:</para>
+
+<programlisting>    case TAGS_REJECTED:
+        /* report the event */
+        neg.flags = 0 &amp; ~CCB_TRANS_TAG_ENB; 
+        neg.valid = CCB_TRANS_TQ_VALID;
+        xpt_async(AC_TRANSFER_NEG, hcb->ccb.ccb_h.path_id, &amp;neg);
+
+        ccb_status = CAM_MSG_REJECT_REC; 
+        /* request the further code to freeze the queue */
+        hcb->ccb->ccb_h.status |= CAM_DEV_QFRZN;
+        lun_to_freeze = hcb->lun;
+        break;</programlisting>
+
+    <para>Then we check a number of other conditions, with processing
+      basically limited to setting the CCB status:</para>
+
+<programlisting>    case SELECTION_TIMEOUT:
+        ccb_status = CAM_SEL_TIMEOUT; 
+        /* request the further code to freeze the queue */
+        hcb->ccb->ccb_h.status |= CAM_DEV_QFRZN;
+        lun_to_freeze = CAM_LUN_WILDCARD;
+        break;
+    case PARITY_ERROR:
+        ccb_status = CAM_UNCOR_PARITY; 
+        break;
+    case DATA_OVERRUN:
+    case ODD_WIDE_TRANSFER:
+        ccb_status = CAM_DATA_RUN_ERR; 
+        break;
+    default:
+        /* all other errors are handled in a generic way */
+        ccb_status = CAM_REQ_CMP_ERR; 
+        /* request the further code to freeze the queue */
+        hcb->ccb->ccb_h.status |= CAM_DEV_QFRZN;
+        lun_to_freeze = CAM_LUN_WILDCARD;
+        break;
+    }</programlisting>
+
+    <para>Then we check if the error was serious enough to freeze the
+      input queue until it gets proceeded and do so if it is:</para>
+
+<programlisting>    if(hcb->ccb->ccb_h.status &amp; CAM_DEV_QFRZN) {
+        /* freeze the queue */
+        xpt_freeze_devq(ccb->ccb_h.path, /*count*/1);
+
+        /* re-queue all commands for this target/LUN back to CAM */
+
+        for(h = softc->first_queued_hcb; h != NULL; h = hh) {
+            hh = h->next;
+
+            if(targ == h->targ 
+            &amp;&amp; (lun_to_freeze == CAM_LUN_WILDCARD || lun_to_freeze == h->lun) )
+                free_hcb_and_ccb_done(h, h->ccb, CAM_REQUEUE_REQ);
+        }
+    }
+    free_hcb_and_ccb_done(hcb, hcb->ccb, ccb_status);
+    schedule_next_hcb(softc);
+    return;</programlisting>
+
+    <para>This concludes the generic interrupt handling although
+      specific controllers may require some additions.</para>
+
+  </sect1>
+
+  <sect1 id="scsi-errors">
+    <title>Errors Summary</title>
+
+    <para>When executing an I/O request many things may go wrong. The
+      reason of error can be reported in the CCB status with great
+      detail. Examples of use are spread throughout this document. For
+      completeness here is the summary of recommended responses for
+      the typical error conditions:</para>
+
+    <itemizedlist>
+
+      <listitem><para><emphasis>CAM_RESRC_UNAVAIL</emphasis> - some
+        resource is temporarily unavailable and the SIM driver cannot
+        generate an event when it will become available. An example of
+        this resource would be some intra-controller hardware resource
+        for which the controller does not generate an interrupt when
+        it becomes available.</para></listitem>
+ 
+      <listitem><para><emphasis>CAM_UNCOR_PARITY</emphasis> -
+        unrecovered parity error occurred</para></listitem>
+
+      <listitem><para><emphasis>CAM_DATA_RUN_ERR</emphasis> - data
+        overrun or unexpected data phase (going in other direction
+        than specified in CAM_DIR_MASK) or odd transfer length for
+        wide transfer</para></listitem>
+
+      <listitem><para><emphasis>CAM_SEL_TIMEOUT</emphasis> - selection
+        timeout occurred (target does not respond)</para></listitem>
+
+      <listitem><para><emphasis>CAM_CMD_TIMEOUT</emphasis> - command
+        timeout occurred (the timeout function ran)</para></listitem>
+
+      <listitem><para><emphasis>CAM_SCSI_STATUS_ERROR</emphasis> - the
+        device returned error</para></listitem>
+
+      <listitem><para><emphasis>CAM_AUTOSENSE_FAIL</emphasis> - the
+        device returned error and the REQUEST SENSE COMMAND
+        failed</para></listitem>
+
+      <listitem><para><emphasis>CAM_MSG_REJECT_REC</emphasis> - MESSAGE
+        REJECT message was received</para></listitem>
+
+      <listitem><para><emphasis>CAM_SCSI_BUS_RESET</emphasis> - received
+        SCSI bus reset</para></listitem>
+
+      <listitem><para><emphasis>CAM_REQ_CMP_ERR</emphasis> -
+        <quote>impossible</quote> SCSI phase occurred or something else as weird or
+        just a generic error if further detail is not
+        available</para></listitem>
+
+      <listitem><para><emphasis>CAM_UNEXP_BUSFREE</emphasis> -
+        unexpected disconnect occurred</para></listitem>
+
+      <listitem><para><emphasis>CAM_BDR_SENT</emphasis> - BUS DEVICE
+        RESET message was sent to the target</para></listitem>
+
+      <listitem><para><emphasis>CAM_UNREC_HBA_ERROR</emphasis> -
+        unrecoverable Host Bus Adapter Error</para></listitem>
+
+      <listitem><para><emphasis>CAM_REQ_TOO_BIG</emphasis> - the request
+        was too large for this controller</para></listitem>
+
+      <listitem><para><emphasis>CAM_REQUEUE_REQ</emphasis> - this
+        request should be re-queued to preserve transaction ordering.
+        This typically occurs when the SIM recognizes an error that
+        should freeze the queue and must place other queued requests
+        for the target at the sim level back into the XPT
+        queue. Typical cases of such errors are selection timeouts,
+        command timeouts and other like conditions. In such cases the
+        troublesome command returns the status indicating the error,
+        the and the other commands which have not be sent to the bus
+        yet get re-queued.</para></listitem>
+
+      <listitem><para><emphasis>CAM_LUN_INVALID</emphasis> - the LUN
+        ID in the request is not supported by the SCSI
+        controller</para></listitem>
+
+      <listitem><para><emphasis>CAM_TID_INVALID</emphasis> - the
+        target ID in the request is not supported by the SCSI
+        controller</para></listitem>
+    </itemizedlist>
+  </sect1>
+
+  <sect1 id="scsi-timeout">
+    <title>Timeout Handling</title>
+
+    <para>When the timeout for an HCB expires that request should be
+      aborted, just like with an XPT_ABORT request. The only
+      difference is that the returned status of aborted request should
+      be CAM_CMD_TIMEOUT instead of CAM_REQ_ABORTED (that is why
+      implementation of the abort better be done as a function). But
+      there is one more possible problem: what if the abort request
+      itself will get stuck? In this case the SCSI bus should be
+      reset, just like with an XPT_RESET_BUS request (and the idea
+      about implementing it as a function called from both places
+      applies here too). Also we should reset the whole SCSI bus if a
+      device reset request got stuck. So after all the timeout
+      function would look like:</para>
+
+<programlisting>static void
+xxx_timeout(void *arg)
+{
+    struct xxx_hcb *hcb = (struct xxx_hcb *)arg;
+    struct xxx_softc *softc;
+    struct ccb_hdr *ccb_h;
+
+    softc = hcb->softc;
+    ccb_h = &amp;hcb->ccb->ccb_h;
+
+    if(hcb->flags &amp; HCB_BEING_ABORTED
+    || ccb_h->func_code == XPT_RESET_DEV) {
+        xxx_reset_bus(softc);
+    } else {
+        xxx_abort_ccb(hcb->ccb, CAM_CMD_TIMEOUT);
+    }
+}</programlisting>
+
+    <para>When we abort a request all the other disconnected requests
+      to the same target/LUN get aborted too. So there appears a
+      question, should we return them with status CAM_REQ_ABORTED or
+      CAM_CMD_TIMEOUT?  The current drivers use CAM_CMD_TIMEOUT. This
+      seems logical because if one request got timed out then probably
+      something really bad is happening to the device, so if they
+      would not be disturbed they would time out by themselves.</para>
+
+  </sect1>
+
+</chapter>

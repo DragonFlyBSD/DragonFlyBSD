@@ -1,0 +1,17 @@
+<!--
+     References to other files that can be included within a DocBook
+     BookInfo element.
+
+     Entity names take the form "bookinfo.<element>", where <element> is
+     the name of the outermost element in the entity.  Examples would
+     be "bookinfo.legalnotice", and "bookinfo.preface".
+
+     $DragonFly: doc/en/share/sgml/bookinfo.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+     $DragonFly: doc/en/share/sgml/bookinfo.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+-->
+
+<!ENTITY bookinfo.legalnotice SYSTEM "legalnotice.sgml">
+
+<!ENTITY bookinfo.trademarks SYSTEM "trademarks.sgml">
+
+<!ENTITY bookinfo.freebsd-glossary SYSTEM "glossary/freebsd-glossary.sgml">

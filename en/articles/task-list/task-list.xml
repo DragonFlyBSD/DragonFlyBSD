@@ -1,0 +1,190 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="task-list.xsl"?>
+
+<!--
+ Copyright (c) 2003, 2004  Hiten Pandya
+ All rights reserved.
+ 
+ This file is maintained by:
+ 	Hiten Pandya <hmp@backplane.com>
+-->
+
+<task-list>
+  <item id="SATA">
+  	<name>Updating the ATA Subsystem</name>
+  	<owners>
+		<owner>
+			<name>Joerg Sonnenberger</name>
+			<email>joerg@britannica.bec.de</email>
+		</owner>
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="work-in-progress" />
+	<priority type="veryhigh" />
+	
+	<description>
+	  <para>DragonFly currently lacks support for the newer types of ATA controllers
+	   currently use in the market, i.e. SATA controllers.  The code is also not
+	   64-bit clean which will need to be done for making the code work cleanly
+	   on 64-bit architectures like AMD64, Itanium etc.  The ATA subsystem that
+	   will emerge from this effort will be a mix-breed of FreeBSD's ATAng and
+	   old-ATA.</para>
+	</description>
+	
+	<!-- no dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+
+  <item id="MARCHIVES">
+  	<name>Mailing list archives</name>
+  	<owners>
+		<owner>
+			<name>Justin C. Sherrill</name>
+			<email>justin@shiningsilence.com</email>
+		</owner>
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="work-in-progress" />
+	<priority type="high" />
+	
+	<description>
+	  <para>The mailing list archive interface is to be setup so that developers
+	   and interested parties can lookup old messages.  Currently setting up the
+	   hypermail and mhonarc on leaf.dragonflybsd.org to evaluate results for
+	   each and whichever works well will be the prime candidate for the WWW.</para>
+	</description>
+	
+	<!-- no dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+
+  <item id="WWWREVAMP">
+  	<name>Revamp of the DragonFly World Wide Web Site</name>
+  	<owners>
+		<owner>
+			<name>Hiten Pandya</name>
+			<email>hmp@backplane.com</email>
+		</owner>  	
+		<owner>
+			<name>Justin C. Sherrill</name>
+			<email>justin@shiningsilence.com</email>
+		</owner>
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="suspended" />
+	<priority type="medium" />
+	
+	<description>
+	  <para>The DragonFly WWW site is seriously in need of some revamp.  The work
+	   that I and Justin did on it was just a temporary stop gap.  The layout
+	   needs to be thought out completely so that we support it for printer-friendly
+	   viewing, and other fancy stuff.  We can probably borrow ideas from the
+	   Apache Foundation WWW site.  The WWW site should make use of XML toolkit
+	   and move away from SGML stuff which is currently used on FreeBSD's WWW
+	   site framework.</para>
+	</description>
+
+	<!-- no dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+
+  <item id="WWWMANIF">
+  	<name>WWW Manual Pages Interface</name>
+  	<owners>
+		<owner>
+			<name>Justin C. Sherrill</name>
+			<email>justin@shiningsilence.com</email>
+		</owner>
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="suspended" />
+	<priority type="medium" />
+	
+	<description>
+	  <para>I have the modified Perl CGI scripts from FreeBSD.ORG which were
+	   acquired from someone, and Matt has OK'ed Perl usage on the WWW site.
+	   It just needs to be placed on the website.  This will probably be
+	   finished after putting the new layout.</para>
+	</description>
+
+	<!-- no dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+    
+  <item id="PCINDMA">
+  	<name>Remove Pre-NewBus Shims and move to BusDMA</name>
+  	<owners>
+		<owner>
+			<name>Hiten Pandya</name>
+			<email>hmp@backplane.com</email>
+		</owner>
+		<owner>
+			<name>Joerg Sonnenberger</name>
+			<email>joerg@britannica.bec.de</email>
+		</owner>
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="work-in-progress" />
+	<priority type="high" />
+	
+	<description>
+	  <para>Quite a few drivers in DragonFly have lingering PCI and ISA
+	   pre-newbus compatibility cruft which needs to be removed to make the
+	   drivers work cleanly on other platforms.  At the same time, a need to
+	   bring in BusDMA updates from other BSD camps is equally important.  The
+	   use of BusDMA will allow the drivers to be used on 64-bit platforms.</para>
+	</description>
+	
+	<!-- no dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+
+  <item id="PCISYS">
+  	<name>PCI Subsystem Improvements</name>
+  	<owners>
+		<owner>
+			<name>Joerg Sonnenberger</name>
+			<email>joerg@britannica.bec.de</email>
+		</owner>  	
+	</owners>
+	
+	<last-modified>2004-02-04</last-modified>
+	
+	<status type="work-in-progress" />
+	<priority type="medium" />
+	
+	<description>
+	  <para>The current PCI subsystem in DragonFly has some major deficiencies
+	   with regard to platform issues.  The initialisation and the autoconfig
+	   code heavily relies on either a properly setup PCI-BIOS or ACPI to fetch
+	   and configure IO mappings, memory mappings and interrupt routing.  Linux,
+	   NetBSD and OpenBSD have much better support for "native" configurations.
+	  </para>
+	</description>		
+
+	<!-- dependancies -->
+	<dependancies>
+		<depend ident="NONE" />
+	</dependancies>
+  </item>
+</task-list>

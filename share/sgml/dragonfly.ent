@@ -1,0 +1,43 @@
+<!-- 
+     DragonFlyBSD specific DocBook Entities
+
+     $DragonFly: doc/share/sgml/dragonfly.ent,v 1.1.1.1 2004/04/02 09:37:19 hmp Exp $
+     $DragonFly: doc/share/sgml/dragonfly.ent,v 1.1.1.1 2004/04/02 09:37:19 hmp Exp $
+-->
+
+<!-- These will almost certainly remain the same, but are here for
+     consistency and in case we ever want to make hyperlinks out of
+     some of them. -->
+<!ENTITY os "DragonFlyBSD">
+<!ENTITY os.current "&os;-CURRENT">
+
+<!-- Entities for other BSD variants -->
+<!ENTITY os.freebsd "FreeBSD">
+<!ENTITY os.netbsd  "NetBSD">
+<!ENTITY os.openbsd "OpenBSD">
+
+<!-- Use this entity when refering to 'UNIX' in your document. -->
+<!ENTITY unix "<trademark class='registered'>UNIX</trademark>">
+
+<!-- This entity should be overridden for the print output case to
+     properly render TeX. -->
+<!ENTITY tex 'TeX'>
+
+<!-- The currently released version of FreeBSD.  This value is used to
+     create some links on web sites and such, so do NOT change it until
+     it's really release time -->
+<!ENTITY rel.current CDATA "1.1">
+<!ENTITY rel.current.date CDATA "June 2004">
+<!ENTITY rel.livecd.date CDATA "17 March 2004">
+<!ENTITY rel.livecd.vers CDATA "20040317b">
+
+<!-- Entities for the snapshots -->
+<!ENTITY snapshots.livecd
+  'ftp://ftp.dragonflybsd.org/iso-images/dfly-20040317b.iso.gz'>
+
+<!-- Sections that we don't want to be published -->
+<!ENTITY % not.published 	"IGNORE">
+
+<!-- GUI-buttons -->
+<!ENTITY gui.ok "<guibutton>[&nbsp;OK&nbsp;]</guibutton>">
+<!ENTITY gui.cancel "<guibutton>[&nbsp;Cancel&nbsp;]</guibutton>">

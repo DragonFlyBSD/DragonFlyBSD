@@ -1,0 +1,83 @@
+<!DOCTYPE article PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+<!ENTITY % misc PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Miscellaneous FreeBSD Entities//EN">
+<!ENTITY % authors PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Author Entities//EN">
+<!ENTITY % teams PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Team Entities//EN">
+<!ENTITY % trademarks PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Trademark Entities//EN">
+%man;
+%authors;
+%trademarks;
+%teams;
+%misc;
+<!ENTITY % contrib.ent SYSTEM "contrib.ent">
+%contrib.ent;
+<!ENTITY % not.published "IGNORE">
+]>
+
+<article>
+  <articleinfo>
+    <title>Contributors to &os;</title>
+
+    <abstract>
+      <para>This article lists individuals and organizations who have
+	made contributions to DragonFlyBSD.  If any contributor was
+	overlooked, please do not hesitate to contact the
+	Documentation Team.  Note, an alternative e-mail address
+	format is in use to keep away contact address abusers (i.e.
+	SPAM)</para>
+    </abstract>
+  </articleinfo>
+
+  <sect1 id="staff-committers">
+    <title>Team Members</title>
+
+    <para>These are the people who have commit privileges and do the
+      engineering work on the DragonFlyBSD source tree.  We do not
+      partition contributors from committers, but individuals
+      with commit privileges have to be extra cautious and need to
+      handle administrative issues with regard to contributions made
+      to the project and to discuss changes with other team members.</para>
+
+    <para>Entries are sorted in alphabetical order by last name.</para>
+
+    &contrib.team;
+  </sect1>
+ 
+   <sect1 id="staff-doc">
+    <title>Documentation and Web Team</title>
+
+    <para>The Documentation and Web Team is responsible for a variety of
+      tasks and administrative issues, such as handling new documentation
+      submissions, corresponding with authors and merging other related
+      documents.  As the name suggests, the Team also handles web site
+      design and management issues such as updating the information
+      etc, incorporating patches from contributors etc.</para>
+
+    <para>Entries are sorted in alphabetical order by last name.</para>
+
+    &contrib.docteam;
+  </sect1>
+
+ 
+  <sect1 id="staff-contrib">
+    <title>Contributors</title>
+
+    <para>Under this section is a list of individuals who have
+      contributed their personal resources and precious time to aide in
+      making DragonFlyBSD a success.</para>
+
+    <para>Entries are sorted in alphabetical order by last name.</para>
+
+    &contrib.additional;
+  </sect1>
+
+</article>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     End:
+-->

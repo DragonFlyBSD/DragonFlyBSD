@@ -1,0 +1,360 @@
+<!--
+	The FreeBSD Documentation Project
+	$DragonFly: doc/en/books/arch-handbook/newbus/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:03 hmp Exp $
+
+	Originally by: Jeroen Ruigrok van der Warven
+	Date: newbus-draft.txt,v 1.8 2001/01/25 08:01:08
+	Copyright (c) 2000 Jeroen Ruigrok van der Warven (asmodai@wxs.nl)
+	Copyright (c) 2002 Hiten Mahesh Pandya (hiten@uk.FreeBSD.org)
+	
+	Future Additions:
+	
+		o Expand the information about device_t
+		o Add information about the bus_* functions.
+		o Add information about bus specific (e.g. PCI) functions.
+		o Add a reference section for additional information.
+		o Add more newbus related structures and typedefs.
+		o Add a 'Terminology' section.
+		o Add information on resource manager functions, busspace 
+		manager functions, newbus events related functions.
+		o More cleanup ... !
+	
+	Provided under the FreeBSD Documentation License.
+-->
+<chapter id="newbus">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+         <firstname>Jeroen</firstname>
+	 <surname>Ruigrok van der Werven (asmodai)</surname>
+	 <affiliation><address><email>asmodai@FreeBSD.org</email></address>
+	 </affiliation>
+	 <contrib>Written by </contrib>
+      </author>
+      <author>
+        <firstname>Hiten</firstname>
+	<surname>Pandya</surname>
+	<affiliation><address><email>hiten@uk.FreeBSD.org</email></address>
+	</affiliation>
+      </author>
+    </authorgroup>
+  </chapterinfo>
+  <title>Newbus</title>
+
+  <para><emphasis>Special thanks to Matthew N. Dodd, Warner Losh, Bill Paul,
+  Doug Rabson, Mike Smith, Peter Wemm and Scott Long</emphasis>.</para>
+
+  <para>This chapter explains the Newbus device framework in detail.</para>
+  <sect1 id="newbus-devdrivers">
+    <title>Device Drivers</title>
+    <sect2>
+      <title>Purpose of a Device Driver</title>
+      <para>A device driver is a software component which provides the 
+      interface between the kernel's generic view of a peripheral 
+      (e.g. disk, network adapter) and the actual implementation of the 
+      peripheral.  The <emphasis>device driver interface (DDI)</emphasis> is 
+      the defined interface between the kernel and the device driver component.
+      </para>
+    </sect2>
+    
+    <sect2>
+      <title>Types of Device Drivers</title>
+      <para>There used to be days in &unix;, and thus FreeBSD, in which there 
+      were four types of devices defined:</para>
+      
+      <itemizedlist>
+        <listitem><para>block device drivers</para></listitem>
+        <listitem><para>character device drivers</para></listitem>
+        <listitem><para>network device drivers</para></listitem>
+        <listitem><para>pseudo-device drivers</para></listitem>
+      </itemizedlist>
+      
+      <para><emphasis>Block devices</emphasis> performed in way that used 
+      fixed size blocks [of data].  This type of driver depended on the 
+      so called <emphasis>buffer cache</emphasis>, which had the purpose
+      to cache accessed blocks of data in a dedicated part of the memory.
+      Often this buffer cache was based on write-behind, which meant that when 
+      data was modified in memory it got synced to disk whenever the system 
+      did its periodical disk flushing, thus optimizing writes.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Character devices</title>
+      <para>However, in the versions of FreeBSD 4.0 and onward the
+      distinction between block and character devices became non-existent.
+      </para>
+    </sect2>
+  </sect1>
+  
+  <sect1 id="newbus-overview">
+    <!--
+      Real title:
+      Newbus, Busspace and the Resource Manager, an Explanation of the Possibilities
+    -->
+    <title>Overview of Newbus</title>
+    <para><emphasis>Newbus</emphasis> is the implementation of a new bus 
+    architecture based on abstraction layers which saw its introduction in 
+    FreeBSD 3.0 when the Alpha port was imported into the source tree.  It was 
+    not until 4.0 before it became the default system to use for device 
+    drivers.  Its goals are to provide a more object oriented means of 
+    interconnecting the various busses and devices which a host system 
+    provides to the <emphasis>Operating System</emphasis>.</para>
+    
+    <para>Its main features include amongst others:</para>
+    
+    <itemizedlist>
+      <listitem><para>dynamic attaching</para></listitem>
+      <listitem><para>easy modularization of drivers</para></listitem>
+      <listitem><para>pseudo-busses</para></listitem>
+    </itemizedlist>
+    
+    <para>One of the most prominent changes is the migration from the flat and 
+    ad-hoc system to a device tree lay-out.</para>
+    
+    <para>At the top level resides the <emphasis><quote>root</quote></emphasis>
+    device which is the parent to hang all other devices on.  For each 
+    architecture, there is typically a single child of <quote>root</quote> 
+    which has such things as <emphasis>host-to-PCI bridges</emphasis>, etc. 
+    attached to it.  For x86, this <quote>root</quote> device is the 
+    <emphasis><quote>nexus</quote></emphasis> device and for Alpha, various 
+    different different models of Alpha have different top-level devices 
+    corresponding to the different hardware chipsets, including 
+    <emphasis>lca</emphasis>, <emphasis>apecs</emphasis>, 
+    <emphasis>cia</emphasis> and <emphasis>tsunami</emphasis>.</para>
+    
+    <para>A device in the Newbus context represents a single hardware entity 
+    in the system.  For instance each PCI device is represented by a Newbus 
+    device.  Any device in the system can have children; a device which has 
+    children is often called a <emphasis><quote>bus</quote></emphasis>.  
+    Examples of common busses in the system are ISA and PCI which manage lists 
+    of devices attached to ISA and PCI busses respectively.</para>
+    
+    <para>Often, a connection between different kinds of bus is represented by 
+    a <emphasis><quote>bridge</quote></emphasis> device which normally has one 
+    child for the attached bus.  An example of this is a 
+    <emphasis>PCI-to-PCI bridge</emphasis> which is represented by a device 
+    <emphasis><devicename>pcibN</devicename></emphasis> on the parent PCI bus 
+    and has a child <emphasis><devicename>pciN</devicename></emphasis> for the 
+    attached bus.  This layout simplifies the implementation of the PCI bus 
+    tree, allowing common code to be used for both top-level and bridged 
+    busses.</para>
+    
+    <para>Each device in the Newbus architecture asks its parent to map its 
+    resources.  The parent then asks its own parent until the nexus is 
+    reached.  So, basically the nexus is the only part of the Newbus system 
+    which knows about all resources.</para>
+    
+    <tip><para>An ISA device might want to map its IO port at 
+    <literal>0x230</literal>, so it asks its parent, in this case the ISA 
+    bus.  The ISA bus hands it over to the PCI-to-ISA bridge which in its turn 
+    asks the PCI bus, which reaches the host-to-PCI bridge and finally the 
+    nexus.  The beauty of this transition upwards is that there is room to 
+    translate the requests.  For example, the <literal>0x230</literal> IO port 
+    request might become memory-mapped at <literal>0xb0000230</literal> on a 
+    <acronym>MIPS</acronym> box by the PCI bridge.</para></tip>
+    
+    <para>Resource allocation can be controlled at any place in the device 
+    tree.  For instance on many Alpha platforms, ISA interrupts are managed 
+    separately from PCI interrupts and resource allocations for ISA interrupts 
+    are managed by the Alpha's ISA bus device.  On IA-32, ISA and PCI 
+    interrupts are both managed by the top-level nexus device.  For both 
+    ports, memory and port address space is managed by a single entity - nexus 
+    for IA-32 and the relevant chipset driver on Alpha (e.g. CIA or tsunami).
+    </para>
+    
+    <para>In order to normalize access to memory and port mapped resources, 
+    Newbus integrates the <literal>bus_space</literal> APIs from NetBSD.  
+    These provide a single API to replace inb/outb and direct memory 
+    reads/writes.  The advantage of this is that a single driver can easily 
+    use either memory-mapped registers or port-mapped registers 
+    (some hardware supports both).</para>
+    
+    <para>This support is integrated into the resource allocation mechanism.  
+    When a resource is allocated, a driver can retrieve the associated 
+    <structfield>bus_space_tag_t</structfield> and 
+    <structfield>bus_space_handle_t</structfield> from the resource.</para>
+    
+    <para>Newbus also allows for definitions of interface methods in files 
+    dedicated to this purpose.  These are the <filename>.m</filename> files 
+    that are found under the <filename>src/sys</filename> hierarchy.</para>
+    
+    <para>The core of the Newbus system is an extensible 
+    <quote>object-based programming</quote> model.  Each device in the system 
+    has a table of methods which it supports.  The system and other devices 
+    uses those methods to control the device and request services.  The 
+    different methods supported by a device are defined by a number of 
+    <quote>interfaces</quote>.  An <quote>interface</quote> is simply a group 
+    of related methods which can be implemented by a device.</para>
+    
+    <para>In the Newbus system, the methods for a device are provided by the 
+    various device drivers in the system.  When a device is attached to a 
+    driver during <emphasis>auto-configuration</emphasis>, it uses the method 
+    table declared by the driver.  A device can later 
+    <emphasis>detach</emphasis> from its driver and 
+    <emphasis>re-attach</emphasis> to a new driver with a new method table.  
+    This allows dynamic replacement of drivers which can be useful for driver 
+    development.</para>
+    
+    <para>The interfaces are described by an interface definition language 
+    similar to the language used to define vnode operations for file systems.  
+    The interface would be stored in a methods file (which would normally named
+    <filename>foo_if.m</filename>).</para>
+    
+    <example>
+      <title>Newbus Methods</title>
+      <programlisting>
+      # Foo subsystem/driver (a comment...)
+      
+	  INTERFACE foo
+
+       	METHOD int doit {
+       		device_t dev;
+       	};
+       	
+       	# DEFAULT is the method that will be used, if a method was not
+       	# provided via: DEVMETHOD()
+       	
+       	METHOD void doit_to_child {
+       		device_t dev;
+       		driver_t child;
+       	} DEFAULT doit_generic_to_child;
+      </programlisting>
+    </example>
+    
+    <para>When this interface is compiled, it generates a header file 
+    <quote><filename>foo_if.h</filename></quote> which contains function 
+    declarations:</para>
+    
+    <programlisting>
+      int FOO_DOIT(device_t dev);
+      int FOO_DOIT_TO_CHILD(device_t dev, device_t child);
+    </programlisting>
+	
+    <para>A source file, <quote><filename>foo_if.c</filename></quote> is 
+    also created to accompany the automatically generated header file; it 
+    contains implementations of those functions which look up the location 
+    of the relevant functions in the object's method table and call that 
+    function.</para>
+    
+    <para>The system defines two main interfaces.  The first fundamental 
+    interface is called <emphasis><quote>device</quote></emphasis> and 
+    includes methods which are relevant to all devices.  Methods in the 
+    <emphasis><quote>device</quote></emphasis> interface include 
+    <emphasis><quote>probe</quote></emphasis>, 
+    <emphasis><quote>attach</quote></emphasis> and 
+    <emphasis><quote>detach</quote></emphasis> to control detection of 
+    hardware and <emphasis><quote>shutdown</quote></emphasis>, 
+    <emphasis><quote>suspend</quote></emphasis> and 
+    <emphasis><quote>resume</quote></emphasis> for critical event 
+    notification.</para>
+    
+    <para>The second, more complex interface is 
+    <emphasis><quote>bus</quote></emphasis>.  This interface contains 
+    methods suitable for devices which have children, including methods to
+    access bus specific per-device information 
+    <footnote><para>&man.bus.generic.read.ivar.9; and 
+    &man.bus.generic.write.ivar.9;</para></footnote>, event notification 
+    (<emphasis><literal>child_detached</literal></emphasis>, 
+    <emphasis><literal>driver_added</literal></emphasis>) and resource 
+    management (<emphasis><literal>alloc_resource</literal></emphasis>, 
+    <emphasis><literal>activate_resource</literal></emphasis>, 
+    <emphasis><literal>deactivate_resource</literal></emphasis>, 
+    <emphasis><literal>release_resource</literal></emphasis>).</para>
+    
+    <para>Many methods in the <quote>bus</quote> interface are performing 
+    services for some child of the bus device.  These methods would normally 
+    use the first two arguments to specify the bus providing the service 
+    and the child device which is requesting the service.  To simplify 
+    driver code, many of these methods have accessor functions which 
+    lookup the parent and call a method on the parent.  For instance the 
+    method 
+    <literal>BUS_TEARDOWN_INTR(device_t dev, device_t child, ...)</literal>
+    can be called using the function 
+    <literal>bus_teardown_intr(device_t child, ...)</literal>.</para>
+    
+    <para>Some bus types in the system define additional interfaces to 
+    provide access to bus-specific functionality.  For instance, the PCI
+    bus driver defines the <quote>pci</quote> interface which has two 
+    methods <emphasis><literal>read_config</literal></emphasis> and 
+    <emphasis><literal>write_config</literal></emphasis> for accessing the 
+    configuration registers of a PCI device.</para>
+  </sect1>
+  
+  <sect1 id="newbus-api">
+    <title>Newbus API</title>
+    <para>As the Newbus API is huge, this section makes some effort at
+    documenting it.  More information to come in the next revision of this
+    document.</para>
+    
+    <sect2>
+      <title>Important locations in the source hierarchy</title>
+      
+      <para><filename>src/sys/[arch]/[arch]</filename> - Kernel code for a 
+      specific machine architecture resides in this directory. for example,
+      the <literal>i386</literal> architecture, or the 
+      <literal>SPARC64</literal> architecture.</para>
+      
+      <para><filename>src/sys/dev/[bus]</filename> - device support for a 
+      specific <literal>[bus]</literal> resides in this directory.</para>
+      
+      <para><filename>src/sys/dev/pci</filename> - PCI bus support code
+      resides in this directory.</para>
+      
+      <para><filename>src/sys/[isa|pci]</filename> - PCI/ISA device drivers
+      reside in this directory.  The PCI/ISA bus support code used to exist
+      in this directory in FreeBSD version <literal>4.0</literal>.</para>
+    </sect2>
+    
+    <sect2>
+      <title>Important structures and type definitions</title>
+      <para><literal>devclass_t</literal> - This is a type definition of a
+      pointer to a <literal>struct devclass</literal>.</para>
+      
+      <para><literal>device_method_t</literal> - This is same as 
+      <literal>kobj_method_t</literal> (see 
+      <filename>src/sys/kobj.h</filename>).</para>
+      
+      <para><literal>device_t</literal> - This is a type definition of a 
+      pointer to a <literal>struct device</literal>.
+      <literal>device_t</literal> represents a device in the system.  It is
+      a kernel object.  See <filename>src/sys/sys/bus_private.h</filename> 
+      for implementation details.</para>
+      
+      <para><literal>driver_t</literal> - This is a type definition which,
+      references <literal>struct driver</literal>.  The 
+      <literal>driver</literal> struct is a class of the 
+      <literal>device</literal> kernel object; it also holds data private 
+      to for the driver.</para>
+      
+      <figure>
+        <title><emphasis>driver_t</emphasis> implementation</title>
+	<programlisting>
+	  struct driver {
+	     	KOBJ_CLASS_FIELDS;
+	      	void	*priv;			/* driver private data */
+	  };
+	</programlisting>
+      </figure>
+      
+      <para>A <literal>device_state_t</literal> type, which is
+      an enumeration, <literal>device_state</literal>.  It contains
+      the possible states of a Newbus device before and after the
+      autoconfiguration process.</para>
+      
+      <figure>
+        <title>Device states<emphasis>device_state_t</emphasis></title>
+	<programlisting>
+	  /*
+	   * src/sys/sys/bus.h
+	   */
+	  typedef enum device_state {
+	  	DS_NOTPRESENT,	/* not probed or probe failed */
+	    	DS_ALIVE,		/* probe succeeded */
+	    	DS_ATTACHED,	/* attach method called */
+	    	DS_BUSY			/* device is open */
+	  } device_state_t;
+	</programlisting>
+      </figure>
+    </sect2>
+  </sect1>
+</chapter>

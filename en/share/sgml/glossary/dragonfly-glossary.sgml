@@ -1,0 +1,123 @@
+<!-- 
+    DragonFlyBSD Specific Glossary Terms
+	Please keep this file sorted.
+
+    $DragonFly: doc/en/share/sgml/glossary/dragonfly-glossary.sgml,v 1.1.1.1 2004/04/02 09:36:23 hmp Exp $
+-->
+
+<glossary status="draft" id="dragonfly-glossary">
+  <title>&os; Glossary</title>
+  <para>This glossary contains terms and acronyms specific to &os;.</para>
+
+  <glossdiv>
+    <title>B</title>
+
+    <glossentry id="bsd">
+      <glossterm>Berkeley Software Distribution</glossterm>
+      <acronym>BSD</acronym>
+      <glossdef>
+	<para>This is the name that the Computer Systems Research Group
+	  at Berkeley gave to their improvements and modifications to
+	  AT&amp;T's 32V &unix;.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="bikeshed">
+      <glossterm>Bikeshed Building</glossterm>
+      <glossdef>
+	<para>A phenomenon whereby many people will give an opinion on
+	  an uncomplicated topic, whilst a complex topic receives little
+	  or no discussion.  See the
+	  <ulink url="../faq/misc.html#BIKESHED-PAINTING">FAQ</ulink> for
+	  the origin of the term.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry>
+      <glossterm>BSD</glossterm>
+      <glosssee otherterm="bsd">
+    </glossentry>
+  </glossdiv>
+
+  <glossdiv>
+    <title>K</title>
+
+    <glossentry id="kse">
+      <glossterm>Kernel Scheduler Entities</glossterm>
+      <acronym>KSE</acronym>
+      <glossdef>
+	<para>A kernel-supported threading system.  See the <ulink
+	  url="http://www.FreeBSD.org/kse">project home page</ulink>
+	  for further details.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry>
+      <glossterm>KSE</glossterm>
+      <glosssee otherterm="kse">
+    </glossentry>
+  </glossdiv>
+
+  <glossdiv>
+    <title>M</title>
+
+    <glossentry id="mfc">
+      <glossterm>Merge From Current</glossterm>
+      <acronym>MFC</acronym>
+      <glossdef>
+	<para>To merge functionality or a patch from the -CURRENT
+	  branch to another, most often -STABLE.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="mfs">
+      <glossterm>Merge From Stable</glossterm>
+      <acronym>MFS</acronym>
+      <glossdef>
+	<para>In the normal course of FreeBSD development, a change will
+	  be committed to the -CURRENT branch for testing before being
+	  merged to -STABLE.  On rare occassions, a change will go into
+	  -STABLE first and then be merged to -CURRENT.</para>
+
+	<para>This term is also used when a patch is merged from -STABLE
+	  to a security branch.</para>
+	<glossseealso otherterm="mfc">
+      </glossdef>
+    </glossentry>
+
+    <glossentry>
+      <glossterm>MFC</glossterm>
+      <glosssee otherterm="mfc">
+    </glossentry>
+
+    <glossentry>
+      <glossterm>MFS</glossterm>
+      <glosssee otherterm="mfs">
+    </glossentry>
+
+  </glossdiv>
+
+  <glossdiv>
+    <title>P</title>
+
+    <glossentry id="pola">
+      <glossterm>Principle Of Least Astonishment</glossterm>
+      <acronym>POLA</acronym>
+      <glossdef>
+	<para>As &os; evolves, changes visible to the user should be
+	  kept as unsurprising as possible.  For example, arbitrarily
+	  rearranging system startup variables in
+	  <filename>/etc/defaults/rc.conf</filename> violates
+	  <acronym>POLA</acronym>.  Developers consider
+	  <acronym>POLA</acronym> when contemplating user-visible
+	  system changes.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry>
+      <glossterm>POLA</glossterm>
+      <glosssee otherterm="pola">
+    </glossentry>
+  </glossdiv>
+</glossary>
+

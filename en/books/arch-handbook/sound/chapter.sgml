@@ -1,0 +1,690 @@
+<!--
+     The FreeBSD Documentation Project
+
+    $DragonFly: doc/en/books/arch-handbook/sound/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:17 hmp Exp $
+-->
+
+<chapter id="oss">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Jean-Francois</firstname>
+	<surname>Dockes</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+    <!-- 23 November 2001 -->
+  </chapterinfo>
+
+  <title>Sound subsystem</title>
+  
+  <sect1 id="oss-intro">
+    <title>Introduction</title>
+    
+    <para>The FreeBSD sound subsystem cleanly separates generic sound
+      handling issues from device-specific ones.  This makes it easier
+      to add support for new hardware.</para>
+
+    <para>The &man.pcm.4; framework is the central piece of the sound
+      subsystem.  It mainly implements the following elements:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>A system call interface (read, write, ioctls) to
+          digitized sound and mixer functions.  The ioctl command set
+          is compatible with the legacy <emphasis>OSS</emphasis> or
+          <emphasis>Voxware</emphasis> interface, allowing common
+          multimedia applications to be ported without
+          modification.</para>
+      </listitem>
+      <listitem>
+        <para>Common code for processing sound data (format
+          conversions, virtual channels).</para>
+      </listitem>
+      <listitem>
+        <para>A uniform software interface to hardware-specific audio
+          interface modules.</para>
+      </listitem>
+      <listitem>
+        <para>Additional support for some common hardware interfaces
+          (ac97), or shared hardware-specific code (ex: ISA DMA
+          routines).</para> 
+      </listitem>
+    </itemizedlist>
+
+    <para>The support for specific sound cards is implemented by
+      hardware-specific drivers, which provide channel and mixer interfaces
+      to plug into the generic <devicename>pcm</devicename> code.</para>
+
+    <para>In this chapter, the term <devicename>pcm</devicename> will
+      refer to the central, common part of the sound driver, as
+      opposed to the hardware-specific modules.</para>
+
+    <para>The prospective driver writer will of course want to start
+      from an existing module and use the code as the ultimate
+      reference.  But, while the sound code is nice and clean, it is
+      also mostly devoid of comments.  This document tries to give an
+      overview of the framework interface and answer some questions
+      that may arise while adapting the existing code.</para>
+
+    <para>As an alternative, or in addition to starting from a working
+      example, you can find a commented driver template at
+      <ulink url="http://people.FreeBSD.org/~cg/template.c">
+       http://people.FreeBSD.org/~cg/template.c</ulink></para>
+
+  </sect1>
+
+  <sect1 id="oss-files">
+    <title>Files</title>
+
+    <para>All the relevant code currently (FreeBSD 4.4) lives in
+      <filename>/usr/src/sys/dev/sound/</filename>, except for the
+      public ioctl interface definitions, found in
+      <filename>/usr/src/sys/sys/soundcard.h</filename></para>
+
+    <para>Under <filename>/usr/src/sys/dev/sound/</filename>, the
+      <filename>pcm/</filename> directory holds the central code,
+      while the <filename>isa/</filename> and
+      <filename>pci/</filename> directories have the drivers for ISA
+      and PCI boards.</para>
+
+  </sect1>
+
+  <sect1 id="pcm-probe-and-attach">
+    <title>Probing, attaching, etc.</title>
+
+    <para>Sound drivers probe and attach in almost the same way as any
+      hardware driver module.  You might want to look at the <link
+      linkend="isa-driver"> ISA</link> or <link
+      linkend="pci">PCI</link> specific sections of the handbook for
+      more information.</para>
+      
+    <para>However, sound drivers differ in some ways:</para>
+
+    <itemizedlist>
+
+      <listitem>
+        <para>They declare themselves as <devicename>pcm</devicename>
+          class devices, with a <structname>struct
+          snddev_info</structname> device private structure:</para>
+
+          <programlisting>          static driver_t xxx_driver = {
+              "pcm",
+              xxx_methods,
+              sizeof(struct snddev_info)
+          };
+
+          DRIVER_MODULE(snd_xxxpci, pci, xxx_driver, pcm_devclass, 0, 0);
+          MODULE_DEPEND(snd_xxxpci, snd_pcm, PCM_MINVER, PCM_PREFVER,PCM_MAXVER);</programlisting>
+
+        <para>Most sound drivers need to store additional private
+          information about their device.  A private data structure is
+          usually allocated in the attach routine.  Its address is
+          passed to <devicename>pcm</devicename> by the calls to
+          <function>pcm_register()</function> and
+          <function>mixer_init()</function>.
+          <devicename>pcm</devicename> later passes back this address
+          as a parameter in calls to the sound driver
+          interfaces.</para>
+      </listitem>
+
+      <listitem>
+        <para>The sound driver attach routine should declare its MIXER
+          or AC97 interface to <devicename>pcm</devicename> by calling
+          <function>mixer_init()</function>.  For a MIXER interface,
+          this causes in turn a call to <link linkend="xxxmixer-init">
+          <function>xxxmixer_init()</function></link>.</para>
+      </listitem>
+
+      <listitem>
+        <para>The sound driver attach routine declares its general
+          CHANNEL configuration to <devicename>pcm</devicename> by
+          calling <function>pcm_register(dev, sc, nplay,
+          nrec)</function>, where <varname>sc</varname> is the address
+          for the device data structure, used in further calls from
+          <devicename>pcm</devicename>, and <varname>nplay</varname>
+          and <varname>nrec</varname> are the number of play and
+          record channels.</para>
+      </listitem>
+
+      <listitem>
+        <para>The sound driver attach routine declares each of its
+          channel objects by calls to
+          <function>pcm_addchan()</function>.  This sets up the
+          channel glue in <devicename>pcm</devicename> and causes in
+          turn a call to
+            <link linkend="xxxchannel-init">
+            <function>xxxchannel_init()</function></link>.</para>
+      </listitem>
+
+      <listitem>
+        <para>The sound driver detach routine should call
+        <function>pcm_unregister()</function> before releasing its
+        resources.</para>
+      </listitem>
+    </itemizedlist>
+      
+    <para>There are two possible methods to handle non-PnP devices:</para>
+    <itemizedlist>
+      <listitem>
+        <para>Use a <function>device_identify()</function> method
+          (example: <filename>sound/isa/es1888.c</filename>).  The
+          <function>device_identify()</function> method probes for the
+          hardware at known addresses and, if it finds a supported
+          device, creates a new pcm device which is then passed to
+          probe/attach.</para>
+      </listitem>
+      <listitem>
+        <para>Use a custom kernel configuration with appropriate hints
+          for pcm devices (example:
+          <filename>sound/isa/mss.c</filename>).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para><devicename>pcm</devicename> drivers should implement
+    <function>device_suspend</function>,
+    <function>device_resume</function> and
+    <function>device_shutdown</function> routines, so that power
+    management and module unloading function correctly.</para>
+
+  </sect1>
+
+  <sect1 id="oss-interfaces">
+    <title>Interfaces</title>
+
+    <para>The interface between the <devicename>pcm</devicename> core
+      and the sound drivers is defined in terms of <link
+      linkend="kernel-objects">kernel objects</link>.</para>
+
+    <para>There are two main interfaces that a sound driver will
+      usually provide: <emphasis>CHANNEL</emphasis> and either
+      <emphasis>MIXER</emphasis> or <emphasis>AC97</emphasis>.</para>
+      
+    <para>The <emphasis>AC97</emphasis> interface is a very small
+      hardware access (register read/write) interface, implemented by
+      drivers for hardware with an AC97 codec.  In this case, the
+      actual MIXER interface is provided by the shared AC97 code in
+      <devicename>pcm</devicename>.</para>
+
+    <sect2>
+      <title>The CHANNEL interface</title>
+
+      <sect3>
+        <title>Common notes for function parameters</title>
+
+        <para>Sound drivers usually have a private data structure to
+          describe their device, and one structure for each play and
+          record data channel that it supports.</para>
+
+        <para>For all CHANNEL interface functions, the first parameter
+          is an opaque pointer.</para>
+
+        <para>The second parameter is a pointer to the private
+          channel data structure, except for
+          <function>channel_init()</function> which has a pointer to the
+          private device structure (and returns the channel pointer
+          for further use by <devicename>pcm</devicename>).</para>
+
+      </sect3>
+
+      <sect3>
+        <title>Overview of data transfer operations</title>
+
+        <para>For sound data transfers, the
+          <devicename>pcm</devicename> core and the sound drivers
+          communicate through a shared memory area, described by a
+          <structname>struct snd_dbuf</structname>.</para>
+
+        <para><structname>struct snd_dbuf</structname> is private to
+          <devicename>pcm</devicename>, and sound drivers obtain
+          values of interest by calls to accessor functions
+          (<function>sndbuf_getxxx()</function>).</para>
+
+        <para>The shared memory area has a size of
+          <function>sndbuf_getsize()</function> and is divided into
+          fixed size blocks of <function>sndbuf_getblksz()</function>
+          bytes.</para>
+          
+        <para>When playing, the general transfer mechanism is as
+          follows (reverse the idea for recording):</para>
+
+        <itemizedlist>
+          <listitem>
+            <para><devicename>pcm</devicename> initially fills up the
+              buffer, then calls the sound driver's <link
+              linkend="channel-trigger">
+              <function>xxxchannel_trigger()</function></link>
+              function with a parameter of PCMTRIG_START.</para>
+          </listitem>
+
+          <listitem>
+            <para>The sound driver then arranges to repeatedly
+              transfer the whole memory area
+              (<function>sndbuf_getbuf()</function>,
+              <function>sndbuf_getsize()</function>) to the device, in
+              blocks of <function>sndbuf_getblksz()</function> bytes.
+              It calls back the <function>chn_intr()</function>
+              <devicename>pcm</devicename> function for each
+              transferred block (this will typically happen at
+              interrupt time).</para>
+          </listitem>
+
+          <listitem>
+            <para><function>chn_intr()</function> arranges to copy new
+              data to the area that was transferred to the device (now
+              free), and make appropriate updates to the
+              <structname>snd_dbuf</structname> structure.</para>
+          </listitem>
+
+        </itemizedlist>
+
+      </sect3>
+
+      <sect3 id="xxxchannel-init">
+        <title>channel_init</title>
+
+        <para><function>xxxchannel_init()</function> is called to
+          initialize each of the play or record channels.  The calls
+          are initiated from the sound driver attach routine.  (See
+          the <link linkend="pcm-probe-and-attach">probe and attach
+          section</link>).</para>
+          
+          <programlisting>          static void *
+          xxxchannel_init(kobj_t obj, void *data, 
+             struct snd_dbuf *b, struct pcm_channel *c, int dir)<co id="co-chinit-params">
+          {
+              struct xxx_info *sc = data;
+              struct xxx_chinfo *ch;
+               ...
+              return ch;<co id="co-chinit-return">
+           }</programlisting>
+
+        <calloutlist>
+
+          <callout arearefs="co-chinit-params">
+            <para><varname>b</varname> is the address for the channel
+              <structname>struct snd_dbuf</structname>.  It should be
+              initialized in the function by calling
+              <function>sndbuf_alloc()</function>.  The buffer size to
+              use is normally a small multiple of the 'typical' unit
+              transfer size for your device.</para>
+
+            <para><varname>c</varname> is the
+              <devicename>pcm</devicename> channel control structure
+              pointer.  This is an opaque object.  The function should
+              store it in the local channel structure, to be used in
+              later calls to <devicename>pcm</devicename> (ie:
+              <function>chn_intr(c)</function>).</para>
+
+            <para><varname>dir</varname> indicates the channel
+              direction (<literal>PCMDIR_PLAY</literal> or
+              <literal>PCMDIR_REC</literal>).</para>
+          </callout>
+
+          <callout arearefs="co-chinit-return">
+            <para>The function should return a pointer to the private
+              area used to control this channel.  This will be passed
+              as a parameter to other channel interface calls.</para>
+          </callout>
+
+        </calloutlist>
+
+      </sect3>
+
+      <sect3>
+        <title>channel_setformat</title>
+
+        <para><function>xxxchannel_setformat()</function> should set
+          up the hardware for the specified channel for the specified
+          sound format.</para>
+          
+          <programlisting>          static int
+          xxxchannel_setformat(kobj_t obj, void *data, u_int32_t format)<co id="co-chsetformat-params">
+          {
+              struct xxx_chinfo *ch = data;
+               ...
+              return 0;
+           }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-chsetformat-params">
+            <para><varname>format</varname> is specified as an
+              <literal>AFMT_XXX value</literal>
+              (<filename>soundcard.h</filename>).</para>
+          </callout>
+
+        </calloutlist>
+      </sect3>
+
+      <sect3>
+        <title>channel_setspeed</title>
+
+        <para><function>xxxchannel_setspeed()</function> sets up the
+          channel hardware for the specified sampling speed, and
+          returns the possibly adjusted speed.</para>
+
+        <programlisting>          static int
+          xxxchannel_setspeed(kobj_t obj, void *data, u_int32_t speed)
+          {
+              struct xxx_chinfo *ch = data;
+               ...
+              return speed;
+           }</programlisting>
+
+      </sect3>
+
+      <sect3>
+        <title>channel_setblocksize</title>
+
+        <para><function>xxxchannel_setblocksize()</function> sets the
+          block size, which is the size of unit transactions between
+          <devicename>pcm</devicename> and the sound driver, and
+          between the sound driver and the device.  Typically, this
+          would be the number of bytes transferred before an interrupt
+          occurs.  During a transfer, the sound driver should call
+          <devicename>pcm</devicename>'s
+          <function>chn_intr()</function> every time this size has
+          been transferred.</para>
+
+        <para>Most sound drivers only take note of the block size
+          here, to be used when an actual transfer will be
+          started.</para>
+          
+        <programlisting>          static int
+          xxxchannel_setblocksize(kobj_t obj, void *data, u_int32_t blocksize)
+          {
+              struct xxx_chinfo *ch = data;
+                ...
+              return blocksize;<co id="co-chsetblocksize-return">
+           }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-chsetblocksize-return">
+            <para>The function returns the possibly adjusted block
+              size.  In case the block size is indeed changed,
+              <function>sndbuf_resize()</function> should be called to
+              adjust the buffer.</para> 
+
+          </callout>
+        </calloutlist>
+
+      </sect3>
+
+      <sect3 id="channel-trigger">
+        <title>channel_trigger</title>
+
+        <para><function>xxxchannel_trigger()</function> is called by
+          <devicename>pcm</devicename> to control data transfer
+          operations in the driver.</para> 
+          
+        <programlisting>          static int
+          xxxchannel_trigger(kobj_t obj, void *data, int go)<co id="co-chtrigger-params">
+          {
+              struct xxx_chinfo *ch = data;
+               ...
+              return 0;
+           }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-chtrigger-params">
+            <para><varname>go</varname> defines the action for the
+              current call.  The possible values are:</para>
+              <itemizedlist>
+
+              <listitem>
+                <para><literal>PCMTRIG_START</literal>: the driver
+                  should start a data transfer from or to the channel
+                  buffer.  If needed, the buffer base and size can be
+                  retrieved through
+                  <function>sndbuf_getbuf()</function> and
+                  <function>sndbuf_getsize()</function>.</para>
+              </listitem>
+
+              <listitem>
+                <para><literal>PCMTRIG_EMLDMAWR</literal> /
+                  <literal>PCMTRIG_EMLDMARD</literal>: this tells the
+                  driver that the input or output buffer may have been
+                  updated.  Most drivers just ignore these
+                  calls.</para>
+              </listitem>
+
+              <listitem>
+                <para><literal>PCMTRIG_STOP</literal> /
+                  <literal>PCMTRIG_ABORT</literal>: the driver should
+                  stop the current transfer.</para>
+              </listitem>
+            </itemizedlist>
+
+          </callout> 
+        </calloutlist>
+
+        <note><para>If the driver uses ISA DMA,
+          <function>sndbuf_isadma()</function> should be called before
+          performing actions on the device, and will take care of the
+          DMA chip side of things.</para>
+          </note>
+
+      </sect3>
+
+      <sect3>
+        <title>channel_getptr</title>
+
+        <para><function>xxxchannel_getptr()</function> returns the
+          current offset in the transfer buffer.  This will typically
+          be called by <function>chn_intr()</function>, and this is how
+          <devicename>pcm</devicename> knows where it can transfer
+          new data.</para>
+          
+      </sect3>
+
+      <sect3>
+        <title>channel_free</title>
+
+        <para><function>xxxchannel_free()</function> is called to free
+          up channel resources, for example when the driver is
+          unloaded, and should be implemented if the channel data
+          structures are dynamically allocated or if
+          <function>sndbuf_alloc()</function> was not used for buffer
+          allocation.</para> 
+
+      </sect3>
+
+      <sect3>
+        <title>channel_getcaps</title>
+
+        <programlisting>          struct pcmchan_caps *
+          xxxchannel_getcaps(kobj_t obj, void *data)
+          {
+              return &amp;xxx_caps;<co id="co-chgetcaps-return">
+           }</programlisting>
+
+        <calloutlist>
+
+          <callout arearefs="co-chgetcaps-return">
+            <para>The routine returns a pointer to a (usually
+              statically-defined) <structname>pcmchan_caps</structname>
+              structure (defined in
+              <filename>sound/pcm/channel.h</filename>.  The structure holds
+              the minimum and maximum sampling frequencies, and the
+              accepted sound formats.  Look at any sound driver for an
+              example.</para>
+          </callout>
+
+        </calloutlist>
+
+      </sect3>
+
+      <sect3>
+        <title>More functions</title>
+
+        <para><function>channel_reset()</function>,
+          <function>channel_resetdone()</function>, and
+          <function>channel_notify()</function> are for special purposes
+          and should not be implemented in a driver without discussing
+          it with the authorities (&a.cg;).</para>
+
+        <para><function>channel_setdir()</function> is deprecated.</para>
+      </sect3>
+
+    </sect2>
+
+    <sect2>
+      <title>The MIXER interface</title>
+        
+      <sect3 id="xxxmixer-init">
+        <title>mixer_init</title>
+
+        <para><function>xxxmixer_init()</function> initializes the
+          hardware and tells <devicename>pcm</devicename> what mixer
+          devices are available for playing and recording</para>
+
+        <programlisting>          static int
+          xxxmixer_init(struct snd_mixer *m)
+          {
+              struct xxx_info   *sc = mix_getdevinfo(m);
+              u_int32_t v;
+
+              [Initialize hardware]
+
+              [Set appropriate bits in v for play mixers]<co id="co-mxini-sd">
+              mix_setdevs(m, v);
+              [Set appropriate bits in v for record mixers]
+              mix_setrecdevs(m, v)
+
+              return 0;              
+          }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-mxini-sd">
+            <para>Set bits in an integer value and call
+              <function>mix_setdevs()</function> and
+              <function>mix_setrecdevs()</function> to tell
+              <devicename>pcm</devicename> what devices exist.</para>
+          </callout>
+        </calloutlist>
+
+        <para>Mixer bits definitions can be found in
+          <filename>soundcard.h</filename>
+          (<literal>SOUND_MASK_XXX</literal> values and
+          <literal>SOUND_MIXER_XXX</literal> bit shifts).</para>
+
+      </sect3>
+
+      <sect3>
+        <title>mixer_set</title>
+
+        <para><function>xxxmixer_set()</function> sets the volume
+          level for one mixer device.</para>
+
+        <programlisting>          static int
+          xxxmixer_set(struct snd_mixer *m, unsigned dev, 
+                           unsigned left, unsigned right)<co id="co-mxset-params">
+          {
+              struct sc_info *sc = mix_getdevinfo(m);
+              [set volume level]
+              return left | (right << 8);<co id="co-mxset-return">
+          }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-mxset-params">
+            <para>The device is specified as a SOUND_MIXER_XXX
+              value</para> <para>The volume values are specified in
+              range [0-100].  A value of zero should mute the
+              device.</para>
+          </callout>
+
+          <callout arearefs="co-mxset-return">
+            <para>As the hardware levels probably won't match the
+              input scale, and some rounding will occur, the routine
+              returns the actual level values (in range 0-100) as
+              shown.</para>
+          </callout>
+        </calloutlist>
+
+      </sect3>
+
+      <sect3>
+        <title>mixer_setrecsrc</title>
+
+        <para><function>xxxmixer_setrecsrc()</function> sets the
+          recording source device.</para>
+          
+        <programlisting>          static int
+          xxxmixer_setrecsrc(struct snd_mixer *m, u_int32_t src)<co id="co-mxsr-params">
+          {
+              struct xxx_info *sc = mix_getdevinfo(m);
+
+              [look for non zero bit(s) in src, set up hardware]
+
+              [update src to reflect actual action]
+              return src;<co id="co-mxsr-return">
+           }</programlisting>
+
+        <calloutlist>
+          <callout arearefs="co-mxsr-params">
+            <para>The desired recording devices are specified as a
+              bit field</para>
+          </callout>
+
+          <callout arearefs="co-mxsr-return">
+            <para>The actual devices set for recording are returned.
+              Some drivers can only set one device for recording.  The
+              function should return -1 if an error occurs.</para>
+          </callout>
+        </calloutlist>
+      </sect3>
+
+      <sect3>
+        <title>mixer_uninit, mixer_reinit</title>
+
+        <para><function>xxxmixer_uninit()</function> should ensure
+          that all sound is muted and if possible mixer hardware
+          should be powered down </para>
+
+        <para><function>xxxmixer_reinit()</function> should ensure
+          that the mixer hardware is powered up and any settings not
+          controlled by <function>mixer_set()</function> or
+          <function>mixer_setrecsrc()</function> are restored.</para> 
+
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>The AC97 interface</title>
+
+      <para>The <emphasis>AC97</emphasis> interface is implemented
+        by drivers with an AC97 codec.  It only has three methods:</para>
+
+      <itemizedlist>
+
+        <listitem><para><function>xxxac97_init()</function> returns
+          the number of ac97 codecs found.</para>
+        </listitem>
+
+        <listitem><para><function>ac97_read()</function> and
+          <function>ac97_write()</function> read or write a specified
+          register.</para>
+        </listitem>
+
+      </itemizedlist>
+
+      <para>The <emphasis>AC97</emphasis> interface is used by the
+        AC97 code in <devicename>pcm</devicename> to perform higher
+        level operations.  Look at
+        <filename>sound/pci/maestro3.c</filename> or many others under
+        <filename>sound/pci/</filename> for an example.</para>
+
+    </sect2>
+  </sect1>
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

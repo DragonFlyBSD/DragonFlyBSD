@@ -1,0 +1,944 @@
+<!--
+     The FreeBSD Documentation Project
+     The FreeBSD SMP Next Generation Project
+
+     $DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:15 hmp Exp $
+-->
+<chapter id="smp">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>John</firstname>
+	<surname>Baldwin</surname>
+      </author>
+      <author>
+	<firstname>Robert</firstname>
+	<surname>Watson</surname>
+      </author>
+    </authorgroup>
+
+    <pubdate>$DragonFly: doc/en/books/arch-handbook/smp/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:15 hmp Exp $
+
+    <copyright>
+      <year>2002</year>
+      <year>2003</year>
+      <holder>John Baldwin</holder>
+      <holder>Robert Watson</holder>
+    </copyright>
+  </chapterinfo>
+
+  <title>SMPng Design Document</title>
+
+  <sect1 id="smp-intro">
+    <title>Introduction</title>
+      <para>This document presents the current design and implementation of
+	the SMPng Architecture.  First, the basic primitives and tools are
+	introduced.  Next, a general architecture for the FreeBSD kernel's
+	synchronization and execution model is laid out.  Then, locking
+	strategies for specific subsystems are discussed, documenting the
+	approaches taken to introduce fine-grained synchronization and
+	parallelism for each subsystem.  Finally, detailed implementation
+	notes are provided to motivate design choices, and make the reader
+	aware of important implications involving the use of specific
+	primitives. </para>
+
+    <para>This document is a work-in-progress, and will be updated to
+      reflect on-going design and implementation activities associated
+      with the SMPng Project.  Many sections currently exist only in
+      outline form, but will be fleshed out as work proceeds.  Updates or
+      suggestions regarding the document may be directed to the document
+      editors.</para>
+
+    <para>The goal of SMPng is to allow concurrency in the kernel.
+      The kernel is basically one rather large and complex program. To
+      make the kernel multi-threaded we use some of the same tools used
+      to make other programs multi-threaded.  These include mutexes,
+      shared/exclusive locks, semaphores, and condition variables.  For
+      the definitions of these and other SMP-related terms, please see
+      the <xref linkend="smp-glossary"> section of this article.</para>
+  </sect1>
+
+  <sect1 id="smp-lock-fundamentals">
+    <title>Basic Tools and Locking Fundamentals</title>
+
+    <sect2>
+      <title>Atomic Instructions and Memory Barriers</title>
+
+      <para>There are several existing treatments of memory barriers
+	and atomic instructions, so this section will not include a
+	lot of detail.  To put it simply, one can not go around reading
+	variables without a lock if a lock is used to protect writes
+	to that variable.  This becomes obvious when you consider that
+	memory barriers simply determine relative order of memory
+	operations; they do not make any guarantee about timing of
+	memory operations.  That is, a memory barrier does not force
+	the contents of a CPU's local cache or store buffer to flush.
+	Instead, the memory barrier at lock release simply ensures
+	that all writes to the protected data will be visible to other
+	CPU's or devices if the write to release the lock is visible.
+	The CPU is free to keep that data in its cache or store buffer
+	as long as it wants. However, if another CPU performs an
+	atomic instruction on the same datum, the first CPU must
+	guarantee that the updated value is made visible to the second
+	CPU along with any other operations that memory barriers may
+	require.</para>
+
+      <para>For example, assuming a simple model where data is
+	considered visible when it is in main memory (or a global
+	cache), when an atomic instruction is triggered on one CPU,
+	other CPU's store buffers and caches must flush any writes to
+	that same cache line along with any pending operations behind
+	a memory barrier.</para>
+
+      <para>This requires one to take special care when using an item
+	protected by atomic instructions.  For example, in the sleep
+	mutex implementation, we have to use an
+	<function>atomic_cmpset</function> rather than an
+	<function>atomic_set</function> to turn on the
+	<constant>MTX_CONTESTED</constant> bit.  The reason is that we
+	read the value of <structfield>mtx_lock</structfield> into a
+	variable and then make a decision based on that read.
+	However, the value we read may be stale, or it may change
+	while we are making our decision.  Thus, when the
+	<function>atomic_set</function> executed, it may end up
+	setting the bit on another value than the one we made the
+	decision on. Thus, we have to use an
+	<function>atomic_cmpset</function> to set the value only if
+	the value we made the decision on is up-to-date and
+	valid.</para>
+
+      <para>Finally, atomic instructions only allow one item to be
+	updated or read.  If one needs to atomically update several
+	items, then a lock must be used instead.  For example, if two
+	counters must be read and have values that are consistent
+	relative to each other, then those counters must be protected
+	by a lock rather than by separate atomic instructions.</para>
+    </sect2>
+
+    <sect2>
+      <title>Read Locks versus Write Locks</title>
+
+      <para>Read locks do not need to be as strong as write locks.
+	Both types of locks need to ensure that the data they are
+	accessing is not stale.  However, only write access requires
+	exclusive access.  Multiple threads can safely read a value.
+	Using different types of locks for reads and writes can be
+	implemented in a number of ways.</para>
+
+      <para>First, sx locks can be used in this manner by using an
+	exclusive lock when writing and a shared lock when reading.
+	This method is quite straightforward.</para>
+
+      <para>A second method is a bit more obscure.  You can protect a
+	datum with multiple locks.  Then for reading that data you
+	simply need to have a read lock of one of the locks.  However,
+	to write to the data, you need to have a write lock of all of
+	the locks.  This can make writing rather expensive but can be
+	useful when data is accessed in various ways.  For example,
+	the parent process pointer is protected by both the
+	proctree_lock sx lock and the per-process mutex.  Sometimes
+	the proc lock is easier as we are just checking to see who a
+	parent of a process is that we already have locked.  However,
+	other places such as <function>inferior</function> need to
+	walk the tree of processes via parent pointers and locking
+	each process would be prohibitive as well as a pain to
+	guarantee that the condition you are checking remains valid
+	for both the check and the actions taken as a result of the
+	check.</para>
+    </sect2>
+
+    <sect2>
+      <title>Locking Conditions and Results</title>
+
+      <para>If you need a lock to check the state of a variable so
+	that you can take an action based on the state you read, you
+	can not just hold the lock while reading the variable and then
+	drop the lock before you act on the value you read.  Once you
+	drop the lock, the variable can change rendering your decision
+	invalid. Thus, you must hold the lock both while reading the
+	variable and while performing the action as a result of the
+	test.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="smp-design">
+    <title>General Architecture and Design</title>
+
+    <sect2>
+      <title>Interrupt Handling</title>
+
+      <para>Following the pattern of several other multi-threaded &unix;
+	kernels, FreeBSD deals with interrupt handlers by giving them
+	their own thread context.  Providing a context for interrupt
+	handlers allows them to block on locks.  To help avoid
+	latency, however, interrupt threads run at real-time kernel
+	priority. Thus, interrupt handlers should not execute for very
+	long to avoid starving other kernel threads.  In addition,
+	since multiple handlers may share an interrupt thread,
+	interrupt handlers should not sleep or use a sleepable lock to
+	avoid starving another interrupt handler.</para>
+
+      <para>The interrupt threads currently in FreeBSD are referred to
+	as heavyweight interrupt threads.  They are called this
+	because switching to an interrupt thread involves a full
+	context switch. In the initial implementation, the kernel was
+	not preemptive and thus interrupts that interrupted a kernel
+	thread would have to wait until the kernel thread blocked or
+	returned to userland before they would have an opportunity to
+	run.</para>
+
+      <para>To deal with the latency problems, the kernel in FreeBSD
+	has been made preemptive.  Currently, we only preempt a kernel
+	thread when we release a sleep mutex or when an interrupt
+	comes in.  However, the plan is to make the FreeBSD kernel
+	fully preemptive as described below.</para>
+
+      <para>Not all interrupt handlers execute in a thread context.
+	Instead, some handlers execute directly in primary interrupt
+	context.  These interrupt handlers are currently misnamed
+	<quote>fast</quote> interrupt handlers since the
+	<constant>INTR_FAST</constant> flag used in earlier versions
+	of the kernel is used to mark these handlers.  The only
+	interrupts which currently use these types of interrupt
+	handlers are clock interrupts and serial I/O device
+	interrupts.  Since these handlers do not have their own
+	context, they may not acquire blocking locks and thus may only
+	use spin mutexes.</para>
+
+      <para>Finally, there is one optional optimization that can be
+	added in MD code called lightweight context switches.  Since
+	an interrupt thread executes in a kernel context, it can
+	borrow the vmspace of any process.  Thus, in a lightweight
+	context switch, the switch to the interrupt thread does not
+	switch vmspaces but borrows the vmspace of the interrupted
+	thread.  In order to ensure that the vmspace of the
+	interrupted thread does not disappear out from under us, the
+	interrupted thread is not allowed to execute until the
+	interrupt thread is no longer borrowing its vmspace.  This can
+	happen when the interrupt thread either blocks or finishes.
+	If an interrupt thread blocks, then it will use its own
+	context when it is made runnable again.  Thus, it can release
+	the interrupted thread.</para>
+
+      <para>The cons of this optimization are that they are very
+	machine specific and complex and thus only worth the effort if
+	their is a large performance improvement.  At this point it is
+	probably too early to tell, and in fact, will probably hurt
+	performance as almost all interrupt handlers will immediately
+	block on Giant and require a thread fix-up when they block.
+	Also, an alternative method of interrupt handling has been
+	proposed by Mike Smith that works like so:</para>
+
+      <orderedlist>
+	<listitem>
+	  <para>Each interrupt handler has two parts: a predicate
+	    which runs in primary interrupt context and a handler
+	    which runs in its own thread context.</para>
+	</listitem>
+
+	<listitem>
+	  <para>If an interrupt handler has a predicate, then when an
+	    interrupt is triggered, the predicate is run.  If the
+	    predicate returns true then the interrupt is assumed to be
+	    fully handled and the kernel returns from the interrupt.
+	    If the predicate returns false or there is no predicate,
+	    then the threaded handler is scheduled to run.</para>
+	</listitem>
+      </orderedlist>
+
+      <para>Fitting light weight context switches into this scheme
+	might prove rather complicated.  Since we may want to change
+	to this scheme at some point in the future, it is probably
+	best to defer work on light weight context switches until we
+	have settled on the final interrupt handling architecture and
+	determined how light weight context switches might or might
+	not fit into it.</para>
+    </sect2>
+
+    <sect2>
+      <title>Kernel Preemption and Critical Sections</title>
+
+      <sect3>
+	<title>Kernel Preemption in a Nutshell</title>
+
+	<para>Kernel preemption is fairly simple.  The basic idea is
+	  that a CPU should always be doing the highest priority work
+	  available.  Well, that is the ideal at least.  There are a
+	  couple of cases where the expense of achieving the ideal is
+	  not worth being perfect.</para>
+
+	<para>Implementing full kernel preemption is very
+	  straightforward: when you schedule a thread to be executed
+	  by putting it on a runqueue, you check to see if its
+	  priority is higher than the currently executing thread.  If
+	  so, you initiate a context switch to that thread.</para>
+
+	<para>While locks can protect most data in the case of a
+	  preemption, not all of the kernel is preemption safe.  For
+	  example, if a thread holding a spin mutex preempted and the
+	  new thread attempts to grab the same spin mutex, the new
+	  thread may spin forever as the interrupted thread may never
+	  get a chance to execute.  Also, some code such as the code
+	  to assign an address space number for a process during
+	  exec() on the Alpha needs to not be preempted as it supports
+	  the actual context switch code.  Preemption is disabled for
+	  these code sections by using a critical section.</para>
+      </sect3>
+
+      <sect3>
+	<title>Critical Sections</title>
+
+	<para>The responsibility of the critical section API is to
+	  prevent context switches inside of a critical section.  With
+	  a fully preemptive kernel, every
+	  <function>setrunqueue</function> of a thread other than the
+	  current thread is a preemption point.  One implementation is
+	  for <function>critical_enter</function> to set a per-thread
+	  flag that is cleared by its counterpart.  If
+	  <function>setrunqueue</function> is called with this flag
+	  set, it does not preempt regardless of the priority of the new
+	  thread relative to the current thread.  However, since
+	  critical sections are used in spin mutexes to prevent
+	  context switches and multiple spin mutexes can be acquired,
+	  the critical section API must support nesting.  For this
+	  reason the current implementation uses a nesting count
+	  instead of a single per-thread flag.</para>
+
+	<para>In order to minimize latency, preemptions inside of a
+	  critical section are deferred rather than dropped.  If a
+	  thread is made runnable that would normally be preempted to
+	  outside of a critical section, then a per-thread flag is set
+	  to indicate that there is a pending preemption.  When the
+	  outermost critical section is exited, the flag is checked.
+	  If the flag is set, then the current thread is preempted to
+	  allow the higher priority thread to run.</para>
+
+	<para>Interrupts pose a problem with regards to spin mutexes.
+	  If a low-level interrupt handler needs a lock, it needs to
+	  not interrupt any code needing that lock to avoid possible
+	  data structure corruption.  Currently, providing this
+	  mechanism is piggybacked onto critical section API by means
+	  of the <function>cpu_critical_enter</function> and
+	  <function>cpu_critical_exit</function> functions.  Currently
+	  this API disables and re-enables interrupts on all of
+	  FreeBSD's current platforms.  This approach may not be
+	  purely optimal, but it is simple to understand and simple to
+	  get right. Theoretically, this second API need only be used
+	  for spin mutexes that are used in primary interrupt context.
+	  However, to make the code simpler, it is used for all spin
+	  mutexes and even all critical sections.  It may be desirable
+	  to split out the MD API from the MI API and only use it in
+	  conjunction with the MI API in the spin mutex
+	  implementation.  If this approach is taken, then the MD API
+	  likely would need a rename to show that it is a separate API
+	  now.</para>
+      </sect3>
+
+      <sect3>
+	<title>Design Tradeoffs</title>
+
+	<para>As mentioned earlier, a couple of trade-offs have been
+	  made to sacrifice cases where perfect preemption may not
+	  always provide the best performance.</para>
+
+	<para>The first trade-off is that the preemption code does not
+	  take other CPUs into account.  Suppose we have a two CPU's A
+	  and B with the priority of A's thread as 4 and the priority
+	  of B's thread as 2.  If CPU B makes a thread with priority 1
+	  runnable, then in theory, we want CPU A to switch to the new
+	  thread so that we will be running the two highest priority
+	  runnable threads.  However, the cost of determining which
+	  CPU to enforce a preemption on as well as actually signaling
+	  that CPU via an IPI along with the synchronization that
+	  would be required would be enormous.  Thus, the current code
+	  would instead force CPU B to switch to the higher priority
+	  thread. Note that this still puts the system in a better
+	  position as CPU B is executing a thread of priority 1 rather
+	  than a thread of priority 2.</para>
+
+	<para>The second trade-off limits immediate kernel preemption
+	  to real-time priority kernel threads.  In the simple case of
+	  preemption defined above, a thread is always preempted
+	  immediately (or as soon as a critical section is exited) if
+	  a higher priority thread is made runnable.  However, many
+	  threads executing in the kernel only execute in a kernel
+	  context for a short time before either blocking or returning
+	  to userland.  Thus, if the kernel preempts these threads to
+	  run another non-realtime kernel thread, the kernel may
+	  switch out the executing thread just before it is about to
+	  sleep or execute.  The cache on the CPU must then adjust to
+	  the new thread.  When the kernel returns to the interrupted
+	  CPU, it must refill all the cache information that was lost.
+	  In addition, two extra context switches are performed that
+	  could be avoided if the kernel deferred the preemption until
+	  the first thread blocked or returned to userland.  Thus, by
+	  default, the preemption code will only preempt immediately
+	  if the higher priority thread is a real-time priority
+	  thread.</para>
+
+	<para>Turning on full kernel preemption for all kernel threads
+	  has value as a debugging aid since it exposes more race
+	  conditions.  It is especially useful on UP systems were many
+	  races are hard to simulate otherwise.  Thus, there will be a
+	  kernel option to enable preemption for all kernel threads
+	  that can be used for debugging purposes.</para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Thread Migration</title>
+
+      <para>Simply put, a thread migrates when it moves from one CPU
+	to another.  In a non-preemptive kernel this can only happen
+	at well-defined points such as when calling
+	<function>tsleep</function> or returning to userland.
+	However, in the preemptive kernel, an interrupt can force a
+	preemption and possible migration at any time.  This can have
+	negative affects on per-CPU data since with the exception of
+	<varname>curthread</varname> and <varname>curpcb</varname> the
+	data can change whenever you migrate.  Since you can
+	potentially migrate at any time this renders per-CPU data
+	rather useless. Thus it is desirable to be able to disable
+	migration for sections of code that need per-CPU data to be
+	stable.</para>
+
+      <para>Critical sections currently prevent migration since they
+	do not allow context switches.  However, this may be too strong
+	of a requirement to enforce in some cases since a critical
+	section also effectively blocks interrupt threads on the
+	current processor.  As a result, it may be desirable to
+	provide an API whereby code may indicate that if the current
+	thread is preempted it should not migrate to another
+	CPU.</para>
+
+      <para>One possible implementation is to use a per-thread nesting
+	count <varname>td_pinnest</varname> along with a
+	<varname>td_pincpu</varname> which is updated to the current
+	CPU on each context switch.  Each CPU has its own run queue
+	that holds threads pinned to that CPU.  A thread is pinned
+	when its nesting count is greater than zero and a thread
+	starts off unpinned with a nesting count of zero.  When a
+	thread is put on a runqueue, we check to see if it is pinned.
+	If so, we put it on the per-CPU runqueue, otherwise we put it
+	on the global runqueue.  When
+	<function>choosethread</function> is called to retrieve the
+	next thread, it could either always prefer bound threads to
+	unbound threads or use some sort of bias when comparing
+	priorities.  If the nesting count is only ever written to by
+	the thread itself and is only read by other threads when the
+	owning thread is not executing but while holding the
+	<varname>sched_lock</varname>, then
+	<varname>td_pinnest</varname> will not need any other locks.
+	The <function>migrate_disable</function> function would
+	increment the nesting count and
+	<function>migrate_enable</function> would decrement the
+	nesting count.  Due to the locking requirements specified
+	above, they will only operate on the current thread and thus
+	would not need to handle the case of making a thread
+	migrateable that currently resides on a per-CPU run
+	queue.</para>
+
+      <para>It is still debatable if this API is needed or if the
+	critical section API is sufficient by itself.  Many of the
+	places that need to prevent migration also need to prevent
+	preemption as well, and in those places a critical section
+	must be used regardless.</para>
+    </sect2>
+
+    <sect2>
+      <title>Callouts</title>
+
+      <para>The <function>timeout()</function> kernel facility permits
+	kernel services to register functions for execution as part
+	of the <function>softclock()</function> software interrupt.
+	Events are scheduled based on a desired number of clock
+	ticks, and callbacks to the consumer-provided function
+	will occur at approximately the right time.</para>
+
+      <para>The global list of pending timeout events is protected
+	by a global spin mutex, <varname>callout_lock</varname>;
+	all access to the timeout list must be performed with this
+	mutex held.  When <function>softclock()</function> is
+	woken up, it scans the list of pending timeouts for those
+	that should fire.  In order to avoid lock order reversal,
+	the <function>softclock</function> thread will release the
+	<varname>callout_lock</varname> mutex when invoking the
+	provided <function>timeout()</function> callback function.
+	If the <constant>CALLOUT_MPSAFE</constant> flag was not set
+	during registration, then Giant will be grabbed before
+	invoking the callout, and then released afterwards.  The
+	<varname>callout_lock</varname> mutex will be re-grabbed
+	before proceeding.  The <function>softclock()</function>
+	code is careful to leave the list in a consistent state
+	while releasing the mutex.  If <constant>DIAGNOSTIC</constant>
+	is enabled, then the time taken to execute each function is
+	measured, and a warning generated if it exceeds a
+	threshold.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="smp-lock-strategies">
+    <title>Specific Locking Strategies</title>
+
+    <sect2>
+      <title>Credentials</title>
+
+      <para><structname>struct ucred</structname> is the kernel's
+	internal credential structure, and is generally used as the
+	basis for process-driven access control within the kernel.  
+	BSD-derived systems use a <quote>copy-on-write</quote> model for credential 
+	data: multiple references may exist for a credential structure, 
+	and when a change needs to be made, the structure is duplicated,
+	modified, and then the reference replaced.  Due to wide-spread
+	caching of the credential to implement access control on open,
+	this results in substantial memory savings.  With a move to
+	fine-grained SMP, this model also saves substantially on
+	locking operations by requiring that modification only occur
+	on an unshared credential, avoiding the need for explicit   
+	synchronization when consuming a known-shared
+	credential.</para>
+
+      <para>Credential structures with a single reference are
+	considered mutable; shared credential structures must not be  
+	modified or a race condition is risked.  A mutex,
+	<structfield>cr_mtxp</structfield> protects the reference 
+	count of <structname>struct ucred</structname> so as to
+	maintain consistency.  Any use of the structure requires a
+	valid reference for the duration of the use, or the structure
+	may be released out from under the illegitimate
+	consumer.</para>
+
+      <para>The <structname>struct ucred</structname> mutex is a leaf
+	mutex, and for performance reasons, is implemented via a mutex
+	pool.</para>
+
+      <para>Usually, credentials are used in a read-only manner for access
+	control decisions, and in this case <structfield>td_ucred</structfield>
+	is generally preferred because it requires no locking.  When a
+	process' credential is updated the <literal>proc</literal> lock
+	must be held across the check and update operations thus avoid
+	races.  The process credential <structfield>p_ucred</structfield>
+	must be used for check and update operations to prevent
+	time-of-check, time-of-use races.</para>
+
+      <para>If system call invocations will perform access control after
+	an update to the process credential, the value of
+	<structfield>td_ucred</structfield> must also be refreshed to
+	the current process value.  This will prevent use of a stale
+	credential following a change.  The kernel automatically
+	refreshes the <structfield>td_ucred</structfield> pointer in
+	the thread structure from the process
+	<structfield>p_ucred</structfield> whenever a process enters
+	the kernel, permitting use of a fresh credential for kernel
+	access control.</para>
+    </sect2>
+
+    <sect2>
+      <title>File Descriptors and File Descriptor Tables</title>
+
+      <para>Details to follow.</para>
+    </sect2>
+
+    <sect2>
+      <title>Jail Structures</title>
+
+      <para><structname>struct prison</structname> stores
+	administrative details pertinent to the maintenance of jails
+	created using the &man.jail.2; API.  This includes the
+	per-jail hostname, IP address, and related settings.  This
+	structure is reference-counted since pointers to instances of
+	the structure are shared by many credential structures.  A
+	single mutex, <structfield>pr_mtx</structfield> protects read
+	and write access to the reference count and all mutable
+	variables inside the struct jail.  Some variables are set only
+	when the jail is created, and a valid reference to the
+	<structname>struct prison</structname> is sufficient to read
+	these values.  The precise locking of each entry is documented
+	via comments in <filename>sys/jail.h</filename>.</para>
+    </sect2>
+
+    <sect2>
+      <title>MAC Framework</title>
+
+      <para>The TrustedBSD MAC Framework maintains data in a variety
+	of kernel objects, in the form of <structname>struct
+	label</structname>.  In general, labels in kernel objects
+	are protected by the same lock as the remainder of the kernel
+	object.  For example, the <structfield>v_label</structfield>
+	label in <structname>struct vnode</structname> is protected
+	by the vnode lock on the vnode.</para>
+
+      <para>In addition to labels maintained in standard kernel objects,
+	the MAC Framework also maintains a list of registered and
+	active policies.  The policy list is protected by a global
+	mutex (<varname>mac_policy_list_lock</varname>) and a busy
+	count (also protected by the mutex).  Since many access
+	control checks may occur in parallel, entry to the framework
+	for a read-only access to the policy list requires holding the
+	mutex while incrementing (and later decrementing) the busy
+	count.  The mutex need not be held for the duration of the
+	MAC entry operation--some operations, such as label operations
+	on file system objects--are long-lived.  To modify the policy
+	list, such as during policy registration and de-registration,
+	the mutex must be held and the reference count must be zero,
+	to prevent modification of the list while it is in use.</para>
+
+      <para>A condition variable,
+	<varname>mac_policy_list_not_busy</varname>, is available to
+	threads that need to wait for the list to become unbusy, but
+	this condition variable must only be waited on if the caller is
+	holding no other locks, or a lock order violation may be
+	possible.  The busy count, in effect, acts as a form of
+	shared/exclusive lock over access to the framework: the difference
+	is that, unlike with an sx lock, consumers waiting for the list
+	to become unbusy may be starved, rather than permitting lock
+	order problems with regards to the busy count and other locks
+	that may be held on entry to (or inside) the MAC Framework.</para>
+    </sect2>
+
+    <sect2>
+      <title>Modules</title>
+
+      <para>For the module subsystem there exists a single lock that is
+	used to protect the shared data.  This lock is a shared/exclusive
+	(SX) lock and has a good chance of needing to be acquired (shared
+	or exclusively), therefore there are a few macros that have been
+	added to make access to the lock more easy.  These macros can be
+	located in <filename>sys/module.h</filename> and are quite basic
+	in terms of usage.  The main structures protected under this lock
+	are the <structname>module_t</structname> structures (when shared)
+	and the global <structname>modulelist_t</structname> structure,
+	modules.  One should review the related source code in
+	<filename>kern/kern_module.c</filename> to further understand the
+	locking strategy.</para>
+    </sect2>
+
+    <sect2>
+      <title>Newbus Device Tree</title>
+
+      <para>The newbus system will have one sx lock.  Readers will
+	hold a shared (read) lock (&man.sx.slock.9;) and writers will hold
+	an exclusive (write) lock (&man.sx.xlock.9;).  Internal functions 
+	will not do locking at all.  Externally visible ones will lock as 
+	needed.
+	Those items that do not matter if the race is won or lost will
+	not be locked, since they tend to be read all over the place
+	(e.g. &man.device.get.softc.9;).  There will be relatively few
+	changes to the newbus data structures, so a single lock should
+	be sufficient and not impose a performance penalty.</para>
+    </sect2>
+
+    <sect2>
+      <title>Pipes</title>
+
+      <para>...</para>
+    </sect2>
+
+    <sect2>
+      <title>Processes and Threads</title>
+
+      <para>- process hierarchy</para>
+      <para>- proc locks, references</para>
+      <para>- thread-specific copies of proc entries to freeze during system
+	calls, including td_ucred</para>
+      <para>- inter-process operations</para>
+      <para>- process groups and sessions</para>
+    </sect2>
+
+    <sect2>
+      <title>Scheduler</title>
+
+      <para>Lots of references to <varname>sched_lock</varname> and notes
+	pointing at specific primitives and related magic elsewhere in the
+	document.</para>
+    </sect2>
+
+    <sect2>
+      <title>Select and Poll</title>
+
+      <para>The select() and poll() functions permit threads to block
+	waiting on events on file descriptors--most frequently, whether
+	or not the file descriptors are readable or writable.</para>
+
+      <para>...</para>
+    </sect2>
+
+    <sect2>
+      <title>SIGIO</title>
+
+      <para>The SIGIO service permits processes to request the delivery
+	of a SIGIO signal to its process group when the read/write status
+	of specified file descriptors changes.  At most one process or
+	process group is permitted to register for SIGIO from any given
+	kernel object, and that process or group is referred to as
+	the owner.  Each object supporting SIGIO registration contains
+	pointer field that is NULL if the object is not registered, or
+	points to a <structname>struct sigio</structname> describing
+	the registration.  This field is protected by a global mutex,
+	<varname>sigio_lock</varname>.  Callers to SIGIO maintenance
+	functions must pass in this field <quote>by reference</quote> so that local
+	register copies of the field are not made when unprotected by
+	the lock.</para>
+
+      <para>One <structname>struct sigio</structname> is allocated for
+	each registered object associated with any process or process
+	group, and contains back-pointers to the object, owner, signal
+	information, a credential, and the general disposition of the
+	registration.  Each process or progress group contains a list of
+	registered <structname>struct sigio</structname> structures,
+	<structfield>p_sigiolst</structfield> for processes, and
+	<structfield>pg_sigiolst</structfield> for process groups.
+	These lists are protected by the process or process group
+	locks respectively.  Most fields in each <structname>struct
+	sigio</structname> are constant for the duration of the
+	registration, with the exception of the
+	<structfield>sio_pgsigio</structfield> field which links the
+	<structname>struct sigio</structname> into the process or
+	process group list.  Developers implementing new kernel
+	objects supporting SIGIO will, in general, want to avoid
+	holding structure locks while invoking SIGIO supporting
+	functions, such as <function>fsetown()</function>
+	or <function>funsetown()</function> to avoid
+	defining a lock order between structure locks and the global
+	SIGIO lock.  This is generally possible through use of an
+	elevated reference count on the structure, such as reliance
+	on a file descriptor reference to a pipe during a pipe
+	operation.</para>
+    </sect2>
+
+    <sect2>
+      <title>Sysctl</title>
+
+      <para>The <function>sysctl()</function> MIB service is invoked
+	from both within the kernel and from userland applications
+	using a system call.  At least two issues are raised in locking:
+	first, the protection of the structures maintaining the
+	namespace, and second, interactions with kernel variables and
+	functions that are accessed by the sysctl interface.  Since
+	sysctl permits the direct export (and modification) of
+	kernel statistics and configuration parameters, the sysctl
+	mechanism must become aware of appropriate locking semantics
+	for those variables.  Currently, sysctl makes use of a
+	single global sx lock to serialize use of sysctl(); however, it
+	is assumed to operate under Giant and other protections are not
+	provided.  The remainder of this section speculates on locking
+	and semantic changes to sysctl.</para>
+
+      <para>- Need to change the order of operations for sysctl's that
+	update values from read old, copyin and copyout, write new to
+	copyin, lock, read old and write new, unlock, copyout.  Normal
+	sysctl's that just copyout the old value and set a new value
+	that they copyin may still be able to follow the old model.
+	However, it may be cleaner to use the second model for all of
+	the sysctl handlers to avoid lock operations.</para>
+
+      <para>- To allow for the common case, a sysctl could embed a
+	pointer to a mutex in the SYSCTL_FOO macros and in the struct.
+	This would work for most sysctl's.  For values protected by sx
+	locks, spin mutexes, or other locking strategies besides a
+	single sleep mutex, SYSCTL_PROC nodes could be used to get the
+	locking right.</para>
+    </sect2>
+
+    <sect2>
+      <title>Taskqueue</title>
+
+       <para> The taskqueue's interface has two basic locks associated
+	with it in order to protect the related shared data.  The
+	<varname>taskqueue_queues_mutex</varname> is meant to serve as a
+	lock to protect the <varname>taskqueue_queues</varname> TAILQ.
+	The other mutex lock associated with this system is the one in the
+	<structname>struct taskqueue</structname> data structure.  The
+	use of the synchronization primitive here is to protect the
+	integrity of the data in the <structname>struct
+	taskqueue</structname>.  It should be noted that there are no
+	separate macros to assist the user in locking down his/her own work
+	since these locks are most likely not going to be used outside of
+	<filename>kern/subr_taskqueue.c</filename>.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="smp-implementation-notes">
+    <title>Implementation Notes</title>
+
+    <sect2>
+      <title>Details of the Mutex Implementation</title>
+
+      <para>- Should we require mutexes to be owned for mtx_destroy()
+	since we can not safely assert that they are unowned by anyone
+	else otherwise?</para>
+
+      <sect3>
+	<title>Spin Mutexes</title>
+
+	<para>- Use a critical section...</para>
+      </sect3>
+
+      <sect3>
+	<title>Sleep Mutexes</title>
+
+	<para>- Describe the races with contested mutexes</para>
+
+	<para>- Why it is safe to read mtx_lock of a contested mutex
+	  when holding sched_lock.</para>
+
+	<para>- Priority propagation</para>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Witness</title>
+
+      <para>- What does it do</para>
+
+      <para>- How does it work</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="smp-misc">
+    <title>Miscellaneous Topics</title>
+
+    <sect2>
+      <title>Interrupt Source and ICU Abstractions</title>
+
+      <para>- struct isrc</para>
+
+      <para>- pic drivers</para>
+    </sect2>
+
+    <sect2>
+      <title>Other Random Questions/Topics</title>
+
+      <para>Should we pass an interlock into
+	<function>sema_wait</function>?</para>
+
+      <para>- Generic turnstiles for sleep mutexes and sx locks.</para>
+
+      <para>- Should we have non-sleepable sx locks?</para>
+    </sect2>
+  </sect1>
+
+  <glossary id="smp-glossary">
+    <title>Glossary</title>
+
+    <glossentry id="smp-glossary-atomic">
+      <glossterm>atomic</glossterm>
+      <glossdef>
+	<para>An operation is atomic if all of its effects are visible
+	  to other CPUs together when the proper access protocol is
+	  followed.  In the degenerate case are atomic instructions
+	  provided directly by machine architectures.  At a higher
+	  level, if several members of a structure are protected by a
+	  lock, then a set of operations are atomic if they are all
+	  performed while holding the lock without releasing the lock
+	  in between any of the operations.</para>
+
+	<glossseealso>operation</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-block">
+      <glossterm>block</glossterm>
+      <glossdef>
+	<para>A thread is blocked when it is waiting on a lock,
+	  resource, or condition.  Unfortunately this term is a bit
+	  overloaded as a result.</para>
+
+	<glossseealso>sleep</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-critical-section">
+      <glossterm>critical section</glossterm>
+      <glossdef>
+	<para>A section of code that is not allowed to be preempted.
+	  A critical section is entered and exited using the
+	  &man.critical.enter.9; API.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-MD">
+      <glossterm>MD</glossterm>
+      <glossdef>
+	<para>Machine dependent.</para>
+
+	<glossseealso>MI</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-memory-operation">
+      <glossterm>memory operation</glossterm>
+      <glossdef>
+	<para>A memory operation reads and/or writes to a memory
+	  location.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-MI">
+      <glossterm>MI</glossterm>
+      <glossdef>
+	<para>Machine independent.</para>
+
+	<glossseealso>MD</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-operation">
+      <glossterm>operation</glossterm>
+      <glosssee>memory operation</glosssee>
+    </glossentry>
+
+    <glossentry id="smp-glossary-primary-interrupt-context">
+      <glossterm>primary interrupt context</glossterm>
+      <glossdef>
+	<para>Primary interrupt context refers to the code that runs
+	  when an interrupt occurs.  This code can either run an
+	  interrupt handler directly or schedule an asynchronous
+	  interrupt thread to execute the interrupt handlers for a
+	  given interrupt source.</para>
+      </glossdef>
+    </glossentry>
+
+    <glossentry>
+      <glossterm>realtime kernel thread</glossterm>
+      <glossdef>
+	<para>A high priority kernel thread.  Currently, the only
+	  realtime priority kernel threads are interrupt threads.</para>
+
+	<glossseealso>thread</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-sleep">
+      <glossterm>sleep</glossterm>
+      <glossdef>
+	<para>A thread is asleep when it is blocked on a condition
+	  variable or a sleep queue via <function>msleep</function> or
+	  <function>tsleep</function>.</para>
+
+	<glossseealso>block</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-sleepable-lock">
+      <glossterm>sleepable lock</glossterm>
+      <glossdef>
+	<para>A sleepable lock is a lock that can be held by a thread
+	  which is asleep.  Lockmgr locks and sx locks are currently
+	  the only sleepable locks in FreeBSD.  Eventually, some sx
+	  locks such as the allproc and proctree locks may become
+	  non-sleepable locks.</para>
+
+	<glossseealso>sleep</glossseealso>
+      </glossdef>
+    </glossentry>
+
+    <glossentry id="smp-glossary-thread">
+      <glossterm>thread</glossterm>
+      <glossdef>
+	<para>A kernel thread represented by a struct thread.  Threads own
+	  locks and hold a single execution context.</para>
+      </glossdef>
+    </glossentry>
+  </glossary>
+</chapter>

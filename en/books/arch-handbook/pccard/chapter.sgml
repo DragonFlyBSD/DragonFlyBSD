@@ -1,0 +1,369 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/pccard/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:05 hmp Exp $
+-->
+
+<chapter id="pccard">
+  <title>PC Card</title>
+
+  <para>This chapter will talk about the FreeBSD mechanisms for
+    writing a device driver for a PC Card or CardBus device.  However,
+    at the present time, it just documents how to add a driver to an
+    existing pccard driver.</para>
+
+  <sect1 id="pccard-adddev">
+    <title>Adding a device</title>
+
+    <para>The procedure for adding a new device to the list of
+      supported pccard devices has changed from the system used
+      through FreeBSD 4.  In prior versions, editing a file in
+      <filename>/etc</filename> to list the device was necessary.
+      Starting in FreeBSD 5.0, devices drivers know what devices they
+      support.  There is now a table of supported devices in the
+      kernel that drivers use to attach to a device.</para>
+
+    <sect2 id="pccard-overview">
+      <title>Overview</title>
+
+      <para>PC Cards are identified in one of two ways, both based on
+        information in the <acronym>CIS</acronym> of the card.  The
+        first method is to use numeric manufacturer and product
+        numbers.  The second method is to use the human readable
+        strings that are also contained in the CIS.  The PC Card bus
+        uses a centralized database and some macros to facilitate a
+        design pattern to help the driver writer match devices to his
+        driver.</para>
+
+      <para>There is a widespread practice of one company developing a
+        reference design for a PC Card product and then selling this
+        design to other companies to market.  Those companies refine
+        the design, market the product to their target audience or
+        geographic area and put their own name plate onto the card.
+        However, the refinements to the physical card typically are
+        very minor, if any changes are made at all.  Often, however,
+        to strengthen their branding of their version of the card,
+        these vendors will place their company name in the human
+        strings in the CIS space, but leave the manufacturer and
+        product ids unchanged.</para>
+
+      <para>Because of the above practice, it is a smaller work load
+        for FreeBSD to use the numeric IDs.  It also introduces some
+        minor complications into the process of adding IDs to the
+        system.  One must carefully check to see who really made the
+        card, especially when it appears that the vendor who made the
+        card from might already have a different manufacturer id
+        listed in the central database.  Linksys, D-Link and NetGear
+        are a number of US Manufacturers of LAN hardware that often
+        sell the same design.  These same designs can be sold in Japan
+        under names such as Buffalo and Corega.  Yet often, these
+        devices will all have the same manufacturer and product
+        id.</para>
+
+      <para>The PC Card bus keeps its central database of card
+        information, but not which driver is associated with them, in
+        <filename>/sys/dev/pccard/pccarddevs</filename>.  It also
+        provides a set of macros that allow one to easily construct
+        simple entries in the table the driver uses to claim
+        devices.</para>
+
+      <para>Finally, some really low end devices do not contain
+        manufacturer identification at all.  These devices require
+        that one matches them using the human readable CIS strings.
+        While it would be nice if we didn't need this method as a
+        fallback, it is necessary for some very low end CD-ROM players
+        that are quite popular.  This method should generally be
+        avoided, but a number of devices are listed in this section
+        because they were added prior to the recognition of the
+        <acronym>OEM</acronym> nature of the PC Card business.  When
+        adding new devices, prefer using the numeric method.</para>
+
+    </sect2>
+
+    <sect2 id="pccard-pccarddevs">
+      <title>Format of <filename>pccarddevs</filename></title>
+
+      <para>There are four sections of the
+        <filename>pccarddevs</filename> files.  The first section
+        lists the manufacturer numbers for those vendors that use
+        them.  This section is sorted in numerical order.  The next
+        section has all of the products that are used by these
+        vendors, along with their product ID numbers and a description
+        string.  The description string typically isn't used (instead
+        we set the device's description based on the human readable
+        CIS, even if we match on the numeric version).  These two
+        sections are then repeated for those devices that use the
+        string matching method.  Finally, C-style comments are allowed
+        anywhere in the file.</para>
+
+      <para>The first section of the file contains the vendor IDs.
+        Please keep this list sorted in numeric order.  Also, please
+        coordinate changes to this file because we share it with
+        NetBSD to help facilitate a common clearing house for this
+        information.  For example:</para>
+
+<programlisting>vendor FUJITSU			0x0004  Fujitsu Corporation
+vendor NETGEAR_2		0x000b  Netgear
+vendor PANASONIC		0x0032	Matsushita Electric Industrial Co.
+vendor SANDISK			0x0045	Sandisk Corporation</programlisting>
+
+      <para>shows the first few vendor ids.  Chances are very good
+        that the <literal>NETGEAR_2</literal> entry is really an OEM
+        that NETGEAR purchased cards from and the author of support
+        for those cards was unaware at the time that Netgear was using
+        someone else's id.  These entries are fairly straightforward.
+        There's the vendor keyword used to denote the kind of line
+        that this is.  There's the name of the vendor.  This name will
+        be repeated later in the pccarddevs file, as well as used in
+        the driver's match tables, so keep it short and a valid C
+        identifier.  There's a numeric ID, in hex, for the
+        manufacturer.  Do not add IDs of the form
+        <literal>0xffffffff</literal> or <literal>0xffff</literal>
+        because these are reserved ids (the former is 'no id set'
+        while the latter is sometimes seen in extremely poor quality
+        cards to try to indicate 'none).  Finally there's a string
+        description of the company that makes the card.  This string
+        is not used in FreeBSD for anything but commentary
+        purposes.</para>
+
+      <para>The second section of the file contains the products.  As
+        you can see in the following example:</para>
+
+<programlisting>/* Allied Telesis K.K. */
+product ALLIEDTELESIS LA_PCM	0x0002 Allied Telesis LA-PCM
+
+/* Archos */
+product	ARCHOS ARC_ATAPI	0x0043 MiniCD</programlisting>
+
+      <para>the format is similar to the vendor lines.  There is the
+        product keyword.  Then there is the vendor name, repeated from
+        above.  This is followed by the product name, which is used by
+        the driver and should be a valid C identifier, but may also
+        start with a number.  There's then the product id for this
+        card, in hex.  As with the vendors, there's the same
+        convention for <literal>0xffffffff</literal> and
+        <literal>0xffff</literal>.  Finally, there's a string
+        description of the device itself.  This string typically is
+        not used in FreeBSD, since FreeBSD's pccard bus driver will
+        construct a string from the human readable CIS entries, but it
+        can be used in the rare cases where this is somehow
+        insufficient.  The products are in alphabetical order by
+        manufacturer, then numerical order by product id.  They have a
+        C comment before each manufacturer's entries and there is a
+        blank line between entries.</para>
+
+      <para>The third section is like the previous vendor section, but
+        with all of the manufacturer numeric ids as
+        <literal>-1</literal>.  <literal>-1</literal> means
+        <quote>match anything you find</quote> in the FreeBSD pccard
+        bus code.  Since these are C identifiers, their names must be
+        unique.  Otherwise the format is identical to the first
+        section of the file.</para>
+
+      <para>The final section contains the entries for those cards
+        that we must match with string entries.  This sections' format
+        is a little different than the generic section:</para>
+
+<programlisting>product ADDTRON AWP100		{ "Addtron", "AWP-100&amp;spWireless&amp;spPCMCIA", "Version&amp;sp01.02", NULL }
+product ALLIEDTELESIS WR211PCM	{ "Allied&amp;spTelesis&amp;spK.K.", "WR211PCM", NULL, NULL } Allied Telesis WR211PCM</programlisting>
+
+      <para>We have the familiar product keyword, followed by the
+        vendor name followed by the card name, just as in the second
+        section of the file.  However, then we deviate from that
+        format.  There is a {} grouping, followed by a number of
+        strings.  These strings correspond to the vendor, product and
+        extra information that is defined in a CIS_INFO tuple.  These
+        strings are filtered by the program that generates
+        <filename>pccarddevs.h</filename> to replace &amp;sp with a
+        real space.  NULL entries mean that that part of the entry
+        should be ignored.  In the example I've picked, there's a bad
+        entry.  It shouldn't contain the version number in it unless
+        that's critical for the operation of the card.  Sometimes
+        vendors will have many different versions of the card in the
+        field that all work, in which case that information only makes
+        it harder for someone with a similar card to use it with
+        FreeBSD.  Sometimes it is necessary when a vendor wishes to
+        sell many different parts under the same brand due to market
+        considerations (availability, price, and so forth).  Then it
+        can be critical to disambiguating the card in those rare cases
+        where the vendor kept the same manufacturer/product pair.
+        Regular expression matching is not available at this
+        time.</para>
+
+    </sect2>
+
+    <sect2 id="pccard-probe">
+      <title>Sample probe routine</title>
+
+      <para>To understand how to add a device to the list of supported
+        devices, one must understand the probe and/or match routines
+        that many drivers have.  It is complicated a little in FreeBSD
+        5.x because there is a compatibility layer for OLDCARD present
+        as well.  Since only the window-dressing is different, an
+        idealized version will be presented here.</para>
+
+<programlisting>static const struct pccard_product wi_pccard_products[] = {
+	PCMCIA_CARD(3COM, 3CRWE737A, 0),
+	PCMCIA_CARD(BUFFALO, WLI_PCM_S11, 0),
+	PCMCIA_CARD(BUFFALO, WLI_CF_S11G, 0),
+	PCMCIA_CARD(TDK, LAK_CD011WL, 0),
+	{ NULL }
+};
+
+static int
+wi_pccard_probe(dev)
+	device_t	dev;
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, wi_pccard_products,
+	    sizeof(wi_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return (0);
+	}
+	return (ENXIO);
+}</programlisting>
+
+      <para>Here we have a simple pccard probe routine that matches a
+        few devices.  As stated above, the name may vary (if it isn't
+        <function>foo_pccard_probe()</function> it will be
+        <function>foo_pccard_match()</function>).  The function
+        <function>pccard_product_lookup()</function> is a generalized
+        function that walks the table and returns a pointer to the
+        first entry that it matches.  Some drivers may use this
+        mechanism to convey additional information about some cards to
+        the rest of the driver, so there may be some variance in the
+        table.  The only requirement is that if you have a different
+        table, the first element of the structure you have a table of
+        be a struct pccard_product.</para>
+
+      <para>Looking at the table
+        <structname>wi_pccard_products</structname>, one notices that
+        all the entries are of the form
+        <function>PCMCIA_CARD(<replaceable>foo</replaceable>,
+        <replaceable>bar</replaceable>,
+        <replaceable>baz</replaceable>)</function>.  The
+        <replaceable>foo</replaceable> part is the manufacturer id
+        from <filename>pccarddevs</filename>.  The
+        <replaceable>bar</replaceable> part is the product.  The
+        <replaceable>baz</replaceable> is the expected function number
+        that for this card.  Many pccards can have multiple functions,
+        and some way to disambiguate function 1 from function 0 is
+        needed.  You may see <literal>PCMCIA_CARD_D</literal>, which
+        includes the device description from the
+        <filename>pccarddevs</filename> file.  You may also see
+        <literal>PCMCIA_CARD2</literal> and
+        <literal>PCMCIA_CARD2_D</literal> which are used when you need
+        to match CIS both CIS strings and manufacturer numbers, in the
+        <quote>use the default description</quote> and <quote>take the
+        description from pccarddevs</quote> flavors.</para>
+
+    </sect2>
+
+    <sect2 id="pccard-add">
+      <title>Putting it all together</title>
+
+      <para>So, to add a new device, one must do the following steps.
+        First, one must obtain the identification information from the
+        device.  The easiest way to do this is to insert the device
+        into a PC Card or CF slot and issue <command>devinfo
+        -v</command>.  You'll likely see something like:</para>
+
+<programlisting>        cbb1 pnpinfo vendor=0x104c device=0xac51 subvendor=0x1265 subdevice=0x0300 class=0x060700 at slot=10 function=1
+          cardbus1
+          pccard1
+            unknown pnpinfo manufacturer=0x026f product=0x030c cisvendor="BUFFALO" cisproduct="WLI2-CF-S11" function_type=6 at function=0</programlisting>
+
+      <para>as part of the output.  The manufacturer and product are
+        the numeric IDs for this product.  While the cisvendor and
+        cisproduct are the strings that are present in the CIS that
+        describe this product.</para>
+
+      <para>Since we first want to prefer the numeric option, first
+        try to construct an entry based on that.  The above card has
+        been slightly fictionalized for the purpose of this example.
+        The vendor is BUFFALO, which we see already has an
+        entry:</para>
+
+<programlisting>vendor BUFFALO			0x026f	BUFFALO (Melco Corporation)</programlisting>
+
+      <para>so we're good there.  Looking for an entry for this card,
+        we do not find one.  Instead we find:</para>
+
+<programlisting>/* BUFFALO */
+product BUFFALO WLI_PCM_S11	0x0305	BUFFALO AirStation 11Mbps WLAN
+product BUFFALO LPC_CF_CLT	0x0307	BUFFALO LPC-CF-CLT
+product	BUFFALO	LPC3_CLT	0x030a	BUFFALO LPC3-CLT Ethernet Adapter
+product BUFFALO WLI_CF_S11G	0x030b	BUFFALO AirStation 11Mbps CF WLAN</programlisting>
+
+      <para>we can just add</para>
+
+<programlisting>product BUFFALO WLI2_CF_S11G	0x030c	BUFFALO AirStation ultra 802.11b CF</programlisting>
+
+      <para>to <filename>pccarddevs</filename>.  Presently, there is a
+        manual step to regenerate the
+        <filename>pccarddevs.h</filename> file used to convey these
+        identifiers to the the client driver.  The following steps
+        must be done before you can use them in the driver:</para>
+
+<screen>&prompt.root; <userinput>cd src/sys/dev/pccard</userinput>
+&prompt.root; <userinput>make -f Makefile.pccarddevs</userinput>
+</screen>
+
+      <para>Once these steps are complete, you can add the card to the
+        driver.  That is a simple operation of adding one line:</para>
+
+<programlisting>static const struct pccard_product wi_pccard_products[] = {
+	PCMCIA_CARD(3COM, 3CRWE737A, 0),
+	PCMCIA_CARD(BUFFALO, WLI_PCM_S11, 0),
+	PCMCIA_CARD(BUFFALO, WLI_CF_S11G, 0),
++	PCMCIA_CARD(BUFFALO, WLI_CF2_S11G, 0),
+	PCMCIA_CARD(TDK, LAK_CD011WL, 0),
+	{ NULL }
+};</programlisting>
+
+      <para>Note that I've included a '<literal>+</literal>' in the
+        line before the line that I added, but that is simply to
+        highlight the line.  Do not add it to the actual driver.  Once
+        you've added the line, you can recompile your kernel or module
+        and try to see if it recognizes the device.  If it does and
+        works, please submit a patch.  If it doesn't work, please
+        figure out what is needed to make it work and submit a patch.
+        If it didn't recognize it at all, you have done something
+        wrong and should recheck each step.</para>
+
+      <para>If you are a FreeBSD src committer, and everything appears
+        to be working, then you can commit the changes to the tree.
+        However, there are some minor tricky things that you need to
+        worry about.  First, you must commit the
+        <filename>pccarddevs</filename> file to the tree.  After you
+        have done that, you must regenerate
+        <filename>pccarddevs.h</filename> and commit it as a second
+        commit (this is to make sure that the right
+        &dollar;FreeBSD&dollar; tag is in the latter file).  Finally,
+        you need to commit the additions to the driver.</para>
+
+    </sect2>
+
+    <sect2 id="pccard-pr">
+      <title>Submitting a new device</title>
+
+      <para>Many people send entries for new devices to the author
+        directly.  Please do not do this.  Please submit them as a PR
+        and send the author the PR number for his records.  This makes
+        sure that entries aren't lost.  When submitting a PR, it is
+        unnecessary to include the <filename>pccardevs.h</filename>
+        diffs in the patch, since those will be regenerated.  It is
+        necessary to include a description of the device, as well as
+        the patches to the client driver.  If you don't know the name,
+        use OEM99 as the name, and the author will adjust OEM99
+        accordingly after investigation.  Committers should not commit
+        OEM99, but instead find the highest OEM entry and commit one
+        more than that.</para>
+
+    </sect2>
+
+  </sect1>
+
+</chapter>

@@ -1,0 +1,6 @@
+<!-- $DragonFly: doc/en/articles/contributors/contrib.ent,v 1.1.1.1 2004/04/02 09:35:45 hmp Exp $
+
+<!ENTITY contrib.team	     SYSTEM "contrib.team.sgml">
+<!ENTITY contrib.docteam     SYSTEM "contrib.docteam.sgml">
+<!ENTITY contrib.additional  SYSTEM "contrib.additional.sgml">
+

@@ -1,0 +1,21 @@
+<!--
+     DragonFly Newsgroups
+
+     $DragonFly: doc/en/share/sgml/newsgroups.ent,v 1.1.1.1 2004/04/02 09:36:22 hmp Exp $
+-->
+
+<!ENTITY ng.bugs "the
+ <ulink url='news://nntp.dragonflybsd.org/dragonfly.bugs'>dragonfly.bugs</ulink>
+ newsgroup">
+<!ENTITY ng.commits "the
+ <ulink url='news://nntp.dragonflybsd.org/dragonfly.commits'>dragonfly.commits</ulink>
+ newsgroup">
+<!ENTITY ng.docs "the
+ <ulink url='news://nntp.dragonflybsd.org/dragonfly.docs'>dragonfly.docs</ulink>
+ newsgroup">
+<!ENTITY ng.kernel "the
+ <ulink url='news://nntp.dragonflybsd.org/dragonfly.kernel'>dragonfly.kernel</ulink>
+ newsgroup">
+<!ENTITY ng.submit "the
+ <ulink url='news://nntp.dragonflybsd.org/dragonfly.submit'>dragonfly.submit</ulink>
+ newsgroup">

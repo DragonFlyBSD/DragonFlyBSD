@@ -1,0 +1,14 @@
+  -- ...................................................................... --
+  -- DragonFly SGML Public Identifiers ...................................... --
+  
+  -- $DragonFly: doc/en/share/sgml/catalog,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+  -- $DragonFly: doc/en/share/sgml/catalog,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+
+PUBLIC "-//DragonFlyBSD//DOCUMENT DocBook Stylesheet//EN"
+	"dragonfly.dsl"
+
+PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN"
+	"mailing-lists.ent"
+
+PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Language Specific Entities//EN"
+	"l10n.ent"

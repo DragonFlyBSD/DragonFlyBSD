@@ -1,0 +1,57 @@
+$DragonFly: doc/share/sgml/README.mirrors,v 1.1.1.1 2004/04/02 09:36:37 hmp Exp $
+
+This is an instruction for use of the following files, which are used
+for both of www/ and doc/ tree:
+
+ mirrors.xml		database of FreeBSD mirror sites
+
+ mirrors-local.xsl	stylesheet to create localized version of mirrors.xml.
+ mirrors-master.xsl	"-master" is master, "-local" is slave.
+
+ transtable.xml		word-by-word basis translation table
+
+ transtable-local.xsl	stylesheet to copy and translate a xml document.
+ transtable-master.xsl	"-master" is master, "-local" is slave.
+
+* Notes for mirrors.xml maintainers
+
+  The elements are sorted in alphabetical order when the documents
+  are rendered.  So basically order of <entry> is not important, but
+  <entry> with role="primary" will be handled specially.  Currently
+  it is for the central servers and the primary mirror sites.
+
+* Notes for doc/ and www/ maintainers including translation teams:
+
+  Translators should not simply copy mirrors.xml, mirrors-*.xsl,
+  transtable.xml, and transtable-*.xsl in share/sgml to the
+  language dependent directory.  Instead, create "skeleton" *.xsl,
+  which just import the master stylesheet.  *-local.xsl in share/sgml
+  are "skeleton" for en_US.ISO8859-1, so you can start from these.
+  See ja_JP.eucJP/ for example.
+
+  Documents always use mirrors.xml in the language dependent directory.
+  This file is dynamically generated from share/sgml/mirorrs.xml, and it
+  is localized using transtable-local.xsl.  transtable-local.xsl refers
+  transtable.xml, a translation table for translating country name and
+  so on.  It should be in the language dependent directory, but if not exist,
+  share/sgml/transtable.xml (a dummy translation table) will be used.
+  Similarly, if there is not mirrors-local.xsl in the language dependent
+  directory, share/sgml/mirrors-local.xsl will be used.
+
+  That is:
+                          share/sgml           <langcode>/share/sgml
+  -----------------------------------------------------------------------
+   mirrors.xml            master copy           dynamically generated
+   mirrors-local.xsl      dummy                 this is used if exists
+   mirrors-master.xsl     used from -local.xsl  should not exist
+   transtable.xml         dummy                 this is used if exists
+   transtable-local.xsl   dummy                 this is used if exists
+   transtable-master.xsl  used from -local.xsl  should not exist
+  -----------------------------------------------------------------------
+
+  "dummy" means that it will be used when the localized version of it is
+  not available.  So the translation teams copy the "dummy" files,
+  and adjust them to the language (especially make sure "encoding" part).
+
+  If you add a document using mirrors.xml, use ${XML_MIRRORS} in the
+  Makefile.

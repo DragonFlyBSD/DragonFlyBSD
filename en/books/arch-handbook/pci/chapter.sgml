@@ -1,0 +1,380 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/pci/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:06 hmp Exp $
+-->
+
+<chapter id="pci">
+  <title>PCI Devices</title>
+
+  <para>This chapter will talk about the FreeBSD mechanisms for
+    writing a device driver for a device on a PCI bus.</para>
+
+  <sect1 id="pci-probe">
+    <title>Probe and Attach</title>
+
+    <para>Information here about how the PCI bus code iterates through
+      the unattached devices and see if a newly loaded kld will attach
+      to any of them.</para>
+
+<programlisting>/*
+ * Simple KLD to play with the PCI functions.
+ *
+ * Murray Stokely
+ */
+
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+#include &lt;sys/param.h&gt;  /* defines used in kernel.h */
+#include &lt;sys/module.h&gt;
+#include &lt;sys/systm.h&gt;
+#include &lt;sys/errno.h&gt;
+#include &lt;sys/kernel.h&gt; /* types used in module initialization */
+#include &lt;sys/conf.h&gt;   /* cdevsw struct */
+#include &lt;sys/uio.h&gt;    /* uio struct */
+#include &lt;sys/malloc.h&gt;
+#include &lt;sys/bus.h&gt;	/* structs, prototypes for pci bus stuff */
+
+#include &lt;machine/bus.h&gt;
+#include &lt;sys/rman.h&gt;
+#include &lt;machine/resource.h&gt;
+
+#include &lt;dev/pci/pcivar.h&gt; /* For get_pci macros! */
+#include &lt;dev/pci/pcireg.h&gt;
+
+/* Function prototypes */
+d_open_t	mypci_open;
+d_close_t	mypci_close;
+d_read_t	mypci_read;
+d_write_t	mypci_write;
+
+/* Character device entry points */
+
+static struct cdevsw mypci_cdevsw = {
+	.d_open =	mypci_open,
+	.d_close =	mypci_close,
+	.d_read =	mypci_read,
+	.d_write =	mypci_write,
+	.d_name =	"mypci",
+};
+
+/* vars */
+static dev_t sdev;
+
+/* We're more interested in probe/attach than with
+   open/close/read/write at this point */
+
+int
+mypci_open(dev_t dev, int oflags, int devtype, d_thread_t *td)
+{
+	int err = 0;
+
+	printf("Opened device \"mypci\" successfully.\n");
+	return (err);
+}
+
+int
+mypci_close(dev_t dev, int fflag, int devtype, d_thread_t *td)
+{
+	int err = 0;
+
+	printf("Closing device \"mypci.\"\n");
+	return (err);
+}
+
+int
+mypci_read(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+
+	printf("mypci read!\n");
+	return (err);
+}
+
+int
+mypci_write(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+
+	printf("mypci write!\n");
+	return (err);
+}
+
+/* PCI Support Functions */
+
+/*
+ * Return identification string if this is device is ours.
+ */
+static int
+mypci_probe(device_t dev)
+{
+	device_printf(dev, "MyPCI Probe\nVendor ID : 0x%x\nDevice ID : 0x%x\n",
+	    pci_get_vendor(dev), pci_get_device(dev));
+
+	if (pci_get_vendor(dev) == 0x11c1) {
+		printf("We've got the Winmodem, probe successful!\n");
+		return (0);
+	}
+	return (ENXIO);
+}
+
+/* Attach function is only called if the probe is successful */
+
+static int
+mypci_attach(device_t dev)
+{
+
+	printf("MyPCI Attach for : deviceID : 0x%x\n",pci_get_vendor(dev));
+	sdev = make_dev(<literal>&</literal>mypci_cdevsw, 0, UID_ROOT,
+	    GID_WHEEL, 0600, "mypci");
+	printf("Mypci device loaded.\n");
+	return (ENXIO);
+}
+
+/* Detach device. */
+
+static int
+mypci_detach(device_t dev)
+{
+
+	printf("Mypci detach!\n");
+	return (0);
+}
+
+/* Called during system shutdown after sync. */
+
+static int
+mypci_shutdown(device_t dev)
+{
+
+	printf("Mypci shutdown!\n");
+	return (0);
+}
+
+/*
+ * Device suspend routine.
+ */
+static int
+mypci_suspend(device_t dev)
+{
+
+	printf("Mypci suspend!\n");
+	return (0);
+}
+
+/*
+ * Device resume routine.
+ */
+
+static int
+mypci_resume(device_t dev)
+{
+
+	printf("Mypci resume!\n");
+	return (0);
+}
+
+static device_method_t mypci_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		mypci_probe),
+	DEVMETHOD(device_attach,	mypci_attach),
+	DEVMETHOD(device_detach,	mypci_detach),
+	DEVMETHOD(device_shutdown,	mypci_shutdown),
+	DEVMETHOD(device_suspend,	mypci_suspend),
+	DEVMETHOD(device_resume,	mypci_resume),
+
+	{ 0, 0 }
+};
+
+static driver_t mypci_driver = {
+	"mypci",
+	mypci_methods,
+	0,
+	/*	sizeof(struct mypci_softc), */
+};
+
+static devclass_t mypci_devclass;
+
+DRIVER_MODULE(mypci, pci, mypci_driver, mypci_devclass, 0, 0);</programlisting>
+
+    <para>Additional Resources
+    <itemizedlist>
+      <listitem><simpara><ulink url="http://www.pcisig.org/">PCI
+	Special Interest Group</ulink></simpara></listitem>
+
+      <listitem><simpara>PCI System Architecture, Fourth Edition by
+	Tom Shanley, et al.</simpara></listitem>
+
+    </itemizedlist>
+    </para>
+  </sect1>
+
+  <sect1 id="pci-bus">
+    <title>Bus Resources</title>
+
+    <para>FreeBSD provides an object-oriented mechanism for requesting
+      resources from a parent bus.  Almost all devices will be a child
+      member of some sort of bus (PCI, ISA, USB, SCSI, etc) and these
+      devices need to acquire resources from their parent bus (such as
+      memory segments, interrupt lines, or DMA channels).</para>
+
+    <sect2>
+      <title>Base Address Registers</title>
+
+      <para>To do anything particularly useful with a PCI device you
+      will need to obtain the <emphasis>Base Address
+      Registers</emphasis> (BARs) from the PCI Configuration space.
+      The PCI-specific details of obtaining the BAR are abstracted in
+      the <function>bus_alloc_resource()</function> function.</para>
+
+      <para>For example, a typical driver might have something similar
+      to this in the <function>attach()</function> function:</para>
+
+<programlisting>    sc->bar0id = PCIR_BAR(0);
+    sc->bar0res = bus_alloc_resource(dev, SYS_RES_MEMORY, &amp;(sc->bar0id),
+				  0, ~0, 1, RF_ACTIVE);
+    if (sc->bar0res == NULL) {
+        printf("Memory allocation of PCI base register 0 failed!\n");
+        error = ENXIO;
+        goto fail1;
+    }
+
+    sc->bar1id = PCIR_BAR(1);
+    sc->bar1res = bus_alloc_resource(dev, SYS_RES_MEMORY, &amp;(sc->bar1id),
+				  0, ~0, 1, RF_ACTIVE);
+    if (sc->bar1res == NULL) {
+        printf("Memory allocation of PCI base register 1 failed!\n");
+        error =  ENXIO;
+        goto fail2;
+    }
+    sc->bar0_bt = rman_get_bustag(sc->bar0res);
+    sc->bar0_bh = rman_get_bushandle(sc->bar0res);
+    sc->bar1_bt = rman_get_bustag(sc->bar1res);
+    sc->bar1_bh = rman_get_bushandle(sc->bar1res);
+
+</programlisting>
+
+      <para>Handles for each base address register are kept in the
+        <structname>softc</structname> structure so that they can be
+        used to write to the device later.</para>
+
+      <para>These handles can then be used to read or write from the
+        device registers with the <function>bus_space_*</function>
+        functions.  For example, a driver might contain a shorthand
+        function to read from a board specific register like this:</para>
+
+<programlisting>uint16_t
+board_read(struct ni_softc *sc, uint16_t address) {
+    return bus_space_read_2(sc->bar1_bt, sc->bar1_bh, address);
+}
+</programlisting>
+
+      <para>Similarly, one could write to the registers with:</para>
+
+<programlisting>void
+board_write(struct ni_softc *sc, uint16_t address, uint16_t value) {
+    bus_space_write_2(sc->bar1_bt, sc->bar1_bh, address, value);
+}
+</programlisting>
+
+      <para>These functions exist in 8bit, 16bit, and 32bit versions
+        and you should use
+        <function>bus_space_{read|write}_{1|2|4}</function>
+        accordingly.</para>
+
+    </sect2>
+    <sect2>
+      <title>Interrupts</title>
+
+      <para>Interrupts are allocated from the object-oriented bus code
+        in a way similar to the memory resources.  First an IRQ
+        resource must be allocated from the parent bus, and then the
+        interrupt handler must be set up to deal with this IRQ.</para>
+
+      <para>Again, a sample from a device
+        <function>attach()</function> function says more than
+        words.</para>
+
+<programlisting>/* Get the IRQ resource */
+
+    sc->irqid = 0x0;
+    sc->irqres = bus_alloc_resource(dev, SYS_RES_IRQ, &amp;(sc->irqid),
+				  0, ~0, 1, RF_SHAREABLE | RF_ACTIVE);
+    if (sc->irqres == NULL) {
+	printf("IRQ allocation failed!\n");
+	error = ENXIO;
+	goto fail3;
+    }
+
+    /* Now we should set up the interrupt handler */
+
+    error = bus_setup_intr(dev, sc->irqres, INTR_TYPE_MISC,
+			   my_handler, sc, &amp;(sc->handler));
+    if (error) {
+	printf("Couldn't set up irq\n");
+	goto fail4;
+    }
+
+    sc->irq_bt = rman_get_bustag(sc->irqres);
+    sc->irq_bh = rman_get_bushandle(sc->irqres);
+</programlisting>
+
+      <para>Some care must be taken in the detach routine of the
+      driver.  You must quiesce the device's interrupt stream, and
+      remove the interrupt handler.  Once
+      <function>bus_teardown_intr()</function> has returned, you
+      know that your interrupt handler will no longer be called and
+      that all threads that might have been executing this interrupt handler
+      have returned.  Since this function can sleep, you must not hold
+      any mutexes when calling this function.</para>
+
+    </sect2>
+
+    <sect2>
+      <title>DMA</title>
+      <para>This section is obsolete, and present only for historical
+      reasons.  The proper methods for dealing with these issues is to
+      use the <function>bus_space_dma*()</function> functions instead.
+      This paragraph can be removed when this section is updated to reflect
+      that usage.  However, at the moment, the API is in a bit of
+      flux, so once that settles down, it would be good to update this
+      section to reflect that.</para>
+
+      <para>On the PC, peripherals that want to do bus-mastering DMA
+      must deal with physical addresses.  This is a problem since
+      FreeBSD uses virtual memory and deals almost exclusively with
+      virtual addresses.  Fortunately, there is a function,
+      <function>vtophys()</function> to help.</para>
+
+<programlisting>#include &lt;vm/vm.h&gt;
+#include &lt;vm/pmap.h&gt;
+
+#define vtophys(virtual_address) (...)
+</programlisting>
+
+      <para>The solution is a bit different on the alpha however, and
+        what we really want is a function called
+        <function>vtobus()</function>.</para>
+
+<programlisting>#if defined(__alpha__)
+#define vtobus(va)      alpha_XXX_dmamap((vm_offset_t)va)
+#else
+#define vtobus(va)      vtophys(va)
+#endif
+</programlisting>
+
+    </sect2>
+
+    <sect2>
+      <title>Deallocating Resources</title>
+
+      <para>It is very important to deallocate all of the resources
+        that were allocated during <function>attach()</function>.
+        Care must be taken to deallocate the correct stuff even on a
+        failure condition so that the system will remain usable while
+        your driver dies.</para>
+
+    </sect2>
+  </sect1>
+
+</chapter>

@@ -1,0 +1,357 @@
+<!--
+     Trademark Legend, as required by The Open Group, Sun, etc..
+
+     This file contains entities with trademark attributions for all
+     the companies the FreeBSD documentation references.  It also
+     contains entities for common products with proper trademark
+     symbols.
+
+     Please keep this file sorted.
+
+     $DragonFly: doc/share/sgml/trademarks.ent,v 1.1.1.1 2004/04/02 09:37:15 hmp Exp $
+-->
+
+<!ENTITY tm-attrib.dragonflybsd "<para>DragonFlyBSD is a registered
+  trademark of the DragonFlyBSD Project.</para>">
+
+<!ENTITY tm-attrib.3com "<para>3Com and HomeConnect are registered
+  trademarks of 3Com Corporation.</para>">
+<!-- An SGML entity can't start with a number... -->
+<!ENTITY tm.3com "<trademark class='registered'>3Com</trademark>">
+
+<!ENTITY tm-attrib.3ware "<para>3ware and Escalade are registered
+  trademarks of 3ware Inc.</para>">
+<!ENTITY tm.3ware "<trademark class='registered'>3ware</trademark>">
+<!ENTITY escalade "<trademark class='registered'>Escalade</trademark>">
+
+<!-- http://www.adaptec.com/worldwide/company/compeditorial.html?prodkey=legal_copyright -->
+<!ENTITY tm-attrib.adaptec "<para>Adaptec is a registered trademark of
+  Adaptec, Inc.</para>">
+<!ENTITY adaptec "<trademark class='registered'>Adaptec</trademark>">
+
+<!ENTITY tm-attrib.adobe "<para>Adobe, Acrobat, Acrobat Reader, and
+  PostScript are either registered trademarks or trademarks of Adobe
+  Systems Incorporated in the United States and/or other
+  countries.</para>">
+<!ENTITY acrobat "<trademark class='registered'>Acrobat</trademark>">
+<!ENTITY acrobat.reader "<trademark class='registered'>Acrobat&nbsp;Reader</trademark>">
+<!ENTITY adobe "<trademark class='registered'>Adobe</trademark>">
+<!ENTITY postscript "<trademark class='registered'>PostScript</trademark>">
+
+<!-- http://www.amd.com/us-en/Trademarkinformation/0,,1435_1442,00.html -->
+<!ENTITY tm-attrib.amd "<para>AMD, Am486, Am5X86, AMD Athlon, AMD
+  Duron, AMD Opteron, AMD-K6, &Eacute;lan, and PCnet are
+  trademarks of Advanced Micro Devices, Inc.</para>">
+<!ENTITY am486 "<trademark class='registered'>Am486</trademark>">
+<!ENTITY am5x86 "<trademark class='registered'>Am5x86</trademark>">
+<!ENTITY amd.athlon "<trademark>AMD&nbsp;Athlon</trademark>">
+<!ENTITY amd.duron "<trademark>AMD&nbsp;Duron</trademark>">
+<!ENTITY amd.k6 "<trademark class='registered'>AMD-K6</trademark>">
+<!ENTITY amd.opteron "<trademark>AMD&nbsp;Operon</trademark>">
+<!ENTITY elan "<trademark>&Eacute;lan</trademark>">
+
+<!ENTITY tm-attrib.apple "<para>Apple, FireWire, Mac, Macintosh, Mac OS,
+  Quicktime, and TrueType are trademarks of Apple Computer, Inc.,
+  registered in the United States and other countries.</para>">
+<!ENTITY firewire "<trademark class='registered'>FireWire</trademark>">
+<!ENTITY mac "<trademark class='registered'>Mac</trademark>">
+<!ENTITY macintosh "<trademark class='registered'>Macintosh</trademark>">
+<!ENTITY macos "<trademark class='registered'>Mac&nbsp;OS</trademark>">
+<!ENTITY quicktime "<trademark class='registered'>Quicktime</trademark>">
+<!ENTITY truetype "<trademark class='registered'>TrueType</trademark>">
+
+<!ENTITY tm-attrib.arm "<para>ARM is a registered trademark of ARM
+  Limited.</para>">
+<!ENTITY arm "<trademark class='registered'>ARM</trademark>">
+
+<!-- http://www.bluetooth.com/sig/trademark.use.asp -->
+<!ENTITY tm-attrib.bluetooth "<para>The Bluetooth word mark is owned
+  by the Bluetooth SIG, Inc.</para>">
+<!ENTITY bluetooth "<trademark class='registered'>Bluetooth</trademark>">
+
+<!ENTITY tm-attrib.broadcom "<para>Broadcom is a registered trademark
+  of Broadcom Corporation and/or its subsidiaries.</para>">
+<!ENTITY broadcom "<trademark class='registered'>Broadcom</trademark>">
+
+<!-- http://www.checkpoint.com/copyright.html -->
+<!ENTITY tm-attrib.check-point "<para>Check Point, Firewall-1, and
+  VPN-1 are trademarks of Check Point Software Technologies
+  Ltd..</para>">
+
+<!ENTITY tm-attrib.cisco "<para>Cisco, Catalyst, and IOS are
+  registered trademarks of Cisco Systems, Inc. and/or its affiliates
+  in the United States and certain other countries.">
+<!ENTITY catalyst "<trademark class='registered'>Catalyst</trademark>">
+<!ENTITY ios "<trademark class='registered'>IOS</trademark>">
+
+<!ENTITY tm-attrib.corel "<para>Corel and WordPerfect are trademarks
+  or registered trademarks of Corel Corporation and/or its
+  subsidiaries in Canada, the United States and/or other
+  countries.</para>">
+
+<!-- http://www.creative.com/legal.asp -->
+<!ENTITY tm-attrib.creative "<para>Sound Blaster is a trademark of
+  Creative Technology Ltd. in the United States and/or other
+  countries.</para>">
+<!ENTITY soundblaster "<trademark class='registered'>SoundBlaster</trademark>">
+
+<!-- http://www.cvsup.org/ -->
+<!ENTITY tm-attrib.cvsup "<para>CVSup is a registered trademark of
+  John D. Polstra.</para>">
+
+<!-- http://www.dell.com/us/en/gen/misc/policy_007_policy.htm -->
+<!ENTITY tm-attrib.dell "<para>Dell, Dell Precision, Latitude,
+  Optiplex, PowerEdge are trademarks or registered trademarks of Dell
+  Computer Corporation</para>">
+<!ENTITY dell "<trademark>Dell</trademark>">
+<!ENTITY poweredge "<trademark>PowerEdge</trademark>">
+
+<!ENTITY tm-attrib.freebsd "<para>FreeBSD is a registered trademark of
+  Wind River Systems, Inc.  This is expected to change soon.</para>">
+
+<!-- http://www.heidelberg.com/hq/eng/small_print/trademarks.asp -->
+<!ENTITY tm-attrib.heidelberger "<para>Heidelberg, Helvetica,
+  Palatino, and Times Roman are either registered trademarks or
+  trademarks of Heidelberger Druckmaschinen AG in the U.S. and other
+  countries.</para>">
+
+<!ENTITY tm-attrib.ibm "<para>IBM, AIX, EtherJet, Netfinity, OS/2, PowerPC, PS/2, S/390, and ThinkPad are
+  trademarks of International Business Machines Corporation in the
+  United States, other countries, or both.</para>">
+<!ENTITY aix "<trademark class='registered'>AIX</trademark>">
+<!ENTITY etherjet "<trademark>EtherJet</trademark>">
+<!ENTITY netfinity "<trademark class='registered'>Netfinity</trademark>">
+<!ENTITY os2 "<trademark class='registered'>OS/2</trademark>">
+<!ENTITY powerpc "<trademark class='registered'>PowerPC</trademark>">
+<!ENTITY ps2 "<trademark class='registered'>PS/2</trademark>">
+<!ENTITY s390 "<trademark class='registered'>S/390</trademark>">
+<!ENTITY thinkpad "<trademark class='registered'>ThinkPad</trademark>">
+
+<!ENTITY tm-attrib.ieee "<para>IEEE, POSIX, and 802 are registered
+  trademarks of Institute of Electrical and Electronics Engineers,
+  Inc. in the United States.</para>">
+<!ENTITY posix "<trademark class='registered'>POSIX</trademark>">
+
+<!ENTITY tm-attrib.intel "<para>Intel, Celeron, EtherExpress, i386,
+  i486, Itanium, Pentium, and Xeon are trademarks or registered
+  trademarks of Intel Corporation or its subsidiaries in the United
+  States and other countries.</para>">
+<!ENTITY celeron "<trademark class='registered'>Celeron</trademark>">
+<!ENTITY etherexpress "<trademark>EtherExpress</trademark>">
+<!ENTITY i386 "<trademark>i386</trademark>">
+<!ENTITY i486 "<trademark>i486</trademark>">
+<!ENTITY intel "<trademark class='registered'>Intel</trademark>">
+<!ENTITY itanium "<trademark class='registered'>Itanium</trademark>">
+<!ENTITY pentium "<trademark class='registered'>Pentium</trademark>">
+<!ENTITY xeon "<trademark>Xeon</trademark>">
+
+<!-- http://www.quicken.com/support/trademark/ -->
+<!ENTITY tm-attrib.intuit "<para>Intuit and Quicken are registered
+  trademarks and/or registered service marks of Intuit Inc., or one of
+  its subsidiaries, in the United States and other countries.</para>">
+
+<!ENTITY tm-attrib.iomega "<para>Iomega, Zip, and Jaz are either
+  registered trademarks or trademarks of Iomega Corporation in the
+  United States and/or other countries.</para>">
+<!ENTITY iomegazip "<trademark class='registered'>Zip</trademark>">
+<!ENTITY jaz "<trademark class='registered'>Jaz</trademark>">
+
+<!ENTITY tm-attrib.lantronix "<para>Lantronix and EasyIO are
+  trademarks of Lantronix Corporation.</para>">
+<!ENTITY easyio "<trademark>EasyIO</trademark>">
+
+<!ENTITY tm-attrib.linux "<para>Linux is a registered trademark of
+  Linus Torvalds in the United States.</para>">
+
+<!-- http://www.lsilogic.com/trademrk.html -->
+<!ENTITY tm-attrib.lsilogic "<para>LSI Logic, AcceleRAID, eXtremeRAID,
+  MegaRAID and Mylex are trademarks or registered trademarks of LSI
+  Logic Corp.</para>">
+<!ENTITY acceleraid "<trademark>AcceleRAID</trademark>">
+<!ENTITY megaraid "<trademark class='registered'>MegaRAID</trademark>">
+<!ENTITY mylex "<trademark class='registered'>Mylex</trademark>">
+
+<!ENTITY tm-attrib.macromedia "<para>Macromedia, Flash, and Shockwave are
+  trademarks or registered trademarks of Macromedia, Inc. in the
+  United States and/or other countries.</para>">
+<!ENTITY flash "<trademark>Flash</trademark>">
+<!ENTITY macromedia "<trademark class='registered'>Macromedia</trademark>">
+<!ENTITY shockwave "<trademark class='registered'>Shockwave</trademark>">
+
+<!ENTITY tm-attrib.microsoft "<para>Microsoft, FrontPage, MS-DOS,
+  Outlook, Windows, Windows Media, and Windows NT are either
+  registered trademarks or trademarks of Microsoft Corporation in the
+  United States and/or other countries.</para>">
+<!ENTITY microsoft "<trademark class='registered'>Microsoft</trademark>">
+<!ENTITY microsoft.windows "&microsoft;&nbsp;&windows;">
+<!ENTITY ms-dos "<trademark class='registered'>MS-DOS</trademark>">
+<!ENTITY outlook "<trademark class='registered'>Outlook</trademark>">
+<!ENTITY windows "<trademark class='registered'>Windows</trademark>">
+<!ENTITY windows.media "<trademark class='registered'>Windows Media</trademark>">
+<!ENTITY windowsnt "<trademark class='registered'>Windows&nbsp;NT</trademark>">
+
+<!ENTITY tm-attrib.mips "<para>MIPS and R4000 are registered
+  trademarks of MIPS Technologies, Inc. in the United States and other
+  countries.</para>">
+<!ENTITY mips "<trademark class='registered'>MIPS</trademark>">
+
+<!-- http://www.mysql.com/company/trademark.html -->
+<!ENTITY tm-attrib.mysql "<para>MySQL is a registered trademark of
+  MySQL AB in the United States, the European Union and other
+  countries.</para>">
+<!ENTITY mysql "<trademark>MySQL</trademark>">
+
+<!-- http://www.m-sys.com/content/LegalTerms.asp -->
+<!ENTITY tm-attrib.m-systems "<para>M-Systems and DiskOnChip are
+  trademarks or registered trademarks of M-Systems Flash Disk
+  Pioneers, Ltd.</para>">
+<!ENTITY diskonchip "<trademark class='registered'>DiskOnChip</trademark>">
+
+<!ENTITY tm-attrib.netscape "<para>Netscape and the Netscape Navigator
+  are registered trademarks of Netscape Communications Corporation in
+  the U.S. and other countries.</para>">
+<!ENTITY netscape "<trademark class='registered'>Netscape</trademark>">
+<!ENTITY netscape.navigator "<trademark class='registered'>Netscape&nbsp;Navigator</trademark>">
+
+<!-- http://www.nexthop.com/legal.shtml -->
+<!ENTITY tm-attrib.nexthop "<para>GateD and NextHop are registered and
+  unregistered trademarks of NextHop in the U.S. and other
+  countries.</para>">
+<!ENTITY gated "<trademark class='registered'>GateD</trademark>">
+
+<!-- http://www.novell.com/company/legal/trademarks/tmlist.html -->
+<!ENTITY tm-attrib.novell "<para>NetWare, NetWare Loadable Module, and
+  NLM are either registered trademarks or trademarks of Novell,
+  Inc. in the United States and other countries.</para>">
+
+<!ENTITY tm-attrib.opengroup "<para>Motif, OSF/1, and UNIX are
+  registered trademarks and IT DialTone and The Open Group are
+  trademarks of The Open Group in the United States and other
+  countries.</para>">
+<!ENTITY motif "<trademark class='registered'>Motif</trademark>">
+<!ENTITY unix "<trademark class='registered'>UNIX</trademark>">
+
+<!-- http://www.oracle.com/html/trademark.html -->
+<!-- http://www.oracle.com/html/3party.html -->
+<!ENTITY tm-attrib.oracle "<para>Oracle is a registered trademark
+  of Oracle Corporation.</para>">
+<!ENTITY oracle "<trademark class='registered'>Oracle</trademark>">
+
+<!-- http://www.powerquest.com/legal/ -->
+<!ENTITY tm-attrib.powerquest "<para>PowerQuest and PartitionMagic are
+  registered trademarks of PowerQuest Corporation in the United States
+  and/or other countries.</para>">
+<!ENTITY partitionmagic "<trademark class='registered'>PartitionMagic</trademark>">
+
+<!-- http://www.qualcomm.com/main/legal.html -->
+<!ENTITY tm-attrib.qualcomm "<para>QUALCOMM and Eudora are registered
+  trademarks of QUALCOMM Incorporated.</para>">
+<!ENTITY eudora "<trademark class='registered'>Eudora</trademark>">
+
+<!-- http://www.realnetworks.com/company/logos/policy.html -->
+<!ENTITY tm-attrib.realnetworks "<para>RealNetworks, RealPlayer, and
+  RealAudio are the registered trademarks of RealNetworks,
+  Inc.</para>">
+
+<!-- Note: RedHat doesn't use (r)/(tm) for their own trademarks -->
+<!-- http://www.redhat.com/legal/legal_statement.html -->
+<!ENTITY tm-attrib.redhat "<para>Red Hat, RPM, are trademarks or
+  registered trademarks of Red Hat, Inc. in the United States and
+  other countries.</para>">
+
+<!ENTITY tm-attrib.sap "<para>SAP, R/3, and mySAP are trademarks or
+  registered trademarks of SAP AG in Germany and in several other
+  countries all over the world.</para>">
+<!ENTITY r3 "<trademark class='registered'>R/3</trademark>">
+<!ENTITY sap "<trademark class='registered'>SAP</trademark>">
+<!ENTITY sap.r3 "&sap;&nbsp;&r3;">
+
+<!ENTITY tm-attrib.sgi "<para>Silicon Graphics, SGI, and OpenGL are
+  registered trademarks of Silicon Graphics, Inc., in the United
+  States and/or other countries worldwide.</para>">
+<!ENTITY opengl "<trademark class='registered'>OpenGL</trademark>">
+
+<!ENTITY tm-attrib.sparc "<para>Sparc, Sparc64, SPARCEngine, and
+  UltraSPARC are trademarks of SPARC International, Inc in the United
+  States and other countries.  Products bearing SPARC trademarks are
+  based upon architecture developed by Sun Microsystems, Inc.</para>">
+<!ENTITY sparc "<trademark class='registered'>Sparc</trademark>">
+<!ENTITY sparc64 "<trademark class='registered'>Sparc64</trademark>">
+<!ENTITY sparcengine "<trademark class='registered'>SPARCEngine</trademark>">
+<!ENTITY ultrasparc "<trademark class='registered'>UltraSPARC</trademark>">
+
+<!ENTITY tm-attrib.sun "<para>Sun, Sun Microsystems, Java, Java Virtual Machine, JavaServer Pages, JDK, JSP, JVM, Netra, Solaris, StarOffice,
+  Sun Blade, Sun Enterprise, Sun Fire, SunOS, and Ultra are trademarks or registered trademarks of
+  Sun Microsystems, Inc. in the United States and other
+  countries.</para>">
+<!ENTITY java "<trademark>Java</trademark>">
+<!ENTITY java.virtual.machine "<trademark>Java Virtual Machine</trademark>">
+<!ENTITY javaserver.pages "<trademark>JavaServer Pages</trademark>">
+<!ENTITY jdk "<trademark>JDK</trademark>">
+<!ENTITY jsp "<trademark>JSP</trademark>">
+<!ENTITY jvm "<trademark>JVM</trademark>">
+<!ENTITY netra "<trademark>Netra</trademark>">
+<!ENTITY solaris "<trademark>Solaris</trademark>">
+<!ENTITY staroffice "<trademark>StarOffice</trademark>">
+<!ENTITY sun.blade "<trademark>Sun&nbsp;Blade</trademark>">
+<!ENTITY sun.enterprise "<trademark>Sun&nbsp;Enterprise</trademark>">
+<!ENTITY sun.fire "<trademark>Sun&nbsp;Fire</trademark>">
+<!ENTITY sun.ultra "Sun&nbsp;<trademark>Ultra</trademark>">
+<!ENTITY sunos "<trademark>SunOS</trademark>">
+
+<!-- http://www.symantec.com/legal/legal_note.html -->
+<!ENTITY tm-attrib.symantec "<para>Symantec and Ghost are registered
+  trademarks of Symantec Corporation in the United States and other
+  countries.</para>">
+
+<!-- http://www.mathworks.com/company/trademarks.shtml -->
+<!ENTITY tm-attrib.themathworks "<para>MATLAB is a registered trademark
+  of The MathWorks, Inc.</para>">
+<!ENTITY matlab "<trademark class='registered'>MATLAB</trademark>">
+
+<!ENTITY tm-attrib.thomson "<para>SpeedTouch is a trademark of
+  Thomson</para>">
+<!ENTITY speedtouch "<trademark>SpeedTouch</trademark>">
+
+<!-- http://www.transmeta.com/about/legal.html -->
+<!ENTITY tm-attrib.transmeta "<para>Transmeta and Crusoe are either
+  trademarks or registered trademarks of Transmeta Corporation in the
+  United States and/or other countries.</para>">
+<!ENTITY crusoe "<trademark>Crusoe</trademark>">
+<!ENTITY transmeta "<trademark>Transmeta</trademark>">
+
+<!-- http://www.usr.com/adbuilder/ab-usage-guidelines.asp -->
+<!-- http://www.usr.com/adbuilder/ab-tips-trade-ref.asp -->
+<!ENTITY tm-attrib.usrobotics "<para>U.S. Robotics and Sportster are
+  registered trademarks of U.S. Robotics Corporation.</para>">
+<!ENTITY sportster "<trademark class='registered'>Sportster</trademark>">
+<!ENTITY usrobotics "<trademark class='registered'>U.S. Robotics</trademark>">
+
+<!-- http://www.maplesoft.com/trademarks.shtml -->
+<!ENTITY tm-attrib.waterloomaple "<para>Waterloo Maple and Maple are
+  trademarks or registered trademarks of Waterloo Maple Inc.</para>">
+<!ENTITY maple "<trademark>Maple</trademark>">
+
+<!-- http://www.wolfram.com/company/terms.html -->
+<!ENTITY tm-attrib.wolframresearch "<para>Mathematica is a registered
+  trademark of Wolfram Research, Inc.</para>">
+<!ENTITY mathematica "<trademark class='registered'>Mathematica</trademark>">
+
+<!-- http://www.vmware.com/legal.html -->
+<!ENTITY tm-attrib.vmware "<para>VMware is a trademark of VMware,
+  Inc.</para>">
+
+<!ENTITY tm-attrib.xfree86 "<para>XFree86 is a trademark of The
+  XFree86 Project, Inc.</para>">
+<!ENTITY xfree86 "<trademark>XFree86</trademark>">
+
+<!-- http://www.xiph.org/ -->
+<!ENTITY tm-attrib.xiph "<para>Ogg Vorbis and Xiph.Org are trademarks
+  of Xiph.Org.</para>">
+
+<!ENTITY tm-attrib.general "<para>Many of the designations used by
+  manufacturers and sellers to distinguish their products are claimed
+  as trademarks.  Where those designations appear in this document,
+  and the FreeBSD Project was aware of the trademark claim, the
+  designations have been followed by the <quote>&trade;</quote> or the
+  <quote>&reg;</quote> symbol.</para>">

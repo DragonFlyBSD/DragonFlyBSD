@@ -1,0 +1,1127 @@
+<!--
+  $DragonFly: doc/share/sgml/bibliography.sgml,v 1.1.1.1 2004/04/02 09:36:39 hmp Exp $
+  $DragonFly: doc/share/sgml/bibliography.sgml,v 1.1.1.1 2004/04/02 09:36:39 hmp Exp $
+-->
+
+<bibliography id="bibliography">
+  <title>Bibliography</title>
+
+  <biblioentry id="biblio-unleashed">
+    <biblioset relation="book">
+      <title>FreeBSD Unleashed</title>
+
+      <authorgroup>
+	<author>
+	  <firstname>Michael</firstname>
+	  <surname>Urban</surname>
+	</author>
+	<author>
+	  <firstname>Brian</firstname>
+	  <surname>Tiemann</surname>
+	</author>
+      </authorgroup>
+
+      <publisher>
+	<publishername>Sams</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pagenums>992</pagenums>
+
+      <pubdate>October 2001</pubdate>
+
+      <isbn>ISBN 0-67232-206-4</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44sysman">
+    <biblioset relation="book">
+      <title>4.4BSD System Manager's Manual</title>
+
+      <corpauthor>Computer Systems Research Group, University of
+	California, Berkeley</corpauthor>
+
+      <publisher>
+	<publishername>O'Reilly and Associates</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>June 1994</pubdate>
+
+      <pagenums>804 pages</pagenums>
+
+      <isbn>ISBN 1-56592-080-5</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44userman">
+    <biblioset relation="book">
+      <title>4.4BSD User's Reference Manual</title>
+
+      <corpauthor>Computer Systems Research Group, University of
+	California, Berkeley</corpauthor>
+
+      <publisher>
+	<publishername>O'Reilly and Associates</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>June 1994</pubdate>
+
+      <pagenums>905 pages</pagenums>
+
+      <isbn>ISBN 1-56592-075-9</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44suppman">
+    <biblioset relation="book">
+      <title>4.4BSD User's Supplementary Documents</title>
+
+      <corpauthor>Computer Systems Research Group, University of
+	California, Berkeley</corpauthor>
+
+      <publisher>
+	<publishername>O'Reilly and Associates</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>June 1994</pubdate>
+
+      <pagenums>712 pages</pagenums>
+
+      <isbn>ISBN 1-56592-076-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44progman">
+    <biblioset relation="book">
+      <title>4.4BSD Programmer's Reference Manual</title>
+
+      <corpauthor>Computer Systems Research Group, University of
+	California, Berkeley</corpauthor>
+
+      <publisher>
+	<publishername>O'Reilly and Associates</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>June 1994</pubdate>
+
+      <pagenums>866 pages</pagenums>
+
+      <isbn>ISBN 1-56592-078-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44progsupp">
+    <biblioset relation="book">
+      <title>4.4BSD Programmer's Supplementary Documents</title>
+
+      <corpauthor>Computer Systems Research Group, University of
+	California, Berkeley</corpauthor>
+
+      <publisher>
+	<publishername>O'Reilly and Associates</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>June 1994</pubdate>
+
+      <pagenums>596 pages</pagenums>
+
+      <isbn>ISBN 1-56592-079-1</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-44kernel">
+    <biblioset relation="book">
+      <title>The Design and Implementation of the 4.4BSD Operating System</title>
+
+      <authorgroup>
+	<author>
+	  <firstname>M. K.</firstname>
+
+	  <surname>McKusick</surname>
+	</author>
+
+	<author>
+	  <firstname>Kirk</firstname>
+
+	  <surname>Marshall</surname>
+	</author>
+
+	<author>
+	  <firstname>Keith</firstname>
+
+	  <surname>Bostic</surname>
+	</author>
+
+	<author>
+	  <firstname>Michael J</firstname>
+
+	  <surname>Karels</surname>
+	</author>
+
+	<author>
+	  <firstname>John</firstname>
+
+	  <surname>Quarterman</surname>
+	</author>
+      </authorgroup>
+
+      <publisher>
+	<publishername>Addison-Wesley</publishername>
+
+	<address>
+	  <city>Reading</city>
+	  <state>MA</state>
+	</address>
+      </publisher>
+
+      <pubdate>1996</pubdate>
+
+      <isbn>ISBN 0-201-54979-4</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-nemeth3rd">
+    <biblioset relation="book">
+      <title>Unix System Administration Handbook</title>
+
+      <authorgroup>
+        <author>
+          <firstname>Evi</firstname>
+
+          <surname>Nemeth</surname>
+        </author>
+
+        <author>
+          <firstname>Garth</firstname>
+
+          <surname>Snyder</surname>
+        </author>
+
+        <author>
+          <firstname>Scott</firstname>
+
+          <surname>Seebass</surname>
+        </author>
+
+        <author>
+          <firstname>Trent R.</firstname>
+
+          <surname>Hein</surname>
+        </author>
+
+        <author>
+          <firstname>John</firstname>
+
+          <surname>Quarterman</surname>
+        </author>
+      </authorgroup>
+
+      <publisher>
+        <publishername>Prentice-Hall</publishername>
+      </publisher>
+
+      <edition>3rd edition</edition>
+
+      <pubdate>2000</pubdate>
+
+      <isbn>ISBN 0-13-020601-6</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="lehey3rd">
+    <biblioset relation="book">
+      <title>The Complete FreeBSD</title>
+
+      <author>
+        <firstname>Greg</firstname>
+
+        <surname>Lehey</surname>
+      </author>
+
+      <publisher>
+        <publishername>Walnut Creek</publishername>
+      </publisher>
+
+      <edition>3rd edition</edition>
+
+      <pubdate>June 1999</pubdate>
+
+      <pagenums>773 pages</pagenums>
+
+      <isbn>ISBN 1-57176-246-9</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-handbook">
+    <biblioset relation="book">
+      <title>The FreeBSD Handbook</title>
+
+      <corpauthor>FreeBSD Documentation Project</corpauthor>
+
+      <publisher>
+        <publishername>BSDi</publishername>
+      </publisher>
+
+      <edition>1st Edition</edition>
+
+      <pubdate>November 1999</pubdate>
+
+      <pagenums>489 pages</pagenums>
+
+      <isbn>ISBN 1-57176-241-8</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-mckusick-1">
+    <abbrev>McKusick et al, 1994</abbrev>
+
+    <biblioset relation="manual">
+      <title>Berkeley Software Architecture Manual, 4.4BSD
+        Edition</title>
+
+      <authorgroup>
+        <author>
+          <firstname>M. K.</firstname>
+
+          <surname>McKusick</surname>
+        </author>
+
+        <author>
+          <firstname>M. J.</firstname>
+
+          <surname>Karels</surname>
+        </author>
+
+        <author>
+          <firstname>S. J.</firstname>
+
+          <surname>Leffler</surname>
+        </author>
+
+        <author>
+          <firstname>W. N.</firstname>
+
+          <surname>Joy</surname>
+        </author>
+
+        <author>
+          <firstname>R. S.</firstname>
+
+          <surname>Faber</surname>
+        </author>
+      </authorgroup>
+
+      <pagenums>5:1-42</pagenums>
+    </biblioset>
+  </biblioentry>
+
+
+
+
+  <biblioentry id="biblio-ja-fbsdpc98">
+    <biblioset relation="book">
+      <title>FreeBSD for PC 98'ers (in Japanese)</title>
+      <publisher>
+        <publishername>SHUWA System Co, LTD.</publishername>
+      </publisher>
+      <isbn>ISBN 4-87966-468-5 C3055 P2900E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-fbsd">
+    <biblioset relation="book">
+      <title>FreeBSD (in Japanese)</title>
+      <publisher>
+        <publishername>CUTT</publishername>
+      </publisher>
+      <isbn>ISBN 4-906391-22-2</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-compintro">
+    <biblioset relation="book">
+      <title>Complete Introduction to FreeBSD (in Japanese)</title>
+      <publisher>
+        <publishername>Shoeisha Co., Ltd</publishername>
+      </publisher>
+      <isbn>ISBN 4-88135-473-6 P3600E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-unixstarterkit">
+    <biblioset relation="book">
+      <title>Personal UNIX Starter Kit FreeBSD (in Japanese)</title>
+      <publisher>
+        <publishername>ASCII</publishername>
+      </publisher>
+      <isbn>ISBN 4-7561-1733-3 P3000E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-fbsdhb">
+    <biblioset relation="book">
+      <title>FreeBSD Handbook (Japanese translation)</title>
+      <publisher>
+        <publishername>ASCII</publishername>
+      </publisher>
+      <isbn>ISBN 4-7561-1580-2 P3800E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ge-fbsdmitmeth">
+    <biblioset relation="book">
+      <title>FreeBSD mit Methode (in German)</title>
+      <publisher>
+        <publishername>Computer und Literature Verlag/Vertrieb Hanser</publishername>
+      </publisher>
+      <pubdate>1998</pubdate>
+      <isbn>ISBN 3-932311-31-0</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-fbsdinstandutil">
+    <biblioset relation="book">
+      <title>FreeBSD install and Utilization Manual (in Japanese)</title>
+      <publisher>
+        <publishername>Mainichi Communications Inc.</publishername>
+      </publisher>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-indo-intserv">
+    <biblioset relation="book">
+      <title>Building Internet Server with FreeBSD (in Indonesia Language)</title>
+      <publisher>
+        <publishername>Elex Media Komputindo</publishername>
+      </publisher>
+      <author>
+        <firstname>Onno W</firstname>
+        <surname>Purbo</surname>
+      </author>
+      <author>
+        <firstname>Dodi</firstname>
+        <surname>Maryanto</surname>
+      </author>
+      <author>
+        <firstname>Syahrial</firstname>
+        <surname>Hubbany</surname>
+      </author>
+      <author>
+        <firstname>Widjil</firstname>
+        <surname>Widodo</surname>
+      </author>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-fbsdcorpnetguide">
+    <biblioset relation="book">
+      <title>The FreeBSD Corporate Networker's Guide</title>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixnutshell">
+    <biblioset relation="book">
+      <title>UNIX in a Nutshell</title>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc.</publishername>
+      </publisher>
+      <pubdate>1990</pubdate>
+      <isbn>ISBN 093717520X</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-cantfindadmin">
+    <biblioset relation="book">
+      <title>What You Need To Know When You Can't Find Your Unix System Administrator</title>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc.</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <author>
+        <firstname>Linda</firstname>
+        <surname>Mui</surname>
+      </author>
+      <isbn>ISBN 1-56592-104-6</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ja-fbsdusrrefman">
+    <biblioset relation="book">
+      <title>FreeBSD User's Reference Manual (Japanese translation)</title>
+      <publisher>
+        <publishername>Mainichi Communications Inc.</publishername>
+      </publisher>
+      <corpauthor>Jpman Project, Japan FreeBSD Users Group</corpauthor>
+      <pubdate>1998</pubdate>
+      <isbn>ISBN 4-8399-0088-4 P3800E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-newcomeunix">
+    <biblioset relation="article">
+      <citetitle pubwork="book"><ulink url="http://unixhelp.ed.ac.uk/">Online Guide 
+        for newcomers to the UNIX environment</ulink></citetitle>
+      <publisher>
+        <publishername><ulink url="http://www.ed.ac.uk/">Edinburgh University</ulink></publishername>
+      </publisher>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-dnsandbind">
+    <biblioset relation="book">
+      <title>DNS and BIND</title>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <isbn>ISBN 1-56592-512-2</isbn>
+      <author>
+        <firstname>Paul Albitz</firstname>
+        <surname>Albitz</surname>
+      </author>
+      <author>
+        <firstname>Cricket</firstname>
+        <surname>Liu</surname>
+      </author>
+      <pubdate>1998</pubdate>
+      <edition>3rd</edition>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-sendmail">
+    <biblioset relation="book">
+      <title>Sendmail</title>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <pubdate>1997</pubdate>
+      <edition>2nd</edition>
+      <author>
+        <firstname>Brian</firstname>
+        <surname>Costales</surname>
+      </author>
+      <isbn>ISBN 1-56592-222-0</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-esssysadmin">
+    <biblioset relation="book">
+      <title>Essential System Administration</title>
+      <author>
+        <firstname>&AElig;leen</firstname>
+        <surname>Frisch</surname>
+      </author>
+      <edition>2nd</edition>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates</publishername>
+      </publisher>
+      <pubdate>1995</pubdatE>
+      <isbn>ISBN 1-56592-127-5</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-tcpipnetworkadministration">
+    <biblioset relation="book">
+      <title>TCP/IP Network Administration</title>
+      <author>
+        <firstname>Craig</firstname>
+        <surname>Hunt</surname>
+      </author>
+      <edition>2nd</edition>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <pubdate>1997</pubdate>
+      <isbn>ISBN 1-56592-322-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-managingnfsandnis">
+    <biblioset relation="book">
+      <title>Managing NFS and NIS</title>
+      <author>
+        <firstname>Hal</firstname>
+        <surname>Stern</surname>
+      </author>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <pubdate>1991</pubdate>
+      <isbn>ISBN 0-937175-75-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-jpmanprojectjfug">
+    <biblioset relation="book">
+      <citetitle pubwork="book"><ulink url="http://www.pc.mycom.co.jp/FreeBSD/sam.html">
+        FreeBSD System Administration's Manual</ulink></citetitle>
+      <corpauthor><ulink url="http://www.jp.FreeBSD.org">Jpman Project, Japan FreeBSD
+        Users Group</ulink></corpauthor>
+      <publisher>
+        <publishername><ulink url="http://www.pc.mycom.co.jp/">Mainichi Communications 
+          Inc.</ulink></publishername>
+      </publisher>
+      <pubdate>1998</pubdate>
+      <isbn>ISBN 4-8399-0109-0 P3300E</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-xwinsystoolkit">
+    <biblioset relation="book">
+      <title>X Window System Toolkit</title>
+      <publisher>
+        <publishername>Digital Press</publishername>
+      </publisher>
+      <author>
+        <firstname>Paul</firstname>
+        <surname>Asente</surname>
+      </author>
+      <isbn>ISBN 1-55558-051-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-carefman">
+    <biblioset relation="book">
+      <title>C: A Reference Manual</title>
+      <publisher>
+        <publishername>Prentice Hall</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <edition>4th</edition>
+      <author>
+        <firstname>Samuel P.</firstname>
+        <surname>Harbison</surname>
+      </author>
+      <author>
+        <firstname>Guy L. Jr.</firstname>
+        <surname>Steele</surname>
+      </author>
+      <isbn>ISBN 0-13-326224-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-thecproglang">
+    <biblioset relation="book">
+      <title>The C Programming Language</title>
+      <publisher>
+        <publishername>Prentice Hall</publishername>
+      </publisher>
+      <pubdate>1998</pubdate>
+      <author>
+        <firstname>Brian, Kernighan and Dennis</firstname>
+        <surname>Ritchie</surname>
+      </author>
+      <isbn>ISBN 0-13-110362-9</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-portingunixsoft">
+    <biblioset relation="book">
+      <title>Porting UNIX Software</title>
+      <author>
+        <firstname>Greg</firstname>
+        <surname>Lehey</surname>
+      </author>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc.</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <isbn>ISBN 1-56592-126-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-thestandardclibrary">
+    <biblioset relation="book">
+      <title>The Standard C Library</title>
+      <publisher>
+        <publishername>Prentice Hall</publishername>
+      </publisher>
+      <pubdate>1992</pubdate>
+      <author>
+        <firstname>P. J.</firstname>
+        <surname>Plauger</surname>
+      </author>
+      <isbn>ISBN 0-13-131509-9</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-advprogintheunixenv">
+    <biblioset relation="book">
+      <title>Advanced Programming in the UNIX Environment</title>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1992</pubdate>
+      <author>
+        <firstname>W. Richard</firstname>
+        <surname>Stevens</surname>
+      </author>
+      <isbn>ISBN 0-201-56317-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixnetprog">
+    <biblioset relation="book">
+      <title>UNIX Network Programming</title>
+      <author>
+        <firstname>W. Richard</firstname>
+        <surname>Stevens</surname>
+      </author>
+      <publisher>
+        <publishername>Prentice Hall</publishername>
+      </publisher>
+      <pubdate>1998</pubdate>
+      <edition>2nd</edition>
+      <isbn>ISBN 0-13-490012-X</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-writeserialdriverforunix">
+    <biblioset relation="book">
+      <title>Writing Serial Drivers for UNIX</title>
+      <author>
+        <firstname>Bill</firstname>
+        <surname>Wells</surname>
+      </author>
+      <pubdate>December 1994</pubdate>
+      <publisher>
+        <publishername>Dr. Dobb's Journal</publishername>
+      </publisher>
+      <pagenums>pp68-71, pp97-99</pagenums>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixsysarch">
+    <biblioset relation="book">
+      <title>UNIX System Architecture</title>
+      <publisher>
+        <publishername>Prentice-Hall, Inc</publishername>
+      </publisher>
+      <pubdate>1990</pubdate>
+      <author>
+        <firstname>Prabhat K.</firstname>
+        <surname>Andleigh</surname>
+      </author>
+      <isbn>ISBN 0-13-949843-5</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-portingunixtothe386">
+    <biblioset relation="book">
+      <title>Porting UNIX to the 386</title>
+      <author>
+        <firstname>William</firstname>
+        <surname>Jolitz</surname>
+      </author>
+      <publisher>
+        <publishername>Dr. Dobb's Journal</publishername>
+      </publisher>
+      <pubdate>January 1991-July 1992</pubdate>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-tcpipillv1theprotocols">
+    <biblioset relation="book">
+      <title>TCP/IP Illustrated, Volume 1: The Protocols</title>
+      <author>
+        <firstname>W. Richard</firstname>
+        <surname>Stevens</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1996</pubdate>
+      <isbn>ISBN 0-201-63346-9</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixsysformodrnarch">
+    <biblioset relation="book">
+      <title>Unix Systems for Modern Architectures</title>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <author>
+        <firstname>Curt</firstname>
+        <surname>Schimmel</surname>
+      </author>
+      <pubdate>1994</pubdate>
+      <isbn>ISBN 0-201-63338-8</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-tcpipillvol3">
+    <biblioset relation="book">
+      <title>TCP/IP Illustrated, Volume 3: TCP for Transactions, HTTP, NNTP and the UNIX Domain Protocols</title>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1996</pubdate>
+      <author>
+        <firstname>W. Richard</firstname>
+        <surname>Stevens</surname>
+      </author>
+      <isbn>ISBN 0-201-63495-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixinternthenewfrontiers">
+    <biblioset relation="book">
+      <title>UNIX Internals -- The New Frontiers</title>
+      <author>
+        <firstname>Uresh</firstname>
+        <surname>Vahalia</surname>
+      </author>
+      <publisher>
+        <publishername>Prentice Hall</publishername>
+      </publisher>
+      <pubdate>1996</pubdate>
+      <isbn>ISBN 0-13-101908-2</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-tcpipillvol2theimplementation">
+    <biblioset relation="book">
+      <title>TCP/IP Illustrated, Volume 2: The Implementation</title>
+      <author>
+        <firstname>Gary R.</firstname>
+        <surname>Wright</surname>
+      </author>
+      <author>
+        <firstname>W. Richard</firstname>
+        <surname>Stevens</surname>
+      </author>
+      <pubdate>1995</pubdate>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <isbn>ISBN 0-201-63354-X</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-firewallsandinternetsecurity">
+    <biblioset relation="book">
+      <title>Firewalls and Internet Security: Repelling the Wily Hacker</title>
+      <author>
+        <firstname>William R.</firstname>
+        <surname>CHeswick</surname>
+      </author>
+      <author>
+        <firstname>Steven M.</firstname>
+        <surname>Bellovin</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <isbn>ISBN 0-201-63357-4</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-practicalunixsecurity">
+    <biblioset relation="book">
+      <title>Practical UNIX Security</title>
+      <author>
+        <firstname>Simson</firstname>
+        <surname>Garfinkel</surname>
+      </author>
+      <author>
+        <firstname>Gene</firstname>
+        <surname>Spafford</surname>
+      </author>
+      <pubdate>1996</pubdate>
+      <edition>2nd</edition>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <isbn>ISBN 1-56592-148-8</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-pgpprettygoodprivacy">
+    <biblioset relation="book">
+      <title>PGP Pretty Good Privacy</title>
+      <author>
+        <firstname>Simson</firstname>
+        <surname>Garfinkel</surname>
+      </author>
+      <publisher>
+        <publishername>O'Reilly &amp; Associates, Inc</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <isbn>ISBN 1-56592-098-8</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-pentiumprocarch">
+    <biblioset relation="book">
+      <title>Pentium Processor System Architecture</title>
+      <author>
+        <firstname>Don</firstname>
+        <surname>Anderson</surname>
+      </author>
+      <author>
+        <firstname>Tom</firstname>
+        <surname>Shanley</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <edition>2nd</edition>
+      <isbn>ISBN 0-201-40992-5</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-progguidetothesvgacards">
+    <biblioset relation="book">
+      <title>Programmer's Guide to the EGA, VGA, and Super VGA Cards</title>
+      <author>
+        <firstname>Richard F.</firstname>
+        <surname>Ferraro</surname>
+      </author>
+      <edition>3rd</edition>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <isbn>ISBN 0-201-62490-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-80486">
+    <biblioset relation="book">
+      <title>80486 System Architecture</title>
+      <author>
+        <firstname>Tom</firstname>
+        <surname>Shanley</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <edition>3rd</edition>
+      <isbn>ISBN 0-201-40994-1</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-isasysarch">
+    <biblioset relation="book">
+      <title>ISA System Architecture</title>
+      <author>
+        <firstname>Tom</firstname>
+        <surname>Shanley</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <edition>3rd</edition>
+      <pubdate>1995</pubdate>
+      <isbn>ISBN 0-201-40996-8</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-pcisysarch">
+    <biblioset relation="book">
+      <title>PCI System Architecture</title>
+      <author>
+        <firstname>Tom</firstname>
+        <surname>Shanley</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1995</pubdate>
+      <edition>3rd</edition>
+      <isbn>ISBN 0-201-40993-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-theundocumentedpc">
+    <biblioset relation="book">
+      <title>The Undocumented PC</title>
+      <author>
+        <firstname>Frank</firstname>
+        <surname>Van Gilluwe</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1994</pubdate>
+      <isbn>ISBN 0-201-62277-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-bellsystemtechnicaljournal">
+    <biblioset relation="book">
+      <title>Bell System Technical Journal</title>, Unix Time-Sharing System
+      <publisher>
+	<publishername>American Telephone & Telegraph Company</publishername>
+      </publisher>
+      <pubdate>July-August 1978</pubdate>
+      <edition>Vol 57, No 6, Part 2</edition>
+      <isbn>ISSN0005-8580</isbn>
+    </biblioset>
+  </biblioentry> 
+
+  <biblioentry id="biblio-commentaryonunix">
+    <biblioset relation="book">
+      <title>Lion's Commentary on UNIX</title>
+      <author>
+        <firstname>John</firstname>
+        <surname>Lion</surname>
+      </author>
+      <publisher>
+        <publishername>ITP Media Group</publishername>
+      </publisher>
+      <pubdate>1996</pubdate>
+      <edition>6th</edition>
+      <isbn>ISBN 1573980137</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-newhackerdict">
+    <biblioset relation="book">
+      <title>The New Hacker's Dictionary</title>
+      <author>
+        <firstname>Eric S.</firstname>
+        <surname>Raymond</surname>
+      </author>
+      <publisher>
+        <publishername>MIT Press</publishername>
+      </publisher>
+      <pubdate>1996</pubdate>
+      <edition>3rd</edition>
+      <isbn>ISBN 0-262-68092-0</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-aqtrcentofunix">
+    <biblioset relation="book">
+      <title>A quarter century of UNIX</title>
+      <author>
+        <firstname>Peter H.</firstname>
+        <surname>Salus</surname>
+      </author>
+      <publisher>
+        <publishername>Addison-Wesley</publishername>
+      </publisher>
+      <pubdate>1994</pubdate>
+      <isbn>ISBN 0-201-54777-5</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-unixhatershandbook">
+    <biblioset relation="book">
+      <title>The UNIX-HATERS Handbook</title>
+      <author>
+        <firstname>Steven</firstname>
+        <surname>Strassman</surname>
+      </author>
+      <author>
+        <firstname>Daniel</firstname>
+        <surname>Weise</surname>
+      </author>
+      <author>
+        <firstname>Simon</firstname>
+        <surname>Garfinkel</surname>
+      </author>
+      <publisher>
+        <publishername>IDG Books Worldwide, Inc</publishername>
+      </publisher>
+      <pubdate>1994</pubdate>
+      <isbn>ISBN 1-56884-203-1</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-lifewithunix">
+    <biblioset relation="book">
+      <title>Life with UNIX &mdash; special edition</title>
+      <author>
+        <firstname>Don</firstname>
+        <surname>Libes</surname>
+      </author>
+      <author>
+        <firstname>Sandy</firstname>
+        <surname>Ressler</surname>
+      </author>
+      <publisher>
+        <publishername>Prentice-Hall</publishername>
+      </publisher>
+      <pubdate>1989</pubdate>
+      <isbn>ISBN 0-13-536657-7</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-bsdfamilytree">
+    <biblioset relation="book">
+      <citetitle pubwork="book">
+        <ulink url="ftp://ftp.uk.FreeBSD.org/pub/FreeBSD/FreeBSD-current/src/share/misc/bsd-family-tree">
+          The BSD Family Tree</ulink></citetitle>
+      <pubdate>1997</pubdate>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="absolutebsd">
+    <biblioset relation="book">
+      <title>Absolute BSD</title>
+
+      <author>
+        <firstname>Michael</firstname>
+
+        <surname>Lucas</surname>
+      </author>
+
+      <publisher>
+        <publishername>No Starch Press</publishername>
+      </publisher>
+
+      <pubdate>June 2002</pubdate>
+
+      <isbn>ISBN 1-886411-74-3</isbn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-ccppusersjournal">
+    <biblioset relation="magazine">
+      <title>The C/C++ Users Journal</title>
+      <publisher>
+        <publishername>R&amp;D Publications Inc.</publishername>
+      </publisher>
+      <issn>ISSN 1075-2838</issn>
+    </biblioset>
+  </biblioentry>
+
+  <biblioentry id="biblio-sysadminthejournalforunixsysadmins">
+    <biblioset relation="magazine">
+      <title>Sys Admin &mdash; The Journal for UNIX System Administrators</title>
+      <publisher>
+        <publishername>Miller Freeman, Inc</publishername>
+      </publisher>
+      <issn>ISSN 1061-2688</issn>
+    </biblioset>
+  </biblioentry>
+</bibliography>
+
+<!--
+   Local Variables:
+   mode: sgml
+   sgml-indent-data: t
+   sgml-omittag: nil
+   sgml-always-quote-attributes: t
+   sgml-parent-document: ("../../en_US.ISO8859-1/books/bibliography/book.sgml" "book" "bibliography")
+   End:
+-->

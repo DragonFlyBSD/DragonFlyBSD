@@ -1,0 +1,2487 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/isa/chapter.sgml,v 1.1.1.1 2004/04/02 09:35:59 hmp Exp $
+-->
+
+<chapter id="isa-driver">
+  <title>ISA device drivers</title>
+
+  <para>
+    <emphasis> 
+      This chapter was written by &a.babkin; Modifications for the
+      handbook made by &a.murray;, &a.wylie;, and &a.logo;.
+    </emphasis>
+  </para>
+
+  <sect1 id="isa-driver-synopsis">
+    <title>Synopsis</title>
+
+    <para>This chapter introduces the issues relevant to writing a
+      driver for an ISA device.  The pseudo-code presented here is
+      rather detailed and reminiscent of the real code but is still
+      only pseudo-code. It avoids the details irrelevant to the
+      subject of the discussion. The real-life examples can be found
+      in the source code of real drivers. In particular the drivers
+      <literal>ep</literal> and <literal>aha</literal> are good sources of information.</para>
+  </sect1>
+
+  <sect1 id="isa-driver-basics">
+    <title>Basic information</title>
+
+    <para>A typical ISA driver would need the following include
+      files:</para>
+
+<programlisting>#include &lt;sys/module.h&gt;
+#include &lt;sys/bus.h&gt;
+#include &lt;machine/bus.h&gt;
+#include &lt;machine/resource.h&gt;
+#include &lt;sys/rman.h&gt;
+
+#include &lt;isa/isavar.h&gt;
+#include &lt;isa/pnpvar.h&gt;</programlisting>
+
+    <para>They describe the things specific to the ISA and generic
+      bus subsystem.</para>
+
+    <para>The bus subsystem is implemented in an object-oriented
+      fashion, its main structures are accessed by associated method
+      functions.</para>
+
+    <para>The list of bus methods implemented by an ISA driver is like
+      one for any other bus. For a hypothetical driver named <quote>xxx</quote>
+      they would be:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para><function>static void xxx_isa_identify (driver_t *,
+          device_t);</function> Normally used for bus drivers, not
+          device drivers. But for ISA devices this method may have
+          special use: if the device provides some device-specific
+          (non-PnP) way to auto-detect devices this routine may
+          implement it.</para>
+      </listitem>
+
+      <listitem>
+	<para><function>static int xxx_isa_probe (device_t
+          dev);</function> Probe for a device at a known (or PnP)
+          location. This routine can also accommodate device-specific
+          auto-detection of parameters for partially configured
+          devices.</para>
+      </listitem>
+
+      <listitem>
+	<para><function>static int xxx_isa_attach (device_t
+          dev);</function> Attach and initialize device.</para>
+      </listitem>
+
+      <listitem>
+	<para><function>static int xxx_isa_detach (device_t
+          dev);</function> Detach device before unloading the driver
+          module.</para>
+      </listitem>
+
+      <listitem>
+        <para><function>static int xxx_isa_shutdown (device_t
+          dev);</function> Execute shutdown of the device before
+          system shutdown.</para>
+      </listitem>
+
+      <listitem>
+	<para><function>static int xxx_isa_suspend (device_t
+          dev);</function> Suspend the device before the system goes
+          to the power-save state. May also abort transition to the
+          power-save state.</para>
+      </listitem>
+
+      <listitem>
+	<para><function>static int xxx_isa_resume (device_t
+ 	  dev);</function> Resume the device activity after return
+ 	  from power-save state.</para>
+      </listitem>
+
+    </itemizedlist>
+
+    <para><function>xxx_isa_probe()</function> and
+      <function>xxx_isa_attach()</function> are mandatory, the rest of
+      the routines are optional, depending on the device's
+      needs.</para>
+
+    <para>The driver is linked to the system with the following set of
+      descriptions.</para>
+
+<programlisting>    /* table of supported bus methods */
+    static device_method_t xxx_isa_methods[] = {
+        /* list all the bus method functions supported by the driver */
+        /* omit the unsupported methods */
+        DEVMETHOD(device_identify,  xxx_isa_identify),
+        DEVMETHOD(device_probe,     xxx_isa_probe),
+        DEVMETHOD(device_attach,    xxx_isa_attach),
+        DEVMETHOD(device_detach,    xxx_isa_detach),
+        DEVMETHOD(device_shutdown,  xxx_isa_shutdown),
+        DEVMETHOD(device_suspend,   xxx_isa_suspend),
+        DEVMETHOD(device_resume,    xxx_isa_resume),
+
+	{ 0, 0 }
+    };
+
+    static driver_t xxx_isa_driver = {
+        "xxx",
+        xxx_isa_methods,
+        sizeof(struct xxx_softc),
+    };
+
+
+    static devclass_t xxx_devclass;
+
+    DRIVER_MODULE(xxx, isa, xxx_isa_driver, xxx_devclass,
+        load_function, load_argument);</programlisting>
+
+      <para>Here struct <structname>xxx_softc</structname> is a
+        device-specific structure that contains private driver data
+        and descriptors for the driver's resources.  The bus code
+        automatically allocates one softc descriptor per device as
+        needed.</para>
+
+      <para>If the driver is implemented as a loadable module then
+        <function>load_function()</function> is called to do
+        driver-specific initialization or clean-up when the driver is
+        loaded or unloaded and load_argument is passed as one of its
+        arguments.  If the driver does not support dynamic loading (in
+        other words it must always be linked into the kernel) then these
+        values should be set to 0 and the last definition would look
+        like:</para>
+
+      <programlisting> DRIVER_MODULE(xxx, isa, xxx_isa_driver,
+       xxx_devclass, 0, 0);</programlisting>
+
+      <para>If the driver is for a device which supports PnP then a
+        table of supported PnP IDs must be defined.  The table
+        consists of a list of PnP IDs supported by this driver and
+        human-readable descriptions of the hardware types and models
+        having these IDs. It looks like:</para>
+
+<programlisting>    static struct isa_pnp_id xxx_pnp_ids[] = {
+        /* a line for each supported PnP ID */
+        { 0x12345678,   "Our device model 1234A" },
+        { 0x12345679,   "Our device model 1234B" },
+        { 0,        NULL }, /* end of table */
+    };</programlisting>
+
+      <para>If the driver does not support PnP devices it still needs
+        an empty PnP ID table, like:</para>
+
+<programlisting>    static struct isa_pnp_id xxx_pnp_ids[] = {
+        { 0,        NULL }, /* end of table */
+    };</programlisting>
+
+    </sect1>
+
+    <sect1 id="isa-driver-device-t">
+      <title>Device_t pointer</title>
+
+      <para><structname>Device_t</structname> is the pointer type for
+	the device structure. Here we consider only the methods
+	interesting from the device driver writer's standpoint.  The
+	methods to manipulate values in the device structure
+	are:</para>
+
+      <itemizedlist>
+
+        <listitem><para><function>device_t
+	  device_get_parent(dev)</function> Get the parent bus of a
+	  device.</para></listitem>
+
+        <listitem><para><function>driver_t
+	  device_get_driver(dev)</function> Get pointer to its driver
+	  structure.</para></listitem>
+
+	<listitem><para><function>char
+	  *device_get_name(dev)</function> Get the driver name, such
+	  as <literal>"xxx"</literal> for our example.</para></listitem>
+
+	<listitem><para><function>int device_get_unit(dev)</function>
+	  Get the unit number (units are numbered from 0 for the
+	  devices associated with each driver).</para></listitem>
+
+	<listitem><para><function>char
+	  *device_get_nameunit(dev)</function> Get the device name
+	  including the unit number, such as <quote>xxx0</quote>, <quote>xxx1</quote> and so
+	  on.</para></listitem>
+
+	<listitem><para><function>char
+	  *device_get_desc(dev)</function> Get the device
+	  description. Normally it describes the exact model of device
+	  in human-readable form.</para></listitem>
+
+	<listitem><para><function>device_set_desc(dev,
+	  desc)</function> Set the description. This makes the device
+	  description point to the string desc which may not be
+	  deallocated or changed after that.</para></listitem>
+
+	<listitem><para><function>device_set_desc_copy(dev,
+	  desc)</function> Set the description. The description is
+	  copied into an internal dynamically allocated buffer, so the
+	  string desc may be changed afterwards without adverse
+	  effects.</para></listitem>
+
+	<listitem><para><function>void
+	  *device_get_softc(dev)</function> Get pointer to the device
+	  descriptor (struct <structname>xxx_softc</structname>)
+	  associated with this device.</para></listitem>
+
+	<listitem><para><function>u_int32_t
+	  device_get_flags(dev)</function> Get the flags specified for
+	  the device in the configuration file.</para></listitem>
+
+      </itemizedlist>
+
+      <para>A convenience function <function>device_printf(dev, fmt,
+	...)</function> may be used to print the messages from the
+	device driver. It automatically prepends the unitname and
+	colon to the message.</para>
+
+      <para>The device_t methods are implemented in the file
+        <filename>kern/bus_subr.c</filename>.</para>
+
+    </sect1>
+
+    <sect1 id="isa-driver-config">
+      <title>Configuration file and the order of identifying and probing
+	during auto-configuration</title>
+
+      <para>The ISA devices are described in the kernel configuration file
+  	like:</para>
+
+      <programlisting>device xxx0 at isa? port 0x300 irq 10 drq 5
+       iomem 0xd0000 flags 0x1 sensitive</programlisting>
+
+      <para>The values of port, IRQ and so on are converted to the
+	resource values associated with the device. They are optional,
+	depending on the device's needs and abilities for
+	auto-configuration. For example, some devices do not need DRQ
+	at all and some allow the driver to read the IRQ setting from
+	the device configuration ports. If a machine has multiple ISA
+	buses the exact bus may be specified in the configuration
+	line, like <literal>isa0</literal> or <literal>isa1</literal>, otherwise the device would be
+	searched for on all the ISA buses.</para>
+
+      <para><literal>sensitive</literal> is a resource requesting that this device must
+	be probed before all non-sensitive devices. It is supported
+	but does not seem to be used in any current driver.</para>
+
+      <para>For legacy ISA devices in many cases the drivers are still
+	able to detect the configuration parameters. But each device
+	to be configured in the system must have a config line. If two
+	devices of some type are installed in the system but there is
+	only one configuration line for the corresponding driver, ie:
+	<programlisting>device xxx0 at isa?</programlisting> then only
+	one device will be configured.</para>
+
+      <para>But for the devices supporting automatic identification by
+	the means of Plug-n-Play or some proprietary protocol one
+	configuration line is enough to configure all the devices in
+	the system, like the one above or just simply:</para>
+
+      <programlisting>device xxx at isa?</programlisting>
+
+      <para>If a driver supports both auto-identified and legacy
+	devices and both kinds are installed at once in one machine
+	then it is enough to describe in the config file the legacy
+	devices only. The auto-identified devices will be added
+	automatically.</para>
+
+      <para>When an ISA bus is auto-configured the events happen as
+  	follows:</para>
+
+      <para>All the drivers' identify routines (including the PnP
+	identify routine which identifies all the PnP devices) are
+	called in random order.  As they identify the devices they add
+	them to the list on the ISA bus.  Normally the drivers'
+	identify routines associate their drivers with the new
+	devices. The PnP identify routine does not know about the
+	other drivers yet so it does not associate any with the new
+	devices it adds.</para>
+
+      <para>The PnP devices are put to sleep using the PnP protocol to
+        prevent them from being probed as legacy devices.</para>
+
+      <para>The probe routines of non-PnP devices marked as
+        <literal>sensitive</literal> are called.  If probe for a device went
+        successfully, the attach routine is called for it.</para>
+
+      <para>The probe and attach routines of all non-PNP devices are
+  	called likewise.</para>
+
+      <para>The PnP devices are brought back from the sleep state and
+        assigned the resources they request: I/O and memory address
+        ranges, IRQs and DRQs, all of them not conflicting with the
+        attached legacy devices.</para>
+
+      <para>Then for each PnP device the probe routines of all the
+        present ISA drivers are called. The first one that claims the
+        device gets attached.  It is possible that multiple drivers
+        would claim the device with different priority; in this case, the
+        highest-priority driver wins.  The probe routines must call
+        <function>ISA_PNP_PROBE()</function> to compare the actual PnP
+        ID with the list of the IDs supported by the driver and if the
+        ID is not in the table return failure. That means that
+        absolutely every driver, even the ones not supporting any PnP
+        devices must call <function>ISA_PNP_PROBE()</function>, at
+        least with an empty PnP ID table to return failure on unknown
+        PnP devices.</para>
+
+      <para>The probe routine returns a positive value (the error
+        code) on error, zero or negative value on success.</para>
+
+      <para>The negative return values are used when a PnP device
+        supports multiple interfaces. For example, an older
+        compatibility interface and a newer advanced interface which
+        are supported by different drivers. Then both drivers would
+        detect the device. The driver which returns a higher value in
+        the probe routine takes precedence (in other words, the driver
+        returning 0 has highest precedence, returning -1 is next,
+        returning -2 is after it and so on). In result the devices
+        which support only the old interface will be handled by the
+        old driver (which should return -1 from the probe routine)
+        while the devices supporting the new interface as well will be
+        handled by the new driver (which should return 0 from the
+        probe routine). If multiple drivers return the same value then
+        the one called first wins. So if a driver returns value 0 it
+        may be sure that it won the priority arbitration.</para>
+
+      <para>The device-specific identify routines can also assign not
+        a driver but a class of drivers to the device. Then all the
+        drivers in the class are probed for this device, like the case
+        with PnP. This feature is not implemented in any existing
+        driver and is not considered further in this document.</para>
+
+      <para>Because the PnP devices are disabled when probing the
+        legacy devices they will not be attached twice (once as legacy
+        and once as PnP).  But in case of device-dependent identify
+        routines it is the responsibility of the driver to make sure
+        that the same device will not be attached by the driver twice:
+        once as legacy user-configured and once as
+        auto-identified.</para>
+
+      <para>Another practical consequence for the auto-identified
+        devices (both PnP and device-specific) is that the flags can
+        not be passed to them from the kernel configuration file. So
+        they must either not use the flags at all or use the flags
+        from the device unit 0 for all the auto-identified devices or
+        use the sysctl interface instead of flags.</para>
+
+      <para>Other unusual configurations may be accommodated by
+        accessing the configuration resources directly with functions
+        of families <function>resource_query_*()</function> and
+        <function>resource_*_value()</function>. Their implementations
+        are located in <filename>kern/subr_bus.c</filename>. The old IDE disk driver
+        <filename>i386/isa/wd.c</filename> contains examples of such use. But the standard
+        means of configuration must always be preferred. Leave parsing
+        the configuration resources to the bus configuration
+        code.</para>
+
+    </sect1>
+
+    <sect1 id="isa-driver-resources">
+      <title>Resources</title>
+
+      <para>The information that a user enters into the kernel
+        configuration file is processed and passed to the kernel as
+        configuration resources. This information is parsed by the bus
+        configuration code and transformed into a value of structure
+        device_t and the bus resources associated with it. The drivers
+        may access the configuration resources directly using
+        functions resource_* for more complex cases of
+        configuration. However, generally this is neither needed nor recommended,
+        so this issue is not discussed further here.</para>
+
+      <para>The bus resources are associated with each device. They
+        are identified by type and number within the type. For the ISA
+        bus the following types are defined:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><emphasis>SYS_RES_IRQ</emphasis> - interrupt
+	    number</para>
+	</listitem>
+
+	<listitem>
+	  <para><emphasis>SYS_RES_DRQ</emphasis> - ISA DMA channel
+	    number</para>
+	</listitem>
+
+	<listitem>
+	  <para><emphasis>SYS_RES_MEMORY</emphasis> - range of
+	    device memory mapped into the system memory space
+	  </para>
+	</listitem>
+
+	<listitem>
+	  <para><emphasis>SYS_RES_IOPORT</emphasis> - range of
+	    device I/O registers</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The enumeration within types starts from 0, so if a device
+        has two memory regions it would have resources of type
+        SYS_RES_MEMORY numbered 0 and 1.  The resource type has
+        nothing to do with the C language type, all the resource
+        values have the C language type <literal>unsigned long</literal> and must be
+        cast as necessary. The resource numbers do not have to be
+        contiguous, although for ISA they normally would be. The
+        permitted resource numbers for ISA devices are:</para>
+
+      <programlisting>          IRQ: 0-1
+          DRQ: 0-1
+          MEMORY: 0-3
+          IOPORT: 0-7</programlisting>
+
+      <para>All the resources are represented as ranges, with a start
+        value and count.  For IRQ and DRQ resources the count would
+        normally be equal to 1. The values for memory refer to the
+        physical addresses.</para>
+
+      <para>Three types of activities can be performed on
+        resources:</para>
+
+      <itemizedlist>
+	<listitem><para>set/get</para></listitem>
+	<listitem><para>allocate/release</para></listitem>
+	<listitem><para>activate/deactivate</para></listitem>
+      </itemizedlist>
+
+      <para>Setting sets the range used by the resource. Allocation
+        reserves the requested range that no other driver would be
+        able to reserve it (and checking that no other driver reserved
+        this range already). Activation makes the resource accessible
+        to the driver by doing whatever is necessary for that (for
+        example, for memory it would be mapping into the kernel
+        virtual address space).</para>
+
+      <para>The functions to manipulate resources are:</para>
+
+      <itemizedlist>
+	<listitem>
+	  <para><function>int bus_set_resource(device_t dev, int type,
+            int rid, u_long start, u_long count)</function></para>
+
+          <para>Set a range for a resource. Returns 0 if successful,
+            error code otherwise.  Normally, this function will
+            return an error only if one of <literal>type</literal>,
+            <literal>rid</literal>, <literal>start</literal> or
+            <literal>count</literal> has a value that falls out of the
+            permitted range.</para>
+
+          <itemizedlist>
+            <listitem>
+              <para> dev - driver's device</para>
+            </listitem>
+            <listitem>
+              <para> type - type of resource, SYS_RES_* </para>
+            </listitem>
+            <listitem>
+              <para> rid - resource number (ID) within type </para>
+            </listitem>
+            <listitem>
+              <para> start, count - resource range </para>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+
+        <listitem>
+          <para><function>int bus_get_resource(device_t dev, int type,
+          int rid, u_long *startp, u_long *countp)</function></para>
+
+          <para>Get the range of resource. Returns 0 if successful,
+            error code if the resource is not defined yet.</para>
+        </listitem>
+
+        <listitem>
+	  <para><function>u_long bus_get_resource_start(device_t dev,
+            int type, int rid) u_long bus_get_resource_count (device_t
+            dev, int type, int rid)</function></para>
+
+          <para>Convenience functions to get only the start or
+            count. Return 0 in case of error, so if the resource start
+            has 0 among the legitimate values it would be impossible
+            to tell if the value is 0 or an error occurred.  Luckily,
+            no ISA resources for add-on drivers may have a start value
+            equal to 0.</para>
+        </listitem>
+
+        <listitem>
+          <para><function>void bus_delete_resource(device_t dev, int
+            type, int rid)</function></para>
+          <para> Delete a resource, make it undefined.</para>
+        </listitem>
+
+        <listitem>
+          <para><function>struct resource *
+            bus_alloc_resource(device_t dev, int type, int *rid,
+            u_long start, u_long end, u_long count, u_int
+            flags)</function></para>
+
+          <para>Allocate a resource as a range of count values not
+            allocated by anyone else, somewhere between start and
+            end. Alas, alignment is not supported.  If the resource
+            was not set yet it is automatically created. The special
+            values of start 0 and end ~0 (all ones) means that the
+            fixed values previously set by
+            <function>bus_set_resource()</function> must be used
+            instead: start and count as themselves and
+            end=(start+count), in this case if the resource was not
+            defined before then an error is returned.  Although rid is
+            passed by reference it is not set anywhere by the resource
+            allocation code of the ISA bus. (The other buses may use a
+            different approach and modify it).</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Flags are a bitmap, the flags interesting for the caller
+        are:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para><emphasis>RF_ACTIVE</emphasis> - causes the resource
+            to be automatically activated after allocation.</para>
+        </listitem>
+
+        <listitem>
+          <para><emphasis>RF_SHAREABLE</emphasis> - resource may be
+            shared at the same time by multiple drivers.</para>
+        </listitem>
+
+        <listitem>
+          <para><emphasis>RF_TIMESHARE</emphasis> - resource may be
+            time-shared by multiple drivers, i.e. allocated at the
+            same time by many but activated only by one at any given
+            moment of time.</para>
+        </listitem>
+<!-- XXXDONT KNOW IT THESE SHOULD BE TWO SEPARATE LISTS OR NOT -->
+        <listitem>
+          <para>Returns 0 on error. The allocated values may be
+            obtained from the returned handle using methods
+            <function>rhand_*()</function>.</para>
+        </listitem>
+        <listitem>
+          <para><function>int bus_release_resource(device_t dev, int
+            type, int rid, struct resource *r)</function></para>
+	</listitem>
+
+        <listitem>
+          <para>Release the resource, r is the handle returned by
+            <function>bus_alloc_resource()</function>.  Returns 0 on
+            success, error code otherwise.</para>
+        </listitem>
+
+        <listitem>
+          <para><function>int bus_activate_resource(device_t dev, int
+            type, int rid, struct resource *r)</function>
+            <function>int bus_deactivate_resource(device_t dev, int
+            type, int rid, struct resource *r)</function></para>
+        </listitem>
+
+        <listitem>
+          <para>Activate or deactivate resource. Return 0 on success,
+            error code otherwise.  If the resource is time-shared and
+            currently activated by another driver then EBUSY is
+            returned.</para>
+        </listitem>
+
+        <listitem>
+          <para><function>int bus_setup_intr(device_t dev, struct
+            resource *r, int flags, driver_intr_t *handler, void *arg,
+            void **cookiep)</function> <function>int
+            bus_teardown_intr(device_t dev, struct resource *r, void
+            *cookie)</function></para>
+        </listitem>
+
+        <listitem>
+          <para>Associate or de-associate the interrupt handler with a
+            device. Return 0 on success, error code otherwise.</para>
+        </listitem>
+
+        <listitem>
+          <para>r - the activated resource handler describing the
+            IRQ</para>
+	  <para>flags - the interrupt priority level, one of:</para>
+
+          <itemizedlist>
+            <listitem>
+              <para><function>INTR_TYPE_TTY</function> - terminals and
+                other likewise character-type devices. To mask them
+                use <function>spltty()</function>.</para>
+            </listitem>
+            <listitem>
+              <para><function>(INTR_TYPE_TTY |
+                INTR_TYPE_FAST)</function> - terminal type devices
+                with small input buffer, critical to the data loss on
+                input (such as the old-fashioned serial ports). To
+                mask them use <function>spltty()</function>.</para>
+            </listitem>
+            <listitem>
+              <para><function>INTR_TYPE_BIO</function> - block-type
+                devices, except those on the CAM controllers. To mask
+                them use <function>splbio()</function>.</para>
+            </listitem>
+            <listitem>
+              <para><function>INTR_TYPE_CAM</function> - CAM (Common
+                Access Method) bus controllers. To mask them use
+                <function>splcam()</function>.</para>
+             </listitem>
+             <listitem>
+               <para><function>INTR_TYPE_NET</function> - network
+                interface controllers. To mask them use
+                <function>splimp()</function>.</para>
+             </listitem>
+             <listitem>
+               <para><function>INTR_TYPE_MISC</function> -
+                miscellaneous devices.  There is no other way to mask
+                them than by <function>splhigh()</function> which
+                masks all interrupts.</para>
+             </listitem>
+          </itemizedlist>
+        </listitem>
+      </itemizedlist>
+
+      <para>When an interrupt handler executes all the other
+        interrupts matching its priority level will be masked. The
+        only exception is the MISC level for which no other interrupts
+        are masked and which is not masked by any other
+        interrupt.</para>
+
+      <itemizedlist>
+        <listitem>
+          <para><emphasis>handler</emphasis> - pointer to the handler
+            function, the type driver_intr_t is defined as <function>void
+            driver_intr_t(void *)</function></para>
+        </listitem>
+        <listitem>
+          <para><emphasis>arg</emphasis> - the argument passed to the
+            handler to identify this particular device. It is cast
+            from void* to any real type by the handler. The old
+            convention for the ISA interrupt handlers was to use the
+            unit number as argument, the new (recommended) convention
+            is using a pointer to the device softc structure.</para>
+        </listitem>
+        <listitem>
+          <para><emphasis>cookie[p]</emphasis> - the value received
+            from <function>setup()</function> is used to identify the
+            handler when passed to
+            <function>teardown()</function></para>
+        </listitem>
+      </itemizedlist>
+
+      <para>A number of methods are defined to operate on the resource
+        handlers (struct resource *). Those of interest to the device
+        driver writers are:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para><function>u_long rman_get_start(r) u_long
+            rman_get_end(r)</function> Get the start and end of
+            allocated resource range.</para>
+        </listitem>
+        <listitem>
+          <para><function>void *rman_get_virtual(r)</function> Get
+            the virtual address of activated memory resource.</para>
+        </listitem>
+      </itemizedlist>
+
+    </sect1>
+
+    <sect1 id="isa-driver-busmem">
+      <title>Bus memory mapping</title>
+
+      <para>In many cases data is exchanged between the driver and the
+        device through the memory. Two variants are possible:</para>
+
+      <para>(a) memory is located on the device card</para>
+      <para>(b) memory is the main memory of the computer</para>
+
+      <para>In case (a) the driver always copies the data back and
+        forth between the on-card memory and the main memory as
+        necessary. To map the on-card memory into the kernel virtual
+        address space the physical address and length of the on-card
+        memory must be defined as a SYS_RES_MEMORY resource. That
+        resource can then be allocated and activated, and its virtual
+        address obtained using
+        <function>rman_get_virtual()</function>.  The older drivers
+        used the function <function>pmap_mapdev()</function> for this
+        purpose, which should not be used directly any more. Now it is
+        one of the internal steps of resource activation.</para>
+
+      <para>Most of the ISA cards will have their memory configured
+        for physical location somewhere in range 640KB-1MB. Some of
+        the ISA cards require larger memory ranges which should be
+        placed somewhere under 16MB (because of the 24-bit address
+        limitation on the ISA bus). In that case if the machine has
+        more memory than the start address of the device memory (in
+        other words, they overlap) a memory hole must be configured at
+        the address range used by devices. Many BIOSes allow
+        configuration of a memory hole of 1MB starting at 14MB or
+        15MB. FreeBSD can handle the memory holes properly if the BIOS
+        reports them properly (this feature may be broken on old BIOSes).</para>
+
+      <para>In case (b) just the address of the data is sent to
+        the device, and the device uses DMA to actually access the
+        data in the main memory. Two limitations are present: First,
+        ISA cards can only access memory below 16MB.  Second, the
+        contiguous pages in virtual address space may not be
+        contiguous in physical address space, so the device may have
+        to do scatter/gather operations. The bus subsystem provides
+        ready solutions for some of these problems, the rest has to be
+        done by the drivers themselves.</para>
+
+      <para>Two structures are used for DMA memory allocation,
+        bus_dma_tag_t and bus_dmamap_t. Tag describes the properties
+        required for the DMA memory. Map represents a memory block
+        allocated according to these properties. Multiple maps may be
+        associated with the same tag.</para>
+
+      <para>Tags are organized into a tree-like hierarchy with
+        inheritance of the properties. A child tag inherits all the
+        requirements of its parent tag, and may make them more strict
+        but never more loose.</para>
+
+      <para>Normally one top-level tag (with no parent) is created for
+        each device unit.  If multiple memory areas with different
+        requirements are needed for each device then a tag for each of
+        them may be created as a child of the parent tag.</para>
+
+      <para>The tags can be used to create a map in two ways.</para>
+
+      <para>First, a chunk of contiguous memory conformant with the
+        tag requirements may be allocated (and later may be
+        freed). This is normally used to allocate relatively
+        long-living areas of memory for communication with the
+        device. Loading of such memory into a map is trivial: it is
+        always considered as one chunk in the appropriate physical
+        memory range.</para>
+
+      <para>Second, an arbitrary area of virtual memory may be loaded
+        into a map. Each page of this memory will be checked for
+        conformance to the map requirement.  If it conforms then it is
+        left at its original location. If it is not then a fresh
+        conformant <quote>bounce page</quote> is allocated and used as intermediate
+        storage. When writing the data from the non-conformant
+        original pages they will be copied to their bounce pages first
+        and then transferred from the bounce pages to the device. When
+        reading the data would go from the device to the bounce pages
+        and then copied to their non-conformant original pages. The
+        process of copying between the original and bounce pages is
+        called synchronization. This is normally used on a per-transfer
+        basis: buffer for each transfer would be loaded, transfer done
+        and buffer unloaded.</para>
+
+      <para>The functions working on the DMA memory are:</para>
+
+      <itemizedlist>
+        <listitem>
+        <para><function>int bus_dma_tag_create(bus_dma_tag_t parent,
+          bus_size_t alignment, bus_size_t boundary, bus_addr_t
+          lowaddr, bus_addr_t highaddr, bus_dma_filter_t *filter, void
+          *filterarg, bus_size_t maxsize, int nsegments, bus_size_t
+          maxsegsz, int flags, bus_dma_tag_t *dmat)</function></para>
+
+        <para>Create a new tag. Returns 0 on success, the error code
+          otherwise.</para>
+
+        <itemizedlist>
+	  <listitem>
+            <para><emphasis>parent</emphasis> - parent tag, or NULL to
+              create a top-level tag.</para>
+	  </listitem>
+
+	  <listitem>
+            <para><emphasis>alignment</emphasis> -
+              required physical alignment of the memory area to be
+              allocated for this tag. Use value 1 for <quote>no specific
+              alignment</quote>. Applies only to the future
+              <function>bus_dmamem_alloc()</function> but not
+              <function>bus_dmamap_create()</function> calls.</para>
+	  </listitem>
+
+	  <listitem>
+              <para><emphasis>boundary</emphasis> - physical address
+              boundary that must not be crossed when allocating the
+              memory. Use value 0 for <quote>no boundary</quote>. Applies only to
+              the future <function>bus_dmamem_alloc()</function> but
+              not <function>bus_dmamap_create()</function> calls.
+              Must be power of 2. If the memory is planned to be used
+              in non-cascaded DMA mode (i.e. the DMA addresses will be
+              supplied not by the device itself but by the ISA DMA
+              controller) then the boundary must be no larger than
+              64KB (64*1024) due to the limitations of the DMA
+              hardware.</para>
+          </listitem>
+
+          <listitem>
+            <para><emphasis>lowaddr, highaddr</emphasis> - the names
+              are slightly misleading; these values are used to limit
+              the permitted range of physical addresses used to
+              allocate the memory.  The exact meaning varies depending
+              on the planned future use:</para>
+
+            <itemizedlist>
+              <listitem>
+                <para>For <function>bus_dmamem_alloc()</function> all
+                  the addresses from 0 to lowaddr-1 are considered
+                  permitted, the higher ones are forbidden.</para>
+              </listitem>
+
+              <listitem>
+                <para>For <function>bus_dmamap_create()</function> all
+                  the addresses outside the inclusive range [lowaddr;
+                  highaddr] are considered accessible. The addresses
+                  of pages inside the range are passed to the filter
+                  function which decides if they are accessible. If no
+                  filter function is supplied then all the range is
+                  considered unaccessible.</para>
+              </listitem>
+
+              <listitem>
+                <para>For the ISA devices the normal values (with no
+                  filter function) are:</para>
+                <para>lowaddr = BUS_SPACE_MAXADDR_24BIT</para>
+                <para>highaddr = BUS_SPACE_MAXADDR</para>
+              </listitem>
+            </itemizedlist>
+
+          </listitem>
+
+          <listitem>
+            <para><emphasis>filter, filterarg</emphasis> - the filter
+              function and its argument. If NULL is passed for filter
+              then the whole range [lowaddr, highaddr] is considered
+              unaccessible when doing
+              <function>bus_dmamap_create()</function>.  Otherwise the
+              physical address of each attempted page in range
+              [lowaddr; highaddr] is passed to the filter function
+              which decides if it is accessible. The prototype of the
+              filter function is: <function>int filterfunc(void *arg,
+              bus_addr_t paddr)</function>. It must return 0 if the
+              page is accessible, non-zero otherwise.</para>
+          </listitem>
+
+	  <listitem>
+            <para><emphasis>maxsize</emphasis> - the maximal size of
+              memory (in bytes) that may be allocated through this
+              tag. In case it is difficult to estimate or could be
+              arbitrarily big, the value for ISA devices would be
+              BUS_SPACE_MAXSIZE_24BIT.</para>
+          </listitem>
+
+	  <listitem>
+            <para><emphasis>nsegments</emphasis> - maximal number of
+              scatter-gather segments supported by the device. If
+              unrestricted then the value BUS_SPACE_UNRESTRICTED
+              should be used. This value is recommended for the parent
+              tags, the actual restrictions would then be specified
+              for the descendant tags. Tags with nsegments equal to
+              BUS_SPACE_UNRESTRICTED may not be used to actually load
+              maps, they may be used only as parent tags. The
+              practical limit for nsegments seems to be about 250-300,
+              higher values will cause kernel stack overflow (the hardware
+	      can not normally support that many
+              scatter-gather buffers anyway).</para>
+          </listitem>
+
+	  <listitem>
+            <para><emphasis>maxsegsz</emphasis> - maximal size of a
+              scatter-gather segment supported by the device. The
+              maximal value for ISA device would be
+              BUS_SPACE_MAXSIZE_24BIT.</para>
+          </listitem>
+
+	  <listitem>
+            <para><emphasis>flags</emphasis> - a bitmap of flags. The
+              only interesting flags are:</para>
+
+	    <itemizedlist>
+	      <listitem>
+                <para><emphasis>BUS_DMA_ALLOCNOW</emphasis> - requests
+                  to allocate all the potentially needed bounce pages
+                  when creating the tag.</para>
+              </listitem>
+
+	      <listitem>
+	        <para><emphasis>BUS_DMA_ISA</emphasis> - mysterious
+                  flag used only on Alpha machines. It is not defined
+                  for the i386 machines.  Probably it should be used
+                  by all the ISA drivers for Alpha machines but it
+                  looks like there are no such drivers yet.</para>
+              </listitem>
+	    </itemizedlist>
+	  </listitem>
+
+          <listitem>
+            <para><emphasis>dmat</emphasis> - pointer to the storage
+              for the new tag to be returned.</para>
+          </listitem>
+
+	</itemizedlist>
+
+      </listitem>
+
+      <listitem> <!-- Second entry in list alpha -->
+        <para><function>int bus_dma_tag_destroy(bus_dma_tag_t
+	  dmat)</function></para>
+
+        <para>Destroy a tag. Returns 0 on success, the error code
+	  otherwise.</para>
+
+        <para>dmat - the tag to be destroyed.</para>
+
+      </listitem>
+
+      <listitem> <!-- Third entry in list alpha -->
+        <para><function>int bus_dmamem_alloc(bus_dma_tag_t dmat,
+          void** vaddr, int flags, bus_dmamap_t
+          *mapp)</function></para>
+
+        <para>Allocate an area of contiguous memory described by the
+          tag. The size of memory to be allocated is tag's maxsize.
+          Returns 0 on success, the error code otherwise. The result
+          still has to be loaded by
+          <function>bus_dmamap_load()</function> before being used to get
+          the physical address of the memory.</para>
+
+<!-- XXX What it is Wylie, I got to here -->
+
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>dmat</emphasis> - the tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>vaddr</emphasis> - pointer to the storage
+                  for the kernel virtual address of the allocated area
+                  to be returned.
+                 </para>
+              </listitem>
+              <listitem>
+                <para>
+                  flags - a bitmap of flags. The only interesting flag is:
+                </para>
+                <itemizedlist>
+                  <listitem>
+                    <para>
+                      <emphasis>BUS_DMA_NOWAIT</emphasis> - if the
+                      memory is not immediately available return the
+                      error. If this flag is not set then the routine
+                      is allowed to sleep until the memory
+                      becomes available.
+                    </para>
+                  </listitem>
+                </itemizedlist>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>mapp</emphasis> - pointer to the storage
+                  for the new map to be returned.
+                </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+
+          <listitem> <!-- Fourth entry in list alpha -->
+            <para>
+              <function>void bus_dmamem_free(bus_dma_tag_t dmat, void
+              *vaddr, bus_dmamap_t map)</function>
+            </para>
+            <para>
+              Free the memory allocated by
+              <function>bus_dmamem_alloc()</function>. At present, 
+              freeing of the memory allocated with ISA restrictions is
+              not implemented.  Because of this the recommended model
+              of use is to keep and re-use the allocated areas for as
+              long as possible. Do not lightly free some area and then
+              shortly allocate it again. That does not mean that
+              <function>bus_dmamem_free()</function> should not be
+              used at all: hopefully it will be properly implemented
+              soon.
+            </para>
+
+            <itemizedlist>
+              <listitem>
+                <para><emphasis>dmat</emphasis> - the tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>vaddr</emphasis> - the kernel virtual
+                  address of the memory
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>map</emphasis> - the map of the memory (as
+                  returned from
+                  <function>bus_dmamem_alloc()</function>)
+                </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+
+          <listitem> <!-- The fifth entry in list alpha -->
+            <para>
+              <function>int bus_dmamap_create(bus_dma_tag_t dmat, int
+              flags, bus_dmamap_t *mapp)</function>
+            </para>
+            <para>
+              Create a map for the tag, to be used in
+              <function>bus_dmamap_load()</function> later.  Returns 0
+              on success, the error code otherwise.
+            </para>
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>dmat</emphasis> - the tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>flags</emphasis> - theoretically, a bit map
+                  of flags. But no flags are defined yet, so at present
+                  it will be always 0.
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>mapp</emphasis> - pointer to the storage
+                  for the new map to be returned
+                </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+
+          <listitem> <!-- Sixth entry in the alpha list -->
+            <para>
+              <function>int bus_dmamap_destroy(bus_dma_tag_t dmat,
+              bus_dmamap_t map)</function>
+            </para>
+            <para>
+              Destroy a map. Returns 0 on success, the error code otherwise.
+            </para>
+
+            <itemizedlist>
+              <listitem>
+                <para>
+                  dmat - the tag to which the map is associated
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  map - the map to be destroyed
+                </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+
+          <listitem> <!-- Seventh entry in list alpha -->
+            <para>
+              <function>int bus_dmamap_load(bus_dma_tag_t dmat,
+              bus_dmamap_t map, void *buf, bus_size_t buflen,
+              bus_dmamap_callback_t *callback, void *callback_arg, int
+              flags)</function>
+            </para>
+            <para>
+              Load a buffer into the map (the map must be previously
+              created by <function>bus_dmamap_create()</function> or
+              <function>bus_dmamem_alloc()</function>).  All the pages
+              of the buffer are checked for conformance to the tag
+              requirements and for those not conformant the bounce
+              pages are allocated. An array of physical segment
+              descriptors is built and passed to the callback
+              routine. This callback routine is then expected to
+              handle it in some way. The number of bounce buffers in
+              the system is limited, so if the bounce buffers are
+              needed but not immediately available the request will be
+              queued and the callback will be called when the bounce
+              buffers will become available. Returns 0 if the callback
+              was executed immediately or EINPROGRESS if the request
+              was queued for future execution. In the latter case the
+              synchronization with queued callback routine is the
+              responsibility of the driver.
+            </para>
+            <!--<blockquote>-->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>dmat</emphasis> - the tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>map</emphasis> - the map
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>buf</emphasis> - kernel virtual address of
+                  the buffer
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>buflen</emphasis> - length of the buffer
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>callback</emphasis>,<function>
+                  callback_arg</function> - the callback function and
+                  its argument
+                </para>
+              </listitem>
+            </itemizedlist>
+            <!--</blockquote>-->
+            <para>
+              The prototype of callback function is:
+            </para>
+            <para>
+              <function>void callback(void *arg, bus_dma_segment_t
+              *seg, int nseg, int error)</function>
+            </para>
+            <!--     <blockquote> -->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>arg</emphasis> - the same as callback_arg
+                  passed to <function>bus_dmamap_load()</function>
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>seg</emphasis> - array of the segment
+                  descriptors
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>nseg</emphasis> - number of descriptors in
+                  array
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>error</emphasis> - indication of the
+                  segment number overflow: if it is set to EFBIG then
+                  the buffer did not fit into the maximal number of
+                  segments permitted by the tag. In this case only the
+                  permitted number of descriptors will be in the
+                  array. Handling of this situation is up to the
+                  driver: depending on the desired semantics it can
+                  either consider this an error or split the buffer in
+                  two and handle the second part separately
+                </para>
+              </listitem>
+            </itemizedlist>
+            <!--     </blockquote>  -->
+            <para>
+              Each entry in the segments array contains the fields:
+            </para>
+
+            <!--   <blockquote> -->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>ds_addr</emphasis> - physical bus address
+                  of the segment
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>ds_len</emphasis> - length of the segment
+                </para>
+              </listitem>
+            </itemizedlist>
+            <!--   </blockquote>-->
+          </listitem>
+
+          <listitem> <!-- Eighth entry in alpha list -->
+            <para>
+              <function>void bus_dmamap_unload(bus_dma_tag_t dmat,
+              bus_dmamap_t map)</function>
+            </para>
+            <para>unload the map.
+            </para>
+            <!--  <blockquote>  -->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>dmat</emphasis> - tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>map</emphasis> - loaded map
+                </para>
+              </listitem>
+            </itemizedlist>
+            <!--  </blockquote>  -->
+          </listitem>
+
+          <listitem> <!-- Ninth entry list alpha -->
+            <para>
+              <function>void bus_dmamap_sync (bus_dma_tag_t dmat,
+              bus_dmamap_t map, bus_dmasync_op_t op)</function>
+            </para>
+            <para>
+              Synchronise a loaded buffer with its bounce pages before
+              and after physical transfer to or from device. This is
+              the function that does all the necessary copying of data
+              between the original buffer and its mapped version. The
+              buffers must be synchronized both before and after doing
+              the transfer.
+            </para>
+            <!--  <blockquote> -->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <emphasis>dmat</emphasis> - tag
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>map</emphasis> - loaded map
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <emphasis>op</emphasis> - type of synchronization
+                  operation to perform:
+                </para>
+              </listitem>
+            </itemizedlist>
+            <!-- <blockquote> -->
+            <itemizedlist>
+              <listitem>
+                <para>
+                  <function>BUS_DMASYNC_PREREAD</function> - before
+                  reading from device into buffer
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <function>BUS_DMASYNC_POSTREAD</function> - after
+                  reading from device into buffer
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <function>BUS_DMASYNC_PREWRITE</function> - before
+                  writing the buffer to device
+                </para>
+              </listitem>
+              <listitem>
+                <para>
+                  <function>BUS_DMASYNC_POSTWRITE</function> - after
+                  writing the buffer to device
+                </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </itemizedlist>   <!-- End of list alpha -->
+<!-- </blockquote>
+</blockquote> -->
+
+        <para>
+          As of now PREREAD and POSTWRITE are null operations but that
+          may change in the future, so they must not be ignored in the
+          driver. Synchronization is not needed for the memory
+          obtained from <function>bus_dmamem_alloc()</function>.
+        </para>
+        <para>
+          Before calling the callback function from
+          <function>bus_dmamap_load()</function> the segment array is
+          stored in the stack. And it gets pre-allocated for the
+          maximal number of segments allowed by the tag. Because of
+          this the practical limit for the number of segments on i386
+          architecture is about 250-300 (the kernel stack is 4KB minus
+          the size of the user structure, size of a segment array
+          entry is 8 bytes, and some space must be left). Because the
+          array is allocated based on the maximal number this value
+          must not be set higher than really needed. Fortunately, for
+          most of hardware the maximal supported number of segments is
+          much lower. But if the driver wants to handle buffers with a
+          very large number of scatter-gather segments it should do
+          that in portions: load part of the buffer, transfer it to
+          the device, load next part of the buffer, and so on.
+        </para>
+        <para>
+          Another practical consequence is that the number of segments
+          may limit the size of the buffer. If all the pages in the
+          buffer happen to be physically non-contiguous then the
+          maximal supported buffer size for that fragmented case would
+          be (nsegments * page_size). For example, if a maximal number
+          of 10 segments is supported then on i386 maximal guaranteed
+          supported buffer size would be 40K. If a higher size is
+          desired then special tricks should be used in the driver.
+        </para>
+        <para>
+          If the hardware does not support scatter-gather at all or
+          the driver wants to support some buffer size even if it is
+          heavily fragmented then the solution is to allocate a
+          contiguous buffer in the driver and use it as intermediate
+          storage if the original buffer does not fit.
+        </para>
+        <para>
+          Below are the typical call sequences when using a map depend
+          on the use of the map.  The characters -> are used to show
+          the flow of time.
+        </para>
+        <para>
+          For a buffer which stays practically fixed during all the
+          time between attachment and detachment of a device:</para>
+        <para>
+          bus_dmamem_alloc -> bus_dmamap_load -> ...use buffer... ->
+          -> bus_dmamap_unload -> bus_dmamem_free
+        </para>
+
+        <para>For a buffer that changes frequently and is passed from
+        outside the driver:
+
+	<!-- XXX is this correct? -->
+        <programlisting>          bus_dmamap_create ->
+          -> bus_dmamap_load -> bus_dmamap_sync(PRE...) -> do transfer ->
+          -> bus_dmamap_sync(POST...) -> bus_dmamap_unload ->
+          ...
+          -> bus_dmamap_load -> bus_dmamap_sync(PRE...) -> do transfer ->
+          -> bus_dmamap_sync(POST...) -> bus_dmamap_unload ->
+          -> bus_dmamap_destroy        </programlisting>
+
+        </para>
+        <para>
+          When loading a map created by
+          <function>bus_dmamem_alloc()</function> the passed address
+          and size of the buffer must be the same as used in
+          <function>bus_dmamem_alloc()</function>. In this case it is
+          guaranteed that the whole buffer will be mapped as one
+          segment (so the callback may be based on this assumption)
+          and the request will be executed immediately (EINPROGRESS
+          will never be returned).  All the callback needs to do in
+          this case is to save the physical address.
+        </para>
+        <para>
+          A typical example would be:
+        </para>
+
+        <programlisting>          static void
+        alloc_callback(void *arg, bus_dma_segment_t *seg, int nseg, int error)
+        {
+          *(bus_addr_t *)arg = seg[0].ds_addr;
+        }
+
+          ...
+          int error;
+          struct somedata {
+            ....
+          };
+          struct somedata *vsomedata; /* virtual address */
+          bus_addr_t psomedata; /* physical bus-relative address */
+          bus_dma_tag_t tag_somedata;
+          bus_dmamap_t map_somedata;
+          ...
+
+          error=bus_dma_tag_create(parent_tag, alignment,
+           boundary, lowaddr, highaddr, /*filter*/ NULL, /*filterarg*/ NULL,
+           /*maxsize*/ sizeof(struct somedata), /*nsegments*/ 1,
+           /*maxsegsz*/ sizeof(struct somedata), /*flags*/ 0,
+           &#38;tag_somedata);
+          if(error)
+          return error;
+
+          error = bus_dmamem_alloc(tag_somedata, &#38;vsomedata, /* flags*/ 0,
+             &#38;map_somedata);
+          if(error)
+             return error;
+
+          bus_dmamap_load(tag_somedata, map_somedata, (void *)vsomedata,
+             sizeof (struct somedata), alloc_callback,
+             (void *) &#38;psomedata, /*flags*/0);        </programlisting>
+
+        <para>
+          Looks a bit long and complicated but that is the way to do
+          it. The practical consequence is: if multiple memory areas
+          are allocated always together it would be a really good idea
+          to combine them all into one structure and allocate as one
+          (if the alignment and boundary limitations permit).
+        </para>
+        <para>
+          When loading an arbitrary buffer into the map created by
+          <function>bus_dmamap_create()</function> special measures
+          must be taken to synchronize with the callback in case it
+          would be delayed. The code would look like:
+        </para>
+
+        <programlisting>          {
+           int s;
+           int error;
+
+           s = splsoftvm();
+           error = bus_dmamap_load(
+               dmat,
+               dmamap,
+               buffer_ptr,
+               buffer_len,
+               callback,
+               /*callback_arg*/ buffer_descriptor,
+               /*flags*/0);
+           if (error == EINPROGRESS) {
+               /*
+                * Do whatever is needed to ensure synchronization
+                * with callback. Callback is guaranteed not to be started
+                * until we do splx() or tsleep().
+                */
+              }
+           splx(s);
+          }        </programlisting>
+
+        <para>
+          Two possible approaches for the processing of requests are:
+        </para>
+        <para>
+          1. If requests are completed by marking them explicitly as
+          done (such as the CAM requests) then it would be simpler to
+          put all the further processing into the callback driver
+          which would mark the request when it is done. Then not much
+          extra synchronization is needed. For the flow control
+          reasons it may be a good idea to freeze the request queue
+          until this request gets completed.
+        </para>
+        <para>
+          2. If requests are completed when the function returns (such
+          as classic read or write requests on character devices) then
+          a synchronization flag should be set in the buffer
+          descriptor and <function>tsleep()</function> called.  Later
+          when the callback gets called it will do its processing and
+          check this synchronization flag. If it is set then the
+          callback should issue a wakeup. In this approach the
+          callback function could either do all the needed processing
+          (just like the previous case) or simply save the segments
+          array in the buffer descriptor. Then after callback
+          completes the calling function could use this saved segments
+          array and do all the processing.
+
+        </para>
+     </sect1>
+<!--_________________________________________________________________________-->
+<!--~~~~~~~~~~~~~~~~~~~~END OF SECTION~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+     <sect1 id="isa-driver-dma">
+        <title>DMA</title>
+        <!-- Section Marked up by Wylie -->
+        <para>
+          The Direct Memory Access (DMA) is implemented in the ISA bus
+          through the DMA controller (actually, two of them but that is
+          an irrelevant detail).  To make the early ISA devices simple
+          and cheap the logic of the bus control and address
+          generation was concentrated in the DMA controller.
+          Fortunately, FreeBSD provides a set of functions that mostly
+          hide the annoying details of the DMA controller from the
+          device drivers.
+        </para>
+
+        <para>
+          The simplest case is for the fairly intelligent
+          devices. Like the bus master devices on PCI they can
+          generate the bus cycles and memory addresses all by
+          themselves. The only thing they really need from the DMA
+          controller is bus arbitration. So for this purpose they
+          pretend to be cascaded slave DMA controllers. And the only
+          thing needed from the system DMA controller is to enable the
+          cascaded mode on a DMA channel by calling the following
+          function when attaching the driver:
+        </para>
+
+        <para>
+          <function>void isa_dmacascade(int channel_number)</function>
+        </para>
+
+        <para>
+          All the further activity is done by programming the
+          device. When detaching the driver no DMA-related functions
+          need to be called.
+        </para>
+
+        <para>
+          For the simpler devices things get more complicated. The
+          functions used are:
+        </para>
+
+        <itemizedlist>
+
+          <listitem>
+          <para>
+            <function>int isa_dma_acquire(int chanel_number)</function>
+          </para>
+          <para>
+                Reserve a DMA channel. Returns 0 on success or EBUSY
+                if the channel was already reserved by this or a
+                different driver. Most of the ISA devices are not able
+                to share DMA channels anyway, so normally this
+                function is called when attaching a device. This
+                reservation was made redundant by the modern interface
+                of bus resources but still must be used in addition to
+                the latter. If not used then later, other DMA routines
+                will panic.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>int isa_dma_release(int chanel_number)</function>
+          </para>
+          <para>
+                Release a previously reserved DMA channel. No
+                transfers must be in progress when the channel is
+                released (in addition the device must not try to
+                initiate transfer after the channel is released).
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>void isa_dmainit(int chan, u_int
+            bouncebufsize)</function>
+          </para>
+          <para>
+                Allocate a bounce buffer for use with the specified
+                channel. The requested size of the buffer can not exceed
+                64KB. This bounce buffer will be automatically used
+                later if a transfer buffer happens to be not
+                physically contiguous or outside of the memory
+                accessible by the ISA bus or crossing the 64KB
+                boundary. If the transfers will be always done from
+                buffers which conform to these conditions (such as
+                those allocated by
+                <function>bus_dmamem_alloc()</function> with proper
+                limitations) then <function>isa_dmainit()</function>
+                does not have to be called. But it is quite convenient
+                to transfer arbitrary data using the DMA controller.
+                The bounce buffer will automatically care of the
+                scatter-gather issues.
+          </para>
+ <!-- <blockquote> -->
+          <itemizedlist>
+                <listitem>
+                  <para>
+                    <emphasis>chan</emphasis> - channel number
+                  </para>
+                </listitem>
+                <listitem>
+                  <para>
+                    <emphasis>bouncebufsize</emphasis> - size of the
+                    bounce buffer in bytes
+                  </para>
+                </listitem>
+          </itemizedlist>
+<!-- </blockquote> -->
+<!--</para> -->
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>void isa_dmastart(int flags, caddr_t addr, u_int
+            nbytes, int chan)</function>
+          </para>
+          <para>
+                Prepare to start a DMA transfer. This function must be
+                called to set up the DMA controller before actually
+                starting transfer on the device. It checks that the
+                buffer is contiguous and falls into the ISA memory
+                range, if not then the bounce buffer is automatically
+                used. If bounce buffer is required but not set up by
+                <function>isa_dmainit()</function> or too small for
+                the requested transfer size then the system will
+                panic. In case of a write request with bounce buffer
+                the data will be automatically copied to the bounce
+                buffer.
+          </para>
+        </listitem>
+        <listitem>
+          <para>flags - a bitmask determining the type of operation to
+          be done. The direction bits B_READ and B_WRITE are mutually
+          exclusive.
+          </para>
+        <!--   <blockquote>  -->
+          <itemizedlist>
+            <listitem>
+              <para>
+                B_READ - read from the ISA bus into memory
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                B_WRITE - write from the memory to the ISA bus
+              </para>
+            </listitem>
+            <listitem>
+              <para>
+                B_RAW - if set then the DMA controller will remember
+                the buffer and after the end of transfer will
+                automatically re-initialize itself to repeat transfer
+                of the same buffer again (of course, the driver may
+                change the data in the buffer before initiating
+                another transfer in the device). If not set then the
+                parameters will work only for one transfer, and
+                <function>isa_dmastart()</function> will have to be
+                called again before initiating the next
+                transfer. Using B_RAW makes sense only if the bounce
+                buffer is not used.
+              </para>
+            </listitem>
+          </itemizedlist>
+<!--   </blockquote>  -->
+        </listitem>
+        <listitem>
+          <para>
+            addr - virtual address of the buffer
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            nbytes - length of the buffer. Must be less or equal to
+            64KB. Length of 0 is not allowed: the DMA controller will
+            understand it as 64KB while the kernel code will
+            understand it as 0 and that would cause unpredictable
+            effects. For channels number 4 and higher the length must
+            be even because these channels transfer 2 bytes at a
+            time. In case of an odd length the last byte will not be
+            transferred.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            chan - channel number
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>void isa_dmadone(int flags, caddr_t addr, int
+            nbytes, int chan)</function>
+          </para>
+          <para>
+            Synchronize the memory after device reports that transfer
+            is done. If that was a read operation with a bounce buffer
+            then the data will be copied from the bounce buffer to the
+            original buffer. Arguments are the same as for
+            <function>isa_dmastart()</function>. Flag B_RAW is
+            permitted but it does not affect
+            <function>isa_dmadone()</function> in any way.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>int isa_dmastatus(int channel_number)</function>
+          </para>
+          <para>
+            Returns the number of bytes left in the current transfer
+            to be transferred.  In case the flag B_READ was set in
+            <function>isa_dmastart()</function> the number returned
+            will never be equal to zero. At the end of transfer it
+            will be automatically reset back to the length of
+            buffer. The normal use is to check the number of bytes
+            left after the device signals that the transfer is
+            completed.  If the number of bytes is not 0 then something
+            probably went wrong with that transfer.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <function>int isa_dmastop(int channel_number)</function>
+          </para>
+          <para>
+            Aborts the current transfer and returns the number of
+            bytes left untransferred.
+          </para>
+        </listitem>
+       </itemizedlist>
+     </sect1>
+
+     <sect1 id="isa-driver-probe">
+     <title>xxx_isa_probe</title>
+     <!-- Section marked up by Wylie -->
+
+        <para>
+          This function probes if a device is present. If the driver
+          supports auto-detection of some part of device configuration
+          (such as interrupt vector or memory address) this
+          auto-detection must be done in this routine.
+        </para>
+
+        <para>
+          As for any other bus, if the device cannot be detected or
+          is detected but failed the self-test or some other problem
+          happened then it returns a positive value of error. The
+          value ENXIO must be returned if the device is not
+          present. Other error values may mean other conditions. Zero
+          or negative values mean success. Most of the drivers return
+          zero as success.
+        </para>
+
+        <para>
+          The negative return values are used when a PnP device
+          supports multiple interfaces. For example, an older
+          compatibility interface and a newer advanced interface which
+          are supported by different drivers. Then both drivers would
+          detect the device. The driver which returns a higher value
+          in the probe routine takes precedence (in other words, the
+          driver returning 0 has highest precedence, one returning -1
+          is next, one returning -2 is after it and so on). In result
+          the devices which support only the old interface will be
+          handled by the old driver (which should return -1 from the
+          probe routine) while the devices supporting the new
+          interface as well will be handled by the new driver (which
+          should return 0 from the probe routine).
+        </para>
+
+        <para>
+          The device descriptor struct xxx_softc is allocated by the
+          system before calling the probe routine. If the probe
+          routine returns an error the descriptor will be
+          automatically deallocated by the system. So if a probing
+          error occurs the driver must make sure that all the
+          resources it used during probe are deallocated and that
+          nothing keeps the descriptor from being safely
+          deallocated. If the probe completes successfully the
+          descriptor will be preserved by the system and later passed
+          to the routine <function>xxx_isa_attach()</function>. If a
+          driver returns a negative value it can not be sure that it
+          will have the highest priority and its attach routine will
+          be called. So in this case it also must release all the
+          resources before returning and if necessary allocate them
+          again in the attach routine. When
+          <function>xxx_isa_probe()</function> returns 0 releasing the
+          resources before returning is also a good idea and a
+          well-behaved driver should do so. But in cases where there is
+          some problem with releasing the resources the driver is
+          allowed to keep resources between returning 0 from the probe
+          routine and execution of the attach routine.
+        </para>
+
+        <para>
+          A typical probe routine starts with getting the device
+          descriptor and unit:
+        </para>
+
+        <programlisting>         struct xxx_softc *sc = device_get_softc(dev);
+          int unit = device_get_unit(dev);
+          int pnperror;
+          int error = 0;
+
+          sc->dev = dev; /* link it back */
+          sc->unit = unit;        </programlisting>
+
+        <para>
+          Then check for the PnP devices. The check is carried out by
+          a table containing the list of PnP IDs supported by this
+          driver and human-readable descriptions of the device models
+          corresponding to these IDs.
+        </para>
+
+        <programlisting>
+        pnperror=ISA_PNP_PROBE(device_get_parent(dev), dev,
+        xxx_pnp_ids); if(pnperror == ENXIO) return ENXIO;
+        </programlisting>
+
+        <para>
+          The logic of ISA_PNP_PROBE is the following: If this card
+          (device unit) was not detected as PnP then ENOENT will be
+          returned. If it was detected as PnP but its detected ID does
+          not match any of the IDs in the table then ENXIO is
+          returned. Finally, if it has PnP support and it matches on
+          of the IDs in the table, 0 is returned and the appropriate
+          description from the table is set by
+          <function>device_set_desc()</function>.
+        </para>
+
+        <para>
+          If a driver supports only PnP devices then the condition
+          would look like:
+        </para>
+
+        <programlisting>          if(pnperror != 0)
+              return pnperror;        </programlisting>
+
+        <para>
+          No special treatment is required for the drivers which do not
+          support PnP because they pass an empty PnP ID table and will
+          always get ENXIO if called on a PnP card.
+        </para>
+
+        <para>
+          The probe routine normally needs at least some minimal set
+          of resources, such as I/O port number to find the card and
+          probe it. Depending on the hardware the driver may be able
+          to discover the other necessary resources automatically. The
+          PnP devices have all the resources pre-set by the PnP
+          subsystem, so the driver does not need to discover them by
+          itself.
+        </para>
+
+        <para>
+          Typically the minimal information required to get access to
+          the device is the I/O port number. Then some devices allow
+          to get the rest of information from the device configuration
+          registers (though not all devices do that).  So first we try
+          to get the port start value:
+        </para>
+
+        <programlisting> sc->port0 = bus_get_resource_start(dev,
+        SYS_RES_IOPORT, 0 /*rid*/); if(sc->port0 == 0) return ENXIO;
+        </programlisting>
+
+        <para>
+          The base port address is saved in the structure softc for
+          future use.  If it will be used very often then calling the
+          resource function each time would be prohibitively slow. If
+          we do not get a port we just return an error.  Some device
+          drivers can instead be clever and try to probe all the
+          possible ports, like this:
+        </para>
+
+        <programlisting>          
+          /* table of all possible base I/O port addresses for this device */
+          static struct xxx_allports {
+              u_short port; /* port address */
+              short used; /* flag: if this port is already used by some unit */
+          } xxx_allports = {
+              { 0x300, 0 },
+              { 0x320, 0 },
+              { 0x340, 0 },
+              { 0, 0 } /* end of table */
+          };
+
+          ...
+          int port, i;
+          ...
+
+          port =  bus_get_resource_start(dev, SYS_RES_IOPORT, 0 /*rid*/);
+          if(port !=0 ) {
+              for(i=0; xxx_allports[i].port!=0; i++) {
+                  if(xxx_allports[i].used || xxx_allports[i].port != port)
+                      continue;
+
+                  /* found it */
+                  xxx_allports[i].used = 1;
+                  /* do probe on a known port */
+                  return xxx_really_probe(dev, port);
+              }
+              return ENXIO; /* port is unknown or already used */
+          }
+
+          /* we get here only if we need to guess the port */
+          for(i=0; xxx_allports[i].port!=0; i++) {
+              if(xxx_allports[i].used)
+                  continue;
+
+              /* mark as used - even if we find nothing at this port
+               * at least we won't probe it in future
+               */
+               xxx_allports[i].used = 1;
+
+              error = xxx_really_probe(dev, xxx_allports[i].port);
+              if(error == 0) /* found a device at that port */
+                  return 0;
+          }
+          /* probed all possible addresses, none worked */
+          return ENXIO;</programlisting>
+
+        <para>
+          Of course, normally the driver's
+          <function>identify()</function> routine should be used for
+          such things. But there may be one valid reason why it may be
+          better to be done in <function>probe()</function>: if this
+          probe would drive some other sensitive device crazy.  The
+          probe routines are ordered with consideration of the
+          <literal>sensitive</literal> flag: the sensitive devices get probed first and
+          the rest of the devices later.  But the
+          <function>identify()</function> routines are called before
+          any probes, so they show no respect to the sensitive devices
+          and may upset them.
+        </para>
+
+        <para>
+          Now, after we got the starting port we need to set the port
+          count (except for PnP devices) because the kernel does not
+          have this information in the configuration file.
+        </para>
+
+        <programlisting>          
+         if(pnperror /* only for non-PnP devices */
+         &#38;&#38; bus_set_resource(dev, SYS_RES_IOPORT, 0, sc->port0, 
+         XXX_PORT_COUNT)&lt;0)
+             return ENXIO;</programlisting>
+
+        <para>
+          Finally allocate and activate a piece of port address space
+          (special values of start and end mean <quote>use those we set by
+          <function>bus_set_resource()</function></quote>):
+        </para>
+
+        <programlisting>
+          sc->port0_rid = 0;
+          sc->port0_r = bus_alloc_resource(dev, SYS_RES_IOPORT,  
+          &#38;sc->port0_rid,
+              /*start*/ 0, /*end*/ ~0, /*count*/ 0, RF_ACTIVE);
+
+          if(sc->port0_r == NULL)
+              return ENXIO;</programlisting>
+
+        <para>
+          Now having access to the port-mapped registers we can poke
+          the device in some way and check if it reacts like it is
+          expected to. If it does not then there is probably some
+          other device or no device at all at this address.
+        </para>
+
+        <para>
+          Normally drivers do not set up the interrupt handlers until
+          the attach routine. Instead they do probes in the polling
+          mode using the <function>DELAY()</function> function for
+          timeout. The probe routine must never hang forever, all the
+          waits for the device must be done with timeouts. If the
+          device does not respond within the time it is probably broken
+          or misconfigured and the driver must return error. When
+          determining the timeout interval give the device some extra
+          time to be on the safe side: although
+          <function>DELAY()</function> is supposed to delay for the
+          same amount of time on any machine it has some margin of
+          error, depending on the exact CPU.
+        </para>
+
+        <para>
+          If the probe routine really wants to check that the
+          interrupts really work it may configure and probe the
+          interrupts too. But that is not recommended.
+        </para>
+
+        <programlisting>          
+          /* implemented in some very device-specific way */
+          if(error = xxx_probe_ports(sc))
+              goto bad; /* will deallocate the resources before returning */
+        </programlisting>
+
+        <para>
+          The function <function>xxx_probe_ports()</function> may also
+          set the device description depending on the exact model of
+          device it discovers.  But if there is only one supported
+          device model this can be as well done in a hardcoded way.
+          Of course, for the PnP devices the PnP support sets the
+          description from the table automatically.
+        </para>
+
+
+        <programlisting>          if(pnperror)
+              device_set_desc(dev, "Our device model 1234");
+        </programlisting>
+
+        <para>
+          Then the probe routine should either discover the ranges of
+          all the resources by reading the device configuration
+          registers or make sure that they were set explicitly by the
+          user. We will consider it with an example of on-board
+          memory. The probe routine should be as non-intrusive as
+          possible, so allocation and check of functionality of the
+          rest of resources (besides the ports) would be better left
+          to the attach routine.
+        </para>
+
+        <para>
+          The memory address may be specified in the kernel
+          configuration file or on some devices it may be
+          pre-configured in non-volatile configuration registers.  If
+          both sources are available and different, which one should
+          be used?  Probably if the user bothered to set the address
+          explicitly in the kernel configuration file they know what
+          they are doing and this one should take precedence. An
+          example of implementation could be:
+        </para>
+        <programlisting>          
+          /* try to find out the config address first */
+          sc->mem0_p = bus_get_resource_start(dev, SYS_RES_MEMORY, 0 /*rid*/);
+          if(sc->mem0_p == 0) { /* nope, not specified by user */
+              sc->mem0_p = xxx_read_mem0_from_device_config(sc);
+
+
+          if(sc->mem0_p == 0)
+                  /* can't get it from device config registers either */
+                  goto bad;
+          } else {
+              if(xxx_set_mem0_address_on_device(sc) &lt; 0)
+                  goto bad; /* device does not support that address */
+          }
+
+          /* just like the port, set the memory size,
+           * for some devices the memory size would not be constant
+           * but should be read from the device configuration registers instead
+           * to accommodate different models of devices. Another option would
+           * be to let the user set the memory size as "msize" configuration
+           * resource which will be automatically handled by the ISA bus.
+           */
+           if(pnperror) { /* only for non-PnP devices */
+              sc->mem0_size = bus_get_resource_count(dev, SYS_RES_MEMORY, 0 /*rid*/);
+              if(sc->mem0_size == 0) /* not specified by user */
+                  sc->mem0_size = xxx_read_mem0_size_from_device_config(sc);
+
+              if(sc->mem0_size == 0) {
+                  /* suppose this is a very old model of device without
+                   * auto-configuration features and the user gave no preference,
+                   * so assume the minimalistic case
+                   * (of course, the real value will vary with the driver)
+                   */
+                  sc->mem0_size = 8*1024;
+              }
+
+              if(xxx_set_mem0_size_on_device(sc) &lt; 0)
+                  goto bad; /* device does not support that size */
+
+              if(bus_set_resource(dev, SYS_RES_MEMORY, /*rid*/0,
+                      sc->mem0_p, sc->mem0_size)&lt;0)
+                  goto bad;
+          } else {
+              sc->mem0_size = bus_get_resource_count(dev, SYS_RES_MEMORY, 0 /*rid*/);
+          }        </programlisting>
+
+        <para>
+          Resources for IRQ and DRQ are easy to check by analogy.
+        </para>
+
+        <para>
+          If all went well then release all the resources and return success.
+        </para>
+
+        <programlisting>          xxx_free_resources(sc);
+          return 0;</programlisting>
+
+        <para>
+          Finally, handle the troublesome situations. All the
+          resources should be deallocated before returning. We make
+          use of the fact that before the structure softc is passed to
+          us it gets zeroed out, so we can find out if some resource
+          was allocated: then its descriptor is non-zero.
+        </para>
+
+        <programlisting>          bad:
+
+          xxx_free_resources(sc);
+          if(error)
+                return error;
+          else /* exact error is unknown */
+              return ENXIO;</programlisting>
+
+        <para>
+          That would be all for the probe routine. Freeing of
+          resources is done from multiple places, so it is moved to a
+          function which may look like:
+        </para>
+
+<programlisting>static void
+           xxx_free_resources(sc)
+              struct xxx_softc *sc;
+          {
+              /* check every resource and free if not zero */
+
+              /* interrupt handler */
+              if(sc->intr_r) {
+                  bus_teardown_intr(sc->dev, sc->intr_r, sc->intr_cookie);
+                  bus_release_resource(sc->dev, SYS_RES_IRQ, sc->intr_rid,
+                      sc->intr_r);
+                  sc->intr_r = 0;
+              }
+
+              /* all kinds of memory maps we could have allocated */
+              if(sc->data_p) {
+                  bus_dmamap_unload(sc->data_tag, sc->data_map);
+                  sc->data_p = 0;
+              }
+               if(sc->data) { /* sc->data_map may be legitimately equal to 0 */
+                  /* the map will also be freed */
+                  bus_dmamem_free(sc->data_tag, sc->data, sc->data_map);
+                  sc->data = 0;
+              }
+              if(sc->data_tag) {
+                  bus_dma_tag_destroy(sc->data_tag);
+                  sc->data_tag = 0;
+              }
+
+              ... free other maps and tags if we have them ...
+
+              if(sc->parent_tag) {
+                  bus_dma_tag_destroy(sc->parent_tag);
+                  sc->parent_tag = 0;
+              }
+
+              /* release all the bus resources */
+              if(sc->mem0_r) {
+                  bus_release_resource(sc->dev, SYS_RES_MEMORY, sc->mem0_rid,
+                      sc->mem0_r);
+                  sc->mem0_r = 0;
+              }
+              ...
+              if(sc->port0_r) {
+                  bus_release_resource(sc->dev, SYS_RES_IOPORT, sc->port0_rid,
+                      sc->port0_r);
+                  sc->port0_r = 0;
+              }
+          }</programlisting>
+
+     </sect1>
+
+     <sect1 id="isa-driver-attach">
+     <title>xxx_isa_attach</title>
+     <!-- Section Marked up by Wylie -->
+
+        <para>The attach routine actually connects the driver to the
+        system if the probe routine returned success and the system
+        had chosen to attach that driver.  If the probe routine
+        returned 0 then the attach routine may expect to receive the
+        device structure softc intact, as it was set by the probe
+        routine. Also if the probe routine returns 0 it may expect
+        that the attach routine for this device shall be called at
+        some point in the future. If the probe routine returns a
+        negative value then the driver may make none of these
+        assumptions.
+        </para>
+
+        <para>The attach routine returns 0 if it completed successfully or
+          error code otherwise.
+        </para>
+
+        <para>The attach routine starts just like the probe routine,
+          with getting some frequently used data into more accessible
+          variables.
+        </para>
+
+        <programlisting>          struct xxx_softc *sc = device_get_softc(dev);
+          int unit = device_get_unit(dev);
+          int error = 0;</programlisting>
+
+        <para>Then allocate and activate all the necessary
+          resources. Because normally the port range will be released
+          before returning from probe, it has to be allocated
+          again. We expect that the probe routine had properly set all
+          the resource ranges, as well as saved them in the structure
+          softc. If the probe routine had left some resource allocated
+          then it does not need to be allocated again (which would be
+          considered an error).
+        </para>
+
+        <programlisting>          sc->port0_rid = 0;
+          sc->port0_r = bus_alloc_resource(dev, SYS_RES_IOPORT,  &#38;sc->port0_rid,
+              /*start*/ 0, /*end*/ ~0, /*count*/ 0, RF_ACTIVE);
+
+          if(sc->port0_r == NULL)
+               return ENXIO;
+
+          /* on-board memory */
+          sc->mem0_rid = 0;
+          sc->mem0_r = bus_alloc_resource(dev, SYS_RES_MEMORY,  &#38;sc->mem0_rid,
+              /*start*/ 0, /*end*/ ~0, /*count*/ 0, RF_ACTIVE);
+
+          if(sc->mem0_r == NULL)
+                goto bad;
+
+          /* get its virtual address */
+          sc->mem0_v = rman_get_virtual(sc->mem0_r);</programlisting>
+
+        <para>The DMA request channel (DRQ) is allocated likewise. To
+          initialize it use functions of the
+          <function>isa_dma*()</function> family. For example:
+        </para>
+
+        <para><function>isa_dmacascade(sc->drq0);</function></para>
+
+        <para>The interrupt request line (IRQ) is a bit
+          special. Besides allocation the driver's interrupt handler
+          should be associated with it. Historically in the old ISA
+          drivers the argument passed by the system to the interrupt
+          handler was the device unit number. But in modern drivers
+          the convention suggests passing the pointer to structure
+          softc. The important reason is that when the structures
+          softc are allocated dynamically then getting the unit number
+          from softc is easy while getting softc from the unit number is
+          difficult. Also this convention makes the drivers for
+          different buses look more uniform and allows them to share
+          the code: each bus gets its own probe, attach, detach and
+          other bus-specific routines while the bulk of the driver
+          code may be shared among them.
+        </para>
+
+        <programlisting>
+          sc->intr_rid = 0;
+          sc->intr_r = bus_alloc_resource(dev, SYS_RES_MEMORY,  &#38;sc->intr_rid,
+                /*start*/ 0, /*end*/ ~0, /*count*/ 0, RF_ACTIVE);
+
+          if(sc->intr_r == NULL)
+              goto bad;
+
+          /*
+           * XXX_INTR_TYPE is supposed to be defined depending on the type of
+           * the driver, for example as INTR_TYPE_CAM for a CAM driver
+           */
+          error = bus_setup_intr(dev, sc->intr_r, XXX_INTR_TYPE,
+              (driver_intr_t *) xxx_intr, (void *) sc, &#38;sc->intr_cookie);
+          if(error)
+              goto bad;
+
+        </programlisting>
+
+
+        <para>If the device needs to make DMA to the main memory then
+          this memory should be allocated like described before:
+        </para>
+
+        <programlisting>          error=bus_dma_tag_create(NULL, /*alignment*/ 4,
+              /*boundary*/ 0, /*lowaddr*/ BUS_SPACE_MAXADDR_24BIT,
+              /*highaddr*/ BUS_SPACE_MAXADDR, /*filter*/ NULL, /*filterarg*/ NULL,
+              /*maxsize*/ BUS_SPACE_MAXSIZE_24BIT,
+              /*nsegments*/ BUS_SPACE_UNRESTRICTED,
+              /*maxsegsz*/ BUS_SPACE_MAXSIZE_24BIT, /*flags*/ 0,
+              &#38;sc->parent_tag);
+          if(error)
+              goto bad;
+
+          /* many things get inherited from the parent tag
+           * sc->data is supposed to point to the structure with the shared data,
+           * for example for a ring buffer it could be:
+           * struct {
+           *   u_short rd_pos;
+           *   u_short wr_pos;
+           *   char    bf[XXX_RING_BUFFER_SIZE]
+           * } *data;
+           */
+          error=bus_dma_tag_create(sc->parent_tag, 1,
+              0, BUS_SPACE_MAXADDR, 0, /*filter*/ NULL, /*filterarg*/ NULL,
+              /*maxsize*/ sizeof(* sc->data), /*nsegments*/ 1,
+              /*maxsegsz*/ sizeof(* sc->data), /*flags*/ 0,
+              &#38;sc->data_tag);
+          if(error)
+              goto bad;
+
+          error = bus_dmamem_alloc(sc->data_tag, &#38;sc->data, /* flags*/ 0,
+              &#38;sc->data_map);
+          if(error)
+               goto bad;
+
+          /* xxx_alloc_callback() just saves the physical address at
+           * the pointer passed as its argument, in this case &#38;sc->data_p.
+           * See details in the section on bus memory mapping.
+           * It can be implemented like:
+           *
+           * static void
+           * xxx_alloc_callback(void *arg, bus_dma_segment_t *seg,
+           *     int nseg, int error)
+           * {
+           *    *(bus_addr_t *)arg = seg[0].ds_addr;
+           * }
+           */
+          bus_dmamap_load(sc->data_tag, sc->data_map, (void *)sc->data,
+              sizeof (* sc->data), xxx_alloc_callback, (void *) &#38;sc->data_p,
+              /*flags*/0);</programlisting>
+
+
+        <para>After all the necessary resources are allocated the
+          device should be initialized. The initialization may include
+          testing that all the expected features are functional.</para>
+
+        <programlisting>          if(xxx_initialize(sc) &lt; 0)
+               goto bad;        </programlisting>
+
+
+        <para>The bus subsystem will automatically print on the
+          console the device description set by probe. But if the
+          driver wants to print some extra information about the
+          device it may do so, for example:</para>
+
+        <programlisting>
+        device_printf(dev, "has on-card FIFO buffer of %d bytes\n", sc->fifosize);
+        </programlisting>
+
+        <para>If the initialization routine experiences any problems
+          then printing messages about them before returning error is
+          also recommended.</para>
+
+        <para>The final step of the attach routine is attaching the
+          device to its functional subsystem in the kernel. The exact
+          way to do it depends on the type of the driver: a character
+          device, a block device, a network device, a CAM SCSI bus
+          device and so on.</para>
+
+        <para>If all went well then return success.</para>
+
+        <programlisting>          error = xxx_attach_subsystem(sc);
+          if(error)
+              goto bad;
+
+          return 0;        </programlisting>
+
+        <para>Finally, handle the troublesome situations. All the
+          resources should be deallocated before returning an
+          error. We make use of the fact that before the structure
+          softc is passed to us it gets zeroed out, so we can find out
+          if some resource was allocated: then its descriptor is
+          non-zero.</para>
+
+        <programlisting>          bad:
+
+          xxx_free_resources(sc);
+          if(error)
+              return error;
+          else /* exact error is unknown */
+              return ENXIO;</programlisting>
+
+        <para>That would be all for the attach routine.</para>
+
+     </sect1>
+
+
+     <sect1 id="isa-driver-detach">
+       <title>xxx_isa_detach</title>
+
+        <para>
+          If this function is present in the driver and the driver is
+          compiled as a loadable module then the driver gets the
+          ability to be unloaded. This is an important feature if the
+          hardware supports hot plug. But the ISA bus does not support
+          hot plug, so this feature is not particularly important for
+          the ISA devices. The ability to unload a driver may be
+          useful when debugging it, but in many cases installation of
+          the new version of the driver would be required only after
+          the old version somehow wedges the system and a reboot will be
+          needed anyway, so the efforts spent on writing the detach
+          routine may not be worth it. Another argument that
+          unloading would allow upgrading the drivers on a production
+          machine seems to be mostly theoretical. Installing a new
+          version of a driver is a dangerous operation which should
+          never be performed on a production machine (and which is not
+          permitted when the system is running in secure mode).  Still,
+          the detach routine may be provided for the sake of
+          completeness.
+        </para>
+
+        <para>
+          The detach routine returns 0 if the driver was successfully
+          detached or the error code otherwise.
+        </para>
+
+        <para>
+          The logic of detach is a mirror of the attach. The first
+          thing to do is to detach the driver from its kernel
+          subsystem. If the device is currently open then the driver
+          has two choices: refuse to be detached or forcibly close and
+          proceed with detach. The choice used depends on the ability
+          of the particular kernel subsystem to do a forced close and
+          on the preferences of the driver's author. Generally the
+          forced close seems to be the preferred alternative.
+        <programlisting>          struct xxx_softc *sc = device_get_softc(dev);
+          int error;
+
+          error = xxx_detach_subsystem(sc);
+          if(error)
+              return error;</programlisting>
+        </para>
+        <para>
+          Next the driver may want to reset the hardware to some
+          consistent state.  That includes stopping any ongoing
+          transfers, disabling the DMA channels and interrupts to
+          avoid memory corruption by the device. For most of the
+          drivers this is exactly what the shutdown routine does, so
+          if it is included in the driver we can just call it.
+        </para>
+        <para><function>xxx_isa_shutdown(dev);</function></para>
+
+        <para>
+          And finally release all the resources and return success.
+        <programlisting>          xxx_free_resources(sc);
+          return 0;</programlisting>
+
+        </para>
+     </sect1>
+
+     <sect1 id="isa-driver-shutdown">
+       <title>xxx_isa_shutdown</title>
+
+        <para>
+          This routine is called when the system is about to be shut
+          down. It is expected to bring the hardware to some
+          consistent state. For most of the ISA devices no special
+          action is required, so the function is not really necessary
+          because the device will be re-initialized on reboot
+          anyway. But some devices have to be shut down with a special
+          procedure, to make sure that they will be properly detected
+          after soft reboot (this is especially true for many devices
+          with proprietary identification protocols).  In any case
+          disabling DMA and interrupts in the device registers and
+          stopping any ongoing transfers is a good idea. The exact
+          action depends on the hardware, so we do not consider it here
+          in any detail.
+        </para>
+     </sect1>
+
+     <sect1 id="isa-driver-intr">
+          <title>xxx_intr</title>
+
+        <para>
+          The interrupt handler is called when an interrupt is
+          received which may be from this particular device. The ISA
+          bus does not support interrupt sharing (except in some special
+          cases) so in practice if the interrupt handler is called
+          then the interrupt almost for sure came from its
+          device. Still, the interrupt handler must poll the device
+          registers and make sure that the interrupt was generated by
+          its device. If not it should just return.
+        </para>
+
+        <para>
+          The old convention for the ISA drivers was getting the
+          device unit number as an argument. This is obsolete, and the
+          new drivers receive whatever argument was specified for them
+          in the attach routine when calling
+          <function>bus_setup_intr()</function>. By the new convention
+          it should be the pointer to the structure softc. So the
+          interrupt handler commonly starts as:
+        </para>
+
+        <programlisting>
+          static void
+          xxx_intr(struct xxx_softc *sc)
+          {
+
+        </programlisting>
+
+        <para>
+          It runs at the interrupt priority level specified by the
+          interrupt type parameter of
+          <function>bus_setup_intr()</function>. That means that all
+          the other interrupts of the same type as well as all the
+          software interrupts are disabled.
+        </para>
+
+        <para>
+          To avoid races it is commonly written as a loop:
+        </para>
+
+        <programlisting>
+          while(xxx_interrupt_pending(sc)) {
+              xxx_process_interrupt(sc);
+              xxx_acknowledge_interrupt(sc);
+          }        </programlisting>
+
+        <para>
+          The interrupt handler has to acknowledge interrupt to the
+          device only but not to the interrupt controller, the system
+          takes care of the latter.
+        </para>
+
+     </sect1>
+</chapter>

@@ -1,0 +1,9 @@
+$DragonFly: doc/share/images/README,v 1.1.1.1 2004/04/02 09:36:25 hmp Exp $
+
+Images used in Books, Articles should be added to this directory.
+A hierarchy has already been created.  For example, if you article
+is called `vm-design', then add a directory called `vm-design'
+under articles/ and then store your images under articles/vm-design/.
+
+Only images of type Postscript (EPS), PNG and PIC are allowed so
+CVS can be maintained.

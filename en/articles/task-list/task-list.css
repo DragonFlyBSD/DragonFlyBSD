@@ -1,0 +1,70 @@
+/*
+ * DragonFly - Task List Stylesheet
+ * Copyright (c) 2003, 2004  Hiten Pandya.
+ *
+ * All rights reserved.
+ */
+
+body {
+	background: #FFFFFF;
+}
+
+a:hover {
+	text-decoration: none;
+}
+
+table {
+	border-style: flat;
+	border-color: #C0C0C0;
+}
+
+
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: helvetica, arial, sans-serif;	
+	background: #FFFFFF;
+}
+
+h1 { color: blue; }
+
+p {
+	font-family: helvetica, geneva, arial, sans-serif;
+	font-size: 10pt;
+	background: #FFFFFF;
+}
+
+td {
+	font-family: helvetica, geneva, arial, sans-serif;
+	font-size: 10pt;
+	background: #FFFFFF;
+	border-style: flat;
+	border-color: #C0C0C0;	
+}
+
+th {
+	font-family: verdana, tahoma, helvetica, arial, sans-serif;
+	font-size: 10pt;
+	background: #FFFFFF;
+	border-style: flat;
+	border-color: #C0C0C0;	
+}
+
+/* Status entries */
+.work-in-progress {
+	color: #FF8000;
+}
+
+.done {
+	color: #008442;
+}
+
+.suspended,.blocked {
+	color: #FF0000;
+}
+
+/* Priority entries */
+.veryhigh, .high { color: #FF0000; }
+
+.medium { color: #FF8000; }
+
+.low { color: #0080C0; }

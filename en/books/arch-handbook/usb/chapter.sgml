@@ -1,0 +1,623 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/usb/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:20 hmp Exp $
+-->
+
+<chapter id="usb">
+  <title>USB Devices</title>
+
+  <para><emphasis>This chapter was written by &a.nhibma;.  Modifications made for
+    the handbook by &a.murray;.</emphasis></para>
+
+  <sect1 id="usb-intro">
+    <title>Introduction</title>
+
+    <para>The Universal Serial Bus (USB) is a new way of attaching
+      devices to personal computers. The bus architecture features
+      two-way communication and has been developed as a response to
+      devices becoming smarter and requiring more interaction with the
+      host.  USB support is included in all current PC chipsets and is
+      therefore available in all recently built PCs.  Apple's
+      introduction of the USB-only iMac has been a major incentive for
+      hardware manufacturers to produce USB versions of their devices.
+      The future PC specifications specify that all legacy connectors
+      on PCs should be replaced by one or more USB connectors,
+      providing generic plug and play capabilities.  Support for USB
+      hardware was available at a very early stage in NetBSD and was
+      developed by Lennart Augustsson for the NetBSD project.  The
+      code has been ported to FreeBSD and we are currently maintaining
+      a shared code base.  For the implementation of the USB subsystem
+      a number of features of USB are important.</para>
+
+    <para><emphasis>Lennart Augustsson has done most of the implementation of
+      the USB support for the NetBSD project. Many thanks for this
+      incredible amount of work. Many thanks also to Ardy and Dirk for
+      their comments and proofreading of this paper.</emphasis></para>
+
+    <itemizedlist>
+
+      <listitem><para>Devices connect to ports on the computer
+        directly or on devices called hubs, forming a treelike device
+        structure.</para></listitem>
+
+      <listitem><para>The devices can be connected and disconnected at
+        run time.</para></listitem>
+
+      <listitem><para>Devices can suspend themselves and trigger
+        resumes of the host system</para></listitem>
+
+      <listitem><para>As the devices can be powered from the bus, the
+        host software has to keep track of power budgets for each
+        hub.</para></listitem>
+
+      <listitem><para>Different quality of service requirements by the
+        different device types together with the maximum of 126
+        devices that can be connected to the same bus, require proper
+        scheduling of transfers on the shared bus to take full
+        advantage of the 12Mbps bandwidth available. (over 400Mbps
+        with USB 2.0)</para></listitem>
+
+      <listitem><para>Devices are intelligent and contain easily
+        accessible information about themselves</para></listitem>
+
+    </itemizedlist>
+
+    <para>The development of drivers for the USB subsystem and devices
+      connected to it is supported by the specifications that have
+      been developed and will be developed. These specifications are
+      publicly available from the USB home pages.  Apple has been very
+      strong in pushing for standards based drivers, by making drivers
+      for the generic classes available in their operating system
+      MacOS and discouraging the use of separate drivers for each new
+      device.  This chapter tries to collate essential information for a
+      basic understanding of the present implementation of the USB
+      stack in FreeBSD/NetBSD.  It is recommended however to read it
+      together with the relevant specifications mentioned in the
+      references below.</para>
+    
+    <sect2>
+      <title>Structure of the USB Stack</title>
+
+      <para>The USB support in FreeBSD can be split into three
+        layers. The lowest layer contains the host controller driver,
+        providing a generic interface to the hardware and its scheduling
+        facilities.  It supports initialisation of the hardware,
+        scheduling of transfers and handling of completed and/or failed
+        transfers.  Each host controller driver implements a virtual hub
+        providing hardware independent access to the registers
+        controlling the root ports on the back of the machine.</para>
+
+      <para>The middle layer handles the device connection and
+        disconnection, basic initialisation of the device, driver
+        selection, the communication channels (pipes) and does
+        resource management.  This services layer also controls the
+        default pipes and the device requests transferred over
+        them.</para>
+  
+      <para>The top layer contains the individual drivers supporting
+        specific (classes of) devices. These drivers implement the
+        protocol that is used over the pipes other than the default
+        pipe. They also implement additional functionality to make the
+        device available to other parts of the kernel or userland. They
+        use the USB driver interface (USBDI) exposed by the services
+        layer.</para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="usb-hc">
+    <title>Host Controllers</title>
+
+    <para>The host controller (HC) controls the transmission of
+      packets on the bus. Frames of 1 millisecond are used. At the
+      start of each frame the host controller generates a Start of
+      Frame (SOF) packet.</para>
+
+    <para>The SOF packet is used to synchronise to the start of the
+      frame and to keep track of the frame number. Within each frame
+      packets are transferred, either from host to device (out) or
+      from device to host (in). Transfers are always initiated by the
+      host (polled transfers). Therefore there can only be one host
+      per USB bus. Each transfer of a packet has a status stage in
+      which the recipient of the data can return either ACK
+      (acknowledge reception), NAK (retry), STALL (error condition) or
+      nothing (garbled data stage, device not available or
+      disconnected). Section 8.5 of the <ulink
+      url="http://www.usb.org/developers/docs.html">USB
+      specification</ulink> explains the details of packets in more
+      detail. Four different types of transfers can occur on a USB
+      bus: control, bulk, interrupt and isochronous.  The types of
+      transfers and their characteristics are described below (`Pipes'
+      subsection).</para>
+
+    <para>Large transfers between the device on the USB bus and the
+      device driver are split up into multiple packets by the host
+      controller or the HC driver.</para>
+
+    <para>Device requests (control transfers) to the default endpoints
+      are special. They consist of two or three phases: SETUP, DATA
+      (optional) and STATUS. The set-up packet is sent to the
+      device. If there is a data phase, the direction of the data
+      packet(s) is given in the set-up packet. The direction in the
+      status phase is the opposite of the direction during the data
+      phase, or IN if there was no data phase. The host controller
+      hardware also provides registers with the current status of the
+      root ports and the changes that have occurred since the last
+      reset of the status change register. Access to these registers
+      is provided through a virtualised hub as suggested in the USB
+      specification [ 2]. The virtual hub must comply with the hub
+      device class given in chapter 11 of that specification. It must
+      provide a default pipe through which device requests can be sent
+      to it. It returns the standard andhub class specific set of
+      descriptors. It should also provide an interrupt pipe that
+      reports changes happening at its ports. There are currently two
+      specifications for host controllers available: <ulink
+      url="http://developer.intel.com/design/USB/UHCI11D.htm">Universal
+      Host Controller Interface</ulink> (UHCI; Intel) and <ulink
+      url="http://www.compaq.com/productinfo/development/openhci.html">Open
+      Host Controller Interface</ulink> (OHCI; Compaq, Microsoft,
+      National Semiconductor). The UHCI specification has been
+      designed to reduce hardware complexity by requiring the host
+      controller driver to supply a complete schedule of the transfers
+      for each frame. OHCI type controllers are much more independent
+      by providing a more abstract interface doing alot of work
+      themselves. </para>
+
+    <sect2>
+      <title>UHCI</title>
+
+      <para>The UHCI host controller maintains a framelist with 1024
+        pointers to per frame data structures. It understands two
+        different data types: transfer descriptors (TD) and queue
+        heads (QH). Each TD represents a packet to be communicated to
+        or from a device endpoint. QHs are a means to groupTDs (and
+        QHs) together.</para>
+
+      <para>Each transfer consists of one or more packets. The UHCI
+        driver splits large transfers into multiple packets. For every
+        transfer, apart from isochronous transfers, a QH is
+        allocated. For every type of transfer these QHs are collected
+        at a QH for that type. Isochronous transfers have to be
+        executed first because of the fixed latency requirement and
+        are directly referred to by the pointer in the framelist. The
+        last isochronous TD refers to the QH for interrupt transfers
+        for that frame. All QHs for interrupt transfers point at the
+        QH for control transfers, which in turn points at the QH for
+        bulk transfers. The following diagram gives a graphical
+        overview of this:</para>
+
+      <para>This results in the following schedule being run in each
+        frame. After fetching the pointer for the current frame from
+        the framelist the controller first executes the TDs for all
+        the isochronous packets in that frame. The last of these TDs
+        refers to the QH for the interrupt transfers for
+        thatframe. The host controller will then descend from that QH
+        to the QHs for the individual interrupt transfers. After
+        finishing that queue, the QH for the interrupt transfers will
+        refer the controller to the QH for all control transfers. It
+        will execute all the subqueues scheduled there, followed by
+        all the transfers queued at the bulk QH. To facilitate the
+        handling of finished or failed transfers different types of
+        interrupts are generated by the hardware at the end of each
+        frame. In the last TD for a transfer the Interrupt-On
+        Completion bit is set by the HC driver to flag an interrupt
+        when the transfer has completed. An error interrupt is flagged
+        if a TD reaches its maximum error count. If the short packet
+        detect bit is set in a TD and less than the set packet length
+        is transferred this interrupt is flagged to notify
+        the controller driver of the completed transfer. It is the host
+        controller driver's task to find out which transfer has
+        completed or produced an error. When called the interrupt
+        service routine will locate all the finished transfers and
+        call their callbacks.</para>
+
+      <para>See for a more elaborate description the <ulink
+        url="http://developer.intel.com/design/USB/UHCI11D.htm">UHCI
+        specification.</ulink></para>
+
+    </sect2>
+
+    <sect2>
+      <title>OHCI</title>
+      
+      <para>Programming an OHCI host controller is much simpler. The
+        controller assumes that a set of endpoints is available, and
+        is aware of scheduling priorities and the ordering of the
+        types of transfers in a frame. The main data structure used by
+        the host controller is the endpoint descriptor (ED) to which
+        aqueue of transfer descriptors (TDs) is attached. The ED
+        contains the maximum packet size allowed for an endpoint and
+        the controller hardware does the splitting into packets. The
+        pointers to the data buffers are updated after each transfer
+        and when the start and end pointer are equal, the TD is
+        retired to the done-queue. The four types of endpoints have
+        their own queues. Control and bulk endpoints are queued each at
+        their own queue. Interrupt EDs are queued in a tree, with the
+        level in the tree defining the frequency at which they
+        run.</para>
+
+      <para>framelist interruptisochronous control bulk</para>
+
+      <para>The schedule being run by the host controller in each
+        frame looks as follows. The controller will first run the
+        non-periodic control and bulk queues, up to a time limit set
+        by the HC driver. Then the interrupt transfers for that frame
+        number are run, by using the lower five bits of the frame
+        number as an index into level 0 of the tree of interrupts
+        EDs. At the end of this tree the isochronous EDs are connected
+        and these are traversed subsequently. The isochronous TDs
+        contain the frame number of the first frame the transfer
+        should be run in. After all the periodic transfers have been
+        run, the control and bulk queues are traversed
+        again. Periodically the interrupt service routine is called to
+        process the done queue and call the callbacks for each
+        transfer and reschedule interrupt and isochronous
+        endpoints.</para>
+
+      <para>See for a more elaborate description the <ulink
+        url="http://www.compaq.com/productinfo/development/openhci.html">
+        OHCI specification</ulink>. Services layer The middle layer
+        provides access to the device in a controlled way and
+        maintains resources in use by the different drivers and the
+        services layer. The layer takes care of the following
+        aspects:</para>
+
+      <itemizedlist>
+        <listitem><para>The device configuration
+          information</para></listitem>
+	<listitem><para>The pipes to communicate with a
+	  device</para></listitem>
+	<listitem><para>Probing and attaching and detaching form a
+  	  device.</para></listitem>
+      </itemizedlist>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="usb-dev">
+    <title>USB Device Information</title>
+
+    <sect2>
+      <title>Device configuration information</title>
+
+      <para>Each device provides different levels of configuration
+        information. Each device has one or more configurations, of
+        which one is selected during probe/attach. A configuration
+        provides power and bandwidth requirements. Within each
+        configuration there can be multiple interfaces. A device
+        interface is a collection of endpoints. For example USB
+        speakers can have an interface for the audio data (Audio
+        Class) and an interface for the knobs, dials and buttons (HID
+        Class). All interfaces in a configuration are active at the
+        same time and can be attached to by different drivers. Each
+        interface can have alternates, providing different quality of
+        service parameters. In for example cameras this is used to
+        provide different frame sizes and numbers of frames per
+        second.</para>
+
+      <para>Within each interface 0 or more endpoints can be
+        specified. Endpoints are the unidirectional access points for
+        communicating with a device. They provide buffers to
+        temporarily store incoming or outgoing data from the
+        device. Each endpoint has a unique address within
+        a configuration, the endpoint's number plus its direction. The
+        default endpoint, endpoint 0, is not part of any interface and
+        available in all configurations. It is managed by the services
+        layer and not directly available to device drivers.</para>
+
+      <para>Level 0 Level 1 Level 2 Slot 0</para>
+      <para>Slot 3 Slot 2 Slot 1</para>
+      <para>(Only 4 out of 32 slots shown)</para>
+
+      <para>This hierarchical configuration information is described
+        in the device by a standard set of descriptors (see section 9.6
+        of the USB specification [ 2]). They can be requested through
+        the Get Descriptor Request. The services layer caches these
+        descriptors to avoid unnecessary transfers on the USB
+        bus. Access to the descriptors is provided through function
+        calls.</para>
+
+      <itemizedlist>
+        <listitem><para>Device descriptors: General information about
+          the device, like Vendor, Product and Revision Id, supported
+          device class, subclass and protocol if applicable, maximum
+          packet size for the default endpoint, etc.</para></listitem>
+
+	<listitem><para>Configuration descriptors: The number of
+   	  interfaces in this configuration, suspend and resume
+   	  functionality supported and power
+   	  requirements.</para></listitem>
+
+	<listitem><para>Interface descriptors: interface class,
+  	  subclass and protocol if applicable, number of alternate
+  	  settings for the interface and the number of
+  	  endpoints.</para></listitem>
+
+	<listitem><para>Endpoint descriptors: Endpoint address,
+	  direction and type, maximum packet size supported and
+	  polling frequency if type is interrupt endpoint. There is no
+	  descriptor for the default endpoint (endpoint 0) and it is
+	  never counted in an interface descriptor.</para></listitem>
+
+	<listitem><para>String descriptors: In the other descriptors
+  	  string indices are supplied for some fields.These can be
+  	  used to retrieve descriptive strings, possibly in multiple
+  	  languages.</para></listitem>
+
+      </itemizedlist>
+
+      <para>Class specifications can add their own descriptor types
+        that are available through the GetDescriptor Request.</para>
+
+      <para>Pipes Communication to end points on a device flows
+        through so-called pipes. Drivers submit transfers to endpoints
+        to a pipe and provide a callback to be called on completion or
+        failure of the transfer (asynchronous transfers) or wait for
+        completion (synchronous transfer). Transfers to an endpoint
+        are serialised in the pipe. A transfer can either complete,
+        fail or time-out (if a time-out has been set). There are two
+        types of time-outs for transfers. Time-outs can happen due to
+        time-out on the USBbus (milliseconds). These time-outs are
+        seen as failures and can be due to disconnection of the
+        device. A second form of time-out is implemented in software
+        and is triggered when a transfer does not complete within a
+        specified amount of time (seconds). These are caused by a
+        device acknowledging negatively (NAK) the transferred
+        packets. The cause for this is the device not being ready to
+        receive data, buffer under- or overrun or protocol
+        errors.</para>
+
+      <para>If a transfer over a pipe is larger than the maximum
+        packet size specified in the associated endpoint descriptor,
+        the host controller (OHCI) or the HC driver (UHCI) will split
+        the transfer into packets of maximum packet size, with the
+        last packet possibly smaller than the maximum
+        packet size.</para>
+
+      <para>Sometimes it is not a problem for a device to return less
+        data than requested. For example abulk-in-transfer to a modem
+        might request 200 bytes of data, but the modem has only 5
+        bytes available at that time. The driver can set the short
+        packet (SPD) flag. It allows the host controller to accept a
+        packet even if the amount of data transferred is less than
+        requested. This flag is only valid for in-transfers, as the
+        amount of data to be sent to a device is always known
+        beforehand. If an unrecoverable error occurs in a device
+        during a transfer the pipe is stalled. Before any more data is
+        accepted or sent the driver needs to resolve the cause of the
+        stall and clear the endpoint stall condition through send the
+        clear endpoint halt device request over the default
+        pipe. The default endpoint should never stall.</para>
+
+      <para>There are four different types of endpoints and
+        corresponding pipes: - Control pipe / default pipe: There is
+        one control pipe per device, connected to the default endpoint
+        (endpoint 0). The pipe carries the device requests and
+        associated data. The difference between transfers over the
+        default pipe and other pipes is that the protocol for
+        the transfers is described in the USB specification [ 2]. These
+        requests are used to reset and configure the device. A basic
+        set of commands that must be supported by each device is
+        provided in chapter 9 of the USB specification [ 2]. The
+        commands supported on this pipe can be extended by a device
+        class specification to support additional
+        functionality.</para>
+
+      <itemizedlist>
+        <listitem><para>Bulk pipe: This is the USB equivalent to a raw
+          transmission medium.</para></listitem>
+        <listitem><para>Interrupt pipe: The host sends a request for
+          data to the device and if the device has nothing to send, it
+          will NAK the data packet. Interrupt transfers are scheduled
+          at a frequency specified when creating the
+          pipe.</para></listitem>
+
+	<listitem><para>Isochronous pipe: These pipes are intended for
+	    isochronous data, for example video or audio streams, with
+	fixed latency, but no guaranteed delivery. Some support for
+	pipes of this type is available in the current
+	implementation. Packets in control, bulk and interrupt
+	transfers are retried if an error occurs during transmission
+	or the device acknowledges the packet negatively (NAK) due to
+	for example lack of buffer space to store the incoming
+	data. Isochronous packets are however not retried in case of
+	failed delivery or NAK of a packet as this might violate the
+	timing constraints.</para></listitem>
+      </itemizedlist>
+
+      <para>The availability of the necessary bandwidth is calculated
+        during the creation of the pipe. Transfers are scheduled within
+        frames of 1 millisecond. The bandwidth allocation within a
+        frame is prescribed by the USB specification, section 5.6 [
+        2]. Isochronous and interrupt transfers are allowed to consume
+        up to 90% of the bandwidth within a frame. Packets for control
+        and bulk transfers are scheduled after all isochronous and
+        interrupt packets and will consume all the remaining
+        bandwidth.</para>
+
+      <para>More information on scheduling of transfers and bandwidth
+        reclamation can be found in chapter 5of the USB specification
+        [ 2], section 1.3 of the UHCI specification [ 3] and section
+        3.4.2 of the OHCI specification [4].</para>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="usb-devprobe">
+    <title>Device probe and attach</title>
+
+    <para>After the notification by the hub that a new device has been
+      connected, the service layer switches on the port, providing the
+      device with 100 mA of current. At this point the device is in
+      its default state and listening to device address 0. The
+      services layer will proceed to retrieve the various descriptors
+      through the default pipe. After that it will send a Set Address
+      request to move the device away from the default device address
+      (address 0). Multiple device drivers might be able to support
+      the device. For example a modem driver might be able to support
+      an ISDN TA through the AT compatibility interface. A driver for
+      that specific model of the ISDN adapter might however be able to
+      provide much better support for this device. To support this
+      flexibility, the probes return priorities indicating their level
+      of support. Support for a specific revision of a product ranks
+      the highest and the generic driver the lowest priority. It might
+      also be that multiple drivers could attach to one device if
+      there are multiple interfaces within one configuration. Each
+      driver only needs to support a subset of the interfaces.</para>
+
+    <para>The probing for a driver for a newly attached device checks
+      first for device specific drivers. If not found, the probe code
+      iterates over all supported configurations until a driver
+      attaches in a configuration. To support devices with multiple
+      drivers on different interfaces, the probe iterates over all
+      interfaces in a configuration that have not yet been claimed by
+      a driver. Configurations that exceed the power budget for the
+      hub are ignored. During attach the driver should initialise the
+      device to its proper state, but not reset it, as this will make
+      the device disconnect itself from the bus and restart the
+      probing process for it. To avoid consuming unnecessary bandwidth
+      should not claim the interrupt pipe at attach time, but
+      should postpone allocating the pipe until the file is opened and
+      the data is actually used. When the file is closed the pipe
+      should be closed again, even though the device might still be
+      attached.</para>
+
+    <sect2>
+      <title>Device disconnect and detach</title>
+
+      <para>A device driver should expect to receive errors during any
+        transaction with the device. The design of USB supports and
+        encourages the disconnection of devices at any point in
+        time. Drivers should make sure that they do the right thing
+        when the device disappears.</para>
+
+      <para>Furthermore a device that has been disconnected and
+        reconnected will not be reattached at the same device
+        instance. This might change in the future when more devices
+        support serial numbers (see the device descriptor) or other
+        means of defining an identity for a device have been
+        developed.</para>
+
+      <para>The disconnection of a device is signaled by a hub in the
+        interrupt packet delivered to the hub driver. The status
+        change information indicates which port has seen a connection
+        change. The device detach method for all device drivers for
+        the device connected on that port are called and the structures
+        cleaned up. If the port status indicates that in the mean time
+        a device has been connected to that port, the procedure for
+        probing and attaching the device will be started. A device
+        reset will produce a disconnect-connect sequence on the hub
+        and will be handled as described above.</para>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="usb-protocol">
+    <title>USB Drivers Protocol Information</title>
+
+    <para>The protocol used over pipes other than the default pipe is
+      undefined by the USB specification.  Information on this can be
+      found from various sources. The most accurate source is the
+      developer's section on the USB home pages [ 1]. From these pages
+      a growing number of deviceclass specifications are
+      available. These specifications specify what a compliant device
+      should look like from a driver perspective, basic functionality
+      it needs to provide and the protocol that is to be used over the
+      communication channels.  The USB specification [ 2] includes the
+      description of the Hub Class. A class specification for Human
+      Interface Devices (HID) has been created to cater for keyboards,
+      tablets, bar-code readers, buttons, knobs, switches, etc. A
+      third example is the class specification for mass storage
+      devices. For a full list of device classes see the developers
+      section on the USB home pages [ 1].</para>
+
+    <para>For many devices the protocol information has not yet been
+      published however. Information on the protocol being used might
+      be available from the company making the device. Some companies
+      will require you to sign a Non -Disclosure Agreement (NDA)
+      before giving you the specifications. This in most cases
+      precludes making the driver open source.</para>
+
+    <para>Another good source of information is the Linux driver
+      sources, as a number of companies have started to provide drivers
+      for Linux for their devices. It is always a good idea to contact
+      the authors of those drivers for their source of
+      information.</para>
+
+    <para>Example: Human Interface Devices The specification for the
+      Human Interface Devices like keyboards, mice, tablets, buttons,
+      dials,etc. is referred to in other device class specifications
+      and is used in many devices.</para>
+
+    <para>For example audio speakers provide endpoints to the digital
+      to analogue converters and possibly an extra pipe for a
+      microphone. They also provide a HID endpoint in a separate
+      interface for the buttons and dials on the front of the
+      device. The same is true for the monitor control class. It is
+      straightforward to build support for these interfaces through
+      the available kernel and userland libraries together with the
+      HID class driver or the generic driver. Another device that
+      serves as an example for interfaces within one configuration
+      driven by different device drivers is a cheap keyboard with
+      built-in legacy mouse port. To avoid having the cost of
+      including the hardware for a USB hub in the device,
+      manufacturers combined the mouse data received from the PS/2 port
+      on the back of the keyboard and the key presses from the keyboard
+      into two separate interfaces in the same configuration. The
+      mouse and keyboard drivers each attach to the appropriate
+      interface and allocate the pipes to the two independent
+      endpoints.</para>
+
+    <para>Example: Firmware download Many devices that have been
+      developed are based on a general purpose processor with
+      an additional USB core added to it. Because the development of
+      drivers and firmware for USB devices is still very new, many
+      devices require the downloading of the firmware after they
+      have been connected.</para>
+
+    <para>The procedure followed is straightforward. The device
+      identifies itself through a vendor and product Id. The first
+      driver probes and attaches to it and downloads the firmware into
+      it. After that the device soft resets itself and the driver is
+      detached. After a short pause the device announces its presence
+      on the bus. The device will have changed its
+      vendor/product/revision Id to reflect the fact that it has been
+      supplied with firmware and as a consequence a second driver will
+      probe it and attach to it.</para>
+
+    <para>An example of these types of devices is the ActiveWire I/O
+      board, based on the EZ-USB chip. For this chip a generic firmware
+      downloader is available. The firmware downloaded into the
+      ActiveWire board changes the revision Id. It will then perform a
+      soft reset of the USB part of the EZ-USB chip to disconnect from
+      the USB bus and again reconnect.</para>
+
+    <para>Example: Mass Storage Devices Support for mass storage
+      devices is mainly built around existing protocols. The Iomega
+      USB Zipdrive is based on the SCSI version of their drive. The
+      SCSI commands and status messages are wrapped in blocks and
+      transferred over the bulk pipes to and from the device,
+      emulating a SCSI controller over the USB wire. ATAPI and UFI
+      commands are supported in a similar fashion.</para>
+
+    <para>The Mass Storage Specification supports 2 different types of
+      wrapping of the command block.The initial attempt was based on
+      sending the command and status through the default pipe and
+      using bulk transfers for the data to be moved between the host
+      and the device. Based on experience a second approach was
+      designed that was based on wrapping the command and status
+      blocks and sending them over the bulk out and in endpoint. The
+      specification specifies exactly what has to happen when and what
+      has to be done in case an error condition is encountered. The
+      biggest challenge when writing drivers for these devices is to
+      fit USB based protocol into the existing support for mass storage
+      devices. CAM provides hooks to do this in a fairly straight
+      forward way. ATAPI is less simple as historically the IDE
+      interface has never had many different appearances.</para>
+
+    <para>The support for the USB floppy from Y-E Data is again less
+      straightforward as a new command set has been designed.</para>
+
+  </sect1>
+
+</chapter>

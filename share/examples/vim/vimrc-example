@@ -1,0 +1,23 @@
+" $DragonFly: doc/share/examples/vim/vimrc-example,v 1.1.1.1 2004/04/02 09:36:25 hmp Exp $
+" DragonFly Documentation vimrc file for VIM users.
+set ch=2
+
+" Only do this for Vim version 5.0 and later.
+if version >= 500
+
+  " Switch on syntax highlighting.
+  syntax on
+
+  " Switch on search pattern highlighting.
+  set hlsearch
+
+  " Hide the mouse pointer while typing
+  set mousehide
+
+  " Edit DragonFlyBSD DocBook files
+  source $HOME/.vim/edit-sgml.vim
+
+  " Iso-8859-1 accents in SGML
+  source $HOME/.vim/accents-sgml.vim
+
+endif

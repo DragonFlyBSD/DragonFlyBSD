@@ -1,0 +1,99 @@
+
+	How to add your key to the list
+	===============================
+
+The addkey.sh script will export your key and generate the correct
+SGML incantations to have your key listed in the "PGP Keys" chapter.
+It was written for GnuPG, but shouldn't be difficult to modify to use
+PGP if you absolutely won't use GnuPG.
+
+For addkey.sh to perform its magic, gpg must be in your path, and the
+key(s) you wish to export must be present in the default keyring or in
+a keyring listed in your ~/.gnupg/options file.
+
+The simplest case is when your login name (as reported by 'id -nu') is
+the same as your freefall login name, and all the keys you wish to add
+(and only those keys) have a UID that contains your FreeBSD.org email
+address.  For instance, in my case:
+
+| % sh addkey.sh
+| Retrieving key...
+| pub  1024D/27848427 2000-10-13 Dag-Erling Smørgrav (low security key) <des@dragonfly.org>
+| pub  1024D/0512E49A 2001-06-26 Dag-Erling Smørgrav (FreeBSD) <des@dragonfly.org>
+| WARNING: Multiple keys; exporting all.  If this is not what you want,
+| WARNING: you should specify a key ID on the command line.
+| Generating des.key...
+| Adding key to entity list...
+| 
+| Unless you are already listed there, you should now add the
+| following text to
+| usr/doc/en_US.ISO8859-1/books/handbook/pgpkeys/chapter.sgml in the
+| appropriate position in
+| the developer section (unless this is a role key or you are a
+| core member.)  Remember to keep the list sorted by last name!
+| 
+|     <sect2 id="pgpkey-des">
+|       <title>&a.des;</title>
+|       &pgpkey.des;
+|     </sect2>
+| 
+| Don't forget to 'cvs add des.key' if this is a new entry,
+| and check your diffs before committing!
+
+If your login name is different from your freefall login name, specify
+your freefall login name as the first argument to addkey.sh:
+
+| % sh addkey.sh des
+
+If you want to tune what keys are to be exported, specify the key IDs,
+or strings to look for in the UID, just like you would to gpg:
+
+| % sh addkey.sh des 0512E49A
+
+You can specify as few or as many IDs as you want, and addkey.sh will
+export all matching keys, and those only.  If you didn't specify any
+key IDs on the command line, addkey.sh will look for a key that
+matches your FreeBSD.org email address.
+
+The script will generate a file named <freefall-login>.key (des.key in
+my case) that with programlisting elements: one that contains the
+fingerprints of all the keys you exported, and one that contains an
+ASCII dump of those keys, as produced by 'gpg --armor --export'.  It
+will also add a line to pgpkeys.ent defining an external entity named
+pgpkey.<freefall-login> (pgpkey.des in my case) that refers to the key
+file.
+
+As you can see from the example above, addkey.sh will also tell you
+what keys it exported (check this carefully before committing!) and
+provide instructions for actually adding the key to the handbook.
+Beware that the keys are supposed to be ordered by surname; if you're
+unsure where to add your entry, use finger(1) to check the surnames of
+those around you.
+
+Once you've successfully run addkey.sh, 'cvs add' your key file, check
+the diffs, and commit.
+
+
+	How to update your key
+	======================
+
+There are two ways to update your key.  The first is to follow the
+above instructions as if you were adding your key for the first time -
+except that you don't need to edit chapter.sgml, because you're
+already listed there.  The addkey.sh script will snarf the RCS Id from
+the old key file and generate a new one with whatever keys you
+specified.
+
+The second method, which you can use if you're not adding or removing
+any keys, but just updating the ones that are already there (because
+you've had your key signed, or you've added or removed UIDs), is to
+execute the third line of your key file, which is a pre-cooked
+addkey.sh command line with your freefall login and the numeric key
+IDs of the keys contained in the file.  Just do the equivalent of:
+
+| % eval $(grep addkey des.key)
+
+The exact command, of course, will depend on your shell, and on your
+freefall login name.
+
+$DragonFly: doc/share/pgpkeys/README,v 1.1.1.1 2004/04/02 09:36:37 hmp Exp $

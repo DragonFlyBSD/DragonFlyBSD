@@ -1,0 +1,260 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/vm/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+-->
+
+<chapter id="vm">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+	<firstname>Matthew</firstname>
+	<surname>Dillon</surname>
+	<contrib>Contributed by </contrib>
+      </author>
+    </authorgroup>
+    <!-- 6 Feb 1999 -->
+  </chapterinfo>
+
+  <title>Virtual Memory System</title>
+
+    <sect1 id="vm-physmem">
+      <title>Management of physical
+	memory&mdash;<literal>vm_page_t</literal></title>
+      
+      <para>Physical memory is managed on a page-by-page basis through the
+	<literal>vm_page_t</literal> structure.  Pages of physical memory are
+	categorized through the placement of their respective
+	<literal>vm_page_t</literal> structures on one of several paging
+	queues.</para>
+
+      <para>A page can be in a wired, active, inactive, cache, or free state.
+	Except for the wired state, the page is typically placed in a doubly
+	link list queue representing the state that it is in.  Wired pages
+	are not placed on any queue.</para>
+
+      <para>FreeBSD implements a more involved paging queue for cached and
+	free pages in order to implement page coloring.  Each of these states
+	involves multiple queues arranged according to the size of the
+	processor's L1 and L2 caches.  When a new page needs to be allocated,
+	FreeBSD attempts to obtain one that is reasonably well aligned from
+	the point of view of the L1 and L2 caches relative to the VM object
+	the page is being allocated for.</para>
+
+      <para>Additionally, a page may be held with a reference count or locked
+	with a busy count.  The VM system also implements an <quote>ultimate
+	locked</quote> state for a page using the PG_BUSY bit in the page's
+	flags.</para>
+
+      <para>In general terms, each of the paging queues operates in a LRU
+	fashion.  A page is typically placed in a wired or active state
+	initially.  When wired, the page is usually associated with a page
+	table somewhere.  The VM system ages the page by scanning pages in a
+	more active paging queue (LRU) in order to move them to a less-active
+	paging queue.  Pages that get moved into the cache are still
+	associated with a VM object but are candidates for immediate reuse.
+	Pages in the free queue are truly free.  FreeBSD attempts to minimize
+	the number of pages in the free queue, but a certain minimum number of
+	truly free pages must be maintained in order to accommodate page
+	allocation at interrupt time.</para>
+
+      <para>If a process attempts to access a page that does not exist in its
+	page table but does exist in one of the paging queues (such as the
+	inactive or cache queues), a relatively inexpensive page reactivation
+	fault occurs which causes the page to be reactivated. If the page
+	does not exist in system memory at all, the process must block while
+	the page is brought in from disk.</para>
+
+      <para>FreeBSD dynamically tunes its paging queues and attempts to
+	maintain reasonable ratios of pages in the various queues as well as
+	attempts to maintain a reasonable breakdown of clean vs. dirty pages.
+	The amount of rebalancing that occurs depends on the system's memory
+	load.  This rebalancing is implemented by the pageout daemon and
+	involves laundering dirty pages (syncing them with their backing
+	store), noticing when pages are activity referenced (resetting their
+	position in the LRU queues or moving them between queues), migrating
+	pages between queues when the queues are out of balance, and so forth.
+	FreeBSD's VM system is willing to take a reasonable number of
+	reactivation page faults to determine how active or how idle a page
+	actually is.  This leads to better decisions being made as to when to
+	launder or swap-out a page.</para>
+    </sect1>
+    
+    <sect1 id="vm-cache">
+      <title>The unified buffer
+	cache&mdash;<literal>vm_object_t</literal></title>
+	  
+      <para>FreeBSD implements the idea of a generic <quote>VM object</quote>.
+	VM objects can be associated with backing store of various
+	types&mdash;unbacked, swap-backed, physical device-backed, or
+	file-backed storage.  Since the filesystem uses the same VM objects to
+	manage in-core data relating to files, the result is a unified buffer
+	cache.</para>
+
+      <para>VM objects can be <emphasis>shadowed</emphasis>.  That is, they
+	can be stacked on top of each other.  For example, you might have a
+	swap-backed VM object stacked on top of a file-backed VM object in
+	order to implement a MAP_PRIVATE mmap()ing.  This stacking is also
+	used to implement various sharing properties, including
+	copy-on-write, for forked address spaces.</para>
+
+      <para>It should be noted that a <literal>vm_page_t</literal> can only be
+	associated with one VM object at a time.  The VM object shadowing
+	implements the  perceived sharing of the same page across multiple
+	instances.</para>
+    </sect1>
+    
+    <sect1 id="vm-fileio">
+      <title>Filesystem I/O&mdash;<literal>struct buf</literal></title>
+      
+      <para>vnode-backed VM objects, such as file-backed objects, generally
+	need to maintain their own clean/dirty info independent from the VM
+	system's idea of clean/dirty.  For example, when the VM system decides
+	to  synchronize a physical page to its backing store, the VM system
+	needs to mark the page clean before the page is actually written to
+	its backing store.  Additionally, filesystems need to be able to map
+	portions of a file or file metadata into KVM in order to operate on
+	it.</para>
+
+      <para>The entities used to manage this are known as filesystem buffers,
+	<literal>struct buf</literal>'s, or
+	<literal>bp</literal>'s.  When a filesystem needs to operate on a
+	portion of a VM object, it typically maps part of the object into a
+	struct buf and the maps the pages in the struct buf into KVM.  In the
+	same manner, disk I/O is typically issued by mapping portions of
+	objects into buffer structures and  then issuing the I/O on the buffer
+	structures.  The underlying  vm_page_t's are typically busied for the
+	duration of the I/O.  Filesystem buffers also have their own notion of
+	being busy, which is useful to filesystem driver code which would
+	rather operate on filesystem buffers instead of hard VM pages.</para>
+
+      <para>FreeBSD reserves a limited amount of KVM to hold mappings from
+	struct bufs, but it should be made clear that this KVM is used solely
+	to hold mappings and does not limit the ability to cache data.
+	Physical data caching is strictly a function of
+	<literal>vm_page_t</literal>'s, not filesystem buffers.  However,
+	since filesystem buffers are used to placehold I/O, they do inherently
+	limit the amount of concurrent I/O possible.  However, as there are usually a
+	few thousand filesystem buffers available, this is not usually a
+	problem.</para>
+    </sect1>
+    
+    <sect1 id="vm-pagetables">
+      <title>Mapping Page Tables&mdash;<literal>vm_map_t, vm_entry_t</literal></title>
+      
+      <para>FreeBSD separates the physical page table topology from the VM
+	system.  All hard per-process page tables can be reconstructed on  the
+	fly and are usually considered throwaway.  Special page tables such as
+	those managing KVM are typically permanently preallocated. These page
+	tables are not throwaway.</para>
+
+      <para>FreeBSD associates portions of vm_objects with address ranges in
+	virtual memory through <literal>vm_map_t</literal> and
+	<literal>vm_entry_t</literal> structures.  Page tables are directly
+	synthesized from the
+	<literal>vm_map_t</literal>/<literal>vm_entry_t</literal>/
+	<literal>vm_object_t</literal> hierarchy.  Recall that I mentioned
+	that physical pages  are only directly associated with a
+	<literal>vm_object</literal>; that is not quite true.
+	<literal>vm_page_t</literal>'s are also linked into page tables that
+	they are actively associated with.  One <literal>vm_page_t</literal>
+	can be linked into  several <emphasis>pmaps</emphasis>, as page tables
+	are called.  However, the hierarchical association holds, so all
+	references to the same page in the same object reference the same
+	<literal>vm_page_t</literal> and thus give us buffer cache unification
+	across the board.</para>
+    </sect1>
+      
+    <sect1 id="vm-kvm">
+      <title>KVM Memory Mapping</title>
+      
+      <para>FreeBSD uses KVM to hold various kernel structures.  The single
+	largest entity held in KVM is the filesystem buffer cache.  That is,
+	mappings relating to <literal>struct buf</literal> entities.</para>
+
+      <para>Unlike Linux, FreeBSD does <emphasis>not</emphasis> map all of physical memory into
+	KVM.  This means that FreeBSD can handle memory configurations up to
+	4G on 32 bit platforms.  In fact, if the mmu were capable of it,
+	FreeBSD could theoretically handle memory configurations up to 8TB on
+	a 32 bit platform.  However, since most 32 bit platforms are only
+	capable of mapping 4GB of ram, this is a moot point.</para>
+
+        <para>KVM is managed through several mechanisms.  The main mechanism
+	  used to manage KVM is the <emphasis>zone allocator</emphasis>.  The
+	  zone allocator takes a chunk of KVM and splits it up into
+	  constant-sized blocks of memory in order to allocate a specific type
+	  of structure.  You can use <command>vmstat -m</command> to get an
+	  overview of current KVM  utilization broken down by zone.</para>
+    </sect1>
+    
+    <sect1 id="vm-tuning">
+      <title>Tuning the FreeBSD VM system</title>
+      
+      <para>A concerted effort has been made to make the FreeBSD kernel
+	dynamically tune itself.  Typically you do not need to mess with
+	anything beyond the <option>maxusers</option> and
+	<option>NMBCLUSTERS</option> kernel config options.  That is, kernel
+	compilation options specified in (typically)
+	<filename>/usr/src/sys/i386/conf/<replaceable>CONFIG_FILE</replaceable></filename>.
+	A description of all available kernel configuration options can be
+	found in <filename>/usr/src/sys/i386/conf/LINT</filename>.</para>
+
+      <para>In a large system configuration you may wish to increase
+	<option>maxusers</option>.  Values typically range from 10 to 128.
+	Note that raising <option>maxusers</option> too high can cause the
+	system to overflow available KVM resulting in unpredictable operation.
+	It is better to leave <option>maxusers</option> at some reasonable number and add other
+	options, such as <option>NMBCLUSTERS</option>, to increase specific
+	resources.</para>
+
+      <para>If your system is going to use the network heavily, you may want
+	to increase <option>NMBCLUSTERS</option>.  Typical values range from
+	1024 to 4096.</para>
+
+      <para>The <literal>NBUF</literal> parameter is also traditionally used
+	to scale the system.  This parameter determines the amount of KVA the
+	system can use to map filesystem buffers for I/O.  Note that this
+	parameter has nothing whatsoever to do with the unified buffer cache!
+	This parameter is dynamically tuned in 3.0-CURRENT and later kernels
+	and should generally not be adjusted manually.  We recommend that you
+	<emphasis>not</emphasis> try to specify an <literal>NBUF</literal>
+	parameter.  Let the system pick it.  Too small a value can result in
+	extremely inefficient filesystem operation while too large a value can
+	starve the page queues by causing too many pages to become wired
+	down.</para>
+
+      <para>By default, FreeBSD kernels are not optimized.  You can set
+	debugging and optimization flags with the
+	<literal>makeoptions</literal> directive in the kernel configuration.
+	Note that you should not use <option>-g</option> unless you can
+	accommodate the large (typically 7 MB+) kernels that result.</para>
+
+      <programlisting>makeoptions      DEBUG="-g"
+makeoptions      COPTFLAGS="-O -pipe"</programlisting>
+
+      <para>Sysctl provides a way to tune kernel parameters at run-time. You
+	typically do not need to mess with any of the sysctl variables,
+	especially the VM related ones.</para>
+
+      <para>Run time VM and system tuning is relatively straightforward.
+	First, use Soft Updates on your UFS/FFS filesystems whenever possible.
+	<filename>/usr/src/sys/ufs/ffs/README.softupdates</filename> contains
+	instructions (and restrictions) on how to configure it.</para>
+
+      <para>Second, configure  sufficient swap.  You should have a swap
+	partition configured on each physical disk, up to four, even on your
+	<quote>work</quote> disks.  You should have at least 2x the swap space
+	as you have main memory, and possibly even more if you do not have a
+	lot of memory.  You should also size your swap partition based on the
+	maximum memory configuration you ever intend to put on the machine so
+	you do not have to repartition your disks later on. If you want to be
+	able to accommodate a crash dump, your first swap partition must be at
+	least as large as main memory and <filename>/var/crash</filename> must
+	have sufficient free space to hold the dump.</para>
+
+      <para>NFS-based swap is perfectly acceptable on 4.X or later systems,
+	but you must be aware that the NFS server will take the brunt of the
+	paging load.</para>
+    </sect1>
+
+</chapter>

@@ -1,0 +1,44 @@
+<!-- 
+     Trademark Legend, as required by The Open Group, Sun, etc..
+
+     $DragonFly: doc/en/share/sgml/trademarks.sgml,v 1.1.1.1 2004/04/02 09:36:22 hmp Exp $
+     $DragonFly: doc/en/share/sgml/trademarks.sgml,v 1.1.1.1 2004/04/02 09:36:22 hmp Exp $
+-->
+
+<legalnotice id="trademarks" role="trademarks">
+
+  <para>DragonFlyBSD is copyright the DragonFlyBSD Project.</para>
+
+  <para>FreeBSD is a registered trademark of Wind River Systems, Inc.
+    This is expected to change soon.</para>
+
+  <para>UNIX is a registered trademark of The Open Group in the US and
+    other countries.</para>
+
+  <para>Sun, Sun Microsystems, SunOS, Solaris, and Java are trademarks
+    or registered trademarks of Sun Microsystems, Inc. in the United
+    States and other countries.</para>
+
+<!-- Product Trademarks -->
+
+  <para>Apple and QuickTime are trademarks of Apple Computer, Inc.,
+    registered in the U.S. and other countries.</para>
+
+  <para>Macromedia and Flash are trademarks or registered
+    trademarks of Macromedia, Inc. in the United States and/or other
+    countries.</para>
+
+  <para>Microsoft, Windows, and Windows Media are either registered
+    trademarks or trademarks of Microsoft Corporation in the United
+    States and/or other countries.</para>
+
+  <para>PartitionMagic is a registered trademark of PowerQuest
+    Corporation in the United States and/or other countries.</para>
+
+  <para>Many of the designations used by manufacturers and sellers to
+    distinguish their products are claimed as trademarks.  Where those
+    designations appear in this book, and the DragonFlyBSD Project was
+    aware of the trademark claim, the designations have been followed
+    by the <quote>&trade;</quote> symbol.</para>
+
+</legalnotice>
