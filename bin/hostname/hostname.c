@@ -33,17 +33,15 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.12 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.13 2005/03/21 16:59:31 liamfoy Exp $
  */
 
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
-#include <sys/time.h>
 #include <sys/module.h>
 #include <sys/linker.h>
-
 
 #include <net/ethernet.h>
 #include <net/if.h>
@@ -52,7 +50,6 @@
 #include <net/if_types.h>
 #include <net/route.h>
 #include <netinet/in.h>
-
 
 #include <err.h>
 #include <stdio.h>
@@ -140,18 +137,17 @@ main(int argc, char **argv)
 			iflag |= HST_IF_V6;
 			break;
 		case 'i':
-			siflag = strdup(optarg);
+			siflag = optarg;
 			silen = strlen(siflag);
 			iflag |= HST_IF;
 			break;
 		case 'r':
-			srflag = strdup(optarg);
+			srflag = optarg;
 			rflag = 1;
 			break;
 		case 's':
 			sflag = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -189,11 +185,11 @@ main(int argc, char **argv)
 		needed = 1;
 
 		if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)
-			errx(1, "iflist-sysctl-estimate:%i",errno);
+			err(1, "sysctl: iflist-sysctl-estimate");
 		if ((buf = malloc(needed)) == NULL)
-			errx(1, "malloc");
+			err(1, "malloc failed");
 		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
-			errx(1, "actual retrieval of interface table");
+			err(1, "sysctl: retrieval of interface table");
 	
 		lim = buf + needed;
 
@@ -260,11 +256,12 @@ main(int argc, char **argv)
 
 		if (h_errno == NETDB_SUCCESS) {
 			if (sethostname(hst->h_name, (int)strlen(hst->h_name)))
-				errx(1, "sethostname");
+				err(1, "sethostname");
 		} else if (h_errno == HOST_NOT_FOUND) {
 			errx(1,"hostname not found");
 		} else {
-			errx(1,"gethostbyaddr");
+			herror("gethostbyaddr");
+			exit(1);
 		}
 	} else if (rflag) {
 		ret = inet_pton(AF_INET, srflag, &ia);
