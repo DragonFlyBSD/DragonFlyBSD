@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.7 2003/07/10 04:47:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.8 2003/07/11 23:26:16 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -90,7 +90,11 @@ static void tco_forward __P((int force));
 static void tco_setscales __P((struct timecounter *tc));
 static __inline unsigned tco_delta __P((struct timecounter *tc));
 
-/* Some of these don't belong here, but it's easiest to concentrate them. */
+/*
+ * Some of these don't belong here, but it's easiest to concentrate them.
+ * Note that cp_time[] counts in microseconds, but most userland programs
+ * just compare relative times against the total by delta.
+ */
 long cp_time[CPUSTATES];
 
 SYSCTL_OPAQUE(_kern, OID_AUTO, cp_time, CTLFLAG_RD, &cp_time, sizeof(cp_time),
@@ -173,8 +177,9 @@ int	stathz;
 int	profhz;
 static int profprocs;
 int	ticks;
-static int psdiv, pscnt;		/* prof => stat divider */
-int	psratio;			/* ratio: prof / stat */
+static int psticks;			/* profiler ticks */
+static int psdiv;			/* prof / stat divider */
+int	psratio;			/* ratio: prof * 100 / stat */
 
 /*
  * Initialize clock frequencies and start both clocks running.
@@ -190,7 +195,7 @@ initclocks(dummy)
 	 * Set divisors to 1 (normal case) and let the machine-specific
 	 * code do its bit.
 	 */
-	psdiv = pscnt = 1;
+	psdiv = 1;
 	cpu_initclocks();
 
 #ifdef DEVICE_POLLING
@@ -234,7 +239,7 @@ hardclock(frame)
 			psignal(p, SIGPROF);
 	}
 
-#if defined(SMP) && defined(BETTER_CLOCK)
+#if 0 /* SMP and BETTER_CLOCK */
 	forward_hardclock(pscnt);
 #endif
 
@@ -337,7 +342,7 @@ startprofclock(p)
 		p->p_flag |= P_PROFIL;
 		if (++profprocs == 1 && stathz != 0) {
 			s = splstatclock();
-			psdiv = pscnt = psratio;
+			psdiv = psratio;
 			setstatclockrate(profhz);
 			splx(s);
 		}
@@ -357,7 +362,7 @@ stopprofclock(p)
 		p->p_flag &= ~P_PROFIL;
 		if (--profprocs == 0 && stathz != 0) {
 			s = splstatclock();
-			psdiv = pscnt = 1;
+			psdiv = 1;
 			setstatclockrate(stathz);
 			splx(s);
 		}
@@ -419,21 +424,19 @@ statclock(frame)
 		 */
 		if (p && (p->p_flag & P_PROFIL))
 			addupc_intr(p, CLKF_PC(frame), 1);
-#if defined(SMP) && defined(BETTER_CLOCK)
+#if 0	/* SMP and BETTER_CLOCK */
 		if (stathz != 0)
 			forward_statclock(pscnt);
 #endif
 		td->td_uticks += bump;
-		if (--pscnt > 0)
-			return;
 
 		/*
 		 * Charge the time as appropriate
 		 */
 		if (p && p->p_nice > NZERO)
-			++cp_time[CP_NICE];
+			cp_time[CP_NICE] += bump;
 		else
-			++cp_time[CP_USER];
+			cp_time[CP_USER] += bump;
 	} else {
 #ifdef GPROF
 		/*
@@ -448,7 +451,7 @@ statclock(frame)
 			}
 		}
 #endif
-#if defined(SMP) && defined(BETTER_CLOCK)
+#if 0	/* SMP and BETTER_CLOCK */
 		if (stathz != 0)
 			forward_statclock(pscnt);
 #endif
@@ -469,19 +472,26 @@ statclock(frame)
 		else
 			td->td_sticks += bump;
 
-		if (--pscnt > 0)
-			return;
-
 		if (CLKF_INTR(frame)) {
-			cp_time[CP_INTR]++;
+			cp_time[CP_INTR] += bump;
 		} else {
 			if (td == &mycpu->gd_idlethread)
-				++cp_time[CP_IDLE];
+				cp_time[CP_IDLE] += bump;
 			else
-				++cp_time[CP_SYS];
+				cp_time[CP_SYS] += bump;
 		}
 	}
-	pscnt = psdiv;
+
+	/*
+	 * bump psticks and check against gd_psticks.  When we hit the
+	 * 1*hz mark (psdiv ticks) we do the more expensive stuff.
+	 */
+	++psticks;
+	if (psticks < mycpu->gd_psticks || psdiv == mycpu->gd_psdiv)
+		return;
+
+	mycpu->gd_psdiv = psdiv;
+	mycpu->gd_psticks = psticks + psdiv;
 
 	if (p != NULL) {
 		schedclock(p);

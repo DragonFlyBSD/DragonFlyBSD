@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.22 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.23 2003/07/11 23:26:15 dillon Exp $
  */
 
 /*
@@ -262,11 +262,11 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	}
 
 	/*
-	 * Charge system time if profiling.
+	 * Charge system time if profiling.  Note: times are in microseconds.
 	 */
 	if (p->p_flag & P_PROFIL) {
 		addupc_task(p, frame->tf_eip, 
-		    (u_int)(curthread->td_sticks - oticks) * psratio);
+		    (u_int)(curthread->td_sticks - oticks));
 	}
 
 	/*

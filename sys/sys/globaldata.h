@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.9 2003/07/10 04:47:55 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.10 2003/07/11 23:26:18 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -78,6 +78,8 @@ struct globaldata {
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for fast interrupts) */
 	int		gd_astpending;		/* sorta MD but easier here */
+	int		gd_psticks;		/* profile kern/kern_clock.c */
+	int		gd_psdiv;		/* profile kern/kern_clock.c */
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;
 	struct thread	gd_schedthread;
