@@ -34,7 +34,7 @@
  *      @(#)tip.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tip/tip/tip.h,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.4 2004/08/19 23:21:12 joerg Exp $
  */
 
 /*
@@ -208,6 +208,7 @@ extern value_t	vtable[];	/* variable table */
 #define loginit(x)
 #else
 void logent(char *, char *, char *, char*);
+void  loginit(void);
 #endif
 
 /*
@@ -310,7 +311,6 @@ extern	int   any(char, char *);
 extern	void  setscript(void);
 extern	void  tipout(void);
 extern	void  vinit(void);
-extern	void  loginit(void);
 extern	int   hunt(char *);
 extern	int vstring(char *, char *);
 extern	void setparity(char *);
