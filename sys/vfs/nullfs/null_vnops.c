@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.14 2004/08/28 19:02:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.15 2004/08/28 21:32:28 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -622,9 +622,14 @@ null_lock(struct vop_lock_args *ap)
 	 * If locking only the nullfs layer, or if there is no lower layer,
 	 * or if an error occured while attempting to lock the nullfs layer,
 	 * we are done.
+	 *
+	 * np can be NULL is the vnode is being recycled from a previous
+	 * hash collision.
 	 */
-	if ((flags & LK_THISLAYER) || np->null_lowervp == NULL || error)
+	if ((flags & LK_THISLAYER) || np == NULL ||
+	    np->null_lowervp == NULL || error) {
 		return (error);
+	}
 
 	/*
 	 * Lock the underlying vnode.  If we are draining we should not drain
@@ -681,10 +686,10 @@ null_unlock(struct vop_unlock_args *ap)
 
 	/*
 	 * If there is no underlying vnode the lock operation occurs at
-	 * the nullfs layer.
+	 * the nullfs layer.  np can be NULL is the vnode is being recycled
+	 * from a previous hash collision.
 	 */
-	lvp = np->null_lowervp;
-	if (lvp == NULL) {
+	if (np == NULL || (lvp = np->null_lowervp) == NULL) {
 		error = lockmgr(&vp->v_lock, flags | LK_RELEASE,
 				ap->a_vlock, ap->a_td);
 		return(error);
@@ -841,12 +846,20 @@ null_destroyvobject(struct vop_destroyvobject_args *ap)
 
 /*
  * null_getvobject(struct vnode *vp, struct vm_object **objpp)
+ *
+ * Note that this can be called when a vnode is being recycled, and
+ * v_data may be NULL in that case if nullfs had to recycle a vnode
+ * due to a null_node collision.
  */
 static int
 null_getvobject(struct vop_getvobject_args *ap)
 {
-	struct vnode *lvp = NULLVPTOLOWERVP(ap->a_vp);
+	struct vnode *lvp;
 
+	if (ap->a_vp->v_data == NULL)
+		return EINVAL;
+
+	lvp = NULLVPTOLOWERVP(ap->a_vp);
 	if (lvp == NULL)
 		return EINVAL;
 	return (VOP_GETVOBJECT(lvp, ap->a_objpp));

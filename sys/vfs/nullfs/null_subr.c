@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.13 2004/08/28 19:02:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.14 2004/08/28 21:32:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -170,7 +170,8 @@ null_node_add(struct null_node *np)
 	lwkt_gettoken(&ilock, &null_ihash_token);
 	npp = NULL_NHASH(np->null_lowervp);
 	while ((n2 = *npp) != NULL) {
-		if (n2->null_lowervp == np->null_lowervp) {
+		if (n2->null_lowervp == np->null_lowervp &&
+		    n2->null_vnode->v_mount == np->null_vnode->v_mount) {
 			lwkt_reltoken(&ilock);
 			return(EBUSY);
 		}
