@@ -1,9 +1,9 @@
 #	@(#)Makefile	8.2 (Berkeley) 12/13/93
 # $FreeBSD: src/share/man/man3/Makefile,v 1.15.2.3 2001/04/25 11:11:30 ru Exp $
-# $DragonFly: src/share/man/man3/Makefile,v 1.2 2003/06/17 04:36:58 dillon Exp $
+# $DragonFly: src/share/man/man3/Makefile,v 1.3 2004/08/19 20:38:33 joerg Exp $
 
 MAN=	assert.3 bitstring.3 end.3 fpgetround.3 intro.3 pthread.3 queue.3 \
-	stdarg.3 sysexits.3
+	stdarg.3 sysexits.3 tree.3
 MLINKS+=bitstring.3 bit_alloc.3 bitstring.3 bit_clear.3 \
 	bitstring.3 bit_decl.3 bitstring.3 bit_ffc.3 bitstring.3 bit_ffs.3 \
 	bitstring.3 bit_nclear.3 bitstring.3 bit_nset.3 bitstring.3 bit_set.3 \
