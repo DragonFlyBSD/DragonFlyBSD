@@ -24,7 +24,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.1 2003/11/10 06:08:34 dillon Exp $
+\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.2 2003/11/10 15:35:34 drhodus Exp $
 
 marker task-beastie.4th
 
@@ -144,10 +144,10 @@ at-xy ."         `--{__________) [0m" 1+
 	clear
 	46 4 print-beastie
 	42 20 2 2 box
-	13 6 at-xy ." Welcome to FreeBSD!"
-	printmenuitem ."  Boot FreeBSD [default]" bootkey !
+	13 6 at-xy ." Welcome to DragonFly!"
+	printmenuitem ."  Boot DragonFly [default]" bootkey !
 	s" arch-i386" environment? if
-		printmenuitem ."  Boot FreeBSD with ACPI " bootacpikey !
+		printmenuitem ."  Boot DragonFly with ACPI " bootacpikey !
 		acpienabled? if
 			." disabled"
 		else
@@ -156,9 +156,9 @@ at-xy ."         `--{__________) [0m" 1+
 	else
 		-2 bootacpikey !
 	then
-	printmenuitem ."  Boot FreeBSD in Safe Mode" bootsafekey !
-	printmenuitem ."  Boot FreeBSD in single user mode" bootsinglekey !
-	printmenuitem ."  Boot FreeBSD with verbose logging" bootverbosekey !
+	printmenuitem ."  Boot DragonFly in Safe Mode" bootsafekey !
+	printmenuitem ."  Boot DragonFly in single user mode" bootsinglekey !
+	printmenuitem ."  Boot DragonFly with verbose logging" bootverbosekey !
 	printmenuitem ."  Escape to loader prompt" escapekey !
 	printmenuitem ."  Reboot" rebootkey !
 	menuX @ 20 at-xy
