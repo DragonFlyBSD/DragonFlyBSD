@@ -37,7 +37,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vnops.c,v 1.76.2.7 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vnops.c,v 1.9 2003/09/01 01:14:55 hmp Exp $
  */
 
 /*
@@ -738,6 +738,10 @@ procfs_lookup(ap)
 		if (p == NULL)
 			break;
 
+		if (ps_showallprocs == 0 && ap->a_cnp->cn_cred->cr_uid != 0 &&
+		    ap->a_cnp->cn_cred->cr_uid != p->p_ucred->cr_uid)
+			break;
+
 		return (procfs_allocvp(dvp->v_mount, vpp, pid, Pproc));
 
 	case Pproc:
@@ -746,6 +750,10 @@ procfs_lookup(ap)
 
 		p = PFIND(pfs->pfs_pid);
 		if (p == NULL)
+			break;
+
+		if (ps_showallprocs == 0 && ap->a_cnp->cn_cred->cr_uid != 0 &&
+		    ap->a_cnp->cn_cred->cr_uid != p->p_ucred->cr_uid)
 			break;
 
 		for (pt = proc_targets, i = 0; i < nproc_targets; pt++, i++) {
@@ -903,6 +911,16 @@ procfs_readdir(ap)
 					if (!p)
 						goto done;
 				}
+				if (ps_showallprocs == 0 && 
+				    ap->a_cred->cr_uid != 0 &&
+				    ap->a_cred->cr_uid !=
+				    p->p_ucred->cr_uid) {
+					p = p->p_list.le_next;
+					if (!p)
+						goto done;
+					break;
+				}
+
 				dp->d_fileno = PROCFS_FILENO(p->p_pid, Pproc);
 				dp->d_namlen = sprintf(dp->d_name, "%ld",
 				    (long)p->p_pid);

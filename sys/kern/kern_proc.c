@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.12 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.13 2003/09/01 01:14:55 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@ MALLOC_DEFINE(M_SESSION, "session", "session header");
 static MALLOC_DEFINE(M_PROC, "proc", "Proc structures");
 MALLOC_DEFINE(M_SUBPROC, "subproc", "Proc sub-structures");
 
-static int ps_showallprocs = 1;
+int ps_showallprocs = 1;
 static int ps_showallthreads = 1;
 SYSCTL_INT(_kern, OID_AUTO, ps_showallprocs, CTLFLAG_RW,
     &ps_showallprocs, 0, "");

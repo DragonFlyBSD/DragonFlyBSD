@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.30 2003/08/27 02:03:22 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.31 2003/09/01 01:14:55 hmp Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -389,6 +389,7 @@ extern int	whichidqs;	/* Bit mask summary of non-empty Q's. */
 
 extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
+extern	int ps_showallprocs;
 
 struct proc *pfind (pid_t);	/* Find process by id. */
 struct pgrp *pgfind (pid_t);	/* Find process group by id. */
