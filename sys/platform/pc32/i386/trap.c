@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.6 2003/06/23 17:55:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.7 2003/06/23 23:36:05 dillon Exp $
  */
 
 /*
@@ -167,6 +167,7 @@ userret(p, frame, oticks, have_mplock)
 	int have_mplock;
 {
 	int sig, s;
+	struct thread *td;
 
 	while ((sig = CURSIG(p)) != 0) {
 		if (have_mplock == 0) {
@@ -206,8 +207,9 @@ userret(p, frame, oticks, have_mplock)
 			get_mplock();
 			have_mplock = 1;
 		}
-		addupc_task(p, frame->tf_eip,
-			    (u_int)(p->p_sticks - oticks) * psratio);
+		td = curthread;
+		addupc_task(p, frame->tf_eip, 
+		    (u_int)(td->td_sticks - oticks) * psratio);
 	}
 	curpriority = p->p_priority;
 	return(have_mplock);
@@ -322,7 +324,7 @@ restart:
         if ((ISPL(frame.tf_cs) == SEL_UPL) || (frame.tf_eflags & PSL_VM)) {
 		/* user trap */
 
-		sticks = p->p_sticks;
+		sticks = curthread->td_sticks;
 		p->p_md.md_regs = &frame;
 
 		switch (type) {
@@ -1094,7 +1096,7 @@ syscall2(frame)
 	 * updated by the clock interrupt.
 	 */
 	crit_enter();
-	sticks = ((volatile struct proc *)p)->p_sticks;	
+	sticks = curthread->td_sticks;
 	crit_exit();
 
 	p->p_md.md_regs = &frame;

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.13 2003/06/23 17:55:50 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.14 2003/06/23 23:36:14 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -169,13 +169,6 @@ struct	proc {
 	u_int	p_slptime;	 /* Time since last blocked. */
 
 	struct	itimerval p_realtimer;	/* Alarm timer. */
-	u_int64_t p_runtime;		/* Real time in microsec. */
-	u_int64_t p_uu;			/* Previous user time in microsec. */
-	u_int64_t p_su;			/* Previous system time in microsec. */
-	u_int64_t p_iu;			/* Previous interrupt time in usec. */
-	u_int64_t p_uticks;		/* Statclock hits in user mode. */
-	u_int64_t p_sticks;		/* Statclock hits in system mode. */
-	u_int64_t p_iticks;		/* Statclock hits processing intr. */
 
 	int	p_traceflag;		/* Kernel trace points. */
 	struct	vnode *p_tracep;	/* Trace to vnode. */

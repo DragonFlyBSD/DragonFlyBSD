@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.7 2003/06/21 07:54:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.8 2003/06/23 23:36:05 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -67,15 +67,13 @@ _CPU_prvspace:
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
 	.globl	gd_curthread, gd_npxthread, gd_astpending, gd_reqpri
-	.globl	gd_common_tss, gd_switchtime, gd_switchticks, gd_idlethread
+	.globl	gd_common_tss, gd_idlethread
 	.set	gd_curthread,globaldata + GD_CURTHREAD
 	.set	gd_idlethread,globaldata + GD_IDLETHREAD
 	.set	gd_astpending,globaldata + GD_ASTPENDING
 	.set	gd_reqpri,globaldata + GD_REQPRI
 	.set	gd_npxthread,globaldata + GD_NPXTHREAD
 	.set	gd_common_tss,globaldata + GD_COMMON_TSS
-	.set	gd_switchtime,globaldata + GD_SWITCHTIME
-	.set	gd_switchticks,globaldata + GD_SWITCHTICKS
 
 	.globl	gd_common_tssd, gd_tss_gdt
 	.set	gd_common_tssd,globaldata + GD_COMMON_TSSD
@@ -88,15 +86,13 @@ _CPU_prvspace:
 
 #ifndef SMP
 	.globl	_curthread, _npxthread, _astpending, _reqpri
-	.globl	_common_tss, _switchtime, _switchticks, _idlethread
+	.globl	_common_tss, _idlethread
 	.set	_curthread,globaldata + GD_CURTHREAD
 	.set	_idlethread,globaldata + GD_IDLETHREAD
 	.set	_astpending,globaldata + GD_ASTPENDING
 	.set	_reqpri,globaldata + GD_REQPRI
 	.set	_npxthread,globaldata + GD_NPXTHREAD
 	.set	_common_tss,globaldata + GD_COMMON_TSS
-	.set	_switchtime,globaldata + GD_SWITCHTIME
-	.set	_switchticks,globaldata + GD_SWITCHTICKS
 
 	.globl	_common_tssd, _tss_gdt
 	.set	_common_tssd,globaldata + GD_COMMON_TSSD

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.6 2003/06/22 04:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.7 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -399,13 +399,6 @@ sleepinit(void)
 	hogticks = 2 * sched_quantum;
 	for (i = 0; i < TABLESIZE; i++)
 		TAILQ_INIT(&slpque[i]);
-}
-
-void
-xwait_init(struct xwait *w)
-{
-	bzero(w, sizeof(*w));
-	TAILQ_INIT(&w->waitq);
 }
 
 /*
@@ -813,10 +806,11 @@ restart:
 void
 mi_switch()
 {
-	struct timeval new_switchtime;
-	register struct proc *p = curproc;	/* XXX */
-	register struct rlimit *rlim;
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;	/* XXX */
+	struct rlimit *rlim;
 	int x;
+	u_int64_t ttime;
 
 	/*
 	 * XXX this spl is almost unnecessary.  It is partly to allow for
@@ -842,31 +836,17 @@ mi_switch()
 	if (p->p_simple_locks)
 		printf("sleep: holding simple lock\n");
 #endif
-	/*
-	 * Compute the amount of time during which the current
-	 * process was running, and add that to its total so far.
-	 */
-	microuptime(&new_switchtime);
-	if (timevalcmp(&new_switchtime, &mycpu->gd_switchtime, <)) {
-		printf("microuptime() went backwards (%ld.%06ld -> %ld.%06ld)\n",
-		    mycpu->gd_switchtime.tv_sec, mycpu->gd_switchtime.tv_usec, 
-		    new_switchtime.tv_sec, new_switchtime.tv_usec);
-		new_switchtime = mycpu->gd_switchtime;
-	} else {
-		p->p_runtime += 
-		    (new_switchtime.tv_usec - mycpu->gd_switchtime.tv_usec) +
-		    (new_switchtime.tv_sec - mycpu->gd_switchtime.tv_sec) *
-		    (int64_t)1000000;
-	}
 
 	/*
 	 * Check if the process exceeds its cpu resource allocation.
-	 * If over max, kill it.
+	 * If over max, kill it.  Time spent in interrupts is not 
+	 * included.  YYY 64 bit match is expensive.  Ick.
 	 */
+	ttime = td->td_sticks + td->td_uticks;
 	if (p->p_stat != SZOMB && p->p_limit->p_cpulimit != RLIM_INFINITY &&
-	    p->p_runtime > p->p_limit->p_cpulimit) {
+	    ttime > p->p_limit->p_cpulimit) {
 		rlim = &p->p_rlimit[RLIMIT_CPU];
-		if (p->p_runtime / (rlim_t)1000000 >= rlim->rlim_max) {
+		if (ttime / (rlim_t)1000000 >= rlim->rlim_max) {
 			killproc(p, "exceeded maximum CPU limit");
 		} else {
 			psignal(p, SIGXCPU);
@@ -886,12 +866,8 @@ mi_switch()
 	 * at a time to run per cpu.
 	 */
 	cnt.v_swtch++;
-	mycpu->gd_switchtime = new_switchtime;
 	lwkt_switch();
 	remrunqueue(p);
-	if (mycpu->gd_switchtime.tv_sec == 0)
-		microuptime(&mycpu->gd_switchtime);
-	mycpu->gd_switchticks = ticks;
 
 	splx(x);
 }

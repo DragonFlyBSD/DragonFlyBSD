@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.4 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.5 2003/06/23 23:36:05 dillon Exp $
  */
 
 #include "npx.h"
@@ -339,18 +339,6 @@ ENTRY(fork_trampoline)
 	call	remrunqueue		/* LWKT restore func doesn't do that */
 	addl	$4,%esp
 
-#ifdef SMP
-	cmpl	$0,_switchtime
-	jne	1f
-	movl	$gd_switchtime,%eax
-	addl	%fs:0,%eax
-	pushl	%eax
-	call	_microuptime
-	popl	%edx
-	movl	_ticks,%eax
-	movl	%eax,_switchticks
-1:
-#endif
 	/*
 	 * cpu_set_fork_handler intercepts this function call to
 	 * have this call a non-return function to stay in kernel mode.

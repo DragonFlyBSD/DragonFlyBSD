@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.3 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -383,34 +383,58 @@ statclock(frame)
 	register struct gmonparam *g;
 	int i;
 #endif
-	register struct proc *p;
+	thread_t td;
 	struct pstats *pstats;
 	long rss;
 	struct rusage *ru;
 	struct vmspace *vm;
+	struct proc *p;
+	int bump;
+	struct timeval tv;
+	struct timeval *stv;
 
-	if (curproc != NULL && CLKF_USERMODE(frame)) {
+	/*
+	 * How big was our timeslice relative to the last time
+	 */
+	microuptime(&tv);
+	stv = &mycpu->gd_stattv;
+	if (stv->tv_sec == 0) {
+	    bump = 1;
+	} else {
+	    bump = tv.tv_usec - stv->tv_usec +
+		(tv.tv_sec - stv->tv_sec) * 1000000;
+	    if (bump < 0)
+		bump = 0;
+	    if (bump > 1000000)
+		bump = 1000000;
+	}
+	*stv = tv;
+
+	td = curthread;
+	p = td->td_proc;
+
+	if (CLKF_USERMODE(frame)) {
 		/*
-		 * Came from user mode; CPU was in user state.
-		 * If this process is being profiled, record the tick.
+		 * Came from userland, handle user time and deal with
+		 * possible process.
 		 */
-		p = curproc;
-		if (p->p_flag & P_PROFIL)
+		if (p && (p->p_flag & P_PROFIL))
 			addupc_intr(p, CLKF_PC(frame), 1);
 #if defined(SMP) && defined(BETTER_CLOCK)
 		if (stathz != 0)
 			forward_statclock(pscnt);
 #endif
+		td->td_uticks += bump;
 		if (--pscnt > 0)
 			return;
+
 		/*
-		 * Charge the time as appropriate.
+		 * Charge the time as appropriate
 		 */
-		p->p_uticks++;
-		if (p->p_nice > NZERO)
-			cp_time[CP_NICE]++;
+		if (p && p->p_nice > NZERO)
+			++cp_time[CP_NICE];
 		else
-			cp_time[CP_USER]++;
+			++cp_time[CP_USER];
 	} else {
 #ifdef GPROF
 		/*
@@ -429,8 +453,6 @@ statclock(frame)
 		if (stathz != 0)
 			forward_statclock(pscnt);
 #endif
-		if (--pscnt > 0)
-			return;
 		/*
 		 * Came from kernel mode, so we were:
 		 * - handling an interrupt,
@@ -443,16 +465,22 @@ statclock(frame)
 		 * so that we know how much of its real time was spent
 		 * in ``non-process'' (i.e., interrupt) work.
 		 */
-		p = curproc;
+		if (CLKF_INTR(frame))
+			td->td_iticks += bump;
+		else
+			td->td_sticks += bump;
+
+		if (--pscnt > 0)
+			return;
+
 		if (CLKF_INTR(frame)) {
-			if (p != NULL)
-				p->p_iticks++;
 			cp_time[CP_INTR]++;
-		} else if (p != NULL) {
-			p->p_sticks++;
-			cp_time[CP_SYS]++;
-		} else
-			cp_time[CP_IDLE]++;
+		} else {
+			if (td == &mycpu->gd_idlethread)
+				++cp_time[CP_IDLE];
+			else
+				++cp_time[CP_SYS];
+		}
 	}
 	pscnt = psdiv;
 

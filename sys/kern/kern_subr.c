@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.4 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -63,6 +63,7 @@ uiomove(cp, n, uio)
 	u_int cnt;
 	int error = 0;
 	int save = 0;
+	int baseticks = ticks;
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomove: mode"));
@@ -89,8 +90,10 @@ uiomove(cp, n, uio)
 
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			if (ticks - mycpu->gd_switchticks >= hogticks)
+			if (ticks - baseticks >= hogticks) {
 				uio_yield();
+				baseticks = ticks;
+			}
 			if (uio->uio_rw == UIO_READ)
 				error = copyout(cp, iov->iov_base, cnt);
 			else
@@ -130,6 +133,7 @@ uiomoveco(cp, n, uio, obj)
 	struct iovec *iov;
 	u_int cnt;
 	int error;
+	int baseticks = ticks;
 
 	KASSERT(uio->uio_rw == UIO_READ || uio->uio_rw == UIO_WRITE,
 	    ("uiomoveco: mode"));
@@ -151,8 +155,10 @@ uiomoveco(cp, n, uio, obj)
 
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			if (ticks - mycpu->gd_switchticks >= hogticks)
+			if (ticks - baseticks >= hogticks) {
 				uio_yield();
+				baseticks = ticks;
+			}
 			if (uio->uio_rw == UIO_READ) {
 #ifdef ENABLE_VFS_IOOPT
 				if (vfs_ioopt && ((cnt & PAGE_MASK) == 0) &&
@@ -233,7 +239,7 @@ uioread(n, uio, obj, nread)
 
 			cnt &= ~PAGE_MASK;
 
-			if (ticks - switchticks >= hogticks)
+			if (ticks - mycpu->gd_switchticks >= hogticks)
 				uio_yield();
 			error = vm_uiomove(&curproc->p_vmspace->vm_map, obj,
 						uio->uio_offset, cnt,

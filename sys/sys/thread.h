@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.7 2003/06/22 20:32:18 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.8 2003/06/23 23:36:14 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -132,6 +132,9 @@ struct thread {
     void	(*td_switch)(struct thread *ntd);
     lwkt_wait_t td_wait;	/* thread sitting on wait structure */
     lwkt_rwlock	td_rwlock;	/* thread arbitration */
+    u_int64_t	td_uticks;	/* Statclock hits in user mode (uS) */
+    u_int64_t	td_sticks;      /* Statclock hits in system mode (uS) */
+    u_int64_t	td_iticks;	/* Statclock hits processing intr (uS) */
     struct mi_thread td_mach;
 };
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.9 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.10 2003/06/23 23:36:08 dillon Exp $
  */
 
 /*
@@ -46,9 +46,7 @@ struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
 	struct thread	*gd_npxthread;
-	struct timeval	gd_switchtime;
 	struct i386tss	gd_common_tss;
-	int		gd_switchticks;
 	int		gd_tdfreecount;		/* new thread cache */
 	int		gd_reqpri;		/* highest pri blocked thread */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
@@ -57,6 +55,7 @@ struct globaldata {
 	struct segment_descriptor *gd_tss_gdt;
 	int		gd_currentldt;		/* USER_LDT */
 	u_int		gd_cpu;
+	struct timeval	gd_stattv;
 #ifdef SMP
 	u_int		gd_cpu_lockid;
 	u_int		gd_other_cpus;

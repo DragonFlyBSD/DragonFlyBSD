@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.10 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.11 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -379,10 +379,7 @@ proc0_post(void *dummy __unused)
 	 */
 	LIST_FOREACH(p, &allproc, p_list) {
 		microtime(&p->p_stats->p_start);
-		p->p_runtime = 0;
 	}
-	microuptime(&mycpu->gd_switchtime);
-	mycpu->gd_switchticks = ticks;
 
 	/*
 	 * Give the ``random'' number generator a thump.

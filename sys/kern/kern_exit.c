@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.8 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.9 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -321,15 +321,6 @@ exit1(int rv)
 	*p->p_ru = p->p_stats->p_ru;
 	calcru(p, &p->p_ru->ru_utime, &p->p_ru->ru_stime, NULL);
 	ruadd(p->p_ru, &p->p_stats->p_cru);
-
-	/*
-	 * Pretend that an mi_switch() to the next process occurs now.  We
-	 * must set `switchtime' directly since we will call cpu_switch()
-	 * directly.  Set it now so that the rest of the exit time gets
-	 * counted somewhere if possible.
-	 */
-	microuptime(&mycpu->gd_switchtime);
-	mycpu->gd_switchticks = ticks;
 
 	/*
 	 * notify interested parties of our demise.

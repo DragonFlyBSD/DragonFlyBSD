@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.4 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.5 2003/06/23 23:36:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -490,6 +490,10 @@ getrlimit(struct __getrlimit_args *uap)
 /*
  * Transform the running time and tick information in proc p into user,
  * system, and interrupt time usage.
+ *
+ * Since we are limited to statclock tick granularity this is a statisical
+ * calculation which will be correct over the long haul, but should not be
+ * expected to measure fine grained deltas.
  */
 void
 calcru(p, up, sp, ip)
@@ -498,90 +502,24 @@ calcru(p, up, sp, ip)
 	struct timeval *sp;
 	struct timeval *ip;
 {
-	/* {user, system, interrupt, total} {ticks, usec}; previous tu: */
-	u_int64_t ut, uu, st, su, it, iu, tt, tu, ptu;
+	struct thread *td = p->p_thread;
 	int s;
-	struct timeval tv;
 
-	/* XXX: why spl-protect ?  worst case is an off-by-one report */
+	/*
+	 * Calculate at the statclock level.  YYY if the thread is owned by
+	 * another cpu we need to forward the request to the other cpu, or
+	 * have a token to interlock the information.
+	 */
 	s = splstatclock();
-	ut = p->p_uticks;
-	st = p->p_sticks;
-	it = p->p_iticks;
-	splx(s);
-
-	tt = ut + st + it;
-	if (tt == 0) {
-		st = 1;
-		tt = 1;
-	}
-
-	tu = p->p_runtime;
-	if (p == curproc) {
-		/*
-		 * Adjust for the current time slice.  This is actually fairly
-		 * important since the error here is on the order of a time
-		 * quantum, which is much greater than the sampling error.
-		 */
-		microuptime(&tv);
-		if (timevalcmp(&tv, &mycpu->gd_switchtime, <)) {
-			printf("microuptime() went backwards "
-			    "(%ld.%06ld -> %ld.%06ld)\n",
-			    mycpu->gd_switchtime.tv_sec,
-			    mycpu->gd_switchtime.tv_usec, 
-			    tv.tv_sec, tv.tv_usec);
-		} else {
-			tu += (tv.tv_usec - mycpu->gd_switchtime.tv_usec) +
-			    (tv.tv_sec - mycpu->gd_switchtime.tv_sec) *
-			    (int64_t)1000000;
-		}
-	}
-	ptu = p->p_uu + p->p_su + p->p_iu;
-	if (tu < ptu || (int64_t)tu < 0) {
-		/* XXX no %qd in kernel.  Truncate. */
-		printf("calcru: negative time of %ld usec for pid %d (%s)\n",
-		       (long)tu, p->p_pid, p->p_comm);
-		tu = ptu;
-	}
-
-	/* Subdivide tu. */
-	uu = (tu * ut) / tt;
-	su = (tu * st) / tt;
-	iu = tu - uu - su;
-
-	/* Enforce monotonicity. */
-	if (uu < p->p_uu || su < p->p_su || iu < p->p_iu) {
-		if (uu < p->p_uu)
-			uu = p->p_uu;
-		else if (uu + p->p_su + p->p_iu > tu)
-			uu = tu - p->p_su - p->p_iu;
-		if (st == 0)
-			su = p->p_su;
-		else {
-			su = ((tu - uu) * st) / (st + it);
-			if (su < p->p_su)
-				su = p->p_su;
-			else if (uu + su + p->p_iu > tu)
-				su = tu - uu - p->p_iu;
-		}
-		KASSERT(uu + su + p->p_iu <= tu,
-		    ("calcru: monotonisation botch 1"));
-		iu = tu - uu - su;
-		KASSERT(iu >= p->p_iu,
-		    ("calcru: monotonisation botch 2"));
-	}
-	p->p_uu = uu;
-	p->p_su = su;
-	p->p_iu = iu;
-
-	up->tv_sec = uu / 1000000;
-	up->tv_usec = uu % 1000000;
-	sp->tv_sec = su / 1000000;
-	sp->tv_usec = su % 1000000;
+	up->tv_sec = td->td_uticks / 1000000;
+	up->tv_usec = td->td_uticks % 1000000;
+	sp->tv_sec = td->td_sticks / 1000000;
+	sp->tv_usec = td->td_sticks % 1000000;
 	if (ip != NULL) {
-		ip->tv_sec = iu / 1000000;
-		ip->tv_usec = iu % 1000000;
+		ip->tv_sec = td->td_iticks / 1000000;
+		ip->tv_usec = td->td_iticks % 1000000;
 	}
+	splx(s);
 }
 
 #ifndef _SYS_SYSPROTO_H_
