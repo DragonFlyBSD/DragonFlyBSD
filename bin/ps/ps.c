@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.8 2004/06/21 00:47:57 hmp Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.9 2004/06/21 01:03:06 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -353,7 +353,7 @@ main(int argc, char **argv)
 	/*
 	 * select procs
 	 */
-	if ((kp = kvm_getprocs(kd, what, flag, &nentries)) == 0)
+	if ((kp = kvm_getprocs(kd, what, flag, &nentries)) == NULL)
 		errx(1, "%s", kvm_geterr(kd));
 	if ((kinfo = malloc(nentries * sizeof(*kinfo))) == NULL)
 		err(1, NULL);
