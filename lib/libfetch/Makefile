@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libfetch/Makefile,v 1.14.2.5 2003/01/09 11:50:32 des Exp $
-# $DragonFly: src/lib/libfetch/Makefile,v 1.5 2004/08/16 14:19:31 joerg Exp $
+# $DragonFly: src/lib/libfetch/Makefile,v 1.6 2005/02/28 13:09:24 joerg Exp $
 
 LIB=		fetch
 WARNS?=		6
@@ -16,8 +16,6 @@ CFLAGS+=	-DWITH_SSL
 DPADD=		${LIBSSL} ${LIBCRYPTO}
 LDADD=		-lssl -lcrypto
 .endif
-
-NO_WERROR=	yes
 
 SHLIB_MAJOR=    3
 SHLIB_MINOR=	0
