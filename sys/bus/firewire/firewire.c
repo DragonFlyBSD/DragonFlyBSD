@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/firewire.c,v 1.68 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.7 2004/04/07 05:54:27 dillon Exp $
+ * $DragonFly: src/sys/bus/firewire/firewire.c,v 1.8 2004/11/18 15:53:40 joerg Exp $
  *
  */
 
@@ -1717,7 +1717,7 @@ fw_rcv_copy(struct fw_rcv_buf *rb)
 	/* Copy header */ 
 	p = (u_char *)&rb->xfer->recv.hdr;
 	bcopy(rb->vec->iov_base, p, tinfo->hdr_len);
-	(u_char *)rb->vec->iov_base += tinfo->hdr_len;
+	rb->vec->iov_base = (uint8_t *)rb->vec->iov_base + tinfo->hdr_len;
 	rb->vec->iov_len -= tinfo->hdr_len;
 
 	/* Copy payload */
