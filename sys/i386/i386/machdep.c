@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.39 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.40 2003/10/25 17:36:22 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1141,10 +1141,15 @@ extern inthand_t
 	IDTVEC(div), IDTVEC(dbg), IDTVEC(nmi), IDTVEC(bpt), IDTVEC(ofl),
 	IDTVEC(bnd), IDTVEC(ill), IDTVEC(dna), IDTVEC(fpusegm),
 	IDTVEC(tss), IDTVEC(missing), IDTVEC(stk), IDTVEC(prot),
-	IDTVEC(page), IDTVEC(mchk), IDTVEC(rsvd), IDTVEC(fpu), IDTVEC(align),
-	IDTVEC(xmm), IDTVEC(syscall);
+	IDTVEC(page), IDTVEC(mchk), IDTVEC(fpu), IDTVEC(align),
+	IDTVEC(xmm), IDTVEC(syscall),
+	IDTVEC(rsvd0);
 extern inthand_t
 	IDTVEC(int0x80_syscall), IDTVEC(int0x81_syscall);
+
+#ifdef DEBUG_INTERRUPTS
+extern inthand_t *Xrsvdary[256];
+#endif
 
 void
 sdtossd(sd, ssd)
@@ -1602,6 +1607,31 @@ physmap_done:
 	avail_end = phys_avail[pa_indx];
 }
 
+/*
+ * IDT VECTORS:
+ *	0	Divide by zero
+ *	1	Debug
+ *	2	NMI
+ *	3	BreakPoint
+ *	4	OverFlow
+ *	5	Bound-Range
+ *	6	Invalid OpCode
+ *	7	Device Not Available (x87)
+ *	8	Double-Fault
+ *	9	Coprocessor Segment overrun (unsupported, reserved)
+ *	10	Invalid-TSS
+ *	11	Segment not present
+ *	12	Stack
+ *	13	General Protection
+ *	14	Page Fault
+ *	15	Reserved
+ *	16	x87 FP Exception pending
+ *	17	Alignment Check
+ *	18	Machine Check
+ *	19	SIMD floating point
+ *	20-31	reserved
+ *	32-255	INTn/external sources
+ */
 void
 init386(int first)
 {
@@ -1704,8 +1734,13 @@ init386(int first)
 	init_locks();
 
 	/* exceptions */
-	for (x = 0; x < NIDT; x++)
-		setidt(x, &IDTVEC(rsvd), SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	for (x = 0; x < NIDT; x++) {
+#ifdef DEBUG_INTERRUPTS
+		setidt(x, Xrsvdary[x], SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+#else
+		setidt(x, &IDTVEC(rsvd0), SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+#endif
+	}
 	setidt(0, &IDTVEC(div),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(1, &IDTVEC(dbg),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(2, &IDTVEC(nmi),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
@@ -1721,7 +1756,7 @@ init386(int first)
 	setidt(12, &IDTVEC(stk),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(13, &IDTVEC(prot),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(14, &IDTVEC(page),  SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	setidt(15, &IDTVEC(rsvd),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
+	setidt(15, &IDTVEC(rsvd0),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(16, &IDTVEC(fpu),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(17, &IDTVEC(align), SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
 	setidt(18, &IDTVEC(mchk),  SDT_SYS386TGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.37 2003/10/21 04:14:58 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.38 2003/10/25 17:36:22 dillon Exp $
  */
 
 /*
@@ -1101,7 +1101,7 @@ trap_fatal(frame, eva)
 		return;
 #endif
 #ifdef DDB
-	if ((debugger_on_panic || db_active) && kdb_trap(type, 0, frame))
+	if ((debugger_on_panic || db_active) && kdb_trap(type, code, frame))
 		return;
 #endif
 	printf("trap number		= %d\n", type);
