@@ -1,4 +1,4 @@
-# $DragonFly: src/test/debug/gdb.kernel,v 1.1 2004/06/26 13:09:52 hmp Exp $
+# $DragonFly: src/test/debug/gdb.kernel,v 1.2 2004/06/26 13:19:06 hmp Exp $
 #
 # Command file for the GNU Debugger, for kernel debugging.
 #
@@ -12,6 +12,7 @@
 #    kldstat 	- kldstat(1) command style output of loaded modules 
 #    pcomm  	- print command name of arg0's (thread's) process pointer
 #    psx     	- process listing with wchan information
+#    running_threads - the current running thread on each CPU.
 #
 set print union
 set history expansion on
@@ -81,4 +82,8 @@ end
 
 document psx
 Output a list of processes with wait-channel (wchan) informaiton.
+end
+
+document running_threads
+List the threads which are currently running and their CPU number.
 end
