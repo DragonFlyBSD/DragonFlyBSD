@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.13 2004/09/14 07:52:03 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.14 2004/09/17 17:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -225,7 +225,7 @@ state(const KINFO *k, const VARENT *ve)
 		*cp++ = 'V';
 	if ((flag & P_SYSTEM) || p->p_lock > 0)
 		*cp++ = 'L';
-	if (numcpus && KI_THREAD(k)->td_mpcount_unused == 0)
+	if (numcpus > 1 && KI_THREAD(k)->td_mpcount_unused == 0)
 		*cp++ = 'M';
 	if (flag & P_JAILED)
 		*cp++ = 'J';

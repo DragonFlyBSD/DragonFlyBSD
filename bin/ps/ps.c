@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.11 2004/09/14 07:52:03 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.12 2004/09/17 17:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -348,7 +348,7 @@ main(int argc, char **argv)
 	/*
 	 * Get number of cpus
 	 */
-	if (sysctlbyname("hw.numcpu", &numcpus, &numcpus_size, NULL, 0) < 0)
+	if (sysctlbyname("hw.ncpu", &numcpus, &numcpus_size, NULL, 0) < 0)
 		numcpus = 1;
 
 	/*
