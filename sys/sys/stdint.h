@@ -1,13 +1,14 @@
 /*
  * This file is in the public domain.
  * $FreeBSD: src/sys/sys/inttypes.h,v 1.2 1999/08/28 00:51:47 peter Exp $
- * $DragonFly: src/sys/sys/stdint.h,v 1.1 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/stdint.h,v 1.2 2003/11/19 00:42:30 dillon Exp $
  *
  * Note: since portions of these header files can be included with various
  * other combinations of defines, we cannot surround the whole header file
  * with an #ifndef sequence.  Elements are individually protected.
  */
 
+#include <sys/cdefs.h>
 #include <machine/stdint.h>
 
 #ifndef _SYS_STDINT_H_
