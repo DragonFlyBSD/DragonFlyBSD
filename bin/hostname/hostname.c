@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.8 2004/07/05 05:32:15 dillon Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.9 2004/07/05 05:34:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -106,6 +106,7 @@ int
 main(int argc, char **argv)
 {
 	int ch,sflag,rflag,ret,flag6,iflag;
+	int silen;
 	char hostname[MAXHOSTNAMELEN];
 	char *srflag, *siflag = NULL;
 	struct hostent *hst;
@@ -139,6 +140,7 @@ main(int argc, char **argv)
 			break;
 		case 'i':
 			siflag = strdup(optarg);
+			silen = strlen(siflag);
 			iflag |= HST_IF;
 			break;
 		case 'r':
@@ -207,11 +209,13 @@ main(int argc, char **argv)
 			case RTM_IFINFO:
 				ifm = (struct if_msghdr *)(void *)rtm;
 
-				if (ifm->ifm_addrs & RTA_IFP) {
-					sdl = (struct sockaddr_dl *)(ifm+1);
-					if (strcmp(siflag,sdl->sdl_data) == 0) {
-						idx = ifm->ifm_index;
-					}
+				if ((ifm->ifm_addrs & RTA_IFP) == 0)
+					break;
+				sdl = (struct sockaddr_dl *)(ifm + 1);
+				if (silen != sdl->sdl_nlen)
+					break;
+				if (!strncmp(siflag, sdl->sdl_data, silen)) {
+					idx = ifm->ifm_index;
 				}
 				break;
 			case RTM_NEWADDR:
