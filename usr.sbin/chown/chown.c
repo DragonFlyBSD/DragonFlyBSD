@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chown.c	8.8 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/chown/chown.c,v 1.15.2.3 2002/08/07 21:24:33 schweikh Exp $
- * $DragonFly: src/usr.sbin/chown/chown.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/chown/chown.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -51,11 +51,11 @@
 #include <string.h>
 #include <unistd.h>
 
-void	a_gid __P((char *));
-void	a_uid __P((char *));
-void	chownerr __P((char *));
-u_long	id __P((char *, char *));
-void	usage __P((void));
+void	a_gid(char *);
+void	a_uid(char *);
+void	chownerr(char *);
+u_long	id(char *, char *);
+void	usage(void);
 
 uid_t uid;
 gid_t gid;

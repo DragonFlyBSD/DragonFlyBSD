@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.9 2003/04/15 14:37:35 ru Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -132,10 +132,10 @@ Boolean			checkEnvFirst;	/* -e flag */
 Lst			envFirstVars;	/* (-E) vars to override from env */
 static Boolean		jobsRunning;	/* TRUE if the jobs might be running */
 
-static void		MainParseArgs __P((int, char **));
-char *			chdir_verify_path __P((char *, char *));
-static int		ReadMakefile __P((ClientData, ClientData));
-static void		usage __P((void));
+static void		MainParseArgs(int, char **);
+char *			chdir_verify_path(char *, char *);
+static int		ReadMakefile(ClientData, ClientData);
+static void		usage(void);
 
 static char *curdir;			/* startup directory */
 static char *objdir;			/* where we chdir'ed to */
@@ -893,7 +893,7 @@ main(argc, argv)
 	Lst_Destroy(targs, NOFREE);
 	Lst_Destroy(variables, NOFREE);
 	Lst_Destroy(makefiles, NOFREE);
-	Lst_Destroy(create, (void (*) __P((ClientData))) free);
+	Lst_Destroy(create, (void (*)(ClientData)) free);
 
 	/* print the graph now it's been processed if the user requested it */
 	if (DEBUG(GRAPH2))

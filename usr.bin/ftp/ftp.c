@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.3 2003/10/04 20:36:44 hmp Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $	*/
 /*	$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $	*/
 
 /*
@@ -459,7 +459,7 @@ sendrequest(const char *cmd, const char *local, const char *remote,
 	struct stat st;
 	int c, d;
 	FILE *fin, *dout;
-	int (*closefunc) __P((FILE *));
+	int (*closefunc)(FILE *);
 	sig_t oldinti, oldintr, oldintp;
 	volatile off_t hashbytes;
 	char *lmode, buf[BUFSIZ], *bufp;
@@ -747,7 +747,7 @@ recvrequest(const char *cmd, const char *local, const char *remote,
             const char *lmode, int printnames, int ignorespecial)
 {
 	FILE *fout, *din;
-	int (*closefunc) __P((FILE *));
+	int (*closefunc)(FILE *);
 	sig_t oldinti, oldintr, oldintp;
 	int c, d;
 	volatile int is_retr, tcrflag, bare_lfs;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)banner.c	8.4 (Berkeley) 4/29/95
  * $FreeBSD: src/usr.bin/banner/banner.c,v 1.7.2.4 2001/10/02 11:41:25 ru Exp $
- * $DragonFly: src/usr.bin/banner/banner.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/banner/banner.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 /*
@@ -1018,7 +1018,7 @@ char	print[DWIDTH];
 int	debug, i, j, linen, max, nchars, pc, term, trace, x, y;
 int	width = DWIDTH;	/* -w option: scrunch letters to 80 columns */
 
-static void usage __P((void));
+static void usage(void);
 
 int
 main(int argc, char *argv[])

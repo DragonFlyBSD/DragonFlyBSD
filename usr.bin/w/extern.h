@@ -32,12 +32,12 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/w/extern.h,v 1.2.6.1 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/w/extern.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 extern int use_ampm;
 
 struct proc;
-void	pr_attime __P((time_t *, time_t *));
-int	pr_idle __P((time_t));
-int	proc_compare __P((struct proc *, struct proc *));
+void	pr_attime(time_t *, time_t *);
+int	pr_idle(time_t);
+int	proc_compare(struct proc *, struct proc *);

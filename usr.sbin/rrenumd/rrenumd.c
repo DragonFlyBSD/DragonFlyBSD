@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -96,29 +96,29 @@ int with_v4dest, with_v6dest;
 struct in6_addr prefix; /* ADHOC */
 int prefixlen = 64; /* ADHOC */
 
-extern int parse __P((FILE **));
+extern int parse(FILE **);
 
-static void show_usage __P((void));
-static void init_sin6 __P((struct sockaddr_in6 *, const char *));
+static void show_usage(void);
+static void init_sin6(struct sockaddr_in6 *, const char *);
 #if 0
-static void join_multi __P((const char *));
+static void join_multi(const char *);
 #endif
-static void init_globals __P((void));
-static void config __P((FILE **));
+static void init_globals(void);
+static void config(FILE **);
 #ifdef IPSEC_POLICY_IPSEC
-static void sock6_open __P((struct flags *, char *));
-static void sock4_open __P((struct flags *, char *));
+static void sock6_open(struct flags *, char *);
+static void sock4_open(struct flags *, char *);
 #else
-static void sock6_open __P((struct flags *));
-static void sock4_open __P((struct flags *));
+static void sock6_open(struct flags *);
+static void sock4_open(struct flags *);
 #endif
-static void rrenum_output __P((struct payload_list *, struct dst_list *));
-static void rrenum_snd_eachdst __P((struct payload_list *));
+static void rrenum_output(struct payload_list *, struct dst_list *);
+static void rrenum_snd_eachdst(struct payload_list *);
 #if 0
-static void rrenum_snd_fullsequence __P((void));
+static void rrenum_snd_fullsequence(void);
 #endif
-static void rrenum_input __P((int));
-int main __P((int, char *[]));
+static void rrenum_input(int);
+int main(int, char *[]);
 
 
 /* Print usage. Don't call this after daemonized. */

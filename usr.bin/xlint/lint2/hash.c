@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: hash.c,v 1.2 1995/07/03 21:24:47 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/hash.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/hash.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stddef.h>
@@ -43,7 +43,7 @@
 /* pointer to hash table, initialized in inithash() */
 static	hte_t	**htab;
 
-static	int	hash __P((const char *));
+static	int	hash(const char *);
 
 /*
  * Initialize hash table.
@@ -110,7 +110,7 @@ hsearch(s, mknew)
  */
 void
 forall(f)
-	void	(*f) __P((hte_t *));
+	void	(*f)(hte_t *);
 {
 	int	i;
 	hte_t	*hte;

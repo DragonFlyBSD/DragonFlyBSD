@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 /*
@@ -78,17 +78,17 @@ void	tipdone();
 char	*sname();
 char	PNbuf[256];			/* This limits the size of a number */
 
-static void usage __P((void));
-void setparity __P((char *));
-void xpwrite __P((int, char *, int));
-char escape __P((void));
-void tipin __P((void));
-int prompt __P((char *, char *, size_t));
-void unraw __P((void));
-void shell_uid __P((void));
-void daemon_uid __P((void));
-void user_uid __P((void));
-int speed __P((int));
+static void usage(void);
+void setparity(char *);
+void xpwrite(int, char *, int);
+char escape(void);
+void tipin(void);
+int prompt(char *, char *, size_t);
+void unraw(void);
+void shell_uid(void);
+void daemon_uid(void);
+void user_uid(void);
+int speed(int);
 
 int
 main(argc, argv)

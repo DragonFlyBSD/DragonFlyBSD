@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/sys-bsd.c,v 1.17.2.1 2002/09/17 16:53:55 nectar Exp $
- * $DragonFly: src/usr.sbin/pppd/sys-bsd.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/sys-bsd.c,v 1.4 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*	$NetBSD: sys-bsd.c,v 1.1.1.3 1997/09/26 18:53:04 christos Exp $	*/
@@ -104,8 +104,8 @@ static u_int32_t default_route_gateway;	/* gateway addr for default route */
 static u_int32_t proxy_arp_addr;	/* remote addr for proxy arp */
 
 /* Prototypes for procedures local to this file. */
-static int dodefaultroute __P((u_int32_t, int));
-static int get_ether_addr __P((u_int32_t, struct sockaddr_dl *));
+static int dodefaultroute(u_int32_t, int);
+static int get_ether_addr(u_int32_t, struct sockaddr_dl *);
 
 
 /*

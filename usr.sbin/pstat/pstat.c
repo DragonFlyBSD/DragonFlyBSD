@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.4 2003/08/27 03:21:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.5 2003/11/03 19:31:41 eirikn Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -183,29 +183,29 @@ struct {
 		return (0);						\
 	}
 
-void	filemode __P((void));
-int	getfiles __P((char **, int *));
+void	filemode(void);
+int	getfiles(char **, int *);
 struct mount *
-	getmnt __P((struct mount *));
+	getmnt(struct mount *);
 struct e_vnode *
-	kinfo_vnodes __P((int *));
+	kinfo_vnodes(int *);
 struct e_vnode *
-	loadvnodes __P((int *));
-void	mount_print __P((struct mount *));
-void	nfs_header __P((void));
-int	nfs_print __P((struct vnode *));
-void	swapmode __P((void));
-void	ttymode __P((void));
-void	ttyprt __P((struct tty *, int));
-void	ttytype __P((struct tty *, char *, int, int, int));
-void	ufs_header __P((void));
-int	ufs_print __P((struct vnode *));
-void	union_header __P((void));
-int	union_print __P((struct vnode *));
-static void usage __P((void));
-void	vnode_header __P((void));
-void	vnode_print __P((struct vnode *, struct vnode *));
-void	vnodemode __P((void));
+	loadvnodes(int *);
+void	mount_print(struct mount *);
+void	nfs_header(void);
+int	nfs_print(struct vnode *);
+void	swapmode(void);
+void	ttymode(void);
+void	ttyprt(struct tty *, int);
+void	ttytype(struct tty *, char *, int, int, int);
+void	ufs_header(void);
+int	ufs_print(struct vnode *);
+void	union_header(void);
+int	union_print(struct vnode *);
+static void usage(void);
+void	vnode_header(void);
+void	vnode_print(struct vnode *, struct vnode *);
+void	vnodemode(void);
 
 int
 main(argc, argv)

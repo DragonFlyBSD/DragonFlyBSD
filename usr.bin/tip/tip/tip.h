@@ -34,7 +34,7 @@
  *      @(#)tip.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tip/tip/tip.h,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 /*
@@ -205,9 +205,9 @@ extern value_t	vtable[];	/* variable table */
 
 #if !ACULOG
 #define logent(a, b, c, d)
-#define loginit()
+#define loginit(x)
 #else
-void logent __P((char *, char *, char *, char*));
+void logent(char *, char *, char *, char*);
 #endif
 
 /*
@@ -305,24 +305,24 @@ extern	int disc;			/* current tty discpline */
 extern	char *ctrl();
 extern	char *vinterp();
 extern	char *connect();
-extern	int   size __P((char *));
-extern	int   any __P((char, char *));
-extern	void  setscript __P((void));
-extern	void  tipout __P((void));
-extern	void  vinit __P((void));
-extern	void  loginit __P((void));
-extern	int   hunt __P((char *));
-extern	int vstring __P((char *, char *));
-extern	void setparity __P((char *));
-extern	void vlex __P((char *));
-extern	void daemon_uid __P((void));
-extern	void disconnect __P((char *));
-extern	void shell_uid __P((void));
-extern	void unraw __P((void));
-extern	void xpwrite __P((int, char *, int));
-extern	int prompt __P((char *, char *, size_t));
-extern	int consh __P((int));
-extern	void tipabort __P((char *));
+extern	int   size(char *);
+extern	int   any(char, char *);
+extern	void  setscript(void);
+extern	void  tipout(void);
+extern	void  vinit(void);
+extern	void  loginit(void);
+extern	int   hunt(char *);
+extern	int vstring(char *, char *);
+extern	void setparity(char *);
+extern	void vlex(char *);
+extern	void daemon_uid(void);
+extern	void disconnect(char *);
+extern	void shell_uid(void);
+extern	void unraw(void);
+extern	void xpwrite(int, char *, int);
+extern	int prompt(char *, char *, size_t);
+extern	int consh(int);
+extern	void tipabort(char *);
 
 #define TL_VERBOSE       0x00000001
 #define TL_SIGNAL_TIPOUT 0x00000002

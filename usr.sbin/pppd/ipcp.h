@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/ipcp.h,v 1.10 1999/08/28 01:19:03 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/ipcp.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/ipcp.h,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -66,6 +66,6 @@ extern ipcp_options ipcp_gotoptions[];
 extern ipcp_options ipcp_allowoptions[];
 extern ipcp_options ipcp_hisoptions[];
 
-char *ip_ntoa __P((u_int32_t));
+char *ip_ntoa(u_int32_t);
 
 extern struct protent ipcp_protent;

@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.8 1999/08/28 01:15:40 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/callbootd/callbootd.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
  */
 #include "bootparam_prot.h"
 #include <rpc/rpc.h>
@@ -31,9 +31,9 @@ char cln[MAX_MACHINE_NAME+1];
 char dmn[MAX_MACHINE_NAME+1];
 char path[MAX_PATH_LEN+1];
 extern char *inet_ntoa();
-static void usage __P((void));
-int printgetfile __P((bp_getfile_res *));
-int printwhoami __P((bp_whoami_res *));
+static void usage(void);
+int printgetfile(bp_getfile_res *);
+int printwhoami(bp_whoami_res *);
 
 int
 eachres_whoami(resultp, raddr)

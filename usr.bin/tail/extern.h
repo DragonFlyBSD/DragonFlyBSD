@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tail/extern.h,v 1.4.6.2 2001/12/19 20:29:29 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/extern.h,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/extern.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #define	WR(p, size) do { \
@@ -53,16 +53,16 @@ struct mapinfo {
 
 enum STYLE { NOTSET = 0, FBYTES, FLINES, RBYTES, RLINES, REVERSE };
 
-void forward __P((FILE *, enum STYLE, off_t, struct stat *));
-void reverse __P((FILE *, enum STYLE, off_t, struct stat *));
+void forward(FILE *, enum STYLE, off_t, struct stat *);
+void reverse(FILE *, enum STYLE, off_t, struct stat *);
 
-int bytes __P((FILE *, off_t));
-int lines __P((FILE *, off_t));
+int bytes(FILE *, off_t);
+int lines(FILE *, off_t);
 
-void ierr __P((void));
-void oerr __P((void));
-int mapprint __P((struct mapinfo *, off_t, off_t));
-int maparound __P((struct mapinfo *, off_t));
+void ierr(void);
+void oerr(void);
+int mapprint(struct mapinfo *, off_t, off_t);
+int maparound(struct mapinfo *, off_t);
 
 extern int Fflag, fflag, rflag, rval;
 extern char *fname;

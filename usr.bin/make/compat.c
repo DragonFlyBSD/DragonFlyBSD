@@ -37,7 +37,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -76,9 +76,9 @@ static char 	    meta[256];
 
 static GNode	    *curTarg = NILGNODE;
 static GNode	    *ENDNode;
-static void CompatInterrupt __P((int));
-static int CompatRunCommand __P((ClientData, ClientData));
-static int CompatMake __P((ClientData, ClientData));
+static void CompatInterrupt(int);
+static int CompatRunCommand(ClientData, ClientData);
+static int CompatMake(ClientData, ClientData);
 
 static char *sh_builtin[] = { 
 	"alias", "cd", "eval", "exec", "exit", "read", "set", "ulimit", 

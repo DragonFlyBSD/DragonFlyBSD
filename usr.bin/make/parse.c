@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.1 2002/12/26 14:36:38 ru Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -233,28 +233,28 @@ static struct {
 { ".WAIT",	  Wait, 	0 },
 };
 
-static int ParseFindKeyword __P((char *));
-static int ParseLinkSrc __P((ClientData, ClientData));
-static int ParseDoOp __P((ClientData, ClientData));
-static int ParseAddDep __P((ClientData, ClientData));
-static void ParseDoSrc __P((int, char *, Lst));
-static int ParseFindMain __P((ClientData, ClientData));
-static int ParseAddDir __P((ClientData, ClientData));
-static int ParseClearPath __P((ClientData, ClientData));
-static void ParseDoDependency __P((char *));
-static int ParseAddCmd __P((ClientData, ClientData));
-static int ParseReadc __P((void));
-static void ParseUnreadc __P((int));
-static void ParseHasCommands __P((ClientData));
-static void ParseDoInclude __P((char *));
-static void ParseDoError __P((char *));
+static int ParseFindKeyword(char *);
+static int ParseLinkSrc(ClientData, ClientData);
+static int ParseDoOp(ClientData, ClientData);
+static int ParseAddDep(ClientData, ClientData);
+static void ParseDoSrc(int, char *, Lst);
+static int ParseFindMain(ClientData, ClientData);
+static int ParseAddDir(ClientData, ClientData);
+static int ParseClearPath(ClientData, ClientData);
+static void ParseDoDependency(char *);
+static int ParseAddCmd(ClientData, ClientData);
+static int ParseReadc(void);
+static void ParseUnreadc(int);
+static void ParseHasCommands(ClientData);
+static void ParseDoInclude(char *);
+static void ParseDoError(char *);
 #ifdef SYSVINCLUDE
-static void ParseTraditionalInclude __P((char *));
+static void ParseTraditionalInclude(char *);
 #endif
-static int ParseEOF __P((int));
-static char *ParseReadLine __P((void));
-static char *ParseSkipLine __P((int));
-static void ParseFinishLine __P((void));
+static int ParseEOF(int);
+static char *ParseReadLine(void);
+static char *ParseSkipLine(int);
+static void ParseFinishLine(void);
 
 /*-
  *----------------------------------------------------------------------
@@ -2611,7 +2611,7 @@ Parse_Init ()
 void
 Parse_End()
 {
-    Lst_Destroy(targCmds, (void (*) __P((ClientData))) free);
+    Lst_Destroy(targCmds, (void (*)(ClientData)) free);
     if (targets)
 	Lst_Destroy(targets, NOFREE);
     Lst_Destroy(sysIncPath, Dir_Destroy);

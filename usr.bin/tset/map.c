@@ -32,7 +32,7 @@
  *
  * @(#)map.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/map.c,v 1.7 1999/08/30 08:27:30 peter Exp $
- * $DragonFly: src/usr.bin/tset/map.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tset/map.c,v 1.4 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@
 #include "extern.h"
 
 extern speed_t Ospeed;
-speed_t	tset_baudrate __P((char *));
+speed_t	tset_baudrate(char *);
 
 /* Baud rate conditionals for mapping. */
 #define	GT		0x01

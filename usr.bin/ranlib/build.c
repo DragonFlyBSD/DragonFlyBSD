@@ -35,7 +35,7 @@
  *
  * @(#)build.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/build.c,v 1.7 1999/08/28 01:05:01 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/build.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/build.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -53,10 +53,10 @@
 
 #include "archive.h"
 
-extern int tmp __P(( void ));
-extern void error __P(( char * ));
-extern void badfmt __P(( void ));
-extern void settime __P(( int ));
+extern int tmp( void );
+extern void error( char * );
+extern void badfmt( void );
+extern void settime( int );
 
 extern CHDR chdr;			/* converted header */
 extern char *archive;			/* archive name */
@@ -75,8 +75,8 @@ FILE *fp;
 long symcnt;				/* symbol count */
 long tsymlen;				/* total string length */
 
-static void rexec __P((int, int));
-static void symobj __P((void));
+static void rexec(int, int);
+static void symobj(void);
 
 int
 build(void)

@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1995-1996 Wolfram Schneider, Berlin. @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.c    8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/locate/locate/locate.c,v 1.12.2.1 2001/03/04 08:47:25 kris Exp $
- * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*
@@ -112,23 +112,23 @@ int f_limit;            /* limit number of output lines, 0 == infinite */
 u_int counter;          /* counter for matches [-c] */
 
 
-void    usage __P((void));
-void    statistic __P((FILE *, char *));
-void    fastfind __P((FILE *, char *, char *));
-void    fastfind_icase __P((FILE *, char *, char *));
-void    fastfind_mmap __P((char *, caddr_t, int, char *));
-void    fastfind_mmap_icase __P((char *, caddr_t, int, char *));
-void	search_mmap __P((char *, char **));
-void	search_fopen __P((char *, char **));
-unsigned long cputime __P((void));
+void    usage(void);
+void    statistic(FILE *, char *);
+void    fastfind(FILE *, char *, char *);
+void    fastfind_icase(FILE *, char *, char *);
+void    fastfind_mmap(char *, caddr_t, int, char *);
+void    fastfind_mmap_icase(char *, caddr_t, int, char *);
+void	search_mmap(char *, char **);
+void	search_fopen(char *, char **);
+unsigned long cputime(void);
 
-extern char     **colon __P((char **, char*, char*));
-extern void     print_matches __P((u_int));
-extern int      getwm __P((caddr_t));
-extern int      getwf __P((FILE *));
-extern u_char   *tolower_word __P((u_char *));
-extern int	check_bigram_char __P((int));
-extern char 	*patprep __P((char *));
+extern char     **colon(char **, char*, char*);
+extern void     print_matches(u_int);
+extern int      getwm(caddr_t);
+extern int      getwf(FILE *);
+extern u_char   *tolower_word(u_char *);
+extern int	check_bigram_char(int);
+extern char 	*patprep(char *);
 
 int
 main(argc, argv)

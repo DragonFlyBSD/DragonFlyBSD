@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/lexer.l,v 1.1.2.2 2001/07/03 11:02:10 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/lexer.l,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/lexer.l,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 %{
@@ -60,9 +60,9 @@ int lineno = 1;
 #define LINEBUF_SIZE 1000
 char linebuf[LINEBUF_SIZE];
 
-int parse __P((FILE **));
-void yyerror __P((const char *));
-int yylex __P((void));
+int parse(FILE **);
+void yyerror(const char *);
+int yylex(void);
 %}
 
 /* common section */
@@ -256,7 +256,7 @@ off		{
 
 int parse(FILE **fp)
 {
-	extern int yyparse __P((void));
+	extern int yyparse(void);
 
 	yyin = *fp;
 

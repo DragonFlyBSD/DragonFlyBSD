@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/column/column.c,v 1.4.6.2 2001/08/02 01:34:19 obrien Exp $
- * $DragonFly: src/usr.bin/column/column.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/column/column.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)column.c	8.4 (Berkeley) 5/4/95
@@ -50,12 +50,12 @@
 
 #define	TAB	8
 
-void  c_columnate __P((void));
-void  input __P((FILE *));
-void  maketbl __P((void));
-void  print __P((void));
-void  r_columnate __P((void));
-void  usage __P((void));
+void  c_columnate(void);
+void  input(FILE *);
+void  maketbl(void);
+void  print(void);
+void  r_columnate(void);
+void  usage(void);
 
 int termwidth = 80;		/* default terminal width */
 

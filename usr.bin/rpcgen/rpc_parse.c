@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_parse.c 1.8 89/02/22 (C) 1987 SMI
- * $DragonFly: src/usr.bin/rpcgen/rpc_parse.c,v 1.3 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_parse.c,v 1.4 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #ident	"@(#)rpc_parse.c	1.12	93/07/05 SMI"
@@ -45,18 +45,18 @@
 
 #define ARGNAME "arg"
 
-extern char *make_argname __P(( char *, char * ));
-static void isdefined __P(( definition * ));
-static void def_struct __P(( definition * ));
-static void def_program __P(( definition * ));
-static void def_enum __P(( definition * ));
-static void def_const __P(( definition * ));
-static void def_union __P(( definition * ));
-static void def_typedef __P(( definition * ));
-static void get_declaration __P(( declaration *, defkind ));
-static void get_prog_declaration __P(( declaration *, defkind, int ));
-static void get_type __P(( char **, char **, defkind ));
-static void unsigned_dec __P(( char ** ));
+extern char *make_argname( char *, char * );
+static void isdefined( definition * );
+static void def_struct( definition * );
+static void def_program( definition * );
+static void def_enum( definition * );
+static void def_const( definition * );
+static void def_union( definition * );
+static void def_typedef( definition * );
+static void get_declaration( declaration *, defkind );
+static void get_prog_declaration( declaration *, defkind, int );
+static void get_type( char **, char **, defkind );
+static void unsigned_dec( char ** );
 
 #ifndef __FreeBSD__
 extern char *strdup();

@@ -32,22 +32,22 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/ar/extern.h,v 1.1.1.1.14.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/extern.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/extern.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
  */
 
-int	append __P((char **));
-void	badfmt __P((void));
-int	compare __P((char *));
-int	contents __P((char **));
-int	delete __P((char **));
-void	error __P((char *));
-int	extract __P((char **));
-char   *files __P((char **argv));
-int	move __P((char **));
-void	orphans __P((char **argv));
-int	print __P((char **));
-int	replace __P((char **));
-int	tmp __P((void));
+int	append(char **);
+void	badfmt(void);
+int	compare(char *);
+int	contents(char **);
+int	delete(char **);
+void	error(char *);
+int	extract(char **);
+char   *files(char **argv);
+int	move(char **);
+void	orphans(char **argv);
+int	print(char **);
+int	replace(char **);
+int	tmp(void);
 
 extern char *archive;
 extern char *posarg, *posname;		/* positioning file name */

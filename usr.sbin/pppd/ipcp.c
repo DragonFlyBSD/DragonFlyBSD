@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/ipcp.c,v 1.12 1999/08/28 01:19:03 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/ipcp.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/ipcp.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -52,17 +52,17 @@ static int proxy_arp_set[NUM_PPP];	/* Have created proxy arp entry */
 /*
  * Callbacks for fsm code.  (CI = Configuration Information)
  */
-static void ipcp_resetci __P((fsm *));	/* Reset our CI */
-static int  ipcp_cilen __P((fsm *));	        /* Return length of our CI */
-static void ipcp_addci __P((fsm *, u_char *, int *)); /* Add our CI */
-static int  ipcp_ackci __P((fsm *, u_char *, int));	/* Peer ack'd our CI */
-static int  ipcp_nakci __P((fsm *, u_char *, int));	/* Peer nak'd our CI */
-static int  ipcp_rejci __P((fsm *, u_char *, int));	/* Peer rej'd our CI */
-static int  ipcp_reqci __P((fsm *, u_char *, int *, int)); /* Rcv CI */
-static void ipcp_up __P((fsm *));		/* We're UP */
-static void ipcp_down __P((fsm *));		/* We're DOWN */
-static void ipcp_script __P((fsm *, char *)); /* Run an up/down script */
-static void ipcp_finished __P((fsm *));	/* Don't need lower layer */
+static void ipcp_resetci(fsm *);	/* Reset our CI */
+static int  ipcp_cilen(fsm *);	        /* Return length of our CI */
+static void ipcp_addci(fsm *, u_char *, int *); /* Add our CI */
+static int  ipcp_ackci(fsm *, u_char *, int);	/* Peer ack'd our CI */
+static int  ipcp_nakci(fsm *, u_char *, int);	/* Peer nak'd our CI */
+static int  ipcp_rejci(fsm *, u_char *, int);	/* Peer rej'd our CI */
+static int  ipcp_reqci(fsm *, u_char *, int *, int); /* Rcv CI */
+static void ipcp_up(fsm *);		/* We're UP */
+static void ipcp_down(fsm *);		/* We're DOWN */
+static void ipcp_script(fsm *, char *); /* Run an up/down script */
+static void ipcp_finished(fsm *);	/* Don't need lower layer */
 
 fsm ipcp_fsm[NUM_PPP];		/* IPCP fsm structure */
 
@@ -87,18 +87,18 @@ static fsm_callbacks ipcp_callbacks = { /* IPCP callback routines */
 /*
  * Protocol entry points from main code.
  */
-static void ipcp_init __P((int));
-static void ipcp_open __P((int));
-static void ipcp_close __P((int, char *));
-static void ipcp_lowerup __P((int));
-static void ipcp_lowerdown __P((int));
-static void ipcp_input __P((int, u_char *, int));
-static void ipcp_protrej __P((int));
-static int  ipcp_printpkt __P((u_char *, int,
-			       void (*) __P((void *, char *, ...)), void *));
-static void ip_check_options __P((void));
-static int  ip_demand_conf __P((int));
-static int  ip_active_pkt __P((u_char *, int));
+static void ipcp_init(int);
+static void ipcp_open(int);
+static void ipcp_close(int, char *);
+static void ipcp_lowerup(int);
+static void ipcp_lowerdown(int);
+static void ipcp_input(int, u_char *, int);
+static void ipcp_protrej(int);
+static int  ipcp_printpkt(u_char *, int,
+			       void (*)(void *, char *, ...), void *);
+static void ip_check_options(void);
+static int  ip_demand_conf(int);
+static int  ip_active_pkt(u_char *, int);
 
 struct protent ipcp_protent = {
     PPP_IPCP,
@@ -118,7 +118,7 @@ struct protent ipcp_protent = {
     ip_active_pkt
 };
 
-static void ipcp_clear_addrs __P((int));
+static void ipcp_clear_addrs(int);
 
 /*
  * Lengths of configuration options.
@@ -1366,7 +1366,7 @@ static int
 ipcp_printpkt(p, plen, printer, arg)
     u_char *p;
     int plen;
-    void (*printer) __P((void *, char *, ...));
+    void (*printer)(void *, char *, ...);
     void *arg;
 {
     int code, id, len, olen;

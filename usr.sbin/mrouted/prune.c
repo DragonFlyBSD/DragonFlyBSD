@@ -10,7 +10,7 @@
  * prune.c,v 3.8.4.59 1998/03/01 02:06:32 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/prune.c,v 1.17.2.1 2000/10/29 03:59:57 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/prune.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
@@ -42,20 +42,20 @@ unsigned int kroutes;			/* current number of cache entries  */
 /****************************************************************************
                        Functions that are local to prune.c
 ****************************************************************************/
-static int		scoped_addr __P((vifi_t vifi, u_int32 addr));
-static void		prun_add_ttls __P((struct gtable *gt));
-static int		pruning_neighbor __P((vifi_t vifi, u_int32 addr));
-static int		can_mtrace __P((vifi_t vifi, u_int32 addr));
-static struct ptable *	find_prune_entry __P((u_int32 vr, struct ptable *pt));
-static void		remove_sources __P((struct gtable *gt));
-static void		rexmit_prune __P((void *arg));
-static void		expire_prune __P((vifi_t vifi, struct gtable *gt));
-static void		send_prune __P((struct gtable *gt));
-static void		send_graft __P((struct gtable *gt));
-static void		send_graft_ack __P((u_int32 src, u_int32 dst,
+static int		scoped_addr(vifi_t vifi, u_int32 addr);
+static void		prun_add_ttls(struct gtable *gt);
+static int		pruning_neighbor(vifi_t vifi, u_int32 addr);
+static int		can_mtrace(vifi_t vifi, u_int32 addr);
+static struct ptable *	find_prune_entry(u_int32 vr, struct ptable *pt);
+static void		remove_sources(struct gtable *gt);
+static void		rexmit_prune(void *arg);
+static void		expire_prune(vifi_t vifi, struct gtable *gt);
+static void		send_prune(struct gtable *gt);
+static void		send_graft(struct gtable *gt);
+static void		send_graft_ack(u_int32 src, u_int32 dst,
 					u_int32 origin, u_int32 grp,
-					vifi_t vifi));
-static void		update_kernel __P((struct gtable *g));
+					vifi_t vifi);
+static void		update_kernel(struct gtable *g);
 
 /* 
  * Updates the ttl values for each vif.

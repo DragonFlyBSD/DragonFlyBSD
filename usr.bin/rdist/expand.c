@@ -32,7 +32,7 @@
  *
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/expand.c,v 1.8 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/expand.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/expand.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include "defs.h"
@@ -60,16 +60,16 @@ char	**sortbase;
 #define sort()	qsort((char *)sortbase, &eargv[eargc] - sortbase, \
 		      sizeof(*sortbase), argcmp), sortbase = &eargv[eargc]
 
-static void	Cat __P((char *, char *));
-static void	addpath __P((int));
-static int	amatch __P((char *, char *));
-static int	argcmp __P((const void *, const void *));
-static int	execbrc __P((char *, char *));
-static void	expsh __P((char *));
-static void	expstr __P((char *));
-static int	match __P((char *, char *));
-static void	matchdir __P((char *));
-static int	smatch __P((char *, char *));
+static void	Cat(char *, char *);
+static void	addpath(int);
+static int	amatch(char *, char *);
+static int	argcmp(const void *, const void *);
+static int	execbrc(char *, char *);
+static void	expsh(char *);
+static void	expstr(char *);
+static int	match(char *, char *);
+static void	matchdir(char *);
+static int	smatch(char *, char *);
 
 /*
  * Take a list of names and expand any macros, etc.

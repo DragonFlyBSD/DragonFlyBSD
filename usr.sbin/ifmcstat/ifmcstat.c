@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3 2003/08/27 03:21:50 dillon Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.4 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -63,13 +63,13 @@ struct	nlist nl[] = {
 	{ "" },
 };
 
-const char *inet6_n2a __P((struct in6_addr *));
-int main __P((void));
-char *ifname __P((struct ifnet *));
-void kread __P((u_long, void *, int));
-void if6_addrlist __P((struct ifaddr *));
-void in6_multilist __P((struct in6_multi *));
-struct in6_multi * in6_multientry __P((struct in6_multi *));
+const char *inet6_n2a(struct in6_addr *);
+int main(void);
+char *ifname(struct ifnet *);
+void kread(u_long, void *, int);
+void if6_addrlist(struct ifaddr *);
+void in6_multilist(struct in6_multi *);
+struct in6_multi * in6_multientry(struct in6_multi *);
 
 #define	KREAD(addr, buf, type) \
 	kread((u_long)addr, (void *)buf, sizeof(type))

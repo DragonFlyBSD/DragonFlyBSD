@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/fsm.c,v 1.8 1999/08/28 01:19:02 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/fsm.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/fsm.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -34,14 +34,14 @@
 #include "pppd.h"
 #include "fsm.h"
 
-static void fsm_timeout __P((void *));
-static void fsm_rconfreq __P((fsm *, int, u_char *, int));
-static void fsm_rconfack __P((fsm *, int, u_char *, int));
-static void fsm_rconfnakrej __P((fsm *, int, int, u_char *, int));
-static void fsm_rtermreq __P((fsm *, int, u_char *, int));
-static void fsm_rtermack __P((fsm *));
-static void fsm_rcoderej __P((fsm *, u_char *, int));
-static void fsm_sconfreq __P((fsm *, int));
+static void fsm_timeout(void *);
+static void fsm_rconfreq(fsm *, int, u_char *, int);
+static void fsm_rconfack(fsm *, int, u_char *, int);
+static void fsm_rconfnakrej(fsm *, int, int, u_char *, int);
+static void fsm_rtermreq(fsm *, int, u_char *, int);
+static void fsm_rtermack(fsm *);
+static void fsm_rcoderej(fsm *, u_char *, int);
+static void fsm_sconfreq(fsm *, int);
 
 #define PROTO_NAME(f)	((f)->callbacks->proto_name)
 
@@ -507,7 +507,7 @@ fsm_rconfnakrej(f, code, id, inp, len)
     u_char *inp;
     int len;
 {
-    int (*proc) __P((fsm *, u_char *, int));
+    int (*proc)(fsm *, u_char *, int);
     int ret;
 
     FSMDEBUG((LOG_INFO, "fsm_rconfnakrej(%s): Rcvd id %d.",

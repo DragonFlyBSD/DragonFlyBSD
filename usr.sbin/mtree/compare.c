@@ -32,7 +32,7 @@
  *
  * @(#)compare.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -59,7 +59,7 @@
 extern int uflag;
 extern int lineno;
 
-static char *ftype __P((u_int));
+static char *ftype(u_int);
 
 #define	INDENTNAMELEN	8
 #define	LABEL \

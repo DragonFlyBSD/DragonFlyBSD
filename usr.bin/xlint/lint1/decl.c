@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/decl.c,v 1.2.8.2 2001/07/19 09:19:47 kris Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -58,25 +58,25 @@ int	enumval;
  */
 dinfo_t	*dcs;
 
-static	type_t	*tdeferr __P((type_t *, tspec_t));
-static	void	settdsym __P((type_t *, sym_t *));
-static	tspec_t	mrgtspec __P((tspec_t, tspec_t));
-static	void	align __P((int, int));
-static	sym_t	*newtag __P((sym_t *, scl_t, int, int));
-static	int	eqargs __P((type_t *, type_t *, int *));
-static	int	mnoarg __P((type_t *, int *));
-static	int	chkosdef __P((sym_t *, sym_t *));
-static	int	chkptdecl __P((sym_t *, sym_t *));
-static	sym_t	*nsfunc __P((sym_t *, sym_t *));
-static	void	osfunc __P((sym_t *, sym_t *));
-static	void	ledecl __P((sym_t *));
-static	int	chkinit __P((sym_t *));
-static	void	chkausg __P((int, sym_t *));
-static	void	chkvusg __P((int, sym_t *));
-static	void	chklusg __P((sym_t *));
-static	void	chktusg __P((sym_t *));
-static	void	chkglvar __P((sym_t *));
-static	void	glchksz __P((sym_t *));
+static	type_t	*tdeferr(type_t *, tspec_t);
+static	void	settdsym(type_t *, sym_t *);
+static	tspec_t	mrgtspec(tspec_t, tspec_t);
+static	void	align(int, int);
+static	sym_t	*newtag(sym_t *, scl_t, int, int);
+static	int	eqargs(type_t *, type_t *, int *);
+static	int	mnoarg(type_t *, int *);
+static	int	chkosdef(sym_t *, sym_t *);
+static	int	chkptdecl(sym_t *, sym_t *);
+static	sym_t	*nsfunc(sym_t *, sym_t *);
+static	void	osfunc(sym_t *, sym_t *);
+static	void	ledecl(sym_t *);
+static	int	chkinit(sym_t *);
+static	void	chkausg(int, sym_t *);
+static	void	chkvusg(int, sym_t *);
+static	void	chklusg(sym_t *);
+static	void	chktusg(sym_t *);
+static	void	chkglvar(sym_t *);
+static	void	glchksz(sym_t *);
 
 /*
  * initializes all global vars used in declarations

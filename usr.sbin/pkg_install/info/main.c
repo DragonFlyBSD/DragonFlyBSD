@@ -18,7 +18,7 @@
  * This is the info module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/info/main.c,v 1.22.2.14 2002/08/20 06:35:08 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/info/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include "lib.h"
@@ -36,7 +36,7 @@ char *CheckPkg		= NULL;
 char *LookUpOrigin	= NULL;
 struct which_head *whead;
 
-static void usage __P((void));
+static void usage(void);
 
 int
 main(int argc, char **argv)

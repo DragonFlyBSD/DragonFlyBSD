@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.c,v 1.5.2.1 2001/08/01 06:39:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 /* main() function for NFS lock daemon.  Most of the code in this	*/
@@ -44,10 +44,10 @@
 #include <rpc/pmap_clnt.h>
 #include "lockd.h"
 
-void nlm_prog_1 __P((struct svc_req *, SVCXPRT *));
-void nlm_prog_3 __P((struct svc_req *, SVCXPRT *));
-void nlm_prog_4 __P((struct svc_req *, SVCXPRT *));
-static void usage __P((void));
+void nlm_prog_1(struct svc_req *, SVCXPRT *);
+void nlm_prog_3(struct svc_req *, SVCXPRT *);
+void nlm_prog_4(struct svc_req *, SVCXPRT *);
+static void usage(void);
 
 int debug_level = 0;	/* Zero means no debugging syslog() calls	*/
 

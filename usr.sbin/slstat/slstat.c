@@ -21,7 +21,7 @@
  *	- Initial distribution.
  *
  * $FreeBSD: src/usr.sbin/slstat/slstat.c,v 1.14 1999/08/28 01:20:00 peter Exp $
- * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.3 2003/08/08 04:18:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.4 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -49,9 +49,9 @@
 #include <net/slcompress.h>
 #include <net/sl/if_slvar.h>
 
-static	void usage __P((void));
-static	void intpr __P((void));
-static	void catchalarm __P((int));
+static	void usage(void);
+static	void intpr(void);
+static	void catchalarm(int);
 
 #define INTERFACE_PREFIX        "sl%d"
 char    interface[IFNAMSIZ];

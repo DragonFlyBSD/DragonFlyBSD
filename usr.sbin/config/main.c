@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.4 2003/08/15 06:32:45 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.5 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -67,9 +67,9 @@ static int no_config_clobber = TRUE;
 int	debugging;
 int	profiling;
 
-static void configfile __P((void));
-static void get_srcdir __P((void));
-static void usage __P((void));
+static void configfile(void);
+static void get_srcdir(void);
+static void usage(void);
 
 /*
  * Config builds a set of files for building a UNIX

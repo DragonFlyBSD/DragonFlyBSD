@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -54,9 +54,9 @@ int	blklev;
  */
 int	mblklev;
 
-static	int	toicon __P((tnode_t *));
-static	void	idecl __P((sym_t *, int));
-static	void	ignuptorp __P((void));
+static	int	toicon(tnode_t *);
+static	void	idecl(sym_t *, int);
+static	void	ignuptorp(void);
 
 %}
 

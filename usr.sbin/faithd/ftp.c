@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/ftp.c,v 1.2.2.5 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/ftp.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/faithd/ftp.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -69,11 +69,11 @@ enum state { NONE, LPRT, EPRT, PORT, LPSV, EPSV, PASV };
 enum state { NONE, LPRT, EPRT, LPSV, EPSV };
 #endif
 
-static int ftp_activeconn __P((void));
-static int ftp_passiveconn __P((void));
-static int ftp_copy __P((int, int));
-static int ftp_copyresult __P((int, int, enum state));
-static int ftp_copycommand __P((int, int, enum state *));
+static int ftp_activeconn(void);
+static int ftp_passiveconn(void);
+static int ftp_copy(int, int);
+static int ftp_copyresult(int, int, enum state);
+static int ftp_copycommand(int, int, enum state *);
 
 void
 ftp_relay(int ctl6, int ctl4)

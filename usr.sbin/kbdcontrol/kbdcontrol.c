@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.30.2.2 2001/06/08 18:27:32 sobomax Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/kbdcontrol/kbdcontrol.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -98,9 +98,9 @@ int 		number;
 char 		letter;
 int		token;
 
-int		get_accent_definition_line __P((accentmap_t *));
-int		get_key_definition_line __P((keymap_t *));
-void		usage __P((void));
+int		get_accent_definition_line(accentmap_t *);
+int		get_key_definition_line(keymap_t *);
+void		usage(void);
 
 char *
 nextarg(int ac, char **av, int *indp, int oc)

@@ -31,7 +31,7 @@
  *
  * $NetBSD: lastlogin.c,v 1.4 1998/02/03 04:45:35 perry Exp $
  * $FreeBSD: src/usr.sbin/lastlogin/lastlogin.c,v 1.2.2.2 2001/07/19 05:02:46 kris Exp $
- * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/lastlogin/lastlogin.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,9 +46,9 @@
 
 static	const char *logfile = _PATH_LASTLOG;
 
-	int	main __P((int, char **));
-static	void	output __P((struct passwd *, struct lastlog *));
-static	void	usage __P((void));
+	int	main(int, char **);
+static	void	output(struct passwd *, struct lastlog *);
+static	void	usage(void);
 
 int
 main(argc, argv)

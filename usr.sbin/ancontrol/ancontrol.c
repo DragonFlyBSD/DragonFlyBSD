@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
- * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.4 2003/11/03 19:31:35 eirikn Exp $
  *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
  * @(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp
@@ -59,36 +59,36 @@
 #include <md4.h>
 #include <ctype.h>
 
-static int an_getval		__P((const char *, struct an_req *));
-static void an_setval		__P((const char *, struct an_req *));
-static void an_printwords	__P((u_int16_t *, int));
-static void an_printspeeds	__P((u_int8_t*, int));
-static void an_printbool	__P((int));
-static void an_printhex		__P((char *, int));
-static void an_printstr		__P((char *, int));
-static void an_dumpstatus	__P((const char *));
-static void an_dumpstats	__P((const char *));
-static void an_dumpconfig	__P((const char *));
-static void an_dumpcaps		__P((const char *));
-static void an_dumpssid		__P((const char *));
-static void an_dumpap		__P((const char *));
-static void an_setconfig	__P((const char *, int, void *));
-static void an_setssid		__P((const char *, int, void *));
-static void an_setap		__P((const char *, int, void *));
-static void an_setspeed		__P((const char *, int, void *));
-static void an_readkeyinfo	__P((const char *));
+static int an_getval	(const char *, struct an_req *);
+static void an_setval	(const char *, struct an_req *);
+static void an_printwords(u_int16_t *, int);
+static void an_printspeeds(u_int8_t*, int);
+static void an_printbool(int);
+static void an_printhex	(char *, int);
+static void an_printstr	(char *, int);
+static void an_dumpstatus(const char *);
+static void an_dumpstats(const char *);
+static void an_dumpconfig(const char *);
+static void an_dumpcaps	(const char *);
+static void an_dumpssid	(const char *);
+static void an_dumpap	(const char *);
+static void an_setconfig(const char *, int, void *);
+static void an_setssid	(const char *, int, void *);
+static void an_setap	(const char *, int, void *);
+static void an_setspeed	(const char *, int, void *);
+static void an_readkeyinfo(const char *);
 #ifdef ANCACHE
-static void an_zerocache	__P((const char *));
-static void an_readcache	__P((const char *));
+static void an_zerocache(const char *);
+static void an_readcache(const char *);
 #endif
-static int an_hex2int		__P((char));
-static void an_str2key		__P((char *, struct an_ltv_key *));
-static void an_setkeys		__P((const char *, char *, int));
-static void an_enable_tx_key	__P((const char *, char *));
-static void an_enable_leap_mode __P((const char *, char *));
-static void usage		__P((char *));
-static void 			__P(an_dumprssimap(const char *));
-int main			__P((int, char **));
+static int an_hex2int	(char);
+static void an_str2key	(char *, struct an_ltv_key *);
+static void an_setkeys	(const char *, char *, int);
+static void an_enable_tx_key(const char *, char *);
+static void an_enable_leap_mode(const char *, char *);
+static void usage	(char *);
+static void 		an_dumprssimap(const char *);
+int main		(int, char **);
 
 #define ACT_DUMPSTATS 1
 #define ACT_DUMPCONFIG 2

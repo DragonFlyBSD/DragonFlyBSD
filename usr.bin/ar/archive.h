@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)archive.h	8.3 (Berkeley) 4/2/94
- * $DragonFly: src/usr.bin/ar/Attic/archive.h,v 1.2 2003/11/03 19:14:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/archive.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
  */
 
 /* Ar(1) options. */
@@ -98,9 +98,9 @@ typedef struct {
 
 struct stat;
 
-void	close_archive __P((int));
-void	copy_ar __P((CF *, off_t));
-int	get_arobj __P((int));
-int	open_archive __P((int));
-void	put_arobj __P((CF *, struct stat *));
-void	skip_arobj __P((int));
+void	close_archive(int);
+void	copy_ar(CF *, off_t);
+int	get_arobj(int);
+int	open_archive(int);
+void	put_arobj(CF *, struct stat *);
+void	skip_arobj(int);

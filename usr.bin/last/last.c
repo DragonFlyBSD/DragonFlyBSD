@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/last/last.c,v 1.10.6.11 2002/11/02 23:00:26 mux Exp $
- * $DragonFly: src/usr.bin/last/last.c,v 1.3 2003/10/04 20:36:47 hmp Exp $
+ * $DragonFly: src/usr.bin/last/last.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
  *
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)last.c	8.2 (Berkeley) 4/2/94
@@ -92,18 +92,18 @@ static time_t	snaptime;			/* if != 0, we will only
 						 * at this snapshot time
 						 */
 
-int	 main __P((int, char *[]));
-void	 addarg __P((int, char *));
-time_t	 dateconv __P((char *));
-void	 doentry __P((struct utmp *));
-void	 hostconv __P((char *));
-void	 onintr __P((int));
-void	 printentry __P((struct utmp *, struct ttytab *));
-char	*ttyconv __P((char *));
-char	*ttyconv __P((char *));
-int	 want __P((struct utmp *));
-void	 usage __P((void));
-void	 wtmp __P((void));
+int	 main(int, char *[]);
+void	 addarg(int, char *);
+time_t	 dateconv(char *);
+void	 doentry(struct utmp *);
+void	 hostconv(char *);
+void	 onintr(int);
+void	 printentry(struct utmp *, struct ttytab *);
+char	*ttyconv(char *);
+char	*ttyconv(char *);
+int	 want(struct utmp *);
+void	 usage(void);
+void	 wtmp(void);
 
 void
 usage(void)

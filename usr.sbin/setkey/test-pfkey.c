@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/test-pfkey.c,v 1.1.2.1 2000/07/15 07:37:04 kris Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/test-pfkey.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/test-pfkey.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
 /*	$KAME: test-pfkey.c,v 1.4 2000/06/07 00:29:14 itojun Exp $	*/
 
 /*
@@ -54,18 +54,18 @@ u_char m_buf[BUFSIZ];
 u_int m_len;
 char *pname;
 
-void Usage __P((void));
-int sendkeymsg __P((void));
-void key_setsadbmsg __P((u_int));
-void key_setsadbsens __P((void));
-void key_setsadbprop __P((void));
-void key_setsadbid __P((u_int, caddr_t));
-void key_setsadblft __P((u_int, u_int));
-void key_setspirange __P((void));
-void key_setsadbkey __P((u_int, caddr_t));
-void key_setsadbsa __P((void));
-void key_setsadbaddr __P((u_int, u_int, caddr_t));
-void key_setsadbextbuf __P((caddr_t, int, caddr_t, int, caddr_t, int));
+void Usage(void);
+int sendkeymsg(void);
+void key_setsadbmsg(u_int);
+void key_setsadbsens(void);
+void key_setsadbprop(void);
+void key_setsadbid(u_int, caddr_t);
+void key_setsadblft(u_int, u_int);
+void key_setspirange(void);
+void key_setsadbkey(u_int, caddr_t);
+void key_setsadbsa(void);
+void key_setsadbaddr(u_int, u_int, caddr_t);
+void key_setsadbextbuf(caddr_t, int, caddr_t, int, caddr_t, int);
 
 void
 Usage()

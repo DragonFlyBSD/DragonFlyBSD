@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 /*
@@ -67,16 +67,16 @@
 
 static struct file_list *fcur;
 
-static char *tail __P((char *));
-static void do_clean __P((FILE *));
-static void do_rules __P((FILE *));
-static void do_sfiles __P((FILE *));
-static void do_mfiles __P((FILE *));
-static void do_cfiles __P((FILE *));
-static void do_objs __P((FILE *));
-static void do_before_depend __P((FILE *));
-static int opteq __P((char *, char *));
-static void read_files __P((void));
+static char *tail(char *);
+static void do_clean(FILE *);
+static void do_rules(FILE *);
+static void do_sfiles(FILE *);
+static void do_mfiles(FILE *);
+static void do_cfiles(FILE *);
+static void do_objs(FILE *);
+static void do_before_depend(FILE *);
+static int opteq(char *, char *);
+static void read_files(void);
 
 /*
  * Lookup a file, by name.

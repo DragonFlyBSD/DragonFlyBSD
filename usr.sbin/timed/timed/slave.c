@@ -32,7 +32,7 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include "globals.h"
@@ -49,14 +49,14 @@ static char master_name[MAXHOSTNAMELEN];
 static struct netinfo *old_slavenet;
 static int old_status;
 
-static void schgdate __P((struct tsp *, char *));
-static void setmaster __P((struct tsp *));
-static void answerdelay __P((void));
+static void schgdate(struct tsp *, char *);
+static void setmaster(struct tsp *);
+static void answerdelay(void);
 
 #ifdef sgi
-extern void logwtmp __P((struct timeval *, struct timeval *));
+extern void logwtmp(struct timeval *, struct timeval *);
 #else
-extern void logwtmp __P((char *, char *, char *));
+extern void logwtmp(char *, char *, char *);
 #endif /* sgi */
 
 int

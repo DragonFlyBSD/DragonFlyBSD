@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/bitmap.h,v 1.4 1999/08/28 01:19:16 peter Exp $
- * $DragonFly: src/usr.sbin/pw/bitmap.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/bitmap.h,v 1.3 2003/11/03 19:31:41 eirikn Exp $
  */
 
 #ifndef _BITMAP_H_
@@ -39,13 +39,13 @@ struct bitmap
 };
 
 __BEGIN_DECLS
-struct bitmap bm_alloc __P((int size));
-void bm_dealloc __P((struct bitmap * bm));
-void bm_setbit __P((struct bitmap * bm, int pos));
-void bm_clrbit __P((struct bitmap * bm, int pos));
-int bm_isset __P((struct bitmap * bm, int pos));
-int bm_firstunset __P((struct bitmap * bm));
-int bm_lastset __P((struct bitmap * bm));
+struct bitmap bm_alloc(int size);
+void bm_dealloc(struct bitmap * bm);
+void bm_setbit(struct bitmap * bm, int pos);
+void bm_clrbit(struct bitmap * bm, int pos);
+int bm_isset(struct bitmap * bm, int pos);
+int bm_firstunset(struct bitmap * bm);
+int bm_lastset(struct bitmap * bm);
 __END_DECLS
 
 #endif				/* !_BITMAP_H */

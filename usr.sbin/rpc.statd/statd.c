@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.c,v 1.6 1999/10/05 14:40:38 marcel Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 /* main() function for status monitor daemon.  Some of the code in this	*/
@@ -52,7 +52,7 @@ int debug = 0;		/* Controls syslog() calls for debug messages	*/
 
 extern void sm_prog_1(struct svc_req *rqstp, SVCXPRT *transp);
 static void handle_sigchld();
-static void usage __P((void));
+static void usage(void);
 
 int
 main(int argc, char **argv)

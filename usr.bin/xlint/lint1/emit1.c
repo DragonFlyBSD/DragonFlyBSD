@@ -31,15 +31,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: emit1.c,v 1.4 1995/10/02 17:21:28 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/emit1.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/emit1.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <ctype.h>
 
 #include "lint1.h"
 
-static	void	outtt __P((sym_t *, sym_t *));
-static	void	outfstrg __P((strg_t *));
+static	void	outtt(sym_t *, sym_t *);
+static	void	outfstrg(strg_t *);
 
 /*
  * Write type into the output buffer.

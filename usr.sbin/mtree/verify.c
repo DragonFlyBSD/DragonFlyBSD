@@ -32,7 +32,7 @@
  *
  * @(#)verify.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/verify.c,v 1.10.2.2 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,8 @@ extern int lineno;
 static NODE *root;
 static char path[MAXPATHLEN];
 
-static void	miss __P((NODE *, char *));
-static int	vwalk __P((void));
+static void	miss(NODE *, char *);
+static int	vwalk(void);
 
 int
 verify()

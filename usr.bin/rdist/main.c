@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/main.c,v 1.5 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/main.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/main.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include "defs.h"
@@ -68,8 +68,8 @@ char	*path_rsh = _PATH_RSH;	/* rsh (or equiv command) path */
 struct	passwd *pw;	/* pointer to static area used by getpwent */
 struct	group *gr;	/* pointer to static area used by getgrent */
 
-static void usage __P((void));
-static void docmdargs __P((int, char *[]));
+static void usage(void);
+static void docmdargs(int, char *[]);
 
 int
 main(argc, argv)

@@ -28,7 +28,7 @@
  *
  * @(#)rpc_cout.c 1.13 89/02/22 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_cout.c,v 1.7 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_cout.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #ident	"@(#)rpc_cout.c	1.14	93/07/05 SMI" 
@@ -44,16 +44,16 @@
 #include "rpc_parse.h"
 #include "rpc_util.h"
 
-static void print_header __P(( definition * ));
-static void print_trailer __P(( void ));
-static void print_stat __P(( int , declaration * ));
-static void emit_enum __P(( definition * ));
-static void emit_program __P(( definition * ));
-static void emit_union __P(( definition * ));
-static void emit_struct __P(( definition * ));
-static void emit_typedef __P(( definition * ));
-static void emit_inline __P(( int, declaration *, int ));
-static void emit_single_in_line __P(( int, declaration *, int, relation ));
+static void print_header( definition * );
+static void print_trailer( void );
+static void print_stat( int , declaration * );
+static void emit_enum( definition * );
+static void emit_program( definition * );
+static void emit_union( definition * );
+static void emit_struct( definition * );
+static void emit_typedef( definition * );
+static void emit_inline( int, declaration *, int );
+static void emit_single_in_line( int, declaration *, int, relation );
 
 /*
  * Emit the C-routine for the given definition

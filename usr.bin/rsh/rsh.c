@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rsh.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/usr.bin/rsh/rsh.c,v 1.21.2.4 2002/09/17 15:34:41 nectar Exp $
- * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -78,11 +78,11 @@ int	rfd2;
 
 int family = PF_UNSPEC;
 
-void	connect_timeout __P((int));
-char   *copyargs __P((char **));
-void	sendsig __P((int));
-void	talk __P((int, long, pid_t, int, int));
-void	usage __P((void));
+void	connect_timeout(int);
+char   *copyargs(char **);
+void	sendsig(int);
+void	talk(int, long, pid_t, int, int);
+void	usage(void);
 
 int
 main(argc, argv)

@@ -26,16 +26,16 @@
  * @(#) pmap_check.h 1.3 93/11/21 16:18:53
  *
  * $FreeBSD: src/usr.sbin/portmap/pmap_check.h,v 1.3 2000/01/15 23:08:28 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_check.h,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_check.h,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
-extern int from_local __P((struct sockaddr_in *));
-extern void check_startup __P((void));
-extern int check_default __P((struct sockaddr_in *, u_long, u_long));
-extern int check_setunset __P((struct sockaddr_in *, u_long, u_long, u_long));
-extern int check_privileged_port __P((struct sockaddr_in *, u_long, u_long,
-	u_long));
-extern int check_callit __P((struct sockaddr_in *, u_long, u_long, u_long));
+extern int from_local(struct sockaddr_in *);
+extern void check_startup(void);
+extern int check_default(struct sockaddr_in *, u_long, u_long);
+extern int check_setunset(struct sockaddr_in *, u_long, u_long, u_long);
+extern int check_privileged_port(struct sockaddr_in *, u_long, u_long,
+	u_long);
+extern int check_callit(struct sockaddr_in *, u_long, u_long, u_long);
 
 extern int verboselog;
 extern int allow_severity;

@@ -8,15 +8,15 @@
  *
  *
  * @(#) $Id icmp.c,v 3.8.4.2 1998/01/06 01:57:42 fenner Exp $
- * $DragonFly: src/usr.sbin/mrouted/icmp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/icmp.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
 
 static int	icmp_socket;
 
-static void	icmp_handler __P((int, fd_set *));
-static char *	icmp_name __P((struct icmp *));
+static void	icmp_handler(int, fd_set *);
+static char *	icmp_name(struct icmp *);
 
 void
 init_icmp()

@@ -32,7 +32,7 @@
  *
  * @(#)docmd.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/docmd.c,v 1.12 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include "defs.h"
@@ -44,17 +44,17 @@ FILE	*lfp;			/* log file for recording files updated */
 struct	subcmd *subcmds;	/* list of sub-commands for current cmd */
 jmp_buf	env;
 
-static int	 makeconn __P((char *));
-static int	 okname __P((char *));
-static void	 closeconn __P((void));
-static void	 cmptime __P((char *));
-static void	 doarrow __P((char **,
-		    struct namelist *, char *, struct subcmd *));
-static void	 dodcolon __P((char **,
-		    struct namelist *, char *, struct subcmd *));
-static void	 notify __P((char *, char *, struct namelist *, time_t));
-static void	 rcmptime __P((struct stat *));
-static int	 remotecmd __P((char *, char *, char *, char *));
+static int	 makeconn(char *);
+static int	 okname(char *);
+static void	 closeconn(void);
+static void	 cmptime(char *);
+static void	 doarrow(char **,
+		    struct namelist *, char *, struct subcmd *);
+static void	 dodcolon(char **,
+		    struct namelist *, char *, struct subcmd *);
+static void	 notify(char *, char *, struct namelist *, time_t);
+static void	 rcmptime(struct stat *);
+static int	 remotecmd(char *, char *, char *, char *);
 
 /*
  * Do the commands in cmds (initialized by yyparse).

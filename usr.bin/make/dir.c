@@ -37,7 +37,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -186,12 +186,12 @@ static Hash_Table mtimes;   /* Results of doing a last-resort stat in
 			     * should be ok, but... */
 
 
-static int DirFindName __P((ClientData, ClientData));
-static int DirMatchFiles __P((char *, Path *, Lst));
-static void DirExpandCurly __P((char *, char *, Lst, Lst));
-static void DirExpandInt __P((char *, Lst, Lst));
-static int DirPrintWord __P((ClientData, ClientData));
-static int DirPrintDir __P((ClientData, ClientData));
+static int DirFindName(ClientData, ClientData);
+static int DirMatchFiles(char *, Path *, Lst);
+static void DirExpandCurly(char *, char *, Lst, Lst);
+static void DirExpandInt(char *, Lst, Lst);
+static int DirPrintWord(ClientData, ClientData);
+static int DirPrintDir(ClientData, ClientData);
 
 /*-
  *-----------------------------------------------------------------------

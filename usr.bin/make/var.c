@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -165,29 +165,29 @@ typedef struct {
     int		   flags;
 } VarREPattern;
 
-static int VarCmp __P((ClientData, ClientData));
-static Var *VarFind __P((char *, GNode *, int));
-static void VarAdd __P((char *, char *, GNode *));
-static void VarDelete __P((ClientData));
-static Boolean VarHead __P((char *, Boolean, Buffer, ClientData));
-static Boolean VarTail __P((char *, Boolean, Buffer, ClientData));
-static Boolean VarSuffix __P((char *, Boolean, Buffer, ClientData));
-static Boolean VarRoot __P((char *, Boolean, Buffer, ClientData));
-static Boolean VarMatch __P((char *, Boolean, Buffer, ClientData));
+static int VarCmp(ClientData, ClientData);
+static Var *VarFind(char *, GNode *, int);
+static void VarAdd(char *, char *, GNode *);
+static void VarDelete(ClientData);
+static Boolean VarHead(char *, Boolean, Buffer, ClientData);
+static Boolean VarTail(char *, Boolean, Buffer, ClientData);
+static Boolean VarSuffix(char *, Boolean, Buffer, ClientData);
+static Boolean VarRoot(char *, Boolean, Buffer, ClientData);
+static Boolean VarMatch(char *, Boolean, Buffer, ClientData);
 #ifdef SYSVVARSUB
-static Boolean VarSYSVMatch __P((char *, Boolean, Buffer, ClientData));
+static Boolean VarSYSVMatch(char *, Boolean, Buffer, ClientData);
 #endif
-static Boolean VarNoMatch __P((char *, Boolean, Buffer, ClientData));
-static void VarREError __P((int, regex_t *, const char *));
-static Boolean VarRESubstitute __P((char *, Boolean, Buffer, ClientData));
-static Boolean VarSubstitute __P((char *, Boolean, Buffer, ClientData));
-static char *VarGetPattern __P((GNode *, int, char **, int, int *, int *,
-				VarPattern *));
-static char *VarQuote __P((char *));
-static char *VarModify __P((char *, Boolean (*)(char *, Boolean, Buffer,
+static Boolean VarNoMatch(char *, Boolean, Buffer, ClientData);
+static void VarREError(int, regex_t *, const char *);
+static Boolean VarRESubstitute(char *, Boolean, Buffer, ClientData);
+static Boolean VarSubstitute(char *, Boolean, Buffer, ClientData);
+static char *VarGetPattern(GNode *, int, char **, int, int *, int *,
+				VarPattern *);
+static char *VarQuote(char *);
+static char *VarModify(char *, Boolean (*)(char *, Boolean, Buffer,
 						ClientData),
-			    ClientData));
-static int VarPrintVar __P((ClientData, ClientData));
+			    ClientData);
+static int VarPrintVar(ClientData, ClientData);
 
 /*-
  *-----------------------------------------------------------------------
@@ -1240,7 +1240,7 @@ static char *
 VarModify (str, modProc, datum)
     char    	  *str;	    	    /* String whose words should be trimmed */
 				    /* Function to use to modify them */
-    Boolean    	  (*modProc) __P((char *, Boolean, Buffer, ClientData));
+    Boolean    	  (*modProc)(char *, Boolean, Buffer, ClientData);
     ClientData	  datum;    	    /* Datum to pass it */
 {
     Buffer  	  buf;	    	    /* Buffer for the new string */

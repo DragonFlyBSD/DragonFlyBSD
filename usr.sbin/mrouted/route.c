@@ -10,7 +10,7 @@
  * route.c,v 3.8.4.41 1998/01/15 00:08:34 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/route.c,v 1.12 1999/08/28 01:17:08 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/route.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/route.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
@@ -42,17 +42,17 @@ unsigned int nroutes;			/* current number of route entries  */
 /*
  * Private functions.
  */
-static int init_children_and_leaves	__P((struct rtentry *r,
-						vifi_t parent, int first));
-static int find_route		__P((u_int32 origin, u_int32 mask));
-static void create_route	__P((u_int32 origin, u_int32 mask));
-static void discard_route	__P((struct rtentry *prev_r));
-static int compare_rts		__P((const void *rt1, const void *rt2));
-static int report_chunk		__P((int, struct rtentry *start_rt, vifi_t vifi,
-						u_int32 dst));
-static void queue_blaster_report __P((vifi_t, u_int32, u_int32, char *,
-					int, u_int32));
-static void process_blaster_report __P((void *));
+static int init_children_and_leaves(struct rtentry *r,
+						vifi_t parent, int first);
+static int find_route	(u_int32 origin, u_int32 mask);
+static void create_route(u_int32 origin, u_int32 mask);
+static void discard_route(struct rtentry *prev_r);
+static int compare_rts	(const void *rt1, const void *rt2);
+static int report_chunk		(int, struct rtentry *start_rt, vifi_t vifi,
+						u_int32 dst);
+static void queue_blaster_report(vifi_t, u_int32, u_int32, char *,
+					int, u_int32);
+static void process_blaster_report(void *);
 
 #ifdef SNMP
 #include <sys/types.h>

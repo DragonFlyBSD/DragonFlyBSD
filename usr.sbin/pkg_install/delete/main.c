@@ -17,7 +17,7 @@
  * This is the delete module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.17.2.8 2002/08/20 06:35:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -35,7 +35,7 @@ Boolean	NoDeInstall	= FALSE;
 Boolean	Recursive	= FALSE;
 match_t	MatchType	= MATCH_GLOB;
 
-static void usage __P((void));
+static void usage(void);
 
 int
 main(int argc, char **argv)

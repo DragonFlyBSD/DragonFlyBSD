@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/lcp.h,v 1.7 1999/08/28 01:19:05 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/lcp.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/lcp.h,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -76,11 +76,11 @@ extern u_int32_t xmit_accm[][8];
 #define MINMRU	128		/* No MRUs below this */
 #define MAXMRU	16384		/* Normally limit MRU to this */
 
-void lcp_open __P((int));
-void lcp_close __P((int, char *));
-void lcp_lowerup __P((int));
-void lcp_lowerdown __P((int));
-void lcp_sprotrej __P((int, u_char *, int));	/* send protocol reject */
+void lcp_open(int);
+void lcp_close(int, char *);
+void lcp_lowerup(int);
+void lcp_lowerdown(int);
+void lcp_sprotrej(int, u_char *, int);	/* send protocol reject */
 
 extern struct protent lcp_protent;
 

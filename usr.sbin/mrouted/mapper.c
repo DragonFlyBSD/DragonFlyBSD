@@ -4,7 +4,7 @@
  * mapper.c,v 3.8.4.3 1998/01/06 01:57:47 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/mapper.c,v 1.15.2.1 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mapper.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mapper.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 /*
@@ -78,23 +78,23 @@ int	show_names = TRUE;
 vifi_t  numvifs;		/* to keep loader happy */
 				/* (see COPY_TABLES macro called in kern.c) */
 
-Node *			find_node __P((u_int32 addr, Node **ptr));
-Interface *		find_interface __P((u_int32 addr, Node *node));
-Neighbor *		find_neighbor __P((u_int32 addr, Node *node));
-int			main __P((int argc, char *argv[]));
-void			ask __P((u_int32 dst));
-void			ask2 __P((u_int32 dst));
-int			retry_requests __P((Node *node));
-char *			inet_name __P((u_int32 addr));
-void			print_map __P((Node *node));
-char *			graph_name __P((u_int32 addr, char *buf, int len));
-void			graph_edges __P((Node *node));
-void			elide_aliases __P((Node *node));
-void			graph_map __P((void));
-int			get_number __P((int *var, int deflt, char ***pargv,
-						int *pargc));
-u_int32			host_addr __P((char *name));
-static void		usage __P((void));
+Node *			find_node(u_int32 addr, Node **ptr);
+Interface *		find_interface(u_int32 addr, Node *node);
+Neighbor *		find_neighbor(u_int32 addr, Node *node);
+int			main(int argc, char *argv[]);
+void			ask(u_int32 dst);
+void			ask2(u_int32 dst);
+int			retry_requests(Node *node);
+char *			inet_name(u_int32 addr);
+void			print_map(Node *node);
+char *			graph_name(u_int32 addr, char *buf, int len);
+void			graph_edges(Node *node);
+void			elide_aliases(Node *node);
+void			graph_map(void);
+int			get_number(int *var, int deflt, char ***pargv,
+						int *pargc);
+u_int32			host_addr(char *name);
+static void		usage(void);
 
 
 Node *find_node(addr, ptr)

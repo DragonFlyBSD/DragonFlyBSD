@@ -32,7 +32,7 @@
  *
  *	@(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.h,v 1.35.2.1 2000/08/03 00:09:56 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.h,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.h,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 /*
@@ -145,18 +145,18 @@ struct opt_list {
 extern char	*ident;
 extern int	do_trace;
 
-char	*get_word __P((FILE *));
-char	*get_quoted_word __P((FILE *));
-char	*path __P((char *));
-char	*raisestr __P((char *));
-void	moveifchanged __P((const char *, const char *));
-void	init_dev __P((struct device *));       
-void	newbus_ioconf __P((void));
-int	yyparse __P((void));
-int	yylex __P((void));
-void	options __P((void));
-void	makefile __P((void));
-void	headers __P((void));
+char	*get_word(FILE *);
+char	*get_quoted_word(FILE *);
+char	*path(char *);
+char	*raisestr(char *);
+void	moveifchanged(const char *, const char *);
+void	init_dev(struct device *);       
+void	newbus_ioconf(void);
+int	yyparse(void);
+int	yylex(void);
+void	options(void);
+void	makefile(void);
+void	headers(void);
 
 extern struct	device *dtab;
 

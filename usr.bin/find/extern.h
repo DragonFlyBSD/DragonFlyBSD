@@ -32,23 +32,23 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/16/94
  *	$FreeBSD: src/usr.bin/find/extern.h,v 1.9.2.4 2001/05/06 09:53:22 phk Exp $
- *	$DragonFly: src/usr.bin/find/extern.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ *	$DragonFly: src/usr.bin/find/extern.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
 
-void	 brace_subst __P((char *, char **, char *, int));
-void	*emalloc __P((unsigned int));
-PLAN	*find_create __P((char ***));
-int	 find_execute __P((PLAN *, char **));
-PLAN	*find_formplan __P((char **));
-PLAN	*not_squish __P((PLAN *));
-PLAN	*or_squish __P((PLAN *));
-PLAN	*paren_squish __P((PLAN *));
+void	 brace_subst(char *, char **, char *, int);
+void	*emalloc(unsigned int);
+PLAN	*find_create(char ***);
+int	 find_execute(PLAN *, char **);
+PLAN	*find_formplan(char **);
+PLAN	*not_squish(PLAN *);
+PLAN	*or_squish(PLAN *);
+PLAN	*paren_squish(PLAN *);
 struct stat;
-void	 printlong __P((char *, char *, struct stat *));
-int	 queryuser __P((char **));
-OPTION	*option __P((char *));
+void	 printlong(char *, char *, struct stat *);
+int	 queryuser(char **);
+OPTION	*option(char *);
 
 creat_f	c_Xmin;
 creat_f	c_Xtime;

@@ -37,7 +37,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /* dir.h --
@@ -54,19 +54,19 @@ typedef struct Path {
     Hash_Table    files;    	/* Hash table of files in directory */
 } Path;
 
-void Dir_Init __P((void));
-void Dir_End __P((void));
-Boolean Dir_HasWildcards __P((char *));
-void Dir_Expand __P((char *, Lst, Lst));
-char *Dir_FindFile __P((char *, Lst));
-int Dir_MTime __P((GNode *));
-void Dir_AddDir __P((Lst, char *));
-char *Dir_MakeFlags __P((char *, Lst));
-void Dir_ClearPath __P((Lst));
-void Dir_Concat __P((Lst, Lst));
-void Dir_PrintDirectories __P((void));
-void Dir_PrintPath __P((Lst));
-void Dir_Destroy __P((ClientData));
-ClientData Dir_CopyDir __P((ClientData));
+void Dir_Init(void);
+void Dir_End(void);
+Boolean Dir_HasWildcards(char *);
+void Dir_Expand(char *, Lst, Lst);
+char *Dir_FindFile(char *, Lst);
+int Dir_MTime(GNode *);
+void Dir_AddDir(Lst, char *);
+char *Dir_MakeFlags(char *, Lst);
+void Dir_ClearPath(Lst);
+void Dir_Concat(Lst, Lst);
+void Dir_PrintDirectories(void);
+void Dir_PrintPath(Lst);
+void Dir_Destroy(ClientData);
+ClientData Dir_CopyDir(ClientData);
 
 #endif /* _DIR */

@@ -32,7 +32,7 @@
  *
  * @(#)correct.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/correct.c,v 1.4 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include "globals.h"
@@ -43,7 +43,7 @@
 #include <sys/syssgi.h>
 #endif /* sgi */
 
-static void adjclock __P((struct timeval *));
+static void adjclock(struct timeval *);
 
 /*
  * sends to the slaves the corrections for their clocks after fixing our

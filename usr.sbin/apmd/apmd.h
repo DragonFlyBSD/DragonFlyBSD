@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.h,v 1.2.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.h,v 1.3 2003/11/03 19:31:35 eirikn Exp $
  */
 
 #define APMD_CONFIGFILE		"/etc/apmd.conf"
@@ -54,10 +54,10 @@ enum {
 };
 
 struct event_cmd_op {
-	int (* act) __P((void *this));
-	void (* dump) __P((void *this, FILE * fp));
-	struct event_cmd * (* clone) __P((void *this));
-	void (* free) __P((void *this));
+	int (* act)(void *this);
+	void (* dump)(void *this, FILE * fp);
+	struct event_cmd * (* clone)(void *this);
+	void (* free)(void *this);
 };
 struct event_cmd {
 	struct event_cmd * next;

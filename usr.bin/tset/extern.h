@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/9/93
  *	$FreeBSD: src/usr.bin/tset/extern.h,v 1.6.2.1 2000/11/12 07:48:29 dg Exp $
- *	$DragonFly: src/usr.bin/tset/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ *	$DragonFly: src/usr.bin/tset/extern.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include <termcap.h>
@@ -41,13 +41,13 @@ extern struct termios mode, oldmode;
 extern int Columns, isreset, Lines;
 extern int erasech, intrchar, killch;
 
-void	 add_mapping __P((char *, char *));
-void	 cat __P((char *));
-char	*get_termcap_entry __P((char *, char **));
-char	*mapped __P((char *));
-int      outc __P((int));
-void	 reset_mode __P((void));
-void	 set_control_chars __P((void));
-void	 set_conversions __P((int));
-void	 set_init __P((void));
-void	 wrtermcap __P((char *));
+void	 add_mapping(char *, char *);
+void	 cat(char *);
+char	*get_termcap_entry(char *, char **);
+char	*mapped(char *);
+int      outc(int);
+void	 reset_mode(void);
+void	 set_control_chars(void);
+void	 set_conversions(int);
+void	 set_init(void);
+void	 wrtermcap(char *);

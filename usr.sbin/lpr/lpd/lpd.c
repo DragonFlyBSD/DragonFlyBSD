@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)lpd.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 /*
@@ -110,8 +110,8 @@ static int	*socksetup(int _af, int _debuglvl);
 static void	 usage(void);
 
 /* XXX from libc/net/rcmd.c */
-extern int __ivaliduser_sa __P((FILE *, struct sockaddr *, socklen_t,
-				const char *, const char *));
+extern int __ivaliduser_sa(FILE *, struct sockaddr *, socklen_t,
+				const char *, const char *);
 
 uid_t	uid, euid;
 

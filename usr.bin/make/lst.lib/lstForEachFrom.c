@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEachFrom.c,v 1.7 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  *
  * @(#)lstForEachFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -67,7 +67,7 @@ void
 Lst_ForEachFrom (l, ln, proc, d)
     Lst	    	    	l;
     LstNode    	  	ln;
-    register int	(*proc) __P((ClientData, ClientData));
+    register int	(*proc)(ClientData, ClientData);
     register ClientData	d;
 {
     register ListNode	tln = (ListNode)ln;

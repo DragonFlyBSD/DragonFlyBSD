@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/keyserv/crypt_server.c,v 1.6.2.1 2001/07/19 04:21:20 kris Exp $
- * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/keyserv/crypt_server.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -160,7 +160,7 @@ int _arcfour_crypt(buf, len, desp)
 	return(DESERR_NOHWDEVICE);
 }
 
-int (*_my_crypt)__P((char *, int, struct desparams *)) = NULL;
+int (*_my_crypt)(char *, int, struct desparams *) = NULL;
 
 static void *dlhandle;
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp_var.h,v 1.11.2.2 2002/08/27 09:55:08 yar Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.2 2003/06/17 04:29:26 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp_var.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $	*/
 /*	$NetBSD: ftp_var.h,v 1.20.2.1 1997/11/18 01:01:37 mellon Exp $	*/
 
 /*
@@ -176,7 +176,7 @@ struct cmd {
 #ifndef SMALL
 	char	*c_complete;	/* context sensitive completion list */
 #endif /* !SMALL */
-	void	(*c_handler) __P((int, char **)); /* function to call */
+	void	(*c_handler)(int, char **); /* function to call */
 };
 
 struct macel {

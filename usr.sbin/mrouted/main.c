@@ -10,7 +10,7 @@
  * main.c,v 3.8.4.29 1998/03/01 01:49:00 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/main.c,v 1.16.2.4 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 /*
@@ -106,21 +106,21 @@ static struct debugname {
 /*
  * Forward declarations.
  */
-static void final_init __P((void *));
-static void fasttimer __P((void *));
-static void timer __P((void *));
-static void dump __P((void));
-static void dump_version __P((FILE *));
-static void fdump __P((void));
-static void cdump __P((void));
-static void restart __P((void));
-static void handler __P((int));
-static void cleanup __P((void));
-static void resetlogging __P((void *));
-static void usage __P((void));
+static void final_init(void *);
+static void fasttimer(void *);
+static void timer(void *);
+static void dump(void);
+static void dump_version(FILE *);
+static void fdump(void);
+static void cdump(void);
+static void restart(void);
+static void handler(int);
+static void cleanup(void);
+static void resetlogging(void *);
+static void usage(void);
 
 /* To shut up gcc -Wstrict-prototypes */
-int main __P((int argc, char **argv));
+int main(int argc, char **argv);
 
 int
 register_input_handler(fd, func)

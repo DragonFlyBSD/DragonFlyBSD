@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -142,18 +142,18 @@ int	s, utmpf;
 
 #define	WHDRSIZE	(sizeof(mywd) - sizeof(mywd.wd_we))
 
-void	 run_as __P((uid_t *, gid_t *));
-int	 configure __P((int));
-void	 getboottime __P((int));
-void	 onalrm __P((int));
-void	 quit __P((char *));
-void	 rt_xaddrs __P((caddr_t, caddr_t, struct rt_addrinfo *));
-int	 verify __P((char *, int));
-static void usage __P((void));
+void	 run_as(uid_t *, gid_t *);
+int	 configure(int);
+void	 getboottime(int);
+void	 onalrm(int);
+void	 quit(char *);
+void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
+int	 verify(char *, int);
+static void usage(void);
 #ifdef DEBUG
-char	*interval __P((int, char *));
-void	 Sendto __P((int, const void *, size_t, int,
-		     const struct sockaddr *, int));
+char	*interval(int, char *);
+void	 Sendto(int, const void *, size_t, int,
+		     const struct sockaddr *, int);
 #define	 sendto Sendto
 #endif
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.3 2003/10/11 09:56:48 hmp Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.4 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include "timedc.h"
@@ -54,7 +54,7 @@ int	fromatty;
 char	*margv[MAX_MARGV];
 char	cmdline[200];
 jmp_buf	toplevel;
-static struct cmd *getcmd __P((char *));
+static struct cmd *getcmd(char *);
 
 int
 main(argc, argv)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/psdate.h,v 1.4 1999/08/28 01:19:17 peter Exp $
- * $DragonFly: src/usr.sbin/pw/psdate.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/psdate.h,v 1.3 2003/11/03 19:31:41 eirikn Exp $
  */
 
 #ifndef _PSDATE_H_
@@ -34,8 +34,8 @@
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-time_t parse_date __P((time_t dt, char const * str));
-void print_date __P((char *buf, time_t t, int dotime));
+time_t parse_date(time_t dt, char const * str);
+void print_date(char *buf, time_t t, int dotime);
 __END_DECLS
 
 #endif				/* !_PSDATE_H_ */

@@ -1,6 +1,6 @@
 /*	$NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $	*/
 /*	$FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.10.2.6 2002/12/31 09:05:27 maxim Exp $	*/
-/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.3 2003/08/08 04:18:48 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.4 2003/11/03 19:31:44 eirikn Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -162,8 +162,8 @@ typedef struct action_match_s {
 /* the function returns 0 for failure, 1 for all arguments found and 2 for
  * arguments left over in trail.
  */
-typedef int (*config_field_fn)	__P((action_t *action, char *args,
-					char **trail));
+typedef int (*config_field_fn)(action_t *action, char *args,
+					char **trail);
 
 int set_device_field(action_t *action, char *args, char **trail);
 int set_vendor_field(action_t *action, char *args, char **trail);
@@ -202,11 +202,11 @@ config_field_t config_fields[] = {
 
 
 /* prototypes for some functions */
-void print_event	__P((struct usb_event *event));
-void print_action	__P((action_t *action, int i));
-void print_actions	__P((void));
-int  find_action	__P((struct usb_device_info *devinfo,
-			action_match_t *action_match));
+void print_event(struct usb_event *event);
+void print_action(action_t *action, int i);
+void print_actions(void);
+int  find_action(struct usb_device_info *devinfo,
+			action_match_t *action_match);
 
 
 void

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/kbdcontrol/lex.h,v 1.9.2.2 2001/06/08 18:27:32 sobomax Exp $
- * $DragonFly: src/usr.sbin/kbdcontrol/lex.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/kbdcontrol/lex.h,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #define TNOP		256
@@ -69,4 +69,4 @@ extern int number;
 extern char letter;
 extern FILE *yyin;
 
-extern int yylex __P((void));
+extern int yylex(void);

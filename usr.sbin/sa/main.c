@@ -29,7 +29,7 @@
  *
  * @(#) Copyright (c) 1994 Christopher G. Demetriou All rights reserved.
  * $FreeBSD: src/usr.sbin/sa/main.c,v 1.8.2.2 2001/07/19 05:20:49 kris Exp $
- * $DragonFly: src/usr.sbin/sa/main.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sa/main.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 /*
@@ -49,17 +49,17 @@
 #include "extern.h"
 #include "pathnames.h"
 
-static int	acct_load	__P((char *, int));
-static u_quad_t	decode_comp_t	__P((comp_t));
-static int	cmp_comm	__P((const char *, const char *));
-static int	cmp_usrsys	__P((const DBT *, const DBT *));
-static int	cmp_avgusrsys	__P((const DBT *, const DBT *));
-static int	cmp_dkio	__P((const DBT *, const DBT *));
-static int	cmp_avgdkio	__P((const DBT *, const DBT *));
-static int	cmp_cpumem	__P((const DBT *, const DBT *));
-static int	cmp_avgcpumem	__P((const DBT *, const DBT *));
-static int	cmp_calls	__P((const DBT *, const DBT *));
-static void	usage		__P((void));
+static int	acct_load(char *, int);
+static u_quad_t	decode_comp_t(comp_t);
+static int	cmp_comm(const char *, const char *);
+static int	cmp_usrsys(const DBT *, const DBT *);
+static int	cmp_avgusrsys(const DBT *, const DBT *);
+static int	cmp_dkio(const DBT *, const DBT *);
+static int	cmp_avgdkio(const DBT *, const DBT *);
+static int	cmp_cpumem(const DBT *, const DBT *);
+static int	cmp_avgcpumem(const DBT *, const DBT *);
+static int	cmp_calls(const DBT *, const DBT *);
+static void	usage	(void);
 
 int aflag, bflag, cflag, dflag, Dflag, fflag, iflag, jflag, kflag;
 int Kflag, lflag, mflag, qflag, rflag, sflag, tflag, uflag, vflag;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chpass.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/chpass/chpass.c,v 1.16.2.4 2002/08/11 14:16:42 dwmalone Exp $
- * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/chpass/chpass.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -67,8 +67,8 @@ int yp_errno = YP_TRUE;
 char *tempname;
 uid_t uid;
 
-void	baduser __P((void));
-void	usage __P((void));
+void	baduser(void);
+void	usage(void);
 
 int
 main(int argc, char **argv)

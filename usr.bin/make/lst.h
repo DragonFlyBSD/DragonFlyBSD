@@ -37,7 +37,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -68,8 +68,8 @@ typedef	struct	LstNode	*LstNode;
  *	not to be freed.
  * NOCOPY performs similarly when given as the copyProc to Lst_Duplicate.
  */
-#define NOFREE		((void (*) __P((ClientData))) 0)
-#define NOCOPY		((ClientData (*) __P((ClientData))) 0)
+#define NOFREE		((void (*)(ClientData)) 0)
+#define NOCOPY		((ClientData (*)(ClientData)) 0)
 
 #define LST_CONCNEW	0   /* create new LstNode's when using Lst_Concat */
 #define LST_CONCLINK	1   /* relink LstNode's when using Lst_Concat */
@@ -78,43 +78,43 @@ typedef	struct	LstNode	*LstNode;
  * Creation/destruction functions
  */
 /* Create a new list */
-Lst		Lst_Init __P((Boolean));
+Lst		Lst_Init(Boolean);
 /* Duplicate an existing list */
-Lst		Lst_Duplicate __P((Lst, ClientData (*)(ClientData)));
+Lst		Lst_Duplicate(Lst, ClientData (*)(ClientData));
 /* Destroy an old one */
-void		Lst_Destroy __P((Lst, void (*)(ClientData)));
+void		Lst_Destroy(Lst, void (*)(ClientData));
 /* True if list is empty */
-Boolean		Lst_IsEmpty __P((Lst));
+Boolean		Lst_IsEmpty(Lst);
 
 /*
  * Functions to modify a list
  */
 /* Insert an element before another */
-ReturnStatus	Lst_Insert __P((Lst, LstNode, ClientData));
+ReturnStatus	Lst_Insert(Lst, LstNode, ClientData);
 /* Insert an element after another */
-ReturnStatus	Lst_Append __P((Lst, LstNode, ClientData));
+ReturnStatus	Lst_Append(Lst, LstNode, ClientData);
 /* Place an element at the front of a lst. */
-ReturnStatus	Lst_AtFront __P((Lst, ClientData));
+ReturnStatus	Lst_AtFront(Lst, ClientData);
 /* Place an element at the end of a lst. */
-ReturnStatus	Lst_AtEnd __P((Lst, ClientData));
+ReturnStatus	Lst_AtEnd(Lst, ClientData);
 /* Remove an element */
-ReturnStatus	Lst_Remove __P((Lst, LstNode));
+ReturnStatus	Lst_Remove(Lst, LstNode);
 /* Replace a node with a new value */
-ReturnStatus	Lst_Replace __P((LstNode, ClientData));
+ReturnStatus	Lst_Replace(LstNode, ClientData);
 /* Concatenate two lists */
-ReturnStatus	Lst_Concat __P((Lst, Lst, int));
+ReturnStatus	Lst_Concat(Lst, Lst, int);
 
 /*
  * Node-specific functions
  */
 /* Return first element in list */
-LstNode		Lst_First __P((Lst));
+LstNode		Lst_First(Lst);
 /* Return last element in list */
-LstNode		Lst_Last __P((Lst));
+LstNode		Lst_Last(Lst);
 /* Return successor to given element */
-LstNode		Lst_Succ __P((LstNode));
+LstNode		Lst_Succ(LstNode);
 /* Get datum from LstNode */
-ClientData	Lst_Datum __P((LstNode));
+ClientData	Lst_Datum(LstNode);
 
 /*
  * Functions for entire lists
@@ -129,38 +129,38 @@ LstNode		Lst_FindFrom __P((Lst, LstNode, ClientData,
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum
  */
-LstNode		Lst_Member __P((Lst, ClientData));
+LstNode		Lst_Member(Lst, ClientData);
 /* Apply a function to all elements of a lst */
-void		Lst_ForEach __P((Lst, int (*)(ClientData, ClientData),
-				 ClientData));
+void		Lst_ForEach(Lst, int (*)(ClientData, ClientData),
+				 ClientData);
 /*
  * Apply a function to all elements of a lst starting from a certain point.
  * If the list is circular, the application will wrap around to the
  * beginning of the list again.
  */
-void		Lst_ForEachFrom __P((Lst, LstNode,
+void		Lst_ForEachFrom(Lst, LstNode,
 				     int (*)(ClientData, ClientData),
-				     ClientData));
+				     ClientData);
 /*
  * these functions are for dealing with a list as a table, of sorts.
  * An idea of the "current element" is kept and used by all the functions
  * between Lst_Open() and Lst_Close().
  */
 /* Open the list */
-ReturnStatus	Lst_Open __P((Lst));
+ReturnStatus	Lst_Open(Lst);
 /* Next element please */
-LstNode		Lst_Next __P((Lst));
+LstNode		Lst_Next(Lst);
 /* Done yet? */
-Boolean		Lst_IsAtEnd __P((Lst));
+Boolean		Lst_IsAtEnd(Lst);
 /* Finish table access */
-void		Lst_Close __P((Lst));
+void		Lst_Close(Lst);
 
 /*
  * for using the list as a queue
  */
 /* Place an element at tail of queue */
-ReturnStatus	Lst_EnQueue __P((Lst, ClientData));
+ReturnStatus	Lst_EnQueue(Lst, ClientData);
 /* Remove an element from head of queue */
-ClientData	Lst_DeQueue __P((Lst));
+ClientData	Lst_DeQueue(Lst);
 
 #endif /* _LST_H_ */

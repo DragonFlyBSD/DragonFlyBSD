@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/dump.c,v 1.1.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtsold/dump.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -52,8 +52,8 @@ static FILE *fp;
 
 extern struct ifinfo *iflist;
 
-static void dump_interface_status __P((void));
-static char *sec2str __P((time_t));
+static void dump_interface_status(void);
+static char *sec2str(time_t);
 char *ifstatstr[] = {"IDLE", "DELAY", "PROBE", "DOWN", "TENTATIVE"};
 
 static void

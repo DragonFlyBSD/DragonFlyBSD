@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)col.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/col/col.c,v 1.6.6.4 2001/08/02 01:27:12 obrien Exp $
- * $DragonFly: src/usr.bin/col/col.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/col/col.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -84,14 +84,14 @@ struct line_str {
 	int	l_max_col;		/* max column in the line */
 };
 
-LINE   *alloc_line __P((void));
-void	dowarn __P((int));
-void	flush_line __P((LINE *));
-void	flush_lines __P((int));
-void	flush_blanks __P((void));
-void	free_line __P((LINE *));
-int	main __P((int, char **));
-void	usage __P((void));
+LINE   *alloc_line(void);
+void	dowarn(int);
+void	flush_line(LINE *);
+void	flush_lines(int);
+void	flush_blanks(void);
+void	free_line(LINE *);
+int	main(int, char **);
+void	usage(void);
 
 CSET	last_set;		/* char_set of last char printed */
 LINE   *lines;

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/locate/util.c,v 1.6.2.1 2001/12/20 04:21:48 mikeh Exp $
- * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/locate/locate/util.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 
@@ -47,13 +47,13 @@
 
 #include "locate.h"
 
-char 	**colon __P((char **, char*, char*));
-char 	*patprep __P((char *));
-void print_matches __P((u_int));
-u_char 	*tolower_word __P((u_char *));
-int 	getwm __P((caddr_t));
-int 	getwf __P((FILE *));
-int	check_bigram_char __P((int));
+char 	**colon(char **, char*, char*);
+char 	*patprep(char *);
+void print_matches(u_int);
+u_char 	*tolower_word(u_char *);
+int 	getwm(caddr_t);
+int 	getwf(FILE *);
+int	check_bigram_char(int);
 
 /* 
  * Validate bigram chars. If the test failed the database is corrupt 

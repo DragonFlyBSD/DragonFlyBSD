@@ -10,7 +10,7 @@
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
@@ -28,7 +28,7 @@ struct timeout_q {
 };
 
 #ifdef IGMP_DEBUG
-static void print_Q __P((void));
+static void print_Q(void);
 #else
 #define	print_Q()	
 #endif

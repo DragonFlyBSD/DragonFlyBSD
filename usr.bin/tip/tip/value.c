@@ -32,7 +32,7 @@
  *
  * @(#)value.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/value.c,v 1.5.2.1 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/value.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include "tip.h"
@@ -40,9 +40,9 @@
 #define MIDDLE	35
 
 static value_t *vlookup();
-int vstring __P((char *, char *));
-void vlex __P((char *));
-void vassign __P((value_t *, char *));
+int vstring(char *, char *);
+void vlex(char *);
+void vassign(value_t *, char *);
 
 static int col = 0;
 

@@ -60,7 +60,7 @@
  *
  * @(#) Header: mrinfo.c,v 1.6 93/04/08 15:14:16 van Exp
  * $FreeBSD: src/usr.sbin/mrouted/mrinfo.c,v 1.17.2.1 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mrinfo.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mrinfo.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include <err.h>
@@ -86,16 +86,16 @@ int	target_level = 0;
 vifi_t  numvifs;		/* to keep loader happy */
 				/* (see COPY_TABLES macro called in kern.c) */
 
-char *			inet_name __P((u_int32 addr));
-void			ask __P((u_int32 dst));
-void			ask2 __P((u_int32 dst));
-int			get_number __P((int *var, int deflt, char ***pargv,
-					int *pargc));
-u_int32			host_addr __P((char *name));
-static void		usage __P((void));
+char *			inet_name(u_int32 addr);
+void			ask(u_int32 dst);
+void			ask2(u_int32 dst);
+int			get_number(int *var, int deflt, char ***pargv,
+					int *pargc);
+u_int32			host_addr(char *name);
+static void		usage(void);
 
 /* to shut up -Wstrict-prototypes */
-int			main __P((int argc, char *argv[]));
+int			main(int argc, char *argv[]);
 
 
 char   *

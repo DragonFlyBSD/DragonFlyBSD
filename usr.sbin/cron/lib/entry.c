@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/entry.c,v 1.9.2.5 2001/08/18 04:20:31 mikeh Exp $
- * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/entry.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 /* vix 26jan87 [RCS'd; rest of log is in RCS file]
@@ -39,10 +39,10 @@ typedef	enum ecode {
 #endif
 } ecode_e;
 
-static char	get_list __P((bitstr_t *, int, int, char *[], int, FILE *)),
-		get_range __P((bitstr_t *, int, int, char *[], int, FILE *)),
-		get_number __P((int *, int, char *[], int, FILE *));
-static int	set_element __P((bitstr_t *, int, int, int));
+static char	get_list(bitstr_t *, int, int, char *[], int, FILE *),
+		get_range(bitstr_t *, int, int, char *[], int, FILE *),
+		get_number(int *, int, char *[], int, FILE *);
+static int	set_element(bitstr_t *, int, int, int);
 
 static char *ecodes[] =
 	{

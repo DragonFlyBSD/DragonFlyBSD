@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tftp/extern.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/tftp/extern.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
-void	recvfile __P((int, char *, char *));
-void	xmitfile __P((int, char *, char *));
+void	recvfile(int, char *, char *);
+void	xmitfile(int, char *, char *);

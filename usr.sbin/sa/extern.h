@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/extern.h,v 1.4 1999/08/28 01:19:52 peter Exp $
- * $DragonFly: src/usr.sbin/sa/extern.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sa/extern.h,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -61,24 +61,24 @@ struct userinfo {
 
 /* typedefs */
 
-typedef	int (*cmpf_t) __P((const DBT *, const DBT *));
+typedef	int (*cmpf_t)(const DBT *, const DBT *);
 
 /* external functions in sa.c */
-int	main		__P((int, char **));
+int	main	(int, char **);
 
 /* external functions in pdb.c */
-int	pacct_init	__P((void));
-void	pacct_destroy	__P((void));
-int	pacct_add	__P((const struct cmdinfo *));
-int	pacct_update	__P((void));
-void	pacct_print	__P((void));
+int	pacct_init(void);
+void	pacct_destroy(void);
+int	pacct_add(const struct cmdinfo *);
+int	pacct_update(void);
+void	pacct_print(void);
 
 /* external functions in usrdb.c */
-int	usracct_init	__P((void));
-void	usracct_destroy	__P((void));
-int	usracct_add	__P((const struct cmdinfo *));
-int	usracct_update	__P((void));
-void	usracct_print	__P((void));
+int	usracct_init(void);
+void	usracct_destroy(void);
+int	usracct_add(const struct cmdinfo *);
+int	usracct_update(void);
+void	usracct_print(void);
 
 /* variables */
 

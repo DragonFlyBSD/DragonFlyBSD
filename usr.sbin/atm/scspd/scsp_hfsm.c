@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
  */
 
 
@@ -61,13 +61,13 @@
  * HELLO FSM actions
  */
 #define	HELLO_ACTION_CNT	7
-int	scsp_hello_act_00 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_01 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_02 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_03 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_04 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_05 __P((Scsp_dcs *, Scsp_msg *));
-int	scsp_hello_act_06 __P((Scsp_dcs *, Scsp_msg *));
+int	scsp_hello_act_00(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_01(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_02(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_03(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_04(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_05(Scsp_dcs *, Scsp_msg *);
+int	scsp_hello_act_06(Scsp_dcs *, Scsp_msg *);
 
 static int (*scsp_action_vector[HELLO_ACTION_CNT])() = {
 	scsp_hello_act_00,

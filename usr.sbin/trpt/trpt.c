@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)trpt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/trpt/trpt.c,v 1.12 2000/01/29 11:49:07 shin Exp $
- * $DragonFly: src/usr.sbin/trpt/trpt.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/trpt/trpt.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -87,12 +87,12 @@ static caddr_t tcp_pcbs[TCP_NDEBUG];
 static n_time ntime;
 static int aflag, kflag, memf, follow, sflag, tflag;
 
-void dotrace __P((caddr_t));
-void klseek __P((int, off_t, int));
-int numeric __P((caddr_t *, caddr_t *));
-void tcp_trace __P((short, short, struct tcpcb *, struct tcpcb *,
-			int, void *, struct tcphdr *, int));
-static void usage __P((void));
+void dotrace(caddr_t);
+void klseek(int, off_t, int);
+int numeric(caddr_t *, caddr_t *);
+void tcp_trace(short, short, struct tcpcb *, struct tcpcb *,
+			int, void *, struct tcphdr *, int);
+static void usage(void);
 
 int
 main(argc, argv)

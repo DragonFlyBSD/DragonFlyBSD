@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -82,9 +82,9 @@ struct kt {
 };
 
 
-int kw_lookup __P((char *));
-int octal __P((char *));
-int hex __P((char *));
+int kw_lookup(char *);
+int octal(char *);
+int hex(char *);
 
 %}
 WORD	[A-Za-z_][-A-Za-z_]*

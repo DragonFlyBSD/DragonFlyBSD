@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/emit.c,v 1.1.1.1.8.1 2001/03/04 09:27:26 kris Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/emit.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/emit.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
  *
  * $NetBSD: emit.c,v 1.2 1995/07/03 21:24:00 cgd Exp $
  */
@@ -50,7 +50,7 @@ static	FILE	*lout;
 /* output buffer data */
 ob_t	ob;
 
-static	void	outxbuf __P((void));
+static	void	outxbuf(void);
 
 
 /*

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/xten/xten.c,v 1.4 1999/08/28 01:21:02 peter Exp $
- * $DragonFly: src/usr.sbin/xten/xten.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/xten/xten.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
  */
 
 /*
@@ -66,8 +66,8 @@ char *X10cmdnames[] = {
   NULL
 };
 
-int find __P((char *, char *[]));
-static void usage __P((void));
+int find(char *, char *[]);
+static void usage(void);
 
 int
 main(argc, argv)

@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
  */
 
 /*-
@@ -309,23 +309,23 @@ struct opacket {
 u_char	packet[512];		/* last inbound (icmp) packet */
 struct opacket	*outpacket;	/* last output (udp) packet */
 
-int	main __P((int, char *[]));
-int	wait_for_reply __P((int, struct msghdr *));
+int	main(int, char *[]);
+int	wait_for_reply(int, struct msghdr *);
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
-int	setpolicy __P((int so, char *policy));
+int	setpolicy(int so, char *policy);
 #endif
 #endif
-void	send_probe __P((int, int));
-struct udphdr *get_udphdr __P((struct ip6_hdr *, u_char *));
-int	get_hoplim __P((struct msghdr *));
-double	deltaT __P((struct timeval *, struct timeval *));
-char	*pr_type __P((int));
-int	packet_ok __P((struct msghdr *, int, int));
-void	print __P((struct msghdr *, int));
-void	tvsub __P((struct timeval *, struct timeval *));
-const char *inetname __P((struct sockaddr *));
-void	usage __P((void));
+void	send_probe(int, int);
+struct udphdr *get_udphdr(struct ip6_hdr *, u_char *);
+int	get_hoplim(struct msghdr *);
+double	deltaT(struct timeval *, struct timeval *);
+char	*pr_type(int);
+int	packet_ok(struct msghdr *, int, int);
+void	print(struct msghdr *, int);
+void	tvsub(struct timeval *, struct timeval *);
+const char *inetname(struct sockaddr *);
+void	usage(void);
 
 int rcvsock;			/* receive (icmp) socket file descriptor */
 int sndsock;			/* send (udp) socket file descriptor */

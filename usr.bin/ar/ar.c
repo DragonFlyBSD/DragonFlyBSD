@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ar/ar.c,v 1.8.2.1 2001/08/02 00:51:00 obrien Exp $
- * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/ar/Attic/ar.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  *
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ar.c	8.3 (Berkeley) 4/2/94
@@ -59,8 +59,8 @@
 CHDR chdr;
 u_int options;
 char *archive, *envtmp, *posarg, *posname;
-static void badoptions __P((char *));
-static void usage __P((void));
+static void badoptions(char *);
+static void usage(void);
 
 /*
  * main --
@@ -73,7 +73,7 @@ main(int argc, char **argv)
 {
 	int c;
 	char *p;
-	int (*fcall) __P((char **)) = NULL;
+	int (*fcall)(char **) = NULL;
 
 	(void) setlocale(LC_TIME, "");;
 

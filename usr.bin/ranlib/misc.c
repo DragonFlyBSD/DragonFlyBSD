@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/misc.c,v 1.5 1999/08/28 01:05:02 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 extern char *archive;			/* archive name */
 char *tname = "temporary file";		/* temporary file "name" */
 
-void error __P(( char * ));
+void error( char * );
 
 int
 tmp(void)

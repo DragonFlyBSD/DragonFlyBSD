@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -77,10 +77,10 @@ static time_t prefix_timo = (60 * 120);	/* 2 hours.
 					 * XXX: should be configurable. */
 extern struct rainfo *ralist;
 
-static struct rtadvd_timer *prefix_timeout __P((void *));
-static void makeentry __P((char *, size_t, int, char *, int));
-static void get_prefix __P((struct rainfo *));
-static int getinet6sysctl __P((int));
+static struct rtadvd_timer *prefix_timeout(void *);
+static void makeentry(char *, size_t, int, char *, int);
+static void get_prefix(struct rainfo *);
+static int getinet6sysctl(int);
 
 void
 getconfig(intface)

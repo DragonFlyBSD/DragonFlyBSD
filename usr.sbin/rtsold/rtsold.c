@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.c,v 1.1.2.4 2002/04/04 11:07:19 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -83,7 +83,7 @@ static int fflag = 0;
 /* a == b */
 #define TIMEVAL_EQ(a, b) (((a).tv_sec==(b).tv_sec) && ((a).tv_usec==(b).tv_usec))
 
-int main __P((int argc, char *argv[]));
+int main(int argc, char *argv[]);
 
 /* static variables and functions */
 static int mobile_node = 0;
@@ -91,20 +91,20 @@ static int do_dump;
 static char *dumpfilename = "/var/run/rtsold.dump"; /* XXX: should be configurable */
 static char *pidfilename = "/var/run/rtsold.pid"; /* should be configurable */
 
-static int ifconfig __P((char *ifname));
+static int ifconfig(char *ifname);
 #if 0
-static int ifreconfig __P((char *ifname));
+static int ifreconfig(char *ifname);
 #endif
-static int make_packet __P((struct ifinfo *ifinfo));
-static struct timeval *rtsol_check_timer __P((void));
-static void TIMEVAL_ADD __P((struct timeval *a, struct timeval *b,
-			     struct timeval *result));
-static void TIMEVAL_SUB __P((struct timeval *a, struct timeval *b,
-			     struct timeval *result));
+static int make_packet(struct ifinfo *ifinfo);
+static struct timeval *rtsol_check_timer(void);
+static void TIMEVAL_ADD(struct timeval *a, struct timeval *b,
+			     struct timeval *result);
+static void TIMEVAL_SUB(struct timeval *a, struct timeval *b,
+			     struct timeval *result);
 
-static void rtsold_set_dump_file __P((void));
-static void usage __P((char *progname));
-static char **autoifprobe __P((void));
+static void rtsold_set_dump_file(void);
+static void usage(char *progname);
+static char **autoifprobe(void);
 
 int
 main(argc, argv)

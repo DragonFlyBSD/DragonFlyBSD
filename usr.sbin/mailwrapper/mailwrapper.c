@@ -1,7 +1,7 @@
 /*	$OpenBSD: mailwrapper.c,v 1.6 1999/12/17 05:06:28 mickey Exp $	*/
 /*	$NetBSD: mailwrapper.c,v 1.3 1999/05/29 18:18:15 christos Exp $	*/
 /* $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4.2.3 2001/10/01 12:52:47 dd Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.2 2003/06/17 04:29:57 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -50,11 +50,11 @@ struct arglist {
 	char **argv;
 };
 
-int main __P((int, char *[], char *[]));
+int main(int, char *[], char *[]);
 
-static void initarg __P((struct arglist *));
-static void addarg __P((struct arglist *, const char *, int));
-static void freearg __P((struct arglist *, int));
+static void initarg(struct arglist *);
+static void addarg(struct arglist *, const char *, int);
+static void freearg(struct arglist *, int);
 
 extern const char *__progname;	/* from crt0.o */
 

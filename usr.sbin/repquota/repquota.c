@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)repquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/repquota/repquota.c,v 1.9.2.2 2002/03/15 22:18:25 mikeh Exp $
- * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.3 2003/08/08 04:18:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.4 2003/11/03 19:31:41 eirikn Exp $
  */
 
 /*
@@ -88,11 +88,11 @@ u_long highid[MAXQUOTAS];	/* highest addid()'ed identifier per type */
 int	vflag;			/* verbose */
 int	aflag;			/* all file systems */
 
-int hasquota __P((struct fstab *, int, char **));
-int oneof __P((char *, char *[], int));
-int repquota __P((struct fstab *, int, char *));
-char *timeprt __P((time_t));
-static void usage __P((void));
+int hasquota(struct fstab *, int, char **);
+int oneof(char *, char *[], int);
+int repquota(struct fstab *, int, char *);
+char *timeprt(time_t);
+static void usage(void);
 
 int
 main(argc, argv)

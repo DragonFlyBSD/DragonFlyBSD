@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/advcap.c,v 1.1.2.2 2001/07/03 11:02:13 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/advcap.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 /*
@@ -93,15 +93,15 @@ static	char *remotefile;
 
 extern char *conffile;
 
-int tgetent __P((char *, char *));
-int getent __P((char *, char *, char *));
-int tnchktc __P((void));
-int tnamatch __P((char *));
-static char *tskip __P((char *));
-long long tgetnum __P((char *));
-int tgetflag __P((char *));
-char *tgetstr __P((char *, char **));
-static char *tdecode __P((char *, char **));
+int tgetent(char *, char *);
+int getent(char *, char *, char *);
+int tnchktc(void);
+int tnamatch(char *);
+static char *tskip(char *);
+long long tgetnum(char *);
+int tgetflag(char *);
+char *tgetstr(char *, char **);
+static char *tdecode(char *, char **);
 
 /*
  * Get an entry for terminal name in buffer bp,

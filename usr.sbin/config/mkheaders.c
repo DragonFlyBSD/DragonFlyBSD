@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.3 2003/08/07 21:19:25 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.4 2003/11/03 19:31:36 eirikn Exp $
  */
 
 /*
@@ -47,10 +47,10 @@
 #include "config.h"
 #include "y.tab.h"
 
-static void do_header __P((char *, char *, int));
-static void do_count __P((char *, char *, int));
-static char *toheader __P((char *));
-static char *tomacro __P((char *));
+static void do_header(char *, char *, int);
+static void do_count(char *, char *, int);
+static char *toheader(char *);
+static char *tomacro(char *);
 
 void
 headers()

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ranlib.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/ranlib.c,v 1.5.2.1 2001/03/04 08:56:30 kris Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/ranlib.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/ranlib.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -46,9 +46,9 @@
 #include <unistd.h>
 #include "archive.h"
 
-extern int build __P(( void ));
-extern int touch __P(( void ));
-static void usage __P((void));
+extern int build( void );
+extern int touch( void );
+static void usage(void);
 
 CHDR chdr;
 u_int options;				/* UNUSED -- keep open_archive happy */

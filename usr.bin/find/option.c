@@ -35,7 +35,7 @@
  *
  * @(#)option.c	8.2 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/find/option.c,v 1.9.2.6 2003/02/22 16:33:24 des Exp $
- * $DragonFly: src/usr.bin/find/option.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/find/option.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -153,7 +153,7 @@ OPTION *
 option(char *name)
 {
 	OPTION tmp;
-	int typecompare __P((const void *, const void *));
+	int typecompare(const void *, const void *);
 
 	tmp.name = name;
 	return ((OPTION *)bsearch(&tmp, options,

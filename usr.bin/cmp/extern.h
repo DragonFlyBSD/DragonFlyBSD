@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  *
  * $FreeBSD: src/usr.bin/cmp/extern.h,v 1.1.1.1.14.2 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/extern.h,v 1.2 2003/06/17 04:29:25 dillon Exp $
+ * $DragonFly: src/usr.bin/cmp/extern.h,v 1.3 2003/11/03 19:31:28 eirikn Exp $
  *
  */
 
@@ -41,9 +41,9 @@
 #define DIFF_EXIT	1
 #define ERR_EXIT	2	/* error exit code */
 
-void	c_regular __P((int, const char *, off_t, off_t, int, const char *, off_t, off_t));
-void	c_special __P((int, const char *, off_t, int, const char *, off_t));
-void	diffmsg __P((const char *, const char *, off_t, off_t));
-void	eofmsg __P((const char *));
+void	c_regular(int, const char *, off_t, off_t, int, const char *, off_t, off_t);
+void	c_special(int, const char *, off_t, int, const char *, off_t);
+void	diffmsg(const char *, const char *, off_t, off_t);
+void	eofmsg(const char *);
 
 extern int lflag, sflag, xflag;

@@ -32,20 +32,20 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/extern.h,v 1.3.2.2 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/extern.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/extern.h,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
-int	 compare __P((char *, NODE *, FTSENT *));
-int	 crc __P((int, u_long *, u_long *));
-void	 cwalk __P((void));
-char	*flags_to_string __P((u_long));
+int	 compare(char *, NODE *, FTSENT *);
+int	 crc(int, u_long *, u_long *);
+void	 cwalk(void);
+char	*flags_to_string(u_long);
 
-char	*inotype __P((u_int));
-u_int	 parsekey __P((char *, int *));
-char	*rlink __P((char *));
-NODE	*spec __P((void));
-int	 verify __P((void));
+char	*inotype(u_int);
+u_int	 parsekey(char *, int *);
+char	*rlink(char *);
+NODE	*spec(void);
+int	 verify(void);
 
-int	 check_excludes __P((const char *, const char *));
-void	 init_excludes __P((void));
-void	 read_excludes_file __P((const char *));
+int	 check_excludes(const char *, const char *);
+void	 init_excludes(void);
+void	 read_excludes_file(const char *);

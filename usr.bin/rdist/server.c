@@ -32,7 +32,7 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/server.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/wait.h>
@@ -53,22 +53,22 @@ int	oumask;			/* old umask for creating files */
 
 extern	FILE *lfp;		/* log file for mailing changes */
 
-static int	chkparent __P((char *));
-static void	clean __P((char *));
-static void	comment __P((char *));
-static void	dospecial __P((char *));
-static int	fchog __P((int, char *, char *, char *, int));
-static void	hardlink __P((char *));
-static void	note __P((const char *, ...));
-static void	query __P((char *));
-static void	recvf __P((char *, int));
-static void	removeit __P((struct stat *));
-static int	response __P((void));
-static void	rmchk __P((int));
+static int	chkparent(char *);
+static void	clean(char *);
+static void	comment(char *);
+static void	dospecial(char *);
+static int	fchog(int, char *, char *, char *, int);
+static void	hardlink(char *);
+static void	note(const char *, ...);
+static void	query(char *);
+static void	recvf(char *, int);
+static void	removeit(struct stat *);
+static int	response(void);
+static void	rmchk(int);
 static struct linkbuf *
-		    savelink __P((struct stat *));
-static void	sendf __P((char *, int));
-static int	update __P((char *, int, struct stat *));
+		    savelink(struct stat *);
+static void	sendf(char *, int);
+static int	update(char *, int, struct stat *);
 
 /*
  * Server routine to read requests and process them.

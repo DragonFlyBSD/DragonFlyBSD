@@ -28,7 +28,7 @@
  *
  * @(#)rpc_tblout.c 1.4 89/02/22 (C) 1988 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_tblout.c,v 1.4 1999/08/28 01:05:17 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_tblout.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #ident	"@(#)rpc_tblout.c	1.11	93/07/05 SMI" 
@@ -59,9 +59,9 @@ static char null_entry[] = "\n\t(char *(*)())0,\n\
 
 static char tbl_nproc[] = "int %s_nproc =\n\tsizeof(%s_table)/sizeof(%s_table[0]);\n\n";
 
-extern int nullproc __P(( proc_list * ));
-static void write_table __P(( definition * ));
-static void printit __P(( char *, char * ));
+extern int nullproc( proc_list * );
+static void write_table( definition * );
+static void printit( char *, char * );
 
 void
 write_tables()

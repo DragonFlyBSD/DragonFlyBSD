@@ -34,7 +34,7 @@
 /*
  * @(#) pmap_check.c 1.6 93/11/21 20:58:59
  * $FreeBSD: src/usr.sbin/portmap/pmap_check.c,v 1.6 2000/01/15 23:08:28 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_check.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -60,8 +60,8 @@
 #define YPPROC_DOMAIN_NONACK ((u_long) 2)
 #define MOUNTPROC_MNT	((u_long) 1)
 
-static void logit __P((int, struct sockaddr_in *, u_long, u_long, const char *));
-static void toggle_verboselog __P((int));
+static void logit(int, struct sockaddr_in *, u_long, u_long, const char *);
+static void toggle_verboselog(int);
 
 int     verboselog = 0;
 int     allow_severity = LOG_INFO;

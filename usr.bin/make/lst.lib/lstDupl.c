@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDupl.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  *
  * @(#)lstDupl.c	8.1 (Berkeley) 6/6/93
  */
@@ -64,7 +64,7 @@ Lst
 Lst_Duplicate (l, copyProc)
     Lst     	  l;	    	 /* the list to duplicate */
     /* A function to duplicate each ClientData */
-    ClientData	  (*copyProc) __P((ClientData));
+    ClientData	  (*copyProc)(ClientData);
 {
     register Lst 	nl;
     register ListNode  	ln;

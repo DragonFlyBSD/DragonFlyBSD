@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rip6query/rip6query.c,v 1.3.2.2 2001/07/03 11:02:08 ume Exp $
- * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.3 2003/11/03 19:31:41 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -68,10 +68,10 @@ struct rip6	*ripbuf;
 
 #define	RIPSIZE(n)	(sizeof(struct rip6) + (n-1) * sizeof(struct netinfo6))
 
-int main __P((int, char **));
-static void usage __P((void));
-static const char *sa_n2a __P((struct sockaddr *));
-static const char *inet6_n2a __P((struct in6_addr *));
+int main(int, char **);
+static void usage(void);
+static const char *sa_n2a(struct sockaddr *);
+static const char *inet6_n2a(struct in6_addr *);
 
 int
 main(argc, argv)

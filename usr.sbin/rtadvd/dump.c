@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/dump.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/dump.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -65,8 +65,8 @@ static FILE *fp;
 
 extern struct rainfo *ralist;
 
-static char *ether_str __P((struct sockaddr_dl *));
-static void if_dump __P((void));
+static char *ether_str(struct sockaddr_dl *);
+static void if_dump(void);
 
 #ifdef __FreeBSD__		/* XXX: see PORTABILITY */
 #define LONGLONG "%qu"

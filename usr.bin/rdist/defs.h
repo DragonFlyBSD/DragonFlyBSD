@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/9/93
- * $DragonFly: src/usr.bin/rdist/defs.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/defs.h,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -162,31 +162,31 @@ extern char buf[BUFSIZ];	/* general purpose buffer */
 extern char target[BUFSIZ];	/* target/source directory name */
 extern char *path_rsh;		/* rsh command to use */
 
-int	 any __P((int, char *));
-char	*colon __P((char *));
-void	 cleanup __P((int));
-void	 define __P((char *));
-void	 docmds __P((char **, int, char **));
-void	 error __P((const char *, ...));
-int	 except __P((char *));
+int	 any(int, char *);
+char	*colon(char *);
+void	 cleanup(int);
+void	 define(char *);
+void	 docmds(char **, int, char **);
+void	 error(const char *, ...);
+int	 except(char *);
 struct namelist *
-	 expand __P((struct namelist *, int));
-char	*exptilde __P((char [], char *, int));
-void	 fatal __P((const char *, ...));
-int	 inlist __P((struct namelist *, char *));
+	 expand(struct namelist *, int);
+char	*exptilde(char [], char *, int);
+void	 fatal(const char *, ...);
+int	 inlist(struct namelist *, char *);
 void	 insert __P((char *,
 	    struct namelist *, struct namelist *, struct subcmd *));
-void	 install __P((char *, char *, int, int));
-void	 log __P((FILE *, const char *, ...));
+void	 install(char *, char *, int, int);
+void	 log(FILE *, const char *, ...);
 struct namelist *
-	 lookup __P((char *, int, struct namelist *));
-void	 lostconn __P((int));
+	 lookup(char *, int, struct namelist *);
+void	 lostconn(int);
 struct namelist *
-	 makenl __P((char *));
+	 makenl(char *);
 struct subcmd *
-	 makesubcmd __P((int));
-void	 prnames __P((struct namelist *));
-void	 server __P((void));
-void	 yyerror __P((char *));
-int	 yyparse __P((void));
-int	 rshrcmd __P((char **, u_short, char *, char *, char *, int *));
+	 makesubcmd(int);
+void	 prnames(struct namelist *);
+void	 server(void);
+void	 yyerror(char *);
+int	 yyparse(void);
+int	 rshrcmd(char **, u_short, char *, char *, char *, int *);

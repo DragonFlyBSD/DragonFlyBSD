@@ -37,7 +37,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 #ifndef OLD_JOKE
@@ -284,29 +284,29 @@ STATIC Lst	stoppedJobs;	/* Lst of Job structures describing
 #define W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
 
-static int JobCondPassSig __P((ClientData, ClientData));
-static void JobPassSig __P((int));
-static int JobCmpPid __P((ClientData, ClientData));
-static int JobPrintCommand __P((ClientData, ClientData));
-static int JobSaveCommand __P((ClientData, ClientData));
-static void JobClose __P((Job *));
+static int JobCondPassSig(ClientData, ClientData);
+static void JobPassSig(int);
+static int JobCmpPid(ClientData, ClientData);
+static int JobPrintCommand(ClientData, ClientData);
+static int JobSaveCommand(ClientData, ClientData);
+static void JobClose(Job *);
 #ifdef REMOTE
-static int JobCmpRmtID __P((Job *, int));
+static int JobCmpRmtID(Job *, int);
 # ifdef RMT_WILL_WATCH
-static void JobLocalInput __P((int, Job *));
+static void JobLocalInput(int, Job *);
 # endif
 #else
-static void JobFinish __P((Job *, int *));
-static void JobExec __P((Job *, char **));
+static void JobFinish(Job *, int *);
+static void JobExec(Job *, char **);
 #endif
-static void JobMakeArgv __P((Job *, char **));
-static void JobRestart __P((Job *));
-static int JobStart __P((GNode *, int, Job *));
-static char *JobOutput __P((Job *, char *, char *, int));
-static void JobDoOutput __P((Job *, Boolean));
-static Shell *JobMatchShell __P((char *));
-static void JobInterrupt __P((int, int));
-static void JobRestartJobs __P((void));
+static void JobMakeArgv(Job *, char **);
+static void JobRestart(Job *);
+static int JobStart(GNode *, int, Job *);
+static char *JobOutput(Job *, char *, char *, int);
+static void JobDoOutput(Job *, Boolean);
+static Shell *JobMatchShell(char *);
+static void JobInterrupt(int, int);
+static void JobRestartJobs(void);
 
 /*-
  *-----------------------------------------------------------------------
@@ -1079,7 +1079,7 @@ Boolean
 Job_CheckCommands(gn, abortProc)
     GNode          *gn;	    	    /* The target whose commands need
 				     * verifying */
-    void    	 (*abortProc) __P((char *, ...));
+    void    	 (*abortProc)(char *, ...);
 			/* Function to abort with message */
 {
     if (OP_NOP(gn->type) && Lst_IsEmpty(gn->commands) &&

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)gcore.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/usr.bin/gcore/gcore.c,v 1.15.2.2 2001/08/17 20:56:22 mikeh Exp $
- * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.4 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/gcore/gcore.c,v 1.5 2003/11/03 19:31:29 eirikn Exp $
  */
 
 /*
@@ -79,7 +79,7 @@ static void	userdump(int, struct proc *, u_long, int);
 
 kvm_t *kd;
 /* XXX undocumented routine, should be in kvm.h? */
-ssize_t kvm_uread __P((kvm_t *, const struct proc *, u_long, char *, size_t));
+ssize_t kvm_uread(kvm_t *, const struct proc *, u_long, char *, size_t);
 
 static int data_offset;
 static pid_t pid;

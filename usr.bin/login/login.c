@@ -32,7 +32,7 @@
  *
  * @(#)login.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/login/login.c,v 1.51.2.15 2003/04/29 14:10:41 des Exp $
- * $DragonFly: src/usr.bin/login/login.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/login/login.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
  */
 
 #if 0
@@ -87,24 +87,24 @@ static char copyright[] =
 #define	NI_WITHSCOPEID	0
 #endif
 
-void	 badlogin __P((char *));
-void	 checknologin __P((void));
-void	 dolastlog __P((int));
-void	 getloginname __P((void));
-void	 motd __P((char *));
-int	 rootterm __P((char *));
-void	 sigint __P((int));
-void	 sleepexit __P((int));
-void	 refused __P((char *,char *,int));
-char	*stypeof __P((char *));
-void	 timedout __P((int));
-int	 login_access __P((char *, char *));
-void     login_fbtab __P((char *, uid_t, gid_t));
+void	 badlogin(char *);
+void	 checknologin(void);
+void	 dolastlog(int);
+void	 getloginname(void);
+void	 motd(char *);
+int	 rootterm(char *);
+void	 sigint(int);
+void	 sleepexit(int);
+void	 refused(char *,char *,int);
+char	*stypeof(char *);
+void	 timedout(int);
+int	 login_access(char *, char *);
+void     login_fbtab(char *, uid_t, gid_t);
 
 #ifdef USE_PAM
-static int auth_pam __P((void));
-static int export_pam_environment __P((void));
-static int ok_to_export __P((const char *));
+static int auth_pam(void);
+static int export_pam_environment(void);
+static int ok_to_export(const char *);
 
 static pam_handle_t *pamh = NULL;
 static char **environ_pam;
@@ -118,9 +118,9 @@ static char **environ_pam;
 		syslog(LOG_ERR, "pam_end: %s", pam_strerror(pamh, e)); \
 }
 #endif /* USE_PAM */
-static int auth_traditional __P((void));
-extern void login __P((struct utmp *));
-static void usage __P((void));
+static int auth_traditional(void);
+extern void login(struct utmp *);
+static void usage(void);
 
 #define	TTYGRPNAME	"tty"		/* name of group to own ttys */
 #define	DEFAULT_BACKOFF	3

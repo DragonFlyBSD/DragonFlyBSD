@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/usr.bin/rpcgen/rpc_scan.c,v 1.4.8.1 2001/03/04 08:59:50 kris Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_scan.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  *
  * @(#)rpc_scan.c 1.11 89/02/22 (C) 1987 SMI
  */
@@ -55,15 +55,15 @@
 static int pushed = 0;	/* is a token pushed */
 static token lasttok;	/* last token, if pushed */
 
-static void unget_token __P(( token * ));
-static void findstrconst __P(( char **, char **));
-static void findchrconst __P(( char **, char **));
-static void findconst __P(( char **, char **));
-static void findkind __P(( char **, token * ));
-static int cppline __P(( char * ));
-static int directive __P(( char * ));
-static void printdirective __P(( char * ));
-static void docppline __P(( char *, int *, char ** ));
+static void unget_token( token * );
+static void findstrconst( char **, char **);
+static void findchrconst( char **, char **);
+static void findconst( char **, char **);
+static void findkind( char **, token * );
+static int cppline( char * );
+static int directive( char * );
+static void printdirective( char * );
+static void docppline( char *, int *, char ** );
 
 /*
  * scan expecting 1 given token 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/token.l,v 1.2.2.3 2001/07/03 11:02:17 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/token.l,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/token.l,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
 /*	$KAME: token.l,v 1.21 2001/05/18 05:35:01 sakane Exp $	*/
 
 /*
@@ -76,12 +76,12 @@ extern u_char m_buf[BUFSIZ];
 extern u_int m_len;
 extern int f_debug;
 
-int yylex __P((void));
-void yyfatal __P((const char *s));
-void yyerror __P((const char *s));
-extern void parse_init __P((void));
-int parse __P((FILE **));
-int yyparse __P((void));
+int yylex(void);
+void yyfatal(const char *s);
+void yyerror(const char *s);
+extern void parse_init(void);
+int parse(FILE **);
+int yyparse(void);
 
 %}
 

@@ -18,7 +18,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/cbcp.c,v 1.4 1999/08/28 01:19:00 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -36,14 +36,14 @@
 /*
  * Protocol entry points.
  */
-static void cbcp_init      __P((int unit));
-static void cbcp_open      __P((int unit));
-static void cbcp_lowerup   __P((int unit));
-static void cbcp_input     __P((int unit, u_char *pkt, int len));
-static void cbcp_protrej   __P((int unit));
-static int  cbcp_printpkt  __P((u_char *pkt, int len,
-				void (*printer) __P((void *, char *, ...)),
-				void *arg));
+static void cbcp_init     (int unit);
+static void cbcp_open     (int unit);
+static void cbcp_lowerup  (int unit);
+static void cbcp_input    (int unit, u_char *pkt, int len);
+static void cbcp_protrej  (int unit);
+static int  cbcp_printpkt (u_char *pkt, int len,
+				void (*printer)(void *, char *, ...),
+				void *arg);
 
 struct protent cbcp_protent = {
     PPP_CBCP,
@@ -67,11 +67,11 @@ cbcp_state cbcp[NUM_PPP];
 
 /* internal prototypes */
 
-static void cbcp_recvreq __P((cbcp_state *us, char *pckt, int len));
-static void cbcp_resp __P((cbcp_state *us));
-static void cbcp_up __P((cbcp_state *us));
-static void cbcp_recvack __P((cbcp_state *us, char *pckt, int len));
-static void cbcp_send __P((cbcp_state *us, u_char code, u_char *buf, int len));
+static void cbcp_recvreq(cbcp_state *us, char *pckt, int len);
+static void cbcp_resp(cbcp_state *us);
+static void cbcp_up(cbcp_state *us);
+static void cbcp_recvack(cbcp_state *us, char *pckt, int len);
+static void cbcp_send(cbcp_state *us, u_char code, u_char *buf, int len);
 
 /* init state */
 static void
@@ -184,7 +184,7 @@ static int
 cbcp_printpkt(p, plen, printer, arg)
     u_char *p;
     int plen;
-    void (*printer) __P((void *, char *, ...));
+    void (*printer)(void *, char *, ...);
     void *arg;
 {
     int code, opt, id, len, olen, delay;

@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_clntout.c 1.11 89/02/22 (C) 1987 SMI
- * $DragonFly: src/usr.bin/rpcgen/rpc_clntout.c,v 1.3 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_clntout.c,v 1.4 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #ident	"@(#)rpc_clntout.c	1.15	94/04/25 SMI"
@@ -42,10 +42,10 @@
 #include "rpc_parse.h"
 #include "rpc_util.h"
 
-extern void pdeclaration __P(( char *, declaration *, int, char * ));
-void printarglist __P(( proc_list *, char *, char *, char *));
-static void write_program __P(( definition * ));
-static void printbody __P(( proc_list * ));
+extern void pdeclaration( char *, declaration *, int, char * );
+void printarglist( proc_list *, char *, char *, char *);
+static void write_program( definition * );
+static void printbody( proc_list * );
 
 static char RESULT[] = "clnt_res";
 

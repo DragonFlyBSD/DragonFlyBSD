@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFind.c,v 1.6 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFind.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFind.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  *
  * @(#)lstFind.c	8.1 (Berkeley) 6/6/93
  */
@@ -64,7 +64,7 @@ LstNode
 Lst_Find (l, d, cProc)
     Lst		l;
     ClientData	d;
-    int		(*cProc) __P((ClientData, ClientData));
+    int		(*cProc)(ClientData, ClientData);
 {
     return (Lst_FindFrom (l, Lst_First(l), d, cProc));
 }

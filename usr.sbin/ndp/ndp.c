@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.5 2001/08/13 02:58:26 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $	*/
 /*	$KAME: ndp.c,v 1.65 2001/05/08 04:36:34 itojun Exp $	*/
 
 /*
@@ -135,33 +135,33 @@ char ntop_buf[INET6_ADDRSTRLEN];	/* inet_ntop() */
 char host_buf[NI_MAXHOST];		/* getnameinfo() */
 char ifix_buf[IFNAMSIZ];		/* if_indextoname() */
 
-int main __P((int, char **));
-int file __P((char *));
-void getsocket __P((void));
-int set __P((int, char **));
-void get __P((char *));
-int delete __P((char *));
-void dump __P((struct in6_addr *));
-static struct in6_nbrinfo *getnbrinfo __P((struct in6_addr *addr,
-					   int ifindex, int));
-static char *ether_str __P((struct sockaddr_dl *));
-int ndp_ether_aton __P((char *, u_char *));
-void usage __P((void));
-int rtmsg __P((int));
-void ifinfo __P((int, char **));
-void rtrlist __P((void));
-void plist __P((void));
-void pfx_flush __P((void));
-void rtrlist __P((void));
-void rtr_flush __P((void));
-void harmonize_rtr __P((void));
+int main(int, char **);
+int file(char *);
+void getsocket(void);
+int set(int, char **);
+void get(char *);
+int delete(char *);
+void dump(struct in6_addr *);
+static struct in6_nbrinfo *getnbrinfo(struct in6_addr *addr,
+					   int ifindex, int);
+static char *ether_str(struct sockaddr_dl *);
+int ndp_ether_aton(char *, u_char *);
+void usage(void);
+int rtmsg(int);
+void ifinfo(int, char **);
+void rtrlist(void);
+void plist(void);
+void pfx_flush(void);
+void rtrlist(void);
+void rtr_flush(void);
+void harmonize_rtr(void);
 #ifdef SIOCSDEFIFACE_IN6	/* XXX: check SIOCGDEFIFACE_IN6 as well? */
-static void getdefif __P((void));
-static void setdefif __P((char *));
+static void getdefif(void);
+static void setdefif(char *);
 #endif
-static char *sec2str __P((time_t t));
-static char *ether_str __P((struct sockaddr_dl *sdl));
-static void ts_print __P((const struct timeval *));
+static char *sec2str(time_t t);
+static char *ether_str(struct sockaddr_dl *sdl);
+static void ts_print(const struct timeval *);
 
 static char *rtpref_str[] = {
 	"medium",		/* 00 */

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwho.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rwho/rwho.c,v 1.13.2.1 2002/03/12 19:49:09 phantom Exp $
- * $DragonFly: src/usr.bin/rwho/rwho.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rwho/rwho.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -71,8 +71,8 @@ int	nusers;
 time_t	now;
 int	aflg;
 
-static void usage __P((void));
-int utmpcmp __P((const void *, const void *));
+static void usage(void);
+int utmpcmp(const void *, const void *);
 
 int
 main(argc, argv)

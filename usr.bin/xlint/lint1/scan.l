@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -58,25 +58,25 @@ pos_t	curr_pos = { 1, "" };
  */
 pos_t	csrc_pos = { 1, "" };
 
-static	void	incline __P((void));
-static	void	badchar __P((int));
-static	sbuf_t	*allocsb __P((void));
-static	void	freesb __P((sbuf_t *));
-static	int	inpc __P((void));
-static	int	hash __P((const char *));
-static	sym_t	*search __P((sbuf_t *));
-static	int	name __P((void));
-static	int	keyw __P((sym_t *));
-static	int	icon __P((int));
-static	int	fcon __P((void));
-static	int	operator __P((int, op_t));
-static	int	ccon __P((void));
-static	int	wccon __P((void));
-static	int	getescc __P((int));
-static	void	directive __P((void));
-static	void	comment __P((void));
-static	int	string __P((void));
-static	int	wcstrg __P((void));
+static	void	incline(void);
+static	void	badchar(int);
+static	sbuf_t	*allocsb(void);
+static	void	freesb(sbuf_t *);
+static	int	inpc(void);
+static	int	hash(const char *);
+static	sym_t	*search(sbuf_t *);
+static	int	name(void);
+static	int	keyw(sym_t *);
+static	int	icon(int);
+static	int	fcon(void);
+static	int	operator(int, op_t);
+static	int	ccon(void);
+static	int	wccon(void);
+static	int	getescc(int);
+static	void	directive(void);
+static	void	comment(void);
+static	int	string(void);
+static	int	wcstrg(void);
 
 %}
 
@@ -1005,7 +1005,7 @@ comment()
 	static struct {
 		const	char *keywd;
 		int	arg;
-		void	(*func) __P((int));
+		void	(*func)(int);
 	} keywtab[] = {
 		{ "ARGSUSED",		1,	argsused	},
 		{ "CONSTCOND",		0,	constcond	},

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994, 1995 The Regents of the University of California.  All rights reserved.
  * @(#)ctags.c	8.4 (Berkeley) 2/7/95
  * $FreeBSD: src/usr.bin/ctags/ctags.c,v 1.7.2.1 2001/09/18 04:16:53 mikeh Exp $
- * $DragonFly: src/usr.bin/ctags/ctags.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/ctags/ctags.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
  */
 
 #include <err.h>
@@ -70,9 +70,9 @@ char	*curfile;		/* current input file name */
 char	searchar = '/';		/* use /.../ searches by default */
 char	lbuf[LINE_MAX];
 
-void	init __P((void));
-void	find_entries __P((char *));
-static void usage __P((void));
+void	init(void);
+void	find_entries(char *);
+static void usage(void);
 
 int
 main(int argc, char **argv)

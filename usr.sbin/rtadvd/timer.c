@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/timer.c,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/timer.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 #include <sys/time.h>
@@ -61,8 +61,8 @@ rtadvd_timer_init()
 }
 
 struct rtadvd_timer *
-rtadvd_add_timer(struct rtadvd_timer *(*timeout) __P((void *)),
-    void (*update) __P((void *, struct timeval *)),
+rtadvd_add_timer(struct rtadvd_timer *(*timeout)(void *),
+    void (*update)(void *, struct timeval *),
     void *timeodata, void *updatedata)
 {
 	struct rtadvd_timer *newtimer;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)accton.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/accton/accton.c,v 1.5 1999/08/28 01:15:10 peter Exp $
- * $DragonFly: src/usr.sbin/accton/accton.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/accton/accton.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -43,7 +43,7 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage __P((void));
+static void usage(void);
 
 int
 main(argc, argv)

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fstat/fstat.h,v 1.1.2.1 2000/07/02 10:20:25 ps Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $
  */
 
 #ifndef	__FSTAT_H__
@@ -65,10 +65,10 @@ extern kvm_t *kd;
 extern int vflg;
 extern int Pid;
 
-udev_t dev2udev __P((dev_t dev));
+udev_t dev2udev(dev_t dev);
 
 /* Additional filesystem types */
-int isofs_filestat __P((struct vnode *vp, struct filestat *fsp));
-int msdosfs_filestat __P((struct vnode *vp, struct filestat *fsp));
+int isofs_filestat(struct vnode *vp, struct filestat *fsp);
+int msdosfs_filestat(struct vnode *vp, struct filestat *fsp);
 
 #endif /* __FSTAT_H__ */

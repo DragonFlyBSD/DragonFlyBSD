@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)portmap.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/portmap/portmap.c,v 1.10.2.3 2002/05/06 18:18:21 dwmalone Exp $
- * $DragonFly: src/usr.sbin/portmap/portmap.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/portmap/portmap.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -93,10 +93,10 @@ static char sccsid[] = "@(#)portmap.c 1.32 87/08/06 Copyr 1984 Sun Micro";
 
 #include "pmap_check.h"
 
-static void reg_service __P((struct svc_req *, SVCXPRT *));
-static void reap __P((int));
-static void callit __P((struct svc_req *, SVCXPRT *));
-static void usage __P((void));
+static void reg_service(struct svc_req *, SVCXPRT *);
+static void reap(int);
+static void callit(struct svc_req *, SVCXPRT *);
+static void usage(void);
 
 struct pmaplist *pmaplist;
 int debugging = 0;

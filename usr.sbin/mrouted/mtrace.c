@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -149,7 +149,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.2 2003/06/17 04:29:57 dillon Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -308,68 +308,68 @@ int ip_addlen = 0;		     	/* Workaround for Option bug #2     */
 #endif
 #endif
 
-typedef int (*callback_t) __P((int, u_char *, int, struct igmp *, int,
-			struct sockaddr *, int *, struct timeval *));
+typedef int (*callback_t)(int, u_char *, int, struct igmp *, int,
+			struct sockaddr *, int *, struct timeval *);
 
-void			init_igmp __P((void));
-void			send_igmp __P((u_int32 src, u_int32 dst, int type,
+void			init_igmp(void);
+void			send_igmp(u_int32 src, u_int32 dst, int type,
 						int code, u_int32 group,
-						int datalen));
-int			inet_cksum __P((u_short *addr, u_int len));
-void			k_set_rcvbuf __P((int bufsize));
-void			k_hdr_include __P((int bool));
-void			k_set_ttl __P((int t));
-void			k_set_loop __P((int l));
-void			k_set_if __P((u_int32 ifa));
-void			k_join __P((u_int32 grp, u_int32 ifa));
-void			k_leave __P((u_int32 grp, u_int32 ifa));
-char *			inet_fmt __P((u_int32 addr, char *s));
-char *			inet_fmts __P((u_int32 addr, u_int32 mask, char *s));
-char *			inet_name __P((u_int32 addr));
-u_int32			host_addr __P((char *name));
+						int datalen);
+int			inet_cksum(u_short *addr, u_int len);
+void			k_set_rcvbuf(int bufsize);
+void			k_hdr_include(int bool);
+void			k_set_ttl(int t);
+void			k_set_loop(int l);
+void			k_set_if(u_int32 ifa);
+void			k_join(u_int32 grp, u_int32 ifa);
+void			k_leave(u_int32 grp, u_int32 ifa);
+char *			inet_fmt(u_int32 addr, char *s);
+char *			inet_fmts(u_int32 addr, u_int32 mask, char *s);
+char *			inet_name(u_int32 addr);
+u_int32			host_addr(char *name);
 /* u_int is promoted u_char */
-char *			proto_type __P((u_int type));
-char *			flag_type __P((u_int type));
+char *			proto_type(u_int type);
+char *			flag_type(u_int type);
 
-u_int32			get_netmask __P((int s, u_int32 *dst));
-int			get_ttl __P((struct resp_buf *buf));
-int			t_diff __P((u_long a, u_long b));
-u_long			byteswap __P((u_long v));
-int			mtrace_callback __P((int, u_char *, int, struct igmp *,
+u_int32			get_netmask(int s, u_int32 *dst);
+int			get_ttl(struct resp_buf *buf);
+int			t_diff(u_long a, u_long b);
+u_long			byteswap(u_long v);
+int			mtrace_callback(int, u_char *, int, struct igmp *,
 					int, struct sockaddr *, int *,
-					struct timeval *));
-int			send_recv __P((u_int32 dst, int type, int code,
+					struct timeval *);
+int			send_recv(u_int32 dst, int type, int code,
 					int tries, struct resp_buf *save,
-					callback_t callback));
-void			passive_mode __P((void));
-char *			print_host __P((u_int32 addr));
-char *			print_host2 __P((u_int32 addr1, u_int32 addr2));
-void			print_trace __P((int idx, struct resp_buf *buf,
-					char **names));
-int			what_kind __P((struct resp_buf *buf, char *why));
-char *			scale __P((int *hop));
-void			stat_line __P((struct tr_resp *r, struct tr_resp *s,
-					int have_next, int *res));
-void			fixup_stats __P((struct resp_buf *base,
+					callback_t callback);
+void			passive_mode(void);
+char *			print_host(u_int32 addr);
+char *			print_host2(u_int32 addr1, u_int32 addr2);
+void			print_trace(int idx, struct resp_buf *buf,
+					char **names);
+int			what_kind(struct resp_buf *buf, char *why);
+char *			scale(int *hop);
+void			stat_line(struct tr_resp *r, struct tr_resp *s,
+					int have_next, int *res);
+void			fixup_stats(struct resp_buf *base,
 					struct resp_buf *prev,
 					struct resp_buf *new,
-					int *bugs));
-int			check_thresh __P((int thresh,
+					int *bugs);
+int			check_thresh(int thresh,
 					struct resp_buf *base,
 					struct resp_buf *prev,
-					struct resp_buf *new));
-int			print_stats __P((struct resp_buf *base,
+					struct resp_buf *new);
+int			print_stats(struct resp_buf *base,
 					struct resp_buf *prev,
 					struct resp_buf *new,
 					int *bugs,
-					char **names));
-int			path_changed __P((struct resp_buf *base,
-					struct resp_buf *new));
-void			check_vif_state __P((void));
+					char **names);
+int			path_changed(struct resp_buf *base,
+					struct resp_buf *new);
+void			check_vif_state(void);
 
-int			main __P((int argc, char *argv[]));
-void			log __P((int, int, char *, ...));
-static void		usage __P((void));
+int			main(int argc, char *argv[]);
+void			log(int, int, char *, ...);
+static void		usage(void);
 
 
 /*

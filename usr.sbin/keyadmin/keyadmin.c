@@ -73,7 +73,7 @@ Research Laboratory (NRL).
 
 /*
  *	$ANA: keyadmin.c,v 1.2 1996/06/13 19:42:40 wollman Exp $
- * $DragonFly: src/usr.sbin/keyadmin/keyadmin.c,v 1.2 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyadmin/keyadmin.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -116,9 +116,9 @@ Research Laboratory (NRL).
 
 #include <arpa/inet.h>
 
-int parse7 __P((int, char **));
-int parse4 __P((int, char **));
-int docmd __P((int, char **));
+int parse7(int, char **);
+int parse4(int, char **);
+int docmd(int, char **);
 
 #define KEYCMD_ARG_MAX  10
 
@@ -145,7 +145,7 @@ char parse4usage[] = "<type> <spi> <src> <dst>";
 struct keycmd {
   char *name;
   int num;
-  int (*parse) __P((int, char **));
+  int (*parse)(int, char **);
   char *usage;
   char *help;
 } keycmds[] = {

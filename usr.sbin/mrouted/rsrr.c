@@ -24,7 +24,7 @@
  * noted when applicable.
  *
  * $FreeBSD: src/usr.sbin/mrouted/rsrr.c,v 1.8.2.1 2001/05/12 09:48:20 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/rsrr.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/rsrr.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 /* RSRR code written by Daniel Zappala, USC Information Sciences Institute,
@@ -59,14 +59,14 @@ int client_length = sizeof(client_addr);
 /*
  * Procedure definitions needed internally.
  */
-static void	rsrr_accept __P((int recvlen));
-static void	rsrr_accept_iq __P((void));
-static int	rsrr_accept_rq __P((struct rsrr_rq *route_query, int flags,
-					struct gtable *gt_notify));
-static void	rsrr_read __P((int, fd_set *));
-static int	rsrr_send __P((int sendlen));
-static void	rsrr_cache __P((struct gtable *gt,
-					struct rsrr_rq *route_query));
+static void	rsrr_accept(int recvlen);
+static void	rsrr_accept_iq(void);
+static int	rsrr_accept_rq(struct rsrr_rq *route_query, int flags,
+					struct gtable *gt_notify);
+static void	rsrr_read(int, fd_set *);
+static int	rsrr_send(int sendlen);
+static void	rsrr_cache(struct gtable *gt,
+					struct rsrr_rq *route_query);
 
 /* Initialize RSRR socket */
 void

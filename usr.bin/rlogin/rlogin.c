@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.24.2.2 2002/07/19 18:03:41 ru Exp $
- * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 /*
@@ -116,27 +116,27 @@ struct winsize {
 #endif
 struct	winsize winsize;
 
-void		catch_child __P((int));
-void		copytochild __P((int));
-void		doit __P((long)) __dead2;
-void		done __P((int)) __dead2;
-void		echo __P((char));
-u_int		getescape __P((char *));
-void		lostpeer __P((int));
-void		mode __P((int));
-void		msg __P((char *));
-void		oob __P((int));
-int		reader __P((int));
-void		sendwindow __P((void));
-void		setsignal __P((int));
-void		sigwinch __P((int));
-void		stop __P((char));
-void		usage __P((void)) __dead2;
-void		writer __P((void));
-void		writeroob __P((int));
+void		catch_child(int);
+void		copytochild(int);
+void		doit(long) __dead2;
+void		done(int) __dead2;
+void		echo(char);
+u_int		getescape(char *);
+void		lostpeer(int);
+void		mode(int);
+void		msg(char *);
+void		oob(int);
+int		reader(int);
+void		sendwindow(void);
+void		setsignal(int);
+void		sigwinch(int);
+void		stop(char);
+void		usage(void) __dead2;
+void		writer(void);
+void		writeroob(int);
 
 #ifdef OLDSUN
-int		get_window_size __P((int, struct winsize *));
+int		get_window_size(int, struct winsize *);
 #endif
 
 int

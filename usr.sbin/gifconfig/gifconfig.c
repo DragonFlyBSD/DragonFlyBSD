@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/gifconfig/gifconfig.c,v 1.2.2.4 2002/08/30 14:23:39 sobomax Exp $	*/
-/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.2 2003/06/17 04:29:53 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/gifconfig/gifconfig.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $	*/
 /*	$KAME: gifconfig.c,v 1.14 2001/01/01 04:04:56 jinmei Exp $	*/
 
 /*
@@ -103,11 +103,11 @@ kvm_t	*kvmd;
 char ntop_buf[INET6_ADDRSTRLEN];	/*inet_ntop()*/
 #endif
 
-void setifpsrc __P((char *, int));
-void setifpdst __P((char *, int));
-void setifflags __P((char *, int));
+void setifpsrc(char *, int);
+void setifpdst(char *, int);
+void setifflags(char *, int);
 #ifdef SIOCDIFPHYADDR
-void delifaddrs __P((char *, int));
+void delifaddrs(char *, int);
 #endif
 
 #define	NEXTARG		0xffffff
@@ -115,7 +115,7 @@ void delifaddrs __P((char *, int));
 static struct	cmd {
 	char	*c_name;
 	int	c_parameter;		/* NEXTARG means next argv */
-	void	(*c_func) __P((char *, int));
+	void	(*c_func)(char *, int);
 } cmds[] = {
 	{ "up",		IFF_UP,		setifflags } ,
 	{ "down",	-IFF_UP,	setifflags },
@@ -130,22 +130,22 @@ static struct	cmd {
  * XNS support liberally adapted from code written at the University of
  * Maryland principally by James O'Toole and Chris Torek.
  */
-int main __P((int, char *[]));
-void status __P((void));
-void phys_status __P((int));
-void in_status __P((int));
+int main(int, char *[]);
+void status(void);
+void phys_status(int);
+void in_status(int);
 #ifdef INET6
-void in6_status __P((int));
+void in6_status(int);
 #endif
-void ether_status __P((int));
-void Perror __P((char *));
-void in_getaddr __P((char *, int));
+void ether_status(int);
+void Perror(char *);
+void in_getaddr(char *, int);
 #ifdef INET6
-void in6_getaddr __P((char *, int));
-void in6_getprefix __P((char *, int));
+void in6_getaddr(char *, int);
+void in6_getprefix(char *, int);
 #endif
-void printb __P((char *, unsigned int, char *));
-int prefix __P((void *, int));
+void printb(char *, unsigned int, char *);
+int prefix(void *, int);
 
 char ntop_buf[INET6_ADDRSTRLEN];
 
@@ -153,9 +153,9 @@ char ntop_buf[INET6_ADDRSTRLEN];
 struct afswtch {
 	char *af_name;
 	short af_af;
-	void (*af_status) __P((int));
-	void (*af_getaddr) __P((char *, int));
-	void (*af_getprefix) __P((char *, int));
+	void (*af_status)(int);
+	void (*af_getaddr)(char *, int);
+	void (*af_getprefix)(char *, int);
 	u_long af_pifaddr;
 	caddr_t af_addreq;
 	caddr_t af_req;
@@ -173,8 +173,8 @@ struct afswtch {
 
 struct afswtch *afp = NULL;	/*the address family being set or asked about*/
 
-void	rt_xaddrs __P((caddr_t, caddr_t, struct rt_addrinfo *));
-int	ifconfig __P((int argc, char *argv[], int af, struct afswtch *rafp));
+void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
+int	ifconfig(int argc, char *argv[], int af, struct afswtch *rafp);
 
 
 

@@ -37,7 +37,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -220,18 +220,18 @@ extern Lst  	stoppedJobs;	/* List of jobs that are stopped or didn't
 extern Boolean	jobFull;    	/* Non-zero if no more jobs should/will start*/
 
 
-void Job_Touch __P((GNode *, Boolean));
-Boolean Job_CheckCommands __P((GNode *, void (*abortProc )(char *, ...)));
-void Job_CatchChildren __P((Boolean));
-void Job_CatchOutput __P((void));
-void Job_Make __P((GNode *));
-void Job_Init __P((int, int));
-Boolean Job_Full __P((void));
-Boolean Job_Empty __P((void));
-ReturnStatus Job_ParseShell __P((char *));
-int Job_End __P((void));
-void Job_Wait __P((void));
-void Job_AbortAll __P((void));
-void JobFlagForMigration __P((int));
+void Job_Touch(GNode *, Boolean);
+Boolean Job_CheckCommands(GNode *, void (*abortProc )(char *, ...));
+void Job_CatchChildren(Boolean);
+void Job_CatchOutput(void);
+void Job_Make(GNode *);
+void Job_Init(int, int);
+Boolean Job_Full(void);
+Boolean Job_Empty(void);
+ReturnStatus Job_ParseShell(char *);
+int Job_End(void);
+void Job_Wait(void);
+void Job_AbortAll(void);
+void JobFlagForMigration(int);
 
 #endif /* _JOB_H_ */

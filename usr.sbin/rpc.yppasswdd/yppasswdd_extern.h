@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.9.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_extern.h,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -59,8 +59,8 @@ extern char	*yp_dir;
 extern char	*progname;
 extern void	do_master(void);
 extern void	yppasswdprog_1(struct svc_req *, register SVCXPRT *);
-extern void     master_yppasswdprog_1 __P((struct svc_req *,
-						register SVCXPRT *));
+extern void     master_yppasswdprog_1(struct svc_req *,
+						register SVCXPRT *);
 extern void	reaper(int);
 extern void	install_reaper(int);
 extern int	pw_copy(int, int, struct passwd *);
@@ -68,7 +68,7 @@ extern int	pw_lock(void);
 extern int	pw_mkdb(char *);
 extern int	pw_tmp(void);
 extern void	pw_init(void);
-extern char	*ok_shell __P ((char *));
+extern char	*ok_shell(char *);
 extern char	*passfile;
 extern char	*passfile_default;
 extern char	*tempname;

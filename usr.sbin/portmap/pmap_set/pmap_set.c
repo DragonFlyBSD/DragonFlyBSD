@@ -8,7 +8,7 @@
 /*
  * @(#) pmap_set.c 1.1 92/06/11 22:53:16
  * $FreeBSD: src/usr.sbin/portmap/pmap_set/pmap_set.c,v 1.6 2000/01/15 23:08:30 brian Exp $
- * $DragonFly: src/usr.sbin/portmap/pmap_set/pmap_set.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/portmap/pmap_set/pmap_set.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 #include <err.h>
 #include <stdio.h>
@@ -19,7 +19,7 @@
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 
-static int parse_line __P((char *, u_long *, u_long *, int *, unsigned *));
+static int parse_line(char *, u_long *, u_long *, int *, unsigned *);
 
 int
 main(argc, argv)

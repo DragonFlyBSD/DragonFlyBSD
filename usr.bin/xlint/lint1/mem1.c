@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: mem1.c,v 1.2 1995/07/03 21:24:25 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,7 @@ typedef struct fn {
 
 static	fn_t	*fnames;
 
-static	fn_t	*srchfn __P((const char *, size_t));
+static	fn_t	*srchfn(const char *, size_t);
 
 /*
  * Look for a Filename of length l.
@@ -162,9 +162,9 @@ static	mbl_t	*frmblks;
 /* length of new allocated memory blocks */
 static	size_t	mblklen;
 
-static	void	*xgetblk __P((mbl_t **, size_t));
-static	void	xfreeblk __P((mbl_t **));
-static	mbl_t	*xnewblk __P((void));
+static	void	*xgetblk(mbl_t **, size_t);
+static	void	xfreeblk(mbl_t **);
+static	mbl_t	*xnewblk(void);
 
 static mbl_t *
 xnewblk()

@@ -10,7 +10,7 @@
  * vif.c,v 3.8.4.56.2.1 1999/01/20 05:18:50 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/vif.c,v 1.15 1999/08/28 01:17:09 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/vif.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/vif.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
@@ -43,19 +43,19 @@ typedef struct {
 /*
  * Forward declarations.
  */
-static void start_vif __P((vifi_t vifi));
-static void start_vif2 __P((vifi_t vifi));
-static void stop_vif __P((vifi_t vifi));
-static void age_old_hosts __P((void));
-static void send_probe_on_vif __P((struct uvif *v));
-static void send_query __P((struct uvif *v));
-static int info_version __P((char *p, int plen));
-static void DelVif __P((void *arg));
-static int SetTimer __P((int vifi, struct listaddr *g));
-static int DeleteTimer __P((int id));
-static void SendQuery __P((void *arg));
-static int SetQueryTimer __P((struct listaddr *g, vifi_t vifi, int to_expire,
-					int q_time));
+static void start_vif(vifi_t vifi);
+static void start_vif2(vifi_t vifi);
+static void stop_vif(vifi_t vifi);
+static void age_old_hosts(void);
+static void send_probe_on_vif(struct uvif *v);
+static void send_query(struct uvif *v);
+static int info_version(char *p, int plen);
+static void DelVif(void *arg);
+static int SetTimer(int vifi, struct listaddr *g);
+static int DeleteTimer(int id);
+static void SendQuery(void *arg);
+static int SetQueryTimer(struct listaddr *g, vifi_t vifi, int to_expire,
+					int q_time);
 
 
 /*

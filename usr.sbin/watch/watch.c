@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/usr.sbin/watch/watch.c,v 1.18.2.3 2002/08/17 00:59:03 mikeh Exp $
- * $DragonFly: src/usr.sbin/watch/watch.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/watch/watch.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -50,19 +50,19 @@
 #define CHR_SWITCH	24	/* Ctrl+X	 */
 #define CHR_CLEAR	23	/* Ctrl+V	 */
 
-static void	clear __P((void));
-static void	timestamp  __P((const char *));
-static void	set_tty __P((void));
-static void	unset_tty __P((void));
-static void	fatal __P((int, const char *));
-static int	open_snp __P((void));
-static void	cleanup __P((int));
-static void	usage __P((void));
-static void	setup_scr __P((void));
-static void	attach_snp __P((void));
-static void	detach_snp __P((void));
-static void	set_dev __P((const char *));
-static void	ask_dev __P((char *, const char *));
+static void	clear(void);
+static void	timestamp (const char *);
+static void	set_tty(void);
+static void	unset_tty(void);
+static void	fatal(int, const char *);
+static int	open_snp(void);
+static void	cleanup(int);
+static void	usage(void);
+static void	setup_scr(void);
+static void	attach_snp(void);
+static void	detach_snp(void);
+static void	set_dev(const char *);
+static void	ask_dev(char *, const char *);
 
 int             opt_reconn_close = 0;
 int             opt_reconn_oflow = 0;

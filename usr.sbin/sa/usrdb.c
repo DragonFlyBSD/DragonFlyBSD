@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/usrdb.c,v 1.8.2.2 2000/10/28 02:28:20 gallatin Exp $
- * $DragonFly: src/usr.sbin/sa/usrdb.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sa/usrdb.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 #include "extern.h"
 #include "pathnames.h"
 
-static int uid_compare __P((const DBT *, const DBT *));
+static int uid_compare(const DBT *, const DBT *);
 
 static DB	*usracct_db;
 

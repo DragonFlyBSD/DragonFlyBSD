@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include "globals.h"
@@ -54,12 +54,12 @@ extern int justquit;
 static int dictate;
 static int slvcount;			/* slaves listening to our clock */
 
-static void mchgdate __P((struct tsp *));
+static void mchgdate(struct tsp *);
 
 #ifdef sgi
-extern void logwtmp __P((struct timeval *, struct timeval *));
+extern void logwtmp(struct timeval *, struct timeval *);
 #else
-extern void logwtmp __P((char *, char *, char *));
+extern void logwtmp(char *, char *, char *);
 #endif /* sgi */
 
 /*

@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include "cron.h"
@@ -31,8 +31,8 @@
 #endif
 
 
-static void		child_process __P((entry *, user *)),
-			do_univ __P((user *));
+static void		child_process(entry *, user *),
+			do_univ(user *);
 
 
 void

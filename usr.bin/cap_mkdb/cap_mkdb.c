@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cap_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.6.2.2 2001/08/02 01:15:51 obrien Exp $
- * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/cap_mkdb/cap_mkdb.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -47,10 +47,10 @@
 #include <string.h>
 #include <unistd.h>
 
-int	 main __P((int, char *[]));
-void	 db_build __P((char **));
-void	 dounlink __P((void));
-void	 usage __P((void));
+int	 main(int, char *[]);
+void	 db_build(char **);
+void	 dounlink(void);
+void	 usage(void);
 
 DB *capdbp;
 int verbose;

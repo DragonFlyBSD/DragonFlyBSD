@@ -37,7 +37,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /* hash.c --
@@ -56,7 +56,7 @@
  * defined:
  */
 
-static void RebuildTable __P((Hash_Table *));
+static void RebuildTable(Hash_Table *);
 
 /*
  * The following defines the ratio of # entries to # buckets

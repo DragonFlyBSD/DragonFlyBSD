@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -109,22 +109,22 @@ static	int	first = 1;
 static	const	char *currfn;
 
 
-static	void	appstrg __P((char ***, char *));
-static	void	appcstrg __P((char ***, const char *));
-static	void	applst __P((char ***, char *const *));
-static	void	freelst __P((char ***));
-static	char	*concat2 __P((const char *, const char *));
-static	char	*concat3 __P((const char *, const char *, const char *));
-static	void	terminate __P((int));
-static	const	char *basename __P((const char *, int));
-static	void	appdef __P((char ***, const char *));
-static	void	usage __P((void));
-static	void	fname __P((const char *, int));
-static	void	runchild __P((const char *, char *const *, const char *));
-static	void	findlibs __P((char *const *));
-static	int	rdok __P((const char *));
-static	void	lint2 __P((void));
-static	void	cat __P((char *const *, const char *));
+static	void	appstrg(char ***, char *);
+static	void	appcstrg(char ***, const char *);
+static	void	applst(char ***, char *const *);
+static	void	freelst(char ***);
+static	char	*concat2(const char *, const char *);
+static	char	*concat3(const char *, const char *, const char *);
+static	void	terminate(int);
+static	const	char *basename(const char *, int);
+static	void	appdef(char ***, const char *);
+static	void	usage(void);
+static	void	fname(const char *, int);
+static	void	runchild(const char *, char *const *, const char *);
+static	void	findlibs(char *const *);
+static	int	rdok(const char *);
+static	void	lint2(void);
+static	void	cat(char *const *, const char *);
 
 /*
  * Some functions to deal with lists of strings.

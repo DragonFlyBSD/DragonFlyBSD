@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/tcp.c,v 1.1.2.3 2002/04/28 05:40:29 suz Exp $
- * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/faithd/tcp.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -64,12 +64,12 @@ static pid_t ppid = (pid_t)0;
 volatile time_t child_lastactive = (time_t)0;
 static time_t parent_lastactive = (time_t)0;
 
-static void sig_ctimeout __P((int));
-static void sig_child __P((int));
-static void notify_inactive __P((void));
-static void notify_active __P((void));
-static void send_data __P((int, int, const char *, int));
-static void relay __P((int, int, const char *, int));
+static void sig_ctimeout(int);
+static void sig_child(int);
+static void notify_inactive(void);
+static void notify_active(void);
+static void send_data(int, int, const char *, int);
+static void relay(int, int, const char *, int);
 
 /*
  * Inactivity timer:

@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/sa/pdb.c,v 1.7 1999/08/28 01:19:53 peter Exp $
- * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sa/pdb.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -41,9 +41,9 @@
 #include "extern.h"
 #include "pathnames.h"
 
-static int check_junk __P((struct cmdinfo *));
-static void add_ci __P((const struct cmdinfo *, struct cmdinfo *));
-static void print_ci __P((const struct cmdinfo *, const struct cmdinfo *));
+static int check_junk(struct cmdinfo *);
+static void add_ci(const struct cmdinfo *, struct cmdinfo *);
+static void print_ci(const struct cmdinfo *, const struct cmdinfo *);
 
 static DB	*pacct_db;
 

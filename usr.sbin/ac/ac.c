@@ -13,7 +13,7 @@
  *      other than his own.
  *
  * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
- * $DragonFly: src/usr.sbin/ac/ac.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/ac/ac.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -81,20 +81,20 @@ static struct tty_list *Ttys = NULL;
 static int Debug = 0;
 #endif
 
-int			main __P((int, char **));
-int			ac __P((FILE *));
-struct tty_list		*add_tty __P((char *));
-int			do_tty __P((char *));
-FILE			*file __P((char *));
-struct utmp_list	*log_in __P((struct utmp_list *, struct utmp *));
-struct utmp_list	*log_out __P((struct utmp_list *, struct utmp *));
-int			on_console __P((struct utmp_list *));
-void			show __P((char *, time_t));
+int			main(int, char **);
+int			ac(FILE *);
+struct tty_list		*add_tty(char *);
+int			do_tty(char *);
+FILE			*file(char *);
+struct utmp_list	*log_in(struct utmp_list *, struct utmp *);
+struct utmp_list	*log_out(struct utmp_list *, struct utmp *);
+int			on_console(struct utmp_list *);
+void			show(char *, time_t);
 void			show_today __P((struct user_list *, struct utmp_list *,
 			    time_t));
-void			show_users __P((struct user_list *));
-struct user_list	*update_user __P((struct user_list *, char *, time_t));
-void			usage __P((void));
+void			show_users(struct user_list *);
+struct user_list	*update_user(struct user_list *, char *, time_t);
+void			usage(void);
 
 /*
  * open wtmp or die

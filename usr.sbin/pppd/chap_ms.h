@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/chap_ms.h,v 1.5 1999/08/28 01:19:02 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/chap_ms.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap_ms.h,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 #ifndef __CHAPMS_INCLUDE__
@@ -28,7 +28,7 @@
 #define MD4_SIGNATURE_SIZE	16	/* 16 bytes in a MD4 message digest */
 #define MAX_NT_PASSWORD	256	/* Maximum number of (Unicode) chars in an NT password */
 
-void ChapMS __P((chap_state *, char *, int, char *, int));
+void ChapMS(chap_state *, char *, int, char *, int);
 
 #define __CHAPMS_INCLUDE__
 #endif /* __CHAPMS_INCLUDE__ */

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/parse.y,v 1.1.2.2 2001/07/03 11:02:17 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/parse.y,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/parse.y,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
 /*	$KAME: kame/kame/kame/setkey/parse.y,v 1.36 2001/06/07 15:53:12 sakane Exp $	*/
 
 /*
@@ -81,17 +81,17 @@ extern int m_len;
 extern char cmdarg[8192];
 extern int f_debug;
 
-static struct addrinfo *parse_addr __P((char *, char *, int));
-static int setvarbuf __P((int *, struct sadb_ext *, int, caddr_t, int));
-void parse_init __P((void));
-void free_buffer __P((void));
+static struct addrinfo *parse_addr(char *, char *, int);
+static int setvarbuf(int *, struct sadb_ext *, int, caddr_t, int);
+void parse_init(void);
+void free_buffer(void);
 
-extern int setkeymsg __P((void));
-extern int sendkeymsg __P((void));
+extern int setkeymsg(void);
+extern int sendkeymsg(void);
 
-extern int yylex __P((void));
-extern void yyfatal __P((const char *));
-extern void yyerror __P((const char *));
+extern int yylex(void);
+extern void yyfatal(const char *);
+extern void yyerror(const char *);
 %}
 
 %union {

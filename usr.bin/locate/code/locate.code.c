@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/locate/code/locate.code.c,v 1.11.2.1 2001/03/04 08:46:46 kris Exp $
- * $DragonFly: src/usr.bin/locate/code/locate.code.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/locate/code/locate.code.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.code.c	8.1 (Berkeley) 6/6/93
@@ -109,11 +109,11 @@ bg_t big[UCHAR_MAX + 1][UCHAR_MAX + 1];
 #else
 #define BGINDEX(x) bgindex(x)
 typedef int bg_t;
-int	bgindex __P((char *));
+int	bgindex(char *);
 #endif /* LOOKUP */
 
 
-void	usage __P((void));
+void	usage(void);
 
 int
 main(argc, argv)

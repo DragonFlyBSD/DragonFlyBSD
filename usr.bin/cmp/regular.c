@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/cmp/regular.c,v 1.7.2.3 2001/11/21 10:47:54 dwmalone Exp $
- * $DragonFly: src/usr.bin/cmp/regular.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/cmp/regular.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  *
  * @(#)regular.c	8.3 (Berkeley) 4/2/94
  */
@@ -49,7 +49,7 @@
 
 #include "extern.h"
 
-static u_char *remmap __P((u_char *, int, off_t));
+static u_char *remmap(u_char *, int, off_t);
 #define MMAP_CHUNK (8*1024*1024)
 
 #define ROUNDPAGE(i) ((i) & ~pagemask)

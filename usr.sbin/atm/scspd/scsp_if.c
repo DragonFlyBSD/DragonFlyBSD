@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_if.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_if.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_if.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
  */
 
 
@@ -66,27 +66,27 @@
  */
 #define	SCSP_CIFSM_ACTION_CNT	11
 int	scsp_client_act_00
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_01
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_02
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_03
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_04
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_05
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_06
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_07
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_08
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_09
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 int	scsp_client_act_10
-			__P((Scsp_dcs *, Scsp_msg *, Scsp_if_msg *));
+		(Scsp_dcs *, Scsp_msg *, Scsp_if_msg *);
 
 static int (*scsp_action_vector[SCSP_CIFSM_ACTION_CNT])() = {
 	scsp_client_act_00,

@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/magic.c,v 1.8 1999/08/28 01:19:05 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/magic.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/magic.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -28,8 +28,8 @@
 #include "pppd.h"
 #include "magic.h"
 
-extern long mrand48 __P((void));
-extern void srand48 __P((long));
+extern long mrand48(void);
+extern void srand48(long);
 
 /*
  * magic_init - Initialize the magic number generator.

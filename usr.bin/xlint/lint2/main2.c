@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main2.c,v 1.2 1995/07/03 21:24:53 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -82,7 +82,7 @@ int	Fflag;
  */
 const	char	**libs;
 
-static	void	usage __P((void));
+static	void	usage(void);
 
 
 int

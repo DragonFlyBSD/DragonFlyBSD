@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #define TSPTYPES
@@ -89,9 +89,9 @@ static struct goodhost {		/* hosts that we trust */
 } *goodhosts;
 
 static char *goodgroup;			/* net group of trusted hosts */
-static void checkignorednets __P((void));
-static void pickslavenet __P((struct netinfo *));
-static void add_good_host __P((char *, int));
+static void checkignorednets(void);
+static void pickslavenet(struct netinfo *);
+static void add_good_host(char *, int);
 
 #ifdef sgi
 char *timetrim_fn;
@@ -104,7 +104,7 @@ double tot_ticks, hr_ticks;
 int bufspace = 60*1024;
 #endif
 
-static void usage __P((void));
+static void usage(void);
 
 /*
  * The timedaemons synchronize the clocks of hosts in a local area network.

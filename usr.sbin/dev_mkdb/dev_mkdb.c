@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dev_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.4.2.1 2001/11/25 18:34:09 iedowse Exp $
- * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 #include <string.h>
 #include <unistd.h>
 
-static void	usage __P((void));
+static void	usage(void);
 
 int
 main(argc, argv)

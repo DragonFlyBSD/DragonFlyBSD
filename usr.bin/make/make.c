@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -86,12 +86,12 @@ static int  	numNodes;   	/* Number of nodes to be processed. If this
 				 * is non-zero when Job_Empty() returns
 				 * TRUE, there's a cycle in the graph */
 
-static int MakeAddChild __P((ClientData, ClientData));
-static int MakeAddAllSrc __P((ClientData, ClientData));
-static int MakeTimeStamp __P((ClientData, ClientData));
-static int MakeHandleUse __P((ClientData, ClientData));
-static Boolean MakeStartJobs __P((void));
-static int MakePrintStatus __P((ClientData, ClientData));
+static int MakeAddChild(ClientData, ClientData);
+static int MakeAddAllSrc(ClientData, ClientData);
+static int MakeTimeStamp(ClientData, ClientData);
+static int MakeHandleUse(ClientData, ClientData);
+static Boolean MakeStartJobs(void);
+static int MakePrintStatus(ClientData, ClientData);
 /*-
  *-----------------------------------------------------------------------
  * Make_TimeStamp --

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd_mkdb.c	8.5 (Berkeley) 4/20/94
  * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.35 2000/03/09 18:11:16 paul Exp $
- * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.3 2003/11/03 19:31:41 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -75,12 +75,12 @@ static char prefix[MAXPATHLEN];
 static int is_comment;	/* flag for comments */
 static char line[LINE_MAX];
 
-void	cleanup __P((void));
-void	error __P((char *));
-void	cp __P((char *, char *, mode_t mode));
-void	mv __P((char *, char *));
-int	scan __P((FILE *, struct passwd *));
-static void	usage __P((void));
+void	cleanup(void);
+void	error(char *);
+void	cp(char *, char *, mode_t mode);
+void	mv(char *, char *);
+int	scan(FILE *, struct passwd *);
+static void	usage(void);
 
 int
 main(argc, argv)

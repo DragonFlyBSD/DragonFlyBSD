@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/vgrind/extern.h,v 1.2 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/vgrind/extern.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 typedef int boolean;
@@ -59,8 +59,8 @@ extern char    *language;              /* the language indicator */
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-extern int      STRNCMP __P((char *, char *, int));
-extern char    *convexp __P((char *));
-extern char    *expmatch __P((char *, char *, char *));
+extern int      STRNCMP(char *, char *, int);
+extern char    *convexp(char *);
+extern char    *expmatch(char *, char *, char *);
 __END_DECLS
 

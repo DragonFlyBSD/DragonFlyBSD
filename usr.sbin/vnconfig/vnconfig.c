@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.3 2003/08/08 04:18:49 dillon Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.4 2003/11/03 19:31:44 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -94,14 +94,14 @@ u_long setopt = 0;
 u_long resetopt = 0;
 char *configfile;
 
-int config __P((struct vndisk *));
-void getoptions __P((struct vndisk *, char *));
-char *rawdevice __P((char *));
-void readconfig __P((int));
-static void usage __P((void));
+int config(struct vndisk *);
+void getoptions(struct vndisk *, char *);
+char *rawdevice(char *);
+void readconfig(int);
+static void usage(void);
 static int getsize(const char *arg);
 static void do_autolabel(const char *dev, const char *label);
-int what_opt __P((char *, u_long *));
+int what_opt(char *, u_long *);
 
 int
 main(argc, argv)

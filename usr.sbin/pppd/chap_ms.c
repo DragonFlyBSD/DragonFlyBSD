@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/chap_ms.c,v 1.8 2000/02/24 21:10:28 markm Exp $
- * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 /*
@@ -65,18 +65,18 @@ typedef struct {
    in case this struct gets padded. */
 
 
-static void	ChallengeResponse __P((u_char *, u_char *, u_char *));
-static void	DesEncrypt __P((u_char *, u_char *, u_char *));
-static void	MakeKey __P((u_char *, u_char *));
-static u_char	Get7Bits __P((u_char *, int));
-static void	ChapMS_NT __P((char *, int, char *, int, MS_ChapResponse *));
+static void	ChallengeResponse(u_char *, u_char *, u_char *);
+static void	DesEncrypt(u_char *, u_char *, u_char *);
+static void	MakeKey(u_char *, u_char *);
+static u_char	Get7Bits(u_char *, int);
+static void	ChapMS_NT(char *, int, char *, int, MS_ChapResponse *);
 #ifdef MSLANMAN
-static void	ChapMS_LANMan __P((char *, int, char *, int, MS_ChapResponse *));
+static void	ChapMS_LANMan(char *, int, char *, int, MS_ChapResponse *);
 #endif
 
 #ifdef USE_CRYPT
-static void	Expand __P((u_char *, u_char *));
-static void	Collapse __P((u_char *, u_char *));
+static void	Expand(u_char *, u_char *);
+static void	Collapse(u_char *, u_char *);
 #endif
 
 static void

@@ -1,6 +1,6 @@
 /*	$KAME: rtsock.c,v 1.3 2000/10/10 08:46:45 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/rtsold/rtsock.c,v 1.1.2.1 2001/07/03 11:02:16 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
@@ -65,13 +65,13 @@
 		       : sizeof(u_long)))
 
 #ifdef RTM_IFANNOUNCE	/*NetBSD 1.5 or later*/
-static int rtsock_input_ifannounce __P((int, struct rt_msghdr *, char *));
+static int rtsock_input_ifannounce(int, struct rt_msghdr *, char *);
 #endif
 
 static struct {
 	u_char type;
 	size_t minlen;
-	int (*func) __P((int, struct rt_msghdr *, char *));
+	int (*func)(int, struct rt_msghdr *, char *);
 } rtsock_dispatch[] = {
 #ifdef RTM_IFANNOUNCE	/*NetBSD 1.5 or later*/
 	{ RTM_IFANNOUNCE, sizeof(struct if_announcemsghdr),

@@ -35,7 +35,7 @@
  *
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/touch.c,v 1.6 1999/08/28 01:05:04 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/touch.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/touch.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -53,9 +53,9 @@
 extern CHDR chdr;			/* converted header */
 extern char *archive;			/* archive name */
 
-extern void error __P(( char * ));
-void settime __P(( int ));
-int touch __P(( void ));
+extern void error( char * );
+void settime( int );
+int touch( void );
 
 int
 touch(void)

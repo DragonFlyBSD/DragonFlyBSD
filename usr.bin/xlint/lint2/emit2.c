@@ -31,16 +31,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: emit2.c,v 1.2 1995/07/03 21:24:44 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/emit2.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/emit2.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <err.h>
 
 #include "lint2.h"
 
-static	void	outtype __P((type_t *));
-static	void	outdef __P((hte_t *, sym_t *));
-static	void	dumpname __P((hte_t *));
+static	void	outtype(type_t *);
+static	void	outdef(hte_t *, sym_t *);
+static	void	dumpname(hte_t *);
 
 /*
  * Write type into the output buffer.

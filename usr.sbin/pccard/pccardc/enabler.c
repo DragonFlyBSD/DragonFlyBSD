@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardc/enabler.c,v 1.13 1999/08/28 01:17:32 peter Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/enabler.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/enabler.c,v 1.4 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <err.h>
@@ -38,7 +38,7 @@
 #include <bus/pccard/cardinfo.h>
 #include <bus/pccard/cis.h>
 
-static void    usage __P((char *));
+static void    usage(char *);
 
 int
 enabler_main(argc, argv)

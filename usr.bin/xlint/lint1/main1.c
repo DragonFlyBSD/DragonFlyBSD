@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main1.c,v 1.3 1995/10/02 17:29:56 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -103,7 +103,7 @@ int	vflag = 1;
 /* Complain about structures which are never defined. */
 int	zflag = 1;
 
-static	void	usage __P((void));
+static	void	usage(void);
 
 int
 main(argc, argv)

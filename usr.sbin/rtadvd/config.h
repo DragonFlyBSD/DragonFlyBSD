@@ -29,12 +29,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.h,v 1.1.2.3 2002/06/29 18:59:53 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/config.h,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
-extern void getconfig __P((char *));
-extern void delete_prefix __P((struct prefix *));
-extern void invalidate_prefix __P((struct prefix *));
-extern void update_prefix __P((struct prefix *));
-extern void make_prefix __P((struct rainfo *, int, struct in6_addr *, int));
-extern void make_packet __P((struct rainfo *));
+extern void getconfig(char *);
+extern void delete_prefix(struct prefix *);
+extern void invalidate_prefix(struct prefix *);
+extern void update_prefix(struct prefix *);
+extern void make_prefix(struct rainfo *, int, struct in6_addr *, int);
+extern void make_packet(struct rainfo *);

@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -30,17 +30,17 @@
 #endif
 
 
-static	void	usage __P((void)),
-		run_reboot_jobs __P((cron_db *)),
-		cron_tick __P((cron_db *)),
-		cron_sync __P((void)),
-		cron_sleep __P((cron_db *)),
-		cron_clean __P((cron_db *)),
+static	void	usage(void),
+		run_reboot_jobs(cron_db *),
+		cron_tick(cron_db *),
+		cron_sync(void),
+		cron_sleep(cron_db *),
+		cron_clean(cron_db *),
 #ifdef USE_SIGCHLD
-		sigchld_handler __P((int)),
+		sigchld_handler(int),
 #endif
-		sighup_handler __P((int)),
-		parse_args __P((int c, char *v[]));
+		sighup_handler(int),
+		parse_args(int c, char *v[]);
 
 static time_t	last_time = 0;
 static int	dst_enabled = 0;

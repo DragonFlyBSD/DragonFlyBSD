@@ -31,19 +31,19 @@
  * SUCH DAMAGE.
  *
  *	@(#)tftpsubs.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.bin/tftp/tftpsubs.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/tftp/tftpsubs.h,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 /*
  * Prototypes for read-ahead/write-behind subroutines for tftp user and
  * server.
  */
-struct tftphdr *r_init __P((void));
-void	read_ahead __P((FILE *, int));
-int	readit __P((FILE *, struct tftphdr **, int));
+struct tftphdr *r_init(void);
+void	read_ahead(FILE *, int);
+int	readit(FILE *, struct tftphdr **, int);
 
-int	synchnet __P((int));
+int	synchnet(int);
 
-struct tftphdr *w_init __P((void));
-int	write_behind __P((FILE *, int));
-int	writeit __P((FILE *, struct tftphdr **, int, int));
+struct tftphdr *w_init(void);
+int	write_behind(FILE *, int);
+int	writeit(FILE *, struct tftphdr **, int, int);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)id.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/usr.bin/id/id.c,v 1.12.2.3 2001/12/20 12:09:03 ru Exp $
- * $DragonFly: src/usr.bin/id/id.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/id/id.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@ void	group(struct passwd *, int);
 void	usage(void);
 void	user(struct passwd *);
 struct passwd *
-	who __P((char *));
+	who(char *);
 
 int isgroups, iswhoami;
 

@@ -1,6 +1,6 @@
 /*	$NetBSD: crunchide.c,v 1.8 1997/11/01 06:51:45 lukem Exp $	*/
 /* $FreeBSD: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.6.6.1 2002/07/25 09:33:17 ru Exp $ */
-/* $DragonFly: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.2 2003/06/17 04:29:53 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/crunch/crunchide/crunchide.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $ */
 /*
  * Copyright (c) 1997 Christopher G. Demetriou.  All rights reserved.
  * Copyright (c) 1994 University of Maryland
@@ -87,7 +87,7 @@ int hide_syms(const char *filename);
 
 int verbose;
 
-int main __P((int, char *[]));
+int main(int, char *[]);
 
 int main(argc, argv)
 int argc;

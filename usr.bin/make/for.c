@@ -32,7 +32,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -79,7 +79,7 @@ typedef struct _For {
     Lst  	  lst;			/* List of variables	*/
 } For;
 
-static int ForExec	__P((ClientData, ClientData));
+static int ForExec(ClientData, ClientData);
 
 
 
@@ -294,6 +294,6 @@ For_Run()
     Lst_ForEach(arg.lst, ForExec, (ClientData) &arg);
 
     free((Address)arg.var);
-    Lst_Destroy(arg.lst, (void (*) __P((ClientData))) free);
+    Lst_Destroy(arg.lst, (void (*)(ClientData)) free);
     Buf_Destroy(arg.buf, TRUE);
 }

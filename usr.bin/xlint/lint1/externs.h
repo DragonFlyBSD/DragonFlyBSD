@@ -30,29 +30,29 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/xlint/lint1/externs.h,v 1.2 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/externs.h,v 1.3 2003/11/03 19:31:34 eirikn Exp $
  */
 
 /*
  * mem.c
  */
-extern	void	*xmalloc __P((size_t));
-extern	void	*xcalloc __P((size_t, size_t));
-extern	void	*xrealloc __P((void *, size_t));
-extern	char	*xstrdup __P((const char *));
-extern	void	nomem __P((void));
+extern	void	*xmalloc(size_t);
+extern	void	*xcalloc(size_t, size_t);
+extern	void	*xrealloc(void *, size_t);
+extern	char	*xstrdup(const char *);
+extern	void	nomem(void);
 
 /*
  * emit.c
  */
 extern	ob_t	ob;
 
-extern	void	outopen __P((const char *));
-extern	void	outclose __P((void));
-extern	void	outclr __P((void));
-extern	void	outchar __P((int));
-extern	void	outqchar __P((int));
-extern	void	outstrg __P((const char *));
-extern	void	outint __P((int));
-extern	void	outname __P((const char *));
-extern	void	outsrc __P((const char *));
+extern	void	outopen(const char *);
+extern	void	outclose(void);
+extern	void	outclr(void);
+extern	void	outchar(int);
+extern	void	outqchar(int);
+extern	void	outstrg(const char *);
+extern	void	outint(int);
+extern	void	outname(const char *);
+extern	void	outsrc(const char *);

@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/misc.c,v 1.8.2.1 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/misc.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/misc.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -87,7 +87,7 @@ parsekey(name, needvaluep)
 	int *needvaluep;
 {
 	KEY *k, tmp;
-	int keycompare __P((const void *, const void *));
+	int keycompare(const void *, const void *);
 
 	tmp.name = name;
 	k = (KEY *)bsearch(&tmp, keylist, sizeof(keylist) / sizeof(KEY),

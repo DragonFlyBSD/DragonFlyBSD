@@ -10,7 +10,7 @@
  * igmp.c,v 3.8.4.19 1998/01/06 01:57:43 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/igmp.c,v 1.16 1999/08/28 01:17:04 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/igmp.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/igmp.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
  */
 
 #include "defs.h"
@@ -30,7 +30,7 @@ u_int32		dvmrp_genid;		     /* IGMP generation id          */
  * Local function definitions.
  */
 /* u_char promoted to u_int */
-static int	igmp_log_level __P((u_int type, u_int code));
+static int	igmp_log_level(u_int type, u_int code);
 
 /*
  * Open and initialize the igmp socket, and fill in the non-changing

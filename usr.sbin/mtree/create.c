@@ -32,7 +32,7 @@
  *
  * @(#)create.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/create.c,v 1.18.2.3 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/create.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/create.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -75,11 +75,11 @@ static uid_t uid;
 static mode_t mode;
 static u_long flags = 0xffffffff;
 
-static int	dsort __P((const FTSENT **, const FTSENT **));
-static void	output __P((int, int *, const char *, ...));
-static int	statd __P((FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
-			   u_long *));
-static void	statf __P((int, FTSENT *));
+static int	dsort(const FTSENT **, const FTSENT **);
+static void	output(int, int *, const char *, ...);
+static int	statd(FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
+			   u_long *);
+static void	statf(int, FTSENT *);
 
 void
 cwalk()

@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -93,10 +93,10 @@ static Hash_Table targets;	/* a hash table of same */
 
 #define HTSIZE	191		/* initial size of hash table */
 
-static int TargPrintOnlySrc __P((ClientData, ClientData));
-static int TargPrintName __P((ClientData, ClientData));
-static int TargPrintNode __P((ClientData, ClientData));
-static void TargFreeGN __P((ClientData));
+static int TargPrintOnlySrc(ClientData, ClientData);
+static int TargPrintName(ClientData, ClientData);
+static int TargPrintNode(ClientData, ClientData);
+static void TargFreeGN(ClientData);
 
 /*-
  *-----------------------------------------------------------------------

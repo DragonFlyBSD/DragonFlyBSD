@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.3 2003/10/04 20:36:49 hmp Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -112,13 +112,13 @@ typedef struct Arch {
     size_t	  fnamesize;  /* Size of the string table */
 } Arch;
 
-static int ArchFindArchive __P((ClientData, ClientData));
-static void ArchFree __P((ClientData));
-static struct ar_hdr *ArchStatMember __P((char *, char *, Boolean));
-static FILE *ArchFindMember __P((char *, char *, struct ar_hdr *, char *));
+static int ArchFindArchive(ClientData, ClientData);
+static void ArchFree(ClientData);
+static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
+static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
 #define SVR4ARCHIVES
-static int ArchSVR4Entry __P((Arch *, char *, size_t, FILE *));
+static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
 #endif
 
 /*-

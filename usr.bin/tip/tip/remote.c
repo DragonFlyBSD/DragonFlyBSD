@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)remote.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/remote.c,v 1.4 1999/08/28 01:06:35 peter Exp $
- * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.2 2003/06/17 04:29:32 dillon Exp $
+ * $DragonFly: src/usr.bin/tip/tip/remote.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include <sys/syslimits.h>
@@ -64,7 +64,7 @@ static char	*db_array[3] = { _PATH_REMOTE, 0, 0 };
 
 #define cgetflag(f)	(cgetcap(bp, f, ':') != NULL)
 
-static void getremcap __P((char *));
+static void getremcap(char *);
 
 /*
 	Expand the start tilde sequence at the start of the

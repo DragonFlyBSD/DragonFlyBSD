@@ -25,7 +25,7 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
- * $DragonFly: src/usr.bin/rpcgen/rpc_sample.c,v 1.2 2003/11/03 19:14:35 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_sample.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 #pragma ident	"@(#)rpc_sample.c	1.9	94/04/25 SMI" 
@@ -43,10 +43,10 @@
 
 static char RQSTP[] = "rqstp";
 
-extern void printarglist __P(( proc_list *, char *, char *, char *));
-static void write_sample_client __P(( char *, version_list * ));
-static void write_sample_server __P(( definition * ));
-static void return_type __P(( proc_list * ));
+extern void printarglist( proc_list *, char *, char *, char *);
+static void write_sample_client( char *, version_list * );
+static void write_sample_server( definition * );
+static void return_type( proc_list * );
 
 void
 write_sample_svc(def)

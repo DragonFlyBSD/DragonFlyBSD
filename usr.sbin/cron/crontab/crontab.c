@@ -16,7 +16,7 @@
  *
  * From Id: crontab.c,v 2.13 1994/01/17 03:20:37 vixie Exp
  * $FreeBSD: src/usr.sbin/cron/crontab/crontab.c,v 1.12.2.4 2001/06/16 03:18:37 peter Exp $
- * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 /* crontab - install and manage per-user crontab files
@@ -24,7 +24,7 @@
  * vix 26jan87 [original]
  */
 
-static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.2 2003/06/17 04:29:53 dillon Exp $";
+static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.3 2003/11/03 19:31:36 eirikn Exp $";
 
 #define	MAIN_PROGRAM
 
@@ -62,13 +62,13 @@ static	FILE		*NewCrontab;
 static	int		CheckErrorCount;
 static	enum opt_t	Option;
 static	struct passwd	*pw;
-static	void		list_cmd __P((void)),
-			delete_cmd __P((void)),
-			edit_cmd __P((void)),
-			poke_daemon __P((void)),
-			check_error __P((char *)),
-			parse_args __P((int c, char *v[]));
-static	int		replace_cmd __P((void));
+static	void		list_cmd(void),
+			delete_cmd(void),
+			edit_cmd(void),
+			poke_daemon(void),
+			check_error(char *),
+			parse_args(int c, char *v[]);
+static	int		replace_cmd(void);
 
 
 static void

@@ -32,8 +32,8 @@
  *
  *	From: @(#)extern.h	8.1 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/passwd/extern.h,v 1.5 1999/08/28 01:04:50 peter Exp $
- * $DragonFly: src/usr.bin/passwd/extern.h,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/passwd/extern.h,v 1.3 2003/11/03 19:31:31 eirikn Exp $
  */
 
-int	krb_passwd __P((char *, char *, char *, char *));
-int	local_passwd __P((char *));
+int	krb_passwd(char *, char *, char *, char *);
+int	local_passwd(char *);

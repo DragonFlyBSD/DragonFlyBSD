@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: init.c,v 1.4 1995/10/02 17:21:37 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -52,12 +52,12 @@ sym_t	*initsym;
 istk_t	*initstk;
 
 
-static	void	popi2 __P((void));
-static	void	popinit __P((int));
-static	void	pushinit __P((void));
-static	void	testinit __P((void));
-static	void	nextinit __P((int));
-static	int	strginit __P((tnode_t *));
+static	void	popi2(void);
+static	void	popinit(int);
+static	void	pushinit(void);
+static	void	testinit(void);
+static	void	nextinit(int);
+static	int	strginit(tnode_t *);
 
 
 /*

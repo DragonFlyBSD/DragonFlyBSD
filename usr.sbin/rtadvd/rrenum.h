@@ -29,8 +29,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rrenum.h,v 1.1.2.2 2001/07/03 11:02:14 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/rrenum.h,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/rrenum.h,v 1.3 2003/11/03 19:31:42 eirikn Exp $
  */
 
-void rr_input __P((int, struct icmp6_router_renum *, struct in6_pktinfo *,
-	struct sockaddr_in6 *, struct in6_addr *));
+void rr_input(int, struct icmp6_router_renum *, struct in6_pktinfo *,
+	struct sockaddr_in6 *, struct in6_addr *);

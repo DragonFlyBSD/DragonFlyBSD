@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
- * $DragonFly: src/usr.sbin/timed/timedc/extern.h,v 1.2 2003/11/03 19:14:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/extern.h,v 1.3 2003/11/03 19:31:43 eirikn Exp $
  */
 
 #if __STDC__
@@ -40,14 +40,14 @@ struct tsp;
 
 extern struct cmd cmdtab[];
 
-void	bytehostorder __P((struct tsp *));
-void	bytenetorder __P((struct tsp *));
-void	clockdiff __P((int, char *[]));
-void	help __P((int, char *[]));
-void	intr __P((int));
-void	makeargv __P((void));
-void	msite __P((int, char *[]));
-int	priv_resources __P((void));
-void	quit __P((void));
-void	testing __P((int, char *[]));
-void	tracing __P((int, char *[]));
+void	bytehostorder(struct tsp *);
+void	bytenetorder(struct tsp *);
+void	clockdiff(int, char *[]);
+void	help(int, char *[]);
+void	intr(int);
+void	makeargv(void);
+void	msite(int, char *[]);
+int	priv_resources(void);
+void	quit(void);
+void	testing(int, char *[]);
+void	tracing(int, char *[]);

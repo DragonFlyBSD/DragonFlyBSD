@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
  */
 
 /*
@@ -201,40 +201,40 @@
 
 #define	SIGBLOCK	(sigmask(SIGCHLD)|sigmask(SIGHUP)|sigmask(SIGALRM))
 
-void		close_sep __P((struct servtab *));
-void		flag_signal __P((int));
-void		flag_config __P((int));
-void		config __P((void));
-int		cpmip __P((const struct servtab *, int));
-void		endconfig __P((void));
-struct servtab *enter __P((struct servtab *));
-void		freeconfig __P((struct servtab *));
-struct servtab *getconfigent __P((void));
-int		matchservent __P((const char *, const char *, const char *));
-char	       *nextline __P((FILE *));
-void		addchild __P((struct servtab *, int));
-void		flag_reapchild __P((int));
-void		reapchild __P((void));
-void		enable __P((struct servtab *));
-void		disable __P((struct servtab *));
-void		flag_retry __P((int));
-void		retry __P((void));
-int		setconfig __P((void));
-void		setup __P((struct servtab *));
+void		close_sep(struct servtab *);
+void		flag_signal(int);
+void		flag_config(int);
+void		config(void);
+int		cpmip(const struct servtab *, int);
+void		endconfig(void);
+struct servtab *enter(struct servtab *);
+void		freeconfig(struct servtab *);
+struct servtab *getconfigent(void);
+int		matchservent(const char *, const char *, const char *);
+char	       *nextline(FILE *);
+void		addchild(struct servtab *, int);
+void		flag_reapchild(int);
+void		reapchild(void);
+void		enable(struct servtab *);
+void		disable(struct servtab *);
+void		flag_retry(int);
+void		retry(void);
+int		setconfig(void);
+void		setup(struct servtab *);
 #ifdef IPSEC
-void		ipsecsetup __P((struct servtab *));
+void		ipsecsetup(struct servtab *);
 #endif
-void		unregisterrpc __P((register struct servtab *sep));
-static struct conninfo *search_conn __P((struct servtab *sep, int ctrl));
-static int	room_conn __P((struct servtab *sep, struct conninfo *conn));
-static void	addchild_conn __P((struct conninfo *conn, pid_t pid));
-static void	reapchild_conn __P((pid_t pid));
-static void	free_conn __P((struct conninfo *conn));
-static void	resize_conn __P((struct servtab *sep, int maxperip));
-static void	free_connlist __P((struct servtab *sep));
-static void	free_proc __P((struct procinfo *));
-static struct procinfo *search_proc __P((pid_t pid, int add));
-static int	hashval __P((char *p, int len));
+void		unregisterrpc(register struct servtab *sep);
+static struct conninfo *search_conn(struct servtab *sep, int ctrl);
+static int	room_conn(struct servtab *sep, struct conninfo *conn);
+static void	addchild_conn(struct conninfo *conn, pid_t pid);
+static void	reapchild_conn(pid_t pid);
+static void	free_conn(struct conninfo *conn);
+static void	resize_conn(struct servtab *sep, int maxperip);
+static void	free_connlist(struct servtab *sep);
+static void	free_proc(struct procinfo *);
+static struct procinfo *search_proc(pid_t pid, int add);
+static int	hashval(char *p, int len);
 
 int	allow_severity;
 int	deny_severity;

@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/demand.c,v 1.5 1999/08/28 01:19:02 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/demand.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/demand.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -61,7 +61,7 @@ struct packet {
 struct packet *pend_q;
 struct packet *pend_qtail;
 
-static int active_packet __P((unsigned char *, int));
+static int active_packet(unsigned char *, int);
 
 /*
  * demand_conf - configure the interface for doing dial-on-demand.

@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.1 2001/03/09 01:13:24 tmm Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -152,30 +152,30 @@ static Suff 	    *emptySuff;	/* The empty suffix required for POSIX
 				 * single-suffix transformation rules */
 
 
-static char *SuffStrIsPrefix __P((char *, char *));
-static char *SuffSuffIsSuffix __P((Suff *, char *));
-static int SuffSuffIsSuffixP __P((ClientData, ClientData));
-static int SuffSuffHasNameP __P((ClientData, ClientData));
-static int SuffSuffIsPrefix __P((ClientData, ClientData));
-static int SuffGNHasNameP __P((ClientData, ClientData));
-static void SuffFree __P((ClientData));
-static void SuffInsert __P((Lst, Suff *));
-static void SuffRemove __P((Lst, Suff *));
-static Boolean SuffParseTransform __P((char *, Suff **, Suff **));
-static int SuffRebuildGraph __P((ClientData, ClientData));
-static int SuffAddSrc __P((ClientData, ClientData));
-static int SuffRemoveSrc __P((Lst));
-static void SuffAddLevel __P((Lst, Src *));
-static Src *SuffFindThem __P((Lst, Lst));
-static Src *SuffFindCmds __P((Src *, Lst));
-static int SuffExpandChildren __P((ClientData, ClientData));
-static Boolean SuffApplyTransform __P((GNode *, GNode *, Suff *, Suff *));
-static void SuffFindDeps __P((GNode *, Lst));
-static void SuffFindArchiveDeps __P((GNode *, Lst));
-static void SuffFindNormalDeps __P((GNode *, Lst));
-static int SuffPrintName __P((ClientData, ClientData));
-static int SuffPrintSuff __P((ClientData, ClientData));
-static int SuffPrintTrans __P((ClientData, ClientData));
+static char *SuffStrIsPrefix(char *, char *);
+static char *SuffSuffIsSuffix(Suff *, char *);
+static int SuffSuffIsSuffixP(ClientData, ClientData);
+static int SuffSuffHasNameP(ClientData, ClientData);
+static int SuffSuffIsPrefix(ClientData, ClientData);
+static int SuffGNHasNameP(ClientData, ClientData);
+static void SuffFree(ClientData);
+static void SuffInsert(Lst, Suff *);
+static void SuffRemove(Lst, Suff *);
+static Boolean SuffParseTransform(char *, Suff **, Suff **);
+static int SuffRebuildGraph(ClientData, ClientData);
+static int SuffAddSrc(ClientData, ClientData);
+static int SuffRemoveSrc(Lst);
+static void SuffAddLevel(Lst, Src *);
+static Src *SuffFindThem(Lst, Lst);
+static Src *SuffFindCmds(Src *, Lst);
+static int SuffExpandChildren(ClientData, ClientData);
+static Boolean SuffApplyTransform(GNode *, GNode *, Suff *, Suff *);
+static void SuffFindDeps(GNode *, Lst);
+static void SuffFindArchiveDeps(GNode *, Lst);
+static void SuffFindNormalDeps(GNode *, Lst);
+static int SuffPrintName(ClientData, ClientData);
+static int SuffPrintSuff(ClientData, ClientData);
+static int SuffPrintTrans(ClientData, ClientData);
 
 	/*************** Lst Predicates ****************/
 /*-

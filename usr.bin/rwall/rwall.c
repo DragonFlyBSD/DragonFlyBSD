@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
  * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
- * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.2 2003/06/17 04:29:31 dillon Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
  */
 
 /*
@@ -62,9 +62,9 @@
 int mbufsize;
 char *mbuf;
 
-void	makemsg __P((char *));
-static void usage __P((void));
-char   *ttymsg __P((struct iovec *, int, char *, int));
+void	makemsg(char *);
+static void usage(void);
+char   *ttymsg(struct iovec *, int, char *, int);
 
 /* ARGSUSED */
 int

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
  */
 
 /*
@@ -52,18 +52,18 @@
 #define MAXBR	100	/* Max number of bracket pairs known */
 #define MAXCMDS	500	/* Max number of commands known */
 
-void addcmd __P((char *));
-void addmac __P((char *));
-int binsrch __P((char *));
-void checkknown __P((char *));
-void chkcmd __P((char *, char *));
-void complain __P((int));
-int eq __P((char *, char *));
-void nomatch __P((char *));
-void pe __P((int));
-void process __P((FILE *));
-void prop __P((int));
-static void usage __P((void));
+void addcmd(char *);
+void addmac(char *);
+int binsrch(char *);
+void checkknown(char *);
+void chkcmd(char *, char *);
+void complain(int);
+int eq(char *, char *);
+void nomatch(char *);
+void pe(int);
+void process(FILE *);
+void prop(int);
+static void usage(void);
 
 /*
  * The stack on which we remember what we've seen so far.

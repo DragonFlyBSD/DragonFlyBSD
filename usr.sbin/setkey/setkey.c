@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*
@@ -54,18 +54,18 @@
 
 #include "libpfkey.h"
 
-void Usage __P((void));
-int main __P((int, char **));
-int get_supported __P((void));
-void sendkeyshort __P((u_int));
-void promisc __P((void));
-int sendkeymsg __P((void));
-int postproc __P((struct sadb_msg *, int));
-const char *numstr __P((int));
-void shortdump_hdr __P((void));
-void shortdump __P((struct sadb_msg *));
-static void printdate __P((void));
-static int32_t gmt2local __P((time_t));
+void Usage(void);
+int main(int, char **);
+int get_supported(void);
+void sendkeyshort(u_int);
+void promisc(void);
+int sendkeymsg(void);
+int postproc(struct sadb_msg *, int);
+const char *numstr(int);
+void shortdump_hdr(void);
+void shortdump(struct sadb_msg *);
+static void printdate(void);
+static int32_t gmt2local(time_t);
 
 #define MODE_SCRIPT	1
 #define MODE_CMDDUMP	2
@@ -92,7 +92,7 @@ static time_t thiszone;
 
 extern int lineno;
 
-extern int parse __P((FILE **));
+extern int parse(FILE **);
 
 void
 Usage()

@@ -1,6 +1,6 @@
 /*	$KAME: prefix.h,v 1.4 2001/09/05 03:04:21 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/faithd/prefix.h,v 1.1.2.2 2002/04/28 05:40:29 suz Exp $	*/
-/*	$DragonFly: src/usr.sbin/faithd/prefix.h,v 1.2 2003/06/17 04:29:53 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/faithd/prefix.h,v 1.3 2003/11/03 19:31:37 eirikn Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
@@ -47,7 +47,7 @@ struct config {
 
 #define _PATH_PREFIX_CONF	"/etc/faithd.conf"
 
-extern const char *prefix_string __P((const struct prefix *));
-extern int prefix_match __P((const struct prefix *, const struct sockaddr *));
-extern int config_load __P((const char *));
-extern const struct config *config_match __P((struct sockaddr *, struct sockaddr *));
+extern const char *prefix_string(const struct prefix *);
+extern int prefix_match(const struct prefix *, const struct sockaddr *);
+extern int config_load(const char *);
+extern const struct config *config_match(struct sockaddr *, struct sockaddr *);

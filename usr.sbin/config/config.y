@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.3 2003/11/03 19:31:36 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -105,8 +105,8 @@ int	maxusers;
 
 #define ns(s)	strdup(s)
 
-static int connect __P((char *, int));
-static void yyerror __P((char *s));
+static int connect(char *, int);
+static void yyerror(char *s);
 
 
 %}

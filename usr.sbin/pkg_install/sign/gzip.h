@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/sign/gzip.h,v 1.1.2.2 2001/05/17 12:33:39 sobomax Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/gzip.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/sign/Attic/gzip.h,v 1.3 2003/11/03 19:31:39 eirikn Exp $ */
 /* $OpenBSD: gzip.h,v 1.2 1999/10/04 21:46:28 espie Exp $ */
 /*-
  * Copyright (c) 1999 Marc Espie.
@@ -69,21 +69,21 @@ struct signature {
 #define GZIP_SIGNED 		1	/* gzip file, signature parsed ok */
 #define GZIP_NOT_GZIP 		2	/* not a proper gzip file */
 #define GZIP_NOT_PGPSIGNED 	3	/* gzip file, unknown extension */
-extern int gzip_read_header __P((FILE *f, /*@out@*/struct mygzip_header *h, \
-	/*@null@*/struct signature **sign));
+extern int gzip_read_header(FILE *f, /*@out@*/struct mygzip_header *h, \
+	/*@null@*/struct signature **sign);
 /* gzip_write_header returns 1 for success */
-extern int gzip_write_header __P((FILE *f, const struct mygzip_header *h, \
-	/*@null@*/struct signature *sign));
+extern int gzip_write_header(FILE *f, const struct mygzip_header *h, \
+	/*@null@*/struct signature *sign);
 /*
  * Writing header to memory. Returns size needed, or 0 if buffer too small
  * buffer must be at least 14 characters
  */
-extern int gzip_copy_header __P((const struct mygzip_header *h, \
+extern int gzip_copy_header(const struct mygzip_header *h, \
 	/*@null@*/struct signature *sign, \
-	void (*add)(void *, const char *, size_t), void *data));
+	void (*add)(void *, const char *, size_t), void *data);
 
-extern void free_signature __P((/*@null@*/struct signature *sign));
-extern void sign_fill_tag __P((struct signature *sign));
+extern void free_signature(/*@null@*/struct signature *sign);
+extern void sign_fill_tag(struct signature *sign);
 #define KNOWN_TAGS 4
 #define TAG_PGP 0
 #define TAG_SHA1 1

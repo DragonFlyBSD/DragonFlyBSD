@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)strip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/strip/strip.c,v 1.12 1999/08/28 01:05:53 peter Exp $
- * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/strip/Attic/strip.c,v 1.4 2003/11/03 19:31:33 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -67,7 +67,7 @@ main(int argc, char **argv)
 {
 	register int fd, nb;
 	EXEC head;
-	void (*sfcn)__P((const char *, int, EXEC *));
+	void (*sfcn)(const char *, int, EXEC *);
 	int ch;
 	char *fn;
 

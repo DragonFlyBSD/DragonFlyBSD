@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
  */
 
 /*-
@@ -381,11 +381,11 @@ extern int debug;
  */
 #include "nonints.h"
 
-int Make_TimeStamp __P((GNode *, GNode *));
-Boolean Make_OODate __P((GNode *));
-int Make_HandleUse __P((GNode *, GNode *));
-void Make_Update __P((GNode *));
-void Make_DoAllVar __P((GNode *));
-Boolean Make_Run __P((Lst));
+int Make_TimeStamp(GNode *, GNode *);
+Boolean Make_OODate(GNode *);
+int Make_HandleUse(GNode *, GNode *);
+void Make_Update(GNode *);
+void Make_DoAllVar(GNode *);
+Boolean Make_Run(Lst);
 
 #endif /* _MAKE_H_ */
