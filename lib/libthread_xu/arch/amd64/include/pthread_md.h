@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/include/pthread_md.h,v 1.10 2004/08/25 23:42:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.2 2005/03/15 11:26:34 davidxu Exp $
  */
 
 /*
@@ -36,17 +36,14 @@
 
 #include <stddef.h>
 #include <sys/types.h>
-#include <sys/kse.h>
 #include <machine/sysarch.h>
-#include <ucontext.h>
 
 #define	DTV_OFFSET		offsetof(struct tcb, tcb_dtv)
 
 struct pthread;
-struct tdv;
 
 /*
- * %fs points to a struct tcb.
+ * Variant II tcb, %fs points to the struct. 
  */
 
 struct tcb {
@@ -57,17 +54,17 @@ struct tcb {
 };
 
 /*
- * Evaluates to the byte offset of the per-kse variable name.
+ * Evaluates to the byte offset of the per-tcb variable name.
  */
 #define	__tcb_offset(name)	__offsetof(struct tcb, name)
 
 /*
- * Evaluates to the type of the per-kse variable name.
+ * Evaluates to the type of the per-tcb variable name.
  */
 #define	__tcb_type(name)	__typeof(((struct tcb *)0)->name)
 
 /*
- * Evaluates to the value of the per-kse variable name.
+ * Evaluates to the value of the per-tcb variable name.
  */
 #define	TCB_GET64(name) ({					\
 	__tcb_type(name) __result;				\

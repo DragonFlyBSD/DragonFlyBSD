@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/i386/include/pthread_md.h,v 1.13 2004/11/06 03:35:51 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.3 2005/02/22 14:53:17 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.4 2005/03/15 11:26:34 davidxu Exp $
  */
 
 /*
@@ -42,7 +42,7 @@
 struct pthread;
 
 /*
- * %gs points to a struct tcb.
+ * Variant II tcb, %gs points to the struct.
  */
 struct tcb {
 	struct tcb		*tcb_self;	/* required by rtld */
@@ -52,17 +52,17 @@ struct tcb {
 };
 
 /*
- * Evaluates to the byte offset of the per-thread variable name.
+ * Evaluates to the byte offset of the per-tcb variable name.
  */
 #define	__tcb_offset(name)	__offsetof(struct tcb, name)
 
 /*
- * Evaluates to the type of the per-thread variable name.
+ * Evaluates to the type of the per-tcb variable name.
  */
 #define	__tcb_type(name)	__typeof(((struct tcb *)0)->name)
 
 /*
- * Evaluates to the value of the per-kse variable name.
+ * Evaluates to the value of the per-tcb variable name.
  */
 #define	TCB_GET32(name) ({					\
 	__tcb_type(name) __result;				\
