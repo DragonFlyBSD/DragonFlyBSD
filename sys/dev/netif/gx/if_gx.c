@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.12 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.13 2005/02/18 23:15:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -345,7 +346,8 @@ gx_attach(device_t dev)
 	ifp->if_watchdog = gx_watchdog;
 	ifp->if_init = gx_init;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_snd.ifq_maxlen = GX_TX_RING_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, GX_TX_RING_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* see if we can enable hardware checksumming */
 	if (gx->gx_vflags & GXF_CSUM) {
@@ -1446,7 +1448,7 @@ gx_intr(void *xsc)
 	/* Turn interrupts on. */
 	CSR_WRITE_4(gx, GX_INT_MASK_SET, GX_INT_WANTED);
 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if (ifp->if_flags & IFF_RUNNING && !ifq_is_empty(&ifp->if_snd))
 		gx_start(ifp);
 
 	splx(s);
@@ -1586,7 +1588,7 @@ gx_start(struct ifnet *ifp)
 	gx = ifp->if_softc;
 
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1596,10 +1598,10 @@ gx_start(struct ifnet *ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (gx_encap(gx, m_head) != 0) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
 
