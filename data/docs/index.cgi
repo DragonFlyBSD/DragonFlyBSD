@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.5 2004/02/20 17:28:40 drhodus Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.6 2004/02/20 18:44:50 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -8,7 +8,8 @@ $TITLE(The DragonFly BSD Project)
 <P>
 <TABLE>
 <TR>
-    <A HREF="upgrade.html">FreeBSD 4.9 Upgrade Instructions</A></TD>
+    <TD><A HREF="upgrade.html">FreeBSD 4.9 Upgrade Instructions</A></TD>
+    <TD><I>February 2003</I></TD>
 </TR>
 <TR>
     <TD>BAFUG Slides <A HREF="BAFUG1_SLIDES/">[HTML]</A>
