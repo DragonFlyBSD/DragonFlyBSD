@@ -1,8 +1,22 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.10 2004/07/12 19:53:16 hmp Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.11 2004/12/21 01:38:49 hmp Exp $
 
 $TITLE(The DragonFly BSD Project)
+
+<table border="0" width="100%" bgcolor="white">
+<tr><td align="center">
+	<h1>Ongoing DragonFly News</h1></td></tr>
+<tr><td>
+	<p>The <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly Digest</a>
+    has up to date information on recent events and changes.</p>
+
+	<p>A <a href="http://www.sitetronics.com/dfwiki/">Wiki</a> has been
+	started by the
+	<a href="http://www.bsdinstaller.org/">DragonFly Installer Team</a> for
+	things related to DragonFly.</a></p>
+</td></tr>
+</table>
 <table border="0" width="100%" bgcolor="white">
 <tr><td align="center">
     <h1>DragonFly-1.0 RELEASED!</h1>
