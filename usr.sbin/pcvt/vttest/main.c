@@ -16,7 +16,7 @@ choice to the address below.
 */
 
 /* $FreeBSD: src/usr.sbin/pcvt/vttest/main.c,v 1.4.6.1 2000/12/11 01:03:35 obrien Exp $ */
-/* $DragonFly: src/usr.sbin/pcvt/vttest/Attic/main.c,v 1.3 2004/01/23 19:57:41 joerg Exp $ */
+/* $DragonFly: src/usr.sbin/pcvt/vttest/Attic/main.c,v 1.4 2005/02/20 17:19:11 asmodai Exp $ */
 
 #include "header.h"
 
@@ -92,18 +92,11 @@ main() {
       ""
     };
 
-#ifdef UNIX
   initterminal(setjmp(intrenv));
   signal(SIGINT, onbrk);
   signal(SIGTERM, onterm);
   reading = 0;
-#else
-  initterminal(0);
-#endif
   do {
-#ifdef SARG20
-    ttybin(1);	/* set line to binary mode again. It's reset somehow!! */
-#endif
     ed(2);
     cup(5,10); printf("VT100 test program, version %s", VERSION);
     cup(7,10); println("Choose test type:");
@@ -821,9 +814,7 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
   ledmsg[4] = "L1";          ledseq[4] = "1";
   ledmsg[5] = "";            ledseq[5] = "";
 
-#ifdef UNIX
   fflush(stdout);
-#endif
   ed(2);
   cup(10,1);
   println("These LEDs (\"lamps\") on the keyboard should be on:");
@@ -882,11 +873,9 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
     sgr("");
   }
   cup(22,1);
-#ifdef UNIX
   sgttyNew.sg_flags &= ~CRMOD;
   sgttyNew.sg_flags &= ~ECHO;
   stty(0, &sgttyNew);
-#endif
   inflush();
   printf("Press each key, both shifted and unshifted. Finish with RETURN:");
   do { /* while (kbdc != 13) */
@@ -902,9 +891,6 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
       }
     }
   } while (kbdc != 13);
-#ifdef SARG10
-  inchar();  /* Local hack: Read LF that TOPS-10 adds to CR */
-#endif
   cup(23,1); el(0);
 
   for (ckeymode = 0; ckeymode <= 2; ckeymode++) {
@@ -984,10 +970,8 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
     }
   }
 
-#ifdef UNIX
   sgttyNew.sg_flags |= CRMOD;
   stty(0, &sgttyNew);
-#endif
   ed(2);
   cup(5,1);
   println("Finally, a check of the ANSWERBACK MESSAGE, which can be sent");
@@ -1001,10 +985,8 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
   println("the answerback message should be displayed in reverse mode.");
   println("Finish with a single RETURN.");
 
-#ifdef UNIX
   sgttyNew.sg_flags &= ~CRMOD;
   stty(0, &sgttyNew);
-#endif
   do {
     cup(17,1);
     inflush();
@@ -1022,29 +1004,17 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
     sgr("0");
   }
   cup(19,1);
-#ifdef UNIX
   sgttyNew.sg_flags |= CRMOD;
   stty(0, &sgttyNew);
-#endif
   println(
   "Push each CTRL-key TWICE. Note that you should be able to send *all*");
   println(
   "CTRL-codes twice, including CTRL-S (X-Off) and CTRL-Q (X-Off)!");
   println(
   "Finish with DEL (also called DELETE or RUB OUT), or wait 1 minute.");
-#ifdef UNIX
-#ifdef SIII
-  sgttyNew.sg_flags &= ~CBREAK;
-  stty(0, &sgttyNew);
-#endif
   sgttyNew.sg_flags |= RAW;
   stty(0, &sgttyNew);
-#endif
   ttybin(1);
-#ifdef SARG20
-  page(0);	/* Turn off all character processing at input */
-  superbin(1);	/* Turn off ^C (among others). Keep your fingers crossed!! */
-#endif
   do {
     cup(23,1); kbdc = inchar();
     cup(23,1); el(0);
@@ -1060,21 +1030,10 @@ TAB*    qQ   wW   eE   rR   tT   yY   uU   iI   oO   pP   [{   ]}      DEL
       printf("%s", ckeytab[kbdc].csymbol);
     }
   } while (kbdc != '\177');
-#ifdef UNIX
   sgttyNew.sg_flags &= ~RAW;
   sgttyNew.sg_flags |= ECHO;
   stty(0, &sgttyNew);
-#ifdef SIII
-  sgttyNew.sg_flags |= CBREAK;
-  stty(0, &sgttyNew);
-#endif
-#endif
   ttybin(0);
-#ifdef SARG20
-  superbin(0);	/* Puuuh! We made it!? */
-  page(1);	/* Back to normal input processing */
-  ttybin(1);	/* This must be the mode for DEC20 */
-#endif
   cup(24,1);
   okflag = 1;
   for (i = 0; i < 32; i++) if (ckeytab[i].ccount < 2) okflag = 0;
@@ -1120,10 +1079,8 @@ tst_reports() {
     { "", "" }
   };
 
-#ifdef UNIX
   sgttyNew.sg_flags &= ~ECHO;
   stty(0, &sgttyNew);
-#endif
   cup(5,1);
   println("This is a test of the ANSWERBACK MESSAGE. (To load the A.B.M.");
   println("see the TEST KEYBOARD part of this program). Below here, the");
@@ -1143,10 +1100,8 @@ tst_reports() {
   println("Test of LineFeed/NewLine mode.");
   cup(3,1);
   sm("20");
-#ifdef UNIX
   sgttyNew.sg_flags &= ~CRMOD;
   stty(0, &sgttyNew);
-#endif
   printf("NewLine mode set. Push the RETURN key: ");
   report = instr();
   cup(4,1);
@@ -1164,10 +1119,8 @@ tst_reports() {
   if (!strcmp(report, "\015")) printf(" -- OK");
   else                         printf(" -- Not expected");
   cup(9,1);
-#ifdef UNIX
   sgttyNew.sg_flags |= CRMOD;
   stty(0, &sgttyNew);
-#endif
   holdit();
 
   ed(2);
@@ -1274,10 +1227,8 @@ tst_reports() {
   }
   cup(24,1);
   holdit();
-#ifdef UNIX
   sgttyNew.sg_flags |= ECHO;
   stty(0, &sgttyNew);
-#endif
 }
 
 tst_vt52() {
@@ -1811,9 +1762,7 @@ tst_rst() {
   printf ("The terminal will now be RESET. ");
   holdit();
   ris();
-#ifdef UNIX
   fflush(stdout);
-#endif
   zleep(5000);		/* Wait 5.0 seconds */
   cup(10,1);
   println("The terminal is now RESET. Next, the built-in confidence test");
@@ -1821,9 +1770,7 @@ tst_rst() {
   holdit();
   ed(2);
   dectst(1);
-#ifdef UNIX
   fflush(stdout);
-#endif
   zleep(5000);		/* Wait 5.0 seconds */
   cup(10,1);
   println("If the built-in confidence test found any errors, a code");
@@ -1833,7 +1780,6 @@ tst_rst() {
 
 initterminal(pn) int pn; {
 
-#ifdef UNIX
   if (pn==0) {
     fflush(stdout);
     gtty(0,&sgttyOrg);
@@ -1847,28 +1793,6 @@ initterminal(pn) int pn; {
     sgttyNew.sg_flags = sgttyOrg.sg_flags | CBREAK;
     }
   stty(0,&sgttyNew);
-#ifdef SIII
-  close(2);
-  open(_PATH_TTY,O_RDWR|O_NDELAY);
-#endif
-#endif
-#ifdef SARG10
-  /* Set up neccesary TOPS-10 terminal parameters	*/
-
-  trmop(02041, `VT100`);	/* tty type vt100	*/
-  trmop(02002, 0);	/* tty no tape	*/
-  trmop(02003, 0);	/* tty lc	*/
-  trmop(02005, 1);	/* tty tab	*/
-  trmop(02010, 1);	/* tty no crlf	*/
-  trmop(02020, 0);	/* tty no tape	*/
-  trmop(02021, 1);	/* tty page	*/
-  trmop(02025, 0);	/* tty blanks	*/
-  trmop(02026, 1);	/* tty no alt	*/
-  trmop(02040, 1);	/* tty defer	*/
-#endif
-#ifdef SARG20
-  ttybin(1);	/* set line to binary mode */
-#endif
   /* Set up my personal prejudices	*/
 
   esc("<");	/* Enter ANSI mode (if in VT52 mode)	*/
@@ -1904,16 +1828,10 @@ bye () {
   printf("That's all, folks!\n");
   printf("\n\n\n");
   inflush();
-#ifdef SARG20
-  ttybin(0);	/* reset line to normal mode */
-#endif
-#ifdef UNIX
   stty(0,&sgttyOrg);
-#endif
   exit(0);
 }
 
-#ifdef UNIX
 void
 onbrk(int no) {
   signal(SIGINT, onbrk);
@@ -1928,7 +1846,6 @@ onterm(int no) {
   signal(SIGTERM, onterm);
   longjmp(intrenv, 1);
 }
-#endif
 
 holdit() {
   inflush();
@@ -1937,7 +1854,6 @@ holdit() {
 }
 
 readnl() {
-#ifdef UNIX
   char ch;
   fflush(stdout);
   brkrd = 0;
@@ -1946,15 +1862,6 @@ readnl() {
   if (brkrd)
     kill(getpid(), SIGTERM);
   reading = 0;
-#endif
-#ifdef SARG10
- while (getchar() != '\n')
- ;
-#endif
-#ifdef SARG20
- while (getchar() != '\n')
-   ;
-#endif
 }
 
 scanto(str, pos, toc) char *str; int *pos; char toc; {
