@@ -38,7 +38,7 @@
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
  * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -96,7 +96,7 @@ char bits[] = {				/* used to extract bits from a char */
 };
 int pflag;				/* 1 to preserve parity bits */
 
-unsigned char des_buf[8];	/* shared buffer for get_des_char/put_des_char */
+char des_buf[8];		/* shared buffer for get_des_char/put_des_char */
 int des_ct = 0;			/* count for get_des_char/put_des_char */
 int des_n = 0;			/* index for put_des_char/get_des_char */
 
@@ -129,7 +129,7 @@ get_des_char(FILE *fp)
 		des_n = 0;
 		des_ct = cbc_decode(des_buf, fp);
 	}
-	return (des_ct > 0) ? des_buf[des_n++] : EOF;
+	return (des_ct > 0) ? (unsigned char)des_buf[des_n++] : EOF;
 #else
 	return (getc(fp));
 #endif
@@ -145,7 +145,7 @@ put_des_char(int c, FILE *fp)
 		des_ct = cbc_encode(des_buf, des_n, fp);
 		des_n = 0;
 	}
-	return (des_ct >= 0) ? (des_buf[des_n++] = c) : EOF;
+	return (des_ct >= 0) ? ((unsigned char)des_buf[des_n++] = c) : EOF;
 #else
 	return (fputc(c, fp));
 #endif
@@ -199,7 +199,7 @@ get_keyword(void)
  * print a warning message and, possibly, terminate
  */
 void
-des_error(char *s)
+des_error(const char *s)
 {
 	(void)sprintf(errmsg, "%s", s ? s : strerror(errno));
 }
@@ -238,7 +238,7 @@ hex_to_binary(int c, int radix)
  * convert the key to a bit pattern
  */
 void
-expand_des_key(char *obuf, char *ibuf)
+expand_des_key(char *obuf, char *inbuf)
 {
 	register int i, j;		/* counter in a for loop */
 	int nbuf[64];			/* used for hex/key translation */
@@ -246,13 +246,13 @@ expand_des_key(char *obuf, char *ibuf)
 	/*
 	 * leading '0x' or '0X' == hex key
 	 */
-	if (ibuf[0] == '0' && (ibuf[1] == 'x' || ibuf[1] == 'X')) {
-		ibuf = &ibuf[2];
+	if (inbuf[0] == '0' && (inbuf[1] == 'x' || inbuf[1] == 'X')) {
+		inbuf = &inbuf[2];
 		/*
 		 * now translate it, bombing on any illegal hex digit
 		 */
-		for (i = 0; ibuf[i] && i < 16; i++)
-			if ((nbuf[i] = hex_to_binary((int) ibuf[i], 16)) == -1)
+		for (i = 0; inbuf[i] && i < 16; i++)
+			if ((nbuf[i] = hex_to_binary((int) inbuf[i], 16)) == -1)
 				des_error("bad hex digit in key");
 		while (i < 16)
 			nbuf[i++] = 0;
@@ -266,13 +266,13 @@ expand_des_key(char *obuf, char *ibuf)
 	/*
 	 * leading '0b' or '0B' == binary key
 	 */
-	if (ibuf[0] == '0' && (ibuf[1] == 'b' || ibuf[1] == 'B')) {
-		ibuf = &ibuf[2];
+	if (inbuf[0] == '0' && (inbuf[1] == 'b' || inbuf[1] == 'B')) {
+		inbuf = &inbuf[2];
 		/*
 		 * now translate it, bombing on any illegal binary digit
 		 */
-		for (i = 0; ibuf[i] && i < 16; i++)
-			if ((nbuf[i] = hex_to_binary((int) ibuf[i], 2)) == -1)
+		for (i = 0; inbuf[i] && i < 16; i++)
+			if ((nbuf[i] = hex_to_binary((int) inbuf[i], 2)) == -1)
 				des_error("bad binary digit in key");
 		while (i < 64)
 			nbuf[i++] = 0;
@@ -286,7 +286,7 @@ expand_des_key(char *obuf, char *ibuf)
 	/*
 	 * no special leader -- ASCII
 	 */
-	(void)strncpy(obuf, ibuf, 8);
+	(void)strncpy(obuf, inbuf, 8);
 }
 
 /*****************
@@ -371,7 +371,7 @@ cbc_encode(char *msgbuf, int n, FILE *fp)
 int
 cbc_decode(char *msgbuf, FILE *fp)
 {
-	Desbuf ibuf;	/* temp buffer for initialization vector */
+	Desbuf inbuf;	/* temp buffer for initialization vector */
 	register int n;		/* number of bytes actually read */
 	register int c;		/* used to test for EOF */
 	int inverse = 1;	/* 0 to encrypt, 1 to decrypt */
@@ -380,11 +380,11 @@ cbc_decode(char *msgbuf, FILE *fp)
 		/*
 		 * do the transformation
 		 */
-		MEMCPY(BUFFER(ibuf), BUFFER(msgbuf), 8);
+		MEMCPY(BUFFER(inbuf), BUFFER(msgbuf), 8);
 		DES_XFORM(UBUFFER(msgbuf));
 		for (c = 0; c < 8; c++)
 			UCHAR(msgbuf, c) ^= UCHAR(ivec, c);
-		MEMCPY(BUFFER(ivec), BUFFER(ibuf), 8);
+		MEMCPY(BUFFER(ivec), BUFFER(inbuf), 8);
 		/*
 		 * if the last one, handle it specially
 		 */

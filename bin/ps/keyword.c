@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.9 2003/11/21 22:46:10 dillon Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.10 2004/03/19 17:47:49 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -191,7 +191,7 @@ showkey(void)
 {
 	VAR *v;
 	int i;
-	char *p, *sep;
+	const char *p, *sep;
 
 	i = 0;
 	sep = "";
@@ -208,9 +208,15 @@ showkey(void)
 }
 
 void
-parsefmt(char *p)
+parsefmt(const char *fmt)
 {
 	static struct varent *vtail;
+	char *p, *op;
+
+	op = p = strdup(fmt);
+
+	if (p == NULL)
+		errx(1, "Not enough memory");
 
 #define	FMTSEP	" \t,\n"
 	while (p && *p) {
@@ -238,6 +244,8 @@ parsefmt(char *p)
 		showkey();
 		exit(1);
 	}
+
+	free(op);
 }
 
 static VAR *
@@ -245,7 +253,6 @@ findvar(char *p)
 {
 	VAR *v, key;
 	char *hp;
-	int vcmp();
 
 	hp = strchr(p, '=');
 	if (hp)
@@ -273,5 +280,5 @@ findvar(char *p)
 static int
 vcmp(const void *a, const void *b)
 {
-        return (strcmp(((VAR *)a)->name, ((VAR *)b)->name));
+        return (strcmp(((const VAR *)a)->name, ((const VAR *)b)->name));
 }

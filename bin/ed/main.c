@@ -28,7 +28,7 @@
  * @(#) Copyright (c) 1993 Andrew Moore, Talke Studio. All rights reserved.
  * @(#)main.c,v 1.1 1994/02/01 00:34:42 alm Exp
  * $FreeBSD: src/bin/ed/main.c,v 1.14.2.4 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/main.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/ed/main.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
  */
 
 /*
@@ -90,8 +90,8 @@ char old_filename[PATH_MAX] = "";	/* default filename */
 long current_addr;		/* current address in editor buffer */
 long addr_last;			/* last address in editor buffer */
 int lineno;			/* script line number */
-char *prompt;			/* command-line prompt */
-char *dps = "*";		/* default command-line prompt */
+const char *prompt;		/* command-line prompt */
+const char *dps = "*";		/* default command-line prompt */
 
 const char usage[] = "usage: %s [-] [-sx] [-p string] [name]\n";
 
@@ -1310,7 +1310,7 @@ has_trailing_escape(char *s, char *t)
 
 /* strip_escapes: return copy of escaped string of at most length PATH_MAX */
 char *
-strip_escapes(char *s)
+strip_escapes(const char *s)
 {
 	static char *file = NULL;
 	static int filesz = 0;

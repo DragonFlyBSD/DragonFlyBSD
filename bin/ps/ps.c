@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.5 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.6 2004/03/19 17:47:49 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ static int forceuread=1;
 
 enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
 
-static char	*fmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
+static const char *getfmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
 		    KINFO *, char *, int);
 static char	*kludge_oldps_options (char *);
 static int	 pscomp (const void *, const void *);
@@ -96,13 +96,13 @@ static void	 sizevars (void);
 static void	 usage (void);
 static uid_t	*getuids(const char *, int *);
 
-char dfmt[] = "pid tt state time command";
-char jfmt[] = "user pid ppid pgid sess jobc state tt time command";
-char lfmt[] = "uid pid ppid cpu pri nice vsz rss wchan state tt time command";
-char   o1[] = "pid";
-char   o2[] = "tt state time command";
-char ufmt[] = "user pid %cpu %mem vsz rss tt state start time command";
-char vfmt[] = "pid state time sl re pagein vsz rss lim tsiz %cpu %mem command";
+static char dfmt[] = "pid tt state time command";
+static char jfmt[] = "user pid ppid pgid sess jobc state tt time command";
+static char lfmt[] = "uid pid ppid cpu pri nice vsz rss wchan state tt time command";
+static char   o1[] = "pid";
+static char   o2[] = "tt state time command";
+static char ufmt[] = "user pid %cpu %mem vsz rss tt state start time command";
+static char vfmt[] = "pid state time sl re pagein vsz rss lim tsiz %cpu %mem command";
 
 kvm_t *kd;
 
@@ -117,7 +117,8 @@ main(int argc, char **argv)
 	uid_t *uids;
 	int all, ch, flag, i, fmt, lineno, nentries, nocludge, dropgid;
 	int prtheader, wflag, what, xflg, uid, nuids;
-	char *cp, *nlistf, *memf, errbuf[_POSIX2_LINE_MAX];
+	char errbuf[_POSIX2_LINE_MAX];
+	const char *cp, *nlistf, *memf;
 
 	(void) setlocale(LC_ALL, "");
 
@@ -232,14 +233,16 @@ main(int argc, char **argv)
 			/* FALLTHROUGH */
 		case 't': {
 			struct stat sb;
-			char *ttypath, pathbuf[PATH_MAX];
+			char pathbuf[PATH_MAX];
+			const char *ttypath;
 
 			if (strcmp(optarg, "co") == 0)
 				ttypath = _PATH_CONSOLE;
-			else if (*optarg != '/')
-				(void)snprintf(ttypath = pathbuf,
+			else if (*optarg != '/') {
+				snprintf(pathbuf,
 				    sizeof(pathbuf), "%s%s", _PATH_TTY, optarg);
-			else
+				ttypath = pathbuf;
+			} else
 				ttypath = optarg;
 			if (stat(ttypath, &sb) == -1)
 				err(1, "%s", ttypath);
@@ -399,7 +402,8 @@ getuids(const char *arg, int *nuids)
 	char name[UT_NAMESIZE + 1];
 	struct passwd *pwd;
 	uid_t *uids, *moreuids;
-	int l, alloc;
+	size_t l;
+	int alloc;
 
 
 	alloc = 0;
@@ -490,11 +494,11 @@ sizevars(void)
 	totwidth--;
 }
 
-static char *
-fmt(char **(*fn) (kvm_t *, const struct kinfo_proc *, int), KINFO *ki, char
+static const char *
+getfmt(char **(*fn) (kvm_t *, const struct kinfo_proc *, int), KINFO *ki, char
     *comm, int maxlen)
 {
-	char *s;
+	const char *s;
 
 	if ((s =
 	    fmt_argv((*fn)(kd, ki->ki_p, termwidth), comm, maxlen)) == NULL)
@@ -528,19 +532,20 @@ saveuser(KINFO *ki)
 	 * save arguments if needed
 	 */
 	if (needcomm && (UREADOK(ki) || (KI_PROC(ki)->p_args != NULL))) {
-		ki->ki_args = fmt(kvm_getargv, ki, KI_THREAD(ki)->td_comm,
+		ki->ki_args = getfmt(kvm_getargv, ki, KI_THREAD(ki)->td_comm,
 		    MAXCOMLEN);
 	} else if (needcomm) {
-		ki->ki_args = malloc(strlen(KI_THREAD(ki)->td_comm) + 3);
-		sprintf(ki->ki_args, "(%s)", KI_THREAD(ki)->td_comm);
+		char *tmp;
+		tmp = malloc(strlen(KI_THREAD(ki)->td_comm) + 3);
+		sprintf(tmp, "(%s)", KI_THREAD(ki)->td_comm);
+		ki->ki_args = tmp;
 	} else {
 		ki->ki_args = NULL;
 	}
 	if (needenv && UREADOK(ki)) {
-		ki->ki_env = fmt(kvm_getenvv, ki, (char *)NULL, 0);
+		ki->ki_env = getfmt(kvm_getenvv, ki, (char *)NULL, 0);
 	} else if (needenv) {
-		ki->ki_env = malloc(3);
-		strcpy(ki->ki_env, "()");
+		ki->ki_env = "()";
 	} else {
 		ki->ki_env = NULL;
 	}
@@ -554,12 +559,12 @@ pscomp(const void *a, const void *b)
 		  KI_EPROC(k)->e_vm.vm_tsize)
 
 	if (sortby == SORTCPU)
-		return (getpcpu((KINFO *)b) - getpcpu((KINFO *)a));
+		return (getpcpu((const KINFO *)b) - getpcpu((const KINFO *)a));
 	if (sortby == SORTMEM)
-		return (VSIZE((KINFO *)b) - VSIZE((KINFO *)a));
-	i =  KI_EPROC((KINFO *)a)->e_tdev - KI_EPROC((KINFO *)b)->e_tdev;
+		return (VSIZE((const KINFO *)b) - VSIZE((const KINFO *)a));
+	i =  KI_EPROC((const KINFO *)a)->e_tdev - KI_EPROC((const KINFO *)b)->e_tdev;
 	if (i == 0)
-		i = KI_PROC((KINFO *)a)->p_pid - KI_PROC((KINFO *)b)->p_pid;
+		i = KI_PROC((const KINFO *)a)->p_pid - KI_PROC((const KINFO *)b)->p_pid;
 	return (i);
 }
 

@@ -32,13 +32,17 @@
  *
  * @(#)nlist.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/nlist.c,v 1.12.6.2 2001/08/01 05:04:48 obrien Exp $
- * $DragonFly: src/bin/ps/nlist.c,v 1.3 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/ps/nlist.c,v 1.4 2004/03/19 17:47:49 cpressey Exp $
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/sysctl.h>
 
 #include <stddef.h>
+
+#include "ps.h"
 
 fixpt_t	ccpu;				/* kernel _ccpu variable */
 int	nlistread;			/* if nlist already read. */

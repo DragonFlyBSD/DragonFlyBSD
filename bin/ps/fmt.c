@@ -32,7 +32,7 @@
  *
  * @(#)fmt.c	8.4 (Berkeley) 4/15/94
  * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
- * $DragonFly: src/bin/ps/fmt.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/ps/fmt.c,v 1.5 2004/03/19 17:47:49 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +57,7 @@ static char *
 shquote(char **argv)
 {
 	static long arg_max = -1;
-	long len;
+	size_t len;
 	char **p, *dst, *src;
 	static char *buf = NULL;
 
@@ -99,7 +99,7 @@ cmdpart(char *arg0)
 	return ((cp = strrchr(arg0, '/')) != NULL ? cp + 1 : arg0);
 }
 
-char *
+const char *
 fmt_argv(char **argv, char *cmd, int maxlen)
 {
 	int len;

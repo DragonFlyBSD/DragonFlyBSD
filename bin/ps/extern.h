@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.4 2003/09/21 04:24:47 drhodus Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.5 2004/03/19 17:47:49 cpressey Exp $
  */
 
 struct kinfo;
@@ -47,43 +47,43 @@ extern VAR var[];
 extern VARENT *vhead;
 
 __BEGIN_DECLS
-void	 command (KINFO *, VARENT *);
-void	 cputime (KINFO *, VARENT *);
+void	 command (const KINFO *, const VARENT *);
+void	 cputime (const KINFO *, const VARENT *);
 int	 donlist (void);
-void	 evar (KINFO *, VARENT *);
-char	*fmt_argv (char **, char *, int);
-double	 getpcpu (KINFO *);
-double	 getpmem (KINFO *);
-void	 logname (KINFO *, VARENT *);
-void	 longtname (KINFO *, VARENT *);
-void	 lstarted (KINFO *, VARENT *);
-void	 maxrss (KINFO *, VARENT *);
+void	 evar (const KINFO *, const VARENT *);
+const char *fmt_argv (char **, char *, int);
+double	 getpcpu (const KINFO *);
+double	 getpmem (const KINFO *);
+void	 logname (const KINFO *, const VARENT *);
+void	 longtname (const KINFO *, const VARENT *);
+void	 lstarted (const KINFO *, const VARENT *);
+void	 maxrss (const KINFO *, const VARENT *);
 void	 nlisterr (struct nlist *);
-void	 p_rssize (KINFO *, VARENT *);
-void	 pagein (KINFO *, VARENT *);
-void	 parsefmt (char *);
-void	 pcpu (KINFO *, VARENT *);
-void	 pnice (KINFO *, VARENT *);
-void	 pmem (KINFO *, VARENT *);
-void	 pri (KINFO *, VARENT *);
-void	 rtprior (KINFO *, VARENT *);
+void	 p_rssize (const KINFO *, const VARENT *);
+void	 pagein (const KINFO *, const VARENT *);
+void	 parsefmt (const char *);
+void	 pcpu (const KINFO *, const VARENT *);
+void	 pnice (const KINFO *, const VARENT *);
+void	 pmem (const KINFO *, const VARENT *);
+void	 pri (const KINFO *, const VARENT *);
+void	 rtprior (const KINFO *, const VARENT *);
 void	 printheader (void);
-void	 pvar (KINFO *, VARENT *);
-void	 tvar (KINFO *, VARENT *);
-void	 rssize (KINFO *, VARENT *);
-void	 runame (KINFO *, VARENT *);
-int	 s_runame (KINFO *);
-void	 rvar (KINFO *, VARENT *);
+void	 pvar (const KINFO *, const VARENT *);
+void	 tvar (const KINFO *, const VARENT *);
+void	 rssize (const KINFO *, const VARENT *);
+void	 runame (const KINFO *, const VARENT *);
+int	 s_runame (const KINFO *);
+void	 rvar (const KINFO *, const VARENT *);
 void	 showkey (void);
-void	 started (KINFO *, VARENT *);
-void	 state (KINFO *, VARENT *);
-void	 tdev (KINFO *, VARENT *);
-void	 tname (KINFO *, VARENT *);
-void	 tsize (KINFO *, VARENT *);
-void	 ucomm (KINFO *, VARENT *);
-void	 uname (KINFO *, VARENT *);
-int	 s_uname (KINFO *);
-void	 uvar (KINFO *, VARENT *);
-void	 vsize (KINFO *, VARENT *);
-void	 wchan (KINFO *, VARENT *);
+void	 started (const KINFO *, const VARENT *);
+void	 state (const KINFO *, const VARENT *);
+void	 tdev (const KINFO *, const VARENT *);
+void	 tname (const KINFO *, const VARENT *);
+void	 tsize (const KINFO *, const VARENT *);
+void	 ucomm (const KINFO *, const VARENT *);
+void	 uname (const KINFO *, const VARENT *);
+int	 s_uname (const KINFO *);
+void	 uvar (const KINFO *, const VARENT *);
+void	 vsize (const KINFO *, const VARENT *);
+void	 wchan (const KINFO *, const VARENT *);
 __END_DECLS

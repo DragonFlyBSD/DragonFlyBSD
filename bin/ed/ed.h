@@ -26,7 +26,7 @@
  *
  *	@(#)ed.h,v 1.5 1994/02/01 00:34:39 alm Exp
  * $FreeBSD: src/bin/ed/ed.h,v 1.13.2.1 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/ed.h,v 1.4 2003/11/14 03:54:26 dillon Exp $
+ * $DragonFly: src/bin/ed/ed.h,v 1.5 2004/03/19 17:47:48 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -193,7 +193,7 @@ void clear_undo_stack (void);
 int close_sbuf (void);
 int copy_lines (long);
 int delete_lines (long, long);
-void des_error (char *);
+void des_error (const char *);
 int display_lines (long, long, int);
 line_t *dup_line_node (line_t *);
 int exec_command (void);
@@ -229,7 +229,7 @@ int is_legal_filename (char *);
 int join_lines (long, long);
 int mark_line_node (line_t *, int);
 int move_lines (long);
-line_t *next_active_node ();
+line_t *next_active_node (void);
 long next_addr (void);
 int open_sbuf (void);
 char *parse_char_class (char *);
@@ -247,12 +247,12 @@ int set_active_node (line_t *);
 void set_des_key (char *);
 void signal_hup (int);
 void signal_int (int);
-char *strip_escapes (char *);
+char *strip_escapes (const char *);
 int substitute_matching_text (pattern_t *, line_t *, int, int);
 char *translit_text (char *, int, int, int);
 void unmark_line_node (line_t *);
 void unset_active_nodes (line_t *, line_t *);
-long write_file (char *, char *, long, long);
+long write_file (const char *, const char *, long, long);
 long write_stream (FILE *, long, long);
 
 /* global buffers */

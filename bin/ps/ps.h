@@ -32,7 +32,7 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.4 2003/09/21 04:24:47 drhodus Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.5 2004/03/19 17:47:49 cpressey Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
@@ -52,9 +52,9 @@ struct usave {
 
 typedef struct kinfo {
 	struct kinfo_proc *ki_p;	/* proc structure */
-	struct usave ki_u;	/* interesting parts of user */
-	char *ki_args;		/* exec args */
-	char *ki_env;		/* environment */
+	struct usave ki_u;		/* interesting parts of user */
+	const char *ki_args;		/* exec args */
+	const char *ki_env;		/* environment */
 } KINFO;
 
 /* Variables. */
@@ -64,29 +64,29 @@ typedef struct varent {
 } VARENT;
 
 typedef struct var {
-	char	*name;		/* name(s) of variable */
-	char	*header;	/* default header */
-	char	*alias;		/* aliases */
-#define	COMM	0x01		/* needs exec arguments and environment (XXX) */
-#define	LJUST	0x02		/* left adjust on output (trailing blanks) */
-#define	USER	0x04		/* needs user structure */
-#define	DSIZ	0x08		/* field size is dynamic*/
-	u_int	flag;
-				/* output routine */
-	void	(*oproc) (struct kinfo *, struct varent *);
-				/* sizing routine*/
-	int	(*sproc) (struct kinfo *);
-	short	width;		/* printing width */
+	const char  *name;		/* name(s) of variable */
+	const char  *header;		/* default header */
+	const char  *alias;		/* aliases */
+#define	COMM	    0x01		/* needs exec arguments and environment (XXX) */
+#define	LJUST	    0x02		/* left adjust on output (trailing blanks) */
+#define	USER	    0x04		/* needs user structure */
+#define	DSIZ	    0x08		/* field size is dynamic*/
+	u_int	    flag;
+					/* output routine */
+	void	    (*oproc) (struct kinfo *, struct varent *);
+					/* sizing routine*/
+	int	    (*sproc) (struct kinfo *);
+	short	    width;		/* printing width */
 	/*
 	 * The following (optional) elements are hooks for passing information
 	 * to the generic output routines: pvar, evar, uvar (those which print
 	 * simple elements from well known structures: proc, eproc, usave)
 	 */
-	int	off;		/* offset in structure */
-	enum	type type;	/* type of element */
-	char	*fmt;		/* printf format */
-	char	*time;		/* time format */
-	short	dwidth;		/* dynamic printing width */
+	int	    off;		/* offset in structure */
+	enum	    type type;		/* type of element */
+	const char  *fmt;		/* printf format */
+	const char  *time;		/* time format */
+	short	    dwidth;		/* dynamic printing width */
 	/*
 	 * glue to link selected fields together
 	 */

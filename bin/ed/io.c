@@ -26,7 +26,7 @@
  *
  * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
  * $FreeBSD: src/bin/ed/io.c,v 1.10 1999/08/27 23:14:14 peter Exp $
- * $DragonFly: src/bin/ed/io.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/ed/io.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
  */
 
 #include "ed.h"
@@ -145,7 +145,7 @@ get_stream_line(FILE *fp)
 
 /* write_file: write a range of lines to a named file/pipe; return line count */
 long
-write_file(char *fn, char *mode, long n, long m)
+write_file(const char *fn, const char *mode, long n, long m)
 {
 	FILE *fp;
 	long size;
