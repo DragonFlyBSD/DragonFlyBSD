@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.4 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.5 2004/09/17 01:03:58 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -66,6 +66,9 @@ static void	pffasttimo (void *);
 static void	pfslowtimo (void *);
 
 struct domain *domains;
+
+static struct callout pffasttimo_ch;
+static struct callout pfslowtimo_ch;
 
 /*
  * Add a new protocol domain to the list of supported domains
@@ -138,8 +141,10 @@ domaininit(void *dummy)
 	if (max_linkhdr < 16)		/* XXX */
 		max_linkhdr = 16;
 
-	timeout(pffasttimo, (void *)0, 1);
-	timeout(pfslowtimo, (void *)0, 1);
+	callout_init(&pffasttimo_ch);
+	callout_init(&pfslowtimo_ch);
+	callout_reset(&pffasttimo_ch, 1, pffasttimo, NULL);
+	callout_reset(&pfslowtimo_ch, 1, pfslowtimo, NULL);
 }
 
 
@@ -241,7 +246,7 @@ pfslowtimo(arg)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_slowtimo)
 				(*pr->pr_slowtimo)();
-	timeout(pfslowtimo, (void *)0, hz/2);
+	callout_reset(&pfslowtimo_ch, hz / 2, pfslowtimo, NULL);
 }
 
 static void
@@ -255,5 +260,5 @@ pffasttimo(arg)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_fasttimo)
 				(*pr->pr_fasttimo)();
-	timeout(pffasttimo, (void *)0, hz/5);
+	callout_reset(&pffasttimo_ch, hz / 5, pffasttimo, NULL);
 }
