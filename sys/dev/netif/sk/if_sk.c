@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.24 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.25 2005/02/20 01:49:21 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -99,6 +99,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1502,7 +1503,8 @@ static int sk_attach(dev)
 	ifp->if_watchdog = sk_watchdog;
 	ifp->if_init = sk_init;
 	ifp->if_baudrate = 1000000000;
-	ifp->if_snd.ifq_maxlen = SK_TX_RING_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, SK_TX_RING_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do miibus setup.
@@ -1856,7 +1858,7 @@ static void sk_start(ifp)
 	idx = sc_if->sk_cdata.sk_tx_prod;
 
 	while(sc_if->sk_cdata.sk_tx_chain[idx].sk_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1866,10 +1868,10 @@ static void sk_start(ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (sk_encap(sc_if, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		BPF_MTAP(ifp, m_head);
 	}
@@ -2244,9 +2246,9 @@ static void sk_intr(xsc)
 
 	CSR_WRITE_4(sc, SK_IMR, sc->sk_intrmask);
 
-	if (ifp0 != NULL && ifp0->if_snd.ifq_head != NULL)
+	if (ifp0 != NULL && !ifq_is_empty(&ifp0->if_snd))
 		sk_start(ifp0);
-	if (ifp1 != NULL && ifp1->if_snd.ifq_head != NULL)
+	if (ifp1 != NULL && !ifq_is_empty(&ifp0->if_snd))
 		sk_start(ifp1);
 
 	return;
