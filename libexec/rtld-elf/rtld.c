@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.7 2004/01/20 21:32:46 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.8 2004/11/18 10:01:47 dillon Exp $
  */
 
 /*
@@ -1438,7 +1438,21 @@ relocate_objects(Obj_Entry *first, bool bind_now)
 	if (reloc_non_plt(obj, &obj_rtld))
 		return -1;
 
-	if (obj->textrel) {	/* Re-protected the text segment. */
+	/*
+	 * Reprotect the text segment.  Make sure it is included in the
+	 * core dump since we modified it.  This unfortunately causes the
+	 * entire text segment to core-out but we don't have much of a
+	 * choice.  We could try to only reenable core dumps on pages
+	 * in which relocations occured but that is likely most of the text
+	 * pages anyway, and even that would not work because the rest of
+	 * the text pages would wind up as a read-only OBJT_DEFAULT object
+	 * (created due to our modifications) backed by the original OBJT_VNODE
+	 * object, and the ELF coredump code is currently only able to dump
+	 * vnode records for pure vnode-backed mappings, not vnode backings
+	 * to memory objects.
+	 */
+	if (obj->textrel) {
+	    madvise(obj->mapbase, obj->textsize, MADV_CORE);
 	    if (mprotect(obj->mapbase, obj->textsize,
 	      PROT_READ|PROT_EXEC) == -1) {
 		_rtld_error("%s: Cannot write-protect text segment: %s",

@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.7.2.2 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.3 2003/09/18 21:22:56 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.4 2004/11/18 10:01:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -180,18 +180,24 @@ map_object(int fd, const char *path, const struct stat *sb)
 	clear_page = mapbase + (trunc_page(clear_vaddr) - base_vaddr);
 	if ((nclear = data_vlimit - clear_vaddr) > 0) {
 	    /* Make sure the end of the segment is writable */
-	    if ((data_prot & PROT_WRITE) == 0 &&
-		-1 ==  mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE)) {
+	    if ((data_prot & PROT_WRITE) == 0) {
+		if (mprotect(clear_page, PAGE_SIZE, data_prot|PROT_WRITE) < 0) {
 			_rtld_error("%s: mprotect failed: %s", path,
 			    strerror(errno));
 			return NULL;
+		}
 	    }
 
 	    memset(clear_addr, 0, nclear);
 
-	    /* Reset the data protection back */
-	    if ((data_prot & PROT_WRITE) == 0)
-		 mprotect(clear_page, PAGE_SIZE, data_prot);
+	    /*
+	     * reset the data protection back, enable the segment to be
+	     * coredumped since we modified it.
+	     */
+	    if ((data_prot & PROT_WRITE) == 0) {
+		madvise(clear_page, PAGE_SIZE, MADV_CORE);
+		mprotect(clear_page, PAGE_SIZE, data_prot);
+	    }
 	}
 
 	/* Overlay the BSS segment onto the proper region. */
