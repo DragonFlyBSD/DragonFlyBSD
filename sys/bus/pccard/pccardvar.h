@@ -1,6 +1,6 @@
-/*	$NetBSD: pcmciavar.h,v 1.9 1998/12/29 09:00:28 marc Exp $	*/
-/* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.6.2.3 2002/09/01 05:45:51 imp Exp $ */
-/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
+/*	$NetBSD: pcmciavar.h,v 1.12 2000/02/08 12:51:31 enami Exp $	*/
+/* $FreeBSD: src/sys/dev/pccard/pccardvar.h,v 1.34 2002/11/14 05:15:50 imp Exp $ */
+/* $DragonFly: src/sys/bus/pccard/pccardvar.h,v 1.3 2004/02/10 07:55:45 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -61,7 +61,8 @@ struct pccard_mem_handle {
 	bus_addr_t      addr;		/* resulting address in bus space */
 	bus_size_t      size;		/* size of mem space */
 	bus_size_t      realsize;	/* how much we really allocated */
-	long		offset;
+	long		offset;		/* mapped Offset on card */
+	bus_addr_t	cardaddr;	/* Absolute address on card */
 	int		kind;
 };
 
@@ -104,7 +105,27 @@ struct pccard_config_entry {
 		u_long	hostaddr;
 	} memspace[2];		/* XXX this could be as high as 8 */
 	int		maxtwins;
+	struct resource *iores[4];
+	int		iorid[4];
+	struct resource *irqres;
+	int		irqrid;
+	struct resource *memres[2];
+	int		memrid[2];
 	STAILQ_ENTRY(pccard_config_entry) cfe_list;
+};
+
+struct pccard_funce_disk {
+	int pfd_interface;
+};
+
+struct pccard_funce_lan {
+	int pfl_nidlen;
+	u_int8_t pfl_nid[8];
+};
+
+union pccard_funce {
+	struct pccard_funce_disk pfv_disk;
+	struct pccard_funce_lan pfv_lan;
 };
 
 struct pccard_function {
@@ -112,8 +133,8 @@ struct pccard_function {
 	int		number;
 	int		function;
 	int		last_config_index;
-	u_long		ccr_base;
-	u_long		ccr_mask;
+	uint32_t	ccr_base;	/* Offset with card's memory */
+	uint32_t	ccr_mask;
 	struct resource *ccr_res;
 	int		ccr_rid;
 	STAILQ_HEAD(, pccard_config_entry) cfe_head;
@@ -122,17 +143,23 @@ struct pccard_function {
 	struct pccard_softc *sc;
 	struct pccard_config_entry *cfe;
 	struct pccard_mem_handle pf_pcmh;
+	device_t	dev;
 #define	pf_ccrt		pf_pcmh.memt
 #define	pf_ccrh		pf_pcmh.memh
 #define	pf_ccr_realsize	pf_pcmh.realsize
-	bus_addr_t	pf_ccr_offset;
+	uint32_t	pf_ccr_offset;	/* Offset from ccr_base of CIS */
 	int		pf_ccr_window;
-	long		pf_mfc_iobase;
+	long		pf_mfc_iobase;	/* Right type? */
 	long		pf_mfc_iomax;
-	int		(*ih_fct)(void *);
-	void		*ih_arg;
-	int		ih_ipl;
 	int		pf_flags;
+	driver_intr_t	*intr_handler;
+	void		*intr_handler_arg;
+	void		*intr_handler_cookie;
+
+	union pccard_funce pf_funce; /* CISTPL_FUNCE */
+#define pf_funce_disk_interface pf_funce.pfv_disk.pfd_interface
+#define pf_funce_lan_nid pf_funce.pfv_lan.pfl_nid
+#define pf_funce_lan_nidlen pf_funce.pfv_lan.pfl_nidlen
 };
 
 /* pf_flags */
@@ -150,11 +177,12 @@ struct pccard_card {
 	 * indicates no id was found.
 	 */
 	int32_t		manufacturer;
-#define	PCCARD_VENDOR_INVALID	-1
+#define	PCMCIA_VENDOR_INVALID	-1
 	int32_t		product;
-#define	PCCARD_PRODUCT_INVALID		-1
+#define	PCMCIA_PRODUCT_INVALID		-1
+	int16_t		prodext;
 	u_int16_t	error;
-#define	PCCARD_CIS_INVALID		{ NULL, NULL, NULL, NULL }
+#define	PCMCIA_CIS_INVALID		{ NULL, NULL, NULL, NULL }
 	STAILQ_HEAD(, pccard_function) pf_head;
 };
 
@@ -168,7 +196,7 @@ struct pccard_card {
 /* More later? */
 struct pccard_ivar {
 	struct resource_list resources;
-	int	slotnum;
+	struct pccard_function *fcn;
 };
 
 struct pccard_softc {
@@ -177,9 +205,7 @@ struct pccard_softc {
 
 	/* this stuff is for the card */
 	struct pccard_card card;
-	void		*ih;
 	int		sc_enabled_count;	/* num functions enabled */
-
 };
 
 void
@@ -202,6 +228,33 @@ struct pccard_tuple {
 	bus_space_handle_t memh;
 };
 
+struct pccard_product {
+	const char	*pp_name;		/* NULL if end of table */
+#define PCCARD_VENDOR_ANY ((u_int32_t) -1)
+	u_int32_t	pp_vendor;
+#define PCCARD_PRODUCT_ANY ((u_int32_t) -1)
+	u_int32_t	pp_product;
+	int		pp_expfunc;
+	const char	*pp_cis[4];
+};
+
+typedef int (*pccard_product_match_fn) (device_t dev,
+    const struct pccard_product *ent, int vpfmatch);
+
+#include "card_if.h"
+
+/*
+ * make this inline so that we don't have to worry about dangling references
+ * to it in the modules or the code.
+ */
+static __inline const struct pccard_product *
+pccard_product_lookup(device_t dev, const struct pccard_product *tab,
+    size_t ent_size, pccard_product_match_fn matchfn)
+{
+	return CARD_DO_PRODUCT_LOOKUP(device_get_parent(dev), dev,
+	    tab, ent_size, matchfn);
+}
+
 void	pccard_read_cis(struct pccard_softc *);
 void	pccard_check_cis_quirks(device_t);
 void	pccard_print_cis(device_t);
@@ -215,7 +268,7 @@ int	pccard_scan_cis(device_t,
 	(pccard_cis_read_1((tuple), ((tuple)->ptr+(2+(idx1)))))
 
 #define	pccard_tuple_read_2(tuple, idx2)				\
-	(pccard_tuple_read_1((tuple), (idx2)) | 			\
+	(pccard_tuple_read_1((tuple), (idx2)) |				\
 	 (pccard_tuple_read_1((tuple), (idx2)+1)<<8))
 
 #define	pccard_tuple_read_3(tuple, idx3)				\
@@ -238,16 +291,8 @@ int	pccard_scan_cis(device_t,
 #define	PCCARD_SPACE_MEMORY	1
 #define	PCCARD_SPACE_IO		2
 
-int	pccard_ccr_read(struct pccard_function *, int);
-void	pccard_ccr_write(struct pccard_function *, int, int);
-
 #define	pccard_mfc(sc)	(STAILQ_FIRST(&(sc)->card.pf_head) &&		\
 		 STAILQ_NEXT(STAILQ_FIRST(&(sc)->card.pf_head),pf_list))
-
-void	pccard_function_init(struct pccard_function *,
-	    struct pccard_config_entry *);
-int	pccard_function_enable(struct pccard_function *);
-void	pccard_function_disable(struct pccard_function *);
 
 #define	pccard_io_alloc(pf, start, size, align, pciop)			\
 	(pccard_chip_io_alloc((pf)->sc->pct, pf->sc->pch, (start),	\
@@ -262,16 +307,26 @@ void	pccard_io_unmap(struct pccard_function *, int);
 
 #define pccard_mem_alloc(pf, size, pcmhp)				\
 	(pccard_chip_mem_alloc((pf)->sc->pct, (pf)->sc->pch, (size), (pcmhp)))
-
 #define pccard_mem_free(pf, pcmhp)					\
 	(pccard_chip_mem_free((pf)->sc->pct, (pf)->sc->pch, (pcmhp)))
-
 #define pccard_mem_map(pf, kind, card_addr, size, pcmhp, offsetp, windowp) \
 	(pccard_chip_mem_map((pf)->sc->pct, (pf)->sc->pch, (kind),	\
 	 (card_addr), (size), (pcmhp), (offsetp), (windowp)))
-
 #define	pccard_mem_unmap(pf, window)					\
 	(pccard_chip_mem_unmap((pf)->sc->pct, (pf)->sc->pch, (window)))
+
+/* compat layer */
+static __inline int
+pccard_compat_probe(device_t dev)
+{
+	return (CARD_COMPAT_DO_PROBE(device_get_parent(dev), dev));
+}
+
+static __inline int
+pccard_compat_attach(device_t dev)
+{
+	return (CARD_COMPAT_DO_ATTACH(device_get_parent(dev), dev));
+}
 
 /* ivar interface */
 enum {
@@ -287,18 +342,41 @@ enum {
 	PCCARD_IVAR_FUNCTION
 };
 
-/* read ethernet address from CIS tupple */
-__inline static int
-pccard_get_ether(device_t dev, u_char *enaddr)
-{
-	return BUS_READ_IVAR(device_get_parent(dev), dev, 
-	    PCCARD_IVAR_ETHADDR, (uintptr_t *)enaddr);
+#define PCCARD_ACCESSOR(A, B, T)					\
+__inline static int							\
+pccard_get_ ## A(device_t dev, T *t)					\
+{									\
+	return BUS_READ_IVAR(device_get_parent(dev), dev,		\
+	    PCCARD_IVAR_ ## B, (uintptr_t *) t);			\
 }
+
+PCCARD_ACCESSOR(ether,		ETHADDR,		u_int8_t)
+PCCARD_ACCESSOR(vendor,		VENDOR,			u_int32_t)
+PCCARD_ACCESSOR(product,	PRODUCT,		u_int32_t)
+PCCARD_ACCESSOR(prodext,	PRODEXT,		u_int16_t)
+PCCARD_ACCESSOR(function_number,FUNCTION_NUMBER,	u_int32_t)
+PCCARD_ACCESSOR(function,	FUNCTION,		u_int32_t)
+PCCARD_ACCESSOR(vendor_str,	VENDOR_STR,		char *)
+PCCARD_ACCESSOR(product_str,	PRODUCT_STR,		char *)
+PCCARD_ACCESSOR(cis3_str,	CIS3_STR,		char *)
 
 /* shared memory flags */
 enum {
-	PCCARD_A_MEM_ATTR=1,    /* attribute */
 	PCCARD_A_MEM_COM,       /* common */
+	PCCARD_A_MEM_ATTR,      /* attribute */
 	PCCARD_A_MEM_8BIT,      /* 8 bit */
 	PCCARD_A_MEM_16BIT      /* 16 bit */
 };
+
+#define PCCARD_SOFTC(d) (struct pccard_softc *) device_get_softc(d)
+#define PCCARD_IVAR(d) (struct pccard_ivar *) device_get_ivars(d)
+
+#define PCCARD_S(a, b) PCMCIA_STR_ ## a ## _ ## b
+#define PCCARD_P(a, b) PCMCIA_PRODUCT_ ## a ## _ ## b
+#define PCCARD_C(a, b) PCMCIA_CIS_ ## a ## _ ## b
+#define PCMCIA_CARD(v, p, f) { PCCARD_S(v, p), PCMCIA_VENDOR_ ## v, \
+		PCCARD_P(v, p), f, PCCARD_C(v, p) }
+#define PCMCIA_CARD2(v1, p1, p2, f) \
+		{ PCMCIA_STR_ ## p2, PCMCIA_VENDOR_ ## v1, PCCARD_P(v1, p1), \
+		  f, PCMCIA_CIS_ ## p2}
+

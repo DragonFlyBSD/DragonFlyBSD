@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.8 2003/11/17 00:54:39 asmodai Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.9 2004/02/10 07:55:46 joerg Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -218,7 +218,8 @@ ${_src}:
 
 MFILES?= kern/bus_if.m kern/device_if.m bus/iicbus/iicbb_if.m \
     bus/iicbus/iicbus_if.m bus/isa/isa_if.m dev/netif/mii_layer/miibus_if.m \
-    dev/misc/pccard/card_if.m dev/misc/pccard/power_if.m bus/pci/pci_if.m \
+    bus/pccard/card_if.m bus/pccard/power_if.m bus/pci/pci_if.m \
+    bus/pci/pcib_if.m \
     bus/ppbus/ppbus_if.m bus/smbus/smbus_if.m bus/usb/usb_if.m \
     dev/sound/pcm/ac97_if.m dev/sound/pcm/channel_if.m \
     dev/sound/pcm/feeder_if.m dev/sound/pcm/mixer_if.m \

@@ -16,7 +16,7 @@
 # in doubt as to the purpose or necessity of a line, check first in LINT.
 #
 # $FreeBSD: src/sys/i386/conf/GENERIC,v 1.246.2.54 2003/04/28 03:41:46 simokawa Exp $
-# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.8 2004/01/27 18:26:43 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/GENERIC,v 1.9 2004/02/10 07:55:47 joerg Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -171,9 +171,9 @@ device		npx0	at nexus? port IO_NPX irq 13
 device		apm0	at nexus? disable flags 0x20 # Advanced Power Management
 
 # PCCARD (PCMCIA) support
-device		card
-device		pcic0	at isa? irq 0 port 0x3e0 iomem 0xd0000
-device		pcic1	at isa? irq 0 port 0x3e2 iomem 0xd4000 disable
+device		pccard
+device		cardbus
+device		cbb
 
 # Serial (COM) ports
 device		sio0	at isa? port IO_COM1 flags 0x10 irq 4

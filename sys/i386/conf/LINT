@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.20 2004/02/06 15:31:58 hmp Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.21 2004/02/10 07:55:47 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2048,11 +2048,13 @@ device		bktr
 #
 # PCCARD/PCMCIA
 #
-# card: pccard slots
-# pcic: isa/pccard bridge
-device		pcic0 at isa?
-device		pcic1 at isa?
-device		card
+# pccard: pccard slots
+# pcic: isa/pccard bridge (OLDCARD)
+# cardbus/cbb: cardbus bridge (NEWCARD)
+device		pccard
+device		cardbus
+device		cbb
+device		pcic
 
 # You may need to reset all pccards after resuming
 options 	PCIC_RESUME_RESET	# reset after resume

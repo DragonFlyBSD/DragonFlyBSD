@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.45 2004/02/09 21:13:17 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.46 2004/02/10 07:55:46 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -249,6 +249,12 @@ dev/acpica/Osd/OsdStream.c     optional acpica
 dev/acpica/Osd/OsdSynch.c      optional acpica
 dev/acpica/Osd/OsdTable.c      optional acpica
 
+dev/pccard/pccbb/pccbb.c		optional cbb
+dev/pccard/cardbus/cardbus.c		optional cardbus
+dev/pccard/cardbus/cardbus_cis.c	optional cardbus
+dev/pccard/exca/exca.c			optional cbb
+dev/pccard/pcic/i82365.c		optional pcic pccard
+dev/pccard/pcic/i82365_isa.c		optional pcic pccard isa
 
 dev/disk/advansys/adv_eisa.c		optional adv eisa
 dev/disk/advansys/adv_pci.c		optional adv pci
@@ -262,13 +268,13 @@ dev/disk/advansys/adwmcode.c		optional adw
 dev/netif/an/if_an.c			optional an
 dev/netif/an/if_an_isa.c		optional an isa
 dev/netif/an/if_an_pci.c		optional an pci
-dev/netif/an/if_an_pccard.c		optional an card
+dev/netif/an/if_an_pccard.c		optional an pccard
 dev/netif/ar/if_ar.c			optional ar
 dev/netif/ar/if_ar_pci.c		optional ar pci
 dev/raid/asr/asr.c			optional asr pci
 dev/disk/ata/ata-all.c			optional ata
 dev/disk/ata/ata-isa.c			optional ata isa
-dev/disk/ata/ata-card.c			optional ata card
+dev/disk/ata/ata-card.c			optional ata pccard
 dev/disk/ata/ata-pci.c			optional ata pci
 dev/disk/ata/ata-dma.c			optional ata pci
 dev/disk/ata/ata-disk.c			optional atadisk
@@ -290,7 +296,7 @@ dev/disk/aha/aha_isa.c			optional aha isa
 dev/disk/aha/aha_mca.c			optional aha mca
 dev/disk/ahb/ahb.c			optional ahb eisa
 dev/disk/aic/aic.c			optional aic
-dev/disk/aic/aic_pccard.c		optional aic card
+dev/disk/aic/aic_pccard.c		optional aic pccard
 dev/disk/aic7xxx/aic7770.c		optional ahc eisa
 dev/disk/aic7xxx/ahc_eisa.c		optional ahc eisa
 #dev/disk/aic7xxx/ahc_isa.c		optional ahc isa
@@ -314,7 +320,7 @@ dev/raid/ciss/ciss.c			optional ciss
 dev/netif/cm/smc90cx6.c			optional cm
 dev/netif/cs/if_cs.c			optional cs
 dev/netif/cs/if_cs_isa.c		optional cs isa
-dev/netif/cs/if_cs_pccard.c	optional cs card
+dev/netif/cs/if_cs_pccard.c	optional cs pccard
 #dev/raid/dpt/dpt_control.c	optional dpt
 dev/raid/dpt/dpt_scsi.c	optional dpt
 dev/raid/dpt/dpt_eisa.c	optional dpt eisa
@@ -324,13 +330,13 @@ dev/netif/ep/if_ep.c		optional ep
 dev/netif/ep/if_ep_isa.c	optional ep isa
 dev/netif/ep/if_ep_eisa.c	optional ep eisa
 dev/netif/ep/if_ep_mca.c	optional ep mca
-dev/netif/ep/if_ep_pccard.c	optional ep card
+dev/netif/ep/if_ep_pccard.c	optional ep pccard
 dev/atm/en/midway.c		optional en
 dev/netif/ex/if_ex.c		optional ex
 dev/netif/ex/if_ex_isa.c	optional ex isa
-dev/netif/ex/if_ex_pccard.c	optional ex card
+dev/netif/ex/if_ex_pccard.c	optional ex pccard
 dev/netif/fe/if_fe.c		optional fe
-dev/netif/fe/if_fe_pccard.c	optional fe card
+dev/netif/fe/if_fe_pccard.c	optional fe pccard
 bus/firewire/firewire.c		optional firewire
 bus/firewire/fwcrom.c		optional firewire
 bus/firewire/fwdev.c		optional firewire
@@ -417,20 +423,11 @@ dev/disk/mpt/mpt_pci.c		optional mpt
 dev/netif/my/if_my.c		optional my
 dev/misc/musycc/musycc.c	optional musycc
 dev/disk/ncv/ncr53c500.c	optional ncv
-dev/disk/ncv/ncr53c500_pccard.c	optional ncv card
+dev/disk/ncv/ncr53c500_pccard.c	optional ncv pccard
 dev/netif/nge/if_nge.c		optional nge
 dev/misc/nmdm/nmdm.c		optional nmdm
 dev/disk/nsp/nsp.c		optional nsp
-dev/disk/nsp/nsp_pccard.c	optional nsp card
-dev/misc/pccard/pccard.c	optional pccard
-dev/misc/pccard/pccard_cis.c	optional pccard
-dev/misc/pccard/pccard_cis_quirks.c optional pccard
-dev/misc/pccard/power_if.m	optional pccard
-dev/misc/pccard/power_if.m	optional card
-dev/misc/pccard/card_if.m	optional pccard
-dev/misc/pccard/card_if.m	optional card
-dev/misc/pcic/i82365.c			optional pcic pccard
-dev/misc/pcic/i82365_isa.c		optional pcic pccard
+dev/disk/nsp/nsp_pccard.c	optional nsp pccard
 dev/netif/fea/if_fea.c			optional fea eisa
 dev/netif/fpa/if_fpa.c			optional fpa pci
 dev/netif/pdq_layer/pdq.c		optional fea eisa
@@ -451,7 +448,7 @@ dev/misc/ppi/ppi.c		optional ppi
 dev/misc/pps/pps.c		optional pps
 dev/disk/vpo/vpo.c		optional vpo
 dev/disk/vpo/vpoio.c	optional vpo
-dev/netif/ray/if_ray.c        optional ray card
+dev/netif/ray/if_ray.c        optional ray pccard
 dev/netif/ray/if_ray.c        optional ray pccard
 dev/crypto/rndtest/rndtest.c	optional rndtest
 dev/serial/rp/rp.c		optional nrp
@@ -471,13 +468,13 @@ dev/serial/si/si_isa.c		optional si isa
 dev/serial/si/si_pci.c		optional si pci
 dev/netif/sn/if_sn.c		optional sn
 dev/netif/sn/if_sn_isa.c	optional sn isa
-dev/netif/sn/if_sn_pccard.c	optional sn card
+dev/netif/sn/if_sn_pccard.c	optional sn pccard
 dev/misc/snp/snp.c		optional snp
 dev/netif/sr/if_sr.c		optional sr
 dev/netif/sr/if_sr_pci.c	optional sr pci
 dev/disk/stg/tmc18c30.c	optional stg
 dev/disk/stg/tmc18c30_isa.c	optional stg isa
-dev/disk/stg/tmc18c30_pccard.c	optional stg card
+dev/disk/stg/tmc18c30_pccard.c	optional stg pccard
 bus/iicbus/iicbb.c	optional iicbb
 bus/iicbus/iicbb_if.m		optional iicbb
 bus/iicbus/iicsmb.c		optional iicsmb
@@ -515,10 +512,10 @@ dev/netif/vx/if_vx.c			optional vx
 dev/netif/vx/if_vx_eisa.c		optional vx eisa
 dev/netif/vx/if_vx_pci.c		optional vx pci
 dev/netif/wi/if_wi.c			optional wi
-dev/netif/wi/if_wi_pccard.c		optional wi card
+dev/netif/wi/if_wi_pccard.c		optional wi pccard
 dev/netif/wi/if_wi_pci.c		optional wi pci
 dev/netif/wi/wi_hostap.c		optional wi
-dev/netif/xe/if_xe.c			optional xe card
+dev/netif/xe/if_xe.c			optional xe pccard
 vfs/gnu/ext2fs/ext2_alloc.c		optional ext2fs
 vfs/gnu/ext2fs/ext2_balloc.c	optional ext2fs
 vfs/gnu/ext2fs/ext2_inode.c		optional ext2fs
@@ -1056,12 +1053,12 @@ vfs/nwfs/nwfs_node.c		optional nwfs
 vfs/nwfs/nwfs_subr.c		optional nwfs
 vfs/nwfs/nwfs_vfsops.c		optional nwfs
 vfs/nwfs/nwfs_vnops.c		optional nwfs
-bus/pccard/pccard.c		optional card
-bus/pccard/pccard_beep.c	optional card
-bus/pccard/pccard_nbk.c		optional card
-bus/pccard/pcic.c		optional pcic card
-bus/pccard/pcic_isa.c		optional pcic isa card
-bus/pccard/pcic_pci.c		optional pcic pci card
+bus/pccard/card_if.m		standard
+bus/pccard/pccard.c		optional pccard
+bus/pccard/pccard_cis.c		optional pccard
+bus/pccard/pccard_cis_quirks.c	optional pccard
+bus/pccard/pccard_beep.c	optional pccard
+bus/pccard/power_if.m		standard
 dev/agp/agp.c			optional agp
 dev/agp/agp_intel.c		optional agp
 dev/agp/agp_nvidia.c		optional agp
@@ -1076,7 +1073,7 @@ dev/netif/awi/am79c930.c	optional awi
 dev/netif/awi/awi.c		optional awi
 dev/netif/awi/awi_wep.c		optional awi
 dev/netif/awi/awi_wicfg.c	optional awi
-dev/netif/awi/if_awi_pccard.c	optional awi card
+dev/netif/awi/if_awi_pccard.c	optional awi pccard
 dev/video/bktr/bktr_core.c	optional bktr pci
 dev/video/bktr/bktr_i2c.c	optional bktr pci smbus
 dev/video/bktr/bktr_card.c	optional bktr pci

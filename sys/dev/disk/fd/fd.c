@@ -51,12 +51,12 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.12 2004/01/11 16:45:16 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.13 2004/02/10 07:55:46 joerg Exp $
  *
  */
 
 #include "opt_fdc.h"
-#include "use_card.h"
+#include "use_pccard.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
