@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.30 2005/01/31 21:37:52 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.31 2005/03/13 21:33:47 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -851,6 +851,17 @@ nanotime(struct timespec *tsp)
 		tsp->tv_nsec -= 1000000000;
 		++tsp->tv_sec;
 	}
+}
+
+/*
+ * note: this is not exactly synchronized with real time.  To do that we
+ * would have to do what microtime does and check for a nanoseconds overflow.
+ */
+time_t
+get_approximate_time_t(void)
+{
+	struct globaldata *gd = mycpu;
+	return(gd->gd_time_seconds + basetime.tv_sec);
 }
 
 int

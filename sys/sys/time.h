@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.11 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.12 2005/03/13 21:33:48 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -206,6 +206,7 @@ void	microuptime (struct timeval *tv);
 void	microtime (struct timeval *tv);
 void	nanouptime (struct timespec *ts);
 void	nanotime (struct timespec *ts);
+time_t	get_approximate_time_t(void);
 void	set_timeofday(struct timespec *ts);
 void	timevaladd (struct timeval *, struct timeval *);
 void	timevalsub (struct timeval *, struct timeval *);
