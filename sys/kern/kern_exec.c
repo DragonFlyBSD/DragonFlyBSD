@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.15 2003/11/16 02:37:39 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.16 2003/11/16 19:32:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -753,23 +753,26 @@ exec_copyout_strings(struct image_params *imgp)
 	/*
 	 * If we have a valid auxargs ptr, prepare some room
 	 * on the stack.
-	 */
-	if (imgp->auxargs)
-	/*
+	 *
 	 * The '+ 2' is for the null pointers at the end of each of the
 	 * arg and env vector sets, and 'AT_COUNT*2' is room for the
 	 * ELF Auxargs data.
 	 */
+	if (imgp->auxargs) {
 		vectp = (char **)(destp - (imgp->args->argc +
-		    imgp->args->envc + 2 + AT_COUNT*2) * sizeof(char*));
-	else 
+			imgp->args->envc + 2 + AT_COUNT * 2) * sizeof(char*));
+	} else {
+		vectp = (char **)(destp - (imgp->args->argc +
+			imgp->args->envc + 2) * sizeof(char*));
+	}
+
 	/*
-	 * The '+ 2' is for the null pointers at the end of each of the
-	 * arg and env vector sets
+	 * Align the stack to a multiple of 0x20 to be friendly to high-end
+	 * cpus.  This is not strictly necessary since newer gcc's now use
+	 * a masking operation on the stack pointer instead of assuming
+	 * alignment, but it doesn't hurt either.
 	 */
-		vectp = (char **)
-		    (destp - (imgp->args->argc + imgp->args->envc + 2) *
-		    sizeof(char*));
+	vectp = (char **)((vm_offset_t)vectp & ~(vm_offset_t)0x1F);
 
 	/*
 	 * vectp also becomes our initial stack base
