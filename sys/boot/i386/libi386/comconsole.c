@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.4 2004/06/25 05:37:58 dillon Exp $
  */
 
 #include <stand.h>
@@ -94,11 +94,12 @@ comc_putchar(int c)
 {
     int wait;
 
-    for (wait = COMC_TXWAIT; wait > 0; wait--)
+    for (wait = COMC_TXWAIT; wait > 0; wait--) {
         if (inb(COMPORT + com_lsr) & LSR_TXRDY) {
 	    outb(COMPORT + com_data, (u_char)c);
 	    break;
 	}
+    }
 }
 
 static int

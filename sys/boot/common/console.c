@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/console.c,v 1.6 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/console.c,v 1.3 2003/11/10 06:08:31 dillon Exp $
+ * $DragonFly: src/sys/boot/common/console.c,v 1.4 2004/06/25 05:37:57 dillon Exp $
  */
 
 #include <stand.h>
@@ -47,45 +47,50 @@ static int	cons_find(char *name);
 void
 cons_probe(void) 
 {
-    int			cons;
-    int			active;
-    char		*prefconsole;
-    
-    /* Do all console probes */
+    int	cons;
+    int	active;
+    char *prefconsole;
+
+    /*
+     * Probe all available consoles
+     */
     for (cons = 0; consoles[cons] != NULL; cons++) {
 	consoles[cons]->c_flags = 0;
  	consoles[cons]->c_probe(consoles[cons]);
     }
-    /* Now find the first working one */
+
+    /*
+     * Get our console preference.  If there is no preference, all 
+     * available consoles will be made active in parallel.  Otherwise
+     * only the specified console is activated.
+     */
     active = -1;
-    for (cons = 0; consoles[cons] != NULL && active == -1; cons++) {
-	consoles[cons]->c_flags = 0;
- 	consoles[cons]->c_probe(consoles[cons]);
-	if (consoles[cons]->c_flags == (C_PRESENTIN | C_PRESENTOUT))
-	    active = cons;
+    if ((prefconsole = getenv("console")) != NULL) {
+	for (cons = 0; consoles[cons] != NULL; cons++) {
+	    if (strcmp(prefconsole, consoles[cons]->c_name) == 0) {
+		if (consoles[cons]->c_flags & (C_PRESENTIN | C_PRESENTOUT))
+		    active = cons;
+	    }
+	}
+	unsetenv("console");
+	if (active >= 0) {
+	    env_setenv("console", EV_VOLATILE, consoles[active]->c_name,
+			cons_set, env_nounset);
+	}
     }
 
-    /* Check to see if a console preference has already been registered */
-    prefconsole = getenv("console");
-    if (prefconsole != NULL)
-	prefconsole = strdup(prefconsole);
-    if (prefconsole != NULL) {
-	unsetenv("console");		/* we want to replace this */
-	for (cons = 0; consoles[cons] != NULL; cons++)
-	    /* look for the nominated console, use it if it's functional */
-	    if (!strcmp(prefconsole, consoles[cons]->c_name) &&
-		(consoles[cons]->c_flags == (C_PRESENTIN | C_PRESENTOUT)))
-		active = cons;
-	free(prefconsole);
+    /*
+     * Active the active console or all consoles if active is -1.
+     */
+    for (cons = 0; consoles[cons] != NULL; cons++) {
+	if ((active == -1 || cons == active) &&
+	    (consoles[cons]->c_flags & (C_PRESENTIN|C_PRESENTOUT))
+	) {
+	    consoles[cons]->c_flags |= (C_ACTIVEIN | C_ACTIVEOUT);
+	    consoles[cons]->c_init(0);
+	    printf("Console: %s\n", consoles[cons]->c_desc);
+	}
     }
-    if (active == -1)
-	active = 0;
-    consoles[active]->c_flags |= (C_ACTIVEIN | C_ACTIVEOUT);
-    consoles[active]->c_init(0);
-
-    printf("Console: %s\n", consoles[active]->c_desc);
-    env_setenv("console", EV_VOLATILE, consoles[active]->c_name, cons_set,
-	env_nounset);
 }
 
 int
@@ -95,11 +100,15 @@ getchar(void)
     int		rv;
     
     /* Loop forever polling all active consoles */
-    for(;;)
-	for (cons = 0; consoles[cons] != NULL; cons++)
+    for(;;) {
+	for (cons = 0; consoles[cons] != NULL; cons++) {
 	    if ((consoles[cons]->c_flags & C_ACTIVEIN) && 
-		((rv = consoles[cons]->c_in()) != -1))
+		((rv = consoles[cons]->c_in()) != -1)
+	    ) {
 		return(rv);
+	    }
+	}
+    }
 }
 
 int
@@ -123,9 +132,10 @@ putchar(int c)
     if (c == '\n')
 	putchar('\r');
     
-    for (cons = 0; consoles[cons] != NULL; cons++)
+    for (cons = 0; consoles[cons] != NULL; cons++) {
 	if (consoles[cons]->c_flags & C_ACTIVEOUT)
 	    consoles[cons]->c_out(c);
+    }
 }
 
 static int

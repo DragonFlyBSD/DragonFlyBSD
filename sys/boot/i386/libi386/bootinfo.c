@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/bootinfo.c,v 1.35 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/bootinfo.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/bootinfo.c,v 1.4 2004/06/25 05:37:58 dillon Exp $
  */
 
 #include <stand.h>
@@ -51,7 +51,7 @@ static struct
     {"boot_gdb",	RB_GDB},
     {"boot_single",	RB_SINGLE},
     {"boot_verbose",	RB_VERBOSE},
-    {"boot_multicons",	RB_MULTIPLE},
+    {"boot_vidcons",	RB_VIDEO},
     {"boot_serial",	RB_SERIAL},
     {NULL,	0}
 };
@@ -87,7 +87,11 @@ bi_getboothowto(char *kargs)
 		    howto |= RB_KDB;
 		    break;
 		case 'D':
-		    howto |= RB_MULTIPLE;
+		    /* all available consoles become active */
+		    howto &= ~(RB_MUTE|RB_VIDEO|RB_SERIAL);
+		    break;
+		case 'V':
+		    howto |= RB_VIDEO;
 		    break;
 		case 'm':
 		    howto |= RB_MUTE;
@@ -125,6 +129,8 @@ bi_getboothowto(char *kargs)
 	howto |= RB_SERIAL;
     if (!strcmp(getenv("console"), "nullconsole"))
 	howto |= RB_MUTE;
+    if (!strcmp(getenv("console"), "vidconsole"))
+	howto |= RB_VIDEO;
     return(howto);
 }
 

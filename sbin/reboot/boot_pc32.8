@@ -39,7 +39,7 @@
 .\"     @(#)boot_i386.8	8.2 (Berkeley) 4/19/94
 .\"
 .\" $FreeBSD: src/sbin/reboot/boot_i386.8,v 1.23.2.11 2002/04/24 17:47:58 rnordier Exp $
-.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/sbin/reboot/boot_pc32.8,v 1.4 2004/06/25 05:38:00 dillon Exp $
 .\"
 .Dd April 19, 1994
 .Dt BOOT 8 i386
@@ -118,7 +118,7 @@ the listing will be of the relevant subdirectory.)
 .Ar bios_drive : Ns Ar interface Ns Po
 .Ar unit , Ns Ar part Pc
 .Ar filename
-.Op Fl aCcDdghnPprsv
+.Op Fl aCcDdghmnPprsvV
 .Xc
 Specify boot file and flags.
 .Bl -tag -width indent
@@ -182,19 +182,16 @@ remain in UserConfig regardless of any
 .Ic quit
 commands present in the script.
 .It Fl D
-toggle single and dual console configurations.  In the single
-configuration the console will be either the internal display
-or the serial port, depending on the state of the
-.Fl h
-option below.  In the dual console configuration,
-both the internal display and the serial port will become the console
-at the same time, regardless of the state of the
-.Fl h
-option.  However, the dual console configuration takes effect only during
-the boot prompt.  Once the kernel is loaded, the console specified
-by the
-.Fl h
-option becomes the only console.
+Use all available consoles as the system console.  Input will be accepted
+on any console and output will be routed to all of them.  This is the
+default.
+.It Fl h
+Use the serial console as the system console.
+.It Fl V
+Use the video console as the system console.
+.It Fl m
+Mute the system console.  None of the console devices will be used for the
+system console.
 .It Fl d
 enter the DDB kernel debugger
 (see
@@ -202,24 +199,6 @@ enter the DDB kernel debugger
 as early as possible in kernel initialization.
 .It Fl g
 use the GDB remote debugging protocol.
-.It Fl h
-toggle internal and serial consoles.  You can use this to switch
-console devices.  For instance, if you boot from the internal console,
-you can use the
-.Fl h
-option to force the kernel to use the serial port as its
-console device.  Alternatively, if you boot from the serial port,
-you can use this option to force the kernel to use the internal display
-as the console instead.
-The serial port driver
-.Xr sio 4
-has a flag to override this option.
-If that flag is set, the serial port will always be used as the console,
-regardless of the
-.Fl h
-option described here.  See the man page for
-.Xr sio 4
-for more details.
 .It Fl n
 ignore key press to interrupt boot before loader(8) is invoked.
 .It Fl P
