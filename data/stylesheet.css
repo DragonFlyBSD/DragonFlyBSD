@@ -5,9 +5,11 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.5 2004/02/15 19:29:40 dillon Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.6 2004/02/16 21:14:35 justin Exp $
  *
  */
+
+/* overrides of existing tags */
 
 PRE,CODE,TT {
    font-size: 1.1em;
@@ -57,81 +59,6 @@ TD {
 
 /* main */
 
-A:link 	{
-   text-decoration : none; 
-   color : #0033FF; /* #333366; */
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-}
-
-A:visited {
-   text-decoration : none; 
-   color : #666699; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-}
-
-A:active  {
-   text-decoration : none; 
-   color : #CC3300; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-}
-
-A:hover  {
-   text-decoration : none; 
-   color : #CC3300; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-}	
-
-.related  {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size : 86%; 
-}
-
-.date  {
-   font-size : 11px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   color : #000000; 
-}
-
-.sectiontitle  {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size : 15px; 
-   font-weight : bold; 
-   color : #CC3300; 
-}
-
-.search  {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size : 11px; 
-   font-weight : bold; 
-   color : #000000; 
-}
-
-/* Right hand side content */
-
-.sidebartitle, .relatedlocaltitle {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size: 90%;
-   font-weight: bold;
-   color : #FFFFFF;
-}
-
-.relatedwebtitle {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size: 90%;
-   font-weight: bold;
-   color : #FF0000;
-}
-
-.sidebarcontent, .relatedcontent {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size: 80%;
-}
-
-.disclaimer  {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size : 11px; 
-   color : #000000; 
-}
 
 /* 
  * Left hand side navigation components
@@ -140,16 +67,6 @@ A:hover  {
 .topLevel {
    font-weight : 600; 
    font-size : 11px; 
-   line-height : 15px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   letter-spacing : 0px; 
-   text-decoration : none; 
-   text-align : right; 
-}
-
-.keyMenu {
-   /*font-weight : 600; */
-   font-size : 12px; 
    line-height : 15px; 
    font-family: Verdana, Arial, Helvetica, Sans-serif;
    letter-spacing : 0px; 
@@ -172,31 +89,4 @@ A:hover  {
    background-color : #ffcc66; 
 }
 
-.sublist { 
-   background-color: #CCCCCC; 
-   font-weight : 600; 
-   font-size : 11px; 
-   line-height : 15px; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   letter-spacing : 0px; 
-   text-decoration : none; 
-   text-align : right; 
-}
-
-.published {
-   color : #999999; 
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size:11px;
-}
-
-.endmatter {
-   color: #999999;
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size:11px;
-}
-
-.copyright {
-   font-family: Verdana, Arial, Helvetica, Sans-serif;
-   font-size:11px;
-}
 
