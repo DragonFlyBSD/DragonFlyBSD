@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.5 2003/12/01 20:12:39 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.6 2004/02/03 04:26:01 dillon Exp $
 #
 ISODIR ?= /usr/release
 ISOFILE ?= ${ISODIR}/dfly.iso
@@ -56,6 +56,6 @@ clean:
 	if [ -d ${ISOROOT} ]; then rm -rf ${ISOROOT}; fi
 
 realclean:	clean
-	rm -rf ${OBJSYS}/GENERIC
+	rm -rf ${OBJSYS}/${KERNCONF}
 
 .include <bsd.prog.mk>
