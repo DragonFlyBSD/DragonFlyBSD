@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.5 2004/06/03 10:00:06 eirikn Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.6 2004/11/12 00:09:00 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -450,7 +450,9 @@ elf_getsigs(struct proc *p, struct file *fp)
 	return error;
 }
 
-
+/*
+ * Returns a locked, refd vnode
+ */
 static int
 ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp) 
 {
@@ -480,22 +482,23 @@ ckpt_fhtovp(fhandle_t *fh, struct vnode **vpp)
 static int
 mmap_vp(struct vn_hdr *vnh) 
 {
-	struct vnode **vpp, *vp;
+	struct vnode *vp;
 	Elf_Phdr *phdr;
 	struct file *fp;
 	int error;
 	TRACE_ENTER;
-	vpp = &vp;
 
 	phdr = &vnh->vnh_phdr;
 
-	if ((error = ckpt_fhtovp(&vnh->vnh_fh, vpp)) != 0)
+	if ((error = ckpt_fhtovp(&vnh->vnh_fh, &vp)) != 0)
 		return error;
 	/*
 	 * XXX O_RDONLY -> or O_RDWR if file is PROT_WRITE, MAP_SHARED
 	 */
-	if ((error = fp_vpopen(*vpp, O_RDONLY, &fp)) != 0)
+	if ((error = fp_vpopen(vp, O_RDONLY, &fp)) != 0) {
+		vput(vp);
 		return error;
+	}
 	error = mmap_phdr(fp, phdr);
 	fp_close(fp);
 	TRACE_EXIT;
@@ -585,8 +588,10 @@ elf_getfiles(struct proc *p, struct file *fp)
 		}
 		if ((error = ckpt_fhtovp(&cfi->cfi_fh, &vp)) != 0)
 			break;
-		if ((error = fp_vpopen(vp, OFLAGS(cfi->cfi_flags), &tempfp)) != 0)
+		if ((error = fp_vpopen(vp, OFLAGS(cfi->cfi_flags), &tempfp)) != 0) {
+			vput(vp);
 			break;
+		}
 		tempfp->f_offset = cfi->cfi_offset;
 		/*  XXX bail for now if we the index is 
 		 *  larger than the current file table 

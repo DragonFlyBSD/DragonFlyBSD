@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.19 2004/10/27 08:52:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.20 2004/11/12 00:09:40 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -191,7 +191,13 @@ static int null_bug_bypass = 0;   /* for debugging: enables bypass printf'ing */
 SYSCTL_INT(_debug, OID_AUTO, nullfs_bug_bypass, CTLFLAG_RW, 
 	&null_bug_bypass, 0, "");
 
-static int	null_resolve(struct vop_resolve_args *ap);
+static int	null_nresolve(struct vop_nresolve_args *ap);
+static int	null_ncreate(struct vop_ncreate_args *ap);
+static int	null_nmkdir(struct vop_nmkdir_args *ap);
+static int	null_nremove(struct vop_nremove_args *ap);
+static int	null_nrmdir(struct vop_nrmdir_args *ap);
+static int	null_nrename(struct vop_nrename_args *ap);
+
 static int	null_revoke(struct vop_revoke_args *ap);
 static int	null_access(struct vop_access_args *ap);
 static int	null_createvobject(struct vop_createvobject_args *ap);
@@ -386,8 +392,7 @@ null_lookup(struct vop_lookup_args *ap)
 	struct vnode *vp, *ldvp, *lvp;
 	int error;
 
-	if ((flags & CNP_ISLASTCN) && 
-	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
+	if ((dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_DELETE || 
 	     cnp->cn_nameiop == NAMEI_RENAME)) {
 		return (EROFS);
@@ -412,7 +417,7 @@ null_lookup(struct vop_lookup_args *ap)
 	 */
 	vp = lvp = NULL;
 	error = VOP_LOOKUP(ldvp, &lvp, cnp);
-	if (error == EJUSTRETURN && (flags & CNP_ISLASTCN) &&
+	if (error == EJUSTRETURN && 
 	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_CREATE || 
 	     cnp->cn_nameiop == NAMEI_RENAME)) {
@@ -513,9 +518,42 @@ null_getattr(struct vop_getattr_args *ap)
  * Resolve a locked ncp at the nullfs layer.
  */
 static int
-null_resolve(struct vop_resolve_args *ap)
+null_nresolve(struct vop_nresolve_args *ap)
 {
-	return(vop_noresolve(ap));
+	return(vop_compat_nresolve(ap));
+}
+
+/*
+ * Create a file
+ */
+static int
+null_ncreate(struct vop_ncreate_args *ap)
+{
+	return(vop_compat_ncreate(ap));
+}
+
+static int
+null_nmkdir(struct vop_nmkdir_args *ap)
+{
+	return(vop_compat_nmkdir(ap));
+}
+
+static int
+null_nremove(struct vop_nremove_args *ap)
+{
+	return(vop_compat_nremove(ap));
+}
+
+static int
+null_nrmdir(struct vop_nrmdir_args *ap)
+{
+	return(vop_compat_nrmdir(ap));
+}
+
+static int
+null_nrename(struct vop_nrename_args *ap)
+{
+	return(vop_compat_nrename(ap));
 }
 
 /*
@@ -898,7 +936,6 @@ null_getvobject(struct vop_getvobject_args *ap)
  */
 struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) null_bypass },
-	{ &vop_resolve_desc,		(void *) null_resolve },
 	{ &vop_access_desc,		(void *) null_access },
 	{ &vop_createvobject_desc,	(void *) null_createvobject },
 	{ &vop_destroyvobject_desc,	(void *) null_destroyvobject },
@@ -915,6 +952,13 @@ struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_setattr_desc,		(void *) null_setattr },
 	{ &vop_unlock_desc,		(void *) null_unlock },
 	{ &vop_revoke_desc,		(void *) null_revoke },
+
+	{ &vop_nresolve_desc,		(void *) null_nresolve },
+	{ &vop_ncreate_desc,		(void *) null_ncreate },
+	{ &vop_nmkdir_desc,		(void *) null_nmkdir },
+	{ &vop_nremove_desc,		(void *) null_nremove },
+	{ &vop_nrmdir_desc,		(void *) null_nrmdir },
+	{ &vop_nrename_desc,		(void *) null_nrename },
 	{ NULL, NULL }
 };
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.5 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.6 2004/11/12 00:09:52 dillon Exp $
  */
 
 #ifndef _UFS_UFS_UFSMOUNT_H_
@@ -64,7 +64,6 @@ MALLOC_DECLARE(M_UFSMNT);
 
 struct buf;
 struct inode;
-struct nameidata;
 struct timeval;
 struct ucred;
 struct uio;

@@ -37,7 +37,7 @@
  *
  *	@(#)buf.h	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/sys/buf.h,v 1.88.2.10 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/sys/buf2.h,v 1.8 2004/11/09 17:36:42 dillon Exp $
+ * $DragonFly: src/sys/sys/buf2.h,v 1.9 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_BUF2_H_
@@ -59,7 +59,6 @@
  *
  * Get a lock sleeping non-interruptably until it becomes available.
  */
-static __inline int BUF_LOCK (struct buf *, int);
 static __inline int
 BUF_LOCK(struct buf *bp, int locktype)
 {
@@ -79,7 +78,6 @@ BUF_LOCK(struct buf *bp, int locktype)
 /*
  * Get a lock sleeping with specified interruptably and timeout.
  */
-static __inline int BUF_TIMELOCK (struct buf *, int, char *, int, int);
 static __inline int
 BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
 {
@@ -100,7 +98,6 @@ BUF_TIMELOCK(struct buf *bp, int locktype, char *wmesg, int catch, int timo)
  * Release a lock. Only the acquiring process may free the lock unless
  * it has been handed off to biodone.
  */
-static __inline void BUF_UNLOCK (struct buf *);
 static __inline void
 BUF_UNLOCK(struct buf *bp)
 {

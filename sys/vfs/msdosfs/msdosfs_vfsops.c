@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.20 2004/10/12 19:21:00 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.21 2004/11/12 00:09:36 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -53,7 +53,7 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -235,7 +235,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	int error, flags;
 	mode_t accessmode;
 	struct proc *p = td->td_proc;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	KKASSERT(p);
 
@@ -299,12 +299,15 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	error = namei(&nd);
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
 	if (error)
 		return (error);
-	devvp = nd.ni_vp;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -397,7 +400,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);

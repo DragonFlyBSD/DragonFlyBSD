@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.15 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.16 2004/11/12 00:09:52 dillon Exp $
  */
 
 #include "opt_ufs.h"
@@ -93,21 +93,6 @@ SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0, "");
  * be "."., but the caller must check to ensure it does an vrele and vput
  * instead of two vputs.
  *
- * This routine is actually used as VOP_CACHEDLOOKUP method, and the
- * filesystem employs the generic vfs_cache_lookup() as VOP_LOOKUP
- * method.
- *
- * vfs_cache_lookup() performs the following for us:
- *	check that it is a directory
- *	check accessibility of directory
- *	check for modification attempts on read-only mounts
- *	if name found in cache
- *	    if at end of path and deleting or creating
- *		drop it
- *	     else
- *		return name.
- *	return VOP_CACHEDLOOKUP()
- *
  * Overall outline of ufs_lookup:
  *
  *	search for name in directory, to found or notfound
@@ -125,7 +110,7 @@ SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0, "");
  *	      struct componentname *a_cnp)
  */
 int
-ufs_lookup(struct vop_cachedlookup_args *ap)
+ufs_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	struct inode *dp;	/* inode for directory being searched */
@@ -179,8 +164,7 @@ ufs_lookup(struct vop_cachedlookup_args *ap)
 	 */
 	slotstatus = FOUND;
 	slotfreespace = slotsize = slotneeded = 0;
-	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) {
 		slotstatus = NONE;
 		slotneeded = DIRECTSIZ(cnp->cn_namelen);
 	}
@@ -392,7 +376,7 @@ notfound:
 	     (nameiop == NAMEI_DELETE &&
 	      (ap->a_cnp->cn_flags & CNP_DOWHITEOUT) &&
 	      (ap->a_cnp->cn_flags & CNP_ISWHITEOUT))) &&
-	    (flags & CNP_ISLASTCN) && dp->i_effnlink != 0) {
+	    dp->i_effnlink != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -440,18 +424,12 @@ notfound:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
 	}
-	/*
-	 * Insert name into cache (as non-existent) if appropriate.
-	 */
-	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -473,7 +451,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
+	if (nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
 
 	/*
@@ -483,7 +461,7 @@ found:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE) {
 		/*
 		 * Write access to directory required to delete files.
 		 */
@@ -541,7 +519,7 @@ found:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == NAMEI_RENAME && wantparent && (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent) {
 		if ((error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td)) != 0)
 			return (error);
 		/*
@@ -560,7 +538,6 @@ found:
 		if (error)
 			return (error);
 		*vpp = tdp;
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -596,7 +573,7 @@ found:
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
-		if (lockparent && (flags & CNP_ISLASTCN)) {
+		if (lockparent) {
 			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
 				vput(tdp);
 				return (error);
@@ -611,18 +588,12 @@ found:
 		error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp);
 		if (error)
 			return (error);
-		if (!lockparent || !(flags & CNP_ISLASTCN)) {
+		if (!lockparent) {
 			VOP_UNLOCK(pdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = tdp;
 	}
-
-	/*
-	 * Insert name into cache if appropriate.
-	 */
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 
@@ -692,10 +663,6 @@ ufs_makedirentry(struct inode *ip, struct componentname *cnp,
 		 struct direct *newdirp)
 {
 
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_SAVENAME) == 0)
-		panic("ufs_makedirentry: missing name");
-#endif
 	newdirp->d_ino = ip->i_number;
 	newdirp->d_namlen = cnp->cn_namelen;
 	bcopy(cnp->cn_nameptr, newdirp->d_name, (unsigned)cnp->cn_namelen + 1);
@@ -713,7 +680,7 @@ ufs_makedirentry(struct inode *ip, struct componentname *cnp,
 
 /*
  * Write a directory entry after a call to namei, using the parameters
- * that it left in nameidata. The argument dirp is the new directory
+ * that it left in the directory inode. The argument dirp is the new directory
  * entry contents. Dvp is a pointer to the directory to be written,
  * which was left locked by namei. Remaining parameters (dp->i_offset, 
  * dp->i_count) indicate how the space for the new entry is to be obtained.
@@ -946,7 +913,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 
 /*
  * Remove a directory entry after a call to namei, using
- * the parameters which it left in nameidata. The entry
+ * the parameters which it left in the directory inode. The entry
  * dp->i_offset contains the offset into the directory of the
  * entry to be eliminated.  The dp->i_count field contains the
  * size of the previous record in the directory.  If this

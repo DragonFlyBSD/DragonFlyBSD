@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.18 2004/08/02 13:22:34 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.19 2004/11/12 00:09:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@
 #include <sys/socketvar.h>
 #include <sys/domain.h>
 #include <sys/protosw.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <vm/vm_zone.h>
 
 #include <netinet/in.h>
@@ -137,7 +137,7 @@ int
 nfssvc(struct nfssvc_args *uap)
 {
 #ifndef NFS_NOSERVER
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct file *fp;
 	struct sockaddr *nam;
 	struct nfsd_args nfsdarg;
@@ -147,6 +147,7 @@ nfssvc(struct nfssvc_args *uap)
 	struct nfssvc_sock *slp;
 	struct nfsuid *nuidp;
 	struct nfsmount *nmp;
+	struct vnode *vp;
 #endif /* NFS_NOSERVER */
 	int error;
 	struct thread *td = curthread;
@@ -172,16 +173,21 @@ nfssvc(struct nfssvc_args *uap)
 		error = copyin(uap->argp, (caddr_t)&ncd, sizeof (ncd));
 		if (error)
 			return (error);
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
-			UIO_USERSPACE, ncd.ncd_dirp, td);
-		error = namei(&nd);
+		vp = NULL;
+		error = nlookup_init(&nd, ncd.ncd_dirp, UIO_USERSPACE, 
+					NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error == 0)
+			error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);   
+		nlookup_done(&nd);
 		if (error)
 			return (error);
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		if ((nd.ni_vp->v_flag & VROOT) == 0)
+
+		if ((vp->v_flag & VROOT) == 0)
 			error = EINVAL;
-		nmp = VFSTONFS(nd.ni_vp->v_mount);
-		vput(nd.ni_vp);
+		nmp = VFSTONFS(vp->v_mount);
+		vput(vp);
 		if (error)
 			return (error);
 		if ((nmp->nm_state & NFSSTA_MNTD) &&

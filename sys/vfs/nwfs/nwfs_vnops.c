@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.19 2004/11/03 22:07:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.20 2004/11/12 00:09:42 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -384,9 +384,7 @@ nwfs_write(struct vop_write_args *ap)
 /*
  * nwfs_create call
  * Create a regular file. On entry the directory to contain the file being
- * created is locked.  We must release before we return. We must also free
- * the pathname buffer pointed at by cnp->cn_pnbuf, always on error, or
- * only if the SAVESTART bit in cn_flags is clear on success.
+ * created is locked.  We must release before we return. 
  *
  * nwfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
  *		struct componentname *a_cnpl, struct vattr *a_vap)
@@ -431,8 +429,6 @@ nwfs_create(struct vop_create_args *ap)
 			np->opened = 0;
 			*vpp = vp;
 		}
-		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, vp, cnp);
 	}
 	return (error);
 }
@@ -459,7 +455,6 @@ nwfs_remove(struct vop_remove_args *ap)
 	} else if (!ncp_conn_valid(NWFSTOCONN(nmp))) {
 		error = EIO;
 	} else {
-		cache_purge(vp);
 		error = ncp_DeleteNSEntry(nmp, VTONW(dvp)->n_fid.f_id,
 		    cnp->cn_namelen,cnp->cn_nameptr,cnp->cn_td,cnp->cn_cred);
 		if (error == 0)
@@ -523,11 +518,6 @@ nwfs_rename(struct vop_rename_args *ap)
 
 	if (error == 0x8992)
 		error = EEXIST;
-	if (fvp->v_type == VDIR) {
-		if (tvp != NULL && tvp->v_type == VDIR)
-			cache_purge(tdvp);
-		cache_purge(fdvp);
-	}
 out:
 	if (tdvp == tvp)
 		vrele(tdvp);
@@ -661,7 +651,6 @@ nwfs_rmdir(struct vop_rmdir_args *ap)
 		error = ENOTEMPTY;
 	dnp->n_flag |= NMODIFIED;
 	nwfs_attr_cacheremove(dvp);
-	cache_purge(vp);
 	return (error);
 }
 
@@ -842,7 +831,7 @@ nwfs_lookup(struct vop_lookup_args *ap)
 	struct nwnode *dnp, *npp;
 	struct nw_entry_info fattr, *fap;
 	ncpfid fid;
-	int nameiop=cnp->cn_nameiop, islastcn;
+	int nameiop=cnp->cn_nameiop;
 	int lockparent, wantparent, error = 0, notfound;
 	struct thread *td = cnp->cn_td;
 	char _name[cnp->cn_namelen+1];
@@ -859,8 +848,7 @@ nwfs_lookup(struct vop_lookup_args *ap)
 	NCPVNDEBUG("%d '%s' in '%s' id=d\n", nameiop, _name, 
 		VTONW(dvp)->n_name/*, VTONW(dvp)->n_name*/);
 
-	islastcn = flags & CNP_ISLASTCN;
-	if (islastcn && (mp->mnt_flag & MNT_RDONLY) && (nameiop != NAMEI_LOOKUP))
+	if ((mp->mnt_flag & MNT_RDONLY) && nameiop != NAMEI_LOOKUP)
 		return (EROFS);
 	if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)))
 		return (error);
@@ -876,53 +864,6 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	if (error) 
 	    return ENOENT;
 
-	error = cache_lookup(dvp, vpp, cnp);
-	NCPVNDEBUG("cache_lookup returned %d\n",error);
-	if (error > 0)
-		return error;
-	if (error) {		/* name was found */
-		struct vattr vattr;
-		int vpid;
-
-		vp = *vpp;
-		vpid = vp->v_id;
-		if (dvp == vp) {	/* lookup on current */
-			/* vp already ref'd */
-			error = 0;
-			NCPVNDEBUG("cached '.'");
-		} else if (flags & CNP_ISDOTDOT) {
-			VOP_UNLOCK(dvp, 0, td);	/* unlock parent */
-			error = vget(vp, LK_EXCLUSIVE, td);
-			vrele(vp);
-			if (!error && lockparent && islastcn)
-				error = vn_lock(dvp, LK_EXCLUSIVE, td);
-		} else {
-			error = vget(vp, LK_EXCLUSIVE, td);
-			vrele(vp);
-			if (!lockparent || error || !islastcn)
-				VOP_UNLOCK(dvp, 0, td);
-		}
-		if (!error) {
-			if (vpid == vp->v_id) {
-			   if (!VOP_GETATTR(vp, &vattr, td)
-			    && vattr.va_ctime.tv_sec == VTONW(vp)->n_ctime) {
-				if (nameiop != NAMEI_LOOKUP && islastcn)
-					cnp->cn_flags |= CNP_SAVENAME;
-				NCPVNDEBUG("use cached vnode");
-				return (0);
-			   }
-			   cache_purge(vp);
-			}
-			vput(vp);
-			if (lockparent && dvp != vp && islastcn)
-				VOP_UNLOCK(dvp, 0, td);
-		}
-		error = vn_lock(dvp, LK_EXCLUSIVE, td);
-		*vpp = NULLVP;
-		if (error)
-			return (error);
-	}
-	/* not in cache, so ...  */
 	error = 0;
 	*vpp = NULLVP;
 	fap = NULL;
@@ -957,8 +898,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		return (notfound);	/* hard error */
 	if (notfound) { /* entry not found */
 		/* Handle RENAME or CREATE case... */
-		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent && islastcn) {
-			cnp->cn_flags |= CNP_SAVENAME;
+		if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) && wantparent) {
 			if (!lockparent)
 				VOP_UNLOCK(dvp, 0, td);
 			return (EJUSTRETURN);
@@ -968,7 +908,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		NCPVNDEBUG("Found entry %s with id=%d\n", fap->entryName, fap->dirEntNum);
 	}*/
 	/* handle DELETE case ... */
-	if (nameiop == NAMEI_DELETE && islastcn) { 	/* delete last component */
+	if (nameiop == NAMEI_DELETE) { 	/* delete last component */
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) {	/* we found ourselfs */
@@ -979,18 +919,16 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		cnp->cn_flags |= CNP_SAVENAME;	/* I free it later */
 		if (!lockparent) VOP_UNLOCK(dvp, 0, td);
 		return (0);
 	}
-	if (nameiop == NAMEI_RENAME && islastcn && wantparent) {
+	if (nameiop == NAMEI_RENAME && wantparent) {
 		error = VOP_ACCESS(dvp, VWRITE, cnp->cn_cred, cnp->cn_td);
 		if (error) return (error);
 		if (NWCMPF(&dnp->n_fid, &fid)) return EISDIR;
 		error = nwfs_nget(mp, fid, fap, dvp, &vp);
 		if (error) return (error);
 		*vpp = vp;
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(dvp, 0, td);
 		return (0);
@@ -1002,8 +940,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 			vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
-		if (lockparent && islastcn &&
-		    (error = vn_lock(dvp, LK_EXCLUSIVE, td))) {
+		if (lockparent && (error = vn_lock(dvp, LK_EXCLUSIVE, td))) {
 		    	vput(vp);
 			return (error);
 		}
@@ -1016,12 +953,15 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 		if (error) return (error);
 		*vpp = vp;
 		NCPVNDEBUG("lookup: getnewvp!\n");
-		if (!lockparent || !islastcn)
+		if (!lockparent)
 			VOP_UNLOCK(dvp, 0, td);
 	}
-	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
+#if 0
+	/* XXX MOVE TO NREMOVE */
+	if ((cnp->cn_flags & CNP_MAKEENTRY)) {
 		VTONW(*vpp)->n_ctime = VTONW(*vpp)->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, *vpp, cnp);
+		/* XXX */
 	}
+#endif
 	return (0);
 }

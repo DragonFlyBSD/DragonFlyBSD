@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.17 2004/10/12 19:20:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.18 2004/11/12 00:09:03 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -97,7 +97,7 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/conf.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
@@ -1536,31 +1536,34 @@ ccddump(dev_t dev, u_int count, u_int blkno, u_int secsize)
 static int
 ccdlookup(char *path, struct thread *td, struct vnode **vpp)
 {
-	struct nameidata nd;
+	struct nlookupdata nd;
+	struct ucred *cred;
 	struct vnode *vp;
 	int error;
-	struct ucred *cred;
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
+	*vpp = NULL;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, path, td);
-	if ((error = vn_open(&nd, FREAD|FWRITE, 0)) != 0) {
+	error = nlookup_init(&nd, path, UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	if (error)
+		return (error);
+	if ((error = vn_open(&nd, NULL, FREAD|FWRITE, 0)) != 0) {
 #ifdef DEBUG
 		if (ccddebug & CCDB_FOLLOW|CCDB_INIT)
 			printf("ccdlookup: vn_open error = %d\n", error);
 #endif
-		return (error);
+		goto done;
 	}
-	vp = nd.ni_vp;
+	vp = nd.nl_open_vp;
 
 	if (vp->v_usecount > 1) {
 		error = EBUSY;
-		goto bad;
+		goto done;
 	}
 
 	if (!vn_isdisk(vp, &error)) 
-		goto bad;
+		goto done;
 
 #ifdef DEBUG
 	if (ccddebug & CCDB_VNODE)
@@ -1568,14 +1571,12 @@ ccdlookup(char *path, struct thread *td, struct vnode **vpp)
 #endif
 
 	VOP_UNLOCK(vp, 0, td);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	*vpp = vp;
+	nd.nl_open_vp = NULL;
+	nlookup_done(&nd);
+	*vpp = vp;				/* leave ref intact  */
 	return (0);
-bad:
-	VOP_UNLOCK(vp, 0, td);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	/* vn_close does vrele() for vp */
-	(void)vn_close(vp, FREAD|FWRITE, td);
+done:
+	nlookup_done(&nd);
 	return (error);
 }
 

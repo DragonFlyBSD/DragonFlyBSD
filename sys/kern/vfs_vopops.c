@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.9 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.10 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,9 +128,33 @@
 		VDESC_NO_OFFSET,					\
 		VDESC_NO_OFFSET)
 
+#define VNODEOP_DESC_INIT_NCP2_CRED(name)				\
+	VNODEOP_DESC_INIT(name, 0, NULL, 				\
+		VDESC_NO_OFFSET,					\
+		__offsetof(VARGSSTRUCT(name), a_cred),			\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
+
 #define VNODEOP_DESC_INIT_NCP_CRED(name)				\
 	VNODEOP_DESC_INIT(name, 0, NULL, 				\
 		VDESC_NO_OFFSET,					\
+		__offsetof(VARGSSTRUCT(name), a_cred),			\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
+
+#define VNODEOP_DESC_INIT_NCP_VP_CRED(name)				\
+	static int VOFFNAME(name)[] = { 				\
+		__offsetof(VARGSSTRUCT(name), a_vp), 			\
+		VDESC_NO_OFFSET };					\
+	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
+		VDESC_NO_OFFSET,					\
+		__offsetof(VARGSSTRUCT(name), a_cred),			\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
+
+#define VNODEOP_DESC_INIT_NCP_CRED_VPP(name)				\
+	VNODEOP_DESC_INIT(name, 0, NULL, 				\
+		__offsetof(VARGSSTRUCT(name), a_vpp),			\
 		__offsetof(VARGSSTRUCT(name), a_cred),			\
 		VDESC_NO_OFFSET,					\
 		VDESC_NO_OFFSET)
@@ -144,6 +168,16 @@
 		VDESC_NO_OFFSET,					\
 		VDESC_NO_OFFSET,					\
 		__offsetof(VARGSSTRUCT(name), a_cnp))
+
+#define VNODEOP_DESC_INIT_DVP_VPP_CRED(name)				\
+	static int VOFFNAME(name)[] = { 				\
+		__offsetof(VARGSSTRUCT(name), a_dvp),			\
+		VDESC_NO_OFFSET };					\
+	VNODEOP_DESC_INIT(name, 0, VOFFNAME(name), 			\
+		__offsetof(VARGSSTRUCT(name), a_vpp),			\
+		__offsetof(VARGSSTRUCT(name), a_cred),			\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
 
 #define VNODEOP_DESC_INIT_DVP_CNP(name)					\
 	static int VOFFNAME(name)[] = { 				\
@@ -179,9 +213,7 @@
 
 VNODEOP_DESC_INIT_SIMPLE(default);
 VNODEOP_DESC_INIT_VP(islocked);
-VNODEOP_DESC_INIT_NCP_CRED(resolve);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(lookup);
-VNODEOP_DESC_INIT_DVP_VPP_CNP(cachedlookup);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(create);
 VNODEOP_DESC_INIT_DVP_CNP(whiteout);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(mknod);
@@ -200,7 +232,6 @@ VNODEOP_DESC_INIT_VP(revoke);
 VNODEOP_DESC_INIT_VP_CRED(mmap);
 VNODEOP_DESC_INIT_VP(fsync);
 VNODEOP_DESC_INIT_DVP_VP_CNP(remove);
-VNODEOP_DESC_INIT_NCP_CRED(nremove);
 VNODEOP_DESC_INIT_TDVP_VP_CNP(link);
 
 static int VOFFNAME(rename)[] = { 
@@ -219,6 +250,7 @@ VNODEOP_DESC_INIT(rename,
 	VDESC_NO_OFFSET,
 	VDESC_NO_OFFSET,
 	__offsetof(VARGSSTRUCT(rename), a_fcnp));
+
 VNODEOP_DESC_INIT_DVP_VPP_CNP(mkdir);
 VNODEOP_DESC_INIT_DVP_VP_CNP(rmdir);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(symlink);
@@ -248,6 +280,18 @@ VNODEOP_DESC_INIT_VP(createvobject);
 VNODEOP_DESC_INIT_VP(destroyvobject);
 VNODEOP_DESC_INIT_VP(getvobject);
 VNODEOP_DESC_INIT_SIMPLE(vfsset);
+
+VNODEOP_DESC_INIT_NCP_CRED(nresolve);
+VNODEOP_DESC_INIT_DVP_VPP_CRED(nlookupdotdot);
+VNODEOP_DESC_INIT_NCP_CRED_VPP(ncreate);
+VNODEOP_DESC_INIT_NCP_CRED_VPP(nmkdir);
+VNODEOP_DESC_INIT_NCP_CRED_VPP(nmknod);
+VNODEOP_DESC_INIT_NCP_VP_CRED(nlink);
+VNODEOP_DESC_INIT_NCP_CRED_VPP(nsymlink);
+VNODEOP_DESC_INIT_NCP_CRED(nwhiteout);
+VNODEOP_DESC_INIT_NCP_CRED(nremove);
+VNODEOP_DESC_INIT_NCP_CRED(nrmdir);
+VNODEOP_DESC_INIT_NCP2_CRED(nrename);
 
 /*
  * The DO_OPS macro basicallys calls ops->blah(&ap) but is also responsible
@@ -292,21 +336,6 @@ vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_resolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
-{
-	struct vop_resolve_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_resolve_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
-	ap.a_cred = cred;
-
-	DO_OPS(ops, error, &ap, vop_resolve);
-	return(error);
-}
-
-int
 vop_lookup(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp)
 {
@@ -324,24 +353,7 @@ vop_lookup(struct vop_ops *ops, struct vnode *dvp,
 }
 
 int
-vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp,
-	struct vnode **vpp, struct componentname *cnp)
-{
-	struct vop_cachedlookup_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_cachedlookup_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_dvp = dvp;
-	ap.a_vpp = vpp;
-	ap.a_cnp = cnp;
-
-	DO_OPS(ops, error, &ap, vop_cachedlookup);
-	return(error);
-}
-
-int
-vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_create(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_create_args ap;
@@ -350,7 +362,6 @@ vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_create_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
@@ -360,7 +371,7 @@ vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 }
 
 int
-vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_whiteout(struct vop_ops *ops, struct vnode *dvp,
 	struct componentname *cnp, int flags)
 {
 	struct vop_whiteout_args ap;
@@ -369,7 +380,6 @@ vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_whiteout_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_cnp = cnp;
 	ap.a_flags = flags;
 
@@ -378,7 +388,7 @@ vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 }
 
 int
-vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_mknod(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_mknod_args ap;
@@ -387,7 +397,6 @@ vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_mknod_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
@@ -398,7 +407,7 @@ vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 
 int
 vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
-	struct thread *td)
+	struct file *fp, struct thread *td)
 {
 	struct vop_open_args ap;
 	int error;
@@ -406,6 +415,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_head.a_desc = &vop_open_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
+	ap.a_fp = fp;
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 	ap.a_td = td;
@@ -641,7 +651,7 @@ vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, struct thread *td)
 }
 
 int
-vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_remove(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_remove_args ap;
@@ -650,7 +660,6 @@ vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_remove_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
@@ -659,22 +668,7 @@ vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 }
 
 int
-vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
-{
-	struct vop_nremove_args ap;
-	int error;
-
-	ap.a_head.a_desc = &vop_nremove_desc;
-	ap.a_head.a_ops = ops;
-	ap.a_ncp = ncp;
-	ap.a_cred = cred;
-
-	DO_OPS(ops, error, &ap, vop_nremove);
-	return(error);
-}
-
-int
-vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
+vop_link(struct vop_ops *ops, struct vnode *tdvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_link_args ap;
@@ -683,7 +677,6 @@ vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_link_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_tdvp = tdvp;
-	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
@@ -692,10 +685,9 @@ vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
 }
 
 int
-vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
-	struct vnode *fvp, struct componentname *fcnp,
-	struct vnode *tdvp, struct namecache *tpar,
-	struct vnode *tvp, struct componentname *tcnp)
+vop_rename(struct vop_ops *ops, 
+	   struct vnode *fdvp, struct vnode *fvp, struct componentname *fcnp,
+	   struct vnode *tdvp, struct vnode *tvp, struct componentname *tcnp)
 {
 	struct vop_rename_args ap;
 	int error;
@@ -703,11 +695,9 @@ vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
 	ap.a_head.a_desc = &vop_rename_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_fdvp = fdvp;
-	ap.a_fpar = fpar;
 	ap.a_fvp = fvp;
 	ap.a_fcnp = fcnp;
 	ap.a_tdvp = tdvp;
-	ap.a_tpar = tpar;
 	ap.a_tvp = tvp;
 	ap.a_tcnp = tcnp;
 
@@ -716,7 +706,7 @@ vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
 }
 
 int
-vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_mkdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_mkdir_args ap;
@@ -725,7 +715,6 @@ vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_mkdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
@@ -735,7 +724,7 @@ vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 }
 
 int
-vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_rmdir(struct vop_ops *ops, struct vnode *dvp, 
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_rmdir_args ap;
@@ -744,7 +733,6 @@ vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_rmdir_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
 
@@ -753,7 +741,7 @@ vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 }
 
 int
-vop_symlink(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+vop_symlink(struct vop_ops *ops, struct vnode *dvp,
 	struct vnode **vpp, struct componentname *cnp,
 	struct vattr *vap, char *target)
 {
@@ -763,7 +751,6 @@ vop_symlink(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_head.a_desc = &vop_symlink_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_dvp = dvp;
-	ap.a_par = par;
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
@@ -1219,6 +1206,279 @@ vop_vfsset(struct vop_ops *ops, int op, const char *opstr)
 	return(error);
 }
 
+/*
+ * NEW API FUNCTIONS
+ *
+ * nresolve takes a locked ncp and a cred and resolves the ncp into a 
+ * positive or negative hit.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nresolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+{
+	struct vop_nresolve_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nresolve_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nresolve);
+	return(error);
+}
+
+/*
+ * nlookupdotdot takes an unlocked directory, dvp, and looks up "..", returning
+ * a locked parent directory in *vpp.  If an error occurs *vpp will be NULL.
+ */
+int
+vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
+	struct vnode **vpp, struct ucred *cred)
+{
+	struct vop_nlookupdotdot_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nlookupdotdot_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_dvp = dvp;
+	ap.a_vpp = vpp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nlookupdotdot);
+	return(error);
+}
+
+/*
+ * ncreate takes a locked, resolved ncp that typically represents a negative
+ * cache hit and creates the file or node specified by the ncp, cred, and
+ * vattr.  If no error occurs a locked vnode is returned in *vpp.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_ncreate(struct vop_ops *ops, struct namecache *ncp, 
+	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
+{
+	struct vop_ncreate_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_ncreate_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_vpp = vpp;
+	ap.a_cred = cred;
+	ap.a_vap = vap;
+
+	DO_OPS(ops, error, &ap, vop_ncreate);
+	return(error);
+}
+
+/*
+ * nmkdir takes a locked, resolved ncp that typically represents a negative
+ * cache hit and creates the directory specified by the ncp, cred, and
+ * vattr.  If no error occurs a locked vnode is returned in *vpp.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nmkdir(struct vop_ops *ops, struct namecache *ncp, 
+	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
+{
+	struct vop_nmkdir_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nmkdir_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_vpp = vpp;
+	ap.a_cred = cred;
+	ap.a_vap = vap;
+
+	DO_OPS(ops, error, &ap, vop_nmkdir);
+	return(error);
+}
+
+/*
+ * nmknod takes a locked, resolved ncp that typically represents a negative
+ * cache hit and creates the node specified by the ncp, cred, and
+ * vattr.  If no error occurs a locked vnode is returned in *vpp.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nmknod(struct vop_ops *ops, struct namecache *ncp, 
+	struct vnode **vpp, struct ucred *cred, struct vattr *vap)
+{
+	struct vop_nmknod_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nmknod_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_vpp = vpp;
+	ap.a_cred = cred;
+	ap.a_vap = vap;
+
+	DO_OPS(ops, error, &ap, vop_nmknod);
+	return(error);
+}
+
+/*
+ * nlink takes a locked, resolved ncp that typically represents a negative
+ * cache hit and creates the node specified by the ncp, cred, and
+ * existing vnode.  The passed vp must be locked and will remain locked
+ * on return, as does the ncp, whether an error occurs or not.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nlink(struct vop_ops *ops, struct namecache *ncp,
+	struct vnode *vp, struct ucred *cred)
+{
+	struct vop_nlink_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nlink_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_vp = vp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nlink);
+	return(error);
+}
+
+/*
+ * nsymlink takes a locked, resolved ncp that typically represents a negative
+ * cache hit and creates a symbolic link based on cred, vap, and target (the
+ * contents of the link).  If no error occurs a locked vnode is returned in
+ * *vpp.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
+	struct vnode **vpp, struct ucred *cred,
+	struct vattr *vap, char *target)
+{
+	struct vop_nsymlink_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nsymlink_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_vpp = vpp;
+	ap.a_cred = cred;
+	ap.a_vap = vap;
+	ap.a_target = target;
+
+	DO_OPS(ops, error, &ap, vop_nsymlink);
+	return(error);
+}
+
+/*
+ * nwhiteout takes a locked, resolved ncp that can represent a positive or
+ * negative hit and executes the whiteout function specified in flags.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp, 
+	struct ucred *cred, int flags)
+{
+	struct vop_nwhiteout_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nwhiteout_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_cred = cred;
+	ap.a_flags = flags;
+
+	DO_OPS(ops, error, &ap, vop_nwhiteout);
+	return(error);
+}
+
+/*
+ * nremove takes a locked, resolved ncp that generally represents a
+ * positive hit and removes the file.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+{
+	struct vop_nremove_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nremove_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nremove);
+	return(error);
+}
+
+/*
+ * nrmdir takes a locked, resolved ncp that generally represents a
+ * directory and removes the directory.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.
+ */
+int
+vop_nrmdir(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+{
+	struct vop_nrmdir_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nrmdir_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nrmdir);
+	return(error);
+}
+
+/*
+ * nrename takes TWO locked, resolved ncp's and the cred of the caller
+ * and renames the source ncp to the target ncp.  The target ncp may 
+ * represent a positive or negative hit.
+ *
+ * The namecache is automatically adjusted by this function.  The ncp
+ * is left locked on return.  The source ncp is typically changed to
+ * a negative cache hit and the target ncp typically takes on the
+ * source ncp's underlying file.
+ */
+int
+vop_nrename(struct vop_ops *ops, struct namecache *fncp, 
+	    struct namecache *tncp, struct ucred *cred)
+{
+	struct vop_nrename_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nrename_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_fncp = fncp;
+	ap.a_tncp = tncp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nrename);
+	return(error);
+}
+
 /************************************************************************
  *		PRIMARY VNODE OPERATIONS FORWARDING CALLS		*
  ************************************************************************
@@ -1259,30 +1519,11 @@ vop_islocked_ap(struct vop_islocked_args *ap)
 }
 
 int
-vop_resolve_ap(struct vop_resolve_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_resolve);
-	return(error);
-}
-
-
-int
 vop_lookup_ap(struct vop_lookup_args *ap)
 {
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_lookup);
-	return(error);
-}
-
-int
-vop_cachedlookup_ap(struct vop_cachedlookup_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_cachedlookup);
 	return(error);
 }
 
@@ -1445,15 +1686,6 @@ vop_remove_ap(struct vop_remove_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_remove);
-	return(error);
-}
-
-int
-vop_nremove_ap(struct vop_nremove_args *ap)
-{
-	int error;
-
-	DO_OPS(ap->a_head.a_ops, error, ap, vop_nremove);
 	return(error);
 }
 
@@ -1733,6 +1965,105 @@ vop_vfsset_ap(struct vop_vfsset_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_vfsset);
+	return(error);
+}
+
+int
+vop_nresolve_ap(struct vop_nresolve_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nresolve);
+	return(error);
+}
+
+int
+vop_nlookupdotdot_ap(struct vop_nlookupdotdot_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nlookupdotdot);
+	return(error);
+}
+
+int
+vop_ncreate_ap(struct vop_ncreate_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_ncreate);
+	return(error);
+}
+
+int
+vop_nmkdir_ap(struct vop_nmkdir_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nmkdir);
+	return(error);
+}
+
+int
+vop_nmknod_ap(struct vop_nmknod_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nmknod);
+	return(error);
+}
+
+int
+vop_nlink_ap(struct vop_nlink_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nlink);
+	return(error);
+}
+
+int
+vop_nsymlink_ap(struct vop_nsymlink_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nsymlink);
+	return(error);
+}
+
+int
+vop_nwhiteout_ap(struct vop_nwhiteout_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nwhiteout);
+	return(error);
+}
+
+int
+vop_nremove_ap(struct vop_nremove_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nremove);
+	return(error);
+}
+
+int
+vop_nrmdir_ap(struct vop_nrmdir_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nrmdir);
+	return(error);
+}
+
+int
+vop_nrename_ap(struct vop_nrename_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nrename);
 	return(error);
 }
 

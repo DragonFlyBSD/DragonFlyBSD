@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.22 2004/10/12 19:20:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.23 2004/11/12 00:09:28 dillon Exp $
  * 
  */
 
@@ -57,6 +57,7 @@
 #include <sys/file.h>
 #include <sys/fcntl.h>
 #include <sys/uio.h>
+#include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/ioccom.h>
 #include <sys/select.h>
@@ -162,7 +163,7 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
 
     missing
     { &vop_reallocblks_desc,	(void *) ufs_missingop },
-    { &vop_cachedlookup_desc,	(void *) ufs_lookup },
+    { &vop_lookup_desc,		(void *) ufs_lookup },
     { &vop_whiteout_desc,	(void *) ufs_whiteout },
 #endif
     { NULL, NULL }
@@ -291,7 +292,7 @@ coda_open(void *v)
     cp->c_inode = inode;
 
     /* Open the cache file. */
-    error = VOP_OPEN(vp, flag, cred, td); 
+    error = VOP_OPEN(vp, flag, cred, NULL, td); 
     if (error) {
     	printf("coda_open: VOP_OPEN on container failed %d\n", error);
 	return (error);
@@ -442,7 +443,7 @@ coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw, int ioflag,
 	    opened_internally = 1;
 	    MARK_INT_GEN(CODA_OPEN_STATS);
 	    error = VOP_OPEN(vp, (rw == UIO_READ ? FREAD : FWRITE), 
-			     cred, td);
+			     cred, NULL, td);
 printf("coda_rdwr: Internally Opening %p\n", vp);
 	    if (error) {
 		printf("coda_rdwr: VOP_OPEN on container failed %d\n", error);
@@ -514,7 +515,7 @@ coda_ioctl(void *v)
 /* locals */
     int error;
     struct vnode *tvp;
-    struct nameidata ndp;
+    struct nlookupdata nd;
     struct PioctlData *iap = (struct PioctlData *)data;
 
     MARK_ENTRY(CODA_IOCTL_STATS);
@@ -535,9 +536,14 @@ coda_ioctl(void *v)
     /* Should we use the name cache here? It would get it from
        lookupname sooner or later anyway, right? */
 
-    NDINIT(&ndp, NAMEI_LOOKUP, (iap->follow ? CNP_FOLLOW : 0), UIO_USERSPACE, iap->path, td);
-    error = namei(&ndp);
-    tvp = ndp.ni_vp;
+    tvp = NULL;
+    error = nlookup_init(&nd, iap->path, UIO_USERSPACE,
+			(iap->follow ? NLC_FOLLOW : 0));
+    if (error == 0)
+	error = nlookup(&nd);
+    if (error == 0)
+	error = cache_vref(nd.nl_ncp, nd.nl_cred, &tvp);
+    nlookup_done(&nd);
 
     if (error) {
 	MARK_INT_FAIL(CODA_IOCTL_STATS);
@@ -552,7 +558,6 @@ coda_ioctl(void *v)
      */
     if (tvp->v_tag != VT_CODA) {
 	vrele(tvp);
-	NDFREE(&ndp, NDF_ONLY_PNBUF);
 	MARK_INT_FAIL(CODA_IOCTL_STATS);
 	CODADEBUG(CODA_IOCTL, 
 		 myprintf(("coda_ioctl error: %s not a coda object\n", 
@@ -561,7 +566,7 @@ coda_ioctl(void *v)
     }
 
     if (iap->vi.in_size > VC_MAXDATASIZE) {
-	NDFREE(&ndp, 0);
+	vrele(tvp);
 	return(EINVAL);
     }
     error = venus_ioctl(vtomi(tvp), &((VTOC(tvp))->c_fid), com, flag, data, cred, td);
@@ -572,7 +577,6 @@ coda_ioctl(void *v)
 	CODADEBUG(CODA_IOCTL, myprintf(("Ioctl returns %d \n", error)); )
 
     vrele(tvp);
-    NDFREE(&ndp, NDF_ONLY_PNBUF);
     return(error);
 }
 
@@ -1011,30 +1015,11 @@ coda_lookup(void *v)
      * we need to save the last component of the name.  (Create will
      * have to free the name buffer later...lucky us...)
      */
-    if (((cnp->cn_nameiop == NAMEI_CREATE) || (cnp->cn_nameiop == NAMEI_RENAME))
-	&& (cnp->cn_flags & CNP_ISLASTCN)
-	&& (error == ENOENT))
+    if ((cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME)
+	&& error == ENOENT)
     {
 	error = EJUSTRETURN;
-	cnp->cn_flags |= CNP_SAVENAME;
 	*ap->a_vpp = NULL;
-    }
-
-    /* 
-     * If we are removing, and we are at the last element, and we
-     * found it, then we need to keep the name around so that the
-     * removal will go ahead as planned.  Unfortunately, this will
-     * probably also lock the to-be-removed vnode, which may or may
-     * not be a good idea.  I'll have to look at the bits of
-     * coda_remove to make sure.  We'll only save the name if we did in
-     * fact find the name, otherwise coda_remove won't have a chance
-     * to free the pathname.  
-     */
-    if ((cnp->cn_nameiop == NAMEI_DELETE)
-	&& (cnp->cn_flags & CNP_ISLASTCN)
-	&& !error)
-    {
-	cnp->cn_flags |= CNP_SAVENAME;
     }
 
     /* 
@@ -1047,7 +1032,7 @@ coda_lookup(void *v)
      * we are ISLASTCN
      */
     if (!error || (error == EJUSTRETURN)) {
-	if (!(cnp->cn_flags & CNP_LOCKPARENT) || !(cnp->cn_flags & CNP_ISLASTCN)) {
+	if ((cnp->cn_flags & CNP_LOCKPARENT) == 0) {
 	    if ((error = VOP_UNLOCK(dvp, 0, td))) {
 		return error; 
 	    }	    
@@ -1152,17 +1137,10 @@ coda_create(void *v)
     }
 
     if (!error) {
-	if (cnp->cn_flags & CNP_LOCKLEAF) {
-	    if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
-		printf("coda_create: ");
-		panic("unlocked parent but couldn't lock child");
-	    }
+	if ((error = VOP_LOCK(*ap->a_vpp, LK_EXCLUSIVE, td))) {
+	    printf("coda_create: ");
+	    panic("unlocked parent but couldn't lock child");
 	}
-#ifdef OLD_DIAGNOSTIC
-	else {
-	    printf("coda_create: LOCKLEAF not set!\n");
-	}
-#endif
     }
     return(error);
 }
@@ -1350,8 +1328,6 @@ coda_rename(void *v)
 
  exit:
     CODADEBUG(CODA_RENAME, myprintf(("in rename result %d\n",error));)
-    /* XXX - do we need to call cache pureg on the moved vnode? */
-    cache_purge(ap->a_fvp);
 
     /* It seems to be incumbent on us to drop locks on all four vnodes */
     /* From-vnodes are not locked, only ref'd.  To-vnodes are locked. */
@@ -1596,7 +1572,7 @@ coda_readdir(void *v)
 	if (cp->c_ovp == NULL) {
 	    opened_internally = 1;
 	    MARK_INT_GEN(CODA_OPEN_STATS);
-	    error = VOP_OPEN(vp, FREAD, cred, td);
+	    error = VOP_OPEN(vp, FREAD, cred, NULL, td);
 printf("coda_readdir: Internally Opening %p\n", vp);
 	    if (error) {
 		printf("coda_readdir: VOP_OPEN on container failed %d\n", error);

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.6 2004/10/07 20:18:33 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.7 2004/11/12 00:09:24 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -126,6 +126,50 @@ nlookup_init(struct nlookupdata *nd,
 }
 
 /*
+ * This works similarly to nlookup_init() but does not assume a process
+ * context.  rootncp is always chosen for the root directory and the cred
+ * and starting directory are supplied in arguments.
+ */
+int
+nlookup_init_raw(struct nlookupdata *nd, 
+	     const char *path, enum uio_seg seg, int flags,
+	     struct ucred *cred, struct namecache *ncstart)
+{
+    size_t pathlen;
+    thread_t td;
+    int error;
+
+    td = curthread;
+
+    bzero(nd, sizeof(struct nlookupdata));
+    nd->nl_path = zalloc(namei_zone);
+    nd->nl_flags |= NLC_HASBUF;
+    if (seg == UIO_SYSSPACE) 
+	error = copystr(path, nd->nl_path, MAXPATHLEN, &pathlen);
+    else
+	error = copyinstr(path, nd->nl_path, MAXPATHLEN, &pathlen);
+
+    /*
+     * Don't allow empty pathnames.
+     * POSIX.1 requirement: "" is not a vaild file name.
+     */
+    if (error == 0 && pathlen <= 1)
+	error = ENOENT;
+
+    if (error == 0) {
+	nd->nl_ncp = cache_hold(ncstart);
+	nd->nl_rootncp = cache_hold(rootncp);
+	nd->nl_jailncp = cache_hold(rootncp);
+	nd->nl_cred = crhold(cred);
+	nd->nl_td = td;
+	nd->nl_flags |= flags;
+    } else {
+	nlookup_done(nd);
+    }
+    return(error);
+}
+
+/*
  * Cleanup a nlookupdata structure after we are through with it.  This may
  * be called on any nlookupdata structure initialized with nlookup_init().
  * Calling nlookup_done() is mandatory in all cases except where nlookup_init()
@@ -159,7 +203,21 @@ nlookup_done(struct nlookupdata *nd)
 	crfree(nd->nl_cred);
 	nd->nl_cred = NULL;
     }
-    nd->nl_flags = 0;
+    if (nd->nl_open_vp) {
+	if (nd->nl_flags & NLC_LOCKVP) {
+		VOP_UNLOCK(nd->nl_open_vp, 0, nd->nl_td);
+		nd->nl_flags &= ~NLC_LOCKVP;
+	}
+	vn_close(nd->nl_open_vp, nd->nl_vp_fmode, nd->nl_td);
+	nd->nl_open_vp = NULL;
+    }
+    nd->nl_flags = 0;	/* clear remaining flags (just clear everything) */
+}
+
+void
+nlookup_zero(struct nlookupdata *nd)
+{
+    bzero(nd, sizeof(struct nlookupdata));
 }
 
 /*
@@ -200,6 +258,11 @@ nlookup_simple(const char *str, enum uio_seg seg,
  * Intermediate directory elements, including the current directory, require
  * execute (search) permission.  nlookup does not examine the access 
  * permissions on the returned element.
+ *
+ * If NLC_CREATE or NLC_DELETE is set the last directory must allow node
+ * creation (VCREATE/VDELETE), and an error code of 0 will be returned for
+ * a non-existant target.  Otherwise a non-existant target will cause
+ * ENOENT to be returned.
  */
 int
 nlookup(struct nlookupdata *nd)
@@ -207,6 +270,7 @@ nlookup(struct nlookupdata *nd)
     struct nlcomponent nlc;
     struct namecache *ncp;
     char *ptr;
+    char *xptr;
     int error;
     int len;
 
@@ -279,7 +343,10 @@ nlookup(struct nlookupdata *nd)
 	 * mount point and skip the mount-under node.  If we are at the root
 	 * ".." just returns the root.
 	 *
-	 * This subsection returns a locked, refd 'ncp'.
+	 * This subsection returns a locked, refd 'ncp' unless it errors out.
+	 * The namecache topology is not allowed to be disconnected, so 
+	 * encountering a NULL parent will generate EINVAL.  This typically
+	 * occurs when a directory is removed out from under a process.
 	 */
 	if (nlc.nlc_namelen == 1 && nlc.nlc_nameptr[0] == '.') {
 	    ncp = cache_get(nd->nl_ncp);
@@ -290,18 +357,16 @@ nlookup(struct nlookupdata *nd)
 		ncp = cache_get(ncp);
 	    } else {
 		while ((ncp->nc_flag & NCF_MOUNTPT) && ncp != nd->nl_rootncp) {
-		    /* ignore NCF_REVALPARENT on a mount point */
 		    ncp = ncp->nc_parent;	/* get to underlying node */
 		    KKASSERT(ncp != NULL && 1);
 		}
-		if (ncp->nc_flag & NCF_REVALPARENT) {
-		    printf("[diagnostic] nlookup can't .. past a renamed directory: %*.*s\n", ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
-		    error = EINVAL;
-		    break;
-		}
-		if (ncp != nd->nl_rootncp)
+		if (ncp != nd->nl_rootncp) {
 			ncp = ncp->nc_parent;
-		KKASSERT(ncp != NULL && 2);
+			if (ncp == NULL) {
+				error = EINVAL;
+				break;
+			}
+		}
 		ncp = cache_get(ncp);
 	    }
 	} else {
@@ -332,7 +397,18 @@ nlookup(struct nlookupdata *nd)
 	}
 
 	/*
-	 * Early completion
+	 * Early completion.  ENOENT is not an error if this is the last
+	 * component and NLC_CREATE was requested.  Note that ncp->nc_error
+	 * is left as ENOENT in that case, which we check later on.
+	 */
+	for (xptr = ptr; *xptr == '/'; ++xptr)
+		;
+	if (error == ENOENT && *xptr == 0 && (nd->nl_flags & NLC_CREATE)) {
+	    error = naccess(ncp, VCREATE, nd->nl_cred);
+	}
+
+	/*
+	 * Early completion on error.
 	 */
 	if (error) {
 	    cache_put(ncp);
@@ -423,12 +499,16 @@ nlookup(struct nlookupdata *nd)
 	/*
 	 * Skip any slashes to get to the next element.  If there 
 	 * are any slashes at all the current element must be a
-	 * directory.  If it isn't we break without incrementing
-	 * ptr and fall through to the failure case below.
+	 * directory or, in the create case, intended to become a directory.
+	 * If it isn't we break without incrementing ptr and fall through
+	 * to the failure case below.
 	 */
 	while (*ptr == '/') {
-	    if ((ncp->nc_flag & NCF_ISDIR) == 0)
+	    if ((ncp->nc_flag & NCF_ISDIR) == 0 && 
+		!(nd->nl_flags & NLC_WILLBEDIR)
+	    ) {
 		break;
+	    }
 	    ++ptr;
 	}
 
@@ -454,11 +534,25 @@ nlookup(struct nlookupdata *nd)
 	}
 
 	/*
+	 * Successful lookup of last element.
+	 *
+	 * Check directory permissions if a deletion is specified.
+	 */
+	if (*ptr == 0 && (nd->nl_flags & NLC_DELETE)) {
+	    if ((error = naccess(ncp, VDELETE, nd->nl_cred)) != 0) {
+		cache_put(ncp);
+		break;
+	    }
+	}
+
+	/*
 	 * XXX vnode canvmio (test in mmap(), read(), and write())
 	 */
 
 	/*
-	 * Termination: no more elements.
+	 * Termination: no more elements.  If NLC_CREATE was set the
+	 * ncp may represent a negative hit (ncp->nc_error will be ENOENT),
+	 * but we still return an error code of 0.
 	 */
 	cache_drop(nd->nl_ncp);
 	nd->nl_ncp = ncp;
@@ -597,7 +691,7 @@ naccess(struct namecache *ncp, int vmode, struct ucred *cred)
 	) {
 	    if ((par = ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
-			error = EROFS;
+			error = EINVAL;
 	    } else {
 		cache_hold(par);
 		error = naccess(par, VWRITE, cred);

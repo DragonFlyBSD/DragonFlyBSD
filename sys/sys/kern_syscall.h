@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.19 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.20 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -37,7 +37,6 @@ struct image_args;
 struct mbuf;
 struct msghdr;
 struct namecache;
-struct nameidata;
 struct nlookupdata;
 struct rlimit;
 struct rusage;
@@ -64,7 +63,7 @@ int kern_fstat(int fd, struct stat *st);
 /*
  * Prototypes for syscalls in kern/kern_exec.c
  */
-int kern_execve(struct nameidata *nd, struct image_args *args);
+int kern_execve(struct nlookupdata *nd, struct image_args *args);
 
 /*
  * Prototypes for syscalls in kern/kern_exit.c
@@ -118,30 +117,30 @@ int kern_socketpair(int domain, int type, int protocol, int *sockv);
 /*
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
-int kern_access(struct nameidata *nd, int aflags);
+int kern_access(struct nlookupdata *nd, int aflags);
 int kern_chdir(struct nlookupdata *nd);
-int kern_chmod(struct nameidata *nd, int mode);
-int kern_chown(struct nameidata *nd, int uid, int gid);
+int kern_chmod(struct nlookupdata *nd, int mode);
+int kern_chown(struct nlookupdata *nd, int uid, int gid);
 /*int kern_chroot(struct namecache *ncp);*/
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_ftruncate(int fd, off_t length);
 int kern_futimes(int fd, struct timeval *tptr);
 int kern_getdirentries(int fd, char *buf, u_int count, long *basep, int *res);
-int kern_link(struct nameidata *nd, struct nameidata *linknd);
+int kern_link(struct nlookupdata *nd, struct nlookupdata *linknd);
 int kern_lseek(int fd, off_t offset, int whence, off_t *res);
-int kern_mkdir(struct nameidata *nd, int mode);
-int kern_mkfifo(struct nameidata *nd, int mode);
-int kern_mknod(struct nameidata *nd, int mode, int dev);
-int kern_open(struct nameidata *nd, int flags, int mode, int *res);
-int kern_readlink(struct nameidata *nd, char *buf, int count, int *res);
-int kern_rename(struct nameidata *fromnd, struct nameidata *tond);
-int kern_rmdir(struct nameidata *nd);
+int kern_mkdir(struct nlookupdata *nd, int mode);
+int kern_mkfifo(struct nlookupdata *nd, int mode);
+int kern_mknod(struct nlookupdata *nd, int mode, int dev);
+int kern_open(struct nlookupdata *nd, int flags, int mode, int *res);
+int kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res);
+int kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond);
+int kern_rmdir(struct nlookupdata *nd);
 int kern_stat(struct nlookupdata *nd, struct stat *st);
-int kern_statfs(struct nameidata *nd, struct statfs *buf);
-int kern_symlink(char *path, struct nameidata *nd);
-int kern_truncate(struct nameidata *nd, off_t length);
-int kern_unlink(struct nameidata *nd);
-int kern_utimes(struct nameidata *nd, struct timeval *tptr);
+int kern_statfs(struct nlookupdata *nd, struct statfs *buf);
+int kern_symlink(struct nlookupdata *nd, char *path, int mode);
+int kern_truncate(struct nlookupdata *nd, off_t length);
+int kern_unlink(struct nlookupdata *nd);
+int kern_utimes(struct nlookupdata *nd, struct timeval *tptr);
 
 /*
  * Prototypes for syscalls in kern/vfs_cache.c

@@ -37,7 +37,7 @@
  *
  *	@(#)device_pager.c	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/vm/device_pager.c,v 1.46.2.1 2000/08/02 21:54:37 peter Exp $
- * $DragonFly: src/sys/vm/device_pager.c,v 1.8 2004/07/21 01:25:18 dillon Exp $
+ * $DragonFly: src/sys/vm/device_pager.c,v 1.9 2004/11/12 00:09:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -265,5 +265,7 @@ dev_pager_putfake(vm_page_t m)
 {
 	if (!(m->flags & PG_FICTITIOUS))
 		panic("dev_pager_putfake: bad page");
+	KKASSERT(m->object == NULL);
 	zfree(fakepg_zone, m);
 }
+

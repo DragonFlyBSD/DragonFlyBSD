@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.8 2004/10/12 19:20:48 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.9 2004/11/12 00:09:27 dillon Exp $
  */
 
 /*
@@ -76,6 +76,7 @@ struct componentname;
 struct vattr;
 struct ucred;
 struct uio;
+struct file;
 struct knote;
 struct vm_object;
 struct vm_page;
@@ -93,20 +94,7 @@ struct vop_islocked_args {
 	struct thread *a_td;
 };
 
-struct vop_resolve_args {
-	struct vop_generic_args a_head;
-	struct namecache *a_ncp;
-	struct ucred *a_cred;
-};
-
 struct vop_lookup_args {
-	struct vop_generic_args a_head;
-	struct vnode *a_dvp;
-	struct vnode **a_vpp;
-	struct componentname *a_cnp;
-};
-
-struct vop_cachedlookup_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
 	struct vnode **a_vpp;
@@ -116,7 +104,6 @@ struct vop_cachedlookup_args {
 struct vop_create_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode **a_vpp;
 	struct componentname *a_cnp;
 	struct vattr *a_vap;
@@ -125,7 +112,6 @@ struct vop_create_args {
 struct vop_whiteout_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct componentname *a_cnp;
 	int a_flags;
 };
@@ -133,7 +119,6 @@ struct vop_whiteout_args {
 struct vop_mknod_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode **a_vpp;
 	struct componentname *a_cnp;
 	struct vattr *a_vap;
@@ -144,6 +129,7 @@ struct vop_open_args {
 	struct vnode *a_vp;
 	int a_mode;
 	struct ucred *a_cred;
+	struct file *a_fp;		/* optional fp for fileops override */
 	struct thread *a_td;
 };
 
@@ -249,21 +235,13 @@ struct vop_fsync_args {
 struct vop_remove_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
-};
-
-struct vop_nremove_args {
-	struct vop_generic_args a_head;
-	struct namecache *a_ncp;		/* locked namespace */
-	struct ucred *a_cred;
 };
 
 struct vop_link_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_tdvp;
-	struct namecache *a_par;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
 };
@@ -271,11 +249,9 @@ struct vop_link_args {
 struct vop_rename_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_fdvp;
-	struct namecache *a_fpar;
 	struct vnode *a_fvp;
 	struct componentname *a_fcnp;
 	struct vnode *a_tdvp;
-	struct namecache *a_tpar;
 	struct vnode *a_tvp;
 	struct componentname *a_tcnp;
 };
@@ -283,7 +259,6 @@ struct vop_rename_args {
 struct vop_mkdir_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode **a_vpp;
 	struct componentname *a_cnp;
 	struct vattr *a_vap;
@@ -292,7 +267,6 @@ struct vop_mkdir_args {
 struct vop_rmdir_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
 };
@@ -300,7 +274,6 @@ struct vop_rmdir_args {
 struct vop_symlink_args {
 	struct vop_generic_args a_head;
 	struct vnode *a_dvp;
-	struct namecache *a_par;
 	struct vnode **a_vpp;
 	struct componentname *a_cnp;
 	struct vattr *a_vap;
@@ -504,6 +477,88 @@ struct vop_vfsset_args {
 };
 
 /*
+ * NEW API
+ */
+struct vop_nresolve_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct ucred *a_cred;
+};
+
+struct vop_nlookupdotdot_args {
+	struct vop_generic_args a_head;
+	struct vnode *a_dvp;
+	struct vnode **a_vpp;
+	struct ucred *a_cred;
+};
+
+struct vop_ncreate_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;		/* locked namespace */
+	struct vnode **a_vpp;			/* returned refd & locked */
+	struct ucred *a_cred;
+	struct vattr *a_vap;
+};
+
+struct vop_nmkdir_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;		/* locked namespace */
+	struct vnode **a_vpp;			/* returned refd & locked */
+	struct ucred *a_cred;
+	struct vattr *a_vap;
+};
+
+struct vop_nmknod_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct vnode **a_vpp;
+	struct ucred *a_cred;
+	struct vattr *a_vap;
+};
+
+struct vop_nlink_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct vnode *a_vp;
+	struct ucred *a_cred;
+};
+
+struct vop_nsymlink_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct vnode **a_vpp;
+	struct ucred *a_cred;
+	struct vattr *a_vap;
+	char *a_target;
+};
+
+struct vop_nwhiteout_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;
+	struct ucred *a_cred;
+	int a_flags;
+};
+
+struct vop_nremove_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;		/* locked namespace */
+	struct ucred *a_cred;
+};
+
+struct vop_nrmdir_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;		/* locked namespace */
+	struct ucred *a_cred;
+};
+
+struct vop_nrename_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_fncp;		/* locked namespace / from */
+	struct namecache *a_tncp;		/* locked namespace / to */
+	struct ucred *a_cred;
+};
+
+/*
  * This structure is the post-compiled VOP operations vector.  vop_ops are
  * typically per-mount entities.  The first section is used by our vop_*()
  * function wrappers to implement hooks for per-mount management functions
@@ -530,9 +585,8 @@ struct vop_ops {
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
 	int	(*vop_islocked)(struct vop_islocked_args *);
-	int	(*vop_resolve)(struct vop_resolve_args *);
 	int	(*vop_lookup)(struct vop_lookup_args *);
-	int	(*vop_cachedlookup)(struct vop_cachedlookup_args *);
+	int	(*vop_unused03)(void *);
 	int	(*vop_create)(struct vop_create_args *);
 	int	(*vop_whiteout)(struct vop_whiteout_args *);
 	int	(*vop_mknod)(struct vop_mknod_args *);
@@ -582,8 +636,19 @@ struct vop_ops {
 	int	(*vop_destroyvobject)(struct vop_destroyvobject_args *);
 	int	(*vop_getvobject)(struct vop_getvobject_args *);
 	int	(*vop_vfsset)(struct vop_vfsset_args *);
+
+	int	(*vop_nresolve)(struct vop_nresolve_args *);
+	int	(*vop_nlookupdotdot)(struct vop_nlookupdotdot_args *);
+	int	(*vop_ncreate)(struct vop_ncreate_args *);
+	int	(*vop_nmkdir)(struct vop_nmkdir_args *);
+	int	(*vop_nmknod)(struct vop_nmknod_args *);
+	int	(*vop_nlink)(struct vop_nlink_args *);
+	int	(*vop_nsymlink)(struct vop_nsymlink_args *);
+	int	(*vop_nwhiteout)(struct vop_nwhiteout_args *);
 	int	(*vop_nremove)(struct vop_nremove_args *);
-#define vop_ops_last_field	vop_nremove
+	int	(*vop_nrmdir)(struct vop_nrmdir_args *);
+	int	(*vop_nrename)(struct vop_nrename_args *);
+#define vop_ops_last_field	vop_nrename
 };
 
 #define VVF_JOURNAL_HOOK	0x0001		/* FUTURE */
@@ -612,9 +677,7 @@ union vop_args_union {
 	struct vop_generic_args vu_head;
 	struct vop_generic_args vu_default;
 	struct vop_islocked_args vu_islocked;
-	struct vop_resolve_args vu_resolve;
 	struct vop_lookup_args vu_lookup;
-	struct vop_cachedlookup_args vu_cachedlookup;
 	struct vop_create_args vu_create;
 	struct vop_whiteout_args vu_whiteout;
 	struct vop_mknod_args vu_mknod;
@@ -633,7 +696,6 @@ union vop_args_union {
 	struct vop_mmap_args vu_mmap;
 	struct vop_fsync_args vu_fsync;
 	struct vop_remove_args vu_remove;
-	struct vop_nremove_args vu_nremove;
 	struct vop_link_args vu_link;
 	struct vop_rename_args vu_rename;
 	struct vop_mkdir_args vu_mkdir;
@@ -665,6 +727,18 @@ union vop_args_union {
 	struct vop_destroyvobject_args vu_destroyvobject;
 	struct vop_getvobject_args vu_getvobject;
 	struct vop_vfsset_args vu_vfsset;
+
+	struct vop_nresolve_args vu_nresolve;
+	struct vop_nlookupdotdot_args vu_nlookupdotdot;
+	struct vop_ncreate_args vu_ncreate;
+	struct vop_nmkdir_args vu_nmkdir;
+	struct vop_nmknod_args vu_nmknod;
+	struct vop_nlink_args vu_nlink;
+	struct vop_nsymlink_args vu_nsymlink;
+	struct vop_nwhiteout_args vu_nwhiteout;
+	struct vop_nremove_args vu_nremove;
+	struct vop_nrmdir_args vu_nrmdir;
+	struct vop_nrename_args vu_nrename;
 };
 
 #ifdef _KERNEL
@@ -678,21 +752,18 @@ union vop_args_union {
  * in a message and dispatch it to the correct thread.
  */
 int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_resolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred);
 int vop_lookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
-int vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp, 
-		struct vnode **vpp, struct componentname *cnp);
-int vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_create(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
-int vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_whiteout(struct vop_ops *ops, struct vnode *dvp, 
 		struct componentname *cnp, int flags);
-int vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_mknod(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
 int vop_open(struct vop_ops *ops, struct vnode *vp, int mode,
-		struct ucred *cred, struct thread *td);
+		struct ucred *cred, struct file *file, struct thread *td);
 int vop_close(struct vop_ops *ops, struct vnode *vp,
 		int fflag, struct thread *td);
 int vop_access(struct vop_ops *ops, struct vnode *vp, int mode,
@@ -718,20 +789,20 @@ int vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags,
 		struct ucred *cred, struct thread *td);
 int vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor,
 		struct thread *td);
-int vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_remove(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
+int vop_link(struct vop_ops *ops, struct vnode *tdvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
+int vop_rename(struct vop_ops *ops, struct vnode *fdvp,
 		struct vnode *fvp, struct componentname *fcnp,
-		struct vnode *tdvp, struct namecache *tpar,
-		struct vnode *tvp, struct componentname *tcnp);
-int vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+		struct vnode *tdvp, struct vnode *tvp,
+		struct componentname *tcnp);
+int vop_mkdir(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap);
-int vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_rmdir(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode *vp, struct componentname *cnp);
-int vop_symlink(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
+int vop_symlink(struct vop_ops *ops, struct vnode *dvp,
 		struct vnode **vpp, struct componentname *cnp,
 		struct vattr *vap, char *target);
 int vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
@@ -782,7 +853,29 @@ int vop_getvobject(struct vop_ops *ops,
 		struct vnode *vp, struct vm_object **objpp);
 int vop_vfsset(struct vop_ops *ops, int op, const char *opstr);
 
-int vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred);
+int vop_nresolve(struct vop_ops *ops, struct namecache *ncp,
+		struct ucred *cred);
+int vop_nlookupdotdot(struct vop_ops *ops, struct vnode *dvp,
+		struct vnode **vpp, struct ucred *cred);
+int vop_ncreate(struct vop_ops *ops, struct namecache *ncp,
+		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
+int vop_nmkdir(struct vop_ops *ops, struct namecache *ncp,
+		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
+int vop_nmknod(struct vop_ops *ops, struct namecache *ncp,
+		struct vnode **vpp, struct ucred *cred, struct vattr *vap);
+int vop_nlink(struct vop_ops *ops, struct namecache *ncp, struct vnode *vp,
+		struct ucred *cred);
+int vop_nsymlink(struct vop_ops *ops, struct namecache *ncp,
+		struct vnode **vpp, struct ucred *cred,
+		struct vattr *vap, char *target);
+int vop_nwhiteout(struct vop_ops *ops, struct namecache *ncp,
+		struct ucred *cred, int flags);
+int vop_nremove(struct vop_ops *ops, struct namecache *ncp,
+		struct ucred *cred);
+int vop_nrmdir(struct vop_ops *ops, struct namecache *ncp,
+		struct ucred *cred);
+int vop_nrename(struct vop_ops *ops, struct namecache *fncp,
+		struct namecache *tncp, struct ucred *cred);
 
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
@@ -795,9 +888,7 @@ int vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred);
  */
 int vop_vnoperate_ap(struct vop_generic_args *ap);
 int vop_islocked_ap(struct vop_islocked_args *ap);
-int vop_resolve_ap(struct vop_resolve_args *ap);
 int vop_lookup_ap(struct vop_lookup_args *ap);
-int vop_cachedlookup_ap(struct vop_cachedlookup_args *ap);
 int vop_create_ap(struct vop_create_args *ap);
 int vop_whiteout_ap(struct vop_whiteout_args *ap);
 int vop_mknod_ap(struct vop_mknod_args *ap);
@@ -816,7 +907,6 @@ int vop_revoke_ap(struct vop_revoke_args *ap);
 int vop_mmap_ap(struct vop_mmap_args *ap);
 int vop_fsync_ap(struct vop_fsync_args *ap);
 int vop_remove_ap(struct vop_remove_args *ap);
-int vop_nremove_ap(struct vop_nremove_args *ap);
 int vop_link_ap(struct vop_link_args *ap);
 int vop_rename_ap(struct vop_rename_args *ap);
 int vop_mkdir_ap(struct vop_mkdir_args *ap);
@@ -849,6 +939,18 @@ int vop_destroyvobject_ap(struct vop_destroyvobject_args *ap);
 int vop_getvobject_ap(struct vop_getvobject_args *ap);
 int vop_vfsset_ap(struct vop_vfsset_args *ap);
 
+int vop_nresolve_ap(struct vop_nresolve_args *ap);
+int vop_nlookupdotdot_ap(struct vop_nlookupdotdot_args *ap);
+int vop_ncreate_ap(struct vop_ncreate_args *ap);
+int vop_nmkdir_ap(struct vop_nmkdir_args *ap);
+int vop_nmknod_ap(struct vop_nmknod_args *ap);
+int vop_nlink_ap(struct vop_nlink_args *ap);
+int vop_nsymlink_ap(struct vop_nsymlink_args *ap);
+int vop_nwhiteout_ap(struct vop_nwhiteout_args *ap);
+int vop_nremove_ap(struct vop_nremove_args *ap);
+int vop_nrmdir_ap(struct vop_nrmdir_args *ap);
+int vop_nrename_ap(struct vop_nrename_args *ap);
+
 /*
  * VOP operations descriptor.  This is used by the vop_ops compiler
  * to convert VFS vector arrays (typically in vfs/blah/blah_vnops.c)
@@ -856,9 +958,7 @@ int vop_vfsset_ap(struct vop_vfsset_args *ap);
  */
 extern struct vnodeop_desc vop_default_desc;
 extern struct vnodeop_desc vop_islocked_desc;
-extern struct vnodeop_desc vop_resolve_desc;
 extern struct vnodeop_desc vop_lookup_desc;
-extern struct vnodeop_desc vop_cachedlookup_desc;
 extern struct vnodeop_desc vop_create_desc;
 extern struct vnodeop_desc vop_whiteout_desc;
 extern struct vnodeop_desc vop_mknod_desc;
@@ -877,7 +977,6 @@ extern struct vnodeop_desc vop_revoke_desc;
 extern struct vnodeop_desc vop_mmap_desc;
 extern struct vnodeop_desc vop_fsync_desc;
 extern struct vnodeop_desc vop_remove_desc;
-extern struct vnodeop_desc vop_nremove_desc;
 extern struct vnodeop_desc vop_link_desc;
 extern struct vnodeop_desc vop_rename_desc;
 extern struct vnodeop_desc vop_mkdir_desc;
@@ -910,27 +1009,28 @@ extern struct vnodeop_desc vop_destroyvobject_desc;
 extern struct vnodeop_desc vop_getvobject_desc;
 extern struct vnodeop_desc vop_vfsset_desc;
 
+extern struct vnodeop_desc vop_nresolve_desc;
+extern struct vnodeop_desc vop_nlookupdotdot_desc;
+extern struct vnodeop_desc vop_ncreate_desc;
+extern struct vnodeop_desc vop_nmkdir_desc;
+extern struct vnodeop_desc vop_nmknod_desc;
+extern struct vnodeop_desc vop_nlink_desc;
+extern struct vnodeop_desc vop_nsymlink_desc;
+extern struct vnodeop_desc vop_nwhiteout_desc;
+extern struct vnodeop_desc vop_nremove_desc;
+extern struct vnodeop_desc vop_nrmdir_desc;
+extern struct vnodeop_desc vop_nrename_desc;
+
 #endif
 
 /*
- * VOP_ macro compatibility.  Remove these as we get rid of the VOP macros.
- * We have to convert the VOP macros into the vop_*() version that requires
- * the appropriate v_ops structure pointer for the first arg.
+ * VOP_*() convenience macros extract the operations vector and make the
+ * vop_*() call.
  */
 #define VOP_ISLOCKED(vp, td)				\
 	vop_islocked((vp)->v_ops, vp, td)
-#define VOP_LOOKUP(dvp, vpp, cnp)			\
-	vop_lookup((dvp)->v_ops, dvp, vpp, cnp)
-#define VOP_CACHEDLOOKUP(dvp, vpp, cnp)	\
-	vop_cachedlookup((dvp)->v_ops, dvp, vpp, cnp)
-#define VOP_CREATE(dvp, par, vpp, cnp, vap)		\
-	vop_create((dvp)->v_ops, dvp, par, vpp, cnp, vap)
-#define VOP_WHITEOUT(dvp, par, cnp, flags)		\
-	vop_whiteout((dvp)->v_ops, dvp, par, cnp, flags)
-#define VOP_MKNOD(dvp, par, vpp, cnp, vap)		\
-	vop_mknod((dvp)->v_ops, dvp, par, vpp, cnp, vap)
-#define VOP_OPEN(vp, mode, cred, td)			\
-	vop_open((vp)->v_ops, vp, mode, cred, td)
+#define VOP_OPEN(vp, mode, cred, fp, td)		\
+	vop_open((vp)->v_ops, vp, mode, cred, fp, td)
 #define VOP_CLOSE(vp, fflag, td)			\
 	vop_close((vp)->v_ops, vp, fflag, td)
 #define VOP_ACCESS(vp, mode, cred, td)			\
@@ -957,18 +1057,6 @@ extern struct vnodeop_desc vop_vfsset_desc;
 	vop_mmap((vp)->v_ops, vp, fflags, cred, td)
 #define VOP_FSYNC(vp, waitfor, td)			\
 	vop_fsync((vp)->v_ops, vp, waitfor, td)
-#define VOP_REMOVE(dvp, par, vp, cnp)			\
-	vop_remove((dvp)->v_ops, dvp, par, vp, cnp)
-#define VOP_LINK(tdvp, par, vp, cnp)			\
-	vop_link((tdvp)->v_ops, tdvp, par, vp, cnp)
-#define VOP_RENAME(fdvp, fpar, fvp, fcnp, tdvp, tpar, tvp, tcnp)	\
-	vop_rename((fdvp)->v_ops, fdvp, fpar, fvp, fcnp, tdvp, tpar, tvp, tcnp)
-#define VOP_MKDIR(dvp, par, vpp, cnp, vap)		\
-	vop_mkdir((dvp)->v_ops, dvp, par, vpp, cnp, vap)
-#define VOP_RMDIR(dvp, par, vp, cnp)			\
-	vop_rmdir((dvp)->v_ops, dvp, par, vp, cnp)
-#define VOP_SYMLINK(dvp, par, vpp, cnp, vap, target)	\
-	vop_symlink((dvp)->v_ops, dvp, par, vpp, cnp, vap, target)
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
 	vop_readdir((vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
 #define VOP_READLINK(vp, uio, cred)			\
@@ -1020,6 +1108,62 @@ extern struct vnodeop_desc vop_vfsset_desc;
 #define VOP_GETVOBJECT(vp, objpp)			\
 	vop_getvobject((vp)->v_ops, vp, objpp)
 /* no VOP_VFSSET() */
+
+/*
+ * 'OLD' VOP calls.  These calls may only be made by the new API
+ * compatibility functions in kern/vfs_default.c.  Attempting to
+ * call these functions directly will confuse the namecache.  These
+ * calls are deprecated and being removed from the system and from
+ * the VFS's.
+ */
+#define VOP_OLD_LOOKUP(dvp, vpp, cnp)			\
+	vop_lookup((dvp)->v_ops, dvp, vpp, cnp)
+#define VOP_OLD_CREATE(dvp, vpp, cnp, vap)		\
+	vop_create((dvp)->v_ops, dvp, vpp, cnp, vap)
+#define VOP_OLD_MKDIR(dvp, vpp, cnp, vap)		\
+	vop_mkdir((dvp)->v_ops, dvp, vpp, cnp, vap)
+#define VOP_OLD_MKNOD(dvp, vpp, cnp, vap)		\
+	vop_mknod((dvp)->v_ops, dvp, vpp, cnp, vap)
+#define VOP_OLD_LINK(tdvp, vp, cnp)			\
+	vop_link((tdvp)->v_ops, tdvp, vp, cnp)
+#define VOP_OLD_SYMLINK(dvp, vpp, cnp, vap, target)	\
+	vop_symlink((dvp)->v_ops, dvp, vpp, cnp, vap, target)
+#define VOP_OLD_WHITEOUT(dvp, cnp, flags)		\
+	vop_whiteout((dvp)->v_ops, dvp, cnp, flags)
+#define VOP_OLD_RENAME(fdvp, fvp, fcnp, tdvp, tvp, tcnp) \
+	vop_rename((fdvp)->v_ops, fdvp, fvp, fcnp, tdvp, tvp, tcnp)
+#define VOP_OLD_RMDIR(dvp, vp, cnp)			\
+	vop_rmdir((dvp)->v_ops, dvp, vp, cnp)
+#define VOP_OLD_REMOVE(dvp, vp, cnp)			\
+	vop_remove((dvp)->v_ops, dvp, vp, cnp)
+
+/*
+ * 'NEW' VOP calls.  These calls use namespaces as an operational basis
+ * rather then vnodes and replace the OLD calls.   Eventually all VFS's
+ * will support these calls.  Those that do not fall through to compatibility
+ * code in kern/vfs_default which does the magic required to call the old
+ * routines.
+ */
+#define VOP_NRESOLVE(ncp, cred)				\
+	vop_nresolve((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
+#define VOP_NCREATE(ncp, vpp, cred, vap)		\
+	vop_ncreate((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+#define VOP_NMKDIR(ncp, vpp, cred, vap)			\
+	vop_nmkdir((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+#define VOP_NMKNOD(ncp, vpp, cred, vap)			\
+	vop_nmknod((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+#define VOP_NLINK(ncp, vp, cred)			\
+	vop_nlink((ncp)->nc_mount->mnt_vn_ops, ncp, vp, cred)
+#define VOP_NSYMLINK(ncp, vpp, cred, vap, target)	\
+	vop_nsymlink((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap, target)
+#define VOP_NWHITEOUT(ncp, cred, flags)			\
+	vop_nwhiteout((ncp)->nc_mount->mnt_vn_ops, ncp, cred, flags)
+#define VOP_NRENAME(fncp, tncp, cred)			\
+	vop_nrename((fncp)->nc_mount->mnt_vn_ops, fncp, tncp, cred)
+#define VOP_NRMDIR(ncp, cred)				\
+	vop_nrmdir((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
+#define VOP_NREMOVE(ncp, cred)				\
+	vop_nremove((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
 
 #endif
 

@@ -28,13 +28,13 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/compat/linux/linux_util.c,v 1.12.2.2 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.9 2004/09/09 20:52:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_util.c,v 1.10 2004/11/12 00:09:18 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
@@ -53,8 +53,9 @@ int
 linux_copyin_path(char *uname, char **kname, int flags)
 {
 	struct thread *td = curthread;
-	struct nameidata nd, ndroot;
+	struct nlookupdata nd, ndroot;
 	struct vattr vat, vatroot;
+	struct vnode *vp, *vproot;
 	char *buf, *cp;
 	int error, length, dummy;
 
@@ -93,17 +94,22 @@ linux_copyin_path(char *uname, char **kname, int flags)
 			goto dont_translate;
 		*cp = 0;
 
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-		error = namei(&nd);
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		nlookup_done(&nd);
 		if (error)
 			goto dont_translate;
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		vrele(nd.ni_vp);
 		*cp = '/';
 		return (0);
 	case LINUX_PATH_EXISTS:
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-		error = namei(&nd);
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		vp = NULL;
+		if (error == 0)
+			error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		nlookup_done(&nd);
 		if (error)
 			goto dont_translate;
 
@@ -120,28 +126,32 @@ linux_copyin_path(char *uname, char **kname, int flags)
 		 * emulation subtree does not exist.  Cross our fingers
 		 * and return the untranslated path if something happens.
 		 */
-		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
-		    linux_emul_path, td);
-		error = namei(&ndroot);
+		error = nlookup_init(&ndroot, linux_emul_path, UIO_SYSSPACE,
+					NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&ndroot);
+		vproot = NULL;
+		if (error == 0) {
+			error = cache_vref(ndroot.nl_ncp, ndroot.nl_cred,
+						&vproot);
+		}
+		nlookup_done(&ndroot);
 		if (error) {
-			NDFREE(&nd, NDF_ONLY_PNBUF);
-			vrele(nd.ni_vp);
+			vrele(vp);
 			goto dont_translate;
 		}
 		
-		error = VOP_GETATTR(nd.ni_vp, &vat, td);
+		error = VOP_GETATTR(vp, &vat, td);
 		if (error == 0) {
-			error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td);
+			error = VOP_GETATTR(vproot, &vatroot, td);
 			if (error == 0) {
 				if (vat.va_fsid == vatroot.va_fsid &&
 				    vat.va_fileid == vatroot.va_fileid)
 					error = ENOENT;
 			}
 		}
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		vrele(nd.ni_vp);
-		NDFREE(&ndroot, NDF_ONLY_PNBUF);
-		vrele(ndroot.ni_vp);
+		vrele(vp);
+		vrele(vproot);
 		if (error)
 			goto dont_translate;
 		return (0);
@@ -165,8 +175,7 @@ done:
 int
 linux_translate_path(char *path, int size)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *buf;
 	int error, length, dummy;
 
@@ -178,16 +187,16 @@ linux_translate_path(char *path, int size)
 		goto cleanup;
 	
 	/*
-	 * If this errors, then the path probably doesn't exists.
+	 * If this errors, then the path probably doesn't exist.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-	error = namei(&nd);
+	error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	nlookup_done(&nd);
 	if (error) {
 		error = 0;
 		goto cleanup;
 	}
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
 
 	/*
 	 * The alternate path does exist.  Return it in the buffer if

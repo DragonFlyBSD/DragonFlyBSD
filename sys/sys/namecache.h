@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.14 2004/10/19 05:55:31 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.15 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -92,6 +92,9 @@ TAILQ_HEAD(namecache_list, namecache);
  * point, may have to obtain multiple namespace record locks to avoid
  * confusion, but only the one representing the physical directory is passed
  * into lower layer VOP calls.
+ *
+ * Many new API VOP operations do not pass vnodes.  In these cases the
+ * operations vector is typically obtained via nc_mount->mnt_vn_ops.
  */
 struct namecache {
     LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
@@ -109,7 +112,7 @@ struct namecache {
     int		nc_timeout;		/* compared against ticks, or 0 */
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
-    struct mount *nc_mount;
+    struct mount *nc_mount;		/* associated mount for vopops */
 };
 
 typedef struct namecache *namecache_t;
@@ -127,7 +130,6 @@ typedef struct namecache *namecache_t;
 #define NCF_UNUSED080	0x0080
 #define NCF_ISSYMLINK	0x0100	/* represents a symlink */
 #define NCF_ISDIR	0x0200	/* represents a directory */
-#define NCF_REVALPARENT	0x0400	/* reevaluate the parent link */
 
 /*
  * cache_inval[_vp]() flags
@@ -135,9 +137,6 @@ typedef struct namecache *namecache_t;
 #define CINV_PARENT	0x0001	/* disconnect from parent in namecache */
 #define CINV_SELF	0x0002	/* disconnect vp from namecache */
 #define CINV_CHILDREN	0x0004	/* disconnect children in namecache */
-
-#define NCPNULL		((struct namecache *)NULL)	/* placemarker */
-#define NCPPNULL	((struct namecache **)NULL)	/* placemarker */
 
 #ifdef _KERNEL
 
@@ -147,13 +146,11 @@ struct nlcomponent;
 struct mount;
 
 void	cache_lock(struct namecache *ncp);
+int	cache_lock_nonblock(struct namecache *ncp);
 void	cache_unlock(struct namecache *ncp);
 void	cache_setvp(struct namecache *ncp, struct vnode *vp);
+void	cache_settimeout(struct namecache *ncp, int nticks);
 void	cache_setunresolved(struct namecache *ncp);
-int	cache_lookup(struct vnode *dvp, struct vnode **vpp,
-			struct componentname *cnp);
-void	cache_enter(struct vnode *dvp, struct vnode *vp,
-			struct componentname *cnp);
 struct namecache *cache_nlookup(struct namecache *par, struct nlcomponent *nlc);
 struct namecache *cache_allocroot(struct mount *mp, struct vnode *vp);
 void	cache_inval(struct namecache *ncp, int flags);
@@ -169,9 +166,10 @@ struct namecache *cache_get(struct namecache *ncp);
 struct namecache *cache_hold(struct namecache *ncp);
 void	cache_put(struct namecache *ncp);
 void	cache_drop(struct namecache *ncp);
-int	vfs_cache_lookup(struct vop_lookup_args *ap);
+void	cache_rename(struct namecache *fncp, struct namecache *tncp);
 int	cache_vget(struct namecache *, struct ucred *, int, struct vnode **);
 int	cache_vref(struct namecache *, struct ucred *, struct vnode **);
+struct namecache *cache_fromdvp(struct vnode *, struct ucred *, int);
 
 #endif
 

@@ -31,12 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.2 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/nlookup.h,v 1.3 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
 #define	_SYS_NLOOKUP_H_
 
+#ifndef _SYS_UIO_H_
+#include <sys/uio.h>
+#endif
+
+struct vnode;
 struct vattr;
 struct mount;
 struct namecache;
@@ -60,6 +65,12 @@ struct nlcomponent {
  * access checks.
  */
 struct nlookupdata {
+	/*
+	 * These fields are setup by nlookup_init() with nl_ncp set to
+	 * the current directory if a process or the root directory if
+	 * a pure thread.  The result from nlookup() will be returned in
+	 * nl_ncp.
+	 */
 	struct namecache *nl_ncp;	/* start-point and result */
 	struct namecache *nl_rootncp;	/* root directory */
 	struct namecache *nl_jailncp;	/* jail directory */
@@ -70,6 +81,14 @@ struct nlookupdata {
 
 	int		nl_flags;	/* operations flags */
 	int		nl_loopcnt;	/* symlinks encountered */
+
+	/*
+	 * These fields are populated by vn_open().  nlookup_done() will
+	 * vn_close() a non-NULL vp so if you extract it be sure to NULL out
+	 * nl_open_vp.
+	 */
+	struct  vnode	*nl_open_vp;	
+	int		nl_vp_fmode;
 };
 
 #define NLC_FOLLOW		0x00000001	/* follow leaf symlink */
@@ -78,10 +97,17 @@ struct nlookupdata {
 #define NLC_ISWHITEOUT		0x00000008
 #define NLC_WILLBEDIR		0x00000010
 #define NLC_NCPISLOCKED		0x00000020
+#define NLC_LOCKVP		0x00000040	/* nl_open_vp from vn_open */
+#define NLC_CREATE		0x00000080
+#define NLC_DELETE		0x00000100
+#define NLC_NFS_RDONLY		0x00010000	/* set by nfs_namei() only */
+#define NLC_NFS_NOSOFTLINKTRAV	0x00020000	/* do not traverse softlnks */
 
 #ifdef _KERNEL
 
 int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
+int nlookup_init_raw(struct nlookupdata *, const char *, enum uio_seg, int, struct ucred *, struct namecache *);
+void nlookup_zero(struct nlookupdata *);
 void nlookup_done(struct nlookupdata *);
 struct namecache *nlookup_simple(const char *str, enum uio_seg seg, 
 				int niflags, int *error);

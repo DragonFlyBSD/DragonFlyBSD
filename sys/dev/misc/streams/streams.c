@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.13 2004/08/02 13:22:32 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.14 2004/11/12 00:09:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -242,8 +242,11 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	  return error;
 
 	if ((error = socreate(family, &so, type, protocol, td)) != 0) {
-	  p->p_fd->fd_ofiles[fd] = 0;
-	  ffree(fp);
+	  if (p->p_fd->fd_ofiles[fd] == fp) {
+	      p->p_fd->fd_ofiles[fd] = NULL;
+	      fdrop(fp, td);
+	  }
+	  fdrop(fp, td);
 	  return error;
 	}
 
@@ -251,8 +254,8 @@ streamsopen(dev_t dev, int oflags, int devtype, d_thread_t *td)
 	fp->f_flag = FREAD|FWRITE;
 	fp->f_ops = &svr4_netops;
 	fp->f_type = DTYPE_SOCKET;
-
 	(void)svr4_stream_get(fp);
+	fdrop(fp, td);
 	p->p_dupfd = fd;
 	return ENXIO;
 }

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.45 2004/10/25 19:14:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.46 2004/11/12 00:09:24 dillon Exp $
  */
 
 /*
@@ -59,7 +59,6 @@
 #include <sys/mbuf.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -88,6 +87,8 @@ static MALLOC_DEFINE(M_NETADDR, "Export Host", "Export host address structure");
 
 int numvnodes;
 SYSCTL_INT(_debug, OID_AUTO, numvnodes, CTLFLAG_RD, &numvnodes, 0, "");
+int vfs_fastdev;
+SYSCTL_INT(_vfs, OID_AUTO, fastdev, CTLFLAG_RW, &vfs_fastdev, 0, "");
 
 enum vtype iftovt_tab[16] = {
 	VNON, VFIFO, VCHR, VNON, VDIR, VNON, VBLK, VNON,
@@ -1788,40 +1789,6 @@ vn_isdisk(struct vnode *vp, int *errp)
 	if (errp != NULL)
 		*errp = 0;
 	return (1);
-}
-
-void
-NDFREE(struct nameidata *ndp, const uint flags)
-{
-	if (!(flags & NDF_NO_FREE_PNBUF) &&
-	    (ndp->ni_cnd.cn_flags & CNP_HASBUF)) {
-		zfree(namei_zone, ndp->ni_cnd.cn_pnbuf);
-		ndp->ni_cnd.cn_flags &= ~CNP_HASBUF;
-	}
-	if (!(flags & NDF_NO_DVP_UNLOCK) &&
-	    (ndp->ni_cnd.cn_flags & CNP_LOCKPARENT) &&
-	    ndp->ni_dvp != ndp->ni_vp) {
-		VOP_UNLOCK(ndp->ni_dvp, 0, ndp->ni_cnd.cn_td);
-	}
-	if (!(flags & NDF_NO_DVP_RELE) &&
-	    (ndp->ni_cnd.cn_flags & (CNP_LOCKPARENT|CNP_WANTPARENT))) {
-		vrele(ndp->ni_dvp);
-		ndp->ni_dvp = NULL;
-	}
-	if (!(flags & NDF_NO_VP_UNLOCK) &&
-	    (ndp->ni_cnd.cn_flags & CNP_LOCKLEAF) && ndp->ni_vp) {
-		VOP_UNLOCK(ndp->ni_vp, 0, ndp->ni_cnd.cn_td);
-	}
-	if (!(flags & NDF_NO_VP_RELE) &&
-	    ndp->ni_vp) {
-		vrele(ndp->ni_vp);
-		ndp->ni_vp = NULL;
-	}
-	if (!(flags & NDF_NO_STARTDIR_RELE) &&
-	    (ndp->ni_cnd.cn_flags & CNP_SAVESTART)) {
-		vrele(ndp->ni_startdir);
-		ndp->ni_startdir = NULL;
-	}
 }
 
 #ifdef DEBUG_VFS_LOCKS

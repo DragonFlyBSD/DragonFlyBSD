@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.12 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.13 2004/11/12 00:09:23 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -37,7 +37,7 @@
 #include <sys/types.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
 #include <sys/linker.h>
@@ -196,9 +196,10 @@ link_aout_load_module(const char* filename, linker_file_t* result)
 static int
 link_aout_load_file(const char* filename, linker_file_t* result)
 {
-    struct nameidata nd;
+    struct nlookupdata nd;
     struct thread *td = curthread;
     struct proc *p = td->td_proc;
+    struct vnode *vp;
     int error = 0;
     int resid;
     struct exec header;
@@ -217,17 +218,22 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     pathname = linker_search_path(filename);
     if (pathname == NULL)
 	return ENOENT;
-    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, pathname, td);
-    error = vn_open(&nd, FREAD, 0);
+    error = nlookup_init(&nd, pathname, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
+    if (error == 0)
+	error = vn_open(&nd, NULL, FREAD, 0);
     free(pathname, M_LINKER);
-    if (error)
+    if (error) {
+	nlookup_done(&nd);
 	return error;
-    NDFREE(&nd, NDF_ONLY_PNBUF);
+    }
+    vp = nd.nl_open_vp;
+    nd.nl_open_vp = NULL;
+    nlookup_done(&nd);
 
     /*
      * Read the a.out header from the file.
      */
-    error = vn_rdwr(UIO_READ, nd.ni_vp, (void*) &header, sizeof header, 0,
+    error = vn_rdwr(UIO_READ, vp, (void*) &header, sizeof header, 0,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
 	goto out;
@@ -246,8 +252,8 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     /*
      * Read the text and data sections and zero the bss.
      */
-    VOP_LEASE(nd.ni_vp, td, p->p_ucred, LEASE_READ);
-    error = vn_rdwr(UIO_READ, nd.ni_vp, (void*) af->address,
+    VOP_LEASE(vp, td, p->p_ucred, LEASE_READ);
+    error = vn_rdwr(UIO_READ, vp, (void*) af->address,
 		    header.a_text + header.a_data, 0,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
@@ -286,8 +292,8 @@ link_aout_load_file(const char* filename, linker_file_t* result)
     *result = lf;
 
 out:
-    VOP_UNLOCK(nd.ni_vp, 0, td);
-    vn_close(nd.ni_vp, FREAD, td);
+    VOP_UNLOCK(vp, 0, td);
+    vn_close(vp, FREAD, td);
 
     return error;
 }

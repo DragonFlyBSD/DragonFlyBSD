@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.31 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.32 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -51,7 +51,7 @@
 #include <sys/vnode.h>
 #include <sys/event.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/pioctl.h>
 #include <sys/systm.h>
 #include <sys/acct.h>
@@ -1451,7 +1451,7 @@ coredump(struct proc *p)
 	struct ucred *cred = p->p_ucred;
 	struct thread *td = p->p_thread;
 	struct flock lf;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct vattr vattr;
 	int error, error1;
 	char *name;			/* name of corefile */
@@ -1477,13 +1477,17 @@ coredump(struct proc *p)
 	name = expand_name(p->p_comm, p->p_ucred->cr_uid, p->p_pid);
 	if (name == NULL)
 		return (EINVAL);
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, name, td);
-	error = vn_open(&nd, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
+	error = nlookup_init(&nd, name, UIO_SYSSPACE, NLC_LOCKVP);
+	if (error == 0)
+		error = vn_open(&nd, NULL, O_CREAT | FWRITE | O_NOFOLLOW, S_IRUSR | S_IWUSR);
 	free(name, M_TEMP);
-	if (error)
+	if (error) {
+		nlookup_done(&nd);
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vp = nd.ni_vp;
+	}
+	vp = nd.nl_open_vp;
+	nd.nl_open_vp = NULL;
+	nlookup_done(&nd);
 
 	VOP_UNLOCK(vp, 0, td);
 	lf.l_whence = SEEK_SET;
@@ -1510,8 +1514,7 @@ coredump(struct proc *p)
 	VOP_UNLOCK(vp, 0, td);
 
 	error = p->p_sysent->sv_coredump ?
-	  p->p_sysent->sv_coredump(p, vp, limit) :
-	  ENOSYS;
+		  p->p_sysent->sv_coredump(p, vp, limit) : ENOSYS;
 
 out1:
 	lf.l_type = F_UNLCK;

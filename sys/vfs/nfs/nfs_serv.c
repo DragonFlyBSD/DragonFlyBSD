@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.19 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.20 2004/11/12 00:09:37 dillon Exp $
  */
 
 /*
@@ -61,19 +61,12 @@
  *	Warning: always pay careful attention to resource cleanup on return
  *	and note that nfsm_*() macros can terminate a procedure on certain
  *	errors.
- *
- *	lookup() and namei()
- *	may return garbage in various structural fields/return elements
- *	if an error is returned, and may garbage up nd.ni_dvp even if no
- *	error is returned and you did not request LOCKPARENT or WANTPARENT.
- *
- *	We use the ni_cnd.cn_flags 'HASBUF' flag to track whether the name
- *	buffer has been freed or not.
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/unistd.h>
 #include <sys/vnode.h>
@@ -151,21 +144,6 @@ static int nfsrv_access (struct vnode *,int,struct ucred *,int,
 		struct thread *, int);
 static void nfsrvw_coalesce (struct nfsrv_descript *,
 		struct nfsrv_descript *);
-
-/*
- * Clear nameidata fields that are tested in nsfmout cleanup code prior
- * to using first nfsm macro (that might jump to the cleanup code).
- */
-
-static __inline 
-void
-ndclear(struct nameidata *nd)
-{
-	nd->ni_cnd.cn_flags = 0;
-	nd->ni_vp = NULL;
-	nd->ni_dvp = NULL;
-	nd->ni_startdir = NULL;
-}
 
 /*
  * nfs v3 access service
@@ -450,8 +428,10 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
 	struct nfs_fattr *fp;
-	struct nameidata nd, ind, *ndp = &nd;
-	struct vnode *vp, *dirp = NULL;
+	struct nlookupdata nd;
+	struct vnode *vp;
+	struct vnode *dirp;
+	struct namecache *ncp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	caddr_t cp;
@@ -466,7 +446,9 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
@@ -474,10 +456,8 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 
 	pubflag = nfs_ispublicfh(fhp);
 
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
-	nd.ni_cnd.cn_flags = CNP_LOCKLEAF | CNP_SAVESTART;
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
+	error = nfs_namei(&nd, cred, NAMEI_LOOKUP, NULL, &vp,
+		fhp, len, slp, nam, &md, &dpos,
 		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), pubflag);
 
 	/*
@@ -505,7 +485,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 
 	if (pubflag) {
-		if (nd.ni_vp->v_type == VDIR && nfs_pub.np_index != NULL) {
+		if (vp->v_type == VDIR && nfs_pub.np_index != NULL) {
 			/*
 			 * Setup call to lookup() to see if we can find
 			 * the index file. Arguably, this doesn't belong
@@ -519,29 +499,30 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			 * However, the cnd resource continues to be maintained
 			 * via the original nd.  Confused?  You aren't alone!
 			 */
-			ind = nd;
-			VOP_UNLOCK(nd.ni_vp, 0, td);
-			ind.ni_pathlen = strlen(nfs_pub.np_index);
-			ind.ni_cnd.cn_nameptr = ind.ni_cnd.cn_pnbuf =
-			    nfs_pub.np_index;
-			ind.ni_startdir = nd.ni_vp;
-			vref(ind.ni_startdir);
-
-			error = lookup(&ind);
-			ind.ni_dvp = NULL;
+			VOP_UNLOCK(vp, 0, td);
+			ncp = cache_hold(nd.nl_ncp);
+			nlookup_done(&nd);
+			error = nlookup_init_raw(&nd, nfs_pub.np_index,
+						UIO_SYSSPACE, 0, cred, ncp);
+			cache_drop(ncp);
+			if (error == 0)
+				error = nlookup(&nd);
 
 			if (error == 0) {
 				/*
 				 * Found an index file. Get rid of
-				 * the old references.  transfer nd.ni_vp'
+				 * the old references.  transfer vp and
+				 * load up the new vp.  Fortunately we do
+				 * not have to deal with dvp, that would be
+				 * a huge mess.
 				 */
 				if (dirp)	
 					vrele(dirp);
-				dirp = nd.ni_vp;
-				nd.ni_vp = NULL;
-				vrele(nd.ni_startdir);
-				nd.ni_startdir = NULL;
-				ndp = &ind;
+				dirp = vp;
+				vp = NULL;
+				error = cache_vget(nd.nl_ncp, nd.nl_cred,
+							LK_EXCLUSIVE, &vp);
+				KKASSERT(error == 0);
 			}
 			error = 0;
 		}
@@ -552,9 +533,9 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 * to NFS I/O.
 		 */
 
-		if (ndp->ni_vp->v_mount != nfs_pub.np_mount) {
-			vput(nd.ni_vp);
-			nd.ni_vp = NULL;
+		if (vp->v_mount != nfs_pub.np_mount) {
+			vput(vp);
+			vp = NULL;
 			error = EPERM;
 		}
 	}
@@ -579,22 +560,22 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		goto nfsmout;
 	}
 
+#if 0
+	/* XXX not sure how to deal with this */
 	nqsrv_getl(ndp->ni_startdir, ND_READ);
+#endif
 
 	/*
 	 * Clear out some resources prior to potentially blocking.  This
 	 * is not as critical as ni_dvp resources in other routines, but
 	 * it helps.
 	 */
-	vrele(ndp->ni_startdir);
-	ndp->ni_startdir = NULL;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	nlookup_done(&nd);
 
 	/*
 	 * Get underlying attribute, then release remaining resources ( for
 	 * the same potential blocking reason ) and reply.
 	 */
-	vp = ndp->ni_vp;
 	bzero((caddr_t)fhp, sizeof(nfh));
 	fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 	error = VFS_VPTOFH(vp, &fhp->fh_fid);
@@ -602,7 +583,7 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = VOP_GETATTR(vp, vap, td);
 
 	vput(vp);
-	ndp->ni_vp = NULL;
+	vp = NULL;
 	nfsm_reply(NFSX_SRVFH(v3) + NFSX_POSTOPORFATTR(v3) + NFSX_POSTOPATTR(v3));
 	if (error) {
 		nfsm_srvpostop_attr(dirattr_ret, &dirattr);
@@ -621,11 +602,9 @@ nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 nfsmout:
 	if (dirp)
 		vrele(dirp);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (ndp->ni_startdir)
-		vrele(ndp->ni_startdir);
-	if (ndp->ni_vp)
-		vput(ndp->ni_vp);
+	nlookup_done(&nd);		/* may be called twice */
+	if (vp)
+		vput(vp);
 	return (error);
 }
 
@@ -1580,7 +1559,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr *vap = &va;
 	struct nfsv2_sattr *sp;
 	u_int32_t *tl;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int32_t t1;
 	caddr_t bpos;
 	int error = 0, rdev, cache, len, tsize, dirfor_ret = 1, diraft_ret = 1;
@@ -1588,7 +1567,9 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t cp;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	struct vnode *dirp = (struct vnode *)0;
+	struct vnode *dirp;
+	struct vnode *dvp;
+	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t frev, tempsize;
@@ -1598,15 +1579,14 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 #ifndef nolint
 	rdev = 0;
 #endif
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	dvp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
-
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_SAVESTART;
 
 	/*
 	 * Call namei and do initial cleanup to get a few things
@@ -1617,8 +1597,9 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * be valid at all if an error occurs so we have to invalidate it
 	 * prior to calling nfsm_reply ( which might goto nfsmout ).
 	 */
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+			  fhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
 		if (v3) {
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
@@ -1637,10 +1618,10 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * No error.  Continue.  State:
 	 *
-	 *	startdir	is valid ( we release this immediately )
 	 *	dirp 		may be valid
-	 *	nd.ni_vp	may be valid
-	 *	nd.ni_dvp	is valid
+	 *	vp		may be valid or NULL if the target does not
+	 *			exist.
+	 *	dvp		is valid
 	 *
 	 * The error state is set through the code and we may also do some
 	 * opportunistic releasing of vnodes to avoid holding locks through
@@ -1653,7 +1634,7 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		how = fxdr_unsigned(int, *tl);
 		switch (how) {
 		case NFSV3CREATE_GUARDED:
-			if (nd.ni_vp) {
+			if (vp) {
 				error = EEXIST;
 				break;
 			}
@@ -1698,24 +1679,20 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * The only possible error we can have at this point is EEXIST. 
 	 * nd.ni_vp will also be non-NULL in that case.
 	 */
-	if (nd.ni_vp == NULL) {
+	if (vp == NULL) {
 		if (vap->va_mode == (mode_t)VNOVAL)
 			vap->va_mode = 0;
 		if (vap->va_type == VREG || vap->va_type == VSOCK) {
-			nqsrv_getl(nd.ni_dvp, ND_WRITE);
-			error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp,
-					    &nd.ni_cnd, vap);
-			if (error)
-				NDFREE(&nd, NDF_ONLY_PNBUF);
-			else {
-			    	nfsrv_object_create(nd.ni_vp);
+			nqsrv_getl(dvp, ND_WRITE);
+			error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
+			if (error == 0) {
+			    	nfsrv_object_create(vp);
 				if (exclusive_flag) {
 					exclusive_flag = 0;
 					VATTR_NULL(vap);
 					bcopy(cverf, (caddr_t)&vap->va_atime,
 						NFSX_V3CREATEVERF);
-					error = VOP_SETATTR(nd.ni_vp, vap, cred,
-						td);
+					error = VOP_SETATTR(vp, vap, cred, td);
 				}
 			}
 		} else if (
@@ -1734,22 +1711,24 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				goto nfsmreply0;
                         }
 			vap->va_rdev = rdev;
-			nqsrv_getl(nd.ni_dvp, ND_WRITE);
+			nqsrv_getl(dvp, ND_WRITE);
 
-			error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp, 
-					    &nd.ni_cnd, vap);
-			if (error) {
-				NDFREE(&nd, NDF_ONLY_PNBUF);
+			error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
+			if (error)
 				goto nfsmreply0;
-			}
-			vput(nd.ni_vp);
-			nd.ni_vp = NULL;
+#if 0
+			/*
+			 * XXX what is this junk supposed to do ?
+			 */
+
+			vput(vp);
+			vp = NULL;
 
 			/*
 			 * release dvp prior to lookup
 			 */
-			vput(nd.ni_dvp);
-			nd.ni_dvp = NULL;
+			vput(dvp);
+			dvp = NULL;
 
 			/*
 			 * Setup for lookup. 
@@ -1774,29 +1753,30 @@ nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 				error = EINVAL;
 				goto nfsmreply0;
 			}
+#endif
 		} else {
 			error = ENXIO;
 		}
 	} else {
 		if (vap->va_size != -1) {
-			error = nfsrv_access(nd.ni_vp, VWRITE, cred,
-			    (nd.ni_cnd.cn_flags & CNP_RDONLY), td, 0);
+			error = nfsrv_access(vp, VWRITE, cred,
+			    (nd.nl_flags & NLC_NFS_RDONLY), td, 0);
 			if (!error) {
-				nqsrv_getl(nd.ni_vp, ND_WRITE);
+				nqsrv_getl(vp, ND_WRITE);
 				tempsize = vap->va_size;
 				VATTR_NULL(vap);
 				vap->va_size = tempsize;
-				error = VOP_SETATTR(nd.ni_vp, vap, cred, td);
+				error = VOP_SETATTR(vp, vap, cred, td);
 			}
 		}
 	}
 
 	if (!error) {
 		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = nd.ni_vp->v_mount->mnt_stat.f_fsid;
-		error = VFS_VPTOFH(nd.ni_vp, &fhp->fh_fid);
+		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		error = VFS_VPTOFH(vp, &fhp->fh_fid);
 		if (!error)
-			error = VOP_GETATTR(nd.ni_vp, vap, td);
+			error = VOP_GETATTR(vp, vap, td);
 	}
 	if (v3) {
 		if (exclusive_flag && !error &&
@@ -1827,21 +1807,17 @@ nfsmreply0:
 	/* fall through */
 
 nfsmout:
-	if (nd.ni_startdir) {
-		vrele(nd.ni_startdir);
-		nd.ni_startdir = NULL;
-	}
 	if (dirp)
 		vrele(dirp);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	nlookup_done(&nd);
+	if (dvp) {
+		if (dvp == vp)
+			vrele(dvp);
 		else
-			vput(nd.ni_dvp);
+			vput(dvp);
 	}
-	if (nd.ni_vp)
-		vput(nd.ni_vp);
+	if (vp)
+		vput(vp);
 	return (error);
 }
 
@@ -1859,7 +1835,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr va, dirfor, diraft;
 	struct vattr *vap = &va;
 	u_int32_t *tl;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int32_t t1;
 	caddr_t bpos;
 	int error = 0, cache, len, dirfor_ret = 1, diraft_ret = 1;
@@ -1867,21 +1843,22 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	enum vtype vtyp;
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	struct vnode *vp, *dirp = (struct vnode *)0;
+	struct vnode *dirp;
+	struct vnode *dvp;
+	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	dvp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
-
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_SAVESTART;
 
 	/*
 	 * Handle nfs_namei() call.  If an error occurs, the nd structure
@@ -1889,8 +1866,9 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * nfsmout.
 	 */
 
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+			  fhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp)
 		dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
 	if (error) {
@@ -1917,7 +1895,7 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	/*
 	 * Iff doesn't exist, create it.
 	 */
-	if (nd.ni_vp) {
+	if (vp) {
 		error = EEXIST;
 		goto out;
 	}
@@ -1925,33 +1903,30 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
 	if (vtyp == VSOCK) {
-		vrele(nd.ni_startdir);
-		nd.ni_startdir = NULL;
-		nqsrv_getl(nd.ni_dvp, ND_WRITE);
-		error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp,
-				&nd.ni_cnd, vap);
-		if (error)
-			NDFREE(&nd, NDF_ONLY_PNBUF);
+		nqsrv_getl(dvp, ND_WRITE);
+		error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, vap);
 	} else {
 		if (vtyp != VFIFO && (error = suser_cred(cred, 0)))
 			goto out;
-		nqsrv_getl(nd.ni_dvp, ND_WRITE);
+		nqsrv_getl(dvp, ND_WRITE);
 
-		error = VOP_MKNOD(nd.ni_dvp, NCPNULL, &nd.ni_vp,
-				&nd.ni_cnd, vap);
-		if (error) {
-			NDFREE(&nd, NDF_ONLY_PNBUF);
+		error = VOP_NMKNOD(nd.nl_ncp, &vp, nd.nl_cred, vap);
+		if (error)
 			goto out;
-		}
-		vput(nd.ni_vp);
-		nd.ni_vp = NULL;
+
+#if 0
+		vput(vp);
+		vp = NULL;
 
 		/*
 		 * Release dvp prior to lookup
 		 */
-		vput(nd.ni_dvp);
-		nd.ni_dvp = NULL;
+		vput(dvp);
+		dvp = NULL;
 
+		/*
+		 * XXX what is this stuff for?
+		 */
 		KKASSERT(td->td_proc);
 		nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
 		nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT);
@@ -1965,25 +1940,21 @@ nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			goto out;
 		if (nd.ni_cnd.cn_flags & CNP_ISSYMLINK)
 			error = EINVAL;
+#endif
 	}
 
 	/*
 	 * send response, cleanup, return.
 	 */
 out:
-	if (nd.ni_startdir) {
-		vrele(nd.ni_startdir);
-		nd.ni_startdir = NULL;
-	}
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	nlookup_done(&nd);
+	if (dvp) {
+		if (dvp == vp)
+			vrele(dvp);
 		else
-			vput(nd.ni_dvp);
-		nd.ni_dvp = NULL;
+			vput(dvp);
+		dvp = NULL;
 	}
-	vp = nd.ni_vp;
 	if (!error) {
 		bzero((caddr_t)fhp, sizeof(nfh));
 		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
@@ -1994,7 +1965,6 @@ out:
 	if (vp) {
 		vput(vp);
 		vp = NULL;
-		nd.ni_vp = NULL;
 	}
 	diraft_ret = VOP_GETATTR(dirp, &diraft, td);
 	if (dirp) {
@@ -2011,17 +1981,15 @@ out:
 nfsmout:
 	if (dirp)
 		vrele(dirp);
-	if (nd.ni_startdir)
-		vrele(nd.ni_startdir);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	nlookup_done(&nd);
+	if (dvp) {
+		if (dvp == vp)
+			vrele(dvp);
 		else
-			vput(nd.ni_dvp);
+			vput(dvp);
 	}
-	if (nd.ni_vp)
-		vput(nd.ni_vp);
+	if (vp)
+		vput(vp);
 	return (error);
 }
 
@@ -2036,7 +2004,7 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct sockaddr *nam = nfsd->nd_nam;
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
@@ -2045,73 +2013,68 @@ nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	char *cp2;
 	struct mbuf *mb, *mreq;
 	struct vnode *dirp;
+	struct vnode *dvp;
+	struct vnode *vp;
 	struct vattr dirfor, diraft;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	dvp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
 
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_DELETE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	error = nfs_namei(&nd, cred, NAMEI_DELETE, &dvp, &vp,
+			  fhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
-		if (v3) {
+		if (v3)
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
-		} else {
-			vrele(dirp);
-			dirp = NULL;
-		}
 	}
 	if (error == 0) {
-		if (nd.ni_vp->v_type == VDIR) {
+		if (vp->v_type == VDIR) {
 			error = EPERM;		/* POSIX */
 			goto out;
 		}
 		/*
 		 * The root of a mounted filesystem cannot be deleted.
 		 */
-		if (nd.ni_vp->v_flag & VROOT) {
+		if (vp->v_flag & VROOT) {
 			error = EBUSY;
 			goto out;
 		}
 out:
 		if (!error) {
-			nqsrv_getl(nd.ni_dvp, ND_WRITE);
-			nqsrv_getl(nd.ni_vp, ND_WRITE);
-			error = VOP_REMOVE(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
-			if (error == 0)
-				cache_purge(nd.ni_vp);
-			NDFREE(&nd, NDF_ONLY_PNBUF);
+			nqsrv_getl(dvp, ND_WRITE);
+			nqsrv_getl(vp, ND_WRITE);
+			error = VOP_NREMOVE(nd.nl_ncp, nd.nl_cred);
 		}
 	}
-	if (dirp && v3) {
+	if (dirp && v3)
 		diraft_ret = VOP_GETATTR(dirp, &diraft, td);
-		vrele(dirp);
-		dirp = NULL;
-	}
 	nfsm_reply(NFSX_WCCDATA(v3));
 	if (v3) {
 		nfsm_srvwcc_data(dirfor_ret, &dirfor, diraft_ret, &diraft);
 		error = 0;
 	}
 nfsmout:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	nlookup_done(&nd);
+	if (dirp)
+		vrele(dirp);
+	if (dvp) {
+		if (dvp == vp)
+			vrele(dvp);
 		else
-			vput(nd.ni_dvp);
+			vput(dvp);
 	}
-	if (nd.ni_vp)
-		vput(nd.ni_vp);
+	if (vp)
+		vput(vp);
 	return(error);
 }
 
@@ -2134,9 +2097,10 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
-	struct nameidata fromnd, tond;
-	struct vnode *fvp, *tvp, *tdvp, *fdirp = (struct vnode *)0;
-	struct vnode *tdirp = (struct vnode *)0;
+	struct nlookupdata fromnd, tond;
+	struct vnode *fvp, *fdirp;
+	struct vnode *tvp, *tdirp;
+	struct namecache *ncp;
 	struct vattr fdirfor, fdiraft, tdirfor, tdiraft;
 	nfsfh_t fnfh, tnfh;
 	fhandle_t *ffhp, *tfhp;
@@ -2154,8 +2118,10 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * Clear fields incase goto nfsmout occurs from macro.
 	 */
 
-	ndclear(&fromnd);
-	ndclear(&tond);
+	nlookup_zero(&fromnd);
+	nlookup_zero(&tond);
+	fdirp = NULL;
+	tdirp = NULL;
 
 	nfsm_srvmtofh(ffhp);
 	nfsm_srvnamesiz(len);
@@ -2164,18 +2130,12 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 * the second nfs_namei() call, in case it is remapped.
 	 */
 	saved_uid = cred->cr_uid;
-	fromnd.ni_cnd.cn_cred = cred;
-	fromnd.ni_cnd.cn_nameiop = NAMEI_DELETE;
-	fromnd.ni_cnd.cn_flags = CNP_WANTPARENT | CNP_SAVESTART;
-	error = nfs_namei(&fromnd, ffhp, len, slp, nam, &md,
-		&dpos, &fdirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	error = nfs_namei(&fromnd, cred, NAMEI_DELETE, NULL, NULL,
+			  ffhp, len, slp, nam, &md, &dpos, &fdirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (fdirp) {
-		if (v3) {
+		if (v3)
 			fdirfor_ret = VOP_GETATTR(fdirp, &fdirfor, td);
-		} else {
-			vrele(fdirp);
-			fdirp = NULL;
-		}
 	}
 	if (error) {
 		nfsm_reply(2 * NFSX_WCCDATA(v3));
@@ -2184,29 +2144,48 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	fvp = fromnd.ni_vp;
+
+	/*
+	 * We have to unlock the from ncp before we can safely lookup
+	 * the target ncp.
+	 */
+	KKASSERT(fromnd.nl_flags & NLC_NCPISLOCKED);
+	cache_unlock(fromnd.nl_ncp);
+	fromnd.nl_flags &= ~NLC_NCPISLOCKED;
 	nfsm_srvmtofh(tfhp);
 	nfsm_strsiz(len2, NFS_MAXNAMLEN);
 	cred->cr_uid = saved_uid;
-	tond.ni_cnd.cn_cred = cred;
-	tond.ni_cnd.cn_nameiop = NAMEI_RENAME;
-	tond.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF | 
-		CNP_NOCACHE | CNP_SAVESTART;
-	error = nfs_namei(&tond, tfhp, len2, slp, nam, &md,
-		&dpos, &tdirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+
+	error = nfs_namei(&tond, cred, NAMEI_RENAME, NULL, NULL,
+			  tfhp, len2, slp, nam, &md, &dpos, &tdirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (tdirp) {
-		if (v3) {
+		if (v3)
 			tdirfor_ret = VOP_GETATTR(tdirp, &tdirfor, td);
-		} else {
-			vrele(tdirp);
-			tdirp = NULL;
-		}
 	}
 	if (error)
 		goto out1;
 
-	tdvp = tond.ni_dvp;
-	tvp = tond.ni_vp;
+	/*
+	 * relock the source
+	 */
+	if (cache_lock_nonblock(fromnd.nl_ncp) == 0) {
+		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
+	} else if (fromnd.nl_ncp > tond.nl_ncp) {
+		cache_lock(fromnd.nl_ncp);
+		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
+	} else {
+		cache_unlock(tond.nl_ncp);
+		cache_lock(fromnd.nl_ncp);
+		cache_resolve(fromnd.nl_ncp, fromnd.nl_cred);
+		cache_lock(tond.nl_ncp);
+		cache_resolve(tond.nl_ncp, tond.nl_cred);
+	}
+	fromnd.nl_flags |= NLC_NCPISLOCKED;
+
+	tvp = tond.nl_ncp->nc_vp;
+	fvp = fromnd.nl_ncp->nc_vp;
+
 	if (tvp != NULL) {
 		if (fvp->v_type == VDIR && tvp->v_type != VDIR) {
 			if (v3)
@@ -2236,53 +2215,57 @@ nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 			error = ENOTEMPTY;
 		goto out;
 	}
-	if (fvp->v_mount != tdvp->v_mount) {
+	if (fromnd.nl_ncp->nc_mount != tond.nl_ncp->nc_mount) {
 		if (v3)
 			error = EXDEV;
 		else
 			error = ENOTEMPTY;
 		goto out;
 	}
-	if (fvp == tdvp) {
+	if (fromnd.nl_ncp == tond.nl_ncp->nc_parent) {
 		if (v3)
 			error = EINVAL;
 		else
 			error = ENOTEMPTY;
 	}
+
+	/*
+	 * You cannot rename a source into itself or a subdirectory of itself.
+	 * We check this by travsering the target directory upwards looking
+	 * for a match against the source.
+	 */
+	if (error == 0) {
+		for (ncp = tond.nl_ncp; ncp; ncp = ncp->nc_parent) {
+			if (fromnd.nl_ncp == ncp) {
+				error = EINVAL;
+				break;
+			}
+		}
+	}
+
 	/*
 	 * If source is the same as the destination (that is the
 	 * same vnode with the same name in the same directory),
 	 * then there is nothing to do.
 	 */
-	if (fvp == tvp && fromnd.ni_dvp == tdvp &&
-	    fromnd.ni_cnd.cn_namelen == tond.ni_cnd.cn_namelen &&
-	    !bcmp(fromnd.ni_cnd.cn_nameptr, tond.ni_cnd.cn_nameptr,
-	      fromnd.ni_cnd.cn_namelen))
+	if (fromnd.nl_ncp == tond.nl_ncp)
 		error = -1;
 out:
 	if (!error) {
 		/*
-		 * The VOP_RENAME function releases all vnode references &
+		 * The VOP_NRENAME function releases all vnode references &
 		 * locks prior to returning so we need to clear the pointers
 		 * to bypass cleanup code later on.
 		 */
-		nqsrv_getl(fromnd.ni_dvp, ND_WRITE);
+#if 0
+		/* XXX should be handled by NRENAME */
+		nqsrv_getl(fdvp, ND_WRITE);
 		nqsrv_getl(tdvp, ND_WRITE);
 		if (tvp) {
 			nqsrv_getl(tvp, ND_WRITE);
 		}
-		error = VOP_RENAME(fromnd.ni_dvp, NCPNULL, fromnd.ni_vp, &fromnd.ni_cnd,
-				   tond.ni_dvp, NCPNULL, tond.ni_vp, &tond.ni_cnd);
-		if (error == 0)
-			cache_purge(fromnd.ni_vp);
-		fromnd.ni_dvp = NULL;
-		fromnd.ni_vp = NULL;
-		tond.ni_dvp = NULL;
-		tond.ni_vp = NULL;
-		if (error) {
-			fromnd.ni_cnd.cn_flags &= ~CNP_HASBUF;
-			tond.ni_cnd.cn_flags &= ~CNP_HASBUF;
-		}
+#endif
+		error = VOP_NRENAME(fromnd.nl_ncp, tond.nl_ncp, tond.nl_cred);
 	} else {
 		if (error == -1)
 			error = 0;
@@ -2303,36 +2286,12 @@ out1:
 	/* fall through */
 
 nfsmout:
-	/*
-	 * Clear out tond related fields
-	 */
 	if (tdirp)
 		vrele(tdirp);
-	if (tond.ni_startdir)
-		vrele(tond.ni_startdir);
-	NDFREE(&tond, NDF_ONLY_PNBUF);
-	if (tond.ni_dvp) {
-		if (tond.ni_dvp == tond.ni_vp)
-			vrele(tond.ni_dvp);
-		else
-			vput(tond.ni_dvp);
-	}
-	if (tond.ni_vp)
-		vput(tond.ni_vp);
-
-	/*
-	 * Clear out fromnd related fields
-	 */
+	nlookup_done(&tond);
 	if (fdirp)
 		vrele(fdirp);
-	if (fromnd.ni_startdir)
-		vrele(fromnd.ni_startdir);
-	NDFREE(&fromnd, NDF_ONLY_PNBUF);
-	if (fromnd.ni_dvp)
-		vrele(fromnd.ni_dvp);
-	if (fromnd.ni_vp)
-		vrele(fromnd.ni_vp);
-
+	nlookup_done(&fromnd);
 	return (error);
 }
 
@@ -2347,7 +2306,7 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct sockaddr *nam = nfsd->nd_nam;
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	u_int32_t *tl;
 	int32_t t1;
 	caddr_t bpos;
@@ -2355,14 +2314,18 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int getret = 1, v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
-	struct vnode *vp = NULL, *xp, *dirp = (struct vnode *)0;
+	struct vnode *dirp;
+	struct vnode *dvp;
+	struct vnode *vp;
+	struct vnode *xp;
 	struct vattr dirfor, diraft, at;
 	nfsfh_t nfh, dnfh;
 	fhandle_t *fhp, *dfhp;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = dvp = vp = xp = NULL;
 
 	fhp = &nfh.fh_generic;
 	dfhp = &dnfh.fh_generic;
@@ -2370,56 +2333,50 @@ nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	nfsm_srvmtofh(dfhp);
 	nfsm_srvnamesiz(len);
 
-	error = nfsrv_fhtovp(fhp, FALSE, &vp, cred, slp, nam,
+	error = nfsrv_fhtovp(fhp, FALSE, &xp, cred, slp, nam,
 		 &rdonly, (nfsd->nd_flag & ND_KERBAUTH), TRUE);
 	if (error) {
 		nfsm_reply(NFSX_POSTOPATTR(v3) + NFSX_WCCDATA(v3));
 		nfsm_srvpostop_attr(getret, &at);
 		nfsm_srvwcc_data(dirfor_ret, &dirfor, diraft_ret, &diraft);
-		vp = NULL;
+		xp = NULL;
 		error = 0;
 		goto nfsmout;
 	}
-	if (vp->v_type == VDIR) {
+	if (xp->v_type == VDIR) {
 		error = EPERM;		/* POSIX */
 		goto out1;
 	}
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT;
-	error = nfs_namei(&nd, dfhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+
+	error = nfs_namei(&nd, cred, NAMEI_CREATE, &dvp, &vp,
+			  dfhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
-		if (v3) {
+		if (v3)
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
-		} else {
-			vrele(dirp);
-			dirp = NULL;
-		}
 	}
 	if (error)
 		goto out1;
 
-	xp = nd.ni_vp;
-	if (xp != NULL) {
+	if (vp != NULL) {
 		error = EEXIST;
 		goto out;
 	}
-	xp = nd.ni_dvp;
-	if (vp->v_mount != xp->v_mount)
+	if (xp->v_mount != dvp->v_mount)
 		error = EXDEV;
 out:
 	if (!error) {
-		nqsrv_getl(vp, ND_WRITE);
+#if 0
 		nqsrv_getl(xp, ND_WRITE);
-		error = VOP_LINK(nd.ni_dvp, NCPNULL, vp, &nd.ni_cnd);
-		NDFREE(&nd, NDF_ONLY_PNBUF);
+		nqsrv_getl(vp, ND_WRITE);
+#endif
+		error = VOP_NLINK(nd.nl_ncp, xp, nd.nl_cred);
 	}
 	/* fall through */
 
 out1:
 	if (v3)
-		getret = VOP_GETATTR(vp, &at, td);
+		getret = VOP_GETATTR(xp, &at, td);
 	if (dirp)
 		diraft_ret = VOP_GETATTR(dirp, &diraft, td);
 	nfsm_reply(NFSX_POSTOPATTR(v3) + NFSX_WCCDATA(v3));
@@ -2431,19 +2388,19 @@ out1:
 	/* fall through */
 
 nfsmout:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	nlookup_done(&nd);
 	if (dirp)
 		vrele(dirp);
-	if (vp)
-		vrele(vp);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
+	if (xp)
+		vrele(xp);
+	if (dvp) {
+		if (dvp == vp)
+			vrele(dvp);
 		else
-			vput(nd.ni_dvp);
+			vput(dvp);
 	}
-	if (nd.ni_vp)
-		vrele(nd.ni_vp);
+	if (vp)
+		vput(vp);
 	return(error);
 }
 
@@ -2459,7 +2416,7 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	caddr_t dpos = nfsd->nd_dpos;
 	struct ucred *cred = &nfsd->nd_cr;
 	struct vattr va, dirfor, diraft;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct vattr *vap = &va;
 	u_int32_t *tl;
 	int32_t t1;
@@ -2470,29 +2427,26 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int error = 0, cache, len, len2, dirfor_ret = 1, diraft_ret = 1;
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	struct mbuf *mb, *mreq, *mb2;
-	struct vnode *dirp = (struct vnode *)0;
+	struct vnode *dirp;
+	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_SAVESTART;
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+
+	error = nfs_namei(&nd, cred, NAMEI_CREATE, NULL, &vp,
+			fhp, len, slp, nam, &md, &dpos, &dirp,
+			td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
-		if (v3) {
+		if (v3)
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
-		} else {
-			vrele(dirp);
-			dirp = NULL;
-		}
 	}
 	if (error)
 		goto out;
@@ -2517,30 +2471,30 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		vap->va_mode = nfstov_mode(sp->sa_mode);
 	}
 	*(pathcp + len2) = '\0';
-	if (nd.ni_vp) {
+	if (vp) {
 		error = EEXIST;
 		goto out;
 	}
 
-	/*
-	 * issue symlink op.  SAVESTART is set so the underlying path component
-	 * is only freed by the VOP if an error occurs.
-	 */
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
-	nqsrv_getl(nd.ni_dvp, ND_WRITE);
-	error = VOP_SYMLINK(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, vap, pathcp);
-	if (error)
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-	else
-		vput(nd.ni_vp);
-	nd.ni_vp = NULL;
-	/*
-	 * releases directory prior to potential lookup op.
-	 */
-	vput(nd.ni_dvp);
-	nd.ni_dvp = NULL;
+#if 0
+	nqsrv_getl(dvp, ND_WRITE);
+#endif
+	error = VOP_NSYMLINK(nd.nl_ncp, &vp, nd.nl_cred, vap, pathcp);
+	if (error == 0) {
+		bzero((caddr_t)fhp, sizeof(nfh));
+		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		error = VFS_VPTOFH(vp, &fhp->fh_fid);
+		if (!error)
+			error = VOP_GETATTR(vp, vap, td);
+	}
 
+#if 0
+	/*
+	 * We have a vp in hand from the new API call, we do not have to
+	 * look it up again.
+	 */
 	if (error == 0) {
 	    if (v3) {
 		/*
@@ -2552,7 +2506,6 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		 */
 		nd.ni_cnd.cn_nameiop = NAMEI_LOOKUP;
 		nd.ni_cnd.cn_flags &= ~(CNP_LOCKPARENT | CNP_FOLLOW);
-		nd.ni_cnd.cn_flags |= CNP_LOCKLEAF;
 		nd.ni_cnd.cn_td = td;
 		nd.ni_cnd.cn_cred = cred;
 
@@ -2570,11 +2523,12 @@ nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		}
 	    }
 	}
+#endif
 out:
-	/*
-	 * These releases aren't strictly required, does even doing them
-	 * make any sense? XXX can nfsm_reply() block?
-	 */
+	if (vp) {
+		vput(vp);
+		vp = NULL;
+	}
 	if (pathcp) {
 		FREE(pathcp, M_TEMP);
 		pathcp = NULL;
@@ -2583,10 +2537,6 @@ out:
 		diraft_ret = VOP_GETATTR(dirp, &diraft, td);
 		vrele(dirp);
 		dirp = NULL;
-	}
-	if (nd.ni_startdir) {
-		vrele(nd.ni_startdir);
-		nd.ni_startdir = NULL;
 	}
 	nfsm_reply(NFSX_SRVFH(v3) + NFSX_POSTOPATTR(v3) + NFSX_WCCDATA(v3));
 	if (v3) {
@@ -2600,22 +2550,13 @@ out:
 	/* fall through */
 
 nfsmout:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
-		else
-			vput(nd.ni_dvp);
-	}
-	if (nd.ni_vp)
-		vrele(nd.ni_vp);
-	if (nd.ni_startdir)
-		vrele(nd.ni_startdir);
+	nlookup_done(&nd);
+	if (vp)
+		vput(vp);
 	if (dirp)
 		vrele(dirp);
 	if (pathcp)
 		FREE(pathcp, M_TEMP);
-
 	return (error);
 }
 
@@ -2633,7 +2574,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	struct vattr va, dirfor, diraft;
 	struct vattr *vap = &va;
 	struct nfs_fattr *fp;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	caddr_t cp;
 	u_int32_t *tl;
 	int32_t t1;
@@ -2642,31 +2583,27 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mb2, *mreq;
-	struct vnode *dirp = NULL;
-	int vpexcl = 0;
+	struct vnode *dirp;
+	struct vnode *vp;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_CREATE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT;
 
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+	error = nfs_namei(&nd, cred, NAMEI_CREATE, NULL, &vp,
+			  fhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
-		if (v3) {
+		if (v3)
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
-		} else {
-			vrele(dirp);
-			dirp = NULL;
-		}
 	}
 	if (error) {
 		nfsm_reply(NFSX_WCCDATA(v3));
@@ -2688,8 +2625,7 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 
 	vap->va_type = VDIR;
-	if (nd.ni_vp != NULL) {
-		NDFREE(&nd, NDF_ONLY_PNBUF);
+	if (vp != NULL) {
 		error = EEXIST;
 		goto out;
 	}
@@ -2701,20 +2637,17 @@ nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	 */
 	if (vap->va_mode == (mode_t)VNOVAL)
 		vap->va_mode = 0;
+#if 0
 	nqsrv_getl(nd.ni_dvp, ND_WRITE);
-	error = VOP_MKDIR(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, vap);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vpexcl = 1;
+#endif
+	error = VOP_NMKDIR(nd.nl_ncp, &vp, nd.nl_cred, vap);
 
-	vput(nd.ni_dvp);
-	nd.ni_dvp = NULL;
-
-	if (!error) {
+	if (error == 0) {
 		bzero((caddr_t)fhp, sizeof(nfh));
-		fhp->fh_fsid = nd.ni_vp->v_mount->mnt_stat.f_fsid;
-		error = VFS_VPTOFH(nd.ni_vp, &fhp->fh_fid);
-		if (!error)
-			error = VOP_GETATTR(nd.ni_vp, vap, td);
+		fhp->fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		error = VFS_VPTOFH(vp, &fhp->fh_fid);
+		if (error == 0)
+			error = VOP_GETATTR(vp, vap, td);
 	}
 out:
 	if (dirp)
@@ -2735,21 +2668,11 @@ out:
 	/* fall through */
 
 nfsmout:
+	nlookup_done(&nd);
 	if (dirp)
 		vrele(dirp);
-	if (nd.ni_dvp) {
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		if (nd.ni_dvp == nd.ni_vp && vpexcl)
-			vrele(nd.ni_dvp);
-		else
-			vput(nd.ni_dvp);
-	}
-	if (nd.ni_vp) {
-		if (vpexcl)
-			vput(nd.ni_vp);
-		else
-			vrele(nd.ni_vp);
-	}
+	if (vp)
+		vput(vp);
 	return (error);
 }
 
@@ -2771,31 +2694,29 @@ nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 	int v3 = (nfsd->nd_flag & ND_NFSV3);
 	char *cp2;
 	struct mbuf *mb, *mreq;
-	struct vnode *vp, *dirp = (struct vnode *)0;
+	struct vnode *dirp;
+	struct vnode *vp;
 	struct vattr dirfor, diraft;
 	nfsfh_t nfh;
 	fhandle_t *fhp;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	u_quad_t frev;
 
 	nfsdbprintf(("%s %d\n", __FILE__, __LINE__));
-	ndclear(&nd);
+	nlookup_zero(&nd);
+	dirp = NULL;
+	vp = NULL;
 
 	fhp = &nfh.fh_generic;
 	nfsm_srvmtofh(fhp);
 	nfsm_srvnamesiz(len);
-	nd.ni_cnd.cn_cred = cred;
-	nd.ni_cnd.cn_nameiop = NAMEI_DELETE;
-	nd.ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
-	error = nfs_namei(&nd, fhp, len, slp, nam, &md, &dpos,
-		&dirp, td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
+
+	error = nfs_namei(&nd, cred, NAMEI_DELETE, NULL, &vp,
+			  fhp, len, slp, nam, &md, &dpos, &dirp,
+			  td, (nfsd->nd_flag & ND_KERBAUTH), FALSE);
 	if (dirp) {
-		if (v3) {
+		if (v3)
 			dirfor_ret = VOP_GETATTR(dirp, &dirfor, td);
-		} else {
-			vrele(dirp);
-			dirp = NULL;
-		}
 	}
 	if (error) {
 		nfsm_reply(NFSX_WCCDATA(v3));
@@ -2803,18 +2724,11 @@ nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
 		error = 0;
 		goto nfsmout;
 	}
-	vp = nd.ni_vp;
 	if (vp->v_type != VDIR) {
 		error = ENOTDIR;
 		goto out;
 	}
-	/*
-	 * No rmdir "." please.
-	 */
-	if (nd.ni_dvp == vp) {
-		error = EINVAL;
-		goto out;
-	}
+
 	/*
 	 * The root of a mounted filesystem cannot be deleted.
 	 */
@@ -2826,13 +2740,15 @@ out:
 	 * component is freed by the VOP after either.
 	 */
 	if (!error) {
+#if 0
 		nqsrv_getl(nd.ni_dvp, ND_WRITE);
 		nqsrv_getl(vp, ND_WRITE);
-		error = VOP_RMDIR(nd.ni_dvp, NCPNULL, nd.ni_vp, &nd.ni_cnd);
-		if (error == 0)
-			cache_purge(nd.ni_vp);
+#endif
+		vput(vp);
+		vp = NULL;
+		error = VOP_NRMDIR(nd.nl_ncp, nd.nl_cred);
 	}
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	nlookup_done(&nd);
 
 	if (dirp)
 		diraft_ret = VOP_GETATTR(dirp, &diraft, td);
@@ -2844,18 +2760,11 @@ out:
 	/* fall through */
 
 nfsmout:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	nlookup_done(&nd);
 	if (dirp)
 		vrele(dirp);
-	if (nd.ni_dvp) {
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
-		else
-			vput(nd.ni_dvp);
-	}
-	if (nd.ni_vp)
-		vput(nd.ni_vp);
-
+	if (vp)
+		vput(vp);
 	return(error);
 }
 

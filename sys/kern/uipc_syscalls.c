@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.43 2004/10/22 13:42:14 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.44 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -109,7 +109,6 @@ kern_socket(int domain, int type, int protocol, int *res)
 	error = falloc(p, &fp, &fd);
 	if (error)
 		return (error);
-	fhold(fp);
 	error = socreate(domain, &so, type, protocol, td);
 	if (error) {
 		if (fdp->fd_ofiles[fd] == fp) {
@@ -271,7 +270,6 @@ kern_accept(int s, struct sockaddr **name, int *namelen, int *res)
 		fdrop(lfp, td);
 		return (error);
 	}
-	fhold(nfp);
 	*res = fd;
 
 	head = (struct socket *)lfp->f_data;
@@ -355,7 +353,7 @@ done:
 	/*
 	 * Release explicitly held references before returning.
 	 */
-	if (nfp != NULL)
+	if (nfp)
 		fdrop(nfp, td);
 	fdrop(lfp, td);
 	return (error);
@@ -501,13 +499,11 @@ kern_socketpair(int domain, int type, int protocol, int *sv)
 	error = falloc(p, &fp1, &fd);
 	if (error)
 		goto free2;
-	fhold(fp1);
 	sv[0] = fd;
 	fp1->f_data = (caddr_t)so1;
 	error = falloc(p, &fp2, &fd);
 	if (error)
 		goto free3;
-	fhold(fp2);
 	fp2->f_data = (caddr_t)so2;
 	sv[1] = fd;
 	error = soconnect2(so1, so2);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.22 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.23 2004/11/12 00:09:37 dillon Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/vnode.h>
+#include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
@@ -560,8 +561,6 @@ struct nfssvc_args;
 extern int nfssvc(struct proc *, struct nfssvc_args *, int *);
 
 LIST_HEAD(nfsnodehashhead, nfsnode);
-
-int nfs_webnamei (struct nameidata *, struct vnode *, struct proc *);
 
 u_quad_t
 nfs_curusec(void) 
@@ -1353,7 +1352,10 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 	np = VTONFS(vp);
 	vap = &np->n_vattr;
 	nmp = VFSTONFS(vp->v_mount);
-	/* XXX n_mtime doesn't seem to be updated on a miss-and-reload */
+
+	/*
+	 * Dynamic timeout based on how recently the file was modified.
+	 */
 	timeo = (time_second - np->n_mtime) / 10;
 
 #ifdef NFS_ACDEBUG
@@ -1415,6 +1417,7 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 }
 
 #ifndef NFS_NOSERVER
+
 /*
  * Set up nameidata for a lookup() call and do it.
  *
@@ -1424,37 +1427,41 @@ nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
  * the lookup result is within the public fs, and deny access if
  * it is not.
  *
- * nfs_namei() clears out garbage fields that namei() might leave garbage.
- * This is mainly ni_vp and ni_dvp when an error occurs, and ni_dvp when no
- * error occurs but the parent was not requested.
- *
  * dirp may be set whether an error is returned or not, and must be 
  * released by the caller.
+ *
+ * On return nd->nl_ncp usually points to the target ncp, which may represent
+ * a negative hit.
+ *
+ * NOTE: the caller must call nlookup_done(nd) unconditionally on return
+ * to cleanup.
  */
 int
-nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
-	  struct nfssvc_sock *slp, struct sockaddr *nam, struct mbuf **mdp,
-	  caddr_t *dposp, struct vnode **retdirp, struct thread *td,
-	  int kerbflag, int pubflag)
+nfs_namei(struct nlookupdata *nd, struct ucred *cred, int nameiop,
+	struct vnode **dvpp, struct vnode **vpp,
+	fhandle_t *fhp, int len,
+	struct nfssvc_sock *slp, struct sockaddr *nam, struct mbuf **mdp,
+	caddr_t *dposp, struct vnode **dirpp, struct thread *td,
+	int kerbflag, int pubflag)
 {
 	int i, rem;
+	int flags;
 	struct mbuf *md;
 	char *fromcp, *tocp, *cp;
-	struct iovec aiov;
-	struct uio auio;
+	char *namebuf;
+	struct namecache *ncp;
 	struct vnode *dp;
-	int error, rdonly, linklen;
-	struct componentname *cnp = &ndp->ni_cnd;
+	int error, rdonly;
 
-	*retdirp = (struct vnode *)0;
-	cnp->cn_pnbuf = zalloc(namei_zone);
+	namebuf = zalloc(namei_zone);
+	flags = 0;
+	*dirpp = NULL;
 
 	/*
-	 * Copy the name from the mbuf list to ndp->ni_pnbuf
-	 * and set the various ndp fields appropriately.
+	 * Copy the name from the mbuf list to namebuf.
 	 */
 	fromcp = *dposp;
-	tocp = cnp->cn_pnbuf;
+	tocp = namebuf;
 	md = *mdp;
 	rem = mtod(md, caddr_t) + md->m_len - fromcp;
 	for (i = 0; i < len; i++) {
@@ -1486,10 +1493,11 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 	}
 
 	/*
-	 * Extract and set starting directory.
+	 * Extract and set starting directory.  The returned dp is refd
+	 * but not locked.
 	 */
-	error = nfsrv_fhtovp(fhp, FALSE, &dp, ndp->ni_cnd.cn_cred, slp,
-	    nam, &rdonly, kerbflag, pubflag);
+	error = nfsrv_fhtovp(fhp, FALSE, &dp, cred, slp,
+				nam, &rdonly, kerbflag, pubflag);
 	if (error)
 		goto out;
 	if (dp->v_type != VDIR) {
@@ -1498,14 +1506,12 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 		goto out;
 	}
 
-	if (rdonly)
-		cnp->cn_flags |= CNP_RDONLY;
-
 	/*
 	 * Set return directory.  Reference to dp is implicitly transfered 
-	 * to the returned pointer
+	 * to the returned pointer.  This must be set before we potentially
+	 * goto out below.
 	 */
-	*retdirp = dp;
+	*dirpp = dp;
 
 	if (pubflag) {
 		/*
@@ -1513,7 +1519,7 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 		 * and the 'native path' indicator.
 		 */
 		cp = zalloc(namei_zone);
-		fromcp = cnp->cn_pnbuf;
+		fromcp = namebuf;
 		tocp = cp;
 		if ((unsigned char)*fromcp >= WEBNFS_SPECCHAR_START) {
 			switch ((unsigned char)*fromcp) {
@@ -1553,151 +1559,79 @@ nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
 				*tocp++ = *fromcp++;
 		}
 		*tocp = '\0';
-		zfree(namei_zone, cnp->cn_pnbuf);
-		cnp->cn_pnbuf = cp;
-	}
-
-	ndp->ni_pathlen = (tocp - cnp->cn_pnbuf) + 1;
-	ndp->ni_segflg = UIO_SYSSPACE;
-
-	if (pubflag) {
-		ndp->ni_rootdir = rootvnode;
-		ndp->ni_loopcnt = 0;
-		if (cnp->cn_pnbuf[0] == '/')
-			dp = rootvnode;
-	} else {
-		cnp->cn_flags |= CNP_NOCROSSMOUNT;
+		zfree(namei_zone, namebuf);
+		namebuf = cp;
 	}
 
 	/*
-	 * Initialize for scan, set ni_startdir and bump ref on dp again
-	 * because lookup() will dereference ni_startdir.
+	 * Setup for search.  We need to get a start directory from dp.  Note
+	 * that dp is ref'd, but we no longer 'own' the ref (*dirpp owns it).
 	 */
+	if (pubflag == 0) {
+		flags |= NLC_NFS_NOSOFTLINKTRAV;
+		flags |= NLC_NOCROSSMOUNT;
+	}
+	if (rdonly)
+		flags |= NLC_NFS_RDONLY;
+	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
+		flags |= NLC_CREATE;
 
-	cnp->cn_td = td;
-	vref(dp);
-	ndp->ni_startdir = dp;
+	/*
+	 * We need a starting ncp from the directory vnode dp.  dp must not
+	 * be locked.  The returned ncp will be refd but not locked. 
+	 *
+	 * If no suitable ncp is found we instruct cache_fromdvp() to create
+	 * one.  If this fails the directory has probably been removed while
+	 * the target was chdir'd into it and any further lookup will fail.
+	 */
+	if ((ncp = cache_fromdvp(dp, cred, 1)) == NULL) {
+		error = EINVAL;
+		goto out;
+	}
+	nlookup_init_raw(nd, namebuf, UIO_SYSSPACE, flags, cred, ncp);
+	cache_drop(ncp);
 
-	for (;;) {
-		cnp->cn_nameptr = cnp->cn_pnbuf;
-		/*
-		 * Call lookup() to do the real work.  If an error occurs,
-		 * ndp->ni_vp and ni_dvp are left uninitialized or NULL and
-		 * we do not have to dereference anything before returning.
-		 * In either case ni_startdir will be dereferenced and NULLed
-		 * out.
-		 */
-		error = lookup(ndp);
-		if (error)
-			break;
+	/*
+	 * Ok, do the lookup.
+	 */
+	error = nlookup(nd);
 
-		/*
-		 * Check for encountering a symbolic link.  Trivial 
-		 * termination occurs if no symlink encountered.
-		 * Note: zfree is safe because error is 0, so we will
-		 * not zfree it again when we break.
-		 */
-		if ((cnp->cn_flags & CNP_ISSYMLINK) == 0) {
-			nfsrv_object_create(ndp->ni_vp);
-			if (cnp->cn_flags & (CNP_SAVENAME | CNP_SAVESTART))
-				cnp->cn_flags |= CNP_HASBUF;
-			else
-				zfree(namei_zone, cnp->cn_pnbuf);
-			break;
+	/*
+	 * If no error occured return the requested dvpp and vpp.  If
+	 * NLC_CREATE was specified nd->nl_ncp may represent a negative
+	 * cache hit in which case we do not attempt to obtain the vp.
+	 */
+	if (error == 0) {
+		ncp = nd->nl_ncp;
+		if (dvpp) {
+			if (ncp->nc_parent &&
+			    ncp->nc_parent->nc_mount == ncp->nc_mount) {
+				error = cache_vget(ncp->nc_parent, nd->nl_cred,
+						LK_EXCLUSIVE, dvpp);
+			} else {
+				error = ENXIO;
+			}
 		}
-
-		/*
-		 * Validate symlink
-		 */
-		if ((cnp->cn_flags & CNP_LOCKPARENT) && ndp->ni_pathlen == 1)
-			VOP_UNLOCK(ndp->ni_dvp, 0, td);
-		if (!pubflag) {
-			error = EINVAL;
-			goto badlink2;
+		if (vpp && ncp->nc_vp) {
+			error = cache_vget(ncp, nd->nl_cred, LK_EXCLUSIVE, vpp);
 		}
-
-		if (ndp->ni_loopcnt++ >= MAXSYMLINKS) {
-			error = ELOOP;
-			goto badlink2;
-		}
-		if (ndp->ni_pathlen > 1)
-			cp = zalloc(namei_zone);
-		else
-			cp = cnp->cn_pnbuf;
-		aiov.iov_base = cp;
-		aiov.iov_len = MAXPATHLEN;
-		auio.uio_iov = &aiov;
-		auio.uio_iovcnt = 1;
-		auio.uio_offset = 0;
-		auio.uio_rw = UIO_READ;
-		auio.uio_segflg = UIO_SYSSPACE;
-		auio.uio_td = NULL;
-		auio.uio_resid = MAXPATHLEN;
-		error = VOP_READLINK(ndp->ni_vp, &auio, cnp->cn_cred);
 		if (error) {
-		badlink1:
-			if (ndp->ni_pathlen > 1)
-				zfree(namei_zone, cp);
-		badlink2:
-			vrele(ndp->ni_dvp);
-			vput(ndp->ni_vp);
-			break;
+			if (dvpp && *dvpp) {
+				vput(*dvpp);
+				*dvpp = NULL;
+			}
+			if (vpp && *vpp) {
+				vput(*vpp);
+				*vpp = NULL;
+			}
 		}
-		linklen = MAXPATHLEN - auio.uio_resid;
-		if (linklen == 0) {
-			error = ENOENT;
-			goto badlink1;
-		}
-		if (linklen + ndp->ni_pathlen >= MAXPATHLEN) {
-			error = ENAMETOOLONG;
-			goto badlink1;
-		}
-
-		/*
-		 * Adjust or replace path
-		 */
-		if (ndp->ni_pathlen > 1) {
-			bcopy(ndp->ni_next, cp + linklen, ndp->ni_pathlen);
-			zfree(namei_zone, cnp->cn_pnbuf);
-			cnp->cn_pnbuf = cp;
-		} else
-			cnp->cn_pnbuf[linklen] = '\0';
-		ndp->ni_pathlen += linklen;
-
-		/*
-		 * Cleanup refs for next loop and check if root directory 
-		 * should replace current directory.  Normally ni_dvp 
-		 * becomes the new base directory and is cleaned up when
-		 * we loop.  Explicitly null pointers after invalidation
-		 * to clarify operation.
-		 */
-		vput(ndp->ni_vp);
-		ndp->ni_vp = NULL;
-
-		if (cnp->cn_pnbuf[0] == '/') {
-			vrele(ndp->ni_dvp);
-			ndp->ni_dvp = ndp->ni_rootdir;
-			vref(ndp->ni_dvp);
-		}
-		ndp->ni_startdir = ndp->ni_dvp;
-		ndp->ni_dvp = NULL;
 	}
 
 	/*
-	 * nfs_namei() guarentees that fields will not contain garbage
-	 * whether an error occurs or not.  This allows the caller to track
-	 * cleanup state trivially.
+	 * Finish up.
 	 */
 out:
-	if (error) {
-		zfree(namei_zone, cnp->cn_pnbuf);
-		ndp->ni_vp = NULL;
-		ndp->ni_dvp = NULL;
-		ndp->ni_startdir = NULL;
-		cnp->cn_flags &= ~CNP_HASBUF;
-	} else if ((ndp->ni_cnd.cn_flags & (CNP_WANTPARENT|CNP_LOCKPARENT)) == 0) {
-		ndp->ni_dvp = NULL;
-	}
+	zfree(namei_zone, namebuf);
 	return (error);
 }
 

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.22 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.23 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,7 +41,7 @@
 #include <sys/mman.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/pioctl.h>
 #include <sys/procfs.h>
 #include <sys/resourcevar.h>
@@ -337,13 +337,13 @@ static int
 elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 {
 	struct {
-		struct nameidata nd;
+		struct nlookupdata nd;
 		struct vattr attr;
 		struct image_params image_params;
 	} *tempdata;
 	const Elf_Ehdr *hdr = NULL;
 	const Elf_Phdr *phdr = NULL;
-	struct nameidata *nd;
+	struct nlookupdata *nd;
 	struct vmspace *vmspace = p->p_vmspace;
 	struct vattr *attr;
 	struct image_params *imgp;
@@ -365,23 +365,23 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	imgp->attr = attr;
 	imgp->firstpage = NULL;
 	imgp->image_header = NULL;
+	imgp->vp = NULL;
 
-        NDINIT(nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW,
-	    UIO_SYSSPACE, file, td);
-			 
-	if ((error = namei(nd)) != 0) {
-		nd->ni_vp = NULL;
+	error = nlookup_init(nd, file, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(nd);
+	if (error == 0)
+		error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	nlookup_done(nd);
+	if (error)
 		goto fail;
-	}
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	imgp->vp = nd->ni_vp;
 
 	/*
 	 * Check permissions, modes, uid, etc on the file, and "open" it.
 	 */
 	error = exec_check_permissions(imgp);
 	if (error) {
-		VOP_UNLOCK(nd->ni_vp, 0, td);
+		VOP_UNLOCK(imgp->vp, 0, td);
 		goto fail;
 	}
 
@@ -391,8 +391,8 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 	 * its VTEXT flag, too.
 	 */
 	if (error == 0)
-		nd->ni_vp->v_flag |= VTEXT;
-	VOP_UNLOCK(nd->ni_vp, 0, td);
+		imgp->vp->v_flag |= VTEXT;
+	VOP_UNLOCK(imgp->vp, 0, td);
 	if (error)
                 goto fail;
 
@@ -429,7 +429,7 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
   				prot |= VM_PROT_READ;
 
 			error = elf_load_section(
-				    p, vmspace, nd->ni_vp,
+				    p, vmspace, imgp->vp,
 				    phdr[i].p_offset,
 				    (caddr_t)phdr[i].p_vaddr +
 				    rbase,
@@ -452,9 +452,10 @@ elf_load_file(struct proc *p, const char *file, u_long *addr, u_long *entry)
 fail:
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
-	if (nd->ni_vp)
-		vrele(nd->ni_vp);
-
+	if (imgp->vp) {
+		vrele(imgp->vp);
+		imgp->vp = NULL;
+	}
 	free(tempdata, M_TEMP);
 
 	return error;
@@ -801,9 +802,12 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 		return (error);
 	fsetcred(fp, p->p_ucred);
 
+	/*
+	 * XXX fixme.
+	 */
 	fp->f_data = (caddr_t)vp;
 	fp->f_flag = O_CREAT|O_WRONLY|O_NOFOLLOW;
-	fp->f_ops = &vnops;
+	fp->f_ops = &vnode_fileops;
 	fp->f_type = DTYPE_VNODE;
 	VOP_UNLOCK(vp, 0, p->p_thread);
 	

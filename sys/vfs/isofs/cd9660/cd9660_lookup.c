@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.14 2004/10/12 19:20:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.15 2004/11/12 00:09:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@
  *		 struct componentname *a_cnp)
  */
 int
-cd9660_lookup(struct vop_cachedlookup_args *ap)
+cd9660_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	globaldata_t gd = mycpu;
@@ -305,11 +305,6 @@ notfound:
 	if (bp != NULL)
 		brelse(bp);
 
-	/*
-	 * Insert name into cache (as non-existent) if appropriate.
-	 */
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
 	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
 		return (EROFS);
 	return (ENOENT);
@@ -323,7 +318,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
+	if (nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset;
 
 	/*
@@ -359,7 +354,7 @@ found:
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
-		if (lockparent && (flags & CNP_ISLASTCN)) {
+		if (lockparent) {
 			if ((error = vn_lock(pdp, LK_EXCLUSIVE, td)) != 0) {
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
 				vput(tdp);
@@ -378,18 +373,12 @@ found:
 		brelse(bp);
 		if (error)
 			return (error);
-		if (!lockparent || !(flags & CNP_ISLASTCN)) {
+		if (!lockparent) {
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			VOP_UNLOCK(pdp, 0, td);
 		}
 		*vpp = tdp;
 	}
-
-	/*
-	 * Insert name into cache if appropriate.
-	 */
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 

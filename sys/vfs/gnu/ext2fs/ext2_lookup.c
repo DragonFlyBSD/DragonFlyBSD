@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.15 2004/10/12 19:20:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.16 2004/11/12 00:09:30 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -289,7 +289,7 @@ ext2_readdir(struct vop_readdir_args *ap)
  *	       struct componentname *a_cnp)
  */
 int
-ext2_lookup(struct vop_cachedlookup_args *ap)
+ext2_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *vdp;	/* vnode for directory being searched */
 	struct inode *dp;	/* inode for directory being searched */
@@ -341,8 +341,7 @@ ext2_lookup(struct vop_cachedlookup_args *ap)
 	 */
 	slotstatus = FOUND;
 	slotfreespace = slotsize = slotneeded = 0;
-	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) {
 		slotstatus = NONE;
 		slotneeded = EXT2_DIR_REC_LEN(cnp->cn_namelen); 
 		/* was
@@ -492,7 +491,7 @@ searchloop:
 	 * allowing file to be created.
 	 */
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    (flags & CNP_ISLASTCN) && dp->i_nlink != 0) {
+	    dp->i_nlink != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -533,16 +532,10 @@ searchloop:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(vdp, 0, td);
 		return (EJUSTRETURN);
 	}
-	/*
-	 * Insert name into cache (as non-existent) if appropriate.
-	 */
-	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -565,7 +558,7 @@ found:
 	 * If the final component of path name, save information
 	 * in the cache as to where the entry was found.
 	 */
-	if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
+	if (nameiop == NAMEI_LOOKUP)
 		dp->i_diroff = dp->i_offset &~ (DIRBLKSIZ - 1);
 
 	/*
@@ -575,7 +568,7 @@ found:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE) {
 		/*
 		 * Write access to directory required to delete files.
 		 */
@@ -623,8 +616,7 @@ found:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == NAMEI_RENAME && wantparent &&
-	    (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent) {
 		if ((error = VOP_ACCESS(vdp, VWRITE, cred, cnp->cn_td)) != 0)
 			return (error);
 		/*
@@ -636,7 +628,6 @@ found:
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0)
 			return (error);
 		*vpp = tdp;
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent)
 			VOP_UNLOCK(vdp, 0, td);
 		return (0);
@@ -668,8 +659,7 @@ found:
 			vn_lock(pdp, LK_EXCLUSIVE | LK_RETRY, td);
 			return (error);
 		}
-		if (lockparent && (flags & CNP_ISLASTCN) &&
-		    (error = vn_lock(pdp, LK_EXCLUSIVE, td))) {
+		if (lockparent && (error = vn_lock(pdp, LK_EXCLUSIVE, td))) {
 			vput(tdp);
 			return (error);
 		}
@@ -680,16 +670,10 @@ found:
 	} else {
 		if ((error = VFS_VGET(vdp->v_mount, dp->i_ino, &tdp)) != 0)
 			return (error);
-		if (!lockparent || !(flags & CNP_ISLASTCN))
+		if (!lockparent)
 			VOP_UNLOCK(pdp, 0, td);
 		*vpp = tdp;
 	}
-
-	/*
-	 * Insert name into cache if appropriate.
-	 */
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 
@@ -736,9 +720,9 @@ ext2_dirbadentry(struct vnode *dp, struct ext2_dir_entry_2 *de,
 
 /*
  * Write a directory entry after a call to namei, using the parameters
- * that it left in nameidata.  The argument ip is the inode which the new
- * directory entry will refer to.  Dvp is a pointer to the directory to
- * be written, which was left locked by namei. Remaining parameters
+ * that it left in the directory inode.  The argument ip is the inode which
+ * the new directory entry will refer to.  Dvp is a pointer to the directory 
+ * to be written, which was left locked by namei. Remaining parameters
  * (dp->i_offset, dp->i_count) indicate how the space for the new
  * entry is to be obtained.
  */
@@ -757,10 +741,6 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 	int     DIRBLKSIZ = ip->i_e2fs->s_blocksize;
 
 
-#if DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_SAVENAME) == 0)
-		panic("direnter: missing name");
-#endif
 	dp = VTOI(dvp);
 	newdir.inode = ip->i_number;
 	newdir.name_len = cnp->cn_namelen;
@@ -876,7 +856,7 @@ ext2_direnter(struct inode *ip, struct vnode *dvp, struct componentname *cnp)
 
 /*
  * Remove a directory entry after a call to namei, using
- * the parameters which it left in nameidata. The entry
+ * the parameters which it left in the directory inode. The entry
  * dp->i_offset contains the offset into the directory of the
  * entry to be eliminated.  The dp->i_count field contains the
  * size of the previous record in the directory.  If this

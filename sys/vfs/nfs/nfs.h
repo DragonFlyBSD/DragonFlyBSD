@@ -35,7 +35,7 @@
  *
  *	@(#)nfs.h	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sys/nfs/nfs.h,v 1.53.2.5 2002/02/20 01:35:34 iedowse Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.7 2004/09/16 15:15:51 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs.h,v 1.8 2004/11/12 00:09:37 dillon Exp $
  */
 
 #ifndef _NFS_NFS_H_
@@ -307,7 +307,10 @@ extern vm_zone_t nfsmount_zone;
 
 extern struct callout nfs_timer_handle;
 
-struct uio; struct buf; struct vattr; struct nameidata;	/* XXX */
+struct uio;
+struct buf;
+struct vattr;
+struct nlookupdata;
 
 /*
  * The set of signals the interrupt an I/O in progress for NFSMNT_INT mounts.
@@ -617,9 +620,10 @@ int	nfs_request (struct vnode *, struct mbuf *, int, struct thread *,
 			 caddr_t *);
 int	nfs_loadattrcache (struct vnode **, struct mbuf **, caddr_t *,
 			       struct vattr *, int);
-int	nfs_namei (struct nameidata *, fhandle_t *, int,
-		       struct nfssvc_sock *, struct sockaddr *, struct mbuf **,
-		       caddr_t *, struct vnode **, struct thread *, int, int);
+int	nfs_namei (struct nlookupdata *, struct ucred *, int, 
+		    struct vnode **, struct vnode **, fhandle_t *, int,
+		    struct nfssvc_sock *, struct sockaddr *, struct mbuf **,
+		    caddr_t *, struct vnode **, struct thread *, int, int);
 void	nfsm_adj (struct mbuf *, int, int);
 int	nfsm_mbuftouio (struct mbuf **, struct uio *, int, caddr_t *);
 void	nfsrv_initcache (void);

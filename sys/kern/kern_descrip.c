@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.30 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.31 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -51,7 +51,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/filio.h>
@@ -876,62 +876,78 @@ fdavail(struct proc *p, int n)
  *	is allocated and the file pointer is returned unassociated with
  *	any process.  resultfd is only used if p is not NULL and may
  *	separately be NULL indicating that you don't need the returned fd.
+ *
+ *	A held file pointer is returned.  If a descriptor has been allocated
+ *	an additional hold on the fp will be made due to the fd_ofiles[]
+ *	reference.
  */
 int
 falloc(struct proc *p, struct file **resultfp, int *resultfd)
 {
-	struct file *fp, *fq;
-	int error, i;
 	static struct timeval lastfail;
 	static int curfail;
+	struct file *fp;
+	int error;
 
+	fp = NULL;
+
+	/*
+	 * Handle filetable full issues and root overfill.
+	 */
 	if (nfiles >= maxfiles - maxfilesrootres &&
 	    ((p && p->p_ucred->cr_ruid != 0) || nfiles >= maxfiles)) {
 		if (ppsratecheck(&lastfail, &curfail, 1)) {
 			printf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
 				(p ? p->p_ucred->cr_ruid : -1));
 		}
-		return (ENFILE);
+		error = ENFILE;
+		goto done;
 	}
+
 	/*
 	 * Allocate a new file descriptor.
-	 * If the process has file descriptor zero open, add to the list
-	 * of open files at that point, otherwise put it at the front of
-	 * the list of open files.
 	 */
 	nfiles++;
 	fp = malloc(sizeof(struct file), M_FILE, M_WAITOK | M_ZERO);
-
-	/*
-	 * wait until after malloc (which may have blocked) returns before
-	 * allocating the slot, else a race might have shrunk it if we had
-	 * allocated it before the malloc.
-	 */
-	i = -1;
-	if (p && (error = fdalloc(p, 0, &i))) {
-		nfiles--;
-		free(fp, M_FILE);
-		return (error);
-	}
 	fp->f_count = 1;
 	fp->f_ops = &badfileops;
 	fp->f_seqcount = 1;
-	if (p) {
+	if (p)
 		fp->f_cred = crhold(p->p_ucred);
-		if ((fq = p->p_fd->fd_ofiles[0]) != NULL) {
-			LIST_INSERT_AFTER(fq, fp, f_list);
-		} else {
-			LIST_INSERT_HEAD(&filehead, fp, f_list);
-		}
-		p->p_fd->fd_ofiles[i] = fp;
-	} else {
+	else
 		fp->f_cred = crhold(proc0.p_ucred);
-		LIST_INSERT_HEAD(&filehead, fp, f_list);
+	LIST_INSERT_HEAD(&filehead, fp, f_list);
+	if (resultfd) {
+		if ((error = fsetfd(p, fp, resultfd)) != 0) {
+			fdrop(fp, p->p_thread);
+			fp = NULL;
+		}
+	} else {
+		error = 0;
 	}
-	if (resultfp)
-		*resultfp = fp;
-	if (resultfd)
-		*resultfd = i;
+done:
+	*resultfp = fp;
+	return (0);
+}
+
+/*
+ * Associate a file pointer with a file descriptor.  On success the fp
+ * will have an additional ref representing the fd_ofiles[] association.
+ */
+int
+fsetfd(struct proc *p, struct file *fp, int *resultfd)
+{
+	int i;
+	int error;
+
+	KKASSERT(p);
+
+	i = -1;
+	if ((error = fdalloc(p, 0, &i)) == 0) {
+		fhold(fp);
+		p->p_fd->fd_ofiles[i] = fp;
+	}
+	*resultfd = i;
 	return (0);
 }
 
@@ -1334,7 +1350,7 @@ int
 fdcheckstd(struct proc *p)
 {
 	struct thread *td = p->p_thread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct filedesc *fdp;
 	struct file *fp;
 	register_t retval;
@@ -1346,33 +1362,30 @@ fdcheckstd(struct proc *p)
        devnull = -1;
        error = 0;
        for (i = 0; i < 3; i++) {
-               if (fdp->fd_ofiles[i] != NULL)
-                       continue;
-               if (devnull < 0) {
-                       error = falloc(p, &fp, &fd);
-                       if (error != 0)
-                               break;
-                       NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, 
-			   "/dev/null", td);
-                       flags = FREAD | FWRITE;
-                       error = vn_open(&nd, flags, 0);
-                       if (error != 0) {
-                               fdp->fd_ofiles[i] = NULL;
-                               fdrop(fp, td);
-                               break;
-                       }
-                       NDFREE(&nd, NDF_ONLY_PNBUF);
-                       fp->f_data = (caddr_t)nd.ni_vp;
-                       fp->f_flag = flags;
-                       fp->f_ops = &vnops;
-                       fp->f_type = DTYPE_VNODE;
-                       VOP_UNLOCK(nd.ni_vp, 0, td);
-                       devnull = fd;
-               } else {
-                       error = kern_dup(DUP_FIXED, devnull, i, &retval);
-                       if (error != 0)
-                               break;
-               }
+		if (fdp->fd_ofiles[i] != NULL)
+			continue;
+		if (devnull < 0) {
+			if ((error = falloc(p, &fp, NULL)) != 0)
+				break;
+
+			error = nlookup_init(&nd, "/dev/null", UIO_SYSSPACE,
+						NLC_FOLLOW|NLC_LOCKVP);
+			flags = FREAD | FWRITE;
+			if (error == 0)
+				error = vn_open(&nd, fp, flags, 0);
+			if (error == 0)
+				error = fsetfd(p, fp, &fd);
+			fdrop(fp, td);
+			nlookup_done(&nd);
+			if (error)
+				break;
+			KKASSERT(i == fd);
+			devnull = fd;
+		} else {
+			error = kern_dup(DUP_FIXED, devnull, i, &retval);
+			if (error != 0)
+				break;
+		}
        }
        return (error);
 }

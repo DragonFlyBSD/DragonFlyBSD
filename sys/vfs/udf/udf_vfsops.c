@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.9 2004/10/12 19:21:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.10 2004/11/12 00:09:51 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -84,7 +84,7 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/queue.h>
 #include <sys/vnode.h>
@@ -139,7 +139,7 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct udf_mnt *imp = 0;
 	size_t size;
 	int error;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		return (EROFS);
@@ -161,11 +161,15 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	}
 
 	/* Check that the mount device exists */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(&nd)))
-		return(error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	devvp = nd.ni_vp;
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
+		return (error);
 
 	if (vn_isdisk(devvp, &error) == 0) {
 		vrele(devvp);
@@ -255,7 +259,7 @@ udf_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 		return(error);
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, FREAD, FSCRED, td);
+	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return(error);

@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.24 2004/09/17 00:18:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.25 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -279,10 +279,14 @@ hardclock(systimer_t info, struct intrframe *frame)
 	 * stay in synch.
 	 *
 	 * Note that we never allow info->time (aka gd->gd_hardclock.time)
-	 * to reverse index gd_cpuclock_base.
+	 * to reverse index gd_cpuclock_base, but that it is possible for
+	 * it to temporarily get behind in the seconds if something in the
+	 * system locks interrupts for a long period of time.  Since periodic
+	 * timers count events, though everything should resynch again
+	 * immediately.
 	 */
 	cputicks = info->time - gd->gd_cpuclock_base;
-	if (cputicks > cputimer_freq) {
+	if (cputicks >= cputimer_freq) {
 		++gd->gd_time_seconds;
 		gd->gd_cpuclock_base += cputimer_freq;
 	}
@@ -676,6 +680,12 @@ SYSCTL_PROC(_kern, KERN_CLOCKRATE, clockrate, CTLTYPE_STRUCT|CTLFLAG_RD,
  * Each cpu independantly maintains the current time of day, so all
  * we need to do to protect ourselves from changes is to do a loop
  * check on the seconds field changing out from under us.
+ *
+ * The system timer maintains a 32 bit count and due to various issues
+ * it is possible for the calculated delta to occassionally exceed
+ * cputimer_freq.  If this occurs the cputimer_freq64_nsec multiplication
+ * can easily overflow, so we deal with the case.  For uniformity we deal
+ * with the case in the usec case too.
  */
 void
 getmicrouptime(struct timeval *tvp)
@@ -687,6 +697,11 @@ getmicrouptime(struct timeval *tvp)
 		tvp->tv_sec = gd->gd_time_seconds;
 		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
 	} while (tvp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tvp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
 	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 	if (tvp->tv_usec >= 1000000) {
 		tvp->tv_usec -= 1000000;
@@ -704,11 +719,12 @@ getnanouptime(struct timespec *tsp)
 		tsp->tv_sec = gd->gd_time_seconds;
 		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
 	} while (tsp->tv_sec != gd->gd_time_seconds);
-	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
-	if (tsp->tv_nsec >= 1000000000) {
-		tsp->tv_nsec -= 1000000000;
-		++tsp->tv_sec;
+
+	if (delta >= cputimer_freq) {
+		tsp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
 	}
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 }
 
 void
@@ -721,11 +737,12 @@ microuptime(struct timeval *tvp)
 		tvp->tv_sec = gd->gd_time_seconds;
 		delta = cputimer_count() - gd->gd_cpuclock_base;
 	} while (tvp->tv_sec != gd->gd_time_seconds);
-	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
-	if (tvp->tv_usec >= 1000000) {
-		tvp->tv_usec -= 1000000;
-		++tvp->tv_sec;
+
+	if (delta >= cputimer_freq) {
+		tvp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
 	}
+	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 }
 
 void
@@ -738,11 +755,12 @@ nanouptime(struct timespec *tsp)
 		tsp->tv_sec = gd->gd_time_seconds;
 		delta = cputimer_count() - gd->gd_cpuclock_base;
 	} while (tsp->tv_sec != gd->gd_time_seconds);
-	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
-	if (tsp->tv_nsec >= 1000000000) {
-		tsp->tv_nsec -= 1000000000;
-		++tsp->tv_sec;
+
+	if (delta >= cputimer_freq) {
+		tsp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
 	}
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 }
 
 /*
@@ -759,6 +777,11 @@ getmicrotime(struct timeval *tvp)
 		tvp->tv_sec = gd->gd_time_seconds;
 		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
 	} while (tvp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tvp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
 	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 
 	tvp->tv_sec += basetime.tv_sec;
@@ -779,6 +802,11 @@ getnanotime(struct timespec *tsp)
 		tsp->tv_sec = gd->gd_time_seconds;
 		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
 	} while (tsp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tsp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
 	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 
 	tsp->tv_sec += basetime.tv_sec;
@@ -799,6 +827,11 @@ microtime(struct timeval *tvp)
 		tvp->tv_sec = gd->gd_time_seconds;
 		delta = cputimer_count() - gd->gd_cpuclock_base;
 	} while (tvp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tvp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
 	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
 
 	tvp->tv_sec += basetime.tv_sec;
@@ -819,6 +852,11 @@ nanotime(struct timespec *tsp)
 		tsp->tv_sec = gd->gd_time_seconds;
 		delta = cputimer_count() - gd->gd_cpuclock_base;
 	} while (tsp->tv_sec != gd->gd_time_seconds);
+
+	if (delta >= cputimer_freq) {
+		tsp->tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
+	}
 	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
 
 	tsp->tv_sec += basetime.tv_sec;
@@ -941,7 +979,8 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		ts.tv_sec = gd->gd_time_seconds;
 		delta = count - gd->gd_cpuclock_base;
 	} while (ts.tv_sec != gd->gd_time_seconds);
-	if (delta > cputimer_freq) {
+
+	if (delta >= cputimer_freq) {
 		ts.tv_sec += delta / cputimer_freq;
 		delta %= cputimer_freq;
 	}
@@ -968,7 +1007,13 @@ pps_event(struct pps_state *pps, sysclock_t count, int event)
 		/* magic, at its best... */
 		tcount = count - pps->ppscount[2];
 		pps->ppscount[2] = count;
-		delta = (cputimer_freq64_nsec * tcount) >> 32;
+		if (tcount >= cputimer_freq) {
+			delta = 1000000000 * (tcount / cputimer_freq) +
+				(cputimer_freq64_nsec * 
+				 (tcount % cputimer_freq)) >> 32;
+		} else {
+			delta = (cputimer_freq64_nsec * tcount) >> 32;
+		}
 		hardpps(tsp, delta);
 	}
 #endif

@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.11 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.12 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -136,7 +136,8 @@ extern int fp_mmap(void *addr, size_t size, int prot, int flags, struct file *fp
 extern int fp_close(struct file *fp);
 
 extern struct filelist filehead; /* head of list of open files */
-extern struct fileops vnops;
+extern struct fileops vnode_fileops;
+extern struct fileops specvnode_fileops;
 extern struct fileops badfileops;
 extern int maxfiles;		/* kernel limit on number of open files */
 extern int maxfilesrootres;	/* descriptors reserved for root use */

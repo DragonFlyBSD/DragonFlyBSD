@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.17 2004/10/12 19:20:37 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.18 2004/11/12 00:09:18 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -54,356 +54,14 @@
 #include <sys/uio.h>
 #include <sys/malloc.h>
 #include <sys/dirent.h>
+#include <sys/kern_syscall.h>
 #include <vfs/ufs/dir.h>	/* XXX only for DIRBLKSIZ */
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
 #include "linux_util.h"
 
-static int
-linux_getcwd_scandir (struct vnode **, struct vnode **,
-    char **, char *, struct thread *);
-static int
-linux_getcwd_common (struct vnode *, struct vnode *,
-		   char **, char *, int, int, struct thread *);
-
 #define DIRENT_MINSIZE (sizeof(struct dirent) - (MAXNAMLEN+1) + 4)
-
-/*
- * Vnode variable naming conventions in this file:
- *
- * rvp: the current root we're aiming towards.
- * lvp, *lvpp: the "lower" vnode
- * uvp, *uvpp: the "upper" vnode.
- *
- * Since all the vnodes we're dealing with are directories, and the
- * lookups are going *up* in the filesystem rather than *down*, the
- * usual "pvp" (parent) or "dvp" (directory) naming conventions are
- * too confusing.
- */
-
-/*
- * XXX Will infinite loop in certain cases if a directory read reliably
- *	returns EINVAL on last block.
- * XXX is EINVAL the right thing to return if a directory is malformed?
- */
-
-/*
- * XXX Untested vs. mount -o union; probably does the wrong thing.
- */
-
-/*
- * Find parent vnode of *lvpp, return in *uvpp
- *
- * If we care about the name, scan it looking for name of directory
- * entry pointing at lvp.
- *
- * Place the name in the buffer which starts at bufp, immediately
- * before *bpp, and move bpp backwards to point at the start of it.
- *
- * On entry, *lvpp is a locked vnode reference; on exit, it is vput and NULL'ed
- * On exit, *uvpp is either NULL or is a locked vnode reference.
- */
-static int
-linux_getcwd_scandir(lvpp, uvpp, bpp, bufp, td)
-	struct vnode **lvpp;
-	struct vnode **uvpp;
-	char **bpp;
-	char *bufp;
-	struct thread *td;
-{
-	struct proc *p = td->td_proc;
-	int     error = 0;
-	int     eofflag;
-	off_t   off;
-	int     tries;
-	struct uio uio;
-	struct iovec iov;
-	char   *dirbuf = NULL;
-	int	dirbuflen;
-	ino_t   fileno;
-	struct vattr va;
-	struct vnode *uvp = NULL;
-	struct vnode *lvp = *lvpp;	
-	struct componentname cn;
-	int len, reclen;
-	tries = 0;
-
-	KKASSERT(p);
-
-	/*
-	 * If we want the filename, get some info we need while the
-	 * current directory is still locked.
-	 */
-	if (bufp != NULL) {
-		error = VOP_GETATTR(lvp, &va, td);
-		if (error) {
-			vput(lvp);
-			*lvpp = NULL;
-			*uvpp = NULL;
-			return error;
-		}
-	}
-
-	/*
-	 * Ok, we have to do it the hard way..
-	 * Next, get parent vnode using lookup of ..
-	 */
-	cn.cn_nameiop = NAMEI_LOOKUP;
-	cn.cn_flags = CNP_ISLASTCN | CNP_ISDOTDOT | CNP_RDONLY;
-	cn.cn_td = td;
-	cn.cn_cred = p->p_ucred;
-	cn.cn_pnbuf = NULL;
-	cn.cn_nameptr = "..";
-	cn.cn_namelen = 2;
-	cn.cn_consume = 0;
-	
-	/*
-	 * At this point, lvp is locked and will be unlocked by the lookup.
-	 * On successful return, *uvpp will be locked
-	 */
-	error = VOP_LOOKUP(lvp, uvpp, &cn);
-	if (error) {
-		vput(lvp);
-		*lvpp = NULL;
-		*uvpp = NULL;
-		return error;
-	}
-	uvp = *uvpp;
-
-	/* If we don't care about the pathname, we're done */
-	if (bufp == NULL) {
-		vrele(lvp);
-		*lvpp = NULL;
-		return 0;
-	}
-	
-	fileno = va.va_fileid;
-
-	dirbuflen = DIRBLKSIZ;
-	if (dirbuflen < va.va_blocksize)
-		dirbuflen = va.va_blocksize;
-	dirbuf = (char *)malloc(dirbuflen, M_TEMP, M_WAITOK);
-
-#if 0
-unionread:
-#endif
-	off = 0;
-	do {
-		/* call VOP_READDIR of parent */
-		iov.iov_base = dirbuf;
-		iov.iov_len = dirbuflen;
-
-		uio.uio_iov = &iov;
-		uio.uio_iovcnt = 1;
-		uio.uio_offset = off;
-		uio.uio_resid = dirbuflen;
-		uio.uio_segflg = UIO_SYSSPACE;
-		uio.uio_rw = UIO_READ;
-		uio.uio_td = td;
-
-		eofflag = 0;
-
-		error = VOP_READDIR(uvp, &uio, p->p_ucred, &eofflag, 0, 0);
-
-		off = uio.uio_offset;
-
-		/*
-		 * Try again if NFS tosses its cookies.
-		 * XXX this can still loop forever if the directory is busted
-		 * such that the second or subsequent page of it always
-		 * returns EINVAL
-		 */
-		if ((error == EINVAL) && (tries < 3)) {
-			off = 0;
-			tries++;
-			continue;	/* once more, with feeling */
-		}
-
-		if (!error) {
-			char   *cpos;
-			struct dirent *dp;
-			
-			cpos = dirbuf;
-			tries = 0;
-				
-			/* scan directory page looking for matching vnode */ 
-			for (len = (dirbuflen - uio.uio_resid); len > 0; len -= reclen) {
-				dp = (struct dirent *) cpos;
-				reclen = dp->d_reclen;
-
-				/* check for malformed directory.. */
-				if (reclen < DIRENT_MINSIZE) {
-					error = EINVAL;
-					goto out;
-				}
-				/*
-				 * XXX should perhaps do VOP_LOOKUP to
-				 * check that we got back to the right place,
-				 * but getting the locking games for that
-				 * right would be heinous.
-				 */
-				if ((dp->d_type != DT_WHT) &&
-				    (dp->d_fileno == fileno)) {
-					char *bp = *bpp;
-					bp -= dp->d_namlen;
-					
-					if (bp <= bufp) {
-						error = ERANGE;
-						goto out;
-					}
-					bcopy(dp->d_name, bp, dp->d_namlen);
-					error = 0;
-					*bpp = bp;
-					goto out;
-				}
-				cpos += reclen;
-			}
-		}
-	} while (!eofflag);
-	error = ENOENT;
-		
-out:
-	vrele(lvp);
-	*lvpp = NULL;
-	free(dirbuf, M_TEMP);
-	return error;
-}
-
-
-/*
- * common routine shared by sys___getcwd() and linux_vn_isunder()
- */
-
-#define GETCWD_CHECK_ACCESS 0x0001
-
-static int
-linux_getcwd_common (lvp, rvp, bpp, bufp, limit, flags, td)
-	struct vnode *lvp;
-	struct vnode *rvp;
-	char **bpp;
-	char *bufp;
-	int limit;
-	int flags;
-	struct thread *td;
-{
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	struct vnode *uvp = NULL;
-	char *bp = NULL;
-	int error;
-	int perms = VEXEC;
-
-	KKASSERT(p);
-	fdp = p->p_fd;
-
-	if (rvp == NULL) {
-		rvp = fdp->fd_rdir;
-		if (rvp == NULL)
-			rvp = rootvnode;
-	}
-	
-	vref(rvp);
-	vref(lvp);
-
-	/*
-	 * Error handling invariant:
-	 * Before a `goto out':
-	 *	lvp is either NULL, or locked and held.
-	 *	uvp is either NULL, or locked and held.
-	 */
-
-	error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
-	if (error) {
-		vrele(lvp);
-		lvp = NULL;
-		goto out;
-	}
-	if (bufp)
-		bp = *bpp;
-	/*
-	 * this loop will terminate when one of the following happens:
-	 *	- we hit the root
-	 *	- getdirentries or lookup fails
-	 *	- we run out of space in the buffer.
-	 */
-	if (lvp == rvp) {
-		if (bp)
-			*(--bp) = '/';
-		goto out;
-	}
-	do {
-		if (lvp->v_type != VDIR) {
-			error = ENOTDIR;
-			goto out;
-		}
-		
-		/*
-		 * access check here is optional, depending on
-		 * whether or not caller cares.
-		 */
-		if (flags & GETCWD_CHECK_ACCESS) {
-			error = VOP_ACCESS(lvp, perms, p->p_ucred, td);
-			if (error)
-				goto out;
-			perms = VEXEC|VREAD;
-		}
-		
-		/*
-		 * step up if we're a covered vnode..
-		 */
-		while (lvp->v_flag & VROOT) {
-			struct vnode *tvp;
-
-			if (lvp == rvp)
-				goto out;
-			
-			tvp = lvp;
-			lvp = lvp->v_mount->mnt_vnodecovered;
-			vput(tvp);
-			/*
-			 * hodie natus est radici frater
-			 */
-			if (lvp == NULL) {
-				error = ENOENT;
-				goto out;
-			}
-			vref(lvp);
-			error = vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
-			if (error != 0) {
-				vrele(lvp);
-				lvp = NULL;
-				goto out;
-			}
-		}
-		error = linux_getcwd_scandir(&lvp, &uvp, &bp, bufp, td);
-		if (error)
-			goto out;
-#if DIAGNOSTIC		
-		if (lvp != NULL)
-			panic("getcwd: oops, forgot to null lvp");
-		if (bufp && (bp <= bufp)) {
-			panic("getcwd: oops, went back too far");
-		}
-#endif		
-		if (bp) 
-			*(--bp) = '/';
-		lvp = uvp;
-		uvp = NULL;
-		limit--;
-	} while ((lvp != rvp) && (limit > 0)); 
-
-out:
-	if (bpp)
-		*bpp = bp;
-	if (uvp)
-		vput(uvp);
-	if (lvp)
-		vput(lvp);
-	vrele(rvp);
-	return error;
-}
-
 
 /*
  * Find pathname of process's current directory.
@@ -415,66 +73,29 @@ out:
 int
 linux_getcwd(struct linux_getcwd_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct __getcwd_args bsd;
-	caddr_t sg, bp, bend, path;
-	int error, len, lenused;
-
-	KKASSERT(p);
+	int buflen;
+	int error;
+	char *buf;
+	char *bp;
 
 #ifdef DEBUG
 	printf("Linux-emul(%ld): getcwd(%p, %d)\n", (long)p->p_pid,
 	       args->buf, args->bufsize);
 #endif
+	buflen = args->bufsize;
+	if (buflen < 2)
+		return (EINVAL);
+	if (buflen > MAXPATHLEN)
+		buflen = MAXPATHLEN;
 
-	sg = stackgap_init();
-	bsd.buf = stackgap_alloc(&sg, SPARE_USRSPACE);
-	bsd.buflen = SPARE_USRSPACE;
-	bsd.sysmsg_result = 0;
-	error = __getcwd(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
-	if (!error) {
-		lenused = strlen(bsd.buf) + 1;
-		if (lenused <= args->bufsize) {
-			args->sysmsg_result = lenused;
-			error = copyout(bsd.buf, args->buf, lenused);
-		}
-		else
-			error = ERANGE;
-	} else {
-		len = args->bufsize;
-
-		if (len > MAXPATHLEN*4)
-			len = MAXPATHLEN*4;
-		else if (len < 2)
-			return ERANGE;
-
-		path = (char *)malloc(len, M_TEMP, M_WAITOK);
-
-		bp = &path[len];
-		bend = bp;
-		*(--bp) = '\0';
-
-		/*
-		 * 5th argument here is "max number of vnodes to traverse".
-		 * Since each entry takes up at least 2 bytes in the output buffer,
-		 * limit it to N/2 vnodes for an N byte buffer.
-		 */
-
-		error = linux_getcwd_common (p->p_fd->fd_cdir, NULL,
-		    &bp, path, len/2, GETCWD_CHECK_ACCESS, td);
-
-		if (error)
-			goto out;
-		lenused = bend - bp;
-		args->sysmsg_result = lenused;
-		/* put the result into user buffer */
-		error = copyout(bp, args->buf, lenused);
-
-out:
-		free(path, M_TEMP);	
+	buf = malloc(buflen, M_TEMP, M_WAITOK);
+	bp = kern_getcwd(buf, buflen, &error);
+	if (error == 0) {
+		buflen = strlen(bp) + 1;
+		error = copyout(bp, args->buf, buflen);
+		args->sysmsg_result = buflen;
 	}
+	free(buf, M_TEMP);
 	return (error);
 }
 

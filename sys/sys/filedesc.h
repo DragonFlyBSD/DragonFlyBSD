@@ -32,7 +32,7 @@
  *
  *	@(#)filedesc.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/filedesc.h,v 1.19.2.5 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/filedesc.h,v 1.7 2003/10/13 21:15:48 dillon Exp $
+ * $DragonFly: src/sys/sys/filedesc.h,v 1.8 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_FILEDESC_H_
@@ -165,7 +165,8 @@ int	dupfdopen (struct filedesc *, int, int, int, int);
 int	fdalloc (struct proc *p, int want, int *result);
 int	fdavail (struct proc *p, int n);
 int	falloc (struct proc *p, struct file **resultfp, int *resultfd);
-void	fsetcred(struct file *fp, struct ucred *cr);
+int	fsetfd (struct proc *p, struct file *fp, int *resultfd);
+void	fsetcred (struct file *fp, struct ucred *cr);
 void	ffree (struct file *);
 struct	filedesc *fdinit (struct proc *p);
 struct	filedesc *fdshare (struct proc *p);

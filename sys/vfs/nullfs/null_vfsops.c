@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.13 2004/10/12 19:21:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.14 2004/11/12 00:09:40 dillon Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include "null.h"
 
 extern struct vnodeopv_entry_desc null_vnodeop_entries[];
@@ -91,7 +91,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct null_mount *xmp;
 	u_int size;
 	int isvnunlocked = 0;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	NULLFSDEBUG("nullfs_mount(mp = %p)\n", (void *)mp);
 
@@ -121,28 +121,27 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Find lower node
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
-		UIO_USERSPACE, args.target, td);
-	error = namei(&nd);
+	lowerrootvp = NULL;
+	error = nlookup_init(&nd, args.target, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, 
+					&lowerrootvp);
+	}
+	nlookup_done(&nd);
+
 	/*
 	 * Re-lock vnode.
 	 */
 	if (isvnunlocked && !VOP_ISLOCKED(mp->mnt_vnodecovered, NULL))
 		vn_lock(mp->mnt_vnodecovered, LK_EXCLUSIVE | LK_RETRY, td);
-
 	if (error)
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-
+		
 	/*
 	 * Sanity check on lower vnode
-	 */
-	lowerrootvp = nd.ni_vp;
-
-	vrele(nd.ni_dvp);
-	nd.ni_dvp = NULLVP;
-
-	/*
+	 *
 	 * Check multi null mount to avoid `lock against myself' panic.
 	 */
 	if (lowerrootvp == VTONULL(mp->mnt_vnodecovered)->null_lowervp) {

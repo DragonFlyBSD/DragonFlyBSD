@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_lookup.c,v 1.30.2.1 2000/11/03 15:55:39 bp Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.12 2004/10/12 19:21:00 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_lookup.c,v 1.13 2004/11/12 00:09:36 dillon Exp $ */
 /*	$NetBSD: msdosfs_lookup.c,v 1.37 1997/11/17 15:36:54 ws Exp $	*/
 
 /*-
@@ -82,7 +82,7 @@
  *		  struct componentname *a_cnp)
  */
 int
-msdosfs_lookup(struct vop_cachedlookup_args *ap)
+msdosfs_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *vdp = ap->a_dvp;
 	struct vnode **vpp = ap->a_vpp;
@@ -179,8 +179,7 @@ msdosfs_lookup(struct vop_cachedlookup_args *ap)
 	 * case it doesn't already exist.
 	 */
 	slotcount = wincnt;
-	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    (flags & CNP_ISLASTCN))
+	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
 		slotcount = 0;
 
 #ifdef MSDOSFS_DEBUG
@@ -334,7 +333,7 @@ notfound:
 	       slotcount, slotoffset);
 #endif
 	if ((nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) &&
-	    (flags & CNP_ISLASTCN) && dp->de_refcnt != 0) {
+	    dp->de_refcnt != 0) {
 		/*
 		 * Access for write is interpreted as allowing
 		 * creation of files in the directory.
@@ -362,18 +361,12 @@ notfound:
 		 * NB - if the directory is unlocked, then this
 		 * information cannot be used.
 		 */
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		return (EJUSTRETURN);
 	}
-	/*
-	 * Insert name into cache (as non-existent) if appropriate.
-	 */
-	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -427,7 +420,7 @@ foundroot:
 	 * the directory (in ndp->ni_dvp), otherwise we go
 	 * on and lock the inode, being careful with ".".
 	 */
-	if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_DELETE) {
 		/*
 		 * Don't allow deleting the root.
 		 */
@@ -467,8 +460,7 @@ foundroot:
 	 * Must get inode of directory entry to verify it's a
 	 * regular file, or empty directory.
 	 */
-	if (nameiop == NAMEI_RENAME && wantparent &&
-	    (flags & CNP_ISLASTCN)) {
+	if (nameiop == NAMEI_RENAME && wantparent) {
 		if (blkoff == MSDOSFSROOT_OFS)
 			return EROFS;			/* really? XXX */
 
@@ -486,7 +478,6 @@ foundroot:
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
 		*vpp = DETOV(tdp);
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(vdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -523,7 +514,7 @@ foundroot:
 			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 			return (error);
 		}
-		if (lockparent && (flags & CNP_ISLASTCN)) {
+		if (lockparent) {
 			error = vn_lock(pdp, LK_EXCLUSIVE, td);
 			if (error) {
 				vput(DETOV(tdp));
@@ -538,18 +529,12 @@ foundroot:
 	} else {
 		if ((error = deget(pmp, cluster, blkoff, &tdp)) != 0)
 			return (error);
-		if (!lockparent || !(flags & CNP_ISLASTCN)) {
+		if (!lockparent) {
 			VOP_UNLOCK(pdp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 		*vpp = DETOV(tdp);
 	}
-
-	/*
-	 * Insert name into cache if appropriate.
-	 */
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 

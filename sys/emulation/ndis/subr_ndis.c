@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ndis.c,v 1.62 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.5 2004/10/12 19:20:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ndis.c,v 1.6 2004/11/12 00:09:20 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@
 #include <sys/queue.h>
 #include <sys/proc.h>
 #include <sys/filedesc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
 #include <sys/kthread.h>
@@ -2543,11 +2543,12 @@ ndis_open_file(status, filehandle, filelength, filename, highestaddr)
 {
 	char			*afilename = NULL;
 	struct thread		*td = curthread;
-	struct nameidata	nd;
+	struct nlookupdata	nd;
 	int			error;
 	struct vattr		vat;
 	struct vattr		*vap = &vat;
 	ndis_fh			*fh;
+	struct vnode		*vp;
 	char			path[MAXPATHLEN];
 
 	ndis_unicode_to_ascii(filename->nus_buf,
@@ -2562,29 +2563,31 @@ ndis_open_file(status, filehandle, filelength, filename, highestaddr)
 		return;
 	}
 
-	NDINIT2(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, 
-		td, proc0.p_ucred);
-
-	error = vn_open(&nd, FREAD, 0);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	if (error == 0)
+		error = vn_open(&nd, NULL, FREAD, 0);
 	if (error) {
 		*status = NDIS_STATUS_FILE_NOT_FOUND;
 		free(fh, M_TEMP);
 		printf("NDIS: open file %s failed: %d\n", path, error);
-		return;
+		goto done;
 	}
 
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+	vp = nd.nl_open_vp;
+	nd.nl_open_vp = NULL;
 
 	/* Get the file size. */
-	VOP_GETATTR(nd.ni_vp, vap, td);
-	VOP_UNLOCK(nd.ni_vp, 0, td);
+	VOP_GETATTR(vp, vap, td);
+	VOP_UNLOCK(vp, 0, td);
 
-	fh->nf_vp = nd.ni_vp;
+	fh->nf_vp = vp;
 	fh->nf_map = NULL;
 	*filehandle = fh;
 	*filelength = fh->nf_maplen = vap->va_size & 0xFFFFFFFF;
 	*status = NDIS_STATUS_SUCCESS;
 
+done:
+	nlookup_done(&nd);
 	return;
 }
 

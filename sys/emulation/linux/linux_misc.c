@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.21 2004/10/12 19:20:37 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.22 2004/11/12 00:09:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -42,7 +42,7 @@
 #include <sys/mount.h>
 #include <sys/poll.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/blist.h>
 #include <sys/reboot.h>
 #include <sys/resourcevar.h>
@@ -242,7 +242,7 @@ linux_uselib(struct linux_uselib_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p;
-	struct nameidata ni;
+	struct nlookupdata nd;
 	struct vnode *vp;
 	struct exec *a_out;
 	struct vattr attr;
@@ -269,27 +269,17 @@ linux_uselib(struct linux_uselib_args *args)
 	locked = 0;
 	vp = NULL;
 
-	NDINIT(&ni, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
-		UIO_SYSSPACE, path, td);
-	error = namei(&ni);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
 	if (error)
 		goto cleanup;
-
-	vp = ni.ni_vp;
-	/*
-	 * XXX - This looks like a bogus check. A LOCKLEAF namei should not
-	 * succeed without returning a vnode.
-	 */
-	if (vp == NULL) {
-		error = ENOEXEC;	/* ?? */
-		goto cleanup;
-	}
-	NDFREE(&ni, NDF_ONLY_PNBUF);
-
 	/*
 	 * From here on down, we have a locked vnode that must be unlocked.
 	 */
-	locked++;
+	locked = 1;
 
 	/* Writable? */
 	if (vp->v_writecount) {
@@ -319,7 +309,7 @@ linux_uselib(struct linux_uselib_args *args)
 	if (error)
 		goto cleanup;
 
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, td);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL, td);
 	if (error)
 		goto cleanup;
 
@@ -462,17 +452,20 @@ linux_uselib(struct linux_uselib_args *args)
 	}
 
 cleanup:
-	/* Unlock vnode if needed */
-	if (locked)
-		VOP_UNLOCK(vp, 0, td);
-
+	/* Unlock/release vnode */
+	if (vp) {
+		if (locked)
+			VOP_UNLOCK(vp, 0, td);
+		vrele(vp);
+	}
 	/* Release the kernel mapping. */
-	if (a_out)
+	if (a_out) {
 		vm_map_remove(kernel_map, (vm_offset_t)a_out,
 		    (vm_offset_t)a_out + PAGE_SIZE);
-
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
-	return error;
+	return (error);
 }
 
 int
@@ -740,10 +733,9 @@ struct l_utimbuf {
 int
 linux_utime(struct linux_utime_args *args)
 {
-	struct thread *td = curthread;
 	struct timeval tv[2];
 	struct l_utimbuf lut;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -764,10 +756,10 @@ linux_utime(struct linux_utime_args *args)
 		tv[1].tv_sec = lut.l_modtime;
 		tv[1].tv_usec = 0;
 	}
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_utimes(&nd, args->times ? tv : NULL);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_utimes(&nd, args->times ? tv : NULL);
+	nlookup_done(&nd);
 cleanup:
 	linux_free_path(&path);
 	return (error);
@@ -856,8 +848,7 @@ linux_wait4(struct linux_wait4_args *args)
 int
 linux_mknod(struct linux_mknod_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -869,13 +860,15 @@ linux_mknod(struct linux_mknod_args *args)
 		printf(ARGS(mknod, "%s, %d, %d"),
 		    path, args->mode, args->dev);
 #endif
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
-
-	if (args->mode & S_IFIFO) {
-		error = kern_mkfifo(&nd, args->mode);
-	} else {
-		error = kern_mknod(&nd, args->mode, args->dev);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		if (args->mode & S_IFIFO) {
+			error = kern_mkfifo(&nd, args->mode);
+		} else {
+			error = kern_mknod(&nd, args->mode, args->dev);
+		}
 	}
+	nlookup_done(&nd);
 
 	linux_free_path(&path);
 	return(error);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.35 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.36 2004/11/12 00:09:37 dillon Exp $
  */
 
 
@@ -55,6 +55,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/socket.h>
 #include <sys/vnode.h>
 #include <sys/dirent.h>
@@ -135,6 +136,8 @@ static int	nfs_readlink (struct vop_readlink_args *);
 static int	nfs_print (struct vop_print_args *);
 static int	nfs_advlock (struct vop_advlock_args *);
 static int	nfs_bwrite (struct vop_bwrite_args *);
+
+static	int	nfs_nresolve (struct vop_nresolve_args *);
 /*
  * Global vfs data structures for nfs
  */
@@ -174,6 +177,8 @@ struct vnodeopv_entry_desc nfsv2_vnodeop_entries[] = {
 	{ &vop_symlink_desc,		(void *) nfs_symlink },
 	{ &vop_unlock_desc,		(void *) vop_stdunlock },
 	{ &vop_write_desc,		(void *) nfs_write },
+
+	{ &vop_nresolve_desc,		(void *) nfs_nresolve },
 	{ NULL, NULL }
 };
 
@@ -371,9 +376,10 @@ nfs_access(struct vop_access_args *ap)
 		 * Does our cached result allow us to give a definite yes to
 		 * this request?
 		 */
-		if ((mycpu->gd_time_seconds < (np->n_modestamp + nfsaccess_cache_timeout)) &&
-		    (ap->a_cred->cr_uid == np->n_modeuid) &&
-		    ((np->n_mode & mode) == mode)) {
+		if (np->n_modestamp && 
+		   (mycpu->gd_time_seconds < (np->n_modestamp + nfsaccess_cache_timeout)) &&
+		   (ap->a_cred->cr_uid == np->n_modeuid) &&
+		   ((np->n_mode & mode) == mode)) {
 			nfsstats.accesscache_hits++;
 		} else {
 			/*
@@ -525,8 +531,14 @@ nfs_open(struct vop_open_args *ap)
 			}
 		}
 	}
-	if ((nmp->nm_flag & NFSMNT_NQNFS) == 0)
-		np->n_attrstamp = 0; /* For Open/Close consistency */
+
+	/*
+	 * Clear attrstamp only if opening with write access.  It is unclear
+	 * whether we should do this at all here, but we certainly should not
+	 * clear attrstamp unconditionally.
+	 */
+	if (ap->a_mode & FWRITE)
+		np->n_attrstamp = 0;
 	return (0);
 }
 
@@ -810,7 +822,127 @@ nfsmout:
 }
 
 /*
+ * NEW API CALL - replaces nfs_lookup().  However, we cannot remove 
+ * nfs_lookup() until all remaining new api calls are implemented.
+ *
+ * Resolve a namecache entry.  This function is passed a locked ncp and
+ * must call cache_setvp() on it as appropriate to resolve the entry.
+ */
+static int
+nfs_nresolve(struct vop_nresolve_args *ap)
+{
+	struct thread *td = curthread;
+	struct namecache *ncp;
+	struct ucred *cred;
+	struct nfsnode *np;
+	struct vnode *dvp;
+	struct vnode *nvp;
+	nfsfh_t *fhp;
+	int attrflag;
+	int fhsize;
+	int error;
+	int len;
+	int v3;
+	/******NFSM MACROS********/
+	struct mbuf *mb, *mrep, *mreq, *mb2, *md;
+	caddr_t bpos, dpos, cp, cp2;
+	u_int32_t *tl;
+	int32_t t1, t2;
+
+	cred = ap->a_cred;
+	ncp = ap->a_ncp;
+
+	KKASSERT(ncp->nc_parent && ncp->nc_parent->nc_vp);
+	dvp = ncp->nc_parent->nc_vp;
+	if ((error = vget(dvp, LK_SHARED, td)) != 0)
+		return (error);
+
+	nvp = NULL;
+	v3 = NFS_ISV3(dvp);
+	nfsstats.lookupcache_misses++;
+	nfsstats.rpccnt[NFSPROC_LOOKUP]++;
+	len = ncp->nc_nlen;
+	nfsm_reqhead(dvp, NFSPROC_LOOKUP,
+		NFSX_FH(v3) + NFSX_UNSIGNED + nfsm_rndup(len));
+	nfsm_fhtom(dvp, v3);
+	nfsm_strtom(ncp->nc_name, len, NFS_MAXNAMLEN);
+	nfsm_request(dvp, NFSPROC_LOOKUP, td, ap->a_cred);
+	if (error) {
+		/*
+		 * Cache negatve lookups to reduce NFS traffic, but use
+		 * a fast timeout.  Otherwise use a timeout of 1 tick.
+		 * XXX we should add a namecache flag for no-caching
+		 * to uncache the negative hit as soon as possible, but
+		 * we cannot simply destroy the entry because it is used
+		 * as a placeholder by the caller.
+		 */
+		if (error == ENOENT) {
+			int nticks;
+
+			if (nfsneg_cache_timeout)
+				nticks = nfsneg_cache_timeout * hz;
+			else
+				nticks = 1;
+			cache_setvp(ncp, NULL);
+			cache_settimeout(ncp, nticks);
+		}
+		nfsm_postop_attr(dvp, attrflag);
+		m_freem(mrep);
+		goto nfsmout;
+	}
+
+	/*
+	 * Success, get the file handle, do various checks, and load 
+	 * post-operation data from the reply packet.  Theoretically
+	 * we should never be looking up "." so, theoretically, we
+	 * should never get the same file handle as our directory.  But
+	 * we check anyway. XXX
+	 *
+	 * Note that no timeout is set for the positive cache hit.  We
+	 * assume, theoretically, that ESTALE returns will be dealt with
+	 * properly to handle NFS races and in anycase we cannot depend
+	 * on a timeout to deal with NFS open/create/excl issues so instead
+	 * of a bad hack here the rest of the NFS client code needs to do
+	 * the right thing.
+	 */
+	nfsm_getfh(fhp, fhsize, v3);
+
+	np = VTONFS(dvp);
+	if (NFS_CMPFH(np, fhp, fhsize)) {
+		vref(dvp);
+		nvp = dvp;
+	} else {
+		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
+		if (error) {
+			m_freem(mrep);
+			vput(dvp);
+			return (error);
+		}
+		nvp = NFSTOV(np);
+	}
+	if (v3) {
+		nfsm_postop_attr(nvp, attrflag);
+		nfsm_postop_attr(dvp, attrflag);
+	} else {
+		nfsm_loadattr(nvp, NULL);
+	}
+	cache_setvp(ncp, nvp);
+	m_freem(mrep);
+nfsmout:
+	vput(dvp);
+	if (nvp) {
+		if (nvp == dvp)
+			vrele(nvp);
+		else
+			vput(nvp);
+	}
+	return (error);
+}
+
+/*
  * 'cached' nfs directory lookup
+ *
+ * NOTE: cannot be removed until NFS implements all the new n*() API calls.
  *
  * nfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
  *	      struct vnode **a_vpp, struct componentname *a_cnp)
@@ -840,7 +972,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 	 * Read-only mount check and directory check.
 	 */
 	*vpp = NULLVP;
-	if ((flags & CNP_ISLASTCN) && (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
+	if ((dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
 		return (EROFS);
 
@@ -857,102 +989,9 @@ nfs_lookup(struct vop_lookup_args *ap)
 	wantparent = flags & (CNP_LOCKPARENT|CNP_WANTPARENT);
 	nmp = VFSTONFS(dvp->v_mount);
 	np = VTONFS(dvp);
-	error = cache_lookup(dvp, vpp, cnp);
-	if (error != 0) {
-		struct vattr vattr;
-		int vpid;
 
-		if (error == ENOENT) {
-			if (nfsneg_cache_timeout) {
-				*vpp = NULLVP;
-				return (error);
-			}
-			goto miss;
-		}
-		if (error > 0) {
-			printf("nfs_lookup: %*.*s weird error %d\n",
-				(int)cnp->cn_namelen, (int)cnp->cn_namelen,
-				cnp->cn_nameptr, error);
-			*vpp = NULLVP;
-			return (error);
-		}
-
-		/*
-		 * At this point we have a cache hit (error should be -1).
-		 * The vnode returned in *vpp will be referenced but not
-		 * locked.
-		 */
-		if ((error = VOP_ACCESS(dvp, VEXEC, cnp->cn_cred, td)) != 0) {
-			vrele(*vpp);
-			*vpp = NULLVP;
-			return (error);
-		}
-
-		newvp = *vpp;
-		vpid = newvp->v_id;
-		/*
-		 * See the comment starting `Step through' in ufs/ufs_lookup.c
-		 * for an explanation of the locking protocol
-		 */
-		if (dvp == newvp) {
-			/* newvp already ref'd from lookup */
-			error = 0;
-		} else if (flags & CNP_ISDOTDOT) {
-			VOP_UNLOCK(dvp, 0, td);
-			cnp->cn_flags |= CNP_PDIRUNLOCK;
-			error = vget(newvp, LK_EXCLUSIVE, td);
-			vrele(newvp);	/* get rid of ref from lookup */
-			if (!error && lockparent && (flags & CNP_ISLASTCN)) {
-				error = vn_lock(dvp, LK_EXCLUSIVE, td);
-				if (error == 0)
-					cnp->cn_flags &= ~CNP_PDIRUNLOCK;
-			}
-		} else {
-			error = vget(newvp, LK_EXCLUSIVE, td);
-			vrele(newvp);	/* get rid of ref from lookup */
-			if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
-				VOP_UNLOCK(dvp, 0, td);
-				cnp->cn_flags |= CNP_PDIRUNLOCK;
-			}
-		}
-		if (!error) {
-			/*
-			 * Attempt to do a better job synchronizing our cache
-			 * to the NFS server by checking the vnode against 
-			 * the nfs-only cache via VOP_GETATTR().
-			 *
-			 * WARNING! An old ctime check has been removed.  We
-			 * can't just willy-nilly purge a directory vnode that
-			 * might have children in the new VFS scheme.  The
-			 * ctime check was bogus anyway.
-			 */
-			if (vpid == newvp->v_id) {
-			   if (VOP_GETATTR(newvp, &vattr, td) == 0) {
-				nfsstats.lookupcache_hits++;
-				if (cnp->cn_nameiop != NAMEI_LOOKUP &&
-				    (flags & CNP_ISLASTCN))
-					cnp->cn_flags |= CNP_SAVENAME;
-				return (0);
-			   }
-			   cache_purge(newvp);
-			}
-			vput(newvp);
-			if (lockparent && dvp != newvp && (flags & CNP_ISLASTCN)) {
-				VOP_UNLOCK(dvp, 0, td);
-				cnp->cn_flags |= CNP_PDIRUNLOCK;
-			}
-		}
-		error = vn_lock(dvp, LK_EXCLUSIVE, td);
-		if (error == 0)
-			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
-		*vpp = NULLVP;
-		if (error)
-			return (error);
-	}
-
-miss:
 	/*
-	 * Cache miss, go the wire.
+	 * Go to the wire.
 	 */
 	error = 0;
 	newvp = NULLVP;
@@ -965,24 +1004,6 @@ miss:
 	nfsm_strtom(cnp->cn_nameptr, len, NFS_MAXNAMLEN);
 	nfsm_request(dvp, NFSPROC_LOOKUP, cnp->cn_td, cnp->cn_cred);
 	if (error) {
-		/*
-		 * Cache negatve lookups to reduce NFS traffic, but use
-		 * a fast timeout.
-		 */
-		if (error == ENOENT &&
-		    (cnp->cn_flags & CNP_MAKEENTRY) && 
-		    cnp->cn_nameiop == NAMEI_LOOKUP &&
-		    nfsneg_cache_timeout) {
-			int toval = nfsneg_cache_timeout * hz;
-			if (cnp->cn_flags & CNP_CACHETIMEOUT) {
-				if (cnp->cn_timeout > toval)
-					cnp->cn_timeout = toval;
-			} else {
-				cnp->cn_flags |= CNP_CACHETIMEOUT;
-				cnp->cn_timeout = toval;
-			}
-			cache_enter(dvp, NULL, cnp);
-		}
 		nfsm_postop_attr(dvp, attrflag);
 		m_freem(mrep);
 		goto nfsmout;
@@ -992,7 +1013,7 @@ miss:
 	/*
 	 * Handle RENAME case...
 	 */
-	if (cnp->cn_nameiop == NAMEI_RENAME && wantparent && (flags & CNP_ISLASTCN)) {
+	if (cnp->cn_nameiop == NAMEI_RENAME && wantparent) {
 		if (NFS_CMPFH(np, fhp, fhsize)) {
 			m_freem(mrep);
 			return (EISDIR);
@@ -1010,7 +1031,6 @@ miss:
 			nfsm_loadattr(newvp, (struct vattr *)0);
 		*vpp = newvp;
 		m_freem(mrep);
-		cnp->cn_flags |= CNP_SAVENAME;
 		if (!lockparent) {
 			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -1028,7 +1048,7 @@ miss:
 			return (error); /* NOTE: return error from nget */
 		}
 		newvp = NFSTOV(np);
-		if (lockparent && (flags & CNP_ISLASTCN)) {
+		if (lockparent) {
 			error = vn_lock(dvp, LK_EXCLUSIVE, td);
 			if (error) {
 				vput(newvp);
@@ -1045,7 +1065,7 @@ miss:
 			m_freem(mrep);
 			return (error);
 		}
-		if (!lockparent || !(flags & CNP_ISLASTCN)) {
+		if (!lockparent) {
 			VOP_UNLOCK(dvp, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
@@ -1056,13 +1076,13 @@ miss:
 		nfsm_postop_attr(dvp, attrflag);
 	} else
 		nfsm_loadattr(newvp, (struct vattr *)0);
-	if (cnp->cn_nameiop != NAMEI_LOOKUP && (flags & CNP_ISLASTCN))
-		cnp->cn_flags |= CNP_SAVENAME;
+#if 0
+	/* XXX MOVE TO nfs_nremove() */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) &&
-	    (cnp->cn_nameiop != NAMEI_DELETE || !(flags & CNP_ISLASTCN))) {
-		np->n_ctime = np->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, newvp, cnp);
+	    cnp->cn_nameiop != NAMEI_DELETE) {
+		np->n_ctime = np->n_vattr.va_ctime.tv_sec; /* XXX */
 	}
+#endif
 	*vpp = newvp;
 	m_freem(mrep);
 nfsmout:
@@ -1071,8 +1091,9 @@ nfsmout:
 			vrele(newvp);
 			*vpp = NULLVP;
 		}
-		if ((cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME) &&
-		    (flags & CNP_ISLASTCN) && error == ENOENT) {
+		if ((cnp->cn_nameiop == NAMEI_CREATE || 
+		     cnp->cn_nameiop == NAMEI_RENAME) &&
+		    error == ENOENT) {
 			if (!lockparent) {
 				VOP_UNLOCK(dvp, 0, td);
 				cnp->cn_flags |= CNP_PDIRUNLOCK;
@@ -1082,8 +1103,6 @@ nfsmout:
 			else
 				error = EJUSTRETURN;
 		}
-		if (cnp->cn_nameiop != NAMEI_LOOKUP && (flags & CNP_ISLASTCN))
-			cnp->cn_flags |= CNP_SAVENAME;
 	}
 	return (error);
 }
@@ -1412,8 +1431,6 @@ nfsmout:
 		if (newvp)
 			vput(newvp);
 	} else {
-		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, newvp, cnp);
 		*vpp = newvp;
 	}
 	VTONFS(dvp)->n_flag |= NMODIFIED;
@@ -1544,8 +1561,6 @@ nfsmout:
 		error = nfs_setattrrpc(newvp, vap, cnp->cn_cred, cnp->cn_td);
 	}
 	if (!error) {
-		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, newvp, cnp);
 		/*
 		 * The new np may have enough info for access
 		 * checks, make sure rucred and wucred are
@@ -1589,8 +1604,6 @@ nfs_remove(struct vop_remove_args *ap)
 	struct vattr vattr;
 
 #ifndef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("nfs_remove: no name");
 	if (vp->v_usecount < 1)
 		panic("nfs_remove: bad v_usecount");
 #endif
@@ -1599,14 +1612,6 @@ nfs_remove(struct vop_remove_args *ap)
 	else if (vp->v_usecount == 1 || (np->n_sillyrename &&
 	    VOP_GETATTR(vp, &vattr, cnp->cn_td) == 0 &&
 	    vattr.va_nlink > 1)) {
-		/*
-		 * Purge the name cache so that the chance of a lookup for
-		 * the name succeeding while the remove is in progress is
-		 * minimized. Without node locking it can still happen, such
-		 * that an I/O op returns ESTALE, but since you get this if
-		 * another host removes the file..
-		 */
-		cache_purge(vp);
 		/*
 		 * throw away biocache buffers, mainly to avoid
 		 * unnecessary delayed writes later.
@@ -1624,8 +1629,9 @@ nfs_remove(struct vop_remove_args *ap)
 		 */
 		if (error == ENOENT)
 			error = 0;
-	} else if (!np->n_sillyrename)
+	} else if (!np->n_sillyrename) {
 		error = nfs_sillyrename(dvp, vp, cnp);
+	}
 	np->n_attrstamp = 0;
 	return (error);
 }
@@ -1689,11 +1695,6 @@ nfs_rename(struct vop_rename_args *ap)
 	struct componentname *fcnp = ap->a_fcnp;
 	int error;
 
-#ifndef DIAGNOSTIC
-	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
-	    (fcnp->cn_flags & CNP_HASBUF) == 0)
-		panic("nfs_rename: no name");
-#endif
 	/* Check for cross-device rename */
 	if ((fvp->v_mount != tdvp->v_mount) ||
 	    (tvp && (fvp->v_mount != tvp->v_mount))) {
@@ -1717,32 +1718,24 @@ nfs_rename(struct vop_rename_args *ap)
 	/*
 	 * If the tvp exists and is in use, sillyrename it before doing the
 	 * rename of the new file over it.
+	 *
 	 * XXX Can't sillyrename a directory.
 	 *
-	 * We must purge tvp from the cache (old API) or further accesses
-	 * will see the old version of the file and return ESTALE.
+	 * We do not attempt to do any namecache purges in this old API
+	 * routine.  The new API compat functions have access to the actual
+	 * namecache structures and will do it for us.
 	 */
 	if (tvp && tvp->v_usecount > 1 && !VTONFS(tvp)->n_sillyrename &&
 		tvp->v_type != VDIR && !nfs_sillyrename(tdvp, tvp, tcnp)) {
-		cache_purge(tvp);
 		vput(tvp);
 		tvp = NULL;
 	} else if (tvp) {
-		cache_purge(tvp);
+		;
 	}
 
 	error = nfs_renamerpc(fdvp, fcnp->cn_nameptr, fcnp->cn_namelen,
 		tdvp, tcnp->cn_nameptr, tcnp->cn_namelen, tcnp->cn_cred,
 		tcnp->cn_td);
-
-	cache_purge(fvp);
-#if 0
-	if (fvp->v_type == VDIR) {
-		if (tvp != NULL && tvp->v_type == VDIR)
-			cache_purge(tdvp);
-		cache_purge(fdvp);
-	}
-#endif
 
 out:
 	if (tdvp == tvp)
@@ -2083,10 +2076,6 @@ nfsmout:
 	VTONFS(dvp)->n_flag |= NMODIFIED;
 	if (!wccflag)
 		VTONFS(dvp)->n_attrstamp = 0;
-#if 0
-	cache_purge(dvp);
-#endif
-	cache_purge(vp);
 	/*
 	 * Kludge: Map ENOENT => 0 assuming that you have a reply to a retry.
 	 */
@@ -2338,8 +2327,6 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	nfsuint64 *cookiep;
 	caddr_t bpos, dpos, cp2, dpossav1, dpossav2;
 	struct mbuf *mreq, *mrep, *md, *mb, *mb2, *mdsav1, *mdsav2;
-	struct nameidata nami, *ndp = &nami;
-	struct componentname *cnp = &ndp->ni_cnd;
 	nfsuint64 cookie;
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);
 	struct nfsnode *dnp = VTONFS(vp), *np;
@@ -2347,6 +2334,9 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 	u_quad_t fileno;
 	int error = 0, tlen, more_dirs = 1, blksiz = 0, doit, bigenough = 1, i;
 	int attrflag, fhsize;
+	struct namecache *ncp;
+	struct namecache *dncp;
+	struct nlcomponent nlc;
 
 #ifndef nolint
 	dp = (struct dirent *)0;
@@ -2356,7 +2346,16 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 		(uiop->uio_resid & (DIRBLKSIZ - 1)))
 		panic("nfs readdirplusrpc bad uio");
 #endif
-	ndp->ni_dvp = vp;
+	/*
+	 * Obtain the namecache record for the directory so we have something
+	 * to use as a basis for creating the entries.  This function will
+	 * return a held (but not locked) ncp.  The ncp may be disconnected
+	 * from the tree and cannot be used for upward traversals, and the
+	 * ncp may be unnamed.  Note that other unrelated operations may 
+	 * cause the ncp to be named at any time.
+	 */
+	dncp = cache_fromdvp(vp, NULL, 0);
+	bzero(&nlc, sizeof(nlc));
 	newvp = NULLVP;
 
 	/*
@@ -2432,8 +2431,8 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				uiop->uio_resid -= DIRHDSIZ;
 				uiop->uio_iov->iov_base += DIRHDSIZ;
 				uiop->uio_iov->iov_len -= DIRHDSIZ;
-				cnp->cn_nameptr = uiop->uio_iov->iov_base;
-				cnp->cn_namelen = len;
+				nlc.nlc_nameptr = uiop->uio_iov->iov_base;
+				nlc.nlc_namelen = len;
 				nfsm_mtouio(uiop, len);
 				cp = uiop->uio_iov->iov_base;
 				tlen -= len;
@@ -2488,8 +2487,20 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				md = mdsav2;
 				dp->d_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
-				ndp->ni_vp = newvp;
-			        cache_enter(ndp->ni_dvp, ndp->ni_vp, cnp);
+				if (dncp) {
+				    printf("NFS/READDIRPLUS, ENTER %*.*s\n",
+					nlc.nlc_namelen, nlc.nlc_namelen,
+					nlc.nlc_nameptr);
+				    ncp = cache_nlookup(dncp, &nlc);
+				    cache_setunresolved(ncp);
+				    cache_setvp(ncp, newvp);
+				    cache_put(ncp);
+				} else {
+				    printf("NFS/READDIRPLUS, UNABLE TO ENTER"
+					" %*.*s\n",
+					nlc.nlc_namelen, nlc.nlc_namelen,
+					nlc.nlc_nameptr);
+				}
 			    }
 			} else {
 			    /* Just skip over the file handle */
@@ -2549,6 +2560,8 @@ nfsmout:
 			vput(newvp);
 		newvp = NULLVP;
 	}
+	if (dncp)
+		cache_drop(dncp);
 	return (error);
 }
 
@@ -2572,7 +2585,7 @@ nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 	 * completely destroys performance.  We can't do it anyway with the
 	 * new VFS API since we would be breaking the namecache topology.
 	 */
-	cache_purge(vp);
+	cache_purge(vp);	/* XXX */
 	np = VTONFS(vp);
 #ifndef DIAGNOSTIC
 	if (vp->v_type == VDIR)

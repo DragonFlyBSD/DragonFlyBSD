@@ -32,7 +32,7 @@
  *
  *	From: @(#)uipc_usrreq.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_usrreq.c,v 1.54.2.10 2003/03/04 17:28:09 nectar Exp $
- * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.16 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_usrreq.c,v 1.17 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,12 +45,13 @@
 #include <sys/file.h>
 #include <sys/filedesc.h>
 #include <sys/mbuf.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/resourcevar.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 #include <sys/sysctl.h>
 #include <sys/un.h>
 #include <sys/unpcb.h>
@@ -588,46 +589,37 @@ unp_bind(struct unpcb *unp, struct sockaddr *nam, struct thread *td)
 	struct vnode *vp;
 	struct vattr vattr;
 	int error, namelen;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char buf[SOCK_MAXADDRLEN];
 
 	if (unp->unp_vnode != NULL)
 		return (EINVAL);
 	namelen = soun->sun_len - offsetof(struct sockaddr_un, sun_path);
 	if (namelen <= 0)
-		return EINVAL;
+		return (EINVAL);
 	strncpy(buf, soun->sun_path, namelen);
 	buf[namelen] = 0;	/* null-terminate the string */
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_SYSSPACE, buf, td);
-/* SHOULD BE ABLE TO ADOPT EXISTING AND wakeup() ALA FIFO's */
-	error = namei(&nd);
+	error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_LOCKVP|NLC_CREATE);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0 && nd.nl_ncp->nc_vp != NULL)
+		error = EADDRINUSE;
 	if (error)
-		return (error);
-	vp = nd.ni_vp;
-	if (vp != NULL) {
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		if (nd.ni_dvp == vp)
-			vrele(nd.ni_dvp);
-		else
-			vput(nd.ni_dvp);
-		vrele(vp);
-		return (EADDRINUSE);
-	}
+		goto done;
+
 	VATTR_NULL(&vattr);
 	vattr.va_type = VSOCK;
 	vattr.va_mode = (ACCESSPERMS & ~p->p_fd->fd_cmask);
-	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_CREATE(nd.ni_dvp, NCPNULL, &nd.ni_vp, &nd.ni_cnd, &vattr);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vput(nd.ni_dvp);
-	if (error)
-		return (error);
-	vp = nd.ni_vp;
-	vp->v_socket = unp->unp_socket;
-	unp->unp_vnode = vp;
-	unp->unp_addr = (struct sockaddr_un *)dup_sockaddr(nam);
-	VOP_UNLOCK(vp, 0, td);
-	return (0);
+	error = VOP_NCREATE(nd.nl_ncp, &vp, nd.nl_cred, &vattr);
+	if (error == 0) {
+		vp->v_socket = unp->unp_socket;
+		unp->unp_vnode = vp;
+		unp->unp_addr = (struct sockaddr_un *)dup_sockaddr(nam);
+		VOP_UNLOCK(vp, 0, td);
+	}
+done:
+	nlookup_done(&nd);
+	return (error);
 }
 
 static int
@@ -639,7 +631,7 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct socket *so2, *so3;
 	struct unpcb *unp, *unp2, *unp3;
 	int error, len;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char buf[SOCK_MAXADDRLEN];
 
 	KKASSERT(p);
@@ -650,13 +642,16 @@ unp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	strncpy(buf, soun->sun_path, len);
 	buf[len] = 0;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF,
-	    UIO_SYSSPACE, buf, td);
-	error = namei(&nd);
+	vp = NULL;
+	error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
 	if (error)
 		return (error);
-	vp = nd.ni_vp;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+
 	if (vp->v_type != VSOCK) {
 		error = ENOTSOCK;
 		goto bad;

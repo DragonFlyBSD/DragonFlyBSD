@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vnops.c,v 1.95.2.4 2003/06/13 15:05:47 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.20 2004/11/03 22:07:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vnops.c,v 1.21 2004/11/12 00:09:36 dillon Exp $ */
 /*	$NetBSD: msdosfs_vnops.c,v 1.68 1998/02/10 14:10:04 mrg Exp $	*/
 
 /*-
@@ -125,9 +125,7 @@ static int msdosfs_putpages (struct vop_putpages_args *);
 
 /*
  * Create a regular file. On entry the directory to contain the file being
- * created is locked.  We must release before we return. We must also free
- * the pathname buffer pointed at by cnp->cn_pnbuf, always on error, or
- * only if the SAVESTART bit in cn_flags is clear on success.
+ * created is locked.  We must release before we return. 
  *
  * msdosfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
  *		  struct componentname *a_cnp, struct vattr *a_vap)
@@ -163,10 +161,6 @@ msdosfs_create(struct vop_create_args *ap)
 	 * use the absence of the owner write bit to make the file
 	 * readonly.
 	 */
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("msdosfs_create: no name");
-#endif
 	bzero(&ndirent, sizeof(ndirent));
 	error = uniqdosname(pdep, cnp, ndirent.de_Name);
 	if (error)
@@ -987,11 +981,6 @@ msdosfs_rename(struct vop_rename_args *ap)
 
 	pmp = VFSTOMSDOSFS(fdvp->v_mount);
 
-#ifdef DIAGNOSTIC
-	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
-	    (fcnp->cn_flags & CNP_HASBUF) == 0)
-		panic("msdosfs_rename: no name");
-#endif
 	/*
 	 * Check for cross-device rename.
 	 */
@@ -1018,6 +1007,10 @@ abortit:
 		goto abortit;
 	}
 
+	/*
+	 * fvp, fdvp are unlocked, tvp, tdvp are locked.  Lock fvp and note
+	 * that we have to unlock it to use the abortit target.
+	 */
 	error = vn_lock(fvp, LK_EXCLUSIVE, td);
 	if (error)
 		goto abortit;
@@ -1048,11 +1041,14 @@ abortit:
 	}
 
 	/*
-	 * When the target exists, both the directory
-	 * and target vnodes are returned locked.
+	 * fvp locked, fdvp unlocked, tvp, tdvp locked.  DE_RENAME only
+	 * set if doingdirectory.  We will get fvp unlocked in fairly
+	 * short order.  dp and xp must be setup and fvp must be unlocked
+	 * for the out and bad targets to work properly.
 	 */
 	dp = VTODE(tdvp);
 	xp = tvp ? VTODE(tvp) : NULL;
+
 	/*
 	 * Remember direntry place to use for destination
 	 */
@@ -1073,27 +1069,56 @@ abortit:
 	VOP_UNLOCK(fvp, 0, td);
 	if (VTODE(fdvp)->de_StartCluster != VTODE(tdvp)->de_StartCluster)
 		newparent = 1;
+
+	/*
+	 * ok. fvp, fdvp unlocked, tvp, tdvp locked. tvp may be NULL.
+	 * DE_RENAME only set if doingdirectory.
+	 */
 	if (doingdirectory && newparent) {
 		if (error)	/* write access check above */
 			goto bad;
-		if (xp != NULL)
+		if (xp != NULL) {
 			vput(tvp);
+			xp = NULL;
+		}
 		/*
-		 * doscheckpath() vput()'s dp,
-		 * so we have to do a relookup afterwards
+		 * checkpath vput's tdvp (VTOI(dp)) on return no matter what,
+		 * get an extra ref so we wind up with just an unlocked, ref'd
+		 * tdvp.  The 'out' target skips tvp and tdvp cleanups (tdvp
+		 * isn't locked so we can't use the out target).
 		 */
+		vref(tdvp);
 		error = doscheckpath(ip, dp);
-		if (error)
+		if (error) {
+			vrele(tdvp);
 			goto out;
-		if ((tcnp->cn_flags & CNP_SAVESTART) == 0)
-			panic("msdosfs_rename: lost to startdir");
+		}
+		/*
+		 * relookup no longer messes with the ref count.  tdvp must
+		 * be unlocked on entry and on success will be locked on
+		 * return.
+		 */
 		error = relookup(tdvp, &tvp, tcnp);
-		if (error)
+		if (error) {
+			if (tcnp->cn_flags & CNP_PDIRUNLOCK)
+				vrele(tdvp);
+			else
+				vput(tdvp);
 			goto out;
+		}
+
+		/*
+		 * tvp and tdvp are now locked again.
+		 */
 		dp = VTODE(tdvp);
 		xp = tvp ? VTODE(tvp) : NULL;
 	}
 
+	/*
+	 * tvp and tdvp are now locked again, the 'bad' target can be used
+	 * to clean them up again.  Delete an existant target and clean
+	 * up tvp.  Set xp to NULL to indicate that tvp has been cleaned up.
+	 */
 	if (xp != NULL) {
 		/*
 		 * Target must be empty if a directory and have no links
@@ -1109,7 +1134,6 @@ abortit:
 				error = ENOTDIR;
 				goto bad;
 			}
-			cache_purge(tdvp);
 		} else if (doingdirectory) {
 			error = EISDIR;
 			goto bad;
@@ -1119,6 +1143,7 @@ abortit:
 			goto bad;
 		vput(tvp);
 		xp = NULL;
+		tvp = NULL;
 	}
 
 	/*
@@ -1128,32 +1153,49 @@ abortit:
 	 */
 	error = uniqdosname(VTODE(tdvp), tcnp, toname);
 	if (error)
-		goto abortit;
+		goto bad;
 
 	/*
-	 * Since from wasn't locked at various places above,
-	 * have to do a relookup here.
+	 * Since from wasn't locked at various places above, we have to do
+	 * a relookup here.  If the target and source are the same directory
+	 * we have to unlock the target directory in order to safely relookup
+	 * the source, because relookup expects its directory to be unlocked.
+	 *
+	 * Note that ap->a_fvp is still valid and ref'd.  Any cleanup must
+	 * now take that into account.
+	 *
+	 * The tdvp locking issues make this a real mess.
 	 */
 	fcnp->cn_flags &= ~CNP_MODMASK;
-	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
-	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
-		panic("msdosfs_rename: lost from startdir");
-	if (!newparent)
+	fcnp->cn_flags |= CNP_LOCKPARENT;
+	if (newparent == 0)
 		VOP_UNLOCK(tdvp, 0, td);
-	if (relookup(fdvp, &fvp, fcnp) == 0)
-		vrele(fdvp);
-	if (fvp == NULL) {
+	error = relookup(fdvp, &fvp, fcnp);
+	if (error || fvp == NULL) {
 		/*
-		 * From name has disappeared.
+		 * From name has disappeared.  Note: fdvp might == tdvp.
+		 *
+		 * DE_RENAME is only set if doingdirectory.
 		 */
 		if (doingdirectory)
 			panic("rename: lost dir entry");
+		if (fcnp->cn_flags & CNP_PDIRUNLOCK)
+			vrele(fdvp);
+		else
+			vput(fdvp);
+		if (newparent == 0)
+			vrele(tdvp);
+		else
+			vput(tdvp);
 		vrele(ap->a_fvp);
-		if (newparent)
-			VOP_UNLOCK(tdvp, 0, td);
-		vrele(tdvp);
-		return 0;
+		return(0);
 	}
+
+	/*
+	 * No error occured.  tdvp, fdvp and fvp are all locked.  If 
+	 * newparent was 0 be aware that fdvp == tdvp.  tvp has been cleaned
+	 * up.  ap->a_fvp is still refd.
+	 */
 	xp = VTODE(fvp);
 	zp = VTODE(fdvp);
 	from_diroffset = zp->de_fndoffset;
@@ -1165,21 +1207,16 @@ abortit:
 	 * no further work to be done. If the source is a directory
 	 * then it cannot have been rmdir'ed or renamed; this is
 	 * prohibited by the DE_RENAME flag.
+	 *
+	 * DE_RENAME is only set if doingdirectory.
 	 */
 	if (xp != ip) {
 		if (doingdirectory)
 			panic("rename: lost dir entry");
-		vrele(ap->a_fvp);
-		VOP_UNLOCK(fvp, 0, td);
-		if (newparent)
-			VOP_UNLOCK(fdvp, 0, td);
-		xp = NULL;
+		goto done;
 	} else {
 		u_long new_dirclust;
 		u_long new_diroffset;
-
-		vrele(fvp);
-		xp = NULL;
 
 		/*
 		 * First write a new entry in the destination
@@ -1196,30 +1233,21 @@ abortit:
 		error = createde(ip, dp, (struct denode **)0, tcnp);
 		if (error) {
 			bcopy(oldname, ip->de_Name, 11);
-			if (newparent)
-				VOP_UNLOCK(fdvp, 0, td);
-			VOP_UNLOCK(fvp, 0, td);
-			goto bad;
+			goto done;
 		}
 		ip->de_refcnt++;
 		zp->de_fndoffset = from_diroffset;
 		error = removede(zp, ip);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
-			if (newparent)
-				VOP_UNLOCK(fdvp, 0, td);
-			VOP_UNLOCK(fvp, 0, td);
-			goto bad;
+			goto done;
 		}
 		if (!doingdirectory) {
 			error = pcbmap(dp, de_cluster(pmp, to_diroffset), 0,
 				       &new_dirclust, 0);
 			if (error) {
 				/* XXX should really panic here, fs is corrupt */
-				if (newparent)
-					VOP_UNLOCK(fdvp, 0, td);
-				VOP_UNLOCK(fvp, 0, td);
-				goto bad;
+				goto done;
 			}
 			if (new_dirclust == MSDOSFSROOT)
 				new_diroffset = to_diroffset;
@@ -1227,8 +1255,6 @@ abortit:
 				new_diroffset = to_diroffset & pmp->pm_crbomask;
 			msdosfs_reinsert(ip, new_dirclust, new_diroffset);
 		}
-		if (newparent)
-			VOP_UNLOCK(fdvp, 0, td);
 	}
 
 	/*
@@ -1240,14 +1266,14 @@ abortit:
 		if (cn == MSDOSFSROOT) {
 			/* this should never happen */
 			panic("msdosfs_rename(): updating .. in root directory?");
-		} else
+		} else {
 			bn = cntobn(pmp, cn);
+		}
 		error = bread(pmp->pm_devvp, bn, pmp->pm_bpcluster, &bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
 			brelse(bp);
-			VOP_UNLOCK(fvp, 0, td);
-			goto bad;
+			goto done;
 		}
 		dotdotp = (struct direntry *)bp->b_data + 1;
 		putushort(dotdotp->deStartCluster, dp->de_StartCluster);
@@ -1256,18 +1282,40 @@ abortit:
 		error = bwrite(bp);
 		if (error) {
 			/* XXX should really panic here, fs is corrupt */
-			VOP_UNLOCK(fvp, 0, td);
-			goto bad;
+			goto done;
 		}
 	}
 
-	VOP_UNLOCK(fvp, 0, td);
+	/*
+	 * done case fvp, fdvp, tdvp are locked.  ap->a_fvp is refd
+	 */
+done:
+	if (doingdirectory)
+		ip->de_flag &= ~DE_RENAME;	/* XXX fvp not locked */
+	vput(fvp);
+	if (newparent)
+		vput(fdvp);
+	else
+		vrele(fdvp);
+	vput(tdvp);
+	vrele(ap->a_fvp);
+	return (error);
+
+	/*
+	 * 'bad' target: xp governs tvp.  tvp and tdvp arel ocked, fdvp and fvp
+	 * are not locked.  ip points to fvp's inode which may have DE_RENAME
+	 * set.
+	 */
 bad:
 	if (xp)
 		vput(tvp);
 	vput(tdvp);
 out:
-	ip->de_flag &= ~DE_RENAME;
+	/*
+	 * 'out' target: tvp and tdvp have already been cleaned up.
+	 */
+	if (doingdirectory)
+		ip->de_flag &= ~DE_RENAME;
 	vrele(fdvp);
 	vrele(fvp);
 	return (error);
@@ -1385,10 +1433,6 @@ msdosfs_mkdir(struct vop_mkdir_args *ap)
 	 * cluster.  This will be written to an empty slot in the parent
 	 * directory.
 	 */
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("msdosfs_mkdir: no name");
-#endif
 	error = uniqdosname(pdep, cnp, ndirent.de_Name);
 	if (error)
 		goto bad;
@@ -1461,7 +1505,6 @@ msdosfs_rmdir(struct vop_rmdir_args *ap)
 	 * Truncate the directory that is being deleted.
 	 */
 	error = detrunc(ip, (u_long)0, IO_SYNC, td);
-	cache_purge(vp);
 
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 out:
@@ -1898,7 +1941,7 @@ struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) msdosfs_access },
 	{ &vop_bmap_desc,		(void *) msdosfs_bmap },
-	{ &vop_cachedlookup_desc,	(void *) msdosfs_lookup },
+	{ &vop_lookup_desc,		(void *) msdosfs_lookup },
 	{ &vop_close_desc,		(void *) msdosfs_close },
 	{ &vop_create_desc,		(void *) msdosfs_create },
 	{ &vop_fsync_desc,		(void *) msdosfs_fsync },
@@ -1907,7 +1950,6 @@ struct vnodeopv_entry_desc msdosfs_vnodeop_entries[] = {
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_link_desc,		(void *) msdosfs_link },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
 	{ &vop_mkdir_desc,		(void *) msdosfs_mkdir },
 	{ &vop_mknod_desc,		(void *) msdosfs_mknod },
 	{ &vop_pathconf_desc,		(void *) msdosfs_pathconf },

@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.10 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.11 2004/11/12 00:09:24 dillon Exp $
  */
 
 /*
@@ -94,7 +94,7 @@ cttyopen(dev_t dev, int flag, int mode, struct thread *td)
 		} else {
 			vsetflags(ttyvp, VCTTYISOPEN);
 			vn_lock(ttyvp, LK_EXCLUSIVE | LK_RETRY, td);
-			error = VOP_OPEN(ttyvp, flag, NOCRED, td);
+			error = VOP_OPEN(ttyvp, flag, NOCRED, NULL, td);
 			VOP_UNLOCK(ttyvp, 0, td);
 		}
 	} else {

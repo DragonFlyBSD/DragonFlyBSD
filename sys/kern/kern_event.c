@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.12 2004/05/13 23:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.13 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -377,6 +377,7 @@ kqueue(struct kqueue_args *uap)
 	TAILQ_INIT(&kq->kq_head);
 	fp->f_data = (caddr_t)kq;
 	uap->sysmsg_result = fd;
+	fdrop(fp, curthread);
 	if (fdp->fd_knlistsize < 0)
 		fdp->fd_knlistsize = 0;		/* this process has a kq */
 	kq->kq_fdp = fdp;

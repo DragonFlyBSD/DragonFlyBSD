@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.13 2004/10/12 19:21:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.14 2004/11/12 00:09:53 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/malloc.h>
 #include "umap.h"
 #include <vm/vm_zone.h>
@@ -92,7 +92,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct vnode *lowerrootvp, *vp;
 	struct vnode *umapm_rootvp;
 	struct umap_mount *amp;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	u_int size;
 	int error;
 #ifdef DEBUG
@@ -126,23 +126,24 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	/*
 	 * Find lower node
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
-		UIO_USERSPACE, args.target, td);
-	error = namei(&nd);
+	lowerrootvp = NULL;
+	error = nlookup_init(&nd, args.target, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, 
+					&lowerrootvp);
+	}
+	nlookup_done(&nd);
 	if (error)
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
 
 	/*
 	 * Sanity check on lower vnode
 	 */
-	lowerrootvp = nd.ni_vp;
 #ifdef DEBUG
 	printf("vp = %p, check for VDIR...\n", (void *)lowerrootvp);
 #endif
-	vrele(nd.ni_dvp);
-	nd.ni_dvp = 0;
-
 	if (lowerrootvp->v_type != VDIR) {
 		vput(lowerrootvp);
 		return (EINVAL);

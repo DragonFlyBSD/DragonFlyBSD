@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.14 2004/10/05 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.15 2004/11/12 00:09:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,6 @@
 #include <sys/filedesc.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
@@ -234,9 +233,8 @@ statfs_copyout(struct statfs *statfs, struct l_statfs_buf *buf)
 int
 linux_statfs(struct linux_statfs_args *args)
 {
-	struct thread *td = curthread;
 	struct statfs statfs;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -247,10 +245,10 @@ linux_statfs(struct linux_statfs_args *args)
 	if (ldebug(statfs))
 		printf(ARGS(statfs, "%s, *"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_statfs(&nd, &statfs);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_statfs(&nd, &statfs);
+	nlookup_done(&nd);
 	if (error == 0)
 		error = statfs_copyout(&statfs, args->buf);
 	linux_free_path(&path);

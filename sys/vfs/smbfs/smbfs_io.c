@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.13 2004/10/12 19:21:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.14 2004/11/12 00:09:48 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -81,7 +81,6 @@ static int
 smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 {
 	struct dirent de;
-	struct componentname cn;
 	struct smb_cred scred;
 	struct smbfs_fctx *ctx;
 	struct vnode *newvp;
@@ -158,12 +157,8 @@ smbfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 		if (smbfs_fastlookup) {
 			error = smbfs_nget(vp->v_mount, vp, ctx->f_name,
 			    ctx->f_nmlen, &ctx->f_attr, &newvp);
-			if (!error) {
-				cn.cn_nameptr = de.d_name;
-				cn.cn_namelen = de.d_namlen;
-		    		cache_enter(vp, newvp, &cn);
+			if (!error)
 				vput(newvp);
-			}
 		}
 		error = uiomove((caddr_t)&de, DE_SIZE, uio);
 		if (error)
@@ -534,7 +529,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 #ifdef SMBFS_RWGENERIC
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
-	VOP_OPEN(vp, FWRITE, cred, td);
+	VOP_OPEN(vp, FWRITE, cred, NULL, td);
 	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
 	VOP_CLOSE(vp, FWRITE, cred, td);

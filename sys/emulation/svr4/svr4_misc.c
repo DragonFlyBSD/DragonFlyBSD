@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.25 2004/10/12 19:20:42 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.26 2004/11/12 00:09:22 dillon Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include <sys/dirent.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -1651,27 +1651,26 @@ svr4_sys_nice(struct svr4_sys_nice_args *uap)
 int
 svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 	int *retval;
 
 	retval = &uap->sysmsg_result;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_SAVENAME, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-
-	if ((error = namei(&nd)) != 0)
-		return error;
-
-	if ((error = copyout(nd.ni_cnd.cn_pnbuf, SCARG(uap, buf),
-	    SCARG(uap, bufsiz))) != 0)
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, 0);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error)
 		goto bad;
 
-	*retval = strlen(nd.ni_cnd.cn_pnbuf) < SCARG(uap, bufsiz) ? 
-	  strlen(nd.ni_cnd.cn_pnbuf) + 1 : SCARG(uap, bufsiz);
+	if ((error = copyout(nd.nl_path, SCARG(uap, buf),
+				SCARG(uap, bufsiz))) != 0) {
+		goto bad;
+	}
+
+	*retval = strlen(nd.nl_path) < SCARG(uap, bufsiz) ? 
+		  strlen(nd.nl_path) + 1 : SCARG(uap, bufsiz);
 bad:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vput(nd.ni_vp);
-	return error;
+	nlookup_done(&nd);
+	return (error);
 }

@@ -37,13 +37,13 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.22 2004/10/12 19:20:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.23 2004/11/12 00:09:34 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -155,7 +155,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
 	args.flags = ISOFSMNT_ROOT;
 
 	vn_lock(rootvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(rootvp, FREAD, FSCRED, td);
+	error = VOP_OPEN(rootvp, FREAD, FSCRED, NULL, td);
 	VOP_UNLOCK(rootvp, 0, td);
 	if (error)
 		return (error);
@@ -188,7 +188,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	int error;
 	mode_t accessmode;
 	struct iso_mnt *imp = 0;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	if ((mp->mnt_flag & MNT_ROOTFS) != 0) {
 		return (iso_mountroot(mp, td));
@@ -214,11 +214,15 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(&nd)))
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	devvp = nd.ni_vp;
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -302,7 +306,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		return (error);
 
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, FREAD, FSCRED, td);
+	error = VOP_OPEN(devvp, FREAD, FSCRED, NULL, td);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return error;

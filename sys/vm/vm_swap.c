@@ -32,7 +32,7 @@
  *
  *	@(#)vm_swap.c	8.5 (Berkeley) 2/17/94
  * $FreeBSD: src/sys/vm/vm_swap.c,v 1.96.2.2 2001/10/14 18:46:47 iedowse Exp $
- * $DragonFly: src/sys/vm/vm_swap.c,v 1.15 2004/10/12 19:21:16 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_swap.c,v 1.16 2004/11/12 00:09:56 dillon Exp $
  */
 
 #include "opt_swap.h"
@@ -42,7 +42,7 @@
 #include <sys/sysproto.h>
 #include <sys/buf.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/dmap.h>		/* XXX */
 #include <sys/vnode.h>
 #include <sys/fcntl.h>
@@ -183,7 +183,7 @@ swapon(struct swapon_args *uap)
 	struct thread *td = curthread;
 	struct vattr attr;
 	struct vnode *vp;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 	struct ucred *cred;
 
@@ -194,13 +194,15 @@ swapon(struct swapon_args *uap)
 	if (error)
 		return (error);
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->name, td);
-	error = namei(&nd);
+	vp = NULL;
+	error = nlookup_init(&nd, uap->name, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
 	if (error)
 		return (error);
-
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vp = nd.ni_vp;
 
 	if (vn_isdisk(vp, &error))
 		error = swaponvp(td, vp, 0);
@@ -266,7 +268,7 @@ swaponvp(struct thread *td, struct vnode *vp, u_long nblks)
 	return EINVAL;
     found:
 	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(vp, FREAD | FWRITE, cred, td);
+	error = VOP_OPEN(vp, FREAD | FWRITE, cred, NULL, td);
 	VOP_UNLOCK(vp, 0, td);
 	if (error)
 		return (error);

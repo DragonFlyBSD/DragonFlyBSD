@@ -26,14 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.9 2003/09/23 05:03:50 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.10 2004/11/12 00:09:16 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/file.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/stat.h>
 #include <sys/filedesc.h>
 #include <sys/kernel.h>
@@ -108,21 +108,24 @@ ibcs2_statfs(struct ibcs2_statfs_args *uap)
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	caddr_t sg = stackgap_init();
 
 	CHECKALTEXIST(&sg, SCARG(uap, path));
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	mp = nd.ni_vp->v_mount;
-	sp = &mp->mnt_stat;
-	vrele(nd.ni_vp);
-	if ((error = VFS_STATFS(mp, sp, td)) != 0)
-		return (error);
-	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
-	return cvt_statfs(sp, (caddr_t)SCARG(uap, buf), SCARG(uap, len));
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		mp = nd.nl_ncp->nc_mount;
+		sp = &mp->mnt_stat;
+		error = VFS_STATFS(mp, sp, td);
+		if (error == 0) {
+			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
+			error = cvt_statfs(sp, (caddr_t)SCARG(uap, buf),
+					    SCARG(uap, len));
+		}
+	}
+	nlookup_done(&nd);
 }
 
 int

@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.16 2004/10/12 19:21:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.17 2004/11/12 00:09:55 dillon Exp $
  */
 
 /*
@@ -49,6 +49,7 @@
 #include <sys/proc.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
+#include <sys/nlookup.h>
 #include <sys/namei.h>
 #include <sys/malloc.h>
 #include <sys/filedesc.h>
@@ -80,7 +81,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	struct vnode *upperrootvp = NULLVP;
 	struct union_mount *um = 0;
 	struct ucred *cred = 0;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *cp = 0;
 	int len;
 	u_int size;
@@ -131,25 +132,17 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 #endif
 
 	/*
-	 * Obtain upper vnode by calling namei() on the path.  The
+	 * Obtain upper vnode by calling nlookup() on the path.  The
 	 * upperrootvp will be turned referenced but not locked.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT,
-		UIO_USERSPACE, args.target, td);
-
-	error = namei(&nd);
-
-#if 0
-	if (lowerrootvp->v_tag == VT_UNION)
-		vn_lock(lowerrootvp, LK_EXCLUSIVE | LK_RETRY, td);
-#endif
+	error = nlookup_init(&nd, args.target, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &upperrootvp);
+	nlookup_done(&nd);
 	if (error)
 		goto bad;
-
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	upperrootvp = nd.ni_vp;
-	vrele(nd.ni_dvp);
-	nd.ni_dvp = NULL;
 
 	UDEBUG(("mount_root UPPERVP %p locked = %d\n", upperrootvp,
 	    VOP_ISLOCKED(upperrootvp, NULL)));
@@ -220,7 +213,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 * supports whiteout operations
 	 */
 	if ((mp->mnt_flag & MNT_RDONLY) == 0) {
-		error = VOP_WHITEOUT(um->um_uppervp, NCPNULL, NULL, NAMEI_LOOKUP);
+		error = VOP_WHITEOUT(um->um_uppervp, NULL, NAMEI_LOOKUP);
 		if (error)
 			goto bad;
 	}

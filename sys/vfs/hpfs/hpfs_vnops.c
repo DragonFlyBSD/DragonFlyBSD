@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.20 2004/10/12 19:20:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.21 2004/11/12 00:09:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1147,13 +1147,12 @@ hpfs_lookup(struct vop_lookup_args *ap)
 
 		error = VFS_VGET(hpmp->hpm_mp,
 				 dhp->h_fn.fn_parent, ap->a_vpp); 
-		if(error) {
+		if (error) {
 			VOP__LOCK(dvp, 0, cnp->cn_td);
 			return(error);
 		}
 
-		if( lockparent && (flags & CNP_ISLASTCN) && 
-		    (error = VOP__LOCK(dvp, 0, cnp->cn_td)) ) {
+		if (lockparent && (error = VOP__LOCK(dvp, 0, cnp->cn_td))) {
 			vput( *(ap->a_vpp) );
 			return (error);
 		}
@@ -1166,11 +1165,10 @@ hpfs_lookup(struct vop_lookup_args *ap)
 		error = hpfs_genlookupbyname(dhp,
 				cnp->cn_nameptr, cnp->cn_namelen, &bp, &dep);
 		if (error) {
-			if ((error == ENOENT) && (flags & CNP_ISLASTCN) &&
+			if (error == ENOENT && 
 			    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {
 				if(!lockparent)
 					VOP__UNLOCK(dvp, 0, cnp->cn_td);
-				cnp->cn_flags |= CNP_SAVENAME;
 				return (EJUSTRETURN);
 			}
 
@@ -1180,7 +1178,7 @@ hpfs_lookup(struct vop_lookup_args *ap)
 		dprintf(("hpfs_lookup: fnode: 0x%x, CPID: 0x%x\n",
 			 dep->de_fnode, dep->de_cpid));
 
-		if (nameiop == NAMEI_DELETE && (flags & CNP_ISLASTCN)) {
+		if (nameiop == NAMEI_DELETE) {
 			error = VOP_ACCESS(dvp, VWRITE, cred, cnp->cn_td);
 			if (error) {
 				brelse(bp);
@@ -1214,12 +1212,8 @@ hpfs_lookup(struct vop_lookup_args *ap)
 
 		brelse(bp);
 
-		if(!lockparent || !(flags & CNP_ISLASTCN))
+		if(!lockparent)
 			VOP__UNLOCK(dvp, 0, cnp->cn_td);
-		if ((flags & CNP_MAKEENTRY) &&
-		    (!(flags & CNP_ISLASTCN) || 
-		     (nameiop != NAMEI_DELETE && nameiop != NAMEI_CREATE)))
-			cache_enter(dvp, *ap->a_vpp, cnp);
 	}
 	return (error);
 }
@@ -1254,9 +1248,6 @@ hpfs_create(struct vop_create_args *ap)
 
 	dprintf(("hpfs_create(0x%x, %s, %ld): \n", VTOHP(ap->a_dvp)->h_no,
 		ap->a_cnp->cn_nameptr, ap->a_cnp->cn_namelen));
-
-	if (!(ap->a_cnp->cn_flags & CNP_HASBUF)) 
-		panic ("hpfs_create: no name\n");
 
 	error = hpfs_makefnode (ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);
 
@@ -1319,8 +1310,7 @@ struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
 	{ &vop_islocked_desc, (void *)vop_stdislocked },
 	{ &vop_unlock_desc, (void *)vop_stdunlock },
 	{ &vop_lock_desc, (void *)vop_stdlock },
-	{ &vop_cachedlookup_desc, (void *)hpfs_lookup },
-	{ &vop_lookup_desc, (void *)vfs_cache_lookup },
+	{ &vop_lookup_desc, (void *)hpfs_lookup },
 	{ &vop_access_desc, (void *)hpfs_access },
 	{ &vop_close_desc, (void *)hpfs_close },
 	{ &vop_open_desc, (void *)hpfs_open },

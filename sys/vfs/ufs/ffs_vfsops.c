@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.27 2004/11/09 04:25:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.28 2004/11/12 00:09:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -40,7 +40,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -104,16 +104,12 @@ extern struct vnodeopv_entry_desc ffs_fifoop_entries[];
  *			mp	mount point structure
  *			path	NULL (flag for root mount!!!)
  *			data	<unused>
- *			ndp	<unused>
  *			p	process (user credentials check [statfs])
  *
  *		mount
  *			mp	mount point structure
  *			path	path to mount point
  *			data	pointer to argument struct in user space
- *			ndp	mount point namei() return (used for
- *				credentials on reload), reused to look
- *				up block device.
  *			p	process (user credentials check)
  *
  * RETURNS:	0	Success
@@ -129,7 +125,7 @@ extern struct vnodeopv_entry_desc ffs_fifoop_entries[];
  * NOTES:
  *		A NULL path can be used for a flag since the mount
  *		system call will fail with EFAULT in copyinstr in
- *		namei() if it is a genuine NULL from the user.
+ *		nlookup() if it is a genuine NULL from the user.
  */
 static int
 ffs_mount(struct mount *mp,		/* mount struct pointer */
@@ -138,37 +134,38 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
           struct thread	*td)		/* process requesting mount */
 {
 	size_t		size;
-	int		err = 0;
+	int		error;
 	struct vnode	*devvp;
 
 	struct ufs_args args;
 	struct ufsmount *ump = 0;
 	struct fs *fs;
-	int error, flags, ronly = 0;
+	int flags, ronly = 0;
 	mode_t accessmode;
 	struct ucred *cred;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct vnode *rootvp;
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
+	error = 0;
 
 	/*
 	 * Use NULL path to flag a root mount
 	 */
-	if( path == NULL) {
+	if (path == NULL) {
 		/*
 		 ***
 		 * Mounting root filesystem
 		 ***
 		 */
 	
-		if ((err = bdevvp(rootdev, &rootvp))) {
+		if ((error = bdevvp(rootdev, &rootvp))) {
 			printf("ffs_mountroot: can't find rootvp\n");
-			return (err);
+			return (error);
 		}
 
-		if( ( err = ffs_mountfs(rootvp, mp, td, M_FFSNODE)) != 0) {
+		if( ( error = ffs_mountfs(rootvp, mp, td, M_FFSNODE)) != 0) {
 			/* fs specific cleanup (if any)*/
 			goto error_1;
 		}
@@ -184,8 +181,8 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	 */
 
 	/* copy in user arguments*/
-	err = copyin(data, (caddr_t)&args, sizeof (struct ufs_args));
-	if (err)
+	error = copyin(data, (caddr_t)&args, sizeof (struct ufs_args));
+	if (error)
 		goto error_1;		/* can't get arguments*/
 
 	/*
@@ -196,7 +193,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		ump = VFSTOUFS(mp);
 		fs = ump->um_fs;
 		devvp = ump->um_devvp;
-		err = 0;
+		error = 0;
 		ronly = fs->fs_ronly;	/* MNT_RELOAD might change this */
 		if (ronly == 0 && (mp->mnt_flag & MNT_RDONLY)) {
 			/*
@@ -211,15 +208,15 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			if (mp->mnt_flag & MNT_FORCE)
 				flags |= FORCECLOSE;
 			if (mp->mnt_flag & MNT_SOFTDEP) {
-				err = softdep_flushfiles(mp, flags, td);
+				error = softdep_flushfiles(mp, flags, td);
 			} else {
-				err = ffs_flushfiles(mp, flags, td);
+				error = ffs_flushfiles(mp, flags, td);
 			}
 			ronly = 1;
 		}
-		if (!err && (mp->mnt_flag & MNT_RELOAD))
-			err = ffs_reload(mp, NULL, td);
-		if (err) {
+		if (!error && (mp->mnt_flag & MNT_RELOAD))
+			error = ffs_reload(mp, NULL, td);
+		if (error) {
 			goto error_1;
 		}
 		if (ronly && (mp->mnt_kern_flag & MNTK_WANTRDWR)) {
@@ -248,15 +245,15 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 					printf(
 "WARNING: R/W mount of %s denied.  Filesystem is not clean - run fsck\n",
 					    fs->fs_fsmnt);
-					err = EPERM;
+					error = EPERM;
 					goto error_1;
 				}
 			}
 
 			/* check to see if we need to start softdep */
 			if (fs->fs_flags & FS_DOSOFTDEP) {
-				err = softdep_mount(devvp, mp, fs);
-				if (err)
+				error = softdep_mount(devvp, mp, fs);
+				if (error)
 					goto error_1;
 			}
 
@@ -278,7 +275,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			 * Process export requests.  Jumping to "success"
 			 * will return the vfs_export() error code.
 			 */
-			err = vfs_export(mp, &ump->um_export, &args.export);
+			error = vfs_export(mp, &ump->um_export, &args.export);
 			goto success;
 		}
 	}
@@ -287,17 +284,17 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(&nd);
-	if (err) {
-		/* can't get devvp!*/
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
 		goto error_1;
-	}
 
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	devvp = nd.ni_vp;
-
-	if (!vn_isdisk(devvp, &err))
+	if (!vn_isdisk(devvp, &error))
 		goto error_2;
 
 	/*
@@ -332,7 +329,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				printf("cannot update mount, udev does"
 					" not match %08x vs %08x\n",
 					devvp->v_udev, ump->um_devvp->v_udev);
-				err = EINVAL;	/* needs translation */
+				error = EINVAL;	/* needs translation */
 			}
 		} else {
 			vrele(devvp);
@@ -340,7 +337,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		/*
 		 * Update device name only on success
 		 */
-		if( !err) {
+		if (!error) {
 			/* Save "mounted from" info for mount point (NULL pad)*/
 			copyinstr(	args.fspec,
 					mp->mnt_stat.f_mntfromname,
@@ -375,9 +372,9 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 				&size);				/* real size*/
 		bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-		err = ffs_mountfs(devvp, mp, td, M_FFSNODE);
+		error = ffs_mountfs(devvp, mp, td, M_FFSNODE);
 	}
-	if (err) {
+	if (error) {
 		goto error_2;
 	}
 
@@ -401,7 +398,7 @@ error_2:	/* error with devvp held*/
 error_1:	/* no state to back out*/
 
 success:
-	if (!err && path && (mp->mnt_flag & MNT_UPDATE)) {
+	if (!error && path && (mp->mnt_flag & MNT_UPDATE)) {
 		/* Update clean flag after changing read-onlyness. */
 		fs = ump->um_fs;
 		if (ronly != fs->fs_ronly) {
@@ -411,7 +408,7 @@ success:
 			ffs_sbupdate(ump, MNT_WAIT);
 		}
 	}
-	return (err);
+	return (error);
 }
 
 /*
@@ -625,11 +622,10 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);
-
 	dev = devvp->v_rdev;
 	if (dev->si_iosize_max != 0)
 		mp->mnt_iosize_max = dev->si_iosize_max;
@@ -641,6 +637,8 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	 * block device.  This excludes the original MFS implementation.
 	 * Note that it is optional that the backing device be VMIOed.  This
 	 * increases the opportunity for metadata caching.
+	 *
+	 * This call must be made after the VOP_OPEN.
 	 */
 	if (devvp->v_tag != VT_MFS && vn_isdisk(devvp, NULL)) {
 		vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);

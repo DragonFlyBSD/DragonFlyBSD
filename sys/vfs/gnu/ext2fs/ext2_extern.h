@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.6 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.7 2004/11/12 00:09:30 dillon Exp $
  */
 
 #ifndef _SYS_GNU_EXT2FS_EXT2_EXTERN_H_
@@ -67,7 +67,7 @@ int	ext2_truncate (struct vnode *, off_t, int, struct ucred *, struct thread *);
 int	ext2_update (struct vnode *, int);
 int	ext2_valloc (struct vnode *, int, struct ucred *, struct vnode **);
 int	ext2_vfree (struct vnode *, ino_t, int);
-int 	ext2_lookup (struct vop_cachedlookup_args *);
+int 	ext2_lookup (struct vop_lookup_args *);
 int 	ext2_readdir (struct vop_readdir_args *);
 void	ext2_print_dinode (struct dinode *);
 void	ext2_print_inode (struct inode *);

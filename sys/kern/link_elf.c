@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.14 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.15 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/fcntl.h>
 #include <sys/vnode.h>
 #include <sys/linker.h>
@@ -394,9 +394,10 @@ link_elf_load_module(const char *filename, linker_file_t *result)
 static int
 link_elf_load_file(const char* filename, linker_file_t* result)
 {
-    struct nameidata nd;
+    struct nlookupdata nd;
     struct thread *td = curthread;	/* XXX */
     struct proc *p = td->td_proc;
+    struct vnode *vp;
     Elf_Ehdr *hdr;
     caddr_t firstpage;
     int nbytes, i;
@@ -434,12 +435,17 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     if (pathname == NULL)
 	return ENOENT;
 
-    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, pathname, td);
-    error = vn_open(&nd, FREAD, 0);
+    error = nlookup_init(&nd, pathname, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
+    if (error == 0)
+	error = vn_open(&nd, NULL, FREAD, 0);
     free(pathname, M_LINKER);
-    if (error)
+    if (error) {
+	nlookup_done(&nd);
 	return error;
-    NDFREE(&nd, NDF_ONLY_PNBUF);
+    }
+    vp = nd.nl_open_vp;
+    nd.nl_open_vp = NULL;
+    nlookup_done(&nd);
 
     /*
      * Read the elf header from the file.
@@ -450,7 +456,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	goto out;
     }
     hdr = (Elf_Ehdr *)firstpage;
-    error = vn_rdwr(UIO_READ, nd.ni_vp, firstpage, PAGE_SIZE, 0,
+    error = vn_rdwr(UIO_READ, vp, firstpage, PAGE_SIZE, 0,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     nbytes = PAGE_SIZE - resid;
     if (error)
@@ -574,7 +580,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
      */
     for (i = 0; i < 2; i++) {
 	caddr_t segbase = mapbase + segs[i]->p_vaddr - base_vaddr;
-	error = vn_rdwr(UIO_READ, nd.ni_vp,
+	error = vn_rdwr(UIO_READ, vp,
 			segbase, segs[i]->p_filesz, segs[i]->p_offset,
 			UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
 	if (error) {
@@ -642,7 +648,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	goto out;
     }
     bzero(shdr, nbytes);
-    error = vn_rdwr(UIO_READ, nd.ni_vp,
+    error = vn_rdwr(UIO_READ, vp,
 		    (caddr_t)shdr, nbytes, hdr->e_shoff,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
@@ -667,12 +673,12 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	error = ENOMEM;
 	goto out;
     }
-    error = vn_rdwr(UIO_READ, nd.ni_vp,
+    error = vn_rdwr(UIO_READ, vp,
 		    ef->symbase, symcnt, shdr[symtabindex].sh_offset,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
 	goto out;
-    error = vn_rdwr(UIO_READ, nd.ni_vp,
+    error = vn_rdwr(UIO_READ, vp,
 		    ef->strbase, strcnt, shdr[symstrindex].sh_offset,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
     if (error)
@@ -696,8 +702,8 @@ out:
 	free(shdr, M_LINKER);
     if (firstpage)
 	free(firstpage, M_LINKER);
-    VOP_UNLOCK(nd.ni_vp, 0, td);
-    vn_close(nd.ni_vp, FREAD, td);
+    VOP_UNLOCK(vp, 0, td);
+    vn_close(vp, FREAD, td);
 
     return error;
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.25 2004/10/12 19:20:48 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.26 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -279,6 +279,7 @@ extern	struct vattr va_null;		/* predefined null vattr structure */
 extern	int vfs_ioopt;
 extern	int numvnodes;
 extern	int freevnodes;
+extern  int vfs_fastdev;		/* fast specfs device access */
 
 /*
  * Macro/function to check for client cache inconsistency w.r.t. leasing.
@@ -496,7 +497,7 @@ vn_canvmio(struct vnode *vp)
  */
 struct file;
 struct mount;
-struct nameidata;
+struct nlookupdata;
 struct ostat;
 struct proc;
 struct thread;
@@ -555,8 +556,9 @@ int	debug_vn_lock (struct vnode *vp, int flags, struct thread *td,
 #define vn_lock(vp,flags,p) debug_vn_lock(vp,flags,p,__FILE__,__LINE__)
 #endif
 
+void	vn_setspecops (struct file *fp);
 int	vn_fullpath (struct proc *p, struct vnode *vn, char **retbuf, char **freebuf);
-int	vn_open (struct nameidata *ndp, int fmode, int cmode);
+int	vn_open (struct nlookupdata *ndp, struct file *fp, int fmode, int cmode);
 void	vn_pollevent (struct vnode *vp, int events);
 void	vn_pollgone (struct vnode *vp);
 int	vn_pollrecord (struct vnode *vp, struct thread *td, int events);
@@ -576,7 +578,6 @@ int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);
 int	vop_stdrlock (struct vop_lock_args *ap);
 int	vop_stdunlock (struct vop_unlock_args *ap);
-int	vop_noresolve(struct vop_resolve_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
@@ -591,6 +592,18 @@ int	vop_panic (struct vop_generic_args *ap);
 int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
 int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
 int	vop_stdgetvobject (struct vop_getvobject_args *ap);
+
+int	vop_compat_nresolve(struct vop_nresolve_args *ap);
+int	vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap);
+int	vop_compat_ncreate(struct vop_ncreate_args *ap);
+int	vop_compat_nmkdir(struct vop_nmkdir_args *ap);
+int	vop_compat_nmknod(struct vop_nmknod_args *ap);
+int	vop_compat_nlink(struct vop_nlink_args *ap);
+int	vop_compat_nsymlink(struct vop_nsymlink_args *ap);
+int	vop_compat_nwhiteout(struct vop_nwhiteout_args *ap);
+int	vop_compat_nremove(struct vop_nremove_args *ap);
+int	vop_compat_nrmdir(struct vop_nrmdir_args *ap);
+int	vop_compat_nrename(struct vop_nrename_args *ap);
 
 int	vx_lock (struct vnode *vp);
 void	vx_unlock (struct vnode *vp);

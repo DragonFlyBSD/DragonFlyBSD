@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.23 2004/10/12 19:21:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.24 2004/11/12 00:09:38 dillon Exp $
  */
 
 
@@ -34,7 +34,7 @@
 #include <sys/systm.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
@@ -225,12 +225,13 @@ ntfs_mount(struct mount *mp,
 	   struct thread *td)
 {
 	size_t		size;
-	int		err = 0;
+	int		error;
 	struct vnode	*devvp;
 	struct ntfs_args args;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct vnode *rootvp;
 
+	error = 0;
 #ifdef __DragonFly__
 	/*
 	 * Use NULL path to flag a root mount
@@ -254,7 +255,7 @@ ntfs_mount(struct mount *mp,
 		/*
 		 * Attempt mount
 		 */
-		if( ( err = ntfs_mountfs(rootvp, mp, &args, td)) != 0) {
+		if( ( error = ntfs_mountfs(rootvp, mp, &args, td)) != 0) {
 			/* fs specific cleanup (if any)*/
 			goto error_1;
 		}
@@ -271,8 +272,8 @@ ntfs_mount(struct mount *mp,
 	 */
 
 	/* copy in user arguments*/
-	err = copyin(data, (caddr_t)&args, sizeof (struct ntfs_args));
-	if (err)
+	error = copyin(data, (caddr_t)&args, sizeof (struct ntfs_args));
+	if (error)
 		goto error_1;		/* can't get arguments*/
 
 	/*
@@ -287,12 +288,12 @@ ntfs_mount(struct mount *mp,
 			 * will return the vfs_export() error code.
 			 */
 			struct ntfsmount *ntm = VFSTONTFS(mp);
-			err = vfs_export(mp, &ntm->ntm_export, &args.export);
+			error = vfs_export(mp, &ntm->ntm_export, &args.export);
 			goto success;
 		}
 
 		printf("ntfs_mount(): MNT_UPDATE not supported\n");
-		err = EINVAL;
+		error = EINVAL;
 		goto error_1;
 	}
 
@@ -300,25 +301,26 @@ ntfs_mount(struct mount *mp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(&nd);
-	if (err) {
-		/* can't get devvp!*/
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
 		goto error_1;
-	}
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	devvp = nd.ni_vp;
 
 #if defined(__DragonFly__)
-	if (!vn_isdisk(devvp, &err)) 
+	if (!vn_isdisk(devvp, &error)) 
 		goto error_2;
 #else
 	if (devvp->v_type != VBLK) {
-		err = ENOTBLK;
+		error = ENOTBLK;
 		goto error_2;
 	}
 	if (umajor(devvp->v_udev) >= nblkdev) {
-		err = ENXIO;
+		error = ENXIO;
 		goto error_2;
 	}
 #endif
@@ -331,13 +333,13 @@ ntfs_mount(struct mount *mp,
 		 */
 
 		if (devvp != ntmp->um_devvp)
-			err = EINVAL;	/* needs translation */
+			error = EINVAL;	/* needs translation */
 		else
 			vrele(devvp);
 		/*
 		 * Update device name only on success
 		 */
-		if( !err) {
+		if( !error) {
 			/* Save "mounted from" info for mount point (NULL pad)*/
 			copyinstr(	args.fspec,
 					mp->mnt_stat.f_mntfromname,
@@ -373,9 +375,9 @@ ntfs_mount(struct mount *mp,
 				&size);				/* real size*/
 		bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-		err = ntfs_mountfs(devvp, mp, &args, td);
+		error = ntfs_mountfs(devvp, mp, &args, td);
 	}
-	if (err) {
+	if (error) {
 		goto error_2;
 	}
 
@@ -401,7 +403,7 @@ error_2:	/* error with devvp held*/
 error_1:	/* no state to back out*/
 
 success:
-	return(err);
+	return(error);
 }
 
 /*
@@ -449,7 +451,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);

@@ -38,14 +38,14 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.21 2004/10/12 19:20:55 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.22 2004/11/12 00:09:30 dillon Exp $
  */
 
 #include "opt_quota.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/vnode.h>
@@ -195,7 +195,7 @@ ext2_mount(struct mount *mp, char *path,
 	int error, flags;
 	mode_t accessmode;
 	struct ucred *cred;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	if ((error = copyin(data, (caddr_t)&args, sizeof (struct ufs_args))) != 0)
 		return (error);
@@ -274,11 +274,15 @@ ext2_mount(struct mount *mp, char *path,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(&nd)) != 0)
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	devvp = nd.ni_vp;
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -315,14 +319,12 @@ ext2_mount(struct mount *mp, char *path,
 	}
 	ump = VFSTOUFS(mp);
 	fs = ump->um_e2fs;
-	(void) copyinstr(path, fs->fs_fsmnt, sizeof(fs->fs_fsmnt) - 1, &size);
+	copyinstr(path, fs->fs_fsmnt, sizeof(fs->fs_fsmnt) - 1, &size);
 	bzero(fs->fs_fsmnt + size, sizeof(fs->fs_fsmnt) - size);
-	bcopy((caddr_t)fs->fs_fsmnt, (caddr_t)mp->mnt_stat.f_mntonname,
-	    MNAMELEN);
-	(void) copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, 
-	    &size);
+	bcopy(fs->fs_fsmnt, mp->mnt_stat.f_mntonname, MNAMELEN);
+	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
-	(void)ext2_statfs(mp, &mp->mnt_stat, td);
+	ext2_statfs(mp, &mp->mnt_stat, td);
 	return (0);
 }
 
@@ -660,7 +662,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	vn_lock(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
 	VOP_UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);

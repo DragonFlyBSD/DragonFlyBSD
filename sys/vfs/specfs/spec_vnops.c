@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.21 2004/10/12 19:21:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.22 2004/11/12 00:09:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -267,6 +267,16 @@ spec_open(struct vop_open_args *ap)
 			    dev_dname(dev), cp);
 		}
 	}
+
+	/*
+	 * If we were handed a file pointer we may be able to install a
+	 * shortcut which issues device read and write operations directly
+	 * from the fileops rather then having to go through spec_read()
+	 * and spec_write().
+	 */
+	if (ap->a_fp)
+		vn_setspecops(ap->a_fp);
+
 	if (dev_ref_debug)
 		printf("spec_open: %s %d\n", dev->si_name, vp->v_opencount);
 done:

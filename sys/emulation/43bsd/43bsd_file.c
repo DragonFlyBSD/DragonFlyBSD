@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.6 2004/10/12 19:20:33 dillon Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_file.c,v 1.7 2004/11/12 00:09:10 dillon Exp $
  * 	from: DragonFly kern/vfs_syscalls.c,v 1.20
  *
  * These syscalls used to live in kern/vfs_syscalls.c.  They are modified
@@ -58,8 +58,9 @@
 #include <sys/kern_syscall.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/uio.h>
+#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 
 #include <vfs/union/union.h>
@@ -67,15 +68,14 @@
 int
 ocreat(struct ocreat_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, uap->mode,
-	    &uap->sysmsg_result);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, 
+				    uap->mode, &uap->sysmsg_result);
+	}
 	return (error);
 }
 
@@ -103,14 +103,13 @@ olseek(struct olseek_args *uap)
 int
 otruncate(struct otruncate_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_truncate(&nd, uap->length);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_truncate(&nd, uap->length);
+	nlookup_done(&nd);
 	return (error);
 }
 

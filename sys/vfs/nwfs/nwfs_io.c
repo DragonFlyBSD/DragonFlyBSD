@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.12 2004/10/12 19:21:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.13 2004/11/12 00:09:42 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -81,7 +81,6 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 	struct nwnode *np = VTONW(vp);
 	struct nw_entry_info fattr;
 	struct vnode *newvp;
-	struct componentname cn;
 	ncpfid fid;
 
 	np = VTONW(vp);
@@ -135,9 +134,6 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
 			error = nwfs_nget(vp->v_mount, fid, &fattr, vp, &newvp);
 			if (!error) {
 				VTONW(newvp)->n_ctime = VTONW(newvp)->n_vattr.va_ctime.tv_sec;
-				cn.cn_nameptr = dp.d_name;
-				cn.cn_namelen = dp.d_namlen;
-			        cache_enter(vp, newvp, &cn);
 				vput(newvp);
 			} else
 				error = 0;
@@ -504,7 +500,7 @@ nwfs_putpages(struct vop_putpages_args *ap)
 #ifndef NWFS_RWCACHE
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;		/* XXX */
-	VOP_OPEN(vp, FWRITE, cred, td);
+	VOP_OPEN(vp, FWRITE, cred, NULL, td);
 	error = vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
 	VOP_CLOSE(vp, FWRITE, cred, td);

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.23 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.24 2004/11/12 00:09:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -717,10 +717,6 @@ ufs_link(struct vop_link_args *ap)
 	struct direct newdir;
 	int error;
 
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_link: no name");
-#endif
 	if (tdvp->v_mount != vp->v_mount) {
 		error = EXDEV;
 		goto out2;
@@ -788,8 +784,6 @@ ufs_whiteout(struct vop_whiteout_args *ap)
 	case NAMEI_CREATE:
 		/* create a new directory whiteout */
 #ifdef DIAGNOSTIC
-		if ((cnp->cn_flags & CNP_SAVENAME) == 0)
-			panic("ufs_whiteout: missing name");
 		if (dvp->v_mount->mnt_maxsymlinklen <= 0)
 			panic("ufs_whiteout: old format filesystem");
 #endif
@@ -862,11 +856,6 @@ ufs_rename(struct vop_rename_args *ap)
 	int doingdirectory = 0;
 	int error = 0, ioflag;
 
-#ifdef DIAGNOSTIC
-	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
-	    (fcnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_rename: no name");
-#endif /* DIAGNOSTIC */
 	/*
 	 * Check for cross-device rename.
 	 */
@@ -903,6 +892,11 @@ abortit:
 
 	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
+
+	/*
+	 * Note: now that fvp is locked we have to be sure to unlock it before
+	 * using the 'abortit' target.
+	 */
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
 	if (ip->i_nlink >= LINK_MAX) {
@@ -932,16 +926,20 @@ abortit:
 		doingdirectory = 1;
 	}
 	VN_KNOTE(fdvp, NOTE_WRITE);		/* XXX right place? */
-	vrele(fdvp);
 
 	/*
-	 * When the target exists, both the directory
-	 * and target vnodes are returned locked.
+	 * fvp still locked.  ip->i_flag has IN_RENAME set if doingdirectory.
+	 * Cleanup fvp requirements so we can unlock it.
+	 *
+	 * tvp and tdvp are locked.  tvp may be NULL.  Now that dp and xp
+	 * is setup we can use the 'bad' target if we unlock fvp.  We cannot
+	 * use the abortit target anymore because of IN_RENAME.
 	 */
 	dp = VTOI(tdvp);
-	xp = NULL;
 	if (tvp)
 		xp = VTOI(tvp);
+	else
+		xp = NULL;
 
 	/*
 	 * 1) Bump link count while we're moving stuff
@@ -972,28 +970,71 @@ abortit:
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
 	VOP_UNLOCK(fvp, 0, td);
+
+	/*
+	 * We are now back to where we were in that fvp, fdvp are unlocked
+	 * and tvp, tdvp are locked.  tvp may be NULL.  IN_RENAME may be
+	 * set.  Only the bad target or, if we clean up tvp and tdvp, the
+	 * out target, may be used.
+	 */
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
 		if (error)	/* write access check above */
 			goto bad;
-		if (xp != NULL)
+
+		/*
+		 * Once we start messing with tvp and tdvp we cannot use the
+		 * 'bad' target, only finish cleaning tdvp and tvp up and
+		 * use the 'out' target.
+		 *
+		 * This cleans up tvp.
+		 */
+		if (xp != NULL) {
 			vput(tvp);
-		error = ufs_checkpath(ip, dp, tcnp->cn_cred);
-		if (error)
-			goto out;
-		if ((tcnp->cn_flags & CNP_SAVESTART) == 0)
-			panic("ufs_rename: lost to startdir");
+			xp = NULL;
+		}
+
+		/*
+		 * This is a real mess. ufs_checkpath vput's the target
+		 * directory so retain an extra ref and note that tdvp will
+		 * lose its lock on return.  This leaves us with one good
+		 * ref after ufs_checkpath returns.
+		 */
 		vref(tdvp);
-		error = relookup(tdvp, &tvp, tcnp);
-		if (error)
+		error = ufs_checkpath(ip, dp, tcnp->cn_cred);
+		tcnp->cn_flags |= CNP_PDIRUNLOCK;
+		if (error) {
+			vrele(tdvp);
 			goto out;
-		vrele(tdvp);
+	        }
+
+		/*
+		 * relookup no longer messes with tdvp's refs. tdvp must be
+		 * unlocked on entry and will be locked on a successful
+		 * return.
+		 */
+		error = relookup(tdvp, &tvp, tcnp);
+		if (error) {
+			if (tcnp->cn_flags & CNP_PDIRUNLOCK)
+				vrele(tdvp);
+			else
+				vput(tdvp);
+			goto out;
+		}
+		KKASSERT((tcnp->cn_flags & CNP_PDIRUNLOCK) == 0);
 		dp = VTOI(tdvp);
-		xp = NULL;
 		if (tvp)
 			xp = VTOI(tvp);
 	}
+
+	/*
+	 * We are back to fvp, fdvp unlocked, tvp, tdvp locked.  tvp may 
+	 * be NULL (xp will also be NULL in that case), and IN_RENAME will
+	 * be set if doingdirectory.  This means we can use the 'bad' target
+	 * again.
+	 */
+
 	/*
 	 * 2) If target doesn't exist, link the target
 	 *    to the source and unlink the source.
@@ -1077,9 +1118,9 @@ abortit:
 				error = ENOTDIR;
 				goto bad;
 			}
-			cache_purge(tvp);
+			/* cache_purge removed - handled by VFS compat layer */
 		} else if (doingdirectory == 0) {
-			cache_purge(tvp);
+			/* cache_purge removed - handled by VFS compat layer */
 		} else {
 			error = EISDIR;
 			goto bad;
@@ -1137,28 +1178,43 @@ abortit:
 	}
 
 	/*
+	 * tvp and tdvp have been cleaned up.  only fvp and fdvp (both
+	 * unlocked) remain.  We are about to overwrite fvp but we have to
+	 * keep 'ip' intact so we cannot release the old fvp, which is still
+	 * refd and accessible via ap->a_fvp.
+	 *
+	 * This means we cannot use either 'bad' or 'out' to cleanup any 
+	 * more.
+	 */
+
+	/*
 	 * 3) Unlink the source.
 	 */
 	fcnp->cn_flags &= ~CNP_MODMASK;
-	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
-	if ((fcnp->cn_flags & CNP_SAVESTART) == 0)
-		panic("ufs_rename: lost from startdir");
-	vref(fdvp);
+	fcnp->cn_flags |= CNP_LOCKPARENT;
 	error = relookup(fdvp, &fvp, fcnp);
-	if (error == 0)
-		vrele(fdvp);
-	if (fvp != NULL) {
-		xp = VTOI(fvp);
-		dp = VTOI(fdvp);
-	} else {
+	if (error || fvp == NULL) {
 		/*
-		 * From name has disappeared.
+		 * From name has disappeared.  IN_RENAME will not be set if
+		 * we get past the panic so we don't have to clean it up.
 		 */
 		if (doingdirectory)
 			panic("ufs_rename: lost dir entry");
 		vrele(ap->a_fvp);
-		return (0);
+		if (fcnp->cn_flags & CNP_PDIRUNLOCK)
+			vrele(fdvp);
+		else
+			vput(fdvp);
+		return(0);
 	}
+	KKASSERT((fcnp->cn_flags & CNP_PDIRUNLOCK) == 0);
+
+	/*
+	 * fdvp and fvp are locked.
+	 */
+	xp = VTOI(fvp);
+	dp = VTOI(fdvp);
+
 	/*
 	 * Ensure that the directory entry still exists and has not
 	 * changed while the new name has been entered. If the source is
@@ -1166,7 +1222,7 @@ abortit:
 	 * either case there is no further work to be done. If the source
 	 * is a directory then it cannot have been rmdir'ed; the IN_RENAME
 	 * flag ensures that it cannot be moved by another rename or removed
-	 * by a rmdir.
+	 * by a rmdir.  Cleanup IN_RENAME.
 	 */
 	if (xp != ip) {
 		if (doingdirectory)
@@ -1181,23 +1237,15 @@ abortit:
 		if (doingdirectory && newparent) {
 			xp->i_offset = mastertemplate.dot_reclen;
 			ufs_dirrewrite(xp, dp, newparent, DT_DIR, 0);
-			/*cache_purge(fdvp);*/
+			/* cache_purge removed - handled by VFS compat layer */
 		}
 		error = ufs_dirremove(fdvp, xp, fcnp->cn_flags, 0);
 		xp->i_flag &= ~IN_RENAME;
 	}
 
-	/*
-	 * The old API can only do a kitchen sink invalidation.  It will
-	 * not be possible to '..' through the disconnected fvp (if a
-	 * directory) until it is reconnected by a forward lookup.
-	 */
-	cache_purge(fvp);
 	VN_KNOTE(fvp, NOTE_RENAME);
-	if (dp)
-		vput(fdvp);
-	if (xp)
-		vput(fvp);
+	vput(fdvp);
+	vput(fvp);
 	vrele(ap->a_fvp);
 	return (error);
 
@@ -1216,8 +1264,9 @@ out:
 		if (DOINGSOFTDEP(fvp))
 			softdep_change_linkcnt(ip);
 		vput(fvp);
-	} else
+	} else {
 		vrele(fvp);
+	}
 	return (error);
 }
 
@@ -1242,10 +1291,6 @@ ufs_mkdir(struct vop_mkdir_args *ap)
 	int error, dmode;
 	long blkoff;
 
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_mkdir: no name");
-#endif
 	dp = VTOI(dvp);
 	if ((nlink_t)dp->i_nlink >= LINK_MAX) {
 		error = EMLINK;
@@ -1507,7 +1552,7 @@ ufs_rmdir(struct vop_rmdir_args *ap)
 		error = UFS_TRUNCATE(vp, (off_t)0, ioflag, cnp->cn_cred,
 		    cnp->cn_td);
 	}
-	cache_purge(vp);
+	/* cache_purge removed - handled by VFS compat layer */
 #ifdef UFS_DIRHASH
 	/* Kill any active hash; i_effnlink == 0, so it will not come back. */
 	if (ip->i_dirhash != NULL)
@@ -2005,10 +2050,6 @@ ufs_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	int error;
 
 	pdir = VTOI(dvp);
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_makeinode: no name");
-#endif
 	*vpp = NULL;
 	if ((mode & IFMT) == 0)
 		mode |= IFREG;
@@ -2232,7 +2273,7 @@ static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
 	{ &vop_access_desc,		(void *) ufs_access },
 	{ &vop_advlock_desc,		(void *) ufs_advlock },
 	{ &vop_bmap_desc,		(void *) ufs_bmap },
-	{ &vop_cachedlookup_desc,	(void *) ufs_lookup },
+	{ &vop_lookup_desc,		(void *) ufs_lookup },
 	{ &vop_close_desc,		(void *) ufs_close },
 	{ &vop_create_desc,		(void *) ufs_create },
 	{ &vop_getattr_desc,		(void *) ufs_getattr },
@@ -2240,7 +2281,6 @@ static struct vnodeopv_entry_desc ufs_vnodeop_entries[] = {
 	{ &vop_islocked_desc,		(void *) vop_stdislocked },
 	{ &vop_link_desc,		(void *) ufs_link },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
 	{ &vop_mkdir_desc,		(void *) ufs_mkdir },
 	{ &vop_mknod_desc,		(void *) ufs_mknod },
 	{ &vop_mmap_desc,		(void *) ufs_mmap },

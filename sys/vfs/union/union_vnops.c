@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.16 2004/10/12 19:21:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.17 2004/11/12 00:09:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -229,8 +229,10 @@ union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
 	 */
 	UDEBUG(("parentdir %p result %p flag %lx\n", dvp, tdvp, cnp->cn_flags));
 
-	if (dvp != tdvp && (cnp->cn_flags & CNP_ISLASTCN) == 0)
+#if 0
+	if (dvp != tdvp && (cnp->cn_flags & CNP_XXXISLASTCN) == 0)
 		vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
+#endif
 
 	/*
 	 * Lastly check if the current node is a mount point in
@@ -299,8 +301,7 @@ union_lookup(struct vop_lookup_args *ap)
 	/*
 	 * Disallow write attemps to the filesystem mounted read-only.
 	 */
-	if ((cnp->cn_flags & CNP_ISLASTCN) && 
-	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
+	if ((dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME)) {
 		return (EROFS);
 	}
@@ -367,7 +368,7 @@ union_lookup(struct vop_lookup_args *ap)
 		/*
 		 * Disallow write attemps to the filesystem mounted read-only.
 		 */
-		if (uerror == EJUSTRETURN && (cnp->cn_flags & CNP_ISLASTCN) &&
+		if (uerror == EJUSTRETURN && 
 		    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
 		    (cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME)) {
 			error = EROFS;
@@ -593,8 +594,7 @@ out:
 	 */
 
 	if (*ap->a_vpp != dvp) {
-		if ((error == 0 || error == EJUSTRETURN) &&
-		    (!lockparent || (cnp->cn_flags & CNP_ISLASTCN) == 0)) {
+		if ((error == 0 || error == EJUSTRETURN) && !lockparent) {
 			VOP_UNLOCK(dvp, 0, td);
 		}
 	}
@@ -636,7 +636,7 @@ union_create(struct vop_create_args *ap)
 		struct vnode *vp;
 		struct mount *mp;
 
-		error = VOP_CREATE(dvp, NCPNULL, &vp, cnp, ap->a_vap);
+		error = VOP_CREATE(dvp, &vp, cnp, ap->a_vap);
 		if (error == 0) {
 			mp = ap->a_dvp->v_mount;
 			VOP_UNLOCK(vp, 0, td);
@@ -663,7 +663,7 @@ union_whiteout(struct vop_whiteout_args *ap)
 	int error = EOPNOTSUPP;
 
 	if ((uppervp = union_lock_upper(un, cnp->cn_td)) != NULLVP) {
-		error = VOP_WHITEOUT(un->un_uppervp, NCPNULL, cnp, ap->a_flags);
+		error = VOP_WHITEOUT(un->un_uppervp, cnp, ap->a_flags);
 		union_unlock_upper(uppervp, cnp->cn_td);
 	}
 	return(error);
@@ -687,7 +687,7 @@ union_mknod(struct vop_mknod_args *ap)
 	int error = EROFS;
 
 	if ((dvp = union_lock_upper(dun, cnp->cn_td)) != NULL) {
-		error = VOP_MKNOD(dvp, NCPNULL, ap->a_vpp, cnp, ap->a_vap);
+		error = VOP_MKNOD(dvp, ap->a_vpp, cnp, ap->a_vap);
 		union_unlock_upper(dvp, cnp->cn_td);
 	}
 	return (error);
@@ -747,7 +747,7 @@ union_open(struct vop_open_args *ap)
 	 */
 
 	if (error == 0)
-		error = VOP_OPEN(tvp, mode, cred, td);
+		error = VOP_OPEN(tvp, mode, cred, NULL, td);
 
 	/*
 	 * Absolutely necessary or UFS will blowup
@@ -1234,7 +1234,7 @@ union_remove(struct vop_remove_args *ap)
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
 			cnp->cn_flags |= CNP_DOWHITEOUT;
-		error = VOP_REMOVE(upperdvp, NCPNULL, uppervp, cnp);
+		error = VOP_REMOVE(upperdvp, uppervp, cnp);
 #if 0
 		/* XXX */
 		if (!error)
@@ -1312,7 +1312,7 @@ union_link(struct vop_link_args *ap)
 		return (EROFS);
 
 	VOP_UNLOCK(ap->a_tdvp, 0, td);	/* unlock calling node */
-	error = VOP_LINK(tdvp, NCPNULL, vp, cnp); /* call link on upper */
+	error = VOP_LINK(tdvp, vp, cnp); /* call link on upper */
 
 	/*
 	 * We have to unlock tdvp prior to relocking our calling node in
@@ -1465,7 +1465,7 @@ union_rename(struct vop_rename_args *ap)
 	 * cleanup to do.
 	 */
 
-	return (VOP_RENAME(fdvp, NCPNULL, fvp, ap->a_fcnp, tdvp, NCPNULL, tvp, ap->a_tcnp));
+	return (VOP_RENAME(fdvp, fvp, ap->a_fcnp, tdvp, tvp, ap->a_tcnp));
 
 	/*
 	 * Error.  We still have to release / vput the various elements.
@@ -1501,7 +1501,7 @@ union_mkdir(struct vop_mkdir_args *ap)
 	if ((upperdvp = union_lock_upper(dun, td)) != NULLVP) {
 		struct vnode *vp;
 
-		error = VOP_MKDIR(upperdvp, NCPNULL, &vp, cnp, ap->a_vap);
+		error = VOP_MKDIR(upperdvp, &vp, cnp, ap->a_vap);
 		union_unlock_upper(upperdvp, td);
 
 		if (error == 0) {
@@ -1536,7 +1536,7 @@ union_rmdir(struct vop_rmdir_args *ap)
 	if ((uppervp = union_lock_upper(un, td)) != NULLVP) {
 		if (union_dowhiteout(un, cnp->cn_cred, td))
 			cnp->cn_flags |= CNP_DOWHITEOUT;
-		error = VOP_RMDIR(upperdvp, NCPNULL, uppervp, ap->a_cnp);
+		error = VOP_RMDIR(upperdvp, uppervp, ap->a_cnp);
 		union_unlock_upper(uppervp, td);
 	} else {
 		error = union_mkwhiteout(
@@ -1567,7 +1567,7 @@ union_symlink(struct vop_symlink_args *ap)
 	int error = EROFS;
 
 	if ((dvp = union_lock_upper(dun, td)) != NULLVP) {
-		error = VOP_SYMLINK(dvp, NCPNULL, ap->a_vpp, cnp, ap->a_vap,
+		error = VOP_SYMLINK(dvp, ap->a_vpp, cnp, ap->a_vap,
 			    ap->a_target);
 		union_unlock_upper(dvp, td);
 	}

@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.16 2004/10/12 19:21:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.17 2004/11/12 00:09:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -748,7 +748,7 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		 * from VOP_CLOSE
 		 */
 		vn_lock(lvp, LK_EXCLUSIVE | LK_RETRY, td);
-		error = VOP_OPEN(lvp, FREAD, cred, td);
+		error = VOP_OPEN(lvp, FREAD, cred, NULL, td);
 		if (error == 0 && vn_canvmio(lvp) == TRUE)
 			error = vfs_object_create(lvp, td);
 		if (error == 0) {
@@ -777,8 +777,8 @@ union_copyup(struct union_node *un, int docopy, struct ucred *cred,
 		int i;
 
 		for (i = 0; i < un->un_openl; i++) {
-			(void) VOP_CLOSE(lvp, FREAD, td);
-			(void) VOP_OPEN(uvp, FREAD, cred, td);
+			VOP_CLOSE(lvp, FREAD, td);
+			VOP_OPEN(uvp, FREAD, cred, NULL, td);
 		}
 		if (un->un_openl) {
 			if (vn_canvmio(uvp) == TRUE)
@@ -819,19 +819,17 @@ union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
 	 * Conclusion: Horrible.
 	 */
 	cn->cn_namelen = pathlen;
-	cn->cn_pnbuf = zalloc(namei_zone);
-	bcopy(path, cn->cn_pnbuf, cn->cn_namelen);
-	cn->cn_pnbuf[cn->cn_namelen] = '\0';
+	cn->cn_nameptr = zalloc(namei_zone);
+	bcopy(path, cn->cn_nameptr, cn->cn_namelen);
+	cn->cn_nameptr[cn->cn_namelen] = '\0';
 
 	cn->cn_nameiop = NAMEI_CREATE;
-	cn->cn_flags = (CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_HASBUF |
-			CNP_SAVENAME | CNP_ISLASTCN);
+	cn->cn_flags = CNP_LOCKPARENT;
 	cn->cn_td = cnp->cn_td;
 	if (um->um_op == UNMNT_ABOVE)
 		cn->cn_cred = cnp->cn_cred;
 	else
 		cn->cn_cred = um->um_cred;
-	cn->cn_nameptr = cn->cn_pnbuf;
 	cn->cn_consume = cnp->cn_consume;
 
 	vref(dvp);
@@ -844,9 +842,11 @@ union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
 	 */
 
 	if ((error = relookup(dvp, vpp, cn)) != 0) {
+		zfree(namei_zone, cn->cn_nameptr);
 		vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, cnp->cn_td);
 		return(error);
 	}
+	zfree(namei_zone, cn->cn_nameptr);
 
 	/*
 	 * If no error occurs, dvp will be returned locked with the reference
@@ -886,10 +886,6 @@ union_mkshadow(struct union_mount *um, struct vnode *dvp,
 		return (error);
 
 	if (*vpp) {
-		if (cn.cn_flags & CNP_HASBUF) {
-			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~CNP_HASBUF;
-		}
 		if (dvp == *vpp)
 			vrele(*vpp);
 		else
@@ -913,11 +909,7 @@ union_mkshadow(struct union_mount *um, struct vnode *dvp,
 	/* VOP_LEASE: dvp is locked */
 	VOP_LEASE(dvp, td, cn.cn_cred, LEASE_WRITE);
 
-	error = VOP_MKDIR(dvp, NCPNULL, vpp, &cn, &va);
-	if (cn.cn_flags & CNP_HASBUF) {
-		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~CNP_HASBUF;
-	}
+	error = VOP_MKDIR(dvp, vpp, &cn, &va);
 	/*vput(dvp);*/
 	return (error);
 }
@@ -949,10 +941,6 @@ union_mkwhiteout(struct union_mount *um, struct vnode *dvp,
 		return (error);
 
 	if (wvp) {
-		if (cn.cn_flags & CNP_HASBUF) {
-			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~CNP_HASBUF;
-		}
 		if (wvp == dvp)
 			vrele(wvp);
 		else
@@ -963,11 +951,7 @@ union_mkwhiteout(struct union_mount *um, struct vnode *dvp,
 	/* VOP_LEASE: dvp is locked */
 	VOP_LEASE(dvp, td, cred, LEASE_WRITE);
 
-	error = VOP_WHITEOUT(dvp, NCPNULL, &cn, NAMEI_CREATE);
-	if (cn.cn_flags & CNP_HASBUF) {
-		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~CNP_HASBUF;
-	}
+	error = VOP_WHITEOUT(dvp, &cn, NAMEI_CREATE);
 	return (error);
 }
 
@@ -1013,14 +997,12 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	 * copied in the first place).
 	 */
 	cn.cn_namelen = strlen(un->un_path);
-	cn.cn_pnbuf = zalloc(namei_zone);
-	bcopy(un->un_path, cn.cn_pnbuf, cn.cn_namelen+1);
+	cn.cn_nameptr = zalloc(namei_zone);
+	bcopy(un->un_path, cn.cn_nameptr, cn.cn_namelen+1);
 	cn.cn_nameiop = NAMEI_CREATE;
-	cn.cn_flags = (CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_HASBUF |
-			CNP_SAVENAME | CNP_ISLASTCN);
+	cn.cn_flags = CNP_LOCKPARENT;
 	cn.cn_td = td;
 	cn.cn_cred = cred;
-	cn.cn_nameptr = cn.cn_pnbuf;
 	cn.cn_consume = 0;
 
 	/*
@@ -1030,6 +1012,7 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	 */
 	vref(un->un_dirvp);
 	error = relookup(un->un_dirvp, &vp, &cn);
+	zfree(namei_zone, cn.cn_nameptr);
 	if (error)
 		return (error);
 
@@ -1039,10 +1022,6 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	 */
 	if (vp) {
 		vput(un->un_dirvp);
-		if (cn.cn_flags & CNP_HASBUF) {
-			zfree(namei_zone, cn.cn_pnbuf);
-			cn.cn_flags &= ~CNP_HASBUF;
-		}
 		if (vp == un->un_dirvp)
 			vrele(vp);
 		else
@@ -1064,16 +1043,12 @@ union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 	vap->va_type = VREG;
 	vap->va_mode = cmode;
 	VOP_LEASE(un->un_dirvp, td, cred, LEASE_WRITE);
-	error = VOP_CREATE(un->un_dirvp, NCPNULL, &vp, &cn, vap);
-	if (cn.cn_flags & CNP_HASBUF) {
-		zfree(namei_zone, cn.cn_pnbuf);
-		cn.cn_flags &= ~CNP_HASBUF;
-	}
+	error = VOP_CREATE(un->un_dirvp, &vp, &cn, vap);
 	vput(un->un_dirvp);
 	if (error)
 		return (error);
 
-	error = VOP_OPEN(vp, fmode, cred, td);
+	error = VOP_OPEN(vp, fmode, cred, NULL, td);
 	if (error == 0 && vn_canvmio(vp) == TRUE)
 		error = vfs_object_create(vp, td);
 	if (error) {
@@ -1287,7 +1262,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 		}
 
 		if (lvp != NULLVP) {
-			error = VOP_OPEN(lvp, FREAD, fp->f_cred, td);
+			error = VOP_OPEN(lvp, FREAD, fp->f_cred, NULL, td);
 			if (error == 0 && vn_canvmio(lvp) == TRUE)
 				error = vfs_object_create(lvp, td);
 			if (error) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_acl.c,v 1.2.2.1 2000/07/28 18:48:16 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_acl.c,v 1.7 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acl.c,v 1.8 2004/11/12 00:09:23 dillon Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
 #include <sys/vnode.h>
 #include <sys/lock.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/sysent.h>
 #include <sys/errno.h>
@@ -156,18 +156,21 @@ vacl_aclcheck(struct vnode *vp, acl_type_t type, struct acl *aclp)
 int
 __acl_get_file(struct __acl_get_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
 
-	/* what flags are required here -- possible not LOCKLEAF? */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	error = namei(&nd);
-	if (error)
-		return(error);
-	error = vacl_get_acl(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
-	NDFREE(&nd, 0);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = vacl_get_acl(vp, SCARG(uap, type), SCARG(uap, aclp));
+		vrele(vp);
+	}
 	return (error);
 }
 
@@ -177,17 +180,21 @@ __acl_get_file(struct __acl_get_file_args *uap)
 int
 __acl_set_file(struct __acl_set_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, 
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	error = namei(&nd);
-	if (error)
-		return(error);
-	error = vacl_set_acl(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
-	NDFREE(&nd, 0);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = vacl_set_acl(vp, SCARG(uap, type), SCARG(uap, aclp));
+		vrele(vp);
+	}
 	return (error);
 }
 
@@ -233,17 +240,22 @@ __acl_set_fd(struct __acl_set_fd_args *uap)
 int
 __acl_delete_file(struct __acl_delete_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	error = namei(&nd);
-	if (error)
-		return(error);
-	error = vacl_delete(nd.ni_vp, SCARG(uap, type));
-	NDFREE(&nd, 0);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+
+	if (error == 0) {
+		error = vacl_delete(vp, SCARG(uap, type));
+		vrele(vp);
+	}
 	return (error);
 }
 
@@ -271,17 +283,22 @@ __acl_delete_fd(struct __acl_delete_fd_args *uap)
 int
 __acl_aclcheck_file(struct __acl_aclcheck_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata	nd;
-	int	error;
+	struct nlookupdata nd;
+	struct vnode *vp;
+	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	error = namei(&nd);
-	if (error)
-		return(error);
-	error = vacl_aclcheck(nd.ni_vp, SCARG(uap, type), SCARG(uap, aclp));
-	NDFREE(&nd, 0);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+
+	if (error == 0) {
+		error = vacl_aclcheck(vp, SCARG(uap, type), SCARG(uap, aclp));
+		vrele(vp);
+	}
 	return (error);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.18 2004/10/12 19:20:37 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.19 2004/11/12 00:09:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -37,12 +37,12 @@
 #include <sys/dirent.h>
 #include <sys/fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/filedesc.h>
 #include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
 #include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/sysproto.h>
@@ -62,8 +62,7 @@
 int
 linux_creat(struct linux_creat_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -74,11 +73,11 @@ linux_creat(struct linux_creat_args *args)
 	if (ldebug(creat))
 		printf(ARGS(creat, "%s, %d"), path, args->mode);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC, args->mode,
-	    &args->sysmsg_result);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_open(&nd, O_WRONLY | O_CREAT | O_TRUNC,
+				    args->mode, &args->sysmsg_result);
+	}
 	linux_free_path(&path);
 	return(error);
 }
@@ -89,7 +88,7 @@ linux_open(struct linux_open_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error, flags;
 
@@ -135,9 +134,11 @@ linux_open(struct linux_open_args *args)
 		flags |= O_EXCL;
 	if (args->flags & LINUX_O_NOCTTY)
 		flags |= O_NOCTTY;
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_open(&nd, flags, args->mode, &args->sysmsg_result);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_open(&nd, flags,
+				    args->mode, &args->sysmsg_result);
+	}
 
 	if (error == 0 && !(flags & O_NOCTTY) && 
 		SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
@@ -462,8 +463,7 @@ linux_getdents64(struct linux_getdents64_args *args)
 int
 linux_access(struct linux_access_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -474,11 +474,10 @@ linux_access(struct linux_access_args *args)
 	if (ldebug(access))
 		printf(ARGS(access, "%s, %d"), path, args->flags);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_SYSSPACE, path, td);
-
-	error = kern_access(&nd, args->flags);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_access(&nd, args->flags);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -486,8 +485,7 @@ linux_access(struct linux_access_args *args)
 int
 linux_unlink(struct linux_unlink_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -498,10 +496,10 @@ linux_unlink(struct linux_unlink_args *args)
 	if (ldebug(unlink))
 		printf(ARGS(unlink, "%s"), path);
 #endif
-	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
-
-	error = kern_unlink(&nd);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_unlink(&nd);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -532,8 +530,7 @@ linux_chdir(struct linux_chdir_args *args)
 int
 linux_chmod(struct linux_chmod_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -544,10 +541,10 @@ linux_chmod(struct linux_chmod_args *args)
 	if (ldebug(chmod))
 		printf(ARGS(chmod, "%s, %d"), path, args->mode);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_chmod(&nd, args->mode);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_chmod(&nd, args->mode);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -555,8 +552,7 @@ linux_chmod(struct linux_chmod_args *args)
 int
 linux_mkdir(struct linux_mkdir_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -567,9 +563,10 @@ linux_mkdir(struct linux_mkdir_args *args)
 	if (ldebug(mkdir))
 		printf(ARGS(mkdir, "%s, %d"), path, args->mode);
 #endif
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_SYSSPACE, path, td);
-
-	error = kern_mkdir(&nd, args->mode);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_mkdir(&nd, args->mode);
+	nlookup_done(&nd);
 
 	linux_free_path(&path);
 	return(error);
@@ -578,8 +575,7 @@ linux_mkdir(struct linux_mkdir_args *args)
 int
 linux_rmdir(struct linux_rmdir_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -590,11 +586,10 @@ linux_rmdir(struct linux_rmdir_args *args)
 	if (ldebug(rmdir))
 		printf(ARGS(rmdir, "%s"), path);
 #endif
-	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT | CNP_LOCKLEAF,
-	    UIO_SYSSPACE, path, td);
-
-	error = kern_rmdir(&nd);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_rmdir(&nd);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -602,8 +597,7 @@ linux_rmdir(struct linux_rmdir_args *args)
 int
 linux_rename(struct linux_rename_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata fromnd, tond;
+	struct nlookupdata fromnd, tond;
 	char *from, *to;
 	int error;
 
@@ -619,15 +613,14 @@ linux_rename(struct linux_rename_args *args)
 	if (ldebug(rename))
 		printf(ARGS(rename, "%s, %s"), from, to);
 #endif
-	NDINIT(&fromnd, NAMEI_DELETE, CNP_WANTPARENT | CNP_SAVESTART,
-	    UIO_SYSSPACE, from, td);
-	NDINIT(&tond, NAMEI_RENAME,
-	    CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_NOCACHE |
-	    CNP_SAVESTART | CNP_NOOBJ,
-	    UIO_SYSSPACE, to, td);
-
-	error = kern_rename(&fromnd, &tond);
-
+	error = nlookup_init(&fromnd, from, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = nlookup_init(&tond, to, UIO_SYSSPACE, 0);
+		if (error == 0)
+			error = kern_rename(&fromnd, &tond);
+		nlookup_done(&tond);
+	}
+	nlookup_done(&fromnd);
 	linux_free_path(&from);
 	linux_free_path(&to);
 	return(error);
@@ -637,9 +630,10 @@ int
 linux_symlink(struct linux_symlink_args *args)
 {
 	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path, *link;
 	int error;
+	int mode;
 
 	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
 	if (error)
@@ -653,11 +647,12 @@ linux_symlink(struct linux_symlink_args *args)
 	if (ldebug(symlink))
 		printf(ARGS(symlink, "%s, %s"), path, link);
 #endif
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ, UIO_SYSSPACE,
-	    link, td);
-
-	error = kern_symlink(path, &nd);
-
+	error = nlookup_init(&nd, link, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
+		error = kern_symlink(&nd, path, mode);
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	linux_free_path(&link);
 	return(error);
@@ -666,8 +661,7 @@ linux_symlink(struct linux_symlink_args *args)
 int
 linux_readlink(struct linux_readlink_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -679,12 +673,12 @@ linux_readlink(struct linux_readlink_args *args)
 		printf(ARGS(readlink, "%s, %p, %d"), path, (void *)args->buf,
 		    args->count);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ, UIO_SYSSPACE,
-	   path, td);
-
-	error = kern_readlink(&nd, args->buf, args->count,
-	    &args->sysmsg_result);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = kern_readlink(&nd, args->buf, args->count,
+					&args->sysmsg_result);
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -692,8 +686,7 @@ linux_readlink(struct linux_readlink_args *args)
 int
 linux_truncate(struct linux_truncate_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -705,10 +698,10 @@ linux_truncate(struct linux_truncate_args *args)
 		printf(ARGS(truncate, "%s, %ld"), path,
 		    (long)args->length);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_truncate(&nd, args->length);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_truncate(&nd, args->length);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -716,8 +709,7 @@ linux_truncate(struct linux_truncate_args *args)
 int
 linux_truncate64(struct linux_truncate64_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -729,10 +721,10 @@ linux_truncate64(struct linux_truncate64_args *args)
 		printf(ARGS(truncate64, "%s, %lld"), path,
 		    (off_t)args->length);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_truncate(&nd, args->length);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_truncate(&nd, args->length);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return error;
 }
@@ -770,8 +762,7 @@ linux_ftruncate64(struct linux_ftruncate64_args *args)
 int
 linux_link(struct linux_link_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd, linknd;
+	struct nlookupdata nd, linknd;
 	char *path, *link;
 	int error;
 
@@ -787,13 +778,14 @@ linux_link(struct linux_link_args *args)
 	if (ldebug(link))
 		printf(ARGS(link, "%s, %s"), path, link);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_NOOBJ, UIO_SYSSPACE,
-	    path, td);
-	NDINIT(&linknd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ,
-	    UIO_SYSSPACE, link, td);
-
-	error = kern_link(&nd, &linknd);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = nlookup_init(&linknd, link, UIO_SYSSPACE, 0);
+		if (error == 0)
+			error = kern_link(&nd, &linknd);
+		nlookup_done(&linknd);
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	linux_free_path(&link);
 	return(error);
@@ -1189,8 +1181,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 int
 linux_chown(struct linux_chown_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -1201,10 +1192,10 @@ linux_chown(struct linux_chown_args *args)
 	if (ldebug(chown))
 		printf(ARGS(chown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_chown(&nd, args->uid, args->gid);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_chown(&nd, args->uid, args->gid);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -1212,8 +1203,7 @@ linux_chown(struct linux_chown_args *args)
 int
 linux_lchown(struct linux_lchown_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -1224,10 +1214,10 @@ linux_lchown(struct linux_lchown_args *args)
 	if (ldebug(lchown))
 		printf(ARGS(lchown, "%s, %d, %d"), path, args->uid, args->gid);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
-
-	error = kern_chown(&nd, args->uid, args->gid);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0)
+		error = kern_chown(&nd, args->uid, args->gid);
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }

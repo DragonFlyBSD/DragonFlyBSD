@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.9 2004/10/12 19:21:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.10 2004/11/12 00:09:51 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -59,7 +59,7 @@ static int udf_readdir(struct vop_readdir_args *);
 static int udf_readlink(struct vop_readlink_args *ap);
 static int udf_strategy(struct vop_strategy_args *);
 static int udf_bmap(struct vop_bmap_args *);
-static int udf_lookup(struct vop_cachedlookup_args *);
+static int udf_lookup(struct vop_lookup_args *);
 static int udf_reclaim(struct vop_reclaim_args *);
 static int udf_readatoffset(struct udf_node *, int *, int, struct buf **, uint8_t **);
 static int udf_bmap_internal(struct udf_node *, uint32_t, daddr_t *, uint32_t *);
@@ -68,10 +68,9 @@ struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
 	{ &vop_access_desc,		(void *) udf_access },
 	{ &vop_bmap_desc,		(void *) udf_bmap },
-	{ &vop_cachedlookup_desc,	(void *) udf_lookup },
+	{ &vop_lookup_desc,		(void *) udf_lookup },
 	{ &vop_getattr_desc,		(void *) udf_getattr },
 	{ &vop_ioctl_desc,		(void *) udf_ioctl },
-	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
 	{ &vop_pathconf_desc,		(void *) udf_pathconf },
 	{ &vop_read_desc,		(void *) udf_read },
 	{ &vop_readdir_desc,		(void *) udf_readdir },
@@ -897,7 +896,7 @@ udf_bmap(struct vop_bmap_args *a)
  * The all powerful VOP_LOOKUP().
  */
 static int
-udf_lookup(struct vop_cachedlookup_args *a)
+udf_lookup(struct vop_lookup_args *a)
 {
 	struct vnode *dvp;
 	struct vnode *tdp = NULL;
@@ -988,20 +987,16 @@ lookloop:
 			 * Remember where this entry was if it's the final
 			 * component.
 			 */
-			if ((flags & CNP_ISLASTCN) && nameiop == NAMEI_LOOKUP)
+			if (nameiop == NAMEI_LOOKUP)
 				node->diroff = ds->offset + ds->off;
 			if (numdirpasses == 2)
 				gd->gd_nchstats->ncs_pass2++;
-			if (!(flags & CNP_LOCKPARENT) || !(flags & CNP_ISLASTCN)) {
+			if ((flags & CNP_LOCKPARENT) == 0) {
 				a->a_cnp->cn_flags |= CNP_PDIRUNLOCK;
 				VOP_UNLOCK(dvp, 0, td);
 			}
 
 			*vpp = tdp;
-
-			/* Put this entry in the cache */
-			if (flags & CNP_MAKEENTRY)
-				cache_enter(dvp, *vpp, a->a_cnp);
 		}
 	} else {
 		/* Name wasn't found on this pass.  Do another pass? */
@@ -1011,13 +1006,7 @@ lookloop:
 			udf_closedir(ds);
 			goto lookloop;
 		}
-
-		/* Enter name into cache as non-existant */
-		if (flags & CNP_MAKEENTRY)
-			cache_enter(dvp, *vpp, a->a_cnp);
-
-		if ((flags & CNP_ISLASTCN) &&
-		    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {
+		if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME) {
 			error = EROFS;
 		} else {
 			error = ENOENT;

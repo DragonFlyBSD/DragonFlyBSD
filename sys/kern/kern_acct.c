@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.15 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.16 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,7 +52,7 @@
 #include <sys/kernel.h>
 #include <sys/sysent.h>
 #include <sys/sysctl.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/acct.h>
 #include <sys/resourcevar.h>
 #include <sys/tty.h>
@@ -123,7 +123,8 @@ acct(uap)
 	} */ *uap;
 {
 	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
 
 	/* Make sure that the caller is root. */
@@ -136,29 +137,40 @@ acct(uap)
 	 * appending and make sure it's a 'normal'.
 	 */
 	if (SCARG(uap, path) != NULL) {
-		NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE,
-			SCARG(uap, path), td);
-		error = vn_open(&nd, FWRITE | O_APPEND, 0);
-		if (error)
+		error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE,
+					NLC_LOCKVP);
+		if (error == 0)
+			error = vn_open(&nd, NULL, FWRITE | O_APPEND, 0);
+		if (error == 0 && nd.nl_open_vp->v_type != VREG) 
+			error = EACCES;
+		if (error) {
+			nlookup_done(&nd);
 			return (error);
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		VOP_UNLOCK(nd.ni_vp, 0, td);
-		if (nd.ni_vp->v_type != VREG) {
-			vn_close(nd.ni_vp, FWRITE | O_APPEND, td);
-			return (EACCES);
 		}
+		vp = nd.nl_open_vp;
+		nd.nl_open_vp = NULL;
+		nlookup_done(&nd);
+
+		VOP_UNLOCK(vp, 0, td);
+	} else {
+		vp = NULL;
 	}
 
 	/*
 	 * If accounting was previously enabled, kill the old space-watcher,
-	 * close the file, and (if no new file was specified, leave).
+	 * close the file.
 	 */
 	if (acctp != NULLVP || savacctp != NULLVP) {
 		callout_stop(&acctwatch_handle);
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
-		    FWRITE | O_APPEND, td);
+				FWRITE | O_APPEND, td);
 		acctp = savacctp = NULLVP;
 	}
+
+	/*
+	 * If no new file opened then leave.  We never did an nlookup so
+	 * don't try cleaning it up.
+	 */
 	if (SCARG(uap, path) == NULL)
 		return (error);
 
@@ -166,7 +178,7 @@ acct(uap)
 	 * Save the new accounting file vnode, and schedule the new
 	 * free space watcher.
 	 */
-	acctp = nd.ni_vp;
+	acctp = vp;
 	acctwatch(NULL);
 	return (error);
 }

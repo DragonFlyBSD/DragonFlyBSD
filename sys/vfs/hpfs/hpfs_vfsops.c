@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.22 2004/10/12 19:20:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.23 2004/11/12 00:09:33 dillon Exp $
  */
 
 
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/conf.h>
 #include <sys/proc.h>
 #include <sys/kernel.h>
@@ -93,7 +93,7 @@ static int	hpfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
 #else /* defined(__NetBSD__) */
 static int	hpfs_mount (struct mount *, const char *, void *,
-				struct nameidata *, struct proc *);
+				struct nlookupdata *, struct proc *);
 static void	hpfs_init (void);
 static int	hpfs_mountroot (void);
 static int	hpfs_sysctl (int *, u_int, void *, size_t *, void *,
@@ -169,11 +169,11 @@ hpfs_mount(struct mount *mp,
 	   struct thread *td)
 {
 	u_int		size;
-	int		err = 0;
+	int		error;
 	struct vnode	*devvp;
 	struct hpfs_args args;
 	struct hpfsmount *hpmp = 0;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	dprintf(("hpfs_mount():\n"));
 	/*
@@ -183,8 +183,8 @@ hpfs_mount(struct mount *mp,
 	 */
 
 	/* copy in user arguments*/
-	err = copyin(data, (caddr_t)&args, sizeof (struct hpfs_args));
-	if (err)
+	error = copyin(data, (caddr_t)&args, sizeof (struct hpfs_args));
+	if (error)
 		goto error_1;		/* can't get arguments*/
 
 	/*
@@ -198,15 +198,15 @@ hpfs_mount(struct mount *mp,
 
 		if (args.fspec == 0) {
 			dprintf(("export 0x%x\n",args.export.ex_flags));
-			err = vfs_export(mp, &hpmp->hpm_export, &args.export);
-			if (err) {
+			error = vfs_export(mp, &hpmp->hpm_export, &args.export);
+			if (error) {
 				printf("hpfs_mount: vfs_export failed %d\n",
-					err);
+					error);
 			}
 			goto success;
 		} else {
 			dprintf(("name [FAILED]\n"));
-			err = EINVAL;
+			error = EINVAL;
 			goto success;
 		}
 		dprintf(("\n"));
@@ -216,26 +216,26 @@ hpfs_mount(struct mount *mp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(&nd);
-	if (err) {
-		/* can't get devvp!*/
+	devvp = NULL;
+	error = nlookup_init(&nd, args.fspec, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &devvp);
+	nlookup_done(&nd);
+	if (error)
 		goto error_1;
-	}
-
-	devvp = nd.ni_vp;
-	/* XXX NDFREE */
 
 #if defined(__DragonFly__)
-	if (!vn_isdisk(devvp, &err)) 
+	if (!vn_isdisk(devvp, &error)) 
 		goto error_2;
 #else /* defined(__NetBSD__) */
 	if (devvp->v_type != VBLK) {
-		err = ENOTBLK;
+		error = ENOTBLK;
 		goto error_2;
 	}
 	if (umajor(devvp->v_udev) >= nblkdev) {
-		err = ENXIO;
+		error = ENXIO;
 		goto error_2;
 	}
 #endif
@@ -266,8 +266,8 @@ hpfs_mount(struct mount *mp,
 			&size);				/* real size*/
 	bzero( mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 
-	err = hpfs_mountfs(devvp, mp, &args, td);
-	if (err)
+	error = hpfs_mountfs(devvp, mp, &args, td);
+	if (error)
 		goto error_2;
 
 	/*
@@ -276,10 +276,8 @@ hpfs_mount(struct mount *mp,
 	 *
 	 * This code is common to root and non-root mounts
 	 */
-	(void)VFS_STATFS(mp, &mp->mnt_stat, td);
-
-	goto success;
-
+	VFS_STATFS(mp, &mp->mnt_stat, td);
+	return (error);
 
 error_2:	/* error with devvp held*/
 
@@ -289,7 +287,7 @@ error_2:	/* error with devvp held*/
 error_1:	/* no state to back out*/
 
 success:
-	return( err);
+	return (error);
 }
 
 /*
@@ -337,7 +335,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 
 	ronly = (mp->mnt_flag & MNT_RDONLY) != 0;
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);
-	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, td);
+	error = VOP_OPEN(devvp, ronly ? FREAD : FREAD|FWRITE, FSCRED, NULL, td);
 	VOP__UNLOCK(devvp, 0, td);
 	if (error)
 		return (error);

@@ -28,13 +28,13 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.8 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.9 2004/11/12 00:09:16 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/malloc.h>
 #include <sys/vnode.h>
 
@@ -60,18 +60,14 @@ ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
 	char		**pbuf;
 	int		  cflag;
 {
-	struct thread	 *td = curthread;	/* XXX */
-	struct ucred	*cred;
-	struct nameidata	 nd;
-	struct nameidata	 ndroot;
+	struct nlookupdata	 nd;
+	struct nlookupdata	 ndroot;
 	struct vattr		 vat;
 	struct vattr		 vatroot;
+	struct vnode		*vp;
 	int			 error;
 	char			*ptr, *buf, *cp;
 	size_t			 sz, len;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	buf = (char *) malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	*pbuf = path;
@@ -111,21 +107,22 @@ ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-
-		if ((error = namei(&nd)) != 0) {
-			free(buf, M_TEMP);
-			return error;
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error) {
+			nlookup_done(&nd);
+			return (error);
 		}
-
 		*cp = '/';
-	}
-	else {
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
+	} else {
 
-		if ((error = namei(&nd)) != 0) {
-			free(buf, M_TEMP);
-			return error;
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		if (error) {
+			nlookup_done(&nd);
+			return (error);
 		}
 
 		/*
@@ -136,25 +133,24 @@ ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
-			ibcs2_emul_path, td);
-
-		if ((error = namei(&ndroot)) != 0) {
-			/* Cannot happen! */
-			free(buf, M_TEMP);
-			NDFREE(&nd, NDF_ONLY_PNBUF);
-			vrele(nd.ni_vp);
-			return error;
-		}
-
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
+		error = nlookup_init(&ndroot, ibcs2_emul_path, UIO_SYSSPACE,
+					NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&ndroot);
+		if (error == 0)
+			error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		if (error) 
 			goto done;
-		}
-
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
-		    != 0) {
+		error = VOP_GETATTR(vp, &vat, nd.nl_td);
+		vrele(vp);
+		if (error == 0)
+			error = cache_vref(ndroot.nl_ncp, nd.nl_cred, &vp);
+		if (error)
 			goto done;
-		}
+		error = VOP_GETATTR(vp, &vatroot, nd.nl_td);
+		vrele(vp);
+		if (error)
+			goto done;
 
 		if (vat.va_fsid == vatroot.va_fsid &&
 		    vat.va_fileid == vatroot.va_fileid) {
@@ -163,22 +159,17 @@ ibcs2_emul_find(sgp, prefix, path, pbuf, cflag)
 		}
 
 	}
-	if (sgp == NULL)
+	if (sgp == NULL) {
 		*pbuf = buf;
-	else {
+	} else {
 		sz = &ptr[len] - buf;
 		*pbuf = stackgap_alloc(sgp, sz + 1);
 		error = copyout(buf, *pbuf, sz);
 		free(buf, M_TEMP);
 	}
-
-
 done:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
-	if (!cflag) {
-		NDFREE(&ndroot, NDF_ONLY_PNBUF);
-		vrele(ndroot.ni_vp);
-	}
-	return error;
+	nlookup_done(&nd);
+	if (!cflag)
+		nlookup_done(&ndroot);
+	return (error);
 }

@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.16 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.17 2004/11/12 00:09:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <sys/malloc.h>
 #include <sys/fcntl.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/mount.h>
 #include <vm/vm_zone.h>
@@ -380,7 +380,7 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	struct vnode *vp, **vpp;
 	struct dquot *dq;
 	int error;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct ucred *cred;
 	struct scaninfo scaninfo;
 
@@ -388,23 +388,27 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	cred = td->td_proc->p_ucred;
 
 	vpp = &ump->um_quotas[type];
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, fname, td);
-	error = vn_open(&nd, FREAD|FWRITE, 0);
-	if (error)
+	error = nlookup_init(&nd, fname, UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	if (error == 0)
+		error = vn_open(&nd, NULL, FREAD|FWRITE, 0);
+	if (error == 0 && nd.nl_open_vp->v_type != VREG)
+		error = EACCES;
+	if (error) {
+		nlookup_done(&nd);
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vp = nd.ni_vp;
-	VOP_UNLOCK(vp, 0, td);
-	if (vp->v_type != VREG) {
-		(void) vn_close(vp, FREAD|FWRITE, td);
-		return (EACCES);
 	}
+	vp = nd.nl_open_vp;
+	nd.nl_open_vp = NULL;
+	nlookup_done(&nd);
+
+	VOP_UNLOCK(vp, 0, td);
 	if (*vpp != vp)
 		quotaoff(td, mp, type);
 	ump->um_qflags[type] |= QTF_OPENING;
 	mp->mnt_flag |= MNT_QUOTA;
 	vp->v_flag |= VSYSTEM;
 	*vpp = vp;
+	/* XXX release duplicate vp if *vpp == vp? */
 	/*
 	 * Save the credential of the process that turned on quotas.
 	 * Set up the time limits for this quota.

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.21 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.22 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,6 +51,7 @@
 #include <sys/unistd.h>
 #include <sys/vnode.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/poll.h>
 
 #include <machine/limits.h>
@@ -85,7 +86,6 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_lease_desc,		vop_null },
 	{ &vop_lock_desc,		(void *) vop_stdlock },
 	{ &vop_mmap_desc,		vop_einval },
-	{ &vop_resolve_desc,		(void *) vop_noresolve },
 	{ &vop_lookup_desc,		(void *) vop_nolookup },
 	{ &vop_open_desc,		vop_null },
 	{ &vop_pathconf_desc,		vop_einval },
@@ -100,6 +100,17 @@ static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
 	{ &vop_aclcheck_desc,		vop_eopnotsupp },
 	{ &vop_getextattr_desc,		vop_eopnotsupp },
 	{ &vop_setextattr_desc,		vop_eopnotsupp },
+	{ &vop_nresolve_desc,		(void *) vop_compat_nresolve },
+	{ &vop_nlookupdotdot_desc,	(void *) vop_compat_nlookupdotdot },
+	{ &vop_ncreate_desc,		(void *) vop_compat_ncreate },
+	{ &vop_nmkdir_desc,		(void *) vop_compat_nmkdir },
+	{ &vop_nmknod_desc,		(void *) vop_compat_nmknod },
+	{ &vop_nlink_desc,		(void *) vop_compat_nlink },
+	{ &vop_nsymlink_desc,		(void *) vop_compat_nsymlink },
+	{ &vop_nwhiteout_desc,		(void *) vop_compat_nwhiteout },
+	{ &vop_nremove_desc,		(void *) vop_compat_nremove },
+	{ &vop_nrmdir_desc,		(void *) vop_compat_nrmdir },
+	{ &vop_nrename_desc,		(void *) vop_compat_nrename },
 	{ NULL, NULL }
 };
 
@@ -152,16 +163,16 @@ vop_panic(struct vop_generic_args *ap)
 }
 
 /*
- * vop_noresolve { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
+ * vop_compat_resolve { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
  *
  * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
  * WILL BE REMOVED.  This procedure exists for all VFSs which have not
- * yet implemented vop_resolve().  It converts vop_resolve() into a 
+ * yet implemented VOP_NRESOLVE().  It converts VOP_NRESOLVE() into a 
  * vop_lookup() and does appropriate translations.
  *
  * Resolve a ncp for VFSs which do not support the VOP.  Eventually all
  * VFSs will support this VOP and this routine can be removed, since
- * vop_resolve() is far less complex then the older LOOKUP/CACHEDLOOKUP
+ * VOP_NRESOLVE() is far less complex then the older LOOKUP/CACHEDLOOKUP
  * API.
  *
  * A locked ncp is passed in to be resolved.  The NCP is resolved by
@@ -171,11 +182,13 @@ vop_panic(struct vop_generic_args *ap)
  * negative cache entry.  No vnode locks are retained and the
  * ncp is left locked on return.
  *
+ * The ncp will NEVER represent "", "." or "..", or contain any slashes.
+ *
  * There is a potential directory and vnode interlock.   The lock order
  * requirement is: namecache, governing directory, resolved vnode.
  */
 int
-vop_noresolve(struct vop_resolve_args *ap)
+vop_compat_nresolve(struct vop_nresolve_args *ap)
 {
 	int error;
 	struct vnode *dvp;
@@ -191,15 +204,20 @@ vop_noresolve(struct vop_resolve_args *ap)
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
 		return(EPERM);
 
+	/*
+	 * UFS currently stores all sorts of side effects, including a loop
+	 * variable, in the directory inode.  That needs to be fixed and the
+	 * other VFS's audited before we can switch to LK_SHARED.
+	 */
 	if ((error = vget(dvp, LK_EXCLUSIVE, curthread)) != 0) {
-		printf("[diagnostic] vop_noresolve: EAGAIN on ncp %p %*.*s\n",
-			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
 		return(EAGAIN);
 	}
 
 	bzero(&cnp, sizeof(cnp));
 	cnp.cn_nameiop = NAMEI_LOOKUP;
-	cnp.cn_flags = CNP_ISLASTCN;
+	cnp.cn_flags = 0;
 	cnp.cn_nameptr = ncp->nc_name;
 	cnp.cn_namelen = ncp->nc_nlen;
 	cnp.cn_cred = ap->a_cred;
@@ -232,67 +250,881 @@ vop_noresolve(struct vop_resolve_args *ap)
 	return (error);
 }
 
-#if 0
-
 /*
- * vop_noremove { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
+ * vop_compat_nlookupdotdot { struct vnode *a_dvp,
+ *			struct vnode **a_vpp,
+ *			struct ucred *a_cred }
  *
- * Remove the file/dir represented by a_ncp.
+ * Lookup the vnode representing the parent directory of the specified
+ * directory vnode.  a_dvp should not be locked.  If no error occurs *a_vpp
+ * will contained the parent vnode, locked and refd, else *a_vpp will be NULL.
  *
- * XXX ultra difficult.  A number of existing filesystems, including UFS,
- *     assume that the directory will remain locked and the lookup will
- *     store the directory offset and other things in the directory inode
- *     for the later VOP_REMOVE to use.  We have to move all that
- *     functionality into e.g. UFS's VOP_REMOVE itself.
+ * This function is designed to aid NFS server-side operations and is
+ * used by cache_fromdvp() to create a consistent, connected namecache
+ * topology.
+ *
+ * As part of the NEW API work, VFSs will first split their CNP_ISDOTDOT
+ * code out from their *_lookup() and create *_nlookupdotdot().  Then as time
+ * permits VFSs will implement the remaining *_n*() calls and finally get
+ * rid of their *_lookup() call.
  */
-static int
-vop_nonremove(struct vop_nremove_args *ap)
+int
+vop_compat_nlookupdotdot(struct vop_nlookupdotdot_args *ap)
 {
-	struct namecache *ncfile;
-	struct namecache *ncdir;
-	struct componentname cnd;
-	struct vnode *vp;
-	struct vnode *vpd;
-	thread_t td;
+	struct componentname cnp;
 	int error;
 
-	td = curthread;
-	ncfile = ap->a_ncp;
-	ncdir = ncfile->nc_parent;
-
-	if ((error = cache_vget(ncdir, ap->a_cred, LK_EXCLUSIVE, &vpd)) != 0)
+	/*
+	 * UFS currently stores all sorts of side effects, including a loop
+	 * variable, in the directory inode.  That needs to be fixed and the
+	 * other VFS's audited before we can switch to LK_SHARED.
+	 */
+	*ap->a_vpp = NULL;
+	if ((error = vget(ap->a_dvp, LK_EXCLUSIVE, curthread)) != 0)
 		return (error);
-	if ((error = cache_vget(ncfile, ap->a_cred, LK_EXCLUSIVE, &vp)) != 0) {
-		vput(vpd);
-		return (error);
+	if (ap->a_dvp->v_type != VDIR) {
+		vput(ap->a_dvp);
+		return (ENOTDIR);
 	}
-	bzero(&cnd, sizeof(cnd));
-	cnd.cn_nameiop = NAMEI_DELETE;
-	cnd.cn_td = td;
-	cnd.cn_cred = ap->a_cred;
-	cnd.cn_nameptr = ncfile->nc_name;
-	cnd.cn_namelen = ncfile->nc_nlen;
-	error = VOP_REMOVE(vpd, NCPNULL, vp, &cnd);
-	if (error == 0)
-		cache_purge(vp);
-	vput(vp);
-	vput(vpd);
+
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_LOOKUP;
+	cnp.cn_flags = CNP_ISDOTDOT;
+	cnp.cn_nameptr = "..";
+	cnp.cn_namelen = 2;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = curthread; /* XXX */
 
 	/*
-	 * Re-resolve the ncp to match the fact that the file has been
-	 * deleted from the namespace.  If an error occured leave the ncp
-	 * unresolved (meaning that we have no idea what the correct state
-	 * is).
+	 * vop_lookup() always returns vp locked.  dvp may or may not be
+	 * left locked depending on CNP_PDIRUNLOCK.
 	 */
-	if (error == 0) {
-		cache_setunresolved(ncfile);
-		cache_setvp(ncfile, NULL);
-	}
-        return (error);
+	error = vop_lookup(ap->a_head.a_ops, ap->a_dvp, ap->a_vpp, &cnp);
+	if (error == 0)
+		VOP_UNLOCK(*ap->a_vpp, 0, curthread);
+	if (cnp.cn_flags & CNP_PDIRUNLOCK)
+		vrele(ap->a_dvp);
+	else
+		vput(ap->a_dvp);
+	return (error);
 }
 
-#endif
+/*
+ * vop_compat_ncreate { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			struct vnode *a_vpp,
+ *			struct ucred *a_cred,
+ *			struct vattr *a_vap }
+ *
+ * Create a file as specified by a_vap.  Compatibility requires us to issue
+ * the appropriate VOP_OLD_LOOKUP before we issue VOP_OLD_CREATE in order
+ * to setup the directory inode's i_offset and i_count (e.g. in UFS).
+ */
+int
+vop_compat_ncreate(struct vop_ncreate_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	int error;
 
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_CREATE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+	*ap->a_vpp = NULL;
+
+	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+
+	/*
+	 * EJUSTRETURN should be returned for this case, which means that
+	 * the VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_CREATE is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	if (error == EJUSTRETURN) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_CREATE(dvp, ap->a_vpp, &cnp, ap->a_vap);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, *ap->a_vpp);
+		}
+	} else {
+		if (error == 0) {
+			vput(*ap->a_vpp);
+			*ap->a_vpp = NULL;
+			error = EEXIST;
+		}
+		KKASSERT(*ap->a_vpp == NULL);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nmkdir { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			struct vnode *a_vpp,
+ *			struct ucred *a_cred,
+ *			struct vattr *a_vap }
+ *
+ * Create a directory as specified by a_vap.  Compatibility requires us to
+ * issue the appropriate VOP_OLD_LOOKUP before we issue VOP_OLD_MKDIR in
+ * order to setup the directory inode's i_offset and i_count (e.g. in UFS).
+ */
+int
+vop_compat_nmkdir(struct vop_nmkdir_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_CREATE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+	*ap->a_vpp = NULL;
+
+	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+
+	/*
+	 * EJUSTRETURN should be returned for this case, which means that
+	 * the VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_MKDIR is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	if (error == EJUSTRETURN) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_MKDIR(dvp, ap->a_vpp, &cnp, ap->a_vap);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, *ap->a_vpp);
+		}
+	} else {
+		if (error == 0) {
+			vput(*ap->a_vpp);
+			*ap->a_vpp = NULL;
+			error = EEXIST;
+		}
+		KKASSERT(*ap->a_vpp == NULL);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nmknod { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			struct vnode *a_vpp,
+ *			struct ucred *a_cred,
+ *			struct vattr *a_vap }
+ *
+ * Create a device or fifo node as specified by a_vap.  Compatibility requires
+ * us to issue the appropriate VOP_OLD_LOOKUP before we issue VOP_OLD_MKNOD
+ * in order to setup the directory inode's i_offset and i_count (e.g. in UFS).
+ */
+int
+vop_compat_nmknod(struct vop_nmknod_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_CREATE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+	*ap->a_vpp = NULL;
+
+	error = vop_lookup(ap->a_head.a_ops, dvp, ap->a_vpp, &cnp);
+
+	/*
+	 * EJUSTRETURN should be returned for this case, which means that
+	 * the VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_MKNOD is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	if (error == EJUSTRETURN) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_MKNOD(dvp, ap->a_vpp, &cnp, ap->a_vap);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, *ap->a_vpp);
+		}
+	} else {
+		if (error == 0) {
+			vput(*ap->a_vpp);
+			*ap->a_vpp = NULL;
+			error = EEXIST;
+		}
+		KKASSERT(*ap->a_vpp == NULL);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nlink { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			struct vnode *a_vp,
+ *			struct ucred *a_cred }
+ *
+ * The passed vp is locked and represents the source.  The passed ncp is
+ * locked and represents the target to create.
+ */
+int
+vop_compat_nlink(struct vop_nlink_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	struct vnode *tvp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_CREATE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+
+	tvp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, dvp, &tvp, &cnp);
+
+	/*
+	 * EJUSTRETURN should be returned for this case, which means that
+	 * the VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_LINK is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	if (error == EJUSTRETURN) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		VOP_LEASE(ap->a_vp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_LINK(dvp, ap->a_vp, &cnp);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, ap->a_vp);
+		}
+	} else {
+		if (error == 0) {
+			vput(tvp);
+			error = EEXIST;
+		}
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+int
+vop_compat_nsymlink(struct vop_nsymlink_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	struct vnode *vp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	*ap->a_vpp = NULL;
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_CREATE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+
+	vp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+
+	/*
+	 * EJUSTRETURN should be returned for this case, which means that
+	 * the VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_SYMLINK is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	if (error == EJUSTRETURN) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_SYMLINK(dvp, &vp, &cnp, ap->a_vap, ap->a_target);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, vp);
+			*ap->a_vpp = vp;
+		}
+	} else {
+		if (error == 0) {
+			vput(vp);
+			vp = NULL;
+			error = EEXIST;
+		}
+		KKASSERT(vp == NULL);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nwhiteout { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			  struct ucred *a_cred,
+ *			  int a_flags }
+ *
+ * Issie a whiteout operation (create, lookup, or delete).  Compatibility 
+ * requires us to issue the appropriate VOP_OLD_LOOKUP before we issue 
+ * VOP_OLD_WHITEOUT in order to setup the directory inode's i_offset and i_count
+ * (e.g. in UFS) for the NAMEI_CREATE and NAMEI_DELETE ops.  For NAMEI_LOOKUP
+ * no lookup is necessary.
+ */
+int
+vop_compat_nwhiteout(struct vop_nwhiteout_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	struct vnode *vp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * directory inode.  We expect a return code of EJUSTRETURN for
+	 * the CREATE case.  The cnp must simulated a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = ap->a_flags;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+
+	vp = NULL;
+
+	/*
+	 * EJUSTRETURN should be returned for the CREATE or DELETE cases.
+	 * The VFS has setup the directory inode for the create.  The dvp we
+	 * passed in is expected to remain in a locked state.
+	 *
+	 * If the VOP_OLD_WHITEOUT is successful we are responsible for updating
+	 * the cache state of the locked ncp that was passed to us.
+	 */
+	switch(ap->a_flags) {
+	case NAMEI_DELETE:
+		cnp.cn_flags |= CNP_DOWHITEOUT;
+		/* fall through */
+	case NAMEI_CREATE:
+		error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+		if (error == EJUSTRETURN) {
+			KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+			VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+			error = VOP_OLD_WHITEOUT(dvp, &cnp, ap->a_flags);
+			if (error == 0)
+				cache_setunresolved(ncp);
+		} else {
+			if (error == 0) {
+				vput(vp);
+				vp = NULL;
+				error = EEXIST;
+			}
+			KKASSERT(vp == NULL);
+		}
+		break;
+	case NAMEI_LOOKUP:
+		error = VOP_OLD_WHITEOUT(dvp, NULL, ap->a_flags);
+		break;
+	default:
+		error = EINVAL;
+		break;
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+
+/*
+ * vop_compat_nremove { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			  struct ucred *a_cred }
+ */
+int
+vop_compat_nremove(struct vop_nremove_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	struct vnode *vp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to delete the entry in the
+	 * directory inode.  We expect a return code of 0 for the DELETE
+	 * case (meaning that a vp has been found).  The cnp must simulated
+	 * a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_DELETE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+
+	/*
+	 * The vnode must be a directory and must not represent the
+	 * current directory.
+	 */
+	vp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	if (error == 0 && vp->v_type == VDIR)
+		error = EPERM;
+	if (error == 0) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		VOP_LEASE(vp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_REMOVE(dvp, vp, &cnp);
+		if (error == 0) {
+			cache_setunresolved(ncp);
+			cache_setvp(ncp, NULL);
+		}
+	}
+	if (vp) {
+		if (dvp == vp)
+			vrele(vp);
+		else	
+			vput(vp);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nrmdir { struct namecache *a_ncp, 	XXX STOPGAP FUNCTION
+ *			  struct ucred *a_cred }
+ */
+int
+vop_compat_nrmdir(struct vop_nrmdir_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname cnp;
+	struct namecache *ncp;
+	struct vnode *dvp;
+	struct vnode *vp;
+	int error;
+
+	/*
+	 * Sanity checks, get a locked directory vnode.
+	 */
+	ncp = ap->a_ncp;		/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
+	if (ncp->nc_parent == NULL)
+		return(EPERM);
+	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	if ((error = vget(dvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			ncp, ncp->nc_name);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to delete the entry in the
+	 * directory inode.  We expect a return code of 0 for the DELETE
+	 * case (meaning that a vp has been found).  The cnp must simulated
+	 * a saved-name situation.
+	 */
+	bzero(&cnp, sizeof(cnp));
+	cnp.cn_nameiop = NAMEI_DELETE;
+	cnp.cn_flags = CNP_LOCKPARENT;
+	cnp.cn_nameptr = ncp->nc_name;
+	cnp.cn_namelen = ncp->nc_nlen;
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = td;
+
+	/*
+	 * The vnode must be a directory and must not represent the
+	 * current directory.
+	 */
+	vp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
+	if (error == 0 && vp->v_type != VDIR)
+		error = ENOTDIR;
+	if (error == 0 && vp == dvp)
+		error = EINVAL;
+	if (error == 0 && (vp->v_flag & VROOT))
+		error = EBUSY;
+	if (error == 0) {
+		KKASSERT((cnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		VOP_LEASE(dvp, td, ap->a_cred, LEASE_WRITE);
+		VOP_LEASE(vp, td, ap->a_cred, LEASE_WRITE);
+		error = VOP_OLD_RMDIR(dvp, vp, &cnp);
+
+		/*
+		 * Note that this invalidation will cause any process
+		 * currently CD'd into the directory being removed to be
+		 * disconnected from the topology and not be able to ".."
+		 * back out.
+		 */
+		if (error == 0)
+			cache_inval(ncp, CINV_SELF|CINV_PARENT);
+	}
+	if (vp) {
+		if (dvp == vp)
+			vrele(vp);
+		else	
+			vput(vp);
+	}
+	if ((cnp.cn_flags & CNP_PDIRUNLOCK) == 0)
+		VOP_UNLOCK(dvp, 0, td);
+	vrele(dvp);
+	return (error);
+}
+
+/*
+ * vop_compat_nrename { struct namecache *a_fncp, 	XXX STOPGAP FUNCTION
+ *			struct namecache *a_tncp,
+ *			struct ucred *a_cred }
+ *
+ * This is a fairly difficult procedure.  The old VOP_OLD_RENAME requires that
+ * the source directory and vnode be unlocked and the target directory and
+ * vnode (if it exists) be locked.  All arguments will be vrele'd and 
+ * the targets will also be unlocked regardless of the return code.
+ */
+int
+vop_compat_nrename(struct vop_nrename_args *ap)
+{
+	struct thread *td = curthread;
+	struct componentname fcnp;
+	struct componentname tcnp;
+	struct namecache *fncp;
+	struct namecache *tncp;
+	struct vnode *fdvp, *fvp;
+	struct vnode *tdvp, *tvp;
+	int error;
+
+	/*
+	 * Sanity checks, get referenced vnodes representing the source.
+	 */
+	fncp = ap->a_fncp;		/* locked namecache node */
+	if (fncp->nc_flag & NCF_MOUNTPT) /* can't cross a mount point! */
+		return(EPERM);
+	if (fncp->nc_parent == NULL)
+		return(EPERM);
+	if ((fdvp = fncp->nc_parent->nc_vp) == NULL)
+		return(EPERM);
+
+	/*
+	 * Temporarily lock the source directory and lookup in DELETE mode to
+	 * check permissions.  XXX delete permissions should have been
+	 * checked by nlookup(), we need to add NLC_DELETE for delete
+	 * checking.  It is unclear whether VFS's require the directory setup
+	 * info NAMEI_DELETE causes to be stored in the fdvp's inode, but
+	 * since it isn't locked and since UFS always does a relookup of
+	 * the source, it is believed that the only side effect that matters
+	 * is the permissions check.
+	 */
+	if ((error = vget(fdvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			fncp, fncp->nc_name);
+		return(EAGAIN);
+	}
+
+	bzero(&fcnp, sizeof(fcnp));
+	fcnp.cn_nameiop = NAMEI_DELETE;
+	fcnp.cn_flags = CNP_LOCKPARENT;
+	fcnp.cn_nameptr = fncp->nc_name;
+	fcnp.cn_namelen = fncp->nc_nlen;
+	fcnp.cn_cred = ap->a_cred;
+	fcnp.cn_td = td;
+
+	/*
+	 * note: vop_lookup (i.e. VOP_OLD_LOOKUP) always returns a locked
+	 * fvp.
+	 */
+	fvp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, fdvp, &fvp, &fcnp);
+	if (error == 0 && (fvp->v_flag & VROOT)) {
+		vput(fvp);	/* as if vop_lookup had failed */
+		error = EBUSY;
+	}
+	if ((fcnp.cn_flags & CNP_PDIRUNLOCK) == 0) {
+		fcnp.cn_flags |= CNP_PDIRUNLOCK;
+		VOP_UNLOCK(fdvp, 0, td);
+	}
+	if (error) {
+		vrele(fdvp);
+		return (error);
+	}
+	VOP_UNLOCK(fvp, 0, td);
+
+	/*
+	 * fdvp and fvp are now referenced and unlocked.
+	 *
+	 * Get a locked directory vnode for the target and lookup the target
+	 * in CREATE mode so it places the required information in the
+	 * directory inode.
+	 */
+	tncp = ap->a_tncp;		/* locked namecache node */
+	if (tncp->nc_flag & NCF_MOUNTPT) /* can't cross a mount point! */
+		error = EPERM;
+	if (tncp->nc_parent == NULL)
+		error = EPERM;
+	if ((tdvp = tncp->nc_parent->nc_vp) == NULL)
+		error = EPERM;
+	if (error) {
+		vrele(fdvp);
+		vrele(fvp);
+		return (error);
+	}
+	if ((error = vget(tdvp, LK_EXCLUSIVE, td)) != 0) {
+		printf("[diagnostic] vop_compat_resolve: EAGAIN on ncp %p %s\n",
+			tncp, tncp->nc_name);
+		vrele(fdvp);
+		vrele(fvp);
+		return(EAGAIN);
+	}
+
+	/*
+	 * Setup the cnp for a traditional vop_lookup() call.  The lookup
+	 * caches all information required to create the entry in the
+	 * target directory inode.
+	 */
+	bzero(&tcnp, sizeof(tcnp));
+	tcnp.cn_nameiop = NAMEI_RENAME;
+	tcnp.cn_flags = CNP_LOCKPARENT;
+	tcnp.cn_nameptr = tncp->nc_name;
+	tcnp.cn_namelen = tncp->nc_nlen;
+	tcnp.cn_cred = ap->a_cred;
+	tcnp.cn_td = td;
+
+	tvp = NULL;
+	error = vop_lookup(ap->a_head.a_ops, tdvp, &tvp, &tcnp);
+
+	if (error == EJUSTRETURN) {
+		/*
+		 * Target does not exist.  tvp should be NULL.
+		 */
+		KKASSERT(tvp == NULL);
+		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
+		if (error == 0) {
+			cache_rename(fncp, tncp);
+			cache_setvp(tncp, fvp);
+		}
+	} else if (error == 0) {
+		/*
+		 * Target exists.  VOP_OLD_RENAME should correctly delete the
+		 * target.
+		 */
+		KKASSERT((tcnp.cn_flags & CNP_PDIRUNLOCK) == 0);
+		error = VOP_OLD_RENAME(fdvp, fvp, &fcnp, tdvp, tvp, &tcnp);
+		if (error == 0) {
+			cache_rename(fncp, tncp);
+			cache_setvp(tncp, fvp);
+		}
+	} else {
+		vrele(fdvp);
+		vrele(fvp);
+		if (tcnp.cn_flags & CNP_PDIRUNLOCK)
+			vrele(tdvp);
+		else
+			vput(tdvp);
+	}
+	return (error);
+}
 
 static int
 vop_nolookup(ap)
@@ -580,7 +1412,7 @@ vop_stdgetvobject(ap)
  */
 int 
 vfs_stdmount(struct mount *mp, char *path, caddr_t data,
-	struct nameidata *ndp, struct thread *td)
+	struct nlookupdata *nd, struct thread *td)
 {
 	return (0);
 }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.14 2003/12/20 05:52:21 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.15 2004/11/12 00:09:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -35,7 +35,7 @@
 #include <sys/kern_syscall.h>
 #include <sys/lock.h>
 #include <sys/mman.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
@@ -104,8 +104,7 @@ bsd_to_linux_sigaltstack(int bsa)
 int
 linux_execve(struct linux_execve_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct image_args exec_args;
 	char *path;
 	int error;
@@ -117,12 +116,14 @@ linux_execve(struct linux_execve_args *args)
 	if (ldebug(execve))
 		printf(ARGS(execve, "%s"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
-	    UIO_SYSSPACE, path, td);
-	error = exec_copyin_args(&exec_args, path, PATH_SYSSPACE,
-				args->argp, args->envp);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = exec_copyin_args(&exec_args, path, PATH_SYSSPACE,
+					args->argp, args->envp);
+	}
 	if (error == 0)
 		error = kern_execve(&nd, &exec_args);
+	nlookup_done(&nd);
 
 	/*
 	 * The syscall result is returned in registers to the new program.

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.9 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.10 2004/11/12 00:09:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -32,7 +32,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kern_syscall.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 #include <sys/thread.h>
@@ -51,8 +51,7 @@ DUMMY(getresgid16);
 int
 linux_chown16(struct linux_chown16_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -64,10 +63,12 @@ linux_chown16(struct linux_chown16_args *args)
 		printf(ARGS(chown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
-
-	error = kern_chown(&nd, CAST_NOCHG(args->uid), CAST_NOCHG(args->gid));
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_chown(&nd, CAST_NOCHG(args->uid),
+				    CAST_NOCHG(args->gid));
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }
@@ -75,8 +76,7 @@ linux_chown16(struct linux_chown16_args *args)
 int
 linux_lchown16(struct linux_lchown16_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -88,10 +88,12 @@ linux_lchown16(struct linux_lchown16_args *args)
 		printf(ARGS(lchown16, "%s, %d, %d"), path, args->uid,
 		    args->gid);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
-
-	error = kern_chown(&nd, CAST_NOCHG(args->uid), CAST_NOCHG(args->gid));
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = kern_chown(&nd, CAST_NOCHG(args->uid),
+				    CAST_NOCHG(args->gid));
+	}
+	nlookup_done(&nd);
 	linux_free_path(&path);
 	return(error);
 }

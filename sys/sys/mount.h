@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.13 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.14 2004/11/12 00:09:27 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -122,6 +122,10 @@ struct statfs {
  *
  * NOTE: Any vnode marked VPLACEMARKER is a placemarker and should ALWAYS BE
  * SKIPPED.  NO OTHER FIELDS IN SUCH VNODES ARE VALID.
+ *
+ * NOTE: All VFSs must at least populate mnt_vn_ops or those VOP ops that
+ * only take namecache pointers will not be able to find their operations
+ * vector via namecache->nc_mount.
  */
 TAILQ_HEAD(vnodelst, vnode);
 
@@ -341,7 +345,7 @@ TAILQ_HEAD(mntlist, mount);	/* struct mntlist */
  */
 #ifdef __STDC__
 struct nlookupdata;
-struct nameidata;
+struct nlookupdata;
 struct mbuf;
 #endif
 
@@ -479,7 +483,7 @@ extern	struct nfs_public nfs_pub;
  * functions or casting entries in the VFS op table to "enopnotsupp()".
  */ 
 int	vfs_stdmount (struct mount *mp, char *path, caddr_t data, 
-		struct nameidata *ndp, struct thread *p);
+		struct nlookupdata *ndp, struct thread *p);
 int	vfs_stdstart (struct mount *mp, int flags, struct thread *p);
 int	vfs_stdunmount (struct mount *mp, int mntflags, struct thread *p);
 int	vfs_stdroot (struct mount *mp, struct vnode **vpp);

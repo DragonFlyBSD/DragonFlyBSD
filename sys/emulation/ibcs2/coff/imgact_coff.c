@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.12 2004/10/12 19:20:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.13 2004/11/12 00:09:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,7 +39,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 
 #include <vm/vm.h>
@@ -154,7 +154,7 @@ coff_load_file(struct thread *td, char *name)
 {
   	struct vmspace *vmspace;
   	int error;
-  	struct nameidata nd;
+  	struct nlookupdata nd;
   	struct vnode *vp;
   	struct vattr attr;
   	struct filehdr *fhdr;
@@ -173,15 +173,16 @@ coff_load_file(struct thread *td, char *name)
   	vmspace = td->td_proc->p_vmspace;
 
 	/* XXX use of 'curthread' should be 'td'?*/
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME, UIO_SYSSPACE, name, curthread);
-
-  	error = namei(&nd);
+	error = nlookup_init(&nd, name, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+		if (error)
+			error = ENOEXEC;
+	}
   	if (error)
-    		return error;
-
-  	vp = nd.ni_vp;
-  	if (vp == NULL)
-    		return ENOEXEC;
+		goto done;
 
   	if (vp->v_writecount) {
     		error = ETXTBSY;
@@ -204,7 +205,7 @@ coff_load_file(struct thread *td, char *name)
   	if ((error = VOP_ACCESS(vp, VEXEC, cred, td)) != 0)
     		goto fail;
 
-  	if ((error = VOP_OPEN(vp, FREAD, cred, td)) != 0)
+  	if ((error = VOP_OPEN(vp, FREAD, cred, NULL, td)) != 0)
     		goto fail;
 
 	/*
@@ -286,8 +287,9 @@ coff_load_file(struct thread *td, char *name)
  fail:
 	VOP_UNLOCK(vp, 0, td);
  unlocked_fail:
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
+	vrele(vp);
+done:
+	nlookup_done(&nd);
   	return error;
 }
 

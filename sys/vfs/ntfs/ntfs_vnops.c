@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.18 2004/10/12 19:21:02 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.19 2004/11/12 00:09:38 dillon Exp $
  *
  */
 
@@ -717,29 +717,7 @@ ntfs_lookup(struct vop_lookup_args *ap)
 		(int)cnp->cn_namelen, cnp->cn_nameptr, cnp->cn_namelen,
 		dip->i_number, lockparent, wantparent));
 
-	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_td);
-	if(error)
-		return (error);
-
-	if ((cnp->cn_flags & CNP_ISLASTCN) &&
-	    (dvp->v_mount->mnt_flag & MNT_RDONLY) &&
-	    (cnp->cn_nameiop == NAMEI_DELETE || cnp->cn_nameiop == NAMEI_RENAME))
-		return (EROFS);
-
-#ifdef __NetBSD__
-	/*
-	 * We now have a segment name to search for, and a directory
-	 * to search.
-	 *
-	 * Before tediously performing a linear scan of the directory,
-	 * check the name cache to see if the directory/name pair
-	 * we are looking for is known already.
-	 */
-	if ((error = cache_lookup(ap->a_dvp, ap->a_vpp, cnp)) >= 0)
-		return (error);
-#endif
-
-	if(cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.') {
+	if (cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.') {
 		dprintf(("ntfs_lookup: faking . directory in %d\n",
 			dip->i_number));
 
@@ -770,7 +748,7 @@ ntfs_lookup(struct vop_lookup_args *ap)
 			return (error);
 		}
 
-		if (lockparent && (cnp->cn_flags & CNP_ISLASTCN)) {
+		if (lockparent) {
 			error = VN_LOCK(dvp, LK_EXCLUSIVE, cnp->cn_td);
 			if (error) {
 				vput( *(ap->a_vpp) );
@@ -788,13 +766,9 @@ ntfs_lookup(struct vop_lookup_args *ap)
 		dprintf(("ntfs_lookup: found ino: %d\n", 
 			VTONT(*ap->a_vpp)->i_number));
 
-		if(!lockparent || !(cnp->cn_flags & CNP_ISLASTCN))
+		if (!lockparent)
 			VOP__UNLOCK(dvp, 0, cnp->cn_td);
 	}
-
-	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(dvp, *ap->a_vpp, cnp);
-
 	return (error);
 }
 
@@ -872,8 +846,7 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_islocked_desc,	(void *)vop_stdislocked },
 	{ &vop_unlock_desc,	(void *)vop_stdunlock },
 	{ &vop_lock_desc,	(void *)vop_stdlock },
-	{ &vop_cachedlookup_desc,(void *)ntfs_lookup },
-	{ &vop_lookup_desc,	(void *)vfs_cache_lookup },
+	{ &vop_lookup_desc,	(void *)ntfs_lookup },
 
 	{ &vop_access_desc,	(void *)ntfs_access },
 	{ &vop_close_desc,	(void *)ntfs_close },

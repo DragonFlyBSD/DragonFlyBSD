@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.12 2004/10/12 19:20:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.13 2004/11/12 00:09:04 dillon Exp $
  */
 
 /*
@@ -65,7 +65,7 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/buf.h>
 #include <sys/malloc.h>
 #include <sys/mount.h>
@@ -541,35 +541,40 @@ vniocattach_file(vn, vio, dev, flag, td)
 	struct thread *td;
 {
 	struct vattr vattr;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error, flags;
+	struct vnode *vp;
 	struct proc *p = td->td_proc;
 
 	KKASSERT(p != NULL);
 
 	flags = FREAD|FWRITE;
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, vio->vn_file, td);
-	error = vn_open(&nd, flags, 0);
-	if (error) {
+	error = nlookup_init(&nd, vio->vn_file, 
+				UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	if (error)
+		return (error);
+	if ((error = vn_open(&nd, NULL, flags, 0)) != 0) {
 		if (error != EACCES && error != EPERM && error != EROFS)
-			return (error);
+			goto done;
 		flags &= ~FWRITE;
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW,
-			UIO_USERSPACE, vio->vn_file, td);
-		error = vn_open(&nd, flags, 0);
+		nlookup_done(&nd);
+		error = nlookup_init(&nd, vio->vn_file, UIO_USERSPACE, NLC_FOLLOW|NLC_LOCKVP);
 		if (error)
 			return (error);
+		if ((error = vn_open(&nd, NULL, flags, 0)) != 0)
+			goto done;
 	}
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (nd.ni_vp->v_type != VREG ||
-	    (error = VOP_GETATTR(nd.ni_vp, &vattr, td))) {
-		VOP_UNLOCK(nd.ni_vp, 0, td);
-		(void) vn_close(nd.ni_vp, flags, td);
-		return (error ? error : EINVAL);
+	vp = nd.nl_open_vp;
+	if (vp->v_type != VREG ||
+	    (error = VOP_GETATTR(vp, &vattr, td))) {
+		if (error == 0)
+			error = EINVAL;
+		goto done;
 	}
-	VOP_UNLOCK(nd.ni_vp, 0, td);
+	VOP_UNLOCK(vp, 0, td);
 	vn->sc_secsize = DEV_BSIZE;
-	vn->sc_vp = nd.ni_vp;
+	vn->sc_vp = vp;
+	nd.nl_open_vp = NULL;
 
 	/*
 	 * If the size is specified, override the file attributes.  Note that
@@ -581,8 +586,9 @@ vniocattach_file(vn, vio, dev, flag, td)
 		vn->sc_size = vattr.va_size / vn->sc_secsize;
 	error = vnsetcred(vn, p->p_ucred);
 	if (error) {
-		(void) vn_close(nd.ni_vp, flags, td);
-		return(error);
+		vn->sc_vp = NULL;
+		vn_close(vp, flags, td);
+		goto done;
 	}
 	vn->sc_flags |= VNF_INITED;
 	if (flags == FREAD)
@@ -602,7 +608,9 @@ vniocattach_file(vn, vio, dev, flag, td)
 	IFOPT(vn, VN_FOLLOW)
 		printf("vnioctl: SET vp %p size %x blks\n",
 		       vn->sc_vp, vn->sc_size);
-	return(0);
+done:
+	nlookup_done(&nd);
+	return(error);
 }
 
 /*
@@ -737,7 +745,7 @@ vnclear(struct vn_softc *vn)
 		dsgone(&vn->sc_slices);
 	vn->sc_flags &= ~VNF_INITED;
 	if (vn->sc_vp != NULL) {
-		(void)vn_close(vn->sc_vp, vn->sc_flags & VNF_READONLY ?
+		vn_close(vn->sc_vp, vn->sc_flags & VNF_READONLY ?
 		    FREAD : (FREAD|FWRITE), td);
 		vn->sc_vp = NULL;
 	}

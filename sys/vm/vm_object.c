@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.20 2004/10/12 19:21:16 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.21 2004/11/12 00:09:56 dillon Exp $
  */
 
 /*
@@ -133,7 +133,6 @@ static int	vm_object_page_collect_flush(vm_object_t object, vm_page_t p, int cur
  */
 
 struct object_q vm_object_list;
-static struct lwkt_token vm_object_list_token;
 static long vm_object_count;		/* count of all objects */
 vm_object_t kernel_object;
 vm_object_t kmem_object;
@@ -185,9 +184,11 @@ _vm_object_allocate(objtype_t type, vm_size_t size, vm_object_t object)
 
 	object->generation++;
 
+	crit_enter();
 	TAILQ_INSERT_TAIL(&vm_object_list, object, object_list);
 	vm_object_count++;
 	object_hash_rand = object->hash_rand;
+	crit_exit();
 }
 
 /*
@@ -199,8 +200,6 @@ void
 vm_object_init(void)
 {
 	TAILQ_INIT(&vm_object_list);
-	lwkt_token_init(&vm_object_list_token);
-	vm_object_count = 0;
 	
 	kernel_object = &kernel_object_store;
 	_vm_object_allocate(OBJT_DEFAULT, OFF_TO_IDX(VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS),
@@ -410,7 +409,6 @@ doterm:
 void
 vm_object_terminate(vm_object_t object)
 {
-	lwkt_tokref ilock;
 	vm_page_t p;
 
 	/*
@@ -485,11 +483,14 @@ vm_object_terminate(vm_object_t object)
 	/*
 	 * Remove the object from the global object list.
 	 */
-	lwkt_gettoken(&ilock, &vm_object_list_token);
+	crit_enter();
 	TAILQ_REMOVE(&vm_object_list, object, object_list);
-	lwkt_reltoken(&ilock);
+	vm_object_count--;
+	crit_exit();
 
 	wakeup(object);
+	if (object->ref_count != 0)
+		panic("vm_object_terminate2: object with references, ref_count=%d", object->ref_count);
 
 	/*
 	 * Free the space for the object.
@@ -1187,6 +1188,7 @@ vm_object_backing_scan(vm_object_t object, int op)
 		}
 	}
 	if (op & OBSC_COLLAPSE_WAIT) {
+		KKASSERT((backing_object->flags & OBJ_DEAD) == 0);
 		vm_object_set_flag(backing_object, OBJ_DEAD);
 	}
 
@@ -1427,7 +1429,6 @@ vm_object_collapse(vm_object_t object)
 			 * If there is exactly one reference to the backing
 			 * object, we can collapse it into the parent.  
 			 */
-
 			vm_object_backing_scan(object, OBSC_COLLAPSE_WAIT);
 
 			/*
@@ -1494,12 +1495,14 @@ vm_object_collapse(vm_object_t object)
 
 			KASSERT(backing_object->ref_count == 1, ("backing_object %p was somehow re-referenced during collapse!", backing_object));
 			KASSERT(TAILQ_FIRST(&backing_object->memq) == NULL, ("backing_object %p somehow has left over pages during collapse!", backing_object));
+			crit_enter();
 			TAILQ_REMOVE(
 			    &vm_object_list, 
 			    backing_object,
 			    object_list
 			);
 			vm_object_count--;
+			crit_exit();
 
 			zfree(obj_zone, backing_object);
 

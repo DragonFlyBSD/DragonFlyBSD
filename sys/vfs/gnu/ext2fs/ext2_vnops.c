@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.16 2004/10/12 19:20:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.17 2004/11/12 00:09:30 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -99,10 +99,9 @@ static int ext2_putpages (struct vop_putpages_args *);
 /* Global vfs data structures for ufs. */
 struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) ufs_vnoperate },
-	{ &vop_cachedlookup_desc,	(void *) ext2_lookup },
 	{ &vop_fsync_desc,		(void *) ext2_fsync },
 	{ &vop_inactive_desc,		(void *) ext2_inactive },
-	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
+	{ &vop_lookup_desc,		(void *) ext2_lookup },
 	{ &vop_read_desc,		(void *) ext2_read },
 	{ &vop_readdir_desc,		(void *) ext2_readdir },
 	{ &vop_reallocblks_desc,	(void *) ext2_reallocblks },
@@ -319,10 +318,6 @@ ext2_link(struct vop_link_args *ap)
 	struct inode *ip;
 	int error;
 
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_link: no name");
-#endif
 	if (tdvp->v_mount != vp->v_mount) {
 		error = EXDEV;
 		goto out2;
@@ -356,8 +351,8 @@ out2:
 }
 
 /*
- * Rename system call.
- *   See comments in sys/ufs/ufs/ufs_vnops.c
+ * Rename system call.  fdvp, fvp are ref'd.  tvp, tdvp are ref'd and locked.
+ * all vp's are released and must be in an unlocked state on return.
  *
  * ext2_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
  *		struct componentname *a_fcnp, struct vnode *a_tdvp,
@@ -379,16 +374,12 @@ ext2_rename(struct vop_rename_args *ap)
 	int error = 0;
 	u_char namlen;
 
-#ifdef DIAGNOSTIC
-	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
-	    (fcnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_rename: no name");
-#endif
 	/*
 	 * Check for cross-device rename.
 	 */
 	if ((fvp->v_mount != tdvp->v_mount) ||
-	    (tvp && (fvp->v_mount != tvp->v_mount))) {
+	    (tvp && (fvp->v_mount != tvp->v_mount)) ||
+	    tvp == tdvp) {
 		error = EXDEV;
 abortit:
 		if (tdvp == tvp)
@@ -413,13 +404,17 @@ abortit:
 	 * not call us in that case.  Temporarily just warn if they do.
 	 */
 	if (fvp == tvp) {
-		printf("ext2_rename: fvp == tvp (can't happen)\n");
 		error = 0;
 		goto abortit;
 	}
 
 	if ((error = vn_lock(fvp, LK_EXCLUSIVE, td)) != 0)
 		goto abortit;
+
+	/*
+	 * fvp, tvp, tdvp locked.  fdvp not locked but note that fdvp may
+	 * be equal to tdvp.
+	 */
 	dp = VTOI(fdvp);
 	ip = VTOI(fvp);
  	if (ip->i_nlink >= LINK_MAX) {
@@ -448,16 +443,17 @@ abortit:
 		oldparent = dp->i_number;
 		doingdirectory++;
 	}
-	vrele(fdvp);
 
 	/*
-	 * When the target exists, both the directory
-	 * and target vnodes are returned locked.
+	 * tvp is non-NULL if the target exists.   fvp is still locked but
+	 * we will unlock it soon.  The 'bad' goto target requires dp and
+	 * xp to be correctly assigned.
 	 */
 	dp = VTOI(tdvp);
-	xp = NULL;
 	if (tvp)
 		xp = VTOI(tvp);
+	else
+		xp = NULL;
 
 	/*
 	 * 1) Bump link count while we're moving stuff
@@ -484,23 +480,57 @@ abortit:
 	 */
 	error = VOP_ACCESS(fvp, VWRITE, tcnp->cn_cred, tcnp->cn_td);
 	VOP_UNLOCK(fvp, 0, td);
+
+	/*
+	 * tvp (if not NULL) and tdvp are locked.  fvp and fdvp are not.
+	 * dp and xp are set according to tdvp and tvp.
+	 */
 	if (oldparent != dp->i_number)
 		newparent = dp->i_number;
 	if (doingdirectory && newparent) {
 		if (error)	/* write access check above */
 			goto bad;
-		if (xp != NULL)
+
+		/*
+		 * Prepare for relookup, get rid of xp
+		 */
+		if (xp != NULL) {
 			vput(tvp);
-		error = ext2_checkpath(ip, dp, tcnp->cn_cred);
-		if (error)
-			goto out;
+			xp = NULL;
+		}
+
+		/*
+		 * checkpath vput()'s tdvp (VTOI(dp)) on return no matter what,
+		 * get an extra ref so we wind up with just an unlocked, ref'd
+		 * tdvp.  The 'out' target skips xp and tdvp cleanups.  Our
+		 * tdvp is now unlocked so we have to clean it up ourselves.
+		 */
 		vref(tdvp);
-		error = relookup(tdvp, &tvp, tcnp);
-		if (error)
+		error = ext2_checkpath(ip, dp, tcnp->cn_cred);
+		if (error) {
+			vrele(tdvp);
 			goto out;
-		vrele(tdvp);
+		}
+		/*
+		 * relookup no longer messes with the ref count.  An unlocked
+		 * tdvp must be passed and if no error occurs a locked tdvp
+		 * will be returned.  We have to use the out target again.
+		 */
+		error = relookup(tdvp, &tvp, tcnp);
+		if (error) {
+			if (tcnp->cn_flags & CNP_PDIRUNLOCK)
+				vrele(tdvp);
+			else
+				vput(tdvp);
+			goto out;
+		}
+
+		/*
+		 * tdvp is locked at this point.  in the RENAME case tvp may
+		 * be NULL without an error, assign xp accordingly.  The
+		 * 'bad' target can be used again after this.
+		 */
 		dp = VTOI(tdvp);
-		xp = NULL;
 		if (tvp)
 			xp = VTOI(tvp);
 	}
@@ -510,6 +540,9 @@ abortit:
 	 *    Otherwise, rewrite the target directory
 	 *    entry to reference the source inode and
 	 *    expunge the original entry's existence.
+	 *
+	 * tdvp and tvp are cleaned up by this code.  tvp is only good if
+	 * xp is not NULL.
 	 */
 	if (xp == NULL) {
 		if (dp->i_dev != ip->i_dev)
@@ -539,6 +572,11 @@ abortit:
 			}
 			goto bad;
 		}
+
+		/*
+		 * manual cleanup, we can't use the bad or out target after
+		 * this.
+		 */
 		vput(tdvp);
 	} else {
 		if (xp->i_dev != dp->i_dev || xp->i_dev != ip->i_dev)
@@ -575,7 +613,6 @@ abortit:
 				error = ENOTDIR;
 				goto bad;
 			}
-			cache_purge(tdvp);
 		} else if (doingdirectory) {
 			error = EISDIR;
 			goto bad;
@@ -593,7 +630,13 @@ abortit:
 			dp->i_nlink--;
 			dp->i_flag |= IN_CHANGE;
 		}
+
+		/*
+		 * manual cleanup, we can't use the bad or out target after
+		 * this.
+		 */
 		vput(tdvp);
+
 		/*
 		 * Adjust the link count of the target to
 		 * reflect the dirrewrite above.  If this is
@@ -617,26 +660,64 @@ abortit:
 	}
 
 	/*
+	 * tvp and tdvp have been cleaned up.  The bad and out targets may
+	 * not be used.  fvp and fdvp are ref'd but not locked.  ip
+	 * still represents the old fvp and ip->i_flag may still have IN_RENAME
+	 * set (if doingdirectory).
+	 */
+
+	/*
 	 * 3) Unlink the source.
+	 *
+	 * fdvp is locked and ref'd. ap->a_fvp holds the old lookup unlocked
+	 * and ref'd, fvp will hold the new lookup locked and ref'd.
+	 *
+	 * After the relookup ap->a_fvp must be released as part of our
+	 * cleanup, not just fdvp and fvp.  And, on success, fdvp and
+	 * fvp will be locked so the bad and out targets cannot be used.
 	 */
 	fcnp->cn_flags &= ~CNP_MODMASK;
-	fcnp->cn_flags |= CNP_LOCKPARENT | CNP_LOCKLEAF;
-	vref(fdvp);
+	fcnp->cn_flags |= CNP_LOCKPARENT;
+	KKASSERT(fcnp->cn_flags & CNP_PDIRUNLOCK);
 	error = relookup(fdvp, &fvp, fcnp);
-	if (error == 0)
-		vrele(fdvp);
-	if (fvp != NULL) {
-		xp = VTOI(fvp);
-		dp = VTOI(fdvp);
-	} else {
+	if (error) {
 		/*
 		 * From name has disappeared.
 		 */
 		if (doingdirectory)
 			panic("ufs_rename: lost dir entry");
+		/* ip->i_flag only sets IN_RENAME if doingdirectory */
 		vrele(ap->a_fvp);
+		if (fcnp->cn_flags & CNP_PDIRUNLOCK)
+			vrele(fdvp);
+		else
+			vput(fdvp);
 		return (0);
 	}
+	KKASSERT((fcnp->cn_flags & CNP_PDIRUNLOCK) == 0);
+
+	/*
+	 * This case shouldn't occur
+	 */
+	if (fvp == NULL) {
+		/*
+		 * From name has disappeared.
+		 */
+		if (doingdirectory)
+			panic("ufs_rename: lost dir entry");
+		/* ip->i_flag only sets IN_RENAME if doingdirectory */
+		vrele(ap->a_fvp);
+		vput(fvp);
+		vput(fdvp);
+		return (0);
+	}
+
+	/*
+	 * fvp and fdvp are both ref'd and locked.
+	 */
+	xp = VTOI(fvp);
+	dp = VTOI(fdvp);
+
 	/*
 	 * Ensure that the directory entry still exists and has not
 	 * changed while the new name has been entered. If the source is
@@ -650,6 +731,7 @@ abortit:
 	if (xp != ip) {
 		if (doingdirectory)
 			panic("ufs_rename: lost dir entry");
+		/* ip->i_flag only sets IN_RENAME if doingdirectory */
 	} else {
 		/*
 		 * If the source is a directory with a
@@ -681,7 +763,6 @@ abortit:
 					    IO_NODELOCKED|IO_SYNC,
 					    tcnp->cn_cred, (int *)0,
 					    NULL);
-					cache_purge(fdvp);
 				}
 			}
 		}
@@ -692,17 +773,16 @@ abortit:
 		}
 		xp->i_flag &= ~IN_RENAME;
 	}
-	if (dp)
-		vput(fdvp);
-	if (xp)
-		vput(fvp);
+	vput(fdvp);
+	vput(fvp);
 	vrele(ap->a_fvp);
 	return (error);
 
 bad:
 	if (xp)
 		vput(ITOV(xp));
-	vput(ITOV(dp));
+	if (dp)
+		vput(ITOV(dp));
 out:
 	if (doingdirectory)
 		ip->i_flag &= ~IN_RENAME;
@@ -711,8 +791,9 @@ out:
 		ip->i_flag |= IN_CHANGE;
 		ip->i_flag &= ~IN_RENAME;
 		vput(fvp);
-	} else
+	} else {
 		vrele(fvp);
+	}
 	return (error);
 }
 
@@ -733,10 +814,6 @@ ext2_mkdir(struct vop_mkdir_args *ap)
 	struct dirtemplate dirtemplate, *dtp;
 	int error, dmode;
 
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ufs_mkdir: no name");
-#endif
 	dp = VTOI(dvp);
 	if ((nlink_t)dp->i_nlink >= LINK_MAX) {
 		error = EMLINK;
@@ -930,7 +1007,6 @@ ext2_rmdir(struct vop_rmdir_args *ap)
 		goto out;
 	dp->i_nlink--;
 	dp->i_flag |= IN_CHANGE;
-	cache_purge(dvp);
 	VOP_UNLOCK(dvp, 0, td);
 	/*
 	 * Truncate inode.  The only stuff left
@@ -945,7 +1021,6 @@ ext2_rmdir(struct vop_rmdir_args *ap)
 	 */
 	ip->i_nlink -= 2;
 	error = UFS_TRUNCATE(vp, (off_t)0, IO_SYNC, cnp->cn_cred, td);
-	cache_purge(ITOV(ip));
 	vn_lock(dvp, LK_EXCLUSIVE | LK_RETRY, td);
 out:
 	return (error);
@@ -997,10 +1072,6 @@ ext2_makeinode(int mode, struct vnode *dvp, struct vnode **vpp,
 	int error;
 
 	pdir = VTOI(dvp);
-#ifdef DIAGNOSTIC
-	if ((cnp->cn_flags & CNP_HASBUF) == 0)
-		panic("ext2_makeinode: no name");
-#endif
 	*vpp = NULL;
 	if ((mode & IFMT) == 0)
 		mode |= IFREG;

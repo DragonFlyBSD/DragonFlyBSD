@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.45 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.46 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -322,7 +322,7 @@ update:
 	/*
 	 * Mount the filesystem.
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
-	 * get.  No freeing of cn_pnbuf.
+	 * get. 
 	 */
 	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), td);
 	if (mp->mnt_flag & MNT_UPDATE) {
@@ -453,7 +453,7 @@ unmount(struct unmount_args *uap)
 	struct vnode *vp;
 	struct mount *mp;
 	int error;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
@@ -461,12 +461,16 @@ unmount(struct unmount_args *uap)
 	if (usermount == 0 && (error = suser(td)))
 		return (error);
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error)
 		return (error);
-	vp = nd.ni_vp;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
+
 	mp = vp->v_mount;
 
 	/*
@@ -639,43 +643,42 @@ SYSCTL_INT(_kern_prison, OID_AUTO, quotas, CTLFLAG_RW, &prison_quotas, 0, "");
 int
 quotactl(struct quotactl_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct nlookupdata nd;
+	struct thread *td;
+	struct proc *p;
 	struct mount *mp;
 	int error;
-	struct nameidata nd;
 
-	KKASSERT(p);
+	td = curthread;
+	p = td->td_proc;
 	if (p->p_ucred->cr_prison && !prison_quotas)
 		return (EPERM);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	mp = nd.ni_vp->v_mount;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vrele(nd.ni_vp);
-	return (VFS_QUOTACTL(mp, SCARG(uap, cmd), SCARG(uap, uid),
-	    SCARG(uap, arg), td));
+
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		mp = nd.nl_ncp->nc_mount;
+		error = VFS_QUOTACTL(mp, SCARG(uap, cmd), SCARG(uap, uid),
+				    SCARG(uap, arg), nd.nl_td);
+	}
+	nlookup_done(&nd);
+	return (error);
 }
 
 int
-kern_statfs(struct nameidata *nd, struct statfs *buf)
+kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 {
 	struct thread *td = curthread;
 	struct mount *mp;
 	struct statfs *sp;
 	int error;
 
-	error = namei(nd);
-	if (error)
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	mp = nd->ni_vp->v_mount;
+	mp = nd->nl_ncp->nc_mount;
 	sp = &mp->mnt_stat;
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vrele(nd->ni_vp);
-	error = VFS_STATFS(mp, sp, td);
-	if (error)
+	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
@@ -693,15 +696,14 @@ kern_statfs(struct nameidata *nd, struct statfs *buf)
 int
 statfs(struct statfs_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct statfs buf;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_statfs(&nd, &buf);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_statfs(&nd, &buf);
+	nlookup_done(&nd);
 	if (error == 0)
 		error = copyout(&buf, uap->buf, sizeof(*uap->buf));
 	return (error);
@@ -921,10 +923,9 @@ chdir(struct chdir_args *uap)
 	int error;
 
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0) {
+	if (error == 0)
 		error = kern_chdir(&nd);
-		nlookup_done(&nd);
-	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1042,10 +1043,9 @@ chroot(struct chroot_args *uap)
 
 	KKASSERT(td->td_proc);
 	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
-	if (error == 0) {
+	if (error == 0) 
 		error = kern_chroot(&nd);
-		nlookup_done(&nd);
-	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1067,79 +1067,91 @@ checkvp_chdir(struct vnode *vp, struct thread *td)
 }
 
 int
-kern_open(struct nameidata *nd, int oflags, int mode, int *res)
+kern_open(struct nlookupdata *nd, int oflags, int mode, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
-	struct file *fp;
-	struct vnode *vp;
 	int cmode, flags;
 	struct file *nfp;
+	struct file *fp;
+	struct vnode *vp;
 	int type, indx, error;
-	int ndxerror;
 	struct flock lf;
-	struct nlookupdata ndx;
 
 	if ((oflags & O_ACCMODE) == O_ACCMODE)
 		return (EINVAL);
 	flags = FFLAGS(oflags);
-	error = falloc(p, &nfp, &indx);
+	error = falloc(p, &nfp, NULL);
 	if (error)
 		return (error);
 	fp = nfp;
 	cmode = ((mode &~ fdp->fd_cmask) & ALLPERMS) &~ S_ISTXT;
-	p->p_dupfd = -indx - 1;			/* XXX check for fdopen */
-	/*
-	 * Bump the ref count to prevent another process from closing
-	 * the descriptor while we are blocked in vn_open()
-	 */
-	fhold(fp);
 
 	/*
-	 * XXX temporary hack so we can record the namecache pointer 
-	 * associated with an open descriptor.
+	 * XXX p_dupfd is a real mess.  It allows a device to return a
+	 * file descriptor to be duplicated rather then doing the open
+	 * itself.
 	 */
-	ndxerror = nlookup_init(&ndx, nd->ni_dirp, nd->ni_segflg,
-	    ((nd->ni_cnd.cn_flags & CNP_FOLLOW) ? NLC_FOLLOW : 0));
+	p->p_dupfd = -1;
 
-	error = vn_open(nd, flags, cmode);
+	/*
+	 * Call vn_open() to do the lookup and assign the vnode to the 
+	 * file pointer.  vn_open() does not change the ref count on fp
+	 * and the vnode, on success, will be inherited by the file pointer
+	 * and unlocked.
+	 */
+	nd->nl_flags |= NLC_LOCKVP;
+	error = vn_open(nd, fp, flags, cmode);
+	nlookup_done(nd);
 	if (error) {
-		/*
-		 * release our own reference
-		 */
-		fdrop(fp, td);
-
 		/*
 		 * handle special fdopen() case.  bleh.  dupfdopen() is
 		 * responsible for dropping the old contents of ofiles[indx]
 		 * if it succeeds.
+		 *
+		 * Note that if fsetfd() succeeds it will add a ref to fp
+		 * which represents the fd_ofiles[] assignment.  We must still
+		 * drop our reference.
 		 */
-		if ((error == ENODEV || error == ENXIO) &&
-		    p->p_dupfd >= 0 &&			/* XXX from fdopen */
-		    (error =
-			dupfdopen(fdp, indx, p->p_dupfd, flags, error)) == 0) {
-			*res = indx;
-			nlookup_done(&ndx);
-			return (0);
+		if ((error == ENODEV || error == ENXIO) && p->p_dupfd >= 0) {
+			if (fsetfd(p, fp, &indx) == 0) {
+				error = dupfdopen(fdp, indx, p->p_dupfd, flags, error);
+				if (error == 0) {
+					*res = indx;
+					fdrop(fp, td);	/* our ref */
+					return (0);
+				}
+				if (fdp->fd_ofiles[indx] == fp) {
+					fdp->fd_ofiles[indx] = NULL;
+					fdrop(fp, td);	/* fd_ofiles[] ref */
+				}
+			}
 		}
-		/*
-		 * Clean up the descriptor, but only if another thread hadn't
-		 * replaced or closed it.
-		 */
-		if (fdp->fd_ofiles[indx] == fp) {
-			fdp->fd_ofiles[indx] = NULL;
-			fdrop(fp, td);
-		}
-
+		fdrop(fp, td);	/* our ref */
 		if (error == ERESTART)
 			error = EINTR;
-		nlookup_done(&ndx);
 		return (error);
 	}
+
+	/*
+	 * ref the vnode for ourselves so it can't be ripped out from under
+	 * is.  XXX need an ND flag to request that the vnode be returned
+	 * anyway.
+	 */
+	vp = (struct vnode *)fp->f_data;
+	vref(vp);
+	if ((error = fsetfd(p, fp, &indx)) != 0) {
+		fdrop(fp, td);
+		vrele(vp);
+		return (error);
+	}
+
+	/*
+	 * If no error occurs the vp will have been assigned to the file
+	 * pointer.
+	 */
 	p->p_dupfd = 0;
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vp = nd->ni_vp;
 
 	/*
 	 * There should be 2 references on the file, one from the descriptor
@@ -1152,18 +1164,13 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 	if (fp->f_count == 1) {
 		KASSERT(fdp->fd_ofiles[indx] != fp,
 		    ("Open file descriptor lost all refs"));
-		VOP_UNLOCK(vp, 0, td);
-		vn_close(vp, flags & FMASK, td);
+		vrele(vp);
+		fo_close(fp, td);
 		fdrop(fp, td);
 		*res = indx;
-		nlookup_done(&ndx);
 		return 0;
 	}
 
-	fp->f_data = (caddr_t)vp;
-	fp->f_flag = flags & FMASK;
-	fp->f_ops = &vnops;
-	fp->f_type = (vp->v_type == VFIFO ? DTYPE_FIFO : DTYPE_VNODE);
 	if (flags & (O_EXLOCK | O_SHLOCK)) {
 		lf.l_whence = SEEK_SET;
 		lf.l_start = 0;
@@ -1175,7 +1182,7 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 		type = F_FLOCK;
 		if ((flags & FNONBLOCK) == 0)
 			type |= F_WAIT;
-		VOP_UNLOCK(vp, 0, td);
+
 		if ((error = VOP_ADVLOCK(vp, (caddr_t)fp, F_SETLK, &lf, type)) != 0) {
 			/*
 			 * lock request failed.  Normally close the descriptor
@@ -1183,41 +1190,21 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 			 * it when we weren't looking.  One reference is
 			 * owned by the descriptor array, the other by us.
 			 */
+			vrele(vp);
 			if (fdp->fd_ofiles[indx] == fp) {
 				fdp->fd_ofiles[indx] = NULL;
 				fdrop(fp, td);
 			}
 			fdrop(fp, td);
-			nlookup_done(&ndx);
 			return (error);
 		}
-		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
 		fp->f_flag |= FHASLOCK;
 	}
 	/* assert that vn_open created a backing object if one is needed */
 	KASSERT(!vn_canvmio(vp) || VOP_GETVOBJECT(vp, NULL) == 0,
 		("open: vmio vnode has no backing object after vn_open"));
-	VOP_UNLOCK(vp, 0, td);
 
-	/*
-	 * If the vp is a directory locate the ncp to store with the file
-	 * descriptor.  XXX temporary.  We may eventually wish to do this
-	 * permanently as it would provide an invaluable diagnostic tool,
-	 * but first the entire open path needs to be converted from
-	 * namei to nlookup so we can avoid having to do a double-lookup.
-	 *
-	 * The primary purpose of storing the ncp with the file pointer is
-	 * so it can be used in fchdir() and fchroot() syscalls, allowing
-	 * us to retain an unbroken namecache topology.
-	 */
-	if (ndxerror == 0 && vp->v_type == VDIR) {
-		if ((ndxerror = nlookup(&ndx)) == 0) {
-			fp->f_ncp = ndx.nl_ncp;
-			ndx.nl_ncp = NULL;
-			cache_unlock(fp->f_ncp);
-		}
-	}
-	nlookup_done(&ndx);
+	vrele(vp);
 
 	/*
 	 * release our private reference, leaving the one associated with the
@@ -1237,20 +1224,22 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 int
 open(struct open_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_open(&nd, uap->flags, uap->mode, &uap->sysmsg_result);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_open(&nd, uap->flags,
+				    uap->mode, &uap->sysmsg_result);
+	}
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_mknod(struct nameidata *nd, int mode, int dev)
+kern_mknod(struct nlookupdata *nd, int mode, int dev)
 {
+	struct namecache *ncp;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
@@ -1271,61 +1260,47 @@ kern_mknod(struct nameidata *nd, int mode, int dev)
 	}
 	if (error)
 		return (error);
-	bwillwrite();
-	error = namei(nd);
-	if (error)
-		return (error);
-	vp = nd->ni_vp;
-	if (vp != NULL)
-		error = EEXIST;
-	else {
-		VATTR_NULL(&vattr);
-		vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
-		vattr.va_rdev = dev;
-		whiteout = 0;
 
-		switch (mode & S_IFMT) {
-		case S_IFMT:	/* used by badsect to flag bad sectors */
-			vattr.va_type = VBAD;
-			break;
-		case S_IFCHR:
-			vattr.va_type = VCHR;
-			break;
-		case S_IFBLK:
-			vattr.va_type = VBLK;
-			break;
-		case S_IFWHT:
-			whiteout = 1;
-			break;
-		default:
-			error = EINVAL;
-			break;
-		}
+	bwillwrite();
+	nd->nl_flags |= NLC_CREATE;
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	ncp = nd->nl_ncp;
+	if (ncp->nc_vp)
+		return (EEXIST);
+
+	VATTR_NULL(&vattr);
+	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
+	vattr.va_rdev = dev;
+	whiteout = 0;
+
+	switch (mode & S_IFMT) {
+	case S_IFMT:	/* used by badsect to flag bad sectors */
+		vattr.va_type = VBAD;
+		break;
+	case S_IFCHR:
+		vattr.va_type = VCHR;
+		break;
+	case S_IFBLK:
+		vattr.va_type = VBLK;
+		break;
+	case S_IFWHT:
+		whiteout = 1;
+		break;
+	default:
+		error = EINVAL;
+		break;
 	}
 	if (error == 0) {
-		VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-		if (whiteout)
-			error = VOP_WHITEOUT(nd->ni_dvp, NCPNULL,
-			    &nd->ni_cnd, NAMEI_CREATE);
-		else {
-			error = VOP_MKNOD(nd->ni_dvp, NCPNULL, &nd->ni_vp,
-			    &nd->ni_cnd, &vattr);
+		if (whiteout) {
+			error = VOP_NWHITEOUT(ncp, nd->nl_cred, NAMEI_CREATE);
+		} else {
+			vp = NULL;
+			error = VOP_NMKNOD(ncp, &vp, nd->nl_cred, &vattr);
 			if (error == 0)
-				vput(nd->ni_vp);
+				vput(vp);
 		}
-		NDFREE(nd, NDF_ONLY_PNBUF);
-		vput(nd->ni_dvp);
-	} else {
-		NDFREE(nd, NDF_ONLY_PNBUF);
-		if (nd->ni_dvp == vp)
-			vrele(nd->ni_dvp);
-		else
-			vput(nd->ni_dvp);
-		if (vp)
-			vrele(vp);
 	}
-	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "mknod");
-	ASSERT_VOP_UNLOCKED(nd->ni_vp, "mknod");
 	return (error);
 }
 
@@ -1337,48 +1312,42 @@ kern_mknod(struct nameidata *nd, int mode, int dev)
 int
 mknod(struct mknod_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_USERSPACE, uap->path,
-	    td);
-
-	error = kern_mknod(&nd, uap->mode, uap->dev);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_mknod(&nd, uap->mode, uap->dev);
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_mkfifo(struct nameidata *nd, int mode)
+kern_mkfifo(struct nlookupdata *nd, int mode)
 {
+	struct namecache *ncp;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vattr vattr;
+	struct vnode *vp;
 	int error;
 
 	bwillwrite();
-	error = namei(nd);
-	if (error)
+
+	nd->nl_flags |= NLC_CREATE;
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	if (nd->ni_vp != NULL) {
-		NDFREE(nd, NDF_ONLY_PNBUF);
-		if (nd->ni_dvp == nd->ni_vp)
-			vrele(nd->ni_dvp);
-		else
-			vput(nd->ni_dvp);
-		vrele(nd->ni_vp);
+	ncp = nd->nl_ncp;
+	if (ncp->nc_vp)
 		return (EEXIST);
-	}
+
 	VATTR_NULL(&vattr);
 	vattr.va_type = VFIFO;
 	vattr.va_mode = (mode & ALLPERMS) &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_MKNOD(nd->ni_dvp, NCPNULL, &nd->ni_vp, &nd->ni_cnd, &vattr);
+	vp = NULL;
+	error = VOP_NMKNOD(ncp, &vp, nd->nl_cred, &vattr);
 	if (error == 0)
-		vput(nd->ni_vp);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vput(nd->ni_dvp);
+		vput(vp);
 	return (error);
 }
 
@@ -1390,58 +1359,62 @@ kern_mkfifo(struct nameidata *nd, int mode)
 int
 mkfifo(struct mkfifo_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_USERSPACE, uap->path,
-	    td);
-
-	error = kern_mkfifo(&nd, uap->mode);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_mkfifo(&nd, uap->mode);
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_link(struct nameidata *nd, struct nameidata *linknd)
+kern_link(struct nlookupdata *nd, struct nlookupdata *linknd)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	int error;
 
+	/*
+	 * Lookup the source and obtained a locked vnode.
+	 *
+	 * XXX relookup on vget failure / race ?
+	 */
 	bwillwrite();
-	error = namei(nd);
-	if (error)
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vp = nd->ni_vp;
+	vp = nd->nl_ncp->nc_vp;
+	KKASSERT(vp != NULL);
 	if (vp->v_type == VDIR)
-		error = EPERM;		/* POSIX */
-	else {
-		error = namei(linknd);
-		if (error == 0) {
-			if (linknd->ni_vp != NULL) {
-				if (linknd->ni_vp)
-					vrele(linknd->ni_vp);
-				error = EEXIST;
-			} else {
-				VOP_LEASE(linknd->ni_dvp, td, p->p_ucred,
-				    LEASE_WRITE);
-				VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-				error = VOP_LINK(linknd->ni_dvp, NCPNULL, vp,
-				    &linknd->ni_cnd);
-			}
-			NDFREE(linknd, NDF_ONLY_PNBUF);
-			if (linknd->ni_dvp == linknd->ni_vp)
-				vrele(linknd->ni_dvp);
-			else
-				vput(linknd->ni_dvp);
-			ASSERT_VOP_UNLOCKED(linknd->ni_dvp, "link");
-			ASSERT_VOP_UNLOCKED(linknd->ni_vp, "link");
-		}
+		return (EPERM);		/* POSIX */
+	if ((error = vget(vp, LK_EXCLUSIVE, td)) != 0)
+		return (error);
+
+	/*
+	 * Unlock the source so we can lookup the target without deadlocking
+	 * (XXX vp is locked already, possible other deadlock?).  The target
+	 * must not exist.
+	 */
+	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
+	nd->nl_flags &= ~NLC_NCPISLOCKED;
+	cache_unlock(nd->nl_ncp);
+
+	linknd->nl_flags |= NLC_CREATE;
+	if ((error = nlookup(linknd)) != 0) {
+		vput(vp);
+		return (error);
 	}
-	vrele(vp);
+	if (linknd->nl_ncp->nc_vp) {
+		vput(vp);
+		return (EEXIST);
+	}
+
+	/*
+	 * Finally run the new API VOP.
+	 */
+	error = VOP_NLINK(linknd->nl_ncp, vp, linknd->nl_cred);
+	vput(vp);
 	return (error);
 }
 
@@ -1453,53 +1426,41 @@ kern_link(struct nameidata *nd, struct nameidata *linknd)
 int
 link(struct link_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd, linknd;
+	struct nlookupdata nd, linknd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_NOOBJ, UIO_USERSPACE,
-	    uap->path, td);
-	NDINIT(&linknd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->link, td);
-
-	error = kern_link(&nd, &linknd);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = nlookup_init(&linknd, uap->link, UIO_USERSPACE, 0);
+		if (error == 0)
+			error = kern_link(&nd, &linknd);
+		nlookup_done(&linknd);
+	}
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_symlink(char *path, struct nameidata *nd)
+kern_symlink(struct nlookupdata *nd, char *path, int mode)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct namecache *ncp;
 	struct vattr vattr;
+	struct vnode *vp;
 	int error;
 
 	bwillwrite();
-	error = namei(nd);
-	if (error)
+	nd->nl_flags |= NLC_CREATE;
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	if (nd->ni_vp) {
-		NDFREE(nd, NDF_ONLY_PNBUF);
-		if (nd->ni_dvp == nd->ni_vp)
-			vrele(nd->ni_dvp);
-		else
-			vput(nd->ni_dvp);
-		vrele(nd->ni_vp);
+	ncp = nd->nl_ncp;
+	if (ncp->nc_vp)
 		return (EEXIST);
-	}
-	VATTR_NULL(&vattr);
-	vattr.va_mode = ACCESSPERMS &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_SYMLINK(nd->ni_dvp, NCPNULL, &nd->ni_vp, &nd->ni_cnd,
-	    &vattr, path);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	if (error == 0)
-		vput(nd->ni_vp);
-	vput(nd->ni_dvp);
-	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "symlink");
-	ASSERT_VOP_UNLOCKED(nd->ni_vp, "symlink");
 
+	VATTR_NULL(&vattr);
+	vattr.va_mode = mode;
+	error = VOP_NSYMLINK(ncp, &vp, nd->nl_cred, &vattr, path);
+	if (error == 0)
+		vput(vp);
 	return (error);
 }
 
@@ -1512,16 +1473,20 @@ int
 symlink(struct symlink_args *uap)
 {
 	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
+	int mode;
 
 	path = zalloc(namei_zone);
 	error = copyinstr(uap->path, path, MAXPATHLEN, NULL);
 	if (error == 0) {
-		NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT | CNP_NOOBJ, 
-			UIO_USERSPACE, uap->link, td);
-		error = kern_symlink(path, &nd);
+		error = nlookup_init(&nd, uap->link, UIO_USERSPACE, 0);
+		if (error == 0) {
+			mode = ACCESSPERMS & ~td->td_proc->p_fd->fd_cmask;
+			error = kern_symlink(&nd, path, mode);
+		}
+		nlookup_done(&nd);
 	}
 	zfree(namei_zone, path);
 	return (error);
@@ -1536,83 +1501,32 @@ symlink(struct symlink_args *uap)
 int
 undelete(struct undelete_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
+	struct nlookupdata nd;
 	int error;
-	struct nameidata nd;
 
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, 0);
 	bwillwrite();
-	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT | CNP_DOWHITEOUT, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-
-	if (nd.ni_vp != NULLVP || !(nd.ni_cnd.cn_flags & CNP_ISWHITEOUT)) {
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		if (nd.ni_dvp == nd.ni_vp)
-			vrele(nd.ni_dvp);
-		else
-			vput(nd.ni_dvp);
-		if (nd.ni_vp)
-			vrele(nd.ni_vp);
-		return (EEXIST);
-	}
-
-	VOP_LEASE(nd.ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_WHITEOUT(nd.ni_dvp, NCPNULL, &nd.ni_cnd, NAMEI_DELETE);
+	nd.nl_flags |= NLC_DELETE;
 	if (error == 0)
-		cache_purge(nd.ni_vp);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vput(nd.ni_dvp);
-	ASSERT_VOP_UNLOCKED(nd.ni_dvp, "undelete");
-	ASSERT_VOP_UNLOCKED(nd.ni_vp, "undelete");
+		error = nlookup(&nd);
+	if (error == 0)
+		error = VOP_NWHITEOUT(nd.nl_ncp, nd.nl_cred, NAMEI_DELETE);
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_unlink(struct nameidata *nd)
+kern_unlink(struct nlookupdata *nd)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct vnode *vp;
+	struct namecache *ncp;
 	int error;
 
 	bwillwrite();
-	error = namei(nd);
-	if (error)
+	nd->nl_flags |= NLC_DELETE;
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	vp = nd->ni_vp;
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-
-	if (vp->v_type == VDIR)
-		error = EPERM;		/* POSIX */
-	else {
-		/*
-		 * The root of a mounted filesystem cannot be deleted.
-		 *
-		 * XXX: can this only be a VDIR case?
-		 */
-		if (vp->v_flag & VROOT)
-			error = EBUSY;
-	}
-
-	if (error == 0) {
-		VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-		error = VOP_REMOVE(nd->ni_dvp, NCPNULL, vp, &nd->ni_cnd);
-		if (error == 0)
-			cache_purge(vp);
-	}
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	if (nd->ni_dvp == vp)
-		vrele(nd->ni_dvp);
-	else
-		vput(nd->ni_dvp);
-	if (vp != NULLVP)
-		vput(vp);
-	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "unlink");
-	ASSERT_VOP_UNLOCKED(nd->ni_vp, "unlink");
+	ncp = nd->nl_ncp;
+	error = VOP_NREMOVE(ncp, nd->nl_cred);
 	return (error);
 }
 
@@ -1624,15 +1538,13 @@ kern_unlink(struct nameidata *nd)
 int
 unlink(struct unlink_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT, UIO_USERSPACE, uap->path,
-	    td);
-
-	error = kern_unlink(&nd);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_unlink(&nd);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1688,29 +1600,17 @@ lseek(struct lseek_args *uap)
 }
 
 int
-kern_access(struct nameidata *nd, int aflags)
+kern_access(struct nlookupdata *nd, int aflags)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct ucred *cred, *tmpcred;
 	struct vnode *vp;
 	int error, flags;
 
-	cred = p->p_ucred;
-	/*
-	 * Create and modify a temporary credential instead of one that
-	 * is potentially shared.  This could also mess up socket
-	 * buffer accounting which can run in an interrupt context.
-	 */
-	tmpcred = crdup(cred);
-	tmpcred->cr_uid = p->p_ucred->cr_ruid;
-	tmpcred->cr_groups[0] = p->p_ucred->cr_rgid;
-	p->p_ucred = tmpcred;
-	nd->ni_cnd.cn_cred = tmpcred;
-	error = namei(nd);
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &vp);
 	if (error)
-		goto out1;
-	vp = nd->ni_vp;
+		return (error);
 
 	/* Flags == 0 means only check for existence. */
 	if (aflags) {
@@ -1722,13 +1622,9 @@ kern_access(struct nameidata *nd, int aflags)
 		if (aflags & X_OK)
 			flags |= VEXEC;
 		if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
-			error = VOP_ACCESS(vp, flags, tmpcred, td);
+			error = VOP_ACCESS(vp, flags, nd->nl_cred, td);
 	}
-	NDFREE(nd, NDF_ONLY_PNBUF);
 	vput(vp);
-out1:
-	p->p_ucred = cred;
-	crfree(tmpcred);
 	return (error);
 }
 
@@ -1740,15 +1636,13 @@ out1:
 int
 access(struct access_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_access(&nd, uap->flags);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_access(&nd, uap->flags);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1789,8 +1683,8 @@ stat(struct stat_args *uap)
 		error = kern_stat(&nd, &st);
 		if (error == 0)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
-		nlookup_done(&nd);
 	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1811,8 +1705,8 @@ lstat(struct lstat_args *uap)
 		error = kern_stat(&nd, &st);
 		if (error == 0)
 			error = copyout(&st, uap->ub, sizeof(*uap->ub));
-		nlookup_done(&nd);
 	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -1848,22 +1742,27 @@ int
 nstat(struct nstat_args *uap)
 {
 	struct thread *td = curthread;
+	struct vnode *vp;
 	struct stat sb;
 	struct nstat nsb;
+	struct nlookupdata nd;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = vn_stat(nd.ni_vp, &sb, td);
-	vput(nd.ni_vp);
-	if (error)
-		return (error);
-	cvtnstat(&sb, &nsb);
-	error = copyout(&nsb, SCARG(uap, ub), sizeof (nsb));
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = vn_stat(vp, &sb, td);
+		vput(vp);
+		if (error == 0) {
+			cvtnstat(&sb, &nsb);
+			error = copyout(&nsb, SCARG(uap, ub), sizeof(nsb));
+		}
+	}
 	return (error);
 }
 
@@ -1877,24 +1776,27 @@ int
 nlstat(struct nlstat_args *uap)
 {
 	struct thread *td = curthread;
-	int error;
 	struct vnode *vp;
 	struct stat sb;
 	struct nstat nsb;
-	struct nameidata nd;
+	struct nlookupdata nd;
+	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	vp = nd.ni_vp;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = vn_stat(vp, &sb, td);
-	vput(vp);
-	if (error)
-		return (error);
-	cvtnstat(&sb, &nsb);
-	error = copyout(&nsb, SCARG(uap, ub), sizeof (nsb));
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, 0);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = vn_stat(vp, &sb, td);
+		vput(vp);
+		if (error == 0) {
+			cvtnstat(&sb, &nsb);
+			error = copyout(&nsb, SCARG(uap, ub), sizeof(nsb));
+		}
+	}
 	return (error);
 }
 
@@ -1907,17 +1809,21 @@ nlstat(struct nlstat_args *uap)
 int
 pathconf(struct pathconf_args *uap)
 {
-	struct thread *td = curthread;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = VOP_PATHCONF(nd.ni_vp, SCARG(uap, name), uap->sysmsg_fds);
-	vput(nd.ni_vp);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = VOP_PATHCONF(vp, SCARG(uap, name), uap->sysmsg_fds);
+		vput(vp);
+	}
 	return (error);
 }
 
@@ -1927,7 +1833,7 @@ pathconf(struct pathconf_args *uap)
  * in VOP_READLINK().
  */
 int
-kern_readlink(struct nameidata *nd, char *buf, int count, int *res)
+kern_readlink(struct nlookupdata *nd, char *buf, int count, int *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1936,14 +1842,14 @@ kern_readlink(struct nameidata *nd, char *buf, int count, int *res)
 	struct uio auio;
 	int error;
 
-	error = namei(nd);
+	if ((error = nlookup(nd)) != 0)
+		return (error);
+	error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &vp);
 	if (error)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vp = nd->ni_vp;
-	if (vp->v_type != VLNK)
+	if (vp->v_type != VLNK) {
 		error = EINVAL;
-	else {
+	} else {
 		aiov.iov_base = buf;
 		aiov.iov_len = count;
 		auio.uio_iov = &aiov;
@@ -1968,16 +1874,15 @@ kern_readlink(struct nameidata *nd, char *buf, int count, int *res)
 int
 readlink(struct readlink_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ, UIO_USERSPACE,
-	    uap->path, td);
-
-	error = kern_readlink(&nd, uap->buf, uap->count,
-	    &uap->sysmsg_result);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_readlink(&nd, uap->buf, uap->count,
+					&uap->sysmsg_result);
+	}
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2017,18 +1922,23 @@ setfflags(struct vnode *vp, int flags)
 int
 chflags(struct chflags_args *uap)
 {
-	struct thread *td = curthread;
+	struct nlookupdata nd;
+	struct vnode *vp;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = setfflags(nd.ni_vp, SCARG(uap, flags));
-	vrele(nd.ni_vp);
-	return error;
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	/* XXX Add NLC flag indicating modifying operation? */
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		error = setfflags(vp, SCARG(uap, flags));
+		vrele(vp);
+	}
+	return (error);
 }
 
 /*
@@ -2068,17 +1978,19 @@ setfmode(struct vnode *vp, int mode)
 }
 
 int
-kern_chmod(struct nameidata *nd, int mode)
+kern_chmod(struct nlookupdata *nd, int mode)
 {
+	struct vnode *vp;
 	int error;
 
-	error = namei(nd);
-	if (error)
+	/* XXX Add NLC flag indicating modifying operation? */
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	error = setfmode(nd->ni_vp, mode);
-	vrele(nd->ni_vp);
-	return error;
+	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
+		return (error);
+	error = setfmode(vp, mode);
+	vrele(vp);
+	return (error);
 }
 
 /*
@@ -2090,14 +2002,13 @@ kern_chmod(struct nameidata *nd, int mode)
 int
 chmod(struct chmod_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_chmod(&nd, uap->mode);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_chmod(&nd, uap->mode);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2110,17 +2021,14 @@ chmod(struct chmod_args *uap)
 int
 lchmod(struct lchmod_args *uap)
 {
-	struct thread *td = curthread;
+	struct nlookupdata nd;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	error = setfmode(nd.ni_vp, SCARG(uap, mode));
-	vrele(nd.ni_vp);
-	return error;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_chmod(&nd, uap->mode);
+	nlookup_done(&nd);
+	return (error);
 }
 
 /*
@@ -2161,16 +2069,18 @@ setfown(struct vnode *vp, uid_t uid, gid_t gid)
 }
 
 int
-kern_chown(struct nameidata *nd, int uid, int gid)
+kern_chown(struct nlookupdata *nd, int uid, int gid)
 {
+	struct vnode *vp;
 	int error;
 
-	error = namei(nd);
-	if (error)
+	/* XXX Add NLC flag indicating modifying operation? */
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	error = setfown(nd->ni_vp, uid, gid);
-	vrele(nd->ni_vp);
+	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
+		return (error);
+	error = setfown(vp, uid, gid);
+	vrele(vp);
 	return (error);
 }
 
@@ -2182,14 +2092,13 @@ kern_chown(struct nameidata *nd, int uid, int gid)
 int
 chown(struct chown_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_chown(&nd, uap->uid, uap->gid);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_chown(&nd, uap->uid, uap->gid);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2201,14 +2110,13 @@ chown(struct chown_args *uap)
 int
 lchown(struct lchown_args *uap)
 {
-	struct thread *td = curthread;
+	struct nlookupdata nd;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, uap->path, td);
-
-	error = kern_chown(&nd, uap->uid, uap->gid);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_chown(&nd, uap->uid, uap->gid);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2269,20 +2177,21 @@ setutimes(struct vnode *vp, const struct timespec *ts, int nullflag)
 }
 
 int
-kern_utimes(struct nameidata *nd, struct timeval *tptr)
+kern_utimes(struct nlookupdata *nd, struct timeval *tptr)
 {
 	struct timespec ts[2];
+	struct vnode *vp;
 	int error;
 
-	error = getutimes(tptr, ts);
-	if (error)
+	if ((error = getutimes(tptr, ts)) != 0)
 		return (error);
-	error = namei(nd);
-	if (error)
+	/* XXX Add NLC flag indicating modifying operation? */
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	error = setutimes(nd->ni_vp, ts, tptr == NULL);
-	vrele(nd->ni_vp);
+	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
+		return (error);
+	error = setutimes(vp, ts, tptr == NULL);
+	vrele(vp);
 	return (error);
 }
 
@@ -2294,9 +2203,8 @@ kern_utimes(struct nameidata *nd, struct timeval *tptr)
 int
 utimes(struct utimes_args *uap)
 {
-	struct thread *td = curthread;
 	struct timeval tv[2];
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
 	if (uap->tptr) {
@@ -2304,10 +2212,10 @@ utimes(struct utimes_args *uap)
 		if (error)
 			return (error);
 	}
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_utimes(&nd, uap->tptr ? tv : NULL);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_utimes(&nd, uap->tptr ? tv : NULL);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2319,9 +2227,8 @@ utimes(struct utimes_args *uap)
 int
 lutimes(struct lutimes_args *uap)
 {
-	struct thread *td = curthread;
 	struct timeval tv[2];
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
 	if (uap->tptr) {
@@ -2329,10 +2236,10 @@ lutimes(struct lutimes_args *uap)
 		if (error)
 			return (error);
 	}
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, uap->path, td);
-
-	error = kern_utimes(&nd, uap->tptr ? tv : NULL);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_utimes(&nd, uap->tptr ? tv : NULL);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2378,29 +2285,31 @@ futimes(struct futimes_args *uap)
 }
 
 int
-kern_truncate(struct nameidata* nd, off_t length)
+kern_truncate(struct nlookupdata *nd, off_t length)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
 
 	if (length < 0)
 		return(EINVAL);
-	if ((error = namei(nd)) != 0)
+	/* XXX Add NLC flag indicating modifying operation? */
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	vp = nd->ni_vp;
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-	vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-	if (vp->v_type == VDIR)
+	if ((error = cache_vref(nd->nl_ncp, nd->nl_cred, &vp)) != 0)
+		return (error);
+	VOP_LEASE(vp, nd->nl_td, nd->nl_cred, LEASE_WRITE);
+	if ((error = vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, nd->nl_td)) != 0) {
+		vrele(vp);
+		return (error);
+	}
+	if (vp->v_type == VDIR) {
 		error = EISDIR;
-	else if ((error = vn_writechk(vp)) == 0 &&
-	    (error = VOP_ACCESS(vp, VWRITE, p->p_ucred, td)) == 0) {
+	} else if ((error = vn_writechk(vp)) == 0 &&
+	    (error = VOP_ACCESS(vp, VWRITE, nd->nl_cred, nd->nl_td)) == 0) {
 		VATTR_NULL(&vattr);
 		vattr.va_size = length;
-		error = VOP_SETATTR(vp, &vattr, p->p_ucred, td);
+		error = VOP_SETATTR(vp, &vattr, nd->nl_cred, nd->nl_td);
 	}
 	vput(vp);
 	return (error);
@@ -2414,14 +2323,13 @@ kern_truncate(struct nameidata* nd, off_t length)
 int
 truncate(struct truncate_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, uap->path, td);
-
-	error = kern_truncate(&nd, uap->length);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = kern_truncate(&nd, uap->length);
+	nlookup_done(&nd);
 	return error;
 }
 
@@ -2501,87 +2409,126 @@ fsync(struct fsync_args *uap)
 }
 
 int
-kern_rename(struct nameidata *fromnd, struct nameidata *tond)
+kern_rename(struct nlookupdata *fromnd, struct nlookupdata *tond)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct vnode *tvp, *fvp, *tdvp;
+	struct namecache *fncpd;
+	struct namecache *tncpd;
+	struct namecache *ncp;
+	struct mount *mp;
 	int error;
 
 	bwillwrite();
-	error = namei(fromnd);
+	if ((error = nlookup(fromnd)) != 0)
+		return (error);
+	if ((fncpd = fromnd->nl_ncp->nc_parent) == NULL)
+		return (ENOENT);
+	cache_hold(fncpd);
+
+	/*
+	 * unlock the source ncp so we can lookup the target ncp without
+	 * deadlocking.  The target may or may not exist so we do not check
+	 * for a target vp like kern_mkdir() and other creation functions do.
+	 *
+	 * The source and target directories are ref'd and rechecked after
+	 * everything is relocked to determine if the source or target file
+	 * has been renamed.
+	 */
+	KKASSERT(fromnd->nl_flags & NLC_NCPISLOCKED);
+	fromnd->nl_flags &= ~NLC_NCPISLOCKED;
+	cache_unlock(fromnd->nl_ncp);
+
+	tond->nl_flags |= NLC_CREATE;
+	if ((error = nlookup(tond)) != 0) {
+		cache_drop(fncpd);
+		return (error);
+	}
+	if ((tncpd = tond->nl_ncp->nc_parent) == NULL) {
+		cache_drop(fncpd);
+		return (ENOENT);
+	}
+	cache_hold(tncpd);
+
+	/*
+	 * If the source and target are the same there is nothing to do
+	 */
+	if (fromnd->nl_ncp == tond->nl_ncp) {
+		cache_drop(fncpd);
+		cache_drop(tncpd);
+		return (0);
+	}
+
+	/*
+	 * relock the source ncp
+	 */
+	if (cache_lock_nonblock(fromnd->nl_ncp) == 0) {
+		cache_resolve(fromnd->nl_ncp, fromnd->nl_cred);
+	} else if (fromnd->nl_ncp > tond->nl_ncp) {
+		cache_lock(fromnd->nl_ncp);
+		cache_resolve(fromnd->nl_ncp, fromnd->nl_cred);
+	} else {
+		cache_unlock(tond->nl_ncp);
+		cache_lock(fromnd->nl_ncp);
+		cache_resolve(fromnd->nl_ncp, fromnd->nl_cred);
+		cache_lock(tond->nl_ncp);
+		cache_resolve(tond->nl_ncp, tond->nl_cred);
+	}
+	fromnd->nl_flags |= NLC_NCPISLOCKED;
+
+	/*
+	 * make sure the parent directories linkages are the same
+	 */
+	if (fncpd != fromnd->nl_ncp->nc_parent ||
+	    tncpd != tond->nl_ncp->nc_parent) {
+		cache_drop(fncpd);
+		cache_drop(tncpd);
+		return (ENOENT);
+	}
+
+	/*
+	 * Both the source and target must be within the same filesystem and
+	 * in the same filesystem as their parent directories within the
+	 * namecache topology.
+	 */
+	mp = fncpd->nc_mount;
+	if (mp != tncpd->nc_mount || mp != fromnd->nl_ncp->nc_mount ||
+	    mp != tond->nl_ncp->nc_mount) {
+		cache_drop(fncpd);
+		cache_drop(tncpd);
+		return (EXDEV);
+	}
+
+	/*
+	 * If the target exists and either the source or target is a directory,
+	 * then both must be directories.
+	 */
+	if (tond->nl_ncp->nc_vp) {
+		if (fromnd->nl_ncp->nc_vp->v_type == VDIR) {
+			if (tond->nl_ncp->nc_vp->v_type != VDIR)
+				error = ENOTDIR;
+		} else if (tond->nl_ncp->nc_vp->v_type == VDIR) {
+			error = EISDIR;
+		}
+	}
+
+	/*
+	 * You cannot rename a source into itself or a subdirectory of itself.
+	 * We check this by travsersing the target directory upwards looking
+	 * for a match against the source.
+	 */
+	if (error == 0) {
+		for (ncp = tncpd; ncp; ncp = ncp->nc_parent) {
+			if (fromnd->nl_ncp == ncp) {
+				error = EINVAL;
+				break;
+			}
+		}
+	}
+
+	cache_drop(fncpd);
+	cache_drop(tncpd);
 	if (error)
 		return (error);
-	fvp = fromnd->ni_vp;
-	if (fromnd->ni_vp->v_type == VDIR)
-		tond->ni_cnd.cn_flags |= CNP_WILLBEDIR;
-	error = namei(tond);
-	if (error) {
-		/* Translate error code for rename("dir1", "dir2/."). */
-		if (error == EISDIR && fvp->v_type == VDIR)
-			error = EINVAL;
-		NDFREE(fromnd, NDF_ONLY_PNBUF);
-		vrele(fromnd->ni_dvp);
-		vrele(fvp);
-		goto out1;
-	}
-	tdvp = tond->ni_dvp;
-	tvp = tond->ni_vp;
-	if (tvp != NULL) {
-		if (fvp->v_type == VDIR && tvp->v_type != VDIR) {
-			error = ENOTDIR;
-			goto out;
-		} else if (fvp->v_type != VDIR && tvp->v_type == VDIR) {
-			error = EISDIR;
-			goto out;
-		}
-	}
-	if (fvp == tdvp)
-		error = EINVAL;
-	/*
-	 * If the source is the same as the destination (that is, if they
-	 * are links to the same vnode), then there is nothing to do.
-	 */
-	if (fvp == tvp)
-		error = -1;
-out:
-	if (!error) {
-		VOP_LEASE(tdvp, td, p->p_ucred, LEASE_WRITE);
-		if (fromnd->ni_dvp != tdvp) {
-			VOP_LEASE(fromnd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-		}
-		if (tvp) {
-			VOP_LEASE(tvp, td, p->p_ucred, LEASE_WRITE);
-		}
-		error = VOP_RENAME(fromnd->ni_dvp, NCPNULL, fromnd->ni_vp,
-		    &fromnd->ni_cnd, tond->ni_dvp, NCPNULL, tond->ni_vp,
-		    &tond->ni_cnd);
-		if (error == 0)
-			cache_purge(fromnd->ni_vp);
-		NDFREE(fromnd, NDF_ONLY_PNBUF);
-		NDFREE(tond, NDF_ONLY_PNBUF);
-	} else {
-		NDFREE(fromnd, NDF_ONLY_PNBUF);
-		NDFREE(tond, NDF_ONLY_PNBUF);
-		if (tdvp == tvp)
-			vrele(tdvp);
-		else
-			vput(tdvp);
-		if (tvp)
-			vput(tvp);
-		vrele(fromnd->ni_dvp);
-		vrele(fvp);
-	}
-	vrele(tond->ni_startdir);
-	ASSERT_VOP_UNLOCKED(fromnd->ni_dvp, "rename");
-	ASSERT_VOP_UNLOCKED(fromnd->ni_vp, "rename");
-	ASSERT_VOP_UNLOCKED(tond->ni_dvp, "rename");
-	ASSERT_VOP_UNLOCKED(tond->ni_vp, "rename");
-out1:
-	if (fromnd->ni_startdir)
-		vrele(fromnd->ni_startdir);
-	if (error == -1)
-		return (0);
+	error = VOP_NRENAME(fromnd->nl_ncp, tond->nl_ncp, tond->nl_cred);
 	return (error);
 }
 
@@ -2594,58 +2541,47 @@ out1:
 int
 rename(struct rename_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata fromnd, tond;
+	struct nlookupdata fromnd, tond;
 	int error;
 
-	NDINIT(&fromnd, NAMEI_DELETE, CNP_WANTPARENT | CNP_SAVESTART,
-		UIO_USERSPACE, uap->from, td);
-	NDINIT(&tond, NAMEI_RENAME, 
-	    CNP_LOCKPARENT | CNP_LOCKLEAF | CNP_NOCACHE |
-	     CNP_SAVESTART | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->to, td);
-
-	error = kern_rename(&fromnd, &tond);
-
+	error = nlookup_init(&fromnd, uap->from, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = nlookup_init(&tond, uap->to, UIO_USERSPACE, 0);
+		if (error == 0)
+			error = kern_rename(&fromnd, &tond);
+		nlookup_done(&tond);
+	}
+	nlookup_done(&fromnd);
 	return (error);
 }
 
 int
-kern_mkdir(struct nameidata *nd, int mode)
+kern_mkdir(struct nlookupdata *nd, int mode)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
+	struct namecache *ncp;
 	struct vnode *vp;
 	struct vattr vattr;
 	int error;
 
 	bwillwrite();
-	nd->ni_cnd.cn_flags |= CNP_WILLBEDIR;
-	error = namei(nd);
-	if (error)
+	nd->nl_flags |= NLC_WILLBEDIR | NLC_CREATE;
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	vp = nd->ni_vp;
-	if (vp) {
-		NDFREE(nd, NDF_ONLY_PNBUF);
-		if (nd->ni_dvp == vp)
-			vrele(nd->ni_dvp);
-		else
-			vput(nd->ni_dvp);
-		vrele(vp);
+
+	ncp = nd->nl_ncp;
+	if (ncp->nc_vp)
 		return (EEXIST);
-	}
+
 	VATTR_NULL(&vattr);
 	vattr.va_type = VDIR;
 	vattr.va_mode = (mode & ACCESSPERMS) &~ p->p_fd->fd_cmask;
-	VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-	error = VOP_MKDIR(nd->ni_dvp, NCPNULL, &nd->ni_vp, &nd->ni_cnd,
-	    &vattr);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vput(nd->ni_dvp);
+
+	vp = NULL;
+	error = VOP_NMKDIR(ncp, &vp, p->p_ucred, &vattr);
 	if (error == 0)
-		vput(nd->ni_vp);
-	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "mkdir");
-	ASSERT_VOP_UNLOCKED(nd->ni_vp, "mkdir");
+		vput(vp);
 	return (error);
 }
 
@@ -2658,65 +2594,29 @@ kern_mkdir(struct nameidata *nd, int mode)
 int
 mkdir(struct mkdir_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_CREATE, CNP_LOCKPARENT, UIO_USERSPACE, uap->path,
-	    td);
-
-	error = kern_mkdir(&nd, uap->mode);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_mkdir(&nd, uap->mode);
+	nlookup_done(&nd);
 	return (error);
 }
 
 int
-kern_rmdir(struct nameidata *nd)
+kern_rmdir(struct nlookupdata *nd)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct vnode *vp;
+	struct namecache *ncp;
 	int error;
 
 	bwillwrite();
-	error = namei(nd);
-	if (error)
+	nd->nl_flags |= NLC_DELETE;
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	vp = nd->ni_vp;
-	if (vp->v_type != VDIR) {
-		error = ENOTDIR;
-		goto out;
-	}
-	/*
-	 * No rmdir "." please.
-	 */
-	if (nd->ni_dvp == vp) {
-		error = EINVAL;
-		goto out;
-	}
-	/*
-	 * The root of a mounted filesystem cannot be deleted.
-	 */
-	if (vp->v_flag & VROOT)
-		error = EBUSY;
-	else {
-		VOP_LEASE(nd->ni_dvp, td, p->p_ucred, LEASE_WRITE);
-		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
-		error = VOP_RMDIR(nd->ni_dvp, NCPNULL, nd->ni_vp,
-		    &nd->ni_cnd);
-		if (error == 0)
-			cache_purge(vp);
-	}
-out:
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	if (nd->ni_dvp == vp)
-		vrele(nd->ni_dvp);
-	else
-		vput(nd->ni_dvp);
-	if (vp != NULLVP)
-		vput(vp);
-	ASSERT_VOP_UNLOCKED(nd->ni_dvp, "rmdir");
-	ASSERT_VOP_UNLOCKED(nd->ni_vp, "rmdir");
+
+	ncp = nd->nl_ncp;
+	error = VOP_NRMDIR(ncp, nd->nl_cred);
 	return (error);
 }
 
@@ -2729,15 +2629,13 @@ out:
 int
 rmdir(struct rmdir_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_DELETE, CNP_LOCKPARENT | CNP_LOCKLEAF,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_rmdir(&nd);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0)
+		error = kern_rmdir(&nd);
+	nlookup_done(&nd);
 	return (error);
 }
 
@@ -2867,34 +2765,36 @@ int
 revoke(struct revoke_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct vnode *vp;
+	struct nlookupdata nd;
 	struct vattr vattr;
+	struct vnode *vp;
+	struct ucred *cred;
 	int error;
-	struct nameidata nd;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	vp = nd.ni_vp;
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	if (vp->v_type != VCHR && vp->v_type != VBLK) {
-		error = EINVAL;
-		goto out;
-	}
-	if ((error = VOP_GETATTR(vp, &vattr, td)) != 0)
-		goto out;
-	if (p->p_ucred->cr_uid != vattr.va_uid &&
-	    (error = suser_cred(p->p_ucred, PRISON_ROOT)))
-		goto out;
-	if (count_udev(vp->v_udev) > 0) {
-		if ((error = vx_lock(vp)) == 0) {
-			VOP_REVOKE(vp, REVOKEALL);
-			vx_unlock(vp);
+	vp = NULL;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+	cred = crhold(nd.nl_cred);
+	nlookup_done(&nd);
+	if (error == 0) {
+		if (vp->v_type != VCHR && vp->v_type != VBLK)
+			error = EINVAL;
+		if (error == 0)
+			error = VOP_GETATTR(vp, &vattr, td);
+		if (error == 0 && cred->cr_uid != vattr.va_uid)
+			error = suser_cred(cred, PRISON_ROOT);
+		if (error == 0 && count_udev(vp->v_udev) > 0) {
+			if ((error = vx_lock(vp)) == 0) {
+				VOP_REVOKE(vp, REVOKEALL);
+				vx_unlock(vp);
+			}
 		}
+		vrele(vp);
 	}
-out:
-	vrele(vp);
+	crfree(cred);
 	return (error);
 }
 
@@ -2923,7 +2823,7 @@ int
 getfh(struct getfh_args *uap)
 {
 	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	fhandle_t fh;
 	struct vnode *vp;
 	int error;
@@ -2931,22 +2831,24 @@ getfh(struct getfh_args *uap)
 	/*
 	 * Must be super user
 	 */
-	error = suser(td);
-	if (error)
+	if ((error = suser(td)) != 0)
 		return (error);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE, uap->fname, td);
-	error = namei(&nd);
-	if (error)
-		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vp = nd.ni_vp;
-	bzero(&fh, sizeof(fh));
-	fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
-	error = VFS_VPTOFH(vp, &fh.fh_fid);
-	vput(vp);
-	if (error)
-		return (error);
-	error = copyout(&fh, uap->fhp, sizeof (fh));
+
+	vp = NULL;
+	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	nlookup_done(&nd);
+	if (error == 0) {
+		bzero(&fh, sizeof(fh));
+		fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+		error = VFS_VPTOFH(vp, &fh.fh_fid);
+		vput(vp);
+		if (error == 0)
+			error = copyout(&fh, uap->fhp, sizeof(fh));
+	}
 	return (error);
 }
 
@@ -2970,10 +2872,10 @@ fhopen(struct fhopen_args *uap)
 	struct vattr vat;
 	struct vattr *vap = &vat;
 	struct flock lf;
-	struct file *fp;
 	struct filedesc *fdp = p->p_fd;
 	int fmode, mode, error, type;
 	struct file *nfp; 
+	struct file *fp;
 	int indx;
 
 	/*
@@ -3044,39 +2946,65 @@ fhopen(struct fhopen_args *uap)
 		if (error)
 			goto bad;
 	}
-	error = VOP_OPEN(vp, fmode, p->p_ucred, td);
-	if (error)
-		goto bad;
+
 	/*
-	 * Make sure that a VM object is created for VMIO support.
+	 * VOP_OPEN needs the file pointer so it can potentially override
+	 * it.
+	 *
+	 * WARNING! no f_ncp will be associated when fhopen()ing a directory.
+	 * XXX
 	 */
-	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td)) != 0)
-			goto bad;
+	if ((error = falloc(p, &nfp, NULL)) != 0)
+		goto bad;
+	fp = nfp;
+
+	fp->f_data = (caddr_t)vp;
+	fp->f_flag = fmode & FMASK;
+	fp->f_ops = &vnode_fileops;
+	fp->f_type = DTYPE_VNODE;
+
+	error = VOP_OPEN(vp, fmode, p->p_ucred, fp, td);
+	if (error) {
+		/*
+		 * setting f_ops this way prevents VOP_CLOSE from being
+		 * called or fdrop() releasing the vp from v_data.   Since
+		 * the VOP_OPEN failed we don't want to VOP_CLOSE.
+		 */
+		fp->f_ops = &badfileops;
+		fp->f_data = NULL;
+		fdrop(fp, td);
+		goto bad;
 	}
 	if (fmode & FWRITE)
 		vp->v_writecount++;
 
 	/*
-	 * end of vn_open code 
+	 * The fp now owns a reference on the vnode.  We still have our own
+	 * ref+lock.
 	 */
-
-	if ((error = falloc(p, &nfp, &indx)) != 0) {
-		if (fmode & FWRITE)
-			vp->v_writecount--;
-		goto bad;
-	}
-	fp = nfp;	
+	vref(vp);
 
 	/*
-	 * hold an extra reference to avoid having fp ripped out
-	 * from under us while we block in the lock op.
+	 * Make sure that a VM object is created for VMIO support.  If this
+	 * fails just fdrop() normally to clean up.
 	 */
-	fhold(fp);
-	nfp->f_data = (caddr_t)vp;
-	nfp->f_flag = fmode & FMASK;
-	nfp->f_ops = &vnops;
-	nfp->f_type = DTYPE_VNODE;
+	if (vn_canvmio(vp) == TRUE) {
+		if ((error = vfs_object_create(vp, td)) != 0) {
+			fdrop(fp, td);
+			goto bad;
+		}
+	}
+
+	/*
+	 * The open was successful, associate it with a file descriptor.
+	 */
+	if ((error = fsetfd(p, fp, &indx)) != 0) {
+		if (fmode & FWRITE)
+			vp->v_writecount--;
+		fdrop(fp, td);
+		goto bad;
+	}
+
 	if (fmode & (O_EXLOCK | O_SHLOCK)) {
 		lf.l_whence = SEEK_SET;
 		lf.l_start = 0;
@@ -3104,6 +3032,7 @@ fhopen(struct fhopen_args *uap)
 			 * release our private reference.
 			 */
 			fdrop(fp, td);
+			vrele(vp);
 			return (error);
 		}
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
@@ -3112,7 +3041,7 @@ fhopen(struct fhopen_args *uap)
 	if ((vp->v_type == VREG) && (VOP_GETVOBJECT(vp, NULL) != 0))
 		vfs_object_create(vp, td);
 
-	VOP_UNLOCK(vp, 0, td);
+	vput(vp);
 	fdrop(fp, td);
 	uap->sysmsg_result = indx;
 	return (0);
@@ -3213,18 +3142,23 @@ fhstatfs(struct fhstatfs_args *uap)
 int
 extattrctl(struct extattrctl_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct mount *mp;
+	struct vnode *vp;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return (error);
-	mp = nd.ni_vp->v_mount;
-	NDFREE(&nd, 0);
-	return (VFS_EXTATTRCTL(mp, SCARG(uap, cmd), SCARG(uap, attrname),
-	    SCARG(uap, arg), td));
+	vp = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0) {
+		mp = nd.nl_ncp->nc_mount;
+		error = VFS_EXTATTRCTL(mp, SCARG(uap, cmd), 
+				SCARG(uap, attrname), SCARG(uap, arg), 
+				nd.nl_td);
+	}
+	nlookup_done(&nd);
+	return (error);
 }
 
 /*
@@ -3236,22 +3170,34 @@ extattrctl(struct extattrctl_args *uap)
 int
 extattr_set_file(struct extattr_set_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct nameidata nd;
-	struct uio auio;
-	struct iovec *iov, *needfree = NULL, aiov[UIO_SMALLIOV];
 	char attrname[EXTATTR_MAXNAMELEN];
-	u_int iovlen, cnt;
-	int error, i;
+	struct iovec aiov[UIO_SMALLIOV];
+	struct iovec *needfree;
+	struct nlookupdata nd;
+	struct iovec *iov;
+	struct vnode *vp;
+	struct uio auio;
+	u_int iovlen;
+	u_int cnt;
+	int error;
+	int i;
 
 	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return (error);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return(error);
+
+	vp = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+
+	needfree = NULL;
 	iovlen = uap->iovcnt * sizeof(struct iovec);
 	if (uap->iovcnt > UIO_SMALLIOV) {
 		if (uap->iovcnt > UIO_MAXIOV) {
@@ -3260,13 +3206,14 @@ extattr_set_file(struct extattr_set_file_args *uap)
 		}
 		MALLOC(iov, struct iovec *, iovlen, M_IOV, M_WAITOK);
 		needfree = iov;
-	} else
+	} else {
 		iov = aiov;
+	}
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_WRITE;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_td = td;
+	auio.uio_td = nd.nl_td;
 	auio.uio_offset = 0;
 	if ((error = copyin(uap->iovp, iov, iovlen)))
 		goto done;
@@ -3280,13 +3227,14 @@ extattr_set_file(struct extattr_set_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_SETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
+	error = VOP_SETEXTATTR(vp, attrname, &auio, nd.nl_cred, nd.nl_td);
 	cnt -= auio.uio_resid;
 	uap->sysmsg_result = cnt;
 done:
+	vput(vp);
+	nlookup_done(&nd);
 	if (needfree)
 		FREE(needfree, M_IOV);
-	NDFREE(&nd, 0);
 	return (error);
 }
 
@@ -3299,39 +3247,50 @@ done:
 int
 extattr_get_file(struct extattr_get_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct nameidata nd;
-	struct uio auio;
-	struct iovec *iov, *needfree, aiov[UIO_SMALLIOV];
 	char attrname[EXTATTR_MAXNAMELEN];
-	u_int iovlen, cnt;
-	int error, i;
+	struct iovec aiov[UIO_SMALLIOV];
+	struct iovec *needfree;
+	struct nlookupdata nd;
+	struct iovec *iov;
+	struct vnode *vp;
+	struct uio auio;
+	u_int iovlen;
+	u_int cnt;
+	int error;
+	int i;
 
 	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return (error);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
+
+	vp = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	if (error) {
+		nlookup_done(&nd);
 		return (error);
+	}
+
 	iovlen = uap->iovcnt * sizeof (struct iovec);
+	needfree = NULL;
 	if (uap->iovcnt > UIO_SMALLIOV) {
 		if (uap->iovcnt > UIO_MAXIOV) {
-			NDFREE(&nd, 0);
-			return (EINVAL);
+			error = EINVAL;
+			goto done;
 		}
 		MALLOC(iov, struct iovec *, iovlen, M_IOV, M_WAITOK);
 		needfree = iov;
 	} else {
 		iov = aiov;
-		needfree = NULL;
 	}
 	auio.uio_iov = iov;
 	auio.uio_iovcnt = uap->iovcnt;
 	auio.uio_rw = UIO_READ;
 	auio.uio_segflg = UIO_USERSPACE;
-	auio.uio_td = td;
+	auio.uio_td = nd.nl_td;
 	auio.uio_offset = 0;
 	if ((error = copyin(uap->iovp, iov, iovlen)))
 		goto done;
@@ -3345,13 +3304,14 @@ extattr_get_file(struct extattr_get_file_args *uap)
 		iov++;
 	}
 	cnt = auio.uio_resid;
-	error = VOP_GETEXTATTR(nd.ni_vp, attrname, &auio, p->p_ucred, td);
+	error = VOP_GETEXTATTR(vp, attrname, &auio, nd.nl_cred, nd.nl_td);
 	cnt -= auio.uio_resid;
 	uap->sysmsg_result = cnt;
 done:
+	vput(vp);
+	nlookup_done(&nd);
 	if (needfree)
 		FREE(needfree, M_IOV);
-	NDFREE(&nd, 0);
 	return(error);
 }
 
@@ -3362,21 +3322,29 @@ done:
 int
 extattr_delete_file(struct extattr_delete_file_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct nameidata nd;
 	char attrname[EXTATTR_MAXNAMELEN];
-	int	error;
+	struct nlookupdata nd;
+	struct vnode *vp;
+	int error;
 
 	error = copyin(SCARG(uap, attrname), attrname, EXTATTR_MAXNAMELEN);
 	if (error)
 		return(error);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
-		return(error);
-	error = VOP_SETEXTATTR(nd.ni_vp, attrname, NULL, p->p_ucred, td);
-	NDFREE(&nd, 0);
+
+	vp = NULL;
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	if (error) {
+		nlookup_done(&nd);
+		return (error);
+	}
+
+	error = VOP_SETEXTATTR(vp, attrname, NULL, nd.nl_cred, nd.nl_td);
+	vput(vp);
+	nlookup_done(&nd);
 	return(error);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.24 2004/11/05 18:43:20 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.25 2004/11/12 00:09:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,7 @@
 #include <sys/stat.h>
 #include <sys/proc.h>
 #include <sys/mount.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/buf.h>
 #include <sys/filio.h>
@@ -60,89 +60,144 @@ static int vn_ioctl (struct file *fp, u_long com, caddr_t data,
 		struct thread *td);
 static int vn_read (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags, struct thread *td);
+static int svn_read (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
 static int vn_poll (struct file *fp, int events, struct ucred *cred,
 		struct thread *td);
 static int vn_kqfilter (struct file *fp, struct knote *kn);
 static int vn_statfile (struct file *fp, struct stat *sb, struct thread *td);
 static int vn_write (struct file *fp, struct uio *uio, 
 		struct ucred *cred, int flags, struct thread *td);
+static int svn_write (struct file *fp, struct uio *uio, 
+		struct ucred *cred, int flags, struct thread *td);
 
-struct 	fileops vnops = {
+struct fileops vnode_fileops = {
 	NULL,	/* port */
 	NULL,	/* clone */
 	vn_read, vn_write, vn_ioctl, vn_poll, vn_kqfilter,
 	vn_statfile, vn_closefile
 };
 
+struct fileops specvnode_fileops = {
+	NULL,	/* port */
+	NULL,	/* clone */
+	svn_read, svn_write, vn_ioctl, vn_poll, vn_kqfilter,
+	vn_statfile, vn_closefile
+};
+
 /*
- * Common code for vnode open operations.
- * Check permissions, and call the VOP_OPEN or VOP_CREATE routine.
- * 
- * Note that this does NOT free nameidata for the successful case,
- * due to the NDINIT being done elsewhere.
+ * Shortcut the device read/write.  This avoids a lot of vnode junk.
+ * Basically the specfs vnops for read and write take the locked vnode,
+ * unlock it (because we can't hold the vnode locked while reading or writing
+ * a device which may block indefinitely), issues the device operation, then
+ * relock the vnode before returning, plus other junk.  This bypasses all
+ * of that and just does the device operation.
+ */
+void
+vn_setspecops(struct file *fp)
+{
+	if (vfs_fastdev && fp->f_ops == &vnode_fileops) {
+		fp->f_ops = &specvnode_fileops;
+	}
+}
+
+/*
+ * Common code for vnode open operations.  Check permissions, and call
+ * the VOP_NOPEN or VOP_NCREATE routine.
+ *
+ * The caller is responsible for setting up nd with nlookup_init() and
+ * for cleaning it up with nlookup_done(), whether we return an error
+ * or not.
+ *
+ * On success nd->nl_open_vp will hold a referenced and, if requested,
+ * locked vnode.  A locked vnode is requested via NLC_LOCKVP.  If fp
+ * is non-NULL the vnode will be installed in the file pointer.
+ *
+ * NOTE: The vnode is referenced just once on return whether or not it
+ * is also installed in the file pointer.
  */
 int
-vn_open(ndp, fmode, cmode)
-	struct nameidata *ndp;
-	int fmode, cmode;
+vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 {
 	struct vnode *vp;
-	struct thread *td = ndp->ni_cnd.cn_td;
-	struct ucred *cred = ndp->ni_cnd.cn_cred;
+	struct thread *td = nd->nl_td;
+	struct ucred *cred = nd->nl_cred;
 	struct vattr vat;
 	struct vattr *vap = &vat;
+	struct namecache *ncp;
 	int mode, error;
 
+	/*
+	 * Lookup the path and create or obtain the vnode.  After a
+	 * successful lookup a locked nd->nl_ncp will be returned.
+	 *
+	 * The result of this section should be a locked vnode.
+	 *
+	 * XXX with only a little work we should be able to avoid locking
+	 * the vnode if FWRITE, O_CREAT, and O_TRUNC are *not* set.
+	 */
 	if (fmode & O_CREAT) {
-		ndp->ni_cnd.cn_nameiop = NAMEI_CREATE;
-		ndp->ni_cnd.cn_flags = CNP_LOCKPARENT | CNP_LOCKLEAF;
+		/*
+		 * CONDITIONAL CREATE FILE CASE
+		 *
+		 * Setting NLC_CREATE causes a negative hit to store
+		 * the negative hit ncp and not return an error.  Then
+		 * nc_error or nc_vp may be checked to see if the ncp 
+		 * represents a negative hit.  NLC_CREATE also requires
+		 * write permission on the governing directory or EPERM
+		 * is returned.
+		 */
 		if ((fmode & O_EXCL) == 0 && (fmode & O_NOFOLLOW) == 0)
-			ndp->ni_cnd.cn_flags |= CNP_FOLLOW;
+			nd->nl_flags |= NLC_FOLLOW;
+		nd->nl_flags |= NLC_CREATE;
 		bwillwrite();
-		error = namei(ndp);
+		error = nlookup(nd);
 		if (error)
 			return (error);
-		if (ndp->ni_vp == NULL) {
+
+		ncp = nd->nl_ncp;
+
+		if (ncp->nc_vp == NULL) {
 			VATTR_NULL(vap);
 			vap->va_type = VREG;
 			vap->va_mode = cmode;
 			if (fmode & O_EXCL)
 				vap->va_vaflags |= VA_EXCLUSIVE;
-			VOP_LEASE(ndp->ni_dvp, td, cred, LEASE_WRITE);
-			error = VOP_CREATE(ndp->ni_dvp, NCPNULL, &ndp->ni_vp,
-					   &ndp->ni_cnd, vap);
-			if (error) {
-				NDFREE(ndp, NDF_ONLY_PNBUF);
-				vput(ndp->ni_dvp);
+			error = VOP_NCREATE(ncp, &vp, nd->nl_cred, vap);
+			if (error)
 				return (error);
-			}
-			vput(ndp->ni_dvp);
-			ASSERT_VOP_UNLOCKED(ndp->ni_dvp, "create");
-			ASSERT_VOP_LOCKED(ndp->ni_vp, "create");
 			fmode &= ~O_TRUNC;
-			vp = ndp->ni_vp;
+			ASSERT_VOP_LOCKED(vp, "create");
+			/* locked vnode is returned */
 		} else {
-			if (ndp->ni_dvp == ndp->ni_vp)
-				vrele(ndp->ni_dvp);
-			else
-				vput(ndp->ni_dvp);
-			ndp->ni_dvp = NULL;
-			vp = ndp->ni_vp;
 			if (fmode & O_EXCL) {
 				error = EEXIST;
-				goto bad;
+			} else {
+				error = cache_vget(ncp, cred, 
+						    LK_EXCLUSIVE, &vp);
 			}
+			if (error)
+				return (error);
 			fmode &= ~O_CREAT;
 		}
 	} else {
-		ndp->ni_cnd.cn_nameiop = NAMEI_LOOKUP;
-		ndp->ni_cnd.cn_flags = CNP_LOCKLEAF |
-		    ((fmode & O_NOFOLLOW) ? 0 : CNP_FOLLOW);
-		error = namei(ndp);
+		/*
+		 * NORMAL OPEN FILE CASE
+		 */
+		error = nlookup(nd);
 		if (error)
 			return (error);
-		vp = ndp->ni_vp;
+
+		ncp = nd->nl_ncp;
+
+		error = cache_vget(ncp, cred, LK_EXCLUSIVE, &vp);
+		if (error)
+			return (error);
 	}
+
+	/*
+	 * We have a locked vnode now.
+	 */
 	if (vp->v_type == VLNK) {
 		error = EMLINK;
 		goto bad;
@@ -181,22 +236,79 @@ vn_open(ndp, fmode, cmode)
 		if (error)
 			goto bad;
 	}
-	error = VOP_OPEN(vp, fmode, cred, td);
-	if (error)
-		goto bad;
+
 	/*
-	 * Make sure that a VM object is created for VMIO support.
+	 * Setup the fp so VOP_OPEN can override it.  No descriptor has been
+	 * associated with the fp yet so we own it clean.  f_data will inherit
+	 * our vp reference as long as we do not shift f_ops to &badfileops.
+	 * f_ncp inherits nl_ncp .
 	 */
-	if (vn_canvmio(vp) == TRUE) {
-		if ((error = vfs_object_create(vp, td)) != 0)
-			goto bad;
+	if (fp) {
+		fp->f_data = (caddr_t)vp;
+		fp->f_flag = fmode & FMASK;
+		fp->f_ops = &vnode_fileops;
+		fp->f_type = (vp->v_type == VFIFO ? DTYPE_FIFO : DTYPE_VNODE);
+		if (vp->v_type == VDIR) {
+			fp->f_ncp = nd->nl_ncp;
+			nd->nl_ncp = NULL;
+			cache_unlock(fp->f_ncp);
+		}
 	}
 
+	/*
+	 * Get rid of nl_ncp.  vn_open does not return it (it returns the
+	 * vnode or the file pointer).  Note: we can't leave nl_ncp locked
+	 * through the VOP_OPEN anyway since the VOP_OPEN may block, e.g.
+	 * on /dev/ttyd0
+	 */
+	if (nd->nl_ncp) {
+		cache_put(nd->nl_ncp);
+		nd->nl_ncp = NULL;
+	}
+
+	error = VOP_OPEN(vp, fmode, cred, fp, td);
+	if (error) {
+		/*
+		 * setting f_ops to &badfileops will prevent the descriptor
+		 * code from trying to close and release the vnode, since
+		 * the open failed we do not want to call close.
+		 */
+		fp->f_data = NULL;
+		fp->f_ops = &badfileops;
+		goto bad;
+	}
 	if (fmode & FWRITE)
 		vp->v_writecount++;
+
+	/*
+	 * Make sure that a VM object is created for VMIO support.  If this
+	 * fails we have to be sure to match VOP_CLOSE's with VOP_OPEN's.
+	 * Cleanup the fp so we can just vput() the vp in 'bad'.
+	 */
+	if (vn_canvmio(vp) == TRUE) {
+		if ((error = vfs_object_create(vp, td)) != 0) {
+			fp->f_data = NULL;
+			fp->f_ops = &badfileops;
+			VOP_CLOSE(vp, fmode, td);
+			goto bad;
+		}
+	}
+
+	/*
+	 * Return the vnode.  XXX needs some cleaning up.  The vnode is
+	 * only returned in the fp == NULL case, otherwise the vnode ref
+	 * is inherited by the fp and we unconditionally unlock it.
+	 */
+	if (fp == NULL) {
+		nd->nl_open_vp = vp;
+		nd->nl_vp_fmode = fmode;
+		if ((nd->nl_flags & NLC_LOCKVP) == 0)
+			VOP_UNLOCK(vp, 0, td);
+	} else {
+		VOP_UNLOCK(vp, 0, td);
+	}
 	return (0);
 bad:
-	NDFREE(ndp, NDF_ONLY_PNBUF);
 	vput(vp);
 	return (error);
 }
@@ -409,6 +521,56 @@ vn_read(fp, uio, cred, flags, td)
 }
 
 /*
+ * Device-optimized file table vnode read routine.
+ *
+ * This bypasses the VOP table and talks directly to the device.  Most
+ * filesystems just route to specfs and can make this optimization.
+ */
+static int
+svn_read(fp, uio, cred, flags, td)
+	struct file *fp;
+	struct uio *uio;
+	struct ucred *cred;
+	struct thread *td;
+	int flags;
+{
+	struct vnode *vp;
+	int ioflag;
+	int error;
+	dev_t dev;
+
+	KASSERT(uio->uio_td == td, ("uio_td %p is not td %p", uio->uio_td, td));
+
+	vp = (struct vnode *)fp->f_data;
+	if (vp == NULL || vp->v_type == VBAD)
+		return (EBADF);
+
+	if ((dev = vp->v_rdev) == NULL)
+		return (EBADF);
+	reference_dev(dev);
+
+	if (uio->uio_resid == 0)
+		return (0);
+	if ((flags & FOF_OFFSET) == 0)
+		uio->uio_offset = fp->f_offset;
+
+	ioflag = 0;
+	if (fp->f_flag & FNONBLOCK)
+		ioflag |= IO_NDELAY;
+	if (fp->f_flag & O_DIRECT)
+		ioflag |= IO_DIRECT;
+	ioflag |= sequential_heuristic(uio, fp);
+
+	error = dev_dread(dev, uio, ioflag);
+
+	release_dev(dev);
+	if ((flags & FOF_OFFSET) == 0)
+		fp->f_offset = uio->uio_offset;
+	fp->f_nextoff = uio->uio_offset;
+	return (error);
+}
+
+/*
  * File table vnode write routine.
  */
 static int
@@ -448,6 +610,64 @@ vn_write(fp, uio, cred, flags, td)
 		fp->f_offset = uio->uio_offset;
 	fp->f_nextoff = uio->uio_offset;
 	VOP_UNLOCK(vp, 0, td);
+	return (error);
+}
+
+/*
+ * Device-optimized file table vnode write routine.
+ *
+ * This bypasses the VOP table and talks directly to the device.  Most
+ * filesystems just route to specfs and can make this optimization.
+ */
+static int
+svn_write(fp, uio, cred, flags, td)
+	struct file *fp;
+	struct uio *uio;
+	struct ucred *cred;
+	struct thread *td;
+	int flags;
+{
+	struct vnode *vp;
+	int ioflag;
+	int error;
+	dev_t dev;
+
+	KASSERT(uio->uio_td == td, ("uio_procp %p is not p %p", 
+	    uio->uio_td, td));
+
+	vp = (struct vnode *)fp->f_data;
+	if (vp == NULL || vp->v_type == VBAD)
+		return (EBADF);
+	if (vp->v_type == VREG)
+		bwillwrite();
+	vp = (struct vnode *)fp->f_data;	/* XXX needed? */
+
+	if ((dev = vp->v_rdev) == NULL)
+		return (EBADF);
+	reference_dev(dev);
+
+	if ((flags & FOF_OFFSET) == 0)
+		uio->uio_offset = fp->f_offset;
+
+	ioflag = IO_UNIT;
+	if (vp->v_type == VREG && (fp->f_flag & O_APPEND))
+		ioflag |= IO_APPEND;
+	if (fp->f_flag & FNONBLOCK)
+		ioflag |= IO_NDELAY;
+	if (fp->f_flag & O_DIRECT)
+		ioflag |= IO_DIRECT;
+	if ((fp->f_flag & O_FSYNC) ||
+	    (vp->v_mount && (vp->v_mount->mnt_flag & MNT_SYNCHRONOUS)))
+		ioflag |= IO_SYNC;
+	ioflag |= sequential_heuristic(uio, fp);
+
+	error = dev_dwrite(dev, uio, ioflag);
+
+	release_dev(dev);
+	if ((flags & FOF_OFFSET) == 0)
+		fp->f_offset = uio->uio_offset;
+	fp->f_nextoff = uio->uio_offset;
+
 	return (error);
 }
 

@@ -28,13 +28,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.9 2003/09/23 05:03:50 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.10 2004/11/12 00:09:16 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
-#include <sys/namei.h> 
+#include <sys/nlookup.h> 
 #include <sys/sysproto.h>
 #include <sys/kernel.h>
 #include <sys/filio.h>
@@ -196,17 +196,19 @@ xenix_eaccess(struct xenix_eaccess_args *uap)
 	struct proc *p = curproc;
 	struct ucred *cred = p->p_ucred;
 	struct vnode *vp;
-        struct nameidata nd;
+        struct nlookupdata nd;
         int error, flags;
 	caddr_t sg = stackgap_init();
 
 	CHECKALTEXIST(&sg, SCARG(uap, path));
 
-        NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-            SCARG(uap, path), td);
-        if ((error = namei(&nd)) != 0)
-                return error;
-        vp = nd.ni_vp;
+	error = nlookup_init(&nd, SCARG(uap, path), UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0)
+		error = nlookup(&nd);
+	if (error == 0)
+		error = cache_vget(nd.nl_ncp, nd.nl_cred, LK_EXCLUSIVE, &vp);
+	if (error)
+		goto done;
 
         /* Flags == 0 means only check for existence. */
         if (SCARG(uap, flags)) {
@@ -220,7 +222,8 @@ xenix_eaccess(struct xenix_eaccess_args *uap)
                 if ((flags & VWRITE) == 0 || (error = vn_writechk(vp)) == 0)
                         error = VOP_ACCESS(vp, flags, cred, td);
         }
-	NDFREE(&nd, NDF_ONLY_PNBUF);
         vput(vp);
-        return error;
+done:
+	nlookup_done(&nd);
+        return (error);
 }

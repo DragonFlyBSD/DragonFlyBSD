@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.24 2004/07/24 20:30:00 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.25 2004/11/12 00:09:24 dillon Exp $
  */
 
 /*
@@ -251,7 +251,6 @@ pipe(struct pipe_args *uap)
 		pipeclose(wpipe);
 		return (error);
 	}
-	fhold(rf);
 	uap->sysmsg_fds[0] = fd1;
 
 	/*
@@ -284,6 +283,7 @@ pipe(struct pipe_args *uap)
 	rpipe->pipe_peer = wpipe;
 	wpipe->pipe_peer = rpipe;
 	fdrop(rf, td);
+	fdrop(wf, td);
 
 	return (0);
 }

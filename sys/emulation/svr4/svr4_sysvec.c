@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.10 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.11 2004/11/12 00:09:22 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -47,7 +47,7 @@
 #include <sys/imgact_elf.h>
 #include <sys/socket.h>
 #include <sys/malloc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/module.h>
 #include <vm/vm.h>
@@ -251,10 +251,11 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 	int		  cflag;
 {
 	struct thread *td = curthread;	/* XXX */
-	struct nameidata	 nd;
-	struct nameidata	 ndroot;
+	struct nlookupdata	 nd;
+	struct nlookupdata	 ndroot;
 	struct vattr		 vat;
 	struct vattr		 vatroot;
+	struct vnode		*vp;
 	int			 error;
 	char			*ptr, *buf, *cp;
 	size_t			 sz, len;
@@ -301,24 +302,31 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		for (cp = &ptr[len] - 1; *cp != '/'; cp--);
 		*cp = '\0';
 
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-
-		if ((error = namei(&nd)) != 0) {
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		nlookup_done(&nd);
+		if (error) {
 			free(buf, M_TEMP);
-			return error;
+			return (error);
 		}
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-
 		*cp = '/';
-	}
-	else {
-		NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, buf, td);
-
-		if ((error = namei(&nd)) != 0) {
+	} else {
+		error = nlookup_init(&nd, buf, UIO_SYSSPACE, NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&nd);
+		vp = NULL;
+		if (error == 0)
+			error = cache_vref(nd.nl_ncp, nd.nl_cred, &vp);
+		nlookup_done(&nd);
+		if (error) {
 			free(buf, M_TEMP);
-			return error;
+			return (error);
 		}
-		NDFREE(&nd, NDF_ONLY_PNBUF);
+		error = VOP_GETATTR(vp, &vat, td);
+		vrele(vp);
+		if (error)
+			goto done;
 
 		/*
 		 * We now compare the vnode of the svr4_root to the one
@@ -328,47 +336,38 @@ svr4_emul_find(sgp, prefix, path, pbuf, cflag)
 		 * root directory and never finding it, because "/" resolves
 		 * to the emulation root directory. This is expensive :-(
 		 */
-		NDINIT(&ndroot, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE,
-		    svr4_emul_path, td);
-
-		if ((error = namei(&ndroot)) != 0) {
-			/* Cannot happen! */
+		error = nlookup_init(&ndroot, svr4_emul_path, UIO_SYSSPACE,
+					NLC_FOLLOW);
+		if (error == 0)
+			error = nlookup(&ndroot);
+		vp = NULL;
+		if (error == 0)
+			error = cache_vref(ndroot.nl_ncp, ndroot.nl_cred, &vp);
+		nlookup_done(&ndroot);
+		if (error) {
 			free(buf, M_TEMP);
-			vrele(nd.ni_vp);
-			return error;
+			return (error);
 		}
-		NDFREE(&ndroot, NDF_ONLY_PNBUF);
-
-		if ((error = VOP_GETATTR(nd.ni_vp, &vat, td)) != 0) {
+		error = VOP_GETATTR(vp, &vatroot, td);
+		vrele(vp);
+		if (error)
 			goto done;
-		}
-
-		if ((error = VOP_GETATTR(ndroot.ni_vp, &vatroot, td))
-		    != 0) {
-			goto done;
-		}
 
 		if (vat.va_fsid == vatroot.va_fsid &&
 		    vat.va_fileid == vatroot.va_fileid) {
 			error = ENOENT;
 			goto done;
 		}
-
 	}
-	if (sgp == NULL)
+	if (sgp == NULL) {
 		*pbuf = buf;
-	else {
+	} else {
 		sz = &ptr[len] - buf;
 		*pbuf = stackgap_alloc(sgp, sz + 1);
 		error = copyout(buf, *pbuf, sz);
 		free(buf, M_TEMP);
 	}
-
-
 done:
-	vrele(nd.ni_vp);
-	if (!cflag)
-		vrele(ndroot.ni_vp);
 	return error;
 }
 

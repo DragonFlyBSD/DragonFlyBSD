@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.8 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.9 2004/11/12 00:09:23 dillon Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 #include <sys/sysctl.h>
 #include <sys/vnode.h>
 #include <sys/proc.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/filio.h>
@@ -96,7 +96,7 @@ typedef struct file *file_t;
 int
 fp_open(const char *path, int flags, int mode, file_t *fpp)
 {
-    struct nameidata nd;
+    struct nlookupdata nd;
     struct thread *td;
     struct file *fp;
     int error;
@@ -106,21 +106,15 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
     fp = *fpp;
     td = curthread;
     if (td->td_proc) {
-	if ((flags & O_ROOTCRED) == 0 && td->td_proc)
+	if ((flags & O_ROOTCRED) == 0)
 	    fsetcred(fp, td->td_proc->p_ucred);
-	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
-    } else {
-	NDINIT2(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td, proc0.p_ucred);
     }
+    error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_LOCKVP);
     flags = FFLAGS(flags);
-    if ((error = vn_open(&nd, flags, mode)) == 0) {
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	fp->f_data = (caddr_t)nd.ni_vp;
-	fp->f_flag = flags;
-	fp->f_ops = &vnops;
-	fp->f_type = DTYPE_VNODE;
-	VOP_UNLOCK(nd.ni_vp, 0, td);
-    } else {
+    if (error == 0)
+	error = vn_open(&nd, fp, flags, mode);
+    nlookup_done(&nd);
+    if (error) {
 	fdrop(fp, td);
 	*fpp = NULL;
     }
@@ -129,8 +123,14 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 
 
 /*
- * fp_vpopen():	open a file pointer given a vnode.  The vnode must be locked.
- * The vnode will be returned unlocked whether an error occurs or not.
+ * fp_vpopen():	convert a vnode to a file pointer, call VOP_OPEN() on the
+ * the vnode.  The vnode must be refd and locked.
+ *
+ * On success the vnode's ref is inherited by the file pointer and the caller
+ * should not vrele() it, and the vnode is unlocked.
+ *
+ * On failure the vnode remains locked and refd and the caller is responsible
+ * for vput()ing it.
  */
 int
 fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
@@ -140,7 +140,6 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     int vmode;
     int error;
 
-    *fpp = NULL;
     td = curthread;
 
     /*
@@ -148,22 +147,22 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
      */
     if (vp->v_type == VLNK) {
 	error = EMLINK;
-	goto done;
+	goto bad2;
     }
     if (vp->v_type == VSOCK) {
 	error = EOPNOTSUPP;
-	goto done;
+	goto bad2;
     }
     flags = FFLAGS(flags);
     vmode = 0;
     if (flags & (FWRITE | O_TRUNC)) {
 	if (vp->v_type == VDIR) {
 	    error = EISDIR;
-	    goto done;
+	    goto bad2;
 	}
 	error = vn_writechk(vp);
 	if (error)
-	    goto done;
+	    goto bad2;
 	vmode |= VWRITE;
     }
     if (flags & FREAD)
@@ -171,41 +170,50 @@ fp_vpopen(struct vnode *vp, int flags, file_t *fpp)
     if (vmode) {
 	error = VOP_ACCESS(vp, vmode, td->td_proc->p_ucred, td);
 	if (error)
-	    goto done;
-    }
-    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, td);
-    if (error)
-	goto done;
-    /*
-     * Make sure that a VM object is created for VMIO support.
-     */
-    if (vn_canvmio(vp) == TRUE) {
-	if ((error = vfs_object_create(vp, td)) != 0)
-	    goto done;
+	    goto bad2;
     }
 
     /*
      * File pointer setup
      */
     if ((error = falloc(NULL, fpp, NULL)) != 0)
-	goto done;
+	goto bad2;
     fp = *fpp;
     if ((flags & O_ROOTCRED) == 0 && td->td_proc)
 	fsetcred(fp, td->td_proc->p_ucred);
     fp->f_data = (caddr_t)vp;
     fp->f_flag = flags;
-    fp->f_ops = &vnops;
+    fp->f_ops = &vnode_fileops;
     fp->f_type = DTYPE_VNODE;
 
+    error = VOP_OPEN(vp, flags, td->td_proc->p_ucred, fp, td);
+    if (error)
+	goto bad1;
+
     /*
-     * All done, set return value and update v_writecount now that no more
-     * errors can occur.
+     * Make sure that a VM object is created for VMIO support.
      */
-    *fpp = fp;
+    if (vn_canvmio(vp) == TRUE) {
+	if ((error = vfs_object_create(vp, td)) != 0) {
+	    VOP_CLOSE(vp, flags, td);
+	    goto bad1;
+	}
+    }
+
+    /*
+     * All done, update v_writecount now that no more errors can occur.
+     */
     if (flags & FWRITE)
 	vp->v_writecount++;
-done:
     VOP_UNLOCK(vp, 0, td);
+    return (0);
+bad1:
+    fp->f_ops = &badfileops;	/* open failed, don't close */
+    fp->f_data = NULL;
+    fdrop(fp, td);
+    /* leave the vnode intact, but fall through and unlock it anyway */
+bad2:
+    *fpp = NULL;
     return (error);
 }
 

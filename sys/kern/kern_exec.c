@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.28 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.29 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <sys/proc.h>
 #include <sys/signalvar.h>
 #include <sys/pioctl.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/sfbuf.h>
 #include <sys/sysent.h>
 #include <sys/shm.h>
@@ -117,7 +117,7 @@ print_execve_args(struct image_args *args)
 static const struct execsw **execsw;
 
 int
-kern_execve(struct nameidata *ndp, struct image_args *args)
+kern_execve(struct nlookupdata *nd, struct image_args *args)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -164,13 +164,17 @@ kern_execve(struct nameidata *ndp, struct image_args *args)
 interpret:
 
 	/*
-	 * Translate the file name. namei() returns a vnode pointer
-	 *	in ni_vp amoung other things.
+	 * Translate the file name to a vnode.  Unlock the cache entry to
+	 * improve parallelism for programs exec'd in parallel.
 	 */
-	if ((error = namei(ndp)) != 0)
+	if ((error = nlookup(nd)) != 0)
 		goto exec_fail;
-
-	imgp->vp = ndp->ni_vp;
+	error = cache_vget(nd->nl_ncp, nd->nl_cred, LK_EXCLUSIVE, &imgp->vp);
+	KKASSERT(nd->nl_flags & NLC_NCPISLOCKED);
+	nd->nl_flags &= ~NLC_NCPISLOCKED;
+	cache_unlock(nd->nl_ncp);
+	if (error)
+		goto exec_fail;
 
 	/*
 	 * Check file permissions (also 'opens' file)
@@ -233,13 +237,13 @@ interpret:
 	 */
 	if (imgp->interpreted) {
 		exec_unmap_first_page(imgp);
-		/* free name buffer and old vnode */
-		NDFREE(ndp, NDF_ONLY_PNBUF);
-		vrele(ndp->ni_vp);
-		/* set new name to that of the interpreter */
-		NDINIT(ndp, NAMEI_LOOKUP, 
-		    CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
-		    UIO_SYSSPACE, imgp->interpreter_name, td);
+		nlookup_done(nd);
+		vrele(imgp->vp);
+		imgp->vp = NULL;
+		error = nlookup_init(nd, imgp->interpreter_name, UIO_SYSSPACE,
+					NLC_FOLLOW);
+		if (error)
+			goto exec_fail;
 		goto interpret;
 	}
 
@@ -306,8 +310,8 @@ interpret:
 	execsigs(p);
 
 	/* name this process - nameiexec(p, ndp) */
-	len = min(ndp->ni_cnd.cn_namelen,MAXCOMLEN);
-	bcopy(ndp->ni_cnd.cn_nameptr, p->p_comm, len);
+	len = min(nd->nl_ncp->nc_nlen, MAXCOMLEN);
+	bcopy(nd->nl_ncp->nc_name, p->p_comm, len);
 	p->p_comm[len] = 0;
 
 	/*
@@ -385,8 +389,8 @@ interpret:
 	 */
 	if (p->p_textvp)		/* release old reference */
 		vrele(p->p_textvp);
-	vref(ndp->ni_vp);
-	p->p_textvp = ndp->ni_vp;
+	p->p_textvp = imgp->vp;
+	vref(p->p_textvp);
 
         /*
          * Notify others that we exec'd, and clear the P_INEXEC flag
@@ -435,8 +439,8 @@ exec_fail_dealloc:
 		exec_unmap_first_page(imgp);
 
 	if (imgp->vp) {
-		NDFREE(ndp, NDF_ONLY_PNBUF);
 		vrele(imgp->vp);
+		imgp->vp = NULL;
 	}
 
 	if (error == 0) {
@@ -463,19 +467,18 @@ exec_fail:
 int
 execve(struct execve_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct image_args args;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_FOLLOW | CNP_SAVENAME,
-	    UIO_USERSPACE, uap->fname, td);
-
-	error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
-				uap->argv, uap->envv);
+	error = nlookup_init(&nd, uap->fname, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = exec_copyin_args(&args, uap->fname, PATH_USERSPACE,
+					uap->argv, uap->envv);
+	}
 	if (error == 0)
 		error = kern_execve(&nd, &args);
-
+	nlookup_done(&nd);
 	exec_free_args(&args);
 
 	/*
@@ -497,11 +500,24 @@ exec_map_first_page(struct image_params *imgp)
 	vm_page_t ma[VM_INITIAL_PAGEIN];
 	vm_page_t m;
 	vm_object_t object;
+	int error;
 
 	if (imgp->firstpage)
 		exec_unmap_first_page(imgp);
 
-	VOP_GETVOBJECT(imgp->vp, &object);
+	/*
+	 * XXX the callers should really use vn_open so we don't have to
+	 * do this junk.
+	 */
+	if ((error = VOP_GETVOBJECT(imgp->vp, &object)) != 0) {
+		if (vn_canvmio(imgp->vp) == TRUE) {
+			error = vfs_object_create(imgp->vp, curthread);
+			if (error == 0)
+				error = VOP_GETVOBJECT(imgp->vp, &object);
+		}
+	}
+	if (error)
+		return (EIO);
 
 	/*
 	 * We shouldn't need protection for vm_page_grab() but we certainly
@@ -906,7 +922,7 @@ exec_check_permissions(imgp)
 	 * Call filesystem specific open routine (which does nothing in the
 	 * general case).
 	 */
-	error = VOP_OPEN(vp, FREAD, p->p_ucred, td);
+	error = VOP_OPEN(vp, FREAD, p->p_ucred, NULL, td);
 	if (error)
 		return (error);
 

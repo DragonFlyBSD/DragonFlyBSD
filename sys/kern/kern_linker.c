@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.19 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.20 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -41,7 +41,7 @@
 #include <sys/linker.h>
 #include <sys/fcntl.h>
 #include <sys/libkern.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/sysctl.h>
 
@@ -1096,8 +1096,7 @@ linker_strdup(const char *str)
 char *
 linker_search_path(const char *name)
 {
-    struct nameidata	nd;
-    struct thread	*td = curthread;
+    struct nlookupdata	nd;
     char		*cp, *ep, *result;
     int			error;
     enum vtype		type;
@@ -1124,16 +1123,17 @@ linker_search_path(const char *name)
 	 * Attempt to open the file, and return the path if we succeed and it's
 	 * a regular file.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, result, td);
-	error = vn_open(&nd, FREAD, 0);
+	error = nlookup_init(&nd, result, UIO_SYSSPACE, NLC_FOLLOW|NLC_LOCKVP);
+	if (error == 0)
+	    error = vn_open(&nd, NULL, FREAD, 0);
 	if (error == 0) {
-	    NDFREE(&nd, NDF_ONLY_PNBUF);
-	    type = nd.ni_vp->v_type;
-	    VOP_UNLOCK(nd.ni_vp, 0, td);
-	    vn_close(nd.ni_vp, FREAD, td);
-	    if (type == VREG)
-		return(result);
+	    type = nd.nl_open_vp->v_type;
+	    if (type == VREG) {
+		nlookup_done(&nd);
+		return (result);
+	    }
 	}
+	nlookup_done(&nd);
 	free(result, M_LINKER);
 
 	if (*ep == 0)

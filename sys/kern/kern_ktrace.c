@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.16 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.17 2004/11/12 00:09:23 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -44,7 +44,7 @@
 #include <sys/proc.h>
 #include <sys/fcntl.h>
 #include <sys/lock.h>
-#include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/vnode.h>
 #include <sys/ktrace.h>
 #include <sys/malloc.h>
@@ -253,27 +253,28 @@ ktrace(struct ktrace_args *uap)
 	int descend = uap->ops & KTRFLAG_DESCEND;
 	int ret = 0;
 	int error = 0;
-	struct nameidata nd;
+	struct nlookupdata nd;
 
 	curp->p_traceflag |= KTRFAC_ACTIVE;
 	if (ops != KTROP_CLEAR) {
 		/*
 		 * an operation which requires a file argument.
 		 */
-		NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_USERSPACE, uap->fname, td);
-		error = vn_open(&nd, FREAD|FWRITE|O_NOFOLLOW, 0);
+		error = nlookup_init(&nd, uap->fname, 
+					UIO_USERSPACE, NLC_LOCKVP);
+		if (error == 0)
+			error = vn_open(&nd, NULL, FREAD|FWRITE|O_NOFOLLOW, 0);
+		if (error == 0 && nd.nl_open_vp->v_type != VREG)
+			error = EACCES;
 		if (error) {
 			curp->p_traceflag &= ~KTRFAC_ACTIVE;
+			nlookup_done(&nd);
 			return (error);
 		}
-		NDFREE(&nd, NDF_ONLY_PNBUF);
-		vp = nd.ni_vp;
+		vp = nd.nl_open_vp;
+		nd.nl_open_vp = NULL;
+		nlookup_done(&nd);
 		VOP_UNLOCK(vp, 0, td);
-		if (vp->v_type != VREG) {
-			(void) vn_close(vp, FREAD|FWRITE, td);
-			curp->p_traceflag &= ~KTRFAC_ACTIVE;
-			return (EACCES);
-		}
 	}
 	/*
 	 * Clear all uses of the tracefile.  XXX umm, what happens to the
@@ -285,7 +286,7 @@ ktrace(struct ktrace_args *uap)
 				if (ktrcanset(curp, p) && p->p_tracep == vp) {
 					p->p_tracep = NULL;
 					p->p_traceflag = 0;
-					(void) vn_close(vp, FREAD|FWRITE, td);
+					vn_close(vp, FREAD|FWRITE, td);
 				} else {
 					error = EPERM;
 				}
@@ -312,12 +313,12 @@ ktrace(struct ktrace_args *uap)
 			error = ESRCH;
 			goto done;
 		}
-		LIST_FOREACH(p, &pg->pg_members, p_pglist)
+		LIST_FOREACH(p, &pg->pg_members, p_pglist) {
 			if (descend)
 				ret |= ktrsetchildren(curp, p, ops, facs, vp);
 			else
 				ret |= ktrops(curp, p, ops, facs, vp);
-
+		}
 	} else {
 		/*
 		 * by pid
@@ -336,7 +337,7 @@ ktrace(struct ktrace_args *uap)
 		error = EPERM;
 done:
 	if (vp != NULL)
-		(void) vn_close(vp, FWRITE, td);
+		vn_close(vp, FWRITE, td);
 	curp->p_traceflag &= ~KTRFAC_ACTIVE;
 	return (error);
 #else

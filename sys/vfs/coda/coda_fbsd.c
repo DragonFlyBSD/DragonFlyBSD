@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.7 2004/05/19 22:53:03 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.8 2004/11/12 00:09:28 dillon Exp $
  * 
  */
 
@@ -140,7 +140,7 @@ coda_fbsd_getpages(void *v)
     if (cfvp == NULL) {
 	opened_internally = 1;
 
-	error = VOP_OPEN(vp, FREAD,  cred, p);
+	error = VOP_OPEN(vp, FREAD, cred, NULL, p);
 printf("coda_getp: Internally Opening %p\n", vp);
 
 	if (error) {
