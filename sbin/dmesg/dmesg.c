@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.7 2005/01/14 06:38:41 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -52,8 +52,8 @@
 
 struct nlist nl[] = {
 #define	X_MSGBUF	0
-	{ "_msgbufp" },
-	{ NULL },
+	{ "_msgbufp",	0, 0, 0, 0 },
+	{ NULL,		0, 0, 0, 0 },
 };
 
 void usage(void);
@@ -72,8 +72,7 @@ main(int argc, char **argv)
 	char buf[5];
 	int all = 0;
 	int pri = 0;
-	size_t buflen;
-	int bufpos;
+	size_t buflen, bufpos;
 
 	setlocale(LC_CTYPE, "");
 	memf = nlistf = NULL;
@@ -124,7 +123,7 @@ main(int argc, char **argv)
 		if (!bp)
 			errx(1, "malloc failed");
 		if (kvm_read(kd, (long)cur.msg_ptr, bp, cur.msg_size) !=
-		    cur.msg_size)
+		    (ssize_t)cur.msg_size)
 			errx(1, "kvm_read: %s", kvm_geterr(kd));
 		kvm_close(kd);
 		buflen = cur.msg_size;
