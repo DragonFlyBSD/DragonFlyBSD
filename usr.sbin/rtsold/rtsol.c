@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsol.c,v 1.1.2.4 2002/04/24 10:22:30 suz Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsol.c,v 1.3 2005/02/15 00:26:00 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,14 @@ static struct sockaddr_in6 from;
 
 int rssock;
 
-static struct sockaddr_in6 sin6_allrouters = {sizeof(sin6_allrouters), AF_INET6};
+static struct sockaddr_in6 sin6_allrouters = {
+	sizeof(sin6_allrouters),
+	AF_INET6,
+	0,
+	0,
+	IN6ADDR_ANY_INIT,
+	0
+};
 
 int
 sockopen()
@@ -176,7 +183,7 @@ sockopen()
 void
 sendpacket(struct ifinfo *ifinfo)
 {
-	int i;
+	ssize_t i;
 	struct cmsghdr *cm;
 	struct in6_pktinfo *pi;
 
@@ -210,7 +217,7 @@ sendpacket(struct ifinfo *ifinfo)
 
 	i = sendmsg(rssock, &sndmhdr, 0);
 
-	if (i < 0 || i != ifinfo->rs_datalen) {
+	if (i < 0 || (size_t)i != ifinfo->rs_datalen) {
 		/*
 		 * ENETDOWN is not so serious, especially when using several
 		 * network cards on a mobile node. We ignore it.
@@ -227,7 +234,7 @@ sendpacket(struct ifinfo *ifinfo)
 void
 rtsol_input(int s)
 {
-	int i;
+	ssize_t i;
 	int *hlimp = NULL;
 	struct icmp6_hdr *icp;
 	int ifindex = 0;
@@ -269,7 +276,7 @@ rtsol_input(int s)
 		return;
 	}
 
-	if (i < sizeof(struct nd_router_advert)) {
+	if ((size_t)i < sizeof(struct nd_router_advert)) {
 		warnmsg(LOG_ERR,
 		       __FUNCTION__, "packet size(%d) is too short", i);
 		return;

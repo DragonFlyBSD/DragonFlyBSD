@@ -1,6 +1,6 @@
 /*	$KAME: rtsock.c,v 1.3 2000/10/10 08:46:45 itojun Exp $	*/
 /*	$FreeBSD: src/usr.sbin/rtsold/rtsock.c,v 1.1.2.1 2001/07/03 11:02:16 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/rtsold/rtsock.c,v 1.4 2005/02/15 00:26:00 cpressey Exp $	*/
 
 /*
  * Copyright (C) 2000 WIDE Project.
@@ -77,7 +77,7 @@ static struct {
 	{ RTM_IFANNOUNCE, sizeof(struct if_announcemsghdr),
 	  rtsock_input_ifannounce },
 #endif
-	{ 0, NULL },
+	{ 0, 0, NULL },
 };
 
 int
@@ -96,9 +96,9 @@ rtsock_input(s)
 	char *lim, *next;
 	struct rt_msghdr *rtm;
 	int idx;
-	size_t len;
+	ssize_t len;
 	int ret = 0;
-	const size_t lenlim =
+	const ssize_t lenlim =
 	    offsetof(struct rt_msghdr, rtm_msglen) + sizeof(rtm->rtm_msglen);
 
 	n = read(s, msg, sizeof(msg));
@@ -137,10 +137,7 @@ rtsock_input(s)
 
 #ifdef RTM_IFANNOUNCE	/*NetBSD 1.5 or later*/
 static int
-rtsock_input_ifannounce(s, rtm, lim)
-	int s;
-	struct rt_msghdr *rtm;
-	char *lim;
+rtsock_input_ifannounce(int s __unused, struct rt_msghdr *rtm, char *lim)
 {
 	struct if_announcemsghdr *ifan;
 	struct ifinfo *ifinfo;

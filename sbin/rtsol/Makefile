@@ -12,11 +12,12 @@
 # LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 # A PARTICULAR PURPOSE.
 # $FreeBSD: src/sbin/rtsol/Makefile,v 1.1.2.2 2001/07/03 11:01:20 ume Exp $
-# $DragonFly: src/sbin/rtsol/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
+# $DragonFly: src/sbin/rtsol/Makefile,v 1.3 2005/02/15 00:26:00 cpressey Exp $
 
 SRCDIR=	${.CURDIR}/../../usr.sbin/rtsold
 
 PROG=	rtsol
+WARNS?=	6
 SRCS=	rtsold.c rtsol.c if.c probe.c dump.c rtsock.c
 
 CFLAGS+=-DINET6 -DHAVE_GETIFADDRS

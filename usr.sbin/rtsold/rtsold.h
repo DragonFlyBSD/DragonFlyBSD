@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.h,v 1.1.2.3 2001/07/03 11:02:16 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.h,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsold.h,v 1.4 2005/02/15 00:26:00 cpressey Exp $
  */
 
 struct ifinfo {
@@ -89,7 +89,7 @@ extern int probe_init(void);
 extern void defrouter_probe(int ifindex);
 
 /* dump.c */
-extern void rtsold_dump_file(char *);
+extern void rtsold_dump_file(const char *);
 
 /* rtsock.c */
 extern int rtsock_open(void);

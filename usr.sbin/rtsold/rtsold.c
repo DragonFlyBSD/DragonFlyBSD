@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.c,v 1.1.2.4 2002/04/04 11:07:19 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.5 2005/02/15 00:26:00 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -88,8 +88,11 @@ int main(int argc, char *argv[]);
 /* static variables and functions */
 static int mobile_node = 0;
 static int do_dump;
-static char *dumpfilename = "/var/run/rtsold.dump"; /* XXX: should be configurable */
-static char *pidfilename = "/var/run/rtsold.pid"; /* should be configurable */
+/*
+ * XXX: the following two values should be configurable
+ */
+static const char *dumpfilename = "/var/run/rtsold.dump";
+static const char *pidfilename = "/var/run/rtsold.pid";
 
 static int ifconfig(char *ifname);
 #if 0
@@ -102,7 +105,7 @@ static void TIMEVAL_ADD(struct timeval *a, struct timeval *b,
 static void TIMEVAL_SUB(struct timeval *a, struct timeval *b,
 			     struct timeval *result);
 
-static void rtsold_set_dump_file(void);
+static void rtsold_set_dump_file(int);
 static void usage(char *progname);
 static char **autoifprobe(void);
 
@@ -116,7 +119,7 @@ main(argc, argv)
 	struct timeval *timeout;
 	struct fd_set fdset;
 	char *argv0;
-	char *opts;
+	const char *opts;
 
 	/*
 	 * Initialization
@@ -210,7 +213,7 @@ main(argc, argv)
 		warnx("kernel is configured as a router, not a host");
 
 	/* initialization to dump internal status to a file */
-	if (signal(SIGUSR1, (void *)rtsold_set_dump_file) < 0) {
+	if (signal(SIGUSR1, rtsold_set_dump_file) == SIG_ERR) {
 		errx(1, "failed to set signal for dump status");
 		/*NOTREACHED*/
 	}
@@ -687,7 +690,7 @@ TIMEVAL_SUB(struct timeval *a, struct timeval *b, struct timeval *result)
 }
 
 static void
-rtsold_set_dump_file()
+rtsold_set_dump_file(int signo __unused)
 {
 	do_dump = 1;
 }
