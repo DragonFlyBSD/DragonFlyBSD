@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.5 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.6 2003/09/12 12:26:04 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -132,7 +132,6 @@ struct tcp_syncache {
 	u_int	cache_limit;
 	u_int	rexmt_limit;
 	u_int	hash_secret;
-	u_int	next_reseed;
 	TAILQ_HEAD(, syncache) timerq[SYNCACHE_MAXREXMTS + 1];
 	struct	callout tt_timerq[SYNCACHE_MAXREXMTS + 1];
 };
@@ -228,7 +227,6 @@ syncache_init(void)
 	tcp_syncache.cache_limit =
 	    tcp_syncache.hashsize * tcp_syncache.bucket_limit;
 	tcp_syncache.rexmt_limit = SYNCACHE_MAXREXMTS;
-	tcp_syncache.next_reseed = 0;
 	tcp_syncache.hash_secret = arc4random();
 
         TUNABLE_INT_FETCH("net.inet.tcp.syncache.hashsize",
@@ -265,9 +263,9 @@ syncache_init(void)
 	 * more entry than cache limit, so a new entry can bump out an
 	 * older one.
 	 */
-	tcp_syncache.cache_limit -= 1;
 	tcp_syncache.zone = zinit("syncache", sizeof(struct syncache),
 	    tcp_syncache.cache_limit, ZONE_INTERRUPT, 0);
+	tcp_syncache.cache_limit -= 1;
 }
 
 static void
@@ -276,13 +274,12 @@ syncache_insert(sc, sch)
 	struct syncache_head *sch;
 {
 	struct syncache *sc2;
-	int s, i;
+	int i;
 
 	/*
 	 * Make sure that we don't overflow the per-bucket
 	 * limit or the total cache size limit.
 	 */
-	s = splnet();
 	if (sch->sch_length >= tcp_syncache.bucket_limit) {
 		/*
 		 * The bucket is full, toss the oldest element.
@@ -316,7 +313,6 @@ syncache_insert(sc, sch)
 	sch->sch_length++;
 	tcp_syncache.cache_count++;
 	tcpstat.tcps_sc_added++;
-	splx(s);
 }
 
 static void
@@ -324,7 +320,6 @@ syncache_drop(sc, sch)
 	struct syncache *sc;
 	struct syncache_head *sch;
 {
-	int s;
 
 	if (sch == NULL) {
 #ifdef INET6
@@ -339,8 +334,6 @@ syncache_drop(sc, sch)
 		}
 	}
 
-	s = splnet();
-
 	TAILQ_REMOVE(&sch->sch_bucket, sc, sc_hash);
 	sch->sch_length--;
 	tcp_syncache.cache_count--;
@@ -348,7 +341,6 @@ syncache_drop(sc, sch)
 	TAILQ_REMOVE(&tcp_syncache.timerq[sc->sc_rxtslot], sc, sc_timerq);
 	if (TAILQ_EMPTY(&tcp_syncache.timerq[sc->sc_rxtslot]))
 		callout_stop(&tcp_syncache.tt_timerq[sc->sc_rxtslot]);
-	splx(s);
 
 	syncache_free(sc);
 }
@@ -415,39 +407,29 @@ syncache_lookup(inc, schp)
 {
 	struct syncache *sc;
 	struct syncache_head *sch;
-	int s;
 
 #ifdef INET6
 	if (inc->inc_isipv6) {
 		sch = &tcp_syncache.hashbase[
 		    SYNCACHE_HASH6(inc, tcp_syncache.hashmask)];
 		*schp = sch;
-		s = splnet();
-		TAILQ_FOREACH(sc, &sch->sch_bucket, sc_hash) {
-			if (ENDPTS6_EQ(&inc->inc_ie, &sc->sc_inc.inc_ie)) {
-				splx(s);
+		TAILQ_FOREACH(sc, &sch->sch_bucket, sc_hash)
+			if (ENDPTS6_EQ(&inc->inc_ie, &sc->sc_inc.inc_ie))
 				return (sc);
-			}
-		}
-		splx(s);
 	} else
 #endif
 	{
 		sch = &tcp_syncache.hashbase[
 		    SYNCACHE_HASH(inc, tcp_syncache.hashmask)];
 		*schp = sch;
-		s = splnet();
 		TAILQ_FOREACH(sc, &sch->sch_bucket, sc_hash) {
 #ifdef INET6
 			if (sc->sc_inc.inc_isipv6)
 				continue;
 #endif
-			if (ENDPTS_EQ(&inc->inc_ie, &sc->sc_inc.inc_ie)) {
-				splx(s);
+			if (ENDPTS_EQ(&inc->inc_ie, &sc->sc_inc.inc_ie))
 				return (sc);
-			}
 		}
-		splx(s);
 	}
 	return (NULL);
 }
@@ -604,7 +586,7 @@ syncache_socket(sc, lso)
 	if (sc->sc_inc.inc_isipv6) {
 		struct inpcb *oinp = sotoinpcb(lso);
 		struct in6_addr laddr6;
-		struct sockaddr_in6 *sin6;
+		struct sockaddr_in6 sin6;
 		/*
 		 * Inherit socket options from the listening socket.
 		 * Note that in6p_inputopts are not (and should not be)
@@ -621,28 +603,23 @@ syncache_socket(sc, lso)
 		inp->in6p_route = sc->sc_route6;
 		sc->sc_route6.ro_rt = NULL;
 
-		MALLOC(sin6, struct sockaddr_in6 *, sizeof *sin6,
-		    M_SONAME, M_NOWAIT | M_ZERO);
-		if (sin6 == NULL)
-			goto abort;
-		sin6->sin6_family = AF_INET6;
-		sin6->sin6_len = sizeof(*sin6);
-		sin6->sin6_addr = sc->sc_inc.inc6_faddr;
-		sin6->sin6_port = sc->sc_inc.inc_fport;
+		sin6.sin6_family = AF_INET6;
+		sin6.sin6_len = sizeof sin6;
+		sin6.sin6_addr = sc->sc_inc.inc6_faddr;
+		sin6.sin6_port = sc->sc_inc.inc_fport;
+		sin6.sin6_flowinfo = sin6.sin6_scope_id = 0;
 		laddr6 = inp->in6p_laddr;
 		if (IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
 			inp->in6p_laddr = sc->sc_inc.inc6_laddr;
-		if (in6_pcbconnect(inp, (struct sockaddr *)sin6, &thread0)) {
+		if (in6_pcbconnect(inp, (struct sockaddr *)&sin6, &thread0)) {
 			inp->in6p_laddr = laddr6;
-			FREE(sin6, M_SONAME);
 			goto abort;
 		}
-		FREE(sin6, M_SONAME);
 	} else
 #endif
 	{
 		struct in_addr laddr;
-		struct sockaddr_in *sin;
+		struct sockaddr_in sin;
 
 		inp->inp_options = ip_srcroute();
 		if (inp->inp_options == NULL) {
@@ -652,24 +629,18 @@ syncache_socket(sc, lso)
 		inp->inp_route = sc->sc_route;
 		sc->sc_route.ro_rt = NULL;
 
-		MALLOC(sin, struct sockaddr_in *, sizeof *sin,
-		    M_SONAME, M_NOWAIT | M_ZERO);
-		if (sin == NULL)
-			goto abort;
-		sin->sin_family = AF_INET;
-		sin->sin_len = sizeof(*sin);
-		sin->sin_addr = sc->sc_inc.inc_faddr;
-		sin->sin_port = sc->sc_inc.inc_fport;
-		bzero((caddr_t)sin->sin_zero, sizeof(sin->sin_zero));
+		sin.sin_family = AF_INET;
+		sin.sin_len = sizeof sin;
+		sin.sin_addr = sc->sc_inc.inc_faddr;
+		sin.sin_port = sc->sc_inc.inc_fport;
+		bzero(sin.sin_zero, sizeof sin.sin_zero);
 		laddr = inp->inp_laddr;
 		if (inp->inp_laddr.s_addr == INADDR_ANY)
 			inp->inp_laddr = sc->sc_inc.inc_laddr;
-		if (in_pcbconnect(inp, (struct sockaddr *)sin, &thread0)) {
+		if (in_pcbconnect(inp, (struct sockaddr *)&sin, &thread0)) {
 			inp->inp_laddr = laddr;
-			FREE(sin, M_SONAME);
 			goto abort;
 		}
-		FREE(sin, M_SONAME);
 	}
 
 	tp = intotcpcb(inp);
@@ -818,7 +789,7 @@ syncache_add(inc, to, th, sop, m)
 	struct syncache_head *sch;
 	struct mbuf *ipopts = NULL;
 	struct rmxp_tao *taop;
-	int i, s, win;
+	int i, win;
 
 	so = *sop;
 	tp = sototcpcb(so);
@@ -862,11 +833,9 @@ syncache_add(inc, to, th, sop, m)
 		sc->sc_tp = tp;
 		sc->sc_inp_gencnt = tp->t_inpcb->inp_gencnt;
 		if (syncache_respond(sc, m) == 0) {
-		        s = splnet();
 			TAILQ_REMOVE(&tcp_syncache.timerq[sc->sc_rxtslot],
 			    sc, sc_timerq);
 			SYNCACHE_TIMEOUT(sc, sc->sc_rxtslot);
-		        splx(s);
 		 	tcpstat.tcps_sndacks++;
 			tcpstat.tcps_sndtotal++;
 		}
@@ -881,7 +850,6 @@ syncache_add(inc, to, th, sop, m)
 		 * Treat this as if the cache was full; drop the oldest 
 		 * entry and insert the new one.
 		 */
-		s = splnet();
 		for (i = SYNCACHE_MAXREXMTS; i >= 0; i--) {
 			sc = TAILQ_FIRST(&tcp_syncache.timerq[i]);
 			if (sc != NULL)
@@ -889,7 +857,6 @@ syncache_add(inc, to, th, sop, m)
 		}
 		sc->sc_tp->ts_recent = ticks;
 		syncache_drop(sc, NULL);
-		splx(s);
 		tcpstat.tcps_sc_zonefail++;
 		sc = zalloc(tcp_syncache.zone);
 		if (sc == NULL) {
