@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.10 2003/08/03 12:29:05 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.11 2003/10/02 19:21:06 drhodus Exp $
  */
 
 #include "opt_ddb.h"
@@ -50,6 +50,7 @@
 #include <sys/lock.h>
 #include <sys/resourcevar.h>
 #include <sys/vnode.h>
+#include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
@@ -124,6 +125,28 @@ uiomove(cp, n, uio)
 		curproc->p_flag = (curproc->p_flag & ~P_DEADLKTREAT) | save;
 	return (error);
 }
+/*
+ * Wrapper for uiomove() that validates the arguments against a known-good
+ * kernel buffer.  Currently, uiomove accepts a signed (n) argument, which
+ * is almost definitely a bad thing, so we catch that here as well.  We
+ * return a runtime failure, but it might be desirable to generate a runtime
+ * assertion failure instead.
+ */
+int
+uiomove_frombuf(void *buf, int buflen, struct uio *uio)
+{
+	unsigned int offset, n;
+
+	if (uio->uio_offset < 0 || uio->uio_resid < 0 ||
+	    (offset = uio->uio_offset) != uio->uio_offset)
+		return (EINVAL);
+	if (buflen <= 0 || offset >= buflen)
+		return (0);
+	if ((n = buflen - offset) > INT_MAX)
+		return (EINVAL);
+	return (uiomove((char *)buf + offset, n, uio));
+}
+
 
 int
 uiomoveco(cp, n, uio, obj)

@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_regs.c,v 1.10.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_regs.c,v 1.5 2003/10/02 19:21:06 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -76,12 +76,9 @@ procfs_doregs(curp, p, pfs, uio)
 
 	PHOLD(p);
 
-	if (kl < 0)
-		error = EINVAL;
-	else
 		error = procfs_read_regs(p, &r);
 	if (error == 0)
-		error = uiomove(kv, kl, uio);
+		error = uiomove(&r, sizeof(r), uio);
 	if (error == 0 && uio->uio_rw == UIO_WRITE) {
 		if (p->p_stat != SSTOP)
 			error = EBUSY;

@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.4 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.5 2003/10/02 19:21:06 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -174,7 +174,7 @@ procfs_dostatus(curp, p, pfs, uio)
 	if (xlen <= 0)
 		error = 0;
 	else
-		error = uiomove(ps, xlen, uio);
+		error = uiomove_frombuf(psbuf, ps - psbuf, uio);
 
 	return (error);
 
@@ -253,7 +253,7 @@ procfs_docmdline(curp, p, pfs, uio)
 	if (xlen <= 0)
 		error = 0;
 	else
-		error = uiomove(ps, xlen, uio);
+		error = uiomove_frombuf(bp, buflen, uio);
 	if (buf)
 		FREE(buf, M_TEMP);
 	return (error);

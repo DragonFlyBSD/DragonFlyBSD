@@ -37,7 +37,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_rlimit.c,v 1.5 1999/12/08 08:59:37 phk Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.3 2003/08/07 21:17:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_rlimit.c,v 1.4 2003/10/02 19:21:06 drhodus Exp $
  */
 
 /*
@@ -122,8 +122,7 @@ procfs_dorlimit(curp, p, pfs, uio)
 	if (xlen <= 0)
 		error = 0;
 	else
-		error = uiomove(ps, xlen, uio);
-
+		error = uiomove_frombuf(psbuf, ps - psbuf, uio);
 	return (error);
 }
 
