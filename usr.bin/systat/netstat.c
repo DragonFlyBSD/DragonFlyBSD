@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.6 2004/11/12 19:03:10 joerg Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.7 2004/11/13 13:57:36 joerg Exp $
  */
 
 /*
@@ -75,7 +75,7 @@
 #include "systat.h"
 #include "extern.h"
 
-static void enter(struct inpcb *, struct xsocket *, int, const char *);
+static void enter(struct inpcb *, struct xsocket *, int, const char *, int);
 static char *inetname(struct in_addr);
 static void inetprint(struct in_addr *, int, const char *);
 
@@ -105,6 +105,7 @@ struct netinfo {
 	long	ni_fport;		/* foreign port */
 	long	ni_rcvcc;		/* rcv buffer character count */
 	long	ni_sndcc;		/* snd buffer character count */
+	int	ni_cpuid;		/* cpu id */
 };
 
 static struct {
@@ -114,6 +115,7 @@ static struct {
 static	int aflag = 0;
 static	int nflag = 0;
 static	int lastrow = 1;
+static int	showcpu;
 
 void
 closenetstat(WINDOW *w)
@@ -139,13 +141,24 @@ closenetstat(WINDOW *w)
 int
 initnetstat(void)
 {
+	int ncpu;
+	size_t len;
+
+	len = sizeof(ncpu);
+	if (sysctlbyname("hw.ncpu", &ncpu, &len, NULL, 0) == -1) {
+		warn("cannot determine number of CPUs, assuming SMP");
+		showcpu = 1;
+	} else if (ncpu != 1) {
+		showcpu = 1;
+	}
+	
 	netcb.ni_forw = netcb.ni_prev = (struct netinfo *)&netcb;
 	protos = TCP|UDP;
 	return(1);
 }
 
 static void
-enter_tcp(struct xinpgen *xig)
+enter_tcp(struct xinpgen *xig, int cpu)
 {
 	struct xtcpcb *xtcp = (struct xtcpcb *)xig;
 	struct xsocket *xso;
@@ -155,11 +168,11 @@ enter_tcp(struct xinpgen *xig)
 		return;
 	xso = &xtcp->xt_socket;
 	state = xtcp->xt_tp.t_state;
-	enter(&xtcp->xt_inp, xso, state, "tcp");
+	enter(&xtcp->xt_inp, xso, state, "tcp", cpu);
 }
 
 static void
-enter_udp(struct xinpgen *xig)
+enter_udp(struct xinpgen *xig, int cpu)
 {
 	struct xinpcb *xinp = (struct xinpcb *)xig;
 	struct xsocket *xso;
@@ -167,11 +180,11 @@ enter_udp(struct xinpgen *xig)
 	if (xig->xig_len < sizeof(*xinp))
 		return;
 	xso = &xinp->xi_socket;
-	enter(&xinp->xi_inp, xso, 0, "udp");
+	enter(&xinp->xi_inp, xso, 0, "udp", cpu);
 }
 
 static void
-fetchnetstat_proto(void (*enter_proto)(struct xinpgen *),
+fetchnetstat_proto(void (*enter_proto)(struct xinpgen *, int),
     const char *mibvar)
 {
 	struct xinpgen *xig, *oxig, *end;
@@ -198,7 +211,7 @@ fetchnetstat_proto(void (*enter_proto)(struct xinpgen *),
 	while (oxig + 1 < end && oxig->xig_len > 0) {
 		xig = (struct xinpgen *)((char *)oxig + oxig->xig_len);
 		for (i = 0; i < oxig->xig_count; ++i) {
-			enter_proto(xig);
+			enter_proto(xig, oxig->xig_cpu);
 			xig = (void *)((char *)xig + xig->xig_len);
 		}
 		oxig = (struct xinpgen *)((char *)xig + xig->xig_len);
@@ -220,7 +233,8 @@ fetchnetstat(void)
 }
 
 static void
-enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
+enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto,
+      int cpu)
 {
 	register struct netinfo *p;
 
@@ -273,13 +287,15 @@ enter(struct inpcb *inp, struct xsocket *so, int state, const char *proto)
 	p->ni_rcvcc = so->so_rcv.sb_cc;
 	p->ni_sndcc = so->so_snd.sb_cc;
 	p->ni_state = state;
+	p->ni_cpuid = cpu;
 	p->ni_seen = 1;
 }
 
 /* column locations */
 #define	LADDR	0
-#define	FADDR	LADDR+23
-#define	PROTO	FADDR+23
+#define	FADDR	LADDR+22
+#define	CPUID	FADDR+22
+#define	PROTO	CPUID+4
 #define	RCVCC	PROTO+6
 #define	SNDCC	RCVCC+7
 #define	STATE	SNDCC+7
@@ -291,6 +307,8 @@ labelnetstat(void)
 	wmove(wnd, 0, 0); wclrtobot(wnd);
 	mvwaddstr(wnd, 0, LADDR, "Local Address");
 	mvwaddstr(wnd, 0, FADDR, "Foreign Address");
+	if (showcpu)
+		mvwaddstr(wnd, 0, CPUID, "Cpu");
 	mvwaddstr(wnd, 0, PROTO, "Proto");
 	mvwaddstr(wnd, 0, RCVCC, "Recv-Q");
 	mvwaddstr(wnd, 0, SNDCC, "Send-Q");
@@ -351,6 +369,8 @@ shownetstat(void)
 			inetprint(&p->ni_faddr, p->ni_fport, p->ni_proto);
 			p->ni_flags &= ~NIF_FACHG;
 		}
+		if (showcpu)
+			mvwprintw(wnd, p->ni_line, CPUID, "%d", p->ni_cpuid);
 		mvwaddstr(wnd, p->ni_line, PROTO, p->ni_proto);
 		mvwprintw(wnd, p->ni_line, RCVCC, "%6d", p->ni_rcvcc);
 		mvwprintw(wnd, p->ni_line, SNDCC, "%6d", p->ni_sndcc);
