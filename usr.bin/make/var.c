@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.115 2005/03/01 23:25:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.116 2005/03/01 23:26:30 okumoto Exp $
  */
 
 /*-
@@ -1515,21 +1515,14 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 {
 	const char	*input = foo;
 	char		*rw_str = foo;
-
-	Var	*v;		/* Variable in invocation */
+	char		*ptr;
+	char		endc;	/* Ending character when variable in parens
+				 * or braces */
+	char		startc;	/* Starting character when variable in parens
+				 * or braces */
 	const char	*vname;
-	size_t	vlen;	/* length of variable name, after embedded variable
-			 * expansion */
-	Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
-	char	endc;		/* Ending character when variable in parens
-				 * or braces */
-	char	startc;		/* Starting character when variable in parens
-				 * or braces */
-	char	*tstr;		/* Pointer into str */
-	Boolean	dynamic;	/* TRUE if the variable is local and we're
-				 * expanding it in a non-local context. This
-				 * is done to support dynamic sources. The
-				 * result is just the invocation, unaltered */
+	size_t		vlen;	/* length of variable name, after embedded
+				 * variable expansion */
 
 	/* build up expanded variable name in this buffer */
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
@@ -1540,10 +1533,10 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 */
 	startc = input[1];
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
-	tstr = rw_str + 2;
+	ptr = rw_str + 2;
 
-	while (*tstr != endc && *tstr != ':') {
-		if (*tstr == '\0') {
+	while (*ptr != endc && *ptr != ':') {
+		if (*ptr == '\0') {
 			/*
 			 * If we did not find the end character,
 			 * return var_Error right now, setting the
@@ -1551,34 +1544,43 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 			 * the string, since that's what make does.
 			 */
 			*freePtr = FALSE;
-			*lengthPtr = tstr - input;
+			*lengthPtr = ptr - input;
 			Buf_Destroy(buf, TRUE);
 			return (var_Error);
 
-		} else if (*tstr == '$') {
+		} else if (*ptr == '$') {
 			size_t	rlen;
 			Boolean	rfree;
 			char	*rval;
 
 			rlen = 0;
-			rval = Var_Parse(tstr, ctxt, err, &rlen, &rfree);
+			rval = Var_Parse(ptr, ctxt, err, &rlen, &rfree);
 			if (rval == var_Error) {
 				Fatal("Error expanding embedded variable.");
 			}
 			Buf_Append(buf, rval);
 			if (rfree)
 				free(rval);
-			tstr += rlen - 1;
+			ptr += rlen - 1;
 		} else {
-			Buf_AddByte(buf, (Byte)*tstr);
+			Buf_AddByte(buf, (Byte)*ptr);
 		}
-		tstr++;
+		ptr++;
 	}
-
-	haveModifier = (*tstr == ':');
 
 	vname = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */
 	vlen = strlen(vname);
+
+    {
+	char	*const tstr = ptr;
+	Var	*v;		/* Variable in invocation */
+	Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
+	Boolean	dynamic;	/* TRUE if the variable is local and we're
+				 * expanding it in a non-local context. This
+				 * is done to support dynamic sources. The
+				 * result is just the invocation, unaltered */
+
+	haveModifier = (*tstr == ':');
 
 	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 
@@ -1722,6 +1724,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		*lengthPtr = tstr - input + 1;
 		return (result);
 	}
+    }
 }
 
 /**
