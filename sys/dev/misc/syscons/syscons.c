@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.14 2005/01/28 21:08:38 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.15 2005/02/12 02:58:29 joerg Exp $
  */
 
 #include "use_splash.h"
@@ -399,7 +399,7 @@ sc_attach_unit(int unit, int flags)
     dev = make_dev(&sc_cdevsw, SC_CONSOLECTL,
 		   UID_ROOT, GID_WHEEL, 0600, "consolectl");
     dev->si_tty = sc_console_tty = ttymalloc(sc_console_tty);
-    SC_STAT(dev) = sc_console;
+    dev->si_drv1 = sc_console;
 
     return 0;
 }
@@ -495,7 +495,7 @@ scopen(dev_t dev, int flag, int mode, struct thread *td)
 
     scp = SC_STAT(dev);
     if (scp == NULL) {
-	scp = SC_STAT(dev) = alloc_scp(sc, SC_VTY(dev));
+	scp = dev->si_drv1 = alloc_scp(sc, SC_VTY(dev));
 	if (ISGRAPHSC(scp))
 	    sc_set_pixel_mode(scp, NULL, COL, ROW, 16);
     }
@@ -2540,7 +2540,7 @@ scinit(int unit, int flags)
 	    sc->dev[0]->si_tty = ttymalloc(sc->dev[0]->si_tty);
 	    scp = alloc_scp(sc, sc->first_vty);
 	}
-	SC_STAT(sc->dev[0]) = scp;
+	sc->dev[0]->si_drv1 = scp;
 	sc->cur_scp = scp;
 
 	/* copy screen to temporary buffer */
