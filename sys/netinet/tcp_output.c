@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.3 2003/07/26 21:00:04 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.4 2003/08/15 14:55:04 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -142,7 +142,8 @@ tcp_output(tp)
 	 * to send, then transmit; otherwise, investigate further.
 	 */
 	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
-	if (idle && (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
+	if ((tp->snd_max == tp->snd_una) &&
+	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
 		/*
 		 * We have been idle for "a while" and no acks are
 		 * expected to clock out any data we send --
