@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.6 2005/01/09 03:04:51 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.7 2005/02/28 17:41:00 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -84,7 +84,9 @@
 #include <sys/vnode.h>
 #include <sys/poll.h>
 #include <sys/mountctl.h>
+#include <sys/journal.h>
 #include <sys/file.h>
+#include <sys/proc.h>
 
 #include <machine/limits.h>
 
@@ -131,11 +133,6 @@ static struct journal_subrecord *jrecord_write(struct jrecord *jrec,
 			    int16_t rectype, int bytes);
 static void jrecord_data(struct jrecord *jrec, const void *buf, int bytes);
 static void jrecord_done(struct jrecord *jrec, int abortit);
-
-static void jrecord_write_path(struct jrecord *jrec, 
-			    int16_t rectype, struct namecache *ncp);
-static void jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat);
-
 
 static int journal_setattr(struct vop_setattr_args *ap);
 static int journal_write(struct vop_write_args *ap);
@@ -976,6 +973,11 @@ jrecord_pop(struct jrecord *jrec, struct journal_subrecord *save)
      * pushptrgood.  Pointers become invalid when their related stream
      * record gets pushed out.
      *
+     * If no pointer is available (the data has already been pushed out),
+     * then no fixup of e.g. the length field is possible for non-leaf
+     * nodes.  The protocol allows for this situation by placing a larger
+     * burden on the program scanning the stream on the other end.
+     *
      * [parentA]
      *	  [node X]
      *    [parentB]
@@ -1043,10 +1045,26 @@ jrecord_pop(struct jrecord *jrec, struct journal_subrecord *save)
 }
 
 /*
+ * Write out a leaf record, including associated data.
+ */
+static
+void
+jrecord_leaf(struct jrecord *jrec, int16_t rectype, void *ptr, int bytes)
+{
+    jrecord_write(jrec, rectype, bytes);
+    jrecord_data(jrec, ptr, bytes);
+    jrecord_done(jrec, 0);
+}
+
+/*
  * Write a leaf record out and return a pointer to its base.  The leaf
  * record may contain potentially megabytes of data which is supplied
  * in jrecord_data() calls.  The exact amount must be specified in this
  * call.
+ *
+ * THE RETURNED SUBRECORD POINTER IS ONLY VALID IMMEDIATELY AFTER THE
+ * CALL AND MAY BECOME INVALID AT ANY TIME.  ONLY THE PUSH/POP CODE SHOULD
+ * USE THE RETURN VALUE.
  */
 static
 struct journal_subrecord *
@@ -1207,21 +1225,156 @@ jrecord_done(struct jrecord *jrec, int abortit)
 }
 
 /************************************************************************
- *			LEAF RECORD SUPPORT ROUTINES			*
+ *			LOW LEVEL RECORD SUPPORT ROUTINES		*
  ************************************************************************
  *
- * These routine create leaf subrecords representing common filesystem
- * structures.
+ * These routine create low level recursive and leaf subrecords representing
+ * common filesystem structures.
  */
 
+/*
+ * Write out a filename path relative to the base of the mount point.
+ * rectype is typically JLEAF_PATH{1,2,3,4}.
+ */
 static void
 jrecord_write_path(struct jrecord *jrec, int16_t rectype, struct namecache *ncp)
 {
+    char buf[64];	/* local buffer if it fits, else malloced */
+    char *base;
+    int pathlen;
+    int index;
+    struct namecache *scan;
+
+    /*
+     * Pass 1 - figure out the number of bytes required.  Include terminating
+     * 	       \0 on last element and '/' separator on other elements.
+     */
+again:
+    pathlen = 0;
+    for (scan = ncp; 
+	 scan && (scan->nc_flag & NCF_MOUNTPT) == 0; 
+	 scan = scan->nc_parent
+    ) {
+	pathlen += scan->nc_nlen + 1;
+    }
+
+    if (pathlen <= sizeof(buf))
+	base = buf;
+    else
+	base = malloc(pathlen, M_TEMP, M_INTWAIT);
+
+    /*
+     * Pass 2 - generate the path buffer
+     */
+    index = pathlen;
+    for (scan = ncp; 
+	 scan && (scan->nc_flag & NCF_MOUNTPT) == 0; 
+	 scan = scan->nc_parent
+    ) {
+	if (scan->nc_nlen >= index) {
+	    if (base != buf)
+		free(base, M_TEMP);
+	    goto again;
+	}
+	if (index == pathlen)
+	    base[--index] = 0;
+	else
+	    base[--index] = '/';
+	index -= scan->nc_nlen;
+	bcopy(scan->nc_name, base + index, scan->nc_nlen);
+    }
+    jrecord_leaf(jrec, rectype, base + index, pathlen - index);
+    if (base != buf)
+	free(base, M_TEMP);
 }
 
+/*
+ * Write out a file attribute structure.  While somewhat inefficient, using
+ * a recursive data structure is the most portable and extensible way.
+ */
 static void
 jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
 {
+    void *save;
+
+    save = jrecord_push(jrec, JTYPE_VATTR);
+    if (vat->va_type != VNON)
+	jrecord_leaf(jrec, JLEAF_UID, &vat->va_type, sizeof(vat->va_type));
+    if (vat->va_uid != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_UID, &vat->va_mode, sizeof(vat->va_mode));
+    if (vat->va_nlink != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_NLINK, &vat->va_nlink, sizeof(vat->va_nlink));
+    if (vat->va_uid != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_UID, &vat->va_uid, sizeof(vat->va_uid));
+    if (vat->va_gid != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_GID, &vat->va_gid, sizeof(vat->va_gid));
+    if (vat->va_fsid != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_FSID, &vat->va_fsid, sizeof(vat->va_fsid));
+    if (vat->va_fileid != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_INUM, &vat->va_fileid, sizeof(vat->va_fileid));
+    if (vat->va_size != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_SIZE, &vat->va_size, sizeof(vat->va_size));
+    if (vat->va_atime.tv_sec != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_ATIME, &vat->va_atime, sizeof(vat->va_atime));
+    if (vat->va_mtime.tv_sec != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_MTIME, &vat->va_mtime, sizeof(vat->va_mtime));
+    if (vat->va_ctime.tv_sec != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_CTIME, &vat->va_ctime, sizeof(vat->va_ctime));
+    if (vat->va_gen != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_GEN, &vat->va_gen, sizeof(vat->va_gen));
+    if (vat->va_flags != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_FLAGS, &vat->va_flags, sizeof(vat->va_flags));
+    if (vat->va_rdev != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_UDEV, &vat->va_rdev, sizeof(vat->va_rdev));
+#if 0
+    if (vat->va_filerev != VNOVAL)
+	jrecord_leaf(jrec, JLEAF_FILEREV, &vat->va_filerev, sizeof(vat->va_filerev));
+#endif
+    jrecord_pop(jrec, save);
+    jrecord_done(jrec, 0);
+}
+
+/*
+ * Write out the creds used to issue a file operation.  If a process is
+ * available write out additional tracking information related to the 
+ * process.
+ *
+ * XXX additional tracking info
+ * XXX tty line info
+ */
+static void
+jrecord_write_cred(struct jrecord *jrec, struct thread *td, struct ucred *cred)
+{
+    void *save;
+    struct proc *p;
+
+    save = jrecord_push(jrec, JTYPE_CRED);
+    jrecord_leaf(jrec, JLEAF_UID, &cred->cr_uid, sizeof(cred->cr_uid));
+    jrecord_leaf(jrec, JLEAF_GID, &cred->cr_gid, sizeof(cred->cr_gid));
+    if (td && (p = td->td_proc) != NULL) {
+	jrecord_leaf(jrec, JLEAF_PID, &p->p_pid, sizeof(p->p_pid));
+	jrecord_leaf(jrec, JLEAF_COMM, p->p_comm, sizeof(p->p_comm));
+    }
+    jrecord_pop(jrec, save);
+    jrecord_done(jrec, 0);
+}
+
+/*
+ * Write out information required to identify a vnode
+ */
+static void
+jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
+{
+    /* XXX */
+}
+
+/*
+ * Write out the data associated with a UIO
+ */
+static void
+jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio)
+{
+    /* XXX */
 }
 
 /************************************************************************
@@ -1256,6 +1409,9 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
  * new VFS equivalents (NMKDIR).
  */
 
+/*
+ * Journal vop_settattr { a_vp, a_vap, a_cred, a_td }
+ */
 static
 int
 journal_setattr(struct vop_setattr_args *ap)
@@ -1272,6 +1428,9 @@ journal_setattr(struct vop_setattr_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_SETATTR);
+	    jrecord_write_cred(&jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    jrecord_write_vattr(&jrec, ap->a_vap);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1279,6 +1438,9 @@ journal_setattr(struct vop_setattr_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_write { a_vp, a_uio, a_ioflag, a_cred }
+ */
 static
 int
 journal_write(struct vop_write_args *ap)
@@ -1295,6 +1457,9 @@ journal_write(struct vop_write_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_WRITE);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    jrecord_write_uio(&jrec, JLEAF_FILEDATA, ap->a_uio);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1302,6 +1467,9 @@ journal_write(struct vop_write_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_fsync { a_vp, a_waitfor, a_td }
+ */
 static
 int
 journal_fsync(struct vop_fsync_args *ap)
@@ -1320,6 +1488,9 @@ journal_fsync(struct vop_fsync_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_putpages { a_vp, a_m, a_count, a_sync, a_rtvals, a_offset }
+ */
 static
 int
 journal_putpages(struct vop_putpages_args *ap)
@@ -1336,6 +1507,8 @@ journal_putpages(struct vop_putpages_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_PUTPAGES);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    /* XXX pagelist */
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1343,6 +1516,9 @@ journal_putpages(struct vop_putpages_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_setacl { a_vp, a_type, a_aclp, a_cred, a_td }
+ */
 static
 int
 journal_setacl(struct vop_setacl_args *ap)
@@ -1359,6 +1535,9 @@ journal_setacl(struct vop_setacl_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_SETACL);
+	    jrecord_write_cred(&jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    /* XXX type, aclp */
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1366,6 +1545,9 @@ journal_setacl(struct vop_setacl_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_setextattr { a_vp, a_name, a_uio, a_cred, a_td }
+ */
 static
 int
 journal_setextattr(struct vop_setextattr_args *ap)
@@ -1382,6 +1564,10 @@ journal_setextattr(struct vop_setextattr_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_SETEXTATTR);
+	    jrecord_write_cred(&jrec, ap->a_td, ap->a_cred);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    jrecord_leaf(&jrec, JLEAF_ATTRNAME, ap->a_name, strlen(ap->a_name));
+	    jrecord_write_uio(&jrec, JLEAF_FILEDATA, ap->a_uio);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1389,6 +1575,9 @@ journal_setextattr(struct vop_setextattr_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_ncreate { a_ncp, a_vpp, a_cred, a_vap }
+ */
 static
 int
 journal_ncreate(struct vop_ncreate_args *ap)
@@ -1405,6 +1594,10 @@ journal_ncreate(struct vop_ncreate_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_CREATE);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    if (*ap->a_vpp)
+		jrecord_write_vnode_ref(&jrec, *ap->a_vpp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1412,6 +1605,9 @@ journal_ncreate(struct vop_ncreate_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nmknod { a_ncp, a_vpp, a_cred, a_vap }
+ */
 static
 int
 journal_nmknod(struct vop_nmknod_args *ap)
@@ -1428,6 +1624,11 @@ journal_nmknod(struct vop_nmknod_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_MKNOD);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    jrecord_write_vattr(&jrec, ap->a_vap);
+	    if (*ap->a_vpp)
+		jrecord_write_vnode_ref(&jrec, *ap->a_vpp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1435,6 +1636,9 @@ journal_nmknod(struct vop_nmknod_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nlink { a_ncp, a_vp, a_cred }
+ */
 static
 int
 journal_nlink(struct vop_nlink_args *ap)
@@ -1451,6 +1655,10 @@ journal_nlink(struct vop_nlink_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_LINK);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
+	    /* XXX PATH to VP and inode number */
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1458,6 +1666,9 @@ journal_nlink(struct vop_nlink_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_symlink { a_ncp, a_vpp, a_cred, a_vap, a_target }
+ */
 static
 int
 journal_nsymlink(struct vop_nsymlink_args *ap)
@@ -1474,6 +1685,12 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_SYMLINK);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    jrecord_leaf(&jrec, JLEAF_SYMLINKDATA,
+			ap->a_target, strlen(ap->a_target));
+	    if (*ap->a_vpp)
+		jrecord_write_vnode_ref(&jrec, *ap->a_vpp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1481,6 +1698,9 @@ journal_nsymlink(struct vop_nsymlink_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nwhiteout { a_ncp, a_cred, a_flags }
+ */
 static
 int
 journal_nwhiteout(struct vop_nwhiteout_args *ap)
@@ -1497,6 +1717,8 @@ journal_nwhiteout(struct vop_nwhiteout_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_WHITEOUT);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1504,6 +1726,9 @@ journal_nwhiteout(struct vop_nwhiteout_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nremove { a_ncp, a_cred }
+ */
 static
 int
 journal_nremove(struct vop_nremove_args *ap)
@@ -1520,6 +1745,8 @@ journal_nremove(struct vop_nremove_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_REMOVE);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1527,6 +1754,9 @@ journal_nremove(struct vop_nremove_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nmkdir { a_ncp, a_vpp, a_cred, a_vap }
+ */
 static
 int
 journal_nmkdir(struct vop_nmkdir_args *ap)
@@ -1554,7 +1784,11 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
 #endif
 	    save = jrecord_push(&jrec, JTYPE_MKDIR);
 	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
 	    jrecord_write_vattr(&jrec, ap->a_vap);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
+	    if (*ap->a_vpp)
+		jrecord_write_vnode_ref(&jrec, *ap->a_vpp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1562,7 +1796,9 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
     return (error);
 }
 
-
+/*
+ * Journal vop_nrmdir { a_ncp, a_cred }
+ */
 static
 int
 journal_nrmdir(struct vop_nrmdir_args *ap)
@@ -1579,6 +1815,8 @@ journal_nrmdir(struct vop_nrmdir_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_RMDIR);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
@@ -1586,6 +1824,9 @@ journal_nrmdir(struct vop_nrmdir_args *ap)
     return (error);
 }
 
+/*
+ * Journal vop_nrename { a_fncp, a_tncp, a_cred }
+ */
 static
 int
 journal_nrename(struct vop_nrename_args *ap)
@@ -1602,6 +1843,9 @@ journal_nrename(struct vop_nrename_args *ap)
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_RENAME);
+	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
+	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_fncp);
+	    jrecord_write_path(&jrec, JLEAF_PATH2, ap->a_tncp);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
