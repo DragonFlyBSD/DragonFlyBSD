@@ -51,7 +51,7 @@
  *	Last Edit-Date: [Mon Dec 27 14:03:36 1999]
  *
  * $FreeBSD: src/sys/i386/isa/pcvt/pcvt_drv.c,v 1.63.2.1 2001/02/26 04:23:13 jlemon Exp $
- * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/pcvt/i386/Attic/pcvt_drv.c,v 1.8 2003/08/27 06:48:15 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -69,7 +69,7 @@
 #include "machine/stdarg.h"
 #endif
 
-extern int getchar __P((void));
+extern int getchar (void);
 
 #if PCVT_NETBSD
 	extern u_short *Crtat;

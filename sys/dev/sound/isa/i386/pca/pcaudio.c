@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.6 2003/08/07 21:17:12 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.7 2003/08/27 06:48:15 rob Exp $
  */
 
 #include <sys/param.h>
@@ -175,9 +175,9 @@ static struct cdevsw pca_cdevsw = {
 	/* psize */	nopsize
 };
 
-static void pca_continue __P((void));
-static void pca_init __P((void));
-static void pca_pause __P((void));
+static void pca_continue (void);
+static void pca_init (void);
+static void pca_pause (void);
 
 static void
 conv(const unsigned char *table, unsigned char *buff, unsigned n)

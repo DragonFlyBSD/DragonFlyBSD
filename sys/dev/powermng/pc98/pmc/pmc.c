@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pc98/pc98/pmc.c,v 1.2.2.1 2001/11/01 09:42:29 nyan Exp $
- * $DragonFly: src/sys/dev/powermng/pc98/pmc/Attic/pmc.c,v 1.3 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/pc98/pmc/Attic/pmc.c,v 1.4 2003/08/27 06:48:14 rob Exp $
  */
 
 #include <sys/param.h>
@@ -52,11 +52,11 @@ struct pmc_isa_softc {
 	int			flags;
 };
 
-static int	pmc_isa_alloc_resources __P((device_t));
-static void	pmc_isa_release_resources __P((device_t));
-static int	pmc_isa_probe __P((device_t));
-static int	pmc_isa_attach __P((device_t));
-static int	pmc_isa_detach __P((device_t));
+static int	pmc_isa_alloc_resources (device_t);
+static void	pmc_isa_release_resources (device_t);
+static int	pmc_isa_probe (device_t);
+static int	pmc_isa_attach (device_t);
+static int	pmc_isa_detach (device_t);
 
 #define	PMC_ISA_PORT		0x8f0
 #define	PMC_ISA_PORTSIZE	4

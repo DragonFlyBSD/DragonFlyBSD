@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/soundcard.c,v 1.87 1999/12/20 18:05:01 eivind Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.4 2003/08/07 21:17:12 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.5 2003/08/27 06:48:15 rob Exp $
  *
  */
 #include "use_snd.h"
@@ -76,8 +76,8 @@ audio_poll(int dev, struct fileinfo * file, int events, select_table * wait);
 int
 sequencer_poll (int dev, struct fileinfo *file, int events, select_table * wait);
 
-static int sndprobe    __P((struct isa_device *));
-static int sndattach   __P((struct isa_device *));
+static int sndprobe    (struct isa_device *);
+static int sndattach   (struct isa_device *);
 
 static d_open_t sndopen;
 static d_close_t sndclose;

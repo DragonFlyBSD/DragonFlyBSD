@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.3 2003/08/07 21:17:10 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.4 2003/08/27 06:48:14 rob Exp $
  */
 
 /*
@@ -48,8 +48,8 @@
 #include <i386/isa/intr_machdep.h>
 #endif
 
-static const char *cy_probe		__P((pcici_t, pcidi_t));
-static void cy_attach		__P((pcici_t, int));
+static const char *cy_probe		(pcici_t, pcidi_t);
+static void cy_attach		(pcici_t, int);
 
 extern int cyattach_common(void *, int); /* Not exactly correct */
 extern void cyintr(int);

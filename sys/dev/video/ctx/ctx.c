@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.5 2003/08/07 21:17:15 dillon Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.6 2003/08/27 06:48:15 rob Exp $
  */
 
 /*
@@ -129,8 +129,8 @@ static int     waitvb(int port);
 
 #define   UNIT(x) ((x) & 0x07)
 
-static int	ctxprobe __P((struct isa_device *devp));
-static int	ctxattach __P((struct isa_device *devp));
+static int	ctxprobe (struct isa_device *devp);
+static int	ctxattach (struct isa_device *devp);
 struct isa_driver ctxdriver = {ctxprobe, ctxattach, "ctx"};
 
 static	d_open_t	ctxopen;

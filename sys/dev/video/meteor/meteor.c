@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.8 2003/08/11 17:50:15 drhodus Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.9 2003/08/27 06:48:15 rob Exp $
  */
 
 /*		Change History:
@@ -172,7 +172,7 @@
 #include "meteor_reg.h"
 
 
-static void meteor_intr __P((void *arg));
+static void meteor_intr (void *arg);
 
 /* 
  * Allocate enough memory for:

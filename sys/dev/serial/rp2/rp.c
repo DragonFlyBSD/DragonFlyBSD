@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.8 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.9 2003/08/27 06:48:14 rob Exp $
  */
 
 /* 
@@ -768,8 +768,8 @@ void sDisInterrupts(CHANNEL_T *ChP,Word_t Flags)
   Begin FreeBsd-specific driver code
 **********************************************************************/
 
-static int rpprobe __P((struct isa_device *));
-static int rpattach __P((struct isa_device *));
+static int rpprobe (struct isa_device *);
+static int rpattach (struct isa_device *);
 
 static const char* rp_pciprobe(pcici_t tag, pcidi_t type);
 static void rp_pciattach(pcici_t tag, int unit);
@@ -855,12 +855,12 @@ static	struct	rp_port *p_rp_table[MAX_RP_PORTS];
  * The top-level routines begin here
  */
 
-static	int	rpparam __P((struct tty *, struct termios *));
-static	void	rpstart __P((struct tty *));
-static	void	rpstop __P((struct tty *, int));
-static	void	rphardclose	__P((struct rp_port *));
-static	void	rp_disc_optim	__P((struct tty *tp, struct termios *t,
-						struct rp_port	*rp));
+static	int	rpparam (struct tty *, struct termios *);
+static	void	rpstart (struct tty *);
+static	void	rpstop (struct tty *, int);
+static	void	rphardclose	(struct rp_port *);
+static	void	rp_disc_optim	(struct tty *tp, struct termios *t,
+						struct rp_port	*rp);
 
 static _INLINE_ void rp_do_receive(struct rp_port *rp, struct tty *tp,
 			CHANNEL_t *cp, unsigned int ChanStatus)

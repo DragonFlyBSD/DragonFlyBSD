@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.7 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.8 2003/08/27 06:48:15 rob Exp $
  */
 
 #include <sys/param.h>
@@ -66,12 +66,12 @@ static struct cdevsw spkr_cdevsw = {
 
 static char endtone, endrest;
 
-static void tone __P((unsigned int thz, unsigned int ticks));
-static void rest __P((int ticks));
-static void playinit __P((void));
-static void playtone __P((int pitch, int value, int sustain));
-static int abs __P((int n));
-static void playstring __P((char *cp, size_t slen));
+static void tone (unsigned int thz, unsigned int ticks);
+static void rest (int ticks);
+static void playinit (void);
+static void playtone (int pitch, int value, int sustain);
+static int abs (int n);
+static void playstring (char *cp, size_t slen);
 
 /* emit tone of frequency thz for given number of ticks */
 static void

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.9 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.10 2003/08/27 06:48:14 rob Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -292,46 +292,46 @@ struct com_s {
 };
 
 #ifdef COM_ESP
-static	int	espattach	__P((struct com_s *com, Port_t esp_port));
+static	int	espattach	(struct com_s *com, Port_t esp_port);
 #endif
-static	int	sioattach	__P((device_t dev, int rid, u_long rclk));
-static	int	sio_isa_attach	__P((device_t dev));
+static	int	sioattach	(device_t dev, int rid, u_long rclk);
+static	int	sio_isa_attach	(device_t dev);
 
 static	timeout_t siobusycheck;
-static	u_int	siodivisor	__P((u_long rclk, speed_t speed));
+static	u_int	siodivisor	(u_long rclk, speed_t speed);
 static	timeout_t siodtrwakeup;
-static	void	comhardclose	__P((struct com_s *com));
-static	void	sioinput	__P((struct com_s *com));
-static	void	siointr1	__P((struct com_s *com));
-static	void	siointr		__P((void *arg));
-static	int	commctl		__P((struct com_s *com, int bits, int how));
-static	int	comparam	__P((struct tty *tp, struct termios *t));
+static	void	comhardclose	(struct com_s *com);
+static	void	sioinput	(struct com_s *com);
+static	void	siointr1	(struct com_s *com);
+static	void	siointr		(void *arg);
+static	int	commctl		(struct com_s *com, int bits, int how);
+static	int	comparam	(struct tty *tp, struct termios *t);
 static	inthand2_t siopoll;
-static	int	sioprobe	__P((device_t dev, int xrid, u_long rclk));
-static	int	sio_isa_probe	__P((device_t dev));
-static	void	siosettimeout	__P((void));
-static	int	siosetwater	__P((struct com_s *com, speed_t speed));
-static	void	comstart	__P((struct tty *tp));
-static	void	comstop		__P((struct tty *tp, int rw));
+static	int	sioprobe	(device_t dev, int xrid, u_long rclk);
+static	int	sio_isa_probe	(device_t dev);
+static	void	siosettimeout	(void);
+static	int	siosetwater	(struct com_s *com, speed_t speed);
+static	void	comstart	(struct tty *tp);
+static	void	comstop		(struct tty *tp, int rw);
 static	timeout_t comwakeup;
-static	void	disc_optim	__P((struct tty	*tp, struct termios *t,
-				     struct com_s *com));
+static	void	disc_optim	(struct tty	*tp, struct termios *t,
+				     struct com_s *com);
 
 #if NCARD > 0
-static	int	sio_pccard_attach __P((device_t dev));
-static	int	sio_pccard_detach __P((device_t dev));
-static	int	sio_pccard_probe __P((device_t dev));
+static	int	sio_pccard_attach (device_t dev);
+static	int	sio_pccard_detach (device_t dev);
+static	int	sio_pccard_probe (device_t dev);
 #endif /* NCARD > 0 */
 
 #if NPCI > 0
-static	int	sio_pci_attach __P((device_t dev));
-static	void	sio_pci_kludge_unit __P((device_t dev));
-static	int	sio_pci_probe __P((device_t dev));
+static	int	sio_pci_attach (device_t dev);
+static	void	sio_pci_kludge_unit (device_t dev);
+static	int	sio_pci_probe (device_t dev);
 #endif /* NPCI > 0 */
 
 #if NPUC > 0
-static	int	sio_puc_attach __P((device_t dev));
-static	int	sio_puc_probe __P((device_t dev));
+static	int	sio_puc_attach (device_t dev);
+static	int	sio_puc_probe (device_t dev);
 #endif /* NPUC > 0 */
 
 static char driver_name[] = "sio";
@@ -2979,10 +2979,10 @@ struct siocnstate {
 	u_char	mcr;
 };
 
-static speed_t siocngetspeed __P((Port_t, u_long rclk));
-static void siocnclose	__P((struct siocnstate *sp, Port_t iobase));
-static void siocnopen	__P((struct siocnstate *sp, Port_t iobase, int speed));
-static void siocntxwait	__P((Port_t iobase));
+static speed_t siocngetspeed (Port_t, u_long rclk);
+static void siocnclose	(struct siocnstate *sp, Port_t iobase);
+static void siocnopen	(struct siocnstate *sp, Port_t iobase, int speed);
+static void siocntxwait	(Port_t iobase);
 
 static cn_probe_t siocnprobe;
 static cn_init_t siocninit;

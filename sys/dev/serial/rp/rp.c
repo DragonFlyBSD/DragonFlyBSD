@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.8 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.9 2003/08/27 06:48:14 rob Exp $
  */
 
 /* 
@@ -622,11 +622,11 @@ static	struct	rp_port *p_rp_table[MAX_RP_PORTS];
  * The top-level routines begin here
  */
 
-static	int	rpparam __P((struct tty *, struct termios *));
-static	void	rpstart __P((struct tty *));
-static	void	rpstop __P((struct tty *, int));
-static	void	rphardclose	__P((struct rp_port *));
-static	void	rp_disc_optim	__P((struct tty *tp, struct termios *t));
+static	int	rpparam (struct tty *, struct termios *);
+static	void	rpstart (struct tty *);
+static	void	rpstop (struct tty *, int);
+static	void	rphardclose	(struct rp_port *);
+static	void	rp_disc_optim	(struct tty *tp, struct termios *t);
 
 static _INLINE_ void rp_do_receive(struct rp_port *rp, struct tty *tp,
 			CHANNEL_t *cp, unsigned int ChanStatus)

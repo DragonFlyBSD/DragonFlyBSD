@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/intpm.c,v 1.16.2.1 2001/12/23 08:17:47 pirzyk Exp $
- * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.4 2003/08/07 21:17:07 dillon Exp $
+ * $DragonFly: src/sys/dev/powermng/i386/intpm/intpm.c,v 1.5 2003/08/27 06:48:14 rob Exp $
  */
 
 #include <sys/param.h>
@@ -643,7 +643,7 @@ intsmb_bread(device_t dev, u_char slave, char cmd, u_char count, char *buf)
 DRIVER_MODULE(intsmb, intpm , intpm_driver, intsmb_devclass, 0, 0);
 
 
-static void intpm_intr __P((void *arg));
+static void intpm_intr (void *arg);
 static int
 intpm_attach(device_t dev)
 {
