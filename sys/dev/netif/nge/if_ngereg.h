@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_ngereg.h,v 1.4.2.5 2002/11/13 12:54:06 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_ngereg.h,v 1.3 2004/09/15 00:06:16 joerg Exp $
  */
 
 #define NGE_CSR			0x00
@@ -660,7 +660,7 @@ struct nge_softc {
 #define NGE_WIDTH_64BITS	1
 	struct nge_list_data	*nge_ldata;
 	struct nge_ring_data	nge_cdata;
-	struct callout_handle	nge_stat_ch;
+	struct callout		nge_stat_timer;
 	SLIST_HEAD(__nge_jfreehead, nge_jpool_entry)	nge_jfree_listhead;
 	SLIST_HEAD(__nge_jinusehead, nge_jpool_entry)	nge_jinuse_listhead;
 	u_int8_t		nge_tbi;

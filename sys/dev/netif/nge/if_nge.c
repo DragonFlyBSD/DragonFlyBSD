@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.14 2004/07/29 08:46:22 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.15 2004/09/15 00:06:16 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -821,6 +821,7 @@ static int nge_attach(dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct nge_softc));
+	callout_init(&sc->nge_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -1014,7 +1015,6 @@ static int nge_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->nge_stat_ch);
 
 fail:
 
@@ -1570,7 +1570,7 @@ static void nge_tick(xsc)
 			}
 		}
 	}
-	sc->nge_stat_ch = timeout(nge_tick, sc, hz);
+	callout_reset(&sc->nge_stat_timer, hz, nge_tick, sc);
 
 	splx(s);
 
@@ -1857,7 +1857,7 @@ static void nge_init(xsc)
 	 * Cancel pending I/O and free all RX/TX buffers.
 	 */
 	nge_stop(sc);
-	sc->nge_stat_ch = timeout(nge_tick, sc, hz);
+	callout_reset(&sc->nge_stat_timer, hz, nge_tick, sc);
 
 	if (sc->nge_tbi) {
 		mii = NULL;
@@ -2268,7 +2268,7 @@ static void nge_stop(sc)
 		mii = device_get_softc(sc->nge_miibus);
 	}
 
-	untimeout(nge_tick, sc, sc->nge_stat_ch);
+	callout_stop(&sc->nge_stat_timer);
 #ifdef DEVICE_POLLING
 	ether_poll_deregister(ifp);
 #endif
