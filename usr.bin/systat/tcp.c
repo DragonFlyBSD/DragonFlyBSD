@@ -32,7 +32,7 @@
  *
  * @(#)mbufs.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/tcp.c,v 1.3 1999/08/28 01:06:06 peter Exp $
- * $DragonFly: src/usr.bin/systat/tcp.c,v 1.4 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/tcp.c,v 1.5 2004/04/07 21:40:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,7 @@
 #include "extern.h"
 #include "mode.h"
 
-static struct tcpstat curstat, initstat, oldstat;
+static struct tcp_stats curstat, initstat, oldstat;
 
 /*-
 --0         1         2         3         4         5         6         7
@@ -130,9 +130,9 @@ labeltcp(void)
 }
 
 static void
-domode(struct tcpstat *ret)
+domode(struct tcp_stats *ret)
 {
-	const struct tcpstat *sub;
+	const struct tcp_stats *sub;
 	double divisor = 1.0;
 
 	switch(currentmode) {
@@ -219,7 +219,7 @@ domode(struct tcpstat *ret)
 void
 showtcp(void)
 {
-	struct tcpstat stats;
+	struct tcp_stats stats;
 
 	memset(&stats, 0, sizeof stats);
 	domode(&stats);
@@ -264,15 +264,15 @@ inittcp(void)
 
 	len = 0;
 	if (sysctl(name, 4, 0, &len, 0, 0) < 0) {
-		error("sysctl getting tcpstat size failed");
+		error("sysctl getting tcp_stats size failed");
 		return 0;
 	}
 	if (len > sizeof curstat) {
-		error("tcpstat structure has grown--recompile systat!");
+		error("tcp_stats structure has grown--recompile systat!");
 		return 0;
 	}
 	if (sysctl(name, 4, &initstat, &len, 0, 0) < 0) {
-		error("sysctl getting tcpstat failed");
+		error("sysctl getting tcp_stats failed");
 		return 0;
 	}
 	oldstat = initstat;
@@ -292,7 +292,7 @@ resettcp(void)
 
 	len = sizeof initstat;
 	if (sysctl(name, 4, &initstat, &len, 0, 0) < 0) {
-		error("sysctl getting tcpstat failed");
+		error("sysctl getting tcp_stats failed");
 	}
 	oldstat = initstat;
 }
