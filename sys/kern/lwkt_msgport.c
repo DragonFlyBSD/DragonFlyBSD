@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.5 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.6 2003/10/22 01:01:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -291,6 +291,7 @@ int
 lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
 {
     crit_enter();
+    msg->ms_flags &= ~MSGF_DONE;
     _lwkt_putport(port, msg);
     crit_exit();
     return(EASYNC);
