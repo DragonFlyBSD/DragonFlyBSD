@@ -1,4 +1,4 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.2 2004/11/09 21:29:34 joerg Exp $
 
 --- ntpd.c.orig	2004-11-09 20:39:54.000000000 +0100
 +++ ntpd.c	2004-11-09 20:40:48.000000000 +0100
@@ -8,17 +8,17 @@ $DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.c.patch,v 1.1 2004/11/09 20:05:
  {
 -	extern char *__progname;
 -
--	fprintf(stderr, "usage: %s [-d] [-f file]\n", __progname);
-+	fprintf(stderr, "usage: %s [-d] [-f file]\n", getprogname());
+-	fprintf(stderr, "usage: %s [-dSs] [-f file]\n", __progname);
++	fprintf(stderr, "usage: %s [-dSs] [-f file]\n", getprogname());
  	exit(1);
  }
  
-@@ -81,7 +79,7 @@
+@@ -79,7 +79,7 @@
  	struct ntpd_conf	 conf;
  	struct pollfd		 pfd[POLL_MAX];
  	pid_t			 chld_pid = 0, pid;
 -	char			*conffile;
 +	const char		*conffile;
- 	int			 debug = 0;
- 	int			 ch, nfds;
+ 	int			 ch, nfds, timeout = INFTIM;
  	int			 pipe_chld[2];
+ 

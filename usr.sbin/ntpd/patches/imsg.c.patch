@@ -1,13 +1,13 @@
-$DragonFly: src/usr.sbin/ntpd/patches/Attic/imsg.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/imsg.c.patch,v 1.2 2004/11/09 21:29:34 joerg Exp $
 
---- imsg.c.orig	2004-05-31 15:46:16.000000000 +0200
-+++ imsg.c	2004-11-09 20:41:42.000000000 +0100
-@@ -160,7 +160,7 @@
+--- imsg.c.orig	2004-11-09 22:17:04.000000000 +0100
++++ imsg.c	2004-11-09 22:17:13.000000000 +0100
+@@ -111,7 +111,7 @@
  }
  
  struct buf *
--imsg_create_core(struct imsgbuf *ibuf, int type, u_int32_t peerid,
-+imsg_create_core(struct imsgbuf *ibuf __unused, int type, u_int32_t peerid,
-     u_int16_t datalen, pid_t pid)
+-imsg_create(struct imsgbuf *ibuf, enum imsg_type type, u_int32_t peerid,
++imsg_create(struct imsgbuf *ibuf __unused, enum imsg_type type, u_int32_t peerid,
+     pid_t pid, u_int16_t datalen)
  {
  	struct buf	*wbuf;
