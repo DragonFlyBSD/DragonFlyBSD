@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.12 2005/03/13 21:33:48 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.13 2005/03/15 01:12:21 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -184,6 +184,7 @@ struct clockinfo {
 #endif
 #define CLOCK_VIRTUAL	1
 #define CLOCK_PROF	2
+#define CLOCK_MONOTONIC	4
 
 #define TIMER_RELTIME	0x0	/* relative timer */
 #ifndef TIMER_ABSTIME

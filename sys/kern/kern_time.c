@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.17 2004/09/17 01:29:45 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.18 2005/03/15 01:12:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -148,10 +148,16 @@ clock_gettime(struct clock_gettime_args *uap)
 {
 	struct timespec ats;
 
-	if (SCARG(uap, clock_id) != CLOCK_REALTIME)
+	switch(uap->clock_id) {
+	case CLOCK_REALTIME:
+		nanotime(&ats);
+		return (copyout(&ats, uap->tp, sizeof(ats)));
+	case CLOCK_MONOTONIC:
+		nanouptime(&ats);
+		return (copyout(&ats, uap->tp, sizeof(ats)));
+	default:
 		return (EINVAL);
-	nanotime(&ats);
-	return (copyout(&ats, SCARG(uap, tp), sizeof(ats)));
+	}
 }
 
 /* ARGSUSED */
@@ -165,39 +171,41 @@ clock_settime(struct clock_settime_args *uap)
 
 	if ((error = suser(td)) != 0)
 		return (error);
-	if (SCARG(uap, clock_id) != CLOCK_REALTIME)
-		return (EINVAL);
-	if ((error = copyin(SCARG(uap, tp), &ats, sizeof(ats))) != 0)
+	switch(uap->clock_id) {
+	case CLOCK_REALTIME:
+		if ((error = copyin(uap->tp, &ats, sizeof(ats))) != 0)
+			return (error);
+		if (ats.tv_nsec < 0 || ats.tv_nsec >= 1000000000)
+			return (EINVAL);
+		/* XXX Don't convert nsec->usec and back */
+		TIMESPEC_TO_TIMEVAL(&atv, &ats);
+		error = settime(&atv);
 		return (error);
-	if (ats.tv_nsec < 0 || ats.tv_nsec >= 1000000000)
+	default:
 		return (EINVAL);
-	/* XXX Don't convert nsec->usec and back */
-	TIMESPEC_TO_TIMEVAL(&atv, &ats);
-	if ((error = settime(&atv)))
-		return (error);
-	return (0);
+	}
 }
 
 int
 clock_getres(struct clock_getres_args *uap)
 {
 	struct timespec ts;
-	int error;
 
-	if (SCARG(uap, clock_id) != CLOCK_REALTIME)
-		return (EINVAL);
-	error = 0;
-	if (SCARG(uap, tp)) {
-		ts.tv_sec = 0;
+	switch(uap->clock_id) {
+	case CLOCK_REALTIME:
+	case CLOCK_MONOTONIC:
 		/*
-		 * Round up the result of the division cheaply by adding 1.
-		 * Rounding up is especially important if rounding down
-		 * would give 0.  Perfect rounding is unimportant.
+		 * Round up the result of the division cheaply
+		 * by adding 1.  Rounding up is especially important
+		 * if rounding down would give 0.  Perfect rounding
+		 * is unimportant.
 		 */
+		ts.tv_sec = 0;
 		ts.tv_nsec = 1000000000 / cputimer_freq + 1;
-		error = copyout(&ts, SCARG(uap, tp), sizeof(ts));
+		return(copyout(&ts, uap->tp, sizeof(ts)));
+	default:
+		return(EINVAL);
 	}
-	return (error);
 }
 
 /*
