@@ -58,7 +58,7 @@
 
 /* most of this code has been pilfered from my libdes speed.c program */
 
-/* $DragonFly: src/secure/usr.bin/openssl/apps/Attic/speed.c,v 1.1 2004/02/05 04:22:22 rob Exp $
+/* $DragonFly: src/secure/usr.bin/openssl/apps/Attic/speed.c,v 1.2 2004/02/08 10:51:18 rob Exp $
 */
 #ifndef OPENSSL_NO_SPEED
 
@@ -91,12 +91,12 @@
 #include OPENSSL_UNISTD
 #endif
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(OPENSSL_SYS_MACOSX) || defined (__DragonFLY)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(OPENSSL_SYS_MACOSX) || defined (__DragonFly__)
 # define USE_TOD
 #elif !defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_VXWORKS) && (!defined(OPENSSL_SYS_VMS) || defined(__DECC))
 # define TIMES
 #endif
-#if !defined(_UNICOS) && !defined(__OpenBSD__) && !defined(sgi) && !defined(__FreeBSD__) && !(defined(__bsdi) || defined(__bsdi__)) && !defined(_AIX) && !defined(OPENSSL_SYS_MPE) && !defined(__NetBSD__) && !defined(OPENSSL_SYS_VXWORKS) && !defined (__DragonFly) /* FIXME */
+#if !defined(_UNICOS) && !defined(__OpenBSD__) && !defined(sgi) && !defined(__FreeBSD__) && !(defined(__bsdi) || defined(__bsdi__)) && !defined(_AIX) && !defined(OPENSSL_SYS_MPE) && !defined(__NetBSD__) && !defined(OPENSSL_SYS_VXWORKS) && !defined (__DragonFly__) /* FIXME */
 # define TIMEB
 #endif
 
