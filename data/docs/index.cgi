@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.2 2004/01/22 21:59:09 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.3 2004/01/26 20:37:26 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -8,13 +8,25 @@ $TITLE(The DragonFly BSD Project)
 <P>
 <TABLE>
 <TR>
-    <TD><A HREF="BAFUG1_SLIDES/">BAFUG Slides</A></TD>
-    <TD><A HREF="BAFUG1_SLIDES/dfly_bafug1.sxd">[OpenOffice SXD]</A></TD>
+    <TD>BAFUG Slides <A HREF="BAFUG1_SLIDES/">[HTML]</A>
+    <A HREF="BAFUG1_SLIDES/dfly_bafug1.sxd">[OpenOffice SXD]</A></TD>
+    <TD><I>January 2003</I></TD>
 </TR>
 
 <TR>
     <TD><A HREF="nanosleep/">Nanosleep()</A></TD>
-    <TD><I>(January 2004)</I></TD>
+    <TD><I>January 2004</I></TD>
+</TR>
+
+<TR>
+    <TD><A HREF="benchmarks/zucconi.cgi">DragonFly and FreeBSD 4/5 benchmarks</A></TD>
+    <TD><I>January 2004</I></A></TD>
+</TR>
+
+<TR>
+    <TD>UCB Berkley Slides <A HREF="ucb2003/">[HTML]</A>
+    <A HREF="ucb2003/dfly_basic.sxd">[OpenOffice SXD]</A></TD>
+    <TD><I>October 2003</I></TD>
 </TR>
 
 </TABLE>
