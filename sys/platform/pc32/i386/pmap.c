@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.45 2004/07/29 20:30:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.46 2004/09/26 01:53:51 dillon Exp $
  */
 
 /*
@@ -1023,21 +1023,12 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m, pmap_inval_info_t info)
 		;
 
 	if (m->hold_count == 0) {
-		vm_offset_t pteva;
 		/*
 		 * unmap the page table page
 		 */
 		pmap_inval_add(info, pmap, -1);
 		pmap->pm_pdir[m->pindex] = 0;
 		--pmap->pm_stats.resident_count;
-		if ((((unsigned)pmap->pm_pdir[PTDPTDI]) & PG_FRAME) ==
-			(((unsigned) PTDpde) & PG_FRAME)) {
-			/*
-			 * Do a invltlb to make the invalidated mapping
-			 * take effect immediately.
-			 */
-			pteva = UPT_MIN_ADDRESS + i386_ptob(m->pindex);
-		}
 
 		if (pmap->pm_ptphint == m)
 			pmap->pm_ptphint = NULL;
