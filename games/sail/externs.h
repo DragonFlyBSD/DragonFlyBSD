@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)externs.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/sail/externs.h,v 1.2 2004/01/23 20:28:01 joerg Exp $
  */
 
 #include <stdio.h>
@@ -308,3 +309,5 @@ char *strcat();
 char *strncpy();
 char *getenv();
 char *gets();
+
+int	log(struct ship *s);
