@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.6 2004/07/22 12:23:05 asmodai Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.7 2004/07/22 13:19:26 asmodai Exp $
  */
 
 /*
@@ -231,7 +231,7 @@ main(int argc, char *argv[])
 	exit (copy(argv, type, fts_options));
 }
 
-int
+static int
 copy(argv, type, fts_options)
 	char *argv[];
 	enum op type;
