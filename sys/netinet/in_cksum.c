@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/netinet/in_cksum.c,v 1.6 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_cksum.c,v 1.7 2004/09/30 10:21:07 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -66,13 +66,10 @@
  * This works with 16, 32, 64, etc... bits as long as we deal with the 
  * carry when collapsing it back down to 16 bits.
  */
+
 __uint32_t
 in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
 {
-    union {
-    	struct ipovly ipov;
-	uint16_t w[10];
-    } u;
     __uint8_t *ptr;
     __uint32_t sum0;
     __uint32_t sum1;
@@ -80,21 +77,31 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
     int flip;
 
     sum0 = 0;
+    sum1 = 0;
+    flip = 0;
 
     if (nxt != 0) {
+	uint32_t sum32;
+    	struct ipovly ipov;
+
     	/* pseudo header */
 	if (offset < sizeof(struct ipovly))
 		panic("in_cksum_range: offset too short");
 	if (m->m_len < sizeof(struct ip))
 		panic("in_cksum_range: bad mbuf chain");
-	bzero(&u.ipov, sizeof(u.ipov));
-	u.ipov.ih_len = htons(bytes);
-	u.ipov.ih_pr = nxt;
-	u.ipov.ih_src = mtod(m, struct ip *)->ip_src;
-	u.ipov.ih_dst = mtod(m, struct ip *)->ip_dst;
-	ptr = u.w;
-	sum0 += ptr[0]; sum0 += ptr[1]; sum0 += ptr[2]; sum0 += ptr[3]; sum0 += ptr[4];
-	sum0 += ptr[5]; sum0 += ptr[6]; sum0 += ptr[7]; sum0 += ptr[8]; sum0 += ptr[9];
+	bzero(&ipov, sizeof(ipov));
+	ipov.ih_len = htons(bytes);
+	ipov.ih_pr = nxt;
+	ipov.ih_src = mtod(m, struct ip *)->ip_src;
+	ipov.ih_dst = mtod(m, struct ip *)->ip_dst;
+	ptr = (uint8_t *)&ipov;
+
+	sum32 = asm_ones32(ptr, sizeof(ipov) / 4);
+	sum32 = (sum32 >> 16) + (sum32 & 0xffff);
+	if (flip)
+	    sum1 += sum32;
+	else
+	    sum0 += sum32;
     }
 
     /*
@@ -114,8 +121,6 @@ in_cksum_range(struct mbuf *m, int nxt, int offset, int bytes)
      *
      * Initial offsets do not pre-set flip (assert that offset is even?)
      */
-    sum1 = 0;
-    flip = 0;
     while (bytes > 0 && m) {
 	/*
 	 * Calculate pointer base and number of bytes to snarf, account
