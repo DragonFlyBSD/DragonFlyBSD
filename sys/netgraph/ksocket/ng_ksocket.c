@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.7 2004/03/04 10:29:23 hsu Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.8 2004/04/08 20:13:28 hsu Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -563,7 +563,7 @@ ng_ksocket_constructor(node_p *nodep)
 static int
 ng_ksocket_newhook(node_p node, hook_p hook, const char *name0)
 {
-	struct thread *td = curthread;	/* XXX broken */
+	struct thread *td = curthread->td_proc ? curthread : &thread0;	/* XXX broken */
 	const priv_p priv = node->private;
 	struct ng_mesg *msg;
 	char *s1, *s2, name[NG_HOOKLEN+1];
@@ -645,7 +645,7 @@ static int
 ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 	      const char *raddr, struct ng_mesg **rptr)
 {
-	struct thread *td = curthread;	/* XXX broken */
+	struct thread *td = curthread->td_proc ? curthread : &thread0;	/* XXX broken */
 	const priv_p priv = node->private;
 	struct socket *const so = priv->so;
 	struct ng_mesg *resp = NULL;
@@ -884,7 +884,7 @@ done:
 static int
 ng_ksocket_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 {
-	struct thread *td = curthread;	/* XXX broken */
+	struct thread *td = curthread->td_proc ? curthread : &thread0;	/* XXX broken */
 	const node_p node = hook->node;
 	const priv_p priv = node->private;
 	struct socket *const so = priv->so;
