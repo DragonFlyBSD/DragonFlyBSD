@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.23 2003/10/16 22:26:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.24 2003/10/16 23:59:15 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -286,10 +286,7 @@ schedcpu(void *arg)
 {
 	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
 	struct proc *p;
-	struct proc *curp;
 	int realstathz, s;
-
-	curp = lwkt_preempted_proc(); /* YYY temporary hack */
 
 	realstathz = stathz ? stathz : hz;
 	FOREACH_PROC_IN_SYSTEM(p) {
@@ -809,8 +806,8 @@ resetpriority(struct proc *p)
 
 	if (p->p_rtprio.type != RTP_PRIO_NORMAL)
 		return;
-	newpriority = PUSER + p->p_estcpu / INVERSE_ESTCPU_WEIGHT +
-	    NICE_WEIGHT * p->p_nice;
+	newpriority = NICE_ADJUST(p->p_nice - PRIO_MIN) +
+			p->p_estcpu / ESTCPURAMP;
 	newpriority = min(newpriority, MAXPRI);
 	npq = newpriority / PPQ;
 	crit_enter();
@@ -886,23 +883,21 @@ sched_setup(dummy)
  * a process gets worse as it accumulates CPU time.  The cpu usage
  * estimator (p_estcpu) is increased here.  resetpriority() will
  * compute a different priority each time p_estcpu increases by
- * INVERSE_ESTCPU_WEIGHT
- * (until MAXPRI is reached).  The cpu usage estimator ramps up
- * quite quickly when the process is running (linearly), and decays
- * away exponentially, at a rate which is proportionally slower when
- * the system is busy.  The basic principle is that the system will
- * 90% forget that the process used a lot of CPU time in 5 * loadav
- * seconds.  This causes the system to favor processes which haven't
- * run much recently, and to round-robin among other processes.
+ * INVERSE_ESTCPU_WEIGHT * (until MAXPRI is reached).
+ *
+ * The cpu usage estimator ramps up quite quickly when the process is 
+ * running (linearly), and decays away exponentially, at a rate which
+ * is proportionally slower when the system is busy.  The basic principle
+ * is that the system will 90% forget that the process used a lot of CPU
+ * time in 5 * loadav seconds.  This causes the system to favor processes
+ * which haven't run much recently, and to round-robin among other processes.
  */
 void
-schedclock(p)
-	struct proc *p;
+schedclock(struct proc *p)
 {
-
 	p->p_cpticks++;
 	p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
-	if ((p->p_estcpu % INVERSE_ESTCPU_WEIGHT) == 0)
+	if ((p->p_estcpu % PPQ) == 0)
 		resetpriority(p);
 }
 

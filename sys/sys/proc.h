@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.32 2003/10/16 22:26:42 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.33 2003/10/16 23:59:13 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -375,17 +375,26 @@ extern int	whichrtqs;	/* Bit mask summary of non-empty Q's. */
 extern int	whichidqs;	/* Bit mask summary of non-empty Q's. */
 
 /*
- * XXX macros for scheduler.  Shouldn't be here, but currently needed for
- * bounding the dubious p_estcpu inheritance in wait1().
- * INVERSE_ESTCPU_WEIGHT is only suitable for statclock() frequencies in
- * the range 100-256 Hz (approximately).
+ * Scheduler estcpu macros.
+ *
+ * p_priority = NICE_ADJUST(p->p_nice - PRIO_MIN) +
+ *			p->p_estcpu / ESTCPURAMP;
+ *
+ * NICE_WEIGHT determines the p_estcpu overlap between nice levels.   It
+ * cannot exceed 3.0.  A value of 2.0 gives us a nice small overlap between
+ * nice -20 and nice +0.  A value of 3.0 reduces the overlap while a value
+ * of 1.0 increases the overlap.
+ *
+ * ESTCPURAMP determines how slowly estcpu effects the process priority.
+ * Higher numbers result in slower ramp-up times because estcpu is incremented
+ * once per scheduler tick and maxes out at ESTCPULIM.
  */
-#define	ESTCPULIM(e) \
-    min((e), INVERSE_ESTCPU_WEIGHT * (NICE_WEIGHT * PRIO_MAX - PPQ) + \
-	     INVERSE_ESTCPU_WEIGHT - 1)
-#define	INVERSE_ESTCPU_WEIGHT	8	/* 1 / (priorities per estcpu level) */
-#define	NICE_WEIGHT	2		/* priorities per nice level */
-#define	PPQ		(128 / NQS)	/* priorities per queue */
+
+#define ESTCPURAMP	8			/* higher equals slower */
+#define NICE_ADJUST(value)	(((unsigned int)(NICE_WEIGHT * 128) * (value)) / 128)
+#define ESTCPULIM(v)	min((v), (MAXPRI - NICE_ADJUST(PRIO_MAX - PRIO_MIN)) * ESTCPURAMP)
+#define	NICE_WEIGHT	2.0			/* priorities per nice level */
+#define	PPQ		((MAXPRI + 1) / NQS)	/* priorities per queue */
 
 extern	u_long ps_arg_cache_limit;
 extern	int ps_argsopen;
