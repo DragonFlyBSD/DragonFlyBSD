@@ -36,17 +36,13 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.8 2004/06/02 19:31:02 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.9 2005/02/27 12:38:58 asmodai Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
 #include <sys/conf.h>
-#ifdef PC98
-#define	PC98_ATCOMPAT
-#define	dsinit			atcompat_dsinit
-#endif
 #include <sys/disklabel.h>
 #define	DOSPTYP_EXTENDED	5
 #define	DOSPTYP_EXTENDEDX	15
@@ -492,11 +488,6 @@ mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
 	sp->ds_offset = offset;
 	sp->ds_size = size;
 	sp->ds_type = dp->dp_typ;
-#ifdef PC98_ATCOMPAT
-	/* Fake FreeBSD(98). */
-	if (sp->ds_type == DOSPTYP_386BSD)
-		sp->ds_type = 0x94;
-#endif
 #if 0
 	lp->d_subtype |= (lp->d_subtype & 3) | dospart | DSTYPE_INDOSPART;
 #endif
