@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)zic.c	7.96";
 /*
  * @(#)zic.c	7.96
  * $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zic.c,v 1.3 2004/02/29 16:55:28 joerg Exp $
+ * $DragonFly: src/usr.sbin/zic/zic.c,v 1.4 2004/04/23 17:39:53 cpressey Exp $
  */
 #include "private.h"
 #include "tzfile.h"
@@ -1093,8 +1093,8 @@ inleap(char ** const fields, const int nfields)
 	tod = gethms(fields[LP_TIME], _("invalid time of day"), FALSE);
 	cp = fields[LP_CORR];
 	{
-		register int	positive;
-		int		count;
+		int positive;
+		int count;
 
 		if (strcmp(cp, "") == 0) { /* infile() turns "-" into "" */
 			positive = FALSE;
@@ -1562,10 +1562,10 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 					rp->r_temp = rpytime(rp, year);
 			}
 			for ( ; ; ) {
-				register int	k;
-				register time_t	jtime, ktime;
-				register long	offset;
-				char		buf[BUFSIZ];
+				int k;
+				time_t jtime, ktime;
+				long offset;
+				char buf[BUFSIZ];
 
 				INITIALIZE(ktime);
 				if (useuntil) {
@@ -1825,9 +1825,7 @@ lowerit(int a)
 }
 
 static int
-ciequal(ap, bp)		/* case-insensitive equality */
-register const char *	ap;
-register const char *	bp;
+ciequal(const char *ap, const char *bp)	/* case-insensitive equality */
 {
 	while (lowerit(*ap) == lowerit(*bp++))
 		if (*ap++ == '\0')
@@ -1836,9 +1834,7 @@ register const char *	bp;
 }
 
 static int
-itsabbr(abbr, word)
-register const char *	abbr;
-register const char *	word;
+itsabbr(const char *abbr, const char *word)
 {
 	if (lowerit(*abbr) != lowerit(*word))
 		return FALSE;
@@ -1852,12 +1848,10 @@ register const char *	word;
 }
 
 static const struct lookup *
-byword(word, table)
-register const char * const		word;
-register const struct lookup * const	table;
+byword(const char * const word, const struct lookup * const table)
 {
-	register const struct lookup *	foundlp;
-	register const struct lookup *	lp;
+	const struct lookup *foundlp;
+	const struct lookup *lp;
 
 	if (word == NULL || table == NULL)
 		return NULL;
@@ -1881,12 +1875,11 @@ register const struct lookup * const	table;
 }
 
 static char **
-getfields(cp)
-register char *	cp;
+getfields(char *cp)
 {
-	register char *		dp;
-	register char **	array;
-	register int		nsubs;
+	char *dp;
+	char **array;
+	int nsubs;
 
 	if (cp == NULL)
 		return NULL;
@@ -1917,11 +1910,9 @@ register char *	cp;
 }
 
 static long
-oadd(t1, t2)
-const long	t1;
-const long	t2;
+oadd(const long t1, const long t2)
 {
-	register long	t;
+	long t;
 
 	t = t1 + t2;
 	if ((t2 > 0 && t <= t1) || (t2 < 0 && t >= t1)) {
@@ -1932,11 +1923,9 @@ const long	t2;
 }
 
 static time_t
-tadd(t1, t2)
-const time_t	t1;
-const long	t2;
+tadd(const time_t t1, const long t2)
 {
-	register time_t	t;
+	time_t t;
 
 	if (t1 == max_time && t2 > 0)
 		return max_time;
@@ -1956,13 +1945,11 @@ const long	t2;
 */
 
 static time_t
-rpytime(rp, wantedy)
-register const struct rule * const	rp;
-register const int			wantedy;
+rpytime(const struct rule * const rp, const int wantedy)
 {
-	register int	y, m, i;
-	register long	dayoff;			/* with a nod to Margaret O. */
-	register time_t	t;
+	int y, m, i;
+	long dayoff;			/* with a nod to Margaret O. */
+	time_t t;
 
 	if (wantedy == INT_MIN)
 		return min_time;
@@ -1998,7 +1985,7 @@ register const int			wantedy;
 	--i;
 	dayoff = oadd(dayoff, eitol(i));
 	if (rp->r_dycode == DC_DOWGEQ || rp->r_dycode == DC_DOWLEQ) {
-		register long	wday;
+		long wday;
 
 #define LDAYSPERWEEK	((long) DAYSPERWEEK)
 		wday = eitol(EPOCH_WDAY);
@@ -2041,10 +2028,9 @@ register const int			wantedy;
 }
 
 static void
-newabbr(string)
-const char * const	string;
+newabbr(const char * const string)
 {
-	register int	i;
+	int i;
 
 	i = strlen(string) + 1;
 	if (charcnt + i > TZ_MAX_CHARS) {
@@ -2056,11 +2042,10 @@ const char * const	string;
 }
 
 static int
-mkdirs(argname)
-char * const	argname;
+mkdirs(char * const argname)
 {
-	register char *	name;
-	register char *	cp;
+	char *name;
+	char *cp;
 
 	if (argname == NULL || *argname == '\0' || Dflag)
 		return 0;
@@ -2100,8 +2085,7 @@ char * const	argname;
 }
 
 static long
-eitol(i)
-const int	i;
+eitol(const int i)
 {
 	long	l;
 
@@ -2115,9 +2099,7 @@ const int	i;
 #include <pwd.h>
 
 static void
-setgroup(flag, name)
-	gid_t *flag;
-	const char *name;
+setgroup(gid_t *flag, const char *name)
 {
 	struct group *gr;
 
@@ -2140,9 +2122,7 @@ setgroup(flag, name)
 }
 
 static void
-setuser(flag, name)
-	uid_t *flag;
-	const char *name;
+setuser(uid_t *flag, const char *name)
 {
 	struct passwd *pw;
 
