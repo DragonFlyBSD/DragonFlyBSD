@@ -1,5 +1,5 @@
-/* $FreeBSD: src/contrib/ipfilter/ipsend/ipsend.c,v 1.4.2.5 2003/03/01 03:55:53 darrenr Exp $ */
 /* $FreeBSD: src/contrib/ipfilter/ipsend/ipsend.c,v 1.4.2.6 2004/07/04 09:24:40 darrenr Exp $ */
+/* $DragonFly: src/contrib/ipfilter/ipsend/ipsend.c,v 1.4 2004/07/28 00:49:54 hmp Exp $ */
 /*
  * ipsend.c (C) 1995-1998 Darren Reed
  *
