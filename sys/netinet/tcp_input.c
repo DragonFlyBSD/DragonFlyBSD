@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.34 2004/08/08 06:33:24 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.35 2004/08/11 02:36:22 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -730,7 +730,7 @@ findpcb:
 		rstreason = BANDLIM_RST_CLOSEDPORT;
 		goto dropwithreset;
 	}
-	if (tp->t_state == TCPS_CLOSED)
+	if (tp->t_state <= TCPS_CLOSED)
 		goto drop;
 
 	/* Unscale the window into a 32-bit value. */

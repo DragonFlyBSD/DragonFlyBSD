@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.24 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.25 2004/08/11 02:36:22 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -202,12 +202,16 @@ SYSCTL_INT(_net_inet_ip_portrange, OID_AUTO, randomized, CTLFLAG_RW,
  * NOTE: It is assumed that most of these functions will be called at
  * splnet(). XXX - There are, unfortunately, a few exceptions to this
  * rule that should be fixed.
+ *
+ * NOTE: The caller should initialize the cpu field to the cpu running the
+ * protocol stack associated with this inpcbinfo.
  */
 
 void
 in_pcbinfo_init(struct inpcbinfo *pcbinfo)
 {
 	LIST_INIT(&pcbinfo->pcblisthead);
+	pcbinfo->cpu = -1;
 }
 
 /*

@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.25 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.26 2004/08/11 02:36:22 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -357,6 +357,11 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 
 	tp->t_state = TCPS_LISTEN;
 #ifdef SMP
+	/*
+	 * We have to set the flag because we can't have other cpus messing
+	 * with our inp's flags.
+	 */
+	inp->inp_flags |= INP_WILDCARD_MP;
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		struct netmsg_inswildcard *msg;
 
@@ -374,7 +379,6 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 		msg->nm_pcbinfo = &tcbinfo[cpu];
 		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 	}
-	inp->inp_flags |= INP_WILDCARD_MP;
 #else
 	in_pcbinswildcardhash(inp);
 #endif

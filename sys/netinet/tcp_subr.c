@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.37 2004/08/03 00:04:13 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.38 2004/08/11 02:36:22 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -336,6 +336,7 @@ tcp_init()
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		in_pcbinfo_init(&tcbinfo[cpu]);
+		tcbinfo[cpu].cpu = cpu;
 		tcbinfo[cpu].hashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].hashmask);
 		tcbinfo[cpu].porthashbase = porthashbase;
@@ -675,6 +676,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	if (tcp_do_rfc1644)
 		tp->t_flags |= TF_REQ_CC;
 	tp->t_inpcb = inp;	/* XXX */
+	tp->t_state = TCPS_CLOSED;
 	/*
 	 * Init srtt to TCPTV_SRTTBASE (0), so we can tell that we have no
 	 * rtt estimate.  Set rttvar so that srtt + 4 * rttvar gives
@@ -722,21 +724,49 @@ tcp_drop(struct tcpcb *tp, int errno)
 }
 
 #ifdef SMP
+
 struct netmsg_remwildcard {
 	struct lwkt_msg		nm_lmsg;
 	struct inpcb		*nm_inp;
 	struct inpcbinfo	*nm_pcbinfo;
+#if defined(INET6)
+	int			nm_isinet6;
+#else
+	int			nm_unused01;
+#endif
 };
 
+/*
+ * Wildcard inpcb's on SMP boxes must be removed from all cpus before the
+ * inp can be detached.  We do this by cycling through the cpus, ending up
+ * on the cpu controlling the inp last and then doing the disconnect.
+ */
 static int
 in_pcbremwildcardhash_handler(struct lwkt_msg *msg0)
 {
 	struct netmsg_remwildcard *msg = (struct netmsg_remwildcard *)msg0;
+	int cpu;
 
-	in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
-	lwkt_replymsg(&msg->nm_lmsg, 0);
+	cpu = msg->nm_pcbinfo->cpu;
+
+	if (cpu == msg->nm_inp->inp_pcbinfo->cpu) {
+		/* note: detach removes any wildcard hash entry */
+#ifdef INET6
+		if (msg->nm_isinet6)
+			in6_pcbdetach(msg->nm_inp);
+		else
+#endif
+			in_pcbdetach(msg->nm_inp);
+		lwkt_replymsg(&msg->nm_lmsg, 0);
+	} else {
+		in_pcbremwildcardhash_oncpu(msg->nm_inp, msg->nm_pcbinfo);
+		cpu = (cpu + 1) % ncpus2;
+		msg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_forwardmsg(tcp_cport(cpu), &msg->nm_lmsg);
+	}
 	return (EASYNC);
 }
+
 #endif
 
 /*
@@ -758,9 +788,24 @@ tcp_close(struct tcpcb *tp)
 #endif
 #ifdef INET6
 	boolean_t isipv6 = ((inp->inp_vflag & INP_IPV6) != 0);
+	boolean_t isafinet6 = (INP_CHECK_SOCKAF(so, AF_INET6) != 0);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
+
+	/*
+	 * The tp is not instantly destroyed in the wildcard case.  Setting
+	 * the state to TCPS_TERMINATING will prevent the TCP stack from
+	 * messing with it, though it should be noted that this change may
+	 * not take effect on other cpus until we have chained the wildcard
+	 * hash removal.
+	 *
+	 * XXX we currently depend on the BGL to synchronize the tp->t_state
+	 * update and prevent other tcp protocol threads from accepting new
+	 * connections on the listen socket we might be trying to close down.
+	 */
+	KKASSERT(tp->t_state != TCPS_TERMINATING);
+	tp->t_state = TCPS_TERMINATING;
 
 	/*
 	 * Make sure that all of our timers are stopped before we
@@ -881,33 +926,46 @@ no_valid_rt:
 		FREE(q, M_TSEGQ);
 		tcp_reass_qsize--;
 	}
+
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);
-
+	/*
+	 * Discard the inp.  In the SMP case a wildcard inp's hash (created
+	 * by a listen socket or an INADDR_ANY udp socket) is replicated
+	 * for each protocol thread and must be removed in the context of
+	 * that thread.  This is accomplished by chaining the message
+	 * through the cpus.
+	 *
+	 * If the inp is not wildcarded we simply detach, which will remove
+	 * the any hashes still present for this inp.
+	 */
 #ifdef SMP
 	if (inp->inp_flags & INP_WILDCARD_MP) {
-		for (cpu = 0; cpu < ncpus2; cpu ++) {
-			struct netmsg_remwildcard *msg;
+		struct netmsg_remwildcard *msg;
 
-			msg = malloc(sizeof(struct netmsg_remwildcard),
+		cpu = (inp->inp_pcbinfo->cpu + 1) % ncpus2;
+		msg = malloc(sizeof(struct netmsg_remwildcard),
 			    M_LWKTMSG, M_INTWAIT);
-			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
-			    lwkt_cmd_func(in_pcbremwildcardhash_handler),
-			    lwkt_cmd_op_none);
-			msg->nm_inp = inp;
-			msg->nm_pcbinfo = &tcbinfo[cpu];
-			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
-		}
-		/* XXX wait? */
-	}
-#endif
-
+		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+		    lwkt_cmd_func(in_pcbremwildcardhash_handler),
+		    lwkt_cmd_op_none);
 #ifdef INET6
-	if (INP_CHECK_SOCKAF(so, AF_INET6))
-		in6_pcbdetach(inp);
-	else
+		msg->nm_isinet6 = isafinet6;
 #endif
-		in_pcbdetach(inp);
+		msg->nm_inp = inp;
+		msg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+	} else 
+#endif
+	{
+		/* note: detach removes any wildcard hash entry */
+#ifdef INET6
+		if (isafinet6)
+			in6_pcbdetach(inp);
+		else
+#endif
+			in_pcbdetach(inp);
+	}
 	tcpstat.tcps_closed++;
 	return (NULL);
 }

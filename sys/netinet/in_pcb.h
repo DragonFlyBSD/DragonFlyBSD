@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.15 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.16 2004/08/11 02:36:22 dillon Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -305,6 +305,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	struct	vm_zone *ipi_zone; /* zone to allocate pcbs from */
 	u_int	ipi_count;	/* number of pcbs in this list */
 	u_quad_t ipi_gencnt;	/* current generation count */
+	int	cpu;		/* related protocol thread cpu or -1 */
 };
 
 

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_fsm.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_fsm.h,v 1.14 1999/11/07 04:18:30 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp_fsm.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_fsm.h,v 1.3 2004/08/11 02:36:22 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_FSM_H_
@@ -43,22 +43,23 @@
  * Per RFC793, September, 1981.
  */
 
-#define	TCP_NSTATES	11
+#define	TCP_NSTATES	12
 
-#define	TCPS_CLOSED		0	/* closed */
-#define	TCPS_LISTEN		1	/* listening for connection */
-#define	TCPS_SYN_SENT		2	/* active, have sent syn */
-#define	TCPS_SYN_RECEIVED	3	/* have send and received syn */
+#define TCPS_TERMINATING	0
+#define	TCPS_CLOSED		1	/* closed */
+#define	TCPS_LISTEN		2	/* listening for connection */
+#define	TCPS_SYN_SENT		3	/* active, have sent syn */
+#define	TCPS_SYN_RECEIVED	4	/* have send and received syn */
 /* states < TCPS_ESTABLISHED are those where connections not established */
-#define	TCPS_ESTABLISHED	4	/* established */
-#define	TCPS_CLOSE_WAIT		5	/* rcvd fin, waiting for close */
+#define	TCPS_ESTABLISHED	5	/* established */
+#define	TCPS_CLOSE_WAIT		6	/* rcvd fin, waiting for close */
 /* states > TCPS_CLOSE_WAIT are those where user has closed */
-#define	TCPS_FIN_WAIT_1		6	/* have closed, sent fin */
-#define	TCPS_CLOSING		7	/* closed xchd FIN; await FIN ACK */
-#define	TCPS_LAST_ACK		8	/* had fin and close; await FIN ACK */
+#define	TCPS_FIN_WAIT_1		7	/* have closed, sent fin */
+#define	TCPS_CLOSING		8	/* closed xchd FIN; await FIN ACK */
+#define	TCPS_LAST_ACK		9	/* had fin and close; await FIN ACK */
 /* states > TCPS_CLOSE_WAIT && < TCPS_FIN_WAIT_2 await ACK of FIN */
-#define	TCPS_FIN_WAIT_2		9	/* have closed, fin is acked */
-#define	TCPS_TIME_WAIT		10	/* in 2*msl quiet wait after close */
+#define	TCPS_FIN_WAIT_2		10	/* have closed, fin is acked */
+#define	TCPS_TIME_WAIT		11	/* in 2*msl quiet wait after close */
 
 /* for KAME src sync over BSD*'s */
 #define	TCP6_NSTATES		TCP_NSTATES
@@ -86,17 +87,18 @@
  * if all data queued for output is included in the segment.
  */
 static u_char	tcp_outflags[TCP_NSTATES] = {
-	TH_RST|TH_ACK,		/* 0, CLOSED */
-	0,			/* 1, LISTEN */
-	TH_SYN,			/* 2, SYN_SENT */
-	TH_SYN|TH_ACK,		/* 3, SYN_RECEIVED */
-	TH_ACK,			/* 4, ESTABLISHED */
-	TH_ACK,			/* 5, CLOSE_WAIT */
-	TH_FIN|TH_ACK,		/* 6, FIN_WAIT_1 */
-	TH_FIN|TH_ACK,		/* 7, CLOSING */
-	TH_FIN|TH_ACK,		/* 8, LAST_ACK */
-	TH_ACK,			/* 9, FIN_WAIT_2 */
-	TH_ACK,			/* 10, TIME_WAIT */
+	TH_RST|TH_ACK,		/* 0, TERMINATING */
+	TH_RST|TH_ACK,		/* 1, CLOSED */
+	0,			/* 2, LISTEN */
+	TH_SYN,			/* 3, SYN_SENT */
+	TH_SYN|TH_ACK,		/* 4, SYN_RECEIVED */
+	TH_ACK,			/* 5, ESTABLISHED */
+	TH_ACK,			/* 6, CLOSE_WAIT */
+	TH_FIN|TH_ACK,		/* 7, FIN_WAIT_1 */
+	TH_FIN|TH_ACK,		/* 8, CLOSING */
+	TH_FIN|TH_ACK,		/* 9, LAST_ACK */
+	TH_ACK,			/* 10, FIN_WAIT_2 */
+	TH_ACK,			/* 11, TIME_WAIT */
 };	
 #endif
 
@@ -106,6 +108,7 @@ int	tcp_acounts[TCP_NSTATES][PRU_NREQ];
 
 #ifdef	TCPSTATES
 char *tcpstates[] = {
+	"TERMINATING",
 	"CLOSED",	"LISTEN",	"SYN_SENT",	"SYN_RCVD",
 	"ESTABLISHED",	"CLOSE_WAIT",	"FIN_WAIT_1",	"CLOSING",
 	"LAST_ACK",	"FIN_WAIT_2",	"TIME_WAIT",
