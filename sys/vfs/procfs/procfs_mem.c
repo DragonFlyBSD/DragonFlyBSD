@@ -38,7 +38,7 @@
  *	@(#)procfs_mem.c	8.5 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_mem.c,v 1.46.2.3 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.9 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_mem.c,v 1.10 2004/06/07 16:26:51 dillon Exp $
  */
 
 /*
@@ -109,6 +109,7 @@ procfs_rwmem(struct proc *curp, struct proc *p, struct uio *uio)
 		boolean_t wired;
 		vm_pindex_t pindex;
 		vm_object_t object;
+		vm_object_t nobject;
 		u_int len;
 		vm_page_t m;
 		int s;
@@ -166,7 +167,10 @@ again:
 		 */
 		while (m == NULL && !writing && object->backing_object) {
 			pindex += OFF_TO_IDX(object->backing_object_offset);
-			object = object->backing_object;
+			nobject = object->backing_object;
+			vm_object_reference(nobject);
+			vm_object_deallocate(object);
+			object = nobject;
 			m = vm_page_lookup(object, pindex);
 		}
 
