@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libasn1/Makefile,v 1.3.2.8 2002/08/19 16:10:21 ru Exp $
-# $DragonFly: src/kerberos5/lib/libasn1/Makefile,v 1.3 2004/03/22 20:57:58 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libasn1/Makefile,v 1.4 2004/03/26 21:58:10 dillon Exp $
 
 LIB=	asn1
 CFLAGS+=-I${KRB5DIR}/include \
@@ -111,7 +111,8 @@ asn1_compile.nx:				\
 asn1_compile.nx: getprogname.c setprogname.c
 .endif
 
-parse.o:	parse.c roken.h
+parse.no:	parse.c roken.h
+	${NXCC} ${NXCFLAGS} -c -o ${.TARGET} parse.c
 
 .ORDER: parse.c parse.h
 parse.h parse.c:	parse.y
@@ -119,14 +120,20 @@ parse.h parse.c:	parse.y
 	cp y.tab.c parse.c
 	cp y.tab.h parse.h
 
-lex.o:		lex.l parse.h roken.h
+lex.no:		lex.l parse.h roken.h
+	${LEX} ${LFLAGS} -o${.TARGET}.c ${.ALLSRC:M*.l}
+	${NXCC} ${CFLAGS} -c ${.TARGET}.c -o ${.TARGET}
+	rm -f ${.TARGET}.c
 
-print_version.o: print_version.h print_version.c roken.h
-	${CC} ${CFLAGS} -c -o ${.TARGET} ${KRB5DIR}/lib/vers/print_version.c
+print_version.no: print_version.h print_version.c roken.h
+	${NXCC} ${NXCFLAGS} -c -o ${.TARGET} ${KRB5DIR}/lib/vers/print_version.c
 
 print_version.h: make-print-version.nx
 	./make-print-version.nx print_version.h
 
-CLEANFILES+=	${GEN} asn1_compile.nx lex.o parse.o parse.c parse.h \
-		hdb_asn1.h make-print-version.nx print_version.h print_version.o \
-		y.tab.c y.tab.h
+make-print-version.nx: make-print-version.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
+
+CLEANFILES+=	${GEN} asn1_compile.nx lex.no parse.no parse.c parse.h \
+		hdb_asn1.h make-print-version.nx print_version.h \
+		print_version.no y.tab.c y.tab.h

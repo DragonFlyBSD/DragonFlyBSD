@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libgssapi/Makefile,v 1.2.2.4 2002/07/25 09:33:14 ru Exp $
-# $DragonFly: src/kerberos5/lib/libgssapi/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libgssapi/Makefile,v 1.3 2004/03/26 21:58:11 dillon Exp $
 
 LIB=	gssapi
 CFLAGS+=-I${KRB5DIR}/lib/gssapi	\
@@ -49,7 +49,10 @@ SRCS=				\
 	v1.c			\
 	verify_mic.c		\
         wrap.c                  \
-        address_to_krb5addr.c
+        address_to_krb5addr.c	\
+	k524_err.h		\
+	krb5_err.h		\
+	heim_err.h
 
 INCS=	gssapi.h heim_err.h krb5_err.h k524_err.h
 

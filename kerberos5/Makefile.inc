@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/Makefile.inc,v 1.5.2.5 2002/07/25 09:33:14 ru Exp $
-# $DragonFly: src/kerberos5/Makefile.inc,v 1.4 2004/03/22 20:57:57 dillon Exp $
+# $DragonFly: src/kerberos5/Makefile.inc,v 1.5 2004/03/26 21:58:09 dillon Exp $
 
 DISTRIBUTION?=	krb5
 
@@ -114,18 +114,18 @@ heim_err.c heim_err.h: ${KRB5DIR}/lib/krb5/heim_err.et
 
 CLEANFILES+=heim_err.h heim_err.c heim_err.et
 
-.ORDER: krb5_err.c krb5_err.h
 krb5_err.c krb5_err.h: ${KRB5DIR}/lib/krb5/krb5_err.et
 	test -e ${.OBJDIR}/krb5_err.et || ln -sf ${.ALLSRC}
 	${COMPILE_ET} krb5_err.et
+.ORDER: krb5_err.c krb5_err.h
 
 CLEANFILES+=krb5_err.h krb5_err.c krb5_err.et
 
-.ORDER: kadm5_err.c kadm5_err.h
 kadm5_err.c kadm5_err.h: \
 	${KRB5DIR}/lib/kadm5/kadm5_err.et
 	test -e ${.OBJDIR}/kadm5_err.et || ln -sf ${.ALLSRC}
 	${COMPILE_ET} kadm5_err.et
+.ORDER: kadm5_err.c kadm5_err.h
 
 CLEANFILES+=kadm5_err.h kadm5_err.c kadm5_err.et
 

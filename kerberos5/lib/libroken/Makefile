@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libroken/Makefile,v 1.3.2.7 2002/09/01 04:22:01 nectar Exp $
-# $DragonFly: src/kerberos5/lib/libroken/Makefile,v 1.3 2004/03/22 20:58:01 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libroken/Makefile,v 1.4 2004/03/26 21:58:13 dillon Exp $
 
 LIB=		roken
 CFLAGS+=	-I${KRB5DIR}/include \
@@ -67,3 +67,4 @@ INCS=	roken.h ${KRB5DIR}/lib/roken/roken-common.h
 .PATH:		${KRB5DIR}/lib/roken
 
 build-tools: make-roken.nx
+
