@@ -1,7 +1,7 @@
 /*
  * pipe2.c
  *
- * $DragonFly: src/test/sysperf/pipe2.c,v 1.1 2004/03/28 09:21:53 dillon Exp $
+ * $DragonFly: src/test/sysperf/pipe2.c,v 1.2 2004/03/31 20:27:09 dillon Exp $
  */
 
 #include "blib.h"
@@ -18,12 +18,13 @@ main(int ac, char **av)
     int j;
     int bytes;
     int divisor;
+    int ppri = 999;
     int fds[2];
     char *buf;
     char *ptr;
 
     if (ac == 1) {
-	fprintf(stderr, "%s blocksize[k,m]\n", av[0]);
+	fprintf(stderr, "%s blocksize[k,m] [pipe_writer_pri]\n", av[0]);
 	exit(1);
     }
     bytes = strtol(av[1], &ptr, 0);
@@ -40,6 +41,8 @@ main(int ac, char **av)
 	    "valid byte range: 0-32m (k,m suffixes for KB and MB)\n");
 	exit(1);
     }
+    if (ac >= 3)
+	ppri = strtol(av[2], NULL, 0);
 
     /*
      * Tiny block sizes, try to take into account overhead.
@@ -73,7 +76,12 @@ main(int ac, char **av)
 	/* 
 	 * parent process.
 	 */
-	setpriority(PRIO_PROCESS, getpid(), -20);
+	if (ppri != 999) {
+	    if (setpriority(PRIO_PROCESS, getpid(), ppri) < 0) {
+		perror("setpriority");
+		exit(1);
+	    }
+	}
 	close(fds[1]);
 	write(fds[0], buf, bytes);	/* prime the caches */
 	start_timing();
