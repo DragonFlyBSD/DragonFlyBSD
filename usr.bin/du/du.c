@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.6 2004/07/04 10:34:47 eirikn Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.7 2005/01/01 23:02:42 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -96,6 +96,8 @@ unit_t		unit_adjust(double *);
 void		ignoreadd(const char *);
 void		ignoreclean(void);
 int		ignorep(FTSENT *);
+
+static char period[] = ".";
 
 int
 main(int argc, char **argv)
@@ -216,7 +218,7 @@ main(int argc, char **argv)
 
 	if (!*argv) {
 		argv = save;
-		argv[0] = ".";
+		argv[0] = period;
 		argv[1] = NULL;
 	}
 
