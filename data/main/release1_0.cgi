@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.2 2004/11/22 01:36:22 hmp Exp $
+# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.3 2004/11/24 20:54:06 liamfoy Exp $
 
 $TITLE(DragonFly - July 2004 Release 1.0A Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -72,7 +72,8 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TD>1.0A_REL image</TD>
 <TD>
 <A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>
-<A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A><TD></TR>
+<A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
+<A HREF="rsync://rsync.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">rsync</A><TD></TR>
 
 <TR><TD>Fortunaty.net (Europe)</TD>
 <TD>1.0A_REL image</TD>
@@ -89,8 +90,8 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TR><TD>Starkast.net (Sweden)</TD>
 <TD>1.0A_REL image</TD>
 <TD>
-<A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
-<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
+<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>
+<A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
 <TR><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>1.0A_REL image</TD>
@@ -106,7 +107,7 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, 
 <A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>, 
-<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0A_REL.iso.gz">rysnc</A></TD></TR>
+<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0A_REL.iso.gz">rsync</A></TD></TR>
 
 <TR><TD>Pieter from Holland (EU)</TD>
 <TD>1.0A_REL image</TD>
