@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.6 2004/05/25 18:46:35 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.7 2004/05/25 18:54:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -81,13 +81,8 @@ static int mbr_setslice (char *sname, struct disklabel *lp,
 			     u_long br_offset);
 
 static int
-check_part(sname, dp, offset, nsectors, ntracks, mbr_offset )
-	char	*sname;
-	struct dos_partition *dp;
-	u_long	offset;
-	int	nsectors;
-	int	ntracks;
-	u_long	mbr_offset;
+check_part(char *sname, struct dos_partition *dp, u_long offset,
+	    int nsectors, int ntracks, u_long mbr_offset)
 {
 	int	chs_ecyl;
 	int	chs_esect;
@@ -161,10 +156,7 @@ check_part(sname, dp, offset, nsectors, ntracks, mbr_offset )
 }
 
 int
-dsinit(dev, lp, sspp)
-	dev_t	dev;
-	struct disklabel *lp;
-	struct diskslices **sspp;
+dsinit(dev_t dev, struct disklabel *lp, struct diskslices **sspp)
 {
 	struct buf *bp;
 	u_char	*cp;
@@ -347,12 +339,14 @@ reread_mbr:
 
 	/* Handle extended partitions. */
 	sp -= NDOSPART;
-	for (dospart = 0; dospart < NDOSPART; dospart++, sp++)
+	for (dospart = 0; dospart < NDOSPART; dospart++, sp++) {
 		if (sp->ds_type == DOSPTYP_EXTENDED ||
-		    sp->ds_type == DOSPTYP_EXTENDEDX)
+		    sp->ds_type == DOSPTYP_EXTENDEDX) {
 			mbr_extended(wdev, lp, ssp,
 				     sp->ds_offset, sp->ds_size, sp->ds_offset,
 				     max_nsectors, max_ntracks, mbr_offset, 1);
+		}
+	}
 
 	/*
 	 * mbr_extended() abuses ssp->dss_nslices for the number of slices
@@ -371,18 +365,9 @@ done:
 }
 
 void
-mbr_extended(dev, lp, ssp, ext_offset, ext_size, base_ext_offset, nsectors,
-	     ntracks, mbr_offset, level)
-	dev_t	dev;
-	struct disklabel *lp;
-	struct diskslices *ssp;
-	u_long	ext_offset;
-	u_long	ext_size;
-	u_long	base_ext_offset;
-	int	nsectors;
-	int	ntracks;
-	u_long	mbr_offset;
-	int	level;
+mbr_extended(dev_t dev, struct disklabel *lp, struct diskslices *ssp,
+	    u_long ext_offset, u_long ext_size, u_long base_ext_offset,
+	    int nsectors, int ntracks, u_long mbr_offset, int level)
 {
 	struct buf *bp;
 	u_char	*cp;
@@ -470,11 +455,13 @@ mbr_extended(dev, lp, ssp, ext_offset, ext_size, base_ext_offset, nsectors,
 	ssp->dss_nslices = slice;
 
 	/* If we found any more slices, recursively find all the subslices. */
-	for (dospart = 0; dospart < NDOSPART; dospart++)
-		if (ext_sizes[dospart] != 0)
+	for (dospart = 0; dospart < NDOSPART; dospart++) {
+		if (ext_sizes[dospart] != 0) {
 			mbr_extended(dev, lp, ssp, ext_offsets[dospart],
 				     ext_sizes[dospart], base_ext_offset,
 				     nsectors, ntracks, mbr_offset, ++level);
+		}
+	}
 
 done:
 	bp->b_flags |= B_INVAL | B_AGE;
@@ -482,12 +469,8 @@ done:
 }
 
 static int
-mbr_setslice(sname, lp, sp, dp, br_offset)
-	char	*sname;
-	struct disklabel *lp;
-	struct diskslice *sp;
-	struct dos_partition *dp;
-	u_long	br_offset;
+mbr_setslice(char *sname, struct disklabel *lp, struct diskslice *sp,
+	    struct dos_partition *dp, u_long br_offset)
 {
 	u_long	offset;
 	u_long	size;
@@ -522,8 +505,7 @@ mbr_setslice(sname, lp, sp, dp, br_offset)
 
 #ifdef __alpha__
 void
-alpha_fix_srm_checksum(bp)
-	struct buf *bp;
+alpha_fix_srm_checksum(struct buf *bp)
 {
 	u_int64_t *p;
 	u_int64_t sum;
