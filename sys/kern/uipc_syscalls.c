@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.26 2004/03/06 03:26:57 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.27 2004/03/14 14:35:23 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -72,6 +72,7 @@
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 #include <sys/file2.h>
+#include <sys/signalvar.h>
 
 /*
  * System call interface to the socket abstraction.
