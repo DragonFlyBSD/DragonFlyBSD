@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sisreg.h,v 1.1.4.11 2003/02/05 21:49:01 mbr Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.3 2004/03/16 22:48:00 joerg Exp $
  */
 
 /*
@@ -264,9 +264,9 @@
 #define SIS_RXDMA_256BYTES	0x00700000
 
 #define SIS_RXCFG256 \
- 	(SIS_RXCFG_DRAIN(64)|SIS_RXDMA_256BYTES)
+ 	(SIS_RXCFG_DRAIN(64) | SIS_RXDMA_256BYTES)
 #define SIS_RXCFG64 \
-	(SIS_RXCFG_DRAIN(64)|SIS_RXDMA_64BYTES)
+	(SIS_RXCFG_DRAIN(64) | SIS_RXDMA_64BYTES)
 
 #define SIS_RXFILTCTL_ADDR	0x000F0000
 #define NS_RXFILTCTL_MCHASH	0x00200000
@@ -306,12 +306,12 @@
  */
 struct sis_desc {
 	/* SiS hardware descriptor section */
-	u_int32_t		sis_next;
-	u_int32_t		sis_cmdsts;
+	uint32_t		sis_next;
+	uint32_t		sis_cmdsts;
 #define sis_rxstat		sis_cmdsts
 #define sis_txstat		sis_cmdsts
 #define sis_ctl			sis_cmdsts
-	u_int32_t		sis_ptr;
+	uint32_t		sis_ptr;
 	/* Driver software section */
 	struct mbuf		*sis_mbuf;
 	struct sis_desc		*sis_nextdesc;
@@ -404,18 +404,18 @@ struct sis_ring_data {
 #define NS_DEVICEID_DP83815	0x0020
 
 struct sis_type {
-	u_int16_t		sis_vid;
-	u_int16_t		sis_did;
+	uint16_t		sis_vid;
+	uint16_t		sis_did;
 	char			*sis_name;
 };
 
 struct sis_mii_frame {
-	u_int8_t		mii_stdelim;
-	u_int8_t		mii_opcode;
-	u_int8_t		mii_phyaddr;
-	u_int8_t		mii_regaddr;
-	u_int8_t		mii_turnaround;
-	u_int16_t		mii_data;
+	uint8_t			mii_stdelim;
+	uint8_t			mii_opcode;
+	uint8_t			mii_phyaddr;
+	uint8_t			mii_regaddr;
+	uint8_t			mii_turnaround;
+	uint16_t		mii_data;
 };
 
 /*
@@ -426,9 +426,9 @@ struct sis_mii_frame {
 #define	SIS_MII_WRITEOP		0x01
 #define	SIS_MII_TURNAROUND	0x02
 
-#define SIS_TYPE_900	1
-#define SIS_TYPE_7016	2
-#define SIS_TYPE_83815	3
+#define SIS_TYPE_900		1
+#define SIS_TYPE_7016		2
+#define SIS_TYPE_83815		3
 
 struct sis_softc {
 	struct arpcom		arpcom;		/* interface info */
@@ -438,10 +438,10 @@ struct sis_softc {
 	struct resource		*sis_irq;
 	void			*sis_intrhand;
 	device_t		sis_miibus;
-	u_int8_t		sis_unit;
-	u_int8_t		sis_type;
-	u_int8_t		sis_rev;
-	u_int8_t		sis_link;
+	uint8_t			sis_unit;
+	uint8_t			sis_type;
+	uint8_t			sis_rev;
+	uint8_t			sis_link;
 	struct sis_list_data	*sis_ldata;
 	struct sis_ring_data	sis_cdata;
 	struct callout_handle	sis_stat_ch;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.8 2004/03/14 15:36:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.9 2004/03/16 22:48:00 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -89,8 +89,8 @@
 #include <sys/bus.h>
 #include <sys/rman.h>
 
-#include "../mii_layer/mii.h"
-#include "../mii_layer/miivar.h"
+#include <dev/netif/mii_layer/mii.h>
+#include <dev/netif/mii_layer/miivar.h>
 
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
@@ -108,62 +108,57 @@
 static struct sis_type sis_devs[] = {
 	{ SIS_VENDORID, SIS_DEVICEID_900, "SiS 900 10/100BaseTX" },
 	{ SIS_VENDORID, SIS_DEVICEID_7016, "SiS 7016 10/100BaseTX" },
-	{ NS_VENDORID, NS_DEVICEID_DP83815, "NatSemi DP83815 10/100BaseTX" },
+	{ NS_VENDORID, NS_DEVICEID_DP83815, "NatSemi DP8381[56] 10/100BaseTX" },
 	{ 0, 0, NULL }
 };
 
-static int sis_probe		(device_t);
-static int sis_attach		(device_t);
-static int sis_detach		(device_t);
+static int	sis_probe(device_t);
+static int	sis_attach(device_t);
+static int	sis_detach(device_t);
 
-static int sis_newbuf		(struct sis_softc *,
-					struct sis_desc *,
-					struct mbuf *);
-static int sis_encap		(struct sis_softc *,
-					struct mbuf *, u_int32_t *);
-static void sis_rxeof		(struct sis_softc *);
-static void sis_rxeoc		(struct sis_softc *);
-static void sis_txeof		(struct sis_softc *);
-static void sis_intr		(void *);
-static void sis_tick		(void *);
-static void sis_start		(struct ifnet *);
-static int sis_ioctl		(struct ifnet *, u_long, caddr_t);
-static void sis_init		(void *);
-static void sis_stop		(struct sis_softc *);
-static void sis_watchdog		(struct ifnet *);
-static void sis_shutdown		(device_t);
-static int sis_ifmedia_upd	(struct ifnet *);
-static void sis_ifmedia_sts	(struct ifnet *, struct ifmediareq *);
+static int	sis_newbuf(struct sis_softc *, struct sis_desc *,
+			   struct mbuf *);
+static int	sis_encap(struct sis_softc *, struct mbuf *, uint32_t *);
+static void	sis_rxeof(struct sis_softc *);
+static void	sis_rxeoc(struct sis_softc *);
+static void	sis_txeof(struct sis_softc *);
+static void	sis_intr(void *);
+static void	sis_tick(void *);
+static void	sis_start(struct ifnet *);
+static int	sis_ioctl(struct ifnet *, u_long, caddr_t);
+static void	sis_init(void *);
+static void	sis_stop(struct sis_softc *);
+static void	sis_watchdog(struct ifnet *);
+static void	sis_shutdown(device_t);
+static int	sis_ifmedia_upd(struct ifnet *);
+static void	sis_ifmedia_sts(struct ifnet *, struct ifmediareq *);
 
-static u_int16_t sis_reverse	(u_int16_t);
-static void sis_delay		(struct sis_softc *);
-static void sis_eeprom_idle	(struct sis_softc *);
-static void sis_eeprom_putbyte	(struct sis_softc *, int);
-static void sis_eeprom_getword	(struct sis_softc *, int, u_int16_t *);
-static void sis_read_eeprom	(struct sis_softc *, caddr_t, int,
-							int, int);
+static uint16_t	sis_reverse(uint16_t);
+static void	sis_delay(struct sis_softc *);
+static void	sis_eeprom_idle(struct sis_softc *);
+static void	sis_eeprom_putbyte(struct sis_softc *, int);
+static void	sis_eeprom_getword(struct sis_softc *, int, uint16_t *);
+static void	sis_read_eeprom(struct sis_softc *, caddr_t, int, int, int);
 #ifdef __i386__
-static void sis_read_cmos	(struct sis_softc *, device_t, caddr_t,
-							int, int);
-static void sis_read_mac	(struct sis_softc *, device_t, caddr_t);
-static device_t sis_find_bridge	(device_t);
+static void	sis_read_cmos(struct sis_softc *, device_t, caddr_t, int, int);
+static void	sis_read_mac(struct sis_softc *, device_t, caddr_t);
+static device_t	sis_find_bridge(device_t);
 #endif
 
-static void sis_mii_sync	(struct sis_softc *);
-static void sis_mii_send	(struct sis_softc *, u_int32_t, int);
-static int sis_mii_readreg	(struct sis_softc *, struct sis_mii_frame *);
-static int sis_mii_writereg	(struct sis_softc *, struct sis_mii_frame *);
-static int sis_miibus_readreg	(device_t, int, int);
-static int sis_miibus_writereg	(device_t, int, int, int);
-static void sis_miibus_statchg	(device_t);
+static void	sis_mii_sync(struct sis_softc *);
+static void	sis_mii_send(struct sis_softc *, uint32_t, int);
+static int	sis_mii_readreg(struct sis_softc *, struct sis_mii_frame *);
+static int	sis_mii_writereg(struct sis_softc *, struct sis_mii_frame *);
+static int	sis_miibus_readreg(device_t, int, int);
+static int	sis_miibus_writereg(device_t, int, int, int);
+static void	sis_miibus_statchg(device_t);
 
-static void sis_setmulti_sis	(struct sis_softc *);
-static void sis_setmulti_ns	(struct sis_softc *);
-static u_int32_t sis_crc	(struct sis_softc *, caddr_t);
-static void sis_reset		(struct sis_softc *);
-static int sis_list_rx_init	(struct sis_softc *);
-static int sis_list_tx_init	(struct sis_softc *);
-
+static void	sis_setmulti_sis(struct sis_softc *);
+static void	sis_setmulti_ns(struct sis_softc *);
+static uint32_t	sis_mchash(struct sis_softc *, const uint8_t *);
+static void	sis_reset(struct sis_softc *);
+static int	sis_list_rx_init(struct sis_softc *);
+static int	sis_list_tx_init(struct sis_softc *);
 #ifdef SIS_USEIOSPACE
 #define SIS_RES			SYS_RES_IOPORT
 #define SIS_RID			SIS_PCI_LOIO
@@ -204,12 +199,10 @@ DRIVER_MODULE(if_sis, pci, sis_driver, sis_devclass, 0, 0);
 DRIVER_MODULE(miibus, sis, miibus_driver, miibus_devclass, 0, 0);
 
 #define SIS_SETBIT(sc, reg, x)				\
-	CSR_WRITE_4(sc, reg,				\
-		CSR_READ_4(sc, reg) | (x))
+	CSR_WRITE_4(sc, reg, CSR_READ_4(sc, reg) | (x))
 
 #define SIS_CLRBIT(sc, reg, x)				\
-	CSR_WRITE_4(sc, reg,				\
-		CSR_READ_4(sc, reg) & ~(x))
+	CSR_WRITE_4(sc, reg, CSR_READ_4(sc, reg) & ~(x))
 
 #define SIO_SET(x)					\
 	CSR_WRITE_4(sc, SIS_EECTL, CSR_READ_4(sc, SIS_EECTL) | x)
@@ -221,8 +214,8 @@ DRIVER_MODULE(miibus, sis, miibus_driver, miibus_devclass, 0, 0);
  * Routine to reverse the bits in a word. Stolen almost
  * verbatim from /usr/games/fortune.
  */
-static u_int16_t sis_reverse(n)
-	u_int16_t		n;
+static uint16_t
+sis_reverse(uint16_t n)
 {
 	n = ((n >>  1) & 0x5555) | ((n <<  1) & 0xaaaa);
 	n = ((n >>  2) & 0x3333) | ((n <<  2) & 0xcccc);
@@ -232,21 +225,19 @@ static u_int16_t sis_reverse(n)
 	return(n);
 }
 
-static void sis_delay(sc)
-	struct sis_softc	*sc;
+static void
+sis_delay(struct sis_softc *sc)
 {
-	int			idx;
+	int idx;
 
 	for (idx = (300 / 33) + 1; idx > 0; idx--)
 		CSR_READ_4(sc, SIS_CSR);
-
-	return;
 }
 
-static void sis_eeprom_idle(sc)
-	struct sis_softc	*sc;
+static void
+sis_eeprom_idle(struct sis_softc *sc)
 {
-	int		i;
+	int i;
 
 	SIO_SET(SIS_EECTL_CSEL);
 	sis_delay(sc);
@@ -265,18 +256,15 @@ static void sis_eeprom_idle(sc)
 	SIO_CLR(SIS_EECTL_CSEL);
 	sis_delay(sc);
 	CSR_WRITE_4(sc, SIS_EECTL, 0x00000000);
-
-	return;
 }
 
 /*
  * Send a read command and address to the EEPROM, check for ACK.
  */
-static void sis_eeprom_putbyte(sc, addr)
-	struct sis_softc	*sc;
-	int			addr;
+static void
+sis_eeprom_putbyte(struct sis_softc *sc, int addr)
 {
-	int		d, i;
+	int d, i;
 
 	d = addr | SIS_EECMD_READ;
 
@@ -284,31 +272,26 @@ static void sis_eeprom_putbyte(sc, addr)
 	 * Feed in each bit and stobe the clock.
 	 */
 	for (i = 0x400; i; i >>= 1) {
-		if (d & i) {
+		if (d & i)
 			SIO_SET(SIS_EECTL_DIN);
-		} else {
+		else
 			SIO_CLR(SIS_EECTL_DIN);
-		}
 		sis_delay(sc);
 		SIO_SET(SIS_EECTL_CLK);
 		sis_delay(sc);
 		SIO_CLR(SIS_EECTL_CLK);
 		sis_delay(sc);
 	}
-
-	return;
 }
 
 /*
  * Read a word of data stored in the EEPROM at address 'addr.'
  */
-static void sis_eeprom_getword(sc, addr, dest)
-	struct sis_softc	*sc;
-	int			addr;
-	u_int16_t		*dest;
+static void
+sis_eeprom_getword(struct sis_softc *sc, int addr, uint16_t *dest)
 {
-	int		i;
-	u_int16_t		word = 0;
+	int i;
+	uint16_t word = 0;
 
 	/* Force EEPROM to idle state. */
 	sis_eeprom_idle(sc);
@@ -342,47 +325,39 @@ static void sis_eeprom_getword(sc, addr, dest)
 	sis_eeprom_idle(sc);
 
 	*dest = word;
-
-	return;
 }
 
 /*
  * Read a sequence of words from the EEPROM.
  */
-static void sis_read_eeprom(sc, dest, off, cnt, swap)
-	struct sis_softc	*sc;
-	caddr_t			dest;
-	int			off;
-	int			cnt;
-	int			swap;
+static void
+sis_read_eeprom(struct sis_softc *sc, caddr_t dest, int off, int cnt, int swap)
 {
-	int			i;
-	u_int16_t		word = 0, *ptr;
+	int i;
+	uint16_t word = 0, *ptr;
 
 	for (i = 0; i < cnt; i++) {
 		sis_eeprom_getword(sc, off + i, &word);
-		ptr = (u_int16_t *)(dest + (i * 2));
+		ptr = (uint16_t *)(dest + (i * 2));
 		if (swap)
 			*ptr = ntohs(word);
 		else
 			*ptr = word;
 	}
-
-	return;
 }
 
 #ifdef __i386__
-static device_t sis_find_bridge(dev)
-	device_t		dev;
+static device_t
+sis_find_bridge(device_t dev)
 {
-	devclass_t		pci_devclass;
-	device_t		*pci_devices;
-	int			pci_count = 0;
-	device_t		*pci_children;
-	int			pci_childcount = 0;
-	device_t		*busp, *childp;
-	device_t		child = NULL;
-	int			i, j;
+	devclass_t pci_devclass;
+	device_t *pci_devices;
+	int pci_count = 0;
+	device_t *pci_children;
+	int pci_childcount = 0;
+	device_t *busp, *childp;
+	device_t child = NULL;
+	int i, j;
 
 	if ((pci_devclass = devclass_find("pci")) == NULL)
 		return(NULL);
@@ -392,8 +367,8 @@ static device_t sis_find_bridge(dev)
 	for (i = 0, busp = pci_devices; i < pci_count; i++, busp++) {
 		pci_childcount = 0;
 		device_get_children(*busp, &pci_children, &pci_childcount);
-		for (j = 0, childp = pci_children;
-		    j < pci_childcount; j++, childp++) {
+		for (j = 0, childp = pci_children; j < pci_childcount;
+		     j++, childp++) {
 			if (pci_get_vendor(*childp) == SIS_VENDORID &&
 			    pci_get_device(*childp) == 0x0008) {
 				child = *childp;
@@ -408,17 +383,14 @@ done:
 	return(child);
 }
 
-static void sis_read_cmos(sc, dev, dest, off, cnt)
-	struct sis_softc	*sc;
-	device_t		dev;
-	caddr_t			dest;
-	int			off;
-	int			cnt;
+static void
+sis_read_cmos(struct sis_softc *sc, device_t dev, caddr_t dest, int off,
+	      int cnt)
 {
-	device_t		bridge;
-	u_int8_t		reg;
-	int			i;
-	bus_space_tag_t		btag;
+	device_t bridge;
+	uint8_t reg;
+	int i;
+	bus_space_tag_t	btag;
 
 	bridge = sis_find_bridge(dev);
 	if (bridge == NULL)
@@ -435,15 +407,12 @@ static void sis_read_cmos(sc, dev, dest, off, cnt)
 	}
 
 	pci_write_config(bridge, 0x48, reg & ~0x40, 1);
-	return;
 }
 
-static void sis_read_mac(sc, dev, dest)
-	struct sis_softc	*sc;
-	device_t		dev;
-	caddr_t			dest;
+static void
+sis_read_mac(struct sis_softc *sc, device_t dev, caddr_t dest)
 {
-	u_int32_t		filtsave, csrsave;
+	uint32_t filtsave, csrsave;
 
 	filtsave = CSR_READ_4(sc, SIS_RXFILT_CTL);
 	csrsave = CSR_READ_4(sc, SIS_CSR);
@@ -454,25 +423,24 @@ static void sis_read_mac(sc, dev, dest)
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, filtsave & ~SIS_RXFILTCTL_ENABLE);
 
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, SIS_FILTADDR_PAR0);
-	((u_int16_t *)dest)[0] = CSR_READ_2(sc, SIS_RXFILT_DATA);
+	((uint16_t *)dest)[0] = CSR_READ_2(sc, SIS_RXFILT_DATA);
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL,SIS_FILTADDR_PAR1);
-	((u_int16_t *)dest)[1] = CSR_READ_2(sc, SIS_RXFILT_DATA);
+	((uint16_t *)dest)[1] = CSR_READ_2(sc, SIS_RXFILT_DATA);
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, SIS_FILTADDR_PAR2);
-	((u_int16_t *)dest)[2] = CSR_READ_2(sc, SIS_RXFILT_DATA);
+	((uint16_t *)dest)[2] = CSR_READ_2(sc, SIS_RXFILT_DATA);
 
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, filtsave);
 	CSR_WRITE_4(sc, SIS_CSR, csrsave);
-	return;
 }
 #endif
 
 /*
  * Sync the PHYs by setting data bit and strobing the clock 32 times.
  */
-static void sis_mii_sync(sc)
-	struct sis_softc	*sc;
+static void
+sis_mii_sync(struct sis_softc *sc)
 {
-	int		i;
+	int i;
 
 	SIO_SET(SIS_MII_DIR|SIS_MII_DATA);
 
@@ -482,28 +450,23 @@ static void sis_mii_sync(sc)
 		SIO_CLR(SIS_MII_CLK);
 		DELAY(1);
 	}
-
-	return;
 }
 
 /*
  * Clock a series of bits through the MII.
  */
-static void sis_mii_send(sc, bits, cnt)
-	struct sis_softc	*sc;
-	u_int32_t		bits;
-	int			cnt;
+static void
+sis_mii_send(struct sis_softc *sc, uint32_t bits, int cnt)
 {
-	int			i;
+	int i;
 
 	SIO_CLR(SIS_MII_CLK);
 
 	for (i = (0x1 << (cnt - 1)); i; i >>= 1) {
-                if (bits & i) {
+		if (bits & i)
 			SIO_SET(SIS_MII_DATA);
-                } else {
+		else
 			SIO_CLR(SIS_MII_DATA);
-                }
 		DELAY(1);
 		SIO_CLR(SIS_MII_CLK);
 		DELAY(1);
@@ -514,12 +477,10 @@ static void sis_mii_send(sc, bits, cnt)
 /*
  * Read an PHY register through the MII.
  */
-static int sis_mii_readreg(sc, frame)
-	struct sis_softc	*sc;
-	struct sis_mii_frame	*frame;
-	
+static int
+sis_mii_readreg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
-	int			i, ack, s;
+	int i, ack, s;
 
 	s = splimp();
 
@@ -605,12 +566,10 @@ fail:
 /*
  * Write to a PHY register through the MII.
  */
-static int sis_mii_writereg(sc, frame)
-	struct sis_softc	*sc;
-	struct sis_mii_frame	*frame;
-	
+static int
+sis_mii_writereg(struct sis_softc *sc, struct sis_mii_frame *frame)
 {
-	int			s;
+	int s;
 
 	s = splimp();
 	/*
@@ -620,9 +579,9 @@ static int sis_mii_writereg(sc, frame)
 	frame->mii_stdelim = SIS_MII_STARTDELIM;
 	frame->mii_opcode = SIS_MII_WRITEOP;
 	frame->mii_turnaround = SIS_MII_TURNAROUND;
-	
+
 	/*
- 	 * Turn on data output.
+	 * Turn on data output.
 	 */
 	SIO_SET(SIS_MII_DIR);
 
@@ -651,13 +610,11 @@ static int sis_mii_writereg(sc, frame)
 	return(0);
 }
 
-static int sis_miibus_readreg(dev, phy, reg)
-	device_t		dev;
-	int			phy, reg;
+static int
+sis_miibus_readreg(device_t dev, int phy, int reg)
 {
-	struct sis_softc	*sc;
-	int			i, val = 0;
-	struct sis_mii_frame	frame;
+	struct sis_softc *sc;
+	struct sis_mii_frame frame;
 
 	sc = device_get_softc(dev);
 
@@ -679,12 +636,13 @@ static int sis_miibus_readreg(dev, phy, reg)
 		return CSR_READ_4(sc, NS_BMCR + (reg * 4));
 	}
 	/*
-	* Chipsets < SIS_635 seem not to be able to read/write
-	* through mdio. Use the enhanced PHY access register
-	* again for them.
-	*/
+	 * Chipsets < SIS_635 seem not to be able to read/write
+	 * through mdio. Use the enhanced PHY access register
+	 * again for them.
+	 */
 	if (sc->sis_type == SIS_TYPE_900 &&
 	    sc->sis_rev < SIS_REV_635) {
+		int i, val = 0;
 
 		if (phy != 0)
 			return(0);
@@ -712,20 +670,20 @@ static int sis_miibus_readreg(dev, phy, reg)
 		return(val);
 	} else {
 		bzero((char *)&frame, sizeof(frame));
+
 		frame.mii_phyaddr = phy;
 		frame.mii_regaddr = reg;
 		sis_mii_readreg(sc, &frame);
+
 		return(frame.mii_data);
 	}
 }
 
-static int sis_miibus_writereg(dev, phy, reg, data)
-	device_t		dev;
-	int			phy, reg, data;
+static int
+sis_miibus_writereg(device_t dev, int phy, int reg, int data)
 {
-	struct sis_softc	*sc;
-	int			i;
-	struct sis_mii_frame	frame;
+	struct sis_softc *sc;
+	struct sis_mii_frame frame;
 
 	sc = device_get_softc(dev);
 
@@ -738,9 +696,11 @@ static int sis_miibus_writereg(dev, phy, reg, data)
 
 	if (sc->sis_type == SIS_TYPE_900 &&
 	    sc->sis_rev < SIS_REV_635) {
+		int i;
 
 		if (phy != 0)
 			return(0);
+
 		CSR_WRITE_4(sc, SIS_PHYCTL, (data << 16) | (phy << 11) |
 		    (reg << 6) | SIS_PHYOP_WRITE);
 		SIS_SETBIT(sc, SIS_PHYCTL, SIS_PHYCTL_ACCESS);
@@ -749,13 +709,13 @@ static int sis_miibus_writereg(dev, phy, reg, data)
 			if (!(CSR_READ_4(sc, SIS_PHYCTL) & SIS_PHYCTL_ACCESS))
 				break;
 		}
- 
+
 		if (i == SIS_TIMEOUT)
 			printf("sis%d: PHY failed to come ready\n",
 			    sc->sis_unit);
 	} else {
 		bzero((char *)&frame, sizeof(frame));
- 
+
 		frame.mii_phyaddr = phy;
 		frame.mii_regaddr = reg;
 		frame.mii_data = data;
@@ -764,24 +724,20 @@ static int sis_miibus_writereg(dev, phy, reg, data)
 	return(0);
 }
 
-static void sis_miibus_statchg(dev)
-	device_t		dev;
+static void sis_miibus_statchg(device_t dev)
 {
-	struct sis_softc	*sc;
+	struct sis_softc *sc;
 
 	sc = device_get_softc(dev);
 	sis_init(sc);
-
-	return;
 }
 
-static u_int32_t sis_crc(sc, addr)
-	struct sis_softc	*sc;
-	caddr_t			addr;
+static uint32_t
+sis_mchash(struct sis_softc *sc, const uint8_t *addr)
 {
-	u_int32_t		crc, carry; 
-	int			i, j;
-	u_int8_t		c;
+	uint32_t crc, carry; 
+	int i, j;
+	uint8_t c;
 
 	/* Compute CRC for the address value. */
 	crc = 0xFFFFFFFF; /* initial value */
@@ -805,20 +761,19 @@ static u_int32_t sis_crc(sc, addr)
 	 */
 	if (sc->sis_type == SIS_TYPE_83815)
 		return (crc >> 23);
-	else if (sc->sis_rev >= SIS_REV_635 ||
-	    sc->sis_rev == SIS_REV_900B)
+	else if (sc->sis_rev >= SIS_REV_635 || sc->sis_rev == SIS_REV_900B)
 		return (crc >> 24);
 	else
 		return (crc >> 25);
 }
 
-static void sis_setmulti_ns(sc)
-	struct sis_softc	*sc;
+static void
+sis_setmulti_ns(struct sis_softc *sc)
 {
-	struct ifnet		*ifp;
-	struct ifmultiaddr	*ifma;
-	u_int32_t		h = 0, i, filtsave;
-	int			bit, index;
+	struct ifnet *ifp;
+	struct ifmultiaddr *ifma;
+	uint32_t h = 0, i, filtsave;
+	int bit, index;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -843,11 +798,11 @@ static void sis_setmulti_ns(sc)
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA, 0);
 	}
 
-	for (ifma = ifp->if_multiaddrs.lh_first; ifma != NULL;
-	    ifma = ifma->ifma_link.le_next) {
+	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 		if (ifma->ifma_addr->sa_family != AF_LINK)
 			continue;
-		h = sis_crc(sc, LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+		h = sis_mchash(sc,
+			       LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 		index = h >> 3;
 		bit = h & 0x1F;
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, NS_FILTADDR_FMEM_LO + index);
@@ -857,23 +812,20 @@ static void sis_setmulti_ns(sc)
 	}
 
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, filtsave);
-
-	return;
 }
 
-static void sis_setmulti_sis(sc)
-	struct sis_softc	*sc;
+static void
+sis_setmulti_sis(struct sis_softc *sc)
 {
-	struct ifnet		*ifp;
-	struct ifmultiaddr	*ifma;
-	u_int32_t		h, i, n, ctl;
-	u_int16_t		hashes[16];
+	struct ifnet *ifp;
+	struct ifmultiaddr *ifma;
+	uint32_t h, i, n, ctl;
+	uint16_t hashes[16];
 
 	ifp = &sc->arpcom.ac_if;
 
 	/* hash table size */
-	if (sc->sis_rev >= SIS_REV_635 ||
-	    sc->sis_rev == SIS_REV_900B)
+	if (sc->sis_rev >= SIS_REV_635 || sc->sis_rev == SIS_REV_900B)
 		n = 16;
 	else
 		n = 8;
@@ -896,7 +848,7 @@ static void sis_setmulti_sis(sc)
 		LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link) {
 			if (ifma->ifma_addr->sa_family != AF_LINK)
 				continue;
-			h = sis_crc(sc,
+			h = sis_mchash(sc,
 			    LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
 			hashes[h >> 4] |= 1 << (h & 0xf);
 			i++;
@@ -916,10 +868,10 @@ static void sis_setmulti_sis(sc)
 	CSR_WRITE_4(sc, SIS_RXFILT_CTL, ctl);
 }
 
-static void sis_reset(sc)
-	struct sis_softc	*sc;
+static void
+sis_reset(struct sis_softc *sc)
 {
-	int		i;
+	int i;
 
 	SIS_SETBIT(sc, SIS_CSR, SIS_CSR_RESET);
 
@@ -942,18 +894,16 @@ static void sis_reset(sc)
 		CSR_WRITE_4(sc, NS_CLKRUN, NS_CLKRUN_PMESTS);
 		CSR_WRITE_4(sc, NS_CLKRUN, 0);
 	}
-
-        return;
 }
 
 /*
  * Probe for an SiS chip. Check the PCI vendor and device
  * IDs against our list and return a device name if we find a match.
  */
-static int sis_probe(dev)
-	device_t		dev;
+static int
+sis_probe(device_t dev)
 {
-	struct sis_type		*t;
+	struct sis_type *t;
 
 	t = sis_devs;
 
@@ -973,15 +923,15 @@ static int sis_probe(dev)
  * Attach the interface. Allocate softc structures, do ifmedia
  * setup and ethernet/BPF attach.
  */
-static int sis_attach(dev)
-	device_t		dev;
+static int
+sis_attach(device_t dev)
 {
-	int			s;
-	u_char			eaddr[ETHER_ADDR_LEN];
-	u_int32_t		command;
-	struct sis_softc	*sc;
-	struct ifnet		*ifp;
-	int			unit, error, rid, waittime;
+	int s;
+	uint8_t eaddr[ETHER_ADDR_LEN];
+	uint32_t command;
+	struct sis_softc *sc;
+	struct ifnet *ifp;
+	int unit, error, rid, waittime;
 
 	s = splimp();
 
@@ -1008,7 +958,7 @@ static int sis_attach(dev)
 
 		command = pci_read_config(dev, SIS_PCI_PWRMGMTCTRL, 4);
 		if (command & SIS_PSTATE_MASK) {
-			u_int32_t		iobase, membase, irq;
+			uint32_t		iobase, membase, irq;
 
 			/* Save important PCI config data. */
 			iobase = pci_read_config(dev, SIS_PCI_LOIO, 4);
@@ -1113,7 +1063,7 @@ static int sis_attach(dev)
 		 * Why? Who the hell knows.
 		 */
 		{
-			u_int16_t		tmp[4];
+			uint16_t		tmp[4];
 
 			sis_read_eeprom(sc, (caddr_t)&tmp,
 			    NS_EE_NODEADDR, 4, 0);
@@ -1258,12 +1208,12 @@ fail:
 	return(error);
 }
 
-static int sis_detach(dev)
-	device_t		dev;
+static int
+sis_detach(device_t dev)
 {
-	struct sis_softc	*sc;
-	struct ifnet		*ifp;
-	int			s;
+	struct sis_softc *sc;
+	struct ifnet *ifp;
+	int s;
 
 	s = splimp();
 
@@ -1291,12 +1241,12 @@ static int sis_detach(dev)
 /*
  * Initialize the transmit descriptors.
  */
-static int sis_list_tx_init(sc)
-	struct sis_softc	*sc;
+static int
+sis_list_tx_init(struct sis_softc *sc)
 {
-	struct sis_list_data	*ld;
-	struct sis_ring_data	*cd;
-	int			i, nexti;
+	struct sis_list_data *ld;
+	struct sis_ring_data *cd;
+	int i, nexti;
 
 	cd = &sc->sis_cdata;
 	ld = sc->sis_ldata;
@@ -1317,18 +1267,17 @@ static int sis_list_tx_init(sc)
 	return(0);
 }
 
-
 /*
  * Initialize the RX descriptors and allocate mbufs for them. Note that
  * we arrange the descriptors in a closed ring, so that the last descriptor
  * points back to the first.
  */
-static int sis_list_rx_init(sc)
-	struct sis_softc	*sc;
+static int
+sis_list_rx_init(struct sis_softc *sc)
 {
-	struct sis_list_data	*ld;
-	struct sis_ring_data	*cd;
-	int			i, nexti;
+	struct sis_list_data *ld;
+	struct sis_ring_data *cd;
+	int i, nexti;
 
 	ld = sc->sis_ldata;
 	cd = &sc->sis_cdata;
@@ -1351,12 +1300,9 @@ static int sis_list_rx_init(sc)
 /*
  * Initialize an RX descriptor and attach an MBUF cluster.
  */
-static int sis_newbuf(sc, c, m)
-	struct sis_softc	*sc;
-	struct sis_desc		*c;
-	struct mbuf		*m;
+static int
+sis_newbuf(struct sis_softc *sc, struct sis_desc *c, struct mbuf *m)
 {
-
 	if (m == NULL) {
 		m = m_getcl(M_DONTWAIT, MT_DATA, M_PKTHDR);
 		if (m == NULL)
@@ -1376,14 +1322,14 @@ static int sis_newbuf(sc, c, m)
  * A frame has been uploaded: pass the resulting mbuf chain up to
  * the higher level protocols.
  */
-static void sis_rxeof(sc)
-	struct sis_softc	*sc;
+static void
+sis_rxeof(struct sis_softc *sc)
 {
-        struct mbuf		*m;
-        struct ifnet		*ifp;
-	struct sis_desc		*cur_rx;
-	int			i, total_len = 0;
-	u_int32_t		rxstat;
+	struct mbuf *m;
+	struct ifnet *ifp;
+	struct sis_desc	*cur_rx;
+	int i, total_len = 0;
+	uint32_t rxstat;
 
 	ifp = &sc->arpcom.ac_if;
 	i = sc->sis_cdata.sis_rx_prod;
@@ -1451,16 +1397,13 @@ static void sis_rxeof(sc)
 	}
 
 	sc->sis_cdata.sis_rx_prod = i;
-
-	return;
 }
 
-void sis_rxeoc(sc)
-	struct sis_softc	*sc;
+static void
+sis_rxeoc(struct sis_softc *sc)
 {
 	sis_rxeof(sc);
 	/* sis_init(sc); */
-	return;
 }
 
 /*
@@ -1468,12 +1411,12 @@ void sis_rxeoc(sc)
  * the list buffers.
  */
 
-static void sis_txeof(sc)
-	struct sis_softc	*sc;
+static void
+sis_txeof(struct sis_softc *sc)
 {
-	struct sis_desc		*cur_tx = NULL;
-	struct ifnet		*ifp;
-	u_int32_t		idx;
+	struct sis_desc *cur_tx = NULL;
+	struct ifnet *ifp;
+	uint32_t idx;
 
 	ifp = &sc->arpcom.ac_if;
 
@@ -1520,17 +1463,17 @@ static void sis_txeof(sc)
 		sc->sis_cdata.sis_tx_cons = idx;
 		ifp->if_flags &= ~IFF_OACTIVE;
 	}
+
 	ifp->if_timer = (sc->sis_cdata.sis_tx_cnt == 0) ? 0 : 5;
-	return;
 }
 
-static void sis_tick(xsc)
-	void			*xsc;
+static void
+sis_tick(void *xsc)
 {
-	struct sis_softc	*sc;
-	struct mii_data		*mii;
-	struct ifnet		*ifp;
-	int			s;
+	struct sis_softc *sc;
+	struct mii_data *mii;
+	struct ifnet *ifp;
+	int s;
 
 	s = splimp();
 
@@ -1552,8 +1495,6 @@ static void sis_tick(xsc)
 	sc->sis_stat_ch = timeout(sis_tick, sc, hz);
 
 	splx(s);
-
-	return;
 }
 
 #ifdef DEVICE_POLLING
@@ -1583,7 +1524,7 @@ sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 		sis_start(ifp);
 
 	if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
-		u_int32_t	status;
+		uint32_t status;
 
 		/* Reading the ISR register clears all interrupts. */
 		status = CSR_READ_4(sc, SIS_ISR);
@@ -1602,12 +1543,12 @@ sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 }
 #endif /* DEVICE_POLLING */
 
-static void sis_intr(arg)
-	void			*arg;
+static void
+sis_intr(void *arg)
 {
-	struct sis_softc	*sc;
-	struct ifnet		*ifp;
-	u_int32_t		status;
+	struct sis_softc *sc;
+	struct ifnet *ifp;
+	uint32_t status;
 
 	sc = arg;
 	ifp = &sc->arpcom.ac_if;
@@ -1639,14 +1580,15 @@ static void sis_intr(arg)
 			break;
 
 		if (status &
-		    (SIS_ISR_TX_DESC_OK|SIS_ISR_TX_ERR|
-		     SIS_ISR_TX_OK|SIS_ISR_TX_IDLE) )
+		    (SIS_ISR_TX_DESC_OK | SIS_ISR_TX_ERR | SIS_ISR_TX_OK |
+		     SIS_ISR_TX_IDLE) )
 			sis_txeof(sc);
 
-		if (status & (SIS_ISR_RX_DESC_OK|SIS_ISR_RX_OK|SIS_ISR_RX_IDLE))
+		if (status &
+		    (SIS_ISR_RX_DESC_OK | SIS_ISR_RX_OK | SIS_ISR_RX_IDLE))
 			sis_rxeof(sc);
 
-		if (status & (SIS_ISR_RX_ERR|SIS_ISR_RX_OFLOW))
+		if (status & (SIS_ISR_RX_ERR | SIS_ISR_RX_OFLOW))
 			sis_rxeoc(sc);
 
 		if (status & (SIS_ISR_RX_IDLE))
@@ -1663,22 +1605,18 @@ static void sis_intr(arg)
 
 	if (ifp->if_snd.ifq_head != NULL)
 		sis_start(ifp);
-
-	return;
 }
 
 /*
  * Encapsulate an mbuf chain in a descriptor by coupling the mbuf data
  * pointers to the fragment pointers.
  */
-static int sis_encap(sc, m_head, txidx)
-	struct sis_softc	*sc;
-	struct mbuf		*m_head;
-	u_int32_t		*txidx;
+static int
+sis_encap(struct sis_softc *sc, struct mbuf *m_head, uint32_t *txidx)
 {
-	struct sis_desc		*f = NULL;
-	struct mbuf		*m;
-	int			frag, cur, cnt = 0;
+	struct sis_desc *f = NULL;
+	struct mbuf *m;
+	int frag, cur, cnt = 0;
 
 	/*
  	 * Start packing the mbufs in this chain into
@@ -1723,12 +1661,12 @@ static int sis_encap(sc, m_head, txidx)
  * physical addresses.
  */
 
-static void sis_start(ifp)
-	struct ifnet		*ifp;
+static void
+sis_start(struct ifnet *ifp)
 {
-	struct sis_softc	*sc;
-	struct mbuf		*m_head = NULL;
-	u_int32_t		idx;
+	struct sis_softc *sc;
+	struct mbuf *m_head = NULL;
+	uint32_t idx;
 
 	sc = ifp->if_softc;
 
@@ -1755,9 +1693,7 @@ static void sis_start(ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
-
+		BPF_MTAP(ifp, m_head);
 	}
 
 	/* Transmit */
@@ -1768,17 +1704,15 @@ static void sis_start(ifp)
 	 * Set a timeout in case the chip goes out to lunch.
 	 */
 	ifp->if_timer = 5;
-
-	return;
 }
 
-static void sis_init(xsc)
-	void			*xsc;
+static void
+sis_init(void *xsc)
 {
-	struct sis_softc	*sc = xsc;
-	struct ifnet		*ifp = &sc->arpcom.ac_if;
-	struct mii_data		*mii;
-	int			s;
+	struct sis_softc *sc = xsc;
+	struct ifnet *ifp = &sc->arpcom.ac_if;
+	struct mii_data *mii;
+	int s;
 
 	s = splimp();
 
@@ -1793,23 +1727,23 @@ static void sis_init(xsc)
 	if (sc->sis_type == SIS_TYPE_83815) {
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, NS_FILTADDR_PAR0);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[0]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[0]);
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, NS_FILTADDR_PAR1);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[1]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[1]);
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, NS_FILTADDR_PAR2);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[2]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[2]);
 	} else {
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, SIS_FILTADDR_PAR0);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[0]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[0]);
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, SIS_FILTADDR_PAR1);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[1]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[1]);
 		CSR_WRITE_4(sc, SIS_RXFILT_CTL, SIS_FILTADDR_PAR2);
 		CSR_WRITE_4(sc, SIS_RXFILT_DATA,
-		    ((u_int16_t *)sc->arpcom.ac_enaddr)[2]);
+		    ((uint16_t *)sc->arpcom.ac_enaddr)[2]);
 	}
 
 	/* Init circular RX list. */
@@ -1817,7 +1751,7 @@ static void sis_init(xsc)
 		printf("sis%d: initialization failed: no "
 			"memory for rx buffers\n", sc->sis_unit);
 		sis_stop(sc);
-		(void)splx(s);
+		splx(s);
 		return;
 	}
 
@@ -1838,20 +1772,18 @@ static void sis_init(xsc)
 	}
 
 	 /* If we want promiscuous mode, set the allframes bit. */
-	if (ifp->if_flags & IFF_PROMISC) {
+	if (ifp->if_flags & IFF_PROMISC)
 		SIS_SETBIT(sc, SIS_RXFILT_CTL, SIS_RXFILTCTL_ALLPHYS);
-	} else {
+	else
 		SIS_CLRBIT(sc, SIS_RXFILT_CTL, SIS_RXFILTCTL_ALLPHYS);
-	}
 
 	/*
 	 * Set the capture broadcast bit to capture broadcast frames.
 	 */
-	if (ifp->if_flags & IFF_BROADCAST) {
+	if (ifp->if_flags & IFF_BROADCAST)
 		SIS_SETBIT(sc, SIS_RXFILT_CTL, SIS_RXFILTCTL_BROAD);
-	} else {
+	else
 		SIS_CLRBIT(sc, SIS_RXFILT_CTL, SIS_RXFILTCTL_BROAD);
-	}
 
 	/*
 	 * Load the multicast filter.
@@ -1876,21 +1808,19 @@ static void sis_init(xsc)
 	 * the PCI bus. When this bit is set, the Max DMA Burst Size
 	 * for TX/RX DMA should be no larger than 16 double words.
 	 */
-	if (CSR_READ_4(sc, SIS_CFG) & SIS_CFG_EDB_MASTER_EN) {
+	if (CSR_READ_4(sc, SIS_CFG) & SIS_CFG_EDB_MASTER_EN)
 		CSR_WRITE_4(sc, SIS_RX_CFG, SIS_RXCFG64);
-	} else {
+	else
 		CSR_WRITE_4(sc, SIS_RX_CFG, SIS_RXCFG256);
-	}
 
 	/* Accept Long Packets for VLAN support */
 	SIS_SETBIT(sc, SIS_RX_CFG, SIS_RXCFG_RX_JABBER);
 
 	/* Set TX configuration */
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_10_T) {
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_10_T)
 		CSR_WRITE_4(sc, SIS_TX_CFG, SIS_TXCFG_10);
-	} else {
+	else
 		CSR_WRITE_4(sc, SIS_TX_CFG, SIS_TXCFG_100);
-	}
 
 	/* Set full/half duplex mode. */
 	if ((mii->mii_media_active & IFM_GMASK) == IFM_FDX) {
@@ -1944,21 +1874,19 @@ static void sis_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	(void)splx(s);
+	splx(s);
 
 	sc->sis_stat_ch = timeout(sis_tick, sc, hz);
-
-	return;
 }
 
 /*
  * Set media options.
  */
-static int sis_ifmedia_upd(ifp)
-	struct ifnet		*ifp;
+static int
+sis_ifmedia_upd(struct ifnet *ifp)
 {
-	struct sis_softc	*sc;
-	struct mii_data		*mii;
+	struct sis_softc *sc;
+	struct mii_data *mii;
 
 	sc = ifp->if_softc;
 
@@ -1966,8 +1894,7 @@ static int sis_ifmedia_upd(ifp)
 	sc->sis_link = 0;
 	if (mii->mii_instance) {
 		struct mii_softc	*miisc;
-		for (miisc = LIST_FIRST(&mii->mii_phys); miisc != NULL;
-		    miisc = LIST_NEXT(miisc, mii_list))
+		LIST_FOREACH(miisc, &mii->mii_phys, mii_list)
 			mii_phy_reset(miisc);
 	}
 	mii_mediachg(mii);
@@ -1978,12 +1905,11 @@ static int sis_ifmedia_upd(ifp)
 /*
  * Report current media status.
  */
-static void sis_ifmedia_sts(ifp, ifmr)
-	struct ifnet		*ifp;
-	struct ifmediareq	*ifmr;
+static void
+sis_ifmedia_sts(struct ifnet *ifp, struct ifmediareq *ifmr)
 {
-	struct sis_softc	*sc;
-	struct mii_data		*mii;
+	struct sis_softc *sc;
+	struct mii_data *mii;
 
 	sc = ifp->if_softc;
 
@@ -1991,19 +1917,15 @@ static void sis_ifmedia_sts(ifp, ifmr)
 	mii_pollstat(mii);
 	ifmr->ifm_active = mii->mii_media_active;
 	ifmr->ifm_status = mii->mii_media_status;
-
-	return;
 }
 
-static int sis_ioctl(ifp, command, data)
-	struct ifnet		*ifp;
-	u_long			command;
-	caddr_t			data;
+static int
+sis_ioctl(struct ifnet *ifp, u_long command, caddr_t data)
 {
-	struct sis_softc	*sc = ifp->if_softc;
-	struct ifreq		*ifr = (struct ifreq *) data;
-	struct mii_data		*mii;
-	int			s, error = 0;
+	struct sis_softc *sc = ifp->if_softc;
+	struct ifreq *ifr = (struct ifreq *) data;
+	struct mii_data *mii;
+	int s, error = 0;
 
 	s = splimp();
 
@@ -2040,15 +1962,15 @@ static int sis_ioctl(ifp, command, data)
 		break;
 	}
 
-	(void)splx(s);
+	splx(s);
 
 	return(error);
 }
 
-static void sis_watchdog(ifp)
-	struct ifnet		*ifp;
+static void
+sis_watchdog(struct ifnet *ifp)
 {
-	struct sis_softc	*sc;
+	struct sis_softc *sc;
 
 	sc = ifp->if_softc;
 
@@ -2061,19 +1983,17 @@ static void sis_watchdog(ifp)
 
 	if (ifp->if_snd.ifq_head != NULL)
 		sis_start(ifp);
-
-	return;
 }
 
 /*
  * Stop the adapter and free any mbufs allocated to the
  * RX and TX lists.
  */
-static void sis_stop(sc)
-	struct sis_softc	*sc;
+static void
+sis_stop(struct sis_softc *sc)
 {
-	int		i;
-	struct ifnet		*ifp;
+	int i;
+	struct ifnet *ifp;
 
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
@@ -2117,16 +2037,14 @@ static void sis_stop(sc)
 
 	bzero((char *)&sc->sis_ldata->sis_tx_list,
 		sizeof(sc->sis_ldata->sis_tx_list));
-
-	return;
 }
 
 /*
  * Stop all chip I/O so that the kernel's probe routines don't
  * get confused by errant DMAs when rebooting.
  */
-static void sis_shutdown(dev)
-	device_t		dev;
+static void
+sis_shutdown(device_t dev)
 {
 	struct sis_softc	*sc;
 
@@ -2134,6 +2052,4 @@ static void sis_shutdown(dev)
 
 	sis_reset(sc);
 	sis_stop(sc);
-
-	return;
 }
