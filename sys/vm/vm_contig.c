@@ -64,7 +64,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.11 2004/11/10 17:39:20 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.12 2004/11/10 20:19:51 dillon Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ vm_contig_pg_alloc(
 	if ((boundary & (boundary - 1)) != 0)
 		panic("vm_contig_pg_alloc: boundary must be a power of 2");
 
-	start = 1;	/* must start at 1 due to m[-1] check below */
+	start = 0;
 	for (pass = 0; pass <= 1; pass++) {
 		crit_enter();
 again:
