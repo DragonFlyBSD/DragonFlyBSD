@@ -32,7 +32,7 @@
  *
  *      @(#)if_llc.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_llc.h,v 1.7 1999/08/28 00:48:18 peter Exp $
- * $DragonFly: src/sys/net/if_llc.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/if_llc.h,v 1.3 2004/07/20 14:43:34 joerg Exp $
  */
 
 #ifndef _NET_IF_LLC_H_
@@ -96,6 +96,7 @@ struct llc {
 #define llc_frmr_control       llc_un.type_frmr.frmrinfo.frmr_control
 #define llc_frmr_control_ext   llc_un.type_frmr.frmrinfo.frmr_control_ext
 #define llc_frmr_cause         llc_un.type_frmr.frmrinfo.frmr_control_ext
+#define llc_snap               llc_un.type_snap
 
 /*
  * Don't use sizeof(struct llc_un) for LLC header sizes
