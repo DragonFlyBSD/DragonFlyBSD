@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/lib/Makefile,v 1.19.2.4 2003/01/21 23:06:52 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.4 2004/01/19 11:03:01 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.5 2004/01/20 05:58:57 asmodai Exp $
 
 MAINTAINER=	peter@FreeBSD.org
 
@@ -24,9 +24,9 @@ CVS_UMASK_DFLT?=	002
 CVS_ADMIN_GROUP?=	cvsadmin
 CVS_TMPDIR_DFLT?=	/tmp
 
-SRCS=	config.h argmatch.c getdate.y getline.c \
-	getopt.c getopt1.c getpass.c md5.c savecwd.c \
-	sighandle.c stripslash.c \
+SRCS=	config.h argmatch.c getdate.y getline.c getndelim2.c getnline.c \
+	getopt.c getopt1.c getpass.c lstat.c md5.c savecwd.c \
+	sighandle.c stat.c stripslash.c \
 	xgetwd.c yesno.c
 
 config.h: config.h.proto
