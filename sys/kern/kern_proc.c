@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.13 2003/09/01 01:14:55 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.14 2004/05/29 02:47:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <vm/vm_map.h>
 #include <sys/user.h>
 #include <vm/vm_zone.h>
+#include <machine/smp.h>
 
 static MALLOC_DEFINE(M_PGRP, "pgrp", "process group header");
 MALLOC_DEFINE(M_SESSION, "session", "session header");
@@ -489,6 +490,8 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 	struct thread *td;
 	int doingzomb;
 	int error = 0;
+	int n;
+	int origcpu;
 	struct ucred *cr1 = curproc->p_ucred;
 
 	if (oidp->oid_number == KERN_PROC_PID) {
@@ -574,7 +577,26 @@ sysctl_kern_proc(SYSCTL_HANDLER_ARGS)
 				return (error);
 		}
 	}
-	if (ps_showallthreads) {
+
+	/*
+	 * Iterate over all active cpus and scan their thread list.  Start
+	 * with the next logical cpu and end with our original cpu.  We
+	 * migrate our own thread to each target cpu in order to safely scan
+	 * its thread list.  In the last loop we migrate back to our original
+	 * cpu.
+	 */
+	origcpu = mycpu->gd_cpuid;
+	for (n = 1; ps_showallthreads && n <= ncpus; ++n) {
+		globaldata_t rgd;
+		int nid;
+
+		nid = (origcpu + n) % ncpus;
+		if ((smp_active_mask & (1 << nid)) == 0)
+			continue;
+		rgd = globaldata_find(nid);
+		lwkt_setcpu_self(rgd);
+		cpu_mb1();	/* CURRENT CPU HAS CHANGED */
+
 		TAILQ_FOREACH(td, &mycpu->gd_tdallq, td_allq) {
 			if (td->td_proc)
 				continue;
