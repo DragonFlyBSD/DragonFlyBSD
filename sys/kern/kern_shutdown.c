@@ -37,10 +37,11 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.11 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.12 2003/09/05 17:46:54 hsu Exp $
  */
 
 #include "opt_ddb.h"
+#include "opt_ddb_trace.h"
 #include "opt_hw_wdog.h"
 #include "opt_panic.h"
 #include "opt_show_busybufs.h"
@@ -90,6 +91,16 @@ int debugger_on_panic = 1;
 #endif
 SYSCTL_INT(_debug, OID_AUTO, debugger_on_panic, CTLFLAG_RW,
 	&debugger_on_panic, 0, "Run debugger on kernel panic");
+
+extern void db_print_backtrace(void);
+
+#ifdef DDB_TRACE
+int trace_on_panic = 1;
+#else
+int trace_on_panic = 0;
+#endif
+SYSCTL_INT(_debug, OID_AUTO, trace_on_panic, CTLFLAG_RW,
+	&trace_on_panic, 0, "Print stack trace on kernel panic");
 #endif
 
 SYSCTL_NODE(_kern, OID_AUTO, shutdown, CTLFLAG_RW, 0, "Shutdown environment");
@@ -559,15 +570,18 @@ dumpstatus(vm_offset_t addr, off_t count)
 void
 panic(const char *fmt, ...)
 {
-	int bootopt;
+	int bootopt, newpanic;
 	va_list ap;
 	static char buf[256];
 
 	bootopt = RB_AUTOBOOT | RB_DUMP;
+	newpanic = 0;
 	if (panicstr)
 		bootopt |= RB_NOSYNC;
-	else
+	else {
 		panicstr = fmt;
+		newpanic = 1;
+	}
 
 	va_start(ap, fmt);
 	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
@@ -583,6 +597,8 @@ panic(const char *fmt, ...)
 #endif
 
 #if defined(DDB)
+	if (newpanic && trace_on_panic)
+		db_print_backtrace();
 	if (debugger_on_panic)
 		Debugger ("panic");
 #endif

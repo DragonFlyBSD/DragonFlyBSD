@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.5 2003/08/27 01:43:05 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.6 2003/09/05 17:46:54 hsu Exp $
 #
 #        On the handling of kernel options
 #
@@ -80,6 +80,7 @@ COMPAT_SUNOS	opt_compat.h
 COMPILING_LINT	opt_lint.h
 CY_PCI_FASTINTR
 DDB
+DDB_TRACE
 DDB_UNATTENDED	opt_ddb.h
 GDB_REMOTE_CHAT	opt_ddb.h
 HW_WDOG
