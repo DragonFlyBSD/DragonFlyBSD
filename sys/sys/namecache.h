@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.3 2004/04/08 17:56:46 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.4 2004/04/08 22:00:40 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -63,6 +63,7 @@ struct namecache {
     u_char	nc_nlen;		/* The length of the name, 255 max */
     u_char	nc_unused;
     char	*nc_name;		/* Separately allocated seg name */
+    int		nc_timeout;		/* compared against ticks, or 0 */
 };
 
 typedef struct namecache *namecache_t;

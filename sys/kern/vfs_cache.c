@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.15 2004/04/08 17:56:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.16 2004/04/08 22:00:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -228,7 +228,7 @@ cache_alloc(struct vnode *vp)
 		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
 		++numcache;
 	} else {
-		TAILQ_INSERT_HEAD(&ncneglist, ncp, nc_vnode);
+		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		++numneg;
 	}
 	return(ncp);
@@ -403,21 +403,39 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 	 */
 	hash = fnv_32_buf(cnp->cn_nameptr, cnp->cn_namelen, FNV1_32_INIT);
 	hash = fnv_32_buf(&par, sizeof(par), hash);
-	if (nczapcheck)
-	    printf("DVP %p/%p %08x %*.*s\n", dvp, par, hash, cnp->cn_namelen, cnp->cn_namelen, cnp->cn_nameptr);
+	if (nczapcheck > 1)
+	    printf("DVP %p/%p %08x %*.*s\n", dvp, par, hash, (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr);
+restart:
 	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
 		numchecks++;
-		if (nczapcheck) {
+		if (nczapcheck > 1) {
 		    printf("TEST ncp par=%p %*.*s\n",
 			ncp->nc_parent, ncp->nc_nlen, ncp->nc_nlen,
 			ncp->nc_name);
 		}
+
+		/*
+		 * Zap entries that have timed out.
+		 */
+		if (ncp->nc_timeout && 
+		    (int)(ncp->nc_timeout - ticks) < 0
+		) {
+			if (nczapcheck > 1)
+			    printf("TIMEOUT\n");
+			cache_zap(cache_hold(ncp));
+			goto restart;
+		}
+
+		/*
+		 * Break out if we find a matching entry.  UNRESOLVED entries
+		 * never match (they are in the middle of being destroyed).
+		 */
 		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
 		    ncp->nc_parent == par &&
 		    ncp->nc_nlen == cnp->cn_namelen &&
 		    bcmp(ncp->nc_name, cnp->cn_nameptr, ncp->nc_nlen) == 0
 		) {
-			if (nczapcheck)
+			if (nczapcheck > 1)
 			    printf("GOOD\n");
 			cache_hold(ncp);
 			break;
@@ -434,6 +452,11 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 			nummiss++;
 		}
 		gd->gd_nchstats->ncs_miss++;
+		if (nczapcheck) {
+		    printf("MISS %p/%p %*.*s/%*.*s\n", dvp, par, 
+			par->nc_nlen, par->nc_nlen, (par->nc_name ? par->nc_name : ""),
+			(int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr);
+		}
 		return (0);
 	}
 
@@ -607,14 +630,22 @@ again:
 	bpar = par;
 	hash = fnv_32_buf(&bpar, sizeof(bpar), hash);
 
-	if (nczapcheck)
+	if (nczapcheck > 1)
 	    printf("ENTER %p/%p %08x '%*.*s' %p ", dvp, par, hash, (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr, vp);
 
 
 	name = malloc(cnp->cn_namelen, M_VFSCACHE, M_WAITOK);
 	ncp = cache_alloc(vp);
-	if (nczapcheck)
+	if (nczapcheck > 1)
 	    printf("alloc\n");
+
+	/*
+	 * Set a timeout
+	 */
+	if (cnp->cn_flags & CNP_CACHETIMEOUT) {
+		if ((ncp->nc_timeout = ticks + cnp->cn_timeout) == 0)
+			ncp->nc_timeout = 1;
+	}
 
 	/*
 	 * Linkup the parent pointer, bump the parent vnode's hold
@@ -698,7 +729,7 @@ vfs_cache_setroot(struct vnode *nvp)
 		TAILQ_INSERT_HEAD(&nvp->v_namecache, &rootnamecache, nc_vnode);
 	} else {
 		++numneg;
-		TAILQ_INSERT_HEAD(&ncneglist, &rootnamecache, nc_vnode);
+		TAILQ_INSERT_TAIL(&ncneglist, &rootnamecache, nc_vnode);
 		rootnamecache.nc_flag &= ~NCF_WHITEOUT;
 	}
 }

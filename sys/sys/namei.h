@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.11 2004/04/02 05:46:02 hmp Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.12 2004/04/08 22:00:40 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -71,6 +71,7 @@ struct componentname {
 	char	*cn_nameptr;	/* pointer to looked up name */
 	long	cn_namelen;	/* length of looked up component */
 	long	cn_consume;	/* chars to consume in lookup() */
+	int	cn_timeout;	/* if CNP_CACHETIMEOUT is set, in ticks */
 };
 
 /*
@@ -160,7 +161,8 @@ struct nameidata {
 #define	CNP_PDIRUNLOCK	    0x00200000 /* fs lookup() unlocked parent dir */
 	/* (WANTDNCP)	    0x00400000 */
 	/* (WANTNCP)	    0x00800000 */
-#define CNP_PARAMASK	    0x001fff00 /* mask of parameter descriptors */
+#define CNP_CACHETIMEOUT    0x01000000 /* apply timeout to cache entry */
+#define CNP_PARAMASK	    0x011fff00 /* mask of parameter descriptors */
 
 /*
  * Initialization of an nameidata structure.
