@@ -1,9 +1,9 @@
 /*-
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
-
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by David Xu.
-
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/i386/gen/Attic/_set_tp.c,v 1.1 2005/03/08 13:15:08 davidxu Exp $
+ * $DragonFly: src/lib/libc/i386/gen/Attic/_set_tp.c,v 1.2 2005/03/08 13:17:03 davidxu Exp $
  */
 
 #include <sys/tls.h>
