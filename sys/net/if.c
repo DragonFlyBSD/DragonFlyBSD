@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.21 2004/09/13 23:45:57 drhodus Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.22 2004/09/15 19:34:55 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -113,6 +113,8 @@ int if_clone_list (struct if_clonereq *);
 LIST_HEAD(, if_clone) if_cloners = LIST_HEAD_INITIALIZER(if_cloners);
 int if_cloners_count;
 
+struct callout if_slowtimo_timer;
+
 /*
  * Network interface utility routines.
  *
@@ -127,6 +129,8 @@ ifinit(dummy)
 	struct ifnet *ifp;
 	int s;
 
+	callout_init(&if_slowtimo_timer);
+
 	s = splimp();
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (ifp->if_snd.ifq_maxlen == 0) {
@@ -135,6 +139,7 @@ ifinit(dummy)
 		}
 	}
 	splx(s);
+
 	if_slowtimo(0);
 }
 
@@ -943,7 +948,7 @@ if_slowtimo(arg)
 			(*ifp->if_watchdog)(ifp);
 	}
 	splx(s);
-	timeout(if_slowtimo, (void *)0, hz / IFNET_SLOWHZ);
+	callout_reset(&if_slowtimo_timer, hz / IFNET_SLOWHZ, if_slowtimo, NULL);
 }
 
 /*
