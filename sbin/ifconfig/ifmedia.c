@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.6.2.3 2001/11/14 04:35:07 yar Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.6 2004/12/18 21:43:38 swildner Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.7 2005/03/04 00:11:11 cpressey Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -183,7 +183,8 @@ media_status(int s, struct rt_addrinfo *info __unused)
 }
 
 void
-setmedia(const char *val, int d, int s, const struct afswtch *afp)
+setmedia(const char *val, int d __unused, int s,
+	 const struct afswtch *afp __unused)
 {
 	struct ifmediareq ifmr;
 	int first_type, subtype;
@@ -225,14 +226,16 @@ setmedia(const char *val, int d, int s, const struct afswtch *afp)
 }
 
 void
-setmediaopt(const char *val, int d, int s, const struct afswtch *afp)
+setmediaopt(const char *val, int d __unused, int s,
+	    const struct afswtch *afp __unused)
 {
 
 	domediaopt(val, 0, s);
 }
 
 void
-unsetmediaopt(const char *val, int d, int s, const struct afswtch *afp)
+unsetmediaopt(const char *val, int d __unused, int s,
+	      const struct afswtch *afp __unused)
 {
 
 	domediaopt(val, 1, s);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.14 2005/03/03 23:52:00 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.15 2005/03/04 00:11:11 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -761,7 +761,8 @@ ifconfig(int argc, char *const *argv, const struct afswtch *afp)
 
 /*ARGSUSED*/
 void
-setifaddr(const char *addr, int param, int s, const struct afswtch *afp)
+setifaddr(const char *addr, int param __unused, int s __unused,
+	  const struct afswtch *afp)
 {
 	if (*afp->af_getaddr == NULL)
 		return;
@@ -838,7 +839,8 @@ settunnel(const char *src, const char *dst, int s, const struct afswtch *afp)
 
 /* ARGSUSED */
 void
-deletetunnel(const char *vname, int param, int s, const struct afswtch *afp)
+deletetunnel(const char *vname __unused, int param __unused, int s,
+	     const struct afswtch *afp __unused)
 {
 
 	if (ioctl(s, SIOCDIFPHYADDR, &ifr) < 0)
@@ -846,7 +848,7 @@ deletetunnel(const char *vname, int param, int s, const struct afswtch *afp)
 }
 
 void
-setifnetmask(const char *addr, int dummy __unused, int s,
+setifnetmask(const char *addr, int dummy __unused, int s __unused,
              const struct afswtch *afp)
 {
 	if (*afp->af_getaddr == NULL)
@@ -857,7 +859,7 @@ setifnetmask(const char *addr, int dummy __unused, int s,
 
 #ifdef INET6
 void
-setifprefixlen(const char *addr, int dummy __unused, int s,
+setifprefixlen(const char *addr, int dummy __unused, int s __unused,
                const struct afswtch *afp)
 {
         if (*afp->af_getprefix)
@@ -893,7 +895,7 @@ setip6vltime(const char *seconds, int dummy __unused, int s,
 }
 
 void
-setip6lifetime(const char *cmd, const char *val, int s,
+setip6lifetime(const char *cmd, const char *val, int s __unused,
                const struct afswtch *afp)
 {
 	time_t newval, t;
@@ -915,7 +917,7 @@ setip6lifetime(const char *cmd, const char *val, int s,
 }
 
 void
-setip6eui64(const char *cmd, int dummy __unused, int s,
+setip6eui64(const char *cmd, int dummy __unused, int s __unused,
             const struct afswtch *afp)
 {
 	struct ifaddrs *ifap, *ifa;
@@ -950,7 +952,7 @@ setip6eui64(const char *cmd, int dummy __unused, int s,
 #endif
 
 void
-setifbroadaddr(const char *addr, int dummy __unused, int s,
+setifbroadaddr(const char *addr, int dummy __unused, int s __unused,
                const struct afswtch *afp)
 {
 	if (*afp->af_getaddr == NULL)
@@ -959,8 +961,8 @@ setifbroadaddr(const char *addr, int dummy __unused, int s,
 }
 
 void
-setifipdst(const char *addr, int dummy __unused, int s,
-           const struct afswtch *afp)
+setifipdst(const char *addr, int dummy __unused, int s __unused,
+           const struct afswtch *afp __unused)
 {
 	in_getaddr(addr, DSTADDR);
 	setipdst++;
@@ -970,7 +972,8 @@ setifipdst(const char *addr, int dummy __unused, int s,
 #define rqtosa(x) (&(((struct ifreq *)(afp->x))->ifr_addr))
 
 void
-notealias(const char *addr, int param, int s, const struct afswtch *afp)
+notealias(const char *addr __unused, int param, int s __unused,
+	  const struct afswtch *afp)
 {
 	if (setaddr && doalias == 0 && param < 0)
 		bcopy((caddr_t)rqtosa(af_addreq),
@@ -986,7 +989,7 @@ notealias(const char *addr, int param, int s, const struct afswtch *afp)
 
 /*ARGSUSED*/
 void
-setifdstaddr(const char *addr, int param __unused, int s,
+setifdstaddr(const char *addr, int param __unused, int s __unused,
              const struct afswtch *afp)
 {
 	if (*afp->af_getaddr == NULL)
@@ -1000,7 +1003,8 @@ setifdstaddr(const char *addr, int param __unused, int s,
  * Make a private copy so we can avoid that.
  */
 void
-setifflags(const char *vname, int value, int s, const struct afswtch *afp)
+setifflags(const char *vname, int value, int s,
+	   const struct afswtch *afp __unused)
 {
 	struct ifreq		my_ifr;
 
@@ -1025,7 +1029,8 @@ setifflags(const char *vname, int value, int s, const struct afswtch *afp)
 }
 
 void
-setifcap(const char *vname, int value, int s, const struct afswtch *afp)
+setifcap(const char *vname, int value, int s,
+	 const struct afswtch *afp __unused)
 {
 
  	if (ioctl(s, SIOCGIFCAP, (caddr_t)&ifr) < 0) {
@@ -1045,7 +1050,7 @@ setifcap(const char *vname, int value, int s, const struct afswtch *afp)
 
 void
 setifmetric(const char *val, int dummy __unused, int s,
-            const struct afswtch *afp)
+            const struct afswtch *afp __unused)
 {
 	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_metric = atoi(val);
@@ -1054,7 +1059,8 @@ setifmetric(const char *val, int dummy __unused, int s,
 }
 
 void
-setifmtu(const char *val, int dummy __unused, int s, const struct afswtch *afp)
+setifmtu(const char *val, int dummy __unused, int s,
+	 const struct afswtch *afp __unused)
 {
 	strncpy(ifr.ifr_name, name, sizeof (ifr.ifr_name));
 	ifr.ifr_mtu = atoi(val);
@@ -1064,7 +1070,7 @@ setifmtu(const char *val, int dummy __unused, int s, const struct afswtch *afp)
 
 void
 setifname(const char *val, int dummy __unused, int s, 
-    const struct afswtch *afp)
+	  const struct afswtch *afp __unused)
 {
 	char	*newname;
 
@@ -1752,8 +1758,8 @@ link_getaddr(const char *addr, int which)
 
 /* XXX  FIXME -- should use strtoul for better parsing. */
 void
-setatrange(const char *range, int dummy __unused, int s,
-           const struct afswtch *afp)
+setatrange(const char *range, int dummy __unused, int s __unused,
+           const struct afswtch *afp __unused)
 {
 	u_short	first = 123, last = 123;
 
@@ -1766,8 +1772,8 @@ setatrange(const char *range, int dummy __unused, int s,
 }
 
 void
-setatphase(const char *phase, int dummy __unused, int s,
-           const struct afswtch *afp)
+setatphase(const char *phase, int dummy __unused, int s __unused,
+           const struct afswtch *afp __unused)
 {
 	if (!strcmp(phase, "1"))
 		at_nr.nr_phase = 1;
@@ -1985,7 +1991,8 @@ clone_create(void)
 }
 
 void
-clone_destroy(const char *val, int d, int s, const struct afswtch *rafp)
+clone_destroy(const char *val __unused, int d __unused, int s,
+	      const struct afswtch *rafp __unused)
 {
 
 	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.6 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.7 2005/03/04 00:11:11 cpressey Exp $
  */
 
 /*-
@@ -94,7 +94,8 @@ static const char *get_string(const char *val, const char *sep,
 static void print_string(const u_int8_t *buf, int len);
 
 void
-set80211ssid(const char *val, int d, int s, const struct afswtch *rafp)
+set80211ssid(const char *val, int d __unused, int s,
+	     const struct afswtch *rafp __unused)
 {
 	int		ssid;
 	int		len;
@@ -115,7 +116,8 @@ set80211ssid(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211stationname(const char *val, int d, int s, const struct afswtch *rafp)
+set80211stationname(const char *val, int d __unused, int s,
+		    const struct afswtch *rafp __unused)
 {
 	int			len;
 	u_int8_t		data[33];
@@ -128,13 +130,15 @@ set80211stationname(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211channel(const char *val, int d, int s, const struct afswtch *rafp)
+set80211channel(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_CHANNEL, atoi(val), 0, NULL);
 }
 
 void
-set80211authmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211authmode(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -152,7 +156,8 @@ set80211authmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211powersavemode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersavemode(const char *val, int d __unused, int s,
+		      const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -174,7 +179,8 @@ set80211powersavemode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211powersave(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersave(const char *val __unused, int d, int s,
+		  const struct afswtch *rafp __unused)
 {
 	if (d == 0)
 		set80211(s, IEEE80211_IOC_POWERSAVE, IEEE80211_POWERSAVE_OFF,
@@ -185,13 +191,15 @@ set80211powersave(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211powersavesleep(const char *val, int d, int s, const struct afswtch *rafp)
+set80211powersavesleep(const char *val, int d __unused, int s,
+		       const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_POWERSAVESLEEP, atoi(val), 0, NULL);
 }
 
 void
-set80211wepmode(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wepmode(const char *val, int d __unused, int s,
+		const struct afswtch *rafp __unused)
 {
 	int	mode;
 
@@ -209,19 +217,22 @@ set80211wepmode(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 void
-set80211wep(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wep(const char *val __unused, int d, int s,
+	    const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_WEP, d, 0, NULL);
 }
 
 void
-set80211weptxkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211weptxkey(const char *val, int d __unused, int s,
+		 const struct afswtch *rafp __unused)
 {
 	set80211(s, IEEE80211_IOC_WEPTXKEY, atoi(val)-1, 0, NULL);
 }
 
 void
-set80211wepkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211wepkey(const char *val, int d __unused, int s,
+	       const struct afswtch *rafp __unused)
 {
 	int		key = 0;
 	int		len;
@@ -245,7 +256,8 @@ set80211wepkey(const char *val, int d, int s, const struct afswtch *rafp)
  * it's not all that hard.
  */
 void
-set80211nwkey(const char *val, int d, int s, const struct afswtch *rafp)
+set80211nwkey(const char *val, int d __unused, int s,
+	      const struct afswtch *rafp __unused)
 {
 	int		txkey;
 	int		i, len;
