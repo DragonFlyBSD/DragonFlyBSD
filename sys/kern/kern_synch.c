@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.37 2004/09/17 01:09:09 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.38 2004/11/10 08:27:54 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -760,8 +760,8 @@ resetpriority(struct proc *p)
 	interactive = p->p_interactive / 10;
 	newpriority += interactive;
 
-	newpriority = min(newpriority, MAXPRI);
-	newpriority = max(newpriority, 0);
+	newpriority = MIN(newpriority, MAXPRI);
+	newpriority = MAX(newpriority, 0);
 	npq = newpriority / PPQ;
 	crit_enter();
 	opq = (p->p_priority & PRIMASK) / PPQ;
