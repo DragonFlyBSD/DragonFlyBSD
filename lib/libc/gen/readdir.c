@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/readdir.c,v 1.5.2.4 2002/02/26 22:53:57 alfred Exp $
- * $DragonFly: src/lib/libc/gen/readdir.c,v 1.3 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/readdir.c,v 1.4 2005/02/08 04:07:57 drhodus Exp $
  *
  * @(#)readdir.c	8.3 (Berkeley) 9/29/94
  */
@@ -109,7 +109,6 @@ readdir_r(dirp, entry, result)
 
 	saved_errno = errno;
 	errno = 0;
-	dp = readdir(dirp);
 	if (__isthreaded) {
 		_pthread_mutex_lock((pthread_mutex_t *)&dirp->dd_lock);
 		if ((dp = _readdir_unlocked(dirp)) != NULL)
