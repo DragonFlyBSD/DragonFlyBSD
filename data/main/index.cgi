@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.3 2004/01/06 20:10:52 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -16,7 +16,7 @@ It is our belief that the correct choice of features and algorithms can
 yield the potential for excellent scaleability,
 robustness, and debuggability in a number of broad system categories.  Not
 just for SMP or NUMA, but for everything from a single-node UP system to a
-massively clustered system.  It is the our belief that a fairly simple
+massively clustered system.  It is our belief that a fairly simple
 but wide-ranging set of goals will lay the groundwork for future growth.
 The existing BSD cores, including FreeBSD-5, are still primarily based on
 models which could at best be called 'strained' as they are applied to modern
