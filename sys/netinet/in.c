@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.11 2004/06/07 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.12 2004/09/10 14:02:01 joerg Exp $
  */
 
 #include "opt_bootp.h"
@@ -373,6 +373,8 @@ in_control(so, cmd, data, ifp, td)
 		    (struct sockaddr_in *) &ifr->ifr_addr, 1);
 		if (error != 0 && iaIsNew)
 			break;
+		if (error == 0)
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		return (0);
 
 	case SIOCSIFNETMASK:
@@ -416,6 +418,8 @@ in_control(so, cmd, data, ifp, td)
 		if ((ifp->if_flags & IFF_BROADCAST) &&
 		    (ifra->ifra_broadaddr.sin_family == AF_INET))
 			ia->ia_broadaddr = ifra->ifra_broadaddr;
+		if (error == 0)
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		return (error);
 
 	case SIOCDIFADDR:
@@ -438,6 +442,7 @@ in_control(so, cmd, data, ifp, td)
 			in_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
 			in_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
 		}
+		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		error = 0;
 		break;
 

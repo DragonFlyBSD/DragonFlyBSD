@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.19 2004/08/02 13:22:32 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.20 2004/09/10 14:02:00 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -233,6 +233,8 @@ if_attach(ifp)
 		TAILQ_INSERT_HEAD(&ifp->if_addrhead, ifa, ifa_link);
 	}
 
+	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
+
 	/* Announce the interface. */
 	rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
 }
@@ -249,6 +251,8 @@ if_detach(ifp)
 	struct radix_node_head	*rnh;
 	int s;
 	int i;
+
+	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
 
 	/*
 	 * Remove routes and flush queues.
@@ -434,6 +438,8 @@ if_clone_create(name, len)
 		}
 
 	}
+
+	EVENTHANDLER_INVOKE(if_clone_event, ifc);
 
 	return (0);
 }
@@ -1105,6 +1111,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return (EINVAL);
  		if (ifunit(new_name) != NULL)
  			return (EEXIST);
+
+		EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
  		
  		/* Announce the departure of the interface. */
  		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
@@ -1131,6 +1139,8 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
  		while (namelen != 0)
  			sdl->sdl_data[--namelen] = 0xff;
  		/* XXX IFA_UNLOCK(ifa) */
+
+		EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
  
  		/* Announce the return of the interface. */
  		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);

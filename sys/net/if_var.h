@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.16 2004/07/28 08:53:43 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.17 2004/09/10 14:02:01 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -81,6 +81,7 @@ struct	ucred;
 #include <sys/queue.h>		/* get TAILQ macros */
 
 #ifdef _KERNEL
+#include <sys/eventhandler.h>
 #include <sys/mbuf.h>
 #include <sys/systm.h>		/* XXX */
 #endif /* _KERNEL */
@@ -451,6 +452,19 @@ struct ifmultiaddr {
 };
 
 #ifdef _KERNEL
+/* interface address change event */
+typedef void (*ifaddr_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(ifaddr_event, ifaddr_event_handler_t);
+/* new interface attach event */
+typedef void (*ifnet_attach_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
+/* interface detach event */
+typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
+/* interface clone event */
+typedef void (*if_clone_event_handler_t)(void *, struct ifnet *);
+EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
+
 #define	IFAFREE(ifa)					\
 	do {						\
 		if ((ifa)->ifa_refcnt <= 0)		\

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.8 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.9 2004/09/10 14:02:01 joerg Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -697,6 +697,8 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 			 */
 			pfxlist_onlink_check();
 		}
+		if (error == 0 && ia)
+			EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		break;
 	}
 
@@ -744,6 +746,7 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 
 	  purgeaddr:
 		in6_purgeaddr(&ia->ia_ifa);
+		EVENTHANDLER_INVOKE(ifaddr_event, ifp);
 		break;
 	}
 
