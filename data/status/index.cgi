@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/index.cgi,v 1.6 2003/09/08 04:18:55 drhodus Exp $
+# $DragonFly: site/data/status/Attic/index.cgi,v 1.7 2003/10/27 13:52:04 hmp Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 <P><B>Caching</B> - not started
@@ -84,7 +84,7 @@ the submit list.
 	    <TD>SLAB</TD>
 	    <TD>Slab Allocator for Kernel</TD>
 	    <TD>Matt Dillon</TD>
-	    <TD></TD>
+	    <TD>&nbsp;</TD>
 	    <TD>25-Aug-2003</TD>
 	    <TD>31-Aug-2003</TD>
 	    <TD>Completed</TD>
@@ -93,7 +93,7 @@ the submit list.
 	    <TD>NETNS</TD>
 	    <TD>Fix NETNS</TD>
 	    <TD>David Rhodus</TD>
-	    <TD></TD>
+	    <TD>&nbsp;</TD>
 	    <TD>6-Sept-2003</TD>
 	    <TD>7-Sept-2003</TD>
 	    <TD>Completed</TD>
