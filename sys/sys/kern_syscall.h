@@ -25,14 +25,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.3 2003/09/29 05:34:08 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.4 2003/10/03 00:04:04 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
 #define _SYS_KERN_SYSCALL_H_
 
-struct sockaddr;
+struct mbuf;
 struct msghdr;
+struct sockaddr;
 struct sockopt;
 
 int kern_accept(int s, struct sockaddr **name, int *namelen, int *res);
@@ -42,8 +43,10 @@ int kern_listen(int s, int backlog);
 int kern_getpeername(int s, struct sockaddr **name, int *namelen);
 int kern_getsockopt(int s, struct sockopt *sopt);
 int kern_getsockname(int s, struct sockaddr **name, int *namelen);
-int kern_recvmsg(int s, struct msghdr *mp, int *res);
-int kern_sendmsg(int s, struct msghdr *mp, int *res);
+int kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
+	struct mbuf **control, int *flags, int *res);
+int kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
+	struct mbuf *control, int flags, int *res);
 int kern_setsockopt(int s, struct sockopt *sopt);
 int kern_socketpair(int domain, int type, int protocol, int *sockv);
 

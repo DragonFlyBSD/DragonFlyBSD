@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.2 2003/09/19 08:02:27 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.c,v 1.3 2003/10/03 00:04:04 daver Exp $
  *	from: DragonFly kern/uipc_syscalls.c,v 1.13
  *
  * The original versions of these syscalls used to live in
@@ -46,9 +46,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/sysproto.h>
+#include <sys/kern_syscall.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/kern_syscall.h>
+#include <sys/proc.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/uio.h>
@@ -179,20 +180,23 @@ ogetpeername(struct ogetpeername_args *uap)
 int
 osend(struct osend_args *uap)
 {
-	struct msghdr msg;
+	struct thread *td = curthread;
+	struct uio auio;
 	struct iovec aiov;
 	int error;
 
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
-	msg.msg_iov = &aiov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = NULL;
-	msg.msg_flags = 0;
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = 0;
+	auio.uio_resid = uap->len;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_rw = UIO_WRITE;
+	auio.uio_td = td;
 
-	error = kern_sendmsg(uap->s, &msg, &uap->sysmsg_result);
+	error = kern_sendmsg(uap->s, NULL, &auio, NULL, uap->flags,
+	    &uap->sysmsg_result);
 
 	return (error);
 }
@@ -200,12 +204,14 @@ osend(struct osend_args *uap)
 int
 osendmsg(struct osendmsg_args *uap)
 {
+	struct thread *td = curthread;
 	struct msghdr msg;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
+	struct uio auio;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
 	struct sockaddr *sa = NULL;
 	struct mbuf *control = NULL;
 	struct cmsghdr *cm;
-	int error;
+	int error, i;
 
 	error = copyin(uap->msg, (caddr_t)&msg, sizeof (msg));
 	if (error)
@@ -219,21 +225,60 @@ osendmsg(struct osendmsg_args *uap)
 		    msg.msg_namelen);
 		if (error)
 			return (error);
-		msg.msg_name = sa;
 	}
+
+	/*
+	 * Populate auio.
+	 */
+	if (msg.msg_iovlen >= UIO_MAXIOV) {
+		error =  EMSGSIZE;
+		goto cleanup;
+	}
+	if (msg.msg_iovlen >= UIO_SMALLIOV) {
+		MALLOC(iov, struct iovec *,
+		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV,
+		    M_WAITOK);
+	} else {
+		iov = aiov;
+	}
+	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
+	if (error)
+		goto cleanup;
+	auio.uio_iov = iov;
+	auio.uio_iovcnt = msg.msg_iovlen;
+	auio.uio_offset = 0;
+	auio.uio_resid = 0;
+	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
+		auio.uio_resid += iovp->iov_len;
+		if (auio.uio_resid < 0) {
+			error = EINVAL;
+			goto cleanup;
+		}
+	}
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_rw = UIO_WRITE;
+	auio.uio_td = td;
 
 	/*
 	 * Conditionally copyin msg.msg_control.
 	 */
 	if (msg.msg_control) {
-		if (msg.msg_controllen < sizeof(struct cmsghdr)) {
+		if (msg.msg_controllen < 0 || msg.msg_controllen > MLEN) {
 			error = EINVAL;
 			goto cleanup;
 		}
-		error = sockargs(&control, msg.msg_control,
-		    msg.msg_controllen, MT_CONTROL);
-		if (error)
+		control = m_get(M_WAIT, MT_CONTROL);
+		if (control == NULL) {
+			error = ENOBUFS;
 			goto cleanup;
+		}
+		control->m_len = msg.msg_controllen;
+		error = copyin(msg.msg_control, mtod(control, caddr_t),
+		    msg.msg_controllen);
+		if (error) {
+			m_free(control);
+			goto cleanup;
+		}
 		/*
 		 * In 4.3BSD, the only type of ancillary data was
 		 * access rights and this data did not use a header
@@ -251,30 +296,10 @@ osendmsg(struct osendmsg_args *uap)
 			cm->cmsg_level = SOL_SOCKET;
 			cm->cmsg_type = SCM_RIGHTS;
 		}
-		msg.msg_control = control;
 	}
 
-	/*
-	 * We always copyin msg.msg_iov.
-	 */
-	if (msg.msg_iovlen >= UIO_MAXIOV) {
-		error =  EMSGSIZE;
-		goto cleanup;
-	}
-	if (msg.msg_iovlen >= UIO_SMALLIOV) {
-		MALLOC(iov, struct iovec *,
-		    sizeof(struct iovec) * msg.msg_iovlen, M_IOV,
-		    M_WAITOK);
-	} else {
-		iov = aiov;
-	}
-	error = copyin(msg.msg_iov, iov,
-	    msg.msg_iovlen * sizeof (struct iovec));
-	if (error)
-		goto cleanup;
-	msg.msg_iov = iov;
-
-	error = kern_sendmsg(uap->s, &msg, &uap->sysmsg_result);
+	error = kern_sendmsg(uap->s, sa, &auio, control, uap->flags,
+	    &uap->sysmsg_result);
 
 cleanup:
 	if (sa)
@@ -287,20 +312,23 @@ cleanup:
 int
 orecv(struct orecv_args *uap)
 {
-	struct msghdr msg;
+	struct thread *td = curthread;
+	struct uio auio;
 	struct iovec aiov;
 	int error;
 
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
-	msg.msg_iov = &aiov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = NULL;
-	msg.msg_flags = uap->flags;
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = 0;
+	auio.uio_resid = uap->len;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_rw = UIO_READ;
+	auio.uio_td = td;
 
-	error = kern_recvmsg(uap->s, &msg, &uap->sysmsg_result);
+	error = kern_recvmsg(uap->s, NULL, &auio, NULL, &uap->flags,
+	   &uap->sysmsg_result);
 
 	return (error);
 }
@@ -308,34 +336,37 @@ orecv(struct orecv_args *uap)
 int
 orecvfrom(struct recvfrom_args *uap)
 {
-	struct msghdr msg;
+	struct thread *td = curthread;
+	struct uio auio;
 	struct iovec aiov;
+	struct sockaddr *sa = NULL;
 	int error, fromlen;
 
-	if (uap->fromlenaddr) {
+	if (uap->from && uap->fromlenaddr) {
 		error = copyin(uap->fromlenaddr, &fromlen, sizeof(fromlen));
 		if (error)
 			return (error);
+		if (fromlen < 0)
+			return (EINVAL);
 	} else {
 		fromlen = 0;
 	}
-
-	msg.msg_name = NULL;
-	msg.msg_namelen = fromlen;
-	msg.msg_iov = &aiov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = NULL;
-	msg.msg_flags = uap->flags;
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
+	auio.uio_iov = &aiov;
+	auio.uio_iovcnt = 1;
+	auio.uio_offset = 0;
+	auio.uio_resid = uap->len;
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_rw = UIO_READ;
+	auio.uio_td = td;
 
-	error = kern_recvmsg(uap->s, &msg, &uap->sysmsg_result);
+	error = kern_recvmsg(uap->s, uap->from ? &sa : NULL, &auio, NULL,
+	    &uap->flags, &uap->sysmsg_result);
 
-	fromlen = MIN(msg.msg_namelen, fromlen);
-	if (uap->from) {
-		if (error == 0)
-			error = compat_43_copyout_sockaddr(msg.msg_name,
-			    uap->from, fromlen);
+	if (error == 0 && uap->from) {
+		fromlen = MIN(fromlen, sa->sa_len);
+		error = compat_43_copyout_sockaddr(sa, uap->from, fromlen);
 		if (error == 0)
 			/*
 			 * Old recvfrom didn't signal an error if this
@@ -343,8 +374,8 @@ orecvfrom(struct recvfrom_args *uap)
 			 */
 			copyout(&fromlen, uap->fromlenaddr, sizeof(fromlen));
 	}
-	if (msg.msg_name)
-		FREE(msg.msg_name, M_SONAME);
+	if (sa)
+		FREE(sa, M_SONAME);
 
 	return (error);
 }
@@ -352,13 +383,15 @@ orecvfrom(struct recvfrom_args *uap)
 int
 orecvmsg(struct orecvmsg_args *uap)
 {
+	struct thread *td = curthread;
 	struct msghdr msg;
-	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
-	struct mbuf *m, *ucontrol;
-	caddr_t uname;
+	struct uio auio;
+	struct iovec aiov[UIO_SMALLIOV], *iov = NULL, *iovp;
+	struct mbuf *m, *control;
+	struct sockaddr *sa = NULL;
 	caddr_t ctlbuf;
-	socklen_t *unamelenp, *ucontrollenp;
-	int error, fromlen, len;
+	socklen_t *ufromlenp, *ucontrollenp;
+	int error, fromlen, controllen, len, i, flags, *uflagsp;
 
 	/*
 	 * This copyin handles everything except the iovec.
@@ -367,20 +400,20 @@ orecvmsg(struct orecvmsg_args *uap)
 	if (error)
 		return (error);
 
-	/*
-	 * Save some userland pointers for the copyouts.
-	 */
-	uname = msg.msg_name;
-	unamelenp = (socklen_t *)((caddr_t)uap->msg + offsetof(struct msghdr,
+	if (msg.msg_name && msg.msg_namelen < 0)
+		return (EINVAL);
+	if (msg.msg_control && msg.msg_controllen < 0)
+		return (EINVAL);
+
+	ufromlenp = (socklen_t *)((caddr_t)uap->msg + offsetof(struct msghdr,
 	    msg_namelen));
-	ucontrol = msg.msg_control;
 	ucontrollenp = (socklen_t *)((caddr_t)uap->msg + offsetof(struct msghdr,
 	    msg_controllen));
-
-	fromlen = msg.msg_namelen;
+	uflagsp = (int *)((caddr_t)uap->msg + offsetof(struct msghdr,
+	    msg_flags));
 
 	/*
-	 * Copyin msg.msg_iov.
+	 * Populate auio.
 	 */
 	if (msg.msg_iovlen >= UIO_MAXIOV)
 		return (EMSGSIZE);
@@ -393,56 +426,65 @@ orecvmsg(struct orecvmsg_args *uap)
 	error = copyin(msg.msg_iov, iov, msg.msg_iovlen * sizeof(struct iovec));
 	if (error)
 		goto cleanup;
-	msg.msg_iov = iov;
+	auio.uio_iov = iov;
+	auio.uio_iovcnt = msg.msg_iovlen;
+	auio.uio_offset = 0;
+	auio.uio_resid = 0;
+	for (i = 0, iovp = auio.uio_iov; i < msg.msg_iovlen; i++, iovp++) {
+		auio.uio_resid += iovp->iov_len;
+		if (auio.uio_resid < 0) {
+			error = EINVAL;
+			goto cleanup;
+		}
+	}
+	auio.uio_segflg = UIO_USERSPACE;
+	auio.uio_rw = UIO_READ;
+	auio.uio_td = td;
 
-	/* Don't forget the flags. */
-	msg.msg_flags = uap->flags;
+	flags = msg.msg_flags;
 
-	error = kern_recvmsg(uap->s, &msg, &uap->sysmsg_result);
+	error = kern_recvmsg(uap->s, msg.msg_name ? &sa : NULL, &auio,
+	    msg.msg_control ? &control : NULL, &flags, &uap->sysmsg_result);
 
 	/*
 	 * Copyout msg.msg_name and msg.msg_namelen.
 	 */
-	if (error == 0 && uname) {
-		fromlen = MIN(msg.msg_namelen, fromlen);
-		error = compat_43_copyout_sockaddr(msg.msg_name, uname,
-		    fromlen);
+	if (error == 0 && msg.msg_name) {
+		fromlen = MIN(msg.msg_namelen, sa->sa_len);
+		error = compat_43_copyout_sockaddr(sa, msg.msg_name, fromlen);
 		if (error == 0)
 			/*
 			 * Old recvfrom didn't signal an error if this
 			 * next copyout failed.
 			 */
-			copyout(&fromlen, unamelenp, sizeof(*unamelenp));
+			copyout(&fromlen, ufromlenp, sizeof(*ufromlenp));
 	}
 
 	/*
 	 * Copyout msg.msg_control and msg.msg_controllen.
 	 */
-	if (error == 0 && ucontrol) {
+	if (error == 0 && msg.msg_control) {
 		/*
 		 * If we receive access rights, trim the cmsghdr; anything
 		 * else is tossed.
 		 */
-		if (msg.msg_control) {
-			if (mtod((struct mbuf *)msg.msg_control, 
-			    struct cmsghdr *)->cmsg_level != SOL_SOCKET ||
-			    mtod((struct mbuf *)msg.msg_control,
-			    struct cmsghdr *)->cmsg_type != SCM_RIGHTS) {
-				int temp = 0;
-				error = copyout(&temp, ucontrollenp,
-				    sizeof(*ucontrollenp));
-				goto cleanup;
-			}
-			((struct mbuf *)msg.msg_control)->m_len -=
-			    sizeof(struct cmsghdr);
-			((struct mbuf *)msg.msg_control)->m_data +=
-			    sizeof(struct cmsghdr);
+		if (mtod((struct mbuf *)msg.msg_control,
+		    struct cmsghdr *)->cmsg_level != SOL_SOCKET ||
+		    mtod((struct mbuf *)msg.msg_control,
+		    struct cmsghdr *)->cmsg_type != SCM_RIGHTS) {
+			int temp = 0;
+			error = copyout(&temp, ucontrollenp,
+			    sizeof(*ucontrollenp));
+			goto cleanup;
 		}
+		((struct mbuf *)msg.msg_control)->m_len -=
+		    sizeof(struct cmsghdr);
+		((struct mbuf *)msg.msg_control)->m_data +=
+		    sizeof(struct cmsghdr);
 
 		len = msg.msg_controllen;
-		msg.msg_controllen = 0;
-		m = msg.msg_control;
-		ctlbuf = (caddr_t)ucontrol;
+		m = control;
+		ctlbuf = (caddr_t)msg.msg_control;
 
 		while(m && len > 0) {
 			unsigned int tocopy;
@@ -463,18 +505,21 @@ orecvmsg(struct orecvmsg_args *uap)
 			len -= tocopy;
 			m = m->m_next;
 		}
-		msg.msg_controllen = ctlbuf - (caddr_t)ucontrol;
-		error = copyout(&msg.msg_controllen, ucontrollenp,
+		controllen = ctlbuf - (caddr_t)msg.msg_control;
+		error = copyout(&controllen, ucontrollenp,
 		    sizeof(*ucontrollenp));
 	}
 
+	if (error == 0)
+		error = copyout(&flags, uflagsp, sizeof(*uflagsp));
+
 cleanup:
-	if (msg.msg_name)
-		FREE(msg.msg_name, M_SONAME);
+	if (sa)
+		FREE(sa, M_SONAME);
 	if (iov != aiov)
 		FREE(iov, M_IOV);
-	if (msg.msg_control)
-		m_freem(msg.msg_control);
+	if (control)
+		m_freem(control);
 	return (error);
 }
 
