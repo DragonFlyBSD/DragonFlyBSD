@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/lib/Makefile,v 1.19.2.4 2003/01/21 23:06:52 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.2 2003/06/17 04:25:45 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/lib/Makefile,v 1.3 2004/01/16 14:13:50 asmodai Exp $
 
 MAINTAINER=	peter@FreeBSD.org
 
@@ -30,7 +30,7 @@ SRCS=	config.h argmatch.c getdate.y getline.c \
 	xgetwd.c yesno.c
 
 config.h: config.h.proto
-	sed -e "s,@VERSION@,${VERSION}-FreeBSD,g" \
+	sed -e "s,@VERSION@,${VERSION}-DragonFly,g" \
 	    -e "s,@UMASK_DFLT@,${CVS_UMASK_DFLT},g" \
 	    -e "s,@TMPDIR_DFLT@,${CVS_TMPDIR_DFLT},g" \
 	    -e "s,@CVS_ADMIN_GROUP@,${CVS_ADMIN_GROUP},g" \
