@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.6 2004/06/21 15:39:31 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.7 2004/09/15 15:40:54 joerg Exp $"
 
 #define _DPT_C_
 
@@ -2600,17 +2600,6 @@ dpt_handle_timeouts(dpt_softc_t * dpt)
 
 	dpt->state &= ~DPT_HA_TIMEOUTS_ACTIVE;
 	splx(ospl);
-}
-
-static void
-dpt_timeout(void *arg)
-{
-	dpt_softc_t    *dpt = (dpt_softc_t *) arg;
-
-	if (!(dpt->state & DPT_HA_TIMEOUTS_ACTIVE))
-		dpt_handle_timeouts(dpt);
-
-	timeout(dpt_timeout, (caddr_t) dpt, hz * 10);
 }
 
 #endif				/* DPT_HANDLE_TIMEOUTS */
