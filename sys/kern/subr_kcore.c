@@ -31,67 +31,44 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.2 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kcore.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
  */
 
+/*
+ * This file is shared between the kernel and libkcore and they have
+ * to be kept synchronized.
+ */
+
+#define	_KERNEL_STRUCTURES
+
 #include <sys/param.h>
-#include <sys/sysctl.h>
+#include <sys/file.h>
+#include <sys/kcore.h>
+#include <sys/kinfo.h>
 
-#include <err.h>
-#include <errno.h>
-#include <kinfo.h>
-#include <stdlib.h>
+#ifdef _KERNEL
+#  include <sys/systm.h>
+#  include <sys/proc.h>
+#else
+#  include <sys/user.h>
+#  include <string.h>
+#endif
 
-#define	KERN_FILE_SYSCTL "kern.file"
-
-int
-kinfo_get_files(struct kinfo_file **file_buf, size_t *len)
+void
+kcore_make_file(struct kinfo_file *ufile, struct file *kfile,
+		pid_t pid, uid_t owner, int n)
 {
-	int retval;
-	void *buf;
-	size_t new_len;
+	bzero(ufile, sizeof(*ufile));
+	ufile->f_size = sizeof(*ufile);
+	ufile->f_pid = pid;
+	ufile->f_uid = owner;
 
-	retval = sysctlbyname(KERN_FILE_SYSCTL, NULL, &new_len, NULL, 0);
-	if (retval)
-		return(retval);
-	if ((buf = malloc(new_len)) == NULL)
-		return(ENOMEM);
-	retval = sysctlbyname(KERN_FILE_SYSCTL, buf, &new_len, NULL, 0);
-	if (retval) {
-		free(buf);
-		return(NULL);
-	}
-	/*
-	 * Shrink the buffer to the minimum size, this is not supposed
-	 * to fail.
-	 */
-	if ((buf = reallocf(buf, new_len)) == NULL)
-		err(1, "realloc");
-	if (new_len != 0 &&
-	    ((struct kinfo_file *)buf)->f_size != sizeof(struct kinfo_file)) {
-		warnx("kernel size of struct kinfo_file changed");
-		free(buf);
-		return(EOPNOTSUPP);
-	}
-	*len = new_len / sizeof(struct kinfo_file);
-	*file_buf = buf;
-	return(0);
-}
-
-/* XXX convert kern.maxfiles to size_t */
-int
-kinfo_get_maxfiles(int *maxfiles)
-{
-	int len = sizeof(*maxfiles);
-
-	return(sysctlbyname("kern.maxfiles", maxfiles, &len, NULL, 0));
-}
-
-/* XXX convert kern.openfiles to size_t */
-int
-kinfo_get_openfiles(int *openfiles)
-{
-	int len = sizeof(*openfiles);
-
-	return(sysctlbyname("kern.openfiles", openfiles, &len, NULL, 0));
+	ufile->f_fd = n;
+	ufile->f_file = kfile;
+	ufile->f_data = kfile->f_data;
+	ufile->f_type = kfile->f_type;
+	ufile->f_count = kfile->f_count;
+	ufile->f_msgcount = kfile->f_msgcount;
+	ufile->f_offset = kfile->f_offset;
+	ufile->f_flag = kfile->f_flag;
 }

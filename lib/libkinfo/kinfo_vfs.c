@@ -31,17 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.1 2004/11/18 14:33:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo_vfs.c,v 1.2 2004/11/24 22:51:01 joerg Exp $
  */
 
-#include <sys/param.h>
-#include <sys/kinfo.h>
+#include <sys/types.h>
 #include <sys/sysctl.h>
 
-#include <err.h>
-#include <errno.h>
 #include <kinfo.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 int
 kinfo_get_vfs_bufspace(int *bufspace)

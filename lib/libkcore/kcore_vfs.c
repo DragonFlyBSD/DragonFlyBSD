@@ -31,67 +31,39 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo_file.c,v 1.2 2004/11/24 22:51:01 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore_vfs.c,v 1.1 2004/11/24 22:51:01 joerg Exp $
  */
 
 #include <sys/param.h>
-#include <sys/sysctl.h>
 
 #include <err.h>
 #include <errno.h>
-#include <kinfo.h>
-#include <stdlib.h>
+#include <kcore.h>
+#include <kvm.h>
+#include <nlist.h>
 
-#define	KERN_FILE_SYSCTL "kern.file"
+#include "kcore_private.h"
 
 int
-kinfo_get_files(struct kinfo_file **file_buf, size_t *len)
+kcore_get_vfs_bufspace(struct kcore_data *kc, int *bufspace)
 {
-	int retval;
-	void *buf;
-	size_t new_len;
+	static struct nlist nl[] = {
+		{ "_bufspace", 0, 0, 0, 0},
+		{ NULL, 0, 0, 0, 0}
+	};
 
-	retval = sysctlbyname(KERN_FILE_SYSCTL, NULL, &new_len, NULL, 0);
-	if (retval)
-		return(retval);
-	if ((buf = malloc(new_len)) == NULL)
-		return(ENOMEM);
-	retval = sysctlbyname(KERN_FILE_SYSCTL, buf, &new_len, NULL, 0);
-	if (retval) {
-		free(buf);
-		return(NULL);
+	if (kc == NULL)
+		kc = &kcore_global;
+
+	if (nl[0].n_value == 0) {
+		if ((kvm_nlist(kc->kd, nl) < 0) || (nl[0].n_value == 0)) {
+			errno = EOPNOTSUPP;
+			return(-1);
+		}
 	}
-	/*
-	 * Shrink the buffer to the minimum size, this is not supposed
-	 * to fail.
-	 */
-	if ((buf = reallocf(buf, new_len)) == NULL)
-		err(1, "realloc");
-	if (new_len != 0 &&
-	    ((struct kinfo_file *)buf)->f_size != sizeof(struct kinfo_file)) {
-		warnx("kernel size of struct kinfo_file changed");
-		free(buf);
-		return(EOPNOTSUPP);
+	if (kvm_read(kc->kd, nl[0].n_value, bufspace,
+		     sizeof(*bufspace)) != sizeof(*bufspace)) {
+		warnx("cannot read _bufspace: %s", kvm_geterr(kc->kd));
 	}
-	*len = new_len / sizeof(struct kinfo_file);
-	*file_buf = buf;
 	return(0);
-}
-
-/* XXX convert kern.maxfiles to size_t */
-int
-kinfo_get_maxfiles(int *maxfiles)
-{
-	int len = sizeof(*maxfiles);
-
-	return(sysctlbyname("kern.maxfiles", maxfiles, &len, NULL, 0));
-}
-
-/* XXX convert kern.openfiles to size_t */
-int
-kinfo_get_openfiles(int *openfiles)
-{
-	int len = sizeof(*openfiles);
-
-	return(sysctlbyname("kern.openfiles", openfiles, &len, NULL, 0));
 }

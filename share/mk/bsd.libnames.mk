@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.6 2004/11/18 13:56:56 joerg Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.7 2004/11/24 22:51:01 joerg Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -50,6 +50,7 @@ LIBHISTORY?=	${DESTDIR}${LIBDIR}/libhistory.a
 LIBIPSEC?=	${DESTDIR}${LIBDIR}/libipsec.a
 LIBIPX?=	${DESTDIR}${LIBDIR}/libipx.a
 LIBISC?=	${DESTDIR}${LIBDIR}/libisc.a
+LIBKCORE?=	${DESTDIR}${LIBDIR}/libkcore.a
 LIBKDB?=	${DESTDIR}${LIBDIR}/libkdb.a	# XXX in secure dist, not base
 LIBKRB?=	${DESTDIR}${LIBDIR}/libkrb.a	# XXX in secure dist, not base
 LIBKRB5?=	${DESTDIR}${LIBDIR}/libkrb5.a	# XXX in secure dist, not base

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.10 2004/11/18 13:35:52 joerg Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.11 2004/11/24 22:51:01 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -66,7 +66,6 @@
 
 #include <err.h>
 #include <fcntl.h>
-#include <kinfo.h>
 #include <kvm.h>
 #include <limits.h>
 #include <nlist.h>
@@ -75,17 +74,23 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef USE_KCORE
+#  define KCORE_KINFO_WRAPPER
+#  include <kcore.h>
+
+struct kcore_data *KCORE_KVM_GLOBAL;
+
+#else
+#  include <kinfo.h>
+#endif
+
 struct nlist nl[] = {
 #define NLMANDATORYBEG	0
 #define	V_MOUNTLIST	0
 	{ "_mountlist", 0, 0, 0, 0 },	/* address of head of mount list. */
 #define V_NUMV		1
 	{ "_numvnodes", 0, 0, 0, 0 },
-#define	FNL_NFILE	2
-	{"_nfiles", 0, 0, 0, 0},
-#define FNL_MAXFILE	3
-	{"_maxfiles", 0, 0, 0, 0},
-#define NLMANDATORYEND FNL_MAXFILE	/* names up to here are mandatory */
+#define NLMANDATORYEND V_NUMV		/* names up to here are mandatory */
 #define	SCONS		NLMANDATORYEND + 1
 	{ "_cons", 0, 0, 0, 0 },
 #define	SPTY		NLMANDATORYEND + 2
@@ -282,6 +287,10 @@ main(int argc, char **argv)
 
 	if ((kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf)) == 0)
 		errx(1, "kvm_openfiles: %s", buf);
+#ifdef USE_KCORE
+	if ((KCORE_KVM_GLOBAL = kcore_open(nlistf, memf, buf)) == NULL)
+		errx(1, "kcore_open: %s", buf);
+#endif
 	if ((ret = kvm_nlist(kd, nl)) != 0) {
 		if (ret == -1)
 			errx(1, "kvm_nlist: %s", kvm_geterr(kd));
@@ -891,35 +900,30 @@ ttyprt(struct tty *tp, int line)
 void
 filemode(void)
 {
-	struct file *fp;
-	struct file *addr;
-	char *buf, flagbuf[16], *fbp;
-	int len, maxfile, nfile;
+	struct kinfo_file *fp, *ofp;
+	size_t len;
+	char flagbuf[16], *fbp;
+	int maxfile, nfile;
 	static const char *dtypes[] = { "???", "inode", "socket" };
 
-	KGET(FNL_MAXFILE, maxfile);
+	if (kinfo_get_maxfiles(&maxfile))
+		err(1, "kinfo_get_maxfiles");
 	if (totalflag) {
-		KGET(FNL_NFILE, nfile);
+		if (kinfo_get_openfiles(&nfile))
+			err(1, "kinfo_get_openfiles");
 		(void)printf("%3d/%3d files\n", nfile, maxfile);
 		return;
 	}
-	if (getfiles(&buf, &len) == -1)
-		return;
-	/*
-	 * Getfiles returns in malloc'd memory a pointer to the first file
-	 * structure, and then an array of file structs (whose addresses are
-	 * derivable from the previous entry).
-	 */
-	addr = ((struct filelist *)buf)->lh_first;
-	fp = (struct file *)(buf + sizeof(struct filelist));
-	nfile = (len - sizeof(struct filelist)) / sizeof(struct file);
-
-	(void)printf("%d/%d open files\n", nfile, maxfile);
+	if (kinfo_get_files(&fp, &len))
+		err(1, "kinfo_get_files");
+	ofp = fp;
+	
+	(void)printf("%d/%d open files\n", len, maxfile);
 	(void)printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
-	for (; (char *)fp < buf + len; addr = fp->f_list.le_next, fp++) {
+	for (; len-- > 0; fp++) {
 		if ((unsigned)fp->f_type > DTYPE_SOCKET)
 			continue;
-		(void)printf("%8lx ", (u_long)(void *)addr);
+		(void)printf("%p ", fp->f_file);
 		(void)printf("%-8.8s", dtypes[fp->f_type]);
 		fbp = flagbuf;
 		if (fp->f_flag & FREAD)
@@ -945,38 +949,7 @@ filemode(void)
 		else
 			(void)printf("  %qd\n", fp->f_offset);
 	}
-	free(buf);
-}
-
-int
-getfiles(char **abuf, int *alen)
-{
-	size_t len;
-	int mib[2];
-	char *buf;
-
-	/*
-	 * XXX
-	 * Add emulation of KINFO_FILE here.
-	 */
-	if (memf != NULL)
-		errx(1, "files on dead kernel, not implemented");
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_FILE;
-	if (sysctl(mib, 2, NULL, &len, NULL, 0) == -1) {
-		warn("sysctl: KERN_FILE");
-		return (-1);
-	}
-	if ((buf = malloc(len)) == NULL)
-		errx(1, "malloc");
-	if (sysctl(mib, 2, buf, &len, NULL, 0) == -1) {
-		warn("sysctl: KERN_FILE");
-		return (-1);
-	}
-	*abuf = buf;
-	*alen = len;
-	return (0);
+	free(ofp);
 }
 
 /*

@@ -31,13 +31,14 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.2 2004/11/18 14:33:01 joerg Exp $
+ * $DragonFly: src/lib/libkinfo/kinfo.h,v 1.3 2004/11/24 22:51:01 joerg Exp $
  */
 
-#ifndef _KDATA_H
-#define	_KDATA_H
+#ifndef _KINFO_H
+#define	_KINFO_H
 
 #include <sys/cdefs.h>
+#include <sys/kinfo.h>
 
 __BEGIN_DECLS;
 int	kinfo_get_files(struct kinfo_file **, size_t *);
