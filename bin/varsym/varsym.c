@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/bin/varsym/varsym.c,v 1.1 2003/11/05 23:29:37 dillon Exp $
+ * $DragonFly: src/bin/varsym/varsym.c,v 1.2 2003/11/06 20:14:24 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -33,75 +33,78 @@
 #include <unistd.h>
 #include <sys/varsym.h>
 
+void usage(void);
+
 int
 main(int ac, char **av)
 {
-    int i;
-    int mask =  VARSYM_ALL_MASK;
-    int level = VARSYM_USER;
-    int nary = 0;
-    int mary = 8;
-    int deleteOpt = 0;
-    int verboseOpt = 1;
-    char **ary;
+	int i;
+	int mask =  VARSYM_ALL_MASK;
+	int level = VARSYM_USER;
+	int deleteOpt = 0;
+	int verboseOpt = 1;
 
-    ary = malloc(sizeof(char *) * mary);
-    for (i = 1; i < ac; ++i) {
-	char *ptr = av[i];
-	if (*ptr != '-') {
-	    ary[nary++] = ptr;
-	    if (nary == mary) {
-		mary *= 2;
-		ary = realloc(ary, sizeof(char *) * mary);
-	    }
-	    continue;
+	while ((i = getopt(ac, av, "dhpqsu")) != -1) {
+		switch (i) {
+		case 'd':
+			deleteOpt = 1;
+			break;
+		case 'p':
+			mask = VARSYM_PROC_MASK;
+			level = VARSYM_PROC;
+			break;
+		case 'q':
+			verboseOpt = 0;
+			break;
+		case 's':
+			mask = VARSYM_SYS_MASK;
+			level = VARSYM_SYS;
+			break;
+		case 'u':
+			mask = VARSYM_USER_MASK;
+			level = VARSYM_USER;
+			break;
+		case 'h':
+		default:
+			usage();
+			return(-1);
+		}
 	}
-	ptr += 2;
-	switch(ptr[-1]) {
-	case 'q':
-	    verboseOpt = 0;
-	    break;
-	case 'd':
-	    deleteOpt = 1;
-	    break;
-	case 's':
-	    mask = VARSYM_SYS_MASK;
-	    level = VARSYM_SYS;
-	    break;
-	case 'u':
-	    mask = VARSYM_USER_MASK;
-	    level = VARSYM_USER;
-	    break;
-	case 'p':
-	    mask = VARSYM_PROC_MASK;
-	    level = VARSYM_PROC;
-	    break;
-	}
-    }
-    for (i = 0; i < nary; ++i) {
-	char *name = ary[i];
-	char *data = strchr(name, '=');
-	int error;
-	char buf[MAXVARSYM_DATA];
 
-	if (data)
-	    *data++ = 0;
+	for ( ; optind < ac; optind++) {
+		char *name = av[optind];
+		char *data = strchr(name, '=');
+		int error;
+		char buf[MAXVARSYM_DATA];
 
-	if (deleteOpt) {
-	    error = varsym_set(level, name, NULL);
-	} else if (data) {
-	    error = varsym_set(level, name, data);
-	} else {
-	    error = varsym_get(mask, name, buf, sizeof(buf));
-	    if (error >= 0 && error <= (int)sizeof(buf)) {
-		if (verboseOpt)
-		    printf("%s=", name);
-		printf("%s\n", buf);
-	    }
+		if (data)
+			*data++ = 0;
+
+		if (deleteOpt) {
+			error = varsym_set(level, name, NULL);
+		}
+		else if (data) {
+			error = varsym_set(level, name, data);
+		}
+		else {
+			error = varsym_get(mask, name, buf, sizeof(buf));
+			if (error >= 0 && error <= (int)sizeof(buf)) {
+				if (verboseOpt)
+					printf("%s=", name);
+				printf("%s\n", buf);
+			}
+		}
+		if (error < 0)
+			fprintf(stderr, "%s: %s\n", name, strerror(errno));
 	}
-	if (error < 0)
-	    fprintf(stderr, "%s: %s\n", name, strerror(errno));
-    }
-    return(0);
+
+	return(0);
+}
+
+void
+usage(void)
+{
+
+	fprintf(stderr, "usage: varsym: [-qdsup] var[=data]\n");
 }
 
