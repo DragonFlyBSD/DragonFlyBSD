@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.11 2005/02/04 01:23:16 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.12 2005/02/04 01:33:48 joerg Exp $
  */
 
 /*
@@ -55,7 +55,6 @@
 #include "debug.h"
 #include "rtld.h"
 
-#define END_SYM		"_end"
 #define PATH_RTLD	"/usr/libexec/ld-elf.so.1"
 #define LD_ARY_CACHE	16
 
@@ -1273,18 +1272,12 @@ lock_check(void)
 static Obj_Entry *
 obj_from_addr(const void *addr)
 {
-    unsigned long endhash;
     Obj_Entry *obj;
 
-    endhash = elf_hash(END_SYM);
     for (obj = obj_list;  obj != NULL;  obj = obj->next) {
-	const Elf_Sym *endsym;
-
 	if (addr < (void *) obj->mapbase)
 	    continue;
-	if ((endsym = symlook_obj(END_SYM, endhash, obj, true)) == NULL)
-	    continue;	/* No "end" symbol?! */
-	if (addr < (void *) (obj->relocbase + endsym->st_value))
+	if (addr < (void *) (obj->mapbase + obj->mapsize))
 	    return obj;
     }
     return NULL;
