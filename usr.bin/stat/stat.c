@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $DragonFly: src/usr.bin/stat/stat.c,v 1.1 2003/07/28 20:47:10 rob Exp $	
+/* $DragonFly: src/usr.bin/stat/stat.c,v 1.2 2003/07/29 00:22:37 rob Exp $	
 */
 #include <sys/cdefs.h>
 #if 0
@@ -60,7 +60,7 @@ __FBSDID("$FreeBSD: src/usr.bin/stat/stat.c,v 1.5 2003/05/11 23:02:09 dougb Exp 
 #include <unistd.h>
 
 #define DEF_FORMAT \
-	"%d %i %Sp %l %Su %Sg %r %z \"%Sa\" \"%Sm\" \"%Sc\" \"%SB\" %k %b %N"
+	"%d %i %Sp %l %Su %Sg %r %z %a %m %c %k %b %N"
 #define RAW_FORMAT	"%d %i %#p %l %u %g %r %z %a %m %c %B %k %b %N"
 #define LS_FORMAT	"%Sp %l %Su %Sg %Z %Sm %N%SY"
 #define LSF_FORMAT	"%Sp %l %Su %Sg %Z %Sm %N%T%SY"
