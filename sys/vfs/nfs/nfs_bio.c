@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.11 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.12 2004/02/13 18:52:35 dillon Exp $
  */
 
 
@@ -251,13 +251,9 @@ nfs_putpages(ap)
 	off_t offset;
 	int *rtvals;
 	struct vnode *vp;
-	struct ucred *cred;
 	struct nfsmount *nmp;
 	struct nfsnode *np;
 	vm_page_t *pages;
-
-	KKASSERT(td->td_proc);
-	cred = td->td_proc->p_ucred;
 
 	vp = ap->a_vp;
 	np = VTONFS(vp);
