@@ -22,7 +22,7 @@
  * this gadget.
  *
  * $FreeBSD: src/sys/pci/if_mn.c,v 1.11.2.3 2001/01/23 12:47:09 phk Exp $
- * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.6 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/mn/if_mn.c,v 1.7 2004/09/14 23:49:51 joerg Exp $
  */
 
 /*
@@ -1265,24 +1265,6 @@ mn_intr(void *xsc)
 	if (j)
 		printf("\n");
 	sc->m32x->stat = stat;
-}
-
-static void
-mn_timeout(void *xsc)
-{
-	static int round = 0;
-	struct softc *sc;
-
-	mn_intr(xsc);
-	sc = xsc;
-	timeout(mn_timeout, xsc, 10 * hz);
-	round++;
-	if (round == 2) {
-		sc->m32_mem.ccb = 0x00008004;
-		sc->m32x->cmd = 0x1;
-	} else if (round > 2) {
-		printf("%s: timeout\n", sc->name);
-	}
 }
 
 /*
