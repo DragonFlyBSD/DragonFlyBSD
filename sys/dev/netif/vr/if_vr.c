@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.14 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.15 2004/09/15 01:04:59 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -735,6 +735,7 @@ static int vr_attach(dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct vr_softc *));
+	callout_init(&sc->vr_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -894,8 +895,6 @@ static int vr_attach(dev)
 		error = ENXIO;
 		goto fail;
 	}
-
-	callout_handle_init(&sc->vr_stat_ch);
 
 	/*
 	 * Call MI attach routine.
@@ -1276,7 +1275,7 @@ static void vr_tick(xsc)
 	mii = device_get_softc(sc->vr_miibus);
 	mii_tick(mii);
 
-	sc->vr_stat_ch = timeout(vr_tick, sc, hz);
+	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 
 	splx(s);
 
@@ -1618,7 +1617,7 @@ static void vr_init(xsc)
 
 	(void)splx(s);
 
-	sc->vr_stat_ch = timeout(vr_tick, sc, hz);
+	callout_reset(&sc->vr_stat_timer, hz, vr_tick, sc);
 
 	return;
 }
@@ -1766,7 +1765,7 @@ static void vr_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(vr_tick, sc, sc->vr_stat_ch);
+	callout_stop(&sc->vr_stat_timer);
 
 	VR_SETBIT16(sc, VR_COMMAND, VR_CMD_STOP);
 	VR_CLRBIT16(sc, VR_COMMAND, (VR_CMD_RX_ON|VR_CMD_TX_ON));

@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txp.c,v 1.48 2001/06/27 06:34:50 kjc Exp $	*/
 /*	$FreeBSD: src/sys/dev/txp/if_txp.c,v 1.4.2.4 2001/12/14 19:50:43 jlemon Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.13 2004/07/23 07:16:29 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txp.c,v 1.14 2004/09/15 01:02:54 joerg Exp $ */
 
 /*
  * Copyright (c) 2001
@@ -216,6 +216,7 @@ txp_attach(dev)
 	unit = device_get_unit(dev);
 	sc->sc_dev = dev;
 	sc->sc_cold = 1;
+	callout_init(&sc->txp_stat_timer);
 
 	/*
 	 * Map control/status registers.
@@ -353,7 +354,6 @@ txp_attach(dev)
 	 * Attach us everywhere
 	 */
 	ether_ifattach(ifp, sc->sc_arpcom.ac_enaddr);
-	callout_handle_init(&sc->sc_tick);
 	return(0);
 
 fail:
@@ -1213,7 +1213,7 @@ txp_init(xsc)
 	ifp->if_flags &= ~IFF_OACTIVE;
 	ifp->if_timer = 0;
 
-	sc->sc_tick = timeout(txp_tick, sc, hz);
+	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
 
 	splx(s);
 }
@@ -1255,7 +1255,7 @@ out:
 		free(rsp, M_DEVBUF);
 
 	splx(s);
-	sc->sc_tick = timeout(txp_tick, sc, hz);
+	callout_reset(&sc->txp_stat_timer, hz, txp_tick, sc);
 
 	return;
 }
@@ -1581,7 +1581,7 @@ txp_stop(sc)
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 
-	untimeout(txp_tick, sc, sc->sc_tick);
+	callout_stop(&sc->txp_stat_timer);
 
 	txp_command(sc, TXP_CMD_TX_DISABLE, 0, 0, 0, NULL, NULL, NULL, 1);
 	txp_command(sc, TXP_CMD_RX_DISABLE, 0, 0, 0, NULL, NULL, NULL, 1);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.14 2004/09/15 01:00:26 joerg Exp $
  */
 
 /*
@@ -87,7 +87,7 @@ static void epic_tx_underrun(epic_softc_t *);
 static int epic_common_attach(epic_softc_t *);
 static void epic_ifstart(struct ifnet *);
 static void epic_ifwatchdog(struct ifnet *);
-static void epic_stats_update(epic_softc_t *);
+static void epic_stats_update(void *);
 static int epic_init(epic_softc_t *);
 static void epic_stop(epic_softc_t *);
 static void epic_rx_done(epic_softc_t *);
@@ -225,6 +225,7 @@ epic_attach(dev)
 	bzero(sc, sizeof(epic_softc_t));		
 	sc->unit = unit;
 	sc->dev = dev;
+	callout_init(&sc->tx_stat_timer);
 
 	/* Fill ifnet structure */
 	ifp = &sc->sc_if;
@@ -330,7 +331,6 @@ epic_attach(dev)
 	/* Attach to OS's managers */
 	ether_ifattach(ifp, sc->sc_macaddr);
 	ifp->if_hdrlen = sizeof(struct ether_vlan_header);
-	callout_handle_init(&sc->stat_ch);
 
 fail:
 	splx(s);
@@ -860,8 +860,9 @@ epic_ifwatchdog(ifp)
  * helps in autonegotiation process.
  */
 static void
-epic_stats_update(epic_softc_t * sc)
+epic_stats_update(void *xsc)
 {
+	epic_softc_t *sc = xsc;
 	struct mii_data * mii;
 	int s;
 
@@ -870,7 +871,7 @@ epic_stats_update(epic_softc_t * sc)
 	mii = device_get_softc(sc->miibus);
 	mii_tick(mii);
 
-	sc->stat_ch = timeout((timeout_t *)epic_stats_update, sc, hz);
+	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
 
 	splx(s);
 }
@@ -1201,7 +1202,7 @@ epic_init(sc)
 	/* Set appropriate media */
 	epic_ifmedia_upd(ifp);
 
-	sc->stat_ch = timeout((timeout_t *)epic_stats_update, sc, hz);
+	callout_reset(&sc->tx_stat_timer, hz, epic_stats_update, sc);
 
 	splx(s);
 
@@ -1459,7 +1460,7 @@ epic_stop(sc)
 
 	sc->sc_if.if_timer = 0;
 
-	untimeout((timeout_t *)epic_stats_update, sc, sc->stat_ch);
+	callout_stop(&sc->tx_stat_timer);
 
 	/* Disable interrupts */
 	CSR_WRITE_4(sc, INTMASK, 0);

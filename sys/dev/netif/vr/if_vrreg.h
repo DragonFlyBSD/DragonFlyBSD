@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vrreg.h,v 1.7.2.5 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.3 2004/06/27 19:01:54 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vrreg.h,v 1.4 2004/09/15 01:04:59 joerg Exp $
  */
 
 /*
@@ -468,7 +468,7 @@ struct vr_softc {
 	u_int8_t		vr_flags;	/* See VR_F_* below */
 	struct vr_list_data	*vr_ldata;
 	struct vr_chain_data	vr_cdata;
-	struct callout_handle	vr_stat_ch;
+	struct callout		vr_stat_timer;
 	int			vr_wdogerrors;
 };
 

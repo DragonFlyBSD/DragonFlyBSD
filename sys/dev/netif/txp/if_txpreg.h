@@ -1,6 +1,6 @@
 /*	$OpenBSD: if_txpreg.h,v 1.30 2001/06/23 04:18:02 jason Exp $ */
 /*	$FreeBSD: src/sys/dev/txp/if_txpreg.h,v 1.2.2.1 2001/07/30 17:31:39 wpaul Exp $ */
-/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.2 2003/06/17 04:28:32 dillon Exp $ */
+/*	$DragonFly: src/sys/dev/netif/txp/if_txpreg.h,v 1.3 2004/09/15 01:02:54 joerg Exp $ */
 
 /*
  * Copyright (c) 2001 Aaron Campbell <aaron@monkey.org>.
@@ -607,7 +607,7 @@ struct txp_softc {
 	struct txp_cmd_ring	sc_cmdring;
 	struct txp_rsp_ring	sc_rspring;
 	struct txp_swdesc	sc_txd[TX_ENTRIES];
-	struct callout_handle	sc_tick;
+	struct callout		txp_stat_timer;
 	struct ifmedia		sc_ifmedia;
 	struct txp_tx_ring	sc_txhir, sc_txlor;
 	struct txp_rxbuf_desc	*sc_rxbufs;
