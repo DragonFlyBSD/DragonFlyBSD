@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/crypt-des.c,v 1.12 1999/09/20 12:39:20 markm Exp $
- * $DragonFly: src/secure/lib/libcrypt/crypt-des.c,v 1.3 2004/01/08 18:48:07 asmodai Exp $
+ * $DragonFly: src/secure/lib/libcrypt/crypt-des.c,v 1.4 2005/02/28 16:18:22 joerg Exp $
  *
  * This is an original implementation of the DES and the crypt(3) interfaces
  * by David Burren <davidb@werj.com.au>.
@@ -562,7 +562,8 @@ do_des(	u_int32_t l_in, u_int32_t r_in, u_int32_t *l_out, u_int32_t *r_out, int 
 static int
 des_cipher(const char *in, char *out, long salt, int count)
 {
-	u_int32_t	l_out, r_out, rawl, rawr;
+	const uint32_t	*in32;
+	uint32_t	l_out, r_out, rawl, rawr, *out32;
 	int		retval;
 
 	if (!des_initialised)
@@ -570,13 +571,16 @@ des_cipher(const char *in, char *out, long salt, int count)
 
 	setup_salt(salt);
 
-	rawl = ntohl(*((u_int32_t *) in)++);
-	rawr = ntohl(*((u_int32_t *) in));
+	in32 = (const uint32_t *)in;
+	out32 = (uint32_t *)out;
+
+	rawl = ntohl(*in32++);
+	rawr = ntohl(*in32);
 
 	retval = do_des(rawl, rawr, &l_out, &r_out, count);
 
-	*((u_int32_t *) out)++ = htonl(l_out);
-	*((u_int32_t *) out) = htonl(r_out);
+	*out32++ = htonl(l_out);
+	*out32 = htonl(r_out);
 	return(retval);
 }
 
