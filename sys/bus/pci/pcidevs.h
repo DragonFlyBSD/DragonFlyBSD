@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.5 2004/12/17 16:08:48 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs.h,v 1.6 2004/12/18 16:00:07 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.5 2004/12/17 16:08:21 asmodai Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.6 2004/12/18 15:59:36 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -2087,6 +2087,15 @@
 #define	PCI_PRODUCT_NVIDIA_GEFORCE2_IGP	0x01a0		/* GeForce2 Integrated GPU */
 #define	PCI_PRODUCT_NVIDIA_NFORCE_MCP_AC	0x01b1		/* nForce MCP AC-97 */
 #define	PCI_PRODUCT_NVIDIA_NFORCE_ATA100	0x01bc		/* nForce ATA100 IDE */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_AGP	0x01e0		/* nForce2 AGP Controller */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_AGP2	0x01e1		/* nForce2 AGP Controller */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_PCI	0x01e8		/* nForce2 Host-to-PCI Bridge */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM0	0x01ea		/* nForce2 Memory Controller #0 */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM1	0x01eb		/* nForce2 Memory Controller #1 */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM2	0x01ec		/* nForce2 Memory Controller #2 */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM3	0x01ed		/* nForce2 Memory Controller #3 */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM4	0x01ee		/* nForce2 Memory Controller #4 */
+#define	PCI_PRODUCT_NVIDIA_NFORCE2_MEM5	0x01ef		/* nForce2 Memory Controller #5 */
 #define	PCI_PRODUCT_NVIDIA_GF4_MX_IGP	0x01f0		/* GeForce4 MX Integrated GPU */
 #define	PCI_PRODUCT_NVIDIA_GEFORCE3	0x0200		/* GeForce3 */
 #define	PCI_PRODUCT_NVIDIA_GEFORCE3_TI200	0x0201		/* GeForce3 Ti 200 */

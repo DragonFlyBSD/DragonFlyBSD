@@ -1,10 +1,10 @@
-/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.5 2004/12/17 16:08:48 asmodai Exp $	*/
+/*	$DragonFly: src/sys/bus/pci/pcidevs_data.h,v 1.6 2004/12/18 16:00:07 asmodai Exp $	*/
 
 /*
  * THIS FILE AUTOMATICALLY GENERATED.  DO NOT EDIT.
  *
  * generated from:
- *	DragonFly: src/sys/bus/pci/pcidevs,v 1.5 2004/12/17 16:08:21 asmodai Exp 
+ *	DragonFly: src/sys/bus/pci/pcidevs,v 1.6 2004/12/18 15:59:36 asmodai Exp 
  */
 /* $NetBSD: pcidevs,v 1.606 2004/01/06 19:44:17 matt Exp $ */
 
@@ -7119,6 +7119,60 @@ const struct pci_knowndev pci_knowndevs[] = {
 	    0,
 	    "Nvidia Corporation",
 	    "nForce ATA100 IDE",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_AGP,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 AGP Controller",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_AGP2,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 AGP Controller",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_PCI,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Host-to-PCI Bridge",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM0,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #0",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM1,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #1",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM2,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #2",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM3,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #3",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM4,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #4",
+	},
+	{
+	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_NFORCE2_MEM5,
+	    0,
+	    "Nvidia Corporation",
+	    "nForce2 Memory Controller #5",
 	},
 	{
 	    PCI_VENDOR_NVIDIA, PCI_PRODUCT_NVIDIA_GF4_MX_IGP,
