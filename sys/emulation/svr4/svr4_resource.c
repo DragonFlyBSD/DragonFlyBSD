@@ -40,7 +40,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_resource.c,v 1.4.2.1 2002/09/02 21:22:54 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.5 2003/08/27 06:07:10 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_resource.c,v 1.6 2003/11/04 05:01:10 daver Exp $
  */
 
 /*
@@ -77,6 +77,7 @@
 #include <sys/systm.h>
 #include <sys/proc.h>
 #include <sys/file.h>
+#include <sys/kern_syscall.h>
 #include <sys/resource.h>
 #include <sys/resourcevar.h>
 
@@ -215,7 +216,7 @@ svr4_sys_setrlimit(struct svr4_sys_setrlimit_args *uap)
 	else if (slim.rlim_cur == SVR4_RLIM_SAVED_CUR)
 		blim.rlim_cur = limp->rlim_cur;
 
-	return dosetrlimit(rl, &blim);
+	return kern_setrlimit(rl, &blim);
 }
 
 
@@ -307,5 +308,5 @@ svr4_sys_setrlimit64(struct svr4_sys_setrlimit64_args *uap)
 	else if (slim.rlim_cur == SVR4_RLIM64_SAVED_CUR)
 		blim.rlim_cur = limp->rlim_cur;
 
-	return dosetrlimit(rl, &blim);
+	return kern_setrlimit(rl, &blim);
 }
