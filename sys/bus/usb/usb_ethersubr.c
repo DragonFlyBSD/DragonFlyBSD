@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.10 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.11 2005/02/15 10:30:11 joerg Exp $
  */
 
 /*
@@ -63,6 +63,7 @@
 #include <sys/msgport2.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
@@ -96,7 +97,7 @@ Static int usbintr(struct netmsg *msg)
 
 		/* Re-arm the receiver */
 		(*q->if_rxstart)(ifp);
-		if (ifp->if_snd.ifq_head != NULL)
+		if (!ifq_is_empty(&ifp->if_snd))
 			(*ifp->if_start)(ifp);
 	}
 
@@ -107,7 +108,7 @@ Static int usbintr(struct netmsg *msg)
 			break;
 		ifp = m->m_pkthdr.rcvif;
 		m_freem(m);
-		if (ifp->if_snd.ifq_head != NULL)
+		if (!ifq_is_empty(&ifp->if_snd))
 			(*ifp->if_start)(ifp);
 	}
 
