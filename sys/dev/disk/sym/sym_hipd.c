@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.9 2004/09/17 03:39:39 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.10 2004/09/18 22:01:49 joerg Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -10180,10 +10180,10 @@ out:
 	return retv;
 }
 
-#undef SET_BIT 0
-#undef CLR_BIT 1
-#undef SET_CLK 2
-#undef CLR_CLK 3
+#undef SET_BIT
+#undef CLR_BIT
+#undef SET_CLK
+#undef CLR_CLK
 
 /*
  *  Try reading Symbios NVRAM.
