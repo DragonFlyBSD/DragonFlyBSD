@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_write.c,v 1.16.2.6 2002/11/12 20:46:53 archie Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_write.c,v 1.3 2003/12/01 23:17:08 drhodus Exp $
  *
  */
 #include <sys/types.h>
@@ -94,7 +94,7 @@ _write(int fd, const void *buf, size_t nbytes)
 			 * write:
 			 */
 			if (blocking && ((n < 0 && (errno == EWOULDBLOCK ||
-			    errno == EAGAIN)) || (n >= 0 && num < nbytes))) {
+			    errno == EAGAIN)) || (n > 0 && num < nbytes))) {
 				curthread->data.fd.fd = fd;
 				_thread_kern_set_timeout(NULL);
 
@@ -132,7 +132,7 @@ _write(int fd, const void *buf, size_t nbytes)
 			 * If there was an error, return partial success
 			 * (if any bytes were written) or else the error:
 			 */
-			} else if (n < 0) {
+			} else if (n <= 0) {
 				if (num > 0)
 					ret = num;
 				else
