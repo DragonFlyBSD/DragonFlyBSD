@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.7 2005/02/28 19:51:57 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.8 2005/03/01 01:20:03 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -114,11 +114,6 @@ msf_buf_init(void *__dummy)
 	msf_base = kmem_alloc_nofault(kernel_map,
 					num_msf_bufs * XIO_INTERNAL_SIZE);
 
-	/* 
-	 * Use contig. memory for the maps, so it is quicker to access
-	 * linear maps, and they can also be passed to device
-	 * buffers (in the future).
-	 */
 	msf_bufs = malloc(num_msf_bufs * sizeof(struct msf_buf), M_MSFBUF,
 			M_WAITOK|M_ZERO);
 
