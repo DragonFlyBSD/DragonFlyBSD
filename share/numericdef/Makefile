@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/numericdef/Makefile,v 1.36.2.3 2002/08/17 19:34:11 ache Exp $
-# $DragonFly: src/share/numericdef/Makefile,v 1.5 2004/09/28 09:18:55 asmodai Exp $
+# $DragonFly: src/share/numericdef/Makefile,v 1.6 2004/09/28 16:30:13 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -130,35 +130,35 @@ afterinstall:
 	ln -sf ../ja_JP.eucJP/LC_NUMERIC \
 		${LOCALEDIR}/ja_JP.SJIS/LC_NUMERIC
 .for link in ${UTF8_LATIN1LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-1/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-1/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN2LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-2/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-2/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN5LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-5/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-5/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN7LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-7/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-7/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN9LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-9/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-9/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN13LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-13/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-13/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_LATIN15LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-15/LC_NUMERIC \
+	ln -sf ../${link}.ISO8859-15/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${UTF8_ARMSCII8LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ARMSCII-8/LC_NUMERIC \
+	ln -sf ../${link}.ARMSCII-8/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
 .for link in ${US_LINKS}
@@ -185,23 +185,23 @@ afterinstall:
 	ln -sf ../fr_BE.UTF-8/LC_NUMERIC \
 		${LOCALEDIR}/${link}.UTF-8/LC_NUMERIC
 .endfor
-	ln -sf ${BASE_LOCALEDIR}/be_BY.CP1251/LC_NUMERIC \
+	ln -sf ../be_BY.CP1251/LC_NUMERIC \
 		${LOCALEDIR}/be_BY.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/bg_BG.CP1251/LC_NUMERIC \
+	ln -sf ../bg_BG.CP1251/LC_NUMERIC \
 		${LOCALEDIR}/bg_BG.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/ja_JP.eucJP/LC_NUMERIC \
+	ln -sf ../ja_JP.eucJP/LC_NUMERIC \
 		${LOCALEDIR}/ja_JP.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/kk_KZ.PT154/LC_NUMERIC \
+	ln -sf ../kk_KZ.PT154/LC_NUMERIC \
 		${LOCALEDIR}/kk_KZ.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/ko_KR.eucKR/LC_NUMERIC \
+	ln -sf ../ko_KR.eucKR/LC_NUMERIC \
 		${LOCALEDIR}/ko_KR.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/ru_RU.CP866/LC_NUMERIC \
+	ln -sf ../ru_RU.CP866/LC_NUMERIC \
 		${LOCALEDIR}/ru_RU.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/zh_CN.eucCN/LC_NUMERIC \
+	ln -sf ../zh_CN.eucCN/LC_NUMERIC \
 		${LOCALEDIR}/zh_CN.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/zh_TW.Big5/LC_NUMERIC \
+	ln -sf ../zh_TW.Big5/LC_NUMERIC \
 		${LOCALEDIR}/zh_HK.UTF-8/LC_NUMERIC
-	ln -sf ${BASE_LOCALEDIR}/zh_TW.Big5/LC_NUMERIC \
+	ln -sf ../zh_TW.Big5/LC_NUMERIC \
 		${LOCALEDIR}/zh_TW.UTF-8/LC_NUMERIC
 
 .include <bsd.prog.mk>

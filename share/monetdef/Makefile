@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/monetdef/Makefile,v 1.37.2.3 2002/08/17 19:38:08 ache Exp $
-# $DragonFly: src/share/monetdef/Makefile,v 1.5 2004/09/27 20:02:21 asmodai Exp $
+# $DragonFly: src/share/monetdef/Makefile,v 1.6 2004/09/28 16:30:13 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -110,38 +110,38 @@ afterinstall:
 	ln -sf ../ja_JP.eucJP/LC_MONETARY \
 		${LOCALEDIR}/ja_JP.SJIS/LC_MONETARY
 .for link in ${UTF8_LATIN1LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-1/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-1/LC_MONETARY \
                 ${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN2LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-2/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-2/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN7LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-7/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-7/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN9LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-9/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-9/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN13LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-13/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-13/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${UTF8_LATIN15LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-15/LC_MONETARY \
+	ln -sf ../${link}.ISO8859-15/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
 .for link in ${CH_LINKS}
 	ln -sf ../${CH_SRC}.UTF-8/LC_MONETARY \
 		${LOCALEDIR}/${link}.UTF-8/LC_MONETARY
 .endfor
-	ln -sf ${BASE_LOCALEDIR}/ja_JP.eucJP/LC_MONETARY \
+	ln -sf ../ja_JP.eucJP/LC_MONETARY \
 		${LOCALEDIR}/ja_JP.UTF-8/LC_MONETARY
-	ln -sf ${BASE_LOCALEDIR}/ko_KR.eucKR/LC_MONETARY \
+	ln -sf ../ko_KR.eucKR/LC_MONETARY \
 		${LOCALEDIR}/ko_KR.UTF-8/LC_MONETARY
-	ln -sf ${BASE_LOCALEDIR}/zh_TW.Big5/LC_MONETARY \
+	ln -sf ../zh_TW.Big5/LC_MONETARY \
 		${LOCALEDIR}/zh_TW.UTF-8/LC_MONETARY
 
 .include <bsd.prog.mk>

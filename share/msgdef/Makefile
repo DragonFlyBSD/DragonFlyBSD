@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/msgdef/Makefile,v 1.38.2.3 2002/08/17 19:30:37 ache Exp $
-# $DragonFly: src/share/msgdef/Makefile,v 1.4 2004/09/28 08:53:32 asmodai Exp $
+# $DragonFly: src/share/msgdef/Makefile,v 1.5 2004/09/28 16:30:13 asmodai Exp $
 
 NOMAN=YES
 CLEANFILES+= ${LOCALES:S/$/.out/g}
@@ -140,23 +140,23 @@ afterinstall:
 		${LOCALEDIR}/${link}.US-ASCII/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN1LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-1/LC_MESSAGES \
+	ln -sf ../${link}.ISO8859-1/LC_MESSAGES \
                ${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN2LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-2/LC_MESSAGES \
+	ln -sf ../${link}.ISO8859-2/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN9LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-9/LC_MESSAGES \
+	ln -sf ../${link}.ISO8859-9/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN13LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-13/LC_MESSAGES \
+	ln -sf ../${link}.ISO8859-13/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${UTF8_LATIN15LINKS}
-	ln -sf ${BASE_LOCALEDIR}/${link}.ISO8859-15/LC_MESSAGES \
+	ln -sf ../${link}.ISO8859-15/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
 .for link in ${GB_LINKS}
@@ -187,7 +187,7 @@ afterinstall:
 	ln -sf ../pt_PT.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/${link}.UTF-8/LC_MESSAGES
 .endfor
-	ln -sf ${BASE_LOCALEDIR}/ko_KR.eucKR/LC_MESSAGES \
+	ln -sf ../ko_KR.eucKR/LC_MESSAGES \
 		${LOCALEDIR}/ko_KR.UTF-8/LC_MESSAGES
 	ln -sf ../zh_TW.UTF-8/LC_MESSAGES \
 		${LOCALEDIR}/zh_HK.UTF-8/LC_MESSAGES
