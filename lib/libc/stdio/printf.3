@@ -35,7 +35,7 @@
 .\"
 .\"     @(#)printf.3	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/stdio/printf.3,v 1.17.2.11 2003/03/02 07:29:33 tjr Exp $
-.\" $DragonFly: src/lib/libc/stdio/printf.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $DragonFly: src/lib/libc/stdio/printf.3,v 1.3 2005/01/04 00:00:52 cpressey Exp $
 .\"
 .Dd March 2, 2003
 .Dt PRINTF 3
@@ -107,19 +107,20 @@ string that specifies how subsequent arguments
 .Xr stdarg 3 )
 are converted for output.
 .Pp
-These functions return the number of characters printed
+Upon success, these functions return the number of characters printed
 (not including the trailing
 .Ql \e0
-used to end output to strings) or a negative value if an output error occurs,
-except for
+used to end output to strings),
+or, in the case of
 .Fn snprintf
 and
 .Fn vsnprintf ,
-which return the number of characters that would have been printed if the
+the number of characters that would have been printed if the
 .Fa size
 were unlimited
 (again, not including the final
 .Ql \e0 ) .
+All of these function return a negative value if an output error occurs.
 .Pp
 .Fn Asprintf
 and
