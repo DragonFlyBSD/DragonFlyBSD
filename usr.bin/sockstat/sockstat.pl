@@ -27,7 +27,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # $FreeBSD: src/usr.bin/sockstat/sockstat.pl,v 1.6.2.6 2003/05/05 06:44:26 murray Exp $
-# $DragonFly: src/usr.bin/sockstat/Attic/sockstat.pl,v 1.2 2003/06/17 04:29:31 dillon Exp $
+# $DragonFly: src/usr.bin/sockstat/Attic/sockstat.pl,v 1.3 2004/07/18 00:28:22 dillon Exp $
 #
 
 use strict;
@@ -109,11 +109,11 @@ sub print_inet($$$) {
     foreach $fsd (@{$fstat{$af}}) {
 	next unless defined($fsd->[7]);
 	$nsd = $netstat{$fsd->[7]} || $unknown;
-	next if (!$conn && $nsd->[5] ne '*.*');
-	next if (!$listen && $nsd->[5] eq '*.*');
+	next if (!$conn && $nsd->[6] ne '*.*');
+	next if (!$listen && $nsd->[6] eq '*.*');
 	printf($inet_fmt, $fsd->[0], $fsd->[1], $fsd->[2],
 	       substr($fsd->[3], 0, -1),
-	       $nsd->[1], addr($nsd->[4]), addr($nsd->[5]));
+	       $nsd->[1], addr($nsd->[5]), addr($nsd->[6]));
     }
     print("\n");
 }
@@ -137,11 +137,11 @@ sub print_unix($$) {
     foreach $fsd (@{$fstat{"local"}}) {
 	next unless defined($fsd->[6]);
 	next if (!$conn && defined($fsd->[8]));
-	next if (!$listen && !defined($fsd->[8]));
+	next if (!$listen && !defined($fsd->[9]));
 	$nsd = $netstat{$fsd->[6]} || $unknown;
 	printf($unix_fmt, $fsd->[0], $fsd->[1], $fsd->[2],
 	       substr($fsd->[3], 0, -1), $fsd->[5],
-	       $nsd->[8] || (($fsd->[8] && $endpoint{$fsd->[8]}) ? $endpoint{$fsd->[8]} : "(none)"));
+	       $nsd->[9] || (($fsd->[8] && $endpoint{$fsd->[8]}) ? $endpoint{$fsd->[8]} : "(none)"));
     }
     print("\n");
 }
