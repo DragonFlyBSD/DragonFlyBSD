@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.32 2005/01/31 23:44:17 davidxu Exp $
+$DragonFly: src/test/test/README,v 1.33 2005/02/16 19:37:39 corecode Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -19,3 +19,5 @@ $DragonFly: src/test/test/README,v 1.32 2005/01/31 23:44:17 davidxu Exp $
     First commit!
 
     A silly commit.
+
+	I can commit, therefore I am.
