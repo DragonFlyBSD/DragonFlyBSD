@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.27 2004/11/24 08:37:16 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.28 2004/11/30 18:59:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -343,7 +343,8 @@ again:
 	}
 	return (0);
 bad:
-	vput(vp);
+	if (vp)
+		vput(vp);
 	return (error);
 }
 
