@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.12 2004/05/20 05:09:18 cpressey Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.13 2004/08/13 17:51:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -792,7 +792,7 @@ union_close(struct vop_close_args *ap)
 		vp = un->un_lowervp;
 	}
 	ap->a_vp = vp;
-	return (VCALL(vp, VOFFSET(vop_close), ap));
+	return (VCALL(vp, VOFFSET(vop_close), &ap->a_head));
 }
 
 /*
@@ -831,7 +831,7 @@ union_access(struct vop_access_args *ap)
 
 	if ((vp = union_lock_upper(un, td)) != NULLVP) {
 		ap->a_vp = vp;
-		error = VCALL(vp, VOFFSET(vop_access), ap);
+		error = VCALL(vp, VOFFSET(vop_access), &ap->a_head);
 		union_unlock_upper(vp, td);
 		return(error);
 	}
@@ -847,7 +847,7 @@ union_access(struct vop_access_args *ap)
 		if ((un->un_vnode->v_mount->mnt_flag & MNT_RDONLY) == 0)
 			ap->a_mode &= ~VWRITE;
 
-		error = VCALL(vp, VOFFSET(vop_access), ap);
+		error = VCALL(vp, VOFFSET(vop_access), &ap->a_head);
 		if (error == 0) {
 			struct union_mount *um;
 
@@ -855,7 +855,7 @@ union_access(struct vop_access_args *ap)
 
 			if (um->um_op == UNMNT_BELOW) {
 				ap->a_cred = um->um_cred;
-				error = VCALL(vp, VOFFSET(vop_access), ap);
+				error = VCALL(vp, VOFFSET(vop_access), &ap->a_head);
 			}
 		}
 		VOP_UNLOCK(vp, NULL, 0, td);
@@ -1114,7 +1114,7 @@ union_lease(struct vop_lease_args *ap)
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
-	return (VCALL(ovp, VOFFSET(vop_lease), ap));
+	return (VCALL(ovp, VOFFSET(vop_lease), &ap->a_head));
 }
 
 /*
@@ -1127,7 +1127,7 @@ union_ioctl(struct vop_ioctl_args *ap)
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
-	return (VCALL(ovp, VOFFSET(vop_ioctl), ap));
+	return (VCALL(ovp, VOFFSET(vop_ioctl), &ap->a_head));
 }
 
 /*
@@ -1140,7 +1140,7 @@ union_poll(struct vop_poll_args *ap)
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
-	return (VCALL(ovp, VOFFSET(vop_poll), ap));
+	return (VCALL(ovp, VOFFSET(vop_poll), &ap->a_head));
 }
 
 /*
@@ -1169,7 +1169,7 @@ union_mmap(struct vop_mmap_args *ap)
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
-	return (VCALL(ovp, VOFFSET(vop_mmap), ap));
+	return (VCALL(ovp, VOFFSET(vop_mmap), &ap->a_head));
 }
 
 /*
@@ -1254,7 +1254,7 @@ union_link(struct vop_link_args *ap)
 	struct vnode *tdvp;
 	int error = 0;
 
-	if (ap->a_tdvp->v_op != ap->a_vp->v_op) {
+	if (ap->a_tdvp->v_vops != ap->a_vp->v_vops) {
 		vp = ap->a_vp;
 	} else {
 		struct union_node *tun = VTOUNION(ap->a_vp);
@@ -1326,7 +1326,7 @@ union_rename(struct vop_rename_args *ap)
 	 * replace the fdvp, release the original one and ref the new one.
 	 */
 
-	if (fdvp->v_op == union_vnodeop_p) {	/* always true */
+	if (fdvp->v_vops == union_vnode_vops) {	/* always true */
 		struct union_node *un = VTOUNION(fdvp);
 		if (un->un_uppervp == NULLVP) {
 			/*
@@ -1348,7 +1348,7 @@ union_rename(struct vop_rename_args *ap)
 	 * replace the fvp, release the original one and ref the new one.
 	 */
 
-	if (fvp->v_op == union_vnodeop_p) {	/* always true */
+	if (fvp->v_vops == union_vnode_vops) {	/* always true */
 		struct union_node *un = VTOUNION(fvp);
 #if 0
 		struct union_mount *um = MOUNTTOUNIONMOUNT(fvp->v_mount);
@@ -1406,7 +1406,7 @@ union_rename(struct vop_rename_args *ap)
 	 * reference.
 	 */
 
-	if (tdvp->v_op == union_vnodeop_p) {
+	if (tdvp->v_vops == union_vnode_vops) {
 		struct union_node *un = VTOUNION(tdvp);
 
 		if (un->un_uppervp == NULLVP) {
@@ -1436,7 +1436,7 @@ union_rename(struct vop_rename_args *ap)
 	 * file and change tvp to NULL.
 	 */
 
-	if (tvp != NULLVP && tvp->v_op == union_vnodeop_p) {
+	if (tvp != NULLVP && tvp->v_vops == union_vnode_vops) {
 		struct union_node *un = VTOUNION(tvp);
 
 		tvp = union_lock_upper(un, ap->a_tcnp->cn_td);
@@ -1578,7 +1578,7 @@ union_readdir(struct vop_readdir_args *ap)
 
 	if ((uvp = union_lock_upper(un, td)) != NULLVP) {
 		ap->a_vp = uvp;
-		error = VCALL(uvp, VOFFSET(vop_readdir), ap);
+		error = VCALL(uvp, VOFFSET(vop_readdir), &ap->a_head);
 		union_unlock_upper(uvp, td);
 	}
 	return(error);
@@ -1600,7 +1600,7 @@ union_readlink(struct vop_readlink_args *ap)
 	KASSERT(vp != NULL, ("union_readlink: backing vnode missing!"));
 
 	ap->a_vp = vp;
-	error = VCALL(vp, VOFFSET(vop_readlink), ap);
+	error = VCALL(vp, VOFFSET(vop_readlink), &ap->a_head);
 	union_unlock_other(vp, td);
 
 	return (error);
@@ -1796,7 +1796,7 @@ union_pathconf(struct vop_pathconf_args *ap)
 	KASSERT(vp != NULL, ("union_pathconf: backing vnode missing!"));
 
 	ap->a_vp = vp;
-	error = VCALL(vp, VOFFSET(vop_pathconf), ap);
+	error = VCALL(vp, VOFFSET(vop_pathconf), &ap->a_head);
 	union_unlock_other(vp, td);
 
 	return (error);
@@ -1812,7 +1812,7 @@ union_advlock(struct vop_advlock_args *ap)
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
 	ap->a_vp = ovp;
-	return (VCALL(ovp, VOFFSET(vop_advlock), ap));
+	return (VCALL(ovp, VOFFSET(vop_advlock), &ap->a_head));
 }
 
 
@@ -1844,49 +1844,49 @@ union_strategy(struct vop_strategy_args *ap)
 /*
  * Global vfs data structures
  */
-vop_t **union_vnodeop_p;
+struct vop_ops *union_vnode_vops;
 static struct vnodeopv_entry_desc union_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) union_access },
-	{ &vop_advlock_desc,		(vop_t *) union_advlock },
-	{ &vop_bmap_desc,		(vop_t *) union_bmap },
-	{ &vop_close_desc,		(vop_t *) union_close },
-	{ &vop_create_desc,		(vop_t *) union_create },
-	{ &vop_fsync_desc,		(vop_t *) union_fsync },
-	{ &vop_getpages_desc,		(vop_t *) union_getpages },
-	{ &vop_putpages_desc,		(vop_t *) union_putpages },
-	{ &vop_getattr_desc,		(vop_t *) union_getattr },
-	{ &vop_inactive_desc,		(vop_t *) union_inactive },
-	{ &vop_ioctl_desc,		(vop_t *) union_ioctl },
-	{ &vop_islocked_desc,		(vop_t *) vop_stdislocked },
-	{ &vop_lease_desc,		(vop_t *) union_lease },
-	{ &vop_link_desc,		(vop_t *) union_link },
-	{ &vop_lock_desc,		(vop_t *) union_lock },
-	{ &vop_lookup_desc,		(vop_t *) union_lookup },
-	{ &vop_mkdir_desc,		(vop_t *) union_mkdir },
-	{ &vop_mknod_desc,		(vop_t *) union_mknod },
-	{ &vop_mmap_desc,		(vop_t *) union_mmap },
-	{ &vop_open_desc,		(vop_t *) union_open },
-	{ &vop_pathconf_desc,		(vop_t *) union_pathconf },
-	{ &vop_poll_desc,		(vop_t *) union_poll },
-	{ &vop_print_desc,		(vop_t *) union_print },
-	{ &vop_read_desc,		(vop_t *) union_read },
-	{ &vop_readdir_desc,		(vop_t *) union_readdir },
-	{ &vop_readlink_desc,		(vop_t *) union_readlink },
-	{ &vop_reclaim_desc,		(vop_t *) union_reclaim },
-	{ &vop_remove_desc,		(vop_t *) union_remove },
-	{ &vop_rename_desc,		(vop_t *) union_rename },
-	{ &vop_revoke_desc,		(vop_t *) union_revoke },
-	{ &vop_rmdir_desc,		(vop_t *) union_rmdir },
-	{ &vop_setattr_desc,		(vop_t *) union_setattr },
-	{ &vop_strategy_desc,		(vop_t *) union_strategy },
-	{ &vop_symlink_desc,		(vop_t *) union_symlink },
-	{ &vop_unlock_desc,		(vop_t *) union_unlock },
-	{ &vop_whiteout_desc,		(vop_t *) union_whiteout },
-	{ &vop_write_desc,		(vop_t *) union_write },
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		(void *) union_access },
+	{ &vop_advlock_desc,		(void *) union_advlock },
+	{ &vop_bmap_desc,		(void *) union_bmap },
+	{ &vop_close_desc,		(void *) union_close },
+	{ &vop_create_desc,		(void *) union_create },
+	{ &vop_fsync_desc,		(void *) union_fsync },
+	{ &vop_getpages_desc,		(void *) union_getpages },
+	{ &vop_putpages_desc,		(void *) union_putpages },
+	{ &vop_getattr_desc,		(void *) union_getattr },
+	{ &vop_inactive_desc,		(void *) union_inactive },
+	{ &vop_ioctl_desc,		(void *) union_ioctl },
+	{ &vop_islocked_desc,		(void *) vop_stdislocked },
+	{ &vop_lease_desc,		(void *) union_lease },
+	{ &vop_link_desc,		(void *) union_link },
+	{ &vop_lock_desc,		(void *) union_lock },
+	{ &vop_lookup_desc,		(void *) union_lookup },
+	{ &vop_mkdir_desc,		(void *) union_mkdir },
+	{ &vop_mknod_desc,		(void *) union_mknod },
+	{ &vop_mmap_desc,		(void *) union_mmap },
+	{ &vop_open_desc,		(void *) union_open },
+	{ &vop_pathconf_desc,		(void *) union_pathconf },
+	{ &vop_poll_desc,		(void *) union_poll },
+	{ &vop_print_desc,		(void *) union_print },
+	{ &vop_read_desc,		(void *) union_read },
+	{ &vop_readdir_desc,		(void *) union_readdir },
+	{ &vop_readlink_desc,		(void *) union_readlink },
+	{ &vop_reclaim_desc,		(void *) union_reclaim },
+	{ &vop_remove_desc,		(void *) union_remove },
+	{ &vop_rename_desc,		(void *) union_rename },
+	{ &vop_revoke_desc,		(void *) union_revoke },
+	{ &vop_rmdir_desc,		(void *) union_rmdir },
+	{ &vop_setattr_desc,		(void *) union_setattr },
+	{ &vop_strategy_desc,		(void *) union_strategy },
+	{ &vop_symlink_desc,		(void *) union_symlink },
+	{ &vop_unlock_desc,		(void *) union_unlock },
+	{ &vop_whiteout_desc,		(void *) union_whiteout },
+	{ &vop_write_desc,		(void *) union_write },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc union_vnodeop_opv_desc =
-	{ &union_vnodeop_p, union_vnodeop_entries };
+	{ &union_vnode_vops, union_vnodeop_entries };
 
 VNODEOP_SET(union_vnodeop_opv_desc);

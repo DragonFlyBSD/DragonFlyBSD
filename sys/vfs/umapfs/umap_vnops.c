@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.8 2004/05/18 16:57:01 cpressey Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.9 2004/08/13 17:51:14 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ umap_bypass(struct vop_generic_args *ap)
 		 * that aren't.  (Must map first vp or vclean fails.)
 		 */
 
-		if (i && (*this_vp_p)->v_op != umap_vnodeop_p) {
+		if (i && (*this_vp_p)->v_vops != umap_vnode_vops) {
 			old_vps[i] = NULL;
 		} else {
 			old_vps[i] = *this_vp_p;
@@ -286,9 +286,9 @@ umap_getattr(struct vop_getattr_args *ap)
 	int error, tmpid, nentries, gnentries;
 	u_long (*mapdata)[2], (*gmapdata)[2];
 	struct vnode **vp1p;
-	struct vnodeop_desc *descp = ap->a_desc;
+	struct vnodeop_desc *descp = ap->a_head.a_desc;
 
-	error = umap_bypass((struct vop_generic_args *)ap);
+	error = umap_bypass(&ap->a_head);
 	if (error)
 		return (error);
 
@@ -360,7 +360,7 @@ umap_lock(struct vop_lock_args *ap)
 	if ((ap->a_flags & LK_TYPE_MASK) == LK_DRAIN)
 		return (0);
 	ap->a_flags &= ~LK_INTERLOCK;
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -375,7 +375,7 @@ umap_unlock(struct vop_unlock_args *ap)
 {
 	vop_nounlock(ap);
 	ap->a_flags &= ~LK_INTERLOCK;
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -469,7 +469,7 @@ umap_rename(struct vop_rename_args *ap)
 	    "umap_rename: rename component credit user now %lu, group %lu\n",
 		    (u_long)compcredp->cr_uid, (u_long)compcredp->cr_gid);
 
-	error = umap_bypass((struct vop_generic_args *)ap);
+	error = umap_bypass(&ap->a_head);
 
 	/* Restore the additional mapped componentname cred structure. */
 
@@ -487,19 +487,19 @@ umap_rename(struct vop_rename_args *ap)
  * go away with a merged buffer/block cache.
  *
  */
-vop_t **umap_vnodeop_p;
+struct vop_ops *umap_vnode_vops;
 static struct vnodeopv_entry_desc umap_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) umap_bypass },
-	{ &vop_getattr_desc,		(vop_t *) umap_getattr },
-	{ &vop_inactive_desc,		(vop_t *) umap_inactive },
-	{ &vop_lock_desc,		(vop_t *) umap_lock },
-	{ &vop_print_desc,		(vop_t *) umap_print },
-	{ &vop_reclaim_desc,		(vop_t *) umap_reclaim },
-	{ &vop_rename_desc,		(vop_t *) umap_rename },
-	{ &vop_unlock_desc,		(vop_t *) umap_unlock },
+	{ &vop_default_desc,		(void *) umap_bypass },
+	{ &vop_getattr_desc,		(void *) umap_getattr },
+	{ &vop_inactive_desc,		(void *) umap_inactive },
+	{ &vop_lock_desc,		(void *) umap_lock },
+	{ &vop_print_desc,		(void *) umap_print },
+	{ &vop_reclaim_desc,		(void *) umap_reclaim },
+	{ &vop_rename_desc,		(void *) umap_rename },
+	{ &vop_unlock_desc,		(void *) umap_unlock },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc umap_vnodeop_opv_desc =
-	{ &umap_vnodeop_p, umap_vnodeop_entries };
+	{ &umap_vnode_vops, umap_vnodeop_entries };
 
 VNODEOP_SET(umap_vnodeop_opv_desc);

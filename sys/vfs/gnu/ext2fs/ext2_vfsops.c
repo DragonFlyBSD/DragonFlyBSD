@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.16 2004/05/26 07:45:21 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.17 2004/08/13 17:51:10 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1044,7 +1044,7 @@ restart:
 	MALLOC(ip, struct inode *, sizeof(struct inode), M_EXT2NODE, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	if ((error = getnewvnode(VT_UFS, mp, ext2_vnodeop_p, &vp)) != 0) {
+	if ((error = getnewvnode(VT_UFS, mp, ext2_vnode_vops, &vp)) != 0) {
 		if (ext2fs_inode_hash_lock < 0)
 			wakeup(&ext2fs_inode_hash_lock);
 		ext2fs_inode_hash_lock = 0;
@@ -1118,7 +1118,7 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
 	 * Initialize the vnode from the inode, check for aliases.
 	 * Note that the underlying vnode may have changed.
 	 */
-	if ((error = ufs_vinit(mp, ext2_specop_p, ext2_fifoop_p, &vp)) != 0) {
+	if ((error = ufs_vinit(mp, ext2_spec_vops, ext2_fifo_vops, &vp)) != 0) {
 		vput(vp);
 		*vpp = NULL;
 		return (error);

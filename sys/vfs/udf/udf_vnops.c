@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.4 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.5 2004/08/13 17:51:13 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -64,25 +64,25 @@ static int udf_reclaim(struct vop_reclaim_args *);
 static int udf_readatoffset(struct udf_node *, int *, int, struct buf **, uint8_t **);
 static int udf_bmap_internal(struct udf_node *, uint32_t, daddr_t *, uint32_t *);
 
-vop_t **udf_vnodeop_p;
+struct vop_ops *udf_vnode_vops;
 static struct vnodeopv_entry_desc udf_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) udf_access },
-	{ &vop_bmap_desc,		(vop_t *) udf_bmap },
-	{ &vop_cachedlookup_desc,	(vop_t *) udf_lookup },
-	{ &vop_getattr_desc,		(vop_t *) udf_getattr },
-	{ &vop_ioctl_desc,		(vop_t *) udf_ioctl },
-	{ &vop_lookup_desc,		(vop_t *) vfs_cache_lookup },
-	{ &vop_pathconf_desc,		(vop_t *) udf_pathconf },
-	{ &vop_read_desc,		(vop_t *) udf_read },
-	{ &vop_readdir_desc,		(vop_t *) udf_readdir },
-	{ &vop_readlink_desc,		(vop_t *) udf_readlink },
-	{ &vop_reclaim_desc,		(vop_t *) udf_reclaim },
-	{ &vop_strategy_desc,		(vop_t *) udf_strategy },
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		(void *) udf_access },
+	{ &vop_bmap_desc,		(void *) udf_bmap },
+	{ &vop_cachedlookup_desc,	(void *) udf_lookup },
+	{ &vop_getattr_desc,		(void *) udf_getattr },
+	{ &vop_ioctl_desc,		(void *) udf_ioctl },
+	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
+	{ &vop_pathconf_desc,		(void *) udf_pathconf },
+	{ &vop_read_desc,		(void *) udf_read },
+	{ &vop_readdir_desc,		(void *) udf_readdir },
+	{ &vop_readlink_desc,		(void *) udf_readlink },
+	{ &vop_reclaim_desc,		(void *) udf_reclaim },
+	{ &vop_strategy_desc,		(void *) udf_strategy },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc udf_vnodeop_opv_desc =
-	{ &udf_vnodeop_p, udf_vnodeop_entries };
+	{ &udf_vnode_vops, udf_vnodeop_entries };
 VNODEOP_SET(udf_vnodeop_opv_desc);
 
 MALLOC_DEFINE(M_UDFFID, "UDF FID", "UDF FileId structure");
@@ -182,7 +182,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 	int error;
 	struct vnode *vp;
 
-	error = getnewvnode(VT_UDF, mp, udf_vnodeop_p, &vp);
+	error = getnewvnode(VT_UDF, mp, udf_vnode_vops, &vp);
 	if (error) {
 		printf("udf_allocv: failed to allocate new vnode\n");
 		return(error);

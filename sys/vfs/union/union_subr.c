@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.12 2004/05/20 05:09:18 cpressey Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.13 2004/08/13 17:51:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -528,7 +528,7 @@ loop:
 	 * Create new node rather then replace old node
 	 */
 
-	error = getnewvnode(VT_UNION, mp, union_vnodeop_p, vpp);
+	error = getnewvnode(VT_UNION, mp, union_vnode_vops, vpp);
 	if (error) {
 		/*
 		 * If an error occurs clear out vnodes.
@@ -1155,7 +1155,7 @@ union_dircache_r(struct vnode *vp, struct vnode ***vppp, int *cntp)
 {
 	struct union_node *un;
 
-	if (vp->v_op != union_vnodeop_p) {
+	if (vp->v_vops != union_vnode_vops) {
 		if (vppp) {
 			vref(vp);
 			*(*vppp)++ = vp;
@@ -1270,7 +1270,7 @@ union_dircheck(struct thread *td, struct vnode **vp, struct file *fp)
 {
 	int error = 0;
 
-	if ((*vp)->v_op == union_vnodeop_p) {
+	if ((*vp)->v_vops == union_vnode_vops) {
 		struct vnode *lvp;
 
 		lvp = union_dircache(*vp, td);

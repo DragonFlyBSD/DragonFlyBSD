@@ -36,7 +36,7 @@
  *	@(#)fdesc_vnops.c	8.9 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vnops.c,v 1.47.2.1 2001/10/22 22:49:26 chris Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.11 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vnops.c,v 1.12 2004/08/13 17:51:10 dillon Exp $
  */
 
 /*
@@ -66,7 +66,7 @@
 #define FDL_LOCKED	0x02
 static int fdcache_lock;
 
-static vop_t **fdesc_vnodeop_p;
+static struct vop_ops *fdesc_vnode_vops;
 
 #define	NFDCACHE 4
 #define FD_NHASH(ix) \
@@ -132,7 +132,7 @@ loop:
 	 */
 	MALLOC(fd, struct fdescnode *, sizeof(struct fdescnode), M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_FDESC, mp, fdesc_vnodeop_p, vpp);
+	error = getnewvnode(VT_FDESC, mp, fdesc_vnode_vops, vpp);
 	if (error) {
 		FREE(fd, M_TEMP);
 		goto out;
@@ -529,21 +529,21 @@ fdesc_print(struct vop_print_args *ap)
 }
 
 static struct vnodeopv_entry_desc fdesc_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) vop_null },
-	{ &vop_getattr_desc,		(vop_t *) fdesc_getattr },
-	{ &vop_inactive_desc,		(vop_t *) fdesc_inactive },
-	{ &vop_lookup_desc,		(vop_t *) fdesc_lookup },
-	{ &vop_open_desc,		(vop_t *) fdesc_open },
-	{ &vop_pathconf_desc,		(vop_t *) vop_stdpathconf },
-	{ &vop_poll_desc,		(vop_t *) fdesc_poll },
-	{ &vop_print_desc,		(vop_t *) fdesc_print },
-	{ &vop_readdir_desc,		(vop_t *) fdesc_readdir },
-	{ &vop_reclaim_desc,		(vop_t *) fdesc_reclaim },
-	{ &vop_setattr_desc,		(vop_t *) fdesc_setattr },
+	{ &vop_default_desc,		(void *) vop_defaultop },
+	{ &vop_access_desc,		(void *) vop_null },
+	{ &vop_getattr_desc,		(void *) fdesc_getattr },
+	{ &vop_inactive_desc,		(void *) fdesc_inactive },
+	{ &vop_lookup_desc,		(void *) fdesc_lookup },
+	{ &vop_open_desc,		(void *) fdesc_open },
+	{ &vop_pathconf_desc,		(void *) vop_stdpathconf },
+	{ &vop_poll_desc,		(void *) fdesc_poll },
+	{ &vop_print_desc,		(void *) fdesc_print },
+	{ &vop_readdir_desc,		(void *) fdesc_readdir },
+	{ &vop_reclaim_desc,		(void *) fdesc_reclaim },
+	{ &vop_setattr_desc,		(void *) fdesc_setattr },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc fdesc_vnodeop_opv_desc =
-	{ &fdesc_vnodeop_p, fdesc_vnodeop_entries };
+	{ &fdesc_vnode_vops, fdesc_vnodeop_entries };
 
 VNODEOP_SET(fdesc_vnodeop_opv_desc);

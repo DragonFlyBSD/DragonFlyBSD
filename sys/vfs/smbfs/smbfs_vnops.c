@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.13 2004/05/03 05:19:50 cpressey Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.14 2004/08/13 17:51:13 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -86,47 +86,47 @@ static int smbfs_pathconf(struct vop_pathconf_args *ap);
 static int smbfs_advlock(struct vop_advlock_args *);
 static int smbfs_getextattr(struct vop_getextattr_args *ap);
 
-vop_t **smbfs_vnodeop_p;
+struct vop_ops *smbfs_vnode_vops;
 static struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) smbfs_access },
-	{ &vop_advlock_desc,		(vop_t *) smbfs_advlock },
-	{ &vop_bmap_desc,		(vop_t *) smbfs_bmap },
-	{ &vop_close_desc,		(vop_t *) smbfs_close },
-	{ &vop_create_desc,		(vop_t *) smbfs_create },
-	{ &vop_fsync_desc,		(vop_t *) smbfs_fsync },
-	{ &vop_getattr_desc,		(vop_t *) smbfs_getattr },
-	{ &vop_getpages_desc,		(vop_t *) smbfs_getpages },
-	{ &vop_inactive_desc,		(vop_t *) smbfs_inactive },
-	{ &vop_ioctl_desc,		(vop_t *) smbfs_ioctl },
-	{ &vop_islocked_desc,		(vop_t *) vop_stdislocked },
-	{ &vop_link_desc,		(vop_t *) smbfs_link },
-	{ &vop_lock_desc,		(vop_t *) vop_stdlock },
-	{ &vop_lookup_desc,		(vop_t *) smbfs_lookup },
-	{ &vop_mkdir_desc,		(vop_t *) smbfs_mkdir },
-	{ &vop_mknod_desc,		(vop_t *) smbfs_mknod },
-	{ &vop_open_desc,		(vop_t *) smbfs_open },
-	{ &vop_pathconf_desc,		(vop_t *) smbfs_pathconf },
-	{ &vop_print_desc,		(vop_t *) smbfs_print },
-	{ &vop_putpages_desc,		(vop_t *) smbfs_putpages },
-	{ &vop_read_desc,		(vop_t *) smbfs_read },
-	{ &vop_readdir_desc,		(vop_t *) smbfs_readdir },
-	{ &vop_reclaim_desc,		(vop_t *) smbfs_reclaim },
-	{ &vop_remove_desc,		(vop_t *) smbfs_remove },
-	{ &vop_rename_desc,		(vop_t *) smbfs_rename },
-	{ &vop_rmdir_desc,		(vop_t *) smbfs_rmdir },
-	{ &vop_setattr_desc,		(vop_t *) smbfs_setattr },
-	{ &vop_strategy_desc,		(vop_t *) smbfs_strategy },
-	{ &vop_symlink_desc,		(vop_t *) smbfs_symlink },
-	{ &vop_unlock_desc,		(vop_t *) vop_stdunlock },
-	{ &vop_write_desc,		(vop_t *) smbfs_write },
-	{ &vop_getextattr_desc, 	(vop_t *) smbfs_getextattr },
-/*	{ &vop_setextattr_desc,		(vop_t *) smbfs_setextattr },*/
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		(void *) smbfs_access },
+	{ &vop_advlock_desc,		(void *) smbfs_advlock },
+	{ &vop_bmap_desc,		(void *) smbfs_bmap },
+	{ &vop_close_desc,		(void *) smbfs_close },
+	{ &vop_create_desc,		(void *) smbfs_create },
+	{ &vop_fsync_desc,		(void *) smbfs_fsync },
+	{ &vop_getattr_desc,		(void *) smbfs_getattr },
+	{ &vop_getpages_desc,		(void *) smbfs_getpages },
+	{ &vop_inactive_desc,		(void *) smbfs_inactive },
+	{ &vop_ioctl_desc,		(void *) smbfs_ioctl },
+	{ &vop_islocked_desc,		(void *) vop_stdislocked },
+	{ &vop_link_desc,		(void *) smbfs_link },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
+	{ &vop_lookup_desc,		(void *) smbfs_lookup },
+	{ &vop_mkdir_desc,		(void *) smbfs_mkdir },
+	{ &vop_mknod_desc,		(void *) smbfs_mknod },
+	{ &vop_open_desc,		(void *) smbfs_open },
+	{ &vop_pathconf_desc,		(void *) smbfs_pathconf },
+	{ &vop_print_desc,		(void *) smbfs_print },
+	{ &vop_putpages_desc,		(void *) smbfs_putpages },
+	{ &vop_read_desc,		(void *) smbfs_read },
+	{ &vop_readdir_desc,		(void *) smbfs_readdir },
+	{ &vop_reclaim_desc,		(void *) smbfs_reclaim },
+	{ &vop_remove_desc,		(void *) smbfs_remove },
+	{ &vop_rename_desc,		(void *) smbfs_rename },
+	{ &vop_rmdir_desc,		(void *) smbfs_rmdir },
+	{ &vop_setattr_desc,		(void *) smbfs_setattr },
+	{ &vop_strategy_desc,		(void *) smbfs_strategy },
+	{ &vop_symlink_desc,		(void *) smbfs_symlink },
+	{ &vop_unlock_desc,		(void *) vop_stdunlock },
+	{ &vop_write_desc,		(void *) smbfs_write },
+	{ &vop_getextattr_desc, 	(void *) smbfs_getextattr },
+/*	{ &vop_setextattr_desc,		(void *) smbfs_setextattr },*/
 	{ NULL, NULL }
 };
 
 static struct vnodeopv_desc smbfs_vnodeop_opv_desc =
-	{ &smbfs_vnodeop_p, smbfs_vnodeop_entries };
+	{ &smbfs_vnode_vops, smbfs_vnodeop_entries };
 
 VNODEOP_SET(smbfs_vnodeop_opv_desc);
 

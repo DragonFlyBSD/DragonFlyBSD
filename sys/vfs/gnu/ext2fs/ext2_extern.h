@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_extern.h	8.3 (Berkeley) 4/16/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_extern.h,v 1.22.6.1 2000/11/05 19:17:40 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.4 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_extern.h,v 1.5 2004/08/13 17:51:10 dillon Exp $
  */
 
 #ifndef _SYS_GNU_EXT2FS_EXT2_EXTERN_H_
@@ -101,8 +101,8 @@ void	mark_buffer_dirty (struct buf *bh);
  */
 #define  IS_EXT2_VNODE(vp) (vp->v_mount->mnt_stat.f_type == MOUNT_EXT2FS)
 
-extern vop_t **ext2_vnodeop_p;
-extern vop_t **ext2_specop_p;
-extern vop_t **ext2_fifoop_p;
+extern struct vop_ops *ext2_vnode_vops;
+extern struct vop_ops *ext2_spec_vops;
+extern struct vop_ops *ext2_fifo_vops;
 
 #endif /* !_SYS_GNU_EXT2FS_EXT2_EXTERN_H_ */

@@ -32,10 +32,10 @@
  *
  *	@(#)fifo.h	8.6 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo.h,v 1.16 1999/08/28 00:46:46 peter Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo.h,v 1.3 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo.h,v 1.4 2004/08/13 17:51:10 dillon Exp $
  */
 
-extern vop_t **fifo_vnodeop_p;
+extern struct vop_ops *fifo_vnode_vops;
 
 /*
  * Prototypes for fifo operations on vnodes.

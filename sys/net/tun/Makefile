@@ -1,9 +1,9 @@
 # $FreeBSD: src/sys/modules/if_tun/Makefile,v 1.19.2.1 2001/07/24 09:49:42 dd Exp $
-# $DragonFly: src/sys/net/tun/Makefile,v 1.4 2003/09/16 09:14:40 hsu Exp $
+# $DragonFly: src/sys/net/tun/Makefile,v 1.5 2004/08/13 17:51:09 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../net
 KMOD=   if_tun
-SRCS=   if_tun.c vnode_if.h opt_inet.h opt_inet6.h opt_atalk.h opt_ipx.h
+SRCS=   if_tun.c opt_inet.h opt_inet6.h opt_atalk.h opt_ipx.h
 NOMAN=
 
 NBPF?=	1

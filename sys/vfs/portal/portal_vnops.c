@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.13 2004/06/06 19:16:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.14 2004/08/13 17:51:12 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ portal_lookup(struct vop_lookup_args *ap)
 	MALLOC(pt, struct portalnode *, sizeof(struct portalnode),
 		M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_PORTAL, dvp->v_mount, portal_vnodeop_p, &fvp);
+	error = getnewvnode(VT_PORTAL, dvp->v_mount, portal_vnode_vops, &fvp);
 	if (error) {
 		FREE(pt, M_TEMP);
 		goto bad;
@@ -566,23 +566,23 @@ portal_badop(void)
 	/* NOTREACHED */
 }
 
-vop_t **portal_vnodeop_p;
+struct vop_ops *portal_vnode_vops;
 static struct vnodeopv_entry_desc portal_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) vop_null },
-	{ &vop_bmap_desc,		(vop_t *) portal_badop },
-	{ &vop_getattr_desc,		(vop_t *) portal_getattr },
-	{ &vop_inactive_desc,		(vop_t *) portal_inactive },
-	{ &vop_lookup_desc,		(vop_t *) portal_lookup },
-	{ &vop_open_desc,		(vop_t *) portal_open },
-	{ &vop_pathconf_desc,		(vop_t *) vop_stdpathconf },
-	{ &vop_print_desc,		(vop_t *) portal_print },
-	{ &vop_readdir_desc,		(vop_t *) portal_readdir },
-	{ &vop_reclaim_desc,		(vop_t *) portal_reclaim },
-	{ &vop_setattr_desc,		(vop_t *) portal_setattr },
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		vop_null },
+	{ &vop_bmap_desc,		(void *) portal_badop },
+	{ &vop_getattr_desc,		(void *) portal_getattr },
+	{ &vop_inactive_desc,		(void *) portal_inactive },
+	{ &vop_lookup_desc,		(void *) portal_lookup },
+	{ &vop_open_desc,		(void *) portal_open },
+	{ &vop_pathconf_desc,		(void *) vop_stdpathconf },
+	{ &vop_print_desc,		(void *) portal_print },
+	{ &vop_readdir_desc,		(void *) portal_readdir },
+	{ &vop_reclaim_desc,		(void *) portal_reclaim },
+	{ &vop_setattr_desc,		(void *) portal_setattr },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc portal_vnodeop_opv_desc =
-	{ &portal_vnodeop_p, portal_vnodeop_entries };
+	{ &portal_vnode_vops, portal_vnodeop_entries };
 
 VNODEOP_SET(portal_vnodeop_opv_desc);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfsnode.h,v 1.43 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.9 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.10 2004/08/13 17:51:12 dillon Exp $
  */
 
 
@@ -207,9 +207,9 @@ nfs_vpcred(struct vnode *vp, int ndflag)
 	return(VFSTONFS((vp)->v_mount)->nm_cred);
 }
 
-extern	vop_t	**fifo_nfsv2nodeop_p;
-extern	vop_t	**nfsv2_vnodeop_p;
-extern	vop_t	**spec_nfsv2nodeop_p;
+extern	struct vop_ops *fifo_nfsv2node_vops;
+extern	struct vop_ops *nfsv2_vnode_vops;
+extern	struct vop_ops *spec_nfsv2node_vops;
 
 /*
  * Prototypes for NFS vnode operations

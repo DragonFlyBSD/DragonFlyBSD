@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.11 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.12 2004/08/13 17:51:12 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -273,7 +273,7 @@ null_bypass(struct vop_generic_args *ap)
 		 * that aren't.  (We must always map first vp or vclean fails.)
 		 */
 		if (i && (*this_vp_p == NULLVP ||
-		    (*this_vp_p)->v_op != null_vnodeop_p)) {
+		    (*this_vp_p)->v_vops != null_vnode_vops)) {
 			old_vps[i] = NULLVP;
 		} else {
 			old_vps[i] = *this_vp_p;
@@ -440,7 +440,7 @@ null_setattr(struct vop_setattr_args *ap)
 		}
 	}
 
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -454,7 +454,7 @@ null_getattr(struct vop_getattr_args *ap)
 {
 	int error;
 
-	if ((error = null_bypass((struct vop_generic_args *)ap)) != 0)
+	if ((error = null_bypass(&ap->a_head)) != 0)
 		return (error);
 
 	ap->a_vap->va_fsid = ap->a_vp->v_mount->mnt_stat.f_fsid.val[0];
@@ -490,7 +490,7 @@ null_access(struct vop_access_args *ap)
 			break;
 		}
 	}
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -509,7 +509,7 @@ null_open(struct vop_open_args *ap)
 	    (lvp->v_type == VBLK || lvp->v_type == VCHR))
 		return ENXIO;
 
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -543,7 +543,7 @@ null_rename(struct vop_rename_args *ap)
 		return (EXDEV);
 	}
 	
-	return (null_bypass((struct vop_generic_args *)ap));
+	return (null_bypass(&ap->a_head));
 }
 
 /*
@@ -797,27 +797,27 @@ null_getvobject(struct vop_getvobject_args *ap)
 /*
  * Global vfs data structures
  */
-vop_t **null_vnodeop_p;
+struct vop_ops *null_vnode_vops;
 static struct vnodeopv_entry_desc null_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) null_bypass },
-	{ &vop_access_desc,		(vop_t *) null_access },
-	{ &vop_createvobject_desc,	(vop_t *) null_createvobject },
-	{ &vop_destroyvobject_desc,	(vop_t *) null_destroyvobject },
-	{ &vop_getattr_desc,		(vop_t *) null_getattr },
-	{ &vop_getvobject_desc,		(vop_t *) null_getvobject },
-	{ &vop_inactive_desc,		(vop_t *) null_inactive },
-	{ &vop_islocked_desc,		(vop_t *) null_islocked },
-	{ &vop_lock_desc,		(vop_t *) null_lock },
-	{ &vop_lookup_desc,		(vop_t *) null_lookup },
-	{ &vop_open_desc,		(vop_t *) null_open },
-	{ &vop_print_desc,		(vop_t *) null_print },
-	{ &vop_reclaim_desc,		(vop_t *) null_reclaim },
-	{ &vop_rename_desc,		(vop_t *) null_rename },
-	{ &vop_setattr_desc,		(vop_t *) null_setattr },
-	{ &vop_unlock_desc,		(vop_t *) null_unlock },
+	{ &vop_default_desc,		(void *) null_bypass },
+	{ &vop_access_desc,		(void *) null_access },
+	{ &vop_createvobject_desc,	(void *) null_createvobject },
+	{ &vop_destroyvobject_desc,	(void *) null_destroyvobject },
+	{ &vop_getattr_desc,		(void *) null_getattr },
+	{ &vop_getvobject_desc,		(void *) null_getvobject },
+	{ &vop_inactive_desc,		(void *) null_inactive },
+	{ &vop_islocked_desc,		(void *) null_islocked },
+	{ &vop_lock_desc,		(void *) null_lock },
+	{ &vop_lookup_desc,		(void *) null_lookup },
+	{ &vop_open_desc,		(void *) null_open },
+	{ &vop_print_desc,		(void *) null_print },
+	{ &vop_reclaim_desc,		(void *) null_reclaim },
+	{ &vop_rename_desc,		(void *) null_rename },
+	{ &vop_setattr_desc,		(void *) null_setattr },
+	{ &vop_unlock_desc,		(void *) null_unlock },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc null_vnodeop_opv_desc =
-	{ &null_vnodeop_p, null_vnodeop_entries };
+	{ &null_vnode_vops, null_vnodeop_entries };
 
 VNODEOP_SET(null_vnodeop_opv_desc);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs.h,v 1.8.2.2 2001/10/12 22:08:49 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.4 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs.h,v 1.5 2004/08/13 17:51:12 dillon Exp $
  */
 
 /*#define NTFS_DEBUG 1*/
@@ -336,4 +336,4 @@ typedef int (vop_t) (void *);
 #define ddprintf(a)
 #endif
 
-extern vop_t  **ntfs_vnodeop_p;
+extern struct vop_ops  *ntfs_vnode_vops;

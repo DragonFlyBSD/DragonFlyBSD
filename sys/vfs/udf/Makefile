@@ -1,7 +1,6 @@
-# $DragonFly: src/sys/vfs/udf/Makefile,v 1.1 2004/03/12 22:38:15 joerg Exp $
+# $DragonFly: src/sys/vfs/udf/Makefile,v 1.2 2004/08/13 17:51:13 dillon Exp $
 
 KMOD=	udf
-SRCS=	vnode_if.h \
-	osta.c udf_vfsops.c udf_vnops.c
+SRCS=	osta.c udf_vfsops.c udf_vnops.c
 
 .include <bsd.kmod.mk>

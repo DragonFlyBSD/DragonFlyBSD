@@ -37,7 +37,7 @@
  *
  *	@(#)iso.h	8.6 (Berkeley) 5/10/95
  * $FreeBSD: src/sys/isofs/cd9660/iso.h,v 1.19.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.3 2003/08/20 09:56:32 rob Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/iso.h,v 1.4 2004/08/13 17:51:11 dillon Exp $
  */
 
 #define ISODCL(from, to) (to - from + 1)
@@ -263,9 +263,9 @@ int cd9660_uninit (struct vfsconf *);
 #define cd9660_sysctl ((int (*) (int *, u_int, void *, size_t *, void *, \
                                     size_t, struct proc *))eopnotsupp)
 
-extern vop_t **cd9660_vnodeop_p;
-extern vop_t **cd9660_specop_p;
-extern vop_t **cd9660_fifoop_p;
+extern struct vop_ops *cd9660_vnode_vops;
+extern struct vop_ops *cd9660_spec_vops;
+extern struct vop_ops *cd9660_fifo_vops;
 
 int isochar (u_char *, u_char *, int, u_char *);
 int isofncmp (u_char *, int, u_char *, int, int);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.14 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.15 2004/08/13 17:51:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1309,58 +1309,58 @@ hpfs_pathconf(struct vop_pathconf_args *ap)
 /*
  * Global vfs data structures
  */
-vop_t **hpfs_vnodeop_p;
+struct vop_ops *hpfs_vnode_vops;
 #if defined(__DragonFly__)
 struct vnodeopv_entry_desc hpfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vop_t *)vop_defaultop },
+	{ &vop_default_desc, (void *)vop_defaultop },
 
-	{ &vop_getattr_desc, (vop_t *)hpfs_getattr },
-	{ &vop_setattr_desc, (vop_t *)hpfs_setattr },
-	{ &vop_inactive_desc, (vop_t *)hpfs_inactive },
-	{ &vop_reclaim_desc, (vop_t *)hpfs_reclaim },
-	{ &vop_print_desc, (vop_t *)hpfs_print },
-	{ &vop_create_desc, (vop_t *)hpfs_create },
-	{ &vop_remove_desc, (vop_t *)hpfs_remove },
-	{ &vop_islocked_desc, (vop_t *)vop_stdislocked },
-	{ &vop_unlock_desc, (vop_t *)vop_stdunlock },
-	{ &vop_lock_desc, (vop_t *)vop_stdlock },
-	{ &vop_cachedlookup_desc, (vop_t *)hpfs_lookup },
-	{ &vop_lookup_desc, (vop_t *)vfs_cache_lookup },
-	{ &vop_access_desc, (vop_t *)hpfs_access },
-	{ &vop_close_desc, (vop_t *)hpfs_close },
-	{ &vop_open_desc, (vop_t *)hpfs_open },
-	{ &vop_readdir_desc, (vop_t *)hpfs_readdir },
-	{ &vop_fsync_desc, (vop_t *)hpfs_fsync },
-	{ &vop_bmap_desc, (vop_t *)hpfs_bmap },
-	{ &vop_getpages_desc, (vop_t *) hpfs_getpages },
-	{ &vop_putpages_desc, (vop_t *) hpfs_putpages },
-	{ &vop_strategy_desc, (vop_t *)hpfs_strategy },
-	{ &vop_bwrite_desc, (vop_t *)vop_stdbwrite },
-	{ &vop_read_desc, (vop_t *)hpfs_read },
-	{ &vop_write_desc, (vop_t *)hpfs_write },
-	{ &vop_ioctl_desc, (vop_t *)hpfs_ioctl },
-	{ &vop_pathconf_desc, (vop_t *)hpfs_pathconf },
+	{ &vop_getattr_desc, (void *)hpfs_getattr },
+	{ &vop_setattr_desc, (void *)hpfs_setattr },
+	{ &vop_inactive_desc, (void *)hpfs_inactive },
+	{ &vop_reclaim_desc, (void *)hpfs_reclaim },
+	{ &vop_print_desc, (void *)hpfs_print },
+	{ &vop_create_desc, (void *)hpfs_create },
+	{ &vop_remove_desc, (void *)hpfs_remove },
+	{ &vop_islocked_desc, (void *)vop_stdislocked },
+	{ &vop_unlock_desc, (void *)vop_stdunlock },
+	{ &vop_lock_desc, (void *)vop_stdlock },
+	{ &vop_cachedlookup_desc, (void *)hpfs_lookup },
+	{ &vop_lookup_desc, (void *)vfs_cache_lookup },
+	{ &vop_access_desc, (void *)hpfs_access },
+	{ &vop_close_desc, (void *)hpfs_close },
+	{ &vop_open_desc, (void *)hpfs_open },
+	{ &vop_readdir_desc, (void *)hpfs_readdir },
+	{ &vop_fsync_desc, (void *)hpfs_fsync },
+	{ &vop_bmap_desc, (void *)hpfs_bmap },
+	{ &vop_getpages_desc, (void *) hpfs_getpages },
+	{ &vop_putpages_desc, (void *) hpfs_putpages },
+	{ &vop_strategy_desc, (void *)hpfs_strategy },
+	{ &vop_bwrite_desc, (void *)vop_stdbwrite },
+	{ &vop_read_desc, (void *)hpfs_read },
+	{ &vop_write_desc, (void *)hpfs_write },
+	{ &vop_ioctl_desc, (void *)hpfs_ioctl },
+	{ &vop_pathconf_desc, (void *)hpfs_pathconf },
 	{ NULL, NULL }
 };
 
 static
 struct vnodeopv_desc hpfs_vnodeop_opv_desc =
-	{ &hpfs_vnodeop_p, hpfs_vnodeop_entries };
+	{ &hpfs_vnode_vops, hpfs_vnodeop_entries };
 
 VNODEOP_SET(hpfs_vnodeop_opv_desc);
 #else /* defined(__NetBSD__) */
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vop_t *) genfs_badop },	/* XXX */
-	{ &vop_lookup_desc, (vop_t *) hpfs_lookup },	/* lookup */
+	{ &vop_default_desc, (void *) genfs_badop },	/* XXX */
+	{ &vop_lookup_desc, (void *) hpfs_lookup },	/* lookup */
 	{ &vop_create_desc, genfs_eopnotsupp },		/* create */
 	{ &vop_mknod_desc, genfs_eopnotsupp },		/* mknod */
-	{ &vop_open_desc, (vop_t *) hpfs_open },	/* open */
-	{ &vop_close_desc,(vop_t *) hpfs_close },	/* close */
-	{ &vop_access_desc, (vop_t *) hpfs_access },	/* access */
-	{ &vop_getattr_desc, (vop_t *) hpfs_getattr },	/* getattr */
+	{ &vop_open_desc, (void *) hpfs_open },	/* open */
+	{ &vop_close_desc,(void *) hpfs_close },	/* close */
+	{ &vop_access_desc, (void *) hpfs_access },	/* access */
+	{ &vop_getattr_desc, (void *) hpfs_getattr },	/* getattr */
 	{ &vop_setattr_desc, genfs_eopnotsupp },	/* setattr */
-	{ &vop_read_desc, (vop_t *) hpfs_read },	/* read */
-	{ &vop_write_desc, (vop_t *) hpfs_write },	/* write */
+	{ &vop_read_desc, (void *) hpfs_read },	/* read */
+	{ &vop_write_desc, (void *) hpfs_write },	/* write */
 	{ &vop_lease_desc, genfs_lease_check },		/* lease */
 	{ &vop_fcntl_desc, genfs_fcntl },		/* fcntl */
 	{ &vop_ioctl_desc, genfs_enoioctl },		/* ioctl */
@@ -1375,16 +1375,16 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_mkdir_desc, genfs_eopnotsupp },		/* mkdir */
 	{ &vop_rmdir_desc, genfs_eopnotsupp },		/* rmdir */
 	{ &vop_symlink_desc, genfs_eopnotsupp },	/* symlink */
-	{ &vop_readdir_desc, (vop_t *) hpfs_readdir },	/* readdir */
+	{ &vop_readdir_desc, (void *) hpfs_readdir },	/* readdir */
 	{ &vop_readlink_desc, genfs_eopnotsupp },	/* readlink */
 	{ &vop_abortop_desc, genfs_abortop },		/* abortop */
-	{ &vop_inactive_desc, (vop_t *) hpfs_inactive },	/* inactive */
-	{ &vop_reclaim_desc, (vop_t *) hpfs_reclaim },	/* reclaim */
+	{ &vop_inactive_desc, (void *) hpfs_inactive },	/* inactive */
+	{ &vop_reclaim_desc, (void *) hpfs_reclaim },	/* reclaim */
 	{ &vop_lock_desc, genfs_lock },			/* lock */
 	{ &vop_unlock_desc, genfs_unlock },		/* unlock */
-	{ &vop_bmap_desc, (vop_t *) hpfs_bmap },	/* bmap */
-	{ &vop_strategy_desc, (vop_t *) hpfs_strategy },	/* strategy */
-	{ &vop_print_desc, (vop_t *) hpfs_print },	/* print */
+	{ &vop_bmap_desc, (void *) hpfs_bmap },	/* bmap */
+	{ &vop_strategy_desc, (void *) hpfs_strategy },	/* strategy */
+	{ &vop_print_desc, (void *) hpfs_print },	/* print */
 	{ &vop_islocked_desc, genfs_islocked },		/* islocked */
 	{ &vop_pathconf_desc, hpfs_pathconf },		/* pathconf */
 	{ &vop_advlock_desc, genfs_nullop },		/* advlock */
@@ -1398,6 +1398,6 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ (struct vnodeop_desc *)NULL, (int (*) (void *))NULL }
 };
 struct vnodeopv_desc ntfs_vnodeop_opv_desc =
-	{ &ntfs_vnodeop_p, ntfs_vnodeop_entries };
+	{ &ntfs_vnode_vops, ntfs_vnodeop_entries };
 
 #endif

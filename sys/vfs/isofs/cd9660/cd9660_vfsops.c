@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.17 2004/06/26 02:15:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.18 2004/08/13 17:51:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -699,7 +699,7 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 		return (0);
 
 	/* Allocate a new vnode/iso_node. */
-	if ((error = getnewvnode(VT_ISOFS, mp, cd9660_vnodeop_p, &vp)) != 0) {
+	if ((error = getnewvnode(VT_ISOFS, mp, cd9660_vnode_vops, &vp)) != 0) {
 		*vpp = NULLVP;
 		return (error);
 	}
@@ -831,11 +831,11 @@ cd9660_vget_internal(struct mount *mp, ino_t ino, struct vnode **vpp,
 	 */
 	switch (vp->v_type = IFTOVT(ip->inode.iso_mode)) {
 	case VFIFO:
-		vp->v_op = cd9660_fifoop_p;
+		vp->v_vops = cd9660_fifo_vops;
 		break;
 	case VCHR:
 	case VBLK:
-		vp->v_op = cd9660_specop_p;
+		vp->v_vops = cd9660_spec_vops;
 		addaliasu(vp, ip->inode.iso_rdev);
 		break;
 	default:

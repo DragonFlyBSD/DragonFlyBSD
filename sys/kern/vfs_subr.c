@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.35 2004/07/10 16:29:45 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.36 2004/08/13 17:51:09 dillon Exp $
  */
 
 /*
@@ -619,14 +619,14 @@ SYSINIT(vnlru, SI_SUB_KTHREAD_UPDATE, SI_ORDER_FIRST, kproc_start, &vnlru_kp)
 /*
  * Routines having to do with the management of the vnode table.
  */
-extern vop_t **dead_vnodeop_p;
+extern struct vop_ops *dead_vnode_vops;
 
 /*
  * Return the next vnode from the free list.
  */
 int
 getnewvnode(enum vtagtype tag, struct mount *mp, 
-	    vop_t **vops, struct vnode **vpp)
+	    struct vop_ops *vops, struct vnode **vpp)
 {
 	int s;
 	struct thread *td = curthread;	/* XXX */
@@ -802,7 +802,7 @@ getnewvnode(enum vtagtype tag, struct mount *mp,
 	TAILQ_INIT(&vp->v_dirtyblkhd);
 	vp->v_type = VNON;
 	vp->v_tag = tag;
-	vp->v_op = vops;
+	vp->v_vops = vops;
 	*vpp = vp;
 	vp->v_usecount = 1;
 	vp->v_data = NULL;
@@ -1522,7 +1522,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getnewvnode(VT_NON, (struct mount *)0, spec_vnodeop_p, &nvp);
+	error = getnewvnode(VT_NON, (struct mount *)0, spec_vnode_vops, &nvp);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -1992,7 +1992,7 @@ vflush_scan(struct mount *mp, struct vnode *vp,
 			vgonel(vp, vlock, info->td);
 		} else {
 			vclean(vp, vlock, 0, info->td);
-			vp->v_op = spec_vnodeop_p;
+			vp->v_vops = spec_vnode_vops;
 			insmntque(vp, (struct mount *) 0);
 		}
 		return(0);
@@ -2094,7 +2094,7 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
 	/*
 	 * Done with purge, notify sleepers of the grim news.
 	 */
-	vp->v_op = dead_vnodeop_p;
+	vp->v_vops = dead_vnode_vops;
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
 	vp->v_flag &= ~VXLOCK;
@@ -2113,7 +2113,7 @@ vclean(struct vnode *vp, lwkt_tokref_t vlock, int flags, struct thread *td)
  * revoke { struct vnode *a_vp, int a_flags }
  */
 int
-vop_revoke(struct vop_revoke_args *ap)
+vop_stdrevoke(struct vop_revoke_args *ap)
 {
 	struct vnode *vp, *vq;
 	lwkt_tokref ilock;
@@ -3075,21 +3075,21 @@ static int	sync_reclaim  (struct  vop_reclaim_args *);
 static int	sync_print (struct vop_print_args *);
 #define sync_islocked ((int(*) (struct vop_islocked_args *))vop_noislocked)
 
-static vop_t **sync_vnodeop_p;
+static struct vop_ops *sync_vnode_vops;
 static struct vnodeopv_entry_desc sync_vnodeop_entries[] = {
-	{ &vop_default_desc,	(vop_t *) vop_eopnotsupp },
-	{ &vop_close_desc,	(vop_t *) sync_close },		/* close */
-	{ &vop_fsync_desc,	(vop_t *) sync_fsync },		/* fsync */
-	{ &vop_inactive_desc,	(vop_t *) sync_inactive },	/* inactive */
-	{ &vop_reclaim_desc,	(vop_t *) sync_reclaim },	/* reclaim */
-	{ &vop_lock_desc,	(vop_t *) sync_lock },		/* lock */
-	{ &vop_unlock_desc,	(vop_t *) sync_unlock },	/* unlock */
-	{ &vop_print_desc,	(vop_t *) sync_print },		/* print */
-	{ &vop_islocked_desc,	(vop_t *) sync_islocked },	/* islocked */
+	{ &vop_default_desc,	vop_eopnotsupp },
+	{ &vop_close_desc,	(void *) sync_close },		/* close */
+	{ &vop_fsync_desc,	(void *) sync_fsync },		/* fsync */
+	{ &vop_inactive_desc,	(void *) sync_inactive },	/* inactive */
+	{ &vop_reclaim_desc,	(void *) sync_reclaim },	/* reclaim */
+	{ &vop_lock_desc,	(void *) sync_lock },		/* lock */
+	{ &vop_unlock_desc,	(void *) sync_unlock },		/* unlock */
+	{ &vop_print_desc,	(void *) sync_print },		/* print */
+	{ &vop_islocked_desc,	(void *) sync_islocked },	/* islocked */
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc sync_vnodeop_opv_desc =
-	{ &sync_vnodeop_p, sync_vnodeop_entries };
+	{ &sync_vnode_vops, sync_vnodeop_entries };
 
 VNODEOP_SET(sync_vnodeop_opv_desc);
 
@@ -3109,7 +3109,7 @@ vfs_allocate_syncvnode(struct mount *mp)
 	int error;
 
 	/* Allocate a new vnode */
-	if ((error = getnewvnode(VT_VFS, mp, sync_vnodeop_p, &vp)) != 0) {
+	if ((error = getnewvnode(VT_VFS, mp, sync_vnode_vops, &vp)) != 0) {
 		mp->mnt_syncer = NULL;
 		return (error);
 	}

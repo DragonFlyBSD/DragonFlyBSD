@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.8 2004/05/18 16:57:01 cpressey Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.9 2004/08/13 17:51:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -197,7 +197,7 @@ umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	MALLOC(xp, struct umap_node *, sizeof(struct umap_node),
 	    M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_UMAP, mp, umap_vnodeop_p, vpp);
+	error = getnewvnode(VT_UMAP, mp, umap_vnode_vops, vpp);
 	if (error) {
 		FREE(xp, M_TEMP);
 		return (error);
@@ -291,7 +291,7 @@ umap_checkvp(struct vnode *vp, char *fil, int lno)
 	 * Can't do this check because vop_reclaim runs
 	 * with funny vop vector.
 	 */
-	if (vp->v_op != umap_vnodeop_p) {
+	if (vp->v_vops != umap_vnode_vops) {
 		printf ("umap_checkvp: on non-umap-node\n");
 		while (umap_checkvp_barrier) /*WAIT*/ ;
 		panic("umap_checkvp");

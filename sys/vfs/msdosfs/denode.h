@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/denode.h,v 1.20 1999/12/29 04:54:52 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.5 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/denode.h,v 1.6 2004/08/13 17:51:11 dillon Exp $ */
 /*	$NetBSD: denode.h,v 1.25 1997/11/17 15:36:28 ws Exp $	*/
 
 /*-
@@ -260,7 +260,7 @@ struct defid {
 #endif
 };
 
-extern vop_t **msdosfs_vnodeop_p;
+extern struct vop_ops *msdosfs_vnode_vops;
 
 int msdosfs_lookup (struct vop_cachedlookup_args *);
 int msdosfs_inactive (struct vop_inactive_args *);

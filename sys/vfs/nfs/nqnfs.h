@@ -35,7 +35,7 @@
  *
  *	@(#)nqnfs.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nqnfs.h,v 1.22 2000/02/13 03:32:07 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.5 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nqnfs.h,v 1.6 2004/08/13 17:51:12 dillon Exp $
  */
 
 
@@ -190,7 +190,7 @@ extern u_long nqfhhash;
 #define	NQNFS_EXPIRED	500
 #define	NQNFS_TRYLATER	501
 
-void	nqnfs_lease_check (struct vnode *, struct thread *, struct ucred *, int);
+int	nqnfs_lease_check (struct vnode *, struct thread *, struct ucred *, int);
 void	nqnfs_lease_updatetime (int);
 int	nqsrv_getlease (struct vnode *, u_int32_t *, int,
 			    struct nfssvc_sock *, struct thread *,

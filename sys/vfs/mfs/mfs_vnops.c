@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.13 2004/05/19 22:53:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.14 2004/08/13 17:51:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -65,31 +65,31 @@ static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
 /*
  * mfs vnode operations.
  */
-vop_t **mfs_vnodeop_p;
+struct vop_ops *mfs_vnode_vops;
 static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) mfs_badop },
-	{ &vop_bmap_desc,		(vop_t *) mfs_bmap },
-	{ &vop_bwrite_desc,		(vop_t *) vop_defaultop },
-	{ &vop_close_desc,		(vop_t *) mfs_close },
-	{ &vop_createvobject_desc,	(vop_t *) vop_stdcreatevobject },
-	{ &vop_destroyvobject_desc,	(vop_t *) vop_stddestroyvobject },
-	{ &vop_freeblks_desc,		(vop_t *) mfs_freeblks },
-	{ &vop_fsync_desc,		(vop_t *) mfs_fsync },
-	{ &vop_getpages_desc,		(vop_t *) mfs_getpages },
-	{ &vop_getvobject_desc,		(vop_t *) vop_stdgetvobject },
-	{ &vop_inactive_desc,		(vop_t *) mfs_inactive },
-	{ &vop_ioctl_desc,		(vop_t *) vop_enotty },
-	{ &vop_islocked_desc,		(vop_t *) vop_defaultop },
-	{ &vop_lock_desc,		(vop_t *) vop_defaultop },
-	{ &vop_open_desc,		(vop_t *) mfs_open },
-	{ &vop_print_desc,		(vop_t *) mfs_print },
-	{ &vop_reclaim_desc,		(vop_t *) mfs_reclaim },
-	{ &vop_strategy_desc,		(vop_t *) mfs_strategy },
-	{ &vop_unlock_desc,		(vop_t *) vop_defaultop },
+	{ &vop_default_desc,		(void *) mfs_badop },
+	{ &vop_bmap_desc,		(void *) mfs_bmap },
+	{ &vop_bwrite_desc,		vop_defaultop },
+	{ &vop_close_desc,		(void *) mfs_close },
+	{ &vop_createvobject_desc,	(void *) vop_stdcreatevobject },
+	{ &vop_destroyvobject_desc,	(void *) vop_stddestroyvobject },
+	{ &vop_freeblks_desc,		(void *) mfs_freeblks },
+	{ &vop_fsync_desc,		(void *) mfs_fsync },
+	{ &vop_getpages_desc,		(void *) mfs_getpages },
+	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
+	{ &vop_inactive_desc,		(void *) mfs_inactive },
+	{ &vop_ioctl_desc,		vop_enotty },
+	{ &vop_islocked_desc,		vop_defaultop },
+	{ &vop_lock_desc,		vop_defaultop },
+	{ &vop_open_desc,		(void *) mfs_open },
+	{ &vop_print_desc,		(void *) mfs_print },
+	{ &vop_reclaim_desc,		(void *) mfs_reclaim },
+	{ &vop_strategy_desc,		(void *) mfs_strategy },
+	{ &vop_unlock_desc,		vop_defaultop },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc mfs_vnodeop_opv_desc =
-	{ &mfs_vnodeop_p, mfs_vnodeop_entries };
+	{ &mfs_vnode_vops, mfs_vnodeop_entries };
 
 VNODEOP_SET(mfs_vnodeop_opv_desc);
 
@@ -122,7 +122,7 @@ mfs_open(struct vop_open_args *ap)
 static int
 mfs_fsync(struct vop_fsync_args *ap)
 {
-	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_fsync), ap));
+	return (VOCALL(spec_vnode_vops, VOFFSET(vop_fsync), &ap->a_head));
 }
 
 /*
@@ -405,12 +405,12 @@ mfs_badop(struct vop_generic_args *ap)
 
 	printf("mfs_badop[%s]\n", ap->a_desc->vdesc_name);
 	i = vop_defaultop(ap);
-	printf("mfs_badop[%s] = %d\n", ap->a_desc->vdesc_name,i);
+	printf("mfs_badop[%s] = %d\n", ap->a_desc->vdesc_name, i);
 	return (i);
 }
 
 static int
 mfs_getpages(struct vop_getpages_args *ap)
 {
-	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_getpages), ap));
+	return (VOCALL(spec_vnode_vops, VOFFSET(vop_getpages), &ap->a_head));
 }

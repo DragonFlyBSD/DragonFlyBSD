@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.11 2004/04/22 17:56:44 cpressey Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.12 2004/08/13 17:51:12 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -58,7 +58,7 @@
 
 #define	NWNOHASH(fhsum) (&nwhashtbl[(fhsum.f_id) & nwnodehash])
 
-extern vop_t **nwfs_vnodeop_p;
+extern struct vop_ops *nwfs_vnode_vops;
 
 static LIST_HEAD(nwnode_hash_head,nwnode) *nwhashtbl;
 static u_long nwnodehash;
@@ -166,7 +166,7 @@ rescan:
 	 * elsewhere if MALLOC should block.
 	 */
 	MALLOC(np, struct nwnode *, sizeof *np, M_NWNODE, M_WAITOK | M_ZERO);
-	error = getnewvnode(VT_NWFS, mp, nwfs_vnodeop_p, &vp);
+	error = getnewvnode(VT_NWFS, mp, nwfs_vnode_vops, &vp);
 	if (error) {
 		*vpp = NULL;
 		FREE(np, M_NWNODE);

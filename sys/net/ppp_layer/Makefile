@@ -1,10 +1,10 @@
 # $FreeBSD: src/sys/modules/if_ppp/Makefile,v 1.21 1999/11/28 18:52:51 bde Exp $
-# $DragonFly: src/sys/net/ppp_layer/Makefile,v 1.4 2003/09/10 21:35:42 rob Exp $
+# $DragonFly: src/sys/net/ppp_layer/Makefile,v 1.5 2004/08/13 17:51:09 dillon Exp $
 
 .PATH:  ${.CURDIR}/../ppp ${.CURDIR}/..
 KMOD=   if_ppp
 SRCS=	if_ppp.c ppp_tty.c slcompress.c \
-	use_ppp.h opt_inet.h opt_ipx.h opt_ppp.h vnode_if.h
+	use_ppp.h opt_inet.h opt_ipx.h opt_ppp.h
 NOMAN=
 
 NPPP?=		2

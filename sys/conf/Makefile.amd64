@@ -1,7 +1,7 @@
 # Makefile.amd64 -- with config changes.
 # Copyright 1990 W. Jolitz
 #	from: @(#)Makefile.i386	7.1 5/10/91
-# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.3 2004/05/21 10:47:45 hmp Exp $
+# $DragonFly: src/sys/conf/Attic/Makefile.amd64,v 1.4 2004/08/13 17:51:05 dillon Exp $
 #
 # Makefile for DragonFly BSD
 #
@@ -87,10 +87,10 @@ NORMAL_M= perl5 $S/kern/makeobjops.pl -c $<; \
 	${CC} -c ${CFLAGS} ${PROF} ${.PREFIX}.c
 
 GEN_CFILES= $S/$M/$M/genassym.c
-SYSTEM_CFILES= ioconf.c vnode_if.c config.c
+SYSTEM_CFILES= ioconf.c config.c
 SYSTEM_SFILES= $S/$M/$M/locore.s
 SYSTEM_DEP= Makefile ${SYSTEM_OBJS}
-SYSTEM_OBJS= locore.o vnode_if.o ${OBJS} ioconf.o config.o hack.So
+SYSTEM_OBJS= locore.o ${OBJS} ioconf.o config.o hack.So
 SYSTEM_LD= @${LD} -Bdynamic -T $S/conf/ldscript.$M \
 	-export-dynamic -dynamic-linker /red/herring \
 	-o ${.TARGET} -X ${SYSTEM_OBJS} vers.o
@@ -136,7 +136,7 @@ ${FULLKERNEL}: ${SYSTEM_DEP} vers.o
 	${SYSTEM_LD_TAIL}
 
 .if !exists(.depend)
-${SYSTEM_OBJS}: vnode_if.h ${BEFORE_DEPEND:M*.h} ${MFILES:T:S/.m$/.h/}
+${SYSTEM_OBJS}: ${BEFORE_DEPEND:M*.h} ${MFILES:T:S/.m$/.h/}
 .endif
 
 .for mfile in ${MFILES}
@@ -182,7 +182,7 @@ ${SYSTEM_OBJS} genassym.o vers.o: opt_global.h
 
 # The argument list can be very long, use make -V and xargs to
 # pass it to mkdep.
-kernel-depend: assym.s vnode_if.h ${BEFORE_DEPEND} \
+kernel-depend: assym.s ${BEFORE_DEPEND} \
 	    ${CFILES} ${SYSTEM_CFILES} ${GEN_CFILES} ${SFILES} \
 	    ${SYSTEM_SFILES} ${MFILES:T:S/.m$/.h/}
 	rm -f .newdep
@@ -298,14 +298,14 @@ vers.c: $S/conf/newvers.sh $S/sys/param.h ${SYSTEM_DEP}
 vers.o:
 	${NORMAL_C}
 
-vnode_if.c: $S/kern/vnode_if.pl $S/kern/vnode_if.src
-	perl5 $S/kern/vnode_if.pl -c $S/kern/vnode_if.src
-
-vnode_if.h: $S/kern/vnode_if.pl $S/kern/vnode_if.src
-	perl5 $S/kern/vnode_if.pl -h $S/kern/vnode_if.src
-
-vnode_if.o:
-	${NORMAL_C}
+#vnode_if.c: $S/kern/vnode_if.pl $S/kern/vnode_if.src
+#	perl5 $S/kern/vnode_if.pl -c $S/kern/vnode_if.src
+#
+#vnode_if.h: $S/kern/vnode_if.pl $S/kern/vnode_if.src
+#	perl5 $S/kern/vnode_if.pl -h $S/kern/vnode_if.src
+#
+#vnode_if.o:
+#	${NORMAL_C}
 
 .include "$S/conf/bsd.kern.mk"
 

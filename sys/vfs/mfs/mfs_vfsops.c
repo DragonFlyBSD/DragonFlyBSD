@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.15 2004/05/19 22:53:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.16 2004/08/13 17:51:11 dillon Exp $
  */
 
 
@@ -66,7 +66,7 @@
 MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 
 
-extern vop_t **mfs_vnodeop_p;
+extern struct vop_ops *mfs_vnode_vops;
 
 static int	mfs_mount (struct mount *mp,
 			char *path, caddr_t data, struct nameidata *ndp, 
@@ -290,7 +290,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 */
 	MALLOC(mfsp, struct mfsnode *, sizeof *mfsp, M_MFSNODE, M_WAITOK);
 
-	err = getnewvnode(VT_MFS, (struct mount *)0, mfs_vnodeop_p, &devvp);
+	err = getnewvnode(VT_MFS, NULL, mfs_vnode_vops, &devvp);
 	if (err) {
 		FREE(mfsp, M_MFSNODE);
 		goto error_1;

@@ -36,7 +36,7 @@
  *	@(#)umap.h	8.4 (Berkeley) 8/20/94
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap.h,v 1.13 1999/12/29 04:54:47 peter Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.4 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap.h,v 1.5 2004/08/13 17:51:14 dillon Exp $
  */
 
 #define MAPFILEENTRIES 64
@@ -88,5 +88,5 @@ extern struct vnode *umap_checkvp (struct vnode *vp, char *fil, int lno);
 #define	UMAPVPTOLOWERVP(vp) (VTOUMAP(vp)->umap_lowervp)
 #endif
 
-extern vop_t **umap_vnodeop_p;
+extern struct vop_ops *umap_vnode_vops;
 #endif /* _KERNEL */

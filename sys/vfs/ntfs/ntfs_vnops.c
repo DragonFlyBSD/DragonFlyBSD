@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.12 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.13 2004/08/13 17:51:12 dillon Exp $
  *
  */
 
@@ -98,7 +98,7 @@ static int	ntfs_getpages (struct vop_getpages_args *ap);
 static int	ntfs_putpages (struct vop_putpages_args *);
 static int	ntfs_fsync (struct vop_fsync_args *ap);
 #else
-static int	ntfs_bypass (struct vop_generic_args *ap);
+static int	ntfs_bypass (struct vop_generic_args *);
 #endif
 static int	ntfs_pathconf (void *);
 
@@ -864,61 +864,61 @@ ntfs_pathconf(void *v)
 /*
  * Global vfs data structures
  */
-vop_t **ntfs_vnodeop_p;
+struct vop_ops *ntfs_vnode_vops;
 #if defined(__DragonFly__)
 static
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vop_t *)vop_defaultop },
+	{ &vop_default_desc,	vop_defaultop },
 
-	{ &vop_getattr_desc, (vop_t *)ntfs_getattr },
-	{ &vop_inactive_desc, (vop_t *)ntfs_inactive },
-	{ &vop_reclaim_desc, (vop_t *)ntfs_reclaim },
-	{ &vop_print_desc, (vop_t *)ntfs_print },
-	{ &vop_pathconf_desc, ntfs_pathconf },
+	{ &vop_getattr_desc,	(void *)ntfs_getattr },
+	{ &vop_inactive_desc,	(void *)ntfs_inactive },
+	{ &vop_reclaim_desc,	(void *)ntfs_reclaim },
+	{ &vop_print_desc,	(void *)ntfs_print },
+	{ &vop_pathconf_desc,	(void *)ntfs_pathconf },
 
-	{ &vop_islocked_desc, (vop_t *)vop_stdislocked },
-	{ &vop_unlock_desc, (vop_t *)vop_stdunlock },
-	{ &vop_lock_desc, (vop_t *)vop_stdlock },
-	{ &vop_cachedlookup_desc, (vop_t *)ntfs_lookup },
-	{ &vop_lookup_desc, (vop_t *)vfs_cache_lookup },
+	{ &vop_islocked_desc,	(void *)vop_stdislocked },
+	{ &vop_unlock_desc,	(void *)vop_stdunlock },
+	{ &vop_lock_desc,	(void *)vop_stdlock },
+	{ &vop_cachedlookup_desc,(void *)ntfs_lookup },
+	{ &vop_lookup_desc,	(void *)vfs_cache_lookup },
 
-	{ &vop_access_desc, (vop_t *)ntfs_access },
-	{ &vop_close_desc, (vop_t *)ntfs_close },
-	{ &vop_open_desc, (vop_t *)ntfs_open },
-	{ &vop_readdir_desc, (vop_t *)ntfs_readdir },
-	{ &vop_fsync_desc, (vop_t *)ntfs_fsync },
+	{ &vop_access_desc,	(void *)ntfs_access },
+	{ &vop_close_desc,	(void *)ntfs_close },
+	{ &vop_open_desc,	(void *)ntfs_open },
+	{ &vop_readdir_desc,	(void *)ntfs_readdir },
+	{ &vop_fsync_desc,	(void *)ntfs_fsync },
 
-	{ &vop_bmap_desc, (vop_t *)ntfs_bmap },
-	{ &vop_getpages_desc, (vop_t *) ntfs_getpages },
-	{ &vop_putpages_desc, (vop_t *) ntfs_putpages },
-	{ &vop_strategy_desc, (vop_t *)ntfs_strategy },
-	{ &vop_bwrite_desc, (vop_t *)vop_stdbwrite },
-	{ &vop_read_desc, (vop_t *)ntfs_read },
-	{ &vop_write_desc, (vop_t *)ntfs_write },
+	{ &vop_bmap_desc,	(void *)ntfs_bmap },
+	{ &vop_getpages_desc,	(void *)ntfs_getpages },
+	{ &vop_putpages_desc,	(void *)ntfs_putpages },
+	{ &vop_strategy_desc,	(void *)ntfs_strategy },
+	{ &vop_bwrite_desc,	(void *)vop_stdbwrite },
+	{ &vop_read_desc,	(void *)ntfs_read },
+	{ &vop_write_desc,	(void *)ntfs_write },
 
 	{ NULL, NULL }
 };
 
 static
 struct vnodeopv_desc ntfs_vnodeop_opv_desc =
-	{ &ntfs_vnodeop_p, ntfs_vnodeop_entries };
+	{ &ntfs_vnode_vops, ntfs_vnodeop_entries };
 
 VNODEOP_SET(ntfs_vnodeop_opv_desc);
 
 #else /* !FreeBSD */
 
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
-	{ &vop_default_desc, (vop_t *) ntfs_bypass },
-	{ &vop_lookup_desc, (vop_t *) ntfs_lookup },	/* lookup */
+	{ &vop_default_desc, (void *) ntfs_bypass },
+	{ &vop_lookup_desc, (void *) ntfs_lookup },	/* lookup */
 	{ &vop_create_desc, genfs_eopnotsupp },		/* create */
 	{ &vop_mknod_desc, genfs_eopnotsupp },		/* mknod */
-	{ &vop_open_desc, (vop_t *) ntfs_open },	/* open */
-	{ &vop_close_desc,(vop_t *)  ntfs_close },	/* close */
-	{ &vop_access_desc, (vop_t *) ntfs_access },	/* access */
-	{ &vop_getattr_desc, (vop_t *) ntfs_getattr },	/* getattr */
+	{ &vop_open_desc, (void *) ntfs_open },		/* open */
+	{ &vop_close_desc,(void *)  ntfs_close },	/* close */
+	{ &vop_access_desc, (void *) ntfs_access },	/* access */
+	{ &vop_getattr_desc, (void *) ntfs_getattr },	/* getattr */
 	{ &vop_setattr_desc, genfs_eopnotsupp },	/* setattr */
-	{ &vop_read_desc, (vop_t *) ntfs_read },	/* read */
-	{ &vop_write_desc, (vop_t *) ntfs_write },	/* write */
+	{ &vop_read_desc, (void *) ntfs_read },		/* read */
+	{ &vop_write_desc, (void *) ntfs_write },	/* write */
 	{ &vop_lease_desc, genfs_lease_check },		/* lease */
 	{ &vop_fcntl_desc, genfs_fcntl },		/* fcntl */
 	{ &vop_ioctl_desc, genfs_enoioctl },		/* ioctl */
@@ -933,16 +933,16 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_mkdir_desc, genfs_eopnotsupp },		/* mkdir */
 	{ &vop_rmdir_desc, genfs_eopnotsupp },		/* rmdir */
 	{ &vop_symlink_desc, genfs_eopnotsupp },	/* symlink */
-	{ &vop_readdir_desc, (vop_t *) ntfs_readdir },	/* readdir */
+	{ &vop_readdir_desc, (void *) ntfs_readdir },	/* readdir */
 	{ &vop_readlink_desc, genfs_eopnotsupp },	/* readlink */
 	{ &vop_abortop_desc, genfs_abortop },		/* abortop */
-	{ &vop_inactive_desc, (vop_t *) ntfs_inactive },	/* inactive */
-	{ &vop_reclaim_desc, (vop_t *) ntfs_reclaim },	/* reclaim */
+	{ &vop_inactive_desc, (void *) ntfs_inactive },	/* inactive */
+	{ &vop_reclaim_desc, (void *) ntfs_reclaim },	/* reclaim */
 	{ &vop_lock_desc, genfs_lock },			/* lock */
 	{ &vop_unlock_desc, genfs_unlock },		/* unlock */
-	{ &vop_bmap_desc, (vop_t *) ntfs_bmap },	/* bmap */
-	{ &vop_strategy_desc, (vop_t *) ntfs_strategy },	/* strategy */
-	{ &vop_print_desc, (vop_t *) ntfs_print },	/* print */
+	{ &vop_bmap_desc, (void *) ntfs_bmap },		/* bmap */
+	{ &vop_strategy_desc, (void *) ntfs_strategy },	/* strategy */
+	{ &vop_print_desc, (void *) ntfs_print },	/* print */
 	{ &vop_islocked_desc, genfs_islocked },		/* islocked */
 	{ &vop_pathconf_desc, ntfs_pathconf },		/* pathconf */
 	{ &vop_advlock_desc, genfs_nullop },		/* advlock */
@@ -953,9 +953,9 @@ struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_truncate_desc, genfs_eopnotsupp },	/* truncate */
 	{ &vop_update_desc, genfs_eopnotsupp },		/* update */
 	{ &vop_bwrite_desc, vn_bwrite },		/* bwrite */
-	{ (struct vnodeop_desc *)NULL, (int (*) (void *))NULL }
+	{ NULL, NULL }
 };
 struct vnodeopv_desc ntfs_vnodeop_opv_desc =
-	{ &ntfs_vnodeop_p, ntfs_vnodeop_entries };
+	{ &ntfs_vnode_vops, ntfs_vnodeop_entries };
 
 #endif

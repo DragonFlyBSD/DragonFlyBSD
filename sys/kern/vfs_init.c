@@ -1,4 +1,37 @@
 /*
+ * Copyright (c) 2003,2004 The DragonFly Project.  All rights reserved.
+ * 
+ * This code is derived from software contributed to The DragonFly Project
+ * by Matthew Dillon <dillon@backplane.com>
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of The DragonFly Project nor the names of its
+ *    contributors may be used to endorse or promote products derived
+ *    from this software without specific, prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+ * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ *
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -37,10 +70,11 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.4 2004/03/16 18:42:35 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.5 2004/08/13 17:51:09 dillon Exp $
  */
-
-
+/*
+ * Manage vnode VOP operations vectors
+ */
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
@@ -49,7 +83,6 @@
 #include <sys/vnode.h>
 #include <sys/malloc.h>
 #include <vm/vm_zone.h>
-
 
 MALLOC_DEFINE(M_VNODE, "vnodes", "Dynamically allocated vnodes");
 
@@ -65,153 +98,8 @@ struct vm_zone *namei_zone;
 int maxvfsconf;
 struct vfsconf *vfsconf;
 
-/*
- * vfs_init.c
- *
- * Allocate and fill in operations vectors.
- *
- * An undocumented feature of this approach to defining operations is that
- * there can be multiple entries in vfs_opv_descs for the same operations
- * vector. This allows third parties to extend the set of operations
- * supported by another layer in a binary compatibile way. For example,
- * assume that NFS needed to be modified to support Ficus. NFS has an entry
- * (probably nfs_vnopdeop_decls) declaring all the operations NFS supports by
- * default. Ficus could add another entry (ficus_nfs_vnodeop_decl_entensions)
- * listing those new operations Ficus adds to NFS, all without modifying the
- * NFS code. (Of couse, the OTW NFS protocol still needs to be munged, but
- * that is a(whole)nother story.) This is a feature.
- */
-
-/* Table of known vnodeop vectors (list of VFS vnode vectors) */
-static const struct vnodeopv_desc **vnodeopv_descs;
-static int vnodeopv_num;
-
-/* Table of known descs (list of vnode op handlers "vop_access_desc") */
-static struct vnodeop_desc **vfs_op_descs;
-static int *vfs_op_desc_refs;			/* reference counts */
-static int num_op_descs;
-
-/*
- * Allocate at least vfs_opv_numops number of VFS operation
- * vectors.  The vector is never freed or deallocted once
- * it is initalised, so the vnodes might safely reference
- * it through their v_op pointer without the vector changing
- * suddenly from under them.
- *
- * Allow this number to be tuned at boot.
- */
-static int vfs_opv_numops = 96;
-TUNABLE_INT("vfs.opv_numops", &vfs_opv_numops);
-SYSCTL_INT(_vfs, OID_AUTO, opv_numops, CTLFLAG_RD, &vfs_opv_numops,
-	0, "Maximum number of operations in vop_t vector");
-
-static __inline int
-int_cmp(const void *a, const void *b)
-{
-	return(*(const int *)a - *(const int *)b);
-}
-
-/*
- * Recalculate parts of the VFS operations vector (vfsops).
- */
-static void
-vfs_opv_recalc(void)
-{
-	int i, j, k;
-	int *vfs_op_offsets;
-	vop_t ***opv_desc_vector_p;
-	vop_t **opv_desc_vector;
-	struct vnodeopv_entry_desc *opve_descp;
-	const struct vnodeopv_desc *opv;
-
-	if (vfs_op_descs == NULL)
-		panic("vfs_opv_recalc called with null vfs_op_descs");
-
-	/*
-	 * Allocate and initialize temporary array to store
-	 * offsets. Sort it to put all uninitialized entries
-	 * first and to make holes in existing offset sequence
-	 * detectable.
-	 */
-	MALLOC(vfs_op_offsets, int *,
-		num_op_descs * sizeof(int), M_VNODE, M_WAITOK);
-	if (vfs_op_offsets == NULL)
-		panic("vfs_opv_recals: no memory");
-	for (i = 0; i < num_op_descs; i++)
-		vfs_op_offsets[i] = vfs_op_descs[i]->vdesc_offset;
-	qsort(vfs_op_offsets, num_op_descs, sizeof(int), int_cmp);
-
-	/*
-	 * Run through and make sure all known descs have an offset.
-	 * Use vfs_op_offsets to locate the holes in offset sequence
-	 * and reuse them.
-	 *
-	 * vop_default_desc is at hardwired at offset 1, and offset
-	 * 0 is a panic sanity check.
-	 */
-	j = k = 1;
-	for (i = 0; i < num_op_descs; i++) {
-		if (vfs_op_descs[i]->vdesc_offset != 0)
-			continue;
-		/*
-		 * Look at two adjacent entries vfs_op_offsets[j - 1] and
-		 * vfs_op_offsets[j] and see if we can fit a new offset
-		 * number in between. If not, look at the next pair until
-		 * hole is found or the end of the vfs_op_offsets vector is
-		 * reached. j has been initialized to 1 above so that
-		 * referencing (j-1)-th element is safe and the loop will
-		 * never execute if num_op_descs is 1. For each new value s
-		 * of i the j loop pick up from where previous iteration has
-		 * left off. When the last hole has been consumed or if no
-		 * hole has been found, we will start allocating new numbers
-		 * starting from the biggest already available offset + 1.
-		 */
-		for (; j < num_op_descs; j++) {
-			if (vfs_op_offsets[j - 1] < k && vfs_op_offsets[j] > k)
-				break;
-			k = vfs_op_offsets[j] + 1;
-		}
-		vfs_op_descs[i]->vdesc_offset = k++;
-	}
-	FREE(vfs_op_offsets, M_VNODE);
-
-	/* Panic if new VFSops will cause vector overflow */
-	if (k > vfs_opv_numops)
-		panic("VFS: Ran out of vop_t vector entries. "
-		      "%d entries required, only %d available.",
-		      k, vfs_opv_numops);
-
-	/*
-	 * Allocate and fill in the vectors
-	 */
-	for (i = 0; i < vnodeopv_num; i++) {
-		opv = vnodeopv_descs[i];
-		opv_desc_vector_p = opv->opv_desc_vector_p;
-		if (*opv_desc_vector_p == NULL)
-			MALLOC(*opv_desc_vector_p, vop_t **,
-				vfs_opv_numops * sizeof(vop_t *), M_VNODE,
-				M_WAITOK | M_ZERO);
-		if (*opv_desc_vector_p == NULL)
-			panic("no memory for vop_t ** vector");
-
-		/* Fill in, with slot 0 being to return EOPNOTSUPP */
-		opv_desc_vector = *opv_desc_vector_p;
-		opv_desc_vector[0] = (vop_t *)vop_eopnotsupp;
-		for (j = 0; opv->opv_desc_ops[j].opve_op; j++) {
-			opve_descp = &(opv->opv_desc_ops[j]);
-			opv_desc_vector[opve_descp->opve_op->vdesc_offset] =
-				opve_descp->opve_impl;
-		}
-
-		/* Replace unfilled routines with their default (slot 1). */
-		opv_desc_vector = *(opv->opv_desc_vector_p);
-		if (opv_desc_vector[1] == NULL)
-			panic("vfs_opv_recalc: vector without a default.");
-		for (j = 0; j < vfs_opv_numops; j++)
-			if (opv_desc_vector[j] == NULL)
-				opv_desc_vector[j] = opv_desc_vector[1];
-	}
-}
+static TAILQ_HEAD(, vnodeopv_node) vnodeopv_list;
+static void vfs_recalc_vnodeops(void);
 
 /*
  * Add a vnode operations (vnops) vector to the global list.
@@ -219,66 +107,18 @@ vfs_opv_recalc(void)
 void
 vfs_add_vnodeops(const void *data)
 {
-	const struct vnodeopv_desc *opv;
-	const struct vnodeopv_desc **newopv;
-	struct vnodeop_desc **newop;
-	int *newref;
-	struct vnodeop_desc *desc;
-	int i, j;
+	struct vnodeopv_node *node;
+	struct vop_ops *vops;
 
-	opv = (const struct vnodeopv_desc *)data;
-	MALLOC(newopv, const struct vnodeopv_desc **,
-	       (vnodeopv_num + 1) * sizeof(*newopv), M_VNODE, M_WAITOK);
-	if (newopv == NULL)
-		panic("vfs_add_vnodeops: no memory");
-	if (vnodeopv_descs) {
-		bcopy(vnodeopv_descs, newopv, vnodeopv_num * sizeof(*newopv));
-		FREE(vnodeopv_descs, M_VNODE);
+	node = malloc(sizeof(struct vnodeopv_node), M_VNODE, M_ZERO|M_WAITOK);
+	node->vdesc = data;
+	if ((vops = *node->vdesc->opv_desc_vector) == NULL) {
+		vops = malloc(sizeof(struct vop_ops), M_VNODE, M_ZERO|M_WAITOK);
+		*node->vdesc->opv_desc_vector = vops;
 	}
-	newopv[vnodeopv_num] = opv;
-	vnodeopv_descs = newopv;
-	vnodeopv_num++;
-
-	/* See if we have turned up a new vnode op desc */
-	for (i = 0; (desc = opv->opv_desc_ops[i].opve_op); i++) {
-		for (j = 0; j < num_op_descs; j++) {
-			if (desc == vfs_op_descs[j]) {
-				/* found it, increase reference count */
-				vfs_op_desc_refs[j]++;
-				break;
-			}
-		}
-		if (j == num_op_descs) {
-			/* not found, new entry */
-			MALLOC(newop, struct vnodeop_desc **,
-			       (num_op_descs + 1) * sizeof(*newop),
-			       M_VNODE, M_WAITOK);
-			if (newop == NULL)
-				panic("vfs_add_vnodeops: no memory for desc");
-			/* new reference count (for unload) */
-			MALLOC(newref, int *,
-				(num_op_descs + 1) * sizeof(*newref),
-				M_VNODE, M_WAITOK);
-			if (newref == NULL)
-				panic("vfs_add_vnodeops: no memory for refs");
-			if (vfs_op_descs) {
-				bcopy(vfs_op_descs, newop,
-					num_op_descs * sizeof(*newop));
-				FREE(vfs_op_descs, M_VNODE);
-			}
-			if (vfs_op_desc_refs) {
-				bcopy(vfs_op_desc_refs, newref,
-					num_op_descs * sizeof(*newref));
-				FREE(vfs_op_desc_refs, M_VNODE);
-			}
-			newop[num_op_descs] = desc;
-			newref[num_op_descs] = 1;
-			vfs_op_descs = newop;
-			vfs_op_desc_refs = newref;
-			num_op_descs++;
-		}
-	}
-	vfs_opv_recalc();
+	++vops->vv_refs;
+	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
+	vfs_recalc_vnodeops();
 }
 
 /*
@@ -287,86 +127,87 @@ vfs_add_vnodeops(const void *data)
 void
 vfs_rm_vnodeops(const void *data)
 {
-	const struct vnodeopv_desc *opv;
-	const struct vnodeopv_desc **newopv;
-	struct vnodeop_desc **newop;
-	int *newref;
-	vop_t **opv_desc_vector;
-	struct vnodeop_desc *desc;
-	int i, j, k;
+	struct vnodeopv_node *node;
+	struct vop_ops *vops;
 
-	opv = (const struct vnodeopv_desc *)data;
-	/* Lower ref counts on descs in the table and release if zero */
-	for (i = 0; (desc = opv->opv_desc_ops[i].opve_op); i++) {
-		for (j = 0; j < num_op_descs; j++) {
-			if (desc == vfs_op_descs[j]) {
-				/* found it, decrease reference count */
-				vfs_op_desc_refs[j]--;
-				break;
-			}
-		}
-		for (j = 0; j < num_op_descs; j++) {
-			if (vfs_op_desc_refs[j] > 0)
-				continue;
-			if (vfs_op_desc_refs[j] < 0)
-				panic("vfs_remove_vnodeops: negative refcnt");
-			/* Entry is going away - replace it with defaultop */
-			for (k = 0; k < vnodeopv_num; k++) {
-				opv_desc_vector = 
-					*(vnodeopv_descs[k]->opv_desc_vector_p);
-				if (opv_desc_vector != NULL)
-					opv_desc_vector[desc->vdesc_offset] =
-						opv_desc_vector[1];
-			}
-			MALLOC(newop, struct vnodeop_desc **,
-			       (num_op_descs - 1) * sizeof(*newop),
-			       M_VNODE, M_WAITOK);
-			if (newop == NULL)
-				panic("vfs_remove_vnodeops: no memory for desc");
-			/* new reference count (for unload) */
-			MALLOC(newref, int *,
-				(num_op_descs - 1) * sizeof(*newref),
-				M_VNODE, M_WAITOK);
-			if (newref == NULL)
-				panic("vfs_remove_vnodeops: no memory for refs");
-			for (k = j; k < (num_op_descs - 1); k++) {
-				vfs_op_descs[k] = vfs_op_descs[k + 1];
-				vfs_op_desc_refs[k] = vfs_op_desc_refs[k + 1];
-			}
-			bcopy(vfs_op_descs, newop,
-				(num_op_descs - 1) * sizeof(*newop));
-			bcopy(vfs_op_desc_refs, newref,
-				(num_op_descs - 1) * sizeof(*newref));
-			FREE(vfs_op_descs, M_VNODE);
-			FREE(vfs_op_desc_refs, M_VNODE);
-			vfs_op_descs = newop;
-			vfs_op_desc_refs = newref;
-			num_op_descs--;
-		}
-	}
-
-	for (i = 0; i < vnodeopv_num; i++) {
-		if (vnodeopv_descs[i] == opv) {
-			for (j = i; j < (vnodeopv_num - 1); j++)
-				vnodeopv_descs[j] = vnodeopv_descs[j + 1];
+	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
+		if ((const void *)node->vdesc == data)
 			break;
+	}
+	if (node == NULL) {
+		printf("vfs_rm_vnodeops: unable to find vnodeopv_desc: %p\n",
+			data);
+		return;
+	}
+	TAILQ_REMOVE(&vnodeopv_list, node, entry);
+	vops = *node->vdesc->opv_desc_vector;
+	KKASSERT(vops != NULL && vops->vv_refs > 0);
+	if (--vops->vv_refs == 0) {
+		*node->vdesc->opv_desc_vector = NULL;
+		free(vops, M_VNODE);
+	}
+	free(node, M_VNODE);
+	vfs_recalc_vnodeops();
+}
+
+/*
+ * Recalculate VFS operations vectors
+ */
+static void
+vfs_recalc_vnodeops(void)
+{
+	struct vnodeopv_node *node;
+	struct vnodeopv_entry_desc *desc;
+	struct vop_ops *vops;
+	struct vop_ops *vnew;
+	int off;
+
+	/*
+	 * Because vop_ops may be active we can't just blow them away, we
+	 * have to generate new vop_ops and then copy them into the running
+	 * vop_ops.  Any missing entries will be assigned to the default
+	 * entry.  If the default entry itself is missing it will be assigned
+	 * to vop_eopnotsupp.
+	 */
+	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
+		vops = *node->vdesc->opv_desc_vector;
+		if ((vnew = vops->vv_new) == NULL) {
+			vnew = malloc(sizeof(struct vop_ops),
+					M_VNODE, M_ZERO|M_WAITOK);
+			vops->vv_new = vnew;
+			vnew->vop_default = vop_eopnotsupp;
+		}
+		for (desc = node->vdesc->opv_desc_ops; desc->opve_op; ++desc) {
+			off = desc->opve_op->vdesc_offset;
+			*(void **)((char *)vnew + off) = desc->opve_func;
+		}
+		for (off = __offsetof(struct vop_ops, vop_ops_first_field);
+		     off <= __offsetof(struct vop_ops, vop_ops_last_field);
+		     off += sizeof(void **)
+		) {
+			if (*(void **)((char *)vnew + off) == NULL)
+			    *(void **)((char *)vnew + off) = vnew->vop_default;
 		}
 	}
-	if (i == vnodeopv_num)
-		panic("vfs_remove_vnodeops: opv not found");
-	opv_desc_vector = *(opv->opv_desc_vector_p);
-	if (opv_desc_vector != NULL)
-		FREE(opv_desc_vector, M_VNODE);
-	MALLOC(newopv, const struct vnodeopv_desc **,
-	       (vnodeopv_num - 1) * sizeof(*newopv), M_VNODE, M_WAITOK);
-	if (newopv == NULL)
-		panic("vfs_remove_vnodeops: no memory");
-	bcopy(vnodeopv_descs, newopv, (vnodeopv_num - 1) * sizeof(*newopv));
-	FREE(vnodeopv_descs, M_VNODE);
-	vnodeopv_descs = newopv;
-	vnodeopv_num--;
 
-	vfs_opv_recalc();
+	/*
+	 * Copy the temporary vops into the running configuration and then
+	 * delete them.
+	 */
+	TAILQ_FOREACH(node, &vnodeopv_list, entry) {
+		vops = *node->vdesc->opv_desc_vector;
+		if ((vnew = vops->vv_new) == NULL)
+			continue;
+		for (off = __offsetof(struct vop_ops, vop_ops_first_field);
+		     off <= __offsetof(struct vop_ops, vop_ops_last_field);
+		     off += sizeof(void **)
+		) {
+			*(void **)((char *)vops + off) = 
+				*(void **)((char *)vnew + off);
+		}
+		vops->vv_new = NULL;
+		free(vnew, M_VNODE);
+	}
 }
 
 /*
@@ -381,7 +222,7 @@ struct vattr va_null;
 static void
 vfsinit(void *dummy)
 {
-
+	TAILQ_INIT(&vnodeopv_list);
 	namei_zone = zinit("NAMEI", MAXPATHLEN, 0, 0, 2);
 
 	/*

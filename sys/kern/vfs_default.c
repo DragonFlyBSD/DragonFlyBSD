@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.10 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.11 2004/08/13 17:51:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,40 +71,40 @@ static int	vop_nostrategy (struct vop_strategy_args *);
  *
  */
 
-vop_t **default_vnodeop_p;
+struct vop_ops *default_vnode_vops;
 static struct vnodeopv_entry_desc default_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_eopnotsupp },
-	{ &vop_advlock_desc,		(vop_t *) vop_einval },
-	{ &vop_bwrite_desc,		(vop_t *) vop_stdbwrite },
-	{ &vop_close_desc,		(vop_t *) vop_null },
-	{ &vop_createvobject_desc,	(vop_t *) vop_stdcreatevobject },
-	{ &vop_destroyvobject_desc,	(vop_t *) vop_stddestroyvobject },
-	{ &vop_fsync_desc,		(vop_t *) vop_null },
-	{ &vop_getvobject_desc,		(vop_t *) vop_stdgetvobject },
-	{ &vop_ioctl_desc,		(vop_t *) vop_enotty },
-	{ &vop_islocked_desc,		(vop_t *) vop_noislocked },
-	{ &vop_lease_desc,		(vop_t *) vop_null },
-	{ &vop_lock_desc,		(vop_t *) vop_nolock },
-	{ &vop_mmap_desc,		(vop_t *) vop_einval },
-	{ &vop_lookup_desc,		(vop_t *) vop_nolookup },
-	{ &vop_open_desc,		(vop_t *) vop_null },
-	{ &vop_pathconf_desc,		(vop_t *) vop_einval },
-	{ &vop_poll_desc,		(vop_t *) vop_nopoll },
-	{ &vop_readlink_desc,		(vop_t *) vop_einval },
-	{ &vop_reallocblks_desc,	(vop_t *) vop_eopnotsupp },
-	{ &vop_revoke_desc,		(vop_t *) vop_revoke },
-	{ &vop_strategy_desc,		(vop_t *) vop_nostrategy },
-	{ &vop_unlock_desc,		(vop_t *) vop_nounlock },
-	{ &vop_getacl_desc,		(vop_t *) vop_eopnotsupp },
-	{ &vop_setacl_desc,		(vop_t *) vop_eopnotsupp },
-	{ &vop_aclcheck_desc,		(vop_t *) vop_eopnotsupp },
-	{ &vop_getextattr_desc,		(vop_t *) vop_eopnotsupp },
-	{ &vop_setextattr_desc,		(vop_t *) vop_eopnotsupp },
+	{ &vop_default_desc,		vop_eopnotsupp },
+	{ &vop_advlock_desc,		vop_einval },
+	{ &vop_bwrite_desc,		(void *) vop_stdbwrite },
+	{ &vop_close_desc,		vop_null },
+	{ &vop_createvobject_desc,	(void *) vop_stdcreatevobject },
+	{ &vop_destroyvobject_desc,	(void *) vop_stddestroyvobject },
+	{ &vop_fsync_desc,		vop_null },
+	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
+	{ &vop_ioctl_desc,		vop_enotty },
+	{ &vop_islocked_desc,		(void *) vop_noislocked },
+	{ &vop_lease_desc,		vop_null },
+	{ &vop_lock_desc,		(void *) vop_nolock },
+	{ &vop_mmap_desc,		vop_einval },
+	{ &vop_lookup_desc,		(void *) vop_nolookup },
+	{ &vop_open_desc,		vop_null },
+	{ &vop_pathconf_desc,		vop_einval },
+	{ &vop_poll_desc,		(void *) vop_nopoll },
+	{ &vop_readlink_desc,		vop_einval },
+	{ &vop_reallocblks_desc,	vop_eopnotsupp },
+	{ &vop_revoke_desc,		(void *) vop_stdrevoke },
+	{ &vop_strategy_desc,		(void *) vop_nostrategy },
+	{ &vop_unlock_desc,		(void *) vop_nounlock },
+	{ &vop_getacl_desc,		vop_eopnotsupp },
+	{ &vop_setacl_desc,		vop_eopnotsupp },
+	{ &vop_aclcheck_desc,		vop_eopnotsupp },
+	{ &vop_getextattr_desc,		vop_eopnotsupp },
+	{ &vop_setextattr_desc,		vop_eopnotsupp },
 	{ NULL, NULL }
 };
 
 static struct vnodeopv_desc default_vnodeop_opv_desc =
-        { &default_vnodeop_p, default_vnodeop_entries };
+        { &default_vnode_vops, default_vnodeop_entries };
 
 VNODEOP_SET(default_vnodeop_opv_desc);
 
@@ -114,43 +114,37 @@ vop_eopnotsupp(struct vop_generic_args *ap)
 	/*
 	printf("vop_notsupp[%s]\n", ap->a_desc->vdesc_name);
 	*/
-
 	return (EOPNOTSUPP);
 }
 
 int
 vop_ebadf(struct vop_generic_args *ap)
 {
-
 	return (EBADF);
 }
 
 int
 vop_enotty(struct vop_generic_args *ap)
 {
-
 	return (ENOTTY);
 }
 
 int
 vop_einval(struct vop_generic_args *ap)
 {
-
 	return (EINVAL);
 }
 
 int
 vop_null(struct vop_generic_args *ap)
 {
-
 	return (0);
 }
 
 int
 vop_defaultop(struct vop_generic_args *ap)
 {
-
-	return (VOCALL(default_vnodeop_p, ap->a_desc->vdesc_offset, ap));
+	return (VOCALL(default_vnode_vops, ap->a_desc->vdesc_offset, ap));
 }
 
 int

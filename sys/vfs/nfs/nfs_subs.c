@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.18 2004/06/02 14:43:04 eirikn Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.19 2004/08/13 17:51:11 dillon Exp $
  */
 
 /*
@@ -116,7 +116,7 @@ static sy_call_t *nfs_prev_nfssvc_sy_call;
 
 #ifndef NFS_NOSERVER
 
-static vop_t *nfs_prev_vop_lease_check;
+static int (*nfs_prev_vop_lease_check)(struct vop_lease_args *);
 
 /*
  * Mapping of old NFS Version 2 RPC numbers to generic numbers.
@@ -1124,8 +1124,8 @@ nfs_init(struct vfsconf *vfsp)
 	 * of the system can call us, if we are loadable.
 	 */
 #ifndef NFS_NOSERVER
-	nfs_prev_vop_lease_check = default_vnodeop_p[VOFFSET(vop_lease)];
-	default_vnodeop_p[VOFFSET(vop_lease)] = (vop_t *)nqnfs_vop_lease_check;
+	nfs_prev_vop_lease_check = default_vnode_vops->vop_lease;
+	default_vnode_vops->vop_lease = nqnfs_vop_lease_check;
 #endif
 	nfs_prev_lease_updatetime = lease_updatetime;
 	lease_updatetime = nfs_lease_updatetime;
@@ -1146,7 +1146,7 @@ nfs_uninit(struct vfsconf *vfsp)
 	untimeout(nfs_timer, (void *)NULL, nfs_timer_handle);
 	nfs_mount_type = -1;
 #ifndef NFS_NOSERVER
-	default_vnodeop_p[VOFFSET(vop_lease)] = nfs_prev_vop_lease_check;
+	default_vnode_vops->vop_lease = nfs_prev_vop_lease_check;
 #endif
 	lease_updatetime = nfs_prev_lease_updatetime;
 	sysent[SYS_nfssvc].sy_narg = nfs_prev_nfssvc_sy_narg;
@@ -1242,10 +1242,10 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	if (vp->v_type != vtyp) {
 		vp->v_type = vtyp;
 		if (vp->v_type == VFIFO) {
-			vp->v_op = fifo_nfsv2nodeop_p;
+			vp->v_vops = fifo_nfsv2node_vops;
 		}
 		if (vp->v_type == VCHR || vp->v_type == VBLK) {
-			vp->v_op = spec_nfsv2nodeop_p;
+			vp->v_vops = spec_nfsv2node_vops;
 			addaliasu(vp, rdev);
 		}
 		np->n_mtime = mtime.tv_sec;

@@ -1,7 +1,7 @@
 # Makefile for syscall tables
 #
 # $FreeBSD: src/sys/svr4/Makefile,v 1.3 1999/09/01 00:32:18 newton Exp $
-# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.8 2004/02/16 20:48:35 dillon Exp $
+# $DragonFly: src/sys/emulation/svr4/Attic/Makefile,v 1.9 2004/08/13 17:51:09 dillon Exp $
 
 # This builds the module
 #
@@ -10,7 +10,7 @@
 ARCH=	arch_svr4
 KMOD=	svr4
 SRCS=	svr4_sysent.c svr4_sysvec.c opt_compat.h opt_svr4.h opt_vmpage.h \
-	vnode_if.h imgact_svr4.c svr4_signal.c svr4_fcntl.c svr4_misc.c \
+	imgact_svr4.c svr4_signal.c svr4_fcntl.c svr4_misc.c \
 	svr4_ioctl.c svr4_stat.c svr4_filio.c svr4_ttold.c svr4_termios.c \
 	svr4_stream.c svr4_socket.c svr4_sockio.c svr4_machdep.c \
 	svr4_resource.c svr4_ipc.c

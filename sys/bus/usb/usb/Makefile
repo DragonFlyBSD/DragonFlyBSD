@@ -1,13 +1,12 @@
 # Makefile - module build for usb.ko
 #
-# $DragonFly: src/sys/bus/usb/usb/Makefile,v 1.1 2004/03/17 18:12:57 dillon Exp $
+# $DragonFly: src/sys/bus/usb/usb/Makefile,v 1.2 2004/08/13 17:51:01 dillon Exp $
 
 S		 = ${.CURDIR}/../../..
 .PATH:		 $S/bus/pci $S/bus/usb
 
 KMOD		 = usb
 SRCS		 = bus_if.h device_if.h usb_if.h usb_if.c \
-		   vnode_if.h \
 		   opt_usb.h \
 		   hid.c hid.h usbhid.h \
 		   uhub.c \

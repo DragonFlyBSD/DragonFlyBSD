@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.12 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.13 2004/08/13 17:51:12 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -84,43 +84,43 @@ static int nwfs_print(struct vop_print_args *);
 static int nwfs_pathconf(struct vop_pathconf_args *ap);
 
 /* Global vfs data structures for nwfs */
-vop_t **nwfs_vnodeop_p;
+struct vop_ops *nwfs_vnode_vops;
 static struct vnodeopv_entry_desc nwfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) nwfs_access },
-	{ &vop_bmap_desc,		(vop_t *) nwfs_bmap },
-	{ &vop_open_desc,		(vop_t *) nwfs_open },
-	{ &vop_close_desc,		(vop_t *) nwfs_close },
-	{ &vop_create_desc,		(vop_t *) nwfs_create },
-	{ &vop_fsync_desc,		(vop_t *) nwfs_fsync },
-	{ &vop_getattr_desc,		(vop_t *) nwfs_getattr },
-	{ &vop_getpages_desc,		(vop_t *) nwfs_getpages },
-	{ &vop_putpages_desc,		(vop_t *) nwfs_putpages },
-	{ &vop_ioctl_desc,		(vop_t *) nwfs_ioctl },
-	{ &vop_inactive_desc,		(vop_t *) nwfs_inactive },
-	{ &vop_islocked_desc,		(vop_t *) vop_stdislocked },
-	{ &vop_link_desc,		(vop_t *) nwfs_link },
-	{ &vop_lock_desc,		(vop_t *) vop_stdlock },
-	{ &vop_lookup_desc,		(vop_t *) nwfs_lookup },
-	{ &vop_mkdir_desc,		(vop_t *) nwfs_mkdir },
-	{ &vop_mknod_desc,		(vop_t *) nwfs_mknod },
-	{ &vop_pathconf_desc,		(vop_t *) nwfs_pathconf },
-	{ &vop_print_desc,		(vop_t *) nwfs_print },
-	{ &vop_read_desc,		(vop_t *) nwfs_read },
-	{ &vop_readdir_desc,		(vop_t *) nwfs_readdir },
-	{ &vop_reclaim_desc,		(vop_t *) nwfs_reclaim },
-	{ &vop_remove_desc,		(vop_t *) nwfs_remove },
-	{ &vop_rename_desc,		(vop_t *) nwfs_rename },
-	{ &vop_rmdir_desc,		(vop_t *) nwfs_rmdir },
-	{ &vop_setattr_desc,		(vop_t *) nwfs_setattr },
-	{ &vop_strategy_desc,		(vop_t *) nwfs_strategy },
-	{ &vop_symlink_desc,		(vop_t *) nwfs_symlink },
-	{ &vop_unlock_desc,		(vop_t *) vop_stdunlock },
-	{ &vop_write_desc,		(vop_t *) nwfs_write },
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		(void *) nwfs_access },
+	{ &vop_bmap_desc,		(void *) nwfs_bmap },
+	{ &vop_open_desc,		(void *) nwfs_open },
+	{ &vop_close_desc,		(void *) nwfs_close },
+	{ &vop_create_desc,		(void *) nwfs_create },
+	{ &vop_fsync_desc,		(void *) nwfs_fsync },
+	{ &vop_getattr_desc,		(void *) nwfs_getattr },
+	{ &vop_getpages_desc,		(void *) nwfs_getpages },
+	{ &vop_putpages_desc,		(void *) nwfs_putpages },
+	{ &vop_ioctl_desc,		(void *) nwfs_ioctl },
+	{ &vop_inactive_desc,		(void *) nwfs_inactive },
+	{ &vop_islocked_desc,		(void *) vop_stdislocked },
+	{ &vop_link_desc,		(void *) nwfs_link },
+	{ &vop_lock_desc,		(void *) vop_stdlock },
+	{ &vop_lookup_desc,		(void *) nwfs_lookup },
+	{ &vop_mkdir_desc,		(void *) nwfs_mkdir },
+	{ &vop_mknod_desc,		(void *) nwfs_mknod },
+	{ &vop_pathconf_desc,		(void *) nwfs_pathconf },
+	{ &vop_print_desc,		(void *) nwfs_print },
+	{ &vop_read_desc,		(void *) nwfs_read },
+	{ &vop_readdir_desc,		(void *) nwfs_readdir },
+	{ &vop_reclaim_desc,		(void *) nwfs_reclaim },
+	{ &vop_remove_desc,		(void *) nwfs_remove },
+	{ &vop_rename_desc,		(void *) nwfs_rename },
+	{ &vop_rmdir_desc,		(void *) nwfs_rmdir },
+	{ &vop_setattr_desc,		(void *) nwfs_setattr },
+	{ &vop_strategy_desc,		(void *) nwfs_strategy },
+	{ &vop_symlink_desc,		(void *) nwfs_symlink },
+	{ &vop_unlock_desc,		(void *) vop_stdunlock },
+	{ &vop_write_desc,		(void *) nwfs_write },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc nwfs_vnodeop_opv_desc =
-	{ &nwfs_vnodeop_p, nwfs_vnodeop_entries };
+	{ &nwfs_vnode_vops, nwfs_vnodeop_entries };
 
 VNODEOP_SET(nwfs_vnodeop_opv_desc);
 

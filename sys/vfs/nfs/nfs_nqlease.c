@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.17 2004/08/02 13:22:34 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.18 2004/08/13 17:51:11 dillon Exp $
  */
 
 
@@ -329,7 +329,7 @@ doreply:
  * Ifdef'd code in nfsnode.h renames these routines to whatever a particular
  * OS needs.
  */
-void
+int
 nqnfs_lease_check(struct vnode *vp, struct thread *td,
 		  struct ucred *cred, int flag)
 {
@@ -337,8 +337,9 @@ nqnfs_lease_check(struct vnode *vp, struct thread *td,
 	int cache;
 	u_quad_t frev;
 
-	(void) nqsrv_getlease(vp, &duration, ND_CHECK | flag, NQLOCALSLP,
+	nqsrv_getlease(vp, &duration, ND_CHECK | flag, NQLOCALSLP,
 		td, (struct sockaddr *)0, &cache, &frev, cred);
+	return(0);
 }
 
 /*

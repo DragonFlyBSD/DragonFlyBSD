@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.19 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.20 2004/08/13 17:51:13 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1142,7 +1142,7 @@ restart:
 	    ump->um_malloctype, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	error = getnewvnode(VT_UFS, mp, ffs_vnodeop_p, &vp);
+	error = getnewvnode(VT_UFS, mp, ffs_vnode_vops, &vp);
 	if (error) {
 		if (ffs_inode_hash_lock < 0)
 			wakeup(&ffs_inode_hash_lock);
@@ -1207,7 +1207,7 @@ restart:
 	 * Initialize the vnode from the inode, check for aliases.
 	 * Note that the underlying vnode may have changed.
 	 */
-	error = ufs_vinit(mp, ffs_specop_p, ffs_fifoop_p, &vp);
+	error = ufs_vinit(mp, ffs_spec_vops, ffs_fifo_vops, &vp);
 	if (error) {
 		vput(vp);
 		*vpp = NULL;

@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.9 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.10 2004/08/13 17:51:12 dillon Exp $
  */
 
 /*
@@ -112,7 +112,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Unlock lower node to avoid deadlock.
 	 * (XXX) VOP_ISLOCKED is needed?
 	 */
-	if ((mp->mnt_vnodecovered->v_op == null_vnodeop_p) &&
+	if ((mp->mnt_vnodecovered->v_vops == null_vnode_vops) &&
 		VOP_ISLOCKED(mp->mnt_vnodecovered, NULL)) {
 		VOP_UNLOCK(mp->mnt_vnodecovered, NULL, 0, td);
 		isvnunlocked = 1;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.12 2004/04/24 04:32:04 drhodus Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.13 2004/08/13 17:51:11 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -266,7 +266,7 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
 	 * copy it from the passed disk buffer.
 	 */
 	/* getnewvnode() does a vref() on the vnode */
-	error = getnewvnode(VT_MSDOSFS, mntp, msdosfs_vnodeop_p, &nvp);
+	error = getnewvnode(VT_MSDOSFS, mntp, msdosfs_vnode_vops, &nvp);
 	if (error) {
 		*depp = NULL;
 		FREE(ldep, M_MSDOSFSNODE);

@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_extern.h	8.10 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_extern.h,v 1.27.2.1 2000/12/28 11:01:46 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.6 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_extern.h,v 1.7 2004/08/13 17:51:13 dillon Exp $
  */
 
 #ifndef _UFS_UFS_EXTERN_H_
@@ -90,7 +90,8 @@ int	 ufs_lookup(struct vop_cachedlookup_args *);
 int	 ufs_reclaim(struct vop_reclaim_args *);
 int	 ufs_root(struct mount *, struct vnode **);
 int	 ufs_start(struct mount *, int, struct thread *);
-int	 ufs_vinit(struct mount *, vop_t **, vop_t **, struct vnode **);
+int	 ufs_vinit(struct mount *, struct vop_ops *, struct vop_ops *,
+			struct vnode **);
 
 /*
  * Soft update function prototypes.

@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.18 2004/06/03 18:09:33 hmp Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.19 2004/08/13 17:51:10 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -44,10 +44,10 @@
 #include <sys/uio.h>
 #include <sys/acl.h>
 #include <sys/namecache.h>
-
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #include <sys/thread.h>
 #endif
+#include <sys/vopops.h>
 
 #include <machine/lock.h>
 
@@ -80,8 +80,6 @@ enum vtagtype	{
  */
 TAILQ_HEAD(buflists, buf);
 
-typedef	int 	vop_t (void *);
-
 /*
  * Reading or writing any of these items requires holding the appropriate lock.
  * v_freelist is locked by the global vnode_free_list token.
@@ -101,7 +99,7 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
-	vop_t	**v_op;				/* vnode operations vector */
+	struct	vop_ops *v_vops;
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct	buflists v_cleanblkhd;		/* clean blocklist head */
@@ -359,12 +357,6 @@ struct vnodeop_desc {
 	int	vdesc_cred_offset;	/* cred location, if any */
 	int	vdesc_proc_offset;	/* proc location, if any */
 	int	vdesc_componentname_offset; /* if any */
-	/*
-	 * Finally, we've got a list of private data (about each operation)
-	 * for each transport layer.  (Support to manage this list is not
-	 * yet part of BSD.)
-	 */
-	caddr_t	*vdesc_transports;
 };
 
 #ifdef _KERNEL
@@ -394,27 +386,24 @@ extern struct lwkt_token mntvnode_token;
 
 
 /*
- * This structure is used to configure the new vnodeops vector.
+ * This structure is used to configure the new vnodeops vector.  The entry
+ * descriptor describes a patricular VOP function while the operations
+ * vector descriptor recursively describes arrays of entry descriptors.
  */
 struct vnodeopv_entry_desc {
-	struct vnodeop_desc *opve_op;   /* which operation this is */
-	vop_t *opve_impl;		/* code implementing this operation */
+	struct vnodeop_desc *opve_op;
+	int	(*opve_func)(struct vop_generic_args *ap);
 };
+
 struct vnodeopv_desc {
-			/* ptr to the ptr to the vector where op should go */
-	vop_t ***opv_desc_vector_p;
+	struct vop_ops **opv_desc_vector;	    /* vect to allocate/fill*/
 	struct vnodeopv_entry_desc *opv_desc_ops;   /* null terminated list */
 };
 
-/*
- * A generic structure.
- * This can be used by bypass routines to identify generic arguments.
- */
-struct vop_generic_args {
-	struct vnodeop_desc *a_desc;
-	/* other random data follows, presumably */
+struct vnodeopv_node {
+	TAILQ_ENTRY(vnodeopv_node)	entry;
+	const struct vnodeopv_desc	*vdesc;
 };
-
 
 #ifdef DEBUG_VFS_LOCKS
 /*
@@ -484,12 +473,15 @@ void	assert_vop_unlocked(struct vnode *vp, const char *str);
  * vclean changes the ops vector and then wants to call ops with the old
  * vector.
  */
-#define	VOCALL(OPSV,OFF,AP) (( *((OPSV)[(OFF)])) (AP))
+
+typedef int (*vocall_func_t)(struct vop_generic_args *);
+
+#define VOCALL(vops,off,ap)	(*(vocall_func_t *)((char *)(vops)+(off)))(ap)
 
 /*
  * This call works for vnodes in the kernel.
  */
-#define	VCALL(VP,OFF,AP) VOCALL((VP)->v_op,(OFF),(AP))
+#define	VCALL(VP,OFF,AP) VOCALL((VP)->v_vops,(OFF),(AP))
 #define	VDESC(OP) (& __CONCAT(OP,_desc))
 #define	VOFFSET(OP) (VDESC(OP)->vdesc_offset)
 
@@ -506,11 +498,6 @@ vn_canvmio(struct vnode *vp)
         return(TRUE); 
     return(FALSE); 
 }
-
-/*
- * Finally, include the default set of vnode operations.
- */
-#include "vnode_if.h"
 
 /*
  * Public vnode manipulation functions.
@@ -538,7 +525,7 @@ int 	bdevvp (dev_t dev, struct vnode **vpp);
 void	cvtstat (struct stat *st, struct ostat *ost);
 void	cvtnstat (struct stat *sb, struct nstat *nsb);
 int	getnewvnode (enum vtagtype tag,
-	    struct mount *mp, vop_t **vops, struct vnode **vpp);
+	    struct mount *mp, struct vop_ops *vops, struct vnode **vpp);
 int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
@@ -591,17 +578,17 @@ int	vfs_object_create (struct vnode *vp, struct thread *td);
 void	vfs_timestamp (struct timespec *);
 int	vn_writechk (struct vnode *vp);
 int	vop_stdbwrite (struct vop_bwrite_args *ap);
-int	vop_stdislocked (struct vop_islocked_args *);
-int	vop_stdlock (struct vop_lock_args *);
-int	vop_stdunlock (struct vop_unlock_args *);
-int	vop_noislocked (struct vop_islocked_args *);
-int	vop_nolock (struct vop_lock_args *);
-int	vop_nopoll (struct vop_poll_args *);
-int	vop_nounlock (struct vop_unlock_args *);
-int	vop_stdpathconf (struct vop_pathconf_args *);
-int	vop_stdpoll (struct vop_poll_args *);
-int	vop_revoke (struct vop_revoke_args *);
-int	vop_sharedlock (struct vop_lock_args *);
+int	vop_stdislocked (struct vop_islocked_args *ap);
+int	vop_stdlock (struct vop_lock_args *ap);
+int	vop_stdunlock (struct vop_unlock_args *ap);
+int	vop_noislocked (struct vop_islocked_args *ap);
+int	vop_nolock (struct vop_lock_args *ap);
+int	vop_nopoll (struct vop_poll_args *ap);
+int	vop_nounlock (struct vop_unlock_args *ap);
+int	vop_stdpathconf (struct vop_pathconf_args *ap);
+int	vop_stdpoll (struct vop_poll_args *ap);
+int	vop_stdrevoke (struct vop_revoke_args *ap);
+int	vop_sharedlock (struct vop_lock_args *ap);
 int	vop_eopnotsupp (struct vop_generic_args *ap);
 int	vop_ebadf (struct vop_generic_args *ap);
 int	vop_einval (struct vop_generic_args *ap);
@@ -617,8 +604,8 @@ void	vput (struct vnode *vp);
 void	vrele (struct vnode *vp);
 void	vref (struct vnode *vp);
 
-extern	vop_t	**default_vnodeop_p;
-extern	vop_t **spec_vnodeop_p;
+extern	struct vop_ops *default_vnode_vops;
+extern	struct vop_ops *spec_vnode_vops;
 
 #endif /* _KERNEL */
 

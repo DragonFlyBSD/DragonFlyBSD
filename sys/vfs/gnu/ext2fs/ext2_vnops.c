@@ -44,7 +44,7 @@
  *	@(#)ufs_vnops.c 8.27 (Berkeley) 5/27/95
  *	@(#)ext2_vnops.c	8.7 (Berkeley) 2/3/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_vnops.c,v 1.51.2.2 2003/01/02 17:26:18 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.13 2004/07/02 15:43:10 joerg Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vnops.c,v 1.14 2004/08/13 17:51:10 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -97,51 +97,51 @@ static int ext2_getpages (struct vop_getpages_args *);
 static int ext2_putpages (struct vop_putpages_args *);
 
 /* Global vfs data structures for ufs. */
-vop_t **ext2_vnodeop_p;
+struct vop_ops *ext2_vnode_vops;
 static struct vnodeopv_entry_desc ext2_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) ufs_vnoperate },
-	{ &vop_cachedlookup_desc,	(vop_t *) ext2_lookup },
-	{ &vop_fsync_desc,		(vop_t *) ext2_fsync },
-	{ &vop_inactive_desc,		(vop_t *) ext2_inactive },
-	{ &vop_lookup_desc,		(vop_t *) vfs_cache_lookup },
-	{ &vop_read_desc,		(vop_t *) ext2_read },
-	{ &vop_readdir_desc,		(vop_t *) ext2_readdir },
-	{ &vop_reallocblks_desc,	(vop_t *) ext2_reallocblks },
-	{ &vop_write_desc,		(vop_t *) ext2_write },
-	{ &vop_remove_desc,		(vop_t *) ext2_remove },
-	{ &vop_link_desc,		(vop_t *) ext2_link },
-	{ &vop_rename_desc,		(vop_t *) ext2_rename },
-	{ &vop_mkdir_desc,		(vop_t *) ext2_mkdir },
-	{ &vop_rmdir_desc,		(vop_t *) ext2_rmdir },
-	{ &vop_create_desc,		(vop_t *) ext2_create },
-	{ &vop_mknod_desc,		(vop_t *) ext2_mknod },
-	{ &vop_symlink_desc,		(vop_t *) ext2_symlink },
-	{ &vop_getpages_desc,		(vop_t *) ext2_getpages },
-	{ &vop_putpages_desc,		(vop_t *) ext2_putpages },
+	{ &vop_default_desc,		(void *) ufs_vnoperate },
+	{ &vop_cachedlookup_desc,	(void *) ext2_lookup },
+	{ &vop_fsync_desc,		(void *) ext2_fsync },
+	{ &vop_inactive_desc,		(void *) ext2_inactive },
+	{ &vop_lookup_desc,		(void *) vfs_cache_lookup },
+	{ &vop_read_desc,		(void *) ext2_read },
+	{ &vop_readdir_desc,		(void *) ext2_readdir },
+	{ &vop_reallocblks_desc,	(void *) ext2_reallocblks },
+	{ &vop_write_desc,		(void *) ext2_write },
+	{ &vop_remove_desc,		(void *) ext2_remove },
+	{ &vop_link_desc,		(void *) ext2_link },
+	{ &vop_rename_desc,		(void *) ext2_rename },
+	{ &vop_mkdir_desc,		(void *) ext2_mkdir },
+	{ &vop_rmdir_desc,		(void *) ext2_rmdir },
+	{ &vop_create_desc,		(void *) ext2_create },
+	{ &vop_mknod_desc,		(void *) ext2_mknod },
+	{ &vop_symlink_desc,		(void *) ext2_symlink },
+	{ &vop_getpages_desc,		(void *) ext2_getpages },
+	{ &vop_putpages_desc,		(void *) ext2_putpages },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ext2fs_vnodeop_opv_desc =
-	{ &ext2_vnodeop_p, ext2_vnodeop_entries };
+	{ &ext2_vnode_vops, ext2_vnodeop_entries };
 
-vop_t **ext2_specop_p;
+struct vop_ops *ext2_spec_vops;
 static struct vnodeopv_entry_desc ext2_specop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) ufs_vnoperatespec },
-	{ &vop_fsync_desc,		(vop_t *) ext2_fsync },
-	{ &vop_inactive_desc,		(vop_t *) ext2_inactive },
+	{ &vop_default_desc,		(void *) ufs_vnoperatespec },
+	{ &vop_fsync_desc,		(void *) ext2_fsync },
+	{ &vop_inactive_desc,		(void *) ext2_inactive },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ext2fs_specop_opv_desc =
-	{ &ext2_specop_p, ext2_specop_entries };
+	{ &ext2_spec_vops, ext2_specop_entries };
 
-vop_t **ext2_fifoop_p;
+struct vop_ops *ext2_fifo_vops;
 static struct vnodeopv_entry_desc ext2_fifoop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) ufs_vnoperatefifo },
-	{ &vop_fsync_desc,		(vop_t *) ext2_fsync },
-	{ &vop_inactive_desc,		(vop_t *) ext2_inactive },
+	{ &vop_default_desc,		(void *) ufs_vnoperatefifo },
+	{ &vop_fsync_desc,		(void *) ext2_fsync },
+	{ &vop_inactive_desc,		(void *) ext2_inactive },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc ext2fs_fifoop_opv_desc =
-	{ &ext2_fifoop_p, ext2_fifoop_entries };
+	{ &ext2_fifo_vops, ext2_fifoop_entries };
 
 	VNODEOP_SET(ext2fs_vnodeop_opv_desc);
 	VNODEOP_SET(ext2fs_specop_opv_desc);
