@@ -2,11 +2,11 @@
 #
 # $NetBSD: ntpd,v 1.6 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/ntpd,v 1.5 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.3 2004/11/12 19:45:36 joerg Exp $
+# $DragonFly: src/etc/rc.d/Attic/ntpd,v 1.4 2005/02/20 21:52:33 joerg Exp $
 #
 
 # PROVIDE: ntpd
-# REQUIRE: DAEMON
+# REQUIRE: NETWORKING
 # BEFORE:  LOGIN
 # KEYWORD: DragonFly
 
