@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.5 2005/02/02 20:42:15 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.6 2005/02/11 16:22:33 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -67,6 +67,10 @@ struct battd_conf {
 	const char	*exec_cmd; 	/* Command to execute if desired */	
 };
 
+#ifdef DEBUG
+static int f_debug;
+#endif
+
 static int	check_percent(int);
 static int	check_stat(int);
 static int	check_time(int);
@@ -78,8 +82,13 @@ static void	usage(void); __dead2
 static void
 usage(void)
 {
+#ifdef DEBUG
 	fprintf(stderr, "usage: battd [-dEhT] [-p percent] [-t minutes] [-s status]\n"
 			"	      [-f device] [-e command] [-c seconds]\n");
+#else
+	fprintf(stderr, "usage: battd [-EhT] [-p percent] [-t minutes] [-s status]\n"
+			"	      [-f device] [-e command] [-c seconds]\n");
+#endif
 	exit(EXIT_FAILURE);
 }
 
@@ -137,15 +146,26 @@ execute_cmd(const char *exec_cmd, int *exec_cont)
 	if (exec_cmd != NULL) {
 		if ((pid = fork()) == -1) {
 			/* Here fork failed */
-			syslog(LOG_ERR, "fork failed: %m");
+#ifdef DEBUG
+			if (f_debug)
+				warn("fork failed");
+			else
+#endif
+				syslog(LOG_ERR, "fork failed: %m");
 		} else if (pid == 0) {
 			execl("/bin/sh", "/bin/sh", "-c", exec_cmd, NULL);
 			_exit(EXIT_FAILURE);
 		} else {
 			while (waitpid(pid, &status, 0) != pid)
 				;
-			if (WEXITSTATUS(status))
-				syslog(LOG_ERR, "child exited with code %d", status);
+			if (WEXITSTATUS(status)) {
+#ifdef DEBUG
+				if (f_debug)
+					warnx("child exited with code %d", status);
+				else
+#endif
+					syslog(LOG_ERR, "child exited with code %d", status);
+			}
 			if (*exec_cont)
 				exec_cmd = NULL;
 		}
@@ -191,7 +211,7 @@ main(int argc, char **argv)
 {
 	struct battd_conf battd_options, *opts;
 	struct apm_info ai;
-	int fp_device, exec_cont, f_debug;
+	int fp_device, exec_cont;
 	int per_warn_cont, time_warn_cont, stat_warn_cont;
 	int check_sec, time_def_alert, def_warn_cont;
 	int c, tmp;
@@ -209,7 +229,7 @@ main(int argc, char **argv)
 
 	check_sec = 30;
 
-	exec_cont = f_debug = per_warn_cont = stat_warn_cont = 0;
+	exec_cont = per_warn_cont = stat_warn_cont = 0;
 	time_warn_cont = time_def_alert = def_warn_cont = 0;
 
 	opts->alert_per = 0;
@@ -227,10 +247,12 @@ main(int argc, char **argv)
 				errx(1, "the interval for checking battery"
 					"status must be greater than 0.");
 			break;
+#ifdef DEBUG
 		case 'd':
 			/* Debug mode. */
 			f_debug = 1;
 			break;
+#endif
 		case 'e':
 			/* Command to execute. */
 			opts->exec_cmd = optarg;
@@ -283,7 +305,7 @@ main(int argc, char **argv)
 			 */
 			opts->alert_time = getnum(optarg);
 			if (opts->alert_time <= 0)
-				errx(1, "Alert time must be greater than zero.");
+				errx(1, "Alert time must be greater than 0 minutes.");
 			break;
 		case 'T':
 			time_def_alert = 1;
@@ -305,12 +327,12 @@ main(int argc, char **argv)
 	/* Start test */
 	get_apm_info(&ai, fp_device, opts->apm_dev, ERR_OUT);
 
-	if (opts->alert_per)
+	if (opts->alert_per >= 0)
 		if (check_percent(ai.ai_batt_life))
 			errx(1, "invalid/unknown percentage(%d) returned from %s",
 				ai.ai_batt_life, opts->apm_dev);
 
-	if (opts->alert_time)
+	if (opts->alert_time || time_def_alert)
 		if (check_time(ai.ai_batt_time))
 			errx(1, "invalid/unknown time(%d) returned from %s",
 				ai.ai_batt_time, opts->apm_dev);
@@ -321,14 +343,22 @@ main(int argc, char **argv)
 				ai.ai_batt_stat, opts->apm_dev);
 	/* End test */
 
+#ifdef DEBUG
 	if (f_debug == 0) {
+#endif
 		if (daemon(0, 0) == -1)
 			err(1, "daemon failed");
+#ifdef DEBUG
 	}
+#endif
 
 	for (;;) {
 		if (get_apm_info(&ai, fp_device, opts->apm_dev,
+#ifdef DEBUG
 			f_debug ? ERR_OUT : SYSLOG_OUT))
+#else
+			SYSLOG_OUT))
+#endif
 			/* Recoverable - sleep for check_sec seconds */
 			goto sleepy_time;
 
@@ -362,13 +392,17 @@ main(int argc, char **argv)
 			/* 1. Check battery percentage if enabled */
 			if (opts->alert_per) {
 				if (check_percent(ai.ai_batt_life)) {
+#ifdef DEBUG
 					if (f_debug) {
 						printf("Invaild percentage (%d) recieved from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
+#endif
 						syslog(LOG_ERR, "Invaild percentage recieved from %s.",
 							opts->apm_dev);
+#ifdef DEBUG
 					}
+#endif
 					continue;
 				}
 
@@ -385,13 +419,17 @@ main(int argc, char **argv)
 			/* 2. Check battery time remaining if enabled */
 			if (opts->alert_time) {
 				if (check_time(ai.ai_batt_time)) {
+#ifdef DEBUG
 					if (f_debug) {
 						printf("Invaild time value (%d) recieved from %s.\n",
 							ai.ai_batt_time, opts->apm_dev);
 					} else {
+#endif
 						syslog(LOG_ERR, "Invaild time value recieved from %s.",
 							opts->apm_dev);
+#ifdef DEBUG
 					}
+#endif
 					continue;
 				}
 	
@@ -416,13 +454,17 @@ main(int argc, char **argv)
 			/* 3. Check battery status if enabled */
 			if (opts->alert_status != -1) {
 				if (check_stat(ai.ai_batt_stat)) {
+#ifdef DEBUG
 					if (f_debug) {
 						printf("Invaild status value (%d) recieved from %s.\n",
 							ai.ai_batt_life, opts->apm_dev);
 					} else {
+#endif
 						syslog(LOG_ERR, "Invaild status value recieved from %s.",
 							opts->apm_dev);
+#ifdef DEBUG
 					}
+#endif
 					continue;
 				}
 
