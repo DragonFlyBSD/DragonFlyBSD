@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.22 2005/01/09 17:05:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.23 2005/01/09 22:23:25 okumoto Exp $
  */
 
 /*-
@@ -238,8 +238,6 @@ Compat_RunCommand(void *cmdp, void *gnp)
     ReturnStatus  rstat;	/* Status of fork */
     LstNode 	  *cmdNode;  	/* Node where current command is located */
     char    	  **av;	    	/* Argument vector for thing to exec */
-    int	    	  argc;	    	/* Number of arguments in av or 0 if not
-				 * dynamically allocated */
     int		  internal;	/* Various values.. */
     char	  *cmd = cmdp;
     GNode	  *gn = gnp;
@@ -346,7 +344,6 @@ Compat_RunCommand(void *cmdp, void *gnp)
 	shargv[2] = cmd;
 	shargv[3] = NULL;
 	av = shargv;
-	argc = 0;
     } else if ((internal = shellneed(cmd))) {
 	/*
 	 * This command must be passed by the shell for other reasons..
@@ -359,8 +356,8 @@ Compat_RunCommand(void *cmdp, void *gnp)
 	shargv[2] = cmd;
 	shargv[3] = NULL;
 	av = shargv;
-	argc = 0;
     } else {
+	int	argc;	/* Number of arguments in av */
 	/*
 	 * No meta-characters, so no need to exec a shell. Break the command
 	 * into words to form an argument vector we can execute.
