@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.15 2004/04/30 00:59:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.16 2004/04/30 02:52:28 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -54,6 +54,7 @@
 #include <sys/syslog.h>
 #endif
 #include <sys/signalvar.h>
+#include <sys/thread2.h>
 
 #ifndef SMP
 #include <machine/asmacros.h>
@@ -469,7 +470,7 @@ npx_attach(dev)
 	}
 	npxinit(__INITIAL_NPXCW__);
 
-#if defined(I586_CPU) || defined(I686_CPU)
+#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
 	/*
 	 * The asm_mmx_*() routines actually use XMM as well, so only 
 	 * enable them if we have SSE2 and are using FXSR (fxsave/fxrstore).
@@ -861,6 +862,7 @@ npxdna()
 		       mdcpu->gd_npxthread, curthread);
 		panic("npxdna");
 	}
+	crit_enter();
 	stop_emulating();
 	/*
 	 * Record new context early in case frstor causes an IRQ13.
@@ -881,6 +883,7 @@ npxdna()
 	 * first FPU instruction after a context switch.
 	 */
 	fpurstor(curthread->td_savefpu);
+	crit_exit();
 
 	return (1);
 }
