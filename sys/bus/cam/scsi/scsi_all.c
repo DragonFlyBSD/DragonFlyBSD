@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_all.c,v 1.14.2.11 2003/10/30 15:06:35 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.4 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_all.c,v 1.5 2005/03/15 20:42:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1689,7 +1689,7 @@ scsi_sense_print(struct ccb_scsiio *csio)
 			 * XXX KDM this is stupid, but casting the
 			 * structure doesn't work...
 			 */
-			bcopy(&csio->sense_data, sense, 
+			bcopy(&csio->sense_data, &sense, 
 			      sizeof(struct scsi_sense_data *));
 		}
 	} else {
@@ -1874,7 +1874,7 @@ scsi_sense_string(struct cam_device *device, struct ccb_scsiio *csio,
 			 * XXX KDM this is stupid, but casting the
 			 * structure doesn't work...
 			 */
-			bcopy(&csio->sense_data, sense, 
+			bcopy(&csio->sense_data, &sense, 
 			      sizeof(struct scsi_sense_data *));
 		}
 	} else {

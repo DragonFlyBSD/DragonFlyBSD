@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.8 2004/03/12 03:23:13 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.9 2005/03/15 20:42:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -398,6 +398,12 @@ camperiphfree(struct cam_periph *periph)
 	SET_FOREACH(p_drv, periphdriver_set) {
 		if (strcmp((*p_drv)->driver_name, periph->periph_name) == 0)
 			break;
+	}
+
+	if (*p_drv == NULL) {
+		printf("camperiphfree: attempt to free "
+			"non-existant periph: %s\n", periph->periph_name);
+		return;
 	}
 	
 	if (periph->periph_dtor != NULL)

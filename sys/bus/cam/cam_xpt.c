@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.22 2005/03/05 18:29:24 swildner Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.23 2005/03/15 20:42:12 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -2333,7 +2333,7 @@ xptplistperiphfunc(struct cam_periph *periph, void *arg)
 					break;
 			}
 
-			if (pdrv == NULL) {
+			if (*pdrv == NULL) {
 				cdm->status = CAM_DEV_MATCH_ERROR;
 				return(0);
 			}

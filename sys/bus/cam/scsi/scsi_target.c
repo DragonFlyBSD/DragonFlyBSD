@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.9 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.10 2005/03/15 20:42:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -532,7 +532,6 @@ targwrite(dev_t dev, struct uio *uio, int ioflag)
 		  ("write - uio_resid %d\n", uio->uio_resid));
 	while (uio->uio_resid >= sizeof(user_ccb) && error == 0) {
 		union ccb *ccb;
-		int error;
 
 		error = uiomove((caddr_t)&user_ccb, sizeof(user_ccb), uio);
 		if (error != 0) {
