@@ -32,7 +32,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.4 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.5 2003/11/22 19:30:56 asmodai Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -109,7 +109,7 @@ struct in_conninfo {
 		struct	route_in6 inc6_route;
 	} inc_dependroute;
 };
-#define inc_isipv6	inc_flags	/* temp compatability */
+#define inc_isipv6	inc_flags	/* temp compatibility */
 #define	inc_fport	inc_ie.ie_fport
 #define	inc_lport	inc_ie.ie_lport
 #define	inc_faddr	inc_ie.ie_faddr

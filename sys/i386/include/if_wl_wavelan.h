@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/include/if_wl_wavelan.h,v 1.4 1999/08/28 00:44:15 peter Exp $ */
-/* $DragonFly: src/sys/i386/include/Attic/if_wl_wavelan.h,v 1.3 2003/06/28 04:16:03 dillon Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/if_wl_wavelan.h,v 1.4 2003/11/22 19:30:56 asmodai Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -113,7 +113,7 @@
 #define WLPSA_UNIMAC		0x10	/* Universal MAC address */
 #define WLPSA_LOCALMAC		0x16	/* Locally configured MAC address */
 #define WLPSA_MACSEL		0x1c	/* MAC selector */
-#define WLPSA_COMPATNO		0x1d	/* compatability number */
+#define WLPSA_COMPATNO		0x1d	/* compatibility number */
 #define WLPSA_THRESH		0x1e	/* RF modem threshold preset */
 #define WLPSA_FEATSEL		0x1f	/* feature select */
 #define WLPSA_SUBBAND		0x20	/* subband selector */

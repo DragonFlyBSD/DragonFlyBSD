@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biossmap.c,v 1.2 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/biossmap.c,v 1.1 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/biossmap.c,v 1.2 2003/11/22 19:30:55 asmodai Exp $
  */
 
 /*
@@ -103,6 +103,6 @@ bios_addsmapdata(struct preloaded_file *kfp)
 		return;
 	len = smaplen * sizeof(*smapbase);
 	file_addmetadata(kfp, MODINFOMD_SMAP, len, smapbase);
-	/* Temporary compatability with older development kernels */
+	/* Temporary compatibility with older development kernels */
 	file_addmetadata(kfp, 0x0009, len, smapbase);
 }

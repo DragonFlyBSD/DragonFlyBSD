@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.7 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.8 2003/11/22 19:30:56 asmodai Exp $
  */
 
 /*****************************************************************************/
@@ -116,7 +116,7 @@ static unsigned int	stl_irqshared = 0;
 
 /*
  *	Define the important minor number break down bits. These have been
- *	chosen to be "compatable" with the standard sio driver minor numbers.
+ *	chosen to be "compatible" with the standard sio driver minor numbers.
  *	Extra high bits are used to distinguish between boards.
  */
 #define	STL_CALLOUTDEV		0x80
@@ -1392,7 +1392,7 @@ STATIC int stlioctl(dev_t dev, unsigned long cmd, caddr_t data, int flag,
 	}
 
 /*
- *	Deal with 4.3 compatability issues if we have too...
+ *	Deal with 4.3 compatibility issues if we have too...
  */
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
 	if (1) {

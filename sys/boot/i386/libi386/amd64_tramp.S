@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/amd64_tramp.S,v 1.2 2003/05/17 00:30:51 peter Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/amd64_tramp.S,v 1.1 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/amd64_tramp.S,v 1.2 2003/11/22 19:30:55 asmodai Exp $
  */
 
 /*
@@ -97,7 +97,7 @@ amd64_tramp:
 	orl	$CR0_PG, %eax
 	movl	%eax, %cr0
 	
-	/* Now we're in compatability mode. set %cs for long mode */
+	/* Now we're in compatibility mode. set %cs for long mode */
 	movl	$VTOP(gdtdesc), %eax
 	movl	VTOP(entry_hi), %esi
 	movl	VTOP(entry_lo), %edi

@@ -32,7 +32,7 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.6 2003/11/22 19:30:57 asmodai Exp $
  */
 
 #ifndef _SYS_TIME_H_
@@ -203,7 +203,7 @@ struct timecounter {
 
 #endif /* _KERNEL */
 
-#ifndef _KERNEL			/* NetBSD/OpenBSD compatable interfaces */
+#ifndef _KERNEL			/* NetBSD/OpenBSD compatible interfaces */
 
 #define	timerclear(tvp)		(tvp)->tv_sec = (tvp)->tv_usec = 0
 #define	timerisset(tvp)		((tvp)->tv_sec || (tvp)->tv_usec)

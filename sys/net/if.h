@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.6 2003/11/14 09:53:46 hmp Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.7 2003/11/22 19:30:56 asmodai Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -44,7 +44,7 @@
 
 /*
  * <net/if.h> does not depend on <sys/time.h> on most other systems.  This
- * helps userland compatability.  (struct timeval ifi_lastchange)
+ * helps userland compatibility.  (struct timeval ifi_lastchange)
  */
 #ifndef _KERNEL
 #include <sys/time.h>
@@ -167,7 +167,7 @@ struct if_data {
  */
 struct if_msghdr {
 	u_short	ifm_msglen;	/* to skip over non-understood messages */
-	u_char	ifm_version;	/* future binary compatability */
+	u_char	ifm_version;	/* future binary compatibility */
 	u_char	ifm_type;	/* message type */
 	int	ifm_addrs;	/* like rtm_addrs */
 	int	ifm_flags;	/* value of if_flags */
@@ -181,7 +181,7 @@ struct if_msghdr {
  */
 struct ifa_msghdr {
 	u_short	ifam_msglen;	/* to skip over non-understood messages */
-	u_char	ifam_version;	/* future binary compatability */
+	u_char	ifam_version;	/* future binary compatibility */
 	u_char	ifam_type;	/* message type */
 	int	ifam_addrs;	/* like rtm_addrs */
 	int	ifam_flags;	/* value of ifa_flags */
@@ -195,7 +195,7 @@ struct ifa_msghdr {
  */
 struct ifma_msghdr {
 	u_short	ifmam_msglen;	/* to skip over non-understood messages */
-	u_char	ifmam_version;	/* future binary compatability */
+	u_char	ifmam_version;	/* future binary compatibility */
 	u_char	ifmam_type;	/* message type */
 	int	ifmam_addrs;	/* like rtm_addrs */
 	int	ifmam_flags;	/* value of ifa_flags */

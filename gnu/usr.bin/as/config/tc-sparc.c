@@ -19,7 +19,7 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/as/config/tc-sparc.c,v 1.8 1999/08/27 23:34:30 peter Exp $
- * $DragonFly: src/gnu/usr.bin/as/config/Attic/tc-sparc.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/as/config/Attic/tc-sparc.c,v 1.3 2003/11/22 19:30:55 asmodai Exp $
  */
 #define cypress 1234
 
@@ -378,7 +378,7 @@ static void s_proc() {
 } /* s_proc() */
 
 /*
- * GI: This is needed for compatability with Sun's assembler - which
+ * GI: This is needed for compatibility with Sun's assembler - which
  * otherwise generates a warning when certain "suspect" instructions
  * appear in the delay slot of a branch.  And more seriously without
  * this directive in certain cases Sun's assembler will rearrange

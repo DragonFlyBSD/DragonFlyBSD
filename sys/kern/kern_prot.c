@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.12 2003/11/05 20:24:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.13 2003/11/22 19:30:56 asmodai Exp $
  */
 
 /*
@@ -287,7 +287,7 @@ setpgid(struct setpgid_args *uap)
 
 /*
  * Use the clause in B.4.2.2 that allows setuid/setgid to be 4.2/4.3BSD
- * compatable.  It says that setting the uid/gid to euid/egid is a special
+ * compatible.  It says that setting the uid/gid to euid/egid is a special
  * case of "appropriate privilege".  Once the rules are expanded out, this
  * basically means that setuid(nnn) sets all three id's, in all permitted
  * cases unless _POSIX_SAVED_IDS is enabled.  In that case, setuid(getuid())
@@ -315,7 +315,7 @@ setuid(struct setuid_args *uap)
 	 *
 	 * Note that setuid(geteuid()) is a special case of 
 	 * "appropriate privileges" in appendix B.4.2.2.  We need
-	 * to use this clause to be compatable with traditional BSD
+	 * to use this clause to be compatible with traditional BSD
 	 * semantics.  Basically, it means that "setuid(xx)" sets all
 	 * three id's (assuming you have privs).
 	 *
@@ -429,7 +429,7 @@ setgid(struct setgid_args *uap)
 	 *
 	 * Note that setgid(getegid()) is a special case of
 	 * "appropriate privileges" in appendix B.4.2.2.  We need
-	 * to use this clause to be compatable with traditional BSD
+	 * to use this clause to be compatible with traditional BSD
 	 * semantics.  Basically, it means that "setgid(xx)" sets all
 	 * three id's (assuming you have privs).
 	 *

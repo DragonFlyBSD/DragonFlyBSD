@@ -41,7 +41,7 @@
 
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt.h,v 1.8.2.1 2000/08/07 18:48:14 peter Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt.h,v 1.2 2003/06/17 04:28:23 dillon Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt.h,v 1.3 2003/11/22 19:30:55 asmodai Exp $"
 
 #ifndef _DPT_H
 #define _DPT_H
@@ -905,7 +905,7 @@ typedef struct dpt_ccb {
 } dpt_ccb_t;
 
 /*
- * This is provided for compatability with UnixWare only.
+ * This is provided for compatibility with UnixWare only.
  * Some of the fields may be bogus.
  * Others may have a totally different meaning.
  */

@@ -18,7 +18,7 @@
     <corpauthor>The &os; Project</corpauthor>
 
     <pubdate>$FreeBSD: src/release/doc/en_US.ISO8859-1/readme/article.sgml,v 1.1.2.17 2003/05/01 15:09:53 trhodes Exp $</pubdate>
-    <pubdate>$DragonFly: src/release/doc/en_US.ISO8859-1/readme/Attic/article.sgml,v 1.2 2003/06/17 04:27:19 dillon Exp $</pubdate>
+    <pubdate>$DragonFly: src/release/doc/en_US.ISO8859-1/readme/Attic/article.sgml,v 1.3 2003/11/22 19:30:55 asmodai Exp $</pubdate>
 
     <copyright>
       <year>2000</year>
@@ -284,7 +284,7 @@
 
 	  <listitem>
 	    <para><filename>HARDWARE.TXT</filename>: The hardware
-	      compatability list, showing devices with which &os; has
+	      compatibility list, showing devices with which &os; has
 	      been tested and is known to work.</para>
 	  </listitem>
 

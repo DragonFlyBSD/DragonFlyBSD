@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.4 2003/09/15 23:38:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.5 2003/11/22 19:30:56 asmodai Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -184,7 +184,7 @@ struct ifnet {
 typedef void if_init_f_t (void *);
 
 /*
- * Binary compatability gunk for 4.x ONLY.
+ * Binary compatibility gunk for 4.x ONLY.
  */
 #define if_capabilities	_u1.uif_capabilities
 #define if_capenable	_u2.uif_capenable

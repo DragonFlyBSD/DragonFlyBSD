@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.6 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.7 2003/11/22 19:30:57 asmodai Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -271,7 +271,7 @@ struct tunable_int {
 
 #define	TUNABLE_INT_FETCH(path, var)	getenv_int((path), (var))
 
-/* Backwards compatability with the old deprecated TUNABLE_INT_DECL API */
+/* Backwards compatibility with the old deprecated TUNABLE_INT_DECL API */
 #define TUNABLE_INT_DECL(path, defval, var)	\
 static void __Tunable_ ## var (void *ignored)	\
 {						\

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.4 2003/11/22 19:30:56 asmodai Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*
@@ -252,7 +252,7 @@ struct nd_prefix {
  */
 struct inet6_ndpr_msghdr {
 	u_short	inpm_msglen;	/* to skip over non-understood messages */
-	u_char	inpm_version;	/* future binary compatability */
+	u_char	inpm_version;	/* future binary compatibility */
 	u_char	inpm_type;	/* message type */
 	struct in6_addr inpm_prefix;
 	u_long	prm_vltim;

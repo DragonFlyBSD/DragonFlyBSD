@@ -26,14 +26,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/poll.h,v 1.6.2.1 2000/08/21 12:25:58 sheldonh Exp $
- * $DragonFly: src/sys/sys/poll.h,v 1.4 2003/09/03 12:58:05 hmp Exp $
+ * $DragonFly: src/sys/sys/poll.h,v 1.5 2003/11/22 19:30:57 asmodai Exp $
  */
 
 #ifndef _SYS_POLL_H_
 #define	_SYS_POLL_H_
 
 /*
- * This file is intended to be compatable with the traditional poll.h.
+ * This file is intended to be compatible with the traditional poll.h.
  */
 
 /*

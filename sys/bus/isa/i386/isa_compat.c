@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.c,v 1.18.2.1 2001/05/17 23:05:06 imp Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.4 2003/11/17 00:54:39 asmodai Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.c,v 1.5 2003/11/22 19:30:55 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -260,7 +260,7 @@ isa_compat_attach(device_t dev)
 			printf("isa_compat_attach: failed to setup intr: %d\n",
 			       error);
 	}
-	device_printf(dev, "driver is using old-style compatability shims\n");
+	device_printf(dev, "driver is using old-style compatibility shims\n");
 	return 0;
 }
 

@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.11 2003/11/22 09:50:36 asmodai Exp $
+# $DragonFly: src/sys/config/LINT,v 1.12 2003/11/22 19:30:56 asmodai Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1539,7 +1539,7 @@ options 	NATM			#native ATM
 # Gravis UltraSound ISA PnP/non-PnP
 # Crystal Semiconductor CS461x/428x PCI
 # Neomagic 256AV (ac97)
-# Most of the more common ISA/PnP sb/mss/ess compatable cards.
+# Most of the more common ISA/PnP sb/mss/ess compatible cards.
 
 # For non-pnp sound cards with no bridge drivers only:
 device		pcm0 at isa? irq 10 drq 1 flags 0x0

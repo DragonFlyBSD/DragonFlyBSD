@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifieee80211.c,v 1.1.2.3 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.3 2003/09/28 14:39:18 hmp Exp $
+ * $DragonFly: src/sbin/ifconfig/ifieee80211.c,v 1.4 2003/11/22 19:30:55 asmodai Exp $
  */
 
 /*-
@@ -239,7 +239,7 @@ set80211wepkey(const char *val, int d, int s, const struct afswtch *rafp)
 }
 
 /*
- * This function is purly a NetBSD compatability interface.  The NetBSD
+ * This function is purly a NetBSD compatibility interface.  The NetBSD
  * iterface is too inflexable, but it's there so we'll support it since
  * it's not all that hard.
  */

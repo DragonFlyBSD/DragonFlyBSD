@@ -32,7 +32,7 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.3 2003/11/22 19:30:57 asmodai Exp $
  */
 
 /*
@@ -94,7 +94,7 @@
 
 #ifndef timeradd
 #ifndef _KERNEL		/* use timevaladd/timevalsub in kernel */
-/* NetBSD/OpenBSD compatable interfaces */
+/* NetBSD/OpenBSD compatible interfaces */
 #define timeradd(tvp, uvp, vvp)						\
 	do {								\
 		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\

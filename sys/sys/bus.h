@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/bus.h,v 1.30.2.4 2002/10/10 15:13:33 jhb Exp $
- * $DragonFly: src/sys/sys/bus.h,v 1.3 2003/11/17 00:54:40 asmodai Exp $
+ * $DragonFly: src/sys/sys/bus.h,v 1.4 2003/11/22 19:30:57 asmodai Exp $
  */
 
 #ifndef _SYS_BUS_H_
@@ -60,7 +60,7 @@ enum intr_type {
     INTR_TYPE_MISC = 16,
     INTR_TYPE_FAST = 128
 };
-#define INTR_TYPE_AV INTR_TYPE_TTY	/* for source compatability with 5.x */
+#define INTR_TYPE_AV INTR_TYPE_TTY	/* for source compatibility with 5.x */
 
 typedef int (*devop_t)(void);
 
