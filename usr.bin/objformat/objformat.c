@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2004, The DragonFly Project.  All rights reserved.
  * Copyright (c) 1998, Peter Wemm <peter@netplex.com.au>
  * All rights reserved.
  *
@@ -24,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.12 2004/06/20 22:19:51 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.13 2004/10/26 11:27:46 joerg Exp $
  */
 
 #include <err.h>

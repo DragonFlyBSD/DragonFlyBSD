@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/objformat/Makefile,v 1.15 1999/12/24 15:18:19 green Exp $
-# $DragonFly: src/usr.bin/objformat/Makefile,v 1.5 2004/02/02 05:43:16 dillon Exp $
+# $DragonFly: src/usr.bin/objformat/Makefile,v 1.6 2004/10/26 11:27:46 joerg Exp $
 
 PROG=		objformat
 CFLAGS+=	-Wall
@@ -8,6 +8,12 @@ NOSHARED?=	YES
 CFLAGS+=	-DTARGET_ARCH="${TARGET_ARCH}"
 .endif
 
+.if defined(CCVER_DEFAULT)
+CFLAGS+=	-DCCVER_DEFAULT="\"${CCVER_DEFAULT}\""
+.endif
+.if defined(BINUTILSVER_DEFAULT)
+CFLAGS+=	-DBINUTILSVER_DEFAULT="\"${BINUTILSVER_DEFAULT}\""
+.endif
 # These will exec /usr/libexec/${BINUTILSVER}/<objformat>/<name>
 #
 LINKS+=	${BINDIR}/objformat ${BINDIR}/addr2line
