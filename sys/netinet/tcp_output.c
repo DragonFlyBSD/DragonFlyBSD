@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.10 2004/03/08 00:36:30 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.11 2004/04/07 17:01:25 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -49,6 +49,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/in_cksum.h>
+#include <sys/thread.h>
+#include <sys/globaldata.h>
 
 #include <net/route.h>
 

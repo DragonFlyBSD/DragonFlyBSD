@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.11 2004/03/12 11:29:51 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.12 2004/04/07 17:01:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -340,22 +340,59 @@ protopr(u_long proto,		/* for sysctl version we pass proto # */
 	free(buf);
 }
 
+void
+tcp_stats_agg(struct tcp_stats *ary, struct tcp_stats *ttl, int cpucnt)
+{
+	int i, off, siz;
+	siz = sizeof(struct tcp_stats);
+
+	if (!ary && !ttl)
+		return;
+
+	bzero(ttl, siz);
+	if (cpucnt == 1) {
+		*ttl = ary[0];
+	} else {
+		for (i = 0; i < cpucnt; ++i) {
+			for (off = 0; off < siz; off += sizeof(u_long)) {
+				*(u_long *)((char *)(*(&ttl)) + off) +=
+				*(u_long *)((char *)&ary[i] + off);
+			}
+		}
+	}
+}
+
 /*
  * Dump TCP statistics structure.
  */
 void
 tcp_stats(u_long off __unused, char *name, int af __unused)
 {
-	struct tcpstat tcpstat, zerostat;
-	size_t len = sizeof tcpstat;
+	struct tcp_stats tcpstat, *stattmp;
+	struct tcp_stats zerostat[SMP_MAXCPU];
+	size_t len = sizeof(struct tcp_stats) * SMP_MAXCPU;
+	int cpucnt;
 	
 	if (zflag)
-		memset(&zerostat, 0, len);
-	if (sysctlbyname("net.inet.tcp.stats", &tcpstat, &len,
-	    zflag ? &zerostat : NULL, zflag ? len : 0) < 0) {
-		warn("sysctl: net.inet.tcp.stats");
+		memset(zerostat, 0, len);
+
+	if ((stattmp = malloc(len)) == NULL) {
 		return;
+	} else {
+		if (sysctlbyname("net.inet.tcp.stats", stattmp, &len,
+			zflag ? zerostat : NULL, zflag ? len : 0) < 0) {
+			warn("sysctl: net.inet.tcp.stats");
+			free(stattmp);
+			return;
+		} else {
+			if ((stattmp = realloc(stattmp, len)) == NULL) {
+				warn("tcp_stats");
+				return;
+			}
+		}
 	}
+	cpucnt = len / sizeof(struct tcp_stats);
+	tcp_stats_agg(stattmp, &tcpstat, cpucnt);
 
 #ifdef INET6
 	if (tcp_done != 0)
@@ -458,6 +495,7 @@ tcp_stats(u_long off __unused, char *name, int af __unused)
 	p(tcps_sc_zonefail, "\t\t%lu zone failures\n"); 
 	p(tcps_sc_sendcookie, "\t%lu cookies sent\n"); 
 	p(tcps_sc_recvcookie, "\t%lu cookies received\n"); 
+	free(stattmp);
 #undef p
 #undef p1a
 #undef p2

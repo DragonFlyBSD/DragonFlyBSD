@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.23 2004/04/05 17:47:01 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.24 2004/04/07 17:01:25 dillon Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -102,11 +102,6 @@ MALLOC_DEFINE(M_TSEGQ, "tseg_qent", "TCP segment queue entry");
 
 static const int tcprexmtthresh = 3;
 tcp_cc	tcp_ccgen;
-
-struct	tcpstat tcpstat;
-SYSCTL_STRUCT(_net_inet_tcp, TCPCTL_STATS, stats, CTLFLAG_RW,
-    &tcpstat , tcpstat, "TCP statistics (struct tcpstat, netinet/tcp_var.h)");
-
 static int log_in_vain = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, log_in_vain, CTLFLAG_RW,
     &log_in_vain, 0, "Log all incoming TCP connections");

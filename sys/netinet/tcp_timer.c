@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.6 2004/03/08 00:39:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.7 2004/04/07 17:01:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -48,6 +48,8 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
+#include <sys/thread.h>
+#include <sys/globaldata.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
 

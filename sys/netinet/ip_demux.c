@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.14 2004/04/05 09:17:48 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.15 2004/04/07 17:01:25 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -14,6 +14,7 @@
 #include <sys/socketvar.h>
 #include <sys/thread.h>
 #include <sys/sysctl.h>
+#include <sys/globaldata.h>
 
 #include <net/if.h>
 #include <net/netisr.h>

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.19 2004/04/05 17:47:01 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.20 2004/04/07 17:01:25 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -185,6 +185,33 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
 static void	tcp_cleartaocache (void);
 static void	tcp_notify (struct inpcb *, int);
 
+struct tcp_stats tcpstats_ary[MAXCPU];
+#ifdef SMP
+static int
+sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
+{
+	int cpu, error;
+
+	for (cpu = error = 0; cpu < ncpus; ++cpu) {
+		if ((error = SYSCTL_OUT(req, (void *)&tcpstats_ary[cpu],
+			sizeof(struct tcp_stats))))
+			break;
+		if ((error = SYSCTL_IN(req, (void *)&tcpstats_ary[cpu],
+			sizeof(struct tcp_stats))))
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_net_inet_tcp, TCPCTL_STATS, stats, CTLTYPE_OPAQUE|CTLFLAG_RW,
+    0, 0, sysctl_tcpstats, "S,tcp_stats",
+	"TCP statistics (struct tcp_stats, netinet/tcp_stats.h)");
+#else /* !SMP */
+SYSCTL_STRUCT(_net_inet_tcp, TCPCTL_STATS, stats, CTLFLAG_RW,
+    &tcpstat , tcp_stats,
+	"TCP statistics (struct tcp_stats, netinet/tcp_stats.h)");
+#endif
+
 /*
  * Target size of TCP PCB hash tables. Must be a power of two.
  *
@@ -279,6 +306,21 @@ tcp_init()
 	if (max_linkhdr + TCP_MINPROTOHDR > MHLEN)
 		panic("tcp_init");
 #undef TCP_MINPROTOHDR
+
+	/*
+	 * Initialize TCP statistics.
+	 *
+	 * It is layed out as an array which is has one element for UP,
+	 * and SMP_MAXCPU elements for SMP.  This allows us to retain
+	 * the access mechanism from userland for both UP and SMP.
+	 */
+#ifdef SMP
+	for (cpu = 0; cpu < ncpus; ++cpu) {
+		bzero(&tcpstats_ary[cpu], sizeof(struct tcp_stats));
+	}
+#else
+	bzero(&tcpstat, sizeof(struct tcp_stats));
+#endif
 
 	syncache_init();
 	tcp_thread_init();
