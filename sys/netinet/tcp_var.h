@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.28 2005/01/08 09:26:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.29 2005/03/04 05:57:50 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -433,15 +433,14 @@ struct syncache {
 	u_int8_t	sc_requested_s_scale:4,
 			sc_request_r_scale:4;
 	u_int8_t	sc_flags;
-#define SCF_NOOPT	0x01			/* no TCP options */
-#define SCF_WINSCALE	0x02			/* negotiated window scaling */
-#define SCF_TIMESTAMP	0x04			/* negotiated timestamps */
-#define SCF_CC		0x08			/* negotiated CC */
-#define SCF_UNREACH	0x10			/* icmp unreachable received */
-#define SCF_KEEPROUTE	0x20			/* keep cloned route */
-#define	SCF_SACK_PERMITTED 0x40			/* saw SACK permitted option */
-	TAILQ_ENTRY(syncache)	sc_hash;
-	TAILQ_ENTRY(syncache)	sc_timerq;
+#define SCF_NOOPT		0x01		/* no TCP options */
+#define SCF_WINSCALE		0x02		/* negotiated window scaling */
+#define SCF_TIMESTAMP		0x04		/* negotiated timestamps */
+#define SCF_CC			0x08		/* negotiated CC */
+#define SCF_UNREACH		0x10		/* icmp unreachable received */
+#define	SCF_SACK_PERMITTED	0x20		/* saw SACK permitted option */
+	TAILQ_ENTRY(syncache) sc_hash;
+	TAILQ_ENTRY(syncache) sc_timerq;
 };
 
 struct syncache_head {

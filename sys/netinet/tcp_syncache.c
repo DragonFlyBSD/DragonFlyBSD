@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.21 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.22 2005/03/04 05:57:50 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -281,23 +281,19 @@ syncache_free(struct syncache *sc)
 
 	if (sc->sc_ipopts)
 		m_free(sc->sc_ipopts);
-	if (isipv6)
-		rt = sc->sc_route6.ro_rt;
-	else
-		rt = sc->sc_route.ro_rt;
+
+	rt = isipv6 ? sc->sc_route6.ro_rt : sc->sc_route.ro_rt;
 	if (rt != NULL) {
 		/*
-		 * If this is the only reference to a protocol cloned
+		 * If this is the only reference to a protocol-cloned
 		 * route, remove it immediately.
 		 */
-		if (rt->rt_flags & RTF_WASCLONED &&
-		    !(sc->sc_flags & SCF_KEEPROUTE) &&
-		    rt->rt_refcnt == 1) {
+		if ((rt->rt_flags & RTF_WASCLONED) && rt->rt_refcnt == 1)
 			rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
 				  rt_mask(rt), rt->rt_flags, NULL);
-		}
 		RTFREE(rt);
 	}
+
 	zfree(tcp_syncache.zone, sc);
 }
 
@@ -891,7 +887,6 @@ resetandabort:
 		m_freem(m);			/* XXX only needed for above */
 		tcpstat.tcps_sc_aborted++;
 	} else {
-		sc->sc_flags |= SCF_KEEPROUTE;
 		tcpstat.tcps_sc_completed++;
 	}
 	if (sch == NULL)
@@ -1100,7 +1095,6 @@ syncache_add(inc, to, th, sop, m)
 			sc->sc_rxtslot = 0;
 			so = syncache_socket(sc, *sop);
 			if (so != NULL) {
-				sc->sc_flags |= SCF_KEEPROUTE;
 				taop->tao_cc = to->to_cc;
 				*sop = so;
 			}
