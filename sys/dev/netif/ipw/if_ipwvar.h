@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_ipwvar.h,v 1.2.2.1 2005/01/13 20:01:04 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.1 2005/03/06 18:25:12 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipwvar.h,v 1.2 2005/03/08 17:50:32 joerg Exp $
  */
 
 struct ipw_firmware {
@@ -94,9 +94,6 @@ struct ipw_softc {
 	int				(*sc_newstate)(struct ieee80211com *,
 					    enum ieee80211_state, int);
 	device_t			sc_dev;	
-
-	intrmask_t			sc_intrmask;
-
 	struct ipw_firmware		fw;
 	u_int32_t			flags;
 #define IPW_FLAG_FW_CACHED          (1 << 0)
@@ -151,7 +148,6 @@ struct ipw_softc {
 	int				txfree;
 	u_int32_t			rxcur;
 
-#if NBPFILTER > 0
 	struct bpf_if			*sc_drvbpf;
 
 	union {
@@ -167,12 +163,12 @@ struct ipw_softc {
 	} sc_txtapu;
 #define sc_txtap	sc_txtapu.th
 	int				sc_txtap_len;
-#endif
 	struct sysctl_ctx_list		sysctl_ctx;
 };
 
 #define SIOCSLOADFW	 _IOW('i', 137, struct ifreq)
 #define SIOCSKILLFW	 _IOW('i', 138, struct ifreq)
 
-#define IPW_LOCK(sc)	mtx_lock(&(sc)->sc_mtx)
-#define IPW_UNLOCK(sc)	mtx_unlock(&(sc)->sc_mtx)
+#define IPW_LOCK_DECL()	intrmask_t s
+#define IPW_LOCK(_sc)	s = splimp()
+#define IPW_UNLOCK(_sc)	splx(s)

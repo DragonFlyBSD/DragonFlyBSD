@@ -26,7 +26,7 @@
  *
  *
  * $Id: if_ipw.c,v 1.7.2.1 2005/01/13 20:01:03 damien Exp $
- * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.3 2005/03/07 10:11:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ipw/Attic/if_ipw.c,v 1.4 2005/03/08 17:50:32 joerg Exp $
  */
 
 /*-
@@ -190,12 +190,7 @@ static device_method_t ipw_methods[] = {
 	{ 0, 0 }
 };
 
-static driver_t ipw_driver = {
-	"ipw",
-	ipw_methods,
-	sizeof (struct ipw_softc)
-};
-
+static DEFINE_CLASS_0(ipw, ipw_driver, ipw_methods, sizeof(struct ipw_softc));
 static devclass_t ipw_devclass;
 
 DRIVER_MODULE(ipw, pci, ipw_driver, ipw_devclass, 0, 0);
@@ -339,8 +334,7 @@ ipw_attach(device_t dev)
 	ic->ic_newstate = ipw_newstate;
 	ieee80211_media_init(ifp, ipw_media_change, ipw_media_status);
 
-#ifdef WI_RAWBPF
-	bpfattach2(ifp, DLT_IEEE802_11_RADIO,
+	bpfattach_dlt(ifp, DLT_IEEE802_11_RADIO,
 	    sizeof (struct ieee80211_frame) + 64, &sc->sc_drvbpf);
 
 	sc->sc_rxtap_len = sizeof sc->sc_rxtapu;
@@ -350,7 +344,6 @@ ipw_attach(device_t dev)
 	sc->sc_txtap_len = sizeof sc->sc_txtapu;
 	sc->sc_txtap.wt_ihdr.it_len = htole16(sc->sc_txtap_len);
 	sc->sc_txtap.wt_ihdr.it_present = htole32(IPW_TX_RADIOTAP_PRESENT);
-#endif
 
 	SYSCTL_ADD_PROC(&sc->sysctl_ctx,
 	    SYSCTL_CHILDREN(sysctl_tree), OID_AUTO, "radio",
@@ -383,17 +376,17 @@ ipw_detach(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	ipw_stop(sc);
 	ipw_free_firmware(sc);
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 
-#ifdef WI_RAWBPF
 	bpfdetach(ifp);
-#endif
+
 	ieee80211_ifdetach(ifp);
 
 	ipw_release(sc);
@@ -703,12 +696,13 @@ static int
 ipw_shutdown(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	ipw_stop(sc);
 
-	sc->sc_intrmask = splimp();
+	IPW_UNLOCK(sc);
 
 	return 0;
 }
@@ -717,12 +711,13 @@ static int
 ipw_suspend(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	ipw_stop(sc);
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 
 	return 0;
 }
@@ -732,8 +727,9 @@ ipw_resume(device_t dev)
 {
 	struct ipw_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->sc_ic.ic_if;
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	pci_write_config(dev, 0x41, 0, 1);
 
@@ -743,7 +739,7 @@ ipw_resume(device_t dev)
 			ifp->if_start(ifp);
 	}
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 
 	return 0;
 }
@@ -753,19 +749,20 @@ ipw_media_change(struct ifnet *ifp)
 {
 	struct ipw_softc *sc = ifp->if_softc;
 	int error;
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	error = ieee80211_media_change(ifp);
 	if (error != ENETRESET) {
-		splx(sc->sc_intrmask);
+		IPW_UNLOCK(sc);
 		return error;
 	}
 
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) == (IFF_UP | IFF_RUNNING))
 		ipw_init(sc);
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 
 	return 0;
 }
@@ -785,8 +782,8 @@ ipw_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 		{ IPW_RATE_DS5,  11 },
 		{ IPW_RATE_DS11, 22 },
 	};
-	u_int32_t val;
-	int rate, i;
+	u_int32_t val, i;
+	int rate;
 
 	imr->ifm_status = IFM_AVALID;
 	imr->ifm_active = IFM_IEEE80211;
@@ -823,7 +820,7 @@ ipw_media_status(struct ifnet *ifp, struct ifmediareq *imr)
 }
 
 static int
-ipw_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
+ipw_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg __unused)
 {
 	struct ipw_softc *sc = ic->ic_softc;
 	struct ieee80211_node *ni = ic->ic_bss;
@@ -1041,7 +1038,6 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 	m->m_pkthdr.rcvif = ifp;
 	m->m_pkthdr.len = m->m_len = le32toh(status->len);
 
-#ifdef WI_RAWBPF
 	if (sc->sc_drvbpf != NULL) {
 		struct ipw_rx_radiotap_header *tap = &sc->sc_rxtap;
 
@@ -1050,9 +1046,8 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 		tap->wr_chan_freq = htole16(ic->ic_bss->ni_chan->ic_freq);
 		tap->wr_chan_flags = htole16(ic->ic_bss->ni_chan->ic_flags);
 
-		bpf_mtap2(sc->sc_drvbpf, tap, sc->sc_rxtap_len, m);
+		bpf_ptap(sc->sc_drvbpf, m, tap, sc->sc_rxtap_len);
 	}
-#endif
 
 	wh = mtod(m, struct ieee80211_frame *);
 
@@ -1092,7 +1087,7 @@ ipw_data_intr(struct ipw_softc *sc, struct ipw_status *status,
 }
 
 static void
-ipw_notification_intr(struct ipw_softc *sc, struct ipw_soft_buf *sbuf)
+ipw_notification_intr(struct ipw_softc *sc __unused, struct ipw_soft_buf *sbuf __unused)
 {
 	DPRINTFN(2, ("RX!NOTIFICATION\n"));
 }
@@ -1227,11 +1222,12 @@ ipw_intr(void *arg)
 {
 	struct ipw_softc *sc = arg;
 	u_int32_t r;
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	if ((r = CSR_READ_4(sc, IPW_CSR_INTR)) == 0 || r == 0xffffffff) {
-		splx(sc->sc_intrmask);
+		IPW_UNLOCK(sc);
 		return;
 	}
 
@@ -1263,7 +1259,7 @@ ipw_intr(void *arg)
 	/* Re-enable interrupts */
 	CSR_WRITE_4(sc, IPW_CSR_INTR_MASK, IPW_INTR_MASK);
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 }
 
 static void
@@ -1283,7 +1279,7 @@ ipw_dma_map_txbuf(void *arg, bus_dma_segment_t *segs, int nseg,
 }
 
 static void
-ipw_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg, int error)
+ipw_dma_map_addr(void *arg, bus_dma_segment_t *segs, int nseg __unused, int error)
 {
 	if (error != 0)
 		return;
@@ -1356,7 +1352,6 @@ ipw_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 			return ENOBUFS;
 	}
 
-#ifdef WI_RAWBPF
 	if (sc->sc_drvbpf != NULL) {
 		struct ipw_tx_radiotap_header *tap = &sc->sc_txtap;
 
@@ -1364,9 +1359,8 @@ ipw_tx_start(struct ifnet *ifp, struct mbuf *m0, struct ieee80211_node *ni)
 		tap->wt_chan_freq = htole16(ic->ic_bss->ni_chan->ic_freq);
 		tap->wt_chan_flags = htole16(ic->ic_bss->ni_chan->ic_flags);
 
-		bpf_mtap2(sc->sc_drvbpf, tap, sc->sc_txtap_len, m0);
+		bpf_ptap(sc->sc_drvbpf, m0, tap, sc->sc_txtap_len);
 	}
-#endif
 
 	wh = mtod(m0, struct ieee80211_frame *);
 
@@ -1487,13 +1481,7 @@ ipw_start(struct ifnet *ifp)
 	struct mbuf *m0;
 	struct ieee80211_node *ni;
 
-#if 0
-	sc->sc_intrmask = splimp();
-#endif
 	if (ic->ic_state != IEEE80211_S_RUN) {
-#if 0
-	   splx(sc->sc_intrmask);
-#endif	   
 		return;
 	}
 
@@ -1507,18 +1495,14 @@ ipw_start(struct ifnet *ifp)
 		}
 		m0 = ifq_dequeue(&ifp->if_snd);
 
-#ifdef WI_RAWBPF
 		BPF_MTAP(ifp, m0);
-#endif
 
 		m0 = ieee80211_encap(ifp, m0, &ni);
 		if (m0 == NULL)
 			continue;
 
-#ifdef WI_RAWBPF
 		if (ic->ic_rawbpf != NULL)
 			bpf_mtap(ic->ic_rawbpf, m0);
-#endif
 
 		if (ipw_tx_start(ifp, m0, ni) != 0) {
 			if (ni != NULL && ni != ic->ic_bss)
@@ -1530,9 +1514,6 @@ ipw_start(struct ifnet *ifp)
 		sc->sc_tx_timer = 5;
 		ifp->if_timer = 1;
 	}
-#if 0
-	splx(sc->sc_intrmask);
-#endif
 }
 
 static void
@@ -1563,8 +1544,9 @@ ipw_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 	struct ifreq *ifr;
 	struct ieee80211req *ireq;
 	int error = 0;
+	IPW_LOCK_DECL();
 
-	sc->sc_intrmask = splimp();
+	IPW_LOCK(sc);
 
 	switch (cmd) {
 	case SIOCSIFFLAGS:
@@ -1640,7 +1622,7 @@ ipw_ioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		error = 0;
 	}
 
-	splx(sc->sc_intrmask);
+	IPW_UNLOCK(sc);
 
 	return error;
 }
@@ -1817,7 +1799,6 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	 * mutex(9): no mutexes should be held across functions which access
 	 * memory in userspace, such as copyin(9) [...]
 	 */
-	splx(sc->sc_intrmask);
 
 	if ((error = copyin(data, &hdr, sizeof hdr)) != 0)
 		goto fail1;
@@ -1848,15 +1829,13 @@ ipw_cache_firmware(struct ipw_softc *sc, void *data)
 	DPRINTF(("Firmware cached: main %u, ucode %u\n", fw->main_size,
 	    fw->ucode_size));
 
-	sc->sc_intrmask = splimp();
-
 	sc->flags |= IPW_FLAG_FW_CACHED;
 
 	return 0;
 
 fail3:	free(fw->ucode, M_DEVBUF);
 fail2:	free(fw->main, M_DEVBUF);
-fail1:	sc->sc_intrmask = splimp();
+fail1:
 
 	return error;
 }
@@ -2174,6 +2153,9 @@ ipw_sysctl_stats(SYSCTL_HANDLER_ARGS)
 	struct ipw_softc *sc = arg1;
 	u_int32_t i, size, buf[256];
 
+	(void)arg2; /* silence WARNS == 6 */
+	(void)oidp; /* silence WARNS == 6 */
+
 	if (!(sc->flags & IPW_FLAG_FW_INITED)) {
 		bzero(buf, sizeof buf);
 		return SYSCTL_OUT(req, buf, sizeof buf);
@@ -2193,6 +2175,9 @@ ipw_sysctl_radio(SYSCTL_HANDLER_ARGS)
 {
 	struct ipw_softc *sc = arg1;
 	int val;
+
+	(void)arg2; /* silence WARNS == 6 */
+	(void)oidp; /* silence WARNS == 6 */
 
 	val = !((sc->flags & IPW_FLAG_HAS_RADIO_SWITCH) &&
 		(CSR_READ_4(sc, IPW_CSR_IO) & IPW_IO_RADIO_DISABLED));
