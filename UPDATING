@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.10 2004/11/23 02:20:40 hmp Exp $
+$DragonFly: src/UPDATING,v 1.11 2005/03/01 10:55:17 joerg Exp $
 
 Updating Information for DragonFly users.
 
@@ -102,8 +102,8 @@ the hour and minute in the cron job a bit to avoid pileups.
 	cvsup /usr/share/examples/cvsup/DragonFly-supfile
 	# install the source from the CVS hierarchy
 	cd /usr
-	cvs -R -d /home/dcvs checkout src
-	cvs -R -d /home/dcvs checkout dfports
+	cvs -R -d /home/dcvs checkout -P src
+	cvs -R -d /home/dcvs checkout -P dfports
 
 Once you have the repository and broken out sources you can decide whether to
 update your sources from the repository automatically or manually.  Since
@@ -111,7 +111,7 @@ you are tracking changes made to DragonFly, it is usually a good idea to
 update the sources manually:
 
 	cd /usr/src
-	cvs update
+	cvs update -dP
 
 To upgrade a DragonFly system from sources you run the following sequence:
 
@@ -156,11 +156,7 @@ DragonFly has its own 'port overrides' hierarchy in /usr/dfports.  You can
 check this out of the DragonFly cvs repository using:
 
 cd /usr
-cvs -R -d /cvs checkout dfports
-
-You may wish to use a consolidated distfiles directory, in which case you
-should make /usr/dfports/distfiles a softlink to your existing distfiles
-directory (typically /usr/ports/distfiles).
+cvs -R -d /cvs checkout -P dfports
 
 Be sure that you have installed 'relpath' from the DragonFly sources
 (/usr/src/usr.bin/relpath) as well as the updated /usr/share/mk files from
