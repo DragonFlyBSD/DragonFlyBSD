@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.4 2003/08/06 19:58:46 rob Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.5 2003/10/13 08:43:56 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -380,6 +380,8 @@
                 print
                 ..
             ..
+	    splash
+	    ..
             startslip
             ..
             sunrpc
