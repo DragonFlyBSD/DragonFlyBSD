@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.22 2004/12/23 04:39:57 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.23 2005/01/16 11:18:16 eirikn Exp $
 #
 
 ISODIR ?= /usr/release
@@ -83,7 +83,7 @@ check:
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
 		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz.  This is"; \
 		echo "typically accomplished by cd'ing into the appropriate"; \
-		echo "port and typing 'make installer_fetchpksgs'"; \
+		echo "port and typing 'make installer_fetchpkgs'"; \
 		echo ""; \
 		echo "If you are trying to build the installer, the"; \
 		echo "required packages can be obtained from:"; \
