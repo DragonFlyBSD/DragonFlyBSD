@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  * @(#)muldi3.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/quad/muldi3.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include "quad.h"
@@ -103,8 +104,8 @@ __muldi3(a, b)
 	quad_t a, b;
 {
 	union uu u, v, low, prod;
-	register u_long high, mid, udiff, vdiff;
-	register int negall, negmid;
+	u_long high, mid, udiff, vdiff;
+	int negall, negmid;
 #define	u1	u.ul[H]
 #define	u0	u.ul[L]
 #define	v1	v.ul[H]

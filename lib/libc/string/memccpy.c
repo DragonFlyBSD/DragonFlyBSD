@@ -32,7 +32,7 @@
  *
  * @(#)memccpy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memccpy.c,v 1.2.12.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memccpy.c,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libc/string/memccpy.c,v 1.4 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,9 +47,9 @@ memccpy(t, f, c, n)
 {
 
 	if (n) {
-		register unsigned char *tp = t;
-		register const unsigned char *fp = f;
-		register unsigned char uc = c;
+		unsigned char *tp = t;
+		const unsigned char *fp = f;
+		unsigned char uc = c;
 		do {
 			if ((*tp++ = *fp++) == uc)
 				return (tp);

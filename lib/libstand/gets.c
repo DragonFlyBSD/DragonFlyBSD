@@ -1,4 +1,5 @@
 /*	$NetBSD: gets.c,v 1.6 1995/10/11 21:16:57 pk Exp $	*/
+/* $DragonFly: src/lib/libstand/gets.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -42,8 +43,8 @@
 void
 ngets(char *buf, int n)
 {
-    register int c;
-    register char *lp;
+    int c;
+    char *lp;
 
     for (lp = buf;;)
 	switch (c = getchar() & 0177) {
@@ -62,7 +63,7 @@ ngets(char *buf, int n)
 	    }
 	    break;
 	case 'r'&037: {
-	    register char *p;
+	    char *p;
 
 	    putchar('\n');
 	    for (p = buf; p < lp; ++p)

@@ -32,7 +32,7 @@
  *
  * @(#)strspn.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strspn.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strspn.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strspn.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -44,10 +44,10 @@
 size_t
 strspn(s1, s2)
 	const char *s1;
-	register const char *s2;
+	const char *s2;
 {
-	register const char *p = s1, *spanp;
-	register char c, sc;
+	const char *p = s1, *spanp;
+	char c, sc;
 
 	/*
 	 * Skip any characters in s2, excluding the terminating \0.

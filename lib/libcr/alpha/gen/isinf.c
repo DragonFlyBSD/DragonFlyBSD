@@ -1,6 +1,6 @@
 /*	$NetBSD: isinf.c,v 1.1 1995/02/10 17:50:23 cgd Exp $	*/
 /* $FreeBSD: src/lib/libc/alpha/gen/isinf.c,v 1.1.1.1.6.1 2000/08/21 21:09:29 jhb Exp $ */
-/* $DragonFly: src/lib/libcr/alpha/gen/Attic/isinf.c,v 1.2 2003/06/17 04:26:41 dillon Exp $ */
+/* $DragonFly: src/lib/libcr/alpha/gen/Attic/isinf.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Carnegie-Mellon University.
@@ -37,7 +37,7 @@ int
 isnan(d)
 	double d;
 {
-	register struct ieee_double *p = (struct ieee_double *)&d;
+	struct ieee_double *p = (struct ieee_double *)&d;
 
 	return (p->dbl_exp == DBL_EXP_INFNAN &&
 	    (p->dbl_frach || p->dbl_fracl));
@@ -47,7 +47,7 @@ int
 isinf(d)
 	double d;
 {
-	register struct ieee_double *p = (struct ieee_double *)&d;
+	struct ieee_double *p = (struct ieee_double *)&d;
 
 	return (p->dbl_exp == DBL_EXP_INFNAN &&
 	    !p->dbl_frach && !p->dbl_fracl);

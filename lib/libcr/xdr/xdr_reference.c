@@ -29,7 +29,7 @@
  * @(#)xdr_reference.c 1.11 87/08/11 SMI
  * @(#)xdr_reference.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_reference.c,v 1.8 1999/08/28 00:02:56 peter Exp $
- * $DragonFly: src/lib/libcr/xdr/Attic/xdr_reference.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/xdr/Attic/xdr_reference.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 /*
@@ -60,13 +60,8 @@
  */
 bool_t
 xdr_reference(xdrs, pp, size, proc)
-	register XDR *xdrs;
-	caddr_t *pp;		/* the pointer to work on */
-	u_int size;		/* size of the object pointed to */
-	xdrproc_t proc;		/* xdr routine to handle the object */
-{
-	register caddr_t loc = *pp;
-	register bool_t stat;
+	caddr_t loc = *pp;
+	bool_t stat;
 
 	if (loc == NULL)
 		switch (xdrs->x_op) {
@@ -115,7 +110,7 @@ xdr_reference(xdrs, pp, size, proc)
  */
 bool_t
 xdr_pointer(xdrs,objpp,obj_size,xdr_obj)
-	register XDR *xdrs;
+	XDR *xdrs;
 	char **objpp;
 	u_int obj_size;
 	xdrproc_t xdr_obj;

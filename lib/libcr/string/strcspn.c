@@ -35,7 +35,7 @@
  *
  * @(#)strcspn.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcspn.c,v 1.1.1.1.14.1 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strcspn.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strcspn.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,10 +47,10 @@
 size_t
 strcspn(s1, s2)
 	const char *s1;
-	register const char *s2;
+	const char *s2;
 {
-	register const char *p, *spanp;
-	register char c, sc;
+	const char *p, *spanp;
+	char c, sc;
 
 	/*
 	 * Stop as soon as we find any character from s2.  Note that there

@@ -38,7 +38,7 @@
  *
  * @(#) Header: bootp.c,v 1.4 93/09/11 03:13:51 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/bootp.c,v 1.1.1.1.6.2 2000/09/20 18:37:25 ps Exp $
- * $DragonFly: src/lib/libstand/bootp.c,v 1.3 2004/08/20 00:43:00 joerg Exp $
+ * $DragonFly: src/lib/libstand/bootp.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,7 @@ bootp(sock, flag)
 	int flag;
 {
 	struct iodesc *d;
-	register struct bootp *bp;
+	struct bootp *bp;
 	struct {
 		u_char header[HEADER_SIZE];
 		struct bootp wbootp;
@@ -255,11 +255,11 @@ bootp(sock, flag)
 /* Transmit a bootp request */
 static ssize_t
 bootpsend(d, pkt, len)
-	register struct iodesc *d;
-	register void *pkt;
-	register size_t len;
+	struct iodesc *d;
+	void *pkt;
+	size_t len;
 {
-	register struct bootp *bp;
+	struct bootp *bp;
 
 #ifdef BOOTP_DEBUG
 	if (debug)
@@ -279,13 +279,13 @@ bootpsend(d, pkt, len)
 
 static ssize_t
 bootprecv(d, pkt, len, tleft)
-register struct iodesc *d;
-register void *pkt;
-register size_t len;
+struct iodesc *d;
+void *pkt;
+size_t len;
 time_t tleft;
 {
-	register ssize_t n;
-	register struct bootp *bp;
+	ssize_t n;
+	struct bootp *bp;
 
 #ifdef BOOTP_DEBUGx
 	if (debug)
@@ -338,12 +338,12 @@ bad:
 
 static int
 vend_rfc1048(cp, len)
-	register u_char *cp;
+	u_char *cp;
 	u_int len;
 {
-	register u_char *ep;
-	register int size;
-	register u_char tag;
+	u_char *ep;
+	int size;
+	u_char tag;
 
 #ifdef BOOTP_DEBUG
 	if (debug)
@@ -399,7 +399,7 @@ static void
 vend_cmu(cp)
 	u_char *cp;
 {
-	register struct cmu_vend *vp;
+	struct cmu_vend *vp;
 
 #ifdef BOOTP_DEBUG
 	if (debug)

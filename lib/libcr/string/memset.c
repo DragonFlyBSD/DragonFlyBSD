@@ -35,7 +35,7 @@
  *
  * @(#)memset.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memset.c,v 1.4.2.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/memset.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/memset.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@
 void
 bzero(dst0, length)
 	void *dst0;
-	register size_t length;
+	size_t length;
 #else
 #define	RETURN	return (dst0)
 #define	VAL	c0
@@ -63,15 +63,15 @@ bzero(dst0, length)
 void *
 memset(dst0, c0, length)
 	void *dst0;
-	register int c0;
-	register size_t length;
+	int c0;
+	size_t length;
 #endif
 {
-	register size_t t;
+	size_t t;
 #ifndef BZERO
-	register u_int c;
+	u_int c;
 #endif
-	register u_char *dst;
+	u_char *dst;
 
 	dst = dst0;
 	/*

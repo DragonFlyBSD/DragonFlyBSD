@@ -56,7 +56,7 @@
  * [including the GNU Public Licence.]
  *
  * $FreeBSD: src/lib/libmd/sha0c.c,v 1.3 1999/08/28 00:05:09 peter Exp $
- * $DragonFly: src/lib/libmd/sha0c.c,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $DragonFly: src/lib/libmd/sha0c.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -117,7 +117,7 @@ SHA_CTX *c;
 const unsigned char *data;
 size_t len;
 	{
-	register u_int32_t *p;
+	u_int32_t *p;
 	int ew,ec,sw,sc;
 	u_int32_t l;
 
@@ -287,7 +287,7 @@ SHA_CTX *c;
 const u_int32_t *W;
 int num;
 	{
-	register u_int32_t A,B,C,D,E,T;
+	u_int32_t A,B,C,D,E,T;
 	u_int32_t X[16];
 
 	A=c->h0;
@@ -405,9 +405,9 @@ void SHA_Final(md, c)
 unsigned char *md;
 SHA_CTX *c;
 	{
-	register int i,j;
-	register u_int32_t l;
-	register u_int32_t *p;
+	int i,j;
+	u_int32_t l;
+	u_int32_t *p;
 	static unsigned char end[4]={0x80,0x00,0x00,0x00};
 	unsigned char *cp=end;
 

@@ -32,7 +32,7 @@
  *
  * @(#)mcount.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $
- * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -64,16 +64,16 @@ void	user (void);
  * perform this optimization.
  */
 _MCOUNT_DECL(frompc, selfpc)	/* _mcount; may be static, inline, etc */
-	register uintfptr_t frompc, selfpc;
+	uintfptr_t frompc, selfpc;
 {
 #ifdef GUPROF
 	u_int delta;
 #endif
-	register fptrdiff_t frompci;
-	register u_short *frompcindex;
-	register struct tostruct *top, *prevtop;
-	register struct gmonparam *p;
-	register long toindex;
+	fptrdiff_t frompci;
+	u_short *frompcindex;
+	struct tostruct *top, *prevtop;
+	struct gmonparam *p;
+	long toindex;
 #ifdef _KERNEL
 	MCOUNT_DECL(s)
 #endif

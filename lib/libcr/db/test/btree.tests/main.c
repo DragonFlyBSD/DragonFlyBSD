@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/db/test/btree.tests/Attic/main.c,v 1.4 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/test/btree.tests/Attic/main.c,v 1.5 2004/10/25 19:38:24 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -607,7 +607,7 @@ load(db, argv)
 	DB *db;
 	char **argv;
 {
-	register char *p, *t;
+	char *p, *t;
 	FILE *fp;
 	DBT data, key;
 	recno_t cnt;

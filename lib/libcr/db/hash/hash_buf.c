@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_buf.c,v 1.4.8.1 2001/03/05 07:38:05 obrien Exp $
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash_buf.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_buf.c,v 1.4 2004/10/25 19:38:03 drhodus Exp $
  *
  * @(#)hash_buf.c	8.5 (Berkeley) 7/15/94
  */
@@ -108,9 +108,9 @@ __get_buf(hashp, addr, prev_bp, newpage)
 	BUFHEAD *prev_bp;
 	int newpage;	/* If prev_bp set, indicates a new overflow page. */
 {
-	register BUFHEAD *bp;
-	register u_int32_t is_disk_mask;
-	register int is_disk, segment_ndx;
+	BUFHEAD *bp;
+	u_int32_t is_disk_mask;
+	int is_disk, segment_ndx;
 	SEGMENT segp;
 
 	is_disk = 0;
@@ -162,9 +162,9 @@ newbuf(hashp, addr, prev_bp)
 	u_int32_t addr;
 	BUFHEAD *prev_bp;
 {
-	register BUFHEAD *bp;		/* The buffer we're going to use */
-	register BUFHEAD *xbp;		/* Temp pointer */
-	register BUFHEAD *next_xbp;
+	BUFHEAD *bp;		/* The buffer we're going to use */
+	BUFHEAD *xbp;		/* Temp pointer */
+	BUFHEAD *next_xbp;
 	SEGMENT segp;
 	int segment_ndx;
 	u_int16_t oaddr, *shortp;

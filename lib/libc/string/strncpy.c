@@ -35,7 +35,7 @@
  *
  * @(#)strncpy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strncpy.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strncpy.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strncpy.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -49,11 +49,11 @@ char *
 strncpy(dst, src, n)
 	char *dst;
 	const char *src;
-	register size_t n;
+	size_t n;
 {
 	if (n != 0) {
-		register char *d = dst;
-		register const char *s = src;
+		char *d = dst;
+		const char *s = src;
 
 		do {
 			if ((*d++ = *s++) == 0) {

@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_log2.c	8.2 (Berkeley) 5/31/94
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_log2.c,v 1.3 2004/10/25 19:38:03 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +45,7 @@ u_int32_t
 __log2(num)
 	u_int32_t num;
 {
-	register u_int32_t i, limit;
+	u_int32_t i, limit;
 
 	limit = 1;
 	for (i = 0; limit < num; limit = limit << 1, i++);

@@ -52,7 +52,7 @@
  *
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbydns.c,v 1.13.2.4 2002/10/11 11:07:13 ume Exp $
- * $DragonFly: src/lib/libcr/net/Attic/getnetbydns.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/getnetbydns.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
  *	Dep. Matematica Universidade de Coimbra, Portugal, Europe
@@ -104,9 +104,9 @@ getnetanswer(answer, anslen, net_i)
 	int net_i;
 {
 
-	register HEADER *hp;
-	register u_char *cp;
-	register int n;
+	HEADER *hp;
+	u_char *cp;
+	int n;
 	u_char *eom;
 	int type, class, buflen, ancount, qdcount, haveanswer, i, nchar;
 	char aux1[MAXHOSTNAMELEN], aux2[MAXHOSTNAMELEN], ans[MAXHOSTNAMELEN];
@@ -217,8 +217,8 @@ static	char *net_aliases[MAXALIASES], netbuf[PACKETSZ];
 
 struct netent *
 _getnetbydnsaddr(net, net_type)
-	register unsigned long net;
-	register int net_type;
+	unsigned long net;
+	int net_type;
 {
 	unsigned int netbr[4];
 	int nn, anslen;
@@ -284,7 +284,7 @@ _getnetbydnsaddr(net, net_type)
 
 struct netent *
 _getnetbydnsname(net)
-	register const char *net;
+	const char *net;
 {
 	int anslen;
 	querybuf *buf;

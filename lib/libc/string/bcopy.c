@@ -35,7 +35,7 @@
  *
  * @(#)bcopy.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/bcopy.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/bcopy.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/bcopy.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
  
 #include <sys/cdefs.h>
@@ -69,11 +69,11 @@ bcopy(src0, dst0, length)
 #endif
 	void *dst0;
 	const void *src0;
-	register size_t length;
+	size_t length;
 {
-	register char *dst = dst0;
-	register const char *src = src0;
-	register size_t t;
+	char *dst = dst0;
+	const char *src = src0;
+	size_t t;
 
 	if (length == 0 || dst == src)		/* nothing to do */
 		goto done;

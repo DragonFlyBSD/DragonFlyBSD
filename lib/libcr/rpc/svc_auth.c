@@ -28,7 +28,7 @@
  *
  * @(#)svc_auth.c 1.26 89/02/07 Copyr 1984 Sun Micro
  * $FreeBSD: src/lib/libc/rpc/svc_auth.c,v 1.7 1999/12/29 05:04:16 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_auth.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 /*
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
@@ -66,8 +66,8 @@
  *
  *	enum auth_stat
  *	flavorx_auth(rqst, msg)
- *		register struct svc_req *rqst;
- *		register struct rpc_msg *msg;
+ *		struct svc_req *rqst;
+ *		struct rpc_msg *msg;
  *
  */
 
@@ -104,11 +104,11 @@ static struct authsvc *Auths = NULL;
  */
 enum auth_stat
 _authenticate(rqst, msg)
-	register struct svc_req *rqst;
+	struct svc_req *rqst;
 	struct rpc_msg *msg;
 {
-	register int cred_flavor;
-	register struct authsvc *asp;
+	int cred_flavor;
+	struct authsvc *asp;
 
 	rqst->rq_cred = msg->rm_call.cb_cred;
 	rqst->rq_xprt->xp_verf.oa_flavor = _null_auth.oa_flavor;
@@ -173,10 +173,10 @@ _svcauth_null(rqst, msg)
 
 int
 svc_auth_reg(cred_flavor, handler)
-	register int cred_flavor;
+	int cred_flavor;
 	enum auth_stat (*handler)();
 {
-	register struct authsvc *asp;
+	struct authsvc *asp;
 
 	switch (cred_flavor) {
 	    case AUTH_NULL:

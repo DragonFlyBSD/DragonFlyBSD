@@ -29,7 +29,7 @@
  * @(#)rpc_callmsg.c 1.4 87/08/11 Copyr 1984 Sun Micro
  * @(#)rpc_callmsg.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/rpc_callmsg.c,v 1.9 1999/08/28 00:00:45 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/rpc_callmsg.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/rpc_callmsg.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -49,11 +49,11 @@
  */
 bool_t
 xdr_callmsg(xdrs, cmsg)
-	register XDR *xdrs;
-	register struct rpc_msg *cmsg;
+	XDR *xdrs;
+	struct rpc_msg *cmsg;
 {
-	register int32_t *buf;
-	register struct opaque_auth *oa;
+	int32_t *buf;
+	struct opaque_auth *oa;
 
 	if (xdrs->x_op == XDR_ENCODE) {
 		if (cmsg->rm_call.cb_cred.oa_length > MAX_AUTH_BYTES) {

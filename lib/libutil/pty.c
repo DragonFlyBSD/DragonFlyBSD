@@ -32,7 +32,7 @@
  *
  * @(#)pty.c	8.3 (Berkeley) 5/16/94
  * $FreeBSD: src/lib/libutil/pty.c,v 1.10 1999/08/28 00:05:51 peter Exp $
- * $DragonFly: src/lib/libutil/pty.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/pty.c,v 1.3 2004/10/25 19:39:09 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -56,8 +56,8 @@ openpty(amaster, aslave, name, termp, winp)
 	struct winsize *winp;
 {
 	char line[] = "/dev/ptyXX";
-	register const char *cp1, *cp2;
-	register int master, slave, ttygid;
+	const char *cp1, *cp2;
+	int master, slave, ttygid;
 	struct group *gr;
 
 	if ((gr = getgrnam("tty")) != NULL)

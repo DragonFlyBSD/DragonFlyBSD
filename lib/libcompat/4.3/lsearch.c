@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)lsearch.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcompat/4.3/Attic/lsearch.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -66,7 +67,7 @@ linear_base(key, base, nelp, width, compar, add_flag)
 	u_int *nelp, width;
 	int (*compar)(), add_flag;
 {
-	register char *element, *end;
+	char *element, *end;
 
 	end = base + *nelp * width;
 	for (element = base; element < end; element += width)

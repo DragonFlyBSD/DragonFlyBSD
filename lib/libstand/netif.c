@@ -1,4 +1,5 @@
 /*	$NetBSD: netif.c,v 1.10 1997/09/06 13:57:14 drochner Exp $	*/
+/* $DragonFly: src/lib/libstand/netif.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
 
 /*
  * Copyright (c) 1993 Adam Glass
@@ -290,7 +291,7 @@ netif_open(machdep_hint)
 	void *machdep_hint;
 {
 	int fd;
-	register struct iodesc *s;
+	struct iodesc *s;
 	struct netif *nif;
 	
 	/* find a free socket */

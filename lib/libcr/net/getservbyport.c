@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservbyport.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/net/Attic/getservbyport.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <netdb.h>
@@ -43,7 +44,7 @@ getservbyport(port, proto)
 	int port;
 	const char *proto;
 {
-	register struct servent *p;
+	struct servent *p;
 
 #ifdef YP
 	extern int ___getservbyport_yp;

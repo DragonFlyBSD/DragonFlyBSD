@@ -29,7 +29,7 @@
  * @(#)xdr_array.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_array.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_array.c,v 1.8.2.3 2002/08/01 12:23:20 nectar Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_array.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -59,18 +59,18 @@
  */
 bool_t
 xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t *addrp;		/* array pointer */
 	u_int *sizep;		/* number of elements */
 	u_int maxsize;		/* max numberof elements */
 	u_int elsize;		/* size in bytes of each element */
 	xdrproc_t elproc;	/* xdr routine to handle each element */
 {
-	register u_int i;
-	register caddr_t target = *addrp;
-	register u_int c;  /* the actual element count */
-	register bool_t stat = TRUE;
-	register u_int nodesize;
+	u_int i;
+	caddr_t target = *addrp;
+	u_int c;  /* the actual element count */
+	bool_t stat = TRUE;
+	u_int nodesize;
 
 	/* like strings, arrays are really counted arrays */
 	if (!xdr_u_int(xdrs, sizep)) {
@@ -135,14 +135,14 @@ xdr_array(xdrs, addrp, sizep, maxsize, elsize, elproc)
  */
 bool_t
 xdr_vector(xdrs, basep, nelem, elemsize, xdr_elem)
-	register XDR *xdrs;
-	register char *basep;
-	register u_int nelem;
-	register u_int elemsize;
-	register xdrproc_t xdr_elem;
+	XDR *xdrs;
+	char *basep;
+	u_int nelem;
+	u_int elemsize;
+	xdrproc_t xdr_elem;
 {
-	register u_int i;
-	register char *elptr;
+	u_int i;
+	char *elptr;
 
 	elptr = basep;
 	for (i = 0; i < nelem; i++) {

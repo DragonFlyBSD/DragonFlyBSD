@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/inet_network.c,v 1.6.2.1 2001/04/21 14:53:04 ume Exp $
- * $DragonFly: src/lib/libcr/net/Attic/inet_network.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/inet_network.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  *
  * @(#)inet_network.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,12 +48,12 @@
  */
 in_addr_t
 inet_network(cp)
-	register const char *cp;
+	const char *cp;
 {
-	register in_addr_t val, base, n;
-	register char c;
+	in_addr_t val, base, n;
+	char c;
 	in_addr_t parts[4], *pp = parts;
-	register int i;
+	int i;
 
 again:
 	val = 0; base = 10;

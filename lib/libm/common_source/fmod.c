@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)fmod.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libm/common_source/Attic/fmod.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /* fmod.c
@@ -119,7 +120,7 @@ double x,y;
 
 main()
 {
-	register int i,cases;
+	int i,cases;
 	double x,y;
 
 	srandom(12345);

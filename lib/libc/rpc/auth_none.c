@@ -29,7 +29,7 @@
  * @(#)auth_none.c	1.19 87/08/11 Copyr 1984 Sun Micro
  * @(#)auth_none.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/auth_none.c,v 1.9 1999/08/28 00:00:32 peter Exp $
- * $DragonFly: src/lib/libc/rpc/auth_none.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/auth_none.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -72,9 +72,9 @@ static struct authnone_private {
 AUTH *
 authnone_create()
 {
-	register struct authnone_private *ap = authnone_private;
+	struct authnone_private *ap = authnone_private;
 	XDR xdr_stream;
-	register XDR *xdrs;
+	XDR *xdrs;
 
 	if (ap == 0) {
 		ap = (struct authnone_private *)calloc(1, sizeof (*ap));
@@ -102,7 +102,7 @@ authnone_marshal(client, xdrs)
 	AUTH *client;
 	XDR *xdrs;
 {
-	register struct authnone_private *ap = authnone_private;
+	struct authnone_private *ap = authnone_private;
 
 	if (ap == 0)
 		return (0);

@@ -29,7 +29,7 @@
  * @(#)xdr_float.c 1.12 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_float.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_float.c,v 1.7 1999/08/28 00:02:55 peter Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_float.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_float.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -93,8 +93,8 @@ static struct sgl_limits {
 
 bool_t
 xdr_float(xdrs, fp)
-	register XDR *xdrs;
-	register float *fp;
+	XDR *xdrs;
+	float *fp;
 {
 #ifdef IEEEFP
 	bool_t rv;
@@ -200,18 +200,18 @@ static struct dbl_limits {
 
 bool_t
 xdr_double(xdrs, dp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	double *dp;
 {
 #ifdef IEEEFP
-	register int32_t *i32p;
+	int32_t *i32p;
 	bool_t rv;
 	long tmpl;
 #else
-	register long *lp;
+	long *lp;
 	struct	ieee_double id;
 	struct	vax_double vd;
-	register struct dbl_limits *lim;
+	struct dbl_limits *lim;
 	int i;
 #endif
 

@@ -4,7 +4,7 @@
  * Heimdal compatibility layer.
  *
  * $FreeBSD: src/lib/libpam/modules/pam_krb5/compat_heimdal.c,v 1.1.2.2 2001/07/29 18:57:30 markm Exp $
- * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/compat_heimdal.c,v 1.3 2003/11/22 19:30:55 asmodai Exp $
+ * $DragonFly: src/lib/libpam/modules/pam_krb5/Attic/compat_heimdal.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <errno.h>
@@ -86,7 +86,7 @@ heimdal_pam_prompter(krb5_context context, void *data, const char *name,
 	pam_prompts++;
 
     for (i = 0; i < num_prompts; i++, pam_prompts++) {
-	register int len;
+	int len;
 	if (!resp[pam_prompts].resp) {
 	    pamret = PAM_AUTH_ERR;
 	    goto cleanup;

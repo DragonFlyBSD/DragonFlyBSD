@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/nsap_addr.c,v 1.7 1999/08/28 00:00:15 peter Exp $
- * $DragonFly: src/lib/libcr/net/Attic/nsap_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/nsap_addr.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -29,7 +29,7 @@
 
 static char
 xtob(c)
-	register int c;
+	int c;
 {
 	return (c - (((c >= '0') && (c <= '9')) ? '0' : '7'));
 }
@@ -73,10 +73,10 @@ inet_nsap_addr(ascii, binary, maxlen)
 char *
 inet_nsap_ntoa(binlen, binary, ascii)
 	int binlen;
-	register const u_char *binary;
-	register char *ascii;
+	const u_char *binary;
+	char *ascii;
 {
-	register int nib;
+	int nib;
 	int i;
 	static char tmpbuf[255*3];
 	char *start;

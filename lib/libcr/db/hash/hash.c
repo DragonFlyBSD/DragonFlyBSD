@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash.c,v 1.8 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash.c,v 1.4 2004/10/25 19:38:03 drhodus Exp $
  *
  * @(#)hash.c	8.9 (Berkeley) 6/16/94
  */
@@ -355,7 +355,7 @@ init_htab(hashp, nelem)
 	HTAB *hashp;
 	int nelem;
 {
-	register int nbuckets, nsegs;
+	int nbuckets, nsegs;
 	int l2;
 
 	/*
@@ -601,11 +601,11 @@ hash_access(hashp, action, key, val)
 	ACTION action;
 	DBT *key, *val;
 {
-	register BUFHEAD *rbufp;
+	BUFHEAD *rbufp;
 	BUFHEAD *bufp, *save_bufp;
-	register u_int16_t *bp;
-	register int n, ndx, off, size;
-	register char *kp;
+	u_int16_t *bp;
+	int n, ndx, off, size;
+	char *kp;
 	u_int16_t pageno;
 
 #ifdef HASH_STATISTICS
@@ -730,8 +730,8 @@ hash_seq(dbp, key, data, flag)
 	DBT *key, *data;
 	u_int32_t flag;
 {
-	register u_int32_t bucket;
-	register BUFHEAD *bufp;
+	u_int32_t bucket;
+	BUFHEAD *bufp;
 	HTAB *hashp;
 	u_int16_t *bp, ndx;
 
@@ -874,7 +874,7 @@ hash_realloc(p_ptr, oldsize, newsize)
 	SEGMENT **p_ptr;
 	int oldsize, newsize;
 {
-	register void *p;
+	void *p;
 
 	if ( (p = malloc(newsize)) ) {
 		memmove(p, *p_ptr, oldsize);
@@ -910,8 +910,8 @@ alloc_segs(hashp, nsegs)
 	HTAB *hashp;
 	int nsegs;
 {
-	register int i;
-	register SEGMENT store;
+	int i;
+	SEGMENT store;
 
 	int save_errno;
 

@@ -1,4 +1,5 @@
 /*	$NetBSD: ioctl.c,v 1.4 1994/10/30 21:48:24 cgd Exp $	*/
+/* $DragonFly: src/lib/libstand/ioctl.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -72,7 +73,7 @@ ioctl(fd, cmd, arg)
 	u_long cmd;
 	char *arg;
 {
-	register struct open_file *f = &files[fd];
+	struct open_file *f = &files[fd];
 
 	if ((unsigned)fd >= SOPEN_MAX || f->f_flags == 0) {
 		errno = EBADF;

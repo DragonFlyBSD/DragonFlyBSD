@@ -29,7 +29,7 @@
  * @(#)pmap_getmaps.c 1.10 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getmaps.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getmaps.c,v 1.11 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getmaps.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getmaps.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ pmap_getmaps(address)
 	struct pmaplist *head = (struct pmaplist *)NULL;
 	int socket = -1;
 	struct timeval minutetimeout;
-	register CLIENT *client;
+	CLIENT *client;
 
 	minutetimeout.tv_sec = 60;
 	minutetimeout.tv_usec = 0;

@@ -29,7 +29,7 @@
  * @(#)svc_unix.c 1.21 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_unix.c,v 1.7.2.2 2001/09/05 22:29:23 dec Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/svc_unix.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_unix.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -181,14 +181,14 @@ static int __msgwrite(sock, buf, cnt)
  */
 SVCXPRT *
 svcunix_create(sock, sendsize, recvsize, path)
-	register int sock;
+	int sock;
 	u_int sendsize;
 	u_int recvsize;
 	char *path;
 {
 	bool_t madesock = FALSE;
-	register SVCXPRT *xprt;
-	register struct unix_rendezvous *r;
+	SVCXPRT *xprt;
+	struct unix_rendezvous *r;
 	struct sockaddr_un addr;
 	int len = sizeof(struct sockaddr_un);
 
@@ -257,8 +257,8 @@ makefd_xprt(fd, sendsize, recvsize)
 	u_int sendsize;
 	u_int recvsize;
 {
-	register SVCXPRT *xprt;
-	register struct unix_conn *cd;
+	SVCXPRT *xprt;
+	struct unix_conn *cd;
 
 	xprt = (SVCXPRT *)mem_alloc(sizeof(SVCXPRT));
 	if (xprt == (SVCXPRT *)NULL) {
@@ -289,7 +289,7 @@ makefd_xprt(fd, sendsize, recvsize)
 
 static bool_t
 rendezvous_request(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
 	int sock;
 	struct unix_rendezvous *r;
@@ -327,9 +327,9 @@ rendezvous_stat()
 
 static void
 svcunix_destroy(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
-	register struct unix_conn *cd = (struct unix_conn *)xprt->xp_p1;
+	struct unix_conn *cd = (struct unix_conn *)xprt->xp_p1;
 
 	xprt_unregister(xprt);
 	(void)_close(xprt->xp_sock);
@@ -364,11 +364,11 @@ static struct timeval wait_per_try = { 35, 0 };
  */
 static int
 readunix(xprt, buf, len)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 	caddr_t buf;
-	register int len;
+	int len;
 {
-	register int sock = xprt->xp_sock;
+	int sock = xprt->xp_sock;
 	struct timeval start, delta, tv;
 	struct timeval tmp1, tmp2;
 	fd_set *fds;
@@ -436,11 +436,11 @@ fatal_err:
  */
 static int
 writeunix(xprt, buf, len)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 	caddr_t buf;
 	int len;
 {
-	register int i, cnt;
+	int i, cnt;
 
 	for (cnt = len; cnt > 0; cnt -= i, buf += i) {
 		if ((i = __msgwrite(xprt->xp_sock, buf, cnt)) < 0) {
@@ -456,7 +456,7 @@ static enum xprt_stat
 svcunix_stat(xprt)
 	SVCXPRT *xprt;
 {
-	register struct unix_conn *cd =
+	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
 
 	if (cd->strm_stat == XPRT_DIED)
@@ -469,11 +469,11 @@ svcunix_stat(xprt)
 static bool_t
 svcunix_recv(xprt, msg)
 	SVCXPRT *xprt;
-	register struct rpc_msg *msg;
+	struct rpc_msg *msg;
 {
-	register struct unix_conn *cd =
+	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
-	register XDR *xdrs = &(cd->xdrs);
+	XDR *xdrs = &(cd->xdrs);
 
 	xdrs->x_op = XDR_DECODE;
 	(void)xdrrec_skiprecord(xdrs);
@@ -505,7 +505,7 @@ svcunix_freeargs(xprt, xdr_args, args_ptr)
 	xdrproc_t xdr_args;
 	caddr_t args_ptr;
 {
-	register XDR *xdrs =
+	XDR *xdrs =
 	    &(((struct unix_conn *)(xprt->xp_p1))->xdrs);
 
 	xdrs->x_op = XDR_FREE;
@@ -515,12 +515,12 @@ svcunix_freeargs(xprt, xdr_args, args_ptr)
 static bool_t
 svcunix_reply(xprt, msg)
 	SVCXPRT *xprt;
-	register struct rpc_msg *msg;
+	struct rpc_msg *msg;
 {
-	register struct unix_conn *cd =
+	struct unix_conn *cd =
 	    (struct unix_conn *)(xprt->xp_p1);
-	register XDR *xdrs = &(cd->xdrs);
-	register bool_t stat;
+	XDR *xdrs = &(cd->xdrs);
+	bool_t stat;
 
 	xdrs->x_op = XDR_ENCODE;
 	msg->rm_xid = cd->x_id;

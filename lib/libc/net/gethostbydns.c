@@ -55,7 +55,7 @@
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
  * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -152,9 +152,9 @@ gethostanswer(answer, anslen, qname, qtype)
 	const char *qname;
 	int qtype;
 {
-	register const HEADER *hp;
-	register const u_char *cp;
-	register int n;
+	const HEADER *hp;
+	const u_char *cp;
+	int n;
 	const u_char *eom, *erdata;
 	char *bp, **ap, **hap;
 	int type, class, buflen, ancount, qdcount;
@@ -377,7 +377,7 @@ gethostanswer(answer, anslen, qname, qtype)
 				continue;
 			}
 			if (!haveanswer) {
-				register int nn;
+				int nn;
 
 				host.h_name = bp;
 				nn = strlen(bp) + 1;	/* for the \0 */
@@ -477,7 +477,7 @@ _gethostbydnsname(name, af)
 	int af;
 {
 	querybuf *buf;
-	register const char *cp;
+	const char *cp;
 	char *bp;
 	int n, size, type, len;
 	struct hostent *hp;
@@ -610,10 +610,10 @@ _gethostbydnsaddr(addr, len, af)
 	static const u_char tunnelled[] = { 0,0, 0,0, 0,0, 0,0, 0,0, 0,0 };
 	int n, size;
 	querybuf *buf;
-	register struct hostent *hp;
+	struct hostent *hp;
 	char qbuf[MAXDNAME+1], *qp;
 #ifdef SUNSECURITY
-	register struct hostent *rhp;
+	struct hostent *rhp;
 	char **haddr;
 	u_long old_options;
 	char hname2[MAXDNAME+1];

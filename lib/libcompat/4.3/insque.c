@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)insque.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcompat/4.3/insque.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -46,7 +47,7 @@ struct vaxque {		/* queue format expected by VAX queue instructions */
 
 void
 insque(e, prev)
-	register struct vaxque *e, *prev;
+	struct vaxque *e, *prev;
 {
 	e->vq_prev = prev;
 	e->vq_next = prev->vq_next;

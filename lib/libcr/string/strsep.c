@@ -32,7 +32,7 @@
  *
  * @(#)strsep.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strsep.c,v 1.2.12.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strsep.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strsep.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -52,12 +52,12 @@
  */
 char *
 strsep(stringp, delim)
-	register char **stringp;
-	register const char *delim;
+	char **stringp;
+	const char *delim;
 {
-	register char *s;
-	register const char *spanp;
-	register int c, sc;
+	char *s;
+	const char *spanp;
+	int c, sc;
 	char *tok;
 
 	if ((s = *stringp) == NULL)

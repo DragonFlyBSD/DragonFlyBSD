@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostbynis.c,v 1.10.2.1 2000/10/01 16:39:47 nectar Exp $
- * $DragonFly: src/lib/libc/net/gethostbynis.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/gethostbynis.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -61,7 +61,7 @@ _gethostbynis(name, map, af)
 	int af;
 {
 #ifdef YP
-	register char *cp, **q;
+	char *cp, **q;
 	char *result;
 	int resultlen,size;
 	static struct hostent h;

@@ -1,4 +1,5 @@
 /*	$NetBSD: fstat.c,v 1.1 1996/01/13 22:25:38 leo Exp $	*/
+/* $DragonFly: src/lib/libstand/fstat.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -42,7 +43,7 @@ fstat(fd, sb)
 	int fd;
 	struct stat *sb;
 {
-	register struct open_file *f = &files[fd];
+	struct open_file *f = &files[fd];
 
 	if ((unsigned)fd >= SOPEN_MAX || f->f_flags == 0) {
 		errno = EBADF;

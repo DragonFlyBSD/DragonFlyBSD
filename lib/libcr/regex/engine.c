@@ -37,7 +37,7 @@
  *	@(#)engine.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/engine.c,v 1.5.8.1 2000/07/31 06:30:37 dcs Exp $
- * $DragonFly: src/lib/libcr/regex/Attic/engine.c,v 1.4 2004/03/13 19:46:55 eirikn Exp $
+ * $DragonFly: src/lib/libcr/regex/Attic/engine.c,v 1.5 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ static char *pchar(int ch);
 
 /*
  - matcher - the actual matching engine
- == static int matcher(register struct re_guts *g, char *string, \
+ == static int matcher(struct re_guts *g, char *string, \
  ==	size_t nmatch, regmatch_t pmatch[], int eflags);
  */
 static int			/* 0 success, REG_NOMATCH failure */
@@ -342,7 +342,7 @@ matcher(struct re_guts *g, char *string, size_t nmatch, regmatch_t pmatch[],
 
 /*
  - dissect - figure out what matched what, no back references
- == static char *dissect(register struct match *m, char *start, \
+ == static char *dissect(struct match *m, char *start, \
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* == stop (success) always */
@@ -525,7 +525,7 @@ dissect(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 
 /*
  - backref - figure out what matched what, figuring in back references
- == static char *backref(register struct match *m, char *start, \
+ == static char *backref(struct match *m, char *start, \
  ==	char *stop, sopno startst, sopno stopst, sopno lev);
  */
 static char *			/* == stop (success) or NULL (failure) */
@@ -725,7 +725,7 @@ backref(struct match *m, char *start, char *stop, sopno startst, sopno stopst,
 
 /*
  - fast - step through the string at top speed
- == static char *fast(register struct match *m, char *start, \
+ == static char *fast(struct match *m, char *start, \
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* where tentative match ended, or NULL */
@@ -811,7 +811,7 @@ fast(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 
 /*
  - slow - step through the string more deliberately
- == static char *slow(register struct match *m, char *start, \
+ == static char *slow(struct match *m, char *start, \
  ==	char *stop, sopno startst, sopno stopst);
  */
 static char *			/* where it ended */
@@ -893,8 +893,8 @@ slow(struct match *m, char *start, char *stop, sopno startst, sopno stopst)
 
 /*
  - step - map set of states reachable before char to set reachable after
- == static states step(register struct re_guts *g, sopno start, sopno stop, \
- ==	register states bef, int ch, register states aft);
+ == static states step(struct re_guts *g, sopno start, sopno stop, \
+ ==	states bef, int ch, states aft);
  == #define	BOL	(OUT+1)
  == #define	EOL	(BOL+1)
  == #define	BOLEOL	(BOL+2)

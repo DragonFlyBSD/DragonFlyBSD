@@ -29,7 +29,7 @@
  * @(#)pmap_rmt.c 1.21 87/08/27 Copyr 1984 Sun Micro
  * @(#)pmap_rmt.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_rmt.c,v 1.16.2.1 2002/06/30 23:34:58 iedowse Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_rmt.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_rmt.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -74,7 +74,7 @@ pmap_rmtcall(addr, prog, vers, proc, xdrargs, argsp, xdrres, resp, tout, port_pt
 	u_long *port_ptr;
 {
 	int socket = -1;
-	register CLIENT *client;
+	CLIENT *client;
 	struct rmtcallargs a;
 	struct rmtcallres r;
 	enum clnt_stat stat;
@@ -109,8 +109,8 @@ pmap_rmtcall(addr, prog, vers, proc, xdrargs, argsp, xdrres, resp, tout, port_pt
  */
 bool_t
 xdr_rmtcall_args(xdrs, cap)
-	register XDR *xdrs;
-	register struct rmtcallargs *cap;
+	XDR *xdrs;
+	struct rmtcallargs *cap;
 {
 	u_int lenposition, argposition, position;
 
@@ -140,8 +140,8 @@ xdr_rmtcall_args(xdrs, cap)
  */
 bool_t
 xdr_rmtcallres(xdrs, crp)
-	register XDR *xdrs;
-	register struct rmtcallres *crp;
+	XDR *xdrs;
+	struct rmtcallres *crp;
 {
 	caddr_t port_ptr;
 
@@ -237,14 +237,14 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
 	enum clnt_stat stat;
 	AUTH *unix_auth = authunix_create_default();
 	XDR xdr_stream;
-	register XDR *xdrs = &xdr_stream;
+	XDR *xdrs = &xdr_stream;
 	int outlen, inlen, fromlen, nets;
-	register int sock;
+	int sock;
 	int on = 1;
 	fd_set *fds, readfds;
-	register int i;
+	int i;
 	bool_t done = FALSE;
-	register u_long xid;
+	u_long xid;
 	u_long port;
 	struct in_addr addrs[20];
 	struct sockaddr_in baddr, raddr; /* broadcast and response addresses */

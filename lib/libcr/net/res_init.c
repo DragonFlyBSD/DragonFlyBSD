@@ -33,7 +33,7 @@
  * @(#)res_init.c	8.1 (Berkeley) 6/7/93
  * $From: Id: res_init.c,v 8.7 1996/11/18 09:10:04 vixie Exp $
  * $FreeBSD: src/lib/libc/net/res_init.c,v 1.19.2.7 2002/02/04 18:30:55 ume Exp $
- * $DragonFly: src/lib/libcr/net/Attic/res_init.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_init.c,v 1.4 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -138,9 +138,9 @@ struct __res_state_ext _res_ext;
 int
 res_init()
 {
-	register FILE *fp;
-	register char *cp, **pp;
-	register int n;
+	FILE *fp;
+	char *cp, **pp;
+	int n;
 	char buf[MAXDNAME];
 	int nserv = 0;    /* number of nameserver records read from file */
 	int haveenv = 0;
@@ -555,7 +555,7 @@ static u_int32_t
 net_mask(in)		/* XXX - should really use system's version of this */
 	struct in_addr in;
 {
-	register u_int32_t i = ntohl(in.s_addr);
+	u_int32_t i = ntohl(in.s_addr);
 
 	if (IN_CLASSA(i))
 		return (htonl(IN_CLASSA_NET));

@@ -32,7 +32,7 @@
  *
  * @(#)rindex.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/rindex.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/rindex.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/rindex.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <stddef.h>
@@ -44,10 +44,10 @@ strrchr(p, ch)
 #else
 rindex(p, ch)
 #endif
-	register const char *p;
-	register int ch;
+	const char *p;
+	int ch;
 {
-	register char *save;
+	char *save;
 
 	for (save = NULL;; ++p) {
 		if (*p == ch)

@@ -33,7 +33,7 @@
  * @(#)res_mkquery.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_mkquery.c,v 8.9 1997/04/24 22:22:36 vixie Exp $
  * $FreeBSD: src/lib/libc/net/res_mkquery.c,v 1.15.2.2 2002/09/20 10:45:35 nectar Exp $
- * $DragonFly: src/lib/libc/net/res_mkquery.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_mkquery.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -99,9 +99,9 @@ res_mkquery(op, dname, class, type, data, datalen, newrr_in, buf, buflen)
 	u_char *buf;		/* buffer to put query */
 	int buflen;		/* size of buffer */
 {
-	register HEADER *hp;
-	register u_char *cp;
-	register int n;
+	HEADER *hp;
+	u_char *cp;
+	int n;
 	u_char *dnptrs[20], **dpp, **lastdnptr;
 
 	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
@@ -212,8 +212,8 @@ res_opt(n0, buf, buflen, anslen)
 	int buflen;		/* size of buffer */
 	int anslen;		/* answer buffer length */
 {
-	register HEADER *hp;
-	register u_char *cp;
+	HEADER *hp;
+	u_char *cp;
 
 	hp = (HEADER *) buf;
 	cp = buf + n0;

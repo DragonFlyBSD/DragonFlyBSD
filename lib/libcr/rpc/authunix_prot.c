@@ -29,7 +29,7 @@
  * @(#)authunix_prot.c 1.15 87/08/11 Copyr 1984 Sun Micro
  * @(#)authunix_prot.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/authunix_prot.c,v 1.6 1999/08/28 00:00:33 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/authunix_prot.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/authunix_prot.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -50,8 +50,8 @@
  */
 bool_t
 xdr_authunix_parms(xdrs, p)
-	register XDR *xdrs;
-	register struct authunix_parms *p;
+	XDR *xdrs;
+	struct authunix_parms *p;
 {
 
 	if (xdr_u_long(xdrs, &(p->aup_time))

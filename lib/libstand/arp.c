@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * @(#) Header: arp.c,v 1.5 93/07/15 05:52:26 leres Exp  (LBL)
- * $DragonFly: src/lib/libstand/arp.c,v 1.2 2004/08/20 00:43:00 joerg Exp $
+ * $DragonFly: src/lib/libstand/arp.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,12 +72,12 @@ static	ssize_t arprecv(struct iodesc *, void *, size_t, time_t);
 /* Broadcast an ARP packet, asking who has addr on interface d */
 u_char *
 arpwhohas(d, addr)
-	register struct iodesc *d;
+	struct iodesc *d;
 	struct in_addr addr;
 {
-	register int i;
-	register struct ether_arp *ah;
-	register struct arp_list *al;
+	int i;
+	struct ether_arp *ah;
+	struct arp_list *al;
 	struct {
 		struct ether_header eh;
 		struct {
@@ -150,9 +150,9 @@ arpwhohas(d, addr)
 
 static ssize_t
 arpsend(d, pkt, len)
-	register struct iodesc *d;
-	register void *pkt;
-	register size_t len;
+	struct iodesc *d;
+	void *pkt;
+	size_t len;
 {
 
 #ifdef ARP_DEBUG
@@ -169,13 +169,13 @@ arpsend(d, pkt, len)
  */
 static ssize_t
 arprecv(d, pkt, len, tleft)
-	register struct iodesc *d;
-	register void *pkt;
-	register size_t len;
+	struct iodesc *d;
+	void *pkt;
+	size_t len;
 	time_t tleft;
 {
-	register ssize_t n;
-	register struct ether_arp *ah;
+	ssize_t n;
+	struct ether_arp *ah;
 	u_int16_t etype;	/* host order */
 
 #ifdef ARP_DEBUG
@@ -259,8 +259,8 @@ arprecv(d, pkt, len, tleft)
  */
 void
 arp_reply(d, pkt)
-	register struct iodesc *d;
-	register void *pkt;		/* the request */
+	struct iodesc *d;
+	void *pkt;		/* the request */
 {
 	struct ether_arp *arp = pkt;
 

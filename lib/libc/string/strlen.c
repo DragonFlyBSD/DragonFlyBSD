@@ -32,7 +32,7 @@
  *
  * @(#)strlen.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strlen.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strlen.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strlen.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -42,7 +42,7 @@ size_t
 strlen(str)
 	const char *str;
 {
-	register const char *s;
+	const char *s;
 
 	for (s = str; *s; ++s);
 	return(s - str);

@@ -32,7 +32,7 @@
  *
  * @(#)strerror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strsignal.c,v 1.1.2.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strsignal.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strsignal.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <stdio.h>
@@ -45,8 +45,8 @@ strsignal(num)
 {
 #define	UPREFIX	"Unknown signal: "
 	static char ebuf[40] = UPREFIX;		/* 64-bit number + slop */
-	register unsigned int signum;
-	register char *p, *t;
+	unsigned int signum;
+	char *p, *t;
 	char tmp[40];
 
 	signum = num;				/* convert to unsigned */

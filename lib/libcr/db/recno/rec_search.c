@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_search.c	8.4 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libcr/db/recno/Attic/rec_search.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/recno/Attic/rec_search.c,v 1.3 2004/10/25 19:38:24 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -65,8 +65,8 @@ __rec_search(t, recno, op)
 	recno_t recno;
 	enum SRCHOP op;
 {
-	register indx_t index;
-	register PAGE *h;
+	indx_t index;
+	PAGE *h;
 	EPGNO *parent;
 	RINTERNAL *r;
 	pgno_t pg;

@@ -32,7 +32,7 @@
  *
  * @(#)strcasecmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcasecmp.c,v 1.2.8.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strcasecmp.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -45,7 +45,7 @@ int
 strcasecmp(s1, s2)
 	const char *s1, *s2;
 {
-	register const u_char
+	const u_char
 			*us1 = (const u_char *)s1,
 			*us2 = (const u_char *)s2;
 
@@ -58,10 +58,10 @@ strcasecmp(s1, s2)
 int
 strncasecmp(s1, s2, n)
 	const char *s1, *s2;
-	register size_t n;
+	size_t n;
 {
 	if (n != 0) {
-		register const u_char
+		const u_char
 				*us1 = (const u_char *)s1,
 				*us2 = (const u_char *)s2;
 

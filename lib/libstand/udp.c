@@ -38,7 +38,7 @@
  *
  * @(#) Header: net.c,v 1.9 93/08/06 19:32:15 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/udp.c,v 1.1.2.1 2000/04/15 03:09:29 ps Exp $
- * $DragonFly: src/lib/libstand/udp.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/udp.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -62,14 +62,14 @@
 /* Caller must leave room for ethernet, ip and udp headers in front!! */
 ssize_t
 sendudp(d, pkt, len)
-	register struct iodesc *d;
-	register void *pkt;
-	register size_t len;
+	struct iodesc *d;
+	void *pkt;
+	size_t len;
 {
-	register ssize_t cc;
-	register struct ip *ip;
-	register struct udphdr *uh;
-	register u_char *ea;
+	ssize_t cc;
+	struct ip *ip;
+	struct udphdr *uh;
+	u_char *ea;
 
 #ifdef NET_DEBUG
  	if (debug) {
@@ -104,7 +104,7 @@ sendudp(d, pkt, len)
 
 #ifndef UDP_NO_CKSUM
 	{
-		register struct udpiphdr *ui;
+		struct udpiphdr *ui;
 		struct ip tip;
 
 		/* Calculate checksum (must save and restore ip header) */
@@ -137,15 +137,15 @@ sendudp(d, pkt, len)
  */
 ssize_t
 readudp(d, pkt, len, tleft)
-	register struct iodesc *d;
-	register void *pkt;
-	register size_t len;
+	struct iodesc *d;
+	void *pkt;
+	size_t len;
 	time_t tleft;
 {
-	register ssize_t n;
-	register size_t hlen;
-	register struct ip *ip;
-	register struct udphdr *uh;
+	ssize_t n;
+	size_t hlen;
+	struct ip *ip;
+	struct udphdr *uh;
 	u_int16_t etype;	/* host order */
 
 #ifdef NET_DEBUG
@@ -234,7 +234,7 @@ readudp(d, pkt, len, tleft)
 
 #ifndef UDP_NO_CKSUM
 	if (uh->uh_sum) {
-		register struct udpiphdr *ui;
+		struct udpiphdr *ui;
 		struct ip tip;
 
 		n = ntohs(uh->uh_ulen) + sizeof(*ip);

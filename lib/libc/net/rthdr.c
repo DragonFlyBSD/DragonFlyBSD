@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rthdr.c,v 1.2.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/rthdr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/rthdr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -65,8 +65,8 @@ inet6_rthdr_init(bp, type)
     void *bp;
     int type;
 {
-    register struct cmsghdr *ch = (struct cmsghdr *)bp;
-    register struct ip6_rthdr *rthdr;
+    struct cmsghdr *ch = (struct cmsghdr *)bp;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(ch);
 
@@ -93,7 +93,7 @@ inet6_rthdr_add(cmsg, addr, flags)
     const struct in6_addr *addr;
     u_int flags;
 {
-    register struct ip6_rthdr *rthdr;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(cmsg);
 
@@ -142,7 +142,7 @@ inet6_rthdr_lasthop(cmsg, flags)
     struct cmsghdr *cmsg;
     unsigned int flags;
 {
-    register struct ip6_rthdr *rthdr;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(cmsg);
 
@@ -198,7 +198,7 @@ int
 inet6_rthdr_segments(cmsg)
     const struct cmsghdr *cmsg;
 {
-    register struct ip6_rthdr *rthdr;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(cmsg);
 
@@ -232,7 +232,7 @@ inet6_rthdr_getaddr(cmsg, idx)
     struct cmsghdr *cmsg;
     int idx;
 {
-    register struct ip6_rthdr *rthdr;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(cmsg);
 
@@ -273,7 +273,7 @@ inet6_rthdr_getflags(cmsg, idx)
     const struct cmsghdr *cmsg;
     int idx;
 {
-    register struct ip6_rthdr *rthdr;
+    struct ip6_rthdr *rthdr;
 
     rthdr = (struct ip6_rthdr *)CMSG_DATA(cmsg);
 

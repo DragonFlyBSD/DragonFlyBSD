@@ -35,7 +35,7 @@
  *
  * @(#)strstr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strstr.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strstr.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strstr.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,10 +46,10 @@
  */
 char *
 strstr(s, find)
-	register const char *s, *find;
+	const char *s, *find;
 {
-	register char c, sc;
-	register size_t len;
+	char c, sc;
+	size_t len;
 
 	if ((c = *find++) != 0) {
 		len = strlen(find);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.4 2003/11/12 20:21:23 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_bigkey.c,v 1.5 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -89,7 +89,7 @@ __big_insert(hashp, bufp, key, val)
 	BUFHEAD *bufp;
 	const DBT *key, *val;
 {
-	register u_int16_t *p;
+	u_int16_t *p;
 	int key_size, n, val_size;
 	u_int16_t space, move_bytes, off;
 	char *cp, *key_data, *val_data;
@@ -187,7 +187,7 @@ __big_delete(hashp, bufp)
 	HTAB *hashp;
 	BUFHEAD *bufp;
 {
-	register BUFHEAD *last_bfp, *rbufp;
+	BUFHEAD *last_bfp, *rbufp;
 	u_int16_t *bp, pageno;
 	int key_done, n;
 
@@ -269,8 +269,8 @@ __find_bigpair(hashp, bufp, ndx, key, size)
 	char *key;
 	int size;
 {
-	register u_int16_t *bp;
-	register char *p;
+	u_int16_t *bp;
+	char *p;
 	int ksize;
 	u_int16_t bytes;
 	char *kkey;
@@ -451,8 +451,8 @@ collect_data(hashp, bufp, len, set)
 	BUFHEAD *bufp;
 	int len, set;
 {
-	register u_int16_t *bp;
-	register char *p;
+	u_int16_t *bp;
+	char *p;
 	BUFHEAD *xbp;
 	u_int16_t save_addr;
 	int mylen, totlen;
@@ -575,8 +575,8 @@ __big_split(hashp, op, np, big_keyp, addr, obucket, ret)
 	u_int32_t   obucket;/* Old Bucket */
 	SPLIT_RETURN *ret;
 {
-	register BUFHEAD *tmpp;
-	register u_int16_t *tp;
+	BUFHEAD *tmpp;
+	u_int16_t *tp;
 	BUFHEAD *bp;
 	DBT key, val;
 	u_int32_t change;

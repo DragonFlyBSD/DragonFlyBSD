@@ -29,7 +29,7 @@
  * @(#)pmap_getport.c 1.9 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_getport.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_getport.c,v 1.10 2000/01/27 23:06:40 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.3 2003/11/09 07:10:16 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_getport.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -75,7 +75,7 @@ pmap_getport(address, program, version, protocol)
 {
 	u_short port = 0;
 	int socket = -1;
-	register CLIENT *client;
+	CLIENT *client;
 	struct pmap parms;
 
 	address->sin_port = htons(PMAPPORT);

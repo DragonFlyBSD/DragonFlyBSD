@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libipx/ipx_addr.c,v 1.2.8.1 2001/03/05 06:21:40 kris Exp $
- * $DragonFly: src/lib/libipx/ipx_addr.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libipx/ipx_addr.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  *
  * @(#)ipx_addr.c
  */
@@ -101,7 +101,7 @@ Field(buf, out, len)
 	u_char *out;
 	int len;
 {
-	register char *bp = buf;
+	char *bp = buf;
 	int i, ibase, base16 = 0, base10 = 0, clen = 0;
 	int hb[6], *hp;
 	char *fmt;

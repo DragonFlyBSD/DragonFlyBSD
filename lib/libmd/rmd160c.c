@@ -56,7 +56,7 @@
  * [including the GNU Public Licence.]
  *
  * $FreeBSD: src/lib/libmd/rmd160c.c,v 1.4 1999/08/28 00:05:07 peter Exp $
- * $DragonFly: src/lib/libmd/rmd160c.c,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $DragonFly: src/lib/libmd/rmd160c.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -103,7 +103,7 @@ RIPEMD160_CTX *c;
 const unsigned char *data;
 size_t len;
 	{
-	register u_int32_t *p;
+	u_int32_t *p;
 	int sw,sc;
 	u_int32_t l;
 
@@ -273,7 +273,7 @@ RIPEMD160_CTX *ctx;
 const u_int32_t *X;
 int num;
 	{
-	register u_int32_t A,B,C,D,E;
+	u_int32_t A,B,C,D,E;
 	u_int32_t a,b,c,d,e;
 
 	for (;;)
@@ -472,9 +472,9 @@ void RIPEMD160_Final(md, c)
 unsigned char *md;
 RIPEMD160_CTX *c;
 	{
-	register int i,j;
-	register u_int32_t l;
-	register u_int32_t *p;
+	int i,j;
+	u_int32_t l;
+	u_int32_t *p;
 	static unsigned char end[4]={0x80,0x00,0x00,0x00};
 	unsigned char *cp=end;
 

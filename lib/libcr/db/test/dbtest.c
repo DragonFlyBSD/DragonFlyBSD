@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libcr/db/test/Attic/dbtest.c,v 1.4 2004/07/27 10:20:21 asmodai Exp $
+ * $DragonFly: src/lib/libcr/db/test/Attic/dbtest.c,v 1.5 2004/10/25 19:38:24 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -335,8 +335,8 @@ void
 compare(db1, db2)
 	DBT *db1, *db2;
 {
-	register size_t len;
-	register u_char *p1, *p2;
+	size_t len;
+	u_char *p1, *p2;
 
 	if (db1->size != db2->size)
 		printf("compare failed: key->data len %lu != data len %lu\n",

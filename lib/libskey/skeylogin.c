@@ -5,7 +5,7 @@
  *   Many references for mink  may still be found in this program.
  *
  * $FreeBSD: src/lib/libskey/skeylogin.c,v 1.14.6.1 2000/07/18 11:38:24 sheldonh Exp $
- * $DragonFly: src/lib/libskey/skeylogin.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/libskey/skeylogin.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -273,10 +273,10 @@ char *response;
  */
 int
 atob8(out,in)
-register char *out,*in;
+char *out,*in;
 {
-	register int i;
-	register int val;
+	int i;
+	int val;
 
 	if(in == NULL || out == NULL)
 		return -1;
@@ -300,7 +300,7 @@ register char *out,*in;
 static
 char *
 skipspace(cp)
-register char *cp;
+char *cp;
 {
 	while(*cp == ' ' || *cp == '\t')
 		cp++;
@@ -314,9 +314,9 @@ register char *cp;
 /* Convert 8-byte binary array to hex-ascii string */
 int
 btoa8(out,in)
-register char *out,*in;
+char *out,*in;
 {
-	register int i;
+	int i;
 
 	if(in == NULL || out == NULL)
 		return -1;
@@ -332,7 +332,7 @@ register char *out,*in;
 /* Convert hex digit to binary integer */
 int
 htoi(c)
-register char c;
+char c;
 {
 	if('0' <= c && c <= '9')
 		return c - '0';

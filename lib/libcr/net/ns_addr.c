@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/ns_addr.c,v 1.3.6.2 2001/07/04 22:34:51 kris Exp $
- * $DragonFly: src/lib/libcr/net/Attic/ns_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/ns_addr.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  *
  * @(#)ns_addr.c	8.1 (Berkeley) 6/7/93
  */
@@ -101,7 +101,7 @@ Field(buf, out, len)
 	u_char *out;
 	int len;
 {
-	register char *bp = buf;
+	char *bp = buf;
 	int i, ibase, base16 = 0, base10 = 0, clen = 0;
 	int hb[6], *hp;
 	char *fmt;

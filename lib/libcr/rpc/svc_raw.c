@@ -29,7 +29,7 @@
  * @(#)svc_raw.c 1.15 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_raw.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_raw.c,v 1.7 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/svc_raw.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_raw.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -73,7 +73,7 @@ static struct xp_ops server_ops = {
 SVCXPRT *
 svcraw_create()
 {
-	register struct svcraw_private *srp = svcraw_private;
+	struct svcraw_private *srp = svcraw_private;
 
 	if (srp == 0) {
 		srp = (struct svcraw_private *)calloc(1, sizeof (*srp));
@@ -100,8 +100,8 @@ svcraw_recv(xprt, msg)
 	SVCXPRT *xprt;
 	struct rpc_msg *msg;
 {
-	register struct svcraw_private *srp = svcraw_private;
-	register XDR *xdrs;
+	struct svcraw_private *srp = svcraw_private;
+	XDR *xdrs;
 
 	if (srp == 0)
 		return (0);
@@ -118,8 +118,8 @@ svcraw_reply(xprt, msg)
 	SVCXPRT *xprt;
 	struct rpc_msg *msg;
 {
-	register struct svcraw_private *srp = svcraw_private;
-	register XDR *xdrs;
+	struct svcraw_private *srp = svcraw_private;
+	XDR *xdrs;
 
 	if (srp == 0)
 		return (FALSE);
@@ -138,7 +138,7 @@ svcraw_getargs(xprt, xdr_args, args_ptr)
 	xdrproc_t xdr_args;
 	caddr_t args_ptr;
 {
-	register struct svcraw_private *srp = svcraw_private;
+	struct svcraw_private *srp = svcraw_private;
 
 	if (srp == 0)
 		return (FALSE);
@@ -151,8 +151,8 @@ svcraw_freeargs(xprt, xdr_args, args_ptr)
 	xdrproc_t xdr_args;
 	caddr_t args_ptr;
 {
-	register struct svcraw_private *srp = svcraw_private;
-	register XDR *xdrs;
+	struct svcraw_private *srp = svcraw_private;
+	XDR *xdrs;
 
 	if (srp == 0)
 		return (FALSE);

@@ -32,7 +32,7 @@
  *
  * @(#)bcmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/bcmp.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/bcmp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/bcmp.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <string.h>
@@ -43,9 +43,9 @@
 int
 bcmp(b1, b2, length)
 	const void *b1, *b2;
-	register size_t length;
+	size_t length;
 {
-	register char *p1, *p2;
+	char *p1, *p2;
 
 	if (length == 0)
 		return(0);

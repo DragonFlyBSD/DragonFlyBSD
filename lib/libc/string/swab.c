@@ -35,7 +35,7 @@
  *
  * @(#)swab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/swab.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/swab.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/string/swab.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <string.h>
@@ -46,9 +46,9 @@ swab(from, to, len)
 	void *to;
 	size_t len;
 {
-	register unsigned long temp;
-	register int n;
-	register char *fp, *tp;
+	unsigned long temp;
+	int n;
+	char *fp, *tp;
 
 	n = (len >> 1) + 1;
 	fp = (char *)from;

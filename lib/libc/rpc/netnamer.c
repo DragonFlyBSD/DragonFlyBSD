@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.3.6.1 2000/09/20 04:43:11 jkh Exp $
- * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  *
  * @(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro
  */
@@ -155,9 +155,9 @@ _getgroups(uname, groups)
 	gid_t          groups[NGROUPS];
 {
 	gid_t           ngroups = 0;
-	register struct group *grp;
-	register int    i;
-	register int    j;
+	struct group *grp;
+	int    i;
+	int    j;
 	int             filter;
 
 	setgrent();

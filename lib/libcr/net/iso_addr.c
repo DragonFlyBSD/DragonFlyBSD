@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)iso_addr.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/net/Attic/iso_addr.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -48,12 +49,12 @@
 
 struct iso_addr *
 iso_addr(addr)
-	register const char *addr;
+	const char *addr;
 {
 	static struct iso_addr out_addr;
-	register char *cp = out_addr.isoa_genaddr;
+	char *cp = out_addr.isoa_genaddr;
 	char *cplim = cp + sizeof(out_addr.isoa_genaddr);
-	register int byte = 0, state = VIRGIN, new;
+	int byte = 0, state = VIRGIN, new;
 
 	bzero((char *)&out_addr, sizeof(out_addr));
 	do {

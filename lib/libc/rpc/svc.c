@@ -29,7 +29,7 @@
  * @(#)svc.c 1.44 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc.c	2.4 88/08/11 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc.c,v 1.14.2.1 2001/03/05 10:50:36 obrien Exp $
- * $DragonFly: src/lib/libc/rpc/svc.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -82,7 +82,7 @@ void
 xprt_register(xprt)
 	SVCXPRT *xprt;
 {
-	register int sock = xprt->xp_sock;
+	int sock = xprt->xp_sock;
 
 	if (sock + 1 > __svc_fdsetsize) {
 		int bytes = howmany(sock + 1, NFDBITS) * sizeof(fd_mask);
@@ -129,7 +129,7 @@ void
 xprt_unregister(xprt)
 	SVCXPRT *xprt;
 {
-	register int sock = xprt->xp_sock;
+	int sock = xprt->xp_sock;
 
 	if (xports[sock] == xprt) {
 		xports[sock] = (SVCXPRT *)0;
@@ -165,7 +165,7 @@ svc_register(xprt, prog, vers, dispatch, protocol)
 	int protocol;
 {
 	struct svc_callout *prev;
-	register struct svc_callout *s;
+	struct svc_callout *s;
 
 	if ((s = svc_find(prog, vers, &prev)) != NULL_SVC) {
 		if (s->sc_dispatch == dispatch)
@@ -198,7 +198,7 @@ svc_unregister(prog, vers)
 	u_long vers;
 {
 	struct svc_callout *prev;
-	register struct svc_callout *s;
+	struct svc_callout *s;
 
 	if ((s = svc_find(prog, vers, &prev)) == NULL_SVC)
 		return;
@@ -223,7 +223,7 @@ svc_find(prog, vers, prev)
 	u_long vers;
 	struct svc_callout **prev;
 {
-	register struct svc_callout *s, *p;
+	struct svc_callout *s, *p;
 
 	p = NULL_SVC;
 	for (s = svc_head; s != NULL_SVC; s = s->sc_next) {
@@ -243,7 +243,7 @@ done:
  */
 bool_t
 svc_sendreply(xprt, xdr_results, xdr_location)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 	xdrproc_t xdr_results;
 	caddr_t xdr_location;
 {
@@ -263,7 +263,7 @@ svc_sendreply(xprt, xdr_results, xdr_location)
  */
 void
 svcerr_noproc(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
 	struct rpc_msg rply;
 
@@ -279,7 +279,7 @@ svcerr_noproc(xprt)
  */
 void
 svcerr_decode(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
 	struct rpc_msg rply;
 
@@ -295,7 +295,7 @@ svcerr_decode(xprt)
  */
 void
 svcerr_systemerr(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
 	struct rpc_msg rply;
 
@@ -339,7 +339,7 @@ svcerr_weakauth(xprt)
  */
 void
 svcerr_noprog(xprt)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 {
 	struct rpc_msg rply;
 
@@ -355,7 +355,7 @@ svcerr_noprog(xprt)
  */
 void
 svcerr_progvers(xprt, low_vers, high_vers)
-	register SVCXPRT *xprt;
+	SVCXPRT *xprt;
 	u_long low_vers;
 	u_long high_vers;
 {
@@ -417,10 +417,10 @@ svc_getreqset2(readfds, width)
 	u_long low_vers;
 	u_long high_vers;
 	struct svc_req r;
-	register SVCXPRT *xprt;
-	register int bit;
-	register int sock;
-	register fd_mask mask, *maskp;
+	SVCXPRT *xprt;
+	int bit;
+	int sock;
+	fd_mask mask, *maskp;
 	char cred_area[2*MAX_AUTH_BYTES + RQCRED_SIZE];
 	msg.rm_call.cb_cred.oa_base = cred_area;
 	msg.rm_call.cb_verf.oa_base = &(cred_area[MAX_AUTH_BYTES]);
@@ -440,7 +440,7 @@ svc_getreqset2(readfds, width)
 			if (SVC_RECV(xprt, &msg)) {
 
 				/* now find the exported program and call it */
-				register struct svc_callout *s;
+				struct svc_callout *s;
 				enum auth_stat why;
 
 				r.rq_xprt = xprt;

@@ -1,6 +1,7 @@
 #if defined(LIBC_SCCS) && !defined(lint)
 static char sccsid[] = 	"@(#)authdes_prot.c	2.1 88/07/29 4.0 RPCSRC; from 1.6 88/02/08 SMI";
 #endif
+/* $DragonFly: src/lib/libcr/rpc/Attic/authdes_prot.c,v 1.2 2004/10/25 19:38:25 drhodus Exp $								*/
 /*
  * Sun RPC is a product of Sun Microsystems, Inc. and is provided for
  * unrestricted use provided that this legend is included on all tape
@@ -70,8 +71,8 @@ xdr_authdes_cred(xdrs, cred)
 
 bool_t
 xdr_authdes_verf(xdrs, verf)
-	register XDR *xdrs;
-	register struct authdes_verf *verf;	
+	XDR *xdrs;
+	struct authdes_verf *verf;	
 {
 	/*
  	 * Unrolled xdr

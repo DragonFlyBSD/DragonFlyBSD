@@ -29,7 +29,7 @@
  * @(#)xdr_stdio.c 1.16 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_stdio.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_stdio.c,v 1.7 1999/08/28 00:02:56 peter Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_stdio.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_stdio.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static struct xdr_ops	xdrstdio_ops = {
  */
 void
 xdrstdio_create(xdrs, file, op)
-	register XDR *xdrs;
+	XDR *xdrs;
 	FILE *file;
 	enum xdr_op op;
 {
@@ -94,7 +94,7 @@ xdrstdio_create(xdrs, file, op)
  */
 static void
 xdrstdio_destroy(xdrs)
-	register XDR *xdrs;
+	XDR *xdrs;
 {
 	(void)fflush((FILE *)xdrs->x_private);
 	/* xx should we close the file ?? */
@@ -103,7 +103,7 @@ xdrstdio_destroy(xdrs)
 static bool_t
 xdrstdio_getlong(xdrs, lp)
 	XDR *xdrs;
-	register long *lp;
+	long *lp;
 {
 
 	if (fread((caddr_t)lp, sizeof(int32_t), 1,

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)map.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/map.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libedit/map.c,v 1.5 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -961,7 +961,7 @@ map_init_meta(el)
     EditLine *el;
 {
     char    buf[3];
-    register int i;
+    int i;
     el_action_t *map = el->el_map.key;
     el_action_t *alt = el->el_map.alt;
 
@@ -1003,7 +1003,7 @@ protected void
 map_init_vi(el)
     EditLine *el;
 {
-    register int i;
+    int i;
     el_action_t *key = el->el_map.key;
     el_action_t *alt = el->el_map.alt;
     el_action_t *vii = el->el_map.vii;

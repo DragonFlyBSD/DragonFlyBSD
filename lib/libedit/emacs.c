@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)emacs.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libedit/emacs.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -390,7 +391,7 @@ em_exchange_mark(el, c)
     EditLine *el;
     int c;
 {
-    register char *cp;
+    char *cp;
 
     cp = el->el_line.cursor;
     el->el_line.cursor = el->el_chared.c_kill.mark;

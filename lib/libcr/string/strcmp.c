@@ -35,7 +35,7 @@
  *
  * @(#)strcmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strcmp.c,v 1.2.8.1 2001/07/09 23:30:05 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strcmp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strcmp.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,7 +46,7 @@
  */
 int
 strcmp(s1, s2)
-	register const char *s1, *s2;
+	const char *s1, *s2;
 {
 	while (*s1 == *s2++)
 		if (*s1++ == 0)

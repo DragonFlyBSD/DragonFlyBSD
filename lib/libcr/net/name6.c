@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libcr/net/Attic/name6.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/name6.c,v 1.4 2004/10/25 19:38:25 drhodus Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -1040,9 +1040,9 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 	struct hostent *template;
 	int *errp;
 {
-	register const HEADER *hp;
-	register const u_char *cp;
-	register int n;
+	const HEADER *hp;
+	const u_char *cp;
+	int n;
 	const u_char *eom, *erdata;
 	char *bp, **ap, **hap, *obp;
 	int type, class, buflen, ancount, qdcount;
@@ -1251,7 +1251,7 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 			DNS_ASSERT(strcasecmp(template->h_name, bp) == 0);
 			DNS_ASSERT(n == template->h_length);
 			if (!haveanswer) {
-				register int nn;
+				int nn;
 
 				template->h_name = bp;
 				nn = strlen(bp) + 1;	/* for the \0 */

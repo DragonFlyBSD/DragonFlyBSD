@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservent.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/net/Attic/getservent.c,v 1.4 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/getservent.c,v 1.5 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -209,7 +209,7 @@ struct servent *
 getservent()
 {
 	char *p;
-	register char *cp, **q;
+	char *cp, **q;
 
 #ifdef YP
 	if (serv_stepping_yp && _getservent_yp(line)) {

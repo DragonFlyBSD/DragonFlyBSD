@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)chared.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/chared.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
+ * $DragonFly: src/lib/libedit/chared.c,v 1.5 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -182,8 +182,8 @@ c___isword(p)
  */
 protected char *
 c__prev_word(p, low, n, wtest)
-    register char *p, *low;
-    register int n;
+    char *p, *low;
+    int n;
     int (*wtest) (int);
 {
     p--;
@@ -209,8 +209,8 @@ c__prev_word(p, low, n, wtest)
  */
 protected char *
 c__next_word(p, high, n, wtest)
-    register char *p, *high;
-    register int n;
+    char *p, *high;
+    int n;
     int (*wtest) (int);
 {
     while (n--) {
@@ -231,8 +231,8 @@ c__next_word(p, high, n, wtest)
 protected char *
 cv_next_word(el, p, high, n, wtest)
     EditLine *el;
-    register char *p, *high;
-    register int n;
+    char *p, *high;
+    int n;
     int (*wtest) (int);
 {
     int test;
@@ -264,8 +264,8 @@ cv_next_word(el, p, high, n, wtest)
 protected char *
 cv_prev_word(el, p, low, n, wtest)
     EditLine *el;
-    register char *p, *low;
-    register int n;
+    char *p, *low;
+    int n;
     int (*wtest) (int);
 {
     int test;
@@ -307,8 +307,8 @@ c__number(p, num, dval)
     int *num;	/* Return value	*/
     int dval;	/* dval is the number to subtract from like $-3 */
 {
-    register int i;
-    register int sign = 1;
+    int i;
+    int sign = 1;
 
     if (*++p == '^') {
 	*num = 1;
@@ -336,7 +336,7 @@ protected void
 cv_delfini(el)
     EditLine *el;
 {
-    register int size;
+    int size;
     int oaction;
 
     if (el->el_chared.c_vcmd.action & INSERT)

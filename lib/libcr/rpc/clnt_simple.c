@@ -29,7 +29,7 @@
  * @(#)clnt_simple.c 1.35 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_simple.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_simple.c,v 1.12 2000/01/27 23:06:35 jasone Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/clnt_simple.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/clnt_simple.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -62,7 +62,7 @@ callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
 	xdrproc_t inproc, outproc;
 	char *in, *out;
 {
-	register struct callrpc_private *crp = callrpc_private;
+	struct callrpc_private *crp = callrpc_private;
 	struct sockaddr_in server_addr;
 	enum clnt_stat clnt_stat;
 	struct hostent *hp;

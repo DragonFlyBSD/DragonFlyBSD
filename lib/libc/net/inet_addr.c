@@ -56,7 +56,7 @@
  *
  * @(#)inet_addr.c	8.1 (Berkeley) 6/17/93
  * $FreeBSD: src/lib/libc/net/inet_addr.c,v 1.12.2.2 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libc/net/inet_addr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/inet_addr.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@
  */
 in_addr_t		/* XXX should be struct in_addr :( */
 inet_addr(cp)
-	register const char *cp;
+	const char *cp;
 {
 	struct in_addr val;
 
@@ -93,7 +93,7 @@ inet_addr(cp)
  */
 int
 inet_aton(cp, addr)
-	register const char *cp;
+	const char *cp;
 	struct in_addr *addr;
 {
 	u_long parts[4];

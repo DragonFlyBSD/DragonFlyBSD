@@ -32,7 +32,7 @@
  *
  * @(#)login.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/login.c,v 1.6 1999/08/28 00:05:45 peter Exp $
- * $DragonFly: src/lib/libutil/login.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libutil/login.c,v 1.3 2004/10/25 19:39:09 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -47,7 +47,7 @@ void
 login(ut)
 	struct utmp *ut;
 {
-	register int fd;
+	int fd;
 	int tty;
 
 	tty = ttyslot();

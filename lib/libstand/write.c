@@ -1,4 +1,5 @@
 /*	$NetBSD: write.c,v 1.7 1996/06/21 20:29:30 pk Exp $	*/
+/* $DragonFly: src/lib/libstand/write.c,v 1.2 2004/10/25 19:38:45 drhodus Exp $							*/
 
 /*-
  * Copyright (c) 1993
@@ -73,7 +74,7 @@ write(fd, dest, bcount)
 	void *dest;
 	size_t bcount;
 {
-	register struct open_file *f = &files[fd];
+	struct open_file *f = &files[fd];
 	size_t resid;
 
 	if ((unsigned)fd >= SOPEN_MAX || !(f->f_flags & F_WRITE)) {

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libkvm/kvm_proc.c,v 1.25.2.3 2002/08/24 07:27:46 kris Exp $
- * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.6 2004/04/11 21:28:03 cpressey Exp $
+ * $DragonFly: src/lib/libkvm/kvm_proc.c,v 1.7 2004/10/25 19:38:45 drhodus Exp $
  *
  * @(#)kvm_proc.c	8.3 (Berkeley) 9/23/93
  */
@@ -491,9 +491,9 @@ kvm_argv(kvm_t *kd, const struct proc *p, u_long addr, int narg, int maxcnt)
 
 		/* will we exceed the malloc/realloced buffer? */
 		if (len + cc > kd->arglen) {
-			register int off;
-			register char **pp;
-			register char *op = kd->argspc;
+			int off;
+			char **pp;
+			char *op = kd->argspc;
 
 			kd->arglen *= 2;
 			kd->argspc = (char *)_kvm_realloc(kd, kd->argspc,

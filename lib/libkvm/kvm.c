@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.4 2004/04/11 21:28:03 cpressey Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.5 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -111,7 +111,7 @@ _kvm_syserr(kvm_t *kd, const char *program, const char *fmt, ...)
 		(void)vfprintf(stderr, fmt, ap);
 		(void)fprintf(stderr, ": %s\n", strerror(errno));
 	} else {
-		register char *cp = kd->errbuf;
+		char *cp = kd->errbuf;
 
 		(void)vsnprintf(cp, sizeof(kd->errbuf), (char *)fmt, ap);
 		n = strlen(cp);

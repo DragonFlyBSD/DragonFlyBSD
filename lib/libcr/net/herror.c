@@ -32,7 +32,7 @@
  *
  * @(#)herror.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/herror.c,v 1.8 1999/08/28 00:00:09 peter Exp $
- * $DragonFly: src/lib/libcr/net/Attic/herror.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/herror.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 /*
@@ -78,7 +78,7 @@ herror(s)
 	const char *s;
 {
 	struct iovec iov[4];
-	register struct iovec *v = iov;
+	struct iovec *v = iov;
 
 	if (s && *s) {
 		v->iov_base = (char *)s;

@@ -29,7 +29,7 @@
  * @(#)xdr_mem.c 1.19 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_mem.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_mem.c,v 1.8.2.1 2003/03/20 12:59:55 jedgar Exp $
- * $DragonFly: src/lib/libcr/xdr/Attic/xdr_mem.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/xdr/Attic/xdr_mem.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 /*
@@ -88,7 +88,7 @@ static struct	xdr_ops xdrmem_ops_unaligned = {
  */
 void
 xdrmem_create(xdrs, addr, size, op)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t addr;
 	u_int size;
 	enum xdr_op op;
@@ -110,7 +110,7 @@ xdrmem_destroy(/*xdrs*/)
 
 static bool_t
 xdrmem_getlong_aligned(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 
@@ -124,7 +124,7 @@ xdrmem_getlong_aligned(xdrs, lp)
 
 static bool_t
 xdrmem_putlong_aligned(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 
@@ -138,7 +138,7 @@ xdrmem_putlong_aligned(xdrs, lp)
 
 static bool_t
 xdrmem_getlong_unaligned(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 	int32_t l;
@@ -154,7 +154,7 @@ xdrmem_getlong_unaligned(xdrs, lp)
 
 static bool_t
 xdrmem_putlong_unaligned(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 	int32_t l;
@@ -170,9 +170,9 @@ xdrmem_putlong_unaligned(xdrs, lp)
 
 static bool_t
 xdrmem_getbytes(xdrs, addr, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t addr;
-	register u_int len;
+	u_int len;
 {
 
 	if (xdrs->x_handy < len)
@@ -185,9 +185,9 @@ xdrmem_getbytes(xdrs, addr, len)
 
 static bool_t
 xdrmem_putbytes(xdrs, addr, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t addr;
-	register u_int len;
+	u_int len;
 {
 
 	if (xdrs->x_handy < len)
@@ -200,7 +200,7 @@ xdrmem_putbytes(xdrs, addr, len)
 
 static u_int
 xdrmem_getpos(xdrs)
-	register XDR *xdrs;
+	XDR *xdrs;
 {
 
 	/* XXX w/64-bit pointers, u_int not enough! */
@@ -209,11 +209,11 @@ xdrmem_getpos(xdrs)
 
 static bool_t
 xdrmem_setpos(xdrs, pos)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_int pos;
 {
-	register caddr_t newaddr = xdrs->x_base + pos;
-	register caddr_t lastaddr = xdrs->x_private + xdrs->x_handy;
+	caddr_t newaddr = xdrs->x_base + pos;
+	caddr_t lastaddr = xdrs->x_private + xdrs->x_handy;
 
 	if (newaddr > lastaddr)
 		return (FALSE);
@@ -224,7 +224,7 @@ xdrmem_setpos(xdrs, pos)
 
 static int32_t *
 xdrmem_inline_aligned(xdrs, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	int len;
 {
 	int32_t *buf = 0;
@@ -239,7 +239,7 @@ xdrmem_inline_aligned(xdrs, len)
 
 static int32_t *
 xdrmem_inline_unaligned(xdrs, len)
-	register XDR *xdrs;
+	XDR *xdrs;
 	int len;
 {
 	

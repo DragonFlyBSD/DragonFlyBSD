@@ -33,7 +33,7 @@
  * @(#)res_query.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_query.c,v 8.14 1997/06/09 17:47:05 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_query.c,v 1.19.2.2 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/res_query.c,v 1.3 2004/04/13 21:53:43 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_query.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -385,7 +385,7 @@ const char *
 hostalias(name)
 	const char *name;
 {
-	register char *cp1, *cp2;
+	char *cp1, *cp2;
 	FILE *fp;
 	char *file;
 	char buf[BUFSIZ];

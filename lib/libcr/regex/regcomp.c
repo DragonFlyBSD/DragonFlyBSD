@@ -37,7 +37,7 @@
  *	@(#)regcomp.c	8.5 (Berkeley) 3/20/94
  *
  * $FreeBSD: src/lib/libc/regex/regcomp.c,v 1.13.2.2 2002/03/20 13:13:15 dcs Exp $
- * $DragonFly: src/lib/libcr/regex/Attic/regcomp.c,v 1.4 2004/03/13 19:46:55 eirikn Exp $
+ * $DragonFly: src/lib/libcr/regex/Attic/regcomp.c,v 1.5 2004/10/25 19:38:25 drhodus Exp $
  *
  * @(#)regcomp.c	8.5 (Berkeley) 3/20/94
  */
@@ -299,7 +299,7 @@ regcomp(regex_t *preg, const char *pattern, int cflags)
 
 /*
  - p_ere - ERE parser top level, concatenation and alternation
- == static void p_ere(register struct parse *p, int stop);
+ == static void p_ere(struct parse *p, int stop);
  */
 static void
 p_ere(struct parse *p,
@@ -344,7 +344,7 @@ p_ere(struct parse *p,
 
 /*
  - p_ere_exp - parse one subERE, an atom possibly followed by a repetition op
- == static void p_ere_exp(register struct parse *p);
+ == static void p_ere_exp(struct parse *p);
  */
 static void
 p_ere_exp(struct parse *p)
@@ -492,7 +492,7 @@ p_ere_exp(struct parse *p)
 
 /*
  - p_str - string (no metacharacters) "parser"
- == static void p_str(register struct parse *p);
+ == static void p_str(struct parse *p);
  */
 static void
 p_str(struct parse *p)
@@ -504,8 +504,8 @@ p_str(struct parse *p)
 
 /*
  - p_bre - BRE parser top level, anchoring and concatenation
- == static void p_bre(register struct parse *p, register int end1, \
- ==	register int end2);
+ == static void p_bre(struct parse *p, int end1, \
+ ==	int end2);
  * Giving end1 as OUT essentially eliminates the end1/end2 check.
  *
  * This implementation is a bit of a kludge, in that a trailing $ is first
@@ -544,7 +544,7 @@ p_bre(struct parse *p,
 
 /*
  - p_simp_re - parse a simple RE, an atom possibly followed by a repetition
- == static int p_simp_re(register struct parse *p, int starordinary);
+ == static int p_simp_re(struct parse *p, int starordinary);
  */
 static int			/* was the simple RE an unbackslashed $? */
 p_simp_re(struct parse *p,
@@ -661,7 +661,7 @@ p_simp_re(struct parse *p,
 
 /*
  - p_count - parse a repetition count
- == static int p_count(register struct parse *p);
+ == static int p_count(struct parse *p);
  */
 static int			/* the value */
 p_count(struct parse *p)
@@ -680,7 +680,7 @@ p_count(struct parse *p)
 
 /*
  - p_bracket - parse a bracketed character list
- == static void p_bracket(register struct parse *p);
+ == static void p_bracket(struct parse *p);
  *
  * Note a significant property of this code:  if the allocset() did SETERROR,
  * no set operations are done.
@@ -719,8 +719,8 @@ p_bracket(struct parse *p)
 		return;
 
 	if (p->g->cflags&REG_ICASE) {
-		register int i;
-		register int ci;
+		int i;
+		int ci;
 
 		for (i = p->g->csetsize - 1; i >= 0; i--)
 			if (CHIN(cs, i) && isalpha(i)) {
@@ -732,7 +732,7 @@ p_bracket(struct parse *p)
 			mccase(p, cs);
 	}
 	if (invert) {
-		register int i;
+		int i;
 
 		for (i = p->g->csetsize - 1; i >= 0; i--)
 			if (CHIN(cs, i))
@@ -756,7 +756,7 @@ p_bracket(struct parse *p)
 
 /*
  - p_b_term - parse one term of a bracketed character list
- == static void p_b_term(register struct parse *p, register cset *cs);
+ == static void p_b_term(struct parse *p, cset *cs);
  */
 static void
 p_b_term(struct parse *p, cset *cs)
@@ -833,7 +833,7 @@ p_b_term(struct parse *p, cset *cs)
 
 /*
  - p_b_cclass - parse a character-class name and deal with it
- == static void p_b_cclass(register struct parse *p, register cset *cs);
+ == static void p_b_cclass(struct parse *p, cset *cs);
  */
 static void
 p_b_cclass(struct parse *p, cset *cs)
@@ -925,7 +925,7 @@ p_b_cclass(struct parse *p, cset *cs)
 
 /*
  - p_b_eclass - parse an equivalence-class name and deal with it
- == static void p_b_eclass(register struct parse *p, register cset *cs);
+ == static void p_b_eclass(struct parse *p, cset *cs);
  *
  * This implementation is incomplete. xxx
  */
@@ -940,7 +940,7 @@ p_b_eclass(struct parse *p, cset *cs)
 
 /*
  - p_b_symbol - parse a character or [..]ed multicharacter collating symbol
- == static char p_b_symbol(register struct parse *p);
+ == static char p_b_symbol(struct parse *p);
  */
 static char			/* value of symbol */
 p_b_symbol(struct parse *p)
@@ -959,7 +959,7 @@ p_b_symbol(struct parse *p)
 
 /*
  - p_b_coll_elem - parse a collating-element name and look it up
- == static char p_b_coll_elem(register struct parse *p, int endc);
+ == static char p_b_coll_elem(struct parse *p, int endc);
  */
 static char			/* value of collating element */
 p_b_coll_elem(struct parse *p,
@@ -1004,7 +1004,7 @@ othercase(int ch)
 
 /*
  - bothcases - emit a dualcase version of a two-case character
- == static void bothcases(register struct parse *p, int ch);
+ == static void bothcases(struct parse *p, int ch);
  *
  * Boy, is this implementation ever a kludge...
  */
@@ -1030,7 +1030,7 @@ bothcases(struct parse *p, int ch)
 
 /*
  - ordinary - emit an ordinary character
- == static void ordinary(register struct parse *p, register int ch);
+ == static void ordinary(struct parse *p, int ch);
  */
 static void
 ordinary(struct parse *p, int ch)
@@ -1048,7 +1048,7 @@ ordinary(struct parse *p, int ch)
 
 /*
  - nonnewline - emit REG_NEWLINE version of OANY
- == static void nonnewline(register struct parse *p);
+ == static void nonnewline(struct parse *p);
  *
  * Boy, is this implementation ever a kludge...
  */
@@ -1073,7 +1073,7 @@ nonnewline(struct parse *p)
 
 /*
  - repeat - generate code for a bounded repetition, recursively if needed
- == static void repeat(register struct parse *p, sopno start, int from, int to);
+ == static void repeat(struct parse *p, sopno start, int from, int to);
  */
 static void
 repeat(struct parse *p,
@@ -1144,7 +1144,7 @@ repeat(struct parse *p,
 
 /*
  - seterr - set an error condition
- == static int seterr(register struct parse *p, int e);
+ == static int seterr(struct parse *p, int e);
  */
 static int			/* useless but makes type checking happy */
 seterr(struct parse *p, int e)
@@ -1158,7 +1158,7 @@ seterr(struct parse *p, int e)
 
 /*
  - allocset - allocate a set of characters for []
- == static cset *allocset(register struct parse *p);
+ == static cset *allocset(struct parse *p);
  */
 static cset *
 allocset(struct parse *p)
@@ -1212,7 +1212,7 @@ allocset(struct parse *p)
 
 /*
  - freeset - free a now-unused set
- == static void freeset(register struct parse *p, register cset *cs);
+ == static void freeset(struct parse *p, cset *cs);
  */
 static void
 freeset(struct parse *p, cset *cs)
@@ -1229,7 +1229,7 @@ freeset(struct parse *p, cset *cs)
 
 /*
  - freezeset - final processing on a set of characters
- == static int freezeset(register struct parse *p, register cset *cs);
+ == static int freezeset(struct parse *p, cset *cs);
  *
  * The main task here is merging identical sets.  This is usually a waste
  * of time (although the hash code minimizes the overhead), but can win
@@ -1267,7 +1267,7 @@ freezeset(struct parse *p, cset *cs)
 
 /*
  - firstch - return first character in a set (which must have at least one)
- == static int firstch(register struct parse *p, register cset *cs);
+ == static int firstch(struct parse *p, cset *cs);
  */
 static int			/* character; there is no "none" value */
 firstch(struct parse *p, cset *cs)
@@ -1284,7 +1284,7 @@ firstch(struct parse *p, cset *cs)
 
 /*
  - nch - number of characters in a set
- == static int nch(register struct parse *p, register cset *cs);
+ == static int nch(struct parse *p, cset *cs);
  */
 static int
 nch(struct parse *p, cset *cs)
@@ -1301,8 +1301,8 @@ nch(struct parse *p, cset *cs)
 
 /*
  - mcadd - add a collating element to a cset
- == static void mcadd(register struct parse *p, register cset *cs, \
- ==	register char *cp);
+ == static void mcadd(struct parse *p, cset *cs, \
+ ==	char *cp);
  */
 static void
 mcadd(struct parse *p, cset *cs, char *cp)
@@ -1326,7 +1326,7 @@ mcadd(struct parse *p, cset *cs, char *cp)
 #if used
 /*
  - mcsub - subtract a collating element from a cset
- == static void mcsub(register cset *cs, register char *cp);
+ == static void mcsub(cset *cs, char *cp);
  */
 static void
 mcsub(cset *cs, char *cp)
@@ -1351,7 +1351,7 @@ mcsub(cset *cs, char *cp)
 
 /*
  - mcin - is a collating element in a cset?
- == static int mcin(register cset *cs, register char *cp);
+ == static int mcin(cset *cs, char *cp);
  */
 static int
 mcin(cset *cs, char *cp)
@@ -1361,7 +1361,7 @@ mcin(cset *cs, char *cp)
 
 /*
  - mcfind - find a collating element in a cset
- == static char *mcfind(register cset *cs, register char *cp);
+ == static char *mcfind(cset *cs, char *cp);
  */
 static char *
 mcfind(cset *cs, char *cp)
@@ -1379,7 +1379,7 @@ mcfind(cset *cs, char *cp)
 
 /*
  - mcinvert - invert the list of collating elements in a cset
- == static void mcinvert(register struct parse *p, register cset *cs);
+ == static void mcinvert(struct parse *p, cset *cs);
  *
  * This would have to know the set of possibilities.  Implementation
  * is deferred.
@@ -1392,7 +1392,7 @@ mcinvert(struct parse *p, cset *cs)
 
 /*
  - mccase - add case counterparts of the list of collating elements in a cset
- == static void mccase(register struct parse *p, register cset *cs);
+ == static void mccase(struct parse *p, cset *cs);
  *
  * This would have to know the set of possibilities.  Implementation
  * is deferred.
@@ -1405,7 +1405,7 @@ mccase(struct parse *p, cset *cs)
 
 /*
  - isinsets - is this character in any sets?
- == static int isinsets(register struct re_guts *g, int c);
+ == static int isinsets(struct re_guts *g, int c);
  */
 static int			/* predicate */
 isinsets(struct re_guts *g, int c)
@@ -1423,7 +1423,7 @@ isinsets(struct re_guts *g, int c)
 
 /*
  - samesets - are these two characters in exactly the same sets?
- == static int samesets(register struct re_guts *g, int c1, int c2);
+ == static int samesets(struct re_guts *g, int c1, int c2);
  */
 static int			/* predicate */
 samesets(struct re_guts *g, int c1, int c2)
@@ -1442,7 +1442,7 @@ samesets(struct re_guts *g, int c1, int c2)
 
 /*
  - categorize - sort out character categories
- == static void categorize(struct parse *p, register struct re_guts *g);
+ == static void categorize(struct parse *p, struct re_guts *g);
  */
 static void
 categorize(struct parse *p, struct re_guts *g)
@@ -1468,7 +1468,7 @@ categorize(struct parse *p, struct re_guts *g)
 
 /*
  - dupl - emit a duplicate of a bunch of sops
- == static sopno dupl(register struct parse *p, sopno start, sopno finish);
+ == static sopno dupl(struct parse *p, sopno start, sopno finish);
  */
 static sopno			/* start of duplicate */
 dupl(struct parse *p,
@@ -1491,7 +1491,7 @@ dupl(struct parse *p,
 
 /*
  - doemit - emit a strip operator
- == static void doemit(register struct parse *p, sop op, size_t opnd);
+ == static void doemit(struct parse *p, sop op, size_t opnd);
  *
  * It might seem better to implement this as a macro with a function as
  * hard-case backup, but it's just too big and messy unless there are
@@ -1518,7 +1518,7 @@ doemit(struct parse *p, sop op, size_t opnd)
 
 /*
  - doinsert - insert a sop into the strip
- == static void doinsert(register struct parse *p, sop op, size_t opnd, sopno pos);
+ == static void doinsert(struct parse *p, sop op, size_t opnd, sopno pos);
  */
 static void
 doinsert(struct parse *p, sop op, size_t opnd, sopno pos)
@@ -1554,7 +1554,7 @@ doinsert(struct parse *p, sop op, size_t opnd, sopno pos)
 
 /*
  - dofwd - complete a forward reference
- == static void dofwd(register struct parse *p, sopno pos, sop value);
+ == static void dofwd(struct parse *p, sopno pos, sop value);
  */
 static void
 dofwd(struct parse *p, sopno pos, sop value)
@@ -1569,7 +1569,7 @@ dofwd(struct parse *p, sopno pos, sop value)
 
 /*
  - enlarge - enlarge the strip
- == static void enlarge(register struct parse *p, sopno size);
+ == static void enlarge(struct parse *p, sopno size);
  */
 static void
 enlarge(struct parse *p, sopno size)
@@ -1590,7 +1590,7 @@ enlarge(struct parse *p, sopno size)
 
 /*
  - stripsnug - compact the strip
- == static void stripsnug(register struct parse *p, register struct re_guts *g);
+ == static void stripsnug(struct parse *p, struct re_guts *g);
  */
 static void
 stripsnug(struct parse *p, struct re_guts *g)
@@ -1605,7 +1605,7 @@ stripsnug(struct parse *p, struct re_guts *g)
 
 /*
  - findmust - fill in must and mlen with longest mandatory literal string
- == static void findmust(register struct parse *p, register struct re_guts *g);
+ == static void findmust(struct parse *p, struct re_guts *g);
  *
  * This algorithm could do fancy things like analyzing the operands of |
  * for common subsequences.  Someday.  This code is simple and finds most
@@ -1848,7 +1848,7 @@ altoffset(sop *scan, int offset, int mccs)
 
 /*
  - computejumps - compute char jumps for BM scan
- == static void computejumps(register struct parse *p, register struct re_guts *g);
+ == static void computejumps(struct parse *p, struct re_guts *g);
  *
  * This algorithm assumes g->must exists and is has size greater than
  * zero. It's based on the algorithm found on Computer Algorithms by
@@ -1890,7 +1890,7 @@ computejumps(struct parse *p, struct re_guts *g)
 
 /*
  - computematchjumps - compute match jumps for BM scan
- == static void computematchjumps(register struct parse *p, register struct re_guts *g);
+ == static void computematchjumps(struct parse *p, struct re_guts *g);
  *
  * This algorithm assumes g->must exists and is has size greater than
  * zero. It's based on the algorithm found on Computer Algorithms by
@@ -1973,7 +1973,7 @@ computematchjumps(struct parse *p, struct re_guts *g)
 
 /*
  - pluscount - count + nesting
- == static sopno pluscount(register struct parse *p, register struct re_guts *g);
+ == static sopno pluscount(struct parse *p, struct re_guts *g);
  */
 static sopno			/* nesting depth */
 pluscount(struct parse *p, struct re_guts *g)

@@ -35,7 +35,7 @@
  *
  * @(#)memchr.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memchr.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libc/string/memchr.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/memchr.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -44,11 +44,11 @@
 void *
 memchr(s, c, n)
 	const void *s;
-	register unsigned char c;
-	register size_t n;
+	unsigned char c;
+	size_t n;
 {
 	if (n != 0) {
-		register const unsigned char *p = s;
+		const unsigned char *p = s;
 
 		do {
 			if (*p++ == c)

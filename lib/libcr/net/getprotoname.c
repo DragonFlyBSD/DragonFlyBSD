@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getprotoname.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/net/Attic/getprotoname.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <netdb.h>
@@ -40,10 +41,10 @@ extern int _proto_stayopen;
 
 struct protoent *
 getprotobyname(name)
-	register const char *name;
+	const char *name;
 {
-	register struct protoent *p;
-	register char **cp;
+	struct protoent *p;
+	char **cp;
 
 	setprotoent(_proto_stayopen);
 	while ( (p = getprotoent()) ) {

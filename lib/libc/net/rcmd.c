@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.23.2.7 2002/08/26 16:17:49 jdp Exp $
- * $DragonFly: src/lib/libc/net/rcmd.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
+ * $DragonFly: src/lib/libc/net/rcmd.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  *
  * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
  */
@@ -450,7 +450,7 @@ iruserok_sa(ra, rlen, superuser, ruser, luser)
 	int superuser;
 	const char *ruser, *luser;
 {
-	register char *cp;
+	char *cp;
 	struct stat sbuf;
 	struct passwd *pwd;
 	FILE *hostf;
@@ -601,7 +601,7 @@ __ivaliduser_sa(hostf, raddr, salen, luser, ruser)
 	socklen_t salen;
 	const char *luser, *ruser;
 {
-	register char *user, *p;
+	char *user, *p;
 	int ch;
 	char buf[MAXHOSTNAMELEN + 128];		/* host + login */
 	char hname[MAXHOSTNAMELEN];

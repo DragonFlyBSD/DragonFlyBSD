@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libdevstat/devstat.c,v 1.6 1999/08/28 00:04:26 peter Exp $
- * $DragonFly: src/lib/libdevstat/devstat.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libdevstat/devstat.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -423,7 +423,7 @@ selectdevs(struct device_selection **dev_select, int *num_selected,
 	   char **dev_selections, int num_dev_selections,
 	   devstat_select_mode select_mode, int maxshowdevs, int perf_select)
 {
-	register int i, j, k;
+	int i, j, k;
 	int init_selections = 0, init_selected_var = 0;
 	struct device_selection *old_dev_select = NULL;
 	int old_num_selections = 0, old_num_selected;
@@ -885,7 +885,7 @@ buildmatch(char *match_str, struct devstat_match **matches, int *num_matches)
 	char *tstr[5];
 	char **tempstr;
 	int num_args;
-	register int i, j;
+	int i, j;
 	char *func_name = "buildmatch";
 
 	/* We can't do much without a string to parse */

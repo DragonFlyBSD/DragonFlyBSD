@@ -3,7 +3,7 @@
 ** June 5, 1996 by Arthur David Olson (arthur_david_olson@nih.gov).
 **
 ** $FreeBSD: src/lib/libc/stdtime/asctime.c,v 1.7.6.1 2001/03/05 11:37:20 obrien Exp $
-** $DragonFly: src/lib/libcr/stdtime/Attic/asctime.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+** $DragonFly: src/lib/libcr/stdtime/Attic/asctime.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
 */
 
 /*
@@ -47,8 +47,8 @@ char *result;
 	** three explicit spaces, two explicit colons, a newline,
 	** and a trailing ASCII nul).
 	*/
-	register const char *	wn;
-	register const char *	mn;
+	const char *	wn;
+	const char *	mn;
 
 	if (timeptr->tm_wday < 0 || timeptr->tm_wday >= DAYSPERWEEK)
 		wn = "???";

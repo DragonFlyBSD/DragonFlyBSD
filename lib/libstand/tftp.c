@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/tftp.c,v 1.2.6.4 2001/07/14 14:00:03 mikeh Exp $
- * $DragonFly: src/lib/libstand/tftp.c,v 1.3 2004/08/20 00:43:00 joerg Exp $
+ * $DragonFly: src/lib/libstand/tftp.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -111,9 +111,9 @@ static int tftperrors[8] = {
 
 static ssize_t 
 recvtftp(d, pkt, len, tleft)
-	register struct iodesc *d;
-	register void  *pkt;
-	register ssize_t len;
+	struct iodesc *d;
+	void  *pkt;
+	ssize_t len;
 	time_t          tleft;
 {
 	struct tftphdr *t;
@@ -140,7 +140,7 @@ recvtftp(d, pkt, len, tleft)
 			/*
 			 * First data packet from new port.
 			 */
-			register struct udphdr *uh;
+			struct udphdr *uh;
 			uh = (struct udphdr *) pkt - 1;
 			d->destport = uh->uh_sport;
 		} /* else check uh_sport has not changed??? */

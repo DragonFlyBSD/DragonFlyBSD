@@ -1,3 +1,4 @@
+/* $DragonFly: src/lib/libcompat/regexp/regsub.c,v 1.2 2004/10/25 19:38:02 drhodus Exp $								*/
 /*
  * regsub
  *
@@ -38,11 +39,11 @@ const regexp *prog;
 const char *source;
 char *dest;
 {
-	register char *src;
-	register char *dst;
-	register char c;
-	register int no;
-	register int len;
+	char *src;
+	char *dst;
+	char c;
+	int no;
+	int len;
 	extern char *strncpy();
 
 	if (prog == NULL || source == NULL || dest == NULL) {

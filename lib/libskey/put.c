@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/lib/libskey/put.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+ * $DragonFly: src/lib/libskey/put.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <stdio.h>
@@ -2253,7 +2253,7 @@ int  start, length;
 
 static void
 standard(word)
-register char *word;
+char *word;
 {
 	while(*word){
 		if(!isascii(*word))

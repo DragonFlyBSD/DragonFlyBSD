@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservbyname.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libc/net/getservbyname.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <netdb.h>
@@ -42,8 +43,8 @@ struct servent *
 getservbyname(name, proto)
 	const char *name, *proto;
 {
-	register struct servent *p;
-	register char **cp;
+	struct servent *p;
+	char **cp;
 
 #ifdef YP
 	extern char *___getservbyname_yp;

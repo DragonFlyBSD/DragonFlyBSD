@@ -35,7 +35,7 @@
  *
  * @(#)memcmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/memcmp.c,v 1.1.1.1.14.1 2001/07/09 23:30:03 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/memcmp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/memcmp.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -50,7 +50,7 @@ memcmp(s1, s2, n)
 	size_t n;
 {
 	if (n != 0) {
-		register const unsigned char *p1 = s1, *p2 = s2;
+		const unsigned char *p1 = s1, *p2 = s2;
 
 		do {
 			if (*p1++ != *p2++)

@@ -29,7 +29,7 @@
  * @(#)xdr.c 1.35 87/08/12
  * @(#)xdr.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr.c,v 1.9.2.1 2000/05/06 21:16:04 dec Exp $
- * $DragonFly: src/lib/libc/xdr/xdr.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -154,7 +154,7 @@ xdr_u_int(xdrs, up)
  */
 bool_t
 xdr_long(xdrs, lp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	long *lp;
 {
 	switch (xdrs->x_op) {
@@ -175,7 +175,7 @@ xdr_long(xdrs, lp)
  */
 bool_t
 xdr_u_long(xdrs, ulp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_long *ulp;
 {
 	switch (xdrs->x_op) {
@@ -196,7 +196,7 @@ xdr_u_long(xdrs, ulp)
  */
 bool_t
 xdr_int32_t(xdrs, int32_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	int32_t *int32_p;
 {
 	long l;
@@ -226,7 +226,7 @@ xdr_int32_t(xdrs, int32_p)
  */
 bool_t
 xdr_u_int32_t(xdrs, u_int32_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_int32_t *u_int32_p;
 {
 	u_long l;
@@ -255,7 +255,7 @@ xdr_u_int32_t(xdrs, u_int32_p)
  */
 bool_t
 xdr_int64_t(xdrs, int64_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	int64_t *int64_p;
 {
 	u_long ul[2];
@@ -287,7 +287,7 @@ xdr_int64_t(xdrs, int64_p)
  */
 bool_t
 xdr_u_int64_t(xdrs, uint64_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_int64_t *uint64_p;
 {
 	u_long ul[2];
@@ -321,7 +321,7 @@ xdr_u_int64_t(xdrs, uint64_p)
  */
 bool_t
 xdr_short(xdrs, sp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	short *sp;
 {
 	long l;
@@ -350,7 +350,7 @@ xdr_short(xdrs, sp)
  */
 bool_t
 xdr_u_short(xdrs, usp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_short *usp;
 {
 	u_long l;
@@ -380,7 +380,7 @@ xdr_u_short(xdrs, usp)
  */
 bool_t
 xdr_int16_t(xdrs, int16_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	int16_t *int16_p;
 {
 	long l;
@@ -409,7 +409,7 @@ xdr_int16_t(xdrs, int16_p)
  */
 bool_t
 xdr_u_int16_t(xdrs, u_int16_p)
-	register XDR *xdrs;
+	XDR *xdrs;
 	u_int16_t *u_int16_p;
 {
 	u_long l;
@@ -475,7 +475,7 @@ xdr_u_char(xdrs, cp)
  */
 bool_t
 xdr_bool(xdrs, bp)
-	register XDR *xdrs;
+	XDR *xdrs;
 	bool_t *bp;
 {
 	long lb;
@@ -536,11 +536,11 @@ xdr_enum(xdrs, ep)
  */
 bool_t
 xdr_opaque(xdrs, cp, cnt)
-	register XDR *xdrs;
+	XDR *xdrs;
 	caddr_t cp;
-	register u_int cnt;
+	u_int cnt;
 {
-	register u_int rndup;
+	u_int rndup;
 	static crud[BYTES_PER_XDR_UNIT];
 
 	/*
@@ -588,13 +588,13 @@ xdr_opaque(xdrs, cp, cnt)
  */
 bool_t
 xdr_bytes(xdrs, cpp, sizep, maxsize)
-	register XDR *xdrs;
+	XDR *xdrs;
 	char **cpp;
-	register u_int *sizep;
+	u_int *sizep;
 	u_int maxsize;
 {
-	register char *sp = *cpp;  /* sp is the actual string pointer */
-	register u_int nodesize;
+	char *sp = *cpp;  /* sp is the actual string pointer */
+	u_int nodesize;
 
 	/*
 	 * first deal with the length since xdr bytes are counted
@@ -663,13 +663,13 @@ xdr_netobj(xdrs, np)
  */
 bool_t
 xdr_union(xdrs, dscmp, unp, choices, dfault)
-	register XDR *xdrs;
+	XDR *xdrs;
 	enum_t *dscmp;		/* enum to decide which arm to work on */
 	char *unp;		/* the union itself */
 	struct xdr_discrim *choices;	/* [value, xdr proc] for each arm */
 	xdrproc_t dfault;	/* default xdr routine */
 {
-	register enum_t dscm;
+	enum_t dscm;
 
 	/*
 	 * we deal with the discriminator;  it's an enum
@@ -712,11 +712,11 @@ xdr_union(xdrs, dscmp, unp, choices, dfault)
  */
 bool_t
 xdr_string(xdrs, cpp, maxsize)
-	register XDR *xdrs;
+	XDR *xdrs;
 	char **cpp;
 	u_int maxsize;
 {
-	register char *sp = *cpp;  /* sp is the actual string pointer */
+	char *sp = *cpp;  /* sp is the actual string pointer */
 	u_int size;
 	u_int nodesize;
 

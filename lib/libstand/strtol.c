@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)strtol.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libstand/strtol.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include "stand.h"
@@ -46,13 +47,13 @@ long
 strtol(nptr, endptr, base)
 	const char *nptr;
 	char **endptr;
-	register int base;
+	int base;
 {
-	register const char *s;
-	register unsigned long acc;
-	register unsigned char c;
-	register unsigned long cutoff;
-	register int neg = 0, any, cutlim;
+	const char *s;
+	unsigned long acc;
+	unsigned char c;
+	unsigned long cutoff;
+	int neg = 0, any, cutlim;
 
 	/* Be sensible about NULL strings */
 	if (nptr == NULL)

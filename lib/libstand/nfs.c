@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/nfs.c,v 1.2.6.3 2000/09/10 01:33:25 ps Exp $ */
-/* $DragonFly: src/lib/libstand/nfs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
+/* $DragonFly: src/lib/libstand/nfs.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $ */
 /*	$NetBSD: nfs.c,v 1.2 1998/01/24 12:43:09 drochner Exp $	*/
 
 /*-
@@ -147,11 +147,11 @@ struct fs_ops nfs_fsops = {
  */
 int
 nfs_getrootfh(d, path, fhp)
-	register struct iodesc *d;
+	struct iodesc *d;
 	char *path;
 	u_char *fhp;
 {
-	register int len;
+	int len;
 	struct args {
 		n_long	len;
 		char	path[FNAME_SIZE];
@@ -210,7 +210,7 @@ nfs_lookupfh(d, name, newfd)
 	const char *name;
 	struct nfs_iodesc *newfd;
 {
-	register int len, rlen;
+	int len, rlen;
 	struct args {
 		u_char	fh[NFS_FHSIZE];
 		n_long	len;
@@ -389,8 +389,8 @@ nfs_open(upath, f)
 #ifndef NFS_NOSYMLINK
 	struct nfs_iodesc *newfd;
 	struct nfsv2_fattrs *fa;
-	register char *cp, *ncp;
-	register int c;
+	char *cp, *ncp;
+	int c;
 	char namebuf[NFS_MAXPATHLEN + 1];
 	char linkbuf[NFS_MAXPATHLEN + 1];
 	int nlinks = 0;
@@ -458,7 +458,7 @@ nfs_open(upath, f)
 		 * Get next component of path name.
 		 */
 		{
-			register int len = 0;
+			int len = 0;
 			
 			ncp = cp;
 			while ((c = *cp) != '\0' && c != '/') {
@@ -559,7 +559,7 @@ int
 nfs_close(f)
 	struct open_file *f;
 {
-	register struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
+	struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
 
 #ifdef NFS_DEBUG
 	if (debug)
@@ -583,9 +583,9 @@ nfs_read(f, buf, size, resid)
 	size_t size;
 	size_t *resid;	/* out */
 {
-	register struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
-	register ssize_t cc;
-	register char *addr = buf;
+	struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
+	ssize_t cc;
+	char *addr = buf;
 	
 #ifdef NFS_DEBUG
 	if (debug)
@@ -640,7 +640,7 @@ nfs_seek(f, offset, where)
 	off_t offset;
 	int where;
 {
-	register struct nfs_iodesc *d = (struct nfs_iodesc *)f->f_fsdata;
+	struct nfs_iodesc *d = (struct nfs_iodesc *)f->f_fsdata;
 	n_long size = ntohl(d->fa.fa_size);
 
 	switch (where) {
@@ -670,7 +670,7 @@ nfs_stat(f, sb)
 	struct stat *sb;
 {
 	struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
-	register n_long ftype, mode;
+	n_long ftype, mode;
 
 	ftype = ntohl(fp->fa.fa_type);
 	mode  = ntohl(fp->fa.fa_mode);
@@ -688,7 +688,7 @@ nfs_stat(f, sb)
 static int
 nfs_readdir(struct open_file *f, struct dirent *d)
 {
-	register struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
+	struct nfs_iodesc *fp = (struct nfs_iodesc *)f->f_fsdata;
 	struct nfs_readdir_args *args;
 	struct nfs_readdir_data *rd;
 	struct nfs_readdir_off  *roff = NULL;

@@ -38,7 +38,7 @@
  *
  * @(#) Header: net.c,v 1.9 93/08/06 19:32:15 leres Exp  (LBL)
  * $FreeBSD: src/lib/libstand/net.c,v 1.1.1.1.6.1 2000/04/15 03:09:28 ps Exp $
- * $DragonFly: src/lib/libstand/net.c,v 1.3 2004/07/28 12:07:49 joerg Exp $
+ * $DragonFly: src/lib/libstand/net.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -72,16 +72,16 @@
  */
 ssize_t
 sendrecv(d, sproc, sbuf, ssize, rproc, rbuf, rsize)
-	register struct iodesc *d;
-	register ssize_t (*sproc)(struct iodesc *, void *, size_t);
-	register void *sbuf;
-	register size_t ssize;
-	register ssize_t (*rproc)(struct iodesc *, void *, size_t, time_t);
-	register void *rbuf;
-	register size_t rsize;
+	struct iodesc *d;
+	ssize_t (*sproc)(struct iodesc *, void *, size_t);
+	void *sbuf;
+	size_t ssize;
+	ssize_t (*rproc)(struct iodesc *, void *, size_t, time_t);
+	void *rbuf;
+	size_t rsize;
 {
-	register ssize_t cc;
-	register time_t t, tmo, tlast;
+	ssize_t cc;
+	time_t t, tmo, tlast;
 	long tleft;
 
 #ifdef NET_DEBUG
@@ -139,11 +139,11 @@ n_long
 inet_addr(cp)
 	char *cp;
 {
-	register u_long val;
-	register int n;
-	register char c;
+	u_long val;
+	int n;
+	char c;
 	u_int parts[4];
-	register u_int *pp = parts;
+	u_int *pp = parts;
 
 	for (;;) {
 		/*
@@ -223,11 +223,11 @@ inet_ntoa(ia)
 /* Similar to inet_ntoa() */
 char *
 intoa(addr)
-	register n_long addr;
+	n_long addr;
 {
-	register char *cp;
-	register u_int byte;
-	register int n;
+	char *cp;
+	u_int byte;
+	int n;
 	static char buf[17];	/* strlen(".255.255.255.255") + 1 */
 
 	addr = ntohl(addr);

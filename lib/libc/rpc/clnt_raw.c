@@ -29,7 +29,7 @@
  * @(#)clnt_raw.c 1.22 87/08/11 Copyr 1984 Sun Micro
  * @(#)clnt_raw.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_raw.c,v 1.10 1999/08/28 00:00:36 peter Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_raw.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -86,7 +86,7 @@ clntraw_create(prog, vers)
 	u_long prog;
 	u_long vers;
 {
-	register struct clntraw_private *clp = clntraw_private;
+	struct clntraw_private *clp = clntraw_private;
 	struct rpc_msg call_msg;
 	XDR *xdrs = &clp->xdr_stream;
 	CLIENT	*client = &clp->client_object;
@@ -134,8 +134,8 @@ clntraw_call(h, proc, xargs, argsp, xresults, resultsp, timeout)
 	caddr_t resultsp;
 	struct timeval timeout;
 {
-	register struct clntraw_private *clp = clntraw_private;
-	register XDR *xdrs = &clp->xdr_stream;
+	struct clntraw_private *clp = clntraw_private;
+	XDR *xdrs = &clp->xdr_stream;
 	struct rpc_msg msg;
 	enum clnt_stat status;
 	struct rpc_err error;
@@ -211,8 +211,8 @@ clntraw_freeres(cl, xdr_res, res_ptr)
 	xdrproc_t xdr_res;
 	caddr_t res_ptr;
 {
-	register struct clntraw_private *clp = clntraw_private;
-	register XDR *xdrs = &clp->xdr_stream;
+	struct clntraw_private *clp = clntraw_private;
+	XDR *xdrs = &clp->xdr_stream;
 	bool_t rval;
 
 	if (clp == 0)

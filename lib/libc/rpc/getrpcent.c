@@ -29,7 +29,7 @@
  *
  * @(#)getrpcent.c 1.14 91/03/11 Copyr 1984 Sun Micro
  * $FreeBSD: src/lib/libc/rpc/getrpcent.c,v 1.10 1999/08/28 00:00:39 peter Exp $
- * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/getrpcent.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -77,7 +77,7 @@ static char RPCDB[] = "/etc/rpc";
 static struct rpcdata *
 _rpcdata()
 {
-	register struct rpcdata *d = rpcdata;
+	struct rpcdata *d = rpcdata;
 
 	if (d == 0) {
 		d = (struct rpcdata *)calloc(1, sizeof (struct rpcdata));
@@ -88,10 +88,10 @@ _rpcdata()
 
 struct rpcent *
 getrpcbynumber(number)
-	register int number;
+	int number;
 {
-	register struct rpcdata *d = _rpcdata();
-	register struct rpcent *p;
+	struct rpcdata *d = _rpcdata();
+	struct rpcent *p;
 #ifdef	YP
 	int reason;
 	char adrstr[16];
@@ -156,7 +156,7 @@ void
 setrpcent(f)
 	int f;
 {
-	register struct rpcdata *d = _rpcdata();
+	struct rpcdata *d = _rpcdata();
 
 	if (d == 0)
 		return;
@@ -180,7 +180,7 @@ setrpcent(f)
 void
 endrpcent()
 {
-	register struct rpcdata *d = _rpcdata();
+	struct rpcdata *d = _rpcdata();
 
 	if (d == 0)
 		return;
@@ -203,7 +203,7 @@ endrpcent()
 struct rpcent *
 getrpcent()
 {
-	register struct rpcdata *d = _rpcdata();
+	struct rpcdata *d = _rpcdata();
 #ifdef	YP
 	struct rpcent *hp;
 	int reason;
@@ -256,9 +256,9 @@ interpret(val, len)
 	char *val;
 	int len;
 {
-	register struct rpcdata *d = _rpcdata();
+	struct rpcdata *d = _rpcdata();
 	char *p;
-	register char *cp, **q;
+	char *cp, **q;
 
 	if (d == 0)
 		return (0);

@@ -29,7 +29,7 @@
  * @(#)clnt_unix.c 1.37 87/10/05 Copyr 1984 Sun Micro
  * @(#)clnt_unix.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_unix.c,v 1.5 2000/01/27 23:06:37 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_unix.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_unix.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /*
@@ -115,12 +115,12 @@ clntunix_create(raddr, prog, vers, sockp, sendsz, recvsz)
 	struct sockaddr_un *raddr;
 	u_long prog;
 	u_long vers;
-	register int *sockp;
+	int *sockp;
 	u_int sendsz;
 	u_int recvsz;
 {
 	CLIENT *h;
-	register struct ct_data *ct = NULL;
+	struct ct_data *ct = NULL;
 	struct timeval now;
 	struct rpc_msg call_msg;
 	static u_int32_t disrupt;
@@ -221,7 +221,7 @@ fooy:
 
 static enum clnt_stat
 clntunix_call(h, proc, xdr_args, args_ptr, xdr_results, results_ptr, timeout)
-	register CLIENT *h;
+	CLIENT *h;
 	u_long proc;
 	xdrproc_t xdr_args;
 	caddr_t args_ptr;
@@ -229,12 +229,12 @@ clntunix_call(h, proc, xdr_args, args_ptr, xdr_results, results_ptr, timeout)
 	caddr_t results_ptr;
 	struct timeval timeout;
 {
-	register struct ct_data *ct = (struct ct_data *) h->cl_private;
-	register XDR *xdrs = &(ct->ct_xdrs);
+	struct ct_data *ct = (struct ct_data *) h->cl_private;
+	XDR *xdrs = &(ct->ct_xdrs);
 	struct rpc_msg reply_msg;
 	u_long x_id;
 	u_int32_t *msg_x_id = (u_int32_t *)(ct->ct_mcall);	/* yuk */
-	register bool_t shipnow;
+	bool_t shipnow;
 	int refreshes = 2;
 
 	if (!ct->ct_waitset) {
@@ -321,7 +321,7 @@ clntunix_geterr(h, errp)
 	CLIENT *h;
 	struct rpc_err *errp;
 {
-	register struct ct_data *ct =
+	struct ct_data *ct =
 	    (struct ct_data *) h->cl_private;
 
 	*errp = ct->ct_error;
@@ -333,8 +333,8 @@ clntunix_freeres(cl, xdr_res, res_ptr)
 	xdrproc_t xdr_res;
 	caddr_t res_ptr;
 {
-	register struct ct_data *ct = (struct ct_data *)cl->cl_private;
-	register XDR *xdrs = &(ct->ct_xdrs);
+	struct ct_data *ct = (struct ct_data *)cl->cl_private;
+	XDR *xdrs = &(ct->ct_xdrs);
 
 	xdrs->x_op = XDR_FREE;
 	return ((*xdr_res)(xdrs, res_ptr));
@@ -352,8 +352,8 @@ clntunix_control(cl, request, info)
 	int request;
 	char *info;
 {
-	register struct ct_data *ct = (struct ct_data *)cl->cl_private;
-	register struct timeval *tv;
+	struct ct_data *ct = (struct ct_data *)cl->cl_private;
+	struct timeval *tv;
 	int len;
 
 	switch (request) {
@@ -460,7 +460,7 @@ static void
 clntunix_destroy(h)
 	CLIENT *h;
 {
-	register struct ct_data *ct =
+	struct ct_data *ct =
 	    (struct ct_data *) h->cl_private;
 
 	if (ct->ct_closeit) {
@@ -542,9 +542,9 @@ static int __msgwrite(sock, buf, cnt)
  */
 static int
 readunix(ct, buf, len)
-	register struct ct_data *ct;
+	struct ct_data *ct;
 	caddr_t buf;
-	register int len;
+	int len;
 {
 	fd_set *fds, readfds;
 	struct timeval start, after, duration, delta, tmp, tv;
@@ -621,7 +621,7 @@ writeunix(ct, buf, len)
 	caddr_t buf;
 	int len;
 {
-	register int i, cnt;
+	int i, cnt;
 
 	for (cnt = len; cnt > 0; cnt -= i, buf += i) {
 		if ((i = __msgwrite(ct->ct_sock, buf, cnt)) == -1) {

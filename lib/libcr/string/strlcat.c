@@ -26,7 +26,7 @@
  *
  * $OpenBSD: strlcat.c,v 1.2 1999/06/17 16:28:58 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcat.c,v 1.2.4.2 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/lib/libcr/string/Attic/strlcat.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/string/Attic/strlcat.c,v 1.3 2004/10/25 19:38:44 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -44,9 +44,9 @@ size_t strlcat(dst, src, siz)
 	const char *src;
 	size_t siz;
 {
-	register char *d = dst;
-	register const char *s = src;
-	register size_t n = siz;
+	char *d = dst;
+	const char *s = src;
+	size_t n = siz;
 	size_t dlen;
 
 	/* Find the end of dst and adjust bytes left but don't go past end */

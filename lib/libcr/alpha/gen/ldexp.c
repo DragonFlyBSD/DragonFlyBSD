@@ -1,6 +1,6 @@
 /*	$NetBSD: ldexp.c,v 1.1 1995/02/10 17:50:24 cgd Exp $	*/
 /* $FreeBSD: src/lib/libc/alpha/gen/ldexp.c,v 1.1.1.1.6.1 2000/08/21 21:09:29 jhb Exp $ */
-/* $DragonFly: src/lib/libcr/alpha/gen/Attic/ldexp.c,v 1.2 2003/06/17 04:26:41 dillon Exp $ */
+/* $DragonFly: src/lib/libcr/alpha/gen/Attic/ldexp.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Carnegie-Mellon University.
@@ -43,7 +43,7 @@ ldexp(val, exp)
 	double val;
 	int exp;
 {
-	register int oldexp, newexp, mulexp;
+	int oldexp, newexp, mulexp;
 	union doub {
 		double v;
 		struct ieee_double s;

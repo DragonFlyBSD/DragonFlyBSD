@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)common.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libedit/common.c,v 1.3 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -450,7 +451,7 @@ ed_digit(el, c)
 protected el_action_t
 ed_argument_digit(el, c)
     EditLine *el;
-    register int c;
+    int c;
 {
     if (!isdigit((unsigned char) c))
 	return CC_ERROR;

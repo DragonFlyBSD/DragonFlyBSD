@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.8 2000/01/27 23:06:25 jasone Exp $
- * $DragonFly: src/lib/libcr/gmon/Attic/gmon.c,v 1.4 2004/04/25 12:40:48 joerg Exp $
+ * $DragonFly: src/lib/libcr/gmon/Attic/gmon.c,v 1.5 2004/10/25 19:38:24 drhodus Exp $
  *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
  */
@@ -71,7 +71,7 @@ monstartup(lowpc, highpc)
 	u_long lowpc;
 	u_long highpc;
 {
-	register int o;
+	int o;
 	char *cp;
 	struct gmonparam *p = &_gmonparam;
 

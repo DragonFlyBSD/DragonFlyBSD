@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_utils.c	8.8 (Berkeley) 7/20/94
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_utils.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -214,8 +215,8 @@ int
 __bt_defcmp(a, b)
 	const DBT *a, *b;
 {
-	register size_t len;
-	register u_char *p1, *p2;
+	size_t len;
+	u_char *p1, *p2;
 
 	/*
 	 * XXX
@@ -244,8 +245,8 @@ size_t
 __bt_defpfx(a, b)
 	const DBT *a, *b;
 {
-	register u_char *p1, *p2;
-	register size_t cnt, len;
+	u_char *p1, *p2;
+	size_t cnt, len;
 
 	cnt = 1;
 	len = MIN(a->size, b->size);

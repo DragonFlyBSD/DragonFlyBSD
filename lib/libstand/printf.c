@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/lib/libstand/printf.c,v 1.4 1999/12/27 08:45:14 peter Exp $
- * $DragonFly: src/lib/libstand/printf.c,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $DragonFly: src/lib/libstand/printf.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $
  */
 
 /*
@@ -105,11 +105,11 @@ vsprintf(char *buf, const char *cfmt, va_list ap)
  */
 static char *
 ksprintn(ul, base, lenp)
-	register u_long ul;
-	register int base, *lenp;
+	u_long ul;
+	int base, *lenp;
 {					/* A long in base 8, plus NULL. */
 	static char buf[sizeof(long) * NBBY / 3 + 2];
-	register char *p;
+	char *p;
 
 	p = buf;
 	do {

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/gethostnamadr.c,v 1.15.2.2 2001/03/05 10:40:42 obrien Exp $
- * $DragonFly: src/lib/libcr/net/Attic/gethostnamadr.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/gethostnamadr.c,v 1.3 2004/10/25 19:38:25 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,7 @@ static void
 init_services()
 {
 	char *cp, *p, buf[BUFSIZ];
-	register int cc = 0;
+	int cc = 0;
 	FILE *fd;
 
 	if ((fd = (FILE *)fopen(_PATH_HOSTCONF, "r")) == NULL) {

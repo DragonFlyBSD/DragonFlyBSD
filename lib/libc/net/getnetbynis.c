@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/getnetbynis.c,v 1.11 1999/08/28 00:00:07 peter Exp $
- * $DragonFly: src/lib/libc/net/getnetbynis.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/getnetbynis.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ _getnetbynis(name, map, af)
 	int af;
 {
 #ifdef YP
-	register char *cp, **q;
+	char *cp, **q;
 	static char *result;
 	int resultlen;
 	static struct netent h;

@@ -28,7 +28,7 @@
  *
  * @(#)auth_des.c	2.2 88/07/29 4.0 RPCSRC; from 1.9 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/auth_des.c,v 1.3 1999/08/28 00:00:32 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/auth_des.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/auth_des.c,v 1.4 2004/10/25 19:38:25 drhodus Exp $
  */
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
@@ -422,7 +422,7 @@ authdes_validate(auth, rverf)
 	struct ad_private *ad = AUTH_PRIVATE(auth);
 	struct authdes_verf verf;
 	int status;
-	register u_long *ixdr;
+	u_long *ixdr;
 
 	if (rverf->oa_length != (2 + 1) * BYTES_PER_XDR_UNIT) {
 		return (FALSE);

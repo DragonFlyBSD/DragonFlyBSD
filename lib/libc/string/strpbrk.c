@@ -32,7 +32,7 @@
  *
  * @(#)strpbrk.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/string/strpbrk.c,v 1.1.1.1.14.1 2001/07/09 23:30:07 obrien Exp $
- * $DragonFly: src/lib/libc/string/strpbrk.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/string/strpbrk.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
@@ -43,10 +43,10 @@
  */
 char *
 strpbrk(s1, s2)
-	register const char *s1, *s2;
+	const char *s1, *s2;
 {
-	register const char *scanp;
-	register int c, sc;
+	const char *scanp;
+	int c, sc;
 
 	while ((c = *s1++) != 0) {
 		for (scanp = s2; (sc = *scanp++) != 0;)

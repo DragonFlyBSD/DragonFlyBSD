@@ -29,7 +29,7 @@
  * @(#)svc_auth_unix.c 1.28 88/02/08 Copyr 1984 Sun Micro
  * @(#)svc_auth_unix.c	2.3 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_auth_unix.c,v 1.8 1999/08/28 00:00:49 peter Exp $
- * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/svc_auth_unix.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -52,13 +52,13 @@
  */
 enum auth_stat
 _svcauth_unix(rqst, msg)
-	register struct svc_req *rqst;
-	register struct rpc_msg *msg;
+	struct svc_req *rqst;
+	struct rpc_msg *msg;
 {
-	register enum auth_stat stat;
+	enum auth_stat stat;
 	XDR xdrs;
-	register struct authunix_parms *aup;
-	register int32_t *buf;
+	struct authunix_parms *aup;
+	int32_t *buf;
 	struct area {
 		struct authunix_parms area_aup;
 		char area_machname[MAX_MACHINE_NAME+1];
@@ -66,7 +66,7 @@ _svcauth_unix(rqst, msg)
 	} *area;
 	u_int auth_len;
 	int str_len, gid_len;
-	register int i;
+	int i;
 
 	area = (struct area *) rqst->rq_clntcred;
 	aup = &area->area_aup;

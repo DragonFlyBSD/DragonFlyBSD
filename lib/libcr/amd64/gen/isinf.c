@@ -32,10 +32,11 @@
  *
  * @(#)isinf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/amd64/gen/isinf.c,v 1.10 2003/02/12 20:03:41 mike Exp $
- * $DragonFly: src/lib/libcr/amd64/gen/Attic/isinf.c,v 1.1 2004/03/13 19:46:55 eirikn Exp $
+ * $DragonFly: src/lib/libcr/amd64/gen/Attic/isinf.c,v 1.2 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /* For binary compat; to be removed in FreeBSD 6.0. */
+/* XXX: What about in DragonFlyBSD ? */
 
 #include <sys/types.h>
 
@@ -43,7 +44,7 @@ int
 isnan(d)
 	double d;
 {
-	register struct IEEEdp {
+	struct IEEEdp {
 		u_int manl : 32;
 		u_int manh : 20;
 		u_int  exp : 11;
@@ -57,7 +58,7 @@ int
 isinf(d)
 	double d;
 {
-	register struct IEEEdp {
+	struct IEEEdp {
 		u_int manl : 32;
 		u_int manh : 20;
 		u_int  exp : 11;

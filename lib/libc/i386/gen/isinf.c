@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/i386/gen/isinf.c,v 1.6 1999/08/27 23:59:21 peter Exp $
- * $DragonFly: src/lib/libc/i386/gen/Attic/isinf.c,v 1.3 2003/12/06 03:11:35 drhodus Exp $
+ * $DragonFly: src/lib/libc/i386/gen/Attic/isinf.c,v 1.4 2004/10/25 19:38:01 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -40,7 +40,7 @@ int
 isnan(d)
 	double d;
 {
-	register struct IEEEdp {
+	struct IEEEdp {
 		u_int manl : 32;
 		u_int manh : 20;
 		u_int  exp : 11;
@@ -54,7 +54,7 @@ int
 isinf(d)
 	double d;
 {
-	register struct IEEEdp {
+	struct IEEEdp {
 		u_int manl : 32;
 		u_int manh : 20;
 		u_int  exp : 11;

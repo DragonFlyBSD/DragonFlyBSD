@@ -29,7 +29,7 @@
  * @(#)pmap_prot2.c 1.3 87/08/11 Copyr 1984 Sun Micro
  * @(#)pmap_prot2.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/pmap_prot2.c,v 1.7 1999/08/28 00:00:42 peter Exp $
- * $DragonFly: src/lib/libc/rpc/pmap_prot2.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/pmap_prot2.c,v 1.3 2004/10/25 19:38:02 drhodus Exp $
  */
 
 /*
@@ -84,8 +84,8 @@
  */
 bool_t
 xdr_pmaplist(xdrs, rp)
-	register XDR *xdrs;
-	register struct pmaplist **rp;
+	XDR *xdrs;
+	struct pmaplist **rp;
 {
 	/*
 	 * more_elements is pre-computed in case the direction is
@@ -93,8 +93,8 @@ xdr_pmaplist(xdrs, rp)
 	 * xdr_bool when the direction is XDR_DECODE.
 	 */
 	bool_t more_elements;
-	register int freeing = (xdrs->x_op == XDR_FREE);
-	register struct pmaplist **next = NULL;
+	int freeing = (xdrs->x_op == XDR_FREE);
+	struct pmaplist **next = NULL;
 
 	while (TRUE) {
 		more_elements = (bool_t)(*rp != NULL);

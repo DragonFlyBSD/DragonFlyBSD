@@ -32,7 +32,7 @@
  *
  * @(#)getnetent.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/net/getnetbyht.c,v 1.7.2.1 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/getnetbyht.c,v 1.3 2004/10/25 19:38:01 drhodus Exp $
  */
 
 /* Portions Copyright (c) 1993 Carlos Leandro and Rui Salgueiro
@@ -89,7 +89,7 @@ struct netent *
 getnetent()
 {
 	char *p;
-	register char *cp, **q;
+	char *cp, **q;
 
 	if (netf == NULL && (netf = fopen(_PATH_NETWORKS, "r" )) == NULL)
 		return (NULL);
@@ -135,10 +135,10 @@ again:
 
 struct netent *
 _getnetbyhtname(name)
-	register const char *name;
+	const char *name;
 {
-	register struct netent *p;
-	register char **cp;
+	struct netent *p;
+	char **cp;
 
 	setnetent(_net_stayopen);
 	while ( (p = getnetent()) ) {
@@ -156,10 +156,10 @@ found:
 
 struct netent *
 _getnetbyhtaddr(net, type)
-	register unsigned long net;
-	register int type;
+	unsigned long net;
+	int type;
 {
-	register struct netent *p;
+	struct netent *p;
 
 	setnetent(_net_stayopen);
 	while ( (p = getnetent()) )
