@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/make.conf.5,v 1.12.2.30 2003/05/18 17:05:55 brueffer Exp $
-.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.6 2004/03/11 12:28:56 hmp Exp $
+.\" $DragonFly: src/share/man/man5/make.conf.5,v 1.7 2004/07/08 00:14:49 hmp Exp $
 .\"
 .Dd November 3, 2000
 .Dt MAKE.CONF 5
@@ -49,10 +49,9 @@ is not to run commands or perform compilation actions
 directly.
 Instead, it is included by the
 various makefiles in
-.Pa /usr/src ,
-.Pa /usr/ports
+.Pa /usr/src
 and
-.Pa /usr/doc
+.Pa /usr/ports
 which conditionalize their
 internal actions according to the settings found there.
 .Pp
@@ -132,7 +131,7 @@ may be overridden using the
 and
 .Va NO_CPU_COPTFLAGS
 variables, respectively.  Refer to
-.Pa /usr/share/examples/etc/make.conf
+.Pa /usr/share/examples/etc/defaults/make.conf
 for a list of recognized
 .Va CPUTYPE
 options.
@@ -905,7 +904,6 @@ installed if it is installed anywhere other than
 .Bl -tag -width /etc/defaults/make.conf -compact
 .It Pa /etc/defaults/make.conf
 .It Pa /etc/make.conf
-.It Pa /usr/doc/Makefile
 .It Pa /usr/src/Makefile
 .It Pa /usr/src/Makefile.inc1
 .It Pa /usr/ports/Mk/bsd.port.mk

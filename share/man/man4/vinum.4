@@ -35,7 +35,7 @@
 .\" advised of the possibility of such damage.
 .\"
 .\" $FreeBSD: src/share/man/man4/vinum.4,v 1.22.2.9 2002/04/22 08:19:35 kuriyama Exp $
-.\" $DragonFly: src/share/man/man4/vinum.4,v 1.4 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/vinum.4,v 1.5 2004/07/08 00:14:49 hmp Exp $
 .\"
 .Dd October 5, 1999
 .Dt vinum 4
@@ -175,7 +175,7 @@ this support at the moment, but if you do you must remove it from both the
 kernel and the user components.  To do this, edit the files
 .Pa /usr/src/sbin/vinum/Makefile
 and
-.Pa /usr/src/sys/modules/vinum/Makefile
+.Pa /sys/dev/raid/vinum/Makefile
 and edit the CFLAGS variable to remove the -DVINUMDEBUG option.  If you have
 configured
 .Nm
@@ -252,7 +252,7 @@ objects.
 calls are intended for the use of the
 .Nm
 configuration program only.  They are described in the header file
-.Pa /sys/sys/vinumio.h
+.Pa /sys/dev/raid/vinum/vinumio.h
 .Ss DISK LABELS
 Conventional disk special devices have a
 .Em disk label
@@ -790,12 +790,12 @@ problem:
 .Bl -enum
 .It
 Copy the files
-.Pa /usr/src/sys/modules/vinum/.gdbinit.crash ,
-.Pa /usr/src/sys/modules/vinum/.gdbinit.kernel ,
-.Pa /usr/src/sys/modules/vinum/.gdbinit.serial ,
-.Pa /usr/src/sys/modules/vinum/.gdbinit.vinum
+.Pa /sys/dev/raid/vinum/.gdbinit.crash ,
+.Pa /sys/dev/raid/vinum/.gdbinit.kernel ,
+.Pa /sys/dev/raid/vinum/.gdbinit.serial ,
+.Pa /sys/dev/raid/vinum/.gdbinit.vinum
 and
-.Pa /usr/src/sys/modules/vinum/.gdbinit.vinum.paths
+.Pa /sys/dev/raid/vinum/.gdbinit.vinum.paths
 to the directory in which you will be performing the analysis, typically
 .Pa /var/crash .
 .It
@@ -820,13 +820,13 @@ If the output shows that
 .Pa /modules/vinum.ko
 is stripped, you will have to find a version which is not.  Usually this will be
 either in
-.Pa /usr/obj/sys/modules/vinum/vinum.ko
+.Pa /usr/obj/usr/src/sys/SYSTEM_NAME/usr/src/sys/dev/raid/vinum/vinum.ko
 (if you have built
 .Nm
 with a
 .Ar make world )
 or
-.Pa /usr/src/sys/modules/vinum/vinum.ko
+.Pa /sys/dev/raid/vinum/vinum.ko
 (if you have built
 .Nm
 in this directory).  Modify the file
@@ -886,13 +886,13 @@ Debugger (msg=0xf1093174 "vinum debug") at ../../i386/i386/db_interface.c:318
 318                 in_Debugger = 0;
 #1  0xf108d9bc in vinumioctl (dev=0x40001900, cmd=0xc008464b, data=0xf6dedee0 "",
     flag=0x3, p=0xf68b7940) at
-    /usr/src/sys/modules/Vinum/../../dev/Vinum/vinumioctl.c:102
+    /usr/src/sys/dev/raid/vinum/vinumioctl.c:102
 102             Debugger ("vinum debug");
 (kgdb) bt
 #0  Debugger (msg=0xf0f661ac "vinum debug") at ../../i386/i386/db_interface.c:318
 #1  0xf0f60a7c in vinumioctl (dev=0x40001900, cmd=0xc008464b, data=0xf6923ed0 "",
       flag=0x3, p=0xf688e6c0) at
-      /usr/src/sys/modules/vinum/../../dev/vinum/vinumioctl.c:109
+      /usr/src/sys/dev/raid/vinum/vinumioctl.c:109
 #2  0xf01833b7 in spec_ioctl (ap=0xf6923e0c) at ../../miscfs/specfs/spec_vnops.c:424
 #3  0xf0182cc9 in spec_vnoperate (ap=0xf6923e0c) at ../../miscfs/specfs/spec_vnops.c:129
 #4  0xf01eb3c1 in ufs_vnoperatespec (ap=0xf6923e0c) at ../../ufs/ufs/ufs_vnops.c:2312

@@ -24,7 +24,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/vlan.4,v 1.1.2.6 2002/08/30 11:53:56 yar Exp $
-.\" $DragonFly: src/share/man/man4/vlan.4,v 1.3 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/vlan.4,v 1.4 2004/07/08 00:14:49 hmp Exp $
 .\"
 .Dd July 25, 2001
 .Dt VLAN 4
@@ -125,7 +125,7 @@ natively.
 requires defining
 .Dv BIG_PACKET
 in the
-.Pa /usr/src/sys/pci/if_de.c
+.Pa /sys/dev/netif/de/if_de.c
 source file and rebuilding the kernel.
 The hack works only for the 21041, 21140, and 21140A chips.
 .It Xr fxp 4
