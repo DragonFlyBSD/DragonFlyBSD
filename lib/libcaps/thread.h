@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.3 2004/07/29 08:55:02 dillon Exp $
+ * $DragonFly: src/lib/libcaps/thread.h,v 1.4 2004/10/18 17:54:35 eirikn Exp $
  */
 
 #ifndef _LIBCAPS_THREAD_H_
@@ -50,7 +50,7 @@ extern void cpu_thread_exit(void) __dead2;
 
 /*
  * User overloads of lwkt_*
- * Unfortunately c doesn't support function overrloading.
+ * Unfortunately C doesn't support function overloading.
  * XXX we need some strong weak magic here....
  */
 struct globaldata;
