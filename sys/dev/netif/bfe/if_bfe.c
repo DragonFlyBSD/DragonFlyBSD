@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.9 2004/10/14 18:31:01 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.10 2005/02/15 19:39:40 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -42,6 +42,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -379,7 +380,8 @@ bfe_attach(device_t dev)
 	ifp->if_init = bfe_init;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = BFE_TX_QLEN;
+	ifq_set_maxlen(&ifp->if_snd, BFE_TX_QLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	bfe_get_config(sc);
 
@@ -1201,7 +1203,7 @@ bfe_intr(void *xsc)
 		bfe_txeof(sc);
 
 	/* We have packets pending, fire them out */ 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		bfe_start(ifp);
 
 	splx(s);
@@ -1290,7 +1292,7 @@ bfe_start(struct ifnet *ifp)
 	 * not much point trying to send if the link is down or we have nothing to
 	 * send
 	 */
-	if (!sc->bfe_link && ifp->if_snd.ifq_len < 10) {
+	if (!sc->bfe_link) {
 		splx(s);
 		return;
 	}
@@ -1301,7 +1303,7 @@ bfe_start(struct ifnet *ifp)
 	}
 
 	while (sc->bfe_tx_ring[idx].bfe_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1310,10 +1312,10 @@ bfe_start(struct ifnet *ifp)
 		 * the chip drain the ring
 		 */
 		if (bfe_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
