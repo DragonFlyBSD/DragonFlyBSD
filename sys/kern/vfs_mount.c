@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.1 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.2 2004/10/19 05:55:34 dillon Exp $
  */
 
 /*
@@ -470,6 +470,7 @@ vnlru_proc(void)
 			continue;
 		}
 		done = 0;
+		cache_cleanneg(0);
 		lwkt_gettoken(&ilock, &mountlist_token);
 		for (mp = TAILQ_FIRST(&mountlist); mp != NULL; mp = nmp) {
 			if (vfs_busy(mp, LK_NOWAIT, &ilock, td)) {

@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.38 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.39 2004/10/19 05:55:34 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -777,6 +777,35 @@ done:
 	--ncp->nc_refs;
 }
 
+static enum { CHI_LOW, CHI_HIGH } cache_hysteresis_state = CHI_LOW;
+
+static __inline
+void
+cache_hysteresis(void)
+{
+	/*
+	 * Don't cache too many negative hits.  We use hysteresis to reduce
+	 * the impact on the critical path.
+	 */
+	switch(cache_hysteresis_state) {
+	case CHI_LOW:
+		if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
+			cache_cleanneg(10);
+			cache_hysteresis_state = CHI_HIGH;
+		}
+		break;
+	case CHI_HIGH:
+		if (numneg > MINNEG * 9 / 10 && 
+		    numneg * ncnegfactor * 9 / 10 > numcache
+		) {
+			cache_cleanneg(10);
+		} else {
+			cache_hysteresis_state = CHI_LOW;
+		}
+		break;
+	}
+}
+
 /*
  * NEW NAMECACHE LOOKUP API
  *
@@ -883,6 +912,7 @@ restart:
 	ncp->nc_flag |= NCF_HASHED;
 	cache_link_parent(ncp, par);
 found:
+	cache_hysteresis();
 	return(ncp);
 }
 
@@ -1388,15 +1418,33 @@ againagain:
 			ncp->nc_flag |= NCF_WHITEOUT;
 	}
 	cache_put(ncp);
+	cache_hysteresis();
+}
+
+void
+cache_cleanneg(int count)
+{
+	struct namecache *ncp;
 
 	/*
-	 * Don't cache too many negative hits
+	 * Automode from the vnlru proc - clean out 10% of the negative cache
+	 * entries.
 	 */
-	if (numneg > MINNEG && numneg * ncnegfactor > numcache) {
+	if (count == 0)
+		count = numneg / 10 + 1;
+
+	/*
+	 * Attempt to clean out the specified number of negative cache
+	 * entries.
+	 */
+	while (count) {
 		ncp = TAILQ_FIRST(&ncneglist);
 		KKASSERT(ncp != NULL);
+		TAILQ_REMOVE(&ncneglist, ncp, nc_vnode);
+		TAILQ_INSERT_TAIL(&ncneglist, ncp, nc_vnode);
 		if (cache_get_nonblock(ncp) == 0)
 			cache_zap(ncp);
+		--count;
 	}
 }
 
