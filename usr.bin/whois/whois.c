@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.3 2004/07/23 06:29:27 hmp Exp $
+ * $DragonFly: src/usr.bin/whois/whois.c,v 1.4 2004/08/19 23:12:10 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -255,7 +255,7 @@ whois(const char *query, const char *hostname, int flags)
 	FILE *sfi, *sfo;
 	struct addrinfo *hostres, *res;
 	char *buf, *host, *nhost, *p;
-	int i, s;
+	int i, s = -1;
 	size_t c, len;
 
 	hostres = gethostinfo(hostname, 1);
