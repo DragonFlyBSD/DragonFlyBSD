@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>
+ * Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
  *
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.20 2004/07/10 12:19:27 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.21 2005/02/10 14:28:54 joerg Exp $
  */
 
 #include <sys/param.h>
