@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_if.c,v 1.6 2004/09/14 15:20:24 mlaier Exp $ */
 /*	$OpenBSD: pf_if.c,v 1.11 2004/03/15 11:38:23 cedric Exp $ */
 /* add	$OpenBSD: pf_if.c,v 1.19 2004/08/11 12:06:44 henning Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_if.c,v 1.2 2004/09/19 23:54:02 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -52,6 +52,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/route.h>
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>

@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.2 2004/09/19 23:54:02 dillon Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -3004,7 +3004,7 @@ hook_pf(void)
 	
 	pfh_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 	if (pfh_inet == NULL)
-		return (ENODEV)
+		return (ENODEV);
 	pfil_add_hook(pf_check_in, NULL, PFIL_IN | PFIL_WAITOK, pfh_inet);
 	pfil_add_hook(pf_check_out, NULL, PFIL_OUT | PFIL_WAITOK, pfh_inet);
 #ifdef INET6
