@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.13 2003/11/14 01:32:45 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.14 2003/11/14 21:18:41 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -614,7 +614,6 @@ int
 linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 {
 	struct proc *p = curproc;
-	struct sigaltstack_args sasargs;
 	struct l_ucontext uc;
 	struct l_sigcontext *context;
 	l_stack_t *lss;
