@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.8 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.9 2003/11/16 01:50:54 daver Exp $
  */
 
 #include <sys/param.h>
@@ -137,7 +137,7 @@ linux_signal(struct linux_signal_args *args)
 {
 	l_sigaction_t linux_nsa, linux_osa;
 	struct sigaction nsa, osa;
-	int error;
+	int error, sig;
 
 #ifdef DEBUG
 	if (ldebug(signal))
@@ -148,8 +148,13 @@ linux_signal(struct linux_signal_args *args)
 	linux_nsa.lsa_flags = LINUX_SA_ONESHOT | LINUX_SA_NOMASK;
 	LINUX_SIGEMPTYSET(linux_nsa.lsa_mask);
 	linux_to_bsd_sigaction(&linux_nsa, &nsa);
+	if (args->sig <= LINUX_SIGTBLSZ) {
+		sig = linux_to_bsd_signal[_SIG_IDX(args->sig)];
+	} else {
+		sig = args->sig;
+	}
 
-	error = kern_sigaction(args->sig, &nsa, &osa);
+	error = kern_sigaction(sig, &nsa, &osa);
 
 	bsd_to_linux_sigaction(&osa, &linux_osa);
 	args->sysmsg_result = (int) linux_osa.lsa_handler;
@@ -162,7 +167,7 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 {
 	l_sigaction_t linux_nsa, linux_osa;
 	struct sigaction nsa, osa;
-	int error;
+	int error, sig;
 
 #ifdef DEBUG
 	if (ldebug(rt_sigaction))
@@ -179,8 +184,13 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 			return (error);
 		linux_to_bsd_sigaction(&linux_nsa, &nsa);
 	}
+	if (args->sig <= LINUX_SIGTBLSZ) {
+		sig = linux_to_bsd_signal[_SIG_IDX(args->sig)];
+	} else {
+		sig = args->sig;
+	}
 
-	error = kern_sigaction(args->sig, args->act ? &nsa : NULL,
+	error = kern_sigaction(sig, args->act ? &nsa : NULL,
 	    args->oact ? &osa : NULL);
 
 	if (error == 0 && args->oact) {
