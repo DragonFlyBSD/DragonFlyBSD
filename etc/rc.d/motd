@@ -2,7 +2,7 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.7 2004/02/03 04:50:47 rob Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.8 2004/02/03 05:26:48 rob Exp $
 #
 
 # PROVIDE: motd
