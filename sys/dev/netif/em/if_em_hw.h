@@ -32,7 +32,7 @@
 *******************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em_hw.h,v 1.1.2.8 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.6 2004/05/11 14:00:20 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em_hw.h,v 1.7 2004/05/11 22:55:15 joerg Exp $*/
 /* if_em_hw.h
  * Structures, enums, and macros for the MAC
  */
@@ -324,6 +324,10 @@ void em_read_pci_cfg(struct em_hw *hw, uint32_t reg, uint16_t * value);
 void em_write_pci_cfg(struct em_hw *hw, uint32_t reg, uint16_t * value);
 int32_t em_config_dsp_after_link_change(struct em_hw *hw, boolean_t link_up);
 int32_t em_set_d3_lplu_state(struct em_hw *hw, boolean_t active);
+
+/* Port I/O is only supported on 82544 and newer (not numerical higher!) */
+uint32_t em_read_reg_io(struct em_hw *hw, uint32_t offset);
+void em_write_reg_io(struct em_hw *hw, uint32_t offset, uint32_t value);
 
 #define E1000_READ_REG_IO(a, reg) \
     em_read_reg_io((a), E1000_##reg)
@@ -979,7 +983,8 @@ struct em_hw {
     em_ms_type master_slave;
     em_ms_type original_master_slave;
     em_ffe_config ffe_config_state;
-    unsigned long io_base;
+    bus_space_tag_t reg_io_tag;
+    bus_space_tag_t reg_io_handle;
     uint32_t phy_id;
     uint32_t phy_revision;
     uint32_t phy_addr;

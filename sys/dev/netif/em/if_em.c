@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.13 2004/05/11 14:00:20 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.14 2004/05/11 22:55:15 joerg Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -1559,8 +1559,8 @@ em_allocate_pci_resources(struct adapter *adapter)
 			return(ENXIO);  
 		}
 
-		adapter->hw.io_base =
-		rman_get_start(adapter->res_ioport);
+		adapter->hw.reg_io_tag = rman_get_bustag(adapter->res_ioport);
+		adapter->hw.reg_io_handle = rman_get_bushandle(adapter->res_ioport);
 	}
 
 	rid = 0x0;
@@ -2717,6 +2717,20 @@ em_pci_clear_mwi(struct em_hw *hw)
 {
 	pci_write_config(((struct em_osdep *)hw->back)->dev, PCIR_COMMAND,
 			 (hw->pci_cmd_word & ~CMD_MEM_WRT_INVALIDATE), 2);
+}
+
+uint32_t
+em_read_reg_io(struct em_hw *hw, uint32_t offset)
+{
+	bus_space_write_4(hw->reg_io_tag, hw->reg_io_handle, 0, offset);
+	return(bus_space_read_4(hw->reg_io_tag, hw->reg_io_handle, 4));
+}
+
+void
+em_write_reg_io(struct em_hw *hw, uint32_t offset, uint32_t value)
+{
+	bus_space_write_4(hw->reg_io_tag, hw->reg_io_handle, 0, offset);
+	bus_space_write_4(hw->reg_io_tag, hw->reg_io_handle, 4, value);
 }
 
 /*********************************************************************
