@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.14 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.15 2005/01/14 06:00:04 cpressey Exp $
  */
 
 
@@ -349,7 +349,7 @@ get_system_info(struct system_info *si)
 		exit(1);
 	}
 	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
-		perror("sysctlbyname: vm.vmstats");
+		perror("sysctlbyname: vm.vmmeter");
 		exit(1);
 	}
 	if (kinfo_get_vfs_bufspace(&bufspace)) {
