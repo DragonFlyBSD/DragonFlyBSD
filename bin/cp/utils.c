@@ -32,7 +32,7 @@
  *
  * @(#)utils.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/utils.c,v 1.27.2.6 2002/08/10 13:20:19 johan Exp $
- * $DragonFly: src/bin/cp/utils.c,v 1.6 2004/09/14 00:42:21 drhodus Exp $
+ * $DragonFly: src/bin/cp/utils.c,v 1.7 2004/10/22 22:34:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -257,9 +257,10 @@ setfile(struct stat *fs, int fd)
 		warn("%sutimes: %s", islink ? "l" : "", to.p_path);
 		rval = 1;
 	}
-	if (fd ? fstat(fd, &ts) : stat(to.p_path, &ts))
+	if (fdval ? fstat(fd, &ts) :
+	    (islink ? lstat(to.p_path, &ts) : stat(to.p_path, &ts))) {
 		gotstat = 0;
-	else {
+	} else {
 		gotstat = 1;
 		ts.st_mode &= S_ISUID | S_ISGID | S_ISVTX |
 			      S_IRWXU | S_IRWXG | S_IRWXO;
@@ -271,8 +272,9 @@ setfile(struct stat *fs, int fd)
 	 * chown.  If chown fails, lose setuid/setgid bits.
 	 */
 	if (!gotstat || fs->st_uid != ts.st_uid || fs->st_gid != ts.st_gid)
-		if (fd ? fchown(fd, fs->st_uid, fs->st_gid) :
-		    chown(to.p_path, fs->st_uid, fs->st_gid)) {
+		if (fdval ? fchown(fd, fs->st_uid, fs->st_gid) :
+		    (islink ? lchown(to.p_path, fs->st_uid, fs->st_gid) :
+		    chown(to.p_path, fs->st_uid, fs->st_gid))) {
 			if (errno != EPERM) {
 				warn("chown: %s", to.p_path);
 				rval = 1;
