@@ -3,7 +3,7 @@
  *
  *	Implements structures used for variant symlink support.
  * 
- * $DragonFly: src/sys/sys/varsym.h,v 1.2 2003/11/09 20:29:57 dillon Exp $
+ * $DragonFly: src/sys/sys/varsym.h,v 1.3 2005/01/14 02:25:08 joerg Exp $
  */
 
 #ifndef _SYS_VARSYM_H_
@@ -40,6 +40,7 @@ struct varsymset {
 #define VARSYM_PROC	1
 #define VARSYM_USER	2
 #define VARSYM_SYS	3
+#define VARSYM_PRISON	4	/* used internally */
 
 #define VARSYM_PROC_MASK	(1 << VARSYM_PROC)
 #define VARSYM_USER_MASK	(1 << VARSYM_USER)

@@ -7,12 +7,14 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/jail.h,v 1.8.2.2 2000/11/01 17:58:06 rwatson Exp $
- * $DragonFly: src/sys/sys/jail.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/jail.h,v 1.4 2005/01/14 02:25:08 joerg Exp $
  *
  */
 
 #ifndef _SYS_JAIL_H_
 #define _SYS_JAIL_H_
+
+#include <sys/varsym.h>
 
 struct jail {
 	u_int32_t	version;
@@ -42,6 +44,7 @@ struct prison {
 	char 		pr_host[MAXHOSTNAMELEN];
 	u_int32_t	pr_ip;
 	void		*pr_linux;
+	struct varsymset pr_varsymset;
 };
 
 /*

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.5 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.6 2005/01/14 02:25:08 joerg Exp $
  */
 
 /*
@@ -45,6 +45,7 @@
 #include <sys/ucred.h>
 #include <sys/resourcevar.h>
 #include <sys/proc.h>
+#include <sys/jail.h>
 #include <sys/queue.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
@@ -144,9 +145,12 @@ varsym_set(struct varsym_set_args *uap)
     }
     switch(uap->level) {
     case VARSYM_SYS:
-	if ((error = suser(curthread)) != 0)
+	if (curthread->td_proc != NULL && curthread->td_proc->p_ucred->cr_prison != NULL)
+	    uap->level = VARSYM_PRISON;
+    case VARSYM_PRISON:
+	if (curthread->td_proc != NULL &&
+	    (error = suser_cred(curthread->td_proc->p_ucred, PRISON_ROOT)) != 0)
 	    break;
-	/* XXX implement per-jail sys */
 	/* fall through */
     case VARSYM_USER:
 	/* XXX check jail / implement per-jail user */
@@ -238,6 +242,10 @@ varsym_list(struct varsym_list_args *uap)
 		break;
 	case VARSYM_SYS:
 		vss = &varsymset_sys;
+		break;
+	case VARSYM_PRISON:
+		if (p != NULL && p->p_ucred->cr_prison != NULL)
+			vss = &p->p_ucred->cr_prison->pr_varsymset;
 		break;
 	}
 	if (vss == NULL) {
@@ -334,18 +342,22 @@ varsymlookup(struct varsymset *vss, const char *name, int namelen)
 varsym_t
 varsymfind(int mask, const char *name, int namelen)
 {
-    struct proc *p;
+    struct proc *p = curproc;
     struct varsyment *ve = NULL;
     varsym_t sym;
 
-    if ((mask & (VARSYM_PROC_MASK|VARSYM_USER_MASK)) && (p = curproc) != NULL) {
+    if ((mask & (VARSYM_PROC_MASK|VARSYM_USER_MASK)) && p != NULL) {
 	if (mask & VARSYM_PROC_MASK)
 	    ve = varsymlookup(&p->p_varsymset, name, namelen);
 	if (ve == NULL && (mask & VARSYM_USER_MASK))
 	    ve = varsymlookup(&p->p_ucred->cr_uidinfo->ui_varsymset, name, namelen);
     }
-    if (ve == NULL && (mask & VARSYM_SYS_MASK))
-	ve = varsymlookup(&varsymset_sys, name, namelen);
+    if (ve == NULL && (mask & VARSYM_SYS_MASK)) {
+	if (p != NULL && p->p_ucred->cr_prison) 
+	    ve = varsymlookup(&p->p_ucred->cr_prison->pr_varsymset, name, namelen);
+	else
+	    ve = varsymlookup(&varsymset_sys, name, namelen);
+    }
     if (ve) {
 	sym = ve->ve_sym;
 	++sym->vs_refs;
@@ -377,6 +389,10 @@ varsymmake(int level, const char *name, const char *data)
 	break;
     case VARSYM_SYS:
 	vss = &varsymset_sys;
+	break;
+    case VARSYM_PRISON:
+	if (p != NULL && p->p_ucred->cr_prison != NULL)
+	    vss = &p->p_ucred->cr_prison->pr_varsymset;
 	break;
     }
     if (vss == NULL) {

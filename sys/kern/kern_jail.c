@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/kern_jail.c,v 1.6.2.3 2001/08/17 01:00:26 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_jail.c,v 1.5 2003/06/26 02:17:45 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_jail.c,v 1.6 2005/01/14 02:25:08 joerg Exp $
  *
  */
 
@@ -74,6 +74,7 @@ jail(struct jail_args *uap)
 	if (error) 
 		goto bail;
 	pr->pr_ip = j.ip_number;
+	varsymset_init(&pr->pr_varsymset, NULL);
 
 	ca.path = j.path;
 	error = chroot(&ca);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.18 2004/05/09 11:51:10 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.19 2005/01/14 02:25:08 joerg Exp $
  */
 
 /*
@@ -930,6 +930,7 @@ crfree(struct ucred *cr)
 		if (cr->cr_prison && !--cr->cr_prison->pr_ref) {
 			if (cr->cr_prison->pr_linux != NULL)
 				FREE(cr->cr_prison->pr_linux, M_PRISON);
+			varsymset_clean(&cr->cr_prison->pr_varsymset);
 			FREE(cr->cr_prison, M_PRISON);
 		}
 		cr->cr_prison = NULL;	/* safety */
