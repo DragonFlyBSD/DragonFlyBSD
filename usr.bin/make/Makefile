@@ -1,6 +1,6 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.15 2004/12/17 08:13:30 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.16 2005/01/05 22:21:46 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
@@ -16,7 +16,7 @@ NOSHARED?=	YES
 
 CFLAGS+=-DMAKE_VERSION=\"5200408120\"
 
-# XXX: kernel currently broken
+# There is no obvious performance improvement currently.
 # CFLAGS+=-DUSE_KQUEUE
 
 main.o: ${MAKEFILE}
