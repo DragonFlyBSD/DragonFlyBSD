@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.3 2005/02/04 00:24:23 joerg Exp $
  */
 
 /*
@@ -126,8 +126,6 @@ reloc_non_plt(Obj_Entry *obj, Obj_Entry *obj_rtld)
 	cache = mmap(NULL, bytes, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0);
 	if (cache == MAP_FAILED)
 	    cache = NULL;
-	if (cache != NULL)
-	    memset(cache, 0, bytes);
 
 	rellim = (const Elf_Rel *) ((caddr_t) obj->rel + obj->relsize);
 	for (rel = obj->rel;  rel < rellim;  rel++) {
