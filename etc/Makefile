@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.5 2003/08/01 03:47:06 rob Exp $
+# $DragonFly: src/etc/Makefile,v 1.6 2003/08/01 03:48:33 rob Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -11,7 +11,7 @@ BIN1=	amd.map apmd.conf auth.conf \
 	dhclient.conf dm.conf fbtab ftpusers gettytab group \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
-	motd modems networks newsyslog.conf \
+	motd modems networks network.subr  newsyslog.conf \
 	pam.conf phones printcap profile protocols \
 	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
