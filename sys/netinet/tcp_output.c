@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.25 2005/03/09 06:54:34 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.26 2005/04/05 22:37:37 dillon Exp $
  */
 
 #include "opt_inet6.h"
@@ -187,6 +187,11 @@ tcp_output(tp)
 		 */
 		tp->snd_cwnd = tp->t_maxseg;
 	}
+
+	/*
+	 * Calculate whether the transmit stream was previously idle 
+	 * and adjust TF_LASTIDLE for the next time.
+	 */
 	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
 	if (idle && (tp->t_flags & TF_MORETOCOME))
 		tp->t_flags |= TF_LASTIDLE;
@@ -340,7 +345,7 @@ again:
 	 *	  either idle or running NODELAY
 	 *	- we've timed out (e.g. persist timer)
 	 *	- we have more then 1/2 the maximum send window's worth of
-	 *	  data (receiver may be limited the window size)
+	 *	  data (receiver may be limiting the window size)
 	 *	- we need to retransmit
 	 */
 	if (len) {
