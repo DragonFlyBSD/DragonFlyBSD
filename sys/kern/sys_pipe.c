@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.26 2005/03/01 23:35:14 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.27 2005/03/09 02:22:31 dillon Exp $
  */
 
 /*
@@ -487,6 +487,8 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
+				/* reset out index for copy mode */
+				rpipe->pipe_buffer.out = 0;
 				wakeup(rpipe);
 			}
 		} else if (rpipe->pipe_buffer.out != rpipe->pipe_map.xio_bytes &&
@@ -521,6 +523,8 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
+				/* reset out index for copy mode */
+				rpipe->pipe_buffer.out = 0;
 				wakeup(rpipe);
 			}
 		} else if (rpipe->pipe_buffer.out != rpipe->pipe_map.xio_bytes &&
@@ -544,6 +548,8 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
+				/* reset out index for copy mode */
+				rpipe->pipe_buffer.out = 0;
 				wakeup(rpipe);
 			}
 #endif
