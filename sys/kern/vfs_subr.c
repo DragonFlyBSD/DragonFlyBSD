@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.39 2004/09/04 23:12:54 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.40 2004/09/23 01:55:15 dillon Exp $
  */
 
 /*
@@ -1735,7 +1735,6 @@ vrele(struct vnode *vp)
 void
 vrele_noinactive(struct vnode *vp)
 {
-	struct thread *td = curthread;	/* XXX */
 	lwkt_tokref vlock;
 
 	KASSERT(vp != NULL && vp->v_usecount >= 0,
