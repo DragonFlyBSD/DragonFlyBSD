@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.13 2004/07/29 08:46:22 dillon Exp $
  */
 
 /*
@@ -1569,7 +1569,7 @@ mbuf_dump_chain(struct mbuf * m)
 				    (void *)m->M_dat.MH.MH_dat.MH_ext.ext_buf);
 				log(LOG_DEBUG,
 				    "M_dat.MH.MH_dat.MH_ext.ext_free %p\n",
-				    (void *)m->M_dat.MH.MH_dat.MH_ext.ext_free);
+				    (void *)m->M_dat.MH.MH_dat.MH_ext.ext_nfree.old);
 				log(LOG_DEBUG,
 				    "M_dat.MH.MH_dat.MH_ext.ext_size %d\n",
 				    m->M_dat.MH.MH_dat.MH_ext.ext_size);

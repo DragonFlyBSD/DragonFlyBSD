@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/kern/uipc_mbuf2.c,v 1.2.2.5 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.6 2004/06/02 14:42:57 eirikn Exp $	*/
+/*	$DragonFly: src/sys/kern/uipc_mbuf2.c,v 1.7 2004/07/29 08:46:21 dillon Exp $	*/
 /*	$KAME: uipc_mbuf2.c,v 1.31 2001/11/28 11:08:53 itojun Exp $	*/
 /*	$NetBSD: uipc_mbuf.c,v 1.40 1999/04/01 00:23:25 thorpej Exp $	*/
 
@@ -78,7 +78,7 @@
 
 #define M_SHAREDCLUSTER(m) \
 	(((m)->m_flags & M_EXT) != 0 && \
-	 ((m)->m_ext.ext_free || mclrefcnt[mtocl((m)->m_ext.ext_buf)] > 1))
+	 ((m)->m_ext.ext_nfree.any || mclrefcnt[mtocl((m)->m_ext.ext_buf)] > 1))
 
 MALLOC_DEFINE(M_PACKET_TAGS, "tag", "packet-attached information");
 

@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.21 2004/07/08 22:07:34 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.22 2004/07/29 08:46:21 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -822,8 +822,9 @@ m_mclget(struct mbuf *m, int how)
 	if (m->m_ext.ext_buf != NULL) {
 		m->m_data = m->m_ext.ext_buf;
 		m->m_flags |= M_EXT;
-		m->m_ext.ext_free = NULL;
-		m->m_ext.ext_ref = NULL;
+		KKASSERT((m->m_flags & M_EXT_OLD) == 0);
+		m->m_ext.ext_nfree.any = NULL;
+		m->m_ext.ext_nref.any = NULL;
 		m->m_ext.ext_size = MCLBYTES;
 	}
 }
@@ -853,6 +854,52 @@ m_mclfree(caddr_t mp)
 }
 
 /*
+ * Helper routines for M_EXT reference/free
+ */
+static __inline void
+m_extref(const struct mbuf *m)
+{
+	if (m->m_flags & M_EXT_OLD) {
+		if (m->m_ext.ext_nref.old == NULL) {
+			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
+		} else {
+			int s = splimp();
+			(*m->m_ext.ext_nref.old)(m->m_ext.ext_buf, 
+						m->m_ext.ext_size);
+			splx(s);
+		}
+	} else {
+		if (m->m_ext.ext_nref.new == NULL) {
+			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
+		} else {
+			int s = splimp();
+			(*m->m_ext.ext_nref.new)(m->m_ext.ext_arg); 
+			splx(s);
+		}
+	}
+}
+
+static __inline void
+m_extfree(struct mbuf *m)
+{
+	if (m->m_flags & M_EXT_OLD) {
+		if (m->m_ext.ext_nfree.old != NULL) {
+			m->m_ext.ext_nfree.old(m->m_ext.ext_buf,
+						m->m_ext.ext_size);
+		} else {
+			_m_mclfree(m->m_ext.ext_buf);
+		}
+	} else {
+		if (m->m_ext.ext_nfree.new != NULL) {
+			m->m_ext.ext_nfree.new(m->m_ext.ext_arg);
+		} else {
+			_m_mclfree(m->m_ext.ext_buf);
+		}
+	}
+}
+
+
+/*
  * m_free()
  *
  * Free a single mbuf and any associated external storage.  The successor,
@@ -874,11 +921,7 @@ m_free(struct mbuf *m)
 	if ((m->m_flags & M_PKTHDR) != 0)
 		m_tag_delete_chain(m, NULL);
 	if (m->m_flags & M_EXT) {
-		if (m->m_ext.ext_free != NULL) {
-			m->m_ext.ext_free(m->m_ext.ext_buf, m->m_ext.ext_size);
-		} else {
-			_m_mclfree(m->m_ext.ext_buf); /* inlined */
-		}
+		m_extfree(m);
 	}
 	n = m->m_next;
 	m->m_type = MT_FREE;
@@ -1001,21 +1044,13 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 		n->m_len = min(len, m->m_len - off);
 		if (m->m_flags & M_EXT) {
 			n->m_data = m->m_data + off;
-			if (m->m_ext.ext_ref == NULL) {
-				atomic_add_char(
-				    &mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-			} else {
-				int s = splimp();
-
-				(*m->m_ext.ext_ref)(m->m_ext.ext_buf,
-				    m->m_ext.ext_size);
-				splx(s);
-			}
+			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= M_EXT;
-		} else
+			n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
+		} else {
 			bcopy(mtod(m, caddr_t)+off, mtod(n, caddr_t),
 			    (unsigned)n->m_len);
+		}
 		if (len != M_COPYALL)
 			len -= n->m_len;
 		off = 0;
@@ -1055,17 +1090,9 @@ m_copypacket(struct mbuf *m, int how)
 	n->m_len = m->m_len;
 	if (m->m_flags & M_EXT) {
 		n->m_data = m->m_data;
-		if (m->m_ext.ext_ref == NULL)
-			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-		else {
-			int s = splimp();
-
-			(*m->m_ext.ext_ref)(m->m_ext.ext_buf,
-			    m->m_ext.ext_size);
-			splx(s);
-		}
+		m_extref(m);
 		n->m_ext = m->m_ext;
-		n->m_flags |= M_EXT;
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
 	} else {
 		n->m_data = n->m_pktdat + (m->m_data - m->m_pktdat );
 		bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
@@ -1083,18 +1110,9 @@ m_copypacket(struct mbuf *m, int how)
 		n->m_len = m->m_len;
 		if (m->m_flags & M_EXT) {
 			n->m_data = m->m_data;
-			if (m->m_ext.ext_ref == NULL) {
-				atomic_add_char(
-				    &mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-			} else {
-				int s = splimp();
-
-				(*m->m_ext.ext_ref)(m->m_ext.ext_buf,
-				    m->m_ext.ext_size);
-				splx(s);
-			}
+			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= M_EXT;
+			n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
 		} else {
 			bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
 		}
@@ -1427,18 +1445,10 @@ m_split(struct mbuf *m0, int len0, int wait)
 	}
 extpacket:
 	if (m->m_flags & M_EXT) {
-		n->m_flags |= M_EXT;
-		n->m_ext = m->m_ext;
-		if (m->m_ext.ext_ref == NULL)
-			atomic_add_char(&mclrefcnt[mtocl(m->m_ext.ext_buf)], 1);
-		else {
-			int s = splimp();
-
-			(*m->m_ext.ext_ref)(m->m_ext.ext_buf,
-			    m->m_ext.ext_size);
-			splx(s);
-		}
 		n->m_data = m->m_data + len;
+		m_extref(m);
+		n->m_ext = m->m_ext;
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
 	} else {
 		bcopy(mtod(m, caddr_t) + len, mtod(n, caddr_t), remain);
 	}

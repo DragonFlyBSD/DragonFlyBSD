@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.13 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.14 2004/07/29 08:46:23 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -876,11 +876,11 @@ static int ti_newbuf_jumbo(sc, i, m)
 
 		/* Attach the buffer to the mbuf. */
 		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT;
+		m_new->m_flags |= M_EXT | M_EXT_OLD;
 		m_new->m_len = m_new->m_pkthdr.len =
 		    m_new->m_ext.ext_size = TI_JUMBO_FRAMELEN;
-		m_new->m_ext.ext_free = ti_jfree;
-		m_new->m_ext.ext_ref = ti_jref;
+		m_new->m_ext.ext_nfree.old = ti_jfree;
+		m_new->m_ext.ext_nref.old = ti_jref;
 	} else {
 		m_new = m;
 		m_new->m_data = m_new->m_ext.ext_buf;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.13 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.14 2004/07/29 08:46:22 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -792,11 +792,11 @@ static int lge_newbuf(sc, c, m)
 		}
 		/* Attach the buffer to the mbuf */
 		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT;
+		m_new->m_flags |= M_EXT | M_EXT_OLD;
 		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
 		    m_new->m_len = LGE_MCLBYTES;
-		m_new->m_ext.ext_free = lge_jfree;
-		m_new->m_ext.ext_ref = lge_jref;
+		m_new->m_ext.ext_nfree.old = lge_jfree;
+		m_new->m_ext.ext_nref.old = lge_jref;
 	} else {
 		m_new = m;
 		m_new->m_len = m_new->m_pkthdr.len = LGE_MCLBYTES;

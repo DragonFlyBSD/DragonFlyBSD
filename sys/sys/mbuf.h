@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.12 2004/06/04 20:29:02 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.13 2004/07/29 08:46:22 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -104,11 +104,18 @@ struct pkthdr {
  */
 struct m_ext {
 	caddr_t	ext_buf;		/* start of buffer */
-	void	(*ext_free)		/* free routine if not the usual */
-		    (caddr_t, u_int);
-	u_int	ext_size;		/* size of buffer, for ext_free */
-	void	(*ext_ref)		/* add a reference to the ext object */
-		(caddr_t, u_int);
+	union {
+	    void (*old)(caddr_t, u_int);
+	    void (*new)(void *arg);
+	    void *any;
+	} ext_nfree;
+	u_int	ext_size;		/* size of buffer, for ext_nfree */
+	union {
+	    void (*old)(caddr_t, u_int);
+	    void (*new)(void *arg);
+	    void *any;
+	} ext_nref;
+	void	*ext_arg;
 };
 
 /*
@@ -165,6 +172,7 @@ struct mbuf {
 #define	M_FRAG		0x0400	/* packet is a fragment of a larger packet */
 #define	M_FIRSTFRAG	0x0800	/* packet is first fragment */
 #define	M_LASTFRAG	0x1000	/* packet is last fragment */
+#define M_EXT_OLD	0x2000	/* new ext function format */
 
 /*
  * Flags copied when copying m_pkthdr.
@@ -373,7 +381,7 @@ union mcluster {
  * Check if we can write to an mbuf.
  */
 #define M_EXT_WRITABLE(m)	\
-    ((m)->m_ext.ext_free == NULL && mclrefcnt[mtocl((m)->m_ext.ext_buf)] == 1)
+    ((m)->m_ext.ext_nfree.any == NULL && mclrefcnt[mtocl((m)->m_ext.ext_buf)] == 1)
 
 #define M_WRITABLE(m) (!((m)->m_flags & M_EXT) || \
     M_EXT_WRITABLE(m) )

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.13 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.14 2004/07/29 08:46:22 dillon Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1157,11 +1157,11 @@ static int nge_newbuf(sc, c, m)
 		}
 		/* Attach the buffer to the mbuf */
 		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT;
+		m_new->m_flags |= M_EXT | M_EXT_OLD;
 		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
 		    m_new->m_len = NGE_MCLBYTES;
-		m_new->m_ext.ext_free = nge_jfree;
-		m_new->m_ext.ext_ref = nge_jref;
+		m_new->m_ext.ext_nfree.old = nge_jfree;
+		m_new->m_ext.ext_nref.old = nge_jref;
 	} else {
 		m_new = m;
 		m_new->m_len = m_new->m_pkthdr.len = NGE_MCLBYTES;

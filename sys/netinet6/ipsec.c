@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipsec.c,v 1.3.2.12 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipsec.c,v 1.8 2004/07/29 08:46:22 dillon Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -3246,7 +3246,7 @@ ipsec_copypkt(struct mbuf *m)
 			 * XXX: is this approach effective?
 			 */
 			if (
-				n->m_ext.ext_free ||
+				n->m_ext.ext_nfree.any ||
 				mclrefcnt[mtocl(n->m_ext.ext_buf)] > 1
 			    )
 			{

@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.17 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.18 2004/07/29 08:46:23 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -964,11 +964,11 @@ static int sk_newbuf(sc_if, c, m)
 
 		/* Attach the buffer to the mbuf */
 		m_new->m_data = m_new->m_ext.ext_buf = (void *)buf;
-		m_new->m_flags |= M_EXT;
+		m_new->m_flags |= M_EXT | M_EXT_OLD;
 		m_new->m_ext.ext_size = m_new->m_pkthdr.len =
 		    m_new->m_len = SK_MCLBYTES;
-		m_new->m_ext.ext_free = sk_jfree;
-		m_new->m_ext.ext_ref = sk_jref;
+		m_new->m_ext.ext_nfree.old = sk_jfree;
+		m_new->m_ext.ext_nref.old = sk_jref;
 	} else {
 		/*
 	 	 * We're re-using a previously allocated mbuf;
