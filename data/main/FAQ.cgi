@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.2 2004/01/14 15:54:38 justin Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.3 2004/02/16 05:16:40 dillon Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
 
@@ -19,7 +19,7 @@ dfports works the same as ports - you can keep it up to date using cvsup.
 <P>
 Eventually, DragonFly will have a homegrown port system, using the VFS mechanisms 
 that are as of this writing not complete yet.  For more information, check 
-the <a href="/Goals/packages.cgi">existing packaging description</a>.
+the <a href="/goals/packages.cgi">existing packaging description</a>.
 <P>
 
 <B>What architectures does DragonFly support?</B><BR>
@@ -34,14 +34,14 @@ this in mind.
 <P>
 <B>How can I contribute?</B><BR>
 Pick a topic that you enjoy and start working.  Check the 
-<a href="/Main/team.cgi">Team page</a> to see if there are others 
+<a href="/main/team.cgi">Team page</a> to see if there are others 
 interested in your topic, or ask around in the 
-<a href="/Main/forums.cgi">appropriate forum</a>.  You can 
-<a href="/Main/download.cgi">download 
+<a href="/main/forums.cgi">appropriate forum</a>.  You can 
+<a href="/main/download.cgi">download 
 the source</a> to the operating system and to this site, and send 
 patches in unified diff format (<code>diff -uN</code>) to 
 'submit at dragonflybsd.org' for review.  Subscribe to that same submit 
-<a href="/Main/forums.cgi">mailing list/newsgroup</a> to see feedback 
+<a href="/main/forums.cgi">mailing list/newsgroup</a> to see feedback 
 on your patches, and to find if they have been accepted or rejected.
 
 <P>
@@ -55,9 +55,9 @@ There are other features to complete first before this is tackled.
 Yes and no.  Features must match the existing plan outlined on the site here, 
 and there's plenty of existing problems to solve before 'nonessential' work can be done.
 However, if you are willing to work on it, it probably can be done.  The 
-<a href="/Main/forums.cgi">forums</a> are an excellent place to get feedback and to 
+<a href="/main/forums.cgi">forums</a> are an excellent place to get feedback and to 
 find others that may be interested in your topic.  The 
-<a href="/Main/team.cgi">Team</a> page is also a good place to check.
+<a href="/main/team.cgi">Team</a> page is also a good place to check.
 <P>
 <B>What's the correct way to name this operating system?</B><BR>
 It's a BSD variant, called DragonFly.  Note the capitalization on the F, which isn't 

@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.5 2004/02/12 22:50:16 justin Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.6 2004/02/16 05:16:42 dillon Exp $
 
 $TITLE(DragonFly - Activity Summary)
 
@@ -124,7 +124,7 @@ libcaps has been created.  This is a library that allows userland threading, sim
 	Added by Matt Dillon.  LWKT stands for Light-Weight Kernel Threads.  LWKT gives
 	each CPU in the system its own scheduler, and threads are locked to that CPU.  This
 	removes any need for mutexes to handle interrupts.  More information is available
-	<A HREF="http://www.dragonflybsd.org/Goals/threads.cgi">at the DragonFly website</A>.
+	<A HREF="http://www.dragonflybsd.org/goals/threads.cgi">at the DragonFly website</A>.
 
 	Galen Sampson has been working on a port to userland.
 </BLOCKQUOTE>
@@ -274,5 +274,5 @@ Ryan Dooley patched libc giving stack-smashing protection.
 <H2>Website</H2>
 <BLOCKQUOTE>
 	In October, the DragonFly website received a facelift from Justin Sherrill
-	and Hiten Pandya.  It also now has a <a href="http://www.dragonflybsd.org/Main/team.cgi">Team</a> page, and this report.
+	and Hiten Pandya.  It also now has a <a href="http://www.dragonflybsd.org/main/team.cgi">Team</a> page, and this report.
 </BLOCKQUOTE>

@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.3 2004/01/06 20:10:52 justin Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.4 2004/02/16 05:16:40 dillon Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -39,5 +39,5 @@ the way, but it is possible to do better.
 <P>
 DragonFly is going to be a multi-year project at the very least.  Achieving
 our goal set will require a great deal of groundwork just to reposition
-existing mechanisms to fit the new models.  The Goals link will take you
+existing mechanisms to fit the new models.  The goals link will take you
 to a more detailed description of what we hope to accomplish.
