@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/groff/src/include/config.h,v 1.2.4.2 2003/06/26 13:13:54 ru Exp $
- * $DragonFly: src/gnu/usr.bin/groff/src/include/config.h,v 1.4 2004/02/03 19:22:58 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/groff/src/include/config.h,v 1.5 2004/02/09 20:12:05 dillon Exp $
  */
 
 #include <osreldate.h>
@@ -69,7 +69,10 @@
 #define HAVE_SNPRINTF 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
+/* don't try to use stdint.h when bootstrapping tools from freebsd */
+#ifdef __DragonFly__
 #define HAVE_STDINT_H 1
+#endif
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H 1
