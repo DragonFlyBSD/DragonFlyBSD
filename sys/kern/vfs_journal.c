@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.9 2005/03/04 05:58:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.10 2005/03/04 21:37:27 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -558,7 +558,7 @@ journal_thread(void *info)
  * records are required when we are unable to reserve sufficient stream space
  * due to insufficient space at the end of the physical memory fifo.
  */
-static __inline
+static
 void
 journal_build_pad(struct journal_rawrecbeg *rawp, int recsize)
 {
@@ -653,12 +653,15 @@ journal_reserve(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	 * of the FIFO's buffer.  Calculate 'req' which is the actual number
 	 * of bytes being reserved, including wrap-around dead space.
 	 *
+	 * Neither 'bytes' or 'req' are aligned.
+	 *
 	 * Note that availtoend is not truncated to avail and so cannot be
 	 * used to determine whether the reservation is possible by itself.
 	 * Also, since all fifo ops are 16-byte aligned, we can check
 	 * the size before calculating the aligned size.
 	 */
 	availtoend = jo->fifo.size - (jo->fifo.windex & jo->fifo.mask);
+	KKASSERT((availtoend & 15) == 0);
 	if (bytes > availtoend) 
 	    req = bytes + availtoend;	/* add pad to end */
 	else
@@ -693,7 +696,7 @@ journal_reserve(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	 */
 	rawp = (void *)(jo->fifo.membase + (jo->fifo.windex & jo->fifo.mask));
 	if (req != bytes) {
-	    journal_build_pad(rawp, req - bytes);
+	    journal_build_pad(rawp, availtoend);
 	    rawp = (void *)jo->fifo.membase;
 	}
 	rawp->begmagic = JREC_INCOMPLETEMAGIC;	/* updated by abort/commit */
@@ -856,15 +859,16 @@ journal_commit(struct journal *jo, struct journal_rawrecbeg **rawpp,
     KKASSERT(((intptr_t)rawp & 15) == 0);
 
     /*
-     * Truncate the record if requested.  If the FIFO write index as still
+     * Truncate the record if necessary.  If the FIFO write index as still
      * at the end of our record we can optimally backindex it.  Otherwise
-     * we have to insert a pad record.
+     * we have to insert a pad record to cover the dead space.
      *
      * We calculate osize which is the 16-byte-aligned original recsize.
      * We calculate nsize which is the 16-byte-aligned new recsize.
      *
      * Due to alignment issues or in case the passed truncation bytes is
-     * the same as the original payload, windex will be equal to nindex.
+     * the same as the original payload, nsize may be equal to osize even
+     * if the committed bytes is less then the originally reserved bytes.
      */
     if (bytes >= 0) {
 	KKASSERT(bytes >= 0 && bytes <= rawp->recsize - sizeof(struct journal_rawrecbeg) - sizeof(struct journal_rawrecend));
@@ -872,6 +876,7 @@ journal_commit(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	rawp->recsize = bytes + sizeof(struct journal_rawrecbeg) +
 			sizeof(struct journal_rawrecend);
 	nsize = (rawp->recsize + 15) & ~15;
+	KKASSERT(nsize <= osize);
 	if (osize == nsize) {
 	    /* do nothing */
 	} else if ((jo->fifo.windex & jo->fifo.mask) == (char *)rawp - jo->fifo.membase + osize) {
@@ -879,7 +884,7 @@ journal_commit(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	    jo->fifo.windex -= osize - nsize;
 	} else {
 	    /* we cannot backindex the fifo, emplace a pad in the dead space */
-	    journal_build_pad((void *)((char *)rawp + osize), osize - nsize);
+	    journal_build_pad((void *)((char *)rawp + nsize), osize - nsize);
 	}
     }
 
