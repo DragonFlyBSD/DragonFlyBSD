@@ -31,16 +31,21 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/xio.h,v 1.5 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.6 2005/03/01 23:35:16 dillon Exp $
  */
 
 /*
- * The XIO structure is intended to replace UIO for messaged I/O operations
- * within the kernel.  The originator of the transaction must supply an XIO
- * structure containing a list of appropriate held vm_page's representing
- * the buffer.  The target of the transaction will generally map the
- * pages using the SF_BUF facility, complete the operation, and reply the
- * message.
+ * An XIO holds a platform-agnostic page list representing a data set for
+ * the purposes of I/O, mapping (SFBUF/MSFBUF), or other operations.  The
+ * representation of the data set is byte aligned.  xio_offset and xio_bytes
+ * specifies the precise byte-ranged block within the page list being
+ * represented.
+ *
+ * XIOs do not track an ongoing I/O, they simply represent a block of data.
+ * For this reason most XIO API functions have a 'uoffset' argument which
+ * the caller may use to index within the represented dataset.  This index
+ * is relative to the represented dataset, NOT to the beginning of the
+ * first page.
  */
 #ifndef _SYS_XIO_H_
 #define	_SYS_XIO_H_
@@ -70,7 +75,6 @@ typedef struct xio *xio_t;
 
 #define XIOF_READ	0x0001
 #define XIOF_WRITE	0x0002
-#define XIOF_LINMAP	0x0004
 
 #endif
 
@@ -80,9 +84,34 @@ void xio_init(xio_t xio);
 int xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int vmprot);
 int xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes);
 void xio_release(xio_t xio);
-int xio_uio_copy(xio_t xio, struct uio *uio, int *sizep);
-int xio_copy_xtou(xio_t xio, void *uptr, int bytes);
-int xio_copy_xtok(xio_t xio, void *kptr, int bytes);
+int xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, int *sizep);
+int xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes);
+int xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes);
+
+/*
+ * XIOs are not modified by copy operations, the caller must track the 
+ * offset itself.  This routine will return the number of bytes remaining
+ * in an XIO's buffer given an offset relative to the buffer used to
+ * originally construct the XIO.
+ */
+static __inline
+int
+xio_remaining(xio_t xio, int uoffset)
+{
+	return(xio->xio_bytes - uoffset);
+}
+
+/*
+ * XIOs do not map data but if the page list WERE mapped, this routine will
+ * return the actual KVA offset given a user offset relative to the original
+ * buffer used to construct the XIO.
+ */
+static __inline
+int
+xio_kvaoffset(xio_t xio, int uoffset)
+{
+	return(xio->xio_offset + uoffset);
+}
 
 #endif /* _KERNEL */
 

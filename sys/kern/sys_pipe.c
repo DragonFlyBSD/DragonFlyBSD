@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.25 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.26 2005/03/01 23:35:14 dillon Exp $
  */
 
 /*
@@ -473,22 +473,23 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			/*
 			 * Direct copy using source-side kva mapping
 			 */
-			size = rpipe->pipe_map.xio_bytes;
+			size = rpipe->pipe_map.xio_bytes -
+				rpipe->pipe_buffer.out;
 			if (size > (u_int)uio->uio_resid)
 				size = (u_int)uio->uio_resid;
-			va = (caddr_t)rpipe->pipe_kva + rpipe->pipe_map.xio_offset;
+			va = (caddr_t)rpipe->pipe_kva + 
+				xio_kvaoffset(&rpipe->pipe_map, rpipe->pipe_buffer.out);
 			error = uiomove(va, size, uio);
 			if (error)
 				break;
 			nread += size;
-			rpipe->pipe_map.xio_offset += size;
-			rpipe->pipe_map.xio_bytes -= size;
-			if (rpipe->pipe_map.xio_bytes == 0) {
+			rpipe->pipe_buffer.out += size;
+			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
 				wakeup(rpipe);
 			}
-		} else if (rpipe->pipe_map.xio_bytes &&
+		} else if (rpipe->pipe_buffer.out != rpipe->pipe_map.xio_bytes &&
 			   rpipe->pipe_kva &&
 			   rpipe->pipe_feature == PIPE_SFBUF2 &&
 			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) 
@@ -507,23 +508,22 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			pmap_qenter2(rpipe->pipe_kva, rpipe->pipe_map.xio_pages,
 				    rpipe->pipe_map.xio_npages,
 				    &rpipe->pipe_kvamask);
-			size = rpipe->pipe_map.xio_bytes;
+			size = rpipe->pipe_map.xio_bytes - 
+				rpipe->pipe_buffer.out;
 			if (size > (u_int)uio->uio_resid)
 				size = (u_int)uio->uio_resid;
-			va = (caddr_t)rpipe->pipe_kva + 
-				rpipe->pipe_map.xio_offset;
+			va = (caddr_t)rpipe->pipe_kva + xio_kvaoffset(&rpipe->pipe_map, rpipe->pipe_buffer.out);
 			error = uiomove(va, size, uio);
 			if (error)
 				break;
 			nread += size;
-			rpipe->pipe_map.xio_offset += size;
-			rpipe->pipe_map.xio_bytes -= size;
-			if (rpipe->pipe_map.xio_bytes == 0) {
+			rpipe->pipe_buffer.out += size;
+			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
 				wakeup(rpipe);
 			}
-		} else if (rpipe->pipe_map.xio_bytes &&
+		} else if (rpipe->pipe_buffer.out != rpipe->pipe_map.xio_bytes &&
 			   rpipe->pipe_feature == PIPE_SFBUF1 &&
 			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) 
 				== PIPE_DIRECTW
@@ -536,11 +536,12 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			 * direct_write, we set DIRECTIP when we clear
 			 * DIRECTW after we have exhausted the buffer.
 			 */
-			error = xio_uio_copy(&rpipe->pipe_map, uio, &size);
+			error = xio_uio_copy(&rpipe->pipe_map, rpipe->pipe_buffer.out, uio, &size);
 			if (error)
 				break;
 			nread += size;
-			if (rpipe->pipe_map.xio_bytes == 0) {
+			rpipe->pipe_buffer.out += size;
+			if (rpipe->pipe_buffer.out == rpipe->pipe_map.xio_bytes) {
 				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
 				wakeup(rpipe);
@@ -639,6 +640,7 @@ pipe_build_write_buffer(wpipe, uio)
 
 	error = xio_init_ubuf(&wpipe->pipe_map, uio->uio_iov->iov_base, 
 				size, XIOF_READ);
+	wpipe->pipe_buffer.out = 0;
 	if (error)
 		return(error);
 
@@ -681,14 +683,20 @@ pipe_build_write_buffer(wpipe, uio)
  * In the case of a signal, the writing process might go away.  This
  * code copies the data into the circular buffer so that the source
  * pages can be freed without loss of data.
+ *
+ * Note that in direct mode pipe_buffer.out is used to track the
+ * XIO offset.  We are converting the direct mode into buffered mode
+ * which changes the meaning of pipe_buffer.out.
  */
 static void
 pipe_clone_write_buffer(wpipe)
 	struct pipe *wpipe;
 {
 	int size;
+	int offset;
 
-	size = wpipe->pipe_map.xio_bytes;
+	offset = wpipe->pipe_buffer.out;
+	size = wpipe->pipe_map.xio_bytes - offset;
 
 	KKASSERT(size <= wpipe->pipe_buffer.size);
 
@@ -697,7 +705,7 @@ pipe_clone_write_buffer(wpipe)
 	wpipe->pipe_buffer.cnt = size;
 	wpipe->pipe_state &= ~(PIPE_DIRECTW | PIPE_DIRECTIP);
 
-	xio_copy_xtok(&wpipe->pipe_map, wpipe->pipe_buffer.buffer, size);
+	xio_copy_xtok(&wpipe->pipe_map, offset, wpipe->pipe_buffer.buffer, size);
 	xio_release(&wpipe->pipe_map);
 	if (wpipe->pipe_kva) {
 		pmap_qremove(wpipe->pipe_kva, XIO_INTERNAL_PAGES);
@@ -1129,7 +1137,8 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 
 	case FIONREAD:
 		if (mpipe->pipe_state & PIPE_DIRECTW) {
-			*(int *)data = mpipe->pipe_map.xio_bytes;
+			*(int *)data = mpipe->pipe_map.xio_bytes -
+					mpipe->pipe_buffer.out;
 		} else {
 			*(int *)data = mpipe->pipe_buffer.cnt;
 		}
@@ -1204,8 +1213,10 @@ pipe_stat(struct file *fp, struct stat *ub, struct thread *td)
 	ub->st_mode = S_IFIFO;
 	ub->st_blksize = pipe->pipe_buffer.size;
 	ub->st_size = pipe->pipe_buffer.cnt;
-	if (ub->st_size == 0 && (pipe->pipe_state & PIPE_DIRECTW))
-		ub->st_size = pipe->pipe_map.xio_bytes;
+	if (ub->st_size == 0 && (pipe->pipe_state & PIPE_DIRECTW)) {
+		ub->st_size = pipe->pipe_map.xio_bytes -
+				pipe->pipe_buffer.out;
+	}
 	ub->st_blocks = (ub->st_size + ub->st_blksize - 1) / ub->st_blksize;
 	ub->st_atimespec = pipe->pipe_atime;
 	ub->st_mtimespec = pipe->pipe_mtime;
@@ -1355,8 +1366,10 @@ filt_piperead(struct knote *kn, long hint)
 	struct pipe *wpipe = rpipe->pipe_peer;
 
 	kn->kn_data = rpipe->pipe_buffer.cnt;
-	if ((kn->kn_data == 0) && (rpipe->pipe_state & PIPE_DIRECTW))
-		kn->kn_data = rpipe->pipe_map.xio_bytes;
+	if ((kn->kn_data == 0) && (rpipe->pipe_state & PIPE_DIRECTW)) {
+		kn->kn_data = rpipe->pipe_map.xio_bytes - 
+				rpipe->pipe_buffer.out;
+	}
 
 	if ((rpipe->pipe_state & PIPE_EOF) ||
 	    (wpipe == NULL) || (wpipe->pipe_state & PIPE_EOF)) {

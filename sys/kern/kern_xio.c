@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_xio.c,v 1.7 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_xio.c,v 1.8 2005/03/01 23:35:13 dillon Exp $
  */
 /*
  * Kernel XIO interface.  An initialized XIO is basically a collection of
@@ -86,10 +86,8 @@ xio_init(xio_t xio)
 /*
  * Initialize an XIO given a userspace buffer.  0 is returned on success,
  * an error code on failure.  The actual number of bytes that could be
- * accomodated in the XIO will be stored in xio_bytes.
- *
- * Note that you cannot legally accessed a previously cached linmap with 
- * a newly initialized xio until after calling xio_linmap().
+ * accomodated in the XIO will be stored in xio_bytes and the page offset
+ * will be stored in xio_offset.
  */
 int
 xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
@@ -148,12 +146,8 @@ xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int flags)
 /*
  * Initialize an XIO given a kernelspace buffer.  0 is returned on success,
  * an error code on failure.  The actual number of bytes that could be
- * accomodated in the XIO will be stored in xio_bytes.
- *
- * vmprot is usually either VM_PROT_READ or VM_PROT_WRITE.
- *
- * Note that you cannot legally accessed a previously cached linmap with 
- * a newly initialized xio until after calling xio_linmap().
+ * accomodated in the XIO will be stored in xio_bytes and the page offset
+ * will be stored in xio_offset.
  */
 int
 xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
@@ -202,11 +196,7 @@ xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes)
 
 /*
  * Cleanup an XIO so it can be destroyed.  The pages associated with the
- * XIO are released.  If a linear mapping buffer is active, it will be
- * unlocked but the mappings will be left intact for optimal reconstitution
- * in a later xio_linmap() call.
- *
- * Note that you cannot legally accessed the linmap on a released XIO.
+ * XIO are released.
  */
 void
 xio_release(xio_t xio)
@@ -221,10 +211,6 @@ xio_release(xio_t xio)
 	vm_page_unhold(m);
     }
     splx(s);
-    if (xio->xio_flags & XIOF_LINMAP) {
-	xio->xio_flags &= ~XIOF_LINMAP;
-	/* XXX */
-    }
     xio->xio_offset = 0;
     xio->xio_npages = 0;
     xio->xio_bytes = 0;
@@ -233,39 +219,46 @@ xio_release(xio_t xio)
 
 /*
  * Copy data between an XIO and a UIO.  If the UIO represents userspace it
- * must be relative to the current context.  Both the UIO and the XIO are
- * modified, but the XIO's pages are not released when exhausted.
+ * must be relative to the current context.
+ *
+ * uoffset is the abstracted starting offset in the XIO, not the actual
+ * offset, and usually starts at 0.
+ *
+ * The XIO is not modified.  The UIO is updated to reflect the copy.
  *
  * UIO_READ	xio -> uio
  * UIO_WRITE	uio -> xio
  */
 int
-xio_uio_copy(xio_t xio, struct uio *uio, int *sizep)
+xio_uio_copy(xio_t xio, int uoffset, struct uio *uio, int *sizep)
 {
     int error;
     int bytes;
 
-    if ((bytes = xio->xio_bytes) > uio->uio_resid)
+    bytes = xio->xio_bytes - uoffset;
+    if (bytes > uio->uio_resid)
 	bytes = uio->uio_resid;
-    error = uiomove_fromphys(xio->xio_pages, xio->xio_offset, bytes, uio);
-    if (error == 0) {
-	xio->xio_bytes -= bytes;
-	xio->xio_offset += bytes;
+    KKASSERT(bytes >= 0);
+    error = uiomove_fromphys(xio->xio_pages, xio->xio_offset + uoffset, 
+				bytes, uio);
+    if (error == 0)
 	*sizep = bytes;
-    } else {
+    else
 	*sizep = 0;
-    }
     return(error);
 }
 
 /*
  * Copy the specified number of bytes from the xio to a userland
- * buffer.  Return an error code or 0 on success.
+ * buffer.  Return an error code or 0 on success.  
  *
- * The XIO is modified, but the XIO's pages are not released when exhausted.
+ * uoffset is the abstracted starting offset in the XIO, not the actual
+ * offset, and usually starts at 0.
+ *
+ * The XIO is not modified.
  */
 int
-xio_copy_xtou(xio_t xio, void *uptr, int bytes)
+xio_copy_xtou(xio_t xio, int uoffset, void *uptr, int bytes)
 {
     int i;
     int n;
@@ -277,12 +270,15 @@ xio_copy_xtou(xio_t xio, void *uptr, int bytes)
     if (bytes > xio->xio_bytes)
 	return(EFAULT);
 
-    offset = xio->xio_offset & PAGE_MASK;
+    offset = (xio->xio_offset + uoffset) & PAGE_MASK;
     if ((n = PAGE_SIZE - offset) > bytes)
 	n = bytes;
 
     error = 0;
-    for (i = xio->xio_offset >> PAGE_SHIFT; i < xio->xio_npages; ++i) {
+    for (i = (xio->xio_offset + uoffset) >> PAGE_SHIFT; 
+	 i < xio->xio_npages; 
+	 ++i
+    ) {
 	m = xio->xio_pages[i];
 	sf = sf_buf_alloc(m, SFBA_QUICK);
 	error = copyout((char *)sf_buf_kva(sf) + offset, uptr, n);
@@ -290,8 +286,6 @@ xio_copy_xtou(xio_t xio, void *uptr, int bytes)
 	if (error)
 	    break;
 	bytes -= n;
-	xio->xio_bytes -= n;
-	xio->xio_offset += n;
 	uptr = (char *)uptr + n;
 	if (bytes == 0)
 	    break;
@@ -306,10 +300,13 @@ xio_copy_xtou(xio_t xio, void *uptr, int bytes)
  * Copy the specified number of bytes from the xio to a kernel
  * buffer.  Return an error code or 0 on success.
  *
- * The XIO is modified, but the XIO's pages are not released when exhausted.
+ * uoffset is the abstracted starting offset in the XIO, not the actual
+ * offset, and usually starts at 0.
+ *
+ * The XIO is not modified.
  */
 int
-xio_copy_xtok(xio_t xio, void *kptr, int bytes)
+xio_copy_xtok(xio_t xio, int uoffset, void *kptr, int bytes)
 {
     int i;
     int n;
@@ -318,22 +315,23 @@ xio_copy_xtok(xio_t xio, void *kptr, int bytes)
     vm_page_t m;
     struct sf_buf *sf;
 
-    if (bytes > xio->xio_bytes)
+    if (bytes + uoffset > xio->xio_bytes)
 	return(EFAULT);
 
-    offset = xio->xio_offset & PAGE_MASK;
+    offset = (xio->xio_offset + uoffset) & PAGE_MASK;
     if ((n = PAGE_SIZE - offset) > bytes)
 	n = bytes;
 
     error = 0;
-    for (i = xio->xio_offset >> PAGE_SHIFT; i < xio->xio_npages; ++i) {
+    for (i = (xio->xio_offset + uoffset) >> PAGE_SHIFT; 
+	 i < xio->xio_npages; 
+	 ++i
+    ) {
 	m = xio->xio_pages[i];
 	sf = sf_buf_alloc(m, SFBA_QUICK);
 	bcopy((char *)sf_buf_kva(sf) + offset, kptr, n);
 	sf_buf_free(sf);
 	bytes -= n;
-	xio->xio_bytes -= n;
-	xio->xio_offset += n;
 	kptr = (char *)kptr + n;
 	if (bytes == 0)
 	    break;

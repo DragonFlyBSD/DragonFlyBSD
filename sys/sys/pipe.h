@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.6 2004/05/01 18:16:44 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.7 2005/03/01 23:35:16 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -87,6 +87,10 @@ enum pipe_feature { PIPE_COPY, PIPE_KMEM, PIPE_SFBUF1, PIPE_SFBUF2 };
 /*
  * Per-pipe data structure.
  * Two of these are linked together to produce bi-directional pipes.
+ *
+ * NOTE: pipe_buffer.out has the dual purpose of tracking the copy offset
+ * for both the direct write case (with the rest of pipe_buffer) and the
+ * buffered write case (with pipe_map).
  */
 struct pipe {
 	struct	pipebuf pipe_buffer;	/* data storage */

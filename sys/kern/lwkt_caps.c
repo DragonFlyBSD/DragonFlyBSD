@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.5 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.6 2005/03/01 23:35:13 dillon Exp $
  */
 
 /*
@@ -889,7 +889,7 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
 	caps_dequeue_msg(caps, msg);
 
     if (msg->km_xio.xio_bytes != 0) {
-	error = xio_copy_xtou(&msg->km_xio, uap->msg, 
+	error = xio_copy_xtou(&msg->km_xio, 0, uap->msg, 
 			    min(msg->km_xio.xio_bytes, uap->maxsize));
 	if (error) {
 	    if (msg->km_mcaps->ci_td && msg->km_mcaps->ci_td->td_proc) {
