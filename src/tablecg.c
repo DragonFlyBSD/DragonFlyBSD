@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.7 2003/12/11 19:03:47 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.8 2004/01/07 18:09:43 justin Exp $
  */
 
 #include <sys/types.h>
@@ -47,6 +47,7 @@ char *Main[] = {
     "index.cgi",
     "mascot.cgi",
     "team.cgi",
+    "FAQ.cgi",
     NULL
 };
 
@@ -65,6 +66,7 @@ char *Goals[] = {
 char *Status[] = {
         "diary.cgi",
         "index.cgi",
+	"report-2003.cgi",
         NULL
 };
 
