@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.3 2005/03/02 10:15:46 joerg Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -373,7 +373,7 @@ struct sem {
  */
 struct pthread_cleanup {
 	struct pthread_cleanup	*next;
-	void			(*routine) ();
+	void			(*routine)(void);
 	void			*routine_arg;
 };
 
@@ -385,7 +385,7 @@ struct pthread_attr {
 	int	suspend;
 	int	flags;
 	void	*arg_attr;
-	void	(*cleanup_attr) ();
+	void	(*cleanup_attr)(void);
 	void	*stackaddr_attr;
 	size_t	stacksize_attr;
 };
@@ -470,7 +470,7 @@ struct pthread_key {
 	spinlock_t	lock;
 	volatile int	allocated;
 	volatile int	count;
-	void            (*destructor) ();
+	void            (*destructor)(void);
 };
 
 struct pthread_rwlockattr {
