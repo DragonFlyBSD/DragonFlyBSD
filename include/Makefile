@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.14 2004/01/31 13:38:48 joerg Exp $
+# $DragonFly: src/include/Makefile,v 1.15 2004/02/03 05:51:51 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -95,10 +95,12 @@ osreldate.h:	${.CURDIR}/../sys/conf/newvers.sh \
 	echo "#ifdef _KERNEL" >> osreldate.h;			\
 	echo '#error "osreldate.h must not be used in the kernel, use sys/param.h"' >> osreldate.h; \
 	echo "#else" >> osreldate.h;				\
-	echo \#'undef __DragonFly_version' >> osreldate.h;	\
-	echo \#'define __DragonFly_version' $$RELDATE >> osreldate.h; \
-	echo \#'undef __FreeBSD_version' >> osreldate.h;	\
-	echo \#'define __FreeBSD_version' 480101  >> osreldate.h; \
+	echo "#undef __DragonFly_version" >> osreldate.h;	\
+	echo "#define __DragonFly_version $$RELDATE" >> osreldate.h; \
+	echo "#ifdef __FreeBSD__" >> osreldate.h;		\
+	echo "#undef __FreeBSD_version" >> osreldate.h;	\
+	echo "#define __FreeBSD_version 480101" >> osreldate.h; \
+	echo "#endif" >> osreldate.h;				\
 	echo "#endif" >> osreldate.h
 
 .for i in ${LHDRS}
