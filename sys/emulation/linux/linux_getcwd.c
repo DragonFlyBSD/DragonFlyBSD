@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/compat/linux/linux_getcwd.c,v 1.2.2.3 2001/11/05 19:08:22 marcel Exp $ */
-/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.18 2004/11/12 00:09:18 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/linux/linux_getcwd.c,v 1.19 2004/11/12 06:07:36 dillon Exp $ */
 /* $OpenBSD: linux_getcwd.c,v 1.2 2001/05/16 12:50:21 ho Exp $ */
 /* $NetBSD: vfs_getcwd.c,v 1.3.2.3 1999/07/11 10:24:09 sommerfeld Exp $ */
 
@@ -79,8 +79,9 @@ linux_getcwd(struct linux_getcwd_args *args)
 	char *bp;
 
 #ifdef DEBUG
-	printf("Linux-emul(%ld): getcwd(%p, %d)\n", (long)p->p_pid,
-	       args->buf, args->bufsize);
+	printf("Linux-emul(%d): getcwd(%p, %d)\n", 
+	    (curthread->td_proc ? (int)curthread->td_proc->p_pid : -1),
+	    args->buf, args->bufsize);
 #endif
 	buflen = args->bufsize;
 	if (buflen < 2)
