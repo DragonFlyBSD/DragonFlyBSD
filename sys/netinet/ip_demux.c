@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.4 2004/03/05 19:47:28 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.5 2004/03/05 20:00:03 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -47,9 +47,10 @@ INP_MPORT_HASH(in_addr_t src, in_addr_t dst, int sport, int dport)
 {
 	/*
 	 * Use low order bytes.
-	 * This particular hash function is only good for ncpus < 256.
 	 */
+
 #if (BYTE_ORDER == LITTLE_ENDIAN)
+	KASSERT(ncpus2 < 256, ("need different hash function"));  /* XXX JH */
 	return (((src >> 24) ^ (sport >> 8) ^ (dst >> 24) ^ (dport >> 8)) &
 		ncpus2_mask);
 #else
