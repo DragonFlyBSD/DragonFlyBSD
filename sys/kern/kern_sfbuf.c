@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.4 2004/04/29 17:31:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.5 2004/05/13 00:44:12 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,10 @@ static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
 
 LIST_HEAD(sf_buf_list, sf_buf);
+
+SYSCTL_DECL(_kern_ipc);
+SYSCTL_INT(_kern_ipc, OID_AUTO, nsfbufs, CTLFLAG_RD, &nsfbufs, 0,
+	"Maximum number of sf_bufs available to the system");
 
 /*
  * A hash table of active sendfile(2) buffers
