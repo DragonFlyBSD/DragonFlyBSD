@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libncurses/Makefile,v 1.39.2.13 2002/08/07 16:31:48 ru Exp $
-# $DragonFly: src/lib/libncurses/Makefile,v 1.5 2004/03/25 18:07:27 dillon Exp $
+# $DragonFly: src/lib/libncurses/Makefile,v 1.6 2004/09/26 15:43:40 asmodai Exp $
 
 NCURSES=${.CURDIR}/../../contrib/ncurses
 
@@ -16,7 +16,7 @@ NCURSES_MINOR!=egrep 'NCURSES_MINOR[ 	]*=' ${NCURSES}/dist.mk | sed -e 's/^[^0-9
 NCURSES_PATCH!=egrep 'NCURSES_PATCH[ 	]*=' ${NCURSES}/dist.mk | sed -e 's/^[^0-9]*//'
 
 # From autoconf (!)
-NCURSES_CONST=	
+NCURSES_CONST=	const
 NCURSES_XNAMES=	1
 OSPEED_INCLUDES=\#include <termios.h>
 OSPEED_TYPE=	speed_t
