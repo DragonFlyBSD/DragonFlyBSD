@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.7 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.8 2004/07/05 05:32:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -138,13 +138,8 @@ main(int argc, char **argv)
 			iflag |= HST_IF_V6;
 			break;
 		case 'i':
-			siflag = (char*)calloc(1,sizeof(char) * (strlen((char*)optarg)+1));
-			if (siflag) {
-				iflag |= HST_IF;
-				strlcpy(siflag, (char*)optarg, strlen((char*)optarg)+1);
-			} else {
-				errx(1, "malloc");
-			}
+			siflag = strdup(optarg);
+			iflag |= HST_IF;
 			break;
 		case 'r':
 			srflag = (char*)calloc(1,sizeof(char) * (strlen((char*)optarg)+1));
@@ -169,31 +164,20 @@ main(int argc, char **argv)
 	if (argc > 1)
 		usage();
 
-	if (iflag && *argv) {
-		free(siflag);
+	if (iflag && *argv)
 		usage();
-	}
 
-	if (rflag && *argv) {
-		free(srflag);
+	if (rflag && *argv)
 		usage();
-	}
 
-	if (rflag && (iflag & HST_IF)) {
+	if (rflag && (iflag & HST_IF))
 		usage();
-		free(srflag);
-		free(siflag);
-	}
 
-	if ((iflag & HST_IF_V6) && (iflag & HST_IF_V4)) {
-		free(siflag);
+	if ((iflag & HST_IF_V6) && (iflag & HST_IF_V4))
 		usage();
-	}
 
-	if (!(iflag & HST_IF) && ((iflag & HST_IF_V6)||iflag & HST_IF_V4)) {
-		free(siflag);
+	if (!(iflag & HST_IF) && ((iflag & HST_IF_V6)||iflag & HST_IF_V4))
 		usage();
-	}
 
 	if (iflag & HST_IF) {
 		mib[0] = CTL_NET;
@@ -206,18 +190,12 @@ main(int argc, char **argv)
 		idx = 0;
 		needed = 1;
 
-		if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0) {
-			free(siflag);
+		if (sysctl(mib, 6, NULL, &needed, NULL, 0) < 0)
 			errx(1, "iflist-sysctl-estimate:%i",errno);
-		}
-		if ((buf = malloc(needed)) == NULL) {
-			free(siflag);
+		if ((buf = malloc(needed)) == NULL)
 			errx(1, "malloc");
-		}
-		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0) {
-			free(siflag);
+		if (sysctl(mib, 6, buf, &needed, NULL, 0) < 0)
 			errx(1, "actual retrieval of interface table");
-		}
 	
 		lim = buf + needed;
 
@@ -276,12 +254,10 @@ main(int argc, char **argv)
 		free(buf);
 		free(siflag);
 
-		if (idx == 0) {
+		if (idx == 0)
 			errx(1,"interface not found");
-		}
-		if (hst == NULL) {
+		if (hst == NULL)
 			errx(1, "ip not found on interface");
-		}
 
 		if (h_errno == NETDB_SUCCESS) {
 			if (sethostname(hst->h_name, (int)strlen(hst->h_name)))
@@ -298,7 +274,6 @@ main(int argc, char **argv)
 			ret = inet_pton(AF_INET6, srflag, &ia6);
 
 			if (ret != 1) {
-				free(srflag);
 				errx(1, "invalid ip address");
 			}
 
@@ -311,7 +286,7 @@ main(int argc, char **argv)
 			hst = gethostbyaddr((const char*)&ia, sizeof(ia), AF_INET);
 		if (!hst) {
 			free(srflag);
-			if(h_errno == HOST_NOT_FOUND) 
+			if (h_errno == HOST_NOT_FOUND) 
 				errx(1,"host not found\n");
 		}
 
