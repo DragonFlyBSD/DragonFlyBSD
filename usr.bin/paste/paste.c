@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)paste.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/paste/paste.c,v 1.6.2.2 2002/07/14 15:16:00 tjr Exp $
- * $DragonFly: src/usr.bin/paste/paste.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/paste/paste.c,v 1.3 2004/12/15 23:11:06 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -111,6 +111,7 @@ parallel(char **argv)
 	int opencnt, output;
 	size_t len;
 
+	tmp = NULL;
 	for (cnt = 0, head = NULL; (p = *argv); ++argv, ++cnt) {
 		if ((lp = malloc(sizeof(LIST))) == NULL)
 			err(1, NULL);
