@@ -4,7 +4,7 @@
  * formatting purposes.  Typos/bugs have been fixed.
  *
  * $FreeBSD: src/sys/fs/udf/osta.c,v 1.3 2003/11/05 06:55:23 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/osta.c,v 1.1 2004/03/12 22:38:15 joerg Exp $
+ * $DragonFly: src/sys/vfs/udf/osta.c,v 1.2 2004/05/09 22:15:00 cpressey Exp $
  */
 
 #include <vfs/udf/osta.h>
@@ -211,9 +211,7 @@ static unsigned short crc_table[256] = {
 };
 
 unsigned short
-udf_cksum(s, n)
-	unsigned char *s;
-	int n;
+udf_cksum(unsigned char *s, int n)
 {
 	unsigned short crc=0;
 
@@ -224,9 +222,7 @@ udf_cksum(s, n)
 
 /* UNICODE Checksum */
 unsigned short
-udf_unicode_cksum(s, n)
-	unsigned short *s;
-	int n;
+udf_unicode_cksum(unsigned short *s, int n)
 {
 	unsigned short crc=0;
 
@@ -243,9 +239,11 @@ udf_unicode_cksum(s, n)
 #ifdef MAIN
 unsigned char bytes[] = { 0x70, 0x6A, 0x77 };
 
-main()
+int
+main(void)
 {
 	unsigned short x;
+
 	x = cksum(bytes, sizeof bytes);
 	printf("checksum: calculated=%4.4x, correct=%4.4x\en", x, 0x3299);
 	exit(0);
