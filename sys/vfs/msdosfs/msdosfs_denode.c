@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.17 2004/10/12 19:21:00 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.18 2004/10/27 08:57:48 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -240,7 +240,6 @@ deget(struct msdosfsmount *pmp,	/* so we know the maj/min number */
       u_long diroffset,		/* index of entry within the cluster */
       struct denode **depp)	/* returns the addr of the gotten denode */
 {
-	struct thread *td = curthread;	/* XXX */
 	int error;
 	dev_t dev = pmp->pm_dev;
 	struct mount *mntp = pmp->pm_mountp;
