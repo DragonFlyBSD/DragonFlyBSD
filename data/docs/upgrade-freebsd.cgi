@@ -1,12 +1,12 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.2 2004/07/06 15:26:09 justin Exp $
+# $DragonFly: site/data/docs/Attic/upgrade-freebsd.cgi,v 1.3 2004/08/25 18:04:01 justin Exp $
 
 $TITLE(DragonFly - Upgrading From FreeBSD 4)
 
 <P>
-If you have a system running FreeBSD 4 (4.9 is the most recent release 
-at the time this is written), it is possible to switch to DragonFly 
+If you have a system running FreeBSD 4 (4.9 was the most recent release 
+at the time this document was written), it is possible to switch to DragonFly 
 "in-place" through downloading the DragonFly source and compiling it.
 <P>
 
@@ -60,6 +60,10 @@ cvsup dragonfly-src-supfile
 <P>
 You now will have the DragonFly source files in /usr/src.
 <P>
+<I>Note: the newly created file <code>/usr/src/UPDATING</code> will have the 
+most up-to-date instructions on updating your system; double-check it 
+before proceeding.</I>
+<P>
 <LI> You will now want to compile the userland and the kernel. 
 <P>
 <code>
@@ -68,7 +72,15 @@ make buildworld<BR>
 make buildkernel
 </code>
 <P>
-Then, you can install them:
+<LI> Delete existing FreeBSD include files; having them available may cause 
+conflicts later on.
+<P>
+<code>
+rm -rf /usr/include<BR>
+mkdir /usr/include
+</code>
+<P>
+<LI> Now, install the new DragonFly userland and kernel:
 <P>
 <code>
 make installworld<BR>
@@ -78,8 +90,7 @@ make installkernel
 <LI> You will want to make sure your /etc directory is cleaned up:
 <P>
 <code>
-cd /usr/src/etc<BR>
-make upgrade_etc
+make upgrade
 </code>
 <P>
 <LI> You now can sync your disk and reboot your machine.
