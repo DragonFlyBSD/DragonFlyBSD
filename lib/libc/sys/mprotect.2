@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)mprotect.2	8.1 (Berkeley) 6/9/93
 .\" $FreeBSD: src/lib/libc/sys/mprotect.2,v 1.9.2.5 2002/12/23 20:47:17 trhodes Exp $
-.\" $DragonFly: src/lib/libc/sys/mprotect.2,v 1.3 2004/07/08 00:33:02 hmp Exp $
+.\" $DragonFly: src/lib/libc/sys/mprotect.2,v 1.4 2004/07/15 04:50:49 hmp Exp $
 .\"
 .Dd June 9, 1993
 .Dt MPROTECT 2
@@ -60,7 +60,7 @@ and end addresses of a
 .Pp
 Currently these protection bits are known,
 which can be combined, OR'd together:
-.Bl -tag width "PROT_WRITE"
+.Bl -tag -width "PROT_WRITE" -offset indent
 .It Dv PROT_NONE
 No permissions at all.
 .It Dv PROT_READ
