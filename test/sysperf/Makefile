@@ -1,8 +1,8 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.10 2004/10/31 20:19:23 eirikn Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.11 2005/03/28 03:13:24 dillon Exp $
 #
 
-TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
+TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 /tmp/sc5 \
 	/tmp/loop1 /tmp/loop2 /tmp/loop3 \
 	/tmp/call1 /tmp/call2 /tmp/call3 \
 	/tmp/mt2 \
@@ -28,6 +28,9 @@ all:	$(TARGETS)
 
 /tmp/sc4: syscall4.c blib.c
 	$(CC) $(CFLAGS) syscall4.c blib.c -o /tmp/sc4
+
+/tmp/sc5: syscall5.c blib.c
+	$(CC) $(CFLAGS) syscall5.c blib.c -o /tmp/sc5
 
 /tmp/fork1: fork1.c blib.c
 	$(CC) $(CFLAGS) fork1.c blib.c -o /tmp/fork1
