@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.8 2003/12/27 19:23:02 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.9 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -98,12 +98,8 @@ static ufs_daddr_t ffs_mapsearch (struct fs *, struct cg *, ufs_daddr_t,
  *      available block is located.
  */
 int
-ffs_alloc(ip, lbn, bpref, size, cred, bnp)
-	struct inode *ip;
-	ufs_daddr_t lbn, bpref;
-	int size;
-	struct ucred *cred;
-	ufs_daddr_t *bnp;
+ffs_alloc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t bpref, int size,
+	  struct ucred *cred, ufs_daddr_t *bnp)
 {
 	struct fs *fs;
 	ufs_daddr_t bno;
@@ -169,13 +165,8 @@ nospace:
  * invoked to get an appropriate block.
  */
 int
-ffs_realloccg(ip, lbprev, bpref, osize, nsize, cred, bpp)
-	struct inode *ip;
-	ufs_daddr_t lbprev;
-	ufs_daddr_t bpref;
-	int osize, nsize;
-	struct ucred *cred;
-	struct buf **bpp;
+ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
+	      int osize, int nsize, struct ucred *cred, struct buf **bpp)
 {
 	struct fs *fs;
 	struct buf *bp;
@@ -350,12 +341,11 @@ SYSCTL_INT(_vfs_ffs, FFS_REALLOCBLKS, doreallocblks, CTLFLAG_RW, &doreallocblks,
 static volatile int prtrealloc = 0;
 #endif
 
+/*
+ * ffs_reallocblks(struct vnode *a_vp, struct cluster_save *a_buflist)
+ */
 int
-ffs_reallocblks(ap)
-	struct vop_reallocblks_args /* {
-		struct vnode *a_vp;
-		struct cluster_save *a_buflist;
-	} */ *ap;
+ffs_reallocblks(struct vop_reallocblks_args *ap)
 {
 	struct fs *fs;
 	struct inode *ip;
@@ -569,11 +559,7 @@ fail:
  *      available inode is located.
  */
 int
-ffs_valloc(pvp, mode, cred, vpp)
-	struct vnode *pvp;
-	int mode;
-	struct ucred *cred;
-	struct vnode **vpp;
+ffs_valloc(struct vnode *pvp, int mode, struct ucred *cred, struct vnode **vpp)
 {
 	struct inode *pip;
 	struct fs *fs;
@@ -652,8 +638,7 @@ noinodes:
  * in another cylinder group.
  */
 static ino_t
-ffs_dirpref(pip)
-	struct inode *pip;
+ffs_dirpref(struct inode *pip)
 {
 	struct fs *fs;
 	int cg, prefcg, dirsize, cgsize;
@@ -774,11 +759,7 @@ ffs_dirpref(pip)
  * schedule another I/O transfer.
  */
 ufs_daddr_t
-ffs_blkpref(ip, lbn, indx, bap)
-	struct inode *ip;
-	ufs_daddr_t lbn;
-	int indx;
-	ufs_daddr_t *bap;
+ffs_blkpref(struct inode *ip, ufs_daddr_t lbn, int indx, ufs_daddr_t *bap)
 {
 	struct fs *fs;
 	int cg;
@@ -846,12 +827,9 @@ ffs_blkpref(ip, lbn, indx, bap)
  */
 /*VARARGS5*/
 static u_long
-ffs_hashalloc(ip, cg, pref, size, allocator)
-	struct inode *ip;
-	int cg;
-	long pref;
-	int size;	/* size for data blocks, mode for inodes */
-	allocfcn_t *allocator;
+ffs_hashalloc(struct inode *ip, int cg, long pref,
+	      int size,	/* size for data blocks, mode for inodes */
+	      allocfcn_t *allocator)
 {
 	struct fs *fs;
 	long result;	/* XXX why not same type as we return? */
@@ -899,11 +877,7 @@ ffs_hashalloc(ip, cg, pref, size, allocator)
  * if they are, allocate them.
  */
 static ufs_daddr_t
-ffs_fragextend(ip, cg, bprev, osize, nsize)
-	struct inode *ip;
-	int cg;
-	long bprev;
-	int osize, nsize;
+ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -974,11 +948,7 @@ ffs_fragextend(ip, cg, bprev, osize, nsize)
  * and if it is, allocate it.
  */
 static ufs_daddr_t
-ffs_alloccg(ip, cg, bpref, size)
-	struct inode *ip;
-	int cg;
-	ufs_daddr_t bpref;
-	int size;
+ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1075,10 +1045,7 @@ ffs_alloccg(ip, cg, bpref, size)
  * blocks may be fragmented by the routine that allocates them.
  */
 static ufs_daddr_t
-ffs_alloccgblk(ip, bp, bpref)
-	struct inode *ip;
-	struct buf *bp;
-	ufs_daddr_t bpref;
+ffs_alloccgblk(struct inode *ip, struct buf *bp, ufs_daddr_t bpref)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1195,11 +1162,7 @@ gotit:
  * take the first one that we find following bpref.
  */
 static ufs_daddr_t
-ffs_clusteralloc(ip, cg, bpref, len)
-	struct inode *ip;
-	int cg;
-	ufs_daddr_t bpref;
-	int len;
+ffs_clusteralloc(struct inode *ip, int cg, ufs_daddr_t bpref, int len)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1309,11 +1272,7 @@ fail:
  *      inode in the specified cylinder group.
  */
 static ino_t
-ffs_nodealloccg(ip, cg, ipref, mode)
-	struct inode *ip;
-	int cg;
-	ufs_daddr_t ipref;
-	int mode;
+ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1394,10 +1353,7 @@ gotit:
  * block reassembly is checked.
  */
 void
-ffs_blkfree(ip, bno, size)
-	struct inode *ip;
-	ufs_daddr_t bno;
-	long size;
+ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1507,10 +1463,7 @@ ffs_blkfree(ip, bno, size)
  * fragment is allocated, false if it is free.
  */
 static int
-ffs_checkblk(ip, bno, size)
-	struct inode *ip;
-	ufs_daddr_t bno;
-	long size;
+ffs_checkblk(struct inode *ip, ufs_daddr_t bno, long size)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1555,10 +1508,7 @@ ffs_checkblk(ip, bno, size)
  * Free an inode.
  */
 int
-ffs_vfree( pvp, ino, mode)
-	struct vnode *pvp;
-	ino_t ino;
-	int mode;
+ffs_vfree(struct vnode *pvp, ino_t ino, int mode)
 {
 	if (DOINGSOFTDEP(pvp)) {
 		softdep_freefile(pvp, ino, mode);
@@ -1571,11 +1521,8 @@ ffs_vfree( pvp, ino, mode)
  * Do the actual free operation.
  * The specified inode is placed back in the free map.
  */
- int
- ffs_freefile( pvp, ino, mode)
-	struct vnode *pvp;
-	ino_t ino;
-	int mode;
+int
+ffs_freefile(struct vnode *pvp, ino_t ino, int mode)
 {
 	struct fs *fs;
 	struct cg *cgp;
@@ -1634,11 +1581,7 @@ ffs_vfree( pvp, ino, mode)
  * available.
  */
 static ufs_daddr_t
-ffs_mapsearch(fs, cgp, bpref, allocsiz)
-	struct fs *fs;
-	struct cg *cgp;
-	ufs_daddr_t bpref;
-	int allocsiz;
+ffs_mapsearch(struct fs *fs, struct cg *cgp, ufs_daddr_t bpref, int allocsiz)
 {
 	ufs_daddr_t bno;
 	int start, len, loc, i;
@@ -1700,11 +1643,7 @@ ffs_mapsearch(fs, cgp, bpref, allocsiz)
  * Cnt == 1 means free; cnt == -1 means allocating.
  */
 static void
-ffs_clusteracct(fs, cgp, blkno, cnt)
-	struct fs *fs;
-	struct cg *cgp;
-	ufs_daddr_t blkno;
-	int cnt;
+ffs_clusteracct(struct fs *fs, struct cg *cgp, ufs_daddr_t blkno, int cnt)
 {
 	int32_t *sump;
 	int32_t *lp;
@@ -1793,10 +1732,7 @@ ffs_clusteracct(fs, cgp, blkno, cnt)
  *	fs: error message
  */
 static void
-ffs_fserr(fs, uid, cp)
-	struct fs *fs;
-	u_int uid;
-	char *cp;
+ffs_fserr(struct fs *fs, u_int uid, char *cp)
 {
 	struct thread *td = curthread;
 	struct proc *p;

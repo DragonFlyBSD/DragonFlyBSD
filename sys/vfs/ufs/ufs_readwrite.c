@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.10 2004/04/23 06:23:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.11 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -59,16 +59,13 @@ extern int ffs_rawread(struct vnode *vp, struct uio *uio, int *workdone);
 
 /*
  * Vnode op for reading.
+ *
+ * ffs_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	    struct ucred *a_cred)
  */
 /* ARGSUSED */
 int
-ffs_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+ffs_read(struct vop_read_args *ap)
 {
 	struct vnode *vp;
 	struct inode *ip;
@@ -394,15 +391,12 @@ ffs_read(ap)
 
 /*
  * Vnode op for writing.
+ *
+ * ffs_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 int
-ffs_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+ffs_write(struct vop_write_args *ap)
 {
 	struct vnode *vp;
 	struct uio *uio;
@@ -613,8 +607,7 @@ ffs_write(ap)
  * get page routine
  */
 int
-ffs_getpages(ap)
-	struct vop_getpages_args *ap;
+ffs_getpages(struct vop_getpages_args *ap)
 {
 	off_t foff, physoffset;
 	int i, size, bsize;
@@ -750,8 +743,7 @@ ffs_getpages(ap)
  * XXX has been).
  */
 int
-ffs_putpages(ap)
-	struct vop_putpages_args *ap;
+ffs_putpages(struct vop_putpages_args *ap)
 {
 	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);

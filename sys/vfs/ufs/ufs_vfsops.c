@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vfsops.c	8.8 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vfsops.c,v 1.17.2.3 2001/10/14 19:08:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.6 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vfsops.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -70,9 +70,7 @@ ufs_start(struct mount *mp, int flags, struct thread *td)
  * Return the root of a filesystem.
  */
 int
-ufs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+ufs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	int error;
@@ -88,12 +86,8 @@ ufs_root(mp, vpp)
  * Do operations associated with quotas
  */
 int
-ufs_quotactl(mp, cmds, uid, arg, td)
-	struct mount *mp;
-	int cmds;
-	uid_t uid;
-	caddr_t arg;
-	struct thread *td;
+ufs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
+	     struct thread *td)
 {
 #ifndef QUOTA
 	return (EOPNOTSUPP);
@@ -165,8 +159,7 @@ ufs_quotactl(mp, cmds, uid, arg, td)
  * Initial UFS filesystems, done only once.
  */
 int
-ufs_init(vfsp)
-	struct vfsconf *vfsp;
+ufs_init(struct vfsconf *vfsp)
 {
 	static int done;
 
@@ -187,10 +180,7 @@ ufs_init(vfsp)
  * Call the VFS_CHECKEXP beforehand to verify access.
  */
 int
-ufs_fhtovp(mp, ufhp, vpp)
-	struct mount *mp;
-	struct ufid *ufhp;
-	struct vnode **vpp;
+ufs_fhtovp(struct mount *mp, struct ufid *ufhp, struct vnode **vpp)
 {
 	struct inode *ip;
 	struct vnode *nvp;
@@ -222,11 +212,8 @@ ufs_fhtovp(mp, ufhp, vpp)
  * Verify that a host should have access to a filesystem.
  */
 int
-ufs_check_export(mp, nam, exflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+ufs_check_export(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+		 struct ucred **credanonp)
 {
 	struct netcred *np;
 	struct ufsmount *ump;;

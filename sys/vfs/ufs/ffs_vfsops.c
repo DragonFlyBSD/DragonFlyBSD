@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.16 2004/04/24 04:32:05 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.17 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -128,12 +128,11 @@ VFS_SET(ufs_vfsops, ufs, 0);
  *		namei() if it is a genuine NULL from the user.
  */
 static int
-ffs_mount( mp, path, data, ndp, td)
-        struct mount		*mp;	/* mount struct pointer*/
-        char			*path;	/* path to mount point*/
-        caddr_t			data;	/* arguments to FS specific mount*/
-        struct nameidata	*ndp;	/* mount point credentials*/
-        struct thread		*td;	/* process requesting mount*/
+ffs_mount(struct mount *mp,		/* mount struct pointer */
+          char *path,			/* path to mount point */
+          caddr_t data,			/* arguments to FS specific mount */
+          struct nameidata *ndp,	/* mount point credentials */
+          struct thread	*td)		/* process requesting mount */
 {
 	size_t		size;
 	int		err = 0;
@@ -604,11 +603,8 @@ ffs_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *
  * Common code for mount and mountroot
  */
 int
-ffs_mountfs(devvp, mp, td, malloctype)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct thread *td;
-	struct malloc_type *malloctype;
+ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
+	    struct malloc_type *malloctype)
 {
 	struct ufsmount *ump;
 	struct buf *bp;
@@ -830,10 +826,8 @@ out:
  * XXX - goes away some day.
  */
 static int
-ffs_oldfscompat(fs)
-	struct fs *fs;
+ffs_oldfscompat(struct fs *fs)
 {
-
 	fs->fs_npsect = max(fs->fs_npsect, fs->fs_nsect);	/* XXX */
 	fs->fs_interleave = max(fs->fs_interleave, 1);		/* XXX */
 	if (fs->fs_postblformat == FS_42POSTBLFMT)		/* XXX */
@@ -1058,7 +1052,7 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 static
 int 
 ffs_sync_scan2(struct mount *mp, struct vnode *vp,
-                lwkt_tokref_t vlock, void *data)
+	       lwkt_tokref_t vlock, void *data)
 {
 	struct scaninfo *info = data;
 	thread_t td = curthread;	/* XXX */
@@ -1110,10 +1104,7 @@ ffs_sync_scan2(struct mount *mp, struct vnode *vp,
 static int ffs_inode_hash_lock;
 
 int
-ffs_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+ffs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	struct fs *fs;
 	struct inode *ip;
@@ -1264,10 +1255,7 @@ restart:
  *   those rights via. exflagsp and credanonp
  */
 int
-ffs_fhtovp(mp, fhp, vpp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct vnode **vpp;
+ffs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct ufid *ufhp;
 	struct fs *fs;
@@ -1285,9 +1273,7 @@ ffs_fhtovp(mp, fhp, vpp)
  */
 /* ARGSUSED */
 int
-ffs_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+ffs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct inode *ip;
 	struct ufid *ufhp;
@@ -1304,10 +1290,8 @@ ffs_vptofh(vp, fhp)
  * Initialize the filesystem; just use ufs_init.
  */
 static int
-ffs_init(vfsp)
-	struct vfsconf *vfsp;
+ffs_init(struct vfsconf *vfsp)
 {
-
 	softdep_initialize();
 	return (ufs_init(vfsp));
 }
@@ -1316,9 +1300,7 @@ ffs_init(vfsp)
  * Write a superblock and associated information back to disk.
  */
 static int
-ffs_sbupdate(mp, waitfor)
-	struct ufsmount *mp;
-	int waitfor;
+ffs_sbupdate(struct ufsmount *mp, int waitfor)
 {
 	struct fs *dfs, *fs = mp->um_fs;
 	struct buf *bp;

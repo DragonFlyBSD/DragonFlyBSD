@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.9 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.10 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -74,9 +74,7 @@ static int ffs_indirtrunc (struct inode *, ufs_daddr_t, ufs_daddr_t,
  * set, then wait for the write to complete.
  */
 int
-ffs_update(vp, waitfor)
-	struct vnode *vp;
-	int waitfor;
+ffs_update(struct vnode *vp, int waitfor)
 {
 	struct fs *fs;
 	struct buf *bp;
@@ -131,12 +129,8 @@ ffs_update(vp, waitfor)
  * disk blocks.
  */
 int
-ffs_truncate(vp, length, flags, cred, td)
-	struct vnode *vp;
-	off_t length;
-	int flags;
-	struct ucred *cred;
-	struct thread *td;
+ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
+	     struct thread *td)
 {
 	struct vnode *ovp = vp;
 	ufs_daddr_t lastblock;
@@ -424,12 +418,8 @@ done:
  * NB: triple indirect blocks are untested.
  */
 static int
-ffs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
-	struct inode *ip;
-	ufs_daddr_t lbn, lastbn;
-	ufs_daddr_t dbn;
-	int level;
-	long *countp;
+ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
+	       ufs_daddr_t lastbn, int level, long *countp)
 {
 	int i;
 	struct buf *bp;

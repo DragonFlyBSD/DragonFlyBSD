@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vnops.c	8.15 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vnops.c,v 1.64 2000/01/10 12:04:25 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.6 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vnops.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -112,16 +112,13 @@ VNODEOP_SET(ffs_fifoop_opv_desc);
 
 /*
  * Synch an open file.
+ *
+ * ffs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
+ *	     struct proc *a_p)
  */
 /* ARGSUSED */
 static int
-ffs_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int a_waitfor;
-		struct proc *a_p;
-	} */ *ap;
+ffs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct buf *bp;

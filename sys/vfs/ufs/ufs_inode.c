@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.7 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.8 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include "opt_quota.h"
@@ -61,13 +61,11 @@ int	prtactive = 0;		/* 1 => print out reclaim of active vnodes */
 
 /*
  * Last reference to an inode.  If necessary, write or delete it.
+ *
+ * ufs_inactive(struct vnode *a_vp, struct thread *a_td)
  */
 int
-ufs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+ufs_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct inode *ip = VTOI(vp);
@@ -109,13 +107,11 @@ out:
 
 /*
  * Reclaim an inode so that it can be used for other purposes.
+ *
+ * ufs_reclaim(struct vnode *a_vp, struct thread *a_td)
  */
 int
-ufs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+ufs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct inode *ip;
 	struct vnode *vp = ap->a_vp;

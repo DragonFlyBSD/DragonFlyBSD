@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.3 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.4 2004/05/18 00:16:46 cpressey Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.
@@ -282,7 +282,7 @@ ufsdirhash_free(struct inode *ip)
  */
 int
 ufsdirhash_lookup(struct inode *ip, char *name, int namelen, doff_t *offp,
-    struct buf **bpp, doff_t *prevoffp)
+		  struct buf **bpp, doff_t *prevoffp)
 {
 	struct dirhash *dh, *dh_next;
 	struct direct *dp;
@@ -517,7 +517,6 @@ ufsdirhash_findfree(struct inode *ip, int slotneeded, int *slotsize)
 doff_t
 ufsdirhash_enduseful(struct inode *ip)
 {
-
 	struct dirhash *dh;
 	int i;
 
@@ -615,7 +614,7 @@ ufsdirhash_remove(struct inode *ip, struct direct *dirp, doff_t offset)
  */
 void
 ufsdirhash_move(struct inode *ip, struct direct *dirp, doff_t oldoff,
-    doff_t newoff)
+		doff_t newoff)
 {
 	struct dirhash *dh;
 	int slot;
@@ -972,7 +971,7 @@ ufsdirhash_recycle(int wanted)
 
 
 static void
-ufsdirhash_init()
+ufsdirhash_init(void)
 {
 	ufsdirhash_zone = zinit("DIRHASH", DH_NBLKOFF * sizeof(daddr_t), 0,
 	    0, 1);

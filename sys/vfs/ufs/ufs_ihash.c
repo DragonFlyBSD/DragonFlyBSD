@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.11 2004/03/01 06:33:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.12 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static struct lwkt_token ufs_ihash_token;
  * Initialize inode hash table.
  */
 void
-ufs_ihashinit()
+ufs_ihashinit(void)
 {
 	ihashtbl = hashinit(desiredvnodes, M_UFSIHASH, &ihash);
 	lwkt_token_init(&ufs_ihash_token);
@@ -71,9 +71,7 @@ ufs_ihashinit()
  * to it. If it is in core, return it, even if it is locked.
  */
 struct vnode *
-ufs_ihashlookup(dev, inum)
-	dev_t dev;
-	ino_t inum;
+ufs_ihashlookup(dev_t dev, ino_t inum)
 {
 	struct inode *ip;
 	lwkt_tokref ilock;
@@ -160,8 +158,7 @@ ufs_ihashins(struct inode *ip)
  * Remove the inode from the hash table.
  */
 void
-ufs_ihashrem(ip)
-	struct inode *ip;
+ufs_ihashrem(struct inode *ip)
 {
 	lwkt_tokref ilock;
 

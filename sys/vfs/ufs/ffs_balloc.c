@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.6 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -54,17 +54,12 @@
  * Balloc defines the structure of file system storage
  * by allocating the physical blocks on a device given
  * the inode and the logical block number in a file.
+ *
+ * ffs_balloc(struct vnode *a_vp, ufs_daddr_t a_lbn, int a_size,
+ *	      struct ucred *a_cred, int a_flags, struct buf *a_bpp)
  */
 int
-ffs_balloc(ap)
-	struct vop_balloc_args /* {
-		struct vnode *a_vp;
-		ufs_daddr_t a_lbn;
-		int a_size;
-		struct ucred *a_cred;
-		int a_flags;
-		struct buf *a_bpp;
-	} */ *ap;
+ffs_balloc(struct vop_balloc_args *ap)
 {
 	struct inode *ip;
 	ufs_daddr_t lbn;

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_subr.c	8.5 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_subr.c,v 1.25 1999/12/29 04:55:04 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.6 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_subr.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -63,11 +63,7 @@ void	ffs_checkoverlap (struct buf *, struct inode *);
  * remaining space in the directory.
  */
 int
-ffs_blkatoff(vp, offset, res, bpp)
-	struct vnode *vp;
-	off_t offset;
-	char **res;
-	struct buf **bpp;
+ffs_blkatoff(struct vnode *vp, off_t offset, char **res, struct buf **bpp)
 {
 	struct inode *ip;
 	struct fs *fs;
@@ -98,11 +94,7 @@ ffs_blkatoff(vp, offset, res, bpp)
  * of some frags.
  */
 void
-ffs_fragacct(fs, fragmap, fraglist, cnt)
-	struct fs *fs;
-	int fragmap;
-	int32_t fraglist[];
-	int cnt;
+ffs_fragacct(struct fs *fs, int fragmap, int32_t fraglist[], int cnt)
 {
 	int inblk;
 	int field, subfield;
@@ -130,9 +122,7 @@ ffs_fragacct(fs, fragmap, fraglist, cnt)
 
 #ifdef DDB
 void
-ffs_checkoverlap(bp, ip)
-	struct buf *bp;
-	struct inode *ip;
+ffs_checkoverlap(struct buf *bp, struct inode *ip)
 {
 	struct buf *ebp, *ep;
 	ufs_daddr_t start, last;
@@ -169,10 +159,7 @@ ffs_checkoverlap(bp, ip)
  * check if a block is available
  */
 int
-ffs_isblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	ufs_daddr_t h;
+ffs_isblock(struct fs *fs, unsigned char *cp, ufs_daddr_t h)
 {
 	unsigned char mask;
 
@@ -197,12 +184,8 @@ ffs_isblock(fs, cp, h)
  * check if a block is free
  */
 int
-ffs_isfreeblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	ufs_daddr_t h;
+ffs_isfreeblock(struct fs *fs, unsigned char *cp, ufs_daddr_t h)
 {
-
 	switch ((int)fs->fs_frag) {
 	case 8:
 		return (cp[h] == 0);
@@ -221,12 +204,8 @@ ffs_isfreeblock(fs, cp, h)
  * take a block out of the map
  */
 void
-ffs_clrblock(fs, cp, h)
-	struct fs *fs;
-	u_char *cp;
-	ufs_daddr_t h;
+ffs_clrblock(struct fs *fs, u_char *cp, ufs_daddr_t h)
 {
-
 	switch ((int)fs->fs_frag) {
 	case 8:
 		cp[h] = 0;
@@ -249,14 +228,9 @@ ffs_clrblock(fs, cp, h)
  * put a block into the map
  */
 void
-ffs_setblock(fs, cp, h)
-	struct fs *fs;
-	unsigned char *cp;
-	ufs_daddr_t h;
+ffs_setblock(struct fs *fs, unsigned char *cp, ufs_daddr_t h)
 {
-
 	switch ((int)fs->fs_frag) {
-
 	case 8:
 		cp[h] = 0xff;
 		return;

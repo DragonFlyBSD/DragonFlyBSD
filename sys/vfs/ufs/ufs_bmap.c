@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.5 2003/08/07 21:17:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.6 2004/05/18 00:16:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -58,17 +58,12 @@
  * Bmap converts a the logical block number of a file to its physical block
  * number on the disk. The conversion is done by using the logical block
  * number to index into the array of block pointers described by the dinode.
+ *
+ * ufs_bmap(struct vnode *a_vp, ufs_daddr_t a_bn, struct vnode **a_vpp,
+ *	    ufs_daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
 int
-ufs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		ufs_daddr_t a_bn;
-		struct vnode **a_vpp;
-		ufs_daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+ufs_bmap(struct vop_bmap_args *ap)
 {
 	/*
 	 * Check for underlying vnode requests and ensure that logical
@@ -98,14 +93,8 @@ ufs_bmap(ap)
  */
 
 int
-ufs_bmaparray(vp, bn, bnp, ap, nump, runp, runb)
-	struct vnode *vp;
-	ufs_daddr_t bn;
-	ufs_daddr_t *bnp;
-	struct indir *ap;
-	int *nump;
-	int *runp;
-	int *runb;
+ufs_bmaparray(struct vnode *vp, ufs_daddr_t bn, ufs_daddr_t *bnp,
+	      struct indir *ap, int *nump, int *runp, int *runb)
 {
 	struct inode *ip;
 	struct buf *bp;
@@ -239,11 +228,7 @@ ufs_bmaparray(vp, bn, bnp, ap, nump, runp, runb)
  * once with the offset into the page itself.
  */
 int
-ufs_getlbns(vp, bn, ap, nump)
-	struct vnode *vp;
-	ufs_daddr_t bn;
-	struct indir *ap;
-	int *nump;
+ufs_getlbns(struct vnode *vp, ufs_daddr_t bn, struct indir *ap, int *nump)
 {
 	long blockcnt, metalbn, realbn;
 	struct ufsmount *ump;
