@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.20 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.21 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -272,6 +272,9 @@ sequential_heuristic(struct uio *uio, struct file *fp)
 
 /*
  * Package up an I/O request on a vnode into a uio and do it.
+ *
+ * We are going to assume the caller has done the appropriate
+ * VOP_LEASE() call before calling vn_rdwr()
  */
 int
 vn_rdwr(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)

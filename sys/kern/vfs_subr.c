@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.30 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.31 2004/05/21 15:41:23 drhodus Exp $
  */
 
 /*
@@ -323,33 +323,6 @@ vfs_rootmountalloc(char *fstypename, char *devname, struct mount **mpp)
 	*mpp = mp;
 	return (0);
 }
-
-/*
- * Find an appropriate filesystem to use for the root. If a filesystem
- * has not been preselected, walk through the list of known filesystems
- * trying those that have mountroot routines, and try them until one
- * works or we have tried them all.
- */
-#ifdef notdef	/* XXX JH */
-int
-lite2_vfs_mountroot()
-{
-	struct vfsconf *vfsp;
-	extern int (*lite2_mountroot) (void);
-	int error;
-
-	if (lite2_mountroot != NULL)
-		return ((*lite2_mountroot)());
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
-		if (vfsp->vfc_mountroot == NULL)
-			continue;
-		if ((error = (*vfsp->vfc_mountroot)()) == 0)
-			return (0);
-		printf("%s_mountroot failed: %d\n", vfsp->vfc_name, error);
-	}
-	return (ENODEV);
-}
-#endif
 
 /*
  * Lookup a mount point by filesystem identifier.

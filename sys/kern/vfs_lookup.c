@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.11 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.12 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -120,6 +120,7 @@ namei(struct nameidata *ndp)
 
 	/*
 	 * Don't allow empty pathnames.
+	 * POSIX.1 requirement: "" is not a vaild file name.
 	 */
 	if (!error && *cnp->cn_pnbuf == '\0')
 		error = ENOENT;

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.34 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.35 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -511,7 +511,7 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 #ifdef DEBUG
 static int syncprt = 0;
 SYSCTL_INT(_debug, OID_AUTO, syncprt, CTLFLAG_RW, &syncprt, 0, "");
-#endif
+#endif /* DEBUG */
 
 /* ARGSUSED */
 int
@@ -540,16 +540,13 @@ sync(struct sync_args *uap)
 		vfs_unbusy(mp, td);
 	}
 	lwkt_reltoken(&ilock);
-#if 0
 /*
- * XXX don't call vfs_bufstats() yet because that routine
- * was not imported in the Lite2 merge.
+ * print out buffer pool stat information on each sync() call.
  */
-#ifdef DIAGNOSTIC
+#ifdef DEBUG
 	if (syncprt)
 		vfs_bufstats();
-#endif /* DIAGNOSTIC */
-#endif
+#endif /* DEBUG */
 	return (0);
 }
 
@@ -3216,3 +3213,36 @@ extattr_delete_file(struct extattr_delete_file_args *uap)
 	NDFREE(&nd, 0);
 	return(error);
 }
+
+/*
+ * print out statistics from the current status of the buffer pool
+ * this can be toggeled by the system control option debug.syncprt
+ */
+#ifdef DEBUG
+void
+vfs_bufstats(void)
+{
+        int s, i, j, count;
+        struct buf *bp;
+        struct bqueues *dp;
+        int counts[(MAXBSIZE / PAGE_SIZE) + 1];
+        static char *bname[3] = { "LOCKED", "LRU", "AGE" };
+
+        for (dp = bufqueues, i = 0; dp < &bufqueues[3]; dp++, i++) {
+                count = 0;
+                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
+                        counts[j] = 0;
+                s = splbio();
+                TAILQ_FOREACH(bp, dp, b_freelist) {
+                        counts[bp->b_bufsize/PAGE_SIZE]++;
+                        count++;
+                }
+                splx(s);
+                printf("%s: total-%d", bname[i], count);
+                for (j = 0; j <= MAXBSIZE/PAGE_SIZE; j++)
+                        if (counts[j] != 0)
+                                printf(", %d-%d", j * PAGE_SIZE, counts[j]);
+                printf("\n");
+        }
+}
+#endif

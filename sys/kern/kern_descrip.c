@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.24 2004/05/19 22:52:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.25 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #include "opt_compat.h"
@@ -983,8 +983,7 @@ fdinit(p)
 	if (newfdp->fd_fd.fd_cdir)
 		vref(newfdp->fd_fd.fd_cdir);
 	newfdp->fd_fd.fd_rdir = fdp->fd_rdir;
-	if (newfdp->fd_fd.fd_rdir)
-		vref(newfdp->fd_fd.fd_rdir);
+	vref(newfdp->fd_fd.fd_rdir);
 	newfdp->fd_fd.fd_jdir = fdp->fd_jdir;
 	if (newfdp->fd_fd.fd_jdir)
 		vref(newfdp->fd_fd.fd_jdir);
@@ -1031,6 +1030,11 @@ fdcopy(p)
 	bcopy(fdp, newfdp, sizeof(struct filedesc));
 	if (newfdp->fd_cdir)
 		vref(newfdp->fd_cdir);
+	/*
+	 * We must check for fd_rdir here, at least for now because
+	 * the init process is created before we have access to the
+	 * rootvode to take a reference to it.
+	 */
 	if (newfdp->fd_rdir)
 		vref(newfdp->fd_rdir);
 	if (newfdp->fd_jdir)
@@ -1193,8 +1197,7 @@ fdfree(struct proc *p)
 		FREE(fdp->fd_ofiles, M_FILEDESC);
 	if (fdp->fd_cdir)
 		vrele(fdp->fd_cdir);
-	if (fdp->fd_rdir)
-		vrele(fdp->fd_rdir);
+	vrele(fdp->fd_rdir);
 	if (fdp->fd_jdir)
 		vrele(fdp->fd_jdir);
 	if (fdp->fd_knlist)

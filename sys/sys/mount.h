@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.10 2004/03/12 22:05:53 joerg Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.11 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -440,6 +440,7 @@ int	vfs_lock (struct mount *);         /* lock a vfs */
 void	vfs_msync (struct mount *, int);
 void	vfs_unlock (struct mount *);       /* unlock a vfs */
 int	vfs_busy (struct mount *, int, struct lwkt_tokref *, struct thread *);
+void	vfs_bufstats(void);
 int	vfs_export			    /* process mount export info */
 	  (struct mount *, struct netexport *, struct export_args *);
 struct	netcred *vfs_export_lookup	    /* lookup host in fs export list */

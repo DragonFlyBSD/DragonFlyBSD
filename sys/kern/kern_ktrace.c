@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.14 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.15 2004/05/21 15:41:23 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -487,11 +487,11 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 		if (uio != NULL)
 			kth->ktr_len += uio->uio_resid;
 	}
+	VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-	(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 	error = VOP_WRITE(vp, &auio, IO_UNIT | IO_APPEND, p->p_ucred);
 	if (error == 0 && uio != NULL) {
-		(void)VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
+		VOP_LEASE(vp, td, p->p_ucred, LEASE_WRITE);
 		error = VOP_WRITE(vp, uio, IO_UNIT | IO_APPEND, p->p_ucred);
 	}
 	VOP_UNLOCK(vp, NULL, 0, td);
