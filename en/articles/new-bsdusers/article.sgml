@@ -1,0 +1,293 @@
+<!-- $DragonFly: doc/en/articles/new-bsdusers/article.sgml,v 1.1 2004/09/14 18:03:42 justin Exp $ -->
+
+<!DOCTYPE ARTICLE PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+%man;
+<!ENTITY % mailing-lists PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN">
+%mailing-lists;
+<!ENTITY % urls PUBLIC "-//DragonFlyBSD//ENTITIES DocBook URL Entities//EN">
+%urls;
+
+]>
+
+<article>
+  <articleinfo>
+    <title>A Quick Start on DragonFly</title>
+
+    <authorgroup>
+      <author>
+        <firstname>Justin</firstname>
+        <surname>Sherrill</surname>
+        <affiliation>
+          <address><email>justin@shiningsilence.com</email></address>
+        </affiliation>
+      </author>
+    </authorgroup>
+
+    <pubdate>August 30, 2004</pubdate>
+
+    <abstract>
+      <para>This document covers a number of first steps to take with a 
+      newly installed DragonFly system.  It assumes some experience with a 
+      command line, and moves quickly.  Much of this information is covered 
+      in further depth in the Handbook; the minimum is presented here for 
+      the benefit of readers who are already familiar with the material, 
+      or just impatient.</para>
+    </abstract>
+  </articleinfo>
+
+  <sect1>
+    <title>Keeping up to date</title>
+
+    <para>cvsup is used to copy fresh source code and up-to-date ports to 
+    your system.  cvsup uses a configuration file to determine what to download.  
+    A number of example files are stored in 
+    <filename>/usr/share/examples/cvsup/</filename> and will be used here.</para>
+    
+    <sect2>
+    <title>Pulling in data</title>
+    
+    <para>Three different areas of code are downloaded.  First, the up-to-date source 
+    of DragonFly is downloaded into <filename>/usr/src/</filename>, so that the system 
+    may be rebuilt and updated.  Next, the Ports tree - all the files that make up the 
+    FreeBSD third-party software management system - is downloaded 
+    into <filename>/usr/ports/</filename>.  Third and last, dfports, which is 
+    the DragonFly-specific overrides to various ports in the FreeBSD ports 
+    collection, is downloaded into <filename>/usr/dfports/</filename>.</para>
+    
+    <para>The -h option in the examples below determine what server is used.  
+    It is better for everyone if the load is spread among the mirror servers out there.
+    For DRAGONFLY-MIRROR below, substitute a cvsup mirror listed on the 
+    <ulink url="http://www.dragonflybsd.org/main/download.cgi">Download page</ulink> 
+    on the DragonFly website.  For FREEBSD-MIRROR, substitute a 
+    FreeBSD server listed as near your location, taken from the FreeBSD mirror list.</para>
+    
+    <para>To keep up-to-date source in /usr/src/:</para>
+      
+      <informalexample>
+        <screen>&prompt.root; <userinput>cvsup -g -L 2 -h DRAGONFLY-MIRROR /usr/share/examples/cvsup/DragonFly-src-supfile</userinput></screen>
+      </informalexample>
+    
+    <para>To keep the Ports tree current in /usr/ports/:</para>
+
+      <informalexample>
+        <screen>&prompt.root; <userinput>cvsup -g -L 2 -h FREEBSD-MIRROR /usr/share/examples/cvsup/FreeBSD-ports-supfile</userinput></screen>
+      </informalexample>
+    
+    <para>To keep the dfports tree updated in /usr/dfports/:</para>
+
+      <informalexample>
+        <screen>&prompt.root; <userinput>cvsup -g -L 2 -h DRAGONFLY-MIRROR /usr/share/examples/cvsup/DragonFly-dfports-supfile</userinput></screen>
+      </informalexample>
+    
+    </sect2>
+    
+    <sect2>
+    <title>Updating the operating system</title>
+    
+    <para>If there's not a lot happening on your system, you can do this:</para>
+    
+      <informalexample>
+<screen>&prompt.root; <userinput>cd /usr/src && make buildworld && make buildkernel</userinput>
+&prompt.root; <userinput>make installkernel && make installworld && make upgrade</userinput>
+&prompt.root; <userinput>reboot</userinput>
+</screen>
+      </informalexample>
+
+    <para>If a build step fails, wait a short while and update using 
+    <filename>cvsup</filename>.  DragonFly is under heavy development, and while it has 
+    remained remarkably stable, it is possible someone was in the middle of a commit 
+    while the source on disk was downloaded.  If it does not work on a second try, report 
+    it to &a.bugs.name;.</para>
+    
+    <para>When sending a question to &a.bugs.name;, please describe what you were doing at the time 
+    the error happened, and include the error data.</para>
+    
+    <para>If your problem gets solved, please post a followup message to &a.bugs.name explaining 
+    what the fix was; this will help others in the future who encounter the same problem, or 
+    people looking to fix unresolved problem reports.</para> 
+    
+    <para>If you have other programs running or users on your computer, it may be 
+    a good idea to reboot to single-user mode before running any of the install* 
+    targets, as the installation process removes and reads system software.</para>
+
+<!-- TODO: makevar maketarget -->
+
+<!-- TODO: figure out what 'makevar maketarget' meant when I wrote it.  -->
+<!-- I was sleepy.  - Justin -->
+    
+    <para>If you have a custom kernel config file in 
+    <filename>/usr/src/sys/i386/conf</filename>, replace 
+    <command>make buildkernel</command> and 
+    <command>make installkernel</command> with 
+    <command>make buildkernel KERNCONF=<replaceable>KERNELNAME</replaceable></command> 
+    and <command>make installkernel KERNCONF=<replaceable>KERNELNAME</replaceable></command>, 
+    where <replaceable>KERNELNAME</replaceable> is the name of that configuration file.</para>
+    
+    <para>Once a full buildworld/kernel has been done, 'quickkernel' and 'quickworld' can be 
+    used instead for quicker results.  Drop back to buildworld/installworld if the 
+    'quick' targets cause errors.</para>
+    </sect2>
+    
+  </sect1>
+  
+  <sect1>
+    <title>Installing software</title>
+    
+    <para>DragonFly currently does not have a native packaging system for third-party 
+    software.  Currently, the FreeBSD ports system is used.  The FreeBSD Ports system 
+    keeps a 'skeleton' of files on your hard disk in 
+    <filename>/usr/ports/</filename> (see above on how to update) which allow you 
+    to automatically download and install programs and their dependencies.</para> 
+  
+    <para>To install a program, find its port directory, enter it, and type 'make install'
+    to install.  'make deinstall' will remove the program, and 'make distclean' will remove
+    any files leftover from downloading.  More information is available.</para>
+    
+    <para>Some ports may break because of differences between FreeBSD and DragonFly.  
+    Even if the port does work, it can take a long time to build the software from source.
+    Conveniently, there is an alternative.  Prebuilt packages for DragonFly are available 
+    at gobsd.org, and can be added automatically using pkg_add -r packagename.</para>
+    
+    <note>
+      <para>In general, try the package first.  It will work just as well, if not 
+      better, and install much more quickly.</para>
+    </note>
+  
+  </sect1>  
+  
+  <sect1>
+    <title>Getting to a Desktop</title>
+    
+    <para>The two major requirements to get a "desktop" computer is installing 
+    X Windows, and installing a window environment.</para>
+    
+    <sect2>
+    
+    <title>X Windows</title>
+    <para>The easiest way to get X Windows installed is to add the package:</para>
+    
+    <informalexample>
+      <screen>&prompt.root; <userinput>pkg_add -r XFree86</userinput></screen>
+    </informalexample>
+    
+    <para>It is possible, as <username>root</username>, to have X probe your hardware and build a 
+    suitable configuration file for your machine.</para>
+    
+    <informalexample>
+      <screen>&prompt.root; <userinput>XFree86 -configure > XF86Config.new</userinput></screen>
+    </informalexample>
+    
+    <para>It's also possible to use the programs xf86cfg or xf86config to generate a 
+    configuration file.  xf86cfg is graphical, and autoconfigures itself for display.  If 
+    it has trouble displaying, try it with the '-textmode' argument.  As a final option, 
+    xf86config is a text program that will attempt to display choices for building a working 
+    configuration.  Both require some knowledge of the hardware located inside the computer.  
+    It may be useful to know the video card chipset and the hsync and vsync of the 
+    monitor being used.</para>
+    
+    <para>Once the XF86Config.new file is created, try starting X with that 
+    as the config file.</para>
+    
+    <informalexample>
+      <screen>&prompt.root; <userinput>XFree86 -xf86config XF86Config.new</userinput></screen>
+    </informalexample>
+    
+    <para>Assuming all goes well, this will place you in a minimal X environment, using 
+    the program twm for layout.  You'll see several xterms on the screen, from which   
+    <keycombo><keycap>Ctrl</keycap><keycap>Alt</keycap><keycap>Backspace</keycap></keycombo>
+    will exit you back out.  If everything does not go well - 
+    the screen goes blank, or is garbled - 
+    <keycombo><keycap>Ctrl</keycap><keycap>Alt</keycap><keycap>Backspace</keycap></keycombo>
+    will end X and you can modify the config file (see man XF86Config) and check the log 
+    from X's startup in <filename>/var/log/XFree86.0.log</filename>.</para>
+    
+    <para>Note: It is possible to use the new x.org instead of XFree86.  Commands should be 
+    similar, such as xf86cfg being replaced with xorgcfg.</para>
+    
+    <note><para>Mouse wheel support: Look for a section 
+      called "InputDevice" in your XF86Config file which includes the 
+      line {Driver "mouse"}.  Add this text to the next line:</para>
+
+      <programlisting>Option      "Buttons" "5" 
+Option      "ZAxisMapping" "4 5"</programlisting>
+      
+      <para>When XFree86 is next started, you will be able to scroll windows 
+      using your mouse wheel.</para></note>  
+    
+    <para>Once the configuration file is working satisfactorily, copy it to a location where 
+    X will be able to see it by default.
+
+    <informalexample>
+<screen>&prompt.root; <userinput>mkdir /etc/X11</userinput> (if it already doesn't exist)
+&prompt.root; <userinput>cp XF86Config.new /etc/X11/XF86Config</userinput></screen>
+    </informalexample>
+      
+    </sect2>
+    <sect2>
+    
+    <title>Environment</title>
+    <para>The easiest way to have a usable desktop environment is to install one of the 
+    major desktop environments - KDE or Gnome.</para>
+    
+    <informalexample>
+<screen>&prompt.root; <userinput>pkg_add -r kde3</userinput></screen>
+    </informalexample>
+
+<para><emphasis>or</emphasis></para>
+
+    <informalexample>
+<screen>&prompt.root; <userinput>pkg_add -r gnome2</userinput></screen>
+    </informalexample>
+    
+    <para>To enable KDE after installing, put 'startkde' into a file called .xinitrc in your 
+    home directory.   Typing "startx" after that point (assuming you have X Windows installed 
+    and configured) will get you a graphical desktop.</para>
+    
+    <informalexample>
+      <screen>&prompt.root; <userinput>echo "startkde" > ~/.xinitrc</userinput></screen>
+    </informalexample>
+
+    <para>A similar procedure can enable the Gnome Desktop instead.</para>
+    
+    <informalexample>
+      <screen>&prompt.root; <userinput>echo "gnome-session" > ~/.xinitrc</userinput></screen>
+    </informalexample>
+
+    </sect2>
+  
+</sect1>
+
+<sect1>
+  <title>Other resources</title>
+  
+      <itemizedlist>
+	<listitem>
+	  <para>The DragonFly BSD website: 
+	    <ulink url="http://www.dragonflybsd.org/">http://www.dragonflybsd.org/</ulink></para>
+	</listitem>
+
+	<listitem>
+	  <para>The DragonFly BSD Handbook: 
+            <ulink url="http://www.www.forknibbler.com/handbook/">http://www.forknibbler.com/handbook/</ulink></para>
+	</listitem>
+
+        <listitem>
+          <para>DragonFly BSD Mailing List Archives
+	    <ulink url="http://leaf.dragonflybsd.org/mailarchive/">http://leaf.dragonflybsd.org/mailarchive/</ulink></para>
+        </listitem>
+
+	<listitem>
+	  <para>The DragonFly BSD Log
+	    <ulink url="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsdlog/</ulink></para>
+	</listitem>
+	
+	<listitem>
+	  <para>The DragonFly BSD Bugzilla bug tracker
+	    <ulink url="http://www.forknibbler.com/bugzilla/">http://www.forknibbler.com/bugzilla/</ulink></para>
+	</listitem>
+
+      </itemizedlist>
+
+  </sect1>
+</article>
