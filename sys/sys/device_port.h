@@ -25,10 +25,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/device_port.h,v 1.1.2.1 2000/10/29 11:05:45 non Exp $
- * $DragonFly: src/sys/sys/device_port.h,v 1.4 2004/12/21 22:43:38 joerg Exp $
+ * $DragonFly: src/sys/sys/device_port.h,v 1.5 2004/12/22 01:33:21 joerg Exp $
  */
 
-#ifdef _SYS_DEVICE_PORT_H_
+#ifndef _SYS_DEVICE_PORT_H_
 #define	_SYS_DEVICE_PORT_H_
 
 #if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
