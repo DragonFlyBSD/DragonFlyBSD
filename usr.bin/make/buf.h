@@ -40,7 +40,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.10 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.11 2005/01/06 21:04:20 okumoto Exp $
  */
 
 /*-
@@ -82,10 +82,6 @@ typedef struct Buffer {
 
 void Buf_OvAddByte(Buffer *, Byte);
 void Buf_AddBytes(Buffer *, size_t, const Byte *);
-void Buf_UngetByte(Buffer *, Byte);
-void Buf_UngetBytes(Buffer *, size_t, Byte *);
-int Buf_GetByte(Buffer *);
-int Buf_GetBytes(Buffer *, size_t, Byte *);
 Byte *Buf_GetAll(Buffer *, size_t *);
 void Buf_Discard(Buffer *, size_t);
 size_t Buf_Size(Buffer *);
