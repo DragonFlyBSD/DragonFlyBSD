@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.25 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.26 2005/03/31 21:48:32 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -70,7 +70,6 @@ struct Lst {
 };
 typedef	struct	Lst Lst;
 
-typedef	int CompareProc(const void *, const void *);
 typedef	void *DuplicateProc(void *);
 typedef	void FreeProc(void *);
 
@@ -138,10 +137,7 @@ void	Lst_Concat(Lst *, Lst *, int);
 /*
  * Functions for entire lists
  */
-/* Find an element in a list */
-#define	Lst_Find(LST, D, FN)	(Lst_FindFrom((LST), Lst_First(LST), (D), (FN)))
-/* Find an element starting from somewhere */
-LstNode		*Lst_FindFrom(Lst *, LstNode *, const void *, CompareProc *);
+
 /*
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum

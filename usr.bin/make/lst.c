@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/lst.c,v 1.3 2005/03/16 20:03:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.c,v 1.4 2005/03/31 21:48:32 okumoto Exp $
  */
 
 /*-
@@ -265,49 +265,6 @@ Lst_Duplicate(Lst *dst, Lst *src, DuplicateProc *copyProc)
 	else
 	    Lst_AtEnd(dst, ln->datum);
 	ln = ln->nextPtr;
-    }
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Lst_FindFrom --
- *	Search for a node starting and ending with the given one on the
- *	given list using the passed datum and comparison function to
- *	determine when it has been found.
- *
- * Results:
- *	The found node or NULL
- *
- * Side Effects:
- *	None.
- *
- *-----------------------------------------------------------------------
- */
-LstNode *
-Lst_FindFrom(Lst *l, LstNode *ln, const void *d, CompareProc *cProc)
-{
-    LstNode *tln;
-    Boolean	found = FALSE;
-
-    if (!Lst_Valid(l) || Lst_IsEmpty(l) || !Lst_NodeValid(ln, l)) {
-	return (NULL);
-    }
-
-    tln = ln;
-
-    do {
-	if ((*cProc)(tln->datum, d) == 0) {
-	    found = TRUE;
-	    break;
-	} else {
-	    tln = tln->nextPtr;
-	}
-    } while (tln != ln && tln != NULL);
-
-    if (found) {
-	return (tln);
-    } else {
-	return (NULL);
     }
 }
 
