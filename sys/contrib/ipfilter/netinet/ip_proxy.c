@@ -5,9 +5,9 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.6 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.7 2004/02/12 22:35:47 joerg Exp $
  */
-#if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
 #endif
 
@@ -19,7 +19,7 @@
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/file.h>
-#if !defined(__FreeBSD_version)  
+#if !defined(__DragonFly__) && !defined(__FreeBSD_version)  
 # include <sys/ioctl.h>      
 #endif
 #include <sys/fcntl.h>
@@ -51,7 +51,7 @@
 # include <sys/stream.h>
 # include <sys/kmem.h>
 #endif
-#if __FreeBSD__ > 2
+#if defined(__DragonFly__) || __FreeBSD__ > 2
 # include <sys/queue.h>
 #endif
 #include <net/if.h>
@@ -74,7 +74,7 @@
 #include "ip_nat.h"
 #include "ip_state.h"
 #include "ip_proxy.h"
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <sys/malloc.h>
 #endif
 

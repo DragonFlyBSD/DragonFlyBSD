@@ -5,7 +5,7 @@
  *
  * $Id: ip_auth.h,v 2.1 1999/08/04 17:29:54 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.h,v 1.10.2.4 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.h,v 1.3 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.h,v 1.4 2004/02/12 22:35:47 joerg Exp $
  *
  */
 #ifndef	__IP_AUTH_H__
@@ -54,7 +54,7 @@ extern	void	fr_authexpire (void);
 extern	void	fr_authunload (void);
 extern	mb_t	*fr_authpkts[];
 extern	int	fr_newauth (mb_t *, fr_info_t *, ip_t *);
-#if defined(__NetBSD__) || defined(__OpenBSD__) || \
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || \
     (__FreeBSD_version >= 300003)
 extern	int	fr_preauthcmd (u_long, frentry_t *, frentry_t **);
 extern	int	fr_auth_ioctl (caddr_t, int, u_long);

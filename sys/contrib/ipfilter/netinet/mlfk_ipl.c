@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.9.2.2 2002/04/27 17:37:12 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.4 2003/08/07 21:16:48 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/mlfk_ipl.c,v 1.5 2004/02/12 22:35:47 joerg Exp $
  */
 
 
@@ -39,7 +39,7 @@
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#if (__FreeBSD_version >= 199511)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 199511)
 # include <net/route.h>
 # include <netinet/ip_var.h>
 # include <netinet/tcp.h>

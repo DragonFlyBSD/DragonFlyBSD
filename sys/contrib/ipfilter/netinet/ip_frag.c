@@ -6,7 +6,7 @@
  * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.4 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.5 2004/02/12 22:35:47 joerg Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -25,7 +25,7 @@
 # include <string.h>
 # include <stdlib.h>
 #endif
-#if (defined(KERNEL) || defined(_KERNEL)) && (__FreeBSD_version >= 220000)
+#if (defined(KERNEL) || defined(_KERNEL)) && (defined(__DragonFly__) || __FreeBSD_version >= 220000)
 # include <sys/filio.h>
 # include <sys/fcntl.h>
 #else
@@ -74,7 +74,7 @@
 #include "ip_frag.h"
 #include "ip_state.h"
 #include "ip_auth.h"
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <sys/malloc.h>
 # if (defined(KERNEL) || defined(_KERNEL))
 #  ifndef IPFILTER_LKM
@@ -601,7 +601,7 @@ void ipfr_slowtimer()
 #  if defined(__NetBSD__) && (__NetBSD_Version__ >= 104240000)
 	callout_reset(&ipfr_slowtimer_ch, hz / 2, ipfr_slowtimer, NULL);
 #  else
-#   if (__FreeBSD_version >= 300000)
+#   if defined(__DragonFly__) || __FreeBSD_version >= 300000
 	ipfr_slowtimer_ch = timeout(ipfr_slowtimer, NULL, hz/2);
 #   else
 #    if defined(__OpenBSD__)

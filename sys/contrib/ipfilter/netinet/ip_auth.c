@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.5 2003/09/15 23:38:12 hsu Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -20,7 +20,7 @@
 # include <stdlib.h>
 # include <string.h>
 #endif
-#if (defined(KERNEL) || defined(_KERNEL)) && (__FreeBSD_version >= 220000)
+#if (defined(KERNEL) || defined(_KERNEL)) && (defined(__DragonFly__) || __FreeBSD_version >= 220000)
 # include <sys/filio.h>
 # include <sys/fcntl.h>
 #else
@@ -46,7 +46,7 @@
 # include <sys/stream.h>
 # include <sys/kmem.h>
 #endif
-#if (_BSDI_VERSION >= 199802) || (__FreeBSD_version >= 400000)
+#if defined(__DragonFly__) || (_BSDI_VERSION >= 199802) || (__FreeBSD_version >= 400000)
 # include <sys/queue.h>
 #endif
 #if defined(__NetBSD__) || defined(__OpenBSD__) || defined(bsdi)
@@ -80,7 +80,7 @@
 extern struct ifqueue   ipintrq;		/* ip packet input queue */
 #else
 # ifndef linux
-#  if __FreeBSD_version >= 300000
+#  if defined(__DragonFly__) || __FreeBSD_version >= 300000
 #   include <net/if_var.h>
 #  endif
 #  include <netinet/in_var.h>
@@ -95,11 +95,11 @@ extern struct ifqueue   ipintrq;		/* ip packet input queue */
 #include "ip_auth.h"
 #if !SOLARIS && !defined(linux)
 # include <net/netisr.h>
-# ifdef __FreeBSD__
+# if defined(__DragonFly__) || defined(__FreeBSD__)
 #  include <machine/cpufunc.h>
 # endif
 #endif
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 # if (defined(_KERNEL) || defined(KERNEL)) && !defined(IPFILTER_LKM)
 #  include <sys/libkern.h>
@@ -306,7 +306,7 @@ ip_t *ip;
 int fr_auth_ioctl(data, mode, cmd)
 caddr_t data;
 int mode;
-#if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
 u_long cmd;
 #else
 int cmd;
@@ -314,7 +314,7 @@ int cmd;
 {
 	mb_t *m;
 #if defined(_KERNEL) && !SOLARIS
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 	struct ifqueue *ifq;
 #endif
 	int s;
@@ -419,7 +419,7 @@ fr_authioctlloop:
 
 			bzero((char *)&ro, sizeof(ro));
 #  if ((_BSDI_VERSION >= 199802) && (_BSDI_VERSION < 200005)) || \
-       defined(__OpenBSD__) || (defined(IRIX) && (IRIX >= 605)) || \
+       defined(__DragonFly__) || defined(__OpenBSD__) || (defined(IRIX) && (IRIX >= 605)) || \
        (__FreeBSD_version >= 470102)
 			error = ip_output(m, NULL, &ro, IP_FORWARDING, NULL,
 					  NULL);
@@ -438,7 +438,7 @@ fr_authioctlloop:
 # if SOLARIS
 			error = (fr_qin(fra->fra_q, m) == 0) ? EINVAL : 0;
 # else /* SOLARIS */
-# ifdef __FreeBSD__
+# if defined(__DragonFly__) || defined(__FreeBSD__)
 			error = netisr_queue(NETISR_IP, m);
 # else
 			ifq = &ipintrq;
@@ -603,7 +603,7 @@ void fr_authexpire()
 }
 
 int fr_preauthcmd(cmd, fr, frptr)
-#if defined(__NetBSD__) || defined(__OpenBSD__) || \
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || \
 	(_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
 u_long cmd;
 #else

@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.5 2003/12/02 08:00:22 asmodai Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -477,8 +477,8 @@ typedef	struct	ipflog	{
 #define	IPL_LOGAUTH	3
 #define	IPL_LOGMAX	3
 
-#if !defined(CDEV_MAJOR) && defined (__FreeBSD_version) && \
-    (__FreeBSD_version >= 220000)
+#if !defined(CDEV_MAJOR) && (defined(__DragonFly__) || \
+    (defined (__FreeBSD_version) && __FreeBSD_version >= 220000))
 # define	CDEV_MAJOR	79
 #endif
 
@@ -508,7 +508,7 @@ extern	int	send_icmp_err (ip_t *, int, fr_info_t *, int);
 extern	int	ipf_log (void);
 extern	struct	ifnet *get_unit (char *, int);
 extern	int	mbuflen (mb_t *);
-# if defined(__NetBSD__) || defined(__OpenBSD__) || \
+# if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || \
 	  (_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
 extern	int	iplioctl (dev_t, u_long, caddr_t, int);
 # else
@@ -563,15 +563,15 @@ extern	void	ipfilter_sgi_intfsync (void);
 #   ifdef	IPFILTER_LKM
 extern	int	iplidentify (char *);
 #   endif
-#ifdef	__FreeBSD__
+#if	defined(__DragonFly__) || defined(__FreeBSD__)
 extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct thread *);
 extern	int	iplopen (dev_t, int, int, struct thread *);
 extern	int	iplclose (dev_t, int, int, struct thread *);
 #else
-#   if (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
+#   if defined(__DragonFly__) || (_BSDI_VERSION >= 199510) || (__FreeBSD_version >= 220000) || \
       (NetBSD >= 199511) || defined(__OpenBSD__)
 #    if defined(__NetBSD__) || (_BSDI_VERSION >= 199701) || \
-       defined(__OpenBSD__) || (__FreeBSD_version >= 300000)
+       defined(__OpenBSD__) || defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 extern	int	iplioctl (dev_t, u_long, caddr_t, int, struct proc *);
 #    else
 extern	int	iplioctl (dev_t, int, caddr_t, int, struct proc *);

@@ -12,7 +12,7 @@
  * For more details, see QNX_OCL.txt provided with this distribution.
  *
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.2.2.2 2002/08/31 16:24:52 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.3 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_h323_pxy.c,v 1.4 2004/02/12 22:35:47 joerg Exp $
  */
 
 /*
@@ -22,7 +22,7 @@
  *	ported to ipfilter 3.4.20 by Michael Grant mg-ipf@grant.org
  */
 
-#if __FreeBSD_version >= 220000 && defined(_KERNEL)
+#if (defined(__DragonFly__) || __FreeBSD_version >= 220000) && defined(_KERNEL)
 # include <sys/fcntl.h>
 # include <sys/filio.h>
 #else

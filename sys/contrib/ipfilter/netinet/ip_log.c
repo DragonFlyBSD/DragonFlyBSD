@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.4 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.5 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -15,13 +15,13 @@
     defined(_KERNEL)
 # include "opt_ipfilter_log.h"
 #endif
-#ifdef  __FreeBSD__
+#if  defined(__DragonFly__) || defined(__FreeBSD__)
 # if defined(IPFILTER_LKM) || defined(_KERNEL)
 #  if !defined(__FreeBSD_version) 
 #   include <sys/osreldate.h>
 #  endif
 #  if !defined(IPFILTER_LKM)
-#   if defined(__FreeBSD_version) && (__FreeBSD_version >= 300000)
+#   if defined(__DragonFly__) || (defined(__FreeBSD_version) && (__FreeBSD_version >= 300000))
 #    include "opt_ipfilter.h"
 #   endif
 #  endif
@@ -50,7 +50,7 @@
 # include <sys/errno.h>
 # include <sys/types.h>
 # include <sys/file.h>
-# if __FreeBSD_version >= 220000 && defined(_KERNEL)
+# if (defined(__DragonFly__) || __FreeBSD_version >= 220000) && defined(_KERNEL)
 #  include <sys/fcntl.h>
 #  include <sys/filio.h>
 # else
@@ -61,7 +61,7 @@
 #  include <sys/systm.h>
 # endif
 # if !SOLARIS
-#  if (NetBSD > 199609) || (OpenBSD > 199603) || (__FreeBSD_version >= 300000)
+#  if defined(__DragonFly__) || (NetBSD > 199609) || (OpenBSD > 199603) || (__FreeBSD_version >= 300000)
 #   include <sys/dirent.h>
 #  else
 #   include <sys/dir.h>
@@ -86,7 +86,7 @@
 # ifdef sun
 #  include <net/af.h>
 # endif
-# if __FreeBSD_version >= 300000
+# if defined(__DragonFly__) || __FreeBSD_version >= 300000
 #  include <net/if_var.h>
 # endif
 # include <net/route.h>
@@ -116,7 +116,7 @@
 # include "ip_compat.h"
 # include <netinet/tcpip.h>
 # include "ip_fil.h"
-# if (__FreeBSD_version >= 300000)
+# if defined(__DragonFly__) || __FreeBSD_version >= 300000
 #  include <sys/malloc.h>
 # endif
 
@@ -367,7 +367,7 @@ int *types, cnt;
 #  if SOLARIS || defined(sun)
 	uniqtime(&ipl->ipl_tv);
 #  else
-#   if BSD >= 199306 || defined(__FreeBSD__) || defined(__sgi)
+#   if defined(__DragonFly__) || BSD >= 199306 || defined(__FreeBSD__) || defined(__sgi)
 	microtime(&ipl->ipl_tv);
 #   endif
 #  endif
@@ -453,7 +453,7 @@ struct uio *uio;
 # endif /* SOLARIS */
 	}
 
-# if BSD >= 199306 || defined(__FreeBSD__)
+# if defined(__DragonFly__) || BSD >= 199306 || defined(__FreeBSD__)
 	uio->uio_rw = UIO_READ;
 # endif
 

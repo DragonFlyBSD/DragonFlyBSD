@@ -6,7 +6,7 @@
  * @(#)ip_compat.h	1.8 1/14/96
  * $Id: ip_compat.h,v 2.26.2.46 2002/06/27 14:39:40 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.13.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.8 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_compat.h,v 1.9 2004/02/12 22:35:47 joerg Exp $
  */
 
 #ifndef	__IP_COMPAT_H__
@@ -205,6 +205,12 @@ typedef	 int	minor_t;
 # define	QUAD_T		long
 #endif /* BSD > 199306 */
 
+#if defined(__DragonFly__)
+# include <sys/param.h>
+# ifdef IPFILTER_LKM
+#  define       ACTUALLY_LKM_NOT_KERNEL
+# endif
+#endif
 
 #if defined(__FreeBSD__) && (defined(KERNEL) || defined(_KERNEL))
 # include <sys/param.h>
@@ -237,14 +243,14 @@ typedef	 int	minor_t;
 /*
  * These operating systems already take care of the problem for us.
  */
-#if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__) || \
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__) || \
     defined(__sgi)
 typedef u_int32_t       u_32_t;
 # if defined(_KERNEL) && !defined(IPFILTER_LKM)
 #  if defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 104110000)
 #   include "opt_inet.h"
 #  endif
-#  if defined(__FreeBSD_version) && (__FreeBSD_version >= 400000) && \
+#  if (defined(__DragonFly__) || defined(__FreeBSD_version) && (__FreeBSD_version >= 400000)) && \
       !defined(KLD_MODULE)
 #   include "opt_inet6.h"
 #  endif
@@ -253,7 +259,7 @@ typedef u_int32_t       u_32_t;
 #  endif   
 # endif
 # if !defined(_KERNEL) && !defined(IPFILTER_LKM) && !defined(USE_INET6)
-#  if (defined(__FreeBSD_version) && (__FreeBSD_version >= 400000)) || \
+#  if defined(__DragonFly__) || (defined(__FreeBSD_version) && (__FreeBSD_version >= 400000)) || \
       (defined(OpenBSD) && (OpenBSD >= 200111)) || \
       (defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 105000000))
 #   define USE_INET6
@@ -275,7 +281,7 @@ typedef unsigned int	u_32_t;
 #endif /* __NetBSD__ || __OpenBSD__ || __FreeBSD__ || __sgi */
 
 #ifdef	USE_INET6
-# if defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__)
+# if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__FreeBSD__)
 #  include <netinet/ip6.h>
 #  ifdef	_KERNEL
 #   include <netinet6/ip6_var.h>
@@ -572,14 +578,14 @@ extern	void	m_copyback (struct mbuf *, int, int, caddr_t);
 # ifndef	GET_MINOR
 #  define	GET_MINOR(x)	minor(x)
 # endif
-# if (BSD >= 199306) || defined(__FreeBSD__)
+# if (BSD >= 199306) || defined(__DragonFly__) || defined(__FreeBSD__)
 #  if (defined(__NetBSD_Version__) && (__NetBSD_Version__ < 105180000)) || \
-       defined(__FreeBSD__) || (defined(OpenBSD) && (OpenBSD < 200206)) || \
+       defined(__DragonFly__) || defined(__FreeBSD__) || (defined(OpenBSD) && (OpenBSD < 200206)) || \
        defined(_BSDI_VERSION)
 #   include <vm/vm.h>
 #  endif
-#  if !defined(__FreeBSD__) || (defined (__FreeBSD_version) && \
-      (__FreeBSD_version >= 300000))
+#  if !defined(__FreeBSD__) || (defined(__DragonFly__) || (defined (__FreeBSD_version) && \
+      (__FreeBSD_version >= 300000)))
 #   if (defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 105180000)) || \
        (defined(OpenBSD) && (OpenBSD >= 200111))
 #    include <uvm/uvm_extern.h>

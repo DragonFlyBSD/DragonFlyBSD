@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.8 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.9 2004/02/12 22:35:47 joerg Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -15,8 +15,8 @@
 #if defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
 #endif
-#if defined(_KERNEL) && defined(__FreeBSD_version) && \
-    (__FreeBSD_version >= 400000) && !defined(KLD_MODULE)
+#if defined(_KERNEL) && (defined(__DragonFly__) || (defined(__FreeBSD_version) && \
+    (__FreeBSD_version >= 400000))) && !defined(KLD_MODULE)
 #include "opt_inet6.h"
 #if defined(__DragonFly_version) && (__DragonFly_version >= 100000)
 #include "opt_pfil_hooks.h"
@@ -46,7 +46,7 @@
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <sys/file.h>
-#if __FreeBSD_version >= 220000 && defined(_KERNEL)
+#if (defined(__DragonFly__) || __FreeBSD_version >= 220000) && defined(_KERNEL)
 # include <sys/fcntl.h>
 # include <sys/filio.h>
 #else
@@ -57,7 +57,7 @@
 # include <sys/systm.h>
 #endif
 #if !SOLARIS
-# if (NetBSD > 199609) || (OpenBSD > 199603) || (__FreeBSD_version >= 300000)
+# if defined(__DragonFly__) || (NetBSD > 199609) || (OpenBSD > 199603) || (__FreeBSD_version >= 300000)
 #  include <sys/dirent.h>
 # else
 #  include <sys/dir.h>
@@ -73,7 +73,7 @@
 #ifdef sun
 # include <net/af.h>
 #endif
-#if __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <net/if_var.h>
 # if defined(_KERNEL) && !defined(IPFILTER_LKM)
 #  include "opt_ipfilter.h"
@@ -115,7 +115,7 @@
 #include "ip_state.h"
 #include "ip_proxy.h"
 #include "ip_auth.h"
-#if defined(__FreeBSD_version) && (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && (__FreeBSD_version >= 300000))
 # include <sys/malloc.h>
 #endif
 #ifndef	MIN
@@ -154,7 +154,7 @@ int	ipl_unreach = ICMP_UNREACH_FILTER;
 u_long	ipl_frouteok[2] = {0, 0};
 
 static	int	frzerostats (caddr_t);
-#if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
 static	int	frrequest (int, u_long, caddr_t, int);
 #else
 static	int	frrequest (int, int, caddr_t, int);
@@ -187,7 +187,7 @@ static int	write_output (struct ifnet *, struct mbuf *,
 #endif
 int	fr_running = 0;
 
-#if (__FreeBSD_version >= 300000) && defined(_KERNEL)
+#if (defined(__DragonFly__) || __FreeBSD_version >= 300000) && defined(_KERNEL)
 struct callout_handle ipfr_slowtimer_ch;
 #endif
 #if defined(__NetBSD__) && (__NetBSD_Version__ >= 104230000)
@@ -510,7 +510,7 @@ pfil_error:
 	timeout_set(&ipfr_slowtimer_ch, ipfr_slowtimer, NULL);
 	timeout_add(&ipfr_slowtimer_ch, hz/2);
 #  else
-#   if (__FreeBSD_version >= 300000) || defined(__sgi)
+#   if (defined(__DragonFly__) || __FreeBSD_version >= 300000) || defined(__sgi)
 	ipfr_slowtimer_ch = timeout(ipfr_slowtimer, NULL, hz/2);
 #   else
 	timeout(ipfr_slowtimer, NULL, hz/2);
@@ -549,7 +549,7 @@ int ipldetach()
 # if defined(__NetBSD__) && (__NetBSD_Version__ >= 104230000)
 	callout_stop(&ipfr_slowtimer_ch);
 # else
-#  if (__FreeBSD_version >= 300000)
+#  if (defined(__DragonFly__) || __FreeBSD_version >= 300000)
 	untimeout(ipfr_slowtimer, NULL, ipfr_slowtimer_ch);
 #  else
 #  ifdef __sgi
@@ -661,11 +661,11 @@ int IPL_EXTERN(ioctl)(dev_t dev, int cmd, caddr_t data, int mode
 )
 #else
 int IPL_EXTERN(ioctl)(dev, cmd, data, mode
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 , td)
 struct thread *td;
 # elif (defined(_KERNEL) && ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || \
-       (NetBSD >= 199511) || (__FreeBSD_version >= 220000) || \
+       (NetBSD >= 199511) || defined(__DragonFly__) || (__FreeBSD_version >= 220000) || \
        defined(__OpenBSD__)))
 , p)
 struct proc *p;
@@ -674,7 +674,7 @@ struct proc *p;
 # endif
 dev_t dev;
 # if defined(__NetBSD__) || defined(__OpenBSD__) || \
-	(_BSDI_VERSION >= 199701) || (__FreeBSD_version >= 300000)
+	(_BSDI_VERSION >= 199701) || (defined(__DragonFly__) || __FreeBSD_version >= 300000)
 u_long cmd;
 # else
 int cmd;
@@ -933,7 +933,7 @@ void *ifp;
 
 static int frrequest(unit, req, data, set)
 int unit;
-#if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
 u_long req;
 #else
 int req;
@@ -1134,12 +1134,12 @@ int IPL_EXTERN(open)(dev_t dev, int flags)
 #  endif
 # else
 int IPL_EXTERN(open)(dev, flags
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 , devtype, td)
 int devtype;
 struct thread *td;
 #elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
-     (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
+     (defined(__DragonFly__) || __FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;
 struct proc *p;
@@ -1168,12 +1168,12 @@ int flags;
 int IPL_EXTERN(close)(dev_t dev, int flags, int devtype, cred_t *cp)
 #else
 int IPL_EXTERN(close)(dev, flags
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 , devtype, td)
 int devtype;
 struct thread *td;
 #elif ((_BSDI_VERSION >= 199510) || (BSD >= 199506) || (NetBSD >= 199511) || \
-     (__FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
+     (defined(__DragonFly__) || __FreeBSD_version >= 220000) || defined(__OpenBSD__)) && defined(_KERNEL)
 , devtype, p)
 int devtype;
 struct proc *p;
@@ -1556,7 +1556,7 @@ int dst;
 
 
 # if !defined(IPFILTER_LKM) && !defined(__sgi) && \
-     (!defined(__FreeBSD_version) || (__FreeBSD_version < 300000))
+     (!defined(__DragonFly__) || !defined(__FreeBSD_version) || (__FreeBSD_version < 300000))
 #  if	(BSD < 199306)
 int iplinit (void);
 
@@ -1770,7 +1770,7 @@ frdest_t *fdp;
 	 */
 	if (ip->ip_len <= ifp->if_mtu) {
 # ifndef sparc
-#  if (!defined(__FreeBSD__) && !(_BSDI_VERSION >= 199510)) && \
+#  if (!defined(__DragonFly__) && !defined(__FreeBSD__) && !(_BSDI_VERSION >= 199510)) && \
       !(__NetBSD_Version__ >= 105110000)
 		ip->ip_id = htons(ip->ip_id);
 #  endif

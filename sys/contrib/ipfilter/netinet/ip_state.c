@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.5 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -20,8 +20,9 @@
     defined(_KERNEL)
 # include "opt_ipfilter_log.h"
 #endif
-#if defined(_KERNEL) && defined(__FreeBSD_version) && \
-    (__FreeBSD_version >= 400000) && !defined(KLD_MODULE)
+#if defined(_KERNEL) && (defined(__DragonFly__) || \
+    (defined(__FreeBSD_version) && \
+    __FreeBSD_version >= 400000)) && !defined(KLD_MODULE)
 #include "opt_inet6.h"
 #endif
 #if !defined(_KERNEL) && !defined(KERNEL) && !defined(__KERNEL__)
@@ -34,10 +35,10 @@
 #  include <linux/module.h>
 # endif
 #endif
-#if (defined(KERNEL) || defined(_KERNEL)) && (__FreeBSD_version >= 220000)
+#if (defined(KERNEL) || defined(_KERNEL)) && (defined(__DragonFly__) || __FreeBSD_version >= 220000)
 # include <sys/filio.h>
 # include <sys/fcntl.h>
-# if (__FreeBSD_version >= 300000) && !defined(IPFILTER_LKM)
+# if (defined(__DragonFly__) || __FreeBSD_version >= 300000) && !defined(IPFILTER_LKM)
 #  include "opt_ipfilter.h"
 # endif
 #else
@@ -89,7 +90,7 @@
 #ifdef	USE_INET6
 #include <netinet/icmp6.h>
 #endif
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 # include <sys/malloc.h>
 # if (defined(_KERNEL) || defined(KERNEL)) && !defined(IPFILTER_LKM)
 #  include <sys/libkern.h>

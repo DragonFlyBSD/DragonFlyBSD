@@ -6,7 +6,7 @@
  * @(#)ip_nat.h	1.5 2/4/96
  * $Id: ip_nat.h,v 2.17.2.27 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.15.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.3 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.h,v 1.4 2004/02/12 22:35:47 joerg Exp $
  */
 
 #ifndef	__IP_NAT_H__
@@ -300,7 +300,7 @@ extern	natstat_t	nat_stats;
 #if defined(__OpenBSD__)
 extern	void	nat_ifdetach (void *);
 #endif
-#if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
 extern	int	nat_ioctl (caddr_t, u_long, int);
 #else
 extern	int	nat_ioctl (caddr_t, int, int);

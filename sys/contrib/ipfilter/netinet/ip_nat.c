@@ -8,9 +8,9 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.5 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
-#if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
 #endif
 
@@ -31,7 +31,7 @@
 # include <string.h>
 # include <stdlib.h>
 #endif
-#if (defined(KERNEL) || defined(_KERNEL)) && (__FreeBSD_version >= 220000)
+#if (defined(KERNEL) || defined(_KERNEL)) && (defined(__DragonFly__) || __FreeBSD_version >= 220000)
 # include <sys/filio.h>
 # include <sys/fcntl.h>
 #else
@@ -58,11 +58,11 @@
 # include <sys/stream.h>
 # include <sys/kmem.h>
 #endif
-#if __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <sys/queue.h>
 #endif
 #include <net/if.h>
-#if __FreeBSD_version >= 300000
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <net/if_var.h>
 # if defined(_KERNEL) && !defined(IPFILTER_LKM)
 #  include "opt_ipfilter.h"
@@ -103,7 +103,7 @@ extern struct ifnet vpnif;
 #include "ip_frag.h"
 #include "ip_state.h"
 #include "ip_proxy.h"
-#if (__FreeBSD_version >= 300000)
+#if defined(__DragonFly__) || __FreeBSD_version >= 300000
 # include <sys/malloc.h>
 #endif
 #ifndef	MIN
@@ -419,7 +419,7 @@ u_32_t n;
  * Handle ioctls which manipulate the NAT.
  */
 int nat_ioctl(data, cmd, mode)
-#if defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
+#if defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__) || (__FreeBSD_version >= 300003)
 u_long cmd;
 #else
 int cmd;

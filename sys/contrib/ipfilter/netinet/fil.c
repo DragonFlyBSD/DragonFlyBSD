@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.5 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.6 2004/02/12 22:35:47 joerg Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -19,13 +19,13 @@
     defined(_KERNEL)
 # include "opt_ipfilter_log.h"
 #endif
-#if (defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD_version) && \
-    (__FreeBSD_version >= 220000)
-# if (__FreeBSD_version >= 400000)
+#if (defined(KERNEL) || defined(_KERNEL)) && (defined(__DragonFly__) || (defined(__FreeBSD_version) && \
+    (__FreeBSD_version >= 220000)))
+# if defined(__DragonFly__) || (__FreeBSD_version >= 400000)
 #  ifndef KLD_MODULE
 #   include "opt_inet6.h"
 #  endif
-#  if (__FreeBSD_version == 400019)
+#  if defined(__FreeBSD__) && (__FreeBSD_version == 400019)
 #   define CSUM_DELAY_DATA
 #  endif
 # endif
@@ -88,7 +88,7 @@
 #include "ip_state.h"
 #include "ip_proxy.h"
 #include "ip_auth.h"
-# if defined(__FreeBSD_version) && (__FreeBSD_version >= 300000)
+# if defined(__DragonFly__) || (defined(__FreeBSD_version) && (__FreeBSD_version >= 300000))
 #  include <sys/malloc.h>
 #  if defined(_KERNEL) && !defined(IPFILTER_LKM)
 #   include "opt_ipfilter.h"
@@ -819,7 +819,7 @@ int out;
 	int up;
 
 #  if !SOLARIS && !defined(NETBSD_PF) && \
-      ((defined(__FreeBSD__) && (__FreeBSD_version < 500011)) || \
+      (defined(__DragonFly__) || (defined(__FreeBSD__) && (__FreeBSD_version < 500011)) || \
        defined(__OpenBSD__) || defined(_BSDI_VERSION))
 	if (fr_checkp != fr_check && fr_running > 0) {
 		static int counter = 0;
@@ -1903,7 +1903,7 @@ struct in_addr *inp;
 	struct sockaddr_in *sin;
 	struct ifaddr *ifa;
 
-#   if	(__FreeBSD_version >= 300000)
+#   if	defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 	ifa = TAILQ_FIRST(&ifp->if_addrhead);
 #   else
 #    if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -1931,7 +1931,7 @@ struct in_addr *inp;
 				break;
 		}
 #    endif
-#    if	(__FreeBSD_version >= 300000)
+#    if	defined(__DragonFly__) || (__FreeBSD_version >= 300000)
 		ifa = TAILQ_NEXT(ifa, ifa_link);
 #    else
 #     if defined(__NetBSD__) || defined(__OpenBSD__)
@@ -1983,7 +1983,7 @@ void frsync()
 # if !SOLARIS
 	struct ifnet *ifp;
 
-#  if defined(__OpenBSD__) || ((NetBSD >= 199511) && (NetBSD < 1991011)) || \
+#  if defined(__DragonFly__) || defined(__OpenBSD__) || ((NetBSD >= 199511) && (NetBSD < 1991011)) || \
      (defined(__FreeBSD_version) && (__FreeBSD_version >= 300000))
 #   if (NetBSD >= 199905) || defined(__OpenBSD__)
 	for (ifp = ifnet.tqh_first; ifp; ifp = ifp->if_list.tqe_next)
