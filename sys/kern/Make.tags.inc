@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/kern/Make.tags.inc,v 1.6.2.2 2003/02/10 12:21:08 des Exp $
-# $DragonFly: src/sys/kern/Make.tags.inc,v 1.5 2003/08/07 21:54:30 dillon Exp $
+# $DragonFly: src/sys/kern/Make.tags.inc,v 1.6 2004/04/15 21:00:50 drhodus Exp $
 #	@(#)Make.tags.inc	8.1 (Berkeley) 6/11/93
 
 SYS?=	/sys
@@ -12,23 +12,22 @@ SYS?=	/sys
 # better solution would be for ctags to generate "struct vmmeter" tags.
 
 COMM=	${SYS}/conf/*.[ch] \
-	${SYS}/dev/advansys/*.[ch] \
-	${SYS}/dev/aha/*.[ch] \
-	${SYS}/dev/aic7xxx/*.[ch] \
-	${SYS}/dev/buslogic/*.[ch] \
-	${SYS}/dev/ccd/*.[ch] \
-	${SYS}/dev/dec/*.[ch] \
-	${SYS}/dev/dpt/*.[ch] \
-	${SYS}/dev/en/*.[ch] \
-	${SYS}/dev/hea/*.[ch] \
-	${SYS}/dev/hfa/*.[ch] \
-	${SYS}/dev/iicbus/*.[ch] \
-	${SYS}/dev/isp/*.[ch] \
-	${SYS}/dev/pdq/*.[ch] \
-	${SYS}/dev/ppbus/*.[ch] \
-	${SYS}/dev/smbus/*.[ch] \
-	${SYS}/dev/vn/*.[ch] \
-	${SYS}/dev/vx/*.[ch] \
+	${SYS}/dev/disk/advansys/*.[ch] \
+	${SYS}/dev/disk/aha/*.[ch] \
+	${SYS}/dev/disk/aic7xxx/*.[ch] \
+	${SYS}/dev/disk/buslogic/*.[ch] \
+	${SYS}/dev/disk/ccd/*.[ch] \
+	${SYS}/dev/misc/dec/*.[ch] \
+	${SYS}/dev/raid/dpt/*.[ch] \
+	${SYS}/dev/atm/en/*.[ch] \
+	${SYS}/dev/atm/hea/*.[ch] \
+	${SYS}/dev/atm/hfa/*.[ch] \
+	${SYS}/bus/iicbus/*.[ch] \
+	${SYS}/dev/disk/isp/*.[ch] \
+	${SYS}/bus/ppbus/*.[ch] \
+	${SYS}/bus/smbus/*.[ch] \
+	${SYS}/dev/disk/vn/*.[ch] \
+	${SYS}/dev/netif/vx/*.[ch] \
 	${SYS}/vfs/isofs/cd9660/*.[ch] \
 	${SYS}/kern/*.[ch] \
 	${SYS}/vfs/deadfs/*.[ch] \
@@ -62,28 +61,27 @@ COMMDIR1= ${SYS}/conf \
 	${SYS}/net \
 	${SYS}/netproto \
 	${SYS}/vfs \
-	${SYS}/pci \
+	${SYS}/bus/pci \
 	${SYS}/emulation \
 	${SYS}/vm \
 	${SYS}/sys
 
-COMMDIR2= ${SYS}/dev/advansys \
-	${SYS}/dev/aha \
-	${SYS}/dev/aic7xxx \
-	${SYS}/dev/buslogic \
-	${SYS}/dev/ccd \
-	${SYS}/dev/dec \
-	${SYS}/dev/dpt \
-	${SYS}/dev/en \
-	${SYS}/dev/hea \
-	${SYS}/dev/hfa \
-	${SYS}/dev/iicbus \
-	${SYS}/dev/isp \
-	${SYS}/dev/pdq \
-	${SYS}/dev/ppbus \
-	${SYS}/dev/smbus \
-	${SYS}/dev/vn \
-	${SYS}/dev/vx \
+COMMDIR2= ${SYS}/dev/disk/advansys \
+	${SYS}/dev/disk/aha \
+	${SYS}/dev/disk/aic7xxx \
+	${SYS}/dev/disk/buslogic \
+	${SYS}/dev/disk/ccd \
+	${SYS}/dev/misc/dec \
+	${SYS}/dev/raid/dpt \
+	${SYS}/dev/atm/en \
+	${SYS}/dev/atm/hea \
+	${SYS}/dev/atm/hfa \
+	${SYS}/bus/iicbus \
+	${SYS}/dev/disk/isp \
+	${SYS}/bus/ppbus \
+	${SYS}/bus/smbus \
+	${SYS}/dev/disk/vn \
+	${SYS}/dev/netif/vx \
 	${SYS}/vfs/isofs/cd9660 \
 	${SYS}/vfs/deadfs \
 	${SYS}/vfs/fdesc \
