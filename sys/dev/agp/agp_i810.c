@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.6 2004/03/24 20:42:12 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.7 2004/05/13 14:33:14 joerg Exp $
  */
 
 /*
@@ -104,6 +104,9 @@ agp_i810_match(device_t dev)
 
 	case 0x25628086:
 		return ("Intel 82845 (i845 GMCH) SVGA controller");
+
+	case 0x25728086:
+		return ("Intel 82865 (i865 GMCH) SVGA controller");
 	};
 
 	return NULL;
@@ -133,6 +136,7 @@ agp_i810_find_bridge(device_t dev)
 	case 0x11328086:
 	case 0x35778086:
 	case 0x25628086:
+	case 0x25728086:
 		devid -= 0x20000;
 		break;
 	};
@@ -173,7 +177,8 @@ agp_i810_probe(device_t dev)
 		 * checking whether internal graphics device has been activated.
 		 */
 		if ( (devid != 0x35778086 ) &&
-		     (devid != 0x25628086 ) ) {
+		     (devid != 0x25628086 ) &&
+		     (devid != 0x25728086 ) ) {
 			smram = pci_read_config(bdev, AGP_I810_SMRAM, 1);
 			if ((smram & AGP_I810_SMRAM_GMS)
 			    == AGP_I810_SMRAM_GMS_DISABLED) {
@@ -223,6 +228,7 @@ agp_i810_attach(device_t dev)
 		break;
 	case 0x35778086:
 	case 0x25628086:
+	case 0x25728086:
 		sc->chiptype = CHIP_I830;
 		break;
 	};
