@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)script.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/script/script.c,v 1.11.2.2 2004/03/13 09:21:00 cperciva Exp $
- * $DragonFly: src/usr.bin/script/script.c,v 1.8 2005/03/01 21:20:17 cpressey Exp $
+ * $DragonFly: src/usr.bin/script/script.c,v 1.9 2005/03/07 21:30:57 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -97,7 +97,7 @@ main(int argc, char **argv)
 		case 't':
 			flushtime = atoi(optarg);
 			if (flushtime < 0)
-				err(1, "invalid flush time %d", flushtime);
+				errx(1, "invalid flush time %d", flushtime);
 			break;
 		case '?':
 		default:
