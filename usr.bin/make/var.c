@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.172 2005/03/20 00:44:45 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.173 2005/03/20 12:22:46 okumoto Exp $
  */
 
 /*-
@@ -997,7 +997,7 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 static char *
 modifier_C(VarParser *vp, char value[], Var *v)
 {
-	VarREPattern	patt;
+	VarPattern	patt;
 	char		delim;
 	char		*re;
 	int		error;
@@ -1019,8 +1019,8 @@ modifier_C(VarParser *vp, char value[], Var *v)
 
 	vp->ptr++;		/* consume 2st delim */
 
-	patt.replace = VarGetPattern(vp, delim, NULL, NULL, NULL);
-	if (patt.replace == NULL) {
+	patt.rhs = VarGetPattern(vp, delim, NULL, NULL, NULL);
+	if (patt.rhs == NULL) {
 		Fatal("Unclosed substitution for %s (%c missing)",
 		     v->name, delim);
 	}
@@ -1043,7 +1043,7 @@ modifier_C(VarParser *vp, char value[], Var *v)
 	error = regcomp(&patt.re, re, REG_EXTENDED);
 	if (error) {
 		VarREError(error, &patt.re, "RE substitution error");
-		free(patt.replace);
+		free(patt.rhs);
 		free(re);
 		return (var_Error);
 	}
@@ -1059,7 +1059,7 @@ modifier_C(VarParser *vp, char value[], Var *v)
 
 	regfree(&patt.re);
 	free(patt.matches);
-	free(patt.replace);
+	free(patt.rhs);
 	free(re);
 
 	return (newValue);
