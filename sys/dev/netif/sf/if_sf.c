@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.15 2005/02/20 05:44:34 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -91,6 +91,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -818,7 +819,8 @@ static int sf_attach(dev)
 	ifp->if_watchdog = sf_watchdog;
 	ifp->if_init = sf_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = SF_TX_DLIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, SF_TX_DLIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Call MI attach routine.
@@ -1135,7 +1137,7 @@ static void sf_intr(arg)
 	/* Re-enable interrupts. */
 	csr_write_4(sc, SF_IMR, SF_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		sf_start(ifp);
 
 	return;
@@ -1329,7 +1331,7 @@ static void sf_start(ifp)
 
 	sc = ifp->if_softc;
 
-	if (!sc->sf_link && ifp->if_snd.ifq_len < 10)
+	if (!sc->sf_link)
 		return;
 
 	if (ifp->if_flags & IFF_OACTIVE)
@@ -1351,19 +1353,18 @@ static void sf_start(ifp)
 			cur_tx = NULL;
 			break;
 		}
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		cur_tx = &sc->sf_ldata->sf_tx_dlist[i];
 		if (sf_encap(sc, cur_tx, m_head)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			cur_tx = NULL;
 			break;
 		}
-
-		BPF_MTAP(ifp, m_head);
+		ifq_dequeue(&ifp->if_snd);
+		BPF_MTAP(ifp, cur_tx->sf_mbuf);
 
 		SF_INC(i, SF_TX_DLIST_CNT);
 		sc->sf_tx_cnt++;
@@ -1470,7 +1471,7 @@ static void sf_stats_update(xsc)
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
 			sc->sf_link++;
-			if (ifp->if_snd.ifq_head != NULL)
+			if (!ifq_is_empty(&ifp->if_snd))
 				sf_start(ifp);
 	}
 
@@ -1495,7 +1496,7 @@ static void sf_watchdog(ifp)
 	sf_reset(sc);
 	sf_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		sf_start(ifp);
 
 	return;

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.13 2005/02/20 05:45:11 joerg Exp $
  */
 
 /*
@@ -101,6 +101,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
@@ -222,7 +223,8 @@ sn_attach(device_t dev)
 	ifp->if_ioctl = snioctl;
 	ifp->if_watchdog = snwatchdog;
 	ifp->if_init = sninit;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_timer = 0;
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
@@ -367,7 +369,7 @@ snstart(struct ifnet *ifp)
 
 	s = splimp();
 
-	if (sc->arpcom.ac_if.if_flags & IFF_OACTIVE) {
+	if (ifp->if_flags & IFF_OACTIVE) {
 		splx(s);
 		return;
 	}
@@ -382,7 +384,7 @@ startagain:
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = sc->arpcom.ac_if.if_snd.ifq_head;
+	m = ifq_poll(&ifp->if_snd);
 	if (m == 0) {
 		splx(s);
 		return;
@@ -403,7 +405,7 @@ startagain:
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		printf("%s: large packet discarded (A)\n", ifp->if_xname);
 		++sc->arpcom.ac_if.if_oerrors;
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 		m_freem(m);
 		goto readcheck;
 	}
@@ -460,8 +462,8 @@ startagain:
 		outb(BASE + INTR_MASK_REG_B, mask);
 		sc->intr_mask = mask;
 
-		sc->arpcom.ac_if.if_timer = 1;
-		sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
+		ifp->if_timer = 1;
+		ifp->if_flags |= IFF_OACTIVE;
 		sc->pages_wanted = numPages;
 
 		splx(s);
@@ -497,7 +499,7 @@ startagain:
 	 * Get the packet from the kernel.  This will include the Ethernet
 	 * frame header, MAC Addresses etc.
 	 */
-	IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
+	m = ifq_dequeue(&ifp->if_snd);
 
 	/*
 	 * Push out the data to the card.
@@ -543,14 +545,13 @@ startagain:
 
 	outw(BASE + MMU_CMD_REG_W, MMUCR_ENQUEUE);
 
-	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
-	sc->arpcom.ac_if.if_timer = 1;
+	ifp->if_flags |= IFF_OACTIVE;
+	ifp->if_timer = 1;
 
 	BPF_MTAP(ifp, top);
 
-	sc->arpcom.ac_if.if_opackets++;
+	ifp->if_opackets++;
 	m_freem(top);
-
 
 readcheck:
 
@@ -599,7 +600,7 @@ snresume(struct ifnet *ifp)
 	/*
 	 * Sneak a peek at the next packet
 	 */
-	m = sc->arpcom.ac_if.if_snd.ifq_head;
+	m = ifq_poll(&ifp->if_snd);
 	if (m == 0) {
 		printf("%s: snresume() with nothing to send\n", ifp->if_xname);
 		return;
@@ -619,8 +620,8 @@ snresume(struct ifnet *ifp)
 	 */
 	if (len + pad > ETHER_MAX_LEN - ETHER_CRC_LEN) {
 		printf("%s: large packet discarded (B)\n", ifp->if_xname);
-		++sc->arpcom.ac_if.if_oerrors;
-		IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
+		++ifp->if_oerrors;
+		ifq_dequeue(&ifp->if_snd);
 		m_freem(m);
 		return;
 	}
@@ -655,7 +656,7 @@ snresume(struct ifnet *ifp)
 	packet_no = inb(BASE + ALLOC_RESULT_REG_B);
 	if (packet_no & ARR_FAILED) {
 		printf("%s: Memory allocation failed.  Weird.\n", ifp->if_xname);
-		sc->arpcom.ac_if.if_timer = 1;
+		ifp->if_timer = 1;
 		goto try_start;
 	}
 	/*
@@ -696,7 +697,7 @@ snresume(struct ifnet *ifp)
 	 * Get the packet from the kernel.  This will include the Ethernet
 	 * frame header, MAC Addresses etc.
 	 */
-	IF_DEQUEUE(&sc->arpcom.ac_if.if_snd, m);
+	m = ifq_dequeue(&ifp->if_snd);
 
 	/*
 	 * Push out the data to the card.
@@ -743,7 +744,7 @@ snresume(struct ifnet *ifp)
 
 	BPF_MTAP(ifp, top);
 
-	sc->arpcom.ac_if.if_opackets++;
+	ifp->if_opackets++;
 	m_freem(top);
 
 try_start:
@@ -751,17 +752,15 @@ try_start:
 	/*
 	 * Now pass control to snstart() to queue any additional packets
 	 */
-	sc->arpcom.ac_if.if_flags &= ~IFF_OACTIVE;
+	ifp->if_flags &= ~IFF_OACTIVE;
 	snstart(ifp);
 
 	/*
 	 * We've sent something, so we're active.  Set a watchdog in case the
 	 * TX_EMPTY interrupt is lost.
 	 */
-	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
-	sc->arpcom.ac_if.if_timer = 1;
-
-	return;
+	ifp->if_flags |= IFF_OACTIVE;
+	ifp->if_timer = 1;
 }
 
 

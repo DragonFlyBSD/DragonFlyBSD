@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.16 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.17 2005/02/20 05:45:38 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -91,6 +91,7 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1714,7 +1715,8 @@ static int ti_attach(dev)
 	ifp->if_watchdog = ti_watchdog;
 	ifp->if_init = ti_init;
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_snd.ifq_maxlen = TI_TX_RING_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, TI_TX_RING_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Set up ifmedia support. */
 	ifmedia_init(&sc->ifmedia, IFM_IMASK, ti_ifmedia_upd, ti_ifmedia_sts);
@@ -1981,7 +1983,7 @@ static void ti_intr(xsc)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, TI_MB_HOSTINTR, 0);
 
-	if (ifp->if_flags & IFF_RUNNING && ifp->if_snd.ifq_head != NULL)
+	if ((ifp->if_flags & IFF_RUNNING) && !ifq_is_empty(&ifp->if_snd))
 		ti_start(ifp);
 
 	return;
@@ -2120,7 +2122,7 @@ static void ti_start(ifp)
 	prodidx = CSR_READ_4(sc, TI_MB_SENDPROD_IDX);
 
 	while(sc->ti_cdata.ti_tx_chain[prodidx] == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -2136,7 +2138,6 @@ static void ti_start(ifp)
 		    m_head->m_pkthdr.csum_flags & (CSUM_DELAY_DATA)) {
 			if ((TI_TX_RING_CNT - sc->ti_txcnt) <
 			    m_head->m_pkthdr.csum_data + 16) {
-				IF_PREPEND(&ifp->if_snd, m_head);
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
@@ -2148,11 +2149,11 @@ static void ti_start(ifp)
 		 * for the NIC to drain the ring.
 		 */
 		if (ti_encap(sc, m_head, &prodidx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
 
+		m_head = ifq_dequeue(&ifp->if_snd);
 		BPF_MTAP(ifp, m_head);
 	}
 
