@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dcreg.h,v 1.4.2.22 2003/06/07 16:55:35 mbr Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dcreg.h,v 1.3 2004/09/14 22:44:46 joerg Exp $
  */
 
 /*
@@ -700,7 +700,7 @@ struct dc_softc {
 	struct dc_mediainfo	*dc_mi;
 	struct dc_list_data	*dc_ldata;
 	struct dc_chain_data	dc_cdata;
-	struct callout_handle	dc_stat_ch;
+	struct callout		dc_stat_timer;
 #ifdef __alpha__
 	int			dc_srm_media;
 #endif

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.16 2004/07/23 07:16:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.17 2004/09/14 22:44:46 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -1792,6 +1792,7 @@ static int dc_attach(dev)
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
 	bzero(sc, sizeof(struct dc_softc));
+	callout_init(&sc->dc_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -2116,7 +2117,6 @@ static int dc_attach(dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, eaddr);
-	callout_handle_init(&sc->dc_stat_ch);
 
 	if (DC_IS_ADMTEK(sc)) {
 		/*
@@ -2751,9 +2751,9 @@ static void dc_tick(xsc)
 	}
 
 	if (sc->dc_flags & DC_21143_NWAY && !sc->dc_link)
-		sc->dc_stat_ch = timeout(dc_tick, sc, hz/10);
+		callout_reset(&sc->dc_stat_timer, hz / 10, dc_tick, sc);
 	else
-		sc->dc_stat_ch = timeout(dc_tick, sc, hz);
+		callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 
 	splx(s);
 
@@ -3282,9 +3282,9 @@ static void dc_init(xsc)
 		sc->dc_link = 1;
 	else {
 		if (sc->dc_flags & DC_21143_NWAY)
-			sc->dc_stat_ch = timeout(dc_tick, sc, hz/10);
+			callout_reset(&sc->dc_stat_timer, hz/10, dc_tick, sc);
 		else
-			sc->dc_stat_ch = timeout(dc_tick, sc, hz);
+			callout_reset(&sc->dc_stat_timer, hz, dc_tick, sc);
 	}
 
 #ifdef SRM_MEDIA
@@ -3445,7 +3445,7 @@ static void dc_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(dc_tick, sc, sc->dc_stat_ch);
+	callout_stop(&sc->dc_stat_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 #ifdef DEVICE_POLLING
