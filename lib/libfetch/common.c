@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/common.c,v 1.7.2.13 2003/06/06 06:45:25 des Exp $
- * $DragonFly: src/lib/libfetch/common.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libfetch/common.c,v 1.3 2004/08/16 14:19:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -487,7 +487,8 @@ _fetch_write(conn_t *conn, const char *buf, size_t len)
 {
 	struct iovec iov;
 
-	iov.iov_base = (char *)buf;
+	/* This is correct, because writev doesn't change the buffer */
+	iov.iov_base = __DECONST(char *, buf);
 	iov.iov_len = len;
 	return _fetch_writev(conn, &iov, 1);
 }
@@ -578,9 +579,10 @@ _fetch_putln(conn_t *conn, const char *str, size_t len)
 	int ret;
 
 	DEBUG(fprintf(stderr, ">>> %s\n", str));
-	iov[0].iov_base = (char *)str;
+	/* This is correct, because writev doesn't change the buffer */
+	iov[0].iov_base = __DECONST(char *, str);
 	iov[0].iov_len = len;
-	iov[1].iov_base = (char *)ENDL;
+	iov[1].iov_base = __DECONST(char *, ENDL);
 	iov[1].iov_len = sizeof(ENDL);
 	if (len == 0)
 		ret = _fetch_writev(conn, &iov[1], 1);
