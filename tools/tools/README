@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.2 2003/06/17 04:29:11 dillon Exp $
+# $DragonFly: src/tools/tools/README,v 1.3 2005/01/10 22:13:45 joerg Exp $
 
 This directory is for tools.
 
@@ -20,6 +20,7 @@ kdrv		KernelDriver; add/list/remove third-party kernel driver
 		source to/in/from a kernel source tree.
 kernxref	Shellscript to cross reference symbols in the LINT kernel.
 kerninclude	Shellscript to find unused #includes in the kernel.
+local_syms	Shellscript to find symbols not referenced by other files.
 mid	 	Create a Message-ID database for mailing lists.
 portsinfo 	Generate list of new ports for last two weeks.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
