@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.10 2005/03/04 17:21:14 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.11 2005/03/05 05:04:32 dillon Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -114,6 +114,13 @@ char *
 msf_buf_kva(struct msf_buf *msf)
 {
 	return ((char *)msf->ms_kva + msf->ms_xio->xio_offset);
+}
+
+static __inline
+int
+msf_buf_bytes(struct msf_buf *msf)
+{
+	return (msf->ms_xio->xio_bytes);
 }
 
 /*
