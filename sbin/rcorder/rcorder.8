@@ -1,5 +1,5 @@
 .\"	$NetBSD: rcorder.8,v 1.3 2000/07/17 14:16:22 mrg Exp $
-.\"	$DragonFly: src/sbin/rcorder/rcorder.8,v 1.1 2003/07/24 06:35:38 dillon Exp $
+.\"	$DragonFly: src/sbin/rcorder/rcorder.8,v 1.2 2003/12/11 20:50:21 dillon Exp $
 .\"
 .\" Copyright (c) 1998
 .\" 	Perry E. Metzger.  All rights reserved.
@@ -42,6 +42,7 @@
 .Nm
 .Op Fl k Ar keep
 .Op Fl s Ar skip
+.Op Fl o Ar resolve_for_file
 .Ar
 .Sh DESCRIPTION
 The
@@ -105,6 +106,12 @@ Add the specified keyword to the
 If any
 .Fl s
 option is given, files containing the matching keyword are not listed.
+.It Fl o
+Generate the dependancy list required to execute this file, including this
+file.  
+If several
+.Fl o
+options are specified, the results are merged.
 .El
 .Pp
  An example block follows:

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$NetBSD: rcorder.c,v 1.7 2000/08/04 07:33:55 enami Exp $
- *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.3 2003/11/01 17:16:01 drhodus Exp $
+ *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.4 2003/12/11 20:50:21 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -126,6 +126,7 @@ filenode fn_head_s, *fn_head;
 strnodelist *bl_list;
 strnodelist *keep_list;
 strnodelist *skip_list;
+strnodelist *onetime_list;
 
 void do_file(filenode *fnode);
 void strnode_add(strnodelist **, char *, filenode *);
@@ -154,7 +155,7 @@ main(int argc, char **argv)
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "dk:s:")) != -1)
+	while ((ch = getopt(argc, argv, "dk:s:o:")) != -1)
 		switch (ch) {
 		case 'd':
 #ifdef DEBUG
@@ -168,6 +169,9 @@ main(int argc, char **argv)
 			break;
 		case 's':
 			strnode_add(&skip_list, optarg, 0);
+			break;
+		case 'o':
+			strnode_add(&onetime_list, optarg, 0);
 			break;
 		default:
 			/* XXX should crunch it? */
@@ -786,8 +790,22 @@ generate_ordering(void)
 	 * executed only once for every strongly connected set of
 	 * nodes.
 	 */
-	while (fn_head->next != NULL) {
-		DPRINTF((stderr, "generate on %s\n", fn_head->next->filename));
-		do_file(fn_head->next);
+	if (onetime_list) {
+		struct strnodelist *scan;
+		filenode *file;
+
+		for (scan = onetime_list; scan; scan = scan->next) {
+		    for (file = fn_head->next; file; file = file->next) {
+			if (strcmp(scan->s, file->filename) == 0) {
+			    do_file(file);
+			    break;
+			}
+		    }
+		}
+	} else {
+		while (fn_head->next != NULL) {
+			DPRINTF((stderr, "generate on %s\n", fn_head->next->filename));
+			do_file(fn_head->next);
+		}
 	}
 }
