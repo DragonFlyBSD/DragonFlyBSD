@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.30 2004/07/21 17:19:35 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.31 2005/02/15 16:47:41 joerg Exp $
  */
 
 #include "opt_cpu.h"
@@ -800,7 +800,8 @@ mptable_pass1(void)
 			}
 
 			totalSize -= basetable_entry_types[type].length;
-			(u_char*)position += basetable_entry_types[type].length;
+			position = (uint8_t *)position +
+			    basetable_entry_types[type].length;
 		}
 	}
 
@@ -970,7 +971,7 @@ mptable_pass2(void)
 		}
 
 		totalSize -= basetable_entry_types[type].length;
-		(u_char *) position += basetable_entry_types[type].length;
+		position = (uint8_t *)position + basetable_entry_types[type].length;
 	}
 
 	if (boot_cpu_id == -1)
