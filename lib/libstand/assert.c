@@ -24,15 +24,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/assert.c,v 1.2 1999/08/28 00:05:29 peter Exp $
- * $DragonFly: src/lib/libstand/assert.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/assert.c,v 1.3 2004/01/23 14:43:52 joerg Exp $
  */
 
 #include <stand.h>
 #include <assert.h>
 
+void	exit(int code);
+
 void
 __assert(const char *file, int line, const char *expression)
 {
-    printf("assertion \"%s\" failed: file \"%s\", line %d\n", expression, file, line);
-    exit();
+	printf("assertion \"%s\" failed: file \"%s\", line %d\n", expression,
+	       file, line);
+	exit(1);
 }
