@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.16 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.17 2004/04/09 23:33:02 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -262,10 +262,13 @@ netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
      * If it's a synchronous message for the same thread,
      * execute it directly.
      */
-    if (!(lmsg->ms_flags & MSGF_ASYNC) && port->mp_td == curthread)
-	msg->nm_handler((struct netmsg *)msg);
-    else
+    if (!(lmsg->ms_flags & MSGF_ASYNC) && port->mp_td == curthread) {
+	struct netmsg *msg = (struct netmsg *)lmsg;
+
+	msg->nm_handler(msg);
+    } else {
         lwkt_default_putport(port, lmsg);
+    }
 
     return (EASYNC);
 }
