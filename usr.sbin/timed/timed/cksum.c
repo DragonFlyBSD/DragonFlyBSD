@@ -32,10 +32,11 @@
  *
  * @(#)cksum.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/cksum.c,v 1.3 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/cksum.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/cksum.c,v 1.4 2004/09/05 02:09:24 dillon Exp $
  */
 
 #include <sys/types.h>
+#include "extern.h"
 
 /*
  *			I N _ C K S U M

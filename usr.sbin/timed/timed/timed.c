@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.6 2004/09/05 02:09:24 dillon Exp $
  */
 
 #define TSPTYPES
@@ -148,13 +148,10 @@ main(int argc, char *argv[])
 	struct tms tms;
 #endif /* sgi */
 
-#ifdef lint
-	ntip = NULL;
-#endif
-
 	on = 1;
 	nflag = OFF;
 	iflag = OFF;
+	ntip = NULL;
 
 #ifdef sgi
 	if (0 > syssgi(SGI_GETTIMETRIM, &timetrim)) {
@@ -322,14 +319,14 @@ main(int argc, char *argv[])
 		nentp = getnetbyname(nt->name);
 		if (nentp == 0) {
 			nt->net = inet_network(nt->name);
-			if (nt->net != INADDR_NONE)
+			if (nt->net != (long)INADDR_NONE)
 				nentp = getnetbyaddr(nt->net, AF_INET);
 		}
 		if (nentp != 0) {
 			nt->net = nentp->n_net;
-		} else if (nt->net == INADDR_NONE) {
+		} else if (nt->net == (long)INADDR_NONE) {
 			errx(1, "unknown net %s", nt->name);
-		} else if (nt->net == INADDR_ANY) {
+		} else if (nt->net == (long)INADDR_ANY) {
 			errx(1, "bad net %s", nt->name);
 		} else {
 			warnx("warning: %s unknown in /etc/networks",

@@ -32,7 +32,7 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.6 2004/09/05 02:02:25 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.7 2004/09/05 02:09:24 dillon Exp $
  */
 
 #include "globals.h"
@@ -75,7 +75,6 @@ slave(void)
 	struct timeval ntime, wait;
 	time_t tsp_time_sec;
 	struct tsp *answer;
-	int timeout();
 	char olddate[32];
 	char newdate[32];
 	struct netinfo *ntp;

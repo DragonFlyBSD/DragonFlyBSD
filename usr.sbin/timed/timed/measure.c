@@ -32,7 +32,7 @@
  *
  * @(#)measure.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/measure.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.4 2004/09/05 02:02:25 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.5 2004/09/05 02:09:24 dillon Exp $
  */
 
 #include "globals.h"
@@ -81,6 +81,7 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 	measure_status = HOSTDOWN;
 	measure_delta = HOSTDOWN;
 	errno = 0;
+	trials = 0;	/* avoid compiler warning due to goto quit below */
 
 	/* open raw socket used to measure time differences */
 	if (sock_raw < 0) {
@@ -189,7 +190,7 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 			 * got something.  See if it is ours
 			 */
 			icp = (struct icmp *)(packet + (ip->ip_hl << 2));
-			if (cc < sizeof(*ip)
+			if (cc < (int)sizeof(*ip)
 			    || icp->icmp_type != ICMP_TSTAMPREPLY
 			    || icp->icmp_id != oicp->icmp_id
 			    || icp->icmp_seq < seqno

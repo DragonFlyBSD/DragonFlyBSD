@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.6 2004/09/05 02:09:24 dillon Exp $
  */
 
 #include "globals.h"
@@ -539,7 +539,7 @@ prthp(clock_t delta)
 		return;
 
 	this_time = times(&tm);
-	if (this_time + delta < next_time)
+	if (this_time + (time_t)delta < next_time)
 		return;
 	next_time = this_time + CLK_TCK;
 

@@ -32,7 +32,7 @@
  *
  * @(#)correct.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/correct.c,v 1.4 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.6 2004/09/05 02:09:24 dillon Exp $
  */
 
 #include "globals.h"
@@ -157,7 +157,7 @@ adjclock(struct timeval *corr)
 		}
 	} else {
 		syslog(LOG_WARNING,
-		       "clock correction %d sec too large to adjust",
+		       "clock correction %ld sec too large to adjust",
 		       adj.tv_sec);
 		(void) gettimeofday(&now, 0);
 		timevaladd(&now, corr);
