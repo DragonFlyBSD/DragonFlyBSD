@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.37 2004/12/17 08:13:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.38 2004/12/17 08:17:05 okumoto Exp $
  */
 
 /*-
@@ -165,7 +165,6 @@ MFLAGS_append(char *flag, char *arg)
 static void
 MainParseArgs(int argc, char **argv)
 {
-	char *p;
 	int c;
 
 	optind = 1;	/* since we're called more than once */
@@ -185,7 +184,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			MFLAGS_append("-I", optarg);
 			break;
 		case 'V':
-			Lst_AtEnd(&variables, (void *)optarg);
+			Lst_AtEnd(&variables, estrdup(optarg));
 			MFLAGS_append("-V", optarg);
 			break;
 		case 'X':
@@ -260,9 +259,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			break;
 		}
 		case 'E':
-			p = emalloc(strlen(optarg) + 1);
-			strcpy(p, optarg);
-			Lst_AtEnd(&envFirstVars, p);
+			Lst_AtEnd(&envFirstVars, estrdup(optarg));
 			MFLAGS_append("-E", optarg);
 			break;
 		case 'e':
@@ -270,7 +267,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
-			Lst_AtEnd(&makefiles, optarg);
+			Lst_AtEnd(&makefiles, estrdup(optarg));
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -875,8 +872,8 @@ main(int argc, char **argv)
 		Lst_Destroy(&targs, NOFREE);
 	}
 
-	Lst_Destroy(&variables, NOFREE);
-	Lst_Destroy(&makefiles, NOFREE);
+	Lst_Destroy(&variables, free);
+	Lst_Destroy(&makefiles, free);
 	Lst_Destroy(&create, free);
 
 	/* print the graph now it's been processed if the user requested it */
