@@ -32,14 +32,20 @@
  *
  * Posix rand_r function added May 1999 by Wes Peters <wes@softweyr.com>.
  *
- * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.2.2.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
- *
- * @(#)rand.c	8.1 (Berkeley) 6/14/93
+ * $FreeBSD: src/lib/libc/stdlib/rand.c,v 1.15 2001/03/05 11:33:57 ache Exp $
+ * $DragonFly: src/lib/libc/stdlib/rand.c,v 1.3 2004/05/17 07:35:55 dillon Exp $
  */
 
+#if defined(LIBC_SCCS) && !defined(lint)
+static char sccsid[] = "@(#)rand.c	8.1 (Berkeley) 6/14/93";
+#endif /* LIBC_SCCS and not lint */
+#include <sys/cdefs.h>
+
+#include <sys/time.h>          /* for sranddev() */
 #include <sys/types.h>
+#include <fcntl.h>             /* for sranddev() */
 #include <stdlib.h>
+#include <unistd.h>            /* for sranddev() */
 
 #ifdef TEST
 #include <stdio.h>
@@ -48,7 +54,34 @@
 static int
 do_rand(unsigned long *ctx)
 {
+#ifdef  USE_WEAK_SEEDING
+/*
+ * Historic implementation compatibility.
+ * The random sequences do not vary much with the seed,
+ * even with overflowing.
+ */
 	return ((*ctx = *ctx * 1103515245 + 12345) % ((u_long)RAND_MAX + 1));
+#else   /* !USE_WEAK_SEEDING */
+/*
+ * Compute x = (7^5 * x) mod (2^31 - 1)
+ * wihout overflowing 31 bits:
+ *      (2^31 - 1) = 127773 * (7^5) + 2836
+ * From "Random number generators: good ones are hard to find",
+ * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+ * October 1988, p. 1195.
+ */
+	long hi, lo, x;
+
+	/* Can't be initialized with 0, so use another value. */
+	if (*ctx == 0)
+		*ctx = 123459876;
+	hi = *ctx / 127773;
+	lo = *ctx % 127773;
+	x = 16807 * lo - 2836 * hi;
+	if (x < 0)
+		x += 0x7fffffff;
+	return ((*ctx = x) % ((u_long)RAND_MAX + 1));
+#endif  /* !USE_WEAK_SEEDING */
 }
 
 
@@ -56,8 +89,10 @@ int
 rand_r(unsigned int *ctx)
 {
 	u_long val = (u_long) *ctx;
-	*ctx = do_rand(&val);
-	return (int) *ctx;
+	int r = do_rand(&val);
+
+	*ctx = (unsigned int) val;
+	return (r);
 }
 
 
@@ -66,7 +101,7 @@ static u_long next = 1;
 int
 rand()
 {
-	return do_rand(&next);
+	return (do_rand(&next));
 }
 
 void
@@ -75,6 +110,42 @@ u_int seed;
 {
 	next = seed;
 }
+
+
+/*
+ * sranddev:
+ *
+ * Many programs choose the seed value in a totally predictable manner.
+ * This often causes problems.  We seed the generator using the much more
+ * secure random(4) interface.
+ *
+ * FreeBSD chooses to use /dev/random for their seed.  However, because
+ * of possible problems surrounding /dev/random, we use /dev/urandom for now,
+ * which is guaranteed not to block and will produce a "good enough" seed
+ * for us for the time being.
+ */
+void
+sranddev()
+{
+	int fd, done;
+
+	done = 0;
+	fd = _open("/dev/urandom", O_RDONLY, 0);
+	if (fd >= 0) {
+		if (_read(fd, (void *) &next, sizeof(next)) == sizeof(next))
+			done = 1;
+		_close(fd);
+	}
+
+	if (!done) {
+		struct timeval tv;
+		unsigned long junk;
+
+		gettimeofday(&tv, NULL);
+		srand((getpid() << 16) ^ tv.tv_sec ^ tv.tv_usec ^ junk);
+	}
+}
+
 
 #ifdef TEST
 
