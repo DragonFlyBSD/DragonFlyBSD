@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.19 2004/09/13 23:59:16 drhodus Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.20 2004/09/18 21:05:43 joerg Exp $
  */
 
 #ifdef _KERNEL
@@ -448,6 +448,7 @@ static void		dashutdown(void *arg, int howto);
 
 static int da_retry_count = DA_DEFAULT_RETRY;
 static int da_default_timeout = DA_DEFAULT_TIMEOUT;
+static struct callout dasendorderedtag_ch;
 
 SYSCTL_NODE(_kern_cam, OID_AUTO, da, CTLFLAG_RD, 0,
             "CAM Direct Access Disk driver");
@@ -957,7 +958,9 @@ dainit(void)
 		printf("da: Failed to alloc extend array!\n");
 		return;
 	}
-	
+
+	callout_init(&dasendorderedtag_ch);
+
 	/*
 	 * Install a global async callback.  This callback will
 	 * receive async callbacks like "new device found".
@@ -987,8 +990,9 @@ dainit(void)
 		 * Schedule a periodic event to occasionally send an
 		 * ordered tag to a device.
 		 */
-		timeout(dasendorderedtag, NULL,
-			(DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL);
+		callout_reset(&dasendorderedtag_ch,
+		    (DA_DEFAULT_TIMEOUT * hz) / DA_ORDEREDTAG_INTERVAL,
+		    dasendorderedtag, NULL);
 
 		/* Register our shutdown event handler */
 		if ((EVENTHANDLER_REGISTER(shutdown_post_sync, dashutdown, 
@@ -1876,8 +1880,9 @@ dasendorderedtag(void *arg)
 		splx(s);
 	}
 	/* Queue us up again */
-	timeout(dasendorderedtag, NULL,
-		(da_default_timeout * hz) / DA_ORDEREDTAG_INTERVAL);
+	callout_reset(&dasendorderedtag_ch,
+	    (da_default_timeout * hz) / DA_ORDEREDTAG_INTERVAL,
+	    dasendorderedtag, NULL);
 }
 
 /*
