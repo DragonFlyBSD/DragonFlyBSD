@@ -38,7 +38,7 @@
  *
  * From:
  * $FreeBSD: src/sys/miscfs/procfs/procfs_status.c,v 1.20.2.4 2002/01/22 17:22:59 nectar Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.7 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_status.c,v 1.8 2004/12/01 21:38:50 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -189,6 +189,7 @@ procfs_docmdline(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 	char *buf, *bp;
 	int buflen;
 	struct ps_strings pstr;
+	char **ps_argvstr;
 	int i;
 	size_t bytes_left, done;
 
@@ -226,9 +227,22 @@ procfs_docmdline(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 			FREE(buf, M_TEMP);
 			return (error);
 		}
+		if (pstr.ps_nargvstr > ARG_MAX) {
+			FREE(buf, M_TEMP);
+			return (E2BIG);
+		}
+		MALLOC(ps_argvstr, char **, pstr.ps_nargvstr * sizeof(char *),
+		    M_TEMP, M_WAITOK);
+		error = copyin((void *)pstr.ps_argvstr, ps_argvstr,
+		    pstr.ps_nargvstr * sizeof(char *));
+		if (error) {
+			FREE(ps_argvstr, M_TEMP);
+			FREE(buf, M_TEMP);
+			return (error);
+		}
 		bytes_left = buflen;
 		for (i = 0; bytes_left && (i < pstr.ps_nargvstr); i++) {
-			error = copyinstr(pstr.ps_argvstr[i], ps,
+			error = copyinstr(ps_argvstr[i], ps,
 					  bytes_left, &done);
 			/* If too long or malformed, just truncate */
 			if (error) {
@@ -239,6 +253,7 @@ procfs_docmdline(struct proc *curp, struct proc *p, struct pfsnode *pfs,
 			bytes_left -= done;
 		}
 		buflen = ps - buf;
+		FREE(ps_argvstr, M_TEMP);
 	}
 
 	buflen -= uio->uio_offset;
