@@ -25,10 +25,13 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * 
+ *
+ * $DragonFly: src/sys/dev/sound/isa/i386/uart/Attic/uart6850.c,v 1.2 2004/09/19 16:51:03 joerg Exp $ 
  */
 
-#include <i386/isa/sound/sound_config.h>
+#include <sys/types.h>
+#include <sys/callout.h>
+#include <dev/sound/isa/i386/sound_config.h>
 
 #if	NSND > 0
 
@@ -62,8 +65,10 @@ static int      reset_uart6850(void);
 static void     (*midi_input_intr) (int dev, u_char data);
 static void     poll_uart6850(void *dummy);
 
-
 static sound_os_info *uart6850_osp;
+
+static struct callout	uart6850_ch;
+SYSINIT(uart6850, SI_SUB_DRIVERS, SI_ORDER_ANY, callout_init, &uart6850_ch);
 
 static void
 uart6850_input_loop(void)
@@ -110,8 +115,7 @@ poll_uart6850(void * dummy)
     if (input_avail())
 	uart6850_input_loop();
 
-
-    timeout( poll_uart6850, 0, 1);	/* Come back later */
+    callout_reset(&uart6850_ch, 1, poll_uart6850, NULL); /* Come back later */
 
     splx(flags);
 }
