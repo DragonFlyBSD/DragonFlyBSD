@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.12 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.13 2004/12/30 02:26:12 hsu Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -192,7 +192,12 @@ nd6_ifattach(struct ifnet *ifp)
 	ND.reachable = ND_COMPUTE_RTIME(ND.basereachable);
 	ND.retrans = RETRANS_TIMER;
 	ND.receivedra = 0;
-	ND.flags = ND6_IFF_PERFORMNUD;
+	/*
+	 * Note that the default value of ip6_accept_rtadv is 0, which means
+	 * we won't accept RAs by default even if we set ND6_IFF_ACCEPT_RTADV
+	 * here.
+	 */
+	ND.flags = (ND6_IFF_PERFORMNUD | ND6_IFF_ACCEPT_RTADV);
 	nd6_setmtu(ifp);
 #undef ND
 }

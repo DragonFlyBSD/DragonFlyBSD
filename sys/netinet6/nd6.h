@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.4 2003/11/22 19:30:56 asmodai Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.5 2004/12/30 02:26:12 hsu Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*
@@ -88,6 +88,7 @@ struct nd_ifinfo {
 };
 
 #define ND6_IFF_PERFORMNUD	0x1
+#define ND6_IFF_ACCEPT_RTADV	0x2
 
 struct in6_nbrinfo {
 	char ifname[IFNAMSIZ];	/* if name, e.g. "en0" */
