@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/decl.c,v 1.2.8.2 2001/07/19 09:19:47 kris Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.6 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -172,7 +172,7 @@ initdecl(void)
 		for (i = 0; i < NTSPEC; i++)
 			ttab[i].tt_psz = ttab[i].tt_sz;
 	}
-	
+
 	/* shared type structures */
 	typetab = xcalloc(NTSPEC, sizeof (type_t));
 	for (i = 0; i < NTSPEC; i++)
@@ -402,7 +402,7 @@ addtype(type_t *tp)
 	} else {
 		/*
 		 * remember specifiers "void", "char", "int", "float" or
-		 * "double" int dcs->d_atyp 
+		 * "double" int dcs->d_atyp
 		 */
 		if (dcs->d_atyp != NOTSPEC)
 			/* more than one, print error in deftyp() */
@@ -1127,7 +1127,7 @@ align(int al, int len)
 	 */
 	if (al > dcs->d_stralign)
 		dcs->d_stralign = al;
-	
+
 	no = (dcs->d_offset + (al - 1)) & ~(al - 1);
 	if (len == 0 || dcs->d_offset + len > no)
 		dcs->d_offset = no;
@@ -1351,7 +1351,7 @@ osfunc(sym_t *decl, sym_t *args)
 	    decl->s_type == dcs->d_nxt->d_type) {
 		/*
 		 * We assume that this becomes a function definition. If
-		 * we are wrong, its corrected in chkfdef(). 
+		 * we are wrong, its corrected in chkfdef().
 		 */
 		if (args != NULL) {
 			decl->s_osdef = 1;
@@ -1802,7 +1802,7 @@ decl1ext(sym_t *dsym, int initflg)
 		}
 
 		if (!redec && !isredec(dsym, (warn = 0, &warn))) {
-		
+
 			if (warn) {
 				/* redeclaration of %s */
 				(*(sflag ? error : warning))(27, dsym->s_name);
@@ -1848,7 +1848,7 @@ decl1ext(sym_t *dsym, int initflg)
 			compltyp(dsym, rdsym);
 
 		}
-		
+
 		rmsym(rdsym);
 	}
 
@@ -2356,7 +2356,7 @@ cluparg(void)
 		/* from now the prototype is valid */
 		funcsym->s_osdef = 0;
 		funcsym->s_args = NULL;
-		
+
 	}
 
 }
@@ -2506,7 +2506,7 @@ decl1loc(sym_t *dsym, int initflg)
 			if (hflag)
 				/* declaration hides earlier one: %s */
 				warning(95, dsym->s_name);
-			
+
 		}
 
 		if (dcs->d_rdcsym->s_blklev == blklev) {
@@ -2960,7 +2960,7 @@ chkglvar(sym_t *sym)
 {
 	if (sym->s_scl == TYPEDEF || sym->s_scl == ENUMCON)
 		return;
-	
+
 	if (sym->s_scl != EXTERN && sym->s_scl != STATIC)
 		lerror("chkglvar() 1");
 

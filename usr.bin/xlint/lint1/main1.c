@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main1.c,v 1.3 1995/10/02 17:29:56 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.6 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -170,7 +170,7 @@ usage(void)
 	(void)fprintf(stderr, "usage: lint1 [-abcdeghprstuvyzF] src dest\n");
 	exit(1);
 }
-	
+
 void
 norecover(void)
 {

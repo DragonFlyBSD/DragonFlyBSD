@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: init.c,v 1.4 1995/10/02 17:21:37 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/init.c,v 1.6 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -408,7 +408,7 @@ mkinit(tnode_t *tn)
 	tmem = tsave();
 	expr(tn, 1, 0);
 	trestor(tmem);
-	
+
 	if (isityp(lt) && ln->tn_type->t_isfield && !isityp(rt)) {
 		/*
 		 * Bit-fields can be initialized in trad. C only by integer

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.5 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -277,7 +277,7 @@ data_def:
 	  }
 	| declspecs deftyp type_init_decls T_SEMI
 	| error T_SEMI {
-		globclup();		
+		globclup();
 	  }
 	| error T_RBRACE {
 		globclup();

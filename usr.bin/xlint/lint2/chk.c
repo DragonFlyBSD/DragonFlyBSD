@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: chk.c,v 1.2 1995/07/03 21:24:42 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/chk.c,v 1.6 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/chk.c,v 1.7 2004/07/07 12:24:01 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -266,7 +266,7 @@ chkdnud(hte_t *hte)
 
 	if (hte->h_syms == NULL || hte->h_used || hte->h_def)
 		return;
-	
+
 	if ((sym = hte->h_syms) != NULL) {
 		if (sym->s_def != DECL)
 			errx(1, "internal error: chkdnud() 1");
@@ -928,7 +928,7 @@ scanflike(hte_t *hte, fcall_t *call, int n, const char *fmt, type_t **ap)
 			noasgn = 1;
 			fc = *fp++;
 		}
-		
+
 		if (isdigit(fc)) {
 			fwidth = 1;
 			do { fc = *fp++; } while (isdigit(fc));
@@ -1280,7 +1280,7 @@ eqtype(type_t *tp1, type_t *tp2, int ignqual, int promot, int asgn, int *warn)
 			if (indir == 1 && (t == VOID || tp2->t_tspec == VOID))
 				return (1);
 		}
-		
+
 		if (t != tp2->t_tspec) {
 			/*
 			 * Give pointer to types which differ only in
@@ -1413,4 +1413,3 @@ mnoarg(type_t *tp, int *warn)
 	}
 	return (1);
 }
-

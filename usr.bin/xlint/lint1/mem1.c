@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: mem1.c,v 1.2 1995/07/03 21:24:25 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/mem1.c,v 1.6 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <sys/types.h>
@@ -244,7 +244,7 @@ initmem(void)
 	mblks = xcalloc(nmblks = ML_INC, sizeof (mbl_t *));
 }
 
-	
+
 /*
  * Allocate memory associated with level l.
  */

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main2.c,v 1.2 1995/07/03 21:24:53 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.5 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/main2.c,v 1.6 2004/07/07 12:24:01 asmodai Exp $
  */
 
 #include <stdio.h>
@@ -131,7 +131,7 @@ main(int argc, char *argv[])
 			break;
 		case 'l':
 			for (i = 0; libs[i] != NULL; i++) ;
-			libs = xrealloc(libs, (i + 2) * sizeof (char *)); 
+			libs = xrealloc(libs, (i + 2) * sizeof (char *));
 			libs[i] = xstrdup(optarg);
 			libs[i + 1] = NULL;
 			break;
@@ -139,7 +139,7 @@ main(int argc, char *argv[])
 			usage();
 		}
 	}
-	
+
 	argc -= optind;
 	argv += optind;
 
@@ -184,4 +184,3 @@ usage(void)
 		      "usage: lint2 -hpstxuHF -Clib -l lib ... src1 ...\n");
 	exit(1);
 }
-

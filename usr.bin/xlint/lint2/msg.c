@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: msg.c,v 1.2 1995/07/03 21:24:56 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.6 2004/07/07 12:13:26 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/msg.c,v 1.7 2004/07/07 12:24:01 asmodai Exp $
  */
 
 #include <string.h>
@@ -134,4 +134,3 @@ mkpos(pos_t *posp)
 
 	return (buf);
 }
-

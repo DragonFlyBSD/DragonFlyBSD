@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.6 2004/07/07 08:20:18 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.7 2004/07/07 12:24:00 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -419,7 +419,7 @@ search(sb)
 
 	return (NULL);
 }
-			
+
 static int
 keyw(sym)
 	sym_t	*sym;
@@ -725,7 +725,7 @@ ccon()
 		cv = (char)val;
 		val = cv;
 	}
-	
+
 	yylval.y_val = xcalloc(1, sizeof (val_t));
 	yylval.y_val->v_tspec = INT;
 	yylval.y_val->v_quad = val;
@@ -1412,5 +1412,5 @@ freeyyv(sp, tok)
 			lerror("fryylv() 1");
 		}
 		free(strg);
-	}	
+	}
 }

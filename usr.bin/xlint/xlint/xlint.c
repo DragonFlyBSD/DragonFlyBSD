@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2004/07/07 12:13:27 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.9 2004/07/07 12:24:01 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -143,7 +143,7 @@ appstrg(char ***lstp, char *s)
 	lst[i] = s;
 	lst[i + 1] = NULL;
 	*lstp = lst;
-}	
+}
 
 static void
 appcstrg(char ***lstp, const char *s)
@@ -331,7 +331,7 @@ main(int argc, char *argv[])
 		appstrg(&lcppflgs, concat2("-D", MACHINE_ARCH));
 	}
 #endif
-	
+
 	appcstrg(&deflibs, "c");
 
 	if (signal(SIGHUP, terminate) == SIG_IGN)
@@ -698,7 +698,7 @@ lint2(void)
 
 	path = xmalloc(strlen(PATH_LIBEXEC) + sizeof ("/lint2"));
 	(void)sprintf(path, "%s/lint2", PATH_LIBEXEC);
-	
+
 	appcstrg(&args, path);
 	applst(&args, l2flags);
 	applst(&args, l2libs);
