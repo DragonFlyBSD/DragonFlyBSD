@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.78 2005/02/10 10:45:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.79 2005/02/10 11:33:37 okumoto Exp $
  */
 
 /*-
@@ -1156,34 +1156,40 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	}
     }
 
-    if (v->flags & VAR_IN_USE) {
-	Fatal("Variable %s is recursive.", v->name);
-	/*NOTREACHED*/
-    } else {
-	v->flags |= VAR_IN_USE;
-    }
+	/*
+	 * Make sure this variable is fully expanded.
+	 * XXX This section really should be its own function.
+	 */
+	{
+		if (v->flags & VAR_IN_USE) {
+			Fatal("Variable %s is recursive.", v->name);
+			/* NOTREACHED */
+		} else {
+			v->flags |= VAR_IN_USE;
+		}
 
-    /*
-     * Before doing any modification, we have to make sure the value
-     * has been fully expanded. If it looks like recursion might be
-     * necessary (there's a dollar sign somewhere in the variable's value)
-     * we just call Var_Subst to do any other substitutions that are
-     * necessary. Note that the value returned by Var_Subst will have
-     * been dynamically-allocated, so it will need freeing when we
-     * return.
-     */
-    str = (char *)Buf_GetAll(v->val, (size_t *)NULL);
-    if (strchr(str, '$') != NULL) {
-	Buffer	*buf;
+		/*
+		 * Before doing any modification, we have to make sure the
+		 * value has been fully expanded. If it looks like recursion
+		 * might be necessary (there's a dollar sign somewhere in the
+		 * variable's value) we just call Var_Subst to do any other
+		 * substitutions that are necessary. Note that the value
+		 * returned by Var_Subst will have been
+		 * dynamically-allocated, so it will need freeing when we
+		 * return.
+		 */
+		str = (char *)Buf_GetAll(v->val, (size_t *)NULL);
+		if (strchr(str, '$') != NULL) {
+			Buffer *buf;
 
-	buf = Var_Subst(NULL, str, ctxt, err);
-	str = Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
+			buf = Var_Subst(NULL, str, ctxt, err);
+			str = Buf_GetAll(buf, NULL);
+			Buf_Destroy(buf, FALSE);
 
-	*freePtr = TRUE;
-    }
-
-    v->flags &= ~VAR_IN_USE;
+			*freePtr = TRUE;
+		}
+		v->flags &= ~VAR_IN_USE;
+	}
 
     /*
      * Now we need to apply any modifiers the user wants applied.
