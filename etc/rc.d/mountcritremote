@@ -2,7 +2,7 @@
 #
 # $NetBSD: mountcritremote,v 1.7 2002/04/29 12:29:53 lukem Exp $
 # $FreeBSD: src/etc/rc.d/mountcritremote,v 1.6 2003/06/01 01:43:37 gordon Exp $
-# $DragonFly: src/etc/rc.d/mountcritremote,v 1.4 2004/01/27 00:42:45 rob Exp $
+# $DragonFly: src/etc/rc.d/mountcritremote,v 1.5 2004/01/27 01:26:25 rob Exp $
 #
 
 # PROVIDE: mountcritremote
@@ -70,7 +70,6 @@ mountcritremote_start()
 	# Cleanup /var again just in case it's a network mount.
 	/etc/rc.d/cleanvar reload
 	rm -f /var/run/clean_var /var/spool/lock/clean_var
-	;;
 }
 
 load_rc_config $name
