@@ -1,5 +1,5 @@
 /*	$NetBSD: gzip.c,v 1.67 2004/09/11 11:07:44 dsl Exp $	*/
-/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.3 2004/10/30 18:48:31 dillon Exp $ */
+/*	$DragonFly: src/usr.bin/gzip/gzip.c,v 1.4 2004/12/25 04:14:19 y0netan1 Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 2003, 2004 Matthew R. Green
@@ -472,6 +472,8 @@ prepend_gzip(char *gzip, int *argc, char ***argv)
 				*s = 0;
 				break;
 			}
+		if (*s == '\0')
+			break;
 	}
 
 	/* copy the original arguments and a NULL */
