@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.8 2005/02/07 16:27:19 harti Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.22 2005/03/20 12:23:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.23 2005/03/22 11:29:49 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -51,9 +51,9 @@ struct GNode;
 struct Buffer;
 
 typedef struct Var {
-    char		*name;	/* the variable's name */
-    struct Buffer	*val;	/* its value */
-    int			flags;	/* miscellaneous status flags */
+	char		*name;	/* the variable's name */
+	struct Buffer	*val;	/* its value */
+	int		flags;	/* miscellaneous status flags */
 
 #define	VAR_IN_USE	1	/* Variable's value currently being used.
 				 * Used to avoid recursion */
