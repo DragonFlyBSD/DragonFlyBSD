@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.166 2005/03/16 22:49:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.167 2005/03/16 22:50:06 okumoto Exp $
  */
 
 /*-
@@ -1139,47 +1139,44 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 static char *
 modifier_C(VarParser *vp, char value[], Var *v)
 {
-	const char	*mod = vp->ptr;
 	VarREPattern	patt;
 	char		delim;
 	char		*re;
-	const char	*cur;
 	int		error;
 	char		*newValue;
 
 	patt.flags = 0;
 
-	delim = mod[1];	/* delimiter between sections */
+	vp->ptr++;		/* consume 'C' */
 
-	cur = mod + 2;
+	delim = *vp->ptr;	/* delimiter between sections */
 
-	re = VarGetPattern(vp, &cur, delim, NULL, NULL, NULL);
+	vp->ptr++;		/* consume 1st delim */
+
+	re = VarGetPattern(vp, &vp->ptr, delim, NULL, NULL, NULL);
 	if (re == NULL) {
 		Fatal("Unclosed substitution for %s (%c missing)",
 		     v->name, delim);
 	}
 
-	patt.replace = VarGetPattern(vp, &cur, delim, NULL, NULL, NULL);
+	patt.replace = VarGetPattern(vp, &vp->ptr, delim, NULL, NULL, NULL);
 	if (patt.replace == NULL) {
 		Fatal("Unclosed substitution for %s (%c missing)",
 		     v->name, delim);
 	}
 
-	for (;; cur++) {
-		switch (*cur) {
-		case 'g':
-			patt.flags |= VAR_SUB_GLOBAL;
-			continue;
-		case '1':
-			patt.flags |= VAR_SUB_ONE;
-			continue;
-		default:
-			break;
-		}
+	switch (*vp->ptr) {
+	case 'g':
+		patt.flags |= VAR_SUB_GLOBAL;
+		vp->ptr++;		/* consume 'g' */
+		break;
+	case '1':
+		patt.flags |= VAR_SUB_ONE;
+		vp->ptr++;		/* consume '1' */
+		break;
+	default:
 		break;
 	}
-
-	vp->ptr += (cur - mod);
 
 	error = regcomp(&patt.re, re, REG_EXTENDED);
 	if (error) {
