@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/biosboot/Makefile,v 1.70.2.2 2002/08/07 16:31:55 ru Exp $
-# $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
+# $DragonFly: src/sys/platform/pc32/boot/biosboot/Attic/Makefile,v 1.3 2003/11/15 19:01:31 dillon Exp $
 #
 
 PROG=	boot
@@ -87,5 +87,5 @@ install-boothelp:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${NOBINMODE} \
 		${.CURDIR}/boot.help ${DESTDIR}/
 
-.include <bsd.kern.mk>
+.include "../../../conf/bsd.kern.mk"
 .include <bsd.prog.mk>

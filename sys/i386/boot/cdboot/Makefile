@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/i386/boot/cdboot/Makefile,v 1.7.2.1 2002/08/07 16:31:55 ru Exp $
-# $DragonFly: src/sys/i386/boot/cdboot/Attic/Makefile,v 1.2 2003/06/17 04:28:34 dillon Exp $
+# $DragonFly: src/sys/i386/boot/cdboot/Attic/Makefile,v 1.3 2003/11/15 19:01:33 dillon Exp $
 #
 
 PROG=	boot
@@ -79,5 +79,5 @@ install:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${BINMODE}\
 		boot.img ${DESTDIR}${BINDIR}/cdboot
 
-.include <bsd.kern.mk>
+.include "../../../conf/bsd.kern.mk"
 .include <bsd.prog.mk>

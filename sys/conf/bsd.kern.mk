@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/share/mk/Attic/bsd.kern.mk,v 1.3 2003/11/14 22:58:30 dillon Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.1 2003/11/15 19:01:27 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
