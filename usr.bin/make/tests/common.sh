@@ -2,9 +2,8 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.2 2005/02/26 10:48:43 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.3 2005/02/26 11:51:54 okumoto Exp $
 
-MAKE=/usr/bin/make
 IDTAG='$'DragonFly'$'
 
 #
@@ -119,14 +118,15 @@ eval_cmd()
 			rm -f status
 			;;
 		compare)
-			hack_cmp expected.stdout stdout || FAIL="stdout "$FAIL
-			hack_cmp expected.stderr stderr || FAIL="stderr "$FAIL
-			hack_cmp expected.status status || FAIL="status "$FAIL
+			hack_cmp expected.stdout stdout || FAIL="stdout, "$FAIL
+			hack_cmp expected.stderr stderr || FAIL="stderr, "$FAIL
+			hack_cmp expected.status status || FAIL="status, "$FAIL
 
 			if [ -z "$FAIL" ]; then
 				:
 			else
-				echo "Test failed ( $FAIL) `pwd`"
+				echo "$START_BASE: Test failed {$FAIL}" |\
+					 sed -e 's/, }$/}/'
 			fi
 			;;
 		desc)
@@ -136,7 +136,7 @@ eval_cmd()
 		diff)
 			sh $0 test
 			echo "------------------------"
-			echo "- `pwd`"
+			echo "- $START_BASE"
 			echo "------------------------"
 			hack_diff expected.stdout stdout
 			hack_diff expected.stderr stderr
@@ -204,6 +204,7 @@ for i; do
 done
 
 START_BASE=${START_BASE:-.}
+MAKE=${MAKE:-/usr/bin/make}
 
 export MAKE
 export VERBOSE
