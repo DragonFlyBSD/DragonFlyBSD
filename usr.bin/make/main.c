@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.44 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.45 2005/01/08 22:27:02 okumoto Exp $
  */
 
 /*-
@@ -1001,7 +1001,7 @@ found:
  *	The string must be freed by the caller.
  */
 char *
-Cmd_Exec(char *cmd, const char **error)
+Cmd_Exec(const char *cmd, const char **error)
 {
     char	*args[4];   	/* Args for invoking the shell */
     int 	fds[2];	    	/* Pipe streams */

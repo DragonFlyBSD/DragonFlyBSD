@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.37 2005/01/08 20:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.38 2005/01/08 22:27:02 okumoto Exp $
  */
 
 /*-
@@ -162,7 +162,6 @@ static int VarPrintVar(void *, void *);
 static int
 VarCmp(const void *v, const void *name)
 {
-
     return (strcmp(name, ((const Var *)v)->name));
 }
 
@@ -601,8 +600,7 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  *-----------------------------------------------------------------------
  */
 static char *
-VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *),
-    void *datum)
+VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *), void *datum)
 {
     Buffer  	  *buf;	    	    /* Buffer for the new string */
     Boolean 	  addSpace; 	    /* TRUE if need to add a space to the
@@ -664,7 +662,6 @@ VarSortWords(char *str, int (*cmp)(const void *, const void *))
 static int
 SortIncreasing(const void *l, const void *r)
 {
-
 	return (strcmp(*(const char* const*)l, *(const char* const*)r));
 }
 
@@ -871,8 +868,7 @@ VarREError(int err, regex_t *pat, const char *str)
  *-----------------------------------------------------------------------
  */
 char *
-Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
-    Boolean *freePtr)
+Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freePtr)
 {
     char	    *tstr;    	/* Pointer into str */
     Var	    	    *v;	    	/* Variable in invocation */
@@ -1559,7 +1555,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 #ifdef SUNSHCMD
 		case 's':
 		    if (tstr[1] == 'h' && (tstr[2] == endc || tstr[2] == ':')) {
-			char *error;
+			const char *error;
 			newStr = Cmd_Exec(str, &error);
 			if (error)
 			    Error(error, str);
@@ -1905,7 +1901,6 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 char *
 Var_GetTail(char *file)
 {
-
     return (VarModify(file, VarTail, (void *)NULL));
 }
 
@@ -1946,7 +1941,6 @@ Var_GetHead(char *file)
 void
 Var_Init(void)
 {
-
     VAR_GLOBAL = Targ_NewGN("Global");
     VAR_CMD = Targ_NewGN("Command");
 }
@@ -1970,6 +1964,5 @@ VarPrintVar(void *vp, void *dummy __unused)
 void
 Var_Dump(GNode *ctxt)
 {
-
     Lst_ForEach(&ctxt->context, VarPrintVar, (void *)NULL);
 }

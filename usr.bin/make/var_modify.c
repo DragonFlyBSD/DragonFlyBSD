@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.13 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.14 2005/01/08 22:27:02 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -75,7 +75,7 @@ VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 	if (addSpace) {
 	    Buf_AddByte(buf, (Byte)' ');
 	}
-	Buf_AddBytes(buf, slash - word, (Byte *)word);
+	Buf_AddBytes(buf, slash - word, (const Byte *)word);
     } else {
 	/*
 	 * If no directory part, give . (q.v. the POSIX standard)
@@ -180,9 +180,9 @@ VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 
     dot = strrchr(word, '.');
     if (dot != NULL) {
-	Buf_AddBytes(buf, dot - word, (Byte *)word);
+	Buf_AddBytes(buf, dot - word, (const Byte *)word);
     } else {
-	Buf_AddBytes(buf, strlen(word), (Byte *)word);
+	Buf_AddBytes(buf, strlen(word), (const Byte *)word);
     }
     return (TRUE);
 }

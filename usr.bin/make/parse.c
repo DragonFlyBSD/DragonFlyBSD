@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.32 2005/01/08 20:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.33 2005/01/08 22:27:02 okumoto Exp $
  */
 
 /*-
@@ -1432,7 +1432,8 @@ Parse_DoVar(char *line, GNode *ctxt)
     } else if (type == VAR_SHELL) {
 	Boolean	freeCmd = FALSE; /* TRUE if the command needs to be freed, i.e.
 				  * if any variable expansion was performed */
-	char *res, *error;
+	char		*res;
+	const char	*error;
 
 	if (strchr(cp, '$') != NULL) {
 	    /*
