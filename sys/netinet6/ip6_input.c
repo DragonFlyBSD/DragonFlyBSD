@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.23 2005/01/03 22:03:26 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.24 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -106,6 +106,7 @@
 #include <netinet6/ip6_var.h>
 #include <netinet/in_pcb.h>
 #include <netinet/icmp6.h>
+#include <netinet6/scope6_var.h>
 #include <netinet6/in6_ifattach.h>
 #include <netinet6/nd6.h>
 #include <netinet6/in6_prefix.h>
@@ -197,6 +198,7 @@ ip6_init(void)
 	}
 
 	netisr_register(NETISR_IPV6, cpu0_portfn, ip6_input);
+	scope6_init();
 	nd6_init();
 	frag6_init();
 	/*
@@ -212,13 +214,6 @@ ip6_init(void)
 static void
 ip6_init2(void *dummy)
 {
-
-	/*
-	 * to route local address of p2p link to loopback,
-	 * assign loopback address first.
-	 */
-	in6_ifattach(&loif[0], NULL);
-
 	/* nd6_timer_init */
 	callout_init(&nd6_timer_ch);
 	callout_reset(&nd6_timer_ch, hz, nd6_timer, NULL);
@@ -534,10 +529,6 @@ ip6_input(struct netmsg *msg)
 		dst6->sin6_len = sizeof(struct sockaddr_in6);
 		dst6->sin6_family = AF_INET6;
 		dst6->sin6_addr = ip6->ip6_dst;
-#ifdef SCOPEDROUTING
-		ip6_forward_rt.ro_dst.sin6_scope_id =
-			in6_addr2scopeid(m->m_pkthdr.rcvif, &ip6->ip6_dst);
-#endif
 
 		rtalloc_ign((struct route *)&ip6_forward_rt, RTF_PRCLONING);
 	}

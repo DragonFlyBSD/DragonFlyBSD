@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_var.h,v 1.3.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.5 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_var.h,v 1.6 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: in6_var.h,v 1.56 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -89,6 +89,15 @@ struct in6_addrlifetime {
 	time_t ia6t_preferred;	/* preferred lifetime expiration time */
 	u_int32_t ia6t_vltime;	/* valid lifetime */
 	u_int32_t ia6t_pltime;	/* prefix lifetime */
+};
+
+struct nd_ifinfo;
+struct scope6_id;
+struct in6_ifextra {
+	struct in6_ifstat *in6_ifstat;
+	struct icmp6_ifstat *icmp6_ifstat;
+	struct nd_ifinfo *nd_ifinfo;
+	struct scope6_id *scope6_id;
 };
 
 struct	in6_ifaddr {
@@ -447,18 +456,11 @@ struct	in6_rrenumreq {
 #ifdef _KERNEL
 extern struct in6_ifaddr *in6_ifaddr;
 
-extern struct in6_ifstat **in6_ifstat;
-extern size_t in6_ifstatmax;
 extern struct icmp6stat icmp6stat;
-extern struct icmp6_ifstat **icmp6_ifstat;
-extern size_t icmp6_ifstatmax;
 #define in6_ifstat_inc(ifp, tag) \
 do {								\
-	if ((ifp) && (ifp)->if_index <= if_index		\
-	 && (ifp)->if_index < in6_ifstatmax			\
-	 && in6_ifstat && in6_ifstat[(ifp)->if_index]) {	\
-		in6_ifstat[(ifp)->if_index]->tag++;		\
-	}							\
+	if (ifp)						\
+		((struct in6_ifextra *)((ifp)->if_afdata[AF_INET6]))->in6_ifstat->tag++; \
 } while (0)
 
 extern struct ifqueue ip6intrq;		/* IP6 packet input queue */
@@ -580,6 +582,8 @@ void	in6_purgeaddr (struct ifaddr *);
 int	in6if_do_dad (struct ifnet *);
 void	in6_purgeif (struct ifnet *);
 void	in6_savemkludge (struct in6_ifaddr *);
+void	*in6_domifattach (struct ifnet *);
+void	in6_domifdetach (struct ifnet *, void *);
 void	in6_setmaxmtu   (void);
 void	in6_restoremkludge (struct in6_ifaddr *, struct ifnet *);
 void	in6_purgemkludge (struct ifnet *);

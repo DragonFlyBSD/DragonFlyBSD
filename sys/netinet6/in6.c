@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6.c,v 1.7.2.9 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6.c,v 1.12 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6.c,v 1.13 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: in6.c,v 1.259 2002/01/21 11:37:50 keiichi Exp $	*/
 
 /*
@@ -89,11 +89,9 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/if_ether.h>
-#ifndef SCOPEDROUTING
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/in_pcb.h>
-#endif
 
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
@@ -102,9 +100,7 @@
 #include <netinet6/ip6_mroute.h>
 #include <netinet6/in6_ifattach.h>
 #include <netinet6/scope6_var.h>
-#ifndef SCOPEDROUTING
 #include <netinet6/in6_pcb.h>
-#endif
 
 #include <net/net_osdep.h>
 
@@ -415,13 +411,16 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCSSCOPE6:
 		if (!privileged)
 			return(EPERM);
-		return(scope6_set(ifp, ifr->ifr_ifru.ifru_scope_id));
+		return(scope6_set(ifp,
+			(struct scope6_id *)ifr->ifr_ifru.ifru_scope_id));
 		break;
 	case SIOCGSCOPE6:
-		return(scope6_get(ifp, ifr->ifr_ifru.ifru_scope_id));
+		return(scope6_get(ifp,
+			(struct scope6_id *)ifr->ifr_ifru.ifru_scope_id));
 		break;
 	case SIOCGSCOPE6DEF:
-		return(scope6_get_default(ifr->ifr_ifru.ifru_scope_id));
+		return(scope6_get_default((struct scope6_id *)
+			ifr->ifr_ifru.ifru_scope_id));
 		break;
 	}
 
@@ -557,26 +556,17 @@ in6_control(struct socket *so, u_long cmd, caddr_t data,
 	case SIOCGIFSTAT_IN6:
 		if (ifp == NULL)
 			return EINVAL;
-		if (in6_ifstat == NULL || ifp->if_index >= in6_ifstatmax
-		 || in6_ifstat[ifp->if_index] == NULL) {
-			/* return EAFNOSUPPORT? */
-			bzero(&ifr->ifr_ifru.ifru_stat,
-				sizeof(ifr->ifr_ifru.ifru_stat));
-		} else
-			ifr->ifr_ifru.ifru_stat = *in6_ifstat[ifp->if_index];
+		bzero(&ifr->ifr_ifru.ifru_stat,
+			sizeof(ifr->ifr_ifru.ifru_stat));
+		ifr->ifr_ifru.ifru_stat =
+			*((struct in6_ifextra *)ifp->if_afdata[AF_INET6])->in6_ifstat;
 		break;
 
 	case SIOCGIFSTAT_ICMP6:
-		if (ifp == NULL)
-			return EINVAL;
-		if (icmp6_ifstat == NULL || ifp->if_index >= icmp6_ifstatmax ||
-		    icmp6_ifstat[ifp->if_index] == NULL) {
-			/* return EAFNOSUPPORT? */
-			bzero(&ifr->ifr_ifru.ifru_stat,
-				sizeof(ifr->ifr_ifru.ifru_icmp6stat));
-		} else
-			ifr->ifr_ifru.ifru_icmp6stat =
-				*icmp6_ifstat[ifp->if_index];
+		bzero(&ifr->ifr_ifru.ifru_stat,
+			sizeof(ifr->ifr_ifru.ifru_icmp6stat));
+		ifr->ifr_ifru.ifru_icmp6stat =
+			*((struct in6_ifextra *)ifp->if_afdata[AF_INET6])->icmp6_ifstat;
 		break;
 
 	case SIOCGIFALIFETIME_IN6:
@@ -824,23 +814,19 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 	    (dst6.sin6_family == AF_INET6)) {
 		int scopeid;
 
-#ifndef SCOPEDROUTING
 		if ((error = in6_recoverscope(&dst6,
 					      &ifra->ifra_dstaddr.sin6_addr,
 					      ifp)) != 0)
 			return(error);
-#endif
 		scopeid = in6_addr2scopeid(ifp, &dst6.sin6_addr);
 		if (dst6.sin6_scope_id == 0) /* user omit to specify the ID. */
 			dst6.sin6_scope_id = scopeid;
 		else if (dst6.sin6_scope_id != scopeid)
 			return(EINVAL); /* scope ID mismatch. */
-#ifndef SCOPEDROUTING
 		if ((error = in6_embedscope(&dst6.sin6_addr, &dst6, NULL, NULL))
 		    != 0)
 			return(error);
 		dst6.sin6_scope_id = 0; /* XXX */
-#endif
 	}
 	/*
 	 * The destination address can be specified only for a p2p or a
@@ -1127,13 +1113,6 @@ in6_update_ifa(struct ifnet *ifp, struct in6_aliasreq *ifra,
 			time_second + ia->ia6_lifetime.ia6t_pltime;
 	} else
 		ia->ia6_lifetime.ia6t_preferred = 0;
-
-	/*
-	 * make sure to initialize ND6 information.  this is to workaround
-	 * issues with interfaces with IPv6 addresses, which have never brought
-	 * up.  We are assuming that it is safe to nd6_ifattach multiple times.
-	 */
-	nd6_ifattach(ifp);
 
 	/*
 	 * Perform DAD, if needed.
@@ -1467,7 +1446,6 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 				break;
 
 			bcopy(IFA_IN6(ifa), &candidate, sizeof(candidate));
-#ifndef SCOPEDROUTING
 			/*
 			 * XXX: this is adhoc, but is necessary to allow
 			 * a user to specify fe80::/64 (not /10) for a
@@ -1475,7 +1453,6 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 			 */
 			if (IN6_IS_ADDR_LINKLOCAL(&candidate))
 				candidate.s6_addr16[1] = 0;
-#endif
 			candidate.s6_addr32[0] &= mask.s6_addr32[0];
 			candidate.s6_addr32[1] &= mask.s6_addr32[1];
 			candidate.s6_addr32[2] &= mask.s6_addr32[2];
@@ -1488,24 +1465,19 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 		ia = ifa2ia6(ifa);
 
 		if (cmd == SIOCGLIFADDR) {
-#ifndef SCOPEDROUTING
 			struct sockaddr_in6 *s6;
-#endif
 
 			/* fill in the if_laddrreq structure */
 			bcopy(&ia->ia_addr, &iflr->addr, ia->ia_addr.sin6_len);
-#ifndef SCOPEDROUTING		/* XXX see above */
 			s6 = (struct sockaddr_in6 *)&iflr->addr;
 			if (IN6_IS_ADDR_LINKLOCAL(&s6->sin6_addr)) {
 				s6->sin6_addr.s6_addr16[1] = 0;
 				s6->sin6_scope_id =
 					in6_addr2scopeid(ifp, &s6->sin6_addr);
 			}
-#endif
 			if ((ifp->if_flags & IFF_POINTOPOINT) != 0) {
 				bcopy(&ia->ia_dstaddr, &iflr->dstaddr,
 					ia->ia_dstaddr.sin6_len);
-#ifndef SCOPEDROUTING		/* XXX see above */
 				s6 = (struct sockaddr_in6 *)&iflr->dstaddr;
 				if (IN6_IS_ADDR_LINKLOCAL(&s6->sin6_addr)) {
 					s6->sin6_addr.s6_addr16[1] = 0;
@@ -1513,7 +1485,6 @@ in6_lifaddr_ioctl(struct socket *so, u_long cmd, caddr_t data,
 						in6_addr2scopeid(ifp,
 								 &s6->sin6_addr);
 				}
-#endif
 			} else
 				bzero(&iflr->dstaddr, sizeof(iflr->dstaddr));
 
@@ -1832,9 +1803,6 @@ in6_is_addr_deprecated(struct sockaddr_in6 *sa6)
 	for (ia = in6_ifaddr; ia; ia = ia->ia_next) {
 		if (IN6_ARE_ADDR_EQUAL(&ia->ia_addr.sin6_addr,
 				       &sa6->sin6_addr) &&
-#ifdef SCOPEDROUTING
-		    ia->ia_addr.sin6_scope_id == sa6->sin6_scope_id &&
-#endif
 		    (ia->ia6_flags & IN6_IFF_DEPRECATED) != 0)
 			return(1); /* true */
 
@@ -2349,11 +2317,44 @@ in6_setmaxmtu(void)
 	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
 	{
 		if ((ifp->if_flags & IFF_LOOPBACK) == 0 &&
-		    nd_ifinfo[ifp->if_index].linkmtu > maxmtu)
-			maxmtu =  nd_ifinfo[ifp->if_index].linkmtu;
+		    ND_IFINFO(ifp)->linkmtu > maxmtu)
+			maxmtu =  ND_IFINFO(ifp)->linkmtu;
 	}
 	if (maxmtu)	/* update only when maxmtu is positive */
 		in6_maxmtu = maxmtu;
+}
+
+void *
+in6_domifattach(struct ifnet *ifp)
+{
+	struct in6_ifextra *ext;
+
+	ext = (struct in6_ifextra *)malloc(sizeof(*ext), M_IFADDR, M_WAITOK);
+	bzero(ext, sizeof(*ext));
+
+	ext->in6_ifstat = (struct in6_ifstat *)malloc(sizeof(struct in6_ifstat),
+		M_IFADDR, M_WAITOK);
+	bzero(ext->in6_ifstat, sizeof(*ext->in6_ifstat));
+
+	ext->icmp6_ifstat =
+		(struct icmp6_ifstat *)malloc(sizeof(struct icmp6_ifstat),
+			M_IFADDR, M_WAITOK);
+	bzero(ext->icmp6_ifstat, sizeof(*ext->icmp6_ifstat));
+
+	ext->nd_ifinfo = nd6_ifattach(ifp);
+	ext->scope6_id = scope6_ifattach(ifp);
+	return ext;
+}
+
+void
+in6_domifdetach(struct ifnet *ifp, void *aux)
+{
+	struct in6_ifextra *ext = (struct in6_ifextra *)aux;
+	scope6_ifdetach(ext->scope6_id);
+	nd6_ifdetach(ext->nd_ifinfo);
+	free(ext->in6_ifstat, M_IFADDR);
+	free(ext->icmp6_ifstat, M_IFADDR);
+	free(ext, M_IFADDR);
 }
 
 /*

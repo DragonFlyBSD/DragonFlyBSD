@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.9 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.10 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -657,7 +657,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 			ln->ln_byhint = 0;
 			if (ln->ln_expire)
 				ln->ln_expire = time_second +
-				    nd_ifinfo[rt->rt_ifp->if_index].reachable;
+				    ND_IFINFO(rt->rt_ifp)->reachable;
 		} else {
 			ln->ln_state = ND6_LLINFO_STALE;
 			ln->ln_expire = time_second + nd6_gctimer;
@@ -738,7 +738,7 @@ nd6_na_input(struct mbuf *m, int off, int icmp6len)
 				ln->ln_byhint = 0;
 				if (ln->ln_expire) {
 					ln->ln_expire = time_second +
-					    nd_ifinfo[ifp->if_index].reachable;
+					    ND_IFINFO(ifp)->reachable;
 				}
 			} else {
 				if (lladdr && llchange) {
@@ -1088,8 +1088,8 @@ nd6_dad_start(struct ifaddr *ifa,
 	dp->dad_ns_ocount = dp->dad_ns_tcount = 0;
 	if (tick == NULL) {
 		nd6_dad_ns_output(dp, ifa);
-		nd6_dad_starttimer(dp, 
-		    nd_ifinfo[ifa->ifa_ifp->if_index].retrans * hz / 1000);
+		nd6_dad_starttimer(dp,
+		    ND_IFINFO(ifa->ifa_ifp)->retrans * hz / 1000);
 	} else {
 		int ntick;
 
@@ -1178,8 +1178,8 @@ nd6_dad_timer(struct ifaddr *ifa)
 		 * We have more NS to go.  Send NS packet for DAD.
 		 */
 		nd6_dad_ns_output(dp, ifa);
-		nd6_dad_starttimer(dp, 
-		    nd_ifinfo[ifa->ifa_ifp->if_index].retrans * hz / 1000);
+		nd6_dad_starttimer(dp,
+			ND_IFINFO(ifa->ifa_ifp)->retrans * hz / 1000);
 	} else {
 		/*
 		 * We have transmitted sufficient number of DAD packets.

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/icmp6.h,v 1.2.2.5 2002/06/29 18:31:11 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.5 2004/12/21 02:54:15 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.6 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: icmp6.h,v 1.46 2001/04/27 15:09:48 itojun Exp $	*/
 
 /*
@@ -684,11 +684,8 @@ void	icmp6_mtudisc_update (struct ip6ctlparam *, int);
 /* XXX: is this the right place for these macros? */
 #define icmp6_ifstat_inc(ifp, tag) \
 do {								\
-	if ((ifp) && (ifp)->if_index <= if_index			\
-	 && (ifp)->if_index < icmp6_ifstatmax			\
-	 && icmp6_ifstat && icmp6_ifstat[(ifp)->if_index]) {	\
-		icmp6_ifstat[(ifp)->if_index]->tag++;		\
-	}							\
+	if (ifp)						\
+		((struct in6_ifextra *)((ifp)->if_afdata[AF_INET6]))->icmp6_ifstat->tag++; \
 } while (0)
 
 #define icmp6_ifoutstat_inc(ifp, type, code) \
@@ -696,7 +693,7 @@ do { \
 		icmp6_ifstat_inc(ifp, ifs6_out_msg); \
 		if (type < ICMP6_INFOMSG_MASK) \
 			icmp6_ifstat_inc(ifp, ifs6_out_error); \
-		switch(type) { \
+		switch (type) { \
 		 case ICMP6_DST_UNREACH: \
 			 icmp6_ifstat_inc(ifp, ifs6_out_dstunreach); \
 			 if (code == ICMP6_DST_UNREACH_ADMIN) \

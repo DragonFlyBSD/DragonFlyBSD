@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.26 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.27 2005/02/01 16:09:37 hrs Exp $
  */
 
 #include "opt_compat.h"
@@ -53,6 +53,7 @@
 #include <sys/sockio.h>
 #include <sys/syslog.h>
 #include <sys/sysctl.h>
+#include <sys/domain.h>
 
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -83,6 +84,8 @@
  * System initialization
  */
 
+static void	if_attachdomain(void *);
+static void	if_attachdomain1(struct ifnet *);
 static int ifconf (u_long, caddr_t, struct thread *);
 static void ifinit (void *);
 static void if_qflush (struct ifqueue *);
@@ -237,8 +240,43 @@ if_attach(struct ifnet *ifp)
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
+	if (domains)
+		if_attachdomain1(ifp);
+
 	/* Announce the interface. */
 	rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+}
+
+static void
+if_attachdomain(void *dummy)
+{
+	struct ifnet *ifp;
+	int s;
+
+	s = splnet();
+	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list))
+		if_attachdomain1(ifp);
+	splx(s);
+}
+SYSINIT(domainifattach, SI_SUB_PROTO_IFATTACHDOMAIN, SI_ORDER_FIRST,
+	if_attachdomain, NULL);
+
+static void
+if_attachdomain1(struct ifnet *ifp)
+{
+	struct domain *dp;
+	int s;
+
+	s = splnet();
+
+	/* address family dependent data region */
+	bzero(ifp->if_afdata, sizeof(ifp->if_afdata));
+	for (dp = domains; dp; dp = dp->dom_next) {
+		if (dp->dom_ifattach)
+			ifp->if_afdata[dp->dom_family] =
+				(*dp->dom_ifattach)(ifp);
+	}
+	splx(s);
 }
 
 /*
@@ -252,6 +290,7 @@ if_detach(struct ifnet *ifp)
 	struct radix_node_head	*rnh;
 	int s;
 	int i;
+	struct domain *dp;
 
 	EVENTHANDLER_INVOKE(ifnet_detach_event, ifp);
 
@@ -320,6 +359,12 @@ if_detach(struct ifnet *ifp)
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+
+	for (dp = domains; dp; dp = dp->dom_next) {
+		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
+			(*dp->dom_ifdetach)(ifp,
+				ifp->if_afdata[dp->dom_family]);
+	}
 
 	ifindex2ifnet[ifp->if_index] = NULL;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)domain.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/domain.h,v 1.14 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/domain.h,v 1.4 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/sys/domain.h,v 1.5 2005/02/01 16:09:37 hrs Exp $
  */
 
 #ifndef _SYS_DOMAIN_H_
@@ -46,6 +46,7 @@
  * Forward structure declarations for function prototypes [sic].
  */
 struct	mbuf;
+struct	ifnet;
 
 struct	domain {
 	int	dom_family;		/* AF_xxx */
@@ -61,6 +62,9 @@ struct	domain {
 	int	(*dom_rtattach)(void **, int);	/* initialize routing table */
 	int	dom_rtoffset;		/* an arg to rtattach, in bits */
 	int	dom_maxrtkey;		/* for routing layer */
+	void	*(*dom_ifattach)(struct ifnet *);
+	void	(*dom_ifdetach)(struct ifnet *, void *);
+					/* af-dependent data on ifnet */
 };
 
 #ifdef _KERNEL

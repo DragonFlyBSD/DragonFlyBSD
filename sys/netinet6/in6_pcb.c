@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.21 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.22 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -569,7 +569,7 @@ in6_selecthlim(struct in6pcb *in6p, struct ifnet *ifp)
 	if (in6p && in6p->in6p_hops >= 0)
 		return(in6p->in6p_hops);
 	else if (ifp)
-		return(nd_ifinfo[ifp->if_index].chlim);
+		return(ND_IFINFO(ifp)->chlim);
 	else
 		return(ip6_defhlim);
 }

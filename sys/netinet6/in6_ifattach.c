@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.11 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.12 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -61,10 +61,6 @@
 
 #include <net/net_osdep.h>
 
-struct in6_ifstat **in6_ifstat = NULL;
-struct icmp6_ifstat **icmp6_ifstat = NULL;
-size_t in6_ifstatmax = 0;
-size_t icmp6_ifstatmax = 0;
 unsigned long in6_maxmtu = 0;
 
 #ifdef IP6_AUTO_LINKLOCAL
@@ -437,11 +433,7 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 	ifra.ifra_addr.sin6_family = AF_INET6;
 	ifra.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
 	ifra.ifra_addr.sin6_addr.s6_addr16[0] = htons(0xfe80);
-#ifdef SCOPEDROUTING
-	ifra.ifra_addr.sin6_addr.s6_addr16[1] = 0
-#else
 	ifra.ifra_addr.sin6_addr.s6_addr16[1] = htons(ifp->if_index); /* XXX */
-#endif
 	ifra.ifra_addr.sin6_addr.s6_addr32[1] = 0;
 	if ((ifp->if_flags & IFF_LOOPBACK) != 0) {
 		ifra.ifra_addr.sin6_addr.s6_addr32[2] = 0;
@@ -453,18 +445,11 @@ in6_ifattach_linklocal(struct ifnet *ifp,
 			return -1;
 		}
 	}
-#ifdef SCOPEDROUTING
-	ifra.ifra_addr.sin6_scope_id =
-		in6_addr2scopeid(ifp,  &ifra.ifra_addr.sin6_addr);
-#endif
 
 	ifra.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
 	ifra.ifra_prefixmask.sin6_family = AF_INET6;
 	ifra.ifra_prefixmask.sin6_addr = in6mask64;
-#ifdef SCOPEDROUTING
-	/* take into accound the sin6_scope_id field for routing */
-	ifra.ifra_prefixmask.sin6_scope_id = 0xffffffff;
-#endif
+
 	/* link-local addresses should NEVER expire. */
 	ifra.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
 	ifra.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
@@ -717,7 +702,6 @@ void
 in6_ifattach(struct ifnet *ifp,
 	     struct ifnet *altifp)	/* secondary EUI64 source */
 {
-	static size_t if_indexlim = 8;
 	struct in6_ifaddr *ia;
 	struct in6_addr in6;
 
@@ -731,50 +715,6 @@ in6_ifattach(struct ifnet *ifp,
 	case IFT_PFSYNC:
 		return;
 	}
-
-	/*
-	 * We have some arrays that should be indexed by if_index.
-	 * since if_index will grow dynamically, they should grow too.
-	 *	struct in6_ifstat **in6_ifstat
-	 *	struct icmp6_ifstat **icmp6_ifstat
-	 */
-	if (in6_ifstat == NULL || icmp6_ifstat == NULL ||
-	    if_index >= if_indexlim) {
-		size_t n;
-		caddr_t q;
-		size_t olim;
-
-		olim = if_indexlim;
-		while (if_index >= if_indexlim)
-			if_indexlim <<= 1;
-
-		/* grow in6_ifstat */
-		n = if_indexlim * sizeof(struct in6_ifstat *);
-		q = (caddr_t)malloc(n, M_IFADDR, M_WAITOK);
-		bzero(q, n);
-		if (in6_ifstat) {
-			bcopy((caddr_t)in6_ifstat, q,
-				olim * sizeof(struct in6_ifstat *));
-			free((caddr_t)in6_ifstat, M_IFADDR);
-		}
-		in6_ifstat = (struct in6_ifstat **)q;
-		in6_ifstatmax = if_indexlim;
-
-		/* grow icmp6_ifstat */
-		n = if_indexlim * sizeof(struct icmp6_ifstat *);
-		q = (caddr_t)malloc(n, M_IFADDR, M_WAITOK);
-		bzero(q, n);
-		if (icmp6_ifstat) {
-			bcopy((caddr_t)icmp6_ifstat, q,
-				olim * sizeof(struct icmp6_ifstat *));
-			free((caddr_t)icmp6_ifstat, M_IFADDR);
-		}
-		icmp6_ifstat = (struct icmp6_ifstat **)q;
-		icmp6_ifstatmax = if_indexlim;
-	}
-
-	/* initialize scope identifiers */
-	scope6_ifattach(ifp);
 
 	/*
 	 * quirks based on interface type
@@ -837,20 +777,6 @@ statinit:
 	/* update dynamically. */
 	if (in6_maxmtu < ifp->if_mtu)
 		in6_maxmtu = ifp->if_mtu;
-
-	if (in6_ifstat[ifp->if_index] == NULL) {
-		in6_ifstat[ifp->if_index] = (struct in6_ifstat *)
-			malloc(sizeof(struct in6_ifstat), M_IFADDR, M_WAITOK);
-		bzero(in6_ifstat[ifp->if_index], sizeof(struct in6_ifstat));
-	}
-	if (icmp6_ifstat[ifp->if_index] == NULL) {
-		icmp6_ifstat[ifp->if_index] = (struct icmp6_ifstat *)
-			malloc(sizeof(struct icmp6_ifstat), M_IFADDR, M_WAITOK);
-		bzero(icmp6_ifstat[ifp->if_index], sizeof(struct icmp6_ifstat));
-	}
-
-	/* initialize NDP variables */
-	nd6_ifattach(ifp);
 }
 
 /*
@@ -967,7 +893,7 @@ in6_get_tmpifid(struct ifnet *ifp, u_int8_t *retbuf, const u_int8_t *baseid,
 		int generate)
 {
 	u_int8_t nullbuf[8];
-	struct nd_ifinfo *ndi = &nd_ifinfo[ifp->if_index];
+	struct nd_ifinfo *ndi = ND_IFINFO(ifp);
 
 	bzero(nullbuf, sizeof(nullbuf));
 	if (bcmp(ndi->randomid, nullbuf, sizeof(nullbuf)) == 0) {
@@ -988,9 +914,9 @@ in6_get_tmpifid(struct ifnet *ifp, u_int8_t *retbuf, const u_int8_t *baseid,
 void
 in6_tmpaddrtimer(void *ignored_arg)
 {
-	int i;
 	struct nd_ifinfo *ndi;
 	u_int8_t nullbuf[8];
+	struct ifnet *ifp;
 	int s = splnet();
 
 	callout_reset(&in6_tmpaddrtimer_ch,
@@ -999,8 +925,8 @@ in6_tmpaddrtimer(void *ignored_arg)
 		      in6_tmpaddrtimer, NULL);
 
 	bzero(nullbuf, sizeof(nullbuf));
-	for (i = 1; i < if_index + 1; i++) {
-		ndi = &nd_ifinfo[i];
+	for (ifp = TAILQ_FIRST(&ifnet); ifp; ifp = TAILQ_NEXT(ifp, if_list)) {
+		ndi = ND_IFINFO(ifp);
 		if (bcmp(ndi->randomid, nullbuf, sizeof(nullbuf)) != 0) {
 			/*
 			 * We've been generating a random ID on this interface.

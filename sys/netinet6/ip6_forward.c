@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.10 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.11 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -503,14 +503,12 @@ ip6_forward(struct mbuf *m, int srcrt)
 	}
 	else
 		origifp = rt->rt_ifp;
-#ifndef SCOPEDROUTING
 	/*
 	 * clear embedded scope identifiers if necessary.
 	 * in6_clearscope will touch the addresses only when necessary.
 	 */
 	in6_clearscope(&ip6->ip6_src);
 	in6_clearscope(&ip6->ip6_dst);
-#endif
 
 	/*
 	 * Run through list of hooks for output packets.

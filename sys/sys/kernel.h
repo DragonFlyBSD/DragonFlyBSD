@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.11 2004/03/30 17:18:58 joerg Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.12 2005/02/01 16:09:37 hrs Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -140,6 +140,7 @@ enum sysinit_sub_id {
 	SI_SUB_PROTO_BEGIN	= 0x8000000,	/* XXX: set splimp (kludge)*/
 	SI_SUB_PROTO_IF		= 0x8400000,	/* interfaces*/
 	SI_SUB_PROTO_DOMAIN	= 0x8800000,	/* domains (address families?)*/
+	SI_SUB_PROTO_IFATTACHDOMAIN	= 0x8800001,	/* domain dependent data init */
 	SI_SUB_PROTO_END	= 0x8ffffff,	/* XXX: set splx (kludge)*/
 	SI_SUB_KPROF		= 0x9000000,	/* kernel profiling*/
 	SI_SUB_KICK_SCHEDULER	= 0xa000000,	/* start the timeout events*/

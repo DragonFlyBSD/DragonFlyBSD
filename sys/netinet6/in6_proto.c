@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.7 2005/01/03 22:11:51 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.8 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -264,7 +264,8 @@ struct domain inet6domain =
       (struct protosw *)&inet6sw[sizeof(inet6sw)/sizeof(inet6sw[0])], 0,
       in6_inithead,
       offsetof(struct sockaddr_in6, sin6_addr) << 3,
-      sizeof(struct sockaddr_in6) };
+      sizeof(struct sockaddr_in6),
+      in6_domifattach, in6_domifdetach, };
 
 DOMAIN_SET(inet6);
 

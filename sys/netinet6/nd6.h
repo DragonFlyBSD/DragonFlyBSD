@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.h,v 1.2.2.5 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.5 2004/12/30 02:26:12 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.h,v 1.6 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: nd6.h,v 1.76 2001/12/18 02:10:31 itojun Exp $	*/
 
 /*
@@ -81,6 +81,7 @@ struct nd_ifinfo {
 	int recalctm;			/* BaseReacable re-calculation timer */
 	u_int8_t chlim;			/* CurHopLimit */
 	u_int8_t receivedra;
+	u_int8_t initialized;		/* Flag to see the entry is initialized */
 	/* the following 3 members are for privacy extension for addrconf */
 	u_int8_t randomseed0[8]; /* upper 64 bits of MD5 digest */
 	u_int8_t randomseed1[8]; /* lower 64 bits (usually the EUI64 IFID) */
@@ -89,6 +90,16 @@ struct nd_ifinfo {
 
 #define ND6_IFF_PERFORMNUD	0x1
 #define ND6_IFF_ACCEPT_RTADV	0x2
+
+#ifdef _KERNEL
+#define ND_IFINFO(ifp) \
+	(((struct in6_ifextra *)(ifp)->if_afdata[AF_INET6])->nd_ifinfo)
+#define IN6_LINKMTU(ifp) \
+	((ND_IFINFO(ifp)->linkmtu && ND_IFINFO(ifp)->linkmtu < (ifp)->if_mtu) \
+		? ND_IFINFO(ifp)->linkmtu \
+		: ((ND_IFINFO(ifp)->maxmtu && ND_IFINFO(ifp)->maxmtu < (ifp)->if_mtu) \
+			? ND_IFINFO(ifp)->maxmtu : (ifp)->if_mtu))
+#endif
 
 struct in6_nbrinfo {
 	char ifname[IFNAMSIZ];	/* if name, e.g. "en0" */
@@ -342,7 +353,8 @@ union nd_opts {
 /* XXX: need nd6_var.h?? */
 /* nd6.c */
 void nd6_init (void);
-void nd6_ifattach (struct ifnet *);
+struct nd_ifinfo *nd6_ifattach (struct ifnet *);
+void nd6_ifdetach (struct nd_ifinfo *);
 int nd6_is_addr_neighbor (struct sockaddr_in6 *, struct ifnet *);
 void nd6_option_init (void *, int, union nd_opts *);
 struct nd_opt_hdr *nd6_option (union nd_opts *);

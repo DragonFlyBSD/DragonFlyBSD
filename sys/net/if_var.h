@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.21 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.22 2005/02/01 16:09:37 hrs Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -174,6 +174,7 @@ struct ifnet {
 	struct	ifqueue if_snd;		/* output queue */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
+	void	*if_afdata[AF_MAX];
 };
 typedef void if_init_f_t (void *);
 

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.50 2005/01/08 09:26:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.51 2005/02/01 16:09:37 hrs Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -2920,8 +2920,7 @@ tcp_mss(struct tcpcb *tp, int offer)
 		mss = rt->rt_rmx.rmx_mtu - min_protoh;
 	else {
 		if (isipv6) {
-			mss = nd_ifinfo[rt->rt_ifp->if_index].linkmtu -
-				min_protoh;
+			mss = ND_IFINFO(rt->rt_ifp)->linkmtu - min_protoh;
 			if (!in6_localaddr(&inp->in6p_faddr))
 				mss = min(mss, tcp_v6mssdflt);
 		} else {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/scope6_var.h,v 1.1.2.1 2000/07/15 07:14:38 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.3 2003/08/23 11:02:46 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/scope6_var.h,v 1.4 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: scope6_var.h,v 1.4 2000/05/18 15:03:27 jinmei Exp $	*/
 
 /*
@@ -35,11 +35,21 @@
 #define _NETINET6_SCOPE6_VAR_H_
 
 #ifdef _KERNEL
-void	scope6_ifattach (struct ifnet *);
-int	scope6_set (struct ifnet *, u_int32_t *);
-int	scope6_get (struct ifnet *, u_int32_t *);
+struct scope6_id {
+	/*
+	 * 16 is correspondent to 4bit multicast scope field.
+	 * i.e. from node-local to global with some reserved/unassigned types.
+	 */
+	u_int32_t s6id_list[16];
+};
+
+void	scope6_init (void);
+struct scope6_id *scope6_ifattach (struct ifnet *);
+void	scope6_ifdetach (struct scope6_id *);
+int	scope6_set (struct ifnet *, struct scope6_id *);
+int	scope6_get (struct ifnet *, struct scope6_id *);
 void	scope6_setdefault (struct ifnet *);
-int	scope6_get_default (u_int32_t *);
+int	scope6_get_default (struct scope6_id *);
 u_int32_t scope6_in6_addrscope (struct in6_addr *);
 u_int32_t scope6_addr2default (struct in6_addr *);
 #endif /* _KERNEL */

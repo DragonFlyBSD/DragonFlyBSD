@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.16 2005/01/06 17:59:32 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.17 2005/02/01 16:09:37 hrs Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -521,11 +521,6 @@ skip_ipsec2:;
 		dst->sin6_family = AF_INET6;
 		dst->sin6_len = sizeof(struct sockaddr_in6);
 		dst->sin6_addr = ip6->ip6_dst;
-#ifdef SCOPEDROUTING
-		/* XXX: sin6_scope_id should already be fixed at this point */
-		if (IN6_IS_SCOPE_LINKLOCAL(&dst->sin6_addr))
-			dst->sin6_scope_id = ntohs(dst->sin6_addr.s6_addr16[1]);
-#endif
 	}
 #if defined(IPSEC) || defined(FAST_IPSEC)
 	if (needipsec && needipsectun) {
@@ -788,7 +783,7 @@ skip_ipsec2:;
 		}
 	}
 	if (ro_pmtu->ro_rt != NULL) {
-		u_int32_t ifmtu = nd_ifinfo[ifp->if_index].linkmtu;
+		u_int32_t ifmtu = ND_IFINFO(ifp)->linkmtu;
 
 		mtu = ro_pmtu->ro_rt->rt_rmx.rmx_mtu;
 		if (mtu > ifmtu || mtu == 0) {
@@ -808,7 +803,7 @@ skip_ipsec2:;
 				 ro_pmtu->ro_rt->rt_rmx.rmx_mtu = mtu; /* XXX */
 		}
 	} else {
-		mtu = nd_ifinfo[ifp->if_index].linkmtu;
+		mtu = ND_IFINFO(ifp)->linkmtu;
 	}
 
 	/*
@@ -855,14 +850,12 @@ skip_ipsec2:;
 	}
 	else
 		origifp = ifp;
-#ifndef SCOPEDROUTING
 	/*
 	 * clear embedded scope identifiers if necessary.
 	 * in6_clearscope will touch the addresses only when necessary.
 	 */
 	in6_clearscope(&ip6->ip6_src);
 	in6_clearscope(&ip6->ip6_dst);
-#endif
 
 	/*
 	 * Check with the firewall...
@@ -2496,14 +2489,12 @@ ip6_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in6 *dst)
 #endif
 
 	ip6 = mtod(copym, struct ip6_hdr *);
-#ifndef SCOPEDROUTING
 	/*
 	 * clear embedded scope identifiers if necessary.
 	 * in6_clearscope will touch the addresses only when necessary.
 	 */
 	in6_clearscope(&ip6->ip6_src);
 	in6_clearscope(&ip6->ip6_dst);
-#endif
 
 	(void)if_simloop(ifp, copym, dst->sin6_family, NULL);
 }
