@@ -31,24 +31,25 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/rup/rup.c,v 1.11.2.2 2001/07/02 23:43:04 mikeh Exp $
- * $DragonFly: src/usr.bin/rup/rup.c,v 1.3 2004/09/14 18:36:40 joerg Exp $
+ * $DragonFly: src/usr.bin/rup/rup.c,v 1.4 2005/02/23 17:44:18 liamfoy Exp $
  */
+#include <sys/param.h>
+#include <sys/socket.h>
+
+#include <arpa/inet.h>
+#include <rpc/rpc.h>
+#include <rpc/pmap_clnt.h>
+#undef FSHIFT			/* Use protocol's shift and scale values */
+#undef FSCALE
+#include <rpcsvc/rstat.h>
 
 #include <err.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <sys/param.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <rpc/rpc.h>
-#include <rpc/pmap_clnt.h>
-#include <arpa/inet.h>
-#undef FSHIFT			/* Use protocol's shift and scale values */
-#undef FSCALE
-#include <rpcsvc/rstat.h>
 
 #define HOST_WIDTH 15
 
@@ -154,7 +155,7 @@ rstat_reply(char *replyp, struct sockaddr_in *raddrp)
 }
 
 static int
-onehost(char *host)
+onehost(const char *host)
 {
 	CLIENT *rstat_clnt;
 	statstime host_stat;
@@ -177,7 +178,7 @@ onehost(char *host)
 	bzero(&host_stat, sizeof(host_stat));
 	tv.tv_sec = 15;	/* XXX ??? */
 	tv.tv_usec = 0;
-	if (clnt_call(rstat_clnt, RSTATPROC_STATS, xdr_void, NULL, xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
+	if (clnt_call(rstat_clnt, RSTATPROC_STATS, xdr_void, NULL, (xdrproc_t)xdr_statstime, &host_stat, tv) != RPC_SUCCESS) {
 		clnt_perror(rstat_clnt, host);
 		clnt_destroy(rstat_clnt);
 		return(-1);
@@ -197,7 +198,7 @@ allhosts(void)
 
 	clnt_stat = clnt_broadcast(RSTATPROG, RSTATVERS_TIME, RSTATPROC_STATS,
 				   xdr_void, NULL,
-				   xdr_statstime, (char *)&host_stat, rstat_reply);
+				   (xdrproc_t)xdr_statstime, (char *)&host_stat, rstat_reply);
 	if (clnt_stat != RPC_SUCCESS && clnt_stat != RPC_TIMEDOUT)
 		errx(1, "%s", clnt_sperrno(clnt_stat));
 }
