@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.8 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.9 2003/12/29 03:42:43 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -673,9 +673,10 @@ ad_interrupt(struct ad_request *request)
 	(request->flags & (ADR_F_READ | ADR_F_ERROR)) == ADR_F_READ) {
 
 	/* ready to receive data? */
-	if ((adp->device->channel->status & (ATA_S_READY|ATA_S_DSC|ATA_S_DRQ))
-	    != (ATA_S_READY|ATA_S_DSC|ATA_S_DRQ))
-	    ata_prtdev(adp->device, "read interrupt arrived early");
+	if ((adp->device->channel->status & ATA_S_READY) == 0) {
+	    ata_prtdev(adp->device, "read interrupt arrived early %08x\n",
+		(int)adp->device->channel->status);
+	}
 
 	if (ata_wait(adp->device, (ATA_S_READY | ATA_S_DSC | ATA_S_DRQ)) != 0) {
 	    ata_prtdev(adp->device, "read error detected (too) late");

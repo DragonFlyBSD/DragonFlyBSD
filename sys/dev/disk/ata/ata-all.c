@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.10 2003/12/29 03:42:43 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -775,7 +775,7 @@ ata_reset(struct ata_channel *ch)
     ATA_INB(ch->r_io, ATA_ERROR);
 
     /* wait for BUSY to go inactive */
-    for (timeout = 0; timeout < 310000; timeout++) {
+    for (timeout = 0; timeout < 3100; timeout++) {
 	if (stat0 & ATA_S_BUSY) {
 	    ATA_OUTB(ch->r_io, ATA_DRIVE, ATA_D_IBM | ATA_MASTER);
 	    DELAY(10);
@@ -815,9 +815,14 @@ ata_reset(struct ata_channel *ch)
 	if (mask == 0x03)      /* wait for both master & slave */
 	    if (!(stat0 & ATA_S_BUSY) && !(stat1 & ATA_S_BUSY))
 		break;
-	DELAY(100);
+	DELAY(10000);
     }	
-    DELAY(10);
+    /*
+     * some devices release BUSY before they are ready to accept commands.
+     * We must wait at least 50ms before attempting to issue a command after
+     * BUSY is released.
+     */
+    DELAY(50000);
     ATA_OUTB(ch->r_altio, ATA_ALTSTAT, ATA_A_4BIT);
 
     if (stat0 & ATA_S_BUSY)
