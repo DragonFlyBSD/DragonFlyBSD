@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.10 2004/03/07 12:48:34 eirikn Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.11 2004/03/16 19:16:36 joerg Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -262,3 +262,27 @@ ${OBJS}: ${SRCS:M*.h}
 
 .include <bsd.obj.mk>
 .include "bsd.kern.mk"
+
+# Behaves like MODULE_OVERRIDE
+.if defined(KLD_DEPS)
+all: _kdeps_all
+_kdeps_all: @
+.for _mdep in ${KLD_DEPS}
+	cd ${SYSDIR}/${_mdep} && make all
+.endfor
+depend: _kdeps_depend
+_kdeps_depend: @
+.for _mdep in ${KLD_DEPS}
+	cd ${SYSDIR}/${_mdep} && make depend
+.endfor
+install: _kdeps_install
+_kdeps_install: @
+.for _mdep in ${KLD_DEPS}
+	cd ${SYSDIR}/${_mdep} && make install
+.endfor
+clean: _kdeps_clean
+_kdeps_clean: @
+.for _mdep in ${KLD_DEPS}
+	cd ${SYSDIR}/${_mdep} && make clean
+.endfor
+.endif
