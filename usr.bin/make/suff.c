@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.47 2005/03/15 23:31:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.48 2005/03/18 18:21:10 okumoto Exp $
  */
 
 /*-
@@ -89,6 +89,7 @@
  *	    	  	    	if the target had no implicit sources.
  */
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -193,8 +194,7 @@ SuffStrIsPrefix(const char *pref, char *str)
 /*-
  *-----------------------------------------------------------------------
  * SuffSuffIsSuffix  --
- *	See if suff is a suffix of str. Str should point to THE END of the
- *	string to check. (THE END == the null byte)
+ *	See if suff is a suffix of str.
  *
  * Results:
  *	NULL if it ain't, pointer to character in str before suffix if
@@ -209,48 +209,19 @@ SuffSuffIsSuffix(const Suff *s, char *str)
 {
 	const char	*p1;	/* Pointer into suffix name */
 	char		*p2;	/* Pointer into string being examined */
+	size_t		len;
 
+	len = strlen(str);
 	p1 = s->name + s->nameLen;
-	p2 = str;
+	p2 = str + len;
 
-	while (p1 >= s->name && *p1 == *p2) {
+	while (p1 >= s->name && len > 0 && *p1 == *p2) {
 		p1--;
 		p2--;
+		len--;
 	}
 
 	return (p1 == s->name - 1 ? p2 : NULL);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * SuffSuffIsSuffixP --
- *	Predicate form of SuffSuffIsSuffix. Passed as the callback function
- *	to Lst_Find.
- *
- * Results:
- *	0 if the suffix is the one desired, non-zero if not.
- *
- * Side Effects:
- *	None.
- *
- * XXX use the function above once constification is complete.
- *-----------------------------------------------------------------------
- */
-static int
-SuffSuffIsSuffixP(const void *is, const void *str)
-{
-	const Suff	*s = is;
-	const char	*p1;		/* Pointer into suffix name */
-	const char	*p2 = str;	/* Pointer into string being examined */
-
-	p1 = s->name + s->nameLen;
-
-	while (p1 >= s->name && *p1 == *p2) {
-		p1--;
-		p2--;
-	}
-
-	return (p1 != s->name - 1);
 }
 
 /*-
@@ -720,9 +691,9 @@ SuffRebuildGraph(const GNode *transform, Suff *s)
 	}
 
 	/*
-	* Not from, maybe to?
-	*/
-	cp = SuffSuffIsSuffix(s, transform->name + strlen(transform->name));
+	 * Not from, maybe to?
+	 */
+	cp = SuffSuffIsSuffix(s, transform->name);
 	if (cp != NULL) {
 		/*
 		 * Null-terminate the source suffix in order to find it.
@@ -1354,8 +1325,10 @@ SuffExpandWildcards(GNode *child, Lst *members)
 	 *   suffix, use its path.
 	 * Else use the default system search path.
 	 */
-	cp = child->name + strlen(child->name);
-	ln = Lst_Find(&sufflist, cp, SuffSuffIsSuffixP);
+	LST_FOREACH(ln, &sufflist) {
+		if (SuffSuffIsSuffix(Lst_Datum(ln), child->name) != NULL)
+			break;
+	}
 
 	DEBUGF(SUFF, ("Wildcard expanding \"%s\"...", child->name));
 
@@ -1681,7 +1654,10 @@ SuffFindArchiveDeps(GNode *gn, Lst *slst)
 		/*
 		 * Use first matching suffix...
 		 */
-		ln = Lst_Find(&ms->parents, eoarch, SuffSuffIsSuffixP);
+		LST_FOREACH(ln, &ms->parents) {
+			if (SuffSuffIsSuffix(Lst_Datum(ln), gn->name) != NULL)
+				break;
+		}
 
 		if (ln != NULL) {
 			/*
@@ -1779,8 +1755,12 @@ SuffFindNormalDeps(GNode *gn, Lst *slst)
 		/*
 		 * Look for next possible suffix...
 		 */
-		ln = Lst_FindFrom(&sufflist, ln, eoname, SuffSuffIsSuffixP);
-
+		while (ln != NULL) {
+			if (SuffSuffIsSuffix(Lst_Datum(ln), gn->name) != NULL)
+				break;
+			ln = LST_NEXT(ln);
+		}
+				
 		if (ln != NULL) {
 			int	prefLen;	/* Length of the prefix */
 			Src	*target;
@@ -1799,6 +1779,7 @@ SuffFindNormalDeps(GNode *gn, Lst *slst)
 			 * the end of the name.
 			 */
 			prefLen = (eoname - target->suff->nameLen) - sopref;
+			assert(prefLen >= 0);
 			target->pref = emalloc(prefLen + 1);
 			memcpy(target->pref, sopref, prefLen);
 			target->pref[prefLen] = '\0';
