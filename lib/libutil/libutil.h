@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.5 2004/11/05 17:05:26 dillon Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.6 2005/03/04 05:47:03 cpressey Exp $
  */
 
 #ifndef _LIBUTIL_H_
@@ -47,35 +47,31 @@ struct termios;
 struct winsize;
 struct utmp;
 struct in_addr;
+struct sockaddr;
 
 __BEGIN_DECLS
-void	login (struct utmp *_ut);
-int	login_tty (int _fd);
-int	logout (const char *_line);
-void	logwtmp (const char *_line, const char *_name, const char *_host);
-void	trimdomain (char *_fullhost, int _hostsize);
-int	openpty (int *_amaster, int *_aslave, char *_name,
-		     struct termios *_termp, struct winsize *_winp);
-int	forkpty (int *_amaster, char *_name,
-		     struct termios *_termp, struct winsize *_winp);
-int	humanize_number(char *_buf, size_t _len, int64_t _number, 
-               const char *_suffix, int _scale, int _flags); 
-const char *uu_lockerr (int _uu_lockresult);
-int	uu_lock (const char *_ttyname);
-int	uu_unlock (const char *_ttyname);
-int	uu_lock_txfr (const char *_ttyname, pid_t _pid);
-int	_secure_path (const char *_path, uid_t _uid, gid_t _gid);
+void	login(struct utmp *);
+int	login_tty(int);
+int	logout(const char *);
+void	logwtmp(const char *, const char *, const char *);
+void	trimdomain(char *, int);
+int	openpty(int *, int *, char *, struct termios *, struct winsize *);
+int	forkpty(int *, char *, struct termios *, struct winsize *);
+int	humanize_number(char *, size_t, int64_t, const char *, int, int);
+const char *uu_lockerr(int);
+int	uu_lock(const char *);
+int	uu_unlock(const char *);
+int	uu_lock_txfr(const char *, pid_t);
+int	_secure_path(const char *, uid_t, gid_t);
 int	pidfile(const char *);
-properties properties_read (int fd);
-void	properties_free (properties list);
-char	*property_find (properties list, const char *name);
-char	*auth_getval (const char *name);
-int	realhostname (char *host, size_t hsize, const struct in_addr *ip);
-struct sockaddr;
-int	realhostname_sa (char *host, size_t hsize, struct sockaddr *addr,
-			     int addrlen);
+properties properties_read(int fd);
+void	properties_free(properties);
+char	*property_find(properties, const char *);
+char	*auth_getval(const char *);
+int	realhostname(char *, size_t, const struct in_addr *);
+int	realhostname_sa(char *, size_t, struct sockaddr *, int);
 #ifdef _STDIO_H_	/* avoid adding new includes */
-char   *fparseln (FILE *, size_t *, size_t *, const char[3], int);
+char   *fparseln(FILE *, size_t *, size_t *, const char[3], int);
 #endif
 __END_DECLS
 
