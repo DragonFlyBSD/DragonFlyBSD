@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntp.h,v 1.11 2004/12/13 12:22:52 dtucker Exp $ */
+/*	$OpenBSD: ntp.h,v 1.10 2004/12/08 15:47:38 mickey Exp $ */
 
 /*
  * Copyright (c) 2004 Henning Brauer <henning@openbsd.org>

@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntpd.h,v 1.47 2004/12/09 20:24:46 mickey Exp $ */
+/*	$OpenBSD: ntpd.h,v 1.52 2005/02/02 18:57:09 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -46,6 +46,8 @@
 #define	TRUSTLEVEL_PATHETIC		2
 #define	TRUSTLEVEL_AGRESSIVE		8
 #define	TRUSTLEVEL_MAX			10
+
+#define	MAX_SERVERS_DNS			8
 
 #define	QSCALE_OFF_MIN			0.05
 #define	QSCALE_OFF_MAX			0.50
@@ -111,6 +113,7 @@ struct ntp_peer {
 	u_int32_t			 id;
 	u_int8_t			 shift;
 	u_int8_t			 trustlevel;
+	int				 lasterror;
 };
 
 struct ntpd_conf {
@@ -120,14 +123,15 @@ struct ntpd_conf {
 	u_int8_t				listen_all;
 	u_int8_t				settime;
 	u_int8_t				debug;
+	u_int32_t				scale;
 };
 
 struct buf {
 	TAILQ_ENTRY(buf)	 entries;
 	u_char			*buf;
-	ssize_t			 size;
-	ssize_t			 wpos;
-	ssize_t			 rpos;
+	size_t			 size;
+	size_t			 wpos;
+	size_t			 rpos;
 };
 
 struct msgbuf {
@@ -186,8 +190,8 @@ void		 fatalx(const char *);
 const char *	 log_sockaddr(struct sockaddr *);
 
 /* buffer.c */
-struct buf	*buf_open(ssize_t);
-int		 buf_add(struct buf *, void *, ssize_t);
+struct buf	*buf_open(size_t);
+int		 buf_add(struct buf *, void *, size_t);
 int		 buf_close(struct msgbuf *, struct buf *);
 void		 buf_free(struct buf *);
 void		 msgbuf_init(struct msgbuf *);
@@ -235,6 +239,11 @@ int	client_addr_init(struct ntp_peer *);
 int	client_nextaddr(struct ntp_peer *);
 int	client_query(struct ntp_peer *);
 int	client_dispatch(struct ntp_peer *, u_int8_t);
+void	client_log_error(struct ntp_peer *, const char *, int);
+void	update_scale(double);
+time_t	scale_interval(time_t);
+time_t	error_interval(void);
+void	set_next(struct ntp_peer *, time_t);
 
 /* util.c */
 double			gettime(void);

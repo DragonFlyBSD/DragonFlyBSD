@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/client.c,v 1.48 2004/12/13 12:22:52 dtucker Exp $ */
+/*	$OpenBSD: client.c,v 1.56 2005/02/03 10:53:33 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -27,7 +27,6 @@
 #include "ntpd.h"
 
 int	client_update(struct ntp_peer *);
-void	set_next(struct ntp_peer *, time_t);
 void	set_deadline(struct ntp_peer *, time_t);
 
 void
@@ -48,12 +47,13 @@ int
 client_peer_init(struct ntp_peer *p)
 {
 	if ((p->query = calloc(1, sizeof(struct ntp_query))) == NULL)
-		fatal("client_query calloc");
+		fatal("client_peer_init calloc");
 	p->query->fd = -1;
 	p->query->msg.status = MODE_CLIENT | (NTP_VERSION << 3);
 	p->state = STATE_NONE;
 	p->shift = 0;
 	p->trustlevel = TRUSTLEVEL_PATHETIC;
+	p->lasterror = 0;
 
 	return (client_addr_init(p));
 }
@@ -115,7 +115,7 @@ client_query(struct ntp_peer *p)
 	int	tos = IPTOS_LOWDELAY;
 
 	if (p->addr == NULL && client_nextaddr(p) == -1) {
-		set_next(p, INTERVAL_QUERY_PATHETIC);
+		set_next(p, error_interval());
 		return (-1);
 	}
 
@@ -129,7 +129,7 @@ client_query(struct ntp_peer *p)
 			if (errno == ECONNREFUSED || errno == ENETUNREACH ||
 			    errno == EHOSTUNREACH) {
 				client_nextaddr(p);
-				set_next(p, INTERVAL_QUERY_PATHETIC);
+				set_next(p, error_interval());
 				return (-1);
 			} else
 				fatal("client_query connect");
@@ -176,15 +176,15 @@ client_dispatch(struct ntp_peer *p, u_int8_t settime)
 	ssize_t			 size;
 	struct ntp_msg		 msg;
 	double			 T1, T2, T3, T4;
-	double			 abs_offset;
 	time_t			 interval;
 
 	if ((size = recvfrom(p->query->fd, &buf, sizeof(buf), 0,
 	    NULL, NULL)) == -1) {
 		if (errno == EHOSTUNREACH || errno == EHOSTDOWN ||
-		    errno == ENETDOWN || errno == ECONNREFUSED) {
-			log_warn("recvfrom %s",
-			    log_sockaddr((struct sockaddr *)&p->addr->ss));
+		    errno == ENETUNREACH || errno == ENETDOWN ||
+		    errno == ECONNREFUSED) {
+			client_log_error(p, "recvfrom", errno);
+			set_next(p, error_interval());
 			return (0);
 		} else
 			fatal("recvfrom");
@@ -199,8 +199,13 @@ client_dispatch(struct ntp_peer *p, u_int8_t settime)
 		return (0);
 
 	if ((msg.status & LI_ALARM) == LI_ALARM || msg.stratum == 0 ||
-	    msg.stratum > NTP_MAXSTRATUM)
+	    msg.stratum > NTP_MAXSTRATUM) {
+		interval = error_interval();
+		set_next(p, interval);
+		log_info("reply from %s: not synced, next query %ds",
+		    log_sockaddr((struct sockaddr *)&p->addr->ss), interval);
 		return (0);
+	}
 
 	/*
 	 * From RFC 2030 (with a correction to the delay math):
@@ -237,24 +242,11 @@ client_dispatch(struct ntp_peer *p, u_int8_t settime)
 	p->reply[p->shift].status.stratum = msg.stratum;
 
 	if (p->trustlevel < TRUSTLEVEL_PATHETIC)
-		interval = INTERVAL_QUERY_PATHETIC;
+		interval = scale_interval(INTERVAL_QUERY_PATHETIC);
 	else if (p->trustlevel < TRUSTLEVEL_AGRESSIVE)
-		interval = INTERVAL_QUERY_AGRESSIVE;
-	else {
-		if (p->reply[p->shift].offset < 0)
-			abs_offset = -p->reply[p->shift].offset;
-		else
-			abs_offset = p->reply[p->shift].offset;
-
-		if (abs_offset > QSCALE_OFF_MAX)
-			interval = INTERVAL_QUERY_NORMAL;
-		else if (abs_offset < QSCALE_OFF_MIN)
-			interval = INTERVAL_QUERY_NORMAL *
-			    (QSCALE_OFF_MAX / QSCALE_OFF_MIN);
-		else
-			interval = INTERVAL_QUERY_NORMAL *
-			    (QSCALE_OFF_MAX / abs_offset);
-	}
+		interval = scale_interval(INTERVAL_QUERY_AGRESSIVE);
+	else
+		interval = scale_interval(INTERVAL_QUERY_NORMAL);
 
 	set_next(p, interval);
 	p->state = STATE_REPLY_RECEIVED;
@@ -318,4 +310,18 @@ client_update(struct ntp_peer *p)
 			p->reply[i].good = 0;
 
 	return (0);
+}
+
+void
+client_log_error(struct ntp_peer *peer, const char *operation, int error)
+{
+	const char *address;
+
+	address = log_sockaddr((struct sockaddr *)&peer->addr->ss);
+	if (peer->lasterror == error) {
+		log_debug("%s %s", operation, address);
+		return;
+	}
+	peer->lasterror = error;
+	log_warn("%s %s", operation, address);
 }

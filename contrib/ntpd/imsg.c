@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/imsg.c,v 1.7 2004/09/16 01:13:42 henning Exp $ */
+/*	$OpenBSD: imsg.c,v 1.6 2004/09/16 01:10:05 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>

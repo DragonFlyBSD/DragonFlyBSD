@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntpd.c,v 1.25 2004/12/06 20:57:17 mickey Exp $ */
+/*	$OpenBSD: ntpd.c,v 1.28 2005/01/28 12:32:24 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -33,13 +33,13 @@
 
 #include "ntpd.h"
 
-void	sighdlr(int);
-void	usage(void);
-int	main(int, char *[]);
-int	check_child(pid_t, const char *);
-int	dispatch_imsg(struct ntpd_conf *);
-void	ntpd_adjtime(double);
-void	ntpd_settime(double);
+void		sighdlr(int);
+__dead void	usage(void);
+int		main(int, char *[]);
+int		check_child(pid_t, const char *);
+int		dispatch_imsg(struct ntpd_conf *);
+void		ntpd_adjtime(double);
+void		ntpd_settime(double);
 
 volatile sig_atomic_t	 quit = 0;
 volatile sig_atomic_t	 reconfig = 0;
@@ -63,7 +63,7 @@ sighdlr(int sig)
 	}
 }
 
-void
+__dead void
 usage(void)
 {
 	extern char *__progname;
@@ -128,14 +128,15 @@ main(int argc, char *argv[])
 	if (!conf.settime) {
 		log_init(conf.debug);
 		if (!conf.debug)
-			daemon(1, 0);
+			if (daemon(1, 0))
+				fatal("daemon");
 	} else
 		timeout = 15 * 1000;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe_chld) == -1)
 		fatal("socketpair");
 
-	/* fork children */
+	/* fork child process */
 	chld_pid = ntp_main(pipe_chld, &conf);
 
 	setproctitle("[priv]");
@@ -164,18 +165,19 @@ main(int argc, char *argv[])
 			}
 
 		if (nfds == 0 && conf.settime) {
-			log_debug("no reply received, skipping initial time"
+			log_debug("no reply received, skipping initial time "
 			    "setting");
 			conf.settime = 0;
 			timeout = INFTIM;
 			log_init(conf.debug);
 			if (!conf.debug)
-				daemon(1, 0);
+				if (daemon(1, 0))
+					fatal("daemon");
 		}
 
 		if (nfds > 0 && (pfd[PFD_PIPE].revents & POLLOUT))
 			if (msgbuf_write(&ibuf->w) < 0) {
-				log_warn("pipe write error (to child");
+				log_warn("pipe write error (to child)");
 				quit = 1;
 			}
 
@@ -274,7 +276,8 @@ dispatch_imsg(struct ntpd_conf *conf)
 			/* daemonize now */
 			log_init(conf->debug);
 			if (!conf->debug)
-				daemon(1, 0);
+				if (daemon(1, 0))
+					fatal("daemon");
 			conf->settime = 0;
 			break;
 		case IMSG_HOST_DNS:
@@ -306,7 +309,8 @@ ntpd_adjtime(double d)
 {
 	struct timeval	tv;
 
-	if (d >= (double)LOG_NEGLIGEE / 1000)
+	if (d >= (double)LOG_NEGLIGEE / 1000 ||
+	    d <= -1 * (double)LOG_NEGLIGEE / 1000)
 		log_info("adjusting local clock by %fs", d);
 	else
 		log_debug("adjusting local clock by %fs", d);
