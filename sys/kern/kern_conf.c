@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.6 2004/01/20 05:04:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.7 2004/05/13 00:23:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -215,12 +215,21 @@ make_dev(struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const
 	return (dev);
 }
 
+/*
+ * Because the device might not be immediately removed, destroy_dev
+ * must clean out any potential module data references and install
+ * a device switch that returns an error for all future requests.
+ */
 void
 destroy_dev(dev_t dev)
 {
+	static struct cdevsw dead_cdevsw;
+
+	if (dead_cdevsw.d_port == NULL)
+		compile_devsw(&dead_cdevsw);
 	dev->si_drv1 = 0;
 	dev->si_drv2 = 0;
-	dev->si_devsw = 0;
+	dev->si_devsw = &dead_cdevsw;
 	freedev(dev);
 }
 
