@@ -1,6 +1,6 @@
 #	from: @(#)sys.mk	8.2 (Berkeley) 3/21/94
 # $FreeBSD: src/share/mk/sys.mk,v 1.45.2.6 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/sys.mk,v 1.5 2004/03/20 16:27:41 drhodus Exp $
+# $DragonFly: src/share/mk/sys.mk,v 1.6 2004/03/22 20:58:15 dillon Exp $
 
 unix		?=	We run FreeBSD, not UNIX.
 
@@ -16,7 +16,7 @@ unix		?=	We run FreeBSD, not UNIX.
 .if defined(%POSIX)
 .SUFFIXES:	.o .c .y .l .a .sh .f
 .else
-.SUFFIXES:	.out .a .ln .o .c .cc .cpp .cxx .C .m .F .f .e .r .y .l .S .s .cl .p .h .sh
+.SUFFIXES:	.out .a .ln .o .c .cc .cpp .cxx .C .m .F .f .e .r .y .l .S .s .cl .p .h .sh .no .nx
 .endif
 
 .LIBS:		.a
@@ -39,6 +39,10 @@ CC		?=	c89
 .else
 CC		?=	cc
 .endif
+# The system cc frontend is not subject to the path, e.g. when buildworld
+# is doing cross compiles it may still need the native compiler for things.
+#
+NXCC		?=	OBJFORMATPATH=/ ${CC}
 CFLAGS		?=	-O -pipe
 
 CXX		?=	c++
@@ -74,6 +78,9 @@ LFLAGS		?=
 
 LD		?=	ld
 LDFLAGS		?=
+NXCFLAGS	?=	${CFLAGS}
+NXLDLIBS	?=	${LDLIBS}
+NXLDFLAGS	?=	-static ${LDFLAGS}
 
 LINT		?=	lint
 LINTFLAGS	?=	-chapbx
@@ -211,6 +218,24 @@ MACHINE_ARCH	?=	i386
 	${CC} ${CFLAGS} -c ${.PREFIX}.tmp.c -o ${.TARGET}
 	rm -f ${.PREFIX}.tmp.c
 
+# .no == native object file, for helper code when cross building.
+#
+.c.no:
+	${NXCC} ${NXCFLAGS} -c ${.IMPSRC} -o ${.TARGET}
+
+.y.no:
+	${YACC} ${YFLAGS} ${.IMPSRC}
+	${NXCC} ${CFLAGS} -c y.tab.c -o ${.TARGET}
+	rm -f y.tab.c
+
+.l.no:
+	${LEX} ${LFLAGS} -o${.TARGET}.c ${.IMPSRC}
+	${NXCC} ${CFLAGS} -c ${.TARGET}.c -o ${.TARGET}
+	rm -f ${.TARGET}.c
+
+.no.nx .c.nx:
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.IMPSRC} ${NXLDLIBS} -o ${.TARGET}
+
 # XXX not -j safe
 .y.c:
 	${YACC} ${YFLAGS} ${.IMPSRC}
@@ -259,3 +284,4 @@ __MAKE_CONF?=/etc/make.conf
 # Default executable format
 # XXX hint for bsd.port.mk
 OBJFORMAT?=	elf
+

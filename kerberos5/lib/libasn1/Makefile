@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libasn1/Makefile,v 1.3.2.8 2002/08/19 16:10:21 ru Exp $
-# $DragonFly: src/kerberos5/lib/libasn1/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libasn1/Makefile,v 1.3 2004/03/22 20:57:58 dillon Exp $
 
 LIB=	asn1
 CFLAGS+=-I${KRB5DIR}/include \
@@ -81,12 +81,12 @@ ${I:S/.x/.c/}:	${I}
 
 CLEANFILES+=	${GEN:S/.x/.c/g} krb5_asn1.h asn1_files
 
-${GEN} krb5_asn1.h:		asn1_compile k5.asn1
-	./asn1_compile ${KRB5DIR}/lib/asn1/k5.asn1 krb5_asn1
+${GEN} krb5_asn1.h:		asn1_compile.nx k5.asn1
+	./asn1_compile.nx ${KRB5DIR}/lib/asn1/k5.asn1 krb5_asn1
 
-build-tools:	make-print-version make-roken asn1_compile
+build-tools:	make-print-version.nx make-roken.nx asn1_compile.nx
 
-asn1_compile:					\
+asn1_compile.nx:				\
 	gen.c					\
 	gen_copy.c				\
 	gen_decode.c				\
@@ -96,19 +96,19 @@ asn1_compile:					\
 	gen_length.c				\
 	hash.c					\
 	emalloc.c				\
-	lex.o					\
+	lex.no					\
 	main.c					\
-	parse.o					\
+	parse.no				\
 	symbol.c				\
 	getarg.c				\
 	warnerr.c				\
-	print_version.o				\
+	print_version.no			\
 	get_window_size.c			\
 	strupr.c
-	${CC} ${CFLAGS} ${.OODATE} -o ${.TARGET}
+	${NXCC} ${NXCFLAGS} ${.ALLSRC} -o ${.TARGET}
 
 .if defined(BOOTSTRAPPING)
-asn1_compile: getprogname.c setprogname.c
+asn1_compile.nx: getprogname.c setprogname.c
 .endif
 
 parse.o:	parse.c roken.h
@@ -124,12 +124,9 @@ lex.o:		lex.l parse.h roken.h
 print_version.o: print_version.h print_version.c roken.h
 	${CC} ${CFLAGS} -c -o ${.TARGET} ${KRB5DIR}/lib/vers/print_version.c
 
-print_version.h: make-print-version
-	./make-print-version print_version.h
+print_version.h: make-print-version.nx
+	./make-print-version.nx print_version.h
 
-make-print-version: make-print-version.c
-	${CC} ${CFLAGS} -static -o ${.TARGET} ${.OODATE}
-
-CLEANFILES+=	${GEN} asn1_compile lex.o parse.o parse.c parse.h \
-		hdb_asn1.h make-print-version print_version.h print_version.o \
+CLEANFILES+=	${GEN} asn1_compile.nx lex.o parse.o parse.c parse.h \
+		hdb_asn1.h make-print-version.nx print_version.h print_version.o \
 		y.tab.c y.tab.h

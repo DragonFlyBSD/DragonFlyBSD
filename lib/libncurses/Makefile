@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libncurses/Makefile,v 1.39.2.13 2002/08/07 16:31:48 ru Exp $
-# $DragonFly: src/lib/libncurses/Makefile,v 1.3 2004/03/20 16:27:40 drhodus Exp $
+# $DragonFly: src/lib/libncurses/Makefile,v 1.4 2004/03/22 20:58:09 dillon Exp $
 
 NCURSES=${.CURDIR}/../../contrib/ncurses
 
@@ -308,13 +308,17 @@ term.h:		MKterm.h.awk edit_cfg.sh Caps
 	mv -f $@.new $@
 
 # Build tools
+#
+# NOTE! make_hash, at least, is directly referenced by scripts
+# in contrib/ncurses.
+#
 build-tools: make_hash make_keys
 
 make_keys:	make_keys.c names.c ncurses_def.h ${HEADERS}
-	${CC} -o $@ ${CFLAGS} ${NCURSES}/ncurses/tinfo/make_keys.c
+	${NXCC} -o $@ ${NXCFLAGS} ${NCURSES}/ncurses/tinfo/make_keys.c
 
 make_hash:	comp_hash.c hashsize.h ncurses_def.h ${HEADERS}
-	${CC} -o $@ ${CFLAGS} -DMAIN_PROGRAM \
+	${NXCC} -o $@ ${NXCFLAGS} -DMAIN_PROGRAM \
 		${NCURSES}/ncurses/tinfo/comp_hash.c
 
 # ./configure generated

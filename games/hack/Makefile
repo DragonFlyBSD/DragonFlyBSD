@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/games/hack/Makefile,v 1.20.2.4 2002/08/07 16:31:41 ru Exp $
-# $DragonFly: src/games/hack/Makefile,v 1.2 2003/06/17 04:25:24 dillon Exp $
+# $DragonFly: src/games/hack/Makefile,v 1.3 2004/03/22 20:57:31 dillon Exp $
 
 PROG=	hack
 SRCS=	alloc.c hack.Decl.c hack.apply.c hack.bones.c hack.c hack.cmd.c \
@@ -24,15 +24,12 @@ FILESMODE_rumors=	440
 FILESGRP=	${BINGRP}
 FILESDIR=	/var/games/hackdir
 HIDEGAME=hidegame
-CLEANFILES=hack.onames.h makedefs makedefs.o
+CLEANFILES=hack.onames.h makedefs.nx makedefs.no
 
-build-tools: makedefs
+build-tools: makedefs.nx
 
-hack.onames.h: makedefs def.objects.h
-	./makedefs ${.CURDIR}/def.objects.h > hack.onames.h
-
-makedefs: makedefs.o
-	${CC} -static ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+hack.onames.h: makedefs.nx def.objects.h
+	./makedefs.nx ${.CURDIR}/def.objects.h > hack.onames.h
 
 beforeinstall:
 	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m ${NOBINMODE} /dev/null \

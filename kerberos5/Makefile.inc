@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/Makefile.inc,v 1.5.2.5 2002/07/25 09:33:14 ru Exp $
-# $DragonFly: src/kerberos5/Makefile.inc,v 1.3 2003/08/05 07:45:39 asmodai Exp $
+# $DragonFly: src/kerberos5/Makefile.inc,v 1.4 2004/03/22 20:57:57 dillon Exp $
 
 DISTRIBUTION?=	krb5
 
@@ -137,15 +137,18 @@ k524_err.c k524_err.h: \
 
 CLEANFILES+=k524_err.h k524_err.c k524_err.et
 
-roken.h: make-roken
-	./make-roken > tmp.h ;\
+roken.h: make-roken.nx
+	./make-roken.nx > tmp.h ;\
 	if [ -f roken.h ] && cmp -s tmp.h roken.h ; then rm -f tmp.h ; \
 	else rm -f roken.h; mv tmp.h roken.h; fi
 
 make-roken.c: ${KRB5DIR}/lib/roken/roken.awk ${KRB5DIR}/lib/roken/roken.h.in
 	awk -f ${.ALLSRC} > ${.TARGET}
 
-CLEANFILES+=	make-roken.c make-roken roken.h
+make-roken.nx: make-roken.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
+
+CLEANFILES+=	make-roken.c make-roken.nx roken.h
 
 .else
 

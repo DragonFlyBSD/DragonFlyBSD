@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.49.2.6 2002/11/15 18:18:38 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc/Attic/Makefile.inc,v 1.7 2004/02/02 05:43:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/Attic/Makefile.inc,v 1.8 2004/03/22 20:57:44 dillon Exp $
 
 MY_CCVER=gcc2
 MY_BINUTILS=binutils212
@@ -28,6 +28,8 @@ version!=	grep version_string ${GCCDIR}/version.c \
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
 CFLAGS+=	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
+CFLAGS+=	-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
+CFLAGS+=	-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
 
 # If building 64-bit longs for the i386, "_LARGE_LONG" should also be defined
 # to get the proper sizes in limits.h

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/binutils/ld/Makefile.i386,v 1.8.2.5 2002/09/01 23:39:14 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/binutils/ld/Attic/Makefile.i386,v 1.3 2003/11/19 00:51:37 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/binutils/ld/Attic/Makefile.i386,v 1.4 2004/03/22 20:57:39 dillon Exp $
 
 TARGET_TUPLE?=	i386-unknown-dragonfly
 
@@ -8,7 +8,7 @@ NATIVE_EMULATION=	elf_i386
 HOST=	${TARGET_TUPLE}
 CFLAGS+= -DDEFAULT_EMULATION=\"${NATIVE_EMULATION}\"
 CFLAGS+= -DTARGET=\"${TARGET_TUPLE}\"
-_i386_path=	\"${TOOLS_PREFIX}/usr/lib\"
+_i386_path=	\"${USRDATA_PREFIX}/usr/lib\"
 .else
 _i386_path=	\"/usr/cross/i386-dragonfly/usr/lib\"
 .endif

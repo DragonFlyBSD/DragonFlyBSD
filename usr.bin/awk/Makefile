@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/awk/Makefile,v 1.9.2.1 2002/06/21 20:12:08 obrien Exp $
-# $DragonFly: src/usr.bin/awk/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
+# $DragonFly: src/usr.bin/awk/Makefile,v 1.3 2004/03/22 20:58:25 dillon Exp $
 
 AWKSRC=	${.CURDIR}/../../contrib/one-true-awk
 .PATH: ${AWKSRC}
@@ -17,11 +17,12 @@ CLEANFILES= maketab proctab.c ytab.h
 ytab.h: awkgram.h
 	ln -sf ${.ALLSRC} ${.TARGET}
 
-proctab.c: maketab
-	./maketab > proctab.c
+proctab.c: maketab.nx
+	./maketab.nx > proctab.c
 
-build-tools: maketab
-maketab: ytab.h ${AWKSRC}/maketab.c
+build-tools: maketab.nx
+
+maketab.nx: ytab.h ${AWKSRC}/maketab.c
 
 CLEANFILES+=	nawk.1
 nawk.1: awk.1

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.48.2.6 2002/06/20 23:13:31 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/Makefile,v 1.3 2003/11/19 01:37:27 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/Makefile,v 1.4 2004/03/22 20:57:48 dillon Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -35,33 +35,34 @@ gen-time-stamp: genattrtab genemit genextract genopinit genoutput genpeep genrec
 .for F in attr codes config emit extract flags opinit output peep recog
 build-tools: gen$F
 
-gen$F: gen$F.o rtl.o print-rtl.o obstack.o bitmap.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no rtl.no print-rtl.no obstack.no bitmap.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
-CLEANFILES+=	gen$F
+CLEANFILES+=	gen$F gen$F.no
 .endfor
 
 .for F in attrtab
 build-tools: gen$F
 
-gen$F: gen$F.o rtl.o rtlanal.o print-rtl.o obstack.o bitmap.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no rtl.no rtlanal.no print-rtl.no obstack.no bitmap.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
-CLEANFILES+=	gen$F
+CLEANFILES+=	gen$F gen$F.no
 .endfor
 
 SRCS+=		bitmap.c obstack.c print-rtl.c rtl.c rtlanal.c
+CLEANFILES+=	bitmap.no obstack.no print-rtl.no rtl.no rtlanal.no
 
 .for F in check genrtl
 build-tools: gen$F
 
-gen$F: gen$F.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
-CLEANFILES+=	gen$F
+CLEANFILES+=	gen$F gen$F.no
 .endfor
 
 .ORDER: genrtl.c genrtl.h
@@ -169,21 +170,13 @@ build-tools: depend
 #
 OBJS+=		${SRCS:N*.h:R:S/$/.o/g}
 
-.if !exists(${DEPENDFILE})
-# Fudge pre-dependfile dependencies of objects in much the same way as
-# bsd.prog.mk would do if we defined PROG.  There are complications to
-# avoid circular dependencies.  First, only make most objects depend on
-# all headers.  Filter out the objects that would cause problems (i.e.,
-# objects that will be used to create programs that will generate headers).
+# Setup dependancies so helper programs will compile -jn
 #
-${OBJS:Nbitmap.o:Ngenattr.o:Ngencheck.o:Ngencodes.o:Ngenconfig.o:Ngenflags.o:Ngengenrtl.o:Nobstack.o:Nprint-rtl.o:Nrtl.o}: ${SRCS:M*.h}
+${CLEANFILES:M*.no:Ngencheck.no:Ngengenrtl.no}: ${SRCS:M*.h:Ninsn-*.h}
 
-# Next, make each of the problematic objects depend on only most headers.
-# Filter out the headers that would cause problems (and a few more when it
-# is inconvenient to filter precisely).
-#
-bitmap.o genattr.o gencodes.o genconfig.o genflags.o obstack.o print-rtl.o \
-    rtl.o: ${SRCS:M*.h:Ninsn-*.h}
-gencheck.o: gencheck.h ${SRCS:M*.h:Ngenrtl.h:Ntree-check.h:Ninsn-*.h}
-gengenrtl.o: ${SRCS:M*.h:Ngenrtl.h:Ninsn-*.h}
-.endif
+genextract.no genattrtab.no: insn-config.h
+
+gencheck.no: gencheck.h ${SRCS:M*.h:Ngenrtl.h:Ntree-check.h:Ninsn-*.h}
+
+gengenrtl.no: ${SRCS:M*.h:Ngenrtl.h:Ninsn-*.h}
+

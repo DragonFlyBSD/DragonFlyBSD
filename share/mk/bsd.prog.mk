@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.3 2004/03/05 01:06:50 joerg Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.4 2004/03/22 20:58:15 dillon Exp $
 
 .include <bsd.init.mk>
 
@@ -190,3 +190,4 @@ ${OBJS}: ${SRCS:M*.h}
 .include <bsd.obj.mk>
 
 .include <bsd.sys.mk>
+

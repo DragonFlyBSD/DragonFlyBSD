@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libgcc/Makefile,v 1.50 2003/07/11 05:29:11 kan Exp $
-# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.3 2004/03/05 21:38:44 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc3/libgcc/Attic/Makefile,v 1.4 2004/03/22 20:57:36 dillon Exp $
 
 .include "../Makefile.inc"
 .include "${.CURDIR}/../../../usr.bin/cc3/Makefile.tgt"
@@ -170,7 +170,8 @@ ASM_S=		${LIB1ASMFUNCS:S/$/.So/}
 
 SYMS=		${LIB2FUNCS_1}		\
 		${LIB2FUNCS_2}		\
-		${LIB2_DIVMOD_FUNCS}
+		${LIB2_DIVMOD_FUNCS}	\
+		${LIB2ADDEH}
 .if ${TARGET_ARCH} == "arm" || ${TARGET_ARCH} == "powerpc" || ${TARGET_ARCH} == "sparc64"
 SYMS+=		${FPBIT_FUNCS} ${DPBIT_FUNCS}
 .endif

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.8 2004/03/20 16:27:41 drhodus Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.9 2004/03/22 20:58:15 dillon Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -12,6 +12,14 @@
 # DISTDIR	Change the tree where the file for a distribution
 # 		gets installed (see /usr/src/release/Makefile). [not set]
 #
+# USRDATA_PREFIX This is a companion to TOOLS_PREFIX, and is set to
+#		TOOLS_PREFIX by default.  It controls where an entity
+#		should look for ${USRDATA_PREFIX}/usr/... data.  For
+#		example in a buildworld the compiler and includes are
+#		installed in one place (in /usr/obj somewhere), but
+#		will eventually be installworld'd and so these programs
+#		are expected to access /usr data from somewhere other
+#		then where they were initially built/installed.
 #
 # COPY		The flag passed to the install program to cause the binary
 #		to be copied rather than moved.  This is to be used when
@@ -143,6 +151,7 @@ LIBOWN?=	${BINOWN}
 LIBGRP?=	${BINGRP}
 LIBMODE?=	${NOBINMODE}
 
+USRDATA_PREFIX?= ${TOOLS_PREFIX}
 
 # Share files
 SHAREDIR?=	/usr/share

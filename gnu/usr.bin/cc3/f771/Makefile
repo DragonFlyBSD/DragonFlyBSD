@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.8 2004/02/04 15:39:54 rob Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.9 2004/03/22 20:57:55 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -26,16 +26,10 @@ LDADD=	${LIBCC_INT}
 # files not in SRCS
 #
 build-tools: fini
-fini: fini.o xmalloc_local.o xexit_local.o
-	${CC} -static ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+fini: fini.no xmalloc.no xexit.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
-xmalloc_local.o : xmalloc.c
-	${CC} ${CFLAGS} -c -o ${.TARGET} ${.ALLSRC}
-
-xexit_local.o : xexit.c
-	${CC} ${CFLAGS} -c -o ${.TARGET} ${.ALLSRC}
-
-CLEANFILES=	fini fini.o
+CLEANFILES=	fini fini.no xmalloc.no xexit.no
 
 #-----------------------------------------------------------------------
 # str-* gunk

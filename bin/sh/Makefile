@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.4 (Berkeley) 5/5/95
 # $FreeBSD: src/bin/sh/Makefile,v 1.30.2.1 2001/12/15 10:05:18 knu Exp $
-# $DragonFly: src/bin/sh/Makefile,v 1.2 2003/06/17 04:22:50 dillon Exp $
+# $DragonFly: src/bin/sh/Makefile,v 1.3 2004/03/22 20:57:25 dillon Exp $
 
 PROG=	sh
 SHSRCS=	alias.c arith.y arith_lex.l cd.c echo.c error.c eval.c exec.c expand.c \
@@ -27,36 +27,36 @@ CFLAGS+=-DSHELL -I. -I${.CURDIR}
 	${.CURDIR}/../../usr.bin/printf \
 	${.CURDIR}/../../bin/test
 
-CLEANFILES+= mkinit mkinit.o mknodes mknodes.o \
-	mksyntax mksyntax.o
+CLEANFILES+= mkinit.nx mkinit.no mknodes.nx mknodes.no \
+	mksyntax.nx mksyntax.no
 CLEANFILES+= ${GENSRCS} ${GENHDRS}
 
-build-tools: mkinit mknodes mksyntax
+build-tools: mkinit.nx mknodes.nx mksyntax.nx
 
 .ORDER: builtins.c builtins.h
 builtins.c builtins.h: mkbuiltins builtins.def
 	cd ${.CURDIR}; sh mkbuiltins ${.OBJDIR}
 
-init.c: mkinit alias.c eval.c exec.c input.c jobs.c options.c parser.c \
+init.c: mkinit.nx alias.c eval.c exec.c input.c jobs.c options.c parser.c \
 	redir.c trap.c var.c
-	./mkinit ${.ALLSRC:S/^mkinit$//}
+	./mkinit.nx ${.ALLSRC:S/^mkinit.nx$//}
 
 # XXX this is just to stop the default .c rule being used, so that the
 # intermediate object has a fixed name.
 # XXX we have a default .c rule, but no default .o rule.
 .o:
 	${CC} ${CFLAGS} ${LDFLAGS} ${.IMPSRC} ${LDLIBS} -o ${.TARGET}
-mkinit: mkinit.o
-mknodes: mknodes.o
-mksyntax: mksyntax.o
+mkinit.nx: mkinit.no
+mknodes.nx: mknodes.no
+mksyntax.nx: mksyntax.no
 
 .ORDER: nodes.c nodes.h
-nodes.c nodes.h: mknodes nodetypes nodes.c.pat
-	./mknodes ${.CURDIR}/nodetypes ${.CURDIR}/nodes.c.pat
+nodes.c nodes.h: mknodes.nx nodetypes nodes.c.pat
+	./mknodes.nx ${.CURDIR}/nodetypes ${.CURDIR}/nodes.c.pat
 
 .ORDER: syntax.c syntax.h
-syntax.c syntax.h: mksyntax
-	./mksyntax
+syntax.c syntax.h: mksyntax.nx
+	./mksyntax.nx
 
 token.h: mktokens
 	sh ${.CURDIR}/mktokens

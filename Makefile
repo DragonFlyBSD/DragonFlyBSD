@@ -1,11 +1,14 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.4 2004/03/20 16:27:39 drhodus Exp $
+# $DragonFly: src/Makefile,v 1.5 2004/03/22 20:57:17 dillon Exp $
 #
 # The user-driven targets are:
 #
 # buildworld          - Rebuild *everything*, including glue to help do
 #                       upgrades.
+# quickworld	      - Skip bootstrap, build and cross-build tool steps
+# realquickworld      - Skip above steps, plus depend
+# crossworld	      - Just do the bootstrap, build, and cross-build steps
 # installworld        - Install everything built by "buildworld".
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules.
@@ -87,7 +90,8 @@
 # Define the user-driven targets. These are listed here in alphabetical
 # order, but that's not important.
 #
-TGTS=	all all-man buildkernel buildworld checkdpadd clean \
+TGTS=	all all-man buildkernel buildworld crossworld quickworld \
+	realquickworld checkdpadd clean \
 	cleandepend cleandir depend distribute distributeworld everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \

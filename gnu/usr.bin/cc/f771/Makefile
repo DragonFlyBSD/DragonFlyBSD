@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.5.2.1 2000/07/04 05:39:50 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/f771/Attic/Makefile,v 1.5 2004/02/02 05:43:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc/f771/Attic/Makefile,v 1.6 2004/03/22 20:57:49 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -21,11 +21,11 @@ build-tools: fini
 
 #  The use of ``proj+%BT.o'' is to get around bogus dependacy information
 #  created for build-tools sources.
-fini: fini.o proj+%BT.o
-	${CC} -static ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+fini: fini.no proj+%BT.no
+	${NXCC} -static ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
-proj+%BT.o: proj.c
-	${CC} ${CFLAGS} -o ${.TARGET} -c ${.ALLSRC}
+proj+%BT.no: proj.c
+	${NXCC} ${NXCFLAGS} -o ${.TARGET} -c ${.ALLSRC}
 
 CLEANFILES+=	fini fini.o proj+%BT.o
 

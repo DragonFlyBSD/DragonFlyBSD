@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile,v 1.35 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile,v 1.3 2004/01/20 19:31:18 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile,v 1.4 2004/03/22 20:57:50 dillon Exp $
 
 # The order of some of these are rather important.  Some depend on previous
 # subdirs.
@@ -28,5 +28,8 @@ SUBDIR+= f77 f771 f77doc
 .if !defined(NO_GCOV)
 SUBDIR+= gcov
 .endif
+
+# interdependant header files
+.ORDER: ${SUBDIR}
 
 .include <bsd.subdir.mk>

@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libsl/Makefile,v 1.3.2.1 2002/07/19 18:46:24 ru Exp $
-# $DragonFly: src/kerberos5/lib/libsl/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libsl/Makefile,v 1.3 2004/03/22 20:58:02 dillon Exp $
 
 LIB=	sl
 CFLAGS+=-I${KRB5DIR}/lib/sl \
@@ -14,4 +14,4 @@ INTERNALLIB= yes
 
 .PATH:	${KRB5DIR}/lib/sl
 
-build-tools:	make-roken
+build-tools:	make-roken.nx

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.73 2004/01/15 10:07:59 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.5 2004/02/03 03:47:11 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.6 2004/03/22 20:57:54 dillon Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -42,12 +42,13 @@ gen-time-stamp: genattr genattrtab genconditions genconstants genemit \
 .for F in attr codes config emit extract flags opinit output peep recog
 build-tools: gen$F
 
-gen$F: gen$F.o rtl.o obstack.o print-rtl.o bitmap.o errors.o gensupport.o \
-	ggc-none.o hashtab.o read-rtl.o concat.o insn-conditions.o \
-	xmalloc.o xexit.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no rtl.no obstack.no print-rtl.no bitmap.no errors.no \
+	gensupport.no ggc-none.no hashtab.no read-rtl.no concat.no \
+	insn-conditions.no xmalloc.no xexit.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
+NXOBJS+=	gen$F.no
 CLEANFILES+=	gen$F
 .endfor
 
@@ -56,13 +57,14 @@ CLEANFILES+=	gen$F
 #
 build-tools: genattrtab
 
-genattrtab : genattrtab.o rtl.o obstack.o print-rtl.o bitmap.o errors.o \
-	gensupport.o ggc-none.o hashtab.o read-rtl.o concat.o \
-	insn-conditions.o genautomata.o varray.o getruntime.o \
-	xmalloc.o xexit.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC} -lm
+genattrtab : genattrtab.no rtl.no obstack.no print-rtl.no bitmap.no \
+	errors.no gensupport.no ggc-none.no hashtab.no read-rtl.no concat.no \
+	insn-conditions.no genautomata.no varray.no getruntime.no \
+	xmalloc.no xexit.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC} -lm
 
 GENSRCS+=	genattrtab.c
+NXOBJS+=	genattrtab.no
 CLEANFILES+=	genattrtab
 
 #
@@ -72,22 +74,24 @@ CLEANFILES+=	genattrtab
 .for F in constants conditions
 build-tools: gen$F
 
-gen$F: gen$F.o rtl.o obstack.o bitmap.o errors.o gensupport.o \
-       ggc-none.o hashtab.o read-rtl.o concat.o dummy-conditions.o \
-       xmalloc.o xexit.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no rtl.no obstack.no bitmap.no errors.no gensupport.no \
+       ggc-none.no hashtab.no read-rtl.no concat.no dummy-conditions.no \
+       xmalloc.no xexit.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
+NXOBJS+=	gen$F.no
 CLEANFILES+=	gen$F
 .endfor
 
 .for F in check genrtl preds
 build-tools: gen$F
 
-gen$F: gen$F.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gen$F: gen$F.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gen$F.c
+NXOBJS+=	gen$F.no
 CLEANFILES+=	gen$F
 .endfor
 
@@ -102,6 +106,10 @@ SRCS+=	bitmap.c concat.c dummy-conditions.c errors.c genautomata.c \
 	gensupport.c getruntime.c ggc-none.c hashtab.c \
 	obstack.c physmem.c print-rtl.c read-rtl.c rtl.c varray.c xmemdup.c \
 	xmalloc.c xexit.c
+NXOBJS+= bitmap.no concat.no dummy-conditions.no errors.no \
+	genautomata.no gensupport.no getruntime.no ggc-none.no hashtab.no \
+	obstack.no physmem.no print-rtl.no read-rtl.no rtl.no varray.no \
+	xmemdup.no xmalloc.no xexit.no
 
 #-----------------------------------------------------------------------
 # Common parser stuff.
@@ -139,13 +147,14 @@ gengtype-yacc+%DIKED.c: gengtype-yacc.c
 	    -e "s/realloc/xrealloc/g" \
 	    ${.ALLSRC} > ${.TARGET}
 
-gengtype: gengtype.o gengtype-yacc+%DIKED.o gengtype-lex.o xmemdup.o xmalloc.o xexit.o
-	${CC} ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+gengtype: gengtype.no gengtype-yacc+%DIKED.no gengtype-lex.no xmemdup.no xmalloc.no xexit.no
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 GENSRCS+=	gengtype.c
-CLEANFILES+=	gengtype
+NXOBJS+=	gengtype.no
+CLEANFILES+=	gengtype gengtype-yacc+%DIKED.no gengtype-lex.no
 
-gengtype-lex.o: gengtype-yacc.h
+gengtype-lex.no: gengtype-yacc.h
 
 .ORDER: gtype-desc.c gtype-desc.h
 gtype-desc.c gtype-desc.h: gtype-time-stamp
@@ -419,22 +428,18 @@ all: ${SRCS}
 #
 OBJS+=		${SRCS:N*.h:R:S/$/.o/g}
 CLEANFILES+=	${OBJS}
+CLEANFILES+=	${NXOBJS}
+
+${NXOBJS:M*.no:Ngenextract.no:Ninsn-conditions.no}: ${SRCS:M*.h:Ngtype-desc.h:Ngenrtl.h:Ntree-check.h:Ntm-preds.h:Ninsn-*.h}
+
+${NXOBJS:Ngencheck.no:Ngengenrtl.no:Ngenpreds.no}: tree-check.h tm-preds.h genrtl.h
+
+${NXOBJS:Ngengtype*.no:Nxmemdup.no:Ngengenrtl.no:Ngencheck.no:Ngenpreds.no:Nxmalloc.no:Nxexit.no}: gtype-desc.h
+
+genextract.no: insn-config.h
+
+insn-conditions.no: insn-constants.h
 
 .if !exists(${DEPENDFILE})
-# Fudge pre-dependfile dependencies of objects in much the same way as
-# bsd.prog.mk would do if we defined PROG.  There are complications to
-# avoid circular dependencies.  First, only make most objects depend on
-# all headers.  Filter out the objects that would cause problems (i.e.,
-# objects that will be used to create programs that will generate headers).
-#
-${OBJS}: ${SRCS:M*.h:Ngtype-desc.h:Ngenrtl.h:Ntree-check.h:Ntm-preds.h:Ninsn-*.h}
-
-${OBJS:Ngencheck.o:Ngengenrtl.o:Ngenpreds.o}: tree-check.h tm-preds.h genrtl.h
-
-${OBJS:Ngengtype*.o:Nxmemdup.o:Ngengenrtl.o:Ngencheck.o:Ngenpreds.o:Nxmalloc.o:Nxexit.o}: gtype-desc.h
-
-genextract.o: insn-config.h
-
-insn-conditions.o: insn-constants.h
-
+${OBJS}: ${SRCS:M*.h}
 .endif

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile.inc,v 1.63 2002/06/04 19:45:08 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.7 2004/03/05 21:38:44 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile.inc,v 1.8 2004/03/22 20:57:50 dillon Exp $
 
 BINDIR?=/usr/libexec/gcc3
 MY_CCVER=gcc3
@@ -21,6 +21,8 @@ target=		${TARGET_ARCH}-undermydesk-freebsd
 
 CFLAGS+=	-DIN_GCC -DHAVE_CONFIG_H
 CFLAGS+=	-DPREFIX=\"${TOOLS_PREFIX}/usr\"
+CFLAGS+=	-DPREFIX1=\"${TOOLS_PREFIX}/usr\"
+CFLAGS+=	-DPREFIX2=\"${USRDATA_PREFIX}/usr\"
 #CFLAGS+=	-DWANT_COMPILER_INVARIANTS
 
 # If building 64-bit longs for the i386, "_LARGE_LONG" should also be defined

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/Makefile,v 1.25.2.4 2001/01/06 23:16:53 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/Attic/Makefile,v 1.3 2004/03/20 16:27:39 drhodus Exp $
+# $DragonFly: src/gnu/lib/gcc2/Attic/Makefile,v 1.4 2004/03/22 20:57:33 dillon Exp $
 #
 # GCC2 libraries must be built with GCC2.  If make does not support .makeenv
 # we have to hack it by changing ${MAKE}
@@ -17,5 +17,8 @@ SUBDIR+= libobjc
 .if !defined(.DIRECTIVE_MAKEENV)
 MAKE := CCVER=gcc2 ${MAKE}
 .endif 
+
+# inter-directory dependancies on tconfig.h
+.ORDER: ${SUBDIR}
 
 .include <bsd.subdir.mk>

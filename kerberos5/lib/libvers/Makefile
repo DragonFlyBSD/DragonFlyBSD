@@ -1,5 +1,5 @@
 # $FreeBSD: src/kerberos5/lib/libvers/Makefile,v 1.3.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/kerberos5/lib/libvers/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $DragonFly: src/kerberos5/lib/libvers/Makefile,v 1.3 2004/03/22 20:58:08 dillon Exp $
 
 LIB=		vers
 INTERNALLIB=	YES
@@ -17,12 +17,12 @@ SRCS=		\
 
 .PATH:		${KRB5DIR}/lib/vers
 
-build-tools:	make-print-version
+build-tools:	make-print-version.nx
 
-print_version.h: make-print-version
-	./make-print-version print_version.h
+print_version.h: make-print-version.nx
+	./make-print-version.nx print_version.h
 
-make-print-version: make-print-version.c
-	${CC} ${CFLAGS} -static -o ${.TARGET} ${.OODATE}
+make-print-version.nx: make-print-version.c
+	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
 
-CLEANFILES+=	make-print-version print_version.h
+CLEANFILES+=	make-print-version.nx print_version.h

@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.5 2004/03/20 16:27:41 drhodus Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.6 2004/03/22 20:58:15 dillon Exp $
 #
 
 .include <bsd.init.mk>
@@ -330,3 +330,4 @@ clean:
 .include <bsd.obj.mk>
 
 .include <bsd.sys.mk>
+

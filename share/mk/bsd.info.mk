@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.info.mk,v 1.57.2.7 2003/05/21 13:00:46 ru Exp $
-# $DragonFly: src/share/mk/bsd.info.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.info.mk,v 1.3 2004/03/22 20:58:15 dillon Exp $
 #
 # The include file <bsd.info.mk> handles installing GNU (tech)info files.
 # Texinfo is a documentation system that uses a single source
@@ -152,6 +152,7 @@ ${x:S/$/-install/}:
 	    ${x}.info ${DESTDIR}${INFODIR}/${INFODIRFILE}
 .endfor
 
+.ORDER: ${INFO:S/$/-install/}
 .PHONY: ${INSTALLINFODIRS}
 
 .if defined(SRCS)

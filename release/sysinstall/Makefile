@@ -1,5 +1,5 @@
 # $FreeBSD: src/release/sysinstall/Makefile,v 1.92.2.22 2003/03/07 08:17:59 ru Exp $
-# $DragonFly: src/release/sysinstall/Attic/Makefile,v 1.2 2003/06/17 04:27:21 dillon Exp $
+# $DragonFly: src/release/sysinstall/Attic/Makefile,v 1.3 2004/03/22 20:58:11 dillon Exp $
 
 PROG=	sysinstall
 MAN=	sysinstall.8
@@ -28,46 +28,43 @@ CFLAGS+= -DPC98
 DPADD=	${LIBDIALOG} ${LIBNCURSES} ${LIBUTIL} ${LIBDISK} ${LIBFTPIO}
 LDADD=	-ldialog -lncurses -lutil -ldisk -lftpio
 
-CLEANFILES=	makedevs.c rtermcap
+CLEANFILES=	makedevs.c rtermcap.nx
 CLEANFILES+=	keymap.tmp keymap.h
 
-makedevs.c:	Makefile rtermcap
+makedevs.c:	Makefile rtermcap.nx
 	echo '#include <sys/types.h>' > makedevs.c
-	./rtermcap ansi | \
+	./rtermcap.nx ansi | \
 		file2c 'const char termcap_ansi[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25w | \
+	./rtermcap.nx cons25w | \
 		file2c 'const char termcap_cons25w[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25 | \
+	./rtermcap.nx cons25 | \
 		file2c 'const char termcap_cons25[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25-m | \
+	./rtermcap.nx cons25-m | \
 		file2c 'const char termcap_cons25_m[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25r | \
+	./rtermcap.nx cons25r | \
 		file2c 'const char termcap_cons25r[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25r-m | \
+	./rtermcap.nx cons25r-m | \
 		file2c 'const char termcap_cons25r_m[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25l1 | \
+	./rtermcap.nx cons25l1 | \
 		file2c 'const char termcap_cons25l1[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap cons25l1-m | \
+	./rtermcap.nx cons25l1-m | \
 		file2c 'const char termcap_cons25l1_m[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap vt100 | \
+	./rtermcap.nx vt100 | \
 		file2c 'const char termcap_vt100[] = {' ',0};' \
 		>> makedevs.c
-	./rtermcap xterm | \
+	./rtermcap.nx xterm | \
 		file2c 'const char termcap_xterm[] = {' ',0};' \
 		>> makedevs.c
 
-build-tools:	rtermcap
-
-rtermcap:	rtermcap.c
-	${CC} -o ${.TARGET} ${.ALLSRC} -ltermcap
+build-tools:	rtermcap.nx
 
 .if ${MACHINE} == "pc98"
 KEYMAPS= jp.pc98 jp.pc98.iso

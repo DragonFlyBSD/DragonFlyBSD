@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.23 2003/07/11 05:33:24 kan Exp $
- * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.4 2004/02/03 03:47:11 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/dragonfly-native.h,v 1.5 2004/03/22 20:57:54 dillon Exp $
  */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
@@ -17,13 +17,13 @@
 #undef LOCAL_INCLUDE_DIR		/* We don't wish to support one. */
 
 /* Look for the include files in the system-defined places.  */
-#define GPLUSPLUS_INCLUDE_DIR		PREFIX"/include/c++/3.3"
-#define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX"/include/c++/3.3/backward"
-#define GCC_INCLUDE_DIR			PREFIX"/include"
+#define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++/3.3"
+#define	GPLUSPLUS_BACKWARD_INCLUDE_DIR	PREFIX2"/include/c++/3.3/backward"
+#define GCC_INCLUDE_DIR			PREFIX2"/include"
 #ifdef CROSS_COMPILE
-#define CROSS_INCLUDE_DIR		PREFIX"/include"
+#define CROSS_INCLUDE_DIR		PREFIX2"/include"
 #else
-#define STANDARD_INCLUDE_DIR		PREFIX"/include"
+#define STANDARD_INCLUDE_DIR		PREFIX2"/include"
 #endif
 
 /* Under FreeBSD, the normal location of the compiler back ends is the
@@ -36,9 +36,9 @@
 */
 #undef	TOOLDIR_BASE_PREFIX		/* Old??  This is not documented. */
 #undef	STANDARD_BINDIR_PREFIX		/* We don't need one for now. */
-#define	STANDARD_EXEC_PREFIX		PREFIX"/libexec/gcc3/"
-#define	MD_EXEC_PREFIX			PREFIX"/libexec/gcc3/"
-#define	FBSD_DATA_PREFIX		PREFIX"/libdata/gcc/"
+#define	STANDARD_EXEC_PREFIX		PREFIX1"/libexec/gcc3/"
+#define	MD_EXEC_PREFIX			PREFIX1"/libexec/gcc3/"
+#define	FBSD_DATA_PREFIX		PREFIX1"/libdata/gcc/"
 
 /*
  * XXX at the moment crt1.o, crti.o, and crtn.o are generated from
@@ -49,8 +49,8 @@
 /* Under FreeBSD, the normal location of the various *crt*.o files is the
    /usr/lib directory.  */
 
-#define STANDARD_STARTFILE_PREFIX	PREFIX"/lib/"
-#define STANDARD_STARTFILE_PREFIX_1	PREFIX"/lib/gcc3/"
+#define STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
+#define STANDARD_STARTFILE_PREFIX_1	PREFIX2"/lib/gcc3/"
 #undef MD_STARTFILE_PREFIX
 
 /* For the native system compiler, we actually build libgcc in a profiled

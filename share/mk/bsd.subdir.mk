@@ -1,6 +1,6 @@
 #	from: @(#)bsd.subdir.mk	5.9 (Berkeley) 2/1/91
 # $FreeBSD: src/share/mk/bsd.subdir.mk,v 1.30.2.5 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.subdir.mk,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.subdir.mk,v 1.3 2004/03/22 20:58:15 dillon Exp $
 #
 # The include file <bsd.subdir.mk> contains the default targets
 # for building subdirectories. 
@@ -94,3 +94,8 @@ afterinstall:
 install: beforeinstall realinstall afterinstall
 .ORDER: beforeinstall realinstall afterinstall
 .endif
+
+.ORDER: clean cleandepend cleandir cleanobj \
+	obj objlink tags depend all all-man \
+	install maninstall realinstall distribute
+

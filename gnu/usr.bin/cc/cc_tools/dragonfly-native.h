@@ -1,5 +1,5 @@
 /* $FreeBSD: src/gnu/usr.bin/cc/cc_tools/freebsd-native.h,v 1.5.2.9 2002/05/01 20:04:37 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/dragonfly-native.h,v 1.3 2004/01/28 16:41:17 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/cc/cc_tools/Attic/dragonfly-native.h,v 1.4 2004/03/22 20:57:48 dillon Exp $ */
 
 /* FREEBSD_NATIVE is defined when gcc is integrated into the FreeBSD
    source tree so it can be configured appropriately without using
@@ -13,12 +13,12 @@
 #undef LOCAL_INCLUDE_DIR		/* We don't wish to support one. */
 
 /* Look for the include files in the system-defined places.  */
-#define GPLUSPLUS_INCLUDE_DIR		PREFIX"/include/c++/2.95"
-#define GCC_INCLUDE_DIR			PREFIX"/include"
+#define GPLUSPLUS_INCLUDE_DIR		PREFIX2"/include/c++/2.95"
+#define GCC_INCLUDE_DIR			PREFIX2"/include"
 #ifdef CROSS_COMPILE
-#define CROSS_INCLUDE_DIR		PREFIX"/include"
+#define CROSS_INCLUDE_DIR		PREFIX2"/include"
 #else
-#define STANDARD_INCLUDE_DIR		PREFIX"/include"
+#define STANDARD_INCLUDE_DIR		PREFIX2"/include"
 #endif
 
 /* Under FreeBSD, the normal location of the compiler back ends is the
@@ -31,17 +31,17 @@
 */
 
 #undef  TOOLDIR_BASE_PREFIX		/* Old??  This is not documented. */
-#define STANDARD_EXEC_PREFIX		PREFIX"/libexec/gcc2/"
+#define STANDARD_EXEC_PREFIX		PREFIX1"/libexec/gcc2/"
 #undef  MD_EXEC_PREFIX			/* We don't want one. */
 
 /* Under FreeBSD, the normal location of the various *crt*.o files is the
    /usr/lib directory.  */
 
-#define STANDARD_STARTFILE_PREFIX	PREFIX"/lib/"
+#define STANDARD_STARTFILE_PREFIX	PREFIX2"/lib/"
 #ifdef CROSS_COMPILE
-#define CROSS_STARTFILE_PREFIX		PREFIX"/lib/gcc2/"
+#define CROSS_STARTFILE_PREFIX		PREFIX2"/lib/gcc2/"
 #endif
-#define  MD_STARTFILE_PREFIX		PREFIX"/lib/gcc2/"
+#define  MD_STARTFILE_PREFIX		PREFIX2"/lib/gcc2/"
 
 /* For the native system compiler, we actually build libgcc in a profiled
    version.  So we should use it with -pg.  */

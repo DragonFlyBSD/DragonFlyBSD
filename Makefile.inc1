@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.22 2004/03/21 03:48:38 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.23 2004/03/22 20:57:17 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -21,10 +21,13 @@
 #	-DNO_DOCUPDATE do not update doc in ${MAKE} update
 #	LOCAL_DIRS="list of dirs" to add additional dirs to the SUBDIR list
 #	TARGET_ARCH="arch" to crossbuild world to a different arch
-
 #
 # The intended user-driven targets are:
+#
 # buildworld  - rebuild *everything*, including glue to help do upgrades
+# quickworld  - skip the glue and do a depend+build on the meat
+# realquickworld - skip the glue and depend stages and just build the meat
+# crossworld  - only build the glue (particularly the cross-build environment)
 # installworld- install everything built by "buildworld"
 # update      - convenient way to update your source tree (eg: sup/cvs)
 # most        - build user commands, no libraries or include files
@@ -126,7 +129,18 @@ SUPFLAGS?=	-g -L 2 -P -
 SUPFLAGS+=	-h ${SUPHOST}
 .endif
 
+# Object directory base in primary make.  Note that when we rerun make
+# from inside this file we change MAKEOBJDIRPREFIX to the appropriate
+# subdirectory because the rest of the build system needs it that way.
+# The original object directory base is saved in OBJTREE.
+#
 MAKEOBJDIRPREFIX?=	/usr/obj
+OBJTREE?=		${MAKEOBJDIRPREFIX}
+
+# Used for stage installs and pathing
+#
+DESTDIRBASE?=		${OBJTREE}${.CURDIR}
+
 TARGET_ARCH?=	${MACHINE_ARCH}
 .if ${TARGET_ARCH} == ${MACHINE_ARCH}
 TARGET?=	${MACHINE}
@@ -139,19 +153,32 @@ BUILD_ARCH!=	sysctl -n hw.machine_arch
 .error To cross-build, set TARGET_ARCH.
 .endif
 .endif
-.if ${MACHINE} == ${TARGET}
-OBJTREE=	${MAKEOBJDIRPREFIX}
-.else
-OBJTREE=	${MAKEOBJDIRPREFIX}/${TARGET}
-.endif
-WORLDTMP=	${OBJTREE}${.CURDIR}/${MACHINE_ARCH}
-# /usr/games added for fortune which depend on strfile
-STRICTTMPPATH=	${WORLDTMP}/usr/sbin:${WORLDTMP}/usr/bin:${WORLDTMP}/usr/games
-TMPPATH=	${STRICTTMPPATH}:${PATH}
+
+# BTOOLS	(Natively built) All non-cross-development tools that the
+#		main build needs.  This includes things like 'mkdir' and 'rm'.
+#		We will not use the native system's exec path once we start
+#		on WORLD.  (bootstrap-tools and build-tools or BTOOLS)
+#
+# CTOOLS	(Natively built) Cross development tools which are specific
+#		to the target architecture.
+#
+# WORLD		(Cross built) Our ultimate buildworld, using only BTOOLS and
+#		CTOOLS.
+#
+# MACHINE_ARCH	Architecture we are building on
+# TARGET_ARCH	Architecture we are building for
+#
+BTOOLSDEST=	${DESTDIRBASE}/btools_${MACHINE_ARCH}
+CTOOLSDEST=	${DESTDIRBASE}/ctools_${MACHINE_ARCH}_${TARGET_ARCH}
+WORLDDEST=	${DESTDIRBASE}/world_${TARGET_ARCH}
+
+# The strict temporary command path contains all binaries required
+# by the buildworld system after the cross-tools stage.
+#
+STRICTTMPPATH=	${CTOOLSDEST}/usr/sbin:${CTOOLSDEST}/usr/bin:${CTOOLSDEST}/bin:${CTOOLSDEST}/usr/games:${BTOOLSDEST}/usr/sbin:${BTOOLSDEST}/usr/bin:${BTOOLSDEST}/bin:${BTOOLSDEST}/usr/games
 
 TMPDIR?=	/tmp
 TMPPID!=	echo $$$$
-INSTALLTMP=	${TMPDIR}/install.${TMPPID}
 
 #
 # Building a world goes through the following stages
@@ -174,90 +201,76 @@ INSTALLTMP=	${TMPDIR}/install.${TMPPID}
 #	This stage installs a previously built world.
 #
 
-# Common environment for world related stages
-CROSSENV=	MAKEOBJDIRPREFIX=${OBJTREE} \
-		MACHINE_ARCH=${TARGET_ARCH} \
-		MACHINE=${TARGET} \
-		OBJFORMAT_PATH=${WORLDTMP} \
-		PERL5LIB=${WORLDTMP}/usr/libdata/perl/5.00503 \
-		GROFF_BIN_PATH=${WORLDTMP}/usr/bin \
-		GROFF_FONT_PATH=${WORLDTMP}/usr/share/groff_font \
-		GROFF_TMAC_PATH=${WORLDTMP}/usr/share/tmac
-
 # bootstrap-tool stage
-BMAKEENV=	MAKEOBJDIRPREFIX=${WORLDTMP} \
+#
+BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
 		DESTDIR= \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
+
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 		-DNOHTML -DNOINFO -DNOMAN -DNOPIC -DNOPROFILE -DNOSHARED \
 		-DNO_WERROR
 
 # build-tool stage
-TMAKEENV=	MAKEOBJDIRPREFIX=${OBJTREE} \
+#
+TMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
 		DESTDIR= \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
-TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING
+
+TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
+		-DNO_FORTRAN
 
 # cross-tool stage
-XMAKE=		TOOLS_PREFIX=${WORLDTMP} ${BMAKE} -DNO_FORTRAN -DNO_GDB
-
-# world stage
-WMAKEENV=	${CROSSENV} \
-		DESTDIR=${WORLDTMP} \
+#
+# note: TOOLS_PREFIX points to the obj root holding the cross
+#	compiler binaries, while INCS_PREFIX points to the obj root holding
+#	the target environment (and also determines where cross-built
+#	libraries and crt*.o are installed).
+#
+XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
+		OBJTREE=${OBJTREE} \
+		DESTDIR=${CTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh" \
-		PATH=${TMPPATH}
+		TOOLS_PREFIX=${CTOOLSDEST} \
+		USRDATA_PREFIX=${WORLDDEST}
+
+XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB
+
+# world stage, note the strict path and note that TOOLS_PREFIX is left
+# unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
+# which is primarily for the compiler so it targets / (e.g. /usr/<blah>)
+# for both binary and library paths, even though it is being compiled to
+# WORLDDEST.  None of the programs in the world stage are ever actually
+# executed during the buildworld/installworld.
+#
+CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
+		OBJTREE=${OBJTREE} \
+		MACHINE_ARCH=${TARGET_ARCH} \
+		MACHINE=${TARGET} \
+		OBJFORMAT_PATH=${CTOOLSDEST} \
+		PERL5LIB=${WORLDDEST}/usr/libdata/perl/5.00503 \
+		GROFF_BIN_PATH=${WORLDDEST}/usr/bin \
+		GROFF_FONT_PATH=${WORLDDEST}/usr/share/groff_font \
+		GROFF_TMAC_PATH=${WORLDDEST}/usr/share/tmac
+
+WMAKEENV=	${CROSSENV} \
+		DESTDIR=${WORLDDEST} \
+		INSTALL="sh ${.CURDIR}/tools/install.sh" \
+		PATH=${STRICTTMPPATH}
+
 WMAKE=		${WMAKEENV} ${MAKE} -f Makefile.inc1
 
 # install stage
 IMAKEENV=	${CROSSENV} \
-		PATH=${STRICTTMPPATH}:${INSTALLTMP}
+		PATH=${STRICTTMPPATH}
 IMAKE=		${IMAKEENV} ${MAKE} -f Makefile.inc1
 
 # kernel stage
 KMAKEENV=	${WMAKEENV} \
-		OBJFORMAT_PATH=${WORLDTMP}:${OBJFORMAT_PATH}
+		OBJFORMAT_PATH=${CTOOLSDEST}:${OBJFORMAT_PATH}
 
-# /usr/bin/gccX			version-specific gcc binaries
-# /usr/lib/gccX			version-specific gcc libraries
-# /usr/libexec/gccX		version-specific gcc helper binaries
-# /usr/libexec/binutilsXXX	version-specific binutils
-
-USRDIRS=	usr/bin \
-		usr/lib/gcc2 usr/lib/gcc3 \
-		usr/libexec/gcc2 usr/libexec/gcc3 \
-		usr/lib/compat/aout usr/games \
-		usr/libdata \
-		usr/libexec/binutils212 \
-		usr/libexec/binutils212/elf \
-		usr/libexec/binutils212/aout \
-		usr/libexec/binutils212/ldscripts \
-		usr/libexec/binutils214 \
-		usr/libexec/binutils214/elf \
-		usr/libexec/binutils214/ldscripts \
-		usr/sbin usr/share/misc \
-		usr/share/dict \
-		usr/share/groff_font/devX100 \
-		usr/share/groff_font/devX100-12 \
-		usr/share/groff_font/devX75 \
-		usr/share/groff_font/devX75-12 \
-		usr/share/groff_font/devascii \
-		usr/share/groff_font/devcp1047 \
-		usr/share/groff_font/devdvi \
-		usr/share/groff_font/devhtml \
-		usr/share/groff_font/devkoi8-r \
-		usr/share/groff_font/devlatin1 \
-		usr/share/groff_font/devlbp \
-		usr/share/groff_font/devlj4 \
-		usr/share/groff_font/devps \
-		usr/share/groff_font/devutf8 \
-		usr/share/tmac/mdoc usr/share/tmac/mm
-
-# XXX remove in favor of the BSD.include.dist mtree that we already have.
-#
-INCDIRS=	arpa dev c++/2.95 isc libmilter objc openssl \
-		protocols readline rpc rpcsvc security
-
-#
 # buildworld
 #
 # Attempt to rebuild the entire system, with reasonable chance of
@@ -269,19 +282,23 @@ _worldtmp:
 	@echo ">>> Rebuilding the temporary build tree"
 	@echo "--------------------------------------------------------------"
 .if !defined(NOCLEAN)
-	rm -rf ${WORLDTMP}
+	rm -rf ${BTOOLSDEST} ${CTOOLSDEST} ${WORLDDEST}
 .else
 	# XXX - These two can depend on any header file.
 	rm -f ${OBJTREE}${.CURDIR}/usr.bin/kdump/ioctl.c
 	rm -f ${OBJTREE}${.CURDIR}/usr.bin/truss/ioctl.c
 .endif
-.for _dir in ${USRDIRS}
-	mkdir -p ${WORLDTMP}/${_dir}
+	mkdir -p ${DESTDIRBASE} ${BTOOLSDEST} ${CTOOLSDEST} ${WORLDDEST}
+.for _dir in ${WORLDDEST} ${BTOOLSDEST} ${CTOOLSDEST}
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.root.dist	\
+		-p ${_dir}/  > /dev/null
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.usr.dist		\
+		-p ${_dir}/usr > /dev/null
 .endfor
-.for _dir in ${INCDIRS}
-	mkdir -p ${WORLDTMP}/usr/include/${_dir}
-.endfor
-	ln -sf ${.CURDIR}/sys ${WORLDTMP}
+	mtree -deU -f ${.CURDIR}/etc/mtree/BSD.include.dist	\
+		-p ${WORLDDEST}/usr/include > /dev/null
+	ln -sf ${.CURDIR}/sys ${WORLDDEST}
+
 _bootstrap-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
@@ -289,23 +306,21 @@ _bootstrap-tools:
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${BMAKE} bootstrap-tools
 _cleanobj:
-.if !defined(NOCLEAN)
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 2: cleaning up the object tree"
+	@echo ">>> stage 2a: cleaning up the object tree"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} ${CLEANDIR:S/^/par-/}
-.endif
 _obj:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 2: rebuilding the object tree"
+	@echo ">>> stage 2b: rebuilding the object tree"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} par-obj
 _build-tools:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 2: build tools"
+	@echo ">>> stage 2c: build tools"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${TMAKE} build-tools
 _cross-tools:
@@ -317,40 +332,56 @@ _cross-tools:
 _includes:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 4: populating ${WORLDTMP}/usr/include"
+	@echo ">>> stage 4a: populating ${WORLDDEST}/usr/include"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} SHARED=symlinks par-includes
 _libraries:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 4: building libraries"
+	@echo ">>> stage 4b: building libraries"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} -DNOHTML -DNOINFO -DNOMAN -DNOFSCHG libraries
 _depend:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 4: make dependencies"
+	@echo ">>> stage 4c: make dependencies"
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} par-depend
 everything:
 	@echo
 	@echo "--------------------------------------------------------------"
-	@echo ">>> stage 4: building everything.."
+	@echo ">>> stage 4d: building everything.."
 	@echo "--------------------------------------------------------------"
 	cd ${.CURDIR}; ${WMAKE} all
 
+# note: buildworld no longer depends on _cleanobj because we rm -rf the
+# entire object tree and built the bootstrap tools in a different location.
+#
+# buildworld	- build everything from scratch
+# quickworld	- skip the bootstrap, build, and cross-build steps
+# realquickworld - skip the bootstrap, build, crossbuild, and depend step.
+#
+# note: we include _obj in realquickworld to prevent accidental creation
+# of files in /usr/src.
 
 WMAKE_TGTS=
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_worldtmp _bootstrap-tools
 .endif
-WMAKE_TGTS+=	_cleanobj _obj _build-tools
+WMAKE_TGTS+=	_obj _build-tools
 .if !defined(SUBDIR_OVERRIDE)
 WMAKE_TGTS+=	_cross-tools
 .endif
 WMAKE_TGTS+=	_includes _libraries _depend everything
 
 buildworld: ${WMAKE_TGTS}
+
+quickworld: _obj _includes _libraries _depend everything
+
+realquickworld: _obj _includes _libraries everything
+
+crossworld: _worldtmp _bootstrap-tools _obj _build-tools _cross-tools
+
 .ORDER: ${WMAKE_TGTS}
 
 #
@@ -380,15 +411,7 @@ installcheck:
 # Installs everything compiled by a 'buildworld'.
 #
 distributeworld installworld: installcheck
-	mkdir -p ${INSTALLTMP}
-	for prog in [ awk cap_mkdb cat chflags chmod chown \
-	    date echo egrep find grep \
-	    ln make makewhatis mkdir mtree mv perl pwd_mkdb rm sed sh sysctl \
-	    test true uname wc zic; do \
-		cp `which $$prog` ${INSTALLTMP}; \
-	done
 	cd ${.CURDIR}; ${IMAKE} re${.TARGET:S/world$//}
-	rm -rf ${INSTALLTMP}
 
 #
 # reinstall
@@ -484,7 +507,7 @@ buildkernel:
 	mkdir -p ${KRNLOBJDIR}
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
-		PATH=${TMPPATH} \
+		PATH=${STRICTTMPPATH} \
 		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
@@ -591,7 +614,7 @@ installmost:
 # to attempt to manually finish it.  If in doubt, 'make world' again.
 #
 
-# bootstrap-tools: Build tools needed for compatibility
+# bootstrap-tools: Build all tools required to build all tools.
 #
 # [x]install:	dependancies on various new install features
 # rpcgen:	old rpcgen used a hardwired cpp path, newer OBJFORMAT_PATH
@@ -602,21 +625,39 @@ _strfile=	games/fortune/strfile
 .endif
 
 bootstrap-tools:
-.for _tool in ${_strfile} usr.bin/yacc usr.bin/colldef \
-    usr.bin/uudecode usr.bin/xinstall usr.bin/rpcgen \
-    usr.sbin/config \
-    gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo
-	${ECHODIR} "===> ${_tool}"; \
+.for _tool in ${_strfile} \
+    bin/chmod bin/cp bin/dd bin/mkdir bin/rm bin/echo bin/test \
+    bin/cat bin/date bin/ln bin/mv bin/csh bin/expr bin/sh bin/ls \
+    bin/hostname \
+    sbin/sysctl \
+    usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
+    usr.bin/m4 usr.bin/rpcgen usr.bin/make gnu/usr.bin/awk usr.bin/file \
+    usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
+    usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
+    usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \
+    usr.bin/gencat usr.bin/chflags usr.bin/expand usr.bin/paste \
+    usr.bin/mklocale usr.bin/uuencode usr.bin/compile_et \
+    usr.bin/vi usr.bin/cap_mkdb usr.bin/vgrind usr.bin/true usr.bin/false \
+    usr.bin/cmp usr.bin/xargs usr.bin/id \
+    usr.sbin/chown usr.sbin/mtree usr.sbin/config \
+    usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic \
+    gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo \
+    gnu/usr.bin/grep gnu/usr.bin/sort gnu/usr.bin/patch \
+    gnu/usr.bin/gzip gnu/usr.bin/perl gnu/usr.bin/man/makewhatis
+	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
 		${MAKE} DIRPRFX=${_tool}/ depend; \
 		${MAKE} DIRPRFX=${_tool}/ all; \
-		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${MAKEOBJDIRPREFIX} install
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
 # build-tools: Build special purpose build tools.  gcc2 related tools are
 # only built under the i386 architecture.  Other architectures are
 # gcc3-only.
+#
+# XXX we may be able to remove or consolidate this into bootstrap-tools
+# now that we have the native helper (.nx/.no) infrastructure.
 #
 .if exists(${.CURDIR}/games) && !defined(NOGAMES)
 _games=	games/adventure games/hack games/phantasia
@@ -658,17 +699,16 @@ _libkrb5= kerberos5/lib/libroken kerberos5/lib/libvers \
 _sysinstall= release/sysinstall
 .endif
 
-# build-tools: tools we need 
-#
 build-tools:
-.for _tool in bin/csh bin/sh ${_games} ${_gcc2_tools} ${_gcc3_tools} \
+.for _tool in ${_gcc2_tools} ${_gcc3_tools} \
 	      ${_fortran} ${_perl} ${_libroken4} ${_libkrb5} \
-	      lib/libncurses ${_share} usr.bin/awk usr.bin/file \
-	      ${_sysinstall}
-	${ECHODIR} "===> ${_tool}"; \
+	      ${_share} ${_sysinstall}
+	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
-		${MAKE} DIRPRFX=${_tool}/ build-tools
+		${MAKE} DIRPRFX=${_tool}/ depend; \
+		${MAKE} DIRPRFX=${_tool}/ all; \
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
 
 #
@@ -686,12 +726,12 @@ cross-tools:
 .for _tool in ${_btxld} ${_elf2exe} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
 	      ${_gcc2_cross} ${_gcc3_cross}
-	${ECHODIR} "===> ${_tool}"; \
+	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
 		${MAKE} DIRPRFX=${_tool}/ depend; \
 		${MAKE} DIRPRFX=${_tool}/ all; \
-		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${MAKEOBJDIRPREFIX} install
+		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
 .endfor
 
 #
@@ -731,6 +771,7 @@ _startup_libs=	lib/csu/${MACHINE_ARCH}-elf
 .else
 _startup_libs=	lib/csu/${MACHINE_ARCH}
 .endif
+_startup_libs+=	lib/libc
 
 _prebuild_libs=
 
@@ -799,7 +840,16 @@ _startup_libs3: ${_startup_libs3:S/$/__L/}
 _prebuild_libs: ${_prebuild_libs:S/$/__L/}
 _generic_libs: ${_generic_libs:S/$/__L/}
 
-.for __target in clean cleandepend cleandir depend includes obj
+# library targets must be ordered because there are inter-library
+# races (e.g. generation of tconfig.h)
+#
+.ORDER: ${_startup_libs2:S/$/__L/}
+.ORDER: ${_startup_libs3:S/$/__L/}
+.ORDER: ${_startup_libs:S/$/__L/}
+.ORDER: ${_prebuild_libs:S/$/__L/}
+.ORDER: ${_generic_libs:S/$/__L/}
+
+.for __target in clean cleandepend cleandir obj depend includes
 .for entry in ${SUBDIR}
 ${entry}.${__target}__D: .PHONY
 	@if test -d ${.CURDIR}/${entry}.${MACHINE_ARCH}; then \
@@ -814,19 +864,27 @@ ${entry}.${__target}__D: .PHONY
 	${MAKE} ${__target} DIRPRFX=${DIRPRFX}$${edir}/
 .endfor
 par-${__target}: ${SUBDIR:S/$/.${__target}__D/}
+.ORDER: ${SUBDIR:S/$/.${__target}__D/}
 .endfor
+.ORDER: par-clean par-cleandepend par-cleandir par-obj par-depend par-includes
 
 # The wmake target is used by /usr/bin/wmake to run make in a
 # world build environment.
 #
 wmake:
-	@echo '${WMAKEENV} ${MAKE} ${WMAKE_ARGS}'
+	@echo '${WMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${WMAKE_ARGS}'
 
 wmakeenv:
 	@echo '${WMAKEENV} /bin/sh'
 
+bmake:
+	@echo '${BMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${BMAKE_ARGS}'
+
 bmakeenv:
 	@echo '${BMAKEENV} /bin/sh'
+
+tmake:
+	@echo '${TMAKEENV} ${MAKE} -m ${.CURDIR}/share/mk ${TMAKE_ARGS}'
 
 tmakeenv:
 	@echo '${TMAKEENV} /bin/sh'

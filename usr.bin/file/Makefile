@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/file/Makefile,v 1.13.2.8 2003/03/16 04:47:04 obrien Exp $
-# $DragonFly: src/usr.bin/file/Makefile,v 1.2 2003/06/17 04:29:26 dillon Exp $
+# $DragonFly: src/usr.bin/file/Makefile,v 1.3 2004/03/22 20:58:27 dillon Exp $
 # Makefile for file(1) cmd.
 # Copyright (c) Ian F. Darwin 86/09/01 - see LEGAL.NOTICE.
 #
@@ -51,18 +51,18 @@ all: ${PROG} magic.mgc magic.mime.mgc
 magic: ${MAGFILES}
 	cat ${.ALLSRC} > ${.TARGET}
 
-magic.mgc: mkmagic magic
-	./mkmagic magic
+magic.mgc: mkmagic.nx magic
+	./mkmagic.nx magic
 
-magic.mime.mgc: mkmagic magic.mime
+magic.mime.mgc: mkmagic.nx magic.mime
 	ln -sf ${SRCDIR}/magic.mime magic.mime.PITA
-	./mkmagic magic.mime.PITA
+	./mkmagic.nx magic.mime.PITA
 	mv magic.mime.PITA.mgc magic.mime.mgc
 
-CLEANFILES+=	mkmagic
-build-tools: mkmagic
-mkmagic: apprentice.c print.c
-	${CC} -DHAVE_CONFIG_H -DCOMPILE_ONLY \
+CLEANFILES+=	mkmagic.nx
+build-tools: mkmagic.nx
+mkmagic.nx: apprentice.c print.c
+	${NXCC} -DHAVE_CONFIG_H -DCOMPILE_ONLY \
 	    -I${.CURDIR} -I${SRCDIR} -o ${.TARGET} ${.ALLSRC}
 
 .include <bsd.prog.mk>
