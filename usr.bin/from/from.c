@@ -33,10 +33,11 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/from/from.c,v 1.8.2.1 2000/10/06 08:19:19 ru Exp $
- * $DragonFly: src/usr.bin/from/from.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/from/from.c,v 1.4 2005/02/16 20:35:09 liamfoy Exp $
  */
 
 #include <sys/types.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <pwd.h>
@@ -46,15 +47,16 @@
 #include <string.h>
 #include <unistd.h>
 
-int match(char *, char *);
-static void usage(void);
+static int	match(char *, char *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
 	struct passwd *pwd;
 	int ch, count, newline;
-	char *file, *sender, *p;
+	const char *file;
+	char *sender, *p;
 #if MAXPATHLEN > BUFSIZ
 	char buf[MAXPATHLEN];
 #else
@@ -74,8 +76,7 @@ main(int argc, char **argv)
 		case 's':
 			sender = optarg;
 			for (p = sender; *p; ++p)
-				if (isupper(*p))
-					*p = tolower(*p);
+				*p = tolower(*p);
 			break;
 		case '?':
 		default:
@@ -132,24 +133,22 @@ usage(void)
 	exit(1);
 }
 
-int
-match(register char *line, register char *sender)
+static int
+match(char *line, char *sender)
 {
-	register char ch, pch, first, *p, *t;
+	char ch, pch, first, *p, *t;
 
 	for (first = *sender++;;) {
 		if (isspace(ch = *line))
 			return(0);
 		++line;
-		if (isupper(ch))
-			ch = tolower(ch);
+		ch = tolower(ch);
 		if (ch != first)
 			continue;
 		for (p = sender, t = line;;) {
 			if (!(pch = *p++))
 				return(1);
-			if (isupper(ch = *t++))
-				ch = tolower(ch);
+			ch = tolower(*t++);
 			if (ch != pch)
 				break;
 		}
