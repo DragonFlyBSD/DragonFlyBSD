@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.5 2004/09/04 06:15:08 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.6 2004/09/04 12:03:14 eirikn Exp $
  */
 
 #include "opt_syscons.h"
@@ -79,7 +79,8 @@ static vr_blink_cursor_t	vga_pxlblink_planar;
 static vr_draw_mouse_t		vga_pxlmouse_direct;
 static vr_draw_mouse_t		vga_pxlmouse_planar;
 #else
-#define	vga_pxlmouse		(vr_draw_mouse_t *)vga_nop
+#define	vga_pxlmouse_direct	(vr_draw_mouse_t *)vga_nop
+#define	vga_pxlmouse_planar	(vr_draw_mouse_t *)vga_nop
 #endif
 #endif /* SC_PIXEL_MODE */
 
