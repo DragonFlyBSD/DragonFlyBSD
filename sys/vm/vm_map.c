@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.35 2004/10/26 04:33:11 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.36 2004/12/21 02:42:41 hsu Exp $
  */
 
 /*
@@ -2817,7 +2817,7 @@ vm_map_stack (vm_map_t map, vm_offset_t addrbos, vm_size_t max_ssize,
 	                   addrbos + max_ssize, prot, max, cow);
 
 	/* Now set the avail_ssize amount */
-	if (rv == KERN_SUCCESS){
+	if (rv == KERN_SUCCESS) {
 		if (prev_entry != &map->header)
 			vm_map_clip_end(map, prev_entry, addrbos + max_ssize - init_ssize, &count);
 		new_stack_entry = prev_entry->next;

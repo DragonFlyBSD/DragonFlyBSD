@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.5 2004/09/17 01:03:58 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.6 2004/12/21 02:42:41 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ net_init_domain(struct domain *dp)
 	s = splnet();
 	if (dp->dom_init)
 		(*dp->dom_init)();
-	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++){
+	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 		if (pr->pr_usrreqs == 0)
 			panic("domaininit: %ssw[%d] has no usrreqs!",
 			      dp->dom_name, 
