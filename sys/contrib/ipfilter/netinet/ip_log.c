@@ -5,7 +5,7 @@
  *
  * $Id: ip_log.c,v 2.5.2.1 2000/07/19 13:11:47 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.17.2.4 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_log.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #include <sys/param.h>
 #if defined(KERNEL) && !defined(_KERNEL)
@@ -174,7 +174,7 @@ fr_info_t *fin;
 mb_t *m;
 {
 	ipflog_t ipfl;
-	register size_t mlen, hlen;
+	size_t mlen, hlen;
 	size_t sizes[2];
 	void *ptrs[2];
 	int types[2];

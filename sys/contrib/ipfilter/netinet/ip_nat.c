@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -309,8 +309,8 @@ fr_info_t *fin;
 u_short *sp;
 u_32_t n;
 {
-	register u_short sumshort;
-	register u_32_t sum1;
+	u_short sumshort;
+	u_32_t sum1;
 
 	if (!n)
 		return;
@@ -336,8 +336,8 @@ fr_info_t *fin;
 u_short *sp;
 u_32_t n;
 {
-	register u_short sumshort;
-	register u_32_t sum1;
+	u_short sumshort;
+	u_32_t sum1;
 
 	if (!n)
 		return;
@@ -379,8 +379,8 @@ void fix_datacksum(sp, n)
 u_short *sp;
 u_32_t n;
 {
-	register u_short sumshort;
-	register u_32_t sum1;
+	u_short sumshort;
+	 u_32_t sum1;
 
 	if (!n)
 		return;
@@ -427,7 +427,7 @@ int cmd;
 caddr_t data;
 int mode;
 {
-	register ipnat_t *nat, *nt, *n = NULL, **np = NULL;
+	ipnat_t *nat, *nt, *n = NULL, **np = NULL;
 	int error = 0, ret, arg, getlock;
 	ipnat_t natd;
 	u_32_t i, j;
@@ -793,7 +793,7 @@ static int fr_natgetent(data)
 caddr_t data;
 {
 	nat_save_t ipn, *ipnp, *ipnn = NULL;
-	register nat_t *n, *nat;
+	nat_t *n, *nat;
 	ap_session_t *aps;
 	int error;
 
@@ -872,7 +872,7 @@ static int fr_natputent(data)
 caddr_t data;
 {
 	nat_save_t ipn, *ipnp, *ipnn = NULL;
-	register nat_t *n, *nat;
+	nat_t *n, *nat;
 	ap_session_t *aps;
 	frentry_t *fr;
 	ipnat_t *in;
@@ -1080,8 +1080,8 @@ struct nat *natd;
  */
 static int nat_flushtable()
 {
-	register nat_t *nat, **natp;
-	register int j = 0;
+	nat_t *nat, **natp;
+	int j = 0;
 
 	/*
 	 * ALL NAT mappings deleted, so lets just make the deletions
@@ -1113,7 +1113,7 @@ static int nat_flushtable()
  */
 int nat_clearlist()
 {
-	register ipnat_t *n, **np = &nat_list;
+	ipnat_t *n, **np = &nat_list;
 	int i = 0;
 
 	if (nat_rules != NULL)
@@ -1154,7 +1154,7 @@ nat_t **natsave;
 u_int flags;
 int direction;
 {
-	register u_32_t sum1, sum2, sumd, l;
+	u_32_t sum1, sum2, sumd, l;
 	u_short port = 0, sport = 0, dport = 0, nport = 0;
 	struct in_addr in, inb;
 	u_short nflags, sp, dp;
@@ -2029,14 +2029,14 @@ int dir;
  */
 nat_t *nat_inlookup(fin, flags, p, src, mapdst, rw)
 fr_info_t *fin;
-register u_int flags, p;
+u_int flags, p;
 struct in_addr src , mapdst;
 int rw;
 {
-	register u_short sport, dport;
-	register nat_t *nat;
-	register int nflags;
-	register u_32_t dst;
+	u_short sport, dport;
+	nat_t *nat;
+	int nflags;
+	u_32_t dst;
 	ipnat_t *ipn;
 	void *ifp;
 	u_int hv;
@@ -2125,7 +2125,7 @@ static void nat_tabmove(fin, nat)
 fr_info_t *fin;
 nat_t *nat;
 {
-	register u_short sport, dport;
+	u_short sport, dport;
 	u_int hv, nflags;
 	nat_t **natp;
 
@@ -2176,13 +2176,13 @@ nat_t *nat;
  */
 nat_t *nat_outlookup(fin, flags, p, src, dst, rw)
 fr_info_t *fin;
-register u_int flags, p;
+u_int flags, p;
 struct in_addr src , dst;
 int rw;
 {
-	register u_short sport, dport;
-	register nat_t *nat;
-	register int nflags;
+	u_short sport, dport;
+	nat_t *nat;
+	int nflags;
 	ipnat_t *ipn;
 	u_32_t srcip;
 	void *ifp;
@@ -2265,7 +2265,7 @@ int rw;
  * Lookup the NAT tables to search for a matching redirect
  */
 nat_t *nat_lookupredir(np)
-register natlookup_t *np;
+natlookup_t *np;
 {
 	nat_t *nat;
 	fr_info_t fi;
@@ -2339,8 +2339,8 @@ int ip_natout(ip, fin)
 ip_t *ip;
 fr_info_t *fin;
 {
-	register ipnat_t *np = NULL;
-	register u_32_t ipa;
+	ipnat_t *np = NULL;
+	u_32_t ipa;
 	tcphdr_t *tcp = NULL;
 	u_short sport = 0, dport = 0, *csump = NULL;
 	int natadd = 1, i, icmpset = 1;
@@ -2579,9 +2579,9 @@ int ip_natin(ip, fin)
 ip_t *ip;
 fr_info_t *fin;
 {
-	register struct in_addr src;
-	register struct in_addr in;
-	register ipnat_t *np;
+	struct in_addr src;
+	struct in_addr in;
+	ipnat_t *np;
 	u_short sport = 0, dport = 0, *csump = NULL;
 	u_int nflags = 0, natadd = 1, hv, msk;
 	struct ifnet *ifp = fin->fin_ifp;
@@ -2818,7 +2818,7 @@ void ip_natunload()
  */
 void ip_natexpire()
 {
-	register struct nat *nat, **natp;
+	struct nat *nat, **natp;
 #if defined(_KERNEL) && !SOLARIS
 	int s;
 #endif
@@ -2848,9 +2848,9 @@ void ip_natexpire()
 void ip_natsync(ifp)
 void *ifp;
 {
-	register ipnat_t *n;
-	register nat_t *nat;
-	register u_32_t sum1, sum2, sumd;
+	ipnat_t *n;
+	nat_t *nat;
+	u_32_t sum1, sum2, sumd;
 	struct in_addr in;
 	ipnat_t *np;
 	void *ifp2;

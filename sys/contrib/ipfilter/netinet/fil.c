@@ -5,7 +5,7 @@
  *
  * @(#)fil.c        1.36 6/5/96 (C) 1993-2000 Darren Reed
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/fil.c,v 1.23.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/fil.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -473,9 +473,9 @@ int fr_tcpudpchk(ft, fin)
 frtuc_t *ft;
 fr_info_t *fin;
 {
-	register u_short po, tup;
-	register char i;
-	register int err = 1;
+	u_short po, tup;
+	char i;
+	int err = 1;
 
 	/*
 	 * Both ports should *always* be in the first fragment.
@@ -565,11 +565,11 @@ fr_info_t *fin;
 int fr_scanlist(passin, ip, fin, m)
 u_32_t passin;
 ip_t *ip;
-register fr_info_t *fin;
+fr_info_t *fin;
 void *m;
 {
-	register struct frentry *fr;
-	register fr_ip_t *fi = &fin->fin_fi;
+	struct frentry *fr;
+	fr_ip_t *fi = &fin->fin_fi;
 	int rulen, portcmp = 0, off, skip = 0, logged = 0;
 	u_32_t pass, passt, passl;
 	frentry_t *frl;
@@ -619,8 +619,8 @@ void *m;
 
 		FR_VERBOSE((":i"));
 		{
-			register u_32_t	*ld, *lm, *lip;
-			register int i;
+			 u_32_t	*ld, *lm, *lip;
+			int i;
 
 			lip = (u_32_t *)fi;
 			lm = (u_32_t *)&fr->fr_mip;
@@ -801,12 +801,12 @@ int out;
 	 * The above really sucks, but short of writing a diff
 	 */
 	fr_info_t frinfo, *fc;
-	register fr_info_t *fin = &frinfo;
+	fr_info_t *fin = &frinfo;
 	int changed, error = EHOSTUNREACH, v = ip->ip_v;
 	frentry_t *fr = NULL, *list;
 	u_32_t pass, apass;
 #if !SOLARIS || !defined(_KERNEL)
-	register mb_t *m = *mp;
+	mb_t *m = *mp;
 #endif
 
 #ifdef	_KERNEL
@@ -1318,10 +1318,10 @@ logit:
  * length is in bytes
  */
 u_short ipf_cksum(addr, len)
-register u_short *addr;
-register int len;
+u_short *addr;
+int len;
 {
-	register u_32_t sum = 0;
+	u_32_t sum = 0;
 
 	for (sum = 0; len > 1; len -= 2)
 		sum += *addr++;
@@ -1542,12 +1542,12 @@ nodata:
  */
 void
 m_copydata(m, off, len, cp)
-	register mb_t *m;
-	register int off;
-	register int len;
+	mb_t *m;
+	int off;
+	int len;
 	caddr_t cp;
 {
-	register unsigned count;
+	unsigned count;
 
 	if (off < 0 || len < 0)
 		panic("m_copydata");
@@ -1581,12 +1581,12 @@ m_copydata(m, off, len, cp)
 void
 m_copyback(m0, off, len, cp)
 	struct	mbuf *m0;
-	register int off;
-	register int len;
+	int off;
+	int len;
 	caddr_t cp;
 {
-	register int mlen;
-	register struct mbuf *m = m0, *n;
+	int mlen;
+	struct mbuf *m = m0, *n;
 	int totlen = 0;
 
 	if (m0 == 0)
@@ -1711,8 +1711,8 @@ minor_t unit;
 int *nfreedp;
 frentry_t **listp;
 {
-	register int freed = 0, i;
-	register frentry_t *fp;
+	int freed = 0, i;
+	frentry_t *fp;
 
 	while ((fp = *listp)) {
 		*listp = fp->fr_next;
@@ -1964,7 +1964,7 @@ struct in_addr *inp;
 
 
 static void frsynclist(fr)
-register frentry_t *fr;
+frentry_t *fr;
 {
 	for (; fr; fr = fr->fr_next) {
 		if (fr->fr_ifa != NULL) {
@@ -1981,7 +1981,7 @@ register frentry_t *fr;
 void frsync()
 {
 # if !SOLARIS
-	register struct ifnet *ifp;
+	struct ifnet *ifp;
 
 #  if defined(__OpenBSD__) || ((NetBSD >= 199511) && (NetBSD < 1991011)) || \
      (defined(__FreeBSD_version) && (__FreeBSD_version >= 300000))

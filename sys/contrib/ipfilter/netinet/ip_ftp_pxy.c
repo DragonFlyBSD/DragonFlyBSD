@@ -2,7 +2,7 @@
  * Simple FTP transparent proxy for in-kernel use.  For use with the NAT
  * code.
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.17.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_ftp_pxy.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #if SOLARIS && defined(_KERNEL)
 extern	kmutex_t	ipf_rw;
@@ -264,7 +264,7 @@ int dlen;
 #endif
 	if (inc != 0) {
 #if (SOLARIS || defined(__sgi)) && defined(_KERNEL)
-		register u_32_t	sum1, sum2;
+		u_32_t	sum1, sum2;
 
 		sum1 = ip->ip_len;
 		sum2 = ip->ip_len + inc;
@@ -578,7 +578,7 @@ int dlen;
 #endif /* _KERNEL */
 	if (inc != 0) {
 #if (SOLARIS || defined(__sgi)) && defined(_KERNEL)
-		register u_32_t	sum1, sum2;
+		u_32_t	sum1, sum2;
 
 		sum1 = ip->ip_len;
 		sum2 = ip->ip_len + inc;
@@ -708,8 +708,8 @@ ftpside_t *ftps;
 char *buf;
 size_t len;
 {
-	register char *s, c;
-	register size_t i = len;
+	char *s, c;
+	size_t i = len;
 	char cmd[5];
 
 	if (i < 5) {
@@ -779,8 +779,8 @@ ftpside_t *ftps;
 char *buf;
 size_t len;
 {
-	register char *s, c;
-	register size_t i = len;
+	char *s, c;
+	size_t i = len;
 	int cmd;
 
 	if (i < 5)
@@ -1191,8 +1191,8 @@ nat_t *nat;
 u_short ippr_ftp_atoi(ptr)
 char **ptr;
 {
-	register char *s = *ptr, c;
-	register u_char i = 0, j = 0;
+	char *s = *ptr, c;
+	u_char i = 0, j = 0;
 
 	while ((c = *s++) && isdigit(c)) {
 		i *= 10;

@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_proxy.c,v 2.9.2.24 2002/08/28 12:45:51 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.11.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_proxy.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #if defined(__FreeBSD__) && defined(KERNEL) && !defined(_KERNEL)
 # define	_KERNEL
@@ -240,7 +240,7 @@ fr_info_t *fin;
 ip_t *ip;
 nat_t *nat;
 {
-	register ap_session_t *aps;
+	ap_session_t *aps;
 	aproxy_t *apr;
 
 	if ((nat->nat_ptr == NULL) || (nat->nat_aps != NULL))

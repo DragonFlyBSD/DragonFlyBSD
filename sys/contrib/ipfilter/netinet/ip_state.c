@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -416,7 +416,7 @@ int mode;
 int fr_stgetent(data)
 caddr_t data;
 {
-	register ipstate_t *is, *isn;
+	ipstate_t *is, *isn;
 	ipstate_save_t ips;
 	int error;
 
@@ -459,7 +459,7 @@ caddr_t data;
 int fr_stputent(data)
 caddr_t data;
 {
-	register ipstate_t *is, *isn;
+	ipstate_t *is, *isn;
 	ipstate_save_t ips;
 	int error, out, i;
 	frentry_t *fr;
@@ -538,9 +538,9 @@ caddr_t data;
  * Insert a state table entry manually.
  */
 void fr_stinsert(is)
-register ipstate_t *is;
+ipstate_t *is;
 {
-	register u_int hv = is->is_hv;
+	u_int hv = is->is_hv;
 	char *name;
 	int i;
 
@@ -590,9 +590,9 @@ fr_info_t *fin;
 ipstate_t **stsave;
 u_int flags;
 {
-	register tcphdr_t *tcp = NULL;
-	register ipstate_t *is;
-	register u_int hv;
+	tcphdr_t *tcp = NULL;
+	ipstate_t *is;
+	 u_int hv;
 	struct icmp *ic;
 	ipstate_t ips;
 	int out, ws;
@@ -883,13 +883,13 @@ tcphdr_t *tcp;
  * SYN or a RST or FIN which indicate time to close up shop.
  */
 int fr_tcpstate(is, fin, ip, tcp)
-register ipstate_t *is;
+ipstate_t *is;
 fr_info_t *fin;
 ip_t *ip;
 tcphdr_t *tcp;
 {
-	register tcp_seq seq, ack, end;
-	register int ackskew;
+	tcp_seq seq, ack, end;
+	int ackskew;
 	tcpdata_t  *fdata, *tdata;
 	u_32_t	win, maxwin;
 	int ret = 0, off;
@@ -1176,9 +1176,9 @@ static frentry_t *fr_checkicmpmatchingstate(ip, fin)
 ip_t *ip;
 fr_info_t *fin;
 {
-	register ipstate_t *is, **isp;
-	register u_short sport, dport;
-	register u_char	pr;
+	ipstate_t *is, **isp;
+	u_short sport, dport;
+	u_char	pr;
 	u_short savelen, ohlen;
 	union i6addr dst, src;
 	struct icmp *ic;
@@ -1415,8 +1415,8 @@ ip_t *ip;
 fr_info_t *fin;
 {
 	union i6addr dst, src;
-	register ipstate_t *is, **isp;
-	register u_char pr;
+	ipstate_t *is, **isp;
+	u_char pr;
 	u_int hv, hvm, hlen, tryagain, pass, v;
 	struct icmp *ic;
 	frentry_t *fr;
@@ -1566,7 +1566,7 @@ icmp6again:
 			break;
 	case IPPROTO_UDP :
 	    {
-		register u_short dport, sport;
+		u_short dport, sport;
 
 		dport = tcp->th_dport;
 		sport = tcp->th_sport;
@@ -1671,7 +1671,7 @@ retry_tcpudp:
 void ip_statesync(ifp)
 void *ifp;
 {
-	register ipstate_t *is;
+	ipstate_t *is;
 	int i;
 
 	WRITE_ENTER(&ipf_state);
@@ -1730,7 +1730,7 @@ ipstate_t *is;
  */
 void fr_stateunload()
 {
-	register ipstate_t *is;
+	ipstate_t *is;
 
 	WRITE_ENTER(&ipf_state);
 	while ((is = ips_list))
@@ -1750,7 +1750,7 @@ void fr_stateunload()
  */
 void fr_timeoutstate()
 {
-	register ipstate_t *is, **isp;
+	ipstate_t *is, **isp;
 #if defined(_KERNEL) && !SOLARIS
 	int s;
 #endif
@@ -2121,9 +2121,9 @@ frentry_t *fr_checkicmp6matchingstate(ip, fin)
 ip6_t *ip;
 fr_info_t *fin;
 {
-	register ipstate_t *is, **isp;
-	register u_short sport, dport;
-	register u_char	pr;
+	ipstate_t *is, **isp;
+	u_short sport, dport;
+	u_char	pr;
 	struct icmp6_hdr *ic, *oic;
 	union i6addr dst, src;
 	u_short savelen;

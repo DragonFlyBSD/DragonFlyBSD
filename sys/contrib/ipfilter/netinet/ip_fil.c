@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.3 2003/06/23 17:55:27 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.4 2003/07/26 14:07:18 rob Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -865,7 +865,7 @@ int mode;
 void fr_forgetifp(ifp)
 void *ifp;
 {
-	register frentry_t *f;
+	frentry_t *f;
 
 	WRITE_ENTER(&ipf_mutex);
 	for (f = ipacct[0][fr_active]; (f != NULL); f = f->fr_next)
@@ -909,8 +909,8 @@ int req;
 int set;
 caddr_t data;
 {
-	register frentry_t *fp, *f, **fprev;
-	register frentry_t **ftail;
+	frentry_t *fp, *f, **fprev;
+	frentry_t **ftail;
 	frgroup_t *fg = NULL;
 	int error = 0, in, i;
 	u_int   *p, *pp;
@@ -1177,7 +1177,7 @@ int ioflag;
 int IPL_EXTERN(read)(dev, uio)
 #  endif
 dev_t dev;
-register struct uio *uio;
+struct uio *uio;
 # endif /* __sgi */
 {
 # ifdef IPFILTER_LOG
@@ -1554,12 +1554,12 @@ iplinit()
  * Return the length of the entire mbuf.
  */
 size_t mbufchainlen(m0)
-register struct mbuf *m0;
+struct mbuf *m0;
 {
 #if BSD >= 199306
 	return m0->m_pkthdr.len;
 #else
-	register size_t len = 0;
+	size_t len = 0;
 
 	for (; m0; m0 = m0->m_next)
 		len += m0->m_len;
@@ -1573,9 +1573,9 @@ struct mbuf *m0, **mpp;
 fr_info_t *fin;
 frdest_t *fdp;
 {
-	register struct ip *ip, *mhip;
-	register struct mbuf *m = m0;
-	register struct route *ro;
+	struct ip *ip, *mhip;
+	struct mbuf *m = m0;
+	struct route *ro;
 	int len, off, error = 0, hlen, code;
 	struct ifnet *ifp, *sifp;
 	struct sockaddr_in *dst;

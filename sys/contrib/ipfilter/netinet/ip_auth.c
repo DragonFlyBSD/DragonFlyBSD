@@ -5,7 +5,7 @@
  *
  * @(#)$Id: ip_auth.c,v 2.11.2.20 2002/06/04 14:40:42 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.21.2.7 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_auth.c,v 1.3 2003/07/26 14:07:18 rob Exp $
  */
 #if defined(__sgi) && (IRIX > 602)
 # include <sys/ptimers.h>
@@ -277,7 +277,7 @@ ip_t *ip;
 	 */
 	if ((ip == (ip_t *)m->b_rptr) && (ip->ip_v == 4))
 	{
-		register u_short bo;
+		u_short bo;
 
 		bo = ip->ip_len;
 		ip->ip_len = htons(bo);
@@ -498,8 +498,8 @@ fr_authioctlloop:
  */
 void fr_authunload()
 {
-	register int i;
-	register frauthent_t *fae, **faep;
+	int i;
+	frauthent_t *fae, **faep;
 	frentry_t *fr, **frp;
 	mb_t *m;
 
@@ -548,10 +548,10 @@ void fr_authunload()
  */
 void fr_authexpire()
 {
-	register int i;
-	register frauth_t *fra;
-	register frauthent_t *fae, **faep;
-	register frentry_t *fr, **frp;
+	int i;
+	frauth_t *fra;
+	frauthent_t *fae, **faep;
+	frentry_t *fr, **frp;
 	mb_t *m;
 #if !SOLARIS && defined(_KERNEL)
 	int s;
