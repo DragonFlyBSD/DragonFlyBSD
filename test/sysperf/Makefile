@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.7 2004/04/10 21:36:52 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.8 2004/04/29 16:14:53 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
@@ -10,7 +10,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
 	/tmp/mbw1 \
 	/tmp/upc1 \
-	/tmp/exec1 /tmp/exec2
+	/tmp/exec1 /tmp/exec2 \
+	/tmp/mem1 /tmp/mem2
 
 CFLAGS= -O2 -g -I/usr/src/sys
 
@@ -78,6 +79,12 @@ all:	$(TARGETS)
 
 /tmp/exec2: exec1.c blib.c
 	$(CC) $(CFLAGS) exec1.c blib.c -o /tmp/exec2
+
+/tmp/mem1: memcpy.c memcpy.S blib.c
+	$(CC) $(CFLAGS) memcpy.c memcpy.S blib.c -o /tmp/mem1
+
+/tmp/mem2: memzero.c memzero.S blib.c
+	$(CC) $(CFLAGS) memzero.c memzero.S blib.c -o /tmp/mem2
 
 clean:
 	rm -f $(TARGETS)
