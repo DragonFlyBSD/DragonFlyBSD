@@ -1,59 +1,26 @@
-#	from: @(#)Makefile	5.6 (Berkeley) 5/22/91
-# $FreeBSD: src/lib/csu/i386/Makefile,v 1.40.2.1 2002/08/07 16:31:47 ru Exp $
-# $DragonFly: src/lib/csu/i386/Attic/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
+#
+# $FreeBSD: src/lib/csu/i386-elf/Makefile,v 1.6.2.5 2002/11/23 17:44:29 ru Exp $
+# $DragonFly: src/lib/csu/i386/Attic/Makefile,v 1.3 2004/06/15 08:53:09 joerg Exp $
+#
 
-CFLAGS+=        -DLIBC_SCCS -fno-omit-frame-pointer
-OBJS=		crt0.o c++rt0.o gcrt0.o scrt0.o sgcrt0.o
-CLEANFILES=	a.out crt0.o.tmp c++rt0.o.tmp gcrt0.o.tmp scrt0.o.tmp \
-		sgcrt0.o.tmp
+SRCS=		crt1.c crti.S crtn.S
+OBJS=		${SRCS:N*.h:R:S/$/.o/g}
+OBJS+=		gcrt1.o
+CFLAGS+=	-elf -Wall -fkeep-inline-functions \
+		-I${.CURDIR}/../common
+LDFLAGS+=	-elf
+
+.PATH:		${.CURDIR}/../common
 
 all: ${OBJS}
 
-crt0.o: crt0.c
-	${CC} ${CFLAGS} -c -DCRT0 -DDYNAMIC ${.CURDIR}/crt0.c -o ${.TARGET}
-	${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
+CLEANFILES=	${OBJS}
 
-c++rt0.o: c++rt0.c
-	${CC} ${CFLAGS} -fpic -c ${.CURDIR}/c++rt0.c
-	@${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
-
-#
-# gcrt0.o doesn't really depend on crt0.o, but this is the easiest way
-# to get the dependencies mostly correct.
-#
-gcrt0.o: crt0.o
-	${CC} ${CFLAGS} -c -DMCRT0 -DDYNAMIC ${.CURDIR}/crt0.c -o ${.TARGET}
-	@${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
-
-# dependencies fudged as for gcrt0.o
-scrt0.o: crt0.o
-	${CC} ${CFLAGS} -c -DCRT0 ${.CURDIR}/crt0.c -o ${.TARGET}
-	@${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
-
-# dependencies fudged as for gcrt0.o
-sgcrt0.o: scrt0.o
-	${CC} ${CFLAGS} -c -DMCRT0 ${.CURDIR}/crt0.c -o ${.TARGET}
-	@${LD} -o ${.TARGET}.tmp -x -r ${.TARGET}
-	@mv ${.TARGET}.tmp ${.TARGET}
+gcrt1.o:	crt1.c
+	${CC} ${CFLAGS} -DGCRT -c -o gcrt1.o ${.CURDIR}/crt1.c
 
 realinstall:
-	${INSTALL} -o ${BINOWN} -g ${BINGRP} -m 444 ${OBJS} \
-		${DESTDIR}${LIBDIR}
+	${INSTALL} -o ${LIBOWN} -g ${LIBGRP} -m ${LIBMODE} \
+	    ${OBJS} ${DESTDIR}${LIBDIR}
 
-depend:	.depend
-
-.depend:	crt0.c c++rt0.c
-	rm -f .depend
-	mkdep ${CFLAGS} -DCRT0 -DDYNAMIC ${.CURDIR}/crt0.c
-	mkdep -a ${CFLAGS} ${.CURDIR}/c++rt0.c
-
-cleandepend:
-	rm -f .depend
-
-lint tags:
-
-.include <bsd.prog.mk>
+.include <bsd.lib.mk>
