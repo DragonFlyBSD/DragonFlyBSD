@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.11 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.12 2004/02/24 18:41:57 joerg Exp $
  */
 
 #include "use_bpf.h"
@@ -1130,7 +1130,7 @@ bpf_tap(ifp, pkt, pktlen)
 		++d->bd_rcount;
 		slen = bpf_filter(d->bd_filter, pkt, pktlen, pktlen);
 		if (slen != 0)
-			catchpacket(d, pkt, pktlen, slen, bcopy);
+			catchpacket(d, pkt, pktlen, slen, ovbcopy);
 	}
 }
 
