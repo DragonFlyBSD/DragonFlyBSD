@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.31 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.32 2005/03/23 07:27:56 dillon Exp $
  */
 
 /*
@@ -202,7 +202,7 @@ ip_lengthcheck(struct mbuf **mp)
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
 		if (thoff < sizeof(struct tcphdr) ||
-		    thoff > ntohs(ip->ip_len)) {
+		    thoff + iphlen > ntohs(ip->ip_len)) {
 			tcpstat.tcps_rcvbadoff++;
 			m_free(m);
 			return FALSE;
