@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.34 2003/10/15 23:27:05 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.35 2003/10/16 22:26:42 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -199,6 +199,7 @@ struct thread {
 #define TDPRI_USER_IDLE		4	/* user scheduler idle */
 #define TDPRI_USER_NORM		6	/* user scheduler normal */
 #define TDPRI_USER_REAL		8	/* user scheduler real time */
+#define TDPRI_KERN_LPSCHED	9	/* scheduler helper for userland sch */
 #define TDPRI_KERN_USER		10	/* kernel / block in syscall */
 #define TDPRI_KERN_DAEMON	12	/* kernel daemon (pageout, etc) */
 #define TDPRI_SOFT_NORM		14	/* kernel / normal */

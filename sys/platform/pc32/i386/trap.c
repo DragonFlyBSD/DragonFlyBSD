@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.34 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.35 2003/10/16 22:26:35 dillon Exp $
  */
 
 /*
@@ -183,11 +183,11 @@ passive_release(struct thread *td)
 {
 	struct proc *p = td->td_proc;
 
-	td->td_release = NULL;
 	lwkt_setpri_self(TDPRI_KERN_USER);
-	if (p->p_flag & P_CURPROC) {
-		release_curproc(p);
-	}
+	if (p->p_flag & P_CURPROC)
+		release_curproc(p, (td->td_flags & TDF_RUNQ) == 0);
+	if ((p->p_flag & P_CURPROC) == 0)
+		td->td_release = NULL;
 }
 
 /*
@@ -208,18 +208,18 @@ userexit(struct proc *p)
 	struct thread *td = p->p_thread;
 
 	/*
-	 * If we did not have to release we should already be P_CURPROC.  If
-	 * we did have to release we must acquire P_CURPROC again and then
-	 * restore our priority for user return.
+	 * Reacquire our P_CURPROC status and adjust the LWKT priority
+	 * for our return to userland.  We can fast path the case where
+	 * td_release was not called and P_CURPROC is still set, otherwise
+	 * do it the slow way.
 	 *
 	 * Lowering our priority may make other higher priority threads
 	 * runnable. lwkt_setpri_self() does not switch away, so call
 	 * lwkt_maybe_switch() to deal with it.
 	 */
-	if (td->td_release) {
+	if (td->td_release && (p->p_flag & P_CURPROC)) {
 		++fast_release;
 		td->td_release = NULL;
-		KKASSERT(p->p_flag & P_CURPROC);
 	} else {
 		++slow_release;
 		acquire_curproc(p);
@@ -255,16 +255,16 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	/*
 	 * If a reschedule has been requested then the easiest solution
 	 * is to run our passive release function which will possibly
-	 * shift our P_CURPROC designation to another user process.
-	 * We don't actually switch here because that would be a waste
-	 * of cycles (the newly scheduled user process would just switch
-	 * back to us since we might be running at a kernel priority).
-	 * Instead we fall through and will switch away when we attempt
-	 * to reacquire our P_CURPROC designation.
+	 * shift our P_CURPROC designation to another user process. 
+	 *
+	 * A reschedule can also occur due to a higher priority LWKT thread
+	 * becoming runable, we have to call lwkt_maybe_switch() to deal
+	 * with it.
 	 */
 	if (resched_wanted()) {
 		if (curthread->td_release)
 			passive_release(curthread);
+		lwkt_maybe_switch();
 	}
 
 	/*

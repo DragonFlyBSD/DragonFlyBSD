@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.9 2003/07/25 05:26:50 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.10 2003/10/16 22:26:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -335,7 +335,7 @@ remrunqueue(struct proc *p)
  * useable.
  */
 void
-release_curproc(struct proc *p)
+release_curproc(struct proc *p, int force)
 {
 	int cpuid;
 	struct proc *np;
@@ -352,10 +352,16 @@ release_curproc(struct proc *p)
 		if (try_mplock()) {
 			KKASSERT(curprocmask & (1 << cpuid));
 			if ((np = chooseproc()) != NULL) {
-				np->p_flag |= P_CURPROC;
-				USCHED_COUNTER(np->p_thread);
-				lwkt_acquire(np->p_thread);
-				lwkt_schedule(np->p_thread);
+				if (force || test_resched(p, np)) {
+					np->p_flag |= P_CURPROC;
+					USCHED_COUNTER(np->p_thread);
+					lwkt_acquire(np->p_thread);
+					lwkt_schedule(np->p_thread);
+				} else {
+					p->p_flag &= ~P_CP_RELEASED;
+					p->p_flag |= P_CURPROC;
+					setrunqueue(np);
+				}
 			} else {
 				curprocmask &= ~(1 << cpuid);
 			}
@@ -461,7 +467,7 @@ uio_yield(void)
 	if (p) {
 		p->p_flag |= P_PASSIVE_ACQ;
 		acquire_curproc(p);
-		release_curproc(p);
+		release_curproc(p, 1);
 		p->p_flag &= ~P_PASSIVE_ACQ;
 	}
 }

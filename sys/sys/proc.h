@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.31 2003/09/01 01:14:55 hmp Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.32 2003/10/16 22:26:42 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -419,7 +419,7 @@ int	suser (struct thread *td);
 int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);
 void	remrunqueue (struct proc *);
-void	release_curproc (struct proc *curp);
+void	release_curproc (struct proc *curp, int force);
 void	acquire_curproc (struct proc *curp);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.22 2003/09/25 01:47:56 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.23 2003/10/16 22:26:37 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -149,7 +149,9 @@ roundrobin_interval(void)
 }
 
 /*
- * Force switch among equal priority processes every 100ms.
+ * Force switch among equal priority processes every 100ms. 
+ *
+ * WARNING!  The MP lock is not held on ipi message remotes.
  */
 #ifdef SMP
 
