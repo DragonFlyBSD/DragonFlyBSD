@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.21 2005/01/24 05:07:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.22 2005/01/24 05:12:58 okumoto Exp $
  */
 
 /**
@@ -191,5 +191,14 @@ Buf_Clear(Buffer *bp)
 {
 	bp->inPtr	= bp->buffer;
 	*bp->inPtr	= '\0';
+}
+
+/**
+ * Append characters in str to Buffer object
+ */
+void
+Buf_Append(Buffer *bp, const char str[])
+{
+	Buf_AddBytes(bp, strlen(str), str);
 }
 

@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.23 2005/01/24 05:09:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.24 2005/01/24 05:12:58 okumoto Exp $
  */
 
 /*-
@@ -239,7 +239,7 @@ CondGetArg(char **linePtr, char **argPtr, const char *func, Boolean parens)
 
 	    cp2 = Var_Parse(cp, VAR_CMD, TRUE, &len, &doFree);
 
-	    Buf_AddBytes(buf, strlen(cp2), (Byte *)cp2);
+	    Buf_Append(buf, cp2);
 	    if (doFree) {
 		free(cp2);
 	    }
@@ -539,12 +539,10 @@ CondToken(Boolean doEval)
 		if (!isspace((unsigned char)*condExpr) &&
 		    strchr("!=><", *condExpr) == NULL) {
 		    Buffer *buf;
-		    char *cp;
 
 		    buf = Buf_Init(0);
 
-		    for (cp = lhs; *cp; cp++)
-			Buf_AddByte(buf, (Byte)*cp);
+		    Buf_Append(buf, lhs);
 
 		    if (doFree)
 			free(lhs);
@@ -635,7 +633,7 @@ do_string_compare:
 
 			    cp2 = Var_Parse(cp, VAR_CMD, doEval, &len, &freeIt);
 			    if (cp2 != var_Error) {
-				Buf_AddBytes(buf, strlen(cp2), (Byte *)cp2);
+				Buf_Append(buf, cp2);
 				if (freeIt) {
 				    free(cp2);
 				}
