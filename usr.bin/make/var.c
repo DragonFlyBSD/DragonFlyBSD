@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.153 2005/03/16 00:13:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.154 2005/03/16 00:13:23 okumoto Exp $
  */
 
 /*-
@@ -1797,8 +1797,7 @@ ParseRestEnd(const char input[], Buffer *buf,
  * Parse a multi letter variable name, and return it's value.
  */
 static char *
-VarParseLong(const char input[], VarParser *vp,
-	size_t *consumed, Boolean *freePtr)
+VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 {
 	Buffer		*buf;
 	char		startc;
@@ -1812,27 +1811,21 @@ VarParseLong(const char input[], VarParser *vp,
 	 * Process characters until we reach an end character or a
 	 * colon, replacing embedded variables as we go.
 	 */
-	startc = input[0];
+	startc = vp->ptr[0];
 	endc = (startc == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 
 	*consumed += 1;	/* consume opening paren or brace */
-	input++;
 
-	ptr = input;
-	while (*ptr != endc) {
-		if (*ptr == '\0') {
-			/*
-			 * If we did not find the end character,
-			 * return var_Error right now, setting the
-			 * length to be the distance to the end of
-			 * the string, since that's what make does.
-			 */
+	ptr = vp->ptr + 1;
+	while (*ptr != '\0') {
+		if (*ptr == endc) {
+			*consumed += 1;	/* consume closing paren or brace */
+			result = ParseRestEnd(vp->input, buf, vp, consumed, freePtr);
 			Buf_Destroy(buf, TRUE);
-			*freePtr = FALSE;
-			return (var_Error);
+			return (result);
 
 		} else if (*ptr == ':') {
-			result = ParseRestModifier(input - 2, ptr,
+			result = ParseRestModifier(vp->input, ptr,
 				     startc, endc, buf,
 				     vp, consumed, freePtr);
 			Buf_Destroy(buf, TRUE);
@@ -1861,12 +1854,15 @@ VarParseLong(const char input[], VarParser *vp,
 		}
 	}
 
-	*consumed += 1;	/* consume closing paren or brace */
-
-	result = ParseRestEnd(input - 2, buf, vp, consumed, freePtr);
-
+	/*
+	 * If we did not find the end character,
+	 * return var_Error right now, setting the
+	 * length to be the distance to the end of
+	 * the string, since that's what make does.
+	 */
 	Buf_Destroy(buf, TRUE);
-	return (result);
+	*freePtr = FALSE;
+	return (var_Error);
 }
 
 /**
@@ -1951,7 +1947,7 @@ VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
 		*consumed += 1;	/* consume '$' */
 		/* multi letter variable name */
-		value = VarParseLong(vp->ptr, vp, consumed, freeResult);
+		value = VarParseLong(vp, consumed, freeResult);
 
 	} else {
 		/* single letter variable name */
