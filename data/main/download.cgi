@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.34 2004/07/07 16:42:52 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.35 2004/07/07 17:40:58 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -86,6 +86,10 @@ Germany - cvsup, cvsync, rsync, cvsweb, anoncvs <br/>
 <p>	
 Japan - rsync, cvsup, cvsync, cvsweb <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a href="http://www.allbsd.org/">http://www.allbsd.org</a>
+</p>
+<p>
+Norway - cvsup <br />
+&nbsp;&nbsp;&nbsp;&nbsp;dragon.bsdtech.com
 </p>
 
 <h2>Other Sites</h2>
