@@ -34,7 +34,7 @@
  *
  *	from: @(#)endian.h	7.8 (Berkeley) 4/3/91
  * $FreeBSD: src/sys/i386/include/endian.h,v 1.18 1999/12/29 04:33:01 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.4 2004/08/23 16:03:44 joerg Exp $
+ * $DragonFly: src/sys/cpu/i386/include/endian.h,v 1.5 2004/08/23 21:16:38 dillon Exp $
  */
 
 #ifndef _MACHINE_ENDIAN_H_
@@ -106,6 +106,7 @@
 #define __byte_swap32_var(x) \
 	__extension__ ({ register __uint32_t __X = (x); \
 	   __asm ("bswap %0" : "+r" (__X)); \
+	   __X; })
 
 #else /* !I386_CPU */
 
