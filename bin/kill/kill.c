@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)kill.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $
- * $DragonFly: src/bin/kill/kill.c,v 1.3 2003/10/22 00:51:15 dillon Exp $
+ * $DragonFly: src/bin/kill/kill.c,v 1.4 2004/10/18 18:43:37 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -44,15 +44,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-void nosig(char *);
-void printsignals(FILE *);
-int signame_to_signum(char *);
-void usage(void);
+static void nosig(const char *);
+static void printsignals(FILE *);
+static int signame_to_signum(const char *);
+static void usage(void);
 
 int
 main(int argc, char *argv[])
 {
-	int errors, numsig, pid;
+	int errors, numsig;
+	pid_t  pid;
 	char *ep;
 
 	if (argc < 2)
@@ -117,7 +118,7 @@ main(int argc, char *argv[])
 		usage();
 
 	for (errors = 0; argc; argc--, argv++) {
-		pid = strtol(*argv, &ep, 10);
+		pid = (pid_t)strtol(*argv, &ep, 10);
 		if (!**argv || *ep) {
 			warnx("illegal process id: %s", *argv);
 			errors = 1;
@@ -130,8 +131,8 @@ main(int argc, char *argv[])
 	exit(errors);
 }
 
-int
-signame_to_signum(char *sig)
+static int
+signame_to_signum(const char *sig)
 {
 	int n;
 
@@ -144,8 +145,8 @@ signame_to_signum(char *sig)
 	return (-1);
 }
 
-void
-nosig(char *name)
+static void
+nosig(const char *name)
 {
 
 	warnx("unknown signal %s; valid signals:", name);
@@ -153,13 +154,13 @@ nosig(char *name)
 	exit(1);
 }
 
-void
+static void
 printsignals(FILE *fp)
 {
 	int n;
 
 	for (n = 1; n < sys_nsig; n++) {
-		(void)fprintf(fp, "%s", sys_signame[n]);
+		fprintf(fp, "%s", sys_signame[n]);
 		if (n == (sys_nsig / 2) || n == (sys_nsig - 1))
 			(void)fprintf(fp, "\n");
 		else
@@ -167,7 +168,7 @@ printsignals(FILE *fp)
 	}
 }
 
-void
+static void
 usage(void)
 {
 
