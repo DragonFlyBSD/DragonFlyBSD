@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined2.c,v 1.2 2005/03/15 02:13:15 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined2.c,v 1.3 2005/03/15 02:25:25 dillon Exp $*
  */
 /*
  * Part 2 of the mined editor.
@@ -44,6 +44,7 @@
  *  ========================================================================  */
 
 #include "mined.h"
+#include <signal.h>
 #include <string.h>
 
 /*
@@ -63,12 +64,12 @@ static char *help_string=
 "			Mined (Minix Editor), FreeBSD version.\n"
 "------------------------+-------------------------------+---------------------\n"
 "	CURSOR MOTION	|		EDITING		|	MISC\n"
-" Up			| ^N	Delete next word	| ^E	Erase & redraw\n"
+" Up			| ^N	Delete next word	| ^L	Erase & redraw\n"
 " Down	cursor keys	| ^P	Delete prev. word	|	screen\n"
 " Left			| ^T	Delete to EOL		| ^\\	Abort current\n"
 " Right			+-------------------------------+	operation\n"
 " ^A	start of line	|		BLOCKS		| Esc	repeat last\n"
-" ^Z	end of line	| ^@	Set mark		|	cmd # times\n"
+" ^E	end of line	| ^@	Set mark		|	cmd # times\n"
 " ^^	screen top	| ^K	Delete mark <--> cursor	| F2	file status\n"
 " ^_	screen bottom	| ^C	Save mark <--> cursor	+=====================\n"
 " ^F	word fwd.	| ^Y	Insert the contents of	| ^X	EXIT\n"
@@ -97,6 +98,14 @@ void HLP()
 	c=getchar();
 	RD();
 	return;
+}
+
+void ST()
+{
+	raw_mode(OFF);
+	kill(getpid(), SIGTSTP);
+	raw_mode(ON);
+	RD();
 }
 
 /*

@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined.h,v 1.2 2005/03/15 02:13:15 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined.h,v 1.3 2005/03/15 02:25:25 dillon Exp $*
  */
 /*========================================================================*
  *				Mined.h					  *
@@ -360,6 +360,7 @@ _PROTOTYPE(void BL, (void));
 _PROTOTYPE(void EL, (void));
 _PROTOTYPE(void GOTO, (void));
 _PROTOTYPE(void HLP, (void));
+_PROTOTYPE(void ST, (void));
 _PROTOTYPE(void PD, (void));
 _PROTOTYPE(void PU, (void));
 _PROTOTYPE(void HO, (void));

@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.2 2005/03/15 02:13:15 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.3 2005/03/15 02:25:25 dillon Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -428,14 +428,14 @@
  *    CTRL-G   Insert a file at the current position
  *   
  *  MISCELLANEOUS
- *    CTRL-E   Erase and redraw the screen
+ *    CTRL-L   Erase and redraw the screen
  *    CTRL-V   Visit file (read a new file); complain if old one changed
  *    CTRL-W   Write the current file back to the disk
  *    numeric +  Search forward (prompt for regular expression)
  *    numeric -  Search backward (prompt for regular expression)
  *    numeric 5  Print the current status of the file
  *    CTRL-R   (Global) Replace str1 by str2 (prompts for each string)
- *    CTRL-L   (Line) Replace string1 by string2
+ *    [UNASS]  (Line) Replace string1 by string2
  *    CTRL-S   Fork off a shell and wait for it to finish
  *    CTRL-X   EXIT (prompt if file modified)
  *    CTRL-]   Go to a line. Prompts for linenumber
@@ -1250,8 +1250,8 @@ char *p;
 /* The mapping between input codes and functions. */
 
 void (*key_map[256])() = {       /* map ASCII characters to functions */
-   /* 000-017 */ MA, BL, MP, YA, SD, RD, MN, IF, DPC, S, S, DT, LR, S, DNW,LIB,
-   /* 020-037 */ DPW, WB, GR, SH, DLN, SU, VI, XWT, XT, PT, EL, ESC, I, GOTO,
+   /* 000-017 */ MA, BL, MP, YA, SD, EL, MN, IF, DPC, S, S, DT, RD, S, DNW,LIB,
+   /* 020-037 */ DPW, WB, GR, SH, DLN, SU, VI, XWT, XT, PT, ST, ESC, I, GOTO,
 		 HIGH, LOW,
    /* 040-057 */ S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S,
    /* 060-077 */ S, S, S, S, S, S, S, S, S, S, S, S, S, S, S, S,
