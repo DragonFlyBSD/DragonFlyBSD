@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_rayvar.h,v 1.12.2.4 2001/08/14 22:54:07 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_rayvar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_rayvar.h,v 1.3 2004/09/15 00:33:40 joerg Exp $
  *
  */
 
@@ -67,10 +67,8 @@ struct ray_softc {
 
     device_t dev;			/* Device */
     struct arpcom	arpcom;		/* Ethernet common 		*/
-    struct callout_handle
-    			tx_timerh;	/* Handle for tx timer	*/
-    struct callout_handle
-    			com_timerh;	/* Handle for command timer	*/
+    struct callout	tx_timer;	/* Handle for tx timer	*/
+    struct callout	com_timer;	/* Handle for command timer	*/
 
     bus_space_tag_t	am_bst;		/* Bus space tag for attribute memory */
     bus_space_handle_t	am_bsh;		/* Bus space handle for attribute mem */

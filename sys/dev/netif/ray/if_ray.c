@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ray/if_ray.c,v 1.47.2.4 2001/08/14 22:54:05 dmlb Exp $
- * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.15 2004/07/27 14:16:49 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ray/Attic/if_ray.c,v 1.16 2004/09/15 00:33:40 joerg Exp $
  *
  */
 
@@ -518,14 +518,14 @@ ray_attach(device_t dev)
 	ifp->if_init = ray_init;
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 
-	ether_ifattach(ifp, ep->e_station_addr);
-
 	/*
 	 * Initialise the timers and driver
 	 */
-	callout_handle_init(&sc->com_timerh);
-	callout_handle_init(&sc->tx_timerh);
+	callout_init(&sc->com_timer);
+	callout_init(&sc->tx_timer);
 	TAILQ_INIT(&sc->sc_comq);
+
+	ether_ifattach(ifp, ep->e_station_addr);
 
 	/*
 	 * Print out some useful information
@@ -598,8 +598,8 @@ ray_detach(device_t dev)
 	/*
 	 * Stop the runq and wake up anyone sleeping for us.
 	 */
-	untimeout(ray_com_ecf_timo, sc, sc->com_timerh);
-	untimeout(ray_tx_timo, sc, sc->tx_timerh);
+	callout_stop(&sc->com_timer);
+	callout_stop(&sc->tx_timer);
 	com = TAILQ_FIRST(&sc->sc_comq);
 	for (com = TAILQ_FIRST(&sc->sc_comq); com != NULL;
 	    com = TAILQ_NEXT(com, c_chain)) {
@@ -1456,14 +1456,13 @@ ray_tx(struct ifnet *ifp)
 	}
 	if (!RAY_ECF_READY(sc)) {
 		/* Can't assume that the ECF is busy because of this driver */
-		if ((sc->tx_timerh.callout == NULL) ||
-		    (!callout_active(sc->tx_timerh.callout))) {
-			sc->tx_timerh =
-			    timeout(ray_tx_timo, sc, RAY_TX_TIMEOUT);
+		if (!callout_active(&sc->tx_timer)) {
+			callout_reset(&sc->tx_timer, RAY_TX_TIMEOUT,
+				      ray_tx_timo, sc);
 			return;
-		    }
+		}
 	} else
-		untimeout(ray_tx_timo, sc, sc->tx_timerh);
+		callout_stop(&sc->tx_timer);
 
 	/*
 	 * We find a ccs before we process the mbuf so that we are sure it
@@ -3346,7 +3345,8 @@ ray_com_ecf(struct ray_softc *sc, struct ray_comq_entry *com)
 	if (RAY_COM_NEEDS_TIMO(
 	    SRAM_READ_FIELD_1(sc, com->c_ccs, ray_cmd, c_cmd))) {
 	    	RAY_DPRINTF(sc, RAY_DBG_COM, "adding timeout");
-		sc->com_timerh = timeout(ray_com_ecf_timo, sc, RAY_COM_TIMEOUT);
+		callout_reset(&sc->com_timer, RAY_COM_TIMEOUT,
+			      ray_com_ecf_timo, sc);
 	}
 }
 
@@ -3385,15 +3385,16 @@ ray_com_ecf_timo(void *xsc)
 		break;
 
 	case RAY_CCS_STATUS_BUSY:
-		sc->com_timerh = timeout(ray_com_ecf_timo, sc, RAY_COM_TIMEOUT);
+		callout_reset(&sc->com_timer, RAY_COM_TIMEOUT,
+			      ray_com_ecf_timo, sc);
 		break;
 
 	default:					/* Replicates NetBSD */
 		if (sc->sc_ccsinuse[RAY_CCS_INDEX(com->c_ccs)] == 1) {
 			/* give a chance for the interrupt to occur */
 			sc->sc_ccsinuse[RAY_CCS_INDEX(com->c_ccs)] = 2;
-			sc->com_timerh = timeout(ray_com_ecf_timo, sc,
-			    RAY_COM_TIMEOUT);
+			callout_reset(&sc->com_timer, RAY_COM_TIMEOUT,
+				      ray_com_ecf_timo, sc);
 		} else
 			ray_intr_ccs(sc, cmd, status, com->c_ccs);
 		break;
@@ -3412,7 +3413,7 @@ ray_com_ecf_done(struct ray_softc *sc)
 {
 	RAY_DPRINTF(sc, RAY_DBG_SUBR | RAY_DBG_COM, "");
 
-	untimeout(ray_com_ecf_timo, sc, sc->com_timerh);
+	callout_stop(&sc->com_timer);
 
 	ray_com_runq_done(sc);
 }

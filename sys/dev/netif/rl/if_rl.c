@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.14 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.15 2004/09/15 00:36:09 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
  */
@@ -899,7 +899,7 @@ static int rl_attach(dev)
 		goto fail;
 	}
 
-	callout_handle_init(&sc->rl_stat_ch);
+	callout_init(&sc->rl_stat_timer);
 
 	/* Reset the adapter. */
 	rl_reset(sc);
@@ -1260,7 +1260,7 @@ static void rl_tick(xsc)
 
 	splx(s);
 
-	sc->rl_stat_ch = timeout(rl_tick, sc, hz);
+	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
 
 	return;
 }
@@ -1566,7 +1566,7 @@ static void rl_init(xsc)
 
 	(void)splx(s);
 
-	sc->rl_stat_ch = timeout(rl_tick, sc, hz);
+	callout_reset(&sc->rl_stat_timer, hz, rl_tick, sc);
 
 	return;
 }
@@ -1685,7 +1685,7 @@ static void rl_stop(sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(rl_tick, sc, sc->rl_stat_ch);
+	callout_stop(&sc->rl_stat_timer);
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 #ifdef DEVICE_POLLING
 	ether_poll_deregister(ifp);
