@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.12 2004/04/16 19:52:49 drhodus Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.13 2004/09/06 17:23:22 joerg Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -213,6 +213,7 @@ device		awi
 # exists only as a PCMCIA device, so there is no ISA attachment needed
 # and resources will always be dynamically assigned by the pccard code.
 device		wi
+device		wlan
 # Aironet 4500/4800 802.11 wireless NICs. Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
 # mode (the factory default). If you set the switches on your ISA
@@ -237,6 +238,7 @@ pseudo-device	md		# Memory "disks"
 pseudo-device	gif		# IPv6 and IPv4 tunneling
 pseudo-device	faith	1	# IPv6-to-IPv4 relaying (translation)
 pseudo-device	vn
+pseudo-device	crypto		# core crypto support, used by wlan
 
 # The `bpf' pseudo-device enables the Berkeley Packet Filter.
 # Be aware of the administrative consequences of enabling this!
