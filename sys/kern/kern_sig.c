@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.25 2004/02/08 05:44:58 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.26 2004/02/12 06:57:48 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -978,7 +978,7 @@ psignal(p, sig)
 			struct thread *td = p->p_thread;
 
 			if (td->td_gd != mycpu)
-				lwkt_send_ipiq(td->td_gd->gd_cpuid, signotify_remote, p);
+				lwkt_send_ipiq(td->td_gd, signotify_remote, p);
 		}
 #else
 		if (p == lwkt_preempted_proc())

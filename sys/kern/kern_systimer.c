@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.1 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.2 2004/02/12 06:57:48 dillon Exp $
  */
 
 /*
@@ -138,7 +138,7 @@ systimer_add(systimer_t info)
 	info->queue = &gd->gd_systimerq;
     } else {
 	info->flags |= SYSTF_IPIRUNNING;
-	lwkt_send_ipiq(info->gd->gd_cpuid, (ipifunc_t)systimer_add, info);
+	lwkt_send_ipiq(info->gd, (ipifunc_t)systimer_add, info);
     }
     crit_exit();
 }

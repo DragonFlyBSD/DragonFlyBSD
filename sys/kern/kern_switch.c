@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.16 2003/12/30 03:19:02 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.17 2004/02/12 06:57:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -344,7 +344,7 @@ setrunqueue(struct proc *p)
 	} else if (remote_resched) {
 		if (p->p_priority / PPQ < gd->gd_upri / PPQ) {
 			gd->gd_upri = p->p_priority;
-			lwkt_send_ipiq(cpuid, need_resched_remote, NULL);
+			lwkt_send_ipiq(gd, need_resched_remote, NULL);
 			--count;
 			++remote_resched_affinity;
 		}
@@ -392,7 +392,7 @@ setrunqueue(struct proc *p)
 
 		if (p->p_priority / PPQ < gd->gd_upri / PPQ - 2) {
 			gd->gd_upri = p->p_priority;
-			lwkt_send_ipiq(cpuid, need_resched_remote, NULL);
+			lwkt_send_ipiq(gd, need_resched_remote, NULL);
 			++remote_resched_nonaffinity;
 		}
 	}

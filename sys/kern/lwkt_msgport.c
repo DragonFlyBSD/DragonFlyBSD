@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.13 2004/01/01 00:32:34 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.14 2004/02/12 06:57:48 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -223,7 +223,7 @@ _lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(td);
     } else {
-	lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_replyport_remote, msg);
+	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_replyport_remote, msg);
     }
 }
 
@@ -277,7 +277,7 @@ _lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
 	    lwkt_schedule(td);
     } else {
 	msg->ms_target_port = port;
-	lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_putport_remote, msg);
+	lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_putport_remote, msg);
     }
 }
 

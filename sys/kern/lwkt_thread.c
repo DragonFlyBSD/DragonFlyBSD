@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.51 2004/02/09 21:13:18 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.52 2004/02/12 06:57:48 dillon Exp $
  */
 
 /*
@@ -276,7 +276,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
 	crit_exit();
     } else {
-	lwkt_send_ipiq(gd->gd_cpuid, lwkt_init_thread_remote, td);
+	lwkt_send_ipiq(gd, lwkt_init_thread_remote, td);
     }
 }
 
@@ -812,7 +812,7 @@ lwkt_schedule(thread_t td)
 			need_resched();
 		    }
 		} else {
-		    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
+		    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 		}
 		lwkt_reltoken(&w->wa_token);
 	    } else {
@@ -833,7 +833,7 @@ lwkt_schedule(thread_t td)
 		    need_resched();
 		}
 	    } else {
-		lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
+		lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	    }
 	}
     }
@@ -900,7 +900,7 @@ lwkt_deschedule(thread_t td)
 	if (td->td_gd == mycpu) {
 	    _lwkt_dequeue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_deschedule, td);
+	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_deschedule, td);
 	}
     }
     crit_exit();
@@ -1023,7 +1023,7 @@ lwkt_signal(lwkt_wait_t w, int count)
 	if (td->td_gd == mycpu) {
 	    _lwkt_enqueue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
+	    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	}
 	lwkt_regettoken(&w->wa_token);
     }
@@ -1179,13 +1179,13 @@ crit_panic(void)
  * Must be called from a critical section.
  */
 int
-lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
+lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
 {
     lwkt_ipiq_t ip;
     int windex;
     struct globaldata *gd = mycpu;
 
-    if (dcpu == gd->gd_cpuid) {
+    if (target == gd) {
 	func(arg);
 	return(0);
     } 
@@ -1196,9 +1196,8 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
 	panic("lwkt_send_ipiq: TOO HEAVILY NESTED!");
 #endif
     KKASSERT(curthread->td_pri >= TDPRI_CRIT);
-    KKASSERT(dcpu >= 0 && dcpu < ncpus);
     ++ipiq_count;
-    ip = &gd->gd_ipiq[dcpu];
+    ip = &gd->gd_ipiq[target->gd_cpuid];
 
     /*
      * We always drain before the FIFO becomes full so it should never
@@ -1222,9 +1221,18 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
 	write_eflags(eflags);
     }
     --gd->gd_intr_nesting_level;
-    cpu_send_ipiq(dcpu);	/* issues memory barrier if appropriate */
+    cpu_send_ipiq(target->gd_cpuid);	/* issues mem barrier if appropriate */
     crit_exit();
     return(ip->ip_windex);
+}
+
+/*
+ * deprecated, used only by fast int forwarding.
+ */
+int
+lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg)
+{
+    return(lwkt_send_ipiq(globaldata_find(dcpu), func, arg));
 }
 
 /*
@@ -1256,21 +1264,20 @@ lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
  * up).
  */
 void
-lwkt_wait_ipiq(int dcpu, int seq)
+lwkt_wait_ipiq(globaldata_t target, int seq)
 {
     lwkt_ipiq_t ip;
     int maxc = 100000000;
 
-    if (dcpu != mycpu->gd_cpuid) {
-	KKASSERT(dcpu >= 0 && dcpu < ncpus);
-	ip = &mycpu->gd_ipiq[dcpu];
+    if (target != mycpu) {
+	ip = &mycpu->gd_ipiq[target->gd_cpuid];
 	if ((int)(ip->ip_xindex - seq) < 0) {
 	    unsigned int eflags = read_eflags();
 	    cpu_enable_intr();
 	    while ((int)(ip->ip_xindex - seq) < 0) {
 		lwkt_process_ipiq();
 		if (--maxc == 0)
-			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, dcpu, ip->ip_xindex - seq);
+			printf("LWKT_WAIT_IPIQ WARNING! %d wait %d (%d)\n", mycpu->gd_cpuid, target->gd_cpuid, ip->ip_xindex - seq);
 		if (maxc < -1000000)
 			panic("LWKT_WAIT_IPIQ");
 	    }
@@ -1358,16 +1365,16 @@ lwkt_process_ipiq_frame(struct intrframe frame)
 #else
 
 int
-lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
+lwkt_send_ipiq(globaldata_t target, ipifunc_t func, void *arg)
 {
-    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", dcpu, func, arg);
+    panic("lwkt_send_ipiq: UP box! (%d,%p,%p)", target->gd_cpuid, func, arg);
     return(0); /* NOT REACHED */
 }
 
 void
-lwkt_wait_ipiq(int dcpu, int seq)
+lwkt_wait_ipiq(globaldata_t target, int seq)
 {
-    panic("lwkt_wait_ipiq: UP box! (%d,%d)", dcpu, seq);
+    panic("lwkt_wait_ipiq: UP box! (%d,%d)", target->gd_cpuid, seq);
 }
 
 #endif

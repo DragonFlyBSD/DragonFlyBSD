@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.11 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.12 2004/02/12 06:57:46 dillon Exp $
  */
 
 /*
@@ -174,7 +174,7 @@ clkintr(struct intrframe frame)
 	    if (gscan->gd_nextclock == 0)
 		continue;
 	    if (gscan != gd) {
-		lwkt_send_ipiq(gscan->gd_cpuid, (ipifunc_t)systimer_intr, &timer1_count);
+		lwkt_send_ipiq(gscan, (ipifunc_t)systimer_intr, &timer1_count);
 	    } else {
 		systimer_intr(&timer1_count, &frame);
 	    }

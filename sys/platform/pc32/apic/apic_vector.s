@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.15 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.16 2004/02/12 06:57:46 dillon Exp $
  */
 
 
@@ -188,7 +188,7 @@ IDTVEC(vec_name) ;							\
 	MEXITCOUNT ;							\
 	jmp	doreti ;						\
 6: ;									\
-	/* could not get MP lock, forward the interrupt */		\
+	/* could not get the MP lock, forward the interrupt */		\
 	movl	mp_lock, %eax ;		 /* check race */		\
 	cmpl	$MP_FREE_LOCK,%eax ;					\
 	je	2b ;							\
@@ -197,7 +197,7 @@ IDTVEC(vec_name) ;							\
 	movl	$irq_num,8(%esp) ;					\
 	movl	$forward_fastint_remote,4(%esp) ;			\
 	movl	%eax,(%esp) ;						\
-	call	lwkt_send_ipiq ;					\
+	call	lwkt_send_ipiq_bycpu ;					\
 	addl	$12,%esp ;						\
 	jmp	5f ;							\
 

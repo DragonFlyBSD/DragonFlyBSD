@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.15 2004/01/20 05:04:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.16 2004/02/12 06:57:48 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -554,6 +554,7 @@ malloc(unsigned long size, struct malloc_type *type, int flags)
 	z->z_UIndex = z->z_UEndIndex = slgd->JunkIndex % z->z_NMax;
 	z->z_ChunkSize = size;
 	z->z_FirstFreePg = ZonePageCount;
+	z->z_CpuGd = gd;
 	z->z_Cpu = gd->gd_cpuid;
 	chunk = (SLChunk *)(z->z_BasePtr + z->z_UIndex * size);
 	z->z_Next = slgd->ZoneAry[zi];
@@ -735,10 +736,10 @@ free(void *ptr, struct malloc_type *type)
      * cpu that does.  The freeing code does not need the byte count
      * unless DIAGNOSTIC is set.
      */
-    if (z->z_Cpu != gd->gd_cpuid) {
+    if (z->z_CpuGd != gd) {
 	*(struct malloc_type **)ptr = type;
 #ifdef SMP
-	lwkt_send_ipiq(z->z_Cpu, free_remote, ptr);
+	lwkt_send_ipiq(z->z_CpuGd, free_remote, ptr);
 #else
 	panic("Corrupt SLZone");
 #endif

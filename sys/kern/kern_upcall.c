@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_upcall.c,v 1.4 2003/12/07 04:20:40 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_upcall.c,v 1.5 2004/02/12 06:57:48 dillon Exp $
  */
 
 /*
@@ -141,7 +141,7 @@ upc_control(struct upc_control_args *uap)
 		    wakeup(&targp->p_upcall);
 #ifdef SMP
 		if (targp->p_thread->td_gd != mycpu)
-		    lwkt_send_ipiq(targp->p_thread->td_gd->gd_cpuid, sigupcall_remote, targp);
+		    lwkt_send_ipiq(targp->p_thread->td_gd, sigupcall_remote, targp);
 		else
 		    sigupcall();
 #else

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/slaballoc.h,v 1.5 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/slaballoc.h,v 1.6 2004/02/12 06:57:49 dillon Exp $
  */
 
 #ifndef _SYS_SLABALLOC_H_
@@ -73,6 +73,7 @@ typedef struct SLChunk {
 typedef struct SLZone {
     __int32_t	z_Magic;	/* magic number for sanity check */
     int		z_Cpu;		/* which cpu owns this zone? */
+    struct globaldata *z_CpuGd;	/* which cpu owns this zone? */
     int		z_NFree;	/* total free chunks / ualloc space in zone */
     struct SLZone *z_Next;	/* ZoneAry[] link if z_NFree non-zero */
     int		z_NMax;		/* maximum free chunks */

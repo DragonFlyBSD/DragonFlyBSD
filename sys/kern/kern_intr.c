@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.13 2003/11/03 02:08:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.14 2004/02/12 06:57:48 dillon Exp $
  *
  */
 
@@ -206,7 +206,7 @@ sched_ithd(int intr)
 		irunning[intr] = 1;
 		lwkt_schedule(td);	/* preemption handled internally */
 	    } else {
-		lwkt_send_ipiq(td->td_gd->gd_cpuid, sched_ithd_remote, (void *)intr);
+		lwkt_send_ipiq(td->td_gd, sched_ithd_remote, (void *)intr);
 	    }
 	}
     } else {
