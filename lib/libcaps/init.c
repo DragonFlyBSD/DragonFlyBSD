@@ -1,6 +1,4 @@
 /*
- * THREAD.H
- *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -25,38 +23,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/init.c,v 1.1 2003/12/04 22:06:19 dillon Exp $
  */
 
-#ifndef _LIBCAPS_THREAD_H_
-#define _LIBCAPS_THREAD_H_
+#include "defs.h"
 
-#define THREAD_STACK	65536
+struct thread main_td;
 
-struct thread;
-
-struct md_thread {
-
-};
-
-extern void *libcaps_alloc_stack(int);
-extern void libcaps_free_stack(void *, int);
-extern int tsleep(struct thread *, int, const char *, int);
-extern void lwkt_start_threading(struct thread *);
-extern void cpu_init_thread(struct thread *);
-extern void cpu_set_thread_handler(struct thread *, void (*)(void), void (*)(void *), void *);
-extern void kthread_exit(void) __dead2;
-extern void cpu_thread_exit(void) __dead2;
-
-/*
- * User overloads of lwkt_*
- * Unfortunately c doesn't support function overrloading.
- * XXX we need some strong weak magic here....
- */
-struct globaldata;
-void lwkt_user_gdinit(struct globaldata *);
-
-extern int hz;
-
-#endif
+void
+uthread_init(void)
+{
+    slab_init();
+    globaldata_init(&main_td);
+    sysport_init();
+    crit_exit();
+    get_mplock();
+}
 

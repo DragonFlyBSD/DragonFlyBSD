@@ -25,18 +25,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/defs.h,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/defs.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/stdint.h>
+#include <sys/upcall.h>
 #include <sys/malloc.h>
 #include "thread.h"
 #include <sys/thread.h>
 #include <sys/msgport.h>
 #include <sys/errno.h>
 #include "globaldata.h"
+#include "sysport.h"
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <sys/caps.h>
@@ -78,4 +81,7 @@ void caps_shutdown(caps_port_t port);
 void caps_close(caps_port_t port);
 void caps_kev_write(caps_port_t port, lwkt_msg_t msg);
 lwkt_msg_t caps_kev_read(caps_port_t port);
+
+extern struct thread main_td;
+
 

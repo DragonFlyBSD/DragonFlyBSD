@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -50,18 +50,27 @@
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif
+#ifndef _MACHINE_LOCK_H_
+#include <machine/lock.h>
+#endif
 
-extern struct globaldata *mycpu;
+struct globaldata;
+typedef struct globaldata *globaldata_t;
+
+#include "md_globaldata.h"
+
 extern int smp_active;
 extern int ncpus;
 extern int hz;
+extern u_int32_t stopped_cpus;
 extern char *panicstr;
 
 struct globaldata {
-	struct upcall	gd_upcall;
+	struct globaldata *gd_self;		/* self pointer */
+	struct upcall	gd_upcall;		/* upcall for this cpu */
+	int		gd_upcid;		/* upcall id */
 	struct thread	*gd_curthread;
 	int		gd_tdfreecount;
-	__uint32_t	gd_reqflags;
         TAILQ_HEAD(,thread) gd_tdallq;          /* all threads */
         TAILQ_HEAD(,thread) gd_tdfreeq;         /* new thread cache */
         TAILQ_HEAD(,thread) gd_tdrunq[32];      /* runnable threads */
@@ -70,16 +79,27 @@ struct globaldata {
 	int		gd_intr_nesting_level;
 	struct thread   gd_idlethread;
 	SLGlobalData    gd_slab;                /* slab allocator */
+	int		gd_num_threads;		/* Number of threads */
+	struct lwkt_ipiq *gd_ipiq;
 };
 
+#define gd_reqflags	gd_upcall.pending
+
 #define KASSERT(exp, printargs)	\
-	do { if (!(exp)) { printf printargs; } } while(0)
+	do { if (!(exp)) { panic printargs; } } while(0)
 #define KKASSERT(exp)	assert(exp)
+
+#define MAXVCPU		32
 
 #define curthread	(mycpu->gd_curthread)
 
-typedef struct globaldata *globaldata_t;
-
 extern struct globaldata *globaldata_find(int cpu);
+
+void globaldata_init(struct thread *td);
+void splz(void);
+int need_resched(void);
+void cpu_send_ipiq(int dcpu);
+void mi_gdinit(globaldata_t gd, int cpuid);
+__dead2 void panic(const char *, ...);
 
 #endif

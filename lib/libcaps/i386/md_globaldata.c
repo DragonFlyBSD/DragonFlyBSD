@@ -1,6 +1,4 @@
 /*
- * THREAD.H
- *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -25,38 +23,35 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/md_globaldata.c,v 1.1 2003/12/04 22:06:22 dillon Exp $
  */
+#include "../defs.h"
+#include <machine/segments.h>
+#include <machine/sysarch.h>
 
-#ifndef _LIBCAPS_THREAD_H_
-#define _LIBCAPS_THREAD_H_
+int __mycpu__dummy;	/* for the MP lock functions */
 
-#define THREAD_STACK	65536
+void
+md_gdinit(globaldata_t gd)
+{
+    union descriptor desc;
+    int error;
 
-struct thread;
+    bzero(&desc, sizeof(desc));
+    desc.sd.sd_lolimit = sizeof(struct globaldata);
+    desc.sd.sd_lobase = (uintptr_t)gd & 0xFFFFFF;
+    desc.sd.sd_hibase = (uintptr_t)gd >> 24;
+    desc.sd.sd_type = SDT_MEMRW;
+    desc.sd.sd_dpl = SEL_UPL;
+    desc.sd.sd_p = 1;
+    desc.sd.sd_hilimit = 0;
+    desc.sd.sd_xx = 0;
+    desc.sd.sd_def32 = 1;
+    desc.sd.sd_gran = 0;
 
-struct md_thread {
-
-};
-
-extern void *libcaps_alloc_stack(int);
-extern void libcaps_free_stack(void *, int);
-extern int tsleep(struct thread *, int, const char *, int);
-extern void lwkt_start_threading(struct thread *);
-extern void cpu_init_thread(struct thread *);
-extern void cpu_set_thread_handler(struct thread *, void (*)(void), void (*)(void *), void *);
-extern void kthread_exit(void) __dead2;
-extern void cpu_thread_exit(void) __dead2;
-
-/*
- * User overloads of lwkt_*
- * Unfortunately c doesn't support function overrloading.
- * XXX we need some strong weak magic here....
- */
-struct globaldata;
-void lwkt_user_gdinit(struct globaldata *);
-
-extern int hz;
-
-#endif
+    error = i386_set_ldt(gd->gd_cpuid, &desc, 1);
+    if (error < 0)
+	panic("i386_set_ldt cpu %d failed\n", gd->gd_cpuid);
+    _set_mycpu(LSEL(gd->gd_cpuid, SEL_UPL));
+}
 

@@ -1,6 +1,4 @@
 /*
- * THREAD.H
- *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -25,38 +23,42 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/i386/td_switch.c,v 1.1 2003/12/04 22:06:22 dillon Exp $
  */
+#include <sys/cdefs.h>			/* for __dead2 needed by thread.h */
+#include "libcaps/thread.h"
+#include <sys/thread.h>
+#include "libcaps/globaldata.h"		/* for curthread */
 
-#ifndef _LIBCAPS_THREAD_H_
-#define _LIBCAPS_THREAD_H_
+void cpu_lwkt_switch(struct thread *);
+void cpu_kthread_start(struct thread *);
+void cpu_exit_switch(struct thread *);
 
-#define THREAD_STACK	65536
+void
+cpu_init_thread(struct thread *td)
+{
+    td->td_sp = td->td_kstack + THREAD_STACK - sizeof(void *);
+    td->td_switch = cpu_lwkt_switch;
+}
 
-struct thread;
+void
+cpu_set_thread_handler(thread_t td, void (*rfunc)(void), void (*func)(void *), void *arg)
+{
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = arg;	/* argument to function */
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = rfunc;	/* exit function on return */
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = func;	/* started by cpu_kthread_start */
+	td->td_sp -= sizeof(void *);
+	*(void **)td->td_sp = cpu_kthread_start; /* bootstrap */
+	td->td_switch = cpu_lwkt_switch;
+}
 
-struct md_thread {
-
-};
-
-extern void *libcaps_alloc_stack(int);
-extern void libcaps_free_stack(void *, int);
-extern int tsleep(struct thread *, int, const char *, int);
-extern void lwkt_start_threading(struct thread *);
-extern void cpu_init_thread(struct thread *);
-extern void cpu_set_thread_handler(struct thread *, void (*)(void), void (*)(void *), void *);
-extern void kthread_exit(void) __dead2;
-extern void cpu_thread_exit(void) __dead2;
-
-/*
- * User overloads of lwkt_*
- * Unfortunately c doesn't support function overrloading.
- * XXX we need some strong weak magic here....
- */
-struct globaldata;
-void lwkt_user_gdinit(struct globaldata *);
-
-extern int hz;
-
-#endif
-
+void
+cpu_thread_exit(void)
+{
+	curthread->td_switch = cpu_exit_switch;
+	lwkt_switch();
+	panic("cpu_exit");
+}

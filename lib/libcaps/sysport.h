@@ -1,6 +1,4 @@
 /*
- * THREAD.H
- *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
@@ -25,38 +23,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/thread.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
+ * $DragonFly: src/lib/libcaps/sysport.h,v 1.1 2003/12/04 22:06:19 dillon Exp $
  */
 
-#ifndef _LIBCAPS_THREAD_H_
-#define _LIBCAPS_THREAD_H_
+#ifndef _SYSPORT_H_
+#define _SYSPORT_H_
 
-#define THREAD_STACK	65536
+struct lwkt_port;
 
-struct thread;
+extern struct lwkt_port *sysport;
 
-struct md_thread {
+void sysport_init(void);
 
-};
-
-extern void *libcaps_alloc_stack(int);
-extern void libcaps_free_stack(void *, int);
-extern int tsleep(struct thread *, int, const char *, int);
-extern void lwkt_start_threading(struct thread *);
-extern void cpu_init_thread(struct thread *);
-extern void cpu_set_thread_handler(struct thread *, void (*)(void), void (*)(void *), void *);
-extern void kthread_exit(void) __dead2;
-extern void cpu_thread_exit(void) __dead2;
-
-/*
- * User overloads of lwkt_*
- * Unfortunately c doesn't support function overrloading.
- * XXX we need some strong weak magic here....
- */
-struct globaldata;
-void lwkt_user_gdinit(struct globaldata *);
-
-extern int hz;
-
-#endif
-
+#endif /* _SYSPORT_H_ */

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/slaballoc.c,v 1.2 2003/12/04 22:06:19 dillon Exp $
  *
  * This module implements a thread-safe slab allocator for userland.
  *
@@ -79,6 +79,8 @@
  *    + ability to allocate arbitrarily large chunks of memory
  */
 
+#include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stdint.h>
@@ -88,6 +90,7 @@
 #include <sys/msgport.h>
 #include <sys/errno.h>
 #include "globaldata.h"
+#include <sys/sysctl.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 
@@ -103,7 +106,6 @@ static int ZonePageCount;
 static int ZonePageLimit;
 static int ZoneMask;
 static struct malloc_type *kmemstatistics;
-static struct kmemusage *kmemusage;
 static int32_t weirdary[16];
 
 /*
@@ -169,9 +171,10 @@ slab_init(void)
     int i;
     int error;
     int pagecnt;
+    int pagecnt_size = sizeof(pagecnt);
 
     error = sysctlbyname("vm.stats.vm.v_page_count",
-			&pagecnt, sizeof(pagecnt), NULL, 0);
+			&pagecnt, &pagecnt_size, NULL, 0);
     if (error == 0) {
 	vm_poff_t limsize;
 	int usesize;
@@ -194,6 +197,7 @@ slab_init(void)
 
     for (i = 0; i < arysize(weirdary); ++i)
 	weirdary[i] = WEIRD_ADDR;
+    slab_malloc_init(M_OVERSIZED);
 }
 
 /*
@@ -205,15 +209,15 @@ slab_malloc_init(void *data)
     struct malloc_type *type = data;
     vm_poff_t limsize;
 
-    if (type->ks_magic != M_MAGIC)
-	panic("malloc type lacks magic");
-					   
+    /*
+     * Skip if already initialized
+     */
     if (type->ks_limit != 0)
 	return;
 
+    type->ks_magic = M_MAGIC;
     limsize = (vm_poff_t)-1;	/* unlimited */
     type->ks_limit = limsize / 10;
-
     type->ks_next = kmemstatistics;
     kmemstatistics = type;
 }
@@ -594,7 +598,7 @@ slab_realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
 	return(slab_malloc(size, type, flags));
     if (size == 0) {
-	free(ptr, type);
+	slab_free(ptr, type);
 	return(NULL);
     }
 
@@ -609,7 +613,7 @@ slab_realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
 	if ((nptr = slab_malloc(size, type, flags)) == NULL)
 	    return(NULL);
 	bcopy(ptr, nptr, slab_min(size, osize));
-	free(ptr, type);
+	slab_free(ptr, type);
 	return(nptr);
     }
 
@@ -632,13 +636,13 @@ slab_realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     if ((nptr = slab_malloc(size, type, flags)) == NULL)
 	return(NULL);
     bcopy(ptr, nptr, slab_min(size, z->z_ChunkSize));
-    free(ptr, type);
+    slab_free(ptr, type);
     return(nptr);
 }
 
 #ifdef SMP
 /*
- * free()	(SLAB ALLOCATOR)
+ * slab_free()	(SLAB ALLOCATOR)
  *
  *	Free the specified chunk of memory.
  */
@@ -673,7 +677,7 @@ slab_free(void *ptr, struct malloc_type *type)
 
     /*
      * Handle oversized allocations.  XXX we really should require that a
-     * size be passed to free() instead of this nonsense.
+     * size be passed to slab_free() instead of this nonsense.
      *
      * This code is never called via an ipi.
      */
@@ -692,7 +696,8 @@ slab_free(void *ptr, struct malloc_type *type)
 	 * note: XXX we have still inherited the interrupts-can't-block
 	 * assumption.  An interrupt thread does not bump
 	 * gd_intr_nesting_level so check TDF_INTTHREAD.  This is
-	 * primarily until we can fix softupdate's assumptions about free().
+	 * primarily until we can fix softupdate's assumptions about 
+	 * slab_free().
 	 */
 	crit_enter();
 	--type->ks_inuse[gd->gd_cpuid];
@@ -708,7 +713,7 @@ slab_free(void *ptr, struct malloc_type *type)
 	    crit_exit();
 	    munmap(ptr, slov->ov_Bytes);
 	}
-	free(slov, M_OVERSIZED);
+	slab_free(slov, M_OVERSIZED);
 	return;
     }
 
@@ -735,7 +740,7 @@ slab_free(void *ptr, struct malloc_type *type)
     }
 
     if (type->ks_magic != M_MAGIC)
-	panic("free: malloc type lacks magic");
+	panic("slab_free: malloc type lacks magic");
 
     crit_enter();
     pgno = ((char *)ptr - (char *)z) >> PAGE_SHIFT;

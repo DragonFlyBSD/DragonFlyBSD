@@ -25,18 +25,55 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.c,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.c,v 1.2 2003/12/04 22:06:19 dillon Exp $
  */
 
 #include "defs.h"
 
-struct globaldata gdary[1];
-struct globaldata *mycpu = &gdary[0];
+struct globaldata gdary[MAXVCPU];
+u_int mp_lock;
 int smp_active;
 int ncpus = 1;
+u_int32_t stopped_cpus;
 char *panicstr;
 
-struct globaldata *
+/*
+ * Master globaldata init
+ */
+void
+globaldata_init(thread_t td)
+{
+    mi_gdinit(&gdary[0], 0);
+    if (td) {
+	gdary[0].gd_curthread = td;
+	lwkt_init_thread(td, NULL, TDF_RUNNING, mycpu);
+    }
+}
+
+/*
+ * per-cpu globaldata init.  Calls lwkt_gdinit() and md_gdinit().  Returns
+ * with the target cpu left in a critical section.
+ */
+void
+mi_gdinit(globaldata_t gd, int cpuid)
+{
+    bzero(gd, sizeof(*gd));
+    TAILQ_INIT(&gd->gd_tdfreeq);
+    gd->gd_cpuid = cpuid;
+    gd->gd_self = gd;
+    gd->gd_upcall.magic = UPCALL_MAGIC;
+    gd->gd_upcall.crit_count = UPC_CRITADD;
+    gd->gd_upcid = upc_register(&gd->gd_upcall, upc_callused_wrapper,
+				(void *)lwkt_process_ipiq, gd);
+    gd->gd_ipiq = malloc(sizeof(lwkt_ipiq) * MAXVCPU);
+    bzero(gd->gd_ipiq, sizeof(lwkt_ipiq) * MAXVCPU);
+    if (gd->gd_upcid < 0)
+	panic("upc_register: failed on cpu %d\n", cpuid);
+    md_gdinit(gd);
+    lwkt_gdinit(gd);
+}
+
+globaldata_t
 globaldata_find(int cpu)
 {
     KKASSERT(cpu >= 0 && cpu < ncpus);
@@ -61,30 +98,18 @@ splz(void)
 }
 
 int
-need_resched()
+need_resched(void)
 {
     return(0);
 }
 
 void
-pmap_init_thread(struct thread *td)
+cpu_send_ipiq(int dcpu)
 {
+    upc_control(UPC_CONTROL_DISPATCH, gdary[dcpu].gd_upcid, (void *)TDPRI_CRIT);
 }
 
-void
-cpu_thread_exit(void)
-{
-    exit(1);
-}
-
-void
-cpu_set_thread_handler(struct thread *td, void (*exitfunc)(void),
-		void (*func)(void *), void *ar)
-{
-    assert(0);
-}
-
-void
+__dead2 void
 panic(const char *ctl, ...)
 {
     va_list va;
@@ -92,5 +117,6 @@ panic(const char *ctl, ...)
     va_start(va, ctl);
     vfprintf(stderr, ctl, va);
     va_end(va);
-    exit(1);
+    abort();
 }
+

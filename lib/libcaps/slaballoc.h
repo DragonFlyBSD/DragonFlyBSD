@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/slaballoc.h,v 1.1 2003/11/24 21:15:58 dillon Exp $
+ * $DragonFly: src/lib/libcaps/slaballoc.h,v 1.2 2003/12/04 22:06:19 dillon Exp $
  */
 
 #ifndef _LIBCAPS_SLABALLOC_H_
@@ -102,6 +102,7 @@ typedef struct SLOversized {
 } SLOversized;
 
 void slab_init(void);
+void slab_malloc_init(void *data);
 void *slab_malloc(unsigned long size, struct malloc_type *type, int flags);
 void slab_free(void *ptr, struct malloc_type *info);
 
