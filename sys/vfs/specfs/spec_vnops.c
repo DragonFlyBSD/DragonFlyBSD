@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.16 2004/05/26 00:11:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.17 2004/06/06 18:47:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -295,6 +295,8 @@ spec_read(struct vop_read_args *ap)
 	uio = ap->a_uio;
 	td = uio->uio_td;
 
+	if (dev == NULL)		/* device was revoked */
+		return (EBADF);
 	if (uio->uio_resid == 0)
 		return (0);
 
@@ -325,6 +327,9 @@ spec_write(struct vop_write_args *ap)
 	uio = ap->a_uio;
 	td = uio->uio_td;
 
+	if (dev == NULL)		/* device was revoked */
+		return (EBADF);
+
 	VOP_UNLOCK(vp, NULL, 0, td);
 	error = dev_dwrite(dev, uio, ap->a_ioflag);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
@@ -343,7 +348,9 @@ spec_ioctl(struct vop_ioctl_args *ap)
 {
 	dev_t dev;
 
-	dev = ap->a_vp->v_rdev;
+	if ((dev = ap->a_vp->v_rdev) == NULL)
+		return (EBADF);		/* device was revoked */
+
 	return (dev_dioctl(dev, ap->a_command, ap->a_data,
 		    ap->a_fflag, ap->a_td));
 }
@@ -358,7 +365,8 @@ spec_poll(struct vop_poll_args *ap)
 {
 	dev_t dev;
 
-	dev = ap->a_vp->v_rdev;
+	if ((dev = ap->a_vp->v_rdev) == NULL)
+		return (EBADF);		/* device was revoked */
 	return (dev_dpoll(dev, ap->a_events, ap->a_td));
 }
 
@@ -371,7 +379,8 @@ spec_kqfilter(struct vop_kqfilter_args *ap)
 {
 	dev_t dev;
 
-	dev = ap->a_vp->v_rdev;
+	if ((dev = ap->a_vp->v_rdev) == NULL)
+		return (EBADF);		/* device was revoked */
 	return (dev_dkqfilter(dev, ap->a_kn));
 }
 
@@ -486,6 +495,7 @@ spec_strategy(struct vop_strategy_args *ap)
 	 * and write counts for disks that have associated filesystems.
 	 */
 	vp = ap->a_vp;
+	KKASSERT(vp->v_rdev != NULL);	/* XXX */
 	if (vn_isdisk(vp, NULL) && (mp = vp->v_rdev->si_mountpoint) != NULL) {
 		if ((bp->b_flags & B_READ) == 0) {
 			if (bp->b_lock.lk_lockholder == LK_KERNTHREAD)
@@ -516,6 +526,7 @@ spec_freeblks(struct vop_freeblks_args *ap)
 	 * XXX: This assumes that strategy does the deed right away.
 	 * XXX: this may not be TRTTD.
 	 */
+	KKASSERT(ap->a_vp->v_rdev != NULL);
 	if ((dev_dflags(ap->a_vp->v_rdev) & D_CANFREE) == 0)
 		return (0);
 	bp = geteblk(ap->a_length);
@@ -580,7 +591,8 @@ spec_close(struct vop_close_args *ap)
 	 * if the reference count is 2 (this last descriptor
 	 * plus the session), release the reference from the session.
 	 */
-	reference_dev(dev);
+	if (dev)
+		reference_dev(dev);
 	if (vcount(vp) == 2 && vp->v_opencount == 1 && 
 	    p && (vp->v_flag & VXLOCK) == 0 && vp == p->p_session->s_ttyvp) {
 		vrele(vp);
@@ -596,9 +608,9 @@ spec_close(struct vop_close_args *ap)
 	 * XXX the VXLOCK (force close) case can leave vnodes referencing
 	 * a closed device.
 	 */
-	if ((vp->v_flag & VXLOCK) ||
+	if (dev && ((vp->v_flag & VXLOCK) ||
 	    (dev_dflags(dev) & D_TRACKCLOSE) ||
-	    (vcount(vp) <= 1 && vp->v_opencount == 1)) {
+	    (vcount(vp) <= 1 && vp->v_opencount == 1))) {
 		error = dev_dclose(dev, ap->a_fflag, S_IFCHR, ap->a_td);
 	} else {
 		error = 0;
@@ -609,11 +621,19 @@ spec_close(struct vop_close_args *ap)
 	 * disassociates the rdev.
 	 */
 	KKASSERT(vp->v_opencount > 0);
-	if (dev_ref_debug)
-		printf("spec_close: %s %d\n", dev->si_name, vp->v_opencount - 1);
+	if (dev_ref_debug) {
+		if (dev) {
+			printf("spec_close: %s %d\n",
+				dev->si_name, vp->v_opencount - 1);
+		} else {
+			printf("spec_close: closed revoked device %08x\n",
+				vp->v_udev);
+		}
+	}
 	if (--vp->v_opencount == 0)
 		v_release_rdev(vp);
-	release_dev(dev);
+	if (dev)
+		release_dev(dev);
 	return(error);
 }
 
