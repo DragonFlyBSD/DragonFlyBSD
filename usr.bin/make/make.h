@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.11 2004/11/24 07:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.12 2004/12/01 15:17:28 joerg Exp $
  */
 
 /*-
@@ -141,6 +141,21 @@ typedef struct GNode {
 				 * Suff_FindDeps and opaque to everyone
 				 * but the Suff module) */
 } GNode;
+
+
+/*
+ * Definitions for handling #include specifications
+ */
+typedef struct {
+    char *str;
+    char *ptr;
+} PTR;
+typedef struct IFile {
+    char            *fname;	    /* name of previous file */
+    int             lineno;	    /* saved line number */
+    FILE	    *F;		    /* the open stream */
+    PTR		    *p;	    	    /* the char pointer */
+} IFile;
 
 /*
  * The OP_ constants are used when parsing a dependency line as a way of
@@ -271,6 +286,7 @@ extern Lst  	create;	    	/* The list of target names specified on the
 				 * make(...) statements */
 extern Lst     	dirSearchPath; 	/* The list of directories to search when
 				 * looking for targets */
+extern IFile	curFile;	/* current makefile */
 extern Lst	parseIncPath;	/* The list of directories to search when
 				 * looking for includes */
 
