@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstMember.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.6 2004/12/17 00:02:57 okumoto Exp $
  *
  * @(#)lstMember.c	8.1 (Berkeley) 6/6/93
  */
@@ -47,10 +47,10 @@
 #include "make.h"
 #include "lst.h"
 
-LstNode
-Lst_Member(Lst list, void *d)
+LstNode *
+Lst_Member(Lst *list, void *d)
 {
-    LstNode	lNode;
+    LstNode *lNode;
 
     lNode = list->firstPtr;
     if (lNode == NULL) {

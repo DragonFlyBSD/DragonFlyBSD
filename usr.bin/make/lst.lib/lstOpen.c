@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstOpen.c,v 1.5 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
  *
  * @(#)lstOpen.c	8.1 (Berkeley) 6/6/93
  */
@@ -67,7 +67,7 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Open(Lst l)
+Lst_Open(Lst *l)
 {
 
 	if (Lst_Valid(l) == FALSE) {

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.30 2004/12/16 23:24:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.31 2004/12/17 00:02:57 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -213,7 +213,7 @@ char   		*shellPath = NULL,	/* full pathname of executable image */
 
 static int  	maxJobs;    	/* The most children we can run at once */
 STATIC int     	nJobs;	    	/* The number of children currently running */
-STATIC Lst     	jobs;		/* The structures that describe them */
+STATIC Lst    	*jobs;		/* The structures that describe them */
 STATIC Boolean	jobFull;    	/* Flag to tell when the job table is full. It
 				 * is set TRUE when (1) the total number of
 				 * running jobs equals the maximum allowed */
@@ -240,7 +240,7 @@ STATIC char    	*targFmt;   	/* Format string to use to head output from a
  * been stopped somehow, the job is placed on the stoppedJobs queue to be run
  * when the next job finishes.
  */
-STATIC Lst	stoppedJobs;	/* Lst of Job structures describing
+STATIC Lst	*stoppedJobs;	/* Lst of Job structures describing
 				 * jobs that were stopped due to concurrency
 				 * limits or externally */
 
@@ -470,7 +470,7 @@ JobPrintCommand(void *cmdp, void *jobp)
     char       	  *cmdTemplate;	    /* Template to use when printing the
 				     * command */
     char    	  *cmdStart;	    /* Start of expanded command */
-    LstNode 	  cmdNode;  	    /* Node for replacing the command */
+    LstNode 	  *cmdNode;  	    /* Node for replacing the command */
     char     	  *cmd = cmdp;
     Job           *job = jobp;
 
@@ -1464,7 +1464,7 @@ JobStart(GNode *gn, int flags, Job *previous)
 	    if ((job->flags&JOB_FIRST) && (Lst_Open(gn->commands) != SUCCESS)){
 		cmdsOK = FALSE;
 	    } else {
-		LstNode	ln = Lst_Next(gn->commands);
+		LstNode *ln = Lst_Next(gn->commands);
 
 		if ((ln == NULL) ||
 		    JobPrintCommand(Lst_Datum(ln), job))
@@ -1903,7 +1903,7 @@ Job_CatchChildren(Boolean block)
 {
     int    	  pid;	    	/* pid of dead child */
     Job		  *job;	    	/* job descriptor for dead child */
-    LstNode       jnode;    	/* list element for finding job */
+    LstNode      *jnode;    	/* list element for finding job */
     int	  	  status;   	/* Exit/termination status */
 
     /*
@@ -1984,7 +1984,7 @@ Job_CatchOutput(int flag)
 #else
     struct timeval	  timeout;
     fd_set           	  readfds;
-    LstNode		  ln;
+    LstNode		  *ln;
     Job		   	  *job;
 #endif
 
@@ -2614,7 +2614,7 @@ Job_ParseShell(char *line)
 static void
 JobInterrupt(int runINTERRUPT, int signo)
 {
-    LstNode 	  ln;		/* element in job table */
+    LstNode 	  *ln;		/* element in job table */
     Job           *job = NULL;	/* job descriptor in that element */
     GNode         *interrupt;	/* the node describing the .INTERRUPT target */
 
@@ -2735,7 +2735,7 @@ Job_Wait(void)
 void
 Job_AbortAll(void)
 {
-    LstNode           	ln;	/* element in job table */
+    LstNode           	*ln;	/* element in job table */
     Job            	*job;	/* the job descriptor in that element */
     int     	  	foo;
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -67,9 +67,9 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Insert(Lst list, LstNode ln, void *d)
+Lst_Insert(Lst *list, LstNode *ln, void *d)
 {
-    LstNode	nLNode;	/* new lnode for d */
+    LstNode *nLNode;	/* new lnode for d */
 
     /*
      * check validity of arguments

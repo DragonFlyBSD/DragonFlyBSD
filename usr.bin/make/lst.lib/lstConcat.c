@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstConcat.c,v 1.7 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
  *
  * @(#)lstConcat.c	8.1 (Berkeley) 6/6/93
  */
@@ -71,12 +71,12 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Concat(Lst list1, Lst list2, int flags)
+Lst_Concat(Lst *list1, Lst *list2, int flags)
 {
-    LstNode  	ln;     /* original LstNode */
-    LstNode  	nln;    /* new LstNode */
-    LstNode  	last;   /* the last element in the list. Keeps
-			 * bookkeeping until the end */
+    LstNode *ln;	/* original LstNode */
+    LstNode *nln;	/* new LstNode */
+    LstNode *last;	/* the last element in the list. Keeps
+		         * bookkeeping until the end */
 
     if (!Lst_Valid(list1) || !Lst_Valid(list2)) {
 	return (FAILURE);

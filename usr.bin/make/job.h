@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.15 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.16 2004/12/17 00:02:57 okumoto Exp $
  */
 
 /*-
@@ -97,7 +97,7 @@ typedef struct Job {
     char	tfile[sizeof(TMPPAT)];
 			    /* Temporary file to use for job */
     GNode    	*node;      /* The target the child is making */
-    LstNode 	tailCmds;   /* The node of the first command to be
+    LstNode 	*tailCmds;  /* The node of the first command to be
 			     * saved when the job has been run */
     FILE 	*cmdFILE;   /* When creating the shell script, this is
 			     * where the commands go */

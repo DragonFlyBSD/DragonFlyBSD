@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.15 2004/12/16 23:24:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.16 2004/12/17 00:02:57 okumoto Exp $
  */
 
 /*-
@@ -87,8 +87,8 @@
 #include	  "hash.h"
 #include	  "dir.h"
 
-static Lst        allTargets;	/* the list of all targets found so far */
-static Lst	  allGNs;	/* List of all the GNodes */
+static Lst        *allTargets;	/* the list of all targets found so far */
+static Lst	  *allGNs;	/* List of all the GNodes */
 static Hash_Table targets;	/* a hash table of same */
 
 #define	HTSIZE	191		/* initial size of hash table */
@@ -275,11 +275,11 @@ Targ_FindNode(char *name, int flags)
  *	an error message will be printed for each name which can't be found.
  * -----------------------------------------------------------------------
  */
-Lst
-Targ_FindList(Lst names, int flags)
+Lst *
+Targ_FindList(Lst *names, int flags)
 {
-    Lst            nodes;	/* result list */
-    LstNode	   ln;		/* name list element */
+    Lst            *nodes;	/* result list */
+    LstNode	   *ln;		/* name list element */
     GNode	   *gn;		/* node in tLn */
     char    	   *name;
 

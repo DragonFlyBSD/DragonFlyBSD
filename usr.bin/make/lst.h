@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.12 2004/12/16 23:24:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.13 2004/12/17 00:02:57 okumoto Exp $
  */
 
 /*-
@@ -63,7 +63,7 @@ struct LstNode {
  	int	flags:8;    /* Node status flags */
 	void	*datum;	    /* datum associated with this element */
 };
-typedef	struct	LstNode	*LstNode;
+typedef	struct	LstNode	LstNode;
 
 /*
  * Flags required for synchronization
@@ -78,19 +78,19 @@ typedef enum {
  * The list itself
  */
 struct Lst {
-	LstNode  	firstPtr; /* first node in list */
-	LstNode  	lastPtr;  /* last node in list */
+	LstNode  	*firstPtr; /* first node in list */
+	LstNode  	*lastPtr;  /* last node in list */
 	/*
 	 * fields for sequential access
 	 */
 	LstWhere	atEnd;	  /* Where in the list the last access was */
 	Boolean	  	isOpen;	  /* true if list has been Lst_Open'ed */
-	LstNode  	curPtr;	  /* current node, if open. NULL if
+	LstNode  	*curPtr;  /* current node, if open. NULL if
 				   * *just* opened */
-	LstNode  	prevPtr;  /* Previous node, if open. Used by
+	LstNode  	*prevPtr; /* Previous node, if open. Used by
 				   * Lst_Remove */
 };
-typedef	struct	Lst	*Lst;
+typedef	struct	Lst Lst;
 
 typedef	int CompareProc(void *, void *);
 typedef	int DoProc(void *, void *);
@@ -112,30 +112,30 @@ typedef	void FreeProc(void *);
  * Creation/destruction functions
  */
 /* Create a new list */
-Lst		Lst_Init(void);
+Lst		*Lst_Init(void);
 /* Duplicate an existing list */
-Lst		Lst_Duplicate(Lst, DuplicateProc *);
+Lst		*Lst_Duplicate(Lst *, DuplicateProc *);
 /* Destroy an old one */
-void		Lst_Destroy(Lst, FreeProc *);
+void		Lst_Destroy(Lst *, FreeProc *);
 
 /*
  * Functions to modify a list
  */
 /* Insert an element before another */
-ReturnStatus	Lst_Insert(Lst, LstNode, void *);
+ReturnStatus	Lst_Insert(Lst *, LstNode *, void *);
 /* Insert an element after another */
-ReturnStatus	Lst_Append(Lst, LstNode, void *);
+ReturnStatus	Lst_Append(Lst *, LstNode *, void *);
 /* Place an element at the front of a lst. */
 #define	Lst_AtFront(LST, D)	(Lst_Insert((LST), Lst_First(LST), (D)))
 /* Place an element at the end of a lst. */
 #define	Lst_AtEnd(LST, D) 	(Lst_Append((LST), Lst_Last(LST), (D)))
 /* Remove an element */
-ReturnStatus	Lst_Remove(Lst, LstNode);
+ReturnStatus	Lst_Remove(Lst *, LstNode *);
 /* Replace a node with a new value */
 #define	Lst_Replace(NODE, D)	(((NODE) == NULL) ? FAILURE : \
 				    (((NODE)->datum = (D)), SUCCESS))
 /* Concatenate two lists */
-ReturnStatus	Lst_Concat(Lst, Lst, int);
+ReturnStatus	Lst_Concat(Lst *, Lst *, int);
 
 /*
  * Node-specific functions
@@ -157,14 +157,14 @@ ReturnStatus	Lst_Concat(Lst, Lst, int);
 /* Find an element in a list */
 #define	Lst_Find(LST, D, FN)	(Lst_FindFrom((LST), Lst_First(LST), (D), (FN)))
 /* Find an element starting from somewhere */
-LstNode		Lst_FindFrom(Lst, LstNode, void *, CompareProc *);
+LstNode		*Lst_FindFrom(Lst *, LstNode *, void *, CompareProc *);
 /*
  * See if the given datum is on the list. Returns the LstNode containing
  * the datum
  */
-LstNode		Lst_Member(Lst, void *);
+LstNode		*Lst_Member(Lst *, void *);
 /* Apply a function to all elements of a lst */
-void		Lst_ForEach(Lst, DoProc *, void *);
+void		Lst_ForEach(Lst *, DoProc *, void *);
 #define	Lst_ForEach(LST, FN, D)	(Lst_ForEachFrom((LST), Lst_First(LST), \
 				    (FN), (D)))
 /*
@@ -172,20 +172,20 @@ void		Lst_ForEach(Lst, DoProc *, void *);
  * If the list is circular, the application will wrap around to the
  * beginning of the list again.
  */
-void		Lst_ForEachFrom(Lst, LstNode, DoProc *, void *);
+void		Lst_ForEachFrom(Lst *, LstNode *, DoProc *, void *);
 /*
  * these functions are for dealing with a list as a table, of sorts.
  * An idea of the "current element" is kept and used by all the functions
  * between Lst_Open() and Lst_Close().
  */
 /* Open the list */
-ReturnStatus	Lst_Open(Lst);
+ReturnStatus	Lst_Open(Lst *);
 /* Next element please */
-LstNode		Lst_Next(Lst);
+LstNode		*Lst_Next(Lst *);
 /* Done yet? */
-Boolean		Lst_IsAtEnd(Lst);
+Boolean		Lst_IsAtEnd(Lst *);
 /* Finish table access */
-void		Lst_Close(Lst);
+void		Lst_Close(Lst *);
 
 /*
  * for using the list as a queue
@@ -195,7 +195,7 @@ void		Lst_Close(Lst);
 				    ? Lst_Append((LST), Lst_Last(LST), (D)) \
 				    : FAILURE)
 /* Remove an element from head of queue */
-void *	Lst_DeQueue(Lst);
+void		*Lst_DeQueue(Lst *);
 
 /*
  * LstValid (L) --

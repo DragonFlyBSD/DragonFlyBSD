@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAppend.c,v 1.6 1999/08/28 01:03:45 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
  *
  * @(#)lstAppend.c	8.1 (Berkeley) 6/6/93
  */
@@ -61,7 +61,7 @@
  *	d	said datum
  *
  * Side Effects:
- *	A new ListNode is created and linked in to the List. The lastPtr
+ *	A new LstNode is created and linked in to the List. The lastPtr
  *	field of the List will be altered if ln is the last node in the
  *	list. lastPtr and firstPtr will alter if the list was empty and
  *	ln was NULL.
@@ -69,9 +69,9 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Append(Lst list, LstNode ln, void *d)
+Lst_Append(Lst *list, LstNode *ln, void *d)
 {
-    LstNode	nLNode;
+    LstNode *nLNode;
 
     if (Lst_Valid(list) && (ln == NULL && Lst_IsEmpty(list))) {
 	goto ok;

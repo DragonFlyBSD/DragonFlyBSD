@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.17 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.18 2004/12/17 00:02:57 okumoto Exp $
  */
 
 /*-
@@ -224,7 +224,7 @@ Compat_RunCommand(void *cmdp, void *gnp)
     int	    	  status;   	/* Description of child's death */
     int	    	  cpid;	    	/* Child actually found */
     ReturnStatus  rstat;	/* Status of fork */
-    LstNode 	  cmdNode;  	/* Node where current command is located */
+    LstNode 	  *cmdNode;  	/* Node where current command is located */
     char    	  **av;	    	/* Argument vector for thing to exec */
     int	    	  argc;	    	/* Number of arguments in av or 0 if not
 				 * dynamically allocated */
@@ -678,7 +678,7 @@ CompatMake(void *gnp, void *pgnp)
  *-----------------------------------------------------------------------
  */
 void
-Compat_Run(Lst targs)
+Compat_Run(Lst *targs)
 {
     GNode   	  *gn = NULL;/* Current root target */
     int	    	  errors;   /* Number of targets not remade due to errors */

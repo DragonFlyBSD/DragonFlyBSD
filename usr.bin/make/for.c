@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.14 2004/12/16 23:24:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.15 2004/12/17 00:02:57 okumoto Exp $
  */
 
 /*-
@@ -71,7 +71,7 @@
 static int  	  forLevel = 0;  	/* Nesting level	*/
 static char	 *forVar;		/* Iteration variable	*/
 static Buffer	  forBuf;		/* Commands in loop	*/
-static Lst	  forLst;		/* List of items	*/
+static Lst	  *forLst;		/* List of items	*/
 
 /*
  * State of a for loop.
@@ -79,7 +79,7 @@ static Lst	  forLst;		/* List of items	*/
 typedef struct _For {
     Buffer	  buf;			/* Unexpanded buffer	*/
     char*	  var;			/* Index name		*/
-    Lst  	  lst;			/* List of variables	*/
+    Lst  	  *lst;			/* List of variables	*/
     int  	  lineno;		/* Line #		*/
 } For;
 
