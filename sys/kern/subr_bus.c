@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.5 2003/11/17 00:54:40 asmodai Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.6 2003/11/17 21:24:15 asmodai Exp $
  */
 
 #include "opt_bus.h"
@@ -1003,9 +1003,9 @@ device_set_driver(device_t dev, driver_t *driver)
 		return ENOMEM;
 	    }
 	    bzero(dev->softc, driver->size);
-	} else
-	    kobj_init((kobj_t) dev, &null_class);
-    }
+	}
+    } else
+	kobj_init((kobj_t) dev, &null_class);
     return 0;
 }
 
