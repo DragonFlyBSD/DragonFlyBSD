@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.13 2004/04/16 14:21:58 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.14 2004/05/06 10:15:37 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1159,7 +1159,7 @@ sis_attach(device_t dev)
 	 */
 	device_printf(dev, "Ethernet address: %6D\n", eaddr, ":");
 
-	callout_handle_init(&sc->sis_stat_ch);
+	callout_init(&sc->sis_timer);
 
 	/*
 	 * Allocate the parent bus DMA tag appropriate for PCI.
@@ -1307,8 +1307,6 @@ sis_attach(device_t dev)
 	 * Tell the upper layer(s) we support long frames.
 	 */
 	ifp->if_data.ifi_hdrlen = sizeof(struct ether_vlan_header);
-
-	callout_handle_init(&sc->sis_stat_ch);
 
 	error = bus_setup_intr(dev, sc->sis_irq, INTR_TYPE_NET,
 	    sis_intr, sc, &sc->sis_intrhand);
@@ -1656,7 +1654,7 @@ sis_tick(void *xsc)
 				sis_start(ifp);
 	}
 
-	sc->sis_stat_ch = timeout(sis_tick, sc, hz);
+	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
 
 	splx(s);
 }
@@ -2049,7 +2047,7 @@ sis_init(void *xsc)
 
 	splx(s);
 
-	sc->sis_stat_ch = timeout(sis_tick, sc, hz);
+	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
 }
 
 /*
@@ -2166,7 +2164,7 @@ sis_stop(struct sis_softc *sc)
 	ifp = &sc->arpcom.ac_if;
 	ifp->if_timer = 0;
 
-	untimeout(sis_tick, sc, sc->sis_stat_ch);
+	callout_stop(&sc->sis_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
 #ifdef DEVICE_POLLING

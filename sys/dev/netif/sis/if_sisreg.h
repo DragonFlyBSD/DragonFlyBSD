@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sisreg.h,v 1.1.4.11 2003/02/05 21:49:01 mbr Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.5 2004/04/14 18:24:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sisreg.h,v 1.6 2004/05/06 10:15:37 joerg Exp $
  */
 
 /*
@@ -455,7 +455,7 @@ struct sis_softc {
 	bus_dma_tag_t		sis_parent_tag;
 	bus_dma_tag_t		sis_tag;
 	struct sis_ring_data	sis_cdata;
-	struct callout_handle	sis_stat_ch;
+	struct callout		sis_timer;
 #ifdef DEVICE_POLLING
 	int			rxcycles;
 #endif
