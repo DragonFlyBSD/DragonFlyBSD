@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.6 2004/01/28 14:36:00 joerg Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.7 2004/04/28 22:05:09 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -65,7 +65,7 @@ void	user(void);
  * perform this optimization.
  */
 /* _mcount; may be static, inline, etc */
-_MCOUNT_DECL(uintfptr_t frompc, unitfptr_t selfpc)
+_MCOUNT_DECL(uintfptr_t frompc, uintfptr_t selfpc)
 {
 #ifdef GUPROF
 	int delta;
