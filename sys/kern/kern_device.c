@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.4 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.5 2003/08/23 16:58:36 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -175,6 +175,8 @@ static __inline
 struct cdevsw *
 _devsw(dev_t dev)
 {
+    if (dev == NULL)
+	return(NULL);
     if (dev->si_devsw)
 	return (dev->si_devsw);
     return(cdevsw[major(dev)]);
