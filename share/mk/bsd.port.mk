@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.11 2004/02/22 14:28:50 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.12 2004/02/24 13:05:14 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -67,7 +67,12 @@ TARGETS+=	tags
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
 .endif
 
+.if !empty(.TARGETS)
 ${.TARGETS}:
+.else
+all:
+.MAIN: all
+.endif
 
 # Hack to get Makefiles with conditional statements working
 XFREE86_VERSION?=	4

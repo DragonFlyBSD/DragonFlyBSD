@@ -1,6 +1,7 @@
-# $DragonFly: src/share/mk/Attic/bsd.dfport.mk,v 1.3 2003/11/19 00:51:24 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.dfport.mk,v 1.4 2004/02/24 13:05:14 joerg Exp $
 
-PORTSDIR?=	/usr/dfports
+PORTSDIR?=	/usr/ports
+DFPORTSDIR?=	/usr/dfports
 
 # Temporary Hack
 #
