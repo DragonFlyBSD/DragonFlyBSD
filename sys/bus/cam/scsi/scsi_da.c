@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.18 2004/09/13 23:57:41 drhodus Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.19 2004/09/13 23:59:16 drhodus Exp $
  */
 
 #ifdef _KERNEL
@@ -341,6 +341,14 @@ static struct da_quirk_entry da_quirk_table[] =
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iRiver", "iFP*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
  	},
+	{
+		/*
+		 * Frontier Labs NEX IA+ Digital Audio Player, rev 1.10/0.01
+		 * PR: kern/70158
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "FL" , "NexIA+*", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+	},
  	{
 		/*
 		 * FujiFilm Camera
