@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.20 2004/05/11 18:05:05 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.21 2004/05/11 22:48:53 dillon Exp $
  */
 
 /*
@@ -635,8 +635,6 @@ pipe_build_write_buffer(wpipe, uio)
 	size = (u_int) uio->uio_iov->iov_len;
 	if (size > wpipe->pipe_buffer.size)
 		size = wpipe->pipe_buffer.size;
-	if (size > XIO_INTERNAL_SIZE)
-		size = XIO_INTERNAL_SIZE;
 
 	error = xio_init_ubuf(&wpipe->pipe_map, uio->uio_iov->iov_base, 
 				size, XIOF_READ);
@@ -652,7 +650,7 @@ pipe_build_write_buffer(wpipe, uio)
 	case PIPE_SFBUF2:
 		if (wpipe->pipe_kva == NULL) {
 			wpipe->pipe_kva = 
-			    kmem_alloc_pageable(kernel_map, XIO_INTERNAL_SIZE);
+			    kmem_alloc_nofault(kernel_map, XIO_INTERNAL_SIZE);
 			wpipe->pipe_kvamask = 0;
 		}
 		if (wpipe->pipe_feature == PIPE_KMEM) {
@@ -665,8 +663,10 @@ pipe_build_write_buffer(wpipe, uio)
 	}
 
 	/*
-	 * and update the uio data
+	 * And update the uio data.  The XIO might have loaded fewer bytes
+	 * then requested so reload 'size'.
 	 */
+	size = wpipe->pipe_map.xio_bytes;
 	uio->uio_iov->iov_len -= size;
 	uio->uio_iov->iov_base += size;
 	if (uio->uio_iov->iov_len == 0)
