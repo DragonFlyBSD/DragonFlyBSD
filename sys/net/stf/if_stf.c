@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.10 2004/06/03 18:30:03 joerg Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.11 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -99,7 +99,6 @@
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
-#include <netinet/ipprotosw.h>
 #include <netinet/ip_var.h>
 #include <netinet/in_var.h>
 
@@ -135,7 +134,7 @@ static MALLOC_DEFINE(M_STF, "stf", "6to4 Tunnel Interface");
 static int ip_stf_ttl = 40;
 
 extern  struct domain inetdomain;
-struct ipprotosw in_stf_protosw =
+struct protosw in_stf_protosw =
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR,
   in_stf_input, rip_output,	0,		rip_ctloutput,
   0,

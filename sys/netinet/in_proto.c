@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.8 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.9 2004/11/30 19:21:26 joerg Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -68,7 +68,6 @@
 #include <netinet/udp_var.h>
 #include <netinet/ip_encap.h>
 
-#include <netinet/ipprotosw.h>
 
 /*
  * TCP/IP protocol family: IP, ICMP, UDP, TCP.
@@ -101,7 +100,7 @@
 extern	struct domain inetdomain;
 static	struct pr_usrreqs nousrreqs;
 
-struct ipprotosw inetsw[] = {
+struct protosw inetsw[] = {
 { 0,		&inetdomain,	0,		0,
   0,		0,		0,		0,
   cpu0_soport,

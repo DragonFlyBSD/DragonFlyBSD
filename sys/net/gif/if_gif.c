@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_gif.c,v 1.4.2.15 2002/11/08 16:57:13 ume Exp $	*/
-/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.9 2004/03/23 22:19:06 hsu Exp $	*/
+/*	$DragonFly: src/sys/net/gif/if_gif.c,v 1.10 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$KAME: if_gif.c,v 1.87 2001/10/19 08:50:27 itojun Exp $	*/
 
 /*
@@ -63,7 +63,6 @@
 #include <netinet/in_var.h>
 #include <netinet/in_gif.h>
 #include <netinet/ip_var.h>
-#include <netinet/ipprotosw.h>
 #endif	/* INET */
 
 #ifdef INET6

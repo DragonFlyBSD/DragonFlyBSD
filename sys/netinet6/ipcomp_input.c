@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.6 2004/06/03 18:30:04 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.7 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -84,8 +84,7 @@
 #define IPLEN_FLIPPED
 
 #ifdef INET
-#include <netinet/ipprotosw.h>
-extern struct ipprotosw inetsw[];
+extern struct protosw inetsw[];
 
 void
 ipcomp4_input(struct mbuf *m, ...)

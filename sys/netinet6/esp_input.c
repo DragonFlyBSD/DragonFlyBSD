@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/esp_input.c,v 1.1.2.8 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.8 2004/10/20 05:00:36 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/esp_input.c,v 1.9 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$KAME: esp_input.c,v 1.62 2002/01/07 11:39:57 kjc Exp $	*/
 
 /*
@@ -98,8 +98,7 @@
 		? sizeof(struct newesp) : sizeof(struct esp))
 
 #ifdef INET
-#include <netinet/ipprotosw.h>
-extern struct ipprotosw inetsw[];
+extern struct protosw inetsw[];
 
 void
 esp4_input(struct mbuf *m, ...)

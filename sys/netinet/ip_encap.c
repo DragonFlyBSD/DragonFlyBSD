@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.8 2004/06/03 18:30:03 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.9 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -78,7 +78,6 @@
 #include <netinet/ip.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_encap.h>
-#include <netinet/ipprotosw.h>
 
 #ifdef INET6
 #include <netinet/ip6.h>
@@ -135,7 +134,7 @@ encap4_input(struct mbuf *m, ...)
 	int off, proto;
 	struct ip *ip;
 	struct sockaddr_in s, d;
-	const struct ipprotosw *psw;
+	const struct protosw *psw;
 	struct encaptab *ep, *match;
 	int prio, matchprio;
 	__va_list ap;
@@ -202,7 +201,7 @@ encap4_input(struct mbuf *m, ...)
 
 	if (match) {
 		/* found a match, "match" has the best one */
-		psw = (const struct ipprotosw *)match->psw;
+		psw = match->psw;
 		if (psw && psw->pr_input) {
 			encap_fillarg(m, match);
 			(*psw->pr_input)(m, off, proto);

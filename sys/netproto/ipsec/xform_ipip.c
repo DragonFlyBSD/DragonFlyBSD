@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.9 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.10 2004/11/30 19:21:26 joerg Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -63,7 +63,6 @@
 #include <netinet/ip_ecn.h>
 #include <netinet/ip_var.h>
 #include <netinet/ip_encap.h>
-#include <netinet/ipprotosw.h>
 
 #include <netproto/ipsec/ipsec.h>
 #include <netproto/ipsec/xform.h>
@@ -646,7 +645,7 @@ static struct xformsw ipe4_xformsw = {
 };
 
 extern struct domain inetdomain;
-static struct ipprotosw ipe4_protosw[] = {
+static struct protosw ipe4_protosw[] = {
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   ip4_input,
 		0, 		0,		rip_ctloutput,

@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.36 2004/10/16 23:20:00 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.37 2004/11/30 19:21:26 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -134,7 +134,6 @@
 #include <netinet/ip_var.h>
 #include <netinet/ip_icmp.h>
 
-#include <netinet/ipprotosw.h>
 
 #include <sys/socketvar.h>
 
@@ -222,7 +221,7 @@ static struct ifqueue ipintrq;
 static int ipqmaxlen = IFQ_MAXLEN;
 
 extern	struct domain inetdomain;
-extern	struct ipprotosw inetsw[];
+extern	struct protosw inetsw[];
 u_char	ip_protox[IPPROTO_MAX];
 struct	in_ifaddrhead in_ifaddrhead;		/* first inet address */
 struct	in_ifaddrhashhead *in_ifaddrhashtbl;	/* inet addr hash table */
@@ -333,7 +332,7 @@ static struct mbuf	*ip_reass (struct mbuf *, struct ipq *,
 void
 ip_init(void)
 {
-	struct ipprotosw *pr;
+	struct protosw *pr;
 	int i;
 #ifdef SMP
 	int cpu;
@@ -347,13 +346,13 @@ ip_init(void)
 		    IFQ_MAXLEN, 4000, 0, NULL);
 	TAILQ_INIT(&in_ifaddrhead);
 	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
-	pr = (struct ipprotosw *)pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
+	pr = pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
 	if (pr == NULL)
 		panic("ip_init");
 	for (i = 0; i < IPPROTO_MAX; i++)
 		ip_protox[i] = pr - inetsw;
-	for (pr = (struct ipprotosw *)inetdomain.dom_protosw;
-	     pr < (struct ipprotosw *)inetdomain.dom_protoswNPROTOSW; pr++)
+	for (pr = inetdomain.dom_protosw;
+	     pr < inetdomain.dom_protoswNPROTOSW; pr++)
 		if (pr->pr_domain->dom_family == PF_INET &&
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip_protox[pr->pr_protocol] = pr - inetsw;
