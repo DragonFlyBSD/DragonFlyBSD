@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.5 2004/01/15 15:41:23 drhodus Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.6 2004/03/10 18:16:14 dillon Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -180,6 +180,7 @@ dkitop() {
 
 	case $1 in
 	0) p=a;; 1) p=b;; 2) p=c;; 3) p=d;; 4) p=e;; 5) p=f;; 6) p=g;; 7) p=h;;
+	8) p=i;; 9) p=j;; 10) p=k;; 11) p=l;; 12) p=m;; 13) p=n;; 14) p=o;; 15) p=p;;
 	*) p="?";;
 	esac
 	echo $p
@@ -200,7 +201,7 @@ dkitos() {
 # Convert disk (type, unit, slice, partition) to minor number
 dkminor()
 {
-	echo $(($1 << 25 | ($2 / 32) << 21 | ($2 % 32) << 3 | $3 << 16 | $4))
+	echo $(($1 << 25 | ($2 / 32) << 21 | ($2 % 32) << 3 | $3 << 16 | ($4 & 7) | ($4 & 8) << 17))
 }
 
 # Override mknod(2) to add extra handling to it.
@@ -503,7 +504,7 @@ aacd*s*|ad*s*|ar*s*|afd*s*|amrd*s*|da*s*|fla*s*|idad*s*|ipsd*s*|md*s*|mlxd*s*|ps
 				case $oldslice in
 				0) slice=$oldslice ;;
 				esac
-				for part in 0 1 2 3 4 5 6 7
+				for part in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
 				do
 					minor=`dkminor 0 $unit $slice $part`
 					partname=`dkitop $part`
