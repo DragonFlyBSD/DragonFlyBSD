@@ -28,7 +28,7 @@
  * @(#) Copyright (c) 1993 Andrew Moore, Talke Studio. All rights reserved.
  * @(#)main.c,v 1.1 1994/02/01 00:34:42 alm Exp
  * $FreeBSD: src/bin/ed/main.c,v 1.14.2.4 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/main.c,v 1.7 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/ed/main.c,v 1.8 2005/03/09 02:38:51 drhodus Exp $
  */
 
 /*
@@ -122,6 +122,7 @@ top:
 		case 'x':				/* use crypt */
 #ifdef DES
 			des = get_keyword();
+			break;
 #else
 			fprintf(stderr, "crypt unavailable\n?\n");
 #endif
@@ -818,7 +819,6 @@ exec_command(void)
 		sprintf(errmsg, "crypt unavailable");
 		return ERR;
 #endif
-		break;
 	case 'z':
 #ifdef BACKWARDS
 		if (check_addr_range(first_addr = 1, current_addr + 1) < 0)
