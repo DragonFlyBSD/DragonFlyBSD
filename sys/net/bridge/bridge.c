@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.8 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/bridge/Attic/bridge.c,v 1.9 2004/07/26 00:20:59 geekgod Exp $
  */
 
 /*
@@ -101,11 +101,13 @@
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/if_var.h>
+#include <net/pfil.h>
 
 #include <netinet/in.h> /* for struct arpcom */
 #include <netinet/in_systm.h>
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
+#include <netinet/ip_var.h>
 #include <netinet/if_ether.h> /* for struct arpcom */
 
 #include <net/route.h>
@@ -156,7 +158,6 @@ struct cluster_softc {
 
 
 extern struct protosw inetsw[];			/* from netinet/ip_input.c */
-extern u_char ip_protox[];			/* from netinet/ip_input.c */
 
 static int n_clusters;				/* number of clusters */
 static struct cluster_softc *clusters;
@@ -200,13 +201,8 @@ static struct cluster_softc *clusters;
 static int bdginit(void);
 static void parse_bdg_cfg(void);
 
-static int bdg_ipf;		/* IPFilter enabled in bridge */
+static int bdg_pfil;		/* IPFilter enabled in bridge */
 static int bdg_ipfw;
-
-/*
- * For IPFilter, declared in ip_input.c
- */
-extern int (*fr_checkp)(struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 #if 0 /* debugging only */
 static char *bdg_dst_names[] = {
@@ -516,10 +512,10 @@ SYSCTL_PROC(_net_link_ether, OID_AUTO, bridge, CTLTYPE_INT|CTLFLAG_RW,
 	    &do_bridge, 0, &sysctl_bdg, "I", "Bridging");
 
 SYSCTL_INT(_net_link_ether, OID_AUTO, bridge_ipfw, CTLFLAG_RW,
-	    &bdg_ipfw,0,"Pass bridged pkts through firewall");
+	    &bdg_ipfw,0,"Pass bridged pkts through IPFW");
 
-SYSCTL_INT(_net_link_ether, OID_AUTO, bridge_ipf, CTLFLAG_RW,
-	    &bdg_ipf, 0,"Pass bridged pkts through IPFilter");
+SYSCTL_INT(_net_link_ether, OID_AUTO, bridge_pfil, CTLFLAG_RW,
+	    &bdg_pfil, 0,"Pass bridged pkts through PFIL hooks");
 
 /*
  * The follow macro declares a variable, and maps it to
@@ -837,7 +833,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
      * and pkts already gone through a pipe.
      */
     if (src != NULL && (
-	(fr_checkp != NULL && bdg_ipf != 0) ||
+	(bdg_pfil && pfil_has_hooks(&inet_pfil_hook)) ||
 	(IPFW_LOADED && bdg_ipfw != 0))) {
 
 	int i;
@@ -858,9 +854,9 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 	}
 
 	/*
-	 * IP Filter hook.
+	 * PFIL hooks processing
 	 */
-	if (fr_checkp != NULL && bdg_ipf &&
+	if (bdg_pfil && pfil_has_hooks(&inet_pfil_hook) &&
 	    m0->m_pkthdr.len >= sizeof(struct ip) &&
 	    ntohs(save_eh.ether_type) == ETHERTYPE_IP) {
 	    /*
@@ -868,11 +864,17 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
 	     * here we assume the pkt is an IP one and the header is contiguous
 	     */
 	    struct ip *ip = mtod(m0, struct ip *);
+	    int error;
 
 	    ip->ip_len = ntohs(ip->ip_len);
 	    ip->ip_off = ntohs(ip->ip_off);
 
-	    if ((*fr_checkp)(ip, ip->ip_hl << 2, src, 0, &m0) || m0 == NULL)
+	    /*
+	     * XXX I think this needs to be reworked to enable stateful
+	     * filtering. Think about this. For now, declare the packet as incoming.
+	     */
+	    error = pfil_run_hooks(&inet_pfil_hook, &m0, ifp, PFIL_IN);
+	    if (error != 0 || m0 == NULL)
 		return m0;
 
 	    /*
