@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.10 2003/10/18 23:59:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.11 2003/10/19 00:23:24 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -82,12 +82,6 @@
  */
 
 #include "opt_vm.h"
-
-#if !defined(NO_SLAB_ALLOCATOR)
-
-#if defined(USE_KMEM_MAP)
-#error "If you define USE_KMEM_MAP you must also define NO_SLAB_ALLOCATOR"
-#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -925,4 +919,3 @@ kmem_slab_free(void *ptr, vm_size_t size)
     crit_exit();
 }
 
-#endif

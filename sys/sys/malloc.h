@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.10 2003/10/18 20:07:32 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.11 2003/10/19 00:23:28 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -117,11 +117,7 @@ MALLOC_DECLARE(M_IP6NDP); /* for INET6 */
  * Array of descriptors that describe the contents of each page
  */
 struct kmemusage {
-#ifdef NO_SLAB_ALLOCATOR
-	short ku_indx;		/* bucket index */
-#else
 	short ku_cpu;		/* cpu index */
-#endif
 	union {
 		u_short freecnt;/* for small allocations, free pieces in page */
 		u_short pagecnt;/* for large allocations, pages alloced */
@@ -185,13 +181,7 @@ struct kmembuckets {
 /*
  * Turn virtual addresses into kmem map indices
  */
-#if defined(USE_KMEM_MAP)
-#define kmemxtob(alloc)	(kmembase + (alloc) * PAGE_SIZE)
-#define btokmemx(addr)	(((caddr_t)(addr) - kmembase) / PAGE_SIZE)
-#define btokup(addr)	(&kmemusage[((caddr_t)(addr) - kmembase) >> PAGE_SHIFT])
-#else
 #define btokup(addr)	(&kmemusage[((caddr_t)(addr) - (caddr_t)VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT])
-#endif
 
 /*
  * Deprecated macro versions of not-quite-malloc() and free().

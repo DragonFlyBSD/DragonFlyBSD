@@ -37,7 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.4 2003/09/26 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.5 2003/10/19 00:23:23 dillon Exp $
  */
 
 
@@ -108,30 +108,6 @@
 
 #define VM_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
 #define VM_MIN_ADDRESS		((vm_offset_t)0)
-
-#if defined(USE_KMEM_MAP)
-/* virtual sizes (bytes) for various kernel submaps */
-#ifndef VM_KMEM_SIZE
-#define VM_KMEM_SIZE		(12 * 1024 * 1024)
-#endif
-
-/*
- * How many physical pages per KVA page allocated.
- * min(max(VM_KMEM_SIZE, Physical memory/VM_KMEM_SIZE_SCALE), VM_KMEM_SIZE_MAX)
- * is the total KVA space allocated for kmem_map.
- */
-#ifndef VM_KMEM_SIZE_SCALE
-#define	VM_KMEM_SIZE_SCALE	(3)
-#endif
-
-/*
- * Ceiling on amount of kmem_map kva space.
- */
-#ifndef VM_KMEM_SIZE_MAX
-#define	VM_KMEM_SIZE_MAX	(200 * 1024 * 1024)
-#endif
-
-#endif
 
 /* initial pagein size of beginning of executable file */
 #ifndef VM_INITIAL_PAGEIN

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.10 2003/09/26 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.11 2003/10/19 00:23:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -329,31 +329,6 @@ zget(vm_zone_t z)
 	} else {
 		nbytes = z->zalloc * PAGE_SIZE;
 
-#if defined(USE_KMEM_MAP)
-		/*
-		 * Check to see if the kernel map is already locked. 
-		 * We could allow for recursive locks, but that eliminates
-		 * a valuable debugging mechanism, and opens up the kernel
-		 * map for potential corruption by inconsistent data structure
-		 * manipulation.  We could also use the interrupt allocation
-		 * mechanism, but that has size limitations.   Luckily, we
-		 * have kmem_map that is a submap of kernel map available
-		 * for memory allocation, and manipulation of that map doesn't
-		 * affect the kernel map structures themselves.
-		 *
-		 * We can wait, so just do normal map allocation in the
-		 * appropriate map.
-		 */
-		if (lockstatus(&kernel_map->lock, NULL)) {
-			int s;
-			s = splvm();
-			item = (void *) kmem_malloc(kmem_map, nbytes, M_WAITOK);
-			lwkt_regettoken(&z->zlock);
-			if (item != NULL)
-				zone_kmem_pages += z->zalloc;
-			splx(s);
-		} else
-#endif
 		{
 			item = (void *) kmem_alloc(kernel_map, nbytes);
 			lwkt_regettoken(&z->zlock);
