@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.27 2004/05/07 19:55:29 drhodus Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.28 2004/05/07 21:04:32 drhodus Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -42,10 +42,10 @@ Fortunaty.net (Europe) offers mirrors via
 <a href="http://ftp.fortunaty.net/">HTTP</a> and
 <a href="ftp://ftp.fortunaty.net/">FTP</a>.</p>
 <p>
-The University of Vienna (Germany) offers mirrors via  
+The University of Vienna (Austria) offers mirrors via  
 <a href="ftp://ftp.univie.ac.at/systems/DragonFly/">FTP</a>,
 <a href="http://ftp.univie.ac.at/systems/DragonFly/">HTTP</a>, and
-<a href="rsync://ftp.univie.ac.at/DragonFly/</a>.</p>
+<a href="rsync://ftp.univie.ac.at/DragonFly/">rsync</a>.</p>
 <p>
 Vladimir Egorin at UIC.EDU mirrors the stable ISO CDs via
 <a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a>.</p>
