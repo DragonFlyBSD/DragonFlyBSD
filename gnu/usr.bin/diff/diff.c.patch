@@ -1,0 +1,26 @@
+$DragonFly: src/gnu/usr.bin/diff/diff.c.patch,v 1.1 2004/04/13 14:55:02 eirikn Exp $
+--- ../diff.orig/src/diff.c	2004-02-26 11:40:51.000000000 +0000
++++ diff.c	2004-02-17 17:00:54.000000000 +0000
+@@ -33,7 +33,7 @@
+ #include <hard-locale.h>
+ #include <prepargs.h>
+ #include <quotesys.h>
+-#include <regex.h>
++#include <gnuregex.h>
+ #include <setmode.h>
+ #include <xalloc.h>
+ 
+@@ -265,12 +265,11 @@
+   initialize_main (&argc, &argv);
+   program_name = argv[0];
+   setlocale (LC_ALL, "");
+-  bindtextdomain (PACKAGE, LOCALEDIR);
+   textdomain (PACKAGE);
+   c_stack_action (c_stack_die);
+   function_regexp_list.buf = &function_regexp;
+   ignore_regexp_list.buf = &ignore_regexp;
+-  re_set_syntax (RE_SYNTAX_GREP | RE_NO_POSIX_BACKTRACKING);
++  re_set_syntax (RE_SYNTAX_GREP);
+   excluded = new_exclude ();
+ 
+   /* Decode the options.  */

@@ -1,0 +1,13 @@
+$DragonFly: src/gnu/usr.bin/diff/Attic/util.c.patch,v 1.1 2004/04/13 14:55:02 eirikn Exp $
+diff -ur ../diff.orig/src/util.c ./src/util.c
+--- ../diff.orig/src/util.c	2004-02-26 11:40:51.000000000 +0000
++++ util.c	2004-02-17 17:01:31.000000000 +0000
+@@ -24,7 +24,7 @@
+ #include <dirname.h>
+ #include <error.h>
+ #include <quotesys.h>
+-#include <regex.h>
++#include <gnuregex.h>
+ #include <xalloc.h>
+ 
+ char const pr_program[] = PR_PROGRAM;

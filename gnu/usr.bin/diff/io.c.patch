@@ -1,0 +1,12 @@
+$DragonFly: src/gnu/usr.bin/diff/Attic/io.c.patch,v 1.1 2004/04/13 14:55:02 eirikn Exp $
+--- ../diff.orig/src/io.c	2004-02-26 11:40:51.000000000 +0000
++++ io.c	2004-02-17 17:01:15.000000000 +0000
+@@ -22,7 +22,7 @@
+ 
+ #include "diff.h"
+ #include <cmpbuf.h>
+-#include <regex.h>
++#include <gnuregex.h>
+ #include <setmode.h>
+ #include <xalloc.h>
+ 

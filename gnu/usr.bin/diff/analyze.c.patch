@@ -1,0 +1,13 @@
+$DragonFly: src/gnu/usr.bin/diff/Attic/analyze.c.patch,v 1.1 2004/04/13 14:55:02 eirikn Exp $
+diff -ur ../diff.orig/src/analyze.c ./src/analyze.c
+--- ../diff.orig/src/analyze.c	2004-02-26 11:40:51.000000000 +0000
++++ analyze.c	2004-02-17 16:45:37.000000000 +0000
+@@ -36,7 +36,7 @@
+ #include "diff.h"
+ #include <cmpbuf.h>
+ #include <error.h>
+-#include <regex.h>
++#include <gnuregex.h>
+ #include <xalloc.h>
+ 
+ static lin *xvec, *yvec;	/* Vectors being compared. */
