@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.13 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/globals.s,v 1.14 2003/07/03 17:24:01 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -84,7 +84,7 @@
 	.globl	gd_ss_eflags, gd_intr_nesting_level
 	.globl  gd_CMAP1, gd_CMAP2, gd_CMAP3, gd_PMAP1
 	.globl  gd_CADDR1, gd_CADDR2, gd_CADDR3, gd_PADDR1
-	.globl  gd_irunning, gd_ipending, gd_fpending
+	.globl  gd_irunning, gd_ipending, gd_fpending, gd_cnt
 
 	.set    gd_cpuid,globaldata + GD_CPUID
 	.set    gd_cpu_lockid,globaldata + GD_CPU_LOCKID
@@ -102,6 +102,7 @@
 	.set	gd_fpending,globaldata + GD_FPENDING
 	.set	gd_ipending,globaldata + GD_IPENDING
 	.set	gd_irunning,globaldata + GD_IRUNNING
+	.set	gd_cnt,globaldata + GD_CNT
 
 #if defined(APIC_IO)
 	.globl	lapic_eoi, lapic_svr, lapic_tpr, lapic_irr1, lapic_ver

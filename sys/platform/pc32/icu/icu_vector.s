@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.10 2003/07/01 20:31:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.11 2003/07/03 17:24:02 dillon Exp $
  */
 
 /*
@@ -140,7 +140,7 @@ IDTVEC(vec_name) ; 							\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4,%esp ;						\
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	incl	cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
+	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
@@ -171,7 +171,7 @@ IDTVEC(vec_name) ;							\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4, %esp ;						\
-	incl	cnt+V_INTR ;						\
+	incl	PCPU(cnt)+V_INTR ;					\
 	movl	intr_countp + (irq_num) * 4, %eax ;			\
 	incl	(%eax) ;						\
 	UNMASK_IRQ(icu, irq_num) ;					\
@@ -238,7 +238,7 @@ IDTVEC(vec_name) ; 							\
 	call	sched_ithd ;						\
 	addl	$4,%esp ;						\
 	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
-	incl	cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
+	incl	PCPU(cnt)+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\
 5: ;									\

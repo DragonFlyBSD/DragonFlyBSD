@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.17 2003/06/30 23:54:02 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.18 2003/07/03 17:24:02 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -336,7 +336,7 @@ proc0_init(void *dummy __unused)
 	    limit0.pl_rlimit[RLIMIT_NOFILE].rlim_max = maxfiles;
 	limit0.pl_rlimit[RLIMIT_NPROC].rlim_cur =
 	    limit0.pl_rlimit[RLIMIT_NPROC].rlim_max = maxproc;
-	i = ptoa(cnt.v_free_count);
+	i = ptoa(vmstats.v_free_count);
 	limit0.pl_rlimit[RLIMIT_RSS].rlim_max = i;
 	limit0.pl_rlimit[RLIMIT_MEMLOCK].rlim_max = i;
 	limit0.pl_rlimit[RLIMIT_MEMLOCK].rlim_cur = i / 3;

@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.6 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.7 2003/07/03 17:24:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,6 +99,7 @@
 #include <vm/vm_zone.h>
 
 #include <sys/buf2.h>
+#include <vm/vm_page2.h>
 
 #define SWM_FREE	0x02	/* free, period			*/
 #define SWM_POP		0x04	/* pop out			*/
@@ -306,7 +307,7 @@ swap_pager_swap_init()
 	 * can hold 16 pages, so this is probably overkill.  This reservation
 	 * is typically limited to around 32MB by default.
 	 */
-	n = cnt.v_page_count / 2;
+	n = vmstats.v_page_count / 2;
 	if (maxswzone && n > maxswzone / sizeof(struct swblock))
 		n = maxswzone / sizeof(struct swblock);
 	n2 = n;
@@ -920,11 +921,11 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 		) {
 			splx(s);
 			if (bp->b_flags & B_READ) {
-				++cnt.v_swapin;
-				cnt.v_swappgsin += btoc(nbp->b_bcount);
+				++mycpu->gd_cnt.v_swapin;
+				mycpu->gd_cnt.v_swappgsin += btoc(nbp->b_bcount);
 			} else {
-				++cnt.v_swapout;
-				cnt.v_swappgsout += btoc(nbp->b_bcount);
+				++mycpu->gd_cnt.v_swapout;
+				mycpu->gd_cnt.v_swappgsout += btoc(nbp->b_bcount);
 				nbp->b_dirtyend = nbp->b_bcount;
 			}
 			flushchainbuf(nbp);
@@ -969,11 +970,11 @@ swap_pager_strategy(vm_object_t object, struct buf *bp)
 		if ((bp->b_flags & B_ASYNC) == 0)
 			nbp->b_flags &= ~B_ASYNC;
 		if (nbp->b_flags & B_READ) {
-			++cnt.v_swapin;
-			cnt.v_swappgsin += btoc(nbp->b_bcount);
+			++mycpu->gd_cnt.v_swapin;
+			mycpu->gd_cnt.v_swappgsin += btoc(nbp->b_bcount);
 		} else {
-			++cnt.v_swapout;
-			cnt.v_swappgsout += btoc(nbp->b_bcount);
+			++mycpu->gd_cnt.v_swapout;
+			mycpu->gd_cnt.v_swappgsout += btoc(nbp->b_bcount);
 			nbp->b_dirtyend = nbp->b_bcount;
 		}
 		flushchainbuf(nbp);
@@ -1128,8 +1129,8 @@ swap_pager_getpages(object, m, count, reqpage)
 
 	pbgetvp(swapdev_vp, bp);
 
-	cnt.v_swapin++;
-	cnt.v_swappgsin += bp->b_npages;
+	mycpu->gd_cnt.v_swapin++;
+	mycpu->gd_cnt.v_swappgsin += bp->b_npages;
 
 	/*
 	 * We still hold the lock on mreq, and our automatic completion routine
@@ -1164,7 +1165,7 @@ swap_pager_getpages(object, m, count, reqpage)
 
 	while ((mreq->flags & PG_SWAPINPROG) != 0) {
 		vm_page_flag_set(mreq, PG_WANTED | PG_REFERENCED);
-		cnt.v_intrans++;
+		mycpu->gd_cnt.v_intrans++;
 		if (tsleep(mreq, PSWP, "swread", hz*20)) {
 			printf(
 			    "swap_pager: indefinite wait buffer: device:"
@@ -1384,8 +1385,8 @@ swap_pager_putpages(object, m, count, sync, rtvals)
 		bp->b_dirtyoff = 0;
 		bp->b_dirtyend = bp->b_bcount;
 
-		cnt.v_swapout++;
-		cnt.v_swappgsout += bp->b_npages;
+		mycpu->gd_cnt.v_swapout++;
+		mycpu->gd_cnt.v_swappgsout += bp->b_npages;
 		swapdev_vp->v_numoutput++;
 
 		splx(s);

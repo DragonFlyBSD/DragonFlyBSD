@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.9 2003/06/30 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.10 2003/07/03 17:24:04 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -90,6 +90,7 @@
 #include <vm/vm_extern.h>
 
 #include <sys/user.h>
+#include <vm/vm_page2.h>
 
 /*
  * System initialization
@@ -313,7 +314,7 @@ vm_init_limits(udata)
 	p->p_rlimit[RLIMIT_DATA].rlim_cur = dfldsiz;
 	p->p_rlimit[RLIMIT_DATA].rlim_max = maxdsiz;
 	/* limit the limit to no less than 2MB */
-	rss_limit = max(cnt.v_free_count, 512);
+	rss_limit = max(vmstats.v_free_count, 512);
 	p->p_rlimit[RLIMIT_RSS].rlim_cur = ptoa(rss_limit);
 	p->p_rlimit[RLIMIT_RSS].rlim_max = RLIM_INFINITY;
 }

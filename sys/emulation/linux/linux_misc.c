@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.5 2003/06/26 05:55:10 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.6 2003/07/03 17:23:59 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -137,7 +137,7 @@ linux_sysinfo(struct linux_sysinfo_args *args)
 		sysinfo.loads[i] = averunnable.ldavg[i];
 
 	sysinfo.totalram = physmem * PAGE_SIZE;
-	sysinfo.freeram = sysinfo.totalram - cnt.v_wire_count * PAGE_SIZE;
+	sysinfo.freeram = sysinfo.totalram - vmstats.v_wire_count * PAGE_SIZE;
 
 	sysinfo.sharedram = 0;
 	for (object = TAILQ_FIRST(&vm_object_list); object != NULL;

@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -889,7 +889,7 @@ mlock(struct mlock_args *uap)
 	if (addr + size < addr)
 		return (EINVAL);
 
-	if (atop(size) + cnt.v_wire_count > vm_page_max_wired)
+	if (atop(size) + vmstats.v_wire_count > vm_page_max_wired)
 		return (EAGAIN);
 
 #ifdef pmap_wired_count

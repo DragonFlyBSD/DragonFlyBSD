@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.4 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -188,7 +188,7 @@ void
 vm_init2(void) {
 	zinitna(kmapentzone, &kmapentobj,
 		NULL, 0, lmin((VM_MAX_KERNEL_ADDRESS - KERNBASE) / PAGE_SIZE,
-		cnt.v_page_count) / 8, ZONE_INTERRUPT, 1);
+		vmstats.v_page_count) / 8, ZONE_INTERRUPT, 1);
 	zinitna(mapentzone, &mapentobj,
 		NULL, 0, 0, 0, 1);
 	zinitna(mapzone, &mapobj,
@@ -779,7 +779,7 @@ vm_map_simplify_entry(map, entry)
 	vm_size_t prevsize, esize;
 
 	if (entry->eflags & (MAP_ENTRY_IN_TRANSITION | MAP_ENTRY_IS_SUB_MAP)) {
-		++cnt.v_intrans_coll;
+		++mycpu->gd_cnt.v_intrans_coll;
 		return;
 	}
 
@@ -1050,8 +1050,8 @@ again:
 	entry = start_entry;
 	if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 		entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
-		++cnt.v_intrans_coll;
-		++cnt.v_intrans_wait;
+		++mycpu->gd_cnt.v_intrans_coll;
+		++mycpu->gd_cnt.v_intrans_wait;
 		vm_map_transition_wait(map);
 		/*
 		 * entry and/or start_entry may have been clipped while
@@ -1089,8 +1089,8 @@ again:
 		if (next->eflags & MAP_ENTRY_IN_TRANSITION) {
 			vm_offset_t save_end = entry->end;
 			next->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
-			++cnt.v_intrans_coll;
-			++cnt.v_intrans_wait;
+			++mycpu->gd_cnt.v_intrans_coll;
+			++mycpu->gd_cnt.v_intrans_wait;
 			vm_map_transition_wait(map);
 
 			/*
@@ -2121,8 +2121,8 @@ again:
 		if (entry->eflags & MAP_ENTRY_IN_TRANSITION) {
 			entry->eflags |= MAP_ENTRY_NEEDS_WAKEUP;
 			start = entry->start;
-			++cnt.v_intrans_coll;
-			++cnt.v_intrans_wait;
+			++mycpu->gd_cnt.v_intrans_coll;
+			++mycpu->gd_cnt.v_intrans_wait;
 			vm_map_transition_wait(map);
 			goto again;
 		}

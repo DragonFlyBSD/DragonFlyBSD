@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.3 2003/06/23 17:55:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.4 2003/07/03 17:24:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -105,14 +105,14 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 	/*
 	 * The correct thing here would be:
 	 *
-	memfree = cnt.v_free_count * PAGE_SIZE;
+	memfree = vmstats.v_free_count * PAGE_SIZE;
 	memused = memtotal - memfree;
 	 *
 	 * but it might mislead linux binaries into thinking there
 	 * is very little memory left, so we cheat and tell them that
 	 * all memory that isn't wired down is free.
 	 */
-	memused = cnt.v_wire_count * PAGE_SIZE;
+	memused = vmstats.v_wire_count * PAGE_SIZE;
 	memfree = memtotal - memused;
 	if (swapblist == NULL) {
 		swaptotal = 0;
@@ -137,7 +137,7 @@ linprocfs_domeminfo(curp, p, pfs, uio)
 	 * like unstaticizing it just for linprocfs's sake.
 	 */
 	buffers = 0;
-	cached = cnt.v_cache_count * PAGE_SIZE;
+	cached = vmstats.v_cache_count * PAGE_SIZE;
 
 	ps = psbuf;
 	ps += sprintf(ps,
@@ -257,6 +257,19 @@ linprocfs_docpuinfo(curp, p, pfs, uio)
 	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
 }
 
+static unsigned int
+cpucnt(int offset)
+{
+    int i;
+    int count = 0;
+
+    for (i = 0; i < ncpus; ++i) {
+	struct globaldata *gd = globaldata_find(i);
+	count += *(unsigned int *)((char *)&gd->gd_cnt + offset);
+    }
+    return(count);
+}
+
 int
 linprocfs_dostat(curp, p, pfs, uio)
 	struct proc *curp;
@@ -281,12 +294,12 @@ linprocfs_dostat(curp, p, pfs, uio)
 		      T2J(cp_time[CP_NICE]),
 		      T2J(cp_time[CP_SYS] /*+ cp_time[CP_INTR]*/),
 		      T2J(cp_time[CP_IDLE]),
-		      cnt.v_vnodepgsin,
-		      cnt.v_vnodepgsout,
-		      cnt.v_swappgsin,
-		      cnt.v_swappgsout,
-		      cnt.v_intr,
-		      cnt.v_swtch,
+		      cpucnt(offsetof(struct vmmeter, v_vnodepgsin)),
+		      cpucnt(offsetof(struct vmmeter, v_vnodepgsout)),
+		      cpucnt(offsetof(struct vmmeter, v_swappgsin)),
+		      cpucnt(offsetof(struct vmmeter, v_swappgsout)),
+		      cpucnt(offsetof(struct vmmeter, v_intr)),
+		      cpucnt(offsetof(struct vmmeter, v_swtch)),
 		      boottime.tv_sec);
 	xlen = ps - psbuf;
 	xlen -= uio->uio_offset;

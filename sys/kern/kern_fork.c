@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.9 2003/06/30 19:50:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.10 2003/07/03 17:24:02 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -507,17 +507,17 @@ again:
 	vm_fork(p1, p2, flags);
 
 	if (flags == (RFFDG | RFPROC)) {
-		cnt.v_forks++;
-		cnt.v_forkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_forks++;
+		mycpu->gd_cnt.v_forkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
 	} else if (flags == (RFFDG | RFPROC | RFPPWAIT | RFMEM)) {
-		cnt.v_vforks++;
-		cnt.v_vforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_vforks++;
+		mycpu->gd_cnt.v_vforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
 	} else if (p1 == &proc0) {
-		cnt.v_kthreads++;
-		cnt.v_kthreadpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_kthreads++;
+		mycpu->gd_cnt.v_kthreadpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
 	} else {
-		cnt.v_rforks++;
-		cnt.v_rforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
+		mycpu->gd_cnt.v_rforks++;
+		mycpu->gd_cnt.v_rforkpages += p2->p_vmspace->vm_dsize + p2->p_vmspace->vm_ssize;
 	}
 
 	/*

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.5 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -650,8 +650,8 @@ vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
 				vnode_pager_freepage(m[i]);
 			}
 		}
-		cnt.v_vnodein++;
-		cnt.v_vnodepgsin++;
+		mycpu->gd_cnt.v_vnodein++;
+		mycpu->gd_cnt.v_vnodepgsin++;
 		return vnode_pager_input_old(object, m[reqpage]);
 
 		/*
@@ -666,8 +666,8 @@ vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
 				vnode_pager_freepage(m[i]);
 			}
 		}
-		cnt.v_vnodein++;
-		cnt.v_vnodepgsin++;
+		mycpu->gd_cnt.v_vnodein++;
+		mycpu->gd_cnt.v_vnodepgsin++;
 		return vnode_pager_input_smlfs(object, m[reqpage]);
 	}
 
@@ -782,8 +782,8 @@ vnode_pager_generic_getpages(vp, m, bytecount, reqpage)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
-	cnt.v_vnodein++;
-	cnt.v_vnodepgsin += count;
+	mycpu->gd_cnt.v_vnodein++;
+	mycpu->gd_cnt.v_vnodepgsin += count;
 
 	/* do the input */
 	VOP_STRATEGY(bp->b_vp, bp);
@@ -903,7 +903,7 @@ vnode_pager_putpages(object, m, count, sync, rtvals)
 	 * daemon up.  This should be probably be addressed XXX.
 	 */
 
-	if ((cnt.v_free_count + cnt.v_cache_count) < cnt.v_pageout_free_min)
+	if ((vmstats.v_free_count + vmstats.v_cache_count) < vmstats.v_pageout_free_min)
 		sync |= OBJPC_SYNC;
 
 	/*
@@ -1023,8 +1023,8 @@ vnode_pager_generic_putpages(vp, m, bytecount, flags, rtvals)
 	auio.uio_resid = maxsize;
 	auio.uio_td = NULL;
 	error = VOP_WRITE(vp, &auio, ioflags, curproc->p_ucred);
-	cnt.v_vnodeout++;
-	cnt.v_vnodepgsout += ncount;
+	mycpu->gd_cnt.v_vnodeout++;
+	mycpu->gd_cnt.v_vnodepgsout += ncount;
 
 	if (error) {
 		printf("vnode_pager_putpages: I/O error %d\n", error);

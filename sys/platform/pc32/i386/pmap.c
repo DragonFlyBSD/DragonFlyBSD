@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.13 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.14 2003/07/03 17:24:01 dillon Exp $
  */
 
 /*
@@ -953,7 +953,7 @@ _pmap_unwire_pte_hold(pmap_t pmap, vm_page_t m) {
 			vm_page_flash(m);
 			vm_page_busy(m);
 			vm_page_free_zero(m);
-			--cnt.v_wire_count;
+			--vmstats.v_wire_count;
 		}
 		return 1;
 	}
@@ -1043,7 +1043,7 @@ pmap_pinit(pmap)
 			VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
 	ptdpg->wire_count = 1;
-	++cnt.v_wire_count;
+	++vmstats.v_wire_count;
 
 
 	vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY); /* not usually mapped*/
@@ -1120,7 +1120,7 @@ pmap_release_free_page(pmap, p)
 		pmap->pm_ptphint = NULL;
 
 	p->wire_count--;
-	cnt.v_wire_count--;
+	vmstats.v_wire_count--;
 	vm_page_free_zero(p);
 	return 1;
 }
@@ -1147,7 +1147,7 @@ _pmap_allocpte(pmap, ptepindex)
 		("_pmap_allocpte: %p->queue != PQ_NONE", m));
 
 	if (m->wire_count == 0)
-		cnt.v_wire_count++;
+		vmstats.v_wire_count++;
 	m->wire_count++;
 
 	/*
@@ -2305,7 +2305,7 @@ retry:
 			 * free pages allocating pv entries.
 			 */
 			if ((limit & MAP_PREFAULT_MADVISE) &&
-			    cnt.v_free_count < cnt.v_free_reserved) {
+			    vmstats.v_free_count < vmstats.v_free_reserved) {
 				break;
 			}
 			if (((p->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL) &&
@@ -2331,7 +2331,7 @@ retry:
 			 * free pages allocating pv entries.
 			 */
 			if ((limit & MAP_PREFAULT_MADVISE) &&
-			    cnt.v_free_count < cnt.v_free_reserved) {
+			    vmstats.v_free_count < vmstats.v_free_reserved) {
 				break;
 			}
 			p = vm_page_lookup(object, tmpidx + pindex);
@@ -2533,7 +2533,7 @@ pmap_copy(dst_pmap, src_pmap, dst_addr, len, src_addr)
 		 * way below the low water mark of free pages or way
 		 * above high water mark of used pv entries.
 		 */
-		if (cnt.v_free_count < cnt.v_free_reserved ||
+		if (vmstats.v_free_count < vmstats.v_free_reserved ||
 		    pv_entry_count > pv_entry_high_water)
 			break;
 		

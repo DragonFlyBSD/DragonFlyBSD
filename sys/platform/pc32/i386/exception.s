@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.9 2003/07/01 20:30:40 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.10 2003/07/03 17:24:01 dillon Exp $
  */
 
 #include "npx.h"
@@ -163,14 +163,14 @@ IDTVEC(fpu)
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
-	movl	$KPSEL,%eax
+	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 
 	movl	PCPU(curthread),%ebx		/* save original cpl */
 	movl	TD_CPL(%ebx), %ebx
 	pushl	%ebx
-	incl	cnt+V_TRAP
+	incl	PCPU(cnt)+V_TRAP
 
 	call	npx_intr		/* note: call might mess w/ argument */
 
@@ -210,12 +210,12 @@ alltraps_with_regs_pushed:
 	mov	$KDSEL,%ax
 	mov	%ax,%ds
 	mov	%ax,%es
-	movl	$KPSEL,%eax
+	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 calltrap:
 	FAKE_MCOUNT(btrap)		/* init "from" _btrap -> calltrap */
-	MPLOCKED incl cnt+V_TRAP
+	incl PCPU(cnt)+V_TRAP		/* YYY per-cpu */
 	MP_LOCK
 	movl	PCPU(curthread),%eax	/* keep orig cpl here during call */
 	movl	TD_CPL(%eax),%ebx
@@ -256,13 +256,13 @@ IDTVEC(syscall)
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
-	movl	$KPSEL,%eax
+	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	movl	TF_ERR(%esp),%eax	/* copy saved eflags to final spot */
 	movl	%eax,TF_EFLAGS(%esp)
 	movl	$7,TF_ERR(%esp) 	/* sizeof "lcall 7,0" */
 	FAKE_MCOUNT(13*4(%esp))
-	MPLOCKED incl cnt+V_SYSCALL
+	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	call	syscall2
 	MEXITCOUNT
 	cli				/* atomic astpending access */
@@ -295,11 +295,11 @@ IDTVEC(int0x80_syscall)
 	mov	$KDSEL,%ax		/* switch to kernel segments */
 	mov	%ax,%ds
 	mov	%ax,%es
-	movl	$KPSEL,%eax
+	mov	$KPSEL,%ax
 	mov	%ax,%fs
 	movl	$2,TF_ERR(%esp)		/* sizeof "int 0x80" */
 	FAKE_MCOUNT(13*4(%esp))
-	MPLOCKED incl cnt+V_SYSCALL
+	incl	PCPU(cnt)+V_SYSCALL	/* YYY per-cpu */
 	call	syscall2
 	MEXITCOUNT
 	cli				/* atomic astpending access */

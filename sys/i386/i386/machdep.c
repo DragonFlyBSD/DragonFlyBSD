@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.19 2003/06/30 23:54:00 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.20 2003/07/03 17:24:01 dillon Exp $
  */
 
 #include "apm.h"
@@ -175,7 +175,7 @@ static int
 sysctl_hw_usermem(SYSCTL_HANDLER_ARGS)
 {
 	int error = sysctl_handle_int(oidp, 0,
-		ctob(physmem - cnt.v_wire_count), req);
+		ctob(physmem - vmstats.v_wire_count), req);
 	return (error);
 }
 
@@ -435,8 +435,8 @@ again:
 	cninit();		/* the preferred console may have changed */
 #endif
 
-	printf("avail memory = %u (%uK bytes)\n", ptoa(cnt.v_free_count),
-	    ptoa(cnt.v_free_count) / 1024);
+	printf("avail memory = %u (%uK bytes)\n", ptoa(vmstats.v_free_count),
+	    ptoa(vmstats.v_free_count) / 1024);
 
 	/*
 	 * Set up buffers, so they can be used to read disk labels.
@@ -2064,6 +2064,13 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;
+}
+
+struct globaldata *
+globaldata_find(int cpu)
+{
+	KKASSERT(cpu >= 0 && cpu < ncpus);
+	return(&CPU_prvspace[cpu].mdglobaldata.mi);
 }
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)

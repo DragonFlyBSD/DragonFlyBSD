@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.3 2003/06/25 03:56:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.4 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <vm/vm_pager.h>
 #include <vm/vnode_pager.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_page2.h>
 
 static int vm_fault_additional_pages __P((vm_page_t, int,
 					  int, vm_page_t *, int *));
@@ -194,7 +195,7 @@ vm_fault(vm_map_t map, vm_offset_t vaddr, vm_prot_t fault_type, int fault_flags)
 	int faultcount;
 	struct faultstate fs;
 
-	cnt.v_vm_faults++;	/* needs lock XXX */
+	mycpu->gd_cnt.v_vm_faults++;
 	hardfault = 0;
 
 RetryFault:;
@@ -312,7 +313,7 @@ RetryFault:;
 			if ((fs.m->flags & PG_BUSY) || fs.m->busy) {
 				unlock_things(&fs);
 				(void)vm_page_sleep_busy(fs.m, TRUE, "vmpfw");
-				cnt.v_intrans++;
+				mycpu->gd_cnt.v_intrans++;
 				vm_object_deallocate(fs.first_object);
 				goto RetryFault;
 			}
@@ -576,9 +577,9 @@ readrest:
 			if ((fs.m->flags & PG_ZERO) == 0) {
 				vm_page_zero_fill(fs.m);
 			} else {
-				cnt.v_ozfod++;
+				mycpu->gd_cnt.v_ozfod++;
 			}
-			cnt.v_zfod++;
+			mycpu->gd_cnt.v_zfod++;
 			fs.m->valid = VM_PAGE_BITS_ALL;
 			break;	/* break to PAGE HAS BEEN FOUND */
 		} else {
@@ -668,7 +669,7 @@ readrest:
 				fs.first_m = fs.m;
 				vm_page_busy(fs.first_m);
 				fs.m = NULL;
-				cnt.v_cow_optim++;
+				mycpu->gd_cnt.v_cow_optim++;
 			} else {
 				/*
 				 * Oh, well, lets copy it.
@@ -694,7 +695,7 @@ readrest:
 			 * Only use the new page below...
 			 */
 
-			cnt.v_cow_faults++;
+			mycpu->gd_cnt.v_cow_faults++;
 			fs.m = fs.first_m;
 			fs.object = fs.first_object;
 			fs.pindex = fs.first_pindex;
@@ -1166,7 +1167,7 @@ vm_fault_additional_pages(m, rbehind, rahead, marray, reqpage)
 	 * try to do any readahead that we might have free pages for.
 	 */
 	if ((rahead + rbehind) >
-		((cnt.v_free_count + cnt.v_cache_count) - cnt.v_free_reserved)) {
+		((vmstats.v_free_count + vmstats.v_cache_count) - vmstats.v_free_reserved)) {
 		pagedaemon_wakeup();
 		marray[0] = m;
 		*reqpage = 0;

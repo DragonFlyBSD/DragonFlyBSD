@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.2 2003/06/17 04:29:00 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.3 2003/07/03 17:24:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -387,7 +387,7 @@ _zget(vm_zone_t z)
 			bzero((caddr_t) zkva, PAGE_SIZE);
 			z->zpagecount++;
 			zone_kmem_pages++;
-			cnt.v_wire_count++;
+			vmstats.v_wire_count++;
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
 	} else {

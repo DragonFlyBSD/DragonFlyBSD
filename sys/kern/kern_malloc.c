@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.4 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.5 2003/07/03 17:24:02 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -505,7 +505,7 @@ kmeminit(dummy)
 	 * so make sure that there is enough space.
 	 */
 	vm_kmem_size = VM_KMEM_SIZE;
-	mem_size = cnt.v_page_count * PAGE_SIZE;
+	mem_size = vmstats.v_page_count * PAGE_SIZE;
 
 #if defined(VM_KMEM_SIZE_SCALE)
 	if ((mem_size / VM_KMEM_SIZE_SCALE) > vm_kmem_size)
@@ -526,8 +526,8 @@ kmeminit(dummy)
 	 * to something sane. Be careful to not overflow the 32bit
 	 * ints while doing the check.
 	 */
-	if ((vm_kmem_size / 2) > (cnt.v_page_count * PAGE_SIZE))
-		vm_kmem_size = 2 * cnt.v_page_count * PAGE_SIZE;
+	if ((vm_kmem_size / 2) > (vmstats.v_page_count * PAGE_SIZE))
+		vm_kmem_size = 2 * vmstats.v_page_count * PAGE_SIZE;
 
 	npg = (nmbufs * MSIZE + nmbclusters * MCLBYTES + vm_kmem_size)
 		/ PAGE_SIZE;
@@ -558,7 +558,7 @@ malloc_init(data)
 	if (type->ks_limit != 0)
 		return;
 
-	if (cnt.v_page_count == 0)
+	if (vmstats.v_page_count == 0)
 		panic("malloc_init not allowed before vm init");
 
 	/*
@@ -586,7 +586,7 @@ malloc_uninit(data)
 	if (type->ks_magic != M_MAGIC)
 		panic("malloc type lacks magic");
 
-	if (cnt.v_page_count == 0)
+	if (vmstats.v_page_count == 0)
 		panic("malloc_uninit not allowed before vm init");
 
 	if (type->ks_limit == 0)

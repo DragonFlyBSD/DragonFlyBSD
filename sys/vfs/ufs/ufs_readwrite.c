@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.6 2003/06/26 19:24:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.7 2003/07/03 17:24:04 dillon Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -46,6 +46,8 @@
 #include <vm/vnode_pager.h>
 #include <sys/event.h>
 #include <sys/vmmeter.h>
+#include <vm/vm_page2.h>
+
 #include "opt_directio.h"
 
 #define VN_KNOTE(vp, b) \

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.8 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.9 2003/07/03 17:24:02 dillon Exp $
  */
 
 /*
@@ -179,7 +179,7 @@ void
 vntblinit()
 {
 
-	desiredvnodes = maxproc + cnt.v_page_count / 4;
+	desiredvnodes = maxproc + vmstats.v_page_count / 4;
 	minvnodes = desiredvnodes / 4;
 	simple_lock_init(&mntvnode_slock);
 	simple_lock_init(&mntid_slock);
@@ -474,7 +474,7 @@ vlrureclaim(struct mount *mp)
 	usevnodes = desiredvnodes;
 	if (usevnodes <= 0)
 		usevnodes = 1;
-	trigger = cnt.v_page_count * 2 / usevnodes;
+	trigger = vmstats.v_page_count * 2 / usevnodes;
 
 	done = 0;
 	simple_lock(&mntvnode_slock);

@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.15 2003/06/30 19:50:30 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.16 2003/07/03 17:24:01 dillon Exp $
  */
 
 #include "npx.h"
@@ -294,7 +294,7 @@ cpu_proc_exit(void)
                 reset_dbregs();
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
-	cnt.v_swtch++;
+	mycpu->gd_cnt.v_swtch++;
 
 	crit_enter();
 	lwkt_deschedule_self();
@@ -560,9 +560,9 @@ vm_page_zero_idle()
 	 * pages because doing so may flush our L1 and L2 caches too much.
 	 */
 
-	if (zero_state && vm_page_zero_count >= ZIDLE_LO(cnt.v_free_count))
+	if (zero_state && vm_page_zero_count >= ZIDLE_LO(vmstats.v_free_count))
 		return(0);
-	if (vm_page_zero_count >= ZIDLE_HI(cnt.v_free_count))
+	if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
 		return(0);
 
 #ifdef SMP
@@ -586,7 +586,7 @@ vm_page_zero_idle()
 			    pageq);
 			++vm_page_zero_count;
 			++cnt_prezero;
-			if (vm_page_zero_count >= ZIDLE_HI(cnt.v_free_count))
+			if (vm_page_zero_count >= ZIDLE_HI(vmstats.v_free_count))
 				zero_state = 1;
 		}
 		free_rover = (free_rover + PQ_PRIME2) & PQ_L2_MASK;

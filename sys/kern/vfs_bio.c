@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.8 2003/07/03 17:24:02 dillon Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 #include <vm/vm_extern.h>
 #include <vm/vm_map.h>
 #include <sys/buf2.h>
+#include <vm/vm_page2.h>
 
 static MALLOC_DEFINE(M_BIOBUF, "BIO buffer", "BIO buffer");
 
@@ -426,7 +427,7 @@ bufinit(void)
 	bogus_page = vm_page_alloc(kernel_object,
 			((bogus_offset - VM_MIN_KERNEL_ADDRESS) >> PAGE_SHIFT),
 			VM_ALLOC_NORMAL);
-	cnt.v_wire_count++;
+	vmstats.v_wire_count++;
 
 }
 
@@ -2517,8 +2518,8 @@ allocbuf(struct buf *bp, int size)
 				 */
 				if ((curthread != pagethread) &&
 				    ((m->queue - m->pc) == PQ_CACHE) &&
-				    ((cnt.v_free_count + cnt.v_cache_count) <
-					(cnt.v_free_min + cnt.v_cache_min))) {
+				    ((vmstats.v_free_count + vmstats.v_cache_count) <
+					(vmstats.v_free_min + vmstats.v_cache_min))) {
 					pagedaemon_wakeup();
 				}
 				vm_page_flag_clear(m, PG_ZERO);

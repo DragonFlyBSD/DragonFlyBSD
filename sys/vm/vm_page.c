@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.5 2003/06/25 03:56:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.6 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -87,6 +87,7 @@
 #include <vm/vm_pageout.h>
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_page2.h>
 
 static void	vm_page_queue_init (void);
 static vm_page_t vm_page_select_cache (vm_object_t, vm_pindex_t);
@@ -108,14 +109,14 @@ vm_page_queue_init(void) {
 	int i;
 
 	for(i=0;i<PQ_L2_SIZE;i++) {
-		vm_page_queues[PQ_FREE+i].cnt = &cnt.v_free_count;
+		vm_page_queues[PQ_FREE+i].cnt = &vmstats.v_free_count;
 	}
-	vm_page_queues[PQ_INACTIVE].cnt = &cnt.v_inactive_count;
+	vm_page_queues[PQ_INACTIVE].cnt = &vmstats.v_inactive_count;
 
-	vm_page_queues[PQ_ACTIVE].cnt = &cnt.v_active_count;
-	vm_page_queues[PQ_HOLD].cnt = &cnt.v_active_count;
+	vm_page_queues[PQ_ACTIVE].cnt = &vmstats.v_active_count;
+	vm_page_queues[PQ_HOLD].cnt = &vmstats.v_active_count;
 	for(i=0;i<PQ_L2_SIZE;i++) {
-		vm_page_queues[PQ_CACHE+i].cnt = &cnt.v_cache_count;
+		vm_page_queues[PQ_CACHE+i].cnt = &vmstats.v_cache_count;
 	}
 	for(i=0;i<PQ_COUNT;i++) {
 		TAILQ_INIT(&vm_page_queues[i].pl);
@@ -140,9 +141,9 @@ static void vm_page_free_wakeup (void);
 void
 vm_set_page_size(void)
 {
-	if (cnt.v_page_size == 0)
-		cnt.v_page_size = PAGE_SIZE;
-	if (((cnt.v_page_size - 1) & cnt.v_page_size) != 0)
+	if (vmstats.v_page_size == 0)
+		vmstats.v_page_size = PAGE_SIZE;
+	if (((vmstats.v_page_size - 1) & vmstats.v_page_size) != 0)
 		panic("vm_set_page_size: page size not a power of two");
 }
 
@@ -157,8 +158,8 @@ vm_add_new_page(vm_offset_t pa)
 {
 	vm_page_t m;
 
-	++cnt.v_page_count;
-	++cnt.v_free_count;
+	++vmstats.v_page_count;
+	++vmstats.v_free_count;
 	m = PHYS_TO_VM_PAGE(pa);
 	m->phys_addr = pa;
 	m->flags = 0;
@@ -308,8 +309,8 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	 * last rather than first.  On large-memory machines, this avoids
 	 * the exhaustion of low physical memory before isa_dmainit has run.
 	 */
-	cnt.v_page_count = 0;
-	cnt.v_free_count = 0;
+	vmstats.v_page_count = 0;
+	vmstats.v_free_count = 0;
 	for (i = 0; phys_avail[i + 1] && npages > 0; i += 2) {
 		pa = phys_avail[i];
 		if (i == biggestone)
@@ -752,7 +753,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	s = splvm();
 
 loop:
-	if (cnt.v_free_count > cnt.v_free_reserved) {
+	if (vmstats.v_free_count > vmstats.v_free_reserved) {
 		/*
 		 * Allocate from the free queue if there are plenty of pages
 		 * in it.
@@ -763,9 +764,9 @@ loop:
 			m = vm_page_select_free(object, pindex, FALSE);
 	} else if (
 	    (page_req == VM_ALLOC_SYSTEM && 
-	     cnt.v_cache_count == 0 && 
-	     cnt.v_free_count > cnt.v_interrupt_free_min) ||
-	    (page_req == VM_ALLOC_INTERRUPT && cnt.v_free_count > 0)
+	     vmstats.v_cache_count == 0 && 
+	     vmstats.v_free_count > vmstats.v_interrupt_free_min) ||
+	    (page_req == VM_ALLOC_INTERRUPT && vmstats.v_free_count > 0)
 	) {
 		/*
 		 * Interrupt or system, dig deeper into the free list.
@@ -775,14 +776,14 @@ loop:
 		/*
 		 * Allocatable from cache (non-interrupt only).  On success,
 		 * we must free the page and try again, thus ensuring that
-		 * cnt.v_*_free_min counters are replenished.
+		 * vmstats.v_*_free_min counters are replenished.
 		 */
 		m = vm_page_select_cache(object, pindex);
 		if (m == NULL) {
 			splx(s);
 #if defined(DIAGNOSTIC)
-			if (cnt.v_cache_count > 0)
-				printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", cnt.v_cache_count);
+			if (vmstats.v_cache_count > 0)
+				printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
 #endif
 			vm_pageout_deficit++;
 			pagedaemon_wakeup();
@@ -877,7 +878,7 @@ vm_wait(void)
 			vm_pages_needed = 1;
 			wakeup(&vm_pages_needed);
 		}
-		tsleep(&cnt.v_free_count, PVM, "vmwait", 0);
+		tsleep(&vmstats.v_free_count, PVM, "vmwait", 0);
 	}
 	splx(s);
 }
@@ -903,7 +904,7 @@ vm_waitpfault(void)
 		vm_pages_needed = 1;
 		wakeup(&vm_pages_needed);
 	}
-	tsleep(&cnt.v_free_count, PUSER, "pfault", 0);
+	tsleep(&vmstats.v_free_count, PUSER, "pfault", 0);
 	splx(s);
 }
 
@@ -925,7 +926,7 @@ vm_page_activate(vm_page_t m)
 	s = splvm();
 	if (m->queue != PQ_ACTIVE) {
 		if ((m->queue - m->pc) == PQ_CACHE)
-			cnt.v_reactivated++;
+			mycpu->gd_cnt.v_reactivated++;
 
 		vm_page_unqueue(m);
 
@@ -935,7 +936,7 @@ vm_page_activate(vm_page_t m)
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 			if (m->act_count < ACT_INIT)
 				m->act_count = ACT_INIT;
-			cnt.v_active_count++;
+			vmstats.v_active_count++;
 		}
 	} else {
 		if (m->act_count < ACT_INIT)
@@ -963,7 +964,7 @@ vm_page_free_wakeup(void)
 	 * some free.
 	 */
 	if (vm_pageout_pages_needed &&
-	    cnt.v_cache_count + cnt.v_free_count >= cnt.v_pageout_free_min) {
+	    vmstats.v_cache_count + vmstats.v_free_count >= vmstats.v_pageout_free_min) {
 		wakeup(&vm_pageout_pages_needed);
 		vm_pageout_pages_needed = 0;
 	}
@@ -974,7 +975,7 @@ vm_page_free_wakeup(void)
 	 */
 	if (vm_pages_needed && !vm_page_count_min()) {
 		vm_pages_needed = 0;
-		wakeup(&cnt.v_free_count);
+		wakeup(&vmstats.v_free_count);
 	}
 }
 
@@ -997,7 +998,7 @@ vm_page_free_toq(vm_page_t m)
 
 	s = splvm();
 
-	cnt.v_tfree++;
+	mycpu->gd_cnt.v_tfree++;
 
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
 		printf(
@@ -1151,7 +1152,7 @@ vm_page_wire(vm_page_t m)
 	if (m->wire_count == 0) {
 		if ((m->flags & PG_UNMANAGED) == 0)
 			vm_page_unqueue(m);
-		cnt.v_wire_count++;
+		vmstats.v_wire_count++;
 	}
 	m->wire_count++;
 	KASSERT(m->wire_count != 0,
@@ -1199,20 +1200,20 @@ vm_page_unwire(vm_page_t m, int activate)
 	if (m->wire_count > 0) {
 		m->wire_count--;
 		if (m->wire_count == 0) {
-			cnt.v_wire_count--;
+			vmstats.v_wire_count--;
 			if (m->flags & PG_UNMANAGED) {
 				;
 			} else if (activate) {
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_ACTIVE].pl, m, pageq);
 				m->queue = PQ_ACTIVE;
 				vm_page_queues[PQ_ACTIVE].lcnt++;
-				cnt.v_active_count++;
+				vmstats.v_active_count++;
 			} else {
 				vm_page_flag_clear(m, PG_WINATCFLS);
 				TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 				m->queue = PQ_INACTIVE;
 				vm_page_queues[PQ_INACTIVE].lcnt++;
-				cnt.v_inactive_count++;
+				vmstats.v_inactive_count++;
 			}
 		}
 	} else {
@@ -1246,7 +1247,7 @@ _vm_page_deactivate(vm_page_t m, int athead)
 	s = splvm();
 	if (m->wire_count == 0 && (m->flags & PG_UNMANAGED) == 0) {
 		if ((m->queue - m->pc) == PQ_CACHE)
-			cnt.v_reactivated++;
+			mycpu->gd_cnt.v_reactivated++;
 		vm_page_flag_clear(m, PG_WINATCFLS);
 		vm_page_unqueue(m);
 		if (athead)
@@ -1255,7 +1256,7 @@ _vm_page_deactivate(vm_page_t m, int athead)
 			TAILQ_INSERT_TAIL(&vm_page_queues[PQ_INACTIVE].pl, m, pageq);
 		m->queue = PQ_INACTIVE;
 		vm_page_queues[PQ_INACTIVE].lcnt++;
-		cnt.v_inactive_count++;
+		vmstats.v_inactive_count++;
 	}
 	splx(s);
 }
@@ -1343,7 +1344,7 @@ vm_page_cache(vm_page_t m)
 	m->queue = PQ_CACHE + m->pc;
 	vm_page_queues[m->queue].lcnt++;
 	TAILQ_INSERT_TAIL(&vm_page_queues[m->queue].pl, m, pageq);
-	cnt.v_cache_count++;
+	vmstats.v_cache_count++;
 	vm_page_free_wakeup();
 	splx(s);
 }
@@ -1729,7 +1730,7 @@ again:
 		 * Find first page in array that is free, within range, aligned, and
 		 * such that the boundary won't be crossed.
 		 */
-		for (i = start; i < cnt.v_page_count; i++) {
+		for (i = start; i < vmstats.v_page_count; i++) {
 			int pqtype;
 			phys = VM_PAGE_TO_PHYS(&pga[i]);
 			pqtype = pga[i].queue - pga[i].pc;
@@ -1743,7 +1744,7 @@ again:
 		/*
 		 * If the above failed or we will exceed the upper bound, fail.
 		 */
-		if ((i == cnt.v_page_count) ||
+		if ((i == vmstats.v_page_count) ||
 			((VM_PAGE_TO_PHYS(&pga[i]) + size) > high)) {
 			vm_page_t m, next;
 
@@ -1917,16 +1918,16 @@ vm_page_alloc_contig(
 
 DB_SHOW_COMMAND(page, vm_page_print_page_info)
 {
-	db_printf("cnt.v_free_count: %d\n", cnt.v_free_count);
-	db_printf("cnt.v_cache_count: %d\n", cnt.v_cache_count);
-	db_printf("cnt.v_inactive_count: %d\n", cnt.v_inactive_count);
-	db_printf("cnt.v_active_count: %d\n", cnt.v_active_count);
-	db_printf("cnt.v_wire_count: %d\n", cnt.v_wire_count);
-	db_printf("cnt.v_free_reserved: %d\n", cnt.v_free_reserved);
-	db_printf("cnt.v_free_min: %d\n", cnt.v_free_min);
-	db_printf("cnt.v_free_target: %d\n", cnt.v_free_target);
-	db_printf("cnt.v_cache_min: %d\n", cnt.v_cache_min);
-	db_printf("cnt.v_inactive_target: %d\n", cnt.v_inactive_target);
+	db_printf("vmstats.v_free_count: %d\n", vmstats.v_free_count);
+	db_printf("vmstats.v_cache_count: %d\n", vmstats.v_cache_count);
+	db_printf("vmstats.v_inactive_count: %d\n", vmstats.v_inactive_count);
+	db_printf("vmstats.v_active_count: %d\n", vmstats.v_active_count);
+	db_printf("vmstats.v_wire_count: %d\n", vmstats.v_wire_count);
+	db_printf("vmstats.v_free_reserved: %d\n", vmstats.v_free_reserved);
+	db_printf("vmstats.v_free_min: %d\n", vmstats.v_free_min);
+	db_printf("vmstats.v_free_target: %d\n", vmstats.v_free_target);
+	db_printf("vmstats.v_cache_min: %d\n", vmstats.v_cache_min);
+	db_printf("vmstats.v_inactive_target: %d\n", vmstats.v_inactive_target);
 }
 
 DB_SHOW_COMMAND(pageq, vm_page_print_pageq_info)

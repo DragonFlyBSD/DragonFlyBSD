@@ -66,7 +66,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pageout.c,v 1.151.2.15 2002/12/29 18:21:04 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pageout.c,v 1.4 2003/06/25 03:56:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pageout.c,v 1.5 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -95,6 +95,7 @@
 #include <vm/vm_pager.h>
 #include <vm/swap_pager.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_page2.h>
 
 /*
  * System initialization
@@ -478,7 +479,7 @@ vm_pageout_object_deactivate_pages(map, object, desired, map_remove_only)
 			if (pmap_resident_count(vm_map_pmap(map)) <= desired)
 				return;
 			next = TAILQ_NEXT(p, listq);
-			cnt.v_pdpages++;
+			mycpu->gd_cnt.v_pdpages++;
 			if (p->wire_count != 0 ||
 			    p->hold_count != 0 ||
 			    p->busy != 0 ||
@@ -685,12 +686,12 @@ vm_pageout_scan(int pass)
 
 rescan0:
 	addl_page_shortage = addl_page_shortage_init;
-	maxscan = cnt.v_inactive_count;
+	maxscan = vmstats.v_inactive_count;
 	for (m = TAILQ_FIRST(&vm_page_queues[PQ_INACTIVE].pl);
 	     m != NULL && maxscan-- > 0 && page_shortage > 0;
 	     m = next) {
 
-		cnt.v_pdpages++;
+		mycpu->gd_cnt.v_pdpages++;
 
 		if (m->queue != PQ_INACTIVE) {
 			goto rescan0;
@@ -779,7 +780,7 @@ rescan0:
 		 */
 		if (m->valid == 0) {
 			vm_pageout_page_free(m);
-			cnt.v_dfree++;
+			mycpu->gd_cnt.v_dfree++;
 			--page_shortage;
 
 		/*
@@ -952,7 +953,7 @@ rescan0:
 	 * active queue to the inactive queue.
 	 */
 	page_shortage = vm_paging_target() +
-	    cnt.v_inactive_target - cnt.v_inactive_count;
+	    vmstats.v_inactive_target - vmstats.v_inactive_count;
 	page_shortage += addl_page_shortage;
 
 	/*
@@ -961,7 +962,7 @@ rescan0:
 	 * deactivation candidates.
 	 */
 
-	pcount = cnt.v_active_count;
+	pcount = vmstats.v_active_count;
 	m = TAILQ_FIRST(&vm_page_queues[PQ_ACTIVE].pl);
 
 	while ((m != NULL) && (pcount-- > 0) && (page_shortage > 0)) {
@@ -993,7 +994,7 @@ rescan0:
 		 * The count for pagedaemon pages is done after checking the
 		 * page for eligibility...
 		 */
-		cnt.v_pdpages++;
+		mycpu->gd_cnt.v_pdpages++;
 
 		/*
 		 * Check to see "how much" the page has been used.
@@ -1059,7 +1060,7 @@ rescan0:
 	 * does not effect other calculations.
 	 */
 
-	while (cnt.v_free_count < cnt.v_free_reserved) {
+	while (vmstats.v_free_count < vmstats.v_free_reserved) {
 		static int cache_rover = 0;
 		m = vm_page_list_find(PQ_CACHE, cache_rover, FALSE);
 		if (!m)
@@ -1076,7 +1077,7 @@ rescan0:
 		}
 		cache_rover = (cache_rover + PQ_PRIME2) & PQ_L2_MASK;
 		vm_pageout_page_free(m);
-		cnt.v_dfree++;
+		mycpu->gd_cnt.v_dfree++;
 	}
 	splx(s);
 
@@ -1155,7 +1156,7 @@ rescan0:
 			bigproc->p_estcpu = 0;
 			bigproc->p_nice = PRIO_MIN;
 			resetpriority(bigproc);
-			wakeup(&cnt.v_free_count);
+			wakeup(&vmstats.v_free_count);
 		}
 	}
 }
@@ -1177,18 +1178,18 @@ vm_pageout_page_stats()
 	int s0;
 
 	page_shortage = 
-	    (cnt.v_inactive_target + cnt.v_cache_max + cnt.v_free_min) -
-	    (cnt.v_free_count + cnt.v_inactive_count + cnt.v_cache_count);
+	    (vmstats.v_inactive_target + vmstats.v_cache_max + vmstats.v_free_min) -
+	    (vmstats.v_free_count + vmstats.v_inactive_count + vmstats.v_cache_count);
 
 	if (page_shortage <= 0)
 		return;
 
 	s0 = splvm();
 
-	pcount = cnt.v_active_count;
+	pcount = vmstats.v_active_count;
 	fullintervalcount += vm_pageout_stats_interval;
 	if (fullintervalcount < vm_pageout_full_stats_interval) {
-		tpcount = (vm_pageout_stats_max * cnt.v_active_count) / cnt.v_page_count;
+		tpcount = (vm_pageout_stats_max * vmstats.v_active_count) / vmstats.v_page_count;
 		if (pcount > tpcount)
 			pcount = tpcount;
 	} else {
@@ -1264,23 +1265,23 @@ static int
 vm_pageout_free_page_calc(count)
 vm_size_t count;
 {
-	if (count < cnt.v_page_count)
+	if (count < vmstats.v_page_count)
 		 return 0;
 	/*
 	 * free_reserved needs to include enough for the largest swap pager
 	 * structures plus enough for any pv_entry structs when paging.
 	 */
-	if (cnt.v_page_count > 1024)
-		cnt.v_free_min = 4 + (cnt.v_page_count - 1024) / 200;
+	if (vmstats.v_page_count > 1024)
+		vmstats.v_free_min = 4 + (vmstats.v_page_count - 1024) / 200;
 	else
-		cnt.v_free_min = 4;
-	cnt.v_pageout_free_min = (2*MAXBSIZE)/PAGE_SIZE +
-		cnt.v_interrupt_free_min;
-	cnt.v_free_reserved = vm_pageout_page_count +
-		cnt.v_pageout_free_min + (count / 768) + PQ_L2_SIZE;
-	cnt.v_free_severe = cnt.v_free_min / 2;
-	cnt.v_free_min += cnt.v_free_reserved;
-	cnt.v_free_severe += cnt.v_free_reserved;
+		vmstats.v_free_min = 4;
+	vmstats.v_pageout_free_min = (2*MAXBSIZE)/PAGE_SIZE +
+		vmstats.v_interrupt_free_min;
+	vmstats.v_free_reserved = vm_pageout_page_count +
+		vmstats.v_pageout_free_min + (count / 768) + PQ_L2_SIZE;
+	vmstats.v_free_severe = vmstats.v_free_min / 2;
+	vmstats.v_free_min += vmstats.v_free_reserved;
+	vmstats.v_free_severe += vmstats.v_free_reserved;
 	return 1;
 }
 
@@ -1297,11 +1298,11 @@ vm_pageout()
 	 * Initialize some paging parameters.
 	 */
 
-	cnt.v_interrupt_free_min = 2;
-	if (cnt.v_page_count < 2000)
+	vmstats.v_interrupt_free_min = 2;
+	if (vmstats.v_page_count < 2000)
 		vm_pageout_page_count = 8;
 
-	vm_pageout_free_page_calc(cnt.v_page_count);
+	vm_pageout_free_page_calc(vmstats.v_page_count);
 	/*
 	 * v_free_target and v_cache_min control pageout hysteresis.  Note
 	 * that these are more a measure of the VM cache queue hysteresis
@@ -1313,29 +1314,29 @@ vm_pageout()
 	 * be big enough to handle memory needs while the pageout daemon
 	 * is signalled and run to free more pages.
 	 */
-	if (cnt.v_free_count > 6144)
-		cnt.v_free_target = 4 * cnt.v_free_min + cnt.v_free_reserved;
+	if (vmstats.v_free_count > 6144)
+		vmstats.v_free_target = 4 * vmstats.v_free_min + vmstats.v_free_reserved;
 	else
-		cnt.v_free_target = 2 * cnt.v_free_min + cnt.v_free_reserved;
+		vmstats.v_free_target = 2 * vmstats.v_free_min + vmstats.v_free_reserved;
 
-	if (cnt.v_free_count > 2048) {
-		cnt.v_cache_min = cnt.v_free_target;
-		cnt.v_cache_max = 2 * cnt.v_cache_min;
-		cnt.v_inactive_target = (3 * cnt.v_free_target) / 2;
+	if (vmstats.v_free_count > 2048) {
+		vmstats.v_cache_min = vmstats.v_free_target;
+		vmstats.v_cache_max = 2 * vmstats.v_cache_min;
+		vmstats.v_inactive_target = (3 * vmstats.v_free_target) / 2;
 	} else {
-		cnt.v_cache_min = 0;
-		cnt.v_cache_max = 0;
-		cnt.v_inactive_target = cnt.v_free_count / 4;
+		vmstats.v_cache_min = 0;
+		vmstats.v_cache_max = 0;
+		vmstats.v_inactive_target = vmstats.v_free_count / 4;
 	}
-	if (cnt.v_inactive_target > cnt.v_free_count / 3)
-		cnt.v_inactive_target = cnt.v_free_count / 3;
+	if (vmstats.v_inactive_target > vmstats.v_free_count / 3)
+		vmstats.v_inactive_target = vmstats.v_free_count / 3;
 
 	/* XXX does not really belong here */
 	if (vm_page_max_wired == 0)
-		vm_page_max_wired = cnt.v_free_count / 3;
+		vm_page_max_wired = vmstats.v_free_count / 3;
 
 	if (vm_pageout_stats_max == 0)
-		vm_pageout_stats_max = cnt.v_free_target;
+		vm_pageout_stats_max = vmstats.v_free_target;
 
 	/*
 	 * Set interval in seconds for stats scan.
@@ -1370,7 +1371,7 @@ vm_pageout()
 		if (vm_pages_needed && !vm_page_count_min()) {
 			if (vm_paging_needed() <= 0)
 				vm_pages_needed = 0;
-			wakeup(&cnt.v_free_count);
+			wakeup(&vmstats.v_free_count);
 		}
 		if (vm_pages_needed) {
 			/*
@@ -1401,7 +1402,7 @@ vm_pageout()
 		}
 
 		if (vm_pages_needed)
-			cnt.v_pdwakeups++;
+			mycpu->gd_cnt.v_pdwakeups++;
 		splx(s);
 		vm_pageout_scan(pass);
 		vm_pageout_deficit = 0;

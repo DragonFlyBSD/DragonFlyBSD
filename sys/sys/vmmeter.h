@@ -32,7 +32,7 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/sys/vmmeter.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/vmmeter.h,v 1.3 2003/07/03 17:24:03 dillon Exp $
  */
 
 #ifndef _SYS_VMMETER_H_
@@ -75,6 +75,22 @@ struct vmmeter {
 	u_int v_pfree;		/* pages freed by exiting processes */
 	u_int v_tfree;		/* total pages freed */
 	/*
+	 * Fork/vfork/rfork activity.
+	 */
+	u_int v_forks;		/* number of fork() calls */
+	u_int v_vforks;		/* number of vfork() calls */
+	u_int v_rforks;		/* number of rfork() calls */
+	u_int v_kthreads;	/* number of fork() calls by kernel */
+	u_int v_forkpages;	/* number of VM pages affected by fork() */
+	u_int v_vforkpages;	/* number of VM pages affected by vfork() */
+	u_int v_rforkpages;	/* number of VM pages affected by rfork() */
+	u_int v_kthreadpages;	/* number of VM pages affected by fork() by kernel */
+	u_int v_intrans_coll;	/* intransit map collisions (total) */
+	u_int v_intrans_wait;	/* intransit map collisions which blocked */
+};
+
+struct vmstats {
+	/*
 	 * Distribution of page usages.
 	 */
 	u_int v_page_size;	/* page size in bytes */
@@ -93,106 +109,12 @@ struct vmmeter {
 	u_int v_pageout_free_min;   /* min number pages reserved for kernel */
 	u_int v_interrupt_free_min; /* reserved number of pages for int code */
 	u_int v_free_severe;	/* severe depletion of pages below this pt */
-	/*
-	 * Fork/vfork/rfork activity.
-	 */
-	u_int v_forks;		/* number of fork() calls */
-	u_int v_vforks;		/* number of vfork() calls */
-	u_int v_rforks;		/* number of rfork() calls */
-	u_int v_kthreads;	/* number of fork() calls by kernel */
-	u_int v_forkpages;	/* number of VM pages affected by fork() */
-	u_int v_vforkpages;	/* number of VM pages affected by vfork() */
-	u_int v_rforkpages;	/* number of VM pages affected by rfork() */
-	u_int v_kthreadpages;	/* number of VM pages affected by fork() by kernel */
-	u_int v_intrans_coll;	/* intransit map collisions (total) */
-	u_int v_intrans_wait;	/* intransit map collisions which blocked */
 };
+
 #ifdef _KERNEL
 
-extern struct vmmeter cnt;
-
-/*
- * Return TRUE if we are under our reserved low-free-pages threshold
- */
-
-static __inline 
-int
-vm_page_count_reserved(void)
-{
-    return (cnt.v_free_reserved > (cnt.v_free_count + cnt.v_cache_count));
-}
-
-/*
- * Return TRUE if we are under our severe low-free-pages threshold
- *
- * This routine is typically used at the user<->system interface to determine
- * whether we need to block in order to avoid a low memory deadlock.
- */
-
-static __inline 
-int
-vm_page_count_severe(void)
-{
-    return (cnt.v_free_severe > (cnt.v_free_count + cnt.v_cache_count));
-}
-
-/*
- * Return TRUE if we are under our minimum low-free-pages threshold.
- *
- * This routine is typically used within the system to determine whether
- * we can execute potentially very expensive code in terms of memory.  It
- * is also used by the pageout daemon to calculate when to sleep, when
- * to wake waiters up, and when (after making a pass) to become more
- * desparate.
- */
-
-static __inline 
-int
-vm_page_count_min(void)
-{
-    return (cnt.v_free_min > (cnt.v_free_count + cnt.v_cache_count));
-}
-
-/*
- * Return TRUE if we have not reached our free page target during
- * free page recovery operations.
- */
-
-static __inline 
-int
-vm_page_count_target(void)
-{
-    return (cnt.v_free_target > (cnt.v_free_count + cnt.v_cache_count));
-}
-
-/*
- * Return the number of pages we need to free-up or cache
- * A positive number indicates that we do not have enough free pages.
- */
-
-static __inline 
-int
-vm_paging_target(void)
-{
-    return (
-	(cnt.v_free_target + cnt.v_cache_min) - 
-	(cnt.v_free_count + cnt.v_cache_count)
-    );
-}
-
-/*
- * Return a positive number if the pagedaemon needs to be woken up.
- */
-
-static __inline 
-int
-vm_paging_needed(void)
-{
-    return (
-	(cnt.v_free_reserved + cnt.v_cache_min) >
-	(cnt.v_free_count + cnt.v_cache_count)
-    );
-}
+/* note: vmmeter 'cnt' structure is now per-cpu */
+extern struct vmstats vmstats;
 
 #endif
 
@@ -215,10 +137,10 @@ struct vmtotal
 	int32_t	t_free;		/* free memory pages */
 };
 
+#ifdef PGINPROF
 /*
  * Optional instrumentation.
  */
-#ifdef PGINPROF
 
 #define	NDMON	128
 #define	NSMON	128
@@ -251,6 +173,6 @@ int	rres;
 
 u_int rectime;		/* accumulator for reclaim times */
 u_int pgintime;		/* accumulator for page in times */
-#endif
 
+#endif	/* PGINPROF */
 #endif

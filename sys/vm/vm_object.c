@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.4 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.5 2003/07/03 17:24:04 dillon Exp $
  */
 
 /*
@@ -471,7 +471,7 @@ vm_object_terminate(object)
 		if (p->wire_count == 0) {
 			vm_page_busy(p);
 			vm_page_free(p);
-			cnt.v_pfree++;
+			mycpu->gd_cnt.v_pfree++;
 		} else {
 			vm_page_busy(p);
 			vm_page_remove(p);

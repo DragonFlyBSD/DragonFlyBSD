@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.5 2003/06/26 20:27:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.6 2003/07/03 17:24:03 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -58,6 +58,8 @@
 
 #include <ufs/ffs/fs.h>
 #include <ufs/ffs/ffs_extern.h>
+
+#include <vm/vm_page2.h>
 
 static int ffs_indirtrunc __P((struct inode *, ufs_daddr_t, ufs_daddr_t,
 	    ufs_daddr_t, int, long *));

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.8 2003/06/30 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.9 2003/07/03 17:24:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -713,8 +713,8 @@ spec_getpages(ap)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
-	cnt.v_vnodein++;
-	cnt.v_vnodepgsin += pcount;
+	mycpu->gd_cnt.v_vnodein++;
+	mycpu->gd_cnt.v_vnodepgsin += pcount;
 
 	/* Do the input. */
 	VOP_STRATEGY(bp->b_vp, bp);
