@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/ntoskrnl_var.h,v 1.15 2004/04/20 02:27:38 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.2 2004/07/29 21:35:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/ntoskrnl_var.h,v 1.3 2004/09/19 02:44:35 dillon Exp $
  */
 
 #ifndef _NTOSKRNL_VAR_H_
@@ -238,7 +238,7 @@ struct ktimer {
 	uint64_t		k_duetime;
 	union {
 		list_entry		k_timerlistentry;
-		struct callout_handle	k_handle;
+		struct callout		*k_handle;
 	} u;
 	void			*k_dpc;
 	uint32_t		k_period;

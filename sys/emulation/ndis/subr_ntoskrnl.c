@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/ndis/subr_ntoskrnl.c,v 1.40 2004/07/20 20:28:57 wpaul Exp $
- * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.2 2004/07/29 21:35:57 dillon Exp $
+ * $DragonFly: src/sys/emulation/ndis/subr_ntoskrnl.c,v 1.3 2004/09/19 02:44:35 dillon Exp $
  */
 
 #include <sys/ctype.h>
@@ -182,6 +182,8 @@ static struct lwkt_token ntoskrnl_dispatchtoken;
 static kspin_lock ntoskrnl_global;
 static int ntoskrnl_kth = 0;
 static struct nt_objref_head ntoskrnl_reflist;
+
+static MALLOC_DEFINE(M_NDIS, "ndis", "ndis emulation");
 
 int
 ntoskrnl_libinit()
@@ -1624,8 +1626,12 @@ ntoskrnl_timercall(arg)
 
 	if (timer->k_period) {
 		timer->k_header.dh_inserted = TRUE;
-		timer->k_handle = timeout(ntoskrnl_timercall, timer, 
-					1 + timer->k_period * hz / 1000);
+		callout_reset(timer->k_handle, 1 + timer->k_period * hz / 1000,
+			      ntoskrnl_timercall, timer);
+	} else {
+		callout_deactivate(timer->k_handle);
+		free(timer->k_handle, M_NDIS);
+		timer->k_handle = NULL;
 	}
 
 	if (timer->k_dpc != NULL)
@@ -1657,7 +1663,7 @@ ntoskrnl_init_timer_ex(timer, type)
 	timer->k_header.dh_inserted = FALSE;
 	timer->k_header.dh_type = type;
 	timer->k_header.dh_size = OTYPE_TIMER;
-	callout_handle_init(&timer->k_handle);
+	timer->k_handle = NULL;
 
 	return;
 }
@@ -1740,7 +1746,8 @@ ntoskrnl_set_timer_ex(timer, duetime, period, dpc)
 		return(FALSE);
 
 	if (timer->k_header.dh_inserted == TRUE) {
-		untimeout(ntoskrnl_timercall, timer, timer->k_handle);
+		if (timer->k_handle != NULL)
+			callout_stop(timer->k_handle);
 		timer->k_header.dh_inserted = FALSE;
 		pending = TRUE;
 	} else
@@ -1768,7 +1775,12 @@ ntoskrnl_set_timer_ex(timer, duetime, period, dpc)
 
 	ticks = 1 + tv.tv_sec * hz + tv.tv_usec * hz / 1000000;
 	timer->k_header.dh_inserted = TRUE;
-	timer->k_handle = timeout(ntoskrnl_timercall, timer, ticks);
+	if (timer->k_handle == NULL) {
+		timer->k_handle = malloc(sizeof(struct callout), M_NDIS,
+					 M_INTWAIT);
+		callout_init(timer->k_handle);
+	}
+	callout_reset(timer->k_handle, ticks, ntoskrnl_timercall, timer);
 
 	return(pending);
 }
@@ -1792,7 +1804,11 @@ ntoskrnl_cancel_timer(timer)
 		return(FALSE);
 
 	if (timer->k_header.dh_inserted == TRUE) {
-		untimeout(ntoskrnl_timercall, timer, timer->k_handle);
+		if (timer->k_handle != NULL) {
+			callout_stop(timer->k_handle);
+			free(timer->k_handle, M_NDIS);
+			timer->k_handle = NULL;
+		}
 		if (timer->k_dpc != NULL)
 			ntoskrnl_dequeue_dpc(timer->k_dpc);
 		pending = TRUE;
