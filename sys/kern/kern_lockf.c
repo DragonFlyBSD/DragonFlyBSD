@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.8 2004/05/04 17:00:55 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.9 2004/05/05 09:17:04 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -145,7 +145,8 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	struct flock *fl = ap->a_fl;
 	struct proc *owner;
 	off_t start, end;
-	int type, flags;
+	int type, flags, error;
+	lwkt_tokref ilock;
 
 	if (lock->init_done == 0) {
 		TAILQ_INIT(&lock->lf_range);
@@ -195,20 +196,26 @@ lf_advlock(struct vop_advlock_args *ap, struct lockf *lock, u_quad_t size)
 	/*
 	 * Do the requested operation.
 	 */
+	lwkt_gettoken(&ilock, lwkt_token_pool_get(lock));
 	switch(ap->a_op) {
 	case F_SETLK:
-		return(lf_setlock(lock, owner, type, flags, start, end));
+		error = lf_setlock(lock, owner, type, flags, start, end);
+		break;
 
 	case F_UNLCK:
-		return(lf_clearlock(lock, owner, type, flags, start, end));
+		error = lf_clearlock(lock, owner, type, flags, start, end);
+		break;
 
 	case F_GETLK:
-		return(lf_getlock(fl, lock, owner, type, flags, start, end));
+		error = lf_getlock(fl, lock, owner, type, flags, start, end);
+		break;
 
 	default:
-		return (EINVAL);
+		error = EINVAL;
+		break;
 	}
-	/* NOTREACHED */
+	lwkt_reltoken(&ilock);
+	return(error);
 }
 
 static int
