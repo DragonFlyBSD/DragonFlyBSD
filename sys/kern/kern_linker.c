@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.9 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.10 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -664,7 +664,7 @@ kldload(struct kldload_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    uap->lmsg.u.ms_result = -1;
+    uap->sysmsg_result = -1;
 
     if (securelevel > 0)	/* redundant, but that's OK */
 	return EPERM;
@@ -691,7 +691,7 @@ kldload(struct kldload_args *uap)
 	goto out;
 
     lf->userrefs++;
-    uap->lmsg.u.ms_result = lf->id;
+    uap->sysmsg_result = lf->id;
 
 out:
     if (filename)
@@ -738,7 +738,7 @@ kldfind(struct kldfind_args *uap)
     linker_file_t lf;
     int error = 0;
 
-    uap->lmsg.u.ms_result = -1;
+    uap->sysmsg_result = -1;
 
     filename = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
     if ((error = copyinstr(SCARG(uap, file), filename, MAXPATHLEN, NULL)) != 0)
@@ -750,7 +750,7 @@ kldfind(struct kldfind_args *uap)
 
     lf = linker_find_file_by_name(modulename);
     if (lf)
-	uap->lmsg.u.ms_result = lf->id;
+	uap->sysmsg_result = lf->id;
     else
 	error = ENOENT;
 
@@ -768,18 +768,18 @@ kldnext(struct kldnext_args *uap)
 
     if (SCARG(uap, fileid) == 0) {
 	if (TAILQ_FIRST(&linker_files))
-	    uap->lmsg.u.ms_result = TAILQ_FIRST(&linker_files)->id;
+	    uap->sysmsg_result = TAILQ_FIRST(&linker_files)->id;
 	else
-	    uap->lmsg.u.ms_result = 0;
+	    uap->sysmsg_result = 0;
 	return 0;
     }
 
     lf = linker_find_file_by_id(SCARG(uap, fileid));
     if (lf) {
 	if (TAILQ_NEXT(lf, link))
-	    uap->lmsg.u.ms_result = TAILQ_NEXT(lf, link)->id;
+	    uap->sysmsg_result = TAILQ_NEXT(lf, link)->id;
 	else
-	    uap->lmsg.u.ms_result = 0;
+	    uap->sysmsg_result = 0;
     } else
 	error = ENOENT;
 
@@ -827,7 +827,7 @@ kldstat(struct kldstat_args *uap)
     if ((error = copyout(&lf->size, &stat->size, sizeof(size_t))) != 0)
 	goto out;
 
-    uap->lmsg.u.ms_result = 0;
+    uap->sysmsg_result = 0;
 
 out:
     return error;
@@ -842,9 +842,9 @@ kldfirstmod(struct kldfirstmod_args *uap)
     lf = linker_find_file_by_id(SCARG(uap, fileid));
     if (lf) {
 	if (TAILQ_FIRST(&lf->modules))
-	    uap->lmsg.u.ms_result = module_getid(TAILQ_FIRST(&lf->modules));
+	    uap->sysmsg_result = module_getid(TAILQ_FIRST(&lf->modules));
 	else
-	    uap->lmsg.u.ms_result = 0;
+	    uap->sysmsg_result = 0;
     } else
 	error = ENOENT;
 

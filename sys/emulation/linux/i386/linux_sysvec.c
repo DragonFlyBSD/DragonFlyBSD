@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.6 2003/07/26 19:07:49 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -708,9 +708,9 @@ linux_rt_sigreturn(struct linux_rt_sigreturn_args *args)
 #endif
 	sasargs.ss = ss;
 	sasargs.oss = NULL;
-	sasargs.lmsg.u.ms_result = 0;
+	sasargs.sysmsg_result = 0;
 	(void) sigaltstack(&sasargs);
-	args->lmsg.u.ms_result = sasargs.lmsg.u.ms_result;
+	args->sysmsg_result = sasargs.sysmsg_result;
 
 	return (EJUSTRETURN);
 }

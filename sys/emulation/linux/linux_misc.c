@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_misc.c,v 1.85.2.9 2002/09/24 08:11:41 mdodd Exp $
- * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.10 2003/07/29 21:54:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_misc.c,v 1.11 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -202,7 +202,7 @@ linux_alarm(struct linux_alarm_args *args)
 		timevalsub(&old_it.it_value, &tv);
 		if (old_it.it_value.tv_usec != 0)
 			old_it.it_value.tv_sec++;
-		args->lmsg.u.ms_result = old_it.it_value.tv_sec;
+		args->sysmsg_result = old_it.it_value.tv_sec;
 	}
 	return 0;
 }
@@ -225,13 +225,13 @@ linux_brk(struct linux_brk_args *args)
 #endif
 	old = (vm_offset_t)vm->vm_daddr + ctob(vm->vm_dsize);
 	new = (vm_offset_t)args->dsend;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.nsize = (char *) new;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	if (((caddr_t)new > vm->vm_daddr) && !obreak(&bsd_args))
-		args->lmsg.u.ms_result = (long)new;
+		args->sysmsg_result = (long)new;
 	else
-		args->lmsg.u.ms_result = (long)old;
+		args->sysmsg_result = (long)old;
 
 	return 0;
 }
@@ -488,7 +488,7 @@ linux_select(struct linux_select_args *args)
 #endif
 
 	error = 0;
-	bsa.lmsg.u.ms_result = 0;
+	bsa.sysmsg_result = 0;
 	bsa.nd = args->nfds;
 	bsa.in = args->readfds;
 	bsa.ou = args->writefds;
@@ -532,7 +532,7 @@ linux_select(struct linux_select_args *args)
 	}
 
 	error = select(&bsa);
-	args->lmsg.u.ms_result = bsa.lmsg.u.ms_result;
+	args->sysmsg_result = bsa.sysmsg_result;
 #ifdef DEBUG
 	if (ldebug(select))
 		printf(LMSG("real select returns %d"), error);
@@ -548,7 +548,7 @@ linux_select(struct linux_select_args *args)
 	}
 
 	if (args->timeout) {
-		if (args->lmsg.u.ms_result) {
+		if (args->sysmsg_result) {
 			/*
 			 * Compute how much time was left of the timeout,
 			 * by subtracting the current time and the time
@@ -598,18 +598,18 @@ linux_mremap(struct linux_mremap_args *args)
 	args->old_len = round_page(args->old_len);
 
 	if (args->new_len > args->old_len) {
-		args->lmsg.u.ms_result = 0;
+		args->sysmsg_result = 0;
 		return ENOMEM;
 	}
 
 	if (args->new_len < args->old_len) {
-		bsd_args.lmsg.u.ms_result = 0;
+		bsd_args.sysmsg_result = 0;
 		bsd_args.addr = (caddr_t)(args->addr + args->new_len);
 		bsd_args.len = args->old_len - args->new_len;
 		error = munmap(&bsd_args);
 	}
 
-	args->lmsg.u.ms_resultp = error ? NULL : (void *)args->addr;
+	args->sysmsg_resultp = error ? NULL : (void *)args->addr;
 	return error;
 }
 
@@ -626,10 +626,10 @@ linux_msync(struct linux_msync_args *args)
 	bsd_args.addr = (caddr_t)args->addr;
 	bsd_args.len = args->len;
 	bsd_args.flags = args->fl & ~LINUX_MS_SYNC;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 
 	error = msync(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -650,7 +650,7 @@ linux_time(struct linux_time_args *args)
 	tm = tv.tv_sec;
 	if (args->tm && (error = copyout(&tm, (caddr_t)args->tm, sizeof(tm))))
 		return error;
-	args->lmsg.u.ms_lresult = tm;
+	args->sysmsg_lresult = tm;
 	return 0;
 }
 #endif	/*!__alpha__*/
@@ -698,7 +698,7 @@ linux_times(struct linux_times_args *args)
 		return error;
 
 	microuptime(&tv);
-	args->lmsg.u.ms_result = (int)CONVTCK(tv);
+	args->sysmsg_result = (int)CONVTCK(tv);
 	return 0;
 }
 
@@ -772,9 +772,9 @@ linux_utime(struct linux_utime_args *args)
 		bsdutimes.tptr = NULL;
 
 	bsdutimes.path = args->fname;
-	bsdutimes.lmsg.u.ms_result = 0;
+	bsdutimes.sysmsg_result = 0;
 	error = utimes(&bsdutimes);
-	args->lmsg.u.ms_result = bsdutimes.lmsg.u.ms_result;
+	args->sysmsg_result = bsdutimes.sysmsg_result;
 	return(error);
 }
 #endif /* __i386__ */
@@ -794,7 +794,7 @@ linux_waitpid(struct linux_waitpid_args *args)
 		    args->pid, (void *)args->status, args->options);
 #endif
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.pid = args->pid;
 	bsd_args.status = args->status;
 	bsd_args.options = (args->options & (WNOHANG | WUNTRACED));
@@ -805,7 +805,7 @@ linux_waitpid(struct linux_waitpid_args *args)
 
 	if ((error = wait4(&bsd_args)) != 0)
 		return error;
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 
 	if (args->status) {
 		if ((error = copyin((caddr_t)args->status, &tmpstat,
@@ -842,7 +842,7 @@ linux_wait4(struct linux_wait4_args *args)
 		    (void *)args->rusage);
 #endif
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.pid = args->pid;
 	bsd_args.status = args->status;
 	bsd_args.options = (args->options & (WNOHANG | WUNTRACED));
@@ -853,7 +853,7 @@ linux_wait4(struct linux_wait4_args *args)
 
 	if ((error = wait4(&bsd_args)) != 0)
 		return error;
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 
 	SIGDELSET(p->p_siglist, SIGCHLD);
 
@@ -895,16 +895,16 @@ linux_mknod(struct linux_mknod_args *args)
 	if (args->mode & S_IFIFO) {
 		bsd_mkfifo.path = args->path;
 		bsd_mkfifo.mode = args->mode;
-		bsd_mkfifo.lmsg.u.ms_result = 0;
+		bsd_mkfifo.sysmsg_result = 0;
 		error = mkfifo(&bsd_mkfifo);
-		args->lmsg.u.ms_result = bsd_mkfifo.lmsg.u.ms_result;
+		args->sysmsg_result = bsd_mkfifo.sysmsg_result;
 	} else {
 		bsd_mknod.path = args->path;
 		bsd_mknod.mode = args->mode;
 		bsd_mknod.dev = args->dev;
-		bsd_mknod.lmsg.u.ms_result = 0;
+		bsd_mknod.sysmsg_result = 0;
 		error = mknod(&bsd_mknod);
-		args->lmsg.u.ms_result = bsd_mknod.lmsg.u.ms_result;
+		args->sysmsg_result = bsd_mknod.sysmsg_result;
 	}
 	return(error);
 }
@@ -925,7 +925,7 @@ linux_personality(struct linux_personality_args *args)
 #endif
 
 	/* Yes Jim, it's still a Linux... */
-	args->lmsg.u.ms_result = 0;
+	args->sysmsg_result = 0;
 	return 0;
 }
 
@@ -947,7 +947,7 @@ linux_setitimer(struct linux_setitimer_args *args)
 	bsa.which = args->which;
 	bsa.itv = (struct itimerval *)args->itv;
 	bsa.oitv = (struct itimerval *)args->oitv;
-	bsa.lmsg.u.ms_result = 0;
+	bsa.sysmsg_result = 0;
 	if (args->itv) {
 	    if ((error = copyin((caddr_t)args->itv, &foo, sizeof(foo))))
 		return error;
@@ -961,7 +961,7 @@ linux_setitimer(struct linux_setitimer_args *args)
 #endif
 	}
 	error = setitimer(&bsa);
-	args->lmsg.u.ms_result = bsa.lmsg.u.ms_result;
+	args->sysmsg_result = bsa.sysmsg_result;
 	return(error);
 }
 
@@ -976,9 +976,9 @@ linux_getitimer(struct linux_getitimer_args *args)
 #endif
 	bsa.which = args->which;
 	bsa.itv = (struct itimerval *)args->itv;
-	bsa.lmsg.u.ms_result = 0;
+	bsa.sysmsg_result = 0;
 	error = getitimer(&bsa);
-	args->lmsg.u.ms_result = bsa.lmsg.u.ms_result;
+	args->sysmsg_result = bsa.sysmsg_result;
 	return(error);
 }
 
@@ -992,9 +992,9 @@ linux_nice(struct linux_nice_args *args)
 	bsd_args.which = PRIO_PROCESS;
 	bsd_args.who = 0;	/* current process */
 	bsd_args.prio = args->inc;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	error = setpriority(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 #endif	/*!__alpha__*/
@@ -1074,7 +1074,7 @@ linux_getgroups(struct linux_getgroups_args *args)
 	 */
 
 	if ((ngrp = args->gidsetsize) == 0) {
-		args->lmsg.u.ms_result = bsd_gidsetsz;
+		args->sysmsg_result = bsd_gidsetsz;
 		return (0);
 	}
 
@@ -1091,7 +1091,7 @@ linux_getgroups(struct linux_getgroups_args *args)
 	    ngrp * sizeof(l_gid_t))))
 		return (error);
 
-	args->lmsg.u.ms_result = ngrp;
+	args->sysmsg_result = ngrp;
 	return (0);
 }
 
@@ -1124,9 +1124,9 @@ linux_setrlimit(struct linux_setrlimit_args *args)
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
 	bsd.rlp->rlim_cur = (rlim_t)rlim.rlim_cur;
 	bsd.rlp->rlim_max = (rlim_t)rlim.rlim_max;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	error = setrlimit(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -1152,11 +1152,11 @@ linux_old_getrlimit(struct linux_old_getrlimit_args *args)
 		return (EINVAL);
 
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	error = getrlimit(&bsd);
 	if (error)
 		return (error);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	rlim.rlim_cur = (unsigned long)bsd.rlp->rlim_cur;
 	if (rlim.rlim_cur == ULONG_MAX)
 		rlim.rlim_cur = LONG_MAX;
@@ -1188,11 +1188,11 @@ linux_getrlimit(struct linux_getrlimit_args *args)
 		return (EINVAL);
 
 	bsd.rlp = stackgap_alloc(&sg, sizeof(struct rlimit));
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	error = getrlimit(&bsd);
 	if (error)
 		return (error);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 
 	rlim.rlim_cur = (l_ulong)bsd.rlp->rlim_cur;
 	rlim.rlim_max = (l_ulong)bsd.rlp->rlim_max;
@@ -1228,10 +1228,10 @@ linux_sched_setscheduler(struct linux_sched_setscheduler_args *args)
 
 	bsd.pid = args->pid;
 	bsd.param = (struct sched_param *)args->param;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = sched_setscheduler(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -1246,20 +1246,20 @@ linux_sched_getscheduler(struct linux_sched_getscheduler_args *args)
 		printf(ARGS(sched_getscheduler, "%d"), args->pid);
 #endif
 
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	bsd.pid = args->pid;
 	error = sched_getscheduler(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 
-	switch (args->lmsg.u.ms_result) {
+	switch (args->sysmsg_result) {
 	case SCHED_OTHER:
-		args->lmsg.u.ms_result = LINUX_SCHED_OTHER;
+		args->sysmsg_result = LINUX_SCHED_OTHER;
 		break;
 	case SCHED_FIFO:
-		args->lmsg.u.ms_result = LINUX_SCHED_FIFO;
+		args->sysmsg_result = LINUX_SCHED_FIFO;
 		break;
 	case SCHED_RR:
-		args->lmsg.u.ms_result = LINUX_SCHED_RR;
+		args->sysmsg_result = LINUX_SCHED_RR;
 		break;
 	}
 	return error;
@@ -1289,10 +1289,10 @@ linux_sched_get_priority_max(struct linux_sched_get_priority_max_args *args)
 	default:
 		return EINVAL;
 	}
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = sched_get_priority_max(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -1320,10 +1320,10 @@ linux_sched_get_priority_min(struct linux_sched_get_priority_min_args *args)
 	default:
 		return EINVAL;
 	}
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = sched_get_priority_min(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -1344,10 +1344,10 @@ linux_reboot(struct linux_reboot_args *args)
 	if (args->cmd == REBOOT_CAD_ON || args->cmd == REBOOT_CAD_OFF)
 		return (0);
 	bsd_args.opt = (args->cmd == REBOOT_HALT) ? RB_HALT : 0;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 
 	error = reboot(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -1373,7 +1373,7 @@ linux_getpid(struct linux_getpid_args *args)
 
 	KKASSERT(p);
 
-	args->lmsg.u.ms_result = p->p_pid;
+	args->sysmsg_result = p->p_pid;
 	return (0);
 }
 
@@ -1385,7 +1385,7 @@ linux_getgid(struct linux_getgid_args *args)
 
 	KKASSERT(p);
 
-	args->lmsg.u.ms_result = p->p_ucred->cr_rgid;
+	args->sysmsg_result = p->p_ucred->cr_rgid;
 	return (0);
 }
 
@@ -1397,7 +1397,7 @@ linux_getuid(struct linux_getuid_args *args)
 
 	KKASSERT(p);
 
-	args->lmsg.u.ms_result = p->p_ucred->cr_ruid;
+	args->sysmsg_result = p->p_ucred->cr_ruid;
 	return (0);
 }
 
@@ -1409,10 +1409,10 @@ linux_getsid(struct linux_getsid_args *args)
 	struct getsid_args bsd;
 	int error;
 
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	bsd.pid = args->pid;
 	error = getsid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_signal.c,v 1.9 2000/01/15 15:38:17 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.6 2003/07/26 18:12:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_signal.c,v 1.7 2003/07/30 00:19:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -305,10 +305,10 @@ svr4_sys_sigaction(struct svr4_sys_sigaction_args *uap)
 	SCARG(&sa, act) = nbsa;
 	SCARG(&sa, oact) = obsa;
 
-	sa.lmsg.u.ms_result = 0;
+	sa.sysmsg_result = 0;
 	if ((error = sigaction(&sa)) != 0)
 		return error;
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 
 	if (oisa != NULL) {
 		if ((error = copyin(obsa, &tmpbsa, sizeof(tmpbsa))) != 0)
@@ -330,7 +330,7 @@ svr4_sys_sigaltstack(struct svr4_sys_sigaltstack_args *uap)
 	caddr_t sg;
 	int error, *retval;
 
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	sg = stackgap_init();
 	nsss = SCARG(uap, nss);
 	osss = SCARG(uap, oss);
@@ -352,12 +352,12 @@ svr4_sys_sigaltstack(struct svr4_sys_sigaltstack_args *uap)
 
 	SCARG(&sa, ss) = nbss;
 	SCARG(&sa, oss) = obss;
-	sa.lmsg.u.ms_result = 0;
+	sa.sysmsg_result = 0;
 
 	if ((error = sigaltstack(&sa)) != 0)
 		return error;
 
-	*retval = sa.lmsg.u.ms_result;
+	*retval = sa.sysmsg_result;
 
 	if (obss != NULL) {
 		if ((error = copyin(obss, &tmpbss, sizeof(tmpbss))) != 0)
@@ -378,7 +378,7 @@ svr4_sys_signal(struct svr4_sys_signal_args *uap)
 {
 	struct proc *p = curproc;
 	int signum;
-	int error, *retval = &uap->lmsg.u.ms_result;
+	int error, *retval = &uap->sysmsg_result;
 	caddr_t sg = stackgap_init();
 
 	DPRINTF(("@@@ svr4_sys_signal(%d)\n", p->p_pid));
@@ -403,7 +403,7 @@ svr4_sys_signal(struct svr4_sys_signal_args *uap)
 			SCARG(&sa_args, sig) = signum;
 			SCARG(&sa_args, act) = nbsa;
 			SCARG(&sa_args, oact) = obsa;
-			sa_args.lmsg.u.ms_result = 0;
+			sa_args.sysmsg_result = 0;
 
 			sa.sa_handler = (sig_t) SCARG(uap, handler);
 			SIGEMPTYSET(sa.sa_mask);
@@ -438,9 +438,9 @@ sighold:
 			SCARG(&sa, how) = SIG_BLOCK;
 			SCARG(&sa, set) = set;
 			SCARG(&sa, oset) = NULL;
-			sa.lmsg.u.ms_result = 0;
+			sa.sysmsg_result = 0;
 			error = sigprocmask(&sa);
-			*retval = sa.lmsg.u.ms_result;
+			*retval = sa.sysmsg_result;
 			return(error);
 		}
 
@@ -455,9 +455,9 @@ sighold:
 			SCARG(&sa, how) = SIG_UNBLOCK;
 			SCARG(&sa, set) = set;
 			SCARG(&sa, oset) = NULL;
-			sa.lmsg.u.ms_result = 0;
+			sa.sysmsg_result = 0;
 			error = sigprocmask(&sa);
-			*retval = sa.lmsg.u.ms_result;
+			*retval = sa.sysmsg_result;
 			return(error);
 		}
 
@@ -476,12 +476,12 @@ sighold:
 			sa.sa_flags = 0;
 			if ((error = copyout(&sa, bsa, sizeof(sa))) != 0)
 				return error;
-			sa_args.lmsg.u.ms_result = 0;
+			sa_args.sysmsg_result = 0;
 			if ((error = sigaction(&sa_args)) != 0) {
 				DPRINTF(("sigignore: sigaction failed\n"));
 				return error;
 			}
-			*retval = sa_args.lmsg.u.ms_result;
+			*retval = sa_args.sysmsg_result;
 			return 0;
 		}
 
@@ -494,9 +494,9 @@ sighold:
 			*set = p->p_sigmask;
 			SIGDELSET(*set, signum);
 			SCARG(&sa, sigmask) = set;
-			sa.lmsg.u.ms_result = 0;
+			sa.sysmsg_result = 0;
 			error = sigsuspend(&sa);
-			*retval = sa.lmsg.u.ms_result;
+			*retval = sa.sysmsg_result;
 			return(error);
 		}
 
@@ -514,7 +514,7 @@ svr4_sys_sigprocmask(struct svr4_sys_sigprocmask_args *uap)
 	sigset_t bss;
 	int error = 0, *retval;
 
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	if (SCARG(uap, oset) != NULL) {
 		/* Fix the return value first if needed */
 		bsd_to_svr4_sigset(&p->p_sigmask, &sss);
@@ -567,7 +567,7 @@ svr4_sys_sigpending(struct svr4_sys_sigpending_args *uap)
 	svr4_sigset_t sss;
 
 	DPRINTF(("@@@ svr4_sys_sigpending(%d)\n", p->p_pid));
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	switch (SCARG(uap, what)) {
 	case 1:	/* sigpending */
 		if (SCARG(uap, mask) == NULL)
@@ -611,9 +611,9 @@ svr4_sys_sigsuspend(struct svr4_sys_sigsuspend_args *uap)
 	svr4_to_bsd_sigset(&sss, bss);
 
 	SCARG(&sa, sigmask) = bss;
-	sa.lmsg.u.ms_result = 0;
+	sa.sysmsg_result = 0;
 	error = sigsuspend(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 
@@ -626,9 +626,9 @@ svr4_sys_kill(struct svr4_sys_kill_args *uap)
 
 	SCARG(&ka, pid) = SCARG(uap, pid);
 	SCARG(&ka, signum) = SVR4_SVR42BSD_SIG(SCARG(uap, signum));
-	ka.lmsg.u.ms_result = 0;
+	ka.sysmsg_result = 0;
 	error = kill(&ka);
-	uap->lmsg.u.ms_result = ka.lmsg.u.ms_result;
+	uap->sysmsg_result = ka.sysmsg_result;
 	return(error);
 }
 
@@ -678,8 +678,8 @@ svr4_sys_pause(struct svr4_sys_pause_args *uap)
 	int error;
 
 	SCARG(&bsa, sigmask) = &p->p_sigmask;
-	bsa.lmsg.u.ms_result = 0;
+	bsa.sysmsg_result = 0;
 	error = sigsuspend(&bsa);
-	uap->lmsg.u.ms_result = bsa.lmsg.u.ms_result;
+	uap->sysmsg_result = bsa.sysmsg_result;
 	return(error);
 }

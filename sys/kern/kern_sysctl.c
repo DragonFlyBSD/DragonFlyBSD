@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.10 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.11 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1427,7 +1427,7 @@ ogetkerninfo(struct getkerninfo_args *uap)
 	}
 	if (error)
 		return (error);
-	uap->lmsg.u.ms_result = size;
+	uap->sysmsg_result = size;
 	if (uap->size)
 		error = copyout((caddr_t)&size, (caddr_t)uap->size,
 		    sizeof(size));

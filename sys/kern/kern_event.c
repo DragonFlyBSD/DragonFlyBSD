@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.8 2003/07/29 20:03:05 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -376,7 +376,7 @@ kqueue(struct kqueue_args *uap)
 	kq = malloc(sizeof(struct kqueue), M_KQUEUE, M_WAITOK | M_ZERO);
 	TAILQ_INIT(&kq->kq_head);
 	fp->f_data = (caddr_t)kq;
-	uap->lmsg.u.ms_result = fd;
+	uap->sysmsg_result = fd;
 	if (fdp->fd_knlistsize < 0)
 		fdp->fd_knlistsize = 0;		/* this process has a kq */
 	kq->kq_fdp = fdp;
@@ -444,12 +444,12 @@ kevent(struct kevent_args *uap)
 		uap->changelist += n;
 	}
 	if (nerrors) {
-        	uap->lmsg.u.ms_result = nerrors;
+        	uap->sysmsg_result = nerrors;
 		error = 0;
 		goto done;
 	}
 
-	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, p, &uap->lmsg.u.ms_result);
+	error = kqueue_scan(fp, uap->nevents, uap->eventlist, uap->timeout, p, &uap->sysmsg_result);
 done:
 	if (fp != NULL)
 		fdrop(fp, p->p_thread);

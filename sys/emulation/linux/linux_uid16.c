@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_uid16.c,v 1.4.2.1 2001/10/21 03:57:35 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.5 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_uid16.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -64,9 +64,9 @@ linux_chown16(struct linux_chown16_args *args)
 	bsd.path = args->path;
 	bsd.uid = CAST_NOCHG(args->uid);
 	bsd.gid = CAST_NOCHG(args->gid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	error = chown(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -89,10 +89,10 @@ linux_lchown16(struct linux_lchown16_args *args)
 	bsd.path = args->path;
 	bsd.uid = CAST_NOCHG(args->uid);
 	bsd.gid = CAST_NOCHG(args->gid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = lchown(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -175,7 +175,7 @@ linux_getgroups16(struct linux_getgroups16_args *args)
 	 */
 
 	if ((ngrp = args->gidsetsize) == 0) {
-		args->lmsg.u.ms_result = bsd_gidsetsz;
+		args->sysmsg_result = bsd_gidsetsz;
 		return (0);
 	}
 
@@ -193,7 +193,7 @@ linux_getgroups16(struct linux_getgroups16_args *args)
 	if (error)
 		return (error);
 
-	args->lmsg.u.ms_result = ngrp;
+	args->sysmsg_result = ngrp;
 	return (0);
 }
 
@@ -213,7 +213,7 @@ linux_getgid16(struct linux_getgid16_args *args)
 {
 	struct proc *p = curproc;
 
-	args->lmsg.u.ms_result = p->p_ucred->cr_rgid;
+	args->sysmsg_result = p->p_ucred->cr_rgid;
 	return (0);
 }
 
@@ -222,7 +222,7 @@ linux_getuid16(struct linux_getuid16_args *args)
 {
 	struct proc *p = curproc;
 
-	args->lmsg.u.ms_result = p->p_ucred->cr_ruid;
+	args->sysmsg_result = p->p_ucred->cr_ruid;
 	return (0);
 }
 
@@ -232,10 +232,10 @@ linux_getegid16(struct linux_getegid16_args *args)
 	struct getegid_args bsd;
 	int error;
 
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = getegid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -245,10 +245,10 @@ linux_geteuid16(struct linux_geteuid16_args *args)
 	struct geteuid_args bsd;
 	int error;
 
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = geteuid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -259,10 +259,10 @@ linux_setgid16(struct linux_setgid16_args *args)
 	int error;
 
 	bsd.gid = args->gid;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setgid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -273,10 +273,10 @@ linux_setuid16(struct linux_setuid16_args *args)
 	int error;
 
 	bsd.uid = args->uid;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setuid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -288,10 +288,10 @@ linux_setregid16(struct linux_setregid16_args *args)
 
 	bsd.rgid = CAST_NOCHG(args->rgid);
 	bsd.egid = CAST_NOCHG(args->egid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setregid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -303,10 +303,10 @@ linux_setreuid16(struct linux_setreuid16_args *args)
 
 	bsd.ruid = CAST_NOCHG(args->ruid);
 	bsd.euid = CAST_NOCHG(args->euid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setreuid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -319,10 +319,10 @@ linux_setresgid16(struct linux_setresgid16_args *args)
 	bsd.rgid = CAST_NOCHG(args->rgid);
 	bsd.egid = CAST_NOCHG(args->egid);
 	bsd.sgid = CAST_NOCHG(args->sgid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setresgid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -335,10 +335,10 @@ linux_setresuid16(struct linux_setresuid16_args *args)
 	bsd.ruid = CAST_NOCHG(args->ruid);
 	bsd.euid = CAST_NOCHG(args->euid);
 	bsd.suid = CAST_NOCHG(args->suid);
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = setresuid(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 

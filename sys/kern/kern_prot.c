@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.8 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
  */
 
 /*
@@ -68,9 +68,9 @@ getpid(struct getpid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_fds[0] = p->p_pid;
+	uap->sysmsg_fds[0] = p->p_pid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	uap->lmsg.u.ms_fds[1] = p->p_pptr->p_pid;
+	uap->sysmsg_fds[1] = p->p_pptr->p_pid;
 #endif
 	return (0);
 }
@@ -81,7 +81,7 @@ getppid(struct getppid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_result = p->p_pptr->p_pid;
+	uap->sysmsg_result = p->p_pptr->p_pid;
 	return (0);
 }
 
@@ -95,7 +95,7 @@ getpgrp(struct getpgrp_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_result = p->p_pgrp->pg_id;
+	uap->sysmsg_result = p->p_pgrp->pg_id;
 	return (0);
 }
 
@@ -115,7 +115,7 @@ getpgid(struct getpgid_args *uap)
 	if ((pt = pfind(uap->pid)) == 0)
 		return ESRCH;
 found:
-	uap->lmsg.u.ms_result = pt->p_pgrp->pg_id;
+	uap->sysmsg_result = pt->p_pgrp->pg_id;
 	return 0;
 }
 
@@ -135,7 +135,7 @@ getsid(struct getsid_args *uap)
 	if ((pt = pfind(uap->pid)) == 0)
 		return ESRCH;
 found:
-	uap->lmsg.u.ms_result = pt->p_session->s_sid;
+	uap->sysmsg_result = pt->p_session->s_sid;
 	return 0;
 }
 
@@ -149,9 +149,9 @@ getuid(struct getuid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_fds[0] = p->p_ucred->cr_ruid;
+	uap->sysmsg_fds[0] = p->p_ucred->cr_ruid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	uap->lmsg.u.ms_fds[1] = p->p_ucred->cr_uid;
+	uap->sysmsg_fds[1] = p->p_ucred->cr_uid;
 #endif
 	return (0);
 }
@@ -165,7 +165,7 @@ geteuid(struct geteuid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_result = p->p_ucred->cr_uid;
+	uap->sysmsg_result = p->p_ucred->cr_uid;
 	return (0);
 }
 
@@ -178,9 +178,9 @@ getgid(struct getgid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_fds[0] = p->p_ucred->cr_rgid;
+	uap->sysmsg_fds[0] = p->p_ucred->cr_rgid;
 #if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-	uap->lmsg.u.ms_fds[1] = p->p_ucred->cr_groups[0];
+	uap->sysmsg_fds[1] = p->p_ucred->cr_groups[0];
 #endif
 	return (0);
 }
@@ -196,7 +196,7 @@ getegid(struct getegid_args *uap)
 {
 	struct proc *p = curproc;
 
-	uap->lmsg.u.ms_result = p->p_ucred->cr_groups[0];
+	uap->sysmsg_result = p->p_ucred->cr_groups[0];
 	return (0);
 }
 
@@ -213,7 +213,7 @@ getgroups(struct getgroups_args *uap)
 	cr = p->p_ucred;
 
 	if ((ngrp = uap->gidsetsize) == 0) {
-		uap->lmsg.u.ms_result = cr->cr_ngroups;
+		uap->sysmsg_result = cr->cr_ngroups;
 		return (0);
 	}
 	if (ngrp < cr->cr_ngroups)
@@ -222,7 +222,7 @@ getgroups(struct getgroups_args *uap)
 	if ((error = copyout((caddr_t)cr->cr_groups,
 	    (caddr_t)uap->gidset, ngrp * sizeof(gid_t))))
 		return (error);
-	uap->lmsg.u.ms_result = ngrp;
+	uap->sysmsg_result = ngrp;
 	return (0);
 }
 
@@ -236,7 +236,7 @@ setsid(struct setsid_args *uap)
 		return (EPERM);
 	} else {
 		(void)enterpgrp(p, p->p_pid, 1);
-		uap->lmsg.u.ms_result = p->p_pid;
+		uap->sysmsg_result = p->p_pid;
 		return (0);
 	}
 }
@@ -773,7 +773,7 @@ issetugid(struct issetugid_args *uap)
 	 * a user without an exec - programs cannot know *everything*
 	 * that libc *might* have put in their data segment.
 	 */
-	uap->lmsg.u.ms_result = (p->p_flag & P_SUGID) ? 1 : 0;
+	uap->sysmsg_result = (p->p_flag & P_SUGID) ? 1 : 0;
 	return (0);
 }
 

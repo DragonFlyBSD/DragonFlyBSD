@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.6 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.7 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -70,12 +70,12 @@ linux_creat(struct linux_creat_args *args)
 	if (ldebug(creat))
 		printf(ARGS(creat, "%s, %d"), args->path, args->mode);
 #endif
-    bsd_open_args.lmsg.u.ms_result = 0;
+    bsd_open_args.sysmsg_result = 0;
     bsd_open_args.path = args->path;
     bsd_open_args.mode = args->mode;
     bsd_open_args.flags = O_WRONLY | O_CREAT | O_TRUNC;
     error = open(&bsd_open_args);
-    args->lmsg.u.ms_result = bsd_open_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_open_args.sysmsg_result;
     return(error);
 }
 #endif /*!__alpha__*/
@@ -130,14 +130,14 @@ linux_open(struct linux_open_args *args)
 	bsd_open_args.flags |= O_NOCTTY;
     bsd_open_args.path = args->path;
     bsd_open_args.mode = args->mode;
-    bsd_open_args.lmsg.u.ms_result = 0;
+    bsd_open_args.sysmsg_result = 0;
     error = open(&bsd_open_args);
-    args->lmsg.u.ms_result = bsd_open_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_open_args.sysmsg_result;
 
     if (!error && !(bsd_open_args.flags & O_NOCTTY) && 
 	SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 	struct filedesc *fdp = p->p_fd;
-	struct file *fp = fdp->fd_ofiles[bsd_open_args.lmsg.u.ms_result];
+	struct file *fp = fdp->fd_ofiles[bsd_open_args.sysmsg_result];
 
 	if (fp->f_type == DTYPE_VNODE)
 	    fo_ioctl(fp, TIOCSCTTY, (caddr_t) 0, td);
@@ -163,9 +163,9 @@ linux_lseek(struct linux_lseek_args *args)
     tmp_args.fd = args->fdes;
     tmp_args.offset = (off_t)args->off;
     tmp_args.whence = args->whence;
-    tmp_args.lmsg.u.ms_result = 0;
+    tmp_args.sysmsg_result = 0;
     error = lseek(&tmp_args);
-    args->lmsg.u.ms_result = tmp_args.lmsg.u.ms_result;
+    args->sysmsg_result = tmp_args.sysmsg_result;
     return error;
 }
 
@@ -187,15 +187,15 @@ linux_llseek(struct linux_llseek_args *args)
 	bsd_args.fd = args->fd;
 	bsd_args.offset = off;
 	bsd_args.whence = args->whence;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 
 	if ((error = lseek(&bsd_args)))
 		return error;
 
-	if ((error = copyout(&bsd_args.lmsg.u.ms_offset, (caddr_t)args->res, sizeof (off_t)))) {
+	if ((error = copyout(&bsd_args.sysmsg_offset, (caddr_t)args->res, sizeof (off_t)))) {
 		return error;
 	}
-	args->lmsg.u.ms_result = 0;
+	args->sysmsg_result = 0;
 	return 0;
 }
 #endif /*!__alpha__*/
@@ -210,9 +210,9 @@ linux_readdir(struct linux_readdir_args *args)
 	lda.fd = args->fd;
 	lda.dent = args->dent;
 	lda.count = 1;
-	lda.lmsg.u.ms_result = 0;
+	lda.sysmsg_result = 0;
 	error = linux_getdents(&lda);
-	args->lmsg.u.ms_result = lda.lmsg.u.ms_result;
+	args->sysmsg_result = lda.sysmsg_result;
 	return(error);
 }
 #endif /*!__alpha__*/
@@ -431,7 +431,7 @@ again:
 		nbytes = resid + linuxreclen;
 
 eof:
-	args->lmsg.u.ms_result = nbytes - resid;
+	args->sysmsg_result = nbytes - resid;
 
 out:
 	if (cookies)
@@ -482,10 +482,10 @@ linux_access(struct linux_access_args *args)
 #endif
 	bsd.path = args->path;
 	bsd.flags = args->flags;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = access(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -504,10 +504,10 @@ linux_unlink(struct linux_unlink_args *args)
 		printf(ARGS(unlink, "%s"), args->path);
 #endif
 	bsd.path = args->path;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = unlink(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -526,10 +526,10 @@ linux_chdir(struct linux_chdir_args *args)
 		printf(ARGS(chdir, "%s"), args->path);
 #endif
 	bsd.path = args->path;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = chdir(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -549,10 +549,10 @@ linux_chmod(struct linux_chmod_args *args)
 #endif
 	bsd.path = args->path;
 	bsd.mode = args->mode;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = chmod(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -572,10 +572,10 @@ linux_mkdir(struct linux_mkdir_args *args)
 #endif
 	bsd.path = args->path;
 	bsd.mode = args->mode;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = mkdir(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -594,10 +594,10 @@ linux_rmdir(struct linux_rmdir_args *args)
 		printf(ARGS(rmdir, "%s"), args->path);
 #endif
 	bsd.path = args->path;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = rmdir(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -618,10 +618,10 @@ linux_rename(struct linux_rename_args *args)
 #endif
 	bsd.from = args->from;
 	bsd.to = args->to;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = rename(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -642,10 +642,10 @@ linux_symlink(struct linux_symlink_args *args)
 #endif
 	bsd.path = args->path;
 	bsd.link = args->to;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = symlink(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -667,10 +667,10 @@ linux_readlink(struct linux_readlink_args *args)
 	bsd.path = args->name;
 	bsd.buf = args->buf;
 	bsd.count = args->count;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = readlink(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -691,10 +691,10 @@ linux_truncate(struct linux_truncate_args *args)
 #endif
 	bsd.path = args->path;
 	bsd.length = args->length;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = truncate(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -716,10 +716,10 @@ linux_link(struct linux_link_args *args)
 
     bsd.path = args->path;
     bsd.link = args->to;
-    bsd.lmsg.u.ms_result = 0;
+    bsd.sysmsg_result = 0;
 
     error = link(&bsd);
-    args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+    args->sysmsg_result = bsd.sysmsg_result;
     return(error);
 }
 
@@ -731,10 +731,10 @@ linux_fdatasync(struct linux_fdatasync_args *uap)
 	int error;
 
 	bsd.fd = uap->fd;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = fsync(&bsd);
-	uap->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	uap->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 #endif /*!__alpha__*/
@@ -749,10 +749,10 @@ linux_pread(struct linux_pread_args *uap)
 	bsd.buf = uap->buf;
 	bsd.nbyte = uap->nbyte;
 	bsd.offset = uap->offset;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = pread(&bsd);
-	uap->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	uap->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -766,10 +766,10 @@ linux_pwrite(struct linux_pwrite_args *uap)
 	bsd.buf = uap->buf;
 	bsd.nbyte = uap->nbyte;
 	bsd.offset = uap->offset;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = pwrite(&bsd);
-	uap->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	uap->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -781,9 +781,9 @@ linux_oldumount(struct linux_oldumount_args *args)
 
 	args2.path = args->path;
 	args2.flags = 0;
-	args2.lmsg.u.ms_result = 0;
+	args2.sysmsg_result = 0;
 	error = linux_umount(&args2);
-	args->lmsg.u.ms_result = args2.lmsg.u.ms_result;
+	args->sysmsg_result = args2.sysmsg_result;
 	return(error);
 }
 
@@ -795,10 +795,10 @@ linux_umount(struct linux_umount_args *args)
 
 	bsd.path = args->path;
 	bsd.flags = args->flags;	/* XXX correct? */
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = unmount(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -930,7 +930,7 @@ fcntl_common(struct linux_fcntl64_args *args)
 	bsd_flock = (struct flock *)stackgap_alloc(&sg, sizeof(bsd_flock));
 
 	fcntl_args.fd = args->fd;
-	fcntl_args.lmsg.u.ms_result = 0;
+	fcntl_args.sysmsg_result = 0;
 
 	switch (args->cmd) {
 	case LINUX_F_DUPFD:
@@ -947,22 +947,22 @@ fcntl_common(struct linux_fcntl64_args *args)
 	case LINUX_F_GETFL:
 		fcntl_args.cmd = F_GETFL;
 		error = fcntl(&fcntl_args);
-		result = fcntl_args.lmsg.u.ms_result;
-		args->lmsg.u.ms_result = 0;
+		result = fcntl_args.sysmsg_result;
+		args->sysmsg_result = 0;
 		if (result & O_RDONLY)
-			args->lmsg.u.ms_result |= LINUX_O_RDONLY;
+			args->sysmsg_result |= LINUX_O_RDONLY;
 		if (result & O_WRONLY)
-			args->lmsg.u.ms_result |= LINUX_O_WRONLY;
+			args->sysmsg_result |= LINUX_O_WRONLY;
 		if (result & O_RDWR)
-			args->lmsg.u.ms_result |= LINUX_O_RDWR;
+			args->sysmsg_result |= LINUX_O_RDWR;
 		if (result & O_NDELAY)
-			args->lmsg.u.ms_result |= LINUX_O_NONBLOCK;
+			args->sysmsg_result |= LINUX_O_NONBLOCK;
 		if (result & O_APPEND)
-			args->lmsg.u.ms_result |= LINUX_O_APPEND;
+			args->sysmsg_result |= LINUX_O_APPEND;
 		if (result & O_FSYNC)
-			args->lmsg.u.ms_result |= LINUX_O_SYNC;
+			args->sysmsg_result |= LINUX_O_SYNC;
 		if (result & O_ASYNC)
-			args->lmsg.u.ms_result |= LINUX_FASYNC;
+			args->sysmsg_result |= LINUX_FASYNC;
 		return (error);
 
 	case LINUX_F_SETFL:
@@ -988,7 +988,7 @@ fcntl_common(struct linux_fcntl64_args *args)
 		fcntl_args.cmd = F_GETLK;
 		fcntl_args.arg = (long)bsd_flock;
 		error = fcntl(&fcntl_args);
-		args->lmsg.u.ms_result = fcntl_args.lmsg.u.ms_result;
+		args->sysmsg_result = fcntl_args.sysmsg_result;
 		if (error)
 			return (error);
 		bsd_to_linux_flock(bsd_flock, &linux_flock);
@@ -1037,7 +1037,7 @@ fcntl_common(struct linux_fcntl64_args *args)
 		return (EINVAL);
 	}
 	error = fcntl(&fcntl_args);
-	args->lmsg.u.ms_result = fcntl_args.lmsg.u.ms_result;
+	args->sysmsg_result = fcntl_args.sysmsg_result;
 	return(error);
 }
 
@@ -1055,9 +1055,9 @@ linux_fcntl(struct linux_fcntl_args *args)
 	args64.fd = args->fd;
 	args64.cmd = args->cmd;
 	args64.arg = args->arg;
-	args64.lmsg.u.ms_result = 0;
+	args64.sysmsg_result = 0;
 	error = fcntl_common(&args64);
-	args->lmsg.u.ms_result = args64.lmsg.u.ms_result;
+	args->sysmsg_result = args64.sysmsg_result;
 	return(error);
 }
 
@@ -1078,7 +1078,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 	if (ldebug(fcntl64))
 		printf(ARGS(fcntl64, "%d, %08x, *"), args->fd, args->cmd);
 #endif
-	fcntl_args.lmsg.u.ms_result = 0;
+	fcntl_args.sysmsg_result = 0;
 
 	switch (args->cmd) {
 	case LINUX_F_GETLK64:
@@ -1091,7 +1091,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 		fcntl_args.cmd = F_GETLK;
 		fcntl_args.arg = (long)bsd_flock;
 		error = fcntl(&fcntl_args);
-		args->lmsg.u.ms_result = fcntl_args.lmsg.u.ms_result;
+		args->sysmsg_result = fcntl_args.sysmsg_result;
 		if (error)
 			return (error);
 		bsd_to_linux_flock64(bsd_flock, &linux_flock);
@@ -1108,7 +1108,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 		fcntl_args.cmd = F_SETLK;
 		fcntl_args.arg = (long)bsd_flock;
 		error = fcntl(&fcntl_args);
-		args->lmsg.u.ms_result = fcntl_args.lmsg.u.ms_result;
+		args->sysmsg_result = fcntl_args.sysmsg_result;
 		return(error);
 
 	case LINUX_F_SETLKW64:
@@ -1121,7 +1121,7 @@ linux_fcntl64(struct linux_fcntl64_args *args)
 		fcntl_args.cmd = F_SETLKW;
 		fcntl_args.arg = (long)bsd_flock;
 		error = fcntl(&fcntl_args);
-		args->lmsg.u.ms_result = fcntl_args.lmsg.u.ms_result;
+		args->sysmsg_result = fcntl_args.sysmsg_result;
 		return(error);
 	}
 
@@ -1148,9 +1148,9 @@ linux_chown(struct linux_chown_args *args)
 	bsd.path = args->path;
 	bsd.uid = args->uid;
 	bsd.gid = args->gid;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 	error = chown(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 
@@ -1173,10 +1173,10 @@ linux_lchown(struct linux_lchown_args *args)
 	bsd.path = args->path;
 	bsd.uid = args->uid;
 	bsd.gid = args->gid;
-	bsd.lmsg.u.ms_result = 0;
+	bsd.sysmsg_result = 0;
 
 	error = lchown(&bsd);
-	args->lmsg.u.ms_result = bsd.lmsg.u.ms_result;
+	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
 }
 

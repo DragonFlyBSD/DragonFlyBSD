@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.15 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.16 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -501,7 +501,7 @@ osigprocmask(struct osigprocmask_args *uap)
 
 	OSIG2SIG(uap->mask, set);
 	error = do_sigprocmask(uap->how, &set, &oset, 1);
-	SIG2OSIG(oset, uap->lmsg.u.ms_result);
+	SIG2OSIG(oset, uap->sysmsg_result);
 	return (error);
 }
 
@@ -520,7 +520,7 @@ osigpending(struct osigpending_args *uap)
 {
 	struct proc *p = curproc;
 
-	SIG2OSIG(p->p_siglist, uap->lmsg.u.ms_result);
+	SIG2OSIG(p->p_siglist, uap->sysmsg_result);
 	return (0);
 }
 
@@ -577,7 +577,7 @@ osigblock(struct osigblock_args *uap)
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	(void) splhigh();
-	SIG2OSIG(p->p_sigmask, uap->lmsg.u.ms_result);
+	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
 	SIGSETOR(p->p_sigmask, set);
 	(void) spl0();
 	return (0);
@@ -592,7 +592,7 @@ osigsetmask(struct osigsetmask_args *uap)
 	OSIG2SIG(uap->mask, set);
 	SIG_CANTMASK(set);
 	(void) splhigh();
-	SIG2OSIG(p->p_sigmask, uap->lmsg.u.ms_result);
+	SIG2OSIG(p->p_sigmask, uap->sysmsg_result);
 	SIGSETLO(p->p_sigmask, set);
 	(void) spl0();
 	return (0);

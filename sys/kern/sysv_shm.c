@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.8 2003/07/28 23:28:57 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.9 2003/07/30 00:19:14 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -311,7 +311,7 @@ shmat(struct shmat_args *uap)
 	shmseg->shm_lpid = p->p_pid;
 	shmseg->shm_atime = time_second;
 	shmseg->shm_nattch++;
-	uap->lmsg.u.ms_result = attach_va;
+	uap->sysmsg_result = attach_va;
 	return 0;
 }
 
@@ -328,7 +328,7 @@ struct oshmid_ds {
 };
 
 struct oshmctl_args {
-	struct lwkt_msg lmsg;
+	union sysmsg sysmsg;
 	int shmid;
 	int cmd;
 	struct oshmid_ds *ubuf;
@@ -466,7 +466,7 @@ shmget_existing(p, uap, mode, segnum)
 		return error;
 	if (uap->size && uap->size > shmseg->shm_segsz)
 		return EINVAL;
-	uap->lmsg.u.ms_result = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
+	uap->sysmsg_result = IXSEQ_TO_IPCID(segnum, shmseg->shm_perm);
 	return 0;
 }
 
@@ -546,7 +546,7 @@ shmget_allocate_segment(p, uap, mode)
 		shmseg->shm_perm.mode &= ~SHMSEG_WANTED;
 		wakeup((caddr_t)shmseg);
 	}
-	uap->lmsg.u.ms_result = shmid;
+	uap->sysmsg_result = shmid;
 	return 0;
 }
 

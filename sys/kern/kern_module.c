@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.4 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.5 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -235,11 +235,11 @@ modnext(struct modnext_args *uap)
 {
     module_t mod;
 
-    uap->lmsg.u.ms_result = -1;
+    uap->sysmsg_result = -1;
     if (SCARG(uap, modid) == 0) {
 	mod = TAILQ_FIRST(&modules);
 	if (mod) {
-	    uap->lmsg.u.ms_result = mod->id;
+	    uap->sysmsg_result = mod->id;
 	    return 0;
 	} else
 	    return ENOENT;
@@ -250,9 +250,9 @@ modnext(struct modnext_args *uap)
 	return ENOENT;
 
     if (TAILQ_NEXT(mod, link))
-	uap->lmsg.u.ms_result = TAILQ_NEXT(mod, link)->id;
+	uap->sysmsg_result = TAILQ_NEXT(mod, link)->id;
     else
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
     return 0;
 }
 
@@ -261,16 +261,16 @@ modfnext(struct modfnext_args *uap)
 {
     module_t mod;
 
-    uap->lmsg.u.ms_result = -1;
+    uap->sysmsg_result = -1;
 
     mod = module_lookupbyid(SCARG(uap, modid));
     if (!mod)
 	return ENOENT;
 
     if (TAILQ_NEXT(mod, flink))
-	uap->lmsg.u.ms_result = TAILQ_NEXT(mod, flink)->id;
+	uap->sysmsg_result = TAILQ_NEXT(mod, flink)->id;
     else
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
     return 0;
 }
 
@@ -326,7 +326,7 @@ modstat(struct modstat_args *uap)
 	    goto out;
     }
 
-    uap->lmsg.u.ms_result = 0;
+    uap->sysmsg_result = 0;
 
 out:
     return error;
@@ -346,7 +346,7 @@ modfind(struct modfind_args *uap)
     if (!mod)
 	error = ENOENT;
     else
-	uap->lmsg.u.ms_result = mod->id;
+	uap->sysmsg_result = mod->id;
 
 out:
     return error;

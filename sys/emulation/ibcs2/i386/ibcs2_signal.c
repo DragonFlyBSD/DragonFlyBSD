@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_signal.c,v 1.16 1999/10/10 09:14:31 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.4 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_signal.c,v 1.5 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -244,7 +244,7 @@ ibcs2_sigsys(struct ibcs2_sigsys_args *uap)
 	if (signum <= 0 || signum >= IBCS2_NSIG) {
 		if (IBCS2_SIGCALL(SCARG(uap, sig)) == IBCS2_SIGNAL_MASK ||
 		    IBCS2_SIGCALL(SCARG(uap, sig)) == IBCS2_SIGSET_MASK)
-			uap->lmsg.u.ms_result = (int)IBCS2_SIG_ERR;
+			uap->sysmsg_result = (int)IBCS2_SIG_ERR;
 		return EINVAL;
 	}
 	
@@ -301,7 +301,7 @@ ibcs2_sigsys(struct ibcs2_sigsys_args *uap)
 			if (signum != SIGALRM)
 				sa.sa_flags |= SA_RESTART;
 #endif
-			uap->lmsg.u.ms_result = (int)IBCS2_SIG_ERR; /* init error return */
+			uap->sysmsg_result = (int)IBCS2_SIG_ERR; /* init error return */
 
 			/* perform native sigaction() */
 			if ((error = copyout(&sa, nbsa, sizeof(sa))) != 0)
@@ -313,14 +313,14 @@ ibcs2_sigsys(struct ibcs2_sigsys_args *uap)
 			}
 			if ((error = copyin(obsa, &sa, sizeof(sa))) != 0)
 				return error;
-			uap->lmsg.u.ms_result = (int)sa.sa_handler;
+			uap->sysmsg_result = (int)sa.sa_handler;
 
 			/* special sigset() check */
                         if(IBCS2_SIGCALL(SCARG(uap, sig)) == IBCS2_SIGSET_MASK)
 			        /* check to make sure signal is not blocked */
                                 if(sigismember(&p->p_sigmask, signum)) {
 				        /* return SIG_HOLD and unblock signal*/
-                                        uap->lmsg.u.ms_result = (int)IBCS2_SIG_HOLD;
+                                        uap->sysmsg_result = (int)IBCS2_SIG_HOLD;
 					SIGDELSET(p->p_sigmask, signum);
 				}
 				

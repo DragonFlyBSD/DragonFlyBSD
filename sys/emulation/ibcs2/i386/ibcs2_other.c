@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_other.c,v 1.10 1999/08/28 00:43:59 peter Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.5 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_other.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
  */
 
 /*
@@ -50,7 +50,7 @@ ibcs2_secure(struct ibcs2_secure_args *uap)
 
 	switch (uap->cmd) {
 	case IBCS2_SECURE_GETLUID:		/* get login uid */
-		uap->lmsg.u.ms_result = p->p_ucred->cr_uid;
+		uap->sysmsg_result = p->p_ucred->cr_uid;
 		return 0;
 	case IBCS2_SECURE_SETLUID:		/* set login uid */
 		return EPERM;
@@ -104,7 +104,7 @@ spx_open(struct ibcs2_open_args *uap)
 	  strlen(Xaddr->sun_path) + 1;
 	copyout("/tmp/.X11-unix/X0", Xaddr->sun_path, 18);
 
-	conn.s = fd = uap->lmsg.u.ms_result;
+	conn.s = fd = uap->sysmsg_result;
 	conn.name = (caddr_t)Xaddr;
 	conn.namelen = sizeof(struct sockaddr_un);
 	error = connect(&conn);
@@ -114,7 +114,7 @@ spx_open(struct ibcs2_open_args *uap)
 		close(&cl);
 		return error;
 	}
-	uap->lmsg.u.ms_result = fd;
+	uap->sysmsg_result = fd;
 	return 0;
 }
 #endif /* SPX_HACK */

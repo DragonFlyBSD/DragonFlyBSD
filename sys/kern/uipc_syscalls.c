@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.8 2003/07/27 01:49:52 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -128,7 +128,7 @@ socket(struct socket_args *uap)
 		fp->f_flag = FREAD|FWRITE;
 		fp->f_ops = &socketops;
 		fp->f_type = DTYPE_SOCKET;
-		uap->lmsg.u.ms_result = fd;
+		uap->sysmsg_result = fd;
 	}
 	fdrop(fp, td);
 	return (error);
@@ -269,7 +269,7 @@ accept1(struct accept_args *uap, int compat)
 		goto done;
 	}
 	fhold(nfp);
-	uap->lmsg.u.ms_result = fd;
+	uap->sysmsg_result = fd;
 
 	/* connection has been removed from the listen queue */
 	KNOTE(&head->so_rcv.sb_sel.si_note, 0);
@@ -624,7 +624,7 @@ sendto(struct sendto_args *uap)
 #endif
 	aiov.iov_base = uap->buf;
 	aiov.iov_len = uap->len;
-	return (sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result));
+	return (sendit(uap->s, &msg, uap->flags, &uap->sysmsg_result));
 }
 
 #ifdef COMPAT_OLDSOCK
@@ -645,7 +645,7 @@ osend(struct osend_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = 0;
-	return (sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result));
+	return (sendit(uap->s, &msg, uap->flags, &uap->sysmsg_result));
 }
 
 /*
@@ -675,7 +675,7 @@ osendmsg(struct osendmsg_args *uap)
 		goto done;
 	msg.msg_flags = MSG_COMPAT;
 	msg.msg_iov = iov;
-	error = sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result);
+	error = sendit(uap->s, &msg, uap->flags, &uap->sysmsg_result);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -712,7 +712,7 @@ sendmsg(struct sendmsg_args *uap)
 #ifdef COMPAT_OLDSOCK
 	msg.msg_flags = 0;
 #endif
-	error = sendit(uap->s, &msg, uap->flags, &uap->lmsg.u.ms_result);
+	error = sendit(uap->s, &msg, uap->flags, &uap->sysmsg_result);
 done:
 	if (iov != aiov)
 		FREE(iov, M_IOV);
@@ -895,7 +895,7 @@ recvfrom(struct recvfrom_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(uap->s, &msg, (caddr_t)uap->fromlenaddr, &uap->lmsg.u.ms_result));
+	return (recvit(uap->s, &msg, (caddr_t)uap->fromlenaddr, &uap->sysmsg_result));
 }
 
 #ifdef COMPAT_OLDSOCK
@@ -925,7 +925,7 @@ orecv(struct orecv_args *uap)
 	aiov.iov_len = uap->len;
 	msg.msg_control = 0;
 	msg.msg_flags = uap->flags;
-	return (recvit(uap->s, &msg, (caddr_t)0, &uap->lmsg.u.ms_result));
+	return (recvit(uap->s, &msg, (caddr_t)0, &uap->sysmsg_result));
 }
 
 /*
@@ -960,7 +960,7 @@ orecvmsg(struct orecvmsg_args *uap)
 	if (error)
 		goto done;
 	msg.msg_iov = iov;
-	error = recvit(uap->s, &msg, (caddr_t)&uap->msg->msg_namelen, &uap->lmsg.u.ms_result);
+	error = recvit(uap->s, &msg, (caddr_t)&uap->msg->msg_namelen, &uap->sysmsg_result);
 
 	if (msg.msg_controllen && error == 0)
 		error = copyout((caddr_t)&msg.msg_controllen,
@@ -1004,7 +1004,7 @@ recvmsg(struct recvmsg_args *uap)
 	    (unsigned)(msg.msg_iovlen * sizeof (struct iovec)));
 	if (error)
 		goto done;
-	error = recvit(uap->s, &msg, (caddr_t)0, &uap->lmsg.u.ms_result);
+	error = recvit(uap->s, &msg, (caddr_t)0, &uap->sysmsg_result);
 	if (!error) {
 		msg.msg_iov = uiov;
 		error = copyout((caddr_t)&msg, (caddr_t)uap->msg, sizeof(msg));
@@ -1562,9 +1562,9 @@ do_sendfile(struct sendfile_args *uap, int compat)
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += uap->lmsg.u.ms_result;
+				sbytes += uap->sysmsg_result;
 			else
-				hdtr_size += uap->lmsg.u.ms_result;
+				hdtr_size += uap->sysmsg_result;
 		}
 	}
 
@@ -1807,9 +1807,9 @@ retry_space:
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += uap->lmsg.u.ms_result;
+				sbytes += uap->sysmsg_result;
 			else
-				hdtr_size += uap->lmsg.u.ms_result;
+				hdtr_size += uap->sysmsg_result;
 	}
 
 done:

@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.6 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -99,7 +99,7 @@ thr_sleep(struct thr_sleep_args *uap)
 		timo = tvtohz(&atv);
 	}
 
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
 	if (p->p_wakeup == 0) {
 		sleepstart = ticks;
 		p->p_flag |= P_SINTR;
@@ -107,11 +107,11 @@ thr_sleep(struct thr_sleep_args *uap)
 		p->p_flag &= ~P_SINTR;
 		if (error == EWOULDBLOCK) {
 			p->p_wakeup = 0;
-			uap->lmsg.u.ms_result = EAGAIN;
+			uap->sysmsg_result = EAGAIN;
 			return 0;
 		}
 		if (uap->timeout == 0)
-			uap->lmsg.u.ms_result = ticks - sleepstart;
+			uap->sysmsg_result = ticks - sleepstart;
 	}
 	p->p_wakeup = 0;
 	return (0);
@@ -127,7 +127,7 @@ thr_wakeup(struct thr_wakeup_args *uap)
 		pSlave = pSlave->p_peers;
 
 	if(pSlave == 0) {
-		uap->lmsg.u.ms_result = ESRCH;
+		uap->sysmsg_result = ESRCH;
 		return(0);
 	}
 
@@ -137,7 +137,7 @@ thr_wakeup(struct thr_wakeup_args *uap)
 		return(0);
 	}
 
-	uap->lmsg.u.ms_result = EAGAIN;
+	uap->sysmsg_result = EAGAIN;
 	return 0;
 }
 
@@ -147,7 +147,7 @@ thr_wakeup(struct thr_wakeup_args *uap)
 int
 yield(struct yield_args *uap) 
 {
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
 	uio_yield();
 	return(0);
 }

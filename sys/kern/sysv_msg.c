@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.9 2003/07/28 23:28:57 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.10 2003/07/30 00:19:14 dillon Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -369,7 +369,7 @@ msgctl(struct msgctl_args *uap)
 	}
 
 	if (eval == 0)
-		uap->lmsg.u.ms_result = rval;
+		uap->sysmsg_result = rval;
 	return(eval);
 }
 
@@ -470,7 +470,7 @@ msgget(struct msgget_args *uap)
 
 found:
 	/* Construct the unique msqid */
-	uap->lmsg.u.ms_result = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
+	uap->sysmsg_result = IXSEQ_TO_IPCID(msqid, msqptr->msg_perm);
 	return(0);
 }
 
@@ -783,7 +783,7 @@ msgsnd(struct msgsnd_args *uap)
 	msqptr->msg_stime = time_second;
 
 	wakeup((caddr_t)msqptr);
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
 	return(0);
 }
 
@@ -1054,7 +1054,7 @@ msgrcv(struct msgrcv_args *uap)
 
 	msg_freehdr(msghdr);
 	wakeup((caddr_t)msqptr);
-	uap->lmsg.u.ms_result = msgsz;
+	uap->sysmsg_result = msgsz;
 	return(0);
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.11 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.12 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -121,7 +121,7 @@ getpriority(struct getpriority_args *uap)
 	}
 	if (low == PRIO_MAX + 1)
 		return (ESRCH);
-	uap->lmsg.u.ms_result = low;
+	uap->sysmsg_result = low;
 	return (0);
 }
 

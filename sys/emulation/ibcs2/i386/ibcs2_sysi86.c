@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	ibcs2_sysi86.c,v 1.1 1994/10/14 08:53:11 sos Exp
- *	$DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysi86.c,v 1.4 2003/07/26 18:12:43 dillon Exp $
+ *	$DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_sysi86.c,v 1.5 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ ibcs2_sysi86(struct ibcs2_sysi86_args *args)
 	}
 
 	case SI86_MEM:	/* size of physical memory */
-		args->lmsg.u.ms_result = ctob(physmem);
+		args->sysmsg_result = ctob(physmem);
 		return 0;
 
 	default:

@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.9 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.10 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -112,7 +112,7 @@ read(struct read_args *uap)
 	if ((fp = holdfp(p->p_fd, uap->fd, FREAD)) == NULL)
 		return (EBADF);
 	error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0,
-			&uap->lmsg.u.ms_result);
+			&uap->sysmsg_result);
 	fdrop(fp, td);
 	return(error);
 }
@@ -135,7 +135,7 @@ pread(struct pread_args *uap)
 		error = ESPIPE;
 	} else {
 	    error = dofileread(fp, uap->fd, uap->buf, uap->nbyte, 
-		uap->offset, FOF_OFFSET, &uap->lmsg.u.ms_result);
+		uap->offset, FOF_OFFSET, &uap->sysmsg_result);
 	}
 	fdrop(fp, td);
 	return(error);
@@ -283,7 +283,7 @@ readv(struct readv_args *uap)
 		FREE(ktriov, M_TEMP);
 	}
 #endif
-	uap->lmsg.u.ms_result = cnt;
+	uap->sysmsg_result = cnt;
 done:
 	fdrop(fp, td);
 	if (needfree)
@@ -307,7 +307,7 @@ write(struct write_args *uap)
 	if ((fp = holdfp(p->p_fd, uap->fd, FWRITE)) == NULL)
 		return (EBADF);
 	error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte, (off_t)-1, 0,
-			&uap->lmsg.u.ms_result);
+			&uap->sysmsg_result);
 	fdrop(fp, td);
 	return(error);
 }
@@ -330,7 +330,7 @@ pwrite(struct pwrite_args *uap)
 		error = ESPIPE;
 	} else {
 	    error = dofilewrite(fp, uap->fd, uap->buf, uap->nbyte,
-		uap->offset, FOF_OFFSET, &uap->lmsg.u.ms_result);
+		uap->offset, FOF_OFFSET, &uap->sysmsg_result);
 	}
 	fdrop(fp, td);
 	return(error);
@@ -489,7 +489,7 @@ writev(struct writev_args *uap)
 		FREE(ktriov, M_TEMP);
 	}
 #endif
-	uap->lmsg.u.ms_result = cnt;
+	uap->sysmsg_result = cnt;
 done:
 	fdrop(fp, td);
 	if (needfree)
@@ -702,8 +702,8 @@ select(struct select_args *uap)
 retry:
 	ncoll = nselcoll;
 	p->p_flag |= P_SELECT;
-	error = selscan(p, ibits, obits, uap->nd, &uap->lmsg.u.ms_result);
-	if (error || uap->lmsg.u.ms_result)
+	error = selscan(p, ibits, obits, uap->nd, &uap->sysmsg_result);
+	if (error || uap->sysmsg_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);
@@ -834,8 +834,8 @@ poll(struct poll_args *uap)
 retry:
 	ncoll = nselcoll;
 	p->p_flag |= P_SELECT;
-	error = pollscan(p, (struct pollfd *)bits, nfds, &uap->lmsg.u.ms_result);
-	if (error || uap->lmsg.u.ms_result)
+	error = pollscan(p, (struct pollfd *)bits, nfds, &uap->sysmsg_result);
+	if (error || uap->sysmsg_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
 		getmicrouptime(&rtv);

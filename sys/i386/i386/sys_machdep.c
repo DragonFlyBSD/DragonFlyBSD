@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.9 2003/07/26 18:12:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.10 2003/07/30 00:19:13 dillon Exp $
  *
  */
 
@@ -92,11 +92,11 @@ sysarch(struct sysarch_args *uap)
 	switch(uap->op) {
 #ifdef	USER_LDT
 	case I386_GET_LDT:
-		error = i386_get_ldt(p, uap->parms, &uap->lmsg.u.ms_result);
+		error = i386_get_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
 
 	case I386_SET_LDT:
-		error = i386_set_ldt(p, uap->parms, &uap->lmsg.u.ms_result);
+		error = i386_set_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
 #endif
 	case I386_GET_IOPERM:

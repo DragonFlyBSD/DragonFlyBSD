@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.7 2003/07/26 18:12:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.8 2003/07/30 00:19:15 dillon Exp $
  */
 
 /*
@@ -113,7 +113,7 @@ static struct proc *svr4_pfind __P((pid_t pid));
 int
 svr4_sys_setitimer(struct svr4_sys_setitimer_args *uap)
 {
-        uap->lmsg.u.ms_result = 0;
+        uap->sysmsg_result = 0;
 	return 0;
 }
 #endif
@@ -122,7 +122,7 @@ int
 svr4_sys_wait(struct svr4_sys_wait_args *uap)
 {
 	struct wait_args w4;
-	int error, *retval = &uap->lmsg.u.ms_result, st, sig;
+	int error, *retval = &uap->sysmsg_result, st, sig;
 	size_t sz = sizeof(*SCARG(&w4, status));
 
 	SCARG(&w4, rusage) = NULL;
@@ -137,10 +137,10 @@ svr4_sys_wait(struct svr4_sys_wait_args *uap)
 		SCARG(&w4, status) = SCARG(uap, status);
 
 	SCARG(&w4, pid) = WAIT_ANY;
-	w4.lmsg.u.ms_result = 0;
+	w4.sysmsg_result = 0;
 	if ((error = wait4(&w4)) != 0)
 		return error;
-	*retval = w4.lmsg.u.ms_result;
+	*retval = w4.sysmsg_result;
       
 	if ((error = copyin(SCARG(&w4, status), &st, sizeof(st))) != 0)
 		return error;
@@ -181,9 +181,9 @@ svr4_sys_execv(struct svr4_sys_execv_args *uap)
 	SCARG(&ap, fname) = SCARG(uap, path);
 	SCARG(&ap, argv) = SCARG(uap, argp);
 	SCARG(&ap, envv) = NULL;
-	ap.lmsg.u.ms_result = 0;
+	ap.sysmsg_result = 0;
 	error = execve(&ap);
-	uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+	uap->sysmsg_result = ap.sysmsg_result;
 	return(error);
 }
 
@@ -201,9 +201,9 @@ svr4_sys_execve(struct svr4_sys_execve_args *uap)
 	SCARG(&ap, argv) = SCARG(uap, argp);
 	SCARG(&ap, envv) = SCARG(uap, envp);
 
-	ap.lmsg.u.ms_result = 0;
+	ap.sysmsg_result = 0;
 	error = execve(&ap);
-	uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+	uap->sysmsg_result = ap.sysmsg_result;
 	return(error);
 }
 
@@ -218,7 +218,7 @@ svr4_sys_time(struct svr4_sys_time_args *v)
 	if (SCARG(uap, t))
 		error = copyout(&tv.tv_sec, SCARG(uap, t),
 				sizeof(*(SCARG(uap, t))));
-	v->lmsg.u.ms_result = (int) tv.tv_sec;
+	v->sysmsg_result = (int) tv.tv_sec;
 
 	return error;
 }
@@ -396,7 +396,7 @@ again:
 		nbytes = resid + svr4reclen;
 
 eof:
-	uap->lmsg.u.ms_result = nbytes - resid;
+	uap->sysmsg_result = nbytes - resid;
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
@@ -424,7 +424,7 @@ svr4_sys_getdents(struct svr4_sys_getdents_args *uap)
 	off_t off;		/* true file offset */
 	int buflen, error, eofflag;
 	u_long *cookiebuf = NULL, *cookie;
-	int ncookies = 0, *retval = &uap->lmsg.u.ms_result;
+	int ncookies = 0, *retval = &uap->sysmsg_result;
 
 	KKASSERT(p);
 
@@ -529,7 +529,7 @@ svr4_sys_mmap(struct svr4_sys_mmap_args *uap)
 	int             *retval;
 	int error;
 
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 #define _MAP_NEW	0x80000000
 	/*
          * Verify the arguments.
@@ -546,9 +546,9 @@ svr4_sys_mmap(struct svr4_sys_mmap_args *uap)
 	SCARG(&mm, fd) = SCARG(uap, fd);
 	SCARG(&mm, addr) = SCARG(uap, addr);
 	SCARG(&mm, pos) = SCARG(uap, pos);
-	mm.lmsg.u.ms_resultp = NULL;
+	mm.sysmsg_resultp = NULL;
 	error = mmap(&mm);
-	uap->lmsg.u.ms_resultp = mm.lmsg.u.ms_resultp;
+	uap->sysmsg_resultp = mm.sysmsg_resultp;
 	return(error);
 }
 
@@ -582,9 +582,9 @@ svr4_sys_mmap64(struct svr4_sys_mmap64_args *uap)
 	    SCARG(&mm, addr) != 0 && (void *)SCARG(&mm, addr) < rp)
 		SCARG(&mm, addr) = rp;
 
-	mm.lmsg.u.ms_resultp = 0;
+	mm.sysmsg_resultp = 0;
 	error = mmap(&mm);
-	uap->lmsg.u.ms_resultp = mm.lmsg.u.ms_resultp;
+	uap->sysmsg_resultp = mm.sysmsg_resultp;
 	return(error);
 }
 
@@ -642,14 +642,14 @@ svr4_mknod(retval, path, mode, dev)
 		SCARG(&ap, path) = path;
 		SCARG(&ap, mode) = mode;
 		error = mkfifo(&ap);
-		*retval = ap.lmsg.u.ms_result;
+		*retval = ap.sysmsg_result;
 	} else {
 		struct mknod_args ap;
 		SCARG(&ap, path) = path;
 		SCARG(&ap, mode) = mode;
 		SCARG(&ap, dev) = dev;
 		error = mknod(&ap);
-		*retval = ap.lmsg.u.ms_result;
+		*retval = ap.sysmsg_result;
 	}
 	return(error);
 }
@@ -663,7 +663,7 @@ svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
         int *retval;
 
 	KKASSERT(p);
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
 			  (svr4_dev_t)svr4_to_bsd_odev_t(SCARG(uap, dev)));
@@ -678,7 +678,7 @@ svr4_sys_xmknod(struct svr4_sys_xmknod_args *uap)
         int *retval;
 
 	KKASSERT(p);
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 
 	return svr4_mknod(retval, SCARG(uap, path), SCARG(uap, mode),
 			  (svr4_dev_t)svr4_to_bsd_dev_t(SCARG(uap, dev)));
@@ -700,7 +700,7 @@ svr4_sys_sysconfig(struct svr4_sys_sysconfig_args *uap)
 	int *retval;
 
 	KKASSERT(p);
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 
 	switch (SCARG(uap, name)) {
 	case SVR4_CONFIG_UNUSED:
@@ -861,7 +861,7 @@ timeval_to_clock_t(tv)
 int
 svr4_sys_times(struct svr4_sys_times_args *uap)
 {
-	int			 error, *retval = &uap->lmsg.u.ms_result;
+	int			 error, *retval = &uap->sysmsg_result;
 	struct tms		 tms;
 	struct timeval		 t;
 	struct rusage		*ru;
@@ -906,7 +906,7 @@ int
 svr4_sys_ulimit(struct svr4_sys_ulimit_args *uap)
 {
 	struct proc *p = curproc;
-        int *retval = &uap->lmsg.u.ms_result;
+        int *retval = &uap->sysmsg_result;
 
 	switch (SCARG(uap, cmd)) {
 	case SVR4_GFILLIM:
@@ -992,7 +992,7 @@ int
 svr4_sys_pgrpsys(struct svr4_sys_pgrpsys_args *uap)
 {
 	struct proc *p = curproc;
-        int *retval = &uap->lmsg.u.ms_result;
+        int *retval = &uap->sysmsg_result;
 
 	switch (SCARG(uap, cmd)) {
 	case 1:			/* setpgrp() */
@@ -1006,7 +1006,7 @@ svr4_sys_pgrpsys(struct svr4_sys_pgrpsys_args *uap)
 		{
 			struct setsid_args sida;
 
-			sida.lmsg.u.ms_result = 0;
+			sida.sysmsg_result = 0;
 			setsid(&sida);
 			/* ignore result? */
 		}
@@ -1033,9 +1033,9 @@ svr4_sys_pgrpsys(struct svr4_sys_pgrpsys_args *uap)
 			struct setsid_args sida;
 			int error;
 
-			sida.lmsg.u.ms_result = 0;
+			sida.sysmsg_result = 0;
 			error = setsid(&sida);
-			uap->lmsg.u.ms_result = sida.lmsg.u.ms_result;
+			uap->sysmsg_result = sida.sysmsg_result;
 			return(error);
 		}
 	case 4:			/* getpgid(pid) */
@@ -1054,9 +1054,9 @@ svr4_sys_pgrpsys(struct svr4_sys_pgrpsys_args *uap)
 
 			SCARG(&sa, pid) = SCARG(uap, pid);
 			SCARG(&sa, pgid) = SCARG(uap, pgid);
-			sa.lmsg.u.ms_result = 0;
+			sa.sysmsg_result = 0;
 			error = setpgid(&sa);
-			uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+			uap->sysmsg_result = sa.sysmsg_result;
 		}
 
 	default:
@@ -1121,11 +1121,11 @@ svr4_hrtcntl(struct svr4_hrtcntl_args *uap, register_t *retval)
 int
 svr4_sys_hrtsys(struct svr4_sys_hrtsys_args *uap)
 {
-        int *retval = &uap->lmsg.u.ms_result;
+        int *retval = &uap->sysmsg_result;
 
 	switch (SCARG(uap, cmd)) {
 	case SVR4_HRT_CNTL:
-		return svr4_hrtcntl((struct svr4_hrtcntl_args *)(&uap->lmsg + 1), retval);
+		return svr4_hrtcntl((struct svr4_hrtcntl_args *)(&uap->sysmsg + 1), retval);
 
 	case SVR4_HRT_ALRM:
 		DPRINTF(("hrtalarm\n"));
@@ -1207,7 +1207,7 @@ svr4_sys_waitsys(struct svr4_sys_waitsys_args *uap)
 {
 	struct proc *p = curproc;
 	int nfound;
-	int error, *retval = &uap->lmsg.u.ms_result;
+	int error, *retval = &uap->sysmsg_result;
 	struct proc *q, *t;
 
 
@@ -1418,7 +1418,7 @@ svr4_sys_statvfs(struct svr4_sys_statvfs_args *uap)
 	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
 		return error;
 
-	uap->lmsg.u.ms_result = fs_args.lmsg.u.ms_result;
+	uap->sysmsg_result = fs_args.sysmsg_result;
 
 	bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
 
@@ -1445,7 +1445,7 @@ svr4_sys_fstatvfs(struct svr4_sys_fstatvfs_args *uap)
 	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
 		return error;
 
-	uap->lmsg.u.ms_result = fs_args.lmsg.u.ms_result;
+	uap->sysmsg_result = fs_args.sysmsg_result;
 
 	bsd_statfs_to_svr4_statvfs(&bfs, &sfs);
 
@@ -1473,7 +1473,7 @@ svr4_sys_statvfs64(struct svr4_sys_statvfs64_args *uap)
 	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
 		return error;
 
-	uap->lmsg.u.ms_result = fs_args.lmsg.u.ms_result;
+	uap->sysmsg_result = fs_args.sysmsg_result;
 
 	bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
 
@@ -1500,7 +1500,7 @@ svr4_sys_fstatvfs64(struct svr4_sys_fstatvfs64_args *uap)
 	if ((error = copyin(fs, &bfs, sizeof(bfs))) != 0)
 		return error;
 
-	uap->lmsg.u.ms_result = fs_args.lmsg.u.ms_result;
+	uap->sysmsg_result = fs_args.sysmsg_result;
 
 	bsd_statfs_to_svr4_statvfs64(&bfs, &sfs);
 
@@ -1529,7 +1529,7 @@ svr4_sys_alarm(struct svr4_sys_alarm_args *uap)
 		return error;
         if (oitp->it_value.tv_usec)
                 oitp->it_value.tv_sec++;
-        uap->lmsg.u.ms_result = oitp->it_value.tv_sec;
+        uap->sysmsg_result = oitp->it_value.tv_sec;
         return 0;
 
 }
@@ -1552,7 +1552,7 @@ svr4_sys_facl(struct svr4_sys_facl_args *uap)
 {
 	int *retval;
 
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	*retval = 0;
 
 	switch (SCARG(uap, cmd)) {
@@ -1602,9 +1602,9 @@ svr4_sys_memcntl(struct svr4_sys_memcntl_args *uap)
 			SCARG(&msa, len) = SCARG(uap, len);
 			SCARG(&msa, flags) = (int)SCARG(uap, arg);
 
-			msa.lmsg.u.ms_result = 0;
+			msa.sysmsg_result = 0;
 			error = msync(&msa);
-			uap->lmsg.u.ms_result = msa.lmsg.u.ms_result;
+			uap->sysmsg_result = msa.sysmsg_result;
 			return(error);
 		}
 	case SVR4_MC_ADVISE:
@@ -1616,9 +1616,9 @@ svr4_sys_memcntl(struct svr4_sys_memcntl_args *uap)
 			SCARG(&maa, len) = SCARG(uap, len);
 			SCARG(&maa, behav) = (int)SCARG(uap, arg);
 
-			maa.lmsg.u.ms_result = 0;
+			maa.sysmsg_result = 0;
 			error = madvise(&maa);
-			uap->lmsg.u.ms_result = maa.lmsg.u.ms_result;
+			uap->sysmsg_result = maa.sysmsg_result;
 			return(error);
 		}
 	case SVR4_MC_LOCK:
@@ -1649,7 +1649,7 @@ svr4_sys_nice(struct svr4_sys_nice_args *uap)
 	if ((error = getpriority((struct getpriority_args *)&ap)) != 0)
 		return error;
 
-	uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+	uap->sysmsg_result = ap.sysmsg_result;
 
 	return 0;
 }
@@ -1664,7 +1664,7 @@ svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 	int *retval;
 
 	KKASSERT(p);
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 
 	NDINIT(&nd, LOOKUP, NOFOLLOW | SAVENAME, UIO_USERSPACE,
 	    SCARG(uap, path), td);

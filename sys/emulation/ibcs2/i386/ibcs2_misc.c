@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.5 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
  */
 
 /*
@@ -104,9 +104,9 @@ ibcs2_ulimit(struct ibcs2_ulimit_args *uap)
 	
 	switch (SCARG(uap, cmd)) {
 	case IBCS2_GETFSIZE:
-		uap->lmsg.u.ms_result = p->p_rlimit[RLIMIT_FSIZE].rlim_cur;
-		if (uap->lmsg.u.ms_result == -1) 
-		    uap->lmsg.u.ms_result = 0x7fffffff;
+		uap->sysmsg_result = p->p_rlimit[RLIMIT_FSIZE].rlim_cur;
+		if (uap->sysmsg_result == -1) 
+		    uap->sysmsg_result = 0x7fffffff;
 		return 0;
 	case IBCS2_SETFSIZE:	/* XXX - fix this */
 #ifdef notyet
@@ -115,16 +115,16 @@ ibcs2_ulimit(struct ibcs2_ulimit_args *uap)
 		sra.rlp = &rl;
 		error = setrlimit(&sra);
 		if (!error)
-			uap->lmsg.u.ms_result = p->p_rlimit[RLIMIT_FSIZE].rlim_cur;
+			uap->sysmsg_result = p->p_rlimit[RLIMIT_FSIZE].rlim_cur;
 		else
 			DPRINTF(("failed "));
 		return error;
 #else
-		uap->lmsg.u.ms_result = SCARG(uap, newlimit);
+		uap->sysmsg_result = SCARG(uap, newlimit);
 		return 0;
 #endif
 	case IBCS2_GETPSIZE:
-		uap->lmsg.u.ms_result = p->p_rlimit[RLIMIT_RSS].rlim_cur; /* XXX */
+		uap->sysmsg_result = p->p_rlimit[RLIMIT_RSS].rlim_cur; /* XXX */
 		return 0;
 	case IBCS2_GETDTABLESIZE:
 		uap->cmd = IBCS2_SC_OPEN_MAX;
@@ -159,7 +159,7 @@ ibcs2_wait(struct ibcs2_wait_args *uap)
 	}
 	if ((error = wait4(&w4)) != 0)
 		return error;
-	uap->lmsg.u.ms_fds[0] = w4.lmsg.u.ms_fds[0];
+	uap->sysmsg_fds[0] = w4.sysmsg_fds[0];
 	if (SCARG(&w4, status))	{	/* this is real iBCS brain-damage */
 		error = copyin((caddr_t)SCARG(&w4, status), (caddr_t)&status,
 			       sizeof(SCARG(&w4, status)));
@@ -175,7 +175,7 @@ ibcs2_wait(struct ibcs2_wait_args *uap)
 		/* else exit status -- identical */
 
 		/* record result/status */
-		uap->lmsg.u.ms_fds[1] = status;
+		uap->sysmsg_fds[1] = status;
 		return copyout((caddr_t)&status, (caddr_t)SCARG(&w4, status),
 			       sizeof(SCARG(&w4, status)));
 	}
@@ -195,7 +195,7 @@ ibcs2_execv(struct ibcs2_execv_args *uap)
 	SCARG(&ea, argv) = SCARG(uap, argp);
 	SCARG(&ea, envv) = NULL;
 	error = execve(&ea);
-	uap->lmsg.u.ms_result = ea.lmsg.u.ms_result;
+	uap->sysmsg_result = ea.sysmsg_result;
 	return(error);
 }
 
@@ -216,7 +216,7 @@ ibcs2_umount(struct ibcs2_umount_args *uap)
 	SCARG(&um, path) = SCARG(uap, name);
 	SCARG(&um, flags) = 0;
 	error = unmount(&um);
-	uap->lmsg.u.ms_result = um.lmsg.u.ms_result;
+	uap->sysmsg_result = um.sysmsg_result;
 	return(error);
 }
 
@@ -425,7 +425,7 @@ again:
 		goto again;
 	fp->f_offset = off;		/* update the vnode offset */
 eof:
-	uap->lmsg.u.ms_result = SCARG(uap, nbytes) - resid;
+	uap->sysmsg_result = SCARG(uap, nbytes) - resid;
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
@@ -578,7 +578,7 @@ again:
 		goto again;
 	fp->f_offset = off;		/* update the vnode offset */
 eof:
-	uap->lmsg.u.ms_result = SCARG(uap, nbytes) - resid;
+	uap->sysmsg_result = SCARG(uap, nbytes) - resid;
 out:
 	if (cookies)
 		free(cookies, M_TEMP);
@@ -599,14 +599,14 @@ ibcs2_mknod(struct ibcs2_mknod_args *uap)
                 SCARG(&ap, path) = SCARG(uap, path);
                 SCARG(&ap, mode) = SCARG(uap, mode);
 		error = mkfifo(&ap);
-		uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+		uap->sysmsg_result = ap.sysmsg_result;
 	} else {
                 struct mknod_args ap;
                 SCARG(&ap, path) = SCARG(uap, path);
                 SCARG(&ap, mode) = SCARG(uap, mode);
                 SCARG(&ap, dev) = SCARG(uap, dev);
                 error = mknod(&ap);
-		uap->lmsg.u.ms_result = ap.lmsg.u.ms_result;
+		uap->sysmsg_result = ap.sysmsg_result;
 	}
 	return(error);
 }
@@ -629,15 +629,15 @@ ibcs2_getgroups(struct ibcs2_getgroups_args *uap)
 	}
 	if ((error = getgroups(&sa)) != 0)
 		return error;
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	if (SCARG(uap, gidsetsize) == 0)
 		return 0;
 
-	for (i = 0, gp = SCARG(&sa, gidset); i < uap->lmsg.u.ms_result; i++)
+	for (i = 0, gp = SCARG(&sa, gidset); i < uap->sysmsg_result; i++)
 		iset[i] = (ibcs2_gid_t)*gp++;
-	if (uap->lmsg.u.ms_result && (error = copyout((caddr_t)iset,
+	if (uap->sysmsg_result && (error = copyout((caddr_t)iset,
 					  (caddr_t)SCARG(uap, gidset),
-					  sizeof(ibcs2_gid_t) * uap->lmsg.u.ms_result)))
+					  sizeof(ibcs2_gid_t) * uap->sysmsg_result)))
 		return error;
         return 0;
 }
@@ -665,7 +665,7 @@ ibcs2_setgroups(struct ibcs2_setgroups_args *uap)
 	for (i = 0, gp = SCARG(&sa, gidset); i < SCARG(&sa, gidsetsize); i++)
 		*gp++ = (gid_t)iset[i];
 	error = setgroups(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 
@@ -677,7 +677,7 @@ ibcs2_setuid(struct ibcs2_setuid_args *uap)
 
 	SCARG(&sa, uid) = (uid_t)SCARG(uap, uid);
 	error = setuid(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 
@@ -689,7 +689,7 @@ ibcs2_setgid(struct ibcs2_setgid_args *uap)
 
 	SCARG(&sa, gid) = (gid_t)SCARG(uap, gid);
 	error = setgid(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 
@@ -699,7 +699,7 @@ ibcs2_time(struct ibcs2_time_args *uap)
 	struct timeval tv;
 
 	microtime(&tv);
-	uap->lmsg.u.ms_result = tv.tv_sec;
+	uap->sysmsg_result = tv.tv_sec;
 	if (SCARG(uap, tp))
 		return copyout((caddr_t)&tv.tv_sec, (caddr_t)SCARG(uap, tp),
 			       sizeof(ibcs2_time_t));
@@ -741,12 +741,12 @@ ibcs2_sysconf(struct ibcs2_sysconf_args *uap)
 		SCARG(&ga, rlp) = stackgap_alloc(&sg, sizeof(struct rlimit *));
 		if ((error = getrlimit(&ga)) != 0)
 			return error;
-		uap->lmsg.u.ms_result = SCARG(&ga, rlp)->rlim_cur;
+		uap->sysmsg_result = SCARG(&ga, rlp)->rlim_cur;
 		return 0;
 	    }
 
 	case IBCS2_SC_CLK_TCK:
-		uap->lmsg.u.ms_result = hz;
+		uap->sysmsg_result = hz;
 		return 0;
 
 	case IBCS2_SC_NGROUPS_MAX:
@@ -761,7 +761,7 @@ ibcs2_sysconf(struct ibcs2_sysconf_args *uap)
 		SCARG(&ga, rlp) = stackgap_alloc(&sg, sizeof(struct rlimit *));
 		if ((error = getrlimit(&ga)) != 0)
 			return error;
-		uap->lmsg.u.ms_result = SCARG(&ga, rlp)->rlim_cur;
+		uap->sysmsg_result = SCARG(&ga, rlp)->rlim_cur;
 		return 0;
 	    }
 		
@@ -778,11 +778,11 @@ ibcs2_sysconf(struct ibcs2_sysconf_args *uap)
 		break;
 		
 	case IBCS2_SC_PASS_MAX:
-		uap->lmsg.u.ms_result = 128;		/* XXX - should we create PASS_MAX ? */
+		uap->sysmsg_result = 128;		/* XXX - should we create PASS_MAX ? */
 		return 0;
 
 	case IBCS2_SC_XOPEN_VERSION:
-		uap->lmsg.u.ms_result = 2;		/* XXX: What should that be? */
+		uap->sysmsg_result = 2;		/* XXX: What should that be? */
 		return 0;
 		
 	default:
@@ -799,7 +799,7 @@ ibcs2_sysconf(struct ibcs2_sysconf_args *uap)
 	SCARG(&sa, newlen) = 0;
 	if ((error = __sysctl(&sa)) != 0)
 		return error;
-	uap->lmsg.u.ms_result = value;
+	uap->sysmsg_result = value;
 	return 0;
 }
 
@@ -825,7 +825,7 @@ ibcs2_alarm(struct ibcs2_alarm_args *uap)
 		return error;
         if (oitp->it_value.tv_usec)
                 oitp->it_value.tv_sec++;
-        uap->lmsg.u.ms_result = oitp->it_value.tv_sec;
+        uap->sysmsg_result = oitp->it_value.tv_sec;
         return 0;
 }
 
@@ -856,7 +856,7 @@ ibcs2_times(struct ibcs2_times_args *uap)
         tms.tms_cstime = CONVTCK(ru->ru_stime);
 
 	microtime(&t);
-        uap->lmsg.u.ms_result = CONVTCK(t);
+        uap->sysmsg_result = CONVTCK(t);
 	
 	return copyout((caddr_t)&tms, (caddr_t)SCARG(uap, tp),
 		       sizeof(struct tms));
@@ -877,7 +877,7 @@ ibcs2_stime(struct ibcs2_stime_args *uap)
 	SCARG(&sa, tv)->tv_usec = 0;
 	if ((error = settimeofday(&sa)) != 0)
 		return EPERM;
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return 0;
 }
 
@@ -908,7 +908,7 @@ ibcs2_utime(struct ibcs2_utime_args *uap)
 	} else
 		SCARG(&sa, tptr) = NULL;
 	error = utimes(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 
@@ -924,7 +924,7 @@ ibcs2_nice(struct ibcs2_nice_args *uap)
 	SCARG(&sa, prio) = p->p_nice + SCARG(uap, incr);
 	if ((error = setpriority(&sa)) != 0)
 		return EPERM;
-	uap->lmsg.u.ms_result = p->p_nice;
+	uap->sysmsg_result = p->p_nice;
 	return 0;
 }
 
@@ -939,7 +939,7 @@ ibcs2_pgrpsys(struct ibcs2_pgrpsys_args *uap)
 
 	switch (SCARG(uap, type)) {
 	case 0:			/* getpgrp */
-		uap->lmsg.u.ms_result = p->p_pgrp->pg_id;
+		uap->sysmsg_result = p->p_pgrp->pg_id;
 		return 0;
 
 	case 1:			/* setpgrp */
@@ -949,7 +949,7 @@ ibcs2_pgrpsys(struct ibcs2_pgrpsys_args *uap)
 		SCARG(&sa, pid) = 0;
 		SCARG(&sa, pgid) = 0;
 		setpgid(&sa);
-		uap->lmsg.u.ms_result = p->p_pgrp->pg_id;
+		uap->sysmsg_result = p->p_pgrp->pg_id;
 		return 0;
 	    }
 
@@ -961,7 +961,7 @@ ibcs2_pgrpsys(struct ibcs2_pgrpsys_args *uap)
 		SCARG(&sa, pid) = SCARG(uap, pid);
 		SCARG(&sa, pgid) = SCARG(uap, pgid);
 		error = setpgid(&sa);
-		uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+		uap->sysmsg_result = sa.sysmsg_result;
 		return(error);
 	    }
 
@@ -971,7 +971,7 @@ ibcs2_pgrpsys(struct ibcs2_pgrpsys_args *uap)
 		int error;
 
 		error = setsid(&sida);
-		uap->lmsg.u.ms_result = sida.lmsg.u.ms_result;
+		uap->sysmsg_result = sida.sysmsg_result;
 		return(error);
 	    }
 

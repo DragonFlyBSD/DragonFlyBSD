@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.6 2003/07/26 18:12:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.7 2003/07/30 00:19:15 dillon Exp $
  */
 
 /*
@@ -1471,7 +1471,7 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 	if ((error = fcntl(&fa)) != 0)
 		return error;
 
-	oflags = fa.lmsg.u.ms_result;
+	oflags = fa.sysmsg_result;
 
 	/* update the flags */
 	if (dat != NULL) {
@@ -1499,7 +1499,7 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 		SCARG(&fa, arg) = (long) flags;
 		if ((error = fcntl(&fa)) != 0)
 			  return error;
-		flags =fa.lmsg.u.ms_result;
+		flags =fa.sysmsg_result;
 	}
 
 	/* set up SIGIO receiver if needed */
@@ -1507,10 +1507,10 @@ i_setsig(fp, td, retval, fd, cmd, dat)
 		SCARG(&fa, cmd) = F_SETOWN;
 		SCARG(&fa, arg) = (long) p->p_pid;
 		error = fcntl(&fa);
-		*retval = fa.lmsg.u.ms_result;
+		*retval = fa.sysmsg_result;
 		return(error);
 	}
-	*retval = fa.lmsg.u.ms_result;
+	*retval = fa.sysmsg_result;
 	return 0;
 }
 
@@ -1737,7 +1737,7 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	fp = fdp->fd_ofiles[SCARG(uap, fd)];
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL)) {
@@ -1816,10 +1816,10 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 				SCARG(&wa, fd) = SCARG(uap, fd);
 				SCARG(&wa, buf) = dat.buf;
 				SCARG(&wa, nbyte) = dat.len;
-				wa.lmsg.u.ms_result = 0;
+				wa.sysmsg_result = 0;
 
 				error = write(&wa);
-				*retval = wa.lmsg.u.ms_result;
+				*retval = wa.sysmsg_result;
 				return(error);
 			}
 	                DPRINTF(("putmsg: Invalid inet length %ld\n", sc.len));
@@ -1872,10 +1872,10 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 			SCARG(&co, s) = SCARG(uap, fd);
 			SCARG(&co, name) = (void *) sup;
 			SCARG(&co, namelen) = (int) sasize;
-			co.lmsg.u.ms_result = 0;
+			co.sysmsg_result = 0;
 			
 			error = connect(&co);
-			*retval = co.lmsg.u.ms_result;
+			*retval = co.sysmsg_result;
 			return(error);
 		}
 
@@ -1934,7 +1934,7 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 
 	KKASSERT(p);
 	fdp = p->p_fd;
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 	fp = fdp->fd_ofiles[SCARG(uap, fd)];
 
 	if (((u_int)SCARG(uap, fd) >= fdp->fd_nfiles) || (fp == NULL))
@@ -2263,9 +2263,9 @@ int svr4_sys_send(struct svr4_sys_send_args *uap)
 	SCARG(&osa, buf) = SCARG(uap, buf);
 	SCARG(&osa, len) = SCARG(uap, len);
 	SCARG(&osa, flags) = SCARG(uap, flags);
-	osa.lmsg.u.ms_result = 0;
+	osa.sysmsg_result = 0;
 	error = osend(&osa);
-	uap->lmsg.u.ms_result = osa.lmsg.u.ms_result;
+	uap->sysmsg_result = osa.sysmsg_result;
 	return(error);
 }
 
@@ -2278,9 +2278,9 @@ int svr4_sys_recv(struct svr4_sys_recv_args *uap)
 	SCARG(&ora, buf) = SCARG(uap, buf);
 	SCARG(&ora, len) = SCARG(uap, len);
 	SCARG(&ora, flags) = SCARG(uap, flags);
-	ora.lmsg.u.ms_result = 0;
+	ora.sysmsg_result = 0;
 	error = orecv(&ora);
-	uap->lmsg.u.ms_result = ora.lmsg.u.ms_result;
+	uap->sysmsg_result = ora.sysmsg_result;
 	return(error);
 }
 
@@ -2302,9 +2302,9 @@ svr4_sys_sendto(struct svr4_sys_sendto_args *uap)
 	SCARG(&sa, tolen) = SCARG(uap, tolen);
 
 	DPRINTF(("calling sendto()\n"));
-	sa.lmsg.u.ms_result = 0;
+	sa.sysmsg_result = 0;
 	error = sendto(&sa);
-	uap->lmsg.u.ms_result = sa.lmsg.u.ms_result;
+	uap->sysmsg_result = sa.sysmsg_result;
 	return(error);
 }
 

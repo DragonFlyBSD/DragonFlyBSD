@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.14 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.15 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -94,8 +94,8 @@ fork(struct fork_args *uap)
 	error = fork1(p, RFFDG | RFPROC, &p2);
 	if (error == 0) {
 		start_forked_proc(p, p2);
-		uap->lmsg.u.ms_fds[0] = p2->p_pid;
-		uap->lmsg.u.ms_fds[1] = 0;
+		uap->sysmsg_fds[0] = p2->p_pid;
+		uap->sysmsg_fds[1] = 0;
 	}
 	return error;
 }
@@ -111,8 +111,8 @@ vfork(struct vfork_args *uap)
 	error = fork1(p, RFFDG | RFPROC | RFPPWAIT | RFMEM, &p2);
 	if (error == 0) {
 		start_forked_proc(p, p2);
-		uap->lmsg.u.ms_fds[0] = p2->p_pid;
-		uap->lmsg.u.ms_fds[1] = 0;
+		uap->sysmsg_fds[0] = p2->p_pid;
+		uap->sysmsg_fds[1] = 0;
 	}
 	return error;
 }
@@ -127,8 +127,8 @@ rfork(struct rfork_args *uap)
 	error = fork1(p, uap->flags, &p2);
 	if (error == 0) {
 		start_forked_proc(p, p2);
-		uap->lmsg.u.ms_fds[0] = p2 ? p2->p_pid : 0;
-		uap->lmsg.u.ms_fds[1] = 0;
+		uap->sysmsg_fds[0] = p2 ? p2->p_pid : 0;
+		uap->sysmsg_fds[1] = 0;
 	}
 	return error;
 }

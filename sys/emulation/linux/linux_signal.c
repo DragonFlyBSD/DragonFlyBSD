@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_signal.c,v 1.23.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.4 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_signal.c,v 1.5 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -163,11 +163,11 @@ linux_do_sigaction(int linux_sig, l_sigaction_t *linux_nsa,
 
 	sa_args.act = nsa;
 	sa_args.oact = osa;
-	sa_args.lmsg.u.ms_result = 0;
+	sa_args.sysmsg_result = 0;
 	error = sigaction(&sa_args);
 	if (error)
 		return (error);
-	*res = sa_args.lmsg.u.ms_result;
+	*res = sa_args.sysmsg_result;
 
 	if (linux_osa != NULL)
 		bsd_to_linux_sigaction(osa, linux_osa);
@@ -195,7 +195,7 @@ linux_signal(struct linux_signal_args *args)
 	LINUX_SIGEMPTYSET(nsa.lsa_mask);
 
 	error = linux_do_sigaction(args->sig, &nsa, &osa, &dummy);
-	args->lmsg.u.ms_result = (int)osa.lsa_handler;
+	args->sysmsg_result = (int)osa.lsa_handler;
 
 	return (error);
 }
@@ -226,7 +226,7 @@ linux_rt_sigaction(struct linux_rt_sigaction_args *args)
 	error = linux_do_sigaction(args->sig,
 				   args->act ? &nsa : NULL,
 				   args->oact ? &osa : NULL,
-				   &args->lmsg.u.ms_result);
+				   &args->sysmsg_result);
 
 	if (args->oact != NULL && !error) {
 		error = copyout(&osa, args->oact, sizeof(l_sigaction_t));
@@ -296,7 +296,7 @@ linux_sigprocmask(struct linux_sigprocmask_args *args)
 	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
 				     args->omask ? &oset : NULL,
-				     &args->lmsg.u.ms_result);
+				     &args->sysmsg_result);
 
 	if (args->omask != NULL && !error) {
 		mask = oset.__bits[0];
@@ -332,7 +332,7 @@ linux_rt_sigprocmask(struct linux_rt_sigprocmask_args *args)
 	error = linux_do_sigprocmask(args->how,
 				     args->mask ? &set : NULL,
 				     args->omask ? &oset : NULL,
-				     &args->lmsg.u.ms_result);
+				     &args->sysmsg_result);
 
 	if (args->omask != NULL && !error) {
 		error = copyout(&oset, args->omask, sizeof(l_sigset_t));
@@ -354,7 +354,7 @@ linux_sgetmask(struct linux_sgetmask_args *args)
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &mask);
-	args->lmsg.u.ms_result = mask.__bits[0];
+	args->sysmsg_result = mask.__bits[0];
 	return (0);
 }
 
@@ -371,7 +371,7 @@ linux_ssetmask(struct linux_ssetmask_args *args)
 #endif
 
 	bsd_to_linux_sigset(&p->p_sigmask, &lset);
-	args->lmsg.u.ms_result = lset.__bits[0];
+	args->sysmsg_result = lset.__bits[0];
 	LINUX_SIGEMPTYSET(lset);
 	lset.__bits[0] = args->mask;
 	linux_to_bsd_sigset(&lset, &bset);
@@ -426,9 +426,9 @@ linux_kill(struct linux_kill_args *args)
 		ka.signum = args->signum;
 
 	ka.pid = args->pid;
-	ka.lmsg.u.ms_result = 0;
+	ka.sysmsg_result = 0;
 	error = kill(&ka);
-	args->lmsg.u.ms_result = ka.lmsg.u.ms_result;
+	args->sysmsg_result = ka.sysmsg_result;
 	return(error);
 }
 

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.7 2003/07/26 18:12:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.8 2003/07/30 00:19:15 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -338,7 +338,7 @@ fd_truncate(struct thread *td, int fd, struct flock *flp, int *retval)
 	SCARG(&ft, fd) = fd;
 	SCARG(&ft, length) = start;
 	error = ftruncate(&ft);
-	*retval = ft.lmsg.u.ms_result;
+	*retval = ft.sysmsg_result;
 	return(error);
 }
 
@@ -353,7 +353,7 @@ svr4_sys_open(struct svr4_sys_open_args *uap)
 	caddr_t sg = stackgap_init();
 	CHECKALTEXIST(&sg, SCARG(uap, path));
 
-	cup.lmsg.u.ms_result = 0;
+	cup.sysmsg_result = 0;
 	cup.path = uap->path;
 	cup.flags = svr4_to_bsd_flags(uap->flags);
 	cup.mode = uap->mode;
@@ -366,7 +366,7 @@ svr4_sys_open(struct svr4_sys_open_args *uap)
 	}
 
 	KKASSERT(p);
-	retval = uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
+	retval = uap->sysmsg_result = cup.sysmsg_result;
 
 	if (!(SCARG(&cup, flags) & O_NOCTTY) && SESS_LEADER(p) &&
 	    !(p->p_flag & P_CONTROLT)) {
@@ -401,9 +401,9 @@ svr4_sys_creat(struct svr4_sys_creat_args *uap)
 	SCARG(&cup, mode) = SCARG(uap, mode);
 	SCARG(&cup, flags) = O_WRONLY | O_CREAT | O_TRUNC;
 
-	cup.lmsg.u.ms_result = 0;
+	cup.sysmsg_result = 0;
 	error = open(&cup);
-	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
+	uap->sysmsg_result = cup.sysmsg_result;
 	return(error);
 }
 
@@ -448,9 +448,9 @@ svr4_sys_access(struct svr4_sys_access_args *uap)
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, flags) = SCARG(uap, flags);
-	cup.lmsg.u.ms_result = 0;
+	cup.sysmsg_result = 0;
 	error = access(&cup);
-	uap->lmsg.u.ms_result = cup.lmsg.u.ms_result;
+	uap->sysmsg_result = cup.sysmsg_result;
 	return(error);
 }
 
@@ -470,9 +470,9 @@ svr4_sys_pread(struct svr4_sys_pread_args *uap)
 	SCARG(&pra, nbyte) = SCARG(uap, nbyte);
 	SCARG(&pra, offset) = SCARG(uap, off);
 
-	pra.lmsg.u.ms_result = 0;
+	pra.sysmsg_result = 0;
 	error = pread(&pra);
-	uap->lmsg.u.ms_result = pra.lmsg.u.ms_result;
+	uap->sysmsg_result = pra.sysmsg_result;
 	return(error);
 }
 #endif
@@ -494,9 +494,9 @@ svr4_sys_pread64(struct thread *td, void *v, register_t *retval)
 	SCARG(&pra, nbyte) = SCARG(uap, nbyte);
 	SCARG(&pra, offset) = SCARG(uap, off);
 
-	pra.lmsg.u.ms_result = 0;
+	pra.sysmsg_result = 0;
 	error = sys_pread(&pra, retval);
-	uap->lmsg.u.ms_result = pra.lmsg.u.ms_result;
+	uap->sysmsg_result = pra.sysmsg_result;
 	return(error);
 }
 #endif /* NOTYET */
@@ -517,9 +517,9 @@ svr4_sys_pwrite(struct svr4_sys_pwrite_args *uap)
 	SCARG(&pwa, nbyte) = SCARG(uap, nbyte);
 	SCARG(&pwa, offset) = SCARG(uap, off);
 
-	pwa.lmsg.u.ms_result = 0;
+	pwa.sysmsg_result = 0;
 	error = pwrite(&pwa);
-	uap->lmsg.u.ms_result = pwa.lmsg.u.ms_result;
+	uap->sysmsg_result = pwa.sysmsg_result;
 	return(error);
 }
 #endif
@@ -554,7 +554,7 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 	int                             *retval;
 
 	KKASSERT(p);
-	retval = &uap->lmsg.u.ms_result;
+	retval = &uap->sysmsg_result;
 
 	SCARG(&fa, fd) = SCARG(uap, fd);
 	SCARG(&fa, cmd) = svr4_to_bsd_cmd(SCARG(uap, cmd));
@@ -564,9 +564,9 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 	case F_GETFD:
 	case F_SETFD:
 		SCARG(&fa, arg) = (long) SCARG(uap, arg);
-		fa.lmsg.u.ms_result = 0;
+		fa.sysmsg_result = 0;
 		error = fcntl(&fa);
-		*retval = fa.lmsg.u.ms_result;
+		*retval = fa.sysmsg_result;
 		return error;
 
 	case F_GETFL:
@@ -574,7 +574,7 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 		error = fcntl(&fa);
 		if (error)
 			return error;
-		*retval = bsd_to_svr4_flags(fa.lmsg.u.ms_result);
+		*retval = bsd_to_svr4_flags(fa.sysmsg_result);
 		return error;
 
 	case F_SETFL:
@@ -592,13 +592,13 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 			SCARG(&fa, cmd) = F_GETFL;
 			if ((error = fcntl(&fa)) != 0)
 				return error;
-			flags = fa.lmsg.u.ms_result;
+			flags = fa.sysmsg_result;
 			flags &= O_ASYNC;
 			flags |= svr4_to_bsd_flags((u_long) SCARG(uap, arg));
 			SCARG(&fa, cmd) = cmd;
 			SCARG(&fa, arg) = (long) flags;
 			error = fcntl(&fa);
-			*retval = fa.lmsg.u.ms_result;
+			*retval = fa.sysmsg_result;
 			return error;
 		}
 
@@ -623,9 +623,9 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 			if (error)
 				return error;
 
-			fa.lmsg.u.ms_result = 0;
+			fa.sysmsg_result = 0;
 			error = fcntl(&fa);
-			*retval = fa.lmsg.u.ms_result;
+			*retval = fa.sysmsg_result;
 			if (error || SCARG(&fa, cmd) != F_GETLK)
 				return error;
 
@@ -687,9 +687,9 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 				if (error)
 					return error;
 
-				fa.lmsg.u.ms_result = 0;
+				fa.sysmsg_result = 0;
 				error = fcntl(&fa);
-				*retval = fa.lmsg.u.ms_result;
+				*retval = fa.sysmsg_result;
 				if (error || SCARG(&fa, cmd) != F_GETLK)
 					return error;
 

@@ -1,7 +1,7 @@
 #! /bin/sh -
 #	@(#)makesyscalls.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/kern/makesyscalls.sh,v 1.39.2.4 2001/10/20 09:01:24 marcel Exp $
-# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.6 2003/07/24 23:52:38 dillon Exp $
+# $DragonFly: src/sys/kern/makesyscalls.sh,v 1.7 2003/07/30 00:19:14 dillon Exp $
 
 set -e
 
@@ -124,6 +124,7 @@ s/\$//g
 		printf "#include <sys/signal.h>\n\n" > sysarg
 		printf "#include <sys/acl.h>\n\n" > sysarg
 		printf "#include <sys/msgport.h>\n\n" > sysarg
+		printf "#include <sys/sysmsg.h>\n\n" > sysarg
 		printf "#define\tPAD_(t)\t(sizeof(register_t) <= sizeof(t) ? \\\n" > sysarg
 		printf "\t\t0 : sizeof(register_t) - sizeof(t))\n\n" > sysarg
 
@@ -137,7 +138,8 @@ s/\$//g
 		printf " * created from%s\n */\n\n", $0 > syshide
 		printf " * created from%s\n */\n\n", $0 > sysun
 		printf "union sysunion {\n" > sysun
-		printf "\tstruct lwkt_msg lmsg;\n" > sysun
+		printf "\tstruct\tlwkt_msg lmsg;\n" > sysun
+		printf "\tunion\tsysmsg sysmsg;\n" > sysun
 		next
 	}
 	NF == 0 || $1 ~ /^;/ {
@@ -297,7 +299,7 @@ s/\$//g
 			if (argc != 0 && $2 != "NOARGS" && $2 != "NOPROTO") {
 				printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
 				printf("struct\t%s {\n", argalias) > sysarg
-				printf("\tstruct lwkt_msg lmsg;\n") > sysarg
+				printf("\tunion sysmsg sysmsg;\n") > sysarg
 				for (i = 1; i <= argc; i++)
 					printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
 					    argtype[i], argname[i],
@@ -308,7 +310,7 @@ s/\$//g
 			    $2 != "NODEF") {
 				printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
 				printf("struct\t%s {\n", argalias) > sysarg
-				printf("\tstruct lwkt_msg lmsg;\n") > sysarg
+				printf("\tunion sysmsg sysmsg;\n") > sysarg
 				printf("\tregister_t dummy;\n") > sysarg
 				printf("};\n") > sysarg
 			}
@@ -356,7 +358,7 @@ s/\$//g
 			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
 			printf("#endif\n") > sysun
 			printf("struct\t%s {\n", argalias) > syscompat
-			printf("\tstruct lwkt_msg lmsg;\n") > syscompat
+			printf("\tunion sysmsg sysmsg;\n") > syscompat
 			for (i = 1; i <= argc; i++)
 				printf("\t%s\t%s;\tchar %s_[PAD_(%s)];\n",
 				    argtype[i], argname[i],
@@ -366,7 +368,7 @@ s/\$//g
 		else if($2 != "CPT_NOA") {
 			printf("\tstruct\t%s %s;\n", argalias, usefuncname) > sysun
 			printf("struct\t%s {\n", argalias) > sysarg
-			printf("\tstruct lwkt_msg lmsg;\n") > sysarg
+			printf("\tunion sysmsg sysmsg;\n") > sysarg
 			printf("\tregister_t dummy;\n") > sysarg
 			printf("};\n") > sysarg
 		}
@@ -433,7 +435,7 @@ s/\$//g
 		exit 1
 	}
 	END {
-		printf "\n#define AS(name) ((sizeof(struct name) - sizeof(struct lwkt_msg)) / sizeof(register_t))\n" > sysinc
+		printf "\n#define AS(name) ((sizeof(struct name) - sizeof(union sysmsg)) / sizeof(register_t))\n" > sysinc
 		if (ncompat != 0) {
 			printf "#include \"opt_compat.h\"\n\n" > syssw
 			printf "\n#ifdef %s\n", compat > sysinc
@@ -453,7 +455,6 @@ s/\$//g
 		printf("};\n") > sysnames
 		printf("};\n") > sysun
 		printf("\n#endif /* _KERNEL */\n") > sysdcl
-		printf("\ntypedef union sysunion *sysmsg_t;\n") > sysun
 		printf("#define\t%sMAXSYSCALL\t%d\n", syscallprefix, syscall) \
 		    > syshdr
 	} '

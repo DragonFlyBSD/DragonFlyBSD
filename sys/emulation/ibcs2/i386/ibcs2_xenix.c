@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_xenix.c,v 1.20 1999/12/15 23:01:46 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.6 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_xenix.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ xenix_rdchk(struct xenix_rdchk_args *uap)
 	SCARG(&sa, data) = stackgap_alloc(&sg, sizeof(int));
 	if ((error = ioctl(&sa)) != 0)
 		return error;
-	uap->lmsg.u.ms_result = (*((int*)SCARG(&sa, data))) ? 1 : 0;
+	uap->sysmsg_result = (*((int*)SCARG(&sa, data))) ? 1 : 0;
 	return 0;
 }
 
@@ -185,7 +185,7 @@ int
 xenix_scoinfo(struct xenix_scoinfo_args *uap)
 {
 	/* scoinfo (not documented) */
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
 	return 0;
 }
 

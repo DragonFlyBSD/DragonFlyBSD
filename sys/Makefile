@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/Makefile,v 1.20.2.1 2000/07/10 08:22:34 obrien Exp $
-# $DragonFly: src/sys/Makefile,v 1.3 2003/07/24 01:36:22 dillon Exp $
+# $DragonFly: src/sys/Makefile,v 1.4 2003/07/30 00:19:11 dillon Exp $
 
 # This is the old aout only boot loader.
 .if	exists(${.CURDIR}/${MACHINE_ARCH}/boot) && ${OBJFORMAT} == "aout"
@@ -26,3 +26,5 @@ all_sysent:
 	(cd ${.CURDIR}/svr4; ${MAKE} svr4_sysent.c) 
 	(cd ${.CURDIR}/i386/linux; ${MAKE} linux_sysent.c) 
 	(cd ${.CURDIR}/i386/ibcs2; ${MAKE} ibcs2_sysent.c) 
+	(cd ${.CURDIR}/i386/ibcs2; ${MAKE} ibcs2_isc_sysent.c) 
+	(cd ${.CURDIR}/i386/ibcs2; ${MAKE} ibcs2_xenix_sysent.c) 

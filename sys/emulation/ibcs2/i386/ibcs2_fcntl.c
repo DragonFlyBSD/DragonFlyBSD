@@ -25,7 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_fcntl.c,v 1.14 1999/09/19 17:00:14 green Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.6 2003/07/26 18:12:43 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_fcntl.c,v 1.7 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include "opt_spx_hack.h"
@@ -194,7 +194,7 @@ ibcs2_open(struct ibcs2_open_args *uap)
 #endif /* SPX_HACK */
 	if (!ret && !noctty && p && SESS_LEADER(p) && !(p->p_flag & P_CONTROLT)) {
 		struct filedesc *fdp = p->p_fd;
-		struct file *fp = fdp->fd_ofiles[uap->lmsg.u.ms_result];
+		struct file *fp = fdp->fd_ofiles[uap->sysmsg_result];
 
 		/* ignore any error, just give it a try */
 		if (fp->f_type == DTYPE_VNODE)
@@ -259,7 +259,7 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		error = fcntl(&fa);
 		if (error)
 			return error;
-		uap->lmsg.u.ms_result = oflags2ioflags(fa.lmsg.u.ms_result);
+		uap->sysmsg_result = oflags2ioflags(fa.sysmsg_result);
 		return error;
 	case IBCS2_F_SETFL:
 		SCARG(&fa, fd) = SCARG(uap, fd);
@@ -280,7 +280,7 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 		SCARG(&fa, cmd) = F_GETLK;
 		SCARG(&fa, arg) = (/* XXX */ int)flp;
 		error = fcntl(&fa);
-		uap->lmsg.u.ms_result = fa.lmsg.u.ms_result;
+		uap->sysmsg_result = fa.sysmsg_result;
 		if (error)
 			return error;
 		cvt_flock2iflock(flp, &ifl);
@@ -320,6 +320,6 @@ ibcs2_fcntl(struct ibcs2_fcntl_args *uap)
 	    return ENOSYS;
 	}
 	error = fcntl(&fa);
-	uap->lmsg.u.ms_result = fa.lmsg.u.ms_result;
+	uap->sysmsg_result = fa.sysmsg_result;
 	return(error);
 }

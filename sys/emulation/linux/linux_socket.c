@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.5 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.6 2003/07/30 00:19:13 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -235,7 +235,7 @@ linux_check_hdrincl(int s)
 	bsd_args.name = IP_HDRINCL;
 	bsd_args.val = val;
 	bsd_args.avalsize = (int *)valsize;
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	if ((error = getsockopt(&bsd_args)))
 		return (error);
 	/* return value not used */
@@ -311,9 +311,9 @@ linux_sendto_hdrincl(struct sendto_args *bsd_args)
 	sendmsg_args.s = bsd_args->s;
 	sendmsg_args.msg = (caddr_t)msg;
 	sendmsg_args.flags = bsd_args->flags;
-	sendmsg_args.lmsg.u.ms_result = 0;
+	sendmsg_args.sysmsg_result = 0;
 	error = sendmsg(&sendmsg_args);
-	bsd_args->lmsg.u.ms_result = sendmsg_args.lmsg.u.ms_result;
+	bsd_args->sysmsg_result = sendmsg_args.sysmsg_result;
 	return(error);
 }
 
@@ -334,7 +334,7 @@ linux_socket(struct linux_socket_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.protocol = linux_args.protocol;
 	bsd_args.type = linux_args.type;
 	bsd_args.domain = linux_to_bsd_domain(linux_args.domain);
@@ -343,7 +343,7 @@ linux_socket(struct linux_socket_args *args, int *res)
 
 	retval_socket = socket(&bsd_args);
 	/* Copy back the return value from socket() */
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	if (bsd_args.type == SOCK_RAW
 	    && (bsd_args.protocol == IPPROTO_RAW || bsd_args.protocol == 0)
 	    && bsd_args.domain == AF_INET
@@ -362,7 +362,7 @@ linux_socket(struct linux_socket_args *args, int *res)
 		sg = stackgap_init();
 		hdrincl = (int *)stackgap_alloc(&sg, sizeof(*hdrincl));
 		*hdrincl = 1;
-		bsd_setsockopt_args.s = bsd_args.lmsg.u.ms_result;
+		bsd_setsockopt_args.s = bsd_args.sysmsg_result;
 		bsd_setsockopt_args.level = IPPROTO_IP;
 		bsd_setsockopt_args.name = IP_HDRINCL;
 		bsd_setsockopt_args.val = (caddr_t)hdrincl;
@@ -394,13 +394,13 @@ linux_bind(struct linux_bind_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.name;
 	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
 	    linux_args.namelen);
 	error = bind(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -436,13 +436,13 @@ linux_connect(struct linux_connect_args *args, int *res)
 		return (error);
 #endif /* __alpha__ */
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.name;
 	bsd_args.namelen = linux_to_bsd_namelen(bsd_args.name,
 	    linux_args.namelen);
 	error = connect(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	if (error != EISCONN)
 		return (error);
 
@@ -485,11 +485,11 @@ linux_listen(struct linux_listen_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.backlog = linux_args.backlog;
 	error = listen(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -518,7 +518,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.name = (caddr_t)linux_args.addr;
 	bsd_args.anamelen = linux_args.namelen;
@@ -531,7 +531,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	f_args.fd = *res = bsd_args.lmsg.u.ms_result;
+	f_args.fd = *res = bsd_args.sysmsg_result;
 	f_args.cmd = F_SETFL;
 	f_args.arg = 0;
 	(void)fcntl(&f_args);
@@ -558,12 +558,12 @@ linux_getsockname(struct linux_getsockname_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.fdes = linux_args.s;
 	bsd_args.asa = (caddr_t) linux_args.addr;
 	bsd_args.alen = linux_args.namelen;
 	error = ogetsockname(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -587,12 +587,12 @@ linux_getpeername(struct linux_getpeername_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.fdes = linux_args.s;
 	bsd_args.asa = (caddr_t) linux_args.addr;
 	bsd_args.alen = linux_args.namelen;
 	error = ogetpeername(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -622,12 +622,12 @@ linux_socketpair(struct linux_socketpair_args *args, int *res)
 	if (bsd_args.domain == -1)
 		return (EINVAL);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.type = linux_args.type;
 	bsd_args.protocol = linux_args.protocol;
 	bsd_args.rsv = linux_args.rsv;
 	error = socketpair(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -653,13 +653,13 @@ linux_send(struct linux_send_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
 	bsd_args.flags = linux_args.flags;
 	error = osend(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -685,13 +685,13 @@ linux_recv(struct linux_recv_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
 	bsd_args.flags = linux_args.flags;
 	error = orecv(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -721,7 +721,7 @@ linux_sendto(struct linux_sendto_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.msg;
 	bsd_args.len = linux_args.len;
@@ -734,7 +734,7 @@ linux_sendto(struct linux_sendto_args *args, int *res)
 		return (linux_sendto_hdrincl(&bsd_args));
 
 	error = sendto(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -764,7 +764,7 @@ linux_recvfrom(struct linux_recvfrom_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.buf = linux_args.buf;
 	bsd_args.len = linux_args.len;
@@ -772,7 +772,7 @@ linux_recvfrom(struct linux_recvfrom_args *args, int *res)
 	bsd_args.from = linux_args.from;
 	bsd_args.fromlenaddr = linux_args.fromlen;
 	error = orecvfrom(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -796,12 +796,12 @@ linux_recvmsg(struct linux_recvmsg_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.msg = linux_args.msg;
 	bsd_args.flags = linux_to_bsd_msg_flags(linux_args.flags);
 	error = recvmsg(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -823,11 +823,11 @@ linux_shutdown(struct linux_shutdown_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.how = linux_args.how;
 	error = shutdown(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -855,7 +855,7 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.level = linux_to_bsd_sockopt_level(linux_args.level);
 	switch (bsd_args.level) {
@@ -880,7 +880,7 @@ linux_setsockopt(struct linux_setsockopt_args *args, int *res)
 	bsd_args.val = linux_args.optval;
 	bsd_args.valsize = linux_args.optlen;
 	error = setsockopt(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -908,7 +908,7 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
 		return (error);
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.s = linux_args.s;
 	bsd_args.level = linux_to_bsd_sockopt_level(linux_args.level);
 	switch (bsd_args.level) {
@@ -933,7 +933,7 @@ linux_getsockopt(struct linux_getsockopt_args *args, int *res)
 	bsd_args.val = linux_args.optval;
 	bsd_args.avalsize = linux_args.optlen;
 	error = getsockopt(&bsd_args);
-	*res = bsd_args.lmsg.u.ms_result;
+	*res = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -944,35 +944,35 @@ linux_socketcall(struct linux_socketcall_args *args)
 
 	switch (args->what) {
 	case LINUX_SOCKET:
-		return (linux_socket(arg, &args->lmsg.u.ms_result));
+		return (linux_socket(arg, &args->sysmsg_result));
 	case LINUX_BIND:
-		return (linux_bind(arg, &args->lmsg.u.ms_result));
+		return (linux_bind(arg, &args->sysmsg_result));
 	case LINUX_CONNECT:
-		return (linux_connect(arg, &args->lmsg.u.ms_result));
+		return (linux_connect(arg, &args->sysmsg_result));
 	case LINUX_LISTEN:
-		return (linux_listen(arg, &args->lmsg.u.ms_result));
+		return (linux_listen(arg, &args->sysmsg_result));
 	case LINUX_ACCEPT:
-		return (linux_accept(arg, &args->lmsg.u.ms_result));
+		return (linux_accept(arg, &args->sysmsg_result));
 	case LINUX_GETSOCKNAME:
-		return (linux_getsockname(arg, &args->lmsg.u.ms_result));
+		return (linux_getsockname(arg, &args->sysmsg_result));
 	case LINUX_GETPEERNAME:
-		return (linux_getpeername(arg, &args->lmsg.u.ms_result));
+		return (linux_getpeername(arg, &args->sysmsg_result));
 	case LINUX_SOCKETPAIR:
-		return (linux_socketpair(arg, &args->lmsg.u.ms_result));
+		return (linux_socketpair(arg, &args->sysmsg_result));
 	case LINUX_SEND:
-		return (linux_send(arg, &args->lmsg.u.ms_result));
+		return (linux_send(arg, &args->sysmsg_result));
 	case LINUX_RECV:
-		return (linux_recv(arg, &args->lmsg.u.ms_result));
+		return (linux_recv(arg, &args->sysmsg_result));
 	case LINUX_SENDTO:
-		return (linux_sendto(arg, &args->lmsg.u.ms_result));
+		return (linux_sendto(arg, &args->sysmsg_result));
 	case LINUX_RECVFROM:
-		return (linux_recvfrom(arg, &args->lmsg.u.ms_result));
+		return (linux_recvfrom(arg, &args->sysmsg_result));
 	case LINUX_SHUTDOWN:
-		return (linux_shutdown(arg, &args->lmsg.u.ms_result));
+		return (linux_shutdown(arg, &args->sysmsg_result));
 	case LINUX_SETSOCKOPT:
-		return (linux_setsockopt(arg, &args->lmsg.u.ms_result));
+		return (linux_setsockopt(arg, &args->sysmsg_result));
 	case LINUX_GETSOCKOPT:
-		return (linux_getsockopt(arg, &args->lmsg.u.ms_result));
+		return (linux_getsockopt(arg, &args->sysmsg_result));
 	case LINUX_SENDMSG:
 		do {
 			int error;
@@ -1009,13 +1009,13 @@ linux_socketcall(struct linux_socketcall_args *args)
 					return (error);
 			}
 		done:
-			bsd_args.lmsg.u.ms_result = 0;
+			bsd_args.sysmsg_result = 0;
 			error = sendmsg(&bsd_args);
-			args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+			args->sysmsg_result = bsd_args.sysmsg_result;
 			return(error);
 		} while (0);
 	case LINUX_RECVMSG:
-		return (linux_recvmsg(arg, &args->lmsg.u.ms_result));
+		return (linux_recvmsg(arg, &args->sysmsg_result));
 	}
 
 	uprintf("LINUX: 'socket' typ=%d not implemented\n", args->what);

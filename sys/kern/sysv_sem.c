@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.8 2003/07/28 23:28:57 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.9 2003/07/30 00:19:14 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -547,7 +547,7 @@ __semctl(struct __semctl_args *uap)
 	}
 
 	if (eval == 0)
-		uap->lmsg.u.ms_result = rval;
+		uap->sysmsg_result = rval;
 	return(eval);
 }
 
@@ -655,7 +655,7 @@ semget(struct semget_args *uap)
 	}
 
 found:
-	uap->lmsg.u.ms_result = IXSEQ_TO_IPCID(semid, sema[semid].sem_perm);
+	uap->sysmsg_result = IXSEQ_TO_IPCID(semid, sema[semid].sem_perm);
 	return(0);
 }
 
@@ -906,7 +906,7 @@ done:
 #ifdef SEM_DEBUG
 	printf("semop:  done\n");
 #endif
-	uap->lmsg.u.ms_result = 0;
+	uap->sysmsg_result = 0;
 	return(0);
 }
 

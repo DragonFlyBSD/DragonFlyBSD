@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ipc.c,v 1.17.2.3 2001/11/05 19:08:22 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.4 2003/07/26 18:12:40 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ipc.c,v 1.5 2003/07/30 00:19:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -185,12 +185,12 @@ linux_semop(struct linux_semop_args *args)
 	struct semop_args bsd_args;
 	int error;
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.semid = args->semid;
 	bsd_args.sops = (struct sembuf *)args->tsops;
 	bsd_args.nsops = args->nsops;
 	error = semop(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -200,12 +200,12 @@ linux_semget(struct linux_semget_args *args)
 	struct semget_args bsd_args;
 	int error;
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.key = args->key;
 	bsd_args.nsems = args->nsems;
 	bsd_args.semflg = args->semflg;
 	error = semget(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -225,7 +225,7 @@ linux_semctl(struct linux_semctl_args *args)
 	unptr = stackgap_alloc(&sg, sizeof(union semun));
 	bcopy(&args->arg, unptr, sizeof(union semun));
 
-	bsd_args.lmsg.u.ms_result = 0;
+	bsd_args.sysmsg_result = 0;
 	bsd_args.semid = args->semid;
 	bsd_args.semnum = args->semnum;
 	bsd_args.arg = unptr;
@@ -264,7 +264,7 @@ linux_semctl(struct linux_semctl_args *args)
 		error = __semctl(&bsd_args);
 		if (error)
 			return error;
-		args->lmsg.u.ms_result = IXSEQ_TO_IPCID(bsd_args.semid, 
+		args->sysmsg_result = IXSEQ_TO_IPCID(bsd_args.semid, 
 							unptr->buf->sem_perm);
 		bsd_to_linux_semid_ds(unptr->buf, &linux_semid);
 		return copyout(&linux_semid, (caddr_t)args->arg.buf,
@@ -286,7 +286,7 @@ linux_semctl(struct linux_semctl_args *args)
 						sizeof(linux_seminfo) );
 		if (error)
 			return error;
-		args->lmsg.u.ms_result = seminfo.semmni;
+		args->sysmsg_result = seminfo.semmni;
 		return 0;			/* No need for __semctl call */
 	case LINUX_GETALL:
 		/* FALLTHROUGH */
@@ -297,7 +297,7 @@ linux_semctl(struct linux_semctl_args *args)
 		return EINVAL;
 	}
 	error = __semctl(&bsd_args);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return(error);
 }
 
@@ -307,13 +307,13 @@ linux_msgsnd(struct linux_msgsnd_args *args)
     struct msgsnd_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.msqid = args->msqid;
     bsd_args.msgp = args->msgp;
     bsd_args.msgsz = args->msgsz;
     bsd_args.msgflg = args->msgflg;
     error = msgsnd(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
 
@@ -323,14 +323,14 @@ linux_msgrcv(struct linux_msgrcv_args *args)
     struct msgrcv_args bsd_args; 
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.msqid = args->msqid;
     bsd_args.msgp = args->msgp;
     bsd_args.msgsz = args->msgsz;
     bsd_args.msgtyp = 0; /* XXX - args->msgtyp; */
     bsd_args.msgflg = args->msgflg;
     error = msgrcv(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
 
@@ -340,11 +340,11 @@ linux_msgget(struct linux_msgget_args *args)
     struct msgget_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.key = args->key;
     bsd_args.msgflg = args->msgflg;
     error = msgget(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
 
@@ -354,12 +354,12 @@ linux_msgctl(struct linux_msgctl_args *args)
     struct msgctl_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.msqid = args->msqid;
     bsd_args.cmd = args->cmd;
     bsd_args.buf = (struct msqid_ds *)args->buf;
     error = msgctl(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return ((args->cmd == LINUX_IPC_RMID && error == EINVAL) ? 0 : error);
 }
 
@@ -369,18 +369,18 @@ linux_shmat(struct linux_shmat_args *args)
     struct shmat_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.shmid = args->shmid;
     bsd_args.shmaddr = args->shmaddr;
     bsd_args.shmflg = args->shmflg;
     if ((error = shmat(&bsd_args)))
 	return error;
 #ifdef __i386__
-    if ((error = copyout(&bsd_args.lmsg.u.ms_lresult, (caddr_t)args->raddr, sizeof(l_ulong))))
+    if ((error = copyout(&bsd_args.sysmsg_lresult, (caddr_t)args->raddr, sizeof(l_ulong))))
 	return error;
-    args->lmsg.u.ms_result = 0;
+    args->sysmsg_result = 0;
 #else
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
 #endif
     return 0;
 }
@@ -391,10 +391,10 @@ linux_shmdt(struct linux_shmdt_args *args)
     struct shmdt_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.shmaddr = args->shmaddr;
     error = shmdt(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
 
@@ -404,12 +404,12 @@ linux_shmget(struct linux_shmget_args *args)
     struct shmget_args bsd_args;
     int error;
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     bsd_args.key = args->key;
     bsd_args.size = args->size;
     bsd_args.shmflg = args->shmflg;
     error = shmget(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }
 
@@ -421,7 +421,7 @@ linux_shmctl(struct linux_shmctl_args *args)
     int error;
     caddr_t sg = stackgap_init();
 
-    bsd_args.lmsg.u.ms_result = 0;
+    bsd_args.sysmsg_result = 0;
     switch (args->cmd) {
     case LINUX_IPC_STAT:
 	bsd_args.shmid = args->shmid;
@@ -430,7 +430,7 @@ linux_shmctl(struct linux_shmctl_args *args)
 	if ((error = shmctl(&bsd_args)))
 	    return error;
 	bsd_to_linux_shmid_ds(bsd_args.buf, &linux_shmid);
-	args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+	args->sysmsg_result = bsd_args.sysmsg_result;
 	return copyout(&linux_shmid, (caddr_t)args->buf, sizeof(linux_shmid));
 
     case LINUX_IPC_SET:
@@ -465,6 +465,6 @@ linux_shmctl(struct linux_shmctl_args *args)
 	return EINVAL;
     }
     error = shmctl(&bsd_args);
-    args->lmsg.u.ms_result = bsd_args.lmsg.u.ms_result;
+    args->sysmsg_result = bsd_args.sysmsg_result;
     return(error);
 }

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.8 2003/07/26 18:12:44 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.9 2003/07/30 00:19:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -238,7 +238,7 @@ ptrace(struct ptrace_args *uap)
 		return (error);
 
 	error = kern_ptrace(p, uap->req, uap->pid, addr, uap->data,
-			&uap->lmsg.u.ms_result);
+			&uap->sysmsg_result);
 	if (error)
 		return (error);
 

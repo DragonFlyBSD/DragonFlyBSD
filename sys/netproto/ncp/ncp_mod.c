@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_mod.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.5 2003/07/29 19:39:03 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_mod.c,v 1.6 2003/07/30 00:19:15 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -66,7 +66,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Attach to NCP server
  */
 struct sncp_connect_args {
-	struct lwkt_msg lmsg;
+	union sysmsg sysmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
@@ -97,12 +97,12 @@ sncp_connect(struct sncp_connect_args *uap)
 		ncp_conn_unlock(conn,td);
 	}
 bad:
-	uap->lmsg.u.ms_result = error;
+	uap->sysmsg_result = error;
 	return error;
 }
 
 struct sncp_request_args {
-	struct lwkt_msg lmsg;
+	union sysmsg sysmsg;
 	int connHandle;
 	int fn;
 	struct ncp_buf *ncpbuf;
@@ -195,7 +195,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 			error = ncp_write(conn, &rwrq.nrw_fh, &auio, cred);
 		rwrq.nrw_cnt -= auio.uio_resid;
 		ncp_conn_unlock(conn,td);
-		uap->lmsg.u.ms_result = rwrq.nrw_cnt;
+		uap->sysmsg_result = rwrq.nrw_cnt;
 		break;
 	    } /* case int_read/write */
 	    case NCP_CONN_SETFLAGS: {
@@ -231,7 +231,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 		if (error) return error;
 		error = ncp_login(conn, la.username, la.objtype, la.password, td, cred);
 		ncp_conn_unlock(conn, td);
-		uap->lmsg.u.ms_result = error;
+		uap->sysmsg_result = error;
 		break;
 	    }
 	    case NCP_CONN_GETINFO: {
@@ -281,7 +281,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 		error = ncp_conn_frag_rq(conn, td, &nf);
 		ncp_conn_unlock(conn, td);
 		copyout(&nf, &pdata, sizeof(nf));
-		uap->lmsg.u.ms_result = error;
+		uap->sysmsg_result = error;
 		break;
 	    }
 	    case NCP_CONN_DUP: {
@@ -313,7 +313,7 @@ ncp_conn_handler(struct thread *td, struct sncp_request_args *uap,
 }
 
 struct sncp_conn_scan_args {
-	struct lwkt_msg lmsg;
+	union sysmsg sysmsg;
 	struct ncp_conn_args *li;
 	int *connHandle;
 };
@@ -367,7 +367,7 @@ sncp_conn_scan(struct thread *td, struct sncp_conn_scan_args *uap)
 	}
 	if (user) free(user, M_NCPDATA);
 	if (password) free(password, M_NCPDATA);
-	uap->lmsg.u.ms_result = error;
+	uap->sysmsg_result = error;
 	return error;
 
 }
@@ -412,7 +412,7 @@ ncp_conn_frag_rq(struct ncp_conn *conn, struct thread *td, struct ncp_conn_frag 
  * Pretty much of this stolen from ioctl() function.
  */
 struct sncp_intfn_args {
-	struct lwkt_msg lmsg;
+	union sysmsg sysmsg;
 	u_long	com;
 	caddr_t	data;
 };

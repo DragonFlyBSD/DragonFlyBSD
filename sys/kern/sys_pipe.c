@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.7 2003/07/29 20:03:05 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.8 2003/07/30 00:19:14 dillon Exp $
  */
 
 /*
@@ -204,7 +204,7 @@ pipe(struct pipe_args *uap)
 		return (error);
 	}
 	fhold(rf);
-	uap->lmsg.u.ms_fds[0] = fd1;
+	uap->sysmsg_fds[0] = fd1;
 
 	/*
 	 * Warning: once we've gotten past allocation of the fd for the
@@ -231,7 +231,7 @@ pipe(struct pipe_args *uap)
 	wf->f_type = DTYPE_PIPE;
 	wf->f_data = (caddr_t)wpipe;
 	wf->f_ops = &pipeops;
-	uap->lmsg.u.ms_fds[1] = fd2;
+	uap->sysmsg_fds[1] = fd2;
 
 	rpipe->pipe_peer = wpipe;
 	wpipe->pipe_peer = rpipe;
