@@ -29,7 +29,7 @@
  * @(#)clnt_perror.c 1.15 87/10/07 Copyr 1984 Sun Micro
  * @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.11.2.1 2000/08/23 00:02:04 jhb Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/clnt_perror.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/clnt_perror.c,v 1.3 2004/09/14 17:52:25 joerg Exp $
  */
 
 /*
@@ -133,8 +133,10 @@ clnt_sperror(rpch, s)
 			(long)e.re_lb.s1, (long)e.re_lb.s2);
 		break;
 	}
-	strstart[CLNT_PERROR_BUFLEN-2] = '\n';
-	strstart[CLNT_PERROR_BUFLEN-1] = '\0';
+	if (strstart[CLNT_PERROR_BUFLEN-2] != '\0') {
+		strstart[CLNT_PERROR_BUFLEN-2] = '\n';
+		strstart[CLNT_PERROR_BUFLEN-1] = '\0';
+	}
 	return(strstart) ;
 }
 
