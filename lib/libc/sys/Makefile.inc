@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.6 2004/11/23 07:36:32 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.7 2004/11/23 19:05:53 eirikn Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -81,7 +81,7 @@ ${SPSEUDOR}:
 MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	aio_cancel.2 aio_error.2 aio_read.2 aio_return.2 \
 	aio_suspend.2 aio_waitcomplete.2 aio_write.2 \
-	bind.2 brk.2 checkpoint.2 chdir.2 chflags.2 \
+	bind.2 brk.2 sys_checkpoint.2 chdir.2 chflags.2 \
 	chmod.2 chown.2 chroot.2 clock_gettime.2 close.2 \
 	connect.2 dup.2 execve.2 \
 	fcntl.2 fhopen.2 flock.2 fork.2 fsync.2 \
