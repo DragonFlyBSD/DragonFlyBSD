@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/bus.h,v 1.7.2.2 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.3 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/bus.h,v 1.4 2004/05/07 14:37:31 joerg Exp $
  */
 
 #ifndef _I386_BUS_H_
@@ -43,5 +43,69 @@
 #include "bus_at386.h"
 #endif
 #include "bus_dma.h"
+
+/*
+ * Stream accesses are the same as normal accesses on i386/pc98; there are no
+ * supported bus systems with an endianess different from the host one.
+ */
+#define	bus_space_read_stream_1(t, h, o)	bus_space_read_1((t), (h), (o))
+#define	bus_space_read_stream_2(t, h, o)	bus_space_read_2((t), (h), (o))
+#define	bus_space_read_stream_4(t, h, o)	bus_space_read_4((t), (h), (o))
+
+#define	bus_space_read_multi_stream_1(t, h, o, a, c) \
+	bus_space_read_multi_1((t), (h), (o), (a), (c))
+#define	bus_space_read_multi_stream_2(t, h, o, a, c) \
+	bus_space_read_multi_2((t), (h), (o), (a), (c))
+#define	bus_space_read_multi_stream_4(t, h, o, a, c) \
+	bus_space_read_multi_4((t), (h), (o), (a), (c))
+
+#define	bus_space_write_stream_1(t, h, o, v) \
+	bus_space_write_1((t), (h), (o), (v))
+#define	bus_space_write_stream_2(t, h, o, v) \
+	bus_space_write_2((t), (h), (o), (v))
+#define	bus_space_write_stream_4(t, h, o, v) \
+	bus_space_write_4((t), (h), (o), (v))
+
+#define	bus_space_write_multi_stream_1(t, h, o, a, c) \
+	bus_space_write_multi_1((t), (h), (o), (a), (c))
+#define	bus_space_write_multi_stream_2(t, h, o, a, c) \
+	bus_space_write_multi_2((t), (h), (o), (a), (c))
+#define	bus_space_write_multi_stream_4(t, h, o, a, c) \
+	bus_space_write_multi_4((t), (h), (o), (a), (c))
+
+#define	bus_space_set_multi_stream_1(t, h, o, v, c) \
+	bus_space_set_multi_1((t), (h), (o), (v), (c))
+#define	bus_space_set_multi_stream_2(t, h, o, v, c) \
+	bus_space_set_multi_2((t), (h), (o), (v), (c))
+#define	bus_space_set_multi_stream_4(t, h, o, v, c) \
+	bus_space_set_multi_4((t), (h), (o), (v), (c))
+
+#define	bus_space_read_region_stream_1(t, h, o, a, c) \
+	bus_space_read_region_1((t), (h), (o), (a), (c))
+#define	bus_space_read_region_stream_2(t, h, o, a, c) \
+	bus_space_read_region_2((t), (h), (o), (a), (c))
+#define	bus_space_read_region_stream_4(t, h, o, a, c) \
+	bus_space_read_region_4((t), (h), (o), (a), (c))
+
+#define	bus_space_write_region_stream_1(t, h, o, a, c) \
+	bus_space_write_region_1((t), (h), (o), (a), (c))
+#define	bus_space_write_region_stream_2(t, h, o, a, c) \
+	bus_space_write_region_2((t), (h), (o), (a), (c))
+#define	bus_space_write_region_stream_4(t, h, o, a, c) \
+	bus_space_write_region_4((t), (h), (o), (a), (c))
+
+#define	bus_space_set_region_stream_1(t, h, o, v, c) \
+	bus_space_set_region_1((t), (h), (o), (v), (c))
+#define	bus_space_set_region_stream_2(t, h, o, v, c) \
+	bus_space_set_region_2((t), (h), (o), (v), (c))
+#define	bus_space_set_region_stream_4(t, h, o, v, c) \
+	bus_space_set_region_4((t), (h), (o), (v), (c))
+
+#define	bus_space_copy_region_stream_1(t, h1, o1, h2, o2, c) \
+	bus_space_copy_region_1((t), (h1), (o1), (h2), (o2), (c))
+#define	bus_space_copy_region_stream_2(t, h1, o1, h2, o2, c) \
+	bus_space_copy_region_2((t), (h1), (o1), (h2), (o2), (c))
+#define	bus_space_copy_region_stream_4(t, h1, o1, h2, o2, c) \
+	bus_space_copy_region_4((t), (h1), (o1), (h2), (o2), (c))
 
 #endif /* _I386_BUS_H_ */
