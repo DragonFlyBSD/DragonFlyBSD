@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/busdma_machdep.c,v 1.16.2.2 2003/01/23 00:55:27 scottl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.10 2004/10/14 03:05:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/busdma_machdep.c,v 1.11 2004/10/26 04:22:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -327,7 +327,9 @@ bus_dmamap_destroy(bus_dma_tag_t dmat, bus_dmamap_t map)
 /*
  * Allocate a piece of memory that can be efficiently mapped into
  * bus device space based on the constraints lited in the dma tag.
- * A dmamap to for use with dmamap_load is also allocated.
+ *
+ * mapp is degenerate.  By definition this allocation should not require
+ * bounce buffers so do not allocate a dma map.
  */
 int
 bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
@@ -354,7 +356,7 @@ bus_dmamem_alloc(bus_dma_tag_t dmat, void** vaddr, int flags,
 	    dmat->lowaddr >= ptoa(Maxmem)) {
 		*vaddr = malloc(dmat->maxsize, M_DEVBUF, mflags);
 		/*
-		 * XXX Check wether the allocation crossed a page boundary
+		 * XXX Check whether the allocation crossed a page boundary
 		 * and retry with power-of-2 alignment in that case.
 		 */
 		if ((((intptr_t)*vaddr) & PAGE_MASK) !=
