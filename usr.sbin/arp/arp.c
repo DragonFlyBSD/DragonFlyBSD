@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.3 2004/03/20 17:00:52 cpressey Exp $
  */
 
 /*
@@ -116,7 +116,7 @@ struct	{
 #define SETFUNC(f)	{ if (func) usage(); func = (f); }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	int ch, func = 0;
 	int rtn = 0;
@@ -237,7 +237,7 @@ file(char *name)
 			retval = 1;
 	}
 	fclose(fp);
-	return (retval);
+	return(retval);
 }
 
 void
@@ -257,9 +257,9 @@ int
 set(int argc, char **argv)
 {
 	struct hostent *hp;
-	register struct sockaddr_inarp *addr = &sin_m;
-	register struct sockaddr_dl *sdl;
-	register struct rt_msghdr *rtm = &(m_rtmsg.m_rtm);
+	struct sockaddr_inarp *addr = &sin_m;
+	struct sockaddr_dl *sdl;
+	struct rt_msghdr *rtm = &(m_rtmsg.m_rtm);
 	struct ether_addr *ea;
 	char *host = argv[0], *eaddr = argv[1];
 
@@ -272,10 +272,10 @@ set(int argc, char **argv)
 	if (addr->sin_addr.s_addr == INADDR_NONE) {
 		if (!(hp = gethostbyname(host))) {
 			warnx("%s: %s", host, hstrerror(h_errno));
-			return (1);
+			return(1);
 		}
 		bcopy((char *)hp->h_addr, (char *)&addr->sin_addr,
-		    sizeof addr->sin_addr);
+		    sizeof(addr->sin_addr));
 	}
 	doing_proxy = flags = proxy_only = expire_time = 0;
 	while (argc-- > 0) {
@@ -303,7 +303,7 @@ set(int argc, char **argv)
 		if (!get_ether_addr(addr->sin_addr.s_addr, ea)) {
 			printf("no interface found for %s\n",
 			       inet_ntoa(addr->sin_addr));
-			return (1);
+			return(1);
 		}
 		sdl_m.sdl_alen = ETHER_ADDR_LEN;
 	} else {
@@ -313,7 +313,7 @@ set(int argc, char **argv)
 tryagain:
 	if (rtmsg(RTM_GET) < 0) {
 		warn("%s", host);
-		return (1);
+		return(1);
 	}
 	addr = (struct sockaddr_inarp *)(rtm + 1);
 	sdl = (struct sockaddr_dl *)(ROUNDUP(addr->sin_len) + (char *)addr);
@@ -327,7 +327,7 @@ tryagain:
 		}
 		if (doing_proxy == 0) {
 			printf("set: can only proxy for %s\n", host);
-			return (1);
+			return(1);
 		}
 		if (sin_m.sin_other & SIN_PROXY) {
 			printf("set: proxy entry exists for non 802 device\n");
@@ -340,11 +340,11 @@ tryagain:
 overwrite:
 	if (sdl->sdl_family != AF_LINK) {
 		printf("cannot intuit interface index and type for %s\n", host);
-		return (1);
+		return(1);
 	}
 	sdl_m.sdl_type = sdl->sdl_type;
 	sdl_m.sdl_index = sdl->sdl_index;
-	return (rtmsg(RTM_ADD));
+	return(rtmsg(RTM_ADD));
 }
 
 /*
@@ -362,7 +362,7 @@ get(char *host)
 		if (!(hp = gethostbyname(host)))
 			errx(1, "%s: %s", host, hstrerror(h_errno));
 		bcopy((char *)hp->h_addr, (char *)&addr->sin_addr,
-		    sizeof addr->sin_addr);
+		    sizeof(addr->sin_addr));
 	}
 	search(addr->sin_addr.s_addr, print_entry);
 	if (found_entry == 0) {
@@ -380,8 +380,8 @@ int
 delete(char *host, char *info)
 {
 	struct hostent *hp;
-	register struct sockaddr_inarp *addr = &sin_m;
-	register struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
+	struct sockaddr_inarp *addr = &sin_m;
+	struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
 	struct sockaddr_dl *sdl;
 
 	getsocket();
@@ -396,15 +396,15 @@ delete(char *host, char *info)
 	if (addr->sin_addr.s_addr == INADDR_NONE) {
 		if (!(hp = gethostbyname(host))) {
 			warnx("%s: %s", host, hstrerror(h_errno));
-			return (1);
+			return(1);
 		}
 		bcopy((char *)hp->h_addr, (char *)&addr->sin_addr,
-		    sizeof addr->sin_addr);
+		    sizeof(addr->sin_addr));
 	}
 tryagain:
 	if (rtmsg(RTM_GET) < 0) {
 		warn("%s", host);
-		return (1);
+		return(1);
 	}
 	addr = (struct sockaddr_inarp *)(rtm + 1);
 	sdl = (struct sockaddr_dl *)(ROUNDUP(addr->sin_len) + (char *)addr);
@@ -419,7 +419,7 @@ tryagain:
 	}
 	if (sin_m.sin_other & SIN_PROXY) {
 		fprintf(stderr, "delete: can't locate %s\n",host);
-		return (1);
+		return(1);
 	} else {
 		sin_m.sin_other = SIN_PROXY;
 		goto tryagain;
@@ -427,13 +427,13 @@ tryagain:
 delete:
 	if (sdl->sdl_family != AF_LINK) {
 		printf("cannot locate %s\n", host);
-		return (1);
+		return(1);
 	}
 	if (rtmsg(RTM_DELETE) == 0) {
 		printf("%s (%s) deleted\n", host, inet_ntoa(addr->sin_addr));
-		return (0);
+		return(0);
 	}
-	return (1);
+	return(1);
 }
 
 /*
@@ -492,7 +492,7 @@ print_entry(struct sockaddr_dl *sdl,
 
 	if (nflag == 0)
 		hp = gethostbyaddr((caddr_t)&(addr->sin_addr),
-		    sizeof addr->sin_addr, AF_INET);
+		    sizeof(addr->sin_addr), AF_INET);
 	else
 		hp = 0;
 	if (hp)
@@ -566,10 +566,10 @@ my_ether_aton(char *a, struct ether_addr *n)
 
 	if ((ea = ether_aton(a)) == NULL) {
 		warnx("invalid Ethernet address '%s'", a);
-		return (1);
+		return(1);
 	}
 	*n = *ea;
-	return (0);
+	return(0);
 }
 
 void
@@ -591,9 +591,9 @@ rtmsg(int cmd)
 {
 	static int seq;
 	int rlen;
-	register struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
-	register char *cp = m_rtmsg.m_space;
-	register int l;
+	struct rt_msghdr *rtm = &m_rtmsg.m_rtm;
+	char *cp = m_rtmsg.m_space;
+	int l;
 
 	errno = 0;
 	if (cmd == RTM_DELETE)
@@ -639,7 +639,7 @@ doit:
 	if ((rlen = write(s, (char *)&m_rtmsg, l)) < 0) {
 		if (errno != ESRCH || cmd != RTM_DELETE) {
 			warn("writing to routing socket");
-			return (-1);
+			return(-1);
 		}
 	}
 	do {
@@ -647,7 +647,7 @@ doit:
 	} while (l > 0 && (rtm->rtm_seq != seq || rtm->rtm_pid != pid));
 	if (l < 0)
 		warn("read from routing socket");
-	return (0);
+	return(0);
 }
 
 /*
@@ -676,7 +676,7 @@ get_ether_addr(u_int32_t ipaddr, struct ether_addr *hwaddr)
 	if (ioctl(sock, SIOCGIFCONF, &ifc) < 0) {
 		warnx("ioctl(SIOCGIFCONF)");
 		close(sock);
-		return 0;
+		return(0);
 	}
 
 	/*
@@ -720,7 +720,7 @@ nextif:
 
 	if (ifr >= ifend) {
 		close(sock);
-		return 0;
+		return(0);
 	}
 
 	/*
@@ -740,10 +740,10 @@ nextif:
 			printf("using interface %s for proxy with address ",
 				ifp->ifr_name);
 			printf("%s\n", ether_ntoa(hwaddr));
-			return dla->sdl_alen;
+			return(dla->sdl_alen);
 		}
 		ifr = (struct ifreq *) ((char *)&ifr->ifr_addr
 		    + MAX(ifr->ifr_addr.sa_len, sizeof(ifr->ifr_addr)));
 	}
-	return 0;
+	return(0);
 }
