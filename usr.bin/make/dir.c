@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.6 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.7 2004/11/12 22:28:05 dillon Exp $
  */
 
 /*-
@@ -294,17 +294,33 @@ Dir_HasWildcards (name)
     char          *name;	/* name to check */
 {
     char *cp;
+    int wild = 0, brace = 0, bracket = 0;
 
     for (cp = name; *cp; cp++) {
 	switch(*cp) {
 	case '{':
+		brace++;
+		wild = 1;
+		break;
+	case '}':
+		brace--;
+		break;
 	case '[':
+		bracket++;
+		wild = 1;
+		break;
+	case ']':
+		bracket--;
+		break;
 	case '?':
 	case '*':
-	    return (TRUE);
+		wild = 1;
+		break;
+	default:
+		break;
 	}
     }
-    return (FALSE);
+    return wild && bracket == 0 && brace == 0;
 }
 
 /*-

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.8 2004/11/12 22:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.9 2004/11/12 22:28:05 dillon Exp $
  */
 
 /*-
@@ -496,7 +496,7 @@ ParseDoSrc (tOp, src, allsrc)
 {
     GNode	*gn = NULL;
 
-    if (*src == '.' && isupper (src[1])) {
+    if (*src == '.' && isupper ((unsigned char) src[1])) {
 	int keywd = ParseFindKeyword(src);
 	if (keywd != -1) {
 	    int op = parseKeywords[keywd].op;
@@ -797,9 +797,16 @@ ParseDoDependency (line)
 	if (!*cp) {
 	    /*
 	     * Ending a dependency line without an operator is a Bozo
-	     * no-no
+	     * no-no.  As a heuristic, this is also often triggered by
+	     * undetected conflicts from cvs/rcs merges.
 	     */
-	    Parse_Error (PARSE_FATAL, "Need an operator");
+	    if ((strncmp(line, "<<<<<<", 6) == 0) ||
+		(strncmp(line, "======", 6) == 0) ||
+		(strncmp(line, ">>>>>>", 6) == 0))
+		Parse_Error (PARSE_FATAL,
+		    "Makefile appears to contain unresolved cvs/rcs/??? merge conflicts");
+	    else
+	        Parse_Error (PARSE_FATAL, "Need an operator");
 	    return;
 	}
 	*cp = '\0';
@@ -807,7 +814,7 @@ ParseDoDependency (line)
 	 * Have a word in line. See if it's a special target and set
 	 * specType to match it.
 	 */
-	if (*line == '.' && isupper (line[1])) {
+	if (*line == '.' && isupper ((unsigned char) line[1])) {
 	    /*
 	     * See if the target is a special target that must have it
 	     * or its sources handled specially.
@@ -973,7 +980,7 @@ ParseDoDependency (line)
 		Parse_Error(PARSE_WARNING, "Extra target ignored");
 	    }
 	} else {
-	    while (*cp && isspace (*cp)) {
+	    while (*cp && isspace ((unsigned char) *cp)) {
 		cp++;
 	    }
 	}
@@ -1031,7 +1038,7 @@ ParseDoDependency (line)
     /*
      * Get to the first source
      */
-    while (*cp && isspace (*cp)) {
+    while (*cp && isspace ((unsigned char) *cp)) {
 	cp++;
     }
     line = cp;
@@ -1121,7 +1128,7 @@ ParseDoDependency (line)
 	     * has no valid suffix.
 	     */
 	    char  savec;
-	    while (*cp && !isspace (*cp)) {
+	    while (*cp && !isspace ((unsigned char) *cp)) {
 		cp++;
 	    }
 	    savec = *cp;
@@ -1149,7 +1156,7 @@ ParseDoDependency (line)
 	    if (savec != '\0') {
 		cp++;
 	    }
-	    while (*cp && isspace (*cp)) {
+	    while (*cp && isspace ((unsigned char) *cp)) {
 		cp++;
 	    }
 	    line = cp;
@@ -1164,7 +1171,7 @@ ParseDoDependency (line)
 	     * specifications (i.e. things with left parentheses in them)
 	     * and handle them accordingly.
 	     */
-	    while (*cp && !isspace (*cp)) {
+	    while (*cp && !isspace ((unsigned char) *cp)) {
 		if ((*cp == '(') && (cp > line) && (cp[-1] != '$')) {
 		    /*
 		     * Only stop for a left parenthesis if it isn't at the
@@ -1202,7 +1209,7 @@ ParseDoDependency (line)
 
 		ParseDoSrc (tOp, line, curSrcs);
 	    }
-	    while (*cp && isspace (*cp)) {
+	    while (*cp && isspace ((unsigned char) *cp)) {
 		cp++;
 	    }
 	    line = cp;
@@ -1375,7 +1382,7 @@ Parse_DoVar (line, ctxt)
      * Skip to operator character, nulling out whitespace as we go
      */
     for (cp = line + 1; *cp != '='; cp++) {
-	if (isspace (*cp)) {
+	if (isspace ((unsigned char) *cp)) {
 	    *cp = '\0';
 	}
     }
@@ -1431,7 +1438,7 @@ Parse_DoVar (line, ctxt)
 	    break;
     }
 
-    while (isspace (*cp)) {
+    while (isspace ((unsigned char) *cp)) {
 	cp++;
     }
 
@@ -1452,6 +1459,14 @@ Parse_DoVar (line, ctxt)
 	Boolean	  oldOldVars = oldVars;
 
 	oldVars = FALSE;
+
+	/*
+	 * make sure that we set the variable the first time to nothing
+	 * so that it gets substituted!
+	 */
+	if (!Var_Exists(line, ctxt))
+	    Var_Set(line, "", ctxt);
+
 	cp = Var_Subst(NULL, cp, ctxt, FALSE);
 	oldVars = oldOldVars;
 
@@ -1573,12 +1588,12 @@ static void
 ParseDoError(errmsg)
     char          *errmsg;	/* error message */
 {
-	if (!isspace(*errmsg)) {
+	if (!isspace((unsigned char) *errmsg)) {
 		Parse_Error(PARSE_WARNING, "invalid syntax: .error%s", errmsg);
 		return;
 	}
 	
-	while (isspace(*errmsg))
+	while (isspace((unsigned char) *errmsg))
 		errmsg++;
 	
 	errmsg = Var_Subst(NULL, errmsg, VAR_GLOBAL, FALSE);
@@ -2439,7 +2454,7 @@ Parse_File(name, stream)
 		 * Lines that begin with the special character are either
 		 * include or undef directives.
 		 */
-		for (cp = line + 1; isspace (*cp); cp++) {
+		for (cp = line + 1; isspace ((unsigned char) *cp); cp++) {
 		    continue;
 		}
 		if (strncmp (cp, "include", 7) == 0) {
@@ -2471,7 +2486,7 @@ Parse_File(name, stream)
 #ifndef POSIX
 	    shellCommand:
 #endif
-		for (cp = line + 1; isspace (*cp); cp++) {
+		for (cp = line + 1; isspace ((unsigned char) *cp); cp++) {
 		    continue;
 		}
 		if (*cp) {
