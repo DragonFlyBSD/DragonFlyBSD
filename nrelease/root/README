@@ -255,7 +255,7 @@
     try to kldload it from /modules.  With a recognized network device
     you can ifconfig its IP address or, if you have a DHCP server on your
     network, use 'dhclient <interfacename>' to obtain an IP address from
-    the netweork.
+    the network.
 
 	    USING CVSUP TO OBTAIN A CVS TREE, PORTS, AND DOING BUILDWORLDS
 
@@ -326,5 +326,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.15 2004/07/11 18:09:54 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.16 2004/07/12 20:02:23 drhodus Exp $
 
