@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.3 2004/01/26 17:50:34 joerg Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -107,6 +107,9 @@ static void ***dynamic_allocator_handler_fn()
 /*
  * Threaded process initialization
  */
+
+void	_thread_init(void) __attribute__((constructor));
+
 void
 _thread_init(void)
 {
@@ -458,3 +461,5 @@ _thread_main(int argc, char *argv[], char *env)
 	return (main(argc, argv, env));
 }
 #endif
+
+int _thread_autoinit_dummy_decl = 0;
