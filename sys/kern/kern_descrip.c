@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
- * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.19 2004/03/01 06:33:17 dillon Exp $
+ * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.20 2004/04/21 04:17:58 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -890,9 +890,16 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 {
 	struct file *fp, *fq;
 	int error, i;
+	int maxuserfiles = maxfiles - (maxfiles / 20);
+	static struct timeval lastfail;
+	static int curfail;
 
-	if (nfiles >= maxfiles) {
-		tablefull("file");
+	if ((nfiles >= maxuserfiles && p->p_ucred->cr_ruid != 0)
+	   || nfiles >= maxfiles) {
+		if (ppsratecheck(&lastfail, &curfail, 1)) {
+			printf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
+				p->p_ucred->cr_ruid);
+		}
 		return (ENFILE);
 	}
 	/*
