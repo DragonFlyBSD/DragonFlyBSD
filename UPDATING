@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.5 2003/09/09 16:49:25 dillon Exp $
+$DragonFly: src/UPDATING,v 1.6 2003/11/18 00:34:20 dillon Exp $
 
 Updating Information for DragonFly users.
 
@@ -17,15 +17,37 @@ Compiling DragonFly requires an ISO C90 or higher compliant compiler.
 Compilers which support this are, amongst others: The GNU C Compiler, The
 Intel C++ Compiler, and The TenDRA Compiler.
 
-> Include files
----------------
+You can do DragonFly buildworld/buildkernel/installworld/installkernel
+on FreeBSD-stable boxen as well as DragonFly boxen.
 
-Due to the source tree reorganization header files have moved to different
-locations.  The ufs/ufs directory, for example, now can be found at vfs/ufs.
-ufs/ffs can be found in vfs/ufs as well.
+Due to source tree reorganizations at various times header files may have
+moved or been deleted, leaving stale header files in /usr/include.  This
+can also cause 'make depend' to fail due to make depend getting confused
+about old header files.
 
-Best thing to do would be to rm -rf /usr/include and from /usr/src do a 'make
-includes'.  This should repopulate your entire tree.
+The easiest way to deal with include file messes is to reinstall /usr/include
+from scratch as follows:
+
+	rm -rf /usr/include	# safer to type this verses /usr/include/*
+	mkdir /usr/include
+	cd /usr/src
+	make installincludes
+
+If your have trouble doing builds due to the make depend stage failing, the
+easiest solution is to wipe your object tree and rebuild/reinstall.
+
+	rm -rf /usr/obj		# safer to type this verses /usr/obj/*
+	mkdir /usr/obj
+	cd /usr/src
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel
+	make buildworld
+	make installworld
+
+If you are using 'config' manually, note that building kernels via the manual
+config / /usr/src/sys/compile/BLAH procedure only works reliably on an
+uptodate DragonFly box.  The official way to build kernels is via the
+'make buildkernel KERNCONf=<KERNELNAME>' target from /usr/src.
 
 > Kerberos IV
 -------------
