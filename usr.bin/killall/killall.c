@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.3 2003/07/01 00:19:32 dillon Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.4 2003/08/28 02:35:54 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -63,8 +63,7 @@ upper(const char *str)
 	static char buf[80];
 	char *s;
 
-	strncpy(buf, str, sizeof(buf));
-	buf[sizeof(buf) - 1] = '\0';
+	strlcpy(buf, str, sizeof(buf));
 	for (s = buf; *s; s++)
 		*s = toupper(*s);
 	return buf;
@@ -110,6 +109,7 @@ main(int ac, char **av)
 	char		*user = NULL;
 	char		*tty = NULL;
 	char		*cmd = NULL;
+	int		qflag = 0;
 	int		vflag = 0;
 	int		sflag = 0;
 	int		dflag = 0;
@@ -165,6 +165,9 @@ main(int ac, char **av)
 					++av;
 				--ac;
 				cmd = *av;
+				break;
+			case 'q':
+				qflag++;
 				break;
 			case 'v':
 				vflag++;
@@ -365,7 +368,7 @@ main(int ac, char **av)
 			}
 		}
 	}
-	if (killed == 0) {
+	if (!qflag && killed == 0) {
 		fprintf(stderr, "No matching processes %swere found\n",
 		    getuid() != 0 ? "belonging to you " : "");
 		errors = 1;
