@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003 Hiten M. Pandya <hmp@backplane.com>.
+ * Copyright (c) 2003 Hiten Pandya <hmp@backplane.com>.
  *
  * All rights reserved.
  * 
@@ -33,7 +33,7 @@
  * Adopted from:
  *	src/sys/kern/kern_shutdown.c
  *
- * $DragonFly: src/sys/kern/kern_debug.c,v 1.3 2003/10/05 16:12:00 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_debug.c,v 1.4 2004/02/14 03:54:36 hmp Exp $
  *
  */
 
