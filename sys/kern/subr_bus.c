@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.15 2004/03/31 16:39:20 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.16 2004/04/01 08:41:24 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -166,7 +166,7 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 	 * goes. This means we can safely use static methods and avoids a
 	 * double-free in devclass_delete_driver.
 	 */
-	kobj_class_compile((kobj_class_t) driver);
+	kobj_class_instantiate(driver);
 
 	/*
 	 * Make sure the devclass which the driver is implementing exists.
@@ -175,7 +175,6 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 
 	dl->driver = driver;
 	TAILQ_INSERT_TAIL(&dc->drivers, dl, link);
-	driver->refs++;
 
 	/*
 	 * Call BUS_DRIVER_ADDED for any existing busses in this class.
@@ -237,9 +236,7 @@ devclass_delete_driver(devclass_t busclass, driver_t *driver)
 	TAILQ_REMOVE(&busclass->drivers, dl, link);
 	free(dl, M_BUS);
 
-	driver->refs--;
-	if (driver->refs == 0)
-		kobj_class_free((kobj_class_t) driver);
+	kobj_class_uninstantiate(driver);
 
 	return(0);
 }
@@ -2252,7 +2249,6 @@ root_bus_module_handler(module_t mod, int what, void* arg)
 {
 	switch (what) {
 	case MOD_LOAD:
-		kobj_class_compile((kobj_class_t) &root_driver);
 		root_bus = make_device(NULL, "root", 0);
 		root_bus->desc = "System root bus";
 		kobj_init((kobj_t) root_bus, (kobj_class_t) &root_driver);

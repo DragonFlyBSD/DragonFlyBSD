@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/iconv.c,v 1.1.2.1 2001/05/21 08:28:07 bp Exp $
- * $DragonFly: src/sys/libiconv/iconv.c,v 1.3 2004/03/18 18:27:47 dillon Exp $
+ * $DragonFly: src/sys/libiconv/iconv.c,v 1.4 2004/04/01 08:41:24 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -118,8 +118,7 @@ DECLARE_MODULE(iconv, iconv_mod, SI_SUB_DRIVERS, SI_ORDER_SECOND);
 static int
 iconv_register_converter(struct iconv_converter_class *dcp)
 {
-	kobj_class_compile((struct kobj_class*)dcp);
-	dcp->refs++;
+	kobj_class_instantiate((kobj_class_t)dcp);
 	TAILQ_INSERT_TAIL(&iconv_converters, dcp, cc_link);
 	return 0;
 }
@@ -127,12 +126,12 @@ iconv_register_converter(struct iconv_converter_class *dcp)
 static int
 iconv_unregister_converter(struct iconv_converter_class *dcp)
 {
-	if (dcp->refs > 1) {
+	if (dcp->refs != 1) {
 		ICDEBUG("converter have %d referenses left\n", dcp->refs);
 		return EBUSY;
 	}
 	TAILQ_REMOVE(&iconv_converters, dcp, cc_link);
-	kobj_class_free((struct kobj_class*)dcp);
+	kobj_class_uninstantiate((kobj_class_t)dcp);
 	return 0;
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.5 2004/02/29 17:18:32 joerg Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.6 2004/04/01 08:41:24 joerg Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
@@ -101,20 +101,14 @@ struct kobj_class name ## _class = {		\
 }
 
 /*
- * Compile the method table in a class.
+ * Compile class for the first instance and add a reference.
  */
-void		kobj_class_compile(kobj_class_t cls);
+void		kobj_class_instantiate(kobj_class_t cls);
 
 /*
- * Compile the method table, with the caller providing the space for
- * the ops table.(for use before malloc is initialised).
+ * Remove a reference and free method table with the last instance.
  */
-void		kobj_class_compile_static(kobj_class_t cls, kobj_ops_t ops);
-
-/*
- * Free the compiled method table in a class.
- */
-void		kobj_class_free(kobj_class_t cls);
+void		kobj_class_uninstantiate(kobj_class_t cls);
 
 /*
  * Allocate memory for and initialise a new object.

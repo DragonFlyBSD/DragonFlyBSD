@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.4 2004/03/31 16:39:20 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.5 2004/04/01 08:41:24 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -79,10 +79,9 @@ kobj_unregister_method(struct kobjop_desc *desc)
 }
 
 static void
-kobj_class_compile_common(kobj_class_t cls, kobj_ops_t ops)
+kobj_class_compile(kobj_class_t cls)
 {
 	kobj_method_t *m;
-	int i;
 
 	/*
 	 * Don't do anything if we are already compiled.
@@ -91,41 +90,18 @@ kobj_class_compile_common(kobj_class_t cls, kobj_ops_t ops)
 		return;
 
 	/*
-	 * First register any methods which need it.
-	 */
-	for (i = 0, m = cls->methods; m->desc; i++, m++)
-		kobj_register_method(m->desc);
-
-	/*
-	 * Then initialise the ops table.
-	 */
-	bzero(ops, sizeof(struct kobj_ops));
-	ops->cls = cls;
-	cls->ops = ops;
-}
-
-void
-kobj_class_compile(kobj_class_t cls)
-{
-	kobj_ops_t ops;
-
-	/*
 	 * Allocate space for the compiled ops table.
 	 */
-	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT);
-	if (!ops)
+	cls->ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT | M_ZERO);
+	if (!cls->ops)
 		panic("kobj_compile_methods: out of memory");
-	kobj_class_compile_common(cls, ops);
-}
+	cls->ops->cls = cls;
 
-void
-kobj_class_compile_static(kobj_class_t cls, kobj_ops_t ops)
-{
 	/*
-	 * Increment refs to make sure that the ops table is not freed.
+	 * Afterwards register any methods which need it.
 	 */
-	cls->refs++;
-	kobj_class_compile_common(cls, ops);
+	for (m = cls->methods; m->desc; m++)
+		kobj_register_method(m->desc);
 }
 
 void
@@ -147,7 +123,7 @@ kobj_lookup_method(kobj_method_t *methods,
 	return;
 }
 
-void
+static void
 kobj_class_free(kobj_class_t cls)
 {
 	int i;
@@ -164,6 +140,22 @@ kobj_class_free(kobj_class_t cls)
 	 */
 	free(cls->ops, M_KOBJ);
 	cls->ops = 0;
+}
+
+void
+kobj_class_instantiate(kobj_class_t cls)
+{
+	if (!cls->ops)
+		kobj_class_compile(cls);
+	cls->refs++;
+}
+
+void
+kobj_class_uninstantiate(kobj_class_t cls)
+{
+	cls->refs--;
+	if (cls->refs == 0)
+		kobj_class_free(cls);
 }
 
 kobj_t
@@ -187,14 +179,8 @@ kobj_create(kobj_class_t cls,
 void
 kobj_init(kobj_t obj, kobj_class_t cls)
 {
-	/*
-	 * Consider compiling the class' method table.
-	 */
-	if (!cls->ops)
-		kobj_class_compile(cls);
-
+	kobj_class_instantiate(cls);
 	obj->ops = cls->ops;
-	cls->refs++;
 }
 
 void
@@ -202,14 +188,7 @@ kobj_delete(kobj_t obj, struct malloc_type *mtype)
 {
 	kobj_class_t cls = obj->ops->cls;
 
-	/*
-	 * Consider freeing the compiled method table for the class
-	 * after its last instance is deleted. As an optimisation, we
-	 * should defer this for a short while to avoid thrashing.
-	 */
-	cls->refs--;
-	if (!cls->refs)
-		kobj_class_free(cls);
+	kobj_class_uninstantiate(cls);
 
 	obj->ops = 0;
 	if (mtype)
