@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.5 2004/02/12 00:00:14 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.6 2004/02/19 15:48:26 joerg Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -54,6 +54,9 @@
 
 #include <sys/device_port.h>
 
+#include <bus/pccard/pccarddevs.h>
+#include <bus/pccard/pccardvar.h>
+
 #include <bus/cam/scsi/scsi_low.h>
 #include <bus/cam/scsi/scsi_low_pisa.h>
 
@@ -73,6 +76,24 @@ static int ncvprobe(DEVPORT_PDEVICE devi);
 static int ncvattach(DEVPORT_PDEVICE devi);
 
 static void	ncv_card_unload (DEVPORT_PDEVICE);
+
+static const struct ncv_product {
+	struct pccard_product	prod;
+	int flags;
+} ncv_products[] = {
+	{ PCMCIA_CARD(EPSON, SC200, 0), 0}, 
+	{ PCMCIA_CARD(PANASONIC, KXLC002, 0), 0xb4d00000 }, 
+	{ PCMCIA_CARD(PANASONIC, KXLC004, 0), 0xb4d00100 }, 
+	{ PCMCIA_CARD(MACNICA, MPS100, 0), 0xb6250000 }, 
+	{ PCMCIA_CARD(MACNICA, MPS110, 0), 0 }, 
+	{ PCMCIA_CARD(NEC, PC9801N_J03R, 0), 0 }, 
+	{ PCMCIA_CARD(NEWMEDIA, BASICS_SCSI, 0), 0 }, 
+	{ PCMCIA_CARD(QLOGIC, PC05, 0), 0x84d00000 }, 
+#define FLAGS_REX5572 0x84d00000
+	{ PCMCIA_CARD(RATOC, REX5572, 0), FLAGS_REX5572 }, 
+	{ PCMCIA_CARD(RATOC, REX9530, 0), 0x84d00000 }, 
+	{ { NULL }, 0 }
+};
 
 /*
  * Additional code for FreeBSD new-bus PCCard frontend
@@ -183,6 +204,31 @@ ncv_alloc_resource(DEVPORT_PDEVICE dev)
 	return(0);
 }
 
+static int ncv_pccard_match(device_t dev)
+{
+	const struct ncv_product *pp;
+	const char *vendorstr;
+	const char *prodstr;
+
+	if ((pp = (const struct ncv_product *) pccard_product_lookup(dev, 
+	    (const struct pccard_product *) ncv_products,
+	    sizeof(ncv_products[0]), NULL)) != NULL) {
+		if (pp->prod.pp_name != NULL)
+			device_set_desc(dev, pp->prod.pp_name);
+		device_set_flags(dev, pp->flags);
+		return(0);
+	}
+	vendorstr = pccard_get_vendor_str(dev);
+	prodstr = pccard_get_product_str(dev);
+	if (strcmp(vendorstr, "RATOC System Inc.") == 0 &&
+		strncmp(prodstr, "SOUND/SCSI2 CARD", 16) == 0) {
+		device_set_desc(dev, "RATOC REX-5572");
+		device_set_flags(dev, FLAGS_REX5572);
+		return (0);
+	}
+	return(EIO);
+}
+
 static int
 ncv_pccard_probe(DEVPORT_PDEVICE dev)
 {
@@ -241,9 +287,14 @@ ncv_pccard_detach(DEVPORT_PDEVICE dev)
 
 static device_method_t ncv_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		ncv_pccard_probe),
-	DEVMETHOD(device_attach,	ncv_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	ncv_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	ncv_pccard_match),
+	DEVMETHOD(card_compat_probe,	ncv_pccard_probe),
+	DEVMETHOD(card_compat_attach,	ncv_pccard_attach),
 
 	{ 0, 0 }
 };

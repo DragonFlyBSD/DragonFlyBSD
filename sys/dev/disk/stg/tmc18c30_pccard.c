@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.5 2004/02/12 00:00:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.6 2004/02/19 15:48:26 joerg Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -56,6 +56,9 @@
 
 #include <sys/device_port.h>
 
+#include <bus/pccard/pccarddevs.h>
+#include <bus/pccard/pccardvar.h>
+
 #include <bus/cam/scsi/scsi_low.h>
 #include <bus/cam/scsi/scsi_low_pisa.h>
 
@@ -69,6 +72,15 @@
 #include	<bus/pccard/cardinfo.h>
 #include	<bus/pccard/slot.h>
 
+static const struct pccard_product stg_products[] = {
+	PCMCIA_CARD(FUTUREDOMAIN, SCSI2GO, 0),
+	PCMCIA_CARD(IBM, SCSICARD, 0),
+	PCMCIA_CARD(RATOC, REX5536, 0),
+	PCMCIA_CARD(RATOC, REX5536AM, 0),
+	PCMCIA_CARD(RATOC, REX5536M, 0),
+	{ NULL }
+};
+
 static	int	stgprobe(DEVPORT_PDEVICE devi);
 static	int	stgattach(DEVPORT_PDEVICE devi);
 
@@ -77,6 +89,19 @@ static	void	stg_card_unload	(DEVPORT_PDEVICE);
 /*
  * Additional code for FreeBSD new-bus PCCard frontend
  */
+
+static int stg_pccard_match(device_t dev)
+{
+  	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, stg_products,
+	    sizeof(stg_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return(0);
+	}
+	return(EIO);
+}
 
 static void
 stg_pccard_intr(void * arg)
@@ -216,9 +241,14 @@ stg_pccard_detach(DEVPORT_PDEVICE dev)
 
 static device_method_t stg_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		stg_pccard_probe),
-	DEVMETHOD(device_attach,	stg_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	stg_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	stg_pccard_match),
+	DEVMETHOD(card_compat_probe,	stg_pccard_probe),
+	DEVMETHOD(card_compat_attach,	stg_pccard_attach),
 
 	{ 0, 0 }
 };

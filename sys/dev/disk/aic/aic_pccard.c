@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.5 2004/02/19 15:48:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,11 @@
 #include "aic6360reg.h"
 #include "aicvar.h"
 
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+#include "card_if.h"
+
 struct aic_pccard_softc {
 	struct	aic_softc sc_aic;
 	struct	resource *sc_port;
@@ -50,8 +55,18 @@ struct aic_pccard_softc {
 
 static int aic_pccard_alloc_resources (device_t);
 static void aic_pccard_release_resources (device_t);
+static int aic_pccard_match(device_t);
 static int aic_pccard_probe (device_t);
 static int aic_pccard_attach (device_t);
+
+static const struct pccard_product aic_pccard_products[] = {
+	PCMCIA_CARD(ADAPTEC, APA1460, 0),
+	PCMCIA_CARD(ADAPTEC, APA1460A, 0),
+	PCMCIA_CARD(NEWMEDIA, BUSTOASTER, 0),
+	PCMCIA_CARD(NEWMEDIA, BUSTOASTER2, 0),
+	PCMCIA_CARD(NEWMEDIA, BUSTOASTER3, 0),
+	{ NULL }
+};
 
 #define	AIC_PCCARD_PORTSIZE 0x20
 
@@ -93,6 +108,20 @@ aic_pccard_release_resources(device_t dev)
 	if (sc->sc_irq)
 		bus_release_resource(dev, SYS_RES_IRQ, 0, sc->sc_irq);
 	sc->sc_port = sc->sc_irq = 0;
+}
+
+static int
+aic_pccard_match(device_t dev)
+{
+	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, aic_pccard_products,
+	    sizeof(aic_pccard_products[0]), NULL)) != NULL) {
+		if (pp->pp_name != NULL)
+			device_set_desc(dev, pp->pp_name);
+		return 0;
+	}
+	return ENXIO;
 }
 
 static int
@@ -167,9 +196,14 @@ aic_pccard_detach(device_t dev)
 
 static device_method_t aic_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		aic_pccard_probe),
-	DEVMETHOD(device_attach,	aic_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	aic_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	aic_pccard_match),
+	DEVMETHOD(card_compat_probe,	aic_pccard_probe),
+	DEVMETHOD(card_compat_attach,	aic_pccard_attach),
 	{ 0, 0 }
 };
 

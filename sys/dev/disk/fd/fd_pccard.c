@@ -49,7 +49,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/disk/fd/fd_pccard.c,v 1.1 2004/01/11 16:45:16 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd_pccard.c,v 1.2 2004/02/19 15:48:26 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -63,10 +63,32 @@
 #include "fdc.h"
 #include "fdreg.h"
 
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+#include "card_if.h"
+
+static const struct pccard_product fdc_products[] = {
+  	PCMCIA_CARD(YEDATA, EXTERNAL_FDD, 0),
+  	{ NULL }
+};
+
 static void
 fdctl_wr_pcmcia(fdc_p fdc, u_int8_t v)
 {
 	bus_space_write_1(fdc->portt, fdc->porth, FDCTL+fdc->port_off, v);
+}
+
+static int fdc_pccard_match(device_t dev)
+{
+  	const struct pccard_product *pp;
+
+	if ((pp = pccard_product_lookup(dev, fdc_products,
+	    sizeof(fdc_products[0]), NULL)) != NULL) {
+		device_set_desc(dev, pp->pp_name);
+		return (0);
+	}
+	return (ENXIO);
 }
 
 static int
@@ -99,7 +121,6 @@ fdc_pccard_probe(device_t dev)
 		goto out;
 	}
 
-	device_set_desc(dev, "Y-E Data PCMCIA floppy");
 	fdc->fdct = FDC_NE765;
 
 out:
@@ -134,12 +155,18 @@ fdc_pccard_detach(device_t dev)
 
 static device_method_t fdc_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		fdc_pccard_probe),
-	DEVMETHOD(device_attach,	fdc_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	fdc_pccard_detach),
 	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
 	DEVMETHOD(device_suspend,	bus_generic_suspend),
 	DEVMETHOD(device_resume,	bus_generic_resume),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	fdc_pccard_match),
+	DEVMETHOD(card_compat_probe,	fdc_pccard_probe),
+	DEVMETHOD(card_compat_attach,	fdc_attach),
+	/* Device interface */
 
 	/* Bus interface */
 	DEVMETHOD(bus_print_child,	fdc_print_child),

@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.17 2004/02/17 19:38:53 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.18 2004/02/19 15:48:26 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -250,7 +250,7 @@ dev/serial/cy/cy.c			optional	cy
 dev/netif/elink_layer/elink.c		optional	ep
 dev/netif/elink_layer/elink.c		optional	ie
 dev/disk/fd/fd.c			optional	fd
-dev/disk/fd/fd_pccard.c			optional	fd card
+dev/disk/fd/fd_pccard.c			optional	fd pccard
 dev/misc/gpib/gpib.c			optional	gp
 dev/video/gsc/gsc.c			optional	gsc
 dev/netif/cx/if_cx.c			optional	cx
@@ -476,7 +476,7 @@ dev/misc/atkbdc_layer/atkbdc_isa.c	optional	atkbdc
 dev/misc/ppc/ppc.c			optional	ppc
 dev/misc/psm/psm.c			optional	psm
 dev/serial/sio/sio.c			optional	sio
-dev/serial/sio/sio_pccard.c		optional	sio card
+dev/serial/sio/sio_pccard.c		optional	sio pccard
 bus/isa/syscons_isa.c			optional	sc
 bus/isa/vga_isa.c			optional	vga
 kern/md4c.c				optional	netsmb

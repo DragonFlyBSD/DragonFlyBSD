@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.1 2004/01/11 16:45:17 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.2 2004/02/19 15:48:26 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -48,15 +48,25 @@
 #include "sioreg.h"
 #include "sio_private.h"
 
-static	int	sio_pccard_attach (device_t dev);
-static	int	sio_pccard_detach (device_t dev);
-static	int	sio_pccard_probe (device_t dev);
+#include <bus/pccard/pccarddevs.h>
+#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccardvar.h>
+
+static	int	sio_pccard_attach(device_t dev);
+static	int	sio_pccard_match(device_t self);
+static	int	sio_pccard_detach(device_t dev);
+static	int	sio_pccard_probe(device_t dev);
 
 static device_method_t sio_pccard_methods[] = {
 	/* Device interface */
-	DEVMETHOD(device_probe,		sio_pccard_probe),
-	DEVMETHOD(device_attach,	sio_pccard_attach),
+	DEVMETHOD(device_probe,		pccard_compat_probe),
+	DEVMETHOD(device_attach,	pccard_compat_attach),
 	DEVMETHOD(device_detach,	sio_pccard_detach),
+
+	/* Card interface */
+	DEVMETHOD(card_compat_match,	sio_pccard_match),
+	DEVMETHOD(card_compat_probe,	sio_pccard_probe),
+	DEVMETHOD(card_compat_attach,	sio_pccard_attach),
 
 	{ 0, 0 }
 };
@@ -66,6 +76,26 @@ static driver_t sio_pccard_driver = {
 	sio_pccard_methods,
 	sizeof(struct com_s),
 };
+
+static int
+sio_pccard_match(device_t dev)
+{
+	int		error = 0;
+	u_int32_t	fcn = PCCARD_FUNCTION_UNSPEC;
+
+	fcn = pccard_get_function(dev);
+	if (error != 0)
+		return (error);
+	/*
+	 * If a serial card, we are likely the right driver.  However,
+	 * some serial cards are better servered by other drivers, so
+	 * allow other drivers to claim it, if they want.
+	 */
+	if (fcn == PCCARD_FUNCTION_SERIAL)
+		return (-100);
+
+	return(ENXIO);
+}
 
 static int
 sio_pccard_probe(dev)
