@@ -35,15 +35,24 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.4 2003/10/18 05:48:40 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.5 2003/10/19 00:13:18 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
+
+/*
+ * Do not prevent re-includes of <machine/param.h> if the file was included
+ * with NO_NAMESPACE_POLLUTION, or expected macros will not exist.
+ */
+#ifndef _NO_NAMESPACE_POLLUTION
 #define _MACHINE_PARAM_H_
+#endif
 
 /*
  * Machine dependent constants for Intel 386.
  */
+#ifndef _MACHINE_PARAM_H1_
+#define _MACHINE_PARAM_H1_
 
 /*
  * Round p (pointer or byte index) up to a correctly-aligned value
@@ -63,6 +72,8 @@
 #ifndef _MACHINE_ARCH
 #define	_MACHINE_ARCH	i386
 #endif
+
+#endif	/* _MACHINE_PARAM_H1_ */
 
 #ifndef _NO_NAMESPACE_POLLUTION
 
