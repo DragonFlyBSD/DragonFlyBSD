@@ -1,8 +1,9 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.5 2004/03/23 07:47:14 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.6 2004/09/02 08:57:05 asmodai Exp $
 
-LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
-LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl/doc
+OSSLVERSION=	0.9.7d
+LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}
+LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl-${OSSLVERSION}/doc
 
 CFLAGS+=	-DTERMIOS -DANSI_SOURCE
 CFLAGS+=	-I${LCRYPTO_SRC} -I${LCRYPTO_SRC}/crypto \
@@ -121,7 +122,7 @@ man-update:
 	@(sec=${manpage:E}; \
 	pod=${manpage:R}.pod; \
 	cp ${LCRYPTO_DOC}/${_docs}/$$pod .; \
-	pod2man --section=$$sec --release="0.9.7a" --center="OpenSSL" \
+	pod2man --section=$$sec --release="${OSSLVERSION}" --center="OpenSSL" \
 	  $$pod > ${.CURDIR}/man/${manpage}; \
 	rm $$pod; \
 	${ECHO} ${manpage})
@@ -129,7 +130,7 @@ man-update:
 
 man-makefile-update:
 	rm -f ${.CURDIR}/Makefile.man
-	echo '# $$FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $$' >> ${.CURDIR}/Makefile.man
+	echo '# $$DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.6 2004/09/02 08:57:05 asmodai Exp $$' >> ${.CURDIR}/Makefile.man
 	echo '# DO NOT EDIT: generated from man-makefile-update target' >> \
 	    ${.CURDIR}/Makefile.man
 	for i in ${LCRYPTO_DOC}/${_docs}/*.pod; do \
