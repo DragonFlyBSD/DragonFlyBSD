@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.4 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.5 2005/04/05 23:04:22 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -265,8 +265,6 @@ _pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 	return (cond_wait_common(cond, mutex, NULL, 0));
 }
 
-__strong_reference(_pthread_cond_wait, _thr_cond_wait);
-
 int
 __pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
@@ -284,8 +282,6 @@ _pthread_cond_timedwait(pthread_cond_t * cond, pthread_mutex_t * mutex,
 
 	return (cond_wait_common(cond, mutex, abstime, 0));
 }
-
-__strong_reference(_pthread_cond_timedwait, _thr_cond_timedwait);
 
 int
 __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
@@ -340,13 +336,9 @@ _pthread_cond_signal(pthread_cond_t * cond)
 	return (cond_signal_common(cond, 0));
 }
 
-__strong_reference(_pthread_cond_signal, _thr_cond_signal);
-
 int
 _pthread_cond_broadcast(pthread_cond_t * cond)
 {
 
 	return (cond_signal_common(cond, 1));
 }
-
-__strong_reference(_pthread_cond_broadcast, _thr_cond_broadcast);

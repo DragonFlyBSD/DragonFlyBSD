@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.3 2005/04/05 23:04:22 davidxu Exp $
  */
 
 #include <machine/tls.h>
@@ -226,8 +226,6 @@ _pthread_rwlock_rdlock (pthread_rwlock_t *rwlock)
 	return (rwlock_rdlock_common(rwlock, NULL));
 }
 
-__strong_reference(_pthread_rwlock_rdlock, _thr_rwlock_rdlock);
-
 int
 _pthread_rwlock_timedrdlock (pthread_rwlock_t *rwlock,
 	 const struct timespec *abstime)
@@ -358,8 +356,6 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 	return (ret);
 }
 
-__strong_reference(_pthread_rwlock_unlock, _thr_rwlock_unlock);
-
 static int
 rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
@@ -416,7 +412,6 @@ _pthread_rwlock_wrlock (pthread_rwlock_t *rwlock)
 {
 	return (rwlock_wrlock_common (rwlock, NULL));
 }
-__strong_reference(_pthread_rwlock_wrlock, _thr_rwlock_wrlock);
 
 int
 _pthread_rwlock_timedwrlock (pthread_rwlock_t *rwlock,

@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.3 2005/03/29 19:26:20 joerg Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.4 2005/04/05 23:04:22 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -731,19 +731,6 @@ void	_thr_unlink(struct pthread *curthread, struct pthread *thread);
 void	_thr_suspend_check(struct pthread *curthread);
 void	_thr_assert_lock_level() __dead2;
 int	_thr_get_tid(void);
-
-/*
- * Aliases for _pthread functions. Should be called instead of
- * originals if PLT replocation is unwanted at runtme.
- */
-int	_thr_cond_broadcast(pthread_cond_t *);
-int	_thr_cond_signal(pthread_cond_t *);
-int	_thr_cond_wait(pthread_cond_t *, pthread_mutex_t *);
-int	_thr_mutex_lock(pthread_mutex_t *);
-int	_thr_mutex_unlock(pthread_mutex_t *);
-int	_thr_rwlock_rdlock(pthread_rwlock_t *);
-int	_thr_rwlock_wrlock(pthread_rwlock_t *);
-int	_thr_rwlock_unlock(pthread_rwlock_t *);
 
 /* #include <sys/aio.h> */
 #ifdef _SYS_AIO_H_
