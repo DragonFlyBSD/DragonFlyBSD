@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.3 2003/09/28 17:24:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,9 @@
 #define	GIGA_SI_SZ (GIGA_SZ(1000ULL))
 #define	TERA_SI_SZ (TERA_SZ(1000ULL))
 #define	PETA_SI_SZ (PETA_SZ(1000ULL))
+
+#define	HASHSIZE	256		/* power of 2 only */
+#define HASHMASK	(HASHSIZE - 1)
 
 unsigned long long vals_si [] = {1, KILO_SI_SZ, MEGA_SI_SZ, GIGA_SI_SZ, TERA_SI_SZ, PETA_SI_SZ};
 unsigned long long vals_base2[] = {1, KILO_2_SZ, MEGA_2_SZ, GIGA_2_SZ, TERA_2_SZ, PETA_2_SZ};
@@ -310,25 +313,37 @@ int
 linkchk(p)
 	FTSENT *p;
 {
-	static ID *files;
-	static int maxfiles, nfiles;
+	static ID **files;
+	static int *maxfiles, *nfiles;
+	static ID *filesph[HASHSIZE];
+	static int maxfilesh[HASHSIZE], nfilesh[HASHSIZE];
 	ID *fp, *start;
 	ino_t ino;
 	dev_t dev;
+	int index;
 
 	ino = p->fts_statp->st_ino;
+	index = ino & HASHMASK;
+	files = &filesph[index];
+	maxfiles = &maxfilesh[index];
+	nfiles = &nfilesh[index];
+	
 	dev = p->fts_statp->st_dev;
-	if ((start = files) != NULL)
-		for (fp = start + nfiles - 1; fp >= start; --fp)
+	if ((start = *files) != NULL) {
+		for (fp = start + *nfiles - 1; fp >= start; --fp)
 			if (ino == fp->inode && dev == fp->dev)
 				return (1);
+	}
 
-	if (nfiles == maxfiles && (files = realloc((char *)files,
-	    (u_int)(sizeof(ID) * (maxfiles += 128)))) == NULL)
-		errx(1, "can't allocate memory");
-	files[nfiles].inode = ino;
-	files[nfiles].dev = dev;
-	++nfiles;
+	if (*nfiles == *maxfiles) {
+		*maxfiles = (*maxfiles + 128) + (*maxfiles / 2);
+		*files = realloc((char *)*files, sizeof(ID) * *maxfiles);
+		if (*files == NULL)
+			errx(1, "can't allocate memory");
+	}
+	(*files)[*nfiles].inode = ino;
+	(*files)[*nfiles].dev = dev;
+	++(*nfiles);
 	return (0);
 }
 
