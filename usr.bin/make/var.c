@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.49 2005/01/28 23:25:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.50 2005/01/28 23:26:41 okumoto Exp $
  */
 
 /*-
@@ -173,9 +173,6 @@ VarCmp(const void *v, const void *name)
  *
  * Results:
  *	The contents of name, possibly expanded.
- *
- * Side Effects:
- *	The caller must free the new contents or old contents of name.
  *-----------------------------------------------------------------------
  */
 static char *
@@ -1728,28 +1725,29 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freeP
 char *
 Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 {
-    Buffer  	  *buf;	    	    /* Buffer for forming things */
-    char    	  *val;		    /* Value to substitute for a variable */
-    size_t	  length;   	    /* Length of the variable invocation */
-    Boolean 	  doFree;   	    /* Set true if val should be freed */
+    Buffer	*buf;	/* Buffer for forming things */
+    char	*val;	/* Value to substitute for a variable */
+    size_t	length;	/* Length of the variable invocation */
+    Boolean	doFree;	/* Set true if val should be freed */
     char	*result;
-    static Boolean errorReported;/* Set true if an error has already
-				     * been reported to prevent a plethora
-				     * of messages when recursing */
 
-    buf = Buf_Init(MAKE_BSIZE);
+    static Boolean errorReported;	/* Set true if an error has already
+					 * been reported to prevent a plethora
+					 * of messages when recursing */
+
+    buf = Buf_Init(0);
     errorReported = FALSE;
 
     while (*str) {
-	if (var == NULL && (*str == '$') && (str[1] == '$')) {
+	if (var == NULL && (str[0] == '$') && (str[1] == '$')) {
 	    /*
 	     * A dollar sign may be escaped either with another dollar sign.
 	     * In such a case, we skip over the escape character and store the
 	     * dollar sign into the buffer directly.
 	     */
-	    str++;
-	    Buf_AddByte(buf, (Byte)*str);
-	    str++;
+	    Buf_AddByte(buf, (Byte)str[0]);
+	    str += 2;
+
 	} else if (*str != '$') {
 	    /*
 	     * Skip as many characters as possible -- either to the end of
@@ -1760,6 +1758,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    for (cp = str++; *str != '$' && *str != '\0'; str++)
 		continue;
 	    Buf_AppendRange(buf, cp, str);
+
 	} else {
 	    if (var != NULL) {
 		int expand;
@@ -1769,9 +1768,9 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    Buf_AddBytes(buf, 2, (const Byte *)str);
 			    str += 2;
 			    expand = FALSE;
-			}
-			else
+			} else {
 			    expand = TRUE;
+			}
 			break;
 		    } else {
 			const char *p;
@@ -1805,9 +1804,9 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    Buf_AppendRange(buf, str, p);
 			    str = p;
 			    expand = FALSE;
-			}
-			else
+			} else {
 			    expand = TRUE;
+			}
 			break;
 		    }
 		}
@@ -1867,7 +1866,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	}
     }
 
-    Buf_AddByte(buf, '\0');
+    //Buf_AddByte(buf, '\0');
     result = (char *)Buf_GetAll(buf, (size_t *)NULL);
     Buf_Destroy(buf, FALSE);
     return (result);
