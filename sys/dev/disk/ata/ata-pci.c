@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.7 2004/01/23 14:11:13 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.8 2004/01/23 15:35:13 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -191,6 +191,8 @@ ata_pci_match(device_t dev)
 	return "VIA Apollo ATA controller";
 
     case 0x55131039:
+	if (ata_find_dev(dev, 0x07461039, 0))
+	    return "SiS 5591 ATA133 controller";
 	if (ata_find_dev(dev, 0x06301039, 0x30) ||
 	    ata_find_dev(dev, 0x06331039, 0) ||
 	    ata_find_dev(dev, 0x06351039, 0) ||

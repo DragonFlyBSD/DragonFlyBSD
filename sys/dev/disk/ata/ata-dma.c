@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.8 2004/01/23 14:11:13 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.9 2004/01/23 15:35:13 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -523,6 +523,7 @@ ata_dmainit(struct ata_channel *ch, int device,
 	    ata_find_dev(parent, 0x07351039, 0) ||	/* SiS 735 */
 	    ata_find_dev(parent, 0x07401039, 0) ||	/* SiS 740 */
 	    ata_find_dev(parent, 0x07451039, 0) ||	/* SiS 745 */
+	    ata_find_dev(parent, 0x07461039, 0) ||	/* SiS 746 */
 	    ata_find_dev(parent, 0x07501039, 0)) {	/* SiS 750 */
 	    int8_t reg = 0x40 + (devno << 1);
 	    int16_t val = pci_read_config(parent, reg, 2) & 0x0fff;
