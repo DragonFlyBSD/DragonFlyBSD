@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/catman/catman.c,v 1.9 2003/06/10 02:18:00 ache Exp $
- * $DragonFly: src/usr.bin/catman/catman.c,v 1.1 2004/03/25 18:05:48 joerg Exp $
+ * $DragonFly: src/usr.bin/catman/catman.c,v 1.2 2004/05/17 17:44:26 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -218,7 +218,7 @@ is_manpage_name(char *name)
 	char *lastdot = NULL;
 	char *n;
 
-	for (n = name; n != '\0'; n++) {
+	for (n = name; *n != '\0'; n++) {
 		if (isalnum(*n))
 			continue;
 		switch (*n) {
