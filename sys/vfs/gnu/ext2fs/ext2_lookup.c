@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.10 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.11 2004/04/02 10:50:23 hmp Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -378,7 +378,7 @@ ext2_lookup(ap)
 		    (error = UFS_BLKATOFF(vdp, (off_t)dp->i_offset, NULL, &bp)))
 			return (error);
 		numdirpasses = 2;
-		gd->gd_nchstats.ncs_2passes++;
+		gd->gd_nchstats->ncs_2passes++;
 	}
 	prevoff = dp->i_offset;
 	endsearch = roundup(dp->i_size, DIRBLKSIZ);
@@ -552,7 +552,7 @@ searchloop:
 
 found:
 	if (numdirpasses == 2)
-		gd->gd_nchstats.ncs_pass2++;
+		gd->gd_nchstats->ncs_pass2++;
 	/*
 	 * Check that directory length properly reflects presence
 	 * of this entry.
