@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.33 2005/01/29 19:17:06 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.34 2005/03/23 20:37:03 dillon Exp $
  */
 
 /*
@@ -919,14 +919,15 @@ bdirty(struct buf *bp)
  *	count.
  *	
  *	Must be called at splbio().
- *	The buffer must be on QUEUE_NONE.
+ *
+ *	The buffer is typically on QUEUE_NONE but there is one case in 
+ *	brelse() that calls this function after placing the buffer on
+ *	a different queue.
  */
 
 void
 bundirty(struct buf *bp)
 {
-	KASSERT(bp->b_qindex == QUEUE_NONE, ("bundirty: buffer %p still on queue %d", bp, bp->b_qindex));
-
 	if (bp->b_flags & B_DELWRI) {
 		bp->b_flags &= ~B_DELWRI;
 		reassignbuf(bp, bp->b_vp);
