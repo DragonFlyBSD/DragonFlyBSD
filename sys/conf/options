@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.10 2003/10/25 17:36:20 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.11 2003/12/02 08:00:22 asmodai Exp $
 #
 #        On the handling of kernel options
 #
@@ -279,6 +279,7 @@ DUMMYNET		opt_ipdn.h
 IPFILTER		opt_ipfilter.h
 IPFILTER_LOG		opt_ipfilter.h
 IPFILTER_DEFAULT_BLOCK	opt_ipfilter.h
+PFIL_HOOKS		opt_pfil_hooks.h
 IPFIREWALL		opt_ipfw.h
 IPFW2			opt_ipfw.h
 IPFIREWALL_VERBOSE	opt_ipfw.h

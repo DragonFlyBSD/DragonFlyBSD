@@ -6,7 +6,7 @@
  * @(#)ip_fil.h	1.35 6/5/96
  * $Id: ip_fil.h,v 2.29.2.33 2002/06/04 14:46:28 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.18.2.5 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.4 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.h,v 1.5 2003/12/02 08:00:22 asmodai Exp $
  */
 
 #ifndef	__IP_FIL_H__
@@ -488,8 +488,8 @@ typedef	struct	ipflog	{
  * with this!
  */
 #if (defined(NetBSD) && (NetBSD > 199609) && (NetBSD <= 1991011)) || \
-    (defined(NetBSD1_2) && NetBSD1_2 > 1)
-# if (NetBSD >= 199905)
+    (defined(NetBSD1_2) && NetBSD1_2 > 1) || (__DragonFly_version >= 100000)
+# if (NetBSD >= 199905) || (__DragonFly_version >= 100000)
 #  define PFIL_HOOKS
 # endif
 # ifdef PFIL_HOOKS

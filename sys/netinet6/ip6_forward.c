@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_forward.c,v 1.4.2.7 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.5 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_forward.c,v 1.6 2003/12/02 08:00:22 asmodai Exp $	*/
 /*	$KAME: ip6_forward.c,v 1.69 2001/05/17 03:48:30 itojun Exp $	*/
 
 /*
@@ -35,6 +35,7 @@
 #include "opt_inet.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
+#include "opt_pfil_hooks.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -50,6 +51,9 @@
 
 #include <net/if.h>
 #include <net/route.h>
+#ifdef PFIL_HOOKS
+#include <net/pfil.h>
+#endif
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -82,8 +86,6 @@
 #include <net/ip6fw/ip6_fw.h>
 
 #include <net/net_osdep.h>
-
-extern int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **);
 
 struct	route_in6 ip6_forward_rt;
 
@@ -515,21 +517,17 @@ ip6_forward(m, srcrt)
 	in6_clearscope(&ip6->ip6_dst);
 #endif
 
+#ifdef PFIL_HOOKS
 	/*
-	 * Check if we want to allow this packet to be processed.
-	 * Consider it to be bad if not.
+	 * Run through list of hooks for output packets.
 	 */
-	if (fr_checkp) {
-		struct	mbuf	*m1 = m;
-
-		if ((*fr_checkp)((struct ip *)ip6, sizeof(*ip6),
-				 rt->rt_ifp, 1, &m1) != 0)
-			goto freecopy;
-		m = m1;
-		if (m == NULL)
-			goto freecopy;
-		ip6 = mtod(m, struct ip6_hdr *);
-	}
+	error = pfil_run_hooks(&inet6_pfil_hook, &m, rt->rt_ifp, PFIL_OUT);
+	if (error != 0)
+		goto senderr;
+	if (m == NULL)
+		goto freecopy;
+	ip6 = mtod(m, struct ip6_hdr *);
+#endif /* PFIL_HOOKS */
 
 	error = nd6_output(rt->rt_ifp, origifp, m, dst, rt);
 	if (error) {
@@ -545,6 +543,9 @@ ip6_forward(m, srcrt)
 				goto freecopy;
 		}
 	}
+#ifdef PFIL_HOOKS
+senderr:
+#endif
 	if (mcopy == NULL)
 		return;
 	switch (error) {

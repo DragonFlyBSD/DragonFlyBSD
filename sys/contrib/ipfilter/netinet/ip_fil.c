@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.6 2003/03/01 03:55:54 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.6 2003/08/27 11:02:14 rob Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.7 2003/12/02 08:00:22 asmodai Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -18,6 +18,9 @@
 #if defined(_KERNEL) && defined(__FreeBSD_version) && \
     (__FreeBSD_version >= 400000) && !defined(KLD_MODULE)
 #include "opt_inet6.h"
+#if defined(__DragonFly_version) && (__DragonFly_version >= 100000)
+#include "opt_pfil_hooks.h"
+#endif
 #endif
 #include <sys/param.h>
 #if defined(__NetBSD__) && (NetBSD >= 199905) && !defined(IPFILTER_LKM) && \
@@ -224,7 +227,9 @@ struct devsw iplsw = {
 };
 #endif /* _BSDI_VERSION >= 199510  && _KERNEL */
 
-#if defined(__NetBSD__) || defined(__OpenBSD__)  || (_BSDI_VERSION >= 199701)
+#if defined(__NetBSD__) || defined(__OpenBSD__)  || \
+    (_BSDI_VERSION >= 199701) || (defined(__DragonFly_version) && \
+    (__DragonFly_version >= 100000))
 # include <sys/conf.h>
 # if defined(NETBSD_PF)
 #  include <net/pfil.h>
@@ -306,6 +311,27 @@ int dir;
 }
 # endif
 #endif /* __NetBSD_Version >= 105110000 && _KERNEL */
+#if defined(__DragonFly_version) && (__DragonFly_version >= 100000) && \
+    defined(_KERNEL)
+
+static int
+fr_check_wrapper(void *arg, struct mbuf **mp, struct ifnet *ifp, int dir)
+{
+	struct ip *ip = mtod(*mp, struct ip *);
+	return fr_check(ip, ip->ip_hl << 2, ifp, (dir == PFIL_OUT), mp);
+}
+
+# ifdef USE_INET6
+#  include <netinet/ip6.h>
+
+static int
+fr_check_wrapper6(void *arg, struct mbuf **mp, struct ifnet *ifp, int dir)
+{
+	return (fr_check(mtod(*mp, struct ip *), sizeof(struct ip6_hdr),
+	    ifp, (dir == PFIL_OUT), mp));
+}
+# endif /* USE_INET6 */
+#endif /* __DragonFly_version >= 100000 && _KERNEL */
 #ifdef	_KERNEL
 # if	defined(IPFILTER_LKM) && !defined(__sgi)
 int iplidentify(s)
@@ -343,10 +369,13 @@ int iplattach()
 {
 	char *defpass;
 	int s;
-# if defined(__sgi) || (defined(NETBSD_PF) && (__NetBSD_Version__ >= 104200000))
+# if defined(__sgi) || (defined(NETBSD_PF) && \
+     (__NetBSD_Version__ >= 104200000)) || \
+     (defined(__DragonFly_version) && (__DragonFly_version >= 100000))
 	int error = 0;
 # endif
-#if defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 105110000)
+#if (defined(__NetBSD_Version__) && (__NetBSD_Version__ >= 105110000)) || \
+    (defined(__DragonFly_version) && (__DragonFly_version >= 100000))
 	struct pfil_head *ph_inet;
 # ifdef USE_INET6
 	struct pfil_head *ph_inet6;
@@ -377,8 +406,9 @@ int iplattach()
 	}
 
 # ifdef NETBSD_PF
-#  if (__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011)
-#   if __NetBSD_Version__ >= 105110000
+#  if (__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011) || \
+      (defined(__DragonFly_version) && (__DragonFly_version >= 100000))
+#   if (__NetBSD_Version__ >= 105110000) || (__DragonFly_version >= 100000)
 	ph_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 #    ifdef USE_INET6
 	ph_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
@@ -414,7 +444,7 @@ int iplattach()
 	pfil_add_hook((void *)fr_check, PFIL_IN|PFIL_OUT);
 #  endif
 #  ifdef USE_INET6
-#   if __NetBSD_Version__ >= 105110000
+#   if (__NetBSD_Version__ >= 105110000) || (__DragonFly_version >= 100000)
 	if (ph_inet6 != NULL)
 		error = pfil_add_hook((void *)fr_check_wrapper6, NULL,
 				      PFIL_IN|PFIL_OUT, ph_inet6);
@@ -504,9 +534,10 @@ int ipldetach()
 {
 	int s, i;
 #if defined(NETBSD_PF) && \
-    ((__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011))
+    ((__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011) || \
+     (defined(__DragonFly_version) && (__DragonFly_version >= 100000)))
 	int error = 0;
-# if __NetBSD_Version__ >= 105150000
+# if (__NetBSD_Version__ >= 105150000) || (__DragonFly_version >= 100000)
         struct pfil_head *ph_inet = pfil_head_get(PFIL_TYPE_AF, AF_INET);
 #  ifdef USE_INET6
         struct pfil_head *ph_inet6 = pfil_head_get(PFIL_TYPE_AF, AF_INET6);
@@ -549,8 +580,9 @@ int ipldetach()
 	fr_running = 0;
 
 # ifdef NETBSD_PF
-#  if ((__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011))
-#   if __NetBSD_Version__ >= 105110000
+#  if ((__NetBSD_Version__ >= 104200000) || (__FreeBSD_version >= 500011) || \
+       (__DragonFly_version >= 100000))
+#   if (__NetBSD_Version__ >= 105110000) || (__DragonFly_version >= 100000)
 	if (ph_inet != NULL)
 		error = pfil_remove_hook((void *)fr_check_wrapper, NULL,
 					 PFIL_IN|PFIL_OUT, ph_inet);
@@ -568,7 +600,7 @@ int ipldetach()
 	pfil_remove_hook((void *)fr_check, PFIL_IN|PFIL_OUT);
 #  endif
 #  ifdef USE_INET6
-#   if __NetBSD_Version__ >= 105110000
+#   if (__NetBSD_Version__ >= 105110000) || (__DragonFly_version >= 100000)
 	if (ph_inet6 != NULL)
 		error = pfil_remove_hook((void *)fr_check_wrapper6, NULL,
 					 PFIL_IN|PFIL_OUT, ph_inet6);

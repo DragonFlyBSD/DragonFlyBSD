@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.8 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.9 2003/12/02 08:00:22 asmodai Exp $
  */
 
 #define	_IP_VHL
@@ -44,6 +44,7 @@
 #include "opt_ipfilter.h"
 #include "opt_ipstealth.h"
 #include "opt_ipsec.h"
+#include "opt_pfil_hooks.h"
 #include "opt_random_ip_id.h"
 
 #include <sys/param.h>
@@ -62,6 +63,9 @@
 #include <net/if_types.h>
 #include <net/if_var.h>
 #include <net/if_dl.h>
+#ifdef PFIL_HOOKS
+#include <net/pfil.h>
+#endif
 #include <net/route.h>
 #include <net/netisr.h>
 #include <net/intrq.h>
@@ -207,7 +211,9 @@ int fw_one_pass = 1;
 /* Dummynet hooks */
 ip_dn_io_t *ip_dn_io_ptr;
 
-int (*fr_checkp) (struct ip *, int, struct ifnet *, int, struct mbuf **) = NULL;
+#ifdef PFIL_HOOKS
+struct pfil_head inet_pfil_hook;
+#endif /* PFIL_HOOKS */
 
 /*
  * XXX this is ugly -- the following two global variables are
@@ -262,6 +268,14 @@ ip_init()
 		    pr->pr_protocol && pr->pr_protocol != IPPROTO_RAW)
 			ip_protox[pr->pr_protocol] = pr - inetsw;
 
+#ifdef PFIL_HOOKS
+	inet_pfil_hook.ph_type = PFIL_TYPE_AF;
+	inet_pfil_hook.ph_af = AF_INET;
+	if ((i = pfil_head_register(&inet_pfil_hook)) != 0)
+		printf("%s: WARNING: unable to register pfil hook, "
+			"error %d\n", __func__, i);
+#endif /* PFIL_HOOKS */
+
 	for (i = 0; i < IPREASS_NHASH; i++)
 	    ipq[i].next = ipq[i].prev = &ipq[i];
 
@@ -300,6 +314,10 @@ ip_input(struct mbuf *m)
 	struct in_addr pkt_dst;
 	u_int32_t divert_info = 0;		/* packet divert/tee info */
 	struct ip_fw_args args;
+	int srcrt = 0;				/* forward (by PFIL_HOOKS) */
+#ifdef PFIL_HOOKS
+	struct in_addr odst;			/* original dst address(NAT) */
+#endif
 #ifdef FAST_IPSEC
 	struct m_tag *mtag;
 	struct tdb_ident *tdbi;
@@ -446,17 +464,23 @@ tooshort:
  	 */
 
 iphack:
+#ifdef PFIL_HOOKS
 	/*
-	 * Check if we want to allow this packet to be processed.
-	 * Consider it to be bad if not.
+	 * Run through list of hooks for input packets.
+	 *
+	 * NB: Beware of the destination address changing (e.g.
+	 *     by NAT rewriting). When this happens, tell
+	 *     ip_forward to do the right thing.
 	 */
-	if (fr_checkp) {
-		struct	mbuf	*m1 = m;
-
-		if ((*fr_checkp)(ip, hlen, m->m_pkthdr.rcvif, 0, &m1) || !m1)
-			return;
-		ip = mtod(m = m1, struct ip *);
-	}
+	odst = ip->ip_dst;
+	if (pfil_run_hooks(&inet_pfil_hook, &m, m->m_pkthdr.rcvif,
+	    PFIL_IN) != 0)
+	    	return;
+	if (m == NULL)			/* consumed by filter */
+		return;
+	ip = mtod(m, struct ip *);
+	srcrt = (odst.s_addr != ip->ip_dst.s_addr);
+#endif /* PFIL_HOOKS */
 	if (fw_enable && IPFW_LOADED) {
 		/*
 		 * If we've been forwarded from the output side, then
@@ -690,7 +714,7 @@ pass:
 			goto bad;
 		}
 #endif /* FAST_IPSEC */
-		ip_forward(m, 0, args.next_hop);
+		ip_forward(m, srcrt, args.next_hop);
 	}
 	return;
 

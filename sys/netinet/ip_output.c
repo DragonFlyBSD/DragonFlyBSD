@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.8 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.9 2003/12/02 08:00:22 asmodai Exp $
  */
 
 #define _IP_VHL
@@ -42,6 +42,7 @@
 #include "opt_ipdivert.h"
 #include "opt_ipfilter.h"
 #include "opt_ipsec.h"
+#include "opt_pfil_hooks.h"
 #include "opt_random_ip_id.h"
 #include "opt_mbuf_stress_test.h"
 
@@ -57,6 +58,9 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#ifdef PFIL_HOOKS
+#include <net/pfil.h>
+#endif
 #include <net/route.h>
 
 #include <netinet/in.h>
@@ -722,13 +726,15 @@ spd_done:
 	 * - Wrap: fake packet's addr/port <unimpl.>
 	 * - Encapsulate: put it in another IP and send out. <unimp.>
 	 */ 
-	if (fr_checkp) {
-		struct  mbuf    *m1 = m;
-
-		if ((error = (*fr_checkp)(ip, hlen, ifp, 1, &m1)) || !m1)
-			goto done;
-		ip = mtod(m = m1, struct ip *);
-	}
+#ifdef PFIL_HOOKS
+	/*
+	 * Run through list of hooks for output packets.
+	 */
+	error = pfil_run_hooks(&inet_pfil_hook, &m, ifp, PFIL_OUT);
+	if (error != 0 || m == NULL)
+		goto done;
+	ip = mtod(m, struct ip *);
+#endif /* PFIL_HOOKS */
 
 	/*
 	 * Check with the firewall...
