@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)unvis.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/unvis/unvis.c,v 1.5.2.1 2001/07/30 10:16:49 dd Exp $
- * $DragonFly: src/usr.bin/unvis/unvis.c,v 1.4 2005/01/03 01:06:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/unvis/unvis.c,v 1.5 2005/02/19 00:32:01 liamfoy Exp $
  */
 
 #include <err.h>
@@ -52,7 +52,7 @@ main(int argc, char **argv)
 	int ch;
 
 	while ((ch = getopt(argc, argv, "")) != -1)
-		switch((char)ch) {
+		switch(ch) {
 		case '?':
 		default:
 			usage();
@@ -62,7 +62,7 @@ main(int argc, char **argv)
 
 	if (*argv)
 		while (*argv) {
-			if ((fp=fopen(*argv, "r")) != NULL)
+			if ((fp = fopen(*argv, "r")) != NULL)
 				process(fp, *argv);
 			else
 				warn("%s", *argv);
@@ -90,7 +90,7 @@ process(FILE *fp, const char *filename)
 	while ((c = getc(fp)) != EOF) {
 		offset++;
 	again:
-		switch(ret = unvis(&outc, (char)c, &state, 0)) {
+		switch(ret = unvis(&outc, c, &state, 0)) {
 		case UNVIS_VALID:
 			putchar(outc);
 			break;
