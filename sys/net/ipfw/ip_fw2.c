@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.13 2004/09/16 23:19:34 joerg Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.14 2004/09/17 08:25:30 dillon Exp $
  */
 
 #define        DEB(x)
@@ -2716,7 +2716,6 @@ ipfw_init(void)
 	else
 		printf("limited to %d packets/entry by default\n",
 		    verbose_limit);
-	bzero(&ipfw_timeout_h, sizeof(struct callout_handle));
 	callout_init(&ipfw_timeout_h);
 	callout_reset(&ipfw_timeout_h, hz, ipfw_tick, NULL);
 }
