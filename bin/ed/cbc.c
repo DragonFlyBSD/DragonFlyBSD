@@ -38,7 +38,7 @@
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
  * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.5 2004/10/30 13:34:49 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -174,7 +174,7 @@ flush_des_file(FILE *fp)
 int
 get_keyword(void)
 {
-	register char *p;		/* used to obtain the key */
+	char *p;		/* used to obtain the key */
 	Desbuf msgbuf;			/* I/O buffer */
 
 	/*
@@ -240,7 +240,7 @@ hex_to_binary(int c, int radix)
 void
 expand_des_key(char *obuf, char *inbuf)
 {
-	register int i, j;		/* counter in a for loop */
+	int i, j;		/* counter in a for loop */
 	int nbuf[64];			/* used for hex/key translation */
 
 	/*
@@ -306,8 +306,8 @@ expand_des_key(char *obuf, char *inbuf)
 void
 set_des_key(Desbuf buf)
 {
-	register int i, j;			/* counter in a for loop */
-	register int par;			/* parity counter */
+	int i, j;			/* counter in a for loop */
+	int par;			/* parity counter */
 
 	/*
 	 * if the parity is not preserved, flip it
@@ -372,8 +372,8 @@ int
 cbc_decode(char *msgbuf, FILE *fp)
 {
 	Desbuf inbuf;	/* temp buffer for initialization vector */
-	register int n;		/* number of bytes actually read */
-	register int c;		/* used to test for EOF */
+	int n;		/* number of bytes actually read */
+	int c;		/* used to test for EOF */
 	int inverse = 1;	/* 0 to encrypt, 1 to decrypt */
 
 	if ((n = READ(BUFFER(msgbuf), 8, fp)) == 8) {

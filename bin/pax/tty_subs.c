@@ -36,7 +36,7 @@
  *
  * @(#)tty_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tty_subs.c,v 1.11.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tty_subs.c,v 1.4 2004/07/27 07:22:14 asmodai Exp $
+ * $DragonFly: src/bin/pax/tty_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -114,7 +114,7 @@ tty_prnt(const char *fmt, ...)
 int
 tty_read(char *str, int len)
 {
-	register char *pt;
+	char *pt;
 
 	if ((--len <= 0) || (ttyinf == NULL) || (fgets(str,len,ttyinf) == NULL))
 		return(-1);

@@ -36,7 +36,7 @@
  *
  * @(#)cache.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cache.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cache.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/cache.c,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -172,8 +172,8 @@ grptb_start(void)
 char *
 name_uid(uid_t uid, int frc)
 {
-	register struct passwd *pw;
-	register UIDC *ptr;
+	struct passwd *pw;
+	UIDC *ptr;
 
 	if ((uidtb == NULL) && (uidtb_start() < 0))
 		return("");
@@ -243,8 +243,8 @@ name_uid(uid_t uid, int frc)
 char *
 name_gid(gid_t gid, int frc)
 {
-	register struct group *gr;
-	register GIDC *ptr;
+	struct group *gr;
+	GIDC *ptr;
 
 	if ((gidtb == NULL) && (gidtb_start() < 0))
 		return("");
@@ -313,9 +313,9 @@ name_gid(gid_t gid, int frc)
 int
 uid_name(char *name, uid_t *uid)
 {
-	register struct passwd *pw;
-	register UIDC *ptr;
-	register int namelen;
+	struct passwd *pw;
+	UIDC *ptr;
+	int namelen;
 
 	/*
 	 * return -1 for mangled names
@@ -377,9 +377,9 @@ uid_name(char *name, uid_t *uid)
 int
 gid_name(char *name, gid_t *gid)
 {
-	register struct group *gr;
-	register GIDC *ptr;
-	register int namelen;
+	struct group *gr;
+	GIDC *ptr;
+	int namelen;
 
 	/*
 	 * return -1 for mangled names

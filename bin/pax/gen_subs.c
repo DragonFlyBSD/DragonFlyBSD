@@ -36,7 +36,7 @@
  *
  * @(#)gen_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/gen_subs.c,v 1.12.2.4 2002/03/12 17:49:17 phantom Exp $
- * $DragonFly: src/bin/pax/gen_subs.c,v 1.3 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/gen_subs.c,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -78,9 +78,9 @@ static int d_first = -1;
  */
 
 void
-ls_list(register ARCHD *arcn, time_t now, FILE *fp)
+ls_list(ARCHD *arcn, time_t now, FILE *fp)
 {
-	register struct stat *sbp;
+	struct stat *sbp;
 	char f_mode[MODELEN];
 	char f_date[DATELEN];
 	char *timefrmt;
@@ -158,7 +158,7 @@ ls_list(register ARCHD *arcn, time_t now, FILE *fp)
  */
 
 void
-ls_tty(register ARCHD *arcn)
+ls_tty(ARCHD *arcn)
 {
 	char f_date[DATELEN];
 	char f_mode[MODELEN];
@@ -193,10 +193,10 @@ ls_tty(register ARCHD *arcn)
  */
 
 int
-l_strncpy(register char *dest, register char *src, int len)
+l_strncpy(char *dest, char *src, int len)
 {
-	register char *stop;
-	register char *start;
+	char *stop;
+	char *start;
 
 	stop = dest + len;
 	start = dest;
@@ -219,9 +219,9 @@ l_strncpy(register char *dest, register char *src, int len)
  */
 
 u_long
-asc_ul(register char *str, int len, register int base)
+asc_ul(char *str, int len, int base)
 {
-	register char *stop;
+	char *stop;
 	u_long tval = 0;
 
 	stop = str + len;
@@ -262,9 +262,9 @@ asc_ul(register char *str, int len, register int base)
  */
 
 int
-ul_asc(u_long val, register char *str, register int len, register int base)
+ul_asc(u_long val, char *str, int len, int base)
 {
-	register char *pt;
+	char *pt;
 	u_long digit;
 
 	/*
@@ -316,9 +316,9 @@ ul_asc(u_long val, register char *str, register int len, register int base)
  */
 
 u_quad_t
-asc_uqd(register char *str, int len, register int base)
+asc_uqd(char *str, int len, int base)
 {
-	register char *stop;
+	char *stop;
 	u_quad_t tval = 0;
 
 	stop = str + len;
@@ -359,9 +359,9 @@ asc_uqd(register char *str, int len, register int base)
  */
 
 int
-uqd_asc(u_quad_t val, register char *str, register int len, register int base)
+uqd_asc(u_quad_t val, char *str, int len, int base)
 {
-	register char *pt;
+	char *pt;
 	u_quad_t digit;
 
 	/*

@@ -36,7 +36,7 @@
  *
  * @(#)file_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/file_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/file_subs.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/file_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@
 #include "extern.h"
 
 static int
-mk_link (register char *,register struct stat *,register char *, int);
+mk_link (char *,struct stat *,char *, int);
 
 /*
  * routines that deal with file operations such as: creating, removing;
@@ -73,7 +73,7 @@ mk_link (register char *,register struct stat *,register char *, int);
  */
 
 int
-file_creat(register ARCHD *arcn)
+file_creat(ARCHD *arcn)
 {
 	int fd = -1;
 	mode_t file_mode;
@@ -130,7 +130,7 @@ file_creat(register ARCHD *arcn)
  */
 
 void
-file_close(register ARCHD *arcn, int fd)
+file_close(ARCHD *arcn, int fd)
 {
 	int res = 0;
 
@@ -170,7 +170,7 @@ file_close(register ARCHD *arcn, int fd)
  */
 
 int
-lnk_creat(register ARCHD *arcn)
+lnk_creat(ARCHD *arcn)
 {
 	struct stat sb;
 
@@ -204,7 +204,7 @@ lnk_creat(register ARCHD *arcn)
  */
 
 int
-cross_lnk(register ARCHD *arcn)
+cross_lnk(ARCHD *arcn)
 {
 	/*
 	 * try to make a link to original file (-l flag in copy mode). make sure
@@ -228,7 +228,7 @@ cross_lnk(register ARCHD *arcn)
  */
 
 int
-chk_same(register ARCHD *arcn)
+chk_same(ARCHD *arcn)
 {
 	struct stat sb;
 
@@ -265,7 +265,7 @@ chk_same(register ARCHD *arcn)
  */
 
 static int
-mk_link(register char *to, register struct stat *to_sb, register char *from,
+mk_link(char *to, struct stat *to_sb, char *from,
 	int ign)
 {
 	struct stat sb;
@@ -338,12 +338,12 @@ mk_link(register char *to, register struct stat *to_sb, register char *from,
  */
 
 int
-node_creat(register ARCHD *arcn)
+node_creat(ARCHD *arcn)
 {
-	register int res;
-	register int ign = 0;
-	register int oerrno;
-	register int pass = 0;
+	int res;
+	int ign = 0;
+	int oerrno;
+	int pass = 0;
 	mode_t file_mode;
 	struct stat sb;
 
@@ -502,7 +502,7 @@ node_creat(register ARCHD *arcn)
  */
 
 int
-unlnk_exist(register char *name, register int type)
+unlnk_exist(char *name, int type)
 {
 	struct stat sb;
 
@@ -553,9 +553,9 @@ unlnk_exist(register char *name, register int type)
  */
 
 int
-chk_path( register char *name, uid_t st_uid, gid_t st_gid)
+chk_path( char *name, uid_t st_uid, gid_t st_gid)
 {
-	register char *spt = name;
+	char *spt = name;
 	struct stat sb;
 	int retval = -1;
 
@@ -778,13 +778,13 @@ set_pmode(char *fnm, mode_t mode)
  */
 
 int
-file_write(int fd, char *str, register int cnt, int *rem, int *isempt, int sz,
+file_write(int fd, char *str, int cnt, int *rem, int *isempt, int sz,
 	char *name)
 {
-	register char *pt;
-	register char *end;
-	register int wcnt;
-	register char *st = str;
+	char *pt;
+	char *end;
+	int wcnt;
+	char *st = str;
 
 	/*
 	 * while we have data to process
@@ -890,7 +890,7 @@ file_flush(int fd, char *fname, int isempt)
  */
 
 void
-rdfile_close(register ARCHD *arcn, register int *fd)
+rdfile_close(ARCHD *arcn, int *fd)
 {
 	/*
 	 * make sure the file is open
@@ -920,10 +920,10 @@ rdfile_close(register ARCHD *arcn, register int *fd)
  */
 
 int
-set_crc(register ARCHD *arcn, register int fd)
+set_crc(ARCHD *arcn, int fd)
 {
-	register int i;
-	register int res;
+	int i;
+	int res;
 	off_t cpcnt = 0L;
 	u_long size;
 	unsigned long crc = 0L;

@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.6 2004/08/19 17:36:42 dillon Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.7 2004/10/30 13:34:49 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -64,8 +64,8 @@ void	usage (void);
 int
 main(int argc, char **argv)
 {
-	register int baselen, len, rval;
-	register char *p, *endp;
+	int baselen, len, rval;
+	char *p, *endp;
 	struct stat sb;
 	int ch;
 	char path[PATH_MAX];
@@ -241,7 +241,7 @@ fastcopy(char *from, char *to, struct stat *sbp)
 	static u_int blen;
 	static char *bp;
 	mode_t oldmode;
-	register int nread, from_fd, to_fd;
+	int nread, from_fd, to_fd;
 
 	if ((from_fd = open(from, O_RDONLY, 0)) < 0) {
 		warn("%s", from);

@@ -26,7 +26,7 @@
  *
  * @(#)io.c,v 1.1 1994/02/01 00:34:41 alm Exp
  * $FreeBSD: src/bin/ed/io.c,v 1.10 1999/08/27 23:14:14 peter Exp $
- * $DragonFly: src/bin/ed/io.c,v 1.4 2004/03/19 17:47:48 cpressey Exp $
+ * $DragonFly: src/bin/ed/io.c,v 1.5 2004/10/30 13:34:49 liamfoy Exp $
  */
 
 #include "ed.h"
@@ -118,8 +118,8 @@ read_stream(FILE *fp, long n)
 int
 get_stream_line(FILE *fp)
 {
-	register int c;
-	register int i = 0;
+	int c;
+	int i = 0;
 
 	while (((c = des ? get_des_char(fp) : getc(fp)) != EOF || (!feof(fp) &&
 	    !ferror(fp))) && c != '\n') {
@@ -256,8 +256,8 @@ get_extended_line(int *sizep, int nonl)
 int
 get_tty_line(void)
 {
-	register int oi = 0;
-	register int i = 0;
+	int oi = 0;
+	int i = 0;
 	int c;
 
 	for (;;)

@@ -36,7 +36,7 @@
  *
  * @(#)ar_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_subs.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_subs.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/ar_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -52,9 +52,9 @@
 #include "pax.h"
 #include "extern.h"
 
-static void wr_archive (register ARCHD *, int is_app);
+static void wr_archive (ARCHD *, int is_app);
 static int get_arc (void);
-static int next_head (register ARCHD *);
+static int next_head (ARCHD *);
 extern sigset_t s_mask;
 
 /*
@@ -74,8 +74,8 @@ u_long flcnt;				/* number of files processed */
 void
 list(void)
 {
-	register ARCHD *arcn;
-	register int res;
+	ARCHD *arcn;
+	int res;
 	ARCHD archd;
 	time_t now;
 
@@ -151,8 +151,8 @@ list(void)
 void
 extract(void)
 {
-	register ARCHD *arcn;
-	register int res;
+	ARCHD *arcn;
+	int res;
 	off_t cnt;
 	ARCHD archd;
 	struct stat sb;
@@ -355,11 +355,11 @@ extract(void)
  */
 
 static void
-wr_archive(register ARCHD *arcn, int is_app)
+wr_archive(ARCHD *arcn, int is_app)
 {
-	register int res;
-	register int hlk;
-	register int wr_one;
+	int res;
+	int hlk;
+	int wr_one;
 	off_t cnt;
 	int (*wrf)();
 	int fd = -1;
@@ -560,8 +560,8 @@ wr_archive(register ARCHD *arcn, int is_app)
 void
 append(void)
 {
-	register ARCHD *arcn;
-	register int res;
+	ARCHD *arcn;
+	int res;
 	ARCHD archd;
 	FSUB *orgfrmt;
 	int udev;
@@ -722,12 +722,12 @@ archive(void)
 void
 copy(void)
 {
-	register ARCHD *arcn;
-	register int res;
-	register int fddest;
-	register char *dest_pt;
-	register int dlen;
-	register int drem;
+	ARCHD *arcn;
+	int res;
+	int fddest;
+	char *dest_pt;
+	int dlen;
+	int drem;
 	int fdsrc = -1;
 	struct stat sb;
 	ARCHD archd;
@@ -967,14 +967,14 @@ copy(void)
  */
 
 static int
-next_head(register ARCHD *arcn)
+next_head(ARCHD *arcn)
 {
-	register int ret;
-	register char *hdend;
-	register int res;
-	register int shftsz;
-	register int hsz;
-	register int in_resync = 0; 	/* set when we are in resync mode */
+	int ret;
+	char *hdend;
+	int res;
+	int shftsz;
+	int hsz;
+	int in_resync = 0; 	/* set when we are in resync mode */
 	int cnt = 0;			/* counter for trailer function */
 	int first = 1;			/* on 1st read, EOF isn't premature. */
 
@@ -1121,10 +1121,10 @@ next_head(register ARCHD *arcn)
 static int
 get_arc(void)
 {
-	register int i;
-	register int hdsz = 0;
-	register int res;
-	register int minhd = BLKMULT;
+	int i;
+	int hdsz = 0;
+	int res;
+	int minhd = BLKMULT;
 	char *hdend;
 	int notice = 0;
 

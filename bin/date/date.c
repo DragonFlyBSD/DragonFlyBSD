@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.6 2004/07/22 12:23:54 asmodai Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.7 2004/10/30 13:34:49 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -171,9 +171,9 @@ main(int argc, char **argv)
 #define	ATOI2(s)	((s) += 2, ((s)[-2] - '0') * 10 + ((s)[-1] - '0'))
 
 static void
-setthetime(const char *fmt, register const char *p, int jflag, int nflag)
+setthetime(const char *fmt, const char *p, int jflag, int nflag)
 {
-	register struct tm *lt;
+	struct tm *lt;
 	struct timeval tv;
 	const char *dot, *t;
 	int century;
