@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
-# $DragonFly: src/sys/emulation/linux/Makefile,v 1.6 2004/08/13 17:51:08 dillon Exp $
+# $DragonFly: src/sys/emulation/linux/Makefile,v 1.7 2004/12/20 17:21:39 dillon Exp $
 
 .PATH: ${.CURDIR}/../../emulation/linux ${.CURDIR}/../../emulation/linux/${MACHINE_ARCH}
 
@@ -40,4 +40,3 @@ afterinstall:
 		${.CURDIR}/linux.sh ${DESTDIR}/usr/sbin/linux
 
 .include <bsd.kmod.mk>
-.include <bsd.subdir.mk>

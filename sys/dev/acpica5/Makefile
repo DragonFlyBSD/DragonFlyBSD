@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.6 2004/09/16 20:50:00 joerg Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.7 2004/12/20 17:21:38 dillon Exp $
 
 .include "Makefile.inc"
 
@@ -125,4 +125,3 @@ SUBDIR=	acpi_toshiba
 all: ${PROG} ${SUBDIR}
 
 .include <bsd.kmod.mk>
-.include <bsd.subdir.mk>
