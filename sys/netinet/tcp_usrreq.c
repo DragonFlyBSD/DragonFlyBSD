@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.27 2004/10/27 03:43:47 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.28 2004/12/04 06:27:59 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -364,8 +364,8 @@ tcp_usr_listen(struct socket *so, struct thread *td)
 	tp->t_state = TCPS_LISTEN;
 #ifdef SMP
 	/*
-	 * We have to set the flag because we can't have other cpus messing
-	 * with our inp's flags.
+	 * We have to set the flag because we can't have other cpus
+	 * messing with our inp's flags.
 	 */
 	inp->inp_flags |= INP_WILDCARD_MP;
 	for (cpu = 0; cpu < ncpus2; cpu++) {
@@ -399,17 +399,46 @@ tcp6_usr_listen(struct socket *so, struct thread *td)
 	int error = 0;
 	struct inpcb *inp = sotoinpcb(so);
 	struct tcpcb *tp;
+#ifdef SMP
+	int cpu;
+#endif
 
 	COMMON_START();
 	if (inp->inp_lport == 0) {
-		inp->inp_vflag &= ~INP_IPV4;
-		if ((inp->inp_flags & IN6P_IPV6_V6ONLY) == 0)
+		if (!(inp->inp_flags & IN6P_IPV6_V6ONLY))
 			inp->inp_vflag |= INP_IPV4;
+		else
+			inp->inp_vflag &= ~INP_IPV4;
 		error = in6_pcbbind(inp, (struct sockaddr *)0, td);
 	}
 	if (error == 0)
 		tp->t_state = TCPS_LISTEN;
+#ifdef SMP
+	/*
+	 * We have to set the flag because we can't have other cpus
+	 * messing with our inp's flags.
+	 */
+	inp->inp_flags |= INP_WILDCARD_MP;
+	for (cpu = 0; cpu < ncpus2; cpu++) {
+		struct netmsg_inswildcard *msg;
+
+		if (cpu == mycpu->gd_cpuid) {
+			in_pcbinswildcardhash_oncpu(inp, &tcbinfo[cpu]);
+			continue;
+		}
+
+		msg = malloc(sizeof(struct netmsg_inswildcard), M_LWKTMSG,
+		    M_INTWAIT);
+		lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
+		    lwkt_cmd_func(in_pcbinswildcardhash_handler),
+		    lwkt_cmd_op_none);
+		msg->nm_inp = inp;
+		msg->nm_pcbinfo = &tcbinfo[cpu];
+		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
+	}
+#else
 	in_pcbinswildcardhash(inp);
+#endif
 	COMMON_END(PRU_LISTEN);
 }
 #endif /* INET6 */
