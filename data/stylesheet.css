@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.13 2004/04/15 19:53:16 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.14 2004/04/17 18:49:59 justin Exp $
  *
  */
 
@@ -105,6 +105,19 @@ TD,TH {
 .mlsubject {
    font-weight: 600;
    vertical-align: top;
+}
+
+.mlfirstsubject {
+   font-weight: 600;
+   vertical-align: top;
+   background-color: #DDDDDD;
+}
+
+.mlindentsubject {
+   font-weight: 600;
+   vertical-align: top;
+   background-color: #EEEEEE;
+   text-indent: 3em;
 }
 
 .mlfrom {
