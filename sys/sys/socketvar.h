@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.7 2003/12/10 22:26:19 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.8 2003/12/10 23:48:07 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -270,14 +270,6 @@ struct sockopt {
 	struct	thread *sopt_td; /* calling thread or null if kernel */
 };
 
-struct sf_buf {
-	LIST_ENTRY(sf_buf) list_entry;	/* hash chain of active buffers */
-	TAILQ_ENTRY(sf_buf) free_entry;	/* list of free buffers */
-	struct		vm_page *m;	/* currently mapped page */
-	vm_offset_t	kva;		/* va of mapping */
-	int		refcnt;		/* usage of this mapping */
-};
-
 struct accept_filter {
 	char	accf_name[16];
 	void	(*accf_callback)
@@ -350,10 +342,6 @@ int	sbreserve (struct sockbuf *sb, u_long cc, struct socket *so,
 void	sbtoxsockbuf (struct sockbuf *sb, struct xsockbuf *xsb);
 int	sbwait (struct sockbuf *sb);
 int	sb_lock (struct sockbuf *sb);
-struct sf_buf *
-	sf_buf_alloc(struct vm_page *);
-void	sf_buf_free(caddr_t addr, u_int size);
-void	sf_buf_ref(caddr_t addr, u_int size);
 int	soabort (struct socket *so);
 int	soaccept (struct socket *so, struct sockaddr **nam);
 struct	socket *soalloc (int waitok);

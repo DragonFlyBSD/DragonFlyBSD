@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.6 2003/07/28 05:03:25 hmp Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.7 2003/12/10 23:48:07 hsu Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -457,7 +457,6 @@ extern	union mcluster	*mclfree;
 extern	struct mbuf	*mmbfree;
 extern	int		 nmbclusters;
 extern	int		 nmbufs;
-extern	int		 nsfbufs;
 
 void		 m_adj(struct mbuf *, int);
 void		 m_cat(struct mbuf *, struct mbuf *);
