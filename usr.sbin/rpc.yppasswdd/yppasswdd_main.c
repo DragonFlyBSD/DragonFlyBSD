@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.3 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #include "yppasswd.h"
@@ -153,7 +153,7 @@ main(argc, argv)
 	int argc;
 	char *argv[];
 {
-	register SVCXPRT *transp = NULL;
+	SVCXPRT *transp = NULL;
 	int sock;
 	int proto = 0;
 	struct sockaddr_in saddr;

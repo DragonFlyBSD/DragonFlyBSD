@@ -31,7 +31,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppstats/pppstats.c,v 1.13 1999/08/28 01:19:11 peter Exp $
- * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.4 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.5 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -249,7 +249,7 @@ get_ppp_cstats(csp)
 static void
 intpr()
 {
-    register int line = 0;
+    int line = 0;
     sigset_t oldmask, mask;
     char *bunit;
     int ratef = 0;

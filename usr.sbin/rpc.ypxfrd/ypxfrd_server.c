@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypxfrd/ypxfrd_server.c,v 1.8.2.1 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_server.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_server.c,v 1.3 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #include "ypxfrd.h"
@@ -52,7 +52,7 @@ int children = 0;
 int fp = 0;
 
 static bool_t
-xdr_my_xfr(register XDR *xdrs, xfr *objp)
+xdr_my_xfr(XDR *xdrs, xfr *objp)
 {
 	unsigned char buf[XFRBLOCKSIZE];
 

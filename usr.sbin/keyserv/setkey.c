@@ -28,7 +28,7 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.5 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.6 2004/05/20 19:24:42 cpressey Exp $
  */
 
 /*
@@ -480,7 +480,7 @@ static int
 readcache(char *pub, char *sec, des_block *deskey)
 {
 	struct cachekey_list *found;
-	register struct cachekey_list **l;
+	struct cachekey_list **l;
 
 #define	cachehit(pub, sec, list)	\
 		(memcmp(pub, (list)->public, sizeof (keybuf)) == 0 && \

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_extern.h,v 1.1.1.1.6.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_extern.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_extern.h,v 1.3 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #include <db.h>
@@ -28,7 +28,7 @@
 #define MAP_UPDATE_PATH YPLIBDIR MAP_UPDATE
 
 extern int children;
-extern void ypu_prog_1(struct svc_req *, register SVCXPRT *);
+extern void ypu_prog_1(struct svc_req *, SVCXPRT *);
 extern int localupdate(char *, char *, u_int, u_int, char *, u_int, char *);
 extern int ypmap_update(char *, char *, u_int, u_int, char *, u_int, char *);
 extern int yp_del_record(DB *, DBT *);

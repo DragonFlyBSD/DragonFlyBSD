@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.16.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.4 2004/01/23 19:30:21 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.5 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #include <stdio.h>
@@ -100,7 +100,7 @@ static void copy_yp_pass(p, x, m)
 char *p;
 int x, m;
 {
-	register char *t, *s = p;
+	char *t, *s = p;
 	static char *buf;
 
 	yp_password.pw_fields = 0;

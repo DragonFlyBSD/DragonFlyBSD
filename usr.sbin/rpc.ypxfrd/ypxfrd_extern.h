@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypxfrd/ypxfrd_extern.h,v 1.4.2.1 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_extern.h,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_extern.h,v 1.3 2004/05/20 19:24:43 cpressey Exp $
  */
 
 #ifndef MAX_CHILDREN
@@ -48,4 +48,4 @@ extern void     yp_error(const char *, ...);
 extern int      yp_access(const char *, const struct svc_req *);
 extern int      yp_validdomain(const char *);
 extern char	*yp_dir;
-extern void	ypxfrd_freebsd_prog_1(struct svc_req *, register SVCXPRT *);
+extern void	ypxfrd_freebsd_prog_1(struct svc_req *, SVCXPRT *);

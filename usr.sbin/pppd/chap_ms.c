@@ -20,7 +20,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/chap_ms.c,v 1.8 2000/02/24 21:10:28 markm Exp $
- * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/chap_ms.c,v 1.4 2004/05/20 19:24:42 cpressey Exp $
  */
 
 /*
@@ -170,7 +170,7 @@ static u_char Get7Bits(input, startBit)
     u_char *input;
     int startBit;
 {
-    register unsigned int	word;
+    unsigned int word;
 
     word  = (unsigned)input[startBit / 8] << 8;
     word |= (unsigned)input[startBit / 8 + 1];

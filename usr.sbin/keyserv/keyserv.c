@@ -28,7 +28,7 @@
  *
  * @(#)keyserv.c	1.15	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.3.2.2 2001/07/19 10:58:22 roam Exp $
- * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.5 2004/05/20 19:24:42 cpressey Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ main(int argc, char **argv)
 {
 	int nflag = 0;
 	int c;
-	register SVCXPRT *transp;
+	SVCXPRT *transp;
 	int sock = RPC_ANYSOCK;
 	int warn = 0;
 	char *path = NULL;
