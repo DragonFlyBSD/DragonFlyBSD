@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/config.c,v 1.3.2.5 2003/04/22 09:40:57 suz Exp $
- * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/config.c,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 #include <sys/param.h>
@@ -39,9 +39,9 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) 
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly__  */
 #include <net/route.h>
 #include <net/if_dl.h>
 

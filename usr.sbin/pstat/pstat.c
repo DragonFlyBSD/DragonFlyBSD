@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.6 2004/01/02 18:19:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.7 2004/02/10 02:59:42 rob Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -93,7 +93,7 @@ struct nlist nl[] = {
 
 
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #define SCCONS	(SNPTY+1)
 	{ "_sccons" },
 #define NSCCONS	(SNPTY+2)
@@ -730,7 +730,7 @@ ttymode(void)
 		KGET(SCONS, *tty);
 		ttyprt(&tty[0], 0);
 	}
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	if (nl[NSCCONS].n_type != 0)
 		ttytype(tty, "vty", SCCONS, NSCCONS, 0);
 	if (nl[NSIO].n_type != 0)

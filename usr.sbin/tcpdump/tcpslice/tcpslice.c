@@ -20,7 +20,7 @@
  *
  * @(#) Copyright (c) 1987-1990 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.9.2.1 2000/07/01 01:34:11 ps Exp $
- * $DragonFly: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/tcpslice.c,v 1.3 2004/02/10 02:59:43 rob Exp $
  */
 
 /*
@@ -40,7 +40,7 @@ int fddipad;	/* XXX: libpcap needs this global */
 enum stamp_styles { TIMESTAMP_RAW, TIMESTAMP_READABLE, TIMESTAMP_PARSEABLE };
 enum stamp_styles timestamp_style = TIMESTAMP_RAW;
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 extern int getopt( int argc, char **argv, char *optstring );
 #endif
 

@@ -30,7 +30,7 @@
  *	$Id: monprivate.h,v 1.10 1999/12/13 21:25:26 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnmonitor/monprivate.h,v 1.1.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnmonitor/monprivate.h,v 1.3 2003/08/08 04:18:45 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnmonitor/monprivate.h,v 1.4 2004/02/10 02:59:42 rob Exp $
  *
  *      last edit-date: [Mon Dec 13 21:52:25 1999]
  *
@@ -61,7 +61,8 @@
  *	definitions in i4b_ioctl.h, do something for other systems
  *---------------------------------------------------------------------------*/
 #if defined (__FreeBSD__) || defined(__NetBSD__) || \
-    defined (__OpenBSD__) || defined(__bsdi__)
+    defined (__OpenBSD__) || defined(__bsdi__)   || \
+    defined (__DragonFly__)
 
 #include <i4b_machine/i4b_ioctl.h>
 

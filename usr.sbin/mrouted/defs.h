@@ -8,7 +8,7 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/defs.h,v 1.12.2.1 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.5 2003/11/06 19:46:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.6 2004/02/10 02:59:42 rob Exp $
  * defs.h,v 3.8.4.15 1998/03/01 02:51:42 fenner Exp
  */
 
@@ -42,13 +42,11 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/igmp.h>
-#ifdef __FreeBSD__	/* sigh */
+#ifdef __DragonFly__	/* sigh */
 #include <osreldate.h>
-#if __FreeBSD_version >= 220000
 #define rtentry kernel_rtentry
 #include <net/route.h>
 #undef rtentry
-#endif
 #endif
 #include <net/ip_mroute/ip_mroute.h>
 #ifdef RSRR

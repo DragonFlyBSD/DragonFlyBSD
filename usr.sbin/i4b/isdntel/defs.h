@@ -30,7 +30,7 @@
  *	$Id: defs.h,v 1.10 1999/12/13 21:25:26 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntel/defs.h,v 1.6.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntel/defs.h,v 1.3 2003/08/08 04:18:45 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntel/defs.h,v 1.4 2004/02/10 02:59:42 rob Exp $
  *
  *      last edit-date: [Mon Dec 13 21:53:50 1999]
  *
@@ -47,7 +47,7 @@
 #include <fcntl.h>
 #include <ctype.h>
 #include <sys/time.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) 
 #include <dirent.h>
 #else
 #include <sys/dir.h>

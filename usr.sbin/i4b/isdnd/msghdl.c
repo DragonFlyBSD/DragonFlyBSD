@@ -30,7 +30,7 @@
  *	$Id: msghdl.c,v 1.78 2000/09/21 11:29:51 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/msghdl.c,v 1.6.2.3 2001/12/16 15:13:38 hm Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/msghdl.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/msghdl.c,v 1.3 2004/02/10 02:59:42 rob Exp $
  *
  *      last edit-date: [Thu Sep 21 11:11:48 2000]
  *
@@ -42,7 +42,7 @@
 #include <net/if.h>
 #include <net/if_types.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #include <net/if_var.h>
 #endif
 

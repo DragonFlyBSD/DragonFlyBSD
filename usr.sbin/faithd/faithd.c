@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/faithd/faithd.c,v 1.2.2.7 2002/04/28 08:01:39 ume Exp $
- * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/faithd/faithd.c,v 1.5 2004/02/10 02:59:41 rob Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <libutil.h>
 #endif
 

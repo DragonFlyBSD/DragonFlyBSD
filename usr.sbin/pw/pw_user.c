@@ -25,7 +25,7 @@
  * 
  *
  * $FreeBSD: src/usr.sbin/pw/pw_user.c,v 1.34.2.13 2003/02/01 21:20:10 gad Exp $
- * $DragonFly: src/usr.sbin/pw/pw_user.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_user.c,v 1.3 2004/02/10 02:59:43 rob Exp $
  */
 
 #include <ctype.h>
@@ -125,7 +125,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 		"/nonexistent",
 		"/bin/sh",
 		0
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		,0
 #endif
 	};

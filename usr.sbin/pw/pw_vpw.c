@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw_vpw.c,v 1.3 2000/01/15 00:20:21 davidn Exp $
- * $DragonFly: src/usr.sbin/pw/pw_vpw.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_vpw.c,v 1.3 2004/02/10 02:59:43 rob Exp $
  */
 
 #include <stdio.h>
@@ -191,7 +191,7 @@ RET_SETGRENT
 vsetgrent(void)
 {
 	vendgrent();
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	return 0;
 #endif
 }

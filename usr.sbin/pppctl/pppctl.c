@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pppctl/pppctl.c,v 1.21.2.2 2001/11/23 13:18:39 brian Exp $
- * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppctl/pppctl.c,v 1.3 2004/02/10 02:59:42 rob Exp $
  */
 
 #include <sys/types.h>
@@ -266,7 +266,7 @@ main(int argc, char **argv)
             break;
           pos += n;
         }
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
       setproctitle("-%s", title);
 #else
       setproctitle("%s", title);

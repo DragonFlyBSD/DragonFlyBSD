@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $
  * $FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.8 2002/04/22 13:44:47 des Exp $
- * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.4 2003/12/30 01:01:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.5 2004/02/10 02:59:44 rob Exp $
  */
 
 /*
@@ -49,7 +49,7 @@
 #include <err.h>
 #include <errno.h>
 #include <bus/usb/usb.h>
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #include <sys/ioctl.h>
 #endif
 

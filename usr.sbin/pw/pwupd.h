@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pwupd.h,v 1.7 2000/01/15 00:20:22 davidn Exp $
- * $DragonFly: src/usr.sbin/pw/pwupd.h,v 1.3 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pw/pwupd.h,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 #ifndef _PWUPD_H_
@@ -36,7 +36,7 @@
 
 #include <sys/cdefs.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 #define	RET_SETGRENT	int
 #else
 #define	RET_SETGRENT	void

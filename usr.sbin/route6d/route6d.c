@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.4 2003/11/03 19:31:42 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.5 2004/02/10 02:59:43 rob Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -60,9 +60,9 @@
 #include <sys/sysctl.h>
 #include <sys/uio.h>
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly__  */
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
@@ -2257,7 +2257,7 @@ getifmtu(ifindex)
 	}
 	ifm = (struct if_msghdr *)buf;
 	mtu = ifm->ifm_data.ifi_mtu;
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	if (ifindex != ifm->ifm_index) {
 		fatal("ifindex does not match with ifm_index");
 		/*NOTREACHED*/
@@ -2608,7 +2608,7 @@ rt_entry(rtm, again)
 	/* Check gateway */
 	if (!IN6_IS_ADDR_LINKLOCAL(&rrt->rrt_gw) &&
 	    !IN6_IS_ADDR_LOOPBACK(&rrt->rrt_gw)
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	 && (rrt->rrt_flags & RTF_LOCAL) == 0
 #endif
 	    ) {

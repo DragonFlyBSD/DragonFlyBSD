@@ -36,7 +36,7 @@
  *	$Id: main.c,v 1.35 2000/08/24 11:48:57 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.7.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnmonitor/main.c,v 1.4 2004/02/10 02:59:42 rob Exp $
  *
  *      last edit-date: [Mon Dec 13 21:52:11 1999]
  *
@@ -519,10 +519,10 @@ print_logevent(time_t tstamp, int prio, char * what, char * msg)
  * to write to the last column in the logfilewindow without causing an
  * automatic newline to occur resulting in a blank line in that window.
  */
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <osreldate.h>
 #endif
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 400009
+#if defined(__DragonFly__)
 #warning "FreeBSD ncurses is buggy: write to last column = auto newline!"
 	                wprintw(lower_w, "%s %s %-.*s\n", buf, what,
 				COLS-((strlen(buf))+(strlen(what))+3), msg);

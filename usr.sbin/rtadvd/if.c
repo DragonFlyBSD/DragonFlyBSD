@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/if.c,v 1.2.2.3 2001/07/03 11:02:14 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/if.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/if.c,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_types.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 # include <net/ethernet.h>
 #endif
 #include <ifaddrs.h>

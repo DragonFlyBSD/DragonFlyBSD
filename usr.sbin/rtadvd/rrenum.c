@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rrenum.c,v 1.2.2.2 2001/07/03 11:02:14 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/rrenum.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/rrenum.c,v 1.3 2004/02/10 02:59:43 rob Exp $
  */
 #include <sys/types.h>
 #include <sys/param.h>
@@ -38,9 +38,9 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly__ */
 #include <net/route.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>

@@ -20,7 +20,7 @@
  *
  * @(#) Copyright (c) 1990, 1991, 1992, 1993, 1996 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/usr.sbin/rarpd/rarpd.c,v 1.23.2.4 2002/12/01 19:19:34 dwmalone Exp $
- * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.3 2004/02/10 02:59:43 rob Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if defined(SUNOS4) || defined(__FreeBSD__) /* XXX */
+#if defined(SUNOS4) || defined(__DragonFly__) /* XXX */
 #define HAVE_DIRENT_H
 #endif
 

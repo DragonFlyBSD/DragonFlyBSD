@@ -30,7 +30,7 @@
  *      $Id: files.c,v 1.8 1999/12/13 21:25:26 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntel/files.c,v 1.6.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.4 2004/02/10 02:59:42 rob Exp $
  *
  *      last edit-date: [Mon Dec 13 21:54:06 1999]
  *
@@ -94,7 +94,7 @@ struct onefile
 int
 fill_list(void)
 {
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) 
 	register struct dirent *dp;
 #else
 	register struct direct *dp;

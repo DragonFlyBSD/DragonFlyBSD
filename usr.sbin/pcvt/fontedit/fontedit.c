@@ -20,6 +20,8 @@
  *      Nov 21, 1987 - Fixed man page to say "Fontedit" instead of "Top"
  *      Nov 22, 1987 - Added BSD Compatible ioctl, turned cursor on/off
  *                     - eap@bucsf.bu.edu
+ *
+ * $DragonFly: src/usr.sbin/pcvt/fontedit/Attic/fontedit.c,v 1.2 2004/02/10 02:59:42 rob Exp $
  */
 
 void clear_screen();
@@ -30,10 +32,10 @@ void clear_screen();
 #ifdef BSD
 #include <sys/ioctl.h>
 #endif BSD
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
 #include <sys/termios.h>
 #include <sys/ioctl.h>
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 #include <signal.h>
 
 #ifdef CURFIX
@@ -107,9 +109,9 @@ struct termio old_stty, new_stty;
 #ifdef BSD
 struct sgttyb old_stty, new_stty;
 #endif BSD
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
 struct termios old_stty, new_stty;
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 FILE * font_file = (FILE *)0;
 
 
@@ -130,9 +132,9 @@ interrupt()
 #ifdef BSD
         ioctl( 0, TIOCSETP, &old_stty );
 #endif BSD
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
         ioctl( 0, TIOCSETA, &old_stty );
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 	clear_screen();
 	exit( 0 );
 }
@@ -187,9 +189,9 @@ char *argv[];
 #ifdef BSD
         ioctl( 0, TIOCGETP, &old_stty );
 #endif BSD
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
         ioctl( 0, TIOCGETA, &old_stty );
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 	signal( SIGINT, (void *) interrupt );
 	new_stty = old_stty;
 #ifdef SYSV
@@ -197,12 +199,12 @@ char *argv[];
 	new_stty.c_cc[VMIN] = 1;
 	ioctl( 0, TCSETA, &new_stty );
 #endif SYSV
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
 	new_stty.c_lflag &= ~ICANON;
         new_stty.c_lflag &= ~ECHO;
 	new_stty.c_cc[VMIN] = 1;
 	ioctl( 0, TIOCSETA, &new_stty );
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 #ifdef BSD
 	new_stty.sg_flags |= CBREAK;
         new_stty.sg_flags &= ~ECHO;
@@ -218,9 +220,9 @@ char *argv[];
 #ifdef BSD
 	ioctl( 0, TIOCSETP, &old_stty );
 #endif BSD
-#if defined (__NetBSD__) || defined (__FreeBSD__)
+#if defined (__NetBSD__) || defined (__DragonFly__)
 	ioctl( 0, TIOCSETA, &old_stty );
-#endif /* __NetBSD__ || __FreeBSD__ */
+#endif /* __NetBSD__ || __DragonFly__ */
 	clear_screen();
 
 	/* Overwrite the old file. */

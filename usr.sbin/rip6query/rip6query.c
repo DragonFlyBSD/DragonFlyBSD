@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rip6query/rip6query.c,v 1.3.2.2 2001/07/03 11:02:08 ume Exp $
- * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.3 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rip6query/rip6query.c,v 1.4 2004/02/10 02:59:43 rob Exp $
  */
 
 #include <stdio.h>
@@ -47,9 +47,9 @@
 #include <sys/queue.h>
 
 #include <net/if.h>
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__)
 #include <net/if_var.h>
-#endif /* __FreeBSD__ >= 3 */
+#endif /* __DragonFly__  */
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <arpa/inet.h>
