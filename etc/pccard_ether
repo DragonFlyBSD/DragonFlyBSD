@@ -1,7 +1,7 @@
 #!/bin/sh -
 #
 # $FreeBSD: src/etc/pccard_ether,v 1.15.2.10 2001/09/14 17:28:11 imp Exp $
-# $DragonFly: src/etc/pccard_ether,v 1.3 2003/07/24 06:35:32 dillon Exp $
+# $DragonFly: src/etc/pccard_ether,v 1.4 2003/10/09 15:39:36 dillon Exp $
 #
 # pccard_ether interfacename [start|stop] [ifconfig option]
 #
@@ -34,9 +34,9 @@ start_dhcp() {
 	if [ -x "${dhclient_program}" ]; then
 		if [ `basename ${dhclient_program}` = "dhclient" ]; then
 			pidfile="/var/run/dhclient.${interface}.pid"
-			dhclient_flags="${dhcp_flags} -pf ${pidfile}"
+			dhclient_flags="${dhclient_flags} -pf ${pidfile}"
 		fi
-		${dhclient_program} ${dhcp_flags} ${interface}
+		${dhclient_program} ${dhclient_flags} ${interface}
 	else
 		echo "${dhclient_program}: DHCP client software not available"
 	fi
@@ -183,7 +183,7 @@ case ${startstop} in
 		;;
 	esac
 
-	# Remove the network interface and cleaning the ARP table
+	# Remove the network interface and clean the ARP table
 	ifconfig ${interface} delete
 	arp -d -a
 	
