@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.11 2003/12/16 12:14:45 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.12 2004/01/12 19:07:36 justin Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -101,3 +101,11 @@ do try again in some minutes or hours.
 	<LI>FTP: <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
 	<LI>HTTP: <A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots</A>
 </UL>
+<P>
+Esat.net is mirroring these snapshots via IPv4 and IPv6:
+<UL>
+<LI><a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
+<LI><a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
+<LI><a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>
+
+
