@@ -1,22 +1,17 @@
 #
-# GENERIC -- Generic kernel configuration file for FreeBSD/i386
+# GENERIC -- Generic kernel configuration file for DragonFly/i386
 #
-# For more information on this file, please read the handbook section on
-# Kernel Configuration Files:
+# For more information on this file, please read the FreeBSD handbook section 
+# on Kernel Configuration Files:
 #
 #    http://www.FreeBSD.org/doc/en_US.ISO8859-1/books/handbook/kernelconfig-config.html
-#
-# The handbook is also available locally in /usr/share/doc/handbook
-# if you've installed the doc distribution, otherwise always see the
-# FreeBSD World Wide Web server (http://www.FreeBSD.org/) for the
-# latest information.
 #
 # An exhaustive list of options and more detailed explanations of the
 # device lines is also present in the ./LINT configuration file. If you are
 # in doubt as to the purpose or necessity of a line, check first in LINT.
 #
 # $FreeBSD: src/sys/i386/conf/GENERIC,v 1.246.2.54 2003/04/28 03:41:46 simokawa Exp $
-# $DragonFly: src/sys/config/GENERIC,v 1.10 2004/02/27 11:56:12 joerg Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.11 2004/04/05 13:44:40 eirikn Exp $
 
 machine		i386
 cpu		I386_CPU
