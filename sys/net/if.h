@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.5 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.6 2003/11/14 09:53:46 hmp Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -330,6 +330,7 @@ struct if_nameindex {
 
 __BEGIN_DECLS
 u_int	 if_nametoindex (const char *);
+char	*if_indextoname(u_int, char *);
 struct	 if_nameindex *if_nameindex (void);
 void	 if_freenameindex (struct if_nameindex *);
 __END_DECLS
