@@ -35,7 +35,7 @@
  *
  * @(#)apply.c	8.4 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $
- * $DragonFly: src/usr.bin/apply/apply.c,v 1.3 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/apply/apply.c,v 1.4 2004/06/19 12:34:52 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -255,7 +255,7 @@ exec_shell(const char *command, char *use_shell, char *use_name)
 }
 
 void
-usage()
+usage(void)
 {
 
 	(void)fprintf(stderr,
