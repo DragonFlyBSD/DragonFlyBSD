@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/at/at.c,v 1.18.2.1 2001/08/02 00:55:58 obrien Exp $
- * $DragonFly: src/usr.bin/at/at.c,v 1.3 2003/10/02 17:42:25 hmp Exp $
+ * $DragonFly: src/usr.bin/at/at.c,v 1.4 2004/01/22 03:22:52 rob Exp $
  */
 
 #define _USE_BSD 1
@@ -51,7 +51,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #include <getopt.h>
 #else
 #include <locale.h>
@@ -217,7 +217,7 @@ writefile(time_t runtimer, char queue)
     mode_t cmask;
     struct flock lock;
     
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
     (void) setlocale(LC_TIME, "");
 #endif
 
@@ -455,7 +455,7 @@ list_jobs(void)
     char timestr[TIMESIZE];
     int first=1;
     
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
     (void) setlocale(LC_TIME, "");
 #endif
 

@@ -30,7 +30,7 @@
  *	BSDI tty.c,v 2.4 1996/04/08 22:03:27 prb Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/tty.c,v 1.8.2.2 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.4 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/doscmd/tty.c,v 1.5 2004/01/22 03:22:53 rob Exp $
  */
 
 #include <sys/ioctl.h>
@@ -46,7 +46,7 @@
 #include <stdio.h>
 #include <termios.h>
 #include <unistd.h>
-#if defined (__FreeBSD__) || defined (__DragonFly)
+#ifdef __DragonFly__ 
 # include <osreldate.h>
 # if __FreeBSD_version >= 500014
 #   include <sys/kbio.h>
@@ -218,7 +218,7 @@ console_denit(void *arg)
 {
     int fd = *(int *)arg;
 
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
     if (ioctl(fd, KDSKBMODE, K_XLATE))
 	perror("KDSKBMODE/K_XLATE");
 #else
@@ -281,7 +281,7 @@ console_init(void)
     fd = squirrel_fd(fd);
     kbd_fd = fd;
 
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
     if (ioctl(fd, KDSKBMODE, K_RAW)) {
 	perror("KDSKBMODE/K_RAW");
 	quit(1);    

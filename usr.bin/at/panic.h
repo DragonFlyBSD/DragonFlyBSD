@@ -22,11 +22,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/at/panic.h,v 1.2 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/at/panic.h,v 1.3 2004/01/22 03:22:52 rob Exp $
  */
 
 
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#ifdef __DragonFly__
 #define __NORETURN
 #endif
 

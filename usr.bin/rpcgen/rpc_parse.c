@@ -27,7 +27,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_parse.c 1.8 89/02/22 (C) 1987 SMI
- * $DragonFly: src/usr.bin/rpcgen/rpc_parse.c,v 1.5 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_parse.c,v 1.6 2004/01/22 03:22:53 rob Exp $
  */
 
 #ident	"@(#)rpc_parse.c	1.12	93/07/05 SMI"
@@ -58,7 +58,7 @@ static void get_prog_declaration( declaration *, defkind, int );
 static void get_type( char **, char **, defkind );
 static void unsigned_dec( char ** );
 
-#if !defined(__FreeBSD__) && !defined(__DragonFly__)
+#if !defined(__DragonFly__)
 extern char *strdup();
 #endif
 

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.4 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.5 2004/01/22 03:22:53 rob Exp $
  */
 
 #include <sys/param.h>
@@ -323,9 +323,6 @@ main(argc, argv)
 	appcstrg(&cppflags, "-$");
 	appcstrg(&cppflags, "-C");
 	appcstrg(&cppflags, "-Wcomment");
-#ifdef __FreeBSD__
-	appcstrg(&cppflags, "-D__FreeBSD__=" __XSTRING(__FreeBSD__));
-#endif
 #ifdef __DragonFly__
 	appcstrg(&cppflags, "-D__DragonFly__=" __XSTRING(__DragonFly__));
 #else

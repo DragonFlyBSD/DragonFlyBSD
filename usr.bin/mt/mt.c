@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mt.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/mt/mt.c,v 1.26.2.3 2002/11/08 11:35:57 joerg Exp $
- * $DragonFly: src/usr.bin/mt/mt.c,v 1.4 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/mt/mt.c,v 1.5 2004/01/22 03:22:53 rob Exp $
  */
 
 /*
@@ -53,14 +53,14 @@
 #include <unistd.h>
 
 /* the appropriate sections of <sys/mtio.h> are also #ifdef'd for FreeBSD */
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 /* c_flags */
 #define NEED_2ARGS	0x01
 #define ZERO_ALLOWED	0x02
 #define IS_DENSITY	0x04
 #define DISABLE_THIS	0x08
 #define IS_COMP		0x10
-#endif /* defined(__FreeBSD__) */
+#endif /* defined(__DragonFly__) */
 
 #ifndef TRUE
 #define TRUE 1
@@ -73,13 +73,13 @@ struct commands {
 	char *c_name;
 	int c_code;
 	int c_ronly;
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 	int c_flags;
-#endif /* defined(__FreeBSD__) */
+#endif /* defined(__DragonFly__) */
 } com[] = {
 	{ "bsf",	MTBSF,	1 },
 	{ "bsr",	MTBSR,	1 },
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 	/* XXX FreeBSD considered "eof" dangerous, since it's being
 	   confused with "eom" (and is an alias for "weof" anyway) */
 	{ "eof",	MTWEOF, 0, DISABLE_THIS },
@@ -92,12 +92,12 @@ struct commands {
 	{ "rewind",	MTREW,	1 },
 	{ "rewoffl",	MTOFFL,	1 },
 	{ "status",	MTNOP,	1 },
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 	{ "weof",	MTWEOF,	0, ZERO_ALLOWED },
 #else
 	{ "weof",	MTWEOF,	0 },
 #endif
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 	{ "erase",	MTERASE, 0, ZERO_ALLOWED},
 	{ "blocksize",	MTSETBSIZ, 0, NEED_2ARGS|ZERO_ALLOWED },
 	{ "density",	MTSETDNSTY, 0, NEED_2ARGS|ZERO_ALLOWED|IS_DENSITY },
@@ -118,14 +118,14 @@ struct commands {
 	{ "seteotmodel",	MTIOCSETEOTMODEL, 0, NEED_2ARGS|ZERO_ALLOWED },
 	{ "getmodel",	MTIOCGETEOTMODEL },
 	{ "geteotmodel",	MTIOCGETEOTMODEL },
-#endif /* defined(__FreeBSD__) */
+#endif /* defined(__DragonFly__) */
 	{ NULL }
 };
 
 void printreg(char *, u_int, char *);
 void status(struct mtget *);
 void usage(void);
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 void st_status (struct mtget *);
 int stringtodens (const char *s);
 const char *denstostring (int d);
@@ -133,7 +133,7 @@ int denstobp(int d, int bpi);
 u_int32_t stringtocomp(const char *s);
 const char * comptostring(u_int32_t comp);
 void warn_eof(void);
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */
 
 int
 main(int argc, char **argv)
@@ -170,19 +170,19 @@ main(int argc, char **argv)
 		if (strncmp(p, comp->c_name, len) == 0)
 			break;
 	}
-#if defined(__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 	if((comp->c_flags & NEED_2ARGS) && argc != 2)
 		usage();
 	if(comp->c_flags & DISABLE_THIS) {
 		warn_eof();
 	}
-#endif /* defined(__FreeBSD__) */
+#endif /* defined(__DragonFly__) */
 	if ((mtfd = open(tape, comp->c_ronly ? O_RDONLY : O_RDWR)) < 0)
 		err(1, "%s", tape);
 	if (comp->c_code != MTNOP) {
 		mt_com.mt_op = comp->c_code;
 		if (*argv) {
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 			if (!isdigit(**argv) &&
 			    (comp->c_flags & IS_DENSITY)) {
 				const char *dcanon;
@@ -208,20 +208,20 @@ main(int argc, char **argv)
 				mt_com.mt_count = strtol(*argv, &p, 0);
 #else
 			mt_com.mt_count = strtol(*argv, &p, 10);
-#endif /* defined(__FreeBSD__) */
+#endif /* defined(__DragonFly__) */
 			if ((mt_com.mt_count <=
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 			    ((comp->c_flags & ZERO_ALLOWED)? -1: 0)
 			    && ((comp->c_flags & IS_COMP) == 0)
 #else
 			    0
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */
 			    ) || *p)
 				errx(1, "%s: illegal count", *argv);
 		}
 		else
 			mt_com.mt_count = 1;
-#if	defined(__FreeBSD__) || defined (__DragonFly__)
+#if	defined(__DragonFly__)
 		switch (comp->c_code) {
 		case MTIOCERRSTAT:
 		{
@@ -340,7 +340,7 @@ main(int argc, char **argv)
 #include <tahoe/vba/cyreg.h>
 #endif
 
-#if defined(__FreeBSD__) && defined(__i386__) || defined (__DragonFly__)
+#if defined(__DragonFly__) && defined(__i386__)
 #include <machine/wtio.h>
 #endif
 
@@ -364,7 +364,7 @@ struct tape_desc {
 #ifdef tahoe
 	{ MT_ISCY,	"cipher",	CYS_BITS,	CYCW_BITS },
 #endif
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 	/*
 	 * XXX This is weird.  The st driver reports the tape drive
 	 * as 0x7 (MT_ISAR - Sun/Archive compatible); the wt driver
@@ -378,7 +378,7 @@ struct tape_desc {
 	{ MT_ISVIPER1,	"Archive Viper", WTDS_BITS, WTER_BITS },
 	{ MT_ISMFOUR,	"Wangtek",	 WTDS_BITS, WTER_BITS },
 #endif
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */
 	{ 0 }
 };
 
@@ -399,18 +399,18 @@ status(register struct mtget *bp)
 		if (mt->t_type == bp->mt_type)
 			break;
 	}
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 	if(mt->t_type == MT_ISAR)
 		st_status(bp);
 	else {
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */
 	(void)printf("%s tape drive, residual=%d\n", mt->t_name, bp->mt_resid);
 	printreg("ds", (unsigned short)bp->mt_dsreg, mt->t_dsbits);
 	printreg("\ner", (unsigned short)bp->mt_erreg, mt->t_erbits);
 	(void)putchar('\n');
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 	}
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */
 }
 
 /*
@@ -453,7 +453,7 @@ usage(void)
 	exit(1);
 }
 
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined (__DragonFly__)
 
 struct densities {
 	int dens;
@@ -719,4 +719,4 @@ warn_eof(void)
 	exit(1);
 }
 
-#endif /* defined (__FreeBSD__) */
+#endif /* defined (__DragonFly__) */

@@ -33,7 +33,7 @@
  *                                   \PLUS NUMBER MINUTES|HOURS|DAYS|WEEKS/
  *
  * $FreeBSD: src/usr.bin/at/parsetime.c,v 1.19.2.3 2001/12/19 11:19:16 brian Exp $
- * $DragonFly: src/usr.bin/at/parsetime.c,v 1.3 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/at/parsetime.c,v 1.4 2004/01/22 03:22:52 rob Exp $
  */
 
 /* System Headers */
@@ -47,7 +47,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#if !defined (__FreeBSD__) || !defined (__DragonFly__)
+#ifndef  __DragonFly__
 #include <getopt.h>
 #endif
 

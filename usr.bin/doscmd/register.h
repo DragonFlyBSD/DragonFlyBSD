@@ -24,7 +24,7 @@
 ** SUCH DAMAGE.
 **
 ** $FreeBSD: src/usr.bin/doscmd/register.h,v 1.4 1999/10/08 09:02:38 marcel Exp $
-** $DragonFly: src/usr.bin/doscmd/register.h,v 1.3 2004/01/21 21:48:21 rob Exp $
+** $DragonFly: src/usr.bin/doscmd/register.h,v 1.4 2004/01/22 03:22:52 rob Exp $
 */
 
 /******************************************************************************
@@ -53,7 +53,7 @@ typedef union
 
 #endif
 
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 
 /* layout must match definition of struct sigcontext in <machine/signal.h> */
 

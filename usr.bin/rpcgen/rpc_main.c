@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.6 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.7 2004/01/22 03:22:53 rob Exp $
  */
 
 
@@ -80,7 +80,7 @@ static void s_output( int, char **, char *, char *, int, char *, int, int );
 #define	DONT_EXTEND	0		/* alias for FALSE */
 
 #define	SVR4_CPP "/usr/ccs/lib/cpp"
-#if defined (__FreeBSD__) || defined (__DragonFly__)
+#if defined(__DragonFly__)
 #define	SUNOS_CPP "/usr/bin/cpp"
 #elif defined(__NetBSD__)
 #define SUNOS_CPP "/usr/bin/cpp"

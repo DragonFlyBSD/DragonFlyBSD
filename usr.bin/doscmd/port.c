@@ -30,7 +30,7 @@
  *	BSDI port.c,v 2.2 1996/04/08 19:33:03 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/port.c,v 1.5.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/port.c,v 1.4 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/doscmd/port.c,v 1.5 2004/01/22 03:22:52 rob Exp $
  */
 
 #include <sys/ioctl.h>
@@ -56,7 +56,7 @@
 
 FILE *iolog = 0;
 u_long ioports[MAXPORT/32];
-#ifdef __FreeBSD__ || defined (__DragonFly__)
+#ifdef __DragonFly__
 static void
 iomap(int port, int cnt)
 {

@@ -34,7 +34,7 @@
  *
  * @(#) mytinfo tconv.c 3.2 92/02/01 public domain, By Ross Ridge
  * $FreeBSD: src/usr.bin/tconv/tconv.c,v 1.5.2.1 2001/03/04 09:07:50 kris Exp $
- * $DragonFly: src/usr.bin/tconv/Attic/tconv.c,v 1.4 2004/01/21 21:48:21 rob Exp $
+ * $DragonFly: src/usr.bin/tconv/Attic/tconv.c,v 1.5 2004/01/22 03:22:53 rob Exp $
  */
 
 #define NOTLIB
@@ -48,11 +48,11 @@
 #include <sys/types.h>
 #endif
 #include <sys/stat.h>
-#if defined(__FreeBSD__) || defined(__DragonFly__)
+#if defined(__DragonFly__)
 #include <unistd.h>
 #endif
 
-#if !defined(__FreeBSD__)  &&  !defined(__DragonFly__)
+#if !defined(__DragonFly__)
 #include "strtok.c"
 #include "mkdir.c"
 #endif
