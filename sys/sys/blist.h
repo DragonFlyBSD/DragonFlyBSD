@@ -54,11 +54,15 @@
  *		eats around 32 KBytes of memory. 
  *
  * $FreeBSD: src/sys/sys/blist.h,v 1.2.2.1 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/sys/blist.h,v 1.3 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/blist.h,v 1.4 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_BLIST_H_
 #define _SYS_BLIST_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 /*
  * blmeta and bl_bitmap_t MUST be a power of 2 in size.
@@ -86,12 +90,13 @@ typedef struct blist {
 
 #define BLIST_MAX_ALLOC		BLIST_BMAP_RADIX
 
+#ifdef _KERNEL
 extern blist_t blist_create(daddr_t blocks);
 extern void blist_destroy(blist_t blist);
 extern daddr_t blist_alloc(blist_t blist, daddr_t count);
 extern void blist_free(blist_t blist, daddr_t blkno, daddr_t count);
 extern void blist_print(blist_t blist);
 extern void blist_resize(blist_t *pblist, daddr_t count, int freenew);
+#endif  /* _KERNEL */
 
 #endif	/* _SYS_BLIST_H_ */
-

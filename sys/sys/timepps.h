@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/timepps.h,v 1.12 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/timepps.h,v 1.4 2004/01/30 05:42:18 dillon Exp $
+ * $DragonFly: src/sys/sys/timepps.h,v 1.5 2004/12/30 07:01:52 cpressey Exp $
  *
  * The is a FreeBSD protype version of the "draft-mogul-pps-api-05.txt" 
  * specification for Pulse Per Second timing interfaces.  
@@ -17,7 +17,6 @@
 #define _SYS_TIMEPPS_H_
 
 #include <sys/ioccom.h>
-#include <sys/systimer.h>
 
 #define PPS_API_VERS_1	1
 
@@ -105,6 +104,9 @@ struct pps_kcbind_args {
 #define PPS_IOC_KCBIND		_IOW('1', 7, struct pps_kcbind_args)
 
 #ifdef _KERNEL
+
+#include <sys/systimer.h>
+
 struct pps_state {
 	pps_params_t	ppsparam;
 	pps_info_t	ppsinfo;

@@ -37,11 +37,13 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.8 2004/08/28 19:02:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.9 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
 #define	_UFS_UFS_INODE_H_
+
+#if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 
 #ifndef _SYS_LOCK_H_
 #include <sys/lock.h>
@@ -49,6 +51,9 @@
 #ifndef _SYS_LOCKF_H
 #include <sys/lockf.h>
 #endif
+
+#endif
+
 #ifndef _SYS_QUEUE_H_
 #include <sys/queue.h>
 #endif

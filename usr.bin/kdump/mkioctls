@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.5 2004/03/21 02:09:15 dillon Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.6 2004/12/30 07:01:52 cpressey Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -37,6 +37,7 @@ awk -v x="$ioctl_includes" 'BEGIN {print x}' |
 BEGIN {
 	print "/* XXX obnoxious prerequisites. */"
 	print "#define COMPAT_43"
+	print "#define _KERNEL_STRUCTURES"
 	print "#include <sys/param.h>"
 	print "#include <sys/devicestat.h>"
 	print "#include <sys/disklabel.h>"

@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/sys/eventvar.h,v 1.1.2.2 2000/07/18 21:49:12 jlemon Exp $
- *	$DragonFly: src/sys/sys/eventvar.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ *	$DragonFly: src/sys/sys/eventvar.h,v 1.3 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_EVENTVAR_H_
 #define _SYS_EVENTVAR_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 #define KQ_NEVENTS	8		/* minimize copy{in,out} calls */
 #define KQEXTENT	256		/* linear growth by this amount */

@@ -23,11 +23,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.6 2004/08/24 21:53:41 dillon Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SFBUF_H_
 #define _SFBUF_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 struct sf_buf {
 	LIST_ENTRY(sf_buf) list_entry;	/* hash chain of active buffers */

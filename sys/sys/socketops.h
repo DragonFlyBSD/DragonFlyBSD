@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/socketops.h,v 1.5 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/sys/socketops.h,v 1.6 2004/12/30 07:01:52 cpressey Exp $
  */
 
 /*
@@ -52,6 +52,10 @@
 
 #ifndef _SOCKETOPS_H_
 #define _SOCKETOPS_H_
+
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
 
 #include <sys/protosw.h>
 #include <sys/socket.h>

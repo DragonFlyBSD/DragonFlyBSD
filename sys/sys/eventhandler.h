@@ -24,13 +24,17 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/eventhandler.h,v 1.5 2000/01/16 06:11:33 bde Exp $
- * $DragonFly: src/sys/sys/eventhandler.h,v 1.5 2004/09/10 16:40:31 joerg Exp $
+ * $DragonFly: src/sys/sys/eventhandler.h,v 1.6 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #include <sys/queue.h>
 
 #ifndef SYS_EVENTHANDLER_H
 #define SYS_EVENTHANDLER_H
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 struct eventhandler_entry 
 {
@@ -132,6 +136,7 @@ do {							\
 } while(0)
 
 
+#ifdef _KERNEL
 extern eventhandler_tag	eventhandler_register(struct eventhandler_list *list, 
 					      char *name,
 					      void *func, 
@@ -140,6 +145,7 @@ extern eventhandler_tag	eventhandler_register(struct eventhandler_list *list,
 extern void		eventhandler_deregister(struct eventhandler_list *list,
 						eventhandler_tag tag);
 extern struct eventhandler_list	*eventhandler_find_list(char *name);
+#endif /* _KERNEL */
 
 /*
  * Standard system event queues.

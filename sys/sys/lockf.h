@@ -35,11 +35,15 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.6 2004/05/07 10:09:25 joerg Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
 #define	_SYS_LOCKF_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 #include <sys/queue.h>
 
@@ -66,12 +70,11 @@ struct lockf {
 	int init_done;
 };
 
-int	lf_advlock(struct vop_advlock_args *, struct lockf *, u_quad_t);
-
 #ifdef _KERNEL
+int	lf_advlock(struct vop_advlock_args *, struct lockf *, u_quad_t);
+void	lf_count_adjust(struct proc *, int);
+
 extern int maxposixlocksperuid;
 #endif
-
-void	lf_count_adjust(struct proc *, int);
 
 #endif /* !_SYS_LOCKF_H_ */

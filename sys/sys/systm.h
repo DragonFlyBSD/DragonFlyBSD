@@ -37,11 +37,15 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.24 2004/10/12 19:20:48 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.25 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
 #define	_SYS_SYSTM_H_
+
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
 
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>

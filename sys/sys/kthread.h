@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kthread.h,v 1.2 2000/01/07 08:36:44 luoqi Exp $
- * $DragonFly: src/sys/sys/kthread.h,v 1.7 2004/07/29 09:02:32 dillon Exp $
+ * $DragonFly: src/sys/sys/kthread.h,v 1.8 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_KTHREAD_H_
 #define _SYS_KTHREAD_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 struct proc;
 struct thread;
@@ -44,6 +48,7 @@ struct kproc_desc {
 	struct thread	**global_threadpp;	/* ptr to proc ptr save area */
 };
 
+#ifdef _KERNEL
 void	kproc_start (const void *);
 
 int	suspend_kproc (struct thread *, int);
@@ -55,6 +60,6 @@ int	kthread_create (void (*)(void *), void *, struct thread **,
 int	kthread_create_stk (void (*)(void *), void *, struct thread **,
 			int, const char *, ...);
 void	kthread_exit (void) __dead2;
+#endif /* _KERNEL */
 
-
-#endif
+#endif /* _SYS_KTHREAD_H_ */

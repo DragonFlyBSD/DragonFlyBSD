@@ -26,11 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/assym.h,v 1.3.2.1 2000/07/07 01:31:16 obrien Exp $
- * $DragonFly: src/sys/sys/assym.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/assym.h,v 1.3 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_ASSYM_H_
 #define	_SYS_ASSYM_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 #define	ASSYM_ABS(value)	((value) < 0 ? -((value) + 1) + 1ULL : (value))
 

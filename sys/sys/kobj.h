@@ -24,11 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/kobj.h,v 1.8 2003/09/22 21:32:49 peter Exp $
- * $DragonFly: src/sys/sys/kobj.h,v 1.7 2004/04/14 18:28:29 joerg Exp $
+ * $DragonFly: src/sys/sys/kobj.h,v 1.8 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_KOBJ_H_
 #define _SYS_KOBJ_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 /*
  * Forward declarations
@@ -169,6 +173,8 @@ struct kobj_class name ## _class = {			\
 	#name, methods, size, name ## _baseclasses	\
 }
 
+#ifdef _KERNEL
+
 /*
  * Compile class for the first instance and add a reference.
  */
@@ -241,5 +247,7 @@ kobj_method_t *kobj_lookup_method(kobj_class_t cls,
  * Default method implementation. Returns ENXIO.
  */
 int kobj_error_method(void);
+
+#endif /* _KERNEL */
 
 #endif /* !_SYS_KOBJ_H_ */

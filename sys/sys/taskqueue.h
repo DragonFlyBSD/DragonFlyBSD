@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/taskqueue.h,v 1.3.2.2 2003/09/10 00:40:39 ken Exp $
- * $DragonFly: src/sys/sys/taskqueue.h,v 1.4 2004/08/02 19:32:28 dillon Exp $
+ * $DragonFly: src/sys/sys/taskqueue.h,v 1.5 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_TASKQUEUE_H_
 #define _SYS_TASKQUEUE_H_
 
-#ifndef _KERNEL
-#error "no user-servicable parts inside"
+#if !defined(_KERNEL)
+#error "This file should not be included by userland programs."
 #endif
 
 #include <sys/queue.h>

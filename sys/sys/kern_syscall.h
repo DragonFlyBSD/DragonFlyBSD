@@ -25,11 +25,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.23 2004/12/29 02:40:03 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.24 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
 #define _SYS_KERN_SYSCALL_H_
+
+#ifndef _KERNEL
+#error "This file should not be included by userland programs."
+#endif
 
 enum dup_type {DUP_FIXED, DUP_VARIABLE};
 union fcntl_dat;

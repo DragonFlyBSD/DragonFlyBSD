@@ -39,11 +39,15 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/sys/disk.h,v 1.16.2.3 2001/06/20 16:11:01 scottl Exp $
- * $DragonFly: src/sys/sys/disk.h,v 1.6 2004/07/16 05:51:57 dillon Exp $
+ * $DragonFly: src/sys/sys/disk.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
  */
 
 #ifndef _SYS_DISK_H_
 #define	_SYS_DISK_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
+#endif
 
 #ifndef _SYS_DISKSLICE_H_
 #include <sys/diskslice.h>
@@ -73,10 +77,12 @@ struct disk {
 #define DISKFLAG_LOCK		0x1
 #define DISKFLAG_WANTED		0x2
 
+#ifdef _KERNEL
 dev_t disk_create (int unit, struct disk *disk, int flags, struct cdevsw *sw);
 void disk_destroy (struct disk *disk);
 int disk_dumpcheck (dev_t dev, u_int *count, u_int *blkno, u_int *secsize);
 struct disk *disk_enumerate (struct disk *disk);
 void disk_invalidate (struct disk *disk);
+#endif /* _KERNEL */
 
 #endif /* _SYS_DISK_H_ */
