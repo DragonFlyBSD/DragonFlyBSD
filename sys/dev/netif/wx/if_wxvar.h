@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wxvar.h,v 1.4.2.6 2001/10/20 17:44:12 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.6 2004/04/07 05:45:30 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wxvar.h,v 1.7 2004/09/15 01:19:13 joerg Exp $ */
 /*                  
  * Principal Author: Matthew Jacob
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -100,7 +100,6 @@ struct wxmdvar {
 	struct resource *	irq;	/* resource descriptor for interrupt */
 	void *			ih;	/* interrupt handler cookie */
 	u_int16_t		cmdw;
-	struct callout_handle	sch;	/* handle for timeouts */
 	char 			name[8];
 	bus_space_tag_t		st;	/* bus space tag */
 	bus_space_handle_t	sh;	/* bus space handle */
@@ -128,9 +127,6 @@ struct wxmdvar {
 #define	WXFREE(ptr)			free(ptr, M_DEVBUF)
 #define	SOFTC_IFP(ifp)			ifp->if_softc
 #define	WX_BPFTAP_ARG(ifp)		ifp
-#define	VTIMEOUT(sc, func, arg, time)	(void) timeout(func, arg, time)
-#define	TIMEOUT(sc, func, arg, time)	(sc)->w.sch = timeout(func, arg, time)
-#define	UNTIMEOUT(f, arg, sc)		untimeout(f, arg, (sc)->w.sch)
 #define	INLINE				__inline
 #ifdef	SMPNG
 #define WX_LOCK(_sc)			mtx_lock(&(_sc)->wx_mtx)
@@ -177,6 +173,7 @@ typedef struct wx_softc {
 	 * OS dependent storage... must be first...
 	 */
 	struct wxmdvar w;
+	struct callout watchdog_timer;
 
 	/*
 	 * misc goodies

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/pci/if_wx.c,v 1.5.2.12 2003/03/05 18:42:34 njl Exp $ */
-/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.11 2004/07/23 07:16:30 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wx/Attic/if_wx.c,v 1.12 2004/09/15 01:19:13 joerg Exp $ */
 /*
  * Principal Author: Matthew Jacob <mjacob@feral.com>
  * Copyright (c) 1999, 2001 by Traakan Software
@@ -232,7 +232,7 @@ wx_attach(device_t dev)
 
 	bzero(sc, sizeof (wx_softc_t));
 
-	callout_handle_init(&sc->w.sch);
+	callout_init(&sc->watchdog_timer);
 	sc->w.dev = dev;
 
 	if (bootverbose)
@@ -1455,7 +1455,7 @@ wx_watchdog(void *arg)
 	/*
 	 * Schedule another timeout one second from now.
 	 */
-	TIMEOUT(sc, wx_watchdog, sc, hz);
+	callout_reset(&sc->watchdog_timer, hz, wx_watchdog, sc);
 }
 
 /*
@@ -1644,7 +1644,7 @@ wx_stop(wx_softc_t *sc)
 	/*
 	 * Cancel stats updater.
 	 */
-	UNTIMEOUT(wx_watchdog, sc, sc);
+	callout_stop(&sc->watchdog_timer);
 
 	/*
 	 * Reset the chip
@@ -1854,7 +1854,7 @@ wx_init(void *xsc)
 	/*
 	 * Start stats updater.
 	 */
-	TIMEOUT(sc, wx_watchdog, sc, hz);
+	callout_reset(&sc->watchdog_timer, hz, wx_watchdog, sc);
 
 	WX_UNLOCK(sc);
 	/*
