@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/lshrdi3.c,v 1.5 1999/08/28 00:46:33 peter Exp $
- * $DragonFly: src/sys/libkern/lshrdi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/lshrdi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -44,9 +44,7 @@
  * Shift an (unsigned) quad value right (logical shift right).
  */
 quad_t
-__lshrdi3(a, shift)
-	quad_t a;
-	qshift_t shift;
+__lshrdi3(quad_t a, qshift_t shift)
 {
 	union uu aa;
 

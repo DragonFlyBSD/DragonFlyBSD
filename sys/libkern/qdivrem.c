@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/qdivrem.c,v 1.8 1999/08/28 00:46:35 peter Exp $
- * $DragonFly: src/sys/libkern/qdivrem.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/qdivrem.c,v 1.4 2004/01/26 11:09:44 joerg Exp $
  */
 
 /*
@@ -81,8 +81,7 @@ shl(digit *p, int len, int sh)
  * leading zeros).
  */
 u_quad_t
-__qdivrem(uq, vq, arq)
-	u_quad_t uq, vq, *arq;
+__qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq)
 {
 	union uu tmp;
 	digit *u, *v, *q;

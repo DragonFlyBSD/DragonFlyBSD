@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/qsort.c,v 1.10 1999/08/28 00:46:35 peter Exp $
- * $DragonFly: src/sys/libkern/qsort.c,v 1.4 2003/08/26 21:00:17 rob Exp $
+ * $DragonFly: src/sys/libkern/qsort.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/libkern.h>
 
-typedef int		 cmp_t (const void *, const void *);
-static __inline char	*med3 (char *, char *, char *, cmp_t *);
-static __inline void	 swapfunc (char *, char *, int, int);
+typedef int		 cmp_t(const void *, const void *);
+static __inline char	*med3(char *, char *, char *, cmp_t *);
+static __inline void	 swapfunc(char *, char *, int, int);
 
 #define min(a, b)	(a) < (b) ? a : b
 
@@ -60,9 +60,7 @@ static __inline void	 swapfunc (char *, char *, int, int);
 	es % sizeof(long) ? 2 : es == sizeof(long)? 0 : 1;
 
 static __inline void
-swapfunc(a, b, n, swaptype)
-	char *a, *b;
-	int n, swaptype;
+swapfunc(char *a, char *b, int n, int swaptype)
 {
 	if(swaptype <= 1)
 		swapcode(long, a, b, n)
@@ -81,9 +79,7 @@ swapfunc(a, b, n, swaptype)
 #define vecswap(a, b, n) 	if ((n) > 0) swapfunc(a, b, n, swaptype)
 
 static __inline char *
-med3(a, b, c, cmp)
-	char *a, *b, *c;
-	cmp_t *cmp;
+med3(char *a, char *b, char *c, cmp_t *cmp)
 {
 	return cmp(a, b) < 0 ?
 	       (cmp(b, c) < 0 ? b : (cmp(a, c) < 0 ? c : a ))
@@ -91,10 +87,7 @@ med3(a, b, c, cmp)
 }
 
 void
-qsort(a, n, es, cmp)
-	void *a;
-	size_t n, es;
-	cmp_t *cmp;
+qsort(void *a, size_t n, size_t es, cmp_t *cmp)
 {
 	char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
 	int d, r, swaptype, swap_cnt;

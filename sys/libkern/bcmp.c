@@ -31,24 +31,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/bcmp.c,v 1.6 1999/08/28 00:46:31 peter Exp $
- * $DragonFly: src/sys/libkern/bcmp.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/bcmp.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <string.h>
 #include <machine/endian.h>
 
-typedef	const void	*cvp;
+typedef	const void		*cvp;
 typedef	const unsigned char	*ustring;
-typedef unsigned long	ul;
+typedef unsigned long		ul;
 typedef const unsigned long	*culp;
 
 /*
  * bcmp -- vax cmpc3 instruction
  */
 int
-bcmp(b1, b2, length)
-	const void *b1, *b2;
-	register size_t length;
+bcmp(const void *b1, const void *b2, size_t length)
 {
 #if BYTE_ORDER == LITTLE_ENDIAN
 	/*

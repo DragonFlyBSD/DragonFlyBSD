@@ -26,7 +26,7 @@
  *
  * $OpenBSD: strlcpy.c,v 1.4 1999/05/01 18:56:41 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcpy.c,v 1.2.4.1 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/sys/libkern/strlcpy.c,v 1.1 2003/12/10 00:29:26 dillon Exp $
+ * $DragonFly: src/sys/libkern/strlcpy.c,v 1.2 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -37,10 +37,8 @@
  * will be copied.  Always NUL terminates (unless siz == 0).
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
-size_t strlcpy(dst, src, siz)
-	char *dst;
-	const char *src;
-	size_t siz;
+size_t
+strlcpy(char *dst, const char *src, size_t siz)
 {
 	register char *d = dst;
 	register const char *s = src;

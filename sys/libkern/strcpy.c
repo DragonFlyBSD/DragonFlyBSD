@@ -31,15 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strcpy.c,v 1.7 1999/08/28 00:46:37 peter Exp $
- * $DragonFly: src/sys/libkern/strcpy.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/libkern/strcpy.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/libkern.h>
 
 char *
-strcpy(to, from)
-	char *to;
-	const char *from;
+strcpy(char *to, const char *from)
 {
 	char *save = to;
 

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/ashldi3.c,v 1.5 1999/08/28 00:46:30 peter Exp $
- * $DragonFly: src/sys/libkern/ashldi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/ashldi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -45,9 +45,7 @@
  * This is the same as logical shift left!
  */
 quad_t
-__ashldi3(a, shift)
-	quad_t a;
-	qshift_t shift;
+__ashldi3(quad_t a, qshift_t shift)
 {
 	union uu aa;
 

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/muldi3.c,v 1.6 1999/08/28 00:46:34 peter Exp $
- * $DragonFly: src/sys/libkern/muldi3.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/muldi3.c,v 1.4 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -97,11 +97,10 @@
  * of 2^n in either one will also vanish.  Only `low' need be computed
  * mod 2^2n, and only because of the final term above.
  */
-static quad_t __lmulq(u_long, u_long);
+static quad_t __lmulq(u_long u, u_long v);
 
 quad_t
-__muldi3(a, b)
-	quad_t a, b;
+__muldi3(quad_t a, quad_t b)
 {
 	union uu u, v, low, prod;
 	u_long high, mid, udiff, vdiff;

@@ -31,16 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/rindex.c,v 1.7 1999/12/10 17:38:41 peter Exp $
- * $DragonFly: src/sys/libkern/rindex.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/rindex.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/libkern.h>
 
 char *
-rindex(p, ch)
-	const char *p;
-	int ch;
+rindex(const char *p, int ch)
 {
 	union {
 		const char *cp;

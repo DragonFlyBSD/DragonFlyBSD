@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/ashrdi3.c,v 1.6 1999/08/28 00:46:31 peter Exp $
- * $DragonFly: src/sys/libkern/ashrdi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/ashrdi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -44,9 +44,7 @@
  * Shift a (signed) quad value right (arithmetic shift right).
  */
 quad_t
-__ashrdi3(a, shift)
-	quad_t a;
-	qshift_t shift;
+__ashrdi3(quad_t a, qshift_t shift)
 {
 	union uu aa;
 

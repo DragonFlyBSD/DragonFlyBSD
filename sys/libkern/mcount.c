@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/mcount.c,v 1.16 1999/12/29 04:54:41 peter Exp $
- * $DragonFly: src/sys/libkern/mcount.c,v 1.4 2003/08/26 21:00:17 rob Exp $
+ * $DragonFly: src/sys/libkern/mcount.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +43,10 @@
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
-void	bintr (void);
-void	btrap (void);
-void	eintr (void);
-void	user (void);
+void	bintr(void);
+void	btrap(void);
+void	eintr(void);
+void	user(void);
 #endif
 
 /*
@@ -64,8 +64,8 @@ void	user (void);
  * both frompcindex and frompc.  Any reasonable, modern compiler will
  * perform this optimization.
  */
-_MCOUNT_DECL(frompc, selfpc)	/* _mcount; may be static, inline, etc */
-	uintfptr_t frompc, selfpc;
+/* _mcount; may be static, inline, etc */
+_MCOUNT_DECL(uintfptr_t frompc, unitfptr_t selfpc)
 {
 #ifdef GUPROF
 	int delta;
@@ -261,8 +261,7 @@ MCOUNT
 
 #ifdef GUPROF
 void
-mexitcount(selfpc)
-	uintfptr_t selfpc;
+mexitcount(uintfptr_t selfpc)
 {
 	struct gmonparam *p;
 	uintfptr_t selfpcdiff;

@@ -31,15 +31,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strncmp.c,v 1.7 1999/08/28 00:46:38 peter Exp $
- * $DragonFly: src/sys/libkern/strncmp.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/libkern/strncmp.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/libkern.h>
 
 int
-strncmp(s1, s2, n)
-	const char *s1, *s2;
-	size_t n;
+strncmp(const char *s1, const char *s2, size_t n)
 {
 
 	if (n == 0)

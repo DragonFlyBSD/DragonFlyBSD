@@ -26,7 +26,7 @@
  *
  * $OpenBSD: strlcat.c,v 1.2 1999/06/17 16:28:58 millert Exp $
  * $FreeBSD: src/lib/libc/string/strlcat.c,v 1.2.4.2 2001/07/09 23:30:06 obrien Exp $
- * $DragonFly: src/sys/libkern/strlcat.c,v 1.1 2003/12/10 00:29:26 dillon Exp $
+ * $DragonFly: src/sys/libkern/strlcat.c,v 1.2 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -39,10 +39,8 @@
  * Returns strlen(initial dst) + strlen(src); if retval >= siz,
  * truncation occurred.
  */
-size_t strlcat(dst, src, siz)
-	char *dst;
-	const char *src;
-	size_t siz;
+size_t
+strlcat(char *dst, const char *src, size_t siz)
 {
 	register char *d = dst;
 	register const char *s = src;

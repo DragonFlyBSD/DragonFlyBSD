@@ -36,7 +36,7 @@
  * From: static char sccsid[] = "@(#)strtoul.c	8.1 (Berkeley) 6/4/93";
  *
  * $FreeBSD: src/sys/libkern/strtoul.c,v 1.3 1999/12/01 22:56:51 archie Exp $
- * $DragonFly: src/sys/libkern/strtoul.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/strtoul.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,10 +51,7 @@
  * alphabets and digits are each contiguous.
  */
 unsigned long
-strtoul(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	int base;
+strtoul(const char *nptr, char **endptr, int base)
 {
 	const char *s = nptr;
 	unsigned long acc;

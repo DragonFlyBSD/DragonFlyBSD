@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/moddi3.c,v 1.7 1999/08/28 00:46:34 peter Exp $
- * $DragonFly: src/sys/libkern/moddi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/moddi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <libkern/quad.h>
@@ -47,8 +47,7 @@
  * If -1/2 should produce -1 on this machine, this code is wrong.
  */
 quad_t
-__moddi3(a, b)
-	quad_t a, b;
+__moddi3(quad_t a, quad_t b)
 {
 	u_quad_t ua, ub, ur;
 	int neg;

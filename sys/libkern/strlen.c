@@ -31,18 +31,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/strlen.c,v 1.6 1999/08/28 00:46:37 peter Exp $
- * $DragonFly: src/sys/libkern/strlen.c,v 1.4 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/libkern/strlen.c,v 1.5 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/libkern.h>
 
 size_t
-strlen(str)
-	const char *str;
+strlen(const char *str)
 {
 	const char *s;
 
 	for (s = str; *s; ++s);
 	return(s - str);
 }
-

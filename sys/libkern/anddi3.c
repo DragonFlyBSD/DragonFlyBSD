@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/anddi3.c,v 1.5 1999/08/28 00:46:30 peter Exp $
- * $DragonFly: src/sys/libkern/anddi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/anddi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -44,8 +44,7 @@
  * Return a & b, in quad.
  */
 quad_t
-__anddi3(a, b)
-	quad_t a, b;
+__anddi3(quad_t a, b)
 {
 	union uu aa, bb;
 

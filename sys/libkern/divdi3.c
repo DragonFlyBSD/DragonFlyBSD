@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/divdi3.c,v 1.6 1999/08/28 00:46:31 peter Exp $
- * $DragonFly: src/sys/libkern/divdi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/divdi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <libkern/quad.h>
@@ -45,8 +45,7 @@
  * ??? if -1/2 should produce -1 on this machine, this code is wrong
  */
 quad_t
-__divdi3(a, b)
-	quad_t a, b;
+__divdi3(quad_t a, quad_t b)
 {
 	u_quad_t ua, ub, uq;
 	int neg;

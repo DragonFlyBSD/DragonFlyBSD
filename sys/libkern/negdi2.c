@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/negdi2.c,v 1.5 1999/08/28 00:46:34 peter Exp $
- * $DragonFly: src/sys/libkern/negdi2.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/negdi2.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -44,8 +44,7 @@
  * Return -a (or, equivalently, 0 - a), in quad.  See subdi3.c.
  */
 quad_t
-__negdi2(a)
-	quad_t a;
+__negdi2(quad_t a)
 {
 	union uu aa, res;
 

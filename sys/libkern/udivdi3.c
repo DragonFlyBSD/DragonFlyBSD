@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/udivdi3.c,v 1.6 1999/08/28 00:46:38 peter Exp $
- * $DragonFly: src/sys/libkern/udivdi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/udivdi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <libkern/quad.h>
@@ -44,8 +44,7 @@
  * Divide two unsigned quads.
  */
 u_quad_t
-__udivdi3(a, b)
-	u_quad_t a, b;
+__udivdi3(u_quad_t a, u_quad_t b)
 {
 
 	return (__qdivrem(a, b, (u_quad_t *)0));

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/ucmpdi2.c,v 1.8 1999/08/28 00:46:38 peter Exp $
- * $DragonFly: src/sys/libkern/ucmpdi2.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/ucmpdi2.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <libkern/quad.h>
@@ -45,8 +45,7 @@
  * Neither a nor b are considered signed.
  */
 int
-__ucmpdi2(a, b)
-	u_quad_t a, b;
+__ucmpdi2(u_quad_t a, u_quad_t b)
 {
 	union uu aa, bb;
 

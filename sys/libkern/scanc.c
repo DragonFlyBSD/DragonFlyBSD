@@ -33,28 +33,20 @@
  *	@(#)scanc.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/libkern/scanc.c,v 1.8 1999/08/28 00:46:36 peter Exp $
- * $DragonFly: src/sys/libkern/scanc.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/scanc.c,v 1.4 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/libkern.h>
 
 int
-scanc(size, cp, table, mask0)
-	u_int size;
-	const u_char *cp, table[];
-	int mask0;
+scanc(u_int size, const u_char *cp, const u_char table[], int mask0)
 {
 	const u_char *end;
 	u_char mask;
 
 	mask = mask0;
 	for (end = &cp[size]; cp < end; ++cp) {
-		/*
-		 * gcc-2.6.3 generates poor (un)sign extension code on i386's.
-		 * The cast to volatile should have no effect, but in fact it
-		 * improves the code on i386's.
-		 */
-		if (table[*(volatile const u_char *)cp] & mask)
+		if (table[*cp] & mask)
 			break;
 	}
 	return (end - cp);

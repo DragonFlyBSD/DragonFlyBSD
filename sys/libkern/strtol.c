@@ -36,7 +36,7 @@
  * From: static char sccsid[] = "@(#)strtol.c	8.1 (Berkeley) 6/4/93";
  *
  * $FreeBSD: src/sys/libkern/strtol.c,v 1.5 1999/12/01 22:56:50 archie Exp $
- * $DragonFly: src/sys/libkern/strtol.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/strtol.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -51,10 +51,7 @@
  * alphabets and digits are each contiguous.
  */
 long
-strtol(nptr, endptr, base)
-	const char *nptr;
-	char **endptr;
-	int base;
+strtol(const char *nptr, char **endptr, int base)
 {
 	const char *s = nptr;
 	unsigned long acc;

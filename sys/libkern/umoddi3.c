@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/umoddi3.c,v 1.6 1999/08/28 00:46:39 peter Exp $
- * $DragonFly: src/sys/libkern/umoddi3.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/umoddi3.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <libkern/quad.h>
@@ -44,8 +44,7 @@
  * Return remainder after dividing two unsigned quads.
  */
 u_quad_t
-__umoddi3(a, b)
-	u_quad_t a, b;
+__umoddi3(u_quad_t a, u_quad_t b)
 {
 	u_quad_t r;
 

@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/notdi2.c,v 1.5 1999/08/28 00:46:35 peter Exp $
- * $DragonFly: src/sys/libkern/notdi2.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/libkern/notdi2.c,v 1.3 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include "quad.h"
@@ -45,8 +45,7 @@
  * than `not'.
  */
 quad_t
-__one_cmpldi2(a)
-	quad_t a;
+__one_cmpldi2(quad_t a)
 {
 	union uu aa;
 

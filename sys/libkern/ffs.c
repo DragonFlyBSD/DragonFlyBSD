@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/ffs.c,v 1.5 1999/08/28 00:46:32 peter Exp $
- * $DragonFly: src/sys/libkern/ffs.c,v 1.3 2003/07/26 20:04:12 rob Exp $
+ * $DragonFly: src/sys/libkern/ffs.c,v 1.4 2004/01/26 11:09:44 joerg Exp $
  */
 
 #include <string.h>
@@ -40,8 +40,7 @@
  * ffs -- vax ffs instruction
  */
 int
-ffs(mask)
-	int mask;
+ffs(int mask)
 {
 	int bit;
 
