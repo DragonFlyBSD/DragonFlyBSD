@@ -32,7 +32,7 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -57,6 +57,7 @@
 
 struct ns_ifaddr *ns_ifaddr;
 int ns_interfaces;
+
 extern struct sockaddr_ns ns_netmask, ns_hostmask;
 
 /*

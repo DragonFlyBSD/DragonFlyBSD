@@ -32,7 +32,7 @@
  *
  *	@(#)spp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_debug.c,v 1.10 1999/08/28 00:49:52 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.4 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_debug.c,v 1.5 2004/02/16 20:37:20 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -62,6 +62,9 @@
 #include "spp_debug.h"
 
 int	sppconsdebug = 0;
+struct   spp_debug spp_debug[SPP_NDEBUG];
+int      spp_debx;
+
 /*
  * spp debug routines
  */

@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,8 @@
 extern int idpcksum;	/* from ns_input.c */
 extern long ns_pexseq;	/* from ns_input.c */
 extern struct nspcb nsrawpcb; /* from ns_input.c */
+
+struct  idpstat idpstat;
 
 /*
  * IDP protocol implementation.
@@ -124,7 +126,7 @@ idp_abort(nsp)
  * Drop connection, reporting
  * the specified error.
  */
-struct nspcb *
+void
 idp_drop(nsp, errno)
 	struct nspcb *nsp;
 	int errno;
@@ -158,7 +160,6 @@ idp_output(nsp, m0)
 	int len = 0;
 	struct route *ro;
 	struct mbuf *mprev = NULL;
-	extern int idpcksum;
 
 	/*
 	 * Calculate data length.

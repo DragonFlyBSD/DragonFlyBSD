@@ -32,7 +32,7 @@
  *
  *	@(#)idp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_var.h,v 1.10 1999/12/29 04:46:18 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_var.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_var.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
  */
 
 #ifndef _NETNS_IDP_VAR_H_
@@ -50,12 +50,12 @@ struct	idpstat {
 };
 
 #ifdef _KERNEL
-struct	idpstat	idpstat;
+extern struct idpstat	idpstat;
 struct nspcb;			/* declare in scope for ptr parameter */
 
 void idp_abort (struct nspcb *);
 void idp_input (struct mbuf *, struct nspcb *);
-struct nspcb *idp_drop (struct nspcb *, int);
+void idp_drop (struct nspcb *, int);
 int idp_output (struct nspcb *, struct mbuf *);
 int idp_ctloutput (int, struct socket *, int, int, struct mbuf **);
 int idp_usrreq (struct socket *, int, struct mbuf *, struct mbuf *,

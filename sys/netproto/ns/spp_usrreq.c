@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,6 +62,8 @@
 extern u_char nsctlerrmap[];		/* from ns_input.c */
 extern int idpcksum;			/* from ns_input.c */
 
+struct spp_istat spp_istat;
+u_short spp_iss;
 int	spp_backoff[SPP_MAXRXTSHIFT+1] =
     { 1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64 };
 

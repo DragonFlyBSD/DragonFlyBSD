@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.h,v 1.11 1999/12/29 04:46:20 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
  */
 
 #ifndef _NETNS_NS_PCB_H_
@@ -79,7 +79,8 @@ struct nspcb {
 
 
 #ifdef _KERNEL
-struct	nspcb nspcb;			/* head of list */
+extern struct nspcb nspcb;			/* head of list */
+
 struct	nspcb *ns_pcblookup (struct ns_addr *, u_short, int);
 void ns_pcbdisconnect (struct nspcb *);
 void ns_pcbdetach (struct nspcb *);

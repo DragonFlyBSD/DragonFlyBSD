@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.6 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.7 2004/02/16 20:37:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,8 @@
 
 extern int idpchsum;		/* from ns_input.c */
 extern void spp_ctlinput( int, caddr_t);	/* from spp_usrreq.c XXX */
+
+struct   ns_errstat ns_errstat;
 
 #ifdef lint
 #define NS_ERRPRINTFS 1

@@ -32,7 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_
@@ -188,14 +188,14 @@ struct	spp_istat {
 };
 
 #ifdef _KERNEL
-struct spp_istat spp_istat;
+extern struct spp_istat spp_istat;
+extern u_short spp_iss;
 
 /* Following was struct sppstat sppstat; */
 #ifndef sppstat
 #define sppstat spp_istat.newstats
 #endif
 
-u_short spp_iss;
 void spp_init (void);
 void spp_input (struct mbuf *, struct nspcb *);
 void spp_ctlinput (int, caddr_t);

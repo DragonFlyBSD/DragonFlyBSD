@@ -32,7 +32,7 @@
  *
  *	@(#)spp_debug.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_debug.h,v 1.9 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_debug.h,v 1.3 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_debug.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
  */
 
 #ifndef _NETNS_SPP_DEBUG_H_
@@ -60,8 +60,8 @@ char	*sanames[] =
 #endif
 
 #define	SPP_NDEBUG 100
-struct	spp_debug spp_debug[SPP_NDEBUG];
-int	spp_debx;
+extern struct	spp_debug spp_debug[SPP_NDEBUG];
+extern int	spp_debx;
 
 #endif
 
