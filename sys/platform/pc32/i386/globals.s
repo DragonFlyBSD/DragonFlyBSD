@@ -24,10 +24,8 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.18 2003/08/24 22:36:43 hsu Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.19 2003/12/20 05:52:25 dillon Exp $
  */
-
-#include "opt_user_ldt.h"
 
 #include <machine/asmacros.h>
 #include <machine/pmap.h>
@@ -68,10 +66,8 @@
 	.set	gd_common_tssd,globaldata + GD_COMMON_TSSD
 	.set	gd_tss_gdt,globaldata + GD_TSS_GDT
 
-#ifdef USER_LDT
 	.globl	gd_currentldt
 	.set	gd_currentldt,globaldata + GD_CURRENTLDT
-#endif
 
 	/*
 	 * The BSP version of these get setup in locore.s and pmap.c, while

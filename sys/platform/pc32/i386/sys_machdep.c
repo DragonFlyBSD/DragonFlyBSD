@@ -32,11 +32,9 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.11 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/sys_machdep.c,v 1.12 2003/12/20 05:52:26 dillon Exp $
  *
  */
-
-#include "opt_user_ldt.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -71,10 +69,8 @@
 
 
 
-#ifdef USER_LDT
 static int i386_get_ldt	(struct proc *, char *, int *);
 static int i386_set_ldt	(struct proc *, char *, int *);
-#endif
 static int i386_get_ioperm	(struct proc *, char *);
 static int i386_set_ioperm	(struct proc *, char *);
 int i386_extend_pcb	(struct proc *);
@@ -90,7 +86,6 @@ sysarch(struct sysarch_args *uap)
 	int error = 0;
 
 	switch(uap->op) {
-#ifdef	USER_LDT
 	case I386_GET_LDT:
 		error = i386_get_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
@@ -98,7 +93,6 @@ sysarch(struct sysarch_args *uap)
 	case I386_SET_LDT:
 		error = i386_set_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
-#endif
 	case I386_GET_IOPERM:
 		error = i386_get_ioperm(p, uap->parms);
 		break;
@@ -237,7 +231,6 @@ done:
 	return (error);
 }
 
-#ifdef USER_LDT
 /*
  * Update the GDT entry pointing to the LDT to point to the LDT of the
  * current process.  Do not staticize.
@@ -503,4 +496,3 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 	kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
 	return (0);
 }
-#endif	/* USER_LDT */

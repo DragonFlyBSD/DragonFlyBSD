@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/svr4/svr4_machdep.c,v 1.13.2.1 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.7 2003/08/27 06:07:11 rob Exp $
+ * $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_machdep.c,v 1.8 2003/12/20 05:52:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -486,16 +486,17 @@ int
 svr4_sys_sysarch(struct svr4_sys_sysarch_args *v)
 {
 	struct svr4_sys_sysarch_args *uap = v;
-#ifdef USER_LDT
+#if 0
 	caddr_t sg = stackgap_init(p->p_emul);
 	int error;
 #endif
+	
 	switch (uap->op) {
 	case SVR4_SYSARCH_FPHW:
 		return 0;
 
 	case SVR4_SYSARCH_DSCR:
-#ifdef USER_LDT
+#if 0
 #warning "USER_LDT doesn't work - are you sure you want this?"
 		{
 			struct i386_set_ldt_args sa, *sap;

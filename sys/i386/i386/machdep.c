@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.48 2003/12/07 01:17:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.49 2003/12/20 05:52:25 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -54,7 +54,6 @@
 #include "opt_msgbuf.h"
 #include "opt_perfmon.h"
 #include "opt_swap.h"
-#include "opt_user_ldt.h"
 #include "opt_userconfig.h"
 
 #include <sys/param.h>
@@ -920,10 +919,8 @@ setregs(p, entry, stack, ps_strings)
 	pcb->pcb_gs = _udatasel;
 	load_gs(_udatasel);
 
-#ifdef USER_LDT
 	/* was i386_user_cleanup() in NetBSD */
 	user_ldt_free(pcb);
-#endif
   
 	bzero((char *)regs, sizeof(struct trapframe));
 	regs->tf_eip = entry;
@@ -1870,9 +1867,7 @@ init386(int first)
 
 	_default_ldt = GSEL(GLDT_SEL, SEL_KPL);
 	lldt(_default_ldt);
-#ifdef USER_LDT
 	gd->gd_currentldt = _default_ldt;
-#endif
 	/* spinlocks and the BGL */
 	init_locks();
 
@@ -2597,7 +2592,6 @@ outb(u_int port, u_char data)
 
 #include "opt_cpu.h"
 #include "opt_htt.h"
-#include "opt_user_ldt.h"
 
 
 /*

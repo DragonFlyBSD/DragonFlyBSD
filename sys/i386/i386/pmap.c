@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.25 2003/11/04 01:05:28 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.26 2003/12/20 05:52:26 dillon Exp $
  */
 
 /*
@@ -72,7 +72,6 @@
 #include "opt_disable_pse.h"
 #include "opt_pmap.h"
 #include "opt_msgbuf.h"
-#include "opt_user_ldt.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>

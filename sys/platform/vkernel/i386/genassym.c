@@ -35,10 +35,8 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.32 2003/11/21 05:29:07 dillon Exp $
+ * $DragonFly: src/sys/platform/vkernel/i386/genassym.c,v 1.33 2003/12/20 05:52:25 dillon Exp $
  */
-
-#include "opt_user_ldt.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -135,9 +133,7 @@ ASSYM(PCB_EBX, offsetof(struct pcb, pcb_ebx));
 ASSYM(PCB_EIP, offsetof(struct pcb, pcb_eip));
 ASSYM(TSS_ESP0, offsetof(struct i386tss, tss_esp0));
 
-#ifdef USER_LDT
 ASSYM(PCB_USERLDT, offsetof(struct pcb, pcb_ldt));
-#endif
 
 ASSYM(PCB_GS, offsetof(struct pcb, pcb_gs));
 ASSYM(PCB_DR0, offsetof(struct pcb, pcb_dr0));
@@ -189,9 +185,7 @@ ASSYM(GD_PRIVATE_TSS, offsetof(struct mdglobaldata, gd_private_tss));
 ASSYM(GD_INTR_NESTING_LEVEL, offsetof(struct mdglobaldata, mi.gd_intr_nesting_level));
 ASSYM(GD_REQFLAGS, offsetof(struct mdglobaldata, mi.gd_reqflags));
 
-#ifdef USER_LDT
 ASSYM(GD_CURRENTLDT, offsetof(struct mdglobaldata, gd_currentldt));
-#endif
 
 ASSYM(RQF_IPIQ, RQF_IPIQ);
 ASSYM(RQF_INTPEND, RQF_INTPEND);

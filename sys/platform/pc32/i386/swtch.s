@@ -35,11 +35,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.28 2003/09/25 23:49:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.29 2003/12/20 05:52:26 dillon Exp $
  */
 
 #include "use_npx.h"
-#include "opt_user_ldt.h"
 
 #include <sys/rtprio.h>
 
@@ -343,7 +342,6 @@ ENTRY(cpu_heavy_restore)
 	/*
 	 * Restore the user LDT if we have one
 	 */
-#ifdef	USER_LDT
 	cmpl	$0, PCB_USERLDT(%edx)
 	jnz	1f
 	movl	_default_ldt,%eax
@@ -356,7 +354,6 @@ ENTRY(cpu_heavy_restore)
 	call	set_user_ldt
 	popl	%edx
 2:
-#endif
 	/*
 	 * Restore the %gs segment register, which must be done after
 	 * loading the user LDT.  Since user processes can modify the

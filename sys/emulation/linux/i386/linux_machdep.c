@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.13 2003/11/16 19:08:27 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.14 2003/12/20 05:52:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -724,11 +724,6 @@ linux_modify_ldt(struct linux_modify_ldt_args *uap)
 	default:
 		error = EINVAL;
 		break;
-	}
-
-	if (error == EOPNOTSUPP) {
-		printf("linux: modify_ldt needs kernel option USER_LDT\n");
-		error = ENOSYS;
 	}
 
 	return (error);

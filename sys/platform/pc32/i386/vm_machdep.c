@@ -39,12 +39,11 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.25 2003/11/03 17:11:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.26 2003/12/20 05:52:26 dillon Exp $
  */
 
 #include "use_npx.h"
 #include "use_isa.h"
-#include "opt_user_ldt.h"
 #ifdef PC98
 #include "opt_pc98.h"
 #endif
@@ -129,7 +128,6 @@ cpu_fork(p1, p2, flags)
 	struct pcb *pcb2;
 
 	if ((flags & RFPROC) == 0) {
-#ifdef USER_LDT
 		if ((flags & RFMEM) == 0) {
 			/* unshare user LDT */
 			struct pcb *pcb1 = p1->p_thread->td_pcb;
@@ -141,7 +139,6 @@ cpu_fork(p1, p2, flags)
 				set_user_ldt(pcb1);
 			}
 		}
-#endif
 		return;
 	}
 
@@ -204,7 +201,6 @@ cpu_fork(p1, p2, flags)
 	 */
 	pcb2->pcb_ext = 0;
 
-#ifdef USER_LDT
         /* Copy the LDT, if necessary. */
         if (pcb2->pcb_ldt != 0) {
 		if (flags & RFMEM) {
@@ -214,7 +210,6 @@ cpu_fork(p1, p2, flags)
 				pcb2->pcb_ldt->ldt_len);
 		}
         }
-#endif
 
 	/*
 	 * Now, cpu_switch() can schedule the new process.
@@ -284,9 +279,7 @@ cpu_proc_exit(void)
 		    ctob(IOPAGES + 1));
 		pcb->pcb_ext = 0;
 	}
-#ifdef USER_LDT
 	user_ldt_free(pcb);
-#endif
         if (pcb->pcb_flags & PCB_DBREGS) {
                 /*
                  * disable all hardware breakpoints
