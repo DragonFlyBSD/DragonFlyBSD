@@ -1,32 +1,62 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.5 2003/10/18 20:02:07 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.6 2003/12/01 21:36:43 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
+<P>
+<LI>Thru 1 December 2003 
+<UL>
+    <P>
+    A great deal of new infrastructure is starting to come to fruition.
+    <UL>
+	<LI>We have a new CD release framework (/usr/src/nrelease) in.
+  	    Development on the new framework is proceeding.  Basically the
+	    framework is based on a fully functioning live CD system
+	    and will allow us to build a new installation infrastructure
+	    that is capable of leveraging all the features available in
+	    a fully functioning system rather then being forced to use
+	    a lobotomized set.
+	<LI>A new IPC framework to reliably handle things like password
+	    file lookups is proceeding.  This framework is intended to
+	    remove the need for DLL or statically-linked PAM/NSS and at
+	    the same time make maintainance and upgrades easier and more
+	    portable.
+	<LI>The FreeBSD-5 boot infrastructure has been ported and is now
+	    the default.
+	<LI>RCNG from FreeBSD-5 has been ported and is now the default.
+	<LI>Work is proceeding on bringing in ATAng from FreeBSD-4, with
+	    additional modifications required to guarentee I/O in low
+	    memory situations.  That is, it isn't going to be a straight
+	    port.  The original ATA code from FreeBSD-4.8, which we call
+	    ATAold, has been given interim fixes to deal with the low memory
+	    and PIO backoff issues so we don't have to rush ATAng.
+    </UL>
+    <P>
+</UL>
 <P>
 <LI>Thru 18 October 2003 
 <UL>
     <P>
     Wow, October already!  Good progress is being made on several fronts.
     <UL>
-	<P>* K&R function removal
-	<BR>* VM function cleanups by Hiten
-	<BR>* General kernel API cleanups by David Rhodus
-	<BR>* Syscall Separation work by David Reese
-	<BR>* Removal of stackgap code in the Linux Emu by David Reese
-	<BR>* Networking work by Jeffrey
-	<BR>* Interrupt, Slab Allocator stabilization
-	<BR>* Introduction of _KERNEL_STRUCTURES ... a better way for 
-	      userland programs to access kernel header files rather
-	      then them setting _KERNEL.
-	<BR>* Bring the system uptodate on security issues (David Rhodus, others)
-	<BR>* NFS peformance improvements by David Rhodus and Hiten Pandya
-	<BR>* GUPROF and kldload work in the kernel by Hiten
-	<BR>* Major progress on the checkpointing code in the kernel
-	      primarily by Kip Macy.
-	<BR>* All work through this moment has been stabilized with major
-	      input from David Rhodus.
+	<LI>K&R function removal
+	<LI>VM function cleanups by Hiten
+	<LI>General kernel API cleanups by David Rhodus
+	<LI>Syscall Separation work by David Reese
+	<LI>Removal of stackgap code in the Linux Emu by David Reese
+	<LI>Networking work by Jeffrey
+	<LI>Interrupt, Slab Allocator stabilization
+	<LI>Introduction of _KERNEL_STRUCTURES ... a better way for 
+	    userland programs to access kernel header files rather
+	    then them setting _KERNEL.
+	<LI>Bring the system uptodate on security issues (David Rhodus, others)
+	<LI>NFS peformance improvements by David Rhodus and Hiten Pandya
+	<LI>GUPROF and kldload work in the kernel by Hiten
+	<LI>Major progress on the checkpointing code in the kernel
+	    primarily by Kip Macy.
+	<LI>All work through this moment has been stabilized with major
+	    input from David Rhodus.
     </UL>
     <P>
     Matt's current focus continues to be on rewriting the namecache code.
