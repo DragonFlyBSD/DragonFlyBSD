@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.26 2004/07/29 08:55:02 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.27 2004/08/15 15:00:22 joerg Exp $
  */
 
 #include "opt_vm.h"
@@ -113,7 +113,7 @@ SYSINIT(scheduler, SI_SUB_RUN_SCHEDULER, SI_ORDER_FIRST, scheduler, NULL)
 static void swapout (struct proc *);
 
 int
-kernacc(caddr_t addr, int len, int rw)
+kernacc(c_caddr_t addr, int len, int rw)
 {
 	boolean_t rv;
 	vm_offset_t saddr, eaddr;
@@ -131,7 +131,7 @@ kernacc(caddr_t addr, int len, int rw)
 }
 
 int
-useracc(caddr_t addr, int len, int rw)
+useracc(c_caddr_t addr, int len, int rw)
 {
 	boolean_t rv;
 	vm_prot_t prot;

@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.13 2004/05/27 00:38:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.14 2004/08/15 15:00:22 joerg Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -62,7 +62,7 @@ int swapon (struct proc *, void *, int *);
 
 int grow (struct proc *, size_t);
 int grow_stack (struct proc *, size_t);
-int kernacc (caddr_t, int, int);
+int kernacc(c_caddr_t, int, int);
 vm_offset_t kmem_alloc3 (vm_map_t, vm_size_t, int flags);
 vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
@@ -75,7 +75,7 @@ vm_map_t kmem_suballoc (vm_map_t, vm_offset_t *, vm_offset_t *, vm_size_t);
 void munmapfd (struct proc *, int);
 int swaponvp (struct thread *, struct vnode *, u_long);
 void swapout_procs (int);
-int useracc (caddr_t, int, int);
+int useracc(c_caddr_t, int, int);
 int vm_fault (vm_map_t, vm_offset_t, vm_prot_t, int);
 void vm_fault_copy_entry (vm_map_t, vm_map_t, vm_map_entry_t, vm_map_entry_t);
 void vm_fault_unwire (vm_map_t, vm_map_entry_t);
