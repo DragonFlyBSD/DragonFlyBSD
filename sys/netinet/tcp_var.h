@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.5 2003/08/13 18:34:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.6 2003/08/14 21:08:57 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -327,8 +327,8 @@ struct	tcpstat {
 	u_long	tcps_sndbyte;		/* data bytes sent */
 	u_long	tcps_sndrexmitpack;	/* data packets retransmitted */
 	u_long	tcps_sndrexmitbyte;	/* data bytes retransmitted */
-	u_long	tcps_sndrtobad;		/* supurious RTO retransmissions */
-	u_long	tcps_sndfastrexmitbad;	/* supurious Fast Retransmissions */
+	u_long	tcps_sndrtobad;		/* spurious RTO retransmissions */
+	u_long	tcps_sndfastrexmitbad;	/* spurious Fast Retransmissions */
 	u_long	tcps_sndacks;		/* ack-only packets sent */
 	u_long	tcps_sndprobe;		/* window probes sent */
 	u_long	tcps_sndurg;		/* packets sent with URG only */
