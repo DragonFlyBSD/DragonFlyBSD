@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.4 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.5 2005/02/15 16:32:46 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -190,7 +190,7 @@ cmdscanner(void)
 		makeargv();
 		if (margc == 0)
 			continue;
-		if (el_parse(el, margc, margv) != -1)
+		if (el != NULL && el_parse(el, margc, margv) != -1)
 			continue;
 
 		c = getcmd(margv[0]);
