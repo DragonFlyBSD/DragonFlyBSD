@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)trpt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/trpt/trpt.c,v 1.12 2000/01/29 11:49:07 shin Exp $
- * $DragonFly: src/usr.sbin/trpt/trpt.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/trpt/trpt.c,v 1.4 2004/03/21 22:41:24 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -95,9 +95,7 @@ void tcp_trace(short, short, struct tcpcb *, struct tcpcb *,
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
 	int ch, i, jflag, npcbs;
 	char *system, *core;
@@ -118,7 +116,7 @@ main(argc, argv)
 		case 'p':
 			if (npcbs >= TCP_NDEBUG)
 				errx(1, "too many pcb's specified");
-			(void)sscanf(optarg, "%x", (int *)&tcp_pcbs[npcbs++]);
+			sscanf(optarg, "%x", (int *)&tcp_pcbs[npcbs++]);
 			break;
 		case 's':
 			++sflag;
@@ -157,11 +155,11 @@ main(argc, argv)
 		err(2, "%s", core);
 	if (kflag)
 		errx(1, "can't do core files yet");
-	(void)klseek(memf, (off_t)nl[N_TCP_DEBX].n_value, L_SET);
+	klseek(memf, (off_t)nl[N_TCP_DEBX].n_value, L_SET);
 	if (read(memf, (char *)&tcp_debx, sizeof(tcp_debx)) !=
 	    sizeof(tcp_debx))
 		err(3, "tcp_debx");
-	(void)klseek(memf, (off_t)nl[N_TCP_DEBUG].n_value, L_SET);
+	klseek(memf, (off_t)nl[N_TCP_DEBUG].n_value, L_SET);
 	if (read(memf, (char *)tcp_debug, sizeof(tcp_debug)) !=
 	    sizeof(tcp_debug))
 		err(3, "tcp_debug");
@@ -173,8 +171,8 @@ main(argc, argv)
 	 */
 	if (!npcbs) {
 		for (i = 0; i < TCP_NDEBUG; i++) {
-			register struct tcp_debug *td = &tcp_debug[i];
-			register int j;
+			struct tcp_debug *td = &tcp_debug[i];
+			int j;
 
 			if (td->td_tcb == 0)
 				continue;
@@ -205,21 +203,21 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
-	(void)fprintf(stderr,
-		"usage: trpt [-afjst] [-p hex-address] [system [core]]\n");
+	fprintf(stderr,
+	    "usage: trpt [-afjst] [-p hex-address] [system [core]]\n");
 	exit(1);
 }
 
 void
-dotrace(tcpcb)
-	register caddr_t tcpcb;
+dotrace(caddr_t tcpcb)
 {
-	register struct tcp_debug *td;
-	register int i;
-	int prev_debx = tcp_debx, family;
+	struct tcp_debug *td;
+	int i;
+	int prev_debx, family;
 
+	prev_debx = tcp_debx;
 again:	if (--tcp_debx < 0)
 		tcp_debx = TCP_NDEBUG - 1;
 	for (i = prev_debx % TCP_NDEBUG; i < TCP_NDEBUG; i++) {
@@ -284,12 +282,12 @@ done:	if (follow) {
 			prev_debx = 0;
 		do {
 			sleep(1);
-			(void)klseek(memf, (off_t)nl[N_TCP_DEBX].n_value, L_SET);
+			klseek(memf, (off_t)nl[N_TCP_DEBX].n_value, L_SET);
 			if (read(memf, (char *)&tcp_debx, sizeof(tcp_debx)) !=
 			    sizeof(tcp_debx))
 				err(3, "tcp_debx");
 		} while (tcp_debx == prev_debx);
-		(void)klseek(memf, (off_t)nl[N_TCP_DEBUG].n_value, L_SET);
+		klseek(memf, (off_t)nl[N_TCP_DEBUG].n_value, L_SET);
 		if (read(memf, (char *)tcp_debug, sizeof(tcp_debug)) !=
 		    sizeof(tcp_debug))
 			err(3, "tcp_debug");
@@ -302,13 +300,8 @@ done:	if (follow) {
  */
 /*ARGSUSED*/
 void
-tcp_trace(act, ostate, atp, tp, family, ip, th, req)
-	short act, ostate;
-	struct tcpcb *atp, *tp;
-	int family;
-	void *ip;
-	struct tcphdr *th;
-	int req;
+tcp_trace(short act, short ostate, struct tcpcb *atp, struct tcpcb *tp,
+	  int family, void *ip, struct tcphdr *th, int req)
 {
 	tcp_seq seq, ack;
 	int flags, len, win, timer;
@@ -392,12 +385,13 @@ tcp_trace(act, ostate, atp, tp, family, ip, th, req)
 			printf("(win=%x)", win);
 		flags = th->th_flags;
 		if (flags) {
-			register char *cp = "<";
-#define	pf(flag, string) { \
-	if (th->th_flags&flag) { \
-		(void)printf("%s%s", cp, string); \
-		cp = ","; \
-	} \
+			char *cp = "<";
+
+#define	pf(flag, string) {						\
+	if (th->th_flags & flag) {					\
+		printf("%s%s", cp, string);				\
+		cp = ",";						\
+	}								\
 }
 			pf(TH_SYN, "SYN");
 			pf(TH_ACK, "ACK");
@@ -433,8 +427,8 @@ tcp_trace(act, ostate, atp, tp, family, ip, th, req)
 	 * kernel now uses callouts, not integer time values.
 	 */
 	if (tflag) {
-		register char *cp = "\t";
-		register int i;
+		char *cp = "\t";
+		int i;
 
 		for (i = 0; i < TCPT_NTIMERS; i++) {
 			if (tp->t_timer[i] == 0)
@@ -451,16 +445,13 @@ tcp_trace(act, ostate, atp, tp, family, ip, th, req)
 }
 
 int
-numeric(c1, c2)
-	caddr_t *c1, *c2;
+numeric(caddr_t *c1, caddr_t *c2)
 {
 	return(*c1 - *c2);
 }
 
 void
-klseek(fd, base, off)
-	int fd, off;
-	off_t base;
+klseek(int fd, off_t base, int off)
 {
-	(void)lseek(fd, base, off);
+	lseek(fd, base, off);
 }

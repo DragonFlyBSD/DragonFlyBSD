@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotaon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/quotaon/quotaon.c,v 1.4.2.1 2001/07/19 05:17:06 kris Exp $
- * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.4 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.5 2004/03/21 22:41:24 cpressey Exp $
  */
 
 /*
@@ -68,11 +68,9 @@ int readonly(struct fstab *);
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
-	register struct fstab *fs;
+	struct fstab *fs;
 	char ch, *qfnp, *whoami;
 	long argnum, done = 0;
 	int i, offmode = 0, errs = 0;
@@ -139,9 +137,8 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
-
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: quotaon [-g] [-u] [-v] -a",
 		"       quotaon [-g] [-u] [-v] filesystem ...",
@@ -151,12 +148,8 @@ usage()
 }
 
 int
-quotaonoff(fs, offmode, type, qfpathname)
-	register struct fstab *fs;
-	int offmode, type;
-	char *qfpathname;
+quotaonoff(struct fstab *fs, int offmode, int type, char *qfpathname)
 {
-
 	if (strcmp(fs->fs_file, "/") && readonly(fs))
 		return (1);
 	if (offmode) {
@@ -183,11 +176,9 @@ quotaonoff(fs, offmode, type, qfpathname)
  * Check to see if target appears in list of size cnt.
  */
 int
-oneof(target, list, cnt)
-	register char *target, *list[];
-	int cnt;
+oneof(char *target, char *list[], int cnt)
 {
-	register int i;
+	int i;
 
 	for (i = 0; i < cnt; i++)
 		if (strcmp(target, list[i]) == 0)
@@ -199,12 +190,9 @@ oneof(target, list, cnt)
  * Check to see if a particular quota is to be enabled.
  */
 int
-hasquota(fs, type, qfnamep)
-	register struct fstab *fs;
-	int type;
-	char **qfnamep;
+hasquota(struct fstab *fs, int type, char **qfnamep)
 {
-	register char *opt;
+	char *opt;
 	char *cp;
 	static char initname, usrname[100], grpname[100];
 	static char buf[BUFSIZ];
@@ -238,8 +226,7 @@ hasquota(fs, type, qfnamep)
  * Verify file system is mounted and not readonly.
  */
 int
-readonly(fs)
-	register struct fstab *fs;
+readonly(struct fstab *fs)
 {
 	struct statfs fsbuf;
 

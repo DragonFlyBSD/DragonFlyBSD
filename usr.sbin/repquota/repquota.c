@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)repquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/repquota/repquota.c,v 1.9.2.2 2002/03/15 22:18:25 mikeh Exp $
- * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.4 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/repquota/repquota.c,v 1.5 2004/03/21 22:41:24 cpressey Exp $
  */
 
 /*
@@ -95,13 +95,11 @@ char *timeprt(time_t);
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char **argv;
+main(int argc, char **argv)
 {
-	register struct fstab *fs;
-	register struct passwd *pw;
-	register struct group *gr;
+	struct fstab *fs;
+	struct passwd *pw;
+	struct group *gr;
 	int gflag = 0, uflag = 0, errs = 0;
 	long i, argnum, done = 0;
 	char ch, *qfnp;
@@ -136,13 +134,13 @@ main(argc, argv)
 	if (gflag) {
 		setgrent();
 		while ((gr = getgrent()) != 0)
-			(void) addid((u_long)gr->gr_gid, GRPQUOTA, gr->gr_name);
+			addid((u_long)gr->gr_gid, GRPQUOTA, gr->gr_name);
 		endgrent();
 	}
 	if (uflag) {
 		setpwent();
 		while ((pw = getpwent()) != 0)
-			(void) addid((u_long)pw->pw_uid, USRQUOTA, pw->pw_name);
+			addid((u_long)pw->pw_uid, USRQUOTA, pw->pw_name);
 		endpwent();
 	}
 	setfsent();
@@ -173,21 +171,18 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n",
-		"usage: repquota [-v] [-g] [-u] -a",
-		"       repquota [-v] [-g] [-u] filesystem ...");
+	    "usage: repquota [-v] [-g] [-u] -a",
+	    "       repquota [-v] [-g] [-u] filesystem ...");
 	exit(1);
 }
 
 int
-repquota(fs, type, qfpathname)
-	register struct fstab *fs;
-	int type;
-	char *qfpathname;
+repquota(struct fstab *fs, int type, char *qfpathname)
 {
-	register struct fileusage *fup;
+	struct fileusage *fup;
 	FILE *qf;
 	u_long id;
 	struct dqblk dqbuf;
@@ -264,11 +259,9 @@ repquota(fs, type, qfpathname)
  * Check to see if target appears in list of size cnt.
  */
 int
-oneof(target, list, cnt)
-	register char *target, *list[];
-	int cnt;
+oneof(char *target, char *list[], int cnt)
 {
-	register int i;
+	int i;
 
 	for (i = 0; i < cnt; i++)
 		if (strcmp(target, list[i]) == 0)
@@ -280,12 +273,9 @@ oneof(target, list, cnt)
  * Check to see if a particular quota is to be enabled.
  */
 int
-hasquota(fs, type, qfnamep)
-	register struct fstab *fs;
-	int type;
-	char **qfnamep;
+hasquota(struct fstab *fs, int type, char **qfnamep)
 {
-	register char *opt;
+	char *opt;
 	char *cp;
 	static char initname, usrname[100], grpname[100];
 	static char buf[BUFSIZ];
@@ -310,7 +300,7 @@ hasquota(fs, type, qfnamep)
 		*qfnamep = cp;
 		return (1);
 	}
-	(void) sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
+	sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
 	*qfnamep = buf;
 	return (1);
 }
@@ -321,11 +311,9 @@ hasquota(fs, type, qfnamep)
  * Lookup an id of a specific type.
  */
 struct fileusage *
-lookup(id, type)
-	u_long id;
-	int type;
+lookup(u_long id, int type)
 {
-	register struct fileusage *fup;
+	struct fileusage *fup;
 
 	for (fup = fuhead[type][id & (FUHASH-1)]; fup != 0; fup = fup->fu_next)
 		if (fup->fu_id == id)
@@ -337,10 +325,7 @@ lookup(id, type)
  * Add a new file usage id if it does not already exist.
  */
 struct fileusage *
-addid(id, type, name)
-	u_long id;
-	int type;
-	char *name;
+addid(u_long id, int type, char *name)
 {
 	struct fileusage *fup, **fhp;
 	int len;
@@ -371,8 +356,7 @@ addid(id, type, name)
  * Calculate the grace period and return a printable string for it.
  */
 char *
-timeprt(seconds)
-	time_t seconds;
+timeprt(time_t seconds)
 {
 	time_t hours, minutes;
 	static char buf[20];
