@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tftpd.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/libexec/tftpd/tftpd.c,v 1.15.2.5 2003/04/06 19:42:56 dwmalone Exp $
- * $DragonFly: src/libexec/tftpd/tftpd.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/tftpd/tftpd.c,v 1.3 2003/11/20 14:32:17 eirikn Exp $
  */
 
 /*
@@ -354,8 +354,9 @@ tftp(struct tftphdr *tp, int size)
 	int i, first = 1, has_options = 0, ecode;
 	struct formats *pf;
 	char *filename, *mode, *option, *ccp;
+	char fnbuf[MAXPATHLEN];
 
-	filename = cp = tp->th_stuff;
+	cp = tp->th_stuff;
 again:
 	while (cp < buf + size) {
 		if (*cp == '\0')
@@ -366,6 +367,14 @@ again:
 		nak(EBADOP);
 		exit(1);
 	}
+	i = cp - tp->th_stuff;
+	if (i >= sizeof(fnbuf)) {
+		nak(EBADOP);
+		exit(1);
+	}
+	memcpy(fnbuf, tp->th_stuff, i);
+	fnbuf[i] = '\0';
+	filename = fnbuf;
 	if (first) {
 		mode = ++cp;
 		first = 0;
