@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)sysconf.c	8.2 (Berkeley) 3/20/94
+ * $DragonFly: src/lib/libc/gen/sysconf.c,v 1.3 2004/11/09 17:52:45 joerg Exp $
  */
 
 #include <sys/_posix.h>
@@ -105,6 +106,10 @@ sysconf(name)
 	case _SC_VERSION:
 		mib[0] = CTL_KERN;
 		mib[1] = KERN_POSIX1;
+		break;
+	case _SC_IOV_MAX:
+		mib[0] = CTL_KERN;
+		mib[1] = KERN_IOV_MAX;
 		break;
 
 /* 1003.2 */

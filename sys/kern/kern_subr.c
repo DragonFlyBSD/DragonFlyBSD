@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.19 2004/10/25 19:14:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.20 2004/11/09 17:52:45 joerg Exp $
  */
 
 #include "opt_ddb.h"
@@ -49,12 +49,17 @@
 #include <sys/malloc.h>
 #include <sys/lock.h>
 #include <sys/resourcevar.h>
+#include <sys/sysctl.h>
+#include <sys/uio.h>
 #include <sys/vnode.h>
 #include <machine/limits.h>
 
 #include <vm/vm.h>
 #include <vm/vm_page.h>
 #include <vm/vm_map.h>
+
+SYSCTL_INT(_kern, KERN_IOV_MAX, iov_max, CTLFLAG_RD, NULL, UIO_MAXIOV,
+	"Maximum number of elements in an I/O vector; sysconf(_SC_IOV_MAX)");
 
 /*
  * UIO_READ:	copy the kernelspace cp to the user or kernelspace UIO

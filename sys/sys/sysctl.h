@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.11 2004/05/26 14:12:34 hmp Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.12 2004/11/09 17:52:45 joerg Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -341,8 +341,9 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	KERN_PS_STRINGS		32	/* int: address of PS_STRINGS */
 #define	KERN_USRSTACK		33	/* int: address of USRSTACK */
 #define	KERN_LOGSIGEXIT		34	/* int: do we log sigexit procs? */
-#define KERN_MAXID		35      /* number of valid kern ids */
+#define	KERN_IOV_MAX		35	/* int: value of UIO_MAXIOV */
 #define KERN_MAXPOSIXLOCKSPERUID 36	/* int: max POSIX locks per uid */
+#define KERN_MAXID		37      /* number of valid kern ids */
 
 #define CTL_KERN_NAMES { \
 	{ 0, 0 }, \
@@ -381,6 +382,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "ps_strings", CTLTYPE_INT }, \
 	{ "usrstack", CTLTYPE_INT }, \
 	{ "logsigexit", CTLTYPE_INT }, \
+	{ "iov_max", CTLTYPE_INT }, \
 }
 
 /*

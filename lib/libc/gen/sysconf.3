@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysconf.3	8.3 (Berkeley) 4/19/94
 .\" $FreeBSD: src/lib/libc/gen/sysconf.3,v 1.8.2.6 2001/12/14 18:33:51 ru Exp $
-.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/sysconf.3,v 1.3 2004/11/09 17:52:45 joerg Exp $
 .\"
 .Dd April 19, 1994
 .Dt SYSCONF 3
@@ -72,6 +72,13 @@ The maximum bytes of argument to
 The maximum number of simultaneous processes per user id.
 .It Li _SC_CLK_TCK
 The frequency of the statistics clock in ticks per second.
+.It Li _SC_IOV_MAX
+The maximum number of elements in the I/O vector used by
+.Xr readv 2 ,
+.Xr writev 2 ,
+.Xr recvmsg 2 ,
+and
+.Xr sendmsg 2 .
 .It Li _SC_NGROUPS_MAX
 The maximum number of supplemental groups.
 .It Li _SC_OPEN_MAX

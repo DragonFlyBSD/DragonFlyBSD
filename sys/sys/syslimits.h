@@ -32,7 +32,7 @@
  *
  *	@(#)syslimits.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslimits.h,v 1.9 1999/08/28 00:52:03 peter Exp $
- * $DragonFly: src/sys/sys/syslimits.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/syslimits.h,v 1.3 2004/11/09 17:52:45 joerg Exp $
  */
 
 #ifndef _SYS_SYSLIMITS_H_
@@ -52,6 +52,7 @@
 #endif
 #define	PATH_MAX		 1024	/* max bytes in pathname */
 #define	PIPE_BUF		  512	/* max bytes for atomic pipe writes */
+#define	IOV_MAX			 1024	/* max elements in i/o vector */
 
 #define	BC_BASE_MAX		   99	/* max ibase/obase values in bc(1) */
 #define	BC_DIM_MAX		 2048	/* max array elements in bc(1) */

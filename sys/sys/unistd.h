@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sys/sys/unistd.h,v 1.22.2.2 2000/08/22 01:46:30 jhb Exp $
- * $DragonFly: src/sys/sys/unistd.h,v 1.3 2003/11/27 19:57:36 dillon Exp $
+ * $DragonFly: src/sys/sys/unistd.h,v 1.4 2004/11/09 17:52:45 joerg Exp $
  */
 
 #ifndef _SYS_UNISTD_H_
@@ -145,6 +145,7 @@
 #define	_SC_2_UPE		25
 #define	_SC_STREAM_MAX		26
 #define	_SC_TZNAME_MAX		27
+#define	_SC_IOV_MAX		56
 
 /* configurable system strings */
 #define	_CS_PATH		 1
