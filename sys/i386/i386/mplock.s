@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/i386/i386/mplock.s,v 1.29.2.2 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.12 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mplock.s,v 1.13 2004/06/16 01:17:30 hmp Exp $
  *
  * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
@@ -28,7 +28,7 @@
  *
  *				DragonFly MPLOCK operation
  *
- * Each thread as an MP lock count, td_mpcount, and there is a shared
+ * Each thread has an MP lock count, td_mpcount, and there is a shared
  * global called mp_lock.  mp_lock is the physical MP lock and contains either
  * -1 or the cpuid of the cpu owning the lock.  The count is *NOT* integrated
  * into mp_lock but instead resides in each thread td_mpcount.
