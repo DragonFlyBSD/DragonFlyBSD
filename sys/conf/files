@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.56 2004/03/12 22:38:14 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.57 2004/03/18 18:47:39 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1287,9 +1287,9 @@ libkern/bcd.c				standard
 libkern/crc32.c				standard
 libkern/cmpdi2.c			standard
 libkern/ucmpdi2.c			standard
-libkern/iconv.c				optional libiconv
-libkern/iconv_xlat.c			optional libiconv
-libkern/iconv_converter_if.m		optional libiconv
+libiconv/iconv.c			optional libiconv
+libiconv/iconv_xlat.c			optional libiconv
+libiconv/iconv_converter_if.m		optional libiconv
 libkern/index.c				standard
 libkern/inet_ntoa.c			standard
 libkern/mcount.c			optional	profiling-routine
