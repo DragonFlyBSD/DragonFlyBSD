@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.45 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.46 2004/03/06 19:40:23 dillon Exp $
  */
 
 /*
@@ -1330,7 +1330,7 @@ syscall2(struct trapframe frame)
 	 * results are returned.  Since edx is loaded from fds[1] when the 
 	 * system call returns we pre-set it here.
 	 */
-	lwkt_initmsg(&args.lmsg, &td->td_msgport, code);
+	lwkt_initmsg_rp(&args.lmsg, &td->td_msgport, code);
 	args.sysmsg_copyout = NULL;
 	args.sysmsg_fds[0] = 0;
 	args.sysmsg_fds[1] = frame.tf_edx;
@@ -1582,7 +1582,7 @@ sendsys2(struct trapframe frame)
 	 * Initialize the kernel message from the copied-in data and
 	 * pull in appropriate flags from the userland message.
 	 */
-	lwkt_initmsg(&sysun->lmsg, &td->td_msgport, 
+	lwkt_initmsg_rp(&sysun->lmsg, &td->td_msgport, 
 	    sysun->nosys.usrmsg.umsg.ms_cmd);
 	sysun->sysmsg_copyout = NULL;
 	sysun->lmsg.opaque.ms_umsg = umsg;

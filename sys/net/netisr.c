@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.8 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.9 2004/03/06 19:40:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -11,7 +11,6 @@
 #include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/msgport.h>
-#include <sys/msgport2.h>
 #include <sys/proc.h>
 #include <sys/interrupt.h>
 #include <sys/socket.h>
@@ -22,10 +21,24 @@
 #include <machine/cpufunc.h>
 #include <machine/ipl.h>
 
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
+
 static struct netisr netisrs[NETISR_MAX];
 
 /* Per-CPU thread to handle any protocol.  */
 struct thread netisr_cpu[MAXCPU];
+lwkt_port netisr_afree_rport;
+
+/*
+ * netisr_afree_rport replymsg function, only used to handle async
+ * messages which the sender has abandoned to their fate.
+ */
+static void
+netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+    free(msg, M_LWKTMSG);
+}
 
 static void
 netisr_init(void)
@@ -33,9 +46,12 @@ netisr_init(void)
     int i;
 
     /* Create default per-cpu threads for generic protocol handling. */
-    for (i = 0; i < ncpus; ++i)
+    for (i = 0; i < ncpus; ++i) {
 	lwkt_create(netmsg_service_loop, NULL, NULL, &netisr_cpu[i], 0, i,
 	    "netisr_cpu %d", i);
+    }
+    lwkt_initport(&netisr_afree_rport, NULL);
+    netisr_afree_rport.mp_replyport = netisr_autofree_reply;
 }
 
 SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
@@ -44,11 +60,11 @@ void
 netmsg_service_loop(void *arg)
 {
     struct netmsg *msg;
+    int error;
 
     while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
-	msg->nm_handler(msg);
-	if (msg->nm_lmsg.ms_flags & MSGF_ASYNC)
-	    free(msg, M_LWKTMSG);
+	error = msg->nm_handler(msg);
+	lwkt_replymsg(&msg->nm_lmsg, error);
     }
 }
 
@@ -91,7 +107,7 @@ netisr_queue(int num, struct mbuf *m)
     if (!(pmsg = malloc(sizeof(struct netmsg_packet), M_LWKTMSG, M_NOWAIT)))
 	return (ENOBUFS);
 
-    lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_NEWPKT);
+    lwkt_initmsg_rp(&pmsg->nm_lmsg, &netisr_afree_rport, CMD_NETMSG_NEWPKT);
     pmsg->nm_packet = m;
     pmsg->nm_handler = ni->ni_handler;
     lwkt_sendmsg(port, &pmsg->nm_lmsg);
@@ -151,7 +167,7 @@ schednetisr(int num)
     if (!(pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT)))
 	return;
 
-    lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_POLL);
+    lwkt_initmsg_rp(&pmsg->nm_lmsg, &netisr_afree_rport, CMD_NETMSG_POLL);
     pmsg->nm_handler = ni->ni_handler;
     lwkt_sendmsg(port, &pmsg->nm_lmsg);
 }

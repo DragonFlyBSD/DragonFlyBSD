@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.15 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.16 2004/03/06 19:40:28 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -90,12 +90,6 @@ static void lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg);
 static void lwkt_replyport_remote(lwkt_msg_t msg);
 static void lwkt_putport_remote(lwkt_msg_t msg);
 
-void
-lwkt_initmsg_td(lwkt_msg_t msg, thread_t td)
-{
-    lwkt_initmsg(msg, &td->td_msgport, 0);
-}
-
 /*
  * lwkt_sendmsg()
  *
@@ -116,7 +110,7 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
 
     msg->ms_flags |= MSGF_ASYNC;
     msg->ms_flags &= ~(MSGF_REPLY | MSGF_QUEUED);
-    msg->ms_reply_port = &curthread->td_msgport;
+    KKASSERT(msg->ms_reply_port != NULL);
     if ((error = lwkt_beginmsg(port, msg)) != EASYNC) {
 	lwkt_replymsg(msg, error);
     }
@@ -144,7 +138,7 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
     int error;
 
     msg->ms_flags &= ~(MSGF_ASYNC | MSGF_REPLY | MSGF_QUEUED);
-    msg->ms_reply_port = &curthread->td_msgport;
+    KKASSERT(msg->ms_reply_port != NULL);
     if ((error = lwkt_beginmsg(port, msg)) == EASYNC) {
 	error = lwkt_waitmsg(msg);
     }

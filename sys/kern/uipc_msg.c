@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.1 2004/03/06 01:59:52 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.2 2004/03/06 19:40:28 dillon Exp $
  */
 
 #if defined(SMP) || defined(ALWAYS_MSG)
@@ -45,7 +45,7 @@
 #include <net/netisr.h>
 #include <net/netmsg.h>
 
-static void netmsg_pru_dispatcher(struct netmsg *msg);
+static int netmsg_pru_dispatcher(struct netmsg *msg);
 
 int
 so_pru_abort(struct socket *so)
@@ -58,7 +58,7 @@ so_pru_abort(struct socket *so)
 		return ((*so->so_proto->pr_usrreqs->pru_abort)(so));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_ABORT);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_ABORT);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
 	msg.nm_so = so;
@@ -77,7 +77,7 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 		return ((*so->so_proto->pr_usrreqs->pru_accept)(so, nam));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_ACCEPT);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_ACCEPT);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_accept;
 	msg.nm_so = so;
@@ -98,7 +98,7 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	port = so->so_proto->pr_mport(NULL, NULL);
 
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_ATTACH);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_ATTACH);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_attach;
 	msg.nm_so = so;
@@ -120,7 +120,7 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 
 	/* Send mesg to thread for new address. */
 	port = so->so_proto->pr_mport(NULL, nam);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_BIND);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_BIND);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_bind;
 	msg.nm_so = so;
@@ -141,7 +141,7 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 		return ((*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_CONNECT);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_CONNECT);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_connect;
 	msg.nm_so = so;
@@ -168,7 +168,7 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 	 */
 	panic("connect2 on socket type %d", so1->so_type);
 	port = so1->so_proto->pr_mport(so1, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_CONNECT2);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_CONNECT2);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so1->so_proto->pr_usrreqs->pru_connect2;
 	msg.nm_so1 = so1;
@@ -190,7 +190,7 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		    ifp, td));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_CONTROL);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_CONTROL);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_control;
 	msg.nm_so = so;
@@ -213,7 +213,7 @@ so_pru_detach(struct socket *so)
 		return ((*so->so_proto->pr_usrreqs->pru_detach)(so));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_DETACH);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_DETACH);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_detach;
 	msg.nm_so = so;
@@ -232,7 +232,7 @@ so_pru_disconnect(struct socket *so)
 		return ((*so->so_proto->pr_usrreqs->pru_disconnect)(so));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_DISCONNECT);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_DISCONNECT);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_disconnect;
 	msg.nm_so = so;
@@ -251,7 +251,7 @@ so_pru_listen(struct socket *so, struct thread *td)
 		return ((*so->so_proto->pr_usrreqs->pru_listen)(so, td));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_LISTEN);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_LISTEN);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_listen;
 	msg.nm_so = so;
@@ -271,7 +271,7 @@ so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 		return ((*so->so_proto->pr_usrreqs->pru_peeraddr)(so, nam));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_PEERADDR);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_PEERADDR);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_peeraddr;
 	msg.nm_so = so;
@@ -291,7 +291,7 @@ so_pru_rcvd(struct socket *so, int flags)
 		return ((*so->so_proto->pr_usrreqs->pru_rcvd)(so, flags));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_RCVD);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_RCVD);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvd;
 	msg.nm_so = so;
@@ -311,7 +311,7 @@ so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 		return ((*so->so_proto->pr_usrreqs->pru_rcvoob)(so, m, flags));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_RCVOOB);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_RCVOOB);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvoob;
 	msg.nm_so = so;
@@ -334,7 +334,7 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		    addr, control, td));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_SEND);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_SEND);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_send;
 	msg.nm_so = so;
@@ -358,7 +358,7 @@ so_pru_sense(struct socket *so, struct stat *sb)
 		return ((*so->so_proto->pr_usrreqs->pru_sense)(so, sb));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_SENSE);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_SENSE);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sense;
 	msg.nm_so = so;
@@ -378,7 +378,7 @@ so_pru_shutdown(struct socket *so)
 		return ((*so->so_proto->pr_usrreqs->pru_shutdown)(so));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_SHUTDOWN);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_SHUTDOWN);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_shutdown;
 	msg.nm_so = so;
@@ -397,7 +397,7 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 		return ((*so->so_proto->pr_usrreqs->pru_sockaddr)(so, nam));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_SOCKADDR);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_SOCKADDR);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sockaddr;
 	msg.nm_so = so;
@@ -419,7 +419,7 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred,
 		    cred, td));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PRU_SOPOLL);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PRU_SOPOLL);
 	msg.nm_handler = netmsg_pru_dispatcher;
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sopoll;
 	msg.nm_so = so;
@@ -443,7 +443,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
 		return ((*so->so_proto->pr_ctloutput)(so, sopt));
 
 	port = so->so_proto->pr_mport(so, NULL);
-	lwkt_initmsg(&msg.nm_lmsg, port, CMD_NETMSG_PR_CTLOUTPUT);
+	lwkt_initmsg(&msg.nm_lmsg, CMD_NETMSG_PR_CTLOUTPUT);
 	msg.nm_handler = netmsg_pr_dispatcher;
 	msg.nm_prfn = so->so_proto->pr_ctloutput;
 	msg.nm_so = so;
@@ -457,7 +457,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
  * If we convert all the pru_usrreq functions for all the protocols
  * to take a message directly, this layer can go away.
  */
-static void
+static int
 netmsg_pru_dispatcher(struct netmsg *msg)
 {
 	int error;
@@ -468,7 +468,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_abort *nm = (struct netmsg_pru_abort *)msg;
 
 		error = nm->nm_prufn(nm->nm_so);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_ACCEPT:
@@ -476,7 +475,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_accept *nm = (struct netmsg_pru_accept *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_nam);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_ATTACH:
@@ -484,7 +482,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_attach *nm = (struct netmsg_pru_attach *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_proto, nm->nm_ai);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_BIND:
@@ -492,7 +489,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_bind *nm = (struct netmsg_pru_bind *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_nam, nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_CONNECT:
@@ -501,7 +497,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_connect *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_nam, nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_CONNECT2:
@@ -510,7 +505,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_connect2 *)msg;
 
 		error = nm->nm_prufn(nm->nm_so1, nm->nm_so2);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_CONTROL:
@@ -520,7 +514,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_cmd, nm->nm_data,
 		    nm->nm_ifp, nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_DETACH:
@@ -528,7 +521,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_detach *nm = (struct netmsg_pru_detach *)msg;
 
 		error = nm->nm_prufn(nm->nm_so);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_DISCONNECT:
@@ -537,7 +529,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_disconnect *)msg;
 
 		error = nm->nm_prufn(nm->nm_so);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_LISTEN:
@@ -545,7 +536,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_listen *nm = (struct netmsg_pru_listen *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_PEERADDR:
@@ -554,7 +544,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_peeraddr *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_nam);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_RCVD:
@@ -562,7 +551,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_rcvd *nm = (struct netmsg_pru_rcvd *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_flags);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_RCVOOB:
@@ -570,7 +558,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_rcvoob *nm = (struct netmsg_pru_rcvoob *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_m, nm->nm_flags);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_SEND:
@@ -579,7 +566,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_flags, nm->nm_m,
 		    nm->nm_addr, nm->nm_control, nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_SENSE:
@@ -587,7 +573,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		struct netmsg_pru_sense *nm = (struct netmsg_pru_sense *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_stat);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_SHUTDOWN:
@@ -596,7 +581,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_shutdown *)msg;
 
 		error = nm->nm_prufn(nm->nm_so);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_SOCKADDR:
@@ -605,7 +589,6 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		    (struct netmsg_pru_sockaddr *)msg;
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_nam);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PRU_SOPOLL:
@@ -615,31 +598,31 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 
 		error = nm->nm_prufn(nm->nm_so, nm->nm_events, nm->nm_cred,
 		    nm->nm_td);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	default:
 		panic("unknown netmsg %d", msg->nm_lmsg.ms_cmd);
 		break;
 	}
+	return(error);
 }
 
 /*
  * If we convert all the protosw pr_ functions for all the protocols
  * to take a message directly, this layer can go away.
  */
-void
+int
 netmsg_pr_dispatcher(struct netmsg *msg)
 {
+	int error = 0;
+
 	switch (msg->nm_lmsg.ms_cmd) {
 	case CMD_NETMSG_PR_CTLOUTPUT:
 	{
 		struct netmsg_pr_ctloutput *nm =
 		    (struct netmsg_pr_ctloutput *)msg;
-		int error;
 
 		error = nm->nm_prfn(nm->nm_so, nm->nm_sopt);
-		lwkt_replymsg(&msg->nm_lmsg, error);
 		break;
 	}
 	case CMD_NETMSG_PR_TIMEOUT:
@@ -653,6 +636,7 @@ netmsg_pr_dispatcher(struct netmsg *msg)
 		panic("unknown netmsg %d", msg->nm_lmsg.ms_cmd);
 		break;
 	}
+	return(error);
 }
 
 #endif
