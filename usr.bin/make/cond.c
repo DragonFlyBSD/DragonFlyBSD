@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.27 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.28 2005/02/03 18:36:26 okumoto Exp $
  */
 
 /*-
@@ -111,8 +111,8 @@ static void CondPushBack(Token);
 static int CondGetArg(char **, char **, const char *, Boolean);
 static CondProc	CondDoDefined;
 static CondProc	CondDoMake;
-static CondProc CondDoExists;
-static CondProc CondDoTarget;
+static CondProc	CondDoExists;
+static CondProc	CondDoTarget;
 static char *CondCvtArg(char *, double *);
 static Token CondToken(Boolean);
 static Token CondT(Boolean);
@@ -516,7 +516,7 @@ CondToken(Boolean doEval)
 	    case '$': {
 		char	*lhs;
 		char	*rhs;
-		const char	*op;
+		const char *op;
 		size_t	varSpecLen;
 		Boolean	doFree;
 
