@@ -32,7 +32,7 @@
  *
  *	@(#)namei.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/namei.h,v 1.29.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/namei.h,v 1.8 2003/10/09 22:27:20 dillon Exp $
+ * $DragonFly: src/sys/sys/namei.h,v 1.9 2003/10/13 21:16:10 dillon Exp $
  */
 
 #ifndef _SYS_NAMEI_H_
@@ -158,24 +158,36 @@ struct nameidata {
 /*
  * Initialization of an nameidata structure.
  */
-static void NDINIT (struct nameidata *, u_long, u_long, enum uio_seg,
-	    const char *, struct thread *);
-static __inline void
-NDINIT(struct nameidata *ndp,
-	u_long op, u_long flags,
-	enum uio_seg segflg,
-	const char *namep,
-	struct thread *td
-) {
-	struct proc *p = td->td_proc;
 
-	KKASSERT(p != NULL);
+static __inline void
+_NDINIT(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
+	const char *namep, struct thread *td
+) {
 	ndp->ni_cnd.cn_nameiop = op;
 	ndp->ni_cnd.cn_flags = flags;
 	ndp->ni_segflg = segflg;
 	ndp->ni_dirp = namep;
 	ndp->ni_cnd.cn_td = td;
+}
+
+static __inline void
+NDINIT(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
+	const char *namep, struct thread *td
+) {
+	struct proc *p;
+
+	_NDINIT(ndp, op, flags, segflg, namep, td);
+	p = td->td_proc;
+	KKASSERT(p != NULL);
 	ndp->ni_cnd.cn_cred = p->p_ucred;
+}
+
+static __inline void
+NDINIT2(struct nameidata *ndp, u_long op, u_long flags, enum uio_seg segflg,
+	const char *namep, struct thread *td, struct ucred *cr
+) {
+	_NDINIT(ndp, op, flags, segflg, namep, td);
+	ndp->ni_cnd.cn_cred = cr;
 }
 
 #define NDF_NO_DVP_RELE		0x00000001
