@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# $DragonFly: src/etc/rc.d/mixer,v 1.1 2004/02/25 12:08:29 joerg Exp $
+#
+
+# PROVIDE: mixer
+# REQUIRE: lkm
+
+. /etc/rc.subr
+
+name="mixer"
+start_cmd="mixer_start"
+stop_cmd="mixer_stop"
+mixer_conf=/etc/mixer.conf
+
+mixer_start()
+{
+	if [ -r $mixer_conf ]; then
+		echo "Setting Volume"
+		cat $mixer_conf| xargs mixer 
+	fi
+}
+
+mixer_stop()
+{
+	[ -z "$mixer_conf" ] && return
+	if [ -w $mixer_conf -o \( ! -e $mixer_conf -a -w `dirname $mixer_conf` \) ]; then
+		echo "Storing Volume"
+		mixer 2>/dev/null | awk ' /^Mixer/ {print $2 " " $7 }' > $mixer_conf
+	fi
+}
+
+load_rc_config $name
+run_rc_command "$1"
