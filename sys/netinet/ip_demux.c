@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.12 2004/04/01 23:04:50 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.13 2004/04/03 22:17:59 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -99,7 +99,8 @@ ip_mport(struct mbuf *m)
 		}
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
-		if (thoff < sizeof(struct tcphdr) || thoff > ip->ip_len) {
+		if (thoff < sizeof(struct tcphdr) ||
+		    thoff > ntohs(ip->ip_len)) {
 			tcpstat.tcps_rcvbadoff++;
 			return (NULL);
 		}
