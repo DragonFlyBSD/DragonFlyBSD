@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.11 2004/01/25 12:30:08 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.12 2004/02/08 06:51:54 hmp Exp $
  *
  */
 
@@ -2065,7 +2065,7 @@ bge_rxeof(sc)
 		}
 #endif
 		eh = mtod(m, struct ether_header *);
-		m->m_pkthdr.len = m->m_len = cur_rx->bge_len;
+		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
 		m->m_pkthdr.rcvif = ifp;
 
 		/* Remove header from mbuf and pass it on. */
