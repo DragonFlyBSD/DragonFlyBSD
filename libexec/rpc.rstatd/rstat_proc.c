@@ -29,7 +29,7 @@
  * @(#)rpc.rstatd.c 1.1 86/09/25 Copyr 1984 Sun Micro
  * @(#)rstat_proc.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/libexec/rpc.rstatd/rstat_proc.c,v 1.14.2.1 2002/07/11 17:17:56 alfred Exp $
- * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.4 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/libexec/rpc.rstatd/rstat_proc.c,v 1.5 2005/01/31 21:20:58 joerg Exp $
  */
 
 /*
@@ -38,7 +38,7 @@
  * Copyright (c) 1984 by Sun Microsystems, Inc.
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/kinfo.h>
 #include <sys/socket.h>
 #include <sys/sysctl.h>
