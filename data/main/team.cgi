@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.18 2004/09/09 18:38:14 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.19 2004/09/21 17:55:49 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -62,6 +62,12 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 <td valign="top">Multithreading the network stack, RFC compliance
 (commit access)</td>
 </tr>
+
+<tr><td valign="top"><a href="mailto:virtus 'at' wanadoo 'dot' nl">Douwe Kiela</a></td>
+<td valign="top">Code cleanness and standards conformation
+</td>
+</tr>
+
 
 <tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
 <td valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
