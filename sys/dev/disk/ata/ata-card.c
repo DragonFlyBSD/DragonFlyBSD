@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-card.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-card.c,v 1.4 2004/02/19 15:51:46 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,43 @@
 #include <machine/bus.h>
 #include <sys/rman.h>
 #include "ata-all.h"
+
+#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccardvar.h>
+#include <bus/pccard/pccarddevs.h>
+
+static const struct pccard_product ata_pccard_products[] = {
+	PCMCIA_CARD(FREECOM, PCCARDIDE, 0),
+	PCMCIA_CARD(EXP, EXPMULTIMEDIA, 0),
+	PCMCIA_CARD(IODATA, CBIDE2, 0),
+	PCMCIA_CARD(OEM2, CDROM1, 0),
+	PCMCIA_CARD(OEM2, IDE, 0),
+	PCMCIA_CARD(PANASONIC, KXLC005, 0),
+	PCMCIA_CARD(TEAC, IDECARDII, 0),
+	{NULL}
+};
+
+static int
+ata_pccard_match(device_t dev)
+{
+    const struct pccard_product *pp;
+    u_int32_t fcn = PCCARD_FUNCTION_UNSPEC;
+
+    fcn = pccard_get_function_number(dev);
+
+    /* if it says its a disk we should register it */
+    if (fcn == PCCARD_FUNCTION_DISK)
+	return (0);
+
+    /* match other devices here, primarily cdrom/dvd rom */
+    if ((pp = pccard_product_lookup(dev, ata_pccard_products,
+				    sizeof(ata_pccard_products[0]), NULL))) {
+	if (pp->pp_name)
+	    device_set_desc(dev, pp->pp_name);
+	return (0);
+    }
+    return (ENXIO);
+}
 
 static int
 ata_pccard_probe(device_t dev)
@@ -94,9 +131,15 @@ ata_pccard_probe(device_t dev)
 
 static device_method_t ata_pccard_methods[] = {
     /* device interface */
-    DEVMETHOD(device_probe,	ata_pccard_probe),
-    DEVMETHOD(device_attach,	ata_attach),
+    DEVMETHOD(device_probe,	pccard_compat_probe),
+    DEVMETHOD(device_attach,	pccard_compat_attach),
     DEVMETHOD(device_detach,	ata_detach),
+
+    /* Card interface */
+    DEVMETHOD(card_compat_match,	ata_pccard_match),
+    DEVMETHOD(card_compat_probe,	ata_pccard_probe),
+    DEVMETHOD(card_compat_attach,	ata_attach),
+
     { 0, 0 }
 };
 
