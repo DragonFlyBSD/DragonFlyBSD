@@ -1,11 +1,11 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.3 2003/09/08 23:39:23 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.4 2003/09/09 16:49:31 dillon Exp $
 
 PORTSDIR?=	/usr/ports
-DPORTSDIR?=	/usr/dports
+DFPORTSDIR?=	/usr/dfports
 PORTPATH!=	/usr/bin/relpath ${PORTSDIR} ${.CURDIR}
 
-.if !exists(${DPORTSDIR}/${PORTPATH}/Makefile)
+.if !exists(${DFPORTSDIR}/${PORTPATH}/Makefile)
 # If the port does not exist in /usr/dports/<portpath> use the original
 # FreeBSD port
 #
@@ -46,8 +46,8 @@ TARGETS+=	tags
 .for __target in ${TARGETS}
 .if !target(${__target})
 ${__target}:
-	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DPORTSDIR}/${PORTPATH}"
-	cd ${DPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGET}
+	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
+	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGET}
 .endif
 .endfor
 

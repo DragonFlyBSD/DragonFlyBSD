@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.4 2003/09/09 05:40:58 asmodai Exp $
+$DragonFly: src/UPDATING,v 1.5 2003/09/09 16:49:25 dillon Exp $
 
 Updating Information for DragonFly users.
 
@@ -40,14 +40,14 @@ DragonFly will eventually have its own package management system but at the
 moment we leverage off of the FreeBSD ports system.  You should maintain
 /usr/ports from the FreeBSD cvs repository via cvsup just like you do now.
 
-DragonFly has its own 'port overrides' hierarchy in /usr/dports.  You can
+DragonFly has its own 'port overrides' hierarchy in /usr/dfports.  You can
 check this out of the DragonFly cvs repository using:
 
 cd /usr
-cvs -R -d /cvs checkout dports
+cvs -R -d /cvs checkout dfports
 
 You may wish to use a consolidated distfiles directory, in which case you
-should make /usr/dports/distfiles a softlink to your existing distfiles
+should make /usr/dfports/distfiles a softlink to your existing distfiles
 directory (typically /usr/ports/distfiles).
 
 Be sure that you have installed 'relpath' from the DragonFly sources
