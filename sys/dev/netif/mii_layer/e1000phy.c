@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mii/e1000phy.c,v 1.1.2.2 2002/11/08 21:53:49 semenu Exp $ */
-/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/mii_layer/e1000phy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $ */
 /*
  * Principal Author: Parag Patel
  * Copyright (c) 2001
@@ -148,12 +148,12 @@ e1000phy_attach(device_t dev)
 
 	device_printf(dev, " ");
 	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, IFM_FDX, sc->mii_inst),
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
 				E1000_CR_SPEED_1000 | E1000_CR_FULL_DUPLEX);
 		PRINT("1000baseTX-FDX");
 		/*
 		TODO - apparently 1000BT-simplex not supported?
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, 0, sc->mii_inst),
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 				E1000_CR_SPEED_1000);
 		PRINT("1000baseTX");
 		*/
@@ -295,7 +295,7 @@ e1000phy_service(struct mii_softc *sc, struct mii_data *mii, int cmd)
 			PHY_WRITE(sc, E1000_AR, E1000_FA_1000X_FD);
 			break;
 
-		case IFM_1000_TX:
+		case IFM_1000_T:
 			if (sc->mii_flags & MIIF_DOINGAUTO)
 				return (0);
 
@@ -432,7 +432,7 @@ e1000phy_status(struct mii_softc *sc)
 
 	if ((sc->mii_flags & MIIF_HAVEFIBER) == 0) {
 		if (ssr & E1000_SSR_1000MBS)
-			mii->mii_media_active |= IFM_1000_TX;
+			mii->mii_media_active |= IFM_1000_T;
 		else if (ssr & E1000_SSR_100MBS)
 			mii->mii_media_active |= IFM_100_TX;
 		else

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
  */
@@ -190,10 +190,10 @@ brgphy_attach(dev)
 	if (sc->mii_capabilities & BMSR_MEDIAMASK)
 		mii_add_media(mii, (sc->mii_capabilities & ~BMSR_ANEG),
 		    sc->mii_inst);
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, 0, sc->mii_inst),
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 	    BRGPHY_BMCR_FDX);
 	PRINT(", 1000baseTX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, IFM_FDX, sc->mii_inst), 0);
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst), 0);
 	PRINT("1000baseTX-FDX");
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_AUTO, 0, sc->mii_inst), 0);
 	PRINT("auto");
@@ -269,7 +269,7 @@ brgphy_service(sc, mii, cmd)
 #endif
 			(void) brgphy_mii_phy_auto(sc);
 			break;
-		case IFM_1000_TX:
+		case IFM_1000_T:
 			speed = BRGPHY_S1000;
 			goto setit;
 		case IFM_100_TX:
@@ -290,7 +290,7 @@ setit:
 			PHY_WRITE(sc, BRGPHY_MII_BMCR, speed);
 			PHY_WRITE(sc, BRGPHY_MII_ANAR, BRGPHY_SEL_TYPE);
 
-			if (IFM_SUBTYPE(ife->ifm_media) != IFM_1000_TX)
+			if (IFM_SUBTYPE(ife->ifm_media) != IFM_1000_T)
 				break;
 
 			PHY_WRITE(sc, BRGPHY_MII_1000CTL, gig);
@@ -418,10 +418,10 @@ brgphy_status(sc)
 		switch (PHY_READ(sc, BRGPHY_MII_AUXSTS) &
 		    BRGPHY_AUXSTS_AN_RES) {
 		case BRGPHY_RES_1000FD:
-			mii->mii_media_active |= IFM_1000_TX | IFM_FDX;
+			mii->mii_media_active |= IFM_1000_T | IFM_FDX;
 			break;
 		case BRGPHY_RES_1000HD:
-			mii->mii_media_active |= IFM_1000_TX | IFM_HDX;
+			mii->mii_media_active |= IFM_1000_T | IFM_HDX;
 			break;
 		case BRGPHY_RES_100FD:
 			mii->mii_media_active |= IFM_100_TX | IFM_FDX;

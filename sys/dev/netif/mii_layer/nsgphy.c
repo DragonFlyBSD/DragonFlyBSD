@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/nsgphy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/mii/nsgphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
  */
@@ -155,10 +155,10 @@ static int nsgphy_attach(dev)
 	mii_phy_reset(sc);
 
 	device_printf(dev, " ");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, IFM_FDX, sc->mii_inst),
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, IFM_FDX, sc->mii_inst),
 	    NSGPHY_S1000|NSGPHY_BMCR_FDX);
 	PRINT("1000baseTX-FDX");
-	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_TX, 0, sc->mii_inst),
+	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_1000_T, 0, sc->mii_inst),
 	    NSGPHY_S1000);
 	PRINT("1000baseTX");
 	sc->mii_capabilities =
@@ -246,7 +246,7 @@ nsgphy_service(sc, mii, cmd)
 #endif
 			(void) nsgphy_mii_phy_auto(sc, 0);
 			break;
-		case IFM_1000_TX:
+		case IFM_1000_T:
 			if ((ife->ifm_media & IFM_GMASK) == IFM_FDX) {
 				PHY_WRITE(sc, NSGPHY_MII_BMCR,
 				    NSGPHY_BMCR_FDX|NSGPHY_BMCR_SPD1);
@@ -374,9 +374,9 @@ nsgphy_status(sc)
 		anlpar = PHY_READ(sc, NSGPHY_MII_ANLPAR);
 		gstat = PHY_READ(sc, NSGPHY_MII_1000STS);
 		if (gstat & NSGPHY_1000STS_LPFD)
-			mii->mii_media_active |= IFM_1000_TX|IFM_FDX;
+			mii->mii_media_active |= IFM_1000_T | IFM_FDX;
 		else if (gstat & NSGPHY_1000STS_LPHD)
-			mii->mii_media_active |= IFM_1000_TX|IFM_HDX;
+			mii->mii_media_active |= IFM_1000_T | IFM_HDX;
 		else if (anlpar & NSGPHY_ANLPAR_100T4)
 			mii->mii_media_active |= IFM_100_T4;
 		else if (anlpar & NSGPHY_ANLPAR_100FDX)
@@ -394,7 +394,7 @@ nsgphy_status(sc)
 
 	switch(bmcr & (NSGPHY_BMCR_SPD1|NSGPHY_BMCR_SPD0)) {
 	case NSGPHY_S1000:
-		mii->mii_media_active |= IFM_1000_TX;
+		mii->mii_media_active |= IFM_1000_T;
 		break;
 	case NSGPHY_S100:
 		mii->mii_media_active |= IFM_100_TX;

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.7 2004/07/29 20:34:29 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.8 2005/02/14 16:21:34 joerg Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -137,8 +137,8 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define IFM_1000_SX	14		/* 1000BaseSX Multi-mode Fiber */
 #define IFM_1000_LX	15		/* 1000BaseLX Single-mode Fiber */
 #define IFM_1000_CX	16		/* 1000BaseCX 150ohm STP */
-#define IFM_1000_TX	17		/* 1000BaseTX 4 pair cat 5 */
-#define IFM_homePNA	18		/* HomePNA media for ethernet frames */
+#define IFM_1000_T	17		/* 1000BaseTX 4 pair cat 5 */
+#define IFM_HPNA_1	18		/* HomePNA media for ethernet frames */
 /* note 31 is the max! */
 
 /*
@@ -294,8 +294,8 @@ struct ifmedia_description {
 	{ IFM_1000_SX,	"1000baseSX" },					\
 	{ IFM_1000_LX,	"1000baseLX" },					\
 	{ IFM_1000_CX,	"1000baseCX" },					\
-	{ IFM_1000_TX,	"1000baseTX" },					\
-	{ IFM_homePNA,	"homePNA" },					\
+	{ IFM_1000_T,	"1000baseT" },					\
+	{ IFM_HPNA_1,	"homePNA" },					\
 	{ 0, NULL },							\
 }
 

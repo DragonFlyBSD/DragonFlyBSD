@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.25 2005/01/23 20:21:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.26 2005/02/14 16:21:34 joerg Exp $
  *
  */
 
@@ -610,7 +610,7 @@ bge_miibus_statchg(dev)
 	mii = device_get_softc(sc->bge_miibus);
 
 	BGE_CLRBIT(sc, BGE_MAC_MODE, BGE_MACMODE_PORTMODE);
-	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_TX) {
+	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T) {
 		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_GMII);
 	} else {
 		BGE_SETBIT(sc, BGE_MAC_MODE, BGE_PORTMODE_MII);
@@ -2356,7 +2356,7 @@ bge_tick(xsc)
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 			sc->bge_link++;
-			if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_TX ||
+			if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
 			    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX)
 				printf("bge%d: gigabit link up\n",
 				   sc->bge_unit);

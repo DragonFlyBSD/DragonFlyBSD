@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.26 2005/02/05 23:23:25 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.27 2005/02/14 16:21:34 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -997,7 +997,7 @@ em_media_status(struct ifnet *ifp, struct ifmediareq *ifmr)
 			ifmr->ifm_active |= IFM_100_TX;
 			break;
 		case 1000:
-			ifmr->ifm_active |= IFM_1000_TX;
+			ifmr->ifm_active |= IFM_1000_T;
 			break;
 		}
 		if (adapter->link_duplex == FULL_DUPLEX)
@@ -1032,7 +1032,7 @@ em_media_change(struct ifnet *ifp)
 		adapter->hw.autoneg_advertised = AUTONEG_ADV_DEFAULT;
 		break;
 	case IFM_1000_SX:
-	case IFM_1000_TX:
+	case IFM_1000_T:
 		adapter->hw.autoneg = DO_AUTO_NEG;
 		adapter->hw.autoneg_advertised = ADVERTISE_1000_FULL;
 		break;
@@ -1677,9 +1677,9 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 			    0, NULL);
 		ifmedia_add(&adapter->media, IFM_ETHER | IFM_100_TX | IFM_FDX, 
 			    0, NULL);
-		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_TX | IFM_FDX, 
+		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_T | IFM_FDX, 
 			    0, NULL);
-		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_TX, 0, NULL);
+		ifmedia_add(&adapter->media, IFM_ETHER | IFM_1000_T, 0, NULL);
 	}
 	ifmedia_add(&adapter->media, IFM_ETHER | IFM_AUTO, 0, NULL);
 	ifmedia_set(&adapter->media, IFM_ETHER | IFM_AUTO);

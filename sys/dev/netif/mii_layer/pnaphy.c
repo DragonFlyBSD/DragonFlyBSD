@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.5 2004/09/18 19:32:59 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
  */
@@ -143,7 +143,7 @@ pnaphy_attach(dev)
 	if ((sc->mii_capabilities & BMSR_MEDIAMASK) == 0)
 		printf("no media present");
 	else {
-		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_homePNA, 0, sc->mii_inst), 0);
+		ADD(IFM_MAKEWORD(IFM_ETHER, IFM_HPNA_1, 0, sc->mii_inst), 0);
 		PRINT("HomePNA");
 	}
 	ADD(IFM_MAKEWORD(IFM_ETHER, IFM_NONE, 0, sc->mii_inst),
@@ -270,7 +270,7 @@ pnaphy_service(sc, mii, cmd)
 	/* Update the media status. */
 	ukphy_status(sc);
 	if (IFM_SUBTYPE(mii->mii_media_active) == IFM_10_T)
-		mii->mii_media_active = IFM_ETHER|IFM_homePNA;
+		mii->mii_media_active = IFM_ETHER | IFM_HPNA_1;
 
 	/* Callback if something changed. */
 	if (sc->mii_active != mii->mii_media_active || cmd == MII_MEDIACHG) {

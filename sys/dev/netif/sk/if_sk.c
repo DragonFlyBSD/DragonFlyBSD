@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.23 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.24 2005/02/14 16:21:34 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -1708,7 +1708,7 @@ static int skc_attach(dev)
 		sc->sk_pmd = IFM_1000_CX;
 		break;
 	case SK_PMD_1000BASETX:
-		sc->sk_pmd = IFM_1000_TX;
+		sc->sk_pmd = IFM_1000_T;
 		break;
 	default:
 		printf("skc%d: unknown media type: 0x%x\n",
@@ -2446,7 +2446,7 @@ static void sk_init_yukon(sc_if)
 		break;
 
 	case IFM_1000_CX:
-	case IFM_1000_TX:
+	case IFM_1000_T:
 		phy |= SK_GPHY_COPPER;
 		break;
 	}

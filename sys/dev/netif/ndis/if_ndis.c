@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.2 2004/09/14 23:57:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.3 2005/02/14 16:21:34 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1403,7 +1403,7 @@ ndis_ifmedia_sts(ifp, ifmr)
 		ifmr->ifm_active |= IFM_100_TX;
 		break;
 	case 10000000:
-		ifmr->ifm_active |= IFM_1000_TX;
+		ifmr->ifm_active |= IFM_1000_T;
 		break;
 	default:
 		device_printf(sc->ndis_dev, "unknown speed: %d\n", media_info);

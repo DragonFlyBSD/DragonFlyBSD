@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.16 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.17 2005/02/14 16:21:34 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -654,7 +654,7 @@ static void nge_miibus_statchg(dev)
 		}
 
 		/* If we have a 1000Mbps link, set the mode_1000 bit. */
-		if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_TX ||
+		if (IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_T ||
 		    IFM_SUBTYPE(mii->mii_media_active) == IFM_1000_SX) {
 			NGE_SETBIT(sc, NGE_CFG, NGE_CFG_MODE_1000);
 		} else {
@@ -1562,7 +1562,7 @@ static void nge_tick(xsc)
 			    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
 				sc->nge_link++;
 				if (IFM_SUBTYPE(mii->mii_media_active) 
-				    == IFM_1000_TX)
+				    == IFM_1000_T)
 					printf("nge%d: gigabit link up\n",
 					    sc->nge_unit);
 				if (ifp->if_snd.ifq_head != NULL)
