@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.36 2004/07/09 14:00:34 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.37 2004/07/09 14:53:27 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -98,7 +98,7 @@ based off of recent DragonFly releases.
 
 <TR BGCOLOR="#EEEEEE"><TD>BSDTech.com</TD>
 <TD>RC2 image</TD>
-<TD><A HREF="ftp://dragon.bsdtech.com/mirror/ftp.dragonflybsd.org/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
+<TD><A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
 
 <TR><TD>AllBSD.org</TD>
 <TD>RC2 image</TD>
