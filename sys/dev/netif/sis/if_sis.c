@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.18 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.19 2005/02/14 17:38:30 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -70,6 +70,7 @@
 #include <sys/sysctl.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1280,7 +1281,8 @@ sis_attach(device_t dev)
 	ifp->if_watchdog = sis_watchdog;
 	ifp->if_init = sis_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = SIS_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, SIS_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 #ifdef DEVICE_POLLING
 	ifp->if_capabilities |= IFCAP_POLLING;
 #endif
@@ -1648,8 +1650,8 @@ sis_tick(void *xsc)
 		if (mii->mii_media_status & IFM_ACTIVE &&
 		    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE)
 			sc->sis_link++;
-			if (ifp->if_snd.ifq_head != NULL)
-				sis_start(ifp);
+		if (!ifq_is_empty(&ifp->if_snd))
+			sis_start(ifp);
 	}
 
 	callout_reset(&sc->sis_timer, hz, sis_tick, sc);
@@ -1684,7 +1686,7 @@ sis_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	sc->rxcycles = count;
 	sis_rxeof(sc);
 	sis_txeof(sc);
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		sis_start(ifp);
 
 	if (sc->rxcycles > 0 || cmd == POLL_AND_CHECK_STATUS) {
@@ -1768,7 +1770,7 @@ sis_intr(void *arg)
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, SIS_IER, 1);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		sis_start(ifp);
 }
 
@@ -1855,15 +1857,15 @@ sis_start(struct ifnet *ifp)
 		return;
 
 	while(sc->sis_ldata.sis_tx_list[idx].sis_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
 		if (sis_encap(sc, m_head, &idx)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+		m_head = ifq_dequeue(&ifp->if_snd);
 
 		/*
 		 * If there's a BPF listener, bounce a copy of this frame
@@ -2150,7 +2152,7 @@ sis_watchdog(struct ifnet *ifp)
 	sis_reset(sc);
 	sis_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		sis_start(ifp);
 }
 
