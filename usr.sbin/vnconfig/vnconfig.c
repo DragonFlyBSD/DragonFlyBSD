@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.4 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.5 2004/03/10 17:54:16 dillon Exp $
  */
 
 #include <ctype.h>
@@ -104,10 +104,9 @@ static void do_autolabel(const char *dev, const char *label);
 int what_opt(char *, u_long *);
 
 int
-main(argc, argv)
-	char **argv;
+main(int argc, char *argv[])
 {
-	register int i, rv;
+	int i, rv;
 	int flags = 0;
 	int size = 0;
 	char *autolabel = NULL;
@@ -229,9 +228,7 @@ main(argc, argv)
 }
 
 int
-what_opt(str,p)
-	char *str;
-	u_long *p;
+what_opt(char *str, u_long *p)
 {
 	if (!strcmp(str,"reserve")) { *p |= VN_RESERVE; return 0; }
 	if (!strcmp(str,"labels")) { *p |= VN_LABELS; return 0; }
@@ -244,13 +241,12 @@ what_opt(str,p)
 }
 
 int
-config(vnp)
-	struct vndisk *vnp;
+config(struct vndisk *vnp)
 {
 	char *dev, *file, *oarg;
 	int flags, status;
 	struct vn_ioctl vnio;
-	register int rv;
+	int rv;
 	char *rdev;
 	FILE *f;
 	u_long l;
@@ -482,13 +478,12 @@ config(vnp)
 #define WHITE(c)	((c) == ' ' || (c) == '\t' || (c) == '\n')
 
 void
-readconfig(flags)
-	int flags;
+readconfig(int flags)
 {
 	char buf[LINESIZE];
 	FILE *f;
-	register char *cp, *sp;
-	register int ix;
+	char *cp, *sp;
+	int ix;
 	int ax;
 
 	f = fopen(configfile, "r");
@@ -550,9 +545,7 @@ readconfig(flags)
 }
 
 void
-getoptions(vnp, fstr)
-	struct vndisk *vnp;
-	char *fstr;
+getoptions(struct vndisk *vnp, char *fstr)
 {
 	int flags = 0;
 	char *oarg = NULL;
@@ -579,10 +572,9 @@ getoptions(vnp, fstr)
 }
 
 char *
-rawdevice(dev)
-	char *dev;
+rawdevice(char *dev)
 {
-	register char *rawbuf, *dp, *ep;
+	char *rawbuf, *dp, *ep;
 	struct stat sb;
 	int len;
 
