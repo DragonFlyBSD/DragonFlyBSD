@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.3 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.4 2003/06/30 19:50:31 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -111,12 +111,23 @@
 
 #define	NR_INTRNAMES	(1 + ICU_LEN + 2 * ICU_LEN)
 
-u_long	*intr_countp[ICU_LEN];
-inthand2_t *intr_handler[ICU_LEN];
-u_int	intr_mask[ICU_LEN];
-int	intr_mihandler_installed[ICU_LEN];
-static u_int*	intr_mptr[ICU_LEN];
-void	*intr_unit[ICU_LEN];
+static inthand2_t isa_strayintr;
+
+u_long	*intr_countp[ICU_LEN*2];
+inthand2_t *intr_handler[ICU_LEN*2] = {
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+	isa_strayintr, isa_strayintr, isa_strayintr, isa_strayintr,
+};
+u_int	intr_mask[ICU_LEN*2];
+int	intr_mihandler_installed[ICU_LEN*2];
+static u_int*	intr_mptr[ICU_LEN*2];
+void	*intr_unit[ICU_LEN*2];
 
 static inthand_t *fastintr[ICU_LEN] = {
 	&IDTVEC(fastintr0), &IDTVEC(fastintr1),
@@ -166,8 +177,6 @@ static inthand_t *slowintr[ICU_LEN] = {
 	&IDTVEC(intr20), &IDTVEC(intr21), &IDTVEC(intr22), &IDTVEC(intr23),
 #endif /* APIC_IO */
 };
-
-static inthand2_t isa_strayintr;
 
 #ifdef PC98
 #define NMI_PARITY 0x04
@@ -318,8 +327,7 @@ isa_defaultirq()
  * Caught a stray interrupt, notify
  */
 static void
-isa_strayintr(vcookiep)
-	void *vcookiep;
+isa_strayintr(void *vcookiep)
 {
 	int intr = (void **)vcookiep - &intr_unit[0];
 
@@ -340,6 +348,7 @@ isa_strayintr(vcookiep)
 	 * must be done before sending an EOI so it can't be done if
 	 * we are using AUTO_EOI_1.
 	 */
+	printf("STRAY %d\n", intr);
 	if (intrcnt[1 + intr] <= 5)
 		log(LOG_ERR, "stray irq %d\n", intr);
 	if (intrcnt[1 + intr] == 5)
@@ -906,12 +915,6 @@ inthand_remove(intrec *idesc)
 	return (0);
 }
 
-void
-call_fast_unpend(int irq)
-{
-	fastunpend[irq]();
-}
-
 /*
  * ithread_done()
  *
@@ -919,7 +922,10 @@ call_fast_unpend(int irq)
  *	processing a loop.  We interlock with ipending and irunning.  If
  *	a new interrupt is pending for the thread the function clears the
  *	pending bit and returns.  If no new interrupt is pending we 
- *	deschedule and sleep.
+ *	deschedule and sleep.  If we reschedule and return we have to 
+ *	disable the interrupt again or it will keep interrupting us.
+ *
+ *	See kern/kern_intr.c for more information.
  */
 void
 ithread_done(int irq)
@@ -927,21 +933,22 @@ ithread_done(int irq)
     struct mdglobaldata *gd = mdcpu;
     int mask = 1 << irq;
 
-    crit_enter();
+    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     INTREN(mask);
     if (gd->gd_ipending & mask) {
 	atomic_clear_int(&gd->gd_ipending, mask);
+	INTRDIS(mask);
 	lwkt_schedule_self();
     } else {
 	lwkt_deschedule_self();
 	if (gd->gd_ipending & mask) {	/* race */
 	    atomic_clear_int(&gd->gd_ipending, mask);
+	    INTRDIS(mask);
 	    lwkt_schedule_self();
 	} else {
 	    atomic_clear_int(&gd->gd_irunning, mask);
 	    lwkt_switch();
 	}
     }
-    crit_exit();
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)spec_vnops.c	8.14 (Berkeley) 5/21/95
  * $FreeBSD: src/sys/miscfs/specfs/spec_vnops.c,v 1.131.2.4 2001/02/26 04:23:20 jlemon Exp $
- * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.7 2003/06/26 05:55:16 dillon Exp $
+ * $DragonFly: src/sys/vfs/specfs/spec_vnops.c,v 1.8 2003/06/30 19:50:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -722,8 +722,9 @@ spec_getpages(ap)
 	s = splbio();
 
 	/* We definitely need to be at splbio here. */
-	while ((bp->b_flags & B_DONE) == 0)
+	while ((bp->b_flags & B_DONE) == 0) {
 		tsleep(bp, PVM, "spread", 0);
+	}
 
 	splx(s);
 

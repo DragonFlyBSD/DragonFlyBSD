@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.8 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.9 2003/06/30 19:50:32 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -241,6 +241,7 @@ vm_fork(p1, p2, flags)
 
 	td2 = lwkt_alloc_thread(NULL);
 	pmap_init_proc(p2, td2);
+	lwkt_setpri(td2, TDPRI_KERN_USER);
 
 	up = p2->p_addr;
 
@@ -466,18 +467,18 @@ retry:
 				continue;
 
 			/*
-			 * Do not swapout a process waiting on a critical
-			 * event of some kind.  Also guarantee swap_idle_threshold1
-			 * time in memory.
+			 * YYY do not swapout a proc waiting on a critical
+			 * event.
+			 *
+			 * Guarentee swap_idle_threshold time in memory
 			 */
-			if (((p->p_priority & 0x7f) < PSOCK) ||
-				(p->p_slptime < swap_idle_threshold1))
+			if (p->p_slptime < swap_idle_threshold1)
 				continue;
 
 			/*
-			 * If the system is under memory stress, or if we are swapping
-			 * idle processes >= swap_idle_threshold2, then swap the process
-			 * out.
+			 * If the system is under memory stress, or if we
+			 * are swapping idle processes >= swap_idle_threshold2,
+			 * then swap the process out.
 			 */
 			if (((action & VM_SWAP_NORMAL) == 0) &&
 				(((action & VM_SWAP_IDLE) == 0) ||

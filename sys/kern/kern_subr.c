@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.5 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -419,17 +419,3 @@ phashinit(elements, type, nentries)
 	return (hashtbl);
 }
 
-void
-uio_yield()
-{
-	struct proc *p;
-	int s;
-
-	p = curproc;
-	s = splhigh();
-	p->p_priority = p->p_usrpri;
-	setrunqueue(p);
-	p->p_stats->p_ru.ru_nivcsw++;
-	mi_switch();
-	splx(s);
-}

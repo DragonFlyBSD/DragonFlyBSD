@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.16 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.17 2003/06/30 19:50:30 dillon Exp $
  */
 
 #include "npx.h"
@@ -249,6 +249,7 @@ ENTRY(cpu_exit_switch)
  *
  *	YYY note: spl check is done in mi_switch when it splx()'s.
  */
+
 ENTRY(cpu_heavy_restore)
 	/* interrupts are disabled */
 	movl	TD_PCB(%eax),%edx
@@ -425,18 +426,6 @@ cpu_switch_load_gs:
 	popl	%ebx
 	movl    %eax,%dr7
 1:
-#if 0
-	/*
-	 * Remove the heavy weight process from the heavy weight queue.
-	 * this will also have the side effect of removing the thread from
-	 * the run queue.  YYY temporary?
-	 *
-	 * LWKT threads stay on the run queue until explicitly removed.
-	 */
-	pushl	%ecx
-	call	remrunqueue
-	addl	$4,%esp
-#endif
 
 	sti			/* XXX */
 	ret
@@ -555,10 +544,14 @@ ENTRY(cpu_idle_restore)
  *	don't die.  This restore function is used to bootstrap into an
  *	LWKT based kernel thread only.  cpu_lwkt_switch() will be used
  *	after this.
+ *
+ *	Since all of our context is on the stack we are reentrant and
+ *	we can release our critical section and enable interrupts early.
  */
 ENTRY(cpu_kthread_restore)
 	movl	TD_PCB(%eax),%ebx
 	movl	$0,%ebp
+	subl	$TDPRI_CRIT,TD_PRI(%eax)
 	sti
 	popl	%edx		/* kthread exit function */
 	pushl	PCB_EBX(%ebx)	/* argument to ESI function */
@@ -571,6 +564,9 @@ ENTRY(cpu_kthread_restore)
  *
  *	Standard LWKT switching function.  Only non-scratch registers are
  *	saved and we don't bother with the MMU state or anything else.
+ *
+ *	This function is always called while in a critical section.
+ *
  *	YYY BGL, SPL
  */
 ENTRY(cpu_lwkt_switch)
@@ -589,8 +585,14 @@ ENTRY(cpu_lwkt_switch)
 	ret
 
 /*
- * cpu_idle_restore()	(current thread in %eax on entry)
+ * cpu_lwkt_restore()	(current thread in %eax on entry)
  *
+ *	Standard LWKT restore function.  This function is always called
+ *	while in a critical section.
+ *	
+ *	Warning: due to preemption the restore function can be used to 
+ *	'return' to the original thread.  Interrupt disablement must be
+ *	protected through the switch so we cannot run splz here.
  */
 ENTRY(cpu_lwkt_restore)
 	popfl
@@ -598,14 +600,5 @@ ENTRY(cpu_lwkt_restore)
 	popl	%esi
 	popl	%ebx
 	popl	%ebp
-	cmpl	$0,_intr_nesting_level		/* don't stack too deeply */
-	jne	2f
-	testl	_ipending,%ecx
-	jnz	1f
-	testl	_fpending,%ecx
-	jz	2f
-1:
-	call	splz				/* execute unmasked ints */
-2:
 	ret
 

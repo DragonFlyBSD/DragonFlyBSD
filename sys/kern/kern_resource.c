@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.6 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.7 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -275,10 +275,7 @@ rtprio(register struct rtprio_args *uap)
  * that other processes need (and the idleprio process can't run
  * due to a CPU-bound normal process). Fix me! XXX
  */
-#if 0
  			if (RTP_PRIO_IS_REALTIME(rtp.type))
-#endif
-			if (rtp.type != RTP_PRIO_NORMAL)
 				return (EPERM);
 		}
 		switch (rtp.type) {

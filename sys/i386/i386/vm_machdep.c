@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.14 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.15 2003/06/30 19:50:30 dillon Exp $
  */
 
 #include "npx.h"
@@ -608,7 +608,7 @@ vm_page_zero_idle()
 	return (0);
 }
 
-void
+static void
 swi_vm(void *arg)
 {
 	if (busdma_swi_pending != 0)

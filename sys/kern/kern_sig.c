@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.7 2003/06/27 01:53:25 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.8 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1076,7 +1076,7 @@ psignal(p, sig)
 		 */
 		if (prop & SA_STOP) {
 			if (action != SIG_DFL)
-				goto runfast;
+				goto run;
 			/*
 			 * If a child holding parent blocked,
 			 * stopping could cause deadlock.
@@ -1090,7 +1090,7 @@ psignal(p, sig)
 			stop(p);
 			goto out;
 		} else
-			goto runfast;
+			goto run;
 		/*NOTREACHED*/
 
 	case SSTOP:
@@ -1105,7 +1105,7 @@ psignal(p, sig)
 		 * Kill signal always sets processes running.
 		 */
 		if (sig == SIGKILL)
-			goto runfast;
+			goto run;
 
 		if (prop & SA_CONT) {
 			/*
@@ -1121,10 +1121,10 @@ psignal(p, sig)
 			if (action == SIG_DFL)
 				SIGDELSET(p->p_siglist, sig);
 			if (action == SIG_CATCH)
-				goto runfast;
+				goto run;
 			if (p->p_wchan == 0)
 				goto run;
-			p->p_stat = SSLEEP;
+			clrrunnable(p, SSLEEP);
 			goto out;
 		}
 
@@ -1162,13 +1162,6 @@ psignal(p, sig)
 		goto out;
 	}
 	/*NOTREACHED*/
-
-runfast:
-	/*
-	 * Raise priority to at least PUSER.
-	 */
-	if (p->p_priority > PUSER)
-		p->p_priority = PUSER;
 run:
 	setrunnable(p);
 out:
@@ -1225,8 +1218,7 @@ issignal(p)
 			do {
 				stop(p);
 				mi_switch();
-			} while (!trace_req(p)
-				 && p->p_flag & P_TRACED);
+			} while (!trace_req(p) && p->p_flag & P_TRACED);
 
 			/*
 			 * If parent wants us to take the signal,

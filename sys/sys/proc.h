@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.18 2003/06/28 02:36:44 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.19 2003/06/30 19:50:32 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -203,8 +203,7 @@ struct	proc {
 
 	sigset_t p_sigmask;	/* Current signal mask. */
 	stack_t	p_sigstk;	/* sp & on stack state variable */
-	u_char	p_priority;	/* Process priority. */
-	u_char	p_usrpri;	/* User-priority based on p_cpu and p_nice. */
+	u_char	p_priority;	/* Tracks user sched queue */
 	char	p_nice;		/* Process "nice" value. */
 	char	p_comm[MAXCOMLEN+1];
 
@@ -256,7 +255,7 @@ struct	proc {
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
-#define	P_UNUSED00400	0x00400	/* (was Timing out during sleep.) */
+#define	P_CURPROC	0x00400	/* 'Current process' on this cpu */
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
 #define	P_WAITED	0x01000	/* Debugging process has waited for child. */
 #define	P_WEXIT		0x02000	/* Working on exiting. */
@@ -273,7 +272,7 @@ struct	proc {
 #define	P_SWAPINREQ	0x80000	/* Swapin request due to wakeup */
 
 /* Marked a kernel thread */
-#define	P_UNUSED100000	0x100000
+#define	P_ONRUNQ	0x100000 /* LWKT scheduled (== not on user sched q) */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
 #define P_XSLEEP	0x400000 /* process sitting on xwait_t structure */
 
@@ -400,11 +399,13 @@ int	inferior __P((struct proc *p));
 int	leavepgrp __P((struct proc *p));
 void	mi_switch __P((void));
 void	procinit __P((void));
+void	relscurproc(struct proc *curp);
 int	p_trespass __P((struct ucred *cr1, struct ucred *cr2));
 void	resetpriority __P((struct proc *));
 int	roundrobin_interval __P((void));
 void	schedclock __P((struct proc *));
 void	setrunnable __P((struct proc *));
+void	clrrunnable __P((struct proc *, int stat));
 void	setrunqueue __P((struct proc *));
 void	sleepinit __P((void));
 int	suser __P((struct thread *td));

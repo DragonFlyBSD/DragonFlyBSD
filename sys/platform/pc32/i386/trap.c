@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.11 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.12 2003/06/30 19:50:30 dillon Exp $
  */
 
 /*
@@ -144,9 +144,6 @@ static char *trap_msg[] = {
 	"machine check trap",			/* 28 T_MCHK */
 };
 
-static __inline int userret __P((struct proc *p, struct trapframe *frame,
-				  u_quad_t oticks, int have_mplock));
-
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 extern int has_f00f_bug;
 #endif
@@ -160,46 +157,105 @@ static int panic_on_nmi = 1;
 SYSCTL_INT(_machdep, OID_AUTO, panic_on_nmi, CTLFLAG_RW,
 	&panic_on_nmi, 0, "Panic on NMI");
 
-static __inline int
-userret(p, frame, oticks, have_mplock)
-	struct proc *p;
-	struct trapframe *frame;
-	u_quad_t oticks;
-	int have_mplock;
+/*
+ * USER->KERNEL transition.  Do not transition us out of userland from the
+ * point of view of the userland scheduler unless we actually have to
+ * switch.
+ *
+ * usertdsw is called from within a critical section.
+ */
+static void
+usertdsw(struct thread *ntd)
+{
+	struct thread *td = curthread;
+
+	td->td_switch = cpu_heavy_switch;
+	lwkt_setpri_self(TDPRI_KERN_USER);
+#if 0
+	/* 
+	 * This is where we might want to catch the P_CURPROC designation
+	 * and fix it for *any* switchout rather then just an mi_switch()
+	 * switchout (move from mi_switch()?) YYY
+	 */
+	if (p->p_flag & P_CURPROC) {
+		...
+	}
+#endif
+	td->td_switch(ntd);
+}
+
+/*
+ * Note that userenter() may be re-entered several times due to AST
+ * processing.
+ */
+static __inline void
+userenter(void)
+{
+	struct thread *td = curthread;
+
+	KKASSERT(td->td_switch == cpu_heavy_switch ||
+		td->td_switch == usertdsw);
+	td->td_switch = usertdsw;
+}
+
+static int
+userret(struct proc *p, struct trapframe *frame,
+	u_quad_t oticks, int have_mplock)
 {
 	int sig, s;
-	struct thread *td;
+	struct thread *td = curthread;
 
+	/*
+	 * Post any pending signals
+	 */
+	crit_enter();
 	while ((sig = CURSIG(p)) != 0) {
 		if (have_mplock == 0) {
 			get_mplock();
 			have_mplock = 1;
 		}
+		crit_exit();
 		postsig(sig);
+		crit_enter();
 	}
 
-	p->p_priority = p->p_usrpri;
+	/*
+	 * Set our priority properly and restore our switch function
+	 */
+	if (td->td_switch == cpu_heavy_switch) {
+		switch(p->p_rtprio.type) {
+		case RTP_PRIO_IDLE:
+			lwkt_setpri_self(TDPRI_USER_IDLE);
+			break;
+		case RTP_PRIO_REALTIME:
+		case RTP_PRIO_FIFO:
+			lwkt_setpri_self(TDPRI_USER_REAL);
+			break;
+		default:
+			lwkt_setpri_self(TDPRI_USER_NORM);
+			break;
+		}
+	} else {
+		KKASSERT(td->td_switch == usertdsw);
+		td->td_switch = cpu_heavy_switch;
+	}
+	crit_exit();
+
+	/*
+	 * If a reschedule has been requested we call chooseproc() to locate
+	 * the next runnable process.  When we wakeup from that we check
+	 * for pending signals again.
+	 */
 	if (resched_wanted()) {
-		/*
-		 * Since we are curproc, clock will normally just change
-		 * our priority without moving us from one queue to another
-		 * (since the running process is not on a queue.)
-		 * If that happened after we setrunqueue ourselves but before we
-		 * mi_switch()'ed, we might not be on the queue indicated by
-		 * our priority.
-		 */
+		uio_yield();
 		if (have_mplock == 0) {
 			get_mplock();
 			have_mplock = 1;
 		}
-		s = splhigh();
-		setrunqueue(p);
-		p->p_stats->p_ru.ru_nivcsw++;
-		mi_switch();
-		splx(s);
 		while ((sig = CURSIG(p)) != 0)
 			postsig(sig);
 	}
+
 	/*
 	 * Charge system time if profiling.
 	 */
@@ -208,11 +264,24 @@ userret(p, frame, oticks, have_mplock)
 			get_mplock();
 			have_mplock = 1;
 		}
-		td = curthread;
 		addupc_task(p, frame->tf_eip, 
-		    (u_int)(td->td_sticks - oticks) * psratio);
+		    (u_int)(curthread->td_sticks - oticks) * psratio);
 	}
-	curpriority = p->p_priority;
+
+	/*
+	 * In order to return to userland we need to be the designated
+	 * current (user) process on this cpu, aka P_CURPROC.  The
+	 * setrunqueue() call could make us the current process.
+	 */
+	s = splhigh();
+	while ((p->p_flag & P_CURPROC) == 0) {
+		p->p_stats->p_ru.ru_nivcsw++;
+		lwkt_deschedule_self();
+		mi_switch();
+	}
+	splx(s);
+	KKASSERT(mycpu->gd_uprocscheduled == 1);
+
 	return(have_mplock);
 }
 
@@ -324,6 +393,8 @@ restart:
 
         if ((ISPL(frame.tf_cs) == SEL_UPL) || (frame.tf_eflags & PSL_VM)) {
 		/* user trap */
+
+		userenter();
 
 		sticks = curthread->td_sticks;
 		p->p_md.md_regs = &frame;
@@ -1097,9 +1168,11 @@ syscall2(frame)
 
 	/*
 	 * access non-atomic field from critical section.  p_sticks is
-	 * updated by the clock interrupt.
+	 * updated by the clock interrupt.  Also use this opportunity
+	 * to raise our LWKT priority.
 	 */
 	crit_enter();
+	userenter();
 	sticks = curthread->td_sticks;
 	crit_exit();
 

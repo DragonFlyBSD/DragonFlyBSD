@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.3 2003/06/29 07:37:07 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.4 2003/06/30 19:50:32 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -27,7 +27,11 @@
 static __inline void
 crit_enter(void)
 {
-    curthread->td_pri += TDPRI_CRIT;
+    struct thread *td = curthread;
+
+    if (td->td_pri < 0)
+	crit_panic();
+    td->td_pri += TDPRI_CRIT;
 }
 
 static __inline void
@@ -36,7 +40,8 @@ crit_exit_noyield(void)
     thread_t td = curthread;
 
     td->td_pri -= TDPRI_CRIT;
-    KASSERT(td->td_pri >= 0, ("crit_exit nesting error"));
+    if (td->td_pri < 0)
+	crit_panic();
 }
 
 static __inline void
@@ -45,34 +50,11 @@ crit_exit(void)
     thread_t td = curthread;
 
     td->td_pri -= TDPRI_CRIT;
-    KASSERT(td->td_pri >= 0, ("crit_exit nesting error"));
+    if (td->td_pri < 0)
+	crit_panic();
     if (td->td_pri < mycpu->gd_reqpri)
 	lwkt_yield_quick();
 }
-
-#if 0
-static __inline int
-lwkt_raisepri(int pri)
-{
-    int opri = curthread->td_pri;
-    if (opri < pri)
-	curthread->td_pri = pri;
-    return(opri);
-}
-
-static __inline int
-lwkt_lowerpri(int pri)
-{
-    thread_t td = curthread;
-    int opri = td->td_pri;
-    if (opri > pri) {
-	td->td_pri = pri;
-	if (pri < mycpu->gd_reqpri)
-	    lwkt_yield_quick();
-    }
-    return(opri);
-}
-#endif
 
 static __inline int
 lwkt_havetoken(lwkt_token_t tok)

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.7 2003/06/29 03:28:42 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.8 2003/06/30 19:50:30 dillon Exp $
  */
 
 #include "npx.h"
@@ -312,13 +312,18 @@ IDTVEC(int0x80_syscall)
 	movl	$1,_intr_nesting_level
 	jmp	_doreti
 
+/*
+ * This function is what cpu_heavy_restore jumps to after a new process
+ * is created.  We are in a critical section in order to prevent
+ * cpu_heavy_restore from being interrupted (especially since it stores
+ * its context in a static place!), so the first thing we do is release
+ * the critical section.
+ */
 ENTRY(fork_trampoline)
+	movl	_curthread,%eax
+	subl	$TDPRI_CRIT,TD_PRI(%eax)
 	call	_spl0
-
-	movl	_curthread,%eax		/* YYY heavy weight process must */
-	pushl	TD_PROC(%eax)		/* YYY remove itself from runq because */
-	call	remrunqueue		/* LWKT restore func doesn't do that */
-	addl	$4,%esp
+	call	_splz
 
 	/*
 	 * cpu_set_fork_handler intercepts this function call to

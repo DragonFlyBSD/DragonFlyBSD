@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.11 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.12 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,6 +62,8 @@ static quad_t preempt_hit = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_hit, CTLFLAG_RW, &preempt_hit, 0, "");
 static quad_t preempt_miss = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_miss, CTLFLAG_RW, &preempt_miss, 0, "");
+static quad_t preempt_weird = 0;
+SYSCTL_QUAD(_lwkt, OID_AUTO, preempt_weird, CTLFLAG_RW, &preempt_weird, 0, "");
 
 /*
  * These helper procedures handle the runq, they can only be called from
@@ -92,6 +94,14 @@ _lwkt_enqueue(thread_t td)
 	td->td_flags |= TDF_RUNQ;
 	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
 	gd->gd_runqmask |= 1 << nq;
+#if 0
+	/* 
+	 * YYY needs cli/sti protection? gd_reqpri set by interrupt
+	 * when made pending.  need better mechanism.
+	 */
+	if (gd->gd_reqpri < (td->td_pri & TDPRI_MASK))
+	    gd->gd_reqpri = (td->td_pri & TDPRI_MASK);
+#endif
     }
 }
 
@@ -134,8 +144,8 @@ lwkt_alloc_thread(struct thread *td)
     void *stack;
     int flags = 0;
 
-    crit_enter();
     if (td == NULL) {
+	crit_enter();
 	if (mycpu->gd_tdfreecount > 0) {
 	    --mycpu->gd_tdfreecount;
 	    td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
@@ -156,7 +166,7 @@ lwkt_alloc_thread(struct thread *td)
 	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
 	flags |= TDF_ALLOCATED_STACK;
     }
-    lwkt_init_thread(td, stack, flags);
+    lwkt_init_thread(td, stack, flags, mycpu);
     return(td);
 }
 
@@ -167,11 +177,13 @@ lwkt_alloc_thread(struct thread *td)
  * NOTE!  called from low level boot code, we cannot do anything fancy!
  */
 void
-lwkt_init_thread(thread_t td, void *stack, int flags)
+lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 {
     bzero(td, sizeof(struct thread));
     td->td_kstack = stack;
     td->td_flags |= flags;
+    td->td_gd = gd;
+    td->td_pri = TDPRI_CRIT;
     pmap_init_thread(td);
 }
 
@@ -229,18 +241,19 @@ lwkt_switch(void)
     thread_t ntd;
 
     if (mycpu->gd_intr_nesting_level && td->td_preempted == NULL)
-	panic("lwkt_switch: cannot switch from within an interrupt\n");
+	panic("lwkt_switch: cannot switch from within an interrupt, yet\n");
 
     crit_enter();
     ++switch_count;
     if ((ntd = td->td_preempted) != NULL) {
 	/*
 	 * We had preempted another thread on this cpu, resume the preempted
-	 * thread.
+	 * thread.  This occurs transparently, whether the preempted thread
+	 * was scheduled or not (it may have been preempted after descheduling
+	 * itself).
 	 */
-	td->td_preempted = NULL;
-	td->td_pri -= TDPRI_CRIT;
-	ntd->td_flags &= ~TDF_PREEMPTED;
+	KKASSERT(ntd->td_flags & TDF_PREEMPT_LOCK);
+	ntd->td_flags |= TDF_PREEMPT_DONE;
     } else {
 	/*
 	 * Priority queue / round-robin at each priority.  Note that user
@@ -264,48 +277,69 @@ again:
 	    ntd = gd->gd_idletd;
 	}
     }
+    KASSERT(ntd->td_pri >= TDPRI_CRIT,
+	("priority problem in lwkt_switch %d %d", td->td_pri, ntd->td_pri));
     if (td != ntd)
 	td->td_switch(ntd);
     crit_exit();
 }
 
 /*
- * The target thread preempts the current thread.  The target thread
- * structure must be stable and preempt-safe (e.g. an interrupt thread).
- * When the target thread blocks the current thread will be resumed.
+ * Request that the target thread preempt the current thread.  This only
+ * works if:
  *
- * XXX the target runs in a critical section so it does not open the original
- * thread up to additional interrupts that the original thread believes it
- * is blocking.
+ *	+ We aren't trying to preempt ourselves (it can happen!)
+ *	+ We are not currently being preempted
+ *	+ the target is not currently being preempted
  *
- * Normal kernel threads should not preempt other normal kernel threads
- * as it breaks the assumptions kernel threads are allowed to make.  Note
- * that preemption does not mess around with the current thread's RUNQ
- * state.
+ * XXX at the moment we run the target thread in a critical section during
+ * the preemption in order to prevent the target from taking interrupts
+ * that *WE* can't.  Preemption is strictly limited to interrupt threads
+ * and interrupt-like threads, outside of a critical section, and the
+ * preempted source thread will be resumed the instant the target blocks
+ * whether or not the source is scheduled (i.e. preemption is supposed to
+ * be as transparent as possible).
  *
  * This call is typically made from an interrupt handler like sched_ithd()
  * which will only run if the current thread is not in a critical section,
  * so we optimize the priority check a bit.
+ *
+ * CAREFUL! either we or the target thread may get interrupted during the
+ * switch.
  */
 void
 lwkt_preempt(struct thread *ntd, int id)
 {
     struct thread *td = curthread;
 
-    crit_enter();	/* YYY token */
-    if (ntd->td_preempted == NULL && 
-	(ntd->td_pri & TDPRI_MASK) > (td->td_pri & TDPRI_MASK)
-    ) {
-	++preempt_hit;
-	ntd->td_preempted = td;
-	td->td_flags |= TDF_PREEMPTED;
-	ntd->td_pri += TDPRI_CRIT;
-	while (td->td_flags & TDF_PREEMPTED)
-	    ntd->td_switch(ntd);
-    } else {
-	++preempt_miss;
+    /*
+     * The caller has put us in a critical section, and in order to have
+     * gotten here in the first place the thread the caller interrupted
+     * cannot have been in a critical section before.
+     */
+    KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
+    KASSERT((td->td_pri & ~TDPRI_MASK) == TDPRI_CRIT, ("BADPRI %d", td->td_pri));
+
+    if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
+	++preempt_weird;
+	return;
     }
-    crit_exit_noyield();
+    if (ntd->td_preempted) {
+	++preempt_hit;
+	return;
+    }
+    if ((ntd->td_pri & TDPRI_MASK) <= (td->td_pri & TDPRI_MASK)) {
+	++preempt_miss;
+	return;
+    }
+
+    ++preempt_hit;
+    ntd->td_preempted = td;
+    td->td_flags |= TDF_PREEMPT_LOCK;
+    td->td_switch(ntd);
+    KKASSERT(ntd->td_preempted && (td->td_flags & TDF_PREEMPT_DONE));
+    ntd->td_preempted = NULL;
+    td->td_flags &= ~(TDF_PREEMPT_LOCK|TDF_PREEMPT_DONE);
 }
 
 /*
@@ -385,6 +419,8 @@ lwkt_schedule_self(void)
     crit_enter();
     KASSERT(td->td_wait == NULL, ("lwkt_schedule_self(): td_wait not NULL!"));
     _lwkt_enqueue(td);
+    if (td->td_proc && td->td_proc->p_stat == SSLEEP)
+	panic("SCHED SELF PANIC");
     crit_exit();
 }
 
@@ -404,6 +440,19 @@ lwkt_schedule_self(void)
 void
 lwkt_schedule(thread_t td)
 {
+    if ((td->td_flags & TDF_PREEMPT_LOCK) == 0 && td->td_proc 
+	&& td->td_proc->p_stat == SSLEEP
+    ) {
+	printf("PANIC schedule curtd = %p (%d %d) target %p (%d %d)\n",
+	    curthread,
+	    curthread->td_proc ? curthread->td_proc->p_pid : -1,
+	    curthread->td_proc ? curthread->td_proc->p_stat : -1,
+	    td,
+	    td->td_proc ? curthread->td_proc->p_pid : -1,
+	    td->td_proc ? curthread->td_proc->p_stat : -1
+	);
+	panic("SCHED PANIC");
+    }
     crit_enter();
     if (td == curthread) {
 	_lwkt_enqueue(td);
@@ -515,11 +564,29 @@ lwkt_deschedule(thread_t td)
  * continuous priority changes.  Yield if you want to switch.
  *
  * We have to retain the critical section count which uses the high bits
- * of the td_pri field.
+ * of the td_pri field.  The specified priority may also indicate zero or
+ * more critical sections by adding TDPRI_CRIT*N.
  */
 void
 lwkt_setpri(thread_t td, int pri)
 {
+    KKASSERT(pri >= 0);
+    crit_enter();
+    if (td->td_flags & TDF_RUNQ) {
+	_lwkt_dequeue(td);
+	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+	_lwkt_enqueue(td);
+    } else {
+	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
+    }
+    crit_exit();
+}
+
+void
+lwkt_setpri_self(int pri)
+{
+    thread_t td = curthread;
+
     KKASSERT(pri >= 0 && pri <= TDPRI_MAX);
     crit_enter();
     if (td->td_flags & TDF_RUNQ) {
@@ -767,6 +834,16 @@ kthread_create(void (*func)(void *), void *arg,
      */
     lwkt_schedule(td);
     return 0;
+}
+
+void
+crit_panic(void)
+{
+    struct thread *td = curthread;
+    int lpri = td->td_pri;
+
+    td->td_pri = 0;
+    panic("td_pri is/would-go negative! %p %d", td, lpri);
 }
 
 /*

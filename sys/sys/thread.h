@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.15 2003/06/29 07:37:07 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.16 2003/06/30 19:50:32 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -127,6 +127,7 @@ struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
+    struct globaldata *td_gd;	/* associated with this cpu */
     const char	*td_wmesg;	/* string name for blockage */
     void	*td_wchan;	/* waiting on channel */
     int		td_cpu;		/* cpu owning the thread */
@@ -153,7 +154,9 @@ struct thread {
  */
 #define TDF_EXITED		0x0001	/* thread finished exiting */
 #define TDF_RUNQ		0x0002	/* on run queue */
-#define TDF_PREEMPTED		0x0004	/* thread is currently preempted */
+#define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
+#define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
+
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
 #define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */
@@ -177,6 +180,7 @@ struct thread {
 #define TDPRI_USER_NORM		6	/* user scheduler normal */
 #define TDPRI_USER_REAL		8	/* user scheduler real time */
 #define TDPRI_KERN_USER		10	/* kernel / block in syscall */
+#define TDPRI_KERN_DAEMON	12	/* kernel daemon (pageout, etc) */
 #define TDPRI_SOFT_NORM		14	/* kernel / normal */
 #define TDPRI_SOFT_TIMER	16	/* kernel / timer */
 #define TDPRI_EXITING		19	/* exiting thread */
@@ -196,7 +200,8 @@ struct thread {
 extern struct vm_zone	*thread_zone;
 
 extern struct thread *lwkt_alloc_thread(struct thread *template);
-extern void lwkt_init_thread(struct thread *td, void *stack, int flags);
+extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
+	struct globaldata *gd);
 extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
@@ -220,6 +225,8 @@ extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
 extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
 extern void lwkt_setpri(thread_t td, int pri);
+extern void lwkt_setpri_self(int pri);
+extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 
 

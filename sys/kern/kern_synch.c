@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.11 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.12 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -50,6 +50,7 @@
 #include <sys/resourcevar.h>
 #include <sys/vmmeter.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 #ifdef KTRACE
 #include <sys/uio.h>
 #include <sys/ktrace.h>
@@ -63,7 +64,6 @@
 static void sched_setup __P((void *dummy));
 SYSINIT(sched_setup, SI_SUB_KICK_SCHEDULER, SI_ORDER_FIRST, sched_setup, NULL)
 
-u_char	curpriority;
 int	hogticks;
 int	lbolt;
 int	sched_quantum;		/* Roundrobin scheduling quantum in ticks. */
@@ -83,7 +83,6 @@ static fixpt_t cexp[3] = {
 	0.9944598480048967 * FSCALE,	/* exp(-1/180) */
 };
 
-static int	curpriority_cmp __P((struct proc *p));
 static void	endtsleep __P((void *));
 static void	loadav __P((void *arg));
 static void	maybe_resched __P((struct proc *chk));
@@ -110,57 +109,36 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
 
-/*-
- * Compare priorities.  Return:
- *     <0: priority of p < current priority
- *      0: priority of p == current priority
- *     >0: priority of p > current priority
- * The priorities are the normal priorities or the normal realtime priorities
- * if p is on the same scheduler as curproc.  Otherwise the process on the
- * more realtimeish scheduler has lowest priority.  As usual, a higher
- * priority really means a lower priority.
- */
-static int
-curpriority_cmp(p)
-	struct proc *p;
-{
-	int c_class, p_class;
-
-	c_class = RTP_PRIO_BASE(curproc->p_rtprio.type);
-	p_class = RTP_PRIO_BASE(p->p_rtprio.type);
-	if (p_class != c_class)
-		return (p_class - c_class);
-	if (p_class == RTP_PRIO_NORMAL)
-		return (((int)p->p_priority - (int)curpriority) / PPQ);
-	return ((int)p->p_rtprio.prio - (int)curproc->p_rtprio.prio);
-}
-
 /*
- * Arrange to reschedule if necessary, taking the priorities and
- * schedulers into account.
+ * Arrange to reschedule if necessary by checking to see if the current
+ * process is on the highest priority user scheduling queue.  This may
+ * be run from an interrupt so we have to follow any preemption chains
+ * back to the original process.
  */
 static void
-maybe_resched(chk)
-	struct proc *chk;
+maybe_resched(struct proc *chk)
 {
-	struct proc *p = curproc; /* XXX */
+	struct proc *cur = lwkt_preempted_proc();
+
+	if (cur == NULL)
+		return;
 
 	/*
-	 * XXX idle scheduler still broken because proccess stays on idle
-	 * scheduler during waits (such as when getting FS locks).  If a
-	 * standard process becomes runaway cpu-bound, the system can lockup
-	 * due to idle-scheduler processes in wakeup never getting any cpu.
+	 * Check the user queue (realtime, normal, idle).  Lower numbers
+	 * indicate higher priority queues.  Lower numbers are also better
+	 * for p_priority.
 	 */
-	if (p == NULL) {
-#if 0
+	if (chk->p_rtprio.type < cur->p_rtprio.type) {
 		need_resched();
-#endif
-	} else if (chk == p) {
-		/* We may need to yield if our priority has been raised. */
-		if (curpriority_cmp(chk) > 0)
-			need_resched();
-	} else if (curpriority_cmp(chk) < 0)
-		need_resched();
+	} else if (chk->p_rtprio.type == cur->p_rtprio.type) {
+		if (chk->p_rtprio.type == RTP_PRIO_NORMAL) {
+			if (chk->p_priority / PPQ < cur->p_priority / PPQ)
+				need_resched();
+		} else {
+			if (chk->p_rtprio.prio < cur->p_rtprio.prio)
+				need_resched();
+		}
+	}
 }
 
 int 
@@ -287,8 +265,7 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
  */
 /* ARGSUSED */
 static void
-schedcpu(arg)
-	void *arg;
+schedcpu(void *arg)
 {
 	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
 	struct proc *p;
@@ -330,21 +307,6 @@ schedcpu(arg)
 		p->p_cpticks = 0;
 		p->p_estcpu = decay_cpu(loadfac, p->p_estcpu);
 		resetpriority(p);
-		if (p->p_priority >= PUSER) {
-			if ((p != curp) &&
-#ifdef SMP
-			    p->p_oncpu == 0xff && 	/* idle */
-#endif
-			    p->p_stat == SRUN &&
-			    (p->p_flag & P_INMEM) &&
-			    (p->p_priority / PPQ) != (p->p_usrpri / PPQ)) {
-				remrunqueue(p);
-				p->p_priority = p->p_usrpri;
-				setrunqueue(p);
-			} else {
-				p->p_priority = p->p_usrpri;
-			}
-		}
 		splx(s);
 	}
 	wakeup((caddr_t)&lbolt);
@@ -357,15 +319,14 @@ schedcpu(arg)
  * least six times the loadfactor will decay p_estcpu to zero.
  */
 static void
-updatepri(p)
-	register struct proc *p;
+updatepri(struct proc *p)
 {
-	register unsigned int newcpu = p->p_estcpu;
-	register fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
+	unsigned int newcpu = p->p_estcpu;
+	fixpt_t loadfac = loadfactor(averunnable.ldavg[0]);
 
-	if (p->p_slptime > 5 * loadfac)
+	if (p->p_slptime > 5 * loadfac) {
 		p->p_estcpu = 0;
-	else {
+	} else {
 		p->p_slptime--;	/* the first time was done in schedcpu */
 		while (newcpu && --p->p_slptime)
 			newcpu = decay_cpu(loadfac, newcpu);
@@ -415,6 +376,13 @@ sleepinit(void)
  * signal needs to be delivered, ERESTART is returned if the current system
  * call should be restarted if possible, and EINTR is returned if the system
  * call should be interrupted by the signal (return EINTR).
+ *
+ * If the process has P_CURPROC set mi_switch() will not re-queue it to
+ * the userland scheduler queues because we are in a SSLEEP state.  If
+ * we are not the current process then we have to remove ourselves from
+ * the scheduler queues.
+ *
+ * YYY priority now unused
  */
 int
 tsleep(ident, priority, wmesg, timo)
@@ -449,12 +417,11 @@ tsleep(ident, priority, wmesg, timo)
 	KASSERT(p == NULL || p->p_stat == SRUN, ("tsleep %p %s %d",
 		ident, wmesg, p->p_stat));
 
+	crit_enter();
 	td->td_wchan = ident;
 	td->td_wmesg = wmesg;
-	if (p) {
+	if (p) 
 		p->p_slptime = 0;
-		p->p_priority = priority & PRIMASK;
-	}
 	lwkt_deschedule_self();
 	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
 	if (timo)
@@ -472,29 +439,40 @@ tsleep(ident, priority, wmesg, timo)
 		if (catch) {
 			p->p_flag |= P_SINTR;
 			if ((sig = CURSIG(p))) {
-				if (td->td_wchan)
+				if (td->td_wchan) {
 					unsleep(td);
+					lwkt_schedule_self();
+				}
 				p->p_stat = SRUN;
 				goto resume;
 			}
-			if (p->p_wchan == 0) {
+			if (p->p_wchan == NULL) {
 				catch = 0;
 				goto resume;
 			}
 		} else {
 			sig = 0;
 		}
-		p->p_stat = SSLEEP;
+
+		/*
+		 * If we are not the current process we have to remove ourself
+		 * from the run queue.
+		 */
+		KASSERT(p->p_stat == SRUN, ("PSTAT NOT SRUN %d %d", p->p_pid, p->p_stat));
+		/*
+		 * If this is the current 'user' process schedule another one.
+		 */
+		clrrunnable(p, SSLEEP);
 		p->p_stats->p_ru.ru_nvcsw++;
 		mi_switch();
+		KASSERT(p->p_stat == SRUN, ("tsleep: stat not srun"));
 	} else {
 		lwkt_switch();
 	}
 resume:
-	if (p) {
-		curpriority = p->p_usrpri;
+	crit_exit();
+	if (p)
 		p->p_flag &= ~P_SINTR;
-	}
 	splx(s);
 	if (td->td_flags & TDF_TIMEOUT) {
 		td->td_flags &= ~TDF_TIMEOUT;
@@ -573,7 +551,6 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 	p->p_wchan = w;
 	p->p_wmesg = wmesg;
 	p->p_slptime = 0;
-	p->p_priority = priority & PRIMASK;
 	p->p_flag |= P_XSLEEP;
 	TAILQ_INSERT_TAIL(&w->waitq, p, p_procq);
 	if (timo)
@@ -590,8 +567,10 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 	if (catch) {
 		p->p_flag |= P_SINTR;
 		if ((sig = CURSIG(p))) {
-			if (p->p_wchan)
+			if (p->p_wchan) {
 				unsleep(p);
+				lwkt_schedule_self();
+			}
 			p->p_stat = SRUN;
 			goto resume;
 		}
@@ -599,13 +578,13 @@ xsleep(struct xwait *w, int priority, const char *wmesg, int timo, int *gen)
 			catch = 0;
 			goto resume;
 		}
-	} else
+	} else {
 		sig = 0;
-	p->p_stat = SSLEEP;
+	}
+	clrrunnable(p, SSLEEP);
 	p->p_stats->p_ru.ru_nvcsw++;
 	mi_switch();
 resume:
-	curpriority = p->p_usrpri;
 	*gen = w->gen;	/* update generation number */
 	splx(s);
 	p->p_flag &= ~P_SINTR;
@@ -786,6 +765,43 @@ wakeup_one(void *ident)
 }
 
 /*
+ * Release the P_CURPROC designation on a process in order to allow the
+ * userland scheduler to schedule another one.  This places a runnable
+ * process back on the userland scheduler's run queue.
+ *
+ * Note that losing P_CURPROC does not effect LWKT scheduling, you can
+ * still tsleep/wakeup after having lost P_CURPROC, but userret() will
+ * not return to user mode until it gets it back.
+ */
+static __inline
+void
+_relscurproc(struct proc *p)
+{
+	struct proc *np;
+
+	if (p->p_flag & P_CURPROC) {
+		p->p_flag &= ~P_CURPROC;
+		lwkt_deschedule_self();
+		if (p->p_stat == SRUN && (p->p_flag & P_INMEM)) {
+			setrunqueue(p);
+		}
+		if ((np = chooseproc()) != NULL) {
+			np->p_flag |= P_CURPROC;
+			lwkt_schedule(np->p_thread);
+		} else {
+			KKASSERT(mycpu->gd_uprocscheduled == 1);
+			mycpu->gd_uprocscheduled = 0;
+		}
+	}
+}
+
+void
+relscurproc(struct proc *p)
+{
+	_relscurproc(p);
+}
+
+/*
  * The machine independent parts of mi_switch().
  * Must be called at splstatclock() or higher.
  */
@@ -817,6 +833,14 @@ mi_switch()
 	 */
 	x = splstatclock();
 	clear_resched();
+
+	/*
+	 * If the process being switched out is the 'current' process then
+	 * we have to lose the P_CURPROC designation and choose a new
+	 * process.  If the process is not being LWKT managed and it is in
+	 * SRUN we have to setrunqueue it.
+	 */
+	_relscurproc(p);
 
 #ifdef SIMPLELOCK_DEBUG
 	if (p->p_simple_locks)
@@ -853,7 +877,6 @@ mi_switch()
 	 */
 	cnt.v_swtch++;
 	lwkt_switch();
-	remrunqueue(p);
 
 	splx(x);
 }
@@ -893,27 +916,95 @@ setrunnable(struct proc *p)
 	if ((p->p_flag & P_INMEM) == 0) {
 		p->p_flag |= P_SWAPINREQ;
 		wakeup((caddr_t)&proc0);
-	}
-	else
+	} else {
 		maybe_resched(p);
+	}
+}
+
+/*
+ * Change the process state to NOT be runnable, removing it from the run
+ * queue.  If P_CURPROC is not set and we are in SRUN the process is on the
+ * run queue (If P_INMEM is not set then it isn't because it is swapped).
+ */
+void
+clrrunnable(struct proc *p, int stat)
+{
+	int s;
+
+	s = splhigh();
+	switch(p->p_stat) {
+	case SRUN:
+		if ((p->p_flag & (P_INMEM|P_CURPROC)) == P_INMEM)
+			remrunqueue(p);
+		break;
+	default:
+		break;
+	}
+	p->p_stat = stat;
+	splx(s);
+}
+
+/*
+ * yield / synchronous reschedule
+ *
+ * Simply calling mi_switch() has the effect we want.  mi_switch will
+ * deschedule the current thread, make sure the current process is on
+ * the run queue, and then choose and reschedule another process.
+ */
+void
+uio_yield()
+{
+	struct proc *p = curproc;
+	int s;
+		
+	s = splhigh();
+#if 0
+	KKASSERT(p->p_stat == SRUN);
+	if ((p->p_flag & (P_INMEM|P_CURPROC)) == (P_INMEM|P_CURPROC))
+		setrunqueue(p);
+	lwkt_deschedule_self();
+#endif
+	p->p_stats->p_ru.ru_nivcsw++;
+	mi_switch();
+	splx(s);
 }
 
 /*
  * Compute the priority of a process when running in user mode.
  * Arrange to reschedule if the resulting priority is better
  * than that of the current process.
+ *
+ * YYY real time / idle procs do not use p_priority XXX
  */
 void
-resetpriority(p)
-	register struct proc *p;
+resetpriority(struct proc *p)
 {
-	register unsigned int newpriority;
+	unsigned int newpriority;
+	int opq;
+	int npq;
 
-	if (p->p_rtprio.type == RTP_PRIO_NORMAL) {
-		newpriority = PUSER + p->p_estcpu / INVERSE_ESTCPU_WEIGHT +
-		    NICE_WEIGHT * p->p_nice;
-		newpriority = min(newpriority, MAXPRI);
-		p->p_usrpri = newpriority;
+	if (p->p_rtprio.type != RTP_PRIO_NORMAL)
+		return;
+	newpriority = PUSER + p->p_estcpu / INVERSE_ESTCPU_WEIGHT +
+	    NICE_WEIGHT * p->p_nice;
+	newpriority = min(newpriority, MAXPRI);
+	opq = p->p_priority / PPQ;
+	npq = newpriority / PPQ;
+	if (p->p_stat == SRUN && (p->p_flag & (P_CURPROC|P_INMEM)) == P_INMEM
+	    && opq != npq) {
+		/*
+		 * We have to move the process to another queue
+		 */
+		remrunqueue(p);
+		p->p_priority = newpriority;
+		setrunqueue(p);
+	} else {
+		/*
+		 * Not on a queue or is on the same queue, we can just
+		 * set the priority.
+		 * YYY P_INMEM?
+		 */
+		p->p_priority = newpriority;
 	}
 	maybe_resched(p);
 }
@@ -986,9 +1077,6 @@ schedclock(p)
 
 	p->p_cpticks++;
 	p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
-	if ((p->p_estcpu % INVERSE_ESTCPU_WEIGHT) == 0) {
+	if ((p->p_estcpu % INVERSE_ESTCPU_WEIGHT) == 0)
 		resetpriority(p);
-		if (p->p_priority >= PUSER)
-			p->p_priority = p->p_usrpri;
-	}
 }

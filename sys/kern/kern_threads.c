@@ -47,7 +47,7 @@
  * and I certainly make no claims as to its fitness for *any* purpose.
  * 
  * $FreeBSD: src/sys/kern/kern_threads.c,v 1.15 1999/08/28 00:46:15 peter Exp $
- * $DragonFly: src/sys/kern/kern_threads.c,v 1.3 2003/06/23 17:55:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_threads.c,v 1.4 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +56,7 @@
 #include <sys/proc.h>
 #include <sys/resourcevar.h>
 #include <sys/sysproto.h>
+#include <sys/uio.h>		/* uio_yield() fixme */
 
 /*
  * Low level support for sleep/wakeup paradigm
@@ -147,17 +148,9 @@ int
 yield(struct yield_args *uap) 
 {
 	struct proc *p = curproc;
-	int s;
 
 	p->p_retval[0] = 0;
-
-	s = splhigh();
-	p->p_priority = MAXPRI;
-	setrunqueue(p);
-	p->p_stats->p_ru.ru_nvcsw++;
-	mi_switch();
-	splx(s);
-
+	uio_yield();
 	return(0);
 }
 

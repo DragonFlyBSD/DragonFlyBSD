@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.4 2003/06/23 17:55:27 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.5 2003/06/30 19:50:28 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -107,4 +107,23 @@ db_ps(dummy1, dummy2, dummy3, dummy4)
 		if (p == NULL && np > 0)
 			p = zombproc.lh_first;
     	}
+
+	/*
+	 * Dump running threads
+	 */
+	db_printf("cpu %d tdrunqmask %08x\n", mycpu->gd_cpuid, mycpu->gd_runqmask);
+	db_printf("  tdq     thread    pid flags  pri(act)        sp    wmesg comm\n");
+	for (np = 0; np < 32; ++np) {
+		thread_t td;
+		TAILQ_FOREACH(td, &mycpu->gd_tdrunq[np], td_threadq) {
+			db_printf("  %3d %p %3d %08x %3d(%3d) %p %8.8s %s\n",
+				np, td, 
+				(td->td_proc ? td->td_proc->p_pid : -1),
+				td->td_flags, td->td_pri,
+				td->td_pri & TDPRI_MASK,
+				td->td_sp,
+				td->td_wmesg ? td->td_wmesg : "-",
+				td->td_proc ? td->td_proc->p_comm : td->td_comm);
+		}
+	}
 }

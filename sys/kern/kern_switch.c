@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.3 2003/06/20 02:09:56 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.4 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -72,21 +72,51 @@ SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 /*
  * setrunqueue() examines a process priority and class and inserts it on
  * the tail of it's appropriate run queue (based on class and priority).
- * This sets the queue busy bit.
+ * This sets the queue busy bit.  If no user processes have been scheduled
+ * on the LWKT subsystem we schedule this one.
+ *
  * The process must be runnable.
  * This must be called at splhigh().
- *
- * YYY setrunqueue() is responsible for assigning a cpu to a user
- * process.  If the LWKT thread corresponding to the rt, id, or normal
- * queues is not running, it will be woken up.  YYY
  */
 void
 setrunqueue(struct proc *p)
 {
 	struct rq *q;
 	u_int8_t pri;
+	struct globaldata *gd;
 
 	KASSERT(p->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
+
+	/*
+	 * If we are already the designated current process just
+	 * wakeup the thread.
+	 */
+	if (p->p_flag & P_CURPROC) {
+		KASSERT((p->p_flag & P_ONRUNQ) == 0, ("already on runq!"));
+		lwkt_schedule(p->p_thread);
+		return;
+	}
+
+	/*
+	 * If the process's cpu is not running any userland processes
+	 * then schedule this one's thread.
+	 */
+	gd = p->p_thread->td_gd;
+	if (gd->gd_uprocscheduled == 0) {
+		gd->gd_uprocscheduled = 1;
+		p->p_flag |= P_CURPROC;
+		lwkt_schedule(p->p_thread);
+		KASSERT((p->p_flag & P_ONRUNQ) == 0, ("already on runq2!"));
+		return;
+	}
+
+	KASSERT((p->p_flag & P_ONRUNQ) == 0, ("already on runq3!"));
+	p->p_flag |= P_ONRUNQ;
+	/*
+	 * Otherwise place this process on the userland scheduler's run
+	 * queue for action.
+	 */
+
 	if (p->p_rtprio.type == RTP_PRIO_NORMAL) {
 		pri = p->p_priority >> 2;
 		q = &queues[pri];
@@ -105,12 +135,17 @@ setrunqueue(struct proc *p)
 	}
 	p->p_rqindex = pri;		/* remember the queue index */
 	TAILQ_INSERT_TAIL(q, p, p_procq);
-	lwkt_schedule(p->p_thread);
 }
 
 /*
  * remrunqueue() removes a given process from the run queue that it is on,
- * clearing the queue busy bit if it becomes empty.
+ * clearing the queue busy bit if it becomes empty.  This function is called
+ * when a userland process is selected for LWKT scheduling.  Note that 
+ * LWKT scheduling is an abstraction of 'curproc'.. there could very well be
+ * several userland processes whos threads are scheduled or otherwise in
+ * a special state, and such processes are NOT on the userland scheduler's
+ * run queue.
+ *
  * This must be called at splhigh().
  */
 void
@@ -120,6 +155,8 @@ remrunqueue(struct proc *p)
 	u_int32_t *which;
 	u_int8_t pri;
 
+	KASSERT((p->p_flag & P_ONRUNQ) != 0, ("not on runq4!"));
+	p->p_flag &= ~P_ONRUNQ;
 	pri = p->p_rqindex;
 	if (p->p_rtprio.type == RTP_PRIO_NORMAL) {
 		q = &queues[pri];
@@ -140,37 +177,11 @@ remrunqueue(struct proc *p)
 			("remrunqueue: remove from empty queue"));
 		*which &= ~(1 << pri);
 	}
-	lwkt_deschedule(p->p_thread);
 }
 
-#if 0
 /*
- * procrunnable() returns a boolean true (non-zero) value if there are
- * any runnable processes.  This is intended to be called from the idle
- * loop to avoid the more expensive (and destructive) chooseproc().
- *
- * MP SAFE.  CALLED WITHOUT THE MP LOCK
- */
-u_int32_t
-procrunnable(void)
-{
-	return (rtqueuebits || queuebits || idqueuebits);
-}
-#endif
-
-#if 0
-/*
- * chooseproc() selects the next process to run.  Ideally, cpu_switch()
- * would have determined that there is a process available before calling
- * this, but it is not a requirement.  The selected process is removed
- * from it's queue, and the queue busy bit is cleared if it becomes empty.
- * This must be called at splhigh().
- *
- * For SMP, trivial affinity is implemented by locating the first process
- * on the queue that has a matching lastcpu id.  Since normal priorities
- * are mapped four priority levels per queue, this may allow the cpu to
- * choose a slightly lower priority process in order to preserve the cpu
- * caches.
+ * chooseproc() is called when a cpu needs a user process to LWKT schedule.
+ * chooseproc() will select a user process and return it.
  */
 struct proc *
 chooseproc(void)
@@ -179,9 +190,6 @@ chooseproc(void)
 	struct rq *q;
 	u_int32_t *which;
 	u_int32_t pri;
-#ifdef SMP
-	u_char id;
-#endif
 
 	if (rtqueuebits) {
 		pri = ffs(rtqueuebits) - 1;
@@ -200,22 +208,11 @@ chooseproc(void)
 	}
 	p = TAILQ_FIRST(q);
 	KASSERT(p, ("chooseproc: no proc on busy queue"));
-#ifdef SMP
-	/* wander down the current run queue for this pri level for a match */
-	id = cpuid;
-	while (p->p_lastcpu != id) {
-		p = TAILQ_NEXT(p, p_procq);
-		if (p == NULL) {
-			p = TAILQ_FIRST(q);
-			break;
-		}
-	}
-#endif
 	TAILQ_REMOVE(q, p, p_procq);
 	if (TAILQ_EMPTY(q))
 		*which &= ~(1 << pri);
+	KASSERT((p->p_flag & P_ONRUNQ) != 0, ("not on runq6!"));
+	p->p_flag &= ~P_ONRUNQ;
 	return p;
 }
-
-#endif
 

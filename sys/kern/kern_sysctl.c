@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.5 2003/06/29 06:48:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1096,7 +1096,7 @@ sysctl_root(SYSCTL_HANDLER_ARGS)
 		return (EPERM);
 
 	/* Most likely only root can write */
-	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && p &&
+	if (!(oid->oid_kind & CTLFLAG_ANYBODY) && req->newptr && p &&
 	    (error = suser_cred(p->p_ucred, 
 	     (oid->oid_kind & CTLFLAG_PRISON) ? PRISON_ROOT : 0)))
 		return (error);

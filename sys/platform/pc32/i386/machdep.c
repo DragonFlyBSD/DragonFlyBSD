@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.17 2003/06/29 07:37:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.18 2003/06/30 19:50:30 dillon Exp $
  */
 
 #include "apm.h"
@@ -944,6 +944,9 @@ cpu_halt(void)
  * (unless you want to blow things up!).  Instead we look for runnable threads
  * and loop or halt as appropriate.  Giant is not held on entry to the thread.
  *
+ * The main loop is entered with a critical section held, we must release
+ * the critical section before doing anything else.
+ *
  * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
  * halt until the next clock tick, even if a thread is ready YYY
  */
@@ -954,6 +957,7 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
 void
 cpu_idle(void)
 {
+	crit_exit();
 	for (;;) {
 		lwkt_switch();
 		__asm __volatile("cli");
@@ -1826,12 +1830,14 @@ init386(int first)
 	 */
 	gd = &CPU_prvspace[0].mdglobaldata;
 
-	lwkt_init_thread(&thread0, proc0paddr, 0);
+	lwkt_init_thread(&thread0, proc0paddr, 0, &gd->mi);
 	gd->mi.gd_curthread = &thread0;
 	safepri = thread0.td_cpl = SWI_MASK | HWI_MASK;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
+	proc0.p_flag |= P_CURPROC;
+	gd->mi.gd_uprocscheduled = 1;
 	thread0.td_proc = &proc0;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
@@ -2050,7 +2056,7 @@ cpu_gdinit(struct mdglobaldata *gd, int cpu)
 
 	gd->mi.gd_idletd = &gd->gd_idlethread;
 	sp = gd->mi.gd_prvspace->idlestack;
-	lwkt_init_thread(&gd->gd_idlethread, sp, 0);
+	lwkt_init_thread(&gd->gd_idlethread, sp, 0, &gd->mi);
 	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
 	gd->gd_idlethread.td_sp -= sizeof(void *);
 	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;

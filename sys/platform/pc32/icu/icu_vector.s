@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.8 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.9 2003/06/30 19:50:31 dillon Exp $
  */
 
 /*
@@ -165,11 +165,9 @@ IDTVEC(vec_name) ; 							\
 	.text ;								\
 	SUPERALIGN_TEXT ;						\
 IDTVEC(vec_name) ;							\
-	incl	_intr_nesting_level ;					\
-	pushl %ebp ;	 /* frame for ddb backtrace */			\
-	movl	%esp, %ebp ;						\
+	pushl	%ebp ;							\
+	movl	%esp,%ebp ;						\
 	PUSH_DUMMY ;							\
-	andl	$~IRQ_LBIT(irq_num),_fpending ;				\
 	pushl	intr_unit + (irq_num) * 4 ;				\
 	call	*intr_handler + (irq_num) * 4 ;				\
 	addl	$4, %esp ;						\
@@ -179,7 +177,6 @@ IDTVEC(vec_name) ;							\
 	UNMASK_IRQ(icu, irq_num) ;					\
 	POP_DUMMY ;							\
 	popl %ebp ;							\
-	decl	_intr_nesting_level ;					\
 	ret ;								\
 
 /*
@@ -232,12 +229,15 @@ IDTVEC(vec_name) ; 							\
 	movl	$TDPRI_CRIT,_reqpri ;					\
 	jmp	5f ;							\
 2: ;									\
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	/* set running bit, clear pending bit, run handler */		\
 	orl	$IRQ_LBIT(irq_num),_irunning ;				\
 	andl	$~IRQ_LBIT(irq_num),_ipending ;				\
+	sti ;								\
 	pushl	$irq_num ;						\
 	call	_sched_ithd ;						\
 	addl	$4,%esp ;						\
+	subl	$TDPRI_CRIT,TD_PRI(%ebx) ;				\
 	incl	_cnt+V_INTR ; /* book-keeping YYY make per-cpu */	\
 	movl	intr_countp + (irq_num) * 4,%eax ;			\
 	incl	(%eax) ;						\

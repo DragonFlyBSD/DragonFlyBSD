@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.4 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.5 2003/06/30 19:50:31 dillon Exp $
  */
 
 
@@ -68,6 +68,10 @@ _soft_imask:	.long	SWI_MASK
 _softnet_imask:	.long	SWI_NET_MASK
 	.globl	_softtty_imask
 _softtty_imask:	.long	SWI_TTY_MASK
+	.globl	last_splz
+last_splz:	.long	0
+	.globl	last_splz2
+last_splz2:	.long	0
 
 	.text
 
@@ -103,10 +107,10 @@ doreti_next:
 	testl	_ipending,%ecx
 	jne	doreti_intr
 	testl	$AST_PENDING,_astpending /* any pending ASTs? */
-	je	2f
+	jz	2f
 	testl	$PSL_VM,TF_EFLAGS(%esp)
 	jz	1f
-	cmpl	$1,_in_vm86call
+	cmpl	$1,_in_vm86call		/* YYY make per 'cpu' */
 	jnz	doreti_ast
 1:
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
@@ -203,15 +207,21 @@ doreti_ast:
 	 * SPLZ() a C callable procedure to dispatch any unmasked pending
 	 *	  interrupts regardless of critical section nesting.  ASTs
 	 *	  are not dispatched.
+	 *
+	 *	YYY at the moment I leave us in a critical section so as
+	 *	not to have to mess with the cpls which will soon be obsolete.
 	 */
 	SUPERALIGN_TEXT
 
 ENTRY(splz)
+	pushfl
 	pushl	%ebx
 	movl	_curthread,%ebx
 	movl	TD_CPL(%ebx),%eax
+	addl	$TDPRI_CRIT,TD_PRI(%ebx)
 
 splz_next:
+	cli
 	movl	%eax,%ecx		/* ecx = ~CPL */
 	notl	%ecx
 	testl	_fpending,%ecx		/* check for an unmasked fast int */
@@ -223,7 +233,9 @@ splz_next:
 	testl	_ipending,%ecx
 	jne	splz_intr
 
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	popl	%ebx
+	popfl
 	ret
 
 	/*
@@ -235,9 +247,12 @@ splz_fast:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, _fpending		/* is it really still pending? */
 	jnc	splz_next
+	movl	$1,last_splz
+	movl	%ecx,last_splz2
 	pushl	%eax
 	call    *_fastunpend(,%ecx,4)
 	popl	%eax
+	movl	$-1,last_splz
 	jmp	splz_next
 
 	/*
@@ -249,11 +264,15 @@ splz_intr:
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
 	btrl	%ecx, _ipending		/* is it really still pending? */
 	jnc	splz_next
+	sti
+	movl	$2,last_splz
 	pushl	%eax
 	pushl	%ecx
+	movl	%ecx,last_splz2
 	call	_sched_ithd		/* YYY must pull in imasks */
 	addl	$4,%esp
 	popl	%eax
+	movl	$-2,last_splz
 	jmp	splz_next
 
 	/*

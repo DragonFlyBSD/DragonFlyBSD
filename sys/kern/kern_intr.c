@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.5 2003/06/29 07:37:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.6 2003/06/30 19:50:31 dillon Exp $
  *
  */
 
@@ -86,16 +86,18 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
-     * state.
+     * state.  The kthread restore function exits a critical section before
+     * starting the function so we need *TWO* critical sections in order
+     * for the handler to begin running in one.
      */
     if ((td = ithreads[intr]) == NULL) {
 	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
 	    &ithread_ary[intr], TDF_STOPREQ, "ithread %d", intr);
 	td = ithreads[intr];
 	if (intr >= NHWI && intr < NHWI + NSWI)
-	    lwkt_setpri(td, TDPRI_SOFT_NORM);
+	    lwkt_setpri(td, TDPRI_SOFT_NORM + TDPRI_CRIT * 2);
 	else
-	    lwkt_setpri(td, TDPRI_INT_MED);
+	    lwkt_setpri(td, TDPRI_INT_MED + TDPRI_CRIT * 2);
     }
 
     /*
@@ -175,7 +177,8 @@ sched_ithd(int intr)
 }
 
 /*
- * Interrupt threads run this as their main loop.
+ * Interrupt threads run this as their main loop.  The handler should be
+ * in a critical section on entry.
  */
 static void
 ithread_handler(void *arg)
@@ -184,25 +187,15 @@ ithread_handler(void *arg)
     intrec_t **list = &intlists[intr];
     intrec_t *rec;
     intrec_t *nrec;
-    int xpri = (curthread->td_pri & TDPRI_MASK) + TDPRI_CRIT; /* DEBUG YYY */
 
-    crit_enter();	/* replaces SPLs */
+    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
     for (;;) {
 	for (rec = *list; rec; rec = nrec) {
 	    nrec = rec->next;
 	    rec->handler(rec->argument);
 	}
 	ithread_done(intr);
-
-	/*
-	 * temporary sanity check.  If we preempted another thread we
-	 * are placed in another critical section by that thread which
-	 * will be released when we block and resume the original thread.
-	 */
-	KKASSERT(curthread->td_pri == xpri ||
-	(curthread->td_preempted && curthread->td_pri == xpri + TDPRI_CRIT));
     }
-    crit_exit();	/* not reached */
 }
 
 

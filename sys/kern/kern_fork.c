@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.8 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.9 2003/06/30 19:50:31 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -607,7 +607,9 @@ void
 start_forked_proc(struct proc *p1, struct proc *p2)
 {
 	/*
-	 * Move from SIDL to RUN queue
+	 * Move from SIDL to RUN queue, and activate the process's thread.
+	 * Activation of the thread effectively makes the process "a"
+	 * current process, so we do not setrunqueue().
 	 */
 	KASSERT(p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));
