@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.5 2003/09/30 19:58:59 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.6 2003/10/27 13:31:34 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -46,8 +46,7 @@ You can browse the CVS archive via cvsweb:
 <P>
 Justin Sherrill has set up an ongoing log of DragonFly events.
 <UL>
-    <P><A HREF="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsd
-log/</A>
+    <P><A HREF="http://www.shiningsilence.com/dbsdlog/">http://www.shiningsilence.com/dbsdlog/</A>
 </UL>
 <CENTER><H2>Mirror Sites</H2></CENTER>
 <P>
