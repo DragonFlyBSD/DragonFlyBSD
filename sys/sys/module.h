@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.8 2004/03/18 18:51:56 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.9 2005/03/30 04:29:32 swildner Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -71,7 +71,7 @@ typedef union modspecific {
 } modspecific_t;
 
 /*
- * Module dependency declarartion
+ * Module dependency declaration
  */
 struct mod_depend {
 	int	md_ver_minimum;
