@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.3 2003/08/17 21:59:10 hmp Exp $
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.4 2004/01/06 21:11:05 justin Exp $
 
 $TITLE(DragonFly - User API)
 <CENTER>Creating a Portable User API</CENTER>
@@ -11,7 +11,7 @@ obstacle to the ability for user programs to interoperate with kernels
 which are older or newer than themselves is the fact that these raw structures
 often change.  The worst offenders are things like network interfaces, route
 table ioctls, ipfw, and raw process structures for ps, vmstat, etc.  But even
-non-descript system calls like stat() and readdir() have issues.  In more
+nondescript system calls like stat() and readdir() have issues.  In more
 general terms the system call list itself can create portability problems.
 <P>
 It is a goal of this project to (1) make all actual system calls message-based,
