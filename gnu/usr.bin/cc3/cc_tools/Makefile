@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.73 2004/01/15 10:07:59 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.1 2004/01/17 22:40:15 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.2 2004/01/20 20:38:35 joerg Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -170,9 +170,9 @@ TARGET_INC+=	${GCC_CPU}/att.h
 TARGET_INC+=	dbxelf.h
 TARGET_INC+=	elfos.h
 .endif
-TARGET_INC+=	freebsd-native.h
-TARGET_INC+=	freebsd-spec.h
-TARGET_INC+=	freebsd.h
+TARGET_INC+=	dragonfly-native.h
+TARGET_INC+=	dragonfly-spec.h
+TARGET_INC+=	dragonfly.h
 .if ${TARGET_ARCH} == "alpha"
 TARGET_INC+=	${GCC_CPU}/elf.h
 .endif
@@ -181,10 +181,10 @@ TARGET_INC+=	${GCC_CPU}/elf.h
 TARGET_INC+=	${GCC_CPU}/sysv4.h
 .endif
 .endif
-TARGET_INC+=	${GCC_CPU}/freebsd.h
+TARGET_INC+=	${GCC_CPU}/dragonfly.h
 .if ${TARGET_ARCH} == "amd64"
 TARGET_INC+=	${GCC_CPU}/x86-64.h
-TARGET_INC+=	${GCC_CPU}/freebsd64.h
+TARGET_INC+=	${GCC_CPU}/dragonfly64.h
 .endif
 TARGET_INC+=	defaults.h
 
