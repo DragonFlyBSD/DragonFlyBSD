@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.5 2003/07/06 21:23:51 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.6 2003/08/03 10:07:41 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -156,7 +156,7 @@ elf_brand_inuse(Elf_Brandinfo *entry)
 	struct proc *p;
 	int rval = FALSE;
 
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		if (p->p_sysent == entry->sysvec) {
 			rval = TRUE;
 			break;

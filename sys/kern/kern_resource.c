@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.12 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.13 2003/08/03 10:07:41 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -109,7 +109,7 @@ getpriority(struct getpriority_args *uap)
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
-		LIST_FOREACH(p, &allproc, p_list)
+		FOREACH_PROC_IN_SYSTEM(p)
 			if (PRISON_CHECK(curp->p_ucred, p->p_ucred) &&
 			    p->p_ucred->cr_uid == uap->who &&
 			    p->p_nice < low)
@@ -167,7 +167,7 @@ setpriority(struct setpriority_args *uap)
 	case PRIO_USER:
 		if (uap->who == 0)
 			uap->who = curp->p_ucred->cr_uid;
-		LIST_FOREACH(p, &allproc, p_list)
+		FOREACH_PROC_IN_SYSTEM(p)
 			if (p->p_ucred->cr_uid == uap->who &&
 			    PRISON_CHECK(curp->p_ucred, p->p_ucred)) {
 				error = donice(p, uap->prio);

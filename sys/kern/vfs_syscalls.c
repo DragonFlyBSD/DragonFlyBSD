@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.13 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.14 2003/08/03 10:07:41 hmp Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -377,7 +377,7 @@ checkdirs(struct vnode *olddp)
 		return;
 	if (VFS_ROOT(olddp->v_mountedhere, &newdp))
 		panic("mount: lost mount");
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		fdp = p->p_fd;
 		if (fdp->fd_cdir == olddp) {
 			vrele(fdp->fd_cdir);

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.18 2003/07/13 07:10:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.19 2003/08/03 10:07:40 hmp Exp $
  */
 
 /*
@@ -1372,7 +1372,7 @@ pmap_growkernel(vm_offset_t addr)
 		newpdir = (pd_entry_t) (ptppaddr | PG_V | PG_RW | PG_A | PG_M);
 		pdir_pde(PTD, kernel_vm_end) = newpdir;
 
-		LIST_FOREACH(p, &allproc, p_list) {
+		FOREACH_PROC_IN_SYSTEM(p) {
 			if (p->p_vmspace) {
 				pmap = vmspace_pmap(p->p_vmspace);
 				*pmap_pde(pmap, kernel_vm_end) = newpdir;
@@ -3252,7 +3252,7 @@ pmap_pid_dump(int pid)
 	struct proc *p;
 	int npte = 0;
 	int index;
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		if (p->p_pid != pid)
 			continue;
 

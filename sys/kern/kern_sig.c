@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.16 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.17 2003/08/03 10:07:41 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -725,7 +725,7 @@ killpg1(int sig, int pgid, int all)
 		/*
 		 * broadcast
 		 */
-		LIST_FOREACH(p, &allproc, p_list) {
+		FOREACH_PROC_IN_SYSTEM(p) {
 			if (p->p_pid <= 1 || p->p_flag & P_SYSTEM ||
 			    p == cp || !CANSIGNAL(p, sig))
 				continue;

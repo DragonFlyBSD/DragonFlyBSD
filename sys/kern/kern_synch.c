@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.19 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.20 2003/08/03 10:07:41 hmp Exp $
  */
 
 #include "opt_ktrace.h"
@@ -290,7 +290,7 @@ schedcpu(void *arg)
 	curp = lwkt_preempted_proc(); /* YYY temporary hack */
 
 	realstathz = stathz ? stathz : hz;
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		/*
 		 * Increment time in/out of memory and sleep time
 		 * (if sleeping).  We ignore overflow; with 16-bit int's
@@ -839,7 +839,7 @@ loadav(void *arg)
 
 	avg = &averunnable;
 	nrun = 0;
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		switch (p->p_stat) {
 		case SRUN:
 		case SIDL:

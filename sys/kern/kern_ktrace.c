@@ -32,7 +32,7 @@
  *
  *	@(#)kern_ktrace.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/kern_ktrace.c,v 1.35.2.6 2002/07/05 22:36:38 darrenr Exp $
- * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.7 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/kern_ktrace.c,v 1.8 2003/08/03 10:07:41 hmp Exp $
  */
 
 #include "opt_ktrace.h"
@@ -301,7 +301,7 @@ ktrace(struct ktrace_args *uap)
 	 * loop if vn_close() blocks?
 	 */
 	if (ops == KTROP_CLEARFILE) {
-		LIST_FOREACH(p, &allproc, p_list) {
+		FOREACH_PROC_IN_SYSTEM(p) {
 			if (p->p_tracep == vp) {
 				if (ktrcanset(curp, p) && p->p_tracep == vp) {
 					p->p_tracep = NULL;
@@ -529,7 +529,7 @@ ktrwrite(struct vnode *vp, struct ktr_header *kth, struct uio *uio)
 	 */
 	log(LOG_NOTICE, "ktrace write failed, errno %d, tracing stopped\n",
 	    error);
-	LIST_FOREACH(p, &allproc, p_list) {
+	FOREACH_PROC_IN_SYSTEM(p) {
 		if (p->p_tracep == vp) {
 			p->p_tracep = NULL;
 			p->p_traceflag = 0;
