@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.4 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.5 2004/02/13 17:45:51 joerg Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -48,7 +48,7 @@
 #include <sys/callout.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #else
@@ -67,7 +67,7 @@ static unsigned int get_cdid(void);
 
 int nctrl;				/* number of attached controllers */
 
-#if (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 void i4b_init_callout(call_desc_t *);
 #endif
 
@@ -150,7 +150,7 @@ reserve_cd(void)
 	if(cd == NULL)
 		panic("reserve_cd: no free call descriptor available!");
 
-#if (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 	i4b_init_callout(cd);
 #endif
 
@@ -205,7 +205,7 @@ cd_by_cdid(unsigned int cdid)
 		{
 			NDBGL4(L4_MSG, "found cdid - index=%d cdid=%u cr=%d",
 					i, call_desc[i].cdid, call_desc[i].cr);
-#if (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 			i4b_init_callout(&call_desc[i]);
 #endif
 			return(&(call_desc[i]));
@@ -236,7 +236,7 @@ cd_by_unitcr(int unit, int cr, int crf)
 	  {
 	    NDBGL4(L4_MSG, "found cd, index=%d cdid=%u cr=%d",
 			i, call_desc[i].cdid, call_desc[i].cr);
-#if (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 	    i4b_init_callout(&call_desc[i]);
 #endif
 	    return(&(call_desc[i]));
@@ -261,7 +261,7 @@ get_rand_cr(int unit)
 	{
 		int found = 1;
 		
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #ifdef RANDOMDEV
 		read_random((char *)&val, sizeof(val));
@@ -301,13 +301,13 @@ get_rand_cr(int unit)
 /*---------------------------------------------------------------------------*
  *	initialize the callout handles for FreeBSD
  *---------------------------------------------------------------------------*/
-#if (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || (defined(__NetBSD__) && __NetBSD_Version__ >= 104230000) || defined(__FreeBSD__)
 void
 i4b_init_callout(call_desc_t *cd)
 {
 	if(cd->callouts_inited == 0)
 	{
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		callout_handle_init(&cd->idle_timeout_handle);
 		callout_handle_init(&cd->T303_callout);
 		callout_handle_init(&cd->T305_callout);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/zlib.h,v 1.7.2.1 2002/07/31 14:13:05 rwatson Exp $	*/
-/* $DragonFly: src/sys/net/zlib.h,v 1.2 2003/06/17 04:28:48 dillon Exp $	*/
+/* $DragonFly: src/sys/net/zlib.h,v 1.3 2004/02/13 17:45:49 joerg Exp $	*/
 
 /*
  * This file is derived from zlib.h and zconf.h from the zlib-1.0.4
@@ -510,7 +510,7 @@ extern int EXPORT inflateInit OF((z_streamp strm));
    done by inflate().
 */
 
-#if defined(__FreeBSD__) && defined(_KERNEL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(_KERNEL)
 #define inflate       inflate_ppp     /* FreeBSD already has an inflate :-( */
 #endif
 

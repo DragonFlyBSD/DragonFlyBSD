@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.5 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.6 2004/02/13 17:45:51 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1507,7 +1507,7 @@ check_body:
 
 				if (pcb == NULL || pcb->inp_socket == NULL)
 					break;
-#if __FreeBSD_version < 500034
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD_version < 500034)
 #define socheckuid(a,b)	((a)->so_cred->cr_uid != (b))
 #endif
 				if (cmd->opcode == O_UID) {
@@ -2465,7 +2465,7 @@ ipfw_ctl(struct sockopt *sopt)
 	 */
 	if (sopt->sopt_name == IP_FW_ADD ||
 	    (sopt->sopt_dir == SOPT_SET && sopt->sopt_name != IP_FW_RESETLOG)) {
-#if __FreeBSD_version >= 500034
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500034
 		error = securelevel_ge(sopt->sopt_td->td_ucred, 3);
 		if (error)
 			return (error);

@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.5 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.6 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -68,7 +68,7 @@
 #include <net/sppp/if_sppp.h>
 
 
-#if defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008                
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008)
 #include "use_bpf.h"     
 #else
 #include "bpfilter.h"
@@ -78,7 +78,7 @@
 #include <net/bpf.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #else
@@ -91,7 +91,7 @@
 #include "../include/i4b_l3l4.h"
 #include "../layer4/i4b_l4.h"
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	PDEVSTATIC	static
 
 #ifdef __DragonFly__
@@ -104,7 +104,7 @@
 #define IFP2UNIT(ifp)	(ifp)->if_unit
 #endif
 		
-# if __FreeBSD_version >= 300001
+# if defined(__DragonFly__) || __FreeBSD_version >= 300001
 #  define CALLOUT_INIT(chan)		callout_handle_init(chan)
 #  define TIMEOUT(fun, arg, chan, tick)	chan = timeout(fun, arg, tick)
 #  define UNTIMEOUT(fun, arg, chan)	untimeout(fun, arg, chan)
@@ -126,7 +126,7 @@
 # error "What system are you using?"
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 PDEVSTATIC void i4bispppattach(void *);
 PSEUDO_SET(i4bispppattach, i4b_isppp);
 #else
@@ -170,7 +170,7 @@ struct i4bisppp_softc {
 	int sc_fn;		/* flag, first null acct	*/
 #endif
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 300001
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001)
 	struct callout_handle sc_ch;
 #endif
 
@@ -215,7 +215,7 @@ enum i4bisppp_states {
  *	interface attach routine at kernel boot time
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4bispppattach(void *dummy)
 #else
 i4bispppattach()
@@ -239,7 +239,7 @@ i4bispppattach()
 
 #ifdef __DragonFly__
 		if_initname(&(sc->sc_if), "isp", i);
-#elif defined__FreeBSD__)
+#elif defined(__FreeBSD__)
 		sc->sc_if.if_name = "isp";
 #if defined(__FreeBSD_version) && __FreeBSD_version < 300001
 		sc->sc_if.if_next = NULL;
@@ -303,7 +303,7 @@ i4bispppattach()
 		sc->sc_if_un.scu_sp.pp_chg = i4bisppp_state_changed;
 
 		sppp_attach(&sc->sc_if);
-#if defined(__FreeBSD_version) && ((__FreeBSD_version >= 500009) || (410000 <= __FreeBSD_version && __FreeBSD_version < 500000))
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && ((__FreeBSD_version >= 500009) || (410000 <= __FreeBSD_version && __FreeBSD_version < 500000)))
 		/* do not call bpfattach in ether_ifattach */
 		ether_ifattach(&sc->sc_if, 0);
 #else
@@ -311,7 +311,7 @@ i4bispppattach()
 #endif
 
 #if NBPFILTER > 0 || NBPF > 0
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		bpfattach(&sc->sc_if, DLT_PPP, PPP_HDRLEN);
 		CALLOUT_INIT(&sc->sc_ch);
 #endif /* __FreeBSD__ */
@@ -382,7 +382,7 @@ i4bisppp_start(struct ifnet *ifp)
 	{
 
 #if NBPFILTER > 0 || NBPF > 0
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		if (ifp->if_bpf)
 			bpf_mtap(ifp, m);
 #endif /* __FreeBSD__ */
@@ -697,7 +697,7 @@ i4bisppp_rx_data_rdy(int unit)
 
 #if NBPFILTER > 0 || NBPF > 0
 
-#ifdef __FreeBSD__	
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if(sc->sc_if.if_bpf)
 		bpf_mtap(&sc->sc_if, m);
 #endif /* __FreeBSD__ */

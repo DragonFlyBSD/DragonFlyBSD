@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.4 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.5 2004/02/13 17:45:49 joerg Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -1879,7 +1879,7 @@ ip_dn_ctl(struct sockopt *sopt)
 
     /* Disallow sets in really-really secure mode. */
     if (sopt->sopt_dir == SOPT_SET) {
-#if __FreeBSD_version >= 500034
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500034
 	error =  securelevel_ge(sopt->sopt_td->td_ucred, 3);
 	if (error)
 	    return (error);

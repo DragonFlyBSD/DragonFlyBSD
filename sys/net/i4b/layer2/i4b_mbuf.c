@@ -28,7 +28,7 @@
  *	------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_mbuf.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_mbuf.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Sat Jan 13 13:15:45 2001]
  *
@@ -47,7 +47,7 @@
 
 #ifdef I4B_MBUF_TYPE_DEBUG
 
-#ifdef  __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #define MT_DCHAN	42
 #define MT_BCHAN	43

@@ -30,13 +30,13 @@
  *	$Id: i4b_iframe.c,v 1.25 2000/08/24 11:48:57 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_iframe.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_iframe.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Thu Aug 24 12:49:18 2000]
  *
  *---------------------------------------------------------------------------*/
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bq921.h"
 #else
 #define	NI4BQ921	1
@@ -54,7 +54,7 @@
 #include <sys/callout.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_trace.h>
 #else

@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.10 2004/01/07 11:04:19 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.11 2004/02/13 17:45:49 joerg Exp $
  */
 
 #include "use_bpf.h"
@@ -193,7 +193,7 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 		break;
 
 	case DLT_FDDI:
-#if defined(__FreeBSD__) || defined(__bsdi__)
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 		sockp->sa_family = AF_IMPLINK;
 		hlen = 0;
 #else
@@ -209,7 +209,7 @@ bpf_movein(uio, linktype, mp, sockp, datlen)
 		hlen = 0;
 		break;
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	case DLT_ATM_RFC1483:
 		/*
 		 * en atm driver requires 4-byte atm pseudo header.

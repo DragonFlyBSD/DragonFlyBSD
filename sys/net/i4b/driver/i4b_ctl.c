@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.6 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.7 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -46,7 +46,7 @@
 
 #include <sys/param.h>
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 #include <sys/ioccom.h>
 #else
 #include <sys/ioctl.h>
@@ -58,7 +58,7 @@
 #include <sys/socket.h>
 #include <net/if.h>
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #if defined(__FreeBSD__) && __FreeBSD__ == 3
 #include "opt_devfs.h"
@@ -70,7 +70,7 @@
 
 #endif /* __FreeBSD__ */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #elif defined(__bsdi__)
@@ -89,7 +89,7 @@
 
 static int openflag = 0;
 
-#if BSD > 199306 && defined(__FreeBSD__)
+#if defined(__DragonFly__) || (BSD > 199306 && defined(__FreeBSD__))
 static	d_open_t	i4bctlopen;
 static	d_close_t	i4bctlclose;
 static	d_ioctl_t	i4bctlioctl;
@@ -103,7 +103,7 @@ static d_poll_t		i4bctlpoll;
 
 #define CDEV_MAJOR 55
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 static struct cdevsw i4bctl_cdevsw = {
 	/* name */      "i4bctl",
 	/* maj */       CDEV_MAJOR,
@@ -141,7 +141,7 @@ static void *devfs_token;
 #endif
 #endif
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 #define PDEVSTATIC	/* */
 void i4bctlattach (void);
 int i4bctlopen (dev_t dev, int flag, int fmt, struct proc *p);
@@ -153,14 +153,14 @@ int i4bctlioctl (dev_t dev, int cmd, caddr_t data, int flag, struct proc *p);
 #endif
 #endif	/* !FreeBSD */
 
-#if BSD > 199306 && defined(__FreeBSD__)
+#if defined(__DragonFly__) || (BSD > 199306 && defined(__FreeBSD__))
 /*---------------------------------------------------------------------------*
  *	initialization at kernel load time
  *---------------------------------------------------------------------------*/
 static void
 i4bctlinit(void *unused)
 {
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 	cdevsw_add(&i4bctl_cdevsw);
 #else
 	dev_t dev = makedev(CDEV_MAJOR, 0);
@@ -204,7 +204,7 @@ dummy_i4bctlattach(struct device *parent, struct device *self, void *aux)
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4bctlattach(void *dummy)
 #else
 i4bctlattach()
@@ -260,7 +260,7 @@ i4bctlclose(dev_t dev, int flag, int fmt, struct thread *td)
  *	i4bctlioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-#if defined (__FreeBSD_version) && __FreeBSD_version >= 300003
+#if defined(__DragonFly__) || (defined (__FreeBSD_version) && __FreeBSD_version >= 300003)
 i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #elif defined(__bsdi__)
 i4bctlioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)
@@ -357,7 +357,7 @@ i4bctlioctl(dev_t dev, int cmd, caddr_t data, int flag, struct proc *p)
 #endif DO_I4B_DEBUG
 }
 
-#if defined(__FreeBSD__) && defined(OS_USES_POLL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(OS_USES_POLL)
 
 /*---------------------------------------------------------------------------*
  *	i4bctlpoll - device driver poll routine

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_i4bdrv.c,v 1.11.2.5 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.7 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_i4bdrv.c,v 1.8 2004/02/13 17:45:51 joerg Exp $
  *
  *      last edit-date: [Sat Aug 11 18:08:10 2001]
  *
@@ -46,7 +46,7 @@
 
 #include <sys/param.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
 #include <sys/uio.h>
@@ -59,7 +59,7 @@
 #include <sys/conf.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-#if __FreeBSD_version >= 500014
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500014
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -70,21 +70,21 @@
 #include <sys/types.h>
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bing.h"
 #endif
 
 #ifdef __bsdi__
 #include "ibc.h"
 #else
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bisppp.h"
 #else
 #include <net/if_sppp.h>
 #endif
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #if defined(__FreeBSD__) && __FreeBSD__ == 3
 #include "opt_devfs.h"
@@ -96,7 +96,7 @@
 
 #endif /* __FreeBSD__*/
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_cause.h>
@@ -129,7 +129,7 @@ static void *devfs_token;
 #endif
 #endif
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 
 #define	PDEVSTATIC	/* - not static - */
 PDEVSTATIC void i4battach (void);
@@ -151,7 +151,7 @@ PDEVSTATIC int i4bselect (dev_t dev, int rw, struct proc *p);
 
 #endif /* #ifndef __FreeBSD__ */
 
-#if BSD > 199306 && defined(__FreeBSD__)
+#if defined(__DragonFly__) || (BSD > 199306 && defined(__FreeBSD__))
 
 #define PDEVSTATIC	static
 
@@ -170,7 +170,7 @@ PDEVSTATIC	d_select_t	i4bselect;
 
 #define CDEV_MAJOR 60
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 static struct cdevsw i4b_cdevsw = {
 	/* name */      "i4b",
 	/* maj */       CDEV_MAJOR,
@@ -203,7 +203,7 @@ PSEUDO_SET(i4battach, i4b_i4bdrv);
 static void
 i4b_drvinit(void *unused)
 {
-#if defined(__FreeBSD__) && __FreeBSD__ >= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 4)
 	cdevsw_add(&i4b_cdevsw);
 #else
 	static int i4b_devsw_installed = 0;
@@ -256,7 +256,7 @@ dummy_i4battach(struct device *parent, struct device *self, void *aux)
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4battach(void *dummy)
 #else
 i4battach()
@@ -266,11 +266,11 @@ i4battach()
 
 	i4b_rdqueue.ifq_maxlen = IFQ_MAXLEN;
 
-#if defined(__FreeBSD__) && __FreeBSD__ > 4	
+#if defined(__FreeBSD__) && __FreeBSD__ > 4
 	mtx_init(&i4b_rdqueue.ifq_mtx, "i4b_rdqueue", MTX_DEF);
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	make_dev(&i4b_cdevsw, 0, UID_ROOT, GID_WHEEL, 0600, "i4b");
 #endif
 }
@@ -362,7 +362,7 @@ i4bread(dev_t dev, struct uio *uio, int ioflag)
  *	i4bioctl - device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-#if defined (__FreeBSD_version) && __FreeBSD_version >= 300003
+#if defined(__DragonFly__) || (defined (__FreeBSD_version) && __FreeBSD_version >= 300003)
 i4bioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #elif defined(__bsdi__)
 i4bioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)

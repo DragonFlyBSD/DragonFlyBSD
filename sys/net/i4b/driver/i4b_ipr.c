@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.9 2004/01/06 03:17:26 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.10 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -61,7 +61,7 @@
 
 #if NI4BIPR > 0
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "opt_i4b.h"
 #endif
 
@@ -71,7 +71,7 @@
 #include <sys/socket.h>
 #include <sys/errno.h>
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/ioccom.h>
 #include <sys/sockio.h>
 #ifdef IPR_VJ
@@ -115,7 +115,7 @@
 				/* undef to uncompress in the mbuf itself    */
 #endif /* IPR_VJ */
 
-#if defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) &&  __FreeBSD_version >= 400008)
 #include "use_bpf.h"
 #else
 #include "bpfilter.h"
@@ -126,7 +126,7 @@
 #include <net/bpf.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #else
@@ -139,7 +139,7 @@
 
 #include "../layer4/i4b_l4.h"
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) || !defined(__FreeBSD__)
 #include <machine/cpu.h> /* For softnet */
 #endif
 
@@ -199,7 +199,7 @@ struct ipr_softc {
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
 	struct callout	sc_callout;
 #endif
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct callout_handle	sc_callout;
 #endif
 
@@ -232,13 +232,13 @@ enum ipr_states {
 #define	THE_UNIT	sc->sc_unit
 #endif
 
-#if defined __FreeBSD__ || defined __NetBSD__
+#if defined(__DragonFly__) || defined __FreeBSD__ || defined __NetBSD__
 #  define IOCTL_CMD_T u_long
 #else
 #  define IOCTL_CMD_T int
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 PDEVSTATIC void i4biprattach(void *);
 PSEUDO_SET(i4biprattach, i4b_ipr);
 static int i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data);
@@ -265,7 +265,7 @@ static void iprclearqueues(struct ipr_softc *sc);
  *	interface attach routine at kernel boot time
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4biprattach(void *dummy)
 #else
 i4biprattach()
@@ -351,7 +351,7 @@ i4biprattach()
 #endif
 
 #ifdef	IPR_VJ
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		sl_compress_init(&sc->sc_compr, -1);
 #else
 		sl_compress_init(&sc->sc_compr);
@@ -372,7 +372,7 @@ i4biprattach()
 		if_attach(&sc->sc_if);
 
 #if NBPFILTER > 0 || NBPF > 0
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int));
 #else
 		bpfattach(&sc->sc_if.if_bpf, &sc->sc_if, DLT_NULL, sizeof(u_int));
@@ -500,7 +500,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	/* check for space in choosen send queue */
 	
-#if defined (__FreeBSD__)
+#if defined(__DragonFly__) || defined (__FreeBSD__)
 	if (netisr_queue(NETISR_IP, m))
 	{
 		NDBGL4(L4_IPRDBG, "ipr%d: send queue full!", unit);
@@ -522,7 +522,7 @@ i4biproutput(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 /*---------------------------------------------------------------------------*
  *	process ioctl
  *---------------------------------------------------------------------------*/
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static int
 i4biprioctl(struct ifnet *ifp, IOCTL_CMD_T cmd, caddr_t data)
 #else
@@ -1053,7 +1053,7 @@ error:
 		mm.m_len = 4;
 		mm.m_data = (char *)&af;
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		bpf_mtap(&sc->sc_if, &mm);
 #else
 		bpf_mtap(sc->sc_if.if_bpf, &mm);
@@ -1061,7 +1061,7 @@ error:
 	}
 #endif /* NBPFILTER > 0  || NBPF > 0 */
 
-#if defined (__FreeBSD__)
+#if defined(__DragonFly__) || defined (__FreeBSD__)
 	if (netisr_queue(NETISR_IP, m)) {
 		NDBGL4(L4_IPRDBG, "ipr%d: ipintrq full!", unit);
 		sc->sc_if.if_ierrors++;
@@ -1115,7 +1115,7 @@ ipr_tx_queue_empty(int unit)
 			mm.m_len = 4;
 			mm.m_data = (char *)&af;
 	
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			bpf_mtap(&sc->sc_if, &mm);
 #else
 			bpf_mtap(sc->sc_if.if_bpf, &mm);

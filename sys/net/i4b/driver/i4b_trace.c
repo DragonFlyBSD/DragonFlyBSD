@@ -30,7 +30,7 @@
  *	last edit-date: [Sat Aug 11 18:07:15 2001]
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_trace.c,v 1.9.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.7 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_trace.c,v 1.8 2004/02/13 17:45:49 joerg Exp $
  *
  *	NOTE: the code assumes that SPLI4B >= splimp !
  *
@@ -43,7 +43,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 #include <sys/ioccom.h>
 #else
 #include <sys/ioctl.h>
@@ -57,7 +57,7 @@
 #include <net/if.h>
 #include <sys/tty.h>
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #ifdef DEVFS
 #include <sys/devfsext.h>
@@ -77,7 +77,7 @@
 #include "../include/i4b_global.h"
 #include "../include/i4b_l3l4.h"
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 #define	memcpy(d,s,l)	bcopy(s,d,l)
 #endif
 
@@ -98,7 +98,7 @@ static int rxunit = -1;
 static int txunit = -1;
 static int outunit = -1;
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 
 #define	PDEVSTATIC	/* - not static - */
 void i4btrcattach (void);
@@ -114,7 +114,7 @@ int i4btrcioctl (dev_t dev, int cmd, caddr_t data, int flag, struct proc *p);
 
 #endif
 
-#if BSD > 199306 && defined(__FreeBSD__)
+#if defined(__DragonFly__) || (BSD > 199306 && defined(__FreeBSD__))
 #define	PDEVSTATIC static
 static d_open_t	i4btrcopen;
 static d_close_t i4btrcclose;
@@ -202,7 +202,7 @@ int get_trace_data_from_l1(i4b_trace_hdr_t *hdr, int len, char *buf);
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4btrcattach(void *dummy)
 #else
 i4btrcattach()
@@ -215,13 +215,13 @@ i4btrcattach()
 	for(i=0; i < NI4BTRC; i++)
 	{
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		make_dev(&i4btrc_cdevsw, i,
 				     UID_ROOT, GID_WHEEL, 0600, "i4btrc%d", i);
 #endif
 		trace_queue[i].ifq_maxlen = IFQ_MAXLEN;
 
-#if __FreeBSD__ > 4
+#if defined(__FreeBSD__) && __FreeBSD__ > 4
 		mtx_init(&trace_queue[i].ifq_mtx, "i4b_trace", MTX_DEF);
 #endif
 		device_state[i] = ST_IDLE;
@@ -460,7 +460,7 @@ i4btrcread(dev_t dev, struct uio * uio, int ioflag)
 	return(error);
 }
 
-#if defined(__FreeBSD__) && defined(OS_USES_POLL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(OS_USES_POLL)
 /*---------------------------------------------------------------------------*
  *	poll device
  *---------------------------------------------------------------------------*/
@@ -475,7 +475,7 @@ i4btrcpoll(dev_t dev, int events, struct thread *td)
  *	device driver ioctl routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC int
-#if defined (__FreeBSD_version) && __FreeBSD_version >= 300003
+#if defined(__DragonFly__) || (defined (__FreeBSD_version) && __FreeBSD_version >= 300003)
 i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 #elif defined(__bsdi__)
 i4btrcioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct proc *p)

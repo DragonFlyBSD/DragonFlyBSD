@@ -34,7 +34,7 @@
  *	----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.4 2003/08/07 21:17:28 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_pci.c,v 1.5 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Thu Jan 11 11:29:38 2001]
  *
@@ -1720,7 +1720,7 @@ itjc_attach(device_t dev)
 	sc->sc_obuf2 = NULL;
 	sc->sc_freeflag2 = 0;
 
-#if defined(__FreeBSD__) && __FreeBSD__ >=3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >=3)
 	callout_handle_init(&sc->sc_T3_callout);
 	callout_handle_init(&sc->sc_T4_callout);	
 #endif
@@ -1819,7 +1819,7 @@ itjc_intr(void *xsc)
 static void
 itjc_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc		*sc	= itjc_scp[unit];
 #else
 	struct l1_softc		*sc	= isic_find_sc(unit);
@@ -1910,7 +1910,7 @@ itjc_bchannel_start(int unit, int h_chan)
 	 * But, don't despair. The impact of it is unnoticeable.
 	 */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc  *sc	= itjc_scp[unit];
 #else
 	struct l1_softc	 *sc	= isic_find_sc(unit);
@@ -1970,7 +1970,7 @@ itjc_shutdown(device_t dev)
 isdn_link_t *
 itjc_ret_linktab(int unit, int channel)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc		*sc = itjc_scp[unit];
 #else
 	struct l1_softc		*sc = isic_find_sc(unit);
@@ -1986,7 +1986,7 @@ itjc_ret_linktab(int unit, int channel)
 void
 itjc_set_linktab(int unit, int channel, drvr_link_t *dlt)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc	= itjc_scp[unit];
 #else
 	struct l1_softc *sc	= isic_find_sc(unit);
@@ -2052,7 +2052,7 @@ itjc_init_linktab(struct l1_softc *sc)
 static void
 itjc_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = itjc_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);

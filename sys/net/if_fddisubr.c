@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.8 2004/02/13 17:45:49 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -63,7 +63,7 @@
 #ifdef INET6
 #include <netinet6/nd6.h>
 #endif
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <netinet/if_fddi.h>
 #else
 #include <net/if_fddi.h>
@@ -110,7 +110,7 @@ static	int fddi_resolvemulti (struct ifnet *, struct sockaddr **,
 #if defined(__bsdi__) || defined(__NetBSD__)
 #define	RTALLOC1(a, b)			rtalloc1(a, b)
 #define	ARPRESOLVE(a, b, c, d, e, f)	arpresolve(a, b, c, d, e)
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 #define	RTALLOC1(a, b)			rtalloc1(a, b, 0UL)
 #define	ARPRESOLVE(a, b, c, d, e, f)	arpresolve(a, b, c, d, e, f)
 #endif
@@ -535,7 +535,7 @@ fddi_ifattach(ifp)
 #ifdef IFF_NOTRAILERS
 	ifp->if_flags |= IFF_NOTRAILERS;
 #endif
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	ifa = ifnet_addrs[ifp->if_index - 1];
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
 	sdl->sdl_type = IFT_FDDI;
@@ -547,7 +547,7 @@ fddi_ifattach(ifp)
 #else
 	for (ifa = ifp->if_addrlist; ifa != NULL; ifa = ifa->ifa_next)
 #endif
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 		if ((sdl = (struct sockaddr_dl *)ifa->ifa_addr) &&
 		    sdl->sdl_family == AF_LINK) {
 			sdl->sdl_type = IFT_FDDI;

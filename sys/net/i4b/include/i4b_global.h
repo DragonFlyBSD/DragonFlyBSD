@@ -28,7 +28,7 @@
  *	--------------------------------------
  *
  * $FreeBSD: src/sys/i4b/include/i4b_global.h,v 1.6.2.2 2002/07/07 10:17:10 hm Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_global.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Sun Jul  7 12:11:35 2002]
  *
@@ -45,7 +45,7 @@
 /* hide SMP changes in FreeBSD 5.x-current for 4.x */
 /*-------------------------------------------------*/
 
-#if defined(__FreeBSD__) && __FreeBSD__ <= 4
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ <= 4)
 
 #define IF_LOCK(a)
 #define IF_UNLOCK(a)
@@ -96,7 +96,7 @@
 /* time handling */
 /*---------------*/
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/param.h>
 
 #if defined(__FreeBSD_version) && __FreeBSD_version >= 400000 && __FreeBSD_version < 400011
@@ -104,7 +104,7 @@
 #error "you need a FreeBSD-current >= 400011"
 #endif
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 300001
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001)
 
 #define TIMEOUT_FUNC_T	timeout_t *
 #define SECOND		time_second
@@ -143,7 +143,7 @@
 
 #else
 #define START_TIMER(XHANDLE, XF, XSC, XTIME) XHANDLE = timeout((TIMEOUT_FUNC_T)XF, (void*)XSC, XTIME)
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	STOP_TIMER(XHANDLE, XF, XSC)	untimeout((TIMEOUT_FUNC_T)XF, (void*)XSC, XHANDLE)
 #else
 #define STOP_TIMER(XHANDLE, XF, XSC)	untimeout((TIMEOUT_FUNC_T)XF, (void*)XSC)

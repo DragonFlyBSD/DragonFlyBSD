@@ -30,7 +30,7 @@
  *	$Id: i4b_l3l4.h,v 1.32 2000/08/24 11:48:57 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/include/i4b_l3l4.h,v 1.6.2.2 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/include/i4b_l3l4.h,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i4b_l3l4.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Fri Jun  2 14:29:35 2000]
  *
@@ -192,7 +192,7 @@ typedef struct
 
 	int	timeout_active;		/* idle timeout() active flag	*/
 
-#if (defined(__FreeBSD_version) && __FreeBSD_version >= 300001) || \
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001) || \
 	(!defined(__FreeBSD_version) && defined(__FreeBSD__) && __FreeBSD__ >= 3)
 	struct	callout_handle	idle_timeout_handle;
 	struct	callout_handle	T303_callout;

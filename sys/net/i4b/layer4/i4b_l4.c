@@ -30,7 +30,7 @@
  *	$Id: i4b_l4.c,v 1.54 2000/08/28 07:24:59 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4.c,v 1.6.2.2 2001/12/16 15:12:59 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4.c,v 1.4 2004/02/13 17:45:51 joerg Exp $
  *
  *      last edit-date: [Sun Aug 27 14:53:42 2000]
  *
@@ -54,7 +54,7 @@
 #include <sys/callout.h>
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bing.h"
 #endif
 
@@ -68,7 +68,7 @@
 #include "use_i4brbch.h"
 #include "use_i4btel.h"
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_cause.h>
@@ -83,7 +83,7 @@
 #include "../include/i4b_mbuf.h"
 #include "i4b_l4.h"
 
-#if !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__) && !defined(__NetBSD__)
 #define memcpy(dst, src, len)	bcopy((src), (dst), (len))
 #endif
 
@@ -1085,7 +1085,7 @@ i4b_idle_check_var_unit(call_desc_t *cd)
 	case IST_CHECK:
 		if( i4b_get_idletime(cd) > (SECOND - cd->shorthold_data.idle_time))
 		{	/* activity detected */
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 300001
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300001)
 			cd->idle_timeout_handle =
 #endif
 			/* check again in one second */

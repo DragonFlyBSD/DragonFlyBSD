@@ -36,7 +36,7 @@
  *	$Id: i4b_ifpi_pci.c,v 1.4 2000/06/02 11:58:56 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.5 2003/08/07 21:54:31 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi/i4b_ifpi_pci.c,v 1.6 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -685,7 +685,7 @@ avma1pp_attach_avma1pp(device_t dev)
 	sc->sc_obuf2 = NULL;
 	sc->sc_freeflag2 = 0;
 
-#if defined(__FreeBSD__) && __FreeBSD__ >=3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >=3)
 	callout_handle_init(&sc->sc_T3_callout);
 	callout_handle_init(&sc->sc_T4_callout);	
 #endif
@@ -1111,7 +1111,7 @@ avma1pp_hscx_init(struct l1_softc *sc, int h_chan, int activate)
 static void
 avma1pp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);
@@ -1179,7 +1179,7 @@ avma1pp_bchannel_setup(int unit, int h_chan, int bprot, int activate)
 static void
 avma1pp_bchannel_start(int unit, int h_chan)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);
@@ -1252,7 +1252,7 @@ avma1pp_bchannel_start(int unit, int h_chan)
 static isdn_link_t *
 avma1pp_ret_linktab(int unit, int channel)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);
@@ -1268,7 +1268,7 @@ avma1pp_ret_linktab(int unit, int channel)
 static void
 avma1pp_set_linktab(int unit, int channel, drvr_link_t *dlt)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);
@@ -1333,7 +1333,7 @@ avma1pp_init_linktab(struct l1_softc *sc)
 static void
 avma1pp_bchannel_stat(int unit, int h_chan, bchan_statistics_t *bsp)
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct l1_softc *sc = ifpi_scp[unit];
 #else
 	struct l1_softc *sc = isic_find_sc(unit);

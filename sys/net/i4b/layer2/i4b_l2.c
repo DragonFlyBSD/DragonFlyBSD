@@ -28,13 +28,13 @@
  *	-------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.c,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.3 2003/08/07 21:17:29 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.c,v 1.4 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Fri Jan 12 16:43:31 2001]
  *
  *---------------------------------------------------------------------------*/
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "use_i4bq921.h"
 #else
 #define NI4BQ921	1
@@ -51,7 +51,7 @@
 #include <sys/callout.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_debug.h>
 #else
 #include <i4b/i4b_debug.h>
@@ -284,7 +284,7 @@ i4b_mph_status_ind(int unit, int status, int parm)
 			bzero(&l2sc->stat, sizeof(lapdstat_t));			
 			i4b_l2_unit_init(unit);
 			
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			/* initialize the callout handles for timeout routines */
 			callout_handle_init(&l2sc->T200_callout);
 			callout_handle_init(&l2sc->T202_callout);

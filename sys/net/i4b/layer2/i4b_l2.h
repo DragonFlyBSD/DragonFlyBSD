@@ -30,7 +30,7 @@
  *	$Id: i4b_l2.h,v 1.23 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_l2.h,v 1.6.2.1 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_l2.h,v 1.3 2004/02/13 17:45:50 joerg Exp $
  *
  *      last edit-date: [Sat Mar 18 10:28:22 2000]
  *
@@ -64,7 +64,7 @@ typedef struct {
 	void(*T202func)(void *);/* function to be called when T202 expires */
 	int	T203;		/* max line idle time */
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct	callout_handle T200_callout;
 	struct	callout_handle T202_callout;
 	struct	callout_handle T203_callout;

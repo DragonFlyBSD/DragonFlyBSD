@@ -28,7 +28,7 @@
  *	-------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/i4b_ioctl.h,v 1.6.2.5 2002/04/25 12:29:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_ioctl.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_ioctl.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
  *
  *      last edit-date: [Sun Dec 16 15:09:12 2001]
  *
@@ -37,7 +37,7 @@
 #ifndef _I4B_IOCTL_H_
 #define _I4B_IOCTL_H_
 
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 #ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
 #endif /* _MACHINE_TYPES_H_ */

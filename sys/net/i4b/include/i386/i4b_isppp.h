@@ -21,7 +21,7 @@
  * $Id: i4b_isppp.h,v 1.5 2000/07/18 15:05:37 hm Exp $
  *
  * $FreeBSD: src/sys/i386/include/i4b_isppp.h,v 1.1.2.2 2001/09/28 07:43:19 gj Exp $
- * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/include/i386/i4b_isppp.h,v 1.3 2004/02/13 17:45:49 joerg Exp $
  */
 
 #ifndef _I4B_ISPPP_H_
@@ -32,7 +32,7 @@
 
 #ifdef SPPP_VJ
 #if !(defined (KERNEL) || defined (_KERNEL))
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #if 0
 /*
  * this is needed on FreeBSD to make /usr/src/usr.bin/kdump and
@@ -124,7 +124,7 @@ struct sppp {
 	u_char  confid[IDX_COUNT];	/* id of last configuration request */
 	int	rst_counter[IDX_COUNT];	/* restart counter */
 	int	fail_counter[IDX_COUNT]; /* negotiation failure counter */
-#if defined(__FreeBSD__) && __FreeBSD__ >= 3
+#if defined(__DragonFly__) || (defined(__FreeBSD__) && __FreeBSD__ >= 3)
 	struct callout_handle ch[IDX_COUNT]; /* per-proto and if callouts */
 	struct callout_handle pap_my_to_ch; /* PAP needs one more... */
 #endif
@@ -212,10 +212,10 @@ void sppp_attach (struct ifnet *ifp);
 void sppp_detach (struct ifnet *ifp);
 void sppp_input (struct ifnet *ifp, struct mbuf *m);
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 300003
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300003)
 int sppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
 #else
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 int sppp_ioctl (struct ifnet *ifp, int cmd, void *data);
 #else
 int sppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
@@ -233,10 +233,10 @@ void isppp_attach (struct ifnet *ifp);
 void isppp_detach (struct ifnet *ifp);
 void isppp_input (struct ifnet *ifp, struct mbuf *m);
 
-#if defined(__FreeBSD_version) && __FreeBSD_version >= 300003
+#if defined(__DragonFly__) || (defined(__FreeBSD_version) && __FreeBSD_version >= 300003)
 int isppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);
 #else
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 int isppp_ioctl (struct ifnet *ifp, int cmd, void *data);
 #else
 int isppp_ioctl (struct ifnet *ifp, u_long cmd, void *data);

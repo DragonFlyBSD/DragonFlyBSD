@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.5 2003/07/28 00:02:44 hmp Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.6 2004/02/13 17:45:49 joerg Exp $
  */
 
 /* 
@@ -25,7 +25,7 @@
 #define NO_ZCFUNCS
 #define MY_ZCALLOC
 
-#if defined(__FreeBSD__) && defined(_KERNEL)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(_KERNEL)
 #define inflate	inflate_ppp	/* FreeBSD already has an inflate :-( */
 #endif
 

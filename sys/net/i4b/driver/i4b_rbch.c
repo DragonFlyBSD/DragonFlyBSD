@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.8 2003/08/26 20:49:48 rob Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.9 2004/02/13 17:45:49 joerg Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -58,7 +58,7 @@ extern cc_t ttydefchars;
 #define termioschars(t) memcpy((t)->c_cc, &ttydefchars, sizeof((t)->c_cc))
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 
 #ifdef DEVFS
 #include <sys/devfsext.h>
@@ -70,7 +70,7 @@ extern cc_t ttydefchars;
 #include <sys/filio.h>
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <net/i4b/include/machine/i4b_ioctl.h>
 #include <net/i4b/include/machine/i4b_rbch_ioctl.h>
 #include <net/i4b/include/machine/i4b_debug.h>
@@ -97,7 +97,7 @@ extern cc_t ttydefchars;
 #include <sys/ioctl.h>
 #endif
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <sys/filio.h>
 #endif
 
@@ -131,7 +131,7 @@ static struct rbch_softc {
 	struct selinfo selp;		/* select / poll	*/
 
 #if I4BRBCHACCT
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct callout_handle sc_callout;
 #endif	
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000
@@ -153,7 +153,7 @@ static void rbch_disconnect(int unit, void *cdp);
 static void rbch_init_linktab(int unit);
 static void rbch_clrq(int unit);
 
-#ifndef __FreeBSD__
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
 #define PDEVSTATIC	/* - not static - */
 #define IOCTL_CMD_T	u_long
 void i4brbchattach (void);
@@ -169,7 +169,7 @@ PDEVSTATIC int i4brbchselect (dev_t dev, int rw, struct proc *p);
 #endif
 #endif
 
-#if BSD > 199306 && defined(__FreeBSD__)
+#if defined(__DragonFly__) || (BSD > 199306 && defined(__FreeBSD__))
 #define PDEVSTATIC	static
 #define IOCTL_CMD_T	u_long
 
@@ -262,7 +262,7 @@ dummy_i4brbchattach(struct device *parent, struct device *self, void *aux)
  *	interface attach routine
  *---------------------------------------------------------------------------*/
 PDEVSTATIC void
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 i4brbchattach(void *dummy)
 #else
 i4brbchattach()
@@ -276,13 +276,13 @@ i4brbchattach()
 	
 	for(i=0; i < NI4BRBCH; i++)
 	{
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		make_dev(&i4brbch_cdevsw, i,
 			UID_ROOT, GID_WHEEL, 0600, "i4brbch%d", i);
 #endif
 
 #if I4BRBCHACCT
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		callout_handle_init(&rbch_softc[i].sc_callout);
 #endif
 #if defined(__NetBSD__) && __NetBSD_Version__ >= 104230000

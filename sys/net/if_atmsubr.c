@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.7 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.8 2004/02/13 17:45:49 joerg Exp $
  */
 
 /*
@@ -169,7 +169,7 @@ atm_output(ifp, m0, dst, rt0)
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 			printf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
-#elif defined(__FreeBSD__) || defined(__bsdi__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 			printf("%s: can't handle af%d\n", ifp->if_xname, 
 			    dst->sa_family);
 #endif
@@ -271,7 +271,7 @@ atm_input(ifp, ah, m, rxhand)
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
 				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
-#elif defined(__FreeBSD__) || defined(__bsdi__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 				printf("%s: recv'd invalid LLC/SNAP frame [vp=%d,vc=%d]\n",
 				       ifp->if_xname, ATM_PH_VPI(ah), ATM_PH_VCI(ah));
 #endif
@@ -322,10 +322,10 @@ atm_ifattach(ifp)
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 	for (ifa = TAILQ_FIRST(&ifp->if_addrlist); ifa != 0;
 	    ifa = TAILQ_NEXT(ifa, ifa_list))
-#elif defined(__FreeBSD__) && (__FreeBSD__ > 2)
+#elif defined(__DragonFly__) || (defined(__FreeBSD__) && (__FreeBSD__ > 2))
 	for (ifa = TAILQ_FIRST(&ifp->if_addrhead); ifa; 
 	    ifa = TAILQ_NEXT(ifa, ifa_link))
-#elif defined(__FreeBSD__) || defined(__bsdi__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__bsdi__)
 	for (ifa = ifp->if_addrlist; ifa; ifa = ifa->ifa_next) 
 #endif
 		if ((sdl = (struct sockaddr_dl *)ifa->ifa_addr) &&

@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.6 2004/01/06 03:17:25 dillon Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.7 2004/02/13 17:45:49 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -654,7 +654,7 @@ arc_ifattach(ifp, lla)
 	ifp->if_resolvemulti = arc_resolvemulti;
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 2500000;
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	ifa = ifnet_addrs[ifp->if_index - 1];
 #else
 	ifa = ifaddr_byindex(ifp->if_index);
