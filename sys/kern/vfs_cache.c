@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.48 2005/01/31 18:11:06 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.49 2005/02/01 14:43:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1802,6 +1802,11 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 		numfullpathfail2++;
 		free(buf, M_TEMP);
 		return(ENOENT);
+	}
+	if ((ncp->nc_flag & NCF_ROOT) && ncp != fdp->fd_nrdir) {
+		bp = buf + MAXPATHLEN - 1;
+		*bp = '\0';
+		slash_prefixed = 0;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
