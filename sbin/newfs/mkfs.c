@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.7 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.8 2004/06/26 22:44:05 dillon Exp $
  */
 
 #include "defs.h"
@@ -493,17 +493,19 @@ mkfs(struct partition *pp, char *fsys, int fi, int fo, const char *mfscopy)
 			mincpg);
 		exit(25);
 	} else if (sblock.fs_cpg != cpg) {
-		if (!cpgflg)
+		if (!cpgflg && !mfs)
 			printf("Warning: ");
 		else if (!mapcramped && !inodecramped)
 			exit(26);
-		if (mapcramped && inodecramped)
+		if (!mfs) {
+		    if (mapcramped && inodecramped)
 			printf("Block size and bytes per inode restrict");
-		else if (mapcramped)
+		    else if (mapcramped)
 			printf("Block size restricts");
-		else
+		    else
 			printf("Bytes per inode restrict");
-		printf(" cylinders per group to %d.\n", sblock.fs_cpg);
+		    printf(" cylinders per group to %d.\n", sblock.fs_cpg);
+		}
 		if (cpgflg)
 			exit(27);
 	}
