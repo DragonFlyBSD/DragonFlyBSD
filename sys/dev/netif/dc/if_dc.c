@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.4 2003/08/07 21:17:00 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.5 2003/08/24 15:49:11 drhodus Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -3488,8 +3488,10 @@ static void dc_stop(sc)
 	 */
 	for (i = 0; i < DC_TX_LIST_CNT; i++) {
 		if (sc->dc_cdata.dc_tx_chain[i] != NULL) {
-			if (sc->dc_ldata->dc_tx_list[i].dc_ctl &
-			    DC_TXCTL_SETUP) {
+			if ((sc->dc_ldata->dc_tx_list[i].dc_ctl &
+			    DC_TXCTL_SETUP) ||
+			    !(sc->dc_ldata->dc_tx_list[i].dc_ctl &
+			    DC_TXCTL_LASTFRAG)) {
 				sc->dc_cdata.dc_tx_chain[i] = NULL;
 				continue;
 			}
