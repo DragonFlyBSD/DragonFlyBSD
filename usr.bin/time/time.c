@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)time.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/time/time.c,v 1.14.2.5 2002/06/28 08:35:15 tjr Exp $
- * $DragonFly: src/usr.bin/time/time.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/time/time.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -61,7 +61,7 @@ static char decimal_point;
 int
 main(int argc, char **argv)
 {
-	register int pid;
+	int pid;
 	int aflag, ch, hflag, lflag, status, pflag;
 	struct timeval before, after;
 	struct rusage ru;
@@ -69,12 +69,12 @@ main(int argc, char **argv)
 	char *ofn = NULL;
 	int exitonsig = 0; /* Die with same signal as child */
 
-	(void) setlocale(LC_NUMERIC, "");
+	setlocale(LC_NUMERIC, "");
 	decimal_point = localeconv()->decimal_point[0];
 
 	aflag = hflag = lflag = pflag = 0;
 	while ((ch = getopt(argc, argv, "ahlo:p")) != -1)
-		switch((char)ch) {
+		switch ((char)ch) {
 		case 'a':
 			aflag = 1;
 			break;
@@ -106,7 +106,7 @@ main(int argc, char **argv)
 	}
 
 	gettimeofday(&before, (struct timezone *)NULL);
-	switch(pid = fork()) {
+	switch (pid = fork()) {
 	case -1:			/* error */
 		err(1, "time");
 		/* NOTREACHED */
@@ -116,11 +116,12 @@ main(int argc, char **argv)
 		/* NOTREACHED */
 	}
 	/* parent */
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGQUIT, SIG_IGN);
-	while (wait3(&status, 0, &ru) != pid);		/* XXX use waitpid */
+	signal(SIGINT, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	while (wait3(&status, 0, &ru) != pid)		/* XXX use waitpid */
+		;
 	gettimeofday(&after, (struct timezone *)NULL);
-	if ( ! WIFEXITED(status))
+	if (!WIFEXITED(status))
 		warnx("command terminated abnormally");
 	if (WIFSIGNALED(status))
 		exitonsig = WTERMSIG(status);
@@ -134,35 +135,36 @@ main(int argc, char **argv)
 		at least two digits after the radix. */
 		fprintf(out, "real %ld%c%02ld\n",
 			after.tv_sec, decimal_point,
-			after.tv_usec/10000);
+			after.tv_usec / 10000);
 		fprintf(out, "user %ld%c%02ld\n",
 			ru.ru_utime.tv_sec, decimal_point,
-			ru.ru_utime.tv_usec/10000);
+			ru.ru_utime.tv_usec / 10000);
 		fprintf(out, "sys %ld%c%02ld\n",
 			ru.ru_stime.tv_sec, decimal_point,
-			ru.ru_stime.tv_usec/10000);
+			ru.ru_stime.tv_usec / 10000);
 	} else if (hflag) {
-		humantime(out, after.tv_sec, after.tv_usec/10000);
+		humantime(out, after.tv_sec, after.tv_usec / 10000);
 		fprintf(out, " real\t");
-		humantime(out, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec/10000);
+		humantime(out, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 10000);
 		fprintf(out, " user\t");
-		humantime(out, ru.ru_stime.tv_sec, ru.ru_stime.tv_usec/10000);
+		humantime(out, ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 10000);
 		fprintf(out, " sys\n");
 	} else {
 		fprintf(out, "%9ld%c%02ld real ",
 			after.tv_sec, decimal_point,
-			after.tv_usec/10000);
+			after.tv_usec / 10000);
 		fprintf(out, "%9ld%c%02ld user ",
 			ru.ru_utime.tv_sec, decimal_point,
-			ru.ru_utime.tv_usec/10000);
+			ru.ru_utime.tv_usec / 10000);
 		fprintf(out, "%9ld%c%02ld sys\n",
 			ru.ru_stime.tv_sec, decimal_point,
-			ru.ru_stime.tv_usec/10000);
+			ru.ru_stime.tv_usec / 10000);
 	}
 	if (lflag) {
-		int hz = getstathz();
+		int hz;
 		u_long ticks;
 
+		hz = getstathz();
 		ticks = hz * (ru.ru_utime.tv_sec + ru.ru_stime.tv_sec) +
 		     hz * (ru.ru_utime.tv_usec + ru.ru_stime.tv_usec) / 1000000;
 
@@ -208,7 +210,7 @@ main(int argc, char **argv)
 		else
 			kill(getpid(), exitonsig);
 	}
-	exit (WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
+	exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
 }
 
 static void
@@ -231,10 +233,10 @@ getstathz(void)
 
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_CLOCKRATE;
-	size = sizeof clockrate;
+	size = sizeof(clockrate);
 	if (sysctl(mib, 2, &clockrate, &size, NULL, 0) == -1)
 		err(1, "sysctl kern.clockrate");
-	return clockrate.stathz;
+	return(clockrate.stathz);
 }
 
 static void

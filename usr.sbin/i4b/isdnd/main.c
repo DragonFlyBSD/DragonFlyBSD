@@ -28,7 +28,7 @@
  *	-------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/main.c,v 1.8.2.5 2001/12/16 15:13:38 hm Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/main.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/main.c,v 1.3 2004/03/26 00:30:12 cpressey Exp $
  *
  *      last edit-date: [Tue Jun  5 17:06:20 2001]
  *
@@ -640,7 +640,7 @@ isdnrdhdl(void)
 	static unsigned char msg_rd_buf[MSG_BUF_SIZ];
 	msg_hdr_t *hp = (msg_hdr_t *)&msg_rd_buf[0];
 	
-	register int len;
+	int len;
 
 	if((len = read(isdnfd, msg_rd_buf, MSG_BUF_SIZ)) > 0)
 	{

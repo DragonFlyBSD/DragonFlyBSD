@@ -38,7 +38,7 @@
  *	$Id: rates.c,v 1.11 2000/10/09 12:53:29 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/rates.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/rates.c,v 1.3 2003/11/16 15:17:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/rates.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
  *
  *      last edit-date: [Mon Dec 13 21:48:31 1999]
  *
@@ -94,7 +94,7 @@ int
 readrates(char *filename)
 {
 	char buffer[MAXPATHLEN];
-	register char *bp;
+	char *bp;
 	struct rates *rt, *ort;
 	int rateindx;
 	int indx;
@@ -471,7 +471,7 @@ getrate(int rate_type)
 {
 	struct tm *ptr;
 	time_t now;
-	register struct rates *hd;
+	struct rates *hd;
 	int time_now;
 
 	if((!got_rate) ||

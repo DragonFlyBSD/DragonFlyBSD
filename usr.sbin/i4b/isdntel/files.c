@@ -30,7 +30,7 @@
  *      $Id: files.c,v 1.8 1999/12/13 21:25:26 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntel/files.c,v 1.6.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.4 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntel/files.c,v 1.5 2004/03/26 00:30:12 cpressey Exp $
  *
  *      last edit-date: [Mon Dec 13 21:54:06 1999]
  *
@@ -43,10 +43,10 @@
  *	first element of list
  *---------------------------------------------------------------------------*/
 struct onefile 
-*store(register struct onefile *new,		/* new entry to store into list */
-       register struct onefile *top)		/* current first entry in list */
+*store(struct onefile *new,			/* new entry to store into list */
+       struct onefile *top)			/* current first entry in list */
 {
-	register struct onefile *old, *p;
+	struct onefile *old, *p;
 
 	if (last == NULL)			/* enter very first element ? */
 	{
@@ -95,12 +95,12 @@ int
 fill_list(void)
 {
 #if defined(__DragonFly__) 
-	register struct dirent *dp;
+	struct dirent *dp;
 #else
-	register struct direct *dp;
+	struct direct *dp;
 #endif
-	register struct onefile *new_entry;
-	register DIR *dirp;
+	struct onefile *new_entry;
+	DIR *dirp;
 	int flcnt = 0;
 	char tmp[80];
 	char *s, *d;
@@ -234,8 +234,8 @@ fill_list(void)
 void
 free_list(void)
 {
-	register struct onefile *dir;
-	register struct onefile *tmp;
+	struct onefile *dir;
+	struct onefile *tmp;
 
 	dir = first;				/* start of linked list */
 

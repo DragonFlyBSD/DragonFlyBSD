@@ -23,7 +23,7 @@
  * For semi-intelligent modem handling.
  *
  * $FreeBSD: src/libexec/getty/chat.c,v 1.6 1999/08/28 00:09:34 peter Exp $
- * $DragonFly: src/libexec/getty/chat.c,v 1.3 2003/11/14 03:54:30 dillon Exp $
+ * $DragonFly: src/libexec/getty/chat.c,v 1.4 2004/03/26 00:30:12 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -85,8 +85,7 @@ static int    chat_send (char const *);
  */
 
 static void
-chat_alrm(signo)
-	int signo;
+chat_alrm(int signo)
 {
 	int on = 1;
 
@@ -102,9 +101,10 @@ chat_alrm(signo)
  */
 
 static int
-chat_unalarm()
+chat_unalarm(void)
 {
 	int off = 0;
+
 	return ioctl(STDIN_FILENO, FIONBIO, &off);
 }
 
@@ -114,9 +114,7 @@ chat_unalarm()
  */
 
 static int
-getdigit(ptr, base, max)
-	unsigned char **ptr;
-	int base, max;
+getdigit(unsigned char **ptr, int base, int max)
 {
 	int i, val = 0;
 	char * q;
@@ -143,8 +141,7 @@ getdigit(ptr, base, max)
  */
 
 static char **
-read_chat(chatstr)
-	char **chatstr;
+read_chat(char **chatstr)
 {
 	char *str = *chatstr;
 	char **res = NULL;
@@ -250,9 +247,7 @@ read_chat(chatstr)
  */
 
 static char *
-cleanchr(buf, ch)
-	char **buf;
-	unsigned char ch;
+cleanchr(char **buf, unsigned char ch)
 {
 	int l;
 	static char tmpbuf[5];
@@ -286,9 +281,7 @@ cleanchr(buf, ch)
  */
 
 static char *
-cleanstr(s, l)
-	const unsigned char *s;
-	int l;
+cleanstr(const unsigned char *s, int l)
 {
 	static unsigned char * tmp = NULL;
 	static int tmplen = 0;
@@ -317,8 +310,7 @@ cleanstr(s, l)
  */
 
 static const char *
-result(r)
-	int r;
+result(int r)
 {
 	static const char * results[] = {
 		"OK", "MEMERROR", "IOERROR", "TIMEOUT"
@@ -333,8 +325,7 @@ result(r)
  */
 
 static int
-chat_expect(str)
-	const char *str;
+chat_expect(const char *str)
 {
 	int len, r = 0;
 
@@ -403,8 +394,7 @@ chat_expect(str)
  */
 
 static int
-chat_send(str)
-	char const *str;
+chat_send(char const *str)
 {
 	int r = 0;
 
@@ -457,9 +447,7 @@ chat_send(str)
  */
 
 int
-getty_chat(scrstr, timeout, debug)
-	char *scrstr;
-	int timeout, debug;
+getty_chat(char *scrstr, int timeout, int debug)
 {
         int r = -1;
 

@@ -28,7 +28,7 @@
  *	----------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/exec.c,v 1.6.2.4 2001/12/10 09:42:52 hm Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/exec.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/exec.c,v 1.3 2004/03/26 00:30:12 cpressey Exp $
  *
  *      last edit-date: [Mon Dec 10 10:39:53 2001]
  *
@@ -57,7 +57,7 @@ void
 sigchild_handler(int sig)
 {
 	int retstat;
-	register int i;
+	int i;
 	pid_t pid;
 	
 	if((pid = waitpid(-1, &retstat, WNOHANG)) <= 0)

@@ -30,7 +30,7 @@
  *	$Id: log.c,v 1.25 2000/10/09 12:53:29 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/log.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.4 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.5 2004/03/26 00:30:12 cpressey Exp $
  *
  *      last edit-date: [Mon Dec 13 21:47:28 1999]
  *
@@ -145,7 +145,7 @@ void
 log(int what, const char *fmt, ...)
 {
 	char buffer[LOGBUFLEN];
-	register char *dp;
+	char *dp;
 	va_list ap;
 
 	va_start(ap, fmt);
@@ -192,7 +192,7 @@ log(int what, const char *fmt, ...)
 	}
 	else
 	{
-		register char *s = buffer;
+		char *s = buffer;
 		
 		/* strip leading spaces from syslog output */
 		
@@ -217,7 +217,7 @@ getlogdatetime(void)
 {
 	static char logdatetime[41];
 	time_t tim;
-	register struct tm *tp;
+	struct tm *tp;
 	
 	tim = time(NULL);
 	tp = localtime(&tim);
@@ -231,7 +231,7 @@ getlogdatetime(void)
 static void
 check_reg(char *logstring)
 {
-	register int i;
+	int i;
 
 	for(i = 0; i < MAX_RE; i++)
 	{

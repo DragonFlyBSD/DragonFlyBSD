@@ -30,7 +30,7 @@
  *	$Id: main.c,v 1.16 2000/03/13 16:18:38 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntest/main.c,v 1.7.2.1 2001/08/01 17:45:07 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.3 2003/08/08 04:18:45 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntest/main.c,v 1.4 2004/03/26 00:30:13 cpressey Exp $
  *
  *      last edit-date: [Mon Mar 13 17:19:26 2000]
  *
@@ -711,7 +711,7 @@ int do_test(void)
 void
 setup_wrfix(int len, unsigned char *buf)
 {
-	register int i;
+	int i;
 	
 	for(i=0; i<len;)
 	{
@@ -726,7 +726,7 @@ setup_wrfix(int len, unsigned char *buf)
 int		
 check_rd(int len, unsigned char *wbuf, unsigned char *rbuf)
 {
-	register int i;
+	int i;
 	int ret = 0;
 	
 	for(i=0; i<len; i++)
