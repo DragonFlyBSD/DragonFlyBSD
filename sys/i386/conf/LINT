@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.49 2005/03/28 14:42:45 joerg Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.50 2005/04/02 19:54:29 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -1455,13 +1455,7 @@ pseudo-device	atm
 device		en
 options 	NATM			#native ATM
 
-#
-# pcm: PCM audio through various sound cards.
-#
-# This has support for a large number of new audio cards, based on
-# CS423x, OPTi931, Yamaha OPL-SAx, and also for SB16, GusPnP.
-# For more information about this driver and supported cards,
-# see the pcm.4 man page.
+# Sound drivers
 #
 # The flags of the device tells the device a bit more info about the
 # device that normally is obtained through the PnP interface.
@@ -1471,7 +1465,8 @@ options 	NATM			#native ATM
 #		    zero if don't know what to put in (and you don't,
 #		    since this is unsupported at the moment...).
 #
-# This driver will use the new PnP code if it's available.
+# This driver will use the new PnP code if it's available. You might
+# need PNPBIOS for ISA devices.
 #
 # If you have a GUS-MAX card and want to use the CS4231 codec on the
 # card the drqs for the gus max must be 8 bit (1, 2, or 3).
@@ -1479,49 +1474,12 @@ options 	NATM			#native ATM
 # If you would like to use the full duplex option on the gus, then define
 # flags to be the ``read dma channel''.
 #
-# options BROKEN_BUS_CLOCK	#PAS-16 isn't working and OPTI chipset
-# options SYMPHONY_PAS		#PAS-16 isn't working and SYMPHONY chipset
-# options EXCLUDE_SBPRO		#PAS-16
-# options SBC_IRQ=5		#PAS-16. Must match irq on sb0 line.
-# PAS16: The order of the pas0/sb0/opl0 is important since the
-#	sb emulation is enabled in the pas-16 attach.
-#
-# To override the GUS defaults use:
-# options GUS_DMA2
-# options GUS_DMA
-# options GUS_IRQ
-#
-# The src/sys/i386/isa/sound/sound.doc has more information.
 
-# The newpcm driver (use INSTEAD of snd0 and all VOXWARE drivers!).
-# Note that motherboard sound devices may require device PNPBIOS.
-#
-# Supported cards include:
-# Creative SoundBlaster ISA PnP/non-PnP
-# Supports ESS and Avance ISA chips as well.
-# Gravis UltraSound ISA PnP/non-PnP
-# Crystal Semiconductor CS461x/428x PCI
-# Neomagic 256AV (ac97)
-# Most of the more common ISA/PnP sb/mss/ess compatible cards.
-
-# For non-pnp sound cards with no bridge drivers only:
-device		pcm0 at isa? irq 10 drq 1 flags 0x0
 #
 # For PnP/PCI sound cards
 device		pcm
-
-# The bridge drivers for sound cards.  These can be separately configured
-# for providing services to the likes of new-midi (not in the tree yet).
-# When used with 'device pcm' they also provide pcm sound services.
-#
-# sbc:  Creative SoundBlaster ISA PnP/non-PnP
-#	Supports ESS and Avance ISA chips as well.
-# gusc: Gravis UltraSound ISA PnP/non-PnP
-# csa:  Crystal Semiconductor CS461x/428x PCI
-
-# For non-PnP cards:
-device		sbc0	at isa? port 0x220 irq 5 drq 1 flags 0x15
-device		gusc0	at isa? port 0x220 irq 5 drq 1 flags 0x13
+# For non-pnp sound cards:
+device		pcm0 at isa? irq 10 drq 1 flags 0x0
 
 #
 # Miscellaneous hardware:
