@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.9 2005/03/21 19:18:51 joerg Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.10 2005/03/21 19:20:57 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -259,6 +259,15 @@ main(int argc, char *argv[])
 	for (;;) {
 		struct whod wd;
 		int cc, whod, len = sizeof(from);
+
+		if (got_sigalrm == 1) {
+			onalrm();
+			got_sigalrm = 0;
+		}
+		else if (got_sighup == 1) {
+			getboottime();
+			got_sighup = 0;
+		}
 
 		cc = recvfrom(s, (char *)&wd, sizeof(struct whod), 0,
 			(struct sockaddr *)&from, &len);
