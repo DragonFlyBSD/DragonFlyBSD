@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.3 2003/07/03 18:34:00 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.4 2003/07/30 05:19:54 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@
 #include <unistd.h>
 #include <devstat.h>
 
-struct nlist namelist[] = {
+static struct nlist namelist[] = {
 #define	X_CPTIME	0
 	{ "_cp_time" },
 #define	X_BOOTTIME	1
@@ -81,7 +81,7 @@ struct nlist namelist[] = {
 	{ "_intrnames" },
 #define	X_EINTRNAMES	6
 	{ "_eintrnames" },
-#define	X_INTRCNT	8
+#define	X_INTRCNT	7
 	{ "_intrcnt" },
 #define	X_EINTRCNT	8
 	{ "_eintrcnt" },
@@ -104,7 +104,7 @@ struct nlist namelist[] = {
 	{ "_xstats" },
 #define X_END		17
 #else
-#define X_END		18
+#define X_END		12
 #endif
 	{ "" },
 };
