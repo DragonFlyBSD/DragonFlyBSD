@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.16 2004/06/03 13:30:26 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.17 2004/06/07 07:02:42 dillon Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -794,6 +794,9 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
  	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
  		ninp = LIST_NEXT(inp, inp_list);
 
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
+
  		if ((inp->inp_vflag & INP_IPV6) == 0)
 			continue;
 
@@ -896,6 +899,8 @@ in6_pcbpurgeif0(struct in6pcb *head, struct ifnet *ifp)
 	struct in6_multi_mship *imm, *nimm;
 
 	for (in6p = head; in6p != NULL; in6p = LIST_NEXT(in6p, inp_list)) {
+		if (in6p->in6p_flags & INP_PLACEMARKER)
+			continue;
 		im6o = in6p->in6p_moptions;
 		if ((in6p->inp_vflag & INP_IPV6) &&
 		    im6o) {

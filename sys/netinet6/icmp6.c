@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.10 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.11 2004/06/07 07:02:42 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -1905,8 +1905,10 @@ icmp6_rip6_input(struct	mbuf **mp, int	off)
 	/* KAME hack: recover scopeid */
 	(void)in6_recoverscope(&rip6src, &ip6->ip6_src, m->m_pkthdr.rcvif);
 
-	LIST_FOREACH(in6p, &ripcbinfo.listhead, inp_list)
+	LIST_FOREACH(in6p, &ripcbinfo.pcblisthead, inp_list)
 	{
+		if (in6p->inp_flags & INP_PLACEMARKER)
+			continue;
 		if ((in6p->inp_vflag & INP_IPV6) == 0)
 			continue;
 #ifdef HAVE_NRL_INPCB

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_ifattach.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_ifattach.c,v 1.6 2004/06/07 07:02:42 dillon Exp $	*/
 /*	$KAME: in6_ifattach.c,v 1.118 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -936,8 +936,8 @@ in6_ifdetach(struct ifnet *ifp)
 	}
 
 	/* leave from all multicast groups joined */
-	in6_pcbpurgeif0(LIST_FIRST(&udbinfo.listhead), ifp);
-	in6_pcbpurgeif0(LIST_FIRST(&ripcbinfo.listhead), ifp);
+	in6_pcbpurgeif0(LIST_FIRST(&udbinfo.pcblisthead), ifp);
+	in6_pcbpurgeif0(LIST_FIRST(&ripcbinfo.pcblisthead), ifp);
 	for (in6m = LIST_FIRST(&in6_multihead); in6m; in6m = in6m_next) {
 		in6m_next = LIST_NEXT(in6m, in6m_entry);
 		if (in6m->in6m_ifp != ifp)
