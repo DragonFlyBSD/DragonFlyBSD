@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.10 2004/05/07 05:45:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.11 2004/05/07 10:09:25 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ static int	lf_count_change(struct proc *, int);
  * Change the POSIX lock accounting for the given process.
  */
 void
-lf_count_adjust(struct proc *p, struct uidinfo *newowner)
+lf_count_adjust(struct proc *p, int increase)
 {
 	struct uidinfo *uip;
 
@@ -98,15 +98,14 @@ lf_count_adjust(struct proc *p, struct uidinfo *newowner)
 
 	uip = p->p_ucred->cr_uidinfo;
 
-	newowner->ui_posixlocks += p->p_numposixlocks;
-	uip->ui_posixlocks -= p->p_numposixlocks;
+	if (increase)
+		uip->ui_posixlocks += p->p_numposixlocks;
+	else
+		uip->ui_posixlocks -= p->p_numposixlocks;
 
 	KASSERT(uip->ui_posixlocks >= 0,
-		("Negative number of POSIX locks held by old user: %d.",
-		 uip->ui_posixlocks));
-	KASSERT(newowner->ui_posixlocks >= 0,
-		("Negative number of POSIX locks held by new user: %d.",
-		 newowner->ui_posixlocks));
+		("Negative number of POSIX locks held by %s user: %d.",
+		 increase ? "new" : "old", uip->ui_posixlocks));
 }
 
 static int

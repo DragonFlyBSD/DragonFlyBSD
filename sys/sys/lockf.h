@@ -35,7 +35,7 @@
  *
  *	@(#)lockf.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/sys/lockf.h,v 1.10 1999/08/28 00:51:51 peter Exp $
- * $DragonFly: src/sys/sys/lockf.h,v 1.5 2004/05/04 11:58:26 hmp Exp $
+ * $DragonFly: src/sys/sys/lockf.h,v 1.6 2004/05/07 10:09:25 joerg Exp $
  */
 
 #ifndef _SYS_LOCKF_H_
@@ -71,7 +71,7 @@ int	lf_advlock(struct vop_advlock_args *, struct lockf *, u_quad_t);
 #ifdef _KERNEL
 extern int maxposixlocksperuid;
 #endif
-struct uidinfo;
-void	lf_count_adjust(struct proc *, struct uidinfo *);
+
+void	lf_count_adjust(struct proc *, int);
 
 #endif /* !_SYS_LOCKF_H_ */

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.16 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.17 2004/05/07 10:09:25 joerg Exp $
  */
 
 /*
@@ -1109,9 +1109,10 @@ change_ruid(uid_t ruid)
 
 	cr = cratom(&p->p_ucred);
 	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
-	lf_count_adjust(p, uifind(ruid));
+	lf_count_adjust(p, 0);
 	/* It is assumed that pcred is not shared between processes */
 	cr->cr_ruid = ruid;
 	uireplace(&cr->cr_ruidinfo, uifind(ruid));
+	lf_count_adjust(p, 1);
 	(void)chgproccnt(cr->cr_ruidinfo, 1, 0);
 }
