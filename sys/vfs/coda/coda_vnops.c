@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.7 2003/07/19 21:14:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.8 2003/07/26 13:40:57 rob Exp $
  * 
  */
 
@@ -201,7 +201,7 @@ coda_vop_nop(void *anon) {
 int
 coda_vnodeopstats_init(void)
 {
-	register int i;
+	int i;
 	
 	for(i=0;i<CODA_VNODEOPS_SIZE;i++) {
 		coda_vnodeopstats[i].opcode = i;
@@ -229,7 +229,7 @@ coda_open(v)
      */
 /* true args */
     struct vop_open_args *ap = v;
-    register struct vnode **vpp = &(ap->a_vp);
+    struct vnode **vpp = &(ap->a_vp);
     struct cnode *cp = VTOC(*vpp);
     int flag = ap->a_mode & (~O_EXCL);
     struct ucred *cred = ap->a_cred;
@@ -670,9 +670,9 @@ coda_setattr(v)
 {
 /* true args */
     struct vop_setattr_args *ap = v;
-    register struct vnode *vp = ap->a_vp;
+    struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    register struct vattr *vap = ap->a_vap;
+    struct vattr *vap = ap->a_vap;
     struct ucred *cred = ap->a_cred;
     struct thread *td = ap->a_td;
 /* locals */
@@ -1406,7 +1406,7 @@ coda_mkdir(v)
     struct vnode *dvp = ap->a_dvp;
     struct cnode *dcp = VTOC(dvp);	
     struct componentname  *cnp = ap->a_cnp;
-    register struct vattr *va = ap->a_vap;
+    struct vattr *va = ap->a_vap;
     struct vnode **vpp = ap->a_vpp;
     struct ucred *cred = cnp->cn_cred;
     struct thread *td = cnp->cn_td;
@@ -1596,7 +1596,7 @@ coda_readdir(v)
     struct vop_readdir_args *ap = v;
     struct vnode *vp = ap->a_vp;
     struct cnode *cp = VTOC(vp);
-    register struct uio *uiop = ap->a_uio;
+    struct uio *uiop = ap->a_uio;
     struct ucred *cred = ap->a_cred;
     int *eofflag = ap->a_eofflag;
     u_long **cookies = ap->a_cookies;
@@ -1712,7 +1712,7 @@ coda_strategy(v)
 {
 /* true args */
     struct vop_strategy_args *ap = v;
-    register struct buf *bp __attribute__((unused)) = ap->a_bp;
+    struct buf *bp __attribute__((unused)) = ap->a_bp;
 /* upcall decl */
 /* locals */
 

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.5 2003/07/19 21:14:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.6 2003/07/26 13:40:57 rob Exp $
  * 
  */
 
@@ -117,7 +117,7 @@ vcodaattach(n)
 int 
 vc_nb_open(dev_t dev, int flag, int mode, d_thread_t *td)
 {
-    register struct vcomm *vcp;
+    struct vcomm *vcp;
     
     ENTRY;
 
@@ -228,8 +228,8 @@ vc_nb_read(dev, uiop, flag)
     struct uio  *uiop; 
     int          flag;
 {
-    register struct vcomm *	vcp;
-    register struct vmsg *vmp;
+    struct vcomm *	vcp;
+    struct vmsg *vmp;
     int error = 0;
     
     ENTRY;
@@ -282,8 +282,8 @@ vc_nb_write(dev, uiop, flag)
     struct uio  *uiop; 
     int          flag;
 {
-    register struct vcomm *	vcp;
-    register struct vmsg *vmp;
+    struct vcomm *	vcp;
+    struct vmsg *vmp;
     struct coda_out_hdr *out;
     u_long seq;
     u_long opcode;
@@ -428,7 +428,7 @@ vc_nb_ioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, d_thread_t *td)
 int
 vc_nb_poll(dev_t dev, int events, d_thread_t *td)
 {
-    register struct vcomm *vcp;
+    struct vcomm *vcp;
     int event_msk = 0;
 
     ENTRY;

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.6 2003/07/22 17:03:23 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.7 2003/07/26 13:40:57 rob Exp $
  * 
  */
 
@@ -90,7 +90,7 @@ extern int vc_nb_open __P((dev_t, int, int, d_thread_t *));
 int
 coda_vfsopstats_init(void)
 {
-	register int i;
+	int i;
 	
 	for (i=0;i<CODA_VFSOPS_SIZE;i++) {
 		coda_vfsopstats[i].opcode = i;
@@ -383,7 +383,7 @@ coda_root(vfsp, vpp)
  */
 int
 coda_nb_statfs(vfsp, sbp, td)
-    register struct mount *vfsp;
+    struct mount *vfsp;
     struct statfs *sbp;
     struct thread *td;
 {
@@ -438,7 +438,7 @@ coda_sync(vfsp, waitfor, td)
  */
 int
 coda_fhtovp(vfsp, fhp, nam, vpp, exflagsp, creadanonp)
-    register struct mount *vfsp;    
+    struct mount *vfsp;    
     struct fid *fhp;
     struct mbuf *nam;
     struct vnode **vpp;
