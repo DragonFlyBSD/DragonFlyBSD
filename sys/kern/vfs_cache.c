@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.23 2004/06/05 16:34:05 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.24 2004/06/25 17:37:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1100,8 +1100,6 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 			continue;
 		}
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			if (vp == vn)
-				break;
 			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
 			    ncp->nc_nlen > 0) {
 				break;
