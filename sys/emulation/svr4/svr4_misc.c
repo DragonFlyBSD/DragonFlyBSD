@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.8 2003/07/30 00:19:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.9 2003/08/03 11:42:28 hmp Exp $
  */
 
 /*
@@ -659,7 +659,6 @@ int
 svr4_sys_mknod(struct svr4_sys_mknod_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
         int *retval;
 
 	KKASSERT(p);
@@ -674,7 +673,6 @@ int
 svr4_sys_xmknod(struct svr4_sys_xmknod_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
         int *retval;
 
 	KKASSERT(p);
@@ -696,7 +694,6 @@ int
 svr4_sys_sysconfig(struct svr4_sys_sysconfig_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
 	int *retval;
 
 	KKASSERT(p);
@@ -1658,7 +1655,6 @@ int
 svr4_sys_resolvepath(struct svr4_sys_resolvepath_args *uap)
 {
 	struct thread *td = curthread;	/* XXX */
-	struct proc *p = td->td_proc;
 	struct nameidata nd;
 	int error;
 	int *retval;
