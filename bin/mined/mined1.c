@@ -33,7 +33,7 @@
  *      EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * [original code from minix codebase]
- * $DragonFly: src/bin/mined/mined1.c,v 1.4 2005/03/15 02:32:57 dillon Exp $*
+ * $DragonFly: src/bin/mined/mined1.c,v 1.5 2005/03/17 21:41:16 dillon Exp $*
  */
 /*
  * Part one of the mined editor.
@@ -1181,9 +1181,9 @@ FLAG state;
 /* Set tty to CBREAK mode */
   tcgetattr(input_fd, &new_tty);
   new_tty.c_lflag &= ~(ICANON|ECHO|ECHONL);
-  new_tty.c_iflag &= ~(IXON|IXOFF);
+  new_tty.c_iflag &= ~(IXON|IXOFF|ISIG);
 
-/* Unset signal chars, leave only SIGQUIT set to ^\ */
+/* Unset remaining signal chars, leave only SIGQUIT set to ^\ */
   new_tty.c_cc[VINTR] = new_tty.c_cc[VSUSP] = UNDEF;
   new_tty.c_cc[VQUIT] = '\\' & 037;
   signal(SIGQUIT, catch);		/* Which is caught */
