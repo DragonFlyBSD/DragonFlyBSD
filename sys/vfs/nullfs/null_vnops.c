@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.16 2004/09/26 06:00:09 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.17 2004/10/07 01:13:21 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -191,6 +191,7 @@ static int null_bug_bypass = 0;   /* for debugging: enables bypass printf'ing */
 SYSCTL_INT(_debug, OID_AUTO, nullfs_bug_bypass, CTLFLAG_RW, 
 	&null_bug_bypass, 0, "");
 
+static int	null_resolve(struct vop_resolve_args *ap);
 static int	null_access(struct vop_access_args *ap);
 static int	null_createvobject(struct vop_createvobject_args *ap);
 static int	null_destroyvobject(struct vop_destroyvobject_args *ap);
@@ -509,6 +510,15 @@ null_getattr(struct vop_getattr_args *ap)
 }
 
 /*
+ * Resolve a locked ncp at the nullfs layer.
+ */
+static int
+null_resolve(struct vop_resolve_args *ap)
+{
+	return(vop_noresolve(ap));
+}
+
+/*
  * Handle to disallow write access if mounted read-only.
  *
  * null_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
@@ -728,9 +738,10 @@ null_islocked(struct vop_islocked_args *ap)
 
 
 /*
- * There is no way to tell that someone issued remove/rmdir operation
- * on the underlying filesystem. For now we just have to release lowevrp
- * as soon as possible.
+ * The vnode is no longer active.  However, the new VFS API may retain
+ * the node in the vfs cache.  There is no way to tell that someone issued
+ * a remove/rmdir operation on the underlying filesystem (yet), but we can't
+ * remove the lowervp reference here.
  *
  * null_inactive(struct vnode *a_vp, struct thread *a_td)
  */
@@ -738,30 +749,19 @@ static int
 null_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
-	struct null_node *np = VTONULL(vp);
-	struct vnode *lowervp;
+	/*struct null_node *np = VTONULL(vp);*/
 
 	/*
-	 * Clean out the lowervp.  Due to the drain the lower vp has
-	 * been exclusively locked.  We undo that, then release our
-	 * null_lowervp reference to lowervp.  The lower vnode's
-	 * inactive routine may or may not be called when we do the
-	 * final vrele().
+	 * At the moment don't do anything here.  All the rest of the code
+	 * assumes that lowervp will remain inact, and the inactive nullvp
+	 * may be reactivated at any time.  XXX I'm not sure why the 4.x code
+	 * even worked.
 	 */
-	if (np) {
-		null_node_rem(np);
-		lowervp = np->null_lowervp;
-		np->null_lowervp = NULLVP;
-		if (lowervp) {
-			vput(lowervp);
-			vrele (lowervp);
-		}
-	}
 
 	/*
 	 * Now it is safe to release our nullfs layer vnode.
 	 */
-	VOP_UNLOCK(vp, NULL, LK_THISLAYER, ap->a_td);
+	VOP_UNLOCK(vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
@@ -775,12 +775,24 @@ static int
 null_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
+	struct vnode *lowervp;
 	struct null_node *np;
 
 	np = VTONULL(vp);
 	vp->v_data = NULL;
-	if (np)
+	/*
+	 * null_lowervp reference to lowervp.  The lower vnode's
+	 * inactive routine may or may not be called when we do the
+	 * final vrele().
+	 */
+	if (np) {
+		null_node_rem(np);
+		lowervp = np->null_lowervp;
+		np->null_lowervp = NULLVP;
+		if (lowervp)
+			vrele(lowervp);
 		free(np, M_NULLFSNODE);
+	}
 	return (0);
 }
 
@@ -870,6 +882,7 @@ null_getvobject(struct vop_getvobject_args *ap)
  */
 struct vnodeopv_entry_desc null_vnodeop_entries[] = {
 	{ &vop_default_desc,		(void *) null_bypass },
+	{ &vop_resolve_desc,		(void *) null_resolve },
 	{ &vop_access_desc,		(void *) null_access },
 	{ &vop_createvobject_desc,	(void *) null_createvobject },
 	{ &vop_destroyvobject_desc,	(void *) null_destroyvobject },

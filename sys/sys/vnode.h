@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.23 2004/09/30 18:59:51 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.24 2004/10/07 01:13:20 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -570,6 +570,7 @@ int	vop_stdislocked (struct vop_islocked_args *ap);
 int	vop_stdlock (struct vop_lock_args *ap);
 int	vop_stdrlock (struct vop_lock_args *ap);
 int	vop_stdunlock (struct vop_unlock_args *ap);
+int	vop_noresolve(struct vop_resolve_args *ap);
 int	vop_nopoll (struct vop_poll_args *ap);
 int	vop_stdpathconf (struct vop_pathconf_args *ap);
 int	vop_stdpoll (struct vop_poll_args *ap);
@@ -584,6 +585,7 @@ int	vop_panic (struct vop_generic_args *ap);
 int	vop_stdcreatevobject (struct vop_createvobject_args *ap);
 int	vop_stddestroyvobject (struct vop_destroyvobject_args *ap);
 int	vop_stdgetvobject (struct vop_getvobject_args *ap);
+
 
 void	vput (struct vnode *vp);
 void	vrele (struct vnode *vp);

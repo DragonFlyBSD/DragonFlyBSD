@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.14 2004/08/28 21:32:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.15 2004/10/07 01:13:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -276,8 +276,11 @@ retry:
 	 * Finish up.  Link the vnode and null_node together, ref lowervp
 	 * for the null node.  lowervp is already locked so the lock state
 	 * is already properly synchronized.
+	 *
+	 * Set the vnode up to reclaim as quickly as possible
 	 */
 	vp->v_data = np;
+	vp->v_flag |= VAGE;
 	vref(lowervp);
 	return (0);
 }
@@ -316,6 +319,7 @@ null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 		 * Make new vnode reference the null_node.
 		 */
 		error = null_node_alloc(mp, lowervp, &aliasvp);
+		vrele(lowervp);
 		if (error)
 			return error;
 

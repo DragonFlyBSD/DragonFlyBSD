@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.17 2004/10/05 03:24:09 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.18 2004/10/07 01:13:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,7 +62,6 @@
 #include <vm/vnode_pager.h>
 
 static int	vop_nolookup (struct vop_lookup_args *);
-static int	vop_noresolve (struct vop_resolve_args *);
 static int	vop_nostrategy (struct vop_strategy_args *);
 
 /*
@@ -175,7 +174,7 @@ vop_panic(struct vop_generic_args *ap)
  * There is a potential directory and vnode interlock.   The lock order
  * requirement is: namecache, governing directory, resolved vnode.
  */
-static int
+int
 vop_noresolve(struct vop_resolve_args *ap)
 {
 	int error;
