@@ -1,13 +1,14 @@
 /*
  * pipe2.c
  *
- * $DragonFly: src/test/sysperf/pipe2.c,v 1.3 2004/04/01 01:47:44 dillon Exp $
+ * $DragonFly: src/test/sysperf/pipe2.c,v 1.4 2004/04/28 00:08:55 dillon Exp $
  */
 
 #include "blib.h"
 #include <sys/resource.h>
 
-#define LOOPS	((int)(1000000LL * 16384 / bytes / divisor))
+#define PAGE_SIZE	4096
+#define PAGE_MASK	(PAGE_SIZE - 1)
 
 int
 main(int ac, char **av)
@@ -16,15 +17,16 @@ main(int ac, char **av)
     long long max;
     char c;
     int j;
+    int loops;
     int bytes;
-    int divisor;
     int ppri = 999;
     int fds[2];
     char *buf;
     char *ptr;
+    char *msg = "datarate";
 
     if (ac == 1) {
-	fprintf(stderr, "%s blocksize[k,m] [pipe_writer_pri]\n", av[0]);
+	fprintf(stderr, "%s blocksize[k,m] [pipe_writer_pri] [msg]\n", av[0]);
 	exit(1);
     }
     bytes = strtol(av[1], &ptr, 0);
@@ -42,23 +44,16 @@ main(int ac, char **av)
     }
     if (ac >= 3)
 	ppri = strtol(av[2], NULL, 0);
+    if (ac >= 4)
+	msg = av[3];
 
-    /*
-     * Tiny block sizes, try to take into account overhead.
-     */
-    if (bytes < 4096)
-	divisor = 4096 / bytes;
-    else if (bytes > 1024 * 1024)
-	divisor = 2;
-    else
-	divisor = 1;
-
-    if ((buf = malloc(bytes)) == NULL) {
-	perror("malloc");
+    buf = mmap(NULL, bytes * 2 + PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
+    if (buf == MAP_FAILED) {
+	perror("mmap/buffer");
 	exit(1);
     }
 
-    bzero(buf, bytes);
+    bzero(buf, bytes * 2 + PAGE_SIZE);
 
     printf("tests one-way pipe using direct-write buffer\n");
     if (pipe(fds)) {
@@ -70,6 +65,7 @@ main(int ac, char **av)
 	 * child process
 	 */
 	close(fds[0]);
+	buf += (bytes + PAGE_MASK) & ~PAGE_MASK;
 	while (read(fds[1], buf, bytes) > 0)
 		;
 	_exit(0);
@@ -84,19 +80,37 @@ main(int ac, char **av)
 	    }
 	}
 	close(fds[1]);
-	write(fds[0], buf, bytes);	/* prime the caches */
+
+	/*
+	 * Figure out how many loops it takes for 1 second's worth.
+	 */
 	start_timing();
-	for (j = LOOPS; j; --j) {
+	for (j = 0; ; ++j) {
+	    if (write(fds[0], buf, bytes) != bytes) {
+		perror("write");
+		exit(1);
+	    }
+	    if ((j & 31) == 0 && stop_timing(0, NULL))
+		break;
+	}
+	loops = j * 5 + 1;
+	usleep(1000000 / 10);
+	start_timing();
+
+	for (j = loops; j; --j) {
 	    if (write(fds[0], buf, bytes) != bytes) {
 		perror("write");
 		exit(1);
 	    }
 	}
 	close(fds[0]);
-	while(wait(NULL) >= 0);
-	stop_timing(LOOPS, "full duplex pipe / %dK bufs:", bytes / 1024);
-	printf("datarate: %5.2f MBytes/sec\n",
-		(double)LOOPS * bytes * 1000000.0 / 
+	while(wait(NULL) >= 0)
+	    ;
+	stop_timing(loops, "full duplex pipe / %dK bufs:", bytes / 1024);
+	printf("%s: blkSize %d %5.2f MBytes/sec\n",
+		msg,
+		bytes,
+		(double)loops * bytes * 1000000.0 / 
 		(1024.0 * 1024.0 * get_timing()));
     }
     return(0);
