@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.16 2003/07/03 17:24:01 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.17 2003/07/03 21:22:38 dillon Exp $
  */
 
 /*
@@ -184,29 +184,25 @@ usertdsw(struct thread *ntd)
 	td->td_switch(ntd);
 }
 
-static int uerecurse;
-static void *ueswitch;
 /*
- * Note that userenter() may be re-entered several times due to AST
- * processing.
+ * userenter() passively intercepts the thread switch function to increase
+ * the thread priority from a user priority to a kernel priority, reducing
+ * syscall and trap overhead for the case where no switch occurs.
  */
-static void nop(void) { }
 
 static __inline void
 userenter(void)
 {
 	struct thread *td;
 
-	++uerecurse;
-	if (uerecurse == 2)
-		panic("userenter: reentered!");
 	td = curthread;
-	ueswitch = td->td_switch;
-	nop();
+	KASSERT(td->td_switch == cpu_heavy_switch,
+		("userenter: bad td_switch = %p", td->td_switch));
+#if 0
 	KASSERT(td->td_switch == cpu_heavy_switch || td->td_switch == usertdsw,
 		("userenter: bad td_switch = %p", td->td_switch));
+#endif
 	td->td_switch = usertdsw;
-	--uerecurse;
 }
 
 static int
@@ -235,8 +231,6 @@ userret(struct proc *p, struct trapframe *frame,
 	 * we did not hit our lazy switch function in the first place we
 	 * do not need to restore anything.
 	 */
-	if (++uerecurse == 2)
-		panic("userret: uerecursed!");
 	if (td->td_switch == cpu_heavy_switch) {
 		switch(p->p_rtprio.type) {
 		case RTP_PRIO_IDLE:
@@ -254,7 +248,6 @@ userret(struct proc *p, struct trapframe *frame,
 		KKASSERT(td->td_switch == usertdsw);
 		td->td_switch = cpu_heavy_switch;
 	}
-	--uerecurse;
 	crit_exit();
 
 	/*
@@ -468,7 +461,7 @@ restart:
 		case T_PAGEFLT:		/* page fault */
 			i = trap_pfault(&frame, TRUE, eva);
 			if (i == -1)
-				return;
+				goto out;
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)
 			if (i == -2)
 				goto restart;
@@ -522,7 +515,7 @@ restart:
 #if NNPX > 0
 			/* if a transparent fault (due to context switch "late") */
 			if (npxdna())
-				return;
+				goto out;
 #endif
 			if (!pmath_emulate) {
 				i = SIGFPE;
