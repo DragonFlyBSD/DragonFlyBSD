@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.17 2004/09/01 14:13:55 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.18 2005/03/08 18:40:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -684,6 +684,9 @@ ata_pci_intr(struct ata_channel *ch)
 	break;
 
     case 0x24d18086:   /* Intel ICH5 SATA150 */
+    case 0x24db8086:   /* Intel ICH5 ATA100 */
+    case 0x26518086:   /* Intel ICH6 SATA150 */
+    case 0x26528086:   /* Intel ICH6R SATA150 */
 	dmastat = ATA_INB(ch->r_bmio, ATA_BMSTAT_PORT);
 	if ((dmastat & (ATA_BMSTAT_ACTIVE | ATA_BMSTAT_INTERRUPT)) !=
 		ATA_BMSTAT_INTERRUPT)
