@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.10 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.11 2004/08/25 19:02:42 dillon Exp $
  *
  */
 
@@ -1630,11 +1630,7 @@ END_DEBUG
 		ocb = sbp_dequeue_ocb(sdev, sbp_status);
 		if (ocb == NULL) {
 			sbp_show_sdev_info(sdev, 2);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-			printf("No ocb(%lx) on the queue\n",
-#else
 			printf("No ocb(%x) on the queue\n",
-#endif
 					ntohl(sbp_status->orb_lo));
 		}
 		break;
@@ -1658,11 +1654,7 @@ END_DEBUG
 SBP_DEBUG(0)
 		sbp_show_sdev_info(sdev, 2);
 		printf("ORB status src:%x resp:%x dead:%x"
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-				" len:%x stat:%x orb:%x%08lx\n",
-#else
 				" len:%x stat:%x orb:%x%08x\n",
-#endif
 			sbp_status->src, sbp_status->resp, sbp_status->dead,
 			sbp_status->len, sbp_status->status,
 			ntohs(sbp_status->orb_hi), ntohl(sbp_status->orb_lo));
@@ -2612,11 +2604,7 @@ sbp_dequeue_ocb(struct sbp_dev *sdev, struct sbp_status *sbp_status)
 
 SBP_DEBUG(1)
 	sbp_show_sdev_info(sdev, 2);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-	printf("%s: 0x%08lx src %d\n",
-#else
 	printf("%s: 0x%08x src %d\n",
-#endif
 	    __FUNCTION__, ntohl(sbp_status->orb_lo), sbp_status->src);
 END_DEBUG
 	for (ocb = STAILQ_FIRST(&sdev->ocbs); ocb != NULL; ocb = next) {
