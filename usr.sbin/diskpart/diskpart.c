@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)diskpart.c	8.3 (Berkeley) 11/30/94
  * $FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $
- * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.7 2005/03/16 17:54:59 y0netan1 Exp $
  */
 
 /*
@@ -376,7 +376,8 @@ promptfordisk(char *name)
 	struct disklabel *dp = &disk;
 	struct field *fp;
 	int i;
-	char buf[BUFSIZ], **tp, *cp;
+	char buf[BUFSIZ], *cp;
+	const char **tp;
 
 	strncpy(dp->d_typename, name, sizeof(dp->d_typename));
 	fprintf(stderr,
@@ -460,9 +461,10 @@ again:
 	return (dp);
 }
 
-gettype(char *t, char **names)
+int
+gettype(const char *t, const char **names)
 {
-	char **nm;
+	const char **nm;
 
 	for (nm = names; *nm; nm++)
 		if (ustrcmp(t, *nm) == 0)

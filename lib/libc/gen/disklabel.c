@@ -32,7 +32,7 @@
  *
  * @(#)disklabel.c	8.2 (Berkeley) 5/3/95
  * $FreeBSD: src/lib/libc/gen/disklabel.c,v 1.9.2.1 2001/03/05 08:40:47 obrien Exp $
- * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.5 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/disklabel.c,v 1.6 2005/03/16 17:54:59 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -48,7 +48,7 @@
 #include <unistd.h>
 #include <ctype.h>
 
-static int	gettype (char *, char **);
+static int	gettype (const char *, const char **);
 
 struct disklabel *
 getdiskbyname(name)
@@ -157,11 +157,9 @@ getdiskbyname(name)
 }
 
 static int
-gettype(t, names)
-	char *t;
-	char **names;
+gettype(const char *t, const char **names)
 {
-	char **nm;
+	const char **nm;
 
 	for (nm = names; *nm; nm++)
 		if (strcasecmp(t, *nm) == 0)

@@ -37,7 +37,7 @@
  * @(#)disklabel.c	1.2 (Symmetric) 11/28/85
  * @(#)disklabel.c      8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/sbin/disklabel/disklabel.c,v 1.28.2.15 2003/01/24 16:18:16 des Exp $
- * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.7 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/disklabel/disklabel.c,v 1.8 2005/03/16 17:54:59 y0netan1 Exp $
  */
 
 #include <sys/param.h>
@@ -932,7 +932,7 @@ int
 getasciilabel(FILE *f, struct disklabel *lp)
 {
 	char *cp;
-	char **cpp;
+	const char **cpp;
 	u_int part;
 	char *tp, line[BUFSIZ];
 	u_long v;
