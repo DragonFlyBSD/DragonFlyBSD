@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/serialcomms/chapter.sgml,v 1.88 2004/06/06 18:17:07 mheinen Exp $
-     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/serialcomms/chapter.sgml,v 1.2 2004/07/01 20:38:44 justin Exp $
 -->
 
 <chapter id="serialcomms">
@@ -21,7 +21,7 @@
 
     <para>After reading this chapter, you will know:</para>
     <itemizedlist>
-      <listitem><para>How to connect terminals to your FreeBSD
+      <listitem><para>How to connect terminals to your &os;
 	  system.</para></listitem>
       <listitem><para>How to use a modem to dial out to remote
 	  hosts.</para></listitem>
@@ -38,7 +38,7 @@
       <listitem><para>Understand &unix; permissions and processes (<xref linkend="basics">).</para></listitem>
       <listitem><para>Have access to the technical manual for the
         serial hardware (modem or multi-port card) that you would like
-        to use with FreeBSD.</para></listitem>
+        to use with &os;.</para></listitem>
     </itemizedlist>
   </sect1>
 
@@ -97,7 +97,7 @@
     <sect2 id="serial-cables-ports">
       <title>Cables and Ports</title>
       
-      <para>To connect a modem or terminal to your FreeBSD system, you
+      <para>To connect a modem or terminal to your &os; system, you
 	will need a serial port on your computer and the proper cable to connect
 	to your serial device.  If you are already familiar with your
 	hardware and the cable it requires, you can safely skip this
@@ -224,7 +224,7 @@
 	    straight-through.  That is, the <quote>send data</quote> pin on one
 	    end of the cable goes to the <quote>send data</quote> pin on the
 	    other end. This is the type of cable to use to connect a modem to your
-	    FreeBSD system, and is also appropriate for some
+	    &os; system, and is also appropriate for some
 	    terminals.</para>
 	</sect4>
       </sect3>
@@ -233,19 +233,19 @@
 	<title>Ports</title>
 
 	<para>Serial ports are the devices through which data is transferred
-	  between the FreeBSD host computer and the terminal. This section
+	  between the &os; host computer and the terminal. This section
 	  describes the kinds of ports that exist and how they are addressed
-	  in FreeBSD.</para>
+	  in &os;.</para>
 
 	<sect4 id="term-portkinds">
 	  <title>Kinds of Ports</title>
 	  
 	  <para>Several kinds of serial ports exist.  Before you purchase or
 	    construct a cable, you need to make sure it will fit the ports on
-	    your terminal and on the FreeBSD system.</para>
+	    your terminal and on the &os; system.</para>
 	      
 	  <para>Most terminals will have DB25 ports.  Personal computers,
-	    including PCs running FreeBSD, will have DB25 or DB9 ports. If you
+	    including PCs running &os;, will have DB25 or DB9 ports. If you
 	    have a multiport serial card for your PC, you may have RJ-12 or
 	    RJ-45 ports.</para>
 	      
@@ -257,7 +257,7 @@
 	<sect4 id="term-portnames">
 	  <title>Port Names</title>
 	  
-	  <para>In FreeBSD, you access each serial port through an entry in
+	  <para>In &os;, you access each serial port through an entry in
 	    the <filename>/dev</filename> directory.  There are two different
 	    kinds of entries:</para>
 	      
@@ -295,12 +295,12 @@
     <sect2>
       <title>Kernel Configuration</title>
       
-      <para>FreeBSD supports four serial ports by default.  In the
+      <para>&os; supports four serial ports by default.  In the
 	&ms-dos; world, these are known as
 	<devicename>COM1</devicename>,
 	<devicename>COM2</devicename>,
 	<devicename>COM3</devicename>, and 
-	<devicename>COM4</devicename>.  FreeBSD currently supports
+	<devicename>COM4</devicename>.  &os; currently supports
 	<quote>dumb</quote> multiport serial interface cards, such as
 	the BocaBoard 1008 and 2016, as well as more
 	intelligent multi-port cards such as those made by Digiboard
@@ -332,34 +332,23 @@ sio3 at 0x2e8-0x2ef irq 9 on isa
 sio3: type 16550A</screen>
 	  
       <para>If your kernel does not recognize all of your serial
-	ports, you will probably need to configure a custom FreeBSD
+	ports, you will probably need to configure a custom &os;
 	kernel for your system.  For detailed information on
 	configuring your kernel, please see <xref
 	linkend="kernelconfig">.</para>
 
       <para>The relevant device lines for your kernel configuration
-	file would look like this, for FreeBSD&nbsp;4.X:</para>
+	file would look like this:</para>
 	  
       <programlisting>device		sio0	at isa? port IO_COM1 irq 4
 device		sio1	at isa? port IO_COM2 irq 3
 device		sio2	at isa? port IO_COM3 irq 5
 device		sio3	at isa? port IO_COM4 irq 9</programlisting>
 	  
-
-      <para>and like this, for FreeBSD&nbsp;5.X:</para>
-
-      <programlisting>device		sio</programlisting>
-
       <para>You can comment-out or completely remove lines for devices
-	you do not have in the case of FreeBSD&nbsp;4.X; for
-	FreeBSD&nbsp;5.X you have to edit your
-	<filename>/boot/device.hints</filename> file to configure your
-	serial ports.  Please refer to the &man.sio.4; manual page for
-	more information on serial ports and multiport boards configuration.
-	Be careful if you are using a configuration
-	file that was previously used for a different version of
-	FreeBSD because the device flags and the syntax have changed between
-	versions.</para>
+	you do not have.  Please refer to the &man.sio.4; manual page for
+	more information on serial ports and multiport boards 
+	configuration.</para>
 
       <note>
 	<para><literal>port IO_COM1</literal> is a substitution for
@@ -386,7 +375,7 @@ device		sio3	at isa? port IO_COM4 irq 9</programlisting>
 	devices are accessed through the
 	<filename>/dev/ttyd<replaceable>N</replaceable></filename> (dial-in)
 	and <filename>/dev/cuaa<replaceable>N</replaceable></filename>
-	(call-out) devices.  FreeBSD also provides initialization devices
+	(call-out) devices.  &os; also provides initialization devices
 	(<filename>/dev/ttyid<replaceable>N</replaceable></filename> and
 	<filename>/dev/cuaia<replaceable>N</replaceable></filename>) and
 	locking devices
@@ -404,12 +393,6 @@ device		sio3	at isa? port IO_COM4 irq 9</programlisting>
       
       <sect3>
 	<title>Making Device Special Files</title>
-
-	<note><para>FreeBSD&nbsp;5.0 includes the &man.devfs.5;
-	  filesystem which automatically creates device nodes as
-	  needed.  If you are running a version of FreeBSD with
-	  <literal>devfs</literal> enabled then you can safely skip
-	  this section.</para></note>
 
 	<para>A shell script called <command>MAKEDEV</command> in the
 	  <filename>/dev</filename> directory manages the device special
@@ -479,9 +462,6 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
       <secondary><filename>rc.serial</filename></secondary>
     </indexterm>
 
-    <!-- XXX; /etc/rc.serial is gone in 5.1.
-      How do you set default parameters for these devices in 5.X ? -->
-
     <para>System-wide initialization of the serial devices is
       controlled in <filename>/etc/rc.serial</filename>.  This file
       affects the default settings of serial devices.</para>
@@ -521,9 +501,9 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
     <indexterm><primary>terminals</primary></indexterm>
 
     <para>Terminals provide a convenient and low-cost way to access 
-      your FreeBSD system when you are not at the computer's console or on
+      your &os; system when you are not at the computer's console or on
       a connected network.  This section describes how to use terminals with
-      FreeBSD.</para>
+      &os;.</para>
 
     <sect2 id="term-uses">
       <title>Uses and Types of Terminals</title>
@@ -536,20 +516,20 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	  
       <para>Today's PCs have consoles capable of high quality graphics, but
 	the ability to establish a login session on a serial port still exists
-	in nearly every &unix; style operating system today; FreeBSD is no
+	in nearly every &unix; style operating system today; &os; is no
 	exception.  By using a terminal attached to an unused serial port, you
 	can log in and run any text program that you would normally run on the
 	console or in an <command>xterm</command> window in the X Window
 	System.</para>
 	  
-      <para>For the business user, you can attach many terminals to a FreeBSD
+      <para>For the business user, you can attach many terminals to a &os;
 	system and place them on your employees' desktops.  For a home user, a
 	spare computer such as an older IBM PC or a &macintosh; can be a
-	terminal wired into a more powerful computer running FreeBSD.  You can
+	terminal wired into a more powerful computer running &os;.  You can
 	turn what might otherwise be a single-user computer into a powerful
 	multiple user system.</para>
 	  
-      <para>For FreeBSD, there are three kinds of terminals:</para>
+      <para>For &os;, there are three kinds of terminals:</para>
 	  
       <itemizedlist>
 	<listitem>
@@ -580,7 +560,7 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	    
 	<para>There are hundreds of kinds of dumb terminals made by many
 	  manufacturers, including Digital Equipment Corporation's VT-100 and
-	  Wyse's WY-75.  Just about any kind will work with FreeBSD. Some
+	  Wyse's WY-75.  Just about any kind will work with &os;. Some
 	  high-end terminals can even display graphics, but only certain
 	  software packages can take advantage of these advanced
 	  features.</para>
@@ -600,9 +580,9 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	  software to run on the computer.</para>
 	    
 	<para>Such a configuration is popular in homes.  For example, if your
-	  spouse is busy working on your FreeBSD system's console, you can do
+	  spouse is busy working on your &os; system's console, you can do
 	  some text-only work at the same time from a less powerful personal
-	  computer hooked up as a terminal to the FreeBSD system.</para>
+	  computer hooked up as a terminal to the &os; system.</para>
       </sect3>
 	  
       <sect3 id="term-x">
@@ -622,7 +602,7 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
     <sect2 id="term-config">
       <title>Configuration</title>
       
-      <para>This section describes what you need to configure on your FreeBSD
+      <para>This section describes what you need to configure on your &os;
 	system to enable a login session on a terminal.  It assumes you have
 	already configured your kernel to support the serial port to which the
 	terminal is connected&mdash;and that you have connected it.</para>
@@ -637,7 +617,7 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	reading a login name and starting the <command>login</command>
 	program.</para>
 	  
-      <para>Thus, to configure terminals for your FreeBSD system the
+      <para>Thus, to configure terminals for your &os; system the
 	following steps should be taken as <username>root</username>:</para>
 
       <procedure>
@@ -684,7 +664,7 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	<title>Adding an Entry to <filename>/etc/ttys</filename></title>
 
 	<para>The <filename>/etc/ttys</filename> file lists all of the ports
-	  on your FreeBSD system where you want to allow logins.  For example,
+	  on your &os; system where you want to allow logins.  For example,
 	  the first virtual console <filename>ttyv0</filename> has an entry in
 	  this file.  You can log in on the console using this entry.  This
 	  file also contains entries for the other virtual consoles, serial ports,
@@ -694,7 +674,7 @@ crw-rw----    1 uucp     dialer    28, 193 Feb 15 14:38 /dev/cuala1</screen>
 	  <devicename>/dev/ttyv0</devicename> would be listed as
 	  <devicename>ttyv0</devicename>).</para>
 
-	<para>A default FreeBSD install includes an
+	<para>A default &os; install includes an
 	  <filename>/etc/ttys</filename> file with support for the first
 	  four serial ports: <filename>ttyd0</filename> through
 	  <filename>ttyd3</filename>.  If you are attaching a terminal
@@ -856,10 +836,10 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
 	  port.</para>
 
 	<para>Make sure the cable is connected firmly to both the terminal
-	  and the FreeBSD computer.  Make sure it is the right kind of
+	  and the &os; computer.  Make sure it is the right kind of
 	  cable.</para>
 
-	<para>Make sure the terminal and FreeBSD agree on the bps rate and
+	<para>Make sure the terminal and &os; agree on the bps rate and
 	  parity settings.  If you have a video display terminal, make
 	  sure the contrast and brightness controls are turned up.  If it
 	  is a printing terminal, make sure paper and ink are in good
@@ -908,7 +888,7 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
       <sect3>
 	<title>If Garbage Appears Instead of a Login Prompt</title>
 
-	<para>Make sure the terminal and FreeBSD agree on the bps rate and
+	<para>Make sure the terminal and &os; agree on the bps rate and
 	  parity settings.  Check the <command>getty</command> processes
 	  to make sure the
 	  correct <replaceable>getty</replaceable> type is in use.  If
@@ -948,7 +928,7 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
     <title>Dial-in Service</title>
     <indexterm><primary>dial-in service</primary></indexterm>
 
-    <para>Configuring your FreeBSD system for dial-in service is very
+    <para>Configuring your &os; system for dial-in service is very
       similar to connecting terminals except that you are dealing with
       modems instead of terminals.</para>
 
@@ -1020,10 +1000,10 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
 	  so if you have problems, such as a login session not going away when
 	  the line hangs up, you may have a problem with your cable.</para>
 	    
-	<para>Like other &unix; like operating systems, FreeBSD uses the
+	<para>Like other &unix; like operating systems, &os; uses the
 	  hardware signals to find out when a call has been answered
 	  or a line has been hung up and to hangup and reset the modem
-	  after a call.  FreeBSD avoids sending commands to the modem
+	  after a call.  &os; avoids sending commands to the modem
 	  or watching for status reports from the modem.  If you are
 	  familiar with connecting modems to PC-based bulletin board
 	  systems, this may seem awkward.</para>
@@ -1033,7 +1013,7 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
       <sect2>
 	<title>Serial Interface Considerations</title>
 
-	<para>FreeBSD supports NS8250-, NS16450-, NS16550-, and NS16550A-based
+	<para>&os; supports NS8250-, NS16450-, NS16550-, and NS16550A-based
 	  EIA RS-232C (CCITT V.24) communications interfaces.  The 8250 and
 	  16450 devices have single-character buffers.  The 16550 device
 	  provides a 16-character buffer, which allows for better system
@@ -1087,7 +1067,7 @@ ttyd5   "/usr/libexec/getty std.19200"  vt100  on  insecure
       
       <para>There are three system configuration files in the
 	<filename>/etc</filename> directory that you will probably need to
-	edit to allow dial-up access to your FreeBSD system.  The first,
+	edit to allow dial-up access to your &os; system.  The first,
 	<filename>/etc/gettytab</filename>, contains configuration information
 	for the <filename>/usr/libexec/getty</filename> daemon.  Second,
 	<filename>/etc/ttys</filename> holds information that tells
@@ -1325,7 +1305,7 @@ vq|VH57600|Very High Speed Modem at 57600,8-bit:\
 	  need to use hardware (<filename>RTS/CTS</filename>) flow
 	  control. You can add <command>stty</command> commands to
 	  <filename>/etc/rc.serial</filename> to set the hardware flow
-	  control flag in the FreeBSD kernel for the modem
+	  control flag in the &os; kernel for the modem
 	  ports.</para>
 	    
 	<para>For example to set the <literal>termios</literal> flag
@@ -1492,9 +1472,9 @@ AT&amp;B2&amp;W</programlisting>
 	on your system.</para>
       
       <sect3>
-	<title>Checking Out the FreeBSD System</title>
+	<title>Checking Out the &os; System</title>
 
-	<para>Hook up your modem to your FreeBSD system, boot the system, and,
+	<para>Hook up your modem to your &os; system, boot the system, and,
 	  if your modem has status indication lights, watch to see whether the
 	  modem's <acronym>DTR</acronym> indicator lights when the
 	  <prompt>login:</prompt> prompt appears on the system's console
@@ -1503,8 +1483,8 @@ AT&amp;B2&amp;W</programlisting>
 	  port and is waiting for the modem to accept a call.</para>
 	    
 	<para>If the <acronym>DTR</acronym> indicator does not light, login to
-	  the FreeBSD system through the console and issue a <command>ps
-	    ax</command> to see if FreeBSD is trying to run a
+	  the &os; system through the console and issue a <command>ps
+	    ax</command> to see if &os; is trying to run a
 	  <command>getty</command> process on the correct port. You should see
 	  lines like these among the processes displayed:</para>
 
@@ -1573,7 +1553,7 @@ AT&amp;B2&amp;W</programlisting>
 	  </listitem>
 	</itemizedlist>
 
-	<para>If you dial but the modem on the FreeBSD system will not answer,
+	<para>If you dial but the modem on the &os; system will not answer,
 	  make sure that the modem is configured to answer the phone when
 	  <acronym>DTR</acronym> is asserted.  If the modem seems to be
 	  configured correctly, verify that the <acronym>DTR</acronym> line is
@@ -1914,16 +1894,16 @@ raisechar=^^</programlisting>
     <sect2 id="serialconsole-intro">
       <title>Introduction</title>
       
-      <para>FreeBSD has the ability to boot on a system with only
+      <para>&os; has the ability to boot on a system with only
 	a dumb terminal on a serial port as a console.  Such a configuration
 	should be useful for two classes of people:  system administrators who
-	wish to install FreeBSD on machines that have no keyboard or monitor
+	wish to install &os; on machines that have no keyboard or monitor
 	attached, and developers who want to debug the kernel or device
 	drivers.</para>
   
-      <para>As described in <xref linkend="boot">, FreeBSD employs a three stage
+      <para>As described in <xref linkend="boot">, &os; employs a three stage
 	bootstrap.  The first two stages are in the boot block code which is
-	stored at the beginning of the FreeBSD slice on the boot disk.  The
+	stored at the beginning of the &os; slice on the boot disk.  The
 	boot block will then load and run the boot loader
 	(<filename>/boot/loader</filename>) as the third stage code.</para>
   
@@ -2018,9 +1998,8 @@ raisechar=^^</programlisting>
 	      you may have to unplug your mouse as well as your keyboard.
 	      This is because &ps2; mice share some hardware with the keyboard
 	      and leaving the mouse plugged in can fool the keyboard probe
-	      into thinking the keyboard is still there.  It is said that a
-	      Gateway 2000 Pentium 90&nbsp;MHz system with an AMI BIOS that behaves
-	      this way.  In general, this is not a problem since the mouse is
+	      into thinking the keyboard is still there.  In general, 
+	      this is not a problem since the mouse is
 	      not much good without the keyboard anyway.</para>
 	  </note>
 	</step>
@@ -2076,7 +2055,7 @@ raisechar=^^</programlisting>
 		<para>Forces this unit to be the console (unless there is
 		  another higher priority console), regardless of the
 		  <option>-h</option> option discussed below.  This flag
-		  replaces the <literal>COMCONSOLE</literal> option in FreeBSD
+		  replaces the <literal>COMCONSOLE</literal> option in &os;
 		  versions 2.<replaceable>X</replaceable>.  The flag <literal>0x20</literal> must be used
 		  together with the <option>0x10</option> flag.</para>
 	      </listitem>
@@ -2084,27 +2063,23 @@ raisechar=^^</programlisting>
 	    
 	    <varlistentry>
 	      <term><literal>0x40</literal></term>
-	      
 	      <listitem>
 		<para>Reserves this unit (in conjunction with
 		  <literal>0x10</literal>) and makes the unit
 		  unavailable for normal access.  You should not set
 		  this flag to the serial port unit which you want to
-		  use as the serial console.  The only use of this
-		  flag is to designate the unit for kernel remote
-		  debugging.  See <ulink
-		  url="../developers-handbook/index.html">The
-		  Developer's Handbook</ulink> for more information on
-		  remote debugging.</para>
-		
-		<note>
-		  <para>In FreeBSD&nbsp;4.0 or later the semantics of the
-		    flag <literal>0x40</literal> are slightly different and
-		    there is another flag to specify a serial port for remote
-		    debugging.</para>
-		</note>
+		  use as the serial console.  This reserves this port for 
+		  "low-level IO", i.e. kernel debugging.  </para>
 	      </listitem>
 	    </varlistentry>
+		
+	    <varlistentry>
+	      <term><literal>0x80</literal></term>
+	      <listitem>
+		<para>This port will be used for remote kernel debugging.</para>
+	      </listitem>
+	    </varlistentry>
+		
 	  </variablelist>
 	  
 	  <para>Example:</para>
@@ -2204,7 +2179,7 @@ raisechar=^^</programlisting>
 	<step>
 	  <para>Boot the machine.</para>
 	  
-	  <para>When you start your FreeBSD box, the boot blocks will echo the
+	  <para>When you start your &os; box, the boot blocks will echo the
 	    contents of <filename>/boot.config</filename> to the console.  For
 	    example:</para>
     
@@ -2271,7 +2246,7 @@ Keyboard: no</screen>
 	    interrupt the boot process.  The boot blocks will then prompt you
 	    for further action.  You should now see something like:</para>
     
-	  <screen>>> FreeBSD/i386 BOOT
+	  <screen>>> &os;/i386 BOOT
 Default: 0:ad(0,a)/boot/loader
 boot:</screen>
     
