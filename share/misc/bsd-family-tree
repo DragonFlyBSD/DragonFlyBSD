@@ -404,7 +404,7 @@ FreeBSD 5.2.1		2004-02-22 [FBD] (patch release)
 NetBSD 1.6.2		2004-03-01 [NBD] (patch release)
 OpenBSD 3.5		2004-04-01 [OBD]
 FreeBSD 4.10		2004-05-27 [FBD]
-DragonFly 1.0		2004-07-12 [DFD]
+DragonFly 1.0		2004-07-12 [DFB]
 
 Bibliography
 ------------------------
@@ -466,4 +466,4 @@ Copyright (c) 1997-2004 Wolfram Schneider <wosch@FreeBSD.ORG>
 URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
 $FreeBSD: src/share/misc/bsd-family-tree,v 1.21.2.14 2003/04/07 05:22:13 murray Exp $
-$DragonFly: src/share/misc/bsd-family-tree,v 1.4 2004/10/15 15:11:05 geekgod Exp $
+$DragonFly: src/share/misc/bsd-family-tree,v 1.5 2004/10/24 20:05:07 geekgod Exp $
