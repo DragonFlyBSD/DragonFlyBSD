@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/ip_icmp.h,v 1.16 1999/12/29 04:41:01 peter Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.5 2004/09/20 21:30:01 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.h,v 1.6 2005/03/06 05:09:25 hsu Exp $
  */
 
 #ifndef _NETINET_IP_ICMP_H_
@@ -203,6 +203,7 @@ struct icmp {
 #ifdef _KERNEL
 void	icmp_error (struct mbuf *, int, int, n_long, struct ifnet *);
 void	icmp_input (struct mbuf *, ...);
+int	ip_next_mtu (int, int);
 #endif
 
 #endif

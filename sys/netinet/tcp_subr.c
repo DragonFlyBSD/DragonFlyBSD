@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.44 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.45 2005/03/06 05:09:25 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -124,6 +124,10 @@
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 #include <netinet6/ip6_var.h>
+#include <netinet/ip_icmp.h>
+#ifdef INET6
+#include <netinet/icmp6.h>
+#endif
 #include <netinet/tcp.h>
 #include <netinet/tcp_fsm.h>
 #include <netinet/tcp_seq.h>
@@ -1295,30 +1299,39 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 	struct inpcb *inp;
 	struct tcpcb *tp;
 	void (*notify)(struct inpcb *, int) = tcp_notify;
-	tcp_seq icmp_seq;
-	int cpu;
-	int s;
+	tcp_seq icmpseq;
+	int arg, cpu, s;
+
+	if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0) {
+		return;
+	}
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
 		return;
 
-	if (cmd == PRC_QUENCH)
+	arg = inetctlerrmap[cmd];
+	if (cmd == PRC_QUENCH) {
 		notify = tcp_quench;
-	else if (icmp_may_rst &&
-		 (cmd == PRC_UNREACH_ADMIN_PROHIB || cmd == PRC_UNREACH_PORT ||
-		  cmd == PRC_TIMXCEED_INTRANS) &&
-		 ip != NULL)
+	} else if (icmp_may_rst &&
+		   (cmd == PRC_UNREACH_ADMIN_PROHIB ||
+		    cmd == PRC_UNREACH_PORT ||
+		    cmd == PRC_TIMXCEED_INTRANS) &&
+		   ip != NULL) {
 		notify = tcp_drop_syn_sent;
-	else if (cmd == PRC_MSGSIZE)
+	} else if (cmd == PRC_MSGSIZE) {
+		struct icmp *icmp = (struct icmp *)
+		    ((caddr_t)ip - offsetof(struct icmp, icmp_ip));
+
+		arg = ntohs(icmp->icmp_nextmtu);
 		notify = tcp_mtudisc;
-	else if (PRC_IS_REDIRECT(cmd)) {
+	} else if (PRC_IS_REDIRECT(cmd)) {
 		ip = NULL;
 		notify = in_rtchange;
-	} else if (cmd == PRC_HOSTDEAD)
+	} else if (cmd == PRC_HOSTDEAD) {
 		ip = NULL;
-	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
-		return;
+	}
+
 	if (ip != NULL) {
 		s = splnet();
 		th = (struct tcphdr *)((caddr_t)ip +
@@ -1328,11 +1341,11 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		inp = in_pcblookup_hash(&tcbinfo[cpu], faddr, th->th_dport,
 					ip->ip_src, th->th_sport, 0, NULL);
 		if ((inp != NULL) && (inp->inp_socket != NULL)) {
-			icmp_seq = htonl(th->th_seq);
+			icmpseq = htonl(th->th_seq);
 			tp = intotcpcb(inp);
-			if (SEQ_GEQ(icmp_seq, tp->snd_una) &&
-			    SEQ_LT(icmp_seq, tp->snd_max))
-				(*notify)(inp, inetctlerrmap[cmd]);
+			if (SEQ_GEQ(icmpseq, tp->snd_una) &&
+			    SEQ_LT(icmpseq, tp->snd_max))
+				(*notify)(inp, arg);
 		} else {
 			struct in_conninfo inc;
 
@@ -1348,8 +1361,8 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		splx(s);
 	} else {
 		for (cpu = 0; cpu < ncpus2; cpu++) {
-			in_pcbnotifyall(&tcbinfo[cpu].pcblisthead, faddr,
-					inetctlerrmap[cmd], notify);
+			in_pcbnotifyall(&tcbinfo[cpu].pcblisthead, faddr, arg,
+					notify);
 		}
 	}
 }
@@ -1369,18 +1382,25 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		u_int16_t th_sport;
 		u_int16_t th_dport;
 	} *thp;
+	int arg;
 
 	if (sa->sa_family != AF_INET6 ||
 	    sa->sa_len != sizeof(struct sockaddr_in6))
 		return;
 
+	arg = 0;
 	if (cmd == PRC_QUENCH)
 		notify = tcp_quench;
-	else if (cmd == PRC_MSGSIZE)
+	else if (cmd == PRC_MSGSIZE) {
+		struct ip6ctlparam *ip6cp = d;
+		struct icmp6_hdr *icmp6 = ip6cp->ip6c_icmp6;
+
+		arg = ntohl(icmp6->icmp6_mtu);
 		notify = tcp_mtudisc;
-	else if (!PRC_IS_REDIRECT(cmd) &&
-		 ((unsigned)cmd > PRC_NCMDS || inet6ctlerrmap[cmd] == 0))
+	} else if (!PRC_IS_REDIRECT(cmd) &&
+		 ((unsigned)cmd > PRC_NCMDS || inet6ctlerrmap[cmd] == 0)) {
 		return;
+	}
 
 	/* if the parameter is from icmp6, decode it. */
 	if (d != NULL) {
@@ -1412,7 +1432,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 
 		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,
-		    th.th_sport, cmd, notify);
+		    th.th_sport, cmd, arg, notify);
 
 		inc.inc_fport = th.th_dport;
 		inc.inc_lport = th.th_sport;
@@ -1422,7 +1442,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		syncache_unreach(&inc, &th);
 	} else
 		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, 0,
-		    (const struct sockaddr *)sa6_src, 0, cmd, notify);
+		    (const struct sockaddr *)sa6_src, 0, cmd, arg, notify);
 }
 #endif
 
@@ -1528,47 +1548,58 @@ tcp_drop_syn_sent(struct inpcb *inp, int errno)
 }
 
 /*
- * When `need fragmentation' ICMP is received, update our idea of the MSS
+ * When a `need fragmentation' ICMP is received, update our idea of the MSS
  * based on the new value in the route.  Also nudge TCP to send something,
  * since we know the packet we just sent was dropped.
  * This duplicates some code in the tcp_mss() function in tcp_input.c.
  */
 void
-tcp_mtudisc(struct inpcb *inp, int errno)
+tcp_mtudisc(struct inpcb *inp, int mtu)
 {
 	struct tcpcb *tp = intotcpcb(inp);
 	struct rtentry *rt;
-	struct rmxp_tao *taop;
 	struct socket *so = inp->inp_socket;
-	int offered;
-	int mss;
+	int maxopd, mss;
 #ifdef INET6
 	boolean_t isipv6 = ((tp->t_inpcb->inp_vflag & INP_IPV6) != 0);
 #else
 	const boolean_t isipv6 = FALSE;
 #endif
 
-	if (tp != NULL) {
-		if (isipv6)
-			rt = tcp_rtlookup6(&inp->inp_inc);
-		else
-			rt = tcp_rtlookup(&inp->inp_inc);
-		if (rt == NULL || rt->rt_rmx.rmx_mtu == 0) {
-			tp->t_maxopd = tp->t_maxseg =
-			    isipv6 ? tcp_v6mssdflt : tcp_mssdflt;
-			return;
-		}
-		taop = rmx_taop(rt->rt_rmx);
-		offered = taop->tao_mssopt;
-		mss = rt->rt_rmx.rmx_mtu -
-			(isipv6 ?
-			 sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
-			 sizeof(struct tcpiphdr));
+	if (tp == NULL)
+		return;
 
-		if (offered != 0)
-			mss = min(mss, offered);
+	/*
+	 * If no MTU is provided in the ICMP message, use the
+	 * next lower likely value, as specified in RFC 1191.
+	 */
+	if (mtu == 0) {
+		int oldmtu;
+
+		oldmtu = tp->t_maxopd + 
+		    (isipv6 ?
+		     sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
+		     sizeof(struct tcpiphdr));
+		mtu = ip_next_mtu(oldmtu, 0);
+	}
+
+	if (isipv6)
+		rt = tcp_rtlookup6(&inp->inp_inc);
+	else
+		rt = tcp_rtlookup(&inp->inp_inc);
+	if (rt != NULL) {
+		struct rmxp_tao *taop = rmx_taop(rt->rt_rmx);
+
+		if (rt->rt_rmx.rmx_mtu != 0 && rt->rt_rmx.rmx_mtu < mtu)
+			mtu = rt->rt_rmx.rmx_mtu;
+
+		maxopd = mtu -
+		    (isipv6 ?
+		     sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
+		     sizeof(struct tcpiphdr));
+
 		/*
-		 * XXX - The above conditional probably violates the TCP
+		 * XXX - The following conditional probably violates the TCP
 		 * spec.  The problem is that, since we don't know the
 		 * other end's MSS, we are supposed to use a conservative
 		 * default.  But, if we do that, then MTU discovery will
@@ -1584,33 +1615,44 @@ tcp_mtudisc(struct inpcb *inp, int errno)
 		 * will get recorded and the new parameters should get
 		 * recomputed.  For Further Study.
 		 */
-		if (tp->t_maxopd <= mss)
-			return;
-		tp->t_maxopd = mss;
+		if (taop->tao_mssopt != 0 && taop->tao_mssopt < maxopd)
+			maxopd = taop->tao_mssopt;
+	} else
+		maxopd = mtu -
+		    (isipv6 ?
+		     sizeof(struct ip6_hdr) + sizeof(struct tcphdr) :
+		     sizeof(struct tcpiphdr));
 
-		if ((tp->t_flags & (TF_REQ_TSTMP | TF_NOOPT)) == TF_REQ_TSTMP &&
-		    (tp->t_flags & TF_RCVD_TSTMP) == TF_RCVD_TSTMP)
-			mss -= TCPOLEN_TSTAMP_APPA;
-		if ((tp->t_flags & (TF_REQ_CC | TF_NOOPT)) == TF_REQ_CC &&
-		    (tp->t_flags & TF_RCVD_CC) == TF_RCVD_CC)
-			mss -= TCPOLEN_CC_APPA;
-#if	(MCLBYTES & (MCLBYTES - 1)) == 0
-		if (mss > MCLBYTES)
-			mss &= ~(MCLBYTES - 1);
+	if (tp->t_maxopd <= maxopd)
+		return;
+	tp->t_maxopd = maxopd;
+
+	mss = maxopd;
+	if ((tp->t_flags & (TF_REQ_TSTMP | TF_RCVD_TSTMP | TF_NOOPT)) ==
+			   (TF_REQ_TSTMP | TF_RCVD_TSTMP))
+		mss -= TCPOLEN_TSTAMP_APPA;
+
+	if ((tp->t_flags & (TF_REQ_CC | TF_RCVD_CC | TF_NOOPT)) ==
+			   (TF_REQ_CC | TF_RCVD_CC))
+		mss -= TCPOLEN_CC_APPA;
+
+	/* round down to multiple of MCLBYTES */
+#if	(MCLBYTES & (MCLBYTES - 1)) == 0    /* test if MCLBYTES power of 2 */
+	if (mss > MCLBYTES)
+		mss &= ~(MCLBYTES - 1);	
 #else
-		if (mss > MCLBYTES)
-			mss = mss / MCLBYTES * MCLBYTES;
+	if (mss > MCLBYTES)
+		mss = (mss / MCLBYTES) * MCLBYTES;
 #endif
-		if (so->so_snd.sb_hiwat < mss)
-			mss = so->so_snd.sb_hiwat;
 
-		tp->t_maxseg = mss;
+	if (so->so_snd.sb_hiwat < mss)
+		mss = so->so_snd.sb_hiwat;
 
-		tcpstat.tcps_mturesent++;
-		tp->t_rtttime = 0;
-		tp->snd_nxt = tp->snd_una;
-		tcp_output(tp);
-	}
+	tp->t_maxseg = mss;
+	tp->t_rtttime = 0;
+	tp->snd_nxt = tp->snd_una;
+	tcp_output(tp);
+	tcpstat.tcps_mturesent++;
 }
 
 /*

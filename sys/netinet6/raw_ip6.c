@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet6/raw_ip6.c,v 1.7.2.7 2003/01/24 05:11:35 sam Exp $
- * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.17 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet6/raw_ip6.c,v 1.18 2005/03/06 05:09:25 hsu Exp $
  */
 
 /*
@@ -300,9 +300,8 @@ rip6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		sa6_src = &sa6_any;
 	}
 
-	(void) in6_pcbnotify(&ripcbinfo.pcblisthead, sa, 0,
-			     (const struct sockaddr *)sa6_src,
-			     0, cmd, notify);
+	in6_pcbnotify(&ripcbinfo.pcblisthead, sa, 0,
+		      (const struct sockaddr *)sa6_src, 0, cmd, 0, notify);
 }
 
 /*

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.25 2005/03/04 03:05:59 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.26 2005/03/06 05:09:25 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -749,15 +749,14 @@ in6_mapped_peeraddr(struct socket *so, struct sockaddr **nam)
  * Must be called at splnet.
  */
 void
-in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
-	      const struct sockaddr *src, u_int lport_arg, int cmd,
+in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, in_port_t fport,
+	      const struct sockaddr *src, in_port_t lport, int cmd, int arg,
 	      void (*notify) (struct inpcb *, int))
 {
 	struct inpcb *inp, *ninp;
 	struct sockaddr_in6 sa6_src, *sa6_dst;
-	u_short	fport = fport_arg, lport = lport_arg;
 	u_int32_t flowinfo;
-	int errno, s;
+	int s;
 
 	if ((unsigned)cmd >= PRC_NCMDS || dst->sa_family != AF_INET6)
 		return;
@@ -788,7 +787,8 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
 		if (cmd != PRC_HOSTDEAD)
 			notify = in6_rtchange;
 	}
-	errno = inet6ctlerrmap[cmd];
+	if (cmd != PRC_MSGSIZE)
+		arg = inet6ctlerrmap[cmd];
 	s = splnet();
  	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
  		ninp = LIST_NEXT(inp, inp_list);
@@ -822,9 +822,9 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
 			 (fport && inp->inp_fport != fport))
 			continue;
 
-	  do_notify:
+do_notify:
 		if (notify)
-			(*notify)(inp, errno);
+			(*notify)(inp, arg);
 	}
 	splx(s);
 }

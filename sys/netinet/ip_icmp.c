@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.21 2005/03/04 02:54:31 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.22 2005/03/06 05:09:25 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -132,7 +132,6 @@ int	icmpprintfs = 0;
 
 static void	icmp_reflect (struct mbuf *);
 static void	icmp_send (struct mbuf *, struct mbuf *, struct route *);
-static int	ip_next_mtu (int, int);
 
 extern	struct protosw inetsw[];
 
@@ -385,7 +384,7 @@ icmp_input(struct mbuf *m, ...)
 		if (code)
 			goto badcode;
 		code = PRC_QUENCH;
-	deliver:
+deliver:
 		/*
 		 * Problem with datagram; advise higher level routines.
 		 */
@@ -444,7 +443,6 @@ icmp_input(struct mbuf *m, ...)
 			if (rt != NULL)
 				--rt->rt_refcnt;
 		}
-
 #endif
 		/*
 		 * XXX if the packet contains [IPv4 AH TCP], we can't make a
@@ -456,7 +454,7 @@ icmp_input(struct mbuf *m, ...)
 				   &icp->icmp_ip);
 		break;
 
-	badcode:
+badcode:
 		icmpstat.icps_badcode++;
 		break;
 
@@ -803,10 +801,8 @@ iptime()
  * given current value MTU.  If DIR is less than zero, a larger plateau
  * is returned; otherwise, a smaller value is returned.
  */
-static int
-ip_next_mtu(mtu, dir)
-	int mtu;
-	int dir;
+int
+ip_next_mtu(int mtu, int dir)
 {
 	static int mtutab[] = {
 		65535, 32000, 17914, 8166, 4352, 2002, 1492, 1006, 508, 296,

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.18 2005/02/08 22:56:19 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.19 2005/03/06 05:09:25 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -473,13 +473,13 @@ udp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		bzero(&uh, sizeof(uh));
 		m_copydata(m, off, sizeof(*uhp), (caddr_t)&uh);
 
-		(void) in6_pcbnotify(&udbinfo.pcblisthead, sa, uh.uh_dport,
-				     (struct sockaddr *)ip6cp->ip6c_src, 
-				     uh.uh_sport, cmd, notify);
+		in6_pcbnotify(&udbinfo.pcblisthead, sa, uh.uh_dport,
+			      (struct sockaddr *)ip6cp->ip6c_src, uh.uh_sport,
+			      cmd, 0, notify);
 	} else
-		(void) in6_pcbnotify(&udbinfo.pcblisthead, sa, 0,
-				     (const struct sockaddr *)sa6_src,
-				     0, cmd, notify);
+		in6_pcbnotify(&udbinfo.pcblisthead, sa, 0,
+			      (const struct sockaddr *)sa6_src, 0,
+			      cmd, 0, notify);
 }
 
 static int
