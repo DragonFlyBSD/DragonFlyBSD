@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.5 2003/09/29 15:44:47 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.6 2003/09/29 15:56:42 hmp Exp $
  */
 
 #include "opt_cpu.h"
@@ -974,9 +974,17 @@ print_AMD_info(void)
 		printf(", %d bytes/line", regs[3] & 0xff);
 		printf(", %d lines/tag", (regs[3] >> 8) & 0xff);
 		print_AMD_assoc((regs[3] >> 16) & 0xff);
-		if (cpu_exthigh >= 0x80000006) {	/* K6-III only */
+		if (cpu_exthigh >= 0x80000006) {	/* K6-III, or later */
 			do_cpuid(0x80000006, regs);
-			printf("L2 internal cache: %d kbytes", regs[2] >> 16);
+			/*
+			 * Report right L2 cache size on Duron rev. A0.
+			 */
+			if ((cpu_id & 0xFF0) == 0x630)
+				printf("L2 internal cache: 64 kbytes");
+			else
+				printf("L2 internal cache: %d kbytes",
+					regs[2] >> 16);
+
 			printf(", %d bytes/line", regs[2] & 0xff);
 			printf(", %d lines/tag", (regs[2] >> 8) & 0x0f);
 			print_AMD_assoc((regs[2] >> 12) & 0x0f);	
