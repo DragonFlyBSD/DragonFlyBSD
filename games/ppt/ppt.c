@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ppt.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/ppt/ppt.c,v 1.7 1999/12/12 06:30:45 billf Exp $
- * $DragonFly: src/games/ppt/ppt.c,v 1.3 2005/03/18 17:42:46 swildner Exp $
+ * $DragonFly: src/games/ppt/ppt.c,v 1.4 2005/03/18 23:20:34 swildner Exp $
  */
 
 #include <stdio.h>
