@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.42 2004/05/31 11:43:49 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.43 2004/06/02 07:34:29 hmp Exp $
  */
 
 /*
@@ -2412,7 +2412,7 @@ retry:
 static int pmap_prefault_pageorder[] = {
 	-PAGE_SIZE, PAGE_SIZE,
 	-2 * PAGE_SIZE, 2 * PAGE_SIZE,
-	-3 * PAGE_SIZE, 3 * PAGE_SIZE
+	-3 * PAGE_SIZE, 3 * PAGE_SIZE,
 	-4 * PAGE_SIZE, 4 * PAGE_SIZE
 };
 
