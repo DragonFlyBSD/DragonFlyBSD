@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_varsym.c,v 1.2 2003/11/09 20:29:59 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_varsym.c,v 1.3 2003/11/10 23:58:57 dillon Exp $
  */
 
 /*
@@ -188,6 +188,119 @@ varsym_get(struct varsym_get_args *uap)
     varsymdrop(sym);
 done:
     return(error);
+}
+
+/*
+ * varsym_list() system call
+ *
+ * (int level, char *buf, int maxsize, int *marker)
+ */
+int
+varsym_list(struct varsym_list_args *uap)
+{
+	struct varsymset *vss;
+	struct varsyment *ve;
+	struct proc *p;
+	int i;
+	int error;
+	int bytes;
+	int earlyterm;
+	int marker;
+
+	/*
+	 * Get the marker from userspace.
+	 */
+	if ((error = copyin(uap->marker, &marker, sizeof(marker))) != 0)
+		goto done;
+
+	/*
+	 * Figure out the varsym set.
+	 */
+	p = curproc;
+	vss = NULL;
+
+	switch (uap->level) {
+	case VARSYM_PROC:
+		if (p)
+			vss = &p->p_varsymset;
+		break;
+	case VARSYM_USER:
+		if (p)
+			vss = &p->p_ucred->cr_uidinfo->ui_varsymset;
+		break;
+	case VARSYM_SYS:
+		vss = &varsymset_sys;
+		break;
+	}
+	if (vss == NULL) {
+		error = EINVAL;
+		goto done;
+	}
+
+	/*
+	 * Loop through the variables and dump them to uap->buf
+	 */
+	i = 0;
+	bytes = 0;
+	earlyterm = 0;
+
+	TAILQ_FOREACH(ve, &vss->vx_queue, ve_entry) {
+		varsym_t sym = ve->ve_sym;
+		int namelen = strlen(sym->vs_name);
+		int datalen = strlen(sym->vs_data);
+		int totlen = namelen + datalen + 2;
+
+		/*
+		 * Skip to our index point
+		 */
+		if (i < marker) {
+			++i;
+			continue;
+		}
+
+		/*
+		 * Stop if there is insufficient space in the user buffer.
+		 * If we haven't stored anything yet return EOVERFLOW. 
+		 * Note that the marker index (i) does not change.
+		 */
+		if (bytes + totlen > uap->maxsize) {
+			if (bytes == 0)
+				error = EOVERFLOW;
+			earlyterm = 1;
+			break;
+		}
+
+		error = copyout(sym->vs_name, uap->buf + bytes, namelen + 1);
+		if (error == 0) {
+			bytes += namelen + 1;
+			error = copyout(sym->vs_data, uap->buf + bytes, datalen + 1);
+			if (error == 0)
+				bytes += datalen + 1;
+			else
+				bytes -= namelen + 1;	/* revert if error */
+		}
+		if (error) {
+			earlyterm = 1;
+			break;
+		}
+		++i;
+	}
+
+	/*
+	 * Save the marker back.  If no error occured and earlyterm is clear
+	 * the marker is set to -1 indicating that the variable list has been
+	 * exhausted.  If no error occured the number of bytes loaded into
+	 * the buffer will be returned, otherwise the syscall code returns -1.
+	 */
+	if (error == 0 && earlyterm == 0)
+		marker = -1;
+	else
+		marker = i;
+	if (error == 0)
+		error = copyout(&marker, uap->marker, sizeof(marker));
+	uap->sysmsg_result = bytes;
+done:
+	return(error);
 }
 
 /*

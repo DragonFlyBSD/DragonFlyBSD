@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/bin/varsym/varsym.c,v 1.2 2003/11/06 20:14:24 eirikn Exp $
+ * $DragonFly: src/bin/varsym/varsym.c,v 1.3 2003/11/10 23:58:59 dillon Exp $
  */
 
 #include <stdio.h>
@@ -33,7 +33,8 @@
 #include <unistd.h>
 #include <sys/varsym.h>
 
-void usage(void);
+static void usage(void);
+static void dumpvars(char *buf, int bytes);
 
 int
 main(int ac, char **av)
@@ -43,9 +44,13 @@ main(int ac, char **av)
 	int level = VARSYM_USER;
 	int deleteOpt = 0;
 	int verboseOpt = 1;
+	int allOpt = 0;
 
-	while ((i = getopt(ac, av, "dhpqsu")) != -1) {
+	while ((i = getopt(ac, av, "adhpqsu")) != -1) {
 		switch (i) {
+		case 'a':
+			allOpt = 1;
+			break;
 		case 'd':
 			deleteOpt = 1;
 			break;
@@ -69,6 +74,23 @@ main(int ac, char **av)
 			usage();
 			return(-1);
 		}
+	}
+
+	if (allOpt) {
+		char buf[1024];
+		int marker = 0;
+		int bytes;
+
+		for (;;) {
+			bytes = varsym_list(level, buf, sizeof(buf), &marker);
+			if (bytes < 0)		/* error occured */
+			    break;
+			dumpvars(buf, bytes);
+			if (marker < 0)		/* no more vars */
+			    break;
+		}
+		if (bytes < 0)
+			fprintf(stderr, "varsym_list(): %s\n", strerror(errno));
 	}
 
 	for ( ; optind < ac; optind++) {
@@ -101,10 +123,32 @@ main(int ac, char **av)
 	return(0);
 }
 
-void
+static void
+dumpvars(char *buf, int bytes)
+{
+    int b;
+    int i;
+    char *vname = NULL;
+    char *vdata = NULL;
+
+    for (b = i = 0; i < bytes; ++i) {
+	if (buf[i] == 0) {
+	    if (vname == NULL) {
+		vname = buf + b;
+	    } else {
+		vdata = buf + b;
+		printf("%s=%s\n", vname, vdata);
+		vname = vdata = NULL;
+	    }
+	    b = i + 1;
+	}
+    }
+}
+
+static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: varsym: [-qdsup] var[=data]\n");
+	fprintf(stderr, "usage: varsym: [-aqdsup] var[=data]\n");
 }
 

@@ -22,7 +22,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\" $DragonFly: src/bin/varsym/varsym.1,v 1.1 2003/11/05 23:29:37 dillon Exp $
+.\" $DragonFly: src/bin/varsym/varsym.1,v 1.2 2003/11/10 23:58:59 dillon Exp $
 .\"
 .Dd Nov 5, 2003
 .Dt VARSYM 1
@@ -32,7 +32,7 @@
 .Nd get and set user and system-wide variables for variant symlinks
 .Sh SYNOPSIS
 .Nm
-.Op Fl qdsup
+.Op Fl qadsup
 .Ar var[=data]
 .Sh DESCRIPTION
 The
@@ -44,6 +44,10 @@ For each operand set, modify, retrieve, or delete the specified variable.
 By default variables specified without data are retrieved and variables
 specified with data are set.  Variables may be set to empty.
 .Bl -tag -width Ar
+.It Fl a
+List all variables at the specified level.  Note that per-process variables
+override per-user variables and per-user variables override system-wide
+variables.  By default, per-user variables are listed.
 .It Fl q
 Quiet mode.  When retrieving a variable only its data is printed.
 .It Fl d
@@ -57,11 +61,10 @@ This option causes variables to be set on a per-user-id basis and restricts
 retrievals to user-specific variables.  This is the default.
 .It Fl p
 This option causes variables to be set on a per-process basis and restricts
-retrievals to process-specific variables.  It exists for completeness.  Note
-that since
+retrievals to process-specific variables.  Note that since
 .Nm
-is run as its own process, using this option will not effect your shell's
-namespace.
+is run as its own process, using this option to set a variable will not 
+effect your shell's namespace.
 .El
 .Sh RETURN VALUES
 The
