@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.7 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.8 2005/01/01 09:20:05 hsu Exp $
  */
 
 /*
@@ -210,8 +210,12 @@ in_closeroute(struct radix_node *rn, struct radix_node_head *head)
 		rt->rt_flags |= RTPRF_EXPIRING;
 		rt->rt_rmx.rmx_expire = time_second + rtq_reallyold;
 	} else {
+		/*
+		 * Remove route from the radix tree, but defer deallocation
+		 * until we return to rtfree().
+		 */
 		rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway, rt_mask(rt),
-			  rt->rt_flags, NULL);
+			  rt->rt_flags, &rt);
 	}
 }
 
