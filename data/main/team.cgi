@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.1 2003/12/11 18:53:01 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.2 2004/01/07 18:08:36 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -78,7 +78,7 @@ to the DragonFly project.  Here's a partial list.
 </TR>
 
 <TR><TD VALIGN="top"><A HREF="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</A> </TD>
-<TD VALIGN="top">K&amp;R to ANSI function cleanup, __P() removal, gcc3 building
+<TD VALIGN="top">Code cleanness and userland utilities
 (commit access)</TD>
 </TR>
 
@@ -120,8 +120,16 @@ to the DragonFly project.  Here's a partial list.
 
 </TR>
 
-<TR><TD BGCOLOR="#DDDDDD" VALIGN="top"><A HREF="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</A></TD>
-<TD BGCOLOR="#DDDDDD" VALIGN="top">Secretarial work, website cleanup
+<TR><TD BGCOLOR="#DDDDDD" VALIGN="top">
+Joerg Sonnenberger</A></TD>
+<TD BGCOLOR="#DDDDDD" VALIGN="top">dfports updates
+(commit access)
+</TD>
+</TR>
+
+
+<TR><TD VALIGN="top"><A HREF="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</A></TD>
+<TD VALIGN="top">Secretarial work, website cleanup
 (commit access)</TD>
 </TR>
 
