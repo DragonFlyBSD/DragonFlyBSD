@@ -29,16 +29,18 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/auth.c,v 1.3.6.1 2001/03/05 06:29:52 kris Exp $
- * $DragonFly: src/lib/libutil/auth.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libutil/auth.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  *
  */
 
-#include <unistd.h>
-#include <syslog.h>
 #include <sys/types.h>
-#include <paths.h>
+
 #include <fcntl.h>
-#include <libutil.h>
+#include <paths.h>
+#include <syslog.h>
+#include <unistd.h>
+
+#include "libutil.h"
 
 static properties P;
 

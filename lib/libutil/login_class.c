@@ -22,24 +22,26 @@
  * High-level routines relating to use of the user capabilities database
  *
  * $FreeBSD: src/lib/libutil/login_class.c,v 1.14.2.3 2002/08/06 07:07:52 ache Exp $
- * $DragonFly: src/lib/libutil/login_class.c,v 1.3 2004/04/22 16:52:55 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_class.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <fcntl.h>
-#include <pwd.h>
-#include <syslog.h>
-#include <login_cap.h>
-#include <paths.h>
 #include <sys/rtprio.h>
+
+#include <errno.h>
+#include <fcntl.h>
+#include <paths.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <syslog.h>
+#include <unistd.h>
+
+#include "login_cap.h"
 
 
 static struct login_res {

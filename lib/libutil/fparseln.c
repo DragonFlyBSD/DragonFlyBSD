@@ -1,6 +1,6 @@
 /*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
 /* $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $ */
-/* $DragonFly: src/lib/libutil/fparseln.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $ */
+/* $DragonFly: src/lib/libutil/fparseln.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $ */
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -33,15 +33,15 @@
  * $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $
  */
 
-#include <sys/cdefs.h>
-
 #include <sys/types.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <libutil.h>
+#include <string.h>
+
+#include "libutil.h"
 
 static int isescaped (const char *, const char *, int);
 

@@ -32,7 +32,7 @@
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logwtmp.c,v 1.14 2000/01/15 03:26:54 shin Exp $
- * $DragonFly: src/lib/libutil/logwtmp.c,v 1.3 2004/11/05 17:05:26 dillon Exp $
+ * $DragonFly: src/lib/libutil/logwtmp.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
  */
 
 #include <sys/cdefs.h>
@@ -41,13 +41,14 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 
-#include <libutil.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
+
+#include "libutil.h"
 
 /* wrapper for KAME-special getnameinfo() */
 #ifndef NI_WITHSCOPEID

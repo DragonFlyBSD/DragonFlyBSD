@@ -31,21 +31,23 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/uucplock.c,v 1.12.2.1 2000/10/09 20:20:52 brian Exp $
- * $DragonFly: src/lib/libutil/uucplock.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/uucplock.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  *
  * @(#)uucplock.c	8.1 (Berkeley) 6/6/93
  */
 
 #include <sys/types.h>
 #include <sys/file.h>
+
 #include <dirent.h>
 #include <errno.h>
-#include <unistd.h>
+#include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <paths.h>
 #include <string.h>
+#include <unistd.h>
+
 #include "libutil.h"
 
 #define MAXTRIES 5

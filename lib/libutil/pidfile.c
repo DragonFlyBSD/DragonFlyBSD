@@ -1,5 +1,5 @@
 /*	$NetBSD: pidfile.c,v 1.6 2001/10/20 09:20:28 taca Exp $	*/
-/*	$DragonFly: src/lib/libutil/pidfile.c,v 1.1 2004/09/22 05:06:57 joerg Exp $ */
+/*	$DragonFly: src/lib/libutil/pidfile.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -38,12 +38,14 @@
  */
 
 #include <sys/param.h>
-#include <libutil.h>
+
 #include <paths.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "libutil.h"
 
 static int   pidfile_atexit_done;
 static pid_t pidfile_pid;

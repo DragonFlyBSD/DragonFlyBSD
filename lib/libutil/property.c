@@ -29,18 +29,20 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/property.c,v 1.5.6.1 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/property.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/property.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  *
  */
 
+#include <sys/types.h>
+
 #include <ctype.h>
-#include <unistd.h>
+#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <err.h>
-#include <sys/types.h>
-#include <libutil.h>
+#include <unistd.h>
+
+#include "libutil.h"
 
 static properties
 property_alloc(char *name, char *value)

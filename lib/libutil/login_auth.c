@@ -26,31 +26,18 @@
  * Low-level routines relating to the user capabilities database
  *
  * $FreeBSD: src/lib/libutil/login_auth.c,v 1.11 1999/08/28 00:05:45 peter Exp $
- * $DragonFly: src/lib/libutil/login_auth.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_auth.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  */
 
 #include <sys/types.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <errno.h>
+
 #include <fcntl.h>
-#include <limits.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <pwd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <login_cap.h>
-#include <stdarg.h>
 #include <paths.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <err.h>
-#include <libutil.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include "login_cap.h"
 
 
 /*

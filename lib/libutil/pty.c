@@ -32,7 +32,7 @@
  *
  * @(#)pty.c	8.3 (Berkeley) 5/16/94
  * $FreeBSD: src/lib/libutil/pty.c,v 1.10 1999/08/28 00:05:51 peter Exp $
- * $DragonFly: src/lib/libutil/pty.c,v 1.3 2004/10/25 19:39:09 drhodus Exp $
+ * $DragonFly: src/lib/libutil/pty.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,8 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-#include <libutil.h>
+
+#include "libutil.h"
 
 int
 openpty(amaster, aslave, name, termp, winp)

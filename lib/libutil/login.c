@@ -32,16 +32,17 @@
  *
  * @(#)login.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/login.c,v 1.6 1999/08/28 00:05:45 peter Exp $
- * $DragonFly: src/lib/libutil/login.c,v 1.3 2004/10/25 19:39:09 drhodus Exp $
+ * $DragonFly: src/lib/libutil/login.c,v 1.4 2005/03/04 04:31:11 cpressey Exp $
  */
 
 #include <sys/types.h>
 
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <utmp.h>
-#include <libutil.h>
+
+#include "libutil.h"
 
 void
 login(ut)

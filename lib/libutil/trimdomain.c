@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libutil/trimdomain.c,v 1.1 2004/11/05 17:05:26 dillon Exp $ */
+/* $DragonFly: src/lib/libutil/trimdomain.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
 /*
  * Copyright (c) 2001 Brian Somers <brian@Awfulhak.org>
  *   Based on original work by Atsushi Murai <amurai@FreeBSD.org>
@@ -31,9 +31,10 @@
 #include <sys/cdefs.h>
 #include <sys/param.h>
 
-#include <libutil.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "libutil.h"
 
 static int	isDISP(const char *);
 

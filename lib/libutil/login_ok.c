@@ -21,22 +21,22 @@
  * Support allow/deny lists in login class capabilities
  *
  * $FreeBSD: src/lib/libutil/login_ok.c,v 1.7.2.1 2001/01/10 21:01:30 ghelmer Exp $
- * $DragonFly: src/lib/libutil/login_ok.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_ok.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  */
-
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <ttyent.h>
-#include <fnmatch.h>
 
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/param.h>
-#include <login_cap.h>
 
+#include <errno.h>
+#include <fnmatch.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ttyent.h>
+#include <unistd.h>
+
+#include "login_cap.h"
 
 /* -- support functions -- */
 

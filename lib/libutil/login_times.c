@@ -21,16 +21,17 @@
  * Login period parsing and comparison functions.
  *
  * $FreeBSD: src/lib/libutil/login_times.c,v 1.7 1999/08/28 00:05:48 peter Exp $
- * $DragonFly: src/lib/libutil/login_times.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_times.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  */
 
+#include <sys/types.h>
+
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <ctype.h>
 
-#include <sys/types.h>
-#include <login_cap.h>
+#include "login_cap.h"
 
 static struct
 {

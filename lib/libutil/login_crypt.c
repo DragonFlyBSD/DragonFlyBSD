@@ -24,15 +24,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/login_crypt.c,v 1.2.2.2 2000/10/27 01:50:31 green Exp $
- * $DragonFly: src/lib/libutil/login_crypt.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_crypt.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  */
 
 #include <sys/types.h>
 
-#include <login_cap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
+#include "login_cap.h"
 
 const char *
 login_setcryptfmt(login_cap_t *lc, const char *def, const char *error) {

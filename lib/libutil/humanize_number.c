@@ -1,5 +1,5 @@
 /*	$NetBSD: humanize_number.c,v 1.8 2004/07/27 01:56:24 enami Exp $	*/
-/* $DragonFly: src/lib/libutil/humanize_number.c,v 1.1 2004/11/05 17:05:26 dillon Exp $ */
+/* $DragonFly: src/lib/libutil/humanize_number.c,v 1.2 2005/03/04 04:31:11 cpressey Exp $ */
 
 /*
  * Copyright (c) 1997, 1998, 1999, 2002 The NetBSD Foundation, Inc.
@@ -42,12 +42,14 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+
 #include <assert.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <locale.h>
-#include <libutil.h>
+
+#include "libutil.h"
 
 int
 humanize_number(char *buf, size_t len, int64_t bytes,

@@ -19,15 +19,17 @@
  *    conditions are met.
  *
  * $FreeBSD: src/lib/libutil/_secure_path.c,v 1.5 1999/08/28 00:05:42 peter Exp $
- * $DragonFly: src/lib/libutil/_secure_path.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libutil/_secure_path.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
  */
 
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <syslog.h>
+
 #include <errno.h>
-#include <libutil.h>
+#include <syslog.h>
+
+#include "libutil.h"
 
 /*
  * Check for common security problems on a given path
