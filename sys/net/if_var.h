@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.17 2004/09/10 14:02:01 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.18 2004/09/15 19:33:36 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -462,7 +462,7 @@ EVENTHANDLER_DECLARE(ifnet_attach_event, ifnet_attach_event_handler_t);
 typedef void (*ifnet_detach_event_handler_t)(void *, struct ifnet *);
 EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
 /* interface clone event */
-typedef void (*if_clone_event_handler_t)(void *, struct ifnet *);
+typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
 #define	IFAFREE(ifa)					\
