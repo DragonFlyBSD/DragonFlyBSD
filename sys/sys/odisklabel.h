@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/disklabel.h,v 1.49.2.7 2001/05/27 05:58:26 jkh Exp $
- * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.8 2005/03/05 18:08:50 swildner Exp $
+ * $DragonFly: src/sys/sys/Attic/odisklabel.h,v 1.9 2005/03/16 06:29:03 joerg Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -226,7 +226,7 @@ dkcksum(struct disklabel *lp)
 #define	DTYPE_DOC2K		13		/* Msys DiskOnChip */
 
 #ifdef DKTYPENAMES
-static char *dktypenames[] = {
+static const char *dktypenames[] = {
 	"unknown",
 	"SMD",
 	"MSCP",
