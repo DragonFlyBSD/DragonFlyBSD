@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.27 2005/03/03 22:57:39 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.28 2005/03/07 17:48:34 swildner Exp $
 #
 
 ISODIR ?= /usr/release
@@ -39,13 +39,13 @@ KERNEL_CCVER ?= ${CCVER}
 #########################################################################
 
 release:	check clean buildworld1 buildkernel1 \
-		buildiso customizeiso pkgaddiso mkiso
+		buildiso customizeiso pkgaddiso mklocatedb mkiso
 
 quickrel:	check clean buildworld2 buildkernel2 \
-		buildiso customizeiso pkgaddiso mkiso
+		buildiso customizeiso pkgaddiso mklocatedb mkiso
 
 realquickrel:	check clean \
-		buildiso customizeiso pkgaddiso mkiso
+		buildiso customizeiso pkgaddiso mklocatedb mkiso
 
 #########################################################################
 #			ISO TARGETS WITH INSTALLER			#
@@ -169,6 +169,13 @@ pkgaddiso:
 .for PKG in ${REL_PACKAGES}
 	rm -f ${ISOROOT}/tmp/${PKG}.tgz
 .endfor
+
+mklocatedb:
+	( find -s ${ISOROOT} -path ${ISOROOT}/tmp -or \
+		-path ${ISOROOT}/usr/tmp -or -path ${ISOROOT}/var/tmp \
+		-prune -o -print | sed -e 's#^${ISOROOT}##g' | \
+		/usr/libexec/locate.mklocatedb \
+		-presort >${ISOROOT}/var/db/locate.database )
 
 mkiso:
 	( cd ${ISOROOT}; mkisofs -b boot/cdboot -no-emul-boot \
