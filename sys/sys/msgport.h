@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.20 2004/09/10 18:23:54 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.21 2004/12/21 19:41:36 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -68,7 +68,7 @@ typedef union lwkt_cmd {
  * NOTE! 64-bit-align this structure.
  */
 typedef struct lwkt_msg {
-    TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node (see note above) */
+    TAILQ_ENTRY(lwkt_msg) ms_node;	/* link node */
     union {
 	struct lwkt_msg *ms_next;	/* chaining / cache */
 	union sysunion	*ms_sysunnext;	/* chaining / cache */
