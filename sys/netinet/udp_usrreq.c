@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.19 2004/03/31 00:43:09 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.20 2004/03/31 07:21:38 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -907,9 +907,11 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	s = splnet();
 	error = in_pcbbind(inp, nam, td);
 	splx(s);
-	if (sin->sin_addr.s_addr != INADDR_ANY)
-		inp->inp_flags |= INP_WASBOUND_NOTANY;
-	in_pcbinswildcardhash(inp);
+	if (error == 0) {
+		if (sin->sin_addr.s_addr != INADDR_ANY)
+			inp->inp_flags |= INP_WASBOUND_NOTANY;
+		in_pcbinswildcardhash(inp);
+	}
 	return error;
 }
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/udp6_usrreq.c,v 1.6.2.13 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.12 2004/03/31 00:43:09 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/udp6_usrreq.c,v 1.13 2004/03/31 07:21:38 hsu Exp $	*/
 /*	$KAME: udp6_usrreq.c,v 1.27 2001/05/21 05:45:10 jinmei Exp $	*/
 
 /*
@@ -610,9 +610,11 @@ udp6_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	s = splnet();
 	error = in6_pcbbind(inp, nam, td);
 	splx(s);
-	if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
-		inp->inp_flags |= INP_WASBOUND_NOTANY;
-	in_pcbinswildcardhash(inp);
+	if (error == 0) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&sin6_p->sin6_addr))
+			inp->inp_flags |= INP_WASBOUND_NOTANY;
+		in_pcbinswildcardhash(inp);
+	}
 	return error;
 }
 
