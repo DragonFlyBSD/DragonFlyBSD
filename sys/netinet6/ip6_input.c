@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.14 2004/04/21 18:13:57 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.15 2004/05/04 23:08:43 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -331,7 +331,7 @@ ip6_input(struct netmsg *msg)
 		m_freem(m);
 		m = n;
 	}
-	IP6_EXTHDR_CHECK(m, 0, sizeof(struct ip6_hdr), /*nothing*/);
+	IP6_EXTHDR_CHECK(m, 0, sizeof(struct ip6_hdr), EASYNC);
 #endif
 
 	if (m->m_len < sizeof(struct ip6_hdr)) {
