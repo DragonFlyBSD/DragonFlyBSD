@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)jot.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/jot/jot.c,v 1.13.2.3 2001/12/17 13:49:50 gallatin Exp $
- * $DragonFly: src/usr.bin/jot/jot.c,v 1.3 2003/10/04 20:36:46 hmp Exp $
+ * $DragonFly: src/usr.bin/jot/jot.c,v 1.4 2004/07/31 10:19:53 eirikn Exp $
  */
 
 /*
@@ -47,6 +47,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -74,7 +75,6 @@ int	nofinalnl;
 const	char *sepstring = "\n";
 char	format[BUFSIZ];
 
-int		main(int, char *[]);
 void		getformat(void);
 int		getprec(char *);
 int		putdata(double, long);
