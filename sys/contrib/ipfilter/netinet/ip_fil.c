@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.14 2004/07/28 00:22:36 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.15 2004/09/16 23:40:24 joerg Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -185,7 +185,7 @@ static int	write_output (struct ifnet *, struct mbuf *,
 int	fr_running = 0;
 
 #if (defined(__DragonFly__) || __FreeBSD_version >= 300000) && defined(_KERNEL)
-struct callout_handle ipfr_slowtimer_ch;
+struct callout ipfr_slowtimer_ch;
 #endif
 #if defined(__NetBSD__) && (__NetBSD_Version__ >= 104230000)
 # include <sys/callout.h>
@@ -508,7 +508,8 @@ pfil_error:
 	timeout_add(&ipfr_slowtimer_ch, hz/2);
 #  else
 #   if (defined(__DragonFly__) || __FreeBSD_version >= 300000) || defined(__sgi)
-	ipfr_slowtimer_ch = timeout(ipfr_slowtimer, NULL, hz/2);
+	callout_init(&ipfr_slowtimer_ch);
+	callout_reset(&ipfr_slowtimer_ch, hz / 2, ipfr_slowtimer, NULL);
 #   else
 	timeout(ipfr_slowtimer, NULL, hz/2);
 #   endif
@@ -547,7 +548,7 @@ int ipldetach()
 	callout_stop(&ipfr_slowtimer_ch);
 # else
 #  if (defined(__DragonFly__) || __FreeBSD_version >= 300000)
-	untimeout(ipfr_slowtimer, NULL, ipfr_slowtimer_ch);
+	callout_stop(&ipfr_slowtimer_ch);
 #  else
 #  ifdef __sgi
 	untimeout(ipfr_slowtimer_ch);

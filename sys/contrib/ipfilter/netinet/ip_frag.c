@@ -6,7 +6,7 @@
  * @(#)ip_frag.c    1.11 3/24/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_frag.c,v 2.10.2.24 2002/08/28 12:41:04 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.15.2.7 2004/07/04 09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.6 2004/07/28 00:22:37 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_frag.c,v 1.7 2004/09/16 23:40:24 joerg Exp $
  */
 #if defined(KERNEL) && !defined(_KERNEL)
 # define      _KERNEL
@@ -81,7 +81,7 @@
 #   include <sys/libkern.h>
 #   include <sys/systm.h>
 #  endif
-extern struct callout_handle ipfr_slowtimer_ch;
+extern struct callout ipfr_slowtimer_ch;
 # endif
 #endif
 #if defined(__NetBSD__) && (__NetBSD_Version__ >= 104230000)
@@ -621,7 +621,7 @@ void ipfr_slowtimer()
 	callout_reset(&ipfr_slowtimer_ch, hz / 2, ipfr_slowtimer, NULL);
 #  else
 #   if defined(__DragonFly__) || __FreeBSD_version >= 300000
-	ipfr_slowtimer_ch = timeout(ipfr_slowtimer, NULL, hz/2);
+	callout_reset(&ipfr_slowtimer_ch, hz / 2, ipfr_slowtimer, NULL);
 #   else
 #    if defined(__OpenBSD__)
 	timeout_add(&ipfr_slowtimer_ch, hz/2);
