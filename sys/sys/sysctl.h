@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.4 2003/06/25 03:56:10 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.5 2003/06/29 06:48:29 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -142,6 +142,7 @@ struct sysctl_oid {
 
 int sysctl_handle_int(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_long(SYSCTL_HANDLER_ARGS);
+int sysctl_handle_quad(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_intptr(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_string(SYSCTL_HANDLER_ARGS);
 int sysctl_handle_opaque(SYSCTL_HANDLER_ARGS);
@@ -206,6 +207,11 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define SYSCTL_INT(parent, nbr, name, access, ptr, val, descr) \
 	SYSCTL_OID(parent, nbr, name, CTLTYPE_INT|access, \
 		ptr, val, sysctl_handle_int, "I", descr)
+
+/* Oid for an int.  If ptr is NULL, val is returned. */
+#define SYSCTL_QUAD(parent, nbr, name, access, ptr, val, descr) \
+	SYSCTL_OID(parent, nbr, name, CTLTYPE_QUAD|access, \
+		ptr, val, sysctl_handle_quad, "Q", descr)
 
 #define SYSCTL_ADD_INT(ctx, parent, nbr, name, access, ptr, val, descr)	    \
 	sysctl_add_oid(ctx, parent, nbr, name, CTLTYPE_INT|access,	    \
@@ -281,7 +287,8 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 #define	CTL_MACHDEP	7		/* machine dependent */
 #define	CTL_USER	8		/* user-level */
 #define	CTL_P1003_1B	9		/* POSIX 1003.1B */
-#define	CTL_MAXID	10		/* number of valid top-level ids */
+#define CTL_LWKT	10		/* light weight kernel threads */
+#define	CTL_MAXID	11		/* number of valid top-level ids */
 
 #define CTL_NAMES { \
 	{ 0, 0 }, \
@@ -294,6 +301,7 @@ TAILQ_HEAD(sysctl_ctx_list, sysctl_ctx_entry);
 	{ "machdep", CTLTYPE_NODE }, \
 	{ "user", CTLTYPE_NODE }, \
 	{ "p1003_1b", CTLTYPE_NODE }, \
+	{ "lwkt", CTLTYPE_NODE }, \
 }
 
 /*
@@ -557,6 +565,7 @@ SYSCTL_DECL(_hw);
 SYSCTL_DECL(_machdep);
 SYSCTL_DECL(_user);
 SYSCTL_DECL(_compat);
+SYSCTL_DECL(_lwkt);
 
 extern char	machine[];
 extern char	osrelease[];

@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_mib.c,v 1.29.2.4 2001/07/30 23:28:00 peter Exp $
- * $DragonFly: src/sys/kern/kern_mib.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_mib.c,v 1.5 2003/06/29 06:48:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,6 +71,8 @@ SYSCTL_NODE(, CTL_USER,	  user,   CTLFLAG_RW, 0,
 	"user-level");
 SYSCTL_NODE(, CTL_P1003_1B,  p1003_1b,   CTLFLAG_RW, 0,
 	"p1003_1b, (see p1003_1b.h)");
+SYSCTL_NODE(, CTL_LWKT,  lwkt,   CTLFLAG_RW, 0,
+	"light weight kernel threads");
 
 SYSCTL_NODE(, OID_AUTO,  compat, CTLFLAG_RW, 0,
 	"Compatibility code");

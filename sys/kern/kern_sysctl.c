@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.4 2003/06/25 03:55:57 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.5 2003/06/29 06:48:31 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -798,6 +798,26 @@ sysctl_handle_long(SYSCTL_HANDLER_ARGS)
 }
 
 /*
+ * Handle a quad, signed or unsigned.  arg1 points to it.
+ */
+
+int
+sysctl_handle_quad(SYSCTL_HANDLER_ARGS)
+{
+	int error = 0;
+
+	if (!arg1)
+		return (EINVAL);
+	error = SYSCTL_OUT(req, arg1, sizeof(quad_t));
+
+	if (error || !req->newptr)
+		return (error);
+
+	error = SYSCTL_IN(req, arg1, sizeof(quad_t));
+	return (error);
+}
+
+/*
  * Handle our generic '\0' terminated 'C' string.
  * Two cases:
  * 	a variable string:  point arg1 at it, arg2 is max length.
@@ -1168,6 +1188,7 @@ userland_sysctl(int *name, u_int namelen, void *old, size_t *oldlenp, int inkern
 	req.oldfunc = sysctl_old_user;
 	req.newfunc = sysctl_new_user;
 	req.lock = 1;
+	req.td = curthread;
 
 	/* XXX this should probably be done in a general way */
 	while (memlock.sl_lock) {
