@@ -32,7 +32,7 @@
  *	From: @(#)err.c	8.1 (Berkeley) 6/4/93
  *
  * $FreeBSD: src/lib/libc/gen/err.c,v 1.6 1999/08/27 23:58:33 peter Exp $
- * $DragonFly: src/lib/libc/gen/err.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/err.c,v 1.3 2005/03/09 18:52:21 joerg Exp $
  */
 
 #include <err.h>
@@ -43,7 +43,6 @@
 
 #include <stdarg.h>
 
-extern char *__progname;		/* Program name, from crt0. */
 
 static FILE *err_file; /* file to use for error output */
 static void (*err_exit)(int);
@@ -104,7 +103,7 @@ verrc(eval, code, fmt, ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", __progname);
+	fprintf(err_file, "%s: ", getprogname());
 	if (fmt != NULL) {
 		vfprintf(err_file, fmt, ap);
 		fprintf(err_file, ": ");
@@ -132,7 +131,7 @@ verrx(eval, fmt, ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", __progname);
+	fprintf(err_file, "%s: ", getprogname());
 	if (fmt != NULL)
 		vfprintf(err_file, fmt, ap);
 	fprintf(err_file, "\n");
@@ -175,7 +174,7 @@ vwarnc(code, fmt, ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", __progname);
+	fprintf(err_file, "%s: ", getprogname());
 	if (fmt != NULL) {
 		vfprintf(err_file, fmt, ap);
 		fprintf(err_file, ": ");
@@ -199,7 +198,7 @@ vwarnx(fmt, ap)
 {
 	if (err_file == 0)
 		err_set_file((FILE *)0);
-	fprintf(err_file, "%s: ", __progname);
+	fprintf(err_file, "%s: ", getprogname());
 	if (fmt != NULL)
 		vfprintf(err_file, fmt, ap);
 	fprintf(err_file, "\n");

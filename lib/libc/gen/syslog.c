@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libc/gen/syslog.c,v 1.6 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/syslog.c,v 1.7 2005/03/09 18:52:21 joerg Exp $
  */
 
 #include "namespace.h"
@@ -47,6 +47,7 @@
 #include <fcntl.h>
 #include <paths.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -61,7 +62,6 @@ static int	LogStat = 0;		/* status bits, set by openlog() */
 static const char *LogTag = NULL;	/* string to tag the entry with */
 static int	LogFacility = LOG_USER;	/* default facility code */
 static int	LogMask = 0xff;		/* mask of priorities to be logged */
-extern char	*__progname;		/* Program name, from crt0. */
 
 static void	disconnectlog (void); /* disconnect from syslogd */
 static void	connectlog (void);	/* (re)connect to syslogd */
@@ -164,7 +164,7 @@ vsyslog(pri, fmt, ap)
 		stdp = tbuf + (sizeof(tbuf) - tbuf_cookie.left);
 	}
 	if (LogTag == NULL)
-		LogTag = __progname;
+		LogTag = getprogname();
 	if (LogTag != NULL)
 		(void)fprintf(fp, "%s", LogTag);
 	if (LogStat & LOG_PID)

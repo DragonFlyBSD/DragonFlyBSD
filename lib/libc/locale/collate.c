@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/collate.c,v 1.21.2.4 2002/10/11 10:36:47 ache Exp $
- * $DragonFly: src/lib/libc/locale/collate.c,v 1.4 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/lib/libc/locale/collate.c,v 1.5 2005/03/09 18:52:21 joerg Exp $
  */
 
 #include "namespace.h"
@@ -252,18 +252,16 @@ __collate_strdup(s)
 void
 __collate_err(int ex, const char *f)
 {
-	extern char *__progname;                /* Program name, from crt0. */
-	const char *s;
+	const char *progname;
 	int serrno = errno;
 
-	s = __progname;
-	_write(STDERR_FILENO, s, strlen(s));
+	progname = getprogname();
+	_write(STDERR_FILENO, progname, strlen(progname));
 	_write(STDERR_FILENO, ": ", 2);
-	s = f;
-	_write(STDERR_FILENO, s, strlen(s));
+	_write(STDERR_FILENO, f, strlen(f));
 	_write(STDERR_FILENO, ": ", 2);
-	s = strerror(serrno);
-	_write(STDERR_FILENO, s, strlen(s));
+	f = strerror(serrno);
+	_write(STDERR_FILENO, f, strlen(f));
 	_write(STDERR_FILENO, "\n", 1);
 	exit(ex);
 }

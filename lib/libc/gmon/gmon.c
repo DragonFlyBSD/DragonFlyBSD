@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gmon/gmon.c,v 1.8 2000/01/27 23:06:25 jasone Exp $
- * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.6 2005/01/31 22:29:17 dillon Exp $
+ * $DragonFly: src/lib/libc/gmon/gmon.c,v 1.7 2005/03/09 18:52:21 joerg Exp $
  *
  * @(#)gmon.c	8.1 (Berkeley) 6/4/93
  */
@@ -46,6 +46,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "un-namespace.h"
@@ -55,8 +56,6 @@ extern char *minbrk asm (".minbrk");
 #else
 extern char *minbrk asm ("minbrk");
 #endif
-
-extern char *__progname;
 
 struct gmonparam _gmonparam = { GMON_PROF_OFF };
 
@@ -173,7 +172,7 @@ _mcleanup()
 	}
 
 	moncontrol(0);
-	snprintf(outname,sizeof(outname),"%s.gmon",__progname);
+	snprintf(outname, sizeof(outname), "%s.gmon", getprogname());
 	fd = _open(outname, O_CREAT|O_TRUNC|O_WRONLY, 0666);
 	if (fd < 0) {
 		warnx("_mcleanup: %s - %s",outname,strerror(errno));

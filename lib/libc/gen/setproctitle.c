@@ -15,7 +15,7 @@
  *    Peter Wemm.
  *
  * $FreeBSD: src/lib/libc/gen/setproctitle.c,v 1.12.2.2 2000/12/10 20:27:08 jdp Exp $
- * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.3 2004/02/02 05:43:14 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/setproctitle.c,v 1.4 2005/03/09 18:52:21 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -53,7 +53,6 @@ struct old_ps_strings {
 #include <stdarg.h>
 
 #define SPT_BUFSIZE 2048	/* from other parts of sendmail */
-extern char * __progname;	/* is this defined in a .h anywhere? */
 
 void
 setproctitle(const char *fmt, ...)
@@ -83,7 +82,7 @@ setproctitle(const char *fmt, ...)
 			len = 0;
 		} else {
 			/* print program name heading for grep */
-			(void) snprintf(buf, sizeof(buf), "%s: ", __progname);
+			(void) snprintf(buf, sizeof(buf), "%s: ", getprogname());
 			len = strlen(buf);
 		}
 

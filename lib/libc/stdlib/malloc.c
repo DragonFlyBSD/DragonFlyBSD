@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.6 2005/01/31 22:29:42 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/malloc.c,v 1.7 2005/03/09 18:52:21 joerg Exp $
  *
  */
 
@@ -273,13 +273,13 @@ static void *imalloc(size_t size);
 static void ifree(void *ptr);
 static void *irealloc(void *ptr, size_t size);
 
-extern char *__progname;
-
 static void
-wrterror(char *p)
+wrterror(const char *p)
 {
-    char *q = " error: ";
-    _write(STDERR_FILENO, __progname, strlen(__progname));
+    const char *progname = getprogname();
+    const char *q = " error: ";
+
+    _write(STDERR_FILENO, progname, strlen(progname));
     _write(STDERR_FILENO, malloc_func, strlen(malloc_func));
     _write(STDERR_FILENO, q, strlen(q));
     _write(STDERR_FILENO, p, strlen(p));
@@ -288,12 +288,14 @@ wrterror(char *p)
 }
 
 static void
-wrtwarning(char *p)
+wrtwarning(const char *p)
 {
-    char *q = " warning: ";
+    const char *progname = getprogname();
+    const char *q = " warning: ";
+
     if (malloc_abort)
 	wrterror(p);
-    _write(STDERR_FILENO, __progname, strlen(__progname));
+    _write(STDERR_FILENO, progname, strlen(progname));
     _write(STDERR_FILENO, malloc_func, strlen(malloc_func));
     _write(STDERR_FILENO, q, strlen(q));
     _write(STDERR_FILENO, p, strlen(p));
