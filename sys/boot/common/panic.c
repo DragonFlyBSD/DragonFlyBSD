@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/boot/common/panic.c,v 1.5 1999/08/28 00:39:51 peter Exp $
- * $DragonFly: src/sys/boot/common/panic.c,v 1.2 2003/06/17 04:28:17 dillon Exp $
+ * $DragonFly: src/sys/boot/common/panic.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
  * From: $NetBSD: panic.c,v 1.2 1997/03/22 01:48:36 thorpej Exp $
  */
 
@@ -43,12 +43,12 @@
 void
 panic(const char *fmt,...)
 {
-	va_list         ap;
+	__va_list         ap;
 
 	printf("panic: ");
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	vprintf(fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	printf("\n");
 
 	exit(1);

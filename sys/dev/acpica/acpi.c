@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.95.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.2 2003/11/09 02:22:34 dillon Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -2142,7 +2142,7 @@ acpi_pm_func(u_long cmd, void *arg, ...)
 	int	state, acpi_state;
 	int	error;
 	struct	acpi_softc *sc;
-	va_list	ap;
+	__va_list	ap;
 
 	error = 0;
 	switch (cmd) {
@@ -2153,9 +2153,9 @@ acpi_pm_func(u_long cmd, void *arg, ...)
 			goto out;
 		}
 
-		va_start(ap, arg);
-		state = va_arg(ap, int);
-		va_end(ap);	
+		__va_start(ap, arg);
+		state = __va_arg(ap, int);
+		__va_end(ap);	
 
 		switch (state) {
 		case POWER_SLEEP_STATE_STANDBY:

@@ -32,16 +32,19 @@
  *
  *	@(#)string.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/string.h,v 1.6.2.3 2001/12/25 00:36:57 ache Exp $
- * $DragonFly: src/include/string.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/string.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _STRING_H_
 #define	_STRING_H_
-#include <machine/ansi.h>
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t        size_t;		/* open group */
 #endif
 
 #ifndef	NULL
@@ -61,18 +64,18 @@ char	*strchr __P((const char *, int));
 int	 strcmp __P((const char *, const char *));
 int	 strcoll __P((const char *, const char *));
 char	*strcpy __P((char *, const char *));
-size_t	 strcspn __P((const char *, const char *));
+size_t strcspn __P((const char *, const char *));
 char	*strerror __P((int));
-size_t	 strlen __P((const char *));
+size_t strlen __P((const char *));
 char	*strncat __P((char *, const char *, size_t));
 int	 strncmp __P((const char *, const char *, size_t));
 char	*strncpy __P((char *, const char *, size_t));
 char	*strpbrk __P((const char *, const char *));
 char	*strrchr __P((const char *, int));
-size_t	 strspn __P((const char *, const char *));
+size_t strspn __P((const char *, const char *));
 char	*strstr __P((const char *, const char *));
 char	*strtok __P((char *, const char *));
-size_t	 strxfrm __P((char *, const char *, size_t));
+size_t strxfrm __P((char *, const char *, size_t));
 
 /* Nonstandard routines */
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
@@ -87,8 +90,8 @@ int	 strcasecmp __P((const char *, const char *));
 char	*strcasestr __P((const char *, const char *));
 char	*strdup __P((const char *));
 int	 strerror_r __P((int, char *, size_t));
-size_t	 strlcat __P((char *, const char *, size_t));
-size_t	 strlcpy __P((char *, const char *, size_t));
+size_t strlcat __P((char *, const char *, size_t));
+size_t strlcpy __P((char *, const char *, size_t));
 void	 strmode __P((int, char *));
 int	 strncasecmp __P((const char *, const char *, size_t));
 char	*strnstr __P((const char *, const char *, size_t));

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/kern/subr_sbuf.c,v 1.11.2.2 2002/03/12 01:01:07 archie Exp $
- *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.3 2003/07/29 21:30:02 hmp Exp $
+ *      $DragonFly: src/sys/kern/subr_sbuf.c,v 1.4 2003/11/09 02:22:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -397,7 +397,7 @@ sbuf_cpy(struct sbuf *s, const char *str)
  * Format the given argument list and append the resulting string to an sbuf.
  */
 int
-sbuf_vprintf(struct sbuf *s, const char *fmt, va_list ap)
+sbuf_vprintf(struct sbuf *s, const char *fmt, __va_list ap)
 {
 	int len;
 
@@ -443,12 +443,12 @@ sbuf_vprintf(struct sbuf *s, const char *fmt, va_list ap)
 int
 sbuf_printf(struct sbuf *s, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int result;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	result = sbuf_vprintf(s, fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	return(result);
 }
 

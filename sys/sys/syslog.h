@@ -32,7 +32,7 @@
  *
  *	@(#)syslog.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/syslog.h,v 1.19.2.2 2001/05/29 13:15:08 dwmalone Exp $
- * $DragonFly: src/sys/sys/syslog.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/syslog.h,v 1.4 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_SYSLOG_H_
@@ -187,17 +187,22 @@ CODE facilitynames[] = {
  * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
  * of them here we may collide with the utility's includes.  It's unreasonable
  * for utilities to have to include one of them to include syslog.h, so we get
- * _BSD_VA_LIST_ from <machine/ansi.h> and use it.
+ * __va_list from <machine/stdarg.h> and use it.
  */
-#include <machine/ansi.h>
 #include <sys/cdefs.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
+#endif
 
 __BEGIN_DECLS
 void	closelog (void);
 void	openlog (const char *, int, int);
 int	setlogmask (int);
 void	syslog (int, const char *, ...) __printflike(2, 3);
-void	vsyslog (int, const char *, _BSD_VA_LIST_) __printflike(2, 0);
+void	vsyslog (int, const char *, __va_list) __printflike(2, 0);
 __END_DECLS
 
 #endif /* !_KERNEL */

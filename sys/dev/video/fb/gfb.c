@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/gfb.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/gfb.c,v 1.4 2003/11/09 02:22:35 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -518,23 +518,23 @@ gfb_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy)
 int
 gfb_bitblt(video_adapter_t *adp, ...)
 {
-	va_list args;
+	__va_list args;
 	vm_offset_t src, dst;
 	int count, i;
 	u_int32_t val;
 
-	va_start(args, adp);
+	__va_start(args, adp);
 
-	src = (va_arg(args, vm_offset_t) + adp->va_window_orig) &
+	src = (__va_arg(args, vm_offset_t) + adp->va_window_orig) &
 	    0x0000000000fffff8;
-	dst = (va_arg(args, vm_offset_t) + adp->va_window_orig) &
+	dst = (__va_arg(args, vm_offset_t) + adp->va_window_orig) &
 	    0x0000000000fffff8;
-	count = va_arg(args, int);
+	count = __va_arg(args, int);
 	for(i = 0; i < count; i++, src++, dst++) {
 		val = READ_GFB_BUFFER(adp, src);
 		WRITE_GFB_BUFFER(adp, dst, val);
 	}
-	va_end(args);
+	__va_end(args);
 	return(0);
 }
 

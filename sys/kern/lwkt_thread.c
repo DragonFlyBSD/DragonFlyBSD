@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.40 2003/11/03 02:08:35 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.41 2003/11/09 02:22:36 dillon Exp $
  */
 
 /*
@@ -241,11 +241,11 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 void
 lwkt_set_comm(thread_t td, const char *ctl, ...)
 {
-    va_list va;
+    __va_list va;
 
-    va_start(va, ctl);
+    __va_start(va, ctl);
     vsnprintf(td->td_comm, sizeof(td->td_comm), ctl, va);
-    va_end(va);
+    __va_end(va);
 }
 
 void
@@ -1200,7 +1200,7 @@ lwkt_create(void (*func)(void *), void *arg,
     const char *fmt, ...)
 {
     thread_t td;
-    va_list ap;
+    __va_list ap;
 
     td = lwkt_alloc_thread(template, cpu);
     if (tdp)
@@ -1214,9 +1214,9 @@ lwkt_create(void (*func)(void *), void *arg,
     /*
      * Set up arg0 for 'ps' etc
      */
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    va_end(ap);
+    __va_end(ap);
 
     /*
      * Schedule the thread to run
@@ -1260,7 +1260,7 @@ kthread_create(void (*func)(void *), void *arg,
     struct thread **tdp, const char *fmt, ...)
 {
     thread_t td;
-    va_list ap;
+    __va_list ap;
 
     td = lwkt_alloc_thread(NULL, -1);
     if (tdp)
@@ -1274,9 +1274,9 @@ kthread_create(void (*func)(void *), void *arg,
     /*
      * Set up arg0 for 'ps' etc
      */
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     vsnprintf(td->td_comm, sizeof(td->td_comm), fmt, ap);
-    va_end(ap);
+    __va_end(ap);
 
     /*
      * Schedule the thread to run

@@ -32,13 +32,15 @@
  *
  *	@(#)dirent.h	8.3 (Berkeley) 8/10/94
  * $FreeBSD: src/sys/sys/dirent.h,v 1.11 1999/12/29 04:24:39 peter Exp $
- * $DragonFly: src/sys/sys/dirent.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/dirent.h,v 1.3 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef	_SYS_DIRENT_H_
 #define	_SYS_DIRENT_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 
 /*
  * The dirent structure defines the format of directory entries returned by

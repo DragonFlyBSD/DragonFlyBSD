@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.7 2003/08/11 17:50:15 drhodus Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.8 2003/11/09 02:22:35 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -201,7 +201,7 @@ typedef unsigned int uintptr_t;
 #include <vm/vm_extern.h>
 #endif
 
-#include <sys/inttypes.h>		/* uintptr_t */
+#include <sys/stdint.h>		/* uintptr_t */
 #include <dev/ic/bt8xx.h>
 #include <dev/pci/bktr/bktr_reg.h>
 #include <dev/pci/bktr/bktr_tuner.h>

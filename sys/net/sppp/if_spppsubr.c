@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.5 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.6 2003/11/09 02:22:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -4614,7 +4614,7 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	int len;
 	unsigned int mlen;
 	const char *msg;
-	va_list ap;
+	__va_list ap;
 
 	MGETHDR (m, M_DONTWAIT, MT_DATA);
 	if (! m)
@@ -4631,14 +4631,14 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 	lh->ident = id;
 	p = (u_char*) (lh+1);
 
-	va_start(ap, id);
+	__va_start(ap, id);
 	len = 0;
 
-	while ((mlen = (unsigned int)va_arg(ap, size_t)) != 0) {
-		msg = va_arg(ap, const char *);
+	while ((mlen = (unsigned int)__va_arg(ap, size_t)) != 0) {
+		msg = __va_arg(ap, const char *);
 		len += mlen;
 		if (len > MHLEN - PPP_HEADER_LEN - LCP_HEADER_LEN) {
-			va_end(ap);
+			__va_end(ap);
 			m_freem(m);
 			return;
 		}
@@ -4646,7 +4646,7 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 		bcopy(msg, p, mlen);
 		p += mlen;
 	}
-	va_end(ap);
+	__va_end(ap);
 
 	m->m_pkthdr.len = m->m_len = PPP_HEADER_LEN + LCP_HEADER_LEN + len;
 	lh->len = htons (LCP_HEADER_LEN + len);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.6 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.7 2003/11/09 02:22:34 dillon Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -2877,13 +2877,13 @@ isp_uninit(struct ispsoftc *isp)
 void
 isp_prt(struct ispsoftc *isp, int level, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	if (level != ISP_LOGALL && (level & isp->isp_dblev) == 0) {
 		return;
 	}
 	printf("%s: ", device_get_nameunit(isp->isp_dev));
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	vprintf(fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	printf("\n");
 }

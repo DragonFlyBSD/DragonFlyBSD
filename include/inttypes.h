@@ -1,5 +1,5 @@
 /*-
- * Copyright (c)1999 Citrus Project,
+ * Copyright (c) 2001 Mike Barcroft <mike@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,47 +23,33 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	citrus Id: wctype.h,v 1.4 2000/12/21 01:50:21 itojun Exp
- *	$NetBSD: wctype.h,v 1.3 2000/12/22 14:16:16 itojun Exp $
- * $FreeBSD: src/include/wctype.h,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/include/wctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $FreeBSD: src/include/inttypes.h,v 1.8 2002/09/22 08:06:45 tjr Exp $
+ * $DragonFly: src/include/inttypes.h,v 1.1 2003/11/09 02:22:28 dillon Exp $
  */
 
-#if 0
-/* XXX: not implemented */
-#ifndef _WCTYPE_H_
-#define	_WCTYPE_H_
+#ifndef _INTTYPES_H_
+#define	_INTTYPES_H_
 
-#include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
-#endif
+#include <machine/inttypes.h>
+#include <stdint.h>
 
-#ifndef _WINT_T_DECLARED_
-#define _WINT_T_DECLARED_
-typedef __wint_t	wint_t;
-#endif
-
-#ifndef WEOF
-#define	WEOF	((wint_t)-1)
-#endif
+typedef struct {
+	intmax_t	quot;		/* Quotient. */
+	intmax_t	rem;		/* Remainder. */
+} imaxdiv_t;
 
 __BEGIN_DECLS
-int	iswalnum __P((wint_t));
-int	iswalpha __P((wint_t));
-int	iswblank __P((wint_t));
-int	iswcntrl __P((wint_t));
-int	iswdigit __P((wint_t));
-int	iswgraph __P((wint_t));
-int	iswlower __P((wint_t));
-int	iswprint __P((wint_t));
-int	iswpunct __P((wint_t));
-int	iswspace __P((wint_t));
-int	iswupper __P((wint_t));
-int	iswxdigit __P((wint_t));
-wint_t	towlower __P((wint_t));
-wint_t	towupper __P((wint_t));
+intmax_t	imaxabs(intmax_t) __pure2;
+imaxdiv_t	imaxdiv(intmax_t, intmax_t) __pure2;
+
+intmax_t	strtoimax(const char * __restrict, char ** __restrict, int);
+uintmax_t	strtoumax(const char * __restrict, char ** __restrict, int);
+#ifndef __cplusplus
+intmax_t	wcstoimax(const __wchar_t * __restrict,
+		    __wchar_t ** __restrict, int);
+uintmax_t	wcstoumax(const __wchar_t * __restrict,
+		    __wchar_t ** __restrict, int);
+#endif
 __END_DECLS
 
-#endif		/* _WCTYPE_H_ */
-#endif
+#endif /* !_INTTYPES_H_ */

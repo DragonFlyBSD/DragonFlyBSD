@@ -1,5 +1,5 @@
-/*-
- * Copyright (c)1999 Citrus Project,
+/*
+ * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,47 +23,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	citrus Id: wctype.h,v 1.4 2000/12/21 01:50:21 itojun Exp
- *	$NetBSD: wctype.h,v 1.3 2000/12/22 14:16:16 itojun Exp $
- * $FreeBSD: src/include/wctype.h,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/include/wctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdarg.h,v 1.1 2003/11/09 02:22:28 dillon Exp $
  */
 
-#if 0
-/* XXX: not implemented */
-#ifndef _WCTYPE_H_
-#define	_WCTYPE_H_
+#ifndef _STDARG_H_
+#define _STDARG_H_
 
-#include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
-#include <sys/stdint.h>
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
 #endif
 
-#ifndef _WINT_T_DECLARED_
-#define _WINT_T_DECLARED_
-typedef __wint_t	wint_t;
+typedef	__va_list	va_list;
+
+#define va_start(ap, last)	__va_start(ap, last)
+#define va_arg(ap, type)	__va_arg(ap, type)
+#define va_end(ap)		__va_end(ap)
+
 #endif
 
-#ifndef WEOF
-#define	WEOF	((wint_t)-1)
-#endif
-
-__BEGIN_DECLS
-int	iswalnum __P((wint_t));
-int	iswalpha __P((wint_t));
-int	iswblank __P((wint_t));
-int	iswcntrl __P((wint_t));
-int	iswdigit __P((wint_t));
-int	iswgraph __P((wint_t));
-int	iswlower __P((wint_t));
-int	iswprint __P((wint_t));
-int	iswpunct __P((wint_t));
-int	iswspace __P((wint_t));
-int	iswupper __P((wint_t));
-int	iswxdigit __P((wint_t));
-wint_t	towlower __P((wint_t));
-wint_t	towupper __P((wint_t));
-__END_DECLS
-
-#endif		/* _WCTYPE_H_ */
-#endif

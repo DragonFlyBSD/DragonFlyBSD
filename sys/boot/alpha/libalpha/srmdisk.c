@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/alpha/libalpha/srmdisk.c,v 1.8.2.2 2001/08/01 20:52:03 mjacob Exp $
- * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmdisk.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/alpha/libalpha/Attic/srmdisk.c,v 1.3 2003/11/09 02:22:29 dillon Exp $
  */
 
 /*
@@ -153,7 +153,7 @@ bd_print(int verbose)
 static int 
 bd_open(struct open_file *f, ...)
 {
-    va_list			args;
+    __va_list			args;
     struct alpha_devdesc	*dev;
     struct dos_partition	*dptr;
     struct open_disk		*od;
@@ -163,9 +163,9 @@ bd_open(struct open_file *f, ...)
     int				unit, fd;
     prom_return_t		ret;
 
-    va_start(args, f);
-    dev = va_arg(args, struct alpha_devdesc*);
-    va_end(args);
+    __va_start(args, f);
+    dev = __va_arg(args, struct alpha_devdesc*);
+    __va_end(args);
 
     unit = dev->d_kind.srmdisk.unit;
     if (unit >= nbdinfo) {

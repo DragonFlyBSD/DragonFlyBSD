@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/pnpparse.c,v 1.14 2003/06/11 00:32:45 obrien Exp $
- * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.4 2003/11/08 02:55:16 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/pnpparse.c,v 1.5 2003/11/09 02:22:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,12 +47,12 @@
 void
 pnp_printf(u_int32_t id, char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	printf("%s: ", pnp_eisaformat(id));
 	vprintf(fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 }
 
 /* parse a single descriptor */

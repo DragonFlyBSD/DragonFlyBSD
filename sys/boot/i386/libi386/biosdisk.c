@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.26.2.6 2000/12/28 13:10:47 ps Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.3 2003/07/21 05:50:22 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.4 2003/11/09 02:22:33 dillon Exp $
  */
 
 /*
@@ -416,14 +416,14 @@ bd_printbsdslice(struct open_disk *od, daddr_t offset, char *prefix,
 static int 
 bd_open(struct open_file *f, ...)
 {
-    va_list			ap;
+    __va_list			ap;
     struct i386_devdesc		*dev;
     struct open_disk		*od;
     int				error;
 
-    va_start(ap, f);
-    dev = va_arg(ap, struct i386_devdesc *);
-    va_end(ap);
+    __va_start(ap, f);
+    dev = __va_arg(ap, struct i386_devdesc *);
+    __va_end(ap);
     if ((error = bd_opendisk(&od, dev)))
 	return(error);
     

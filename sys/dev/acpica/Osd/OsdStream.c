@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/Osd/OsdStream.c,v 1.3.4.1 2003/08/22 20:49:21 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdStream.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Osd/Attic/OsdStream.c,v 1.2 2003/11/09 02:22:34 dillon Exp $ 
  */
 
 /*
@@ -37,15 +37,15 @@
 void
 AcpiOsPrintf (const char *Format, ...)
 {
-    va_list	ap;
+    __va_list	ap;
 
-    va_start(ap, Format);
+    __va_start(ap, Format);
     vprintf(Format, ap);
-    va_end(ap);
+    __va_end(ap);
 }
 
 void
-AcpiOsVprintf (const char *Format, va_list Args)
+AcpiOsVprintf (const char *Format, __va_list Args)
 {
     vprintf(Format, Args);
 }

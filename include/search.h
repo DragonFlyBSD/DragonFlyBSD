@@ -1,6 +1,6 @@
 /*	$NetBSD: search.h,v 1.12 1999/02/22 10:34:28 christos Exp $	*/
 /* $FreeBSD: src/include/search.h,v 1.3.2.1 2000/08/17 07:38:34 jhb Exp $ */
-/* $DragonFly: src/include/search.h,v 1.2 2003/06/17 04:25:56 dillon Exp $ */
+/* $DragonFly: src/include/search.h,v 1.3 2003/11/09 02:22:28 dillon Exp $ */
 
 /*
  * Written by J.T. Conklin <jtc@netbsd.org>
@@ -11,11 +11,11 @@
 #define _SEARCH_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
+#include <machine/stdint.h>
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t        size_t;
 #endif
 
 typedef struct entry {

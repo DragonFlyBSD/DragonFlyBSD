@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.12 2003/09/05 17:46:54 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.13 2003/11/09 02:22:36 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -79,7 +79,8 @@
 
 /*
  * Note that stdarg.h and the ANSI style va_start macro is used for both
- * ANSI and traditional C compilers.
+ * ANSI and traditional C compilers.  We use the machine version to stay
+ * within the confines of the kernel header files.
  */
 #include <machine/stdarg.h>
 
@@ -571,7 +572,7 @@ void
 panic(const char *fmt, ...)
 {
 	int bootopt, newpanic;
-	va_list ap;
+	__va_list ap;
 	static char buf[256];
 
 	bootopt = RB_AUTOBOOT | RB_DUMP;
@@ -583,11 +584,11 @@ panic(const char *fmt, ...)
 		newpanic = 1;
 	}
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
 	if (panicstr == fmt)
 		panicstr = buf;
-	va_end(ap);
+	__va_end(ap);
 	printf("panic: %s\n", buf);
 #ifdef SMP
 	/* three seperate prints in case of an unmapped page and trap */

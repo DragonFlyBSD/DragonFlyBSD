@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.8 2003/08/30 15:21:57 asmodai Exp $
+# $DragonFly: src/include/Makefile,v 1.9 2003/11/09 02:22:28 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -13,17 +13,17 @@ INCS=	a.out.h ar.h assert.h bitstring.h complex.h ctype.h db.h \
 	dirent.h disktab.h \
 	dlfcn.h elf.h elf-hints.h err.h fnmatch.h fstab.h \
 	fts.h glob.h grp.h strhash.h histedit.h ieeefp.h ifaddrs.h iso646.h \
+	inttypes.h \
 	langinfo.h libgen.h limits.h link.h locale.h malloc.h memory.h \
 	mpool.h ndbm.h netdb.h nl_types.h nlist.h objformat.h \
 	paths.h pthread.h pthread_np.h pwd.h \
 	ranlib.h readpassphrase.h regex.h regexp.h resolv.h rmd160.h rune.h \
-	runetype.h \
-	search.h setjmp.h sgtty.h \
-	signal.h stab.h stdbool.h stddef.h stdio.h stdlib.h \
+	runetype.h search.h setjmp.h sgtty.h \
+	signal.h stab.h stdarg.h stdbool.h stddef.h stdint.h stdio.h stdlib.h \
 	string.h stringlist.h strings.h struct.h sysexits.h tar.h time.h \
 	timers.h ttyent.h unistd.h utime.h utmp.h vis.h wchar.h wctype.h
 
-MHDRS=	float.h floatingpoint.h stdarg.h varargs.h
+MHDRS=	float.h floatingpoint.h varargs.h
 
 # posix4/aio.h conflicts with dysons and isn't installed:
 PHDRS=	mqueue.h sched.h semaphore.h # aio.h
@@ -31,7 +31,7 @@ PHDRS=	mqueue.h sched.h semaphore.h # aio.h
 # Only for default SHARED=copies case
 SHDRS=	soundcard.h joystick.h
 
-LHDRS=	aio.h errno.h fcntl.h inttypes.h linker_set.h poll.h syslog.h \
+LHDRS=	aio.h errno.h fcntl.h linker_set.h poll.h syslog.h \
 	termios.h ucontext.h
 
 # directories which also contain header files that need to be coiped.

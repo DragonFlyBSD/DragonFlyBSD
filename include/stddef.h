@@ -33,32 +33,37 @@
  *	@(#)stddef.h	8.1 (Berkeley) 6/2/93
  *
  * $FreeBSD: src/include/stddef.h,v 1.2.8.4 2002/08/07 15:49:32 imp Exp $
- * $DragonFly: src/include/stddef.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/stddef.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _STDDEF_H_
 #define _STDDEF_H_
 
-#include <machine/ansi.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>			/* __rune_t and friends */
+#endif
 
-typedef	_BSD_PTRDIFF_T_	ptrdiff_t;
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef	__size_t	size_t;		/* open group */
+#endif
+
+#ifndef _PTRDIFF_T_DECLARED_
+#define _PTRDIFF_T_DECLARED_
+typedef	__ptrdiff_t	ptrdiff_t;	/* open group */
+#endif
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-#ifdef	_BSD_RUNE_T_
-typedef	_BSD_RUNE_T_	rune_t;
-#undef	_BSD_RUNE_T_
+#ifndef _RUNE_T_DECLARED_
+#define _RUNE_T_DECLARED_
+typedef	__rune_t	rune_t;
 #endif
-#endif
-
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
 #endif
 
 #ifndef	__cplusplus
-#ifdef	_BSD_WCHAR_T_
-typedef	_BSD_WCHAR_T_	wchar_t;
-#undef	_BSD_WCHAR_T_
+#ifndef _WCHAR_T_DECLARED_
+#define _WCHAR_T_DECLARED_
+typedef __wchar_t	wchar_t;	/* open group */
 #endif
 #endif
 

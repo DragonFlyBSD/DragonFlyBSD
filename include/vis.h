@@ -32,17 +32,14 @@
  *
  *	@(#)vis.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/vis.h,v 1.6.2.1 2000/08/17 08:25:53 jhb Exp $
- * $DragonFly: src/include/vis.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/vis.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _VIS_H_
 #define	_VIS_H_
 
-#include <machine/ansi.h>
-
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
 #endif
 
 /*
@@ -86,7 +83,7 @@ typedef	_BSD_SIZE_T_	size_t;
 __BEGIN_DECLS
 char	*vis __P((char *, int, int, int));
 int	strvis __P((char *, const char *, int));
-int	strvisx __P((char *, const char *, size_t, int));
+int	strvisx __P((char *, const char *, __size_t, int));
 int	strunvis __P((char *, const char *));
 int	unvis __P((char *, int, int *, int));
 __END_DECLS

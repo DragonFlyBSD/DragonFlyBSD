@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.7 2003/08/07 21:16:54 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.8 2003/11/09 02:22:34 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -1318,7 +1318,7 @@ get_result(u_int unit, int result_len, u_char *result)
 static int
 send_cmd(u_int unit, u_char cmd, u_int nargs, ...)
 {
-	va_list ap;
+	__va_list ap;
 	u_int port = scd_data[unit].iobase;
 	u_int reg;
 	u_char c;
@@ -1343,14 +1343,14 @@ send_cmd(u_int unit, u_char cmd, u_int nargs, ...)
 		return -EIO;
 	}
 
-	va_start(ap, nargs);
+	__va_start(ap, nargs);
 	reg = port + OREG_WPARAMS;
 	for (i = 0; i < nargs; i++) {
-		c = (u_char)va_arg(ap, int);
+		c = (u_char)__va_arg(ap, int);
 		outb(reg, c);
 		XDEBUG(1, (",{0x%x}", c));
 	}
-	va_end(ap);
+	__va_end(ap);
 	XDEBUG(1, ("\n"));
 
 	outb(port+OREG_COMMAND, cmd);

@@ -37,17 +37,19 @@
  *
  *	@(#)types.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/types.h,v 1.40.2.2 2001/04/21 14:53:06 ume Exp $
- * $DragonFly: src/sys/sys/types.h,v 1.4 2003/08/20 07:31:22 rob Exp $
+ * $DragonFly: src/sys/sys/types.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
 #define	_SYS_TYPES_H_
 
 #include <sys/cdefs.h>
-
-/* Machine type dependent parameters. */
-#include <sys/inttypes.h>		/* includes <machine/ansi.h> */
+#include <stdint.h>
+#include <machine/stdarg.h>
+#include <machine/endian.h>
+#ifndef _MACHINE_TYPES_H_
 #include <machine/types.h>
+#endif
 
 #ifndef _POSIX_SOURCE
 typedef	unsigned char	u_char;
@@ -62,35 +64,30 @@ typedef __uint8_t	u_int8_t;
 typedef __uint16_t	u_int16_t;
 typedef __uint32_t	u_int32_t;
 typedef __uint64_t	u_int64_t;
-
-typedef	u_int64_t	u_quad_t;	/* quads */
-typedef	int64_t		quad_t;
+typedef	__uint64_t	u_quad_t;	/* quads */
+typedef	__int64_t	quad_t;
 typedef	quad_t *	qaddr_t;
 
 typedef	char *		caddr_t;	/* core address */
 typedef	const char *	c_caddr_t;	/* core address, pointer to const */
 typedef	volatile char *	v_caddr_t;	/* core address, pointer to volatile */
-typedef	int32_t		daddr_t;	/* disk address */
-typedef	u_int32_t	u_daddr_t;	/* unsigned disk address */
-typedef	u_int32_t	fixpt_t;	/* fixed point number */
-typedef	u_int32_t	gid_t;		/* group id */
-typedef	u_int32_t	in_addr_t;	/* base type for internet address */
-typedef	u_int16_t	in_port_t;
-typedef	u_int32_t	ino_t;		/* inode number */
+typedef	__int32_t	daddr_t;	/* disk address */
+typedef	__uint32_t	u_daddr_t;	/* unsigned disk address */
+typedef	__uint32_t	fixpt_t;	/* fixed point number */
+typedef	__uint32_t	gid_t;		/* group id */
+typedef	__uint32_t	in_addr_t;	/* base type for internet address */
+typedef	__uint16_t	in_port_t;
+typedef	__uint32_t	ino_t;		/* inode number */
 typedef	long		key_t;		/* IPC key (for Sys V IPC) */
-typedef	u_int16_t	mode_t;		/* permissions */
-typedef	u_int16_t	nlink_t;	/* link count */
-typedef	_BSD_OFF_T_	off_t;		/* file offset */
-typedef	_BSD_PID_T_	pid_t;		/* process id */
+typedef	__uint16_t	mode_t;		/* permissions */
+typedef	__uint16_t	nlink_t;	/* link count */
+typedef	__off_t		off_t;		/* file offset */
+typedef	__pid_t		pid_t;		/* process id */
 typedef	quad_t		rlim_t;		/* resource limit */
-#ifdef __alpha__		/* XXX should be in <machine/types.h> */
-typedef	int64_t		segsz_t;	/* segment size */
-#else
-typedef	int32_t		segsz_t;	/* segment size */
-#endif
-typedef	int32_t		swblk_t;	/* swap offset */
-typedef	int32_t		ufs_daddr_t;
-typedef	u_int32_t	uid_t;		/* user id */
+typedef	__int32_t	segsz_t;	/* segment size */
+typedef	__int32_t	swblk_t;	/* swap offset */
+typedef	__int32_t	ufs_daddr_t;
+typedef	__uint32_t	uid_t;		/* user id */
 
 #ifdef _KERNEL
 typedef	int		boolean_t;
@@ -124,36 +121,34 @@ typedef	u_int32_t	dev_t;		/* device number */
 
 #endif /* !_KERNEL */
 
-#include <machine/endian.h>
-
-#ifdef	_BSD_CLOCK_T_
-typedef	_BSD_CLOCK_T_	clock_t;
-#undef	_BSD_CLOCK_T_
+#ifndef _CLOCK_T_DECLARED_
+#define _CLOCK_T_DECLARED_
+typedef	__clock_t	clock_t;
 #endif
 
-#ifdef	_BSD_CLOCKID_T_
-typedef	_BSD_CLOCKID_T_	clockid_t;
-#undef	_BSD_CLOCKID_T_
+#ifndef _CLOCKID_T_DECLARED_
+#define _CLOCKID_T_DECLARED_
+typedef __clockid_t	clockid_t;
 #endif
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t	size_t;
 #endif
 
-#ifdef	_BSD_SSIZE_T_
-typedef	_BSD_SSIZE_T_	ssize_t;
-#undef	_BSD_SSIZE_T_
+#ifndef _SSIZE_T_DECLARED_
+#define _SSIZE_T_DECLARED_
+typedef __ssize_t	ssize_t;
 #endif
 
-#ifdef	_BSD_TIME_T_
-typedef	_BSD_TIME_T_	time_t;
-#undef	_BSD_TIME_T_
+#ifndef _TIME_T_DECLARED_
+#define _TIME_T_DECLARED_
+typedef __time_t	time_t;
 #endif
 
-#ifdef	_BSD_TIMER_T_
-typedef	_BSD_TIMER_T_	timer_t;
-#undef	_BSD_TIMER_T_
+#ifndef _TIMER_T_DECLARED_
+#define _TIMER_T_DECLARED_
+typedef __timer_t	timer_t;
 #endif
 
 #ifndef _POSIX_SOURCE

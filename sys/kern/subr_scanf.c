@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_scanf.c,v 1.13 1999/11/24 01:03:01 archie Exp $
- * $DragonFly: src/sys/kern/subr_scanf.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_scanf.c,v 1.3 2003/11/09 02:22:36 dillon Exp $
  * From: Id: vfscanf.c,v 1.13 1998/09/25 12:20:27 obrien Exp 
  * From: static char sccsid[] = "@(#)strtol.c	8.1 (Berkeley) 6/4/93";
  * From: static char sccsid[] = "@(#)strtoul.c	8.1 (Berkeley) 6/4/93";
@@ -91,17 +91,17 @@ static const u_char *__sccl(char *, const u_char *);
 int
 sscanf(const char *ibuf, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int ret;
 	
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	ret = vsscanf(ibuf, fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	return(ret);
 }
 
 int
-vsscanf(const char *inp, char const *fmt0, va_list ap)
+vsscanf(const char *inp, char const *fmt0, __va_list ap)
 {
 	int inr;
 	const u_char *fmt = (const u_char *)fmt0;
@@ -239,13 +239,13 @@ literal:
 			if (flags & SUPPRESS)	/* ??? */
 				continue;
 			if (flags & SHORT)
-				*va_arg(ap, short *) = nread;
+				*__va_arg(ap, short *) = nread;
 			else if (flags & LONG)
-				*va_arg(ap, long *) = nread;
+				*__va_arg(ap, long *) = nread;
 			else if (flags & QUAD)
-				*va_arg(ap, quad_t *) = nread;
+				*__va_arg(ap, quad_t *) = nread;
 			else
-				*va_arg(ap, int *) = nread;
+				*__va_arg(ap, int *) = nread;
 			continue;
 		}
 
@@ -302,7 +302,7 @@ literal:
 				}
 				nread += sum;
 			} else {
-				bcopy(inp, va_arg(ap, char *), width);
+				bcopy(inp, __va_arg(ap, char *), width);
 				inr -= width;
 				inp += width;
 				nread += width;
@@ -331,7 +331,7 @@ literal:
 				if (n == 0)
 					goto match_failure;
 			} else {
-				p0 = p = va_arg(ap, char *);
+				p0 = p = __va_arg(ap, char *);
 				while (ccltab[(unsigned char)*inp]) {
 					inr--;
 					*p++ = *inp++;
@@ -368,7 +368,7 @@ literal:
 				}
 				nread += n;
 			} else {
-				p0 = p = va_arg(ap, char *);
+				p0 = p = __va_arg(ap, char *);
 				while (!isspace(*inp)) {
 					inr--;
 					*p++ = *inp++;
@@ -511,16 +511,16 @@ literal:
 				*p = 0;
 				res = (*ccfn)(buf, (char **)NULL, base);
 				if (flags & POINTER)
-					*va_arg(ap, void **) =
+					*__va_arg(ap, void **) =
 						(void *)(uintptr_t)res;
 				else if (flags & SHORT)
-					*va_arg(ap, short *) = res;
+					*__va_arg(ap, short *) = res;
 				else if (flags & LONG)
-					*va_arg(ap, long *) = res;
+					*__va_arg(ap, long *) = res;
 				else if (flags & QUAD)
-					*va_arg(ap, quad_t *) = res;
+					*__va_arg(ap, quad_t *) = res;
 				else
-					*va_arg(ap, int *) = res;
+					*__va_arg(ap, int *) = res;
 				nassigned++;
 			}
 			nread += p - buf;

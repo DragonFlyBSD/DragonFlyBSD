@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.8 2003/08/07 21:17:39 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.9 2003/11/09 02:22:37 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -391,7 +391,7 @@ kthread_create2(void (*func)(void *), void *arg,
     struct proc **newpp, int flags, const char *fmt, ...)
 {
 	int error;
-	va_list ap;
+	__va_list ap;
 	struct proc *p2;
 
 	if (!proc0.p_stats || proc0.p_stats->p_start.tv_sec == 0) {
@@ -412,9 +412,9 @@ kthread_create2(void (*func)(void *), void *arg,
 	PHOLD(p2);
 
 	/* set up arg0 for 'ps', et al */
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	vsnprintf(p2->p_comm, sizeof(p2->p_comm), fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 
 	/* call the processes' main()... */
 	cpu_set_fork_handler(p2, func, arg);

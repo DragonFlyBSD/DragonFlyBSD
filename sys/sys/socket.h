@@ -32,13 +32,16 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.6 2003/10/03 00:04:04 daver Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.7 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
 #define	_SYS_SOCKET_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+
 #define _NO_NAMESPACE_POLLUTION
 #include <machine/param.h>
 #undef _NO_NAMESPACE_POLLUTION
@@ -50,11 +53,13 @@
 /*
  * Data types.
  */
-typedef u_char		sa_family_t;
-#ifdef	_BSD_SOCKLEN_T_
-typedef	_BSD_SOCKLEN_T_	socklen_t;
-#undef	_BSD_SOCKLEN_T_
+typedef __uint8_t	sa_family_t;
+
+#ifndef _SOCKLEN_T_DECLARED_
+#define _SOCKLEN_T_DECLARED_
+typedef __socklen_t	socklen_t;
 #endif
+
  
 /*
  * Types
@@ -161,7 +166,7 @@ struct	accept_filter_arg {
  * addresses.
  */
 struct sockaddr {
-	u_char		sa_len;		/* total length */
+	__uint8_t	sa_len;		/* total length */
 	sa_family_t	sa_family;	/* address family */
 	char		sa_data[14];	/* actually longer; address value */
 };
@@ -172,8 +177,8 @@ struct sockaddr {
  * information in raw sockets.
  */
 struct sockproto {
-	u_short	sp_family;		/* address family */
-	u_short	sp_protocol;		/* protocol */
+	__uint16_t	sp_family;		/* address family */
+	__uint16_t	sp_protocol;		/* protocol */
 };
 
 /*
@@ -186,10 +191,10 @@ struct sockproto {
 				_SS_PAD1SIZE - _SS_ALIGNSIZE)
 
 struct sockaddr_storage {
-	u_char		ss_len;		/* address length */
+	__uint8_t	ss_len;		/* address length */
 	sa_family_t	ss_family;	/* address family */
 	char		__ss_pad1[_SS_PAD1SIZE];
-	int64_t		__ss_align;	/* force desired structure storage alignment */
+	__int64_t	__ss_align;	/* force desired structure storage alignment */
 	char		__ss_pad2[_SS_PAD2SIZE];
 };
 

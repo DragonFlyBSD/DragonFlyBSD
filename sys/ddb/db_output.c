@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.4 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.5 2003/11/09 02:22:34 dillon Exp $
  */
 
 /*
@@ -152,40 +152,30 @@ db_print_position()
  * Printing
  */
 void
-#if __STDC__
 db_printf(const char *fmt, ...)
-#else
-db_printf(fmt)
-	const char *fmt;
-#endif
 {
-	va_list	listp;
+	__va_list listp;
 
-	va_start(listp, fmt);
+	__va_start(listp, fmt);
 	kvprintf (fmt, db_putchar, NULL, db_radix, listp);
-	va_end(listp);
+	__va_end(listp);
 }
 
 int db_indent;
 
 void
-#if __STDC__
 db_iprintf(const char *fmt,...)
-#else
-db_iprintf(fmt)
-	const char *fmt;
-#endif
 {
 	int i;
-	va_list listp;
+	__va_list listp;
 
 	for (i = db_indent; i >= 8; i -= 8)
 		db_printf("\t");
 	while (--i >= 0)
 		db_printf(" ");
-	va_start(listp, fmt);
+	__va_start(listp, fmt);
 	kvprintf (fmt, db_putchar, NULL, db_radix, listp);
-	va_end(listp);
+	__va_end(listp);
 }
 
 /*

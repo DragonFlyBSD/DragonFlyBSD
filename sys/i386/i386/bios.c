@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.7 2003/11/08 02:55:17 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bios.c,v 1.8 2003/11/09 02:22:35 dillon Exp $
  */
 
 /*
@@ -317,7 +317,7 @@ int
 bios16(struct bios_args *args, char *fmt, ...)
 {
     char	*p, *stack, *stack_top;
-    va_list 	ap;
+    __va_list 	ap;
     int 	flags = BIOSCODE_FLAG | BIOSDATA_FLAG;
     u_int 	i, arg_start, arg_end;
     pt_entry_t	*pte;
@@ -336,11 +336,11 @@ bios16(struct bios_args *args, char *fmt, ...)
      */
     stack = (caddr_t)PAGE_SIZE - 32;
 
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     for (p = fmt; p && *p; p++) {
 	switch (*p) {
 	case 'p':			/* 32-bit pointer */
-	    i = va_arg(ap, u_int);
+	    i = __va_arg(ap, u_int);
 	    arg_start = min(arg_start, i);
 	    arg_end = max(arg_end, i);
 	    flags |= BIOSARGS_FLAG;
@@ -348,7 +348,7 @@ bios16(struct bios_args *args, char *fmt, ...)
 	    break;
 
 	case 'i':			/* 32-bit integer */
-	    i = va_arg(ap, u_int);
+	    i = __va_arg(ap, u_int);
 	    stack -= 4;
 	    break;
 
@@ -361,7 +361,7 @@ bios16(struct bios_args *args, char *fmt, ...)
 	    break;
 	    
 	case 's':			/* 16-bit integer passed as an int */
-	    i = va_arg(ap, int);
+	    i = __va_arg(ap, int);
 	    stack -= 2;
 	    break;
 
@@ -401,18 +401,18 @@ bios16(struct bios_args *args, char *fmt, ...)
     invltlb();
 
     stack_top = stack;
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     for (p = fmt; p && *p; p++) {
 	switch (*p) {
 	case 'p':			/* 32-bit pointer */
-	    i = va_arg(ap, u_int);
+	    i = __va_arg(ap, u_int);
 	    *(u_int *)stack = (i - arg_start) |
 		(GSEL(GBIOSARGS_SEL, SEL_KPL) << 16);
 	    stack += 4;
 	    break;
 
 	case 'i':			/* 32-bit integer */
-	    i = va_arg(ap, u_int);
+	    i = __va_arg(ap, u_int);
 	    *(u_int *)stack = i;
 	    stack += 4;
 	    break;
@@ -433,7 +433,7 @@ bios16(struct bios_args *args, char *fmt, ...)
 	    break;
 
 	case 's':			/* 16-bit integer passed as an int */
-	    i = va_arg(ap, int);
+	    i = __va_arg(ap, int);
 	    *(u_short *)stack = i;
 	    stack += 2;
 	    break;

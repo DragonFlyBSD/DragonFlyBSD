@@ -26,13 +26,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/sys/sbuf.h,v 1.7.2.2 2002/03/12 01:00:28 archie Exp $
- *      $DragonFly: src/sys/sys/sbuf.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ *      $DragonFly: src/sys/sys/sbuf.h,v 1.3 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_SBUF_H_
 #define _SYS_SBUF_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
+#endif
 
 /*
  * Structure definition
@@ -59,12 +64,12 @@ __BEGIN_DECLS
 struct sbuf	*sbuf_new(struct sbuf *, char *, int, int);
 void		 sbuf_clear(struct sbuf *);
 int		 sbuf_setpos(struct sbuf *, int);
-int		 sbuf_bcat(struct sbuf *, const char *, size_t);
-int		 sbuf_bcpy(struct sbuf *, const char *, size_t);
+int		 sbuf_bcat(struct sbuf *, const char *, __size_t);
+int		 sbuf_bcpy(struct sbuf *, const char *, __size_t);
 int		 sbuf_cat(struct sbuf *, const char *);
 int		 sbuf_cpy(struct sbuf *, const char *);
 int		 sbuf_printf(struct sbuf *, const char *, ...) __printflike(2, 3);
-int		 sbuf_vprintf(struct sbuf *, const char *, _BSD_VA_LIST_) __printflike(2, 0);
+int		 sbuf_vprintf(struct sbuf *, const char *, __va_list) __printflike(2, 0);
 int		 sbuf_putc(struct sbuf *, int);
 int		 sbuf_trim(struct sbuf *);
 int		 sbuf_overflowed(struct sbuf *);
@@ -76,8 +81,8 @@ void		 sbuf_delete(struct sbuf *);
 #ifdef _KERNEL
 struct uio;
 struct sbuf	*sbuf_uionew(struct sbuf *, struct uio *, int *);
-int		 sbuf_bcopyin(struct sbuf *, const void *, size_t);
-int		 sbuf_copyin(struct sbuf *, const void *, size_t);
+int		 sbuf_bcopyin(struct sbuf *, const void *, __size_t);
+int		 sbuf_copyin(struct sbuf *, const void *, __size_t);
 #endif
 __END_DECLS
 

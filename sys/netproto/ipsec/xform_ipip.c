@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.4 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.5 2003/11/09 02:22:36 dillon Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -135,7 +135,7 @@ ip4_input6(struct mbuf **m, int *offp, int proto)
 void
 ip4_input(struct mbuf *m, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int iphlen;
 
 #if 0
@@ -147,9 +147,9 @@ ip4_input(struct mbuf *m, ...)
 		return;
 	}
 #endif
-	va_start(ap, m);
-	iphlen = va_arg(ap, int);
-	va_end(ap);
+	__va_start(ap, m);
+	iphlen = __va_arg(ap, int);
+	__va_end(ap);
 
 	_ipip_input(m, iphlen, NULL);
 }

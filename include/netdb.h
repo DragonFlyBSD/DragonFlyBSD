@@ -56,18 +56,25 @@
  *      @(#)netdb.h	8.1 (Berkeley) 6/2/93
  *      From: Id: netdb.h,v 8.9 1996/11/19 08:39:29 vixie Exp $
  * $FreeBSD: src/include/netdb.h,v 1.14.2.5 2001/08/29 08:46:51 alfred Exp $
- * $DragonFly: src/include/netdb.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/netdb.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _NETDB_H_
 #define _NETDB_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 #include <sys/cdefs.h>
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t        size_t;
+#endif
+
+#ifndef _SOCKLEN_T_DECLARED_
+#define _SOCKLEN_T_DECLARED_
+typedef __socklen_t     socklen_t;
 #endif
 
 #ifndef _PATH_HEQUIV
@@ -123,7 +130,7 @@ struct addrinfo {
 	int	ai_family;	/* PF_xxx */
 	int	ai_socktype;	/* SOCK_xxx */
 	int	ai_protocol;	/* 0 or IPPROTO_xxx for IPv4 and IPv6 */
-	size_t	ai_addrlen;	/* length of ai_addr */
+	size_t ai_addrlen;	/* length of ai_addr */
 	char	*ai_canonname;	/* canonical name for hostname */
 	struct	sockaddr *ai_addr;	/* binary address */
 	struct	addrinfo *ai_next;	/* next structure in linked list */
@@ -201,10 +208,6 @@ struct addrinfo {
 /*
  * data types - basically forward decl for getnameinfo()
  */
-#ifdef	_BSD_SOCKLEN_T_
-typedef	_BSD_SOCKLEN_T_	socklen_t;
-#undef	_BSD_SOCKLEN_T_
-#endif
 
 __BEGIN_DECLS
 void		endhostent __P((void));

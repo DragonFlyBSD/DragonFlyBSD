@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/wchar.h,v 1.3.2.2 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/wchar.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/wchar.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 /*-
@@ -69,31 +69,34 @@
 #define _WCHAR_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>	/* __wchar_t and friends */
+#endif
+
 #ifndef NULL
 #define NULL	0
 #endif
 
 #ifndef __cplusplus
-#ifdef	_BSD_WCHAR_T_
-typedef	_BSD_WCHAR_T_	wchar_t;
-#undef	_BSD_WCHAR_T_
+#ifndef _WCHAR_T_DECLARED_
+#define _WCHAR_T_DECLARED_
+typedef __wchar_t	wchar_t;
 #endif
 #endif
 
-#ifdef	_BSD_MBSTATE_T_
-typedef	_BSD_MBSTATE_T_	mbstate_t;
-#undef	_BSD_MBSTATE_T_
+#ifndef _MBSTATE_T_DECLARED_
+#define _MBSTATE_T_DECLARED_
+typedef	__mbstate_t	mbstate_t;
 #endif
 
-#ifdef	_BSD_WINT_T_
-typedef	_BSD_WINT_T_	wint_t;
-#undef	_BSD_WINT_T_
+#ifndef _WINT_T_DECLARED_
+#define _WINT_T_DECLARED_
+typedef	__wint_t	wint_t;
 #endif
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t        size_t;		/* open group */
 #endif
 
 #ifndef WEOF
@@ -101,16 +104,7 @@ typedef	_BSD_SIZE_T_	size_t;
 #endif
 
 __BEGIN_DECLS
-#if 0
-/* XXX: not implemented */
-size_t	mbrlen __P((const char * __restrict, size_t, mbstate_t * __restrict));
-size_t	mbrtowc __P((wchar_t * __restrict, const char * __restrict, size_t,
-	    mbstate_t * __restrict));
-int	mbsinit __P((const mbstate_t *));
-size_t	mbsrtowcs __P((wchar_t * __restrict, const char ** __restrict, size_t,
-	    mbstate_t * __restrict));
-size_t	wcrtomb __P((char * __restrict, wchar_t, mbstate_t * __restrict));
-#endif
+
 wchar_t	*wcscat __P((wchar_t * __restrict, const wchar_t * __restrict));
 wchar_t	*wcschr __P((const wchar_t *, wchar_t));
 int	wcscmp __P((const wchar_t *, const wchar_t *));

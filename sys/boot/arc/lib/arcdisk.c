@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/arc/lib/arcdisk.c,v 1.3.2.1 2001/01/05 17:37:51 mjacob Exp $
- * $DragonFly: src/sys/boot/arc/lib/Attic/arcdisk.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/arc/lib/Attic/arcdisk.c,v 1.3 2003/11/09 02:22:30 dillon Exp $
  */
 
 /*
@@ -150,11 +150,11 @@ bd_open(struct open_file *f, ...)
     int				error;
     int				unit;
     u_int32_t			fd;
-    va_list			ap;
+    __va_list			ap;
 
-    va_start(ap, f);
-    dev = va_arg(ap, struct arc_devdesc *);
-    va_end(ap);
+    __va_start(ap, f);
+    dev = __va_arg(ap, struct arc_devdesc *);
+    __va_end(ap);
 
     unit = dev->d_kind.arcdisk.unit;
     if (unit >= nbdinfo) {

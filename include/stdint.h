@@ -1,5 +1,5 @@
-/*-
- * Copyright (c)1999 Citrus Project,
+/*
+ * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,47 +23,51 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	citrus Id: wctype.h,v 1.4 2000/12/21 01:50:21 itojun Exp
- *	$NetBSD: wctype.h,v 1.3 2000/12/22 14:16:16 itojun Exp $
- * $FreeBSD: src/include/wctype.h,v 1.3.2.1 2001/07/11 23:48:38 obrien Exp $
- * $DragonFly: src/include/wctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
+ * $DragonFly: src/include/stdint.h,v 1.1 2003/11/09 02:22:28 dillon Exp $
  */
 
-#if 0
-/* XXX: not implemented */
-#ifndef _WCTYPE_H_
-#define	_WCTYPE_H_
+#ifndef _STDINT_H_
+#define _STDINT_H_
 
-#include <sys/cdefs.h>
-#ifndef _SYS_STDINT_H_
 #include <sys/stdint.h>
+
+typedef __int8_t	int8_t;
+typedef __int16_t	int16_t;
+typedef __int32_t	int32_t;
+typedef __int64_t	int64_t;
+
+typedef __uint8_t	uint8_t;
+typedef __uint16_t	uint16_t;
+typedef __uint32_t	uint32_t;
+typedef __uint64_t	uint64_t;
+
+typedef __intptr_t	intptr_t;
+typedef __uintptr_t	uintptr_t;
+
+typedef __intmax_t	intmax_t;
+typedef __uintmax_t	uintmax_t;
+
+#ifndef _PTRDIFF_T_DECLARED_
+#define _PTRDIFF_T_DECLARED_
+typedef __ptrdiff_t		ptrdiff_t;            /* ptr1 - ptr2 */
 #endif
 
-#ifndef _WINT_T_DECLARED_
-#define _WINT_T_DECLARED_
-typedef __wint_t	wint_t;
+typedef __int_fast8_t		int_fast8_t;
+typedef __int_fast16_t		int_fast16_t;
+typedef __int_fast32_t		int_fast32_t;
+typedef __int_fast64_t		int_fast64_t;
+typedef __int_least8_t		int_least8_t;
+typedef __int_least16_t		int_least16_t;
+typedef __int_least32_t		int_least32_t;
+typedef __int_least64_t		int_least64_t;
+typedef __uint_fast8_t		uint_fast8_t;
+typedef __uint_fast16_t		uint_fast16_t;
+typedef __uint_fast32_t		uint_fast32_t;
+typedef __uint_fast64_t		uint_fast64_t;
+typedef __uint_least8_t		uint_least8_t;
+typedef __uint_least16_t	uint_least16_t;
+typedef __uint_least32_t	uint_least32_t;
+typedef __uint_least64_t	uint_least64_t;
+
 #endif
 
-#ifndef WEOF
-#define	WEOF	((wint_t)-1)
-#endif
-
-__BEGIN_DECLS
-int	iswalnum __P((wint_t));
-int	iswalpha __P((wint_t));
-int	iswblank __P((wint_t));
-int	iswcntrl __P((wint_t));
-int	iswdigit __P((wint_t));
-int	iswgraph __P((wint_t));
-int	iswlower __P((wint_t));
-int	iswprint __P((wint_t));
-int	iswpunct __P((wint_t));
-int	iswspace __P((wint_t));
-int	iswupper __P((wint_t));
-int	iswxdigit __P((wint_t));
-wint_t	towlower __P((wint_t));
-wint_t	towupper __P((wint_t));
-__END_DECLS
-
-#endif		/* _WCTYPE_H_ */
-#endif

@@ -61,7 +61,7 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/kern/subr_blist.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_blist.c,v 1.3 2003/11/09 02:22:36 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -915,12 +915,12 @@ main(int ac, char **av)
 void
 panic(const char *ctl, ...)
 {
-	va_list va;
+	__va_list va;
 
-	va_start(va, ctl);
+	__va_start(va, ctl);
 	vfprintf(stderr, ctl, va);
 	fprintf(stderr, "\n");
-	va_end(va);
+	__va_end(va);
 	exit(1);
 }
 

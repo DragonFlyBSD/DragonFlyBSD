@@ -37,7 +37,7 @@
  *
  *	@(#)types.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/boot/dosboot/types.h,v 1.6 1999/12/29 04:32:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/types.h,v 1.3 2003/08/26 21:42:17 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/boot/dosboot/Attic/types.h,v 1.4 2003/11/09 02:22:35 dillon Exp $
  */
 
 #ifndef _SYS_TYPES_H_
@@ -101,28 +101,12 @@ __END_DECLS
 #define	makedev(x,y)	((dev_t)(((x)<<8) | (y)))	/* create dev_t */
 #endif
 
-#include "ansi.h"
-/*#include <machine/types.h>*/
+#include "stdint.h"
 
-#ifdef	_BSD_CLOCK_T_
-typedef	_BSD_CLOCK_T_	clock_t;
-#undef	_BSD_CLOCK_T_
-#endif
-
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
-#endif
-
-#ifdef	_BSD_SSIZE_T_
-typedef	_BSD_SSIZE_T_	ssize_t;
-#undef	_BSD_SSIZE_T_
-#endif
-
-#ifdef	_BSD_TIME_T_
-typedef	_BSD_TIME_T_	time_t;
-#undef	_BSD_TIME_T_
-#endif
+typedef	__clock_t	clock_t;
+typedef __size_t	size_t;
+typedef __ssize_t	ssize_t;
+typedef __time_t	time_t;
 
 #ifndef _POSIX_SOURCE
 #define	NBBY	8		/* number of bits in a byte */

@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.5 2003/11/07 06:00:32 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.6 2003/11/09 02:22:35 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_
@@ -37,7 +37,7 @@
 
 #define i386_saved_state trapframe
 
-typedef	vm_offset_t	db_addr_t;	/* address - unsigned */
+typedef	__uint32_t	db_addr_t;	/* address - unsigned */
 typedef	int		db_expr_t;	/* expression - signed */
 
 typedef struct i386_saved_state db_regs_t;

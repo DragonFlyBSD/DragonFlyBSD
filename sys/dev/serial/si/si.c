@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.7 2003/08/07 21:17:11 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.8 2003/11/09 02:22:35 dillon Exp $
  */
 
 #ifndef lint
@@ -2145,7 +2145,7 @@ si_disc_optim(struct tty *tp, struct termios *t, struct si_port *pp)
 void
 si_dprintf(struct si_port *pp, int flags, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
 	if ((pp == NULL && (si_debug&flags)) ||
 	    (pp != NULL && ((pp->sp_debug&flags) || (si_debug&flags)))) {
@@ -2153,9 +2153,9 @@ si_dprintf(struct si_port *pp, int flags, const char *fmt, ...)
 			printf("%ci%d(%d): ", 's',
 				(int)SI_CARD(minor(pp->sp_tty->t_dev)),
 				(int)SI_PORT(minor(pp->sp_tty->t_dev)));
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		vprintf(fmt, ap);
-		va_end(ap);
+		__va_end(ap);
 	}
 }
 

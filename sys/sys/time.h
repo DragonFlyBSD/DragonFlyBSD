@@ -32,13 +32,15 @@
  *
  *	@(#)time.h	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/time.h,v 1.42 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/time.h,v 1.4 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/time.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_TIME_H_
 #define _SYS_TIME_H_
 
+#ifndef _SYS_TYPES_H_
 #include <sys/types.h>
+#endif
 
 /*
  * Structure returned by gettimeofday(2) system call,

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/tga.c,v 1.1.2.1 2001/11/01 08:33:14 obrien Exp $
- * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.3 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/Attic/tga.c,v 1.4 2003/11/09 02:22:35 dillon Exp $
  */
 /*
  * Copyright (c) 1995, 1996 Carnegie-Mellon University.
@@ -872,13 +872,13 @@ tga_fill_rect(video_adapter_t *adp, int val, int x, int y, int cx, int cy) {
 
 static int
 tga_bitblt(video_adapter_t *adp, ...) {
-	va_list args;
+	__va_list args;
 	int i, count;
 	gfb_reg_t gmor;
 	gfb_reg_t gopr;
 	vm_offset_t src, dst;
 
-	va_start(args, adp);
+	__va_start(args, adp);
 
 	/* Save the pixel mode... */
 	gmor = READ_GFB_REGISTER(adp, TGA_REG_GMOR);
@@ -893,11 +893,11 @@ tga_bitblt(video_adapter_t *adp, ...) {
 	/* Set the raster op (src)... */
 	WRITE_GFB_REGISTER(adp, TGA_REG_GOPR, (gopr & 0xfffffff0) | 0x3);
 
-	src = (va_arg(args, vm_offset_t) + adp->va_window_orig) &
+	src = (__va_arg(args, vm_offset_t) + adp->va_window_orig) &
 	    0x0000000000fffff8;
-	dst = (va_arg(args, vm_offset_t) + adp->va_window_orig) &
+	dst = (__va_arg(args, vm_offset_t) + adp->va_window_orig) &
 	    0x0000000000fffff8;
-	count = va_arg(args, int);
+	count = __va_arg(args, int);
 	for(i = 0; i < count; i+= 64, src += 64, dst += 64) {
 		WRITE_GFB_REGISTER(adp, TGA_REG_GCSR, src);
 		WRITE_GFB_REGISTER(adp, TGA_REG_GCDR, dst);
@@ -909,7 +909,7 @@ tga_bitblt(video_adapter_t *adp, ...) {
 	/* Restore the pixel mode... */
 	WRITE_GFB_REGISTER(adp, TGA_REG_GMOR, gmor);
 
-	va_end(args);
+	__va_end(args);
 	return(0);
 }
 

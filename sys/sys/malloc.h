@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.13 2003/11/03 17:11:22 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.14 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -53,6 +53,10 @@
 #endif
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
+
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>	/* vm_paddr_t */
+#endif
 
 /*
  * flags to malloc.

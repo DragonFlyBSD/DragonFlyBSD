@@ -35,29 +35,25 @@
  *
  *	@(#)runetype.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/runetype.h,v 1.3.8.1 2002/08/08 02:42:29 imp Exp $
- * $DragonFly: src/include/Attic/runetype.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/Attic/runetype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef	_RUNETYPE_H_
 #define	_RUNETYPE_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
-
-#ifdef	_BSD_RUNE_T_
-typedef	_BSD_RUNE_T_	rune_t;
-#undef	_BSD_RUNE_T_
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>	/* for __rune_t and friends */
 #endif
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _RUNE_T_DECLARED_
+#define _RUNE_T_DECLARED_
+typedef __rune_t	rune_t;
 #endif
-
 #ifndef __cplusplus
-#ifdef	_BSD_WCHAR_T_
-typedef	_BSD_WCHAR_T_	wchar_t;
-#undef	_BSD_WCHAR_T_
+#ifndef _WCHAR_T_DECLARED_
+#define _WCHAR_T_DECLARED_
+typedef __wchar_t	wchar_t;
 #endif
 #endif
 
@@ -84,9 +80,9 @@ typedef struct {
 	char		encoding[32];	/* ASCII name of this encoding */
 
 	rune_t		(*sgetrune)
-	    __P((const char *, size_t, char const **));
+	    __P((const char *, __size_t, char const **));
 	int		(*sputrune)
-	    __P((rune_t, char *, size_t, char **));
+	    __P((rune_t, char *, __size_t, char **));
 	rune_t		invalid_rune;
 
 	unsigned long	runetype[_CACHED_RUNES];

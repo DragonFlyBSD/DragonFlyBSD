@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.4 2003/08/23 10:06:24 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.5 2003/11/09 02:22:37 dillon Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -1624,19 +1624,10 @@ key_sp2msg(sp)
 
 /* m will not be freed nor modified */
 static struct mbuf *
-#ifdef __STDC__
 key_gather_mbuf(struct mbuf *m, const struct sadb_msghdr *mhp,
 	int ndeep, int nitem, ...)
-#else
-key_gather_mbuf(m, mhp, ndeep, nitem, va_alist)
-	struct mbuf *m;
-	const struct sadb_msghdr *mhp;
-	int ndeep;
-	int nitem;
-	va_dcl
-#endif
 {
-	va_list ap;
+	__va_list ap;
 	int idx;
 	int i;
 	struct mbuf *result = NULL, *n;
@@ -1645,9 +1636,9 @@ key_gather_mbuf(m, mhp, ndeep, nitem, va_alist)
 	if (m == NULL || mhp == NULL)
 		panic("null pointer passed to key_gather");
 
-	va_start(ap, nitem);
+	__va_start(ap, nitem);
 	for (i = 0; i < nitem; i++) {
-		idx = va_arg(ap, int);
+		idx = __va_arg(ap, int);
 		if (idx < 0 || idx > SADB_EXT_MAX)
 			goto fail;
 		/* don't attempt to pull empty extension */
@@ -1692,7 +1683,7 @@ key_gather_mbuf(m, mhp, ndeep, nitem, va_alist)
 		else
 			result = n;
 	}
-	va_end(ap);
+	__va_end(ap);
 
 	if ((result->m_flags & M_PKTHDR) != 0) {
 		result->m_pkthdr.len = 0;

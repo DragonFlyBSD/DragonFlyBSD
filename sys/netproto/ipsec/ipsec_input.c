@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec_input.c,v 1.2.4.2 2003/03/28 20:32:53 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.3 2003/08/07 21:17:37 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec_input.c,v 1.4 2003/11/09 02:22:36 dillon Exp $	*/
 /*	$OpenBSD: ipsec_input.c,v 1.63 2003/02/20 18:35:43 deraadt Exp $	*/
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -225,13 +225,13 @@ ipsec_common_input(struct mbuf *m, int skip, int protoff, int af, int sproto)
 int
 ipsec4_common_input(struct mbuf *m, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int off, nxt;
 
-	va_start(ap, m);
-	off = va_arg(ap, int);
-	nxt = va_arg(ap, int);
-	va_end(ap);
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	nxt = __va_arg(ap, int);
+	__va_end(ap);
 
 	return ipsec_common_input(m, off, offsetof(struct ip, ip_p),
 				  AF_INET, nxt);

@@ -33,7 +33,7 @@
  *	@(#)signal.h	8.3 (Berkeley) 3/30/94
  *
  * $FreeBSD: src/include/signal.h,v 1.14 1999/10/02 19:33:23 marcel Exp $
- * $DragonFly: src/include/signal.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/signal.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _SIGNAL_H_
@@ -41,7 +41,9 @@
 
 #include <sys/cdefs.h>
 #include <sys/_posix.h>
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 #include <sys/signal.h>
 #include <sys/time.h>
 
@@ -54,7 +56,7 @@ extern __const int sys_nsig;
 __BEGIN_DECLS
 int	raise __P((int));
 #ifndef	_ANSI_SOURCE
-int	kill __P((_BSD_PID_T_, int));
+int	kill __P((__pid_t, int));
 int	sigaction __P((int, const struct sigaction *, struct sigaction *));
 int	sigaddset __P((sigset_t *, int));
 int	sigdelset __P((sigset_t *, int));
@@ -70,14 +72,14 @@ int	sigwait __P((const sigset_t *, int *));
 #ifdef _P1003_1B_VISIBLE
 
 __BEGIN_DECLS
-int sigqueue __P((_BSD_PID_T_, int, const union sigval));
+int sigqueue __P((__pid_t, int, const union sigval));
 int sigtimedwait __P((const sigset_t *, siginfo_t *, const struct timespec *));
 int sigwaitinfo __P((const sigset_t *, siginfo_t *));
 __END_DECLS
 
 #endif
 #ifndef _POSIX_SOURCE
-int	killpg __P((_BSD_PID_T_, int));
+int	killpg __P((__pid_t, int));
 int	sigaltstack __P((const stack_t *, stack_t *)); 
 int	sigblock __P((int));
 int	siginterrupt __P((int, int));

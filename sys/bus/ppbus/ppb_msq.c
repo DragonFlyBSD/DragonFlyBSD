@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppb_msq.c,v 1.9.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppb_msq.c,v 1.4 2003/11/09 02:22:33 dillon Exp $
  *
  */
 #include <machine/stdarg.h>
@@ -190,13 +190,13 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 {
 	int i;
 	int param, ins, arg, type;
-	va_list p_list;
+	__va_list p_list;
 
-	va_start(p_list, nbparam);
+	__va_start(p_list, nbparam);
 
 	for (i=0; i<nbparam; i++) {
 		/* retrieve the parameter descriptor */
-		param = va_arg(p_list, int);
+		param = __va_arg(p_list, int);
 
 		ins  = MS_INS(param);
 		arg  = MS_ARG(param);
@@ -215,19 +215,19 @@ ppb_MS_init_msq(struct ppb_microseq *msq, int nbparam, ...)
 		/* properly cast the parameter */
 		switch (type) {
 		case MS_TYP_INT:
-			msq[ins].arg[arg].i = va_arg(p_list, int);
+			msq[ins].arg[arg].i = __va_arg(p_list, int);
 			break;
 
 		case MS_TYP_CHA:
-			msq[ins].arg[arg].i = (int)va_arg(p_list, char);
+			msq[ins].arg[arg].i = (int)__va_arg(p_list, char);
 			break;
 
 		case MS_TYP_PTR:
-			msq[ins].arg[arg].p = va_arg(p_list, void *);
+			msq[ins].arg[arg].p = __va_arg(p_list, void *);
 			break;
 
 		case MS_TYP_FUN:
-			msq[ins].arg[arg].f = va_arg(p_list, void *);
+			msq[ins].arg[arg].f = __va_arg(p_list, void *);
 			break;
 
 		default:

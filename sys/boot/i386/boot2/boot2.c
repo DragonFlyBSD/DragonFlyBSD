@@ -15,7 +15,7 @@
 
 /*
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.28.2.7 2002/10/10 15:53:24 iwasaki Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.3 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.4 2003/11/09 02:22:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -658,28 +658,28 @@ static int
 printf(const char *fmt,...)
 {
     static const char digits[16] = "0123456789abcdef";
-    va_list ap;
+    __va_list ap;
     char buf[10];
     char *s;
     unsigned r, u;
     int c;
 
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     while ((c = *fmt++)) {
 	if (c == '%') {
 	    c = *fmt++;
 	    switch (c) {
 	    case 'c':
-		putchar(va_arg(ap, int));
+		putchar(__va_arg(ap, int));
 		continue;
 	    case 's':
-		for (s = va_arg(ap, char *); *s; s++)
+		for (s = __va_arg(ap, char *); *s; s++)
 		    putchar(*s);
 		continue;
 	    case 'u':
 	    case 'x':
 		r = c == 'u' ? 10U : 16U;
-		u = va_arg(ap, unsigned);
+		u = __va_arg(ap, unsigned);
 		s = buf;
 		do
 		    *s++ = digits[u % r];
@@ -691,7 +691,7 @@ printf(const char *fmt,...)
 	}
 	putchar(c);
     }
-    va_end(ap);
+    __va_end(ap);
     return 0;
 }
 

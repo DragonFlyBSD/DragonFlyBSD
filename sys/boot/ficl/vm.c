@@ -14,7 +14,7 @@
 */
 
 /* $FreeBSD: src/sys/boot/ficl/vm.c,v 1.5.2.1 2000/07/06 23:51:45 obrien Exp $ */
-/* $DragonFly: src/sys/boot/ficl/vm.c,v 1.2 2003/06/17 04:28:17 dillon Exp $ */
+/* $DragonFly: src/sys/boot/ficl/vm.c,v 1.3 2003/11/09 02:22:33 dillon Exp $ */
 
 #ifdef TESTMAIN
 #include <stdlib.h>
@@ -433,11 +433,11 @@ void vmThrow(FICL_VM *pVM, int except)
 
 void vmThrowErr(FICL_VM *pVM, char *fmt, ...)
 {
-    va_list va;
-    va_start(va, fmt);
+    __va_list va;
+    __va_start(va, fmt);
     vsprintf(pVM->pad, fmt, va);
     vmTextOut(pVM, pVM->pad, 1);
-    va_end(va);
+    __va_end(va);
     longjmp(*(pVM->pState), VM_ERREXIT);
 }
 

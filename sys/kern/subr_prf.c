@@ -37,7 +37,7 @@
  *
  *	@(#)subr_prf.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_prf.c,v 1.61.2.5 2002/08/31 18:22:08 dwmalone Exp $
- * $DragonFly: src/sys/kern/subr_prf.c,v 1.6 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/subr_prf.c,v 1.7 2003/11/09 02:22:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -56,7 +56,8 @@
 
 /*
  * Note that stdarg.h and the ANSI style va_start macro is used for both
- * ANSI and traditional C compilers.
+ * ANSI and traditional C compilers.  We use the __ machine version to stay
+ * within the kernel header file set.
  */
 #include <machine/stdarg.h>
 
@@ -118,18 +119,18 @@ int
 uprintf(const char *fmt, ...)
 {
 	struct proc *p = curproc;
-	va_list ap;
+	__va_list ap;
 	struct putchar_arg pca;
 	int retval = 0;
 
 	if (p && p->p_flag & P_CONTROLT &&
 	    p->p_session->s_ttyvp) {
-		va_start(ap, fmt);
+		__va_start(ap, fmt);
 		pca.tty = p->p_session->s_ttyp;
 		pca.flags = TOTTY;
 
 		retval = kvprintf(fmt, putchar, &pca, 10, ap);
-		va_end(ap);
+		__va_end(ap);
 	}
 	return retval;
 }
@@ -162,7 +163,7 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 	struct session *sess = (struct session *)tpr;
 	struct tty *tp = NULL;
 	int flags = TOLOG;
-	va_list ap;
+	__va_list ap;
 	struct putchar_arg pca;
 	int retval;
 
@@ -170,12 +171,12 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 		flags |= TOTTY;
 		tp = sess->s_ttyp;
 	}
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	pca.tty = tp;
 	pca.flags = flags;
 	pca.pri = LOG_INFO;
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
-	va_end(ap);
+	__va_end(ap);
 	msgbuftrigger = 1;
 	return retval;
 }
@@ -188,15 +189,15 @@ tprintf(tpr_t tpr, const char *fmt, ...)
 int
 ttyprintf(struct tty *tp, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	struct putchar_arg pca;
 	int retval;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	pca.tty = tp;
 	pca.flags = TOTTY;
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
-	va_end(ap);
+	__va_end(ap);
 	return retval;
 }
 
@@ -208,7 +209,7 @@ ttyprintf(struct tty *tp, const char *fmt, ...)
 int
 log(int level, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int retval;
 	struct putchar_arg pca;
 
@@ -216,9 +217,9 @@ log(int level, const char *fmt, ...)
 	pca.pri = level;
 	pca.flags = log_open ? TOLOG : TOCONS;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
-	va_end(ap);
+	__va_end(ap);
 
 	msgbuftrigger = 1;
 	return (retval);
@@ -227,7 +228,7 @@ log(int level, const char *fmt, ...)
 int
 addlog(const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int retval;
 	struct putchar_arg pca;
 
@@ -235,9 +236,9 @@ addlog(const char *fmt, ...)
 	pca.pri = -1;
 	pca.flags = log_open ? TOLOG : TOCONS;
 
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
-	va_end(ap);
+	__va_end(ap);
 
 	msgbuftrigger = 1;
 	return (retval);
@@ -291,21 +292,21 @@ log_console(struct uio *uio)
 int
 printf(const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 	int savintr;
 	struct putchar_arg pca;
 	int retval;
 
 	savintr = consintr;		/* disable interrupts */
 	consintr = 0;
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	pca.tty = NULL;
 	pca.flags = TOCONS | TOLOG;
 	pca.pri = -1;
 	cons_lock();
 	retval = kvprintf(fmt, putchar, &pca, 10, ap);
 	cons_unlock();
-	va_end(ap);
+	__va_end(ap);
 	if (!panicstr)
 		msgbuftrigger = 1;
 	consintr = savintr;		/* reenable interrupts */
@@ -313,7 +314,7 @@ printf(const char *fmt, ...)
 }
 
 int
-vprintf(const char *fmt, va_list ap)
+vprintf(const char *fmt, __va_list ap)
 {
 	int savintr;
 	struct putchar_arg pca;
@@ -366,12 +367,12 @@ int
 sprintf(char *buf, const char *cfmt, ...)
 {
 	int retval;
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, cfmt);
+	__va_start(ap, cfmt);
 	retval = kvprintf(cfmt, NULL, (void *)buf, 10, ap);
 	buf[retval] = '\0';
-	va_end(ap);
+	__va_end(ap);
 	return retval;
 }
 
@@ -379,7 +380,7 @@ sprintf(char *buf, const char *cfmt, ...)
  * Scaled down version of vsprintf(3).
  */
 int
-vsprintf(char *buf, const char *cfmt, va_list ap)
+vsprintf(char *buf, const char *cfmt, __va_list ap)
 {
 	int retval;
 
@@ -395,11 +396,11 @@ int
 snprintf(char *str, size_t size, const char *format, ...)
 {
 	int retval;
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, format);
+	__va_start(ap, format);
 	retval = vsnprintf(str, size, format, ap);
-	va_end(ap);
+	__va_end(ap);
 	return(retval);
 }
 
@@ -407,7 +408,7 @@ snprintf(char *str, size_t size, const char *format, ...)
  * Scaled down version of vsnprintf(3).
  */
 int
-vsnprintf(char *str, size_t size, const char *format, va_list ap)
+vsnprintf(char *str, size_t size, const char *format, __va_list ap)
 {
 	struct snprintf_arg info;
 	int retval;
@@ -500,7 +501,7 @@ ksprintqn(nbuf, uq, base, lenp)
  *		("%*D", len, ptr, " " -> XX XX XX XX ...
  */
 int
-kvprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, va_list ap)
+kvprintf(char const *fmt, void (*func)(int, void*), void *arg, int radix, __va_list ap)
 {
 #define PCHAR(c) {int cc=(c); if (func) (*func)(cc,arg); else *d++ = cc; retval++; }
 	char nbuf[MAXNBUF];
@@ -555,13 +556,13 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			break;
 		case '*':
 			if (!dot) {
-				width = va_arg(ap, int);
+				width = __va_arg(ap, int);
 				if (width < 0) {
 					ladjust = !ladjust;
 					width = -width;
 				}
 			} else {
-				dwidth = va_arg(ap, int);
+				dwidth = __va_arg(ap, int);
 			}
 			goto reswitch;
 		case '0':
@@ -583,8 +584,8 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				width = n;
 			goto reswitch;
 		case 'b':
-			ul = va_arg(ap, int);
-			p = va_arg(ap, char *);
+			ul = __va_arg(ap, int);
+			p = __va_arg(ap, char *);
 			for (q = ksprintn(nbuf, ul, *p++, NULL); *q;)
 				PCHAR(*q--);
 
@@ -606,11 +607,11 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 				PCHAR('>');
 			break;
 		case 'c':
-			PCHAR(va_arg(ap, int));
+			PCHAR(__va_arg(ap, int));
 			break;
 		case 'D':
-			up = va_arg(ap, u_char *);
-			p = va_arg(ap, char *);
+			up = __va_arg(ap, u_char *);
+			p = __va_arg(ap, char *);
 			if (!width)
 				width = 16;
 			while(width--) {
@@ -624,11 +625,11 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			break;
 		case 'd':
 			if (qflag)
-				uq = va_arg(ap, quad_t);
+				uq = __va_arg(ap, quad_t);
 			else if (lflag)
-				ul = va_arg(ap, long);
+				ul = __va_arg(ap, long);
 			else
-				ul = va_arg(ap, int);
+				ul = __va_arg(ap, int);
 			sign = 1;
 			base = 10;
 			goto number;
@@ -641,15 +642,15 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			goto reswitch;
 		case 'o':
 			if (qflag)
-				uq = va_arg(ap, u_quad_t);
+				uq = __va_arg(ap, u_quad_t);
 			else if (lflag)
-				ul = va_arg(ap, u_long);
+				ul = __va_arg(ap, u_long);
 			else
-				ul = va_arg(ap, u_int);
+				ul = __va_arg(ap, u_int);
 			base = 8;
 			goto nosign;
 		case 'p':
-			ul = (uintptr_t)va_arg(ap, void *);
+			ul = (uintptr_t)__va_arg(ap, void *);
 			base = 16;
 			sharpflag = (width == 0);
 			goto nosign;
@@ -659,16 +660,16 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 		case 'n':
 		case 'r':
 			if (qflag)
-				uq = va_arg(ap, u_quad_t);
+				uq = __va_arg(ap, u_quad_t);
 			else if (lflag)
-				ul = va_arg(ap, u_long);
+				ul = __va_arg(ap, u_long);
 			else
 				ul = sign ?
-				    (u_long)va_arg(ap, int) : va_arg(ap, u_int);
+				    (u_long)__va_arg(ap, int) : __va_arg(ap, u_int);
 			base = radix;
 			goto number;
 		case 's':
-			p = va_arg(ap, char *);
+			p = __va_arg(ap, char *);
 			if (p == NULL)
 				p = "(null)";
 			if (!dot)
@@ -690,31 +691,31 @@ reswitch:	switch (ch = (u_char)*fmt++) {
 			break;
 		case 'u':
 			if (qflag)
-				uq = va_arg(ap, u_quad_t);
+				uq = __va_arg(ap, u_quad_t);
 			else if (lflag)
-				ul = va_arg(ap, u_long);
+				ul = __va_arg(ap, u_long);
 			else
-				ul = va_arg(ap, u_int);
+				ul = __va_arg(ap, u_int);
 			base = 10;
 			goto nosign;
 		case 'x':
 		case 'X':
 			if (qflag)
-				uq = va_arg(ap, u_quad_t);
+				uq = __va_arg(ap, u_quad_t);
 			else if (lflag)
-				ul = va_arg(ap, u_long);
+				ul = __va_arg(ap, u_long);
 			else
-				ul = va_arg(ap, u_int);
+				ul = __va_arg(ap, u_int);
 			base = 16;
 			goto nosign;
 		case 'z':
 			if (qflag)
-				uq = va_arg(ap, u_quad_t);
+				uq = __va_arg(ap, u_quad_t);
 			else if (lflag)
-				ul = va_arg(ap, u_long);
+				ul = __va_arg(ap, u_long);
 			else
 				ul = sign ?
-				    (u_long)va_arg(ap, int) : va_arg(ap, u_int);
+				    (u_long)__va_arg(ap, int) : __va_arg(ap, u_int);
 			base = 16;
 			goto number;
 nosign:			sign = 0;

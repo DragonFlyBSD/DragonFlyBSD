@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.8 2003/11/09 02:22:34 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -1362,7 +1362,7 @@ ata_change_mode(struct ata_device *atadev, int mode)
 int
 ata_printf(struct ata_channel *ch, int device, const char * fmt, ...)
 {
-    va_list ap;
+    __va_list ap;
     int ret;
 
     if (device == -1)
@@ -1374,16 +1374,16 @@ ata_printf(struct ata_channel *ch, int device, const char * fmt, ...)
 	    ret = printf("ata%d-%s: ", device_get_unit(ch->dev),
 			 (device == ATA_MASTER) ? "master" : "slave");
     }
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     ret += vprintf(fmt, ap);
-    va_end(ap);
+    __va_end(ap);
     return ret;
 }
 
 int
 ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
 {
-    va_list ap;
+    __va_list ap;
     int ret;
 
     if (atadev->name)
@@ -1391,9 +1391,9 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
     else
 	ret = printf("ata%d-%s: ", device_get_unit(atadev->channel->dev),
 		     (atadev->unit == ATA_MASTER) ? "master" : "slave");
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     ret += vprintf(fmt, ap);
-    va_end(ap);
+    __va_end(ap);
     return ret;
 }
 

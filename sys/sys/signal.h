@@ -37,12 +37,15 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.4 2003/10/13 18:12:07 dillon Exp $
+ * $DragonFly: src/sys/sys/signal.h,v 1.5 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
 #define	_SYS_SIGNAL_H_
 
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>	/* for __ types */
+#endif
 #include <sys/cdefs.h>
 #include <sys/_posix.h>
 
@@ -235,17 +238,12 @@ typedef void __siginfohandler_t (int, struct __siginfo *, void *);
 
 typedef	__sighandler_t	*sig_t;	/* type of pointer to a signal function */
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
-#endif
-
 /*
  * Structure used in sigaltstack call.
  */
 typedef struct sigaltstack {
 	char	*ss_sp;			/* signal stack base */
-	size_t	ss_size;		/* signal stack length */
+	__size_t ss_size;		/* signal stack length */
 	int	ss_flags;		/* SS_DISABLE and/or SS_ONSTACK */
 } stack_t;
 

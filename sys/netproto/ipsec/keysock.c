@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.4 2003/08/23 10:06:23 rob Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.5 2003/11/09 02:22:36 dillon Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -78,23 +78,17 @@ struct pfkeystat pfkeystat;
  * key_output()
  */
 int
-#if __STDC__
 key_output(struct mbuf *m, ...)
-#else
-key_output(m, va_alist)
-	struct mbuf *m;
-	va_dcl
-#endif
 {
 	struct sadb_msg *msg;
 	int len, error = 0;
 	int s;
 	struct socket *so;
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, m);
-	so = va_arg(ap, struct socket *);
-	va_end(ap);
+	__va_start(ap, m);
+	so = __va_arg(ap, struct socket *);
+	__va_end(ap);
 
 	if (m == 0)
 		panic("key_output: NULL pointer was passed.\n");

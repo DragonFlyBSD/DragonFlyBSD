@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/dlfcn.h,v 1.10.2.3 2003/02/20 20:42:45 kan Exp $
- * $DragonFly: src/include/dlfcn.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/dlfcn.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _DLFCN_H_
 #define	_DLFCN_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
+#include <machine/stdint.h>	/* size_t */
 
 /*
  * Modes and flags for dlopen().
@@ -78,10 +78,6 @@ typedef struct dl_info {
 /*
  * Avoid sys/types.h namespace pollution.
  */
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
-#endif
 
 /*
  * Structures, returned by the RTLD_DI_SERINFO dlinfo() request.
@@ -92,7 +88,7 @@ typedef struct dl_serpath {
 } Dl_serpath;
 
 typedef struct  dl_serinfo {
-        size_t		dls_size;       /* total buffer size */
+        __size_t	dls_size;       /* total buffer size */
         unsigned int	dls_cnt;        /* number of path entries */
         Dl_serpath	dls_serpath[1]; /* there may be more than one */
 } Dl_serinfo;

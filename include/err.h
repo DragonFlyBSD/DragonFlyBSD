@@ -32,7 +32,7 @@
  *
  *	@(#)err.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/err.h,v 1.8 1999/08/27 23:44:49 peter Exp $
- * $DragonFly: src/include/err.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/err.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _ERR_H_
@@ -43,27 +43,32 @@
  * places (<machine/varargs.h> and <machine/stdarg.h>), so if we include one
  * of them here we may collide with the utility's includes.  It's unreasonable
  * for utilities to have to include one of them to include err.h, so we get
- * _BSD_VA_LIST_ from <machine/ansi.h> and use it.
+ * __va_list from <machine/stdint.h> and use it.
  */
-#include <machine/ansi.h>
 #include <sys/cdefs.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
+#endif
 
 __BEGIN_DECLS
 void	err __P((int, const char *, ...)) __dead2 __printf0like(2, 3);
-void	verr __P((int, const char *, _BSD_VA_LIST_)) __dead2
+void	verr __P((int, const char *, __va_list)) __dead2
 	    __printf0like(2, 0);
 void	errc __P((int, int, const char *, ...)) __dead2 __printf0like(3, 4);
-void	verrc __P((int, int, const char *, _BSD_VA_LIST_)) __dead2
+void	verrc __P((int, int, const char *, __va_list)) __dead2
 	    __printf0like(3, 0);
 void	errx __P((int, const char *, ...)) __dead2 __printf0like(2, 3);
-void	verrx __P((int, const char *, _BSD_VA_LIST_)) __dead2
+void	verrx __P((int, const char *, __va_list)) __dead2
 	    __printf0like(2, 0);
 void	warn __P((const char *, ...)) __printf0like(1, 2);
-void	vwarn __P((const char *, _BSD_VA_LIST_)) __printf0like(1, 0);
+void	vwarn __P((const char *, __va_list)) __printf0like(1, 0);
 void	warnc __P((int, const char *, ...)) __printf0like(2, 3);
-void	vwarnc __P((int, const char *, _BSD_VA_LIST_)) __printf0like(2, 0);
+void	vwarnc __P((int, const char *, __va_list)) __printf0like(2, 0);
 void	warnx __P((const char *, ...)) __printflike(1, 2);
-void	vwarnx __P((const char *, _BSD_VA_LIST_)) __printflike(1, 0);
+void	vwarnx __P((const char *, __va_list)) __printflike(1, 0);
 void	err_set_file __P((void *));
 void	err_set_exit __P((void (*)(int)));
 __END_DECLS

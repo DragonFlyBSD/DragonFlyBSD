@@ -37,12 +37,18 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.14 2003/11/07 18:28:53 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.15 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
 #define	_SYS_SYSTM_H_
 
+#ifndef _MACHINE_TYPES_H_
+#include <machine/types.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
+#endif
 #include <machine/atomic.h>
 #include <machine/cpufunc.h>
 #include <sys/callout.h>
@@ -129,7 +135,7 @@ void	init_param2 (int physpages);
 void	tablefull (const char *);
 int	addlog (const char *, ...) __printflike(1, 2);
 int	kvprintf (char const *, void (*)(int, void*), void *, int,
-		      _BSD_VA_LIST_) __printflike(1, 0);
+		      __va_list) __printflike(1, 0);
 int	log (int, const char *, ...) __printflike(2, 3);
 void	logwakeup (void);
 void	log_console (struct uio *);
@@ -137,12 +143,12 @@ int	printf (const char *, ...) __printflike(1, 2);
 int	snprintf (char *, size_t, const char *, ...) __printflike(3, 4);
 int	sprintf (char *buf, const char *, ...) __printflike(2, 3);
 int	uprintf (const char *, ...) __printflike(1, 2);
-int	vprintf (const char *, _BSD_VA_LIST_) __printflike(1, 0);
-int	vsnprintf (char *, size_t, const char *, _BSD_VA_LIST_) __printflike(3, 0);
-int     vsprintf (char *buf, const char *, _BSD_VA_LIST_) __printflike(2, 0);
+int	vprintf (const char *, __va_list) __printflike(1, 0);
+int	vsnprintf (char *, size_t, const char *, __va_list) __printflike(3, 0);
+int     vsprintf (char *buf, const char *, __va_list) __printflike(2, 0);
 int	ttyprintf (struct tty *, const char *, ...) __printflike(2, 3);
 int	sscanf (const char *, char const *, ...);
-int	vsscanf (const char *, char const *, _BSD_VA_LIST_);
+int	vsscanf (const char *, char const *, __va_list);
 long	strtol (const char *, char **, int);
 u_long	strtoul (const char *, char **, int);
 quad_t	strtoq (const char *, char **, int);

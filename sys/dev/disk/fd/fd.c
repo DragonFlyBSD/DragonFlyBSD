@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.10 2003/08/07 21:16:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.11 2003/11/09 02:22:34 dillon Exp $
  *
  */
 
@@ -384,15 +384,15 @@ fd_cmd(struct fdc_data *fdc, int n_out, ...)
 	u_char cmd;
 	int n_in;
 	int n;
-	va_list ap;
+	__va_list ap;
 
-	va_start(ap, n_out);
-	cmd = (u_char)(va_arg(ap, int));
-	va_end(ap);
-	va_start(ap, n_out);
+	__va_start(ap, n_out);
+	cmd = (u_char)(__va_arg(ap, int));
+	__va_end(ap);
+	__va_start(ap, n_out);
 	for (n = 0; n < n_out; n++)
 	{
-		if (out_fdc(fdc, va_arg(ap, int)) < 0)
+		if (out_fdc(fdc, __va_arg(ap, int)) < 0)
 		{
 			char msg[50];
 			snprintf(msg, sizeof(msg),
@@ -401,10 +401,10 @@ fd_cmd(struct fdc_data *fdc, int n_out, ...)
 			return fdc_err(fdc, msg);
 		}
 	}
-	n_in = va_arg(ap, int);
+	n_in = __va_arg(ap, int);
 	for (n = 0; n < n_in; n++)
 	{
-		int *ptr = va_arg(ap, int *);
+		int *ptr = __va_arg(ap, int *);
 		if (fd_in(fdc, ptr) < 0)
 		{
 			char msg[50];

@@ -35,25 +35,30 @@
  *
  *	@(#)stdio.h	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/include/stdio.h,v 1.24.2.5 2002/11/09 08:07:20 imp Exp $
- * $DragonFly: src/include/stdio.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/stdio.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef	_STDIO_H_
 #define	_STDIO_H_
 
 #include <sys/cdefs.h>
-#include <machine/ansi.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
+#endif
+#ifndef _MACHINE_STDARG_H_
+#include <machine/stdarg.h>
+#endif
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t	size_t;
 #endif
 
 #ifndef NULL
 #define	NULL	0
 #endif
 
-typedef	_BSD_OFF_T_	fpos_t;
+typedef	__off_t	fpos_t;
 
 #define	_FSTDIO			/* Define for new stdio with functions. */
 
@@ -211,13 +216,13 @@ FILE	*fopen __P((const char *, const char *));
 int	 fprintf __P((FILE *, const char *, ...));
 int	 fputc __P((int, FILE *));
 int	 fputs __P((const char *, FILE *));
-size_t	 fread __P((void *, size_t, size_t, FILE *));
+size_t fread __P((void *, size_t, size_t, FILE *));
 FILE	*freopen __P((const char *, const char *, FILE *));
 int	 fscanf __P((FILE *, const char *, ...));
 int	 fseek __P((FILE *, long, int));
 int	 fsetpos __P((FILE *, const fpos_t *));
 long	 ftell __P((FILE *));
-size_t	 fwrite __P((const void *, size_t, size_t, FILE *));
+size_t fwrite __P((const void *, size_t, size_t, FILE *));
 int	 getc __P((FILE *));
 int	 getchar __P((void));
 char	*gets __P((char *));
@@ -241,9 +246,9 @@ int	 sscanf __P((const char *, const char *, ...));
 FILE	*tmpfile __P((void));
 char	*tmpnam __P((char *));
 int	 ungetc __P((int, FILE *));
-int	 vfprintf __P((FILE *, const char *, _BSD_VA_LIST_));
-int	 vprintf __P((const char *, _BSD_VA_LIST_));
-int	 vsprintf __P((char *, const char *, _BSD_VA_LIST_));
+int	 vfprintf __P((FILE *, const char *, __va_list));
+int	 vprintf __P((const char *, __va_list));
+int	 vsprintf __P((char *, const char *, __va_list));
 __END_DECLS
 
 /*
@@ -272,19 +277,19 @@ __END_DECLS
 __BEGIN_DECLS
 #ifndef _FTRUNCATE_DECLARED
 #define	_FTRUNCATE_DECLARED
-int	 ftruncate __P((int, _BSD_OFF_T_));
+int	 ftruncate __P((int, __off_t));
 #endif
 #ifndef _LSEEK_DECLARED
 #define	_LSEEK_DECLARED
-_BSD_OFF_T_ lseek __P((int, _BSD_OFF_T_, int));
+__off_t lseek __P((int, __off_t, int));
 #endif
 #ifndef _MMAP_DECLARED
 #define	_MMAP_DECLARED
-void	*mmap __P((void *, size_t, int, int, int, _BSD_OFF_T_));
+void	*mmap __P((void *, size_t, int, int, int, __off_t));
 #endif
 #ifndef _TRUNCATE_DECLARED
 #define	_TRUNCATE_DECLARED
-int	 truncate __P((const char *, _BSD_OFF_T_));
+int	 truncate __P((const char *, __off_t));
 #endif
 __END_DECLS
 #endif /* !_ANSI_SOURCE && !_POSIX_SOURCE */
@@ -304,8 +309,8 @@ char	*fgetln __P((FILE *, size_t *));
 #endif
 __const char *fmtcheck __P((const char *, const char *)) __ATTR_FORMAT_ARG;
 int	 fpurge __P((FILE *));
-int	 fseeko __P((FILE *, _BSD_OFF_T_, int));
-_BSD_OFF_T_ ftello __P((FILE *));
+int	 fseeko __P((FILE *, __off_t, int));
+__off_t ftello __P((FILE *));
 int	 getw __P((FILE *));
 int	 pclose __P((FILE *));
 FILE	*popen __P((const char *, const char *));
@@ -314,12 +319,12 @@ void	 setbuffer __P((FILE *, char *, int));
 int	 setlinebuf __P((FILE *));
 char	*tempnam __P((const char *, const char *));
 int	 snprintf __P((char *, size_t, const char *, ...)) __printflike(3, 4);
-int	 vasprintf __P((char **, const char *, _BSD_VA_LIST_))
+int	 vasprintf __P((char **, const char *, __va_list))
 	    __printflike(2, 0);
-int	 vsnprintf __P((char *, size_t, const char *, _BSD_VA_LIST_))
+int	 vsnprintf __P((char *, size_t, const char *, __va_list))
 	    __printflike(3, 0);
-int	 vscanf __P((const char *, _BSD_VA_LIST_)) __scanflike(1, 0);
-int	 vsscanf __P((const char *, const char *, _BSD_VA_LIST_))
+int	 vscanf __P((const char *, __va_list)) __scanflike(1, 0);
+int	 vsscanf __P((const char *, const char *, __va_list))
 	    __scanflike(2, 0);
 __END_DECLS
 
@@ -349,7 +354,7 @@ __END_DECLS
  */
 __BEGIN_DECLS
 int	__srget __P((FILE *));
-int	__svfscanf __P((FILE *, const char *, _BSD_VA_LIST_));
+int	__svfscanf __P((FILE *, const char *, __va_list));
 int	__swbuf __P((int, FILE *));
 __END_DECLS
 

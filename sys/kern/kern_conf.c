@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.4 2003/07/22 17:03:33 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.5 2003/11/09 02:22:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,15 +201,15 @@ dev_t
 make_dev(struct cdevsw *devsw, int minor, uid_t uid, gid_t gid, int perms, const char *fmt, ...)
 {
 	dev_t	dev;
-	va_list ap;
+	__va_list ap;
 	int i;
 
 	compile_devsw(devsw);
 	dev = makedev(devsw->d_maj, minor);
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	i = kvprintf(fmt, NULL, dev->si_name, 32, ap);
 	dev->si_name[i] = '\0';
-	va_end(ap);
+	__va_end(ap);
 	dev->si_devsw = devsw;
 
 	return (dev);

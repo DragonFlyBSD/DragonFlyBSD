@@ -1,6 +1,6 @@
 /*	
  * $FreeBSD: src/sys/boot/common/dev_net.c,v 1.6.2.5 2001/03/04 04:44:42 obrien Exp $
- * $DragonFly: src/sys/boot/common/dev_net.c,v 1.2 2003/06/17 04:28:16 dillon Exp $
+ * $DragonFly: src/sys/boot/common/dev_net.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
  * From: $NetBSD: dev_net.c,v 1.12 1997/12/10 20:38:37 gwr Exp $
  */
 
@@ -113,13 +113,13 @@ net_init(void)
 int
 net_open(struct open_file *f, ...)
 {
-    va_list args;
+    __va_list args;
     char *devname;		/* Device part of file name (or NULL). */
     int error = 0;
 
-    va_start(args, f);
-    devname = va_arg(args, char*);
-    va_end(args);
+    __va_start(args, f);
+    devname = __va_arg(args, char*);
+    __va_end(args);
 
     /* On first open, do netif open, mount, etc. */
     if (netdev_opens == 0) {

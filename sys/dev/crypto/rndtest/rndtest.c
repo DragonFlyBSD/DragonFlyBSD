@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.3 2003/08/07 21:16:49 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.4 2003/11/09 02:22:34 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -172,15 +172,15 @@ static void
 rndtest_report(struct rndtest_state *rsp, int failure, const char *fmt, ...)
 {
 	char buf[80];
-	va_list ap;
+	__va_list ap;
 
 	if (rndtest_verbose == 0)
 		return;
 	if (!failure && rndtest_verbose == 1)	/* don't report successes */
 		return;
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	vsnprintf(buf, sizeof (buf), fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 	device_printf(rsp->rs_parent, "rndtest: %s\n", buf);
 }
 

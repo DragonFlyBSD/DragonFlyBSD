@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biospnp.c,v 1.4.2.1 2000/12/28 13:12:39 ps Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biospnp.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biospnp.c,v 1.3 2003/11/09 02:22:33 dillon Exp $
  */
 
 /*
@@ -247,7 +247,7 @@ biospnp_scanresdata(struct pnpinfo *pi, struct pnp_devNode *dn)
 static int
 biospnp_call(int func, const char *fmt, ...)
 {
-    va_list	ap;
+    __va_list	ap;
     const char	*p;
     u_int8_t	*argp;
     u_int32_t	args[4];
@@ -259,18 +259,18 @@ biospnp_call(int func, const char *fmt, ...)
     argp += sizeof(u_int16_t);
 
     /* take args according to format */
-    va_start(ap, fmt);
+    __va_start(ap, fmt);
     for (p = fmt; *p != 0; p++) {
 	switch(*p) {
 
 	case 'w':
-	    i = va_arg(ap, u_int16_t);
+	    i = __va_arg(ap, u_int16_t);
 	    *(u_int16_t *)argp = i;
 	    argp += sizeof(u_int16_t);
 	    break;
 	    
 	case 'l':
-	    i = va_arg(ap, u_int32_t);
+	    i = __va_arg(ap, u_int32_t);
 	    *(u_int32_t *)argp = i;
 	    argp += sizeof(u_int32_t);
 	    break;

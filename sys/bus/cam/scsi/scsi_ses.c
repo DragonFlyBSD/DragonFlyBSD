@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.6 2003/08/07 21:16:45 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.7 2003/11/09 02:22:33 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -720,12 +720,12 @@ ses_runcmd(struct ses_softc *ssc, char *cdb, int cdbl, char *dptr, int *dlenp)
 static void
 ses_log(struct ses_softc *ssc, const char *fmt, ...)
 {
-	va_list ap;
+	__va_list ap;
 
 	printf("%s%d: ", ssc->periph->periph_name, ssc->periph->unit_number);
-	va_start(ap, fmt);
+	__va_start(ap, fmt);
 	vprintf(fmt, ap);
-	va_end(ap);
+	__va_end(ap);
 }
 
 /*

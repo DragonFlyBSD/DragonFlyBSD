@@ -40,11 +40,15 @@
  *
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  *      $FreeBSD: src/include/ctype.h,v 1.16 2000/02/08 07:43:23 obrien Exp $
- *      $DragonFly: src/include/ctype.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ *      $DragonFly: src/include/ctype.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _CTYPE_H_
 #define	_CTYPE_H_
+
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>	/* __ct_rune_t and friends */
+#endif
 
 /*
  * XXX <runetype.h> brings massive namespace pollution (rune_t and struct
@@ -125,11 +129,10 @@ __END_DECLS
 #define	toascii(c)	((c) & 0x7F)
 #endif
 
-/* See comments in <machine/ansi.h> about _BSD_CT_RUNE_T_. */
 __BEGIN_DECLS
-unsigned long	___runetype __P((_BSD_CT_RUNE_T_));
-_BSD_CT_RUNE_T_	___tolower __P((_BSD_CT_RUNE_T_));
-_BSD_CT_RUNE_T_	___toupper __P((_BSD_CT_RUNE_T_));
+unsigned long	___runetype __P((__ct_rune_t));
+__ct_rune_t	___tolower __P((__ct_rune_t));
+__ct_rune_t	___toupper __P((__ct_rune_t));
 __END_DECLS
 
 /*
@@ -148,28 +151,28 @@ __END_DECLS
 #if !defined(_DONT_USE_CTYPE_INLINE_) && \
     (defined(_USE_CTYPE_INLINE_) || defined(__GNUC__) || defined(__cplusplus))
 static __inline int
-__maskrune(_BSD_CT_RUNE_T_ _c, unsigned long _f)
+__maskrune(__ct_rune_t _c, unsigned long _f)
 {
 	return ((_c < 0 || _c >= _CACHED_RUNES) ? ___runetype(_c) :
 		_CurrentRuneLocale->runetype[_c]) & _f;
 }
 
 static __inline int
-__isctype(_BSD_CT_RUNE_T_ _c, unsigned long _f)
+__isctype(__ct_rune_t _c, unsigned long _f)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? 0 :
 	       !!(_DefaultRuneLocale.runetype[_c] & _f);
 }
 
-static __inline _BSD_CT_RUNE_T_
-__toupper(_BSD_CT_RUNE_T_ _c)
+static __inline __ct_rune_t
+__toupper(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___toupper(_c) :
 	       _CurrentRuneLocale->mapupper[_c];
 }
 
-static __inline _BSD_CT_RUNE_T_
-__tolower(_BSD_CT_RUNE_T_ _c)
+static __inline __ct_rune_t
+__tolower(__ct_rune_t _c)
 {
 	return (_c < 0 || _c >= _CACHED_RUNES) ? ___tolower(_c) :
 	       _CurrentRuneLocale->maplower[_c];
@@ -178,10 +181,10 @@ __tolower(_BSD_CT_RUNE_T_ _c)
 #else /* not using inlines */
 
 __BEGIN_DECLS
-int		__maskrune __P((_BSD_CT_RUNE_T_, unsigned long));
-int		__isctype __P((_BSD_CT_RUNE_T_, unsigned long));
-_BSD_CT_RUNE_T_	__toupper __P((_BSD_CT_RUNE_T_));
-_BSD_CT_RUNE_T_	__tolower __P((_BSD_CT_RUNE_T_));
+int		__maskrune __P((__ct_rune_t, unsigned long));
+int		__isctype __P((__ct_rune_t, unsigned long));
+__ct_rune_t	__toupper __P((__ct_rune_t));
+__ct_rune_t	__tolower __P((__ct_rune_t));
 __END_DECLS
 #endif /* using inlines */
 

@@ -32,29 +32,43 @@
  *
  *	@(#)stdarg.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/stdarg.h,v 1.3 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/stdarg.h,v 1.4 2003/11/09 02:22:35 dillon Exp $
  */
 
-#if !defined(_STDARG_H_) && !defined(_MACHINE_STDARG_H_)
-#define	_STDARG_H_
+#ifndef _MACHINE_STDARG_H_
 #define	_MACHINE_STDARG_H_
 
-typedef char *va_list;
+/*
+ * GNUC mess
+ */
+#if defined(__GNUC__) && (__GNUC__ == 2 && __GNUC_MINOR__ > 95 || __GNUC__ >= 3)
+typedef __builtin_va_list	__va_list;	/* internally known to gcc */
+#else
+typedef	char *			__va_list;
+#endif /* post GCC 2.95 */
+#if defined __GNUC__ && !defined(__GNUC_VA_LIST) && !defined(__NO_GNUC_VA_LIST)
+#define __GNUC_VA_LIST
+typedef __va_list		__gnuc_va_list;	/* compatibility w/GNU headers*/
+#endif
 
+/*
+ * Standard va types and macros
+ */
 #define	__va_size(type) \
 	(((sizeof(type) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 
 #ifdef __GNUC__
-#define va_start(ap, last) \
-	((ap) = (va_list)__builtin_next_arg(last))
+#define __va_start(ap, last) \
+	((ap) = (__va_list)__builtin_next_arg(last))
 #else
-#define	va_start(ap, last) \
-	((ap) = (va_list)&(last) + __va_size(last))
+#define	__va_start(ap, last) \
+	((ap) = (__va_list)&(last) + __va_size(last))
 #endif
 
-#define	va_arg(ap, type) \
+#define	__va_arg(ap, type) \
 	(*(type *)((ap) += __va_size(type), (ap) - __va_size(type)))
 
-#define	va_end(ap)
+#define	__va_end(ap)
 
-#endif /* !_STDARG_H_ */
+#endif
+

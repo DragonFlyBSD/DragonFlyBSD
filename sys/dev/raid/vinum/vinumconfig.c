@@ -47,7 +47,7 @@
  *
  * $Id: vinumconfig.c,v 1.30 2000/05/01 09:45:50 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumconfig.c,v 1.32.2.6 2002/02/03 00:43:35 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinumconfig.c,v 1.5 2003/11/09 02:22:35 dillon Exp $
  */
 
 #define STATIC static
@@ -95,14 +95,14 @@ void
 throw_rude_remark(int error, char *msg,...)
 {
     int retval;
-    va_list ap;
+    __va_list ap;
     char *text;
     static int finishing;				    /* don't recurse */
     int was_finishing;
 
     if ((vinum_conf.flags & VF_LOCKED) == 0)		    /* bug catcher */
     	panic ("throw_rude_remark: called without config lock");
-    va_start(ap, msg);
+    __va_start(ap, msg);
     if ((ioctl_reply != NULL)				    /* we're called from the user */
     &&(!(vinum_conf.flags & VF_READING_CONFIG))) {	    /* and not reading from disk: return msg */
 	/*
@@ -127,7 +127,7 @@ throw_rude_remark(int error, char *msg,...)
 	vprintf(msg, ap);				    /* print to the console */
 	printf("\n");
     }
-    va_end(ap);
+    __va_end(ap);
 
     if (vinum_conf.flags & VF_READING_CONFIG) {		    /* go through to the bitter end, */
 	if ((vinum_conf.flags & VF_READING_CONFIG)	    /* we're reading from disk, */

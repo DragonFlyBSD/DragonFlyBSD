@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/iir/iir.c,v 1.2.2.3 2002/05/05 08:18:12 asmodai Exp $ */
-/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.4 2003/08/07 21:17:09 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/iir/iir.c,v 1.5 2003/11/09 02:22:35 dillon Exp $ */
 /*
  *       Copyright (c) 2000-01 Intel Corporation
  *       All Rights Reserved
@@ -126,13 +126,13 @@ static void ser_putc(int c)
 
 int ser_printf(const char *fmt, ...)
 {
-    va_list args;
+    __va_list args;
     int i;
 
-    va_start(args,fmt);
+    __va_start(args,fmt);
     i = vsprintf(strbuf,fmt,args);
     ser_puts(strbuf);
-    va_end(args);
+    __va_end(args);
     return i;
 }
 #endif

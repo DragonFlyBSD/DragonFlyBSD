@@ -32,13 +32,15 @@
  *
  *	@(#)queue.h	8.5 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/sys/queue.h,v 1.32.2.7 2002/04/17 14:21:02 des Exp $
- * $DragonFly: src/sys/sys/queue.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/queue.h,v 1.4 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef _SYS_QUEUE_H_
 #define	_SYS_QUEUE_H_
 
-#include <machine/ansi.h>	/* for __offsetof */
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>	/* for __offsetof */
+#endif
 
 /*
  * This file defines five types of data structures: singly-linked lists,

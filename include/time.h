@@ -36,12 +36,16 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
+ * $DragonFly: src/include/time.h,v 1.2 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _TIME_H_
 #define	_TIME_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
+#include <machine/uvparam.h>
 #include <sys/_posix.h>
 
 #ifndef _ANSI_SOURCE
@@ -59,19 +63,14 @@
 #define	NULL	0
 #endif
 
-#ifdef	_BSD_CLOCK_T_
-typedef	_BSD_CLOCK_T_	clock_t;
-#undef	_BSD_CLOCK_T_
+#ifndef _CLOCK_T_DECLARED_
+#define _CLOCK_T_DECLARED_
+typedef	__clock_t	clock_t;
 #endif
 
-#ifdef	_BSD_TIME_T_
-typedef	_BSD_TIME_T_	time_t;
-#undef	_BSD_TIME_T_
-#endif
-
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef _TIME_T_DECLARED_
+#define _TIME_T_DECLARED_
+typedef	__time_t	time_t;
 #endif
 
 /* XXX I'm not sure if _ANSI_SOURCE is playing properly
@@ -81,14 +80,14 @@ typedef	_BSD_SIZE_T_	size_t;
 /*
  * New in POSIX 1003.1b-1993.
  */
-#ifdef	_BSD_CLOCKID_T_
-typedef	_BSD_CLOCKID_T_	clockid_t;
-#undef	_BSD_CLOCKID_T_
+#ifndef _CLOCKID_T_DECLARED_
+#define _CLOCKID_T_DECLARED_
+typedef	__clockid_t	clockid_t;
 #endif
 
-#ifdef	_BSD_TIMER_T_
-typedef	_BSD_TIMER_T_	timer_t;
-#undef	_BSD_TIMER_T_
+#ifndef _TIMER_T_DECLARED_
+#define _TIMER_T_DECLARED_
+typedef	__timer_t	timer_t;
 #endif
 
 #ifndef _TIMESPEC_DECLARED
@@ -128,7 +127,7 @@ double difftime __P((time_t, time_t));
 struct tm *gmtime __P((const time_t *));
 struct tm *localtime __P((const time_t *));
 time_t mktime __P((struct tm *));
-size_t strftime __P((char *, size_t, const char *, const struct tm *));
+__size_t strftime __P((char *, __size_t, const char *, const struct tm *));
 time_t time __P((time_t *));
 
 #ifndef _ANSI_SOURCE

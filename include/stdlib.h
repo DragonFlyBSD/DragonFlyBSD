@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.2 2003/06/17 04:25:56 dillon Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.3 2003/11/09 02:22:28 dillon Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -40,25 +40,27 @@
 
 #include <sys/cdefs.h>
 
-#include <machine/ansi.h>
+#ifndef _SYS_STDINT_H_
+#include <sys/stdint.h>
+#endif
 
 #if !defined(_ANSI_SOURCE) && !defined(_POSIX_SOURCE)
-#ifdef	_BSD_RUNE_T_
-typedef	_BSD_RUNE_T_	rune_t;
-#undef	_BSD_RUNE_T_
+#ifndef _RUNE_T_DECLARED_
+#define _RUNE_T_DECLARED_
+typedef __rune_t	rune_t;
 #endif
 #endif
 
-#ifdef	_BSD_SIZE_T_
-typedef	_BSD_SIZE_T_	size_t;
-#undef	_BSD_SIZE_T_
+#ifndef __cplusplus
+#ifndef _WCHAR_T_DECLARED_
+#define _WCHAR_T_DECLARED_
+typedef __wchar_t	wchar_t;
+#endif
 #endif
 
-#ifndef	__cplusplus
-#ifdef	_BSD_WCHAR_T_
-typedef	_BSD_WCHAR_T_	wchar_t;
-#undef	_BSD_WCHAR_T_
-#endif
+#ifndef _SIZE_T_DECLARED_
+#define _SIZE_T_DECLARED_
+typedef __size_t	size_t;
 #endif
 
 typedef struct {

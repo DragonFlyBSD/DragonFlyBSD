@@ -37,17 +37,19 @@
  *
  *	@(#)times.h	8.4 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/times.h,v 1.6 1999/12/29 04:24:48 peter Exp $
- * $DragonFly: src/sys/sys/times.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/times.h,v 1.4 2003/11/09 02:22:37 dillon Exp $
  */
 
 #ifndef	_SYS_TIMES_H_
 #define	_SYS_TIMES_H_
 
-#include <machine/ansi.h>
+#ifndef _MACHINE_STDINT_H_
+#include <machine/stdint.h>
+#endif
 
-#ifdef	_BSD_CLOCK_T_
-typedef	_BSD_CLOCK_T_	clock_t;
-#undef	_BSD_CLOCK_T_
+#ifndef _CLOCK_T_DECLARED_
+#define _CLOCK_T_DECLARED_
+typedef	__clock_t	clock_t;
 #endif
 
 struct tms {
