@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.26 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.27 2004/12/03 20:29:53 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -1167,4 +1167,92 @@ prison_xinpcb(struct thread *td, struct inpcb *inp)
 	if (ntohl(inp->inp_laddr.s_addr) == cr->cr_prison->pr_ip)
 		return (0);
 	return (1);
+}
+
+int
+in_pcblist_global(SYSCTL_HANDLER_ARGS)
+{
+	struct inpcbinfo *pcbinfo = arg1;
+	struct inpcb *inp, *marker;
+	struct xinpcb xi;
+	struct xinpgen xig;
+	int error, i, n;
+	inp_gen_t gencnt;
+
+	/*
+	 * The process of preparing the TCB list is too time-consuming and
+	 * resource-intensive to repeat twice on every request.
+	 */
+	if (req->oldptr == 0) {
+		n = pcbinfo->ipi_count;
+		req->oldidx = 2 * (sizeof xig)
+			+ (n + n/8) * sizeof(struct xinpcb);
+		return 0;
+	}
+
+	if (req->newptr != 0)
+		return EPERM;
+
+	/*
+	 * OK, now we're committed to doing something.
+	 */
+	gencnt = pcbinfo->ipi_gencnt;
+	n = pcbinfo->ipi_count;
+
+	xig.xig_len = sizeof xig;
+	xig.xig_count = n;
+	xig.xig_gen = gencnt;
+	xig.xig_sogen = so_gencnt;
+	xig.xig_cpu = 0;
+	error = SYSCTL_OUT(req, &xig, sizeof xig);
+	if (error)
+		return error;
+
+	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
+
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, marker, inp_list);
+	i = 0;
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
+
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
+		if (inp->inp_gencnt > gencnt)
+			continue;
+		if (prison_xinpcb(req->td, inp))
+			continue;
+		xi.xi_len = sizeof xi;
+		bcopy(inp, &xi.xi_inp, sizeof *inp);
+		if (inp->inp_socket)
+			sotoxsocket(inp->inp_socket, &xi.xi_socket);
+		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
+			break;
+		++i;
+	}
+	LIST_REMOVE(marker, inp_list);
+	if (error == 0 && i < n) {
+		bzero(&xi, sizeof(xi));
+		xi.xi_len = sizeof(xi);
+		while (i < n) {
+			error = SYSCTL_OUT(req, &xi, sizeof(xi));
+			++i;
+		}
+	}
+	if (error == 0) {
+		/*
+		 * Give the user an updated idea of our state.
+		 * If the generation differs from what we told
+		 * her before, she knows that something happened
+		 * while we were processing this request, and it
+		 * might be necessary to retry.
+		 */
+		xig.xig_gen = pcbinfo->ipi_gencnt;
+		xig.xig_sogen = so_gencnt;
+		xig.xig_count = pcbinfo->ipi_count;
+		error = SYSCTL_OUT(req, &xig, sizeof xig);
+	}
+	free(marker, M_TEMP);
+	return(error);
 }

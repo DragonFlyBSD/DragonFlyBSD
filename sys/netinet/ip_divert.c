@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.14 2004/06/07 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.15 2004/12/03 20:29:53 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -441,97 +441,9 @@ div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	return div_output(so, m, (struct sockaddr_in *)nam, control);
 }
 
-static int
-div_pcblist(SYSCTL_HANDLER_ARGS)
-{
-	int error, i, n;
-	struct inpcb *inp;
-	struct inpcb *marker;
-	inp_gen_t gencnt;
-	struct xinpgen xig;
-	struct xinpcb xi;
-
-	/*
-	 * The process of preparing the TCB list is too time-consuming and
-	 * resource-intensive to repeat twice on every request.
-	 */
-	if (req->oldptr == 0) {
-		n = divcbinfo.ipi_count;
-		req->oldidx = 2 * (sizeof xig)
-			+ (n + n/8) * sizeof(struct xinpcb);
-		return 0;
-	}
-
-	if (req->newptr != 0)
-		return EPERM;
-
-	/*
-	 * OK, now we're committed to doing something.
-	 */
-	gencnt = divcbinfo.ipi_gencnt;
-	n = divcbinfo.ipi_count;
-
-	xig.xig_len = sizeof xig;
-	xig.xig_count = n;
-	xig.xig_gen = gencnt;
-	xig.xig_sogen = so_gencnt;
-	xig.xig_cpu = 0;
-	error = SYSCTL_OUT(req, &xig, sizeof xig);
-	if (error)
-		return error;
-
-	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
-	marker->inp_flags |= INP_PLACEMARKER;
-
-	LIST_INSERT_HEAD(&divcbinfo.pcblisthead, marker, inp_list);
-	i = 0;
-	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
-		LIST_REMOVE(marker, inp_list);
-		LIST_INSERT_AFTER(inp, marker, inp_list);
-
-		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (inp->inp_gencnt > gencnt)
-			continue;
-		if (prison_xinpcb(req->td, inp))
-			continue;
-		xi.xi_len = sizeof xi;
-		bcopy(inp, &xi.xi_inp, sizeof *inp);
-		if (inp->inp_socket)
-			sotoxsocket(inp->inp_socket, &xi.xi_socket);
-		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
-			break;
-		++i;
-	}
-	LIST_REMOVE(marker, inp_list);
-	if (error == 0 && i < n) {
-		bzero(&xi, sizeof(xi));
-		xi.xi_len = sizeof(xi);
-		while (i < n) {
-			error = SYSCTL_OUT(req, &xi, sizeof(xi));
-			++i;
-		}
-	}
-	if (error == 0) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		xig.xig_gen = divcbinfo.ipi_gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_count = divcbinfo.ipi_count;
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
-	}
-	free(marker, M_TEMP);
-	return error;
-}
-
 SYSCTL_DECL(_net_inet_divert);
-SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, 0, 0,
-	    div_pcblist, "S,xinpcb", "List of active divert sockets");
+SYSCTL_PROC(_net_inet_divert, OID_AUTO, pcblist, CTLFLAG_RD, &divcbinfo, 0,
+	    in_pcblist_global, "S,xinpcb", "List of active divert sockets");
 
 struct pr_usrreqs div_usrreqs = {
 	div_abort, pru_accept_notsupp, div_attach, div_bind,

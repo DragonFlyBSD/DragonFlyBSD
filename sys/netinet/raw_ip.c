@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.17 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.18 2004/12/03 20:29:53 joerg Exp $
  */
 
 #include "opt_inet6.h"
@@ -640,95 +640,8 @@ rip_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	return rip_output(m, so, dst);
 }
 
-static int
-rip_pcblist(SYSCTL_HANDLER_ARGS)
-{
-	int error, i, n;
-	struct inpcb *inp;
-	struct inpcb *marker;
-	inp_gen_t gencnt;
-	struct xinpgen xig;
-	struct xinpcb xi;
-
-	/*
-	 * The process of preparing the TCB list is too time-consuming and
-	 * resource-intensive to repeat twice on every request.
-	 */
-	if (req->oldptr == 0) {
-		n = ripcbinfo.ipi_count;
-		req->oldidx = 2 * (sizeof xig)
-			+ (n + n/8) * sizeof(struct xinpcb);
-		return 0;
-	}
-
-	if (req->newptr != 0)
-		return EPERM;
-
-	/*
-	 * OK, now we're committed to doing something.
-	 */
-	gencnt = ripcbinfo.ipi_gencnt;
-	n = ripcbinfo.ipi_count;
-
-	xig.xig_len = sizeof xig;
-	xig.xig_count = n;
-	xig.xig_gen = gencnt;
-	xig.xig_sogen = so_gencnt;
-	xig.xig_cpu = 0;
-	error = SYSCTL_OUT(req, &xig, sizeof xig);
-	if (error)
-		return error;
-
-	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
-	marker->inp_flags |= INP_PLACEMARKER;
-	LIST_INSERT_HEAD(&ripcbinfo.pcblisthead, marker, inp_list);
-
-	i = 0;
-	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
-		LIST_REMOVE(marker, inp_list);
-		LIST_INSERT_AFTER(inp, marker, inp_list);
-
-		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (inp->inp_gencnt > gencnt)
-			continue;
-
-		xi.xi_len = sizeof xi;
-		bcopy(inp, &xi.xi_inp, sizeof *inp);
-		if (inp->inp_socket)
-			sotoxsocket(inp->inp_socket, &xi.xi_socket);
-		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
-			break;
-		++i;
-	}
-	LIST_REMOVE(marker, inp_list);
-	if (error == 0 && i < n) {
-		bzero(&xi, sizeof(xi));
-		xi.xi_len = sizeof(xi);
-		while (i < n) {
-			error = SYSCTL_OUT(req, &xi, sizeof(xi));
-			++i;
-		}
-	}
-	if (error == 0) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		xig.xig_gen = ripcbinfo.ipi_gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_count = ripcbinfo.ipi_count;
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
-	}
-	free(marker, M_TEMP);
-	return error;
-}
-
-SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, 0, 0,
-	    rip_pcblist, "S,xinpcb", "List of active raw IP sockets");
+SYSCTL_PROC(_net_inet_raw, OID_AUTO/*XXX*/, pcblist, CTLFLAG_RD, &ripcbinfo, 0,
+	    in_pcblist_global, "S,xinpcb", "List of active raw IP sockets");
 
 struct pr_usrreqs rip_usrreqs = {
 	rip_abort, pru_accept_notsupp, rip_attach, rip_bind, rip_connect,

@@ -82,13 +82,14 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.16 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.17 2004/12/03 20:29:53 joerg Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
 #define _NETINET_IN_PCB_H_
 
 #include <sys/queue.h>
+#include <sys/sysctl.h>
 
 #include <net/route.h>
 
@@ -411,6 +412,8 @@ void	in_pcbremwildcardhash_oncpu(struct inpcb *, struct inpcbinfo *);
 void	in_pcbremconnhash(struct inpcb *inp);
 void	in_pcbremlists (struct inpcb *inp);
 int	prison_xinpcb (struct thread *p, struct inpcb *inp);
+
+int	in_pcblist_global(SYSCTL_HANDLER_ARGS);
 #endif /* _KERNEL */
 
 #endif /* !_NETINET_IN_PCB_H_ */

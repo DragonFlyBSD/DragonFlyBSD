@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.27 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.28 2004/12/03 20:29:53 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -651,96 +651,8 @@ udp_ctlinput(cmd, sa, vip)
 		    notify);
 }
 
-static int
-udp_pcblist(SYSCTL_HANDLER_ARGS)
-{
-	int error, i, n;
-	struct inpcb *inp;
-	struct inpcb *marker;
-	inp_gen_t gencnt;
-	struct xinpgen xig;
-	struct xinpcb xi;
-
-	/*
-	 * The process of preparing the TCB list is too time-consuming and
-	 * resource-intensive to repeat twice on every request.
-	 */
-	if (req->oldptr == 0) {
-		n = udbinfo.ipi_count;
-		req->oldidx = 2 * (sizeof xig)
-			+ (n + n/8) * sizeof(struct xinpcb);
-		return 0;
-	}
-
-	if (req->newptr != 0)
-		return EPERM;
-
-	/*
-	 * OK, now we're committed to doing something.
-	 */
-	gencnt = udbinfo.ipi_gencnt;
-	n = udbinfo.ipi_count;
-
-	xig.xig_len = sizeof xig;
-	xig.xig_count = n;
-	xig.xig_gen = gencnt;
-	xig.xig_sogen = so_gencnt;
-	xig.xig_cpu = 0;
-	error = SYSCTL_OUT(req, &xig, sizeof xig);
-	if (error)
-		return error;
-
-	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
-	marker->inp_flags |= INP_PLACEMARKER;
-
-	LIST_INSERT_HEAD(&udbinfo.pcblisthead, marker, inp_list);
-	i = 0;
-	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
-		LIST_REMOVE(marker, inp_list);
-		LIST_INSERT_AFTER(inp, marker, inp_list);
-		if (inp->inp_flags & INP_PLACEMARKER)
-			continue;
-		if (inp->inp_gencnt > gencnt)
-			continue;
-		if (prison_xinpcb(req->td, inp))
-			continue;
-		xi.xi_len = sizeof xi;
-		bcopy(inp, &xi.xi_inp, sizeof *inp);
-		if (inp->inp_socket)
-			sotoxsocket(inp->inp_socket, &xi.xi_socket);
-		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
-			break;
-		++i;
-	}
-	LIST_REMOVE(marker, inp_list);
-	if (error == 0 && i < n) {
-		bzero(&xi, sizeof(xi));
-		xi.xi_len = sizeof(xi);
-		while (i < n) {
-			if ((error = SYSCTL_OUT(req, &xi, sizeof(xi))) != 0)
-				break;
-			++i;
-		}
-	}
-	if (error == 0) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		xig.xig_gen = udbinfo.ipi_gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_count = udbinfo.ipi_count;
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
-	}
-	free(marker, M_TEMP);
-	return error;
-}
-
-SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, 0, 0,
-	    udp_pcblist, "S,xinpcb", "List of active UDP sockets");
+SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, &udbinfo, 0,
+	    in_pcblist_global, "S,xinpcb", "List of active UDP sockets");
 
 static int
 udp_getcred(SYSCTL_HANDLER_ARGS)
