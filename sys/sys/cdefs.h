@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.8 2004/02/14 17:55:49 dillon Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.9 2004/03/13 12:39:56 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -337,6 +337,18 @@
 
 #ifndef	__COPYRIGHT
 #define	__COPYRIGHT(s)	__IDSTRING(copyright,s)
+#endif
+
+#ifndef	__DECONST
+#define	__DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
+#endif
+
+#ifndef	__DEVOLATILE
+#define	__DEVOLATILE(type, var)	((type)(uintptr_t)(volatile void *)(var))
+#endif
+
+#ifndef	__DEQUALIFY
+#define	__DEQUALIFY(type, var)	((type)(uintptr_t)(const volatile void *)(var))
 #endif
 
 /*-
