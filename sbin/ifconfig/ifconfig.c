@@ -32,8 +32,8 @@
  *
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
- * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.51.2.19 2003/01/28 11:02:56 fjoe Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
+ * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.7 2004/03/15 22:39:37 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ struct	in6_aliasreq	in6_addreq =
 struct	sockaddr_in	netmask;
 struct	netrange	at_nr;		/* AppleTalk net range */
 
-char	name[32];
+char	name[IFNAMSIZ];
 int	flags;
 int	setaddr;
 int	setipdst;
@@ -129,6 +129,7 @@ struct	afswtch;
 
 int supmedia = 0;
 int listcloners = 0;
+int printname = 0;		/* Print the name of the created interface. */
 
 #ifdef INET6
 char	addr_buf[MAXHOSTNAMELEN *2 + 1];	/*for getnameinfo()*/
@@ -172,6 +173,7 @@ c_func	setip6eui64;
 c_func	setifipdst;
 c_func	setifflags, setifmetric, setifmtu, setifcap;
 c_func	clone_destroy;
+c_func	setifname;
 
 
 void clone_create(void);
@@ -278,6 +280,7 @@ struct	cmd {
 	{ "compress",	IFF_LINK0,	setifflags },
 	{ "noicmp",	IFF_LINK1,	setifflags },
 	{ "mtu",	NEXTARG,	setifmtu },
+	{ "name",	NEXTARG,	setifname },
 	{ 0,		0,		setifaddr },
 	{ 0,		0,		setifdstaddr },
 };
@@ -523,7 +526,7 @@ main(int argc, char * const *argv)
 			clone_create();
 			argc--, argv++;
 			if (argc == 0)
-				exit(0);
+				goto end;
 		}
 	}
 
@@ -591,6 +594,9 @@ main(int argc, char * const *argv)
 			addrcount++;
 			next += nextifm->ifm_msglen;
 		}
+		strlcpy(name, sdl->sdl_data,
+				sizeof(name) <= sdl->sdl_nlen ?
+				sizeof(name) : sdl->sdl_nlen + 1);
 
 		if (all || namesonly) {
 			if (uponly)
@@ -633,6 +639,9 @@ main(int argc, char * const *argv)
 
 	if (namesonly && need_nl > 0)
 		putchar('\n');
+end:
+	if (printname)
+		printf("%s\n", name);
 
 	if (all == 0 && namesonly == 0 && foundit == 0)
 		errx(1, "interface %s does not exist", name);
@@ -1054,6 +1063,31 @@ setifmtu(const char *val, int dummy __unused, int s, const struct afswtch *afp)
 	ifr.ifr_mtu = atoi(val);
 	if (ioctl(s, SIOCSIFMTU, (caddr_t)&ifr) < 0)
 		warn("ioctl (set mtu)");
+}
+
+void
+setifname(const char *val, int dummy __unused, int s, 
+    const struct afswtch *afp)
+{
+	char	*newname;
+
+	newname = strdup(val);
+	
+	ifr.ifr_data = newname;
+	if (ioctl(s, SIOCSIFNAME, (caddr_t)&ifr) < 0) {
+		warn("ioctl (set name)");
+		free(newname);
+		return;
+	}
+	strlcpy(name, newname, sizeof(name));
+
+	free(newname);
+
+	/*
+	 * Even if we just created the interface, we don't need to print
+	 * its name because we just nailed it down separately.
+	 */
+	printname = 0;
 }
 
 #define	IFFBITS \
@@ -1873,7 +1907,8 @@ ifmaybeload(char *name)
 				cp = mstat.name;
 			}
 			/* already loaded? */
-			if (!strcmp(ifkind, cp))
+			if (strncmp(name, cp, strlen(cp)) == 0 ||
+				strncmp(ifkind, cp, strlen(cp)) == 0)
 				return;
 		}
 	}
@@ -1939,8 +1974,13 @@ clone_create(void)
 	if (ioctl(s, SIOCIFCREATE, &ifr) < 0)
 		err(1, "SIOCIFCREATE");
 
+	/*
+	 * If we get a different name back then we put in, we probably
+	 * want to print it out, but we might change our mind later so
+	 * we just signal our intrest and leave the printout for later.
+	 */
 	if (strcmp(name, ifr.ifr_name) != 0) {
-		printf("%s\n", ifr.ifr_name);
+		printname = 1;
 		strlcpy(name, ifr.ifr_name, sizeof(name));
 	}
 
@@ -1954,4 +1994,9 @@ clone_destroy(const char *val, int d, int s, const struct afswtch *rafp)
 	(void) strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 	if (ioctl(s, SIOCIFDESTROY, &ifr) < 0)
 		err(1, "SIOCIFDESTROY");
+	/*
+	 * If we create and destroy an interface in the same command,
+	 * there isn't any reason to print it's name.
+	 */
+	printname = 0;
 }
