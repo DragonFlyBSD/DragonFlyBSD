@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.8 2003/08/07 21:17:09 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.9 2004/05/04 12:06:44 hmp Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -238,8 +238,6 @@ free_vinum(int cleardrive)
 STATIC int
 vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 {
-    struct sync_args dummyarg = {0};
-
     switch (type) {
     case MOD_LOAD:
 	vinumattach(NULL);
@@ -248,7 +246,7 @@ vinum_modevent(module_t mod, modeventtype_t type, void *unused)
 	if (!vinum_inactive(1))				    /* is anything open? */
 	    return EBUSY;				    /* yes, we can't do it */
 	vinum_conf.flags |= VF_STOPPING;		    /* note that we want to stop */
-	sync(&dummyarg);			    /* write out buffers */
+	sync(NULL);			    /* write out buffers */
 	free_vinum(0);					    /* clean up */
 #ifdef VINUMDEBUG
 	if (total_malloced) {
