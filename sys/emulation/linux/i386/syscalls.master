@@ -1,4 +1,4 @@
- $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.5 2004/03/11 09:53:19 hmp Exp $
+ $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.6 2004/11/14 01:41:41 dillon Exp $
 
 ;	@(#)syscalls.master	8.1 (Berkeley) 7/19/93
 ; $FreeBSD: src/sys/i386/linux/syscalls.master,v 1.30.2.8 2003/01/02 20:41:33 kan Exp $
@@ -343,18 +343,18 @@
 223    UNIMPL  LINUX   none
 224    UNIMPL  LINUX   linux_gettid
 225    UNIMPL  LINUX   linux_readahead
-226    UNIMPL  LINUX   linux_setxattr
-227    UNIMPL  LINUX   linux_lsetxattr
-228    UNIMPL  LINUX   linux_fsetxattr
-229    UNIMPL  LINUX   linux_getxattr
-230    UNIMPL  LINUX   linux_lgetxattr
-231    UNIMPL  LINUX   linux_fgetxattr
-232    UNIMPL  LINUX   linux_listxattr
-233    UNIMPL  LINUX   linux_llistxattr
-234    UNIMPL  LINUX   linux_flistxattr
-235    UNIMPL  LINUX   linux_removexattr
-236    UNIMPL  LINUX   linux_lremovexattr
-237    UNIMPL  LINUX   linux_fremovexattr
+226	STD	LINUX	{ int linux_setxattr(void); }
+227	STD	LINUX	{ int linux_lsetxattr(void); }
+228	STD	LINUX	{ int linux_fsetxattr(void); }
+229	STD	LINUX	{ int linux_getxattr(void); }
+230	STD	LINUX	{ int linux_lgetxattr(void); }
+231	STD	LINUX	{ int linux_fgetxattr(void); }
+232	STD	LINUX	{ int linux_listxattr(void); }
+233	STD	LINUX	{ int linux_llistxattr(void); }
+234	STD	LINUX	{ int linux_flistxattr(void); }
+235	STD	LINUX	{ int linux_removexattr(void); }
+236	STD	LINUX	{ int linux_lremovexattr(void); }
+237	STD	LINUX	{ int linux_fremovexattr(void); }
 238    UNIMPL  LINUX   linux_tkill
 239    UNIMPL  LINUX   linux_sendfile64
 240    UNIMPL  LINUX   linux_futex
@@ -367,7 +367,7 @@
 247    UNIMPL  LINUX   linux_io_getevents
 248    UNIMPL  LINUX   linux_io_submit
 249    UNIMPL  LINUX   linux_io_cancel
-250    UNIMPL  LINUX   linux_fadvise64
+250	STD	LINUX	{ int linux_fadvise64(void); }
 251    UNIMPL  LINUX   
 252    NOPROTO LINUX   { void sys_exit(int rval); } exit_group sys_exit_args void
 253    UNIMPL  LINUX   linux_lookup_dcookie

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_dummy.c,v 1.21.2.7 2003/01/02 20:41:33 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.5 2003/11/15 03:52:33 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_dummy.c,v 1.6 2004/11/14 01:41:41 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,3 +70,24 @@ DUMMY(setfsgid);
 DUMMY(pivot_root);
 DUMMY(mincore);
 DUMMY(madvise);
+DUMMY(fadvise64);
+
+#define DUMMY_XATTR(s)						\
+int								\
+linux_ ## s ## xattr( struct linux_ ## s ## xattr_args *arg)	\
+{								\
+	return (ENOATTR);					\
+}
+
+DUMMY_XATTR(set);
+DUMMY_XATTR(lset);
+DUMMY_XATTR(fset);
+DUMMY_XATTR(get);
+DUMMY_XATTR(lget);
+DUMMY_XATTR(fget);
+DUMMY_XATTR(list);
+DUMMY_XATTR(llist);
+DUMMY_XATTR(flist);
+DUMMY_XATTR(remove);
+DUMMY_XATTR(lremove);
+DUMMY_XATTR(fremove);
