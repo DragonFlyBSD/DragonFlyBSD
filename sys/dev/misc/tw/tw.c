@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.10 2004/05/19 22:52:45 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.11 2004/09/18 19:11:29 dillon Exp $
  *
  */
 
@@ -261,7 +261,7 @@ static struct tw_sc {
   int sc_nextin;		/* Next free slot in circular buffer */
   int sc_nextout;		/* First used slot in circular buffer */
 				/* Callout for canceling our abortrcv timeout */
-  struct callout_handle abortrcv_ch;
+  struct callout abortrcv_ch;
 #ifdef HIRESTIME
   int sc_xtimes[22];		/* Times for bits in current xmit packet */
   int sc_rtimes[22];		/* Times for bits in current rcv packet */
@@ -402,7 +402,7 @@ static int twattach(idp)
   sc->sc_port = idp->id_iobase;
   sc->sc_state = 0;
   sc->sc_rcount = 0;
-  callout_handle_init(&sc->abortrcv_ch);
+  callout_init(&sc->abortrcv_ch);
   cdevsw_add(&tw_cdevsw, -1, unit);
   make_dev(&tw_cdevsw, unit, 0, 0, 0600, "tw%d", unit);
   return (1);
@@ -956,13 +956,12 @@ int unit;
     sc->sc_bits = 0;
     sc->sc_rphase = newphase;
     /* 3 cycles of silence = 3/60 = 1/20 = 50 msec */
-    sc->abortrcv_ch = timeout(twabortrcv, (caddr_t)sc, hz/20);
+    callout_reset(&sc->abortrcv_ch, hz / 20, twabortrcv, sc);
     sc->sc_rcv_time[0] = tv.tv_usec;
     sc->sc_no_rcv = 1;
     return;
   }
-  untimeout(twabortrcv, (caddr_t)sc, sc->abortrcv_ch);
-  sc->abortrcv_ch = timeout(twabortrcv, (caddr_t)sc, hz/20);
+  callout_reset(&sc->abortrcv_ch, hz / 20, twabortrcv, sc);
   newphase = inb(port + tw_zcport) & tw_zcmask;
 
   /* enforce a minimum delay since the last interrupt */
@@ -996,7 +995,7 @@ int unit;
        */
       sc->sc_state &= ~TWS_RCVING;
       sc->sc_flags |= TW_RCV_ERROR;
-      untimeout(twabortrcv, (caddr_t)sc, sc->abortrcv_ch);
+      callout_stop(&sc->abortrcv_ch);
       log(LOG_ERR, "TWRCV: Invalid start code\n");
       twdebugtimes(sc);
       sc->sc_no_rcv = 0;
@@ -1084,7 +1083,7 @@ int unit;
     }
     sc->sc_state &= ~TWS_RCVING;
     twputpkt(sc, pkt);
-    untimeout(twabortrcv, (caddr_t)sc, sc->abortrcv_ch);
+    callout_stop(&sc->abortrcv_ch);
     if(sc->sc_flags & TW_RCV_ERROR) {
       log(LOG_ERR, "TWRCV: invalid packet: (%d, %x) %c %s\n",
 	  sc->sc_rcount, sc->sc_bits, 'A' + pkt[1], X10_KEY_LABEL[pkt[2]]);

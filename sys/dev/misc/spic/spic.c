@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.9 2004/05/20 21:47:23 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.10 2004/09/18 19:11:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ struct spic_softc {
 	int sc_opened;
 	int sc_sleeping;
 	int sc_buttonlast;
-	struct callout_handle sc_timeout_ch;
+	struct callout	sc_timeout_ch;
 	device_t sc_dev;
 	struct selinfo sc_rsel;
 	u_char sc_buf[SCBUFLEN];
@@ -347,6 +347,7 @@ spic_attach(device_t dev)
 	sc = device_get_softc(dev);
 
 	sc->sc_dev = dev;
+	callout_init(&sc->sc_timeout_ch);
 	
 	spic_pollrate = (hz/50); /* Every 50th of a second */
 
@@ -434,7 +435,8 @@ spictimeout(void *arg)
 		}
 	else {
 		/* No event. Wait some more */
-		sc->sc_timeout_ch = timeout(spictimeout, sc, spic_pollrate);
+		callout_reset(&sc->sc_timeout_ch, spic_pollrate,
+				spictimeout, sc);
 		return;
 	}
 
@@ -447,7 +449,7 @@ spictimeout(void *arg)
 	}
 	spic_call2(sc, 0x81, 0xff); /* Clear event */
 
-	sc->sc_timeout_ch = timeout(spictimeout, sc, spic_pollrate);
+	callout_reset(&sc->sc_timeout_ch, spic_pollrate, spictimeout, sc);
 }
 
 static int
@@ -476,7 +478,7 @@ spicclose(dev_t dev, int flag, int fmt, struct thread *td)
 	sc = devclass_get_softc(spic_devclass, 0);
 
 	/* Stop polling */
-	untimeout(spictimeout, sc, sc->sc_timeout_ch);
+	callout_stop(&sc->sc_timeout_ch);
 	sc->sc_opened = 0;
 	return 0;
 }
