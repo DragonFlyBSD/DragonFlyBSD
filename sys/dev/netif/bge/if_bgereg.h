@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bgereg.h,v 1.1.2.13 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.3 2004/02/10 21:14:14 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bgereg.h,v 1.4 2004/03/22 10:22:26 joerg Exp $
  */
 
 /*
@@ -1800,61 +1800,11 @@ struct bge_status_block {
 
 
 /*
- * Broadcom Vendor ID
- * (Note: the BCM570x still defaults to the Alteon PCI vendor ID
- * even though they're now manufactured by Broadcom)
+ * strange Broadcom PCI IDs
  */
-#define BCOM_VENDORID			0x14E4
-#define BCOM_DEVICEID_BCM5700		0x1644
-#define BCOM_DEVICEID_BCM5701		0x1645
-#define BCOM_DEVICEID_BCM5702		0x16A6
 #define BCOM_DEVICEID_BCM5702X		0x16C6
-#define BCOM_DEVICEID_BCM5703		0x16A7
 #define BCOM_DEVICEID_BCM5703X		0x16C7
-#define BCOM_DEVICEID_BCM5704C		0x1648
-#define BCOM_DEVICEID_BCM5704S		0x16A8
-#define BCOM_DEVICEID_BCM5705		0x1653
-#define BCOM_DEVICEID_BCM5705M		0x165D
-#define BCOM_DEVICEID_BCM5705M_ALT	0x165E
-#define BCOM_DEVICEID_BCM5782		0x1696
-
-/*
- * Alteon AceNIC PCI vendor/device ID.
- */
-#define ALT_VENDORID			0x12AE
-#define ALT_DEVICEID_ACENIC		0x0001
-#define ALT_DEVICEID_ACENIC_COPPER	0x0002
-#define ALT_DEVICEID_BCM5700		0x0003
-#define ALT_DEVICEID_BCM5701		0x0004
-
-/*
- * 3Com 3c985 PCI vendor/device ID.
- */
-#define TC_VENDORID			0x10B7
-#define TC_DEVICEID_3C985		0x0001
-#define TC_DEVICEID_3C996		0x0003
-
-/*
- * SysKonnect PCI vendor ID
- */
-#define SK_VENDORID			0x1148
-#define SK_DEVICEID_ALTIMA		0x4400
-#define SK_SUBSYSID_9D21		0x4421
-#define SK_SUBSYSID_9D41		0x4441
-
-/*
- * Altima PCI vendor/device ID.
- */
-#define ALTIMA_VENDORID			0x173b
-#define ALTIMA_DEVICE_AC1000		0x03e8
-#define ALTIMA_DEVICE_AC1002		0x03e9
-#define ALTIMA_DEVICE_AC9100	 	0x03ea			
-
-/*
- * Dell PCI vendor ID
- */
-
-#define DELL_VENDORID			0x1028
+#define BCOM_DEVICEID_BCM5788		0x169C
 
 /*
  * Offset of MAC address inside EEPROM.

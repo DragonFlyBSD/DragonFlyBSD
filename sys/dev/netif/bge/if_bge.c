@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.15 2004/03/14 15:36:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.16 2004/03/22 10:22:26 joerg Exp $
  *
  */
 
@@ -110,6 +110,7 @@
 #include <dev/netif/mii_layer/miidevs.h>
 #include <dev/netif/mii_layer/brgphyreg.h>
 
+#include <bus/pci/pcidevs.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
@@ -129,41 +130,47 @@
 #define BGE_DEVDESC_MAX		64	/* Maximum device description length */
 
 static struct bge_type bge_devs[] = {
-	{ ALT_VENDORID,	ALT_DEVICEID_BCM5700,
+	{ PCI_VENDOR_ALTEON, PCI_PRODUCT_ALTEON_BCM5700,
 		"Broadcom BCM5700 Gigabit Ethernet" },
-	{ ALT_VENDORID,	ALT_DEVICEID_BCM5701,
+	{ PCI_VENDOR_ALTEON, PCI_PRODUCT_ALTEON_BCM5700,
 		"Broadcom BCM5701 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5700,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5700,
 		"Broadcom BCM5700 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5701,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5701,
 		"Broadcom BCM5701 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5702,
-		"Broadcom BCM5702 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5702X,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5702X,
 		"Broadcom BCM5702X Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5703,
-		"Broadcom BCM5703 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5703X,
+	{ PCI_VENDOR_BROADCOM, BCOM_DEVICEID_BCM5702X,
+		"Broadcom BCM5702X Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5703X,
 		"Broadcom BCM5703X Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5704C,
+	{ PCI_VENDOR_BROADCOM, BCOM_DEVICEID_BCM5703X,
+		"Broadcom BCM5703X Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5704C,
 		"Broadcom BCM5704C Dual Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5704S,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5704S,
 		"Broadcom BCM5704S Dual Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5705,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705,
 		"Broadcom BCM5705 Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5705M,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705M,
 		"Broadcom BCM5705M Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5705M_ALT,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5705_ALT,
 		"Broadcom BCM5705M Gigabit Ethernet" },
-	{ BCOM_VENDORID, BCOM_DEVICEID_BCM5782,
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5782,
 		"Broadcom BCM5782 Gigabit Ethernet" },
-	{ SK_VENDORID, SK_DEVICEID_ALTIMA,
+	{ PCI_VENDOR_BROADCOM, BCOM_DEVICEID_BCM5788,
+		"Broadcom BCM5788 Gigabit Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5901,
+		"Broadcom BCM5901 Fast Ethernet" },
+	{ PCI_VENDOR_BROADCOM, PCI_PRODUCT_BROADCOM_BCM5901A2,
+		"Broadcom BCM5901A2 Fast Ethernet" },
+	{ PCI_VENDOR_SCHNEIDERKOCH, PCI_PRODUCT_SCHNEIDERKOCH_SK_9DX1,
 		"SysKonnect Gigabit Ethernet" },
-	{ ALTIMA_VENDORID, ALTIMA_DEVICE_AC1000,
+	{ PCI_VENDOR_ALTIMA, PCI_PRODUCT_ALTIMA_AC1000,
 		"Altima AC1000 Gigabit Ethernet" },
-	{ ALTIMA_VENDORID, ALTIMA_DEVICE_AC1002,
+	{ PCI_VENDOR_ALTIMA, PCI_PRODUCT_ALTIMA_AC1001,
 		"Altima AC1002 Gigabit Ethernet" },
-	{ ALTIMA_VENDORID, ALTIMA_DEVICE_AC9100,
+	{ PCI_VENDOR_ALTIMA, PCI_PRODUCT_ALTIMA_AC9100,
 		"Altima AC9100 Gigabit Ethernet" },
 	{ 0, 0, NULL }
 };
@@ -1849,7 +1856,8 @@ bge_attach(dev)
 		sc->bge_tbi = 1;
 
 	/* The SysKonnect SK-9D41 is a 1000baseSX card. */
-	if ((pci_read_config(dev, BGE_PCI_SUBSYS, 4) >> 16) == SK_SUBSYSID_9D41)
+	if ((pci_read_config(dev, BGE_PCI_SUBSYS, 4) >> 16) ==
+	     PCI_PRODUCT_SCHNEIDERKOCH_SK_9D41)
 		sc->bge_tbi = 1;
 
 	if (sc->bge_tbi) {
@@ -2242,9 +2250,9 @@ bge_intr(xsc)
 	 * Process link state changes.
 	 * Grrr. The link status word in the status block does
 	 * not work correctly on the BCM5700 rev AX and BX chips,
-	 * according to all available information.  Hence, we have
+	 * according to all available information. Hence, we have
 	 * to enable MII interrupts in order to properly obtain
-	 * async link changes.  Unfortunately, this also means that
+	 * async link changes. Unfortunately, this also means that
 	 * we have to read the MAC status register to detect link
 	 * changes, thereby adding an additional register access to
 	 * the interrupt handler.
@@ -2272,14 +2280,14 @@ bge_intr(xsc)
 				~(BGE_STATFLAG_UPDATED|
 				BGE_STATFLAG_LINKSTATE_CHANGED);
 			/*
-			 * Sometime PCS encoding errors are detected in
+			 * Sometimes PCS encoding errors are detected in
 			 * TBI mode (on fiber NICs), and for some reason
 			 * the chip will signal them as link changes.
 			 * If we get a link change event, but the 'PCS
 			 * encoding error' bit in the MAC status register
 			 * is set, don't bother doing a link check.
 			 * This avoids spurious "gigabit link up" messages
-			 * that sometimes appear on fiber NIC's during
+			 * that sometimes appear on fiber NICs during
 			 * periods of heavy traffic. (There should be no
 			 * effect on copper NICs.)
 			 */
