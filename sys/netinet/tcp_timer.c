@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.4 2003/08/13 18:34:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.5 2003/08/14 23:09:33 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -365,6 +365,23 @@ tcp_save_congestion_state(struct tcpcb *tp)
 		tp->t_rexmtTS = ticks;
 		tp->t_flags |= TF_FIRSTACCACK;
 	}
+}
+
+void
+tcp_revert_congestion_state(struct tcpcb *tp)
+{
+	tp->snd_cwnd = tp->snd_cwnd_prev;
+	tp->snd_ssthresh = tp->snd_ssthresh_prev;
+	tp->snd_recover = tp->snd_recover_prev;
+	if (tp->t_flags & TF_WASFRECOVERY)
+	    ENTER_FASTRECOVERY(tp);
+	if (tp->t_flags & TF_FASTREXMT)
+		++tcpstat.tcps_sndfastrexmitbad;
+	else
+		++tcpstat.tcps_sndrtobad;
+	tp->t_badrxtwin = 0;
+	tp->t_rxtshift = 0;
+	tp->snd_nxt = tp->snd_max;
 }
 
 void

@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2002-2003 Jeffrey Hsu
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.8 2003/08/13 18:34:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.9 2003/08/14 23:09:33 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -968,29 +969,24 @@ after_listen:
 				++tcpstat.tcps_predack;
 				/*
 				 * "bad retransmit" recovery
+				 *
+				 * If Eifel detection applies, then
+				 * it is deterministic, so use it
+				 * unconditionally over the old heuristic.
+				 * Otherwise, fall back to the old heuristic.
 				 */
-				useTS = tcp_do_eifel_detect &&
-				        (to.to_flags & TOF_TS) &&
-				        to.to_tsecr;
-				if ((useTS &&
-				     (tp->t_flags & TF_FIRSTACCACK) &&
-				     (to.to_tsecr < tp->t_rexmtTS)) ||
-				    (!useTS &&
-				     (tp->t_rxtshift == 1 &&
-				      ticks < tp->t_badrxtwin))) {
-					tp->snd_cwnd = tp->snd_cwnd_prev;
-					tp->snd_ssthresh =
-					    tp->snd_ssthresh_prev;
-					tp->snd_recover = tp->snd_recover_prev;
-					if (tp->t_flags & TF_WASFRECOVERY)
-					    ENTER_FASTRECOVERY(tp);
-					tp->snd_nxt = tp->snd_max;
-					tp->t_badrxtwin = 0;
-					tp->t_rxtshift = 0;
-					if (tp->t_flags & TF_FASTREXMT)
-						++tcpstat.tcps_sndfastrexmitbad;
-					else
-						++tcpstat.tcps_sndrtobad;
+				if (tcp_do_eifel_detect &&
+				    (to.to_flags & TOF_TS) && to.to_tsecr &&
+				    (tp->t_flags & TF_FIRSTACCACK)) {
+					/* Eifel detection applicable. */
+					if (to.to_tsecr < tp->t_rexmtTS) {
+						tcp_revert_congestion_state(tp);
+						++tcpstat.tcps_eifeldetected;
+					}
+				} else if (tp->t_rxtshift == 1 &&
+					   ticks < tp->t_badrxtwin) {
+					tcp_revert_congestion_state(tp);
+					++tcpstat.tcps_rttdetected;
 				}
 				tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT);
 				/*
@@ -1836,24 +1832,17 @@ process_ACK:
 		 * original cwnd and ssthresh, and proceed to transmit where
 		 * we left off.
 		 */
-		useTS = tcp_do_eifel_detect && (to.to_flags & TOF_TS) &&
-		    to.to_tsecr;
-		if ((useTS && (tp->t_flags & TF_FIRSTACCACK) && acked &&
-		     (to.to_tsecr < tp->t_rexmtTS)) ||
-		    (!useTS &&
-		     (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin))) {
-			tp->snd_cwnd = tp->snd_cwnd_prev;
-			tp->snd_ssthresh = tp->snd_ssthresh_prev;
-			tp->snd_recover = tp->snd_recover_prev;
-			if (tp->t_flags & TF_WASFRECOVERY)
-				ENTER_FASTRECOVERY(tp);
-			tp->snd_nxt = tp->snd_max;
-			tp->t_badrxtwin = 0;	/* XXX probably not required */
-			tp->t_rxtshift = 0;
-			if (tp->t_flags & TF_FASTREXMT)
-				++tcpstat.tcps_sndfastrexmitbad;
-			else
-				++tcpstat.tcps_sndrtobad;
+		if (tcp_do_eifel_detect && acked &&
+		    (to.to_flags & TOF_TS) && to.to_tsecr &&
+		    (tp->t_flags & TF_FIRSTACCACK)) {
+			/* Eifel detection applicable. */
+			if (to.to_tsecr < tp->t_rexmtTS) {
+				tcp_revert_congestion_state(tp);
+				++tcpstat.tcps_eifeldetected;
+			}
+		} else if (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin) {
+			tcp_revert_congestion_state(tp);
+			++tcpstat.tcps_rttdetected;
 		}
 
 		/*
