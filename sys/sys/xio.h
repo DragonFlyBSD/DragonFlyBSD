@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/xio.h,v 1.1 2004/03/31 19:24:13 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.2 2004/04/09 12:51:20 joerg Exp $
  */
 
 /*
@@ -76,4 +76,4 @@ int xio_copy_xtok(xio_t xio, void *kptr, int bytes);
 
 #endif /* _KERNEL */
 
-#endif /* !_SYS_UIO_H_ */
+#endif /* !_SYS_XIO_H_ */
