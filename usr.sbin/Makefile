@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.20 2005/02/01 18:20:32 liamfoy Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.21 2005/02/19 01:46:12 swildner Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR=	IPXrouted \
@@ -168,10 +168,6 @@ SUBDIR+=editmap \
 	sendmail
 .endif
 
-.if ${MACHINE_ARCH} == "alpha"
-SUBDIR+=elf2exe
-.endif
-
 .if ${MACHINE_ARCH} == "i386"
 SUBDIR+=apm \
 	apmd \
@@ -195,10 +191,6 @@ SUBDIR+=i4b
 
 .if ${MACHINE} == "i386"
 SUBDIR+=boot0cfg
-.endif
-
-.if ${MACHINE} == "pc98"
-SUBDIR+=boot98cfg
 .endif
 
 .include <bsd.subdir.mk>
