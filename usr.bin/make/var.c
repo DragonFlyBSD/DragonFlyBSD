@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.97 2005/02/15 11:09:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.98 2005/02/15 11:11:29 okumoto Exp $
  */
 
 /*-
@@ -931,13 +931,6 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
     Boolean *freePtr)
 {
     const char	*input = foo;
-    char	*rw_str = foo;
-
-    Var		*v;		/* Variable in invocation */
-    Boolean	dynamic;	/* TRUE if the variable is local and we're
-				 * expanding it in a non-local context. This
-				 * is done to support dynamic sources. The
-				 * result is just the invocation, unaltered */
 
     if (input[1] == '\0') {
 	/*
@@ -951,6 +944,8 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	/*
 	 * Check if brackets contain a variable name.
 	 */
+	char	*rw_str = foo;
+	Var	*v;		/* Variable in invocation */
 	const char	*vname;
 	size_t	vlen;	/* length of variable name, after embedded variable
 			 * expansion */
@@ -960,6 +955,10 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	char	startc;		/* Starting character when variable in parens
 				 * or braces */
 	char	*tstr;		/* Pointer into str */
+	Boolean	dynamic;	/* TRUE if the variable is local and we're
+				 * expanding it in a non-local context. This
+				 * is done to support dynamic sources. The
+				 * result is just the invocation, unaltered */
 
 	/* build up expanded variable name in this buffer */
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
@@ -1695,7 +1694,6 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    *tstr = endc;
 	}
 
-
 	if (v->flags & VAR_FROM_ENV) {
 	    if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
 		/*
@@ -1739,7 +1737,9 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 * We just need to check for the first character and return the
 	 * value if it exists.
 	 */
-	char	  name[2];
+	char	*result;
+	Var	*v;		/* Variable in invocation */
+	char	name[2];
 
 	name[0] = input[1];
 	name[1] = '\0';
@@ -1778,8 +1778,8 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    }
 	} else {
 	    if (v->flags & VAR_FROM_ENV) {
-		rw_str = VarExpand(v, ctxt, err);
-		if (rw_str == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
+		result = VarExpand(v, ctxt, err);
+		if (result == (char *)Buf_GetAll(v->val, (size_t *)NULL)) {
 		    /*
 		     * Returning the value unmodified, so tell the caller to free
 		     * the thing.
@@ -1787,12 +1787,12 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    *freePtr = TRUE;
 		    *lengthPtr = 2;
 		    VarDestroy(v, FALSE);
-		    return (rw_str);
+		    return (result);
 		} else {
 		    *freePtr = TRUE;
 		    *lengthPtr = 2;
 		    VarDestroy(v, TRUE);
-		    return (rw_str);
+		    return (result);
 		}
 	    } else {
 		*freePtr = TRUE;
