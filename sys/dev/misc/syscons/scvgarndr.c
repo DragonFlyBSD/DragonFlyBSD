@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvgarndr.c,v 1.5.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.7 2005/01/28 21:08:38 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvgarndr.c,v 1.8 2005/02/12 23:25:41 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -1019,7 +1019,8 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 	line_width = scp->sc->adp->va_line_width;
 	xoff = (x - scp->xoff*8)%8;
 	yoff = y - (y/line_width)*line_width;
-	ymax = imin(y + 16, scp->ypixel);
+	ymax = imin(scp->font_size * (scp->yoff + scp->ysize),
+	    imin(y + 16, scp->ypixel));
 
 	outw(GDCIDX, 0x0805);		/* read mode 1, write mode 0 */
 	outw(GDCIDX, 0x0001);		/* set/reset enable */
@@ -1028,7 +1029,7 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 	outw(GDCIDX, 0xff08);		/* bit mask */
 	outw(GDCIDX, 0x0803);		/* data rotate/function select (and) */
 	p = scp->sc->adp->va_window + line_width*y + x/8;
-	if (x < scp->xpixel - 8) {
+	if (x < 8 * (scp->xoff + scp->xsize) - 8) {
 		for (i = y, j = 0; i < ymax; ++i, ++j) {
 			m = ~(mouse_and_mask[j] >> xoff);
 #ifdef __i386__
@@ -1049,7 +1050,7 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 	}
 	outw(GDCIDX, 0x1003);		/* data rotate/function select (or) */
 	p = scp->sc->adp->va_window + line_width*y + x/8;
-	if (x < scp->xpixel - 8) {
+	if (x < 8 * (scp->xoff + scp->xsize) - 8) {
 		for (i = y, j = 0; i < ymax; ++i, ++j) {
 			m = mouse_or_mask[j] >> xoff;
 #ifdef __i386__
@@ -1074,11 +1075,8 @@ draw_pxlmouse_planar(scr_stat *scp, int x, int y)
 static void
 remove_pxlmouse_planar(scr_stat *scp, int x, int y)
 {
-	vm_offset_t p;
 	int col, row;
 	int pos;
-	int line_width;
-	int ymax;
 	int i;
 
 	/* erase the mouse cursor image */
@@ -1089,43 +1087,6 @@ remove_pxlmouse_planar(scr_stat *scp, int x, int y)
 	(*scp->rndr->draw)(scp, pos, i, FALSE);
 	if (row < scp->ysize - 1)
 		(*scp->rndr->draw)(scp, pos + scp->xsize, i, FALSE);
-
-	/* paint border if necessary */
-	line_width = scp->sc->adp->va_line_width;
-	outw(GDCIDX, 0x0005);		/* read mode 0, write mode 0 */
-	outw(GDCIDX, 0x0003);		/* data rotate/function select */
-	outw(GDCIDX, 0x0f01);		/* set/reset enable */
-	outw(GDCIDX, 0xff08);		/* bit mask */
-	outw(GDCIDX, (scp->border << 8) | 0x00);	/* set/reset */
-	if (row == scp->ysize - 1) {
-		i = (scp->ysize + scp->yoff)*scp->font_size;
-		ymax = imin(i + scp->font_size, scp->ypixel);
-		p = scp->sc->adp->va_window + i*line_width + scp->xoff + col;
-		if (col < scp->xsize - 1) {
-			for (; i < ymax; ++i) {
-				writeb(p, 0);
-				writeb(p + 1, 0);
-				p += line_width;
-			}
-		} else {
-			for (; i < ymax; ++i) {
-				writeb(p, 0);
-				p += line_width;
-			}
-		}
-	}
-	if ((col == scp->xsize - 1) && (scp->xoff > 0)) {
-		i = (row + scp->yoff)*scp->font_size;
-		ymax = imin(i + scp->font_size*2, scp->ypixel);
-		p = scp->sc->adp->va_window + i*line_width
-			+ scp->xoff + scp->xsize;
-		for (; i < ymax; ++i) {
-			writeb(p, 0);
-			p += line_width;
-		}
-	}
-	outw(GDCIDX, 0x0000);		/* set/reset */
-	outw(GDCIDX, 0x0001);		/* set/reset enable */
 }
 
 static void 
