@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.5 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.6 2004/08/09 14:40:08 eirikn Exp $
  *
  */
 
@@ -71,7 +71,7 @@ main(int argc, char **argv)
 	struct stat sb;
 	int c, mntflags, set_gid, set_uid, set_mask, error;
 	char *dev, *dir, mntpath[MAXPATHLEN];
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 	struct vfsconf vfc;
 #else
 	struct vfsconf *vfc;
@@ -145,7 +145,7 @@ main(int argc, char **argv)
 			args.mode = sb.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 	}
 
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 	error = getvfsbyname("ntfs", &vfc);
 	if(error && vfsisloadable("ntfs")) {
 		if(vfsload("ntfs"))
@@ -156,20 +156,20 @@ main(int argc, char **argv)
 #endif
 			err(EX_OSERR, "vfsload(ntfs)");
 		endvfsent();	/* clear cache */
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 		error = getvfsbyname("ntfs", &vfc);
 #else
 		vfc = getvfsbyname("ntfs");
 #endif
 	}
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 	if (error)
 #else
 	if (!vfc)
 #endif
 		errx(EX_OSERR, "ntfs filesystem is not available");
 
-#if __FreeBSD_version >= 300000
+#if __FreeBSD_version >= 300000 || defined(__DragonFly__)
 	if (mount(vfc.vfc_name, mntpath, mntflags, &args) < 0)
 #else
 	if (mount(vfc->vfc_index, mntpath, mntflags, &args) < 0)
