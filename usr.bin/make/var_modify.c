@@ -38,7 +38,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.21 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.22 2005/02/03 18:43:08 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -578,4 +578,3 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
     }
     return (addSpace || added);
 }
-
