@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.13 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.14 2004/09/15 01:22:59 joerg Exp $
  */
 
 /*
@@ -486,6 +486,7 @@ xe_detach(device_t dev) {
   struct xe_softc *sc = device_get_softc(dev);
 
   sc->arpcom.ac_if.if_flags &= ~IFF_RUNNING; 
+  callout_stop(&sc->xe_timer);
   ether_ifdetach(&sc->arpcom.ac_if);
   xe_deactivate(dev);
   return 0;
@@ -538,7 +539,7 @@ xe_attach (device_t dev) {
 
   /* Initialise the ifmedia structure */
   ifmedia_init(scp->ifm, 0, xe_media_change, xe_media_status);
-  callout_handle_init(&scp->chand);
+  callout_init(&scp->xe_timer);
 
   /*
    * Fill in supported media types.  Some cards _do_ support full duplex
@@ -1130,7 +1131,7 @@ static void xe_setmedia(void *xscp) {
 #endif
 
   /* Cancel any pending timeout */
-  untimeout(xe_setmedia, scp, scp->chand);
+  callout_stop(&scp->xe_timer);
   xe_disable_intr(scp);
 
   /* Select media */
@@ -1177,7 +1178,7 @@ static void xe_setmedia(void *xscp) {
 #endif
       scp->arpcom.ac_if.if_flags |= IFF_OACTIVE;
       scp->autoneg_status = XE_AUTONEG_WAITING;
-      scp->chand = timeout(xe_setmedia, scp, hz * 2);
+      callout_reset(&scp->xe_timer, hz * 2, xe_setmedia, scp);
       return;
 
      case XE_AUTONEG_WAITING:
@@ -1196,7 +1197,7 @@ static void xe_setmedia(void *xscp) {
 	bmcr |= PHY_BMCR_AUTONEGENBL|PHY_BMCR_AUTONEGRSTR;
 	xe_phy_writereg(scp, PHY_BMCR, bmcr);
 	scp->autoneg_status = XE_AUTONEG_STARTED;
-	scp->chand = timeout(xe_setmedia, scp, hz * 7/2);
+	callout_reset(&scp->xe_timer, hz * 7 / 2, xe_setmedia, scp);
 	return;
       }
       else {
@@ -1255,7 +1256,7 @@ static void xe_setmedia(void *xscp) {
 	if (scp->phy_ok) {
 	  xe_phy_writereg(scp, PHY_BMCR, PHY_BMCR_SPEEDSEL);
 	  scp->autoneg_status = XE_AUTONEG_100TX;
-	  scp->chand = timeout(xe_setmedia, scp, hz * 3);
+	  callout_reset(&scp->xe_timer, hz * 3, xe_setmedia, scp);
 	  return;
 	}
 	else {

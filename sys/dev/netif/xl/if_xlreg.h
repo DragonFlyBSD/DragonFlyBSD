@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xlreg.h,v 1.25.2.8 2003/08/10 21:55:57 silby Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.4 2004/03/19 06:30:08 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xlreg.h,v 1.5 2004/09/15 01:24:48 joerg Exp $
  */
 
 #define XL_EE_READ	0x0080	/* read, 5 bit address */
@@ -602,7 +602,7 @@ struct xl_softc {
 	int			xl_if_flags;
 	struct xl_list_data	xl_ldata;
 	struct xl_chain_data	xl_cdata;
-	struct callout_handle	xl_stat_ch;
+	struct callout		xl_stat_timer;
 	int			xl_flags;
 	struct resource		*xl_fres;
 	bus_space_handle_t	xl_fhandle;

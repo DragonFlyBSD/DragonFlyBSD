@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.14 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.15 2004/09/15 01:24:48 joerg Exp $
  */
 
 /*
@@ -1477,7 +1477,7 @@ xl_attach(dev)
 	}
 
 	sc->xl_unit = unit;
-	callout_handle_init(&sc->xl_stat_ch);
+	callout_init(&sc->xl_stat_timer);
 
 	/*
 	 * Now allocate a tag for the DMA descriptor lists and a chunk
@@ -2452,7 +2452,7 @@ xl_stats_update(xsc)
 	XL_SEL_WIN(7);
 
 	if (!sc->xl_stats_no_timeout)
-		sc->xl_stat_ch = timeout(xl_stats_update, sc, hz);
+		callout_reset(&sc->xl_stat_timer, hz, xl_stats_update, sc);
 
 	return;
 }
@@ -2980,7 +2980,7 @@ xl_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->xl_stat_ch = timeout(xl_stats_update, sc, hz);
+	callout_reset(&sc->xl_stat_timer, hz, xl_stats_update, sc);
 
 	splx(s);
 
@@ -3245,7 +3245,7 @@ xl_stop(sc)
 	if (sc->xl_flags & XL_FLAG_FUNCREG) bus_space_write_4 (sc->xl_ftag, sc->xl_fhandle, 4, 0x8000);
 
 	/* Stop the stats updater. */
-	untimeout(xl_stats_update, sc, sc->xl_stat_ch);
+	callout_stop(&sc->xl_stat_timer);
 
 	/*
 	 * Free data in the RX lists.

@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xevar.h,v 1.1.2.1 2000/06/01 01:23:53 imp Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xevar.h,v 1.3 2004/09/15 01:23:00 joerg Exp $
  */
 #ifndef DEV_XE_IF_XEDEV_H
 #define DEV_XE_IF_XEDEV_H
@@ -37,7 +37,7 @@ struct xe_softc {
   struct arpcom arpcom;
   struct ifmedia ifmedia;
   struct ifmib_iso_8802_3 mibdata;
-  struct callout_handle chand;
+  struct callout xe_timer;
   struct ifnet *ifp;
   struct ifmedia *ifm;
   char *card_type;	/* Card model name */
