@@ -1,9 +1,9 @@
 #	$NetBSD: Makefile,v 1.8 2004/01/01 02:44:09 mrg Exp $
-# $DragonFly: src/usr.bin/gzip/Makefile,v 1.2 2004/10/31 10:26:26 joerg Exp $
+# $DragonFly: src/usr.bin/gzip/Makefile,v 1.3 2004/11/16 16:54:57 y0netan1 Exp $
 
 PROG=		gzip
 SRCS=		gzip.c
-MAN=		gzip.1 gzexe.1 zdiff.1 zforce.1 zgrep.1 zmore.1 znew.1
+MAN=		gzip.1 gzexe.1 zdiff.1 zforce.1 zmore.1 znew.1
 
 DPADD=		${LIBZ}
 LDADD=		-lz
@@ -21,21 +21,17 @@ LDADD+=		-lbz2
 CFLAGS+=	-DNO_BZIP2_SUPPORT
 .endif
 
-SCRIPTS=	gzexe zdiff zforce zgrep zmore znew
+SCRIPTS=	gzexe zdiff zforce zmore znew
 
 MLINKS+=	gzip.1 gunzip.1 \
 		gzip.1 gzcat.1 \
 		gzip.1 zcat.1 \
-		zdiff.1 zcmp.1 \
-		zgrep.1 zegrep.1 \
-		zgrep.1 zfgrep.1
+		zdiff.1 zcmp.1
 
 LINKS+=		${BINDIR}/gzip ${BINDIR}/gunzip \
 		${BINDIR}/gzip ${BINDIR}/gzcat \
 		${BINDIR}/gzip ${BINDIR}/zcat \
-		${BINDIR}/zdiff ${BINDIR}/zcmp \
-		${BINDIR}/zgrep ${BINDIR}/zegrep \
-		${BINDIR}/zgrep ${BINDIR}/zfgrep
+		${BINDIR}/zdiff ${BINDIR}/zcmp
 
 .if defined(BOOTSTRAPPING)
 
