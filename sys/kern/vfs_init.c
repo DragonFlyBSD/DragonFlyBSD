@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
- * $FreeBSD: src/sys/kern/vfs_init.c,v 1.49 1999/12/12 16:30:34 peter Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.3 2004/03/15 06:10:51 dillon Exp $
+ * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.4 2004/03/16 18:42:35 hmp Exp $
  */
 
 
@@ -90,12 +90,35 @@ static int vnodeopv_num;
 static struct vnodeop_desc **vfs_op_descs;
 static int *vfs_op_desc_refs;			/* reference counts */
 static int num_op_descs;
-static int vfs_opv_numops;
 
+/*
+ * Allocate at least vfs_opv_numops number of VFS operation
+ * vectors.  The vector is never freed or deallocted once
+ * it is initalised, so the vnodes might safely reference
+ * it through their v_op pointer without the vector changing
+ * suddenly from under them.
+ *
+ * Allow this number to be tuned at boot.
+ */
+static int vfs_opv_numops = 96;
+TUNABLE_INT("vfs.opv_numops", &vfs_opv_numops);
+SYSCTL_INT(_vfs, OID_AUTO, opv_numops, CTLFLAG_RD, &vfs_opv_numops,
+	0, "Maximum number of operations in vop_t vector");
+
+static __inline int
+int_cmp(const void *a, const void *b)
+{
+	return(*(const int *)a - *(const int *)b);
+}
+
+/*
+ * Recalculate parts of the VFS operations vector (vfsops).
+ */
 static void
 vfs_opv_recalc(void)
 {
-	int i, j;
+	int i, j, k;
+	int *vfs_op_offsets;
 	vop_t ***opv_desc_vector_p;
 	vop_t **opv_desc_vector;
 	struct vnodeopv_entry_desc *opve_descp;
@@ -105,39 +128,75 @@ vfs_opv_recalc(void)
 		panic("vfs_opv_recalc called with null vfs_op_descs");
 
 	/*
-	 * Run through and make sure all known descs have an offset
-	 *
-	 * vop_default_desc is hardwired at offset 1, and offset 0
-	 * is a panic sanity check.
+	 * Allocate and initialize temporary array to store
+	 * offsets. Sort it to put all uninitialized entries
+	 * first and to make holes in existing offset sequence
+	 * detectable.
 	 */
-	vfs_opv_numops = 0;
+	MALLOC(vfs_op_offsets, int *,
+		num_op_descs * sizeof(int), M_VNODE, M_WAITOK);
+	if (vfs_op_offsets == NULL)
+		panic("vfs_opv_recals: no memory");
 	for (i = 0; i < num_op_descs; i++)
-		if (vfs_opv_numops < (vfs_op_descs[i]->vdesc_offset + 1))
-			vfs_opv_numops = vfs_op_descs[i]->vdesc_offset + 1;
-	for (i = 0; i < num_op_descs; i++)
-		if (vfs_op_descs[i]->vdesc_offset == 0)
-			vfs_op_descs[i]->vdesc_offset = vfs_opv_numops++;
+		vfs_op_offsets[i] = vfs_op_descs[i]->vdesc_offset;
+	qsort(vfs_op_offsets, num_op_descs, sizeof(int), int_cmp);
+
+	/*
+	 * Run through and make sure all known descs have an offset.
+	 * Use vfs_op_offsets to locate the holes in offset sequence
+	 * and reuse them.
+	 *
+	 * vop_default_desc is at hardwired at offset 1, and offset
+	 * 0 is a panic sanity check.
+	 */
+	j = k = 1;
+	for (i = 0; i < num_op_descs; i++) {
+		if (vfs_op_descs[i]->vdesc_offset != 0)
+			continue;
+		/*
+		 * Look at two adjacent entries vfs_op_offsets[j - 1] and
+		 * vfs_op_offsets[j] and see if we can fit a new offset
+		 * number in between. If not, look at the next pair until
+		 * hole is found or the end of the vfs_op_offsets vector is
+		 * reached. j has been initialized to 1 above so that
+		 * referencing (j-1)-th element is safe and the loop will
+		 * never execute if num_op_descs is 1. For each new value s
+		 * of i the j loop pick up from where previous iteration has
+		 * left off. When the last hole has been consumed or if no
+		 * hole has been found, we will start allocating new numbers
+		 * starting from the biggest already available offset + 1.
+		 */
+		for (; j < num_op_descs; j++) {
+			if (vfs_op_offsets[j - 1] < k && vfs_op_offsets[j] > k)
+				break;
+			k = vfs_op_offsets[j] + 1;
+		}
+		vfs_op_descs[i]->vdesc_offset = k++;
+	}
+	FREE(vfs_op_offsets, M_VNODE);
+
+	/* Panic if new VFSops will cause vector overflow */
+	if (k > vfs_opv_numops)
+		panic("VFS: Ran out of vop_t vector entries. "
+		      "%d entries required, only %d available.",
+		      k, vfs_opv_numops);
+
 	/*
 	 * Allocate and fill in the vectors
 	 */
 	for (i = 0; i < vnodeopv_num; i++) {
 		opv = vnodeopv_descs[i];
 		opv_desc_vector_p = opv->opv_desc_vector_p;
-#if 0
-		/* old vector may be in-use by vnodes */
-		/* XXX fixme, pre-allocate enough vectors? */
-		if (*opv_desc_vector_p)
-			FREE(*opv_desc_vector_p, M_VNODE);
-#endif
-		MALLOC(*opv_desc_vector_p, vop_t **,
-		       vfs_opv_numops * sizeof(vop_t *), M_VNODE, M_WAITOK);
+		if (*opv_desc_vector_p == NULL)
+			MALLOC(*opv_desc_vector_p, vop_t **,
+				vfs_opv_numops * sizeof(vop_t *), M_VNODE,
+				M_WAITOK | M_ZERO);
 		if (*opv_desc_vector_p == NULL)
 			panic("no memory for vop_t ** vector");
-		bzero(*opv_desc_vector_p, vfs_opv_numops * sizeof(vop_t *));
 
-		/* Fill in, with slot 0 being panic */
+		/* Fill in, with slot 0 being to return EOPNOTSUPP */
 		opv_desc_vector = *opv_desc_vector_p;
-		opv_desc_vector[0] = (vop_t *)vop_panic;
+		opv_desc_vector[0] = (vop_t *)vop_eopnotsupp;
 		for (j = 0; opv->opv_desc_ops[j].opve_op; j++) {
 			opve_descp = &(opv->opv_desc_ops[j]);
 			opv_desc_vector[opve_descp->opve_op->vdesc_offset] =
@@ -154,6 +213,9 @@ vfs_opv_recalc(void)
 	}
 }
 
+/*
+ * Add a vnode operations (vnops) vector to the global list.
+ */
 void
 vfs_add_vnodeops(const void *data)
 {
@@ -161,7 +223,6 @@ vfs_add_vnodeops(const void *data)
 	const struct vnodeopv_desc **newopv;
 	struct vnodeop_desc **newop;
 	int *newref;
-	vop_t **opv_desc_vector;
 	struct vnodeop_desc *desc;
 	int i, j;
 
@@ -179,7 +240,6 @@ vfs_add_vnodeops(const void *data)
 	vnodeopv_num++;
 
 	/* See if we have turned up a new vnode op desc */
-	opv_desc_vector = *(opv->opv_desc_vector_p);
 	for (i = 0; (desc = opv->opv_desc_ops[i].opve_op); i++) {
 		for (j = 0; j < num_op_descs; j++) {
 			if (desc == vfs_op_descs[j]) {
@@ -221,6 +281,9 @@ vfs_add_vnodeops(const void *data)
 	vfs_opv_recalc();
 }
 
+/*
+ * Unlink previously added vnode operations vector.
+ */
 void
 vfs_rm_vnodeops(const void *data)
 {
@@ -234,7 +297,6 @@ vfs_rm_vnodeops(const void *data)
 
 	opv = (const struct vnodeopv_desc *)data;
 	/* Lower ref counts on descs in the table and release if zero */
-	opv_desc_vector = *(opv->opv_desc_vector_p);
 	for (i = 0; (desc = opv->opv_desc_ops[i].opve_op); i++) {
 		for (j = 0; j < num_op_descs; j++) {
 			if (desc == vfs_op_descs[j]) {
@@ -248,6 +310,14 @@ vfs_rm_vnodeops(const void *data)
 				continue;
 			if (vfs_op_desc_refs[j] < 0)
 				panic("vfs_remove_vnodeops: negative refcnt");
+			/* Entry is going away - replace it with defaultop */
+			for (k = 0; k < vnodeopv_num; k++) {
+				opv_desc_vector = 
+					*(vnodeopv_descs[k]->opv_desc_vector_p);
+				if (opv_desc_vector != NULL)
+					opv_desc_vector[desc->vdesc_offset] =
+						opv_desc_vector[1];
+			}
 			MALLOC(newop, struct vnodeop_desc **,
 			       (num_op_descs - 1) * sizeof(*newop),
 			       M_VNODE, M_WAITOK);
@@ -284,6 +354,9 @@ vfs_rm_vnodeops(const void *data)
 	}
 	if (i == vnodeopv_num)
 		panic("vfs_remove_vnodeops: opv not found");
+	opv_desc_vector = *(opv->opv_desc_vector_p);
+	if (opv_desc_vector != NULL)
+		FREE(opv_desc_vector, M_VNODE);
 	MALLOC(newopv, const struct vnodeopv_desc **,
 	       (vnodeopv_num - 1) * sizeof(*newopv), M_VNODE, M_WAITOK);
 	if (newopv == NULL)
@@ -328,6 +401,13 @@ vfsinit(void *dummy)
 }
 SYSINIT(vfs, SI_SUB_VFS, SI_ORDER_FIRST, vfsinit, NULL)
 
+/*
+ * Register a VFS.
+ *
+ * After doing general initialisation, this function will
+ * call the filesystem specific initialisation vector op,
+ * i.e. vfsops->vfs_init().
+ */
 int
 vfs_register(struct vfsconf *vfc)
 {
@@ -357,8 +437,7 @@ vfs_register(struct vfsconf *vfc)
 	 * preserved by re-registering the oid after modifying its
 	 * number.
 	 */
-	for (oidp = SLIST_FIRST(&sysctl__vfs_children); oidp;
-	     oidp = SLIST_NEXT(oidp, oid_link))
+	SLIST_FOREACH(oidp, &sysctl__vfs_children, oid_link)
 		if (strcmp(oidp->oid_name, vfc->vfc_name) == 0) {
 			sysctl_unregister_oid(oidp);
 			oidp->oid_number = vfc->vfc_typenum;
@@ -374,6 +453,14 @@ vfs_register(struct vfsconf *vfc)
 }
 
 
+/*
+ * Remove previously registered VFS.
+ *
+ * After doing general de-registration like removing sysctl
+ * nodes etc, it will call the filesystem specific vector
+ * op, i.e. vfsops->vfs_uninit().
+ * 
+ */
 int
 vfs_unregister(struct vfsconf *vfc)
 {
