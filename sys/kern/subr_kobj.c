@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_kobj.c,v 1.4.2.1 2001/02/02 19:49:13 cg Exp $
- * $DragonFly: src/sys/kern/subr_kobj.c,v 1.3 2003/11/22 08:39:46 asmodai Exp $
+ * $DragonFly: src/sys/kern/subr_kobj.c,v 1.4 2004/03/31 16:39:20 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ kobj_class_compile(kobj_class_t cls)
 	/*
 	 * Allocate space for the compiled ops table.
 	 */
-	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_NOWAIT);
+	ops = malloc(sizeof(struct kobj_ops), M_KOBJ, M_INTWAIT);
 	if (!ops)
 		panic("kobj_compile_methods: out of memory");
 	kobj_class_compile_common(cls, ops);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.14 2004/03/13 14:38:22 joerg Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.15 2004/03/31 16:39:20 joerg Exp $
  */
 
 #include "opt_bus.h"
@@ -122,7 +122,7 @@ devclass_find_internal(const char *classname, int create)
 	PDEBUG(("%s not found%s", classname, (create? ", creating": "")));
 	if (create) {
 		dc = malloc(sizeof(struct devclass) + strlen(classname) + 1,
-			    M_BUS, M_NOWAIT | M_ZERO);
+			    M_BUS, M_INTWAIT | M_ZERO);
 		if (!dc)
 			return NULL;
 		dc->name = (char*) (dc + 1);
@@ -156,7 +156,7 @@ devclass_add_driver(devclass_t dc, driver_t *driver)
 
 	PDEBUG(("%s", DRIVERNAME(driver)));
 
-	dl = malloc(sizeof *dl, M_BUS, M_NOWAIT | M_ZERO);
+	dl = malloc(sizeof *dl, M_BUS, M_INTWAIT | M_ZERO);
 	if (!dl)
 		return(ENOMEM);
 
@@ -309,7 +309,7 @@ devclass_get_devices(devclass_t dc, device_t **devlistp, int *devcountp)
 		if (dc->devices[i])
 			count++;
 
-	list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT | M_ZERO);
+	list = malloc(count * sizeof(device_t), M_TEMP, M_INTWAIT | M_ZERO);
 	if (list == NULL)
 		return(ENOMEM);
 
@@ -367,7 +367,8 @@ devclass_alloc_unit(devclass_t dc, int *unitp)
 		int newsize;
 
 		newsize = roundup((unit + 1), MINALLOCSIZE / sizeof(device_t));
-		newlist = malloc(sizeof(device_t) * newsize, M_BUS, M_NOWAIT | M_ZERO);
+		newlist = malloc(sizeof(device_t) * newsize, M_BUS,
+				 M_INTWAIT | M_ZERO);
 		if (newlist == NULL)
 			return(ENOMEM);
 		bcopy(dc->devices, newlist, sizeof(device_t) * dc->maxunit);
@@ -390,7 +391,7 @@ devclass_add_device(devclass_t dc, device_t dev)
 	PDEBUG(("%s in devclass %s", DEVICENAME(dev), DEVCLANAME(dc)));
 
 	buflen = strlen(dc->name) + 5;
-	dev->nameunit = malloc(buflen, M_BUS, M_NOWAIT | M_ZERO);
+	dev->nameunit = malloc(buflen, M_BUS, M_INTWAIT | M_ZERO);
 	if (!dev->nameunit)
 		return(ENOMEM);
 
@@ -451,7 +452,7 @@ make_device(device_t parent, const char *name, int unit)
 	} else
 		dc = NULL;
 
-	dev = malloc(sizeof(struct device), M_BUS, M_NOWAIT | M_ZERO);
+	dev = malloc(sizeof(struct device), M_BUS, M_INTWAIT | M_ZERO);
 	if (!dev)
 		return(0);
 
@@ -698,7 +699,7 @@ device_get_children(device_t dev, device_t **devlistp, int *devcountp)
 	TAILQ_FOREACH(child, &dev->children, link)
 		count++;
 
-	list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT | M_ZERO);
+	list = malloc(count * sizeof(device_t), M_TEMP, M_INTWAIT | M_ZERO);
 	if (!list)
 		return(ENOMEM);
 
@@ -792,7 +793,7 @@ device_set_desc_internal(device_t dev, const char* desc, int copy)
 	}
 
 	if (copy && desc) {
-		dev->desc = malloc(strlen(desc) + 1, M_BUS, M_NOWAIT);
+		dev->desc = malloc(strlen(desc) + 1, M_BUS, M_INTWAIT);
 		if (dev->desc) {
 			strcpy(dev->desc, desc);
 			dev->flags |= DF_DESCMALLOCED;
@@ -987,7 +988,7 @@ device_set_driver(device_t dev, driver_t *driver)
 		kobj_init((kobj_t) dev, (kobj_class_t) driver);
 		if (!(dev->flags & DF_EXTERNALSOFTC)) {
 			dev->softc = malloc(driver->size, M_BUS,
-					    M_NOWAIT | M_ZERO);
+					    M_INTWAIT | M_ZERO);
 			if (!dev->softc) {
 				kobj_delete((kobj_t)dev, 0);
 				kobj_init((kobj_t) dev, &null_class);
@@ -1232,12 +1233,12 @@ resource_new_name(const char *name, int unit)
 	struct config_device *new;
 
 	new = malloc((devtab_count + 1) * sizeof(*new), M_TEMP,
-		     M_NOWAIT | M_ZERO);
+		     M_INTWAIT | M_ZERO);
 	if (new == NULL)
 		return(-1);
 	if (devtab && devtab_count > 0)
 		bcopy(devtab, new, devtab_count * sizeof(*new));
-	new[devtab_count].name = malloc(strlen(name) + 1, M_TEMP, M_NOWAIT);
+	new[devtab_count].name = malloc(strlen(name) + 1, M_TEMP, M_INTWAIT);
 	if (new[devtab_count].name == NULL) {
 		free(new, M_TEMP);
 		return(-1);
@@ -1257,12 +1258,12 @@ resource_new_resname(int j, const char *resname, resource_type type)
 	int i;
 
 	i = devtab[j].resource_count;
-	new = malloc((i + 1) * sizeof(*new), M_TEMP, M_NOWAIT | M_ZERO);
+	new = malloc((i + 1) * sizeof(*new), M_TEMP, M_INTWAIT | M_ZERO);
 	if (new == NULL)
 		return(-1);
 	if (devtab[j].resources && i > 0)
 		bcopy(devtab[j].resources, new, i * sizeof(*new));
-	new[i].name = malloc(strlen(resname) + 1, M_TEMP, M_NOWAIT);
+	new[i].name = malloc(strlen(resname) + 1, M_TEMP, M_INTWAIT);
 	if (new[i].name == NULL) {
 		free(new, M_TEMP);
 		return(-1);
@@ -1493,7 +1494,7 @@ resource_set_string(const char *name, int unit, const char *resname,
 		return(EFTYPE);
 	if (res->u.stringval)
 		free(res->u.stringval, M_TEMP);
-	res->u.stringval = malloc(strlen(value) + 1, M_TEMP, M_NOWAIT);
+	res->u.stringval = malloc(strlen(value) + 1, M_TEMP, M_INTWAIT);
 	if (res->u.stringval == NULL)
 		return(ENOMEM);
 	strcpy(res->u.stringval, value);
@@ -1548,7 +1549,7 @@ resource_cfgload(void *dummy __unused)
 					free(res->u.stringval, M_TEMP);
 				stringval = cfgres[j].u.stringval;
 				res->u.stringval = malloc(strlen(stringval) + 1,
-							  M_TEMP, M_NOWAIT);
+							  M_TEMP, M_INTWAIT);
 				if (res->u.stringval == NULL)
 					break;
 				strcpy(res->u.stringval, stringval);
@@ -1595,7 +1596,8 @@ resource_list_add(struct resource_list *rl,
 
 	rle = resource_list_find(rl, type, rid);
 	if (rle == NULL) {
-		rle = malloc(sizeof(struct resource_list_entry), M_BUS, M_NOWAIT);
+		rle = malloc(sizeof(struct resource_list_entry), M_BUS,
+			     M_INTWAIT);
 		if (!rle)
 			panic("resource_list_add: can't record entry");
 		SLIST_INSERT_HEAD(rl, rle, link);
