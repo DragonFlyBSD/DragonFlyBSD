@@ -32,14 +32,19 @@
  *
  * @(#)server.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/server.c,v 1.10 1999/08/28 01:05:09 peter Exp $
- * $DragonFly: src/usr.bin/rdist/server.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/server.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
  */
 
 #include <sys/wait.h>
+
+#include <stdarg.h>
+
 #include "defs.h"
 
-#define	ack() 	(void) write(rem, "\0\n", 2)
-#define	err() 	(void) write(rem, "\1\n", 2)
+#define	ack() write(rem, "\0\n", 2)
+#define	err() write(rem, "\1\n", 2)
+#define protoname() (pw ? pw->pw_name : user)
+#define protogroup() (gr ? gr->gr_name : group)
 
 struct	linkbuf *ihead = NULL;	/* list of files with more than one link */
 char	buf[BUFSIZ];		/* general purpose buffer */
@@ -65,8 +70,7 @@ static void	recvf(char *, int);
 static void	removeit(struct stat *);
 static int	response(void);
 static void	rmchk(int);
-static struct linkbuf *
-		    savelink(struct stat *);
+static struct linkbuf *savelink(struct stat *);
 static void	sendf(char *, int);
 static int	update(char *, int, struct stat *);
 
@@ -91,8 +95,8 @@ server()
 
 	rem = 0;
 	oumask = umask(0);
-	(void) snprintf(buf, sizeof(buf), "V%d\n", VERSION);
-	(void) write(rem, buf, strlen(buf));
+	snprintf(buf, sizeof(buf), "V%d\n", VERSION);
+	write(rem, buf, strlen(buf));
 
 	for (;;) {
 		cp = cmdbuf;
@@ -227,9 +231,7 @@ server()
  * (i.e., more than one source is being copied to the same destination).
  */
 void
-install(src, dest, destdir, opts)
-	char *src, *dest;
-	int destdir, opts;
+install(char *src, char *dest, int destdir, int opts)
 {
 	char *rname;
 	char destcopy[BUFSIZ];
@@ -281,10 +283,10 @@ install(src, dest, destdir, opts)
 	/*
 	 * Pass the destination file/directory name to remote.
 	 */
-	(void) snprintf(buf, sizeof(buf), "%c%s\n", destdir ? 'T' : 't', dest);
+	snprintf(buf, sizeof(buf), "%c%s\n", destdir ? 'T' : 't', dest);
 	if (debug)
 		printf("buf = %s", buf);
-	(void) write(rem, buf, strlen(buf));
+	write(rem, buf, strlen(buf));
 	if (response() < 0)
 		return;
 
@@ -303,9 +305,7 @@ install(src, dest, destdir, opts)
 }
 
 static char *
-remotename(pathname, src)
-	char *pathname;
-	char *src;
+remotename(char *pathname, char *src)
 {
 	char *cp;
 	int len;
@@ -320,17 +320,12 @@ remotename(pathname, src)
 }
 
 void
-installlink(lp, rname, opts)
-	struct linkbuf *lp;
-	char *rname;
-	int opts;
+installlink(struct linkbuf *lp, char *rname, int opts)
 {
 	if (*lp->target == 0)
-		(void) snprintf(buf, sizeof(buf), "k%o %s %s\n",
-			opts, lp->pathname, rname);
+		snprintf(buf, sizeof(buf), "k%o %s %s\n", opts, lp->pathname, rname);
 	else
-		(void) snprintf(buf, sizeof(buf), "k%o %s/%s %s\n",
-			opts, lp->target,
+		snprintf(buf, sizeof(buf), "k%o %s/%s %s\n", opts, lp->target,
 			remotename(lp->pathname, lp->src), rname);
 
 	if (debug) {
@@ -340,20 +335,16 @@ installlink(lp, rname, opts)
 		printf("rname        = %s\n", rname);
 		printf("buf          = %s",   buf);
 	}
-	(void) write(rem, buf, strlen(buf));
-	(void) response();
+	write(rem, buf, strlen(buf));
+	response();
 }
 
-#define protoname() (pw ? pw->pw_name : user)
-#define protogroup() (gr ? gr->gr_name : group)
 /*
  * Transfer the file or directory in target[].
  * rname is the name of the file on the remote host.
  */
 static void
-sendf(rname, opts)
-	char *rname;
-	int opts;
+sendf(char *rname, int opts)
 {
 	register struct subcmd *sc;
 	struct stat stb;
@@ -376,7 +367,7 @@ sendf(rname, opts)
 	}
 	if ((u = update(rname, opts, &stb)) == 0) {
 		if ((stb.st_mode & S_IFMT) == S_IFREG && stb.st_nlink > 1)
-			(void) savelink(&stb);
+			savelink(&stb);
 		return;
 	}
 
@@ -385,14 +376,14 @@ sendf(rname, opts)
 			log(lfp, "%s: no password entry for uid %d \n",
 				target, stb.st_uid);
 			pw = NULL;
-			(void)snprintf(user, sizeof(user), ":%lu", stb.st_uid);
+			snprintf(user, sizeof(user), ":%lu", stb.st_uid);
 		}
 	if (gr == NULL || gr->gr_gid != stb.st_gid)
 		if ((gr = getgrgid(stb.st_gid)) == NULL) {
 			log(lfp, "%s: no name for group %d\n",
 				target, stb.st_gid);
 			gr = NULL;
-			(void)snprintf(group, sizeof(group), ":%lu", stb.st_gid);
+			snprintf(group, sizeof(group), ":%lu", stb.st_gid);
 		}
 	if (u == 1) {
 		if (opts & VERIFY) {
@@ -409,12 +400,12 @@ sendf(rname, opts)
 			error("%s: %s\n", target, strerror(errno));
 			return;
 		}
-		(void) snprintf(buf, sizeof(buf), "D%o %04o 0 0 %s %s %s\n",
+		snprintf(buf, sizeof(buf), "D%o %04o 0 0 %s %s %s\n",
 		    opts, stb.st_mode & 07777, protoname(), protogroup(),
 		    rname);
 		if (debug)
 			printf("buf = %s", buf);
-		(void) write(rem, buf, strlen(buf));
+		write(rem, buf, strlen(buf));
 		if (response() < 0) {
 			closedir(d);
 			return;
@@ -443,8 +434,8 @@ sendf(rname, opts)
 			sendf(dp->d_name, opts);
 		}
 		closedir(d);
-		(void) write(rem, "E\n", 2);
-		(void) response();
+		write(rem, "E\n", 2);
+		response();
 		tp = otp;
 		*tp = '\0';
 		return;
@@ -460,17 +451,17 @@ sendf(rname, opts)
 				return;
 			}
 		}
-		(void) snprintf(buf, sizeof(buf),
+		snprintf(buf, sizeof(buf),
 			"K%o %o %qd %ld %s %s %s\n", opts,
 			stb.st_mode & 07777, stb.st_size, stb.st_mtime,
 			protoname(), protogroup(), rname);
 		if (debug)
 			printf("buf = %s", buf);
-		(void) write(rem, buf, strlen(buf));
+		write(rem, buf, strlen(buf));
 		if (response() < 0)
 			return;
 		sizerr = (readlink(target, buf, BUFSIZ - 1) != stb.st_size);
-		(void) write(rem, buf, stb.st_size);
+		write(rem, buf, stb.st_size);
 		if (debug)
 			printf("readlink = %.*s\n", (int)stb.st_size, buf);
 		goto done;
@@ -504,14 +495,14 @@ sendf(rname, opts)
 		error("%s: %s\n", target, strerror(errno));
 		return;
 	}
-	(void) snprintf(buf, sizeof(buf), "R%o %o %qd %ld %s %s %s\n", opts,
+	snprintf(buf, sizeof(buf), "R%o %o %qd %ld %s %s %s\n", opts,
 		stb.st_mode & 07777, stb.st_size, stb.st_mtime,
 		protoname(), protogroup(), rname);
 	if (debug)
 		printf("buf = %s", buf);
-	(void) write(rem, buf, strlen(buf));
+	write(rem, buf, strlen(buf));
 	if (response() < 0) {
-		(void) close(f);
+		close(f);
 		return;
 	}
 	sizerr = 0;
@@ -521,9 +512,9 @@ sendf(rname, opts)
 			amt = stb.st_size - i;
 		if (sizerr == 0 && read(f, buf, amt) != amt)
 			sizerr = 1;
-		(void) write(rem, buf, amt);
+		write(rem, buf, amt);
 	}
-	(void) close(f);
+	close(f);
 done:
 	if (sizerr) {
 		error("%s: file changed size\n", target);
@@ -542,19 +533,18 @@ dospecial:
 		log(lfp, "special \"%s\"\n", sc->sc_name);
 		if (opts & VERIFY)
 			continue;
-		(void) snprintf(buf, sizeof(buf), "SFILE=%s;%s\n", target,
+		snprintf(buf, sizeof(buf), "SFILE=%s;%s\n", target,
 		    sc->sc_name);
 		if (debug)
 			printf("buf = %s", buf);
-		(void) write(rem, buf, strlen(buf));
+		write(rem, buf, strlen(buf));
 		while (response() > 0)
 			;
 	}
 }
 
 static struct linkbuf *
-savelink(stp)
-	struct stat *stp;
+savelink(struct stat *stp)
 {
 	struct linkbuf *lp;
 
@@ -588,10 +578,7 @@ savelink(stp)
  * and 3 if comparing binaries to determine if out of date.
  */
 static int
-update(rname, opts, stp)
-	char *rname;
-	int opts;
-	struct stat *stp;
+update(char *rname, int opts, struct stat *stp)
 {
 	register char *cp, *s;
 	register off_t size;
@@ -603,10 +590,10 @@ update(rname, opts, stp)
 	/*
 	 * Check to see if the file exists on the remote machine.
 	 */
-	(void) snprintf(buf, sizeof(buf), "Q%s\n", rname);
+	snprintf(buf, sizeof(buf), "Q%s\n", rname);
 	if (debug)
 		printf("buf = %s", buf);
-	(void) write(rem, buf, strlen(buf));
+	write(rem, buf, strlen(buf));
 again:
 	cp = s = buf;
 	do {
@@ -626,10 +613,10 @@ again:
 		if (*s != '\n') {
 			if (!iamremote) {
 				fflush(stdout);
-				(void) write(2, s, cp - s);
+				write(2, s, cp - s);
 			}
 			if (lfp != NULL)
-				(void) fwrite(s, 1, cp - s, lfp);
+				fwrite(s, 1, cp - s, lfp);
 		}
 		return(0);
 
@@ -688,18 +675,17 @@ again:
  *	^Aerror message\n
  */
 static void
-query(name)
-	char *name;
+query(char *name)
 {
 	struct stat stb;
 
 	if (catname)
-		(void) snprintf(tp, sizeof(target) - (tp - target), "/%s",
+		snprintf(tp, sizeof(target) - (tp - target), "/%s",
 		    name);
 
 	if (lstat(target, &stb) < 0) {
 		if (errno == ENOENT)
-			(void) write(rem, "N\n", 2);
+			write(rem, "N\n", 2);
 		else
 			error("%s:%s: %s\n", host, target, strerror(errno));
 		*tp = '\0';
@@ -708,14 +694,14 @@ query(name)
 
 	switch (stb.st_mode & S_IFMT) {
 	case S_IFREG:
-		(void) snprintf(buf, sizeof(buf), "Y%qd %ld\n", stb.st_size,
+		snprintf(buf, sizeof(buf), "Y%qd %ld\n", stb.st_size,
 		    stb.st_mtime);
-		(void) write(rem, buf, strlen(buf));
+		write(rem, buf, strlen(buf));
 		break;
 
 	case S_IFLNK:
 	case S_IFDIR:
-		(void) write(rem, "Y\n", 2);
+		write(rem, "Y\n", 2);
 		break;
 
 	default:
@@ -726,12 +712,10 @@ query(name)
 }
 
 static void
-recvf(cmd, type)
-	char *cmd;
-	int type;
+recvf(char *cmd, int type)
 {
 	register char *cp;
-	int f = -1, mode, opts, wrerr, olderrno;
+	int f, mode, opts, wrerr, olderrno;
 	off_t i, size;
 	time_t mtime;
 	struct stat stb;
@@ -742,6 +726,7 @@ recvf(cmd, type)
 
 	cp = cmd;
 	opts = 0;
+	f = -1;
 	while (*cp >= '0' && *cp <= '7')
 		opts = (opts << 3) | (*cp++ - '0');
 	if (*cp++ != ' ') {
@@ -810,10 +795,10 @@ recvf(cmd, type)
 					return;
 				}
 				buf[0] = '\0';
-				(void) snprintf(buf + 1, sizeof(buf) - 1, 
+				snprintf(buf + 1, sizeof(buf) - 1,
 					"%s: Warning: remote mode %o != local mode %o\n",
 					target, stb.st_mode & 07777, mode);
-				(void) write(rem, buf, strlen(buf + 1) + 1);
+				write(rem, buf, strlen(buf + 1) + 1);
 				return;
 			}
 			errno = ENOTDIR;
@@ -830,15 +815,15 @@ recvf(cmd, type)
 	}
 
 	if (catname)
-		(void) snprintf(tp, sizeof(target) - (tp - target), "/%s", cp);
+		snprintf(tp, sizeof(target) - (tp - target), "/%s", cp);
 	cp = rindex(target, '/');
 	if (cp == NULL)
 		strcpy(new, tempname);
 	else if (cp == target)
-		(void) snprintf(new, sizeof(new), "/%s", tempname);
+		snprintf(new, sizeof(new), "/%s", tempname);
 	else {
 		*cp = '\0';
-		(void) snprintf(new, sizeof(new), "%s/%s", target, tempname);
+		snprintf(new, sizeof(new), "%s/%s", target, tempname);
 		*cp = '/';
 	}
 
@@ -868,7 +853,7 @@ recvf(cmd, type)
 
 			if ((i = readlink(target, tbuf, BUFSIZ - 1)) >= 0 &&
 			    i == size && strncmp(buf, tbuf, size) == 0) {
-				(void) unlink(new);
+				unlink(new);
 				ack();
 				return;
 			}
@@ -887,8 +872,9 @@ recvf(cmd, type)
 	ack();
 	wrerr = 0;
 	for (i = 0; i < size; i += BUFSIZ) {
-		int amt = BUFSIZ;
+		int amt;
 
+		amt = BUFSIZ;
 		cp = buf;
 		if (i + amt > size)
 			amt = size - i;
@@ -896,8 +882,8 @@ recvf(cmd, type)
 			int j = read(rem, cp, amt);
 
 			if (j <= 0) {
-				(void) close(f);
-				(void) unlink(new);
+				close(f);
+				unlink(new);
 				cleanup(0);
 			}
 			amt -= j;
@@ -929,18 +915,18 @@ badnew1:		error("%s:%s: %s\n", host, new, strerror(errno));
 		}
 		while ((c = getc(f1)) == getc(f2))
 			if (c == EOF) {
-				(void) fclose(f1);
-				(void) fclose(f2);
+				fclose(f1);
+				fclose(f2);
 				ack();
 				goto badnew2;
 			}
-		(void) fclose(f1);
-		(void) fclose(f2);
+		fclose(f1);
+		fclose(f2);
 		if (opts & VERIFY) {
 differ:			buf[0] = '\0';
-			(void) snprintf(buf + 1, sizeof(buf) - 1, 
+			snprintf(buf + 1, sizeof(buf) - 1, 
 			    "need to update: %s\n",target);
-			(void) write(rem, buf, strlen(buf + 1) + 1);
+			write(rem, buf, strlen(buf + 1) + 1);
 			goto badnew2;
 		}
 	}
@@ -956,23 +942,24 @@ differ:			buf[0] = '\0';
 		note("%s: utimes failed %s: %s\n", host, new, strerror(errno));
 
 	if (fchog(f, new, owner, group, mode) < 0) {
-badnew2:	if (f != -1) (void) close(f);
-		(void) unlink(new);
+badnew2:	if (f != -1)
+			close(f);
+		unlink(new);
 		return;
 	}
-	(void) close(f);
+	close(f);
 
 fixup:	if (rename(new, target) < 0) {
 badtarget:	error("%s:%s: %s\n", host, target, strerror(errno));
-		(void) unlink(new);
+		unlink(new);
 		return;
 	}
 
 	if (opts & COMPARE) {
 		buf[0] = '\0';
-		(void) snprintf(buf + 1, sizeof(buf) - 1,
+		snprintf(buf + 1, sizeof(buf) - 1,
 		    "updated %s\n", target);
-		(void) write(rem, buf, strlen(buf + 1) + 1);
+		write(rem, buf, strlen(buf + 1) + 1);
 	} else
 		ack();
 }
@@ -981,16 +968,16 @@ badtarget:	error("%s:%s: %s\n", host, target, strerror(errno));
  * Creat a hard link to existing file.
  */
 static void
-hardlink(cmd)
-	char *cmd;
+hardlink(char *cmd)
 {
 	register char *cp;
 	struct stat stb;
 	char *oldname;
-	int opts, exists = 0;
+	int opts, exists;
 
 	cp = cmd;
 	opts = 0;
+	exists = 0;
 	while (*cp >= '0' && *cp <= '7')
 		opts = (opts << 3) | (*cp++ - '0');
 	if (*cp++ != ' ') {
@@ -1007,7 +994,7 @@ hardlink(cmd)
 	*cp++ = '\0';
 
 	if (catname) {
-		(void) snprintf(tp, sizeof(target) - (tp - target), "/%s", cp);
+		snprintf(tp, sizeof(target) - (tp - target), "/%s", cp);
 	}
 	if (lstat(target, &stb) == 0) {
 		int mode = stb.st_mode & S_IFMT;
@@ -1039,8 +1026,7 @@ hardlink(cmd)
  * Check to see if parent directory exists and create one if not.
  */
 static int
-chkparent(name)
-	char *name;
+chkparent(char *name)
 {
 	register char *cp;
 	struct stat stb;
@@ -1067,10 +1053,7 @@ chkparent(name)
  * Change owner, group and mode of file.
  */
 static int
-fchog(fd, file, owner, group, mode)
-	int fd;
-	char *file, *owner, *group;
-	int mode;
+fchog(int fd, char *file, char *owner, char *group, int mode)
 {
 	register int i;
 	int uid, gid;
@@ -1131,8 +1114,7 @@ ok:	if ((fd != -1 && fchown(fd, uid, gid) < 0) || chown(file, uid, gid) < 0)
  * machine and remove them.
  */
 static void
-rmchk(opts)
-	int opts;
+rmchk(int opts)
 {
 	register char *cp, *s;
 	struct stat stb;
@@ -1143,10 +1125,10 @@ rmchk(opts)
 	/*
 	 * Tell the remote to clean the files from the last directory sent.
 	 */
-	(void) snprintf(buf, sizeof(buf), "C%o\n", opts & VERIFY);
+	snprintf(buf, sizeof(buf), "C%o\n", opts & VERIFY);
 	if (debug)
 		printf("buf = %s", buf);
-	(void) write(rem, buf, strlen(buf));
+	write(rem, buf, strlen(buf));
 	if (response() < 0)
 		return;
 	for (;;) {
@@ -1164,16 +1146,15 @@ rmchk(opts)
 			 * Y\n -- file doesn't exist - REMOVE.
 			 */
 			*--cp = '\0';
-			(void) snprintf(tp, sizeof(target) - (tp - target), 
-			    "/%s", s);
+			snprintf(tp, sizeof(target) - (tp - target), "/%s", s);
 			if (debug)
 				printf("check %s\n", target);
 			if (except(target))
-				(void) write(rem, "N\n", 2);
+				write(rem, "N\n", 2);
 			else if (lstat(target, &stb) < 0)
-				(void) write(rem, "Y\n", 2);
+				write(rem, "Y\n", 2);
 			else
-				(void) write(rem, "N\n", 2);
+				write(rem, "N\n", 2);
 			break;
 
 		case '\0':
@@ -1193,10 +1174,10 @@ rmchk(opts)
 			if (*s != '\n') {
 				if (!iamremote) {
 					fflush(stdout);
-					(void) write(2, s, cp - s);
+					write(2, s, cp - s);
 				}
 				if (lfp != NULL)
-					(void) fwrite(s, 1, cp - s, lfp);
+					fwrite(s, 1, cp - s, lfp);
 			}
 			if (buf[0] == '\2')
 				lostconn(0);
@@ -1214,8 +1195,7 @@ rmchk(opts)
  * for extraneous files and remove them.
  */
 static void
-clean(cp)
-	register char *cp;
+clean(register char *cp)
 {
 	DIR *d;
 	register struct dirent *dp;
@@ -1256,8 +1236,8 @@ clean(cp)
 			error("%s:%s: %s\n", host, target, strerror(errno));
 			continue;
 		}
-		(void) snprintf(buf, sizeof(buf), "Q%s\n", dp->d_name);
-		(void) write(rem, buf, strlen(buf));
+		snprintf(buf, sizeof(buf), "Q%s\n", dp->d_name);
+		write(rem, buf, strlen(buf));
 		cp = buf;
 		do {
 			if (read(rem, cp, 1) != 1)
@@ -1270,15 +1250,14 @@ clean(cp)
 		if (opts & VERIFY) {
 			cp = buf;
 			*cp++ = '\0';
-			(void) snprintf(cp, sizeof(buf) - 1,
-			    "need to remove: %s\n", target);
-			(void) write(rem, buf, strlen(cp) + 1);
+			snprintf(cp, sizeof(buf) - 1, "need to remove: %s\n", target);
+			write(rem, buf, strlen(cp) + 1);
 		} else
 			removeit(&stb);
 	}
 	closedir(d);
-	(void) write(rem, "E\n", 2);
-	(void) response();
+	write(rem, "E\n", 2);
+	response();
 	tp = otp;
 	*tp = '\0';
 }
@@ -1288,8 +1267,7 @@ clean(cp)
  * or an error message.
  */
 static void
-removeit(stp)
-	struct stat *stp;
+removeit(struct stat *stp)
 {
 	DIR *d;
 	struct dirent *dp;
@@ -1349,16 +1327,15 @@ bad:
 removed:
 	cp = buf;
 	*cp++ = '\0';
-	(void) snprintf(cp, sizeof(buf) - 1, "removed %s\n", target);
-	(void) write(rem, buf, strlen(cp) + 1);
+	snprintf(cp, sizeof(buf) - 1, "removed %s\n", target);
+	write(rem, buf, strlen(cp) + 1);
 }
 
 /*
  * Execute a shell command to handle special cases.
  */
 static void
-dospecial(cmd)
-	char *cmd;
+dospecial(char *cmd)
 {
 	int fd[2], status, pid, i;
 	register char *cp, *s;
@@ -1373,20 +1350,20 @@ dospecial(cmd)
 		/*
 		 * Return everything the shell commands print.
 		 */
-		(void) close(0);
-		(void) close(1);
-		(void) close(2);
-		(void) open(_PATH_DEVNULL, O_RDONLY);
-		(void) dup(fd[1]);
-		(void) dup(fd[1]);
-		(void) close(fd[0]);
-		(void) close(fd[1]);
+		close(0);
+		close(1);
+		close(2);
+		open(_PATH_DEVNULL, O_RDONLY);
+		dup(fd[1]);
+		dup(fd[1]);
+		close(fd[0]);
+		close(fd[1]);
 		setgid(groupid);
 		setuid(userid);
 		execl(_PATH_BSHELL, "sh", "-c", cmd, 0);
 		_exit(127);
 	}
-	(void) close(fd[1]);
+	close(fd[1]);
 	s = sbuf;
 	*s++ = '\0';
 	while ((i = read(fd[0], buf, sizeof(buf))) > 0) {
@@ -1405,137 +1382,103 @@ dospecial(cmd)
 				s--;
 				continue;
 			}
-			(void) write(rem, sbuf, s - sbuf);
+			write(rem, sbuf, s - sbuf);
 			s = &sbuf[1];
 		} while (--i);
 	}
 	if (s > &sbuf[1]) {
 		*s++ = '\n';
-		(void) write(rem, sbuf, s - sbuf);
+		write(rem, sbuf, s - sbuf);
 	}
 	while ((i = wait(&status)) != pid && i != -1)
 		;
 	if (i == -1)
 		status = -1;
-	(void) close(fd[0]);
+	close(fd[0]);
 	if (status)
 		error("shell returned %d\n", status);
 	else
 		ack();
 }
 
-#if __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 void
-#if __STDC__
 log(FILE *fp, const char *fmt, ...)
-#else
-log(fp, fmt, va_alist)
-	FILE *fp;
-	char *fmt;
-        va_dcl
-#endif
 {
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	/* Print changes locally if not quiet mode */
 	if (!qflag)
-		(void)vprintf(fmt, ap);
+		vprintf(fmt, ap);
 
 	/* Save changes (for mailing) if really updating files */
 	if (!(options & VERIFY) && fp != NULL)
-		(void)vfprintf(fp, fmt, ap);
+		vfprintf(fp, fmt, ap);
 	va_end(ap);
 }
 
 void
-#if __STDC__
 error(const char *fmt, ...)
-#else
-error(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	static FILE *fp;
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	++nerrs;
 	if (!fp && !(fp = fdopen(rem, "w")))
 		return;
 	if (iamremote) {
-		(void)fprintf(fp, "%crdist: ", 0x01);
-		(void)vfprintf(fp, fmt, ap);
+		fprintf(fp, "%crdist: ", 0x01);
+		vfprintf(fp, fmt, ap);
 		fflush(fp);
 	}
 	else {
 		fflush(stdout);
-		(void)fprintf(stderr, "rdist: ");
-		(void)vfprintf(stderr, fmt, ap);
+		fprintf(stderr, "rdist: ");
+		vfprintf(stderr, fmt, ap);
 		fflush(stderr);
 	}
 	if (lfp != NULL) {
-		(void)fprintf(lfp, "rdist: ");
-		(void)vfprintf(lfp, fmt, ap);
+		fprintf(lfp, "rdist: ");
+		vfprintf(lfp, fmt, ap);
 		fflush(lfp);
 	}
 	va_end(ap);
 }
 
 void
-#if __STDC__
 fatal(const char *fmt, ...)
-#else
-fatal(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	static FILE *fp;
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	++nerrs;
 	if (!fp && !(fp = fdopen(rem, "w")))
 		return;
 	if (iamremote) {
-		(void)fprintf(fp, "%crdist: ", 0x02);
-		(void)vfprintf(fp, fmt, ap);
+		fprintf(fp, "%crdist: ", 0x02);
+		vfprintf(fp, fmt, ap);
 		fflush(fp);
 	}
 	else {
 		fflush(stdout);
-		(void)fprintf(stderr, "rdist: ");
-		(void)vfprintf(stderr, fmt, ap);
+		fprintf(stderr, "rdist: ");
+		vfprintf(stderr, fmt, ap);
 		fflush(stderr);
 	}
 	if (lfp != NULL) {
-		(void)fprintf(lfp, "rdist: ");
-		(void)vfprintf(lfp, fmt, ap);
+		fprintf(lfp, "rdist: ");
+		vfprintf(lfp, fmt, ap);
 		fflush(lfp);
 	}
 	cleanup(0);
 }
 
 static int
-response()
+response(void)
 {
 	char *cp, *s;
 	char resp[BUFSIZ];
@@ -1571,10 +1514,10 @@ response()
 		if (*s != '\n') {
 			if (!iamremote) {
 				fflush(stdout);
-				(void) write(2, s, cp - s);
+				write(2, s, cp - s);
 			}
 			if (lfp != NULL)
-				(void) fwrite(s, 1, cp - s, lfp);
+				fwrite(s, 1, cp - s, lfp);
 		}
 		if (resp[0] == '\2')
 			lostconn(0);
@@ -1586,37 +1529,26 @@ response()
  * Remove temporary files and do any cleanup operations before exiting.
  */
 void
-cleanup(signo)
-	int signo;
+cleanup(int signo)
 {
-	(void) unlink(tempfile);
+	unlink(tempfile);
 	exit(1);
 }
 
 static void
-#if __STDC__
 note(const char *fmt, ...)
-#else
-note(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	static char buf[BUFSIZ];
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
+	vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 	comment(buf);
 }
 
 static void
-comment(s)
-	char *s;
+comment(char *s)
 {
 	char c;
 

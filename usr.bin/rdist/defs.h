@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)defs.h	8.1 (Berkeley) 6/9/93
- * $DragonFly: src/usr.bin/rdist/defs.h,v 1.4 2003/11/06 19:09:46 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/defs.h,v 1.5 2004/07/24 19:45:10 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -41,15 +41,16 @@
 
 #include <netinet/in.h>
 
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
-#include <pwd.h>
 #include <grp.h>
+#include <pwd.h>
 #include <stdio.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include "pathnames.h"
 
 /*

@@ -33,13 +33,15 @@
  *
  * @(#)gram.y	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/gram.y,v 1.6 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/gram.y,v 1.3 2003/11/06 19:09:46 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/gram.y,v 1.4 2004/07/24 19:45:10 eirikn Exp $
  */
 
-#include "defs.h"
 #include <sys/types.h>
-#include <regex.h>
+
 #include <limits.h>
+#include <regex.h>
+
+#include "defs.h"
 
 struct	cmd *cmds = NULL;
 struct	cmd *last_cmd;
@@ -363,9 +365,7 @@ again:
 }
 
 int
-any(c, str)
-	register int c;
-	register char *str;
+any(register int c, register char *str)
 {
 	while (*str)
 		if (c == *str++)
@@ -377,10 +377,7 @@ any(c, str)
  * Insert or append ARROW command to list of hosts to be updated.
  */
 void
-insert(label, files, hosts, subcmds)
-	char *label;
-	struct namelist *files, *hosts;
-	struct subcmd *subcmds;
+insert(char *label, struct namelist *files, struct namelist *hosts, struct subcmd *subcmds)
 {
 	register struct cmd *c, *prev, *nc;
 	register struct namelist *h, *next_h;
@@ -428,11 +425,7 @@ insert(label, files, hosts, subcmds)
  * executed in the order they appear in the distfile.
  */
 void
-append(label, files, stamp, subcmds)
-	char *label;
-	struct namelist *files;
-	char *stamp;
-	struct subcmd *subcmds;
+append(char *label, struct namelist *files, char *stamp, struct subcmd *subcmds)
 {
 	register struct cmd *c;
 
@@ -469,8 +462,7 @@ yyerror(s)
  * Return a copy of the string.
  */
 static char *
-makestr(str)
-	char *str;
+makestr(char *str)
 {
 	register char *cp, *s;
 
@@ -486,8 +478,7 @@ makestr(str)
  * Allocate a namelist structure.
  */
 struct namelist *
-makenl(name)
-	char *name;
+makenl(char *name)
 {
 	register struct namelist *nl;
 
@@ -503,8 +494,7 @@ makenl(name)
  * Make a sub command for lists of variables, commands, etc.
  */
 struct subcmd *
-makesubcmd(type)
-	int type;
+makesubcmd(int type)
 {
 	register struct subcmd *sc;
 

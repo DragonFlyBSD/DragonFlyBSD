@@ -33,19 +33,20 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/main.c,v 1.5 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/main.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/main.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
  */
-
-#include "defs.h"
-
-#define NHOSTS 100
-
 /*
  * Remote distribution program.
  */
 
-char	*distfile = NULL;
+#include <stdarg.h>
+
+#include "defs.h"
+
+#define NHOSTS 100
 #define _RDIST_TMP	"/rdistXXXXXX"
+
+char	*distfile = NULL;
 char	tempfile[sizeof _PATH_TMP + sizeof _RDIST_TMP + 1];
 char	*tempname;
 
@@ -72,13 +73,13 @@ static void usage(void);
 static void docmdargs(int, char *[]);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	register char *arg;
-	int cmdargs = 0;
+	int cmdargs;
 	char *dhosts[NHOSTS], **hp = dhosts;
+
+	cmdargs = 0;
 
 	pw = getpwuid(userid = getuid());
 	if (pw == NULL) {
@@ -222,7 +223,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	printf("%s\n%s\n%s\n",
 "usage: rdist [-nqbhirvwyD] [-P /path/to/rsh ] [-f distfile] [-d var=value]",
@@ -235,17 +236,17 @@ usage()
  * rcp like interface for distributing files.
  */
 static void
-docmdargs(nargs, args)
-	int nargs;
-	char *args[];
+docmdargs(int nargs, char **args)
 {
 	register struct namelist *nl, *prev;
 	register char *cp;
-	struct namelist *files = NULL, *hosts;
+	struct namelist *files, *hosts;
 	struct subcmd *cmds;
 	char *dest;
 	static struct namelist tnl = { NULL, NULL };
 	int i;
+
+	files = NULL;
 
 	if (nargs < 2)
 		usage();
@@ -291,8 +292,7 @@ docmdargs(nargs, args)
  * Print a list of NAME blocks (mostly for debugging).
  */
 void
-prnames(nl)
-	register struct namelist *nl;
+prnames(register struct namelist *nl)
 {
 	printf("( ");
 	while (nl != NULL) {
@@ -302,30 +302,16 @@ prnames(nl)
 	printf(")\n");
 }
 
-#if __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 void
-#if __STDC__
 warn(const char *fmt, ...)
-#else
-warn(fmt, va_alist)
-	char *fmt;
-        va_dcl
-#endif
 {
 	extern int yylineno;
 	va_list ap;
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
-	(void)fprintf(stderr, "rdist: line %d: Warning: ", yylineno);
-	(void)vfprintf(stderr, fmt, ap);
-	(void)fprintf(stderr, "\n");
+	fprintf(stderr, "rdist: line %d: Warning: ", yylineno);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
 	va_end(ap);
 }

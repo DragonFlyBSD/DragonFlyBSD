@@ -4,21 +4,22 @@
  * Chris Siebenmann <cks@utcc.utoronto.ca>.
  *
  * $FreeBSD: src/usr.bin/rdist/rshrcmd.c,v 1.6 1999/08/28 01:05:08 peter Exp $
- * $DragonFly: src/usr.bin/rdist/rshrcmd.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/rshrcmd.c,v 1.3 2004/07/24 19:45:10 eirikn Exp $
  */
 
-#include	"defs.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/wait.h>
+
+#include <netdb.h>
+#include <signal.h>
+
+#include "defs.h"
 
 #if	!defined(DIRECT_RCMD)
 
-#include      <sys/socket.h>
-#include      <sys/wait.h>
-#include      <signal.h>
-#include      <netdb.h>
-
 static char *
-xbasename(s)
-	char *s;
+xbasename(char *s)
 {
 	char *ret;
 
@@ -35,15 +36,10 @@ xbasename(s)
  * avoid having to be root.
  */
 int
-rshrcmd(ahost, port, luser, ruser, cmd, fd2p)
-	char  	**ahost;
-	u_short	port;
-	char	*luser, *ruser, *cmd;
-	int	*fd2p;
+rshrcmd(char **ahost, u_short port, char *luser, char *ruser, char *cmd, int *fd2p)
 {
-	int             cpid;
+	int             cpid, sp[2];
 	struct hostent  *hp;
-	int             sp[2];
 
 	/* insure that we are indeed being used as we thought. */
 	if (fd2p != 0)
@@ -54,7 +50,6 @@ rshrcmd(ahost, port, luser, ruser, cmd, fd2p)
 		error("%s: unknown host", *ahost);
 		return -1;
 	}
-	/* *ahost = hp->h_name; *//* This makes me nervous. */
 
 	/* get a socketpair we'll use for stdin and stdout. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sp) < 0) {
@@ -71,7 +66,7 @@ rshrcmd(ahost, port, luser, ruser, cmd, fd2p)
 	if (cpid == 0) {
 		/* child. we use sp[1] to be stdin/stdout, and close
 		   sp[0]. */
-		(void) close(sp[0]);
+		close(sp[0]);
 		if (dup2(sp[1], 0) < 0 || dup2(0,1) < 0) {
 			error("dup2 failed: %s.", strerror(errno));
 			_exit(255);
@@ -105,9 +100,9 @@ rshrcmd(ahost, port, luser, ruser, cmd, fd2p)
 	}
 	if (cpid > 0) {
 		/* parent. close sp[1], return sp[0]. */
-		(void) close(sp[1]);
+		close(sp[1]);
 		/* reap child. */
-		(void) wait(0);
+		wait(0);
 		return sp[0];
 	}
 	/*NOTREACHED*/

@@ -32,7 +32,7 @@
  *
  * @(#)expand.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/expand.c,v 1.8 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/expand.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/expand.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
  */
 
 #include "defs.h"
@@ -40,6 +40,9 @@
 #define	GAVSIZ	NCARGS / 6
 #define LC '{'
 #define RC '}'
+
+#define sort()	qsort((char *)sortbase, &eargv[eargc] - sortbase, \
+		      sizeof(*sortbase), argcmp), sortbase = &eargv[eargc]
 
 static char	shchars[] = "${[*?";
 
@@ -56,9 +59,6 @@ int	nleft;
 int	expany;		/* any expansions done? */
 char	*entp;
 char	**sortbase;
-
-#define sort()	qsort((char *)sortbase, &eargv[eargc] - sortbase, \
-		      sizeof(*sortbase), argcmp), sortbase = &eargv[eargc]
 
 static void	Cat(char *, char *);
 static void	addpath(int);
@@ -81,9 +81,7 @@ static int	smatch(char *, char *);
  * Major portions of this were snarfed from csh/sh.glob.c.
  */
 struct namelist *
-expand(list, wh)
-	struct namelist *list;
-	int wh;
+expand(struct namelist *list, int wh)
 {
 	register struct namelist *nl, *prev;
 	register int n;
@@ -140,8 +138,7 @@ expand(list, wh)
 }
 
 static void
-expstr(s)
-	char *s;
+expstr(char *s)
 {
 	register char *cp, *cp1;
 	register struct namelist *tp;
@@ -242,8 +239,7 @@ expstr(s)
 }
 
 static int
-argcmp(a1, a2)
-	const void *a1, *a2;
+argcmp(const void *a1, const void *a2)
 {
 
 	return (strcmp(*(char **)a1, *(char **)a2));
@@ -254,8 +250,7 @@ argcmp(a1, a2)
  * expand into a list, after searching directory
  */
 static void
-expsh(s)
-	char *s;
+expsh(char *s)
 {
 	register char *cp;
 	register char *spathp, *oldcp;
@@ -292,8 +287,7 @@ endit:
 }
 
 static void
-matchdir(pattern)
-	char *pattern;
+matchdir(char *pattern)
 {
 	struct stat stb;
 	register struct dirent *dp;
@@ -333,13 +327,14 @@ patherr2:
 }
 
 static int
-execbrc(p, s)
-	char *p, *s;
+execbrc(char *p, char *s)
 {
 	char restbuf[BUFSIZ + 2];
 	register char *pe, *pm, *pl;
-	int brclev = 0;
+	int brclev;
 	char *lm, savec, *spathp;
+
+	brclev = 0;
 
 	for (lm = restbuf; *p != '{'; *lm++ = *p++)
 		continue;
@@ -413,13 +408,13 @@ doit:
 }
 
 static int
-match(s, p)
-	char *s, *p;
+match(char *s, char *p)
 {
 	register int c;
 	register char *sentp;
-	char sexpany = expany;
+	char sexpany;
 
+	sexpany = expany;
 	if (*s == '.' && *p != '.')
 		return (0);
 	sentp = entp;
@@ -431,14 +426,12 @@ match(s, p)
 }
 
 static int
-amatch(s, p)
-	register char *s, *p;
+amatch(register char *s, register char *p)
 {
 	register int scc;
-	int ok, lc;
+	int ok, lc, c, cc;
 	char *spathp;
 	struct stat stb;
-	int c, cc;
 
 	expany = 1;
 	for (;;) {
@@ -521,12 +514,10 @@ slash:
 }
 
 static int
-smatch(s, p)
-	register char *s, *p;
+smatch(register char *s, register char *p)
 {
 	register int scc;
-	int ok, lc;
-	int c, cc;
+	int ok, lc, c, cc;
 
 	for (;;) {
 		scc = *s++ & TRIM;
@@ -580,12 +571,12 @@ smatch(s, p)
 }
 
 static void
-Cat(s1, s2)
-	register char *s1, *s2;
+Cat(register char *s1, register char *s2)
 {
-	int len = strlen(s1) + strlen(s2) + 1;
+	int len;
 	register char *s;
 
+	len = strlen(s1) + strlen(s2) + 1;
 	nleft -= len;
 	if (nleft <= 0 || ++eargc >= GAVSIZ)
 		yyerror("Arguments too long");
@@ -601,8 +592,7 @@ Cat(s1, s2)
 }
 
 static void
-addpath(c)
-	int c;
+addpath(int c)
 {
 
 	if (pathp >= lastpathp)
@@ -619,10 +609,7 @@ addpath(c)
  * part corresponding to `file'.
  */
 char *
-exptilde(buf, file, maxlen)
-	char buf[];
-	register char *file;
-	int maxlen;
+exptilde(char buf[], register char *file, int maxlen)
 {
 	register char *s1, *s2, *s3;
 	extern char homedir[];

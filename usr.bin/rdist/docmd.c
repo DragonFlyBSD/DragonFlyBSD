@@ -32,13 +32,16 @@
  *
  * @(#)docmd.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/docmd.c,v 1.12 1999/08/28 01:05:06 peter Exp $
- * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.3 2003/11/03 19:31:31 eirikn Exp $
+ * $DragonFly: src/usr.bin/rdist/docmd.c,v 1.4 2004/07/24 19:45:10 eirikn Exp $
  */
 
-#include "defs.h"
-#include <setjmp.h>
+#include <sys/types.h>
+
 #include <netdb.h>
 #include <regex.h>
+#include <setjmp.h>
+
+#include "defs.h"
 
 FILE	*lfp;			/* log file for recording files updated */
 struct	subcmd *subcmds;	/* list of sub-commands for current cmd */
@@ -60,10 +63,7 @@ static int	 remotecmd(char *, char *, char *, char *);
  * Do the commands in cmds (initialized by yyparse).
  */
 void
-docmds(dhosts, argc, argv)
-	char **dhosts;
-	int argc;
-	char **argv;
+docmds(char **dhosts, int argc, char **argv)
 {
 	register struct cmd *c;
 	register struct namelist *f;
@@ -116,11 +116,7 @@ docmds(dhosts, argc, argv)
  * Process commands for sending files to other machines.
  */
 static void
-doarrow(filev, files, rhost, cmds)
-	char **filev;
-	struct namelist *files;
-	char *rhost;
-	struct subcmd *cmds;
+doarrow(char **filev, struct namelist *files, char *rhost, struct subcmd *cmds)
 {
 	register struct namelist *f;
 	register struct subcmd *sc;
@@ -156,7 +152,7 @@ doarrow(filev, files, rhost, cmds)
 				if (strcmp(f->n_name, *cpp) == 0)
 					goto found;
 			if (!nflag)
-				(void) fclose(lfp);
+				fclose(lfp);
 			continue;
 		}
 	found:
@@ -174,9 +170,9 @@ doarrow(filev, files, rhost, cmds)
 	}
 done:
 	if (!nflag) {
-		(void) signal(SIGPIPE, cleanup);
+		signal(SIGPIPE, cleanup);
 		if (lfp)
-			(void) fclose(lfp);
+			fclose(lfp);
 		lfp = NULL;
 	}
 	for (sc = cmds; sc != NULL; sc = sc->sc_next)
@@ -185,7 +181,7 @@ done:
 	if (!nflag) {
 		struct linkbuf *nextihead;
 
-		(void) unlink(tempfile);
+		unlink(tempfile);
 		for (; ihead != NULL; ihead = nextihead) {
 			nextihead = ihead->nextp;
 			if ((opts & IGNLNKS) || ihead->count == 0)
@@ -197,10 +193,7 @@ done:
 	}
 }
 
-static int remotecmd(rhost, luser, ruser, cmd)
-	char *rhost;
-	char *luser, *ruser;
-	char *cmd;
+static int remotecmd(char *rhost, char *luser, char *ruser, char *cmd)
 {
 	int desc;
 	static int port = -1;
@@ -210,16 +203,16 @@ static int remotecmd(rhost, luser, ruser, cmd)
 		printf("Remote command = '%s'\n", cmd);
 	}
 
-	(void) fflush(stdout);
-	(void) fflush(stderr);
-	(void) signal(SIGALRM, cleanup);
-	(void) alarm(RTIMEOUT);
+	fflush(stdout);
+	fflush(stderr);
+	signal(SIGALRM, cleanup);
+	alarm(RTIMEOUT);
 
 	if (geteuid() == 0 && strcmp(path_rsh, _PATH_RSH) == 0) {
 		if (debug) 
 			printf("I am root, therefore direct rcmd\n");
 
-		(void) signal(SIGPIPE, cleanup);
+		signal(SIGPIPE, cleanup);
 
 		if (port < 0) {
 			struct servent *sp;
@@ -233,13 +226,13 @@ static int remotecmd(rhost, luser, ruser, cmd)
 	} else {
 		if (debug)
 			printf("Remote shell command = '%s'\n", path_rsh);
-		(void) signal(SIGPIPE, SIG_IGN);
+		signal(SIGPIPE, SIG_IGN);
 		desc = rshrcmd(&rhost, -1, luser, ruser, cmd, 0);
 		if (desc > 0)
-			(void) signal(SIGPIPE, cleanup);
+			signal(SIGPIPE, cleanup);
 	}
 
-	(void) alarm(0);
+	alarm(0);
 
 	return(desc);
 }
@@ -249,8 +242,7 @@ static int remotecmd(rhost, luser, ruser, cmd)
  * Create a connection to the rdist server on the machine rhost.
  */
 static int
-makeconn(rhost)
-	char *rhost;
+makeconn(char *rhost)
 {
 	register char *ruser, *cp;
 	static char *cur_host = NULL;
@@ -288,8 +280,7 @@ makeconn(rhost)
 		ruser = user;
 	if (!qflag)
 		printf("updating host %s\n", rhost);
-	(void) snprintf(buf, sizeof(buf), "%s -Server%s",
-	    _PATH_RDIST, qflag ? " -q" : "");
+	snprintf(buf, sizeof(buf), "%s -Server%s", _PATH_RDIST, qflag ? " -q" : "");
 	if (port < 0) {
 		struct servent *sp;
 
@@ -350,15 +341,14 @@ closeconn()
 		printf("closeconn()\n");
 
 	if (rem >= 0) {
-		(void) write(rem, "\2\n", 2);
-		(void) close(rem);
+		write(rem, "\2\n", 2);
+		close(rem);
 		rem = -1;
 	}
 }
 
 void
-lostconn(signo)
-	int signo;
+lostconn(int signo)
 {
 	if (iamremote)
 		cleanup(0);
@@ -367,11 +357,12 @@ lostconn(signo)
 }
 
 static int
-okname(name)
-	register char *name;
+okname(register char *name)
 {
-	register char *cp = name;
+	register char *cp;
 	register int c;
+
+	cp = name;
 
 	do {
 		c = *cp;
@@ -395,11 +386,7 @@ extern	char target[], *tp;
  * Process commands for comparing files to time stamp files.
  */
 static void
-dodcolon(filev, files, stamp, cmds)
-	char **filev;
-	struct namelist *files;
-	char *stamp;
-	struct subcmd *cmds;
+dodcolon(char **filev, struct namelist *files, char *stamp, struct subcmd *cmds)
 {
 	register struct subcmd *sc;
 	register struct namelist *f;
@@ -431,9 +418,9 @@ dodcolon(filev, files, stamp, cmds)
 			error("%s: %s\n", stamp, strerror(errno));
 			return;
 		}
-		(void) gettimeofday(&tv[0], &tz);
+		gettimeofday(&tv[0], &tz);
 		tv[1] = tv[0];
-		(void) utimes(stamp, tv);
+		utimes(stamp, tv);
 	}
 
 	for (f = files; f != NULL; f = f->n_next) {
@@ -449,20 +436,19 @@ dodcolon(filev, files, stamp, cmds)
 	}
 
 	if (tfp != NULL)
-		(void) fclose(tfp);
+		fclose(tfp);
 	for (sc = cmds; sc != NULL; sc = sc->sc_next)
 		if (sc->sc_type == NOTIFY)
 			notify(tempfile, NULL, sc->sc_args, lastmod);
 	if (!nflag && !(options & VERIFY))
-		(void) unlink(tempfile);
+		unlink(tempfile);
 }
 
 /*
  * Compare the mtime of file to the list of time stamps.
  */
 static void
-cmptime(name)
-	char *name;
+cmptime(char *name)
 {
 	struct stat stb;
 
@@ -510,8 +496,7 @@ cmptime(name)
 }
 
 static void
-rcmptime(st)
-	struct stat *st;
+rcmptime(struct stat *st)
 {
 	register DIR *d;
 	register struct dirent *dp;
@@ -554,10 +539,7 @@ rcmptime(st)
  * stamp file.
  */
 static void
-notify(file, rhost, to, lmod)
-	char *file, *rhost;
-	register struct namelist *to;
-	time_t lmod;
+notify(char *file, char *rhost, register struct namelist *to, time_t lmod)
 {
 	register int fd, len;
 	struct stat stb;
@@ -580,21 +562,21 @@ notify(file, rhost, to, lmod)
 	}
 	if (fstat(fd, &stb) < 0) {
 		error("%s: %s\n", file, strerror(errno));
-		(void) close(fd);
+		close(fd);
 		return;
 	}
 	if (stb.st_size == 0) {
-		(void) close(fd);
+		close(fd);
 		return;
 	}
 	/*
 	 * Create a pipe to mailling program.
 	 */
-	(void) snprintf(buf, sizeof(buf), "%s -oi -t", _PATH_SENDMAIL);
+	snprintf(buf, sizeof(buf), "%s -oi -t", _PATH_SENDMAIL);
 	pf = popen(buf, "w");
 	if (pf == NULL) {
 		error("notify: \"%s\" failed\n", _PATH_SENDMAIL);
-		(void) close(fd);
+		close(fd);
 		return;
 	}
 	/*
@@ -623,18 +605,17 @@ notify(file, rhost, to, lmod)
 	putc('\n', pf);
 
 	while ((len = read(fd, buf, BUFSIZ)) > 0)
-		(void) fwrite(buf, 1, len, pf);
-	(void) close(fd);
-	(void) pclose(pf);
+		fwrite(buf, 1, len, pf);
+
+	close(fd);
+	pclose(pf);
 }
 
 /*
  * Return true if name is in the list.
  */
 int
-inlist(list, file)
-	struct namelist *list;
-	char *file;
+inlist(struct namelist *list, char *file)
 {
 	register struct namelist *nl;
 
@@ -648,8 +629,7 @@ inlist(list, file)
  * Return TRUE if file is in the exception list.
  */
 int
-except(file)
-	char *file;
+except(char *file)
 {
 	register struct	subcmd *sc;
 	register struct	namelist *nl;
@@ -681,8 +661,7 @@ except(file)
 }
 
 char *
-colon(cp)
-	register char *cp;
+colon(register char *cp)
 {
 
 	while (*cp) {

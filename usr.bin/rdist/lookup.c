@@ -32,12 +32,12 @@
  *
  * @(#)lookup.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/rdist/lookup.c,v 1.6 1999/08/28 01:05:07 peter Exp $
- * $DragonFly: src/usr.bin/rdist/lookup.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/rdist/lookup.c,v 1.3 2004/07/24 19:45:10 eirikn Exp $
  */
 
 #include "defs.h"
 
-	/* symbol types */
+/* symbol types */
 #define VAR	1
 #define CONST	2
 
@@ -54,12 +54,13 @@ static struct syment *hashtab[HASHSIZE];
  * Define a variable from a command line argument.
  */
 void
-define(name)
-	char *name;
+define(char *name)
 {
 	register char *cp, *s;
 	register struct namelist *nl;
-	struct namelist *value = NULL;
+	struct namelist *value;
+
+	value = NULL;
 
 	if (debug)
 		printf("define(%s)\n", name);
@@ -107,7 +108,7 @@ define(name)
 			cp = s;
 		}
 	}
-	(void) lookup(name, REPLACE, value);
+	lookup(name, REPLACE, value);
 }
 
 /*
@@ -116,12 +117,8 @@ define(name)
  * INSERT - insert name with value, error if already defined.
  * REPLACE - insert or replace name with value.
  */
-
 struct namelist *
-lookup(name, action, value)
-	char *name;
-	int action;
-	struct namelist *value;
+lookup(char *name, int action, struct namelist *value)
 {
 	register unsigned n;
 	register char *cp;
@@ -141,8 +138,7 @@ lookup(name, action, value)
 			continue;
 		if (action != LOOKUP) {
 			if (action != INSERT || s->s_type != CONST) {
-				(void)snprintf(buf, sizeof(buf),
-				    "%s redefined", name);
+				snprintf(buf, sizeof(buf),"%s redefined", name);
 				yyerror(buf);
 			}
 		}
@@ -150,7 +146,7 @@ lookup(name, action, value)
 	}
 
 	if (action == LOOKUP) {
-		(void)snprintf(buf, sizeof(buf), "%s undefined", name);
+		snprintf(buf, sizeof(buf), "%s undefined", name);
 		yyerror(buf);
 		return(NULL);
 	}
