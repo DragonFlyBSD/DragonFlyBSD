@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004, 2005 The DragonFly Project.  All rights reserved.
  * 
  * This code is derived from software contributed to The DragonFly Project
  * by Simon 'corecode' Schubert <corecode@fs.ei.tum.de>.
@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/mapped_ioctl.h,v 1.1 2004/08/13 11:59:00 joerg Exp $
+ * $DragonFly: src/sys/sys/mapped_ioctl.h,v 1.2 2005/03/01 00:43:02 corecode Exp $
  */
 #ifndef _SYS_MAPPED_IOCTL_H_
 #define _SYS_MAPPED_IOCTL_H_
@@ -42,23 +42,26 @@ struct file;
 struct thread;
 struct ioctl_map_entry;
 
-typedef int	(ioctl_map_func)(struct file *, u_long, u_long, caddr_t,
+typedef int	(ioctl_wrap_func)(struct file *, u_long, u_long, caddr_t,
 				 struct thread *);
+typedef u_long	(ioctl_map_func)(u_long, u_long, u_long, u_long, u_long, u_long);
 
 struct ioctl_map_range {
-	u_long		start;
-	u_long		end;
-	u_long		maptocmd;
-	ioctl_map_func *func;
+	u_long		start;		/* Start of source range; inclusive */
+	u_long		end;		/* End of source range; inclusive */
+	u_long		maptocmd;	/* Start of destination range */
+	u_long		maptoend;	/* End of destination range */
+	ioctl_wrap_func *wrapfunc;	/* Ioctl handler to use */
+	ioctl_map_func  *mapfunc;	/* Handler to map source to dest */
 };
 
-#define MAPPED_IOCTL_MAPRANGE(c,e,t,f)	{ (c), (e), (t), (f) }
-#define MAPPED_IOCTL_MAPF(c,t,f)    MAPPED_IOCTL_MAPRANGE((c), (c), (t), (f))
-#define MAPPED_IOCTL_MAP(c,t)	    MAPPED_IOCTL_MAPF((c), (t), NULL)
-#define MAPPED_IOCTL_IO(c,f)	    MAPPED_IOCTL_MAPF((c), _IO(0, 0), (f))
-#define MAPPED_IOCTL_IOR(c,f,t)	    MAPPED_IOCTL_MAPF((c), _IOR(0, 0, t), (f))
-#define MAPPED_IOCTL_IOW(c,f,t)	    MAPPED_IOCTL_MAPF((c), _IOW(0, 0, t), (f))
-#define MAPPED_IOCTL_IOWR(c,f,t)    MAPPED_IOCTL_MAPF((c), _IOWR(0, 0, t), (f))
+#define MAPPED_IOCTL_MAPRANGE(c,e,t,r,f,m)	{ (c), (e), (t), (r), (f), (m) }
+#define MAPPED_IOCTL_MAPF(c,t,f)		MAPPED_IOCTL_MAPRANGE((c), (c), (t), (t), (f), NULL)
+#define MAPPED_IOCTL_MAP(c,t)			MAPPED_IOCTL_MAPF((c), (t), NULL)
+#define MAPPED_IOCTL_IO(c,f)			MAPPED_IOCTL_MAPF((c), _IO(0, 0), (f))
+#define MAPPED_IOCTL_IOR(c,f,t) 		MAPPED_IOCTL_MAPF((c), _IOR(0, 0, t), (f))
+#define MAPPED_IOCTL_IOW(c,f,t) 		MAPPED_IOCTL_MAPF((c), _IOW(0, 0, t), (f))
+#define MAPPED_IOCTL_IOWR(c,f,t)		MAPPED_IOCTL_MAPF((c), _IOWR(0, 0, t), (f))
 
 struct ioctl_map {
 	u_long mask;

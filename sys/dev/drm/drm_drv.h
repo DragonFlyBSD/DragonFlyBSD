@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.10 2004/09/18 16:25:54 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.11 2005/03/01 00:43:02 corecode Exp $
  */
 
 /*
@@ -1144,10 +1144,9 @@ MODULE_DEPEND(DRIVER_NAME, linux, 1, 1, 1);
 #define LINUX_IOCTL_DRM_MIN		0x6400
 #define LINUX_IOCTL_DRM_MAX		0x64ff
 
-static ioctl_map_func DRM(ioctl_dirmap);
 static struct ioctl_map_range DRM(ioctl_cmds)[] = {
-	/* XXX: we should have a BSD #define for the range */
-	MAPPED_IOCTL_MAPRANGE(LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX, LINUX_IOCTL_DRM_MIN, DRM(ioctl_dirmap)),
+	MAPPED_IOCTL_MAPRANGE(LINUX_IOCTL_DRM_MIN, LINUX_IOCTL_DRM_MAX, LINUX_IOCTL_DRM_MIN,
+			      LINUX_IOCTL_DRM_MAX, NULL, linux_gen_dirmap),
 	MAPPED_IOCTL_MAPF(0, 0, NULL)
 };
 
@@ -1161,12 +1160,5 @@ SYSINIT(DRM(register), SI_SUB_KLD, SI_ORDER_MIDDLE,
     mapped_ioctl_register_handler, &DRM(ioctl_handler));
 SYSUNINIT(DRM(unregister), SI_SUB_KLD, SI_ORDER_MIDDLE, 
     mapped_ioctl_unregister_handler, &DRM(ioctl_handler));
-
-static int
-DRM(ioctl_dirmap)(struct file *fp, u_long cmd, u_long ocmd, caddr_t data, struct thread *td)
-{
-	return(linux_ioctl_dirmap(fp, cmd + (ocmd - LINUX_IOCTL_DRM_MIN),
-				  ocmd, data, td));
-}
 
 #endif /* DRM_LINUX */

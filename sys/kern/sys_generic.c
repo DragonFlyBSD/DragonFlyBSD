@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.18 2004/09/13 23:41:18 drhodus Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.19 2005/03/01 00:43:02 corecode Exp $
  */
 
 #include "opt_ktrace.h"
@@ -398,6 +398,11 @@ struct ioctl_map_entry {
 	LIST_ENTRY(ioctl_map_entry) entries;
 };
 
+/*
+ * The true heart of all ioctl syscall handlers (native, emulation).
+ * If map != NULL, it will be searched for a matching entry for com,
+ * and appropriate conversions/conversion functions will be utilized.
+ */
 int
 mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 {
@@ -434,7 +439,8 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 
 		LIST_FOREACH(e, &map->mapping, entries) {
 			for (iomc = e->cmd_ranges; iomc->start != 0 ||
-			     iomc->maptocmd != 0 || iomc->func != NULL;
+			     iomc->maptocmd != 0 || iomc->wrapfunc != NULL ||
+			     iomc->mapfunc != NULL;
 			     iomc++) {
 				if (maskcmd >= iomc->start &&
 				    maskcmd <= iomc->end)
@@ -443,13 +449,13 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 
 			/* Did we find a match? */
 			if (iomc->start != 0 || iomc->maptocmd != 0 ||
-			    iomc->func != NULL)
+			    iomc->wrapfunc != NULL || iomc->mapfunc != NULL)
 				break;
 		}
 
 		if (iomc == NULL ||
 		    (iomc->start == 0 && iomc->maptocmd == 0
-		     && iomc->func == NULL)) {
+		     && iomc->wrapfunc == NULL && iomc->mapfunc == NULL)) {
 			printf("%s: 'ioctl' fd=%d, cmd=0x%lx ('%c',%d) not implemented\n",
 			       map->sys, fd, maskcmd,
 			       (int)((maskcmd >> 8) & 0xff),
@@ -457,7 +463,33 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 			return(EINVAL);
 		}
 
-		com = iomc->maptocmd;
+		/*
+		 * If it's a non-range one to one mapping, maptocmd should be
+		 * correct. If it's a ranged one to one mapping, we pass the
+		 * original value of com, and for a range mapped to a different
+		 * range, we always need a mapping function to translate the
+		 * ioctl to our native ioctl. Ex. 6500-65ff <-> 9500-95ff
+		 */
+		if (iomc->start == iomc->end && iomc->maptocmd == iomc->maptoend) {
+			com = iomc->maptocmd;
+		} else if (iomc->start == iomc->maptocmd && iomc->end == iomc->maptoend) {
+			if (iomc->mapfunc != NULL)
+				com = iomc->mapfunc(iomc->start, iomc->end,
+						    iomc->start, iomc->end,
+						    com, com);
+		} else {
+			if (iomc->mapfunc != NULL) {
+				com = iomc->mapfunc(iomc->start, iomc->end,
+						    iomc->maptocmd, iomc->maptoend,
+						    com, ocom);
+			} else {
+				printf("%s: Invalid mapping for fd=%d, cmd=%#lx ('%c',%d)\n",
+				       map->sys, fd, maskcmd,
+				       (int)((maskcmd >> 8) & 0xff),
+				       (int)(maskcmd & 0xff));
+				return(EINVAL);
+			}
+		}
 	}
 
 	switch (com) {
@@ -531,8 +563,8 @@ mapped_ioctl(int fd, u_long com, caddr_t uspc_data, struct ioctl_map *map)
 		 *  If there is a override function,
 		 *  call it instead of directly routing the call
 		 */
-		if (map != NULL && iomc->func != NULL)
-			error = iomc->func(fp, com, ocom, data, td);
+		if (map != NULL && iomc->wrapfunc != NULL)
+			error = iomc->wrapfunc(fp, com, ocom, data, td);
 		else
 			error = fo_ioctl(fp, com, data, td);
 		/*

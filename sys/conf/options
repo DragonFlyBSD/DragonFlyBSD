@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.30 2005/02/11 22:25:56 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.31 2005/03/01 00:43:02 corecode Exp $
 #
 #        On the handling of kernel options
 #
@@ -354,6 +354,7 @@ NETGRAPH_VJC		opt_netgraph.h
 
 # DRM options
 DRM_DEBUG		opt_drm.h
+DRM_LINUX		opt_drm.h
 
 # ATM (HARP version)
 ATM_CORE		opt_atm.h
