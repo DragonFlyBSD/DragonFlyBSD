@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/domainname/domainname.c,v 1.12.2.1 2001/08/01 02:32:16 obrien Exp $
- * $DragonFly: src/bin/domainname/domainname.c,v 1.6 2004/08/16 05:55:13 joerg Exp $
+ * $DragonFly: src/bin/domainname/domainname.c,v 1.7 2005/03/01 23:12:37 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -66,12 +66,10 @@ main(int argc, char **argv)
 
 	if (argv[0] != NULL) {
 		size_t len = strlen(argv[0]);
-		if (len > MAXHOSTNAMELEN) {
-			fprintf(stderr, "%s: domain name too long\n",
-				getprogname());
-			exit(1);
-		}
-		if (setdomainname(*argv, strlen(argv[0])))
+		if (len > MAXHOSTNAMELEN)
+			errx(1, "domain name too long");
+
+		if (setdomainname(*argv, len))
 			err(1, "setdomainname");
 	} else {
 		if (getdomainname(domainname, sizeof(domainname)))
