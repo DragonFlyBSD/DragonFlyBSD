@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.9 2004/06/26 23:41:06 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.10 2004/06/27 08:00:46 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -50,6 +50,7 @@
 #define RBX_PROBEKBD	0x1e	/* -P */
 /* 0x1f is reserved for the historical RB_BOOTINFO option */
 
+#define RBF_MUTE	(1 << RBX_MUTE)
 #define RBF_SERIAL	(1 << RBX_SERIAL)
 #define RBF_VIDEO	(1 << RBX_VIDEO)
 
@@ -246,12 +247,16 @@ main(void)
     }
 
     /*
-     * Setup our (serial) console after processing the config file
+     * Setup our (serial) console after processing the config file.  If
+     * the initialization fails, don't try to use the serial port.  This
+     * can happen if the serial port is unmaped (happens on new laptops a lot).
      */
-    if ((opts & (RBF_SERIAL|RBF_VIDEO)) == 0)
+    if ((opts & (RBF_MUTE|RBF_SERIAL|RBF_VIDEO)) == 0)
 	opts |= RBF_SERIAL|RBF_VIDEO;
-    if (opts & RBF_SERIAL)
-	sio_init();
+    if (opts & RBF_SERIAL) {
+	if (sio_init())
+	    opts = RBF_VIDEO;
+    }
 
 
     /*
@@ -270,13 +275,10 @@ main(void)
     /* Present the user with the boot2 prompt. */
 
     for (;;) {
-	printf("\nDragonFly/i386 boot\n"
-	       "Default: %u:%s(%u,%c)%s\n"
-	       "boot: ",
+	printf("\nDragonFly boot\n"
+	       "%u:%s(%u,%c)%s: ",
 	       dsk.drive & DRV_MASK, dev_nm[dsk.type], dsk.unit,
 	       'a' + dsk.part, kname);
-	if (opts & RBF_SERIAL)
-	    sio_flush();
 	if (!autoboot || keyhit(5*SECOND))
 	    getstr();
 	else
