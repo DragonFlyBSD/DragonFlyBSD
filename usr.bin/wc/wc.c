@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/wc/wc.c,v 1.11.2.1 2002/08/25 02:47:04 tjr Exp $
- * $DragonFly: src/usr.bin/wc/wc.c,v 1.4 2005/01/11 20:03:11 liamfoy Exp $
+ * $DragonFly: src/usr.bin/wc/wc.c,v 1.5 2005/02/05 16:07:08 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -135,7 +135,7 @@ cnt(const char *file)
 		file = "stdin";
 		fd = STDIN_FILENO;
 	} else {
-		if ((fd = open(file, O_RDONLY, 0)) < 0) {
+		if ((fd = open(file, O_RDONLY)) < 0) {
 			warn("%s: open", file);
 			return (1);
 		}
