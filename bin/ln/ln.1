@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)ln.1	8.2 (Berkeley) 12/30/93
 .\" $FreeBSD: src/bin/ln/ln.1,v 1.11.2.8 2003/02/04 07:31:59 keramida Exp $
-.\" $DragonFly: src/bin/ln/ln.1,v 1.3 2004/01/22 17:30:30 eirikn Exp $
+.\" $DragonFly: src/bin/ln/ln.1,v 1.4 2004/01/27 18:36:52 dillon Exp $
 .\"
 .Dd December 30, 1993
 .Dt LN 1
@@ -170,12 +170,46 @@ No options may be supplied in this simple mode of operation,
 which performs a
 .Xr link 2
 operation using the two passed arguments.
+.Sh VARIANT SYMLINKS
+DragonFly supports a special kind of dynamic
+symbolic link called a
+.Em variant symlink .
+The
+.Ar source_file
+of a variant symlink may contain one or more
+variable names.  Each of these variable
+names is enclosed in braces and preceded by a
+dollar sign in the style of variable references in
+.Xr sh 1
+and
+.Xr csh 1 .
 .Pp
-Use varsym variables to get dynamic symbolic links.
-E.g.
-.Nm ln -s
-.Ar source_file_${varsym}
-.Ar target_file.
+Whenever a variant symlink is followed, each
+variable found in
+.Ar source_file
+is replaced by its associated value.
+In this manner, a variant symlink may resolve to different
+paths based on context.  The facility
+supports per-process, per-user, and system-wide varsyms.
+.Pp
+Varsym variables can be set with the
+.Xr varsym 1
+utility.  Regular
+.Xr environ 7
+environment variables are
+not used to resolve variant symlinks.
+.Ss EXAMPLE
+.Bd -literal -offset indent
+sysctl -w vfs.varsym_enable=1
+
+ln -s 'a${fubar}b' test
+
+echo 'Hello' > axxb
+echo 'Goodbye' > ayyb
+
+varsym fubar=xx; cat test
+varsym fubar=yy; cat test
+.Ed
 .Sh SEE ALSO
 .Xr link 2 ,
 .Xr lstat 2 ,
@@ -195,6 +229,8 @@ options are non-standard and their use in scripts is not recommended.
 They are provided solely for compatibility with other
 .Nm
 implementations.
+.Pp
+Variant symlinks are unique (among BSDs) to DragonFly.
 .Sh STANDARDS
 The
 .Nm
