@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.4 2004/09/15 00:10:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.5 2004/09/15 01:32:07 joerg Exp $
  */
 
 /*
@@ -1499,7 +1499,7 @@ nv_osalloctimer(void *ctx, void **timer)
 
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_osalloctimer\n");
 
-	callout_handle_init(&sc->ostimer);
+	callout_init(&sc->ostimer);
 	*timer = &sc->ostimer;
 
 	return (1);
@@ -1536,7 +1536,8 @@ nv_ossettimer(void *ctx, void *timer, unsigned long delay)
 
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_ossettimer\n");
 
-	*(struct callout_handle *) timer = timeout(sc->ostimer_func, sc->ostimer_params, delay);
+	callout_reset(&sc->ostimer, delay, sc->ostimer_func,
+		      sc->ostimer_params);
 
 	return (1);
 }
@@ -1549,7 +1550,7 @@ nv_oscanceltimer(void *ctx, void *timer)
 
 	DEBUGOUT(NV_DEBUG_BROKEN, "nv: nv_oscanceltimer\n");
 
-	untimeout(sc->ostimer_func, sc->ostimer_params, *(struct callout_handle *) timer);
+	callout_stop(&sc->ostimer);
 
 	return (1);
 }
