@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.19 2005/01/06 10:52:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.20 2005/01/06 13:18:58 okumoto Exp $
  */
 
 /*-
@@ -55,6 +55,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "buf.h"
 #include "cond.h"
 #include "dir.h"
 #include "globals.h"
@@ -189,7 +190,7 @@ CondGetArg(char **linePtr, char **argPtr, char *func, Boolean parens)
 {
     char	  *cp;
     size_t    	  argLen;
-    Buffer	  buf;
+    Buffer	  *buf;
 
     cp = *linePtr;
     if (parens) {
@@ -536,7 +537,7 @@ CondToken(Boolean doEval)
 
 		if (!isspace((unsigned char)*condExpr) &&
 		    strchr("!=><", *condExpr) == NULL) {
-		    Buffer buf;
+		    Buffer *buf;
 		    char *cp;
 
 		    buf = Buf_Init(0);
@@ -605,7 +606,7 @@ do_compare:
 		    char    *string;
 		    char    *cp, *cp2;
 		    int	    qt;
-		    Buffer  buf;
+		    Buffer  *buf;
 
 do_string_compare:
 		    if (((*op != '!') && (*op != '=')) || (op[1] != '=')) {

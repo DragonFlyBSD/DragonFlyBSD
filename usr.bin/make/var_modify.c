@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.12 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.13 2005/01/06 13:18:58 okumoto Exp $
  */
 
 #include <ctype.h>
@@ -66,7 +66,7 @@
  *-----------------------------------------------------------------------
  */
 Boolean
-VarHead(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarHead(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 {
     char *slash;
 
@@ -105,7 +105,7 @@ VarHead(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarTail(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 {
     const char *slash;
 
@@ -138,7 +138,7 @@ VarTail(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSuffix(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarSuffix(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 {
     const char *dot;
 
@@ -170,7 +170,7 @@ VarSuffix(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarRoot(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
+VarRoot(const char *word, Boolean addSpace, Buffer *buf, void *dummy __unused)
 {
     char *dot;
 
@@ -205,7 +205,7 @@ VarRoot(const char *word, Boolean addSpace, Buffer buf, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
+VarMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 {
 
     if (Str_Match(word, pattern)) {
@@ -236,7 +236,7 @@ VarMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSYSVMatch(const char *word, Boolean addSpace, Buffer buf, void *patp)
+VarSYSVMatch(const char *word, Boolean addSpace, Buffer *buf, void *patp)
 {
     int len;
     const char *ptr;
@@ -274,7 +274,7 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer buf, void *patp)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarNoMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
+VarNoMatch(const char *word, Boolean addSpace, Buffer *buf, void *pattern)
 {
 
     if (!Str_Match(word, pattern)) {
@@ -303,7 +303,7 @@ VarNoMatch(const char *word, Boolean addSpace, Buffer buf, void *pattern)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarSubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
+VarSubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 {
     size_t	  	wordLen;    /* Length of word */
     const char	 	*cp;	    /* General pointer */
@@ -466,7 +466,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
  *-----------------------------------------------------------------------
  */
 Boolean
-VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
+VarRESubstitute(const char *word, Boolean addSpace, Buffer *buf, void *patternp)
 {
     VarREPattern *pat;
     int xrv;

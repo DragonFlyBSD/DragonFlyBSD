@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.12 2005/01/06 10:52:59 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.13 2005/01/06 13:18:58 okumoto Exp $
  */
 
 /*-
@@ -95,7 +95,7 @@
  *-----------------------------------------------------------------------
  */
 void
-Buf_OvAddByte(Buffer bp, Byte byte)
+Buf_OvAddByte(Buffer *bp, Byte byte)
 {
 
 	bp->left = 0;
@@ -124,7 +124,7 @@ Buf_OvAddByte(Buffer bp, Byte byte)
  *-----------------------------------------------------------------------
  */
 void
-Buf_AddBytes(Buffer bp, size_t numBytes, const Byte *bytesPtr)
+Buf_AddBytes(Buffer *bp, size_t numBytes, const Byte *bytesPtr)
 {
 
 	BufExpand(bp, numBytes);
@@ -153,7 +153,7 @@ Buf_AddBytes(Buffer bp, size_t numBytes, const Byte *bytesPtr)
  *-----------------------------------------------------------------------
  */
 void
-Buf_UngetByte(Buffer bp, Byte byte)
+Buf_UngetByte(Buffer *bp, Byte byte)
 {
 
 	if (bp->outPtr != bp->buffer) {
@@ -203,7 +203,7 @@ Buf_UngetByte(Buffer bp, Byte byte)
  *-----------------------------------------------------------------------
  */
 void
-Buf_UngetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
+Buf_UngetBytes(Buffer *bp, size_t numBytes, Byte *bytesPtr)
 {
 
 	if ((size_t)(bp->outPtr - bp->buffer) >= numBytes) {
@@ -245,7 +245,7 @@ Buf_UngetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
  *-----------------------------------------------------------------------
  */
 int
-Buf_GetByte(Buffer bp)
+Buf_GetByte(Buffer *bp)
 {
 	int res;
 
@@ -276,7 +276,7 @@ Buf_GetByte(Buffer bp)
  *-----------------------------------------------------------------------
  */
 int
-Buf_GetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
+Buf_GetBytes(Buffer *bp, size_t numBytes, Byte *bytesPtr)
 {
 
 	if ((size_t)(bp->inPtr - bp->outPtr) < numBytes)
@@ -307,7 +307,7 @@ Buf_GetBytes(Buffer bp, size_t numBytes, Byte *bytesPtr)
  *-----------------------------------------------------------------------
  */
 Byte *
-Buf_GetAll(Buffer bp, size_t *numBytesPtr)
+Buf_GetAll(Buffer *bp, size_t *numBytesPtr)
 {
 
 	if (numBytesPtr != NULL)
@@ -330,7 +330,7 @@ Buf_GetAll(Buffer bp, size_t *numBytesPtr)
  *-----------------------------------------------------------------------
  */
 void
-Buf_Discard(Buffer bp, size_t numBytes)
+Buf_Discard(Buffer *bp, size_t numBytes)
 {
 
 	if ((size_t)(bp->inPtr - bp->outPtr) <= numBytes) {
@@ -356,7 +356,7 @@ Buf_Discard(Buffer bp, size_t numBytes)
  *-----------------------------------------------------------------------
  */
 size_t
-Buf_Size(Buffer buf)
+Buf_Size(Buffer *buf)
 {
 
 	return (buf->inPtr - buf->outPtr);
@@ -377,10 +377,10 @@ Buf_Size(Buffer buf)
  *
  *-----------------------------------------------------------------------
  */
-Buffer
+Buffer *
 Buf_Init(size_t size)
 {
-	Buffer bp;	  	/* New Buffer */
+	Buffer *bp;	  	/* New Buffer */
 
 	bp = emalloc(sizeof(*bp));
 
@@ -409,7 +409,7 @@ Buf_Init(size_t size)
  *-----------------------------------------------------------------------
  */
 void
-Buf_Destroy(Buffer buf, Boolean freeData)
+Buf_Destroy(Buffer *buf, Boolean freeData)
 {
 
 	if (freeData)
@@ -432,7 +432,7 @@ Buf_Destroy(Buffer buf, Boolean freeData)
  *-----------------------------------------------------------------------
  */
 void
-Buf_ReplaceLastByte(Buffer buf, Byte byte)
+Buf_ReplaceLastByte(Buffer *buf, Byte byte)
 {
 	if (buf->inPtr == buf->outPtr)
 		Buf_AddByte(buf, byte);

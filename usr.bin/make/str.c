@@ -37,13 +37,14 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.15 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.16 2005/01/06 13:18:58 okumoto Exp $
  */
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "buf.h"
 #include "globals.h"
 #include "str.h"
 #include "util.h"
@@ -406,7 +407,7 @@ Str_SYSVMatch(const char *word, const char *pattern, int *len)
  *-----------------------------------------------------------------------
  */
 void
-Str_SYSVSubst(Buffer buf, const char *pat, const char *src, int len)
+Str_SYSVSubst(Buffer *buf, const char *pat, const char *src, int len)
 {
     const char *m;
 

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.30 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.31 2005/01/06 13:18:58 okumoto Exp $
  */
 
 /*-
@@ -2011,7 +2011,7 @@ ParseSkipLine(int skip, int keep_newline)
     char *line;
     int c, lastc;
     size_t lineLength = 0;
-    Buffer buf;
+    Buffer *buf;
 
     buf = Buf_Init(MAKE_BSIZE);
 
@@ -2082,7 +2082,7 @@ ParseSkipLine(int skip, int keep_newline)
 static char *
 ParseReadLine(void)
 {
-    Buffer  	  buf;	    	/* Buffer for current line */
+    Buffer  	  *buf;	    	/* Buffer for current line */
     int		  c;	      	/* the current character */
     int		  lastc;    	/* The most-recent character */
     Boolean	  semiNL;     	/* treat semi-colons as newlines */

@@ -35,11 +35,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.1 2005/01/06 11:41:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.2 2005/01/06 13:18:58 okumoto Exp $
  */
 
-#include "buf.h"
 #include "sprite.h"
+
+struct Buffer;
 
 /*
  * These constants are all used by the Str_Concat function to decide how the
@@ -56,6 +57,6 @@ char *str_concat(const char *, const char *, int);
 char **brk_string(char *, int *, Boolean);
 int Str_Match(const char *, const char *);
 const char *Str_SYSVMatch(const char *, const char *, int *);
-void Str_SYSVSubst(Buffer, const char *, const char *, int);
+void Str_SYSVSubst(struct Buffer *, const char *, const char *, int);
 
 #endif /* str_h_44db59e6 */
