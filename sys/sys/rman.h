@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/rman.h,v 1.5.2.1 2001/06/05 08:06:07 imp Exp $
- * $DragonFly: src/sys/sys/rman.h,v 1.4 2003/07/19 21:14:50 dillon Exp $
+ * $DragonFly: src/sys/sys/rman.h,v 1.5 2004/01/13 18:45:37 joerg Exp $
  */
 
 #ifndef _SYS_RMAN_H_
@@ -64,6 +64,7 @@ struct	resource {
 #define	RF_TIMESHARE	0x0008	/* resource permits time-division sharing */
 #define	RF_WANTED	0x0010	/* somebody is waiting for this resource */
 #define	RF_FIRSTSHARE	0x0020	/* first in sharing list */
+#define	RF_PREFETCHABLE	0x0040	/* resource is prefetchable */
 
 #define	RF_ALIGNMENT_SHIFT	10 /* alignment size bit starts bit 10 */
 #define	RF_ALIGNMENT_MASK	(0x003F << RF_ALIGNMENT_SHIFT)
@@ -100,6 +101,8 @@ uint32_t rman_make_alignment_flags(uint32_t size);
 
 #define rman_get_start(r)	((r)->r_start)
 #define rman_get_end(r)		((r)->r_end)
+#define rman_get_device(r)	((r)->r_dev)
+#define rman_get_size(r)	((r)->r_end - (r)->r_start + 1)
 #define rman_get_flags(r)	((r)->r_flags)
 #define	rman_set_virtual(r,v)	((r)->r_virtual = (v))
 #define	rman_get_virtual(r)	((r)->r_virtual)
