@@ -19,26 +19,14 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/as/messages.c,v 1.8 1999/08/27 23:34:19 peter Exp $
- * $DragonFly: src/gnu/usr.bin/as/Attic/messages.c,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/messages.c,v 1.3 2004/01/23 20:53:09 joerg Exp $
  */
 #include <stdio.h>
 #include <errno.h>
 
 #include "as.h"
 
-#ifndef __STDC__
-#ifndef NO_STDARG
-#define NO_STDARG
-#endif
-#endif
-
-#ifndef NO_STDARG
 #include <stdarg.h>
-#else
-#ifndef NO_VARARGS
-#include <varargs.h>
-#endif /* NO_VARARGS */
-#endif /* NO_STDARG */
 
 extern char *strerror ();
 
@@ -85,8 +73,7 @@ static void as_bad_internal PARAMS ((char *, unsigned int, char *));
  */
 
 static void
-identify (file)
-     char *file;
+identify(char *file)
 {
   static int identified;
   if (identified)
@@ -171,9 +158,8 @@ as_perror (gripe, filename)
  * Please explain in string (which may have '\n's) what recovery was done.
  */
 
-#ifndef NO_STDARG
 void
-as_tsktsk (const char *format,...)
+as_tsktsk(const char *format, ...)
 {
   va_list args;
 
@@ -183,35 +169,6 @@ as_tsktsk (const char *format,...)
   va_end (args);
   (void) putc ('\n', stderr);
 }				/* as_tsktsk() */
-
-#else
-#ifndef NO_VARARGS
-void
-as_tsktsk (format, va_alist)
-     char *format;
-     va_dcl
-{
-  va_list args;
-
-  as_show_where ();
-  va_start (args);
-  vfprintf (stderr, format, args);
-  va_end (args);
-  (void) putc ('\n', stderr);
-}				/* as_tsktsk() */
-
-#else
-/*VARARGS1 */
-as_tsktsk (format, args)
-     char *format;
-{
-  as_show_where ();
-  _doprnt (format, &args, stderr);
-  (void) putc ('\n', stderr);
-}				/* as_tsktsk */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
 
 /* The common portion of as_warn and as_warn_where.  */
 
@@ -248,7 +205,6 @@ as_warn_internal (file, line, buffer)
 #define flag_no_warnings	(flagseen['W'])
 #endif
 
-#ifndef NO_STDARG
 void
 as_warn (const char *format,...)
 {
@@ -264,50 +220,12 @@ as_warn (const char *format,...)
     }
 }				/* as_warn() */
 
-#else
-#ifndef NO_VARARGS
-void
-as_warn (format, va_alist)
-     char *format;
-     va_dcl
-{
-  va_list args;
-  char buffer[200];
-
-  if (!flag_no_warnings)
-    {
-      va_start (args);
-      vsprintf (buffer, format, args);
-      va_end (args);
-      as_warn_internal ((char *) NULL, 0, buffer);
-    }
-}				/* as_warn() */
-
-#else
-/*VARARGS1 */
-as_warn (format, args)
-     char *format;
-{
-  if (!flag_no_warnings)
-    {
-      ++warning_count;
-      as_show_where ();
-      fprintf (stderr, "Warning: ");
-      _doprnt (format, &args, stderr);
-      (void) putc ('\n', stderr);
-    }
-}				/* as_warn() */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
-
 /* as_warn_where, like as_bad but the file name and line number are
    passed in.  Unfortunately, we have to repeat the function in order
    to handle the varargs correctly and portably.  */
 
-#ifndef NO_STDARG
 void
-as_warn_where (char *file, unsigned int line, const char *format,...)
+as_warn_where(char *file, unsigned int line, const char *format, ...)
 {
   va_list args;
   char buffer[200];
@@ -320,47 +238,6 @@ as_warn_where (char *file, unsigned int line, const char *format,...)
       as_warn_internal (file, line, buffer);
     }
 }				/* as_warn() */
-
-#else
-#ifndef NO_VARARGS
-void
-as_warn_where (file, line, format, va_alist)
-     char *file;
-     unsigned int line;
-     char *format;
-     va_dcl
-{
-  va_list args;
-  char buffer[200];
-
-  if (!flag_no_warnings)
-    {
-      va_start (args);
-      vsprintf (buffer, format, args);
-      va_end (args);
-      as_warn_internal (file, line, buffer);
-    }
-}				/* as_warn() */
-
-#else
-/*VARARGS1 */
-as_warn_where (file, line, format, args)
-     char *file;
-     unsigned int line;
-     char *format;
-{
-  if (!flag_no_warnings)
-    {
-      ++warning_count;
-      identify (file);
-      fprintf (stderr, "%s:%u: Warning: ", file, line);
-      _doprnt (format, &args, stderr);
-      (void) putc ('\n', stderr);
-    }
-}				/* as_warn() */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
 
 /* The common portion of as_bad and as_bad_where.  */
 
@@ -393,7 +270,6 @@ as_bad_internal (file, line, buffer)
  * Please explain in string (which may have '\n's) what recovery was done.
  */
 
-#ifndef NO_STDARG
 void
 as_bad (const char *format,...)
 {
@@ -407,44 +283,10 @@ as_bad (const char *format,...)
   as_bad_internal ((char *) NULL, 0, buffer);
 }
 
-#else
-#ifndef NO_VARARGS
-void
-as_bad (format, va_alist)
-     char *format;
-     va_dcl
-{
-  va_list args;
-  char buffer[200];
-
-  va_start (args);
-  vsprintf (buffer, format, args);
-  va_end (args);
-
-  as_bad_internal ((char *) NULL, 0, buffer);
-}
-
-#else
-/*VARARGS1 */
-as_bad (format, args)
-     char *format;
-{
-  ++error_count;
-
-  as_show_where ();
-  fprintf (stderr, "Error: ");
-  _doprnt (format, &args, stderr);
-  (void) putc ('\n', stderr);
-}				/* as_bad() */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
-
 /* as_bad_where, like as_bad but the file name and line number are
    passed in.  Unfortunately, we have to repeat the function in order
    to handle the varargs correctly and portably.  */
 
-#ifndef NO_STDARG
 void
 as_bad_where (char *file, unsigned int line, const char *format,...)
 {
@@ -458,43 +300,6 @@ as_bad_where (char *file, unsigned int line, const char *format,...)
   as_bad_internal (file, line, buffer);
 }
 
-#else
-#ifndef NO_VARARGS
-void
-as_bad_where (file, line, format, va_alist)
-     char *file;
-     unsigned int line;
-     char *format;
-     va_dcl
-{
-  va_list args;
-  char buffer[200];
-
-  va_start (args);
-  vsprintf (buffer, format, args);
-  va_end (args);
-
-  as_bad_internal (file, line, buffer);
-}
-
-#else
-/*VARARGS1 */
-as_bad_where (file, line, format, args)
-     char *file;
-     unsigned int line;
-     char *format;
-{
-  ++error_count;
-
-  identify (file);
-  fprintf (stderr, "%s:%u: Error: ", file, line);
-  _doprnt (format, &args, stderr);
-  (void) putc ('\n', stderr);
-}				/* as_bad() */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
-
 /*
  *			a s _ f a t a l ()
  *
@@ -504,7 +309,6 @@ as_bad_where (file, line, format, args)
  * It exit()s with a warning status.
  */
 
-#ifndef NO_STDARG
 void
 as_fatal (const char *format,...)
 {
@@ -518,39 +322,6 @@ as_fatal (const char *format,...)
   va_end (args);
   exit (33);
 }				/* as_fatal() */
-
-#else
-#ifndef NO_VARARGS
-void
-as_fatal (format, va_alist)
-     char *format;
-     va_dcl
-{
-  va_list args;
-
-  as_show_where ();
-  va_start (args);
-  fprintf (stderr, "Fatal error:");
-  vfprintf (stderr, format, args);
-  (void) putc ('\n', stderr);
-  va_end (args);
-  exit (33);
-}				/* as_fatal() */
-
-#else
-/*VARARGS1 */
-as_fatal (format, args)
-     char *format;
-{
-  as_show_where ();
-  fprintf (stderr, "Fatal error:");
-  _doprnt (format, &args, stderr);
-  (void) putc ('\n', stderr);
-  exit (33);			/* What is a good exit status? */
-}				/* as_fatal() */
-
-#endif /* not NO_VARARGS */
-#endif /* not NO_STDARG */
 
 void
 fprint_value (file, val)

@@ -19,20 +19,13 @@
 
 /*
  * $FreeBSD: src/gnu/usr.bin/as/as.h,v 1.8 1999/08/27 23:34:12 peter Exp $
- * $DragonFly: src/gnu/usr.bin/as/Attic/as.h,v 1.2 2003/06/17 04:25:44 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/as/Attic/as.h,v 1.3 2004/01/23 20:53:09 joerg Exp $
  */
 
 #define GAS 1
 /* #include <ansidecl.h> */
 #include "host.h"
 #include "flonum.h"
-
-#if __STDC__ != 1
-#define	volatile	/**/
-#ifndef const
-#define	const		/**/
-#endif /* const */
-#endif /* __STDC__ */
 
 #ifdef __GNUC__
 #define alloca __builtin_alloca
@@ -304,27 +297,12 @@ typedef struct {
 	int		poc_val;	/* Value to pass to handler */
 } pseudo_typeS;
 
-#if (__STDC__ == 1) & !defined(NO_STDARG)
-
 int had_errors(void);
 int had_warnings(void);
 void as_bad(const char *Format, ...);
 void as_fatal(const char *Format, ...);
 void as_tsktsk(const char *Format, ...);
 void as_warn(const char *Format, ...);
-
-#else
-
-int had_errors();
-int had_warnings();
-void as_bad();
-void as_fatal();
-void as_tsktsk();
-void as_warn();
-
-#endif /* __STDC__ & !NO_STDARG */
-
-#if __STDC__ == 1
 
 char *app_push(void);
 char *atof_ieee(char *str, int what_kind, LITTLENUM_TYPE *words);
@@ -360,45 +338,6 @@ void scrub_to_string(int ch);
 void subseg_change(segT seg, int subseg);
 void subseg_new(segT seg, subsegT subseg);
 void subsegs_begin(void);
-
-#else /* not __STDC__ */
-
-char *app_push();
-char *atof_ieee();
-char *input_scrub_include_file();
-char *input_scrub_new_file();
-char *input_scrub_next_buffer();
-char *strstr();
-char *xmalloc();
-char *xrealloc();
-int do_scrub_next_char();
-int gen_to_words();
-int had_err();
-int had_errors();
-int had_warnings();
-int ignore_input();
-int scrub_from_file();
-int scrub_from_file();
-int scrub_from_string();
-int seen_at_least_1_file();
-void app_pop();
-void as_howmuch();
-void as_perror();
-void as_where();
-void bump_line_counters();
-void do_scrub_begin();
-void input_scrub_begin();
-void input_scrub_close();
-void input_scrub_end();
-void int_to_gen();
-void new_logical_line();
-void scrub_to_file();
-void scrub_to_string();
-void subseg_change();
-void subseg_new();
-void subsegs_begin();
-
-#endif /* not __STDC__ */
 
 /* this one starts the chain of target dependant headers */
 #include "targ-env.h"
