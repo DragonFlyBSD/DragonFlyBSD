@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.6 2003/06/26 05:55:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.7 2003/07/24 20:43:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -111,8 +111,8 @@ mfs_open(ap)
 	} */ *ap;
 {
 
-	if (ap->a_vp->v_type != VBLK) {
-		panic("mfs_open not VBLK");
+	if (ap->a_vp->v_type != VCHR) {
+		panic("mfs_open not VCHR");
 		/* NOTREACHED */
 	}
 	return (0);
@@ -148,7 +148,7 @@ mfs_freeblks(ap)
 	struct buf *bp;
 	struct vnode *vp;
 
-	if (!vfinddev(ap->a_vp->v_rdev, VBLK, &vp) || vp->v_usecount == 0)
+	if (!vfinddev(ap->a_vp->v_rdev, VCHR, &vp) || vp->v_usecount == 0)
 		panic("mfs_freeblks: bad dev");
 
 	bp = geteblk(ap->a_length);
@@ -178,7 +178,7 @@ mfs_strategy(ap)
 	struct thread *td = curthread;		/* XXX */
 	int s;
 
-	if (!vfinddev(bp->b_dev, VBLK, &vp) || vp->v_usecount == 0)
+	if (!vfinddev(bp->b_dev, VCHR, &vp) || vp->v_usecount == 0)
 		panic("mfs_strategy: bad dev");
 	mfsp = VTOMFS(vp);
 

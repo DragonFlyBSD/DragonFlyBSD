@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.7 2003/07/21 05:50:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.8 2003/07/24 20:43:18 dillon Exp $
  */
 
 
@@ -248,7 +248,7 @@ mfs_mount(mp, path, data, ndp, td)
 		FREE(mfsp, M_MFSNODE);
 		goto error_1;
 	}
-	devvp->v_type = VBLK;
+	devvp->v_type = VCHR;
 	dev = make_dev(&mfs_cdevsw, mfs_minor, 0, 0, 0, "MFS%d", mfs_minor);
 	/* It is not clear that these will get initialized otherwise */
 	dev->si_bsize_phys = DEV_BSIZE;
