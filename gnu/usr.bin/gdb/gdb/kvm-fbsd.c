@@ -1,5 +1,5 @@
 /* $FreeBSD: ports/devel/gdb6/files/kvm-fbsd.c,v 1.2 2004/06/20 22:22:02 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.3 2005/01/12 11:24:24 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.4 2005/01/12 13:16:51 joerg Exp $ */
 
 /* Kernel core dump functions below target vector, for GDB.
    Copyright 1986, 1987, 1989, 1991, 1992, 1993, 1994, 1995
@@ -67,6 +67,9 @@ kgdb_close (int);
 
 static void
 kgdb_get_registers (int);
+
+static void
+set_proc_cmd (char *, int);
 
 
 	/*
@@ -448,4 +451,36 @@ _initialize_kgdblow (void)
   kgdb_ops.to_magic = OPS_MAGIC;
 
   add_target (&kgdb_ops);
+  add_com ("proc", class_obscure, set_proc_cmd, "Set current process context");
+}
+
+static void
+set_proc_cmd (char *arg, int from_tty)
+{
+    CORE_ADDR paddr, val;
+    struct kinfo_proc *kp;
+    int cnt = 0;
+
+    if (!arg)
+	error_no_arg ("proc address for new current process");
+    if (!kernel_debugging)
+	error ("not debugging kernel");
+
+    paddr = (CORE_ADDR)parse_and_eval_address (arg);
+    /* assume it's a thread pointer if it's in the kernel */
+    if (INKERNEL(paddr)) {
+        paddr += offsetof (struct thread, td_pcb);
+        if (kvread (paddr, &val)) {
+	    error("invalid thread address");
+	    val = 0;
+	}
+    } else {
+	kp = kvm_getprocs(core_kd, KERN_PROC_PID, paddr, &cnt);
+	if (!cnt)
+	    error("invalid pid");
+	val = (CORE_ADDR)kp->kp_thread.td_pcb;
+    }
+	
+    if (set_context(val))
+	error("invalid proc address");
 }
