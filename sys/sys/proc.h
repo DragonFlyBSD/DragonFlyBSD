@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.51 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.52 2004/07/23 13:19:42 hmp Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -173,7 +173,7 @@ struct	proc {
 
 	/* scheduling */
 	u_int	p_estcpu;	 /* Time averaged value of p_cpticks. */
-	u_int	p_estcpu_fork;	 /* setcpu as of fork, used in batch detect */
+	u_int	p_estcpu_fork;	 /* estcpu as of fork, used in batch detect */
 	int	p_cpticks;	 /* Ticks of cpu time. */
 	fixpt_t	p_pctcpu;	 /* %cpu for this process during p_swtime */
 	u_int	p_swtime;	 /* Time swapped in or out. */
