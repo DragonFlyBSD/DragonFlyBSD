@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libedit/tty.c,v 1.4.6.1 2000/08/16 14:43:40 ache Exp $
- * $DragonFly: src/lib/libedit/tty.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libedit/tty.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  *
  * @(#)tty.c	8.1 (Berkeley) 6/4/93
  */
@@ -447,10 +447,10 @@ private ttymodes_t ttymodes[] = {
 #define tty__geteightbit(td) (((td)->c_cflag & CSIZE) == CS8)
 #define tty__cooked_mode(td) ((td)->c_lflag & ICANON)
 
-private void    tty__getchar	__P((struct termios *, unsigned char *));
-private void    tty__setchar	__P((struct termios *, unsigned char *));
-private speed_t tty__getspeed	__P((struct termios *));
-private int     tty_setup	__P((EditLine *));
+private void    tty__getchar	(struct termios *, unsigned char *);
+private void    tty__setchar	(struct termios *, unsigned char *);
+private speed_t tty__getspeed	(struct termios *);
+private int     tty_setup	(EditLine *);
 
 #define t_qu t_ts
 

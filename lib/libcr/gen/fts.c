@@ -33,7 +33,7 @@
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  *
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/fts.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/fts.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  *
  * @(#)fts.c	8.6 (Berkeley) 8/14/94
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
@@ -50,16 +50,16 @@
 #include <string.h>
 #include <unistd.h>
 
-static FTSENT	*fts_alloc __P((FTS *, char *, int));
-static FTSENT	*fts_build __P((FTS *, int));
-static void	 fts_lfree __P((FTSENT *));
-static void	 fts_load __P((FTS *, FTSENT *));
-static size_t	 fts_maxarglen __P((char * const *));
-static void	 fts_padjust __P((FTS *, FTSENT *));
-static int	 fts_palloc __P((FTS *, size_t));
-static FTSENT	*fts_sort __P((FTS *, FTSENT *, int));
-static u_short	 fts_stat __P((FTS *, FTSENT *, int));
-static int	 fts_safe_changedir __P((FTS *, FTSENT *, int, char *));
+static FTSENT	*fts_alloc (FTS *, char *, int);
+static FTSENT	*fts_build (FTS *, int);
+static void	 fts_lfree (FTSENT *);
+static void	 fts_load (FTS *, FTSENT *);
+static size_t	 fts_maxarglen (char * const *);
+static void	 fts_padjust (FTS *, FTSENT *);
+static int	 fts_palloc (FTS *, size_t);
+static FTSENT	*fts_sort (FTS *, FTSENT *, int);
+static u_short	 fts_stat (FTS *, FTSENT *, int);
+static int	 fts_safe_changedir (FTS *, FTSENT *, int, char *);
 
 #define	ISDOT(a)	(a[0] == '.' && (!a[1] || (a[1] == '.' && !a[2])))
 
@@ -78,7 +78,7 @@ FTS *
 fts_open(argv, options, compar)
 	char * const *argv;
 	register int options;
-	int (*compar) __P((const FTSENT **, const FTSENT **));
+	int (*compar) (const FTSENT **, const FTSENT **);
 {
 	register FTS *sp;
 	register FTSENT *p, *root;

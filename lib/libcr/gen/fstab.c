@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/fstab.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/fstab.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  *
  * @(#)fstab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
@@ -53,9 +53,9 @@ static FILE *_fs_fp;
 static struct fstab _fs_fstab;
 static int LineNo = 0;
 
-static void error __P((int));
-static void fixfsfile __P((void));
-static int fstabscan __P((void));
+static void error (int);
+static void fixfsfile (void);
+static int fstabscan (void);
 
 static void
 fixfsfile()

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_bigkey.c	8.3 (Berkeley) 5/31/94
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash_bigkey.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_bigkey.c,v 1.4 2003/11/12 20:21:26 eirikn Exp $
  */
 
 /*
@@ -71,8 +71,8 @@
 #include "page.h"
 #include "extern.h"
 
-static int collect_key __P((HTAB *, BUFHEAD *, int, DBT *, int));
-static int collect_data __P((HTAB *, BUFHEAD *, int, int));
+static int collect_key (HTAB *, BUFHEAD *, int, DBT *, int);
+static int collect_data (HTAB *, BUFHEAD *, int, int);
 
 /*
  * Big_insert

@@ -28,7 +28,7 @@
  *
  * @(#)xcrypt.c	2.2 88/08/10 4.0 RPCSRC
  * $FreeBSD: src/lib/librpcsvc/xcrypt.c,v 1.2 1999/08/28 00:05:24 peter Exp $
- * $DragonFly: src/lib/librpcsvc/xcrypt.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/librpcsvc/xcrypt.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 /*
  * Hex encryption/decryption and utility routines
@@ -43,10 +43,10 @@
 #include <rpc/des_crypt.h>
 
 static char hex[];	/* forward */
-static char hexval __P(( char ));
-static void bin2hex __P(( int, unsigned char *, char * ));
-static void hex2bin __P(( int, char *, char * ));
-void passwd2des __P(( char *, char * ));
+static char hexval ( char );
+static void bin2hex ( int, unsigned char *, char * );
+static void hex2bin ( int, char *, char * );
+void passwd2des ( char *, char * );
 
 /*
  * Encrypt a secret key given passwd

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash.c,v 1.8 2000/01/27 23:06:08 jasone Exp $
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  *
  * @(#)hash.c	8.9 (Berkeley) 6/16/94
  */
@@ -57,23 +57,23 @@
 #include "page.h"
 #include "extern.h"
 
-static int   alloc_segs __P((HTAB *, int));
-static int   flush_meta __P((HTAB *));
-static int   hash_access __P((HTAB *, ACTION, DBT *, DBT *));
-static int   hash_close __P((DB *));
-static int   hash_delete __P((const DB *, const DBT *, u_int32_t));
-static int   hash_fd __P((const DB *));
-static int   hash_get __P((const DB *, const DBT *, DBT *, u_int32_t));
-static int   hash_put __P((const DB *, DBT *, const DBT *, u_int32_t));
-static void *hash_realloc __P((SEGMENT **, int, int));
-static int   hash_seq __P((const DB *, DBT *, DBT *, u_int32_t));
-static int   hash_sync __P((const DB *, u_int32_t));
-static int   hdestroy __P((HTAB *));
-static HTAB *init_hash __P((HTAB *, const char *, HASHINFO *));
-static int   init_htab __P((HTAB *, int));
+static int   alloc_segs (HTAB *, int);
+static int   flush_meta (HTAB *);
+static int   hash_access (HTAB *, ACTION, DBT *, DBT *);
+static int   hash_close (DB *);
+static int   hash_delete (const DB *, const DBT *, u_int32_t);
+static int   hash_fd (const DB *);
+static int   hash_get (const DB *, const DBT *, DBT *, u_int32_t);
+static int   hash_put (const DB *, DBT *, const DBT *, u_int32_t);
+static void *hash_realloc (SEGMENT **, int, int);
+static int   hash_seq (const DB *, DBT *, DBT *, u_int32_t);
+static int   hash_sync (const DB *, u_int32_t);
+static int   hdestroy (HTAB *);
+static HTAB *init_hash (HTAB *, const char *, HASHINFO *);
+static int   init_htab (HTAB *, int);
 #if BYTE_ORDER == LITTLE_ENDIAN
-static void  swap_header __P((HTAB *));
-static void  swap_header_copy __P((HASHHDR *, HASHHDR *));
+static void  swap_header (HTAB *);
+static void  swap_header_copy (HASHHDR *, HASHHDR *);
 #endif
 
 /* Fast arithmetic, relying on powers of 2, */

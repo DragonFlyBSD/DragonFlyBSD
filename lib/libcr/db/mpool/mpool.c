@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/mpool/mpool.c,v 1.5.2.1 2001/03/05 23:05:01 obrien Exp $
- * $DragonFly: src/lib/libcr/db/mpool/Attic/mpool.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/mpool/Attic/mpool.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  *
  * @(#)mpool.c	8.5 (Berkeley) 7/26/94
  */
@@ -51,9 +51,9 @@
 #define	__MPOOLINTERFACE_PRIVATE
 #include <mpool.h>
 
-static BKT *mpool_bkt __P((MPOOL *));
-static BKT *mpool_look __P((MPOOL *, pgno_t));
-static int  mpool_write __P((MPOOL *, BKT *));
+static BKT *mpool_bkt (MPOOL *);
+static BKT *mpool_look (MPOOL *, pgno_t);
+static int  mpool_write (MPOOL *, BKT *);
 
 /*
  * mpool_open --
@@ -102,8 +102,8 @@ mpool_open(key, fd, pagesize, maxcache)
 void
 mpool_filter(mp, pgin, pgout, pgcookie)
 	MPOOL *mp;
-	void (*pgin) __P((void *, pgno_t, void *));
-	void (*pgout) __P((void *, pgno_t, void *));
+	void (*pgin) (void *, pgno_t, void *);
+	void (*pgout) (void *, pgno_t, void *);
 	void *pgcookie;
 {
 	mp->pgin = pgin;

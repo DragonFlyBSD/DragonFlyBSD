@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)refresh.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/refresh.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/refresh.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -47,20 +47,20 @@
 
 #include "el.h"
 
-private	void	re_addc 		__P((EditLine *, int));
-private	void	re_update_line 		__P((EditLine *, char *, char *, int));
-private	void	re_insert		__P((EditLine *, char *, int, int,
-					     char *, int));
-private	void	re_delete		__P((EditLine *, char *, int, int,
-					     int));
-private	void	re_fastputc		__P((EditLine *, int));
+private	void	re_addc 		(EditLine *, int);
+private	void	re_update_line 		(EditLine *, char *, char *, int);
+private	void	re_insert		(EditLine *, char *, int, int,
+					     char *, int);
+private	void	re_delete		(EditLine *, char *, int, int,
+					     int);
+private	void	re_fastputc		(EditLine *, int);
 
-private	void	re__strncopy		__P((char *, char *, size_t));
-private	void	re__copy_and_pad	__P((char *, char *, size_t));
+private	void	re__strncopy		(char *, char *, size_t);
+private	void	re__copy_and_pad	(char *, char *, size_t);
 
 #ifdef DEBUG_REFRESH
-private	void	re_printstr		__P((EditLine *, char *, char *,
-					     char *));
+private	void	re_printstr		(EditLine *, char *, char *,
+					     char *);
 # define __F el->el_errfile
 # define RE_DEBUG(a, b, c)	do 				\
 				    if (a) {			\

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)chared.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/chared.h,v 1.2 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/chared.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -135,26 +135,26 @@ typedef struct el_chared_t {
 #include "fcns.h"
 
 
-protected int   cv__isword	__P((int));
-protected void  cv_delfini	__P((EditLine *));
-protected char *cv__endword	__P((char *, char *, int));
-protected int   ce__isword	__P((int));
-protected int   c___isword	__P((int));
-protected void  cv_undo		__P((EditLine *, int, int, char *));
-protected char *cv_next_word	__P((EditLine*, char *, char *, int,
-				     int (*)(int)));
-protected char *cv_prev_word	__P((EditLine*, char *, char *, int,
-				     int (*)(int)));
-protected char *c__next_word	__P((char *, char *, int, int (*)(int)));
-protected char *c__prev_word	__P((char *, char *, int, int (*)(int)));
-protected void  c_insert	__P((EditLine *, int));
-protected void  c_delbefore	__P((EditLine *, int));
-protected void  c_delafter	__P((EditLine *, int));
-protected int   c_gets		__P((EditLine *, char *));
-protected int   c_hpos		__P((EditLine *));
+protected int   cv__isword	(int);
+protected void  cv_delfini	(EditLine *);
+protected char *cv__endword	(char *, char *, int);
+protected int   ce__isword	(int);
+protected int   c___isword	(int);
+protected void  cv_undo		(EditLine *, int, int, char *);
+protected char *cv_next_word	(EditLine*, char *, char *, int,
+				     int (*)(int));
+protected char *cv_prev_word	(EditLine*, char *, char *, int,
+				     int (*)(int));
+protected char *c__next_word	(char *, char *, int, int (*)(int));
+protected char *c__prev_word	(char *, char *, int, int (*)(int));
+protected void  c_insert	(EditLine *, int);
+protected void  c_delbefore	(EditLine *, int);
+protected void  c_delafter	(EditLine *, int);
+protected int   c_gets		(EditLine *, char *);
+protected int   c_hpos		(EditLine *);
 
-protected int   ch_init		__P((EditLine *));
-protected void  ch_reset	__P((EditLine *));
-protected void  ch_end		__P((EditLine *));
+protected int   ch_init		(EditLine *);
+protected void  ch_reset	(EditLine *);
+protected void  ch_end		(EditLine *);
 
 #endif /* _h_el_chared */

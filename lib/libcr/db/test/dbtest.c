@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dbtest.c	8.17 (Berkeley) 9/1/94
  * $FreeBSD: src/lib/libc/db/test/dbtest.c,v 1.3.8.1 2000/08/21 22:44:47 jhb Exp $
- * $DragonFly: src/lib/libcr/db/test/Attic/dbtest.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/test/Attic/dbtest.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -52,22 +52,22 @@
 
 enum S { COMMAND, COMPARE, GET, PUT, REMOVE, SEQ, SEQFLAG, KEY, DATA };
 
-void	 compare __P((DBT *, DBT *));
-DBTYPE	 dbtype __P((char *));
-void	 dump __P((DB *, int));
-void	 err __P((const char *, ...));
-void	 get __P((DB *, DBT *));
-void	 getdata __P((DB *, DBT *, DBT *));
-void	 put __P((DB *, DBT *, DBT *));
-void	 rem __P((DB *, DBT *));
-char	*sflags __P((int));
-void	 synk __P((DB *));
-void	*rfile __P((char *, size_t *));
-void	 seq __P((DB *, DBT *));
-u_int	 setflags __P((char *));
-void	*setinfo __P((DBTYPE, char *));
-void	 usage __P((void));
-void	*xmalloc __P((char *, size_t));
+void	 compare (DBT *, DBT *);
+DBTYPE	 dbtype (char *);
+void	 dump (DB *, int);
+void	 err (const char *, ...);
+void	 get (DB *, DBT *);
+void	 getdata (DB *, DBT *, DBT *);
+void	 put (DB *, DBT *, DBT *);
+void	 rem (DB *, DBT *);
+char	*sflags (int);
+void	 synk (DB *);
+void	*rfile (char *, size_t *);
+void	 seq (DB *, DBT *);
+u_int	 setflags (char *);
+void	*setinfo (DBTYPE, char *);
+void	 usage (void);
+void	*xmalloc (char *, size_t);
 
 DBTYPE type;				/* Database type. */
 void *infop;				/* Iflags. */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/none.c,v 1.2.8.1 2001/03/05 10:25:03 obrien Exp $
- * $DragonFly: src/lib/libc/locale/Attic/none.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/none.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  *
  * @(#)none.c	8.1 (Berkeley) 6/4/93
  */
@@ -44,8 +44,8 @@
 #include <rune.h>
 #include <stdlib.h>
 
-rune_t	_none_sgetrune __P((const char *, size_t, char const **));
-int	_none_sputrune __P((rune_t, char *, size_t, char **));
+rune_t	_none_sgetrune (const char *, size_t, char const **);
+int	_none_sputrune (rune_t, char *, size_t, char **);
 
 int
 _none_init(rl)

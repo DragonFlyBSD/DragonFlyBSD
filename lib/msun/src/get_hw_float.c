@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/msun/src/get_hw_float.c,v 1.3 1999/08/28 00:06:40 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/get_hw_float.c,v 1.2 2003/06/17 04:26:53 dillon Exp $
+ * $DragonFly: src/lib/msun/src/Attic/get_hw_float.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
-int	__get_hw_float __P((void));
+int	__get_hw_float (void);
 
 static int	hw_float = -1;
 

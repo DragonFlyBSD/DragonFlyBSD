@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getusershell.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getusershell.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  *
  * @(#)getusershell.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/getusershell.c,v 1.3.2.1 2001/03/05 09:17:52 obrien Exp $
@@ -54,7 +54,7 @@
 
 static char *okshells[] = { _PATH_BSHELL, _PATH_CSHELL, NULL };
 static char **curshell, **shells, *strings;
-static char **initshells __P((void));
+static char **initshells (void);
 
 /*
  * Get a list of shells from _PATH_SHELLS, if it exists.

@@ -32,7 +32,7 @@
  *
  *	@(#)kvm.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/lib/libkvm/kvm.h,v 1.11 1999/08/27 23:44:50 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm.h,v 1.3 2003/11/09 02:34:02 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm.h,v 1.4 2003/11/12 20:21:30 eirikn Exp $
  */
 
 #ifndef _KVM_H_
@@ -64,24 +64,24 @@ struct kvm_swap {
 #define SWIF_DEV_PREFIX	0x0002
 
 __BEGIN_DECLS
-int	  kvm_close __P((kvm_t *));
-char	**kvm_getargv __P((kvm_t *, const struct kinfo_proc *, int));
-char	**kvm_getenvv __P((kvm_t *, const struct kinfo_proc *, int));
-char	 *kvm_geterr __P((kvm_t *));
-char	 *kvm_getfiles __P((kvm_t *, int, int, int *));
-int	  kvm_getloadavg __P((kvm_t *, double [], int));
+int	  kvm_close (kvm_t *);
+char	**kvm_getargv (kvm_t *, const struct kinfo_proc *, int);
+char	**kvm_getenvv (kvm_t *, const struct kinfo_proc *, int);
+char	 *kvm_geterr (kvm_t *);
+char	 *kvm_getfiles (kvm_t *, int, int, int *);
+int	  kvm_getloadavg (kvm_t *, double [], int);
 struct kinfo_proc *
-	  kvm_getprocs __P((kvm_t *, int, int, int *));
-int	  kvm_getswapinfo __P((kvm_t *, struct kvm_swap *, int, int));
-int	  kvm_nlist __P((kvm_t *, struct nlist *));
+	  kvm_getprocs (kvm_t *, int, int, int *);
+int	  kvm_getswapinfo (kvm_t *, struct kvm_swap *, int, int);
+int	  kvm_nlist (kvm_t *, struct nlist *);
 kvm_t	 *kvm_open
-	    __P((const char *, const char *, const char *, int, const char *));
+	    (const char *, const char *, const char *, int, const char *);
 kvm_t	 *kvm_openfiles
-	    __P((const char *, const char *, const char *, int, char *));
-__ssize_t	  kvm_read __P((kvm_t *, unsigned long, void *, __size_t));
+	    (const char *, const char *, const char *, int, char *);
+__ssize_t	  kvm_read (kvm_t *, unsigned long, void *, __size_t);
 __ssize_t	  kvm_uread
-	    __P((kvm_t *, const struct proc *, unsigned long, char *, __size_t));
-__ssize_t	  kvm_write __P((kvm_t *, unsigned long, const void *, __size_t));
+	    (kvm_t *, const struct proc *, unsigned long, char *, __size_t);
+__ssize_t	  kvm_write (kvm_t *, unsigned long, const void *, __size_t);
 __END_DECLS
 
 #endif /* !_KVM_H_ */

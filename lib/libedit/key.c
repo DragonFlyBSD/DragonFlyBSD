@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)key.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/key.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/key.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -77,17 +77,17 @@ struct key_node_t {
     struct key_node_t *sibling;	/* ptr to another key with same prefix 	*/
 };
 
-private	int            node_trav	__P((EditLine *, key_node_t *, char *,
-					     key_value_t *));
-private	int            node__try	__P((key_node_t *, char *,
-					     key_value_t *, int));
-private	key_node_t    *node__get	__P((int));
-private	void	       node__put	__P((key_node_t *));
-private	int	       node__delete	__P((key_node_t **, char *));
-private	int	       node_lookup 	__P((EditLine *, char *, key_node_t *,
-					     int));
-private	int	       node_enum	__P((EditLine *, key_node_t *, int));
-private	int	       key__decode_char	__P((char *, int, int));
+private	int            node_trav	(EditLine *, key_node_t *, char *,
+					     key_value_t *);
+private	int            node__try	(key_node_t *, char *,
+					     key_value_t *, int);
+private	key_node_t    *node__get	(int);
+private	void	       node__put	(key_node_t *);
+private	int	       node__delete	(key_node_t **, char *);
+private	int	       node_lookup 	(EditLine *, char *, key_node_t *,
+					     int);
+private	int	       node_enum	(EditLine *, key_node_t *, int);
+private	int	       key__decode_char	(char *, int, int);
 
 #define KEY_BUFSIZ	EL_BUFSIZ
 

@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * $FreeBSD: src/lib/libc/rpc/netnamer.c,v 1.3.6.1 2000/09/20 04:43:11 jkh Exp $
- * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/netnamer.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
  *
  * @(#)netnamer.c 1.13 91/03/11 Copyr 1986 Sun Micro
  */
@@ -57,8 +57,8 @@ static char    *OPSYS = "unix";
 static char    *NETID = "netid.byname";
 static char    *NETIDFILE = "/etc/netid";
 
-static int getnetid __P(( char *, char * ));
-static int _getgroups __P(( char *, gid_t * ));
+static int getnetid ( char *, char * );
+static int _getgroups ( char *, gid_t * );
 
 #ifndef NGROUPS
 #define NGROUPS 16

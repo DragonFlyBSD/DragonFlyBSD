@@ -32,7 +32,7 @@
  *
  * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/getpwent.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -49,9 +49,9 @@
 #include <limits.h>
 #include <grp.h>
 
-extern void setnetgrent __P(( char * ));
-extern int getnetgrent __P(( char **, char **, char ** ));
-extern int innetgr __P(( const char *, const char *, const char *, const char * ));
+extern void setnetgrent ( char * );
+extern int getnetgrent ( char **, char **, char ** );
+extern int innetgr ( const char *, const char *, const char *, const char * );
 
 /*
  * The lookup techniques and data extraction code here must be kept
@@ -79,16 +79,16 @@ static char _ypnam[YPMAXRECORD];
 #define YP_HAVE_NONE 0
 static int _gotmaster;
 static char *_pw_yp_domain;
-static inline int unwind __P(( char * ));
-static void _ypinitdb __P(( void ));
-static int _havemaster __P((char *));
-static int _getyppass __P((struct passwd *, const char *, const char * ));
-static int _nextyppass __P((struct passwd *));
-static inline int lookup __P((const char *));
-static inline void store __P((const char *));
-static inline int ingr __P((const char *, const char*));
-static inline int verf __P((const char *));
-static char * _get_adjunct_pw __P((const char *));
+static inline int unwind ( char * );
+static void _ypinitdb ( void );
+static int _havemaster (char *);
+static int _getyppass (struct passwd *, const char *, const char * );
+static int _nextyppass (struct passwd *);
+static inline int lookup (const char *);
+static inline void store (const char *);
+static inline int ingr (const char *, const char*);
+static inline int verf (const char *);
+static char * _get_adjunct_pw (const char *);
 #endif
 static int __hashpw(DBT *);
 static int __initdb(void);

@@ -35,7 +35,7 @@
  *
  * @(#)sscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/sscanf.c,v 1.6 1999/08/28 00:01:17 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/sscanf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/sscanf.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -47,7 +47,7 @@
 #endif
 #include "local.h"
 
-static int eofread __P((void *, char *, int));
+static int eofread (void *, char *, int);
 
 /* ARGSUSED */
 static int

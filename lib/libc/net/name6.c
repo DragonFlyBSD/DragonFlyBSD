@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/name6.c,v 1.6.2.9 2002/11/02 18:54:57 ume Exp $	*/
-/*	$DragonFly: src/lib/libc/net/name6.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
+/*	$DragonFly: src/lib/libc/net/name6.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $	*/
 /*	$KAME: name6.c,v 1.25 2000/06/26 16:44:40 itojun Exp $	*/
 
 /*
@@ -1025,8 +1025,8 @@ typedef union {
 	u_char buf[MAXPACKET];
 } querybuf;
 
-static struct hostent *getanswer __P((const querybuf *, int, const char *,
-	int, struct hostent *, int *));
+static struct hostent *getanswer (const querybuf *, int, const char *,
+	int, struct hostent *, int *);
 
 /*
  * we don't need to take care about sorting, nor IPv4 mapped address here.
@@ -1049,7 +1049,7 @@ getanswer(answer, anslen, qname, qtype, template, errp)
 	int haveanswer, had_error;
 	char tbuf[MAXDNAME];
 	const char *tname;
-	int (*name_ok) __P((const char *));
+	int (*name_ok) (const char *);
 	static char *h_addr_ptrs[MAXADDRS + 1];
 	static char *host_aliases[MAXALIASES];
 	static char hostbuf[8*1024];

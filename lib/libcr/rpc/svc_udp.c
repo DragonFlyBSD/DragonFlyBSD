@@ -29,7 +29,7 @@
  * @(#)svc_udp.c 1.24 87/08/11 Copyr 1984 Sun Micro
  * @(#)svc_udp.c	2.2 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/svc_udp.c,v 1.13 2000/01/27 23:06:41 jasone Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/svc_udp.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/svc_udp.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 /*
@@ -57,8 +57,8 @@ static enum xprt_stat	svcudp_stat();
 static bool_t		svcudp_getargs();
 static bool_t		svcudp_freeargs();
 static void		svcudp_destroy();
-static void		cache_set __P((SVCXPRT *, u_long));
-static int		cache_get __P((SVCXPRT *, struct rpc_msg *, char **, u_long *));
+static void		cache_set (SVCXPRT *, u_long);
+static int		cache_get (SVCXPRT *, struct rpc_msg *, char **, u_long *);
 
 static struct xp_ops svcudp_op = {
 	svcudp_recv,

@@ -23,7 +23,7 @@
  * documentation and/or software.
  *
  * $FreeBSD: src/lib/libmd/md5c.c,v 1.11 1999/12/29 05:04:20 peter Exp $
- * $DragonFly: src/lib/libmd/md5c.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libmd/md5c.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  *
  * This code is the same as the code published by RSA Inc.  It has been
  * edited for clarity and style only.
@@ -39,7 +39,7 @@
 
 #include <sys/md5.h>
 
-static void MD5Transform __P((u_int32_t [4], const unsigned char [64]));
+static void MD5Transform (u_int32_t [4], const unsigned char [64]);
 
 #ifdef _KERNEL
 #define memset(x,y,z)	bzero(x,z);

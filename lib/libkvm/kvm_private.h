@@ -36,7 +36,7 @@
  *
  *	@(#)kvm_private.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libkvm/kvm_private.h,v 1.5 1999/12/27 07:14:58 peter Exp $
- * $DragonFly: src/lib/libkvm/kvm_private.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm_private.h,v 1.3 2003/11/12 20:21:30 eirikn Exp $
  */
 
 struct __kvm {
@@ -71,13 +71,13 @@ struct __kvm {
 /*
  * Functions used internally by kvm, but across kvm modules.
  */
-void	 _kvm_err __P((kvm_t *kd, const char *program, const char *fmt, ...));
-void	 _kvm_freeprocs __P((kvm_t *kd));
-void	 _kvm_freevtop __P((kvm_t *));
-int	 _kvm_initvtop __P((kvm_t *));
-int	 _kvm_kvatop __P((kvm_t *, u_long, u_long *));
-void	*_kvm_malloc __P((kvm_t *kd, size_t));
-void	*_kvm_realloc __P((kvm_t *kd, void *, size_t));
+void	 _kvm_err (kvm_t *kd, const char *program, const char *fmt, ...);
+void	 _kvm_freeprocs (kvm_t *kd);
+void	 _kvm_freevtop (kvm_t *);
+int	 _kvm_initvtop (kvm_t *);
+int	 _kvm_kvatop (kvm_t *, u_long, u_long *);
+void	*_kvm_malloc (kvm_t *kd, size_t);
+void	*_kvm_realloc (kvm_t *kd, void *, size_t);
 void	 _kvm_syserr
-	    __P((kvm_t *kd, const char *program, const char *fmt, ...));
-int	 _kvm_uvatop __P((kvm_t *, const struct proc *, u_long, u_long *));
+	    (kvm_t *kd, const char *program, const char *fmt, ...);
+int	 _kvm_uvatop (kvm_t *, const struct proc *, u_long, u_long *);

@@ -24,7 +24,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology.
   *
   * $FreeBSD: src/lib/libskey/skeyaccess.c,v 1.9.6.2 2002/08/12 19:42:24 iedowse Exp $
-  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
   */
 
 #include <sys/types.h>
@@ -49,12 +49,12 @@
   */
 static char *prev_token = 0;		/* push-back buffer */
 static char *line_pointer = NULL;
-static char *first_token __P((char *, int, FILE *));
+static char *first_token (char *, int, FILE *);
 static int line_number;
-static void unget_token __P((char *));
-static char *get_token __P((void));
-static char *need_token __P((void));
-static char *need_internet_addr __P((void));
+static void unget_token (char *);
+static char *get_token (void);
+static char *need_token (void);
+static char *need_internet_addr (void);
 
  /*
   * Various forms of token matching.
@@ -63,12 +63,12 @@ static char *need_internet_addr __P((void));
 #define match_port(l)		match_token((l)->port)
 #define match_user(l)		match_token((l)->user)
 struct login_info;
-static int match_internet_addr __P((struct login_info *));
-static int match_group __P((struct login_info *));
-static int match_token __P((char *));
-static int is_internet_addr __P((char *));
-static struct addrinfo *convert_internet_addr __P((char *));
-static struct addrinfo *lookup_internet_addr __P((char *));
+static int match_internet_addr (struct login_info *);
+static int match_group (struct login_info *);
+static int match_token (char *);
+static int is_internet_addr (char *);
+static struct addrinfo *convert_internet_addr (char *);
+static struct addrinfo *lookup_internet_addr (char *);
 
 #define MAX_ADDR	32
 #define PERMIT		1
@@ -88,8 +88,8 @@ struct login_info {
     char   *port;			/* login port */
 };
 
-static int _skeyaccess __P((FILE *, struct login_info *));
-int skeyaccess __P((char *, char *, char *, char *));
+static int _skeyaccess (FILE *, struct login_info *);
+int skeyaccess (char *, char *, char *, char *);
 
 /* skeyaccess - find out if UNIX passwords are permitted */
 

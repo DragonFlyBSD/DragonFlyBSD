@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getservent.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/net/Attic/getservent.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/getservent.c,v 1.4 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -45,7 +45,7 @@
 #include <rpcsvc/yp_prot.h>
 #include <rpcsvc/ypclnt.h>
 static int serv_stepping_yp = 0;
-extern int _yp_check __P(( char ** ));
+extern int _yp_check ( char ** );
 #endif
 
 

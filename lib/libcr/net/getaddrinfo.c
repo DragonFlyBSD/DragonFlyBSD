@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getaddrinfo.c,v 1.9.2.14 2002/11/08 17:49:31 ume Exp $	*/
-/*	$DragonFly: src/lib/libcr/net/Attic/getaddrinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/getaddrinfo.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $	*/
 /*	$KAME: getaddrinfo.c,v 1.15 2000/07/09 04:37:24 itojun Exp $	*/
 
 /*
@@ -184,44 +184,44 @@ struct res_target {
 	int n;			/* result length */
 };
 
-static int str_isnumber __P((const char *));
-static int explore_fqdn __P((const struct addrinfo *, const char *,
-	const char *, struct addrinfo **));
-static int explore_null __P((const struct addrinfo *,
-	const char *, struct addrinfo **));
-static int explore_numeric __P((const struct addrinfo *, const char *,
-	const char *, struct addrinfo **));
-static int explore_numeric_scope __P((const struct addrinfo *, const char *,
-	const char *, struct addrinfo **));
-static int get_canonname __P((const struct addrinfo *,
-	struct addrinfo *, const char *));
-static struct addrinfo *get_ai __P((const struct addrinfo *,
-	const struct afd *, const char *));
-static int get_portmatch __P((const struct addrinfo *, const char *));
-static int get_port __P((struct addrinfo *, const char *, int));
-static const struct afd *find_afd __P((int));
-static int addrconfig __P((struct addrinfo *));
+static int str_isnumber (const char *);
+static int explore_fqdn (const struct addrinfo *, const char *,
+	const char *, struct addrinfo **);
+static int explore_null (const struct addrinfo *,
+	const char *, struct addrinfo **);
+static int explore_numeric (const struct addrinfo *, const char *,
+	const char *, struct addrinfo **);
+static int explore_numeric_scope (const struct addrinfo *, const char *,
+	const char *, struct addrinfo **);
+static int get_canonname (const struct addrinfo *,
+	struct addrinfo *, const char *);
+static struct addrinfo *get_ai (const struct addrinfo *,
+	const struct afd *, const char *);
+static int get_portmatch (const struct addrinfo *, const char *);
+static int get_port (struct addrinfo *, const char *, int);
+static const struct afd *find_afd (int);
+static int addrconfig (struct addrinfo *);
 #ifdef INET6
-static int ip6_str2scopeid __P((char *, struct sockaddr_in6 *, u_int32_t *));
+static int ip6_str2scopeid (char *, struct sockaddr_in6 *, u_int32_t *);
 #endif
 
-static struct addrinfo *getanswer __P((const querybuf *, int, const char *,
-	int, const struct addrinfo *));
-static int _dns_getaddrinfo __P((const struct addrinfo *, const char *,
-	struct addrinfo **));
-static struct addrinfo *_gethtent __P((FILE *fp, const char *,
-	const struct addrinfo *));
-static int _files_getaddrinfo __P((const struct addrinfo *, const char *,
-	struct addrinfo **));
+static struct addrinfo *getanswer (const querybuf *, int, const char *,
+	int, const struct addrinfo *);
+static int _dns_getaddrinfo (const struct addrinfo *, const char *,
+	struct addrinfo **);
+static struct addrinfo *_gethtent (FILE *fp, const char *,
+	const struct addrinfo *);
+static int _files_getaddrinfo (const struct addrinfo *, const char *,
+	struct addrinfo **);
 #ifdef YP
-static int _nis_getaddrinfo __P((const struct addrinfo *, const char *,
-	struct addrinfo **));
+static int _nis_getaddrinfo (const struct addrinfo *, const char *,
+	struct addrinfo **);
 #endif
 
-static int res_queryN __P((const char *, struct res_target *));
-static int res_searchN __P((const char *, struct res_target *));
-static int res_querydomainN __P((const char *, const char *,
-	struct res_target *));
+static int res_queryN (const char *, struct res_target *);
+static int res_searchN (const char *, struct res_target *);
+static int res_querydomainN (const char *, const char *,
+	struct res_target *);
 
 static char *ai_errlist[] = {
 	"Success",
@@ -1295,7 +1295,7 @@ getanswer(answer, anslen, qname, qtype, pai)
 	int type, class, ancount, qdcount;
 	int haveanswer, had_error;
 	char tbuf[MAXDNAME];
-	int (*name_ok) __P((const char *));
+	int (*name_ok) (const char *);
 	char hostbuf[8*1024];
 
 	memset(&sentinel, 0, sizeof(sentinel));
@@ -1759,7 +1759,7 @@ free:
 
 /* resolver logic */
 
-extern const char *__hostalias __P((const char *));
+extern const char *__hostalias (const char *);
 extern int h_errno;
 
 /*

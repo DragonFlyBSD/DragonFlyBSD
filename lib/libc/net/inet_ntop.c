@@ -14,7 +14,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_ntop.c,v 1.6.2.2 2002/12/16 15:19:35 robert Exp $
- * $DragonFly: src/lib/libc/net/inet_ntop.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/inet_ntop.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -32,8 +32,8 @@
  * sizeof(int) < 4.  sizeof(int) > 4 is fine; all the world's not a VAX.
  */
 
-static const char *inet_ntop4 __P((const u_char *src, char *dst, size_t size));
-static const char *inet_ntop6 __P((const u_char *src, char *dst, size_t size));
+static const char *inet_ntop4 (const u_char *src, char *dst, size_t size);
+static const char *inet_ntop6 (const u_char *src, char *dst, size_t size);
 
 /* char *
  * inet_ntop(af, src, dst, size)

@@ -35,7 +35,7 @@
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
  * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/setmode.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/setmode.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -65,10 +65,10 @@ typedef struct bitcmd {
 #define	CMD2_OBITS	0x08
 #define	CMD2_UBITS	0x10
 
-static BITCMD	*addcmd __P((BITCMD *, int, int, int, u_int));
-static void	 compress_mode __P((BITCMD *));
+static BITCMD	*addcmd (BITCMD *, int, int, int, u_int);
+static void	 compress_mode (BITCMD *);
 #ifdef SETMODE_DEBUG
-static void	 dumpmode __P((BITCMD *));
+static void	 dumpmode (BITCMD *);
 #endif
 
 /*

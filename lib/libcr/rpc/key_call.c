@@ -30,7 +30,7 @@
  * Copyright (c) 1986-1991 by Sun Microsystems Inc. 
  *
  * $FreeBSD: src/lib/libc/rpc/key_call.c,v 1.3 2000/01/27 23:06:39 jasone Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/key_call.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/key_call.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #ident	"@(#)key_call.c	1.25	94/04/24 SMI"
@@ -82,7 +82,7 @@ cryptkeyres *(*__key_encryptsession_pk_LOCAL)() = 0;
 cryptkeyres *(*__key_decryptsession_pk_LOCAL)() = 0;
 des_block *(*__key_gendes_LOCAL)() = 0;
 
-static int key_call __P(( u_long, xdrproc_t, char *, xdrproc_t, char * ));
+static int key_call ( u_long, xdrproc_t, char *, xdrproc_t, char * );
 
 int
 key_setsecret(secretkey)

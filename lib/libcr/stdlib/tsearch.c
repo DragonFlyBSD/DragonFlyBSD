@@ -10,7 +10,7 @@
  *
  * $NetBSD: tsearch.c,v 1.3 1999/09/16 11:45:37 lukem Exp $
  * $FreeBSD: src/lib/libc/stdlib/tsearch.c,v 1.1.2.1 2000/08/17 07:38:39 jhb Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/tsearch.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/tsearch.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -25,7 +25,7 @@ void *
 tsearch(vkey, vrootp, compar)
 	const void *vkey;		/* key to be located */
 	void **vrootp;			/* address of tree root */
-	int (*compar) __P((const void *, const void *));
+	int (*compar) (const void *, const void *);
 {
 	node_t *q;
 	node_t **rootp = (node_t **)vrootp;

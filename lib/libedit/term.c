@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libedit/term.c,v 1.11.6.1 2000/08/16 14:43:40 ache Exp $
- * $DragonFly: src/lib/libedit/term.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libedit/term.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  *
  * @(#)term.c	8.2 (Berkeley) 4/30/95
  */
@@ -177,13 +177,13 @@ private struct termcapval {
 
 /* do two or more of the attributes use me */
 
-private	void	term_rebuffer_display	__P((EditLine *));
-private	void	term_free_display	__P((EditLine *));
-private	void	term_alloc_display	__P((EditLine *));
-private	void	term_alloc		__P((EditLine *,
-					     struct termcapstr *, char *));
-private void	term_init_arrow		__P((EditLine *));
-private void	term_reset_arrow	__P((EditLine *));
+private	void	term_rebuffer_display	(EditLine *);
+private	void	term_free_display	(EditLine *);
+private	void	term_alloc_display	(EditLine *);
+private	void	term_alloc		(EditLine *,
+					     struct termcapstr *, char *);
+private void	term_init_arrow		(EditLine *);
+private void	term_reset_arrow	(EditLine *);
 
 
 private FILE *term_outfile = NULL;	/* XXX: How do we fix that? */

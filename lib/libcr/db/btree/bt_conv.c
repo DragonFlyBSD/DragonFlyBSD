@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_conv.c	8.5 (Berkeley) 8/17/94
- * $DragonFly: src/lib/libcr/db/btree/Attic/bt_conv.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_conv.c,v 1.4 2003/11/12 20:21:26 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <db.h>
 #include "btree.h"
 
-static void mswap __P((PAGE *));
+static void mswap (PAGE *);
 
 /*
  * __BT_BPGIN, __BT_BPGOUT --

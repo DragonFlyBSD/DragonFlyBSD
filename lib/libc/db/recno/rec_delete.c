@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)rec_delete.c	8.7 (Berkeley) 7/14/94
- * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/db/recno/rec_delete.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@
 #include <db.h>
 #include "recno.h"
 
-static int rec_rdelete __P((BTREE *, recno_t));
+static int rec_rdelete (BTREE *, recno_t);
 
 /*
  * __REC_DELETE -- Delete the item(s) referenced by a key.

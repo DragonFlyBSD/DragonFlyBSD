@@ -55,7 +55,7 @@
  * @(#)gethostnamadr.c	8.1 (Berkeley) 6/4/93
  * $From: Id: gethnamaddr.c,v 8.23 1998/04/07 04:59:46 vixie Exp $
  * $FreeBSD: src/lib/libc/net/gethostbydns.c,v 1.27.2.5 2002/11/02 18:54:57 ume Exp $
- * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/gethostbydns.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -93,7 +93,7 @@ static char hostbuf[8*1024];
 static u_char host_addr[16];	/* IPv4 or IPv6 */
 
 #ifdef RESOLVSORT
-static void addrsort __P((char **, int));
+static void addrsort (char **, int);
 #endif
 
 #define MAXPACKET	(64*1024)
@@ -162,7 +162,7 @@ gethostanswer(answer, anslen, qname, qtype)
 	int toobig = 0;
 	char tbuf[MAXDNAME];
 	const char *tname;
-	int (*name_ok) __P((const char *));
+	int (*name_ok) (const char *);
 
 	tname = qname;
 	host.h_name = NULL;

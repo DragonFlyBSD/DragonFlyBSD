@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getcap.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getcap.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
@@ -65,9 +65,9 @@ static size_t	 topreclen;	/* toprec length */
 static char	*toprec;	/* Additional record specified by cgetset() */
 static int	 gottoprec;	/* Flag indicating retrieval of toprecord */
 
-static int	cdbget __P((DB *, char **, char *));
-static int 	getent __P((char **, u_int *, char **, int, char *, int, char *));
-static int	nfcmp __P((char *, char *));
+static int	cdbget (DB *, char **, char *);
+static int 	getent (char **, u_int *, char **, int, char *, int, char *);
+static int	nfcmp (char *, char *);
 
 /*
  * Cgetset() allows the addition of a user specified buffer to be added

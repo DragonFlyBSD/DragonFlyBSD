@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_close.c,v 1.5 2000/01/27 23:06:05 jasone Exp $
- * $DragonFly: src/lib/libc/db/btree/bt_close.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_close.c,v 1.3 2003/11/12 20:21:22 eirikn Exp $
  *
  * @(#)bt_close.c	8.7 (Berkeley) 8/17/94
  */
@@ -50,7 +50,7 @@
 #include <db.h>
 #include "btree.h"
 
-static int bt_meta __P((BTREE *));
+static int bt_meta (BTREE *);
 
 /*
  * BT_CLOSE -- Close a btree.

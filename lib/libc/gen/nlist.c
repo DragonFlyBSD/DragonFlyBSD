@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/nlist.c,v 1.12.2.1 2001/07/11 23:59:09 obrien Exp $
- *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ *	$DragonFly: src/lib/libc/gen/nlist.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
  *
  * @(#)nlist.c	8.1 (Berkeley) 6/4/93
  */
@@ -55,9 +55,9 @@
 #include <elf-hints.h>
 #endif
 
-int __fdnlist		__P((int, struct nlist *));
-int __aout_fdnlist	__P((int, struct nlist *));
-int __elf_fdnlist	__P((int, struct nlist *));
+int __fdnlist		(int, struct nlist *);
+int __aout_fdnlist	(int, struct nlist *);
+int __elf_fdnlist	(int, struct nlist *);
 
 int
 nlist(name, list)
@@ -75,7 +75,7 @@ nlist(name, list)
 }
 
 static struct nlist_handlers {
-	int	(*fn) __P((int fd, struct nlist *list));
+	int	(*fn) (int fd, struct nlist *list);
 } nlist_fn[] = {
 #ifdef _NLIST_DO_AOUT
 	{ __aout_fdnlist },
@@ -199,7 +199,7 @@ __aout_fdnlist(fd, list)
 #endif
 
 #ifdef _NLIST_DO_ELF
-static void elf_sym_to_nlist __P((struct nlist *, Elf_Sym *, Elf_Shdr *, int));
+static void elf_sym_to_nlist (struct nlist *, Elf_Sym *, Elf_Shdr *, int);
 
 /*
  * __elf_is_okay__ - Determine if ehdr really

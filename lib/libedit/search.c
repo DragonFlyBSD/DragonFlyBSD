@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)search.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/search.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/search.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -110,8 +110,8 @@ el_match(str, pat)
     regexp *rp;
     int rv;
 #else 
-    extern char *re_comp __P((const char *));
-    extern int re_exec __P((const char *));
+    extern char *re_comp (const char *);
+    extern int re_exec (const char *);
 #endif
 
     if (strstr(str, pat) != NULL)

@@ -28,7 +28,7 @@
  *
  * @(#)rtime.c	2.2 88/08/10 4.0 RPCSRC; from 1.8 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/rtime.c,v 1.5 2000/01/27 23:06:41 jasone Exp $
- * $DragonFly: src/lib/libc/rpc/rtime.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/rpc/rtime.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
  */
 
 /*
@@ -56,12 +56,12 @@
 #include <stdio.h>
 #include <netdb.h>
 
-extern int _rpc_dtablesize __P(( void ));
+extern int _rpc_dtablesize ( void );
 
 #define NYEARS	(unsigned long)(1970 - 1900)
 #define TOFFSET (unsigned long)(60*60*24*(365*NYEARS + (NYEARS/4)))
 
-static void do_close __P(( int ));
+static void do_close ( int );
 
 int
 rtime(addrp, timep, timeout)

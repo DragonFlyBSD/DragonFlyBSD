@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/test-policy.c,v 1.2.2.2 2001/07/03 11:01:15 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/test-policy.c,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/test-policy.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: test-policy.c,v 1.14 2000/12/27 11:38:11 sakane Exp $	*/
 
 /*
@@ -85,11 +85,11 @@ struct req_t {
 { 0, "out ipsec esp/transport/fec0::10-fec0::11/use" },
 };
 
-int test1 __P((void));
-int test1sub1 __P((struct req_t *));
-int test1sub2 __P((char *, int));
-int test2 __P((void));
-int test2sub __P((int));
+int test1 (void);
+int test1sub1 (struct req_t *);
+int test1sub2 (char *, int);
+int test2 (void);
+int test2sub (int);
 
 int
 main(ac, av)

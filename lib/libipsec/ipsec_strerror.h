@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_strerror.h,v 1.1.2.2 2001/07/03 11:01:14 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_strerror.h,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/ipsec_strerror.h,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: ipsec_strerror.h,v 1.8 2000/07/30 00:45:12 itojun Exp $	*/
 
 /*
@@ -32,7 +32,7 @@
  */
 
 extern int __ipsec_errcode;
-extern void __ipsec_set_strerror __P((const char *));
+extern void __ipsec_set_strerror (const char *);
 
 #define EIPSEC_NO_ERROR		0	/*success*/
 #define EIPSEC_NOT_SUPPORTED	1	/*not supported*/

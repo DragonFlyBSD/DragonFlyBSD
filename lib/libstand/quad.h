@@ -36,7 +36,7 @@
  *
  *	@(#)quad.h	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libstand/quad.h,v 1.2 1999/08/28 00:05:33 peter Exp $
- * $DragonFly: src/lib/libstand/quad.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/quad.h,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 
 /*
@@ -98,11 +98,11 @@ union uu {
 #define	LHALF(x)	((x) & ((1 << HALF_BITS) - 1))
 #define	LHUP(x)		((x) << HALF_BITS)
 
-quad_t		__divdi3 __P((quad_t a, quad_t b));
-quad_t		__moddi3 __P((quad_t a, quad_t b));
-u_quad_t	__qdivrem __P((u_quad_t u, u_quad_t v, u_quad_t *rem));
-u_quad_t	__udivdi3 __P((u_quad_t a, u_quad_t b));
-u_quad_t	__umoddi3 __P((u_quad_t a, u_quad_t b));
+quad_t		__divdi3 (quad_t a, quad_t b);
+quad_t		__moddi3 (quad_t a, quad_t b);
+u_quad_t	__qdivrem (u_quad_t u, u_quad_t v, u_quad_t *rem);
+u_quad_t	__udivdi3 (u_quad_t a, u_quad_t b);
+u_quad_t	__umoddi3 (u_quad_t a, u_quad_t b);
 
 /*
  * XXX

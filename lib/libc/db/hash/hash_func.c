@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)hash_func.c	8.2 (Berkeley) 2/21/94
- * $DragonFly: src/lib/libc/db/hash/hash_func.c,v 1.3 2003/11/12 18:07:00 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/hash/hash_func.c,v 1.4 2003/11/12 20:21:23 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -44,13 +44,13 @@
 #include "page.h"
 #include "extern.h"
 
-static u_int32_t hash1 __P((const void *, size_t));
-static u_int32_t hash2 __P((const void *, size_t));
-static u_int32_t hash3 __P((const void *, size_t));
-static u_int32_t hash4 __P((const void *, size_t));
+static u_int32_t hash1 (const void *, size_t);
+static u_int32_t hash2 (const void *, size_t);
+static u_int32_t hash3 (const void *, size_t);
+static u_int32_t hash4 (const void *, size_t);
 
 /* Global default hash function */
-u_int32_t (*__default_hash) __P((const void *, size_t)) = hash4;
+u_int32_t (*__default_hash) (const void *, size_t) = hash4;
 
 /*
  * HASH FUNCTIONS

@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/lib/libskey/skey.h,v 1.2 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/libskey/skey.h,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 
 #ifndef _SKEY_H_
@@ -38,27 +38,27 @@ struct mc {
 #define rip             _sk_rip
 #define sevenbit        _sk_sevenbit
 
-void f __P((char *x));
-int keycrunch __P((char *result,const char *seed,const char *passwd));
-char *btoe __P((char *engout,char *c));
-char *put8 __P((char *out,char *s));
-int atob8 __P((char *out, char *in));
-int btoa8 __P((char *out, char *in));
-int htoi __P((char c));
-int etob __P((char *out,char *e));
-void sevenbit __P((char *s));
-char *readpass __P((char *buf, int n));
-void rip __P((char *buf));
+void f (char *x);
+int keycrunch (char *result,const char *seed,const char *passwd);
+char *btoe (char *engout,char *c);
+char *put8 (char *out,char *s);
+int atob8 (char *out, char *in);
+int btoa8 (char *out, char *in);
+int htoi (char c);
+int etob (char *out,char *e);
+void sevenbit (char *s);
+char *readpass (char *buf, int n);
+void rip (char *buf);
 #endif  /* _SKEY_INTERNAL */
 
 /* Simplified application programming interface. */
 #include <pwd.h>
-int skeylookup __P((struct skey *mp, const char *name));
-int skeyverify __P((struct skey *mp, char *response));
-int skeychallenge __P((struct skey *mp, const char *name, char *challenge));
-int skeyinfo __P((struct skey *mp, const char* name, char *ss));
-int skeyaccess __P((char *user, const char *port, const char *host, const char *addr));
-char *skey_getpass __P((const char *prompt, struct passwd * pwd, int pwok));
-const char *skey_crypt __P((char *pp, char *salt, struct passwd *pwd, int pwok));
+int skeylookup (struct skey *mp, const char *name);
+int skeyverify (struct skey *mp, char *response);
+int skeychallenge (struct skey *mp, const char *name, char *challenge);
+int skeyinfo (struct skey *mp, const char* name, char *ss);
+int skeyaccess (char *user, const char *port, const char *host, const char *addr);
+char *skey_getpass (const char *prompt, struct passwd * pwd, int pwok);
+const char *skey_crypt (char *pp, char *salt, struct passwd *pwd, int pwok);
 
 #endif /* _SKEY_H_ */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)map.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/map.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/map.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -46,11 +46,11 @@
 
 #define N_KEYS 256
 
-private void map_print_key	 __P((EditLine *, el_action_t *, char *));
-private void map_print_some_keys __P((EditLine *, el_action_t *, int, int));
-private void map_print_all_keys	 __P((EditLine *));
-private void map_init_nls 	 __P((EditLine *));
-private void map_init_meta	 __P((EditLine *));
+private void map_print_key	 (EditLine *, el_action_t *, char *);
+private void map_print_some_keys (EditLine *, el_action_t *, int, int);
+private void map_print_all_keys	 (EditLine *);
+private void map_init_nls 	 (EditLine *);
+private void map_init_meta	 (EditLine *);
 
 /* keymap tables ; should be N_KEYS*sizeof(KEYCMD) bytes long */
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_seq.c	8.7 (Berkeley) 7/20/94
- * $DragonFly: src/lib/libcr/db/btree/Attic/bt_seq.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_seq.c,v 1.4 2003/11/12 20:21:26 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -47,9 +47,9 @@
 #include <db.h>
 #include "btree.h"
 
-static int __bt_first __P((BTREE *, const DBT *, EPG *, int *));
-static int __bt_seqadv __P((BTREE *, EPG *, int));
-static int __bt_seqset __P((BTREE *, EPG *, DBT *, int));
+static int __bt_first (BTREE *, const DBT *, EPG *, int *);
+static int __bt_seqadv (BTREE *, EPG *, int);
+static int __bt_seqset (BTREE *, EPG *, DBT *, int);
 
 /*
  * Sequential scan support.

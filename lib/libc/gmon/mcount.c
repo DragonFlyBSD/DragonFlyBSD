@@ -32,7 +32,7 @@
  *
  * @(#)mcount.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gmon/mcount.c,v 1.17 1999/12/29 05:04:13 peter Exp $
- * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gmon/mcount.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -42,10 +42,10 @@
 #include <vm/vm.h>
 #include <vm/vm_param.h>
 #include <vm/pmap.h>
-void	bintr __P((void));
-void	btrap __P((void));
-void	eintr __P((void));
-void	user __P((void));
+void	bintr (void);
+void	btrap (void);
+void	eintr (void);
+void	user (void);
 #endif
 
 /*

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)pow.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libm/common_source/Attic/pow.c,v 1.3 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/libm/common_source/Attic/pow.c,v 1.4 2003/11/12 20:21:31 eirikn Exp $
  */
 
 /* POW(X,Y)
@@ -120,7 +120,7 @@
 
 const static double zero=0.0, one=1.0, two=2.0, negone= -1.0;
 
-static double pow_P __P((double, double));
+static double pow_P (double, double);
 
 double pow(x,y)
 double x,y;

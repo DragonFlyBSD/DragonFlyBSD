@@ -29,7 +29,7 @@
  * @(#)xdr_rec.c 1.21 87/08/11 Copyr 1984 Sun Micro
  * @(#)xdr_rec.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/xdr/xdr_rec.c,v 1.12 2000/01/19 06:12:32 wpaul Exp $
- * $DragonFly: src/lib/libc/xdr/xdr_rec.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libc/xdr/xdr_rec.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
  */
 
 /*
@@ -103,7 +103,7 @@ typedef struct rec_strm {
 	/*
 	 * out-goung bits
 	 */
-	int (*writeit) __P((caddr_t, caddr_t, int));
+	int (*writeit) (caddr_t, caddr_t, int);
 	caddr_t out_base;	/* output buffer (points to frag header) */
 	caddr_t out_finger;	/* next output position */
 	caddr_t out_boundry;	/* data cannot up to this address */
@@ -112,7 +112,7 @@ typedef struct rec_strm {
 	/*
 	 * in-coming bits
 	 */
-	int (*readit) __P((caddr_t, caddr_t, int));
+	int (*readit) (caddr_t, caddr_t, int);
 	u_long in_size;	/* fixed size of the input buffer */
 	caddr_t in_base;
 	caddr_t in_finger;	/* location of next byte to be had */

@@ -35,7 +35,7 @@
  *
  *	@(#)hash.h	8.3 (Berkeley) 5/31/94
  * $FreeBSD: src/lib/libc/db/hash/hash.h,v 1.4.8.1 2001/03/05 03:50:02 kris Exp $
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash.h,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash.h,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  */
 
 /* Operations */
@@ -97,7 +97,7 @@ typedef struct htab	 {		/* Memory resident data structure */
 	int		exsegs;		/* Number of extra allocated 
 					 * segments */
 	u_int32_t			/* Hash function */
-	    (*hash)__P((const void *, size_t));
+	    (*hash)(const void *, size_t);
 	int		flags;		/* Flag values */
 	int		fp;		/* File pointer */
 	char		*tmp_buf;	/* Temporary Buffer for BIG data */

@@ -28,7 +28,7 @@
  *
  * @(#)auth_des.c	2.2 88/07/29 4.0 RPCSRC; from 1.9 88/02/08 SMI
  * $FreeBSD: src/lib/libc/rpc/auth_des.c,v 1.3 1999/08/28 00:00:32 peter Exp $
- * $DragonFly: src/lib/libcr/rpc/Attic/auth_des.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/rpc/Attic/auth_des.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 /*
  * Copyright (c) 1988 by Sun Microsystems, Inc.
@@ -50,11 +50,11 @@
 #undef NIS
 #include <rpcsvc/nis.h>
 
-extern bool_t __rpc_get_time_offset __P(( struct timeval *, nis_server *,
-						char *, char **, struct sockaddr_in * ));
-extern int rtime __P(( struct sockaddr_in *, struct timeval *, struct timeval *));
-extern bool_t xdr_authdes_cred __P(( XDR *, struct authdes_cred * ));
-extern bool_t xdr_authdes_verf __P(( XDR *, struct authdes_verf * ));
+extern bool_t __rpc_get_time_offset ( struct timeval *, nis_server *,
+						char *, char **, struct sockaddr_in * );
+extern int rtime ( struct sockaddr_in *, struct timeval *, struct timeval *);
+extern bool_t xdr_authdes_cred ( XDR *, struct authdes_cred * );
+extern bool_t xdr_authdes_verf ( XDR *, struct authdes_verf * );
 
 #define MILLION		1000000L
 #define RTIME_TIMEOUT 5		/* seconds to wait for sync */
@@ -82,7 +82,7 @@ static struct auth_ops authdes_ops = {
 	authdes_destroy
 };
 #ifdef foo
-static bool_t	synchronize __P(( struct sockaddr *, struct timeval *));
+static bool_t	synchronize ( struct sockaddr *, struct timeval *);
 #endif
 /*
  * This struct is pointed to by the ah_private field of an "AUTH *"

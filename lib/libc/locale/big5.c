@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/big5.c,v 1.3.2.2 2001/03/05 10:02:54 obrien Exp $
- * $DragonFly: src/lib/libc/locale/Attic/big5.c,v 1.2 2003/06/17 04:26:43 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/big5.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  *
  * @(#)big5.c	8.1 (Berkeley) 6/4/93
  */
@@ -45,8 +45,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-rune_t	_BIG5_sgetrune __P((const char *, size_t, char const **));
-int	_BIG5_sputrune __P((rune_t, char *, size_t, char **));
+rune_t	_BIG5_sgetrune (const char *, size_t, char const **);
+int	_BIG5_sputrune (rune_t, char *, size_t, char **);
 
 int
 _BIG5_init(rl)

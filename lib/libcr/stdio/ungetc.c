@@ -35,7 +35,7 @@
  *
  * @(#)ungetc.c	8.2 (Berkeley) 11/3/93
  * $FreeBSD: src/lib/libc/stdio/ungetc.c,v 1.7.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/ungetc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/ungetc.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -44,7 +44,7 @@
 #include "local.h"
 #include "libc_private.h"
 
-static int __submore __P((FILE *));
+static int __submore (FILE *);
 
 /*
  * Expand the ungetc buffer `in place'.  That is, adjust fp->_p when

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/hash/hash_buf.c,v 1.4.8.1 2001/03/05 07:38:05 obrien Exp $
- * $DragonFly: src/lib/libcr/db/hash/Attic/hash_buf.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/hash/Attic/hash_buf.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  *
  * @(#)hash_buf.c	8.5 (Berkeley) 7/15/94
  */
@@ -70,7 +70,7 @@
 #include "page.h"
 #include "extern.h"
 
-static BUFHEAD *newbuf __P((HTAB *, u_int32_t, BUFHEAD *));
+static BUFHEAD *newbuf (HTAB *, u_int32_t, BUFHEAD *);
 
 /* Unlink B from its place in the lru */
 #define BUF_REMOVE(B) { \

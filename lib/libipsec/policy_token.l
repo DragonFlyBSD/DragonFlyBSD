@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/policy_token.l,v 1.2.2.2 2001/07/03 11:01:15 ume Exp $	*/
-/*	$DragonFly: src/lib/libipsec/policy_token.l,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/policy_token.l,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: policy_token.l,v 1.11 2000/12/01 10:08:29 sakane Exp $	*/
 
 /*
@@ -54,7 +54,7 @@
 #endif
 #define yylval __libipsecyylval	/* XXX */
 
-int yylex __P((void));
+int yylex (void);
 %}
 
 %option noyywrap
@@ -133,7 +133,7 @@ unique		{ yylval.num = IPSEC_LEVEL_UNIQUE; return(LEVEL); }
 
 %%
 
-void __policy__strbuffer__init__ __P((char *));
+void __policy__strbuffer__init__ (char *);
 
 void
 __policy__strbuffer__init__(msg)

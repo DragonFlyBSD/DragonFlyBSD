@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/utf2.c,v 1.3.2.2 2001/03/05 10:27:18 obrien Exp $
- * $DragonFly: src/lib/libc/locale/Attic/utf2.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/utf2.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  *
  * @(#)utf2.c	8.1 (Berkeley) 6/4/93
  */
@@ -44,8 +44,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-rune_t	_UTF2_sgetrune __P((const char *, size_t, char const **));
-int	_UTF2_sputrune __P((rune_t, char *, size_t, char **));
+rune_t	_UTF2_sgetrune (const char *, size_t, char const **);
+int	_UTF2_sputrune (rune_t, char *, size_t, char **);
 
 static int _utf_count[16] = {
 	1, 1, 1, 1, 1, 1, 1, 1,

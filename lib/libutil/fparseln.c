@@ -1,6 +1,6 @@
 /*	$NetBSD: fparseln.c,v 1.9 1999/09/20 04:48:06 lukem Exp $	*/
 /* $FreeBSD: src/lib/libutil/fparseln.c,v 1.2 1999/12/29 17:50:33 peter Exp $ */
-/* $DragonFly: src/lib/libutil/fparseln.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
+/* $DragonFly: src/lib/libutil/fparseln.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $ */
 
 /*
  * Copyright (c) 1997 Christos Zoulas.  All rights reserved.
@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <libutil.h>
 
-static int isescaped __P((const char *, const char *, int));
+static int isescaped (const char *, const char *, int);
 
 /* isescaped():
  *	Return true if the character in *p that belongs to a string
@@ -202,7 +202,7 @@ fparseln(fp, size, lineno, str, flags)
 
 #ifdef TEST
 
-int main __P((int, char **));
+int main (int, char **);
 
 int
 main(argc, argv)

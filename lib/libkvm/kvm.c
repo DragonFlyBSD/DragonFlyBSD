@@ -36,7 +36,7 @@
  *
  * @(#)kvm.c	8.2 (Berkeley) 2/13/94
  * $FreeBSD: src/lib/libkvm/kvm.c,v 1.12.2.3 2002/09/13 14:53:43 nectar Exp $
- * $DragonFly: src/lib/libkvm/kvm.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libkvm/kvm.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@
 #include "kvm_private.h"
 
 /* from src/lib/libc/gen/nlist.c */
-int __fdnlist		__P((int, struct nlist *));
+int __fdnlist		(int, struct nlist *);
 
 char *
 kvm_geterr(kd)

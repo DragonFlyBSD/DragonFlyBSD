@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.22.2.5 2002/10/12 10:46:37 schweikh Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vfprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vfprintf.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 /*
@@ -64,12 +64,12 @@
 /* Define FLOATING_POINT to get floating point. */
 #define	FLOATING_POINT
 
-static int	__sprint __P((FILE *, struct __suio *));
-static int	__sbprintf __P((FILE *, const char *, va_list));
-static char *	__ultoa __P((u_long, char *, int, int, char *));
-static char *	__uqtoa __P((u_quad_t, char *, int, int, char *));
-static void	__find_arguments __P((const char *, va_list, void ***));
-static void	__grow_type_table __P((int, unsigned char **, int *));
+static int	__sprint (FILE *, struct __suio *);
+static int	__sbprintf (FILE *, const char *, va_list);
+static char *	__ultoa (u_long, char *, int, int, char *);
+static char *	__uqtoa (u_quad_t, char *, int, int, char *);
+static void	__find_arguments (const char *, va_list, void ***);
+static void	__grow_type_table (int, unsigned char **, int *);
 
 /*
  * Flush out all the vectors defined by the given uio,
@@ -248,8 +248,8 @@ __uqtoa(u_quad_t val, char *endp, int base, int octzero, char *xdigs)
 #define	BUF		(MAXEXP+MAXFRACT+1)	/* + decimal point */
 #define	DEFPREC		6
 
-static char *cvt __P((double, int, int, char *, int *, int, int *, char **));
-static int exponent __P((char *, int, int));
+static char *cvt (double, int, int, char *, int *, int, int *, char **);
+static int exponent (char *, int, int);
 
 #else /* no FLOATING_POINT */
 
@@ -1190,7 +1190,7 @@ __grow_type_table (int nextarg, unsigned char **typetable, int *tablesize)
 
 #ifdef FLOATING_POINT
 
-extern char *__dtoa __P((double, int, int, int *, int *, char **, char **));
+extern char *__dtoa (double, int, int, int *, int *, char **, char **);
 
 static char *
 cvt(double value, int ndigits, int flags, char *sign, int *decpt,

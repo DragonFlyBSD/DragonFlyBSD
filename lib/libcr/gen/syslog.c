@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/syslog.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/syslog.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -65,8 +65,8 @@ static int	LogFacility = LOG_USER;	/* default facility code */
 static int	LogMask = 0xff;		/* mask of priorities to be logged */
 extern char	*__progname;		/* Program name, from crt0. */
 
-static void	disconnectlog __P((void)); /* disconnect from syslogd */
-static void	connectlog __P((void));	/* (re)connect to syslogd */
+static void	disconnectlog (void); /* disconnect from syslogd */
+static void	connectlog (void);	/* (re)connect to syslogd */
 
 /*
  * Format of the magic cookie passed through the stdio hook

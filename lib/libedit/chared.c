@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)chared.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/chared.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/chared.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -184,7 +184,7 @@ protected char *
 c__prev_word(p, low, n, wtest)
     register char *p, *low;
     register int n;
-    int (*wtest) __P((int));
+    int (*wtest) (int);
 {
     p--;
 
@@ -211,7 +211,7 @@ protected char *
 c__next_word(p, high, n, wtest)
     register char *p, *high;
     register int n;
-    int (*wtest) __P((int));
+    int (*wtest) (int);
 {
     while (n--) {
 	while ((p < high) && !(*wtest)((unsigned char) *p))
@@ -233,7 +233,7 @@ cv_next_word(el, p, high, n, wtest)
     EditLine *el;
     register char *p, *high;
     register int n;
-    int (*wtest) __P((int));
+    int (*wtest) (int);
 {
     int test;
 
@@ -266,7 +266,7 @@ cv_prev_word(el, p, low, n, wtest)
     EditLine *el;
     register char *p, *low;
     register int n;
-    int (*wtest) __P((int));
+    int (*wtest) (int);
 {
     int test;
 

@@ -33,7 +33,7 @@
  * @(#)res_send.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_send.c,v 8.20 1998/04/06 23:27:51 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_send.c,v 1.31.2.9 2002/04/11 17:30:24 ume Exp $
- * $DragonFly: src/lib/libcr/net/Attic/res_send.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/res_send.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 /*
@@ -121,8 +121,8 @@ static res_send_rhook Rhook = NULL;
 		} else {}
 static char abuf[NI_MAXHOST];
 static char pbuf[NI_MAXSERV];
-static void Aerror __P((FILE *, char *, int, struct sockaddr *));
-static void Perror __P((FILE *, char *, int));
+static void Aerror (FILE *, char *, int, struct sockaddr *);
+static void Perror (FILE *, char *, int);
 
     static void
     Aerror(file, string, error, address)
@@ -177,7 +177,7 @@ res_send_setrhook(hook)
 	Rhook = hook;
 }
 
-static struct sockaddr * get_nsaddr __P((size_t));
+static struct sockaddr * get_nsaddr (size_t);
 
 /*
  * pick appropriate nsaddr_list for use.  see res_init() for initialization.

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/policy_parse.y,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
-/*	$DragonFly: src/lib/libipsec/policy_parse.y,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/policy_parse.y,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: policy_parse.y,v 1.10 2000/05/07 05:25:03 itojun Exp $	*/
 
 /*
@@ -76,18 +76,18 @@ static struct sockaddr *p_src = NULL;
 static struct sockaddr *p_dst = NULL;
 
 struct _val;
-extern void yyerror __P((char *msg));
-static struct sockaddr *parse_sockaddr __P((struct _val *buf));
-static int rule_check __P((void));
-static int init_x_policy __P((void));
-static int set_x_request __P((struct sockaddr *src, struct sockaddr *dst));
-static int set_sockaddr __P((struct sockaddr *addr));
-static void policy_parse_request_init __P((void));
-static caddr_t policy_parse __P((char *msg, int msglen));
+extern void yyerror (char *msg);
+static struct sockaddr *parse_sockaddr (struct _val *buf);
+static int rule_check (void);
+static int init_x_policy (void);
+static int set_x_request (struct sockaddr *src, struct sockaddr *dst);
+static int set_sockaddr (struct sockaddr *addr);
+static void policy_parse_request_init (void);
+static caddr_t policy_parse (char *msg, int msglen);
 
-extern void __policy__strbuffer__init__ __P((char *msg));
-extern int yyparse __P((void));
-extern int yylex __P((void));
+extern void __policy__strbuffer__init__ (char *msg);
+extern int yyparse (void);
+extern int yylex (void);
 
 %}
 

@@ -1,5 +1,5 @@
 /*
- * $DragonFly: src/lib/libskey/put.c,v 1.2 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/libskey/put.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -8,10 +8,10 @@
 #include <ctype.h>
 #include "skey.h"
 
-static unsigned long extract __P((char *s,int start,int length));
-static void standard __P((char *word));
-static void insert __P((char *s, int x, int start, int length));
-static int wsrch __P((char *w,int low,int high));
+static unsigned long extract (char *s,int start,int length);
+static void standard (char *word);
+static void insert (char *s, int x, int start, int length);
+static int wsrch (char *w,int low,int high);
 
 /* Dictionary for integer-word translations */
 static char Wp[2048][4] = {

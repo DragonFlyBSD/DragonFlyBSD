@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)heapsort.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/stdlib/Attic/heapsort.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/heapsort.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 #include <errno.h>
@@ -140,7 +140,7 @@ int
 heapsort(vbase, nmemb, size, compar)
 	void *vbase;
 	size_t nmemb, size;
-	int (*compar) __P((const void *, const void *));
+	int (*compar) (const void *, const void *);
 {
 	register int cnt, i, j, l;
 	register char tmp, *tmp1, *tmp2;

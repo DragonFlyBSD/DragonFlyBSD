@@ -28,7 +28,7 @@
  * Mountain View, California  94043
  *
  * @(#)secretkey.c 1.8 91/03/11 Copyr 1986 Sun Micro
- * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.3 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/librpcsvc/secretkey.c,v 1.4 2003/11/12 20:21:31 eirikn Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
 #include <rpcsvc/ypclnt.h>
 #include <string.h>
 
-extern int xdecrypt __P(( char *, char * ));
+extern int xdecrypt ( char *, char * );
 
 /*
  * Get somebody's encrypted secret key from the database, using the given

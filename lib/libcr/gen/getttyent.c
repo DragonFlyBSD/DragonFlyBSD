@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.11 1999/11/04 04:16:27 ache Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getttyent.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getttyent.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
  *
  * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
  */
@@ -49,8 +49,8 @@ static char *line;
 
 #define	MALLOCCHUNK	100
 
-static char *skip __P((char *));
-static char *value __P((char *));
+static char *skip (char *);
+static char *value (char *);
 
 struct ttyent *
 getttynam(tty)

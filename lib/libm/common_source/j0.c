@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)j0.c	8.2 (Berkeley) 11/30/93
- * $DragonFly: src/lib/libm/common_source/Attic/j0.c,v 1.3 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/libm/common_source/Attic/j0.c,v 1.4 2003/11/12 20:21:30 eirikn Exp $
  */
 
 /*
@@ -118,7 +118,7 @@
 #define infnan(x) (0.0)
 #endif
 
-static double pzero __P((double)), qzero __P((double));
+static double pzero (double), qzero (double);
 
 static double
 huge 	= 1e300,

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/db/btree/bt_open.c,v 1.7.2.1 2000/11/02 10:30:07 kris Exp $
- * $DragonFly: src/lib/libcr/db/btree/Attic/bt_open.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_open.c,v 1.3 2003/11/12 20:21:26 eirikn Exp $
  *
  * @(#)bt_open.c	8.10 (Berkeley) 8/17/94
  */
@@ -67,9 +67,9 @@
 #define	MINPSIZE	128
 #endif
 
-static int byteorder __P((void));
-static int nroot __P((BTREE *));
-static int tmp __P((void));
+static int byteorder (void);
+static int nroot (BTREE *);
+static int tmp (void);
 
 /*
  * __BT_OPEN -- Open a btree.

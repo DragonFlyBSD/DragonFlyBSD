@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/findfp.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/findfp.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -81,7 +81,7 @@ FILE *__stdinp = &__sF[0];
 FILE *__stdoutp = &__sF[1];
 FILE *__stderrp = &__sF[2];
 
-static struct glue *	moreglue __P((int));
+static struct glue *	moreglue (int);
 
 static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 #define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)

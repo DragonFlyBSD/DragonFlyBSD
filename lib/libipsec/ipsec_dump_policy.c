@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libipsec/ipsec_dump_policy.c,v 1.1.2.1 2000/07/15 07:24:04 kris Exp $	*/
-/*	$DragonFly: src/lib/libipsec/ipsec_dump_policy.c,v 1.2 2003/06/17 04:26:49 dillon Exp $	*/
+/*	$DragonFly: src/lib/libipsec/ipsec_dump_policy.c,v 1.3 2003/11/12 20:21:30 eirikn Exp $	*/
 /*	$KAME: ipsec_dump_policy.c,v 1.11 2000/05/07 05:29:47 itojun Exp $	*/
 
 /*
@@ -56,11 +56,11 @@ static const char *ipsp_policy_strs[] = {
 	"discard", "none", "ipsec", "entrust", "bypass",
 };
 
-static char *ipsec_dump_ipsecrequest __P((char *, size_t,
-	struct sadb_x_ipsecrequest *, size_t));
-static int set_addresses __P((char *, size_t, struct sockaddr *,
-	struct sockaddr *));
-static char *set_address __P((char *, size_t, struct sockaddr *));
+static char *ipsec_dump_ipsecrequest (char *, size_t,
+	struct sadb_x_ipsecrequest *, size_t);
+static int set_addresses (char *, size_t, struct sockaddr *,
+	struct sockaddr *);
+static char *set_address (char *, size_t, struct sockaddr *);
 
 /*
  * policy is sadb_x_policy buffer.

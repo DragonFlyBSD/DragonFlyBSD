@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/net/getnameinfo.c,v 1.4.2.5 2002/07/31 10:11:09 ume Exp $	*/
-/*	$DragonFly: src/lib/libcr/net/Attic/getnameinfo.c,v 1.2 2003/06/17 04:26:44 dillon Exp $	*/
+/*	$DragonFly: src/lib/libcr/net/Attic/getnameinfo.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $	*/
 /*	$KAME: getnameinfo.c,v 1.61 2002/06/27 09:25:47 itojun Exp $	*/
 
 /*
@@ -79,9 +79,9 @@ struct sockinet {
 };
 
 #ifdef INET6
-static int ip6_parsenumeric __P((const struct sockaddr *, const char *, char *,
-    size_t, int));
-static int ip6_sa2str __P((const struct sockaddr_in6 *, char *, size_t, int));
+static int ip6_parsenumeric (const struct sockaddr *, const char *, char *,
+    size_t, int);
+static int ip6_sa2str (const struct sockaddr_in6 *, char *, size_t, int);
 #endif
 
 int

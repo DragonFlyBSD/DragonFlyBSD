@@ -16,7 +16,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_pton.c,v 1.6.2.1 2002/04/28 05:40:24 suz Exp $
- * $DragonFly: src/lib/libcr/net/Attic/inet_pton.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/inet_pton.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -33,8 +33,8 @@
  * sizeof(int) < 4.  sizeof(int) > 4 is fine; all the world's not a VAX.
  */
 
-static int	inet_pton4 __P((const char *src, u_char *dst));
-static int	inet_pton6 __P((const char *src, u_char *dst));
+static int	inet_pton4 (const char *src, u_char *dst);
+static int	inet_pton6 (const char *src, u_char *dst);
 
 /* int
  * inet_pton(af, src, dst)

@@ -10,7 +10,7 @@
  * of any kind. I shall in no event be liable for anything that happens
  * to anyone/anything when using this software.
  *
- * $DragonFly: src/lib/libc/gen/rand48.h,v 1.2 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libc/gen/rand48.h,v 1.3 2003/11/12 20:21:23 eirikn Exp $
  */
 
 #ifndef _RAND48_H_
@@ -19,7 +19,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-void		_dorand48 __P((unsigned short[3]));
+void		_dorand48 (unsigned short[3]);
 
 #define	RAND48_SEED_0	(0x330e)
 #define	RAND48_SEED_1	(0xabcd)

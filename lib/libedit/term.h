@@ -36,7 +36,7 @@
  *	@(#)term.h	8.1 (Berkeley) 6/4/93
  *
  * $FreeBSD: src/lib/libedit/term.h,v 1.3.8.1 2000/08/16 14:43:40 ache Exp $
- * $DragonFly: src/lib/libedit/term.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libedit/term.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -83,30 +83,30 @@ typedef struct {
 #define A_K_EN		5
 #define A_K_NKEYS	6
 
-protected void term_move_to_line	__P((EditLine *, int));
-protected void term_move_to_char	__P((EditLine *, int));
-protected void term_clear_EOL		__P((EditLine *, int));
-protected void term_overwrite		__P((EditLine *, char *, int));
-protected void term_insertwrite		__P((EditLine *, char *, int));
-protected void term_deletechars		__P((EditLine *, int));
-protected void term_clear_screen	__P((EditLine *));
-protected void term_beep		__P((EditLine *));
-protected void term_change_size		__P((EditLine *, int, int));
-protected int  term_get_size		__P((EditLine *, int *, int *));
-protected int  term_init		__P((EditLine *));
-protected void term_bind_arrow		__P((EditLine *));
-protected void term_print_arrow		__P((EditLine *, char *));
-protected int  term_clear_arrow		__P((EditLine *, char *));
-protected int  term_set_arrow		__P((EditLine *, char *,
-					     key_value_t *, int));
-protected void term_end			__P((EditLine *));
-protected int  term_set			__P((EditLine *, char *));
-protected int  term_settc		__P((EditLine *, int, char **));
-protected int  term_telltc		__P((EditLine *, int, char **));
-protected int  term_echotc		__P((EditLine *, int, char **));
+protected void term_move_to_line	(EditLine *, int);
+protected void term_move_to_char	(EditLine *, int);
+protected void term_clear_EOL		(EditLine *, int);
+protected void term_overwrite		(EditLine *, char *, int);
+protected void term_insertwrite		(EditLine *, char *, int);
+protected void term_deletechars		(EditLine *, int);
+protected void term_clear_screen	(EditLine *);
+protected void term_beep		(EditLine *);
+protected void term_change_size		(EditLine *, int, int);
+protected int  term_get_size		(EditLine *, int *, int *);
+protected int  term_init		(EditLine *);
+protected void term_bind_arrow		(EditLine *);
+protected void term_print_arrow		(EditLine *, char *);
+protected int  term_clear_arrow		(EditLine *, char *);
+protected int  term_set_arrow		(EditLine *, char *,
+					     key_value_t *, int);
+protected void term_end			(EditLine *);
+protected int  term_set			(EditLine *, char *);
+protected int  term_settc		(EditLine *, int, char **);
+protected int  term_telltc		(EditLine *, int, char **);
+protected int  term_echotc		(EditLine *, int, char **);
 
-protected int  term__putc		__P((int));
-protected void term__flush		__P((void));
+protected int  term__putc		(int);
+protected void term__flush		(void);
 
 /*
  * Easy access macros

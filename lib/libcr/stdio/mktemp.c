@@ -32,7 +32,7 @@
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/mktemp.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/mktemp.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -45,9 +45,9 @@
 #include <ctype.h>
 #include <unistd.h>
 
-char *_mktemp __P((char *));
+char *_mktemp (char *);
 
-static int _gettemp __P((char *, int *, int, int));
+static int _gettemp (char *, int *, int, int);
 
 static const unsigned char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

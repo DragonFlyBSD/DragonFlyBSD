@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/net/rcmd.c,v 1.23.2.7 2002/08/26 16:17:49 jdp Exp $
- * $DragonFly: src/lib/libcr/net/Attic/rcmd.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/rcmd.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  *
  * @(#)rcmd.c	8.3 (Berkeley) 3/26/94
  */
@@ -65,17 +65,17 @@
 #define NI_WITHSCOPEID	0
 #endif
 
-extern int innetgr __P(( const char *, const char *, const char *, const char * ));
+extern int innetgr ( const char *, const char *, const char *, const char * );
 
 #define max(a, b)	((a > b) ? a : b)
 
-int	__ivaliduser __P((FILE *, u_int32_t, const char *, const char *));
-int __ivaliduser_af __P((FILE *,const void *, const char *, const char *,
-	int, int));
-int __ivaliduser_sa __P((FILE *, const struct sockaddr *, socklen_t,
-	const char *,const char *));
-static int __icheckhost __P((const struct sockaddr *, socklen_t,
-	const char *));
+int	__ivaliduser (FILE *, u_int32_t, const char *, const char *);
+int __ivaliduser_af (FILE *,const void *, const char *, const char *,
+	int, int);
+int __ivaliduser_sa (FILE *, const struct sockaddr *, socklen_t,
+	const char *,const char *);
+static int __icheckhost (const struct sockaddr *, socklen_t,
+	const char *);
 
 char paddr[NI_MAXHOST];
 

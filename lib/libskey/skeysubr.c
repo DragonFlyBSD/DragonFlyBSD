@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libskey/skeysubr.c,v 1.9.6.1 2000/07/20 20:13:42 obrien Exp $ */
-/* $DragonFly: src/lib/libskey/skeysubr.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
+/* $DragonFly: src/lib/libskey/skeysubr.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $ */
 
 #include <err.h>
 #include <stdio.h>
@@ -76,7 +76,7 @@ char *buf;
 
 static struct termios saved_ttymode;
 
-static void interrupt __P((int));
+static void interrupt (int);
 
 static void interrupt(sig)
 int sig;
@@ -91,7 +91,7 @@ char *buf;
 int n;
 {
 	struct termios noecho_ttymode;
-	void (*oldsig) __P((int));
+	void (*oldsig) (int);
 
 	/* Save normal line editing modes */
 	tcgetattr(0, &saved_ttymode);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/locale/table.c,v 1.13.2.1 2000/06/04 21:47:39 ache Exp $
- * $DragonFly: src/lib/libc/locale/Attic/table.c,v 1.3 2003/11/09 02:34:01 dillon Exp $
+ * $DragonFly: src/lib/libc/locale/Attic/table.c,v 1.4 2003/11/12 20:21:24 eirikn Exp $
  *
  * @(#)table.c	8.1 (Berkeley) 6/27/93
  */
@@ -43,9 +43,9 @@
 #include <rune.h>
 #include <stdlib.h>
 
-extern rune_t	_none_sgetrune __P((const char *, size_t, char const **));
-extern int	_none_sputrune __P((rune_t, char *, size_t, char **));
-extern int	_none_init __P((char *, char **));
+extern rune_t	_none_sgetrune (const char *, size_t, char const **);
+extern int	_none_sputrune (rune_t, char *, size_t, char **);
+extern int	_none_init (char *, char **);
 
 _RuneLocale _DefaultRuneLocale = {
     _RUNE_MAGIC_1,

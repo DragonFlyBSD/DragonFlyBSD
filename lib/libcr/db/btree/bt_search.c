@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_search.c	8.8 (Berkeley) 7/31/94
- * $DragonFly: src/lib/libcr/db/btree/Attic/bt_search.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/btree/Attic/bt_search.c,v 1.4 2003/11/12 20:21:26 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +44,8 @@
 #include <db.h>
 #include "btree.h"
 
-static int __bt_snext __P((BTREE *, PAGE *, const DBT *, int *));
-static int __bt_sprev __P((BTREE *, PAGE *, const DBT *, int *));
+static int __bt_snext (BTREE *, PAGE *, const DBT *, int *);
+static int __bt_sprev (BTREE *, PAGE *, const DBT *, int *);
 
 /*
  * __bt_search --

@@ -36,7 +36,7 @@
  *	@(#)local.h	8.3 (Berkeley) 7/3/94
  *
  * $FreeBSD: src/lib/libc/stdio/local.h,v 1.1.1.2.6.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/local.h,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/local.h,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 /*
@@ -44,21 +44,21 @@
  * in particular, macros and private variables.
  */
 
-extern int	__sflush __P((FILE *));
-extern FILE	*__sfp __P((void));
-extern int	__srefill __P((FILE *));
-extern int	__sread __P((void *, char *, int));
-extern int	__swrite __P((void *, char const *, int));
-extern fpos_t	__sseek __P((void *, fpos_t, int));
-extern int	__sclose __P((void *));
-extern void	__sinit __P((void));
-extern void	_cleanup __P((void));
-extern void	(*__cleanup) __P((void));
-extern void	__smakebuf __P((FILE *));
-extern int	__swhatbuf __P((FILE *, size_t *, int *));
-extern int	_fwalk __P((int (*)(FILE *)));
-extern int	__swsetup __P((FILE *));
-extern int	__sflags __P((const char *, int *));
+extern int	__sflush (FILE *);
+extern FILE	*__sfp (void);
+extern int	__srefill (FILE *);
+extern int	__sread (void *, char *, int);
+extern int	__swrite (void *, char const *, int);
+extern fpos_t	__sseek (void *, fpos_t, int);
+extern int	__sclose (void *);
+extern void	__sinit (void);
+extern void	_cleanup (void);
+extern void	(*__cleanup) (void);
+extern void	__smakebuf (FILE *);
+extern int	__swhatbuf (FILE *, size_t *, int *);
+extern int	_fwalk (int (*)(FILE *));
+extern int	__swsetup (FILE *);
+extern int	__sflags (const char *, int *);
 
 extern int	__sdidinit;
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)history.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/history.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/history.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -54,9 +54,9 @@ static const char hist_cookie[] = "_HiStOrY_V1_\n";
 
 #include "histedit.h"
 
-typedef const HistEvent *	(*history_gfun_t) __P((ptr_t));
-typedef const HistEvent *	(*history_efun_t) __P((ptr_t, const char *));
-typedef void			(*history_vfun_t) __P((ptr_t));
+typedef const HistEvent *	(*history_gfun_t) (ptr_t);
+typedef const HistEvent *	(*history_efun_t) (ptr_t, const char *);
+typedef void			(*history_vfun_t) (ptr_t);
 
 struct history {
     ptr_t	   h_ref;		/* Argument for history fcns	*/
@@ -83,14 +83,14 @@ struct history {
 #define h_free(a)	free(a)
 
 
-private int		 history_set_num	__P((History *, int));
-private int		 history_set_fun	__P((History *, History *));
-private int		 history_load		__P((History *, const char *));
-private int		 history_save		__P((History *, const char *));
-private const HistEvent *history_prev_event	__P((History *, int));
-private const HistEvent *history_next_event	__P((History *, int));
-private const HistEvent *history_next_string	__P((History *, const char *));
-private const HistEvent *history_prev_string	__P((History *, const char *));
+private int		 history_set_num	(History *, int);
+private int		 history_set_fun	(History *, History *);
+private int		 history_load		(History *, const char *);
+private int		 history_save		(History *, const char *);
+private const HistEvent *history_prev_event	(History *, int);
+private const HistEvent *history_next_event	(History *, int);
+private const HistEvent *history_next_string	(History *, const char *);
+private const HistEvent *history_prev_string	(History *, const char *);
 
 
 /***********************************************************************/
@@ -112,17 +112,17 @@ typedef struct history_t {
     int	eventno;		/* Current event number		*/
 } history_t;
 
-private const HistEvent *history_def_first  __P((ptr_t));
-private const HistEvent *history_def_last   __P((ptr_t));
-private const HistEvent *history_def_next   __P((ptr_t));
-private const HistEvent *history_def_prev   __P((ptr_t));
-private const HistEvent *history_def_curr   __P((ptr_t));
-private const HistEvent *history_def_enter  __P((ptr_t, const char *));
-private const HistEvent *history_def_add    __P((ptr_t, const char *));
-private void             history_def_init   __P((ptr_t *, int));
-private void             history_def_clear  __P((ptr_t));
-private const HistEvent *history_def_insert __P((history_t *, const char *));
-private void             history_def_delete __P((history_t *, hentry_t *));
+private const HistEvent *history_def_first  (ptr_t);
+private const HistEvent *history_def_last   (ptr_t);
+private const HistEvent *history_def_next   (ptr_t);
+private const HistEvent *history_def_prev   (ptr_t);
+private const HistEvent *history_def_curr   (ptr_t);
+private const HistEvent *history_def_enter  (ptr_t, const char *);
+private const HistEvent *history_def_add    (ptr_t, const char *);
+private void             history_def_init   (ptr_t *, int);
+private void             history_def_clear  (ptr_t);
+private const HistEvent *history_def_insert (history_t *, const char *);
+private void             history_def_delete (history_t *, hentry_t *);
 
 #define history_def_set(p, num)	(void) (((history_t *) p)->max = (num))
 

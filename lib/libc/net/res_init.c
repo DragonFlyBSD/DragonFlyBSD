@@ -33,7 +33,7 @@
  * @(#)res_init.c	8.1 (Berkeley) 6/7/93
  * $From: Id: res_init.c,v 8.7 1996/11/18 09:10:04 vixie Exp $
  * $FreeBSD: src/lib/libc/net/res_init.c,v 1.19.2.7 2002/02/04 18:30:55 ume Exp $
- * $DragonFly: src/lib/libc/net/res_init.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_init.c,v 1.3 2003/11/12 20:21:24 eirikn Exp $
  */
 
 /*
@@ -90,12 +90,12 @@
 
 #include "res_config.h"
 
-static void res_setoptions __P((char *, char *));
+static void res_setoptions (char *, char *);
 
 #ifdef RESOLVSORT
 static const char sort_mask[] = "/&";
 #define ISSORTMASK(ch) (strchr(sort_mask, ch) != NULL)
-static u_int32_t net_mask __P((struct in_addr));
+static u_int32_t net_mask (struct in_addr);
 #endif
 
 #if !defined(isascii) /* XXX - could be a function */

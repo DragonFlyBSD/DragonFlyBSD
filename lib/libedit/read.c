@@ -35,7 +35,7 @@
  *
  * @(#)read.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libedit/read.c,v 1.4.6.3 2000/10/31 23:51:10 brian Exp $
- * $DragonFly: src/lib/libedit/read.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libedit/read.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -51,9 +51,9 @@
 
 #define OKCMD -1
 
-private int read__fixio		__P((int, int));
-private int read_preread	__P((EditLine *));
-private int read_getcmd		__P((EditLine *, el_action_t *, char *));
+private int read__fixio		(int, int);
+private int read_preread	(EditLine *);
+private int read_getcmd		(EditLine *, el_action_t *, char *);
 
 #ifdef DEBUG_EDIT
 private void

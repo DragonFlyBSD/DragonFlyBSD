@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)mathimpl.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libm/common_source/Attic/mathimpl.h,v 1.2 2003/11/12 18:07:03 eirikn Exp $
+ * $DragonFly: src/lib/libm/common_source/Attic/mathimpl.h,v 1.3 2003/11/12 20:21:30 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -95,5 +95,5 @@ extern double	__exp__E();
 extern double	__log__L();
 
 struct Double {double a, b;};
-double __exp__D __P((double, double));
-struct Double __log__D __P((double));
+double __exp__D (double, double);
+struct Double __log__D (double);

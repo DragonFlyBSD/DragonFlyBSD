@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bsearch.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/stdlib/Attic/bsearch.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/bsearch.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 #include <stddef.h>
@@ -59,7 +59,7 @@ bsearch(key, base0, nmemb, size, compar)
 	const void *base0;
 	size_t nmemb;
 	register size_t size;
-	register int (*compar) __P((const void *, const void *));
+	register int (*compar) (const void *, const void *);
 {
 	register const char *base = base0;
 	register size_t lim;

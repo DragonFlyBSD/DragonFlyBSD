@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)bt_delete.c	8.13 (Berkeley) 7/28/94
- * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.3 2003/11/12 18:07:00 eirikn Exp $
+ * $DragonFly: src/lib/libc/db/btree/bt_delete.c,v 1.4 2003/11/12 20:21:22 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -46,11 +46,11 @@
 #include <db.h>
 #include "btree.h"
 
-static int __bt_bdelete __P((BTREE *, const DBT *));
-static int __bt_curdel __P((BTREE *, const DBT *, PAGE *, u_int));
-static int __bt_pdelete __P((BTREE *, PAGE *));
-static int __bt_relink __P((BTREE *, PAGE *));
-static int __bt_stkacq __P((BTREE *, PAGE **, CURSOR *));
+static int __bt_bdelete (BTREE *, const DBT *);
+static int __bt_curdel (BTREE *, const DBT *, PAGE *, u_int);
+static int __bt_pdelete (BTREE *, PAGE *);
+static int __bt_relink (BTREE *, PAGE *);
+static int __bt_stkacq (BTREE *, PAGE **, CURSOR *);
 
 /*
  * __bt_delete

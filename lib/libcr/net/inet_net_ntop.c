@@ -15,7 +15,7 @@
  * SOFTWARE.
  *
  * $FreeBSD: src/lib/libc/net/inet_net_ntop.c,v 1.5 1999/08/28 00:00:10 peter Exp $
- * $DragonFly: src/lib/libcr/net/Attic/inet_net_ntop.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/net/Attic/inet_net_ntop.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -34,8 +34,8 @@
 # define SPRINTF(x) ((size_t)sprintf x)
 #endif
 
-static char *	inet_net_ntop_ipv4 __P((const u_char *src, int bits,
-					char *dst, size_t size));
+static char *	inet_net_ntop_ipv4 (const u_char *src, int bits,
+					char *dst, size_t size);
 
 /*
  * char *

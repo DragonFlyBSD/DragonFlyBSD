@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)tokenizer.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/Attic/tokenizer.h,v 1.2 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/Attic/tokenizer.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -45,10 +45,10 @@
 
 typedef struct tokenizer Tokenizer;
 
-Tokenizer 	*tok_init	__P((const char *));
-void		 tok_reset	__P((Tokenizer *));
-void		 tok_end	__P((Tokenizer *));
-int		 tok_line	__P((Tokenizer *, const char *,
-				     int *, char ***));
+Tokenizer 	*tok_init	(const char *);
+void		 tok_reset	(Tokenizer *);
+void		 tok_end	(Tokenizer *);
+int		 tok_line	(Tokenizer *, const char *,
+				     int *, char ***);
 
 #endif /* _h_tokenizer */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)merge.c	8.2 (Berkeley) 2/14/94
- * $DragonFly: src/lib/libcr/stdlib/Attic/merge.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/merge.c,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -57,8 +57,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void setup __P((u_char *, u_char *, size_t, size_t, int (*)()));
-static void insertionsort __P((u_char *, size_t, size_t, int (*)()));
+static void setup (u_char *, u_char *, size_t, size_t, int (*)());
+static void insertionsort (u_char *, size_t, size_t, int (*)());
 
 #define ISIZE sizeof(int)
 #define PSIZE sizeof(u_char *)
@@ -98,7 +98,7 @@ mergesort(base, nmemb, size, cmp)
 	void *base;
 	size_t nmemb;
 	register size_t size;
-	int (*cmp) __P((const void *, const void *));
+	int (*cmp) (const void *, const void *);
 {
 	register int i, sense;
 	int big, iflag;
@@ -259,7 +259,7 @@ COPY:	    			b = t;
 void
 setup(list1, list2, n, size, cmp)
 	size_t n, size;
-	int (*cmp) __P((const void *, const void *));
+	int (*cmp) (const void *, const void *);
 	u_char *list1, *list2;
 {
 	int i, length, size2, tmp, sense;
@@ -334,7 +334,7 @@ static void
 insertionsort(a, n, size, cmp)
 	u_char *a;
 	size_t n, size;
-	int (*cmp) __P((const void *, const void *));
+	int (*cmp) (const void *, const void *);
 {
 	u_char *ai, *s, *t, *u, tmp;
 	int i;

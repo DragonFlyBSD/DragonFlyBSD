@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)radixsort.c	8.2 (Berkeley) 4/28/95
- * $DragonFly: src/lib/libcr/stdlib/Attic/radixsort.c,v 1.3 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/radixsort.c,v 1.4 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -61,10 +61,10 @@ typedef struct {
 } stack;
 
 static inline void simplesort
-	    __P((const u_char **, int, int, const u_char *, u_int));
-static void r_sort_a __P((const u_char **, int, int, const u_char *, u_int));
-static void r_sort_b __P((const u_char **,
-	    const u_char **, int, int, const u_char *, u_int));
+	    (const u_char **, int, int, const u_char *, u_int);
+static void r_sort_a (const u_char **, int, int, const u_char *, u_int);
+static void r_sort_b (const u_char **,
+	    const u_char **, int, int, const u_char *, u_int);
 
 #define	THRESHOLD	20		/* Divert to simplesort(). */
 #define	SIZE		512		/* Default stack size. */

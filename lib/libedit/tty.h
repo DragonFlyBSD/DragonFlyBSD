@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)tty.h	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libedit/tty.h,v 1.2 2003/11/12 18:07:02 eirikn Exp $
+ * $DragonFly: src/lib/libedit/tty.h,v 1.3 2003/11/12 20:21:29 eirikn Exp $
  */
 
 /*
@@ -458,14 +458,14 @@ typedef struct {
 
 typedef unsigned char ttychar_t[NN_IO][C_NCC];
 
-protected int	tty_init	__P((EditLine *));
-protected void	tty_end		__P((EditLine *));
-protected int	tty_stty	__P((EditLine *, int, char**));
-protected int	tty_rawmode	__P((EditLine *));
-protected int	tty_cookedmode	__P((EditLine *));
-protected int	tty_quotemode	__P((EditLine *));
-protected int	tty_noquotemode	__P((EditLine *));
-protected void	tty_bind_char	__P((EditLine *, int));
+protected int	tty_init	(EditLine *);
+protected void	tty_end		(EditLine *);
+protected int	tty_stty	(EditLine *, int, char**);
+protected int	tty_rawmode	(EditLine *);
+protected int	tty_cookedmode	(EditLine *);
+protected int	tty_quotemode	(EditLine *);
+protected int	tty_noquotemode	(EditLine *);
+protected void	tty_bind_char	(EditLine *, int);
 
 typedef struct {
     ttyperm_t t_t;

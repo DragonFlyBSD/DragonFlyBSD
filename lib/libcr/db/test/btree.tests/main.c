@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * @(#)main.c	8.1 (Berkeley) 6/4/93
- * $DragonFly: src/lib/libcr/db/test/btree.tests/Attic/main.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libcr/db/test/btree.tests/Attic/main.c,v 1.4 2003/11/12 20:21:27 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -51,37 +51,37 @@ typedef struct cmd_table {
 	char *cmd;
 	int nargs;
 	int rconv;
-	void (*func) __P((DB *, char **));
+	void (*func) (DB *, char **);
 	char *usage, *descrip;
 } cmd_table;
 
 int stopstop;
 DB *globaldb;
 
-void append	__P((DB *, char **));
-void bstat	__P((DB *, char **));
-void cursor	__P((DB *, char **));
-void delcur	__P((DB *, char **));
-void delete	__P((DB *, char **));
-void dump	__P((DB *, char **));
-void first	__P((DB *, char **));
-void get	__P((DB *, char **));
-void help	__P((DB *, char **));
-void iafter	__P((DB *, char **));
-void ibefore	__P((DB *, char **));
-void icursor	__P((DB *, char **));
-void insert	__P((DB *, char **));
-void keydata	__P((DBT *, DBT *));
-void last	__P((DB *, char **));
-void list	__P((DB *, char **));
-void load	__P((DB *, char **));
-void mstat	__P((DB *, char **));
-void next	__P((DB *, char **));
-int  parse	__P((char *, char **, int));
-void previous	__P((DB *, char **));
-void show	__P((DB *, char **));
-void usage	__P((void));
-void user	__P((DB *));
+void append	(DB *, char **);
+void bstat	(DB *, char **);
+void cursor	(DB *, char **);
+void delcur	(DB *, char **);
+void delete	(DB *, char **);
+void dump	(DB *, char **);
+void first	(DB *, char **);
+void get	(DB *, char **);
+void help	(DB *, char **);
+void iafter	(DB *, char **);
+void ibefore	(DB *, char **);
+void icursor	(DB *, char **);
+void insert	(DB *, char **);
+void keydata	(DBT *, DBT *);
+void last	(DB *, char **);
+void list	(DB *, char **);
+void load	(DB *, char **);
+void mstat	(DB *, char **);
+void next	(DB *, char **);
+int  parse	(char *, char **, int);
+void previous	(DB *, char **);
+void show	(DB *, char **);
+void usage	(void);
+void user	(DB *);
 
 cmd_table commands[] = {
 	"?",	0, 0, help, "help", NULL,

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libncp/ipx.c,v 1.1 1999/10/12 11:56:37 bp Exp $
- * $DragonFly: src/lib/libncp/ipx.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libncp/ipx.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -185,9 +185,9 @@ void ipx_assign_node(IPXNode *dest, IPXNode *src) {
 }
 
 
-static void	rt_xaddrs __P((caddr_t, caddr_t, struct rt_addrinfo *));
-static int	if_ipxscan __P((int addrcount, struct sockaddr_dl *sdl, struct if_msghdr *ifm,
-		    struct ifa_msghdr *ifam,struct ipx_addr *addr));
+static void	rt_xaddrs (caddr_t, caddr_t, struct rt_addrinfo *);
+static int	if_ipxscan (int addrcount, struct sockaddr_dl *sdl, struct if_msghdr *ifm,
+		    struct ifa_msghdr *ifam,struct ipx_addr *addr);
 
 /*
  * Find an IPX interface. 

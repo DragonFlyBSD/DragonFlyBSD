@@ -5,7 +5,7 @@
  *   Many references for mink  may still be found in this program.
  *
  * $FreeBSD: src/lib/libskey/skeylogin.c,v 1.14.6.1 2000/07/18 11:38:24 sheldonh Exp $
- * $DragonFly: src/lib/libskey/skeylogin.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libskey/skeylogin.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -23,7 +23,7 @@
 #include "skey.h"
 #include "pathnames.h"
 
-static char *skipspace __P((char *));
+static char *skipspace (char *);
 
 #define setpriority(x,y,z)	/* nothing */
 

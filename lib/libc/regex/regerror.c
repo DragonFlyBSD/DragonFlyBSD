@@ -37,7 +37,7 @@
  *	@(#)regerror.c	8.4 (Berkeley) 3/20/94
  *
  * @(#)regerror.c	8.4 (Berkeley) 3/20/94
- * $DragonFly: src/lib/libc/regex/regerror.c,v 1.3 2003/11/12 18:07:01 eirikn Exp $
+ * $DragonFly: src/lib/libc/regex/regerror.c,v 1.4 2003/11/12 20:21:25 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ extern "C" {
 #endif
 
 /* === regerror.c === */
-static char *regatoi __P((const regex_t *preg, char *localbuf));
+static char *regatoi (const regex_t *preg, char *localbuf);
 
 #ifdef __cplusplus
 }

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/closedir.c,v 1.6.2.1 2001/03/05 08:29:56 obrien Exp $
- * $DragonFly: src/lib/libc/gen/closedir.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/closedir.c,v 1.3 2003/11/12 20:21:23 eirikn Exp $
  *
  * @(#)closedir.c	8.1 (Berkeley) 6/10/93
  */
@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-extern void _reclaim_telldir __P((DIR *));
+extern void _reclaim_telldir (DIR *);
 
 /*
  * close a directory.
