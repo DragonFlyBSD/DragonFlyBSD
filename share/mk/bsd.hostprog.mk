@@ -1,4 +1,4 @@
-# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.5 2004/06/21 21:50:02 dillon Exp $
+# $DragonFly: src/share/mk/bsd.hostprog.mk,v 1.6 2004/07/21 13:34:27 joerg Exp $
 
 .include <bsd.init.mk>
 
@@ -27,13 +27,11 @@ LDADD+=	${OBJCLIBS}
 .endif
 
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.no/g}
-_PATCHES= ${SRCS:M*.patch}
 .for _PATCH in ${SRCS:T:N*.h.patch:M*.patch}
 .for _OBJ in ${_PATCH:R:R:S/$/.no/}
 OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
 .endfor
 .endfor
-.undef _PATCHES
 
 ${PROG}.nx: ${OBJS}
 .if defined(PROG_CXX)
