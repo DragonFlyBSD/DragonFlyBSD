@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.8 2003/11/18 05:02:40 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.9 2003/11/18 05:10:31 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -115,9 +115,10 @@ devclass_find_internal(const char *classname, int create)
     if (!classname)
 	return NULL;
 
-    for (dc = TAILQ_FIRST(&devclasses); dc; dc = TAILQ_NEXT(dc, link))
+    TAILQ_FOREACH(dc, &devclasses, link) {
 	if (!strcmp(dc->name, classname))
 	    return dc;
+    }
 
     PDEBUG(("%s not found%s", classname, (create? ", creating": "")));
     if (create) {
@@ -204,8 +205,7 @@ devclass_delete_driver(devclass_t busclass, driver_t *driver)
     /*
      * Find the link structure in the bus' list of drivers.
      */
-    for (dl = TAILQ_FIRST(&busclass->drivers); dl;
-	 dl = TAILQ_NEXT(dl, link)) {
+    TAILQ_FOREACH(dl, &busclass->drivers, link) {
 	if (dl->driver == driver)
 	    break;
     }
@@ -254,7 +254,7 @@ devclass_find_driver_internal(devclass_t dc, const char *classname)
 
     PDEBUG(("%s in devclass %s", classname, DEVCLANAME(dc)));
 
-    for (dl = TAILQ_FIRST(&dc->drivers); dl; dl = TAILQ_NEXT(dl, link)) {
+    TAILQ_FOREACH(dl, &dc->drivers, link) {
 	if (!strcmp(dl->driver->name, classname))
 	    return dl;
     }
@@ -521,9 +521,10 @@ device_add_child_ordered(device_t dev, int order, const char *name, int unit)
 	return child;
     child->order = order;
 
-    TAILQ_FOREACH(place, &dev->children, link)
+    TAILQ_FOREACH(place, &dev->children, link) {
 	if (place->order > order)
 	    break;
+    }
 
     if (place) {
 	/*
@@ -601,9 +602,10 @@ next_matching_driver(devclass_t dc, device_t dev, driverlink_t last)
 {
     if (dev->devclass) {
 	driverlink_t dl;
-	for (dl = TAILQ_NEXT(last, link); dl; dl = TAILQ_NEXT(dl, link))
+	for (dl = TAILQ_NEXT(last, link); dl; dl = TAILQ_NEXT(dl, link)) {
 	    if (!strcmp(dev->devclass->name, dl->driver->name))
 		return dl;
+	}
 	return NULL;
     } else
 	return TAILQ_NEXT(last, link);
@@ -700,17 +702,16 @@ device_get_children(device_t dev, device_t **devlistp, int *devcountp)
     device_t *list;
     
     count = 0;
-    for (child = TAILQ_FIRST(&dev->children); child;
-	 child = TAILQ_NEXT(child, link))
+    TAILQ_FOREACH(child, &dev->children, link) {
 	count++;
+    }
 
     list = malloc(count * sizeof(device_t), M_TEMP, M_NOWAIT | M_ZERO);
     if (!list)
 	return ENOMEM;
 
     count = 0;
-    for (child = TAILQ_FIRST(&dev->children); child;
-	 child = TAILQ_NEXT(child, link)) {
+    TAILQ_FOREACH(child, &dev->children, link) {
 	list[count] = child;
 	count++;
     }
@@ -1113,8 +1114,7 @@ sysctl_handle_children(SYSCTL_HANDLER_ARGS)
     device_t child;
     int first = 1, error = 0;
 
-    for (child = TAILQ_FIRST(&dev->children); child;
-	 child = TAILQ_NEXT(child, link)) {
+    TAILQ_FOREACH(child, &dev->children, link) {
 	if (child->nameunit) {
 	    if (!first) {
 		error = SYSCTL_OUT(req, ",", 1);
@@ -1753,8 +1753,9 @@ bus_generic_probe(device_t dev)
     devclass_t dc = dev->devclass;
     driverlink_t dl;
 
-    for (dl = TAILQ_FIRST(&dc->drivers); dl; dl = TAILQ_NEXT(dl, link))
+    TAILQ_FOREACH(dl, &dc->drivers, link) {
 	DEVICE_IDENTIFY(dl->driver, dev);
+    }
 
     return 0;
 }
@@ -1764,9 +1765,9 @@ bus_generic_attach(device_t dev)
 {
     device_t child;
 
-    for (child = TAILQ_FIRST(&dev->children);
-	 child; child = TAILQ_NEXT(child, link))
+    TAILQ_FOREACH(child, &dev->children, link) {
 	device_probe_and_attach(child);
+    }
 
     return 0;
 }
@@ -1780,10 +1781,10 @@ bus_generic_detach(device_t dev)
     if (dev->state != DS_ATTACHED)
 	return EBUSY;
 
-    for (child = TAILQ_FIRST(&dev->children);
-	 child; child = TAILQ_NEXT(child, link))
+    TAILQ_FOREACH(child, &dev->children, link) {
 	if ((error = device_detach(child)) != 0)
 	    return error;
+    }
 
     return 0;
 }
@@ -1793,9 +1794,9 @@ bus_generic_shutdown(device_t dev)
 {
     device_t child;
 
-    for (child = TAILQ_FIRST(&dev->children);
-	 child; child = TAILQ_NEXT(child, link))
+    TAILQ_FOREACH(child, &dev->children, link) {
 	device_shutdown(child);
+    }
 
     return 0;
 }
@@ -1806,8 +1807,7 @@ bus_generic_suspend(device_t dev)
 	int		error;
 	device_t	child, child2;
 
-	for (child = TAILQ_FIRST(&dev->children);
-	     child; child = TAILQ_NEXT(child, link)) {
+	TAILQ_FOREACH(child, &dev->children, link) {
 		error = DEVICE_SUSPEND(child);
 		if (error) {
 			for (child2 = TAILQ_FIRST(&dev->children);
@@ -1825,8 +1825,7 @@ bus_generic_resume(device_t dev)
 {
 	device_t	child;
 
-	for (child = TAILQ_FIRST(&dev->children);
-	     child; child = TAILQ_NEXT(child, link)) {
+	TAILQ_FOREACH(child, &dev->children, link) {
 		DEVICE_RESUME(child);
 		/* if resume fails, there's nothing we can usefully do... */
 	}
@@ -1885,10 +1884,10 @@ bus_generic_driver_added(device_t dev, driver_t *driver)
     device_t child;
 
     DEVICE_IDENTIFY(driver, dev);
-    for (child = TAILQ_FIRST(&dev->children);
-	 child; child = TAILQ_NEXT(child, link))
+    TAILQ_FOREACH(child, &dev->children, link) {
 	if (child->state == DS_NOTPRESENT)
 	    device_probe_and_attach(child);
+    }
 }
 
 int
@@ -2147,8 +2146,7 @@ root_bus_configure(void)
 
     PDEBUG(("."));
 
-    for (dev = TAILQ_FIRST(&root_bus->children); dev;
-	    dev = TAILQ_NEXT(dev, link)) {
+    TAILQ_FOREACH(dev, &root_bus->children, link) {
 	    device_probe_and_attach(dev);
     }
 }
@@ -2257,9 +2255,9 @@ print_device_tree_short(device_t dev, int indent)
 
 	print_device_short(dev, indent);
 
-	for (child = TAILQ_FIRST(&dev->children); child;
-		 child = TAILQ_NEXT(child, link))
+	TAILQ_FOREACH(child, &dev->children, link) {
 		print_device_tree_short(child, indent+1);
+	}
 }
 
 void
@@ -2273,9 +2271,9 @@ print_device_tree(device_t dev, int indent)
 
 	print_device(dev, indent);
 
-	for (child = TAILQ_FIRST(&dev->children); child;
-		 child = TAILQ_NEXT(child, link))
+	TAILQ_FOREACH(child, &dev->children, link) {
 		print_device_tree(child, indent+1);
+	}
 }
 
 static void
@@ -2303,9 +2301,9 @@ print_driver_list(driver_list_t drivers, int indent)
 {
 	driverlink_t driver;
 
-	for (driver = TAILQ_FIRST(&drivers); driver;
-	     driver = TAILQ_NEXT(driver, link))
+	TAILQ_FOREACH(driver, &drivers, link) {
 		print_driver(driver->driver, indent);
+	}
 }
 
 static void
@@ -2342,8 +2340,9 @@ print_devclass_list_short(void)
 	devclass_t dc;
 
 	printf("Short listing of devclasses, drivers & devices:\n");
-	for (dc = TAILQ_FIRST(&devclasses); dc; dc = TAILQ_NEXT(dc, link))
+	TAILQ_FOREACH(dc, &devclasses, link) {
 		print_devclass_short(dc, 0);
+	}
 }
 
 void
@@ -2352,8 +2351,9 @@ print_devclass_list(void)
 	devclass_t dc;
 
 	printf("Full listing of devclasses, drivers & devices:\n");
-	for (dc = TAILQ_FIRST(&devclasses); dc; dc = TAILQ_NEXT(dc, link))
+	TAILQ_FOREACH(dc, &devclasses, link) {
 		print_devclass(dc, 0);
+	}
 }
 
 #endif
