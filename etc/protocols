@@ -2,7 +2,7 @@
 # Internet protocols
 #
 # $FreeBSD: src/etc/protocols,v 1.13.2.3 2002/02/27 03:39:00 dd Exp $
-# $DragonFly: src/etc/protocols,v 1.4 2004/08/30 15:10:50 asmodai Exp $
+# $DragonFly: src/etc/protocols,v 1.5 2005/01/06 08:43:35 asmodai Exp $
 #	from: @(#)protocols	5.1 (Berkeley) 4/17/89
 #
 # See also http://www.iana.org/assignments/protocol-numbers
@@ -66,7 +66,7 @@ narp	54	NARP		# NBMA Address Resolution Protocol
 mobile	55	MOBILE		# IP Mobility
 tlsp	56	TLSP		# Transport Layer Security Protocol
 skip	57	SKIP		# SKIP
-ipv6-icmp	58	IPV6-ICMP	# ICMP for IPv6
+ipv6-icmp	58	IPV6-ICMP icmp6 # ICMP for IPv6
 ipv6-nonxt	59	IPV6-NONXT	# no next header for ipv6
 ipv6-opts	60	IPV6-OPTS	# destination options for ipv6
 #	61			# any host internal protocol
