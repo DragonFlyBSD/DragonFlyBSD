@@ -33,7 +33,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.25 2004/11/17 23:36:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.26 2005/03/28 14:27:37 joerg Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -892,8 +892,6 @@ kmem_slab_alloc(vm_size_t size, vm_offset_t align, int flags)
 	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	crit_exit();
 	vm_map_entry_release(count);
-	if ((flags & M_NULLOK) == 0)
-	    panic("kmem_slab_alloc(): kernel_map ran out of space!");
 	return(NULL);
     }
     offset = addr - VM_MIN_KERNEL_ADDRESS;
