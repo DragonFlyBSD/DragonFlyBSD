@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/mixer,v 1.1 2004/02/25 12:08:29 joerg Exp $
+# $DragonFly: src/etc/rc.d/mixer,v 1.2 2004/02/25 16:16:49 joerg Exp $
 #
 
 # PROVIDE: mixer
@@ -9,6 +9,7 @@
 . /etc/rc.subr
 
 name="mixer"
+rcvar="mixer"
 start_cmd="mixer_start"
 stop_cmd="mixer_stop"
 mixer_conf=/etc/mixer.conf
