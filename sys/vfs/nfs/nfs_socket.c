@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.23 2005/03/24 06:44:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.24 2005/03/24 19:58:19 dillon Exp $
  */
 
 /*
@@ -2054,6 +2054,7 @@ void
 nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 {
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
+	struct nfsrv_rec *rec;
 	struct mbuf *m;
 	struct mbuf *mp;
 	struct sockaddr *nam;
@@ -2062,25 +2063,49 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 
 	if ((slp->ns_flag & SLP_VALID) == 0)
 		return;
-#ifdef notdef
+
 	/*
-	 * Define this to test for nfsds handling this under heavy load.
+	 * Only allow two completed RPC records to build up before we
+	 * stop reading data from the socket.  Otherwise we could eat
+	 * an infinite amount of memory parsing and queueing up RPC
+	 * requests.  This should give pretty good feedback to the TCP
+	 * layer and prevents a memory crunch for other protocols.
+	 *
+	 * Note that the same service socket can be dispatched to several
+	 * nfs servers simultaniously.
+	 *
+	 * the tcp protocol callback calls us with MB_DONTWAIT.  
+	 * nfsd calls us with MB_WAIT (typically).
 	 */
-	if (waitflag == MB_DONTWAIT) {
-		slp->ns_flag |= SLP_NEEDQ; goto dorecs;
+	rec = STAILQ_FIRST(&slp->ns_rec);
+	if (rec && waitflag == MB_DONTWAIT && STAILQ_NEXT(rec, nr_link)) {
+		slp->ns_flag |= SLP_NEEDQ;
+		goto dorecs;
 	}
-#endif
+
+	/*
+	 * Handle protocol specifics to parse an RPC request.  We always
+	 * pull from the socket using non-blocking I/O.
+	 */
 	auio.uio_td = NULL;
 	if (so->so_type == SOCK_STREAM) {
 		/*
-		 * If there are already records on the queue, defer soreceive()
-		 * to an nfsd so that there is feedback to the TCP layer that
-		 * the nfs servers are heavily loaded.
+		 * The data has to be read in an orderly fashion from a TCP
+		 * stream, unlike a UDP socket.  It is possible for soreceive
+		 * and/or nfsrv_getstream() to block, so make sure only one
+		 * entity is messing around with the TCP stream at any given
+		 * moment.  The receive sockbuf's lock in soreceive is not
+		 * sufficient.
+		 *
+		 * Note that this procedure can be called from any number of
+		 * NFS severs *OR* can be upcalled directly from a TCP
+		 * protocol thread.
 		 */
-		if (STAILQ_FIRST(&slp->ns_rec) && waitflag == MB_DONTWAIT) {
+		if (slp->ns_flag & SLP_GETSTREAM) {
 			slp->ns_flag |= SLP_NEEDQ;
 			goto dorecs;
 		}
+		slp->ns_flag |= SLP_GETSTREAM;
 
 		/*
 		 * Do soreceive().
@@ -2093,6 +2118,7 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 				slp->ns_flag |= SLP_NEEDQ;
 			else
 				slp->ns_flag |= SLP_DISCONN;
+			slp->ns_flag &= ~SLP_GETSTREAM;
 			goto dorecs;
 		}
 		m = mp;
@@ -2108,7 +2134,8 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 		slp->ns_rawend = m;
 
 		/*
-		 * Now try and parse record(s) out of the raw stream data.
+		 * Now try and parse as many record(s) as we can out of the
+		 * raw stream data.
 		 */
 		error = nfsrv_getstream(slp, waitflag);
 		if (error) {
@@ -2117,7 +2144,12 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 			else
 				slp->ns_flag |= SLP_NEEDQ;
 		}
+		slp->ns_flag &= ~SLP_GETSTREAM;
 	} else {
+		/*
+		 * For UDP soreceive typically pulls just one packet, loop
+		 * to get the whole batch.
+		 */
 		do {
 			auio.uio_resid = 1000000000;
 			flags = MSG_DONTWAIT;
@@ -2151,13 +2183,17 @@ nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 	}
 
 	/*
-	 * Now try and process the request records, non-blocking.
+	 * If we were upcalled from the tcp protocol layer and we have
+	 * fully parsed records ready to go, or there is new data pending,
+	 * or something went wrong, try to wake up an nfsd thread to deal
+	 * with it.
 	 */
 dorecs:
 	if (waitflag == MB_DONTWAIT &&
-		(STAILQ_FIRST(&slp->ns_rec)
-		 || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN))))
+	    (STAILQ_FIRST(&slp->ns_rec)
+	     || (slp->ns_flag & (SLP_NEEDQ | SLP_DISCONN)))) {
 		nfsrv_wakenfsd(slp);
+	}
 }
 
 /*
@@ -2174,15 +2210,10 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 	struct mbuf *om, *m2, *recm;
 	u_int32_t recmark;
 
-	if (slp->ns_flag & SLP_GETSTREAM)
-		panic("nfs getstream");
-	slp->ns_flag |= SLP_GETSTREAM;
 	for (;;) {
 	    if (slp->ns_reclen == 0) {
-		if (slp->ns_cc < NFSX_UNSIGNED) {
-			slp->ns_flag &= ~SLP_GETSTREAM;
+		if (slp->ns_cc < NFSX_UNSIGNED)
 			return (0);
-		}
 		m = slp->ns_raw;
 		if (m->m_len >= NFSX_UNSIGNED) {
 			bcopy(mtod(m, caddr_t), (caddr_t)&recmark, NFSX_UNSIGNED);
@@ -2212,7 +2243,6 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 			log(LOG_ERR, "%s (%d) from nfs client\n",
 			    "impossible packet length",
 			    slp->ns_reclen);
-			slp->ns_flag &= ~SLP_GETSTREAM;
 			return (EPERM);
 		}
 	    }
@@ -2247,7 +2277,6 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 					m->m_len -= slp->ns_reclen - len;
 					len = slp->ns_reclen;
 				} else {
-					slp->ns_flag &= ~SLP_GETSTREAM;
 					return (EWOULDBLOCK);
 				}
 			} else if ((len + m->m_len) == slp->ns_reclen) {
@@ -2266,7 +2295,6 @@ nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 		slp->ns_cc -= len;
 		slp->ns_reclen = 0;
 	    } else {
-		slp->ns_flag &= ~SLP_GETSTREAM;
 		return (0);
 	    }
 
