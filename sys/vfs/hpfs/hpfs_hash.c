@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.3 2003/07/06 21:23:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.4 2003/07/08 09:57:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -135,6 +135,7 @@ loop:
 				gen = lwkt_regettoken(&hpfs_hphash_token);
 				goto loop;
 			}
+			lwkt_reltoken(&hpfs_hphash_token);
 			return (vp);
 		}
 	}

@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.4 2003/07/06 21:23:48 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.5 2003/07/08 09:57:10 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -597,6 +597,7 @@ loop:
 		    (int)fs->s_blocksize, NOCRED, &bp);
 		if (error) {
 			vput(vp);
+			lwkt_reltoken(&mntvnode_token);
 			return (error);
 		}
 		ext2_ei2di((struct ext2_inode *) ((char *)bp->b_data + 

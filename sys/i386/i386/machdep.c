@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.23 2003/07/08 06:27:26 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.24 2003/07/08 09:57:11 dillon Exp $
  */
 
 #include "apm.h"
@@ -959,6 +959,7 @@ void
 cpu_idle(void)
 {
 	crit_exit();
+	KKASSERT(curthread->td_pri < TDPRI_CRIT);
 	for (;;) {
 		lwkt_switch();
 		__asm __volatile("cli");

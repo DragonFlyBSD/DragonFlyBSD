@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.6 2003/07/08 06:27:28 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.7 2003/07/08 09:57:13 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -24,6 +24,7 @@
  *
  * Synchronous switching and blocking is allowed while in a critical section.
  */
+
 static __inline void
 crit_enter(void)
 {

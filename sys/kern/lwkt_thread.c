@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.16 2003/07/08 06:27:27 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.17 2003/07/08 09:57:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,12 +54,17 @@
 #include <vm/vm_zone.h>
 
 #include <machine/stdarg.h>
+#include <machine/ipl.h>
 #ifdef SMP
 #include <machine/smp.h>
 #endif
 
 static int untimely_switch = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
+#ifdef INVARIANTS
+static int token_debug = 0;
+SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
+#endif
 static quad_t switch_count = 0;
 SYSCTL_QUAD(_lwkt, OID_AUTO, switch_count, CTLFLAG_RW, &switch_count, 0, "");
 static quad_t preempt_hit = 0;
@@ -111,6 +116,13 @@ _lwkt_enqueue(thread_t td)
 	    gd->gd_reqpri = (td->td_pri & TDPRI_MASK);
 #endif
     }
+}
+
+static __inline
+int
+_lwkt_wantresched(thread_t ntd, thread_t cur)
+{
+    return((ntd->td_pri & TDPRI_MASK) > (cur->td_pri & TDPRI_MASK));
 }
 
 /*
@@ -281,9 +293,6 @@ lwkt_free_thread(thread_t td)
  * the target thread (not the current thread).
  */
 
-int swtarg[32][2];
-int swtarg2;
-
 void
 lwkt_switch(void)
 {
@@ -407,13 +416,6 @@ again:
 	ASSERT_MP_LOCK_HELD();
     }
 #endif
-
-	if (mycpu->gd_cpuid == 1) {
-	bcopy(swtarg[0], swtarg[1], sizeof(int)*31*2);
-	swtarg[0][0] = (int)ntd->td_sp;
-	swtarg[0][1] = *(int *)ntd->td_sp;
-	}
-	KKASSERT(td->td_cpu == ntd->td_cpu);
     if (td != ntd) {
 	td->td_switch(ntd);
     }
@@ -458,21 +460,27 @@ lwkt_preempt(thread_t ntd, int critpri)
     thread_t td = curthread;
 #ifdef SMP
     int mpheld;
+    int savecnt;
 #endif
-int savecnt;
 
     /*
      * The caller has put us in a critical section.  We can only preempt
      * if the caller of the caller was not in a critical section (basically
-     * a local interrupt). 
+     * a local interrupt), as determined by the 'critpri' parameter.   If
+     * we are unable to preempt 
      *
      * YYY The target thread must be in a critical section (else it must
      * inherit our critical section?  I dunno yet).
      */
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
 
+    if (!_lwkt_wantresched(ntd, td)) {
+	++preempt_miss;
+	return;
+    }
     if ((td->td_pri & ~TDPRI_MASK) > critpri) {
 	++preempt_miss;
+	need_resched();
 	return;
     }
 #ifdef SMP
@@ -483,14 +491,12 @@ int savecnt;
 #endif
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
+	need_resched();
 	return;
     }
     if (ntd->td_preempted) {
 	++preempt_hit;
-	return;
-    }
-    if ((ntd->td_pri & TDPRI_MASK) <= (td->td_pri & TDPRI_MASK)) {
-	++preempt_miss;
+	need_resched();
 	return;
     }
 #ifdef SMP
@@ -502,6 +508,7 @@ int savecnt;
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
 	++preempt_miss;
+	need_resched();
 	return;
     }
 #endif
@@ -653,8 +660,11 @@ lwkt_schedule(thread_t td)
 		td->td_wait = NULL;
 		if (td->td_cpu == mycpu->gd_cpuid) {
 		    _lwkt_enqueue(td);
-		    if (td->td_preemptable)
+		    if (td->td_preemptable) {
 			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
+		    } else if (_lwkt_wantresched(td, curthread)) {
+			need_resched();
+		    }
 		} else {
 		    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
 		}
@@ -671,8 +681,11 @@ lwkt_schedule(thread_t td)
 	     */
 	    if (td->td_cpu == mycpu->gd_cpuid) {
 		_lwkt_enqueue(td);
-		if (td->td_preemptable)
+		if (td->td_preemptable) {
 		    td->td_preemptable(td, TDPRI_CRIT);
+		} else if (_lwkt_wantresched(td, curthread)) {
+		    need_resched();
+		}
 	    } else {
 		lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
 	    }
@@ -733,6 +746,7 @@ void
 lwkt_setpri(thread_t td, int pri)
 {
     KKASSERT(pri >= 0);
+    KKASSERT(td->td_cpu == mycpu->gd_cpuid);
     crit_enter();
     if (td->td_flags & TDF_RUNQ) {
 	_lwkt_dequeue(td);
@@ -859,6 +873,9 @@ lwkt_signal(lwkt_wait_t w)
  * requesting cpu, unless it has already changed hands.  Since only the
  * current cpu can give away a token it owns we do not need a memory barrier.
  */
+
+#ifdef SMP
+
 static
 void
 lwkt_gettoken_remote(void *arg)
@@ -869,6 +886,8 @@ lwkt_gettoken_remote(void *arg)
     }
 }
 
+#endif
+
 int
 lwkt_gettoken(lwkt_token_t tok)
 {
@@ -878,12 +897,21 @@ lwkt_gettoken(lwkt_token_t tok)
      * block.  The request will be forwarded as necessary playing catchup
      * to the token.
      */
-    struct lwkt_gettoken_req req;
-    int seq;
 
     crit_enter();
+#ifdef INVARIANTS
+    if (token_debug) {
+	printf("gettoken %p %d/%d\n", ((int **)&tok)[-1], (curthread->td_proc?curthread->td_proc->p_pid:-1), curthread->td_pri);
+	if (curthread->td_pri > 2000) {
+	    curthread->td_pri = 1000;
+	    panic("too HIGH!");
+	}
+    }
+#endif
 #ifdef SMP
     while (tok->t_cpu != mycpu->gd_cpuid) {
+	struct lwkt_gettoken_req req;
+	int seq;
 	int dcpu;
 
 	req.cpu = mycpu->gd_cpuid;
@@ -966,14 +994,14 @@ lwkt_gentoken(lwkt_token_t tok, int *gen)
 int
 lwkt_regettoken(lwkt_token_t tok)
 {
-    struct lwkt_gettoken_req req;
-    int seq;
-
     /* assert we are in a critical section */
     if (tok->t_cpu != mycpu->gd_cpuid) {
 #ifdef SMP
 	while (tok->t_cpu != mycpu->gd_cpuid) {
+	    struct lwkt_gettoken_req req;
+	    int seq;
 	    int dcpu;
+
 	    req.cpu = mycpu->gd_cpuid;
 	    req.tok = tok;
 	    dcpu = (volatile int)tok->t_cpu;

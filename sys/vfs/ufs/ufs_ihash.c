@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.4 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.5 2003/07/08 09:57:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -115,6 +115,7 @@ loop:
 				lwkt_gentoken(&ufs_ihash_token, &gen);
 				goto loop;
 			}
+			lwkt_reltoken(&ufs_ihash_token);
 			return (vp);
 		}
 	}

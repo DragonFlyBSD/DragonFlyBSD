@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.6 2003/07/06 21:23:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.7 2003/07/08 09:57:14 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -560,6 +560,7 @@ loop:
 		    (int)fs->fs_bsize, &bp);
 		if (error) {
 			vput(vp);
+			lwkt_reltoken(&mntvnode_token);
 			return (error);
 		}
 		ip->i_din = *((struct dinode *)bp->b_data +
