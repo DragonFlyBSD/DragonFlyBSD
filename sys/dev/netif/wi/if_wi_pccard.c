@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.8.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.4 2004/02/12 12:08:54 joerg Exp $
  */
 
 /*
@@ -61,9 +61,7 @@
 #include <net/if_ieee80211.h>
 
 #include <bus/pccard/pccardvar.h>
-#if __FreeBSD_version >= 500000
 #include <bus/pccard/pccarddevs.h>
-#endif
 
 #include "if_wavelan_ieee.h"
 #include "wi_hostap.h"
@@ -75,18 +73,6 @@
 static int wi_pccard_probe(device_t);
 static int wi_pccard_attach(device_t);
 
-#if __FreeBSD_version < 500000
-static device_method_t wi_pccard_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		wi_pccard_probe),
-	DEVMETHOD(device_attach,	wi_pccard_attach),
-	DEVMETHOD(device_detach,	wi_generic_detach),
-	DEVMETHOD(device_shutdown,	wi_shutdown),
-
-	{ 0, 0 }
-};
-
-#else
 static int wi_pccard_match(device_t);
 
 static device_method_t wi_pccard_methods[] = {
@@ -104,8 +90,6 @@ static device_method_t wi_pccard_methods[] = {
 	{ 0, 0 }
 };
 
-#endif
-
 static driver_t wi_pccard_driver = {
 	"wi",
 	wi_pccard_methods,
@@ -114,19 +98,28 @@ static driver_t wi_pccard_driver = {
 
 DRIVER_MODULE(if_wi, pccard, wi_pccard_driver, wi_devclass, 0, 0);
 
-#if __FreeBSD_version >= 500000
 static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(3COM, 3CRWE737A, 0),
 	PCMCIA_CARD(3COM, 3CRWE777A, 0),
-	PCMCIA_CARD(ACTIONTEC, HWC01170, 0),
+	PCMCIA_CARD(ACTIONTEC, PRISM, 0),
 	PCMCIA_CARD(ADDTRON, AWP100, 0),
-	PCMCIA_CARD(BUFFALO, WLI_PCM_S11, 0),
+	PCMCIA_CARD(AIRVAST, WN_100, 0),
+	PCMCIA_CARD(ALLIEDTELESIS, WR211PCM, 0),
+	PCMCIA_CARD(ARTEM, ONAIR, 0),
+ 	PCMCIA_CARD(ASUS, WL100, 0),
+	PCMCIA_CARD(BAY, EMOBILITY_11B, 0),
+	PCMCIA_CARD(BROMAX, IWN, 0),
+	PCMCIA_CARD(BROMAX, IWN3, 0),
+	PCMCIA_CARD(BROMAX, WCF11, 0),
 	PCMCIA_CARD(BUFFALO, WLI_CF_S11G, 0),
+	PCMCIA_CARD(BUFFALO, WLI_PCM_S11, 0),
 	PCMCIA_CARD(COMPAQ, NC5004, 0),
 	PCMCIA_CARD(CONTEC, FX_DS110_PCC, 0),
 	PCMCIA_CARD(COREGA, WIRELESS_LAN_PCC_11, 0),
 	PCMCIA_CARD(COREGA, WIRELESS_LAN_PCCA_11, 0),
 	PCMCIA_CARD(COREGA, WIRELESS_LAN_PCCB_11, 0),
+	PCMCIA_CARD(COREGA, WIRELESS_LAN_PCCL_11, 0),
+	PCMCIA_CARD(DLINK, DWL650H, 0),
 	PCMCIA_CARD(ELSA, XI300_IEEE, 0),
 	PCMCIA_CARD(ELSA, XI325_IEEE, 0),
 	PCMCIA_CARD(ELSA, XI800_IEEE, 0),
@@ -135,21 +128,20 @@ static const struct pccard_product wi_pccard_products[] = {
 	PCMCIA_CARD(GEMTEK, WLAN, 0),
 	PCMCIA_CARD(HWN, AIRWAY80211, 0), 
 	PCMCIA_CARD(INTEL, PRO_WLAN_2011, 0),
-	PCMCIA_CARD(INTERSIL, PRISM2, 0),
+	PCMCIA_CARD(INTERSIL, MA401RA, 0),
+	PCMCIA_CARD(INTERSIL2, PRISM2, 0),
+	PCMCIA_CARD(IODATA2, WCF12, 0),
 	PCMCIA_CARD(IODATA2, WNB11PCM, 0),
-	PCMCIA_CARD(LINKSYS2, IWN, 0),
-	PCMCIA_CARD(LINKSYS2, IWN2, 0),
-	/* Now that we do PRISM detection, I don't think we need these - imp */
-	PCMCIA_CARD2(LUCENT, WAVELAN_IEEE, NANOSPEED_PRISM2, 0),
-	PCMCIA_CARD2(LUCENT, WAVELAN_IEEE, NEC_CMZ_RT_WP, 0),
-	PCMCIA_CARD2(LUCENT, WAVELAN_IEEE, NTT_ME_WLAN, 0),
-	PCMCIA_CARD2(LUCENT, WAVELAN_IEEE, SMC_2632W, 0),
-	/* Must be after other LUCENT ones because it is less specific */
+	PCMCIA_CARD(FUJITSU, WL110, 0),
 	PCMCIA_CARD(LUCENT, WAVELAN_IEEE, 0),
-	PCMCIA_CARD(NETGEAR2, MA401RA, 0),
+	PCMCIA_CARD(MICROSOFT, MN_520, 0),
+	PCMCIA_CARD(NOKIA, C020_WLAN, 0),
 	PCMCIA_CARD(NOKIA, C110_WLAN, 0),
+	PCMCIA_CARD(PLANEX_2, GWNS11H, 0),
+	PCMCIA_CARD(PROXIM, HARMONY, 0),
 	PCMCIA_CARD(PROXIM, RANGELANDS_8430, 0),
 	PCMCIA_CARD(SAMSUNG, SWL_2000N, 0),
+	PCMCIA_CARD(SIEMENS, SS1021, 0),
 	PCMCIA_CARD(SIMPLETECH, SPECTRUM24_ALT, 0),
 	PCMCIA_CARD(SOCKET, LP_WLAN_CF, 0),
 	PCMCIA_CARD(SYMBOL, LA4100, 0),
@@ -170,7 +162,6 @@ wi_pccard_match(dev)
 	}
 	return ENXIO;
 }
-#endif
 
 static int
 wi_pccard_probe(dev)
