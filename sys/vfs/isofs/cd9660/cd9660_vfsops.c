@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.16 2004/05/26 07:45:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.17 2004/06/26 02:15:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -265,7 +265,7 @@ static int
 iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	    struct iso_args *argp)
 {
-	struct iso_mnt *isomp = (struct iso_mnt *)0;
+	struct iso_mnt *isomp = NULL;
 	struct buf *bp = NULL;
 	struct buf *pribp = NULL, *supbp = NULL;
 	dev_t dev;
@@ -404,8 +404,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		 pri_sierra->root_directory_record:
 		 pri->root_directory_record);
 
-	isomp = malloc(sizeof *isomp, M_ISOFSMNT, M_WAITOK);
-	bzero((caddr_t)isomp, sizeof *isomp);
+	isomp = malloc(sizeof *isomp, M_ISOFSMNT, M_WAITOK | M_ZERO);
 	isomp->logical_block_size = logical_block_size;
 	isomp->volume_space_size =
 		isonum_733 (high_sierra?
