@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.17 2004/05/19 22:52:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.18 2004/09/13 23:57:41 drhodus Exp $
  */
 
 #ifdef _KERNEL
@@ -331,6 +331,14 @@ static struct da_quirk_entry da_quirk_table[] =
 		 * KingByte Pen Drives
 		 */
 		{T_DIRECT, SIP_MEDIA_REMOVABLE, "NO BRAND", "PEN DRIVE", "*"},
+		/*quirks*/ DA_Q_NO_SYNC_CACHE
+ 	},
+	{
+		/*
+		 * iRiver iFP MP3 player (with UMS Firmware)
+		 * PR: kern/54881, i386/63941, kern/66124
+		 */
+		{T_DIRECT, SIP_MEDIA_REMOVABLE, "iRiver", "iFP*", "*"},
 		/*quirks*/ DA_Q_NO_SYNC_CACHE
  	},
  	{
