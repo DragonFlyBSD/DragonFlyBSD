@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.19 2004/03/12 22:29:21 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.20 2004/03/15 20:22:54 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -595,6 +595,8 @@ realloc(void *ptr, unsigned long size, struct malloc_type *type, int flags)
     SLZone *z;
     void *nptr;
     unsigned long osize;
+
+    KKASSERT((flags & M_ZERO) == 0);	/* not supported */
 
     if (ptr == NULL || ptr == ZERO_LENGTH_PTR)
 	return(malloc(size, type, flags));
