@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.56 2005/03/19 00:19:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.57 2005/03/19 00:19:55 okumoto Exp $
  */
 
 /*-
@@ -1465,9 +1465,7 @@ ParseDoError(char *errmsg)
 		errmsg++;
 
 	buf = Var_Subst(NULL, errmsg, VAR_GLOBAL, FALSE);
-	errmsg = Buf_GetAll(buf, NULL);
-
-	Parse_Error(PARSE_FATAL, "%s", errmsg);
+	Parse_Error(PARSE_FATAL, "%s", Buf_Data(buf));
 	Buf_Destroy(buf, TRUE);
 
 	/* Terminate immediately. */
@@ -1499,9 +1497,7 @@ ParseDoWarning(char *warnmsg)
 		warnmsg++;
 
 	buf = Var_Subst(NULL, warnmsg, VAR_GLOBAL, FALSE);
-	warnmsg = Buf_Data(buf);
-
-	Parse_Error(PARSE_WARNING, "%s", warnmsg);
+	Parse_Error(PARSE_WARNING, "%s", Buf_Data(buf));
 	Buf_Destroy(buf, TRUE);
 }
 

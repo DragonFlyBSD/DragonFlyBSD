@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.39 2005/02/07 07:49:16 harti Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.31 2005/03/18 22:12:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.32 2005/03/19 00:19:55 okumoto Exp $
  */
 
 /*-
@@ -629,10 +629,7 @@ do_string_compare:
 			}
 		    }
 
-		    Buf_AddByte(buf, (Byte)0);
-
-		    string = (char *)Buf_GetAll(buf, (size_t *)NULL);
-		    Buf_Destroy(buf, FALSE);
+		    string = Buf_Peel(buf);
 
 		    DEBUGF(COND, ("lhs = \"%s\", rhs = \"%s\", op = %.2s\n",
 			   lhs, string, op));

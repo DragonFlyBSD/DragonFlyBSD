@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.63 2005/03/18 22:12:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.64 2005/03/19 00:19:55 okumoto Exp $
  */
 
 /*-
@@ -797,7 +797,7 @@ main(int argc, char **argv)
 
 		buf = Var_Subst(NULL, VPATH, VAR_CMD, FALSE);
 
-		vpath = Buf_GetAll(buf, NULL);
+		vpath = Buf_Data(buf);
 		do {
 			/* skip to end of directory */
 			for (ptr = vpath; *ptr != ':' && *ptr != '\0'; ptr++)

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.39 2005/03/03 18:22:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.40 2005/03/19 00:19:55 okumoto Exp $
  */
 
 /*-
@@ -188,11 +188,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 	*cp++ = '\0';
 	if (subLibName) {
-		Buffer	*buf;
-
-		buf = Var_Subst(NULL, libName, ctxt, TRUE);
-		libName = Buf_GetAll(buf, NULL);
-		Buf_Destroy(buf, FALSE);
+		libName = Buf_Peel(Var_Subst(NULL, libName, ctxt, TRUE));
 	}
 
 	for (;;) {
@@ -290,7 +286,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 			 * nodeLst we're returning.
 			 */
 			buf1 = Var_Subst(NULL, memName, ctxt, TRUE);
-			memName = Buf_GetAll(buf1, NULL);
+			memName = Buf_Data(buf1);
 
 			sz = strlen(memName) + strlen(libName) + 3;
 			buf = emalloc(sz);
