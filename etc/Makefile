@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.4 2003/07/24 06:35:32 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.5 2003/08/01 03:47:06 rob Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -15,7 +15,7 @@ BIN1=	amd.map apmd.conf auth.conf \
 	pam.conf phones printcap profile protocols \
 	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
-	remote rpc services \
+	rc.subr remote rpc services \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/disktab \
 	etc.${MACHINE_ARCH}/ttys \
