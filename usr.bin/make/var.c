@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.17 2004/12/01 01:29:31 joerg Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.18 2004/12/01 15:06:55 joerg Exp $
  */
 
 /*-
@@ -651,6 +651,48 @@ VarModify (char *str, Boolean (*modProc)(const char *, Boolean, Buffer, void *),
 
 /*-
  *-----------------------------------------------------------------------
+ * VarSortWords --
+ *	Sort the words in the string.
+ *
+ * Input:
+ *	str		String whose words should be sorted
+ *	cmp		A comparison function to control the ordering
+ *
+ * Results:
+ *	A string containing the words sorted
+ *
+ * Side Effects:
+ *	None.
+ *
+ *-----------------------------------------------------------------------
+ */
+static char *
+VarSortWords(char *str, int (*cmp)(const void *, const void *))
+{
+	Buffer buf;
+	char **av;
+	int ac, i;
+
+	buf = Buf_Init(0);
+	av = brk_string(str, &ac, FALSE);
+	qsort((void*)(av + 1), ac - 1, sizeof(char*), cmp);
+	for (i = 1; i < ac; i++) {
+		Buf_AddBytes(buf, strlen(av[i]), (Byte *)av[i]);
+		Buf_AddByte(buf, (Byte)((i < ac - 1) ? ' ' : '\0'));
+	}
+	str = (char *)Buf_GetAll(buf, (int *)NULL);
+	Buf_Destroy(buf, FALSE);
+	return (str);
+}
+
+static int
+SortIncreasing(const void *l, const void *r)
+{
+	return (strcmp(*(const char* const*)l, *(const char* const*)r));
+}
+
+/*-
+ *-----------------------------------------------------------------------
  * VarGetPattern --
  *	Pass through the tstr looking for 1) escaped delimiters,
  *	'$'s and backslashes (place the escaped character in
@@ -1132,7 +1174,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 
 	    DEBUGF(VAR, ("Applying :%c to \"%s\"\n", *tstr, str));
 	    switch (*tstr) {
-	        case 'U':
+		case 'U':
 			if (tstr[1] == endc || tstr[1] == ':') {
 				Buffer buf;
 				buf = Buf_Init(MAKE_BSIZE);
@@ -1466,6 +1508,14 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    free(pattern.matches);
 		    break;
 		}
+		case 'O':
+		    if (tstr[1] == endc || tstr[1] == ':') {
+			newStr = VarSortWords(str, SortIncreasing);
+			cp = tstr + 1;
+			termc = *cp;
+			break;
+		    }
+		    /* FALLTHROUGH */
 		case 'Q':
 		    if (tstr[1] == endc || tstr[1] == ':') {
 			newStr = Var_Quote (str);
