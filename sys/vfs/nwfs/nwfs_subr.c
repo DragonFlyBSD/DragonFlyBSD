@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_subr.c,v 1.2.2.2 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.5 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_subr.c,v 1.6 2004/04/22 17:56:44 cpressey Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -53,7 +53,9 @@
 MALLOC_DEFINE(M_NWFSDATA, "NWFS data", "NWFS private data");
 
 static void 
-ncp_extract_file_info(struct nwmount *nmp, struct ncp_rq *rqp, struct nw_entry_info *target) {
+ncp_extract_file_info(struct nwmount *nmp, struct ncp_rq *rqp,
+		      struct nw_entry_info *target)
+{
 	u_char name_len;
 	const int info_struct_size = sizeof(struct nw_entry_info) - 257;
 
@@ -68,7 +70,7 @@ ncp_extract_file_info(struct nwmount *nmp, struct ncp_rq *rqp, struct nw_entry_i
 
 static void 
 ncp_update_file_info(struct nwmount *nmp, struct ncp_rq *rqp, 
-	struct nw_entry_info *target)
+		     struct nw_entry_info *target)
 {
 	int info_struct_size = sizeof(struct nw_entry_info) - 257;
 
@@ -77,7 +79,7 @@ ncp_update_file_info(struct nwmount *nmp, struct ncp_rq *rqp,
 }
 
 int
-ncp_initsearch(struct vnode *dvp,struct thread *td,struct ucred *cred)
+ncp_initsearch(struct vnode *dvp, struct thread *td, struct ucred *cred)
 {
 	struct nwmount *nmp = VTONWFS(dvp);
 	struct ncp_conn *conn = NWFSTOCONN(nmp);
@@ -103,7 +105,7 @@ int
 ncp_search_for_file_or_subdir(struct nwmount *nmp,
 			      struct nw_search_seq *seq,
 			      struct nw_entry_info *target,
-			      struct thread *td,struct ucred *cred)
+			      struct thread *td, struct ucred *cred)
 {
 	struct ncp_conn *conn = NWFSTOCONN(nmp);
 	int error;
@@ -132,9 +134,9 @@ ncp_search_for_file_or_subdir(struct nwmount *nmp,
  * directory.
  */
 int 
-ncp_obtain_info(struct nwmount *nmp,  u_int32_t dirent,
+ncp_obtain_info(struct nwmount *nmp, u_int32_t dirent,
 		int namelen, char *path, struct nw_entry_info *target,
-		struct thread *td,struct ucred *cred)
+		struct thread *td, struct ucred *cred)
 {
 	struct ncp_conn *conn=NWFSTOCONN(nmp);
 	int error;
@@ -168,7 +170,7 @@ ncp_obtain_info(struct nwmount *nmp,  u_int32_t dirent,
  */
 int
 ncp_lookup(struct vnode *dvp, int len, char *name, struct nw_entry_info *fap,
-		struct thread *td,struct ucred *cred)
+	   struct thread *td, struct ucred *cred)
 {
 	struct nwmount *nmp;
 	struct nwnode *dnp = VTONW(dvp);
@@ -213,10 +215,12 @@ ConvertToNWfromDWORD(u_int32_t sfd, ncp_fh *fh) {
  * entry that wants to be opened.
  */
 int 
-ncp_open_create_file_or_subdir(struct nwmount *nmp,struct vnode *dvp,int namelen,
-	    char *name, int open_create_mode, u_int32_t create_attributes,
-	    int desired_acc_rights, struct ncp_open_info *nop,
-	    struct thread *td,struct ucred *cred)
+ncp_open_create_file_or_subdir(struct nwmount *nmp, struct vnode *dvp,
+			       int namelen, char *name, int open_create_mode,
+			       u_int32_t create_attributes,
+			       int desired_acc_rights,
+			       struct ncp_open_info *nop,
+			       struct thread *td, struct ucred *cred)
 {
 	
 	struct ncp_conn *conn=NWFSTOCONN(nmp);
@@ -261,7 +265,9 @@ ncp_open_create_file_or_subdir(struct nwmount *nmp,struct vnode *dvp,int namelen
 }
 
 int
-ncp_close_file(struct ncp_conn *conn, ncp_fh *fh,struct thread *td,struct ucred *cred) {
+ncp_close_file(struct ncp_conn *conn, ncp_fh *fh, struct thread *td,
+	       struct ucred *cred)
+{
 	int error;
 	DECLARE_RQ;
 
@@ -274,8 +280,8 @@ ncp_close_file(struct ncp_conn *conn, ncp_fh *fh,struct thread *td,struct ucred 
 }
 
 int
-ncp_DeleteNSEntry(struct nwmount *nmp, u_int32_t dirent,
-			int namelen,char *name,struct thread *td,struct ucred *cred)
+ncp_DeleteNSEntry(struct nwmount *nmp, u_int32_t dirent, int namelen,
+		  char *name, struct thread *td, struct ucred *cred)
 {
 	int error;
 	struct ncp_conn *conn=NWFSTOCONN(nmp);
@@ -294,10 +300,9 @@ ncp_DeleteNSEntry(struct nwmount *nmp, u_int32_t dirent,
 
 int 
 ncp_nsrename(struct ncp_conn *conn, int volume, int ns, int oldtype, 
-	struct ncp_nlstables *nt,
-	nwdirent fdir, char *old_name, int oldlen,
-	nwdirent tdir, char *new_name, int newlen,
-	struct thread *td, struct ucred *cred)
+	     struct ncp_nlstables *nt, nwdirent fdir, char *old_name,
+	     int oldlen, nwdirent tdir, char *new_name, int newlen,
+	     struct thread *td, struct ucred *cred)
 {
 	DECLARE_RQ;
 	int error;
@@ -326,9 +331,9 @@ ncp_nsrename(struct ncp_conn *conn, int volume, int ns, int oldtype,
 
 int
 ncp_modify_file_or_subdir_dos_info(struct nwmount *nmp, struct vnode *vp, 
-				u_int32_t info_mask,
-				struct nw_modify_dos_info *info,
-				struct thread *td,struct ucred *cred)
+				   u_int32_t info_mask,
+				   struct nw_modify_dos_info *info,
+				   struct thread *td, struct ucred *cred)
 {
 	struct nwnode *np=VTONW(vp);
 	u_int8_t volnum = nmp->n_volume;
@@ -351,11 +356,8 @@ ncp_modify_file_or_subdir_dos_info(struct nwmount *nmp, struct vnode *vp,
 }
 
 int
-ncp_setattr(vp, vap, cred, td)
-	struct vnode *vp;
-	struct vattr *vap;
-	struct ucred *cred;
-	struct thread *td;
+ncp_setattr(struct vnode *vp, struct vattr *vap, struct ucred *cred,
+	    struct thread *td)
 {
 	struct nwmount *nmp=VTONWFS(vp);
 	struct nwnode *np=VTONW(vp);
@@ -399,9 +401,10 @@ ncp_setattr(vp, vap, cred, td)
 }
 
 int
-ncp_get_volume_info_with_number(struct ncp_conn *conn, 
-	    int n, struct ncp_volume_info *target,
-	    struct thread *td,struct ucred *cred) {
+ncp_get_volume_info_with_number(struct ncp_conn *conn, int n,
+			        struct ncp_volume_info *target,
+				struct thread *td, struct ucred *cred)
+{
 	int error,len;
 	DECLARE_RQ;
 
@@ -429,7 +432,8 @@ ncp_get_volume_info_with_number(struct ncp_conn *conn,
 
 int
 ncp_get_namespaces(struct ncp_conn *conn, u_int32_t volume, int *nsf,
-	    struct thread *td,struct ucred *cred) {
+		   struct thread *td, struct ucred *cred)
+{
 	int error;
 	u_int8_t ns;
 	u_int16_t nscnt;
@@ -452,8 +456,8 @@ ncp_get_namespaces(struct ncp_conn *conn, u_int32_t volume, int *nsf,
 
 int
 ncp_lookup_volume(struct ncp_conn *conn, char *volname, 
-		u_char *volNum, u_int32_t *dirEnt,
-		struct thread *td,struct ucred *cred)
+		  u_char *volNum, u_int32_t *dirEnt,
+		  struct thread *td, struct ucred *cred)
 {
 	int error;
 	DECLARE_RQ;
@@ -534,12 +538,8 @@ static u_short lastdtime;
  * file timestamps. The passed in unix time is assumed to be in GMT.
  */
 void
-ncp_unix2dostime(tsp, tzoff, ddp, dtp, dhp)
-	struct timespec *tsp;
-	int tzoff;
-	u_int16_t *ddp;
-	u_int16_t *dtp;
-	u_int8_t *dhp;
+ncp_unix2dostime(struct timespec *tsp, int tzoff, u_int16_t *ddp,
+		 u_int16_t *dtp, u_int8_t *dhp)
 {
 	u_long t;
 	u_long days;
@@ -615,12 +615,7 @@ static u_long  lastseconds;
  * not be too efficient.
  */
 void
-ncp_dos2unixtime(dd, dt, dh, tzoff, tsp)
-	u_int dd;
-	u_int dt;
-	u_int dh;
-	int tzoff;
-	struct timespec *tsp;
+ncp_dos2unixtime(u_int dd, u_int dt, u_int dh, int tzoff, struct timespec *tsp)
 {
 	u_long seconds;
 	u_long month;

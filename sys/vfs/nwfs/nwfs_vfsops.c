@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.10 2004/04/22 17:56:44 cpressey Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -140,8 +140,9 @@ nwfs_initnls(struct nwmount *nmp) {
  * mp - path - addr in user space of mount point (ie /usr or whatever)
  * data - addr in user space of mount params 
  */
-static int nwfs_mount(struct mount *mp, char *path, caddr_t data, 
-		      struct nameidata *ndp, struct thread *td)
+static int
+nwfs_mount(struct mount *mp, char *path, caddr_t data, 
+	   struct nameidata *ndp, struct thread *td)
 {
 	struct nwfs_args args; 	  /* will hold data from mount request */
 	size_t size;
@@ -271,7 +272,8 @@ nwfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 
 /*  Return locked vnode to root of a filesystem */
 static int
-nwfs_root(struct mount *mp, struct vnode **vpp) {
+nwfs_root(struct mount *mp, struct vnode **vpp)
+{
 	struct vnode *vp;
 	struct nwmount *nmp;
 	struct nwnode *np;
@@ -371,10 +373,7 @@ nwfs_root(struct mount *mp, struct vnode **vpp) {
  */
 /* ARGSUSED */
 static int
-nwfs_start(mp, flags, td)
-	struct mount *mp;
-	int flags;
-	struct thread *td;
+nwfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	NCPVODEBUG("flags=%04x\n",flags);
 	return (0);
@@ -385,12 +384,8 @@ nwfs_start(mp, flags, td)
  */
 /* ARGSUSED */
 static int
-nwfs_quotactl(mp, cmd, uid, arg, td)
-	struct mount *mp;
-	int cmd;
-	uid_t uid;
-	caddr_t arg;
-	struct thread *td;
+nwfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
+	      struct thread *td)
 {
 	NCPVODEBUG("return EOPNOTSUPP\n");
 	return (EOPNOTSUPP);
@@ -430,10 +425,7 @@ nwfs_uninit(struct vfsconf *vfsp)
  * nwfs_statfs call
  */
 int
-nwfs_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+nwfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct nwmount *nmp = VFSTONWFS(mp);
 	int error = 0, secsize;
@@ -480,10 +472,7 @@ nwfs_statfs(mp, sbp, td)
  */
 /* ARGSUSED */
 static int
-nwfs_sync(mp, waitfor, td)
-	struct mount *mp;
-	int waitfor;
-	struct thread *td;
+nwfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct vnode *vp;
 	int error, allerror = 0;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.10 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.11 2004/04/22 17:56:44 cpressey Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -127,15 +127,12 @@ VNODEOP_SET(nwfs_vnodeop_opv_desc);
 /*
  * nwfs_access vnode op
  * for now just return ok
+ *
+ * nwfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-nwfs_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct ucred *cred = ap->a_cred;
@@ -164,16 +161,13 @@ nwfs_access(ap)
 }
 /*
  * nwfs_open vnode op
+ *
+ * nwfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-nwfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int mode = ap->a_mode;
@@ -230,15 +224,12 @@ nwfs_open(ap)
 	return (error);
 }
 
+/*
+ * nwfs_close(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_fflag,
+ *	      struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-nwfs_close(ap)
-	struct vop_close_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
@@ -274,15 +265,12 @@ nwfs_close(ap)
 
 /*
  * nwfs_getattr call from vfs.
+ *
+ * nwfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-nwfs_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
@@ -316,15 +304,12 @@ nwfs_getattr(ap)
 }
 /*
  * nwfs_setattr call from vfs.
+ *
+ * nwfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-nwfs_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
@@ -371,17 +356,15 @@ nwfs_setattr(ap)
 	np->n_mtime = vap->va_mtime.tv_sec;
 	return (0);
 }
+
 /*
  * nwfs_read call.
+ *
+ * nwfs_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 static int
-nwfs_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nwfs_read(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio=ap->a_uio;
@@ -394,14 +377,12 @@ nwfs_read(ap)
 	return error;
 }
 
+/*
+ * nwfs_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
+ */
 static int
-nwfs_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nwfs_write(struct vop_write_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
@@ -420,15 +401,12 @@ nwfs_write(ap)
  * created is locked.  We must release before we return. We must also free
  * the pathname buffer pointed at by cnp->cn_pnbuf, always on error, or
  * only if the SAVESTART bit in cn_flags is clear on success.
+ *
+ * nwfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnpl, struct vattr *a_vap)
  */
 static int
-nwfs_create(ap)
-	struct vop_create_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+nwfs_create(struct vop_create_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -476,15 +454,12 @@ nwfs_create(ap)
 /*
  * nwfs_remove call. It isn't possible to emulate UFS behaivour because
  * NetWare doesn't allow delete/rename operations on an opened file.
+ *
+ * nwfs_remove(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
+ *		struct vnode *a_vp, struct componentname *a_cnp)
  */
 static int
-nwfs_remove(ap)
-	struct vop_remove_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode * a_dvp;
-		struct vnode * a_vp;
-		struct componentname * a_cnp;
-	} */ *ap;
+nwfs_remove(struct vop_remove_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -511,17 +486,13 @@ nwfs_remove(ap)
 
 /*
  * nwfs_file rename call
+ *
+ * nwfs_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *		struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-nwfs_rename(ap)
-	struct vop_rename_args  /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+nwfs_rename(struct vop_rename_args *ap)
 {
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *tvp = ap->a_tvp;
@@ -600,14 +571,12 @@ out:
 /*
  * nwfs hard link create call
  * Netware filesystems don't know what links are.
+ *
+ * nwfs_link(struct vnode *a_tdvp, struct vnode *a_vp,
+ *	     struct componentname *a_cnp)
  */
 static int
-nwfs_link(ap)
-	struct vop_link_args /* {
-		struct vnode *a_tdvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nwfs_link(struct vop_link_args *ap)
 {
 	return EOPNOTSUPP;
 }
@@ -615,38 +584,30 @@ nwfs_link(ap)
 /*
  * nwfs_symlink link create call
  * Netware filesystems don't know what symlinks are.
+ *
+ * nwfs_symlink(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap,
+ *		char *a_target)
  */
 static int
-nwfs_symlink(ap)
-	struct vop_symlink_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-		char *a_target;
-	} */ *ap;
+nwfs_symlink(struct vop_symlink_args *ap)
 {
 	return (EOPNOTSUPP);
 }
 
-static int nwfs_mknod(ap) 
-	struct vop_mknod_args /* {
-	} */ *ap;
+static int nwfs_mknod(struct vop_mknod_args *ap)
 {
 	return (EOPNOTSUPP);
 }
 
 /*
  * nwfs_mkdir call
+ *
+ * nwfs_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-nwfs_mkdir(ap)
-	struct vop_mkdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+nwfs_mkdir(struct vop_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 /*	struct vattr *vap = ap->a_vap;*/
@@ -688,14 +649,12 @@ nwfs_mkdir(ap)
 
 /*
  * nwfs_remove directory call
+ *
+ * nwfs_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
+ *	      struct componentname *a_cnp)
  */
 static int
-nwfs_rmdir(ap)
-	struct vop_rmdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nwfs_rmdir(struct vop_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -723,17 +682,12 @@ nwfs_rmdir(ap)
 
 /*
  * nwfs_readdir call
+ *
+ * nwfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		int *a_eofflag, u_long *a_cookies, int a_ncookies)
  */
 static int
-nwfs_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		u_long *a_cookies;
-		int a_ncookies;
-	} */ *ap;
+nwfs_readdir(struct vop_readdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct uio *uio = ap->a_uio;
@@ -749,27 +703,25 @@ nwfs_readdir(ap)
 	error = nwfs_readvnode(vp, uio, ap->a_cred);
 	return error;
 }
+
+/*
+ * nwfs_fsync(struct vnodeop_desc *a_desc, struct vnode *a_vp,
+ *	      struct ucred *a_cred, int a_waitfor, struct thread *a_td)
+ */
 /* ARGSUSED */
 static int
-nwfs_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode * a_vp;
-		struct ucred * a_cred;
-		int  a_waitfor;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_fsync(struct vop_fsync_args *ap)
 {
 /*	return (nfs_flush(ap->a_vp, ap->a_cred, ap->a_waitfor, ap->a_td, 1));*/
     return (0);
 }
 
+/*
+ * nwfs_print(struct vnode *a_vp)
+ */
 /* ARGSUSED */
-static 
-int nwfs_print (ap) 
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+static int
+nwfs_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nwnode *np = VTONW(vp);
@@ -779,12 +731,11 @@ int nwfs_print (ap)
 	return (0);
 }
 
-static int nwfs_pathconf (ap)
-	struct vop_pathconf_args  /* {
-	struct vnode *vp;
-	int name;
-	register_t *retval;
-	} */ *ap;
+/*
+ * nwfs_pathconf(struct vnode *vp, int name, register_t *retval)
+ */
+static int
+nwfs_pathconf(struct vop_pathconf_args *ap)
 {
 	int name=ap->a_name, error=0;
 	register_t *retval=ap->a_retval;
@@ -805,10 +756,11 @@ static int nwfs_pathconf (ap)
 	return(error);
 }
 
-static int nwfs_strategy (ap) 
-	struct vop_strategy_args /* {
-	struct buf *a_bp
-	} */ *ap;
+/*
+ * nwfs_strategy(struct buf *a_bp)
+ */
+static int
+nwfs_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp=ap->a_bp;
 	int error = 0;
@@ -829,16 +781,12 @@ static int nwfs_strategy (ap)
 	return (error);
 }
 
+/*
+ * nwfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
+ */
 static int
-nwfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+nwfs_bmap(struct vop_bmap_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -892,15 +840,12 @@ nwfs_nget(struct mount *mp, ncpfid fid, struct nw_entry_info *fap,
  * How to keep the brain busy ...
  * Currently lookup routine can make two lookup for vnode. This can be
  * avoided by reorg the code.
+ *
+ * nwfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
+ *		struct vnode **a_vpp, struct componentname *a_cnp)
  */
 int
-nwfs_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nwfs_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode *dvp = ap->a_dvp;

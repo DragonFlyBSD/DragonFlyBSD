@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.9 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.10 2004/04/22 17:56:44 cpressey Exp $
  *
  */
 #include <sys/param.h>
@@ -73,7 +73,8 @@ extern int nwfs_pbuf_freecnt;
 #define	NWFS_RWCACHE
 
 static int
-nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred) {
+nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred)
+{
 	struct nwmount *nmp = VTONWFS(vp);
 	int error, count, i;
 	struct dirent dp;
@@ -154,7 +155,8 @@ nwfs_readvdir(struct vnode *vp, struct uio *uio, struct ucred *cred) {
 }
 
 int
-nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
+nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
+{
 	struct nwmount *nmp = VFSTONWFS(vp->v_mount);
 	struct nwnode *np = VTONW(vp);
 	struct thread *td;
@@ -194,11 +196,8 @@ nwfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred) {
 }
 
 int
-nwfs_writevnode(vp, uiop, cred, ioflag)
-	struct vnode *vp;
-	struct uio *uiop;
-	struct ucred *cred;
-	int ioflag;
+nwfs_writevnode(struct vnode *vp, struct uio *uiop, struct ucred *cred,
+		int ioflag)
 {
 	struct nwmount *nmp = VTONWFS(vp);
 	struct nwnode *np = VTONW(vp);
@@ -374,16 +373,12 @@ nwfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 /*
  * Vnode op for VM getpages.
  * Wish wish .... get rid from multiple IO routines
+ *
+ * nwfs_getpages(struct vnode *a_vp, vm_page_t *a_m, int a_count,
+ *		 int a_reqpage, vm_ooffset_t a_offset)
  */
 int
-nwfs_getpages(ap)
-	struct vop_getpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_reqpage;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+nwfs_getpages(struct vop_getpages_args *ap)
 {
 #ifndef NWFS_RWCACHE
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
@@ -494,17 +489,12 @@ nwfs_getpages(ap)
  * possible bug: all IO done in sync mode
  * Note that vop_close always invalidate pages before close, so it's
  * not necessary to open vnode.
+ *
+ * nwfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count,
+ *		 int a_sync, int *a_rtvals, vm_ooffset_t a_offset)
  */
 int
-nwfs_putpages(ap)
-	struct vop_putpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_sync;
-		int *a_rtvals;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+nwfs_putpages(struct vop_putpages_args *ap)
 {
 	int error;
 	struct thread *td = curthread;	/* XXX */
@@ -582,11 +572,7 @@ nwfs_putpages(ap)
  * doing the flush, just wait for completion.
  */
 int
-nwfs_vinvalbuf(vp, flags, td, intrflg)
-	struct vnode *vp;
-	int flags;
-	struct thread *td;
-	int intrflg;
+nwfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
 {
 	struct nwnode *np = VTONW(vp);
 /*	struct nwmount *nmp = VTONWFS(vp);*/

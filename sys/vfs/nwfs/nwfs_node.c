@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.10 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.11 2004/04/22 17:56:44 cpressey Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -75,18 +75,21 @@ SYSCTL_PROC(_vfs_nwfs, OID_AUTO, vnprint, CTLFLAG_WR|CTLTYPE_OPAQUE,
 	    NULL, 0, nwfs_sysctl_vnprint, "S,vnlist", "vnode hash");
 
 void
-nwfs_hash_init(void) {
+nwfs_hash_init(void)
+{
 	nwhashtbl = hashinit(desiredvnodes, M_NWFSHASH, &nwnodehash);
 	lockinit(&nwhashlock, 0, "nwfshl", 0, 0);
 }
 
 void
-nwfs_hash_free(void) {
+nwfs_hash_free(void)
+{
 	free(nwhashtbl, M_NWFSHASH);
 }
 
 int
-nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS) {
+nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS)
+{
 	struct nwnode *np;
 	struct nwnode_hash_head *nhpp;
 	struct vnode *vp;
@@ -197,7 +200,7 @@ rescan:
 
 int
 nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
-	struct nwnode **npp)
+	      struct nwnode **npp)
 {
 	int error;
 
@@ -209,13 +212,11 @@ nwfs_lookupnp(struct nwmount *nmp, ncpfid fid, struct thread *td,
 
 /*
  * Free nwnode, and give vnode back to system
+ *
+ * nwfs_reclaim(struct vnode *a_vp, struct thread *a_td)
  */
 int
-nwfs_reclaim(ap)                     
-        struct vop_reclaim_args /* {
-    		struct vnode *a_vp;
-		struct thread *a_td;
-        } */ *ap;
+nwfs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *dvp = NULL, *vp = ap->a_vp;
 	struct nwnode *dnp, *np = VTONW(vp);
@@ -246,12 +247,11 @@ nwfs_reclaim(ap)
 	return (0);
 }
 
+/*
+ * nwfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 int
-nwfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+nwfs_inactive(struct vop_inactive_args *ap)
 {
 	struct thread *td = ap->a_td;
 	struct ucred *cred;
