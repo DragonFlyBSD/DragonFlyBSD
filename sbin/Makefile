@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.6 2004/06/18 02:46:45 dillon Exp $
+# $DragonFly: src/sbin/Makefile,v 1.7 2005/01/09 03:06:48 dillon Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -35,6 +35,7 @@ SUBDIR=	adjkerntz \
 	ldconfig \
 	md5 \
 	mknod \
+	mountctl \
 	mount \
 	mount_cd9660 \
 	mount_ext2fs \
