@@ -1,6 +1,6 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.2 2003/06/17 04:29:57 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.3 2004/01/25 22:16:45 drhodus Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
@@ -17,14 +17,13 @@ DESTRUN=	/var/run
 DESTSBIN=	/usr/sbin
 DESTHELP=	/usr/share/misc
 
-CFLAGS+=	-I${BIND_DIR}/port/freebsd/include \
-		-DNOADDITIONAL
+CFLAGS+=	-I${BIND_DIR}/port/freebsd/include
 
 # This is mostly for named and named-xfer
 .if defined(USE_LIBBIND)
 # Sadly, mkdep doesn't know about -idirafter, which would be ideal here.
 #CFLAGS+=	-I${.CURDIR}/../../include -I${BIND_DIR}/include
-CFLAGS+=	-I${BIND_DIR}/include -DNOADDITIONAL
+CFLAGS+=	-I${BIND_DIR}/include
 
 .if exists(${.OBJDIR}/../../lib/libbind)
 LIBBINDDIR:=	${.OBJDIR}/../../lib/libbind
