@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.18 2004/05/19 22:52:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.19 2004/06/02 19:30:59 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -614,7 +614,8 @@ ad_interrupt(struct ad_request *request)
 
     /* do we have a corrected soft error ? */
     if (adp->device->channel->status & ATA_S_CORR)
-	diskerr(request->bp, "soft error (ECC corrected)", LOG_PRINTF,
+	diskerr(request->bp, request->bp->b_dev,
+		"soft error (ECC corrected)", LOG_PRINTF,
 		request->blockaddr + (request->donecount / DEV_BSIZE),
 		&adp->disk.d_label);
 
@@ -623,7 +624,8 @@ ad_interrupt(struct ad_request *request)
 	(request->flags & ADR_F_DMA_USED && dma_stat & ATA_BMSTAT_ERROR)) {
 	adp->device->channel->error =
 	    ATA_INB(adp->device->channel->r_io, ATA_ERROR);
-	diskerr(request->bp, (adp->device->channel->error & ATA_E_ICRC) ?
+	diskerr(request->bp, request->bp->b_dev,
+		(adp->device->channel->error & ATA_E_ICRC) ?
 		"UDMA ICRC error" : "hard error", LOG_PRINTF,
 		request->blockaddr + (request->donecount / DEV_BSIZE),
 		&adp->disk.d_label);

@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.7 2004/05/25 18:54:26 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.8 2004/06/02 19:31:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -187,7 +187,7 @@ reread_mbr:
 	bp->b_flags |= B_READ;
 	BUF_STRATEGY(bp, 1);
 	if (biowait(bp) != 0) {
-		diskerr(bp, "reading primary partition table: error",
+		diskerr(bp, wdev, "reading primary partition table: error",
 		    LOG_PRINTF, 0, (struct disklabel *)NULL);
 		printf("\n");
 		error = EIO;
@@ -396,7 +396,7 @@ mbr_extended(dev_t dev, struct disklabel *lp, struct diskslices *ssp,
 	bp->b_flags |= B_READ;
 	BUF_STRATEGY(bp, 1);
 	if (biowait(bp) != 0) {
-		diskerr(bp, "reading extended partition table: error",
+		diskerr(bp, dev, "reading extended partition table: error",
 		    LOG_PRINTF, 0, (struct disklabel *)NULL);
 		printf("\n");
 		goto done;

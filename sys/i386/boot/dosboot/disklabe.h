@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/i386/boot/dosboot/disklabe.h,v 1.8 1999/12/29 04:32:50 peter Exp $
- * $DragonFly: src/sys/i386/boot/dosboot/Attic/disklabe.h,v 1.3 2003/08/26 21:42:17 rob Exp $
+ * $DragonFly: src/sys/i386/boot/dosboot/Attic/disklabe.h,v 1.4 2004/06/02 19:31:02 dillon Exp $
  */
 
 #ifndef _SYS_DISKLABEL_H_
@@ -382,7 +382,7 @@ int	writedisklabel (dev_t dev, void (*strat)(), struct disklabel *lp);
 char *	readdisklabel (dev_t dev, void (*strat)(), struct disklabel *lp, struct dos_partition *dp, struct dkbad *bdp);
 int	setdisklabel (struct disklabel *olp, struct disklabel *nlp, u_long openmask);
 void	disksort (struct buf *ap, struct buf *bp);
-void	 diskerr (struct buf *, char *, char *, int, int, struct disklabel *);
+void	 diskerr (struct buf *, dev_t, char *, char *, int, int, struct disklabel *);
 #ifdef __i386
 char *	readMBRtolabel ( dev_t dev , void (*strat)(), register struct disklabel *lp, struct dos_partition *dp, int *cyl);
 #endif

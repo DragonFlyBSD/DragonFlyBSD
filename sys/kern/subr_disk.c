@@ -46,7 +46,7 @@
  *	@(#)ufs_disksubr.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/subr_disk.c,v 1.20.2.6 2001/10/05 07:14:57 peter Exp $
  * $FreeBSD: src/sys/ufs/ufs/ufs_disksubr.c,v 1.44.2.3 2001/03/05 05:42:19 obrien Exp $
- * $DragonFly: src/sys/kern/subr_disk.c,v 1.11 2004/05/26 20:04:07 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_disk.c,v 1.12 2004/06/02 19:31:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -771,22 +771,23 @@ hp0g: hard error reading fsbn 12345 of 12344-12347 (hp0 bn %d cn %d tn %d sn %d)
  * or addlog, respectively.  There is no trailing space.
  */
 void
-diskerr(struct buf *bp, char *what, int pri, int blkdone, struct disklabel *lp)
+diskerr(struct buf *bp, dev_t dev, char *what, int pri, 
+	int blkdone, struct disklabel *lp)
 {
-	int unit = dkunit(bp->b_dev);
-	int slice = dkslice(bp->b_dev);
-	int part = dkpart(bp->b_dev);
+	int unit = dkunit(dev);
+	int slice = dkslice(dev);
+	int part = dkpart(dev);
 	char partname[2];
 	char *sname;
 	daddr_t sn;
 
-	sname = dsname(bp->b_dev, unit, slice, part, partname);
+	sname = dsname(dev, unit, slice, part, partname);
 	printf("%s%s: %s %sing fsbn ", sname, partname, what,
 	      bp->b_flags & B_READ ? "read" : "writ");
 	sn = bp->b_blkno;
-	if (bp->b_bcount <= DEV_BSIZE)
+	if (bp->b_bcount <= DEV_BSIZE) {
 		printf("%ld", (long)sn);
-	else {
+	} else {
 		if (blkdone >= 0) {
 			sn += blkdone;
 			printf("%ld of ", (long)sn);

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.16 2004/05/19 22:52:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.17 2004/06/02 19:31:01 dillon Exp $
  *
  */
 
@@ -2098,17 +2098,20 @@ retrier(struct fdc_data *fdc)
 	fail:
 		{
 			int printerror = (fd->options & FDOPT_NOERRLOG) == 0;
-			dev_t sav_b_dev;
 
-			/* Trick diskerr */
 			if (printerror) {
-				sav_b_dev = bp->b_dev;
-				bp->b_dev = make_sub_dev(bp->b_dev,
+				/*
+				 * note: use the correct device for more
+				 * verbose error reporting.
+				 */
+				dev_t subdev;
+
+				subdev = make_sub_dev(bp->b_dev,
 				    (FDUNIT(minor(bp->b_dev))<<3)|RAW_PART);
-				diskerr(bp, "hard error", LOG_PRINTF,
+				diskerr(bp, subdev,
+					"hard error", LOG_PRINTF,
 					fdc->fd->skip / DEV_BSIZE,
 					(struct disklabel *)NULL);
-				bp->b_dev = sav_b_dev;
 			}
 			if (printerror) {
 				if (fdc->flags & FDC_STAT_VALID)
