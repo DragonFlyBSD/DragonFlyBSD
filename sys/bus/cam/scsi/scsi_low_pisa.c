@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low_pisa.c,v 1.2.2.4 2001/12/17 13:30:20 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.3 2003/08/07 21:16:45 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low_pisa.c,v 1.4 2004/02/11 17:46:33 joerg Exp $	*/
 /*	$NecBSD: scsi_low_pisa.c,v 1.13 1998/11/26 14:26:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -117,13 +117,10 @@ scsi_low_notify_pisa(dh, ev)
 }
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__ 
+#ifdef	__DragonFly__ 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#if __FreeBSD_version >= 500001
-#include <sys/bio.h>
-#endif
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/device_port.h>
@@ -165,4 +162,4 @@ static moduledata_t scsi_low_moduledata = {
 DECLARE_MODULE(scsi_low, scsi_low_moduledata, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
 MODULE_VERSION(scsi_low, 1);
 MODULE_DEPEND(scsi_low, cam, 1, 1, 1);
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */

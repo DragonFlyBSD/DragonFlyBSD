@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_low.c,v 1.1.2.5 2003/08/09 06:18:30 non Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.6 2003/12/29 23:31:00 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_low.c,v 1.7 2004/02/11 17:46:33 joerg Exp $
  * $NetBSD: scsi_low.c,v 1.24.10.8 2001/06/26 07:39:44 honda Exp $
  */
 
@@ -17,9 +17,9 @@
 #define	SCSI_LOW_TARGET_OPEN
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 #define	SCSI_LOW_FLAGS_QUIRKS_OK
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /*
  * [NetBSD for NEC PC-98 series]
@@ -71,14 +71,10 @@
 #include <sys/systm.h>
 #include <sys/kernel.h>
 
-#ifdef __FreeBSD__
-#if __FreeBSD_version >= 500001
-#include <sys/bio.h>
-#else
+#ifdef __DragonFly__
 #include <machine/clock.h>
-#endif
 #include <sys/devicestat.h>
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 #include <sys/buf.h>
 #include <sys/queue.h>
@@ -105,12 +101,12 @@
 #include <i386/Cbus/dev/scsi_low.h>
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
-#include "../cam.h"
-#include "../cam_ccb.h"
-#include "../cam_sim.h"
-#include "../cam_debug.h"
-#include "../cam_periph.h"
+#ifdef __DragonFly__
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_debug.h>
+#include <bus/cam/cam_periph.h>
 
 #include "scsi_all.h"
 #include "scsi_message.h"
@@ -118,7 +114,7 @@
 #include "scsi_low.h"
 
 #include <sys/cons.h>
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /**************************************************************
  * Constants

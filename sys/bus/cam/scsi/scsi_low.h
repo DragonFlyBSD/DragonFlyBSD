@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/cam/scsi/scsi_low.h,v 1.1.2.4 2001/07/22 00:21:41 non Exp $	*/
-/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.4 2003/08/27 11:42:33 rob Exp $	*/
+/*	$DragonFly: src/sys/bus/cam/scsi/scsi_low.h,v 1.5 2004/02/11 17:46:33 joerg Exp $	*/
 /*	$NecBSD: scsi_low.h,v 1.24.10.5 2001/06/26 07:31:46 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -54,10 +54,10 @@
 #define	SCSI_LOW_INTERFACE_XS
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 #define	SCSI_LOW_INTERFACE_CAM
 #define	CAM
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /******** includes *******************************/
 #ifdef	__NetBSD__
@@ -65,17 +65,17 @@
 #include <dev/isa/ccbque.h>
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 #include <sys/device_port.h>
-#include "../cam.h"
-#include "../cam_ccb.h"
-#include "../cam_sim.h"
-#include "../cam_xpt_sim.h"
-#include "../cam_debug.h"
+#include <bus/cam/cam.h>
+#include <bus/cam/cam_ccb.h>
+#include <bus/cam/cam_sim.h>
+#include <bus/cam/cam_xpt_sim.h>
+#include <bus/cam/cam_debug.h>
 
 #include "scsi_dvcfg.h"
 #include <i386/isa/ccbque.h>
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /******** functions macro ************************/
 #ifdef	__NetBSD__
@@ -85,13 +85,13 @@
 #define	SCSI_LOW_BZERO(pt, size)	memset((pt), 0, (size))
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 #undef	MSG_IDENTIFY
 #define	SCSI_LOW_DEBUGGER(dev)	Debugger((dev))
 #define	SCSI_LOW_DELAY(mu)	DELAY((mu))
 #define	SCSI_LOW_SPLSCSI	splcam
 #define	SCSI_LOW_BZERO(pt, size)	bzero((pt), (size))
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /******** os depend interface structures **********/
 #ifdef	__NetBSD__
@@ -111,7 +111,7 @@ struct scsi_low_osdep_lun_interface {
 };
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 typedef	struct scsi_sense_data scsi_low_osdep_sense_data_t;
 
 struct scsi_low_osdep_interface {
@@ -134,7 +134,7 @@ struct scsi_low_osdep_targ_interface {
 
 struct scsi_low_osdep_lun_interface {
 };
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 /******** os depend interface functions *************/
 struct slccb;
