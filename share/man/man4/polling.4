@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.1.2.4 2003/04/14 08:58:02 maxim Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.2 2003/06/17 04:36:59 dillon Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.3 2004/03/10 18:18:13 dillon Exp $
 .\"
 .Dd February 15, 2002
 .Dt POLLING 4
@@ -12,11 +12,12 @@
 .Cd "options DEVICE_POLLING"
 .Cd "options HZ=1000"
 .Sh DESCRIPTION
-.Dq "Device polling"
-(polling for brevity) refers to a technique to
-handle devices that does not rely on the latter to generate
-interrupts when they need attention, but rather lets the CPU poll
-devices to service their needs.
+Typically, devices generate interrupts when they need attention
+from the CPU.  Device polling
+.Dq ( "polling" ,
+for brevity,) refers to a technique for handling devices that does not
+rely on interrupts.  Rather, it lets the CPU poll devices periodically
+to service their needs.
 This might seem inefficient and counterintuitive, but when done
 properly,
 .Nm
