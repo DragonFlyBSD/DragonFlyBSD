@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.3 2003/08/03 11:39:57 hmp Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.4 2003/08/03 17:27:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,11 +46,7 @@ static u_char *vid;
 
 #define SCRW 320
 #define SCRH 200
-#ifdef MAX
-#undef MAX
-#else
-#define MAX 63
-#endif
+#define RAINMAX 63
 
 static u_char rain_pal[768];
 static int blanked;
@@ -60,8 +56,8 @@ rain_update(video_adapter_t *adp)
 {
     int i, t;
 
-    t = rain_pal[(MAX*3+2)];
-    for (i = (MAX*3+2); i > 5; i -= 3)
+    t = rain_pal[(RAINMAX*3+2)];
+    for (i = (RAINMAX*3+2); i > 5; i -= 3)
 	rain_pal[i] = rain_pal[i-3];
     rain_pal[5] = t;
     load_palette(adp, rain_pal);
@@ -86,10 +82,10 @@ rain_saver(video_adapter_t *adp, int blank)
 	    splx(pl);
 	    bzero(vid, SCRW*SCRH);
 	    for (i = 0; i < SCRW; i += 2)
-		vid[i] = 1 + (random() % MAX);
+		vid[i] = 1 + (random() % RAINMAX);
 	    for (j = 1, k = SCRW; j < SCRH; j++)
 		for (i = 0; i < SCRW; i += 2, k += 2)
-		    vid[k] = (vid[k-SCRW] < MAX) ? 1 + vid[k-SCRW] : 1;
+		    vid[k] = (vid[k-SCRW] < RAINMAX) ? 1 + vid[k-SCRW] : 1;
 	}
 
 	/* update display */
@@ -114,7 +110,7 @@ rain_init(video_adapter_t *adp)
     }
 
     /* intialize the palette */
-    for (i = 3; i < (MAX+1)*3; i += 3)
+    for (i = 3; i < (RAINMAX+1)*3; i += 3)
 	rain_pal[i+2] = rain_pal[i-1] + 4;
 
     blanked = 0;
