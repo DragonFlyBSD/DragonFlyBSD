@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.21 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_slaballoc.c,v 1.22 2004/06/26 02:12:49 dillon Exp $
  *
  * This module implements a slab allocator drop-in replacement for the
  * kernel malloc().
@@ -738,8 +738,7 @@ free(void *ptr, struct malloc_type *type)
 
     /*
      * If we do not own the zone then forward the request to the
-     * cpu that does.  The freeing code does not need the byte count
-     * unless DIAGNOSTIC is set.
+     * cpu that does.
      */
     if (z->z_CpuGd != gd) {
 	*(struct malloc_type **)ptr = type;
