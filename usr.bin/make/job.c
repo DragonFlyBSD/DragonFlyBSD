@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.22 2004/12/01 15:44:20 joerg Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.23 2004/12/01 15:50:51 joerg Exp $
  */
 
 #ifndef OLD_JOKE
@@ -177,7 +177,7 @@ static Shell    shells[] = {
      */
 {
     "csh",
-    TRUE, "unset verbose", "set verbose", "unset verbose", 10,
+    TRUE, "unset verbose", "set verbose", "unset verbose", 13,
     FALSE, "echo \"%s\"\n", "csh -c \"%s || exit 0\"",
     "v", "e",
 },
@@ -194,15 +194,6 @@ static Shell    shells[] = {
 #endif
     "v", "e",
 },
-    /*
-     * UNKNOWN.
-     */
-{
-    (char *) 0,
-    FALSE, (char *) 0, (char *) 0, (char *) 0, 0,
-    FALSE, (char *) 0, (char *) 0,
-    (char *) 0, (char *) 0,
-}
 };
 static Shell 	*commandShell = &shells[DEFSHELL];/* this is the shell to
 						   * which we pass all
@@ -2248,7 +2239,7 @@ JobMatchShell(char *name)
 
     match = NULL;
 
-    for (sh = shells; sh->name != NULL; sh++) {
+    for (sh = shells; sh < shells + __arysize(shells); sh++) {
 	for (cp1 = eoname - strlen(sh->name), cp2 = sh->name;
 	     *cp1 != '\0' && *cp1 == *cp2;
 	     cp1++, cp2++) {
