@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.25 2004/03/23 17:21:09 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.26 2004/03/25 20:52:43 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -641,10 +641,10 @@ bootstrap-tools:
     usr.bin/vi usr.bin/cap_mkdb usr.bin/vgrind usr.bin/true usr.bin/false \
     usr.bin/cmp usr.bin/xargs usr.bin/id usr.bin/env usr.bin/dirname \
     usr.sbin/chown usr.sbin/mtree usr.sbin/config \
-    usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic \
+    usr.sbin/btxld usr.sbin/pwd_mkdb usr.sbin/zic usr.sbin/makewhatis \
     gnu/usr.bin/gperf gnu/usr.bin/groff gnu/usr.bin/texinfo \
     gnu/usr.bin/grep gnu/usr.bin/sort gnu/usr.bin/patch \
-    gnu/usr.bin/gzip gnu/usr.bin/perl gnu/usr.bin/man/makewhatis
+    gnu/usr.bin/gzip gnu/usr.bin/perl
 	${ECHODIR} "===> ${_tool} (bootstrap-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
