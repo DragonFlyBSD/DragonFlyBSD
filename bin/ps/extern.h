@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.10 2004/11/16 12:16:36 joerg Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.11 2004/11/22 06:50:12 dillon Exp $
  */
 
 struct kinfo;
@@ -67,6 +67,7 @@ void	 pcpu(const KINFO *, const struct varent *);
 void	 pnice(const KINFO *, const struct varent *);
 void	 pmem(const KINFO *, const struct varent *);
 void	 pri(const KINFO *, const struct varent *);
+void	 tdpri(const KINFO *, const struct varent *);
 void	 rtprior(const KINFO *, const struct varent *);
 void	 printheader(void);
 void	 pvar(const KINFO *, const struct varent *);

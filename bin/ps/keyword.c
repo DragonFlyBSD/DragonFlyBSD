@@ -32,7 +32,7 @@
  *
  * @(#)keyword.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/keyword.c,v 1.24.2.3 2002/10/10 20:05:32 jmallett Exp $
- * $DragonFly: src/bin/ps/keyword.c,v 1.16 2004/11/16 12:38:04 joerg Exp $
+ * $DragonFly: src/bin/ps/keyword.c,v 1.17 2004/11/22 06:50:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -177,6 +177,7 @@ static const VAR var[] = {
 	{"svuid", "SVUID", NULL, 0, evar, NULL, UIDLEN, EOFF(e_ucred.cr_svuid), UINT,
 		UIDFMT, NULL},
 	{"tdev", "TDEV", NULL, 0, tdev, NULL, 4, 0, 0, NULL, NULL},
+	{"tdpri", "TDPRI", NULL, 0, tdpri, NULL, 5, 0, 0, NULL, NULL},
 	{"time", "TIME", NULL, USER, cputime, NULL, 9, 0, 0, NULL, NULL},
 	{"tpgid", "TPGID", NULL, 0, evar, NULL, 4, EOFF(e_tpgid), UINT, PIDFMT, NULL},
 	{"tsess", "TSESS", NULL, 0, evar, NULL, 6, EOFF(e_tsess), KPTR, "lx", NULL},

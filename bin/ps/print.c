@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.17 2004/11/16 12:16:36 joerg Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.18 2004/11/22 06:50:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -232,10 +232,27 @@ state(const KINFO *k, const struct varent *vent)
 	printf("%-*s", vent->width, buf);
 }
 
+/*
+ * Normalized priority (lower is better).  For pure threads
+ * output a negated LWKT priority (so lower still means better).
+ */
 void
 pri(const KINFO *k, const struct varent *vent)
 {
-	printf("%*d", vent->width, KI_PROC(k)->p_priority);
+	if (KI_THREAD(k)->td_proc)
+	    printf("%*d", vent->width, KI_PROC(k)->p_priority);
+	else
+	    printf("%*d", vent->width, -(KI_THREAD(k)->td_pri & TDPRI_MASK));
+}
+
+void
+tdpri(const KINFO *k, const struct varent *vent)
+{
+	char buf[32];
+	int val = KI_THREAD(k)->td_pri;
+
+	snprintf(buf, sizeof(buf), "%02d/%d", val & TDPRI_MASK, val / TDPRI_CRIT);
+	printf("%*s", vent->width, buf);
 }
 
 void
