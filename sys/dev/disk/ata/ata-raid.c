@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.11 2004/05/13 23:49:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.12 2004/07/20 17:55:33 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -558,7 +558,7 @@ arstrategy(struct buf *bp)
 	case AR_F_RAID0:
 	    if ((rdp->disks[buf1->drive].flags &
 		 (AR_DF_PRESENT|AR_DF_ONLINE))==(AR_DF_PRESENT|AR_DF_ONLINE) &&
-		!AD_SOFTC(rdp->disks[buf1->drive])->dev->si_disk) {
+		!AD_SOFTC(rdp->disks[buf1->drive])->dev) {
 		rdp->disks[buf1->drive].flags &= ~AR_DF_ONLINE;
 		ar_config_changed(rdp, 1);
 		free(buf1, M_AR);
@@ -583,13 +583,13 @@ arstrategy(struct buf *bp)
 	    }
 	    if ((rdp->disks[buf1->drive].flags &
 		 (AR_DF_PRESENT|AR_DF_ONLINE))==(AR_DF_PRESENT|AR_DF_ONLINE) &&
-		!AD_SOFTC(rdp->disks[buf1->drive])->dev->si_disk) {
+		!AD_SOFTC(rdp->disks[buf1->drive])->dev) {
 		rdp->disks[buf1->drive].flags &= ~AR_DF_ONLINE;
 		change = 1;
 	    }
 	    if ((rdp->disks[buf1->drive + rdp->width].flags &
 		 (AR_DF_PRESENT|AR_DF_ONLINE))==(AR_DF_PRESENT|AR_DF_ONLINE) &&
-		!AD_SOFTC(rdp->disks[buf1->drive + rdp->width])->dev->si_disk) {
+		!AD_SOFTC(rdp->disks[buf1->drive + rdp->width])->dev) {
 		rdp->disks[buf1->drive + rdp->width].flags &= ~AR_DF_ONLINE;
 		change = 1;
 	    }
@@ -1275,7 +1275,7 @@ ar_promise_write_conf(struct ar_softc *rdp)
 	if ((rdp->disks[disk].flags&AR_DF_PRESENT) && rdp->disks[disk].device) {
 	    config->raid.channel = rdp->disks[disk].device->channel->unit;
 	    config->raid.device = (rdp->disks[disk].device->unit != 0);
-	    if (AD_SOFTC(rdp->disks[disk])->dev->si_disk)
+	    if (AD_SOFTC(rdp->disks[disk])->dev)
 		config->raid.disk_sectors = PR_LBA(AD_SOFTC(rdp->disks[disk]));
 	    /*config->raid.disk_offset*/
 	}
