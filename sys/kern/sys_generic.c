@@ -37,7 +37,7 @@
  *
  *	@(#)sys_generic.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/sys_generic.c,v 1.55.2.10 2001/03/17 10:39:32 peter Exp $
- * $DragonFly: src/sys/kern/sys_generic.c,v 1.17 2004/08/13 11:59:00 joerg Exp $
+ * $DragonFly: src/sys/kern/sys_generic.c,v 1.18 2004/09/13 23:41:18 drhodus Exp $
  */
 
 #include "opt_ktrace.h"
@@ -765,8 +765,8 @@ selscan(struct proc *p, fd_mask **ibits, fd_mask **obits, int nfd, int *res)
 int
 poll(struct poll_args *uap)
 {
-	caddr_t bits;
-	char smallbits[32 * sizeof(struct pollfd)];
+	struct pollfd *bits;
+	struct pollfd smallbits[32];
 	struct timeval atv, rtv, ttv;
 	int s, ncoll, error = 0, timo;
 	u_int nfds;
@@ -808,7 +808,7 @@ poll(struct poll_args *uap)
 retry:
 	ncoll = nselcoll;
 	p->p_flag |= P_SELECT;
-	error = pollscan(p, (struct pollfd *)bits, nfds, &uap->sysmsg_result);
+	error = pollscan(p, bits, nfds, &uap->sysmsg_result);
 	if (error || uap->sysmsg_result)
 		goto done;
 	if (atv.tv_sec || atv.tv_usec) {
