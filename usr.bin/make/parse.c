@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.43 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.44 2005/02/04 06:45:16 okumoto Exp $
  */
 
 /*-
@@ -2412,7 +2412,7 @@ stripvarname(char *cp)
  *---------------------------------------------------------------------
  */
 void
-Parse_File(const char *name, FILE *stream)
+Parse_File(char *name, FILE *stream)
 {
     char	  *cp,		/* pointer into the line */
                   *line;	/* the line we're working on */
