@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.18 2004/09/18 23:36:20 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.19 2004/09/20 19:20:59 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -9,7 +9,7 @@ $TITLE(DragonFly - Big-Picture Status)
 	<li>DragonFly has adopted the 3-clause BSD license as its official
 	    license.
 	<li>NFS - increase the size of the nfsheur hash table as per a
-	    Freenix track paper.  nfsheur is used for for sequential I/O
+	    Freenix track paper.  nfsheur is used for sequential I/O
 	    heuristic in NFS.  The increase greatly improves clustering
 	    under parallel NFS loads.
 	<li>More VFS work: make vnode locks mandatory, get rid of nolock
