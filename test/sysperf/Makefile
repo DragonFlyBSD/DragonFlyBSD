@@ -1,5 +1,5 @@
 #
-# $DragonFly: src/test/sysperf/Makefile,v 1.6 2004/03/28 09:21:53 dillon Exp $
+# $DragonFly: src/test/sysperf/Makefile,v 1.7 2004/04/10 21:36:52 dillon Exp $
 #
 
 TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
@@ -9,7 +9,8 @@ TARGETS=/tmp/sc1 /tmp/sc2 /tmp/sc3 /tmp/sc4 \
 	/tmp/fork1 /tmp/pipe1 /tmp/pipe2 \
 	/tmp/sw1 /tmp/sw2 /tmp/sw3 \
 	/tmp/mbw1 \
-	/tmp/upc1
+	/tmp/upc1 \
+	/tmp/exec1 /tmp/exec2
 
 CFLAGS= -O2 -g -I/usr/src/sys
 
@@ -71,6 +72,12 @@ all:	$(TARGETS)
 
 /tmp/upc1: upcall.S upcall1.c blib.c
 	$(CC) $(CFLAGS) -DUSE_CALLU2 upcall.S upcall1.c blib.c -o /tmp/upc1
+
+/tmp/exec1: exec1.c blib.c
+	$(CC) $(CFLAGS) -static -DISSTATIC exec1.c blib.c -o /tmp/exec1
+
+/tmp/exec2: exec1.c blib.c
+	$(CC) $(CFLAGS) exec1.c blib.c -o /tmp/exec2
 
 clean:
 	rm -f $(TARGETS)
