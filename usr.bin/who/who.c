@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
- * $DragonFly: src/usr.bin/who/who.c,v 1.3 2003/11/04 15:35:41 drhodus Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.4 2004/08/25 01:56:49 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -177,6 +177,8 @@ row(struct utmp *ut)
 			state = sb.st_mode & (S_IWOTH|S_IWGRP) ?
 			    '+' : '-';
 			idle = time(NULL) - sb.st_mtime;
+		} else {
+			err(1, "Cannot open %s", tty);
 		}
 	}
 
