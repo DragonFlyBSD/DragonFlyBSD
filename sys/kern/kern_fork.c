@@ -36,8 +36,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
- * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.17 2003/11/27 19:57:37 dillon Exp $
+ * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.18 2004/02/10 15:31:47 hmp Exp $
  */
 
 #include "opt_ktrace.h"
@@ -183,7 +183,8 @@ fork1(p1, flags, procp)
 	uid_t uid;
 	struct proc *newproc;
 	int ok;
-	static int pidchecked = 0;
+	static int curfail = 0, pidchecked = 0;
+	static struct timeval lastfail;
 	struct forklist *ep;
 	struct filedesc_to_leader *fdtol;
 
@@ -232,6 +233,9 @@ fork1(p1, flags, procp)
 	 */
 	uid = p1->p_ucred->cr_ruid;
 	if ((nprocs >= maxproc - 10 && uid != 0) || nprocs >= maxproc) {
+		if (ppsratecheck(&lastfail, &curfail, 1))
+			printf("maxproc limit exceeded by uid %d, please "
+			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
 		return (EAGAIN);
 	}
@@ -252,6 +256,9 @@ fork1(p1, flags, procp)
 		 * Back out the process count
 		 */
 		nprocs--;
+		if (ppsratecheck(&lastfail, &curfail, 1))
+			printf("maxproc limit exceeded by uid %d, please "
+			       "see tuning(7) and login.conf(5).\n", uid);
 		tsleep(&forksleep, 0, "fork", hz / 2);
 		return (EAGAIN);
 	}
