@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.10 2004/04/02 21:53:39 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.11 2004/05/03 15:21:04 justin Exp $
 
 $TITLE(DragonFly - Documentation)
 
@@ -14,7 +14,7 @@ $TITLE(DragonFly - Documentation)
 </tr>
 
 <tr>
-	<td>UCB Berkley Slides on DragonFlyBSD</td>
+	<td>UCB Slides on DragonFlyBSD</td>
 	<td>
 		<a href="./ucb2003/">HTML</a>,
 		<a href="./ucb2003/dfly_basic.sxd">OpenOffice SXD</a>
