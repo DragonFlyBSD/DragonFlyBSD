@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.12 2004/12/17 00:09:17 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.13 2004/12/17 07:05:22 okumoto Exp $
  */
 
 #include "make.h"
@@ -423,14 +423,14 @@ Str_SYSVSubst(Buffer buf, const char *pat, const char *src, int len)
 
     if ((m = strchr(pat, '%')) != NULL) {
 	/* Copy the prefix */
-	Buf_AddBytes(buf, m - pat, (Byte *)pat);
+	Buf_AddBytes(buf, m - pat, (const Byte *)pat);
 	/* skip the % */
 	pat = m + 1;
     }
 
     /* Copy the pattern */
-    Buf_AddBytes(buf, len, (Byte *)src);
+    Buf_AddBytes(buf, len, (const Byte *)src);
 
     /* append the rest */
-    Buf_AddBytes(buf, strlen(pat), (Byte *)pat);
+    Buf_AddBytes(buf, strlen(pat), (const Byte *)pat);
 }
