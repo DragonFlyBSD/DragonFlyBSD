@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.18 2004/04/28 06:59:27 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.19 2004/05/12 20:21:21 hmp Exp $
  */
 
 #include "opt_inet.h"
@@ -197,15 +197,9 @@ sodealloc(struct socket *so)
 		(void)chgsbsize(so->so_cred->cr_uidinfo,
 		    &so->so_snd.sb_hiwat, 0, RLIM_INFINITY);
 #ifdef INET
-	if (so->so_accf != NULL) {
-		if (so->so_accf->so_accept_filter != NULL && 
-			so->so_accf->so_accept_filter->accf_destroy != NULL) {
-			so->so_accf->so_accept_filter->accf_destroy(so);
-		}
-		if (so->so_accf->so_accept_filter_str != NULL)
-			FREE(so->so_accf->so_accept_filter_str, M_ACCF);
-		FREE(so->so_accf, M_ACCF);
-	}
+	/* remove accept filter if present */
+	if (so->so_accf != NULL)
+		do_setopt_accept_filter(so, NULL);
 #endif /* INET */
 	crfree(so->so_cred);
 	zfree(socket_zone, so);
