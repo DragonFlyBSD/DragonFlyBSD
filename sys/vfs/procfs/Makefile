@@ -1,7 +1,6 @@
 # $FreeBSD: src/sys/modules/procfs/Makefile,v 1.18 1999/12/12 20:34:10 peter Exp $
-# $DragonFly: src/sys/vfs/procfs/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $DragonFly: src/sys/vfs/procfs/Makefile,v 1.3 2003/08/15 07:26:15 dillon Exp $
 
-.PATH:	${.CURDIR}/../../miscfs/procfs
 KMOD=	procfs
 SRCS=	vnode_if.h \
 	procfs_ctl.c procfs_map.c procfs_note.c procfs_rlimit.c \

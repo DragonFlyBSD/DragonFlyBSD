@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.7 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.8 2003/08/15 07:26:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -54,6 +54,7 @@
 #include <vm/vnode_pager.h>
 #endif
 #include <vm/vm_extern.h>
+#include <sys/buf2.h>
 
 #if !defined(__FreeBSD__)
 #include <miscfs/specfs/specdev.h>
@@ -116,7 +117,7 @@ hpfs_fsync(ap)
 		struct vnode *a_vp;
 		struct ucred *a_cred;
 		int a_waitfor;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -167,7 +168,7 @@ hpfs_ioctl (
 		caddr_t a_data;
 		int a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap)
 {
 	struct vnode *vp = ap->a_vp;
@@ -367,7 +368,7 @@ hpfs_read(ap)
 		if (toread == 0) 
 			break;
 
-		error = bread(hp->h_devvp, bn, xfersz, NOCRED, &bp);
+		error = bread(hp->h_devvp, bn, xfersz, &bp);
 		if (error) {
 			brelse(bp);
 			break;
@@ -436,7 +437,7 @@ hpfs_write(ap)
 			bp = getblk(hp->h_devvp, bn, xfersz, 0, 0);
 			clrbuf(bp);
 		} else {
-			error = bread(hp->h_devvp, bn, xfersz, NOCRED, &bp);
+			error = bread(hp->h_devvp, bn, xfersz, &bp);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -468,7 +469,7 @@ hpfs_getattr(ap)
 		struct vnode *a_vp;
 		struct vattr *a_vap;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -568,7 +569,7 @@ hpfs_setattr(ap)
 		if (cred->cr_uid != hp->h_uid &&
 		    (error = suser_cred(cred, PRISON_ROOT)) &&
 		    ((vap->va_vaflags & VA_UTIMES_NULL) == 0 ||
-		    (error = VOP_ACCESS(vp, VWRITE, cred, p))))
+		    (error = VOP_ACCESS(vp, VWRITE, cred, td))))
 			return (error);
 		if (vap->va_atime.tv_sec != VNOVAL)
 			hp->h_atime = vap->va_atime.tv_sec;
@@ -593,7 +594,7 @@ hpfs_setattr(ap)
 
 		if (vap->va_size < hp->h_fn.fn_size) {
 #if defined(__FreeBSD__)
-			error = vtruncbuf(vp, cred, p, vap->va_size, DEV_BSIZE);
+			error = vtruncbuf(vp, td, vap->va_size, DEV_BSIZE);
 			if (error)
 				return (error);
 #else /* defined(__NetBSD__) */
@@ -649,16 +650,16 @@ hpfs_inactive(ap)
 		vprint("hpfs_inactive: pushing active", vp);
 
 	if (hp->h_flag & H_INVAL) {
-		VOP__UNLOCK(vp,0,ap->a_p);
+		VOP__UNLOCK(vp,0,ap->a_td);
 #if defined(__FreeBSD__)
-		vrecycle(vp, NULL, ap->a_p);
+		vrecycle(vp, NULL, ap->a_td);
 #else /* defined(__NetBSD__) */
 		vgone(vp);
 #endif
 		return (0);
 	}
 
-	VOP__UNLOCK(vp,0,ap->a_p);
+	VOP__UNLOCK(vp,0,ap->a_td);
 	return (0);
 }
 
@@ -759,7 +760,7 @@ hpfs_access(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
@@ -838,7 +839,7 @@ hpfs_open(ap)
 		struct vnode *a_vp;
 		int  a_mode;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap;
 {
 #if HPFS_DEBUG
@@ -867,7 +868,7 @@ hpfs_close(ap)
 		struct vnode *a_vp;
 		int  a_fflag;
 		struct ucred *a_cred;
-		struct proc *a_p;
+		struct proc *a_td;
 	} */ *ap;
 {
 #if HPFS_DEBUG
@@ -978,7 +979,7 @@ hpfs_readdir(ap)
 
 dive:
 	dprintf(("[dive 0x%x] ", lsn));
-	error = bread(hp->h_devvp, lsn, D_BSIZE, NOCRED, &bp);
+	error = bread(hp->h_devvp, lsn, D_BSIZE, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
@@ -1169,7 +1170,7 @@ hpfs_lookup(ap)
 		return (EOPNOTSUPP);
 	}
 
-	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_proc);
+	error = VOP_ACCESS(dvp, VEXEC, cred, cnp->cn_td);
 	if(error)
 		return (error);
 
@@ -1186,17 +1187,17 @@ hpfs_lookup(ap)
 		dprintf(("hpfs_lookup(0x%x,...): .. faked (0x%x)\n",
 			dhp->h_no, dhp->h_fn.fn_parent));
 
-		VOP__UNLOCK(dvp,0,cnp->cn_proc);
+		VOP__UNLOCK(dvp,0,cnp->cn_td);
 
 		error = VFS_VGET(hpmp->hpm_mp,
 				 dhp->h_fn.fn_parent, ap->a_vpp); 
 		if(error) {
-			VOP__LOCK(dvp, 0, cnp->cn_proc);
+			VOP__LOCK(dvp, 0, cnp->cn_td);
 			return(error);
 		}
 
 		if( lockparent && (flags & ISLASTCN) && 
-		    (error = VOP__LOCK(dvp, 0, cnp->cn_proc)) ) {
+		    (error = VOP__LOCK(dvp, 0, cnp->cn_td)) ) {
 			vput( *(ap->a_vpp) );
 			return (error);
 		}
@@ -1212,7 +1213,7 @@ hpfs_lookup(ap)
 			if ((error == ENOENT) && (flags & ISLASTCN) &&
 			    (nameiop == CREATE || nameiop == RENAME)) {
 				if(!lockparent)
-					VOP__UNLOCK(dvp, 0, cnp->cn_proc);
+					VOP__UNLOCK(dvp, 0, cnp->cn_td);
 				cnp->cn_flags |= SAVENAME;
 				return (EJUSTRETURN);
 			}
@@ -1224,7 +1225,7 @@ hpfs_lookup(ap)
 			 dep->de_fnode, dep->de_cpid));
 
 		if (nameiop == DELETE && (flags & ISLASTCN)) {
-			error = VOP_ACCESS(dvp, VWRITE, cred, cnp->cn_proc);
+			error = VOP_ACCESS(dvp, VWRITE, cred, cnp->cn_td);
 			if (error) {
 				brelse(bp);
 				return (error);
@@ -1258,7 +1259,7 @@ hpfs_lookup(ap)
 		brelse(bp);
 
 		if(!lockparent || !(flags & ISLASTCN))
-			VOP__UNLOCK(dvp, 0, cnp->cn_proc);
+			VOP__UNLOCK(dvp, 0, cnp->cn_td);
 		if ((flags & MAKEENTRY) &&
 		    (!(flags & ISLASTCN) || 
 		     (nameiop != DELETE && nameiop != CREATE)))

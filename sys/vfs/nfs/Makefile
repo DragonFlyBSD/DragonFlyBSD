@@ -1,7 +1,6 @@
 # $FreeBSD: src/sys/modules/nfs/Makefile,v 1.16 1999/12/12 20:34:06 peter Exp $
-# $DragonFly: src/sys/vfs/nfs/Makefile,v 1.2 2003/06/17 04:28:46 dillon Exp $
+# $DragonFly: src/sys/vfs/nfs/Makefile,v 1.3 2003/08/15 07:26:15 dillon Exp $
 
-.PATH: ${.CURDIR}/../../nfs
 KMOD=	nfs
 SRCS=	vnode_if.h \
 	nfs_bio.c nfs_node.c nfs_nqlease.c nfs_serv.c nfs_socket.c \

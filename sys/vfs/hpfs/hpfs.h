@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs.h,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.4 2003/07/26 18:51:23 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs.h,v 1.5 2003/08/15 07:26:15 dillon Exp $
  */
 
 /*#define HPFS_DEBUG 10*/
@@ -415,7 +415,7 @@ extern vop_t ** hpfs_vnodeop_p;
 void hpfs_hphashinit __P((void));
 struct hpfsnode *hpfs_hphashlookup __P((dev_t, lsn_t));
 struct hpfsnode *hpfs_hphashget __P((dev_t, lsn_t));
-struct vnode *hpfs_hphashvget __P((dev_t, lsn_t, struct proc *));
+struct vnode *hpfs_hphashvget __P((dev_t, lsn_t, struct thread *));
 void hpfs_hphashins __P((struct hpfsnode *));
 void hpfs_hphashrem __P((struct hpfsnode *));
 extern struct lock hpfs_hphash_lock;

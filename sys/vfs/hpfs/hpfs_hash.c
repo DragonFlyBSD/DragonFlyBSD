@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.6 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.7 2003/08/15 07:26:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -114,10 +114,10 @@ loop:
 #endif
 
 struct vnode *
-hpfs_hphashvget(dev, ino, p)
+hpfs_hphashvget(dev, ino, td)
 	dev_t dev;
 	lsn_t ino;
-	struct proc *p;
+	struct thread *td;
 {
 	struct hpfsnode *hp;
 	struct vnode *vp;
@@ -131,7 +131,7 @@ loop:
 			lwkt_gettoken (&vp->v_interlock);
 			if (lwkt_gentoken(&hpfs_hphash_token, &gen))
 				goto loop;
-			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, p)) {
+			if (vget(vp, LK_EXCLUSIVE | LK_INTERLOCK, td)) {
 				gen = lwkt_regettoken(&hpfs_hphash_token);
 				goto loop;
 			}

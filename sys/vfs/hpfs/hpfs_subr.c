@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.5 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.6 2003/08/15 07:26:15 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -552,7 +552,7 @@ dive:
 	dprintf(("[dive 0x%x] ", lsn));
 	if (bp != NULL)
 		brelse(bp);
-	error = bread(dhp->h_devvp, lsn, D_BSIZE, NOCRED, &bp);
+	error = bread(dhp->h_devvp, lsn, D_BSIZE, &bp);
 	if (error)
 		goto failed;
 
@@ -842,7 +842,7 @@ hpfs_breadstruct (
 
 	*bpp = NULL;
 
-	error = bread(hpmp->hpm_devvp, lsn, len, NOCRED, &bp);
+	error = bread(hpmp->hpm_devvp, lsn, len, &bp);
 	if (error) {
 		brelse(bp);
 		return (error);
