@@ -17,7 +17,7 @@
 # v5 should uncomment v5 entries and comment v4 entries.
 #
 # $FreeBSD: src/etc/services,v 1.62.2.12 2003/02/01 16:48:17 schweikh Exp $
-# $DragonFly: src/etc/services,v 1.2 2003/06/17 04:24:45 dillon Exp $
+# $DragonFly: src/etc/services,v 1.3 2003/11/09 20:40:04 asmodai Exp $
 #	From: @(#)services	5.8 (Berkeley) 5/9/91
 #
 # WELL KNOWN PORT NUMBERS
@@ -1923,6 +1923,8 @@ ccmail		3264/udp   #cc:mail/lotus
 dec-notes	3333/tcp   #DEC Notes
 dec-notes	3333/udp   #DEC Notes
 rsvp-encap	3455/udp   #RSVP encapsulated in UDP
+svn		3690/tcp   #Subversion
+svn		3690/udp   #Subversion
 mapper-nodemgr	3984/tcp   #MAPPER network node manager
 mapper-nodemgr	3984/udp   #MAPPER network node manager
 mapper-mapethd	3985/tcp   #MAPPER TCP/IP server
