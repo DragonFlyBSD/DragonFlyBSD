@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.3 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.4 2003/06/29 03:28:43 dillon Exp $
  */
 
 
@@ -69,106 +69,71 @@ _softnet_imask:	.long	SWI_NET_MASK
 	.globl	_softtty_imask
 _softtty_imask:	.long	SWI_TTY_MASK
 
-/* pending interrupts blocked by splxxx() */
-	.globl	_ipending
-_ipending:	.long	0
-
-/* set with bits for which queue to service */
-	.globl	_netisr
-_netisr:	.long	0
-
-	.globl _netisrs
-_netisrs:
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-	.long	dummynetisr, dummynetisr, dummynetisr, dummynetisr
-
 	.text
 
-/*
- * Handle return from interrupts, traps and syscalls.
- */
+	/*
+	 * DORETI
+	 *
+	 * Handle return from interrupts, traps and syscalls.  This function
+	 * checks the cpl for unmasked pending interrupts (fast, normal, or
+	 * soft) and schedules them if appropriate, then irets.
+	 */
 	SUPERALIGN_TEXT
 	.type	_doreti,@function
 _doreti:
 	FAKE_MCOUNT(_bintr)		/* init "from" _bintr -> _doreti */
-	addl	$4,%esp			/* discard unit number */
-	popl	%eax			/* cpl or cml to restore */
-	movl	_curthread,%ebx	
+	popl	%eax			/* cpl to restore */
+	movl	_curthread,%ebx
+	cli				/* interlock with TDPRI_CRIT */
+	movl	%eax,TD_CPL(%ebx)	/* save cpl being restored */
+	cmpl	$TDPRI_CRIT,TD_PRI(%ebx) /* can't unpend if in critical sec */
+	jge	5f
+	addl	$TDPRI_CRIT,TD_PRI(%ebx) /* force all ints to pending */
 doreti_next:
-	/*
-	 * Check for pending HWIs and SWIs atomically with restoring cpl
-	 * and exiting.  The check has to be atomic with exiting to stop
-	 * (ipending & ~cpl) changing from zero to nonzero while we're
-	 * looking at it (this wouldn't be fatal but it would increase
-	 * interrupt latency).  Restoring cpl has to be atomic with exiting
-	 * so that the stack cannot pile up (the nesting level of interrupt
-	 * handlers is limited by the number of bits in cpl).
-	 */
-#ifdef SMP
-	cli				/* early to prevent INT deadlock */
-doreti_next2:
-#endif
-	movl	%eax,%ecx
-	notl	%ecx			/* set bit = unmasked level */
-#ifndef SMP
-	cli
-#endif
-	andl	_ipending,%ecx		/* set bit = unmasked pending INT */
-	jne	doreti_unpend
-	movl	%eax,TD_MACH+MTD_CPL(%ebx)
-	decb	_intr_nesting_level
+	sti				/* allow new interrupts */
+	movl	%eax,%ecx		/* cpl being restored */
+	notl	%ecx
+	cli				/* disallow YYY remove */
+	testl	_fpending,%ecx		/* check for an unmasked fast int */
+	jne	doreti_fast
 
-	/* Check for ASTs that can be handled now. */
-	testl	$AST_PENDING,_astpending
-	je	doreti_exit
+	movl	_irunning,%edx		/* check for an unmasked normal int */
+	notl	%edx			/* that isn't already running */
+	andl	%edx, %ecx
+	testl	_ipending,%ecx
+	jne	doreti_intr
+	testl	$AST_PENDING,_astpending /* any pending ASTs? */
+	je	2f
 	testl	$PSL_VM,TF_EFLAGS(%esp)
-	jz	doreti_notvm86
+	jz	1f
 	cmpl	$1,_in_vm86call
-	jne	doreti_ast
-	jmp	doreti_exit	
-
-doreti_notvm86:
+	jnz	doreti_ast
+1:
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
 	jnz	doreti_ast
 
 	/*
-	 * doreti_exit -	release MP lock, pop registers, iret.
-	 *
-	 *	Note that the syscall trap shotcuts to doreti_syscall_ret.
-	 *	The segment register pop is a special case, since it may
-	 *	fault if (for example) a sigreturn specifies bad segment
-	 *	registers.  The fault is handled in trap.c
+	 * Nothing left to do, finish up.  Interrupts are still disabled.
 	 */
-
-doreti_exit:
+2:
+	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
+5:
+	decl	_intr_nesting_level
 	MEXITCOUNT
-
-#ifdef SMP
-	/* release the kernel lock */
-	movl	$_mp_lock, %edx		/* GIANT_LOCK */
-	call	_MPrellock_edx
-#endif /* SMP */
-
 	.globl	doreti_popl_fs
+	.globl	doreti_popl_es
+	.globl	doreti_popl_ds
+	.globl	doreti_iret
 	.globl	doreti_syscall_ret
 doreti_syscall_ret:
 doreti_popl_fs:
 	popl	%fs
-	.globl	doreti_popl_es
 doreti_popl_es:
 	popl	%es
-	.globl	doreti_popl_ds
 doreti_popl_ds:
 	popl	%ds
 	popal
 	addl	$8,%esp
-	.globl	doreti_iret
 doreti_iret:
 	iret
 
@@ -190,125 +155,111 @@ doreti_popl_fs_fault:
 	movl	$T_PROTFLT,TF_TRAPNO(%esp)
 	jmp	alltraps_with_regs_pushed
 
-	ALIGN_TEXT
-doreti_unpend:
 	/*
-	 * Enabling interrupts is safe because we haven't restored cpl yet.
-	 * %ecx contains the next probable ready interrupt (~cpl & ipending)
+	 * FAST interrupt pending
 	 */
-#ifdef SMP
+	ALIGN_TEXT
+doreti_fast:
+	andl	_fpending,%ecx		/* only check fast ints */
 	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
-	lock
-	btrl	%ecx, _ipending		/* is it really still pending? */
-	jnc	doreti_next2		/* some intr cleared memory copy */
-	sti				/* late to prevent INT deadlock */
-#else
-	sti
-	bsfl	%ecx,%ecx		/* slow, but not worth optimizing */
-	btrl	%ecx,_ipending
-	jnc	doreti_next		/* some intr cleared memory copy */
-#endif /* SMP */
-	/*
-	 * Execute handleable interrupt
-	 *
-	 * Set up JUMP to _ihandlers[%ecx] for HWIs.
-	 * Set up CALL of _ihandlers[%ecx] for SWIs.
-	 * This is a bit early for the SMP case - we have to push %ecx and
-	 * %edx, but could push only %ecx and load %edx later.
-	 */
-	movl	_ihandlers(,%ecx,4),%edx
-	cmpl	$NHWI,%ecx
-	jae	doreti_swi		/* software interrupt handling */
-	cli				/* else hardware int handling */
-	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* same as non-smp case right now */
-	MEXITCOUNT
-#ifdef APIC_INTR_DIAGNOSTIC
-	lock
-	incl	CNAME(apic_itrace_doreti)(,%ecx,4)
-#ifdef APIC_INTR_DIAGNOSTIC_IRQ	
-	cmpl	$APIC_INTR_DIAGNOSTIC_IRQ,%ecx
-	jne	9f
-	pushl	%eax
-	pushl	%ecx
-	pushl	%edx
-	pushl	$APIC_ITRACE_DORETI
-	call	log_intr_event
-	addl	$4,%esp
-	popl	%edx
-	popl	%ecx
+	btrl	%ecx, _fpending		/* is it really still pending? */
+	jnc	doreti_next
+	pushl	%eax			/* YYY cpl */
+	call    *_fastunpend(,%ecx,4)
 	popl	%eax
-9:	
-#endif
-#endif
-	jmp	*%edx
-
-	ALIGN_TEXT
-doreti_swi:
-	pushl	%eax
-	/*
-	 * At least the SWI_CLOCK handler has to run at a possibly strictly
-	 * lower cpl, so we have to restore
-	 * all the h/w bits in cpl now and have to worry about stack growth.
-	 * The worst case is currently (30 Jan 1994) 2 SWI handlers nested
-	 * in dying interrupt frames and about 12 HWIs nested in active
-	 * interrupt frames.  There are only 4 different SWIs and the HWI
-	 * and SWI masks limit the nesting further.
-	 *
-	 * The SMP case is currently the same as the non-SMP case.
-	 */
-	orl	imasks(,%ecx,4), %eax	/* or in imasks */
-	movl	%eax,TD_MACH+MTD_CPL(%ebx)	/* set cpl for call */
-
-	call	*%edx
-	popl	%eax			/* cpl to restore */
 	jmp	doreti_next
 
+	/*
+	 *  INTR interrupt pending
+	 */
 	ALIGN_TEXT
+doreti_intr:
+	andl	_ipending,%ecx		/* only check normal ints */
+	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
+	btrl	%ecx, _ipending		/* is it really still pending? */
+	jnc	doreti_next
+	pushl	%eax
+	pushl	%ecx
+	call	_sched_ithd		/* YYY must pull in imasks */
+	addl	$4,%esp
+	popl	%eax
+	jmp	doreti_next
+
+	/*
+	 * AST pending
+	 */
 doreti_ast:
 	andl	$~AST_PENDING,_astpending
 	sti
 	movl	$T_ASTFLT,TF_TRAPNO(%esp)
+	decl	_intr_nesting_level
 	call	_trap
-	subl	%eax,%eax		/* recover cpl|cml */
-	movb	$1,_intr_nesting_level	/* for doreti_next to decrement */
+	incl	_intr_nesting_level
+	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next
 
-	ALIGN_TEXT
-swi_net:
-	MCOUNT
-	bsfl	_netisr,%eax
-	je	swi_net_done
-swi_net_more:
-	btrl	%eax,_netisr
-	jnc	swi_net_next
-	call	*_netisrs(,%eax,4)
-swi_net_next:
-	bsfl	_netisr,%eax
-	jne	swi_net_more
-swi_net_done:
+
+	/*
+	 * SPLZ() a C callable procedure to dispatch any unmasked pending
+	 *	  interrupts regardless of critical section nesting.  ASTs
+	 *	  are not dispatched.
+	 */
+	SUPERALIGN_TEXT
+
+ENTRY(splz)
+	pushl	%ebx
+	movl	_curthread,%ebx
+	movl	TD_CPL(%ebx),%eax
+
+splz_next:
+	movl	%eax,%ecx		/* ecx = ~CPL */
+	notl	%ecx
+	testl	_fpending,%ecx		/* check for an unmasked fast int */
+	jne	splz_fast
+
+	movl	_irunning,%edx		/* check for an unmasked normal int */
+	notl	%edx			/* that isn't already running */
+	andl	%edx, %ecx
+	testl	_ipending,%ecx
+	jne	splz_intr
+
+	popl	%ebx
 	ret
 
+	/*
+	 * FAST interrupt pending
+	 */
 	ALIGN_TEXT
-dummynetisr:
-	MCOUNT
-	ret	
+splz_fast:
+	andl	_fpending,%ecx		/* only check fast ints */
+	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
+	btrl	%ecx, _fpending		/* is it really still pending? */
+	jnc	splz_next
+	pushl	%eax
+	call    *_fastunpend(,%ecx,4)
+	popl	%eax
+	jmp	splz_next
 
-/*
- * The arg is in a nonstandard place, so swi_dispatcher() can't be called
- * directly and swi_generic() can't use ENTRY() or MCOUNT.
- */
+	/*
+	 *  INTR interrupt pending
+	 */
 	ALIGN_TEXT
-	.globl	_swi_generic
-	.type	_swi_generic,@function
-_swi_generic:
+splz_intr:
+	andl	_ipending,%ecx		/* only check normal ints */
+	bsfl	%ecx, %ecx		/* locate the next dispatchable int */
+	btrl	%ecx, _ipending		/* is it really still pending? */
+	jnc	splz_next
+	pushl	%eax
 	pushl	%ecx
-	FAKE_MCOUNT(4(%esp))
-	call	_swi_dispatcher
-	popl	%ecx
-	ret
+	call	_sched_ithd		/* YYY must pull in imasks */
+	addl	$4,%esp
+	popl	%eax
+	jmp	splz_next
 
-ENTRY(swi_null)
-	ret
+	/*
+	 * APIC/ICU specific ipl functions provide masking and unmasking
+	 * calls for userland.
+	 */
 
 #ifdef APIC_IO
 #include "i386/isa/apic_ipl.s"

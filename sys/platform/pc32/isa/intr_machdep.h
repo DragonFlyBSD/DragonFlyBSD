@@ -31,11 +31,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
 #define	_I386_ISA_INTR_MACHDEP_H_
+
+#ifndef _SYS_INTERRUPT_H_
+#include <sys/interrupt.h>
+#endif
 
 /*
  * Low level interrupt code.
@@ -137,12 +141,13 @@
 /*
  * Type of the first (asm) part of an interrupt handler.
  */
-typedef void inthand_t __P((u_int cs, u_int ef, u_int esp, u_int ss));
+typedef void inthand_t(u_int cs, u_int ef, u_int esp, u_int ss);
+typedef void unpendhand_t(void);
 
 #define	IDTVEC(name)	__CONCAT(X,name)
 
 extern u_long *intr_countp[];	/* pointers into intrcnt[] */
-extern inthand2_t *intr_handler[];	/* C entry points of intr handlers */
+extern inthand2_t *intr_handler[];	/* C entry points for FAST ints */
 extern u_int intr_mask[];	/* sets of intrs masked during handling of 1 */
 extern void *intr_unit[];	/* cookies to pass to intr handlers */
 
@@ -161,7 +166,17 @@ inthand_t
 	IDTVEC(intr8), IDTVEC(intr9), IDTVEC(intr10), IDTVEC(intr11),
 	IDTVEC(intr12), IDTVEC(intr13), IDTVEC(intr14), IDTVEC(intr15);
 
-#if defined(SMP) || defined(APIC_IO)
+unpendhand_t
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15);
+
+#if defined(APIC_IO)
 inthand_t
 	IDTVEC(fastintr16), IDTVEC(fastintr17),
 	IDTVEC(fastintr18), IDTVEC(fastintr19),
@@ -170,7 +185,14 @@ inthand_t
 inthand_t
 	IDTVEC(intr16), IDTVEC(intr17), IDTVEC(intr18), IDTVEC(intr19),
 	IDTVEC(intr20), IDTVEC(intr21), IDTVEC(intr22), IDTVEC(intr23);
+unpendhand_t
+	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
+	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
+	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
+	IDTVEC(fastunpend22), IDTVEC(fastunpend23);
+#endif
 
+#if defined(SMP)
 inthand_t
 	Xinvltlb,	/* TLB shootdowns */
 #ifdef BETTER_CLOCK
@@ -186,8 +208,9 @@ inthand_t
 inthand_t
 	Xtest1;		/* 'fake' HWI at top of APIC prio 0x3x, 32+31 = 0x3f */
 #endif /** TEST_TEST1 */
-#endif /* SMP || APIC_IO */
+#endif /* SMP */
 
+void	call_fast_unpend(int irq);
 void	isa_defaultirq __P((void));
 int	isa_nmi __P((int cd));
 int	icu_setup __P((int intr, inthand2_t *func, void *arg, 

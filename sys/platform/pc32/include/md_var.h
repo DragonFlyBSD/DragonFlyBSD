@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.7 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.8 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -58,7 +58,6 @@ extern	char	kstack[];
 extern	int	need_pre_dma_flush;
 extern	int	need_post_dma_flush;
 #endif
-extern	void	(*netisrs[32]) __P((void));
 extern	int	nfs_diskless_valid;
 extern	void	(*ovbcopy_vector) __P((const void *from, void *to, size_t len));
 extern	char	sigcode[];
@@ -110,7 +109,6 @@ int	is_physical_memory __P((vm_offset_t addr));
 u_long	kvtop __P((void *addr));
 void	setidt __P((int idx, alias_for_inthand_t *func, int typ, int dpl,
 		    int selec));
-void	swi_vm __P((void));
 void	userconfig __P((void));
 int     user_dbreg_trap __P((void));
 int	vm_page_zero_idle __P((void));

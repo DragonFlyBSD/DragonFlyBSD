@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/cpufunc.h,v 1.96.2.3 2002/04/28 22:50:54 dwmalone Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpufunc.h,v 1.4 2003/06/29 03:28:43 dillon Exp $
  */
 
 /*
@@ -68,6 +68,10 @@ breakpoint(void)
 	__asm __volatile("int $3");
 }
 
+/*
+ * Find the first 1 in mask, starting with bit 0 and return the
+ * bit number.  If mask is 0 the result is undefined.
+ */
 static __inline u_int
 bsfl(u_int mask)
 {
@@ -77,6 +81,10 @@ bsfl(u_int mask)
 	return (result);
 }
 
+/*
+ * Find the last 1 in mask, starting with bit 31 and return the
+ * bit number.  If mask is 0 the result is undefined.
+ */
 static __inline u_int
 bsrl(u_int mask)
 {
@@ -84,6 +92,34 @@ bsrl(u_int mask)
 
 	__asm __volatile("bsrl %0,%0" : "=r" (result) : "0" (mask));
 	return (result);
+}
+
+/*
+ * Test and set the specified bit (1 << bit) in the integer.  The
+ * previous value of the bit is returned (0 or 1).
+ */
+static __inline int
+btsl(u_int *mask, int bit)
+{
+	int result;
+
+	__asm __volatile("btsl %2,%1; movl $0,%0; adcl $0,%0" :
+		    "=r"(result), "=m"(*mask) : "r" (bit));
+	return(result);
+}
+
+/*
+ * Test and clear the specified bit (1 << bit) in the integer.  The
+ * previous value of the bit is returned (0 or 1).
+ */
+static __inline int
+btrl(u_int *mask, int bit)
+{
+	int result;
+
+	__asm __volatile("btrl %2,%1; movl $0,%0; adcl $0,%0" :
+		    "=r"(result), "=m"(*mask) : "r" (bit));
+	return(result);
 }
 
 static __inline void

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.12 2003/06/28 04:16:05 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.13 2003/06/29 03:28:46 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -186,13 +186,13 @@ struct thread {
 #define TDPRI_MASK		31
 #define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
 
-#define CACHE_NTHREADS		4
+#define CACHE_NTHREADS		6
 
 #ifdef _KERNEL
 
 extern struct vm_zone	*thread_zone;
 
-extern struct thread *lwkt_alloc_thread(void);
+extern struct thread *lwkt_alloc_thread(struct thread *template);
 extern void lwkt_init_thread(struct thread *td, void *stack, int flags);
 extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
@@ -218,6 +218,7 @@ extern void lwkt_exunlock(lwkt_rwlock_t lock);
 extern void lwkt_shunlock(lwkt_rwlock_t lock);
 
 extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
+			    struct thread *template, int tdflags,
 			    const char *ctl, ...);
 extern void lwkt_exit __P((void)) __dead2;
 

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.4 2003/06/25 03:55:56 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.5 2003/06/29 03:28:44 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -316,7 +316,7 @@ static	void	siointr1	__P((struct com_s *com));
 static	void	siointr		__P((void *arg));
 static	int	commctl		__P((struct com_s *com, int bits, int how));
 static	int	comparam	__P((struct tty *tp, struct termios *t));
-static	swihand_t siopoll;
+static	inthand2_t siopoll;
 static	int	sioprobe	__P((device_t dev, int xrid, u_long rclk));
 static	int	sio_isa_probe	__P((device_t dev));
 static	void	siosettimeout	__P((void));
@@ -1410,7 +1410,7 @@ determined_type: ;
 	printf("\n");
 
 	if (!sio_registered) {
-		register_swi(SWI_TTY, siopoll);
+		register_swi(SWI_TTY, siopoll, NULL ,"swi_siopoll");
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);
@@ -2345,7 +2345,7 @@ sioioctl(dev_t dev, u_long cmd, caddr_t	data, int flag, struct thread *td)
 }
 
 static void
-siopoll()
+siopoll(void *dummy)
 {
 	int		unit;
 

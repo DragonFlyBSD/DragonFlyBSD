@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.6 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/exception.s,v 1.7 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include "npx.h"
@@ -81,14 +81,10 @@
  * On entry to a trap or interrupt WE DO NOT OWN THE MP LOCK.  This means
  * that we must be careful in regards to accessing global variables.  We
  * save (push) the current cpl (our software interrupt disable mask), call
- * the trap function, then call _doreti to restore the cpl and deal with
+ * the trap function, then jump to _doreti to restore the cpl and deal with
  * ASTs (software interrupts).  _doreti will determine if the restoration
  * of the cpl unmasked any pending interrupts and will issue those interrupts
  * synchronously prior to doing the iret.
- *
- * At the moment we must own the MP lock to do any cpl manipulation, which
- * means we must own it prior to  calling _doreti.  The syscall case attempts
- * to avoid this by handling a reduced set of cases itself and iret'ing.
  */
 #define	IDTVEC(name)	ALIGN_TEXT; .globl __CONCAT(_X,name); \
 			.type __CONCAT(_X,name),@function; __CONCAT(_X,name):
@@ -171,21 +167,14 @@ IDTVEC(fpu)
 	mov	%ax,%fs
 	FAKE_MCOUNT(13*4(%esp))
 
-#ifdef SMP
-	MPLOCKED incl _cnt+V_TRAP
-	MP_LOCK
-	movl	_curthread,%eax		/* save original cpl */
-	pushl	TD_MACH+MTD_CPL(%eax)
-	pushl	$0			/* dummy unit to finish intr frame */
-#else /* SMP */
-	movl	_curthread,%eax		/* save original cpl */
-	pushl	TD_MACH+MTD_CPL(%eax)
-	pushl	$0			/* dummy unit to finish intr frame */
+	movl	_curthread,%ebx		/* save original cpl */
+	movl	TD_CPL(%ebx), %ebx
+	pushl	%ebx
 	incl	_cnt+V_TRAP
-#endif /* SMP */
 
-	call	_npx_intr
+	call	_npx_intr		/* note: call might mess w/ argument */
 
+	movl	%ebx, (%esp)		/* save cpl for doreti */
 	incb	_intr_nesting_level
 	MEXITCOUNT
 	jmp	_doreti
@@ -229,7 +218,7 @@ calltrap:
 	MPLOCKED incl _cnt+V_TRAP
 	MP_LOCK
 	movl	_curthread,%eax		/* keep orig cpl here during call */
-	movl	TD_MACH+MTD_CPL(%eax),%ebx
+	movl	TD_CPL(%eax),%ebx
 	call	_trap
 
 	/*
@@ -237,7 +226,6 @@ calltrap:
 	 * to interrupt frame.
 	 */
 	pushl	%ebx			/* cpl to restore */
-	subl	$4,%esp			/* dummy unit to finish intr frame */
 	incb	_intr_nesting_level
 	MEXITCOUNT
 	jmp	_doreti
@@ -284,8 +272,7 @@ IDTVEC(syscall)
 	MP_LOCK
 #endif
 	pushl	$0			/* cpl to restore */
-	subl	$4,%esp			/* dummy unit for interrupt frame */
-	movb	$1,_intr_nesting_level
+	movl	$1,_intr_nesting_level
 	jmp	_doreti
 
 /*
@@ -322,8 +309,7 @@ IDTVEC(int0x80_syscall)
 	MP_LOCK
 #endif
 	pushl	$0			/* cpl to restore */
-	subl	$4,%esp			/* dummy unit for interrupt frame */
-	movb	$1,_intr_nesting_level
+	movl	$1,_intr_nesting_level
 	jmp	_doreti
 
 ENTRY(fork_trampoline)
@@ -348,7 +334,6 @@ ENTRY(fork_trampoline)
 	 * Return via _doreti to handle ASTs.
 	 */
 	pushl	$0			/* cpl to restore */
-	subl	$4,%esp			/* dummy unit to finish intr frame */
 	movb	$1,_intr_nesting_level
 	MEXITCOUNT
 	jmp	_doreti

@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.8 2003/06/28 04:16:04 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.9 2003/06/29 03:28:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -108,26 +108,34 @@ lwkt_init_wait(lwkt_wait_t w)
  * does everything except load the startup and switcher function.
  */
 thread_t
-lwkt_alloc_thread(void)
+lwkt_alloc_thread(struct thread *td)
 {
-    struct thread *td;
     void *stack;
+    int flags = 0;
 
     crit_enter();
-    if (mycpu->gd_tdfreecount > 0) {
-	--mycpu->gd_tdfreecount;
-	td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
-	KASSERT(td != NULL && (td->td_flags & TDF_EXITED),
-	    ("lwkt_alloc_thread: unexpected NULL or corrupted td"));
-	TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
-	crit_exit();
-	stack = td->td_kstack;
-    } else {
-	crit_exit();
-	td = zalloc(thread_zone);
-	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+    if (td == NULL) {
+	if (mycpu->gd_tdfreecount > 0) {
+	    --mycpu->gd_tdfreecount;
+	    td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
+	    KASSERT(td != NULL && (td->td_flags & TDF_EXITED),
+		("lwkt_alloc_thread: unexpected NULL or corrupted td"));
+	    TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
+	    crit_exit();
+	    stack = td->td_kstack;
+	    flags = td->td_flags & (TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
+	} else {
+	    crit_exit();
+	    td = zalloc(thread_zone);
+	    td->td_kstack = NULL;
+	    flags |= TDF_ALLOCATED_THREAD;
+	}
     }
-    lwkt_init_thread(td, stack, TDF_ALLOCATED_STACK|TDF_ALLOCATED_THREAD);
+    if ((stack = td->td_kstack) == NULL) {
+	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+	flags |= TDF_ALLOCATED_STACK;
+    }
+    lwkt_init_thread(td, stack, flags);
     return(td);
 }
 
@@ -198,6 +206,9 @@ lwkt_switch(void)
     thread_t td = curthread;
     thread_t ntd;
 
+    if (mycpu->gd_intr_nesting_level)
+	panic("lwkt_switch: cannot switch from within an interrupt\n");
+
     crit_enter();
     if ((ntd = td->td_preempted) != NULL) {
 	/*
@@ -227,16 +238,18 @@ lwkt_switch(void)
  * inside the critical section to pervent its own crit_exit() from reentering
  * lwkt_yield_quick().
  *
+ * gd_reqpri indicates that *something* changed, e.g. an interrupt or softint
+ * came along but was blocked and made pending.
+ *
  * (self contained on a per cpu basis)
  */
 void
 lwkt_yield_quick(void)
 {
     thread_t td = curthread;
-    while ((td->td_pri & TDPRI_MASK) < mycpu->gd_reqpri) {
-#if 0
-	cpu_schedule_reqs();	/* resets gd_reqpri */
-#endif
+
+    if ((td->td_pri & TDPRI_MASK) < mycpu->gd_reqpri) {
+	mycpu->gd_reqpri = 0;
 	splz();
     }
 
@@ -246,7 +259,7 @@ lwkt_yield_quick(void)
      * preemption and MP without actually doing preemption or MP, because a
      * lot of code assumes that wakeup() does not block.
      */
-    if (untimely_switch && intr_nesting_level == 0) {
+    if (untimely_switch && mycpu->gd_intr_nesting_level == 0) {
 	crit_enter();
 	/*
 	 * YYY temporary hacks until we disassociate the userland scheduler
@@ -568,14 +581,15 @@ lwkt_regettoken(lwkt_token_t tok)
  */
 int
 lwkt_create(void (*func)(void *), void *arg,
-    struct thread **tdp, const char *fmt, ...)
+    struct thread **tdp, struct thread *template, int tdflags,
+    const char *fmt, ...)
 {
     struct thread *td;
     va_list ap;
 
-    td = *tdp = lwkt_alloc_thread();
+    td = *tdp = lwkt_alloc_thread(template);
     cpu_set_thread_handler(td, kthread_exit, func, arg);
-    td->td_flags |= TDF_VERBOSE;
+    td->td_flags |= TDF_VERBOSE | tdflags;
 
     /*
      * Set up arg0 for 'ps' etc
@@ -587,7 +601,10 @@ lwkt_create(void (*func)(void *), void *arg,
     /*
      * Schedule the thread to run
      */
-    lwkt_schedule(td);
+    if ((td->td_flags & TDF_STOPREQ) == 0)
+	lwkt_schedule(td);
+    else
+	td->td_flags &= ~TDF_STOPREQ;
     return 0;
 }
 
@@ -612,9 +629,7 @@ lwkt_exit(void)
 
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
- * with proc0 - ie: kernel only.
- *
- * XXX exact duplicate of lwkt_create().
+ * with proc0 - ie: kernel only.  5.x compatible.
  */
 int
 kthread_create(void (*func)(void *), void *arg,
@@ -623,7 +638,7 @@ kthread_create(void (*func)(void *), void *arg,
     struct thread *td;
     va_list ap;
 
-    td = *tdp = lwkt_alloc_thread();
+    td = *tdp = lwkt_alloc_thread(NULL);
     cpu_set_thread_handler(td, kthread_exit, func, arg);
     td->td_flags |= TDF_VERBOSE;
 

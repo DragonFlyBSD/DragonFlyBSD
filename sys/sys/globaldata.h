@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.1 2003/06/28 04:16:05 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.2 2003/06/29 03:28:46 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -44,6 +44,12 @@
  *
  * NOTE! this structure needs to remain compatible between module accessors
  * and the kernel, so we can't throw in lots of #ifdef's.
+ *
+ * gd_reqpri serves serveral purposes, bu it is primarily an interrupt
+ * rollup flag used by the task switcher and spl mechanisms to decide that
+ * further checks are necessary.  Interrupts are typically managed on a
+ * per-processor basis at least until you leave a critical section, but
+ * may then be scheduled to other cpus.
  */
 
 #ifndef _SYS_TIME_H_
@@ -55,14 +61,14 @@ struct privatespace;
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
 	struct thread	*gd_curthread;
-	struct thread	*gd_idletd;		/* a ilttle messy but it works */
+	struct thread	*gd_idletd;		/* a bit messy but it works */
 	int		gd_tdfreecount;		/* new thread cache */
-	int		gd_reqpri;		/* highest pri blocked thread */
+	int		gd_reqpri;		/* (see note above) */
 	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
 	TAILQ_HEAD(,thread) gd_tdrunq;		/* runnable threads */
 	u_int		gd_cpuid;
 	struct timeval	gd_stattv;
-	int		gd_inside_intr;
+	int		gd_intr_nesting_level;	/* (for fast interrupts) */
 	int		gd_astpending;		/* sorta MD but easier here */
 	/* extended by <machine/pcpu.h> */
 };

@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -61,6 +61,9 @@
 #include <machine/md_var.h>
 #include <machine/segments.h>
 #include <sys/bus.h> 
+#include <machine/globaldata.h>
+#include <sys/proc.h>
+#include <sys/thread2.h>
 
 #if defined(APIC_IO)
 #include <machine/smp.h>
@@ -111,6 +114,7 @@
 u_long	*intr_countp[ICU_LEN];
 inthand2_t *intr_handler[ICU_LEN];
 u_int	intr_mask[ICU_LEN];
+int	intr_mihandler_installed[ICU_LEN];
 static u_int*	intr_mptr[ICU_LEN];
 void	*intr_unit[ICU_LEN];
 
@@ -129,6 +133,27 @@ static inthand_t *fastintr[ICU_LEN] = {
 	&IDTVEC(fastintr20), &IDTVEC(fastintr21),
 	&IDTVEC(fastintr22), &IDTVEC(fastintr23),
 #endif /* APIC_IO */
+};
+
+unpendhand_t *fastunpend[ICU_LEN] = {
+	IDTVEC(fastunpend0), IDTVEC(fastunpend1),
+	IDTVEC(fastunpend2), IDTVEC(fastunpend3),
+	IDTVEC(fastunpend4), IDTVEC(fastunpend5),
+	IDTVEC(fastunpend6), IDTVEC(fastunpend7),
+	IDTVEC(fastunpend8), IDTVEC(fastunpend9),
+	IDTVEC(fastunpend10), IDTVEC(fastunpend11),
+	IDTVEC(fastunpend12), IDTVEC(fastunpend13),
+	IDTVEC(fastunpend14), IDTVEC(fastunpend15),
+#if defined(APIC_IO)
+	IDTVEC(fastunpend16), IDTVEC(fastunpend17),
+	IDTVEC(fastunpend18), IDTVEC(fastunpend19),
+	IDTVEC(fastunpend20), IDTVEC(fastunpend21),
+	IDTVEC(fastunpend22), IDTVEC(fastunpend23),
+	IDTVEC(fastunpend24), IDTVEC(fastunpend25),
+	IDTVEC(fastunpend26), IDTVEC(fastunpend27),
+	IDTVEC(fastunpend28), IDTVEC(fastunpend29),
+	IDTVEC(fastunpend30), IDTVEC(fastunpend31),
+#endif
 };
 
 static inthand_t *slowintr[ICU_LEN] = {
@@ -418,6 +443,10 @@ found:
 	intr_countp[intr] = &intrcnt[name_index];
 }
 
+/*
+ * NOTE!  intr_handler[] is only used for FAST interrupts, the *vector.s
+ * code ignores it for normal interrupts.
+ */
 int
 icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 {
@@ -448,8 +477,7 @@ icu_setup(int intr, inthand2_t *handler, void *arg, u_int *maskptr, int flags)
 		vector = TPR_FAST_INTS + intr;
 		setidt(vector, fastintr[intr],
 		       SDT_SYS386IGT, SEL_KPL, GSEL(GCODE_SEL, SEL_KPL));
-	}
-	else {
+	} else {
 		vector = TPR_SLOW_INTS + intr;
 #ifdef APIC_INTR_REORDER
 #ifdef APIC_INTR_HIGHPRI_CLOCK
@@ -520,6 +548,7 @@ icu_unset(intr, handler)
 	return (0);
 }
 
+
 /* The following notice applies beyond this point in the file */
 
 /*
@@ -552,14 +581,14 @@ icu_unset(intr, handler)
  */
 
 typedef struct intrec {
-	intrmask_t	mask;
-	inthand2_t	*handler;
-	void		*argument;
-	struct intrec	*next;
-	char		*name;
-	int		intr;
-	intrmask_t	*maskptr;
-	int		flags;
+	intrmask_t      mask;
+	inthand2_t      *handler;
+	void            *argument;
+	struct intrec   *next;
+	char            *name;
+	int             intr;
+	intrmask_t      *maskptr;
+	int             flags;
 } intrec;
 
 static intrec *intreclist_head[ICU_LEN];
@@ -575,10 +604,11 @@ static intrec *intreclist_head[ICU_LEN];
 static void
 intr_mux(void *arg)
 {
+	intrec **pp;
 	intrec *p;
 	intrmask_t oldspl;
 
-	for (p = arg; p != NULL; p = p->next) {
+	for (pp = arg; (p = *pp) != NULL; pp = &p->next) {
 		oldspl = splq(p->mask);
 		p->handler(p->argument);
 		splx(oldspl);
@@ -672,8 +702,24 @@ static int
 add_intrdesc(intrec *idesc)
 {
 	int irq = idesc->intr;
+	intrec *head;
 
-	intrec *head = intreclist_head[irq];
+	/*
+	 * YYY This is a hack.   The MI interrupt code in kern/kern_intr.c
+	 * handles interrupt thread scheduling for NORMAL interrupts.  It 
+	 * will never get called for fast interrupts.  On the otherhand,
+	 * the handler this code installs in intr_handler[] for a NORMAL
+	 * interrupt is not used by the *vector.s code, so we need this
+	 * temporary hack to run normal interrupts as interrupt threads.
+	 * YYY FIXME!
+	 */
+	if (intr_mihandler_installed[irq] == 0) {
+		intr_mihandler_installed[irq] = 1;
+		register_int(irq, intr_mux, &intreclist_head[irq], idesc->name);
+		printf("installing MI handler for int %d\n", irq);
+	}
+
+	head = intreclist_head[irq];
 
 	if (head == NULL) {
 		/* first handler for this irq, just install it */
@@ -702,7 +748,7 @@ add_intrdesc(intrec *idesc)
 			 * handler by shared interrupt multiplexer function
 			 */
 			icu_unset(irq, head->handler);
-			if (icu_setup(irq, intr_mux, head, 0, 0) != 0)
+			if (icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0) != 0)
 				return (-1);
 			if (bootverbose)
 				printf("\tusing shared irq%d.\n", irq);
@@ -838,7 +884,7 @@ inthand_remove(intrec *idesc)
 			icu_unset(irq, intr_mux);
 			if (head->next != NULL) {
 				/* install the multiplex handler with new list head as argument */
-				errcode = icu_setup(irq, intr_mux, head, 0, 0);
+				errcode = icu_setup(irq, intr_mux, &intreclist_head[irq], 0, 0);
 				if (errcode == 0)
 					update_intrname(irq, NULL);
 			} else {
@@ -859,3 +905,43 @@ inthand_remove(intrec *idesc)
 	free(idesc, M_DEVBUF);
 	return (0);
 }
+
+void
+call_fast_unpend(int irq)
+{
+	fastunpend[irq]();
+}
+
+/*
+ * ithread_done()
+ *
+ *	This function is called by an interrupt thread when it has completed
+ *	processing a loop.  We interlock with ipending and irunning.  If
+ *	a new interrupt is pending for the thread the function clears the
+ *	pending bit and returns.  If no new interrupt is pending we 
+ *	deschedule and sleep.
+ */
+void
+ithread_done(int irq)
+{
+    struct mdglobaldata *gd = mdcpu;
+    int mask = 1 << irq;
+
+    crit_enter();
+    INTREN(mask);
+    if (gd->gd_ipending & mask) {
+	atomic_clear_int(&gd->gd_ipending, mask);
+	lwkt_schedule_self();
+    } else {
+	lwkt_deschedule_self();
+	if (gd->gd_ipending & mask) {	/* race */
+	    atomic_clear_int(&gd->gd_ipending, mask);
+	    lwkt_schedule_self();
+	} else {
+	    atomic_clear_int(&gd->gd_irunning, mask);
+	    lwkt_switch();
+	}
+    }
+    crit_exit();
+}
+

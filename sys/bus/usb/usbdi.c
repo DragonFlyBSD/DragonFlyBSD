@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdi.c,v 1.60 2000/01/19 00:23:58 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usbdi.c,v 1.34.2.7 2002/11/06 14:03:37 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usbdi.c,v 1.3 2003/06/29 03:28:42 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -851,8 +851,8 @@ usbd_do_request_flags(usbd_device_handle dev,
 	usbd_status err;
 
 #ifdef DIAGNOSTIC
-#if defined(__i386__) && defined(__FreeBSD__)
-	KASSERT(intr_nesting_level == 0,
+#if defined(__FreeBSD__)
+	KASSERT(mycpu->gd_intr_nesting_level == 0,
 	       	("usbd_do_request: in interrupt context"));
 #endif
 	if (dev->bus->intr_context) {

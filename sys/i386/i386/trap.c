@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.10 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.11 2003/06/29 03:28:42 dillon Exp $
  */
 
 /*
@@ -503,7 +503,7 @@ kernel_trap:
 		}							\
 	} while (0)
 
-			if (intr_nesting_level == 0) {
+			if (mycpu->gd_intr_nesting_level == 0) {
 				/*
 				 * Invalid %fs's and %gs's can be created using
 				 * procfs or PT_SETREGS or by invalidating the
@@ -695,7 +695,7 @@ trap_pfault(frame, usermode, eva)
 
 		if (p == NULL ||
 		    (!usermode && va < VM_MAXUSER_ADDRESS &&
-		     (intr_nesting_level != 0 || 
+		     (mycpu->gd_intr_nesting_level != 0 || 
 		      curthread->td_pcb->pcb_onfault == NULL))) {
 			trap_fatal(frame, eva);
 			return (-1);
@@ -758,7 +758,7 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
+		if (mycpu->gd_intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
 			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
 			return (0);
 		}
@@ -865,7 +865,7 @@ trap_pfault(frame, usermode, eva)
 		return (0);
 nogo:
 	if (!usermode) {
-		if (intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
+		if (mycpu->gd_intr_nesting_level == 0 && curthread->td_pcb->pcb_onfault) {
 			frame->tf_eip = (int)curthread->td_pcb->pcb_onfault;
 			return (0);
 		}

@@ -35,7 +35,7 @@
  *
  *	from: @(#)icu.h	5.6 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/icu.h,v 1.18 1999/12/26 12:43:47 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/icu.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/icu.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 
 /*
@@ -48,57 +48,10 @@
 
 #ifndef	LOCORE
 
-#ifdef APIC_IO
-
-/*
-#define MP_SAFE
- * Note:
- *	Most of the SMP equivilants of the icu macros are coded
- *	elsewhere in an MP-safe fashion.
- *	In particular note that the 'imen' variable is opaque.
- *	DO NOT access imen directly, use INTREN()/INTRDIS().
- */
-
 void	INTREN			__P((u_int));
 void	INTRDIS			__P((u_int));
 
-#else /* APIC_IO */
-
-/*
- * Interrupt "level" mechanism variables, masks, and macros
- */
-extern	unsigned imen;		/* interrupt mask enable */
-
-#define	INTREN(s)		(imen &= ~(s), SET_ICUS())
-#define	INTRDIS(s)		(imen |= (s), SET_ICUS())
-
-#if 0
-#ifdef PC98
-#define	SET_ICUS()	(outb(IO_ICU1 + 2, imen), outb(IU_ICU2 + 2, imen >> 8))
-#define INTRGET()	((inb(IO_ICU2) << 8 | inb(IO_ICU1)) & 0xffff)
-#else	/* IBM-PC */
-#define	SET_ICUS()	(outb(IO_ICU1 + 1, imen), outb(IU_ICU2 + 1, imen >> 8))
-#define INTRGET()	((inb(IO_ICU2) << 8 | inb(IO_ICU1)) & 0xffff)
-#endif	/* PC98 */
-#else
-/*
- * XXX - IO_ICU* are defined in isa.h, not icu.h, and nothing much bothers to
- * include isa.h, while too many things include icu.h.
- */
-#ifdef PC98
-#define	SET_ICUS()	(outb(0x02, imen), outb(0x0a, imen >> 8))
-/* XXX is this correct? */
-#define INTRGET()	((inb(0x0a) << 8 | inb(0x02)) & 0xffff)
-#else
-#define	SET_ICUS()	(outb(0x21, imen), outb(0xa1, imen >> 8))
-#define INTRGET()	((inb(0xa1) << 8 | inb(0x21)) & 0xffff)
-#endif
-#endif
-
-#endif /* APIC_IO */
-
 #endif /* LOCORE */
-
 
 #ifdef APIC_IO
 /*

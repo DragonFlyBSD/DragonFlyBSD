@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.7 2003/06/27 03:30:43 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.8 2003/06/29 03:28:46 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -239,7 +239,7 @@ vm_fork(p1, p2, flags)
 			shmfork(p1, p2);
 	}
 
-	td2 = lwkt_alloc_thread();
+	td2 = lwkt_alloc_thread(NULL);
 	pmap_init_proc(p2, td2);
 
 	up = p2->p_addr;

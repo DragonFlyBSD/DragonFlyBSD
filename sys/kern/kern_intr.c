@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, Stefan Esser <se@freebsd.org>
- * All rights reserved.
+ * Copyright (c) 2003, Matthew Dillon <dillon@backplane.com> All rights reserved.
+ * Copyright (c) 1997, Stefan Esser <se@freebsd.org> All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,112 +24,158 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
  *
  */
-
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
+#include <sys/thread.h>
+#include <sys/proc.h>
+#include <sys/thread2.h>
 
 #include <machine/ipl.h>
 
 #include <sys/interrupt.h>
 
-struct swilist {
-	swihand_t	*sl_handler;
-	struct swilist	*sl_next;
-};
+typedef struct intrec {
+    struct intrec *next;
+    inthand2_t	*handler;
+    void	*argument;
+    const char	*name;
+    int		intr;
+} intrec_t;
 
-static struct swilist swilists[NSWI];
+static intrec_t	*intlists[NHWI+NSWI];
+static thread_t ithreads[NHWI+NSWI];
+static struct thread ithread_ary[NHWI+NSWI];
+
+static void ithread_handler(void *arg);
 
 void
-register_swi(intr, handler)
-	int intr;
-	swihand_t *handler;
+register_swi(int intr, inthand2_t *handler, void *arg, const char *name)
 {
-	struct swilist *slp, *slq;
-	int s;
+    if (intr < NHWI || intr >= NHWI + NSWI)
+	panic("register_swi: bad intr %d", intr);
+    register_int(intr, handler, arg, name);
+}
 
-	if (intr < NHWI || intr >= NHWI + NSWI)
-		panic("register_swi: bad intr %d", intr);
-	if (handler == swi_generic || handler == swi_null)
-		panic("register_swi: bad handler %p", (void *)handler);
-	slp = &swilists[intr - NHWI];
-	s = splhigh();
-	if (ihandlers[intr] == swi_null)
-		ihandlers[intr] = handler;
-	else {
-		if (slp->sl_next == NULL) {
-			slp->sl_handler = ihandlers[intr];
-			ihandlers[intr] = swi_generic;
-		}
-		slq = malloc(sizeof(*slq), M_DEVBUF, M_NOWAIT);
-		if (slq == NULL)
-			panic("register_swi: malloc failed");
-		slq->sl_handler = handler;
-		slq->sl_next = NULL;
-		while (slp->sl_next != NULL)
-			slp = slp->sl_next;
-		slp->sl_next = slq;
+void
+register_int(int intr, inthand2_t *handler, void *arg, const char *name)
+{
+    intrec_t **list;
+    intrec_t *rec;
+    thread_t td;
+
+    if (intr < 0 || intr > NHWI + NSWI)
+	panic("register_int: bad intr %d", intr);
+
+    rec = malloc(sizeof(intrec_t), M_DEVBUF, M_NOWAIT);
+    if (rec == NULL)
+	panic("register_swi: malloc failed");
+    rec->handler = handler;
+    rec->argument = arg;
+    rec->name = name;
+    rec->intr = intr;
+    rec->next = NULL;
+
+    list = &intlists[intr];
+
+    /*
+     * Create an interrupt thread if necessary, leave it in an unscheduled
+     * state.
+     */
+    if ((td = ithreads[intr]) == NULL) {
+	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
+	    &ithread_ary[intr], TDF_STOPREQ, "ithread %d", intr);
+	td = ithreads[intr];
+    }
+
+    /*
+     * Add the record to the interrupt list
+     */
+    crit_enter();	/* token */
+    while (*list != NULL)
+	list = &(*list)->next;
+    *list = rec;
+    crit_exit();
+}
+
+void
+unregister_swi(int intr, inthand2_t *handler)
+{
+    if (intr < NHWI || intr >= NHWI + NSWI)
+	panic("register_swi: bad intr %d", intr);
+    unregister_int(intr, handler);
+}
+
+void
+unregister_int(int intr, inthand2_t handler)
+{
+    intrec_t **list;
+    intrec_t *rec;
+
+    if (intr < 0 || intr > NHWI + NSWI)
+	panic("register_int: bad intr %d", intr);
+    list = &intlists[intr];
+    crit_enter();
+    while ((rec = *list) != NULL) {
+	if (rec->handler == (void *)handler) {
+	    *list = rec->next;
+	    break;
 	}
-	splx(s);
+	list = &rec->next;
+    }
+    crit_exit();
+    if (rec != NULL) {
+	free(rec, M_DEVBUF);
+    } else {
+	printf("warning: unregister_int: int %d handler %p not found\n",
+	    intr, handler);
+    }
 }
 
+/*
+ * Dispatch an interrupt.
+ */
 void
-swi_dispatcher(intr)
-	int intr;
+sched_ithd(int intr)
 {
-	struct swilist *slp;
+    thread_t td;
 
-	slp = &swilists[intr - NHWI];
-	do {
-		(*slp->sl_handler)();
-		slp = slp->sl_next;
-	} while (slp != NULL);
+    if ((td = ithreads[intr]) != NULL) {
+	if (intlists[intr] == NULL)
+	    printf("sched_ithd: stray interrupt %d\n", intr);
+	else
+	    lwkt_schedule(td);
+    } else {
+	printf("sched_ithd: stray interrupt %d\n", intr);
+    }
 }
 
-void
-unregister_swi(intr, handler)
-	int intr;
-	swihand_t *handler;
+static void
+ithread_handler(void *arg)
 {
-	struct swilist *slfoundpred, *slp, *slq;
-	int s;
+    int intr = (int)arg;
+    intrec_t **list = &intlists[intr];
+    intrec_t *rec;
+    intrec_t *nrec;
 
-	if (intr < NHWI || intr >= NHWI + NSWI)
-		panic("unregister_swi: bad intr %d", intr);
-	if (handler == swi_generic || handler == swi_null)
-		panic("unregister_swi: bad handler %p", (void *)handler);
-	slp = &swilists[intr - NHWI];
-	s = splhigh();
-	if (ihandlers[intr] == handler)
-		ihandlers[intr] = swi_null;
-	else if (slp->sl_next != NULL) {
-		slfoundpred = NULL;
-		for (slq = slp->sl_next; slq != NULL;
-		    slp = slq, slq = slp->sl_next)
-			if (slq->sl_handler == handler)
-				slfoundpred = slp;
-		slp = &swilists[intr - NHWI];
-		if (slfoundpred != NULL) {
-			slq = slfoundpred->sl_next;
-			slfoundpred->sl_next = slq->sl_next;
-			free(slq, M_DEVBUF);
-		} else if (slp->sl_handler == handler) {
-			slq = slp->sl_next;
-			slp->sl_next = slq->sl_next;
-			slp->sl_handler = slq->sl_handler;
-			free(slq, M_DEVBUF);
-		}
-		if (slp->sl_next == NULL)
-			ihandlers[intr] = slp->sl_handler;
+    crit_enter();	/* replaces SPLs */
+    for (;;) {
+	for (rec = *list; rec; rec = nrec) {
+	    nrec = rec->next;
+	    rec->handler(rec->argument);
 	}
-	splx(s);
+	ithread_done(intr);
+	KKASSERT(curthread->td_pri == TDPRI_CRIT);
+    }
+    crit_exit();	/* not reached */
 }
+
 
 /* 
  * Sysctls used by systat and others: hw.intrnames and hw.intrcnt.

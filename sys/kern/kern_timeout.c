@@ -37,13 +37,15 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/callout.h>
 #include <sys/kernel.h>
+#include <sys/interrupt.h>
+#include <machine/ipl.h>
 
 /*
  * TODO:
@@ -75,8 +77,8 @@ static struct callout *nextsoftcheck;	/* Next callout to be checked. */
  * Software (low priority) clock interrupt.
  * Run periodic events from timeout queue.
  */
-void
-softclock()
+static void
+swi_softclock(void *dummy)
 {
 	register struct callout *c;
 	register struct callout_tailq *bucket;
@@ -291,6 +293,14 @@ callout_init(c)
 {
 	bzero(c, sizeof *c);
 }
+
+static void
+swi_softclock_setup(void *arg)
+{
+       register_swi(SWI_CLOCK, swi_softclock, NULL, "swi_sftclk");
+}
+
+SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_softclock_setup, NULL);
 
 #ifdef APM_FIXUP_CALLTODO
 /* 

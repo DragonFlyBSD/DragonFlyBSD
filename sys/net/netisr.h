@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.2 2003/06/17 04:28:48 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.3 2003/06/29 03:28:45 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -66,17 +66,18 @@
 #define	NETISR_NETGRAPH	30		/* same as AF_NETGRAPH */
 #define	NETISR_POLLMORE	31		/* check if we need more polling */
 
+#define NETISR_MAX	32
+
 
 #ifndef LOCORE
 #ifdef _KERNEL
-
-extern volatile unsigned int	netisr;	/* scheduling bits for network */
-#define	schednetisr(anisr)	{ netisr |= 1 << (anisr); setsoftnet(); }
 
 typedef void netisr_t __P((void));
 
 int register_netisr __P((int, netisr_t *));
 int unregister_netisr __P((int));
+void schednetisr(int isrnum);
+
 
 #endif
 #endif

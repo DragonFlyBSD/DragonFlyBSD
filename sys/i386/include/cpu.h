@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.4 2003/06/20 02:09:54 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.5 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -61,7 +61,7 @@
 #define	CLKF_USERMODE(framep) \
 	((ISPL((framep)->cf_cs) == SEL_UPL) || (framep->cf_eflags & PSL_VM))
 
-#define CLKF_INTR(framep)	(intr_nesting_level >= 2)
+#define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level >= 2)
 #if 0
 /*
  * XXX splsoftclock() is very broken and barely worth fixing.  It doesn't
@@ -137,7 +137,6 @@
 #ifdef _KERNEL
 extern char	btext[];
 extern char	etext[];
-extern u_char	intr_nesting_level;
 
 void	fork_trampoline __P((void));
 void	fork_return __P((struct proc *, struct trapframe));

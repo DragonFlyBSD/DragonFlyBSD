@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.3 2003/06/22 17:39:42 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.4 2003/06/29 03:28:44 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -45,6 +45,7 @@
 #include <sys/sysctl.h>
 #include <sys/domain.h>
 #include <sys/protosw.h>
+#include <sys/thread.h>
 
 #include <vm/vm.h>
 #include <vm/vm_kern.h>
@@ -400,7 +401,7 @@ m_clalloc_wait(void)
 
 #ifdef __i386__
 	/* If in interrupt context, and INVARIANTS, maintain sanity and die. */
-	KASSERT(intr_nesting_level == 0, ("CLALLOC: CANNOT WAIT IN INTERRUPT"));
+	KASSERT(mycpu->gd_intr_nesting_level == 0, ("CLALLOC: CANNOT WAIT IN INTERRUPT"));
 #endif
 
 	/* Sleep until something's available or until we expire. */
@@ -442,7 +443,7 @@ m_retry(i, t)
 	 */
 	if (i == M_WAIT) {
 #ifdef __i386__
-		KASSERT(intr_nesting_level == 0,
+		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 #endif
 		m_reclaim();
@@ -487,7 +488,7 @@ m_retryhdr(i, t)
 	 */
 	if (i == M_WAIT) {
 #ifdef __i386__
-		KASSERT(intr_nesting_level == 0,
+		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		    ("MBALLOC: CANNOT WAIT IN INTERRUPT"));
 #endif
 		m_reclaim();

@@ -1,6 +1,6 @@
 /*	$NetBSD: uhci.c,v 1.80 2000/01/19 01:16:38 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/uhci.c,v 1.40.2.10 2003/01/12 02:13:58 iedowse Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.3 2003/06/21 17:27:24 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/uhci.c,v 1.4 2003/06/29 03:28:42 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -1616,8 +1616,8 @@ uhci_abort_xfer(usbd_xfer_handle xfer, usbd_status status)
 		/* We have no process context, so we can't use tsleep(). */
 		timeout(uhci_abort_xfer_end, xfer, hz / USB_FRAMES_PER_SECOND);
 	} else {
-#if defined(DIAGNOSTIC) && defined(__i386__) && defined(__FreeBSD__)
-		KASSERT(intr_nesting_level == 0,
+#if defined(DIAGNOSTIC) && defined(__FreeBSD__)
+		KASSERT(mycpu->gd_intr_nesting_level == 0,
 	        	("ohci_abort_req in interrupt context"));
 #endif
 		usb_delay_ms(xfer->pipe->device->bus, 1);

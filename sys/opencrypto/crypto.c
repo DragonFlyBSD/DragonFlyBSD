@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/opencrypto/crypto.c,v 1.4.2.7 2003/06/03 00:09:02 sam Exp $	*/
-/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.3 2003/06/22 17:39:44 dillon Exp $	*/
+/*	$DragonFly: src/sys/opencrypto/crypto.c,v 1.4 2003/06/29 03:28:45 dillon Exp $	*/
 /*	$OpenBSD: crypto.c,v 1.38 2002/06/11 11:14:29 beck Exp $	*/
 /*
  * The author of this code is Angelos D. Keromytis (angelos@cis.upenn.edu)
@@ -112,7 +112,7 @@ MALLOC_DEFINE(M_CRYPTO_DATA, "crypto", "crypto session records");
  *
  * This scheme is not intended for SMP machines.
  */ 
-static	void cryptointr(void);		/* swi thread to dispatch ops */
+static	void cryptointr(void *dummy);	/* swi thread to dispatch ops */
 static	void cryptoret(void);		/* kernel thread for callbacks*/
 static	struct thread *cryptothread;
 static	void crypto_destroy(void);
@@ -156,7 +156,7 @@ crypto_init(void)
 	TAILQ_INIT(&crp_ret_q);
 	TAILQ_INIT(&crp_ret_kq);
 
-	register_swi(SWI_CRYPTO, cryptointr);
+	register_swi(SWI_CRYPTO, cryptointr, NULL, "swi_crypto");
 	error = kthread_create((void (*)(void *)) cryptoret, NULL,
 		    &cryptothread, "cryptoret");
 	if (error) {
@@ -1000,7 +1000,7 @@ out:
  * Software interrupt thread to dispatch crypto requests.
  */
 static void
-cryptointr(void)
+cryptointr(void *dummy)
 {
 	struct cryptop *crp, *submit;
 	struct cryptkop *krp;

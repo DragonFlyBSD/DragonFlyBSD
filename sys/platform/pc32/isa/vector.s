@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/vector.s,v 1.32 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/vector.s,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 
 /*
@@ -17,30 +17,8 @@
 #include <i386/isa/isa.h>
 #endif
 
-#ifdef FAST_INTR_HANDLER_USES_ES
-#define	ACTUALLY_PUSHED		1
-#define	MAYBE_MOVW_AX_ES	movl	%ax,%es
-#define	MAYBE_POPL_ES		popl	%es
-#define	MAYBE_PUSHL_ES		pushl	%es
-#else
-/*
- * We can usually skip loading %es for fastintr handlers.  %es should
- * only be used for string instructions, and fastintr handlers shouldn't
- * do anything slow enough to justify using a string instruction.
- */
-#define	ACTUALLY_PUSHED		0
-#define	MAYBE_MOVW_AX_ES
-#define	MAYBE_POPL_ES
-#define	MAYBE_PUSHL_ES
-#endif
-
 	.data
 	ALIGN_DATA
-
-	.globl	_intr_nesting_level
-_intr_nesting_level:
-	.byte	0
-	.space	3
 
 /*
  * Interrupt counters and names for export to vmstat(8) and friends.

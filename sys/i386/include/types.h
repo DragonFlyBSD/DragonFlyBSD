@@ -32,7 +32,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.3 2003/06/28 02:09:49 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.4 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
@@ -66,9 +66,5 @@ typedef unsigned int *pt_entry_t;
 
 /* Interrupt mask (spl, xxx_imask, etc) */
 typedef __uint32_t		intrmask_t;
-
-/* Interrupt handler function type. */
-typedef	void			inthand2_t __P((void *_cookie));
-typedef	void			ointhand2_t __P((int _device_id));
 
 #endif /* !_MACHINE_TYPES_H_ */

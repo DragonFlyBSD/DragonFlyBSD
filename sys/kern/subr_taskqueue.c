@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.2 2001/03/31 03:33:44 hsu Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -195,10 +195,10 @@ taskqueue_swi_enqueue(void *context)
 }
 
 static void
-taskqueue_swi_run(void)
+taskqueue_swi_run(void *arg)
 {
 	taskqueue_run(taskqueue_swi);
 }
 
 TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
-		 register_swi(SWI_TQ, taskqueue_swi_run));
+		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq"));

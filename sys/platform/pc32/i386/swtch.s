@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.15 2003/06/28 02:09:47 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.16 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include "npx.h"
@@ -443,6 +443,13 @@ cpu_switch_load_gs:
 
 CROSSJUMPTARGET(sw1a)
 
+badsw0:
+	pushl	%eax
+	pushl	$sw0_1
+	call	_panic
+
+sw0_1:	.asciz	"cpu_switch: panic: %p"
+
 #ifdef DIAGNOSTIC
 badsw1:
 	pushl	$sw0_1
@@ -538,6 +545,7 @@ ENTRY(savectx)
 ENTRY(cpu_idle_restore)
 	movl	$0,%ebp
 	pushl	$0
+	sti
 	jmp	cpu_idle
 
 /*
@@ -551,6 +559,7 @@ ENTRY(cpu_idle_restore)
 ENTRY(cpu_kthread_restore)
 	movl	TD_PCB(%eax),%ebx
 	movl	$0,%ebp
+	sti
 	popl	%edx		/* kthread exit function */
 	pushl	PCB_EBX(%ebx)	/* argument to ESI function */
 	pushl	%edx		/* set exit func as return address */
@@ -589,13 +598,14 @@ ENTRY(cpu_lwkt_restore)
 	popl	%esi
 	popl	%ebx
 	popl	%ebp
-	movl	TD_MACH+MTD_CPL(%eax),%ecx	/* unmasked cpl? YYY too complex */
-	notl	%ecx
-	andl	_ipending,%ecx
-	je	1f
 	cmpl	$0,_intr_nesting_level		/* don't stack too deeply */
-	jne	1f
-	call	splz				/* execute unmasked ints */
+	jne	2f
+	testl	_ipending,%ecx
+	jnz	1f
+	testl	_fpending,%ecx
+	jz	2f
 1:
+	call	splz				/* execute unmasked ints */
+2:
 	ret
 

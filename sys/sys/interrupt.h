@@ -24,21 +24,21 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.3 2003/06/29 03:28:46 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
 #define _SYS_INTERRUPT_H_
 
-typedef void swihand_t __P((void));
+typedef void inthand2_t __P((void *_cookie));
+typedef void ointhand2_t __P((int _device_id));
 
-void	register_swi __P((int intr, swihand_t *handler));
-void	swi_dispatcher __P((int intr));
-swihand_t swi_generic;
-swihand_t swi_null;
-void	unregister_swi __P((int intr, swihand_t *handler));
-
-extern swihand_t *ihandlers[];
+void register_swi(int intr, inthand2_t *handler, void *arg, const char *name);
+void register_int(int intr, inthand2_t *handler, void *arg, const char *name);
+void unregister_swi(int intr, inthand2_t *handler);
+void unregister_int(int intr, inthand2_t *handler);
+void ithread_done(int intr);	/* procedure defined in MD */
+void sched_ithd(int intr);	/* procedure called from MD */
 
 /* Counts and names for statistics (defined in MD code). */
 extern u_long	eintrcnt[];	/* end of intrcnt[] */

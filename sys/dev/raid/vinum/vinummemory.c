@@ -35,7 +35,7 @@
  *
  * $Id: vinummemory.c,v 1.25 2000/05/04 01:57:48 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinummemory.c,v 1.22.2.1 2000/06/02 04:26:11 grog Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinummemory.c,v 1.3 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include <dev/vinum/vinumhdr.h>
@@ -152,7 +152,7 @@ MMalloc(int size, char *file, int line)
 	return 0;					    /* can't continue */
     }
     /* Wait for malloc if we can */
-    result = malloc(size, M_DEVBUF, intr_nesting_level == 0 ? M_WAITOK : M_NOWAIT);
+    result = malloc(size, M_DEVBUF, mycpu->gd_intr_nesting_level == 0 ? M_WAITOK : M_NOWAIT);
     if (result == NULL)
 	log(LOG_ERR, "vinum: can't allocate %d bytes from %s:%d\n", size, file, line);
     else {

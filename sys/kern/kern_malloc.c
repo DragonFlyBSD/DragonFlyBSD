@@ -32,7 +32,7 @@
  *
  *	@(#)kern_malloc.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/kern_malloc.c,v 1.64.2.5 2002/03/16 02:19:51 archie Exp $
- * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.3 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_malloc.c,v 1.4 2003/06/29 03:28:44 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -44,6 +44,7 @@
 #include <sys/mbuf.h>
 #include <sys/vmmeter.h>
 #include <sys/lock.h>
+#include <sys/thread.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -151,7 +152,7 @@ malloc(size, type, flags)
 
 #if defined(INVARIANTS) && defined(__i386__)
 	if (flags == M_WAITOK)
-		KASSERT(intr_nesting_level == 0,
+		KASSERT(mycpu->gd_intr_nesting_level == 0,
 		   ("malloc(M_WAITOK) in interrupt context"));
 #endif
 	/*

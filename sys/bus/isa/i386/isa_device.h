@@ -32,7 +32,7 @@
  *
  *	from: @(#)isa_device.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa_device.h,v 1.68 2000/01/29 18:01:10 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_device.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _I386_ISA_ISA_DEVICE_H_
@@ -42,6 +42,9 @@
 #ifndef _ISA_ISAVAR_H_
 #include <i386/isa/isa_dma.h>
 #endif
+#endif
+#ifndef _SYS_INTERRUPT_H_
+#include <sys/interrupt.h>
 #endif
 
 /*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.10 2003/06/28 04:16:03 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.11 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -81,6 +81,14 @@
 #define _Xdna				Xdna
 #define _Xfastintr0			Xfastintr0
 #define _Xfastintr1			Xfastintr1
+#define _Xfastintr2			Xfastintr2
+#define _Xfastintr3			Xfastintr3
+#define _Xfastintr4			Xfastintr4
+#define _Xfastintr5			Xfastintr5
+#define _Xfastintr6			Xfastintr6
+#define _Xfastintr7			Xfastintr7
+#define _Xfastintr8			Xfastintr8
+#define _Xfastintr9			Xfastintr9
 #define _Xfastintr10			Xfastintr10
 #define _Xfastintr11			Xfastintr11
 #define _Xfastintr12			Xfastintr12
@@ -91,18 +99,34 @@
 #define _Xfastintr17			Xfastintr17
 #define _Xfastintr18			Xfastintr18
 #define _Xfastintr19			Xfastintr19
-#define _Xfastintr2			Xfastintr2
 #define _Xfastintr20			Xfastintr20
 #define _Xfastintr21			Xfastintr21
 #define _Xfastintr22			Xfastintr22
 #define _Xfastintr23			Xfastintr23
-#define _Xfastintr3			Xfastintr3
-#define _Xfastintr4			Xfastintr4
-#define _Xfastintr5			Xfastintr5
-#define _Xfastintr6			Xfastintr6
-#define _Xfastintr7			Xfastintr7
-#define _Xfastintr8			Xfastintr8
-#define _Xfastintr9			Xfastintr9
+#define _Xfastunpend0			Xfastunpend0
+#define _Xfastunpend1			Xfastunpend1
+#define _Xfastunpend2			Xfastunpend2
+#define _Xfastunpend3			Xfastunpend3
+#define _Xfastunpend4			Xfastunpend4
+#define _Xfastunpend5			Xfastunpend5
+#define _Xfastunpend6			Xfastunpend6
+#define _Xfastunpend7			Xfastunpend7
+#define _Xfastunpend8			Xfastunpend8
+#define _Xfastunpend9			Xfastunpend9
+#define _Xfastunpend10			Xfastunpend10
+#define _Xfastunpend11			Xfastunpend11
+#define _Xfastunpend12			Xfastunpend12
+#define _Xfastunpend13			Xfastunpend13
+#define _Xfastunpend14			Xfastunpend14
+#define _Xfastunpend15			Xfastunpend15
+#define _Xfastunpend16			Xfastunpend16
+#define _Xfastunpend17			Xfastunpend17
+#define _Xfastunpend18			Xfastunpend18
+#define _Xfastunpend19			Xfastunpend19
+#define _Xfastunpend20			Xfastunpend20
+#define _Xfastunpend21			Xfastunpend21
+#define _Xfastunpend22			Xfastunpend22
+#define _Xfastunpend23			Xfastunpend23
 #define _Xforward_irq			Xforward_irq
 #define _Xfpu				Xfpu
 #define _Xfpusegm			Xfpusegm
@@ -214,6 +238,7 @@
 #define _etext				etext
 #define _exception			exception
 #define _fast_intr_lock			fast_intr_lock
+#define _fastunpend			fastunpend
 #define _fastmove			fastmove
 #define _gdt				gdt
 #define _generic_bcopy			generic_bcopy
@@ -237,13 +262,11 @@
 #define _intr_countp			intr_countp
 #define _intr_handler			intr_handler
 #define _intr_mask			intr_mask
-#define _intr_nesting_level		intr_nesting_level
 #define _intr_unit			intr_unit
 #define _intrcnt			intrcnt
 #define _intrnames			intrnames
 #define _invltlb_ok			invltlb_ok
 #define _ioapic				ioapic
-#define _ipending			ipending
 #define _isr_lock			isr_lock
 #define _kernbase			kernbase
 #define _kernelname			kernelname
@@ -258,7 +281,6 @@
 #define _mul64				mul64
 #define _net_imask			net_imask
 #define _netisr				netisr
-#define _netisrs			netisrs
 #define _nfs_diskless			nfs_diskless
 #define _nfs_diskless_valid		nfs_diskless_valid
 #define _normalize			normalize
@@ -287,6 +309,7 @@
 #define _round_reg			round_reg
 #define _s_lock				s_lock
 #define _s_unlock			s_unlock
+#define _sched_ithd			sched_ithd
 #define _set_precision_flag_down	set_precision_flag_down
 #define _set_precision_flag_up		set_precision_flag_up
 #define _set_user_ldt			set_user_ldt
@@ -332,6 +355,9 @@
 
 #define	FS(x)	%fs:gd_ ## x
 
+#define _fpending			FS(fpending)
+#define _ipending			FS(ipending)
+#define _irunning			FS(irunning)
 #define _common_tss			FS(common_tss)
 #define _common_tssd			FS(common_tssd)
 #define _cpuid				FS(cpuid)
@@ -341,7 +367,7 @@
 #define _idlethread			FS(idlethread)
 #define _astpending			FS(astpending)
 #define _currentldt			FS(currentldt)
-#define _inside_intr			FS(inside_intr)
+#define _intr_nesting_level		FS(intr_nesting_level)
 #define _npxthread			FS(npxthread)
 #define _other_cpus			FS(other_cpus)
 #define _CADDR1				FS(CADDR1)

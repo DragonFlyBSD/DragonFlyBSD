@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.15 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.16 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include "apm.h"
@@ -89,8 +89,6 @@
 #include <sys/cons.h>
 
 #include <ddb/ddb.h>
-
-#include <net/netisr.h>
 
 #include <machine/cpu.h>
 #include <machine/reg.h>
@@ -452,33 +450,6 @@ again:
 	mp_announce();
 #endif  /* SMP */
 	cpu_setregs();
-}
-
-int
-register_netisr(num, handler)
-	int num;
-	netisr_t *handler;
-{
-	
-	if (num < 0 || num >= (sizeof(netisrs)/sizeof(*netisrs)) ) {
-		printf("register_netisr: bad isr number: %d\n", num);
-		return (EINVAL);
-	}
-	netisrs[num] = handler;
-	return (0);
-}
-
-int
-unregister_netisr(num)
-	int num;
-{
-
-	if (num < 0 || num >= (sizeof(netisrs)/sizeof(*netisrs)) ) {
-		printf("unregister_netisr: bad isr number: %d\n", num);
-		return (EINVAL);
-	}
-	netisrs[num] = NULL;
-	return (0);
 }
 
 /*
@@ -974,18 +945,13 @@ cpu_halt(void)
  * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
  * halt until the next clock tick, even if a thread is ready YYY
  */
-#ifdef SMP
 static int	cpu_idle_hlt = 0;
-#else
-static int	cpu_idle_hlt = 1;
-#endif
 SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
     &cpu_idle_hlt, 0, "Idle loop HLT enable");
 
 void
 cpu_idle(void)
 {
-	spl0();
 	for (;;) {
 		lwkt_switch();
 		if (cpu_idle_hlt) {
@@ -997,7 +963,6 @@ cpu_idle(void)
 		} else {
 			__asm __volatile("sti");
 		}
-		/* YYY BGL */
 	}
 }
 
@@ -2069,6 +2034,8 @@ init386(int first)
  * Initialize machine-dependant portions of the global data structure.
  * Note that the global data area and cpu0's idlestack in the private
  * data space were allocated in locore.
+ *
+ * Note: the idlethread's cpl is 0
  */
 void
 cpu_gdinit(struct mdglobaldata *gd, int cpu)

@@ -2,6 +2,7 @@
  * Copyright (c) 1989, 1990 William F. Jolitz.
  * Copyright (c) 1990 The Regents of the University of California.
  * All rights reserved.
+ * Copyright (c) 2003 Matthew Dillon
  *
  * This code is derived from software contributed to Berkeley by
  * William Jolitz.
@@ -35,142 +36,52 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/icu_ipl.s,v 1.6 1999/08/28 00:44:42 peter Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_ipl.s,v 1.5 2003/06/29 03:28:43 dillon Exp $
  */
 
 	.data
 	ALIGN_DATA
-vec:
-	.long	 vec0,  vec1,  vec2,  vec3,  vec4,  vec5,  vec6,  vec7
-	.long	 vec8,  vec9, vec10, vec11, vec12, vec13, vec14, vec15
 
-/* interrupt mask enable (all h/w off) */
+	/*
+	 * Interrupt mask for ICU interrupts, defaults to all hardware
+	 * interrupts turned off.
+	 */
 	.globl	_imen
 _imen:	.long	HWI_MASK
 
-
-/*
- * 
- */
 	.text
 	SUPERALIGN_TEXT
 
-/*
- * Interrupt priority mechanism
- *	-- soft splXX masks with group mechanism (cpl)
- *	-- h/w masks for currently active or unused interrupts (imen)
- *	-- ipending = active interrupts currently masked by cpl
- *	-- splz handles pending interrupts regardless of the critical
- *	   nesting state, it is only called synchronously.
- */
-
-ENTRY(splz)
 	/*
-	 * The caller has restored cpl and checked that (ipending & ~cpl)
-	 * is nonzero.  We have to repeat the check since if there is an
-	 * interrupt while we're looking, _doreti processing for the
-	 * interrupt will handle all the unmasked pending interrupts
-	 * because we restored early.  We're repeating the calculation
-	 * of (ipending & ~cpl) anyway so that the caller doesn't have
-	 * to pass it, so this only costs one "jne".  "bsfl %ecx,%ecx"
-	 * is undefined when %ecx is 0 so we can't rely on the secondary
-	 * btrl tests.
+	 * Functions to enable and disable a hardware interrupt.  Only
+	 * 16 ICU interrupts exist.
+	 *
+	 * INTREN(1 << irq)	(one interrupt only)
+	 * INTDIS(1 << irq)	(one interrupt only)
 	 */
-	pushl	%ebx
-	movl	_curthread,%ebx
-	movl	TD_MACH+MTD_CPL(%ebx),%eax
-splz_next:
-	/*
-	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
-	 * while we're looking at it - any interrupt will shrink it to 0.
-	 */
-	movl	$0,_reqpri
-	movl	%eax,%ecx
-	notl	%ecx
-	andl	_ipending,%ecx
-	jne	splz_unpend
-	popl	%ebx
+ENTRY(INTRDIS)
+	movl	4(%esp),%eax
+	orl	%eax,_imen
+	pushfl
+	cli
+	movl	_imen,%eax
+	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
+	mov	%ah,%al
+	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
+	popfl
 	ret
 
-	ALIGN_TEXT
-splz_unpend:
-	bsfl	%ecx,%ecx
-	btrl	%ecx,_ipending
-	jnc	splz_next
-	cmpl	$NHWI,%ecx
-	jae	splz_swi
-	/*
-	 * We would prefer to call the intr handler directly here but that
-	 * doesn't work for badly behaved handlers that want the interrupt
-	 * frame.  Also, there's a problem determining the unit number.
-	 * We should change the interface so that the unit number is not
-	 * determined at config time.
-	 */
-	popl	%ebx
-	jmp	*vec(,%ecx,4)
-
-	ALIGN_TEXT
-splz_swi:
-	pushl	%eax
-	orl	imasks(,%ecx,4),%eax
-	movl	%eax,TD_MACH+MTD_CPL(%ebx)
-	call	*_ihandlers(,%ecx,4)
-	popl	%eax
-	movl	%eax,TD_MACH+MTD_CPL(%ebx)
-	jmp	splz_next
-
-/*
- * Fake clock interrupt(s) so that they appear to come from our caller instead
- * of from here, so that system profiling works.
- * XXX do this more generally (for all vectors; look up the C entry point).
- * XXX frame bogusness stops us from just jumping to the C entry point.
- */
-	ALIGN_TEXT
-vec0:
-	popl	%eax			/* return address */
+ENTRY(INTREN)
+	movl	4(%esp),%eax
+	notl	%eax
+	andl	%eax,_imen
 	pushfl
-	pushl	$KCSEL
-	pushl	%eax
 	cli
-	MEXITCOUNT
-	jmp	_Xintr0			/* XXX might need _Xfastintr0 */
-
-#ifndef PC98
-	ALIGN_TEXT
-vec8:
-	popl	%eax	
-	pushfl
-	pushl	$KCSEL
-	pushl	%eax
-	cli
-	MEXITCOUNT
-	jmp	_Xintr8			/* XXX might need _Xfastintr8 */
-#endif /* PC98 */
-
-/*
- * The 'generic' vector stubs.
- */
-
-#define BUILD_VEC(irq_num)			\
-	ALIGN_TEXT ;				\
-__CONCAT(vec,irq_num): ;			\
-	int	$ICU_OFFSET + (irq_num) ;	\
+	movl	_imen,%eax
+	outb	%al,$IO_ICU1+ICU_IMR_OFFSET
+	mov	%ah,%al
+	outb	%al,$IO_ICU2+ICU_IMR_OFFSET
+	popfl
 	ret
 
-	BUILD_VEC(1)
-	BUILD_VEC(2)
-	BUILD_VEC(3)
-	BUILD_VEC(4)
-	BUILD_VEC(5)
-	BUILD_VEC(6)
-	BUILD_VEC(7)
-#ifdef PC98
-	BUILD_VEC(8)
-#endif
-	BUILD_VEC(9)
-	BUILD_VEC(10)
-	BUILD_VEC(11)
-	BUILD_VEC(12)
-	BUILD_VEC(13)
-	BUILD_VEC(14)
-	BUILD_VEC(15)
+

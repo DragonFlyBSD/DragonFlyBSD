@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.13 2003/06/28 04:16:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.14 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include "npx.h"
@@ -54,6 +54,7 @@
 #include <sys/malloc.h>
 #include <sys/proc.h>
 #include <sys/buf.h>
+#include <sys/interrupt.h>
 #include <sys/vnode.h>
 #include <sys/vmmeter.h>
 #include <sys/kernel.h>
@@ -70,6 +71,7 @@
 #include <machine/pcb_ext.h>
 #include <machine/vm86.h>
 #include <machine/globaldata.h>	/* npxthread */
+#include <machine/ipl.h>	/* SWI_ */
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
@@ -606,15 +608,21 @@ vm_page_zero_idle()
 	return (0);
 }
 
-/*
- * Software interrupt handler for queued VM system processing.
- */   
-void  
-swi_vm() 
-{     
+void
+swi_vm(void *arg)
+{
 	if (busdma_swi_pending != 0)
 		busdma_swi();
 }
+
+static void
+swi_vm_setup(void *arg)
+{
+	register_swi(SWI_VM, swi_vm, NULL, "swi_vm");
+}
+
+SYSINIT(vm_setup, SI_SUB_CPU, SI_ORDER_ANY, swi_vm_setup, NULL);
+
 
 /*
  * Tell whether this address is in some physical memory region.

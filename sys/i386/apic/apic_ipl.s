@@ -23,9 +23,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.4 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apic_ipl.s,v 1.5 2003/06/29 03:28:43 dillon Exp $
  */
 
+#if 0
 
 	.data
 	ALIGN_DATA
@@ -101,7 +102,7 @@ ENTRY(splz)
 	 */
 	pushl	%ebx
 	movl	_curthread,%ebx
-	movl	TD_MACH+MTD_CPL(%ebx),%eax
+	movl	TD_CPL(%ebx),%eax
 splz_next:
 	/*
 	 * We don't need any locking here.  (ipending & ~cpl) cannot grow 
@@ -141,10 +142,10 @@ splz_unpend:
 splz_swi:
 	pushl	%eax			/* save cpl across call */
 	orl	imasks(,%ecx,4),%eax
-	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* set cpl for SWI */
+	movl	%eax,TD_CPL(%ebx) /* set cpl for SWI */
 	call	*_ihandlers(,%ecx,4)
 	popl	%eax
-	movl	%eax,TD_MACH+MTD_CPL(%ebx) /* restore cpl and loop */
+	movl	%eax,TD_CPL(%ebx) /* restore cpl and loop */
 	jmp	splz_next
 
 /*
@@ -463,3 +464,5 @@ ENTRY(io_apic_write)
 ENTRY(apic_eoi)
 	movl	$0, _lapic+0xb0
 	ret
+
+#endif

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/ipl_funcs.c,v 1.32.2.5 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.5 2003/06/28 04:16:04 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl_funcs.c,v 1.6 2003/06/29 03:28:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,19 +48,19 @@
 void name(void)					\
 {						\
 	atomic_set_int(var, bits);		\
-	mycpu->gd_reqpri = TDPRI_CRIT;		\
+	mdcpu->mi.gd_reqpri = TDPRI_CRIT;	\
 }
 
-DO_SETBITS(setdelayed,   &ipending, loadandclear(&idelayed))
+DO_SETBITS(setdelayed,   &mdcpu->gd_ipending, loadandclear(&idelayed))
 
-DO_SETBITS(setsoftcamnet,&ipending, SWI_CAMNET_PENDING)
-DO_SETBITS(setsoftcambio,&ipending, SWI_CAMBIO_PENDING)
-DO_SETBITS(setsoftclock, &ipending, SWI_CLOCK_PENDING)
-DO_SETBITS(setsoftnet,   &ipending, SWI_NET_PENDING)
-DO_SETBITS(setsofttty,   &ipending, SWI_TTY_PENDING)
-DO_SETBITS(setsoftvm,	 &ipending, SWI_VM_PENDING)
-DO_SETBITS(setsofttq,	 &ipending, SWI_TQ_PENDING)
-DO_SETBITS(setsoftcrypto,&ipending, SWI_CRYPTO_PENDING)
+DO_SETBITS(setsoftcamnet,&mdcpu->gd_ipending, SWI_CAMNET_PENDING)
+DO_SETBITS(setsoftcambio,&mdcpu->gd_ipending, SWI_CAMBIO_PENDING)
+DO_SETBITS(setsoftclock, &mdcpu->gd_ipending, SWI_CLOCK_PENDING)
+DO_SETBITS(setsoftnet,   &mdcpu->gd_ipending, SWI_NET_PENDING)
+DO_SETBITS(setsofttty,   &mdcpu->gd_ipending, SWI_TTY_PENDING)
+DO_SETBITS(setsoftvm,	 &mdcpu->gd_ipending, SWI_VM_PENDING)
+DO_SETBITS(setsofttq,	 &mdcpu->gd_ipending, SWI_TQ_PENDING)
+DO_SETBITS(setsoftcrypto,&mdcpu->gd_ipending, SWI_CRYPTO_PENDING)
 
 DO_SETBITS(schedsoftcamnet, &idelayed, SWI_CAMNET_PENDING)
 DO_SETBITS(schedsoftcambio, &idelayed, SWI_CAMBIO_PENDING)
@@ -68,11 +68,12 @@ DO_SETBITS(schedsoftnet, &idelayed, SWI_NET_PENDING)
 DO_SETBITS(schedsofttty, &idelayed, SWI_TTY_PENDING)
 DO_SETBITS(schedsoftvm,	&idelayed, SWI_VM_PENDING)
 DO_SETBITS(schedsofttq,	&idelayed, SWI_TQ_PENDING)
+/* YYY schedsoft what? */
 
 unsigned
 softclockpending(void)
 {
-	return (ipending & SWI_CLOCK_PENDING);
+	return ((mdcpu->gd_ipending | mdcpu->gd_fpending) & SWI_CLOCK_PENDING);
 }
 
 /*
@@ -132,8 +133,8 @@ NAME##assert(const char *msg)				\
  *  The SPL routines mess around with the 'cpl' global, which masks 
  *  interrupts.  Interrupts are not *actually* masked.  What happens is 
  *  that if an interrupt masked by the cpl occurs, the appropriate bit
- *  in 'ipending' is set and the interrupt is defered.  When we clear
- *  bits in the cpl we must check to see if any ipending interrupts have
+ *  in '*pending' is set and the interrupt is defered.  When we clear
+ *  bits in the cpl we must check to see if any *pending interrupts have
  *  been unmasked and issue the synchronously, which is what the splz()
  *  call does.
  *
@@ -152,113 +153,53 @@ NAME##assert(const char *msg)				\
  *  NOT need to use locked instructions to modify it.
  */
 
-#ifndef SMP
-
 #define	GENSPL(NAME, OP, MODIFIER, PC)		\
 GENSPLASSERT(NAME, MODIFIER)			\
 unsigned NAME(void)				\
 {						\
 	unsigned x;				\
+	struct thread *td = curthread;		\
 						\
-	x = curthread->td_cpl;			\
-	curthread->td_cpl OP MODIFIER;		\
+	x = td->td_cpl;				\
+	td->td_cpl OP MODIFIER;			\
 	return (x);				\
 }
 
 void
 spl0(void)
 {
-	curthread->td_cpl = 0;
-	if (ipending && curthread->td_pri < TDPRI_CRIT)
+	struct mdglobaldata *gd = mdcpu;
+	struct thread *td = gd->mi.gd_curthread;
+
+	td->td_cpl = 0;
+	if ((gd->gd_ipending || gd->gd_fpending) && td->td_pri < TDPRI_CRIT)
 		splz();
 }
 
 void
 splx(unsigned ipl)
 {
-	curthread->td_cpl = ipl;
-	if ((ipending & ~ipl) && curthread->td_pri < TDPRI_CRIT)
+	struct mdglobaldata *gd = mdcpu;
+	struct thread *td = gd->mi.gd_curthread;
+
+	td->td_cpl = ipl;
+	if (((gd->gd_ipending | gd->gd_fpending) & ~ipl) &&
+	    td->td_pri < TDPRI_CRIT) {
 		splz();
+	}
 }
 
 intrmask_t
 splq(intrmask_t mask)
 { 
-	intrmask_t tmp = curthread->td_cpl;
-	curthread->td_cpl |= mask;
+	struct mdglobaldata *gd = mdcpu;
+	struct thread *td = gd->mi.gd_curthread;
+	intrmask_t tmp;
+
+	tmp = td->td_cpl;
+	td->td_cpl |= mask;
 	return (tmp);
 }       
-
-#else /* !SMP */
-
-#include <machine/smp.h>
-#include <machine/smptests.h>
-
-/*
- *	SMP CASE
- *
- *	Mostly the same as the non-SMP case now, but it didn't used to be
- *	this clean.
- */
-
-#define	GENSPL(NAME, OP, MODIFIER, PC)		\
-GENSPLASSERT(NAME, MODIFIER)			\
-unsigned NAME(void)				\
-{						\
-	unsigned x;				\
-						\
-	x = curthread->td_cpl;			\
-	curthread->td_cpl OP MODIFIER;		\
-						\
-	return (x);				\
-}
-
-/*
- * spl0() -	unmask all interrupts
- *
- *	The MP lock must be held on entry
- *	This routine may only be called from mainline code.
- */
-void
-spl0(void)
-{
-	KASSERT(inside_intr == 0, ("spl0: called from interrupt"));
-	curthread->td_cpl = 0;
-	if (ipending && curthread->td_pri < TDPRI_CRIT)
-		splz();
-}
-
-/*
- * splx() -	restore previous interrupt mask
- *
- *	The MP lock must be held on entry
- */
-
-void
-splx(unsigned ipl)
-{
-	curthread->td_cpl = ipl;
-	if (inside_intr == 0 && (ipending & ~curthread->td_cpl) != 0 &&
-	    curthread->td_pri < TDPRI_CRIT) {
-		splz();
-	}
-}
-
-
-/*
- * splq() -	blocks specified interrupts
- *
- *	The MP lock must be held on entry
- */
-intrmask_t
-splq(intrmask_t mask)
-{
-	intrmask_t tmp = curthread->td_cpl;
-	curthread->td_cpl |= mask;
-	return (tmp);
-}
-
-#endif /* !SMP */
 
 /* Finally, generate the actual spl*() functions */
 

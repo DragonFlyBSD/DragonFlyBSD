@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.3 2003/06/23 17:55:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.4 2003/06/29 03:28:39 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -715,8 +715,8 @@ static xpt_devicefunc_t xptpassannouncefunc;
 static void	 xpt_finishconfig(struct cam_periph *periph, union ccb *ccb);
 static void	 xptaction(struct cam_sim *sim, union ccb *work_ccb);
 static void	 xptpoll(struct cam_sim *sim);
-static swihand_t swi_camnet;
-static swihand_t swi_cambio;
+static inthand2_t swi_camnet;
+static inthand2_t swi_cambio;
 static void	 camisr(cam_isrq_t *queue);
 #if 0
 static void	 xptstart(struct cam_periph *periph, union ccb *work_ccb);
@@ -1374,8 +1374,8 @@ xpt_init(dummy)
 	}
 
 	/* Install our software interrupt handlers */
-	register_swi(SWI_CAMNET, swi_camnet);
-	register_swi(SWI_CAMBIO, swi_cambio);
+	register_swi(SWI_CAMNET, swi_camnet, NULL, "swi_camnet");
+	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio");
 }
 
 static cam_status
@@ -3411,8 +3411,8 @@ xpt_polled_action(union ccb *start_ccb)
 	   && (--timeout > 0)) {
 		DELAY(1000);
 		(*(sim->sim_poll))(sim);
-		swi_camnet();
-		swi_cambio();		
+		swi_camnet(NULL);
+		swi_cambio(NULL);		
 	}
 	
 	dev->ccbq.devq_openings++;
@@ -3422,8 +3422,8 @@ xpt_polled_action(union ccb *start_ccb)
 		xpt_action(start_ccb);
 		while(--timeout > 0) {
 			(*(sim->sim_poll))(sim);
-			swi_camnet();
-			swi_cambio();
+			swi_camnet(NULL);
+			swi_cambio(NULL);
 			if ((start_ccb->ccb_h.status  & CAM_STATUS_MASK)
 			    != CAM_REQ_INPROG)
 				break;
@@ -6278,13 +6278,13 @@ xptpoll(struct cam_sim *sim)
  */
 
 static void
-swi_camnet(void)
+swi_camnet(void *arg)
 {
 	camisr(&cam_netq);
 }
 
 static void
-swi_cambio(void)
+swi_cambio(void *arg)
 {
 	camisr(&cam_bioq);
 }

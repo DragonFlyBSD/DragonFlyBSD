@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.h	5.7 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/isa.h,v 1.23 1999/08/28 00:44:54 peter Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa.h,v 1.3 2003/06/29 03:28:43 dillon Exp $
  */
 
 #ifdef PC98
@@ -56,6 +56,8 @@
  */
 #ifndef IO_ISABEGIN
 #define	IO_ISABEGIN	0x000		/* 0x000 - Beginning of I/O Registers */
+
+#define ICU_IMR_OFFSET	1		/* IO_ICU{1,2} + 1 */
 
 		/* CPU Board */
 #define	IO_DMA1		0x000		/* 8237A DMA Controller #1 */

@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.5 2003/06/22 08:54:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/Attic/apic_vector.s,v 1.6 2003/06/29 03:28:43 dillon Exp $
  */
 
 
@@ -29,14 +29,14 @@ IDTVEC(vec_name) ;							\
 	pushl	%ecx ;							\
 	pushl	%edx ;							\
 	pushl	%ds ;							\
-	MAYBE_PUSHL_ES ;						\
+	pushl	%es ; 							\
 	pushl	%fs ;							\
 	movl	$KDSEL,%eax ;						\
 	mov	%ax,%ds ;						\
-	MAYBE_MOVW_AX_ES ;						\
+	movl	%ax,%es ;						\
 	movl	$KPSEL,%eax ;						\
 	mov	%ax,%fs ;						\
-	FAKE_MCOUNT((5+ACTUALLY_PUSHED)*4(%esp)) ;			\
+	FAKE_MCOUNT(6*4(%esp)) ;					\
 	pushl	_intr_unit + (irq_num) * 4 ;				\
 	call	*_intr_handler + (irq_num) * 4 ; /* do the work ASAP */ \
 	addl	$4, %esp ;						\
@@ -48,7 +48,7 @@ IDTVEC(vec_name) ;							\
 	incl	(%eax) ;						\
 	MEXITCOUNT ;							\
 	popl	%fs ;							\
-	MAYBE_POPL_ES ;							\
+	popl	%es ;							\
 	popl	%ds ;							\
 	popl	%edx ;							\
 	popl	%ecx ;							\
@@ -259,6 +259,7 @@ __CONCAT(Xresume,irq_num): ;						\
 	call	*_intr_handler + (irq_num) * 4 ;			\
 	cli ;								\
 	APIC_ITRACE(apic_itrace_leave, irq_num, APIC_ITRACE_LEAVE) ;	\
+	addl	$4,%esp ;						\
 ;									\
 	lock ;	andl	$~IRQ_BIT(irq_num), iactive ;			\
 	UNMASK_IRQ(irq_num) ;						\
@@ -456,8 +457,6 @@ _Xcpuast:
 	incb	_intr_nesting_level
 	sti
 	
-	pushl	$0
-	
 	movl	_cpuid, %eax
 	lock	
 	btrl	%eax, _checkstate_pending_ast
@@ -512,8 +511,6 @@ _Xforward_irq:
 	incb	_intr_nesting_level
 	sti
 	
-	pushl	$0
-
 	MEXITCOUNT
 	jmp	_doreti			/* Handle forwarded interrupt */
 1:
@@ -722,6 +719,8 @@ _Xrendezvous:
 	
 	
 	.data
+
+#if 0
 /*
  * Addresses of interrupt handlers.
  *  XresumeNN: Resumption addresses for HWIs.
@@ -751,6 +750,7 @@ imasks:				/* masks for interrupt handlers */
 
 	.long	SWI_TTY_MASK, SWI_NET_MASK, SWI_CAMNET_MASK, SWI_CAMBIO_MASK
 	.long	SWI_VM_MASK, SWI_TQ_MASK, SWI_CLOCK_MASK
+#endif
 
 /* active flag for lazy masking */
 iactive:

@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.7 2003/06/28 02:09:52 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.8 2003/06/29 03:28:46 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -176,7 +176,6 @@ int	susword __P((void *base, int word));
 void	realitexpire __P((void *));
 
 void	hardclock __P((struct clockframe *frame));
-void	softclock __P((void));
 void	statclock __P((struct clockframe *frame));
 
 void	startprofclock __P((struct proc *));

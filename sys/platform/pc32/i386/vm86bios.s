@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.6 2003/06/22 08:54:18 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86bios.s,v 1.7 2003/06/29 03:28:42 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -143,8 +143,7 @@ ENTRY(vm86_bioscall)
 	 * Return via _doreti, restore the same cpl as our current cpl
 	 */
 	movl	_curthread,%eax
-	pushl	TD_MACH+MTD_CPL(%eax)
-	subl	$4,%esp			/* dummy unit */
+	pushl	TD_CPL(%eax)
 	incb	_intr_nesting_level	/* dummy to match doreti */
 	MEXITCOUNT
 	jmp	_doreti
