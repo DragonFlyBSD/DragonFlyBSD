@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.1 2003/10/20 04:48:42 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/support.c,v 1.2 2004/06/05 10:02:07 eirikn Exp $
  */
 
 /* prune the includes XXX */
@@ -63,6 +63,7 @@
 #include <sys/exec.h>
 #include <sys/unistd.h>
 #include <sys/time.h>
+#include <sys/kern_syscall.h>
 #include "checkpt.h"
 
 
@@ -97,7 +98,17 @@ ckpt_expand_name(const char *name, uid_t uid, pid_t pid)
 	if (temp == NULL)
 		return NULL;
 	namelen = strlen(name);
-	for (i = 0, n = 0; n < MAXPATHLEN && format[i]; i++) {
+	n = 0;
+	if (ckptfilename[0] != '/') {
+		if (kern_getcwd(temp, MAXPATHLEN - 1) != 0) {
+			free(temp, M_TEMP);
+			return NULL;
+		}
+		n = strlen(temp);
+		temp[n++] = '/';
+		temp[n] = '\0';
+	}
+	for (i= 0; n < MAXPATHLEN && format[i]; i++) {
 		int l;
 		switch (format[i]) {
 		case '%':	/* Format character */
