@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/sys/__error.c,v 1.1.8.1 2001/03/05 11:45:51 obrien Exp $
- * $DragonFly: src/lib/libc/sys/Attic/__error.c,v 1.3 2004/01/23 11:30:28 joerg Exp $
+ * $DragonFly: src/lib/libc/sys/Attic/__error.c,v 1.4 2005/02/01 22:35:19 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -41,12 +41,10 @@ extern int errno;
  * Declare a weak reference in case the application is not linked
  * with libpthread.
  */
-#pragma weak __error=__error_unthreaded
-
-int *	__error(void);
+__weak_reference(__error_unthreaded,__error);
 
 int *
-__error_unthreaded()
+__error_unthreaded(void)
 {
 	return(&errno);
 }

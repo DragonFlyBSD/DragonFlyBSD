@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: /repoman/r/ncvs/src/lib/libc/gen/_pthread_stubs.c,v 1.1 2001/01/24 12:59:20 deischen Exp $
- * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.1 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/_pthread_stubs.c,v 1.2 2005/02/01 22:35:19 joerg Exp $
  */
 
 #include <pthread.h>
@@ -38,20 +38,19 @@
  * between application locks and libc locks (threads holding the
  * latter can't be allowed to exit/terminate).
  */
-#pragma weak	_pthread_getspecific=_pthread_getspecific_stub
-#pragma weak	_pthread_key_create=_pthread_key_create_stub
-#pragma weak	_pthread_key_delete=_pthread_key_delete_stub
-#pragma weak	_pthread_mutex_destroy=_pthread_mutex_destroy_stub
-#pragma weak	_pthread_mutex_init=_pthread_mutex_init_stub
-#pragma weak	_pthread_mutex_lock=_pthread_mutex_lock_stub
-#pragma weak	_pthread_mutex_trylock=_pthread_mutex_trylock_stub
-#pragma weak	_pthread_mutex_unlock=_pthread_mutex_unlock_stub
-#pragma weak	_pthread_mutexattr_init=_pthread_mutexattr_init_stub
-#pragma weak	_pthread_mutexattr_destroy=_pthread_mutexattr_destroy_stub
-#pragma weak	_pthread_mutexattr_settype=_pthread_mutexattr_settype_stub
-#pragma weak	_pthread_once=_pthread_once_stub
-#pragma weak	_pthread_setspecific=_pthread_setspecific_stub
-
+__weak_reference(_pthread_getspecific_stub,_pthread_getspecific);
+__weak_reference(_pthread_key_create_stub,_pthread_key_create);
+__weak_reference(_pthread_key_delete_stub,_pthread_key_delete);
+__weak_reference(_pthread_mutex_destroy_stub,_pthread_mutex_destroy);
+__weak_reference(_pthread_mutex_init_stub,_pthread_mutex_init);
+__weak_reference(_pthread_mutex_lock_stub,_pthread_mutex_lock);
+__weak_reference(_pthread_mutex_trylock_stub,_pthread_mutex_trylock);
+__weak_reference(_pthread_mutex_unlock_stub,_pthread_mutex_unlock);
+__weak_reference(_pthread_mutexattr_init_stub,_pthread_mutexattr_init);
+__weak_reference(_pthread_mutexattr_destroy_stub,_pthread_mutexattr_destroy);
+__weak_reference(_pthread_mutexattr_settype_stub,_pthread_mutexattr_settype);
+__weak_reference(_pthread_once_stub,_pthread_once);
+__weak_reference(_pthread_setspecific_stub,_pthread_setspecific);
 
 void *
 _pthread_getspecific_stub(pthread_key_t key)
