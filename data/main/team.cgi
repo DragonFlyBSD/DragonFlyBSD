@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.21 2004/11/22 01:37:44 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.22 2004/11/24 20:37:01 dillon Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -75,11 +75,6 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</a></td>
 <td valign="top">NVIDIA binary driver port override, misc kernel stuff, software porting.
-</td>
-</tr>
-
-<tr><td valign="top"><a href="mailto:max 'at' love2party 'dot' net">Max Laier</a></td>
-<td valign="top">Network interface aliasing, PFIL_HOOKS
 </td>
 </tr>
 
