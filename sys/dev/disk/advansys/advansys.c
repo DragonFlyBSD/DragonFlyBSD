@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.4 2004/03/15 01:10:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.5 2004/04/01 06:52:45 joerg Exp $
  */
 /*
  * Ported from:
@@ -1290,7 +1290,6 @@ adv_attach(adv)
 	struct adv_softc *adv;
 {
 	struct ccb_setasync csa;
-	struct cam_devq *devq;
 	int max_sg;
 
 	/*
