@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.69 2004/03/17 09:37:13 cperciva Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.13 2004/03/19 18:00:25 hmp Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.14 2004/05/26 14:12:34 hmp Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -145,7 +145,6 @@ TUNABLE_INT("kern.ipc.semusz", &seminfo.semusz);
 TUNABLE_INT("kern.ipc.semvmx", &seminfo.semvmx);
 TUNABLE_INT("kern.ipc.semaem", &seminfo.semaem);
 
-SYSCTL_DECL(_kern_ipc);
 SYSCTL_INT(_kern_ipc, OID_AUTO, semmap, CTLFLAG_RW, &seminfo.semmap, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, semmni, CTLFLAG_RD, &seminfo.semmni, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, semmns, CTLFLAG_RD, &seminfo.semmns, 0, "");

@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.15 2004/03/27 11:50:45 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.16 2004/05/26 14:12:34 hmp Exp $
  */
 
 #include "opt_param.h"
@@ -85,7 +85,6 @@ int	nmbufs;
 u_int	m_mballoc_wid = 0;
 u_int	m_clalloc_wid = 0;
 
-SYSCTL_DECL(_kern_ipc);
 SYSCTL_INT(_kern_ipc, KIPC_MAX_LINKHDR, max_linkhdr, CTLFLAG_RW,
 	   &max_linkhdr, 0, "");
 SYSCTL_INT(_kern_ipc, KIPC_MAX_PROTOHDR, max_protohdr, CTLFLAG_RW,

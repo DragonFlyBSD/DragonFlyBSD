@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.8 2004/05/26 14:12:34 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -47,7 +47,6 @@ SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
 
 LIST_HEAD(sf_buf_list, sf_buf);
 
-SYSCTL_DECL(_kern_ipc);
 SYSCTL_INT(_kern_ipc, OID_AUTO, nsfbufs, CTLFLAG_RD, &nsfbufs, 0,
 	"Maximum number of sf_bufs available to the system");
 

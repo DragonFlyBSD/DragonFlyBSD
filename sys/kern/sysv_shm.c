@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.13 2004/02/05 18:43:22 drhodus Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.14 2004/05/26 14:12:34 hmp Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -135,7 +135,6 @@ TUNABLE_INT("kern.ipc.shmseg", &shminfo.shmseg);
 TUNABLE_INT("kern.ipc.shmmaxpgs", &shminfo.shmall);
 TUNABLE_INT("kern.ipc.shm_use_phys", &shm_use_phys);
 
-SYSCTL_DECL(_kern_ipc);
 SYSCTL_INT(_kern_ipc, OID_AUTO, shmmax, CTLFLAG_RW, &shminfo.shmmax, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, shmmin, CTLFLAG_RW, &shminfo.shmmin, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, shmmni, CTLFLAG_RD, &shminfo.shmmni, 0, "");

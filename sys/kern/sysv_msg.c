@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_msg.c,v 1.23.2.5 2002/12/31 08:54:53 maxim Exp $ */
-/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.12 2003/08/26 21:09:02 rob Exp $ */
+/* $DragonFly: src/sys/kern/sysv_msg.c,v 1.13 2004/05/26 14:12:34 hmp Exp $ */
 
 /*
  * Implementation of SVID messages
@@ -1070,7 +1070,6 @@ TUNABLE_INT("kern.ipc.msgseg", &msginfo.msgseg);
 TUNABLE_INT("kern.ipc.msgssz", &msginfo.msgssz);
 TUNABLE_INT("kern.ipc.msgmni", &msginfo.msgmni);
 
-SYSCTL_DECL(_kern_ipc);
 SYSCTL_INT(_kern_ipc, OID_AUTO, msgmax, CTLFLAG_RD, &msginfo.msgmax, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, msgmni, CTLFLAG_RD, &msginfo.msgmni, 0, "");
 SYSCTL_INT(_kern_ipc, OID_AUTO, msgmnb, CTLFLAG_RD, &msginfo.msgmnb, 0, "");

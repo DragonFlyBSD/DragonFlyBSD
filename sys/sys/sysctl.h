@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.10 2004/05/03 16:06:26 joerg Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.11 2004/05/26 14:12:34 hmp Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -568,6 +568,11 @@ SYSCTL_DECL(_machdep);
 SYSCTL_DECL(_user);
 SYSCTL_DECL(_compat);
 SYSCTL_DECL(_lwkt);
+
+/*
+ * Common second-level oids.
+ */
+SYSCTL_DECL(_kern_ipc);
 
 extern char	machine[];
 extern char	osrelease[];

@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.19 2004/05/12 20:21:21 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.20 2004/05/26 14:12:34 hmp Exp $
  */
 
 #include "opt_inet.h"
@@ -86,7 +86,6 @@ so_gen_t	so_gencnt;	/* generation count for sockets */
 MALLOC_DEFINE(M_SONAME, "soname", "socket name");
 MALLOC_DEFINE(M_PCB, "pcb", "protocol control block");
 
-SYSCTL_DECL(_kern_ipc);
 
 static int somaxconn = SOMAXCONN;
 SYSCTL_INT(_kern_ipc, KIPC_SOMAXCONN, somaxconn, CTLFLAG_RW,
