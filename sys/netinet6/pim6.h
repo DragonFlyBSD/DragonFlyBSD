@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/pim6.h,v 1.1.2.1 2000/07/15 07:14:36 kris Exp $	*/
-/*	$DragonFly: src/sys/netinet6/pim6.h,v 1.2 2003/06/17 04:28:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/pim6.h,v 1.3 2004/09/23 16:46:02 joerg Exp $	*/
 /*	$KAME: pim6.h,v 1.3 2000/03/25 07:23:58 sumikawa Exp $	*/
 
 /*
@@ -43,16 +43,18 @@
  */
 #define PIM_VERSION	2
 struct pim {
-#if defined(BYTE_ORDER) && (BYTE_ORDER == LITTLE_ENDIAN)
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 	u_char	pim_type:4, /* the PIM message type, currently they are:
 			     * Hello, Register, Register-Stop, Join/Prune,
 			     * Bootstrap, Assert, Graft (PIM-DM only),
 			     * Graft-Ack (PIM-DM only), C-RP-Adv
 			     */
 		pim_ver:4;  /* PIM version number; 2 for PIMv2 */
-#else
+#elif _BYTE_ORDER == _BIG_ENDIAN
 	u_char	pim_ver:4,	/* PIM version */
 		pim_type:4;	/* PIM type    */
+#else
+#error "Byte order not implemented"
 #endif
 	u_char  pim_rsv;	/* Reserved */
 	u_short	pim_cksum;	/* IP style check sum */
