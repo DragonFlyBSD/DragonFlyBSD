@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.17 2004/08/30 06:17:16 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.18 2004/09/20 22:03:12 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -267,6 +267,10 @@
             usd
                 04.csh
                 ..
+                05.dc
+                ..
+                06.bc
+                ..
                 07.mail
                 ..
                 10.exref
@@ -297,8 +301,6 @@
             IPv6
             ..
             atm
-            ..
-            bc
             ..
             bootforth
             ..

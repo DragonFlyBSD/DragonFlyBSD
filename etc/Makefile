@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.26 2004/08/13 05:30:02 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.27 2004/09/20 22:03:11 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -140,6 +140,14 @@ upgrade_etc:
 	rm -f ${DESTDIR}/usr/bin/makewhatis
 	rm -f ${DESTDIR}/usr/sbin/prebind
 	ldconfig -R
+.endif
+.if exists(${DESTDIR}/usr/share/examples/bc)
+	rm -rf ${DESTDIR}/usr/share/examples/bc
+.endif
+.if exists(${DESTDIR}/usr/share/info/dc.info.gz)
+	gzip -d ${DESTDIR}/usr/share/info/dc.info.gz
+	install-info --delete ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dir
+	rm -f ${DESTDIR}/usr/share/info/dc.info ${DESTDIR}/usr/share/info/dc.info.gz
 .endif
 
 distribution:

@@ -1,11 +1,11 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.18 2004/09/04 04:00:39 dillon Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.19 2004/09/20 22:03:17 dillon Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
 # XXX broken:		tconv
-# XXX Use GNU versions: apropos bc dc diff grep ld man patch ptx uucp whatis
+# XXX Use GNU versions: apropos diff grep ld man patch ptx uucp whatis
 # Moved to secure: bdes
 #
 SUBDIR=	alias \
@@ -15,6 +15,7 @@ SUBDIR=	alias \
 	asa \
 	banner \
 	basename \
+	bc \
 	biff \
 	brandelf \
 	bzip2 \
@@ -43,6 +44,7 @@ SUBDIR=	alias \
 	csplit \
 	ctags \
 	cut \
+	dc \
 	dirname \
 	du \
 	ee \
