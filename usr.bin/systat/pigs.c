@@ -110,12 +110,18 @@ showpigs()
 	i = nproc + 1;
 	if (i > wnd->_maxy-1)
 		i = wnd->_maxy-1;
-	for (k = 0; i > 0 && pt[k].pt_pctcpu > 0.01; i--, y++, k++) {
+	for (k = 0; i > 0; i--, y++, k++) {
+		if (pt[k].pt_pctcpu <= 0.01 &&
+		    (pt[k].pt_kp == NULL ||
+		    pt[k].pt_kp->kp_proc.p_slptime != 0)
+		) {
+			continue;
+		}
+
 		if (pt[k].pt_kp == NULL) {
 			uname = "";
 			pname = "<idle>";
-		}
-		else {
+		} else {
 			ep = &pt[k].pt_kp->kp_eproc;
 			uname = (char *)user_from_uid(ep->e_ucred.cr_uid, 0);
 			pname = pt[k].pt_kp->kp_thread.td_comm;
@@ -235,9 +241,45 @@ labelpigs()
 }
 
 int
-compar(a, b)
-	const void *a, *b;
+compar(const void *a, const void *b)
 {
-	return (((struct p_times *) a)->pt_pctcpu >
-		((struct p_times *) b)->pt_pctcpu)? -1: 1;
+	struct p_times *pta = (struct p_times *)a;
+	struct p_times *ptb = (struct p_times *)b;
+	float d;
+
+	/*
+	 * Check overall cpu percentage first.
+	 */
+	d = pta->pt_pctcpu - ptb->pt_pctcpu;
+	if (d > 0.10)
+		return(-1);	/* a is better */
+	else if (d < -0.10)
+		return(1);	/* b is better */
+
+	if (pta->pt_kp == NULL && ptb->pt_kp == NULL)
+		return(0);
+	if (ptb->pt_kp == NULL)
+		return(-1);	/* a is better */
+	if (pta->pt_kp == NULL)
+		return(1);	/* b is better */
+	/*
+	 * Then check sleep times and run status.
+	 */
+	if (pta->pt_kp->kp_proc.p_slptime < ptb->pt_kp->kp_proc.p_slptime)
+		return(-1);
+	if (pta->pt_kp->kp_proc.p_slptime > ptb->pt_kp->kp_proc.p_slptime)
+		return(1);
+
+	/*
+	 * Runnability
+	 */
+	if (pta->pt_kp->kp_proc.p_stat != ptb->pt_kp->kp_proc.p_stat) {
+		if (pta->pt_kp->kp_proc.p_stat == SRUN)
+			return(-1);
+		if (ptb->pt_kp->kp_proc.p_stat == SRUN)
+			return(1);
+	}
+	return(0);
 }
+
+
