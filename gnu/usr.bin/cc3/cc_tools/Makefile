@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc_tools/Makefile,v 1.73 2004/01/15 10:07:59 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.2 2004/01/20 20:38:35 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/cc_tools/Attic/Makefile,v 1.3 2004/01/20 20:41:52 joerg Exp $
 
 #
 # This could probably be merged with ../cc_int/Makefile, but bsd.lib.mk
@@ -277,7 +277,7 @@ ${COMMONHDRS}: ${MFILE}
 
 configargs.h:
 	echo 'static const char configuration_arguments[] ='	> ${.TARGET}
-	echo '	"FreeBSD/${TARGET_ARCH} system compiler";'	>> ${.TARGET}
+	echo '	"DragonFly/${TARGET_ARCH} system compiler";'	>> ${.TARGET}
 	echo 'static const char thread_model[] = "posix";'	>> ${.TARGET}
 
 hconfig.h:
