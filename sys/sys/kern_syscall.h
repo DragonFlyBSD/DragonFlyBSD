@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.15 2004/03/16 17:53:51 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.16 2004/03/27 21:01:03 hsu Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -106,7 +106,7 @@ int kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 	struct mbuf **control, int *flags, int *res);
 int kern_shutdown(int s, int how);
 int kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
-	off_t *sbytes, int flags);
+	struct mbuf *mheader, off_t *sbytes, int flags);
 int kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 	struct mbuf *control, int flags, int *res);
 int kern_setsockopt(int s, struct sockopt *sopt);

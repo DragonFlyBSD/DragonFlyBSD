@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.27 2004/03/14 14:35:23 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.28 2004/03/27 21:01:03 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1256,8 +1256,9 @@ sendfile(struct sendfile_args *uap)
 	struct sf_hdtr hdtr;
 	struct iovec aiov[UIO_SMALLIOV], *iov = NULL;
 	struct uio auio;
+	struct mbuf *mheader = NULL;
 	off_t hdtr_size = 0, sbytes;
-	int error, res;
+	int error, hbytes = 0, tbytes;
 
 	KKASSERT(p);
 	fdp = p->p_fd;
@@ -1291,7 +1292,7 @@ sendfile(struct sendfile_args *uap)
 		 */
 		if (hdtr.headers) {
 			error = iovec_copyin(hdtr.headers, &iov, aiov,
-			    hdtr.hdr_cnt, &auio.uio_resid);
+			    hdtr.hdr_cnt, &hbytes);
 			if (error)
 				goto done;
 			auio.uio_iov = iov;
@@ -1300,21 +1301,21 @@ sendfile(struct sendfile_args *uap)
 			auio.uio_segflg = UIO_USERSPACE;
 			auio.uio_rw = UIO_WRITE;
 			auio.uio_td = td;
+			auio.uio_resid = hbytes;
 
-			error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0,
-			    &res);
+			mheader = m_uiomove(&auio, M_WAIT, 0);
 
 			iovec_free(&iov, aiov);
-			if (error)
+			if (mheader == NULL)
 				goto done;
-			hdtr_size += res;
 		}
 	}
 
-	error = kern_sendfile(vp, uap->s, uap->offset, uap->nbytes,
+	error = kern_sendfile(vp, uap->s, uap->offset, uap->nbytes, mheader,
 	    &sbytes, uap->flags);
 	if (error)
 		goto done;
+	hdtr_size += hbytes;	/* account for header bytes successfully sent */
 
 	/*
 	 * Send trailers. Wimp out and use writev(2).
@@ -1331,12 +1332,12 @@ sendfile(struct sendfile_args *uap)
 		auio.uio_rw = UIO_WRITE;
 		auio.uio_td = td;
 
-		error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0, &res);
+		error = kern_sendmsg(uap->s, NULL, &auio, NULL, 0, &tbytes);
 
 		iovec_free(&iov, aiov);
 		if (error)
 			goto done;
-		hdtr_size += res;
+		hdtr_size += tbytes;	/* trailer bytes successfully sent */
 	}
 
 done:
@@ -1351,7 +1352,7 @@ done:
 
 int
 kern_sendfile(struct vnode *vp, int s, off_t offset, size_t nbytes,
-    off_t *sbytes, int flags)
+    struct mbuf *mheader, off_t *sbytes, int flags)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1541,6 +1542,14 @@ retry_lookup:
 		m->m_data = (char *) sf->kva + pgoff;
 		m->m_flags |= M_EXT;
 		m->m_pkthdr.len = m->m_len = xfsize;
+
+		if (mheader) {
+			mheader->m_pkthdr.len += m->m_pkthdr.len;
+			m_cat(mheader, m);
+			m = mheader;
+			mheader = NULL;
+		}
+
 		/*
 		 * Add the buffer to the socket buffer chain.
 		 */
@@ -1608,5 +1617,7 @@ retry_space:
 done:
 	if (fp)
 		fdrop(fp, td);
+	if (mheader != NULL)
+		m_freem(mheader);
 	return (error);
 }
