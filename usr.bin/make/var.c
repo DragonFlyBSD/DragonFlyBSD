@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.123 2005/03/01 23:32:52 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.124 2005/03/03 23:33:34 okumoto Exp $
  */
 
 /*-
@@ -1939,7 +1939,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			     * until the next variable
 			     */
 			    while (*p != '$' && *p != '\0')
-				++p;
+				p++;
 
 			    Buf_AppendRange(buf, str, p);
 			    str = p;
