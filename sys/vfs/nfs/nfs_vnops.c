@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.28 2004/08/28 19:02:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.29 2004/08/28 23:04:23 dillon Exp $
  */
 
 
@@ -882,13 +882,19 @@ nfs_lookup(struct vop_lookup_args *ap)
 			error = 0;
 		} else if (flags & CNP_ISDOTDOT) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
-			if (!error && lockparent && (flags & CNP_ISLASTCN))
+			if (!error && lockparent && (flags & CNP_ISLASTCN)) {
 				error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+				if (error == 0)
+					cnp->cn_flags &= ~CNP_PDIRUNLOCK;
+			}
 		} else {
 			error = vget(newvp, NULL, LK_EXCLUSIVE, td);
-			if (!lockparent || error || !(flags & CNP_ISLASTCN))
+			if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
 				VOP_UNLOCK(dvp, NULL, 0, td);
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
+			}
 		}
 		if (!error) {
 			if (vpid == newvp->v_id) {
@@ -903,10 +909,14 @@ nfs_lookup(struct vop_lookup_args *ap)
 			   cache_purge(newvp);
 			}
 			vput(newvp);
-			if (lockparent && dvp != newvp && (flags & CNP_ISLASTCN))
+			if (lockparent && dvp != newvp && (flags & CNP_ISLASTCN)) {
 				VOP_UNLOCK(dvp, NULL, 0, td);
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
+			}
 		}
 		error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+		if (error == 0)
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		*vpp = NULLVP;
 		if (error)
 			return (error);
@@ -972,23 +982,30 @@ nfs_lookup(struct vop_lookup_args *ap)
 		*vpp = newvp;
 		m_freem(mrep);
 		cnp->cn_flags |= CNP_SAVENAME;
-		if (!lockparent)
+		if (!lockparent) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+		}
 		return (0);
 	}
 
 	if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, NULL, 0, td);
+		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = nfs_nget(dvp->v_mount, fhp, fhsize, &np);
 		if (error) {
 			vn_lock(dvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-			return (error);
+			cnp->cn_flags &= ~CNP_PDIRUNLOCK;
+			return (error); /* NOTE: return error from nget */
 		}
 		newvp = NFSTOV(np);
-		if (lockparent && (flags & CNP_ISLASTCN) &&
-		    (error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td))) {
-		    	vput(newvp);
-			return (error);
+		if (lockparent && (flags & CNP_ISLASTCN)) {
+			error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td);
+			if (error) {
+				vput(newvp);
+				return (error);
+			}
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
 		}
 	} else if (NFS_CMPFH(np, fhp, fhsize)) {
 		vref(dvp);
@@ -999,8 +1016,10 @@ nfs_lookup(struct vop_lookup_args *ap)
 			m_freem(mrep);
 			return (error);
 		}
-		if (!lockparent || !(flags & CNP_ISLASTCN))
+		if (!lockparent || !(flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
+			cnp->cn_flags |= CNP_PDIRUNLOCK;
+		}
 		newvp = NFSTOV(np);
 	}
 	if (v3) {
@@ -1025,8 +1044,10 @@ nfsmout:
 		}
 		if ((cnp->cn_nameiop == NAMEI_CREATE || cnp->cn_nameiop == NAMEI_RENAME) &&
 		    (flags & CNP_ISLASTCN) && error == ENOENT) {
-			if (!lockparent)
+			if (!lockparent) {
 				VOP_UNLOCK(dvp, NULL, 0, td);
+				cnp->cn_flags |= CNP_PDIRUNLOCK;
+			}
 			if (dvp->v_mount->mnt_flag & MNT_RDONLY)
 				error = EROFS;
 			else
