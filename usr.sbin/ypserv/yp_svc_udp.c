@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.5 1999/08/28 01:21:14 peter Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_svc_udp.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
  */
 
 #include <rpc/rpc.h>
@@ -59,8 +59,7 @@ struct svcudp_data {
  */
 
 unsigned long
-svcudp_get_xid(xprt)
-	SVCXPRT *xprt;
+svcudp_get_xid(SVCXPRT *xprt)
 {
 	struct svcudp_data *su;
 
@@ -71,9 +70,7 @@ svcudp_get_xid(xprt)
 }
 
 unsigned long
-svcudp_set_xid(xprt, xid)
-	SVCXPRT *xprt;
-	unsigned long xid;
+svcudp_set_xid(SVCXPRT *xprt, unsigned long xid)
 {
 	struct svcudp_data *su;
 	unsigned long old_xid;

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_access.c,v 1.17.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_access.c,v 1.3 2004/01/08 18:39:19 asmodai Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_access.c,v 1.4 2004/03/31 23:20:22 cpressey Exp $
  */
 
 #include <stdlib.h>
@@ -87,7 +87,8 @@ char *yp_procs[] = {	"ypoldproc_null",
 
 
 #ifdef TCP_WRAPPER
-void load_securenets()
+void
+load_securenets(void)
 {
 }
 #else
@@ -106,7 +107,8 @@ struct securenet *securenets;
  * list. If the file doesn't exist, we set up a dummy entry that
  * allows all hosts to connect.
  */
-void load_securenets()
+void
+load_securenets(void)
 {
 	FILE *fp;
 	char path[MAXPATHLEN + 2];
@@ -208,15 +210,12 @@ void load_securenets()
  */
 
 #ifdef DB_CACHE
-int yp_access(map, domain, rqstp)
+int
+yp_access(const char *map, const char *domain, const struct svc_req *rqstp)
 #else
-int yp_access(map, rqstp)
+int
+yp_access(const char *map, const struct svc_req *rqstp)
 #endif
-	const char *map;
-#ifdef DB_CACHE
-	const char *domain;
-#endif
-	const struct svc_req *rqstp;
 {
 	struct sockaddr_in *rqhost;
 	int status = 0;
@@ -301,8 +300,8 @@ not privileged", map, inet_ntoa(rqhost->sin_addr), ntohs(rqhost->sin_port));
 
 }
 
-int yp_validdomain(domain)
-	const char *domain;
+int
+yp_validdomain(const char *domain)
 {
 	struct stat statbuf;
 	char dompath[MAXPATHLEN + 2];

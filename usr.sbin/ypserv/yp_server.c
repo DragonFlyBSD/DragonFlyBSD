@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_server.c,v 1.31.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_server.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
  */
 
 #include "yp.h"
@@ -53,7 +53,8 @@ int children = 0;
 #define	ORDER_STRING	"YP_LAST_MODIFIED"
 #define	ORDER_SZ	sizeof(ORDER_STRING) - 1
 
-static pid_t yp_fork()
+static pid_t
+yp_fork(void)
 {
 	if (yp_pid != getpid()) {
 		yp_error("child %d trying to fork!", getpid());
@@ -454,7 +455,7 @@ ypproc_clear_2_svc(void *argp, struct svc_req *rqstp)
  * or encounter an error.
  */
 static bool_t
-xdr_my_ypresp_all(register XDR *xdrs, ypresp_all *objp)
+xdr_my_ypresp_all(XDR *xdrs, ypresp_all *objp)
 {
 	while (1) {
 		/* Get a record. */
@@ -652,10 +653,9 @@ ypproc_order_2_svc(ypreq_nokey *argp, struct svc_req *rqstp)
 	return (&result);
 }
 
-static void yp_maplist_free(yp_maplist)
-	struct ypmaplist *yp_maplist;
+static void yp_maplist_free(struct ypmaplist *yp_maplist)
 {
-	register struct ypmaplist *next;
+	struct ypmaplist *next;
 
 	while (yp_maplist) {
 		next = yp_maplist->next;
@@ -666,8 +666,7 @@ static void yp_maplist_free(yp_maplist)
 	return;
 }
 
-static struct ypmaplist *yp_maplist_create(domain)
-	const char *domain;
+static struct ypmaplist *yp_maplist_create(const char *domain)
 {
 	char yp_mapdir[MAXPATHLEN + 2];
 	char yp_mapname[MAXPATHLEN + 2];

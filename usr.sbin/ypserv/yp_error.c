@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_error.c,v 1.7 1999/08/28 01:21:12 peter Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_error.c,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_error.c,v 1.4 2004/03/31 23:20:22 cpressey Exp $
  */
 
 /*
@@ -47,11 +47,7 @@ extern int _rpcpmstart;
 
 extern char *progname;
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 static
 void
@@ -67,20 +63,10 @@ __verr(const char *fmt, va_list ap)
 }
 
 void
-#ifdef __STDC__
 yp_error(const char *fmt, ...)
-#else
-yp_error(fmt, va_list)
-	const char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
-#ifdef __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	__verr(fmt,ap);
 	va_end(ap);
 }

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_main.c,v 1.21.2.3 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
  */
 
 /*
@@ -74,8 +74,8 @@ static int _rpcfdtype;
 #define	_SERVED 1
 #define	_SERVING 2
 
-extern void ypprog_1(struct svc_req *, register SVCXPRT *);
-extern void ypprog_2(struct svc_req *, register SVCXPRT *);
+extern void ypprog_1(struct svc_req *, SVCXPRT *);
+extern void ypprog_2(struct svc_req *, SVCXPRT *);
 extern int _rpc_dtablesize(void);
 extern int _rpcsvcstate;	 /* Set when a request is serviced */
 char *progname = "ypserv";
@@ -84,8 +84,8 @@ char *yp_dir = _PATH_YP;
 int do_dns = 0;
 int resfd;
 
-static
-void _msgout(char* msg)
+static void
+_msgout(char *msg)
 {
 	if (debug) {
 		if (_rpcpmstart)
@@ -99,7 +99,7 @@ void _msgout(char* msg)
 pid_t	yp_pid;
 
 static void
-yp_svc_run()
+yp_svc_run(void)
 {
 #ifdef FD_SETSIZE
 	fd_set readfds;
@@ -150,17 +150,17 @@ yp_svc_run()
 	}
 }
 
-static void unregister()
+static void
+unregister(void)
 {
-	(void) pmap_unset(YPPROG, YPVERS);
-	(void) pmap_unset(YPPROG, YPOLDVERS);
+	pmap_unset(YPPROG, YPVERS);
+	pmap_unset(YPPROG, YPOLDVERS);
 }
 
-static void reaper(sig)
-	int sig;
+static void reaper(int sig)
 {
-	int			status;
-	int			saved_errno;
+	int status;
+	int saved_errno;
 
 	saved_errno = errno;
 
@@ -184,7 +184,8 @@ static void reaper(sig)
 	return;
 }
 
-static void usage()
+static void
+usage(void)
 {
 	fprintf(stderr, "usage: ypserv [-h] [-d] [-n] [-p path]\n");
 	exit(1);
@@ -216,20 +217,18 @@ closedown(int sig)
 	if (_rpcsvcstate == _SERVED)
 		_rpcsvcstate = _IDLE;
 
-	(void) signal(SIGALRM, (SIG_PF) closedown);
-	(void) alarm(_RPCSVC_CLOSEDOWN/2);
+	signal(SIGALRM, (SIG_PF)closedown);
+	alarm(_RPCSVC_CLOSEDOWN / 2);
 }
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
-	register SVCXPRT *transp = NULL;
+	SVCXPRT *transp = NULL;
 	int sock;
 	int proto = 0;
 	struct sockaddr_in saddr;
-	int asize = sizeof (saddr);
+	int asize = sizeof(saddr);
 	int ch;
 
 	while ((ch = getopt(argc, argv, "hdnp:")) != -1) {
@@ -319,18 +318,18 @@ main(argc, argv)
 		exit(1);
 	}
 	if (_rpcpmstart) {
-		(void) signal(SIGALRM, (SIG_PF) closedown);
-		(void) alarm(_RPCSVC_CLOSEDOWN/2);
+		signal(SIGALRM, (SIG_PF)closedown);
+		alarm(_RPCSVC_CLOSEDOWN / 2);
 	}
 /*
  * Make sure SIGPIPE doesn't blow us away while servicing TCP
  * connections.
  */
-	(void) signal(SIGPIPE, SIG_IGN);
-	(void) signal(SIGCHLD, (SIG_PF) reaper);
-	(void) signal(SIGTERM, (SIG_PF) reaper);
-	(void) signal(SIGINT, (SIG_PF) reaper);
-	(void) signal(SIGHUP, (SIG_PF) reaper);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGCHLD, (SIG_PF) reaper);
+	signal(SIGTERM, (SIG_PF) reaper);
+	signal(SIGINT, (SIG_PF) reaper);
+	signal(SIGHUP, (SIG_PF) reaper);
 	yp_svc_run();
 	_msgout("svc_run returned");
 	exit(1);
