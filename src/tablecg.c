@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.8 2004/01/07 18:09:43 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.9 2004/01/12 21:01:28 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -68,6 +68,11 @@ char *Status[] = {
         "index.cgi",
 	"report-2003.cgi",
         NULL
+};
+
+char *Docs[] = {
+	"index.cgi",
+	NULL
 };
 
 
@@ -196,6 +201,7 @@ main(int ac, char **av)
     generate_side_headers("Main", Main);
     generate_side_headers("Goals", Goals);
     generate_side_headers("Status", Status);
+    generate_side_headers("Docs", Docs);
 
     printf("</TD><TD WIDTH=100%% VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
     fflush(stdout);
