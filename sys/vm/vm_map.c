@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.34 2004/10/25 19:14:33 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.35 2004/10/26 04:33:11 dillon Exp $
  */
 
 /*
@@ -133,11 +133,14 @@
  *	maps and requires map entries.
  */
 
+#define VMEPERCPU	2
+
 static struct vm_zone mapentzone_store, mapzone_store;
 static vm_zone_t mapentzone, mapzone, vmspace_zone;
 static struct vm_object mapentobj, mapobj;
 
 static struct vm_map_entry map_entry_init[MAX_MAPENT];
+static struct vm_map_entry cpu_map_entry_init[MAXCPU][VMEPERCPU];
 static struct vm_map map_init[MAX_KMAP];
 
 static vm_map_entry_t vm_map_entry_create(vm_map_t map, int *);
@@ -185,7 +188,8 @@ vmspace_alloc(vm_offset_t min, vm_offset_t max)
 void
 vm_init2(void) 
 {
-	zinitna(mapentzone, &mapentobj, NULL, 0, 0, ZONE_USE_RESERVE, 1);
+	zinitna(mapentzone, &mapentobj, NULL, 0, 0, 
+		ZONE_USE_RESERVE | ZONE_SPECIAL, 1);
 	zinitna(mapzone, &mapobj, NULL, 0, 0, 0, 1);
 	vmspace_zone = zinit("VMSPACE", sizeof (struct vmspace), 0, 0, 3);
 	pmap_init2();
@@ -329,19 +333,32 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 }
 
 /*
- *      vm_map_entry_cpu_init:
+ *      vm_map_entry_reserve_cpu_init:
  *
  *	Set an initial negative count so the first attempt to reserve
- *	space preloads a bunch of vm_map_entry's for this cpu.  This
- *	routine is called in early boot so we cannot just call
+ *	space preloads a bunch of vm_map_entry's for this cpu.  Also
+ *	pre-allocate 2 vm_map_entries which will be needed by zalloc() to
+ *	map a new page for vm_map_entry structures.  SMP systems are
+ *	particularly sensitive.
+ *
+ *	This routine is called in early boot so we cannot just call
  *	vm_map_entry_reserve().
  *
- *	May be called for a gd other then mycpu.
+ *	May be called for a gd other then mycpu, but may only be called
+ *	during early boot.
  */
 void
 vm_map_entry_reserve_cpu_init(globaldata_t gd)
 {
+	vm_map_entry_t entry;
+	int i;
+
 	gd->gd_vme_avail -= MAP_RESERVE_COUNT * 2;
+	entry = &cpu_map_entry_init[gd->gd_cpuid][0];
+	for (i = 0; i < VMEPERCPU; ++i, ++entry) {
+		entry->next = gd->gd_vme_base;
+		gd->gd_vme_base = entry;
+	}
 }
 
 /*
@@ -404,14 +421,18 @@ vm_map_entry_release(int count)
 /*
  *	vm_map_entry_kreserve:
  *
- *	Reserve map entry structures for use in kernel_map or (if it exists)
- *	kmem_map.  These entries have *ALREADY* been reserved on a per-cpu
- *	basis when the map was inited.  This function is used by zalloc()
- *	to avoid a recursion when zalloc() itself needs to allocate additional
- *	kernel memory.
+ *	Reserve map entry structures for use in kernel_map itself.  These
+ *	entries have *ALREADY* been reserved on a per-cpu basis when the map
+ *	was inited.  This function is used by zalloc() to avoid a recursion
+ *	when zalloc() itself needs to allocate additional kernel memory.
  *
- *	This function should only be used when the caller intends to later
- *	call vm_map_entry_reserve() to 'normalize' the reserve cache.
+ *	This function works like the normal reserve but does not load the
+ *	vm_map_entry cache (because that would result in an infinite
+ *	recursion).  Note that gd_vme_avail may go negative.  This is expected.
+ *
+ *	Any caller of this function must be sure to renormalize after 
+ *	potentially eating entries to ensure that the reserve supply
+ *	remains intact.
  */
 int
 vm_map_entry_kreserve(int count)
@@ -419,23 +440,18 @@ vm_map_entry_kreserve(int count)
 	struct globaldata *gd = mycpu;
 
 	crit_enter();
-	gd->gd_vme_kdeficit += count;
+	gd->gd_vme_avail -= count;
 	crit_exit();
-	KKASSERT(gd->gd_vme_base != NULL);
+	KASSERT(gd->gd_vme_base != NULL, ("no reserved entries left, gd_vme_avail = %d\n", gd->gd_vme_avail));
 	return(count);
 }
 
 /*
  *	vm_map_entry_krelease:
  *
- *	Release previously reserved map entries for kernel_map or kmem_map
- *	use.  This routine determines how many entries were actually used and
- *	replentishes the kernel reserve supply from vme_avail.
- *
- *	If there is insufficient supply vme_avail will go negative, which is
- *	ok.  We cannot safely call zalloc in this function without getting
- *	into a recursion deadlock.  zalloc() will call vm_map_entry_reserve()
- *	to regenerate the lost entries.
+ *	Release previously reserved map entries for kernel_map.  We do not
+ *	attempt to clean up like the normal release function as this would
+ *	cause an unnecessary (but probably not fatal) deep procedure call.
  */
 void
 vm_map_entry_krelease(int count)
@@ -443,9 +459,7 @@ vm_map_entry_krelease(int count)
 	struct globaldata *gd = mycpu;
 
 	crit_enter();
-	gd->gd_vme_kdeficit -= count;
-	gd->gd_vme_avail -= gd->gd_vme_kdeficit;	/* can go negative */
-	gd->gd_vme_kdeficit = 0;
+	gd->gd_vme_avail += count;
 	crit_exit();
 }
 

@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.16 2004/09/18 22:00:37 joerg Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.17 2004/10/26 04:33:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -308,6 +308,10 @@ zget(vm_zone_t z)
 		panic("zget: null zone");
 
 	if (z->zflags & ZONE_INTERRUPT) {
+		/*
+		 * Interrupt zones do not mess with the kernel_map, they
+		 * simply populate an existing mapping.
+		 */
 		nbytes = z->zpagecount * PAGE_SIZE;
 		nbytes -= nbytes % z->zsize;
 		item = (char *) z->zkva + nbytes;
@@ -329,16 +333,37 @@ zget(vm_zone_t z)
 			vmstats.v_wire_count++;
 		}
 		nitems = ((z->zpagecount * PAGE_SIZE) - nbytes) / z->zsize;
-	} else {
+	} else if (z->zflags & ZONE_SPECIAL) {
+		/*
+		 * The special zone is the one used for vm_map_entry_t's.
+		 * We have to avoid an infinite recursion in 
+		 * vm_map_entry_reserve() by using vm_map_entry_kreserve()
+		 * instead.  The map entries are pre-reserved by the kernel
+		 * by vm_map_entry_reserve_cpu_init().
+		 */
 		nbytes = z->zalloc * PAGE_SIZE;
 
-		{
-			item = (void *)kmem_alloc3(kernel_map, nbytes, KM_KRESERVE);
-			/* note: z might be modified due to blocking */
-			if (item != NULL)
-				zone_kern_pages += z->zalloc;
-		}
+		item = (void *)kmem_alloc3(kernel_map, nbytes, KM_KRESERVE);
+
+		/* note: z might be modified due to blocking */
 		if (item != NULL) {
+			zone_kern_pages += z->zalloc;
+			bzero(item, nbytes);
+		} else {
+			nbytes = 0;
+		}
+		nitems = nbytes / z->zsize;
+	} else {
+		/*
+		 * Otherwise allocate KVA from the kernel_map.
+		 */
+		nbytes = z->zalloc * PAGE_SIZE;
+
+		item = (void *)kmem_alloc3(kernel_map, nbytes, 0);
+
+		/* note: z might be modified due to blocking */
+		if (item != NULL) {
+			zone_kern_pages += z->zalloc;
 			bzero(item, nbytes);
 		} else {
 			nbytes = 0;
@@ -377,10 +402,12 @@ zget(vm_zone_t z)
 	}
 
 	/*
-	 * Recover any reserve missing due to a zalloc/kreserve/krelease
-	 * recursion.
+	 * A special zone may have used a kernel-reserved vm_map_entry.  If
+	 * so we have to be sure to recover our reserve so we don't run out.
+	 * We will panic if we run out.
 	 */
-	vm_map_entry_reserve(0);
+	if (z->zflags & ZONE_SPECIAL)
+		vm_map_entry_reserve(0);
 
 	return item;
 }
