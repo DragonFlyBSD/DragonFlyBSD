@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: /src/usr.bin/newgrp/newgrp.c,v 1.2 2003/10/30 15:14:34 harti Exp $
- * $DragonFly: src/usr.bin/newgrp/newgrp.c,v 1.1 2004/11/23 16:26:04 liamfoy Exp $
+ * $DragonFly: src/usr.bin/newgrp/newgrp.c,v 1.2 2004/12/08 22:00:32 liamfoy Exp $
  */
 
 /*
@@ -275,9 +275,15 @@ loginshell(void)
 	setusercontext(lc, pwd, pwd->pw_uid,
 	    LOGIN_SETPATH|LOGIN_SETUMASK|LOGIN_SETENV);
 	login_close(lc);
-	setenv("USER", pwd->pw_name, 1);
-	setenv("SHELL", shell, 1);
-	setenv("HOME", pwd->pw_dir, 1);
+	if (setenv("USER", pwd->pw_name, 1) == -1)
+		err(EXIT_FAILURE, "setenv failed");
+
+	if (setenv("SHELL", shell, 1) == -1)
+		err(EXIT_FAILURE, "setenv failed");
+
+	if (setenv("HOME", pwd->pw_dir, 1) == -1)
+		err(EXIT_FAILURE, "setenv failed");
+
 	if (term != NULL)
 		setenv("TERM", term, 1);
 	if (ticket != NULL)
