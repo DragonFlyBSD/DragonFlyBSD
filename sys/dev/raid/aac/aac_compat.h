@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aac/aac_compat.h,v 1.2.2.2 2001/09/19 19:09:11 scottl Exp $
- * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.3 2003/06/19 01:54:56 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/aac/Attic/aac_compat.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
  */
 /*
  * Backwards compatibility support.
@@ -35,7 +35,7 @@
  * Handle the new/old bio/buf changeover
  */
 
-#if __FreeBSD_version < 500003		/* old buf style */
+#if defined(__DragonFly__) || __FreeBSD_version < 500003		/* old buf style */
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/buf2.h>

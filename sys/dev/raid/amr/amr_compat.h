@@ -53,13 +53,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_compat.h,v 1.2.2.4 2002/11/11 13:19:10 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.3 2003/06/19 01:54:58 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_compat.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
  */
 /*
  * Backwards compatibility support.
  */
 
-#if __FreeBSD_version < 500003		/* old buf style */
+#if defined(__DragonFly__) || __FreeBSD_version < 500003		/* old buf style */
 # include <sys/proc.h>
 # include <sys/buf.h>
 # include <machine/clock.h>
@@ -99,7 +99,7 @@
 /************************************************************************
  * Compatibility with older versions of FreeBSD
  */
-#if __FreeBSD_version < 440001
+#if defined(__FreeBSD__) && __FreeBSD_version < 440001
 typedef struct proc     d_thread_t;
 #define M_ZERO          0x0008          /* bzero the allocation */
 #endif

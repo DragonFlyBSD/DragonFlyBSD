@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.3 2004/02/13 01:33:19 joerg Exp $
  */
 
 /********************************************************************************
@@ -53,11 +53,11 @@
  ********************************************************************************
  ********************************************************************************/
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 # include <sys/taskqueue.h>
 #endif
 
-#if __FreeBSD_version <= 500014
+#if defined(__DragonFly__) || __FreeBSD_version <= 500014
 # include <machine/clock.h>
 # undef offsetof
 # define offsetof(type, field) ((size_t)(&((type *)0)->field))
@@ -225,7 +225,7 @@ struct mly_softc {
     struct cam_sim		*mly_cam_sim[MLY_MAX_CHANNELS];
     int				mly_cam_lowbus;
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     /* command-completion task */
     struct task		mly_task_complete;	/* deferred-completion task */
 #endif

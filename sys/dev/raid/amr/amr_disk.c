@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.6 2003/10/13 06:56:13 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.7 2004/02/13 01:33:19 joerg Exp $
  */
 
 /*
@@ -136,7 +136,7 @@ static int
 amrd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
 {
     struct amrd_softc	*sc = (struct amrd_softc *)dev->si_drv1;
-#if __FreeBSD_version < 500000		/* old buf style */
+#if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
     struct disklabel    *label;
 #endif
 
@@ -149,7 +149,7 @@ amrd_open(dev_t dev, int flags, int fmt, d_thread_t *td)
     if (sc->amrd_controller->amr_state & AMR_STATE_SHUTDOWN)
 	return(ENXIO);
 
-#if __FreeBSD_version < 500000		/* old buf style */
+#if defined(__DragonFly__) || __FreeBSD_version < 500000		/* old buf style */
     label = &sc->amrd_disk.d_label;
     bzero(label, sizeof(*label));
     label->d_type       = DTYPE_SCSI;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.6 2003/08/07 21:17:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.7 2004/02/13 01:33:19 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ mly_attach(struct mly_softc *sc)
     mly_initq_busy(sc);
     mly_initq_complete(sc);
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     /*
      * Initialise command-completion task.
      */
@@ -1033,7 +1033,7 @@ mly_done(struct mly_softc *sc)
 
     splx(s);
     if (worked) {
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	if (sc->mly_state & MLY_STATE_INTERRUPTS_ON)
 	    taskqueue_enqueue(taskqueue_swi, &sc->mly_task_complete);
 	else

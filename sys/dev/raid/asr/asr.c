@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.11 2003/11/20 22:07:33 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.12 2004/02/13 01:33:19 joerg Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -335,7 +335,7 @@ typedef struct Asr_softc {
         LIST_HEAD(,ccb_hdr)     ha_ccb;        /* ccbs in use              */
         struct cam_path       * ha_path[MAX_CHANNEL+1];
         struct cam_sim        * ha_sim[MAX_CHANNEL+1];
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
         struct resource       * ha_mem_res;
         struct resource       * ha_mes_res;
         struct resource       * ha_irq_res;
@@ -420,7 +420,7 @@ STATIC Asr_softc_t * Asr_softc;
  */
 
 /* Externally callable routines */
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
 #define PROBE_ARGS  IN device_t tag
 #define PROBE_RET   int
 #define PROBE_SET() u_long id = (pci_get_device(tag)<<16)|pci_get_vendor(tag)
@@ -487,7 +487,7 @@ STATIC void           asr_poll (
  *      Here is the auto-probe structure used to nest our tests appropriately
  *      during the startup phase of the operating system.
  */
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
 STATIC device_method_t asr_methods[] = {
         DEVMETHOD(device_probe,  asr_probe),
         DEVMETHOD(device_attach, asr_attach),
@@ -2551,7 +2551,7 @@ asr_hbareset(
  */
 STATIC int
 asr_pci_map_mem (
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
         IN device_t      tag,
 #else
         IN pcici_t       tag,
@@ -2561,7 +2561,7 @@ asr_pci_map_mem (
         int              rid;
         u_int32_t        p, l, s;
 
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
         /*
          * I2O specification says we must find first *memory* mapped BAR
          */
@@ -2804,14 +2804,14 @@ asr_pci_map_mem (
  */
 STATIC int
 asr_pci_map_int (
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
         IN device_t      tag,
 #else
         IN pcici_t       tag,
 #endif
         IN Asr_softc_t * sc)
 {
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
         int              rid = 0;
 
         sc->ha_irq_res = bus_alloc_resource(tag, SYS_RES_IRQ, &rid,
@@ -2891,7 +2891,7 @@ asr_attach (ATTACH_ARGS)
                         ATTACH_RETURN(ENXIO);
                 }
                 /* Enable if not formerly enabled */
-#if __FreeBSD_version >= 400000
+#if defined(__DragonFly__) || __FreeBSD_version >= 400000
                 pci_write_config (tag, PCIR_COMMAND,
                   pci_read_config (tag, PCIR_COMMAND, sizeof(char))
                   | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN, sizeof(char));

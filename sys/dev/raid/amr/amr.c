@@ -53,7 +53,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/amr/amr.c,v 1.7.2.13 2003/01/15 13:41:18 emoore Exp $
- *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.7 2003/11/20 22:07:33 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/amr/amr.c,v 1.8 2004/02/13 01:33:19 joerg Exp $
  */
 
 /*
@@ -207,7 +207,7 @@ amr_attach(struct amr_softc *sc)
     TAILQ_INIT(&sc->amr_ready);
     bioq_init(&sc->amr_bioq);
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     /*
      * Initialise command-completion task.
      */
@@ -1375,7 +1375,7 @@ amr_done(struct amr_softc *sc)
 	amr_startio(sc);
     
     /* handle completion and timeouts */
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     if (sc->amr_state & AMR_STATE_INTEN) 
 	taskqueue_enqueue(taskqueue_swi, &sc->amr_task_complete);
     else

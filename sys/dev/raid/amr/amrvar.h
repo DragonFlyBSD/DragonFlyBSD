@@ -53,10 +53,10 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/amr/amrvar.h,v 1.2.2.5 2002/12/20 15:12:04 emoore Exp $
- *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.3 2003/10/13 06:56:13 hmp Exp $
+ *      $DragonFly: src/sys/dev/raid/amr/amrvar.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
  */
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 # include <sys/taskqueue.h>
 #endif
 
@@ -217,7 +217,7 @@ struct amr_softc
     /* misc glue */
     struct intr_config_hook	amr_ich;		/* wait-for-interrupts probe hook */
     struct callout_handle	amr_timeout;		/* periodic status check */
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
     struct task			amr_task_complete;	/* deferred-completion task */
 #endif
 };

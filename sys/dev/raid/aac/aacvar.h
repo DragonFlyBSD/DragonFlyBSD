@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aacvar.h,v 1.4.2.7 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.4 2003/07/06 21:23:47 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aacvar.h,v 1.5 2004/02/13 01:33:19 joerg Exp $
  */
 
 /*
@@ -95,7 +95,7 @@
  * Driver Variable Definitions
  */
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 # include <sys/taskqueue.h>
 #endif
 
@@ -251,7 +251,7 @@ extern struct aac_interface	aac_fa_interface;
 TAILQ_HEAD(aac_container_tq, aac_container);
 
 /* Define the OS version specific locks */
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 #include <sys/lock.h>
 #include <sys/mutex.h>
 typedef struct mtx aac_lock_t;
@@ -265,7 +265,7 @@ typedef struct lwkt_token aac_lock_t;
 #define AAC_LOCK_RELEASE(l)	lwkt_reltoken(l)
 #endif
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -342,7 +342,7 @@ struct aac_softc
 	aac_lock_t		aac_sync_lock;
 
 	/* delayed activity infrastructure */
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	struct task		aac_task_complete;	/* deferred-completion
 							 * task */
 #endif

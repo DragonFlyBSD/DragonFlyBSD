@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.9 2003/11/20 22:07:33 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.10 2004/02/13 01:33:18 joerg Exp $
  */
 
 /*
@@ -44,7 +44,7 @@
 #include <sys/kthread.h>
 #include <sys/sysctl.h>
 #include <sys/poll.h>
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
@@ -240,7 +240,7 @@ aac_attach(struct aac_softc *sc)
 	aac_initq_complete(sc);
 	aac_initq_bio(sc);
 
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	/*
 	 * Initialise command-completion task.
 	 */
@@ -298,14 +298,14 @@ aac_attach(struct aac_softc *sc)
 	unit = device_get_unit(sc->aac_dev);
 	sc->aac_dev_t = make_dev(&aac_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
 				 "aac%d", unit);
-#if __FreeBSD_version > 500005
+#if defined(__FreeBSD__) && __FreeBSD_version > 500005
 	(void)make_dev_alias(sc->aac_dev_t, "afa%d", unit);
 	(void)make_dev_alias(sc->aac_dev_t, "hpn%d", unit);
 #endif
 	sc->aac_dev_t->si_drv1 = sc;
 
 	/* Create the AIF thread */
-#if __FreeBSD_version > 500005
+#if defined(__FreeBSD__) && __FreeBSD_version > 500005
 	if (kthread_create((void(*)(void *))aac_host_command, sc,
 			   &sc->aifthread, 0, "aac%daif", unit))
 #else
@@ -792,7 +792,7 @@ aac_host_command(struct aac_softc *sc)
 	sc->aifflags &= ~AAC_AIFFLAGS_RUNNING;
 	wakeup(sc->aac_dev);
 
-#if __FreeBSD_version > 500005
+#if defined(__FreeBSD__) && __FreeBSD_version > 500005
 	mtx_lock(&Giant);
 #endif
 	kthread_exit();
@@ -828,7 +828,7 @@ aac_host_response(struct aac_softc *sc)
 	}
 
 	/* handle completion processing */
-#if __FreeBSD_version >= 500005
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500005
 	taskqueue_enqueue(taskqueue_swi, &sc->aac_task_complete);
 #else
 	aac_complete(sc, 0);

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac_disk.c,v 1.3.2.8 2003/01/11 18:39:39 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.5 2003/08/07 21:17:07 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac_disk.c,v 1.6 2004/02/13 01:33:19 joerg Exp $
  */
 
 #include "opt_aac.h"
@@ -310,7 +310,7 @@ aac_biodone(struct bio *bp)
 	devstat_end_transaction_bio(&sc->ad_stats, bp);
 	if (bp->bio_flags & BIO_ERROR) {
 		blkno = (sc->ad_label.d_nsectors) ? 0 : -1;
-#if __FreeBSD_version > 500005
+#if defined(__FreeBSD__) && __FreeBSD_version > 500005
 		diskerr(bp, (char *)bp->bio_driver1, blkno, &sc->ad_label);
 #else
 		diskerr(bp, (char *)bp->bio_driver1, 0, blkno, &sc->ad_label);

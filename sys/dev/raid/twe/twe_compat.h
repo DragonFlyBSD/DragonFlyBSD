@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.3 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.6 2004/02/12 00:00:19 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.7 2004/02/13 01:33:19 joerg Exp $
  */
 /*
  * Portability and compatibility interfaces.
@@ -134,7 +134,7 @@
 #define twe_printf(sc, fmt, args...)	device_printf(sc->twe_dev, fmt , ##args)
 #define twed_printf(twed, fmt, args...)	device_printf(twed->twed_dev, fmt , ##args)
 
-#if __FreeBSD_version < 500003
+#if defined(__DragonFly__) || __FreeBSD_version < 500003
 # include <machine/clock.h>
 # define INTR_ENTROPY			0
 

@@ -25,13 +25,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mlx/mlx_compat.h,v 1.1.2.1 2001/06/25 04:37:51 msmith Exp $
- * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.3 2003/06/19 01:55:04 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/mlx/mlx_compat.h,v 1.4 2004/02/13 01:33:19 joerg Exp $
  */
 /*
  * Portability and compatibility interfaces.
  */
 
-#if __FreeBSD_version < 500003
+#if defined(__DragonFly__) || __FreeBSD_version < 500003
 # include <machine/clock.h>
 # define INTR_ENTROPY			0
 
