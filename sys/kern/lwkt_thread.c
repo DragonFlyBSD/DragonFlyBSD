@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.31 2003/09/25 23:49:09 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.32 2003/09/28 03:37:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -999,6 +999,10 @@ lwkt_gettoken(lwkt_token_t tok)
 
     crit_enter();
 #ifdef INVARIANTS
+    if (curthread->td_pri > 1800) {
+	printf("lwkt_gettoken: %p called from %p: crit sect nesting warning\n",
+	    tok, ((int **)&tok)[-1]);
+    }
     if (curthread->td_pri > 2000) {
 	curthread->td_pri = 1000;
 	panic("too HIGH!");
