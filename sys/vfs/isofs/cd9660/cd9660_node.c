@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.13 2004/10/12 19:20:58 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.14 2005/02/14 16:11:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,8 @@
 #include "cd9660_node.h"
 #include "cd9660_mount.h"
 
+#define CD9660_HASH_SIZE_LIMIT	8192
+
 /*
  * Structures associated with iso_node caching.
  */
@@ -67,13 +69,20 @@ static void cd9660_ihashrem (struct iso_node *);
 static unsigned	cd9660_chars2ui (unsigned char *begin, int len);
 
 /*
- * Initialize hash links for inodes and dnodes.
+ * Initialize hash links for inodes and dnodes.  CDs and DVDs are small
+ * and slow compared to hard disks, there is no need to have a huge hash
+ * table so the size is capped at CD9660_HASH_SIZE_LIMIT.
  */
 int
 cd9660_init(struct vfsconf *vfsp)
 {
+	int hlimit;
+
+	if ((hlimit = desiredvnodes) < CD9660_HASH_SIZE_LIMIT)
+		hlimit = CD9660_HASH_SIZE_LIMIT;
+
 	isohash = 16;
-	while (isohash < desiredvnodes)
+	while (isohash < hlimit)
 		isohash <<= 1;
 	isohashtbl = malloc(sizeof(void *) * isohash,
 			    M_ISOFSMNT, M_WAITOK|M_ZERO);
