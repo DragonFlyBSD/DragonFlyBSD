@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.82 2005/02/11 22:34:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.83 2005/02/11 22:52:23 okumoto Exp $
  */
 
 /*-
@@ -879,6 +879,9 @@ VarREError(int err, regex_t *pat, const char *str)
  * Side Effects:
  *	None.
  *
+ * Assumption:
+ *	It is assumed that Var_Parse() is called with str[0] == '$'.
+ *
  *-----------------------------------------------------------------------
  */
 char *
@@ -897,10 +900,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 				 * expanding it in a non-local context. This
 				 * is done to support dynamic sources. The
 				 * result is just the invocation, unaltered */
-
-    /*
-     * It is assumed that Var_Parse() is called with str[0] == '$'
-     */
 
     if (str[1] == '\0') {
 	/*
