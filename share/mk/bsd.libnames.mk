@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.8 2004/12/18 17:28:05 asmodai Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.9 2005/01/11 14:36:49 joerg Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -43,7 +43,6 @@ LIBGPLUSPLUS?=	${DESTDIR}${GCCLIBDIR}/libg++.a
 LIBG2C?=	${DESTDIR}${LIBDIR}/libg2c.a
 LIBGCC?=	${DESTDIR}${GCCLIBDIR}/libgcc.a
 LIBGCC_PIC?=	${DESTDIR}${GCCLIBDIR}/libgcc_pic.a
-LIBGMP?=	${DESTDIR}${LIBDIR}/libgmp.a
 LIBGNUREGEX?=	${DESTDIR}${LIBDIR}/libgnuregex.a
 LIBGSSAPI?=	${DESTDIR}${LIBDIR}/libgssapi.a	# XXX in secure dist, not base
 LIBHISTORY?=	${DESTDIR}${LIBDIR}/libhistory.a
@@ -66,7 +65,6 @@ LIBMENU?=	${DESTDIR}${LIBDIR}/libmenu.a
 .if !defined(NO_SENDMAIL)
 LIBMILTER?=	${DESTDIR}${LIBDIR}/libmilter.a
 .endif
-LIBMP?=		${DESTDIR}${LIBDIR}/libmp.a
 LIBMYTINFO?=	${DESTDIR}${LIBDIR}/libmytinfo.a
 LIBNCP?=	${DESTDIR}${LIBDIR}/libncp.a
 LIBNCURSES?=	${DESTDIR}${LIBDIR}/libncurses.a
