@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.7 2004/07/16 09:10:50 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.8 2004/07/16 09:42:50 asmodai Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -183,6 +183,10 @@ fwohci_pci_probe( device_t dev )
 	}
 	if (id == (FW_VENDORID_LUCENT | FW_DEVICE_FW322)) {
 		device_set_desc(dev, "Lucent FW322/323");
+		return 0;
+	}
+	if (id == (FW_VENDORID_INTEL | FW_DEVICE_82372FB)) {
+		device_set_desc(dev, "Intel 82372FB");
 		return 0;
 	}
 #endif
