@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: emit2.c,v 1.2 1995/07/03 21:24:44 cgd Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/emit2.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #include <err.h>

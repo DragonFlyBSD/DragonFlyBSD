@@ -27,6 +27,7 @@
  * Mountain View, California  94043
  *
  * @(#)rpc_hout.c 1.12 89/02/22 (C) 1987 SMI
+ * $DragonFly: src/usr.bin/rpcgen/rpc_hout.c,v 1.3 2003/11/03 19:14:35 eirikn Exp $
  */
 
 #ident	"@(#)rpc_hout.c	1.16	94/04/25 SMI"

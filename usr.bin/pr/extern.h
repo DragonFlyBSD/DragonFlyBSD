@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  *      @(#)extern.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/pr/extern.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
  */
 
 extern int eoptind;

@@ -1,3 +1,6 @@
+/*
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.h,v 1.2 2003/11/03 19:14:36 eirikn Exp $
+ */
 
 extern void setmodulus __P((char *modx));
 

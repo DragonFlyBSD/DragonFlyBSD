@@ -25,6 +25,7 @@
  * Sun Microsystems, Inc.
  * 2550 Garcia Avenue
  * Mountain View, California  94043
+ * $DragonFly: src/usr.bin/rpcgen/rpc_sample.c,v 1.2 2003/11/03 19:14:35 eirikn Exp $
  */
 
 #pragma ident	"@(#)rpc_sample.c	1.9	94/04/25 SMI" 

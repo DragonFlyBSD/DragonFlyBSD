@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: tree.c,v 1.12 1995/10/02 17:37:57 jpo Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/tree.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #include <stdlib.h>

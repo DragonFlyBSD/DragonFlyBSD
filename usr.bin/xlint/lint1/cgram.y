@@ -32,6 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: cgram.y,v 1.8 1995/10/02 17:31:35 jpo Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/cgram.y,v 1.3 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #include <stdlib.h>

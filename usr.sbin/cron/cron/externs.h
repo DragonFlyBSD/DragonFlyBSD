@@ -13,6 +13,8 @@
  * Send bug reports, bug fixes, enhancements, requests, flames, etc., and
  * I'll try to keep a version up to date.  I can be reached as follows:
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
+ *
+ * $DragonFly: src/usr.sbin/cron/cron/externs.h,v 1.2 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #if defined(POSIX) || defined(ATT)

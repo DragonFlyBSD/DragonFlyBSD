@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)pw_util.h	8.2 (Berkeley) 4/1/94
+ * $DragonFly: src/usr.sbin/vipw/pw_util.h,v 1.2 2003/11/03 19:14:37 eirikn Exp $
  */
 
 void	pw_edit __P((int));

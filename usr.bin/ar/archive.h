@@ -34,6 +34,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)archive.h	8.3 (Berkeley) 4/2/94
+ * $DragonFly: src/usr.bin/ar/Attic/archive.h,v 1.2 2003/11/03 19:14:34 eirikn Exp $
  */
 
 /* Ar(1) options. */

@@ -73,6 +73,7 @@ Research Laboratory (NRL).
 
 /*
  *	$ANA: keyadmin.c,v 1.2 1996/06/13 19:42:40 wollman Exp $
+ * $DragonFly: src/usr.sbin/keyadmin/keyadmin.c,v 1.2 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #include <sys/types.h>

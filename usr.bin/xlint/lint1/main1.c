@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: main1.c,v 1.3 1995/10/02 17:29:56 jpo Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/main1.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
  */
 
 #include <stdio.h>

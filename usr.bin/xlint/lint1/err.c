@@ -31,6 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: err.c,v 1.8 1995/10/02 17:37:00 jpo Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/err.c,v 1.3 2003/11/03 19:14:36 eirikn Exp $
  */
 
 /* number of errors found */

@@ -32,6 +32,7 @@
  *
  * @(#) Copyright (c) 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rev.c	8.3 (Berkeley) 5/4/95
+ * $DragonFly: src/usr.bin/rev/rev.c,v 1.3 2003/11/03 19:14:35 eirikn Exp $
  */
 
 #include <sys/types.h>

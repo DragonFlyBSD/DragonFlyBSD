@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)tftpsubs.h	8.1 (Berkeley) 6/6/93
+ * $DragonFly: src/usr.bin/tftp/tftpsubs.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
  */
 
 /*

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)chpass.h	8.4 (Berkeley) 4/2/94
+ * $DragonFly: src/usr.bin/chpass/chpass.h,v 1.2 2003/11/03 19:14:35 eirikn Exp $
  */
 
 struct passwd;
