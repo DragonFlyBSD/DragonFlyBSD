@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.85 2005/02/13 10:03:11 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.86 2005/02/13 10:05:07 okumoto Exp $
  */
 
 /*-
@@ -1066,17 +1066,25 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * No modifiers -- have specification length so we can return
 		 * now.
 		 */
-		*lengthPtr = tstr - start + 1;
-		*tstr = endc;
 		if (dynamic) {
-		    str = emalloc(*lengthPtr + 1);
-		    strncpy(str, start, *lengthPtr);
-		    str[*lengthPtr] = '\0';
+		    char	*result;
+		    size_t	rlen = tstr - start + 1;
+
+		    result = emalloc(rlen + 1);
+		    strncpy(result, start, rlen);
+		    result[rlen] = '\0';
+
 		    *freePtr = TRUE;
+		    *lengthPtr = rlen;
+		    *tstr = endc;
+
 		    Buf_Destroy(buf, TRUE);
-		    return (str);
+		    return (result);
 		} else {
 		    *freePtr = FALSE;
+		    *lengthPtr = tstr - start + 1;
+		    *tstr = endc;
+
 		    Buf_Destroy(buf, TRUE);
 		    return (err ? var_Error : varNoError);
 		}
