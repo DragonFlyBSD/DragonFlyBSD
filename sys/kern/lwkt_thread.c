@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.6 2003/06/27 03:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.7 2003/06/27 20:27:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -332,7 +332,7 @@ lwkt_schedule(thread_t td)
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
-		if (td->td_cpu == mycpu->gd_cpu) {
+		if (td->td_cpu == mycpu->gd_cpuid) {
 		    _lwkt_enqueue(td);
 		} else {
 		    panic("lwkt_schedule: cpu mismatch1");
@@ -357,7 +357,7 @@ lwkt_schedule(thread_t td)
 	     * do not own the thread there might be a race but the
 	     * target cpu will deal with it.
 	     */
-	    if (td->td_cpu == mycpu->gd_cpu) {
+	    if (td->td_cpu == mycpu->gd_cpuid) {
 		_lwkt_enqueue(td);
 	    } else {
 		panic("lwkt_schedule: cpu mismatch3");
@@ -402,7 +402,7 @@ lwkt_deschedule(thread_t td)
     if (td == curthread) {
 	_lwkt_dequeue(td);
     } else {
-	if (td->td_cpu == mycpu->gd_cpu) {
+	if (td->td_cpu == mycpu->gd_cpuid) {
 	    _lwkt_dequeue(td);
 	} else {
 	    panic("lwkt_deschedule: cpu mismatch");
@@ -469,7 +469,7 @@ lwkt_signal(lwkt_wait_t w)
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_wait = NULL;
 	td->td_wmesg = NULL;
-	if (td->td_cpu == mycpu->gd_cpu) {
+	if (td->td_cpu == mycpu->gd_cpuid) {
 	    _lwkt_enqueue(td);
 	} else {
 #if 0
@@ -507,7 +507,7 @@ lwkt_gettoken(lwkt_token_t tok)
      */
     crit_enter();
 #if 0
-    while (tok->t_cpu != mycpu->gd_cpu) {
+    while (tok->t_cpu != mycpu->gd_cpuid) {
 	lwkt_cpu_msg_union msg;
 	initTokenReqMsg(&msg.mu_TokenReq);
 	cpu_domsg(&msg);
@@ -533,7 +533,7 @@ lwkt_gettoken(lwkt_token_t tok)
 void
 lwkt_reltoken(lwkt_token_t tok)
 {
-    if (tok->t_cpu == mycpu->gd_cpu) {
+    if (tok->t_cpu == mycpu->gd_cpuid) {
 	tok->t_cpu = tok->t_reqcpu;
     }
     crit_exit();
@@ -548,8 +548,8 @@ int
 lwkt_regettoken(lwkt_token_t tok)
 {
 #if 0
-    if (tok->t_cpu != mycpu->gd_cpu) {
-	while (tok->t_cpu != mycpu->gd_cpu) {
+    if (tok->t_cpu != mycpu->gd_cpuid) {
+	while (tok->t_cpu != mycpu->gd_cpuid) {
 	    lwkt_cpu_msg_union msg;
 	    initTokenReqMsg(&msg.mu_TokenReq);
 	    cpu_domsg(&msg);

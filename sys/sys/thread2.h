@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.1 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.2 2003/06/27 20:27:19 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -83,7 +83,7 @@ lwkt_setpri(int pri)
 static __inline int
 lwkt_havetoken(lwkt_token_t tok)
 {
-    return (tok->t_cpu == mycpu->gd_cpu);
+    return (tok->t_cpu == mycpu->gd_cpuid);
 }
 
 #endif
