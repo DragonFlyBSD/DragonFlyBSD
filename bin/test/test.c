@@ -10,7 +10,7 @@
  * This program is in the Public Domain.
  *
  * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.6 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.7 2004/11/07 19:42:16 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -33,22 +33,11 @@
 static void error(const char *, ...) __attribute__((__noreturn__));
 
 static void
-#ifdef __STDC__
 error(const char *msg, ...)
-#else
-error(va_alist)
-	va_dcl
-#endif
 {
 	va_list ap;
-#ifndef __STDC__
-	const char *msg;
 
-	va_start(ap);
-	msg = va_arg(ap, const char *);
-#else
 	va_start(ap, msg);
-#endif
 	verrx(2, msg, ap);
 	/*NOTREACHED*/
 	va_end(ap);
@@ -216,8 +205,8 @@ main(int argc, char **argv)
 	euid = geteuid();
 	gid = getgid();
 	uid = getuid();
-	(void)setregid(egid, gid);
-	(void)setreuid(euid, uid);
+	setregid(egid, gid);
+	setreuid(euid, uid);
 
 	nargc = argc;
 	t_wp = &argv[1];
@@ -225,8 +214,8 @@ main(int argc, char **argv)
 
 	if (--nargc > 0)
 		syntax(*t_wp, "unexpected operator");
-	(void)setregid(gid, egid);
-	(void)setreuid(uid, euid);
+	setregid(gid, egid);
+	setreuid(uid, euid);
 
 	return res;
 }
@@ -325,7 +314,7 @@ binop(void)
 	struct t_op const *op;
 
 	opnd1 = *t_wp;
-	(void) t_lex(nargc > 0 ? (--nargc, *++t_wp) : NULL);
+	t_lex(nargc > 0 ? (--nargc, *++t_wp) : NULL);
 	op = t_wp_op;
 
 	if ((opnd2 = nargc > 0 ? (--nargc, *++t_wp) : NULL) == NULL)
