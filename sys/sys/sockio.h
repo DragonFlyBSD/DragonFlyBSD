@@ -32,7 +32,7 @@
  *
  *	@(#)sockio.h	8.1 (Berkeley) 3/28/94
  * $FreeBSD: src/sys/sys/sockio.h,v 1.14.2.6 2002/02/07 15:12:37 ambrisko Exp $
- * $DragonFly: src/sys/sys/sockio.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/sockio.h,v 1.3 2004/03/15 22:37:41 hmp Exp $
  */
 
 #ifndef	_SYS_SOCKIO_H_
@@ -80,6 +80,7 @@
 #define	SIOCDLIFADDR	 _IOW('i', 29, struct if_laddrreq) /* delete IF addr */
 #define	SIOCSIFCAP	 _IOW('i', 30, struct ifreq)	/* set IF features */
 #define	SIOCGIFCAP	_IOWR('i', 31, struct ifreq)	/* get IF features */
+#define	SIOCSIFNAME	_IOW('i', 40, struct ifreq)	/* set IF name */
 
 #define	SIOCADDMULTI	 _IOW('i', 49, struct ifreq)	/* add m'cast addr */
 #define	SIOCDELMULTI	 _IOW('i', 50, struct ifreq)	/* del m'cast addr */

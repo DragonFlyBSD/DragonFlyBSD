@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
- * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.13 2004/03/04 10:29:23 hsu Exp $
+ * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
+ * $DragonFly: src/sys/net/if.c,v 1.14 2004/03/15 22:37:40 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -999,6 +999,10 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 	int error;
 	short oif_flags;
 	int new_flags;
+	size_t namelen, onamelen;
+	char new_name[IFNAMSIZ];
+	struct ifaddr *ifa;
+	struct sockaddr_dl *sdl;
 
 	switch (cmd) {
 
@@ -1090,6 +1094,48 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			return (EINVAL);
 		(void) (*ifp->if_ioctl)(ifp, cmd, data);
 		break;
+
+ 	case SIOCSIFNAME:
+ 		error = suser(td);
+ 		if (error != 0)
+ 			return (error);
+ 		error = copyinstr(ifr->ifr_data, new_name, IFNAMSIZ, NULL);
+ 		if (error != 0)
+ 			return (error);
+		if (new_name[0] == '\0')
+			return (EINVAL);
+ 		if (ifunit(new_name) != NULL)
+ 			return (EEXIST);
+ 		
+ 		/* Announce the departure of the interface. */
+ 		rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+ 
+ 		strlcpy(ifp->if_xname, new_name, sizeof(ifp->if_xname));
+ 		ifa = TAILQ_FIRST(&ifp->if_addrhead);
+ 		/* XXX IFA_LOCK(ifa); */
+ 		sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+ 		namelen = strlen(new_name);
+ 		onamelen = sdl->sdl_nlen;
+ 		/*
+ 		 * Move the address if needed.  This is safe because we
+ 		 * allocate space for a name of length IFNAMSIZ when we
+ 		 * create this in if_attach().
+ 		 */
+ 		if (namelen != onamelen) {
+ 			bcopy(sdl->sdl_data + onamelen,
+ 			    sdl->sdl_data + namelen, sdl->sdl_alen);
+ 		}
+ 		bcopy(new_name, sdl->sdl_data, namelen);
+ 		sdl->sdl_nlen = namelen;
+ 		sdl = (struct sockaddr_dl *)ifa->ifa_netmask;
+ 		bzero(sdl->sdl_data, onamelen);
+ 		while (namelen != 0)
+ 			sdl->sdl_data[--namelen] = 0xff;
+ 		/* XXX IFA_UNLOCK(ifa) */
+ 
+ 		/* Announce the return of the interface. */
+ 		rt_ifannouncemsg(ifp, IFAN_ARRIVAL);
+ 		break;
 
 	case SIOCSIFMETRIC:
 		error = suser(td);
