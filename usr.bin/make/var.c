@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.125 2005/03/04 23:43:33 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.126 2005/03/04 23:44:37 okumoto Exp $
  */
 
 /*-
@@ -1019,178 +1019,166 @@ ParseModifier(const char input[], char tstr[],
 			break;
 		}
 		case 'S':
-		{
-		    VarPattern 	    pattern;
-		    char	    del;
-		    Buffer  	    *buf;    	/* Buffer for patterns */
+{
+	VarPattern pattern;
+	char    del;
+	Buffer *buf;		/* Buffer for patterns */
 
-		    pattern.flags = 0;
-		    del = tstr[1];
-		    tstr += 2;
+	pattern.flags = 0;
+	del = tstr[1];
+	tstr += 2;
 
-		    /*
-		     * If pattern begins with '^', it is anchored to the
-		     * start of the word -- skip over it and flag pattern.
-		     */
-		    if (*tstr == '^') {
-			pattern.flags |= VAR_MATCH_START;
-			tstr += 1;
-		    }
+	/*
+	 * If pattern begins with '^', it is anchored to the start of the
+	 * word -- skip over it and flag pattern.
+	 */
+	if (*tstr == '^') {
+		pattern.flags |= VAR_MATCH_START;
+		tstr += 1;
+	}
+	buf = Buf_Init(0);
 
-		    buf = Buf_Init(0);
-
-		    /*
-		     * Pass through the lhs looking for 1) escaped delimiters,
-		     * '$'s and backslashes (place the escaped character in
-		     * uninterpreted) and 2) unescaped $'s that aren't before
-		     * the delimiter (expand the variable substitution).
-		     * The result is left in the Buffer buf.
-		     */
-		    for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
-			if ((*cp == '\\') &&
-			    ((cp[1] == del) ||
-			     (cp[1] == '$') ||
-			     (cp[1] == '\\')))
-			{
-			    Buf_AddByte(buf, (Byte)cp[1]);
-			    cp++;
-			} else if (*cp == '$') {
-			    if (cp[1] != del) {
+	/*
+	 * Pass through the lhs looking for 1) escaped delimiters, '$'s and
+	 * backslashes (place the escaped character in uninterpreted) and 2)
+	 * unescaped $'s that aren't before the delimiter (expand the
+	 * variable substitution). The result is left in the Buffer buf.
+	 */
+	for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
+		if ((*cp == '\\') &&
+		    ((cp[1] == del) ||
+		     (cp[1] == '$') ||
+		     (cp[1] == '\\'))) {
+			Buf_AddByte(buf, (Byte) cp[1]);
+			cp++;
+		} else if (*cp == '$') {
+			if (cp[1] != del) {
 				/*
 				 * If unescaped dollar sign not before the
 				 * delimiter, assume it's a variable
 				 * substitution and recurse.
 				 */
-				char	*cp2;
-				size_t	len;
-				Boolean	freeIt;
+				char   *cp2;
+				size_t  len;
+				Boolean freeIt;
 
 				len = 0;
 				cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
 				Buf_Append(buf, cp2);
 				if (freeIt) {
-				    free(cp2);
+					free(cp2);
 				}
 				cp += len - 1;
-			    } else {
+			} else {
 				/*
 				 * Unescaped $ at end of pattern => anchor
 				 * pattern at end.
 				 */
 				pattern.flags |= VAR_MATCH_END;
-			    }
-			} else {
-			    Buf_AddByte(buf, (Byte)*cp);
 			}
-		    }
-
-		    Buf_AddByte(buf, (Byte)'\0');
-
-		    /*
-		     * If lhs didn't end with the delimiter, complain and
-		     * exit.
-		     */
-		    if (*cp != del) {
-			Fatal("Unclosed substitution for %s (%c missing)",
-			      v->name, del);
-		    }
-
-		    /*
-		     * Fetch pattern and destroy buffer, but preserve the data
-		     * in it, since that's our lhs. Note that Buf_GetAll
-		     * will return the actual number of bytes, which includes
-		     * the null byte, so we have to decrement the length by
-		     * one.
-		     */
-		    pattern.lhs = (char *)Buf_GetAll(buf, &pattern.leftLen);
-		    pattern.leftLen--;
-		    Buf_Destroy(buf, FALSE);
-
-		    /*
-		     * Now comes the replacement string. Three things need to
-		     * be done here: 1) need to compress escaped delimiters and
-		     * ampersands and 2) need to replace unescaped ampersands
-		     * with the l.h.s. (since this isn't regexp, we can do
-		     * it right here) and 3) expand any variable substitutions.
-		     */
-		    buf = Buf_Init(0);
-
-		    tstr = cp + 1;
-		    for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
-			if ((*cp == '\\') &&
-			    ((cp[1] == del) ||
-			     (cp[1] == '&') ||
-			     (cp[1] == '\\') ||
-			     (cp[1] == '$')))
-			{
-			    Buf_AddByte(buf, (Byte)cp[1]);
-			    cp++;
-			} else if ((*cp == '$') && (cp[1] != del)) {
-			    char	*cp2;
-			    size_t	len;
-			    Boolean	freeIt;
-
-			    len = 0;
-			    cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
-			    Buf_Append(buf, cp2);
-			    cp += len - 1;
-			    if (freeIt) {
-				free(cp2);
-			    }
-			} else if (*cp == '&') {
-			    Buf_AddBytes(buf, pattern.leftLen,
-					 (Byte *)pattern.lhs);
-			} else {
-			    Buf_AddByte(buf, (Byte)*cp);
-			}
-		    }
-
-		    Buf_AddByte(buf, (Byte)'\0');
-
-		    /*
-		     * If didn't end in delimiter character, complain
-		     */
-		    if (*cp != del) {
-			Fatal("Unclosed substitution for %s (%c missing)",
-			      v->name, del);
-		    }
-
-		    pattern.rhs = (char *)Buf_GetAll(buf, &pattern.rightLen);
-		    pattern.rightLen--;
-		    Buf_Destroy(buf, FALSE);
-
-		    /*
-		     * Check for global substitution. If 'g' after the final
-		     * delimiter, substitution is global and is marked that
-		     * way.
-		     */
-		    cp++;
-		    if (*cp == 'g') {
-			pattern.flags |= VAR_SUB_GLOBAL;
-			cp++;
-		    }
-
-		    /*
-		     * Global substitution of the empty string causes an
-		     * infinite number of matches, unless anchored by '^'
-		     * (start of string) or '$' (end of string). Catch the
-		     * infinite substitution here.
-		     * Note that flags can only contain the 3 bits we're
-		     * interested in so we don't have to mask unrelated
-		     * bits. We can test for equality.
-		     */
-		    if (!pattern.leftLen && pattern.flags == VAR_SUB_GLOBAL)
-			Fatal("Global substitution of the empty string");
-
-		    termc = *cp;
-		    newStr = VarModify(rw_str, VarSubstitute, &pattern);
-		    /*
-		     * Free the two strings.
-		     */
-		    free(pattern.lhs);
-		    free(pattern.rhs);
-		    break;
+		} else {
+			Buf_AddByte(buf, (Byte) * cp);
 		}
+	}
+
+	Buf_AddByte(buf, (Byte) '\0');
+
+	/*
+	 * If lhs didn't end with the delimiter, complain and exit.
+	 */
+	if (*cp != del) {
+		Fatal("Unclosed substitution for %s (%c missing)",
+		      v->name, del);
+	}
+	/*
+	 * Fetch pattern and destroy buffer, but preserve the data in it,
+	 * since that's our lhs. Note that Buf_GetAll will return the actual
+	 * number of bytes, which includes the null byte, so we have to
+	 * decrement the length by one.
+	 */
+	pattern.lhs = (char *)Buf_GetAll(buf, &pattern.leftLen);
+	pattern.leftLen--;
+	Buf_Destroy(buf, FALSE);
+
+	/*
+	 * Now comes the replacement string. Three things need to be done
+	 * here: 1) need to compress escaped delimiters and ampersands and 2)
+	 * need to replace unescaped ampersands with the l.h.s. (since this
+	 * isn't regexp, we can do it right here) and 3) expand any variable
+	 * substitutions.
+	 */
+	buf = Buf_Init(0);
+
+	tstr = cp + 1;
+	for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
+		if ((*cp == '\\') &&
+		    ((cp[1] == del) ||
+		     (cp[1] == '&') ||
+		     (cp[1] == '\\') ||
+		     (cp[1] == '$'))) {
+			Buf_AddByte(buf, (Byte) cp[1]);
+			cp++;
+		} else if ((*cp == '$') && (cp[1] != del)) {
+			char   *cp2;
+			size_t  len;
+			Boolean freeIt;
+
+			len = 0;
+			cp2 = Var_Parse(cp, ctxt, err, &len, &freeIt);
+			Buf_Append(buf, cp2);
+			cp += len - 1;
+			if (freeIt) {
+				free(cp2);
+			}
+		} else if (*cp == '&') {
+			Buf_AddBytes(buf, pattern.leftLen,
+				     (Byte *) pattern.lhs);
+		} else {
+			Buf_AddByte(buf, (Byte) * cp);
+		}
+	}
+
+	Buf_AddByte(buf, (Byte) '\0');
+
+	/*
+	 * If didn't end in delimiter character, complain
+	 */
+	if (*cp != del) {
+		Fatal("Unclosed substitution for %s (%c missing)",
+		      v->name, del);
+	}
+	pattern.rhs = (char *)Buf_GetAll(buf, &pattern.rightLen);
+	pattern.rightLen--;
+	Buf_Destroy(buf, FALSE);
+
+	/*
+	 * Check for global substitution. If 'g' after the final delimiter,
+	 * substitution is global and is marked that way.
+	 */
+	cp++;
+	if (*cp == 'g') {
+		pattern.flags |= VAR_SUB_GLOBAL;
+		cp++;
+	}
+	/*
+	 * Global substitution of the empty string causes an infinite number
+	 * of matches, unless anchored by '^' (start of string) or '$' (end
+	 * of string). Catch the infinite substitution here. Note that flags
+	 * can only contain the 3 bits we're interested in so we don't have
+	 * to mask unrelated bits. We can test for equality.
+	 */
+	if (!pattern.leftLen && pattern.flags == VAR_SUB_GLOBAL)
+		Fatal("Global substitution of the empty string");
+
+	termc = *cp;
+	newStr = VarModify(rw_str, VarSubstitute, &pattern);
+	/*
+	 * Free the two strings.
+	 */
+	free(pattern.lhs);
+	free(pattern.rhs);
+	break;
+}
 		case 'C':
 		{
 		    int		delim;
