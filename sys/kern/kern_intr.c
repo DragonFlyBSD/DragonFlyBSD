@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.14 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.15 2004/06/27 19:37:22 dillon Exp $
  *
  */
 
@@ -55,6 +55,21 @@ static thread_t ithreads[NHWI+NSWI];
 static struct thread ithread_ary[NHWI+NSWI];
 static struct random_softc irandom_ary[NHWI+NSWI];
 static int irunning[NHWI+NSWI];
+static int ill_count[NHWI+NSWI];	/* interrupt livelock counter */
+static int ill_ticks[NHWI+NSWI];	/* track ticks to calculate freq */
+static int ill_delta[NHWI+NSWI];	/* track ticks to calculate freq */
+static int ill_state[NHWI+NSWI];	/* current state */
+static struct systimer ill_timer[NHWI+NSWI];
+
+#define LIVELOCK_NONE		0
+#define LIVELOCK_LIMITED	1
+
+static int livelock_limit = 100000;
+static int livelock_fallback = 50000;
+SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
+        CTLFLAG_RW, &livelock_limit, 0, "Livelock interrupt rate limit");
+SYSCTL_INT(_kern, OID_AUTO, livelock_fallback,
+        CTLFLAG_RW, &livelock_fallback, 0, "Livelock interrupt fallback rate");
 
 static void ithread_handler(void *arg);
 
@@ -215,13 +230,35 @@ sched_ithd(int intr)
 }
 
 /*
+ * This is run from a periodic SYSTIMER (and thus must be MP safe, the BGL
+ * might not be held).
+ */
+static void
+ithread_livelock_wakeup(void *data)
+{
+    int intr = (int)data;
+    thread_t td;
+
+    if ((td = ithreads[intr]) != NULL)
+	lwkt_schedule(td);
+}
+
+
+/*
  * Interrupt threads run this as their main loop.  The handler should be
- * in a critical section on entry.
+ * in a critical section on entry and the BGL is usually left held (for now).
+ *
+ * The irunning state starts at 0.  When an interrupt occurs, the hardware
+ * interrupt is disabled and sched_ithd() The HW interrupt remains disabled
+ * until all routines have run.  We then call ithread_done() to reenable 
+ * the HW interrupt and deschedule us until the next interrupt.
  */
 static void
 ithread_handler(void *arg)
 {
     int intr = (int)arg;
+    int freq;
+    int bticks;
     intrec_t **list = &intlists[intr];
     intrec_t *rec;
     intrec_t *nrec;
@@ -234,8 +271,72 @@ ithread_handler(void *arg)
 	    nrec = rec->next;
 	    rec->handler(rec->argument);
 	}
+
+	/*
+	 * This is our interrupt hook to add rate randomness to the random
+	 * number generator.
+	 */
 	if (sc->sc_enabled)
 	    add_interrupt_randomness(intr);
+
+	/*
+	 * This is our livelock test.  If we hit the rate limit we
+	 * limit ourselves to 10000 interrupts/sec until the rate
+	 * falls below 50% of that value, then we unlimit again.
+	 */
+	++ill_count[intr];
+	bticks = ticks - ill_ticks[intr];
+	ill_ticks[intr] = ticks;
+	if (bticks < 0 || bticks > hz)
+	    bticks = hz;
+
+	switch(ill_state[intr]) {
+	case LIVELOCK_NONE:
+	    ill_delta[intr] += bticks;
+	    if (ill_delta[intr] < hz)
+		break;
+	    freq = ill_count[intr] * hz / ill_delta[intr];
+	    ill_delta[intr] = 0;
+	    ill_count[intr] = 0;
+	    if (freq < livelock_limit)
+		break;
+	    printf("intr %d at %d hz, livelocked! limiting at %d hz\n",
+		intr, freq, livelock_fallback);
+	    ill_state[intr] = LIVELOCK_LIMITED;
+	    bticks = 0;
+	    /* fall through */
+	case LIVELOCK_LIMITED:
+	    /*
+	     * Delay (us) before rearming the interrupt
+	     */
+	    systimer_init_oneshot(&ill_timer[intr], ithread_livelock_wakeup,
+				(void *)intr, 1 + 1000000 / livelock_fallback);
+	    lwkt_deschedule_self(curthread);
+	    lwkt_switch();
+	    systimer_del(&ill_timer[intr]);
+
+	    /*
+	     * Calculate interrupt rate (note that due to our delay it
+	     * will not exceed livelock_fallback).
+	     */
+	    ill_delta[intr] += bticks;
+	    if (ill_delta[intr] < hz)
+		break;
+	    freq = ill_count[intr] * hz / ill_delta[intr];
+	    ill_delta[intr] = 0;
+	    ill_count[intr] = 0;
+	    if (freq < (livelock_fallback >> 1)) {
+		printf("intr %d at %d hz, removing livelock limit\n",
+			intr, freq);
+		ill_state[intr] = LIVELOCK_NONE;
+	    }
+	    break;
+	}
+
+	/*
+	 * If another interrupt has not been queued we can reenable the
+	 * hardware interrupt and go to sleep.
+	 */
 	if (irunning[intr] == 0)
 	    ithread_done(intr);
     }
