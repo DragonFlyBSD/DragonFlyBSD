@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.9 2004/06/21 15:39:30 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.10 2004/09/15 16:02:41 joerg Exp $
  */
 
 /*
@@ -298,6 +298,7 @@ ciss_attach(device_t dev)
     int			i, error;
 
     debug_called(1);
+    callout_init(&sc->ciss_periodic);
 
 #ifdef CISS_DEBUG
     /* print structure/union sizes */
@@ -1345,7 +1346,7 @@ ciss_free(struct ciss_softc *sc)
     sc->ciss_flags |= CISS_FLAG_ABORTING;
 
     /* terminate the periodic heartbeat routine */
-    untimeout(ciss_periodic, sc, sc->ciss_periodic);
+    callout_stop(&sc->ciss_periodic);
 
     /* cancel the Event Notify chain */
     ciss_notify_abort(sc);
@@ -2620,7 +2621,8 @@ ciss_periodic(void *arg)
      * Reschedule.
      */
     if (!(sc->ciss_flags & CISS_FLAG_ABORTING))
-	sc->ciss_periodic = timeout(ciss_periodic, sc, CISS_HEARTBEAT_RATE * hz);
+	callout_reset(&sc->ciss_periodic, CISS_HEARTBEAT_RATE * hz,
+		      ciss_periodic, sc);
 }
 
 /************************************************************************

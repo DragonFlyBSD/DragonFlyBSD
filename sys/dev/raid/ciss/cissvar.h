@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissvar.h,v 1.3.2.2 2003/02/06 21:42:59 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.3 2004/02/13 01:33:19 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissvar.h,v 1.4 2004/09/15 16:02:41 joerg Exp $
  */
 
 /*
@@ -204,7 +204,7 @@ struct ciss_softc
     TAILQ_HEAD(,ciss_request)	ciss_busy;		/* requests in the adapter */
     TAILQ_HEAD(,ciss_request)	ciss_complete;		/* requests which have been returned by the adapter */
 
-    struct callout_handle	ciss_periodic;		/* periodic event handling */
+    struct callout		ciss_periodic;		/* periodic event handling */
     struct ciss_request		*ciss_periodic_notify;	/* notify callback request */
 
     struct ciss_notify		ciss_notify[CISS_MAX_EVENTS];
