@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.21 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.22 2003/09/25 01:47:56 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -495,6 +495,12 @@ resume:
 			return (EWOULDBLOCK);
 	} else if (timo) {
 		untimeout(endtsleep, (void *)td, thandle);
+	} else if (td->td_wmesg) {
+		/*
+		 * This can happen if a thread is woken up directly.  Clear
+		 * wmesg to avoid debugging confusion.
+		 */
+		td->td_wmesg = NULL;
 	}
 	if (p) {
 		if (catch && (sig != 0 || (sig = CURSIG(p)))) {
