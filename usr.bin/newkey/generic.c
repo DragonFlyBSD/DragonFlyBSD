@@ -29,7 +29,7 @@
  *
  * @(#)generic.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.bin/newkey/generic.c,v 1.3.2.1 2001/07/04 22:32:20 kris Exp $
- * $DragonFly: src/usr.bin/newkey/generic.c,v 1.4 2005/01/11 00:29:12 joerg Exp $
+ * $DragonFly: src/usr.bin/newkey/generic.c,v 1.5 2005/01/11 00:58:23 joerg Exp $
  */
 
 /*
@@ -38,9 +38,13 @@
 
 #include <sys/file.h>
 
-#include <mp.h>
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <openssl/bn.h>
+#include <openssl/crypto.h>
+#include <openssl/err.h>
 
 #include <rpc/rpc.h>
 #include <rpc/key_prot.h>
@@ -48,6 +52,7 @@
 #include "externs.h"
 
 static void	adjust(char[], char *);
+static BIGNUM	*itobn(long i);
 
 /*
  * Generate a seed
@@ -62,48 +67,91 @@ getseed(char *seed, int seedsize, unsigned char *pass)
 	}
 }
 
+static BIGNUM *
+itobn(long i)
+{
+	BIGNUM *n = 0;
+
+	if ((n = BN_new()) == NULL)
+		errx(1, "could not create BIGNUM: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+	BN_init(n);
+	if (i > 0)
+		BN_add_word(n, (u_long)i);
+	else
+		BN_sub_word(n, (u_long)(-i));
+	return(n);
+}
+
 /*
  * Generate a random public/secret key pair
  */
 void
 genkeys(char *public, char *secret, char *pass)
 {
-	unsigned int i;
-
 #   define BASEBITS (8*sizeof (short) - 1)
 #	define BASE		(1 << BASEBITS)
 
-	MINT *pk = itom(0);
-	MINT *sk = itom(0);
-	MINT *tmp;
-	MINT *base = itom(BASE);
-	MINT *root = itom(PROOT);
-	MINT *modulus = xtom(HEXMODULUS);
+	unsigned int i;
 	short r;
 	unsigned short seed[KEYSIZE/BASEBITS + 1];
 	char *xkey;
 
+	BN_CTX *ctx;
+	BIGNUM *pk, *sk, *tmp, *base, *root, *modulus;
+
+	pk = itobn(0);
+	sk = itobn(0);
+	tmp = itobn(0);
+	base = itobn(BASE);
+	root = itobn(PROOT);
+	modulus = NULL;
+	if (BN_hex2bn(&modulus, HEXMODULUS) == NULL)
+		errx(1, "could convert modulus to BIGNUM: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+
+	if ((ctx = BN_CTX_new()) == NULL)
+		errx(1, "could not create BN_CTX: %s",
+		     ERR_error_string(ERR_get_error(), 0));
+
 	getseed((char *)seed, sizeof (seed), (u_char *)pass);
 	for (i = 0; i < KEYSIZE/BASEBITS + 1; i++) {
 		r = seed[i] % BASE;
-		tmp = itom(r);
-		mult(sk, base, sk);
-		madd(sk, tmp, sk);
-		mfree(tmp);
+		BN_zero(tmp);
+		BN_print_fp(stderr, base);
+		fprintf(stderr,"\n");
+		BN_add_word(tmp, r);
+		BN_print_fp(stderr, sk);
+		fprintf(stderr,"\n");
+		BN_mul(sk, base, sk, ctx);
+		BN_print_fp(stderr, sk);
+		fprintf(stderr,"\n");
+		BN_add(sk, tmp, sk);
+		BN_print_fp(stderr, sk);
+		fprintf(stderr,"\n");
 	}
-	tmp = itom(0);
-	mdiv(sk, modulus, tmp, sk);
-	mfree(tmp);
-	pow(root, sk, modulus, pk);
-	xkey = mtox(sk);
+	BN_zero(tmp);
+	BN_div(tmp, sk, sk, modulus, ctx);
+	BN_mod_exp(pk, root, sk, modulus, ctx);
+
+	if ((xkey = BN_bn2hex(sk)) == NULL)
+		errx(1, "could convert sk to hex: %s",
+		     ERR_error_string(ERR_get_error(), 0));
 	adjust(secret, xkey);
-	xkey = mtox(pk);
+	OPENSSL_free(xkey);
+
+	if ((xkey = BN_bn2hex(pk)) == NULL)
+		errx(1, "could convert pk to hex: %s",
+		     ERR_error_string(ERR_get_error(), 0));
 	adjust(public, xkey);
-	mfree(sk);
-	mfree(base);
-	mfree(pk);
-	mfree(root);
-	mfree(modulus);
+	OPENSSL_free(xkey);
+
+	BN_free(base);
+	BN_free(modulus);
+	BN_free(pk);
+	BN_free(sk);
+	BN_free(root);
+	BN_free(tmp);
 }
 
 /*
