@@ -25,14 +25,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.12 2004/11/20 20:25:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm86.c,v 1.13 2005/01/31 04:35:17 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/proc.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
+#include <sys/sysctl.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -108,6 +110,9 @@ static void vm86_setup_timer_fault(void);
 static void vm86_clear_timer_fault(void);
 
 static int vm86_blew_up_timer;
+
+static int timer_warn = 1;
+SYSCTL_INT(_debug, OID_AUTO, timer_warn, CTLFLAG_RW, &timer_warn, 0, "");
 
 static __inline caddr_t
 MAKE_ADDR(u_short sel, u_short off)
@@ -631,7 +636,10 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 	if (vm86_blew_up_timer) {
 		vm86_blew_up_timer = 0;
 		timer_restore();
-		printf("Warning: BIOS messed around with the 8254, resetting it\n");
+		if (timer_warn) {
+			printf("Warning: BIOS played with the 8254, "
+				"resetting it\n");
+		}
 	}
 	crit_exit();
 	return(error);
