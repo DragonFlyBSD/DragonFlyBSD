@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_ef.c,v 1.2.2.4 2001/02/22 09:27:04 bp Exp $
- * $DragonFly: src/sys/net/ef/if_ef.c,v 1.11 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/ef/if_ef.c,v 1.12 2005/01/23 20:23:22 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -225,8 +225,7 @@ ef_start(struct ifnet *ifp)
 		IF_DEQUEUE(&ifp->if_snd, m);
 		if (m == 0)
 			break;
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m);
+		BPF_MTAP(ifp, m);
 		if (IF_QFULL(&p->if_snd)) {
 			IF_DROP(&p->if_snd);
 			ifp->if_oerrors++;

@@ -28,7 +28,7 @@
  *
  * 	$Id: ng_eiface.c,v 1.14 2000/03/15 12:28:44 vitaly Exp $
  * $FreeBSD: src/sys/netgraph/ng_eiface.c,v 1.4.2.5 2002/12/17 21:47:48 julian Exp $
- * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.6 2004/07/23 07:16:31 joerg Exp $
+ * $DragonFly: src/sys/netgraph/eiface/ng_eiface.c,v 1.7 2005/01/23 20:23:22 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -244,12 +244,7 @@ ng_eiface_start(struct ifnet *ifp)
 		return;
 	}
 
-	/* Berkeley packet filter */
-	/*
-	 * Pass packet to bpf if there is a listener.
-	 */
-	if (ifp->if_bpf)
-	  bpf_mtap(ifp, m);
+	BPF_MTAP(ifp, m);
 
 	/* Copy length before the mbuf gets invalidated */
 	len = m->m_pkthdr.len;
@@ -519,9 +514,7 @@ ng_eiface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	/* Update interface stats */
 	ifp->if_ipackets++;
 
-	/* Berkeley packet filter */
-	if (ifp->if_bpf)
-	  bpf_mtap(ifp, m);
+	BPF_MTAP(ifp, m);
 
 	(*ifp->if_input)(ifp, m);
 

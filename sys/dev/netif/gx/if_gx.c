@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/gx/if_gx.c,v 1.2.2.3 2001/12/14 19:51:39 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.10 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gx.c,v 1.11 2005/01/23 20:21:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1601,12 +1601,7 @@ gx_start(struct ifnet *ifp)
 			break;
 		}
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 
 		/*
 		 * Set a timeout in case the chip goes out to lunch.

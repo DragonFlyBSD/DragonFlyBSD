@@ -28,7 +28,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/cs/if_cs.c,v 1.19.2.1 2001/01/25 20:13:48 imp Exp $
- * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.11 2004/07/23 07:16:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/cs/if_cs.c,v 1.12 2005/01/23 20:21:30 joerg Exp $
  *
  * Device driver for Crystal Semiconductor CS8920 based ethernet
  *   adapters. By Maxim Bolotin and Oleg Sharoiko, 27-April-1997
@@ -960,9 +960,7 @@ cs_start(struct ifnet *ifp)
 
 			cs_write_mbufs(sc, m);
 
-			if (ifp->if_bpf) {
-				bpf_mtap(ifp, m);
-			}
+			BPF_MTAP(ifp, m);
 
 			m_freem(m);
 		}

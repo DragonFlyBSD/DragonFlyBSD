@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/if_wl.c,v 1.27.2.2 2000/07/17 21:24:32 archie Exp $ */
-/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.15 2004/09/15 16:54:21 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/wl/if_wl.c,v 1.16 2005/01/23 20:23:22 joerg Exp $ */
 /* 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -886,10 +886,7 @@ wlstart(struct ifnet *ifp)
     ifp = &(sc->wl_if);
     IF_DEQUEUE(&ifp->if_snd, m);
     if (m != (struct mbuf *)0) {
-	/* let BPF see it before we commit it */
-	if (ifp->if_bpf) {
-	    bpf_mtap(ifp, m);
-	}
+	BPF_MTAP(ifp, m);
 	sc->tbusy++;
 	/* set the watchdog timer so that if the board
 	 * fails to interrupt we will restart

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.21 2004/10/16 03:58:52 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.22 2005/01/23 20:23:22 joerg Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -1452,9 +1452,7 @@ ppp_inproc(sc, m)
 #endif /* PPP_FILTER */
     }
 
-    /* See if bpf wants to look at the packet. */
-    if (sc->sc_if.if_bpf)
-	bpf_mtap(&sc->sc_if, m);
+    BPF_MTAP(&sc->sc_if, m);
 
     isr = -1;
     switch (proto) {

@@ -39,7 +39,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/ep/if_ep.c,v 1.95.2.3 2002/03/06 07:26:35 imp Exp $
- * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ep/if_ep.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
  *
  *  Promiscuous mode added and interrupt logic slightly changed
  *  to reduce the number of adapter failures. Transceiver select
@@ -514,9 +514,7 @@ startagain:
 
     splx(s);
 
-    if (ifp->if_bpf) {
-	bpf_mtap(ifp, top);
-    }
+    BPF_MTAP(ifp, top);
 
     ifp->if_timer = 2;
     ifp->if_opackets++;

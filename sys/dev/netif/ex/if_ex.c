@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ex/if_ex.c,v 1.26.2.3 2001/03/05 05:33:20 imp Exp $
- * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.13 2005/01/04 05:27:47 cpressey Exp $
+ * $DragonFly: src/sys/dev/netif/ex/if_ex.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
  *
  * MAINTAINER: Matthew N. Dodd <winter@jurai.net>
  *                             <mdodd@FreeBSD.org>
@@ -522,9 +522,7 @@ ex_start(struct ifnet *ifp)
 			sc->tx_last = dest;
 			sc->tx_tail = next;
      	 
-			if (ifp->if_bpf != NULL) {
-				bpf_mtap(ifp, opkt);
-			}
+			BPF_MTAP(ifp, opkt);
 
 			ifp->if_timer = 2;
 			ifp->if_opackets++;

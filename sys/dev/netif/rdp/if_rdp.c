@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_rdp.c,v 1.6.2.2 2000/07/17 21:24:32 archie Exp $
- * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.12 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/rdp/if_rdp.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -802,12 +802,7 @@ outloop:
 		sc->txsize = len;
 	}
 
-	/*
-	 * Tap off here if there is a bpf listener.
-	 */
-	if (ifp->if_bpf) {
-		bpf_mtap(ifp, m);
-	}
+	BPF_MTAP(ifp, m);
 
 	m_freem(m);
 

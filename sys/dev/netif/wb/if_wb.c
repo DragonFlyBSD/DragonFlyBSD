@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.14 2004/09/15 01:12:08 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wb/if_wb.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_wb.c,v 1.26.2.6 2003/03/05 18:42:34 njl Exp $
  */
@@ -1520,12 +1520,7 @@ static void wb_start(ifp)
 		if (cur_tx != start_tx)
 			WB_TXOWN(cur_tx) = WB_TXSTAT_OWN;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->wb_mbuf);
+		BPF_MTAP(ifp, cur_tx->wb_mbuf);
 	}
 
 	/*

@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.9 2004/09/16 03:43:09 dillon Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.10 2005/01/23 20:23:22 joerg Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -972,8 +972,7 @@ ng_fec_start(struct ifnet *ifp)
 	if (m0 == NULL)
 		return;
 
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m0);
+	BPF_MTAP(ifp, m0);
 
 	/* Queue up packet on the proper port. */
 	error = ng_fec_choose_port(b, m0, &oifp);

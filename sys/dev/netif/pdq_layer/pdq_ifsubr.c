@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.7 2004/07/23 07:16:27 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.8 2005/01/23 20:21:31 joerg Exp $
  *
  */
 
@@ -185,8 +185,7 @@ pdq_os_receive_pdu(
     struct fddi_header *fh = mtod(m, struct fddi_header *);
 
     sc->sc_if.if_ipackets++;
-    if (sc->sc_bpf != NULL)
-	PDQ_BPF_MTAP(sc, m);
+    BPF_MTAP(&sc->sc_if, m);
     if ((fh->fddi_fc & (FDDIFC_L|FDDIFC_F)) != FDDIFC_LLC_ASYNC) {
 	m_freem(m);
 	return;
@@ -216,8 +215,7 @@ pdq_os_transmit_done(
     struct mbuf *m)
 {
     pdq_softc_t *sc = (pdq_softc_t *) pdq->pdq_os_ctx;
-    if (sc->sc_bpf != NULL)
-	PDQ_BPF_MTAP(sc, m);
+    BPF_MTAP(&sc->sc_if, m);
     m_freem(m);
     sc->sc_if.if_opackets++;
 }

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *   $FreeBSD: src/sys/dev/sn/if_sn.c,v 1.7.2.3 2001/02/04 04:38:38 toshi Exp $
- *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.11 2004/07/23 07:16:28 joerg Exp $
+ *   $DragonFly: src/sys/dev/netif/sn/if_sn.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -546,9 +546,7 @@ startagain:
 	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
 	sc->arpcom.ac_if.if_timer = 1;
 
-	if (ifp->if_bpf) {
-		bpf_mtap(ifp, top);
-	}
+	BPF_MTAP(ifp, top);
 
 	sc->arpcom.ac_if.if_opackets++;
 	m_freem(top);
@@ -743,9 +741,7 @@ snresume(struct ifnet *ifp)
 	sc->intr_mask = mask;
 	outw(BASE + MMU_CMD_REG_W, MMUCR_ENQUEUE);
 
-	if (ifp->if_bpf) {
-		bpf_mtap(ifp, top);
-	}
+	BPF_MTAP(ifp, top);
 
 	sc->arpcom.ac_if.if_opackets++;
 	m_freem(top);

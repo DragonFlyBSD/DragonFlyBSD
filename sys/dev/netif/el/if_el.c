@@ -7,7 +7,7 @@
  * Questions, comments, bug reports and fixes to kimmel@cs.umass.edu.
  *
  * $FreeBSD: src/sys/i386/isa/if_el.c,v 1.47.2.2 2000/07/17 21:24:30 archie Exp $
- * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.11 2004/07/23 07:16:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/el/if_el.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
  */
 /* Except of course for the portions of code lifted from other FreeBSD
  * drivers (mainly elread, elget and el_ioctl)
@@ -328,9 +328,7 @@ el_start(struct ifnet *ifp)
 
 		len = max(len,ETHER_MIN_LEN);
 
-		/* Give the packet to the bpf, if any */
-		if(sc->arpcom.ac_if.if_bpf)
-			bpf_tap(&sc->arpcom.ac_if, sc->el_pktbuf, len);
+		BPF_TAP(&sc->arpcom.ac_if, sc->el_pktbuf, len);
 
 		/* Transfer datagram to board */
 		dprintf(("el: xfr pkt length=%d...\n",len));

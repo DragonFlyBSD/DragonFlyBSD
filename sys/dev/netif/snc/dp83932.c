@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.11 2004/07/23 07:16:28 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.12 2005/01/23 20:21:31 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -364,12 +364,7 @@ outloop:
 		panic("%s: sncstart: no header mbuf",
 		      device_get_nameunit(sc->sc_dev));
 
-	/*
-	 * If bpf is listening on this interface, let it
-	 * see the packet before we commit it to the wire.
-	 */
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m);
+	BPF_MTAP(ifp, m);
 
 	/*
 	 * If there is nothing in the o/p queue, and there is room in

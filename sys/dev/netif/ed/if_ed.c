@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.17 2005/01/04 05:27:47 cpressey Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.18 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -2229,12 +2229,7 @@ outloop:
 	if (sc->xmit_busy == 0)
 		ed_xmit(sc);
 
-	/*
-	 * Tap off here if there is a bpf listener.
-	 */
-	if (ifp->if_bpf) {
-		bpf_mtap(ifp, m0);
-	}
+	BPF_MTAP(ifp, m0);
 
 	m_freem(m0);
 

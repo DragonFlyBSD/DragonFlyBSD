@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.14 2004/09/19 01:27:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.15 2005/01/23 20:21:30 joerg Exp $
  *
  */
 #undef DEBUG
@@ -475,8 +475,7 @@ cxput (cx_chan_t *c, char b)
 		return;
 	}
 	m_copydata (m, 0, len, buf);
-	if (c->ifp->if_bpf)
-		bpf_mtap (c->ifp, m);
+	BPF_MTAP(c->ifp, m);
 	m_freem (m);
 
 	/* Start transmitter. */
@@ -797,12 +796,7 @@ cxinput (cx_chan_t *c, void *buf, unsigned len)
 	printmbuf (m);
 #endif
 
-	/*
-	 * Check if there's a BPF listener on this interface.
-	 * If so, hand off the raw packet to bpf.
-	 */
-	if (c->ifp->if_bpf)
-		bpf_tap (c->ifp, buf, len);
+	BPF_TAP(c->ifp, buf, len);
 
 	/* Count the received bytes to the subchannel, not the master. */
 	c->master->if_ibytes -= len + 3;

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/if_fwe.c,v 1.27 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.12 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fwe/if_fwe.c,v 1.13 2005/01/23 20:21:31 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -534,12 +534,7 @@ fwe_as_output(struct fwe_softc *fwe, struct ifnet *ifp)
 		if (m == NULL)
 			break;
 		STAILQ_REMOVE_HEAD(&fwe->xferlist, link);
-#if defined(__DragonFly__) || __FreeBSD_version < 500000
-		if (ifp->if_bpf != NULL)
-			bpf_mtap(ifp, m);
-#else
 		BPF_MTAP(ifp, m);
-#endif
 
 		/* keep ip packet alignment for alpha */
 		M_PREPEND(m, ETHER_ALIGN, MB_DONTWAIT);

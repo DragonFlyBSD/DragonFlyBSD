@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.18 2004/12/24 10:50:06 asmodai Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.19 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -1151,11 +1151,7 @@ tbdinit:
 
 		sc->tx_queued++;
 
-		/*
-		 * Pass packet to bpf if there is a listener.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, mb_head);
+		BPF_MTAP(ifp, mb_head);
 	}
 
 	/*

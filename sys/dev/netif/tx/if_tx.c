@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/tx/if_tx.c,v 1.61.2.1 2002/10/29 01:43:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.14 2004/09/15 01:00:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tx/if_tx.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
  */
 
 /*
@@ -597,8 +597,7 @@ epic_ifstart(ifp)
 		/* Set watchdog timer */
 		ifp->if_timer = 8;
 
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m0);
+		BPF_MTAP(ifp, m0);
 	}
 
 	ifp->if_flags |= IFF_OACTIVE;

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.29 2003/12/01 21:06:59 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.24 2004/09/14 22:31:01 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.25 2005/01/23 20:21:30 joerg Exp $
  *
  */
 
@@ -2562,12 +2562,7 @@ bge_start(ifp)
 			break;
 		}
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 	}
 
 	/* Transmit */

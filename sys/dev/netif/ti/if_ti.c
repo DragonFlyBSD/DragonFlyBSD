@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.14 2004/07/29 08:46:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
  */
@@ -2153,12 +2153,7 @@ static void ti_start(ifp)
 			break;
 		}
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 	}
 
 	/* Transmit */

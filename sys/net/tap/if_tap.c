@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.15 2004/07/23 07:16:31 joerg Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -677,9 +677,7 @@ tapread(dev, uio, flag)
 		}
 	} while (m0 == NULL);
 
-	/* feed packet to bpf */
-	if (ifp->if_bpf != NULL)
-		bpf_mtap(ifp, m0);
+	BPF_MTAP(ifp, m0);
 
 	/* xfer packet to user space */
 	while ((m0 != NULL) && (uio->uio_resid > 0) && (error == 0)) {

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.13 2004/09/15 00:53:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.14 2005/01/23 20:23:22 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1583,12 +1583,7 @@ static void ste_start(ifp)
 
 		sc->ste_tx_prev_idx=idx;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-	 	 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->ste_mbuf);
+		BPF_MTAP(ifp, cur_tx->ste_mbuf);
 
 		STE_INC(idx, STE_TX_LIST_CNT);
 		sc->ste_cdata.ste_tx_cnt++;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.15 2004/09/15 01:24:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
  */
 
 /*
@@ -2594,12 +2594,7 @@ xl_start(ifp)
 		}
 		prev = cur_tx;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->xl_mbuf);
+		BPF_MTAP(ifp, cur_tx->xl_mbuf);
 	}
 
 	/*
@@ -2717,12 +2712,7 @@ xl_start_90xB(ifp)
 			prev->xl_ptr->xl_next = htole32(cur_tx->xl_phys);
 		prev = cur_tx;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->xl_mbuf);
+		BPF_MTAP(ifp, cur_tx->xl_mbuf);
 
 		XL_INC(idx, XL_TX_LIST_CNT);
 		sc->xl_cdata.xl_tx_cnt++;

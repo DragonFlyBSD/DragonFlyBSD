@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.15 2004/09/14 21:29:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.16 2005/01/23 20:21:30 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -896,10 +896,7 @@ an_rxeof(sc)
 					    (caddr_t)ih +ieee80211_header_len,
 					    rx_frame.an_rx_payload_len);
 			}
-			/* dump raw 802.11 packet to bpf and skip ip stack */
-			if (ifp->if_bpf != NULL) {
-				bpf_tap(ifp, bpf_buf, len);
-			}
+			BPF_TAP(ifp, bpf_buf, len);
 		} else {
 			MGETHDR(m, M_NOWAIT, MT_DATA);
 			if (m == NULL) {
@@ -2623,12 +2620,7 @@ an_start(ifp)
 			an_write_data(sc, id, 0x44, (caddr_t)&sc->an_txbuf,
 				      tx_frame_802_3.an_tx_802_3_payload_len);
 
-			/*
-			 * If there's a BPF listner, bounce a copy of
-			 * this frame to him.
-			 */
-			if (ifp->if_bpf)
-				bpf_mtap(ifp, m0);
+			BPF_MTAP(ifp, m0);
 
 			m_freem(m0);
 			m0 = NULL;
@@ -2693,12 +2685,7 @@ an_start(ifp)
 						    ptr[i]);
 			}
 
-			/*
-			 * If there's a BPF listner, bounce a copy of
-			 * this frame to him.
-			 */
-			if (ifp->if_bpf)
-				bpf_mtap(ifp, m0);
+			BPF_MTAP(ifp, m0);
 
 			m_freem(m0);
 			m0 = NULL;

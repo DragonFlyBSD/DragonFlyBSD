@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.16 2004/09/14 22:54:16 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.17 2005/01/23 20:21:30 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4338,11 +4338,7 @@ tulip_txput(
     } while ((m0 = m0->m_next) != NULL);
 #endif /* TULIP_BUS_DMA */
 
-    /*
-     * bounce a copy to the bpf listener, if any.
-     */
-    if (sc->tulip_if.if_bpf != NULL)
-	bpf_mtap(&sc->tulip_if, m);
+    BPF_MTAP(&sc->tulip_if, m);
 
     /*
      * The descriptors have been filled in.  Now get ready

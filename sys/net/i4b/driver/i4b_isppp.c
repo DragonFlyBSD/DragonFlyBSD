@@ -37,7 +37,7 @@
  *	$Id: i4b_isppp.c,v 1.44 2000/08/31 07:07:26 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_isppp.c,v 1.7.2.3 2003/02/06 14:50:53 gj Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.11 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_isppp.c,v 1.12 2005/01/23 20:23:22 joerg Exp $
  *
  *	last edit-date: [Thu Aug 31 09:02:27 2000]
  *
@@ -365,18 +365,7 @@ i4bisppp_start(struct ifnet *ifp)
 
 	while ((m = sppp_dequeue(&sc->sc_if)) != NULL)
 	{
-
-#if NBPFILTER > 0 || NBPF > 0
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m);
-#endif /* __FreeBSD__ */
-
-#ifdef __NetBSD__
-		if (ifp->if_bpf)
-			bpf_mtap(ifp->if_bpf, m);
-#endif
-#endif /* NBPFILTER > 0 || NBPF > 0 */
+		BPF_MTAP(ifp, m);
 
 		microtime(&ifp->if_lastchange);
 
@@ -678,19 +667,7 @@ i4bisppp_rx_data_rdy(int unit)
 	printf("i4bisppp_rx_data_ready: received packet!\n");
 #endif
 
-#if NBPFILTER > 0 || NBPF > 0
-
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-	if(sc->sc_if.if_bpf)
-		bpf_mtap(&sc->sc_if, m);
-#endif /* __FreeBSD__ */
-
-#ifdef __NetBSD__
-	if(sc->sc_if.if_bpf)
-		bpf_mtap(sc->sc_if.if_bpf, m);
-#endif
-
-#endif /* NBPFILTER > 0  || NBPF > 0 */
+	BPF_MTAP(&sc->sc_if, m);
 
 	s = splimp();
 

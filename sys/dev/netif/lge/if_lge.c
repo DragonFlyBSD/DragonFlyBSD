@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.15 2004/09/14 23:08:41 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/lge/if_lge.c,v 1.16 2005/01/23 20:21:31 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/lge/if_lge.c,v 1.5.2.2 2001/12/14 19:49:23 jlemon Exp $
  */
@@ -1324,12 +1324,7 @@ static void lge_start(ifp)
 			break;
 		}
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 	}
 
 	sc->lge_cdata.lge_tx_prod = idx;

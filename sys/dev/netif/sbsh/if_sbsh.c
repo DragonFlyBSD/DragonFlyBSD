@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.13 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -643,8 +643,7 @@ start_xmit_frames(struct sbsh_softc *sc)
 		if (!m)
 			break;
 		if (m->m_pkthdr.len) {
-			if (ifp->if_bpf)
-				bpf_mtap(ifp, m);
+			BPF_MTAP(ifp, m);
 			encap_frame(sc, m);
 		} else
 			m_freem(m);

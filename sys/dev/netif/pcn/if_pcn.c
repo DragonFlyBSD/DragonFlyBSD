@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.13 2004/09/15 00:24:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -1051,12 +1051,7 @@ static void pcn_start(ifp)
 			break;
 		}
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 
 	}
 

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ar/if_ar.c,v 1.52.2.1 2002/06/17 15:10:57 jhay Exp $
- * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.10 2004/09/14 21:34:30 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ar/if_ar.c,v 1.11 2005/01/23 20:21:30 joerg Exp $
  */
 
 /*
@@ -701,8 +701,7 @@ top_arstart:
 		i++;
 
 #ifndef NETGRAPH
-		if(ifp->if_bpf)
-			bpf_mtap(ifp, mtx);
+		BPF_MTAP(ifp, mtx);
 		m_freem(mtx);
 		++sc->ifsppp.pp_if.if_opackets;
 #else	/* NETGRAPH */
@@ -1700,8 +1699,7 @@ ar_get_packets(struct ar_softc *sc)
 			}
 			ar_copy_rxbuf(m, sc, len);
 #ifndef NETGRAPH
-			if(sc->ifsppp.pp_if.if_bpf)
-				bpf_mtap(&sc->ifsppp.pp_if, m);
+			BPF_MTAP(&sc->ifsppp.pp_if, m);
 			sppp_input(&sc->ifsppp.pp_if, m);
 			sc->ifsppp.pp_if.if_ipackets++;
 #else	/* NETGRAPH */

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/lnc/if_lnc.c,v 1.89 2001/07/04 13:00:19 nyan Exp $
- * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.14 2005/01/04 05:27:47 cpressey Exp $
+ * $DragonFly: src/sys/dev/netif/lnc/Attic/if_lnc.c,v 1.15 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -1374,8 +1374,7 @@ lnc_start(struct ifnet *ifp)
 
 		ifp->if_timer = 2;
 
-		if (sc->arpcom.ac_if.if_bpf)
-			bpf_mtap(&sc->arpcom.ac_if, head);
+		BPF_MTAP(&sc->arpcom.ac_if, head);
 
 		if (sc->nic.mem_mode != DMA_MBUF)
 			m_freem(head);

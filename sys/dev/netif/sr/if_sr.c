@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.11 2004/09/15 00:49:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -869,8 +869,7 @@ top_srstart:
 #endif
 
 #ifndef NETGRAPH
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, mtx);
+		BPF_MTAP(ifp, mtx);
 #else	/* NETGRAPH */
 		sc->outbytes += len;
 #endif	/* NETGRAPH */
@@ -2124,8 +2123,7 @@ sr_get_packets(struct sr_softc *sc)
 			sr_copy_rxbuf(m, sc, len);	/* copy from DPRAM */
 
 #ifndef NETGRAPH
-			if (ifp->if_bpf)
-				bpf_mtap(ifp, m);
+			BPF_MTAP(ifp, m);
 
 #if BUGGY > 3
 			{

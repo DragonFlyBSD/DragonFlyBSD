@@ -22,7 +22,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/fe/if_fe.c,v 1.65.2.1 2000/09/22 10:01:47 nyan Exp $
- * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.11 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fe.c,v 1.12 2005/01/23 20:21:31 joerg Exp $
  *
  * Device driver for Fujitsu MB86960A/MB86965A based Ethernet cards.
  * Contributed by M. Sekiguchi. <seki@sysrap.cs.fujitsu.co.jp>
@@ -1295,9 +1295,8 @@ fe_start (struct ifnet *ifp)
 		 * and only if it is in "receive everything"
 		 * mode.)
 		 */
-		if (sc->sc_if.if_bpf &&
-		    !(sc->sc_if.if_flags & IFF_PROMISC))
-			bpf_mtap(&sc->sc_if, m);
+		if ((sc->sc_if.if_flags & IFF_PROMISC) == 0)
+			BPF_MTAP(&sc->sc_if, m);
 
 		m_freem(m);
 	}

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.15 2004/07/23 07:16:26 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.16 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -1012,8 +1012,7 @@ lemac_start(
 
 	LE_OUTB(sc, LEMAC_REG_TQ, tx_pg);	/* tell chip to transmit this packet */
 
-	if (sc->le_if.if_bpf)
-		bpf_mtap(&sc->le_if, m);
+	BPF_MTAP(&sc->le_if, m);
 
 	m_freem(m);			/* free the mbuf */
     }

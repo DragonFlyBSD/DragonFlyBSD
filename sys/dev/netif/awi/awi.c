@@ -1,6 +1,6 @@
 /*	$NetBSD: awi.c,v 1.26 2000/07/21 04:48:55 onoe Exp $	*/
 /* $FreeBSD: src/sys/dev/awi/awi.c,v 1.10.2.2 2003/01/23 21:06:42 sam Exp $ */
-/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.17 2004/07/27 14:25:56 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/awi/Attic/awi.c,v 1.18 2005/01/23 20:21:30 joerg Exp $ */
 
 /*-
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -223,8 +223,8 @@ int awi_dump_len = 28;
 #define	AWI_BPF_RAW	1
 #if defined(__DragonFly__) || defined(__FreeBSD__)
 #define	AWI_BPF_MTAP(sc, m, raw) do {					\
-	if ((sc)->sc_ifp->if_bpf && (sc)->sc_rawbpf == (raw))		\
-		bpf_mtap((sc)->sc_ifp, (m));				\
+	if ((sc)->sc_rawbpf == (raw))					\
+		BPF_MTAP((sc)->sc_ifp, (m));				\
 } while (0);
 #else
 #define	AWI_BPF_MTAP(sc, m, raw) do {					\

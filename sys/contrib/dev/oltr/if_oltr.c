@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.15 2004/09/16 23:34:19 joerg Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.16 2005/01/23 20:21:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -744,10 +744,7 @@ outloop:
 	sc->tx_head = RING_BUFFER((sc->tx_head + sc->frame_ring[frame].FragmentCount));
 	sc->tx_frame++;
 
-#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m0);
-#endif
+	BPF_MTAP(ifp, m0);
 	/*ifp->if_opackets++;*/
 
 bad:
@@ -1450,10 +1447,7 @@ DriverReceiveFrameCompleted(void *DriverHandle, int ByteCount, int FragmentCount
 					m->m_len = 0;
 				}
 			}
-#if (NBPFILTER > 0) || defined(__DragonFly__) || (__FreeBSD_version > 400000)
-			if (ifp->if_bpf)
-				bpf_mtap(ifp, m0);
-#endif
+			BPF_MTAP(ifp, m0);
 
 			/*if (ifp->if_flags & IFF_PROMISC) {*/
 				if (bcmp(th->iso88025_dhost, ifp->if_broadcastaddr,

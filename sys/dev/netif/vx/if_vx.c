@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx.c,v 1.25.2.6 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.14 2004/09/15 01:09:23 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
  *
  */
 
@@ -441,9 +441,7 @@ startagain:
     CSR_WRITE_2(sc, VX_COMMAND, SET_TX_START_THRESH |
 	((len / 4 + sc->tx_start_thresh) >> 2));
 
-    if (sc->arpcom.ac_if.if_bpf) {
-	bpf_mtap(&sc->arpcom.ac_if, m0);
-    }
+    BPF_MTAP(&sc->arpcom.ac_if, m0);
 
     /*
      * Do the output at splhigh() so that an interrupt from another device

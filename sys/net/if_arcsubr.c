@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.12 2005/01/06 09:14:13 hsu Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.13 2005/01/23 20:23:22 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -205,8 +205,7 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		}
 	}
 
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m);
+	BPF_MTAP(ifp, m);
 
 	if (!IF_HANDOFF(&ifp->if_snd, m, ifp)) {
 		m = NULL;
@@ -508,8 +507,7 @@ arc_input(struct ifnet *ifp, struct mbuf *m)
 	if (m == NULL)
 		return;
 
-	if (ifp->if_bpf)
-		bpf_mtap(ifp, m);
+	BPF_MTAP(ifp, m);
 
 	ah = mtod(m, struct arc_header *);
 	/* does this belong to us? */

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.17 2004/09/14 22:44:46 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.18 2005/01/23 20:21:30 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -3099,8 +3099,7 @@ static void dc_start(ifp)
 		 * If there's a BPF listener, bounce a copy of this frame
 		 * to him.
 		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m_head);
+		BPF_MTAP(ifp, m_head);
 
 		if (sc->dc_flags & DC_TX_ONE) {
 			ifp->if_flags |= IFF_OACTIVE;

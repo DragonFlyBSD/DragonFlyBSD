@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.2 2004/09/15 00:21:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.3 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -660,8 +660,7 @@ wi_rxeof(sc)
 		ifp->if_ipackets++;
 
 		/* Handle BPF listeners. */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m);
+		BPF_MTAP(ifp, m);
 
 		m_freem(m);
 	} else {
@@ -2359,8 +2358,8 @@ nextpkt:
  	 * this frame to him. Also, don't send this to the bpf sniffer
  	 * if we're in procframe or monitor sniffing mode.
 	 */
- 	if (!(sc->wi_procframe || sc->wi_debug.wi_monitor) && ifp->if_bpf)
-		bpf_mtap(ifp, m0);
+ 	if (!(sc->wi_procframe || sc->wi_debug.wi_monitor))
+		BPF_MTAP(ifp, m0);
 
 	m_freem(m0);
 

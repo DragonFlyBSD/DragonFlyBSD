@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.16 2004/09/15 00:39:53 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.17 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -691,8 +691,7 @@ prepare_to_send(struct sbni_softc *sc)
 
 	sbni_outb(sc, CSR0, sbni_inb(sc, CSR0) | TR_REQ);
 	sc->arpcom.ac_if.if_flags |= IFF_OACTIVE;
-	if (sc->arpcom.ac_if.if_bpf)
-		bpf_mtap(&sc->arpcom.ac_if, sc->tx_buf_p);
+	BPF_MTAP(&sc->arpcom.ac_if, sc->tx_buf_p);
 }
 
 

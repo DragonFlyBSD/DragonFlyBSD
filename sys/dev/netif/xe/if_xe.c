@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.14 2004/09/15 01:22:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
  */
 
 /*
@@ -705,13 +705,7 @@ xe_start(struct ifnet *ifp) {
       return;
     }
 
-    /* Tap off here if there is a bpf listener */
-    if (ifp->if_bpf) {
-#if XE_DEBUG > 1
-      device_printf(scp->dev, "sending output packet to BPF\n");
-#endif
-      bpf_mtap(ifp, mbp);
-    }
+    BPF_MTAP(ifp, mbp);
 
     ifp->if_timer = 5;			/* In case we don't hear from the card again */
     scp->tx_queued++;

@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdqvar.h,v 1.3.2.1 2002/05/14 21:02:11 gallatin Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.6 2004/06/02 14:42:53 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdqvar.h,v 1.7 2005/01/23 20:21:31 joerg Exp $
  *
  */
 
@@ -114,11 +114,6 @@ typedef enum { PDQ_BUS_EISA, PDQ_BUS_PCI } pdq_bus_t;
 typedef	u_int16_t pdq_bus_ioport_t;
 typedef volatile pdq_uint32_t *pdq_bus_memaddr_t;
 typedef pdq_bus_memaddr_t pdq_bus_memoffset_t;
-#if defined(__DragonFly__) || BSD >= 199506	/* __FreeBSD__ */
-#define	PDQ_BPF_MTAP(sc, m)	bpf_mtap(&(sc)->sc_if, m)
-#define	PDQ_BPFATTACH(sc, t, s)	bpfattach(&(sc)->sc_if, t, s)
-#endif
-
 
 #elif defined(__bsdi__)
 #include <machine/inline.h>
@@ -161,14 +156,6 @@ typedef pdq_uint32_t pdq_bus_memoffset_t;
 #define	PDQ_CSR_READ(csr, name)			PDQ_OS_MEMRD_32((csr)->csr_bus, (csr)->csr_base, (csr)->name)
 #endif
 
-#endif
-
-#if !defined(PDQ_BPF_MTAP)
-#define	PDQ_BPF_MTAP(sc, m)	bpf_mtap((sc)->sc_bpf, m)
-#endif
-
-#if !defined(PDQ_BPFATTACH)
-#define	PDQ_BPFATTACH(sc, t, s)	bpfattach(&(sc)->sc_bpf, &(sc)->sc_if, t, s)
 #endif
 
 #if !defined(PDQ_OS_PTR_FMT)
@@ -219,11 +206,6 @@ typedef struct {
     pdq_bus_memaddr_t sc_membase;
 #endif
     pdq_bus_t sc_bc;
-#if !defined(__bsdi__) || _BSDI_VERSION >= 199401
-#define	sc_bpf		sc_if.if_bpf
-#else
-    caddr_t sc_bpf;
-#endif
 } pdq_softc_t;
 
 

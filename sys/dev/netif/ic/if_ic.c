@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.8 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.9 2005/01/23 20:21:31 joerg Exp $
  */
 
 /*
@@ -311,8 +311,7 @@ icintr (device_t dev, int event, char *ptr)
 	  sc->ic_if.if_ipackets ++;
 	  sc->ic_if.if_ibytes += len;
 
-	if (sc->ic_if.if_bpf)
-		bpf_tap(&sc->ic_if, sc->ic_ifbuf, len + ICHDRLEN);
+	  BPF_TAP(&sc->ic_if, sc->ic_ifbuf, len + ICHDRLEN);
 
 	  top = m_devget(sc->ic_ifbuf + ICHDRLEN, len, 0, &sc->ic_if, 0);
 

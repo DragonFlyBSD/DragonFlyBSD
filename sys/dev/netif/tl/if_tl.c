@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
- * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.13 2004/09/15 00:55:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/tl/if_tl.c,v 1.14 2005/01/23 20:23:22 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_tl.c,v 1.51.2.5 2001/12/16 15:46:08 luigi Exp $
  */
@@ -1967,12 +1967,7 @@ static void tl_start(ifp)
 		}
 		prev = cur_tx;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->tl_mbuf);
+		BPF_MTAP(ifp, cur_tx->tl_mbuf);
 	}
 
 	/*

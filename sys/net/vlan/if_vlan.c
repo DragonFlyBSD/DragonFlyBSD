@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.10 2004/07/23 07:16:31 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.11 2005/01/23 20:23:22 joerg Exp $
  */
 
 /*
@@ -276,8 +276,7 @@ vlan_start(struct ifnet *ifp)
 		IF_DEQUEUE(&ifp->if_snd, m);
 		if (m == 0)
 			break;
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, m);
+		BPF_MTAP(ifp, m);
 
 		/*
 		 * Do not run parent's if_start() if the parent is not up,

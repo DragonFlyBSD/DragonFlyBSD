@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.15 2004/09/15 01:04:59 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.16 2005/01/23 20:23:22 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
  */
@@ -1486,12 +1486,7 @@ static void vr_start(ifp)
 		if (cur_tx != start_tx)
 			VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 
-		/*
-		 * If there's a BPF listener, bounce a copy of this frame
-		 * to him.
-		 */
-		if (ifp->if_bpf)
-			bpf_mtap(ifp, cur_tx->vr_mbuf);
+		BPF_MTAP(ifp, cur_tx->vr_mbuf);
 
 		VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 		VR_SETBIT16(sc, VR_COMMAND, /*VR_CMD_TX_ON|*/VR_CMD_TX_GO);
