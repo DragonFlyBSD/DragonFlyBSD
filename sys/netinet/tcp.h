@@ -32,7 +32,7 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp.h,v 1.4 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_H_
@@ -130,7 +130,7 @@ struct tcphdr {
 
 #define TCP_MAX_WINSHIFT	14	/* maximum window shift */
 
-#define TCP_MAXBURST		4 	/* maximum segments in a burst */
+#define TCP_MAXBURST		4	/* maximum segments in a burst */
 
 #define TCP_MAXHLEN	(0xf<<2)	/* max length of header in bytes */
 #define TCP_MAXOLEN	(TCP_MAXHLEN - sizeof(struct tcphdr))

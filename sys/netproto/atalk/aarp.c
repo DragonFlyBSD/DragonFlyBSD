@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.14 2004/09/16 21:55:03 joerg Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.15 2004/12/21 02:54:48 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -140,8 +140,7 @@ aarpwhohas( struct arpcom *ac, struct sockaddr_at *sat )
     ea->aarp_hln = sizeof( ea->aarp_sha );
     ea->aarp_pln = sizeof( ea->aarp_spu );
     ea->aarp_op = htons( AARPOP_REQUEST );
-    bcopy((caddr_t)ac->ac_enaddr, (caddr_t)ea->aarp_sha,
-	    sizeof( ea->aarp_sha ));
+    bcopy(ac->ac_enaddr, ea->aarp_sha, sizeof ea->aarp_sha);
 
     /*
      * We need to check whether the output ethernet type should
@@ -206,49 +205,46 @@ aarpresolve( ac, m, destsat, desten )
     struct aarptab	*aat;
     int			s;
 
-    if ( at_broadcast( destsat )) {
+    if (at_broadcast(destsat)) {
 	m->m_flags |= M_BCAST;
-	if ((aa = at_ifawithnet( destsat )) == NULL)  {
-	    m_freem( m );
-	    return( 0 );
+	if ((aa = at_ifawithnet(destsat)) == NULL)  {
+	    m_freem(m);
+	    return (0);
 	}
-	if ( aa->aa_flags & AFA_PHASE2 ) {
-	    bcopy( (caddr_t)atmulticastaddr, (caddr_t)desten,
-		    sizeof( atmulticastaddr ));
-	} else {
+	if (aa->aa_flags & AFA_PHASE2)
+	    bcopy(atmulticastaddr, desten, sizeof atmulticastaddr);
+	else
 	    bcopy(ac->ac_if.if_broadcastaddr, desten, ac->ac_if.if_addrlen);
-	}
-	return( 1 );
+	return (1);
     }
 
     s = splimp();
     AARPTAB_LOOK( aat, destsat->sat_addr );
-    if ( aat == 0 ) {			/* No entry */
+    if (aat == NULL) {			/* No entry */
 	aat = aarptnew( &destsat->sat_addr );
-	if ( aat == 0 ) {
-	    panic( "aarpresolve: no free entry" );
+	if (aat == NULL) {
+	    panic("aarpresolve: no free entry");
 	}
 	aat->aat_hold = m;
-	aarpwhohas( ac, destsat );
-	splx( s );
-	return( 0 );
+	aarpwhohas(ac, destsat);
+	splx(s);
+	return (0);
     }
     /* found an entry */
     aat->aat_timer = 0;
-    if ( aat->aat_flags & ATF_COM ) {	/* entry is COMplete */
-	bcopy( (caddr_t)aat->aat_enaddr, (caddr_t)desten,
-		sizeof( aat->aat_enaddr ));
-	splx( s );
-	return( 1 );
+    if (aat->aat_flags & ATF_COM) {	/* entry is COMplete */
+	bcopy(aat->aat_enaddr, desten, sizeof aat->aat_enaddr);
+	splx(s);
+	return (1);
     }
     /* entry has not completed */
-    if ( aat->aat_hold ) {
-	m_freem( aat->aat_hold );
+    if (aat->aat_hold) {
+	m_freem(aat->aat_hold);
     }
     aat->aat_hold = m;
-    aarpwhohas( ac, destsat );
-    splx( s );
-    return( 0 );
+    aarpwhohas(ac, destsat);
+    splx(s);
+    return (0);
 }
 
 int
@@ -297,7 +293,7 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 {
     struct ether_aarp	*ea;
     struct ifaddr	*ifa;
-    struct at_ifaddr	*aa;
+    struct at_ifaddr	*aa = NULL;
     struct aarptab	*aat;
     struct ether_header	*eh;
     struct llc		*llc;
@@ -316,19 +312,19 @@ at_aarpinput( struct arpcom *ac, struct mbuf *m)
 	return;
     }
 
-    op = ntohs( ea->aarp_op );
-    bcopy( ea->aarp_tpnet, &net, sizeof( net ));
+    op = ntohs(ea->aarp_op);
+    bcopy(ea->aarp_tpnet, &net, sizeof net);
 
     if ( net != 0 ) { /* should be ATADDR_ANYNET? */
 	sat.sat_len = sizeof(struct sockaddr_at);
 	sat.sat_family = AF_APPLETALK;
 	sat.sat_addr.s_net = net;
-	if ((aa = at_ifawithnet( &sat )) == NULL) {
+	if ((aa = at_ifawithnet(&sat)) == NULL) {
 	    m_freem( m );
 	    return;
 	}
-	bcopy( ea->aarp_spnet, &spa.s_net, sizeof( spa.s_net ));
-	bcopy( ea->aarp_tpnet, &tpa.s_net, sizeof( tpa.s_net ));
+	bcopy(ea->aarp_spnet, &spa.s_net, sizeof spa.s_net);
+	bcopy(ea->aarp_tpnet, &tpa.s_net, sizeof tpa.s_net);
     } else {
 	/*
 	 * Since we don't know the net, we just look for the first
@@ -521,7 +517,7 @@ aarpprobe( void *arg )
     struct ether_header	*eh;
     struct ether_aarp	*ea;
     struct ifaddr	*ifa;
-    struct at_ifaddr	*aa;
+    struct at_ifaddr	*aa = NULL;
     struct llc		*llc;
     struct sockaddr	sa;
 

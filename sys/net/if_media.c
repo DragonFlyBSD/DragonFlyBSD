@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.c,v 1.1 1997/03/17 02:55:15 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.c,v 1.9.2.4 2001/07/04 00:12:38 brooks Exp $ */
-/* $DragonFly: src/sys/net/if_media.c,v 1.6 2004/04/22 04:21:29 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.c,v 1.7 2004/12/21 02:54:14 hsu Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -60,7 +60,7 @@
  * Compile-time options:
  * IFMEDIA_DEBUG:
  *	turn on implementation-level debug printfs.
- * 	Useful for debugging newly-ported  drivers.
+ *	Useful for debugging newly-ported  drivers.
  */
 
 static struct ifmedia_entry *ifmedia_match (struct ifmedia *ifm,
@@ -201,7 +201,7 @@ ifmedia_ioctl(ifp, ifr, ifm, cmd)
 	int error = 0, sticky;
 
 	if (ifp == NULL || ifr == NULL || ifm == NULL)
-		return(EINVAL);
+		return (EINVAL);
 
 	switch (cmd) {
 

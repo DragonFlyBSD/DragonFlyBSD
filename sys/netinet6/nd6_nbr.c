@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_nbr.c,v 1.4.2.6 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.6 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_nbr.c,v 1.7 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: nd6_nbr.c,v 1.86 2002/01/21 02:33:04 jinmei Exp $	*/
 
 /*
@@ -212,8 +212,8 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 		tsin6.sin6_family = AF_INET6;
 		tsin6.sin6_addr = taddr6;
 
-		rt = rtalloc1((struct sockaddr *)&tsin6, 0, 0);
-		if (rt && (rt->rt_flags & RTF_ANNOUNCE) != 0 &&
+		rt = rtlookup((struct sockaddr *)&tsin6, 0, 0);
+		if (rt && (rt->rt_flags & RTF_ANNOUNCE) &&
 		    rt->rt_gateway->sa_family == AF_LINK) {
 			/*
 			 * proxy NDP for single entry
@@ -226,7 +226,7 @@ nd6_ns_input(struct mbuf *m, int off, int icmp6len)
 			}
 		}
 		if (rt)
-			rtfree(rt);
+			--rt->rt_refcnt;
 	}
 	if (!ifa) {
 		/*

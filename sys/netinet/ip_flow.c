@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_flow.c,v 1.9.2.2 2001/11/04 17:35:31 luigi Exp $
- * $DragonFly: src/sys/netinet/ip_flow.c,v 1.4 2004/05/03 15:18:25 hmp Exp $
+ * $DragonFly: src/sys/netinet/ip_flow.c,v 1.5 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -191,6 +191,7 @@ ipflow_free(
 	struct ipflow *ipf)
 {
 	int s;
+
 	/*
 	 * Remove the flow from the hash table (at elevated IPL).
 	 * Once it's off the list, we can deal with it at normal
@@ -224,7 +225,7 @@ ipflow_reap(
 				goto done;
 			/*
 			 * choose the one that's been least recently used
-			 * or has had the least uses in the last 1.5 
+			 * or has had the least uses in the last 1.5
 			 * intervals.
 			 */
 			if (maybe_ipf == NULL
@@ -298,8 +299,8 @@ ipflow_create(const struct route *ro, struct mbuf *m)
 		if (ipflow_inuse == IPFLOW_MAX) {
 			ipf = ipflow_reap();
 		} else {
-			ipf = malloc(sizeof(*ipf), M_IPFLOW, 
-					M_INTWAIT | M_NULLOK);
+			ipf = malloc(sizeof(*ipf), M_IPFLOW,
+				     M_INTWAIT | M_NULLOK);
 			if (ipf == NULL)
 				return;
 			ipflow_inuse++;

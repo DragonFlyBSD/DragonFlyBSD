@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.12 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.13 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -72,7 +72,7 @@
 #endif
 
 #ifdef IPX
-#include <netproto/ipx/ipx.h> 
+#include <netproto/ipx/ipx.h>
 #include <netproto/ipx/ipx_if.h>
 #endif
 
@@ -112,10 +112,10 @@ static int	fddi_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 #define	llc_snap	llc_un.type_snap
 #endif
 
-#if defined(__bsdi__) || defined(__NetBSD__)
-#define	RTALLOC1(a, b)			rtalloc1(a, b)
+#if defined(__DragonFly__)
+#define	RTALLOC1(a, b)			rtlookup(a, b, 0UL)
 #define	ARPRESOLVE(a, b, c, d, e, f)	arpresolve(a, b, c, d, e)
-#elif defined(__DragonFly__) || defined(__FreeBSD__)
+#elif defined(__FreeBSD__)
 #define	RTALLOC1(a, b)			rtalloc1(a, b, 0UL)
 #define	ARPRESOLVE(a, b, c, d, e, f)	arpresolve(a, b, c, d, e, f)
 #endif
@@ -128,54 +128,23 @@ static int	fddi_output(struct ifnet *, struct mbuf *, struct sockaddr *,
  */
 static int
 fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	    struct rtentry *rt0)
+	    struct rtentry *rt)
 {
-	u_int16_t type;
-	int s, loop_copy = 0, error = 0, hdrcmplt = 0;
- 	u_char esrc[6], edst[6];
-	struct rtentry *rt;
-	struct fddi_header *fh;
 	struct arpcom *ac = (struct arpcom *)ifp;
+	u_int16_t type;
+	u_char esrc[6], edst[6];
+	struct fddi_header *fh;
+	boolean_t hdrcmplt = FALSE;
+	int s, loop_copy = 0, error;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
 		senderr(ENETDOWN);
-	getmicrotime(&ifp->if_lastchange);
-#if !defined(__bsdi__) || _BSDI_VERSION >= 199401
-	if ((rt = rt0) != NULL) {
-		if ((rt->rt_flags & RTF_UP) == 0) {
-			if ((rt0 = rt = RTALLOC1(dst, 1)) != NULL)
-				rt->rt_refcnt--;
-			else 
-				senderr(EHOSTUNREACH);
-		}
-		if (rt->rt_flags & RTF_GATEWAY) {
-			if (rt->rt_gwroute == 0)
-				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
-				rtfree(rt); rt = rt0;
-			lookup: rt->rt_gwroute = RTALLOC1(rt->rt_gateway, 1);
-				if ((rt = rt->rt_gwroute) == 0)
-					senderr(EHOSTUNREACH);
-			}
-		}
-		if (rt->rt_flags & RTF_REJECT)
-			if (rt->rt_rmx.rmx_expire == 0 ||
-			    time_second < rt->rt_rmx.rmx_expire)
-				senderr(rt == rt0 ? EHOSTDOWN : EHOSTUNREACH);
-	}
-#endif
-	switch (dst->sa_family) {
 
+	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET: {
-#if !defined(__bsdi__) || _BSDI_VERSION >= 199401
-		if (!ARPRESOLVE(ifp, rt, m, dst, edst, rt0))
+		if (!arpresolve(ifp, rt, m, dst, edst))
 			return (0);	/* if not yet resolved */
-#else
-		int usetrailers;
-		if (!arpresolve(ac, m, &((struct sockaddr_in *)dst)->sin_addr, edst, &usetrailers))
-			return (0);	/* if not yet resolved */
-#endif
 		type = htons(ETHERTYPE_IP);
 		break;
 	}
@@ -184,7 +153,7 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	case AF_INET6:
 		if (!nd6_storelladdr(&ac->ac_if, rt, m, dst, (u_char *)edst)) {
 			/* Something bad happened */
-			return(0);
+			return (0);
 		}
 		type = htons(ETHERTYPE_IPV6);
 		break;
@@ -192,67 +161,77 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef IPX
 	case AF_IPX:
 		type = htons(ETHERTYPE_IPX);
- 		bcopy((caddr_t)&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host),
-		    (caddr_t)edst, sizeof (edst));
+		bcopy(&(((struct sockaddr_ipx *)dst)->sipx_addr.x_host), edst,
+		      sizeof edst);
 		break;
 #endif
 #ifdef NETATALK
 	case AF_APPLETALK: {
-	    struct at_ifaddr *aa;
-            if (!aarpresolve(ac, m, (struct sockaddr_at *)dst, edst))
-                return (0);
-	    /*
-	     * ifaddr is the first thing in at_ifaddr
-	     */
-	    if ((aa = at_ifawithnet( (struct sockaddr_at *)dst)) == 0)
-		goto bad;
-	    
-	    /*
-	     * In the phase 2 case, we need to prepend an mbuf for the llc header.
-	     * Since we must preserve the value of m, which is passed to us by
-	     * value, we m_copy() the first mbuf, and use it for our llc header.
-	     */
-	    if (aa->aa_flags & AFA_PHASE2) {
-		struct llc llc;
+		struct at_ifaddr *aa;
 
-		M_PREPEND(m, sizeof(struct llc), MB_WAIT);
-		if (m == 0)
-			senderr(ENOBUFS);
-		llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
-		llc.llc_control = LLC_UI;
-		bcopy(at_org_code, llc.llc_snap_org_code, sizeof(at_org_code));
-		llc.llc_snap_ether_type = htons(ETHERTYPE_AT);
-		bcopy(&llc, mtod(m, caddr_t), sizeof(struct llc));
-		type = 0;
-	    } else {
-		type = htons(ETHERTYPE_AT);
-	    }
-	    break;
+		if (!aarpresolve((struct arpcom *) ifp, m,
+				 (struct sockaddr_at *)dst, edst))
+			return (0);
+
+		/*
+		 * ifaddr is the first thing in at_ifaddr
+		 */
+		if ((aa = at_ifawithnet((struct sockaddr_at *)dst)) == NULL) {
+			error = 0;	/* XXX */
+			goto bad;
+		}
+
+		/*
+		 * In the phase 2 case, we need to prepend an mbuf
+		 * for the llc header.  Since we must preserve the
+		 * value of m, which is passed to us by value, we
+		 * m_copy() the first mbuf, and use it for our llc
+		 * header.
+		 */
+		if (aa->aa_flags & AFA_PHASE2) {
+			struct llc llc;
+
+			M_PREPEND(m, sizeof(struct llc), MB_WAIT);
+			if (m == NULL)
+				senderr(ENOBUFS);
+			llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
+			llc.llc_control = LLC_UI;
+			bcopy(at_org_code, llc.llc_snap_org_code,
+			      sizeof at_org_code);
+			llc.llc_snap_ether_type = htons(ETHERTYPE_AT);
+			bcopy(&llc, mtod(m, caddr_t), sizeof(struct llc));
+			type = 0;
+		} else {
+			type = htons(ETHERTYPE_AT);
+		}
+		break;
 	}
 #endif /* NETATALK */
 #ifdef NS
 	case AF_NS:
 		type = htons(ETHERTYPE_NS);
- 		bcopy((caddr_t)&(((struct sockaddr_ns *)dst)->sns_addr.x_host),
-		    (caddr_t)edst, sizeof (edst));
+		bcopy(&(((struct sockaddr_ns *)dst)->sns_addr.x_host), edst,
+		      sizeof edst);
 		break;
 #endif
 
 	case pseudo_AF_HDRCMPLT:
 	{
 		struct ether_header *eh;
-		hdrcmplt = 1;
+
+		hdrcmplt = TRUE;
 		eh = (struct ether_header *)dst->sa_data;
- 		(void)memcpy((caddr_t)esrc, (caddr_t)eh->ether_shost, sizeof (esrc));
+		memcpy(esrc, eh->ether_shost, sizeof esrc);
 		/* FALLTHROUGH */
 	}
 
 	case AF_UNSPEC:
 	{
 		struct ether_header *eh;
+
 		loop_copy = -1;
 		eh = (struct ether_header *)dst->sa_data;
- 		(void)memcpy((caddr_t)edst, (caddr_t)eh->ether_dhost, sizeof (edst));
+		memcpy(edst, eh->ether_dhost, sizeof edst);
 		if (*edst & 1)
 			m->m_flags |= (M_BCAST|M_MCAST);
 		type = eh->ether_type;
@@ -267,7 +246,7 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			case FDDIFC_LLC_ASYNC: {
 				/* legal priorities are 0 through 7 */
 				if ((fh->fddi_fc & FDDIFC_Z) > 7)
-			        	goto bad;
+					goto bad;
 				break;
 			}
 			case FDDIFC_LLC_SYNC: {
@@ -284,12 +263,12 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			}
 			default: {
 				/* anything else is too dangerous */
-               	 		goto bad;
+				goto bad;
 			}
 		}
 		error = 0;
 		if (fh->fddi_dhost[0] & 1)
-			m->m_flags |= (M_BCAST|M_MCAST);
+			m->m_flags |= (M_BCAST | M_MCAST);
 		goto queue_it;
 	}
 	default:
@@ -300,36 +279,36 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	if (type != 0) {
 		struct llc *l;
-		M_PREPEND(m, sizeof (struct llc), MB_DONTWAIT);
-		if (m == 0)
-			senderr(ENOBUFS);
+
+		M_PREPEND(m, sizeof(struct llc), MB_DONTWAIT);
+		if (m == NULL)
+			return (ENOBUFS);
 		l = mtod(m, struct llc *);
 		l->llc_control = LLC_UI;
 		l->llc_dsap = l->llc_ssap = LLC_SNAP_LSAP;
-		l->llc_snap.org_code[0] = l->llc_snap.org_code[1] = l->llc_snap.org_code[2] = 0;
-		(void)memcpy((caddr_t) &l->llc_snap.ether_type, (caddr_t) &type,
-			sizeof(u_int16_t));
+		l->llc_snap.org_code[0] = l->llc_snap.org_code[1] =
+		    l->llc_snap.org_code[2] = 0;
+		memcpy(&l->llc_snap.ether_type, &type, sizeof(u_int16_t));
 	}
 
 	/*
 	 * Add local net header.  If no space in first mbuf,
 	 * allocate another.
 	 */
-	M_PREPEND(m, sizeof (struct fddi_header), MB_DONTWAIT);
-	if (m == 0)
-		senderr(ENOBUFS);
+	M_PREPEND(m, sizeof(struct fddi_header), MB_DONTWAIT);
+	if (m == NULL)
+		return (ENOBUFS);
 	fh = mtod(m, struct fddi_header *);
 	fh->fddi_fc = FDDIFC_LLC_ASYNC|FDDIFC_LLC_PRIO4;
- 	(void)memcpy((caddr_t)fh->fddi_dhost, (caddr_t)edst, sizeof (edst));
-  queue_it:
+	memcpy(fh->fddi_dhost, edst, sizeof edst);
+
+queue_it:
 	if (hdrcmplt)
-		(void)memcpy((caddr_t)fh->fddi_shost, (caddr_t)esrc,
-			sizeof(fh->fddi_shost));
+		memcpy(fh->fddi_shost, esrc, sizeof fh->fddi_shost);
 	else
-		(void)memcpy((caddr_t)fh->fddi_shost, (caddr_t)ac->ac_enaddr,
-			sizeof(fh->fddi_shost));
+		memcpy(fh->fddi_shost, ac->ac_enaddr, sizeof fh->fddi_shost);
 	/*
-	 * If a simplex interface, and the packet is being sent to our
+		memcpy(fh->fddi_shost, ac->ac_enaddr, sizeof fh->fddi_shost);
 	 * Ethernet address or a broadcast address, loopback a copy.
 	 * XXX To make a simplex device behave exactly like a duplex
 	 * device, we should copy in the case of sending to our own
@@ -340,15 +319,15 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	if ((ifp->if_flags & IFF_SIMPLEX) &&
 	   (loop_copy != -1)) {
 		if ((m->m_flags & M_BCAST) || loop_copy) {
-			struct mbuf *n = m_copy(m, 0, (int)M_COPYALL);
+			struct mbuf *n = m_copypacket(m, MB_DONTWAIT);
 
-			(void) if_simloop(ifp,
-				n, dst->sa_family, sizeof(struct fddi_header));
-	     	} else if (bcmp(fh->fddi_dhost,
-		    fh->fddi_shost, sizeof(fh->fddi_shost)) == 0) {
-			(void) if_simloop(ifp,
-				m, dst->sa_family, sizeof(struct fddi_header));
-			return(0);	/* XXX */
+			if_simloop(ifp, n, dst->sa_family,
+				   sizeof(struct fddi_header));
+		} else if (bcmp(fh->fddi_dhost, fh->fddi_shost,
+				sizeof(fh->fddi_shost)) == 0) {
+			if_simloop(ifp, m, dst->sa_family,
+				   sizeof(struct fddi_header));
+			senderr(0);	/* XXX */
 		}
 	}
 
@@ -370,7 +349,7 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		(*ifp->if_start)(ifp);
 	splx(s);
 
-	return (error);
+	return (0);
 
 bad:
 	if (m)
@@ -403,7 +382,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 		return;
 	}
 	getmicrotime(&ifp->if_lastchange);
-	ifp->if_ibytes += m->m_pkthdr.len + sizeof (*fh);
+	ifp->if_ibytes += m->m_pkthdr.len + sizeof *fh;
 	if (fh->fddi_dhost[0] & 1) {
 		if (bcmp(ifp->if_broadcastaddr, fh->fddi_dhost,
 			 ifp->if_addrlen) == 0)
@@ -412,8 +391,8 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 			m->m_flags |= M_MCAST;
 		ifp->if_imcasts++;
 	} else if ((ifp->if_flags & IFF_PROMISC) &&
-	    bcmp(((struct arpcom *)ifp)->ac_enaddr, (caddr_t)fh->fddi_dhost,
-		    sizeof(fh->fddi_dhost)) != 0) {
+	    bcmp(((struct arpcom *)ifp)->ac_enaddr, fh->fddi_dhost,
+		 sizeof fh->fddi_dhost) != 0) {
 		m_freem(m);
 		return;
 	}
@@ -449,7 +428,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 		if (bcmp(&(l->llc_snap_org_code)[0], aarp_org_code,
 			 sizeof(aarp_org_code)) == 0 &&
 			ntohs(l->llc_snap_ether_type) == ETHERTYPE_AARP) {
-		    m_adj( m, sizeof( struct llc ));
+		    m_adj(m, sizeof(struct llc));
 		    isr = NETISR_AARP;
 		    break;
 		}
@@ -479,11 +458,11 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 			isr = NETISR_IPV6;
 			break;
 #endif
-#ifdef IPX      
-		case ETHERTYPE_IPX: 
+#ifdef IPX
+		case ETHERTYPE_IPX:
 			isr = NETISR_IPX;
-			break;  
-#endif   
+			break;
+#endif
 #ifdef NS
 		case ETHERTYPE_NS:
 			isr = NETISR_NS;
@@ -494,7 +473,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 			isr = NETISR_DECNET;
 			break;
 #endif
-#ifdef NETATALK 
+#ifdef NETATALK
 		case ETHERTYPE_AT:
 	                isr = NETISR_ATALK1;
 			break;
@@ -510,7 +489,7 @@ fddi_input(struct ifnet *ifp, struct mbuf *m)
 		break;
 	}
 #endif /* INET || NS */
-		
+
 	default:
 		/* printf("fddi_input: unknown dsap 0x%x\n", l->llc_dsap); */
 		ifp->if_noproto++;
@@ -566,8 +545,8 @@ fddi_ifattach(ifp)
 		    sdl->sdl_family == AF_LINK) {
 			sdl->sdl_type = IFT_FDDI;
 			sdl->sdl_alen = ifp->if_addrlen;
-			bcopy((caddr_t)((struct arpcom *)ifp)->ac_enaddr,
-			      LLADDR(sdl), ifp->if_addrlen);
+			bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl),
+			      ifp->if_addrlen);
 			break;
 		}
 #endif

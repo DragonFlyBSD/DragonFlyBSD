@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_faith.c,v 1.3.2.6 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/faith/if_faith.c,v 1.8 2004/03/23 22:19:06 hsu Exp $
+ * $DragonFly: src/sys/net/faith/if_faith.c,v 1.9 2004/12/21 02:54:15 hsu Exp $
  */
 /*
  * derived from
@@ -368,9 +368,9 @@ faithprefix(in6)
 	sin6.sin6_family = AF_INET6;
 	sin6.sin6_len = sizeof(struct sockaddr_in6);
 	sin6.sin6_addr = *in6;
-	rt = rtalloc1((struct sockaddr *)&sin6, 0, 0UL);
+	rt = rtlookup((struct sockaddr *)&sin6, 0, 0UL);
 	if (rt && rt->rt_ifp && rt->rt_ifp->if_type == IFT_FAITH &&
-	    (rt->rt_ifp->if_flags & IFF_UP) != 0)
+	    (rt->rt_ifp->if_flags & IFF_UP))
 		ret = 1;
 	else
 		ret = 0;

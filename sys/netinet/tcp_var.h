@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.26 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.27 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -276,14 +276,14 @@ struct tcpcb {
 #ifdef _KERNEL
 
 #if defined(SMP)
-#define _GD 	mycpu
+#define _GD	mycpu
 #define tcpstat	tcpstats_ary[_GD->gd_cpuid]
-#else /* !SMP */
+#else
 #define tcpstat	tcpstats_ary[0]
 #endif
 
 struct tcp_stats;
-extern struct tcp_stats 	tcpstats_ary[MAXCPU];
+extern struct tcp_stats		tcpstats_ary[MAXCPU];
 
 static const int tcprexmtthresh = 3;
 #endif
@@ -408,29 +408,29 @@ struct tcpopt {
 	tcp_cc		to_cc;		/* holds CC or CCnew */
 	tcp_cc		to_ccecho;
 	u_int16_t	to_mss;
-	u_int8_t 	to_requested_s_scale;
-	u_int8_t 	to_pad;
+	u_int8_t	to_requested_s_scale;
+	u_int8_t	to_pad;
 	int		to_nsackblocks;
 	struct raw_sackblock *to_sackblocks;
 };
 
 struct syncache {
 	inp_gen_t	sc_inp_gencnt;		/* pointer check */
-	struct 		tcpcb *sc_tp;		/* tcb for listening socket */
+	struct		tcpcb *sc_tp;		/* tcb for listening socket */
 	struct		mbuf *sc_ipopts;	/* source route */
-	struct 		in_conninfo sc_inc;	/* addresses */
+	struct		in_conninfo sc_inc;	/* addresses */
 #define sc_route	sc_inc.inc_route
 #define sc_route6	sc_inc.inc6_route
 	u_int32_t	sc_tsrecent;
 	tcp_cc		sc_cc_send;		/* holds CC or CCnew */
 	tcp_cc		sc_cc_recv;
-	tcp_seq 	sc_irs;			/* seq from peer */
-	tcp_seq 	sc_iss;			/* our ISS */
+	tcp_seq		sc_irs;			/* seq from peer */
+	tcp_seq		sc_iss;			/* our ISS */
 	u_long		sc_rxttime;		/* retransmit time */
-	u_int16_t	sc_rxtslot; 		/* retransmit counter */
+	u_int16_t	sc_rxtslot;		/* retransmit counter */
 	u_int16_t	sc_peer_mss;		/* peer's MSS */
 	u_int16_t	sc_wnd;			/* advertised window */
-	u_int8_t 	sc_requested_s_scale:4,
+	u_int8_t	sc_requested_s_scale:4,
 			sc_request_r_scale:4;
 	u_int8_t	sc_flags;
 #define SCF_NOOPT	0x01			/* no TCP options */
@@ -448,7 +448,7 @@ struct syncache_head {
 	TAILQ_HEAD(, syncache)	sch_bucket;
 	u_int		sch_length;
 };
- 
+
 /*
  * The TAO cache entry which is stored in the protocol family specific
  * portion of the route metrics.
@@ -457,14 +457,16 @@ struct rmxp_tao {
 	tcp_cc	tao_cc;			/* latest CC in valid SYN */
 	tcp_cc	tao_ccsent;		/* latest CC sent to peer */
 	u_short	tao_mssopt;		/* peer's cached MSS */
+
 #ifdef notyet
 	u_short	tao_flags;		/* cache status flags */
 #define	TAOF_DONT	0x0001		/* peer doesn't understand rfc1644 */
 #define	TAOF_OK		0x0002		/* peer does understand rfc1644 */
 #define	TAOF_UNDEF	0		/* we don't know yet */
-#endif /* notyet */
+#endif
 };
-#define rmx_taop(r)	((struct rmxp_tao *)(r).rmx_filler)
+
+#define rmx_taop(rt)	((struct rmxp_tao *)(rt).rmx_filler)
 
 #define	intotcpcb(ip)	((struct tcpcb *)(ip)->inp_ppcb)
 #define	sototcpcb(so)	(intotcpcb(sotoinpcb(so)))

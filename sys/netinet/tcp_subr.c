@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.42 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.43 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -161,7 +161,7 @@ struct inpcbinfo tcbinfo[MAXCPU];
 struct tcpcbackqhead tcpcbackq[MAXCPU];
 
 int tcp_mssdflt = TCP_MSS;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW,
     &tcp_mssdflt, 0, "Default TCP Maximum Segment Size");
 
 #ifdef INET6
@@ -172,16 +172,16 @@ SYSCTL_INT(_net_inet_tcp, TCPCTL_V6MSSDFLT, v6mssdflt, CTLFLAG_RW,
 
 #if 0
 static int tcp_rttdflt = TCPTV_SRTTDFLT / PR_SLOWHZ;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_RTTDFLT, rttdflt, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_RTTDFLT, rttdflt, CTLFLAG_RW,
     &tcp_rttdflt, 0, "Default maximum TCP Round Trip Time");
 #endif
 
 int tcp_do_rfc1323 = 1;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1323, rfc1323, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1323, rfc1323, CTLFLAG_RW,
     &tcp_do_rfc1323, 0, "Enable rfc1323 (high performance TCP) extensions");
 
 int tcp_do_rfc1644 = 0;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1644, rfc1644, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_DO_RFC1644, rfc1644, CTLFLAG_RW,
     &tcp_do_rfc1644, 0, "Enable rfc1644 (TTCP) extensions");
 
 static int tcp_tcbhashsize = 0;
@@ -193,11 +193,11 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, do_tcpdrain, CTLFLAG_RW, &do_tcpdrain, 0,
      "Enable tcp_drain routine for extra help when low on mbufs");
 
 /* XXX JH */
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, pcbcount, CTLFLAG_RD, 
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, pcbcount, CTLFLAG_RD,
     &tcbinfo[0].ipi_count, 0, "Number of active PCBs");
 
 static int icmp_may_rst = 1;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, icmp_may_rst, CTLFLAG_RW, &icmp_may_rst, 0, 
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, icmp_may_rst, CTLFLAG_RW, &icmp_may_rst, 0,
     "Certain ICMP unreachable messages may abort connections in SYN_SENT");
 
 static int tcp_isn_reseed_interval = 0;
@@ -205,8 +205,8 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, isn_reseed_interval, CTLFLAG_RW,
     &tcp_isn_reseed_interval, 0, "Seconds between reseeding of ISN secret");
 
 /*
- * TCP bandwidth limiting sysctls.  Note that the default lower bound of 
- * 1024 exists only for debugging.  A good production default would be 
+ * TCP bandwidth limiting sysctls.  Note that the default lower bound of
+ * 1024 exists only for debugging.  A good production default would be
  * something like 6100.
  */
 static int tcp_inflight_enable = 0;
@@ -244,10 +244,10 @@ sysctl_tcpstats(SYSCTL_HANDLER_ARGS)
 	int cpu, error = 0;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if ((error = SYSCTL_OUT(req, (void *)&tcpstats_ary[cpu],
+		if ((error = SYSCTL_OUT(req, &tcpstats_ary[cpu],
 					sizeof(struct tcp_stats))))
 			break;
-		if ((error = SYSCTL_IN(req, (void *)&tcpstats_ary[cpu],
+		if ((error = SYSCTL_IN(req, &tcpstats_ary[cpu],
 				       sizeof(struct tcp_stats))))
 			break;
 	}
@@ -383,7 +383,7 @@ tcp_init()
 
 void
 tcpmsg_service_loop(void *dummy)
-{ 
+{
 	struct netmsg *msg;
 
 	while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
@@ -477,7 +477,7 @@ tcp_maketemplate(struct tcpcb *tp)
 
 	if ((tmp = mpipe_alloc_nowait(&tcptemp_mpipe)) == NULL)
 		return (NULL);
-	tcp_fillheaders(tp, (void *)&tmp->tt_ipgen, (void *)&tmp->tt_t);
+	tcp_fillheaders(tp, &tmp->tt_ipgen, &tmp->tt_t);
 	return (tmp);
 }
 
@@ -614,7 +614,7 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 					tlen - sizeof(struct ip6_hdr));
 		ip6->ip6_hlim = in6_selecthlim(tp ? tp->t_inpcb : NULL,
 					       (ro6 && ro6->ro_rt) ?
-					           ro6->ro_rt->rt_ifp : NULL);
+						ro6->ro_rt->rt_ifp : NULL);
 	} else {
 		nth->th_sum = in_pseudo(ip->ip_src.s_addr, ip->ip_dst.s_addr,
 		    htons((u_short)(tlen - sizeof(struct ip) + ip->ip_p)));
@@ -626,15 +626,14 @@ tcp_respond(struct tcpcb *tp, void *ipgen, struct tcphdr *th, struct mbuf *m,
 		tcp_trace(TA_OUTPUT, 0, tp, mtod(m, void *), th, 0);
 #endif
 	if (isipv6) {
-		(void)ip6_output(m, NULL, ro6, ipflags, NULL, NULL,
-				 tp ? tp->t_inpcb : NULL);
+		ip6_output(m, NULL, ro6, ipflags, NULL, NULL,
+			   tp ? tp->t_inpcb : NULL);
 		if ((ro6 == &sro6) && (ro6->ro_rt != NULL)) {
 			RTFREE(ro6->ro_rt);
 			ro6->ro_rt = NULL;
 		}
 	} else {
-		(void)ip_output(m, NULL, ro, ipflags, NULL,
-				tp ? tp->t_inpcb : NULL);
+		ip_output(m, NULL, ro, ipflags, NULL, tp ? tp->t_inpcb : NULL);
 		if ((ro == &sro) && (ro->ro_rt != NULL)) {
 			RTFREE(ro->ro_rt);
 			ro->ro_rt = NULL;
@@ -698,7 +697,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	 * which may match an IPv4-mapped IPv6 address.
 	 */
 	inp->inp_ip_ttl = ip_defttl;
-	inp->inp_ppcb = (caddr_t)tp;
+	inp->inp_ppcb = tp;
 	tcp_sack_tcpcb_init(tp);
 	return (tp);		/* XXX */
 }
@@ -714,7 +713,7 @@ tcp_drop(struct tcpcb *tp, int errno)
 
 	if (TCPS_HAVERCVDSYN(tp->t_state)) {
 		tp->t_state = TCPS_CLOSED;
-		(void) tcp_output(tp);
+		tcp_output(tp);
 		tcpstat.tcps_drops++;
 	} else
 		tcpstat.tcps_conndrops++;
@@ -959,7 +958,7 @@ no_valid_rt:
 		msg->nm_inp = inp;
 		msg->nm_pcbinfo = &tcbinfo[cpu];
 		lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
-	} else 
+	} else
 #endif
 	{
 		/* note: detach removes any wildcard hash entry */
@@ -1083,7 +1082,7 @@ tcp_notify(struct inpcb *inp, int error)
 	else
 		tp->t_softerror = error;
 #if 0
-	wakeup((caddr_t) &so->so_timeo);
+	wakeup(&so->so_timeo);
 	sorwakeup(so);
 	sowwakeup(so);
 #endif
@@ -1123,7 +1122,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 
 	/*
 	 * OK, now we're committed to doing something.  Run the inpcb list
-	 * for each cpu in the system and construct the output.  Use a 
+	 * for each cpu in the system and construct the output.  Use a
 	 * list placemarker to deal with list changes occuring during
 	 * copyout blockages (but otherwise depend on being on the correct
 	 * cpu to avoid races).
@@ -1182,7 +1181,7 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 			bzero(&xt, sizeof(xt));
 			xt.xt_len = sizeof(xt);
 			while (i < n) {
-				error = SYSCTL_OUT(req, &xt, sizeof (xt));
+				error = SYSCTL_OUT(req, &xt, sizeof xt);
 				if (error)
 					break;
 				++i;
@@ -1623,12 +1622,9 @@ tcp_mtudisc(struct inpcb *inp, int errno)
 struct rtentry *
 tcp_rtlookup(struct in_conninfo *inc)
 {
-	struct route *ro;
-	struct rtentry *rt;
+	struct route *ro = &inc->inc_route;
 
-	ro = &inc->inc_route;
-	rt = ro->ro_rt;
-	if (rt == NULL || !(rt->rt_flags & RTF_UP)) {
+	if (ro->ro_rt == NULL || !(ro->ro_rt->rt_flags & RTF_UP)) {
 		/* No route yet, so try to acquire one */
 		if (inc->inc_faddr.s_addr != INADDR_ANY) {
 			/*
@@ -1641,22 +1637,18 @@ tcp_rtlookup(struct in_conninfo *inc)
 			((struct sockaddr_in *) &ro->ro_dst)->sin_addr =
 			    inc->inc_faddr;
 			rtalloc(ro);
-			rt = ro->ro_rt;
 		}
 	}
-	return (rt);
+	return (ro->ro_rt);
 }
 
 #ifdef INET6
 struct rtentry *
 tcp_rtlookup6(struct in_conninfo *inc)
 {
-	struct route_in6 *ro6;
-	struct rtentry *rt;
+	struct route_in6 *ro6 = &inc->inc6_route;
 
-	ro6 = &inc->inc6_route;
-	rt = ro6->ro_rt;
-	if (rt == NULL || !(rt->rt_flags & RTF_UP)) {
+	if (ro6->ro_rt == NULL || !(ro6->ro_rt->rt_flags & RTF_UP)) {
 		/* No route yet, so try to acquire one */
 		if (!IN6_IS_ADDR_UNSPECIFIED(&inc->inc6_faddr)) {
 			/*
@@ -1668,10 +1660,9 @@ tcp_rtlookup6(struct in_conninfo *inc)
 			ro6->ro_dst.sin6_len = sizeof(struct sockaddr_in6);
 			ro6->ro_dst.sin6_addr = inc->inc6_faddr;
 			rtalloc((struct route *)ro6);
-			rt = ro6->ro_rt;
 		}
 	}
-	return (rt);
+	return (ro6->ro_rt);
 }
 #endif
 
@@ -1767,13 +1758,13 @@ tcp_cleartaocache()
  * side of the connection.
  *
  * BACKGROUND:  TCP makes no provision for the management of buffer space
- * at the end points or at the intermediate routers and switches.  A TCP 
+ * at the end points or at the intermediate routers and switches.  A TCP
  * stream, whether using NewReno or not, will eventually buffer as
  * many packets as it is able and the only reason this typically works is
  * due to the fairly small default buffers made available for a connection
  * (typicaly 16K or 32K).  As machines use larger windows and/or window
  * scaling it is now fairly easy for even a single TCP connection to blow-out
- * all available buffer space not only on the local interface, but on 
+ * all available buffer space not only on the local interface, but on
  * intermediate routers and switches as well.  NewReno makes a misguided
  * attempt to 'solve' this problem by waiting for an actual failure to occur,
  * then backing off, then steadily increasing the window again until another
@@ -1795,7 +1786,7 @@ tcp_cleartaocache()
  *
  * The second method is to limit the window to the bandwidth delay product
  * of the link.  This is the method we implement.  RTT variances and our
- * own manipulation of the congestion window, bwnd, can potentially 
+ * own manipulation of the congestion window, bwnd, can potentially
  * destabilize the algorithm.  For this reason we have to stabilize the
  * elements used to calculate the window.  We do this by using the minimum
  * observed RTT, the long term average of the observed bandwidth, and
@@ -1867,7 +1858,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 * Situations Handled:
 	 *	(1) Prevents over-queueing of packets on LANs, especially on
 	 *	    high speed LANs, allowing larger TCP buffers to be
-	 *	    specified, and also does a good job preventing 
+	 *	    specified, and also does a good job preventing
 	 *	    over-queueing of packets over choke points like modems
 	 *	    (at least for the transmit side).
 	 *
@@ -1879,7 +1870,7 @@ tcp_xmit_bandwidth_limit(struct tcpcb *tp, tcp_seq ack_seq)
 	 *	    connections implementing the same algorithm (this may need
 	 *	    a little work).
 	 *
-	 *	(4) Stability value (defaults to 20 = 2 maximal packets) can 
+	 *	(4) Stability value (defaults to 20 = 2 maximal packets) can
 	 *	    be adjusted with a sysctl but typically only needs to be on
 	 *	    very slow connections.  A value no smaller then 5 should
 	 *	    be used, but only reduce this default if you have no other

@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.30 2004/12/16 03:37:30 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.31 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -145,7 +145,7 @@
 extern	char *tcpstates[];	/* XXX ??? */
 
 static int	tcp_attach (struct socket *, struct pru_attach_info *);
-static int	tcp_connect (struct tcpcb *, struct sockaddr *, 
+static int	tcp_connect (struct tcpcb *, struct sockaddr *,
 				 struct thread *);
 #ifdef INET6
 static int	tcp6_connect (struct tcpcb *, struct sockaddr *,
@@ -243,7 +243,7 @@ tcp_usr_detach(struct socket *so)
 				     tp = intotcpcb(inp); \
 				     TCPDEBUG1(); \
 		     } while(0)
-			     
+
 #define COMMON_END(req)	out: TCPDEBUG2(req); splx(s); return error; goto out
 
 
@@ -646,7 +646,7 @@ tcp_usr_rcvd(struct socket *so, int flags)
  * generally are caller-frees.
  */
 static int
-tcp_usr_send(struct socket *so, int flags, struct mbuf *m, 
+tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 	     struct sockaddr *nam, struct mbuf *control, struct thread *td)
 {
 	int s = splnet();
@@ -763,7 +763,7 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 		error = tcp_output(tp);
 		tp->t_flags &= ~TF_FORCE;
 	}
-	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB : 
+	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB :
 		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND));
 }
 
@@ -845,14 +845,14 @@ tcp_connect_oncpu(struct tcpcb *tp, struct sockaddr_in *sin,
 	oinp = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
 	    sin->sin_addr, sin->sin_port,
 	    inp->inp_laddr.s_addr != INADDR_ANY ?
-	        inp->inp_laddr : if_sin->sin_addr,
+		inp->inp_laddr : if_sin->sin_addr,
 	    inp->inp_lport, 0, NULL);
 	if (oinp != NULL) {
 		if (oinp != inp && (otp = intotcpcb(oinp)) != NULL &&
 		    otp->t_state == TCPS_TIME_WAIT &&
 		    (ticks - otp->t_starttime) < tcp_msl &&
 		    (otp->t_flags & TF_RCVD_CC))
-			(void) tcp_close(otp);
+			tcp_close(otp);
 		else
 			return (EADDRINUSE);
 	}
@@ -1186,10 +1186,10 @@ tcp_ctloutput(so, sopt)
  * be set by the route).
  */
 u_long	tcp_sendspace = 1024*32;
-SYSCTL_INT(_net_inet_tcp, TCPCTL_SENDSPACE, sendspace, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_SENDSPACE, sendspace, CTLFLAG_RW,
     &tcp_sendspace , 0, "Maximum outgoing TCP datagram size");
 u_long	tcp_recvspace = 57344;	/* largest multiple of PAGE_SIZE < 64k */
-SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, TCPCTL_RECVSPACE, recvspace, CTLFLAG_RW,
     &tcp_recvspace , 0, "Maximum incoming TCP datagram size");
 
 /*
@@ -1268,7 +1268,7 @@ tcp_disconnect(tp)
 		sbflush(&so->so_rcv);
 		tp = tcp_usrclosed(tp);
 		if (tp)
-			(void) tcp_output(tp);
+			tcp_output(tp);
 	}
 	return (tp);
 }

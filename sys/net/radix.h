@@ -32,7 +32,7 @@
  *
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  * $FreeBSD: src/sys/net/radix.h,v 1.16.2.1 2000/05/03 19:17:11 wollman Exp $
- * $DragonFly: src/sys/net/radix.h,v 1.7 2004/12/15 07:32:26 hsu Exp $
+ * $DragonFly: src/sys/net/radix.h,v 1.8 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _RADIX_H_
@@ -128,7 +128,7 @@ struct radix_node_head {
 
 	/* traverse tree below a */
 	int	(*rnh_walktree_from)
-		    (struct radix_node_head *head, u_char *a, u_char *m,
+		    (struct radix_node_head *head, char *a, char *m,
 		     walktree_f_t *f, void *w);
 
 	/* do something when the last ref drops */
@@ -159,15 +159,15 @@ struct radix_node_head {
 #define Free(p) free(p, M_RTABLE);
 #endif
 
-void	 		 rn_init (void);
-int	 		 rn_inithead (void **, int);
+void			 rn_init (void);
+int			 rn_inithead (void **, int);
 boolean_t		 rn_refines (char *, char *);
 struct radix_node	*rn_addmask (char *, boolean_t, int),
-	 		*rn_addroute (char *, char *, struct radix_node_head *,
-	 			      struct radix_node [2]),
-	 		*rn_delete (char *, char *, struct radix_node_head *),
-	 		*rn_lookup (char *key, char *mask,
-	 			    struct radix_node_head *head),
-	 		*rn_match (char *, struct radix_node_head *);
+			*rn_addroute (char *, char *, struct radix_node_head *,
+				      struct radix_node [2]),
+			*rn_delete (char *, char *, struct radix_node_head *),
+			*rn_lookup (char *key, char *mask,
+				    struct radix_node_head *head),
+			*rn_match (char *, struct radix_node_head *);
 
 #endif /* _RADIX_H_ */

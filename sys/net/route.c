@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.9 2004/12/15 00:11:04 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.10 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -51,17 +51,12 @@
 #include <netinet/in.h>
 #include <net/ip_mroute/ip_mroute.h>
 
-#define	SA(p) ((struct sockaddr *)(p))
-
-struct route_cb route_cb;
 static struct rtstat rtstat;
 struct radix_node_head *rt_tables[AF_MAX+1];
 
-static int rttrash;		/* routes not in table but not freed */
-
-static void rt_maskedcopy (struct sockaddr *, struct sockaddr *,
-    struct sockaddr *);
-static void rtable_init (void **);
+static void	rt_maskedcopy (struct sockaddr *, struct sockaddr *,
+			       struct sockaddr *);
+static void	rtable_init (void **);
 
 static void
 rtable_init(void **table)
@@ -84,6 +79,11 @@ route_init()
 /*
  * Packet routing routines.
  */
+
+/*
+ * Lookup and fill in the ro_rt rtentry field in a route structure given
+ * an address in the ro_dst field.
+ */
 void
 rtalloc(struct route *ro)
 {
@@ -93,188 +93,114 @@ rtalloc(struct route *ro)
 void
 rtalloc_ign(struct route *ro, u_long ignore)
 {
-	struct rtentry *rt;
 	int s;
 
-	if ((rt = ro->ro_rt) != NULL) {
-		if (rt->rt_ifp != NULL && rt->rt_flags & RTF_UP)
+	if (ro->ro_rt != NULL) {
+		if (ro->ro_rt->rt_ifp != NULL && ro->ro_rt->rt_flags & RTF_UP)
 			return;
-		/* XXX - We are probably always at splnet here already. */
-		s = splnet();
-		RTFREE(rt);
+		s = splnet(); /* XXX probably always at splnet here already */
+		rtfree(ro->ro_rt);
 		ro->ro_rt = NULL;
 		splx(s);
 	}
-	ro->ro_rt = rtalloc1(&ro->ro_dst, 1, ignore);
+	ro->ro_rt = rtlookup(&ro->ro_dst, 1, ignore);
 }
 
 /*
- * Look up the route that matches the address given
- * Or, at least try.. Create a cloned route if needed.
+ * Look up the route that matches the given 'dst' address.
+ *
+ * Create a cloned route if the route is a cloning route
+ * and RTF_CLONING or RTF_PRCLONING are not being ignored.
+ *
+ * In either case, the returned route has its refcnt incremented.
  */
 struct rtentry *
-rtalloc1(struct sockaddr *dst, int report, u_long ignflags)
+rtlookup(struct sockaddr *dst, int report, u_long ignflags)
 {
 	struct radix_node_head *rnh = rt_tables[dst->sa_family];
 	struct rtentry *rt;
 	struct radix_node *rn;
-	struct rtentry *newrt = NULL;
 	struct rt_addrinfo info;
 	u_long nflags;
-	int  s = splnet(), err = 0, msgtype = RTM_MISS;
+	int s, err, msgtype;
 
-	/*
-	 * Look up the address in the table for that Address Family
-	 */
-	if (rnh != NULL && (rn = rnh->rnh_matchaddr((char *)dst, rnh)) &&
-	    !(rn->rn_flags & RNF_ROOT)) {
-		/*
-		 * If we find it and it's not the root node, then
-		 * get a refernce on the rtentry associated.
-		 */
-		newrt = rt = (struct rtentry *)rn;
+	s = splnet();
+	if (rnh != NULL && (rn = rnh->rnh_matchaddr((char *)dst, rnh))) {
+		rt = (struct rtentry *)rn;
 		nflags = rt->rt_flags & ~ignflags;
 		if (report && (nflags & (RTF_CLONING | RTF_PRCLONING))) {
-			/*
-			 * We are apparently adding (report = 0 in delete).
-			 * If it requires that it be cloned, do so.
-			 * (This implies it wasn't a HOST route.)
-			 */
-			err = rtrequest(RTM_RESOLVE, dst, SA(0),
-					      SA(0), 0, &newrt);
-			if (err) {
-				/*
-				 * If the cloning didn't succeed, maybe
-				 * what we have will do. Return that.
-				 */
-				newrt = rt;
+			struct rtentry *clonedroute;
+
+			clonedroute = rt;  /* value used in rtrequest()! */
+			err = rtrequest(RTM_RESOLVE, dst, NULL, NULL, 0,
+					&clonedroute);
+			if (err != 0) {
+				/* use original route on clone failure */
 				rt->rt_refcnt++;
-				goto miss;
+				goto reportmiss;
+			} else {
+				rt = clonedroute;	/* use cloned route */
 			}
-			if ((rt = newrt) && (rt->rt_flags & RTF_XRESOLVE)) {
+			if (clonedroute->rt_flags & RTF_XRESOLVE) {
 				/*
-				 * If the new route specifies it be
-				 * externally resolved, then go do that.
+				 * The new cloned route needs external
+				 * resolution.
 				 */
 				msgtype = RTM_RESOLVE;
-				goto miss;
+				goto reportmsg;
 			}
 			/* Inform listeners of the new route. */
 			bzero(&info, sizeof(info));
-			info.rti_info[RTAX_DST] = rt_key(rt);
-			info.rti_info[RTAX_NETMASK] = rt_mask(rt);
-			info.rti_info[RTAX_GATEWAY] = rt->rt_gateway;
-			if (rt->rt_ifp != NULL) {
+			info.rti_info[RTAX_DST] = rt_key(clonedroute);
+			info.rti_info[RTAX_NETMASK] = rt_mask(clonedroute);
+			info.rti_info[RTAX_GATEWAY] = clonedroute->rt_gateway;
+			if (clonedroute->rt_ifp != NULL) {
 				info.rti_info[RTAX_IFP] =
-				    TAILQ_FIRST(&rt->rt_ifp->if_addrhead)->
-								    ifa_addr;
-				info.rti_info[RTAX_IFA] = rt->rt_ifa->ifa_addr;
+				    TAILQ_FIRST(&clonedroute->rt_ifp
+						->if_addrhead)->ifa_addr;
+				info.rti_info[RTAX_IFA] =
+				    clonedroute->rt_ifa->ifa_addr;
 			}
-			rt_missmsg(RTM_ADD, &info, rt->rt_flags, 0);
+			rt_missmsg(RTM_ADD, &info, clonedroute->rt_flags, 0);
 		} else
-			rt->rt_refcnt++;
+			rt->rt_refcnt++;	/* most common case */
 	} else {
-		/*
-		 * Either we hit the root or couldn't find any match,
-		 * Which basically means
-		 * "caint get there frm here"
-		 */
+		rt = NULL;
 		rtstat.rts_unreach++;
-miss:
 		if (report) {
-			/*
-			 * If required, report the failure to the supervising
-			 * Authorities.
-			 * For a delete, this is not an error. (report == 0)
-			 */
+			err = 0;
+reportmiss:
+			msgtype = RTM_MISS;
+reportmsg:
 			bzero(&info, sizeof(info));
 			info.rti_info[RTAX_DST] = dst;
 			rt_missmsg(msgtype, &info, 0, err);
 		}
 	}
 	splx(s);
-	return (newrt);
+	return (rt);
 }
 
-/*
- * Remove a reference count from an rtentry.
- * If the count gets low enough, take it out of the routing table
- */
 void
 rtfree(struct rtentry *rt)
 {
-	/*
-	 * find the tree for that address family
-	 */
 	struct radix_node_head *rnh = rt_tables[rt_key(rt)->sa_family];
-	struct ifaddr *ifa;
 
-	if (rt == NULL || rnh == NULL)
-		panic("rtfree");
-
-	/*
-	 * decrement the reference count by one and if it reaches 0,
-	 * and there is a close function defined, call the close function
-	 */
-	rt->rt_refcnt--;
-	if(rnh->rnh_close && rt->rt_refcnt == 0) {
+	--rt->rt_refcnt;
+	if (rnh->rnh_close && rt->rt_refcnt == 0)
 		rnh->rnh_close((struct radix_node *)rt, rnh);
-	}
-
-	/*
-	 * If we are no longer "up" (and ref == 0)
-	 * then we can free the resources associated
-	 * with the route.
-	 */
 	if (rt->rt_refcnt <= 0 && !(rt->rt_flags & RTF_UP)) {
-		if (rt->rt_nodes->rn_flags & (RNF_ACTIVE | RNF_ROOT))
-			panic ("rtfree 2");
-		/*
-		 * the rtentry must have been removed from the routing table
-		 * so it is represented in rttrash.. remove that now.
-		 */
-		rttrash--;
-
-#ifdef	DIAGNOSTIC
-		if (rt->rt_refcnt < 0) {
-			printf("rtfree: %p not freed (neg refs)\n", rt);
-			return;
-		}
-#endif
-
-		/*
-		 * release references on items we hold them on..
-		 * e.g other routes and ifaddrs.
-		 */
-		if((ifa = rt->rt_ifa))
-			IFAFREE(ifa);
-		if (rt->rt_parent) {
+		KASSERT(!(rt->rt_nodes->rn_flags & (RNF_ACTIVE | RNF_ROOT)),
+			("rtfree: rn_flags 0x%x ", rt->rt_nodes->rn_flags));
+		KASSERT(rt->rt_refcnt == 0,
+			("rtfree: rt_refcnt %ld", rt->rt_refcnt));
+		if (rt->rt_ifa != NULL)
+			IFAFREE(rt->rt_ifa);
+		if (rt->rt_parent != NULL)
 			RTFREE(rt->rt_parent);
-		}
-
-		/*
-		 * The key is separatly alloc'd so free it (see rt_setgate()).
-		 * This also frees the gateway, as they are always malloc'd
-		 * together.
-		 */
-		Free(rt_key(rt));
-
-		/*
-		 * and the rtentry itself of course
-		 */
+		Free(rt_key(rt));  /* Also frees gateway.  See rt_setgate(). */
 		Free(rt);
 	}
-}
-
-void
-ifafree(struct ifaddr *ifa)
-{
-	if (ifa == NULL)
-		panic("ifafree");
-	if (ifa->ifa_refcnt == 0)
-		free(ifa, M_IFADDR);
-	else
-		ifa->ifa_refcnt--;
 }
 
 #define	sa_equal(a1, a2) (bcmp((a1), (a2), (a1)->sa_len) == 0)
@@ -298,41 +224,44 @@ rtredirect(
 	struct rtentry **rtp)
 {
 	struct rtentry *rt;
-	int error = 0;
-	short *stat = NULL;
 	struct rt_addrinfo info;
 	struct ifaddr *ifa;
+	short *stat = NULL;
+	int error;
 
 	/* verify the gateway is directly reachable */
 	if ((ifa = ifa_ifwithnet(gateway)) == NULL) {
 		error = ENETUNREACH;
 		goto out;
 	}
-	rt = rtalloc1(dst, 0, 0UL);
+
 	/*
 	 * If the redirect isn't from our current router for this dst,
 	 * it's either old or wrong.  If it redirects us to ourselves,
 	 * we have a routing loop, perhaps as a result of an interface
 	 * going down recently.
 	 */
-	if (!(flags & RTF_DONE) && rt &&
-	     (!sa_equal(src, rt->rt_gateway) || rt->rt_ifa != ifa))
+	if (!(flags & RTF_DONE) &&
+	    (rt = rtlookup(dst, 0, 0UL)) != NULL &&
+	    (!sa_equal(src, rt->rt_gateway) || rt->rt_ifa != ifa)) {
 		error = EINVAL;
-	else if (ifa_ifwithaddr(gateway))
-		error = EHOSTUNREACH;
-	if (error)
 		goto done;
+	} else if (ifa_ifwithaddr(gateway)) {
+		error = EHOSTUNREACH;
+		goto done;
+	}
+
 	/*
 	 * Create a new entry if we just got back a wildcard entry
 	 * or the the lookup failed.  This is necessary for hosts
 	 * which use routing redirects generated by smart gateways
 	 * to dynamically build the routing tables.
 	 */
-	if ((rt == NULL) || (rt_mask(rt) != NULL && rt_mask(rt)->sa_len < 2))
+	if (rt == NULL || (rt_mask(rt) != NULL && rt_mask(rt)->sa_len < 2))
 		goto create;
+
 	/*
-	 * Don't listen to the redirect if it's
-	 * for a route to an interface.
+	 * Don't listen to the redirect if it's for a route to an interface.
 	 */
 	if (rt->rt_flags & RTF_GATEWAY) {
 		if ((!(rt->rt_flags & RTF_HOST)) && (flags & RTF_HOST)) {
@@ -340,8 +269,8 @@ rtredirect(
 			 * Changing from route to net => route to host.
 			 * Create new route, rather than smashing route to net.
 			 */
-		create:
-			if (rt)
+create:
+			if (rt != NULL)
 				rtfree(rt);
 			flags |=  RTF_GATEWAY | RTF_DYNAMIC;
 			bzero(&info, sizeof(info));
@@ -363,25 +292,28 @@ rtredirect(
 			rt->rt_flags |= RTF_MODIFIED;
 			flags |= RTF_MODIFIED;
 			stat = &rtstat.rts_newgateway;
-			/*
-			 * add the key and gateway (in one malloc'd chunk).
-			 */
+			/* Add the key and gateway (in one malloc'ed chunk). */
 			rt_setgate(rt, rt_key(rt), gateway);
+			error = 0;
 		}
-	} else
+	} else {
 		error = EHOSTUNREACH;
+	}
+
 done:
-	if (rt) {
-		if (rtp != NULL && !error)
+	if (rt != NULL) {
+		if (rtp != NULL && error == 0)
 			*rtp = rt;
 		else
 			rtfree(rt);
 	}
+
 out:
-	if (error)
+	if (error != 0)
 		rtstat.rts_badredirect++;
 	else if (stat != NULL)
 		(*stat)++;
+
 	bzero(&info, sizeof(info));
 	info.rti_info[RTAX_DST] = dst;
 	info.rti_info[RTAX_GATEWAY] = gateway;
@@ -412,7 +344,7 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 	if (!(flags & RTF_GATEWAY)) {
 		/*
 		 * If we are adding a route to an interface,
-		 * and the interface is a pt to pt link
+		 * and the interface is a point-to-point link,
 		 * we should search for the destination
 		 * as our clue to the interface.  Otherwise
 		 * we can use the local address.
@@ -434,7 +366,8 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 	if (ifa == NULL)
 		ifa = ifa_ifwithnet(gateway);
 	if (ifa == NULL) {
-		struct rtentry *rt = rtalloc1(gateway, 0, 0UL);
+		struct rtentry *rt = rtlookup(gateway, 0, 0UL);
+
 		if (rt == NULL)
 			return (NULL);
 		rt->rt_refcnt--;
@@ -443,6 +376,7 @@ ifa_ifwithroute(int flags, struct sockaddr *dst, struct sockaddr *gateway)
 	}
 	if (ifa->ifa_addr->sa_family != dst->sa_family) {
 		struct ifaddr *oifa = ifa;
+
 		ifa = ifaof_ifpforaddr(dst, ifa->ifa_ifp);
 		if (ifa == NULL)
 			ifa = oifa;
@@ -457,29 +391,6 @@ struct rtfc_arg {
 	struct rtentry *rt0;
 	struct radix_node_head *rnh;
 };
-
-/*
- * Do appropriate manipulations of a routing tree given
- * all the bits of info needed
- */
-int
-rtrequest(
-	int req,
-	struct sockaddr *dst,
-	struct sockaddr *gateway,
-	struct sockaddr *netmask,
-	int flags,
-	struct rtentry **ret_nrt)
-{
-	struct rt_addrinfo info;
-
-	bzero(&info, sizeof(info));
-	info.rti_flags = flags;
-	info.rti_info[RTAX_DST] = dst;
-	info.rti_info[RTAX_GATEWAY] = gateway;
-	info.rti_info[RTAX_NETMASK] = netmask;
-	return rtrequest1(req, &info, ret_nrt);
-}
 
 int
 rt_getifa(struct rt_addrinfo *info)
@@ -522,6 +433,29 @@ rt_getifa(struct rt_addrinfo *info)
 	return (error);
 }
 
+/*
+ * Do appropriate manipulations of a routing tree given
+ * all the bits of info needed
+ */
+int
+rtrequest(
+	int req,
+	struct sockaddr *dst,
+	struct sockaddr *gateway,
+	struct sockaddr *netmask,
+	int flags,
+	struct rtentry **ret_nrt)
+{
+	struct rt_addrinfo info;
+
+	bzero(&info, sizeof info);
+	info.rti_flags = flags;
+	info.rti_info[RTAX_DST] = dst;
+	info.rti_info[RTAX_GATEWAY] = gateway;
+	info.rti_info[RTAX_NETMASK] = netmask;
+	return rtrequest1(req, &info, ret_nrt);
+}
+
 int
 rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 {
@@ -531,16 +465,18 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 	struct radix_node_head *rnh;
 	struct ifaddr *ifa;
 	struct sockaddr *ndst;
-	int s = splnet();
 	int error = 0;
+	int s;
 
 #define gotoerr(x) { error = x ; goto bad; }
 
+	s = splnet();
 	/*
 	 * Find the correct routing tree to use for this Address Family
 	 */
 	if ((rnh = rt_tables[dst->sa_family]) == NULL)
 		gotoerr(EAFNOSUPPORT);
+
 	/*
 	 * If we are adding a host route then we don't want to put
 	 * a netmask in the tree, nor do we want to clone it.
@@ -549,71 +485,52 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 		info->rti_info[RTAX_NETMASK] = NULL;
 		info->rti_flags &= ~(RTF_CLONING | RTF_PRCLONING);
 	}
+
 	switch (req) {
 	case RTM_DELETE:
-		/*
-		 * Remove the item from the tree and return it.
-		 * Complain if it is not there and do no more processing.
-		 */
-		if ((rn = rnh->rnh_deladdr((char *)dst,
-		    (char *)info->rti_info[RTAX_NETMASK], rnh)) == NULL)
+		/* Remove the item from the tree. */
+		rn = rnh->rnh_deladdr((char *)info->rti_info[RTAX_DST],
+				      (char *)info->rti_info[RTAX_NETMASK],
+				      rnh);
+		if (rn == NULL)
 			gotoerr(ESRCH);
-		if (rn->rn_flags & (RNF_ACTIVE | RNF_ROOT))
-			panic ("rtrequest delete");
+		KASSERT(!(rn->rn_flags & (RNF_ACTIVE | RNF_ROOT)),
+			("rnh_deladdr returned flags 0x%x", rn->rn_flags));
 		rt = (struct rtentry *)rn;
 
-		/*
-		 * Now search what's left of the subtree for any cloned
-		 * routes which might have been formed from this node.
-		 */
+		/* Free any routes cloned from this one. */
 		if ((rt->rt_flags & (RTF_CLONING | RTF_PRCLONING)) &&
 		    rt_mask(rt) != NULL) {
-			rnh->rnh_walktree_from(rnh, (char *)dst,
+			rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
 					       (char *)rt_mask(rt),
 					       rt_fixdelete, rt);
 		}
 
-		/*
-		 * Remove any external references we may have.
-		 * This might result in another rtentry being freed if
-		 * we held its last reference.
-		 */
-		if (rt->rt_gwroute) {
-			rt = rt->rt_gwroute;
-			RTFREE(rt);
-			(rt = (struct rtentry *)rn)->rt_gwroute = NULL;
+		if (rt->rt_gwroute != NULL) {
+			RTFREE(rt->rt_gwroute);
+			rt->rt_gwroute = NULL;
 		}
 
 		/*
 		 * NB: RTF_UP must be set during the search above,
 		 * because we might delete the last ref, causing
 		 * rt to get freed prematurely.
-		 *  eh? then why not just add a reference?
-		 * I'm not sure how RTF_UP helps matters. (JRE)
 		 */
 		rt->rt_flags &= ~RTF_UP;
 
-		/*
-		 * give the protocol a chance to keep things in sync.
-		 */
+		/* Give the protocol a chance to keep things in sync. */
 		if ((ifa = rt->rt_ifa) && ifa->ifa_rtrequest)
 			ifa->ifa_rtrequest(RTM_DELETE, rt, info);
-
-		/*
-		 * one more rtentry floating around that is not
-		 * linked to the routing table.
-		 */
-		rttrash++;
 
 		/*
 		 * If the caller wants it, then it can have it,
 		 * but it's up to it to free the rtentry as we won't be
 		 * doing it.
 		 */
-		if (ret_nrt != NULL)
+		if (ret_nrt != NULL) {
 			*ret_nrt = rt;
-		else if (rt->rt_refcnt <= 0) {
-			rt->rt_refcnt++; /* make a 1->0 transition */
+		} else if (rt->rt_refcnt <= 0) {
+			rt->rt_refcnt++;  /* refcnt > 0 required for rtfree() */
 			rtfree(rt);
 		}
 		break;
@@ -631,41 +548,29 @@ rtrequest1(int req, struct rt_addrinfo *info, struct rtentry **ret_nrt)
 		goto makeroute;
 
 	case RTM_ADD:
-		if ((info->rti_flags & RTF_GATEWAY) &&
-		    !info->rti_info[RTAX_GATEWAY])
-			panic("rtrequest: GATEWAY but no gateway");
+		KASSERT(!(info->rti_flags & RTF_GATEWAY) ||
+			info->rti_info[RTAX_GATEWAY] != NULL,
+		    ("rtrequest: GATEWAY but no gateway"));
 
 		if (info->rti_ifa == NULL && (error = rt_getifa(info)))
 			gotoerr(error);
 		ifa = info->rti_ifa;
-
 makeroute:
-		R_Malloc(rt, struct rtentry *, sizeof(*rt));
+		R_Malloc(rt, struct rtentry *, sizeof *rt);
 		if (rt == NULL)
 			gotoerr(ENOBUFS);
-		bzero(rt, sizeof(*rt));
+		bzero(rt, sizeof *rt);
 		rt->rt_flags = RTF_UP | info->rti_flags;
-		/*
-		 * Add the gateway. Possibly re-malloc-ing the storage for it
-		 * also add the rt_gwroute if possible.
-		 */
-		if ((error = rt_setgate(rt, dst, info->rti_info[RTAX_GATEWAY]))
-		    != 0) {
+		error = rt_setgate(rt, dst, info->rti_info[RTAX_GATEWAY]);
+		if (error != 0) {
 			Free(rt);
 			gotoerr(error);
 		}
 
-		/*
-		 * point to the (possibly newly malloc'd) dest address.
-		 */
 		ndst = rt_key(rt);
-
-		/*
-		 * make sure it contains the value we want (masked if needed).
-		 */
-		if (info->rti_info[RTAX_NETMASK] != NULL) {
+		if (info->rti_info[RTAX_NETMASK] != NULL)
 			rt_maskedcopy(dst, ndst, info->rti_info[RTAX_NETMASK]);
-		} else
+		else
 			bcopy(dst, ndst, dst->sa_len);
 
 		/*
@@ -673,7 +578,7 @@ makeroute:
 		 * This moved from below so that rnh->rnh_addaddr() can
 		 * examine the ifa and  ifa->ifa_ifp if it so desires.
 		 */
-		ifa->ifa_refcnt++;
+		IFAREF(ifa);
 		rt->rt_ifa = ifa;
 		rt->rt_ifp = ifa->ifa_ifp;
 		/* XXX mtu manipulation will be done in rnh_addaddr -- itojun */
@@ -682,46 +587,42 @@ makeroute:
 				      (char *)info->rti_info[RTAX_NETMASK],
 				      rnh, rt->rt_nodes);
 		if (rn == NULL) {
-			struct rtentry *rt2;
+			struct rtentry *oldrt;
+
 			/*
-			 * Uh-oh, we already have one of these in the tree.
-			 * We do a special hack: if the route that's already
-			 * there was generated by the protocol-cloning
-			 * mechanism, then we just blow it away and retry
-			 * the insertion of the new one.
+			 * We already have one of these in the tree.
+			 * We do a special hack: if the old route was
+			 * cloned, then we blow it away and try
+			 * re-inserting the new one.
 			 */
-			rt2 = rtalloc1(dst, 0, RTF_PRCLONING);
-			if (rt2 != NULL && rt2->rt_parent) {
-				rtrequest(RTM_DELETE,
-					  (struct sockaddr *)rt_key(rt2),
-					  rt2->rt_gateway,
-					  rt_mask(rt2), rt2->rt_flags, 0);
-				RTFREE(rt2);
-				rn = rnh->rnh_addaddr((char *)ndst,
-				    (char *)info->rti_info[RTAX_NETMASK],
-				    rnh, rt->rt_nodes);
-			} else if (rt2 != NULL) {
-				/* undo the extra ref we got */
-				RTFREE(rt2);
+			oldrt = rtlookup(ndst, 0, RTF_CLONING | RTF_PRCLONING);
+			if (oldrt != NULL) {
+				--oldrt->rt_refcnt;
+				if (oldrt->rt_flags & RTF_WASCLONED) {
+					rtrequest(RTM_DELETE, rt_key(oldrt),
+						  oldrt->rt_gateway,
+						  rt_mask(oldrt),
+						  oldrt->rt_flags, NULL);
+					rn = rnh->rnh_addaddr((char *)ndst,
+						  (char *)
+						  info->rti_info[RTAX_NETMASK],
+						  rnh, rt->rt_nodes);
+				}
 			}
 		}
 
 		/*
 		 * If it still failed to go into the tree,
-		 * then un-make it (this should be a function)
+		 * then un-make it (this should be a function).
 		 */
 		if (rn == NULL) {
-			if (rt->rt_gwroute)
+			if (rt->rt_gwroute != NULL)
 				rtfree(rt->rt_gwroute);
-			if (rt->rt_ifa) {
-				IFAFREE(rt->rt_ifa);
-			}
+			IFAFREE(ifa);
 			Free(rt_key(rt));
 			Free(rt);
 			gotoerr(EEXIST);
 		}
-
-		rt->rt_parent = 0;
 
 		/*
 		 * If we got here from RESOLVE, then we are cloning
@@ -729,10 +630,10 @@ makeroute:
 		 * are a clone (and increment the parent's references)
 		 */
 		if (req == RTM_RESOLVE) {
-			rt->rt_rmx = (*ret_nrt)->rt_rmx; /* copy metrics */
-			rt->rt_rmx.rmx_pksent = 0; /* reset packet counter */
+			rt->rt_rmx = (*ret_nrt)->rt_rmx;    /* copy metrics */
+			rt->rt_rmx.rmx_pksent = 0;  /* reset packet counter */
 			if ((*ret_nrt)->rt_flags &
-			    (RTF_CLONING | RTF_PRCLONING)) {
+				       (RTF_CLONING | RTF_PRCLONING)) {
 				rt->rt_parent = *ret_nrt;
 				(*ret_nrt)->rt_refcnt++;
 			}
@@ -742,7 +643,7 @@ makeroute:
 		 * if this protocol has something to add to this then
 		 * allow it to do that as well.
 		 */
-		if (ifa->ifa_rtrequest)
+		if (ifa->ifa_rtrequest != NULL)
 			ifa->ifa_rtrequest(req, rt, info);
 
 		/*
@@ -752,21 +653,20 @@ makeroute:
 		 */
 		if (req == RTM_ADD && !(rt->rt_flags & RTF_HOST) &&
 		    rt_mask(rt) != NULL) {
-			struct rtfc_arg arg;
-			arg.rnh = rnh;
-			arg.rt0 = rt;
+			struct rtfc_arg arg = { rt, rnh };
+
 			rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
 					       (char *)rt_mask(rt),
 					       rt_fixchange, &arg);
 		}
 
 		/*
-		 * actually return a resultant rtentry and
-		 * give the caller a single reference.
+		 * Return the resulting rtentry,
+		 * increasing the number of references by one.
 		 */
 		if (ret_nrt != NULL) {
-			*ret_nrt = rt;
 			rt->rt_refcnt++;
+			*ret_nrt = rt;
 		}
 		break;
 	default:
@@ -792,9 +692,8 @@ rt_fixdelete(struct radix_node *rn, void *vp)
 
 	if (rt->rt_parent == rt0 &&
 	    !(rt->rt_flags & (RTF_PINNED | RTF_CLONING | RTF_PRCLONING))) {
-		return rtrequest(RTM_DELETE, rt_key(rt),
-				 (struct sockaddr *)0, rt_mask(rt),
-				 rt->rt_flags, (struct rtentry **)0);
+		return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
+				 rt->rt_flags, NULL);
 	}
 	return 0;
 }
@@ -831,29 +730,27 @@ rt_fixchange(struct radix_node *rn, void *vp)
 		printf("rt_fixchange: rt %p, rt0 %p\n", rt, rt0);
 #endif
 
-	if (!rt->rt_parent ||
+	if (rt->rt_parent == NULL ||
 	    (rt->rt_flags & (RTF_PINNED | RTF_CLONING | RTF_PRCLONING))) {
 #ifdef DEBUG
-		if(rtfcdebug) printf("no parent, pinned or cloning\n");
+		if (rtfcdebug) printf("no parent, pinned or cloning\n");
 #endif
 		return 0;
 	}
 
 	if (rt->rt_parent == rt0) {
 #ifdef DEBUG
-		if(rtfcdebug) printf("parent match\n");
+		if (rtfcdebug) printf("parent match\n");
 #endif
-		return rtrequest(RTM_DELETE, rt_key(rt),
-				 (struct sockaddr *)0, rt_mask(rt),
-				 rt->rt_flags, (struct rtentry **)0);
+		return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
+				 rt->rt_flags, NULL);
 	}
 
 	/*
 	 * There probably is a function somewhere which does this...
 	 * if not, there should be.
 	 */
-	len = imin(((struct sockaddr *)rt_key(rt0))->sa_len,
-		   ((struct sockaddr *)rt_key(rt))->sa_len);
+	len = imin(rt_key(rt0)->sa_len, rt_key(rt)->sa_len);
 
 	xk1 = (u_char *)rt_key(rt0);
 	xm1 = (u_char *)rt_mask(rt0);
@@ -861,8 +758,8 @@ rt_fixchange(struct radix_node *rn, void *vp)
 
 	/* avoid applying a less specific route */
 	xmp = (u_char *)rt_mask(rt->rt_parent);
-	mlen = ((struct sockaddr *)rt_key(rt->rt_parent))->sa_len;
-	if (mlen > ((struct sockaddr *)rt_key(rt0))->sa_len) {
+	mlen = rt_key(rt->rt_parent)->sa_len;
+	if (mlen > rt_key(rt0)->sa_len) {
 #ifdef DEBUG
 		if (rtfcdebug)
 			printf("rt_fixchange: inserting a less "
@@ -884,7 +781,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	for (i = rnh->rnh_treetop->rn_offset; i < len; i++) {
 		if ((xk2[i] & xm1[i]) != xk1[i]) {
 #ifdef DEBUG
-			if(rtfcdebug) printf("no match\n");
+			if (rtfcdebug) printf("no match\n");
 #endif
 			return 0;
 		}
@@ -895,10 +792,10 @@ rt_fixchange(struct radix_node *rn, void *vp)
 	 * changed/added under the node's mask.  So, get rid of it.
 	 */
 #ifdef DEBUG
-	if(rtfcdebug) printf("deleting\n");
+	if (rtfcdebug) printf("deleting\n");
 #endif
-	return rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *)0,
-			 rt_mask(rt), rt->rt_flags, (struct rtentry **)0);
+	return rtrequest(RTM_DELETE, rt_key(rt), NULL, rt_mask(rt),
+			 rt->rt_flags, NULL);
 }
 
 #define ROUNDUP(a) (a>0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
@@ -906,7 +803,7 @@ rt_fixchange(struct radix_node *rn, void *vp)
 int
 rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 {
-	caddr_t newkey, oldkey;
+	char *space, *oldspace;
 	int dlen = ROUNDUP(dst->sa_len), glen = ROUNDUP(gate->sa_len);
 	struct rtentry *rt = rt0;
 	struct radix_node_head *rnh = rt_tables[dst->sa_family];
@@ -916,78 +813,78 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 	 * will interfere with keeping LLINFO in the routing
 	 * table, so disallow it.
 	 */
-	if (((rt0->rt_flags & (RTF_HOST|RTF_GATEWAY|RTF_LLINFO)) ==
-					(RTF_HOST|RTF_GATEWAY)) &&
-	    (dst->sa_len == gate->sa_len) &&
-	    (bcmp(dst, gate, dst->sa_len) == 0)) {
+	if (((rt0->rt_flags & (RTF_HOST | RTF_GATEWAY | RTF_LLINFO)) ==
+			      (RTF_HOST | RTF_GATEWAY)) &&
+	    dst->sa_len == gate->sa_len &&
+	    sa_equal(dst, gate)) {
 		/*
 		 * The route might already exist if this is an RTM_CHANGE
 		 * or a routing redirect, so try to delete it.
 		 */
 		if (rt_key(rt0) != NULL)
 			rtrequest(RTM_DELETE, rt_key(rt0), rt0->rt_gateway,
-			    rt_mask(rt0), rt0->rt_flags, 0);
+				  rt_mask(rt0), rt0->rt_flags, NULL);
 		return EADDRNOTAVAIL;
 	}
 
 	/*
-	 * Both dst and gateway are stored in the same malloc'd chunk
+	 * Both dst and gateway are stored in the same malloc'ed chunk
 	 * (If I ever get my hands on....)
 	 * if we need to malloc a new chunk, then keep the old one around
 	 * till we don't need it any more.
 	 */
 	if (rt->rt_gateway == NULL || glen > ROUNDUP(rt->rt_gateway->sa_len)) {
-		oldkey = (caddr_t)rt_key(rt);
-		R_Malloc(newkey, caddr_t, dlen + glen);
-		if (newkey == NULL)
+		oldspace = (char *)rt_key(rt);
+		R_Malloc(space, char *, dlen + glen);
+		if (space == NULL)
 			return ENOBUFS;
-		rt->rt_nodes->rn_key = newkey;
+		rt->rt_nodes->rn_key = space;
 	} else {
-		/*
-		 * otherwise just overwrite the old one
-		 */
-		newkey = rt->rt_nodes->rn_key;
-		oldkey = NULL;
+		space = (char *)rt_key(rt);	/* Just use the old space. */
+		oldspace = NULL;
 	}
 
-	/*
-	 * copy the new gateway value into the memory chunk
-	 */
-	rt->rt_gateway = (struct sockaddr *)(newkey + dlen);
+	/* Set the gateway value. */
+	rt->rt_gateway = (struct sockaddr *)(space + dlen);
 	bcopy(gate, rt->rt_gateway, glen);
 
-	/*
-	 * if we are replacing the chunk (or it's new) we need to
-	 * replace the dst as well
-	 */
-	if (oldkey != NULL) {
-		bcopy(dst, newkey, dlen);
-		Free(oldkey);
+	if (oldspace != NULL) {
+		/*
+		 * If we allocated a new chunk, preserve the original dst.
+		 * This way, rt_setgate() really just sets the gate
+		 * and leaves the dst field alone.
+		 */
+		bcopy(dst, space, dlen);
+		Free(oldspace);
 	}
 
 	/*
-	 * If there is already a gwroute, it's now almost definitly wrong
+	 * If there is already a gwroute, it's now almost definitely wrong
 	 * so drop it.
 	 */
 	if (rt->rt_gwroute != NULL) {
 		RTFREE(rt->rt_gwroute);
 		rt->rt_gwroute = NULL;
 	}
-	/*
-	 * Cloning loop avoidance:
-	 * In the presence of protocol-cloning and bad configuration,
-	 * it is possible to get stuck in bottomless mutual recursion
-	 * (rtrequest rt_setgate rtalloc1).  We avoid this by not allowing
-	 * protocol-cloning to operate for gateways (which is probably the
-	 * correct choice anyway), and avoid the resulting reference loops
-	 * by disallowing any route to run through itself as a gateway.
-	 * This is obviously mandatory when we get rt->rt_output().
-	 */
 	if (rt->rt_flags & RTF_GATEWAY) {
-		rt->rt_gwroute = rtalloc1(gate, 1, RTF_PRCLONING);
+		/*
+		 * Cloning loop avoidance: In the presence of
+		 * protocol-cloning and bad configuration, it is
+		 * possible to get stuck in bottomless mutual recursion
+		 * (rtrequest rt_setgate rtlookup).  We avoid this
+		 * by not allowing protocol-cloning to operate for
+		 * gateways (which is probably the correct choice
+		 * anyway), and avoid the resulting reference loops
+		 * by disallowing any route to run through itself as
+		 * a gateway.  This is obviously mandatory when we
+		 * get rt->rt_output().
+		 *
+		 * This breaks TTCP!  XXX JH
+		 */
+		rt->rt_gwroute = rtlookup(gate, 1, RTF_PRCLONING);
 		if (rt->rt_gwroute == rt) {
-			RTFREE(rt->rt_gwroute);
-			rt->rt_gwroute = 0;
+			rt->rt_gwroute = NULL;
+			--rt->rt_refcnt;
 			return EDQUOT; /* failure */
 		}
 	}
@@ -998,10 +895,9 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 	 * (we don't yet have one during adds).
 	 */
 	if (!(rt->rt_flags & RTF_HOST) && rt_mask(rt) != NULL) {
-		struct rtfc_arg arg;
-		arg.rnh = rnh;
-		arg.rt0 = rt;
-		rnh->rnh_walktree_from(rnh, (char*)rt_key(rt),
+		struct rtfc_arg arg = { rt, rnh };
+
+		rnh->rnh_walktree_from(rnh, (char *)rt_key(rt),
 				       (char *)rt_mask(rt),
 				       rt_fixchange, &arg);
 	}
@@ -1010,8 +906,10 @@ rt_setgate(struct rtentry *rt0, struct sockaddr *dst, struct sockaddr *gate)
 }
 
 static void
-rt_maskedcopy(struct sockaddr *src, struct sockaddr *dst,
-    struct sockaddr *netmask)
+rt_maskedcopy(
+	struct sockaddr *src,
+	struct sockaddr *dst,
+	struct sockaddr *netmask)
 {
 	u_char *cp1 = (u_char *)src;
 	u_char *cp2 = (u_char *)dst;
@@ -1026,7 +924,41 @@ rt_maskedcopy(struct sockaddr *src, struct sockaddr *dst,
 	while (cp2 < cplim)
 		*cp2++ = *cp1++ & *cp3++;
 	if (cp2 < cplim2)
-		bzero(cp2, (unsigned)(cplim2 - cp2));
+		bzero(cp2, cplim2 - cp2);
+}
+
+int
+rt_llroute(struct sockaddr *dst, struct rtentry *rt0, struct rtentry **drt)
+{
+	struct rtentry *up_rt, *rt;
+
+	if (!(rt0->rt_flags & RTF_UP)) {
+		up_rt = rtlookup(dst, 1, 0UL);
+		if (up_rt == NULL)
+			return (EHOSTUNREACH);
+		up_rt->rt_refcnt--;
+	} else
+		up_rt = rt0;
+	if (up_rt->rt_flags & RTF_GATEWAY) {
+		if (up_rt->rt_gwroute == NULL) {
+			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway, 1, 0UL);
+			if (up_rt->rt_gwroute == NULL)
+				return (EHOSTUNREACH);
+		} else if (!(up_rt->rt_gwroute->rt_flags & RTF_UP)) {
+			rtfree(up_rt->rt_gwroute);
+			up_rt->rt_gwroute = rtlookup(up_rt->rt_gateway, 1, 0UL);
+			if (up_rt->rt_gwroute == NULL)
+				return (EHOSTUNREACH);
+		}
+		rt = up_rt->rt_gwroute;
+	} else
+		rt = up_rt;
+	if (rt->rt_flags & RTF_REJECT &&
+	    (rt->rt_rmx.rmx_expire == 0 ||		/* rt doesn't expire */
+	     time_second < rt->rt_rmx.rmx_expire))	/* rt not expired */
+		return (rt->rt_flags & RTF_HOST ?  EHOSTDOWN : EHOSTUNREACH);
+	*drt = rt;
+	return 0;
 }
 
 /*
@@ -1036,16 +968,14 @@ rt_maskedcopy(struct sockaddr *src, struct sockaddr *dst,
 int
 rtinit(struct ifaddr *ifa, int cmd, int flags)
 {
+	struct sockaddr *dst, *deldst, *netmask;
 	struct rtentry *rt;
-	struct sockaddr *dst;
-	struct sockaddr *deldst;
-	struct sockaddr *netmask;
-	struct mbuf *m = NULL;
 	struct rtentry *nrt = NULL;
+	struct mbuf *m = NULL;
 	struct radix_node_head *rnh;
 	struct radix_node *rn;
-	int error;
 	struct rt_addrinfo info;
+	int error;
 
 	if (flags & RTF_HOST) {
 		dst = ifa->ifa_dstaddr;
@@ -1068,7 +998,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		if (netmask != NULL) {
 			m = m_get(MB_DONTWAIT, MT_SONAME);
 			if (m == NULL)
-				return(ENOBUFS);
+				return (ENOBUFS);
 			deldst = mtod(m, struct sockaddr *);
 			rt_maskedcopy(dst, deldst, netmask);
 			dst = deldst;
@@ -1078,13 +1008,12 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		 * contains the correct info.
 		 */
 		if ((rnh = rt_tables[dst->sa_family]) == NULL ||
-		    (rn = rnh->rnh_lookup((char *)dst, (char *)netmask,
-		     rnh)) == NULL ||
-		    (rn->rn_flags & RNF_ROOT) ||
+		    (rn = rnh->rnh_lookup((char *)dst,
+					  (char *)netmask, rnh)) == NULL ||
 		    ((struct rtentry *)rn)->rt_ifa != ifa ||
-		    !sa_equal(SA(rn->rn_key), dst)) {
+		    !sa_equal((struct sockaddr *)rn->rn_key, dst)) {
 			if (m != NULL)
-				(void) m_free(m);
+				m_free(m);
 			return (flags & RTF_HOST ? EHOSTUNREACH : ENETUNREACH);
 		}
 		/* XXX */
@@ -1132,7 +1061,7 @@ rtinit(struct ifaddr *ifa, int cmd, int flags)
 		}
 	}
 	if (m != NULL)
-		(void) m_free(m);
+		m_free(m);
 	return (error);
 }
 

@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.6 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.7 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_

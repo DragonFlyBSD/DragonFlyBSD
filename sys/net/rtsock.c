@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.16 2004/12/15 00:11:04 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.17 2004/12/21 02:54:14 hsu Exp $
  */
 
 
@@ -56,6 +56,14 @@
 
 MALLOC_DEFINE(M_RTABLE, "routetbl", "routing tables");
 
+static struct route_cb {
+	int	ip_count;
+	int	ip6_count;
+	int	ipx_count;
+	int	ns_count;
+	int	any_count;
+} route_cb;
+
 static struct	sockaddr route_dst = { 2, PF_ROUTE, };
 static struct	sockaddr route_src = { 2, PF_ROUTE, };
 static struct	sockaddr sa_zero   = { sizeof(sa_zero), AF_INET, };
@@ -76,7 +84,7 @@ static int	sysctl_dumpentry (struct radix_node *rn, void *vw);
 static int	sysctl_iflist (int af, struct walkarg *w);
 static int	route_output(struct mbuf *, struct socket *, ...);
 static void	rt_setmetrics (u_long, struct rt_metrics *,
-		    struct rt_metrics *);
+			       struct rt_metrics *);
 
 /*
  * It really doesn't make any sense at all for this code to share much
@@ -86,6 +94,7 @@ static int
 rts_abort(struct socket *so)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_abort(so);
 	splx(s);
@@ -102,6 +111,7 @@ rts_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 
 	if (sotorawcb(so) != NULL)
 		return EISCONN;	/* XXX panic? */
+
 	MALLOC(rp, struct rawcb *, sizeof *rp, M_PCB, M_WAITOK|M_ZERO);
 	if (rp == NULL)
 		return ENOBUFS;
@@ -148,6 +158,7 @@ static int
 rts_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_bind(so, nam, td); /* xxx just EINVAL */
 	splx(s);
@@ -158,6 +169,7 @@ static int
 rts_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_connect(so, nam, td); /* XXX just EINVAL */
 	splx(s);
@@ -200,6 +212,7 @@ static int
 rts_disconnect(struct socket *so)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_disconnect(so);
 	splx(s);
@@ -212,6 +225,7 @@ static int
 rts_peeraddr(struct socket *so, struct sockaddr **nam)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_peeraddr(so, nam);
 	splx(s);
@@ -226,6 +240,7 @@ rts_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_send(so, flags, m, nam, control, td);
 	splx(s);
@@ -238,6 +253,7 @@ static int
 rts_shutdown(struct socket *so)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_shutdown(so);
 	splx(s);
@@ -248,6 +264,7 @@ static int
 rts_sockaddr(struct socket *so, struct sockaddr **nam)
 {
 	int s, error;
+
 	s = splnet();
 	error = raw_usrreqs.pru_sockaddr(so, nam);
 	splx(s);
@@ -272,6 +289,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	struct radix_node_head *rnh;
 	struct ifnet *ifp = NULL;
 	struct ifaddr *ifa = NULL;
+	struct rawcb *rp = NULL;
 	struct pr_output_info *oi;
 	struct rt_addrinfo info;
 	int len, error = 0;
@@ -405,7 +423,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 				bcopy(rtm, new_rtm, rtm->rtm_msglen);
 				Free(rtm); rtm = new_rtm;
 			}
-			(void)rt_msg2(rtm->rtm_type, &info, (caddr_t)rtm, NULL);
+			rt_msg2(rtm->rtm_type, &info, (caddr_t)rtm, NULL);
 			rtm->rtm_flags = rt->rt_flags;
 			rtm->rtm_rmx = rt->rt_rmx;
 			rtm->rtm_addrs = info.rti_addrs;
@@ -428,23 +446,23 @@ route_output(struct mbuf *m, struct socket *so, ...)
 			}
 			if (info.sa_gateway != NULL &&
 			    (error = rt_setgate(rt, rt_key(rt),
-			    			info.sa_gateway)) != 0)
+						info.sa_gateway)) != 0)
 				gotoerr(error);
 			if ((ifa = info.rti_ifa) != NULL) {
 				struct ifaddr *oifa = rt->rt_ifa;
 
 				if (oifa != ifa) {
-				    if (oifa && oifa->ifa_rtrequest)
-					oifa->ifa_rtrequest(RTM_DELETE, rt,
-					    &info);
-				    IFAFREE(rt->rt_ifa);
-				    rt->rt_ifa = ifa;
-				    ifa->ifa_refcnt++;
-				    rt->rt_ifp = info.rti_ifp;
+					if (oifa && oifa->ifa_rtrequest)
+						oifa->ifa_rtrequest(RTM_DELETE,
+								    rt, &info);
+					IFAFREE(rt->rt_ifa);
+					rt->rt_ifa = ifa;
+					IFAREF(ifa);
+					rt->rt_ifp = info.rti_ifp;
 				}
 			}
 			rt_setmetrics(rtm->rtm_inits, &rtm->rtm_rmx,
-					&rt->rt_rmx);
+			    &rt->rt_rmx);
 			if (rt->rt_ifa && rt->rt_ifa->ifa_rtrequest)
 			       rt->rt_ifa->ifa_rtrequest(RTM_ADD, rt, &info);
 			if (info.sa_genmask != NULL)
@@ -473,8 +491,6 @@ flush:
 	}
 	if (rt)
 		rtfree(rt);
-    {
-	struct rawcb *rp = NULL;
 	/*
 	 * Check to see if we don't want our own messages.
 	 */
@@ -505,7 +521,6 @@ flush:
 		raw_input(m, &route_proto, &route_src, &route_dst);
 	if (rp != NULL)
 		rp->rcb_proto.sp_family = PF_ROUTE;
-    }
 	return (error);
 }
 
@@ -710,18 +725,16 @@ again:
 
 /*
  * This routine is called to generate a message from the routing
- * socket indicating that a redirect has occured, a routing lookup
+ * socket indicating that a redirect has occurred, a routing lookup
  * has failed, or that a protocol has detected timeouts to a particular
  * destination.
  */
 void
-rt_missmsg(type, rtinfo, flags, error)
-	int type, flags, error;
-	struct rt_addrinfo *rtinfo;
+rt_missmsg(int type, struct rt_addrinfo *rtinfo, int flags, int error)
 {
+	struct sockaddr *sa = rtinfo->rti_info[RTAX_DST];
 	struct rt_msghdr *rtm;
 	struct mbuf *m;
-	struct sockaddr *sa = rtinfo->sa_dst;
 
 	if (route_cb.any_count == 0)
 		return;
@@ -777,8 +790,11 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 	info.sa_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
 	info.sa_netmask = ifa->ifa_netmask;
 	info.sa_bcastaddr = ifa->ifa_dstaddr;
-	if ((m = rt_msg1(cmd, &info)) == NULL)
+
+	m = rt_msg1(cmd, &info);
+	if (m == NULL)
 		return;
+
 	ifam = mtod(m, struct ifa_msghdr *);
 	ifam->ifam_index = ifp->if_index;
 	ifam->ifam_metric = ifa->ifa_metric;
@@ -786,6 +802,7 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 	ifam->ifam_addrs = info.rti_addrs;
 
 	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
@@ -800,12 +817,16 @@ rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 
 	if (rt == NULL)
 		return;
+
 	bzero(&info, sizeof(info));
 	info.sa_netmask = rt_mask(rt);
 	info.sa_dst = sa = rt_key(rt);
 	info.sa_gateway = rt->rt_gateway;
-	if ((m = rt_msg1(cmd, &info)) == NULL)
+
+	m = rt_msg1(cmd, &info);
+	if (m == NULL)
 		return;
+
 	rtm = mtod(m, struct rt_msghdr *);
 	rtm->rtm_index = ifp->if_index;
 	rtm->rtm_flags |= rt->rt_flags;
@@ -813,6 +834,7 @@ rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 	rtm->rtm_addrs = info.rti_addrs;
 
 	route_proto.sp_protocol = sa ? sa->sa_family : 0;
+
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
@@ -872,12 +894,16 @@ rt_newmaddrmsg(cmd, ifma)
 	 * (similarly to how ARP entries, e.g., are presented).
 	 */
 	info.sa_gateway = ifma->ifma_lladdr;
-	if ((m = rt_msg1(cmd, &info)) == NULL)
+
+	m = rt_msg1(cmd, &info);
+	if (m == NULL)
 		return;
+
 	ifmam = mtod(m, struct ifma_msghdr *);
 	ifmam->ifmam_index = ifp->if_index;
 	ifmam->ifmam_addrs = info.rti_addrs;
 	route_proto.sp_protocol = ifma->ifma_addr->sa_family;
+
 	raw_input(m, &route_proto, &route_src, &route_dst);
 }
 
@@ -896,15 +922,20 @@ rt_ifannouncemsg(ifp, what)
 
 	if (route_cb.any_count == 0)
 		return;
+
 	bzero(&info, sizeof(info));
+
 	m = rt_msg1(RTM_IFANNOUNCE, &info);
 	if (m == NULL)
 		return;
+
 	ifan = mtod(m, struct if_announcemsghdr *);
 	ifan->ifan_index = ifp->if_index;
 	strlcpy(ifan->ifan_name, ifp->if_xname, sizeof(ifan->ifan_name));
 	ifan->ifan_what = what;
+
 	route_proto.sp_protocol = 0;
+
 	raw_input(m, &route_proto, &route_src, &route_dst);
  }
 
@@ -923,6 +954,7 @@ sysctl_dumpentry(rn, vw)
 
 	if (w->w_op == NET_RT_FLAGS && !(rt->rt_flags & w->w_arg))
 		return 0;
+
 	bzero(&info, sizeof(info));
 	info.sa_dst = rt_key(rt);
 	info.sa_gateway = rt->rt_gateway;
@@ -1038,7 +1070,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 		for (i = 1; i <= AF_MAX; i++)
 			if ((rnh = rt_tables[i]) && (af == 0 || af == i) &&
 			    (error = rnh->rnh_walktree(rnh,
-							sysctl_dumpentry, &w)))
+						       sysctl_dumpentry, &w)))
 				break;
 		break;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.13 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.14 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -88,20 +88,20 @@ SYSCTL_INT(_net_inet_icmp, ICMPCTL_MASKREPL, maskrepl, CTLFLAG_RW,
 	&icmpmaskrepl, 0, "");
 
 static int	drop_redirect = 0;
-SYSCTL_INT(_net_inet_icmp, OID_AUTO, drop_redirect, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, drop_redirect, CTLFLAG_RW,
 	&drop_redirect, 0, "");
 
 static int	log_redirect = 0;
-SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_icmp, OID_AUTO, log_redirect, CTLFLAG_RW,
 	&log_redirect, 0, "");
 
-#ifdef ICMP_BANDLIM 
- 
-/*    
+#ifdef ICMP_BANDLIM
+
+/*
  * ICMP error-response bandwidth limiting sysctl.  If not enabled, sysctl
  *      variable content is -1 and read-only.
- */     
-    
+ */
+
 static int      icmplim = 200;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RW,
 	&icmplim, 0, "");
@@ -111,7 +111,7 @@ static int      icmplim = -1;
 SYSCTL_INT(_net_inet_icmp, ICMPCTL_ICMPLIM, icmplim, CTLFLAG_RD,
 	&icmplim, 0, "");
 	
-#endif 
+#endif
 
 static int	icmplim_output = 1;
 SYSCTL_INT(_net_inet_icmp, OID_AUTO, icmplim_output, CTLFLAG_RW,
@@ -413,7 +413,7 @@ icmp_input(struct mbuf *m, ...)
 		 * (if given) and then notify as usual.  The ULPs will
 		 * notice that the MTU has changed and adapt accordingly.
 		 * If no new MTU was suggested, then we guess a new one
-		 * less than the current value.  If the new MTU is 
+		 * less than the current value.  If the new MTU is
 		 * unreasonably small (arbitrarily set at 296), then
 		 * we reset the MTU to the interface value and enable the
 		 * lock bit, indicating that we are no longer doing MTU
@@ -423,10 +423,10 @@ icmp_input(struct mbuf *m, ...)
 			struct rtentry *rt;
 			int mtu;
 
-			rt = rtalloc1((struct sockaddr *)&icmpsrc, 0,
+			rt = rtlookup((struct sockaddr *)&icmpsrc, 0,
 				      RTF_CLONING | RTF_PRCLONING);
-			if (rt && (rt->rt_flags & RTF_HOST)
-			    && !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
+			if (rt && (rt->rt_flags & RTF_HOST) &&
+			    !(rt->rt_rmx.rmx_locks & RTV_MTU)) {
 				mtu = ntohs(icp->icmp_nextmtu);
 				if (!mtu)
 					mtu = ip_next_mtu(rt->rt_rmx.rmx_mtu,
@@ -444,7 +444,7 @@ icmp_input(struct mbuf *m, ...)
 				}
 			}
 			if (rt)
-				RTFREE(rt);
+				--rt->rt_refcnt;
 		}
 
 #endif
@@ -687,46 +687,48 @@ match:
 		}
 		if (opts) {
 #ifdef ICMPPRINTFS
-		    if (icmpprintfs)
-			    printf("icmp_reflect optlen %d rt %d => ",
-				optlen, opts->m_len);
+			if (icmpprintfs)
+				printf("icmp_reflect optlen %d rt %d => ",
+				       optlen, opts->m_len);
 #endif
-		    for (cnt = optlen; cnt > 0; cnt -= len, cp += len) {
-			    opt = cp[IPOPT_OPTVAL];
-			    if (opt == IPOPT_EOL)
-				    break;
-			    if (opt == IPOPT_NOP)
-				    len = 1;
-			    else {
-				    if (cnt < IPOPT_OLEN + sizeof(*cp))
-					    break;
-				    len = cp[IPOPT_OLEN];
-				    if (len < IPOPT_OLEN + sizeof(*cp) ||
-				        len > cnt)
-					    break;
-			    }
-			    /*
-			     * Should check for overflow, but it "can't happen"
-			     */
-			    if (opt == IPOPT_RR || opt == IPOPT_TS ||
-				opt == IPOPT_SECURITY) {
-				    bcopy((caddr_t)cp,
-					mtod(opts, caddr_t) + opts->m_len, len);
-				    opts->m_len += len;
-			    }
-		    }
-		    /* Terminate & pad, if necessary */
-		    cnt = opts->m_len % 4;
-		    if (cnt) {
-			    for (; cnt < 4; cnt++) {
-				    *(mtod(opts, caddr_t) + opts->m_len) =
-					IPOPT_EOL;
-				    opts->m_len++;
-			    }
-		    }
+			for (cnt = optlen; cnt > 0; cnt -= len, cp += len) {
+				opt = cp[IPOPT_OPTVAL];
+				if (opt == IPOPT_EOL)
+					break;
+				if (opt == IPOPT_NOP)
+					len = 1;
+				else {
+					if (cnt < IPOPT_OLEN + sizeof(*cp))
+						break;
+					len = cp[IPOPT_OLEN];
+					if (len < IPOPT_OLEN + sizeof(*cp) ||
+					    len > cnt)
+					break;
+				}
+				/*
+				 * Should check for overflow, but it
+				 * "can't happen".
+				 */
+				if (opt == IPOPT_RR || opt == IPOPT_TS ||
+				    opt == IPOPT_SECURITY) {
+					bcopy((caddr_t)cp,
+					      mtod(opts, caddr_t) + opts->m_len,
+					      len);
+					opts->m_len += len;
+				}
+			}
+			/* Terminate & pad, if necessary */
+			cnt = opts->m_len % 4;
+			if (cnt) {
+				for (; cnt < 4; cnt++) {
+					*(mtod(opts, caddr_t) + opts->m_len) =
+					    IPOPT_EOL;
+					opts->m_len++;
+				}
+			}
 #ifdef ICMPPRINTFS
-		    if (icmpprintfs)
-			    printf("%d\n", opts->m_len);
+			if (icmpprintfs)
+				printf("%d\n", opts->m_len);
 #endif
 		}
 		/*
@@ -747,7 +749,7 @@ match:
 	icmp_send(m, opts, ro);
 done:
 	if (opts)
-		(void)m_free(opts);
+		m_free(opts);
 	if (ro && ro->ro_rt)
 		RTFREE(ro->ro_rt);
 }
@@ -783,7 +785,7 @@ icmp_send(m, opts, rt)
 		       buf, inet_ntoa(ip->ip_src));
 	}
 #endif
-	(void) ip_output(m, opts, rt, 0, NULL, NULL);
+	ip_output(m, opts, rt, 0, NULL, NULL);
 }
 
 n_time
@@ -838,12 +840,11 @@ ip_next_mtu(mtu, dir)
 #endif
 
 #ifdef ICMP_BANDLIM
-
 /*
  * badport_bandlim() - check for ICMP bandwidth limit
  *
  *	Return 0 if it is ok to send an ICMP error response, -1 if we have
- *	hit our bandwidth limit and it is not ok.  
+ *	hit our bandwidth limit and it is not ok.
  *
  *	If icmplim is <= 0, the feature is disabled and 0 is returned.
  *
@@ -854,10 +855,9 @@ ip_next_mtu(mtu, dir)
  *	Note that the printing of the error message is delayed so we can
  *	properly print the icmp error rate that the system was trying to do
  *	(i.e. 22000/100 pps, etc...).  This can cause long delays in printing
- *	the 'final' error, but it doesn't make sense to solve the printing 
+ *	the 'final' error, but it doesn't make sense to solve the printing
  *	delay with more complex code.
  */
-
 int
 badport_bandlim(int which)
 {
@@ -906,7 +906,4 @@ badport_bandlim(int which)
 	}
 	return(0);
 }
-
 #endif
-
-

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_src.c,v 1.1.2.3 2002/02/26 18:02:06 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.7 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_src.c,v 1.8 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: in6_src.c,v 1.37 2001/03/29 05:34:31 itojun Exp $	*/
 
 /*
@@ -241,22 +241,21 @@ in6_selectsrc(struct sockaddr_in6 *dstsock, struct ip6_pktopts *opts,
 		     !IN6_ARE_ADDR_EQUAL(&satosin6(&ro->ro_dst)->sin6_addr,
 					 dst))) {
 			RTFREE(ro->ro_rt);
-			ro->ro_rt = (struct rtentry *)0;
+			ro->ro_rt = NULL;
 		}
-		if (ro->ro_rt == (struct rtentry *)0 ||
-		    ro->ro_rt->rt_ifp == (struct ifnet *)0) {
+		if (ro->ro_rt == NULL || ro->ro_rt->rt_ifp == NULL) {
 			struct sockaddr_in6 *sa6;
 
 			/* No route yet, so try to acquire one */
 			bzero(&ro->ro_dst, sizeof(struct sockaddr_in6));
-			sa6 = (struct sockaddr_in6 *)&ro->ro_dst;
+			sa6 = &ro->ro_dst;
 			sa6->sin6_family = AF_INET6;
 			sa6->sin6_len = sizeof(struct sockaddr_in6);
 			sa6->sin6_addr = *dst;
 			sa6->sin6_scope_id = dstsock->sin6_scope_id;
 			if (IN6_IS_ADDR_MULTICAST(dst)) {
-				ro->ro_rt = rtalloc1(&((struct route *)ro)
-						     ->ro_dst, 0, 0UL);
+				ro->ro_rt = rtlookup(
+				    (struct sockaddr *)&ro->ro_dst, 0, 0UL);
 			} else {
 				rtalloc((struct route *)ro);
 			}

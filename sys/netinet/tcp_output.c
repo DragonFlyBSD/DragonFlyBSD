@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.20 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.21 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -398,7 +398,7 @@ again:
 		 * It is unclear why we would need to do a pure window update
 		 * past 2 segments if we are going to do one at 1/2 the high
 		 * water mark anyway, especially since under normal conditions
-		 * the user program will drain the socket buffer quickly. 
+		 * the user program will drain the socket buffer quickly.
 		 * The 2-segment pure window update will often add a large
 		 * number of extra, unnecessary acks to the stream.
 		 *
@@ -486,7 +486,7 @@ send:
 			opt[0] = TCPOPT_MAXSEG;
 			opt[1] = TCPOLEN_MAXSEG;
 			mss = htons((u_short) tcp_mssopt(tp));
-			(void)memcpy(opt + 2, &mss, sizeof(mss));
+			memcpy(opt + 2, &mss, sizeof mss);
 			optlen = TCPOLEN_MAXSEG;
 
 			if ((tp->t_flags & TF_REQ_SCALE) &&
@@ -696,7 +696,7 @@ send:
 		} else {
 			m->m_next = m_copy(so->so_snd.sb_mb, off, (int) len);
 			if (m->m_next == NULL) {
-				(void) m_free(m);
+				m_free(m);
 				error = ENOBUFS;
 				goto out;
 			}

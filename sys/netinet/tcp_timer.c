@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.12 2004/11/14 00:49:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.13 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -138,7 +138,7 @@ sysctl_msec_to_ticks(SYSCTL_HANDLER_ARGS)
 		return (EINVAL);
 
 	*(int *)oidp->oid_arg1 = tt;
-        return (0);
+	return (0);
 }
 
 int	tcp_keepinit;
@@ -157,7 +157,7 @@ int	tcp_delacktime;
 SYSCTL_PROC(_net_inet_tcp, TCPCTL_DELACKTIME, delacktime,
     CTLTYPE_INT|CTLFLAG_RW, &tcp_delacktime, 0, sysctl_msec_to_ticks, "I",
     "Time before a delayed ACK is sent");
- 
+
 int	tcp_msl;
 SYSCTL_PROC(_net_inet_tcp, OID_AUTO, msl, CTLTYPE_INT|CTLFLAG_RW,
     &tcp_msl, 0, sysctl_msec_to_ticks, "I", "Maximum segment lifetime");
@@ -171,7 +171,7 @@ SYSCTL_PROC(_net_inet_tcp, OID_AUTO, rexmit_slop, CTLTYPE_INT|CTLFLAG_RW,
     &tcp_rexmit_slop, 0, sysctl_msec_to_ticks, "I", "Retransmission Timer Slop");
 
 static int	always_keepalive = 0;
-SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, always_keepalive, CTLFLAG_RW,
     &always_keepalive , 0, "Assume SO_KEEPALIVE on all TCP connections");
 
 static int	tcp_keepcnt = TCPTV_KEEPCNT;
@@ -235,7 +235,7 @@ tcp_timer_delack(void *xtp)
 
 	tp->t_flags |= TF_ACKNOW;
 	tcpstat.tcps_delack++;
-	(void) tcp_output(tp);
+	tcp_output(tp);
 	splx(s);
 }
 
@@ -270,8 +270,7 @@ tcp_timer_2msl(void *xtp)
 
 #ifdef TCPDEBUG
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_USER, ostate, tp, (void *)0, (struct tcphdr *)0,
-			  PRU_SLOWTIMO);
+		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
 	splx(s);
 }
@@ -331,8 +330,7 @@ tcp_timer_keep(void *xtp)
 
 #ifdef TCPDEBUG
 	if (tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
-		tcp_trace(TA_USER, ostate, tp, (void *)0, (struct tcphdr *)0,
-			  PRU_SLOWTIMO);
+		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
 	splx(s);
 	return;
@@ -343,8 +341,7 @@ dropit:
 
 #ifdef TCPDEBUG
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_USER, ostate, tp, (void *)0, (struct tcphdr *)0,
-			  PRU_SLOWTIMO);
+		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
 	splx(s);
 }
@@ -386,14 +383,13 @@ tcp_timer_persist(void *xtp)
 	}
 	tcp_setpersist(tp);
 	tp->t_flags |= TF_FORCE;
-	(void) tcp_output(tp);
+	tcp_output(tp);
 	tp->t_flags &= ~TF_FORCE;
 
 out:
 #ifdef TCPDEBUG
 	if (tp && tp->t_inpcb->inp_socket->so_options & SO_DEBUG)
-		tcp_trace(TA_USER, ostate, tp, (void *)0, (struct tcphdr *)0,
-			  PRU_SLOWTIMO);
+		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
 	splx(s);
 }
@@ -471,10 +467,10 @@ tcp_timer_rexmt(void *xtp)
 	if (tp->t_rxtshift == 1) {
 		/*
 		 * first retransmit; record ssthresh and cwnd so they can
-	 	 * be recovered if this turns out to be a "bad" retransmit.
-		 * A retransmit is considered "bad" if an ACK for this 
+		 * be recovered if this turns out to be a "bad" retransmit.
+		 * A retransmit is considered "bad" if an ACK for this
 		 * segment is received within RTT/2 interval; the assumption
-		 * here is that the ACK was already in flight.  See 
+		 * here is that the ACK was already in flight.  See
 		 * "On Estimating End-to-End Network Path Properties" by
 		 * Allman and Paxson for more details.
 		 */
@@ -493,9 +489,9 @@ tcp_timer_rexmt(void *xtp)
 		      tp->t_rttmin, TCPTV_REXMTMAX);
 	/*
 	 * Disable rfc1323 and rfc1644 if we havn't got any response to
-	 * our third SYN to work-around some broken terminal servers 
-	 * (most of which have hopefully been retired) that have bad VJ 
-	 * header compression code which trashes TCP segments containing 
+	 * our third SYN to work-around some broken terminal servers
+	 * (most of which have hopefully been retired) that have bad VJ
+	 * header compression code which trashes TCP segments containing
 	 * unknown-to-them TCP options.
 	 */
 	if ((tp->t_state == TCPS_SYN_SENT) && (tp->t_rxtshift == 3))
@@ -562,13 +558,12 @@ tcp_timer_rexmt(void *xtp)
 		tp->t_dupacks = 0;
 	}
 	EXIT_FASTRECOVERY(tp);
-	(void) tcp_output(tp);
+	tcp_output(tp);
 
 out:
 #ifdef TCPDEBUG
 	if (tp && (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_USER, ostate, tp, (void *)0, (struct tcphdr *)0,
-			  PRU_SLOWTIMO);
+		tcp_trace(TA_USER, ostate, tp, NULL, NULL, PRU_SLOWTIMO);
 #endif
 	splx(s);
 }

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/icmp6.h,v 1.2.2.5 2002/06/29 18:31:11 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.4 2004/09/23 16:44:32 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/icmp6.h,v 1.5 2004/12/21 02:54:15 hsu Exp $	*/
 /*	$KAME: icmp6.h,v 1.46 2001/04/27 15:09:48 itojun Exp $	*/
 
 /*
@@ -100,7 +100,7 @@ struct icmp6_hdr {
 #define ICMP6_ECHO_REQUEST		128	/* echo service */
 #define ICMP6_ECHO_REPLY		129	/* echo reply */
 #define ICMP6_MEMBERSHIP_QUERY		130	/* group membership query */
-#define MLD_LISTENER_QUERY		130 	/* multicast listener query */
+#define MLD_LISTENER_QUERY		130	/* multicast listener query */
 #define ICMP6_MEMBERSHIP_REPORT		131	/* group membership report */
 #define MLD_LISTENER_REPORT		131	/* multicast listener report */
 #define ICMP6_MEMBERSHIP_REDUCTION	132	/* group membership termination */
@@ -134,7 +134,7 @@ struct icmp6_hdr {
 
 #define ICMP6_HADISCOV_REQUEST		202	/* XXX To be defined */
 #define ICMP6_HADISCOV_REPLY		203	/* XXX To be defined */
-  
+ 
 #ifndef _KERNEL
 #define MLD6_MTRACE_RESP	MLD_MTRACE_RESP
 #define MLD6_MTRACE		MLD_MTRACE
@@ -143,16 +143,16 @@ struct icmp6_hdr {
 #define ICMP6_MAXTYPE			203
 
 #define ICMP6_DST_UNREACH_NOROUTE	0	/* no route to destination */
-#define ICMP6_DST_UNREACH_ADMIN	 	1	/* administratively prohibited */
+#define ICMP6_DST_UNREACH_ADMIN		1	/* administratively prohibited */
 #define ICMP6_DST_UNREACH_NOTNEIGHBOR	2	/* not a neighbor(obsolete) */
 #define ICMP6_DST_UNREACH_BEYONDSCOPE	2	/* beyond scope of source address */
 #define ICMP6_DST_UNREACH_ADDR		3	/* address unreachable */
 #define ICMP6_DST_UNREACH_NOPORT	4	/* port unreachable */
 
-#define ICMP6_TIME_EXCEED_TRANSIT 	0	/* ttl==0 in transit */
+#define ICMP6_TIME_EXCEED_TRANSIT	0	/* ttl==0 in transit */
 #define ICMP6_TIME_EXCEED_REASSEMBLY	1	/* ttl==0 in reass */
 
-#define ICMP6_PARAMPROB_HEADER 	 	0	/* erroneous header field */
+#define ICMP6_PARAMPROB_HEADER		0	/* erroneous header field */
 #define ICMP6_PARAMPROB_NEXTHEADER	1	/* unrecognized next header */
 #define ICMP6_PARAMPROB_OPTION		2	/* unrecognized option */
 
@@ -205,7 +205,7 @@ struct mld_hdr {
  */
 
 struct nd_router_solicit {	/* router solicitation */
-	struct icmp6_hdr 	nd_rs_hdr;
+	struct icmp6_hdr	nd_rs_hdr;
 	/* could be followed by options */
 } __attribute__((__packed__));
 
@@ -345,7 +345,7 @@ struct nd_opt_route_info {	/* route info */
  */
 
 struct icmp6_namelookup {
-	struct icmp6_hdr 	icmp6_nl_hdr;
+	struct icmp6_hdr	icmp6_nl_hdr;
 	u_int8_t	icmp6_nl_nonce[8];
 	int32_t		icmp6_nl_ttl;
 #if 0
@@ -453,7 +453,7 @@ struct icmp6_router_renum {	/* router renumbering header */
 #define rr_type		rr_hdr.icmp6_type
 #define rr_code		rr_hdr.icmp6_code
 #define rr_cksum	rr_hdr.icmp6_cksum
-#define rr_seqnum 	rr_hdr.icmp6_data32[0]
+#define rr_seqnum	rr_hdr.icmp6_data32[0]
 
 struct rr_pco_match {		/* match prefix part */
 	u_int8_t	rpm_code;
@@ -694,8 +694,8 @@ do {								\
 #define icmp6_ifoutstat_inc(ifp, type, code) \
 do { \
 		icmp6_ifstat_inc(ifp, ifs6_out_msg); \
- 		if (type < ICMP6_INFOMSG_MASK) \
- 			icmp6_ifstat_inc(ifp, ifs6_out_error); \
+		if (type < ICMP6_INFOMSG_MASK) \
+			icmp6_ifstat_inc(ifp, ifs6_out_error); \
 		switch(type) { \
 		 case ICMP6_DST_UNREACH: \
 			 icmp6_ifstat_inc(ifp, ifs6_out_dstunreach); \

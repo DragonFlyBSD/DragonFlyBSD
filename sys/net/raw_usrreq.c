@@ -32,7 +32,7 @@
  *
  *	@(#)raw_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_usrreq.c,v 1.18 1999/08/28 00:48:28 peter Exp $
- * $DragonFly: src/sys/net/raw_usrreq.c,v 1.7 2004/06/06 19:16:07 dillon Exp $
+ * $DragonFly: src/sys/net/raw_usrreq.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -97,10 +97,11 @@ raw_input(m0, proto, src, dst)
 			continue;
 		if (last) {
 			struct mbuf *n;
-			n = m_copy(m, 0, (int)M_COPYALL);
+
+			n = m_copypacket(m, MB_DONTWAIT);
 			if (n) {
-				if (sbappendaddr(&last->so_rcv, src,
-				    n, (struct mbuf *)0) == 0)
+				if (sbappendaddr(&last->so_rcv, src, n,
+						(struct mbuf *)0) == 0)
 					/* should notify about lost packet */
 					m_freem(n);
 				else {
@@ -112,8 +113,7 @@ raw_input(m0, proto, src, dst)
 		last = rp->rcb_socket;
 	}
 	if (last) {
-		if (sbappendaddr(&last->so_rcv, src,
-		    m, (struct mbuf *)0) == 0)
+		if (sbappendaddr(&last->so_rcv, src, m, (struct mbuf *)0) == 0)
 			m_freem(m);
 		else {
 			sorwakeup(last);

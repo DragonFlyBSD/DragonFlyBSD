@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.9 2004/07/26 14:41:17 joerg Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.10 2004/12/21 02:54:14 hsu Exp $
  *
  */
 
@@ -92,23 +92,23 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 			     /* 0x0400	   Nixdorf */
 #define	ETHERTYPE_NS		0x0600	/* XNS */
 #define	ETHERTYPE_NSAT		0x0601	/* XNS Address Translation (3Mb only) */
-#define	ETHERTYPE_DLOG1 	0x0660	/* DLOG (?) */
-#define	ETHERTYPE_DLOG2 	0x0661	/* DLOG (?) */
+#define	ETHERTYPE_DLOG1		0x0660	/* DLOG (?) */
+#define	ETHERTYPE_DLOG2		0x0661	/* DLOG (?) */
 #define	ETHERTYPE_IP		0x0800	/* IP protocol */
 #define	ETHERTYPE_X75		0x0801	/* X.75 Internet */
 #define	ETHERTYPE_NBS		0x0802	/* NBS Internet */
 #define	ETHERTYPE_ECMA		0x0803	/* ECMA Internet */
-#define	ETHERTYPE_CHAOS 	0x0804	/* CHAOSnet */
+#define	ETHERTYPE_CHAOS		0x0804	/* CHAOSnet */
 #define	ETHERTYPE_X25		0x0805	/* X.25 Level 3 */
 #define	ETHERTYPE_ARP		0x0806	/* Address resolution protocol */
 #define	ETHERTYPE_NSCOMPAT	0x0807	/* XNS Compatibility */
-#define	ETHERTYPE_FRARP 	0x0808	/* Frame Relay ARP (RFC1701) */
+#define	ETHERTYPE_FRARP		0x0808	/* Frame Relay ARP (RFC1701) */
 			     /* 0x081C	   Symbolics Private */
 		    /* 0x0888 - 0x088A	   Xyplex */
 #define	ETHERTYPE_UBDEBUG	0x0900	/* Ungermann-Bass network debugger */
 #define	ETHERTYPE_IEEEPUP	0x0A00	/* Xerox IEEE802.3 PUP */
 #define	ETHERTYPE_IEEEPUPAT	0x0A01	/* Xerox IEEE802.3 PUP Address Translation */
-#define	ETHERTYPE_VINES 	0x0BAD	/* Banyan VINES */
+#define	ETHERTYPE_VINES		0x0BAD	/* Banyan VINES */
 #define	ETHERTYPE_VINESLOOP	0x0BAE	/* Banyan VINES Loopback */
 #define	ETHERTYPE_VINESECHO	0x0BAF	/* Banyan VINES Echo */
 
@@ -122,7 +122,7 @@ extern const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN];
 #define	ETHERTYPE_NTRAILER	16
 
 #define	ETHERTYPE_DCA		0x1234	/* DCA - Multicast */
-#define	ETHERTYPE_VALID 	0x1600	/* VALID system protocol */
+#define	ETHERTYPE_VALID		0x1600	/* VALID system protocol */
 #define	ETHERTYPE_DOGFIGHT	0x1989	/* Artificial Horizons ("Aviator" dogfight simulator [on Sun]) */
 #define	ETHERTYPE_RCL		0x1995	/* Datapoint Corporation (RCL lan protocol) */
 
@@ -387,7 +387,7 @@ __BEGIN_DECLS
 struct	ether_addr *ether_aton (const char *);
 int	ether_hostton (const char *, struct ether_addr *);
 int	ether_line (const char *, struct ether_addr *, char *);
-char 	*ether_ntoa (const struct ether_addr *);
+char	*ether_ntoa (const struct ether_addr *);
 int	ether_ntohost (char *, const struct ether_addr *);
 __END_DECLS
 

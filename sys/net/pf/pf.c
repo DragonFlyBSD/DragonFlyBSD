@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.2 2004/11/30 16:02:21 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.3 2004/12/21 02:54:15 hsu Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -4854,7 +4854,7 @@ pf_routable(struct pf_addr *addr, sa_family_t af)
 	dst->sin_family = af;
 	dst->sin_len = sizeof(*dst);
 	dst->sin_addr = addr->v4;
-	rtalloc_ign(&ro, (RTF_CLONING|RTF_PRCLONING));
+	rtalloc_ign(&ro, (RTF_CLONING | RTF_PRCLONING));
 
 	if (ro.ro_rt != NULL) {
 		ret = 1;

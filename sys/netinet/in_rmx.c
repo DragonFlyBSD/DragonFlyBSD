@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.6 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.7 2004/12/21 02:54:15 hsu Exp $
  */
 
 /*
@@ -57,7 +57,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
 
-#define RTPRF_OURS	RTF_PROTO3	/* set on routes we manage */
+#define RTPRF_EXPIRING	RTF_PROTO3	/* set on routes we manage */
 
 static struct callout in_rtqtimo_ch;
 
@@ -78,9 +78,8 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	if (IN_MULTICAST(ntohl(sin->sin_addr.s_addr)))
 		rt->rt_flags |= RTF_MULTICAST;
 
-	if (!(rt->rt_flags & (RTF_HOST | RTF_CLONING | RTF_MULTICAST))) {
+	if (!(rt->rt_flags & (RTF_HOST | RTF_CLONING | RTF_MULTICAST)))
 		rt->rt_flags |= RTF_PRCLONING;
-	}
 
 	/*
 	 * A little bit of help for both IP output and input:
@@ -115,26 +114,25 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 	ret = rn_addroute(key, mask, head, treenodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
 		struct rtentry *rt2;
+
 		/*
 		 * We are trying to add a host route, but can't.
 		 * Find out if it is because of an
 		 * ARP entry and delete it if so.
 		 */
-		rt2 = rtalloc1((struct sockaddr *)sin, 0,
+		rt2 = rtlookup((struct sockaddr *)sin, 0,
 				RTF_CLONING | RTF_PRCLONING);
 		if (rt2) {
+			--rt->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&
-				rt2->rt_flags & RTF_HOST &&
-				rt2->rt_gateway &&
-				rt2->rt_gateway->sa_family == AF_LINK) {
-				rtrequest(RTM_DELETE,
-					  (struct sockaddr *)rt_key(rt2),
-					  rt2->rt_gateway,
-					  rt_mask(rt2), rt2->rt_flags, 0);
-				ret = rn_addroute(key, mask, head,
-					treenodes);
+			    rt2->rt_flags & RTF_HOST &&
+			    rt2->rt_gateway &&
+			    rt2->rt_gateway->sa_family == AF_LINK) {
+				rtrequest(RTM_DELETE, rt_key(rt2),
+					  rt2->rt_gateway, rt_mask(rt2),
+					  rt2->rt_flags, NULL);
+				ret = rn_addroute(key, mask, head, treenodes);
 			}
-			RTFREE(rt2);
 		}
 	}
 
@@ -152,7 +150,7 @@ in_addroute(char *key, char *mask, struct radix_node_head *head,
 }
 
 /*
- * This code is the inverse of in_clsroute: on first reference, if we
+ * This code is the inverse of in_closeroute: on first reference, if we
  * were managing the route, stop doing so and set the expiration timer
  * back off again.
  */
@@ -163,8 +161,8 @@ in_matchroute(char *key, struct radix_node_head *head)
 	struct rtentry *rt = (struct rtentry *)rn;
 
 	if (rt != NULL && rt->rt_refcnt == 0) { /* this is first reference */
-		if (rt->rt_flags & RTPRF_OURS) {
-			rt->rt_flags &= ~RTPRF_OURS;
+		if (rt->rt_flags & RTPRF_EXPIRING) {
+			rt->rt_flags &= ~RTPRF_EXPIRING;
 			rt->rt_rmx.rmx_expire = 0;
 		}
 	}
@@ -174,23 +172,23 @@ in_matchroute(char *key, struct radix_node_head *head)
 static int rtq_reallyold = 60*60;  /* one hour is ``really old'' */
 SYSCTL_INT(_net_inet_ip, IPCTL_RTEXPIRE, rtexpire, CTLFLAG_RW,
     &rtq_reallyold , 0,
-    "Default expiration time on dynamically learned routes");
+    "Default expiration time on cloned routes");
 
 static int rtq_minreallyold = 10;  /* never automatically crank down to less */
 SYSCTL_INT(_net_inet_ip, IPCTL_RTMINEXPIRE, rtminexpire, CTLFLAG_RW,
     &rtq_minreallyold , 0,
-    "Minimum time to attempt to hold onto dynamically learned routes");
+    "Minimum time to attempt to hold onto cloned routes");
 
 static int rtq_toomany = 128;	   /* 128 cached routes is ``too many'' */
 SYSCTL_INT(_net_inet_ip, IPCTL_RTMAXCACHE, rtmaxcache, CTLFLAG_RW,
-    &rtq_toomany , 0, "Upper limit on dynamically learned routes");
+    &rtq_toomany , 0, "Upper limit on cloned routes");
 
 /*
  * On last reference drop, mark the route as belong to us so that it can be
  * timed out.
  */
 static void
-in_clsroute(struct radix_node *rn, struct radix_node_head *head)
+in_closeroute(struct radix_node *rn, struct radix_node_head *head)
 {
 	struct rtentry *rt = (struct rtentry *)rn;
 
@@ -200,7 +198,7 @@ in_clsroute(struct radix_node *rn, struct radix_node_head *head)
 	if ((rt->rt_flags & (RTF_LLINFO | RTF_HOST)) != RTF_HOST)
 		return;
 
-	if ((rt->rt_flags & (RTF_WASCLONED | RTPRF_OURS)) != RTF_WASCLONED)
+	if ((rt->rt_flags & (RTF_WASCLONED | RTPRF_EXPIRING)) != RTF_WASCLONED)
 		return;
 
 	/*
@@ -209,13 +207,11 @@ in_clsroute(struct radix_node *rn, struct radix_node_head *head)
 	 * waiting for a timeout cycle to kill it.
 	 */
 	if (rtq_reallyold != 0) {
-		rt->rt_flags |= RTPRF_OURS;
+		rt->rt_flags |= RTPRF_EXPIRING;
 		rt->rt_rmx.rmx_expire = time_second + rtq_reallyold;
 	} else {
-		rtrequest(RTM_DELETE,
-			  (struct sockaddr *)rt_key(rt),
-			  rt->rt_gateway, rt_mask(rt),
-			  rt->rt_flags, 0);
+		rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway, rt_mask(rt),
+			  rt->rt_flags, NULL);
 	}
 }
 
@@ -240,17 +236,14 @@ in_rtqkill(struct radix_node *rn, void *rock)
 	struct rtentry *rt = (struct rtentry *)rn;
 	int err;
 
-	if (rt->rt_flags & RTPRF_OURS) {
+	if (rt->rt_flags & RTPRF_EXPIRING) {
 		ap->found++;
-
 		if (ap->draining || rt->rt_rmx.rmx_expire <= time_second) {
 			if (rt->rt_refcnt > 0)
 				panic("rtqkill route really not free");
 
-			err = rtrequest(RTM_DELETE,
-					(struct sockaddr *)rt_key(rt),
-					rt->rt_gateway, rt_mask(rt),
-					rt->rt_flags, 0);
+			err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
+					rt_mask(rt), rt->rt_flags, NULL);
 			if (err) {
 				log(LOG_WARNING, "in_rtqkill: error %d\n", err);
 			} else {
@@ -358,7 +351,7 @@ in_inithead(void **head, int off)
 	rnh = *head;
 	rnh->rnh_addaddr = in_addroute;
 	rnh->rnh_matchaddr = in_matchroute;
-	rnh->rnh_close = in_clsroute;
+	rnh->rnh_close = in_closeroute;
 	callout_init(&in_rtqtimo_ch);
 	in_rtqtimo(rnh);	/* kick off timeout first time */
 	return 1;
@@ -398,8 +391,8 @@ in_ifadownkill(struct radix_node *rn, void *xap)
 		 * so that behavior is not needed there.
 		 */
 		rt->rt_flags &= ~(RTF_CLONING | RTF_PRCLONING);
-		err = rtrequest(RTM_DELETE, (struct sockaddr *)rt_key(rt),
-				rt->rt_gateway, rt_mask(rt), rt->rt_flags, 0);
+		err = rtrequest(RTM_DELETE, rt_key(rt), rt->rt_gateway,
+				rt_mask(rt), rt->rt_flags, NULL);
 		if (err) {
 			log(LOG_WARNING, "in_ifadownkill: error %d\n", err);
 		}

@@ -1,7 +1,7 @@
 /*
  * $KAME: net_osdep.h,v 1.68 2001/12/21 08:14:58 itojun Exp $
  * $FreeBSD: src/sys/net/net_osdep.h,v 1.1.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/net_osdep.h,v 1.5 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/net/net_osdep.h,v 1.6 2004/12/21 02:54:14 hsu Exp $
  */
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -294,9 +294,6 @@ extern const char *if_name (struct ifnet *);
 #define ifa_list	ifa_link
 #define if_addrlist	if_addrhead
 #define if_list		if_link
-
-/* sys/net/if.h */
-#define IFAREF(ifa)	do { ++(ifa)->ifa_refcnt; } while (0)
 
 #define WITH_CONVERT_AND_STRIP_IP_LEN
 

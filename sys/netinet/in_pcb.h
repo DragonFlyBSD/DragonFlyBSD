@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.18 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.19 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -152,7 +152,7 @@ struct in_endpoints {
  * XXX
  * At some point struct route should possibly change to:
  *   struct rtentry *rt
- *   struct in_endpoints *ie; 
+ *   struct in_endpoints *ie;
  */
 struct in_conninfo {
 	u_int8_t	inc_flags;
@@ -192,7 +192,7 @@ struct inpcb {
 	/* local and foreign ports, local and foreign addr */
 	struct	in_conninfo inp_inc;
 
-	caddr_t	inp_ppcb;		/* pointer to per-protocol pcb */
+	void	*inp_ppcb;		/* pointer to per-protocol pcb */
 	struct	inpcbinfo *inp_pcbinfo;	/* PCB list info */
 	struct	inpcbinfo *inp_cpcbinfo;/* back pointer for connection table */
 	struct	socket *inp_socket;	/* back pointer to socket */
@@ -363,7 +363,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 
 #define	INP_SOCKAF(so) so->so_proto->pr_domain->dom_family
 
-#define	INP_CHECK_SOCKAF(so, af) 	(INP_SOCKAF(so) == af)
+#define	INP_CHECK_SOCKAF(so, af)	(INP_SOCKAF(so) == af)
 
 #ifdef _KERNEL
 extern int	ipport_lowfirstauto;

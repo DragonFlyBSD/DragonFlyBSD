@@ -39,7 +39,7 @@
  *	@(#)bpf.h	1.34 (LBL)     6/16/96
  *
  * $FreeBSD: src/sys/net/bpf.h,v 1.21.2.4 2002/07/05 14:40:00 fenner Exp $
- * $DragonFly: src/sys/net/bpf.h,v 1.6 2004/09/19 22:32:47 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.h,v 1.7 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _NET_BPF_H_
@@ -294,7 +294,7 @@ struct bpf_hdr {
 #define		BPF_H		0x08
 #define		BPF_B		0x10
 #define BPF_MODE(code)	((code) & 0xe0)
-#define		BPF_IMM 	0x00
+#define		BPF_IMM		0x00
 #define		BPF_ABS		0x20
 #define		BPF_IND		0x40
 #define		BPF_MEM		0x60

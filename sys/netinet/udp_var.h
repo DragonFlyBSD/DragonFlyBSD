@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.12 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.13 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_
@@ -92,7 +92,7 @@
  * UDP kernel structures and variables.
  */
 struct	udpiphdr {
-	struct 	ipovly ui_i;		/* overlaid ip structure */
+	struct	ipovly ui_i;		/* overlaid ip structure */
 	struct	udphdr ui_u;		/* udp header */
 };
 #define	ui_x1		ui_i.ih_x1

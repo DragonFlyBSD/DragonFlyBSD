@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.6 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.7 2004/12/21 02:54:14 hsu Exp $
  */
 
 /* 
@@ -1601,7 +1601,7 @@ local block_state deflate_stored(s, flush)
 	s->lookahead = 0;
 
 	/* Emit a stored block if pending_buf will be full: */
- 	max_start = s->block_start + max_block_size;
+	max_start = s->block_start + max_block_size;
         if (s->strstart == 0 || (ulg)s->strstart >= max_start) {
 	    /* strstart == 0 is possible when wraparound on 16-bit machine */
 	    s->lookahead = (uInt)(s->strstart - max_start);
@@ -4069,7 +4069,7 @@ z_stream *z;
 	n -= t;
 	z->total_out += t;
 	s->read = q;    /* drag read pointer forward */
-/*      WWRAP  */ 	/* expand WWRAP macro by hand to handle s->read */
+/*      WWRAP  */	/* expand WWRAP macro by hand to handle s->read */
 	if (q == s->end) {
 	    s->read = q = s->window;
 	    m = WAVAIL;

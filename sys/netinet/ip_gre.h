@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.h,v 1.5 2002/06/09 16:33:40 itojun Exp $
- * $DragonFly: src/sys/netinet/ip_gre.h,v 1.3 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.h,v 1.4 2004/12/21 02:54:15 hsu Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
+ *	  This product includes software developed by the NetBSD
+ *	  Foundation, Inc. and its contributors.
  * 4. Neither the name of The NetBSD Foundation nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.12 2004/10/20 05:00:36 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.13 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -101,10 +101,10 @@ struct ip_moptions {
 #ifdef _KERNEL
 
 #if defined(SMP)
-#define	_GD 	mycpu
-#define ipstat 	ipstats_ary[_GD->gd_cpuid]
+#define	_GD	mycpu
+#define ipstat	ipstats_ary[_GD->gd_cpuid]
 #else /* !SMP */
-#define ipstat 	ipstats_ary[0]
+#define ipstat	ipstats_ary[0]
 #endif
 
 struct ip_stats;

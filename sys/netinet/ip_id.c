@@ -35,10 +35,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_id.c,v 1.1.2.1 2001/07/19 06:37:26 kris Exp $
- * $DragonFly: src/sys/netinet/ip_id.c,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/ip_id.c,v 1.4 2004/12/21 02:54:15 hsu Exp $
  */
 
-/* 
+/*
  * seed = random 15bit
  * n = prime, g0 = generator to n,
  * j = random so that gcd(j,n-1) == 1
@@ -46,7 +46,7 @@
  *
  * X[0] = random seed.
  * X[n] = a*X[n-1]+b mod m is a Linear Congruential Generator
- * with a = 7^(even random) mod m, 
+ * with a = 7^(even random) mod m,
  *      b = random with gcd(b,m) == 1
  *      m = 31104 and a maximal period of m-1.
  *
@@ -74,7 +74,7 @@
 
 #define PFAC_N 3
 const static u_int16_t pfacts[PFAC_N] = {
-	2, 
+	2,
 	3,
 	2729
 };
@@ -121,15 +121,15 @@ pmod(gen, exp, mod)
 	return (s);
 }
 
-/* 
- * Initalizes the seed and chooses a suitable generator. Also toggles 
+/*
+ * Initalizes the seed and chooses a suitable generator. Also toggles
  * the msb flag. The msb flag is used to generate two distinct
  * cycles of random numbers and thus avoiding reuse of ids.
  *
- * This function is called from id_randomid() when needed, an 
+ * This function is called from id_randomid() when needed, an
  * application does not have to worry about it.
  */
-static void 
+static void
 ip_initid(void)
 {
 	u_int16_t j, i;
@@ -157,7 +157,7 @@ ip_initid(void)
 	j = tmp % RU_N;
 	tmp = tmp >> 16;
 
-	/* 
+	/*
 	 * Do a fast gcd(j,RU_N-1), so we can find a j with
 	 * gcd(j, RU_N-1) == 1, giving a new generator for
 	 * RU_GEN^j mod RU_N
@@ -170,7 +170,7 @@ ip_initid(void)
 
 		if (i>=PFAC_N)
 			noprime = 0;
-		else 
+		else
 			j = (j+1) % RU_N;
 	}
 
@@ -178,7 +178,7 @@ ip_initid(void)
 	ru_counter = 0;
 
 	ru_reseed = time.tv_sec + RU_OUT;
-	ru_msb = ru_msb == 0x8000 ? 0 : 0x8000; 
+	ru_msb = ru_msb == 0x8000 ? 0 : 0x8000;
 }
 
 u_int16_t

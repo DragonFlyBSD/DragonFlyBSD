@@ -34,7 +34,7 @@
  *
  *	@(#)if_fddi.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_fddi.h,v 1.8 1999/12/29 04:40:58 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.4 2004/07/23 07:16:31 joerg Exp $
+ * $DragonFly: src/sys/netinet/Attic/if_fddi.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IF_FDDI_H_
@@ -67,7 +67,7 @@ struct	fddi_header {
 #define	FDDIFC_LLC_PRIO5	5
 #define	FDDIFC_LLC_PRIO6	6
 #define	FDDIFC_LLC_PRIO7	7
-#define FDDIFC_LLC_SYNC         0xd0
+#define FDDIFC_LLC_SYNC		0xd0
 #define	FDDIFC_SMT		0x40
 
 #if defined(_KERNEL)

@@ -1,6 +1,6 @@
 /*
- * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.7 2004/06/03 18:30:03 joerg Exp $
+ * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.8 2004/12/21 02:54:15 hsu Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -18,8 +18,8 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *        This product includes software developed by the NetBSD
- *        Foundation, Inc. and its contributors.
+ *	  This product includes software developed by the NetBSD
+ *	  Foundation, Inc. and its contributors.
  * 4. Neither the name of The NetBSD Foundation nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -93,7 +93,7 @@
 #include <machine/stdarg.h>
 
 #if 1
-void gre_inet_ntoa(struct in_addr in); 	/* XXX */
+void gre_inet_ntoa(struct in_addr in);	/* XXX */
 #endif
 
 static struct gre_softc *gre_lookup(struct mbuf *, u_int8_t);
@@ -120,7 +120,7 @@ gre_input(struct mbuf *m, ...)
 
 	ret = gre_input2(m, off, proto);
 	/*
-	 * ret == 0 : packet not processed, meaning that 
+	 * ret == 0 : packet not processed, meaning that
 	 * no matching tunnel that is up is found.
 	 * we inject it to raw ip socket to see if anyone picks it up.
 	 */

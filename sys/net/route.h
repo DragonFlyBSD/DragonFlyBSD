@@ -32,7 +32,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.6 2004/12/15 00:11:04 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.7 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -99,6 +99,7 @@ struct mbuf;
 #ifndef RNF_NORMAL
 #include <net/radix.h>
 #endif
+
 struct rtentry {
 	struct	radix_node rt_nodes[2];	/* tree glue, and other values */
 #define	rt_key(r)	((struct sockaddr *)((r)->rt_nodes->rn_key))
@@ -109,13 +110,13 @@ struct rtentry {
 	struct	ifnet *rt_ifp;		/* the answer: interface to use */
 	struct	ifaddr *rt_ifa;		/* the answer: interface to use */
 	struct	sockaddr *rt_genmask;	/* for generation of cloned routes */
-	caddr_t	rt_llinfo;		/* pointer to link level info cache */
+	void	*rt_llinfo;		/* pointer to link level info cache */
 	struct	rt_metrics rt_rmx;	/* metrics used by rx'ing protocols */
 	struct	rtentry *rt_gwroute;	/* implied entry for gatewayed routes */
-	int	(*rt_output) (struct ifnet *, struct mbuf *,
-				  struct sockaddr *, struct rtentry *);
+	int	(*rt_output) (struct ifnet *, struct mbuf *, struct sockaddr *,
+			      struct rtentry *);
 					/* output routine for this (rt,if) */
-	struct	rtentry *rt_parent; 	/* cloning parent of this route */
+	struct	rtentry *rt_parent;	/* cloning parent of this route */
 	void	*rt_filler2;		/* more filler */
 };
 
@@ -156,7 +157,7 @@ struct ortentry {
 #define RTF_PROTO3	0x40000		/* protocol specific routing flag */
 /*			0x80000		   unused */
 #define RTF_PINNED	0x100000	/* future use */
-#define	RTF_LOCAL	0x200000 	/* route represents a local address */
+#define	RTF_LOCAL	0x200000	/* route represents a local address */
 #define	RTF_BROADCAST	0x400000	/* route represents a bcast address */
 #define	RTF_MULTICAST	0x800000	/* route represents a mcast address */
 					/* 0x1000000 and up unassigned */
@@ -266,24 +267,7 @@ struct rt_addrinfo {
 #define	sa_author	rti_info[RTAX_AUTHOR]
 #define	sa_bcastaddr	rti_info[RTAX_BRD]
 
-struct route_cb {
-	int	ip_count;
-	int	ip6_count;
-	int	ipx_count;
-	int	ns_count;
-	int	any_count;
-};
-
 #ifdef _KERNEL
-#define	RTFREE(rt) \
-	do { \
-		if ((rt)->rt_refcnt <= 1) \
-			rtfree(rt); \
-		else \
-			(rt)->rt_refcnt--; \
-	} while (0)
-
-extern struct route_cb route_cb;
 extern struct radix_node_head *rt_tables[AF_MAX+1];
 
 struct ifmultiaddr;
@@ -293,6 +277,8 @@ void	 route_init (void);
 int	 rt_getifa (struct rt_addrinfo *);
 void	 rt_ifannouncemsg (struct ifnet *, int);
 void	 rt_ifmsg (struct ifnet *);
+int	 rt_llroute (struct sockaddr *dst, struct rtentry *rt0,
+	    struct rtentry **drt);
 void	 rt_missmsg (int, struct rt_addrinfo *, int, int);
 void	 rt_newaddrmsg (int, struct ifaddr *, int, struct rtentry *);
 void	 rt_newmaddrmsg (int, struct ifmultiaddr *);
@@ -301,7 +287,7 @@ int	 rt_setgate (struct rtentry *,
 void	 rtalloc (struct route *);
 void	 rtalloc_ign (struct route *, u_long);
 struct rtentry *
-	 rtalloc1 (struct sockaddr *, int, u_long);
+	 rtlookup (struct sockaddr *, int, u_long);
 void	 rtfree (struct rtentry *);
 int	 rtinit (struct ifaddr *, int, int);
 int	 rtioctl (u_long, caddr_t, struct thread *);
@@ -310,6 +296,15 @@ void	 rtredirect (struct sockaddr *, struct sockaddr *,
 int	 rtrequest (int, struct sockaddr *,
 	    struct sockaddr *, struct sockaddr *, int, struct rtentry **);
 int	 rtrequest1 (int, struct rt_addrinfo *, struct rtentry **);
+
+static __inline void
+RTFREE(struct rtentry *rt)
+{
+	if (rt->rt_refcnt <= 1)
+		rtfree(rt);
+	else
+		--rt->rt_refcnt;
+}
 #endif
 
 #endif

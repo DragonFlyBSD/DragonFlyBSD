@@ -38,7 +38,7 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.5 2004/07/27 01:24:28 cpressey Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.6 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@
 #define MINDEX(m, k)							\
 {									\
 	int len = m->m_len;						\
- 									\
+									\
 	while (k >= len) {						\
 		k -= len;						\
 		m = m->m_next;						\

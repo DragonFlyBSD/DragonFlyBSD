@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.4 2004/09/24 12:39:25 joerg Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip6.h,v 1.5 2004/12/21 02:54:15 hsu Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -149,7 +149,7 @@ struct ip6_dest {
 #define IP6OPT_RTALERT_LEN	4
 #define IP6OPT_RTALERT_MLD	0	/* Datagram contains an MLD message */
 #define IP6OPT_RTALERT_RSVP	1	/* Datagram contains an RSVP message */
-#define IP6OPT_RTALERT_ACTNET	2 	/* contains an Active Networks msg */
+#define IP6OPT_RTALERT_ACTNET	2	/* contains an Active Networks msg */
 #define IP6OPT_MINLEN		2
 
 #define IP6OPT_BINDING_UPDATE	0xc6	/* 11 0 00110 */

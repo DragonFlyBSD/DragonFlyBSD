@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2003, 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2003, 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.39 2004/12/20 17:15:40 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.40 2004/12/21 02:54:15 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -240,10 +240,10 @@ sysctl_ipstats(SYSCTL_HANDLER_ARGS)
 	int cpu, error = 0;
 
 	for (cpu = 0; cpu < ncpus; ++cpu) {
-		if ((error = SYSCTL_OUT(req, (void *)&ipstats_ary[cpu],
+		if ((error = SYSCTL_OUT(req, &ipstats_ary[cpu],
 					sizeof(struct ip_stats))))
 			break;
-		if ((error = SYSCTL_IN(req, (void *)&ipstats_ary[cpu],
+		if ((error = SYSCTL_IN(req, &ipstats_ary[cpu],
 				       sizeof(struct ip_stats))))
 			break;
 	}
@@ -618,7 +618,7 @@ iphack:
 	 */
 	if (pfil_has_hooks(&inet_pfil_hook)) {
 		odst = ip->ip_dst;
-		if (pfil_run_hooks(&inet_pfil_hook, &m, 
+		if (pfil_run_hooks(&inet_pfil_hook, &m,
 		    m->m_pkthdr.rcvif, PFIL_IN)) {
 			return;
 		}
@@ -1557,8 +1557,8 @@ dropit:
 			/*
 			 * locate outgoing interface
 			 */
-			(void)memcpy(&ipaddr.sin_addr, cp + off,
-			    sizeof(ipaddr.sin_addr));
+			memcpy(&ipaddr.sin_addr, cp + off,
+			    sizeof ipaddr.sin_addr);
 
 			if (opt == IPOPT_SSRR) {
 #define	INA	struct in_ifaddr *
@@ -1574,7 +1574,7 @@ dropit:
 				goto bad;
 			}
 			ip->ip_dst = ipaddr.sin_addr;
-			(void)memcpy(cp + off, &(IA_SIN(ia)->sin_addr),
+			memcpy(cp + off, &IA_SIN(ia)->sin_addr,
 			    sizeof(struct in_addr));
 			cp[IPOPT_OFFSET] += sizeof(struct in_addr);
 			/*
@@ -1600,8 +1600,8 @@ dropit:
 			off--;			/* 0 origin */
 			if (off > optlen - (int)sizeof(struct in_addr))
 				break;
-			(void)memcpy(&ipaddr.sin_addr, &ip->ip_dst,
-			    sizeof(ipaddr.sin_addr));
+			memcpy(&ipaddr.sin_addr, &ip->ip_dst,
+			    sizeof ipaddr.sin_addr);
 			/*
 			 * locate outgoing interface; if we're the destination,
 			 * use the incoming interface (should be same).
@@ -1613,7 +1613,7 @@ dropit:
 				code = ICMP_UNREACH_HOST;
 				goto bad;
 			}
-			(void)memcpy(cp + off, &(IA_SIN(ia)->sin_addr),
+			memcpy(cp + off, &IA_SIN(ia)->sin_addr,
 			    sizeof(struct in_addr));
 			cp[IPOPT_OFFSET] += sizeof(struct in_addr);
 			break;
@@ -1656,7 +1656,7 @@ dropit:
 							    m->m_pkthdr.rcvif);
 				if (ia == NULL)
 					continue;
-				(void)memcpy(sin, &IA_SIN(ia)->sin_addr,
+				memcpy(sin, &IA_SIN(ia)->sin_addr,
 				    sizeof(struct in_addr));
 				cp[IPOPT_OFFSET] += sizeof(struct in_addr);
 				off += sizeof(struct in_addr);
@@ -1668,7 +1668,7 @@ dropit:
 					code = &cp[IPOPT_OFFSET] - (u_char *)ip;
 					goto bad;
 				}
-				(void)memcpy(&ipaddr.sin_addr, sin,
+				memcpy(&ipaddr.sin_addr, sin,
 				    sizeof(struct in_addr));
 				if (ifa_ifwithaddr((SA)&ipaddr) == NULL)
 					continue;
@@ -1681,7 +1681,7 @@ dropit:
 				goto bad;
 			}
 			ntime = iptime();
-			(void)memcpy(cp + off, &ntime, sizeof(n_time));
+			memcpy(cp + off, &ntime, sizeof(n_time));
 			cp[IPOPT_OFFSET] += sizeof(n_time);
 		}
 	}
@@ -1787,7 +1787,7 @@ ip_srcroute(void)
 	 */
 	ip_srcrt.nop = IPOPT_NOP;
 	ip_srcrt.srcopt[IPOPT_OFFSET] = IPOPT_MINOFF;
-	(void)memcpy(mtod(m, caddr_t) + sizeof(struct in_addr), &ip_srcrt.nop,
+	memcpy(mtod(m, caddr_t) + sizeof(struct in_addr), &ip_srcrt.nop,
 	    OPTSIZ);
 	q = (struct in_addr *)(mtod(m, caddr_t) +
 	    sizeof(struct in_addr) + OPTSIZ);

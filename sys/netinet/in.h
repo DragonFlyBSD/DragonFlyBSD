@@ -32,7 +32,7 @@
  *
  *	@(#)in.h	8.3 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/in.h,v 1.48.2.10 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in.h,v 1.9 2004/09/19 22:32:48 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.h,v 1.10 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IN_H_
@@ -67,7 +67,7 @@
 #define	IPPROTO_ICMP		1		/* control message protocol */
 #define	IPPROTO_IGMP		2		/* group mgmt protocol */
 #define	IPPROTO_GGP		3		/* gateway^2 (deprecated) */
-#define IPPROTO_IPV4		4 		/* IPv4 encapsulation */
+#define IPPROTO_IPV4		4		/* IPv4 encapsulation */
 #define IPPROTO_IPIP		IPPROTO_IPV4	/* for compatibility */
 #define	IPPROTO_TCP		6		/* tcp */
 #define	IPPROTO_ST		7		/* Stream protocol II */
@@ -92,7 +92,7 @@
 #define	IPPROTO_LEAF2		26		/* Leaf-2 */
 #define	IPPROTO_RDP		27		/* Reliable Data */
 #define	IPPROTO_IRTP		28		/* Reliable Transaction */
-#define	IPPROTO_TP		29 		/* tp-4 w/ class negotiation */
+#define	IPPROTO_TP		29		/* tp-4 w/ class negotiation */
 #define	IPPROTO_BLT		30		/* Bulk Data Transfer */
 #define	IPPROTO_NSP		31		/* Network Services */
 #define	IPPROTO_INP		32		/* Merit Internodal */
@@ -109,7 +109,7 @@
 #define	IPPROTO_ROUTING		43		/* IP6 routing header */
 #define	IPPROTO_FRAGMENT	44		/* IP6 fragmentation header */
 #define	IPPROTO_IDRP		45		/* InterDomain Routing*/
-#define	IPPROTO_RSVP		46 		/* resource reservation */
+#define	IPPROTO_RSVP		46		/* resource reservation */
 #define	IPPROTO_GRE		47		/* General Routing Encap. */
 #define	IPPROTO_MHRP		48		/* Mobile Host Routing */
 #define	IPPROTO_BHA		49		/* BHA */
@@ -168,7 +168,7 @@
 /* 101-254: Partly Unassigned */
 #define	IPPROTO_PIM		103		/* Protocol Independent Mcast */
 #define	IPPROTO_PGM		113		/* PGM */
-#define	IPPROTO_PFSYNC          240             /* PFSYNC */
+#define	IPPROTO_PFSYNC		240		/* PFSYNC */
 /* 255: Reserved */
 /* BSD Private, local use, namespace incursion */
 #define	IPPROTO_DIVERT		254		/* divert pseudo-protocol */
@@ -212,20 +212,17 @@
  * Administrator looking for you with a heavy object.
  *
  * For a slightly more orthodox text view on this:
+ *   ftp://ftp.isi.edu/in-notes/iana/assignments/port-numbers
  *
- *            ftp://ftp.isi.edu/in-notes/iana/assignments/port-numbers
- *
- *    port numbers are divided into three ranges:
- *
- *                0 -  1023 Well Known Ports
- *             1024 - 49151 Registered Ports
- *            49152 - 65535 Dynamic and/or Private Ports
- *
+ *   port numbers are divided into three ranges:
+ *		0 -  1023 Well Known Ports
+ *	     1024 - 49151 Registered Ports
+ *	    49152 - 65535 Dynamic and/or Private Ports
  */
 
 /*
  * Ports < IPPORT_RESERVED are reserved for
- * privileged processes (e.g. root).         (IP_PORTRANGE_LOW)
+ * privileged processes (e.g. root).  (IP_PORTRANGE_LOW)
  * Ports > IPPORT_USERRESERVED are reserved
  * for servers, not necessarily privileged.  (IP_PORTRANGE_DEFAULT)
  */
@@ -310,7 +307,7 @@ struct sockaddr_in {
 	char	sin_zero[8];
 };
 
-#define	INET_ADDRSTRLEN                 16
+#define	INET_ADDRSTRLEN		16
 
 /*
  * Options for use with [gs]etsockopt at the IP level.
@@ -340,11 +337,11 @@ struct sockaddr_in {
 #define	IP_IPSEC_POLICY		21   /* int; set/get security policy */
 #define	IP_FAITH		22   /* bool; accept FAITH'ed connections */
 
-#define	IP_FW_ADD     		50   /* add a firewall rule to chain */
-#define	IP_FW_DEL    		51   /* delete a firewall rule from chain */
-#define	IP_FW_FLUSH   		52   /* flush firewall rule chain */
-#define	IP_FW_ZERO    		53   /* clear single/all firewall counter(s) */
-#define	IP_FW_GET     		54   /* get entire firewall rule chain */
+#define	IP_FW_ADD		50   /* add a firewall rule to chain */
+#define	IP_FW_DEL		51   /* delete a firewall rule from chain */
+#define	IP_FW_FLUSH		52   /* flush firewall rule chain */
+#define	IP_FW_ZERO		53   /* clear single/all firewall counter(s) */
+#define	IP_FW_GET		54   /* get entire firewall rule chain */
 #define	IP_FW_RESETLOG		55   /* reset logging counters */
 
 #define	IP_DUMMYNET_CONFIGURE	60   /* add/configure a dummynet pipe */
@@ -487,7 +484,7 @@ struct ip_mreq {
 	{ "rtminexpire", CTLTYPE_INT }, \
 	{ "rtmaxcache", CTLTYPE_INT }, \
 	{ "sourceroute", CTLTYPE_INT }, \
- 	{ "directed-broadcast", CTLTYPE_INT }, \
+	{ "directed-broadcast", CTLTYPE_INT }, \
 	{ "intr-queue-maxlen", CTLTYPE_INT }, \
 	{ "intr-queue-drops", CTLTYPE_INT }, \
 	{ "stats", CTLTYPE_STRUCT }, \
@@ -511,7 +508,7 @@ struct thread;
 int	 in_broadcast (struct in_addr, struct ifnet *);
 int	 in_canforward (struct in_addr);
 int	 in_localaddr (struct in_addr);
-char 	*inet_ntoa (struct in_addr); /* in libkern */
+char	*inet_ntoa (struct in_addr); /* in libkern */
 
 int	prison_ip (struct thread *td, int flag, u_int32_t *ip);
 void	prison_remote_ip (struct thread *td, int flag, u_int32_t *ip);

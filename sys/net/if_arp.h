@@ -32,7 +32,7 @@
  *
  *	@(#)if_arp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_arp.h,v 1.14.2.3 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/if_arp.h,v 1.4 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/net/if_arp.h,v 1.5 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _NET_IF_ARP_H_
@@ -50,10 +50,10 @@
  */
 struct	arphdr {
 	u_short	ar_hrd;		/* format of hardware address */
-#define ARPHRD_ETHER 	1	/* ethernet hardware format */
+#define ARPHRD_ETHER	1	/* ethernet hardware format */
 #define ARPHRD_IEEE802	6	/* token-ring hardware format */
 #define ARPHRD_ARCNET	7	/* arcnet hardware format */
-#define ARPHRD_FRELAY 	15	/* frame relay hardware format */
+#define ARPHRD_FRELAY	15	/* frame relay hardware format */
 	u_short	ar_pro;		/* format of protocol address */
 	u_char	ar_hln;		/* length of hardware address */
 	u_char	ar_pln;		/* length of protocol address */
@@ -62,7 +62,7 @@ struct	arphdr {
 #define	ARPOP_REPLY	2	/* response to previous request */
 #define	ARPOP_REVREQUEST 3	/* request protocol address given hardware */
 #define	ARPOP_REVREPLY	4	/* response giving protocol address */
-#define ARPOP_INVREQUEST 8 	/* request to identify peer */
+#define ARPOP_INVREQUEST 8	/* request to identify peer */
 #define ARPOP_INVREPLY	9	/* response identifying peer */
 /*
  * The remaining fields are variable in size,
@@ -111,7 +111,7 @@ struct	arpcom {
 	/*
 	 * The ifnet struct _must_ be at the head of this structure.
 	 */
-	struct 	ifnet ac_if;		/* network-visible interface */
+	struct	ifnet ac_if;		/* network-visible interface */
 	u_char	ac_enaddr[6];		/* ethernet hardware address */
 	int	ac_multicnt;		/* length of ac_multiaddrs list */
 	void	*ac_netgraph;		/* ng_ether(4) netgraph node info */

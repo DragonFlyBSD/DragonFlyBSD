@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/net/zlib.h,v 1.7.2.1 2002/07/31 14:13:05 rwatson Exp $	*/
-/* $DragonFly: src/sys/net/zlib.h,v 1.3 2004/02/13 17:45:49 joerg Exp $	*/
+/* $DragonFly: src/sys/net/zlib.h,v 1.4 2004/12/21 02:54:14 hsu Exp $	*/
 
 /*
  * This file is derived from zlib.h and zconf.h from the zlib-1.0.4
@@ -74,7 +74,7 @@ extern "C" {
 #  define deflateInit_	z_deflateInit_
 #  define deflate	z_deflate
 #  define deflateEnd	z_deflateEnd
-#  define inflateInit_ 	z_inflateInit_
+#  define inflateInit_	z_inflateInit_
 #  define inflate	z_inflate
 #  define inflateEnd	z_inflateEnd
 #  define deflateInit2_	z_deflateInit2_

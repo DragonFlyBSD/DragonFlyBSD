@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbsh/if_sbsh.c,v 1.3.2.1 2003/04/15 18:15:07 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.12 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbsh/if_sbsh.c,v 1.13 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -459,7 +459,7 @@ sbsh_ioctl(struct ifnet	*ifp, u_long cmd, caddr_t data, struct ucred *cr)
 		ds.status_3 = ((volatile u_int8_t *)sc->cmdp)[0x3c2];
 
 		bcopy(&sc->in_stats, ifr->ifr_data, sizeof(struct sbni16_stats));
-		bcopy(&ds, ifr->ifr_data + sizeof(struct sbni16_stats),
+		bcopy(&ds, (char *)ifr->ifr_data + sizeof(struct sbni16_stats),
 		    sizeof(struct dsl_stats));
 		break;
 

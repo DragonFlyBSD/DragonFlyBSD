@@ -41,7 +41,7 @@
  * This version is for use with mbufs on BSD-derived systems.
  *
  * $FreeBSD: src/sys/net/bsd_comp.c,v 1.11.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bsd_comp.c,v 1.7 2004/07/27 01:24:28 cpressey Exp $
+ * $DragonFly: src/sys/net/bsd_comp.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -440,8 +440,8 @@ bsd_decomp_init(void *state, u_char *options, int opt_len,
  * compress a packet
  *	One change from the BSD compress command is that when the
  *	code size expands, we do not output a bunch of padding.
- *   **mret 	- return compressed mbuf chain here
- *   *mp    	- from here
+ *   **mret	- return compressed mbuf chain here
+ *   *mp	- from here
  *   slen	- uncompressed length
  *   maxolen	- max compressed length
  */
@@ -755,7 +755,7 @@ bsd_incomp(void *state, struct mbuf *dmsg)
     bitno += n_bits;		/* output (count) the last code */
     db->bytes_out += bitno/8;
     db->in_count += ilen;
-    (void)bsd_check(db);
+    bsd_check(db);
 
     ++db->incomp_count;
     db->incomp_bytes += ilen;

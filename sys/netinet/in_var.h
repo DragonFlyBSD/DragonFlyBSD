@@ -32,7 +32,7 @@
  *
  *	@(#)in_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in_var.h,v 1.33.2.3 2001/12/14 20:09:34 jlemon Exp $
- * $DragonFly: src/sys/netinet/in_var.h,v 1.7 2004/04/13 00:14:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_var.h,v 1.8 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IN_VAR_H_
@@ -87,7 +87,7 @@ struct	in_aliasreq {
 extern	struct	in_addr zeroin_addr;
 extern	u_char	inetctlerrmap[];
 
-/* 
+/*
  * Hash table for IP addresses.
  */
 extern	LIST_HEAD(in_ifaddrhashhead, in_ifaddr) *in_ifaddrhashtbl;

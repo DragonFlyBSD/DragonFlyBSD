@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.19 2004/07/07 15:16:04 joerg Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.20 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include "use_bpf.h"
@@ -182,7 +182,7 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 		 * specified anyway.
 		 */
 		sockp->sa_family = AF_UNSPEC;
-		hlen = 12; 	/* XXX 4(ATM_PH) + 3(LLC) + 5(SNAP) */
+		hlen = 12;	/* XXX 4(ATM_PH) + 3(LLC) + 5(SNAP) */
 		break;
 
 	case DLT_PPP:
@@ -200,11 +200,11 @@ bpf_movein(struct uio *uio, int linktype, struct mbuf **mp,
 		return(EIO);
 
 	MGETHDR(m, MB_WAIT, MT_DATA);
-	if (m == 0)
+	if (m == NULL)
 		return(ENOBUFS);
 	if (len > MHLEN) {
 		MCLGET(m, MB_WAIT);
-		if ((m->m_flags & M_EXT) == 0) {
+		if (!(m->m_flags & M_EXT)) {
 			error = ENOBUFS;
 			goto bad;
 		}
@@ -244,9 +244,7 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 	 * it will divert packets to bpf.
 	 */
 	d->bd_bif = bp;
-	d->bd_next = bp->bif_dlist;
-	bp->bif_dlist = d;
-
+	SLIST_INSERT_HEAD(&bp->bif_dlist, d, bd_next);
 	bp->bif_ifp->if_bpf = bp;
 }
 
@@ -256,7 +254,6 @@ bpf_attachd(struct bpf_d *d, struct bpf_if *bp)
 static void
 bpf_detachd(struct bpf_d *d)
 {
-	struct bpf_d **p;
 	struct bpf_if *bp;
 
 	bp = d->bd_bif;
@@ -276,20 +273,15 @@ bpf_detachd(struct bpf_d *d)
 		}
 	}
 	/* Remove d from the interface's descriptor list. */
-	p = &bp->bif_dlist;
-	while (*p != d) {
-		p = &(*p)->bd_next;
-		if (*p == NULL)
-			panic("bpf_detachd: descriptor not in list");
-	}
-	*p = (*p)->bd_next;
-	if (bp->bif_dlist == NULL) {
+	SLIST_REMOVE(&bp->bif_dlist, d, bpf_d, bd_next);
+
+	if (SLIST_EMPTY(&bp->bif_dlist)) {
 		/*
 		 * Let the driver know that there are no more listeners.
 		 */
-		d->bd_bif->bif_ifp->if_bpf = 0;
+		d->bd_bif->bif_ifp->if_bpf = NULL;
 	}
-	d->bd_bif = 0;
+	d->bd_bif = NULL;
 }
 
 /*
@@ -310,7 +302,7 @@ bpfopen(dev_t dev, int flags, int fmt, struct thread *td)
 
 	d = dev->si_drv1;
 	/*
-	 * Each minor can be opened by only one process.  If the requested 
+	 * Each minor can be opened by only one process.  If the requested
 	 * minor is in use, return EBUSY.
 	 */
 	if (d != NULL)
@@ -345,7 +337,7 @@ bpfclose(dev_t dev, int flags, int fmt, struct thread *td)
 		bpf_detachd(d);
 	splx(s);
 	bpf_freed(d);
-	dev->si_drv1 = 0;
+	dev->si_drv1 = NULL;
 	free(d, M_BPF);
 
 	return(0);
@@ -361,7 +353,7 @@ bpfclose(dev_t dev, int flags, int fmt, struct thread *td)
 	(d)->bd_hlen = (d)->bd_slen; \
 	(d)->bd_sbuf = (d)->bd_fbuf; \
 	(d)->bd_slen = 0; \
-	(d)->bd_fbuf = 0;
+	(d)->bd_fbuf = NULL;
 /*
  *  bpfread - read next chunk of packets from buffers
  */
@@ -390,7 +382,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 	 * ends when the timeout expires or when enough packets
 	 * have arrived to fill the store buffer.
 	 */
-	while (d->bd_hbuf == 0) {
+	while (d->bd_hbuf == NULL) {
 		if ((d->bd_immediate || timed_out) && d->bd_slen != 0) {
 			/*
 			 * A packet(s) either arrived since the previous
@@ -457,7 +449,7 @@ bpfread(dev_t dev, struct uio *uio, int ioflag)
 
 	s = splimp();
 	d->bd_fbuf = d->bd_hbuf;
-	d->bd_hbuf = 0;
+	d->bd_hbuf = NULL;
 	d->bd_hlen = 0;
 	splx(s);
 
@@ -475,7 +467,7 @@ bpf_wakeup(struct bpf_d *d)
 		callout_stop(&d->bd_callout);
 		d->bd_state = BPF_IDLE;
 	}
-	wakeup((caddr_t)d);
+	wakeup(d);
 	if (d->bd_async && d->bd_sig && d->bd_sigio)
 		pgsigio(d->bd_sigio, d->bd_sig, 0);
 
@@ -509,7 +501,7 @@ bpfwrite(dev_t dev, struct uio *uio, int ioflag)
 	static struct sockaddr dst;
 	int datlen;
 
-	if (d->bd_bif == 0)
+	if (d->bd_bif == NULL)
 		return(ENXIO);
 
 	ifp = d->bd_bif->bif_ifp;
@@ -546,7 +538,7 @@ reset_d(struct bpf_d *d)
 	if (d->bd_hbuf) {
 		/* Free the hold buffer. */
 		d->bd_fbuf = d->bd_hbuf;
-		d->bd_hbuf = 0;
+		d->bd_hbuf = NULL;
 	}
 	d->bd_slen = 0;
 	d->bd_hlen = 0;
@@ -614,7 +606,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		{
 			struct ifnet *ifp;
 
-			if (d->bd_bif == 0)
+			if (d->bd_bif == NULL)
 				error = EINVAL;
 			else {
 				ifp = d->bd_bif->bif_ifp;
@@ -668,7 +660,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Put interface into promiscuous mode.
 	 */
 	case BIOCPROMISC:
-		if (d->bd_bif == 0) {
+		if (d->bd_bif == NULL) {
 			/*
 			 * No interface attached yet.
 			 */
@@ -688,7 +680,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Get device parameters.
 	 */
 	case BIOCGDLT:
-		if (d->bd_bif == 0)
+		if (d->bd_bif == NULL)
 			error = EINVAL;
 		else
 			*(u_int *)addr = d->bd_bif->bif_dlt;
@@ -698,7 +690,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	 * Get interface name.
 	 */
 	case BIOCGETIF:
-		if (d->bd_bif == 0)
+		if (d->bd_bif == NULL)
 			error = EINVAL;
 		else {
 			struct ifnet *const ifp = d->bd_bif->bif_ifp;
@@ -827,7 +819,7 @@ bpfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 
 	case BIOCSRSIG:		/* Set receive signal */
 		{
-		 	u_int sig;
+			u_int sig;
 
 			sig = *(u_int *)addr;
 
@@ -856,15 +848,15 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 	int s;
 
 	old = d->bd_filter;
-	if (fp->bf_insns == 0) {
+	if (fp->bf_insns == NULL) {
 		if (fp->bf_len != 0)
 			return(EINVAL);
 		s = splimp();
-		d->bd_filter = 0;
+		d->bd_filter = NULL;
 		reset_d(d);
 		splx(s);
 		if (old != 0)
-			free((caddr_t)old, M_BPF);
+			free(old, M_BPF);
 		return(0);
 	}
 	flen = fp->bf_len;
@@ -873,18 +865,18 @@ bpf_setf(struct bpf_d *d, struct bpf_program *fp)
 
 	size = flen * sizeof(*fp->bf_insns);
 	fcode = (struct bpf_insn *)malloc(size, M_BPF, M_WAITOK);
-	if (copyin((caddr_t)fp->bf_insns, (caddr_t)fcode, size) == 0 &&
+	if (copyin(fp->bf_insns, fcode, size) == 0 &&
 	    bpf_validate(fcode, (int)flen)) {
 		s = splimp();
 		d->bd_filter = fcode;
 		reset_d(d);
 		splx(s);
 		if (old != 0)
-			free((caddr_t)old, M_BPF);
+			free(old, M_BPF);
 
 		return(0);
 	}
-	free((caddr_t)fcode, M_BPF);
+	free(fcode, M_BPF);
 	return(EINVAL);
 }
 
@@ -901,7 +893,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 	struct ifnet *theywant;
 
 	theywant = ifunit(ifr->ifr_name);
-	if (theywant == 0)
+	if (theywant == NULL)
 		return(ENXIO);
 
 	/*
@@ -910,7 +902,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 	for (bp = bpf_iflist; bp != 0; bp = bp->bif_next) {
 		struct ifnet *ifp = bp->bif_ifp;
 
-		if (ifp == 0 || ifp != theywant)
+		if (ifp == NULL || ifp != theywant)
 			continue;
 		/*
 		 * We found the requested interface.
@@ -919,7 +911,7 @@ bpf_setif(struct bpf_d *d, struct ifreq *ifr)
 		 * If we're already attached to requested interface,
 		 * just flush the buffer.
 		 */
-		if ((ifp->if_flags & IFF_UP) == 0)
+		if (!(ifp->if_flags & IFF_UP))
 			return(ENETDOWN);
 
 		if (d->bd_sbuf == NULL) {
@@ -1000,16 +992,16 @@ bpfpoll(dev_t dev, int events, struct thread *td)
 void
 bpf_tap(struct ifnet *ifp, u_char *pkt, u_int pktlen)
 {
-	struct bpf_if *bp;
+	struct bpf_if *bp = ifp->if_bpf;
 	struct bpf_d *d;
 	u_int slen;
+
 	/*
 	 * Note that the ipl does not have to be raised at this point.
 	 * The only problem that could arise here is that if two different
 	 * interfaces shared any data.  This is not the case.
 	 */
-	bp = ifp->if_bpf;
-	for (d = bp->bif_dlist; d != 0; d = d->bd_next) {
+	SLIST_FOREACH(d, &bp->bif_dlist, bd_next) {
 		++d->bd_rcount;
 		slen = bpf_filter(d->bd_filter, pkt, pktlen, pktlen);
 		if (slen != 0)
@@ -1053,10 +1045,10 @@ bpf_mtap(struct ifnet *ifp, struct mbuf *m)
 	struct mbuf *m0;
 
 	pktlen = 0;
-	for (m0 = m; m0 != 0; m0 = m0->m_next)
+	for (m0 = m; m0 != NULL; m0 = m0->m_next)
 		pktlen += m0->m_len;
 
-	for (d = bp->bif_dlist; d != 0; d = d->bd_next) {
+	SLIST_FOREACH(d, &bp->bif_dlist, bd_next) {
 		if (!d->bd_seesent && (m->m_pkthdr.rcvif == NULL))
 			continue;
 		++d->bd_rcount;
@@ -1101,7 +1093,7 @@ catchpacket(struct bpf_d *d, u_char *pkt, u_int pktlen, u_int snaplen,
 		 * Rotate the buffers if we can, then wakeup any
 		 * pending reads.
 		 */
-		if (d->bd_fbuf == 0) {
+		if (d->bd_fbuf == NULL) {
 			/*
 			 * We haven't completed the previous read yet,
 			 * so drop the packet.
@@ -1167,15 +1159,15 @@ bpf_freed(struct bpf_d *d)
 	 * been detached from its interface and it yet hasn't been marked
 	 * free.
 	 */
-	if (d->bd_sbuf != 0) {
+	if (d->bd_sbuf != NULL) {
 		free(d->bd_sbuf, M_BPF);
-		if (d->bd_hbuf != 0)
+		if (d->bd_hbuf != NULL)
 			free(d->bd_hbuf, M_BPF);
-		if (d->bd_fbuf != 0)
+		if (d->bd_fbuf != NULL)
 			free(d->bd_fbuf, M_BPF);
 	}
 	if (d->bd_filter)
-		free((caddr_t)d->bd_filter, M_BPF);
+		free(d->bd_filter, M_BPF);
 }
 
 /*
@@ -1197,7 +1189,7 @@ bpfattach(struct ifnet *ifp, u_int dlt, u_int hdrlen)
 	bp->bif_next = bpf_iflist;
 	bpf_iflist = bp;
 
-	bp->bif_ifp->if_bpf = 0;
+	bp->bif_ifp->if_bpf = NULL;
 
 	/*
 	 * Compute the length of the bpf header.  This is not necessarily
@@ -1241,7 +1233,7 @@ bpfdetach(struct ifnet *ifp)
 		return;
 	}
 
-	while ((d = bp->bif_dlist) != NULL) {
+	while ((d = SLIST_FIRST(&bp->bif_dlist)) != NULL) {
 		bpf_detachd(d);
 		bpf_wakeup(d);
 	}

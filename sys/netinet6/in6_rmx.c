@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.7 2004/12/14 18:46:08 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.8 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -157,14 +157,16 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 	ret = rn_addroute(key, mask, head, treenodes);
 	if (ret == NULL && rt->rt_flags & RTF_HOST) {
 		struct rtentry *rt2;
+
 		/*
 		 * We are trying to add a host route, but can't.
 		 * Find out if it is because of an
 		 * ARP entry and delete it if so.
 		 */
-		rt2 = rtalloc1((struct sockaddr *)sin6, 0,
+		rt2 = rtlookup((struct sockaddr *)sin6, 0,
 				RTF_CLONING | RTF_PRCLONING);
 		if (rt2 != NULL) {
+			--rt2->rt_refcnt;
 			if (rt2->rt_flags & RTF_LLINFO &&
 				rt2->rt_flags & RTF_HOST &&
 				rt2->rt_gateway &&
@@ -176,7 +178,6 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 				ret = rn_addroute(key, mask, head,
 					treenodes);
 			}
-			RTFREE(rt2);
 		}
 	} else if (ret == NULL && rt->rt_flags & RTF_CLONING) {
 		struct rtentry *rt2;
@@ -193,7 +194,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 		 *	net route entry, 3ffe:0501:: -> if0.
 		 *	This case should not raise an error.
 		 */
-		rt2 = rtalloc1((struct sockaddr *)sin6, 0,
+		rt2 = rtlookup((struct sockaddr *)sin6, 0,
 			       RTF_CLONING | RTF_PRCLONING);
 		if (rt2 != NULL) {
 			if ((rt2->rt_flags & (RTF_CLONING|RTF_HOST|RTF_GATEWAY))
@@ -203,7 +204,7 @@ in6_addroute(char *key, char *mask, struct radix_node_head *head,
 			    rt2->rt_ifp == rt->rt_ifp) {
 				ret = rt2->rt_nodes;
 			}
-			RTFREE(rt2);
+			--rt2->rt_refcnt;
 		}
 	}
 	return ret;

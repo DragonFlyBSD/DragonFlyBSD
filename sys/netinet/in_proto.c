@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.9 2004/11/30 19:21:26 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.10 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -146,21 +146,21 @@ struct protosw inetsw[] = {
 },
 #ifdef IPSEC
 { SOCK_RAW,	&inetdomain,	IPPROTO_AH,	PR_ATOMIC|PR_ADDR,
-  ah4_input,	0,	 	0,		0,
+  ah4_input,	0,		0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #ifdef IPSEC_ESP
 { SOCK_RAW,	&inetdomain,	IPPROTO_ESP,	PR_ATOMIC|PR_ADDR,
-  esp4_input,	0,	 	0,		0,
+  esp4_input,	0,		0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #endif
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPCOMP,	PR_ATOMIC|PR_ADDR,
-  ipcomp4_input, 0,	 	0,		0,
+  ipcomp4_input, 0,		0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
@@ -168,28 +168,28 @@ struct protosw inetsw[] = {
 #endif /* IPSEC */
 #ifdef FAST_IPSEC
 { SOCK_RAW,	&inetdomain,	IPPROTO_AH,	PR_ATOMIC|PR_ADDR,
-  ipsec4_common_input,	0, 	0,		0,
+  ipsec4_common_input,	0,	0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_ESP,	PR_ATOMIC|PR_ADDR,
-  ipsec4_common_input,	0, 	0,		0,
+  ipsec4_common_input,	0,	0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPCOMP,	PR_ATOMIC|PR_ADDR,
-  ipsec4_common_input,	0, 	0,		0,
+  ipsec4_common_input,	0,	0,		0,
   cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #endif /* FAST_IPSEC */
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  encap4_input,	0,	 	0,		rip_ctloutput,
+  encap4_input,	0,		0,		rip_ctloutput,
   cpu0_soport,
-  encap_init,		0,		0,		0,
+  encap_init,	0,		0,		0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_MOBILE,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
@@ -206,7 +206,7 @@ struct protosw inetsw[] = {
 },
 # ifdef INET6
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
-  encap4_input,	0,	 	0,		rip_ctloutput,
+  encap4_input,	0,		0,		rip_ctloutput,
   cpu0_soport,
   encap_init,	0,		0,		0,
   &rip_usrreqs
@@ -214,7 +214,7 @@ struct protosw inetsw[] = {
 #endif
 #ifdef IPDIVERT
 { SOCK_RAW,	&inetdomain,	IPPROTO_DIVERT,	PR_ATOMIC|PR_ADDR,
-  div_input,	0,	 	0,		ip_ctloutput,
+  div_input,	0,		0,		ip_ctloutput,
   cpu0_soport,
   div_init,	0,		0,		0,
   &div_usrreqs,
@@ -264,7 +264,7 @@ struct protosw inetsw[] = {
 extern int in_inithead (void **, int);
 
 struct domain inetdomain =
-    { AF_INET, "internet", 0, 0, 0, 
+    { AF_INET, "internet", 0, 0, 0,
       (struct protosw *)inetsw,
       (struct protosw *)&inetsw[sizeof(inetsw)/sizeof(inetsw[0])], 0,
       in_inithead, 32, sizeof(struct sockaddr_in)

@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.11 2004/07/06 11:44:37 joerg Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.12 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -243,7 +243,7 @@ struct	ifreq {
 		int	ifru_mtu;
 		int	ifru_phys;
 		int	ifru_media;
-		caddr_t	ifru_data;
+		void   *ifru_data;
 		int	ifru_cap[2];
 	} ifr_ifru;
 #define	ifr_addr	ifr_ifru.ifru_addr	/* address */
@@ -323,13 +323,6 @@ struct if_laddrreq {
 	struct	sockaddr_storage addr;   /* in/out */
 	struct	sockaddr_storage dstaddr; /* out */
 };
-
-#ifdef _KERNEL
-#ifdef MALLOC_DECLARE
-MALLOC_DECLARE(M_IFADDR);
-MALLOC_DECLARE(M_IFMADDR);
-#endif
-#endif
 
 #ifndef _KERNEL
 struct if_nameindex {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_output.c,v 1.13.2.18 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.14 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_output.c,v 1.15 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: ip6_output.c,v 1.279 2002/01/26 06:12:30 jinmei Exp $	*/
 
 /*
@@ -686,11 +686,11 @@ skip_ipsec2:;
 		 * ``net'' ff00::/8).
 		 */
 		if (ifp == NULL) {
-			if (ro->ro_rt == 0) {
-				ro->ro_rt = rtalloc1((struct sockaddr *)
-						&ro->ro_dst, 0, 0UL);
+			if (ro->ro_rt == NULL) {
+				ro->ro_rt = rtlookup(
+				    (struct sockaddr *)&ro->ro_dst, 0, 0UL);
 			}
-			if (ro->ro_rt == 0) {
+			if (ro->ro_rt == NULL) {
 				ip6stat.ip6s_noroute++;
 				error = EHOSTUNREACH;
 				/* XXX in6_ifstat_inc(ifp, ifs6_out_discard) */
@@ -771,6 +771,7 @@ skip_ipsec2:;
 		/* The first hop and the final destination may differ. */
 		struct sockaddr_in6 *sin6_fin =
 			(struct sockaddr_in6 *)&ro_pmtu->ro_dst;
+
 		if (ro_pmtu->ro_rt && ((ro->ro_rt->rt_flags & RTF_UP) == 0 ||
 				       !IN6_ARE_ADDR_EQUAL(&sin6_fin->sin6_addr,
 							   &finaldst))) {

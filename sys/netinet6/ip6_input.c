@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.21 2004/10/15 22:59:10 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.22 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -530,7 +530,7 @@ ip6_input(struct netmsg *msg)
 		}
 
 		bzero(&ip6_forward_rt.ro_dst, sizeof(struct sockaddr_in6));
-		dst6 = (struct sockaddr_in6 *)&ip6_forward_rt.ro_dst;
+		dst6 = &ip6_forward_rt.ro_dst;
 		dst6->sin6_len = sizeof(struct sockaddr_in6);
 		dst6->sin6_family = AF_INET6;
 		dst6->sin6_addr = ip6->ip6_dst;

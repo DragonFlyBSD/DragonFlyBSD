@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.10 2004/07/23 07:16:30 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.11 2004/12/21 02:54:14 hsu Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -106,44 +106,16 @@ const uint8_t	arcbroadcastaddr[1] = {0};
  */
 static int
 arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
-	   struct rtentry *rt0)
+	   struct rtentry *rt)
 {
-	struct rtentry		*rt;
-	struct arccom		*ac;
 	struct arc_header	*ah;
 	int			error;
 	u_int8_t		atype, adst;
 	int			loop_copy = 0;
 	int			isphds;
 
-	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
-		return(ENETDOWN); /* m, m1 aren't initialized yet */
-
-	error = 0;
-	ac = (struct arccom *)ifp;
-
-	if ((rt = rt0)) {
-		if ((rt->rt_flags & RTF_UP) == 0) {
-			if ((rt0 = rt = rtalloc1(dst, 1, 0UL)))
-				rt->rt_refcnt--;
-			else
-				senderr(EHOSTUNREACH);
-		}
-		if (rt->rt_flags & RTF_GATEWAY) {
-			if (rt->rt_gwroute == 0)
-				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
-				rtfree(rt); rt = rt0;
-			lookup: rt->rt_gwroute = rtalloc1(rt->rt_gateway, 1, 0UL);
-				if ((rt = rt->rt_gwroute) == 0)
-					senderr(EHOSTUNREACH);
-			}
-		}
-		if (rt->rt_flags & RTF_REJECT)
-			if (rt->rt_rmx.rmx_expire == 0 ||
-			    time_second < rt->rt_rmx.rmx_expire)
-				senderr(rt == rt0 ? EHOSTDOWN : EHOSTUNREACH);
-	}
+	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
+		return (ENETDOWN);	/* m, m1 aren't initialized yet */
 
 	switch (dst->sa_family) {
 #ifdef INET
@@ -156,7 +128,7 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			adst = ifp->if_broadcastaddr[0];
 		else if (ifp->if_flags & IFF_NOARP)
 			adst = ntohl(SIN(dst)->sin_addr.s_addr) & 0xFF;
-		else if (!arpresolve(ifp, rt, m, dst, &adst, rt0))
+		else if (!arpresolve(ifp, rt, m, dst, &adst))
 			return 0;	/* not resolved yet */
 
 		atype = (ifp->if_flags & IFF_LINK0) ?
@@ -165,13 +137,8 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #endif
 #ifdef INET6
 	case AF_INET6:
-#ifdef OLDIP6OUTPUT
-		if (!nd6_resolve(ifp, rt, m, dst, (u_char *)&adst))
-			return(0);	/* if not yet resolves */
-#else
 		if (!nd6_storelladdr(ifp, rt, m, dst, (u_char *)&adst))
-			return(0); /* it must be impossible, but... */
-#endif /* OLDIP6OUTPUT */
+			return (0); /* it must be impossible, but... */
 		atype = ARCTYPE_INET6;
 		break;
 #endif
@@ -215,7 +182,7 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	isphds = arc_isphds(atype);
 	M_PREPEND(m, isphds ? ARC_HDRNEWLEN : ARC_HDRLEN, MB_DONTWAIT);
-	if (m == 0)
+	if (m == NULL)
 		senderr(ENOBUFS);
 	ah = mtod(m, struct arc_header *);
 	ah->arc_type = atype;
@@ -229,11 +196,11 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	if ((ifp->if_flags & IFF_SIMPLEX) && (loop_copy != -1)) {
 		if ((m->m_flags & M_BCAST) || (loop_copy > 0)) {
-			struct mbuf *n = m_copy(m, 0, (int)M_COPYALL);
+			struct mbuf *n = m_copypacket(m, MB_DONTWAIT);
 
-			(void) if_simloop(ifp, n, dst->sa_family, ARC_HDRLEN);
+			if_simloop(ifp, n, dst->sa_family, ARC_HDRLEN);
 		} else if (ah->arc_dhost == ah->arc_shost) {
-			(void) if_simloop(ifp, m, dst->sa_family, ARC_HDRLEN);
+			if_simloop(ifp, m, dst->sa_family, ARC_HDRLEN);
 			return (0);     /* XXX */
 		}
 	}
@@ -246,7 +213,7 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		senderr(ENOBUFS);
 	}
 
-	return (error);
+	return (0);
 
 bad:
 	if (m)
@@ -481,7 +448,7 @@ arc_defrag(ifp, m)
 			/* is it the last one? */
 			if (af->af_lastseen > af->af_maxflag) {
 				af->af_packet = NULL;
-				return(m1);
+				return (m1);
 			} else
 				return NULL;
 		}

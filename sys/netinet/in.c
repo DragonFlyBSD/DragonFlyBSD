@@ -32,7 +32,7 @@
  *
  *	@(#)in.c	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/in.c,v 1.44.2.14 2002/11/08 00:45:50 suz Exp $
- * $DragonFly: src/sys/netinet/in.c,v 1.12 2004/09/10 14:02:01 joerg Exp $
+ * $DragonFly: src/sys/netinet/in.c,v 1.13 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_bootp.h"
@@ -67,7 +67,7 @@ static int	in_ifinit (struct ifnet *,
 	    struct in_ifaddr *, struct sockaddr_in *, int);
 
 static int subnetsarelocal = 0;
-SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_ip, OID_AUTO, subnets_are_local, CTLFLAG_RW,
 	&subnetsarelocal, 0, "");
 
 struct in_multihead in_multihead; /* XXX BSS initialization */
@@ -134,7 +134,7 @@ struct sockaddr_in *ap;
 
     ap->sin_len = 0;
     while (--cp >= cplim)
-        if (*cp) {
+	if (*cp) {
 	    (ap)->sin_len = cp - (char *) (ap) + 1;
 	    break;
 	}
@@ -355,10 +355,10 @@ in_control(so, cmd, data, ifp, td)
 		}
 		if (ia->ia_flags & IFA_ROUTE) {
 			ia->ia_ifa.ifa_dstaddr = (struct sockaddr *)&oldaddr;
-			rtinit(&(ia->ia_ifa), (int)RTM_DELETE, RTF_HOST);
+			rtinit(&ia->ia_ifa, RTM_DELETE, RTF_HOST);
 			ia->ia_ifa.ifa_dstaddr =
 					(struct sockaddr *)&ia->ia_dstaddr;
-			rtinit(&(ia->ia_ifa), (int)RTM_ADD, RTF_HOST|RTF_UP);
+			rtinit(&ia->ia_ifa, RTM_ADD, RTF_HOST | RTF_UP);
 		}
 		return (0);
 
@@ -658,9 +658,9 @@ in_ifscrub(ifp, ia)
 	if ((ia->ia_flags & IFA_ROUTE) == 0)
 		return;
 	if (ifp->if_flags & (IFF_LOOPBACK|IFF_POINTOPOINT))
-		rtinit(&(ia->ia_ifa), (int)RTM_DELETE, RTF_HOST);
+		rtinit(&ia->ia_ifa, RTM_DELETE, RTF_HOST);
 	else
-		rtinit(&(ia->ia_ifa), (int)RTM_DELETE, 0);
+		rtinit(&ia->ia_ifa, RTM_DELETE, 0);
 	ia->ia_flags &= ~IFA_ROUTE;
 }
 
@@ -693,7 +693,7 @@ in_ifinit(ifp, ia, sin, scrub)
 	 */
 	if (ifp->if_ioctl &&
 	    (error = (*ifp->if_ioctl)(ifp, SIOCSIFADDR, (caddr_t)ia,
-	    			      (struct ucred *)NULL))) {
+				      (struct ucred *)NULL))) {
 		splx(s);
 		/* LIST_REMOVE(ia, ia_hash) is done in in_control */
 		ia->ia_addr = oldaddr;
@@ -782,9 +782,7 @@ in_ifinit(ifp, ia, sin, scrub)
  * Return 1 if the address might be a local broadcast address.
  */
 int
-in_broadcast(in, ifp)
-	struct in_addr in;
-        struct ifnet *ifp;
+in_broadcast(struct in_addr in, struct ifnet *ifp)
 {
 	struct ifaddr *ifa;
 	u_long t;

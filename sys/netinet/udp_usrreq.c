@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.28 2004/12/03 20:29:53 joerg Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.29 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -147,7 +147,7 @@ SYSCTL_INT(_net_inet_udp, UDPCTL_CHECKSUM, checksum, CTLFLAG_RW,
 		&udpcksum, 0, "");
 
 int	log_in_vain = 0;
-SYSCTL_INT(_net_inet_udp, OID_AUTO, log_in_vain, CTLFLAG_RW, 
+SYSCTL_INT(_net_inet_udp, OID_AUTO, log_in_vain, CTLFLAG_RW,
     &log_in_vain, 0, "Log all incoming UDP packets");
 
 static int	blackhole = 0;
@@ -311,7 +311,7 @@ udp_input(struct mbuf *m, ...)
 			if (m->m_pkthdr.csum_flags & CSUM_PSEUDO_HDR)
 				uh->uh_sum = m->m_pkthdr.csum_data;
 			else
-	                	uh->uh_sum = in_pseudo(ip->ip_src.s_addr,
+				uh->uh_sum = in_pseudo(ip->ip_src.s_addr,
 				    ip->ip_dst.s_addr, htonl((u_short)len +
 				    m->m_pkthdr.csum_data + IPPROTO_UDP));
 			uh->uh_sum ^= 0xffff;
@@ -403,7 +403,7 @@ udp_input(struct mbuf *m, ...)
 					;
 				else
 #endif /*FAST_IPSEC*/
-				if ((n = m_copy(m, 0, M_COPYALL)) != NULL)
+				if ((n = m_copypacket(m, MB_DONTWAIT)) != NULL)
 					udp_append(last, ip, n,
 						   iphlen +
 						   sizeof(struct udphdr));
@@ -508,7 +508,7 @@ udp_input(struct mbuf *m, ...)
 #endif
 		ip_savecontrol(inp, &opts, ip, m);
 	}
- 	m_adj(m, iphlen + sizeof(struct udphdr));
+	m_adj(m, iphlen + sizeof(struct udphdr));
 #ifdef INET6
 	if (inp->inp_vflag & INP_IPV6) {
 		in6_sin_2_v4mapsin6(&udp_in, &udp_in6.uin6_sin);
@@ -623,13 +623,13 @@ udp_ctlinput(cmd, sa, vip)
 	struct ip *ip = vip;
 	struct udphdr *uh;
 	void (*notify) (struct inpcb *, int) = udp_notify;
-        struct in_addr faddr;
+	struct in_addr faddr;
 	struct inpcb *inp;
 	int s;
 
 	faddr = ((struct sockaddr_in *)sa)->sin_addr;
 	if (sa->sa_family != AF_INET || faddr.s_addr == INADDR_ANY)
-        	return;
+		return;
 
 	if (PRC_IS_REDIRECT(cmd)) {
 		ip = 0;
@@ -642,13 +642,13 @@ udp_ctlinput(cmd, sa, vip)
 		s = splnet();
 		uh = (struct udphdr *)((caddr_t)ip + (ip->ip_hl << 2));
 		inp = in_pcblookup_hash(&udbinfo, faddr, uh->uh_dport,
-                    ip->ip_src, uh->uh_sport, 0, NULL);
+					ip->ip_src, uh->uh_sport, 0, NULL);
 		if (inp != NULL && inp->inp_socket != NULL)
 			(*notify)(inp, inetctlerrmap[cmd]);
 		splx(s);
 	} else
 		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
-		    notify);
+				notify);
 }
 
 SYSCTL_PROC(_net_inet_udp, UDPCTL_PCBLIST, pcblist, CTLFLAG_RD, &udbinfo, 0,
@@ -664,7 +664,7 @@ udp_getcred(SYSCTL_HANDLER_ARGS)
 	error = suser(req->td);
 	if (error)
 		return (error);
-	error = SYSCTL_IN(req, addrs, sizeof(addrs));
+	error = SYSCTL_IN(req, addrs, sizeof addrs);
 	if (error)
 		return (error);
 	s = splnet();
@@ -781,7 +781,7 @@ udp_output(inp, m, dstaddr, control, td)
 	 * Set up checksum and output datagram.
 	 */
 	if (udpcksum) {
-        	ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
+		ui->ui_sum = in_pseudo(ui->ui_src.s_addr, ui->ui_dst.s_addr,
 		    htons((u_short)len + sizeof(struct udphdr) + IPPROTO_UDP));
 		m->m_pkthdr.csum_flags = CSUM_UDP;
 		m->m_pkthdr.csum_data = offsetof(struct udphdr, uh_sum);
@@ -983,9 +983,9 @@ udp_shutdown(struct socket *so)
 }
 
 struct pr_usrreqs udp_usrreqs = {
-	udp_abort, pru_accept_notsupp, udp_attach, udp_bind, udp_connect, 
-	pru_connect2_notsupp, in_control, udp_detach, udp_disconnect, 
-	pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp, 
+	udp_abort, pru_accept_notsupp, udp_attach, udp_bind, udp_connect,
+	pru_connect2_notsupp, in_control, udp_detach, udp_disconnect,
+	pru_listen_notsupp, in_setpeeraddr, pru_rcvd_notsupp,
 	pru_rcvoob_notsupp, udp_send, pru_sense_null, udp_shutdown,
 	in_setsockaddr, sosendudp, soreceive, sopoll
 };

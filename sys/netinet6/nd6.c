@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.11 2004/12/14 18:46:08 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.12 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -789,8 +789,8 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 #ifdef SCOPEDROUTING
 	sin6.sin6_scope_id = in6_addr2scopeid(ifp, addr6);
 #endif
-	rt = rtalloc1((struct sockaddr *)&sin6, create, 0UL);
-	if (rt && (rt->rt_flags & RTF_LLINFO) == 0) {
+	rt = rtlookup((struct sockaddr *)&sin6, create, 0UL);
+	if (rt && !(rt->rt_flags & RTF_LLINFO)) {
 		/*
 		 * This is the case for the default route.
 		 * If we want to create a neighbor cache for the address, we
@@ -798,8 +798,8 @@ nd6_lookup(struct in6_addr *addr6, int create, struct ifnet *ifp)
 		 * interface route.
 		 */
 		if (create) {
-			RTFREE(rt);
-			rt = 0;
+			--rt->rt_refcnt;
+			rt = NULL;
 		}
 	}
 	if (!rt) {
@@ -1845,10 +1845,9 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 	 * next hop determination.  This routine is derived from ether_outpout.
 	 */
 	if (rt) {
-		if ((rt->rt_flags & RTF_UP) == 0) {
-			if ((rt0 = rt = rtalloc1((struct sockaddr *)dst, 1, 0UL)) !=
-				NULL)
-			{
+		if (!(rt->rt_flags & RTF_UP)) {
+			if ((rt0 = rt =
+			    rtlookup((struct sockaddr *)dst, 1, 0UL))) {
 				rt->rt_refcnt--;
 				if (rt->rt_ifp != ifp) {
 					/* XXX: loop care? */
@@ -1883,12 +1882,13 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 				goto sendpkt;
 			}
 
-			if (rt->rt_gwroute == 0)
+			if (rt->rt_gwroute == NULL)
 				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
-				rtfree(rt); rt = rt0;
-			lookup: rt->rt_gwroute = rtalloc1(rt->rt_gateway, 1, 0UL);
-				if ((rt = rt->rt_gwroute) == 0)
+			if (!(rt->rt_gwroute->rt_flags & RTF_UP)) {
+				rtfree(rt->rt_gwroute);
+lookup:				rt->rt_gwroute = rtlookup(rt->rt_gateway, 1,
+							  0UL);
+				if (rt->rt_gwroute == NULL)
 					senderr(EHOSTUNREACH);
 			}
 		}
@@ -1992,7 +1992,7 @@ nd6_output(struct ifnet *ifp, struct ifnet *origifp, struct mbuf *m0,
 	if (m)
 		m_freem(m);
 	return (error);
-}	
+}
 #undef senderr
 
 int
@@ -2024,10 +2024,12 @@ nd6_need_cache(struct ifnet *ifp)
 }
 
 int
-nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt, struct mbuf *m,
+nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt0, struct mbuf *m,
 		struct sockaddr *dst, u_char *desten)
 {
 	struct sockaddr_dl *sdl;
+	struct rtentry *rt;
+
 
 	if (m->m_flags & M_MCAST) {
 		switch (ifp->if_type) {
@@ -2053,11 +2055,14 @@ nd6_storelladdr(struct ifnet *ifp, struct rtentry *rt, struct mbuf *m,
 			return(0);
 		}
 	}
-
-	if (rt == NULL) {
+	if (rt0 == NULL) {
 		/* this could happen, if we could not allocate memory */
 		m_freem(m);
 		return(0);
+	}
+	if (rt_llroute(dst, rt0, &rt) != 0) {
+		m_freem(m);
+		return (0);
 	}
 	if (rt->rt_gateway->sa_family != AF_LINK) {
 		printf("nd6_storelladdr: something odd happens\n");

@@ -32,7 +32,7 @@
  *
  *	@(#)if_types.h	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sys/net/if_types.h,v 1.8.2.4 2002/12/23 23:02:21 kbyanc Exp $
- * $DragonFly: src/sys/net/if_types.h,v 1.3 2004/09/19 22:32:47 joerg Exp $
+ * $DragonFly: src/sys/net/if_types.h,v 1.4 2004/12/21 02:54:14 hsu Exp $
  * $NetBSD: if_types.h,v 1.16 2000/04/19 06:30:53 itojun Exp $
  */
 
@@ -44,7 +44,7 @@
  * This list is derived from the SNMP list of ifTypes, originally
  * documented in RFC1573, now maintained as:
  *
- * 	ftp.isi.edu/in-notes/iana/assignments/smi-numbers
+ *	ftp.isi.edu/in-notes/iana/assignments/smi-numbers
  */
 
 #define	IFT_OTHER	0x1		/* none of the following */

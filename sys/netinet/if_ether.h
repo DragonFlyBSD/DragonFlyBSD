@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.h	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/sys/netinet/if_ether.h,v 1.24.2.1 2002/02/13 21:38:56 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.h,v 1.4 2003/09/15 23:38:14 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IF_ETHER_H_
@@ -65,7 +65,7 @@
 #define ETHER_MAP_IPV6_MULTICAST(ip6addr, enaddr)			\
 /* struct	in6_addr *ip6addr; */					\
 /* u_char	enaddr[ETHER_ADDR_LEN]; */				\
-{                                                                       \
+{									\
 	(enaddr)[0] = 0x33;						\
 	(enaddr)[1] = 0x33;						\
 	(enaddr)[2] = ((u_char *)ip6addr)[12];				\
@@ -115,7 +115,7 @@ extern u_char	ether_ipmulticast_min[ETHER_ADDR_LEN];
 extern u_char	ether_ipmulticast_max[ETHER_ADDR_LEN];
 
 int	arpresolve (struct ifnet *, struct rtentry *, struct mbuf *,
-			struct sockaddr *, u_char *, struct rtentry *);
+			struct sockaddr *, u_char *);
 void	arp_ifinit (struct ifnet *, struct ifaddr *);
 #endif
 

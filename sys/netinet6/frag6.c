@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/frag6.c,v 1.2.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.6 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/frag6.c,v 1.7 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: frag6.c,v 1.33 2002/01/07 11:34:48 kjc Exp $	*/
 
 /*
@@ -157,11 +157,11 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 #ifdef IN6_IFSTAT_STRICT
 	/* find the destination interface of the packet. */
 	dst = (struct sockaddr_in6 *)&ro.ro_dst;
-	if (ro.ro_rt
-	 && ((ro.ro_rt->rt_flags & RTF_UP) == 0
-	  || !IN6_ARE_ADDR_EQUAL(&dst->sin6_addr, &ip6->ip6_dst))) {
-		RTFREE(ro.ro_rt);
-		ro.ro_rt = (struct rtentry *)0;
+	if (ro.ro_rt &&
+	    (!(ro.ro_rt->rt_flags & RTF_UP) ||
+	     !IN6_ARE_ADDR_EQUAL(&dst->sin6_addr, &ip6->ip6_dst))) {
+		rtfree(ro.ro_rt);
+		ro.ro_rt = (struct rtentry *)NULL;
 	}
 	if (ro.ro_rt == NULL) {
 		bzero(dst, sizeof(*dst));
@@ -174,7 +174,7 @@ frag6_input(struct mbuf **mp, int *offp, int proto)
 		dstifp = ((struct in6_ifaddr *)ro.ro_rt->rt_ifa)->ia_ifp;
 #else
 	/* we are violating the spec, this is not the destination interface */
-	if ((m->m_flags & M_PKTHDR) != 0)
+	if (m->m_flags & M_PKTHDR)
 		dstifp = m->m_pkthdr.rcvif;
 #endif
 
@@ -662,11 +662,11 @@ frag6_slowtimo(void)
 	 */
 	if (ip6_forward_rt.ro_rt) {
 		RTFREE(ip6_forward_rt.ro_rt);
-		ip6_forward_rt.ro_rt = 0;
+		ip6_forward_rt.ro_rt = NULL;
 	}
 	if (ipsrcchk_rt.ro_rt) {
 		RTFREE(ipsrcchk_rt.ro_rt);
-		ipsrcchk_rt.ro_rt = 0;
+		ipsrcchk_rt.ro_rt = NULL;
 	}
 #endif
 

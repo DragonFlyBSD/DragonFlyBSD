@@ -32,7 +32,7 @@
  *
  *	@(#)raw_cb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/raw_cb.c,v 1.16 1999/08/28 00:48:27 peter Exp $
- * $DragonFly: src/sys/net/raw_cb.c,v 1.8 2004/06/04 04:30:55 dillon Exp $
+ * $DragonFly: src/sys/net/raw_cb.c,v 1.9 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -97,7 +97,7 @@ raw_detach(struct rawcb *rp)
 	so->so_pcb = 0;
 	sofree(so);
 	LIST_REMOVE(rp, list);
-	free((caddr_t)(rp), M_PCB);
+	free(rp, M_PCB);
 }
 
 /*

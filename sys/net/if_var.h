@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.18 2004/09/15 19:33:36 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.19 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -138,7 +138,7 @@ struct	ifqueue {
  */
 struct ifnet {
 	void	*if_softc;		/* pointer to driver state */
-	TAILQ_ENTRY(ifnet) if_link; 	/* all struct ifnets are chained */
+	TAILQ_ENTRY(ifnet) if_link;	/* all struct ifnets are chained */
 	char	if_xname[IFNAMSIZ];	/* external name (name + unit) */
 	const char *if_dname;		/* driver name */
 	int	if_dunit;		/* unit or IF_DUNIT_NONE */
@@ -444,7 +444,7 @@ struct ifprefix {
  */
 struct ifmultiaddr {
 	LIST_ENTRY(ifmultiaddr) ifma_link; /* queue macro glue */
-	struct	sockaddr *ifma_addr; 	/* address this membership is for */
+	struct	sockaddr *ifma_addr;	/* address this membership is for */
 	struct	sockaddr *ifma_lladdr;	/* link-layer translation, if any */
 	struct	ifnet *ifma_ifp;	/* back-pointer to interface */
 	u_int	ifma_refcount;		/* reference count */
@@ -465,13 +465,25 @@ EVENTHANDLER_DECLARE(ifnet_detach_event, ifnet_detach_event_handler_t);
 typedef void (*if_clone_event_handler_t)(void *, struct if_clone *);
 EVENTHANDLER_DECLARE(if_clone_event, if_clone_event_handler_t);
 
-#define	IFAFREE(ifa)					\
-	do {						\
-		if ((ifa)->ifa_refcnt <= 0)		\
-			ifafree(ifa);			\
-		else					\
-			(ifa)->ifa_refcnt--;		\
-	} while (0)
+static __inline void
+IFAREF(struct ifaddr *ifa)
+{
+	++ifa->ifa_refcnt;
+}
+
+#include <sys/malloc.h>
+
+MALLOC_DECLARE(M_IFADDR);
+MALLOC_DECLARE(M_IFMADDR);
+
+static __inline void
+IFAFREE(struct ifaddr *ifa)
+{
+	if (ifa->ifa_refcnt <= 0)
+		free(ifa, M_IFADDR);
+	else
+		ifa->ifa_refcnt--;
+}
 
 extern	struct ifnethead ifnet;
 extern struct	ifnet	**ifindex2ifnet;

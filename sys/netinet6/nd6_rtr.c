@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6_rtr.c,v 1.2.2.5 2003/04/05 10:28:53 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.5 2004/12/14 18:46:08 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6_rtr.c,v 1.6 2004/12/21 02:54:47 hsu Exp $	*/
 /*	$KAME: nd6_rtr.c,v 1.111 2001/04/27 01:37:15 jinmei Exp $	*/
 
 /*
@@ -1804,7 +1804,7 @@ in6_tmpifadd(ia0, forcegen)
 	if (ia0->ia6_lifetime.ia6t_preferred != 0) {
 		pltime0 = IFA6_IS_DEPRECATED(ia0) ? 0 :
 			(ia0->ia6_lifetime.ia6t_preferred - time_second);
-		if (pltime0 > ip6_temp_preferred_lifetime - ip6_desync_factor){
+		if (pltime0 > ip6_temp_preferred_lifetime - ip6_desync_factor) {
 			pltime0 = ip6_temp_preferred_lifetime -
 				ip6_desync_factor;
 		}

@@ -12,7 +12,7 @@
  * no representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied
  * warranty.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
  * ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_hostcache.h,v 1.3 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/in_hostcache.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/Attic/in_hostcache.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IN_HOSTCACHE_H

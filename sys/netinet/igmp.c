@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.9 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.10 2004/12/21 02:54:15 hsu Exp $
  */
 
 /*
@@ -123,30 +123,30 @@ static struct router_info *
 find_rti(ifp)
 	struct ifnet *ifp;
 {
-        struct router_info *rti = Head;
+	struct router_info *rti = Head;
 
 #ifdef IGMP_DEBUG
 	printf("[igmp.c, _find_rti] --> entering \n");
 #endif
-        while (rti) {
-                if (rti->rti_ifp == ifp) {
+	while (rti) {
+		if (rti->rti_ifp == ifp) {
 #ifdef IGMP_DEBUG
 			printf("[igmp.c, _find_rti] --> found old entry \n");
 #endif
-                        return rti;
-                }
-                rti = rti->rti_next;
-        }
+			return rti;
+		}
+		rti = rti->rti_next;
+	}
 	MALLOC(rti, struct router_info *, sizeof *rti, M_IGMP, M_INTWAIT);
-        rti->rti_ifp = ifp;
-        rti->rti_type = IGMP_V2_ROUTER;
-        rti->rti_time = 0;
-        rti->rti_next = Head;
-        Head = rti;
+	rti->rti_ifp = ifp;
+	rti->rti_type = IGMP_V2_ROUTER;
+	rti->rti_time = 0;
+	rti->rti_next = Head;
+	Head = rti;
 #ifdef IGMP_DEBUG
 	printf("[igmp.c, _find_rti] --> created an entry \n");
 #endif
-        return rti;
+	return rti;
 }
 
 void
@@ -445,51 +445,51 @@ igmp_sendpkt(inm, type, addr)
 	int type;
 	unsigned long addr;
 {
-        struct mbuf *m;
-        struct igmp *igmp;
-        struct ip *ip;
-        struct ip_moptions imo;
+	struct mbuf *m;
+	struct igmp *igmp;
+	struct ip *ip;
+	struct ip_moptions imo;
 
-        MGETHDR(m, MB_DONTWAIT, MT_HEADER);
-        if (m == NULL)
-                return;
+	MGETHDR(m, MB_DONTWAIT, MT_HEADER);
+	if (m == NULL)
+		return;
 
 	m->m_pkthdr.rcvif = loif;
 	m->m_pkthdr.len = sizeof(struct ip) + IGMP_MINLEN;
 	MH_ALIGN(m, IGMP_MINLEN + sizeof(struct ip));
 	m->m_data += sizeof(struct ip);
-        m->m_len = IGMP_MINLEN;
-        igmp = mtod(m, struct igmp *);
-        igmp->igmp_type   = type;
-        igmp->igmp_code   = 0;
-        igmp->igmp_group  = inm->inm_addr;
-        igmp->igmp_cksum  = 0;
-        igmp->igmp_cksum  = in_cksum(m, IGMP_MINLEN);
+	m->m_len = IGMP_MINLEN;
+	igmp = mtod(m, struct igmp *);
+	igmp->igmp_type   = type;
+	igmp->igmp_code   = 0;
+	igmp->igmp_group  = inm->inm_addr;
+	igmp->igmp_cksum  = 0;
+	igmp->igmp_cksum  = in_cksum(m, IGMP_MINLEN);
 
-        m->m_data -= sizeof(struct ip);
-        m->m_len += sizeof(struct ip);
-        ip = mtod(m, struct ip *);
-        ip->ip_tos        = 0;
-        ip->ip_len        = sizeof(struct ip) + IGMP_MINLEN;
-        ip->ip_off        = 0;
-        ip->ip_p          = IPPROTO_IGMP;
-        ip->ip_src.s_addr = INADDR_ANY;
-        ip->ip_dst.s_addr = addr ? addr : igmp->igmp_group.s_addr;
+	m->m_data -= sizeof(struct ip);
+	m->m_len += sizeof(struct ip);
+	ip = mtod(m, struct ip *);
+	ip->ip_tos = 0;
+	ip->ip_len = sizeof(struct ip) + IGMP_MINLEN;
+	ip->ip_off = 0;
+	ip->ip_p = IPPROTO_IGMP;
+	ip->ip_src.s_addr = INADDR_ANY;
+	ip->ip_dst.s_addr = addr ? addr : igmp->igmp_group.s_addr;
 
-        imo.imo_multicast_ifp  = inm->inm_ifp;
-        imo.imo_multicast_ttl  = 1;
-	imo.imo_multicast_vif  = -1;
-        /*
-         * Request loopback of the report if we are acting as a multicast
-         * router, so that the process-level routing demon can hear it.
-         */
-        imo.imo_multicast_loop = (ip_mrouter != NULL);
+	imo.imo_multicast_ifp = inm->inm_ifp;
+	imo.imo_multicast_ttl = 1;
+	imo.imo_multicast_vif = -1;
+	/*
+	 * Request loopback of the report if we are acting as a multicast
+	 * router, so that the process-level routing demon can hear it.
+	 */
+	imo.imo_multicast_loop = (ip_mrouter != NULL);
 
 	/*
 	 * XXX
 	 * Do we have to worry about reentrancy here?  Don't think so.
 	 */
-        ip_output(m, router_alert, &igmprt, 0, &imo, NULL);
+	ip_output(m, router_alert, &igmprt, 0, &imo, NULL);
 
-        ++igmpstat.igps_snd_reports;
+	++igmpstat.igps_snd_reports;
 }

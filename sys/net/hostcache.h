@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.h,v 1.4 1999/12/29 04:38:32 peter Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.h,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.h,v 1.3 2004/12/21 02:54:14 hsu Exp $
  */
 
 #ifndef _NET_HOSTCACHE_H
@@ -56,7 +56,7 @@ struct hcentry {
 	struct	rtentry *hc_rt;		/* route to get there */
 	/* struct nexthop *hc_nh; */
 	int	hc_refcnt;		/* reference count */
-	struct	hctable *hc_hct; 	/* back ref to table */
+	struct	hctable *hc_hct;	/* back ref to table */
 };
 
 struct hccallback {

@@ -12,7 +12,7 @@
  * no representations about the suitability of this software for any
  * purpose.  It is provided "as is" without express or implied
  * warranty.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY M.I.T. ``AS IS''.  M.I.T. DISCLAIMS
  * ALL EXPRESS OR IMPLIED WARRANTIES WITH REGARD TO THIS SOFTWARE,
  * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_hostcache.c,v 1.3 1999/08/28 00:49:16 peter Exp $
- * $DragonFly: src/sys/netinet/Attic/in_hostcache.c,v 1.3 2004/06/06 19:16:08 dillon Exp $
+ * $DragonFly: src/sys/netinet/Attic/in_hostcache.c,v 1.4 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ inhc_alloc(struct sockaddr_in *sin)
 	if (inhc != 0)
 		return inhc;
 
-	rt = rtalloc1(inhc->inhc_hc.hc_host, 1, 0);
+	rt = rtlookup(inhc->inhc_hc.hc_host, 1, 0);
 	if (rt == 0)
 		return 0;
 

@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.11 2004/06/02 14:42:57 eirikn Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.12 2004/12/21 02:54:14 hsu Exp $
  */
 
 /*
@@ -108,31 +108,30 @@ struct	ifnet loif[NLOOP];
 
 /* ARGSUSED */
 static void
-loopattach(dummy)
-	void *dummy;
+loopattach(void *dummy)
 {
 	struct ifnet *ifp;
-	int i = 0;
+	int i;
 
-	for (ifp = loif; i < NLOOP; ifp++) {
-	    if_initname(ifp, "lo", i++);
-	    ifp->if_mtu = LOMTU;
-	    ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
-	    ifp->if_ioctl = loioctl;
-	    ifp->if_output = looutput;
-	    ifp->if_type = IFT_LOOP;
-	    ifp->if_snd.ifq_maxlen = ifqmaxlen;
-	    if_attach(ifp);
-	    bpfattach(ifp, DLT_NULL, sizeof(u_int));
+	for (i = 0, ifp = loif; i < NLOOP; i++, ifp++) {
+		if_initname(ifp, "lo", i);
+		ifp->if_mtu = LOMTU;
+		ifp->if_flags = IFF_LOOPBACK | IFF_MULTICAST;
+		ifp->if_ioctl = loioctl;
+		ifp->if_output = looutput;
+		ifp->if_type = IFT_LOOP;
+		ifp->if_snd.ifq_maxlen = ifqmaxlen;
+		if_attach(ifp);
+		bpfattach(ifp, DLT_NULL, sizeof(u_int));
 	}
 }
 
 int
-looutput(ifp, m, dst, rt)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr *dst;
-	struct rtentry *rt;
+looutput(
+	struct ifnet *ifp,
+	struct mbuf *m,
+	struct sockaddr *dst,
+	struct rtentry *rt)
 {
 	struct mbuf *n;
 
@@ -181,7 +180,7 @@ looutput(ifp, m, dst, rt)
 		return (EAFNOSUPPORT);
 	}
 #endif
-	return(if_simloop(ifp, m, dst->sa_family, 0));
+	return (if_simloop(ifp, m, dst->sa_family, 0));
 }
 
 /*
@@ -194,13 +193,8 @@ looutput(ifp, m, dst, rt)
  *
  * This function expects the packet to include the media header of length hlen.
  */
-
 int
-if_simloop(ifp, m, af, hlen)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	int af;
-	int hlen;
+if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 {
 	int isr;
 
@@ -295,10 +289,7 @@ if_simloop(ifp, m, af, hlen)
 
 /* ARGSUSED */
 static void
-lortrequest(cmd, rt, info)
-	int cmd;
-	struct rtentry *rt;
-	struct rt_addrinfo *info;
+lortrequest(int cmd, struct rtentry *rt, struct rt_addrinfo *info)
 {
 	if (rt) {
 		rt->rt_rmx.rmx_mtu = rt->rt_ifp->if_mtu; /* for ISO */
@@ -307,8 +298,7 @@ lortrequest(cmd, rt, info)
 		 * should be at least twice the MTU plus a little more for
 		 * overhead.
 		 */
-		rt->rt_rmx.rmx_recvpipe =
-			rt->rt_rmx.rmx_sendpipe = 3 * LOMTU;
+		rt->rt_rmx.rmx_recvpipe = rt->rt_rmx.rmx_sendpipe = 3 * LOMTU;
 	}
 }
 
@@ -317,11 +307,7 @@ lortrequest(cmd, rt, info)
  */
 /* ARGSUSED */
 int
-loioctl(ifp, cmd, data, cr)
-	struct ifnet *ifp;
-	u_long cmd;
-	caddr_t data;
-	struct ucred *cr;
+loioctl(struct ifnet *ifp, u_long cmd, caddr_t data, struct ucred *cr)
 {
 	struct ifaddr *ifa;
 	struct ifreq *ifr = (struct ifreq *)data;

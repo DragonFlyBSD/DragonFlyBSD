@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.7 2004/12/15 00:11:04 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
  */
 
 /*
@@ -55,13 +55,13 @@
  */
 #define clen(c)	(*(u_char *)(c))
 
-static int rn_walktree_from(struct radix_node_head *h, u_char *a, u_char *m,
+static int rn_walktree_from(struct radix_node_head *h, char *a, char *m,
 			    walktree_f_t *f, void *w);
 static int rn_walktree(struct radix_node_head *, walktree_f_t *, void *);
 
 static struct radix_node
     *rn_insert(char *, struct radix_node_head *, boolean_t *,
-    	       struct radix_node [2]),
+	       struct radix_node [2]),
     *rn_newpair(char *, int, struct radix_node[2]),
     *rn_search(const char *, struct radix_node *),
     *rn_search_m(const char *, struct radix_node *, const char *);
@@ -70,7 +70,6 @@ static int max_keylen;
 static struct radix_mask *rn_mkfreelist;
 static struct radix_node_head *mask_rnhead;
 static char *addmask_key;
-static char normal_chars[] = {0, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, -1};
 static char *rn_zeros, *rn_ones;
 
 #define rn_masktop (mask_rnhead->rnh_treetop)
@@ -178,17 +177,17 @@ rn_refines(char *m, char *n)
 		lim -= longer;
 	while (n < lim) {
 		if (*n & ~(*m))
-			return 0;
+			return FALSE;
 		if (*n++ != *m++)
 			masks_are_equal = FALSE;
 	}
 	while (n < lim2)
 		if (*n++)
-			return 0;
+			return FALSE;
 	if (masks_are_equal && (longer < 0))
 		for (lim2 = m - longer; m < lim2; )
 			if (*m++)
-				return 1;
+				return TRUE;
 	return (!masks_are_equal);
 }
 
@@ -362,11 +361,8 @@ rn_newpair(char *key, int indexbit, struct radix_node nodes[2])
 }
 
 static struct radix_node *
-rn_insert(
-	char *key,
-	struct radix_node_head *head,
-	boolean_t *dupentry,
-	struct radix_node nodes[2])
+rn_insert(char *key, struct radix_node_head *head, boolean_t *dupentry,
+	  struct radix_node nodes[2])
 {
 	struct radix_node *top = head->rnh_treetop;
 	int head_off = top->rn_offset, klen = clen(key);
@@ -374,7 +370,7 @@ rn_insert(
 	char *cp = key + head_off;
 	int b;
 	struct radix_node *tt;
-    	/*
+	/*
 	 * Find first bit at which the key and t->rn_key differ
 	 */
     {
@@ -489,6 +485,10 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	for (cp = netmask + skip; cp < cplim && clen(cp) == 0xff;)
 		cp++;
 	if (cp != cplim) {
+		static const char normal_chars[] = {
+			0, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, -1
+		};
+
 		for (j = 0x80; (j & *cp) != 0; j >>= 1)
 			b++;
 		if (*cp != normal_chars[b] || cp != (cplim - 1))
@@ -593,7 +593,7 @@ rn_addroute(char *key, char *netmask, struct radix_node_head *head,
 			(tt = treenodes)->rn_dupedkey = t;
 			tt->rn_flags = t->rn_flags;
 			tt->rn_parent = x = t->rn_parent;
-			t->rn_parent = tt;	 		/* parent */
+			t->rn_parent = tt;			/* parent */
 			if (x->rn_left == t)
 				x->rn_left = tt;
 			else
@@ -831,9 +831,11 @@ on1:
 				mp = &m->rm_next;
 			*mp = t->rn_mklist;
 		} else {
-			/* If there are any key,mask pairs in a sibling
-			   duped-key chain, some subset will appear sorted
-			   in the same order attached to our mklist */
+			/*
+			 * If there are any (key, mask) pairs in a sibling
+			 * duped-key chain, some subset will appear sorted
+			 * in the same order attached to our mklist.
+			 */
 			for (m = t->rn_mklist; m && x; x = x->rn_dupedkey)
 				if (m == x->rn_mklist) {
 					struct radix_mask *mm = m->rm_next;
@@ -880,12 +882,12 @@ out:
  * exit.
  */
 static int
-rn_walktree_from(struct radix_node_head *h, u_char *xa, u_char *xm,
+rn_walktree_from(struct radix_node_head *h, char *xa, char *xm,
 		 walktree_f_t *f, void *w)
 {
 	struct radix_node *base, *next;
 	struct radix_node *rn, *last = NULL /* shut up gcc */;
-	int stopping = 0;
+	boolean_t stopping = FALSE;
 	int lastb, error;
 
 	/*
@@ -936,7 +938,7 @@ rn_walktree_from(struct radix_node_head *h, u_char *xa, u_char *xm,
 
 			/* if went up beyond last, stop */
 			if (rn->rn_bit < lastb) {
-				stopping = 1;
+				stopping = TRUE;
 				/* printf("up too far\n"); */
 			}
 		}
@@ -956,7 +958,7 @@ rn_walktree_from(struct radix_node_head *h, u_char *xa, u_char *xm,
 
 		if (rn->rn_flags & RNF_ROOT) {
 			/* printf("root, stopping"); */
-			stopping = 1;
+			stopping = TRUE;
 		}
 
 	}
@@ -1005,7 +1007,7 @@ int
 rn_inithead(void **head, int off)
 {
 	struct radix_node_head *rnh;
-	struct radix_node *t, *left, *right;
+	struct radix_node *root, *left, *right;
 
 	if (*head)
 		return (1);
@@ -1015,25 +1017,26 @@ rn_inithead(void **head, int off)
 	bzero(rnh, sizeof (*rnh));
 	*head = rnh;
 
-	t = rn_newpair(rn_zeros, off, rnh->rnh_nodes);
+	root = rn_newpair(rn_zeros, off, rnh->rnh_nodes);
 	right = rnh->rnh_nodes + 2;
-	t->rn_right = right;
-	t->rn_parent = t;
+	root->rn_parent = root;
+	root->rn_flags = RNF_ROOT | RNF_ACTIVE;
+	root->rn_right = right;
 
-	left = t->rn_left;
-	left->rn_flags = t->rn_flags = RNF_ROOT | RNF_ACTIVE;
+	left = root->rn_left;
 	left->rn_bit = -1 - off;
+	left->rn_flags = RNF_ROOT | RNF_ACTIVE;
 
 	*right = *left;
 	right->rn_key = rn_ones;
 
+	rnh->rnh_treetop = root;
 	rnh->rnh_addaddr = rn_addroute;
 	rnh->rnh_deladdr = rn_delete;
 	rnh->rnh_matchaddr = rn_match;
 	rnh->rnh_lookup = rn_lookup;
 	rnh->rnh_walktree = rn_walktree;
 	rnh->rnh_walktree_from = rn_walktree_from;
-	rnh->rnh_treetop = t;
 
 	return (1);
 }

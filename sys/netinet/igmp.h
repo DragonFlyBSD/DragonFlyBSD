@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/igmp.h,v 1.10 1999/08/28 00:49:15 peter Exp $
- * $DragonFly: src/sys/netinet/igmp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/igmp.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_IGMP_H_
@@ -54,35 +54,34 @@
  * IGMP packet format.
  */
 struct igmp {
-	u_char		igmp_type;	/* version & type of IGMP message  */
-	u_char		igmp_code;	/* subtype for routing msgs        */
-	u_short		igmp_cksum;	/* IP-style checksum               */
-	struct in_addr	igmp_group;	/* group address being reported    */
-};					/*  (zero for queries)             */
+	u_char		igmp_type;	/* version & type of IGMP message */
+	u_char		igmp_code;	/* subtype for routing msgs */
+	u_short		igmp_cksum;	/* IP-style checksum */
+	struct in_addr	igmp_group;	/* group address being reported */
+};					/*  (zero for queries) */
 
 #define IGMP_MINLEN		     8
 
 /*
  * Message types, including version number.
  */
-#define IGMP_MEMBERSHIP_QUERY   	0x11	/* membership query         */
+#define IGMP_MEMBERSHIP_QUERY		0x11	/* membership query */
 #define IGMP_V1_MEMBERSHIP_REPORT	0x12	/* Ver. 1 membership report */
 #define IGMP_V2_MEMBERSHIP_REPORT	0x16	/* Ver. 2 membership report */
-#define IGMP_V2_LEAVE_GROUP		0x17	/* Leave-group message	    */
+#define IGMP_V2_LEAVE_GROUP		0x17	/* Leave-group message */
 
-#define IGMP_DVMRP			0x13	/* DVMRP routing message    */
-#define IGMP_PIM			0x14	/* PIM routing message	    */
+#define IGMP_DVMRP			0x13	/* DVMRP routing message */
+#define IGMP_PIM			0x14	/* PIM routing message */
 
 #define IGMP_MTRACE_RESP		0x1e  /* traceroute resp.(to sender)*/
-#define IGMP_MTRACE			0x1f  /* mcast traceroute messages  */
+#define IGMP_MTRACE			0x1f  /* mcast traceroute messages */
 
-#define IGMP_MAX_HOST_REPORT_DELAY   10    /* max delay for response to     */
-					   /*  query (in seconds) according */
-					   /*  to RFC1112                   */
+#define IGMP_MAX_HOST_REPORT_DELAY   10    /* max delay for response to
+					    *  query (in seconds) according
+					    *  to RFC1112 */
 
-
-#define IGMP_TIMER_SCALE     10		/* denotes that the igmp code field */
-					/* specifies time in 10th of seconds*/
+#define IGMP_TIMER_SCALE     10		/* denotes that the igmp code field
+					 * specifies time in 10th of seconds*/
 
 /*
  * The following four defininitions are for backwards compatibility.

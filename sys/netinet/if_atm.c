@@ -15,7 +15,7 @@
  *    documentation and/or other materials provided with the distribution.
  * 3. All advertising materials mentioning features or use of this software
  *    must display the following acknowledgement:
- *      This product includes software developed by Charles D. Cranor and 
+ *      This product includes software developed by Charles D. Cranor and
  *	Washington University.
  * 4. The name of the author may not be used to endorse or promote products
  *    derived from this software without specific prior written permission.
@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/if_atm.c,v 1.8.2.1 2001/12/20 10:30:18 ru Exp $
- * $DragonFly: src/sys/netinet/if_atm.c,v 1.5 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_atm.c,v 1.6 2004/12/21 02:54:15 hsu Exp $
  */
 
 /*
@@ -71,10 +71,9 @@
 /*
  * atm_rtrequest: handle ATM rt request (in support of generic code)
  *   inputs: "req" = request code
- *           "rt" = route entry
- *           "info" = rt_addrinfo
+ *	     "rt" = route entry
+ *	     "info" = rt_addrinfo
  */
-
 void
 atm_rtrequest(req, rt, info)
 	int req;
@@ -108,7 +107,7 @@ atm_rtrequest(req, rt, info)
 		 * case we are being called via "ifconfig" to set the address.
 		 */
 
-		if ((rt->rt_flags & RTF_HOST) == 0) { 
+		if ((rt->rt_flags & RTF_HOST) == 0) {
 			rt_setgate(rt,rt_key(rt),(struct sockaddr *)&null_sdl);
 			gate = rt->rt_gateway;
 			SDL(gate)->sdl_type = rt->rt_ifp->if_type;
@@ -139,14 +138,14 @@ atm_rtrequest(req, rt, info)
 		if (sin->sin_family != AF_INET)
 			goto failed;
 		aph = (struct atm_pseudohdr *) LLADDR(SDL(gate));
-		npcb = npcb_add(NULL, rt->rt_ifp, ATM_PH_VCI(aph), 
+		npcb = npcb_add(NULL, rt->rt_ifp, ATM_PH_VCI(aph),
 						ATM_PH_VPI(aph));
-		if (npcb == NULL) 
+		if (npcb == NULL)
 			goto failed;
 		npcb->npcb_flags |= NPCB_IP;
 		npcb->ipaddr.s_addr = sin->sin_addr.s_addr;
 		/* XXX: move npcb to llinfo when ATM ARP is ready */
-		rt->rt_llinfo = (caddr_t) npcb;
+		rt->rt_llinfo =  npcb;
 		rt->rt_flags |= RTF_LLINFO;
 #endif
 		/*
@@ -154,8 +153,8 @@ atm_rtrequest(req, rt, info)
 		 */
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
-		if (rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA, 
-		    (caddr_t)&api, (struct ucred *)NULL) != 0) {
+		if (rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMENA, (caddr_t)&api,
+					 (struct ucred *)NULL) != 0) {
 			printf("atm: couldn't add VC\n");
 			goto failed;
 		}
@@ -173,8 +172,8 @@ failed:
 			rt->rt_flags &= ~RTF_LLINFO;
 		}
 #endif
-		rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *)0,
-			rt_mask(rt), 0, (struct rtentry **) 0);
+		rtrequest(RTM_DELETE, rt_key(rt), (struct sockaddr *) NULL,
+		    rt_mask(rt), 0, (struct rtentry **) NULL);
 		break;
 
 	case RTM_DELETE:
@@ -185,8 +184,7 @@ failed:
 		 */
 
 		if (rt->rt_flags & RTF_LLINFO) {
-			npcb_free((struct natmpcb *)rt->rt_llinfo, 
-								NPCB_DESTROY);
+			npcb_free(rt->rt_llinfo, NPCB_DESTROY);
 			rt->rt_llinfo = NULL;
 			rt->rt_flags &= ~RTF_LLINFO;
 		}
@@ -197,8 +195,8 @@ failed:
 
 		bcopy(LLADDR(SDL(gate)), &api.aph, sizeof(api.aph));
 		api.rxhand = NULL;
-		(void)rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, 
-		    (caddr_t)&api, (struct ucred *)NULL);
+		rt->rt_ifp->if_ioctl(rt->rt_ifp, SIOCATMDIS, (caddr_t)&api,
+				     (struct ucred *)NULL);
 
 		break;
 	}
@@ -212,7 +210,7 @@ failed:
  *     [3] "dst" = sockaddr_in (IP) address of dest.
  *   output:
  *     [4] "desten" = ATM pseudo header which we will fill in VPI/VCI info
- *   return: 
+ *   return:
  *     0 == resolve FAILED; note that "m" gets m_freem'd in this case
  *     1 == resolve OK; desten contains result
  *
@@ -240,7 +238,7 @@ struct atm_pseudohdr *desten;	/* OUT */
 		rt = RTALLOC1(dst, 0);
 		if (rt == NULL) goto bad; /* failed */
 		rt->rt_refcnt--;	/* don't keep LL references */
-		if ((rt->rt_flags & RTF_GATEWAY) != 0 || 
+		if ((rt->rt_flags & RTF_GATEWAY) != 0 ||
 			(rt->rt_flags & RTF_LLINFO) == 0 ||
 			/* XXX: are we using LLINFO? */
 			rt->rt_gateway->sa_family != AF_LINK) {
@@ -249,7 +247,7 @@ struct atm_pseudohdr *desten;	/* OUT */
 	}
 
 	/*
-	 * note that rt_gateway is a sockaddr_dl which contains the 
+	 * note that rt_gateway is a sockaddr_dl which contains the
 	 * atm_pseudohdr data structure for this route.   we currently
 	 * don't need any rt_llinfo info (but will if we want to support
 	 * ATM ARP [c.f. if_ether.c]).

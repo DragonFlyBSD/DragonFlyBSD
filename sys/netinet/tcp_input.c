@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.45 2004/12/08 23:59:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.46 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -494,7 +494,7 @@ tcp6_input(struct mbuf **mp, int *offp, int proto)
 
 		ip6 = mtod(m, struct ip6_hdr *);
 		icmp6_error(m, ICMP6_DST_UNREACH, ICMP6_DST_UNREACH_ADDR,
-			    (caddr_t)&ip6->ip6_dst - (caddr_t)ip6);
+			    offsetof(struct ip6_hdr, ip6_dst));
 		return (IPPROTO_DONE);
 	}
 
@@ -1225,7 +1225,7 @@ after_listen:
 
 				sowwakeup(so);
 				if (so->so_snd.sb_cc)
-					(void) tcp_output(tp);
+					tcp_output(tp);
 				return;
 			}
 		} else if (tiwin == tp->snd_wnd &&
@@ -1847,7 +1847,7 @@ trimthenstep6:
 		 * later; if not, do so now to pass queued data to user.
 		 */
 		if (tlen == 0 && !(thflags & TH_FIN))
-			(void) tcp_reass(tp, NULL, NULL, NULL);
+			tcp_reass(tp, NULL, NULL, NULL);
 		/* fall into ... */
 
 	/*
@@ -1906,7 +1906,7 @@ trimthenstep6:
 					 * packets in the network.
 					 */
 					tp->snd_cwnd += tp->t_maxseg;
-					(void) tcp_output(tp);
+					tcp_output(tp);
 				}
 			} else if (SEQ_LT(th->th_ack, tp->snd_recover)) {
 				tp->t_dupacks = 0;
@@ -1940,7 +1940,7 @@ fastretransmit:
 				old_snd_nxt = tp->snd_nxt;
 				tp->snd_nxt = th->th_ack;
 				tp->snd_cwnd = tp->t_maxseg;
-				(void) tcp_output(tp);
+				tcp_output(tp);
 				++tcpstat.tcps_sndfastrexmit;
 				tp->snd_cwnd = tp->snd_ssthresh;
 				tp->rexmt_high = tp->snd_nxt;
@@ -1970,7 +1970,7 @@ fastretransmit:
 				tp->snd_cwnd = ownd +
 				    (tp->t_dupacks - tp->snd_limited) *
 				    tp->t_maxseg;
-				(void) tcp_output(tp);
+				tcp_output(tp);
 				tp->snd_cwnd = oldcwnd;
 				sent = tp->snd_max - oldsndmax;
 				if (sent > tp->t_maxseg) {
@@ -1993,9 +1993,9 @@ fastretransmit:
 				    tp->t_dupacks + 1 >=
 				      iceildiv(ownd, tp->t_maxseg) &&
 				    (!TCP_DO_SACK(tp) ||
-				     ownd <= tp->t_maxseg || 
+				     ownd <= tp->t_maxseg ||
 				     tcp_sack_has_sacked(&tp->scb,
-				         ownd - tp->t_maxseg))) {
+							ownd - tp->t_maxseg))) {
 					++tcpstat.tcps_sndearlyrexmit;
 					tp->t_flags |= TF_EARLYREXMT;
 					goto fastretransmit;
@@ -2488,15 +2488,14 @@ dodata:							/* XXX */
 
 #ifdef TCPDEBUG
 	if (so->so_options & SO_DEBUG)
-		tcp_trace(TA_INPUT, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
+		tcp_trace(TA_INPUT, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 
 	/*
 	 * Return any desired output.
 	 */
 	if (needoutput || (tp->t_flags & TF_ACKNOW))
-		(void) tcp_output(tp);
+		tcp_output(tp);
 	return;
 
 dropafterack:
@@ -2523,12 +2522,11 @@ dropafterack:
 	}
 #ifdef TCPDEBUG
 	if (so->so_options & SO_DEBUG)
-		tcp_trace(TA_DROP, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
+		tcp_trace(TA_DROP, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 	m_freem(m);
 	tp->t_flags |= TF_ACKNOW;
-	(void) tcp_output(tp);
+	tcp_output(tp);
 	return;
 
 dropwithreset:
@@ -2562,8 +2560,7 @@ dropwithreset:
 
 #ifdef TCPDEBUG
 	if (tp == NULL || (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_DROP, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
+		tcp_trace(TA_DROP, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 	if (thflags & TH_ACK)
 		/* mtod() below is safe as long as hdr dropping is delayed */
@@ -2584,8 +2581,7 @@ drop:
 	 */
 #ifdef TCPDEBUG
 	if (tp == NULL || (tp->t_inpcb->inp_socket->so_options & SO_DEBUG))
-		tcp_trace(TA_DROP, ostate, tp, (void *)tcp_saveipgen,
-			  &tcp_savetcp, 0);
+		tcp_trace(TA_DROP, ostate, tp, tcp_saveipgen, &tcp_savetcp, 0);
 #endif
 	m_freem(m);
 	return;
@@ -2981,7 +2977,7 @@ tcp_mss(struct tcpcb *tp, int offer)
 		if (bufsize > sb_max)
 			bufsize = sb_max;
 		if (bufsize > so->so_snd.sb_hiwat)
-			(void)sbreserve(&so->so_snd, bufsize, so, NULL);
+			sbreserve(&so->so_snd, bufsize, so, NULL);
 	}
 	tp->t_maxseg = mss;
 
@@ -2994,7 +2990,7 @@ tcp_mss(struct tcpcb *tp, int offer)
 		if (bufsize > sb_max)
 			bufsize = sb_max;
 		if (bufsize > so->so_rcv.sb_hiwat)
-			(void)sbreserve(&so->so_rcv, bufsize, so, NULL);
+			sbreserve(&so->so_rcv, bufsize, so, NULL);
 	}
 
 	/*
@@ -3069,7 +3065,7 @@ tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
 	/* Set snd_cwnd to one segment beyond acknowledged offset. */
 	tp->snd_cwnd = tp->t_maxseg;
 	tp->t_flags |= TF_ACKNOW;
-	(void) tcp_output(tp);
+	tcp_output(tp);
 	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
 		tp->snd_nxt = old_snd_nxt;
 	/* partial window deflation */

@@ -7,7 +7,7 @@
  *
  * Questions, comments or suggestions should be directed to
  * Larry Lile <lile@stdio.com>.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -31,14 +31,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_iso88025subr.c,v 1.7.2.7 2002/06/18 00:15:31 kbyanc Exp $
- * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.9 2004/07/23 07:16:30 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/if_iso88025subr.c,v 1.10 2004/12/21 02:54:14 hsu Exp $
  *
  */
 
 /*
  *
  * General ISO 802.5 (Token Ring) support routines
- * 
+ *
  */
 
 #include "opt_inet.h"
@@ -49,7 +49,7 @@
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/socket.h>
-#include <sys/sockio.h> 
+#include <sys/sockio.h>
 #include <sys/sysctl.h>
 
 #include <net/if.h>
@@ -104,120 +104,98 @@ iso88025_ifattach(struct ifnet *ifp)
 	if (ifp->if_mtu == 0)
 		ifp->if_mtu = ISO88025_DEFAULT_MTU;
 
-        ifa = ifnet_addrs[ifp->if_index - 1];
-        if (ifa == 0) {
-                printf("iso88025_ifattach: no lladdr!\n");
-                return;
-        }
-        sdl = (struct sockaddr_dl *)ifa->ifa_addr;
-        sdl->sdl_type = IFT_ISO88025;
-        sdl->sdl_alen = ifp->if_addrlen;
-        bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);
+	ifa = ifnet_addrs[ifp->if_index - 1];
+	if (ifa == NULL) {
+		printf("iso88025_ifattach: no lladdr!\n");
+		return;
+	}
+	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
+	sdl->sdl_type = IFT_ISO88025;
+	sdl->sdl_alen = ifp->if_addrlen;
+	bcopy(((struct arpcom *)ifp)->ac_enaddr, LLADDR(sdl), ifp->if_addrlen);
 	bpfattach(ifp, DLT_IEEE802, sizeof(struct iso88025_header));
 }
 
 int
 iso88025_ioctl(struct ifnet *ifp, int command, caddr_t data)
 {
-        struct ifaddr *ifa = (struct ifaddr *) data;
-        struct ifreq *ifr = (struct ifreq *) data;
-        int error = 0;
+	struct ifaddr *ifa = (struct ifaddr *) data;
+	struct ifreq *ifr = (struct ifreq *) data;
+	int error = 0;
 
-        switch (command) {
-        case SIOCSIFADDR:
-                ifp->if_flags |= IFF_UP;
+	switch (command) {
+	case SIOCSIFADDR:
+		ifp->if_flags |= IFF_UP;
 
-                switch (ifa->ifa_addr->sa_family) {
+		switch (ifa->ifa_addr->sa_family) {
 #ifdef INET
-                case AF_INET:
-                        ifp->if_init(ifp->if_softc);    /* before arpwhohas */
-                        arp_ifinit(ifp, ifa);
-                        break;
+		case AF_INET:
+			ifp->if_init(ifp->if_softc);	/* before arpwhohas */
+			arp_ifinit(ifp, ifa);
+			break;
 #endif
-                default:
-                        ifp->if_init(ifp->if_softc);
-                        break;
-                }
-                break;
+		default:
+			ifp->if_init(ifp->if_softc);
+			break;
+		}
+		break;
 
-        case SIOCGIFADDR:
-                {
-                        struct sockaddr *sa;
+	case SIOCGIFADDR:
+		bcopy(((struct arpcom *)ifp->if_softc)->ac_enaddr,
+		      ((struct sockaddr *)ifr->ifr_data)->sa_data,
+		      ISO88025_ADDR_LEN);
+		break;
 
-                        sa = (struct sockaddr *) & ifr->ifr_data;
-                        bcopy(((struct arpcom *)ifp->if_softc)->ac_enaddr,
-                              (caddr_t) sa->sa_data, ISO88025_ADDR_LEN);
-                }
-                break;
-
-        case SIOCSIFMTU:
-                /*
-                 * Set the interface MTU.
-                 */
-                if (ifr->ifr_mtu > ISO88025_MAX_MTU) {
-                        error = EINVAL;
-                } else {
-                        ifp->if_mtu = ifr->ifr_mtu;
-                }
-                break;
-        }
-        return (error);
+	case SIOCSIFMTU:
+		/*
+		 * Set the interface MTU.
+		 */
+		if (ifr->ifr_mtu > ISO88025_MAX_MTU) {
+			error = EINVAL;
+		} else {
+			ifp->if_mtu = ifr->ifr_mtu;
+		}
+		break;
+	}
+	return (error);
 }
 
 /*
  * ISO88025 encapsulation
  */
 static int
-iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct rtentry *rt0)
+iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
+		struct rtentry *rt0)
 {
 	struct iso88025_header *th;
 	struct iso88025_header gen_th;
 	struct iso88025_sockaddr_data *sd = (struct iso88025_sockaddr_data *)dst->sa_data;
-        struct llc *l;
+	struct llc *l;
 	struct sockaddr_dl *sdl = NULL;
-        int s, error = 0, rif_len = 0;
- 	u_char edst[6];
+	int s, error = 0, rif_len = 0;
+	u_char edst[6];
 	struct rtentry *rt;
 	int len = m->m_pkthdr.len, loop_copy = 0;
 	struct arpcom *ac = (struct arpcom *)ifp;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
 		senderr(ENETDOWN);
-	rt = rt0;
-	if (rt) {
-		if ((rt->rt_flags & RTF_UP) == 0) {
-			rt0 = rt = rtalloc1(dst, 1, 0UL);
-			if (rt0)
-				rt->rt_refcnt--;
-			else
-				senderr(EHOSTUNREACH);
-		}
-		if (rt->rt_flags & RTF_GATEWAY) {
-			if (rt->rt_gwroute == 0)
-				goto lookup;
-			if (((rt = rt->rt_gwroute)->rt_flags & RTF_UP) == 0) {
-				rtfree(rt); rt = rt0;
-			lookup: rt->rt_gwroute = rtalloc1(rt->rt_gateway, 1,
-							  0UL);
-				if ((rt = rt->rt_gwroute) == 0)
-					senderr(EHOSTUNREACH);
-			}
-		}
-		if (rt->rt_flags & RTF_REJECT)
-			if (rt->rt_rmx.rmx_expire == 0 ||
-			    time_second < rt->rt_rmx.rmx_expire)
-				senderr(rt == rt0 ? EHOSTDOWN : EHOSTUNREACH);
-	}
 
-	/* Calculate routing info length based on arp table entry */
+	if (rt0 == NULL)
+		senderr(EHOSTUNREACH);
+	error = rt_llroute(dst, rt0, &rt);
+	if (error != 0)
+		senderr(error);
+
+	/* Calculate routing info length based on arp table entry. */
 	if (rt && (sdl = (struct sockaddr_dl *)rt->rt_gateway))
 		if (SDL_ISO88025(sdl)->trld_rcf != NULL)
 			rif_len = TR_RCF_RIFLEN(SDL_ISO88025(sdl)->trld_rcf);
 
-	/* Generate a generic 802.5 header for the packet */
+	/* Generate a generic 802.5 header for the packet. */
 	gen_th.ac = TR_AC;
 	gen_th.fc = TR_LLC_FRAME;
-	memcpy(gen_th.iso88025_shost, ac->ac_enaddr, sizeof(ac->ac_enaddr));
+	memcpy(gen_th.iso88025_shost, ac->ac_enaddr, sizeof ac->ac_enaddr);
 	if (rif_len) {
 		gen_th.iso88025_shost[0] |= TR_RII;
 		if (rif_len > 2) {
@@ -225,20 +203,20 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 			memcpy(gen_th.rd, sdl->sdl_route, rif_len - 2);
 		}
 	}
-	
+
 
 	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET:
-		if (!arpresolve(ifp, rt, m, dst, edst, rt0))
+		if (!arpresolve(ifp, rt0, m, dst, edst))
 			return (0);	/* if not yet resolved */
 		/* Add LLC and SNAP headers */
 		M_PREPEND(m, 8, MB_DONTWAIT);
-		if (m == 0)
-			senderr(ENOBUFS);
+		if (m == NULL)
+			return (ENOBUFS);
 		l = mtod(m, struct llc *);
-	        l->llc_un.type_snap.ether_type = htons(ETHERTYPE_IP);
-	        l->llc_dsap = l->llc_ssap = LLC_SNAP_LSAP;
+		l->llc_un.type_snap.ether_type = htons(ETHERTYPE_IP);
+		l->llc_dsap = l->llc_ssap = LLC_SNAP_LSAP;
 		l->llc_un.type_snap.control = LLC_UI;
 		l->llc_un.type_snap.org_code[0] = 0x0;
 		l->llc_un.type_snap.org_code[1] = 0x0;
@@ -256,7 +234,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 		 * mbuf provided, ac/fc are set in sa_data.  sockaddr.sa_data
 		 * should be a iso88025_sockaddr_data structure see iso88025.h
 		 */
-                loop_copy = -1;
+		loop_copy = -1;
 		sd = (struct iso88025_sockaddr_data *)dst->sa_data;
 		gen_th.ac = sd->ac;
 		gen_th.fc = sd->fc;
@@ -275,45 +253,44 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 	 * Add local net header.  If no space in first mbuf,
 	 * allocate another.
 	 */
-	
+
 	M_PREPEND(m, ISO88025_HDR_LEN + rif_len, MB_DONTWAIT);
-	if (m == 0)
-		senderr(ENOBUFS);
+	if (m == NULL)
+		return (ENOBUFS);
 
 	/* Copy as much of the generic header as is needed into the mbuf */
 	th = mtod(m, struct iso88025_header *);
 	memcpy(th, &gen_th, ISO88025_HDR_LEN + rif_len);
 
-        /*
-         * If a simplex interface, and the packet is being sent to our
-         * Ethernet address or a broadcast address, loopback a copy.
-         * XXX To make a simplex device behave exactly like a duplex
-         * device, we should copy in the case of sending to our own
-         * ethernet address (thus letting the original actually appear
-         * on the wire). However, we don't do that here for security
-         * reasons and compatibility with the original behavior.
-         */     
-        if ((ifp->if_flags & IFF_SIMPLEX) &&
-           (loop_copy != -1)) {
-                if ((m->m_flags & M_BCAST) || (loop_copy > 0)) { 
-                        struct mbuf *n = m_copy(m, 0, (int)M_COPYALL);
-                        (void) if_simloop(ifp,
-			    n, dst->sa_family, ISO88025_HDR_LEN);
-                } else if (bcmp(th->iso88025_dhost,
-                    th->iso88025_shost, ETHER_ADDR_LEN) == 0) {
-                        (void) if_simloop(ifp,
-			    m, dst->sa_family, ISO88025_HDR_LEN);
-                        return(0);      /* XXX */
-                }       
-        }      
+	/*
+	 * If a simplex interface, and the packet is being sent to our
+	 * Ethernet address or a broadcast address, loopback a copy.
+	 * XXX To make a simplex device behave exactly like a duplex
+	 * device, we should copy in the case of sending to our own
+	 * ethernet address (thus letting the original actually appear
+	 * on the wire). However, we don't do that here for security
+	 * reasons and compatibility with the original behavior.
+	 */
+	if ((ifp->if_flags & IFF_SIMPLEX) &&
+	   (loop_copy != -1)) {
+		if ((m->m_flags & M_BCAST) || (loop_copy > 0)) {
+			struct mbuf *n = m_copypacket(m, MB_DONTWAIT);
 
-        s = splimp();
+			if_simloop(ifp, n, dst->sa_family, ISO88025_HDR_LEN);
+		} else if (bcmp(th->iso88025_dhost,
+		    th->iso88025_shost, ETHER_ADDR_LEN) == 0) {
+			if_simloop(ifp, m, dst->sa_family, ISO88025_HDR_LEN);
+			return (0);	/* XXX */
+		}
+	}
+
+	s = splimp();
 	/*
 	 * Queue message on interface, and start output if interface
 	 * not yet active.
 	 */
 	if (IF_QFULL(&ifp->if_snd)) {
-            printf("iso88025_output: packet dropped QFULL.\n");
+		printf("iso88025_output: packet dropped QFULL.\n");
 		IF_DROP(&ifp->if_snd);
 		splx(s);
 		senderr(ENOBUFS);
@@ -321,7 +298,7 @@ iso88025_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst, struct 
 	if (m->m_flags & M_MCAST)
 		ifp->if_omcasts++;
 	IF_ENQUEUE(&ifp->if_snd, m);
-        if ((ifp->if_flags & IFF_OACTIVE) == 0)
+	if (!(ifp->if_flags & IFF_OACTIVE))
 		(*ifp->if_start)(ifp);
 	splx(s);
 	ifp->if_obytes += len + ISO88025_HDR_LEN + 8;
@@ -344,7 +321,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 	int isr, hdr_len;
 	u_short ether_type;
 
-	if ((ifp->if_flags & IFF_UP) == 0) {
+	if (!(ifp->if_flags & IFF_UP)) {
 		m_freem(m);
 		return;
 	}
@@ -383,8 +360,8 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 		l->llc_dsap = l->llc_ssap;
 		l->llc_ssap = c;
 		if (m->m_flags & (M_BCAST | M_MCAST))
-			bcopy((caddr_t)ac->ac_enaddr, 
-			      (caddr_t)th->iso88025_dhost, ISO88025_ADDR_LEN);
+			bcopy(ac->ac_enaddr, th->iso88025_dhost,
+			      ISO88025_ADDR_LEN);
 		sa.sa_family = AF_UNSPEC;
 		sa.sa_len = sizeof(sa);
 		th2 = (struct iso88025_sockaddr_data *)sa.sa_data;
@@ -404,9 +381,9 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 		return;
 	}
 
-        m->m_pkthdr.len -= 8;
-        m->m_len -= 8;
-        m->m_data += 8; /* Length of LLC header in our case */
+	m->m_pkthdr.len -= 8;
+	m->m_len -= 8;
+	m->m_data += 8; /* Length of LLC header in our case */
 
 	ifp->if_ibytes += m->m_pkthdr.len + sizeof(*th);
 	if (th->iso88025_dhost[0] & 1) {
@@ -415,7 +392,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;
-	} 
+	}
 	if (m->m_flags & (M_BCAST|M_MCAST))
 		ifp->if_imcasts++;
 
@@ -424,7 +401,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 	switch (ether_type) {
 #ifdef INET
 	case ETHERTYPE_IP:
-		th->iso88025_shost[0] &= ~(TR_RII); 
+		th->iso88025_shost[0] &= ~(TR_RII);
 		if (ipflow_fastforward(m))
 			return;
 		isr = NETISR_IP;
@@ -436,7 +413,7 @@ iso88025_input(struct ifnet *ifp, struct mbuf *m)
 			return;
 		}
 		isr = NETISR_ARP;
-                break;
+		break;
 #endif
 	default:
 	    m_freem(m);

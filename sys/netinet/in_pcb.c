@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
- * 
+ *
  * This code is derived from software contributed to The DragonFly Project
  * by Jeffrey M. Hsu.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 3. Neither the name of The DragonFly Project nor the names of its
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific, prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -82,7 +82,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.28 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.29 2004/12/21 02:54:15 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -228,7 +228,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	inp = zalloc(pcbinfo->ipi_zone);
 	if (inp == NULL)
 		return (ENOBUFS);
-	bzero((caddr_t)inp, sizeof *inp);
+	bzero(inp, sizeof *inp);
 	inp->inp_gencnt = ++pcbinfo->ipi_gencnt;
 	inp->inp_pcbinfo = inp->inp_cpcbinfo = pcbinfo;
 	inp->inp_socket = so;
@@ -245,7 +245,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 	if (ip6_auto_flowlabel)
 		inp->inp_flags |= IN6P_AUTOFLOWLABEL;
 #endif
-	so->so_pcb = (caddr_t)inp;
+	so->so_pcb = inp;
 	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
 	pcbinfo->ipi_count++;
 	return (0);
@@ -496,7 +496,7 @@ in_pcbladdr(inp, nam, plocal_sin)
 		    (!(ro->ro_rt->rt_flags & RTF_UP) ||
 		     ro->ro_dst.sa_family != AF_INET ||
 		     satosin(&ro->ro_dst)->sin_addr.s_addr !=
-		         sin->sin_addr.s_addr ||
+				      sin->sin_addr.s_addr ||
 		     inp->inp_socket->so_options & SO_DONTROUTE)) {
 			RTFREE(ro->ro_rt);
 			ro->ro_rt = (struct rtentry *)NULL;
@@ -639,7 +639,7 @@ in_pcbdetach(inp)
 	so->so_pcb = 0;
 	sofree(so);
 	if (inp->inp_options)
-		(void)m_free(inp->inp_options);
+		m_free(inp->inp_options);
 	if (inp->inp_route.ro_rt)
 		rtfree(inp->inp_route.ro_rt);
 	ip_freemoptions(inp->inp_moptions);
@@ -804,14 +804,14 @@ in_losing(inp)
 	struct rt_addrinfo info;
 
 	if ((rt = inp->inp_route.ro_rt)) {
-		bzero((caddr_t)&info, sizeof info);
+		bzero(&info, sizeof info);
 		info.rti_flags = rt->rt_flags;
 		info.rti_info[RTAX_DST] = rt_key(rt);
 		info.rti_info[RTAX_GATEWAY] = rt->rt_gateway;
 		info.rti_info[RTAX_NETMASK] = rt_mask(rt);
 		rt_missmsg(RTM_LOSING, &info, rt->rt_flags, 0);
 		if (rt->rt_flags & RTF_DYNAMIC)
-			(void) rtrequest1(RTM_DELETE, &info, NULL);
+			rtrequest1(RTM_DELETE, &info, NULL);
 		inp->inp_route.ro_rt = NULL;
 		rtfree(rt);
 		/*
@@ -934,7 +934,7 @@ in_pcblookup_hash(pcbinfo, faddr, fport_arg, laddr, lport_arg, wildcard, ifp)
 		if (in_hosteq(inp->inp_faddr, faddr) &&
 		    in_hosteq(inp->inp_laddr, laddr) &&
 		    inp->inp_fport == fport && inp->inp_lport == lport) {
-		    	/* found */
+			/* found */
 			return (inp);
 		}
 	}
@@ -1225,7 +1225,7 @@ in_pcblist_global(SYSCTL_HANDLER_ARGS)
 		bzero(&xi, sizeof(xi));
 		xi.xi_len = sizeof(xi);
 		while (i < n) {
-			error = SYSCTL_OUT(req, &xi, sizeof(xi));
+			error = SYSCTL_OUT(req, &xi, sizeof xi);
 			++i;
 		}
 	}

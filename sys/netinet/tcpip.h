@@ -32,7 +32,7 @@
  *
  *	@(#)tcpip.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcpip.h,v 1.8 1999/08/28 00:49:34 peter Exp $
- * $DragonFly: src/sys/netinet/tcpip.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcpip.h,v 1.3 2004/12/21 02:54:15 hsu Exp $
  */
 
 #ifndef _NETINET_TCPIP_H_
@@ -42,7 +42,7 @@
  * Tcp+ip header, after ip options removed.
  */
 struct tcpiphdr {
-	struct 	ipovly ti_i;		/* overlaid ip structure */
+	struct	ipovly ti_i;		/* overlaid ip structure */
 	struct	tcphdr ti_t;		/* tcp header */
 };
 #ifdef notyet
@@ -50,7 +50,7 @@ struct tcpiphdr {
  * Tcp+ip header, after ip options removed but including TCP options.
  */
 struct full_tcpiphdr {
-	struct 	ipovly ti_i;		/* overlaid ip structure */
+	struct	ipovly ti_i;		/* overlaid ip structure */
 	struct	tcphdr ti_t;		/* tcp header */
 	char	ti_o[TCP_MAXOLEN];	/* space for tcp options */
 };

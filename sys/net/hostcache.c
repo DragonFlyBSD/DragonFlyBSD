@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/hostcache.c,v 1.6.2.1 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.3 2004/09/15 20:38:36 joerg Exp $
+ * $DragonFly: src/sys/net/Attic/hostcache.c,v 1.4 2004/12/21 02:54:14 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -77,8 +77,7 @@ hc_init(int af, struct hccallback *hccb, int init_nelem, int primes)
 	hct->hct_nentries = nelem;
 	hct->hct_primes = primes;
 	callout_init(&hc_timeout_h);
-	callout_reset(&hc_timeout_h, hc_timeout_interval * hz,
-		      hc_timeout, hct);
+	callout_reset(&hc_timeout_h, hc_timeout_interval * hz, hc_timeout, hct);
 	return 0;
 }
 
@@ -99,15 +98,15 @@ hc_get(struct sockaddr *sa)
 		if (cmpsa(hc->hc_host, sa) == 0)
 			break;
 	}
-	if (hc == 0)
-		return 0;
+	if (hc == NULL)
+		return NULL;
 	s = splnet();
-	if (hc->hc_rt && (hc->hc_rt->rt_flags & RTF_UP) == 0) {
+	if (hc->hc_rt && !(hc->hc_rt->rt_flags & RTF_UP)) {
 		RTFREE(hc->hc_rt);
-		hc->hc_rt = 0;
+		hc->hc_rt = NULL;
 	}
-	if (hc->hc_rt == 0) {
-		hc->hc_rt = rtalloc1(hc->hc_host, 1, 0);
+	if (hc->hc_rt == NULL) {
+		hc->hc_rt = rtlookup(hc->hc_host, 1, 0);
 	}
 	hc_ref(hc);
 	splx(s);
@@ -162,7 +161,7 @@ hc_insert(struct hcentry *hc)
 		if (cmpsa(hc2->hc_host, hc->hc_host) == 0)
 			break;
 	}
-	if (hc2 != 0)
+	if (hc2 != NULL)
 		return EEXIST;
 	hc->hc_hct = hct;
 	s = splnet();
