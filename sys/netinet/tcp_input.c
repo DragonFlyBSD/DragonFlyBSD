@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.40 2004/11/17 20:51:16 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.41 2004/11/17 21:50:46 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -398,7 +398,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 
 		te->tqe_len += q->tqe_len;
 		if (q->tqe_th->th_flags & TH_FIN)
-			te->tqe_th->th_flags &= TH_FIN;
+			te->tqe_th->th_flags |= TH_FIN;
 		m_cat(te->tqe_m, q->tqe_m);
 		tp->encloseblk.rblk_end = tend;
 		/*
