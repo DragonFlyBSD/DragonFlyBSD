@@ -33,12 +33,11 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)logger.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/logger/logger.c,v 1.5.2.3 2001/09/06 17:38:57 ru Exp $
- * $DragonFly: src/usr.bin/logger/logger.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/logger/logger.c,v 1.4 2005/02/25 18:08:05 liamfoy Exp $
  */
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -51,9 +50,9 @@
 #define	SYSLOG_NAMES
 #include <syslog.h>
 
-int	decode(char *, CODE *);
-int	pencode(char *);
-static void	logmessage(int, char *, char *);
+static int	decode(const char *, CODE *);
+static int	pencode(char *);
+static void	logmessage(int, const char *, const char *);
 static void	usage(void);
 
 struct socks {
@@ -87,7 +86,7 @@ main(int argc, char **argv)
 	logflags = 0;
 	unsetenv("TZ");
 	while ((ch = getopt(argc, argv, "46Af:h:ip:st:")) != -1)
-		switch((char)ch) {
+		switch(ch) {
 		case '4':
 			family = PF_INET;
 			break;
@@ -127,12 +126,12 @@ main(int argc, char **argv)
 
 	/* setup for logging */
 	openlog(tag ? tag : getlogin(), logflags, 0);
-	(void) fclose(stdout);
+	fclose(stdout);
 
 	/* log input line if appropriate */
 	if (argc > 0) {
-		register char *p, *endp;
-		int len;
+		char *p, *endp;
+		size_t len;
 
 		for (p = buf, endp = buf + sizeof(buf) - 2; *argv;) {
 			len = strlen(*argv);
@@ -160,14 +159,14 @@ main(int argc, char **argv)
 /*
  *  Send the message to syslog, either on the local host, or on a remote host
  */
-void 
-logmessage(int pri, char *host, char *buf)
+static void 
+logmessage(int pri, const char *host, const char *buf)
 {
 	static struct socks *socks;
 	static int nsock = 0;
 	struct addrinfo hints, *res, *r;
 	char *line;
-	int maxs, len, sock, error, i, lsent;
+	int maxs, len, sock, error, i, lsent = 0;
 
 	if (host == NULL) {
 		syslog(pri, "%s", buf);
@@ -190,7 +189,7 @@ logmessage(int pri, char *host, char *buf)
 		for (maxs = 0, r = res; r; r = r->ai_next, maxs++);
 		socks = malloc(maxs * sizeof(struct socks));
 		if (!socks)
-			errx(1, "couldn't allocate memory for sockets");
+			err(1, "couldn't allocate memory for sockets");
 		for (r = res; r; r = r->ai_next) {
 			sock = socket(r->ai_family, r->ai_socktype,
 				      r->ai_protocol);
@@ -216,7 +215,7 @@ logmessage(int pri, char *host, char *buf)
 			break;
 	}
 	if (lsent != len)
-		warnx ("sendmsg");
+		warnx("sendmsg");
 
 	free(line);
 }
@@ -224,8 +223,8 @@ logmessage(int pri, char *host, char *buf)
 /*
  *  Decode a symbolic name to a numeric value
  */
-int
-pencode(register char *s)
+static int
+pencode(char *s)
 {
 	char *save;
 	int fac, lev;
@@ -249,9 +248,9 @@ pencode(register char *s)
 }
 
 int
-decode(char *name, CODE *codetab)
+decode(const char *name, CODE *codetab)
 {
-	register CODE *c;
+	CODE *c;
 
 	if (isdigit(*name))
 		return (atoi(name));
@@ -266,8 +265,7 @@ decode(char *name, CODE *codetab)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s\n",
-	    "logger [-46Ais] [-f file] [-h host] [-p pri] [-t tag] [message ...]"
-	    );
+	fprintf(stderr, "usage: %s\n",
+	    "logger [-46Ais] [-f file] [-h host] [-p pri] [-t tag] [message ...]");
 	exit(1);
 }
