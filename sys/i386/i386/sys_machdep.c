@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.13 2004/03/30 19:14:04 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.14 2004/04/22 03:39:43 dillon Exp $
  *
  */
 
@@ -42,6 +42,7 @@
 #include <sys/malloc.h>
 #include <sys/thread.h>
 #include <sys/proc.h>
+#include <sys/thread.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
@@ -61,6 +62,7 @@
 #include <machine/globaldata.h>	/* mdcpu */
 
 #include <vm/vm_kern.h>		/* for kernel_map */
+#include <sys/thread2.h>
 
 #define MAX_LD 8192
 #define LD_PER_PAGE 512
@@ -296,17 +298,19 @@ user_ldt_free(struct pcb *pcb)
 	if (pcb_ldt == NULL)
 		return;
 
+	crit_enter();
 	if (pcb == curthread->td_pcb) {
 		lldt(_default_ldt);
 		mdcpu->gd_currentldt = _default_ldt;
 	}
+	pcb->pcb_ldt = NULL;
+	crit_exit();
 
 	if (--pcb_ldt->ldt_refcnt == 0) {
 		kmem_free(kernel_map, (vm_offset_t)pcb_ldt->ldt_base,
 			pcb_ldt->ldt_len * sizeof(union descriptor));
 		FREE(pcb_ldt, M_SUBPROC);
 	}
-	pcb->pcb_ldt = NULL;
 }
 
 static int
