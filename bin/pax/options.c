@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -63,17 +63,17 @@ static char flgch[] = FLGCH;	/* list of all possible flags */
 static OPLIST *ophead = NULL;	/* head for format specific options -x */
 static OPLIST *optail = NULL;	/* option tail */
 
-static int no_op __P((void));
-static void printflg __P((unsigned int));
-static int c_frmt __P((const void *, const void *));
-static off_t str_offt __P((char *));
-static char *getline __P((FILE *fp));
-static void pax_options __P((register int, register char **));
-static void pax_usage __P((void));
-static void tar_options __P((register int, register char **));
-static void tar_usage __P((void));
-static void cpio_options __P((register int, register char **));
-static void cpio_usage __P((void));
+static int no_op (void);
+static void printflg (unsigned int);
+static int c_frmt (const void *, const void *);
+static off_t str_offt (char *);
+static char *getline (FILE *fp);
+static void pax_options (register int, register char **);
+static void pax_usage (void);
+static void tar_options (register int, register char **);
+static void tar_usage (void);
+static void cpio_options (register int, register char **);
+static void cpio_usage (void);
 
 /* errors from getline */
 #define GETLINE_FILE_CORRUPT 1

@@ -36,7 +36,7 @@
  *
  * @(#)pat_rep.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pat_rep.c,v 1.15.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/pat_rep.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/pat_rep.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -68,15 +68,15 @@ static PATTERN *pattail = NULL;		/* file pattern match list tail */
 static REPLACE *rephead = NULL;		/* replacement string list head */
 static REPLACE *reptail = NULL;		/* replacement string list tail */
 
-static int rep_name __P((char *, int *, int));
-static int tty_rename __P((register ARCHD *));
-static int fix_path __P((char *, int *, char *, int));
-static int fn_match __P((register char *, register char *, char **));
-static char * range_match __P((register char *, register int));
+static int rep_name (char *, int *, int);
+static int tty_rename (register ARCHD *);
+static int fix_path (char *, int *, char *, int);
+static int fn_match (register char *, register char *, char **);
+static char * range_match (register char *, register int);
 #ifdef NET2_REGEX
-static int resub __P((regexp *, char *, char *, register char *));
+static int resub (regexp *, char *, char *, register char *);
 #else
-static int resub __P((regex_t *, regmatch_t *, char *, char *, char *));
+static int resub (regex_t *, regmatch_t *, char *, char *, char *);
 #endif
 
 /*

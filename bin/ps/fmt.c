@@ -32,7 +32,7 @@
  *
  * @(#)fmt.c	8.4 (Berkeley) 4/15/94
  * $FreeBSD: src/bin/ps/fmt.c,v 1.14.2.1 2002/03/16 01:15:11 mikeh Exp $
- * $DragonFly: src/bin/ps/fmt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ps/fmt.c,v 1.3 2003/09/21 04:24:47 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -46,8 +46,8 @@
 #include <vis.h>
 #include "ps.h"
 
-static char *cmdpart __P((char *));
-static char *shquote __P((char **));
+static char *cmdpart (char *);
+static char *shquote (char **);
 
 /*
  * XXX

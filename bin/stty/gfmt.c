@@ -32,7 +32,7 @@
  *
  * @(#)gfmt.c	8.6 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/gfmt.c,v 1.10.2.2 2001/08/01 05:26:12 obrien Exp $
- * $DragonFly: src/bin/stty/gfmt.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/stty/gfmt.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +44,7 @@
 #include "stty.h"
 #include "extern.h"
 
-static void gerr __P((const char *s));
+static void gerr (const char *s);
 
 static void
 gerr(s)

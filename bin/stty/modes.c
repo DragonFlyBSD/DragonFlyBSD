@@ -32,7 +32,7 @@
  *
  * @(#)modes.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/modes.c,v 1.8.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/modes.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/stty/modes.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -40,7 +40,7 @@
 #include <string.h>
 #include "stty.h"
 
-int msearch __P((char ***, struct info *));
+int msearch (char ***, struct info *);
 
 struct modes {
 	const char *name;

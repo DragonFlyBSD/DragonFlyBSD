@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/extern.h,v 1.5 1999/08/27 23:13:59 peter Exp $
- * $DragonFly: src/bin/date/extern.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/date/extern.h,v 1.3 2003/09/21 04:19:10 drhodus Exp $
  */
 
-int	netsettime __P((time_t));
+int	netsettime (time_t);

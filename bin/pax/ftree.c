@@ -36,7 +36,7 @@
  *
  * @(#)ftree.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ftree.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ftree.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/ftree.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -75,7 +75,7 @@ static FTREE *ftcur = NULL;		/* current file arg being processed */
 static FTSENT *ftent = NULL;		/* current file tree entry */
 static int ftree_skip;			/* when set skip to next file arg */
 
-static int ftree_arg __P((void));
+static int ftree_arg (void);
 
 /*
  * ftree_start()

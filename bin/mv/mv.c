@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/mv/mv.c,v 1.24.2.5 2002/08/19 00:26:41 johan Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.3 2003/09/21 04:23:40 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -59,11 +59,11 @@
 
 int fflg, iflg, nflg, vflg;
 
-int	copy __P((char *, char *));
-int	do_move __P((char *, char *));
-int	fastcopy __P((char *, char *, struct stat *));
-int	main __P((int, char *[]));
-void	usage __P((void));
+int	copy (char *, char *);
+int	do_move (char *, char *);
+int	fastcopy (char *, char *, struct stat *);
+int	main (int, char *[]);
+void	usage (void);
 
 int
 main(argc, argv)

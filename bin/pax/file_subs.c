@@ -36,7 +36,7 @@
  *
  * @(#)file_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/file_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/file_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/file_subs.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@
 #include "extern.h"
 
 static int
-mk_link __P((register char *,register struct stat *,register char *, int));
+mk_link (register char *,register struct stat *,register char *, int);
 
 /*
  * routines that deal with file operations such as: creating, removing;

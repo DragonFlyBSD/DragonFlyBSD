@@ -36,7 +36,7 @@
  *
  * @(#)tar.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tar.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tar.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/tar.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -54,11 +54,11 @@
  * Routines for reading, writing and header identify of various versions of tar
  */
 
-static u_long tar_chksm __P((register char *, register int));
-static char *name_split __P((register char *, register int));
-static int ul_oct __P((u_long, register char *, register int, int));
+static u_long tar_chksm (register char *, register int);
+static char *name_split (register char *, register int);
+static int ul_oct (u_long, register char *, register int, int);
 #ifndef NET2_STAT
-static int uqd_oct __P((u_quad_t, register char *, register int, int));
+static int uqd_oct (u_quad_t, register char *, register int, int);
 #endif
 
 /*

@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pax.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $
- * $DragonFly: src/bin/pax/pax.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/pax.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,7 @@
 #include <unistd.h>
 #include "pax.h"
 #include "extern.h"
-static int gen_init __P((void));
+static int gen_init (void);
 
 /*
  * PAX main routines, general globals and some simple start up routines

@@ -36,7 +36,7 @@
  *
  * @(#)cpio.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cpio.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cpio.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/cpio.c,v 1.3 2003/09/21 04:24:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -50,9 +50,9 @@
 #include "cpio.h"
 #include "extern.h"
 
-static int rd_nm __P((register ARCHD *, int));
-static int rd_ln_nm __P((register ARCHD *));
-static int com_rd __P((register ARCHD *));
+static int rd_nm (register ARCHD *, int);
+static int rd_ln_nm (register ARCHD *);
+static int com_rd (register ARCHD *);
 
 /*
  * Routines which support the different cpio versions

@@ -32,7 +32,7 @@
  *
  * @(#)key.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/key.c,v 1.11.2.2 2001/10/15 13:45:05 dd Exp $
- * $DragonFly: src/bin/stty/key.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/stty/key.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -47,28 +47,28 @@
 #include "extern.h"
 
 __BEGIN_DECLS
-static int c_key __P((const void *, const void *));
-void	f_all __P((struct info *));
-void	f_cbreak __P((struct info *));
-void	f_columns __P((struct info *));
-void	f_dec __P((struct info *));
-void	f_ek __P((struct info *));
-void	f_everything __P((struct info *));
-void	f_extproc __P((struct info *));
-void	f_ispeed __P((struct info *));
-void	f_nl __P((struct info *));
-void	f_ospeed __P((struct info *));
-void	f_raw __P((struct info *));
-void	f_rows __P((struct info *));
-void	f_sane __P((struct info *));
-void	f_size __P((struct info *));
-void	f_speed __P((struct info *));
-void	f_tty __P((struct info *));
+static int c_key (const void *, const void *);
+void	f_all (struct info *);
+void	f_cbreak (struct info *);
+void	f_columns (struct info *);
+void	f_dec (struct info *);
+void	f_ek (struct info *);
+void	f_everything (struct info *);
+void	f_extproc (struct info *);
+void	f_ispeed (struct info *);
+void	f_nl (struct info *);
+void	f_ospeed (struct info *);
+void	f_raw (struct info *);
+void	f_rows (struct info *);
+void	f_sane (struct info *);
+void	f_size (struct info *);
+void	f_speed (struct info *);
+void	f_tty (struct info *);
 __END_DECLS
 
 static struct key {
 	const char *name;			/* name */
-	void (*f) __P((struct info *));		/* function */
+	void (*f) (struct info *);		/* function */
 #define	F_NEEDARG	0x01			/* needs an argument */
 #define	F_OFFOK		0x02			/* can turn off */
 	int flags;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/domainname/domainname.c,v 1.12.2.1 2001/08/01 02:32:16 obrien Exp $
- * $DragonFly: src/bin/domainname/domainname.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/domainname/domainname.c,v 1.3 2003/09/21 04:20:36 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -44,8 +44,8 @@
 #include <string.h>
 #include <unistd.h>
 
-int main __P((int, char *[]));
-void usage __P((void));
+int main (int, char *[]);
+void usage (void);
 
 int
 main(argc,argv)

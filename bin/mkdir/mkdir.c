@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkdir.c	8.2 (Berkeley) 1/25/94
  * $FreeBSD: src/bin/mkdir/mkdir.c,v 1.19.2.2 2001/08/01 04:42:37 obrien Exp $
- * $DragonFly: src/bin/mkdir/mkdir.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/mkdir/mkdir.c,v 1.3 2003/09/21 04:23:06 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -48,9 +48,9 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-int	build __P((char *, mode_t));
-int	main __P((int, char *[]));
-void	usage __P((void));
+int	build (char *, mode_t);
+int	main (int, char *[]);
+void	usage (void);
 
 int vflag;
 

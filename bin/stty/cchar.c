@@ -32,7 +32,7 @@
  *
  * @(#)cchar.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/cchar.c,v 1.9.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/cchar.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/stty/cchar.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -46,7 +46,7 @@
 #include "stty.h"
 #include "extern.h"
 
-static int c_cchar __P((const void *, const void *));
+static int c_cchar (const void *, const void *);
 
 /*
  * Special control characters.

@@ -5,7 +5,7 @@
  * Largely rewritten by J.T. Conklin (jtc@wimsey.com)
  *
  * $FreeBSD: src/bin/expr/expr.y,v 1.14.2.3 2001/08/01 02:37:46 obrien Exp $
- * $DragonFly: src/bin/expr/expr.y,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/expr/expr.y,v 1.3 2003/09/21 04:21:56 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -33,35 +33,35 @@ struct val {
 
 struct val *result;
 
-int		chk_div __P((quad_t, quad_t));
-int		chk_minus __P((quad_t, quad_t, quad_t));
-int		chk_plus __P((quad_t, quad_t, quad_t));
-int		chk_times __P((quad_t, quad_t, quad_t));
-void		free_value __P((struct val *));
-int		is_zero_or_null __P((struct val *));
-int		isstring __P((struct val *));
-int		main __P((int, char **));
-struct val	*make_integer __P((quad_t));
-struct val	*make_str __P((const char *));
-struct val	*op_and __P((struct val *, struct val *));
-struct val	*op_colon __P((struct val *, struct val *));
-struct val	*op_div __P((struct val *, struct val *));
-struct val	*op_eq __P((struct val *, struct val *));
-struct val	*op_ge __P((struct val *, struct val *));
-struct val	*op_gt __P((struct val *, struct val *));
-struct val	*op_le __P((struct val *, struct val *));
-struct val	*op_lt __P((struct val *, struct val *));
-struct val	*op_minus __P((struct val *, struct val *));
-struct val	*op_ne __P((struct val *, struct val *));
-struct val	*op_or __P((struct val *, struct val *));
-struct val	*op_plus __P((struct val *, struct val *));
-struct val	*op_rem __P((struct val *, struct val *));
-struct val	*op_times __P((struct val *, struct val *));
-quad_t		to_integer __P((struct val *));
-void		to_string __P((struct val *));
-int		yyerror __P((const char *));
-int		yylex __P((void));
-int		yyparse __P((void));
+int		chk_div (quad_t, quad_t);
+int		chk_minus (quad_t, quad_t, quad_t);
+int		chk_plus (quad_t, quad_t, quad_t);
+int		chk_times (quad_t, quad_t, quad_t);
+void		free_value (struct val *);
+int		is_zero_or_null (struct val *);
+int		isstring (struct val *);
+int		main (int, char **);
+struct val	*make_integer (quad_t);
+struct val	*make_str (const char *);
+struct val	*op_and (struct val *, struct val *);
+struct val	*op_colon (struct val *, struct val *);
+struct val	*op_div (struct val *, struct val *);
+struct val	*op_eq (struct val *, struct val *);
+struct val	*op_ge (struct val *, struct val *);
+struct val	*op_gt (struct val *, struct val *);
+struct val	*op_le (struct val *, struct val *);
+struct val	*op_lt (struct val *, struct val *);
+struct val	*op_minus (struct val *, struct val *);
+struct val	*op_ne (struct val *, struct val *);
+struct val	*op_or (struct val *, struct val *);
+struct val	*op_plus (struct val *, struct val *);
+struct val	*op_rem (struct val *, struct val *);
+struct val	*op_times (struct val *, struct val *);
+quad_t		to_integer (struct val *);
+void		to_string (struct val *);
+int		yyerror (const char *);
+int		yylex (void);
+int		yyparse (void);
 
 char **av;
 %}

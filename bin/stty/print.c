@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/stty/print.c,v 1.12.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/print.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/stty/print.c,v 1.3 2003/09/21 04:26:26 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -46,9 +46,9 @@
 
 #include <sys/ioctl_compat.h>	/* XXX NTTYDISC is too well hidden */
 
-static void  binit __P((const char *));
-static void  bput __P((const char *));
-static const char *ccval __P((struct cchar *, int));
+static void  binit (const char *);
+static void  bput (const char *);
+static const char *ccval (struct cchar *, int);
 
 void
 print(tp, wp, ldisc, fmt)

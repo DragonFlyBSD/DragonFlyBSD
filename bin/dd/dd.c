@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/dd/dd.c,v 1.3 2003/09/21 04:19:42 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -60,15 +60,15 @@
 #include "dd.h"
 #include "extern.h"
 
-static void dd_close __P((void));
-static void dd_in __P((void));
-int main __P((int, char *[]));
-static void getfdtype __P((IO *));
-static void setup __P((void));
+static void dd_close (void);
+static void dd_in (void);
+int main (int, char *[]);
+static void getfdtype (IO *);
+static void setup (void);
 
 IO	in, out;		/* input/output state */
 STAT	st;			/* statistics */
-void	(*cfunc) __P((void));	/* conversion function */
+void	(*cfunc) (void);	/* conversion function */
 quad_t	cpy_cnt;		/* # of blocks to copy */
 off_t	pending = 0;		/* pending seek if sparse */
 u_int	ddflags;		/* conversion options */

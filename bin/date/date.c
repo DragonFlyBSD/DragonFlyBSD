@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.3 2003/09/21 04:19:10 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -58,11 +58,11 @@
 time_t tval;
 int retval;
 
-static void setthetime __P((const char *, const char *, int, int));
-static void badformat __P((void));
-static void usage __P((void));
+static void setthetime (const char *, const char *, int, int);
+static void badformat (void);
+static void usage (void);
 
-int logwtmp __P((char *, char *, char *));
+int logwtmp (char *, char *, char *);
 
 int
 main(argc, argv)

@@ -36,7 +36,7 @@
  *
  * @(#)sel_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/sel_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/sel_subs.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -53,10 +53,10 @@
 #include "sel_subs.h"
 #include "extern.h"
 
-static int str_sec __P((register char *, time_t *));
-static int usr_match __P((register ARCHD *));
-static int grp_match __P((register ARCHD *));
-static int trng_match __P((register ARCHD *));
+static int str_sec (register char *, time_t *);
+static int usr_match (register ARCHD *);
+static int grp_match (register ARCHD *);
+static int trng_match (register ARCHD *);
 
 static TIME_RNG *trhead = NULL;		/* time range list head */
 static TIME_RNG *trtail = NULL;		/* time range list tail */

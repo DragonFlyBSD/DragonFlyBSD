@@ -36,7 +36,7 @@
  *
  * @(#)ar_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_subs.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_subs.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/ar_subs.c,v 1.3 2003/09/21 04:24:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -52,9 +52,9 @@
 #include "pax.h"
 #include "extern.h"
 
-static void wr_archive __P((register ARCHD *, int is_app));
-static int get_arc __P((void));
-static int next_head __P((register ARCHD *));
+static void wr_archive (register ARCHD *, int is_app);
+static int get_arc (void);
+static int next_head (register ARCHD *);
 extern sigset_t s_mask;
 
 /*

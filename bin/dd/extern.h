@@ -36,29 +36,29 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/extern.h,v 1.9.2.1 2000/08/07 08:30:17 ps Exp $
- * $DragonFly: src/bin/dd/extern.h,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/dd/extern.h,v 1.3 2003/09/21 04:19:42 drhodus Exp $
  */
 
 #include <sys/cdefs.h>
 
-void block __P((void));
-void block_close __P((void));
-void dd_out __P((int));
-void def __P((void));
-void def_close __P((void));
-void jcl __P((char **));
-void pos_in __P((void));
-void pos_out __P((void));
-void summary __P((void));
-void summaryx __P((int));
-void terminate __P((int));
-void unblock __P((void));
-void unblock_close __P((void));
-void bitswab __P((void *, size_t));
+void block (void);
+void block_close (void);
+void dd_out (int);
+void def (void);
+void def_close (void);
+void jcl (char **);
+void pos_in (void);
+void pos_out (void);
+void summary (void);
+void summaryx (int);
+void terminate (int);
+void unblock (void);
+void unblock_close (void);
+void bitswab (void *, size_t);
 
 extern IO in, out;
 extern STAT st;
-extern void (*cfunc) __P((void));
+extern void (*cfunc) (void);
 extern quad_t cpy_cnt;
 extern size_t cbsz;
 extern u_int ddflags;

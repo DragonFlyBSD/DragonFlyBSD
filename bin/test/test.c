@@ -10,7 +10,7 @@
  * This program is in the Public Domain.
  *
  * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.3 2003/09/21 04:27:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -173,21 +173,21 @@ struct t_op const *t_wp_op;
 int nargc;
 char **t_wp;
 
-static int	aexpr __P((enum token));
-static int	binop __P((void));
-static int	equalf __P((const char *, const char *));
-static int	filstat __P((char *, enum token));
-static int	getn __P((const char *));
-static quad_t	getq __P((const char *));
-static int	intcmp __P((const char *, const char *));
-static int	isoperand __P((void));
-static int	newerf __P((const char *, const char *));
-static int	nexpr __P((enum token));
-static int	oexpr __P((enum token));
-static int	olderf __P((const char *, const char *));
-static int	primary __P((enum token));
-static void	syntax __P((const char *, const char *));
-static enum	token t_lex __P((char *));
+static int	aexpr (enum token);
+static int	binop (void);
+static int	equalf (const char *, const char *);
+static int	filstat (char *, enum token);
+static int	getn (const char *);
+static quad_t	getq (const char *);
+static int	intcmp (const char *, const char *);
+static int	isoperand (void);
+static int	newerf (const char *, const char *);
+static int	nexpr (enum token);
+static int	oexpr (enum token);
+static int	olderf (const char *, const char *);
+static int	primary (enum token);
+static void	syntax (const char *, const char *);
+static enum	token t_lex (char *);
 
 int
 main(argc, argv)

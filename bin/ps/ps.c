@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.3 2003/07/01 00:19:29 dillon Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.4 2003/09/21 04:24:47 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -85,15 +85,15 @@ static int forceuread=1;
 
 enum sort { DEFAULT, SORTMEM, SORTCPU } sortby = DEFAULT;
 
-static char	*fmt __P((char **(*)(kvm_t *, const struct kinfo_proc *, int),
-		    KINFO *, char *, int));
-static char	*kludge_oldps_options __P((char *));
-static int	 pscomp __P((const void *, const void *));
-static void	 saveuser __P((KINFO *));
-static void	 scanvars __P((void));
-static void	 dynsizevars __P((KINFO *));
-static void	 sizevars __P((void));
-static void	 usage __P((void));
+static char	*fmt (char **(*)(kvm_t *, const struct kinfo_proc *, int),
+		    KINFO *, char *, int);
+static char	*kludge_oldps_options (char *);
+static int	 pscomp (const void *, const void *);
+static void	 saveuser (KINFO *);
+static void	 scanvars (void);
+static void	 dynsizevars (KINFO *);
+static void	 sizevars (void);
+static void	 usage (void);
 static uid_t	*getuids(const char *, int *);
 
 char dfmt[] = "pid tt state time command";
@@ -495,7 +495,7 @@ sizevars()
 
 static char *
 fmt(fn, ki, comm, maxlen)
-	char **(*fn) __P((kvm_t *, const struct kinfo_proc *, int));
+	char **(*fn) (kvm_t *, const struct kinfo_proc *, int);
 	KINFO *ki;
 	char *comm;
 	int maxlen;

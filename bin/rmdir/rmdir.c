@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rmdir.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rmdir/rmdir.c,v 1.9.2.2 2001/08/01 05:16:47 obrien Exp $
- * $DragonFly: src/bin/rmdir/rmdir.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/rmdir/rmdir.c,v 1.3 2003/09/21 04:25:36 drhodus Exp $
  */
 
 #include <err.h>
@@ -43,9 +43,9 @@
 #include <string.h>
 #include <unistd.h>
 
-int main __P((int, char *[]));
-int rm_path __P((char *));
-void usage __P((void));
+int main (int, char *[]);
+int rm_path (char *);
+void usage (void);
 
 int
 main(argc, argv)

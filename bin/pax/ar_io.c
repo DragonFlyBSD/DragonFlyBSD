@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.3 2003/09/10 22:43:54 rob Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.4 2003/09/21 04:24:16 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -81,9 +81,9 @@ char *arcname;		  	/* printable name of archive */
 const char *gzip_program;		/* name of gzip program */
 static pid_t zpid = -1;			/* pid of child process */
 
-static int get_phys __P((void));
+static int get_phys (void);
 extern sigset_t s_mask;
-static void ar_start_gzip __P((int, const char *, int));
+static void ar_start_gzip (int, const char *, int);
 
 /*
  * ar_open()

@@ -36,7 +36,7 @@
  *
  * @(#)tables.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/tables.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tables.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/pax/tables.c,v 1.3 2003/09/21 04:24:17 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -76,7 +76,7 @@ static int dirfd = -1;		/* storage for setting created dir time/mode */
 static u_long dircnt;		/* entries in dir time/mode storage */
 static int ffd = -1;		/* tmp file for file time table name storage */
 
-static DEVT *chk_dev __P((dev_t, int));
+static DEVT *chk_dev (dev_t, int);
 
 /*
  * hard link table routines
