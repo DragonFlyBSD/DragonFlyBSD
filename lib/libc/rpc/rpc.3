@@ -1,6 +1,6 @@
 .\" @(#)rpc.3n	2.4 88/08/08 4.0 RPCSRC; from 1.19 88/06/24 SMI
 .\" $FreeBSD: src/lib/libc/rpc/rpc.3,v 1.11.2.5 2001/12/14 18:33:56 ru Exp $
-.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.3 2004/09/14 18:23:15 joerg Exp $
+.\" $DragonFly: src/lib/libc/rpc/rpc.3,v 1.4 2004/11/16 18:55:45 liamfoy Exp $
 .\"
 .Dd February 16, 1988
 .Dt RPC 3
@@ -260,7 +260,7 @@ Otherwise, the socket remains open.
 .Ft CLIENT *
 .Xc
 .It Xo
-.Fn clnt_create "onst char *host" "u_long prog" "u_long vers" "const char *proto"
+.Fn clnt_create "const char *host" "u_long prog" "u_long vers" "const char *proto"
 .Xc
 .Pp
 Generic client creation routine.
@@ -382,7 +382,7 @@ to the structure at address
 .Ft void
 .Xc
 .It Xo
-.Fn clnt_pcreateerror "char *s"
+.Fn clnt_pcreateerror "const char *s"
 .Xc
 .Pp
 prints a message to standard error indicating
@@ -415,7 +415,7 @@ Used after
 .Pp
 .It Xo
 .Ft void
-.Fn clnt_perror "CLIENT *clnt" "char *s"
+.Fn clnt_perror "CLIENT *clnt" "const char *s"
 .Xc
 .Pp
 Print a message to standard error indicating why an
@@ -433,7 +433,7 @@ Used after
 .Ft "char *"
 .Xc
 .It Xo
-.Fn clnt_spcreateerror "char *s"
+.Fn clnt_spcreateerror "const char *s"
 .Xc
 .Pp
 Like
@@ -485,7 +485,7 @@ result will not get overwritten on each call.
 .Ft "char *"
 .Xc
 .It Xo
-.Fn clnt_sperror "CLIENT *rpch" "char *s"
+.Fn clnt_sperror "CLIENT *rpch" "const char *s"
 .Xc
 .Pp
 Like

@@ -29,7 +29,7 @@
  * @(#)clnt_perror.c 1.15 87/10/07 Copyr 1984 Sun Micro
  * @(#)clnt_perror.c	2.1 88/07/29 4.0 RPCSRC
  * $FreeBSD: src/lib/libc/rpc/clnt_perror.c,v 1.11.2.1 2000/08/23 00:02:04 jhb Exp $
- * $DragonFly: src/lib/libc/rpc/clnt_perror.c,v 1.3 2004/09/14 17:52:25 joerg Exp $
+ * $DragonFly: src/lib/libc/rpc/clnt_perror.c,v 1.4 2004/11/16 18:55:45 liamfoy Exp $
  */
 
 /*
@@ -66,7 +66,7 @@ _buf()
 char *
 clnt_sperror(rpch, s)
 	CLIENT *rpch;
-	char *s;
+	const char *s;
 {
 	struct rpc_err e;
 	char *err;
@@ -143,7 +143,7 @@ clnt_sperror(rpch, s)
 void
 clnt_perror(rpch, s)
 	CLIENT *rpch;
-	char *s;
+	const char *s;
 {
 	(void) fprintf(stderr,"%s\n",clnt_sperror(rpch,s));
 }
@@ -196,7 +196,7 @@ clnt_perrno(num)
 
 char *
 clnt_spcreateerror(s)
-	char *s;
+	const char *s;
 {
 	char *str = _buf();
 
@@ -226,7 +226,7 @@ clnt_spcreateerror(s)
 
 void
 clnt_pcreateerror(s)
-	char *s;
+	const char *s;
 {
 	(void) fprintf(stderr,"%s\n",clnt_spcreateerror(s));
 }
