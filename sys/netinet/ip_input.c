@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.29 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.30 2004/06/04 03:57:41 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -51,6 +51,7 @@
 #include <sys/systm.h>
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
+#include <sys/mpipe.h>
 #include <sys/domain.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
@@ -267,6 +268,9 @@ static	struct ip_srcrt {
 	struct	in_addr route[MAX_IPOPTLEN/sizeof(struct in_addr)];
 } ip_srcrt;
 
+static MALLOC_DEFINE(M_IPQ, "ipq", "IP Fragment Management");
+static struct malloc_pipe ipq_mpipe;
+
 static void		save_rte (u_char *, struct in_addr);
 static int		ip_dooptions (struct mbuf *m, int,
 					struct sockaddr_in *next_hop);
@@ -290,6 +294,12 @@ ip_init(void)
 	int cpu;
 #endif
 
+	/*
+	 * Make sure we can handle a reasonable number of fragments but
+	 * cap it at 4000 (XXX).
+	 */
+	mpipe_init(&ipq_mpipe, M_IPQ, sizeof(struct ipq),
+		    IFQ_MAXLEN, 4000, 0, NULL);
 	TAILQ_INIT(&in_ifaddrhead);
 	in_ifaddrhashtbl = hashinit(INADDR_NHASH, M_IFADDR, &in_ifaddrhmask);
 	pr = (struct ipprotosw *)pffindproto(PF_INET, IPPROTO_RAW, SOCK_RAW);
@@ -1087,7 +1097,7 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mbuf *p = NULL, *q, *nq;
-	struct mbuf *t;
+	struct mbuf *n;
 	int hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	int i, next;
 
@@ -1102,9 +1112,8 @@ ip_reass(struct mbuf *m, struct ipq *fp, struct ipq *where,
 	 * If first fragment to arrive, create a reassembly queue.
 	 */
 	if (fp == NULL) {
-		if ((t = m_get(MB_DONTWAIT, MT_FTABLE)) == NULL)
+		if ((fp = mpipe_alloc_nowait(&ipq_mpipe)) == NULL)
 			goto dropfrag;
-		fp = mtod(t, struct ipq *);
 		insque(fp, where);
 		nipq++;
 		fp->ipq_nfrags = 1;
@@ -1241,9 +1250,9 @@ inserted:
 	 * Concatenate fragments.
 	 */
 	m = q;
-	t = m->m_next;
+	n = m->m_next;
 	m->m_next = NULL;
-	m_cat(m, t);
+	m_cat(m, n);
 	nq = q->m_nextpkt;
 	q->m_nextpkt = NULL;
 	for (q = nq; q != NULL; q = nq) {
@@ -1273,15 +1282,15 @@ inserted:
 	ip->ip_dst = fp->ipq_dst;
 	remque(fp);
 	nipq--;
-	(void) m_free(dtom(fp));
+	mpipe_free(&ipq_mpipe, fp);
 	m->m_len += (IP_VHL_HL(ip->ip_vhl) << 2);
 	m->m_data -= (IP_VHL_HL(ip->ip_vhl) << 2);
 	/* some debugging cruft by sklower, below, will go away soon */
 	if (m->m_flags & M_PKTHDR) { /* XXX this should be done elsewhere */
 		int plen = 0;
 
-		for (t = m; t; t = t->m_next)
-			plen += t->m_len;
+		for (n = m; n; n = n->m_next)
+			plen += n->m_len;
 		m->m_pkthdr.len = plen;
 	}
 	return (m);
@@ -1315,7 +1324,7 @@ ip_freef(struct ipq *fp)
 		m_freem(q);
 	}
 	remque(fp);
-	(void) m_free(dtom(fp));
+	mpipe_free(&ipq_mpipe, fp);
 	nipq--;
 }
 
