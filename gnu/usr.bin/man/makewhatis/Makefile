@@ -1,6 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/man/makewhatis/Makefile,v 1.16.2.2 2001/04/25 14:04:13 ru Exp $
-# $DragonFly: src/gnu/usr.bin/man/makewhatis/Attic/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
-MAINTAINER= wosch
+# $DragonFly: src/gnu/usr.bin/man/makewhatis/Attic/Makefile,v 1.3 2004/01/31 06:56:38 dillon Exp $
 
 SCRIPTS=makewhatis.perl makewhatis.local.sh
 MAN=	makewhatis.1 makewhatis.local.8

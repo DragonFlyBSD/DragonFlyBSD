@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipsend/Makefile,v 1.8.2.3 2001/11/14 14:15:05 guido Exp $
-# $DragonFly: src/usr.sbin/ipsend/Makefile,v 1.3 2003/08/08 04:18:46 dillon Exp $
+# $DragonFly: src/usr.sbin/ipsend/Makefile,v 1.4 2004/01/31 06:56:45 dillon Exp $
 
 .PATH:	${.CURDIR}/../../contrib/ipfilter/ipsend \
 	${.CURDIR}/../../contrib/ipfilter/iplang \
@@ -18,7 +18,5 @@ CFLAGS+=-DDOSOCKET -DIPL_NAME=\"/dev/ipl\" -DUSE_INET6 \
 
 DPADD=	${LIBL}
 LDADD=	-ll
-
-MAINTAINER=	guido@freebsd.org
 
 .include <bsd.prog.mk>

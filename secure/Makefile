@@ -1,11 +1,9 @@
 # $FreeBSD: src/secure/Makefile,v 1.16.2.1 2002/07/25 09:33:13 ru Exp $
-# $DragonFly: src/secure/Makefile,v 1.2 2003/06/17 04:27:42 dillon Exp $
+# $DragonFly: src/secure/Makefile,v 1.3 2004/01/31 06:56:41 dillon Exp $
 
 # lib must be first, or it will not work.  This is because we reference
 # the lib's in the directory where they are built from the binaries we
 # want to build.
-
-MAINTAINER=	markm
 
 SUBDIR= lib libexec usr.bin usr.sbin
 

@@ -1,7 +1,5 @@
 # $FreeBSD: src/usr.sbin/ntp/Makefile.inc,v 1.1.2.1 2001/12/21 17:42:30 roberto Exp $
-# $DragonFly: src/usr.sbin/ntp/Attic/Makefile.inc,v 1.2 2003/06/17 04:29:57 dillon Exp $
-
-MAINTAINER=	roberto
+# $DragonFly: src/usr.sbin/ntp/Attic/Makefile.inc,v 1.3 2004/01/31 06:56:46 dillon Exp $
 
 DEFS_LOCAL= -DPARSE -DHAVE_CONFIG_H
 NTPDEFS=   -DSYS_FREEBSD

@@ -1,8 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/4/94
 # $FreeBSD: src/libexec/lukemftpd/Makefile,v 1.5.2.2 2002/08/30 06:50:58 obrien Exp $
-# $DragonFly: src/libexec/lukemftpd/Attic/Makefile,v 1.2 2003/06/17 04:27:07 dillon Exp $
-
-MAINTAINER=	obrien
+# $DragonFly: src/libexec/lukemftpd/Attic/Makefile,v 1.3 2004/01/31 06:56:40 dillon Exp $
 
 LUKEMFTPD=	${.CURDIR}/../../contrib/lukemftpd
 .PATH: ${LUKEMFTPD}/src

@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/pppd/Makefile,v 1.19.2.2 2001/08/19 03:32:43 kris Exp $
-# $DragonFly: src/usr.sbin/pppd/Makefile,v 1.4 2003/08/05 17:11:04 rob Exp $
+# $DragonFly: src/usr.sbin/pppd/Makefile,v 1.5 2004/01/31 06:56:46 dillon Exp $
 
 CFLAGS+= -DHAVE_PATHS_H
 
@@ -10,9 +10,6 @@ MAN=	pppd.8
 BINMODE=4550
 BINOWN=	root
 BINGRP=	dialer
-
-# as per handbook policies section
-MAINTAINER=	peter@freebsd.org
 
 LDADD=	-lcrypt -lutil -lmd
 DPADD=	${LIBCRYPT} ${LIBUTIL} ${LIBMD}

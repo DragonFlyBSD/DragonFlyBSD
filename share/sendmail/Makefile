@@ -1,9 +1,7 @@
 # $FreeBSD: src/share/sendmail/Makefile,v 1.1.2.7 2003/05/10 17:24:25 gshapiro Exp $
-# $DragonFly: src/share/sendmail/Makefile,v 1.2 2003/06/17 04:37:02 dillon Exp $
+# $DragonFly: src/share/sendmail/Makefile,v 1.3 2004/01/31 06:56:41 dillon Exp $
 #
 # Doing a make install builds /usr/share/sendmail/
-
-MAINTAINER=	gshapiro@FreeBSD.org
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 CFDIR=	cf

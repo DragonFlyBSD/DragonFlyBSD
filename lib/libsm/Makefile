@@ -1,7 +1,5 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
-
-MAINTAINER=	gshapiro@FreeBSD.org
+# $DragonFly: src/lib/libsm/Makefile,v 1.3 2004/01/31 06:56:39 dillon Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/libsm

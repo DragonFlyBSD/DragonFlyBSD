@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/modules/vinum/Makefile,v 1.17 2000/01/04 23:46:41 grog Exp $ 
-# $DragonFly: src/sys/dev/raid/vinum/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $ 
-
-MAINTAINER=  grog@FreeBSD.org
+# $DragonFly: src/sys/dev/raid/vinum/Makefile,v 1.3 2004/01/31 06:56:42 dillon Exp $ 
 
 .PATH: ${.CURDIR}/../../dev/vinum
 KMOD= vinum

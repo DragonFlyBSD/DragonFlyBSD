@@ -1,9 +1,7 @@
 #
 # $FreeBSD: src/lib/libz/Makefile,v 1.11.2.4 2003/02/01 13:33:12 sobomax Exp $
-# $DragonFly: src/lib/libz/Makefile,v 1.2 2003/06/17 04:26:52 dillon Exp $
+# $DragonFly: src/lib/libz/Makefile,v 1.3 2004/01/31 06:56:39 dillon Exp $
 #
-
-MAINTAINER=peter@FreeBSD.org
 
 LIB=		z
 MAN=		zlib.3

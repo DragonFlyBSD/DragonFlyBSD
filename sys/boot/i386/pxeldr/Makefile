@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/pxeldr/Makefile,v 1.9 2003/09/03 08:12:20 phk Exp $
-# $DragonFly: src/sys/boot/i386/pxeldr/Attic/Makefile,v 1.3 2003/11/10 06:08:37 dillon Exp $
-
-MAINTAINER=jhb@FreeBSD.org
+# $DragonFly: src/sys/boot/i386/pxeldr/Attic/Makefile,v 1.4 2004/01/31 06:56:42 dillon Exp $
 
 ORG=		0x7c00
 

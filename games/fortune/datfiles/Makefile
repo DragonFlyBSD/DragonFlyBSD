@@ -1,15 +1,10 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/19/94
 # $FreeBSD: src/games/fortune/datfiles/Makefile,v 1.24.2.3 2002/02/18 15:03:32 ru Exp $
-# $DragonFly: src/games/fortune/datfiles/Makefile,v 1.2 2003/06/17 04:25:23 dillon Exp $
+# $DragonFly: src/games/fortune/datfiles/Makefile,v 1.3 2004/01/31 06:56:36 dillon Exp $
 
 FILES=	fortunes fortunes2 freebsd-tips murphy startrek zippy
 BLDS=	fortunes.dat fortunes2.dat murphy.dat startrek.dat zippy.dat \
 	fortunes-o fortunes-o.dat freebsd-tips.dat
-
-# Pass all new entries by ${MAINTAINER} to preserve some semblance of
-# humor in the fortune files.  What's funny to you on 6 beers may not
-# be funny to anyone else.
-MAINTAINER=	jkh
 
 # TO AVOID INSTALLING THE POTENTIALLY OFFENSIVE FORTUNES, COMMENT OUT THE
 # THREE LINES AND UNCOMMENT THE FOURTH LINE.

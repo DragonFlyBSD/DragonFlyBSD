@@ -1,7 +1,5 @@
 # $FreeBSD: src/lib/libbz2/Makefile,v 1.2.2.2 2002/07/22 14:21:49 ru Exp $
-# $DragonFly: src/lib/libbz2/Makefile,v 1.2 2003/06/17 04:26:41 dillon Exp $
-
-MAINTAINER=	obrien@FreeBSD.org
+# $DragonFly: src/lib/libbz2/Makefile,v 1.3 2004/01/31 06:56:38 dillon Exp $
 
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2
 .PATH: ${BZ2DIR}

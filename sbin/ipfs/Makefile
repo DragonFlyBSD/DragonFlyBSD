@@ -1,5 +1,5 @@
 # $FreeBSD: src/sbin/ipfs/Makefile,v 1.1.2.1 2001/11/14 14:21:03 guido Exp $
-# $DragonFly: src/sbin/ipfs/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
+# $DragonFly: src/sbin/ipfs/Makefile,v 1.3 2004/01/31 06:56:40 dillon Exp $
 
 .PATH:  ${.CURDIR}/../../contrib/ipfilter ${.CURDIR}/../../contrib/ipfilter/man
 
@@ -9,7 +9,5 @@ SRCS=   ipfs.c
 CFLAGS+=-DUSE_INET6 -DIPL_NAME=\"/dev/ipl\"
 CFLAGS+=-I${.CURDIR}/../../sys/contrib/ipfilter/netinet
 CFLAGS+=-I${.CURDIR}/../../contrib/ipfilter
-
-MAINTAINER=     darrenr@freebsd.org
 
 .include <bsd.prog.mk>

@@ -2,10 +2,8 @@
 #
 # $TSHeader: src/sbin/ffsinfo/Makefile,v 1.3 2000/12/05 19:45:10 tomsoft Exp $
 # $FreeBSD: src/sbin/ffsinfo/Makefile,v 1.3.2.1 2001/07/16 15:01:56 tomsoft Exp $
-# $DragonFly: src/sbin/ffsinfo/Makefile,v 1.2 2003/06/17 04:27:32 dillon Exp $
+# $DragonFly: src/sbin/ffsinfo/Makefile,v 1.3 2004/01/31 06:56:40 dillon Exp $
 #
-
-MAINTAINER=	tomsoft@FreeBSD.ORG, chm@FreeBSD.ORG
 
 #CFLAGS+=${BDECFLAGS}
  

@@ -1,7 +1,5 @@
 # $FreeBSD: src/sys/modules/linux/Makefile,v 1.34.2.12 2003/01/02 20:41:34 kan Exp $
-# $DragonFly: src/sys/emulation/linux/Makefile,v 1.3 2003/08/15 06:32:51 dillon Exp $
-
-MAINTAINER=	marcel@FreeBSD.org
+# $DragonFly: src/sys/emulation/linux/Makefile,v 1.4 2004/01/31 06:56:43 dillon Exp $
 
 .PATH: ${.CURDIR}/../../emulation/linux ${.CURDIR}/../../emulation/linux/${MACHINE_ARCH}
 

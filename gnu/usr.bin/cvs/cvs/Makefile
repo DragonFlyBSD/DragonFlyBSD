@@ -1,7 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.4 2004/01/20 05:58:30 asmodai Exp $
-
-MAINTAINER=	peter@FreeBSD.org
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.5 2004/01/31 06:56:37 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 

@@ -1,9 +1,7 @@
 #
 # $FreeBSD: src/usr.sbin/tcpdchk/Makefile,v 1.3.2.2 2001/04/25 12:11:00 ru Exp $
-# $DragonFly: src/usr.sbin/tcpdchk/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
+# $DragonFly: src/usr.sbin/tcpdchk/Makefile,v 1.3 2004/01/31 06:56:46 dillon Exp $
 #
-
-MAINTAINER=markm@FreeBSD.org
 
 PROG=	tcpdchk
 MAN=	tcpdchk.8

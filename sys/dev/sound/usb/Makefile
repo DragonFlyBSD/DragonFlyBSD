@@ -1,7 +1,6 @@
 #       $FreeBSD: src/sys/modules/usb/Makefile,v 1.7 2000/01/28 11:26:40 bde Exp $ 
-#       $DragonFly: src/sys/dev/sound/usb/Attic/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $ 
+#       $DragonFly: src/sys/dev/sound/usb/Attic/Makefile,v 1.3 2004/01/31 06:56:42 dillon Exp $ 
 
-MAINTAINER	 = n_hibma@freebsd.org
 S		 = ${.CURDIR}/../..
 
 .PATH:		 $S/dev/usb $S/pci

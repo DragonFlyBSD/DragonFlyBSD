@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipftest/Makefile,v 1.4.2.5 2002/04/27 18:19:04 darrenr Exp $
-# $DragonFly: src/usr.sbin/ipftest/Makefile,v 1.3 2003/08/08 04:18:45 dillon Exp $
+# $DragonFly: src/usr.sbin/ipftest/Makefile,v 1.4 2004/01/31 06:56:45 dillon Exp $
 
 .PATH:	${.CURDIR}/../../sys/netinet \
 	${.CURDIR}/../../contrib/ipfilter ${.CURDIR}/../../contrib/ipfilter/man
@@ -21,7 +21,5 @@ CLEANFILES+=	opt_ipfilter.h
 
 opt_ipfilter.h:	Makefile
 	echo "#define IPFILTER 1" > opt_ipfilter.h
-
-MAINTAINER=	guido@freebsd.org
 
 .include <bsd.prog.mk>

@@ -1,6 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/man/apropos/Makefile,v 1.15.2.1 2001/04/25 14:04:13 ru Exp $
-# $DragonFly: src/gnu/usr.bin/man/apropos/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
-MAINTAINER= wosch
+# $DragonFly: src/gnu/usr.bin/man/apropos/Makefile,v 1.3 2004/01/31 06:56:37 dillon Exp $
 
 SCRIPTS=apropos
 MAN=	apropos.1

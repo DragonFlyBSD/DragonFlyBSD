@@ -1,7 +1,5 @@
 # $FreeBSD: src/usr.bin/bzip2/Makefile,v 1.5.2.2 2001/08/02 01:09:06 obrien Exp $
-# $DragonFly: src/usr.bin/bzip2/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
-
-MAINTAINER=	obrien@FreeBSD.org
+# $DragonFly: src/usr.bin/bzip2/Makefile,v 1.3 2004/01/31 06:56:43 dillon Exp $
 
 BZ2DIR=	${.CURDIR}/../../contrib/bzip2
 .PATH: ${BZ2DIR}

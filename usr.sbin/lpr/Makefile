@@ -1,8 +1,5 @@
 # $FreeBSD: src/usr.sbin/lpr/Makefile,v 1.5.2.3 2002/02/01 01:03:39 gad Exp $
-# $DragonFly: src/usr.sbin/lpr/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
-
-MAINTAINER=	wollman@FreeBSD.org
-MAINTAINER+=	gad@FreeBSD.org
+# $DragonFly: src/usr.sbin/lpr/Makefile,v 1.3 2004/01/31 06:56:45 dillon Exp $
 
 SUBDIR=	common_source chkprintcap lp lpc lpd lpq lpr lprm lptest pac \
 	filters filters.ru SMM.doc

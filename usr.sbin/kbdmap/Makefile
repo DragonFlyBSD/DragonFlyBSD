@@ -1,7 +1,5 @@
 # $FreeBSD: src/usr.sbin/kbdmap/Makefile,v 1.9.2.2 2001/04/25 14:04:50 ru Exp $
-# $DragonFly: src/usr.sbin/kbdmap/Makefile,v 1.2 2003/06/17 04:29:55 dillon Exp $
-
-MAINTAINER= wosch
+# $DragonFly: src/usr.sbin/kbdmap/Makefile,v 1.3 2004/01/31 06:56:45 dillon Exp $
 
 SCRIPTS=${.CURDIR}/kbdmap.pl
 MAN=	kbdmap.1

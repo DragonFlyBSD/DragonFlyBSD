@@ -1,8 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/whois/Makefile,v 1.3.2.2 2001/08/23 07:20:13 mike Exp $
-# $DragonFly: src/usr.bin/whois/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
-
-MAINTAINER=	mike@FreeBSD.org
+# $DragonFly: src/usr.bin/whois/Makefile,v 1.3 2004/01/31 06:56:44 dillon Exp $
 
 PROG=	whois
 WARNS?=	2

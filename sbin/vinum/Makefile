@@ -1,7 +1,6 @@
 # $FreeBSD: src/sbin/vinum/Makefile,v 1.12.2.2 2001/08/01 09:13:24 obrien Exp $
-# $DragonFly: src/sbin/vinum/Makefile,v 1.3 2003/08/08 04:18:41 dillon Exp $
+# $DragonFly: src/sbin/vinum/Makefile,v 1.4 2004/01/31 06:56:41 dillon Exp $
 
-MAINTAINER  =  grog@FreeBSD.org
 PROG=	vinum
 SRCS=	v.c list.c vinumparser.c vinumutil.c vext.h commands.c
 MAN=	vinum.8
