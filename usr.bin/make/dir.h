@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.5 2004/11/12 22:02:51 dillon Exp $
  */
 
 /* dir.h --

@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
  */
 
 #include "make.h"
@@ -86,11 +86,11 @@ str_end()
  */
 char *
 str_concat(s1, s2, flags)
-	char *s1, *s2;
+	const char *s1, *s2;
 	int flags;
 {
-	register int len1, len2;
-	register char *result;
+	int len1, len2;
+	char *result;
 
 	/* get the length of both strings */
 	len1 = strlen(s1);
@@ -116,8 +116,8 @@ str_concat(s1, s2, flags)
 
 	/* free original strings */
 	if (flags & STR_DOFREE) {
-		(void)free(s1);
-		(void)free(s2);
+		free(__DECONST(void *, s1));
+		free(__DECONST(void *, s2));
 	}
 	return(result);
 }
@@ -134,12 +134,12 @@ str_concat(s1, s2, flags)
  */
 char **
 brk_string(str, store_argc, expand)
-	register char *str;
+	char *str;
 	int *store_argc;
 	Boolean expand;
 {
-	register int argc, ch;
-	register char inquote, *p, *start, *t;
+	int argc, ch;
+	char inquote, *p, *start, *t;
 	int len;
 
 	/* skip leading space chars. */
@@ -257,10 +257,10 @@ done:	argv[argc] = (char *)NULL;
  */
 char *
 Str_FindSubstring(string, substring)
-	register char *string;		/* String to search. */
+	char *string;			/* String to search. */
 	char *substring;		/* Substring to find in string */
 {
-	register char *a, *b;
+	char *a, *b;
 
 	/*
 	 * First scan quickly through the two strings looking for a single-
@@ -296,8 +296,8 @@ Str_FindSubstring(string, substring)
  */
 int
 Str_Match(string, pattern)
-	register char *string;		/* String */
-	register char *pattern;		/* Pattern */
+	char *string;		/* String */
+	char *pattern;		/* Pattern */
 {
 	char c2;
 

@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.6 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -357,7 +357,7 @@ VarAdd (name, val, ctxt)
     char           *val;	/* value to set it to */
     GNode          *ctxt;	/* context in which to set it */
 {
-    register Var   *v;
+    Var		  *v;
     int	    	  len;
 
     v = (Var *) emalloc (sizeof (Var));
@@ -427,7 +427,7 @@ Var_Delete(name, ctxt)
     }
     ln = Lst_Find(ctxt->context, (void *)name, VarCmp);
     if (ln != NULL) {
-	register Var 	  *v;
+	Var 	  *v;
 
 	v = (Var *)Lst_Datum(ln);
 	Lst_Remove(ctxt->context, ln);
@@ -464,7 +464,7 @@ Var_Set (name, val, ctxt)
     char           *val;	/* value to give to the variable */
     GNode          *ctxt;	/* context in which to set it */
 {
-    register Var   *v;
+    Var		   *v;
 
     /*
      * We only look for a variable in the given context since anything set
@@ -539,7 +539,7 @@ Var_Append (name, val, ctxt)
     char           *val;	/* String to append to it */
     GNode          *ctxt;	/* Context in which this should occur */
 {
-    register Var   *v;
+    Var		   *v;
 
     v = VarFind (name, ctxt, (ctxt == VAR_GLOBAL) ? FIND_ENV : 0);
 
@@ -657,7 +657,7 @@ VarHead (word, addSpace, buf, dummy)
     Buffer  	  buf;	    	/* Buffer in which to store it */
     void *	  dummy;
 {
-    register char *slash;
+    char *slash;
 
     slash = strrchr (word, '/');
     if (slash != (char *)NULL) {
@@ -704,7 +704,7 @@ VarTail (word, addSpace, buf, dummy)
     Buffer  	  buf;	    	/* Buffer in which to store it */
     void *	  dummy;
 {
-    register char *slash;
+    char *slash;
 
     if (addSpace) {
 	Buf_AddByte (buf, (Byte)' ');
@@ -743,7 +743,7 @@ VarSuffix (word, addSpace, buf, dummy)
     Buffer  	  buf;	    	/* Buffer in which to store it */
     void *	  dummy;
 {
-    register char *dot;
+    char *dot;
 
     dot = strrchr (word, '.');
     if (dot != (char *)NULL) {
@@ -781,7 +781,7 @@ VarRoot (word, addSpace, buf, dummy)
     Buffer  	  buf;	    	/* Buffer in which to store it */
     void *	  dummy;
 {
-    register char *dot;
+    char *dot;
 
     if (addSpace) {
 	Buf_AddByte (buf, (Byte)' ');
@@ -934,8 +934,8 @@ VarSubstitute (word, addSpace, buf, patternp)
     Buffer  	  	buf;	    /* Buffer for result */
     void *	        patternp;   /* Pattern for substitution */
 {
-    register int  	wordLen;    /* Length of word */
-    register char 	*cp;	    /* General pointer */
+    int		  	wordLen;    /* Length of word */
+    char	 	*cp;	    /* General pointer */
     VarPattern	*pattern = (VarPattern *) patternp;
 
     wordLen = strlen(word);
@@ -1030,7 +1030,7 @@ VarSubstitute (word, addSpace, buf, patternp)
 	     * addSpace is set FALSE as soon as a space is added to the
 	     * buffer.
 	     */
-	    register Boolean done;
+	    Boolean done;
 	    int origSize;
 
 	    done = FALSE;
@@ -1475,14 +1475,14 @@ Var_Parse (str, ctxt, err, lengthPtr, freePtr)
     int	    	    *lengthPtr;	/* OUT: The length of the specification */
     Boolean 	    *freePtr; 	/* OUT: TRUE if caller should free result */
 {
-    register char   *tstr;    	/* Pointer into str */
+    char	    *tstr;    	/* Pointer into str */
     Var	    	    *v;	    	/* Variable in invocation */
     char	    *cp;    	/* Secondary pointer into str (place marker
 				 * for tstr) */
     Boolean 	    haveModifier;/* TRUE if have modifiers for the variable */
-    register char   endc;    	/* Ending character when variable in parens
+    char	    endc;    	/* Ending character when variable in parens
 				 * or braces */
-    register char   startc=0;	/* Starting character when variable in parens
+    char	    startc=0;	/* Starting character when variable in parens
 				 * or braces */
     int             cnt;	/* Used to count brace pairs when variable in
 				 * in parens or braces */
@@ -1860,7 +1860,7 @@ Var_Parse (str, ctxt, err, lengthPtr, freePtr)
 		case 'S':
 		{
 		    VarPattern 	    pattern;
-		    register char   delim;
+		    char	    delim;
 		    Buffer  	    buf;    	/* Buffer for patterns */
 
 		    pattern.flags = 0;

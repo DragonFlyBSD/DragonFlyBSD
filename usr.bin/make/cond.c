@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.6 2004/11/12 21:52:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -178,9 +179,9 @@ CondGetArg (linePtr, argPtr, func, parens)
     char    	  *func;
     Boolean 	  parens;   	/* TRUE if arg should be bounded by parens */
 {
-    register char *cp;
+    char	  *cp;
     int	    	  argLen;
-    register Buffer buf;
+    Buffer	  buf;
 
     cp = *linePtr;
     if (parens) {
@@ -435,11 +436,11 @@ CondDoTarget (argLen, arg)
  */
 static char *
 CondCvtArg(str, value)
-    register char    	*str;
+    char		*str;
     double		*value;
 {
     if ((*str == '0') && (str[1] == 'x')) {
-	register long i;
+	long i;
 
 	for (str += 2, i = 0; ; str++) {
 	    int x;

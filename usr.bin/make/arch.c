@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.6 2004/11/12 21:52:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -178,7 +178,7 @@ Arch_ParseArchive (linePtr, nodeLst, ctxt)
     Lst	    	    nodeLst;   	    /* Lst on which to place the nodes */
     GNode   	    *ctxt;  	    /* Context in which to expand variables */
 {
-    register char   *cp;	    /* Pointer into line */
+    char            *cp;	    /* Pointer into line */
     GNode	    *gn;     	    /* New node */
     char	    *libName;  	    /* Library-part of specification */
     char	    *memName;  	    /* Member-part of specification */

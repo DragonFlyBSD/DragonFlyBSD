@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.3 2004/11/12 22:02:51 dillon Exp $
  */
 
 #define	DEFSHELL	1			/* Bourne shell */

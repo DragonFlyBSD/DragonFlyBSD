@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.5 2004/11/12 21:52:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.6 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -178,7 +179,7 @@ CompatRunCommand (cmdp, gnp)
     void *    gnp;    	/* Node from which the command came */
 {
     char    	  *cmdStart;	/* Start of expanded command */
-    register char *cp;
+    char	  *cp;
     Boolean 	  silent,   	/* Don't print command */
 		  errCheck; 	/* Check errors */
     int 	  reason;   	/* Reason for child's death */

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.3 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -91,7 +92,7 @@
  */
 void
 Buf_OvAddByte (bp, byte)
-    register Buffer bp;
+    Buffer bp;
     int    byte;
 {
     int nbytes = 1;
@@ -122,8 +123,8 @@ Buf_OvAddByte (bp, byte)
  */
 void
 Buf_AddBytes (bp, numBytes, bytesPtr)
-    register Buffer bp;
-    int	    numBytes;
+    Buffer bp;
+    int	     numBytes;
     const Byte *bytesPtr;
 {
 
@@ -154,7 +155,7 @@ Buf_AddBytes (bp, numBytes, bytesPtr)
  */
 void
 Buf_UngetByte (bp, byte)
-    register Buffer bp;
+    Buffer bp;
     int    byte;
 {
 
@@ -204,7 +205,7 @@ Buf_UngetByte (bp, byte)
  */
 void
 Buf_UngetBytes (bp, numBytes, bytesPtr)
-    register Buffer bp;
+    Buffer  bp;
     int	    numBytes;
     Byte    *bytesPtr;
 {
@@ -249,7 +250,7 @@ Buf_UngetBytes (bp, numBytes, bytesPtr)
  */
 int
 Buf_GetByte (bp)
-    register Buffer bp;
+    Buffer bp;
 {
     int	    res;
 
@@ -282,7 +283,7 @@ Buf_GetByte (bp)
  */
 int
 Buf_GetBytes (bp, numBytes, bytesPtr)
-    register Buffer bp;
+    Buffer  bp;
     int	    numBytes;
     Byte    *bytesPtr;
 {
@@ -316,7 +317,7 @@ Buf_GetBytes (bp, numBytes, bytesPtr)
  */
 Byte *
 Buf_GetAll (bp, numBytesPtr)
-    register Buffer bp;
+    Buffer  bp;
     int	    *numBytesPtr;
 {
 
@@ -342,7 +343,7 @@ Buf_GetAll (bp, numBytesPtr)
  */
 void
 Buf_Discard (bp, numBytes)
-    register Buffer bp;
+    Buffer  bp;
     int	    numBytes;
 {
 

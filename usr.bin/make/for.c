@@ -1,6 +1,9 @@
 /*
- * Copyright (c) 1992, The Regents of the University of California.
- * All rights reserved.
+ * Copyright (c) 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * This code is derived from software contributed to Berkeley by
+ * Christos Zoulas.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-

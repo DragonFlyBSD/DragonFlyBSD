@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.4 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-

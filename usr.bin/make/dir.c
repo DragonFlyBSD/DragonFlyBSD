@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.6 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -292,7 +293,7 @@ Boolean
 Dir_HasWildcards (name)
     char          *name;	/* name to check */
 {
-    register char *cp;
+    char *cp;
 
     for (cp = name; *cp; cp++) {
 	switch(*cp) {
@@ -663,12 +664,12 @@ Dir_FindFile (name, path)
     char    	  *name;    /* the file to find */
     Lst           path;	    /* the Lst of directories to search */
 {
-    register char *p1;	    /* pointer into p->name */
-    register char *p2;	    /* pointer into name */
+    char          *p1;	    /* pointer into p->name */
+    char          *p2;	    /* pointer into name */
     LstNode       ln;	    /* a list element */
-    register char *file;    /* the current filename to check */
-    register Path *p;	    /* current path member */
-    register char *cp;	    /* index of first slash, if any */
+    char          *file;    /* the current filename to check */
+    Path          *p;	    /* current path member */
+    char          *cp;	    /* index of first slash, if any */
     Boolean	  hasSlash; /* true if 'name' contains a / */
     struct stat	  stb;	    /* Buffer for stat, if necessary */
     Hash_Entry	  *entry;   /* Entry for mtimes table */
@@ -1030,9 +1031,9 @@ Dir_AddDir (path, name)
     char          *name;      /* the name of the directory to add */
 {
     LstNode       ln;	      /* node in case Path structure is found */
-    register Path *p;	      /* pointer to new Path structure */
+    Path          *p;	      /* pointer to new Path structure */
     DIR     	  *d;	      /* for reading directory */
-    register struct dirent *dp; /* entry in directory */
+    struct dirent *dp;	      /* entry in directory */
 
     ln = Lst_Find (openDirectories, (void *)name, DirFindName);
     if (ln != NULL) {

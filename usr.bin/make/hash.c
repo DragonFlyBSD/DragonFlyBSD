@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 1988, 1989, 1990 The Regents of the University of California.
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
  * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
@@ -37,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.4 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
  */
 
 /* hash.c --
@@ -83,15 +84,15 @@ static void RebuildTable(Hash_Table *);
 
 void
 Hash_InitTable(t, numBuckets)
-	register Hash_Table *t;	/* Structure to use to hold table. */
+	Hash_Table *t;		/* Structure to use to hold table. */
 	int numBuckets;		/* How many buckets to create for starters.
 				 * This number is rounded up to a power of
 				 * two.   If <= 0, a reasonable default is
 				 * chosen. The table will grow in size later
 				 * as needed. */
 {
-	register int i;
-	register struct Hash_Entry **hp;
+	int i;
+	struct Hash_Entry **hp;
 
 	/*
 	 * Round up the size to a power of two.
@@ -132,8 +133,8 @@ void
 Hash_DeleteTable(t)
 	Hash_Table *t;
 {
-	register struct Hash_Entry **hp, *h, *nexth = NULL;
-	register int i;
+	struct Hash_Entry **hp, *h, *nexth = NULL;
+	int i;
 
 	for (hp = t->bucketPtr, i = t->size; --i >= 0;) {
 		for (h = *hp++; h != NULL; h = nexth) {
@@ -173,9 +174,9 @@ Hash_FindEntry(t, key)
 	Hash_Table *t;		/* Hash table to search. */
 	char *key;		/* A hash key. */
 {
-	register Hash_Entry *e;
-	register unsigned h;
-	register char *p;
+	Hash_Entry *e;
+	unsigned h;
+	char *p;
 
 	for (h = 0, p = key; *p;)
 		h = (h << 5) - h + *p++;
@@ -207,14 +208,14 @@ Hash_FindEntry(t, key)
 
 Hash_Entry *
 Hash_CreateEntry(t, key, newPtr)
-	register Hash_Table *t;	/* Hash table to search. */
+	Hash_Table *t;		/* Hash table to search. */
 	char *key;		/* A hash key. */
 	Boolean *newPtr;	/* Filled in with TRUE if new entry created,
 				 * FALSE otherwise. */
 {
-	register Hash_Entry *e;
-	register unsigned h;
-	register char *p;
+	Hash_Entry *e;
+	unsigned h;
+	char *p;
 	int keylen;
 	struct Hash_Entry **hp;
 
@@ -277,7 +278,7 @@ Hash_DeleteEntry(t, e)
 	Hash_Table *t;
 	Hash_Entry *e;
 {
-	register Hash_Entry **hp, *p;
+	Hash_Entry **hp, *p;
 
 	if (e == NULL)
 		return;
@@ -316,7 +317,7 @@ Hash_DeleteEntry(t, e)
 Hash_Entry *
 Hash_EnumFirst(t, searchPtr)
 	Hash_Table *t;			/* Table to be searched. */
-	register Hash_Search *searchPtr;/* Area in which to keep state
+	Hash_Search *searchPtr;		/* Area in which to keep state
 					 * about search.*/
 {
 	searchPtr->tablePtr = t;
@@ -345,10 +346,9 @@ Hash_EnumFirst(t, searchPtr)
 
 Hash_Entry *
 Hash_EnumNext(searchPtr)
-	register Hash_Search *searchPtr; /* Area used to keep state about
-					    search. */
+	Hash_Search *searchPtr;	    /* Area used to keep state about search. */
 {
-	register Hash_Entry *e;
+	Hash_Entry *e;
 	Hash_Table *t = searchPtr->tablePtr;
 
 	/*
@@ -391,11 +391,11 @@ Hash_EnumNext(searchPtr)
 
 static void
 RebuildTable(t)
-	register Hash_Table *t;
+	Hash_Table *t;
 {
-	register Hash_Entry *e, *next = NULL, **hp, **xp;
-	register int i, mask;
-        register Hash_Entry **oldhp;
+	Hash_Entry *e, *next = NULL, **hp, **xp;
+	int i, mask;
+        Hash_Entry **oldhp;
 	int oldsize;
 
 	oldhp = t->bucketPtr;

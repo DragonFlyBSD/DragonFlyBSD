@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.5 2004/11/12 21:52:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.6 2004/11/12 22:02:51 dillon Exp $
  */
 
 /*-
@@ -155,7 +155,7 @@ GNode *
 Targ_NewGN (name)
     char           *name;	/* the name to stick in the new node */
 {
-    register GNode *gn;
+    GNode *gn;
 
     gn = (GNode *) emalloc (sizeof (GNode));
     gn->name = estrdup (name);
@@ -288,9 +288,9 @@ Targ_FindList (names, flags)
 				 * name */
 {
     Lst            nodes;	/* result list */
-    register LstNode  ln;		/* name list element */
-    register GNode *gn;		/* node in tLn */
-    char    	  *name;
+    LstNode	   ln;		/* name list element */
+    GNode	   *gn;		/* node in tLn */
+    char    	   *name;
 
     nodes = Lst_Init (FALSE);
 
@@ -482,9 +482,9 @@ Targ_FmtTime (time)
  */
 void
 Targ_PrintType (type)
-    register int    type;
+    int    type;
 {
-    register int    tbit;
+    int    tbit;
 
 #ifdef __STDC__
 #define PRINTBIT(attr)	case CONCAT(OP_,attr): printf("." #attr " "); break
