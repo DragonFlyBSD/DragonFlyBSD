@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libfetch/http.c,v 1.13.2.23 2003/06/06 06:45:25 des Exp $
- * $DragonFly: src/lib/libfetch/http.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libfetch/http.c,v 1.3 2005/03/02 05:15:13 joerg Exp $
  */
 
 /*
@@ -131,13 +131,13 @@ _http_new_chunk(struct httpio *io)
 	if (_fetch_getln(io->conn) == -1)
 		return (-1);
 
-	if (io->conn->buflen < 2 || !ishexnumber(*io->conn->buf))
+	if (io->conn->buflen < 2 || !isxdigit(*io->conn->buf))
 		return (-1);
 
 	for (p = io->conn->buf; *p && !isspace(*p); ++p) {
 		if (*p == ';')
 			break;
-		if (!ishexnumber(*p))
+		if (!isxdigit(*p))
 			return (-1);
 		if (isdigit(*p)) {
 			io->chunksize = io->chunksize * 16 +
