@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.181 2005/03/23 20:58:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.182 2005/03/29 22:19:25 okumoto Exp $
  */
 
 /*-
@@ -1320,8 +1320,20 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
-		size_t  consumed = vp->ptr - vp->input + 1;
+		size_t  consumed;
+		/*
+		 * Still need to get to the end of the variable
+		 * specification, so kludge up a Var structure for the
+		 * modifications
+		 */
+		v = VarCreate(vname, NULL, VAR_JUNK);
+		value = ParseModifier(vp, startc, v, freeResult);
+		if (*freeResult) {
+			free(value);
+		}
+		VarDestroy(v, TRUE);
 
+		consumed = vp->ptr - vp->input + 1;
 		/*
 		 * If substituting a local variable in a non-local context,
 		 * assume it's for dynamic source stuff. We have to handle
@@ -1357,6 +1369,9 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 				return (value);
 			}
 		}
+
+		*freeResult = FALSE;
+		return (vp->err ? var_Error : varNoError);
 	} else {
 		/*
 		 * Check for D and F forms of local variables since we're in
@@ -1376,22 +1391,22 @@ ParseRestModifier(VarParser *vp, char startc, Buffer *buf, Boolean *freeResult)
 				return (value);
 			}
 		}
-	}
 
-	/*
-	 * Still need to get to the end of the variable
-	 * specification, so kludge up a Var structure for the
-	 * modifications
-	 */
-	v = VarCreate(vname, NULL, VAR_JUNK);
-	value = ParseModifier(vp, startc, v, freeResult);
-	if (*freeResult) {
-		free(value);
-	}
-	VarDestroy(v, TRUE);
+		/*
+		 * Still need to get to the end of the variable
+		 * specification, so kludge up a Var structure for the
+		 * modifications
+		 */
+		v = VarCreate(vname, NULL, VAR_JUNK);
+		value = ParseModifier(vp, startc, v, freeResult);
+		if (*freeResult) {
+			free(value);
+		}
+		VarDestroy(v, TRUE);
 
-	*freeResult = FALSE;
-	return (vp->err ? var_Error : varNoError);
+		*freeResult = FALSE;
+		return (vp->err ? var_Error : varNoError);
+	}
 }
 
 static char *
