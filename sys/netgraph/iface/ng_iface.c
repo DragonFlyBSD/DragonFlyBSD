@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_iface.c,v 1.7.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/iface/ng_iface.c,v 1.5 2003/09/16 06:25:35 hsu Exp $
  * $Whistle: ng_iface.c,v 1.33 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -51,6 +51,11 @@
  *
  * This node also includes Berkeley packet filter support.
  */
+
+#include "opt_atalk.h"
+#include "opt_inet.h"
+#include "opt_inet6.h"
+#include "opt_ipx.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -66,7 +71,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
-#include <net/intrq.h>
+#include <net/netisr.h>
 #include <net/bpf.h>
 
 #include <netinet/in.h>
@@ -728,6 +733,7 @@ ng_iface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	const priv_p priv = hook->node->private;
 	const iffam_p iffam = get_iffam_from_hook(priv, hook);
 	struct ifnet *const ifp = priv->ifp;
+	int isr;
 
 	/* Sanity checks */
 	KASSERT(iffam != NULL, ("%s: iffam", __FUNCTION__));
@@ -753,7 +759,33 @@ ng_iface_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 	NG_FREE_META(meta);
 
 	/* Send packet */
-	return family_enqueue(iffam->family, m);
+	switch (iffam->family) {
+#ifdef INET
+	case AF_INET:
+		isr = NETISR_IP;
+		break;
+#endif
+#ifdef INET6
+	case AF_INET6:
+		isr = NETISR_IPV6;
+		break;
+#endif
+#ifdef IPX
+	case AF_IPX:
+		isr = NETISR_IPX;
+		break;
+#endif
+#ifdef NETATALK
+	case AF_APPLETALK:
+		isr = NETISR_ATALK2;
+		break;
+#endif
+	default:
+		m_freem(m);
+		return (EAFNOSUPPORT);
+	}
+	netisr_dispatch(isr, m);
+	return (0);
 }
 
 /*

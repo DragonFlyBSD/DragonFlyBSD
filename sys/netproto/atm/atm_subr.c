@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.6 2003/09/16 05:03:13 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.7 2003/09/16 06:25:35 hsu Exp $
  */
 
 /*
@@ -36,7 +36,6 @@
  */
 
 #include "kern_include.h"
-#include <net/intrq.h>
 
 /*
  * Global variables
@@ -56,7 +55,7 @@ int			atm_dev_print = 0;
 int			atm_print_data = 0;
 int			atm_version = ATM_VERSION;
 struct timeval		atm_debugtime = {0, 0};
-const int		atmintrq_present = 1;
+struct ifqueue		atm_intrq;
 
 struct sp_info	atm_attributes_pool = {
 	"atm attributes pool",		/* si_name */
