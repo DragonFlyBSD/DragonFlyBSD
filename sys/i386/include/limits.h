@@ -32,7 +32,7 @@
  *
  *	@(#)limits.h	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/limits.h,v 1.14.2.2 2000/11/05 09:21:42 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/limits.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/limits.h,v 1.3 2004/09/10 01:45:37 joerg Exp $
  */
 
 #ifndef _MACHINE_LIMITS_H_
@@ -93,6 +93,9 @@
 
 #if !defined(_POSIX_SOURCE)
 #define	SIZE_T_MAX	UINT_MAX	/* max value for a size_t */
+
+#define	GID_MAX		UINT_MAX	/* max value for a gid_t */
+#define	UID_MAX		UINT_MAX	/* max value for a uid_t */
 
 /* Quads and long longs are the same size.  Ensure they stay in sync. */
 #define	UQUAD_MAX	ULLONG_MAX	/* max value for a uquad_t */
