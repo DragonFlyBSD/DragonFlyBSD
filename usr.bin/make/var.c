@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.75 2005/02/09 22:10:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.76 2005/02/10 07:39:38 okumoto Exp $
  */
 
 /*-
@@ -887,21 +887,16 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 {
     char	*tstr;		/* Pointer into str */
     Var		*v;		/* Variable in invocation */
-    char	 *cp;		/* Secondary pointer into str (place marker
-				 * for tstr) */
     Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
     char	endc;		/* Ending character when variable in parens
 				 * or braces */
     char	startc;		/* Starting character when variable in parens
 				 * or braces */
     char	*start;
-    char	delim;
     Boolean	dynamic;	/* TRUE if the variable is local and we're
 				 * expanding it in a non-local context. This
 				 * is done to support dynamic sources. The
 				 * result is just the invocation, unaltered */
-    int		vlen;		/* length of variable name, after embedded variable
-				 * expansion */
 
     *freePtr = FALSE;
     dynamic = FALSE;
@@ -922,6 +917,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	/*
 	 * Check if brackets contain a variable name.
 	 */
+	int	vlen;		/* length of variable name, after embedded variable
+				 * expansion */
 
 	/* build up expanded variable name in this buffer */
 	Buffer	*buf = Buf_Init(MAKE_BSIZE);
@@ -1196,6 +1193,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
      *		  :L		Converts variable to lower-case.
      */
     if ((str != NULL) && haveModifier) {
+	char	*cp;
 	/*
 	 * Skip initial colon while putting it back.
 	 */
@@ -1431,6 +1429,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 		case 'C':
 		{
+		    int		delim;
 		    VarREPattern    pattern;
 		    char	   *re;
 		    int		    error;
@@ -1636,6 +1635,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 			    cp++;
 		    }
 		    if (*cp == endc && eqFound) {
+			int delim;
 
 			/*
 			 * Now we break this sucker into the lhs and
