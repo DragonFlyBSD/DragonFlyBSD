@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/bin/varsym/varsym.c,v 1.3 2003/11/10 23:58:59 dillon Exp $
+ * $DragonFly: src/bin/varsym/varsym.c,v 1.4 2003/12/11 20:33:49 dillon Exp $
  */
 
 #include <stdio.h>
@@ -116,7 +116,7 @@ main(int ac, char **av)
 				printf("%s\n", buf);
 			}
 		}
-		if (error < 0)
+		if (error < 0 && verboseOpt)
 			fprintf(stderr, "%s: %s\n", name, strerror(errno));
 	}
 
@@ -148,7 +148,6 @@ dumpvars(char *buf, int bytes)
 static void
 usage(void)
 {
-
 	fprintf(stderr, "usage: varsym: [-aqdsup] var[=data]\n");
 }
 
