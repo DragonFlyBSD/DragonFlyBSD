@@ -2,7 +2,7 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.5 2004/01/27 00:42:45 rob Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.6 2004/02/01 03:32:08 rob Exp $
 #
 
 # PROVIDE: motd
@@ -28,16 +28,19 @@ motd_start()
 	if [ ! -f /etc/motd ]; then
 		install -c -o root -g wheel -m ${PERMS} /dev/null /etc/motd
 	fi
+	T1='mktem -t motd'
+	awk 'NR == 1{if ($1 == "DragonFly") {print} else {exit 1}}' < /etc/motd > $t1 && {	
 
-	T=`mktemp -t motd`
-	uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T}
-	awk '{if (NR == 1) {if ($1 == "DragonFly") {next} else {print "\n"$0}} else {print}}' < /etc/motd >> ${T}
-	cmp -s $T /etc/motd || {
-		cp $T /etc/motd
-		chmod ${PERMS} /etc/motd
+        T2=`mktemp -t motd`
+        uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T2}
+        cmp -s $T1 $T2 || {
+                       awk '{if (NR == 1) {next} else {print}}' < /etc/motd >> ${T2}
+                       cp $T2 /etc/motd
+                       chmod ${PERMS} /etc/motd
+                       rm -f $T2
+               }
 	}
 	rm -f $T
 }
-
 load_rc_config $name
 run_rc_command "$1"
