@@ -32,11 +32,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcireg.h,v 1.15 2004/01/06 14:24:01 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.9 2004/07/16 12:15:51 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.10 2004/07/16 12:22:21 asmodai Exp $
  *
  */
 #define		PCI_CBMEM		0x10
 
+#define		FW_VENDORID_NATSEMI	0x1000
 #define		FW_VENDORID_NEC		0x1033
 #define		FW_VENDORID_TI		0x104c
 #define		FW_VENDORID_SONY	0x104d
@@ -47,6 +48,7 @@
 #define		FW_VENDORID_INTEL	0x8086
 #define		FW_VENDORID_ADAPTEC	0x9004
 
+#define		FW_DEVICE_CS4210	(0x000f << 16)
 #define		FW_DEVICE_UPD861	(0x0063 << 16)
 #define		FW_DEVICE_UPD871	(0x00ce << 16)
 #define		FW_DEVICE_UPD72870	(0x00cd << 16)

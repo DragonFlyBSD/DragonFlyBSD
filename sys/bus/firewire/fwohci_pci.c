@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.9 2004/07/16 12:15:51 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.10 2004/07/16 12:22:21 asmodai Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -97,6 +97,10 @@ fwohci_pci_probe( device_t dev )
 	u_int32_t id;
 
 	id = pci_get_devid(dev);
+	if (id == (FW_VENDORID_NATSEMI | FW_DEVICE_CS4210)) {
+		device_set_desc(dev, "National Semiconductor CS4210");
+		return 0;
+	}
 	if (id == (FW_VENDORID_NEC | FW_DEVICE_UPD861)) {
 		device_set_desc(dev, "NEC uPD72861");
 		return 0;
