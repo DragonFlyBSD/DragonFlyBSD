@@ -32,7 +32,7 @@
  *
  *	@(#)libkern.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/sys/libkern.h,v 1.20.2.2 2001/09/30 21:12:54 luigi Exp $
- * $DragonFly: src/sys/sys/libkern.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/libkern.h,v 1.4 2003/12/10 00:29:24 dillon Exp $
  */
 
 #ifndef _SYS_LIBKERN_H_
@@ -85,6 +85,8 @@ void	 srandom (u_long);
 char	*strcat (char *, const char *);
 int	 strcmp (const char *, const char *);
 char	*strcpy (char *, const char *);
+size_t   strlcat (char *, const char *, size_t);
+size_t   strlcpy (char *, const char *, size_t);
 size_t	 strlen (const char *);
 int	 strncmp (const char *, const char *, size_t);
 char	*strncpy (char *, const char *, size_t);
