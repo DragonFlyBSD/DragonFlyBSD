@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.8 2004/04/22 04:21:58 dillon Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.9 2004/09/15 20:23:22 joerg Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -128,7 +128,7 @@ static void ready_event(struct dn_flow_queue *q);
 static struct dn_pipe *all_pipes = NULL ;	/* list of all pipes */
 static struct dn_flow_set *all_flow_sets = NULL ;/* list of all flow_sets */
 
-static struct callout_handle dn_timeout;
+static struct callout dn_timeout;
 
 #ifdef SYSCTL_NODE
 SYSCTL_NODE(_net_inet_ip, OID_AUTO, dummynet,
@@ -753,7 +753,7 @@ dummynet(void * __unused unused)
 	    pe->sum -= q->fs->weight ;
 	}
     splx(s);
-    dn_timeout = timeout(dummynet, NULL, 1);
+    callout_reset(&dn_timeout, 1, dummynet, NULL);
 }
 
 /*
@@ -1912,7 +1912,8 @@ ip_dn_init(void)
     ip_dn_io_ptr = dummynet_io;
     ip_dn_ruledel_ptr = dn_rule_delete;
     bzero(&dn_timeout, sizeof(struct callout_handle));
-    dn_timeout = timeout(dummynet, NULL, 1);
+    callout_init(&dn_timeout);
+    callout_reset(&dn_timeout, 1, dummynet, NULL);
 }
 
 static int
@@ -1937,7 +1938,7 @@ dummynet_modevent(module_t mod, int type, void *data)
 		return EINVAL ;
 #else
 		s = splimp();
-		untimeout(dummynet, NULL, dn_timeout);
+		callout_stop(&dn_timeout);
 		dummynet_flush();
 		ip_dn_ctl_ptr = NULL;
 		ip_dn_io_ptr = NULL;
