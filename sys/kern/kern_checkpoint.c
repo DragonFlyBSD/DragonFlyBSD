@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.1 2004/11/23 06:32:32 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_checkpoint.c,v 1.2 2005/02/26 20:32:36 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -248,8 +248,10 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 		goto done;
 
 	/* fetch signal disposition */
-	if ((error = elf_getsigs(p, fp)) != 0)
+	if ((error = elf_getsigs(p, fp)) != 0) {
+		printf("failure in recovering signals\n");
 		goto done;
+	}
 
 	/* fetch open files */
 	if ((error = elf_getfiles(p, fp)) != 0)
@@ -462,6 +464,8 @@ elf_getsigs(struct proc *p, struct file *fp)
 	p->p_procsig->ps_sigacts = tmpsigacts;
 	bcopy(&csi->csi_sigacts, p->p_procsig->ps_sigacts, sizeof(struct sigacts));
 	bcopy(&csi->csi_itimerval, &p->p_realtimer, sizeof(struct itimerval));
+	SIG_CANTMASK(csi->csi_sigmask);
+	bcopy(&csi->csi_sigmask, &p->p_sigmask, sizeof(sigset_t));
 	p->p_sigparent = csi->csi_sigparent;
  done:
 	if (csi)
@@ -597,8 +601,11 @@ elf_getfiles(struct proc *p, struct file *fp)
 		goto done;
 
 	/*
-	 * Close all descriptors >= 3.  These descriptors are from the
+	 * Close all file descriptors >= 3.  These descriptors are from the
 	 * checkpt(1) program itself and should not be retained.
+	 *
+	 * XXX we need a flag so a checkpoint restore can opt to supply the
+	 * descriptors, or the non-regular-file descripors.
 	 */
 	for (i = 3; i < p->p_fd->fd_nfiles; ++i)
 		kern_close(i);

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.24 2004/11/18 13:09:30 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.25 2005/02/26 20:32:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -966,8 +966,15 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 	 * is mapped all over the place).  Instead we rely on the fact
 	 * that a checkpoint-restored program does not mmap() the checkpt
 	 * vnode NOCORE, so its contents will be written out to the
-	 * checkpoint file itself.  This is necessary because the 'old'
-	 * checkpoint file is typically destroyed when a new one is created.
+	 * new checkpoint file.  This is necessary because the 'old'
+	 * checkpoint file is typically destroyed when a new one is created
+	 * and thus cannot be used to restore the new checkpoint.
+	 *
+	 * Theoretically we could create a chain of checkpoint files and
+	 * operate the checkpointing operation kinda like an incremental
+	 * checkpoint, but a checkpoint restore would then likely wind up
+	 * referencing many prior checkpoint files and that is a bit over
+	 * the top for the purpose of the checkpoint API.
 	 */
 	if (entry->object.vm_object->type == OBJT_VNODE) {
 		vp = (struct vnode *)entry->object.vm_object->handle;
@@ -1271,6 +1278,7 @@ elf_putsigs(struct proc *p, elf_buf_t target)
 		bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
 		bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
 		bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
+		bcopy(&p->p_sigmask, &csi->csi_sigmask, sizeof(sigset_t));
 		csi->csi_sigparent = p->p_sigparent;
 	}
 	return(error);
@@ -1295,16 +1303,29 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 	}
 
 	/*
-	 * ignore STDIN/STDERR/STDOUT
+	 * ignore STDIN/STDERR/STDOUT.
 	 */
 	for (i = 3; error == 0 && i < p->p_fd->fd_nfiles; i++) {
 		if ((fp = p->p_fd->fd_ofiles[i]) == NULL)
 			continue;
+		/* 
+		 * XXX Only checkpoint vnodes for now.
+		 */
 		if (fp->f_type != DTYPE_VNODE)
 			continue;
-		cfi = target_reserve(target, sizeof(struct ckpt_fileinfo), &error);
-		if (cfi) {
-			cfi->cfi_index = -1;
+		cfi = target_reserve(target, sizeof(struct ckpt_fileinfo),
+					&error);
+		if (cfi == NULL)
+			continue;
+		cfi->cfi_index = -1;
+		cfi->cfi_type = fp->f_type;
+		cfi->cfi_flags = fp->f_flag;
+		cfi->cfi_offset = fp->f_offset;
+		/* f_count and f_msgcount should not be saved/restored */
+		/* XXX save cred info */
+
+		switch(fp->f_type) {
+		case DTYPE_VNODE:
 			vp = (struct vnode *)fp->f_data;
 			/*
 			 * it looks like a bug in ptrace is marking 
@@ -1313,13 +1334,14 @@ elf_putfiles(struct proc *p, elf_buf_t target)
 			 * further panics from truss
 			 */
 			if (vp == NULL || vp->v_mount == NULL)
-			        continue;
+				break;
 			cfh->cfh_nfiles++;
 			cfi->cfi_index = i;
-			cfi->cfi_flags = fp->f_flag;
-			cfi->cfi_offset = fp->f_offset;
 			cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 			error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
+			break;
+		default:
+			break;
 		}
 	}
 	return(error);

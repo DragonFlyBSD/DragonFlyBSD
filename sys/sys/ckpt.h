@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.5 2005/02/17 14:00:09 joerg Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.6 2005/02/26 20:32:37 dillon Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
@@ -49,7 +49,8 @@ struct ckpt_fileinfo {
 	u_int		cfi_flags;	/* saved f_flag	*/
 	off_t		cfi_offset;	/* saved f_offset */
 	fhandle_t	cfi_fh;
-	int		cfi_reserved[8];
+	int		cfi_type;
+	int		cfi_reserved[7];
 };
 
 struct ckpt_siginfo {
@@ -58,7 +59,8 @@ struct ckpt_siginfo {
 	struct sigacts	csi_sigacts;
 	struct itimerval csi_itimerval;
 	int		csi_sigparent;
-	int		csi_reserved[8];
+	sigset_t	csi_sigmask;
+	int		csi_reserved[6];
 };
 
 struct vn_hdr {
