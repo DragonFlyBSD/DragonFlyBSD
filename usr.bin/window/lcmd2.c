@@ -35,7 +35,7 @@
  *
  * @(#)lcmd2.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/lcmd2.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd2.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/lcmd2.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include "defs.h"
@@ -282,7 +282,7 @@ l_def_shell(v, a)
 			break;
 		}
 	if (default_shellfile = *default_shell)
-		if (*default_shell = rindex(default_shellfile, '/'))
+		if (*default_shell = strrchr(default_shellfile, '/'))
 			(*default_shell)++;
 		else
 			*default_shell = default_shellfile;

@@ -32,7 +32,7 @@
  *
  * @(#)display.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/display.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/display.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/hexdump/display.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -219,7 +219,7 @@ bpad(PR *pr)
 	pr->cchar[0] = 's';
 	pr->cchar[1] = '\0';
 	for (p1 = pr->fmt; *p1 != '%'; ++p1);
-	for (p2 = ++p1; *p1 && index(spec, *p1); ++p1);
+	for (p2 = ++p1; *p1 && strchr(spec, *p1); ++p1);
 	while ((*p2++ = *p1++));
 }
 

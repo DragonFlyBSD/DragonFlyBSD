@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/main.c,v 1.8.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/main.c,v 1.4 2003/11/04 16:52:01 drhodus Exp $
+ * $DragonFly: src/usr.bin/tftp/main.c,v 1.5 2004/08/30 18:06:50 eirikn Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -342,16 +342,16 @@ put(int argc, char **argv)
 		return;
 	}
 	targ = argv[argc - 1];
-	if (rindex(argv[argc - 1], ':')) {
+	if (strrchr(argv[argc - 1], ':')) {
 		char *cp;
 
 		for (n = 1; n < argc - 1; n++)
-			if (index(argv[n], ':')) {
+			if (strchr(argv[n], ':')) {
 				putusage(argv[0]);
 				return;
 			}
 		cp = argv[argc - 1];
-		targ = rindex(cp, ':');
+		targ = strrchr(cp, ':');
 		*targ++ = 0;
 		if (cp[0] == '[' && cp[strlen(cp) - 1] == ']') {
 			cp[strlen(cp) - 1] = '\0';
@@ -378,7 +378,7 @@ put(int argc, char **argv)
 	}
 				/* this assumes the target is a directory */
 				/* on a remote unix system.  hmmmm.  */
-	cp = index(targ, '\0');
+	cp = strchr(targ, '\0');
 	*cp++ = '/';
 	for (n = 1; n < argc - 1; n++) {
 		strcpy(cp, tail(argv[n]));
@@ -426,13 +426,13 @@ get(int argc, char **argv)
 	}
 	if (!connected) {
 		for (n = 1; n < argc ; n++)
-			if (rindex(argv[n], ':') == 0) {
+			if (strrchr(argv[n], ':') == 0) {
 				getusage(argv[0]);
 				return;
 			}
 	}
 	for (n = 1; n < argc ; n++) {
-		src = rindex(argv[n], ':');
+		src = strrchr(argv[n], ':');
 		if (src == NULL)
 			src = argv[n];
 		else {
@@ -560,7 +560,7 @@ tail(char *filename)
 	register char *s;
 
 	while (*filename) {
-		s = rindex(filename, '/');
+		s = strrchr(filename, '/');
 		if (s == NULL)
 			break;
 		if (s[1])

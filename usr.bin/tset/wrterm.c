@@ -32,7 +32,7 @@
  *
  * @(#)wrterm.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/wrterm.c,v 1.3 1999/08/28 01:06:59 peter Exp $
- * $DragonFly: src/usr.bin/tset/wrterm.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tset/wrterm.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -54,7 +54,7 @@ wrtermcap(char *bp)
 	char *t, *sep;
 
 	/* Find the end of the terminal names. */
-	if ((t = index(bp, ':')) == NULL)
+	if ((t = strchr(bp, ':')) == NULL)
 		errx(1, "termcap names not colon terminated");
 	*t++ = '\0';
 

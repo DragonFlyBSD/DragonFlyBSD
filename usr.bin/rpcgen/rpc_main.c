@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.9 2004/06/19 16:40:36 joerg Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.10 2004/08/30 18:06:50 eirikn Exp $
  */
 
 
@@ -222,7 +222,7 @@ extendfile(char *path, char *ext)
 	char *p;
 	char *file;
 
-	if ((file = rindex(path, '/')) == NULL)
+	if ((file = strrchr(path, '/')) == NULL)
 		file = path;
 	else
 		file++;
@@ -787,7 +787,7 @@ struct commandline *cmd;
 	if (allfiles) {
 		mkfilename = alloc(strlen("makefile.") +
 			strlen(cmd->infile) + 1);
-		temp = rindex(cmd->infile, '.');
+		temp = strrchr(cmd->infile, '.');
 		strcat(mkfilename, "makefile.");
 		strncat(mkfilename, cmd->infile, (temp - cmd->infile));
 	} else

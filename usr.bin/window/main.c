@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/window/main.c,v 1.5.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/main.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/main.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include "defs.h"
@@ -62,7 +62,7 @@ char **argv;
 	char tflag = 0;
 
 	escapec = ESCAPEC;
-	if (p = rindex(*argv, '/'))
+	if (p = strrchr(*argv, '/'))
 		p++;
 	else
 		p = *argv;
@@ -108,7 +108,7 @@ char **argv;
 		(void) fprintf(stderr, "Out of memory.\n");
 		exit(1);
 	}
-	if (p = rindex(default_shellfile, '/'))
+	if (p = strrchr(default_shellfile, '/'))
 		p++;
 	else
 		p = default_shellfile;

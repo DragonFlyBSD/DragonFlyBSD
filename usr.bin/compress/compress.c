@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)compress.c	8.2 (Berkeley) 1/7/94
  * $FreeBSD: src/usr.bin/compress/compress.c,v 1.7.6.5 2002/07/16 00:56:04 tjr Exp $
- * $DragonFly: src/usr.bin/compress/compress.c,v 1.3 2003/10/02 17:42:27 hmp Exp $
+ * $DragonFly: src/usr.bin/compress/compress.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ main(int argc, char **argv)
 	char *p, newname[MAXPATHLEN];
 
 	cat = 0;
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		++p;
@@ -135,7 +135,7 @@ main(int argc, char **argv)
 				compress(*argv, "/dev/stdout", bits);
 				break;
 			}
-			if ((p = rindex(*argv, '.')) != NULL &&
+			if ((p = strrchr(*argv, '.')) != NULL &&
 			    !strcmp(p, ".Z")) {
 				cwarnx("%s: name already has trailing .Z",
 				    *argv);
@@ -158,7 +158,7 @@ main(int argc, char **argv)
 				break;
 			}
 			len = strlen(*argv);
-			if ((p = rindex(*argv, '.')) == NULL ||
+			if ((p = strrchr(*argv, '.')) == NULL ||
 			    strcmp(p, ".Z")) {
 				if (len > sizeof(newname) - 3) {
 					cwarnx("%s: name too long", *argv);

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/systat/devs.c,v 1.4 1999/08/28 01:05:59 peter Exp $
- * $DragonFly: src/usr.bin/systat/devs.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/devs.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 /*
  * Some code and ideas taken from the old disks.c.
@@ -255,7 +255,7 @@ dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	register char *cp;
 	register int i;
 	int retval = 0;
-	char *index();
+	char *strchr();
 
 	/*
 	 * If we've gone through this code before, free previously
@@ -272,7 +272,7 @@ dsselect(char *args, devstat_select_mode select_mode, int maxshowdevs,
 	/* do an initial malloc */
 	specified_devices = (char **)malloc(sizeof(char *));
 
-	cp = index(args, '\n');
+	cp = strchr(args, '\n');
 	if (cp)
 		*cp = '\0';
 	for (;;) {

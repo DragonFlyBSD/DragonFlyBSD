@@ -32,7 +32,7 @@
  *
  * @(#)map.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/map.c,v 1.7 1999/08/30 08:27:30 peter Exp $
- * $DragonFly: src/usr.bin/tset/map.c,v 1.4 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/tset/map.c,v 1.5 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -130,7 +130,7 @@ next:	if (*arg == ':') {
 			goto badmopt;
 		++arg;
 	} else {				/* Optional baudrate. */
-		arg = index(p = arg, ':');
+		arg = strchr(p = arg, ':');
 		if (arg == NULL)
 			goto badmopt;
 		*arg++ = '\0';

@@ -32,7 +32,7 @@
  *
  * @(#)netcmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netcmds.c,v 1.9 1999/08/28 01:06:04 peter Exp $
- * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/netcmds.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 /*
@@ -128,9 +128,9 @@ changeitems(char *args, int onoff)
 	struct servent *sp;
 	struct hostent *hp;
 	struct in_addr in;
-	char *index();
+	char *strchr();
 
-	cp = index(args, '\n');
+	cp = strchr(args, '\n');
 	if (cp)
 		*cp = '\0';
 	for (;;args = cp) {

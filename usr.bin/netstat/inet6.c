@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/inet6.c,v 1.3.2.11 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.3 2004/06/11 12:03:15 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet6.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  *
  * @(#)inet6.c	8.4 (Berkeley) 4/20/94
  */
@@ -1050,7 +1050,7 @@ inet6print(struct in6_addr *in6, int port, char *proto, int numeric)
 
 	sprintf(line, "%.*s.", Wflag ? 39 :
 		(Aflag && !numeric) ? 12 : 16, inet6name(in6));
-	cp = index(line, '\0');
+	cp = strchr(line, '\0');
 	if (!numeric && port)
 		GETSERVBYPORT6(port, proto, sp);
 	if (sp || port == 0)
@@ -1079,7 +1079,7 @@ inet6name(struct in6_addr *in6p)
 	if (first && !numeric_addr) {
 		first = 0;
 		if (gethostname(domain, MAXHOSTNAMELEN) == 0 &&
-		    (cp = index(domain, '.')))
+		    (cp = strchr(domain, '.')))
 			(void) strcpy(domain, cp + 1);
 		else
 			domain[0] = 0;
@@ -1088,7 +1088,7 @@ inet6name(struct in6_addr *in6p)
 	if (!numeric_addr && !IN6_IS_ADDR_UNSPECIFIED(in6p)) {
 		hp = gethostbyaddr((char *)in6p, sizeof(*in6p), AF_INET6);
 		if (hp) {
-			if ((cp = index(hp->h_name, '.')) &&
+			if ((cp = strchr(hp->h_name, '.')) &&
 			    !strcmp(cp + 1, domain))
 				*cp = 0;
 			cp = hp->h_name;

@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.14 2004/06/07 02:36:28 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.15 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -843,7 +843,7 @@ inetprint(struct in_addr *in, int port, const char *proto, int numeric_port)
 	    sprintf(line, "%s.", inetname(in));
 	else
 	    sprintf(line, "%.*s.", (Aflag && !numeric_port) ? 12 : 16, inetname(in));
-	cp = index(line, '\0');
+	cp = strchr(line, '\0');
 	if (!numeric_port && port)
 		sp = getservbyport((int)port, proto);
 	if (sp || port == 0)

@@ -32,7 +32,7 @@
  *
  * @(#)str.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/tr/str.c,v 1.10.2.2 2002/07/29 12:59:33 tjr Exp $
- * $DragonFly: src/usr.bin/tr/str.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tr/str.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -140,7 +140,7 @@ bracket(STR *s)
 	repeat:
 		if ((p = strpbrk(s->str + 2, "*]")) == NULL)
 			return (0);
-		if (p[0] != '*' || index(p, ']') == NULL)
+		if (p[0] != '*' || strchr(p, ']') == NULL)
 			return (0);
 		s->str += 1;
 		genseq(s);

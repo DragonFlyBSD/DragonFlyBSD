@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)finger.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/finger/finger.c,v 1.15.2.9 2002/07/29 18:52:52 ume Exp $
- * $DragonFly: src/usr.bin/finger/finger.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/finger/finger.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
  */
 
 /*
@@ -274,7 +274,7 @@ userlist(int argc, char **argv)
 
 	/* Pull out all network requests. */
 	for (ap = p = argv, np = nargv; *p; ++p)
-		if (index(*p, '@'))
+		if (strchr(*p, '@'))
 			*np++ = *p;
 		else
 			*ap++ = *p;

@@ -35,7 +35,7 @@
  *
  * @(#)lcmd1.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/window/lcmd1.c,v 1.2.6.2 2001/05/17 09:45:00 obrien Exp $
- * $DragonFly: src/usr.bin/window/lcmd1.c,v 1.2 2003/06/17 04:29:34 dillon Exp $
+ * $DragonFly: src/usr.bin/window/lcmd1.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include "defs.h"
@@ -102,7 +102,7 @@ register struct value *a;
 			*pp = a->v_str;
 		*pp = 0;
 		shf = *(sh = argv);
-		if (*sh = rindex(shf, '/'))
+		if (*sh = strrchr(shf, '/'))
 			(*sh)++;
 		else
 			*sh = shf;

@@ -27,7 +27,7 @@
  * 2550 Garcia Avenue
  * Mountain View, California  94043
  *
- * $DragonFly: src/usr.bin/chkey/chkey.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/chkey/chkey.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
  * @(#)chkey.c 1.7 91/03/11 Copyr 1986 Sun Micro
  */
 /*
@@ -266,12 +266,12 @@ ypgetpwuid(uid_t uid)
 			&val, &vallen) != 0) {
 		return (NULL);
 	}
-	p = index(val, ':');
+	p = strchr(val, ':');
 	if (p == NULL) {	
 		return (NULL);
 	}
 	pw.pw_passwd = p + 1;
-	p = index(pw.pw_passwd, ':');
+	p = strchr(pw.pw_passwd, ':');
 	if (p == NULL) {
 		return (NULL);
 	}

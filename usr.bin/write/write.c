@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)write.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/write/write.c,v 1.12 1999/08/28 01:07:48 peter Exp $
- * $DragonFly: src/usr.bin/write/write.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/write/write.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -84,7 +84,7 @@ main(int argc, char **argv)
 		errx(1, "can't find your tty");
 	if (!(mytty = ttyname(myttyfd)))
 		errx(1, "can't find your tty's name");
-	if ((cp = rindex(mytty, '/')))
+	if ((cp = strrchr(mytty, '/')))
 		mytty = cp + 1;
 	if (term_chk(mytty, &msgsok, &atime, 1))
 		exit(1);

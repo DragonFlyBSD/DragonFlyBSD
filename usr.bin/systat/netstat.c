@@ -32,7 +32,7 @@
  *
  * @(#)netstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/systat/netstat.c,v 1.13 1999/08/30 08:18:08 peter Exp $
- * $DragonFly: src/usr.bin/systat/netstat.c,v 1.3 2003/10/04 20:36:51 hmp Exp $
+ * $DragonFly: src/usr.bin/systat/netstat.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 /*
@@ -360,10 +360,10 @@ static void
 inetprint(register struct in_addr *in, int port, char *proto)
 {
 	struct servent *sp = 0;
-	char line[80], *cp, *index();
+	char line[80], *cp, *strchr();
 
 	snprintf(line, sizeof(line), "%.*s.", 16, inetname(*in));
-	cp = index(line, '\0');
+	cp = strchr(line, '\0');
 	if (!nflag && port)
 		sp = getservbyport(port, proto);
 	if (sp || port == 0)
@@ -373,7 +373,7 @@ inetprint(register struct in_addr *in, int port, char *proto)
 		snprintf(cp, sizeof(line) - (cp - line), "%d", 
 		    ntohs((u_short)port));
 	/* pad to full column to clear any garbage */
-	cp = index(line, '\0');
+	cp = strchr(line, '\0');
 	while (cp - line < 22)
 		*cp++ = ' ';
 	line[22] = '\0';

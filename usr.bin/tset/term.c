@@ -32,7 +32,7 @@
  *
  * @(#)term.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/tset/term.c,v 1.4 1999/08/28 01:06:58 peter Exp $
- * $DragonFly: src/usr.bin/tset/term.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tset/term.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -72,7 +72,7 @@ get_termcap_entry(char *userarg, char **tcapbufp)
 
 	/* Try ttyname(3); check for dialup or other mapping. */
 	if ((ttypath = ttyname(STDERR_FILENO))) {
-		if ((p = rindex(ttypath, '/')))
+		if ((p = strrchr(ttypath, '/')))
 			++p;
 		else
 			p = ttypath;
@@ -144,7 +144,7 @@ askuser(char *dflt)
 			return (dflt);
 		}
 
-		if ((p = index(answer, '\n')))
+		if ((p = strchr(answer, '\n')))
 			*p = '\0';
 		if (answer[0])
 			return (answer);

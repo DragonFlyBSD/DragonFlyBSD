@@ -35,7 +35,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/ranlib/misc.c,v 1.5 1999/08/28 01:05:02 peter Exp $
- * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.4 2004/07/24 11:45:44 eirikn Exp $
+ * $DragonFly: src/usr.bin/ranlib/Attic/misc.c,v 1.5 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ rname(char *path)
 {
 	register char *ind;
 
-	return((ind = rindex(path, '/')) ? ind + 1 : path);
+	return((ind = strrchr(path, '/')) ? ind + 1 : path);
 }
 
 void

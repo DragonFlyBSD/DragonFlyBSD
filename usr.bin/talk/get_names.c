@@ -32,7 +32,7 @@
  *
  * @(#)get_names.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/talk/get_names.c,v 1.6.2.1 2001/07/30 10:31:29 dd Exp $
- * $DragonFly: src/usr.bin/talk/get_names.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/talk/get_names.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 #include <err.h>
@@ -77,7 +77,7 @@ get_names(int argc, char **argv)
 	gethostname(hostname, sizeof (hostname));
 	my_machine_name = hostname;
 	/* check for, and strip out, the machine name of the target */
-	for (cp = argv[1]; *cp && !index("@:!", *cp); cp++)
+	for (cp = argv[1]; *cp && !strchr("@:!", *cp); cp++)
 		;
 	if (*cp == '\0') {
 		/* this is a local to local talk */

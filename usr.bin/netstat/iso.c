@@ -35,7 +35,7 @@
 
 /*
  * $FreeBSD: src/usr.bin/netstat/iso.c,v 1.4.2.2 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/iso.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/iso.c,v 1.3 2004/08/30 18:06:50 eirikn Exp $
  */
 /*******************************************************************************
 	          Copyright IBM Corporation 1987
@@ -397,7 +397,7 @@ isonetprint(struct iso_addr *iso, char *sufx, u_short sufxlen, int islocal)
 	int Alen = Aflag?18:22;
 
 	line =  isonetname(iso);
-	cp = index(line, '\0');
+	cp = strchr(line, '\0');
 	ihe = (struct iso_hostent *)0;
 
 	if( islocal )

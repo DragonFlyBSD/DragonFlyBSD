@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.6 2004/08/19 23:35:45 joerg Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.7 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -233,7 +233,7 @@ intpr(int interval, u_long ifnetaddr, void (*pfunc)(char *))
 			ifnetaddr = (u_long)TAILQ_NEXT(&ifnet, if_link);
 			if (interface != 0 && (strcmp(name, interface) != 0))
 				continue;
-			cp = index(name, '\0');
+			cp = strchr(name, '\0');
 
 			if (pfunc) {
 				(*pfunc)(name);

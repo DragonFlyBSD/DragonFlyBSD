@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rlogin.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/rlogin/rlogin.c,v 1.24.2.2 2002/07/19 18:03:41 ru Exp $
- * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rlogin/rlogin.c,v 1.4 2004/08/30 18:06:50 eirikn Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ main(argc, argv)
 	one = 1;
 	host = localname = user = NULL;
 
-	if ((p = rindex(argv[0], '/')))
+	if ((p = strrchr(argv[0], '/')))
 		++p;
 	else
 		p = argv[0];

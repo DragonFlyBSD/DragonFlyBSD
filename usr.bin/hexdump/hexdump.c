@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hexdump.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/hexdump/hexdump.c,v 1.4.2.2 2002/07/23 14:27:06 tjr Exp $
- * $DragonFly: src/usr.bin/hexdump/hexdump.c,v 1.3 2003/10/04 20:36:45 hmp Exp $
+ * $DragonFly: src/usr.bin/hexdump/hexdump.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -56,7 +56,7 @@ main(int argc, char **argv)
 
 	(void)setlocale(LC_ALL, "");
 
-	if (!(p = rindex(argv[0], 'o')) || strcmp(p, "od"))
+	if (!(p = strrchr(argv[0], 'o')) || strcmp(p, "od"))
 		newsyntax(argc, &argv);
 	else
 		oldsyntax(argc, &argv);

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cksum.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/cksum/cksum.c,v 1.11.2.1 2001/07/30 10:16:29 dd Exp $
- * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/cksum/cksum.c,v 1.5 2004/08/30 18:06:49 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -61,7 +61,7 @@ main(int argc, char **argv)
 	int (*cfncn)(int, u_int32_t *, u_int32_t *);
 	void (*pfncn)(char *, u_int32_t, u_int32_t);
 
-	if ((p = rindex(argv[0], '/')) == NULL)
+	if ((p = strrchr(argv[0], '/')) == NULL)
 		p = argv[0];
 	else
 		++p;
