@@ -32,15 +32,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.h,v 1.1 2003/09/12 00:43:30 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_socket.h,v 1.2 2003/09/19 08:02:27 daver Exp $
  *	from: DragonFly sys/socket.h,v 1.3
  *
  * These are the 4.3BSD compatibility structures from sys/socket.h.
- * The structure omsghdr will migrate here after some changes are made
- * to o{send,recv} and o{send,recv}msg.
  */
 
 struct osockaddr {
 	u_short	sa_family;		/* address family */
 	char	sa_data[14];		/* up to 14 bytes of direct address */
+};
+
+struct omsghdr {
+	caddr_t	msg_name;		/* optional address */
+	int	msg_namelen;		/* size of address */
+	struct	iovec *msg_iov;		/* scatter/gather array */
+	int	msg_iovlen;		/* # elements in msg_iov */
+	caddr_t	msg_accrights;		/* access rights sent/received */
+	int	msg_accrightslen;
 };

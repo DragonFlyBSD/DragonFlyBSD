@@ -32,7 +32,7 @@
  *
  *	@(#)socket.h	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/sys/socket.h,v 1.39.2.7 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/socket.h,v 1.4 2003/09/12 00:43:31 daver Exp $
+ * $DragonFly: src/sys/sys/socket.h,v 1.5 2003/09/19 08:02:27 daver Exp $
  */
 
 #ifndef _SYS_SOCKET_H_
@@ -392,18 +392,6 @@ struct cmsgcred {
 #define	SCM_RIGHTS	0x01		/* access rights (array of int) */
 #define	SCM_TIMESTAMP	0x02		/* timestamp (struct timeval) */
 #define	SCM_CREDS	0x03		/* process creds (struct cmsgcred) */
-
-/*
- * 4.3-compat message header (move to compat file later).
- */
-struct omsghdr {
-	caddr_t	msg_name;		/* optional address */
-	int	msg_namelen;		/* size of address */
-	struct	iovec *msg_iov;		/* scatter/gather array */
-	int	msg_iovlen;		/* # elements in msg_iov */
-	caddr_t	msg_accrights;		/* access rights sent/received */
-	int	msg_accrightslen;
-};
 
 /*
  * howto arguments for shutdown(2), specified by Posix.1g.
