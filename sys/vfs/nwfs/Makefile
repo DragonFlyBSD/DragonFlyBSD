@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/nwfs/Makefile,v 1.5 1999/12/12 20:34:08 peter Exp $
-# $DragonFly: src/sys/vfs/nwfs/Makefile,v 1.4 2004/08/13 17:51:12 dillon Exp $
+# $DragonFly: src/sys/vfs/nwfs/Makefile,v 1.5 2005/02/18 11:41:42 corecode Exp $
 
 KMOD=	nwfs
 KMODDEPS= ncp
@@ -17,12 +17,12 @@ opt_ncp.h:
 	echo "#define NCP	1"  > ${.TARGET}
 
 load: nwfs.ko
-	kldload ./nwfs.ko
+	kldload ${.OBJDIR}/nwfs.ko
 
 unload:
-	@(if kldunload nwfs; then true; else true; fi)
+	@-kldunload nwfs
 
 deinstall:
-	rm -f /modules/nwfs.ko
+	rm -f ${DESTDIR}/modules/nwfs.ko
 
 .include <bsd.kmod.mk>

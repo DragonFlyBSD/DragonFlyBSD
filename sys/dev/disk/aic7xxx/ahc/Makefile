@@ -1,6 +1,6 @@
 
 # $FreeBSD: src/sys/modules/aic7xxx/ahc/Makefile,v 1.2.2.1 2002/09/02 05:47:44 scottl Exp $
-# $DragonFly: src/sys/dev/disk/aic7xxx/ahc/Makefile,v 1.3 2003/08/15 08:32:28 dillon Exp $
+# $DragonFly: src/sys/dev/disk/aic7xxx/ahc/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
 
 .PATH:	${.CURDIR}/..
 KMOD=	ahc
@@ -35,7 +35,9 @@ SRCS+= device_if.h bus_if.h pci_if.h
 
 CLEANFILES= ${GENSRCS} aic7xxx_reg_print.c
 
+.if !defined(BUILDING_WITH_KERNEL)
 use_pci.h:
 	echo "#define NPCI 1" > use_pci.h
+.endif
 
 .include <bsd.kmod.mk>

@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.17 2004/10/20 23:03:02 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.18 2005/02/18 11:41:41 corecode Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -215,11 +215,16 @@ unload:
 	${KMODUNLOAD} -v ${KMOD}
 .endif
 
-.for _src in ${SRCS:Mopt_*.h}
+.for _src in ${SRCS:Mopt_*.h} ${SRCS:Muse_*.h}
 CLEANFILES+=	${_src}
 .if !target(${_src})
+.if defined(BUILDING_WITH_KERNEL) && exists(${BUILDING_WITH_KERNEL}/${_src})
+${_src}: ${BUILDING_WITH_KERNEL}/${_src}
+	cp ${BUILDING_WITH_KERNEL}/${_src} ${.TARGET}
+.else
 ${_src}:
 	touch ${.TARGET}
+.endif	# BUILDING_WITH_KERNEL
 .endif
 .endfor
 

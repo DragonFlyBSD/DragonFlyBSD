@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/aha/Makefile,v 1.4 2000/01/28 11:26:23 bde Exp $
-# $DragonFly: src/sys/dev/disk/aha/Makefile,v 1.3 2003/08/15 08:32:28 dillon Exp $
+# $DragonFly: src/sys/dev/disk/aha/Makefile,v 1.4 2005/02/18 11:41:42 corecode Exp $
 
 .PATH:	${.CURDIR}/../../dev/aha
 KMOD	= aha
@@ -10,7 +10,9 @@ CLEANFILES	= use_aha.h
 use_aha.h:
 	echo "#define NAHA 1" > use_aha.h
 
+.if !defined(BUILDING_WITH_KERNEL)
 opt_scsi.h:
 	echo "#define SCSI_DELAY 15000" > opt_scsi.h
+.endif
 
 .include <bsd.kmod.mk>

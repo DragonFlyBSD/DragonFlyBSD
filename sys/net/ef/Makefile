@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/if_ef/Makefile,v 1.2.2.2 2001/04/25 11:24:03 ru Exp $
-# $DragonFly: src/sys/net/ef/Makefile,v 1.2 2003/06/17 04:28:44 dillon Exp $
+# $DragonFly: src/sys/net/ef/Makefile,v 1.3 2005/02/18 11:41:42 corecode Exp $
 
 .PATH:  ${.CURDIR}/../../net
 
@@ -20,11 +20,13 @@ CFLAGS+= ${PROTOS}
 CFLAGS+= -DEF_DEBUG
 .endif
 
+.if !defined(BUILDING_WITH_KERNEL)
 opt_inet.h:
 	echo "#define INET 1" > opt_inet.h
 
 opt_ipx.h:
 	echo "#define IPX 1" > opt_ipx.h
+.endif
 
 opt_ef.h:
 .for frame in ETHER_II ETHER_8023 ETHER_8022 ETHER_SNAP
@@ -34,9 +36,9 @@ opt_ef.h:
 .endfor
 
 load: all
-	/sbin/kldload ./${PROG}
+	/sbin/kldload ${.OBJDIR}/${KMOD}
 
 unload:
-	/sbin/kldunload ${PROG}
+	-/sbin/kldunload ${KMOD}
 
 .include <bsd.kmod.mk>
