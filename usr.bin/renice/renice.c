@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)renice.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.bin/renice/renice.c,v 1.4.2.3 2002/06/17 23:58:46 tjr Exp $
- * $DragonFly: src/usr.bin/renice/renice.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/renice/renice.c,v 1.3 2005/01/23 16:30:07 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -157,7 +157,7 @@ getnum(const char *com, const char *str, int *val)
 		warnx("%s argument %s is out of range.", com, str);
 		return (1);
 	}
-	if (ep == str || *ep != '\0' || errno != 0) {
+	if (ep == str || *ep != '\0') {
 		warnx("Bad %s argument: %s.", com, str);
 		return (1);
 	}
