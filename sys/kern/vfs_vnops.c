@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.16 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.17 2004/03/29 15:21:42 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -340,8 +340,18 @@ vn_rdwr_inchunks(rw, vp, base, len, offset, segflg, ioflg, cred, aresid, td)
 	int error = 0;
 
 	do {
-		int chunk = (len > MAXBSIZE) ? MAXBSIZE : len;
+		int chunk;
 
+		/*
+		 * Force `offset' to a multiple of MAXBSIZE except possibly
+		 * for the first chunk, so that filesystems only need to
+		 * write full blocks except possibly for the first and last
+		 * chunks.
+		 */
+		chunk = MAXBSIZE - (uoff_t)offset % MAXBSIZE;
+
+		if (chunk > len)
+			chunk = len;
 		if (rw != UIO_READ && vp->v_type == VREG)
 			bwillwrite();
 		error = vn_rdwr(rw, vp, base, chunk, offset, segflg,
@@ -658,7 +668,7 @@ debug_vn_lock(struct vnode *vp, lwkt_tokref_t vlock, int flags,
 			error = VOP_LOCK(vp, vlock,
 				    flags | LK_NOPAUSE | LK_INTERLOCK, td);
 			if (error == 0)
-				return (error);
+				return (0);
 		}
 		flags &= ~LK_INTERLOCK;
 	} while (flags & LK_RETRY);
