@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.167 2005/03/16 22:50:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.168 2005/03/19 00:15:44 okumoto Exp $
  */
 
 /*-
@@ -709,43 +709,52 @@ SortIncreasing(const void *l, const void *r)
  *-----------------------------------------------------------------------
  */
 static char *
-VarGetPattern(VarParser *vp, const char **tstr, int delim, int *flags,
-    size_t *length, VarPattern *pattern)
+VarGetPattern(VarParser *vp, int delim, int *flags,
+    size_t *length, VarPattern *patt)
 {
-	const char *cp;
-	Buffer *buf = Buf_Init(0);
-	size_t  junk;
+	Buffer		*buf;
 
-	if (length == NULL)
-		length = &junk;
-
-#define	IS_A_MATCH(cp, delim) \
-    ((cp[0] == '\\') && ((cp[1] == delim) ||  \
-     (cp[1] == '\\') || (cp[1] == '$') || (pattern && (cp[1] == '&'))))
+	buf = Buf_Init(0);
 
 	/*
 	 * Skim through until the matching delimiter is found; pick up
 	 * variable substitutions on the way. Also allow backslashes to quote
 	 * the delimiter, $, and \, but don't touch other backslashes.
 	 */
-	for (cp = *tstr; *cp && (*cp != delim); cp++) {
-		if (IS_A_MATCH(cp, delim)) {
-			Buf_AddByte(buf, (Byte)cp[1]);
-			cp++;
-		} else if (*cp == '$') {
-			if (cp[1] == delim) {
-				if (flags == NULL)
-					Buf_AddByte(buf, (Byte)*cp);
-				else
+	while (*vp->ptr != '\0') {
+		if (*vp->ptr == delim) {
+			char   *result;
+			vp->ptr++;	/* consume delim */
+
+			result = (char *)Buf_GetAll(buf, length);
+			Buf_Destroy(buf, FALSE);
+			return (result);
+
+		} else if ((vp->ptr[0] == '\\') &&
+		    ((vp->ptr[1] == delim) ||
+		     (vp->ptr[1] == '\\') ||
+		     (vp->ptr[1] == '$') ||
+		     (vp->ptr[1] == '&' && patt != NULL))) {
+			vp->ptr++;		/* consume backslash */
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
+
+		} else if (vp->ptr[0] == '$') {
+			if (vp->ptr[1] == delim) {
+				if (flags == NULL) {
+					Buf_AddByte(buf, (Byte)vp->ptr[0]);
+					vp->ptr++;
+				} else {
 					/*
-					 * Unescaped $ at end of pattern =>
-					 * anchor pattern at end.
+					 * Unescaped $ at end of patt =>
+					 * anchor patt at end.
 					 */
 					*flags |= VAR_MATCH_END;
+					vp->ptr++;
+				}
 			} else {
-				if (flags == NULL ||
-				    (*flags & VAR_NOSUBST) == 0) {
-					char   *cp2;
+				if (flags == NULL || (*flags & VAR_NOSUBST) == 0) {
+					char   *cp;
 					size_t  len;
 					Boolean freeIt;
 
@@ -756,16 +765,15 @@ VarGetPattern(VarParser *vp, const char **tstr, int delim, int *flags,
 					 * recurse.
 					 */
 					len = 0;
-					cp2 = Var_Parse(cp, vp->ctxt, vp->err, &len, &freeIt);
-					Buf_Append(buf, cp2);
+					cp = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+					Buf_Append(buf, cp);
 					if (freeIt)
-						free(cp2);
-					cp += len - 1;
+						free(cp);
+					vp->ptr += len;
 				} else {
-					const char *cp2 = &cp[1];
+					const char *cp = vp->ptr + 1;
 
-					if (*cp2 == OPEN_PAREN ||
-					    *cp2 == OPEN_BRACE) {
+					if (*cp == OPEN_PAREN || *cp == OPEN_BRACE) {
 						/*
 						 * Find the end of this
 						 * variable reference and
@@ -773,44 +781,40 @@ VarGetPattern(VarParser *vp, const char **tstr, int delim, int *flags,
 						 * ado. It will be
 						 * interperated later.
 						 */
-						int	have = *cp2;
-						int	want = (*cp2 == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
+						int	have = *cp;
+						int	want = (*cp == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
 						int	depth = 1;
 
-						for (++cp2; *cp2 != '\0' && depth > 0; ++cp2) {
-							if (cp2[-1] != '\\') {
-								if (*cp2 == have)
+						for (++cp; *cp != '\0' && depth > 0; ++cp) {
+							if (cp[-1] != '\\') {
+								if (*cp == have)
 									++depth;
-								if (*cp2 == want)
+								if (*cp == want)
 									--depth;
 							}
 						}
-						Buf_AppendRange(buf, cp, cp2);
-						cp = --cp2;
-					} else
-						Buf_AddByte(buf, (Byte)*cp);
+						Buf_AppendRange(buf, vp->ptr, cp);
+						vp->ptr = cp;
+					} else {
+						Buf_AddByte(buf,
+						    (Byte)vp->ptr[0]);
+						vp->ptr++;
+					}
 				}
 			}
-		} else if (pattern && *cp == '&')
-			Buf_AddBytes(buf, pattern->leftLen, (Byte *) pattern->lhs);
-		else
-			Buf_AddByte(buf, (Byte)*cp);
+		} else if (vp->ptr[0] == '&' && patt != NULL) {
+			Buf_AddBytes(buf, patt->leftLen, (Byte *)patt->lhs);
+			vp->ptr++;
+		} else {
+			Buf_AddByte(buf, (Byte)vp->ptr[0]);
+			vp->ptr++;
+		}
 	}
 
-	Buf_AddByte(buf, (Byte)'\0');
-
-	if (*cp != delim) {
-		*tstr = cp;
+	if (length != NULL) {
 		*length = 0;
-		return (NULL);
-	} else {
-		char   *result;
-		*tstr = ++cp;
-		result = (char *)Buf_GetAll(buf, length);
-		*length -= 1;	/* Don't count the NULL */
-		Buf_Destroy(buf, FALSE);
-		return (result);
 	}
+	return (NULL);
 }
 
 /*-
@@ -1024,16 +1028,16 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 				 * delimiter, assume it's a variable
 				 * substitution and recurse.
 				 */
-				char   *cp2;
+				char   *cp;
 				size_t  len;
 				Boolean freeIt;
 
 				len = 0;
-				cp2 = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+				cp = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
 				vp->ptr += len;
-				Buf_Append(buf, cp2);
+				Buf_Append(buf, cp);
 				if (freeIt) {
-					free(cp2);
+					free(cp);
 				}
 			}
 		} else {
@@ -1081,16 +1085,16 @@ modifier_S(VarParser *vp, const char value[], Var *v)
 				Buf_AddByte(buf, (Byte)vp->ptr[0]);
 				vp->ptr++;
 			} else {
-				char   *cp2;
+				char   *cp;
 				size_t  len;
 				Boolean freeIt;
 
 				len = 0;
-				cp2 = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+				cp = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
 				vp->ptr += len;
-				Buf_Append(buf, cp2);
+				Buf_Append(buf, cp);
 				if (freeIt) {
-					free(cp2);
+					free(cp);
 				}
 			}
 		} else if (vp->ptr[0] == '&') {
@@ -1153,13 +1157,13 @@ modifier_C(VarParser *vp, char value[], Var *v)
 
 	vp->ptr++;		/* consume 1st delim */
 
-	re = VarGetPattern(vp, &vp->ptr, delim, NULL, NULL, NULL);
+	re = VarGetPattern(vp, delim, NULL, NULL, NULL);
 	if (re == NULL) {
 		Fatal("Unclosed substitution for %s (%c missing)",
 		     v->name, delim);
 	}
 
-	patt.replace = VarGetPattern(vp, &vp->ptr, delim, NULL, NULL, NULL);
+	patt.replace = VarGetPattern(vp, delim, NULL, NULL, NULL);
 	if (patt.replace == NULL) {
 		Fatal("Unclosed substitution for %s (%c missing)",
 		     v->name, delim);
@@ -1226,9 +1230,9 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 	 * First we make a pass through the string trying to verify it is a
 	 * SYSV-make-style translation: it must be: <string1>=<string2>)
 	 */
+	eqFound = FALSE;
 	cp = vp->ptr;
 	cnt = 1;
-	eqFound = FALSE;
 	while (*cp != '\0' && cnt) {
 		if (*cp == '=') {
 			eqFound = TRUE;
@@ -1245,19 +1249,18 @@ sysVvarsub(VarParser *vp, char startc, Var *v, const char value[])
 		/*
 		 * Now we break this sucker into the lhs and rhs.
 		 */
-		cp = vp->ptr;
-
-		patt.lhs = VarGetPattern(vp, &cp, '=', &patt.flags, &patt.leftLen, NULL);
+		patt.lhs = VarGetPattern(vp, '=', &patt.flags, &patt.leftLen, NULL);
 		if (patt.lhs == NULL) {
 			Fatal("Unclosed substitution for %s (%c missing)",
 			      v->name, '=');
 		}
-		patt.rhs = VarGetPattern(vp, &cp, endc, NULL, &patt.rightLen, &patt);
+		patt.rhs = VarGetPattern(vp, endc, NULL, &patt.rightLen, &patt);
 		if (patt.rhs == NULL) {
 			Fatal("Unclosed substitution for %s (%c missing)",
 			      v->name, endc);
 		}
-		vp->ptr = cp - 1;	/* put pointer on top of endc */
+
+		vp->ptr--;	/* put pointer back on top of endc */
 
 		/*
 		 * SYSV modifications happen through the whole string. Note
