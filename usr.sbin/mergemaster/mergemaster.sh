@@ -9,12 +9,12 @@
 # DougB@FreeBSD.org
 
 # $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.46 2003/05/03 06:35:19 dougb Exp $
-# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.3 2003/07/24 06:35:39 dillon Exp $
+# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.4 2003/07/28 06:28:23 rob Exp $
 
 PATH=/bin:/usr/bin:/usr/sbin
 
 display_usage () {
-  VERSION_NUMBER=`grep "[$]FreeBSD:" $0 | cut -d ' ' -f 4`
+  VERSION_NUMBER=`grep "[$]DragonFly:" $0 | cut -d ' ' -f 4`
   echo "mergemaster version ${VERSION_NUMBER}"
   echo 'Usage: mergemaster [-scrvahipCP] [-m /path]'
   echo '         [-t /path] [-d] [-u N] [-w N] [-D /path]'
@@ -406,7 +406,7 @@ fi
 
 # Define what CVS $Id tag to look for to aid portability.
 #
-CVS_ID_TAG=FreeBSD
+CVS_ID_TAG=DragonFly
 
 delete_temproot () {
   rm -rf "${TEMPROOT}" 2>/dev/null
@@ -670,10 +670,10 @@ do_install_and_rm () {
 
 # 4095 = "obase=10;ibase=8;07777" | bc
 find_mode () {
-  local OCTAL
-  OCTAL=$(( ~$(echo "obase=10; ibase=8; ${CONFIRMED_UMASK}" | bc) & 4095 &
-    $(echo "obase=10; ibase=8; $(stat -f "%OMp%OLp" ${1})" | bc) )) 
-  printf "%04o\n" ${OCTAL}
+local OCTAL
+  OCTAL=`perl -e 'printf "%04o\n", (((stat("$ARGV[0]"))[2] & 07777) &~ \
+    oct("$ARGV[1]"))' "${1}" "${CONFIRMED_UMASK}"`
+  echo "${OCTAL}"
 }
 
 mm_install () {
