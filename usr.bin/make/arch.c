@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.38 2005/02/26 01:52:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.39 2005/03/03 18:22:58 okumoto Exp $
  */
 
 /*-
@@ -209,7 +209,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 		while (*cp != '\0' && *cp != ')' &&
 		    isspace((unsigned char)*cp)) {
-		    cp++;
+			cp++;
 		}
 
 		memName = cp;
@@ -476,8 +476,8 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 	 * We use the ARMAG string to make sure this is an archive we
 	 * can handle...
 	 */
-	if ((fread(magic, SARMAG, 1, arch) != 1) ||
-	    (strncmp(magic, ARMAG, SARMAG) != 0)) {
+	if (fread(magic, SARMAG, 1, arch) != 1 ||
+	    strncmp(magic, ARMAG, SARMAG) != 0) {
 		fclose(arch);
 		return (NULL);
 	}
@@ -489,7 +489,7 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 	 * the comparisons easier...
 	 */
 	cp = strrchr(member, '/');
-	if ((cp != NULL) && (strcmp(member, RANLIBMAG) != 0)) {
+	if (cp != NULL && strcmp(member, RANLIBMAG) != 0) {
 		member = cp + 1;
 	}
 	len = tlen = strlen(member);
@@ -515,10 +515,12 @@ ArchFindMember(const char *archive, const char *member, struct ar_hdr *arhPtr,
 			 * prefixes. Names are space-padded to the right, so if
 			 * the character in 'name' at the end of the matched
 			 * string is anything but a space, this isn't the
-			 * member we sought.
+			 * member we sought. Additionally there may be a
+			 * slash at the end of the name (System 5 style).
 			 */
 			if (tlen != sizeof(arhPtr->ar_name) &&
-			    arhPtr->ar_name[tlen] != ' '){
+			    arhPtr->ar_name[tlen] != ' ' &&
+			    arhPtr->ar_name[tlen] != '/') {
 				goto skip;
 			}
 			/*
@@ -721,7 +723,7 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	 * the comparisons easier...
 	 */
 	cp = strrchr(member, '/');
-	if ((cp != NULL) && (strcmp(member, RANLIBMAG) != 0))
+	if (cp != NULL && strcmp(member, RANLIBMAG) != 0)
 		member = cp + 1;
 
 	ln = Lst_Find(&archives, archive, ArchFindArchive);
@@ -775,8 +777,8 @@ ArchStatMember(const char *archive, const char *member, Boolean hash)
 	 * We use the ARMAG string to make sure this is an archive we
 	 * can handle...
 	 */
-	if ((fread(magic, SARMAG, 1, arch) != 1) ||
-	    (strncmp(magic, ARMAG, SARMAG) != 0)) {
+	if (fread(magic, SARMAG, 1, arch) != 1 ||
+	    strncmp(magic, ARMAG, SARMAG) != 0) {
 		fclose(arch);
 		return (NULL);
 	}
@@ -1142,7 +1144,7 @@ Arch_LibOODate(GNode *gn)
 	if (OP_NOP(gn->type) && Lst_IsEmpty(&gn->children)) {
 		return (FALSE);
 	}
-	if ((gn->mtime > now) || (gn->mtime < gn->cmtime)) {
+	if (gn->mtime > now || gn->mtime < gn->cmtime) {
 		return (TRUE);
 	}
 
