@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.3 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.4 2005/02/19 00:55:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -47,6 +47,7 @@
 #endif
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -480,7 +481,8 @@ ndis_attach(dev)
 	ifp->if_watchdog = ndis_watchdog;
 	ifp->if_init = ndis_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = 50;
+	ifq_set_maxlen(&ifp->if_snd, 50);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_capenable = ifp->if_capabilities;
 	ifp->if_hwassist = sc->ndis_hwassist;
 
@@ -1129,7 +1131,7 @@ ndis_starttask(arg)
 	struct ifnet		*ifp;
 
 	ifp = arg;
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		ndis_start(ifp);
 	return;
 }
@@ -1170,7 +1172,7 @@ ndis_start(ifp)
 	p0 = &sc->ndis_txarray[sc->ndis_txidx];
 
 	while(sc->ndis_txpending) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_poll(&ifp->if_snd);
 		if (m == NULL)
 			break;
 
@@ -1178,9 +1180,9 @@ ndis_start(ifp)
 
 		if (ndis_mtop(m, &sc->ndis_txarray[sc->ndis_txidx])) {
 			NDIS_UNLOCK(sc);
-			IF_PREPEND(&ifp->if_snd, m);
 			return;
 		}
+		m = ifq_dequeue(&ifp->if_snd);
 
 		/*
 		 * Save pointer to original mbuf
