@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.79 2005/02/27 12:51:01 asmodai Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.80 2005/04/06 21:29:10 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -27,9 +27,49 @@ If you prefer to obtain the source via cvsup, you can use
 pull the source into /home/dcvs, no more than once a day. 
 A <a href="dragonfly-cvs-sys-supfile">sys hierarchy only</a> cvsup 
 file is available.  See below for suitable cvsup locations.
-<b>NOTE! there is currently a lot of VFS work going on in HEAD.  When
-using CVS we recommend that you checkout and track the DragonFly_Stable
-tag rather then HEAD.</b></p>
+</p>
+
+<p>
+You typically extract sources from the repository into /usr/src using
+something like this:
+</p>
+<ul>
+<pre>
+cd /usr
+rm -rf src
+cvs -d /home/dcvs checkout -rDragonFly_Preview src</pre>
+</ul>
+
+<p>
+When extracting sources from the cvs repository please note the meaning of
+the following tags:
+<ul>
+    <table BORDER="1">
+    <tr><td><b>CVS Tag</b></td><td><b>Description</b></td></tr>
+    <tr>
+	<td>HEAD</td>
+	<td>Represents the bleeding edge of Dragonfly development.  Kernels
+	    compiled from these sources will be marked DEVELOPMENT.</td>
+    </tr>
+    <tr>
+	<td>DragonFly_Preview</td>
+	<td>Represents a recent snapshot of the development tree.  Kernels
+	    compiled from these sources are still highly developmental and
+	    may be unstable, but are likely a lot more stable then HEAD.</td>
+    </tr>
+    <tr>
+	<td>DragonFly_RELEASE_X_Y_Slip</td>
+	<td>Represents code tracking a particular DragonFly release.  The
+	    actual brancah tag is the same tag without the '_Slip' suffix,
+	    but since the subversion is only bumped once a day you should
+	    use the full tag to extract sources so the subversion reported
+	    by the kernel matches the actual subversion of the code and so
+	    you do not catch the codebase in the middle of a commit.
+	</td>
+    </tr>
+    </table>
+</ul>
+</p>
 
 <h2>Other Sites</h2>
 
@@ -45,22 +85,48 @@ Daily DragonFly events and news are reported at the
 
 <p>
 DragonFly is under major development so while we do have a release cycle
-there are actually better choices.  We have daily snapshots and we have
-selected 'reasonably stable' snapshots.  First-time DragonFly users are
-probably best served by the most recent 'reasonably stable' snapshot,
-which is currently dfly-20041222-stable.iso.gz.</p>
-<p>
-Releases occur approximately every 6 months and serve as major feature
-points in the DragonFly distribution, but as a young project DragonFly
-does not yet have the developer resources to maintain multiple release
-branches.  Users are best served by downloading one of the recent stable
-tagged snapshots.
+there are often better choices.  We have daily snapshots and we have
+preview snapshots of current development.  First-time DragonFly users are
+probably best served using a preview snapshot.  These snapshots can be
+located at <a href="ftp://ftp.dragonflybsd.org/iso-images/">ftp://ftp.dragonflybsd.org/iso-images</a>. 
+Daily snapshots are available at <a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/</a>.
+</p>
 <p>
 We are building both gcc-2.95.x and gcc-3.4 based daily snapshots.  
 <b><i>gcc-3.4 based systems are considered experimental and should only
 be used for testing and development purposes!</i></b>.  Most DragonFly users
 and, indeed, most developers, are using pain-free gcc-2.95.x snapshots.
 Both compilers are available for use in all DragonFly snapshots.</p>
+</p>
+
+<p>
+DragonFly systems based on current development are labeled PREVIEW or
+DEVELOPMENT.  People who want to keep up with recent developments but who
+do not want the absolute bleeding-edge-likely-to-crash-in-bad-ways work
+should use PREVIEW.  People who want the bleeding edge should use the
+HEAD of the CVS tree which are marked DEVELOPMENT.  <i>We used to have
+something called STABLE and CURRENT.  Those no longer exist.  STABLE has
+been renamed to PREVIEW and CURRENT has been renamed to DEVELOPMENT.</i>
+</p>
+
+<h2>DragonFly Releases</h2>
+
+<p>
+Releases occur approximately twice a year.  We are currently in the final
+stages of putting together the <b>DragonFly 1.2-RELEASE</b>.  This will be the
+first release that we maintain a separate CVS branch for.  DragonFly
+release branches <b>only contain bug and security fixes</b> and are
+designed for people running production systems who don't want any surprises.
+Brand-new features often discussed on the mailing lists are typically not
+in release branches.
+</p>
+
+<p>
+DragonFly systems based on releases are labeled RELEASE.  For example,
+you might be running <b>DragonFly X.Y.Z-RELEASE</b>.  The subversion is
+bumped on a daily basis when commits have been made to the release branch
+that day and can become quite large.  For example, 1.2.75.
+</p>
 
 <h2>Download Sites</h2>
 
