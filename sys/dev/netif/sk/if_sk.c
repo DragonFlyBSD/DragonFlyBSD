@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.9 2003/11/20 22:07:30 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.10 2003/12/17 22:18:24 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -215,7 +215,8 @@ static int sk_marv_miibus_readreg     (struct sk_if_softc *, int, int);
 static int sk_marv_miibus_writereg    (struct sk_if_softc *, int, int, int);
 static void sk_marv_miibus_statchg    (struct sk_if_softc *);
 
-static u_int32_t sk_calchash	(caddr_t);
+static u_int32_t xmac_calchash	(caddr_t);
+static u_int32_t gmac_calchash	(caddr_t);
 static void sk_setfilt		(struct sk_if_softc *, caddr_t, int);
 static void sk_setmulti		(struct sk_if_softc *);
 static void sk_setpromisc	(struct sk_if_softc *);
@@ -671,10 +672,11 @@ static void sk_marv_miibus_statchg(sc_if)
 	return;
 }
 
-#define SK_POLY		0xEDB88320
-#define SK_BITS		6
+#define XMAC_POLY		0xEDB88320
+#define GMAC_POLY               0x04C11DB7L
+#define HASH_BITS		6
 
-static u_int32_t sk_calchash(addr)
+static u_int32_t xmac_calchash(addr)
 	caddr_t			addr;
 {
 	u_int32_t		idx, bit, data, crc;
@@ -684,10 +686,47 @@ static u_int32_t sk_calchash(addr)
 
 	for (idx = 0; idx < 6; idx++) {
 		for (data = *addr++, bit = 0; bit < 8; bit++, data >>= 1)
-			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? SK_POLY : 0);
+			crc = (crc >> 1) ^ (((crc ^ data) & 1) ? XMAC_POLY : 0);
 	}
 
-	return (~crc & ((1 << SK_BITS) - 1));
+	return (~crc & ((1 << HASH_BITS) - 1));
+}
+
+static u_int32_t gmac_calchash(addr)
+    caddr_t			addr;
+{
+    u_int32_t               idx, bit, crc, tmpData, data;
+
+    /* Compute CRC for the address value. */
+    crc = 0xFFFFFFFF; /* initial value */
+
+    for (idx = 0; idx < 6; idx++) {
+        data = *addr++;
+
+        /* Change bit order in byte. */
+        tmpData = data;
+        for (bit = 0; bit < 8; bit++) {
+            if (tmpData & 1) {
+                data |=  1 << (7 - bit);
+            }
+            else {
+                data &= ~(1 << (7 - bit));
+            }
+
+            tmpData >>= 1;
+        }
+
+        crc ^= (data << 24);
+        for (bit = 0; bit < 8; bit++) {
+            if (crc & 0x80000000) {
+                crc = (crc << 1) ^ GMAC_POLY;
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+
+    return (crc & ((1 << HASH_BITS) - 1));
 }
 
 static void sk_setfilt(sc_if, addr, slot)
@@ -763,12 +802,25 @@ static void sk_setmulti(sc_if)
 				continue;
 			}
 
-			h = sk_calchash(
-				LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
-			if (h < 32)
-				hashes[0] |= (1 << h);
-			else
-				hashes[1] |= (1 << (h - 32));
+                        switch(sc->sk_type) {
+                        case SK_GENESIS:
+                            h = xmac_calchash(
+                                LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+                            if (h < 32)
+                                hashes[0] |= (1 << h);
+                            else
+                                hashes[1] |= (1 << (h - 32));
+                            break;
+
+                        case SK_YUKON:
+                            h = gmac_calchash(
+                                LLADDR((struct sockaddr_dl *)ifma->ifma_addr));
+                            if (h < 32)
+                                hashes[0] |= (1 << h);
+                            else
+                                hashes[1] |= (1 << (h - 32));
+                            break;
+                        }
 		}
 	}
 
