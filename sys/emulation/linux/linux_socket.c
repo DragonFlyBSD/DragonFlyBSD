@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.10 2003/09/07 20:36:11 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.11 2003/09/07 21:40:58 daver Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -61,7 +61,7 @@
  * Copyin a sockaddr structure provided by a Linux binary.  Linux uses
  * the 4.3BSD sockaddr structure which has no sa_len field.  We must
  * pass 4.4BSD sockaddr structures when we call native functions in the
- * BSD kernel.  his function does the conversion for us.
+ * BSD kernel.  This function does the conversion for us.
  *
  * Also, our socket calls require the sockaddr structure length to agree
  * with the address family.  Linux does not, so we must force it.
@@ -120,6 +120,24 @@ linux_getsockaddr(struct sockaddr **namp, struct sockaddr *uaddr, size_t len)
 		sa->sa_len = sa_len;
 		*namp = sa;
 	}
+
+	return (error);
+}
+
+/*
+ * Transform a 4.4BSD sockaddr structure into a Linux sockaddr structure
+ * and copy it out to a user address.
+ */
+static int
+linux_copyout_sockaddr(struct sockaddr *sa, struct sockaddr *uaddr)
+{
+	int error, sa_len;
+
+	/* Save the length of sa before we destroy it */
+	sa_len = sa->sa_len;
+	*(u_short *)sa = sa->sa_family;
+
+	error = copyout(sa, uaddr, sa_len);
 
 	return (error);
 }
@@ -512,20 +530,14 @@ static int
 linux_listen(struct linux_listen_args *args, int *res)
 {
 	struct linux_listen_args linux_args;
-	struct listen_args /* {
-		int s;
-		int backlog;
-	} */ bsd_args;
 	int error;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.s = linux_args.s;
-	bsd_args.backlog = linux_args.backlog;
-	error = listen(&bsd_args);
-	*res = bsd_args.sysmsg_result;
+	error = kern_listen(linux_args.s, linux_args.backlog);
+
 	return(error);
 }
 
@@ -567,11 +579,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 			copyout(&sa_len, linux_args.namelen,
 			    sizeof(*linux_args.namelen));
 		} else {
-			/*
-			 * Convert to the Linux sockaddr strucuture.
-			 */
-			*(u_short *)sa = sa->sa_family;
-			error = copyout(sa, linux_args.addr, sa_len);
+			error = linux_copyout_sockaddr(sa, linux_args.addr);
 			if (error == 0) {
 				error = copyout(&sa_len, linux_args.namelen,
 				    sizeof(*linux_args.namelen));
@@ -608,22 +616,25 @@ static int
 linux_getsockname(struct linux_getsockname_args *args, int *res)
 {
 	struct linux_getsockname_args linux_args;
-	struct getsockname_args /* {
-		int fdes;
-		caddr_t asa;
-		int *alen;
-	} */ bsd_args;
-	int error;
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
+		return (error);
+	error = copyin(linux_args.namelen, &sa_len, sizeof(sa_len));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.fdes = linux_args.s;
-	bsd_args.asa = (caddr_t) linux_args.addr;
-	bsd_args.alen = linux_args.namelen;
-	error = ogetsockname(&bsd_args);
-	*res = bsd_args.sysmsg_result;
+	error = kern_getsockname(linux_args.s, &sa, &sa_len);
+
+	if (error == 0)
+		error = linux_copyout_sockaddr(sa, linux_args.addr);
+	if (error == 0)
+		error = copyout(&sa_len, linux_args.namelen,
+		    sizeof(*linux_args.namelen));
+	if (sa)
+		FREE(sa, M_SONAME);
 	return(error);
 }
 
@@ -637,22 +648,25 @@ static int
 linux_getpeername(struct linux_getpeername_args *args, int *res)
 {
 	struct linux_getpeername_args linux_args;
-	struct ogetpeername_args /* {
-		int fdes;
-		caddr_t asa;
-		int *alen;
-	} */ bsd_args;
-	int error;
+	struct sockaddr *sa = NULL;
+	int error, sa_len;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
+		return (error);
+	error = copyin(linux_args.namelen, &sa_len, sizeof(sa_len));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.fdes = linux_args.s;
-	bsd_args.asa = (caddr_t) linux_args.addr;
-	bsd_args.alen = linux_args.namelen;
-	error = ogetpeername(&bsd_args);
-	*res = bsd_args.sysmsg_result;
+	error = kern_getpeername(linux_args.s, &sa, &sa_len);
+
+	if (error == 0)
+		error = linux_copyout_sockaddr(sa, linux_args.addr);
+	if (error == 0)
+		error = copyout(&sa_len, linux_args.namelen,
+		    sizeof(*linux_args.namelen));
+	if (sa)
+		FREE(sa, M_SONAME);
 	return(error);
 }
 
@@ -667,27 +681,20 @@ static int
 linux_socketpair(struct linux_socketpair_args *args, int *res)
 {
 	struct linux_socketpair_args linux_args;
-	struct socketpair_args /* {
-		int domain;
-		int type;
-		int protocol;
-		int *rsv;
-	} */ bsd_args;
-	int error;
+	int error, domain, sockv[2];
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
 
-	bsd_args.domain = linux_to_bsd_domain(linux_args.domain);
-	if (bsd_args.domain == -1)
+	domain = linux_to_bsd_domain(linux_args.domain);
+	if (domain == -1)
 		return (EINVAL);
+	error = kern_socketpair(domain, linux_args.type, linux_args.protocol,
+	    sockv);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.type = linux_args.type;
-	bsd_args.protocol = linux_args.protocol;
-	bsd_args.rsv = linux_args.rsv;
-	error = socketpair(&bsd_args);
-	*res = bsd_args.sysmsg_result;
+	if (error == 0)
+		error = copyout(sockv, linux_args.rsv, sizeof(sockv));
 	return(error);
 }
 
