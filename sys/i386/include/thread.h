@@ -33,23 +33,27 @@
  * 
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.7 2004/07/16 05:48:46 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/thread.h,v 1.8 2005/02/21 21:40:55 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
+
+#include "segments.h"
 
 union savefpu;
 
 struct md_thread {
     unsigned int	mtd_cpl;
     union savefpu	*mtd_savefpu;
+    struct segment_descriptor mtd_tls[NGTLS];
 };
 
 #ifdef _KERNEL
 
 #define td_cpl		td_mach.mtd_cpl
 #define td_savefpu	td_mach.mtd_savefpu
+#define td_tls		td_mach.mtd_tls
 
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.

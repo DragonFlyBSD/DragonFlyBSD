@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.32 2005/02/01 22:41:24 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm_machdep.c,v 1.33 2005/02/21 21:40:53 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -194,7 +194,8 @@ cpu_fork(p1, p2, flags)
 				pcb2->pcb_ldt->ldt_len);
 		}
         }
-
+	bcopy(&p1->p_thread->td_tls, &p2->p_thread->td_tls,
+	      sizeof(p2->p_thread->td_tls));
 	/*
 	 * Now, cpu_switch() can schedule the new process.
 	 * pcb_esp is loaded pointing to the cpu_switch() stack frame

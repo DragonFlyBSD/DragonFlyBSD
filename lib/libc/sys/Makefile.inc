@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.9 2005/02/21 19:53:34 dillon Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.10 2005/02/21 21:41:01 dillon Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -105,7 +105,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	sigaction.2 sigaltstack.2 sigpending.2 sigprocmask.2 sigreturn.2 \
 	sigstack.2 sigsuspend.2 socket.2 socketpair.2 stat.2 statfs.2 \
 	swapon.2 symlink.2 sync.2 sysarch.2 syscall.2 \
-	truncate.2 umask.2 umtx.2 undelete.2 \
+	truncate.2 tls.2 umask.2 umtx.2 undelete.2 \
 	unlink.2 utimes.2 upc_register.2 vfork.2 wait.2 write.2
 .if !defined(NO_P1003_1B)
 MAN+=	sched_get_priority_max.2 sched_setparam.2 \
@@ -158,5 +158,7 @@ MLINKS+=sched_get_priority_max.2 sched_get_priority_min.2 \
 	sched_get_priority_max.2 sched_rr_get_interval.2
 MLINKS+=sched_setparam.2 sched_getparam.2
 MLINKS+=sched_setscheduler.2 sched_getscheduler.2
+MLINKS+=tls.2 sys_set_tls_area.2 tls.2 sys_get_tls_area.2
+MLINKS+=umtx.2 umtx_sleep.2 umtx.2 umtx_wakeup.2
 .endif
 .endif

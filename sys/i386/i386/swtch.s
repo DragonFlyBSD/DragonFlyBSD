@@ -66,7 +66,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.36 2004/12/20 09:21:18 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.37 2005/02/21 21:40:53 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -374,6 +374,12 @@ ENTRY(cpu_heavy_restore)
 	call	set_user_ldt
 	popl	%edx
 2:
+	/*
+	 * Restore the user TLS if we have one
+	 */
+	pushl	%edx
+	call	set_user_TLS
+	popl	%edx
 	/*
 	 * Restore the %gs segment register, which must be done after
 	 * loading the user LDT.  Since user processes can modify the

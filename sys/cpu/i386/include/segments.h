@@ -36,7 +36,7 @@
  *
  *	from: @(#)segments.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/segments.h,v 1.24 1999/12/29 04:33:07 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.7 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/cpu/i386/include/segments.h,v 1.8 2005/02/21 21:40:55 dillon Exp $
  */
 
 #ifndef _MACHINE_SEGMENTS_H_
@@ -220,11 +220,14 @@ struct region_descriptor {
 #define GBIOSDATA_SEL	12	/* BIOS interface (Data) */
 #define GBIOSUTIL_SEL	13	/* BIOS interface (Utility) */
 #define GBIOSARGS_SEL	14	/* BIOS interface (Arguments) */
+#define	GTLS_START	15	/* Thread TLS Descriptor */
+#define	GTLS_END	17	/* Thread TLS Descriptor */
 
+#define NGTLS		(GTLS_END - GTLS_START + 1)
 #ifdef BDE_DEBUGGER
-#define	NGDT		18	/* some of 11-17 are reserved for debugger */
+#define	NGDT		21	/* some of 11-17 are reserved for debugger */
 #else
-#define NGDT 		15
+#define NGDT 		18
 #endif
 
 /*

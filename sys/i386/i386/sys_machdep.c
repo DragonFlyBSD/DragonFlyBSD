@@ -32,7 +32,7 @@
  *
  *	from: @(#)sys_machdep.c	5.5 (Berkeley) 1/19/91
  * $FreeBSD: src/sys/i386/i386/sys_machdep.c,v 1.47.2.3 2002/10/07 17:20:00 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.15 2004/12/20 13:58:02 joerg Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/sys_machdep.c,v 1.16 2005/02/21 21:40:53 dillon Exp $
  *
  */
 
@@ -75,6 +75,7 @@ static int i386_get_ldt	(struct proc *, char *, int *);
 static int i386_set_ldt	(struct proc *, char *, int *);
 static int i386_get_ioperm	(struct proc *, char *);
 static int i386_set_ioperm	(struct proc *, char *);
+static int check_descs(union descriptor *, int);
 int i386_extend_pcb	(struct proc *);
 
 /*
@@ -91,7 +92,6 @@ sysarch(struct sysarch_args *uap)
 	case I386_GET_LDT:
 		error = i386_get_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
-
 	case I386_SET_LDT:
 		error = i386_set_ldt(p, uap->parms, &uap->sysmsg_result);
 		break;
@@ -234,8 +234,31 @@ done:
 }
 
 /*
+ * Update the TLS entries for the process.  Used by assembly, do not staticize.
+ *
+ * Must be called from a critical section (else an interrupt thread preemption
+ * may cause %gs to fault).  Normally called from the low level swtch.s code.
+ */
+void
+set_user_TLS(void)
+{
+	struct thread *td = curthread;
+	int i;
+#ifdef SMP
+	int off = GTLS_START + mycpu->gd_cpuid * NGDT;
+#else
+	const int off = GTLS_START;
+#endif
+	for (i = 0; i < NGTLS; ++i)
+		gdt[off + i].sd = td->td_tls[i];
+}
+
+/*
  * Update the GDT entry pointing to the LDT to point to the LDT of the
- * current process.  Do not staticize.
+ * current process.  Used by assembly, do not staticize.
+ *
+ * Must be called from a critical section (else an interrupt thread preemption
+ * may cause %gs to fault).  Normally called from the low level swtch.s code.
  */   
 void
 set_user_ldt(struct pcb *pcb)
@@ -358,12 +381,12 @@ i386_get_ldt(struct proc *p, char *args, int *res)
 static int
 i386_set_ldt(struct proc *p, char *args, int *res)
 {
-	int error = 0, i, n;
+	int error = 0;
 	int largest_ld;
 	struct pcb *pcb = p->p_thread->td_pcb;
 	struct pcb_ldt *pcb_ldt = pcb->pcb_ldt;
 	union descriptor *descs;
-	int descs_size, s;
+	int descs_size;
 	struct i386_ldt_args ua, *uap = &ua;
 
 	if ((error = copyin(args, uap, sizeof(struct i386_ldt_args))) < 0)
@@ -396,10 +419,15 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 			pcb_ldt->ldt_base = new_ldt->ldt_base;
 			pcb_ldt->ldt_len = new_ldt->ldt_len;
 			FREE(new_ldt, M_SUBPROC);
-		} else
+		} else {
 			pcb->pcb_ldt = pcb_ldt = new_ldt;
+		}
+		/*
+		 * Since the LDT may be shared, we must signal other cpus to
+		 * reload it.  XXX we need to track which cpus might be
+		 * using the shared ldt and only signal those.
+		 */
 #ifdef SMP
-		/* signal other cpus to reload ldt */
 		smp_rendezvous(NULL, (void (*)(void *))set_user_ldt, NULL, pcb);
 #else
 		set_user_ldt(pcb);
@@ -416,7 +444,36 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 		return (error);
 	}
 	/* Check descriptors for access violations */
-	for (i = 0, n = uap->start; i < uap->num; i++, n++) {
+	error = check_descs(descs, uap->num);
+	if (error) {
+		kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+		return (error);
+	}
+
+	/*
+	 * Fill in the actual ldt entries.  Since %fs might point to one of
+	 * these entries a critical section is required to prevent an
+	 * interrupt thread from preempting us, switch back, and faulting
+	 * on the load of %fs due to a half-formed descriptor.
+	 */
+	crit_enter();
+	bcopy(descs, 
+		 &((union descriptor *)(pcb_ldt->ldt_base))[uap->start],
+		uap->num * sizeof(union descriptor));
+	*res = uap->start;
+
+	crit_exit();
+	kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+	return (0);
+}
+
+static int
+check_descs(union descriptor *descs, int num)
+{
+	int i;
+
+	/* Check descriptors for access violations */
+	for (i = 0; i < num; i++) {
 		union descriptor *dp;
 		dp = &descs[i];
 
@@ -443,7 +500,6 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 			 * to create a segment of these types.  They are
 			 * for OS use only.
 			 */
-			kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
 			return EACCES;
 
 		/* memory segment types */
@@ -452,11 +508,8 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 		case SDT_MEMERC:  /* memory execute read conforming */
 		case SDT_MEMERAC: /* memory execute read accessed conforming */
 			/* Must be "present" if executable and conforming. */
-			if (dp->sd.sd_p == 0) {
-				kmem_free(kernel_map, (vm_offset_t)descs,
-				    descs_size);
+			if (dp->sd.sd_p == 0)
 				return (EACCES);
-			}
 			break;
 		case SDT_MEMRO:   /* memory read only */
 		case SDT_MEMROA:  /* memory read only accessed */
@@ -472,27 +525,13 @@ i386_set_ldt(struct proc *p, char *args, int *res)
 		case SDT_MEMERA:  /* memory execute read accessed */
 			break;
 		default:
-			kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
 			return(EINVAL);
 			/*NOTREACHED*/
 		}
 
 		/* Only user (ring-3) descriptors may be present. */
-		if ((dp->sd.sd_p != 0) && (dp->sd.sd_dpl != SEL_UPL)) {
-			kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
+		if ((dp->sd.sd_p != 0) && (dp->sd.sd_dpl != SEL_UPL))
 			return (EACCES);
-		}
 	}
-
-	s = splhigh();
-
-	/* Fill in range */
-	bcopy(descs, 
-		 &((union descriptor *)(pcb_ldt->ldt_base))[uap->start],
-		uap->num * sizeof(union descriptor));
-	*res = uap->start;
-
-	splx(s);
-	kmem_free(kernel_map, (vm_offset_t)descs, descs_size);
 	return (0);
 }

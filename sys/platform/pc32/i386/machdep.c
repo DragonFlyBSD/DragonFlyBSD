@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.69 2005/02/07 20:38:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.70 2005/02/21 21:40:53 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1175,6 +1175,33 @@ struct soft_segment_descriptor gdt_segs[] = {
 	0, 0,
 	0,			/* default 32 vs 16 bit size */
 	1  			/* limit granularity (byte/page units)*/ },
+/* GTLS_START 15 TLS */
+{	0x0,			/* segment base address  */
+	0x0,			/* length */
+	0,			/* segment type */
+	0,			/* segment descriptor priority level */
+	0,			/* segment descriptor present */
+	0, 0,
+	0,			/* default 32 vs 16 bit size */
+	0  			/* limit granularity (byte/page units)*/ },
+/* GTLS_START+1 16 TLS */
+{	0x0,			/* segment base address  */
+	0x0,			/* length */
+	0,			/* segment type */
+	0,			/* segment descriptor priority level */
+	0,			/* segment descriptor present */
+	0, 0,
+	0,			/* default 32 vs 16 bit size */
+	0  			/* limit granularity (byte/page units)*/ },
+/* GTLS_END 17 TLS */
+{	0x0,			/* segment base address  */
+	0x0,			/* length */
+	0,			/* segment type */
+	0,			/* segment descriptor priority level */
+	0,			/* segment descriptor present */
+	0, 0,
+	0,			/* default 32 vs 16 bit size */
+	0  			/* limit granularity (byte/page units)*/ },
 };
 
 static struct soft_segment_descriptor ldt_segs[] = {
