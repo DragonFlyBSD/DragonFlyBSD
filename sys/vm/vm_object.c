@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.18 2004/07/31 07:52:51 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.19 2004/09/17 10:02:12 dillon Exp $
  */
 
 /*
@@ -467,6 +467,7 @@ vm_object_terminate(vm_object_t object)
 		} else {
 			vm_page_busy(p);
 			vm_page_remove(p);
+			vm_page_wakeup(p);
 		}
 	}
 	splx(s);

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.25 2004/05/27 00:38:58 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.26 2004/09/17 10:02:12 dillon Exp $
  */
 
 /*
@@ -88,6 +88,8 @@
 #include <vm/vm_pager.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_page2.h>
+
+#include <sys/thread2.h>
 
 static void vm_page_queue_init(void);
 static void vm_page_free_wakeup(void);
@@ -416,29 +418,29 @@ vm_page_insert(vm_page_t m, vm_object_t object, vm_pindex_t pindex)
 }
 
 /*
- * Removes the given mem entry from the object/offset-page table and
- * the object page list, but do not invalidate/terminate the backing store.
+ * Removes the given vm_page_t from the global (object,index) hash table
+ * and from the object's memq.
  *
- * This routine must be called at splvm().
  * The underlying pmap entry (if any) is NOT removed here.
  * This routine may not block.
- * The page must be BUSY.
+ *
+ * The page must be BUSY and will remain BUSY on return.  No spl needs to be
+ * held on call to this routine.
+ *
+ * note: FreeBSD side effect was to unbusy the page on return.  We leave
+ * it busy.
  */
 void
 vm_page_remove(vm_page_t m)
 {
 	vm_object_t object;
+	struct vm_page **bucket;
 
 	if (m->object == NULL)
 		return;
 
 	if ((m->flags & PG_BUSY) == 0)
 		panic("vm_page_remove: page not busy");
-
-	/*
-	 * Basically destroy the page.
-	 */
-	vm_page_wakeup(m);
 
 	object = m->object;
 
@@ -449,19 +451,16 @@ vm_page_remove(vm_page_t m)
 	 * Note: we must NULL-out m->hnext to prevent loops in detached
 	 * buffers with vm_page_lookup().
 	 */
-	{
-		struct vm_page **bucket;
-
-		bucket = &vm_page_buckets[vm_page_hash(m->object, m->pindex)];
-		while (*bucket != m) {
-			if (*bucket == NULL)
-			    panic("vm_page_remove(): page not found in hash");
-			bucket = &(*bucket)->hnext;
-		}
-		*bucket = m->hnext;
-		m->hnext = NULL;
-		vm_page_bucket_generation++;
+	crit_enter();
+	bucket = &vm_page_buckets[vm_page_hash(m->object, m->pindex)];
+	while (*bucket != m) {
+		if (*bucket == NULL)
+		    panic("vm_page_remove(): page not found in hash");
+		bucket = &(*bucket)->hnext;
 	}
+	*bucket = m->hnext;
+	m->hnext = NULL;
+	vm_page_bucket_generation++;
 
 	/*
 	 * Now remove from the object's list of backed pages.
@@ -475,6 +474,7 @@ vm_page_remove(vm_page_t m)
 	object->generation++;
 
 	m->object = NULL;
+	crit_exit();
 }
 
 /*
@@ -542,15 +542,14 @@ retry:
 void
 vm_page_rename(vm_page_t m, vm_object_t new_object, vm_pindex_t new_pindex)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 	vm_page_remove(m);
 	vm_page_insert(m, new_object, new_pindex);
 	if (m->queue - m->pc == PQ_CACHE)
 		vm_page_deactivate(m);
 	vm_page_dirty(m);
-	splx(s);
+	vm_page_wakeup(m);
+	crit_exit();
 }
 
 /*
@@ -730,6 +729,7 @@ vm_page_select_free(vm_object_t object, vm_pindex_t pindex, boolean_t prefer_zer
  *
  * The object must be locked.
  * This routine may not block.
+ * The returned page will be marked PG_BUSY
  *
  * Additional special handling is required when called from an interrupt
  * (VM_ALLOC_INTERRUPT).  We are not allowed to mess with the page cache
@@ -739,7 +739,6 @@ vm_page_t
 vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 {
 	vm_page_t m = NULL;
-	int s;
 
 	KASSERT(!vm_page_lookup(object, pindex),
 		("vm_page_alloc: page already allocated"));
@@ -752,7 +751,7 @@ vm_page_alloc(vm_object_t object, vm_pindex_t pindex, int page_req)
 	if (curthread == pagethread)
 		page_req |= VM_ALLOC_SYSTEM;
 
-	s = splvm();
+	crit_enter();
 loop:
 	if (vmstats.v_free_count > vmstats.v_free_reserved ||
 	    ((page_req & VM_ALLOC_INTERRUPT) && vmstats.v_free_count > 0) ||
@@ -784,7 +783,7 @@ loop:
 		m = vm_page_select_cache(object, pindex);
 #endif
 		/*
-		 * On succuess move the page into the free queue and loop.
+		 * On success move the page into the free queue and loop.
 		 */
 		if (m != NULL) {
 			KASSERT(m->dirty == 0,
@@ -798,7 +797,7 @@ loop:
 		/*
 		 * On failure return NULL
 		 */
-		splx(s);
+		crit_exit();
 #if defined(DIAGNOSTIC)
 		if (vmstats.v_cache_count > 0)
 			printf("vm_page_alloc(NORMAL): missing pages on cache queue: %d\n", vmstats.v_cache_count);
@@ -810,14 +809,15 @@ loop:
 		/*
 		 * No pages available, wakeup the pageout daemon and give up.
 		 */
-		splx(s);
+		crit_exit();
 		vm_pageout_deficit++;
 		pagedaemon_wakeup();
 		return (NULL);
 	}
 
 	/*
-	 * Good page found.
+	 * Good page found.  The page has not yet been busied.  We are in
+	 * a critical section.
 	 */
 	KASSERT(m != NULL, ("vm_page_alloc(): missing page on free queue\n"));
 
@@ -827,7 +827,8 @@ loop:
 	vm_page_unqueue_nowakeup(m);
 
 	/*
-	 * Initialize structure.  Only the PG_ZERO flag is inherited.
+	 * Initialize structure.  Only the PG_ZERO flag is inherited.  Set
+	 * the page PG_BUSY
 	 */
 	if (m->flags & PG_ZERO) {
 		vm_page_zero_count--;
@@ -844,7 +845,7 @@ loop:
 		("vm_page_alloc: free/cache page %p was dirty", m));
 
 	/*
-	 * vm_page_insert() is safe prior to the splx().  Note also that
+	 * vm_page_insert() is safe prior to the crit_exit().  Note also that
 	 * inserting a page here does not insert it into the pmap (which
 	 * could cause us to block allocating memory).  We cannot block 
 	 * anywhere.
@@ -858,7 +859,11 @@ loop:
 	if (vm_paging_needed())
 		pagedaemon_wakeup();
 
-	splx(s);
+	crit_exit();
+
+	/*
+	 * A PG_BUSY page is returned.
+	 */
 	return (m);
 }
 
@@ -919,9 +924,7 @@ vm_waitpfault(void)
 void
 vm_page_activate(vm_page_t m)
 {
-	int s;
-
-	s = splvm();
+	crit_enter();
 	if (m->queue != PQ_ACTIVE) {
 		if ((m->queue - m->pc) == PQ_CACHE)
 			mycpu->gd_cnt.v_reactivated++;
@@ -941,8 +944,7 @@ vm_page_activate(vm_page_t m)
 		if (m->act_count < ACT_INIT)
 			m->act_count = ACT_INIT;
 	}
-
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -982,19 +984,21 @@ vm_page_free_wakeup(void)
 /*
  *	vm_page_free_toq:
  *
- *	Returns the given page to the PQ_FREE list,
- *	disassociating it with any VM object.
+ *	Returns the given page to the PQ_FREE list, disassociating it with
+ *	any VM object.
  *
- *	Object and page must be locked prior to entry.
+ *	The vm_page must be PG_BUSY on entry.  PG_BUSY will be released on
+ *	return (the page will have been freed).  No particular spl is required
+ *	on entry.
+ *
  *	This routine may not block.
  */
 void
 vm_page_free_toq(vm_page_t m)
 {
-	int s;
 	struct vpgqueues *pq;
 
-	s = splvm();
+	crit_enter();
 	mycpu->gd_cnt.v_tfree++;
 
 	if (m->busy || ((m->queue - m->pc) == PQ_FREE)) {
@@ -1022,7 +1026,8 @@ vm_page_free_toq(vm_page_t m)
 	 * and queue removal.
 	 */
 	if ((m->flags & PG_FICTITIOUS) != 0) {
-		splx(s);
+		vm_page_wakeup(m);
+		crit_exit();
 		return;
 	}
 
@@ -1069,9 +1074,9 @@ vm_page_free_toq(vm_page_t m)
 	} else {
 		TAILQ_INSERT_HEAD(&pq->pl, m, pageq);
 	}
-
+	vm_page_wakeup(m);
 	vm_page_free_wakeup();
-	splx(s);
+	crit_exit();
 }
 
 /*
