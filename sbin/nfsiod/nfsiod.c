@@ -36,14 +36,13 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)nfsiod.c	8.4 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/nfsiod/nfsiod.c,v 1.9 1999/08/28 00:13:55 peter Exp $
- * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/nfsiod/nfsiod.c,v 1.5 2004/11/14 20:07:25 liamfoy Exp $
  */
 
 #include <sys/param.h>
 #include <sys/syslog.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
-#include <sys/time.h>
 
 #include <nfs/rpcv2.h>
 #include <nfs/nfs.h>
@@ -60,9 +59,9 @@ int debug = 1;
 int debug = 0;
 #endif
 
-void nonfs(int);
-void reapchild(int);
-void usage(void);
+static void	nonfs(int);
+static void	reapchild(int);
+static void	usage(void);
 
 /*
  * Nfsiod does asynchronous buffered I/O on behalf of the NFS client.
@@ -99,7 +98,6 @@ main(int argc, char **argv)
 				num_servers = DEFNFSDCNT;
 			}
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -123,12 +121,12 @@ main(int argc, char **argv)
 
 	if (debug == 0) {
 		daemon(0, 0);
-		(void)signal(SIGHUP, SIG_IGN);
-		(void)signal(SIGINT, SIG_IGN);
-		(void)signal(SIGQUIT, SIG_IGN);
-		(void)signal(SIGSYS, nonfs);
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
+		signal(SIGSYS, nonfs);
 	}
-	(void)signal(SIGCHLD, reapchild);
+	signal(SIGCHLD, reapchild);
 
 	openlog("nfsiod:", LOG_PID, LOG_DAEMON);
 
@@ -147,24 +145,23 @@ main(int argc, char **argv)
 	exit (0);
 }
 
-void
-nonfs(int signo)
+static void
+nonfs(int signo __unused)
 {
 	syslog(LOG_ERR, "missing system call: NFS not available");
 }
 
-void
-reapchild(int signo)
+static void
+reapchild(int signo __unused)
 {
 
-	while (wait3(NULL, WNOHANG, NULL) > 0) {
-		/* nothing */
-	};
+	while (wait3(NULL, WNOHANG, NULL) > 0)
+		;
 }
 
-void
+static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: nfsiod [-n num_servers]\n");
+	fprintf(stderr, "usage: nfsiod [-n num_servers]\n");
 	exit(1);
 }
