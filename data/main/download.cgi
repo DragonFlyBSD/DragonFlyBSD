@@ -1,24 +1,20 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.39 2004/07/12 17:41:25 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.40 2004/07/12 18:34:29 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
-<p>
-There are several ways to install DragonFly on your computer.  
-Some of these methods require prior BSD experience with tools like 
-disklabel or boot0cfg, and we have no completed installation 
-program at this point.</p>
 
 <h2>CD Images</h2>
 
 <p>
 DragonFly CDs are 'live', meaning these CDs will boot your system 
 and let you log in as root (no password) and install to your IDE disk-based 
-system.  Make sure you read the 
-<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a> file, as 
-this is not an automated installation.  See the 'Download Site' list below 
-for a list of download locations. </p>
+system.  The CD includes an installer that can be run at the console, or 
+(experimentally) via a web browser.  Make sure you read the 
+<a href="/cgi-bin/cvsweb.cgi/~checkout~/src/nrelease/root/README">README</a> file 
+for more information.  
+See the 'Download Site' list below for a list of download locations. </p>
 
 <p>
 <b>The DragonFly 1.0-RELEASE is here!  See below for download sites!  The MD5
@@ -142,7 +138,7 @@ Daily DragonFly events and news are reported at the
 <TD>Snapshots master site, official ISOs</TD>
 <TD>
 <a href="http://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">HTTP</a>
-<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>,
+<a href="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots">FTP</a>
 </TD>
 </TR>
 
@@ -168,9 +164,9 @@ cvsup</TD>
 <TD>Esat.net (UK)</TD>
 <TD>Daily snapshots, official ISOs</TD>
 <TD>
-<a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">HTTP</a>, 
-<a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">FTP</a>, and 
-<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/snapshots/">rysnc</a>. (IPv4 and IPv6)
+<a href="http://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">HTTP</a>, 
+<a href="ftp://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">FTP</a>, and 
+<a href="rsync://ftp.esat.net/mirrors/chlamydia.fs.ei.tum.de/pub/DragonFly/">rysnc</a>. (IPv4 and IPv6)
 </TD>
 </TR>
 
@@ -204,6 +200,16 @@ cvsup</TD>
 <TD>
 <a href="http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly">cvsweb</a>, 
 cvsup, cvsync, rsync, anoncvs
+</TD>
+</TR>
+
+<TR BGCOLOR="#EEEEEE">
+<TD>dragonfly.the-bofh.org (Holland)</TD>
+<TD>Code</TD>
+<TD>
+<a href="http://dragonfly.the-bofh.org/">HTTP</a>, 
+<a href="ftp://dragonfly.the-bofh.org/">FTP</a>, 
+cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TD>
 </TR>
 
