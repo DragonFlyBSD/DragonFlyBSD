@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.8 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.9 2005/02/03 09:20:27 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -224,6 +224,8 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 	return 0;
 
 bad:
+	if (freebuf != NULL)
+		free(freebuf, M_TEMP);
 	ana->cont = 1;
 	ana->fields = 0;
 	ana->outbuf -= *ana->outlen;
