@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.6 2003/09/02 10:05:52 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.7 2003/09/18 18:32:55 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -927,10 +927,16 @@ send:
 
 out:
 		if (error == ENOBUFS) {
+			/*
+			 * If we can't send, make sure there is something
+			 * to get us going again later.  Persist state
+			 * is not necessarily right, but it is close enough.
+			 */
 	                if (!callout_active(tp->tt_rexmt) &&
-                            !callout_active(tp->tt_persist))
-	                        callout_reset(tp->tt_rexmt, tp->t_rxtcur,
-                                      tcp_timer_rexmt, tp);
+                            !callout_active(tp->tt_persist)) {
+				tp->t_rxtshift = 0;
+				tcp_setpersist(tp);
+			}
 			tcp_quench(tp->t_inpcb, 0);
 			return (0);
 		}
