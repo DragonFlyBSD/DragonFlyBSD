@@ -1,9 +1,10 @@
 # $FreeBSD: src/gnu/usr.bin/cc/Makefile,v 1.35 2003/07/11 05:37:23 kan Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile,v 1.1 2004/01/17 22:40:14 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/Attic/Makefile,v 1.2 2004/01/17 23:05:19 drhodus Exp $
 
 # The order of some of these are rather important.  Some depend on previous
 # subdirs.
 
+BINDIR?=/usr/bin/gcc3
 SUBDIR= cc_tools cc_int cc cc1 include protoize doc
 
 .if !defined(NO_CPP)

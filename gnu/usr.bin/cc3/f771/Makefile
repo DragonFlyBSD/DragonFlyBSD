@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.1 2004/01/17 22:40:16 drhodus Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.2 2004/01/17 23:05:20 drhodus Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -10,7 +10,7 @@ SRCS=	bad.c bit.c bld.c com.c data.c equiv.c expr.c global.c implic.c info.c \
 	intrin.c lab.c lex.c malloc.c name.c parse.c        src.c st.c sta.c \
 	stb.c stc.c std.c ste.c storag.c stp.c str.c sts.c stt.c stu.c stv.c \
 	stw.c symbol.c target.c top.c type.c where.c main.c
-BINDIR=	/usr/libexec
+BINDIR=	/usr/libexec/gcc3
 NOMAN=
 
 CFLAGS+= -I${GCCDIR}/f -I.
