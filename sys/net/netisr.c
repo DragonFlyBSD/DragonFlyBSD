@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.17 2004/06/07 07:01:36 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.18 2004/06/27 19:40:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -29,6 +29,7 @@ static struct netisr netisrs[NETISR_MAX];
 /* Per-CPU thread to handle any protocol.  */
 struct thread netisr_cpu[MAXCPU];
 lwkt_port netisr_afree_rport;
+lwkt_port netisr_adone_rport;
 lwkt_port netisr_sync_port;
 
 /*
@@ -39,6 +40,14 @@ static void
 netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
 {
     free(msg, M_LWKTMSG);
+}
+
+static void
+netisr_autodone_reply(lwkt_port_t port, lwkt_msg_t msg)
+{
+    crit_enter();
+    msg->ms_flags |= MSGF_DONE|MSGF_REPLY1;
+    crit_exit();
 }
 
 /*
@@ -123,10 +132,13 @@ netisr_init(void)
 
     /*
      * The netisr_afree_rport is a special reply port which automatically
-     * frees the replied message.
+     * frees the replied message.  The netisr_adone_rport() simply marks
+     * the message as being done.
      */
     lwkt_initport(&netisr_afree_rport, NULL);
     netisr_afree_rport.mp_replyport = netisr_autofree_reply;
+    lwkt_initport(&netisr_adone_rport, NULL);
+    netisr_adone_rport.mp_replyport = netisr_autodone_reply;
 
     /*
      * The netisr_syncport is a special port which executes the message
@@ -144,8 +156,9 @@ netmsg_service_loop(void *arg)
 {
     struct netmsg *msg;
 
-    while ((msg = lwkt_waitport(&curthread->td_msgport, NULL)))
+    while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
 	msg->nm_lmsg.ms_cmd.cm_func(&msg->nm_lmsg);
+    }
 }
 
 /*
@@ -189,6 +202,7 @@ netisr_queue(int num, struct mbuf *m)
     lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
 		lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
     pmsg->nm_packet = m;
+    pmsg->nm_lmsg.u.ms_result = num;
     lwkt_sendmsg(port, &pmsg->nm_lmsg);
     return (0);
 }
@@ -198,7 +212,8 @@ netisr_register(int num, lwkt_portfn_t mportfn, netisr_fn_t handler)
 {
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("netisr_register: bad isr %d", num));
-
+    lwkt_initmsg(&netisrs[num].ni_netmsg.nm_lmsg, &netisr_adone_rport, 0,
+	    lwkt_cmd_op_none, lwkt_cmd_op_none);
     netisrs[num].ni_mport = mportfn;
     netisrs[num].ni_handler = handler;
 }
@@ -238,23 +253,48 @@ sync_soport(struct socket *so __unused, struct sockaddr *nam __unused,
 }
 
 /*
- * This function is used to call the netisr handler from the appropriate
+ * schednetisr() is used to call the netisr handler from the appropriate
  * netisr thread for polling and other purposes.
+ *
+ * This function may be called from a hard interrupt or IPI and must be
+ * MP SAFE and non-blocking.  We use a fixed per-cpu message instead of
+ * trying to allocate one.  We must get ourselves onto the target cpu
+ * to safely check the MSGF_DONE bit on the message but since the message
+ * will be sent to that cpu anyway this does not add any extra work beyond
+ * what lwkt_sendmsg() would have already had to do to schedule the target
+ * thread.
  */
+static void
+schednetisr_remote(void *data)
+{
+    int num = (int)data;
+    struct netisr *ni = &netisrs[num];
+    lwkt_port_t port = &netisr_cpu[0].td_msgport;
+    struct netmsg *pmsg;
+
+    pmsg = &netisrs[num].ni_netmsg;
+    crit_enter();
+    if (pmsg->nm_lmsg.ms_flags & MSGF_DONE) {
+	lwkt_initmsg(&pmsg->nm_lmsg, &netisr_adone_rport, 0,
+		    lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
+	pmsg->nm_lmsg.u.ms_result = num;
+	lwkt_sendmsg(port, &pmsg->nm_lmsg);
+    }
+    crit_exit();
+}
+
 void
 schednetisr(int num)
 {
-    struct netisr *ni = &netisrs[num];
-    struct netmsg *pmsg;
-    lwkt_port_t port = &netisr_cpu[0].td_msgport;
-
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("schednetisr: bad isr %d", num));
-
-    pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT);
-    if (pmsg) {
-	lwkt_initmsg(&pmsg->nm_lmsg, &netisr_afree_rport, 0,
-		    lwkt_cmd_func((void *)ni->ni_handler), lwkt_cmd_op_none);
-	lwkt_sendmsg(port, &pmsg->nm_lmsg);
-    }
+#ifdef SMP
+    if (mycpu->gd_cpuid != 0)
+	lwkt_send_ipiq(globaldata_find(0), schednetisr_remote, (void *)num);
+    else
+	schednetisr_remote((void *)num);
+#else
+    schednetisr_remote((void *)num);
+#endif
 }
+

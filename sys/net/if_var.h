@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.11 2004/04/16 14:24:36 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.12 2004/06/27 19:40:14 dillon Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -416,6 +416,7 @@ typedef	void poll_handler_t (struct ifnet *ifp,
 		enum poll_cmd cmd, int count);
 int	ether_poll_register(poll_handler_t *h, struct ifnet *ifp);
 int	ether_poll_deregister(struct ifnet *ifp);
+void	emergency_poll_enable(const char *name);
 #endif /* DEVICE_POLLING */
 #endif /* _KERNEL */
 

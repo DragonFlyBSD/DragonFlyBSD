@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.12 2004/04/21 18:13:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.13 2004/06/27 19:40:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,13 +41,6 @@
 #include <net/if.h>			/* for IFF_* flags		*/
 #include <net/netisr.h>			/* for NETISR_POLL		*/
 
-#ifdef SMP
-#include "opt_lint.h"
-#ifndef COMPILING_LINT
-#error DEVICE_POLLING is not compatible with SMP
-#endif
-#endif
-
 /* the two netisr handlers */
 static int netisr_poll(struct netmsg *);
 static int netisr_pollmore(struct netmsg *);
@@ -55,7 +48,6 @@ static int netisr_pollmore(struct netmsg *);
 void init_device_poll(void);		/* init routine			*/
 void hardclock_device_poll(void);	/* hook from hardclock		*/
 void ether_poll(int);			/* polling while in trap	*/
-int idle_poll(void);			/* poll while in idle loop	*/
 
 /*
  * Polling support for [network] device drivers.
@@ -121,10 +113,6 @@ SYSCTL_UINT(_kern_polling, OID_AUTO, each_burst, CTLFLAG_RW,
 static u_int32_t poll_burst_max = 150;	/* good for 100Mbit net and HZ=1000 */
 SYSCTL_UINT(_kern_polling, OID_AUTO, burst_max, CTLFLAG_RW,
 	&poll_burst_max, 0, "Max Polling burst size");
-
-static u_int32_t poll_in_idle_loop=1;		/* do we poll in idle loop ? */
-SYSCTL_UINT(_kern_polling, OID_AUTO, idle_poll, CTLFLAG_RW,
-	&poll_in_idle_loop, 0, "Enable device polling in idle loop");
 
 u_int32_t poll_in_trap;			/* used in trap.c */
 SYSCTL_UINT(_kern_polling, OID_AUTO, poll_in_trap, CTLFLAG_RW,
@@ -265,25 +253,6 @@ ether_poll(int count)
 }
 
 /*
- * idle_poll is replaces the body of the idle loop when DEVICE_POLLING
- * is used.  YYY not currently implemented.
- */
-int
-idle_poll(void)
-{
-	if (poll_in_idle_loop && poll_handlers > 0) {
-		int s = splimp();
-		cpu_enable_intr();
-		ether_poll(poll_each_burst);
-		cpu_disable_intr();
-		splx(s);
-		vm_page_zero_idle();
-		return 1;
-	} else
-		return vm_page_zero_idle();
-}
-
-/*
  * netisr_pollmore is called after other netisr's, possibly scheduling
  * another NETISR_POLL call, or adapting the burst size for the next cycle.
  *
@@ -309,6 +278,7 @@ netisr_pollmore(struct netmsg *msg)
 	int kern_load;
 	int s = splhigh();
 
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 	phase = 5;
 	if (residual_burst > 0) {
 		schednetisr(NETISR_POLL);
@@ -329,9 +299,9 @@ netisr_pollmore(struct netmsg *msg)
 	}
 
 	pending_polls--;
-	if (pending_polls == 0)	/* we are done */
+	if (pending_polls == 0) {	/* we are done */
 		phase = 0;
-	else {
+	} else {
 		/*
 		 * Last cycle was long and caused us to miss one or more
 		 * hardclock ticks. Restart processing again, but slightly
@@ -345,7 +315,6 @@ netisr_pollmore(struct netmsg *msg)
 	}
 out:
 	splx(s);
-	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return(EASYNC);
 }
 
@@ -353,6 +322,9 @@ out:
  * netisr_poll is scheduled by schednetisr when appropriate, typically once
  * per tick. It is called at splnet() so first thing to do is to upgrade to
  * splimp(), and call all registered handlers.
+ *
+ * Note that the message is replied immediately in order to allow a new
+ * ISR to be scheduled in the handler.
  */
 /* ARGSUSED */
 static int
@@ -361,8 +333,10 @@ netisr_poll(struct netmsg *msg)
 	static int reg_frac_count;
 	int i, cycles;
 	enum poll_cmd arg = POLL_ONLY;
-	int s=splimp();
+	int s;
 
+	lwkt_replymsg(&msg->nm_lmsg, 0);
+	s = splimp();
 	phase = 3;
 	if (residual_burst == 0) { /* first call in this tick */
 		microuptime(&poll_start_t);
@@ -402,10 +376,11 @@ netisr_poll(struct netmsg *msg)
 	residual_burst -= cycles;
 
 	if (polling) {
-		for (i = 0 ; i < poll_handlers ; i++)
+		for (i = 0 ; i < poll_handlers ; i++) {
 			if (pr[i].handler && (IFF_UP|IFF_RUNNING) ==
 			    (pr[i].ifp->if_flags & (IFF_UP|IFF_RUNNING)) )
 				pr[i].handler(pr[i].ifp, arg, cycles);
+		}
 	} else {	/* unregister */
 		for (i = 0 ; i < poll_handlers ; i++) {
 			if (pr[i].handler &&
@@ -421,7 +396,6 @@ netisr_poll(struct netmsg *msg)
 	schednetisr(NETISR_POLLMORE);
 	phase = 4;
 	splx(s);
-	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return(EASYNC);
 }
 
@@ -506,4 +480,13 @@ ether_poll_deregister(struct ifnet *ifp)
 	}
 	splx(s);
 	return 1;
+}
+
+void
+emergency_poll_enable(const char *name)
+{
+	if (polling == 0) {
+		polling = 1;
+		printf("%s forced polling on\n", name);
+	}
 }

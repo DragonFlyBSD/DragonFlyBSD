@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.17 2004/04/24 06:55:57 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.18 2004/06/27 19:40:14 dillon Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -152,9 +152,10 @@ int netmsg_so_notify_abort(lwkt_msg_t);
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 
 struct netisr {
-	lwkt_port	ni_port;		/* must be first */
+	lwkt_port	ni_port;	/* must be first */
 	lwkt_portfn_t	ni_mport;
 	netisr_fn_t	ni_handler;
+	struct netmsg	ni_netmsg;	/* for sched_netisr() (no-data) */
 };
 
 extern lwkt_port netisr_afree_rport;
