@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.2 2004/06/26 03:15:46 justin Exp $
 -->
 
 <chapter id="introduction">
@@ -442,36 +442,24 @@
       <sect2info>
         <authorgroup>
           <author>
-            <firstname>Satoshi</firstname>
-	    <surname>Asami</surname>
-   	    <contrib>Contributed by </contrib>
+            <firstname>Justin</firstname>
+	    <surname>Sherrill</surname>
+   	    <contrib>Written by </contrib>
 	  </author>
         </authorgroup>
       </sect2info>
 
-      <title>The FreeBSD Development Model</title>
+      <title>The &os; Development Model</title>
     
       <indexterm>
-        <primary>FreeBSD Project</primary>
+        <primary>&os; Project</primary>
         <secondary>development model</secondary>
       </indexterm>
-      <para>The development of FreeBSD is a very open and flexible
-	process, being literally built from the contributions
-	of hundreds of people around the world, as can be seen from
-	our <ulink
-	url="../../articles/contributors/article.html">list of
-	contributors</ulink>.  FreeBSD's development infrastructure allow
-	these hundreds of developers to collaborate over the Internet.
-	We are constantly on the lookout for
-	new developers and ideas, and those interested in becoming
-	more closely involved with the project need simply contact us
-	at the &a.hackers;.  The &a.announce; is also available to
-	those wishing to make other FreeBSD users aware of major areas
-	of work.</para>
-
-      <para>Useful things to know about the FreeBSD project and its
-	development process, whether working independently or in close
-	cooperation:</para>
+      <para>&os; is developed by many people around the world.  
+	There is no qualification process; anyone may submit his 
+	or her code, documentation, or designs, for use in the 
+	Project.  Here is a general description of the Project's 
+	organizational structure.</para>
 
       <variablelist>
 	<varlistentry>
@@ -487,130 +475,51 @@
       <see>CVS</see>
 	  </indexterm>
 	  <listitem>
-	    <para>The central source tree for FreeBSD is maintained by
+	    <para>Source for &os; is kept in
 	      <ulink url="http://www.cvshome.org/">CVS</ulink>
-	      (Concurrent Versions System), a freely available source code
-	      control tool that comes bundled with FreeBSD.  The primary
-	      <ulink url="http://www.FreeBSD.org/cgi/cvsweb.cgi">CVS
-	      repository</ulink> resides on a machine in Santa Clara CA, USA
-	      from where it is replicated to numerous mirror machines
-	      throughout the world.  The CVS tree, which contains the <link
-	      linkend="current">-CURRENT</link> and <link
-	      linkend="stable">-STABLE</link> trees,
-	      can all be easily replicated to your own machine as well.
-	      Please refer to the <link linkend="synching">Synchronizing
-	      your source tree</link> section for more information on
-	      doing this.</para>
+	      (Concurrent Versions System), which is available 
+              with each &os; install. 
+	      The primary
+	      <ulink url="http://www.dragonflybsd.org/cvsweb">CVS
+	      repository</ulink> resides on a machine in California, USA.  
+	      Documentation on obtaining the &os; 
+	      source is available elsewhere in this book.</para>
+	  <!-- <link linkend="marker">blah</link> needed for when 
+	  obtaining source code page is known -->
 	  </listitem>
 	</varlistentry>
       
 	<varlistentry>
-	  <term>The committers list<anchor
+	  <term>Commit access<anchor
 	    id="development-committers"></term>
 	      
 	  <indexterm><primary>committers</primary></indexterm>
 	  <listitem>
-	    <para>The <firstterm>committers</firstterm>
-	      are the people who have <emphasis>write</emphasis> access to
-	      the CVS tree, and are authorized to make modifications
-	      to the FreeBSD source (the term <quote>committer</quote>
-	      comes from the &man.cvs.1; <command>commit</command>
-	      command, which is used to bring new changes into the CVS
-	      repository).  The best way of making submissions for review
-	      by the committers list is to use the &man.send-pr.1;
-	      command. If something appears to be jammed in the
-	      system, then you may also reach them by sending mail to
-	      the &a.committers;.</para>
+	    <para>
+	      The best way of getting changes made to the 
+	      &os; source is to mail the &a.submit.name mailing list.  
+	      Including desired source code changes (unified diff 
+	      format is best) is the most useful format.  A 
+              certain number of developers have access to commit 
+              changes to the &os; source, and can do so after review 
+              on that list.</para>
 	  </listitem>
 	</varlistentry>
       
-	<varlistentry>
-	  <term>The FreeBSD core team<anchor id="development-core"></term>
-
-	  <indexterm><primary>core team</primary></indexterm>
-	  <listitem>
-	    <para>The <firstterm>FreeBSD core team</firstterm>
-	      would be equivalent to the board of directors if the FreeBSD
-	      Project were a company.  The primary task of the core team
-	      is to make sure the project, as a whole, is in good shape
-	      and is heading in the right directions.  Inviting dedicated
-	      and responsible developers to join our group of committers
-	      is one of the functions of the core team, as is the
-	      recruitment of new core team members as others move on.
-	      The current core team was elected from a pool of committer
-	      candidates in June 2002.  Elections are held every 2 years.
-	      </para>
-
-	    <para>Some core team members also have specific areas of
-	      responsibility, meaning that they are committed to
-	      ensuring that some large portion of the system works as
-	      advertised.  For a complete list of FreeBSD developers
-	      and their areas of responsibility, please see the <ulink
-	      url="../../articles/contributors/article.html">Contributors
-	      List</ulink></para>
-
-	    <note>
-	      <para>Most members of the core team are volunteers when it
-	        comes to FreeBSD development and do not benefit from the
-		project financially, so <quote>commitment</quote> should
-		also not be misconstrued as meaning <quote>guaranteed
-		support.</quote>  The <quote>board of directors</quote>
-		analogy above is not very accurate, and it may be
-		more suitable to say that these are the people who gave up
-		their lives in favor of FreeBSD against their better
-		judgment!</para>
-	    </note>
-	  </listitem>
-	</varlistentry>
-      
-	<varlistentry>
-	  <term>Outside contributors</term>
-
-	  <indexterm><primary>contributors</primary></indexterm>
-	  <listitem>
-	    <para>Last, but definitely not least, the largest group of
-	      developers are the users themselves who provide feedback and
-	      bug fixes to us on an almost constant basis.  The primary
-	      way of keeping in touch with FreeBSD's more non-centralized
-	      development is to subscribe to the &a.hackers where such
-              things are discussed.  See <xref
-              linkend="eresources"> for more information about
-              the various FreeBSD mailing lists.</para>
-	  
-	    <para><citetitle><ulink
-	      url="../../articles/contributors/article.html">The
-	      FreeBSD Contributors List</ulink></citetitle> is a long
-	      and growing one, so why not join it by contributing
-	      something back to FreeBSD today?</para>
-
-	    <para>Providing code is not the only way of contributing to
-	      the project; for a more complete list of things that need
-	      doing, please refer to the <ulink
-	      url="&url.main;/index.html">FreeBSD Project web
-	      site</ulink>.</para>
-	  </listitem>
-	</varlistentry>
       </variablelist>
     
-      <para>In summary, our development model is organized as a loose set
-        of concentric circles.  The centralized model is designed for the
-        convenience of the <emphasis>users</emphasis> of FreeBSD, who are
-        provided with an easy way of tracking one central code
-	base, not to keep potential contributors out! Our desire is to
-	present a stable operating system with a large set of coherent
-	<link linkend="ports">application programs</link> that the users
-	can easily install and use &mdash; this model works very well in
-	accomplishing that.</para>
-    
-      <para>All we ask of those who would join us as FreeBSD developers is
-        some of the same dedication its current people have to its
-	continued success!</para>
+      <para>The &os; development model is loose; changes to the code 
+      are generally peer-reviewed and added when any objections have been 
+      corrected.  There is no formal entry/rejection process, though final 
+      say on all code submissions goes to Matt Dillon, as originator of this 
+      project.</para>
     </sect2>
 
     <sect2 id="relnotes">
-      <title>The Current FreeBSD Release</title>
+      <title>The Current &os; Release</title>
 
       <indexterm><primary>NetBSD</primary></indexterm>
+      <indexterm><primary>FreeBSD</primary></indexterm>
       <indexterm><primary>OpenBSD</primary></indexterm>
       <indexterm><primary>386BSD</primary></indexterm>
       <indexterm><primary>Free Software Foundation</primary></indexterm>
@@ -618,61 +527,30 @@
       <indexterm>
         <primary>Computer Systems Research Group (CSRG)</primary>
       </indexterm>
-      <para>FreeBSD is a freely available, full source 4.4BSD-Lite based
+      <para>&os; is a freely available, full source 4.4BSD-Lite based
         release for Intel &i386;, &i486;, &pentium;,
         &pentium;&nbsp;Pro,
         &celeron;,
         &pentium;&nbsp;II,
         &pentium;&nbsp;III,
         &pentium;&nbsp;4 (or compatible),
-        &xeon;, DEC <trademark>Alpha</trademark>
-        and Sun &ultrasparc; based computer
-        systems.  It is based primarily on software from U.C. Berkeley's
-        CSRG group, with some enhancements from NetBSD, OpenBSD, 386BSD, and
-        the Free Software Foundation.</para>
-
-      <para>Since our release of FreeBSD&nbsp;2.0 in late 94, the performance,
-        feature set, and stability of FreeBSD has improved dramatically.
-	<!-- XXX is the rest of this paragraph still true ? -->
-        The largest change is a revamped virtual memory system with a merged
-        VM/file buffer cache that not only increases performance, but also
-        reduces FreeBSD's memory footprint, making a 5&nbsp;MB configuration a
-        more acceptable minimum.  Other enhancements include full NIS client
-        and server support, transaction TCP support, dial-on-demand PPP,
-        integrated DHCP support, an improved SCSI subsystem, ISDN support,
-        support for ATM, FDDI, Fast and Gigabit Ethernet (1000&nbsp;Mbit)
-        adapters, improved support for the latest Adaptec controllers, and
-        many thousands of bug fixes.</para>
-
-      <para>In addition to the base distributions, FreeBSD offers a
-        ported software collection with thousands of commonly
-        sought-after programs.  At the time of this printing, there
-        were over &os.numports; ports!  The list of ports ranges from
-        http (WWW) servers, to games, languages, editors, and almost
-        everything in between.  The entire ports collection requires
-        approximately &ports.size; of storage, all ports being expressed as
-        <quote>deltas</quote> to their original sources.  This makes
-        it much easier for us to update ports, and greatly reduces the
-        disk space demands made by the older 1.0 ports collection.  To
-        compile a port, you simply change to the directory of the
-        program you wish to install, type <command>make
-        install</command>, and let the system do the rest.  The full
-        original distribution for each port you build is retrieved
-        dynamically off the CDROM or a local FTP site, so you need
-        only enough disk space to build the ports you want.  Almost
-        every port is also provided as a pre-compiled
-        <quote>package</quote>, which can be installed with a simple
-        command (<command>pkg_add</command>) by those who do not wish
-        to compile their own ports from source.  More information on
-	packages and ports can be found in <xref linkend="ports">.</para>
+        and &xeon; based computer
+        systems.  It is based primarily on FreeBSD 4.8, and includes 
+        enhancements from U.C. Berkeley's CSRG group, NetBSD, OpenBSD, 
+        386BSD, and the Free Software Foundation.</para>
+<!-- mention of a new ports system goes here, once one exists. -->
 
       <para>A number of additional documents which you may find very helpful
-        in the process of installing and using FreeBSD may now also be found
-        in the <filename>/usr/share/doc</filename> directory on any recent
-        FreeBSD machine.  You may view the locally installed
+        in the process of installing and using &os; may now also be found
+        in the <filename>/usr/share/doc</filename> directory on any 
+        machine.  </para><!-- You may view the locally installed
         manuals with any HTML capable browser using the following
-        URLs:</para>
+        URLs:</para> -->
 
+	<!-- not yet valid; build system needs to be set up to include -->
+	<!-- this handbook and other data. -->
+	
+<!--	
       <variablelist>
         <varlistentry>
 	  <term>The FreeBSD Handbook</term>
@@ -692,10 +570,12 @@
 	  </listitem>
         </varlistentry>
       </variablelist>
+-->    
+      <para>The most up-to-date documentation can be found at <ulink
+	url="&url.main;/">http://www.dragonflybsd.org/</ulink>.</para>
     
-      <para>You can also view the master (and most frequently updated)
-        copies at <ulink
-	url="&url.main;/index.html">http://www.FreeBSD.org/</ulink>.</para>
+    
+    
     </sect2>
   </sect1>
 </chapter>
