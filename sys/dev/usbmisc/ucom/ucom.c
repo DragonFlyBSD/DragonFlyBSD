@@ -2,7 +2,7 @@
  * $NetBSD: ucom.c,v 1.39 2001/08/16 22:31:24 augustss Exp $
  * $NetBSD: ucom.c,v 1.40 2001/11/13 06:24:54 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/ucom.c,v 1.35 2003/11/16 11:58:21 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.16 2004/06/06 18:58:09 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ucom/ucom.c,v 1.17 2004/10/16 03:20:52 dillon Exp $
  */
 /*-
  * Copyright (c) 2001-2002, Shunsuke Akiyama <akiyama@jp.FreeBSD.org>.
@@ -65,11 +65,6 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- */
-
-/*
- * TODO:
- * 1. How do I handle hotchar?
  */
 
 #include <sys/param.h>
@@ -954,8 +949,13 @@ ucomstop(struct tty *tp, int flag)
 	DPRINTF(("ucomstop: %d\n", flag));
 
 	if (flag & FREAD) {
+		/*
+		 * This is just supposed to flush pending receive data,
+		 * not stop the reception of data entirely!
+		 */
 		DPRINTF(("ucomstop: read\n"));
 		ucomstopread(sc);
+		ucomstartread(sc);
 	}
 
 	if (flag & FWRITE) {
@@ -990,7 +990,12 @@ ucomwritecb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 		       USBDEVNAME(sc->sc_dev), usbd_errstr(status));
 		if (status == USBD_STALLED)
 			usbd_clear_endpoint_stall_async(sc->sc_bulkin_pipe);
-		/* XXX we should restart after some delay. */
+		/*
+		 * XXX.  We may need a flag to sequence ucomstopread() and
+		 * ucomstartread() to handle the case where ucomstartread()
+		 * is called after ucomstopread() but before the request has
+		 * been properly canceled?
+		 */
 		goto error;
 	}
 
@@ -1101,6 +1106,16 @@ ucomreadcb(usbd_xfer_handle xfer, usbd_private_handle p, usbd_status status)
 			ttyblock(tp);
 		lostcc = b_to_q((char *)cp, cc, &tp->t_rawq);
 		tp->t_rawcc += cc;
+		if (sc->hotchar) {
+			while (cc) {
+				if (*cp == sc->hotchar)
+					break;
+				--cc;
+				++cp;
+			}
+			if (cc)
+				setsofttty();
+		}
 		ttwakeup(tp);
 		if (tp->t_state & TS_TTSTOP
 		    && (tp->t_iflag & IXANY
