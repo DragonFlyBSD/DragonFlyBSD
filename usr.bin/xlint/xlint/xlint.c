@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/xlint/xlint.c,v 1.8 2000/01/14 09:25:31 sheldonh Exp $
- * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.9 2004/07/07 12:24:01 asmodai Exp $
+ * $DragonFly: src/usr.bin/xlint/xlint/xlint.c,v 1.10 2004/10/29 15:18:53 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -139,7 +139,7 @@ appstrg(char ***lstp, char *s)
 	olst = *lstp;
 	for (i = 0; olst[i] != NULL; i++) ;
 	lst = xmalloc((i + 2) * sizeof (char *));
-	(void)memcpy(lst, olst, i * sizeof (char *));
+	memcpy(lst, olst, i * sizeof (char *));
 	lst[i] = s;
 	lst[i + 1] = NULL;
 	*lstp = lst;
@@ -161,7 +161,7 @@ applst(char ***destp, char *const *src)
 	for (i = 0; odest[i] != NULL; i++) ;
 	for (k = 0; src[k] != NULL; k++) ;
 	dest = xmalloc((i + k + 1) * sizeof (char *));
-	(void)memcpy(dest, odest, i * sizeof (char *));
+	memcpy(dest, odest, i * sizeof (char *));
 	for (k = 0; src[k] != NULL; k++)
 		dest[i + k] = xstrdup(src[k]);
 	dest[i + k] = NULL;
@@ -189,8 +189,8 @@ concat2(const char *s1, const char *s2)
 	char	*s;
 
 	s = xmalloc(strlen(s1) + strlen(s2) + 1);
-	(void)strcpy(s, s1);
-	(void)strcat(s, s2);
+	strcpy(s, s1);
+	strcat(s, s2);
 
 	return (s);
 }
@@ -201,9 +201,9 @@ concat3(const char *s1, const char *s2, const char *s3)
 	char	*s;
 
 	s = xmalloc(strlen(s1) + strlen(s2) + strlen(s3) + 1);
-	(void)strcpy(s, s1);
-	(void)strcat(s, s2);
-	(void)strcat(s, s3);
+	strcpy(s, s1);
+	strcat(s, s2);
+	strcat(s, s3);
 
 	return (s);
 }
@@ -217,18 +217,18 @@ terminate(int signo)
 	int	i;
 
 	if (cppout != NULL)
-		(void)remove(cppout);
+		remove(cppout);
 
 	if (p1out != NULL) {
 		for (i = 0; p1out[i] != NULL; i++)
-			(void)remove(p1out[i]);
+			remove(p1out[i]);
 	}
 
 	if (p2out != NULL)
-		(void)remove(p2out);
+		remove(p2out);
 
 	if (currfn != NULL)
-		(void)remove(currfn);
+		remove(currfn);
 
 	exit(signo != 0 ? 1 : 0);
 }
@@ -262,18 +262,18 @@ appdef(char ***lstp, const char *def)
 static void
 usage(void)
 {
-	(void)printf("lint [-abceghprvxzHFS] [-s|-t] [-i|-nu] [-Dname[=def]] [-Uname]\n");
-	(void)printf("     [-Idirectory] [-Ldirectory] [-llibrary] [-ooutputfile] file ...\n");
-	(void)printf("\n");
-	(void)printf("lint [-abceghprvzHFS] [-s|-t] -Clibrary [-Dname[=def]]\n");
-	(void)printf("     [-Idirectory] [-Uname] file ...\n");
+	printf("lint [-abceghprvxzHFS] [-s|-t] [-i|-nu] [-Dname[=def]] [-Uname]\n");
+	printf("     [-Idirectory] [-Ldirectory] [-llibrary] [-ooutputfile] file ...\n");
+	printf("\n");
+	printf("lint [-abceghprvzHFS] [-s|-t] -Clibrary [-Dname[=def]]\n");
+	printf("     [-Idirectory] [-Uname] file ...\n");
 	terminate(-1);
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
-	int	c;
+	int	c, fd;
 	char	flgbuf[3], *tmp, *s;
 	size_t	len;
 	struct	utsname un;
@@ -282,16 +282,20 @@ main(int argc, char *argv[])
 		tmpdir = xstrdup(_PATH_TMP);
 	} else {
 		s = xmalloc(len + 2);
-		(void)sprintf(s, "%s%s", tmp, tmp[len - 1] == '/' ? "" : "/");
+		sprintf(s, "%s%s", tmp, tmp[len - 1] == '/' ? "" : "/");
 		tmpdir = s;
 	}
 
 	cppout = xmalloc(strlen(tmpdir) + sizeof ("lint0.XXXXXX"));
-	(void)sprintf(cppout, "%slint0.XXXXXX", tmpdir);
-	if (mktemp(cppout) == NULL) {
-		warn("can't make temp");
+	sprintf(cppout, "%slint0.XXXXXX", tmpdir);
+
+	fd = mkstemp(cppout);
+	if (fd == -1) {
+		err(1, "could not make a temporary file");
+		close(fd);
 		terminate(-1);
 	}
+	close (fd);
 
 	p1out = xcalloc(1, sizeof (char *));
 	p2in = xcalloc(1, sizeof (char *));
@@ -335,10 +339,10 @@ main(int argc, char *argv[])
 	appcstrg(&deflibs, "c");
 
 	if (signal(SIGHUP, terminate) == SIG_IGN)
-		(void)signal(SIGHUP, SIG_IGN);
-	(void)signal(SIGINT, terminate);
-	(void)signal(SIGQUIT, terminate);
-	(void)signal(SIGTERM, terminate);
+		signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, terminate);
+	signal(SIGQUIT, terminate);
+	signal(SIGTERM, terminate);
 
 	while (argc > optind) {
 
@@ -358,7 +362,7 @@ main(int argc, char *argv[])
 		case 'r':
 		case 'v':
 		case 'z':
-			(void)sprintf(flgbuf, "-%c", c);
+			sprintf(flgbuf, "-%c", c);
 			appcstrg(&l1flags, flgbuf);
 			break;
 
@@ -367,7 +371,7 @@ main(int argc, char *argv[])
 			/* FALLTHROUGH */
 		case 'u':
 		case 'h':
-			(void)sprintf(flgbuf, "-%c", c);
+			sprintf(flgbuf, "-%c", c);
 			appcstrg(&l1flags, flgbuf);
 			appcstrg(&l2flags, flgbuf);
 			break;
@@ -434,14 +438,14 @@ main(int argc, char *argv[])
 			Cflag = 1;
 			appstrg(&l2flags, concat2("-C", optarg));
 			p2out = xmalloc(sizeof ("llib-l.ln") + strlen(optarg));
-			(void)sprintf(p2out, "llib-l%s.ln", optarg);
+			sprintf(p2out, "llib-l%s.ln", optarg);
 			freelst(&deflibs);
 			break;
 
 		case 'D':
 		case 'I':
 		case 'U':
-			(void)sprintf(flgbuf, "-%c", c);
+			sprintf(flgbuf, "-%c", c);
 			appstrg(&cppflags, concat2(flgbuf, optarg));
 			break;
 
@@ -495,7 +499,7 @@ main(int argc, char *argv[])
 		findlibs(deflibs);
 	}
 
-	(void)printf("Lint pass2:\n");
+	printf("Lint pass2:\n");
 	lint2();
 
 	if (oflag)
@@ -519,6 +523,7 @@ fname(const char *name, int last)
 	const	char *bn, *suff;
 	char	**args, *ofn, *path;
 	size_t	len;
+	int fd;
 
 	bn = basename(name, '/');
 	suff = basename(bn, '.');
@@ -537,7 +542,7 @@ fname(const char *name, int last)
 	}
 
 	if (!iflag || !first || !last)
-		(void)printf("%s:\n", Fflag ? name : bn);
+		printf("%s:\n", Fflag ? name : bn);
 
 	/* build the name of the output file of lint1 */
 	if (oflag) {
@@ -547,15 +552,18 @@ fname(const char *name, int last)
 	} else if (iflag) {
 		ofn = xmalloc(strlen(bn) + (bn == suff ? 4 : 2));
 		len = bn == suff ? strlen(bn) : (suff - 1) - bn;
-		(void)sprintf(ofn, "%.*s", (int)len, bn);
-		(void)strcat(ofn, ".ln");
+		sprintf(ofn, "%.*s", (int)len, bn);
+		strcat(ofn, ".ln");
 	} else {
 		ofn = xmalloc(strlen(tmpdir) + sizeof ("lint1.XXXXXX"));
-		(void)sprintf(ofn, "%slint1.XXXXXX", tmpdir);
-		if (mktemp(ofn) == NULL) {
-			warn("can't make temp");
+		sprintf(ofn, "%slint1.XXXXXX", tmpdir);
+		fd = mkstemp(ofn);
+		if (fd == -1) {
+			err(1, "could not make a temporary file");
+			close(fd);
 			terminate(-1);
-		}
+        	}
+        	close (fd);
 	}
 	if (!iflag)
 		appcstrg(&p1out, ofn);
@@ -565,7 +573,7 @@ fname(const char *name, int last)
 	/* run cpp */
 
 	path = xmalloc(strlen(PATH_USRBIN) + sizeof ("/cpp"));
-	(void)sprintf(path, "%s/cpp", PATH_USRBIN);
+	sprintf(path, "%s/cpp", PATH_USRBIN);
 
 	appcstrg(&args, path);
 	applst(&args, cppflags);
@@ -580,7 +588,7 @@ fname(const char *name, int last)
 	/* run lint1 */
 
 	path = xmalloc(strlen(PATH_LIBEXEC) + sizeof ("/lint1"));
-	(void)sprintf(path, "%s/lint1", PATH_LIBEXEC);
+	sprintf(path, "%s/lint1", PATH_LIBEXEC);
 
 	appcstrg(&args, path);
 	applst(&args, l1flags);
@@ -604,13 +612,13 @@ runchild(const char *path, char *const *args, const char *crfn)
 
 	if (Vflag) {
 		for (i = 0; args[i] != NULL; i++)
-			(void)printf("%s ", args[i]);
-		(void)printf("\n");
+			printf("%s ", args[i]);
+		printf("\n");
 	}
 
 	currfn = crfn;
 
-	(void)fflush(stdout);
+	fflush(stdout);
 
 	switch (fork()) {
 	case -1:
@@ -622,7 +630,7 @@ runchild(const char *path, char *const *args, const char *crfn)
 		break;
 	case 0:
 		/* child */
-		(void)execv(path, args);
+		execv(path, args);
 		warn("cannot exec %s", path);
 		exit(1);
 		/* NOTREACHED */
@@ -657,11 +665,11 @@ findlibs(char *const *liblst)
 		for (k = 0; (path = libsrchpath[k]) != NULL; k++) {
 			len = strlen(path) + strlen(lib);
 			lfn = xrealloc(lfn, len + sizeof ("/llib-l.ln"));
-			(void)sprintf(lfn, "%s/llib-l%s.ln", path, lib);
+			sprintf(lfn, "%s/llib-l%s.ln", path, lib);
 			if (rdok(lfn))
 				break;
 			lfn = xrealloc(lfn, len + sizeof ("/lint/llib-l.ln"));
-			(void)sprintf(lfn, "%s/lint/llib-l%s.ln", path, lib);
+			sprintf(lfn, "%s/lint/llib-l%s.ln", path, lib);
 			if (rdok(lfn))
 				break;
 		}
@@ -697,7 +705,7 @@ lint2(void)
 	args = xcalloc(1, sizeof (char *));
 
 	path = xmalloc(strlen(PATH_LIBEXEC) + sizeof ("/lint2"));
-	(void)sprintf(path, "%s/lint2", PATH_LIBEXEC);
+	sprintf(path, "%s/lint2", PATH_LIBEXEC);
 
 	appcstrg(&args, path);
 	applst(&args, l2flags);
@@ -742,9 +750,9 @@ cat(char *const *srcs, const char *dest)
 				terminate(-1);
 			}
 		} while (rlen == MBLKSIZ);
-		(void)close(ifd);
+		close(ifd);
 	}
-	(void)close(ofd);
+	close(ofd);
 	free(buf);
 }
 
