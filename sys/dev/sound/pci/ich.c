@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.c,v 1.3.2.12 2003/01/20 03:59:42 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.c,v 1.4 2003/08/14 18:10:40 asmodai Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -35,7 +35,7 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.4 2003/08/14 18:10:40 asmodai Exp $");
 
 /* -------------------------------------------------------------------- */
 
@@ -46,6 +46,7 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/ich.c,v 1.3 2003/08/07 21:17
 
 #define SIS7012ID       0x70121039      /* SiS 7012 needs special handling */
 #define ICH4ID		0x24c58086	/* ICH4 needs special handling too */
+#define	ICH5ID		0x24d58086	/* ICH5 should be like ICH4 */
 
 /* buffer descriptor */
 struct ich_desc {
@@ -569,8 +570,10 @@ ich_init(struct sc_info *sc)
 	stat = ich_rd(sc, ICH_REG_GLOB_STA, 4);
 
 	if ((stat & ICH_GLOB_STA_PCR) == 0) {
-		/* ICH4 may fail when busmastering is enabled. Continue */
-		if (pci_get_devid(sc->dev) != ICH4ID) {
+		/* ICH4 may fail when busmastering is enabled. Continue
+		 * Assume ICH5 is like ICH4. */
+		if ((pci_get_devid(sc->dev) != ICH4ID) ||
+		    (pci_get_devid(sc->dev) != ICH5ID)) {
 			return ENXIO;
 		}
 	}
@@ -622,6 +625,10 @@ ich_pci_probe(device_t dev)
 		device_set_desc(dev, "Intel 82801DB (ICH4)");
 		return 0;
 
+	case ICH5ID:
+		device_set_desc(dev, "Intel 82801EB (ICH5)");
+		return 0;
+		
 	case SIS7012ID:
 		device_set_desc(dev, "SiS 7012");
 		return 0;
@@ -672,8 +679,10 @@ ich_pci_attach(device_t dev)
 	 * pci config space.  The driver should use MMBAR and MBBAR,
 	 * but doing so will mess things up here.  ich4 has enough new
 	 * features it warrants it's own driver. 
+	 * Assume ICH5 is like ICH4.
 	 */
-	if (pci_get_devid(dev) == ICH4ID) {
+	if ((pci_get_devid(dev) == ICH4ID) ||
+	    (pci_get_devid(dev) == ICH5ID)) {
 		pci_write_config(dev, PCIR_ICH_LEGACY, ICH_LEGACY_ENABLE, 1);
 	}
 
