@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)newfs.8	8.6 (Berkeley) 5/3/95
 .\" $FreeBSD: src/sbin/newfs/newfs.8,v 1.26.2.15 2003/05/13 12:16:08 joerg Exp $
-.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.2 2003/06/17 04:27:34 dillon Exp $
+.\" $DragonFly: src/sbin/newfs/newfs.8,v 1.3 2003/12/01 04:36:57 dillon Exp $
 .\"
 .Dd May 13, 2003
 .Dt NEWFS 8
@@ -42,7 +42,7 @@
 .Nd construct a new file system
 .Sh SYNOPSIS
 .Nm
-.Op Fl NOU
+.Op Fl NCOU
 .Op Fl S Ar sector-size
 .Op Fl T Ar disktype
 .Op Fl a Ar maxcontig
@@ -141,6 +141,11 @@ For backward compatibility and for
 will use this file for the image of the filesystem.  When
 .Nm mount_mfs
 exits, this file will be left behind.
+.It Fl C
+Tell
+.Nm Mount_mfs
+to copy the underlying filesystem into the MFS mount being created
+over it.
 .It Fl N
 Cause the file system parameters to be printed out
 without really creating the file system.
