@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libc_r/Makefile,v 1.24.2.7 2002/10/22 14:44:02 fjoe Exp $
-# $DragonFly: src/lib/libc_r/Makefile,v 1.2 2003/06/17 04:26:47 dillon Exp $
+# $DragonFly: src/lib/libc_r/Makefile,v 1.3 2005/02/21 15:26:55 joerg Exp $
 #
 # All library objects contain rcsid strings by default; they may be
 # excluded as a space-saving measure.  To produce a library that does
@@ -36,7 +36,7 @@ HIDDEN_SYSCALLS= aio_suspend.o accept.o bind.o close.o connect.o dup.o dup2.o \
 	recvmsg.o sched_yield.o select.o sendfile.o sendmsg.o sendto.o \
 	setsockopt.o shutdown.o sigaction.o \
 	sigpending.o sigprocmask.o \
-	sigsuspend.o socket.o \
+	sigsuspend.o sigtimedwait.o sigwaitinfo.o socket.o \
 	socketpair.o wait4.o write.o writev.o
 
 .include "${.CURDIR}/../libc/Makefile.inc"
