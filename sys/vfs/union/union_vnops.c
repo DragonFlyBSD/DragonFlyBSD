@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.12 2004/05/20 05:09:18 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -172,11 +172,8 @@ union_unlock_other(struct vnode *vp, struct thread *td)
  */
 
 static int
-union_lookup1(udvp, pdvp, vpp, cnp)
-	struct vnode *udvp;
-	struct vnode **pdvp;
-	struct vnode **vpp;
-	struct componentname *cnp;
+union_lookup1(struct vnode *udvp, struct vnode **pdvp, struct vnode **vpp,
+	      struct componentname *cnp)
 {
 	int error;
 	struct thread *td = cnp->cn_td;
@@ -276,14 +273,12 @@ union_lookup1(udvp, pdvp, vpp, cnp)
 	return (0);
 }
 
+/*
+ * union_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
+ *		struct vnode **a_vpp, struct componentname *a_cnp)
+ */
 static int
-union_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+union_lookup(struct vop_lookup_args *ap)
 {
 	int error;
 	int uerror, lerror;
@@ -624,16 +619,12 @@ out:
  *
  * a_dvp is locked on entry and remains locked on return.  a_vpp is returned
  * locked if no error occurs, otherwise it is garbage.
+ *
+ * union_create(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap)
  */
-
 static int
-union_create(ap)
-	struct vop_create_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+union_create(struct vop_create_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -659,13 +650,12 @@ union_create(ap)
 	return (error);
 }
 
+/*
+ * union_whiteout(struct vnode *a_dvp, struct componentname *a_cnp,
+ *		  int a_flags)
+ */
 static int
-union_whiteout(ap)
-	struct vop_whiteout_args /* {
-		struct vnode *a_dvp;
-		struct componentname *a_cnp;
-		int a_flags;
-	} */ *ap;
+union_whiteout(struct vop_whiteout_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -684,16 +674,12 @@ union_whiteout(ap)
  *
  *	a_dvp is locked on entry and should remain locked on return.
  *	a_vpp is garbagre whether an error occurs or not.
+ *
+ * union_mknod(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap)
  */
-
 static int
-union_mknod(ap)
-	struct vop_mknod_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+union_mknod(struct vop_mknod_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -714,17 +700,12 @@ union_mknod(ap)
  *	vn_open.  What we *really* need to do to avoid screwups if the
  *	open semantics change is to call vn_open().  For example, ufs blows
  *	up if you open a file but do not vmio it prior to writing.
+ *
+ * union_open(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_mode,
+ *	      struct ucred *a_cred, struct thread *a_td)
  */
-
 static int
-union_open(ap)
-	struct vop_open_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		int a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_open(struct vop_open_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct vnode *tvp;
@@ -792,16 +773,12 @@ union_open(ap)
  *
  *	It is unclear whether a_vp is passed locked or unlocked.  Whatever
  *	the case we do not change it.
+ *
+ * union_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
-
 static int
-union_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_close(struct vop_close_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct vnode *vp;
@@ -825,16 +802,12 @@ union_close(ap)
  * copied vnode.  This ensures that no additional
  * file permissions are given away simply because
  * the user caused an implicit file copy.
+ *
+ * union_access(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_mode,
+ *		struct ucred *a_cred, struct thread *a_td)
  */
 static int
-union_access(ap)
-	struct vop_access_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		int a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_access(struct vop_access_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct thread *td = ap->a_td;
@@ -904,16 +877,12 @@ union_access(ap)
  * we are running without any specific locking at all, but beware
  * to any programmer that care must be taken if locking is added
  * to this function.
+ *
+ * union_getattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		 struct ucred *a_cred, struct thread *a_td)
  */
-
 static int
-union_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_getattr(struct vop_getattr_args *ap)
 {
 	int error;
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -962,14 +931,12 @@ union_getattr(ap)
 	return (0);
 }
 
+/*
+ * union_setattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		 struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-union_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_setattr(struct vop_setattr_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct thread *td = ap->a_td;
@@ -1043,14 +1010,12 @@ union_putpages(struct vop_putpages_args *ap)
 	return(r);
 }
 
+/*
+ * union_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
+ */
 static int
-union_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+union_read(struct vop_read_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct thread *td = ap->a_uio->uio_td;
@@ -1087,14 +1052,12 @@ union_read(ap)
 	return (error);
 }
 
+/*
+ * union_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		struct ucred *a_cred)
+ */
 static int
-union_write(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+union_write(struct vop_read_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct thread *td = ap->a_uio->uio_td;
@@ -1141,14 +1104,12 @@ union_write(ap)
 	return (error);
 }
 
+/*
+ * union_lease(struct vnode *a_vp, struct thread *a_td, struct ucred *a_cred,
+ *		int a_flag)
+ */
 static int
-union_lease(ap)
-	struct vop_lease_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-		struct ucred *a_cred;
-		int a_flag;
-	} */ *ap;
+union_lease(struct vop_lease_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
@@ -1156,16 +1117,12 @@ union_lease(ap)
 	return (VCALL(ovp, VOFFSET(vop_lease), ap));
 }
 
+/*
+ * union_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data, int a_fflag,
+ *		struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-union_ioctl(ap)
-	struct vop_ioctl_args /* {
-		struct vnode *a_vp;
-		int  a_command;
-		caddr_t  a_data;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
@@ -1173,14 +1130,12 @@ union_ioctl(ap)
 	return (VCALL(ovp, VOFFSET(vop_ioctl), ap));
 }
 
+/*
+ * union_poll(struct vnode *a_vp, int a_events, struct ucred *a_cred,
+ *	      struct thread *a_td)
+ */
 static int
-union_poll(ap)
-	struct vop_poll_args /* {
-		struct vnode *a_vp;
-		int  a_events;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_poll(struct vop_poll_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
@@ -1188,13 +1143,11 @@ union_poll(ap)
 	return (VCALL(ovp, VOFFSET(vop_poll), ap));
 }
 
+/*
+ * union_revoke(struct vnode *a_vp, int a_flags, struct thread *a_td)
+ */
 static int
-union_revoke(ap)
-	struct vop_revoke_args /* {
-		struct vnode *a_vp;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+union_revoke(struct vop_revoke_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -1206,14 +1159,12 @@ union_revoke(ap)
 	return (0);
 }
 
+/*
+ * union_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
+ *	      struct thread *a_td)
+ */
 static int
-union_mmap(ap)
-	struct vop_mmap_args /* {
-		struct vnode *a_vp;
-		int  a_fflags;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+union_mmap(struct vop_mmap_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
@@ -1221,14 +1172,12 @@ union_mmap(ap)
 	return (VCALL(ovp, VOFFSET(vop_mmap), ap));
 }
 
+/*
+ * union_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
+ *		struct thread *a_td)
+ */
 static int
-union_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int  a_waitfor;
-		struct thread *a_td;
-	} */ *ap;
+union_fsync(struct vop_fsync_args *ap)
 {
 	int error = 0;
 	struct thread *td = ap->a_td;
@@ -1248,15 +1197,12 @@ union_fsync(ap)
  *
  *	Remove the specified cnp.  The dvp and vp are passed to us locked
  *	and must remain locked on return.
+ *
+ * union_remove(struct vnode *a_dvp, struct vnode *a_vp,
+ *		struct componentname *a_cnp)
  */
-
 static int
-union_remove(ap)
-	struct vop_remove_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+union_remove(struct vop_remove_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -1294,15 +1240,12 @@ union_remove(ap)
  *	tdvp will be locked on entry, vp will not be locked on entry.
  *	tdvp should remain locked on return and vp should remain unlocked
  *	on return.
+ *
+ * union_link(struct vnode *a_tdvp, struct vnode *a_vp,
+ *	      struct componentname *a_cnp)
  */
-
 static int
-union_link(ap)
-	struct vop_link_args /* {
-		struct vnode *a_tdvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+union_link(struct vop_link_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct thread *td = cnp->cn_td;
@@ -1364,16 +1307,13 @@ union_link(ap)
 	return (error);
 }
 
+/*
+ * union_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *		struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *		struct vnode *a_tvp, struct componentname *a_tcnp)
+ */
 static int
-union_rename(ap)
-	struct vop_rename_args  /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+union_rename(struct vop_rename_args *ap)
 {
 	int error;
 	struct vnode *fdvp = ap->a_fdvp;
@@ -1529,14 +1469,12 @@ bad:
 	return (error);
 }
 
+/*
+ * union_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap)
+ */
 static int
-union_mkdir(ap)
-	struct vop_mkdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+union_mkdir(struct vop_mkdir_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -1561,13 +1499,12 @@ union_mkdir(ap)
 	return (error);
 }
 
+/*
+ * union_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
+ *		struct componentname *a_cnp)
+ */
 static int
-union_rmdir(ap)
-	struct vop_rmdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+union_rmdir(struct vop_rmdir_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -1599,17 +1536,13 @@ union_rmdir(ap)
  *
  *	dvp is locked on entry and remains locked on return.  a_vpp is garbage
  *	(unused).
+ *
+ * union_symlink(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap,
+ *		char *a_target)
  */
-
 static int
-union_symlink(ap)
-	struct vop_symlink_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-		char *a_target;
-	} */ *ap;
+union_symlink(struct vop_symlink_args *ap)
 {
 	struct union_node *dun = VTOUNION(ap->a_dvp);
 	struct componentname *cnp = ap->a_cnp;
@@ -1631,17 +1564,12 @@ union_symlink(ap)
  * directories.  getdirentries is responsible for walking
  * down the union stack.  readdir(3) is responsible for
  * eliminating duplicate names from the returned data stream.
+ *
+ * union_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		 int *a_eofflag, u_long *a_cookies, int a_ncookies)
  */
 static int
-union_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		u_long *a_cookies;
-		int a_ncookies;
-	} */ *ap;
+union_readdir(struct vop_readdir_args *ap)
 {
 	struct union_node *un = VTOUNION(ap->a_vp);
 	struct thread *td = ap->a_uio->uio_td;
@@ -1656,13 +1584,11 @@ union_readdir(ap)
 	return(error);
 }
 
+/*
+ * union_readlink(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
+ */
 static int
-union_readlink(ap)
-	struct vop_readlink_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-	} */ *ap;
+union_readlink(struct vop_readlink_args *ap)
 {
 	int error;
 	struct union_node *un = VTOUNION(ap->a_vp);
@@ -1684,14 +1610,11 @@ union_readlink(ap)
  *	union_inactive:
  *
  *	Called with the vnode locked.  We are expected to unlock the vnode.
+ *
+ * union_inactive(struct vnode *a_vp, struct thread *a_td)
  */
-
 static int
-union_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+union_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct thread *td = ap->a_td;
@@ -1733,11 +1656,11 @@ union_inactive(ap)
 	return (0);
 }
 
+/*
+ * union_reclaim(struct vnode *a_vp)
+ */
 static int
-union_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+union_reclaim(struct vop_reclaim_args *ap)
 {
 	union_freevp(ap->a_vp);
 
@@ -1745,8 +1668,7 @@ union_reclaim(ap)
 }
 
 static int
-union_lock(ap)
-	struct vop_lock_args *ap;
+union_lock(struct vop_lock_args *ap)
 {
 #if 0
 	struct vnode *vp = ap->a_vp;
@@ -1791,15 +1713,12 @@ union_lock(ap)
  *	union_unlock:
  *
  *	Unlock our union node.  This also unlocks uppervp.  
+ *
+ * union_unlock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
+ *		struct thread *a_td)
  */
 static int
-union_unlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+union_unlock(struct vop_unlock_args *ap)
 {
 	int error;
 #if 0
@@ -1834,27 +1753,21 @@ union_unlock(ap)
  *
  *	For some reason we cannot return the 'real' vnode either, it seems
  *	to blow up memory maps.
+ *
+ * union_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	      daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
-
 static int
-union_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+union_bmap(struct vop_bmap_args *ap)
 {
 	return(EOPNOTSUPP);
 }
 
+/*
+ * union_print(struct vnode *a_vp)
+ */
 static int
-union_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+union_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -1868,13 +1781,11 @@ union_print(ap)
 	return (0);
 }
 
+/*
+ * union_pathconf(struct vnode *a_vp, int a_name, int *a_retval)
+ */
 static int
-union_pathconf(ap)
-	struct vop_pathconf_args /* {
-		struct vnode *a_vp;
-		int a_name;
-		int *a_retval;
-	} */ *ap;
+union_pathconf(struct vop_pathconf_args *ap)
 {
 	int error;
 	struct thread *td = curthread;		/* XXX */
@@ -1891,15 +1802,12 @@ union_pathconf(ap)
 	return (error);
 }
 
+/*
+ * union_advlock(struct vnode *a_vp, caddr_t a_id, int a_op,
+ *		 struct flock *a_fl, int a_flags)
+ */
 static int
-union_advlock(ap)
-	struct vop_advlock_args /* {
-		struct vnode *a_vp;
-		caddr_t  a_id;
-		int  a_op;
-		struct flock *a_fl;
-		int  a_flags;
-	} */ *ap;
+union_advlock(struct vop_advlock_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
@@ -1914,13 +1822,11 @@ union_advlock(ap)
  *
  * vnode in its arguments.
  * This goes away with a merged VM/buffer cache.
+ *
+ * union_strategy(struct vnode *a_vp, struct buf *a_bp)
  */
 static int
-union_strategy(ap)
-	struct vop_strategy_args /* {
-		struct vnode *a_vp;
-		struct buf *a_bp;
-	} */ *ap;
+union_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct vnode *othervp = OTHERVP(bp->b_vp);

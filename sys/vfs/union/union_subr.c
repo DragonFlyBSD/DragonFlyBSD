@@ -36,7 +36,7 @@
  *
  *	@(#)union_subr.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_subr.c,v 1.43.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/union/union_subr.c,v 1.12 2004/05/20 05:09:18 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -92,7 +92,7 @@ static int union_vn_close (struct vnode *, int, struct ucred *,
 				struct thread *);
 
 int
-union_init()
+union_init(void)
 {
 	int i;
 
@@ -103,8 +103,7 @@ union_init()
 }
 
 static int
-union_list_lock(ix)
-	int ix;
+union_list_lock(int ix)
 {
 	if (unvplock[ix] & UNVP_LOCKED) {
 		unvplock[ix] |= UNVP_WANT;
@@ -116,8 +115,7 @@ union_list_lock(ix)
 }
 
 static void
-union_list_unlock(ix)
-	int ix;
+union_list_unlock(int ix)
 {
 	unvplock[ix] &= ~UNVP_LOCKED;
 
@@ -139,10 +137,8 @@ union_list_unlock(ix)
  */
 
 static void
-union_updatevp(un, uppervp, lowervp)
-	struct union_node *un;
-	struct vnode *uppervp;
-	struct vnode *lowervp;
+union_updatevp(struct union_node *un, struct vnode *uppervp,
+	       struct vnode *lowervp)
 {
 	int ohash = UNION_HASH(un->un_uppervp, un->un_lowervp);
 	int nhash = UNION_HASH(uppervp, lowervp);
@@ -212,9 +208,7 @@ union_updatevp(un, uppervp, lowervp)
  */
 
 static void
-union_newlower(un, lowervp)
-	struct union_node *un;
-	struct vnode *lowervp;
+union_newlower(struct union_node *un, struct vnode *lowervp)
 {
 	union_updatevp(un, un->un_uppervp, lowervp);
 }
@@ -226,9 +220,7 @@ union_newlower(un, lowervp)
  */
 
 static void
-union_newupper(un, uppervp)
-	struct union_node *un;
-	struct vnode *uppervp;
+union_newupper(struct union_node *un, struct vnode *uppervp)
 {
 	union_updatevp(un, uppervp, un->un_lowervp);
 }
@@ -239,9 +231,7 @@ union_newupper(un, uppervp)
  * giving priority to the upper layer size.
  */
 void
-union_newsize(vp, uppersz, lowersz)
-	struct vnode *vp;
-	off_t uppersz, lowersz;
+union_newsize(struct vnode *vp, off_t uppersz, off_t lowersz)
 {
 	struct union_node *un;
 	off_t sz;
@@ -331,15 +321,14 @@ union_newsize(vp, uppersz, lowersz)
  */
 
 int
-union_allocvp(vpp, mp, dvp, upperdvp, cnp, uppervp, lowervp, docache)
-	struct vnode **vpp;
-	struct mount *mp;
-	struct vnode *dvp;		/* parent union vnode */
-	struct vnode *upperdvp;		/* parent vnode of uppervp */
-	struct componentname *cnp;	/* may be null */
-	struct vnode *uppervp;		/* may be null */
-	struct vnode *lowervp;		/* may be null */
-	int docache;
+union_allocvp(struct vnode **vpp,
+	      struct mount *mp,
+	      struct vnode *dvp,		/* parent union vnode */
+	      struct vnode *upperdvp,		/* parent vnode of uppervp */
+	      struct componentname *cnp,	/* may be null */
+	      struct vnode *uppervp,		/* may be null */
+	      struct vnode *lowervp,		/* may be null */
+	      int docache)
 {
 	int error;
 	struct union_node *un = 0;
@@ -603,8 +592,7 @@ out:
 }
 
 int
-union_freevp(vp)
-	struct vnode *vp;
+union_freevp(struct vnode *vp)
 {
 	struct union_node *un = VTOUNION(vp);
 
@@ -649,11 +637,8 @@ union_freevp(vp)
  * haven't been bumped at all.
  */
 static int
-union_copyfile(fvp, tvp, cred, td)
-	struct vnode *fvp;
-	struct vnode *tvp;
-	struct ucred *cred;
-	struct thread *td;
+union_copyfile(struct vnode *fvp, struct vnode *tvp, struct ucred *cred,
+	       struct thread *td)
 {
 	char *buf;
 	struct uio uio;
@@ -736,11 +721,8 @@ union_copyfile(fvp, tvp, cred, td)
  */
 
 int
-union_copyup(un, docopy, cred, td)
-	struct union_node *un;
-	int docopy;
-	struct ucred *cred;
-	struct thread *td;
+union_copyup(struct union_node *un, int docopy, struct ucred *cred,
+	     struct thread *td)
 {
 	int error;
 	struct vnode *lvp, *uvp;
@@ -823,14 +805,9 @@ union_copyup(un, docopy, cred, td)
  */
 
 static int
-union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
-	struct union_mount *um;
-	struct vnode *dvp;
-	struct vnode **vpp;
-	struct componentname *cnp;
-	struct componentname *cn;
-	char *path;
-	int pathlen;
+union_relookup(struct union_mount *um, struct vnode *dvp, struct vnode **vpp,
+	       struct componentname *cnp, struct componentname *cn, char *path,
+	       int pathlen)
 {
 	int error;
 
@@ -897,11 +874,8 @@ union_relookup(um, dvp, vpp, cnp, cn, path, pathlen)
  * is returned locked and ref'd
  */
 int
-union_mkshadow(um, dvp, cnp, vpp)
-	struct union_mount *um;
-	struct vnode *dvp;
-	struct componentname *cnp;
-	struct vnode **vpp;
+union_mkshadow(struct union_mount *um, struct vnode *dvp,
+	       struct componentname *cnp, struct vnode **vpp)
 {
 	int error;
 	struct vattr va;
@@ -960,11 +934,8 @@ union_mkshadow(um, dvp, cnp, vpp)
  * (cnp) is the componentname to be created.
  */
 int
-union_mkwhiteout(um, dvp, cnp, path)
-	struct union_mount *um;
-	struct vnode *dvp;
-	struct componentname *cnp;
-	char *path;
+union_mkwhiteout(struct union_mount *um, struct vnode *dvp,
+		 struct componentname *cnp, char *path)
 {
 	int error;
 	struct thread *td = cnp->cn_td;
@@ -1017,10 +988,7 @@ union_mkwhiteout(um, dvp, cnp, path)
  * use.  If an error occurs *vpp iis undefined.
  */
 static int
-union_vn_create(vpp, un, td)
-	struct vnode **vpp;
-	struct union_node *un;
-	struct thread *td;
+union_vn_create(struct vnode **vpp, struct union_node *un, struct thread *td)
 {
 	struct vnode *vp;
 	struct ucred *cred;
@@ -1120,13 +1088,9 @@ union_vn_create(vpp, un, td)
 }
 
 static int
-union_vn_close(vp, fmode, cred, td)
-	struct vnode *vp;
-	int fmode;
-	struct ucred *cred;
-	struct thread *td;
+union_vn_close(struct vnode *vp, int fmode, struct ucred *cred,
+	       struct thread *td)
 {
-
 	if (fmode & FWRITE)
 		--vp->v_writecount;
 	return (VOP_CLOSE(vp, fmode, td));
@@ -1187,10 +1151,7 @@ union_dowhiteout(struct union_node *un, struct ucred *cred, struct thread *td)
 }
 
 static void
-union_dircache_r(vp, vppp, cntp)
-	struct vnode *vp;
-	struct vnode ***vppp;
-	int *cntp;
+union_dircache_r(struct vnode *vp, struct vnode ***vppp, int *cntp)
 {
 	struct union_node *un;
 

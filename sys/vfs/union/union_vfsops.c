@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.11 2004/04/24 04:32:06 drhodus Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.12 2004/05/20 05:09:18 cpressey Exp $
  */
 
 /*
@@ -70,12 +70,8 @@ static int	union_unmount (struct mount *mp, int mntflags,
  * Mount union filesystem
  */
 static int
-union_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	    struct thread *td)
 {
 	int error = 0;
 	struct union_args args;
@@ -309,10 +305,7 @@ bad:
  * Free reference to union layer
  */
 static int
-union_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+union_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
 	int error;
@@ -364,9 +357,7 @@ union_unmount(mp, mntflags, td)
 }
 
 static int
-union_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+union_root(struct mount *mp, struct vnode **vpp)
 {
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
 	int error;
@@ -394,10 +385,7 @@ union_root(mp, vpp)
 }
 
 static int
-union_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	int error;
 	struct union_mount *um = MOUNTTOUNIONMOUNT(mp);
