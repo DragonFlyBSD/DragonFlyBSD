@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.55 2005/03/18 18:29:05 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.56 2005/03/21 01:49:43 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1977,6 +1977,7 @@ fastretransmit:
 			} else if (tcp_do_limitedtransmit) {
 				u_long oldcwnd = tp->snd_cwnd;
 				tcp_seq oldsndmax = tp->snd_max;
+				tcp_seq oldsndnxt = tp->snd_nxt;
 				/* outstanding data */
 				uint32_t ownd = tp->snd_max - tp->snd_una;
 				u_int sent;
@@ -1988,10 +1989,13 @@ fastretransmit:
 				    ("dupacks not 1 or 2"));
 				if (tp->t_dupacks == 1)
 					tp->snd_limited = 0;
+				oldsndnxt = tp->snd_nxt;
+				tp->snd_nxt = tp->snd_max;
 				tp->snd_cwnd = ownd +
 				    (tp->t_dupacks - tp->snd_limited) *
 				    tp->t_maxseg;
 				tcp_output(tp);
+				tp->snd_nxt = oldsndnxt;
 				tp->snd_cwnd = oldcwnd;
 				sent = tp->snd_max - oldsndmax;
 				if (sent > tp->t_maxseg) {
