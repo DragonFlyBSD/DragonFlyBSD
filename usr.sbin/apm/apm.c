@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.7 2004/08/13 19:01:18 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.8 2004/08/13 19:12:52 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -71,7 +71,8 @@ usage(void)
  * interpretation of the string argument given.
  */
 static int
-is_true(const char *boolean) {
+is_true(const char *boolean)
+{
 	char *endp;
 	long val;
 
@@ -148,7 +149,8 @@ apm_getinfo(int fd, apm_info_t aip)
 }
 
 static void 
-apm_enable(int fd, int enable) {
+apm_enable(int fd, int enable)
+{
 
 	if (enable) {
 		if (ioctl(fd, APMIO_ENABLE) == -1)
@@ -352,7 +354,8 @@ apm_display(int fd, int newstate)
 }
 
 static void
-apm_haltcpu(int fd, int enable) {
+apm_haltcpu(int fd, int enable)
+{
 
 	if (enable) {
 		if (ioctl(fd, APMIO_HALTCPU, NULL) == -1)
