@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.34 2004/06/22 21:46:53 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.35 2004/06/26 02:56:47 drhodus Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -734,8 +734,6 @@ _games=	games/adventure games/hack games/phantasia
 _share=	share/syscons/scrnmaps
 .endif
 
-_gcc3_cross= gnu/usr.bin/cc3
-_gcc3_tools= gnu/usr.bin/cc3/cc_tools
 _gcc34_cross= gnu/usr.bin/cc34
 _gcc34_tools= gnu/usr.bin/cc34/cc_prep gnu/usr.bin/cc34/cc_tools
 .if ${MACHINE_ARCH} == "i386" && ${TARGET_ARCH} == "i386"
@@ -769,7 +767,7 @@ _sysinstall= release/sysinstall
 .endif
 
 build-tools:
-.for _tool in ${_gcc2_tools} ${_gcc3_tools} ${_gcc34_tools} \
+.for _tool in ${_gcc2_tools} ${_gcc34_tools} \
 	      ${_fortran} ${_perl} ${_libroken4} ${_libkrb5} \
 	      ${_share} ${_sysinstall}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
@@ -795,7 +793,7 @@ _btxld=	usr.sbin/btxld
 cross-tools:
 .for _tool in ${_btxld} ${_elf2exe} ${_binutils} \
 	      usr.bin/objformat usr.sbin/crunch/crunchide \
-	      ${_gcc2_cross} ${_gcc3_cross} ${_gcc34_cross}
+	      ${_gcc2_cross} ${_gcc34_cross}
 	${ECHODIR} "===> ${_tool} (cross-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
 		${MAKE} DIRPRFX=${_tool}/ obj; \
@@ -825,8 +823,6 @@ libraries:
 	cd ${.CURDIR}; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc2 \
 		${MAKE} -f Makefile.inc1 _startup_libs2; \
-	    HOST_CCVER=${HOST_CCVER} CCVER=gcc3 \
-		${MAKE} -f Makefile.inc1 _startup_libs3; \
 	    HOST_CCVER=${HOST_CCVER} CCVER=gcc34 \
 		${MAKE} -f Makefile.inc1 _startup_libs34; \
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
@@ -841,7 +837,6 @@ libraries:
 # specifically built using gcc{2,3}.
 #
 _startup_libs2=	gnu/lib/gcc2/libgcc
-_startup_libs3=	gnu/lib/gcc3/libgcc
 _startup_libs34=	gnu/lib/gcc34/libgcc
 .if exists(${.CURDIR}/lib/csu/${MACHINE_ARCH}-elf)
 _startup_libs=	lib/csu/${MACHINE_ARCH}-elf
