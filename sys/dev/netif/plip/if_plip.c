@@ -25,7 +25,7 @@
  *
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  * $FreeBSD: src/sys/dev/ppbus/if_plip.c,v 1.19.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.9 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/plip/if_plip.c,v 1.10 2005/02/19 17:59:38 joerg Exp $
  */
 
 /*
@@ -97,6 +97,7 @@
 #include <sys/rman.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/netisr.h>
 
@@ -244,7 +245,7 @@ lp_attach (device_t dev)
 	ifp->if_type = IFT_PARA;
 	ifp->if_hdrlen = 0;
 	ifp->if_addrlen = 0;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 	if_attach(ifp);
 
 	bpfattach(ifp, DLT_NULL, sizeof(u_int32_t));
