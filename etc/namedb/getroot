@@ -3,8 +3,9 @@
 # If you are running named and using root.zone as a master, the root.zone
 # file should be updated periodicly from ftp.rs.internic.net.
 #
-# $DragonFly: src/etc/namedb/getroot,v 1.1 2004/05/27 18:15:40 dillon Exp $
+# $DragonFly: src/etc/namedb/getroot,v 1.2 2005/02/24 21:58:20 dillon Exp $
 
+cd /etc/namedb
 umask 027
 
 set hostname = 'ftp.rs.internic.net'
