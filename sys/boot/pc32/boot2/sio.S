@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/sio.s,v 1.4 1999/08/28 00:40:02 peter Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/sio.S,v 1.6 2004/07/18 23:40:01 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/sio.S,v 1.7 2004/09/12 18:37:15 dillon Exp $
  */
 		.set SIO_PRT,SIOPRT		# Base port
 		.set SIO_FMT,SIOFMT		# 8N1
@@ -80,7 +80,12 @@ sio_putc.1:	inb (%dx),%al			# Transmitter buffer empty?
 		movb 0x4(%esp,1),%al		# Get character
 		subb $0x5,%dl			# Transmitter hold reg
 		outb %al,(%dx)			# Write character
-sio_putc.2:	ret $0x4
+sio_putc.2:	
+#ifdef __USING_MRTD__
+		ret $0x4
+#else
+		ret
+#endif
 
 		/*
 		 * int sio_getc(void)
