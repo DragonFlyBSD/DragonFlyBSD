@@ -25,11 +25,21 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.4 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.5 2004/10/07 01:32:03 dillon Exp $
  */
 
 /*
  * clist support routines
+ *
+ * NOTE on cblock->c_cf:	This pointer may point at the base of a cblock,
+ *				which is &cblock->c_info[0], but will never
+ *				point at the end of a cblock (char *)(cblk + 1)
+ *				
+ * NOTE on cblock->c_cl:	This pointer will never point at the base of
+ *				a block but may point at the end of one.
+ *
+ * These routines may be used by more then just ttys, so a critical section
+ * must be used to access the free list, and for general safety.
  */
 
 #include <sys/param.h>
@@ -38,6 +48,7 @@
 #include <sys/malloc.h>
 #include <sys/tty.h>
 #include <sys/clist.h>
+#include <sys/thread2.h>
 
 static void clist_init (void *);
 SYSINIT(clist, SI_SUB_CLIST, SI_ORDER_FIRST, clist_init, NULL)
@@ -76,8 +87,7 @@ DB_SHOW_COMMAND(cbstat, cbstat)
  */
 /* ARGSUSED*/
 static void
-clist_init(dummy)
-	void *dummy;
+clist_init(void *dummy)
 {
 	/*
 	 * Allocate an initial base set of cblocks as a 'slush'.
@@ -88,46 +98,55 @@ clist_init(dummy)
 	 * interrupt handlers when it may be unsafe to call malloc().
 	 */
 	cblock_alloc_cblocks(cslushcount = INITIAL_CBLOCKS);
+	KKASSERT(sizeof(struct cblock) == CBLOCK);
 }
 
 /*
  * Remove a cblock from the cfreelist queue and return a pointer
  * to it.
+ *
+ * May not block.
  */
-static __inline struct cblock *
-cblock_alloc()
+static struct cblock *
+cblock_alloc(void)
 {
 	struct cblock *cblockp;
 
 	cblockp = cfreelist;
 	if (cblockp == NULL)
 		panic("clist reservation botch");
-	cfreelist = cblockp->c_next;
-	cblockp->c_next = NULL;
+	KKASSERT(cblockp->c_head.ch_magic == CLIST_MAGIC_FREE);
+	cfreelist = cblockp->c_head.ch_next;
+	cblockp->c_head.ch_next = NULL;
+	cblockp->c_head.ch_magic = CLIST_MAGIC_USED;
 	cfreecount -= CBSIZE;
 	return (cblockp);
 }
 
 /*
  * Add a cblock to the cfreelist queue.
+ *
+ * May not block, must be called in a critical section
  */
-static __inline void
-cblock_free(cblockp)
-	struct cblock *cblockp;
+static void
+cblock_free(struct cblock *cblockp)
 {
 	if (isset(cblockp->c_quote, CBQSIZE * NBBY - 1))
 		bzero(cblockp->c_quote, sizeof cblockp->c_quote);
-	cblockp->c_next = cfreelist;
+	KKASSERT(cblockp->c_head.ch_magic == CLIST_MAGIC_USED);
+	cblockp->c_head.ch_next = cfreelist;
+	cblockp->c_head.ch_magic = CLIST_MAGIC_FREE;
 	cfreelist = cblockp;
 	cfreecount += CBSIZE;
 }
 
 /*
  * Allocate some cblocks for the cfreelist queue.
+ *
+ * This routine my  block, but still must be called in a critical section
  */
 static void
-cblock_alloc_cblocks(number)
-	int number;
+cblock_alloc_cblocks(int number)
 {
 	int i;
 	struct cblock *cbp;
@@ -139,25 +158,23 @@ cblock_alloc_cblocks(number)
 "clist_alloc_cblocks: M_NOWAIT malloc failed, trying M_WAITOK\n");
 			cbp = malloc(sizeof *cbp, M_TTYS, M_WAITOK);
 		}
+		KKASSERT(((intptr_t)cbp & CROUND) == 0);
 		/*
 		 * Freed cblocks have zero quotes and garbage elsewhere.
 		 * Set the may-have-quote bit to force zeroing the quotes.
 		 */
 		setbit(cbp->c_quote, CBQSIZE * NBBY - 1);
+		cbp->c_head.ch_magic = CLIST_MAGIC_USED;
 		cblock_free(cbp);
 	}
 	ctotcount += number;
 }
 
 /*
- * Set the cblock allocation policy for a a clist.
- * Must be called in process context at spltty().
+ * Set the cblock allocation policy for a clist.
  */
 void
-clist_alloc_cblocks(clistp, ccmax, ccreserved)
-	struct clist *clistp;
-	int ccmax;
-	int ccreserved;
+clist_alloc_cblocks(struct clist *clistp, int ccmax, int ccreserved)
 {
 	int dcbr;
 
@@ -169,25 +186,31 @@ clist_alloc_cblocks(clistp, ccmax, ccreserved)
 	if (ccreserved != 0)
 		ccreserved += CBSIZE - 1;
 
+	crit_enter();
 	clistp->c_cbmax = roundup(ccmax, CBSIZE) / CBSIZE;
 	dcbr = roundup(ccreserved, CBSIZE) / CBSIZE - clistp->c_cbreserved;
-	if (dcbr >= 0)
-		cblock_alloc_cblocks(dcbr);
-	else {
+	if (dcbr >= 0) {
+		clistp->c_cbreserved += dcbr;	/* atomic w/c_cbmax */
+		cblock_alloc_cblocks(dcbr);	/* may block */
+	} else {
+		KKASSERT(clistp->c_cbcount <= clistp->c_cbreserved);
 		if (clistp->c_cbreserved + dcbr < clistp->c_cbcount)
 			dcbr = clistp->c_cbcount - clistp->c_cbreserved;
-		cblock_free_cblocks(-dcbr);
+		clistp->c_cbreserved += dcbr;	/* atomic w/c_cbmax */
+		cblock_free_cblocks(-dcbr);	/* may block */
 	}
-	clistp->c_cbreserved += dcbr;
+	KKASSERT(clistp->c_cbreserved >= 0);
+	crit_exit();
 }
 
 /*
  * Free some cblocks from the cfreelist queue back to the
  * system malloc pool.
+ *
+ * Must be called from within a critical section.  May block.
  */
 static void
-cblock_free_cblocks(number)
-	int number;
+cblock_free_cblocks(int number)
 {
 	int i;
 
@@ -198,34 +221,34 @@ cblock_free_cblocks(number)
 
 /*
  * Free the cblocks reserved for a clist.
- * Must be called at spltty().
  */
 void
-clist_free_cblocks(clistp)
-	struct clist *clistp;
+clist_free_cblocks(struct clist *clistp)
 {
+	int cbreserved;
+
+	crit_enter();
 	if (clistp->c_cbcount != 0)
 		panic("freeing active clist cblocks");
-	cblock_free_cblocks(clistp->c_cbreserved);
+	cbreserved = clistp->c_cbreserved;
 	clistp->c_cbmax = 0;
 	clistp->c_cbreserved = 0;
+	cblock_free_cblocks(cbreserved); /* may block */
+	crit_exit();
 }
 
 /*
  * Get a character from the head of a clist.
  */
 int
-getc(clistp)
-	struct clist *clistp;
+getc(struct clist *clistp)
 {
 	int chr = -1;
-	int s;
 	struct cblock *cblockp;
 
-	s = spltty();
-
-	/* If there are characters in the list, get one */
+	crit_enter();
 	if (clistp->c_cc) {
+		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
 		chr = (u_char)*clistp->c_cf;
 
@@ -247,9 +270,11 @@ getc(clistp)
 		 * last pointers to NULL. In either case, free the
 		 * current cblock.
 		 */
-		if ((clistp->c_cf >= (char *)(cblockp+1)) || (clistp->c_cc == 0)) {
+		KKASSERT(clistp->c_cf <= (char *)(cblockp + 1));
+		if ((clistp->c_cf == (char *)(cblockp + 1)) ||
+		    (clistp->c_cc == 0)) {
 			if (clistp->c_cc > 0) {
-				clistp->c_cf = cblockp->c_next->c_info;
+				clistp->c_cf = cblockp->c_head.ch_next->c_info;
 			} else {
 				clistp->c_cf = clistp->c_cl = NULL;
 			}
@@ -258,8 +283,7 @@ getc(clistp)
 				++cslushcount;
 		}
 	}
-
-	splx(s);
+	crit_exit();
 	return (chr);
 }
 
@@ -269,20 +293,16 @@ getc(clistp)
  * actually copied.
  */
 int
-q_to_b(clistp, dest, amount)
-	struct clist *clistp;
-	char *dest;
-	int amount;
+q_to_b(struct clist *clistp, char *dest, int amount)
 {
 	struct cblock *cblockp;
 	struct cblock *cblockn;
 	char *dest_orig = dest;
 	int numc;
-	int s;
 
-	s = spltty();
-
+	crit_enter();
 	while (clistp && amount && (clistp->c_cc > 0)) {
+		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
 		cblockn = cblockp + 1; /* pointer arithmetic! */
 		numc = min(amount, (char *)cblockn - clistp->c_cf);
@@ -298,9 +318,11 @@ q_to_b(clistp, dest, amount)
 		 * and last pointer to NULL. In either case, free the
 		 * current cblock.
 		 */
-		if ((clistp->c_cf >= (char *)cblockn) || (clistp->c_cc == 0)) {
+		KKASSERT(clistp->c_cf <= (char *)cblockn);
+		if ((clistp->c_cf == (char *)cblockn) || (clistp->c_cc == 0)) {
 			if (clistp->c_cc > 0) {
-				clistp->c_cf = cblockp->c_next->c_info;
+				KKASSERT(cblockp->c_head.ch_next != NULL);
+				clistp->c_cf = cblockp->c_head.ch_next->c_info;
 			} else {
 				clistp->c_cf = clistp->c_cl = NULL;
 			}
@@ -309,8 +331,7 @@ q_to_b(clistp, dest, amount)
 				++cslushcount;
 		}
 	}
-
-	splx(s);
+	crit_exit();
 	return (dest - dest_orig);
 }
 
@@ -318,18 +339,15 @@ q_to_b(clistp, dest, amount)
  * Flush 'amount' of chars, beginning at head of clist 'clistp'.
  */
 void
-ndflush(clistp, amount)
-	struct clist *clistp;
-	int amount;
+ndflush(struct clist *clistp, int amount)
 {
 	struct cblock *cblockp;
 	struct cblock *cblockn;
 	int numc;
-	int s;
 
-	s = spltty();
-
+	crit_enter();
 	while (amount && (clistp->c_cc > 0)) {
+		KKASSERT(((intptr_t)clistp->c_cf & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
 		cblockn = cblockp + 1; /* pointer arithmetic! */
 		numc = min(amount, (char *)cblockn - clistp->c_cf);
@@ -343,9 +361,11 @@ ndflush(clistp, amount)
 		 * and last pointer to NULL. In either case, free the
 		 * current cblock.
 		 */
-		if ((clistp->c_cf >= (char *)cblockn) || (clistp->c_cc == 0)) {
+		KKASSERT(clistp->c_cf <= (char *)cblockn);
+		if (clistp->c_cf == (char *)cblockn || clistp->c_cc == 0) {
 			if (clistp->c_cc > 0) {
-				clistp->c_cf = cblockp->c_next->c_info;
+				KKASSERT(cblockp->c_head.ch_next != NULL);
+				clistp->c_cf = cblockp->c_head.ch_next->c_info;
 			} else {
 				clistp->c_cf = clistp->c_cl = NULL;
 			}
@@ -354,8 +374,7 @@ ndflush(clistp, amount)
 				++cslushcount;
 		}
 	}
-
-	splx(s);
+	crit_exit();
 }
 
 /*
@@ -363,18 +382,20 @@ ndflush(clistp, amount)
  * more clists, or 0 for success.
  */
 int
-putc(chr, clistp)
-	int chr;
-	struct clist *clistp;
+putc(int chr, struct clist *clistp)
 {
 	struct cblock *cblockp;
-	int s;
 
-	s = spltty();
+	crit_enter();
 
+	/*
+	 * Note: this section may point c_cl at the base of a cblock.  This
+	 * is a temporary violation of the requirements for c_cl, we
+	 * increment it before returning.
+	 */
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
-			splx(s);
+			crit_exit();
 			printf("putc to a clist with no reserved cblocks\n");
 			return (-1);		/* nothing done */
 		}
@@ -390,14 +411,14 @@ putc(chr, clistp)
 			if (clistp->c_cbcount >= clistp->c_cbreserved) {
 				if (clistp->c_cbcount >= clistp->c_cbmax
 				    || cslushcount <= 0) {
-					splx(s);
+					crit_exit();
 					return (-1);
 				}
 				--cslushcount;
 			}
 			cblockp = cblock_alloc();
 			clistp->c_cbcount++;
-			prev->c_next = cblockp;
+			prev->c_head.ch_next = cblockp;
 			clistp->c_cl = cblockp->c_info;
 		}
 	}
@@ -412,13 +433,14 @@ putc(chr, clistp)
 		 * may be quoted.
 		 */
 		setbit(cblockp->c_quote, CBQSIZE * NBBY - 1);
-	} else
+	} else {
 		clrbit(cblockp->c_quote, clistp->c_cl - (char *)cblockp->c_info);
+	}
 
 	*clistp->c_cl++ = chr;
 	clistp->c_cc++;
 
-	splx(s);
+	crit_exit();
 	return (0);
 }
 
@@ -427,16 +449,12 @@ putc(chr, clistp)
  * number of characters not copied.
  */
 int
-b_to_q(src, amount, clistp)
-	char *src;
-	int amount;
-	struct clist *clistp;
+b_to_q(char *src, int amount, struct clist *clistp)
 {
 	struct cblock *cblockp;
 	char *firstbyte, *lastbyte;
 	u_char startmask, endmask;
 	int startbit, endbit, num_between, numc;
-	int s;
 
 	/*
 	 * Avoid allocating an initial cblock and then not using it.
@@ -445,15 +463,16 @@ b_to_q(src, amount, clistp)
 	if (amount <= 0)
 		return (amount);
 
-	s = spltty();
+	crit_enter();
 
 	/*
-	 * If there are no cblocks assigned to this clist yet,
-	 * then get one.
+	 * Note: this section may point c_cl at the base of a cblock.  This
+	 * is a temporary violation of the requirements for c_cl.  Since
+	 * amount is non-zero we will not return with it in that state.
 	 */
 	if (clistp->c_cl == NULL) {
 		if (clistp->c_cbreserved < 1) {
-			splx(s);
+			crit_exit();
 			printf("b_to_q to a clist with no reserved cblocks.\n");
 			return (amount);	/* nothing done */
 		}
@@ -462,6 +481,10 @@ b_to_q(src, amount, clistp)
 		clistp->c_cf = clistp->c_cl = cblockp->c_info;
 		clistp->c_cc = 0;
 	} else {
+		/*
+		 * c_cl may legally point past the end of the block, which
+		 * falls through to the 'get another cblock' code below.
+		 */
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cl & ~CROUND);
 	}
 
@@ -475,14 +498,14 @@ b_to_q(src, amount, clistp)
 			if (clistp->c_cbcount >= clistp->c_cbreserved) {
 				if (clistp->c_cbcount >= clistp->c_cbmax
 				    || cslushcount <= 0) {
-					splx(s);
+					crit_exit();
 					return (amount);
 				}
 				--cslushcount;
 			}
 			cblockp = cblock_alloc();
 			clistp->c_cbcount++;
-			prev->c_next = cblockp;
+			prev->c_head.ch_next = cblockp;
 			clistp->c_cl = cblockp->c_info;
 		}
 
@@ -540,11 +563,9 @@ b_to_q(src, amount, clistp)
 		 * cblock) we prepare for the assignment of 'prev'
 		 * above.
 		 */
-		cblockp += 1;
-
+		++cblockp;
 	}
-
-	splx(s);
+	crit_exit();
 	return (amount);
 }
 
@@ -552,12 +573,12 @@ b_to_q(src, amount, clistp)
  * Get the next character in the clist. Store it at dst. Don't
  * advance any clist pointers, but return a pointer to the next
  * character position.
+ *
+ * Must be called at spltty().  This routine may not run in a critical
+ * section and so may not call the cblock allocator/deallocator.
  */
 char *
-nextc(clistp, cp, dst)
-	struct clist *clistp;
-	char *cp;
-	int *dst;
+nextc(struct clist *clistp, char *cp, int *dst)
 {
 	struct cblock *cblockp;
 
@@ -572,7 +593,7 @@ nextc(clistp, cp, dst)
 		 * cblock, advance to the next cblock.
 		 */
 		if (((intptr_t)cp & CROUND) == 0)
-			cp = ((struct cblock *)cp - 1)->c_next->c_info;
+			cp = ((struct cblock *)cp - 1)->c_head.ch_next->c_info;
 		cblockp = (struct cblock *)((intptr_t)cp & ~CROUND);
 
 		/*
@@ -591,17 +612,20 @@ nextc(clistp, cp, dst)
  * "Unput" a character from a clist.
  */
 int
-unputc(clistp)
-	struct clist *clistp;
+unputc(struct clist *clistp)
 {
 	struct cblock *cblockp = 0, *cbp = 0;
-	int s;
 	int chr = -1;
 
-
-	s = spltty();
+	crit_enter();
 
 	if (clistp->c_cc) {
+		/*
+		 * note that clistp->c_cl will never point at the base
+		 * of a cblock (cblock->c_info) (see assert this later on),
+		 * but it may point past the end of one.  We temporarily
+		 * violate this in the decrement below but then we fix it up.
+		 */
 		--clistp->c_cc;
 		--clistp->c_cl;
 
@@ -619,30 +643,39 @@ unputc(clistp)
 		 * If all of the characters have been unput in this
 		 * cblock, then find the previous one and free this
 		 * one.
+		 *
+		 * if c_cc is 0 clistp->c_cl may end up pointing at
+		 * cblockp->c_info, which is illegal, but the case will be 
+		 * taken care of near the end of the routine.  Otherwise
+		 * there *MUST* be another cblock, find it.
 		 */
-		if (clistp->c_cc && (clistp->c_cl <= (char *)cblockp->c_info)) {
+		KKASSERT(clistp->c_cl >= (char *)cblockp->c_info);
+		if (clistp->c_cc && (clistp->c_cl == (char *)cblockp->c_info)) {
 			cbp = (struct cblock *)((intptr_t)clistp->c_cf & ~CROUND);
 
-			while (cbp->c_next != cblockp)
-				cbp = cbp->c_next;
+			while (cbp->c_head.ch_next != cblockp)
+				cbp = cbp->c_head.ch_next;
+			cbp->c_head.ch_next = NULL;
 
 			/*
 			 * When the previous cblock is at the end, the 'last'
 			 * pointer always points (invalidly) one past.
 			 */
-			clistp->c_cl = (char *)(cbp+1);
+			clistp->c_cl = (char *)(cbp + 1);
 			cblock_free(cblockp);
 			if (--clistp->c_cbcount >= clistp->c_cbreserved)
 				++cslushcount;
-			cbp->c_next = NULL;
 		}
 	}
 
 	/*
 	 * If there are no more characters on the list, then
-	 * free the last cblock.
+	 * free the last cblock.   It should not be possible for c->cl
+	 * to be pointing past the end of a block due to our decrement
+	 * of it way above.
 	 */
-	if ((clistp->c_cc == 0) && clistp->c_cl) {
+	if (clistp->c_cc == 0 && clistp->c_cl) {
+		KKASSERT(((intptr_t)clistp->c_cl & CROUND) != 0);
 		cblockp = (struct cblock *)((intptr_t)clistp->c_cl & ~CROUND);
 		cblock_free(cblockp);
 		if (--clistp->c_cbcount >= clistp->c_cbreserved)
@@ -650,7 +683,7 @@ unputc(clistp)
 		clistp->c_cf = clistp->c_cl = NULL;
 	}
 
-	splx(s);
+	crit_exit();
 	return (chr);
 }
 
@@ -659,12 +692,11 @@ unputc(clistp)
  * preserving quote bits.
  */
 void
-catq(src_clistp, dest_clistp)
-	struct clist *src_clistp, *dest_clistp;
+catq(struct clist *src_clistp, struct clist *dest_clistp)
 {
-	int chr, s;
+	int chr;
 
-	s = spltty();
+	crit_enter();
 	/*
 	 * If the destination clist is empty (has no cblocks atttached),
 	 * and there are no possible complications with the resource counters,
@@ -682,11 +714,10 @@ catq(src_clistp, dest_clistp)
 		dest_clistp->c_cbcount = src_clistp->c_cbcount;
 		src_clistp->c_cbcount = 0;
 
-		splx(s);
+		crit_exit();
 		return;
 	}
-
-	splx(s);
+	crit_exit();
 
 	/*
 	 * XXX  This should probably be optimized to more than one

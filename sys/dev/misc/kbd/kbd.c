@@ -24,7 +24,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.12 2004/09/19 02:15:44 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.13 2004/10/07 01:32:04 dillon Exp $
+ */
+/*
+ * Generic keyboard driver.
+ *
+ * Interrupt note: keyboards use clist functions and since usb keyboard
+ * interrupts are not protected by spltty(), we must use a critical section
+ * to protect against corruption.
  */
 
 #include "opt_kbd.h"
@@ -39,6 +46,8 @@
 #include <sys/poll.h>
 #include <sys/vnode.h>
 #include <sys/uio.h>
+#include <sys/thread.h>
+#include <sys/thread2.h>
 
 #include <machine/console.h>
 
@@ -80,9 +89,7 @@ kbd_realloc_array(void)
 	keyboard_t **new_kbd;
 	keyboard_switch_t **new_kbdsw;
 	int newsize;
-	int s;
 
-	s = spltty();
 	newsize = ((keyboards + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
 	new_kbd = malloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
 				M_WAITOK | M_ZERO);
@@ -90,6 +97,7 @@ kbd_realloc_array(void)
 				M_WAITOK | M_ZERO);
 	bcopy(keyboard, new_kbd, sizeof(*keyboard)*keyboards);
 	bcopy(kbdsw, new_kbdsw, sizeof(*kbdsw)*keyboards);
+	crit_enter();
 	if (keyboards > 1) {
 		free(keyboard, M_DEVBUF);
 		free(kbdsw, M_DEVBUF);
@@ -97,7 +105,7 @@ kbd_realloc_array(void)
 	keyboard = new_kbd;
 	kbdsw = new_kbdsw;
 	keyboards = newsize;
-	splx(s);
+	crit_exit();
 
 	if (bootverbose)
 		printf("kbd: new array size %d\n", keyboards);
@@ -226,23 +234,22 @@ int
 kbd_unregister(keyboard_t *kbd)
 {
 	int error;
-	int s;
 
 	if ((kbd->kb_index < 0) || (kbd->kb_index >= keyboards))
 		return ENOENT;
 	if (keyboard[kbd->kb_index] != kbd)
 		return ENOENT;
 
-	s = spltty();
+	crit_enter();
 	if (KBD_IS_BUSY(kbd)) {
 		error = (*kbd->kb_callback.kc_func)(kbd, KBDIO_UNLOADING,
 						    kbd->kb_callback.kc_arg);
 		if (error) {
-			splx(s);
+			crit_exit();
 			return error;
 		}
 		if (KBD_IS_BUSY(kbd)) {
-			splx(s);
+			crit_exit();
 			return EBUSY;
 		}
 	}
@@ -250,7 +257,7 @@ kbd_unregister(keyboard_t *kbd)
 	keyboard[kbd->kb_index] = NULL;
 	kbdsw[kbd->kb_index] = NULL;
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -315,16 +322,15 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 	     void *arg)
 {
 	int index;
-	int s;
 
 	if (func == NULL)
 		return -1;
 
-	s = spltty();
+	crit_enter();
 	index = kbd_find_keyboard(driver, unit);
 	if (index >= 0) {
 		if (KBD_IS_BUSY(keyboard[index])) {
-			splx(s);
+			crit_exit();
 			return -1;
 		}
 		callout_init(&keyboard[index]->kb_atkbd_timeout_ch);
@@ -334,7 +340,7 @@ kbd_allocate(char *driver, int unit, void *id, kbd_callback_func_t *func,
 		keyboard[index]->kb_callback.kc_arg = arg;
 		(*kbdsw[index]->clear_state)(keyboard[index]);
 	}
-	splx(s);
+	crit_exit();
 	return index;
 }
 
@@ -342,9 +348,8 @@ int
 kbd_release(keyboard_t *kbd, void *id)
 {
 	int error;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	if (!KBD_IS_VALID(kbd) || !KBD_IS_BUSY(kbd)) {
 		error = EINVAL;
 	} else if (kbd->kb_token != id) {
@@ -358,7 +363,7 @@ kbd_release(keyboard_t *kbd, void *id)
 		(*kbdsw[kbd->kb_index]->clear_state)(kbd);
 		error = 0;
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -367,9 +372,8 @@ kbd_change_callback(keyboard_t *kbd, void *id, kbd_callback_func_t *func,
 		    void *arg)
 {
 	int error;
-	int s;
 
-	s = spltty();
+	crit_enter();
 	if (!KBD_IS_VALID(kbd) || !KBD_IS_BUSY(kbd)) {
 		error = EINVAL;
 	} else if (kbd->kb_token != id) {
@@ -381,7 +385,7 @@ kbd_change_callback(keyboard_t *kbd, void *id, kbd_callback_func_t *func,
 		kbd->kb_callback.kc_arg = arg;
 		error = 0;
 	}
-	splx(s);
+	crit_exit();
 	return error;
 }
 
@@ -523,20 +527,19 @@ genkbdopen(dev_t dev, int mode, int flag, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
-	int s;
 	int i;
 
-	s = spltty();
+	crit_enter();
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		splx(s);
+		crit_exit();
 		return ENXIO;
 	}
 	i = kbd_allocate(kbd->kb_name, kbd->kb_unit, sc,
 			 genkbd_event, (void *)sc);
 	if (i < 0) {
-		splx(s);
+		crit_exit();
 		return EBUSY;
 	}
 	/* assert(i == kbd->kb_index) */
@@ -553,7 +556,7 @@ genkbdopen(dev_t dev, int mode, int flag, d_thread_t *td)
 	clist_alloc_cblocks(&sc->gkb_q, KB_QSIZE, KB_QSIZE/2); /* XXX */
 	sc->gkb_rsel.si_flags = 0;
 	sc->gkb_rsel.si_pid = 0;
-	splx(s);
+	crit_exit();
 
 	return 0;
 }
@@ -563,13 +566,12 @@ genkbdclose(dev_t dev, int mode, int flag, d_thread_t *td)
 {
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
-	int s;
 
 	/*
 	 * NOTE: the device may have already become invalid.
 	 * kbd == NULL || !KBD_IS_VALID(kbd)
 	 */
-	s = spltty();
+	crit_enter();
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
@@ -580,7 +582,7 @@ genkbdclose(dev_t dev, int mode, int flag, d_thread_t *td)
 		clist_free_cblocks(&sc->gkb_q);
 #endif
 	}
-	splx(s);
+	crit_exit();
 	return 0;
 }
 
@@ -592,35 +594,34 @@ genkbdread(dev_t dev, struct uio *uio, int flag)
 	u_char buffer[KB_BUFSIZE];
 	int len;
 	int error;
-	int s;
 
 	/* wait for input */
-	s = spltty();
+	crit_enter();
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
-		splx(s);
+		crit_exit();
 		return ENXIO;
 	}
 	while (sc->gkb_q.c_cc == 0) {
 		if (flag & IO_NDELAY) {
-			splx(s);
+			crit_exit();
 			return EWOULDBLOCK;
 		}
 		sc->gkb_flags |= KB_ASLEEP;
 		error = tsleep((caddr_t)sc, PCATCH, "kbdrea", 0);
 		kbd = kbd_get_keyboard(KBD_INDEX(dev));
 		if ((kbd == NULL) || !KBD_IS_VALID(kbd)) {
-			splx(s);
+			crit_exit();
 			return ENXIO;	/* our keyboard has gone... */
 		}
 		if (error) {
 			sc->gkb_flags &= ~KB_ASLEEP;
-			splx(s);
+			crit_exit();
 			return error;
 		}
 	}
-	splx(s);
+	crit_exit();
 
 	/* copy as much input as possible */
 	error = 0;
@@ -669,10 +670,9 @@ genkbdpoll(dev_t dev, int events, d_thread_t *td)
 	keyboard_t *kbd;
 	genkbd_softc_t *sc;
 	int revents;
-	int s;
 
 	revents = 0;
-	s = spltty();
+	crit_enter();
 	sc = dev->si_drv1;
 	kbd = kbd_get_keyboard(KBD_INDEX(dev));
 	if ((sc == NULL) || (kbd == NULL) || !KBD_IS_VALID(kbd)) {
@@ -683,7 +683,7 @@ genkbdpoll(dev_t dev, int events, d_thread_t *td)
 		else
 			selrecord(td, &sc->gkb_rsel);
 	}
-	splx(s);
+	crit_exit();
 	return revents;
 }
 
@@ -799,10 +799,9 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 {
 	keyarg_t *keyp;
 	fkeyarg_t *fkeyp;
-	int s;
 	int i;
 
-	s = spltty();
+	crit_enter();
 	switch (cmd) {
 
 	case KDGKBINFO:		/* get keyboard information */
@@ -834,7 +833,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		bcopy(arg, kbd->kb_keymap, sizeof(*kbd->kb_keymap));
 		break;
 #else
-		splx(s);
+		crit_exit();
 		return ENODEV;
 #endif
 
@@ -842,7 +841,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		keyp = (keyarg_t *)arg;
 		if (keyp->keynum >= sizeof(kbd->kb_keymap->key)
 					/sizeof(kbd->kb_keymap->key[0])) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		bcopy(&kbd->kb_keymap->key[keyp->keynum], &keyp->key,
@@ -853,14 +852,14 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		keyp = (keyarg_t *)arg;
 		if (keyp->keynum >= sizeof(kbd->kb_keymap->key)
 					/sizeof(kbd->kb_keymap->key[0])) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		bcopy(&keyp->key, &kbd->kb_keymap->key[keyp->keynum],
 		      sizeof(keyp->key));
 		break;
 #else
-		splx(s);
+		crit_exit();
 		return ENODEV;
 #endif
 
@@ -872,14 +871,14 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		bcopy(arg, kbd->kb_accentmap, sizeof(*kbd->kb_accentmap));
 		break;
 #else
-		splx(s);
+		crit_exit();
 		return ENODEV;
 #endif
 
 	case GETFKEY:		/* get functionkey string */
 		fkeyp = (fkeyarg_t *)arg;
 		if (fkeyp->keynum >= kbd->kb_fkeytab_size) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		bcopy(kbd->kb_fkeytab[fkeyp->keynum].str, fkeyp->keydef,
@@ -890,7 +889,7 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 #ifndef KBD_DISABLE_KEYMAP_LOAD
 		fkeyp = (fkeyarg_t *)arg;
 		if (fkeyp->keynum >= kbd->kb_fkeytab_size) {
-			splx(s);
+			crit_exit();
 			return EINVAL;
 		}
 		kbd->kb_fkeytab[fkeyp->keynum].len = imin(fkeyp->flen, MAXFK);
@@ -898,16 +897,16 @@ genkbd_commonioctl(keyboard_t *kbd, u_long cmd, caddr_t arg)
 		      kbd->kb_fkeytab[fkeyp->keynum].len);
 		break;
 #else
-		splx(s);
+		crit_exit();
 		return ENODEV;
 #endif
 
 	default:
-		splx(s);
+		crit_exit();
 		return ENOIOCTL;
 	}
 
-	splx(s);
+	crit_exit();
 	return 0;
 }
 

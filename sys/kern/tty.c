@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.12 2004/09/13 16:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.13 2004/10/07 01:32:03 dillon Exp $
  */
 
 /*-
@@ -80,6 +80,7 @@
 #include <sys/proc.h>
 #define	TTYDEFCHARS
 #include <sys/tty.h>
+#include <sys/clist.h>
 #undef	TTYDEFCHARS
 #include <sys/fcntl.h>
 #include <sys/conf.h>
@@ -2554,8 +2555,7 @@ ttymalloc(tp)
 
 	if (tp)
 		return(tp);
-        tp = malloc(sizeof *tp, M_TTYS, M_WAITOK);
-        bzero(tp, sizeof *tp);
+        tp = malloc(sizeof *tp, M_TTYS, M_WAITOK|M_ZERO);
 	ttyregister(tp);
         return (tp);
 }
