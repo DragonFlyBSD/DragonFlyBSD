@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.7 2004/05/03 18:43:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.8 2004/06/01 17:35:58 joerg Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -367,7 +367,7 @@ gif_encapcheck4(m, off, proto, arg)
 	sc = (struct gif_softc *)arg;
 
 	/* LINTED const cast */
-	m_copydata((struct mbuf *)m, 0, sizeof(ip), (caddr_t)&ip);
+	m_copydata(__DECONST(struct mbuf *, m), 0, sizeof(ip), (caddr_t)&ip);
 	ifp = ((m->m_flags & M_PKTHDR) != 0) ? m->m_pkthdr.rcvif : NULL;
 
 	return gif_validate4(&ip, sc, ifp);
