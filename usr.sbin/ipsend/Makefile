@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipsend/Makefile,v 1.8.2.3 2001/11/14 14:15:05 guido Exp $
-# $DragonFly: src/usr.sbin/ipsend/Makefile,v 1.6 2004/07/21 15:26:19 drhodus Exp $
+# $DragonFly: src/usr.sbin/ipsend/Makefile,v 1.7 2004/07/23 18:15:08 drhodus Exp $
 
 .PATH:	${.CURDIR}/../../contrib/ipfilter/ipsend \
 	${.CURDIR}/../../contrib/ipfilter/iplang \
@@ -15,6 +15,9 @@ CFLAGS+=-DDOSOCKET -DIPL_NAME=\"/dev/ipl\" -DUSE_INET6 \
 	-I${.CURDIR}/../../contrib/ipfilter/ipsend \
 	-I${.CURDIR}/../../contrib/ipfilter/iplang \
 	-I${.CURDIR}/../../contrib/ipfilter
+
+#Define __FreeBSD__ as is needed when building with gcc3.
+CFLAGS+=-D__FreeBSD__
 
 DPADD=	${LIBL}
 LDADD=	-ll

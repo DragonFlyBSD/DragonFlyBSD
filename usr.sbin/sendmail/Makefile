@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.8 (Berkeley) 3/28/97
 # $FreeBSD: src/usr.sbin/sendmail/Makefile,v 1.15.2.13 2002/03/25 21:32:29 gshapiro Exp $
-# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.6 2004/07/21 15:26:20 drhodus Exp $
+# $DragonFly: src/usr.sbin/sendmail/Makefile,v 1.7 2004/07/23 18:15:08 drhodus Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 SMDIR=	${SENDMAIL_DIR}/src
@@ -33,6 +33,9 @@ MAPS=	-DMAP_REGEX -DDNSMAP
 
 CFLAGS+= -I${SMDIR} -I${SENDMAIL_DIR}/include -I.
 CFLAGS+= ${DBMDEF} ${NIS} -DMILTER -DNETINET6 -DTCPWRAPPERS ${MAPS}
+
+# Define __FreeBSD__ as is needed when building with gcc3.
+CFLAGS+=-D__FreeBSD__
 
 DPADD=	${LIBUTIL} ${LIBWRAP}
 LDADD=	-lutil -lwrap

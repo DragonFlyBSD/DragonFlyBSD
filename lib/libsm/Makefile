@@ -1,11 +1,14 @@
 # $FreeBSD: src/lib/libsm/Makefile,v 1.1.2.2 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libsm/Makefile,v 1.5 2004/07/21 16:13:42 drhodus Exp $
+# $DragonFly: src/lib/libsm/Makefile,v 1.6 2004/07/23 18:15:08 drhodus Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/libsm
 
 CFLAGS+= -I${SENDMAIL_DIR}/src -I${SENDMAIL_DIR}/include -I.
 CFLAGS+=-DNETINET6 -DNEWDB -DNIS -DMAP_REGEX -DNOT_SENDMAIL
+
+#Define __FreeBSD__ as is needed when building with gcc3.
+CFLAGS+= -D__FreeBSD__
 
 # User customizations to the sendmail build environment
 CFLAGS+=${SENDMAIL_CFLAGS}

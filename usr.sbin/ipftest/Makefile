@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/ipftest/Makefile,v 1.4.2.5 2002/04/27 18:19:04 darrenr Exp $
-# $DragonFly: src/usr.sbin/ipftest/Makefile,v 1.6 2004/07/21 15:26:19 drhodus Exp $
+# $DragonFly: src/usr.sbin/ipftest/Makefile,v 1.7 2004/07/23 18:15:08 drhodus Exp $
 
 .PATH:	${.CURDIR}/../../sys/netinet \
 	${.CURDIR}/../../contrib/ipfilter ${.CURDIR}/../../contrib/ipfilter/man
@@ -16,6 +16,9 @@ CFLAGS+= -I${.OBJDIR}
 CFLAGS+=-I${.CURDIR}/../../sys/contrib/ipfilter
 CFLAGS+=-I${.CURDIR}/../../sys
 CFLAGS+=-I${.CURDIR}/../../contrib/ipfilter
+
+#Define __FreeBSD__ as is needed when building with gcc3.
+CFLAGS+=-D__FreeBSD__
 
 CLEANFILES+=	opt_ipfilter.h
 
