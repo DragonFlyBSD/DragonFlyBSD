@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.6 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.7 2003/08/20 23:54:36 rob Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -611,7 +611,7 @@ int	sysctl_find_oid(int *name, u_int namelen, struct sysctl_oid **noid,
 __BEGIN_DECLS
 int	sysctl (int *, u_int, void *, size_t *, void *, size_t);
 int	sysctlbyname (const char *, void *, size_t *, void *, size_t);
-int	sysctlnametomib (const char *, int *, size_t *));
+int	sysctlnametomib (const char *, int *, size_t *);
 __END_DECLS
 #endif	/* _KERNEL */
 
