@@ -35,7 +35,7 @@
  *
  * @(#)forward.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/forward.c,v 1.11.6.7 2003/01/07 05:26:22 tjr Exp $
- * $DragonFly: src/usr.bin/tail/forward.c,v 1.4 2004/12/27 20:55:07 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/forward.c,v 1.5 2004/12/27 21:06:39 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -232,14 +232,14 @@ rlines(FILE *fp, off_t off, struct stat *sbp)
  */
 
 static void
-show(file_info_t *file)
+show(file_info_t *file, int index)
 {
 	int ch, first;
 
 	first = 1;
 	while ((ch = getc(file->fp)) != EOF) {
 		if (first && no_files > 1) {
-			printf("\n==> %s <==\n", file->file_name);
+			showfilename(index, file->file_name);
 			first = 0;
 		}
 		if (putchar(ch) == EOF)
@@ -252,6 +252,21 @@ show(file_info_t *file)
 	} else {
 		clearerr(file->fp);
 	}
+}
+
+void
+showfilename(int index, const char *filename)
+{
+	static int last_index = -1;
+	static int continuing = 0;
+
+	if (last_index == index)
+		return;
+	if (continuing)
+		printf("\n");
+	printf("==> %s <==\n", filename);
+	continuing = 1;
+	last_index = index;
 }
 
 static void
@@ -304,7 +319,7 @@ follow(file_info_t *files, enum STYLE style, off_t off)
 			active = 1;
 			n++;
 			if (no_files > 1)
-				printf("\n==> %s <==\n", file->file_name);
+				showfilename(i, file->file_name);
 			forward(file->fp, style, off, &file->st);
 			if (Fflag && fileno(file->fp) != STDIN_FILENO)
 				n++;
@@ -349,7 +364,7 @@ follow(file_info_t *files, enum STYLE style, off_t off)
 					}
 				}
 			}
-			show(file);
+			show(file, i);
 		}
 
 		switch (action) {

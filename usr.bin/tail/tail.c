@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tail.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/tail.c,v 1.4 2004/12/27 20:55:07 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/tail.c,v 1.5 2004/12/27 21:06:39 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -64,7 +64,7 @@ main(int argc, char **argv)
 	FILE *fp;
 	off_t off;
 	enum STYLE style;
-	int i, ch, first;
+	int i, ch;
 	file_info_t *file;
 	char *p;
 
@@ -181,16 +181,14 @@ main(int argc, char **argv)
 			free(file->file_name);
 		free(files);
 	} else if (*argv) {
-		for (first = 1; (fname = *argv++) != NULL;) {
+		for (i = 0; (fname = *argv++) != NULL; ++i) {
 			if ((fp = fopen(fname, "r")) == NULL ||
 			    fstat(fileno(fp), &sb)) {
 				ierr();
 				continue;
 			}
 			if (argc > 1) {
-				(void)printf("%s==> %s <==\n",
-				    first ? "" : "\n", fname);
-				first = 0;
+				showfilename(i, fname);
 				(void)fflush(stdout);
 			}
 

@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tail/extern.h,v 1.4.6.2 2001/12/19 20:29:29 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/extern.h,v 1.4 2004/12/27 20:55:07 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/extern.h,v 1.5 2004/12/27 21:06:39 dillon Exp $
  */
 
 #define	WR(p, size) do { \
@@ -72,6 +72,7 @@ void ierr(void);
 void oerr(void);
 int mapprint(struct mapinfo *, off_t, off_t);
 int maparound(struct mapinfo *, off_t);
+void showfilename(int index, const char *filename);
 
 extern int Fflag, fflag, rflag, rval, no_files;
 extern char *fname;
