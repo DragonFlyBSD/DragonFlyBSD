@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.45 2004/07/14 15:18:14 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.46 2004/07/15 00:01:14 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -17,9 +17,20 @@ for more information.
 See the 'Download Site' list below for a list of download locations. </p>
 
 <p>
-<b>The DragonFly 1.0-RELEASE is here!  See below for download sites!  The MD5
-for the release is:<br />MD5 (dfly-1.0REL.iso.gz) = c95a378c13257f39420f5f9e4104bd7b
-</b><br /> 
+<b>The DragonFly 1.0-RELEASE is here!  See below for download sites!  The MD5s
+for the release is:
+<br />MD5 (dfly-1.0REL.iso.gz) = c95a378c13257f39420f5f9e4104bd7b
+<br />MD5 (dfly-1.0_REL-1.0A_REL.xdelta) = 6001980541a4a2b77505c1845f925d57
+<br />MD5 (dfly-1.0A_REL.iso) = ddf5686f828b2ece0b4029ae3ed78c2a
+<br />MD5 (dfly-1.0A_REL.iso.gz) = b1c8ded31133960fa58a7b10c300aabd
+
+</b><br /> </p>
+<p><b>NOTICE!  RELEASE UPDATED TO 1.0A TO FIX A SERIOUS FDISK/SLICE ISSUE
+WITH THE INSTALLER.  An xdelta (/usr/ports/misc/xdelta) patch is available
+for people who have downloaded the original 1.0REL iso, and a new ISO is
+being propagated to our mirrors.  To apply the delta, unzip the 1.0REL ISO,
+apply the delta, and then run md5 on the result to ensure that it matches
+the 1.0A_REL (ungzipped) ISO.</b></p>
 
 <h2>Obtaining source via CVS</h2>
 
@@ -45,6 +56,16 @@ Daily DragonFly events and news are reported at the
 <p>
 <A HREF="http://www.bsdinstaller.org/errata.html">Installer Errata</A>
 </p>
+<p>
+<b>IMPORTANT ERRATA ADDENDUM: Using the installer on a multi-slice disk
+will improperly resize the target slice when it is not the last slice,
+to be the same size as the last slice, leading to a corrupt disk!  
+1.0A fixes the problem and is now online and there is an xdelta available at:
+<A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0_REL-1.0A_REL.xdelta">dfly-1.0_REL-1.0A_REL.xdelta (master site)</A>.
+The 1.0A ISO is being propogated to our mirrors now.  If you have the original
+release iso please use the xdelta program and the above xdelta patch on the
+gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
+</p>
 
 <h2>Download Sites</h2>
 
@@ -61,71 +82,73 @@ Daily DragonFly events and news are reported at the
 <!-- even if the site's a regular mirror too. -->
 
 <TR BGCOLOR="#EEEEEE"><TD>GoBSD.COM</TD>
-<TD>REL image</TD>
-<TD><A HREF="http://gobsd.com/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://gobsd.com/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <!-- <TR BGCOLOR="#EEEEEE"><TD>The-BOFH.org (Holland)</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://www.the-bofh.org/dfly-1.0REL.iso.gz">HTTP</A></TD></TR> 
 -->
 
 <!--
 <TR BGCOLOR="#EEEEEE"><TD>Sitetronics.com</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://freebsd0.sitetronics.com/~dodell/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR BGCOLOR="#EEEEEE"><TD>Fortunaty.net (Europe)</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
 <!-- This mirror appears to have an incomplete copy
 <TR><TD>univie.ac.at</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://ftp.univie.ac.at/systems/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR><TD>hp48.org</TD>
-<TD>REL image</TD>
-<TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>Starkast.net (Sweden)</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD>
 <A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>
 <A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>BSDTech.com (Norway)</TD>
-<TD>REL image</TD>
+<TD>1.0A_REL image</TD>
 <TD>
-<A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
-<A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
+<A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, 
+<A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>AllBSD.org (Japan)</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
 <A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>, 
 <A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0REL.iso.gz">rysnc</A></TD></TR>
 
-<TR><TD>Pieter from Holland</TD>
-<TD>REL image</TD>
-<TD><A HREF="http://15pc221.sshunet.nl/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<TR><TD>Pieter from Holland (EU)</TD>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://15pc221.sshunet.nl/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>RPI.edu (NY, USA)</TD>
-<TD>REL image</TD>
-<TD><A HREF="http://www.acm.cs.rpi.edu/~tbw/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://www.acm.cs.rpi.edu/~tbw/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
+<!--
 <TR BGCOLOR="#EEEEEE"><TD>Dragonflybsd.org (California, USA)</TD>
-<TD>REL image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0REL.iso.gz">FTP</A>
+<TD>1.0_REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
 (<I>try to find another site first)</I></TD></TR>
+-->
 
 <TR><TD>EnergyHQ</TD>
-<TD>REL image</TD>
+<TD>1.0_REL image</TD>
 <TD><A HREF="http://www.energyhq.es.eu.org/files/dfly-1.0REL.iso.gz.torrent">BitTorrent</A></TD></TR>
 
 <!-- end of REL links -->
@@ -136,9 +159,9 @@ Daily DragonFly events and news are reported at the
 
 <TR BGCOLOR="#EEEEEE">
 <TD>DragonFlyBSD.org (California)</TD>
-<TD>Code, ISO master site</TD>
+<TD>Code, ISO master site (<B>NOTE: Please use other sites to download the ISOs!</B>)</TD>
 <TD><a href="ftp://ftp.dragonflybsd.org/">FTP</a>, 
-<a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">cvsweb</a> (preferred)
+<a href="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">cvsweb</a>
 </TD>
 </TR>
 
