@@ -26,7 +26,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libcaps/globaldata.h,v 1.3 2003/12/07 04:21:52 dillon Exp $
+ * $DragonFly: src/lib/libcaps/globaldata.h,v 1.4 2004/01/17 17:27:54 drhodus Exp $
  */
 
 #ifndef _LIBCAPS_GLOBALDATA_H_
@@ -86,6 +86,25 @@ struct globaldata {
 
 #define gd_reqflags	gd_upcall.upc_pending
 #define gd_curthread	gd_upcall.upc_uthread
+
+#define RQB_IPIQ       0
+#define RQB_INTPEND    1
+#define RQB_AST_OWEUPC 2
+#define RQB_AST_SIGNAL 3
+#define RQB_AST_RESCHED        4
+#define RQB_AST_UPCALL 5
+
+
+#define RQF_IPIQ       (1 << RQB_IPIQ)
+#define RQF_INTPEND    (1 << RQB_INTPEND)
+#define RQF_AST_OWEUPC (1 << RQB_AST_OWEUPC)
+#define RQF_AST_SIGNAL (1 << RQB_AST_SIGNAL)
+#define RQF_AST_RESCHED        (1 << RQB_AST_RESCHED)
+#define RQF_AST_UPCALL (1 << RQB_AST_UPCALL)
+#define RQF_AST_MASK   (RQF_AST_OWEUPC|RQF_AST_SIGNAL|RQF_AST_RESCHED|\
+                        RQF_AST_UPCALL)
+
+#define RQF_IDLECHECK_MASK     (RQF_IPIQ|RQF_INTPEND)
 
 #define KASSERT(exp, printargs)	\
 	do { if (!(exp)) { panic printargs; } } while(0)
