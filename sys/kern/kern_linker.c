@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.12 2003/10/13 04:16:51 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.13 2003/11/10 06:12:13 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -92,7 +92,7 @@ linker_add_class(const char* desc, void* priv,
 static int
 linker_file_sysinit(linker_file_t lf)
 {
-    struct linker_set* sysinits;
+    struct sysinit** start, ** stop;
     struct sysinit** sipp;
     struct sysinit** xipp;
     struct sysinit* save;
@@ -102,16 +102,11 @@ linker_file_sysinit(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_sysinit: calling SYSINITs for %s\n",
 		   lf->filename));
 
-    if (linker_file_lookup_symbol(lf, "sysinit_set", 0, (caddr_t *)&sysinits)) {
-	KLD_DPF(FILE, ("linker_file_sysinit: SYSINITs not found\n"));
-	return 0; /* XXX is this correct ? No sysinit ? */
-    }
-    KLD_DPF(FILE, ("linker_file_sysinit: SYSINITs %p\n", sysinits));
-    if (sysinits == NULL)
+    if (linker_file_lookup_set(lf, "sysinit_set", &start, &stop, NULL) != 0)
 	return 0; /* XXX is this correct ? No sysinit ? */
 
     /* HACK ALERT! */
-    for (sipp = (struct sysinit **)sysinits->ls_items; *sipp; sipp++) {
+    for (sipp = start; sipp < stop; sipp++) {
 	if ((*sipp)->func == module_register_init) {
 	    moddata = (*sipp)->udata;
 	    error = module_register(moddata, lf);
@@ -130,8 +125,8 @@ linker_file_sysinit(linker_file_t lf)
      * Since some things care about execution order, this is the
      * operation which ensures continued function.
      */
-    for (sipp = (struct sysinit **)sysinits->ls_items; *sipp; sipp++) {
-	for (xipp = sipp + 1; *xipp; xipp++) {
+    for (sipp = start; sipp < stop; sipp++) {
+	for (xipp = sipp + 1; xipp < stop; xipp++) {
 	    if ((*sipp)->subsystem < (*xipp)->subsystem ||
 		 ((*sipp)->subsystem == (*xipp)->subsystem &&
 		  (*sipp)->order <= (*xipp)->order))
@@ -147,7 +142,7 @@ linker_file_sysinit(linker_file_t lf)
      * Traverse the (now) ordered list of system initialization tasks.
      * Perform each task, and continue on to the next task.
      */
-    for (sipp = (struct sysinit **)sysinits->ls_items; *sipp; sipp++) {
+    for (sipp = start; sipp < stop; sipp++) {
 	if ((*sipp)->subsystem == SI_SUB_DUMMY)
 	    continue;	/* skip dummy task(s)*/
 
@@ -160,7 +155,7 @@ linker_file_sysinit(linker_file_t lf)
 static void
 linker_file_sysuninit(linker_file_t lf)
 {
-    struct linker_set* sysuninits;
+    struct sysinit** start, ** stop;
     struct sysinit** sipp;
     struct sysinit** xipp;
     struct sysinit* save;
@@ -168,12 +163,7 @@ linker_file_sysuninit(linker_file_t lf)
     KLD_DPF(FILE, ("linker_file_sysuninit: calling SYSUNINITs for %s\n",
 		   lf->filename));
 
-    if (linker_file_lookup_symbol(lf, "sysuninit_set", 0, (caddr_t *)&sysuninits)) {
-	KLD_DPF(FILE, ("linker_file_sysuninit: SYSUNINITs not found\n"));
-	return;
-    }
-    KLD_DPF(FILE, ("linker_file_sysuninit: SYSUNINITs %p\n", sysuninits));
-    if (sysuninits == NULL)
+    if (linker_file_lookup_set(lf, "sysuninit_set", &start, &stop, NULL) != 0)
 	return;
 
     /*
@@ -183,8 +173,8 @@ linker_file_sysuninit(linker_file_t lf)
      * Since some things care about execution order, this is the
      * operation which ensures continued function.
      */
-    for (sipp = (struct sysinit **)sysuninits->ls_items; *sipp; sipp++) {
-	for (xipp = sipp + 1; *xipp; xipp++) {
+    for (sipp = start; sipp < stop; sipp++) {
+	for (xipp = sipp + 1; xipp < stop; xipp++) {
 	    if ((*sipp)->subsystem > (*xipp)->subsystem ||
 		 ((*sipp)->subsystem == (*xipp)->subsystem &&
 		  (*sipp)->order >= (*xipp)->order))
@@ -200,7 +190,7 @@ linker_file_sysuninit(linker_file_t lf)
      * Traverse the (now) ordered list of system initialization tasks.
      * Perform each task, and continue on to the next task.
      */
-    for (sipp = (struct sysinit **)sysuninits->ls_items; *sipp; sipp++) {
+    for (sipp = start; sipp < stop; sipp++) {
 	if ((*sipp)->subsystem == SI_SUB_DUMMY)
 	    continue;	/* skip dummy task(s)*/
 
@@ -212,39 +202,29 @@ linker_file_sysuninit(linker_file_t lf)
 static void
 linker_file_register_sysctls(linker_file_t lf)
 {
-    struct linker_set* sysctls;
+    struct sysctl_oid **start, **stop, **oidp;
 
     KLD_DPF(FILE, ("linker_file_register_sysctls: registering SYSCTLs for %s\n",
 		   lf->filename));
 
-    if (linker_file_lookup_symbol(lf, "sysctl_set", 0, (caddr_t *)&sysctls)) {
-	KLD_DPF(FILE, ("linker_file_register_sysctls: SYSCTLs not found\n"));
+    if (linker_file_lookup_set(lf, "sysctl_set", &start, &stop, NULL) != 0)
 	return;
-    }
-    KLD_DPF(FILE, ("linker_file_register_sysctls: SYSCTLs %p\n", sysctls));
-    if (sysctls == NULL)
-	return;
-
-    sysctl_register_set(sysctls);
+    for (oidp = start; oidp < stop; oidp++)
+	sysctl_register_oid(*oidp);
 }
 
 static void
 linker_file_unregister_sysctls(linker_file_t lf)
 {
-    struct linker_set* sysctls;
+    struct sysctl_oid **start, **stop, **oidp;
 
     KLD_DPF(FILE, ("linker_file_unregister_sysctls: registering SYSCTLs for %s\n",
 		   lf->filename));
 
-    if (linker_file_lookup_symbol(lf, "sysctl_set", 0, (caddr_t *)&sysctls)) {
-	KLD_DPF(FILE, ("linker_file_unregister_sysctls: SYSCTLs not found\n"));
+    if (linker_file_lookup_set(lf, "sysctl_set", &start, &stop, NULL) != 0)
 	return;
-    }
-    KLD_DPF(FILE, ("linker_file_unregister_sysctls: SYSCTLs %p\n", sysctls));
-    if (sysctls == NULL)
-	return;
-
-    sysctl_unregister_set(sysctls);
+    for (oidp = start; oidp < stop; oidp++)
+	sysctl_unregister_oid(*oidp);
 }
 
 int
@@ -489,6 +469,18 @@ linker_file_add_dependancy(linker_file_t file, linker_file_t dep)
     file->ndeps++;
 
     return 0;
+}
+
+/*
+ * Locate a linker set and its contents.
+ * This is a helper function to avoid linker_if.h exposure elsewhere.
+ * Note: firstp and lastp are really void ***
+ */
+int
+linker_file_lookup_set(linker_file_t file, const char *name,
+                      void *firstp, void *lastp, int *countp)
+{
+    return file->ops->lookup_set(file, name, firstp, lastp, countp);
 }
 
 int
@@ -926,9 +918,9 @@ linker_preload(void* arg)
     linker_file_t	lf;
     linker_class_t	lc;
     int			error;
-    struct linker_set	*sysinits;
     struct sysinit	**sipp;
     const moduledata_t	*moddata;
+    struct sysinit	**si_start, **si_stop;
 
     modptr = NULL;
     while ((modptr = preload_search_next_name(modptr)) != NULL) {
@@ -959,13 +951,13 @@ linker_preload(void* arg)
 	if (lf) {
 	    lf->userrefs++;
 
-	    if (linker_file_lookup_symbol(lf, "sysinit_set", 0, (caddr_t *)&sysinits) == 0 && sysinits) {
+	    if (linker_file_lookup_set(lf, "sysinit_set", &si_start, &si_stop, NULL) == 0) {
 		/* HACK ALERT!
 		 * This is to set the sysinit moduledata so that the module
 		 * can attach itself to the correct containing file.
 		 * The sysinit could be run at *any* time.
 		 */
-		for (sipp = (struct sysinit **)sysinits->ls_items; *sipp; sipp++) {
+		for (sipp = si_start; sipp < si_stop; sipp++) {
 		    if ((*sipp)->func == module_register_init) {
 			moddata = (*sipp)->udata;
 			error = module_register(moddata, lf);
@@ -974,7 +966,7 @@ linker_preload(void* arg)
 				modtype, modname, error);
 		    }
 		}
-		sysinit_add((struct sysinit **)sysinits->ls_items);
+		sysinit_add(si_start, si_stop);
 	    }
 	    linker_file_register_sysctls(lf);
 	}

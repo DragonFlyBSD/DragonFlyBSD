@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.5 2003/11/10 06:12:06 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -40,6 +40,8 @@
 
 #include <dev/video/fb/fbreg.h>
 #include "syscons.h"
+
+SET_DECLARE(scrndr_set, const sc_renderer_t);
 
 /* for compatibility with previous versions */
 /* 3.0-RELEASE used the following structure */
@@ -804,8 +806,8 @@ sc_rndr_sw_t
 			}
 		}
 	} else {
-		list = (const sc_renderer_t **)scrndr_set.ls_items;
-		while ((p = *list++) != NULL) {
+		SET_FOREACH(list, scrndr_set) {
+			p = *list;
 			if ((strcmp(p->name, name) == 0)
 				&& (mode == p->mode)) {
 				scp->status &=

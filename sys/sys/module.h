@@ -24,11 +24,21 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
 #define _SYS_MODULE_H_
+
+/*
+ * Module metadata types
+ */
+#define MDT_DEPEND		1	/* argument is a module name */
+#define MDT_MODULE		2	/* module declaration */
+#define MDT_VERSION		3	/* module version(s) */
+
+#define MDT_STRUCT_VERSION      1	/* version of metadata structure */
+#define MDT_SETNAME		"modmetadata_set"
 
 typedef enum modeventtype {
     MOD_LOAD,
@@ -60,6 +70,29 @@ typedef union modspecific {
     long	longval;
     u_long	ulongval;
 } modspecific_t;
+
+/*
+ * Module dependency declarartion
+ */
+struct mod_depend {
+	int	md_ver_minimum;
+	int	md_ver_preferred;
+	int	md_ver_maximum;
+};
+  
+/*
+ * Module version declaration
+ */
+struct mod_version {  
+	int	mv_version;
+};
+  
+struct mod_metadata {   
+	int		md_version;     /* structure version MDTV_* */
+	int		md_type;        /* type of entry MDT_* */
+	void		*md_data;       /* specific data */
+	const char	*md_cval;       /* common string label */
+};
 
 #ifdef _KERNEL
 

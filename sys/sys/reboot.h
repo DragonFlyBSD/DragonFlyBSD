@@ -32,7 +32,7 @@
  *
  *	@(#)reboot.h	8.3 (Berkeley) 12/13/94
  * $FreeBSD: src/sys/sys/reboot.h,v 1.18.2.1 2001/12/17 18:44:43 guido Exp $
- * $DragonFly: src/sys/sys/reboot.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/reboot.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_REBOOT_H_
@@ -64,6 +64,7 @@
 #define	RB_SELFTEST	0x20000	/* don't boot to normal operation, do selftest */
 #define	RB_PAUSE	0x40000	/* pause after each output line during probe */
 
+#define RB_MULTIPLE	0x20000000	/* use multiple consoles (5.x) */
 #define	RB_BOOTINFO	0x80000000	/* have `struct bootinfo *' arg */
 
 /*

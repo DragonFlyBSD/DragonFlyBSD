@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdreg.h,v 1.9.2.2 2001/07/30 16:46:44 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.2 2003/06/17 04:28:28 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.3 2003/11/10 06:12:05 dillon Exp $
  */
 
 #ifndef _DEV_KBD_KBDREG_H_
@@ -175,7 +175,6 @@ typedef struct keyboard_driver {
 
 /* global variables */
 extern keyboard_switch_t **kbdsw;
-extern struct linker_set kbddriver_set;
 
 /* functions for the keyboard driver */
 int			kbd_add_driver(keyboard_driver_t *driver);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.9 2003/08/15 06:32:51 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.10 2003/11/10 06:12:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1893,40 +1893,6 @@ linux_ioctl(struct linux_ioctl_args *args)
 	    (int)(args->cmd & 0xff00) >> 8, (int)(args->cmd & 0xff));
 
 	return (EINVAL);
-}
-
-int
-linux_ioctl_register_handlers(struct linker_set *s)
-{
-	int error, i;
-
-	if (s == NULL)
-		return (EINVAL);
-
-	for (i = 0; i < s->ls_length; i++) {
-		error = linux_ioctl_register_handler(s->ls_items[i]);
-		if (error)
-			return (error);
-	}
-
-	return (0);
-}
-
-int
-linux_ioctl_unregister_handlers(struct linker_set *s)
-{
-	int error, i;
-
-	if (s == NULL)
-		return (EINVAL);
-
-	for (i = 0; i < s->ls_length; i++) {
-		error = linux_ioctl_unregister_handler(s->ls_items[i]);
-		if (error)
-			return (error);
-	}
-
-	return (0);
 }
 
 int

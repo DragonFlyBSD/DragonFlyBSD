@@ -36,7 +36,7 @@
  *	from: @(#)ufs_disksubr.c	7.16 (Berkeley) 5/4/91
  *	from: ufs_disksubr.c,v 1.8 1994/06/07 01:21:39 phk Exp $
  * $FreeBSD: src/sys/kern/subr_diskmbr.c,v 1.45 2000/01/28 10:22:07 bde Exp $
- * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.4 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/subr_diskmbr.c,v 1.5 2003/11/10 06:12:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #define	DOSPTYP_EXTENDEDX	15
 #define	DOSPTYP_ONTRACK		84
 #include <sys/diskslice.h>
+#include <sys/diskmbr.h>
 #include <sys/malloc.h>
 #include <sys/syslog.h>
 #include <sys/device.h>

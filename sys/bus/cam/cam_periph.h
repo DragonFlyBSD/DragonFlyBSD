@@ -26,19 +26,22 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.h,v 1.6.2.1 2000/05/07 18:16:49 n_hibma Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.3 2003/07/19 21:14:11 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.h,v 1.4 2003/11/10 06:12:00 dillon Exp $
  */
 
 #ifndef _CAM_CAM_PERIPH_H
 #define _CAM_CAM_PERIPH_H 1
 
 #include <sys/queue.h>
+#ifndef _SYS_LINKER_SET_H_
+#include <sys/linker_set.h>
+#endif
 
 #ifdef _KERNEL
 
 extern struct cam_periph *xpt_periph;
 
-extern struct linker_set periphdriver_set;
+SET_DECLARE(periphdriver_set, struct periph_driver);
 
 typedef void (periph_init_t)(void); /*
 				     * Callback informing the peripheral driver

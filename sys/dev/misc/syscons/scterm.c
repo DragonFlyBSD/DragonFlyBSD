@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scterm.c,v 1.2 2000/01/29 15:08:46 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scterm.c,v 1.4 2003/11/10 06:12:06 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -36,6 +36,8 @@
 
 #include "syscons.h"
 #include "sctermvar.h"
+
+SET_DECLARE(scterm_set, sc_term_sw_t);
 
 /* exported subroutines */
 
@@ -96,8 +98,8 @@ sc_term_sw_t
 			}
 		}
 	} else {
-		list = (sc_term_sw_t **)scterm_set.ls_items;
-		while ((p = *list++) != NULL) {
+		SET_FOREACH(list, scterm_set) {
+			p = *list;
 			if ((strcmp(name, p->te_name) == 0)
 			    || (strcmp(name, "*") == 0)) {
 				return p;

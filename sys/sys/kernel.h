@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.5 2003/09/24 18:37:51 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.6 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -243,7 +243,7 @@ struct sysinit {
 	C_SYSUNINIT(uniquifier, subsystem, order,		\
 	(sysinit_cfunc_t)(sysinit_nfunc_t)func, (void *)ident)
 
-void	sysinit_add (struct sysinit **set);
+void	sysinit_add (struct sysinit **set, struct sysinit **set_end);
 
 /*
  * Infrastructure for tunable 'constants'.  Value may be specified at compile

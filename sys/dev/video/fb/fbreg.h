@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fbreg.h,v 1.6 1999/12/29 04:35:36 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.4 2003/07/22 17:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fbreg.h,v 1.5 2003/11/10 06:12:09 dillon Exp $
  */
 
 #ifndef _DEV_FB_FBREG_H_
@@ -149,7 +149,6 @@ typedef struct video_driver {
 
 /* global variables */
 extern struct video_switch **vidsw;
-extern struct linker_set videodriver_set;
 
 /* functions for the video card driver */
 int		vid_register(video_adapter_t *adp);

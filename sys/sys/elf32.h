@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf32.h,v 1.7 1999/08/28 00:51:41 peter Exp $
- * $DragonFly: src/sys/sys/elf32.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/elf32.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_ELF32_H_
@@ -42,6 +42,7 @@ typedef u_int32_t	Elf32_Off;
 typedef int32_t		Elf32_Sword;
 typedef u_int32_t	Elf32_Word;
 typedef u_int32_t	Elf32_Size;
+typedef Elf32_Off	Elf32_Hashelt;
 
 /*
  * ELF header.

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.6 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.7 2003/11/10 06:12:05 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -55,6 +55,8 @@ typedef struct genkbd_softc {
 
 static	SLIST_HEAD(, keyboard_driver) keyboard_drivers =
  	SLIST_HEAD_INITIALIZER(keyboard_drivers);
+
+SET_DECLARE(kbddriver_set, const keyboard_driver_t);
 
 /* local arrays */
 
@@ -203,8 +205,8 @@ kbd_register(keyboard_t *kbd)
 			return index;
 		}
 	}
-	list = (const keyboard_driver_t **)kbddriver_set.ls_items;
-	while ((p = *list++) != NULL) {
+	SET_FOREACH(list, kbddriver_set) {
+		p = *list;
 		if (strcmp(p->name, kbd->kb_name) == 0) {
 			keyboard[index] = kbd;
 			kbdsw[index] = p->kbdsw;
@@ -258,8 +260,8 @@ keyboard_switch_t
 		if (strcmp(p->name, driver) == 0)
 			return p->kbdsw;
 	}
-	list = (const keyboard_driver_t **)kbddriver_set.ls_items;
-	while ((p = *list++) != NULL) {
+	SET_FOREACH(list, kbddriver_set) {
+		p = *list;
 		if (strcmp(p->name, driver) == 0)
 			return p->kbdsw;
 	}
@@ -397,8 +399,8 @@ kbd_configure(int flags)
 		if (p->configure != NULL)
 			(*p->configure)(flags);
 	}
-	list = (const keyboard_driver_t **)kbddriver_set.ls_items;
-	while ((p = *list++) != NULL) {
+	SET_FOREACH(list, kbddriver_set) {
+		p = *list;
 		if (p->configure != NULL)
 			(*p->configure)(flags);
 	}

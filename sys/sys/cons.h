@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/sys/cons.h,v 1.24 2000/01/11 14:54:01 yokota Exp $
- * $DragonFly: src/sys/sys/cons.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/cons.h,v 1.4 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _MACHINE_CONS_H_
@@ -79,7 +79,6 @@ struct consdev {
 #define CN_REMOTE	3	/* serial interface with remote bit set */
 
 #ifdef _KERNEL
-extern	struct linker_set cons_set;
 extern	int cons_unavail;
 extern	struct consdev *cn_tab;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/elf.h,v 1.9.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/elf.h,v 1.3 2003/11/10 06:12:12 dillon Exp $
  */
 
 #ifndef _MACHINE_ELF_H_
@@ -35,8 +35,12 @@
  */
 
 #include <sys/elf32.h>	/* Definitions common to all 32 bit architectures. */
+#include <sys/elf64.h>	/* Definitions common to all 32 bit architectures. */
 
+#ifndef __ELF_WORD_SIZE
 #define __ELF_WORD_SIZE	32	/* Used by <sys/elf_generic.h> */
+#endif
+
 #include <sys/elf_generic.h>
 
 #define ELF_ARCH	EM_386
@@ -58,6 +62,13 @@ typedef struct {	/* Auxiliary vector entry on initial stack */
 		void	(*a_fcn)(void);	/* Function pointer (not used). */
 	} a_un;
 } Elf32_Auxinfo;
+
+#if __ELF_WORD_SIZE == 64
+/* Fake for amd64 loader support */
+typedef struct {
+        int fake;
+} Elf64_Auxinfo;
+#endif
 
 __ElfType(Auxinfo);
 

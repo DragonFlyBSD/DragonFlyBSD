@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * $FreeBSD: src/sys/netncp/ncp_conn.c,v 1.3.2.5 2001/02/22 08:54:11 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_conn.c,v 1.6 2003/11/10 06:12:14 dillon Exp $
  *
  * Connection tables
  */
@@ -61,8 +61,6 @@ static struct lock lhlock;
 static int ncp_sysctl_connstat(SYSCTL_HANDLER_ARGS);
 static int ncp_conn_lock_any(struct ncp_conn *conn, struct thread *td, 
     struct ucred *cred);
-
-extern struct linker_set sysctl_net_ncp;
 
 SYSCTL_DECL(_net_ncp);
 SYSCTL_INT (_net_ncp, OID_AUTO, burst_enabled, CTLFLAG_RD, &ncp_burst_enabled, 0, "");

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_generic.h,v 1.4 1999/08/28 00:51:42 peter Exp $
- * $DragonFly: src/sys/sys/elf_generic.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/elf_generic.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_ELF_GENERIC_H_
@@ -51,6 +51,7 @@
 #error "Unknown byte order"
 #endif
 
+#define __elfN(x)       __CONCAT(__CONCAT(__CONCAT(elf,__ELF_WORD_SIZE),_),x)
 #define __ElfN(x)	__CONCAT(__CONCAT(__CONCAT(Elf,__ELF_WORD_SIZE),_),x)
 #define __ELFN(x)	__CONCAT(__CONCAT(__CONCAT(ELF,__ELF_WORD_SIZE),_),x)
 #define __ElfType(x)	typedef __ElfN(x) __CONCAT(Elf_,x)
@@ -61,6 +62,7 @@ __ElfType(Off);
 __ElfType(Sword);
 __ElfType(Word);
 __ElfType(Size);
+__ElfType(Hashelt);
 __ElfType(Ehdr);
 __ElfType(Shdr);
 __ElfType(Phdr);

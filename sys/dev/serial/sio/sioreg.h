@@ -32,7 +32,7 @@
  *
  *	from: @(#)comreg.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/sioreg.h,v 1.15.2.3 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.3 2003/11/10 06:12:08 dillon Exp $
  */
 
 /* Receiver clock frequency for "standard" pc serial ports. */
@@ -65,7 +65,6 @@
 #define	FIFO_RX_HIGH	0xc0
 
 /* character format control register (aka line control register) */
-#define	CFCR_DLAB	0x80
 #define	CFCR_SBREAK	0x40
 #define	CFCR_PZERO	0x30
 #define	CFCR_PONE	0x20
@@ -77,7 +76,6 @@
 #define	CFCR_7BITS	0x02
 #define	CFCR_6BITS	0x01
 #define	CFCR_5BITS	0x00
-#define	CFCR_EFR_ENABLE	0xbf		/* magic to enable EFR on 16650 up */
 
 /* modem control register */
 #define	MCR_PRESCALE	0x80		/* only available on 16650 up */
@@ -109,7 +107,6 @@
 #define	MSR_DCTS	0x01
 
 /* enhanced feature register (only available on 16650 up) */
-#define	com_efr		com_fifo
 #define	EFR_EFE		0x10		/* enhanced functions enable */
 
 #ifdef PC98

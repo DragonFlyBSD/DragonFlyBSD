@@ -35,7 +35,7 @@
  *
  *	@(#)sysctl.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/sysctl.h,v 1.81.2.10 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/sys/sysctl.h,v 1.8 2003/10/24 17:19:13 dillon Exp $
+ * $DragonFly: src/sys/sys/sysctl.h,v 1.9 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_SYSCTL_H_
@@ -572,8 +572,6 @@ extern char	osrelease[];
 extern char	ostype[];
 extern char	kern_ident[];
 
-struct linker_set;
-
 /* Dynamic oid handling */
 struct sysctl_oid *sysctl_add_oid(struct sysctl_ctx_list *clist,
 		struct sysctl_oid_list *parent, int nbr, const char *name,
@@ -589,10 +587,6 @@ struct	sysctl_ctx_entry *sysctl_ctx_entry_find(struct sysctl_ctx_list *clist,
 		struct sysctl_oid *oidp);
 int	sysctl_ctx_entry_del(struct sysctl_ctx_list *clist,
 		struct sysctl_oid *oidp);
-
-/* Linker set based oid handling */
-void	sysctl_register_set(struct linker_set *lsp);
-void	sysctl_unregister_set(struct linker_set *lsp);
 
 int	kernel_sysctl(int *name, u_int namelen, void *old,
 		      size_t *oldlenp, void *new, size_t newlen,

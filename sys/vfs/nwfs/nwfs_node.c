@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.8 2003/08/07 21:54:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.9 2003/11/10 06:12:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -68,8 +68,6 @@ MALLOC_DEFINE(M_NWNODE, "NWFS node", "NWFS vnode private part");
 MALLOC_DEFINE(M_NWFSHASH, "NWFS hash", "NWFS has table");
 
 static int nwfs_sysctl_vnprint(SYSCTL_HANDLER_ARGS);
-
-extern struct linker_set sysctl_vfs_nwfs;
 
 SYSCTL_DECL(_vfs_nwfs);
 

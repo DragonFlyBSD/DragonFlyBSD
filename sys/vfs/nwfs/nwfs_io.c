@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_io.c,v 1.6.2.1 2000/10/25 02:11:10 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_io.c,v 1.9 2003/11/10 06:12:17 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -62,8 +62,6 @@
 #include "nwfs_subr.h"
 
 static int nwfs_fastlookup = 1;
-
-extern struct linker_set sysctl_vfs_nwfs;
 
 SYSCTL_DECL(_vfs_nwfs);
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, fastlookup, CTLFLAG_RW, &nwfs_fastlookup, 0, "");

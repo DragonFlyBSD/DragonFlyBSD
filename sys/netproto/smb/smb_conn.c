@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_conn.c,v 1.1.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.5 2003/08/07 21:17:38 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_conn.c,v 1.6 2003/11/10 06:12:16 dillon Exp $
  */
 
 /*
@@ -56,8 +56,6 @@
 
 static struct smb_connobj smb_vclist;
 static int smb_vcnext = 1;	/* next unique id for VC */
-
-extern struct linker_set sysctl_net_smb;
 
 SYSCTL_NODE(_net, OID_AUTO, smb, CTLFLAG_RW, NULL, "SMB protocol");
 

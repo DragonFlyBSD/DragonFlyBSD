@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_aout.c,v 1.26 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_aout.c,v 1.7 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/link_aout.c,v 1.8 2003/11/10 06:12:13 dillon Exp $
  */
 
 #ifndef __alpha__
@@ -69,6 +69,8 @@ static int		link_aout_search_symbol(linker_file_t lf, caddr_t value,
 						c_linker_sym_t* sym, long* diffp);
 static void		link_aout_unload_file(linker_file_t);
 static void		link_aout_unload_module(linker_file_t);
+static int		link_aout_lookup_set(linker_file_t lf, const char *name,
+				void ***startp, void ***stopp, int *countp);
 
 static struct linker_class_ops link_aout_class_ops = {
     link_aout_load_module,
@@ -79,12 +81,14 @@ static struct linker_file_ops link_aout_file_ops = {
     link_aout_symbol_values,
     link_aout_search_symbol,
     link_aout_unload_file,
+    link_aout_lookup_set
 };
 static struct linker_file_ops link_aout_module_ops = {
     link_aout_lookup_symbol,
     link_aout_symbol_values,
     link_aout_search_symbol,
     link_aout_unload_module,
+    link_aout_lookup_set
 };
 
 typedef struct aout_file {
@@ -603,4 +607,43 @@ link_aout_search_symbol(linker_file_t lf, caddr_t value,
 	return 0;
 }
 
+/*
+ * Look up a linker set on an a.out + gnu LD system.
+ */
+
+struct generic_linker_set {
+	int     ls_length;
+	void    *ls_items[1];
+};
+
+static int
+link_aout_lookup_set(linker_file_t lf, const char *name,
+		    void ***startp, void ***stopp, int *countp)
+{
+	c_linker_sym_t sym;
+	linker_symval_t symval;
+	void **start, **stop;
+	int error, count;
+	struct generic_linker_set *setp;
+
+	error = link_aout_lookup_symbol(lf, name, &sym);
+	if (error)
+	       return error;
+	link_aout_symbol_values(lf, sym, &symval);
+	if (symval.value == 0)
+	       return ESRCH;
+	setp = (struct generic_linker_set *)symval.value;
+	count = setp->ls_length;
+	start = &setp->ls_items[0];
+	stop = &setp->ls_items[count];
+	if (startp)
+	       *startp = start;
+	if (stopp)
+	       *stopp = stop;
+	if (countp)
+	       *countp = count;
+	return 0;
+}
+
 #endif /* !__alpha__ */
+

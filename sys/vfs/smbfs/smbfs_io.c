@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.8 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.9 2003/11/10 06:12:17 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -70,8 +70,6 @@
 extern int smbfs_pbuf_freecnt;
 
 static int smbfs_fastlookup = 1;
-
-extern struct linker_set sysctl_vfs_smbfs;
 
 SYSCTL_DECL(_vfs_smbfs);
 SYSCTL_INT(_vfs_smbfs, OID_AUTO, fastlookup, CTLFLAG_RW, &smbfs_fastlookup, 0, "");

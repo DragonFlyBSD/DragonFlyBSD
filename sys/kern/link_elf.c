@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.7 2003/10/02 21:00:20 hmp Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.8 2003/11/10 06:12:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,6 +60,9 @@ static int	link_elf_search_symbol(linker_file_t, caddr_t value,
 
 static void	link_elf_unload_file(linker_file_t);
 static void	link_elf_unload_module(linker_file_t);
+static int	link_elf_lookup_set(linker_file_t, const char *,
+			void ***, void ***, int *);
+
 
 static struct linker_class_ops link_elf_class_ops = {
     link_elf_load_module,
@@ -70,6 +73,7 @@ static struct linker_file_ops link_elf_file_ops = {
     link_elf_symbol_values,
     link_elf_search_symbol,
     link_elf_unload_file,
+    link_elf_lookup_set
 };
 
 static struct linker_file_ops link_elf_module_ops = {
@@ -77,6 +81,7 @@ static struct linker_file_ops link_elf_module_ops = {
     link_elf_symbol_values,
     link_elf_search_symbol,
     link_elf_unload_module,
+    link_elf_lookup_set
 };
 typedef struct elf_file {
     caddr_t		address;	/* Relocation address */
@@ -987,3 +992,62 @@ link_elf_search_symbol(linker_file_t lf, caddr_t value,
 
 	return 0;
 }
+
+/*
+ * Look up a linker set on an ELF system.
+ */
+static int
+link_elf_lookup_set(linker_file_t lf, const char *name,
+		void ***startp, void ***stopp, int *countp)
+{
+	c_linker_sym_t sym;
+	linker_symval_t symval;
+	char *setsym;
+	void **start, **stop;
+	int len, error = 0, count;
+
+	len = strlen(name) + sizeof("__start_set_"); /* sizeof includes \0 */
+	setsym = malloc(len, M_LINKER, M_WAITOK);
+	if (setsym == NULL)
+	       return ENOMEM;
+
+	/* get address of first entry */
+	snprintf(setsym, len, "%s%s", "__start_set_", name);
+	error = link_elf_lookup_symbol(lf, setsym, &sym);
+	if (error)
+	       goto out;
+	link_elf_symbol_values(lf, sym, &symval);
+	if (symval.value == 0) {
+	       error = ESRCH;
+	       goto out;
+	}
+	start = (void **)symval.value;
+
+	/* get address of last entry */
+	snprintf(setsym, len, "%s%s", "__stop_set_", name);
+	error = link_elf_lookup_symbol(lf, setsym, &sym);
+	if (error)
+	       goto out;
+	link_elf_symbol_values(lf, sym, &symval);
+	if (symval.value == 0) {
+	       error = ESRCH;
+	       goto out;
+	}
+	stop = (void **)symval.value;
+
+	/* and the number of entries */
+	count = stop - start;
+
+	/* and copy out */
+	if (startp)
+	       *startp = start;
+	if (stopp)
+	       *stopp = stop;
+	if (countp)
+	       *countp = count;
+
+	out:
+	free(setsym, M_LINKER);
+	return error;
+}
+

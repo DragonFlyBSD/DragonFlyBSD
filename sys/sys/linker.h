@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/linker.h,v 1.17.2.1 2002/03/11 01:13:53 dd Exp $
- * $DragonFly: src/sys/sys/linker.h,v 1.3 2003/07/18 05:12:41 dillon Exp $
+ * $DragonFly: src/sys/sys/linker.h,v 1.4 2003/11/10 06:12:17 dillon Exp $
  */
 
 #ifndef _SYS_LINKER_H_
@@ -77,6 +77,9 @@ struct linker_file_ops {
      * Unload a file, releasing dependancies and freeing storage.
      */
     void		(*unload)(linker_file_t);
+
+    int			(*lookup_set)(linker_file_t, const char *name,
+					void ***firstp, void ***lastp, int *countp);
 };
 
 struct common_symbol {
@@ -184,7 +187,16 @@ int linker_file_add_dependancy(linker_file_t _file, linker_file_t _dep);
  * caddr_t.  An error is returned, 0 if no error occured.
  */
 int linker_file_lookup_symbol(linker_file_t _file, const char* _name, 
-				  int _deps, caddr_t *);
+			    int _deps, caddr_t *);
+
+
+/*
+ * Lookup a linker set in a file.  Return pointers to the first entry,
+ * last + 1, and count of entries.  Use: for (p = start; p < stop; p++) {}
+ * void *start is really: "struct yoursetmember ***start;"
+ */
+int linker_file_lookup_set(linker_file_t _file, const char *_name,
+			    void *_start, void *_stop, int *_count);
 
 /*
  * Search the linker path for the module.  Return the full pathname in
@@ -220,9 +232,22 @@ int linker_ddb_symbol_values(c_linker_sym_t _sym, linker_symval_t *_symval);
 #define MODINFOMD_SSYM		0x0003		/* start of symbols */
 #define MODINFOMD_ESYM		0x0004		/* end of symbols */
 #define MODINFOMD_DYNAMIC	0x0005		/* _DYNAMIC pointer */
+#define MODINFOMD_ENVP          0x0006          /* (from 5.x) envp[] */
+#define MODINFOMD_HOWTO         0x0007          /* (from 5.x) boothowto */
+#define MODINFOMD_KERNEND       0x0008          /* (from 5.x) kernend */
 #define MODINFOMD_NOCOPY	0x8000		/* don't copy this metadata to the kernel */
 
 #define MODINFOMD_DEPLIST	(0x4001 | MODINFOMD_NOCOPY)	/* depends on */
+
+#ifdef _KERNEL
+#define MD_FETCH(mdp, info, type) ({ \
+	type *__p; \
+	__p = (type *)preload_search_info((mdp), MODINFO_METADATA | (info)); \
+	__p ? *__p : 0; \
+})
+#endif
+
+#define LINKER_HINTS_VERSION	1		/* linker.hints file version */
 
 #ifdef _KERNEL
 

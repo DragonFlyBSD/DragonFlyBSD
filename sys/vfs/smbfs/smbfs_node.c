@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_node.c,v 1.2.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.7 2003/08/07 21:54:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_node.c,v 1.8 2003/11/10 06:12:17 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -68,7 +68,6 @@ static MALLOC_DEFINE(M_SMBNODENAME, "SMBFS nname", "SMBFS node name");
 int smbfs_hashprint(struct mount *mp);
 
 #if 0
-extern struct linker_set sysctl_vfs_smbfs;
 #ifdef SYSCTL_DECL
 SYSCTL_DECL(_vfs_smbfs);
 #endif

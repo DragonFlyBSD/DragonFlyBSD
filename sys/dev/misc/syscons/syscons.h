@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.3 2003/06/23 17:55:35 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.4 2003/11/10 06:12:06 dillon Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
@@ -425,25 +425,23 @@ extern struct linker_set scrndr_set;
 	DATA_SET(set, scrndr_##name##_##mode##)
 
 #define RENDERER_MODULE(name, set)				\
+	SET_DECLARE(set, sc_renderer_t);			\
 	static int						\
 	scrndr_##name##_event(module_t mod, int type, void *data) \
 	{							\
 		sc_renderer_t **list;				\
-		sc_renderer_t *p;				\
 		int error = 0;					\
 		switch (type) {					\
 		case MOD_LOAD:					\
-			list = (sc_renderer_t **)set.ls_items;	\
-			while ((p = *list++) != NULL) {		\
-				error = sc_render_add(p);	\
+			SET_FOREACH(list, set) {		\
+				error = sc_render_add(*list);	\
 				if (error)			\
 					break;			\
 			}					\
 			break;					\
 		case MOD_UNLOAD:				\
-			list = (sc_renderer_t **)set.ls_items;	\
-			while ((p = *list++) != NULL) {		\
-				error = sc_render_remove(p);	\
+			SET_FOREACH(list, set) {		\
+				error = sc_render_remove(*list);	\
 				if (error)			\
 					break;			\
 			}					\

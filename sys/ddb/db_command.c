@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.5 2003/08/27 10:47:13 rob Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.6 2003/11/10 06:12:04 dillon Exp $
  */
 
 /*
@@ -54,13 +54,14 @@
  * Exported global variables
  */
 boolean_t	db_cmd_loop_done;
-extern struct linker_set	db_cmd_set;
 db_addr_t	db_dot;
 jmp_buf		db_jmpbuf;
 db_addr_t	db_last_addr;
 db_addr_t	db_prev;
 db_addr_t	db_next;
-extern struct linker_set	db_show_cmd_set;
+
+SET_DECLARE(db_cmd_set, struct command);
+SET_DECLARE(db_show_cmd_set, struct command);
 
 static db_cmdfcn_t	db_fncall;
 static db_cmdfcn_t	db_gdb;
@@ -98,22 +99,26 @@ db_skip_to_eol()
 #define	CMD_HELP	4
 
 static void	db_cmd_list (struct command *table,
-				 struct command **aux_tablep);
+				 struct command **aux_tablep,
+				 struct command **aux_tablep_end);
 static int	db_cmd_search (char *name, struct command *table,
 				   struct command **aux_tablep,
+				   struct command **aux_tablep_end,
 				   struct command **cmdp);
 static void	db_command (struct command **last_cmdp,
 				struct command *cmd_table,
-				struct command **aux_cmd_tablep);
+				struct command **aux_cmd_tablep,
+				struct command **aux_cmd_tablep_end);
 
 /*
  * Search for command prefix.
  */
 static int
-db_cmd_search(name, table, aux_tablep, cmdp)
+db_cmd_search(name, table, aux_tablep, aux_tablep_end, cmdp)
 	char *		name;
 	struct command	*table;
 	struct command	**aux_tablep;
+	struct command	**aux_tablep_end;
 	struct command	**cmdp;	/* out */
 {
 	struct command	*cmd;
@@ -152,7 +157,7 @@ db_cmd_search(name, table, aux_tablep, cmdp)
 	}
 	if (result == CMD_NONE && aux_tablep != 0)
 	    /* XXX repeat too much code. */
-	    for (aux_cmdp = aux_tablep; *aux_cmdp != 0; aux_cmdp++) {
+	    for (aux_cmdp = aux_tablep; aux_cmdp < aux_tablep_end; aux_cmdp++) {
 		char *lp;
 		char *rp;
 		int  c;
@@ -192,9 +197,10 @@ db_cmd_search(name, table, aux_tablep, cmdp)
 }
 
 static void
-db_cmd_list(table, aux_tablep)
+db_cmd_list(table, aux_tablep, aux_tablep_end)
 	struct command *table;
 	struct command **aux_tablep;
+	struct command **aux_tablep_end;
 {
 	struct command *cmd;
 	struct command **aux_cmdp;
@@ -205,17 +211,18 @@ db_cmd_list(table, aux_tablep)
 	}
 	if (aux_tablep == 0)
 	    return;
-	for (aux_cmdp = aux_tablep; *aux_cmdp != 0; aux_cmdp++) {
+	for (aux_cmdp = aux_tablep; aux_cmdp < aux_tablep_end; aux_cmdp++) {
 	    db_printf("%-12s", (*aux_cmdp)->name);
 	    db_end_line();
 	}
 }
 
 static void
-db_command(last_cmdp, cmd_table, aux_cmd_tablep)
+db_command(last_cmdp, cmd_table, aux_cmd_tablep, aux_cmd_tablep_end)
 	struct command	**last_cmdp;	/* IN_OUT */
 	struct command	*cmd_table;
 	struct command	**aux_cmd_tablep;
+	struct command	**aux_cmd_tablep_end;
 {
 	struct command	*cmd;
 	int		t;
@@ -250,6 +257,7 @@ db_command(last_cmdp, cmd_table, aux_cmd_tablep)
 		result = db_cmd_search(db_tok_string,
 				       cmd_table,
 				       aux_cmd_tablep,
+				       aux_cmd_tablep_end,
 				       &cmd);
 		switch (result) {
 		    case CMD_NONE:
@@ -261,7 +269,7 @@ db_command(last_cmdp, cmd_table, aux_cmd_tablep)
 			db_flush_lex();
 			return;
 		    case CMD_HELP:
-			db_cmd_list(cmd_table, aux_cmd_tablep);
+			db_cmd_list(cmd_table, aux_cmd_tablep, aux_cmd_tablep_end);
 			db_flush_lex();
 			return;
 		    default:
@@ -270,13 +278,14 @@ db_command(last_cmdp, cmd_table, aux_cmd_tablep)
 		if ((cmd_table = cmd->more) != 0) {
 		    /* XXX usually no more aux's. */
 		    aux_cmd_tablep = 0;
-		    if (cmd_table == db_show_cmds)
-			aux_cmd_tablep =
-			    (struct command **)&db_show_cmd_set.ls_items[0];
+		    if (cmd_table == db_show_cmds) {
+			aux_cmd_tablep = SET_BEGIN(db_show_cmd_set);
+			aux_cmd_tablep_end = SET_LIMIT(db_show_cmd_set);
+		    }
 
 		    t = db_read_token();
 		    if (t != tIDENT) {
-			db_cmd_list(cmd_table, aux_cmd_tablep);
+			db_cmd_list(cmd_table, aux_cmd_tablep, aux_cmd_tablep_end);
 			db_flush_lex();
 			return;
 		    }
@@ -461,7 +470,7 @@ db_command_loop()
 	    (void) db_read_line();
 
 	    db_command(&db_last_command, db_command_table,
-		       (struct command **)&db_cmd_set.ls_items[0]);
+		    SET_BEGIN(db_cmd_set), SET_LIMIT(db_cmd_set));
 	}
 }
 

@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.7 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.8 2003/11/10 06:12:13 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -116,6 +116,7 @@ static struct lwkt_port	cn_port;
 
 
 CONS_DRIVER(cons, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+SET_DECLARE(cons_set, struct consdev);
 
 void
 cninit()
@@ -132,8 +133,8 @@ cninit()
 	 * Find the first console with the highest priority.
 	 */
 	best_cp = NULL;
-	list = (struct consdev **)cons_set.ls_items;
-	while ((cp = *list++) != NULL) {
+	SET_FOREACH(list, cons_set) {
+		cp = *list;
 		if (cp->cn_probe == NULL)
 			continue;
 		(*cp->cn_probe)(cp);

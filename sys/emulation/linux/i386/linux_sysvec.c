@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_sysvec.c,v 1.55.2.9 2002/01/12 11:03:30 bde Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.9 2003/08/27 06:30:03 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_sysvec.c,v 1.10 2003/11/10 06:12:11 dillon Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -84,7 +84,7 @@ extern int linux_szsigcode;
 
 extern struct sysent linux_sysent[LINUX_SYS_MAXSYSCALL];
 
-extern struct linker_set linux_ioctl_handler_set;
+SET_DECLARE(linux_ioctl_handler_set, struct linux_ioctl_handler);
 
 static int	linux_fixup (register_t **stack_base,
 				 struct image_params *iparams);
@@ -837,6 +837,7 @@ linux_elf_modevent(module_t mod, int type, void *data)
 {
 	Elf32_Brandinfo **brandinfo;
 	int error;
+	struct linux_ioctl_handler **lihp;
 
 	error = 0;
 
@@ -847,8 +848,8 @@ linux_elf_modevent(module_t mod, int type, void *data)
 			if (elf_insert_brand_entry(*brandinfo) < 0)
 				error = EINVAL;
 		if (error == 0) {
-			linux_ioctl_register_handlers(
-				&linux_ioctl_handler_set);
+			SET_FOREACH(lihp, linux_ioctl_handler_set)
+				linux_ioctl_register_handler(*lihp);
 			if (bootverbose)
 				printf("Linux ELF exec handler installed\n");
 		} else
@@ -866,8 +867,8 @@ linux_elf_modevent(module_t mod, int type, void *data)
 					error = EINVAL;
 		}
 		if (error == 0) {
-			linux_ioctl_unregister_handlers(
-				&linux_ioctl_handler_set);
+			SET_FOREACH(lihp, linux_ioctl_handler_set)
+				linux_ioctl_unregister_handler(*lihp);
 			if (bootverbose)
 				printf("Linux ELF exec handler removed\n");
 		} else

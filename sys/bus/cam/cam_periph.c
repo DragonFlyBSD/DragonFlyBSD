@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.5 2003/08/07 21:16:44 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.6 2003/11/10 06:12:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,8 +113,7 @@ cam_periph_alloc(periph_ctor_t *periph_ctor,
 	
 	init_level++;
 
-	for (p_drv = (struct periph_driver **)periphdriver_set.ls_items;
-	     *p_drv != NULL; p_drv++) {
+	SET_FOREACH(p_drv, periphdriver_set) {
 		if (strcmp((*p_drv)->driver_name, name) == 0)
 			break;
 	}
@@ -202,9 +201,7 @@ cam_periph_find(struct cam_path *path, char *name)
 	struct cam_periph *periph;
 	int s;
 
-	for (p_drv = (struct periph_driver **)periphdriver_set.ls_items;
-	     *p_drv != NULL; p_drv++) {
-
+	SET_FOREACH(p_drv, periphdriver_set) {
 		if (name != NULL && (strcmp((*p_drv)->driver_name, name) != 0))
 			continue;
 
@@ -402,8 +399,7 @@ camperiphfree(struct cam_periph *periph)
 	int s;
 	struct periph_driver **p_drv;
 
-	for (p_drv = (struct periph_driver **)periphdriver_set.ls_items;
-	     *p_drv != NULL; p_drv++) {
+	SET_FOREACH(p_drv, periphdriver_set) {
 		if (strcmp((*p_drv)->driver_name, periph->periph_name) == 0)
 			break;
 	}
