@@ -19,8 +19,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.5.6.1 2000/08/02 22:42:34 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.3 2003/08/27 09:38:33 rob Exp $
+ * $FreeBSD: src/sys/dev/vx/if_vxreg.h,v 1.6 2000/05/01 19:54:26 peter Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vxreg.h,v 1.4 2003/12/07 19:23:40 dillon Exp $
  *
  October 2, 1994
 
@@ -54,7 +54,11 @@
 struct vx_softc {
     struct arpcom arpcom;	/* Ethernet common part		*/
     int unit;			/* unit number */
-    u_int vx_io_addr;		/* i/o bus address		*/
+    bus_space_handle_t		vx_bhandle;
+    bus_space_tag_t		vx_btag;
+    void			*vx_intrhand;
+    struct resource		*vx_irq;
+    struct resource		*vx_res;
 #define MAX_MBS  8		/* # of mbufs we keep around	*/
     struct mbuf *mb[MAX_MBS];	/* spare mbuf storage.		*/
     int next_mb;		/* Which mbuf to use next. 	*/
@@ -67,6 +71,20 @@ struct vx_softc {
     struct callout_handle ch;	/* Callout handle for timeouts  */
     int	buffill_pending;
 };
+
+#define CSR_WRITE_4(sc, reg, val)	\
+	bus_space_write_4(sc->vx_btag, sc->vx_bhandle, reg, val)
+#define CSR_WRITE_2(sc, reg, val)	\
+	bus_space_write_2(sc->vx_btag, sc->vx_bhandle, reg, val)
+#define CSR_WRITE_1(sc, reg, val)	\
+	bus_space_write_1(sc->vx_btag, sc->vx_bhandle, reg, val)
+
+#define CSR_READ_4(sc, reg)		\
+	bus_space_read_4(sc->vx_btag, sc->vx_bhandle, reg)
+#define CSR_READ_2(sc, reg)		\
+	bus_space_read_2(sc->vx_btag, sc->vx_bhandle, reg)
+#define CSR_READ_1(sc, reg)		\
+	bus_space_read_1(sc->vx_btag, sc->vx_bhandle, reg)
 
 /*
  * Some global constants
@@ -317,7 +335,7 @@ struct vx_softc {
 #define S_UPD_STATS		(u_short) (0x80)
 #define S_COMMAND_IN_PROGRESS	(u_short) (0x1000)
 
-#define VX_BUSY_WAIT while (inw(BASE + VX_STATUS) & S_COMMAND_IN_PROGRESS)
+#define VX_BUSY_WAIT while (CSR_READ_2(sc, VX_STATUS) & S_COMMAND_IN_PROGRESS)
 
 /* Address Config. Register.    
  * Window 0/Port 06
@@ -437,7 +455,7 @@ struct vx_softc {
 #define ENABLE_DRQ_IRQ                  0x0001
 #define MFG_ID                          0x506d  /* `TCM' */
 #define PROD_ID                         0x5090
-#define GO_WINDOW(x)		outw(BASE+VX_COMMAND, WINDOW_SELECT|(x))
+#define GO_WINDOW(x)		CSR_WRITE_2(sc, VX_COMMAND, WINDOW_SELECT|(x))
 #define JABBER_GUARD_ENABLE	0x40
 #define LINKBEAT_ENABLE		0x80
 #define	ENABLE_UTP		(JABBER_GUARD_ENABLE | LINKBEAT_ENABLE)

@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.8 2003/11/22 09:50:35 asmodai Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.9 2003/12/07 19:23:36 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -256,7 +256,6 @@ dev/video/gsc/gsc.c			optional	gsc
 dev/netif/cx/if_cx.c			optional	cx
 dev/netif/el/if_el.c			optional	el
 dev/netif/le/if_le.c			optional	le
-dev/netif/lnc/if_lnc.c			optional	lnc
 dev/netif/rdp/if_rdp.c			optional	rdp
 dev/netif/wl/if_wl.c			optional	wl
 i386/isa/intr_machdep.c			standard

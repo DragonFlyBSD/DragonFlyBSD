@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.5 2003/11/20 22:07:32 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.6 2003/12/07 19:23:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,6 @@ static int
 vx_eisa_attach(device_t dev)
 {
     struct vx_softc *sc;
-    int             unit = device_get_unit(dev);
     struct resource *io = 0;
     struct resource *eisa_io = 0;
     struct resource *irq = 0;
@@ -140,28 +139,31 @@ vx_eisa_attach(device_t dev)
 	goto bad;
     }
 
-    if ((sc = vxalloc(unit)) == NULL)
-	goto bad;
+    sc = device_get_softc(dev);
 
-    sc->vx_io_addr = rman_get_start(io);
+    sc->vx_res = io;
+    sc->vx_bhandle = rman_get_bushandle(io);
+    sc->vx_btag = rman_get_bustag(io);
 
     rid = 0;
     irq = bus_alloc_resource(dev, SYS_RES_IRQ, &rid,
 			     0, ~0, 1, RF_ACTIVE);
     if (!irq) {
 	device_printf(dev, "No irq?!\n");
-	vxfree(sc);
 	goto bad;
     }
+
+    sc->vx_irq = irq;
 
     /* Now the registers are availible through the lower ioport */
 
     vxattach(sc);
 
     if (bus_setup_intr(dev, irq, INTR_TYPE_NET, vxintr, sc, &ih)) {
-	vxfree(sc);
 	goto bad;
     }
+
+    sc->vx_intrhand = ih;
 
     return 0;
 
