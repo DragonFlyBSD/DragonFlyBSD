@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.5 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.6 2004/01/18 03:28:29 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -210,8 +210,8 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 		 * this iface name will come along for the ride.
 		 * (see div_output for the other half of this.)
 		 */ 
-		snprintf(divsrc.sin_zero, m->m_pkthdr.rcvif->if_xname,
-		        sizeof(divsrc.sin_zero));
+		snprintf(divsrc.sin_zero, sizeof(divsrc.sin_zero),
+			    m->m_pkthdr.rcvif->if_xname);
 	}
 
 	/* Put packet on socket queue, if any */
