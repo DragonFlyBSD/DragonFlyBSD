@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.13 2003/11/10 09:24:39 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.14 2003/11/10 18:09:12 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -753,48 +753,53 @@ elf_freebsd_fixup(register_t **stack_base, struct image_params *imgp)
  * Code for generating ELF core dumps.
  */
 
-typedef void (*segment_callback) (vm_map_entry_t, void *);
+typedef int (*segment_callback) (vm_map_entry_t, void *);
 
 /* Closure for cb_put_phdr(). */
 struct phdr_closure {
-	Elf_Phdr *phdr;		/* Program header to fill in */
+	Elf_Phdr *phdr;		/* Program header to fill in (incremented) */
+	Elf_Phdr *phdr_max;	/* Pointer bound for error check */
 	Elf_Off offset;		/* Offset of segment in core file */
 };
 
 /* Closure for cb_size_segment(). */
 struct sseg_closure {
 	int count;		/* Count of writable segments. */
-	size_t size;		/* Total size of all writable segments. */
+	size_t vsize;		/* Total size of all writable segments. */
 };
 
+/* Closure for cb_put_fp(). */
 struct fp_closure {
 	struct vn_hdr *vnh;
+	struct vn_hdr *vnh_max;
 	int count;
 	struct stat *sb;
 };
 
-	
+typedef struct elf_buf {
+	char	*buf;
+	size_t	off;
+	size_t	off_max;
+} *elf_buf_t;
 
-static void cb_put_phdr (vm_map_entry_t, void *);
-static void cb_size_segment (vm_map_entry_t, void *);
-static void cb_fpcount_segment(vm_map_entry_t, void *);
-static void cb_put_fp(vm_map_entry_t, void *);
+static void *target_reserve(elf_buf_t target, size_t bytes, int *error);
+
+static int cb_put_phdr (vm_map_entry_t, void *);
+static int cb_size_segment (vm_map_entry_t, void *);
+static int cb_fpcount_segment(vm_map_entry_t, void *);
+static int cb_put_fp(vm_map_entry_t, void *);
 
 
-static void each_segment (struct proc *, segment_callback,
-    void *, int);
+static int each_segment (struct proc *, segment_callback, void *, int);
 static int elf_corehdr (struct proc *, struct file *, struct ucred *,
-    int, void *, size_t);
-static void elf_puthdr (struct proc *, void *, size_t *,
-    const prstatus_t *, const prfpregset_t *, const prpsinfo_t *, int);
-static void elf_putnote (void *, size_t *, const char *, int,
-    const void *, size_t);
+			int, elf_buf_t);
+static int elf_puthdr (struct proc *, elf_buf_t, const prstatus_t *,
+			const prfpregset_t *, const prpsinfo_t *, int);
+static int elf_putnote (elf_buf_t, const char *, int, const void *, size_t);
 
-static void elf_putsigs(struct proc *, void *, int *);
-
-static void elf_puttextvp(struct proc *, void *, int *);
-static void elf_putfiles(struct proc *, void *, int *); 
-
+static int elf_putsigs(struct proc *, elf_buf_t);
+static int elf_puttextvp(struct proc *, elf_buf_t);
+static int elf_putfiles(struct proc *, elf_buf_t);
 
 extern int osreldate;
 
@@ -827,18 +832,19 @@ elf_coredump(struct proc *p, struct vnode *vp, off_t limit)
 int
 generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 {
-
 	struct ucred *cred = p->p_ucred;
 	int error = 0;
 	struct sseg_closure seginfo;
-	void *hdr;
-	size_t hdrsize;
+	struct elf_buf target;
 
 	if (!fp)
 		printf("can't dump core - null fp\n");
-	/* Size the program segments. */
+
+	/*
+	 * Size the program segments
+	 */
 	seginfo.count = 0;
-	seginfo.size = 0;
+	seginfo.vsize = 0;
 	each_segment(p, cb_size_segment, &seginfo, 1);
 
 	/*
@@ -846,24 +852,23 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	 * a dry run of generating it.  Nothing is written, but the
 	 * size is calculated.
 	 */
+	bzero(&target, sizeof(target));
+	elf_puthdr(p, &target, NULL, NULL, NULL, seginfo.count);
 
-	hdrsize = 0;
-	elf_puthdr(p, (void *)NULL, &hdrsize,
-	    (const prstatus_t *)NULL, (const prfpregset_t *)NULL,
-	    (const prpsinfo_t *)NULL, seginfo.count);
-
-	if (hdrsize + seginfo.size >= limit)
+	if (target.off + seginfo.vsize >= limit)
 		return (EFAULT);
 
 	/*
 	 * Allocate memory for building the header, fill it up,
 	 * and write it out.
 	 */
-	hdr = malloc(hdrsize, M_TEMP, M_WAITOK);
-	if (hdr == NULL) {
+	target.off_max = target.off;
+	target.off = 0;
+	target.buf = malloc(target.off_max, M_TEMP, M_WAITOK|M_ZERO);
+
+	if (target.buf == NULL)
 		return EINVAL;
-	}
-	error = elf_corehdr(p, fp, cred, seginfo.count, hdr, hdrsize);
+	error = elf_corehdr(p, fp, cred, seginfo.count, &target);
 
 	/* Write the contents of all of the writable segments. */
 	if (error == 0) {
@@ -871,8 +876,8 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 		int i;
 		int nbytes;
 
-		php = (Elf_Phdr *)((char *)hdr + sizeof(Elf_Ehdr)) + 1;
-		for (i = 0;  i < seginfo.count;  i++) {
+		php = (Elf_Phdr *)(target.buf + sizeof(Elf_Ehdr)) + 1;
+		for (i = 0; i < seginfo.count; i++) {
 			error = fp_write(fp, (caddr_t)php->p_vaddr,
 					php->p_filesz, &nbytes);
 			if (error != 0)
@@ -880,7 +885,7 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 			php++;
 		}
 	}
-	free(hdr, M_TEMP);
+	free(target.buf, M_TEMP);
 	
 	return error;
 }
@@ -889,11 +894,14 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
  * A callback for each_segment() to write out the segment's
  * program header entry.
  */
-static void
+static int
 cb_put_phdr(vm_map_entry_t entry, void *closure)
 {
-	struct phdr_closure *phc = (struct phdr_closure *)closure;
+	struct phdr_closure *phc = closure;
 	Elf_Phdr *phdr = phc->phdr;
+
+	if (phc->phdr == phc->phdr_max)
+		return EINVAL;
 
 	phc->offset = round_page(phc->offset);
 
@@ -912,52 +920,57 @@ cb_put_phdr(vm_map_entry_t entry, void *closure)
 		phdr->p_flags |= PF_X;
 
 	phc->offset += phdr->p_filesz;
-	phc->phdr++;
+	++phc->phdr;
+	return 0;
 }
 
 /*
  * A callback for each_writable_segment() to gather information about
  * the number of segments and their total size.
  */
-static void
+static int
 cb_size_segment(vm_map_entry_t entry, void *closure)
 {
-	struct sseg_closure *ssc = (struct sseg_closure *)closure;
+	struct sseg_closure *ssc = closure;
 
-	ssc->count++;
-	ssc->size += entry->end - entry->start;
+	++ssc->count;
+	ssc->vsize += entry->end - entry->start;
+	return 0;
 }
 
 /*
  * A callback for each_segment() to gather information about
  * the number of text segments.
  */
-static void
+static int
 cb_fpcount_segment(vm_map_entry_t entry, void *closure)
 {
-	int *count = (int *)closure;
+	int *count = closure;
 	if (entry->object.vm_object->type == OBJT_VNODE)
 		++*count;
+	return 0;
 }
 
-static void
+static int
 cb_put_fp(vm_map_entry_t entry, void *closure) 
 {
-	struct fp_closure *fpc = (struct fp_closure *)closure;
+	struct fp_closure *fpc = closure;
 	struct vn_hdr *vnh = fpc->vnh;
 	Elf_Phdr *phdr = &vnh->vnh_phdr;
 	struct vnode *vp;
 	int error;
 
 	if (entry->object.vm_object->type == OBJT_VNODE) {
+		if (vnh == fpc->vnh_max)
+			return EINVAL;
 		vp = (struct vnode *)entry->object.vm_object->handle;
-		
-		vnh->vnh_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+
+		if (vp->v_mount)
+			vnh->vnh_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 		error = VFS_VPTOFH(vp, &vnh->vnh_fh.fh_fid);
 		if (error) 
-			return;
-		
-		
+			return error;
+
 		phdr->p_type = PT_LOAD;
 		phdr->p_offset = 0;        /* not written to core */
 		phdr->p_vaddr = entry->start;
@@ -974,23 +987,22 @@ cb_put_fp(vm_map_entry_t entry, void *closure)
 		++fpc->vnh;
 		++fpc->count;
 	}
+	return 0;
 }
-
-
-
 
 /*
  * For each writable segment in the process's memory map, call the given
  * function with a pointer to the map entry and some arbitrary
  * caller-supplied data.
  */
-static void
+static int
 each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 {
+	int error = 0;
 	vm_map_t map = &p->p_vmspace->vm_map;
 	vm_map_entry_t entry;
 
-	for (entry = map->header.next;  entry != &map->header;
+	for (entry = map->header.next; error == 0 && entry != &map->header;
 	    entry = entry->next) {
 		vm_object_t obj;
 
@@ -1032,8 +1044,25 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
 		    obj->type != OBJT_VNODE)
 			continue;
 
-		(*func)(entry, closure);
+		error = (*func)(entry, closure);
 	}
+	return error;
+}
+
+static
+void *
+target_reserve(elf_buf_t target, size_t bytes, int *error)
+{
+    void *res = NULL;
+
+    if (target->buf) {
+	    if (target->off + bytes > target->off_max)
+		    *error = EINVAL;
+	    else
+		    res = target->buf + target->off;
+    }
+    target->off += bytes;
+    return (res);
 }
 
 /*
@@ -1042,14 +1071,14 @@ each_segment(struct proc *p, segment_callback func, void *closure, int writable)
  */
 static int
 elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs, 
-	    void *hdr, size_t hdrsize)
+	    elf_buf_t target)
 {
 	struct {
 		prstatus_t status;
 		prfpregset_t fpregset;
 		prpsinfo_t psinfo;
 	} *tempdata;
-	size_t off;
+	int error;
 	prstatus_t *status;
 	prfpregset_t *fpregset;
 	prpsinfo_t *psinfo;
@@ -1079,62 +1108,71 @@ elf_corehdr(struct proc *p, struct file *fp, struct ucred *cred, int numsegs,
 	strncpy(psinfo->pr_psargs, p->p_comm, PRARGSZ);
 
 	/* Fill in the header. */
-	bzero(hdr, hdrsize);
-	off = 0;
-	elf_puthdr(p, hdr, &off, status, fpregset, psinfo, numsegs);
+	error = elf_puthdr(p, target, status, fpregset, psinfo, numsegs);
 
 	free(tempdata, M_TEMP);
 
 	/* Write it to the core file. */
-	return fp_write(fp, hdr, hdrsize, &nbytes);
+	if (error == 0)
+		error = fp_write(fp, target->buf, target->off, &nbytes);
+	return error;
 }
 
-static void
-elf_puthdr(struct proc *p, void *dst, size_t *off, const prstatus_t *status,
-    const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs)
+static int
+elf_puthdr(struct proc *p, elf_buf_t target, const prstatus_t *status,
+	const prfpregset_t *fpregset, const prpsinfo_t *psinfo, int numsegs)
 {
-	size_t ehoff;
+	int error = 0;
 	size_t phoff;
 	size_t noteoff;
 	size_t notesz;
+	Elf_Ehdr *ehdr;
+	Elf_Phdr *phdr;
 
-	ehoff = *off;
-	*off += sizeof(Elf_Ehdr);
+	ehdr = target_reserve(target, sizeof(Elf_Ehdr), &error);
 
-	phoff = *off;
-	*off += (numsegs + 1) * sizeof(Elf_Phdr);
+	phoff = target->off;
+	phdr = target_reserve(target, (numsegs + 1) * sizeof(Elf_Phdr), &error);
 
-	noteoff = *off;
-	elf_putnote(dst, off, "FreeBSD", NT_PRSTATUS, status,
-	    sizeof *status);
-	elf_putnote(dst, off, "FreeBSD", NT_FPREGSET, fpregset,
-	    sizeof *fpregset);
-	elf_putnote(dst, off, "FreeBSD", NT_PRPSINFO, psinfo,
-	    sizeof *psinfo);
-	notesz = *off - noteoff;
+	noteoff = target->off;
+	if (error == 0) {
+		error = elf_putnote(target, "FreeBSD", NT_PRSTATUS, 
+					status, sizeof *status);
+	}
+	if (error == 0) {
+		error = elf_putnote(target, "FreeBSD", NT_FPREGSET,
+					fpregset, sizeof *fpregset);
+	}
+	if (error == 0) {
+		error = elf_putnote(target, "FreeBSD", NT_PRPSINFO,
+					psinfo, sizeof *psinfo);
+	}
+	notesz = target->off - noteoff;
 
-	/* put extra cruft for dumping process state here 
-	*  - we really want it be before all the program 
-	*    mappings
-	*  - we just need to update the offset accordingly
-	*    and GDB will be none the wiser.
-	*/
-	elf_puttextvp(p, dst, off);
-	elf_putsigs(p, dst, off);
-	elf_putfiles(p, dst, off);
+	/*
+	 * put extra cruft for dumping process state here 
+	 *  - we really want it be before all the program 
+	 *    mappings
+	 *  - we just need to update the offset accordingly
+	 *    and GDB will be none the wiser.
+	 */
+	if (error == 0)
+		error = elf_puttextvp(p, target);
+	if (error == 0)
+		error = elf_putsigs(p, target);
+	if (error == 0)
+		error = elf_putfiles(p, target);
 
-	/* Align up to a page boundary for the program segments. */
-	*off = round_page(*off);
-
-	if (dst != NULL) {
-		Elf_Ehdr *ehdr;
-		Elf_Phdr *phdr;
-		struct phdr_closure phc;
-
+	/*
+	 * Align up to a page boundary for the program segments.  The
+	 * actual data will be written to the outptu file, not to elf_buf_t,
+	 * so we do not have to do any further bounds checking.
+	 */
+	target->off = round_page(target->off);
+	if (error == 0 && ehdr != NULL) {
 		/*
 		 * Fill in the ELF header.
 		 */
-		ehdr = (Elf_Ehdr *)((char *)dst + ehoff);
 		ehdr->e_ident[EI_MAG0] = ELFMAG0;
 		ehdr->e_ident[EI_MAG1] = ELFMAG1;
 		ehdr->e_ident[EI_MAG2] = ELFMAG2;
@@ -1157,11 +1195,12 @@ elf_puthdr(struct proc *p, void *dst, size_t *off, const prstatus_t *status,
 		ehdr->e_shentsize = sizeof(Elf_Shdr);
 		ehdr->e_shnum = 0;
 		ehdr->e_shstrndx = SHN_UNDEF;
-
+	}
+	if (error == 0 && phdr != NULL) {
 		/*
 		 * Fill in the program header entries.
 		 */
-		phdr = (Elf_Phdr *)((char *)dst + phoff);
+		struct phdr_closure phc;
 
 		/* The note segement. */
 		phdr->p_type = PT_NOTE;
@@ -1172,58 +1211,65 @@ elf_puthdr(struct proc *p, void *dst, size_t *off, const prstatus_t *status,
 		phdr->p_memsz = 0;
 		phdr->p_flags = 0;
 		phdr->p_align = 0;
-		phdr++;
+		++phdr;
 
 		/* All the writable segments from the program. */
 		phc.phdr = phdr;
-		phc.offset = *off;
+		phc.phdr_max = phdr + numsegs;
+		phc.offset = target->off;
 		each_segment(p, cb_put_phdr, &phc, 1);
 	}
+	return (error);
 }
 
-static void
-elf_putnote(void *dst, size_t *off, const char *name, int type,
-    const void *desc, size_t descsz)
+static int
+elf_putnote(elf_buf_t target, const char *name, int type,
+	    const void *desc, size_t descsz)
 {
+	int error = 0;
+	char *dst;
 	Elf_Note note;
 
 	note.n_namesz = strlen(name) + 1;
 	note.n_descsz = descsz;
 	note.n_type = type;
+	dst = target_reserve(target, sizeof(note), &error);
 	if (dst != NULL)
-		bcopy(&note, (char *)dst + *off, sizeof note);
-	*off += sizeof note;
+		bcopy(&note, dst, sizeof note);
+	dst = target_reserve(target, note.n_namesz, &error);
 	if (dst != NULL)
-		bcopy(name, (char *)dst + *off, note.n_namesz);
-	*off += roundup2(note.n_namesz, sizeof(Elf_Size));
+		bcopy(name, dst, note.n_namesz);
+	target->off = roundup2(target->off, sizeof(Elf_Size));
+	dst = target_reserve(target, note.n_descsz, &error);
 	if (dst != NULL)
-		bcopy(desc, (char *)dst + *off, note.n_descsz);
-	*off += roundup2(note.n_descsz, sizeof(Elf_Size));
+		bcopy(desc, dst, note.n_descsz);
+	target->off = roundup2(target->off, sizeof(Elf_Size));
+	return(error);
 }
 
 
-static void
-elf_putsigs(struct proc *p, void *dst, int *off) 
+static int
+elf_putsigs(struct proc *p, elf_buf_t target)
 {
+	int error = 0;
 	struct ckpt_siginfo *csi;
-	if (dst == NULL) { 
-	        *off += sizeof(struct ckpt_siginfo);
-		return;
-	}
-	csi = (struct ckpt_siginfo *)((char *)dst + *off);	
 
-	csi->csi_ckptpisz = sizeof(struct ckpt_siginfo);
-	bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
-	bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
-	bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
-	csi->csi_sigparent = p->p_sigparent;
-	*off += sizeof(struct ckpt_siginfo);
+	csi = target_reserve(target, sizeof(struct ckpt_siginfo), &error);
+	if (csi) {
+		csi->csi_ckptpisz = sizeof(struct ckpt_siginfo);
+		bcopy(p->p_procsig, &csi->csi_procsig, sizeof(struct procsig));
+		bcopy(p->p_procsig->ps_sigacts, &csi->csi_sigacts, sizeof(struct sigacts));
+		bcopy(&p->p_realtimer, &csi->csi_itimerval, sizeof(struct itimerval));
+		csi->csi_sigparent = p->p_sigparent;
+	}
+	return(error);
 }
 
-static void
-elf_putfiles(struct proc *p, void *dst, int *off)
+static int
+elf_putfiles(struct proc *p, elf_buf_t target)
 {
-	int i, error;
+	int error = 0;
+	int i;
 	struct ckpt_filehdr *cfh = NULL;
 	struct ckpt_fileinfo *cfi;
 	struct file *fp;	
@@ -1232,69 +1278,72 @@ elf_putfiles(struct proc *p, void *dst, int *off)
 	 * the duplicated loop is gross, but it was the only way
 	 * to eliminate uninitialized variable warnings 
 	 */
-	if (dst) {
-		cfh = (struct ckpt_filehdr *)((char *)dst + *off);
+	cfh = target_reserve(target, sizeof(struct ckpt_filehdr), &error);
+	if (cfh) {
 		cfh->cfh_nfiles = 0;		
 	}
-	*off += sizeof(struct ckpt_filehdr); 
 
 	/*
 	 * ignore STDIN/STDERR/STDOUT
 	 */
-	for (i = 3; i < p->p_fd->fd_nfiles; i++) {
+	for (i = 3; error == 0 && i < p->p_fd->fd_nfiles; i++) {
 		if ((fp = p->p_fd->fd_ofiles[i]) == NULL)
 			continue;
 		if (fp->f_type != DTYPE_VNODE)
 			continue;
-		if (dst) {
+		cfi = target_reserve(target, sizeof(struct ckpt_fileinfo), &error);
+		if (cfi) {
+			cfi->cfi_index = -1;
 			vp = (struct vnode *)fp->f_data;
-			/* it looks like a bug in ptrace is marking 
+			/*
+			 * it looks like a bug in ptrace is marking 
 			 * a non-vnode as a vnode - until we find the 
 			 * root cause this will at least prevent
 			 * further panics from truss
 			 */
-			if (vp == NULL)
+			if (vp == NULL || vp->v_mount == NULL)
 			        continue;
 			cfh->cfh_nfiles++;
-			cfi = (struct ckpt_fileinfo *)((char *)dst + *off);
 			cfi->cfi_index = i;
 			cfi->cfi_flags = fp->f_flag;
 			cfi->cfi_offset = fp->f_offset;
 			cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
 			error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
 		}
-		*off += sizeof(struct ckpt_fileinfo);
 	}
+	return(error);
 }
 
-static void
-elf_puttextvp(struct proc *p, void *dst, int *off) 
+static int
+elf_puttextvp(struct proc *p, elf_buf_t target)
 {
+	int error = 0;
 	int *vn_count;
 	struct fp_closure fpc;
 	struct ckpt_vminfo *vminfo;
 
-	vminfo = (struct ckpt_vminfo *)((char *)dst + *off);
-	if (dst != NULL) {
+	vminfo = target_reserve(target, sizeof(struct ckpt_vminfo), &error);
+	if (vminfo != NULL) {
 		vminfo->cvm_dsize = p->p_vmspace->vm_dsize;
 		vminfo->cvm_tsize = p->p_vmspace->vm_tsize;
 		vminfo->cvm_daddr = p->p_vmspace->vm_daddr;
 		vminfo->cvm_taddr = p->p_vmspace->vm_taddr;
 	}
-	*off += sizeof(*vminfo);
 
-	vn_count = (int *)((char *)dst + *off);
-	*off += sizeof(int);
-
-	fpc.vnh = (struct vn_hdr *)((char *)dst + *off);
 	fpc.count = 0;
-	if (dst != NULL) {
-		each_segment(p, cb_put_fp, &fpc, 0);
-		*vn_count = fpc.count;
+	vn_count = target_reserve(target, sizeof(int), &error);
+	if (target->buf != NULL) {
+		fpc.vnh = (struct vn_hdr *)(target->buf + target->off);
+		fpc.vnh_max = fpc.vnh + 
+			(target->off_max - target->off) / sizeof(struct vn_hdr);
+		error = each_segment(p, cb_put_fp, &fpc, 0);
+		if (vn_count)
+			*vn_count = fpc.count;
 	} else {
-		each_segment(p, cb_fpcount_segment, &fpc.count, 0);
+		error = each_segment(p, cb_fpcount_segment, &fpc.count, 0);
 	}
-	*off += fpc.count * sizeof(struct vn_hdr);
+	target->off += fpc.count * sizeof(struct vn_hdr);
+	return(error);
 }
 
 

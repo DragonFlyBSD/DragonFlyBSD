@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.2 2003/10/20 06:50:49 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.3 2003/11/10 18:09:13 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -180,6 +180,10 @@ elf_getnotes(struct proc *p, struct file *fp, size_t notesz)
 
 	nthreads = (notesz - sizeof(prpsinfo_t))/(sizeof(prstatus_t) + 
 						  sizeof(prfpregset_t));
+	PRINTF(("reading notes header nthreads=%d\n", nthreads));
+	if (nthreads <= 0 || nthreads > CKPT_MAXTHREADS)
+		return EINVAL;
+
 	psinfo  = malloc(sizeof(prpsinfo_t), M_TEMP, M_ZERO | M_WAITOK);
 	status  = malloc(nthreads*sizeof(prstatus_t), M_TEMP, M_WAITOK);
 	fpregset  = malloc(nthreads*sizeof(prfpregset_t), M_TEMP, M_WAITOK);
@@ -217,8 +221,7 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 
 	TRACE_ENTER;
 	
-	ehdr = malloc(sizeof(Elf_Ehdr), 
-				   M_TEMP, M_ZERO | M_WAITOK);
+	ehdr = malloc(sizeof(Elf_Ehdr), M_TEMP, M_ZERO | M_WAITOK);
 
 	if ((error = elf_gethdr(fp, ehdr)) != 0)
 		goto done;
@@ -565,7 +568,14 @@ elf_getfiles(struct proc *p, struct file *fp)
 
 	for (i = 0; i < filecount; i++) {
 		struct ckpt_fileinfo *cfi= &cfi_base[i];
-		if (cfi->cfi_index < 0 || cfi->cfi_index >=  p->p_fd->fd_nfiles) {
+		/*
+		 * Ignore placeholder entries where cfi_index is less then
+		 * zero.  This will occur if the elf core dump code thinks
+		 * it can save a vnode but winds up not being able to.
+		 */
+		if (cfi->cfi_index < 0)
+			continue;
+		if (cfi->cfi_index >=  p->p_fd->fd_nfiles) {
 			PRINTF(("can't currently restore fd: %d\n",
 			       cfi->cfi_index));
 			goto done;

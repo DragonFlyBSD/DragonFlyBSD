@@ -22,10 +22,12 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/ckpt.h,v 1.3 2003/10/20 04:47:35 dillon Exp $
+ * $DragonFly: src/sys/sys/ckpt.h,v 1.4 2003/11/10 18:09:10 dillon Exp $
  */
 #ifndef _SYS_CKPT_H_
 #define _SYS_CKPT_H_
+
+#define CKPT_MAXTHREADS	256
 
 struct ckpt_filehdr {
 	int		cfh_magic;	/* XXX implement */
