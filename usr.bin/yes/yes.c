@@ -33,17 +33,20 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)yes.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/yes/yes.c,v 1.1.1.1.14.1 2000/06/08 06:24:44 kris Exp $
- * $DragonFly: src/usr.bin/yes/yes.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/yes/yes.c,v 1.4 2004/12/20 23:59:45 liamfoy Exp $
  */
 
+#include <err.h>
 #include <stdio.h>
 
 int
 main(int argc, char **argv)
 {
+	const char *str = "y";
+
 	if (argc > 1)
-		for(;;)
-			puts(argv[1]);
-	else for (;;)
-		puts("y");
+		str = argv[1];
+	while (puts(str) != EOF)
+		;
+	err(1, "stdout");
 }
