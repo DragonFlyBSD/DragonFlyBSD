@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.13 2004/09/18 20:02:35 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.14 2004/09/19 01:24:28 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -257,6 +257,7 @@ struct com_s {
 #endif
 	int	unit;		/* unit	number */
 	int	dtr_wait;	/* time to hold DTR down on close (* 1/hz) */
+	struct callout dtr_ch;
 #if 0
 	u_int	tx_fifo_size;
 #endif
@@ -566,6 +567,7 @@ cyattach_common(cy_iobase, cy_align)
 
 	com = malloc(sizeof *com, M_DEVBUF, M_WAITOK | M_ZERO);
 	com->unit = unit;
+			callout_init(&com->dtr_ch);
 			com->gfrcr_image = firmware_version;
 			if (CY_RTS_DTR_SWAPPED(firmware_version)) {
 				com->mcr_dtr = MCR_RTS;
@@ -641,6 +643,8 @@ cyattach_common(cy_iobase, cy_align)
 	make_dev(&sio_cdevsw, minorbase | CALLOUT_MASK | CONTROL_LOCK_STATE,
 		UID_UUCP, GID_DIALER, 0660, "cualc%r%r", adapter,
 		unit % CY_MAX_PORTS);
+
+	/* for(cdu...), for(cyu...) terminating blocks */
 		}
 	}
 
@@ -918,7 +922,8 @@ comhardclose(com)
 			cd1400_channel_cmd(com, com->channel_control);
 
 			if (com->dtr_wait != 0 && !(com->state & CS_DTR_OFF)) {
-				timeout(siodtrwakeup, com, com->dtr_wait);
+				callout_reset(&com->dtr_ch, com->dtr_wait,
+						siodtrwakeup, com);
 				com->state |= CS_DTR_OFF;
 			}
 		}

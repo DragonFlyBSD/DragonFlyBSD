@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.12 2004/05/19 22:52:45 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.13 2004/09/19 01:27:23 dillon Exp $
  *
  */
 #undef DEBUG
@@ -66,6 +66,7 @@ void cxmint (cx_chan_t *c);
 int cxrinta (cx_chan_t *c);
 void cxtinta (cx_chan_t *c);
 timeout_t cxtimeout;
+extern struct callout cxtimeout_ch;
 
 #ifdef DEBUG
 #   define print(s)     printf s
@@ -940,7 +941,7 @@ void cxtimeout (void *a)
 			}
 			splx (s);
 		}
-	timeout (cxtimeout, 0, hz*5);
+	callout_reset (&cxtimeout_ch, hz * 5, cxtimeout, NULL);
 }
 
 

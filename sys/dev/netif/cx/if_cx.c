@@ -17,7 +17,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/if_cx.c,v 1.32 1999/11/18 08:36:42 peter Exp $
- * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.13 2004/06/02 14:42:50 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/cx/if_cx.c,v 1.14 2004/09/19 01:27:23 dillon Exp $
  *
  */
 #undef DEBUG
@@ -106,6 +106,7 @@ static unsigned short drq_valid_values [] = { 5, 6, 7, 0 };
 static unsigned short port_valid_values [] = {
 	0x240, 0x260, 0x280, 0x300, 0x320, 0x380, 0x3a0, 0,
 };
+struct callout cxtimeout_ch;
 
 DECLARE_DUMMY_MODULE(if_cx);
 
@@ -290,9 +291,10 @@ cxattach (struct isa_device *id)
 	cx_setup_board (b);
 
 	/* Activate the timeout routine. */
-	if (unit == 0)
-		timeout (cxtimeout, 0, hz*5);
-
+	if (unit == 0) {
+		callout_init(&cxtimeout_ch);
+		callout_reset(&cxtimeout_ch, hz * 5, cxtimeout, NULL);
+	}
 	printf ("cx%d: <Cronyx-%s>\n", unit, b->name);
 	cdevsw_add(&cx_cdevsw, -1, unit);
 	make_dev(&cx_cdevsw, unit, UID_ROOT, GID_WHEEL, 0600, "cx%d", unit);
