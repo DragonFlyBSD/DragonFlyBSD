@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.168 2005/03/19 00:15:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.169 2005/03/19 00:16:19 okumoto Exp $
  */
 
 /*-
@@ -692,8 +692,7 @@ SortIncreasing(const void *l, const void *r)
  *	Pass through the tstr looking for 1) escaped delimiters,
  *	'$'s and backslashes (place the escaped character in
  *	uninterpreted) and 2) unescaped $'s that aren't before
- *	the delimiter (expand the variable substitution unless flags
- *	has VAR_NOSUBST set).
+ *	the delimiter (expand the variable substitution).
  *	Return the expanded string or NULL if the delimiter was missing
  *	If pattern is specified, handle escaped ampersands, and replace
  *	unescaped ampersands with the lhs of the pattern.
@@ -753,54 +752,22 @@ VarGetPattern(VarParser *vp, int delim, int *flags,
 					vp->ptr++;
 				}
 			} else {
-				if (flags == NULL || (*flags & VAR_NOSUBST) == 0) {
-					char   *cp;
-					size_t  len;
-					Boolean freeIt;
+				char   *cp;
+				size_t  len;
+				Boolean freeIt;
 
-					/*
-					 * If unescaped dollar sign not
-					 * before the delimiter, assume it's
-					 * a variable substitution and
-					 * recurse.
-					 */
-					len = 0;
-					cp = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
-					Buf_Append(buf, cp);
-					if (freeIt)
-						free(cp);
-					vp->ptr += len;
-				} else {
-					const char *cp = vp->ptr + 1;
-
-					if (*cp == OPEN_PAREN || *cp == OPEN_BRACE) {
-						/*
-						 * Find the end of this
-						 * variable reference and
-						 * suck it in without further
-						 * ado. It will be
-						 * interperated later.
-						 */
-						int	have = *cp;
-						int	want = (*cp == OPEN_PAREN) ? CLOSE_PAREN : CLOSE_BRACE;
-						int	depth = 1;
-
-						for (++cp; *cp != '\0' && depth > 0; ++cp) {
-							if (cp[-1] != '\\') {
-								if (*cp == have)
-									++depth;
-								if (*cp == want)
-									--depth;
-							}
-						}
-						Buf_AppendRange(buf, vp->ptr, cp);
-						vp->ptr = cp;
-					} else {
-						Buf_AddByte(buf,
-						    (Byte)vp->ptr[0]);
-						vp->ptr++;
-					}
-				}
+				/*
+				 * If unescaped dollar sign not
+				 * before the delimiter, assume it's
+				 * a variable substitution and
+				 * recurse.
+				 */
+				len = 0;
+				cp = Var_Parse(vp->ptr, vp->ctxt, vp->err, &len, &freeIt);
+				Buf_Append(buf, cp);
+				if (freeIt)
+					free(cp);
+				vp->ptr += len;
 			}
 		} else if (vp->ptr[0] == '&' && patt != NULL) {
 			Buf_AddBytes(buf, patt->leftLen, (Byte *)patt->lhs);
