@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.17 2003/11/05 23:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.18 2004/01/24 07:55:50 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -540,19 +540,19 @@ uicreate(uid_t uid)
 {
 	struct	uidinfo *uip, *norace;
 
-	MALLOC(uip, struct uidinfo *, sizeof(*uip), M_UIDINFO, M_NOWAIT);
-	if (uip == NULL) {
-		MALLOC(uip, struct uidinfo *, sizeof(*uip), M_UIDINFO, M_WAITOK);
-		/*
-		 * if we M_WAITOK we must look afterwards or risk
-		 * redundant entries
-		 */
-		norace = uilookup(uid);
-		if (norace != NULL) {
-			FREE(uip, M_UIDINFO);
-			return (norace);
-		}
+	/*
+	 * Allocate space and check for a race
+	 */
+	MALLOC(uip, struct uidinfo *, sizeof(*uip), M_UIDINFO, M_WAITOK);
+	norace = uilookup(uid);
+	if (norace != NULL) {
+		FREE(uip, M_UIDINFO);
+		return (norace);
 	}
+
+	/*
+	 * Initialize structure and enter it into the hash table
+	 */
 	LIST_INSERT_HEAD(UIHASH(uid), uip, ui_hash);
 	uip->ui_uid = uid;
 	uip->ui_proccnt = 0;
