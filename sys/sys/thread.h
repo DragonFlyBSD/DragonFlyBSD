@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.58 2004/09/14 07:41:49 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.59 2004/10/13 19:51:31 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -304,7 +304,9 @@ struct thread {
 #define TDPRI_MASK		31
 #define TDPRI_CRIT		32	/* high bits of td_pri used for crit */
 
+#ifdef _KERNEL
 #define LWKT_THREAD_STACK	(UPAGES * PAGE_SIZE)
+#endif
 
 #define CACHE_NTHREADS		6
 
