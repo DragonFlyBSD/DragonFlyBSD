@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.13 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.14 2004/06/07 02:36:22 dillon Exp $
  */
 
 #include "opt_inet.h"
@@ -115,7 +115,7 @@ static struct sockaddr_in divsrc = { sizeof(divsrc), AF_INET };
 void
 div_init(void)
 {
-	LIST_INIT(&divcbinfo.listhead);
+	in_pcbinfo_init(&divcbinfo);
 	/*
 	 * XXX We don't use the hash list for divert IP, but it's easier
 	 * to allocate a one entry hash list than it is to check all
@@ -217,7 +217,9 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	/* Put packet on socket queue, if any */
 	sa = NULL;
 	nport = htons((u_int16_t)port);
-	LIST_FOREACH(inp, &divcbinfo.listhead, inp_list) {
+	LIST_FOREACH(inp, &divcbinfo.pcblisthead, inp_list) {
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
 		if (inp->inp_lport == nport)
 			sa = inp->inp_socket;
 	}
@@ -442,10 +444,12 @@ div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 static int
 div_pcblist(SYSCTL_HANDLER_ARGS)
 {
-	int error, i, n, s;
-	struct inpcb *inp, **inp_list;
+	int error, i, n;
+	struct inpcb *inp;
+	struct inpcb *marker;
 	inp_gen_t gencnt;
 	struct xinpgen xig;
+	struct xinpcb xi;
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
@@ -464,46 +468,51 @@ div_pcblist(SYSCTL_HANDLER_ARGS)
 	/*
 	 * OK, now we're committed to doing something.
 	 */
-	s = splnet();
 	gencnt = divcbinfo.ipi_gencnt;
 	n = divcbinfo.ipi_count;
-	splx(s);
 
 	xig.xig_len = sizeof xig;
 	xig.xig_count = n;
 	xig.xig_gen = gencnt;
 	xig.xig_sogen = so_gencnt;
+	xig.xig_cpu = 0;
 	error = SYSCTL_OUT(req, &xig, sizeof xig);
 	if (error)
 		return error;
 
-	inp_list = malloc(n * sizeof *inp_list, M_TEMP, M_WAITOK);
-	if (inp_list == 0)
-		return ENOMEM;
-	
-	s = splnet();
-	for (inp = LIST_FIRST(&divcbinfo.listhead), i = 0; inp && i < n;
-	     inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
-			inp_list[i++] = inp;
-	}
-	splx(s);
-	n = i;
+	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
 
-	error = 0;
-	for (i = 0; i < n; i++) {
-		inp = inp_list[i];
-		if (inp->inp_gencnt <= gencnt) {
-			struct xinpcb xi;
-			xi.xi_len = sizeof xi;
-			/* XXX should avoid extra copy */
-			bcopy(inp, &xi.xi_inp, sizeof *inp);
-			if (inp->inp_socket)
-				sotoxsocket(inp->inp_socket, &xi.xi_socket);
-			error = SYSCTL_OUT(req, &xi, sizeof xi);
+	LIST_INSERT_HEAD(&divcbinfo.pcblisthead, marker, inp_list);
+	i = 0;
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
+
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
+		if (inp->inp_gencnt > gencnt)
+			continue;
+		if (prison_xinpcb(req->td, inp))
+			continue;
+		xi.xi_len = sizeof xi;
+		bcopy(inp, &xi.xi_inp, sizeof *inp);
+		if (inp->inp_socket)
+			sotoxsocket(inp->inp_socket, &xi.xi_socket);
+		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
+			break;
+		++i;
+	}
+	LIST_REMOVE(marker, inp_list);
+	if (error == 0 && i < n) {
+		bzero(&xi, sizeof(xi));
+		xi.xi_len = sizeof(xi);
+		while (i < n) {
+			error = SYSCTL_OUT(req, &xi, sizeof(xi));
+			++i;
 		}
 	}
-	if (!error) {
+	if (error == 0) {
 		/*
 		 * Give the user an updated idea of our state.
 		 * If the generation differs from what we told
@@ -511,14 +520,12 @@ div_pcblist(SYSCTL_HANDLER_ARGS)
 		 * while we were processing this request, and it
 		 * might be necessary to retry.
 		 */
-		s = splnet();
 		xig.xig_gen = divcbinfo.ipi_gencnt;
 		xig.xig_sogen = so_gencnt;
 		xig.xig_count = divcbinfo.ipi_count;
-		splx(s);
 		error = SYSCTL_OUT(req, &xig, sizeof xig);
 	}
-	free(inp_list, M_TEMP);
+	free(marker, M_TEMP);
 	return error;
 }
 

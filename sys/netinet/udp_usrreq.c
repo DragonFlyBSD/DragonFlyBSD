@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.24 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.25 2004/06/07 02:36:22 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -147,7 +147,7 @@ static	int udp_output (struct inpcb *, struct mbuf *, struct sockaddr *,
 void
 udp_init()
 {
-	LIST_INIT(&udbinfo.listhead);
+	in_pcbinfo_init(&udbinfo);
 	udbinfo.hashbase = hashinit(UDBHASHSIZE, M_PCB, &udbinfo.hashmask);
 	udbinfo.porthashbase = hashinit(UDBHASHSIZE, M_PCB,
 					&udbinfo.porthashmask);
@@ -314,7 +314,9 @@ udp_input(struct mbuf *m, ...)
 #ifdef INET6
 		udp_in6.uin6_init_done = udp_ip6.uip6_init_done = 0;
 #endif
-		LIST_FOREACH(inp, &udbinfo.listhead, inp_list) {
+		LIST_FOREACH(inp, &udbinfo.pcblisthead, inp_list) {
+			if (inp->inp_flags & INP_PLACEMARKER)
+				continue;
 #ifdef INET6
 			if ((inp->inp_vflag & INP_IPV4) == 0)
 				continue;
@@ -596,17 +598,19 @@ udp_ctlinput(cmd, sa, vip)
 			(*notify)(inp, inetctlerrmap[cmd]);
 		splx(s);
 	} else
-		in_pcbnotifyall(&udbinfo.listhead, faddr, inetctlerrmap[cmd],
+		in_pcbnotifyall(&udbinfo.pcblisthead, faddr, inetctlerrmap[cmd],
 		    notify);
 }
 
 static int
 udp_pcblist(SYSCTL_HANDLER_ARGS)
 {
-	int error, i, n, s;
-	struct inpcb *inp, **inp_list;
+	int error, i, n;
+	struct inpcb *inp;
+	struct inpcb *marker;
 	inp_gen_t gencnt;
 	struct xinpgen xig;
+	struct xinpcb xi;
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
@@ -625,46 +629,51 @@ udp_pcblist(SYSCTL_HANDLER_ARGS)
 	/*
 	 * OK, now we're committed to doing something.
 	 */
-	s = splnet();
 	gencnt = udbinfo.ipi_gencnt;
 	n = udbinfo.ipi_count;
-	splx(s);
 
 	xig.xig_len = sizeof xig;
 	xig.xig_count = n;
 	xig.xig_gen = gencnt;
 	xig.xig_sogen = so_gencnt;
+	xig.xig_cpu = 0;
 	error = SYSCTL_OUT(req, &xig, sizeof xig);
 	if (error)
 		return error;
 
-	inp_list = malloc(n * sizeof *inp_list, M_TEMP, M_WAITOK);
-	if (inp_list == 0)
-		return ENOMEM;
-	
-	s = splnet();
-	for (inp = LIST_FIRST(&udbinfo.listhead), i = 0; inp && i < n;
-	     inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
-			inp_list[i++] = inp;
-	}
-	splx(s);
-	n = i;
+	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
 
-	error = 0;
-	for (i = 0; i < n; i++) {
-		inp = inp_list[i];
-		if (inp->inp_gencnt <= gencnt) {
-			struct xinpcb xi;
-			xi.xi_len = sizeof xi;
-			/* XXX should avoid extra copy */
-			bcopy(inp, &xi.xi_inp, sizeof *inp);
-			if (inp->inp_socket)
-				sotoxsocket(inp->inp_socket, &xi.xi_socket);
-			error = SYSCTL_OUT(req, &xi, sizeof xi);
+	LIST_INSERT_HEAD(&udbinfo.pcblisthead, marker, inp_list);
+	i = 0;
+	while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
+		LIST_REMOVE(marker, inp_list);
+		LIST_INSERT_AFTER(inp, marker, inp_list);
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
+		if (inp->inp_gencnt > gencnt)
+			continue;
+		if (prison_xinpcb(req->td, inp))
+			continue;
+		xi.xi_len = sizeof xi;
+		bcopy(inp, &xi.xi_inp, sizeof *inp);
+		if (inp->inp_socket)
+			sotoxsocket(inp->inp_socket, &xi.xi_socket);
+		if ((error = SYSCTL_OUT(req, &xi, sizeof xi)) != 0)
+			break;
+		++i;
+	}
+	LIST_REMOVE(marker, inp_list);
+	if (error == 0 && i < n) {
+		bzero(&xi, sizeof(xi));
+		xi.xi_len = sizeof(xi);
+		while (i < n) {
+			if ((error = SYSCTL_OUT(req, &xi, sizeof(xi))) != 0)
+				break;
+			++i;
 		}
 	}
-	if (!error) {
+	if (error == 0) {
 		/*
 		 * Give the user an updated idea of our state.
 		 * If the generation differs from what we told
@@ -672,14 +681,12 @@ udp_pcblist(SYSCTL_HANDLER_ARGS)
 		 * while we were processing this request, and it
 		 * might be necessary to retry.
 		 */
-		s = splnet();
 		xig.xig_gen = udbinfo.ipi_gencnt;
 		xig.xig_sogen = so_gencnt;
 		xig.xig_count = udbinfo.ipi_count;
-		splx(s);
 		error = SYSCTL_OUT(req, &xig, sizeof xig);
 	}
-	free(inp_list, M_TEMP);
+	free(marker, M_TEMP);
 	return error;
 }
 

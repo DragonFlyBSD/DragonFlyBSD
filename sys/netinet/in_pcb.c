@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/in_pcb.c,v 1.59.2.27 2004/01/02 04:06:42 ambrisko Exp $
- * $DragonFly: src/sys/netinet/in_pcb.c,v 1.21 2004/05/08 13:30:52 hmp Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.c,v 1.22 2004/06/07 02:36:22 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -150,6 +150,12 @@ SYSCTL_PROC(_net_inet_ip_portrange, OID_AUTO, hilast, CTLTYPE_INT|CTLFLAG_RW,
  * rule that should be fixed.
  */
 
+void
+in_pcbinfo_init(struct inpcbinfo *pcbinfo)
+{
+	LIST_INIT(&pcbinfo->pcblisthead);
+}
+
 /*
  * Allocate a PCB and associate it with the socket.
  */
@@ -182,7 +188,7 @@ in_pcballoc(struct socket *so, struct inpcbinfo *pcbinfo)
 		inp->inp_flags |= IN6P_AUTOFLOWLABEL;
 #endif
 	so->so_pcb = (caddr_t)inp;
-	LIST_INSERT_HEAD(&pcbinfo->listhead, inp, inp_list);
+	LIST_INSERT_HEAD(&pcbinfo->pcblisthead, inp, inp_list);
 	pcbinfo->ipi_count++;
 	return (0);
 }
@@ -660,9 +666,15 @@ in_pcbnotifyall(head, faddr, errno, notify)
 	struct inpcb *inp, *ninp;
 	int s;
 
+	/*
+	 * note: if INP_PLACEMARKER is set we must ignore the rest of
+	 * the structure and skip it.
+	 */
 	s = splnet();
 	for (inp = LIST_FIRST(head); inp != NULL; inp = ninp) {
 		ninp = LIST_NEXT(inp, inp_list);
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
 #ifdef INET6
 		if (!(inp->inp_vflag & INP_IPV4))
 			continue;
@@ -685,6 +697,8 @@ in_pcbpurgeif0(head, ifp)
 	int i, gap;
 
 	for (inp = head; inp != NULL; inp = LIST_NEXT(inp, inp_list)) {
+		if (inp->inp_flags & INP_PLACEMARKER)
+			continue;
 		imo = inp->inp_moptions;
 		if ((inp->inp_vflag & INP_IPV4) && imo != NULL) {
 			/*

@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.13 2004/05/03 15:18:25 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.14 2004/06/07 02:36:28 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,9 +78,9 @@
 #include "netstat.h"
 
 char	*inetname (struct in_addr *);
-void	inetprint (struct in_addr *, int, char *, int);
+void	inetprint (struct in_addr *, int, const char *, int);
 #ifdef INET6
-extern void	inet6print (struct in6_addr *, int, char *, int);
+extern void	inet6print (struct in6_addr *, int, const char *, int);
 static int udp_done, tcp_done;
 #endif /* INET6 */
 
@@ -90,18 +90,18 @@ static int udp_done, tcp_done;
  * Listening processes (aflag) are suppressed unless the
  * -a (all) flag is specified.
  */
+
+static int ppr_first = 1;
+static void outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp);
+
 void
-protopr(u_long proto,		/* for sysctl version we pass proto # */
-	char *name, int af)
+protopr(u_long proto, char *name, int af)
 {
 	int istcp;
-	static int first = 1;
+	int i;
 	char *buf;
-	const char *mibvar, *vchar;
-	struct tcpcb *tp = NULL;
-	struct inpcb *inp;
+	const char *mibvar;
 	struct xinpgen *xig, *oxig;
-	struct xsocket *so;
 	size_t len;
 
 	istcp = 0;
@@ -148,183 +148,37 @@ protopr(u_long proto,		/* for sysctl version we pass proto # */
 		return;
 	}
 
-	oxig = xig = (struct xinpgen *)buf;
-	for (xig = (struct xinpgen *)((char *)xig + xig->xig_len);
-	     xig->xig_len > sizeof(struct xinpgen);
-	     xig = (struct xinpgen *)((char *)xig + xig->xig_len)) {
-		if (istcp) {
-			tp = &((struct xtcpcb *)xig)->xt_tp;
-			inp = &((struct xtcpcb *)xig)->xt_inp;
-			so = &((struct xtcpcb *)xig)->xt_socket;
-		} else {
-			inp = &((struct xinpcb *)xig)->xi_inp;
-			so = &((struct xinpcb *)xig)->xi_socket;
-		}
-
-		/* Ignore sockets for protocols other than the desired one. */
-		if (so->xso_protocol != (int)proto)
-			continue;
-
-		/* Ignore PCBs which were freed during copyout. */
-		if (inp->inp_gencnt > oxig->xig_gen)
-			continue;
-
-		if ((af == AF_INET && (inp->inp_vflag & INP_IPV4) == 0)
-#ifdef INET6
-		    || (af == AF_INET6 && (inp->inp_vflag & INP_IPV6) == 0)
-#endif /* INET6 */
-		    || (af == AF_UNSPEC && ((inp->inp_vflag & INP_IPV4) == 0
-#ifdef INET6
-					    && (inp->inp_vflag &
-						INP_IPV6) == 0
-#endif /* INET6 */
-			))
-		    )
-			continue;
-		if (!aflag &&
-		    (
-		     (af == AF_INET &&
-		      inet_lnaof(inp->inp_laddr) == INADDR_ANY)
-#ifdef INET6
-		     || (af == AF_INET6 &&
-			 IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
-#endif /* INET6 */
-		     || (af == AF_UNSPEC &&
-			 (((inp->inp_vflag & INP_IPV4) != 0 &&
-			   inet_lnaof(inp->inp_laddr) == INADDR_ANY)
-#ifdef INET6
-			  || ((inp->inp_vflag & INP_IPV6) != 0 &&
-			      IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
-#endif
-			  ))
-		     ))
-			continue;
-
-		if (first) {
-			if (!Lflag) {
-				printf("Active Internet connections");
-				if (aflag)
-					printf(" (including servers)");
-			} else
-				printf(
-	"Current listen queue sizes (qlen/incqlen/maxqlen)");
-			putchar('\n');
-			if (Aflag)
-				printf("%-8.8s ", "Socket");
-			if (Lflag)
-				printf("%-5.5s %-14.14s %-22.22s\n",
-					"Proto", "Listen", "Local Address");
-			else
-				printf((Aflag && !Wflag) ?
-		"%-5.5s %-6.6s %-6.6s  %-18.18s %-18.18s %s\n" :
-		"%-5.5s %-6.6s %-6.6s  %-22.22s %-22.22s %s\n",
-					"Proto", "Recv-Q", "Send-Q",
-					"Local Address", "Foreign Address",
-					"(state)");
-			first = 0;
-		}
-		if (Lflag && so->so_qlimit == 0)
-			continue;
-		if (Aflag) {
-			if (istcp)
-				printf("%8lx ", (u_long)inp->inp_ppcb);
-			else
-				printf("%8lx ", (u_long)so->so_pcb);
-		}
-#ifdef INET6
-		if ((inp->inp_vflag & INP_IPV6) != 0)
-			vchar = ((inp->inp_vflag & INP_IPV4) != 0)
-				? "46" : "6 ";
-		else
-#endif
-		vchar = ((inp->inp_vflag & INP_IPV4) != 0)
-				? "4 " : "  ";
-		printf("%-3.3s%-2.2s ", name, vchar);
-		if (Lflag) {
-			char buf[15];
-
-			snprintf(buf, 15, "%d/%d/%d", so->so_qlen,
-				 so->so_incqlen, so->so_qlimit);
-			printf("%-14.14s ", buf);
-		} else if (Bflag) {
-			printf("%6ld %6ld  ",
-			       so->so_rcv.sb_hiwat,
-			       so->so_snd.sb_hiwat);
-		} else {
-			printf("%6ld %6ld  ",
-			       so->so_rcv.sb_cc,
-			       so->so_snd.sb_cc);
-		}
-		if (numeric_port) {
-			if (inp->inp_vflag & INP_IPV4) {
-				inetprint(&inp->inp_laddr, (int)inp->inp_lport,
-					  name, 1);
-				if (!Lflag)
-					inetprint(&inp->inp_faddr,
-						  (int)inp->inp_fport, name, 1);
+	oxig = (struct xinpgen *)buf;
+	while ((char *)(oxig + 1) - (char *)buf < len) {
+		if (oxig->xig_len == 0)
+			break;
+		xig = (void *)((char *)oxig + oxig->xig_len);
+		for (i = 0; i < oxig->xig_count; ++i) {
+			if (istcp) {
+				struct xtcpcb *tcp = (void *)xig;
+				if (xig->xig_len < sizeof(struct xtcpcb))
+					break;
+				outputpcb(proto, name, oxig->xig_cpu,
+					&tcp->xt_inp, &tcp->xt_socket,
+					&tcp->xt_tp);
+			} else {
+				struct xinpcb *in = (void *)xig;
+				if (xig->xig_len < sizeof(struct xinpcb))
+					break;
+				outputpcb(proto, name, oxig->xig_cpu,
+					&in->xi_inp, &in->xi_socket,
+					NULL);
 			}
-#ifdef INET6
-			else if (inp->inp_vflag & INP_IPV6) {
-				inet6print(&inp->in6p_laddr,
-					   (int)inp->inp_lport, name, 1);
-				if (!Lflag)
-					inet6print(&inp->in6p_faddr,
-						   (int)inp->inp_fport, name, 1);
-			} /* else nothing printed now */
-#endif /* INET6 */
-		} else if (inp->inp_flags & INP_ANONPORT) {
-			if (inp->inp_vflag & INP_IPV4) {
-				inetprint(&inp->inp_laddr, (int)inp->inp_lport,
-					  name, 1);
-				if (!Lflag)
-					inetprint(&inp->inp_faddr,
-						  (int)inp->inp_fport, name, 0);
-			}
-#ifdef INET6
-			else if (inp->inp_vflag & INP_IPV6) {
-				inet6print(&inp->in6p_laddr,
-					   (int)inp->inp_lport, name, 1);
-				if (!Lflag)
-					inet6print(&inp->in6p_faddr,
-						   (int)inp->inp_fport, name, 0);
-			} /* else nothing printed now */
-#endif /* INET6 */
-		} else {
-			if (inp->inp_vflag & INP_IPV4) {
-				inetprint(&inp->inp_laddr, (int)inp->inp_lport,
-					  name, 0);
-				if (!Lflag)
-					inetprint(&inp->inp_faddr,
-						  (int)inp->inp_fport, name,
-						  inp->inp_lport !=
-							inp->inp_fport);
-			}
-#ifdef INET6
-			else if (inp->inp_vflag & INP_IPV6) {
-				inet6print(&inp->in6p_laddr,
-					   (int)inp->inp_lport, name, 0);
-				if (!Lflag)
-					inet6print(&inp->in6p_faddr,
-						   (int)inp->inp_fport, name,
-						   inp->inp_lport !=
-							inp->inp_fport);
-			} /* else nothing printed now */
-#endif /* INET6 */
+			xig = (void *)((char *)xig + xig->xig_len);
 		}
-		if (istcp && !Lflag) {
-			if (tp->t_state < 0 || tp->t_state >= TCP_NSTATES)
-				printf("%d", tp->t_state);
-                      else {
-				printf("%s", tcpstates[tp->t_state]);
-#if defined(TF_NEEDSYN) && defined(TF_NEEDFIN)
-                              /* Show T/TCP `hidden state' */
-                              if (tp->t_flags & (TF_NEEDSYN|TF_NEEDFIN))
-                                      putchar('*');
-#endif /* defined(TF_NEEDSYN) && defined(TF_NEEDFIN) */
-                      }
-		}
-		putchar('\n');
+		/*
+		 * the terminating xig tells if anything has changed.  
+		 * Just ignore it and skip to the starting xig for the next
+		 * cpu (if any).
+		 */
+		oxig = (void *)((char *)xig + xig->xig_len);
 	}
+#if 0
 	if (xig != oxig && xig->xig_gen != oxig->xig_gen) {
 		if (oxig->xig_count > xig->xig_count) {
 			printf("Some %s sockets may have been deleted.\n",
@@ -337,8 +191,175 @@ protopr(u_long proto,		/* for sysctl version we pass proto # */
 			       name);
 		}
 	}
+#endif
 	free(buf);
 }
+
+static void
+outputpcb(int proto, const char *name, int cpu, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp)
+{
+	const char *vchar;
+
+	/* Ignore sockets for protocols other than the desired one. */
+	if (so->xso_protocol != (int)proto)
+		return;
+
+	if ((af == AF_INET && (inp->inp_vflag & INP_IPV4) == 0)
+#ifdef INET6
+	    || (af == AF_INET6 && (inp->inp_vflag & INP_IPV6) == 0)
+#endif /* INET6 */
+	    || (af == AF_UNSPEC && ((inp->inp_vflag & INP_IPV4) == 0
+#ifdef INET6
+		&& (inp->inp_vflag & INP_IPV6) == 0
+#endif /* INET6 */
+		))
+	    ) {
+		return;
+	}
+	if (!aflag && ( 
+		(af == AF_INET && inet_lnaof(inp->inp_laddr) == INADDR_ANY)
+#ifdef INET6
+	    || (af == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
+#endif /* INET6 */
+	    || (af == AF_UNSPEC && (((inp->inp_vflag & INP_IPV4) != 0 &&
+		inet_lnaof(inp->inp_laddr) == INADDR_ANY)
+#ifdef INET6
+	    || ((inp->inp_vflag & INP_IPV6) != 0 &&
+		IN6_IS_ADDR_UNSPECIFIED(&inp->in6p_laddr))
+#endif
+		  ))
+	     )) {
+		return;
+	}
+
+	if (ppr_first) {
+		if (!Lflag) {
+			printf("Active Internet connections");
+			if (aflag)
+				printf(" (including servers)");
+		} else {
+			printf("Current listen queue sizes "
+				"(qlen/incqlen/maxqlen)");
+		}
+		putchar('\n');
+		if (Aflag)
+			printf("%-8.8s ", "Socket");
+		if (Lflag) {
+			printf("%3s %-5.5s %-14.14s %-22.22s\n",
+				"Cpu", "Proto", "Listen", "Local Address");
+		} else {
+			printf((Aflag && !Wflag) ?
+			    "%3s %-5.5s %-6.6s %-6.6s %-17.17s %-17.17s %s\n" :
+			    "%3s %-5.5s %-6.6s %-6.6s %-21.21s %-21.21s %s\n",
+			    "Cpu", "Proto", "Recv-Q", "Send-Q",
+			    "Local Address", "Foreign Address",
+			    "(state)");
+		}
+		ppr_first = 0;
+	}
+	if (Lflag && so->so_qlimit == 0)
+		return;
+	if (Aflag) {
+		if (tp)
+			printf("%8lx ", (u_long)inp->inp_ppcb);
+		else
+			printf("%8lx ", (u_long)so->so_pcb);
+	}
+#ifdef INET6
+	if ((inp->inp_vflag & INP_IPV6) != 0)
+		vchar = ((inp->inp_vflag & INP_IPV4) != 0) ? "46" : "6 ";
+	else
+#endif
+		vchar = ((inp->inp_vflag & INP_IPV4) != 0) ? "4 " : "  ";
+
+	printf("%3d %-3.3s%-2.2s ", cpu, name, vchar);
+	if (Lflag) {
+		char buf[15];
+
+		snprintf(buf, sizeof(buf), "%d/%d/%d", so->so_qlen,
+			 so->so_incqlen, so->so_qlimit);
+		printf("%-13.13s ", buf);
+	} else if (Bflag) {
+		printf("%6ld %6ld ",
+		       so->so_rcv.sb_hiwat,
+		       so->so_snd.sb_hiwat);
+	} else {
+		printf("%6ld %6ld ",
+		       so->so_rcv.sb_cc,
+		       so->so_snd.sb_cc);
+	}
+	if (numeric_port) {
+		if (inp->inp_vflag & INP_IPV4) {
+			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
+				  name, 1);
+			if (!Lflag)
+				inetprint(&inp->inp_faddr,
+					  (int)inp->inp_fport, name, 1);
+		}
+#ifdef INET6
+		else if (inp->inp_vflag & INP_IPV6) {
+			inet6print(&inp->in6p_laddr,
+				   (int)inp->inp_lport, name, 1);
+			if (!Lflag)
+				inet6print(&inp->in6p_faddr,
+					   (int)inp->inp_fport, name, 1);
+		} /* else nothing printed now */
+#endif /* INET6 */
+	} else if (inp->inp_flags & INP_ANONPORT) {
+		if (inp->inp_vflag & INP_IPV4) {
+			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
+				  name, 1);
+			if (!Lflag)
+				inetprint(&inp->inp_faddr,
+					  (int)inp->inp_fport, name, 0);
+		}
+#ifdef INET6
+		else if (inp->inp_vflag & INP_IPV6) {
+			inet6print(&inp->in6p_laddr,
+				   (int)inp->inp_lport, name, 1);
+			if (!Lflag)
+				inet6print(&inp->in6p_faddr,
+					   (int)inp->inp_fport, name, 0);
+		} /* else nothing printed now */
+#endif /* INET6 */
+	} else {
+		if (inp->inp_vflag & INP_IPV4) {
+			inetprint(&inp->inp_laddr, (int)inp->inp_lport,
+				  name, 0);
+			if (!Lflag)
+				inetprint(&inp->inp_faddr,
+					  (int)inp->inp_fport, name,
+					  inp->inp_lport !=
+						inp->inp_fport);
+		}
+#ifdef INET6
+		else if (inp->inp_vflag & INP_IPV6) {
+			inet6print(&inp->in6p_laddr,
+				   (int)inp->inp_lport, name, 0);
+			if (!Lflag)
+				inet6print(&inp->in6p_faddr,
+					   (int)inp->inp_fport, name,
+					   inp->inp_lport !=
+						inp->inp_fport);
+		} /* else nothing printed now */
+#endif /* INET6 */
+	}
+	if (tp && !Lflag) {
+		if (tp->t_state < 0 || tp->t_state >= TCP_NSTATES)
+			printf("%d", tp->t_state);
+	      else {
+			printf("%s", tcpstates[tp->t_state]);
+#if defined(TF_NEEDSYN) && defined(TF_NEEDFIN)
+		      /* Show T/TCP `hidden state' */
+		      if (tp->t_flags & (TF_NEEDSYN|TF_NEEDFIN))
+			      putchar('*');
+#endif /* defined(TF_NEEDSYN) && defined(TF_NEEDFIN) */
+	      }
+	}
+	putchar('\n');
+}
+
+
 
 #define CPU_STATS_FUNC(proto,type)                            \
 static void                                                   \
@@ -812,7 +833,7 @@ pim_stats(u_long off __unused, char *name, int af1 __unused)
  * Pretty print an Internet address (net address + port).
  */
 void
-inetprint(struct in_addr *in, int port, char *proto, int numeric_port)
+inetprint(struct in_addr *in, int port, const char *proto, int numeric_port)
 {
 	struct servent *sp = 0;
 	char line[80], *cp;
@@ -829,7 +850,7 @@ inetprint(struct in_addr *in, int port, char *proto, int numeric_port)
 		sprintf(cp, "%.15s ", sp ? sp->s_name : "*");
 	else
 		sprintf(cp, "%d ", ntohs((u_short)port));
-	width = (Aflag && !Wflag) ? 18 : 22;
+	width = (Aflag && !Wflag) ? 17 : 21;
 	if (Wflag)
 	    printf("%-*s ", width, line);
 	else

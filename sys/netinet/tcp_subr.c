@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.32 2004/06/04 04:32:23 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.33 2004/06/07 02:36:22 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -104,6 +104,8 @@
 #include <sys/md5.h>
 
 #include <sys/msgport2.h>
+
+#include <machine/smp.h>
 
 int tcp_mssdflt = TCP_MSS;
 SYSCTL_INT(_net_inet_tcp, TCPCTL_MSSDFLT, mssdflt, CTLFLAG_RW, 
@@ -249,6 +251,10 @@ tcp_init()
 	int hashsize = TCBHASHSIZE;
 	int cpu;
 
+	/*
+	 * note: tcptemp is used for keepalives, and it is ok for an
+	 * allocation to fail so do not specify MPF_INT.
+	 */
 	mpipe_init(&tcptemp_mpipe, M_TCPTEMP, sizeof(struct tcptemp),
 		    25, -1, 0, NULL);
 
@@ -275,7 +281,7 @@ tcp_init()
 			 ZONE_INTERRUPT, 0);
 
 	for (cpu = 0; cpu < ncpus2; cpu++) {
-		LIST_INIT(&tcbinfo[cpu].listhead);
+		in_pcbinfo_init(&tcbinfo[cpu]);
 		tcbinfo[cpu].hashbase = hashinit(hashsize, M_PCB,
 		    &tcbinfo[cpu].hashmask);
 		tcbinfo[cpu].porthashbase = porthashbase;
@@ -824,6 +830,8 @@ tcp_drain_oncpu(struct inpcbhead *head)
 	struct tseg_qent *te;
 
 	LIST_FOREACH(inpb, head, inp_list) {
+		if (inpb->inp_flags & INP_PLACEMARKER)
+			continue;
 		if ((tcpb = intotcpcb(inpb))) {
 			while ((te = LIST_FIRST(&tcpb->t_segq)) != NULL) {
 				LIST_REMOVE(te, tqe_q);
@@ -875,7 +883,7 @@ tcp_drain()
 		struct netmsg_tcp_drain *msg;
 
 		if (cpu == mycpu->gd_cpuid) {
-			tcp_drain_oncpu(&tcbinfo[cpu].listhead);
+			tcp_drain_oncpu(&tcbinfo[cpu].pcblisthead);
 		} else {
 			msg = malloc(sizeof(struct netmsg_tcp_drain),
 				    M_LWKTMSG, M_NOWAIT);
@@ -884,12 +892,12 @@ tcp_drain()
 			lwkt_initmsg(&msg->nm_lmsg, &netisr_afree_rport, 0,
 				lwkt_cmd_func(tcp_drain_handler),
 				lwkt_cmd_op_none);
-			msg->nm_head = &tcbinfo[cpu].listhead;
+			msg->nm_head = &tcbinfo[cpu].pcblisthead;
 			lwkt_sendmsg(tcp_cport(cpu), &msg->nm_lmsg);
 		}
 	}
 #else
-	tcp_drain_oncpu(&tcbinfo[0].listhead);
+	tcp_drain_oncpu(&tcbinfo[0].pcblisthead);
 #endif
 }
 
@@ -932,62 +940,90 @@ tcp_notify(struct inpcb *inp, int error)
 static int
 tcp_pcblist(SYSCTL_HANDLER_ARGS)
 {
-	int error, i, n, s;
-	struct inpcb *inp, **inp_list;
+	int error, i, n;
+	struct inpcb *marker;
+	struct inpcb *inp;
 	inp_gen_t gencnt;
 	struct xinpgen xig;
+	globaldata_t gd;
+	int origcpu, ccpu;
+
+	error = 0;
+	n = 0;
 
 	/*
 	 * The process of preparing the TCB list is too time-consuming and
 	 * resource-intensive to repeat twice on every request.
 	 */
 	if (req->oldptr == NULL) {
-		n = tcbinfo[mycpu->gd_cpuid].ipi_count;
-		req->oldidx = 2 * (sizeof xig) +
-			      (n + n/8) * sizeof(struct xtcpcb);
+		for (ccpu = 0; ccpu < ncpus; ++ccpu) {
+			gd = globaldata_find(ccpu);
+			n += tcbinfo[gd->gd_cpuid].ipi_count;
+		}
+		req->oldidx = 2 * ncpus * (sizeof xig) +
+		  (n + n/8) * sizeof(struct xtcpcb);
 		return (0);
 	}
 
 	if (req->newptr != NULL)
 		return (EPERM);
 
+	marker = malloc(sizeof(struct inpcb), M_TEMP, M_WAITOK|M_ZERO);
+	marker->inp_flags |= INP_PLACEMARKER;
+
 	/*
-	 * OK, now we're committed to doing something.
+	 * OK, now we're committed to doing something.  Run the inpcb list
+	 * for each cpu in the system and construct the output.  Use a 
+	 * list placemarker to deal with list changes occuring during
+	 * copyout blockages (but otherwise depend on being on the correct
+	 * cpu to avoid races).
 	 */
-	s = splnet();
-	gencnt = tcbinfo[mycpu->gd_cpuid].ipi_gencnt;
-	n = tcbinfo[mycpu->gd_cpuid].ipi_count;
-	splx(s);
+	origcpu = mycpu->gd_cpuid;
+	for (ccpu = 1; ccpu <= ncpus && error == 0; ++ccpu) {
+		globaldata_t rgd;
+		caddr_t inp_ppcb;
+		struct xtcpcb xt;
+		int cpu_id;
 
-	xig.xig_len = sizeof xig;
-	xig.xig_count = n;
-	xig.xig_gen = gencnt;
-	xig.xig_sogen = so_gencnt;
-	error = SYSCTL_OUT(req, &xig, sizeof xig);
-	if (error != 0)
-		return (error);
+		cpu_id = (origcpu + ccpu) % ncpus;
+		if ((smp_active_mask & (1 << cpu_id)) == 0)
+			continue;
+		rgd = globaldata_find(cpu_id);
+		lwkt_setcpu_self(rgd);
 
-	inp_list = malloc(n * sizeof *inp_list, M_TEMP, M_WAITOK);
-	if (inp_list == NULL)
-		return (ENOMEM);
+		/* indicate change of CPU */
+		cpu_mb1();
 
-	s = splnet();
-	for (inp = LIST_FIRST(&tcbinfo[mycpu->gd_cpuid].listhead), i = 0;
-	    inp && i < n; inp = LIST_NEXT(inp, inp_list)) {
-		if (inp->inp_gencnt <= gencnt && !prison_xinpcb(req->td, inp))
-			inp_list[i++] = inp;
-	}
-	splx(s);
-	n = i;
+		gencnt = tcbinfo[cpu_id].ipi_gencnt;
+		n = tcbinfo[cpu_id].ipi_count;
 
-	error = 0;
-	for (i = 0; i < n; i++) {
-		inp = inp_list[i];
-		if (inp->inp_gencnt <= gencnt) {
-			struct xtcpcb xt;
-			caddr_t inp_ppcb;
+		xig.xig_len = sizeof xig;
+		xig.xig_count = n;
+		xig.xig_gen = gencnt;
+		xig.xig_sogen = so_gencnt;
+		xig.xig_cpu = cpu_id;
+		error = SYSCTL_OUT(req, &xig, sizeof xig);
+		if (error != 0)
+			break;
+
+		LIST_INSERT_HEAD(&tcbinfo[cpu_id].pcblisthead, marker, inp_list);
+		i = 0;
+		while ((inp = LIST_NEXT(marker, inp_list)) != NULL && i < n) {
+			/*
+			 * process a snapshot of pcbs, ignoring placemarkers
+			 * and using our own to allow SYSCTL_OUT to block.
+			 */
+			LIST_REMOVE(marker, inp_list);
+			LIST_INSERT_AFTER(inp, marker, inp_list);
+
+			if (inp->inp_flags & INP_PLACEMARKER)
+				continue;
+			if (inp->inp_gencnt > gencnt)
+				continue;
+			if (prison_xinpcb(req->td, inp))
+				continue;
+
 			xt.xt_len = sizeof xt;
-			/* XXX should avoid extra copy */
 			bcopy(inp, &xt.xt_inp, sizeof *inp);
 			inp_ppcb = inp->inp_ppcb;
 			if (inp_ppcb != NULL)
@@ -996,25 +1032,44 @@ tcp_pcblist(SYSCTL_HANDLER_ARGS)
 				bzero(&xt.xt_tp, sizeof xt.xt_tp);
 			if (inp->inp_socket)
 				sotoxsocket(inp->inp_socket, &xt.xt_socket);
-			error = SYSCTL_OUT(req, &xt, sizeof xt);
+			if ((error = SYSCTL_OUT(req, &xt, sizeof xt)) != 0)
+				break;
+			++i;
+		}
+		LIST_REMOVE(marker, inp_list);
+		if (error == 0 && i < n) {
+			bzero(&xt, sizeof(xt));
+			xt.xt_len = sizeof(xt);
+			while (i < n) {
+				error = SYSCTL_OUT(req, &xt, sizeof (xt));
+				if (error)
+					break;
+				++i;
+			}
+		}
+		if (error == 0) {
+			/*
+			 * Give the user an updated idea of our state.
+			 * If the generation differs from what we told
+			 * her before, she knows that something happened
+			 * while we were processing this request, and it
+			 * might be necessary to retry.
+			 */
+			xig.xig_gen = tcbinfo[cpu_id].ipi_gencnt;
+			xig.xig_sogen = so_gencnt;
+			xig.xig_count = tcbinfo[cpu_id].ipi_count;
+			error = SYSCTL_OUT(req, &xig, sizeof xig);
 		}
 	}
-	if (!error) {
-		/*
-		 * Give the user an updated idea of our state.
-		 * If the generation differs from what we told
-		 * her before, she knows that something happened
-		 * while we were processing this request, and it
-		 * might be necessary to retry.
-		 */
-		s = splnet();
-		xig.xig_gen = tcbinfo[mycpu->gd_cpuid].ipi_gencnt;
-		xig.xig_sogen = so_gencnt;
-		xig.xig_count = tcbinfo[mycpu->gd_cpuid].ipi_count;
-		splx(s);
-		error = SYSCTL_OUT(req, &xig, sizeof xig);
-	}
-	free(inp_list, M_TEMP);
+
+	/*
+	 * Make sure we are on the same cpu we were on originally, since
+	 * higher level callers expect this.  Also don't pollute caches with
+	 * migrated userland data by (eventually) returning to userland
+	 * on a different cpu.
+	 */
+	lwkt_setcpu_self(globaldata_find(origcpu));
+	free(marker, M_TEMP);
 	return (error);
 }
 
@@ -1166,7 +1221,7 @@ tcp_ctlinput(int cmd, struct sockaddr *sa, void *vip)
 		splx(s);
 	} else {
 		for (cpu = 0; cpu < ncpus2; cpu++) {
-			in_pcbnotifyall(&tcbinfo[cpu].listhead, faddr,
+			in_pcbnotifyall(&tcbinfo[cpu].pcblisthead, faddr,
 					inetctlerrmap[cmd], notify);
 		}
 	}
@@ -1228,7 +1283,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		bzero(&th, sizeof th);
 		m_copydata(m, off, sizeof *thp, (caddr_t)&th);
 
-		in6_pcbnotify(&tcbinfo[0].listhead, sa, th.th_dport,
+		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, th.th_dport,
 		    (struct sockaddr *)ip6cp->ip6c_src,
 		    th.th_sport, cmd, notify);
 
@@ -1239,7 +1294,7 @@ tcp6_ctlinput(int cmd, struct sockaddr *sa, void *d)
 		inc.inc_isipv6 = 1;
 		syncache_unreach(&inc, &th);
 	} else
-		in6_pcbnotify(&tcbinfo[0].listhead, sa, 0,
+		in6_pcbnotify(&tcbinfo[0].pcblisthead, sa, 0,
 		    (const struct sockaddr *)sa6_src, 0, cmd, notify);
 }
 #endif

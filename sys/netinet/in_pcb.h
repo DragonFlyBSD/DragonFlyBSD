@@ -33,7 +33,7 @@
  *
  *	@(#)in_pcb.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/in_pcb.h,v 1.32.2.7 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/in_pcb.h,v 1.13 2004/04/28 08:00:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_pcb.h,v 1.14 2004/06/07 02:36:22 dillon Exp $
  */
 
 #ifndef _NETINET_IN_PCB_H_
@@ -232,6 +232,7 @@ struct	xinpgen {
 	u_int	xig_count;	/* number of PCBs at this time */
 	inp_gen_t xig_gen;	/* generation count at this time */
 	so_gen_t xig_sogen;	/* socket generation count at this time */
+	int	xig_cpu;	/* cpu containing additional info */
 };
 #endif /* _SYS_SOCKETVAR_H_ */
 
@@ -248,7 +249,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 	u_long	porthashmask;
 	struct	inpcontainerhead *wildcardhashbase;
 	u_long	wildcardhashmask;
-	struct	inpcbhead listhead;	/* head of queue of active pcb's */
+	struct	inpcbhead pcblisthead;	/* head of queue of active pcb's */
 	u_short	lastport;
 	u_short	lastlow;
 	u_short	lasthi;
@@ -280,6 +281,7 @@ struct inpcbinfo {		/* XXX documentation, prefixes */
 #define	INP_WILDCARD_MP		0x800	/* distributed wildcard match */
 #define	INP_CONNECTED		0x1000	/* exact match */
 #define	INP_WASBOUND_NOTANY	0x2000	/* was bound to non-null laddr */
+#define INP_PLACEMARKER		0x4000	/* skip this pcb, its a placemarker */
 
 #define IN6P_IPV6_V6ONLY	0x008000 /* restrict AF_INET6 socket for v6 */
 
@@ -331,6 +333,7 @@ extern int	ipport_hilastauto;
 void	in_pcbpurgeif0 (struct inpcb *, struct ifnet *);
 void	in_losing (struct inpcb *);
 void	in_rtchange (struct inpcb *, int);
+void	in_pcbinfo_init (struct inpcbinfo *);
 int	in_pcballoc (struct socket *, struct inpcbinfo *);
 int	in_pcbbind (struct inpcb *, struct sockaddr *, struct thread *);
 int	in_pcbconnect (struct inpcb *, struct sockaddr *, struct thread *);
