@@ -33,7 +33,7 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.3 2003/07/24 20:42:33 dillon Exp $
  */
 
 /* 
@@ -56,31 +56,21 @@
 #include <ufs/ufs/ufs_extern.h>
 
 int
-softdep_flushfiles(oldmnt, flags, p)
-	struct mount *oldmnt;
-	int flags;
-	struct proc *p;
+softdep_flushfiles(struct mount *oldmnt, int flags, thread_t td)
 {
-
 	panic("softdep_flushfiles called");
 }
 
 int
-softdep_mount(devvp, mp, fs, cred)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct fs *fs;
-	struct ucred *cred;
+softdep_mount(struct vnode *devvp, struct mount *mp, struct fs *fs)
 {
-
 	return (0);
 }
 
 void 
-softdep_initialize()
+softdep_initialize(void)
 {
-
-	return;
+	/* empty */
 }
 
 void

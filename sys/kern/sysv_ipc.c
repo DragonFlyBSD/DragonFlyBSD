@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.5 2003/07/23 07:14:18 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.6 2003/07/24 20:42:31 dillon Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -80,15 +80,16 @@ ipcperm(struct proc *p, struct ipc_perm *perm, int mode)
 #include <sys/sysproto.h>
 #include <sys/systm.h>
 
-static void sysv_nosys __P((struct proc *p, char *s));
+static void sysv_nosys __P((char *s));
 
 static void 
-sysv_nosys(p, s)
-	struct proc *p;
-	char *s;
+sysv_nosys(char *s)
 {
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+
 	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
-			p->p_comm, p->p_pid, s);
+			td->td_comm, (p ? p->p_pid : -1), s);
 }
 
 #if !defined(SYSVSEM)
@@ -98,47 +99,38 @@ sysv_nosys(p, s)
  */
 
 int
-semsys(p, uap)
-	struct proc *p;
-	struct semsys_args *uap;
+semsys(struct semsys_args *uap)
 {
-	sysv_nosys(p, "SYSVSEM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSEM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-__semctl(p, uap)
-	struct proc *p;
-	register struct __semctl_args *uap;
+__semctl(struct __semctl_args *uap)
 {
-	sysv_nosys(p, "SYSVSEM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSEM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-semget(p, uap)
-	struct proc *p;
-	register struct semget_args *uap;
+semget(struct semget_args *uap)
 {
-	sysv_nosys(p, "SYSVSEM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSEM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-semop(p, uap)
-	struct proc *p;
-	register struct semop_args *uap;
+semop(struct semop_args *uap)
 {
-	sysv_nosys(p, "SYSVSEM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSEM");
+	return nosys((struct nosys_args *)uap);
 };
 
 /* called from kern_exit.c */
 void
-semexit(p)
-	struct proc *p;
+semexit(struct proc *p)
 {
-	return;
+	/* empty */
 }
 
 #endif /* !defined(SYSVSEM) */
@@ -148,52 +140,43 @@ semexit(p)
 
 /*
  * SYSVMSG stubs
+ * 
+ * note: msgsys args actually var-args? YYYY
  */
 
 int
-msgsys(p, uap)
-	struct proc *p;
-	/* XXX actually varargs. */
-	struct msgsys_args *uap;
+msgsys(struct msgsys_args *uap)
 {
-	sysv_nosys(p, "SYSVMSG");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVMSG");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-msgctl(p, uap)
-	struct proc *p;
-	register struct msgctl_args *uap;
+msgctl(struct msgctl_args *uap)
 {
-	sysv_nosys(p, "SYSVMSG");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVMSG");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-msgget(p, uap)
-	struct proc *p;
-	register struct msgget_args *uap;
+msgget(struct msgget_args *uap)
 {
-	sysv_nosys(p, "SYSVMSG");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVMSG");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-msgsnd(p, uap)
-	struct proc *p;
-	register struct msgsnd_args *uap;
+msgsnd(struct msgsnd_args *uap)
 {
-	sysv_nosys(p, "SYSVMSG");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVMSG");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-msgrcv(p, uap)
-	struct proc *p;
-	register struct msgrcv_args *uap;
+msgrcv(struct msgrcv_args *uap)
 {
-	sysv_nosys(p, "SYSVMSG");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVMSG");
+	return nosys((struct nosys_args *)uap);
 };
 
 #endif /* !defined(SYSVMSG) */
@@ -206,64 +189,53 @@ msgrcv(p, uap)
  */
 
 int
-shmdt(p, uap)
-	struct proc *p;
-	struct shmdt_args *uap;
+shmdt(struct shmdt_args *uap)
 {
-	sysv_nosys(p, "SYSVSHM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSHM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-shmat(p, uap)
-	struct proc *p;
-	struct shmat_args *uap;
+shmat(struct shmat_args *uap)
 {
-	sysv_nosys(p, "SYSVSHM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSHM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-shmctl(p, uap)
-	struct proc *p;
-	struct shmctl_args *uap;
+shmctl(struct shmctl_args *uap)
 {
-	sysv_nosys(p, "SYSVSHM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSHM");
+	return nosys((struct nosys_args *)uap);
 };
 
 int
-shmget(p, uap)
-	struct proc *p;
-	struct shmget_args *uap;
+shmget(struct shmget_args *uap)
 {
-	sysv_nosys(p, "SYSVSHM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSHM");
+	return nosys((struct nosys_args *)uap);
 };
 
+/* XXX actually varargs. */
 int
-shmsys(p, uap)
-	struct proc *p;
-	/* XXX actually varargs. */
-	struct shmsys_args *uap;
+shmsys(struct shmsys_args *uap)
 {
-	sysv_nosys(p, "SYSVSHM");
-	return nosys(p, (struct nosys_args *)uap);
+	sysv_nosys("SYSVSHM");
+	return nosys((struct nosys_args *)uap);
 };
 
 /* called from kern_fork.c */
 void
-shmfork(p1, p2)
-	struct proc *p1, *p2;
+shmfork(struct proc *p1, struct proc *p2)
 {
-	return;
+	/* empty */
 }
 
 /* called from kern_exit.c */
 void
 shmexit(struct vmspace *vm)
 {
-	return;
+	/* empty */
 }
 
 #endif /* !defined(SYSVSHM) */
