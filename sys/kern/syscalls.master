@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.16 2005/01/14 02:20:22 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.17 2005/01/14 04:19:49 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -631,5 +631,5 @@
 466	STD	BSD	{ int exec_sys_unregister(int id); }
 467	STD	BSD	{ int sys_checkpoint(int type, int fd, pid_t pid, int retval); }
 468	STD	BSD	{ int mountctl(const char *path, int op, int fd, const void *ctl, int ctllen, void *buf, int buflen); }
-469	STD	BSD	{ int umtx_sleep(const int *ptr, int value, int timeout); }
-470	STD	BSD	{ int umtx_wakeup(const void *ptr, int count); }
+469	STD	BSD	{ int umtx_sleep(volatile const int *ptr, int value, int timeout); }
+470	STD	BSD	{ int umtx_wakeup(volatile const int *ptr, int count); }
