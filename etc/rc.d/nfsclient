@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/nfsclient,v 1.3 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/nfsclient,v 1.1 2003/07/24 06:35:37 dillon Exp $
+# $DragonFly: src/etc/rc.d/nfsclient,v 1.2 2003/11/09 07:31:27 dillon Exp $
 #
 
 # PROVIDE: nfsclient
@@ -54,8 +54,12 @@ unmount_all()
 	# If /var/db/mounttab exists, some nfs-server has not been
 	# successfully notified about a previous client shutdown.
 	# If there is no /var/db/mounttab, we do nothing.
-	if [ -f /var/db/mounttab ]; then
-		rpc.umntall -k
+
+	if checkyesno rpc_umntall_enable; then
+		if [ -f /var/db/mounttab ]; then
+			echo -n ' rpc.umntall'
+			rpc.umntall -k -f
+		fi
 	fi
 }
 load_rc_config $name
