@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_log1pf.c,v 1.5 1999/08/28 00:06:52 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_log1pf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_log1pf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -33,7 +33,8 @@ Lp7 = 1.4798198640e-01; /* 3E178897 */
 
 static const float zero = 0.0;
 
-	float log1pf(float x)
+float
+__generic_log1pf(float x)
 {
 	float hfsq,f,c,s,z,R,u;
 	int32_t k,hx,hu,ax;

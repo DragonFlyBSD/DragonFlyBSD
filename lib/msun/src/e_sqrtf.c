@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_sqrtf.c,v 1.5 1999/08/28 00:06:39 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_sqrtf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_sqrtf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -22,7 +22,7 @@
 static	const float	one	= 1.0, tiny=1.0e-30;
 
 float
-__ieee754_sqrtf(float x)
+__generic___ieee754_sqrtf(float x)
 {
 	float z;
 	int32_t sign = (int)0x80000000;

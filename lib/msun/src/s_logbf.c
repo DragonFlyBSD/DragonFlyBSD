@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_logbf.c,v 1.5 1999/08/28 00:06:53 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_logbf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_logbf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -20,7 +20,7 @@
 #include "math_private.h"
 
 float
-logbf(float x)
+__generic_logbf(float x)
 {
 	int32_t ix;
 	GET_FLOAT_WORD(ix,x);

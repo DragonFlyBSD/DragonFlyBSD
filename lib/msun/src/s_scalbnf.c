@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_scalbnf.c,v 1.5 1999/08/28 00:06:54 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_scalbnf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_scalbnf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -26,7 +26,7 @@ huge   = 1.0e+30,
 tiny   = 1.0e-30;
 
 float
-scalbnf (float x, int n)
+__generic_scalbnf(float x, int n)
 {
 	int32_t k,ix;
 	GET_FLOAT_WORD(ix,x);

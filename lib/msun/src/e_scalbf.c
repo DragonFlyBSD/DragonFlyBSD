@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_scalbf.c,v 1.5 1999/08/28 00:06:38 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_scalbf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_scalbf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -21,10 +21,10 @@
 
 #ifdef _SCALB_INT
 float
-__ieee754_scalbf(float x, int fn)
+__generic___ieee754_scalbf(float x, int fn)
 #else
 float
-__ieee754_scalbf(float x, float fn)
+__generic___ieee754_scalbf(float x, float fn)
 #endif
 {
 #ifdef _SCALB_INT

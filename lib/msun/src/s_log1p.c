@@ -10,7 +10,7 @@
  * ====================================================
  *
  * $FreeBSD: src/lib/msun/src/s_log1p.c,v 1.5 1999/08/28 00:06:52 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_log1p.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_log1p.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /* double log1p(double x)
@@ -96,7 +96,7 @@ Lp7 = 1.479819860511658591e-01;  /* 3FC2F112 DF3E5244 */
 static const double zero = 0.0;
 
 double
-log1p(double x)
+__generic_log1p(double x)
 {
 	double hfsq,f,c,s,z,R,u;
 	int32_t k,hx,hu,ax;

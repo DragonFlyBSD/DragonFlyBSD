@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_atan2f.c,v 1.5 1999/08/28 00:06:29 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_atan2f.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_atan2f.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -28,7 +28,7 @@ pi      = 3.1415925026e+00, /* 0x40490fda */
 pi_lo   = 1.5099578832e-07; /* 0x34222168 */
 
 float
-__ieee754_atan2f(float y, float x)
+__generic___ieee754_atan2f(float y, float x)
 {
 	float z;
 	int32_t k,m,hx,hy,ix,iy;

@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_atanf.c,v 1.5 1999/08/28 00:06:44 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_atanf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_atanf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -52,7 +52,7 @@ one   = 1.0,
 huge   = 1.0e30;
 
 float
-atanf(float x)
+__generic_atanf(float x)
 {
 	float w,s1,s2,z;
 	int32_t ix,hx,id;

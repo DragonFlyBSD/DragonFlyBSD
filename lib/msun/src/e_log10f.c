@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_log10f.c,v 1.6 1999/08/28 00:06:36 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_log10f.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_log10f.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -28,7 +28,7 @@ log10_2lo  =  7.9034151668e-07; /* 0x355427db */
 static const float zero   =  0.0;
 
 float
-__ieee754_log10f(float x)
+__generic___ieee754_log10f(float x)
 {
 	float y,z;
 	int32_t i,k,hx;

@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_rintf.c,v 1.6 1999/08/28 00:06:54 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_rintf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_rintf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -32,7 +32,7 @@ TWO23[2]={
 };
 
 float
-rintf(float x)
+__generic_rintf(float x)
 {
 	int32_t i0,j0,sx;
 	u_int32_t i,i1;

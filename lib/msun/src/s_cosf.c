@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/s_cosf.c,v 1.5 1999/08/28 00:06:46 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/s_cosf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/s_cosf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -22,7 +22,7 @@
 static const float one=1.0;
 
 float
-cosf(float x)
+__generic_cosf(float x)
 {
 	float y[2],z=0.0;
 	int32_t n,ix;

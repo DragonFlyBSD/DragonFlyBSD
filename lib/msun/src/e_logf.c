@@ -2,7 +2,7 @@
  * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
  *
  * $FreeBSD: src/lib/msun/src/e_logf.c,v 1.5 1999/08/28 00:06:36 peter Exp $
- * $DragonFly: src/lib/msun/src/Attic/e_logf.c,v 1.3 2004/12/29 15:22:57 asmodai Exp $
+ * $DragonFly: src/lib/msun/src/Attic/e_logf.c,v 1.4 2004/12/29 17:48:27 asmodai Exp $
  */
 
 /*
@@ -34,7 +34,7 @@ Lg7 = 1.4798198640e-01; /* 3E178897 */
 static const float zero   =  0.0;
 
 float
-__ieee754_logf(float x)
+__generic___ieee754_logf(float x)
 {
 	float hfsq,f,s,z,R,w,t1,t2,dk;
 	int32_t k,ix,i,j;
