@@ -1,13 +1,15 @@
 /*
  * Grand digital clock for curses compatible terminals
- * Usage: grdc [-s] [n]   -- run for n seconds (default infinity)
- * Flags: -s: scroll
+ * Usage: grdc [-s] [-d msecs] [n]   -- run for n seconds (default infinity)
+ * Flags:	-s: scroll (default scroll duration 120msec)
+ *	-d msecs: specify scroll duration (implies -s)
  *
  * modified 10-18-89 for curses (jrl)
  * 10-18-89 added signal handling
+ * 03-23-04 added centering, scroll delay (cap)
  *
  * $FreeBSD: src/games/grdc/grdc.c,v 1.8.2.1 2001/10/02 11:51:49 ru Exp $
- * $DragonFly: src/games/grdc/grdc.c,v 1.3 2004/03/23 18:34:41 cpressey Exp $
+ * $DragonFly: src/games/grdc/grdc.c,v 1.4 2004/03/25 23:55:13 cpressey Exp $
  */
 
 #include <err.h>
@@ -18,9 +20,8 @@
 #ifndef NONPOSIX
 #include <unistd.h>
 #endif
+#include <time.h>
 
-#define YBASE	10
-#define XBASE	10
 #define XLENGTH 58
 #define YDEPTH  7
 
@@ -36,12 +37,15 @@ long old[6], next[6], new[6], mask;
 volatile sig_atomic_t sigtermed;
 
 int hascolor = 0;
+long int scroll_msecs = 120;
+int xbase, ybase, xmax, ymax;
 
 static void set(int, int);
 static void standt(int);
 static void sighndl(int);
 static void usage(void);
 static void draw_row(int, int);
+static void snooze(long int);
 
 void sighndl(int signo)
 {
@@ -55,11 +59,17 @@ main(int argc, char **argv)
 	int n;
 	int ch;
 	int scrol;
+	int forever = 1;
 
 	scrol = 0;
 
-	while ((ch = getopt(argc, argv, "s")) != -1)
+	while ((ch = getopt(argc, argv, "d:s")) != -1)
 		switch (ch) {
+		case 'd':
+			scroll_msecs = atol(optarg);
+			if (scroll_msecs < 0)
+				errx(1, "scroll duration may not be negative");
+			/* FALLTHROUGH */
 		case 's':
 			scrol = 1;
 			break;
@@ -76,12 +86,20 @@ main(int argc, char **argv)
 		/* NOTREACHED */
 	}
 
-	if (argc > 0)
+	if (argc > 0) {
 		n = atoi(*argv);
-	else
-		n = 0;
+		forever = 0;
+	}
 
 	initscr();
+
+	getmaxyx(stdscr, ymax, xmax);
+	if (ymax < YDEPTH + 2 || xmax < XLENGTH + 4) {
+		endwin();
+		errx(1, "terminal too small");
+	}
+	xbase = (xmax - XLENGTH) / 2 + 2;
+	ybase = (ymax - YDEPTH) / 2 + 1;
 
 	signal(SIGINT, sighndl);
 	signal(SIGTERM, sighndl);
@@ -107,21 +125,22 @@ main(int argc, char **argv)
 	if (hascolor) {
 		attrset(COLOR_PAIR(3));
 
-		mvaddch(YBASE - 2, XBASE - 3, ACS_ULCORNER);
+		mvaddch(ybase - 2, xbase - 3, ACS_ULCORNER);
 		hline(ACS_HLINE, XLENGTH);
-		mvaddch(YBASE - 2, XBASE - 2 + XLENGTH, ACS_URCORNER);
+		mvaddch(ybase - 2, xbase - 2 + XLENGTH, ACS_URCORNER);
 
-		mvaddch(YBASE + YDEPTH - 1, XBASE - 3, ACS_LLCORNER);
+		mvaddch(ybase + YDEPTH - 1, xbase - 3, ACS_LLCORNER);
 		hline(ACS_HLINE, XLENGTH);
-		mvaddch(YBASE + YDEPTH - 1, XBASE - 2 + XLENGTH, ACS_LRCORNER);
+		mvaddch(ybase + YDEPTH - 1, xbase - 2 + XLENGTH, ACS_LRCORNER);
 
-		move(YBASE - 1, XBASE - 3);
+		move(ybase - 1, xbase - 3);
 		vline(ACS_VLINE, YDEPTH);
 
-		move(YBASE - 1, XBASE - 2 + XLENGTH);
+		move(ybase - 1, xbase - 2 + XLENGTH);
 		vline(ACS_VLINE, YDEPTH);
 
 		attrset(COLOR_PAIR(2));
+		refresh();
 	}
 	do {
 		mask = 0;
@@ -137,6 +156,7 @@ main(int argc, char **argv)
 		set(10, 17);
 		for(k = 0; k < 6; k++) {
 			if (scrol) {
+				snooze(scroll_msecs / 6);
 				for(i = 0; i < 5; i++)
 					new[i] = (new[i] & ~mask) |
 						 (new[i+1] & mask);
@@ -150,26 +170,39 @@ main(int argc, char **argv)
 					draw_row(i, s);
 				}
 				if (!s) {
+					move(ybase, 0);
 					refresh();
 				}
 			}
 		}
-		move(6, 0);
+		move(ybase, 0);
 		refresh();
-		sleep(1);
-		if (sigtermed) {
-			standend();
-			clear();
-			refresh();
-			endwin();
-			errx(1, "terminated by signal %d", (int)sigtermed);
-		}
-	} while(--n);
+		snooze(1000 - (scrol ? scroll_msecs : 0));
+	} while (forever ? 1 : --n);
 	standend();
 	clear();
 	refresh();
 	endwin();
 	return(0);
+}
+
+void
+snooze(long int msecs)
+{
+	struct timespec ts;
+  
+	ts.tv_sec = 0;
+	ts.tv_nsec = 1000000 * msecs;
+
+	nanosleep(&ts, NULL);
+
+	if (sigtermed) {
+		standend();
+		clear();
+		refresh();
+		endwin();
+		errx(1, "terminated by signal %d", (int)sigtermed);
+	}
 }
 
 void
@@ -182,7 +215,7 @@ draw_row(int i, int s)
 		for (j = 0, t = 1 << 26; t; t >>= 1, j++) {
 			if (a & t) {
 				if (!(a & (t << 1))) {
-					move(YBASE + i, XBASE + 2 * j);
+					move(ybase + i, xbase + 2 * j);
 				}
 				addstr("  ");
 			}
@@ -228,6 +261,6 @@ standt(int on)
 void
 usage(void)
 {
-	fprintf(stderr, "usage: grdc [-s] [n]\n");
+	fprintf(stderr, "usage: grdc [-s] [-d msecs] [n]\n");
 	exit(1);
 }
