@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.40 2004/10/22 17:59:59 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.41 2004/10/28 18:56:52 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -904,9 +904,14 @@ restart:
 
 	/*
 	 * Initialize as a new UNRESOLVED entry, lock (non-blocking),
-	 * and link to the parent.
+	 * and link to the parent.  Only special mount points will have
+	 * a namelen of 0.  Those will have their nc_mount assigned through
+	 * other means.
 	 */
-	bcopy(nlc->nlc_nameptr, ncp->nc_name, nlc->nlc_namelen);
+	if (nlc->nlc_namelen) {
+		bcopy(nlc->nlc_nameptr, ncp->nc_name, nlc->nlc_namelen);
+		ncp->nc_mount = par->nc_mount;
+	}
 	nchpp = NCHHASH(hash);
 	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 	ncp->nc_flag |= NCF_HASHED;
@@ -1383,6 +1388,7 @@ againagain:
 		nchpp = NCHHASH(hash);
 		LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 		ncp->nc_flag |= NCF_HASHED;
+		ncp->nc_mount = dvp->v_mount;
 		cache_link_parent(ncp, par);
 	} else if (new_ncp) {
 		cache_free(new_ncp);
@@ -1591,7 +1597,7 @@ cache_purgevfs(struct mount *mp)
 			nnp = LIST_NEXT(ncp, nc_hash);
 			if (nnp)
 				cache_hold(nnp);
-			if (ncp->nc_vp && ncp->nc_vp->v_mount == mp) {
+			if (ncp->nc_mount == mp) {
 				cache_lock(ncp);
 				cache_zap(ncp);
 			} else {
