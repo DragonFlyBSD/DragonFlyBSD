@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.15 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.16 2003/11/30 20:13:53 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -92,6 +92,8 @@ struct malloc_type {
 	__uint16_t ks_mapblocks; /* number of times blocked for kernel map */
 	long	ks_reserved[4];	/* future use (module compatibility) */
 };
+
+typedef struct malloc_type	*malloc_type_t;
 
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 

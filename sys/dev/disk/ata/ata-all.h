@@ -26,8 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.26.2.12 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.3 2003/07/19 21:14:18 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.4 2003/11/30 20:14:18 dillon Exp $
  */
+
+#ifndef _SYS_MPIPE_H_
+#include <sys/mpipe.h>
+#endif
 
 /* ATA register defines */
 #define ATA_DATA			0x00	/* data register */
@@ -225,6 +229,8 @@ struct ata_channel {
     TAILQ_HEAD(, ad_request)	ata_queue;	/* head of ATA queue */
     TAILQ_HEAD(, atapi_request) atapi_queue;	/* head of ATAPI queue */
     void			*running;	/* currently running request */
+    struct malloc_pipe		req_mpipe;	/* request allocations */
+    struct malloc_pipe		dma_mpipe;	/* dma allocations */
 };
 
 /* disk bay/enclosure related */
@@ -236,6 +242,7 @@ struct ata_channel {
 
 /* externs */
 extern devclass_t ata_devclass;
+extern int	ata_mpipe_size;
  
 /* public prototypes */
 int ata_probe(device_t);
@@ -263,7 +270,8 @@ int ata_wmode(struct ata_params *);
 int ata_umode(struct ata_params *);
 int ata_find_dev(device_t, u_int32_t, u_int32_t);
 
-void *ata_dmaalloc(struct ata_channel *, int);
+void *ata_dmaalloc(struct ata_channel *, int, int);
+void ata_dmafree(struct ata_channel *, void *buf);
 void ata_dmainit(struct ata_channel *, int, int, int, int);
 int ata_dmasetup(struct ata_channel *, int, struct ata_dmaentry *, caddr_t, int);
 void ata_dmastart(struct ata_channel *, int, struct ata_dmaentry *, int);

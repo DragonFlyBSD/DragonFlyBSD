@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cam.c,v 1.10.2.3 2003/05/21 09:24:55 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cam.c,v 1.4 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ atapi_cam_attach_bus(struct ata_channel *ata_ch)
     }
 
     if ((scp = malloc(sizeof(struct atapi_xpt_softc),
-		      M_ATACAM, M_NOWAIT | M_ZERO)) == NULL)
+		      M_ATACAM, M_WAITOK | M_ZERO)) == NULL)
 	goto error;
 
     scp->ata_ch = ata_ch;
@@ -481,7 +481,7 @@ atapi_action(struct cam_sim *sim, union ccb *ccb)
 	if ((ccb_h->flags & CAM_DIR_MASK) == CAM_DIR_IN && (len & 1)) {
 	    /* ATA always transfers an even number of bytes */
 	    if (!(buf = hcb->dxfer_alloc = malloc(++len, M_ATACAM,
-						  M_NOWAIT | M_ZERO)))
+						  M_WAITOK | M_ZERO)))
 		goto action_oom;
 	}
 	s = splbio();
@@ -652,7 +652,7 @@ static struct atapi_hcb *
 allocate_hcb(struct atapi_xpt_softc *softc, int unit, int bus, union ccb *ccb)
 {
     struct atapi_hcb *hcb = (struct atapi_hcb *)
-    malloc(sizeof(struct atapi_hcb), M_ATACAM, M_NOWAIT | M_ZERO);
+    malloc(sizeof(struct atapi_hcb), M_ATACAM, M_WAITOK | M_ZERO);
 
     if (hcb != NULL) {
 	hcb->softc = softc;

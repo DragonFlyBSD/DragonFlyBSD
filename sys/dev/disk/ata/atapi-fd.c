@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-fd.c,v 1.44.2.9 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.8 2003/11/15 21:05:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-fd.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ afdattach(struct ata_device *atadev)
     struct afd_softc *fdp;
     dev_t dev;
 
-    fdp = malloc(sizeof(struct afd_softc), M_AFD, M_NOWAIT | M_ZERO);
+    fdp = malloc(sizeof(struct afd_softc), M_AFD, M_WAITOK | M_ZERO);
     if (!fdp) {
 	ata_prtdev(atadev, "out of memory\n");
 	return 0;

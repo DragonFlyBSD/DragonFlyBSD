@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.5 2003/11/26 14:24:46 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.6 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -34,6 +34,7 @@
 #include <sys/ata.h>
 #include <sys/buf.h>
 #include <sys/malloc.h> 
+#include <sys/mpipe.h> 
 #include <sys/bus.h>
 #include <sys/disk.h>
 #include <sys/devicestat.h>
@@ -60,19 +61,21 @@ static int hpt_cable80(struct ata_channel *);
 	 (device == ATA_SLAVE && ch->devices & ATA_ATAPI_SLAVE))
 
 void *
-ata_dmaalloc(struct ata_channel *ch, int device)
+ata_dmaalloc(struct ata_channel *ch, int device, int flags)
 {
     void *dmatab;
 
-    if ((dmatab = malloc(PAGE_SIZE, M_DEVBUF, M_NOWAIT))) {
-	if (((uintptr_t)dmatab >> PAGE_SHIFT) ^
-	    (((uintptr_t)dmatab + PAGE_SIZE - 1) >> PAGE_SHIFT)) {
-	    ata_printf(ch, device, "dmatab crosses page boundary, no DMA\n");
-	    free(dmatab, M_DEVBUF);
-	    dmatab = NULL;
-	}
-    }
-    return dmatab;
+    KKASSERT(ch->dma_mpipe.max_count != 0);
+    dmatab = mpipe_alloc(&ch->dma_mpipe, flags);
+    KKASSERT(((uintptr_t)dmatab & PAGE_MASK) == 0);
+    return (dmatab);
+}
+
+void
+ata_dmafree(struct ata_channel *ch, void *dmatab)
+{
+    if (dmatab)
+	mpipe_free(&ch->dma_mpipe, dmatab);
 }
 
 void

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-isa.c,v 1.4.2.1 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.3 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-isa.c,v 1.4 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -109,9 +109,14 @@ DRIVER_MODULE(ata, isa, ata_isa_driver, ata_devclass, 0, 0);
 #include "use_pci.h"
 #if NPCI == 0
 void *
-ata_dmaalloc(struct ata_channel *ch, int device)
+ata_dmaalloc(struct ata_channel *ch, int device, int flags)
 {
     return 0;
+}
+
+void
+ata_dmafree(struct ata_channel *ch, void *dmatab)
+{
 }
 
 void

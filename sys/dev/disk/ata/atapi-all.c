@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.4 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.5 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -94,7 +94,7 @@ atapi_attach(struct ata_device *atadev)
     ATA_UNLOCK_CH(atadev->channel);
 
     if (!(atadev->result = malloc(sizeof(struct atapi_reqsense), M_ATAPI,
-				  M_NOWAIT | M_ZERO)))
+				  M_WAITOK | M_ZERO)))
 	ata_prtdev(atadev, "no memory for sense data\n");
 
     switch (atadev->param->type) {
@@ -162,7 +162,7 @@ atapi_detach(struct ata_device *atadev)
 	    biodone(bp);
 	}
 	if (request->dmatab)
-	    free(request->dmatab, M_DEVBUF);
+	    ata_dmafree(atadev->channel, request->dmatab);
 	free(request, M_ATAPI);
     }
     free(atadev->result, M_ATAPI);
@@ -178,10 +178,12 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 {
     struct atapi_request *request;
     int error, s;
- 
-    if (!(request = malloc(sizeof(struct atapi_request), M_ATAPI,
-			   M_NOWAIT | M_ZERO)))
-	return ENOMEM;
+
+    request = malloc(sizeof(struct atapi_request), M_ATAPI, M_NOWAIT|M_ZERO);
+    if (request == NULL) {
+	printf("WARNNIG: atapi_queue_cmd: malloc() would block\n");
+	request = malloc(sizeof(struct atapi_request), M_ATAPI, M_WAITOK|M_ZERO);
+    }
 
     request->device = atadev;
     request->data = data;
@@ -196,8 +198,12 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 	request->driver = driver;
     }
     if (atadev->mode >= ATA_DMA) {
-	if (!(request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit)))
-	    atadev->mode = ATA_PIO;
+	request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit, M_NOWAIT);
+	if (request->dmatab == NULL) {
+	    printf("WARNING: atapi_queue_cmd: ata_dmaalloc() would block\n");
+	    request->dmatab = ata_dmaalloc(atadev->channel,
+					atadev->unit, M_WAITOK);
+	}
     }
 
 #ifdef ATAPI_DEBUG
@@ -226,7 +232,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     if (error)
 	 bcopy(&request->sense, atadev->result, sizeof(struct atapi_reqsense));
     if (request->dmatab)
-	free(request->dmatab, M_DEVBUF);
+	ata_dmafree(atadev->channel, request->dmatab);
     free(request, M_ATAPI);
     return error;
 }
@@ -606,7 +612,7 @@ atapi_finish(struct atapi_request *request)
     if (request->callback) {
 	if (!((request->callback)(request))) {
 	    if (request->dmatab)
-		free(request->dmatab, M_DEVBUF);
+		ata_dmafree(request->device->channel, request->dmatab);
 	    free(request, M_ATAPI);
 	}
     }

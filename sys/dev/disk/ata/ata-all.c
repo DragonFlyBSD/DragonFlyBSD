@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.8 2003/11/09 02:22:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -60,6 +60,11 @@
 #include "ata-disk.h"
 #include "ata-raid.h"
 #include "atapi-all.h"
+
+union ata_request {
+	struct ad_request	ad;
+	struct atapi_request	atapi;
+};
 
 /* device structures */
 static	d_ioctl_t	ataioctl;
@@ -96,6 +101,12 @@ static int ata_enclosure_status(struct ata_device *, int *, int *, int *, int *)
 
 /* sysctl vars */
 SYSCTL_NODE(_hw, OID_AUTO, ata, CTLFLAG_RD, 0, "ATA driver parameters");
+
+int ata_mpipe_size = 4;
+TUNABLE_INT("hw.ata.mpipe_size", &ata_mpipe_size);
+SYSCTL_INT(_hw_ata, OID_AUTO, mpipe_size, CTLFLAG_RW, &ata_mpipe_size, 0,
+           "ATA global I/O pipeline max size");
+
 
 /* global vars */
 devclass_t ata_devclass;
@@ -155,6 +166,10 @@ ata_probe(device_t dev)
     ch->device[SLAVE].mode = ATA_PIO;
     TAILQ_INIT(&ch->ata_queue);
     TAILQ_INIT(&ch->atapi_queue);
+
+    mpipe_init(&ch->req_mpipe, M_ATA, sizeof(union ata_request), 4, ata_mpipe_size);
+    mpipe_init(&ch->dma_mpipe, M_DEVBUF, PAGE_SIZE, 4, ata_mpipe_size);
+
     return 0;
     
 failure:
@@ -286,6 +301,9 @@ ata_detach(device_t dev)
     ch->r_altio = NULL;
     ch->r_bmio = NULL;
     ch->r_irq = NULL;
+    mpipe_done(&ch->req_mpipe);
+    mpipe_done(&ch->dma_mpipe);
+
     ATA_UNLOCK_CH(ch);
     return 0;
 }
@@ -435,7 +453,7 @@ ataioctl(dev_t dev, u_long cmd, caddr_t addr, int32_t flag, struct thread *td)
 				 ATA_ATAPI_MASTER : ATA_ATAPI_SLAVE)))
 		return ENODEV;
 
-	    if (!(buf = malloc(iocmd->u.atapi.count, M_ATA, M_NOWAIT)))
+	    if (!(buf = malloc(iocmd->u.atapi.count, M_ATA, M_WAITOK)))
 		return ENOMEM;
 
 	    if (iocmd->u.atapi.flags & ATAPI_CMD_WRITE) {
@@ -473,7 +491,7 @@ ata_getparam(struct ata_device *atadev, u_int8_t command)
     struct ata_params *ata_parm;
     int retry = 0;
 
-    if (!(ata_parm = malloc(sizeof(struct ata_params), M_ATA, M_NOWAIT))) {
+    if (!(ata_parm = malloc(sizeof(struct ata_params), M_ATA, M_WAITOK))) {
 	ata_prtdev(atadev, "malloc for identify data failed\n");
 	return -1;
     }
@@ -1400,7 +1418,7 @@ ata_prtdev(struct ata_device *atadev, const char * fmt, ...)
 void
 ata_set_name(struct ata_device *atadev, char *name, int lun)
 {
-    atadev->name = malloc(strlen(name) + 4, M_ATA, M_NOWAIT);
+    atadev->name = malloc(strlen(name) + 4, M_ATA, M_WAITOK);
     if (atadev->name)
 	sprintf(atadev->name, "%s%d", name, lun);
 }
@@ -1559,7 +1577,7 @@ ata_init(void)
     /* register boot attach to be run when interrupts are enabled */
     if (!(ata_delayed_attach = (struct intr_config_hook *)
 			       malloc(sizeof(struct intr_config_hook),
-				      M_TEMP, M_NOWAIT | M_ZERO))) {
+				      M_TEMP, M_WAITOK | M_ZERO))) {
 	printf("ata: malloc of delayed attach hook failed\n");
 	return;
     }

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.8 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -99,7 +99,7 @@ astattach(struct ata_device *atadev)
     struct ast_readposition position;
     dev_t dev;
 
-    stp = malloc(sizeof(struct ast_softc), M_AST, M_NOWAIT | M_ZERO);
+    stp = malloc(sizeof(struct ast_softc), M_AST, M_WAITOK | M_ZERO);
     if (!stp) {
 	ata_prtdev(atadev, "out of memory\n");
 	return 0;

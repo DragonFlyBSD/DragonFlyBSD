@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.8 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -132,7 +132,7 @@ acdattach(struct ata_device *atadev)
 			   sizeof(struct changer)>>8, sizeof(struct changer),
 			   0, 0, 0, 0, 0, 0 };
 
-	chp = malloc(sizeof(struct changer), M_ACD, M_NOWAIT | M_ZERO);
+	chp = malloc(sizeof(struct changer), M_ACD, M_WAITOK | M_ZERO);
 	if (chp == NULL) {
 	    ata_prtdev(atadev, "out of memory\n");
 	    free(cdp, M_ACD);
@@ -148,7 +148,7 @@ acdattach(struct ata_device *atadev)
 
 	    chp->table_length = htons(chp->table_length);
 	    if (!(cdparr = malloc(sizeof(struct acd_softc) * chp->slots,
-				  M_ACD, M_NOWAIT))) {
+				  M_ACD, M_WAITOK))) {
 		ata_prtdev(atadev, "out of memory\n");
 		free(chp, M_ACD);
 		free(cdp, M_ACD);
@@ -172,7 +172,7 @@ acdattach(struct ata_device *atadev)
 				  DEVSTAT_TYPE_CDROM | DEVSTAT_TYPE_IF_IDE,
 				  DEVSTAT_PRIORITY_CD);
 	    }
-	    name = malloc(strlen(atadev->name) + 2, M_ACD, M_NOWAIT);
+	    name = malloc(strlen(atadev->name) + 2, M_ACD, M_WAITOK);
 	    strcpy(name, atadev->name);
 	    strcat(name, "-");
 	    ata_free_name(atadev);
@@ -248,7 +248,7 @@ acd_init_lun(struct ata_device *atadev)
 {
     struct acd_softc *cdp;
 
-    if (!(cdp = malloc(sizeof(struct acd_softc), M_ACD, M_NOWAIT | M_ZERO)))
+    if (!(cdp = malloc(sizeof(struct acd_softc), M_ACD, M_WAITOK | M_ZERO)))
 	return NULL;
     TAILQ_INIT(&cdp->dev_list);
     bufq_init(&cdp->queue);
@@ -258,7 +258,7 @@ acd_init_lun(struct ata_device *atadev)
     cdp->slot = -1;
     cdp->changer_info = NULL;
     if (!(cdp->stats = malloc(sizeof(struct devstat), M_ACD,
-			      M_NOWAIT | M_ZERO))) {
+			      M_WAITOK | M_ZERO))) {
 	free(cdp, M_ACD);
 	return NULL;
     }
@@ -673,7 +673,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	    if (te->address_format == CD_MSF_FORMAT) {
 		struct cd_toc_entry *entry;
 
-		toc = malloc(sizeof(struct toc), M_ACD, M_NOWAIT | M_ZERO);
+		toc = malloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 		entry = toc->tab + (toc->hdr.ending_track + 1 -
 			toc->hdr.starting_track) + 1;
@@ -718,7 +718,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 	    if (te->address_format == CD_MSF_FORMAT) {
 		struct cd_toc_entry *entry;
 
-		toc = malloc(sizeof(struct toc), M_ACD, M_NOWAIT | M_ZERO);
+		toc = malloc(sizeof(struct toc), M_ACD, M_WAITOK | M_ZERO);
 		bcopy(&cdp->toc, toc, sizeof(struct toc));
 
 		entry = toc->tab + (track - toc->hdr.starting_track);
@@ -858,7 +858,7 @@ acdioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 #ifndef CD_BUFFER_BLOCKS
 #define CD_BUFFER_BLOCKS 13
 #endif
-	    if (!(buffer = malloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_NOWAIT))){
+	    if (!(buffer = malloc(CD_BUFFER_BLOCKS * 2352, M_ACD, M_WAITOK))){
 		error = ENOMEM;
 		break;
 	    }
@@ -1340,7 +1340,7 @@ acd_read_toc(struct acd_softc *cdp)
 	char name[16];
 
 	sprintf(name, "acd%dt%d", cdp->lun, track);
-	entry = malloc(sizeof(struct acd_devlist), M_ACD, M_NOWAIT | M_ZERO);
+	entry = malloc(sizeof(struct acd_devlist), M_ACD, M_WAITOK | M_ZERO);
 	entry->dev = make_dev(&acd_cdevsw, (cdp->lun << 3) | (track << 16),
 			      0, 0, 0644, name, NULL);
 	entry->dev->si_drv1 = cdp->dev->si_drv1;
@@ -1649,7 +1649,7 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
     if ((error = acd_mode_select(cdp, (caddr_t)&param, param.page_length + 10)))
 	return error;
 
-    buffer = malloc(cuesheet->len, M_ACD, M_NOWAIT);
+    buffer = malloc(cuesheet->len, M_ACD, M_WAITOK);
     if (!buffer)
 	return ENOMEM;
     if ((error = copyin(cuesheet->entries, buffer, cuesheet->len)))
@@ -1711,7 +1711,7 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     ccb[9] = length & 0xff;
     ccb[10] = (ai->agid << 6) | ai->format;
 
-    d = malloc(length, M_ACD, M_NOWAIT | M_ZERO);
+    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
     d->length = htons(length - 2);
 
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
@@ -1775,19 +1775,19 @@ acd_send_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     switch (ai->format) {
     case DVD_SEND_CHALLENGE:
 	length = 16;
-	d = malloc(length, M_ACD, M_NOWAIT | M_ZERO);
+	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(ai->keychal, &d->data[0], 10);
 	break;
 
     case DVD_SEND_KEY2:
 	length = 12;
-	d = malloc(length, M_ACD, M_NOWAIT | M_ZERO);
+	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
 	bcopy(&ai->keychal[0], &d->data[0], 5);
 	break;
     
     case DVD_SEND_RPC:
 	length = 8;
-	d = malloc(length, M_ACD, M_NOWAIT | M_ZERO);
+	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
 	d->data[0] = ai->region;
 	break;
 
@@ -1850,7 +1850,7 @@ acd_read_structure(struct acd_softc *cdp, struct dvd_struct *s)
 	return EINVAL;
     }
 
-    d = malloc(length, M_ACD, M_NOWAIT | M_ZERO);
+    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
     d->length = htons(length - 2);
 	
     bzero(ccb, sizeof(ccb));

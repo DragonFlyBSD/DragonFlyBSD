@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.7 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.8 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -115,10 +115,13 @@ ad_attach(struct ata_device *atadev)
     struct ad_softc *adp;
     dev_t dev;
 
-    if (!(adp = malloc(sizeof(struct ad_softc), M_AD, M_NOWAIT | M_ZERO))) {
+    if (!(adp = malloc(sizeof(struct ad_softc), M_AD, M_WAITOK | M_ZERO))) {
 	ata_prtdev(atadev, "failed to allocate driver storage\n");
 	return;
     }
+
+    KKASSERT(atadev->channel->req_mpipe.max_count != 0);
+
     adp->device = atadev;
 #ifdef ATA_STATIC_ID
     adp->lun = (device_get_unit(atadev->channel->dev)<<1)+ATA_DEV(atadev->unit);
@@ -397,8 +400,14 @@ ad_start(struct ata_device *atadev)
 	    return;
     }
 
-    if (!(request = malloc(sizeof(struct ad_request), M_AD, M_NOWAIT|M_ZERO))) {
-	ata_prtdev(atadev, "out of memory in start\n");
+    /*
+     * Allocate a request.  The allocation can only fail if the pipeline
+     * is full, in which case the request will be picked up later when
+     * ad_start() is called after another request completes.
+     */
+    request = mpipe_alloc(&atadev->channel->req_mpipe, M_NOWAIT|M_ZERO);
+    if (request == NULL) {
+	ata_prtdev(atadev, "pipeline full allocating request in ad_start\n");
 	return;
     }
 
@@ -412,8 +421,13 @@ ad_start(struct ata_device *atadev)
     if (bp->b_flags & B_READ) 
 	request->flags |= ADR_F_READ;
     if (adp->device->mode >= ATA_DMA) {
-	if (!(request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit)))
-	    adp->device->mode = ATA_PIO;
+	request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit, M_NOWAIT);
+	if (request->dmatab == NULL) {
+	    mpipe_free(&atadev->channel->req_mpipe, request);
+	    ata_prtdev(atadev, "pipeline full allocated dmabuf in ad_start\n");
+	    /* do not revert to PIO, wait for ad_start after I/O completion */
+	    return;
+	}
     }
 
     /* insert in tag array */
@@ -804,9 +818,9 @@ ad_free(struct ad_request *request)
     int s = splbio();
 
     if (request->dmatab)
-	free(request->dmatab, M_DEVBUF);
+	ata_dmafree(request->softc->device->channel, request->dmatab);
     request->softc->tags[request->tag] = NULL;
-    free(request, M_AD);
+    mpipe_free(&request->softc->device->channel->req_mpipe, request);
     splx(s);
 }
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-raid.c,v 1.3.2.19 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.8 2003/08/07 21:16:51 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-raid.c,v 1.9 2003/11/30 20:14:18 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -116,7 +116,7 @@ ata_raiddisk_attach(struct ad_softc *adp)
 
     if (!ar_table)
 	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
-			  M_AR, M_NOWAIT | M_ZERO);
+			  M_AR, M_WAITOK | M_ZERO);
     if (!ar_table) {
 	ata_prtdev(adp->device, "no memory for ATA raid array\n");
 	return 0;
@@ -250,7 +250,7 @@ ata_raid_create(struct raid_setup *setup)
 
     if (!ar_table)
 	ar_table = malloc(sizeof(struct ar_soft *) * MAX_ARRAYS,
-			  M_AR, M_NOWAIT | M_ZERO);
+			  M_AR, M_WAITOK | M_ZERO);
     if (!ar_table) {
 	printf("ar: no memory for ATA raid array\n");
 	return 0;
@@ -263,7 +263,7 @@ ata_raid_create(struct raid_setup *setup)
 	return ENOSPC;
 
     if (!(rdp = (struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_NOWAIT | M_ZERO))) {
+					 M_WAITOK | M_ZERO))) {
 	printf("ar%d: failed to allocate raid config storage\n", array);
 	return ENOMEM;
     }
@@ -550,7 +550,7 @@ arstrategy(struct buf *bp)
 	    return;
 	}
 
-	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_NOWAIT | M_ZERO);
+	buf1 = malloc(sizeof(struct ar_buf), M_AR, M_WAITOK | M_ZERO);
 	BUF_LOCKINIT(&buf1->bp);
 	BUF_LOCK(&buf1->bp, LK_EXCLUSIVE);
 	buf1->bp.b_pblkno = lba;
@@ -631,7 +631,7 @@ arstrategy(struct buf *bp)
 			((rdp->flags & AR_F_REBUILDING) &&
 			 (rdp->disks[buf1->drive].flags & AR_DF_SPARE) &&
 			 buf1->bp.b_pblkno < rdp->lock_start)) {
-			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_NOWAIT);
+			buf2 = malloc(sizeof(struct ar_buf), M_AR, M_WAITOK);
 			bcopy(buf1, buf2, sizeof(struct ar_buf));
 			BUF_LOCKINIT(&buf2->bp);
 			BUF_LOCK(&buf2->bp, LK_EXCLUSIVE);
@@ -827,7 +827,7 @@ ar_rebuild(struct ar_softc *rdp)
     rdp->lock_end = rdp->lock_start + 256;
     rdp->flags |= AR_F_REBUILDING;
     splx(s);
-    buffer = malloc(256 * DEV_BSIZE, M_AR, M_NOWAIT | M_ZERO);
+    buffer = malloc(256 * DEV_BSIZE, M_AR, M_WAITOK | M_ZERO);
 
     /* now go copy entire disk(s) */
     while (rdp->lock_end < (rdp->total_sectors / rdp->width)) {
@@ -896,7 +896,7 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
     int array, disk_number = 0, retval = 0;
 
     if (!(info = (struct highpoint_raid_conf *)
-	  malloc(sizeof(struct highpoint_raid_conf), M_AR, M_NOWAIT | M_ZERO)))
+	  malloc(sizeof(struct highpoint_raid_conf), M_AR, M_WAITOK | M_ZERO)))
 	return retval;
 
     if (ar_rw(adp, HPT_LBA, sizeof(struct highpoint_raid_conf),
@@ -925,7 +925,7 @@ ar_highpoint_read_conf(struct ad_softc *adp, struct ar_softc **raidp)
 	if (!raidp[array]) {
 	    raidp[array] = 
 		(struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_NOWAIT | M_ZERO);
+					 M_WAITOK | M_ZERO);
 	    if (!raidp[array]) {
 		printf("ar%d: failed to allocate raid config storage\n", array);
 		goto highpoint_out;
@@ -1045,7 +1045,7 @@ ar_highpoint_write_conf(struct ar_softc *rdp)
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if (!(config = (struct highpoint_raid_conf *)
 	      malloc(sizeof(struct highpoint_raid_conf),
-		     M_AR, M_NOWAIT | M_ZERO))) {
+		     M_AR, M_WAITOK | M_ZERO))) {
 	    printf("ar%d: Highpoint write conf failed\n", rdp->lun);
 	    return -1;
 	}
@@ -1125,7 +1125,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
     int array, count, disk, disksum = 0, retval = 0; 
 
     if (!(info = (struct promise_raid_conf *)
-	  malloc(sizeof(struct promise_raid_conf), M_AR, M_NOWAIT | M_ZERO)))
+	  malloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK | M_ZERO)))
 	return retval;
 
     if (ar_rw(adp, PR_LBA(adp), sizeof(struct promise_raid_conf),
@@ -1171,7 +1171,7 @@ ar_promise_read_conf(struct ad_softc *adp, struct ar_softc **raidp, int local)
 	if (!raidp[array]) {
 	    raidp[array] = 
 		(struct ar_softc*)malloc(sizeof(struct ar_softc), M_AR,
-					 M_NOWAIT | M_ZERO);
+					 M_WAITOK | M_ZERO);
 	    if (!raidp[array]) {
 		printf("ar%d: failed to allocate raid config storage\n", array);
 		goto promise_out;
@@ -1286,7 +1286,7 @@ ar_promise_write_conf(struct ar_softc *rdp)
 
     for (disk = 0; disk < rdp->total_disks; disk++) {
 	if (!(config = (struct promise_raid_conf *)
-	      malloc(sizeof(struct promise_raid_conf), M_AR, M_NOWAIT))) {
+	      malloc(sizeof(struct promise_raid_conf), M_AR, M_WAITOK))) {
 	    printf("ar%d: %s write conf failed\n",
 		   rdp->lun, local ? "FreeBSD" : "Promise");
 	    return -1;
@@ -1411,7 +1411,7 @@ ar_rw(struct ad_softc *adp, u_int32_t lba, int count, caddr_t data, int flags)
     struct buf *bp;
     int retry = 0, error = 0;
 
-    if (!(bp = (struct buf *)malloc(sizeof(struct buf), M_AR, M_NOWAIT|M_ZERO)))
+    if (!(bp = (struct buf *)malloc(sizeof(struct buf), M_AR, M_WAITOK|M_ZERO)))
 	return ENOMEM;
     BUF_LOCKINIT(bp);
     BUF_LOCK(bp, LK_EXCLUSIVE);
