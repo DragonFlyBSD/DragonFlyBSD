@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/parse.y,v 1.22 2004/11/05 14:28:29 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/parse.y,v 1.24 2004/11/25 06:27:41 henning Exp $ */
 
 /*
  * Copyright (c) 2002, 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -39,7 +39,7 @@ static struct ntpd_conf		*conf;
 static FILE			*fin = NULL;
 static int			 lineno = 1;
 static int			 errors = 0;
-char				*infile;
+const char			*infile;
 
 int	 yyerror(const char *, ...);
 int	 yyparse(void);
@@ -78,14 +78,15 @@ conf_main	: LISTEN ON address	{
 			struct listen_addr	*la;
 			struct ntp_addr		*h, *next;
 
-			if ($3->a == NULL) {
-				yyerror("cannot resolve \"%s\"", $3->name);
+			if ((h = $3->a) == NULL &&
+			    (host_dns($3->name, &h) == -1 || !h)) {
+				yyerror("could not resolve \"%s\"", $3->name);
 				free($3->name);
 				free($3);
 				YYERROR;
 			}
 
-			for (h = $3->a; h != NULL; h = next) {
+			for (; h != NULL; h = next) {
 				next = h->next;
 				if (h->ss.ss_family == AF_UNSPEC) {
 					conf->listen_all = 1;
@@ -399,7 +400,7 @@ yylex(void)
 }
 
 int
-parse_config(char *filename, struct ntpd_conf *xconf)
+parse_config(const char *filename, struct ntpd_conf *xconf)
 {
 	conf = xconf;
 	lineno = 1;
