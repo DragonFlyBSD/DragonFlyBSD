@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * FreeBSD: src/sys/dev/ips/ips_pci.c,v 1.7 2003/09/11 23:30:28 ps 
- * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.1 2004/01/15 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_pci.c,v 1.2 2004/02/22 07:27:56 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -50,17 +50,6 @@ ips_pci_probe(device_t dev)
 		return (0);
 	}
 	return (ENXIO);
-}
-
-static int
-resource_disabled(const char *name, int unit)
-{
-	int error, value;
-
-	error = resource_int_value(name, unit, "disabled", &value);
-	if (error)
-		return (0);
-	return (value);
 }
 
 static int
