@@ -1,5 +1,5 @@
 # $FreeBSD: src/contrib/binutils/ld/emultempl/elf32.em,v 1.2.6.6 2002/09/01 23:44:16 obrien Exp $
-# $DragonFly: src/contrib/binutils/ld/emultempl/Attic/elf32.em,v 1.2 2003/06/17 04:23:58 dillon Exp $
+# $DragonFly: src/contrib/binutils/ld/emultempl/Attic/elf32.em,v 1.3 2004/01/15 11:59:27 joerg Exp $
 
 
 # This shell script emits a C file. -*- C -*-
@@ -440,7 +440,7 @@ if [ "x${host}" = "x${target}" ] ; then
   case " ${EMULATION_LIBPATH} " in
   *" ${EMULATION_NAME} "*)
     case ${target} in
-      *-*-freebsd*)
+      *-*-freebsd* | *-*-dragonfly*)
 	cat >>e${EMULATION_NAME}.c <<EOF
 /*
  * Read the system search path the FreeBSD way rather than like Linux.
@@ -776,7 +776,7 @@ if [ "x${host}" = "x${target}" ] ; then
   case " ${EMULATION_LIBPATH} " in
   *" ${EMULATION_NAME} "*)
     case ${target} in
-      *-*-freebsd*)
+      *-*-freebsd* | *-*-dragonfly*)
 	cat >>e${EMULATION_NAME}.c <<EOF
 	  if (gld${EMULATION_NAME}_check_ld_elf_hints (l->name, force))
 	    break;
