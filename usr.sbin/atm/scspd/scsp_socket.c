@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -134,8 +134,7 @@ static struct t_atm_app_name	appname = {
  *
  */
 Scsp_dcs *
-scsp_find_dcs(sd)
-	int	sd;
+scsp_find_dcs(int sd)
 {
 	Scsp_server	*ssp;
 	Scsp_dcs	*dcsp = NULL;
@@ -169,8 +168,7 @@ scsp_find_dcs(sd)
  *
  */
 Scsp_server *
-scsp_find_server(sd)
-	int	sd;
+scsp_find_server(int sd)
 {
 	Scsp_server	*ssp;
 
@@ -198,8 +196,7 @@ scsp_find_server(sd)
  *
  */
 int
-scsp_dcs_connect(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_dcs_connect(Scsp_dcs *dcsp)
 
 {
 	int			rc, sd;
@@ -397,8 +394,7 @@ connect_fail:
  *
  */
 int
-scsp_dcs_listen(ssp)
-	Scsp_server	*ssp;
+scsp_dcs_listen(Scsp_server *ssp)
 {
 	int			rc, sd;
 	struct sockaddr_atm	ls_addr;
@@ -580,8 +576,7 @@ listen_fail:
  *
  */
 Scsp_dcs *
-scsp_dcs_accept(ssp)
-	Scsp_server	*ssp;
+scsp_dcs_accept(Scsp_server *ssp)
 {
 	int			len, rc, sd;
 	struct sockaddr_atm	dcs_sockaddr;
@@ -706,9 +701,7 @@ dcs_accept_fail:
  *
  */
 int
-scsp_dcs_read(dcsp)
-	Scsp_dcs	*dcsp;
-
+scsp_dcs_read(Scsp_dcs *dcsp)
 {
 	int			len, rc;
 	char			*buff = (char *)0;
@@ -816,7 +809,7 @@ dcs_read_fail:
  *
  */
 int
-scsp_server_listen()
+scsp_server_listen(void)
 {
 	int	rc, sd;
 
@@ -897,9 +890,7 @@ scsp_server_listen()
  *
  */
 int
-scsp_server_accept(ls)
-	int	ls;
-
+scsp_server_accept(int ls)
 {
 	int		len, rc, sd;
 	struct sockaddr	server_addr;
@@ -956,9 +947,7 @@ scsp_server_accept(ls)
  *
  */
 Scsp_if_msg *
-scsp_if_sock_read(sd)
-	int	sd;
-
+scsp_if_sock_read(int sd)
 {
 	int		len;
 	char		*buff = (char *)0;
@@ -1024,9 +1013,7 @@ socket_read_fail:
  *
  */
 int
-scsp_if_sock_write(sd, msg)
-	int		sd;
-	Scsp_if_msg	*msg;
+scsp_if_sock_write(int sd, Scsp_if_msg *msg)
 {
 	int	len, rc;
 
@@ -1068,8 +1055,7 @@ scsp_if_sock_write(sd, msg)
  *
  */
 int
-scsp_server_read(ssp)
-	Scsp_server	*ssp;
+scsp_server_read(Scsp_server *ssp)
 {
 	int		rc;
 	Scsp_dcs	*dcsp;
@@ -1177,8 +1163,7 @@ scsp_server_read(ssp)
  *
  */
 int
-scsp_send_cache_ind(ssp)
-	Scsp_server	*ssp;
+scsp_send_cache_ind(Scsp_server *ssp)
 {
 	int		rc;
 	Scsp_if_msg	*msg;
@@ -1222,9 +1207,7 @@ scsp_send_cache_ind(ssp)
  *
  */
 int
-scsp_pending_read(psp)
-	Scsp_pending	*psp;
-
+scsp_pending_read(Scsp_pending *psp)
 {
 	int		rc;
 	Scsp_server	*ssp;

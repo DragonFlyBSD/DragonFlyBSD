@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -73,9 +73,7 @@
  *
  */
 static void
-scsp_ca_csas_setup(dcsp, cap)
-	Scsp_dcs	*dcsp;
-	Scsp_ca		*cap;
+scsp_ca_csas_setup(Scsp_dcs *dcsp, Scsp_ca *cap)
 {
 	int		csas_len, len, mtu;
 	Scsp_server	*ssp = dcsp->sd_server;
@@ -119,9 +117,7 @@ scsp_ca_csas_setup(dcsp, cap)
  *
  */
 void
-scsp_csus_ack(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_csus_ack(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	Scsp_csu_msg	*csusp;
 	Scsp_csa	*csap, *csasp, *next_csasp;
@@ -197,8 +193,7 @@ scsp_csus_ack(dcsp, msg)
  *
  */
 int
-scsp_send_ca(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_send_ca(Scsp_dcs *dcsp)
 {
 	int		rc;
 	Scsp_msg	*ca_msg;
@@ -283,8 +278,7 @@ scsp_send_ca(dcsp)
  *
  */
 int
-scsp_send_csus(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_send_csus(Scsp_dcs *dcsp)
 {
 	int		csas_len, len, mtu, rc;
 	Scsp_msg	*csus_msg;
@@ -382,9 +376,7 @@ scsp_send_csus(dcsp)
  *
  */
 int
-scsp_send_csu_req(dcsp, csap)
-	Scsp_dcs	*dcsp;
-	Scsp_csa	*csap;
+scsp_send_csu_req(Scsp_dcs *dcsp, Scsp_csa *csap)
 {
 	int		rc;
 	Scsp_server	*ssp = dcsp->sd_server;
@@ -478,9 +470,7 @@ scsp_send_csu_req(dcsp, csap)
  *
  */
 int
-scsp_send_csu_reply(dcsp, csap)
-	Scsp_dcs	*dcsp;
-	Scsp_csa	*csap;
+scsp_send_csu_reply(Scsp_dcs *dcsp, Scsp_csa *csap)
 {
 	int		rc;
 	Scsp_server	*ssp = dcsp->sd_server;
@@ -561,8 +551,7 @@ scsp_send_csu_reply(dcsp, csap)
  *
  */
 int
-scsp_send_hello(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_send_hello(Scsp_dcs *dcsp)
 {
 	int		rc;
 	Scsp_msg	*hello;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_config.c,v 1.3 1999/08/28 01:15:29 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_config.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_config.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 /*
@@ -75,8 +75,7 @@
  *
  */
 int
-atmarp_cfg_netif(netif)
-	char	*netif;
+atmarp_cfg_netif(char *netif)
 {
 	int			rc;
 	Atmarp_intf		*aip = (Atmarp_intf *)0;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_hfsm.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -105,10 +105,7 @@ static int hello_state_table[SCSP_HFSM_EVENT_CNT][SCSP_HFSM_STATE_CNT] = {
  *
  */
 int
-scsp_hfsm(dcsp, event, msg)
-	Scsp_dcs	*dcsp;
-	int		event;
-	Scsp_msg	*msg;
+scsp_hfsm(Scsp_dcs *dcsp, int event, Scsp_msg *msg)
 {
 	int	action, rc, state;
 
@@ -149,9 +146,7 @@ scsp_hfsm(dcsp, event, msg)
  *
  */
 int
-scsp_hello_act_00(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_00(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	scsp_log(LOG_ERR, "Hello FSM error--unexpected action, state=%d",
 			dcsp->sd_hello_state);
@@ -174,9 +169,7 @@ scsp_hello_act_00(dcsp, msg)
  *
  */
 int
-scsp_hello_act_01(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_01(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int		rc;
 
@@ -220,9 +213,7 @@ scsp_hello_act_01(dcsp, msg)
  *
  */
 int
-scsp_hello_act_02(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_02(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int		rc;
 
@@ -296,9 +287,7 @@ scsp_hello_act_02(dcsp, msg)
  *
  */
 int
-scsp_hello_act_03(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_03(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int		rc;
 
@@ -334,9 +323,7 @@ scsp_hello_act_03(dcsp, msg)
  *
  */
 int
-scsp_hello_act_04(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_04(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int	rc = 0;
 
@@ -384,9 +371,7 @@ scsp_hello_act_04(dcsp, msg)
  *
  */
 int
-scsp_hello_act_05(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_05(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int	rc;
 	Scsp_id	*ridp;
@@ -477,9 +462,7 @@ scsp_hello_act_05(dcsp, msg)
  *
  */
 int
-scsp_hello_act_06(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_hello_act_06(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int	rc = 0, rcv_found;
 	Scsp_id	*ridp;

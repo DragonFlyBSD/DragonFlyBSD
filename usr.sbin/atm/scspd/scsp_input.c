@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_input.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_input.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_input.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -77,8 +77,7 @@ static int scsp_parse_atmarp(char *, int, Scsp_atmarp_csa **);
  *
  */
 static u_long
-get_long(cp)
-	u_char	*cp;
+get_long(u_char *cp)
 {
 	int	i;
 	u_long	l;
@@ -108,8 +107,7 @@ get_long(cp)
  *
  */
 static void
-scsp_free_ca(cap)
-	Scsp_ca	*cap;
+scsp_free_ca(Scsp_ca *cap)
 {
 	Scsp_csa	*csap, *ncsap;
 
@@ -145,8 +143,7 @@ scsp_free_ca(cap)
  *
  */
 static void
-scsp_free_csu(csup)
-	Scsp_csu_msg	*csup;
+scsp_free_csu(Scsp_csu_msg *csup)
 {
 	Scsp_csa	*csap, *ncsap;
 
@@ -182,8 +179,7 @@ scsp_free_csu(csup)
  *
  */
 static void
-scsp_free_hello(hp)
-	Scsp_hello	*hp;
+scsp_free_hello(Scsp_hello *hp)
 {
 	/*
 	 * Return if there's nothing to free
@@ -209,8 +205,7 @@ scsp_free_hello(hp)
  *
  */
 void
-scsp_free_msg(msg)
-	Scsp_msg	*msg;
+scsp_free_msg(Scsp_msg *msg)
 {
 	Scsp_ext	*exp, *nexp;
 
@@ -266,10 +261,7 @@ scsp_free_msg(msg)
  *
  */
 static int
-scsp_parse_id(buff, id_len, idp)
-	char	*buff;
-	int	id_len;
-	Scsp_id	*idp;
+scsp_parse_id(char *buff, int id_len, Scsp_id *idp)
 {
 	/*
 	 * Sanity check
@@ -311,10 +303,7 @@ scsp_parse_id(buff, id_len, idp)
  *
  */
 static int
-scsp_parse_mcp(buff, pdu_len, mcp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_mcp	*mcp;
+scsp_parse_mcp(char *buff, int pdu_len, Scsp_mcp *mcp)
 {
 	int			len;
 	u_char			*idp;
@@ -389,10 +378,7 @@ mcp_invalid:
  *
  */
 static int
-scsp_parse_ext(buff, pdu_len, expp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_ext	**expp;
+scsp_parse_ext(char *buff, int pdu_len, Scsp_ext **expp)
 {
 	int			len;
 	struct scsp_next	*sep;
@@ -458,10 +444,7 @@ ext_invalid:
  *
  */
 static int
-scsp_parse_csa(buff, pdu_len, csapp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_csa	**csapp;
+scsp_parse_csa(char *buff, int pdu_len, Scsp_csa **csapp)
 {
 	int			len;
 	char			*idp;
@@ -564,10 +547,7 @@ csa_invalid:
  *
  */
 static int
-scsp_parse_ca(buff, pdu_len, capp)
-	char	*buff;
-	int	pdu_len;
-	Scsp_ca	**capp;
+scsp_parse_ca(char *buff, int pdu_len, Scsp_ca **capp)
 {
 	int		i, len, proc_len;
 	struct scsp_nca	*scap;
@@ -647,10 +627,7 @@ ca_invalid:
  *
  */
 static int
-scsp_parse_atmarp(buff, pdu_len, acspp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_atmarp_csa	**acspp;
+scsp_parse_atmarp(char *buff, int pdu_len, Scsp_atmarp_csa **acspp)
 {
 	int			len, proc_len;
 	struct scsp_atmarp_ncsa	*sacp;
@@ -821,10 +798,7 @@ acs_invalid:
  *
  */
 static int
-scsp_parse_csu(buff, pdu_len, csupp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_csu_msg	**csupp;
+scsp_parse_csu(char *buff, int pdu_len, Scsp_csu_msg **csupp)
 {
 	int			i, len, proc_len;
 	Scsp_csu_msg		*csup;
@@ -887,10 +861,7 @@ csu_invalid:
  *
  */
 static int
-scsp_parse_hello(buff, pdu_len, hpp)
-	char		*buff;
-	int		pdu_len;
-	Scsp_hello	**hpp;
+scsp_parse_hello(char *buff, int pdu_len, Scsp_hello **hpp)
 {
 	int			i, len, proc_len;
 	struct scsp_nhello	*shp = (struct scsp_nhello *)buff;
@@ -985,9 +956,7 @@ hello_invalid:
  *
  */
 Scsp_msg *
-scsp_parse_msg(buff, pdu_len)
-	char			*buff;
-	int			pdu_len;
+scsp_parse_msg(char *buff, int pdu_len)
 {
 	int			ext_off, len, plen;
 	struct scsp_nhdr	*shp;

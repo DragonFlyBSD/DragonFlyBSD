@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_print.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_print.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_print.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -203,7 +203,7 @@ static Type_name atmarp_state_names[] = {
  *
  */
 static void
-init_indent()
+init_indent(void)
 {
 	indent[0] = '\0';
 }
@@ -220,7 +220,7 @@ init_indent()
  *
  */
 static void
-inc_indent()
+inc_indent(void)
 {
 	if (strlen(indent) >= MAX_INDENT)
 		return;
@@ -239,7 +239,7 @@ inc_indent()
  *
  */
 static void
-dec_indent()
+dec_indent(void)
 {
 	if (strlen(indent) < MIN_INDENT)
 		return;
@@ -260,9 +260,7 @@ dec_indent()
  *
  */
 static char *
-scsp_type_name(type, tbl)
-	u_char	type;
-	Type_name	*tbl;
+scsp_type_name(u_char type, Type_name *tbl)
 {
 	int	i;
 
@@ -294,8 +292,7 @@ scsp_type_name(type, tbl)
  *
  */
 char *
-format_hfsm_state(state)
-	int	state;
+format_hfsm_state(int state)
 {
 	return(scsp_type_name((u_char)state, hfsm_state_names));
 }
@@ -312,8 +309,7 @@ format_hfsm_state(state)
  *
  */
 char *
-format_hfsm_event(event)
-	int	event;
+format_hfsm_event(int event)
 {
 	char	*cp;
 
@@ -333,8 +329,7 @@ format_hfsm_event(event)
  *
  */
 char *
-format_cafsm_state(state)
-	int	state;
+format_cafsm_state(int state)
 {
 	return(scsp_type_name((u_char)state, cafsm_state_names));
 }
@@ -351,8 +346,7 @@ format_cafsm_state(state)
  *
  */
 char *
-format_cafsm_event(event)
-	int	event;
+format_cafsm_event(int event)
 {
 	return(scsp_type_name((u_char)event, cafsm_event_names));
 }
@@ -369,8 +363,7 @@ format_cafsm_event(event)
  *
  */
 char *
-format_cifsm_state(state)
-	int	state;
+format_cifsm_state(int state)
 {
 	return(scsp_type_name((u_char)state, cifsm_state_names));
 }
@@ -387,8 +380,7 @@ format_cifsm_state(state)
  *
  */
 char *
-format_cifsm_event(event)
-	int	event;
+format_cifsm_event(int event)
 {
 	return(scsp_type_name((u_char)event, cifsm_event_names));
 }
@@ -406,9 +398,7 @@ format_cifsm_event(event)
  *
  */
 void
-print_scsp_id(fp, idp)
-	FILE	*fp;
-	Scsp_id	*idp;
+print_scsp_id(FILE *fp, Scsp_id *idp)
 {
 	int	i;
 
@@ -436,9 +426,7 @@ print_scsp_id(fp, idp)
  *
  */
 void
-print_scsp_cache_key(fp, ckp)
-	FILE		*fp;
-	Scsp_ckey	*ckp;
+print_scsp_cache_key(FILE *fp, Scsp_ckey *ckp)
 {
 	int	i;
 
@@ -465,9 +453,7 @@ print_scsp_cache_key(fp, ckp)
  *
  */
 static void
-print_scsp_mcp(fp, mcp)
-	FILE		*fp;
-	Scsp_mcp	*mcp;
+print_scsp_mcp(FILE *fp, Scsp_mcp *mcp)
 {
 	inc_indent();
 	fprintf(fp, "%sProtocol ID:          %s (0x%02x)\n", indent,
@@ -498,9 +484,7 @@ print_scsp_mcp(fp, mcp)
  *
  */
 static void
-print_scsp_ext(fp, exp)
-	FILE		*fp;
-	Scsp_ext	*exp;
+print_scsp_ext(FILE *fp, Scsp_ext *exp)
 {
 	int	i;
 	u_char	*cp;
@@ -534,9 +518,7 @@ print_scsp_ext(fp, exp)
  *
  */
 static void
-print_scsp_atmarp_csa(fp, acsp)
-	FILE		*fp;
-	Scsp_atmarp_csa	*acsp;
+print_scsp_atmarp_csa(FILE *fp, Scsp_atmarp_csa *acsp)
 {
 	inc_indent();
 	fprintf(fp, "%sState:                 %s (%d)\n", indent,
@@ -572,9 +554,7 @@ print_scsp_atmarp_csa(fp, acsp)
  *
  */
 static void
-print_scsp_csa(fp, csap)
-	FILE		*fp;
-	Scsp_csa	*csap;
+print_scsp_csa(FILE *fp, Scsp_csa *csap)
 {
 	inc_indent();
 	fprintf(fp, "%sNext:                 %p\n", indent, csap->next);
@@ -607,9 +587,7 @@ print_scsp_csa(fp, csap)
  *
  */
 static void
-print_scsp_ca(fp, cap)
-	FILE	*fp;
-	Scsp_ca	*cap;
+print_scsp_ca(FILE *fp, Scsp_ca *cap)
 {
 	int		n;
 	Scsp_csa	*csap;
@@ -647,9 +625,7 @@ print_scsp_ca(fp, cap)
  *
  */
 static void
-print_scsp_csu(fp, csup)
-	FILE		*fp;
-	Scsp_csu_msg	*csup;
+print_scsp_csu(FILE *fp, Scsp_csu_msg *csup)
 {
 	int		i;
 	Scsp_csa	*csap;
@@ -678,9 +654,7 @@ print_scsp_csu(fp, csup)
  *
  */
 static void
-print_scsp_hello(fp, hp)
-	FILE		*fp;
-	Scsp_hello	*hp;
+print_scsp_hello(FILE *fp, Scsp_hello *hp)
 {
 	Scsp_id	*ridp;
 
@@ -742,9 +716,7 @@ typedef	struct scsp_nhrp	Scsp_nhrp;
  *
  */
 void
-print_scsp_msg(fp, msg)
-	FILE		*fp;
-	Scsp_msg	*msg;
+print_scsp_msg(FILE *fp, Scsp_msg *msg)
 {
 	int		n;
 	Scsp_ext	*exp;
@@ -804,9 +776,7 @@ print_scsp_msg(fp, msg)
  *
  */
 static void
-print_scsp_if_atmarp(fp, amp)
-	FILE		*fp;
-	Scsp_atmarp_msg	*amp;
+print_scsp_if_atmarp(FILE *fp, Scsp_atmarp_msg *amp)
 {
 	inc_indent();
 	fprintf(fp, "%sState:                %s (%d)\n", indent,
@@ -841,9 +811,7 @@ print_scsp_if_atmarp(fp, amp)
  *
  */
 void
-print_scsp_if_msg(fp, imsg)
-	FILE		*fp;
-	Scsp_if_msg	*imsg;
+print_scsp_if_msg(FILE *fp, Scsp_if_msg *imsg)
 {
 	int		len;
 	Scsp_atmarp_msg	*ap;
@@ -921,9 +889,7 @@ print_scsp_if_msg(fp, imsg)
  *
  */
 void
-print_scsp_pending(fp, pp)
-	FILE		*fp;
-	Scsp_pending	*pp;
+print_scsp_pending(FILE *fp, Scsp_pending *pp)
 {
 	/*
 	 * Initialize
@@ -959,9 +925,7 @@ print_scsp_pending(fp, pp)
  *
  */
 void
-print_scsp_server(fp, ssp)
-	FILE		*fp;
-	Scsp_server	*ssp;
+print_scsp_server(FILE *fp, Scsp_server *ssp)
 {
 	/*
 	 * Initialize
@@ -1025,9 +989,7 @@ print_scsp_server(fp, ssp)
  *
  */
 void
-print_scsp_cse(fp, csep)
-	FILE		*fp;
-	Scsp_cse	*csep;
+print_scsp_cse(FILE *fp, Scsp_cse *csep)
 {
 	/*
 	 * Print the fields of the cache summary entry
@@ -1056,9 +1018,7 @@ print_scsp_cse(fp, csep)
  *
  */
 void
-print_scsp_csu_rexmt(fp, rxp)
-	FILE		*fp;
-	Scsp_csu_rexmt	*rxp;
+print_scsp_csu_rexmt(FILE *fp, Scsp_csu_rexmt *rxp)
 {
 	int		i;
 	Scsp_csa	*csap;
@@ -1087,9 +1047,7 @@ print_scsp_csu_rexmt(fp, rxp)
  *
  */
 void
-print_scsp_dcs(fp, dcsp)
-	FILE		*fp;
-	Scsp_dcs	*dcsp;
+print_scsp_dcs(FILE *fp, Scsp_dcs *dcsp)
 {
 	Scsp_csa	*csap;
 	Scsp_cse	*csep;
@@ -1229,7 +1187,7 @@ print_scsp_dcs(fp, dcsp)
  *
  */
 void
-print_scsp_dump()
+print_scsp_dump(void)
 {
 	int		i;
 	Scsp_server	*ssp;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_if.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_if.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_if.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -136,11 +136,7 @@ static int client_state_table[SCSP_CIFSM_EVENT_CNT][SCSP_CIFSM_STATE_CNT] = {
  *
  */
 int
-scsp_cfsm(dcsp, event, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	int		event;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_cfsm(Scsp_dcs *dcsp, int event, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int	action, rc, state;
 
@@ -182,10 +178,7 @@ scsp_cfsm(dcsp, event, msg, cmsg)
  *
  */
 int
-scsp_client_act_00(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_00(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	scsp_log(LOG_ERR, "Server I/F FSM error--unexpected action, state=%d",
 			dcsp->sd_client_state);
@@ -208,10 +201,7 @@ scsp_client_act_00(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_01(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_01(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	return(0);
 }
@@ -233,10 +223,7 @@ scsp_client_act_01(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_02(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_02(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	/*
 	 * Set the new state
@@ -263,10 +250,7 @@ scsp_client_act_02(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_03(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_03(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	/*
 	 * Set the new state
@@ -293,10 +277,7 @@ scsp_client_act_03(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_04(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_04(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	/*
 	 * Set the new state
@@ -326,10 +307,7 @@ scsp_client_act_04(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_05(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_05(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int		i;
 	Scsp_cse	*csep, *ncsep;
@@ -371,10 +349,7 @@ scsp_client_act_05(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_06(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_06(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	/*
 	 * Set the new state
@@ -402,10 +377,7 @@ scsp_client_act_06(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_07(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_07(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int		rc;
 	Scsp_csa	*csap;
@@ -467,10 +439,7 @@ scsp_client_act_07(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_08(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_08(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int		rc;
 
@@ -505,10 +474,7 @@ scsp_client_act_08(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_09(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_09(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int		rc, rrc = 0;
 	Scsp_csa	*csap;
@@ -573,10 +539,7 @@ scsp_client_act_09(dcsp, msg, cmsg)
  *
  */
 int
-scsp_client_act_10(dcsp, msg, cmsg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	Scsp_if_msg	*cmsg;
+scsp_client_act_10(Scsp_dcs *dcsp, Scsp_msg *msg, Scsp_if_msg *cmsg)
 {
 	int		rc, rrc = 0;
 	Scsp_csa	*csap;

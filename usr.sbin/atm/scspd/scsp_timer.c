@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -71,8 +71,7 @@
  *
  */
 void
-scsp_open_timeout(stp)
-	Harp_timer	*stp;
+scsp_open_timeout(Harp_timer *stp)
 {
 	Scsp_dcs	*dcsp;
 
@@ -110,8 +109,7 @@ scsp_open_timeout(stp)
  *
  */
 void
-scsp_hello_timeout(stp)
-	Harp_timer	*stp;
+scsp_hello_timeout(Harp_timer *stp)
 {
 	Scsp_dcs	*dcsp;
 
@@ -145,8 +143,7 @@ scsp_hello_timeout(stp)
  *
  */
 void
-scsp_hello_rcv_timeout(stp)
-	Harp_timer	*stp;
+scsp_hello_rcv_timeout(Harp_timer *stp)
 {
 	Scsp_dcs	*dcsp;
 
@@ -176,8 +173,7 @@ scsp_hello_rcv_timeout(stp)
  *
  */
 void
-scsp_ca_retran_timeout(stp)
-	Harp_timer	*stp;
+scsp_ca_retran_timeout(Harp_timer *stp)
 {
 	Scsp_dcs	*dcsp;
 
@@ -207,8 +203,7 @@ scsp_ca_retran_timeout(stp)
  *
  */
 void
-scsp_csus_retran_timeout(stp)
-	Harp_timer	*stp;
+scsp_csus_retran_timeout(Harp_timer *stp)
 {
 	Scsp_dcs	*dcsp;
 
@@ -238,8 +233,7 @@ scsp_csus_retran_timeout(stp)
  *
  */
 void
-scsp_csu_req_retran_timeout(stp)
-	Harp_timer	*stp;
+scsp_csu_req_retran_timeout(Harp_timer *stp)
 {
 	Scsp_csu_rexmt	*rxp;
 	Scsp_dcs	*dcsp;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 
@@ -79,8 +79,7 @@
  *
  */
 Atmarp_intf *
-atmarp_find_intf_sock(sd)
-	int	sd;
+atmarp_find_intf_sock(int sd)
 {
 	Atmarp_intf	*aip;
 
@@ -108,8 +107,7 @@ atmarp_find_intf_sock(sd)
  *
  */
 Atmarp_intf *
-atmarp_find_intf_name(name)
-	char	*name;
+atmarp_find_intf_name(char *name)
 {
 	Atmarp_intf	*aip;
 
@@ -136,8 +134,7 @@ atmarp_find_intf_name(name)
  *
  */
 void
-atmarp_clear_marks()
-
+atmarp_clear_marks(void)
 {
 	int		i;
 	Atmarp_intf	*aip;
@@ -173,8 +170,7 @@ atmarp_clear_marks()
  *
  */
 int
-atmarp_is_server(aip)
-	Atmarp_intf	*aip;
+atmarp_is_server(Atmarp_intf *aip)
 {
 	int			rc;
 	int			buf_len = sizeof(struct air_asrv_rsp);
@@ -214,8 +210,7 @@ atmarp_is_server(aip)
  *
  */
 int
-atmarp_if_ready(aip)
-	Atmarp_intf	*aip;
+atmarp_if_ready(Atmarp_intf *aip)
 {
 	int			i, len, mtu, rc, sel;
 	Atmarp			*aap = (Atmarp *)0;
@@ -433,9 +428,7 @@ if_ready_fail:
  *
  */
 Atmarp *
-atmarp_copy_cache_entry(cp)
-	struct air_arp_rsp	*cp;
-
+atmarp_copy_cache_entry(struct air_arp_rsp *cp)
 {
 	struct sockaddr_in	*ipp;
 	Atmarp_intf		*aip;
@@ -500,8 +493,7 @@ atmarp_copy_cache_entry(cp)
  *
  */
 int
-atmarp_update_kernel(aap)
-	Atmarp	*aap;
+atmarp_update_kernel(Atmarp *aap)
 {
 	int			rc = 0, sd;
 	struct atmaddreq	aar;
@@ -551,7 +543,7 @@ atmarp_update_kernel(aap)
  *
  */
 void
-atmarp_get_updated_cache()
+atmarp_get_updated_cache(void)
 {
 	int			i, len, rc;
 	struct atminfreq	air;
@@ -641,9 +633,7 @@ atmarp_get_updated_cache()
  *
  */
 void
-atmarp_process_cache_entry(cp)
-	struct air_arp_rsp	*cp;
-
+atmarp_process_cache_entry(struct air_arp_rsp *cp)
 {
 	int			rc;
 	struct sockaddr_in	*ipp = (struct sockaddr_in *)&cp->aap_arp_addr;
@@ -706,9 +696,7 @@ atmarp_process_cache_entry(cp)
  *
  */
 static void
-print_scsp_id(df, ip)
-	FILE	*df;
-	Scsp_id	*ip;
+print_scsp_id(FILE *df, Scsp_id *ip)
 {
 	int	i;
 
@@ -734,9 +722,7 @@ print_scsp_id(df, ip)
  *
  */
 static void
-print_scsp_cache_key(df, cp)
-	FILE		*df;
-	Scsp_ckey	*cp;
+print_scsp_cache_key(FILE *df, Scsp_ckey *cp)
 {
 	int	i;
 
@@ -761,9 +747,7 @@ print_scsp_cache_key(df, cp)
  *
  */
 void
-print_atmarp_intf(df, aip)
-	FILE		*df;
-	Atmarp_intf	*aip;
+print_atmarp_intf(FILE *df, Atmarp_intf *aip)
 {
 	if (!aip) {
 		fprintf(df, "print_atmarp_intf: NULL interface entry address\n");
@@ -801,9 +785,7 @@ print_atmarp_intf(df, aip)
  *
  */
 void
-print_atmarp_cache(df, aap)
-	FILE	*df;
-	Atmarp	*aap;
+print_atmarp_cache(FILE *df, Atmarp *aap)
 {
 	if (!aap) {
 		fprintf(df, "print_atmarp_cache: NULL ATMARP entry address\n");
@@ -847,9 +829,7 @@ print_atmarp_cache(df, aap)
  *
  */
 void
-dump_atmarp_cache(df, aip)
-	FILE		*df;
-	Atmarp_intf	*aip;
+dump_atmarp_cache(FILE *df, Atmarp_intf *aip)
 {
 	int	i;
 	Atmarp	*aap;
@@ -881,9 +861,7 @@ dump_atmarp_cache(df, aip)
  *
  */
 void
-print_atmarp_slis(df, asp)
-	FILE		*df;
-	Atmarp_slis	*asp;
+print_atmarp_slis(FILE *df, Atmarp_slis *asp)
 {
 	Atmarp_intf	**aipp;
 
@@ -917,8 +895,7 @@ print_atmarp_slis(df, asp)
  *
  */
 void
-atmarp_sigint(sig)
-	int			sig;
+atmarp_sigint(int sig)
 {
 	Atmarp_intf	*aip;
 	FILE		*df;

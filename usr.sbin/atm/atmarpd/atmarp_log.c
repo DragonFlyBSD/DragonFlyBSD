@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_log.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 
@@ -76,22 +76,11 @@
  *
  */
 void
-#if __STDC__
 atmarp_log(const int level, const char *fmt, ...)
-#else
-atmarp_log(level, fmt, va_alist)
-	int	level;
-	char	*fmt;
-	va_dcl
-#endif
 {
 	va_list	ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	/*
 	 * In debug mode, just write to stdout
@@ -133,8 +122,7 @@ atmarp_log(level, fmt, va_alist)
  *
  */
 void
-atmarp_mem_err(cp)
-	char	*cp;
+atmarp_mem_err(char *cp)
 {
 	atmarp_log(LOG_CRIT, "out of memory: %s", cp);
 	exit(2);

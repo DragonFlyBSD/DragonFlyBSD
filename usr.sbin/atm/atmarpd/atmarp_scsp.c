@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 /*
@@ -76,9 +76,7 @@
  *
  */
 int
-atmarp_scsp_cache(aip, msg)
-	Atmarp_intf	*aip;
-	Scsp_if_msg	*msg;
+atmarp_scsp_cache(Atmarp_intf *aip, Scsp_if_msg *msg)
 {
 	int		i, len, rc = 0;
 	Atmarp		*aap;
@@ -158,9 +156,7 @@ atmarp_scsp_cache(aip, msg)
  *
  */
 int
-atmarp_scsp_solicit(aip, smp)
-	Atmarp_intf	*aip;
-	Scsp_if_msg	*smp;
+atmarp_scsp_solicit(Atmarp_intf *aip, Scsp_if_msg *smp)
 {
 	int		i, rc = 0;
 	Atmarp		*aap;
@@ -245,9 +241,7 @@ atmarp_scsp_solicit(aip, smp)
  *
  */
 int
-atmarp_scsp_update(aap, state)
-	Atmarp		*aap;
-	int		state;
+atmarp_scsp_update(Atmarp *aap, int state)
 {
 	int		rc = 0;
 	Atmarp_intf	*aip = aap->aa_intf;
@@ -312,9 +306,7 @@ atmarp_scsp_update(aap, state)
  *
  */
 int
-atmarp_scsp_update_in(aip, smp)
-	Atmarp_intf	*aip;
-	Scsp_if_msg	*smp;
+atmarp_scsp_update_in(Atmarp_intf *aip, Scsp_if_msg *smp)
 {
 	int	accept, rc;
 	Atmarp	*aap;
@@ -446,8 +438,7 @@ atmarp_scsp_update_in(aip, smp)
  *
  */
 int
-atmarp_scsp_read(aip)
-	Atmarp_intf	*aip;
+atmarp_scsp_read(Atmarp_intf *aip)
 {
 	int		len, rc = 0;
 	char		*buff = (char *)0;
@@ -555,10 +546,7 @@ read_fail:
  *
  */
 int
-atmarp_scsp_out(aip, buff, len)
-	Atmarp_intf	*aip;
-	char		*buff;
-	int		len;
+atmarp_scsp_out(Atmarp_intf *aip, char *buff, int len)
 {
 	int	rc;
 
@@ -602,8 +590,7 @@ atmarp_scsp_out(aip, buff, len)
  *
  */
 int
-atmarp_scsp_connect(aip)
-	Atmarp_intf	*aip;
+atmarp_scsp_connect(Atmarp_intf *aip)
 {
 	int		len, rc, sd;
 	char		*sn;
@@ -730,8 +717,7 @@ scsp_connect_fail:
  *
  */
 void
-atmarp_scsp_close(aip)
-	Atmarp_intf	*aip;
+atmarp_scsp_close(Atmarp_intf *aip)
 {
 	/*
 	 * Close and unlink the SCSP socket
@@ -761,8 +747,7 @@ atmarp_scsp_close(aip)
  *
  */
 int
-atmarp_scsp_disconnect(aip)
-	Atmarp_intf	*aip;
+atmarp_scsp_disconnect(Atmarp_intf *aip)
 {
 	int	i;
 	Atmarp	*aap;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scspd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scspd.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -95,8 +95,7 @@ static int	scsp_int_signal = 0;
  *
  */
 void
-scsp_sighup(sig)
-	int	sig;
+scsp_sighup(int sig)
 {
 	/*
 	 * Flag the signal
@@ -116,8 +115,7 @@ scsp_sighup(sig)
  *
  */
 void
-scsp_sigint(sig)
-	int	sig;
+scsp_sigint(int sig)
 {
 	/*
 	 * Flag the signal
@@ -138,9 +136,7 @@ scsp_sigint(sig)
  *
  */
 void
-initialize(argc, argv)
-	int	argc;
-	char	**argv;
+initialize(int argc, char **argv)
 {
 	int	i;
 	char	*cp;
@@ -227,7 +223,7 @@ initialize(argc, argv)
  *
  */
 static void
-start_daemon()
+start_daemon(void)
 
 {
 	int	dpid, fd, file_count, rc;
@@ -351,10 +347,7 @@ daemon_bypass:
  *
  */
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
-
+main(int argc, char **argv)
 {
 	int		i, rc, scsp_server_lsock;
 	Scsp_server	*ssp;

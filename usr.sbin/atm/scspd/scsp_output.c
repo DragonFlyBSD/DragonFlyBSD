@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_output.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_output.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_output.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -76,9 +76,7 @@
  *
  */
 static void
-put_long(l, cp)
-	u_long	l;
-	u_char	*cp;
+put_long(u_long l, u_char *cp)
 {
 	u_long	nl;
 
@@ -103,9 +101,7 @@ put_long(l, cp)
  *
  */
 static int
-scsp_format_id(idp, buff)
-	Scsp_id	*idp;
-	char	*buff;
+scsp_format_id(Scsp_id *idp, char *buff)
 {
 	/*
 	 * Copy the ID
@@ -132,9 +128,7 @@ scsp_format_id(idp, buff)
  *
  */
 static int
-scsp_format_mcp(mcp, buff)
-	Scsp_mcp	*mcp;
-	char		*buff;
+scsp_format_mcp(Scsp_mcp *mcp, char *buff)
 {
 	int			len;
 	char			*odp;
@@ -206,10 +200,7 @@ mcp_invalid:
  *
  */
 static int
-scsp_format_ext(exp, buff, blen)
-	Scsp_ext	*exp;
-	char		*buff;
-	int		blen;
+scsp_format_ext(Scsp_ext *exp, char *buff, int blen)
 {
 	struct scsp_next	*sep;
 
@@ -260,9 +251,7 @@ scsp_format_ext(exp, buff, blen)
  *
  */
 static int
-scsp_format_atmarp(acsp, buff)
-	Scsp_atmarp_csa	*acsp;
-	char		*buff;
+scsp_format_atmarp(Scsp_atmarp_csa *acsp, char *buff)
 {
 	char			*cp;
 	int			len, pkt_len;
@@ -423,9 +412,7 @@ scsp_format_atmarp(acsp, buff)
  *
  */
 static int
-scsp_format_csa(csap, buff)
-	Scsp_csa	*csap;
-	char		*buff;
+scsp_format_csa(Scsp_csa *csap, char *buff)
 {
 	int			len = 0;
 	char			*odp;
@@ -499,10 +486,7 @@ scsp_format_csa(csap, buff)
  *
  */
 static int
-scsp_format_ca(cap, buff, blen)
-	Scsp_ca	*cap;
-	char	*buff;
-	int	blen;
+scsp_format_ca(Scsp_ca *cap, char *buff, int blen)
 {
 	int		i, len, proc_len;
 	struct scsp_nca	*scap;
@@ -576,10 +560,7 @@ ca_invalid:
  *
  */
 static int
-scsp_format_csu(csup, buff, blen)
-	Scsp_csu_msg	*csup;
-	char		*buff;
-	int		blen;
+scsp_format_csu(Scsp_csu_msg *csup, char *buff, int blen)
 {
 	int			i, len, proc_len;
 	struct scsp_ncsu_msg	*scsup;
@@ -634,10 +615,7 @@ csu_invalid:
  *
  */
 static int
-scsp_format_hello(hp, buff, blen)
-	Scsp_hello	*hp;
-	char		*buff;
-	int		blen;
+scsp_format_hello(Scsp_hello *hp, char *buff, int blen)
 {
 	int			len, proc_len;
 	struct scsp_nhello	*shp;
@@ -712,10 +690,7 @@ hello_invalid:
  *
  */
 int
-scsp_format_msg(dcsp, msg, bpp)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	char		**bpp;
+scsp_format_msg(Scsp_dcs *dcsp, Scsp_msg *msg, char **bpp)
 {
 	char			*buff = (char *)0, *e_buff = (char *)0;
 	int			buff_len, e_buff_len;
@@ -862,9 +837,7 @@ ignore:
  *
  */
 int
-scsp_send_msg(dcsp, msg)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
+scsp_send_msg(Scsp_dcs *dcsp, Scsp_msg *msg)
 {
 	int	len, rc;
 	char	*buff;

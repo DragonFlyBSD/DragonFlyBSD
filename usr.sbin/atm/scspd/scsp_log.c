@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_log.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_log.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_log.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -85,22 +85,11 @@ FILE	*scsp_trace_file = (FILE *)0;
  *
  */
 void
-#if __STDC__
 scsp_log(const int level, const char *fmt, ...)
-#else
-scsp_log(level, fmt, va_alist)
-	int	level;
-	char	*fmt;
-	va_dcl
-#endif
 {
 	va_list	ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	/*
 	 * In debug mode, just write to stdout
@@ -141,7 +130,7 @@ scsp_log(level, fmt, va_alist)
  *
  */
 void
-scsp_open_trace()
+scsp_open_trace(void)
 {
 	char	fname[64];
 
@@ -175,21 +164,11 @@ scsp_open_trace()
  *
  */
 void
-#if __STDC__
 scsp_trace(const char *fmt, ...)
-#else
-scsp_trace(fmt, va_alist)
-	char	*fmt;
-	va_dcl
-#endif
 {
 	va_list	ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 
 	/*
 	 * Write the message to the trace file, if it's open
@@ -215,10 +194,7 @@ scsp_trace(fmt, va_alist)
  *
  */
 void
-scsp_trace_msg(dcsp, msg, dir)
-	Scsp_dcs	*dcsp;
-	Scsp_msg	*msg;
-	int		dir;
+scsp_trace_msg(Scsp_dcs *dcsp, Scsp_msg *msg, int dir)
 {
 	struct in_addr	addr;
 
@@ -252,8 +228,7 @@ scsp_trace_msg(dcsp, msg, dir)
  *
  */
 void
-scsp_mem_err(cp)
-	char	*cp;
+scsp_mem_err(char *cp)
 {
 	scsp_log(LOG_CRIT, "out of memory: %s", cp);
 	exit(2);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_config.c,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -86,8 +86,7 @@ Scsp_dcs	*current_dcs;
  *
  */
 int
-scsp_config(cfn)
-	char	*cfn;
+scsp_config(char *cfn)
 {
 	int		rc;
 	Scsp_server	*ssp, *snext;
@@ -152,7 +151,7 @@ scsp_config(cfn)
  *
  */
 int
-start_dcs()
+start_dcs(void)
 {
 	Scsp_dcs		*dcsp;
 
@@ -208,7 +207,7 @@ start_dcs()
  *
  */
 int
-finish_dcs()
+finish_dcs(void)
 {
 	int		rc = 0;
 	Scsp_dcs	*dcsp;
@@ -265,8 +264,7 @@ finish_dcs()
  *
  */
 int
-set_dcs_addr(ap, sap)
-	char	*ap, *sap;
+set_dcs_addr(char *ap, char *sap)
 {
 	Scsp_dcs		*dcsp;
 	Atm_addr		addr, subaddr;
@@ -371,8 +369,7 @@ set_dcs_addr(ap, sap)
  *
  */
 int
-set_dcs_ca_rexmit(val)
-	int	val;
+set_dcs_ca_rexmit(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -423,8 +420,7 @@ set_dcs_ca_rexmit(val)
  *
  */
 int
-set_dcs_csus_rexmit(val)
-	int	val;
+set_dcs_csus_rexmit(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -475,8 +471,7 @@ set_dcs_csus_rexmit(val)
  *
  */
 int
-set_dcs_csu_rexmit(val)
-	int	val;
+set_dcs_csu_rexmit(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -527,8 +522,7 @@ set_dcs_csu_rexmit(val)
  *
  */
 int
-set_dcs_csu_rexmit_max(val)
-	int	val;
+set_dcs_csu_rexmit_max(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -580,8 +574,7 @@ set_dcs_csu_rexmit_max(val)
  *
  */
 int
-set_dcs_hello_df(val)
-	int	val;
+set_dcs_hello_df(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -632,8 +625,7 @@ set_dcs_hello_df(val)
  *
  */
 int
-set_dcs_hello_int(val)
-	int	val;
+set_dcs_hello_int(int val)
 {
 	Scsp_dcs	*dcsp;
 
@@ -683,8 +675,7 @@ set_dcs_hello_int(val)
  *
  */
 int
-set_dcs_hops(hops)
-	int	hops;
+set_dcs_hops(int hops)
 {
 	Scsp_dcs	*dcsp;
 
@@ -734,8 +725,7 @@ set_dcs_hops(hops)
  *
  */
 int
-set_dcs_id(name)
-	char	*name;
+set_dcs_id(char *name)
 {
 	Scsp_dcs		*dcsp;
 	Scsp_server		*ssp;
@@ -800,8 +790,7 @@ set_dcs_id(name)
  *
  */
 int
-set_intf(netif)
-	char	*netif;
+set_intf(char *netif)
 {
 	int			rc;
 	Scsp_server		*ssp;
@@ -856,8 +845,7 @@ set_intf_done:
  *
  */
 int
-set_protocol(proto)
-	int	proto;
+set_protocol(int proto)
 {
 	Scsp_server	*ssp;
 
@@ -911,8 +899,7 @@ set_protocol(proto)
  *
  */
 int
-set_server_group(sgid)
-	int	sgid;
+set_server_group(int sgid)
 {
 	Scsp_server	*ssp;
 
@@ -957,8 +944,7 @@ set_server_group(sgid)
  *
  */
 int
-start_server(name)
-	char	*name;
+start_server(char *name)
 {
 	int		i;
 	Scsp_server	*ssp;
@@ -1058,7 +1044,7 @@ start_server(name)
  *
  */
 int
-finish_server()
+finish_server(void)
 {
 	int		rc = 0;
 	Scsp_server	*ssp;
@@ -1132,8 +1118,7 @@ finish_server()
  *
  */
 int
-set_log_file(file)
-	char	*file;
+set_log_file(char *file)
 {
 	/*
 	 * Make sure we haven't already got a log file

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.c,v 1.3.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 #include <assert.h>
@@ -350,7 +350,7 @@ read_config(void)
 }
 
 void
-dump_config()
+dump_config(void)
 {
 	int i;
 	struct battery_watch_event *q;
@@ -386,7 +386,7 @@ dump_config()
 }
 
 void
-destroy_config()
+destroy_config(void)
 {
 	int i;
 	struct battery_watch_event *q;
@@ -417,7 +417,7 @@ destroy_config()
 }
 
 void
-restart()
+restart(void)
 {
 	destroy_config();
 	read_config();
@@ -429,7 +429,7 @@ restart()
  * write pid file
  */
 static void
-write_pid()
+write_pid(void)
 {
 	FILE *fp = fopen(apmd_pidfile, "w");
 
@@ -452,7 +452,7 @@ enque_signal(int sig)
 }
 
 void
-wait_child()
+wait_child(void)
 {
 	int status;
 	while (waitpid(-1, &status, WNOHANG) > 0)
@@ -509,7 +509,7 @@ proc_apmevent(int fd)
 	BATTERY_DISCHARGING)
 
 void
-check_battery()
+check_battery(void)
 {
 
 	static int first_time=1, last_state;

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 /*
@@ -87,7 +87,7 @@ Harp_timer	cache_timer, perm_timer;
  *
  */
 void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: %s [-d] [-l <log_file>] <net_intf> ...\n", prog);
 	exit(1);
@@ -106,9 +106,7 @@ usage()
  *
  */
 static void
-initialize(argc, argv)
-	int	argc;
-	char	*argv[];
+initialize(int argc, char **argv)
 
 {
 	int	i, rc;
@@ -184,8 +182,7 @@ initialize(argc, argv)
  *
  */
 static void
-start_daemon()
-
+start_daemon(void)
 {
 	int	dpid, fd, file_count, rc;
 
@@ -315,10 +312,7 @@ daemon_bypass:
  *
  */
 int
-main(argc, argv)
-	int	argc;
-	char	*argv[];
-
+main(int argc, char **argv)
 {
 	int		i, rc;
 	fd_set		read_set, write_set, except_set;

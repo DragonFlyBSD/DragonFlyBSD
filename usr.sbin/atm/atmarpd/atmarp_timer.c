@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
  */
 
 /*
@@ -74,8 +74,7 @@
  *
  */
 void
-atmarp_cache_timeout(tp)
-	Harp_timer	*tp;
+atmarp_cache_timeout(Harp_timer *tp)
 {
 	Atmarp_intf	*aip;
 
@@ -127,8 +126,7 @@ atmarp_cache_timeout(tp)
  *
  */
 void
-atmarp_perm_timeout(tp)
-	Harp_timer	*tp;
+atmarp_perm_timeout(Harp_timer *tp)
 {
 	int		i, rc;
 	Atmarp_intf	*aip;
@@ -178,8 +176,7 @@ atmarp_perm_timeout(tp)
  *
  */
 void
-atmarp_keepalive_timeout(tp)
-	Harp_timer	*tp;
+atmarp_keepalive_timeout(Harp_timer *tp)
 {
 	Atmarp_intf	*aip;
 	Scsp_if_msg	*msg;

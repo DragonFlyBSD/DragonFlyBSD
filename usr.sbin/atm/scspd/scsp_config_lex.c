@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_config_lex.c,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config_lex.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_config_lex.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 /*
@@ -190,8 +190,7 @@ static struct {
  *
  */
 static char *
-copy_buffer(s)
-	char	*s;
+copy_buffer(char *s)
 {
 	char	*t;
 
@@ -217,8 +216,7 @@ copy_buffer(s)
  *
  */
 static void
-push_char(c)
-	char	c;
+push_char(char c)
 {
 	if (c == '\n')
 		parse_line--;
@@ -240,8 +238,7 @@ push_char(c)
  *	None
  */
 static void
-init_class_tbl(tbl)
-	char *tbl;
+init_class_tbl(char *tbl)
 {
 	int	i;
 	char	c;
@@ -303,8 +300,7 @@ init_class_tbl(tbl)
  *	int	character class
  */
 static int
-char_class(c)
-	char	c;
+char_class(char c)
 {
 	int	class = CHAR_INVALID;
 
@@ -331,9 +327,7 @@ char_class(c)
  *	None
  */
 static void
-scan_error(c, state)
-	char	c;
-	int	state;
+scan_error(char c, int state)
 {
 	/*
 	 * Check for invalid character
@@ -390,7 +384,7 @@ scan_error(c, state)
  *	token	the type of the token found
  */
 int
-yylex()
+yylex(void)
 {
 	int		i, state;
 	char		c, token_buffer[TOK_MAX_LEN];

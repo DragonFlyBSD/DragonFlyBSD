@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -74,8 +74,7 @@
  *
  */
 int
-scsp_hash(ckp)
-	Scsp_ckey	*ckp;
+scsp_hash(Scsp_ckey *ckp)
 {
 	int	i, j, h;
 
@@ -110,9 +109,7 @@ scsp_hash(ckp)
  *
  */
 int
-scsp_cmp_id(id1p, id2p)
-	Scsp_id	*id1p;
-	Scsp_id	*id2p;
+scsp_cmp_id(Scsp_id *id1p, Scsp_id *id2p)
 {
 	int	diff, i;
 
@@ -148,9 +145,7 @@ scsp_cmp_id(id1p, id2p)
  *
  */
 int
-scsp_cmp_key(ck1p, ck2p)
-	Scsp_ckey	*ck1p;
-	Scsp_ckey	*ck2p;
+scsp_cmp_key(Scsp_ckey *ck1p, Scsp_ckey *ck2p)
 {
 	int	diff, i;
 
@@ -184,8 +179,7 @@ scsp_cmp_key(ck1p, ck2p)
  *
  */
 int
-scsp_is_atmarp_server(netif)
-	char	*netif;
+scsp_is_atmarp_server(char *netif)
 {
 	int			rc;
 	int			buf_len = sizeof(struct air_asrv_rsp);
@@ -225,8 +219,7 @@ scsp_is_atmarp_server(netif)
  *
  */
 Scsp_cse *
-scsp_dup_cse(csep)
-	Scsp_cse	*csep;
+scsp_dup_cse(Scsp_cse *csep)
 {
 	Scsp_cse	*dupp;
 
@@ -260,8 +253,7 @@ scsp_dup_cse(csep)
  *
  */
 Scsp_csa *
-scsp_dup_csa(csap)
-	Scsp_csa	*csap;
+scsp_dup_csa(Scsp_csa *csap)
 {
 	Scsp_csa	*dupp;
 	Scsp_atmarp_csa	*adp;
@@ -308,8 +300,7 @@ scsp_dup_csa(csap)
  *
  */
 Scsp_csa *
-scsp_cse2csas(csep)
-	Scsp_cse	*csep;
+scsp_cse2csas(Scsp_cse *csep)
 {
 	Scsp_csa	*csap;
 
@@ -345,8 +336,7 @@ scsp_cse2csas(csep)
  *
  */
 Scsp_cse *
-scsp_atmarp2cse(aap)
-	Scsp_atmarp_msg	*aap;
+scsp_atmarp2cse(Scsp_atmarp_msg *aap)
 {
 	Scsp_cse	*csep;
 
@@ -383,8 +373,7 @@ scsp_atmarp2cse(aap)
  *
  */
 void
-scsp_dcs_cleanup(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_dcs_cleanup(Scsp_dcs *dcsp)
 {
 	Scsp_cse	*csep, *ncsep;
 	Scsp_csa	*csap, *next_csap;
@@ -456,8 +445,7 @@ scsp_dcs_cleanup(dcsp)
  *
  */
 void
-scsp_dcs_delete(dcsp)
-	Scsp_dcs	*dcsp;
+scsp_dcs_delete(Scsp_dcs *dcsp)
 {
 	Scsp_cse	*csep, *next_cse;
 	Scsp_csu_rexmt	*rxp, *next_rxp;
@@ -558,8 +546,7 @@ scsp_dcs_delete(dcsp)
  *
  */
 void
-scsp_server_shutdown(ssp)
-	Scsp_server	*ssp;
+scsp_server_shutdown(Scsp_server *ssp)
 {
 	int		i;
 	Scsp_dcs	*dcsp;
@@ -629,8 +616,7 @@ scsp_server_shutdown(ssp)
  *
  */
 void
-scsp_server_delete(ssp)
-	Scsp_server	*ssp;
+scsp_server_delete(Scsp_server *ssp)
 {
 	int		i;
 	Scsp_dcs	*dcsp, *next_dcs;
@@ -679,8 +665,7 @@ scsp_server_delete(ssp)
  *
  */
 int
-scsp_get_server_info(ssp)
-	Scsp_server	*ssp;
+scsp_get_server_info(Scsp_server *ssp)
 {
 	int			i, len, mtu, rc, sel;
 	struct atminfreq	air;
@@ -843,9 +828,7 @@ server_info_done:
  *
  */
 void
-scsp_process_ca(dcsp, cap)
-	Scsp_dcs	*dcsp;
-	Scsp_ca		*cap;
+scsp_process_ca(Scsp_dcs* dcsp, Scsp_ca *cap)
 {
 	Scsp_csa	*csap, *next_csap;
 	Scsp_cse	*csep;
@@ -883,9 +866,7 @@ scsp_process_ca(dcsp, cap)
  *
  */
 void
-scsp_process_cache_rsp(ssp, smp)
-	Scsp_server	*ssp;
-	Scsp_if_msg	*smp;
+scsp_process_cache_rsp(Scsp_server *ssp, Scsp_if_msg *smp)
 {
 	int		len;
 	Scsp_atmarp_msg	*aap;
@@ -952,9 +933,7 @@ scsp_process_cache_rsp(ssp, smp)
  *
  */
 int
-scsp_propagate_csa(dcsp, csap)
-	Scsp_dcs	*dcsp;
-	Scsp_csa	*csap;
+scsp_propagate_csa(Scsp_dcs *dcsp, Scsp_csa *csap)
 {
 	int		rc, ret_rc = 0;
 	Scsp_server	*ssp = dcsp->sd_server;
@@ -1013,9 +992,7 @@ scsp_propagate_csa(dcsp, csap)
  *
  */
 void
-scsp_update_cache(dcsp, csap)
-	Scsp_dcs	*dcsp;
-	Scsp_csa	*csap;
+scsp_update_cache(Scsp_dcs *dcsp, Scsp_csa *csap)
 {
 	Scsp_cse	*csep;
 
@@ -1086,7 +1063,7 @@ scsp_update_cache(dcsp, csap)
  *
  */
 void
-scsp_reconfigure()
+scsp_reconfigure(void)
 {
 	int		rc;
 	Scsp_server	*ssp;

@@ -13,7 +13,7 @@
  *      other than his own.
  *
  * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
- * $DragonFly: src/usr.sbin/ac/ac.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ac/ac.c,v 1.5 2003/11/15 20:33:42 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -100,8 +100,7 @@ void			usage(void);
  * open wtmp or die
  */
 FILE *
-file(name)
-	char *name;
+file(char *name)
 {
 	FILE *fp;
 
@@ -114,8 +113,7 @@ file(name)
 }
 
 struct tty_list *
-add_tty(name)
-	char *name;
+add_tty(char *name)
 {
 	struct tty_list *tp;
 	register char *rcp;
@@ -145,8 +143,7 @@ add_tty(name)
  * should we process the named tty?
  */
 int
-do_tty(name)
-	char *name;
+do_tty(char *name)
 {
 	struct tty_list *tp;
 	int def_ret = 0;
@@ -170,8 +167,7 @@ do_tty(name)
  * is someone logged in on Console?
  */
 int
-on_console(head)
-	struct utmp_list *head;
+on_console(struct utmp_list *head)
 {
 	struct utmp_list *up;
 
@@ -188,10 +184,7 @@ on_console(head)
  * update user's login time
  */
 struct user_list *
-update_user(head, name, secs)
-	struct user_list *head;
-	char	*name;
-	time_t	secs;
+update_user(struct user_list *head, char *name, time_t secs)
 {
 	struct user_list *up;
 
@@ -219,9 +212,7 @@ update_user(head, name, secs)
 }
 
 int
-main(argc, argv)
-	int	argc;
-	char	**argv;
+main(int argc, char **argv)
 {
 	FILE *fp;
 	int c;
@@ -290,17 +281,14 @@ main(argc, argv)
  * print login time in decimal hours
  */
 void
-show(name, secs)
-	char *name;
-	time_t secs;
+show(char *name, time_t secs)
 {
 	(void)printf("\t%-*s %8.2f\n", UT_NAMESIZE, name,
 	    ((double)secs / 3600));
 }
 
 void
-show_users(list)
-	struct user_list *list;
+show_users(struct user_list *list)
 {
 	struct user_list *lp;
 
@@ -312,10 +300,7 @@ show_users(list)
  * print total login time for 24hr period in decimal hours
  */
 void
-show_today(users, logins, secs)
-	struct user_list *users;
-	struct utmp_list *logins;
-	time_t secs;
+show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
 {
 	struct user_list *up;
 	struct utmp_list *lp;
@@ -352,9 +337,7 @@ show_today(users, logins, secs)
  * been shut down.
  */
 struct utmp_list *
-log_out(head, up)
-	struct utmp_list *head;
-	struct utmp *up;
+log_out(struct utmp_list *head, struct utmp *up)
 {
 	struct utmp_list *lp, *lp2, *tlp;
 	time_t secs;
@@ -394,9 +377,7 @@ log_out(head, up)
  * if do_tty says ok, login a user
  */
 struct utmp_list *
-log_in(head, up)
-	struct utmp_list *head;
-	struct utmp *up;
+log_in(struct utmp_list *head, struct utmp *up)
 {
 	struct utmp_list *lp;
 
@@ -461,8 +442,7 @@ log_in(head, up)
 }
 
 int
-ac(fp)
-	FILE	*fp;
+ac(FILE *fp)
 {
 	struct utmp_list *lp, *head = NULL;
 	struct utmp usr;
@@ -553,7 +533,7 @@ ac(fp)
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 #ifdef CONSOLE_TTY

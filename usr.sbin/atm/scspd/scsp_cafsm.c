@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.3 2003/11/03 19:31:35 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
  */
 
 
@@ -141,10 +141,7 @@ static int ca_state_table[SCSP_CAFSM_EVENT_CNT][SCSP_CAFSM_STATE_CNT] = {
  *
  */
 int
-scsp_cafsm(dcsp, event, p)
-	Scsp_dcs	*dcsp;
-	int		event;
-	void		*p;
+scsp_cafsm(Scsp_dcs *dcsp, int event, void *p)
 {
 	int	action, rc, state;
 
@@ -187,9 +184,7 @@ scsp_cafsm(dcsp, event, p)
  *
  */
 int
-scsp_ca_act_00(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_00(Scsp_dcs *dcsp, void *p)
 {
 	int	rc;
 
@@ -235,9 +230,7 @@ scsp_ca_act_00(dcsp, p)
  *
  */
 int
-scsp_ca_act_01(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_01(Scsp_dcs *dcsp, void *p)
 {
 	int		i, rc;
 	Scsp_cse	*csep, *dupp;
@@ -291,9 +284,7 @@ scsp_ca_act_01(dcsp, p)
  *
  */
 int
-scsp_ca_act_02(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_02(Scsp_dcs *dcsp, void *p)
 {
 	int		rc;
 
@@ -331,9 +322,7 @@ scsp_ca_act_02(dcsp, p)
  *
  */
 int
-scsp_ca_act_03(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_03(Scsp_dcs *dcsp, void *p)
 {
 	int		rc = 0;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -434,9 +423,7 @@ scsp_ca_act_03(dcsp, p)
  *
  */
 int
-scsp_ca_act_04(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_04(Scsp_dcs *dcsp, void *p)
 {
 	int		rc = 0;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -540,9 +527,7 @@ scsp_ca_act_04(dcsp, p)
  *
  */
 int
-scsp_ca_act_05(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 {
 	int		rc = 0;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -652,9 +637,7 @@ scsp_ca_act_05(dcsp, p)
  *
  */
 int
-scsp_ca_act_06(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_06(Scsp_dcs *dcsp, void *p)
 {
 	int	rc;
 
@@ -689,9 +672,7 @@ scsp_ca_act_06(dcsp, p)
  *
  */
 int
-scsp_ca_act_07(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_07(Scsp_dcs *dcsp, void *p)
 {
 	int		rc;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -730,9 +711,7 @@ scsp_ca_act_07(dcsp, p)
  *
  */
 int
-scsp_ca_act_08(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_08(Scsp_dcs *dcsp, void *p)
 {
 	int		rc;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -789,9 +768,7 @@ scsp_ca_act_08(dcsp, p)
  *
  */
 int
-scsp_ca_act_09(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_09(Scsp_dcs *dcsp, void *p)
 {
 	/*
 	 * Free any CA message saved for retransmission
@@ -819,9 +796,7 @@ scsp_ca_act_09(dcsp, p)
  *
  */
 int
-scsp_ca_act_10(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_10(Scsp_dcs *dcsp, void *p)
 {
 	int		rc = 0;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -918,9 +893,7 @@ scsp_ca_act_10(dcsp, p)
  *
  */
 int
-scsp_ca_act_11(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_11(Scsp_dcs *dcsp, void *p)
 {
 	int		rc, state;
 	Scsp_csa	*csap =  (Scsp_csa *)p;
@@ -1015,9 +988,7 @@ scsp_ca_act_11(dcsp, p)
  *
  */
 int
-scsp_ca_act_12(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_12(Scsp_dcs *dcsp, void *p)
 {
 	int	rc;
 
@@ -1042,9 +1013,7 @@ scsp_ca_act_12(dcsp, p)
  *
  */
 int
-scsp_ca_act_13(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_13(Scsp_dcs *dcsp, void *p)
 {
 	int		rc = 0;
 	Scsp_csu_rexmt	*rxp = (Scsp_csu_rexmt *)p;
@@ -1100,9 +1069,7 @@ scsp_ca_act_13(dcsp, p)
  *
  */
 int
-scsp_ca_act_14(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_14(Scsp_dcs *dcsp, void *p)
 {
 	Scsp_csa        *csap =  (Scsp_csa *)p;
 	Scsp_cse	*csep, *csep1;
@@ -1207,9 +1174,7 @@ scsp_ca_act_14(dcsp, p)
  *
  */
 int
-scsp_ca_act_15(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_15(Scsp_dcs *dcsp, void *p)
 {
 	int		rc;
 	Scsp_msg	*msg = (Scsp_msg *)p;
@@ -1259,9 +1224,7 @@ scsp_ca_act_15(dcsp, p)
  *
  */
 int
-scsp_ca_act_16(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_16(Scsp_dcs *dcsp, void *p)
 {
 	int		found, rc = 0;
 	Scsp_if_msg	*cmsg = (Scsp_if_msg *)p;
@@ -1344,9 +1307,7 @@ scsp_ca_act_16(dcsp, p)
  *
  */
 int
-scsp_ca_act_17(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_17(Scsp_dcs *dcsp, void *p)
 {
 	return(0);
 }
@@ -1366,9 +1327,7 @@ scsp_ca_act_17(dcsp, p)
  *
  */
 int
-scsp_ca_act_18(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_18(Scsp_dcs *dcsp, void *p)
 {
 	Scsp_csa        *csap =  (Scsp_csa *)p;
 
@@ -1396,9 +1355,7 @@ scsp_ca_act_18(dcsp, p)
  *
  */
 int
-scsp_ca_act_19(dcsp, p)
-	Scsp_dcs	*dcsp;
-	void		*p;
+scsp_ca_act_19(Scsp_dcs *dcsp, void *p)
 {
 	Scsp_if_msg	*cmsg = (Scsp_if_msg *)p;
 	Scsp_csa	*csap;
