@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.17 2004/05/01 00:28:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.18 2004/05/04 12:22:46 hmp Exp $
  */
 
 #include "opt_cpu.h"
@@ -431,7 +431,7 @@ npx_attach(dev)
 	device_t dev;
 {
 	int flags;
-#if defined(I586_CPU) || defined(I686_CPU)
+#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
 	int mmxopt = 0;
 #endif
 
