@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uuencode.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.bin/uuencode/uuencode.c,v 1.4.2.5 2002/10/21 11:52:15 fanf Exp $
- * $DragonFly: src/usr.bin/uuencode/uuencode.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/uuencode/uuencode.c,v 1.3 2004/12/24 15:13:56 liamfoy Exp $
  */
 
 /*
@@ -55,20 +55,20 @@
 #include <string.h>
 #include <unistd.h>
 
-void encode(void);
-void base64_encode(void);
-static void usage(void);
+static void	encode(void);
+static void	base64_encode(void);
+static void	usage(void);
 
-FILE *output;
-int mode;
-char **av;
+static FILE	 *output;
+static int	 mode;
+static char	**av;
 
 int
 main(int argc, char *argv[])
 {
 	struct stat sb;
 	int base64;
-	char ch;
+	int ch;
 	char *outfile;
 
 	base64 = 0;
@@ -133,7 +133,7 @@ main(int argc, char *argv[])
 /*
  * Copy from in to out, encoding in base64 as you go along.
  */
-void
+static void
 base64_encode(void)
 {
 	/*
@@ -163,11 +163,11 @@ base64_encode(void)
 /*
  * Copy from in to out, encoding as you go along.
  */
-void
+static void
 encode(void)
 {
-	register int ch, n;
-	register char *p;
+	int ch, n;
+	char *p;
 	char buf[80];
 
 	(void)fprintf(output, "begin %o %s\n", mode, *av);
