@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.22 2004/08/02 19:36:26 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.23 2004/08/02 23:20:30 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -195,6 +195,36 @@ initclocks_pcpu(void)
 	systimer_init_periodic(&gd->gd_schedclock, schedclock, 
 				NULL, ESTCPUFREQ); 
 	crit_exit();
+}
+
+/*
+ * Resynchronize gd_cpuclock_base after the system has been woken up from 
+ * a sleep.  It is absolutely essential that all the cpus be properly
+ * synchronized.  Resynching is required because nanouptime() and friends
+ * will overflow intermediate multiplications if more then 2 seconds
+ * worth of cputimer_cont() delta has built up.
+ */
+#ifdef SMP
+
+static
+void
+restoreclocks_remote(lwkt_cpusync_t poll)
+{
+	mycpu->gd_cpuclock_base = *(sysclock_t *)poll->cs_data;
+	mycpu->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
+}
+
+#endif
+
+void
+restoreclocks(void)
+{
+	sysclock_t base = cputimer_count();
+#ifdef SMP
+	lwkt_cpusync_simple(-1, restoreclocks_remote, &base);
+#else
+	mycpu->gd_cpuclock_base = base;
+#endif
 }
 
 /*

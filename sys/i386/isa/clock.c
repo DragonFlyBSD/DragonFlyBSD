@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.15 2004/07/20 04:12:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.16 2004/08/02 23:20:30 dillon Exp $
  */
 
 /*
@@ -596,17 +596,21 @@ rtc_restore(void)
 }
 
 /*
- * Restore all the timers non-atomically (XXX: should be atomically).
+ * Restore all the timers.
  *
- * This function is called from apm_default_resume() to restore all the timers.
- * This should not be necessary, but there are broken laptops that do not
- * restore all the timers on resume.
+ * This function is called from apm_default_resume() / pmtimer to restore
+ * all the timers.  We also have to restore our timebases, especially on
+ * MP systems, because cputimer_count() counter's delta may have grown
+ * too large for nanouptime() and friends to handle.
  */
 void
 timer_restore(void)
 {
+	crit_enter();
 	i8254_restore();		/* restore timer_freq and hz */
 	rtc_restore();			/* reenable RTC interrupts */
+	restoreclocks();
+	crit_exit();
 }
 
 /*

@@ -22,7 +22,7 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- * $DragonFly: src/sys/platform/pc32/isa/pmtimer.c,v 1.1 2003/09/24 03:32:17 drhodus Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/pmtimer.c,v 1.2 2004/08/02 23:20:30 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -98,37 +98,16 @@ pmtimer_resume(device_t dev)
 {
 	int pl;
 	u_int second, minute, hour;
-	struct timeval resume_time, tmp_time;
+	struct timeval resume_time;
 
 	/* modified for adjkerntz */
 	pl = splsoftclock();
 	timer_restore();		/* restore the all timers */
 	inittodr(0);			/* adjust time to RTC */
 	microtime(&resume_time);
-	getmicrotime(&tmp_time);
-	timevaladd(&tmp_time, &diff_time);
 
-#ifdef FIXME
-	/* XXX THIS DOESN'T WORK!!! */
-	time = tmp_time;
-#endif
-
-#ifdef PMTIMER_FIXUP_CALLTODO
-	/* Calculate the delta time suspended */
-	timevalsub(&resume_time, &suspend_time);
-	/* Fixup the calltodo list with the delta time. */
-	adjust_timeout_calltodo(&resume_time);
-#endif /* PMTIMER_FIXUP_CALLTODOK */
 	splx(pl);
-#ifndef PMTIMER_FIXUP_CALLTODO
 	second = resume_time.tv_sec - suspend_time.tv_sec; 
-#else /* PMTIMER_FIXUP_CALLTODO */
-	/* 
-	 * We've already calculated resume_time to be the delta between 
-	 * the suspend and the resume. 
-	 */
-	second = resume_time.tv_sec; 
-#endif /* PMTIMER_FIXUP_CALLTODO */
 	hour = second / 3600;
 	second %= 3600;
 	minute = second / 60;

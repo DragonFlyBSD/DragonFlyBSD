@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/syscons_isa.c,v 1.11.2.2 2001/08/01 10:42:28 yokota Exp $
- * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.4 2004/01/30 05:42:12 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/syscons_isa.c,v 1.5 2004/08/02 23:20:28 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -212,6 +212,9 @@ sc_get_bios_values(bios_values_t *values)
 int
 sc_tone(int herz)
 {
+	return EBUSY;
+#if 0
+	/* XXX use sound device if available */
 #ifdef __i386__
 	int pitch;
 
@@ -233,6 +236,7 @@ sc_tone(int herz)
 #endif /* __i386__ */
 
 	return 0;
+#endif
 }
 
 DRIVER_MODULE(sc, isa, sc_driver, sc_devclass, 0, 0);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.10 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.11 2004/08/02 23:20:29 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -232,6 +232,8 @@ pca_init(void)
 static int
 pca_start(void)
 {
+	return(-1);
+#if 0
 	int x = splhigh();
 	int rv = 0;
 
@@ -252,12 +254,14 @@ pca_start(void)
 
 	splx(x);
 	return rv;
+#endif
 }
 
 
 static void
 pca_stop(void)
 {
+#if 0
 	int x = splhigh();
 
 	/* release the timers */
@@ -271,24 +275,28 @@ pca_stop(void)
 	pca_status.buffer = pca_status.buf[pca_status.current];
 	pca_status.timer_on = 0;
 	splx(x);
+#endif
 }
 
 
 static void
 pca_pause(void)
 {
+#if 0
 	int x = splhigh();
 
 	release_timer0();
 	release_timer2();
 	pca_status.timer_on = 0;
 	splx(x);
+#endif
 }
 
 
 static void
 pca_continue(void)
 {
+#if 0
 	int x = splhigh();
 
         pca_status.oldval = inb(IO_PPI) | 0x03;
@@ -296,6 +304,7 @@ pca_continue(void)
 	acquire_timer0(INTERRUPT_RATE, pcaintr);
 	pca_status.timer_on = 1;
 	splx(x);
+#endif
 }
 
 
