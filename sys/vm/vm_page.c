@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.17 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.18 2004/03/24 17:06:44 hmp Exp $
  */
 
 /*
@@ -1339,8 +1339,9 @@ vm_page_cache(vm_page_t m)
 {
 	int s;
 
-	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy || m->wire_count) {
-		printf("vm_page_cache: attempting to cache busy page\n");
+	if ((m->flags & (PG_BUSY|PG_UNMANAGED)) || m->busy ||
+			m->wire_count || m->hold_count) {
+		printf("vm_page_cache: attempting to cache busy/held page\n");
 		return;
 	}
 	if ((m->queue - m->pc) == PQ_CACHE)
