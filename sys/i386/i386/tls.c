@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.1 2005/02/21 21:40:53 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/tls.c,v 1.2 2005/03/23 01:13:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -96,7 +96,7 @@ sys_set_tls_area(struct sys_set_tls_area_args *uap)
 	}
 	if (error)
 		return (error);
-	if (info.size < 0)
+	if (info.size < -1)
 		return (EINVAL);
 	if (info.size > (1 << 20))
 		info.size = (info.size + PAGE_MASK) & ~PAGE_MASK;
@@ -118,11 +118,28 @@ sys_set_tls_area(struct sys_set_tls_area_args *uap)
 		desc->sd_dpl = SEL_UPL;
 		desc->sd_xx = 0;
 		desc->sd_p = 1;
-		if (info.size >= (1 << 20)) {
+		if (info.size == -1) {
+			/*
+			 * A descriptor size of -1 is a hack to map the
+			 * whole address space.  This type of mapping is
+			 * required for direct-tls accesses of variable
+			 * data, e.g. %gs:OFFSET where OFFSET is negative.
+			 */
+			desc->sd_lolimit = -1;
+			desc->sd_hilimit = -1;
+			desc->sd_gran = 1;
+		} else if (info.size >= (1 << 20)) {
+			/*
+			 * A descriptor size greater then 1MB requires page
+			 * granularity (the lo+hilimit field is only 20 bits)
+			 */
 			desc->sd_lolimit = info.size >> PAGE_SHIFT;
 			desc->sd_hilimit = info.size >> (PAGE_SHIFT + 16);
 			desc->sd_gran = 1;
 		} else {
+			/*
+			 * Otherwise a byte-granular size is supported.
+			 */
 			desc->sd_lolimit = info.size;
 			desc->sd_hilimit = info.size >> 16;
 			desc->sd_gran = 0;
