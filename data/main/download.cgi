@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.24 2004/04/23 03:36:29 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.25 2004/05/04 17:24:43 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -41,6 +41,11 @@ AllBSD.org (Japan) also mirrors these images via
 Fortunaty.net (Europe) offers mirrors via 
 <a href="http://ftp.fortunaty.net/">HTTP</a> and
 <a href="ftp://ftp.fortunaty.net/">FTP</a>.</p>
+<p>
+The University of Vienna (Germany) offers mirrors via  
+<a href="ftp://ftp.univie.ac.at/systems/DragonFly/">FTP</a>,
+<a href="http://ftp.univie.ac.at/systems/DragonFly/">HTTP</a>, and
+<a href="rsync://ftp.univie.ac.at/DragonFly/</a>.</p>
 <p>
 Vladimir Egorin at UIC.EDU mirrors the stable ISO CDs via
 <a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a>.</p>
