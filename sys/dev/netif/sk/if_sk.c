@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.21 2004/12/26 06:10:50 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.22 2004/12/26 06:12:04 dillon Exp $
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
  */
@@ -2426,7 +2426,12 @@ static void sk_init_yukon(sc_if)
 {
 	u_int32_t		phy;
 	u_int16_t		reg;
+	struct sk_softc		*sc;
+	struct ifnet		*ifp;
 	int			i;
+
+	sc = sc_if->sk_softc;
+	ifp = &sc_if->arpcom.ac_if;
 
 	/* GMAC and GPHY Reset */
 	SK_IF_WRITE_4(sc_if, 0, SK_GPHY_CTRL, SK_GPHY_RESET_SET);
@@ -2478,8 +2483,10 @@ static void sk_init_yukon(sc_if)
 		      YU_TPR_JAM_IPG(0xb) | YU_TPR_JAM2DATA_IPG(0x1a) );
 
 	/* serial mode register */
-	SK_YU_WRITE_2(sc_if, YUKON_SMR, YU_SMR_DATA_BLIND(0x1c) |
-		      YU_SMR_MFL_VLAN | YU_SMR_IPG_DATA(0x1e));
+	reg = YU_SMR_DATA_BLIND(0x1c) | YU_SMR_MFL_VLAN | YU_SMR_IPG_DATA(0x1e);
+	if (ifp->if_mtu > (ETHERMTU + ETHER_HDR_LEN + ETHER_CRC_LEN))
+		reg |= YU_SMR_MFL_JUMBO;
+	SK_YU_WRITE_2(sc_if, YUKON_SMR, reg);
 
 	/* Setup Yukon's address */
 	for (i = 0; i < 3; i++) {
