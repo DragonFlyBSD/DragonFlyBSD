@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.12 2004/03/06 05:00:41 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.13 2004/03/08 00:39:00 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -85,30 +86,31 @@ struct tcpcb {
 	struct	inpcb *t_inpcb;		/* back pointer to internet pcb */
 	int	t_state;		/* state of this connection */
 	u_int	t_flags;
-#define	TF_ACKNOW	0x000001	/* ack peer immediately */
-#define	TF_DELACK	0x000002	/* ack, but try to delay it */
-#define	TF_NODELAY	0x000004	/* don't delay packets to coalesce */
-#define	TF_NOOPT	0x000008	/* don't use tcp options */
-#define	TF_SENTFIN	0x000010	/* have sent FIN */
-#define	TF_REQ_SCALE	0x000020	/* have/will request window scaling */
-#define	TF_RCVD_SCALE	0x000040	/* other side has requested scaling */
-#define	TF_REQ_TSTMP	0x000080	/* have/will request timestamps */
-#define	TF_RCVD_TSTMP	0x000100	/* a timestamp was received in SYN */
-#define	TF_SACK_PERMIT	0x000200	/* other side said I could SACK */
-#define	TF_NEEDSYN	0x000400	/* send SYN (implicit state) */
-#define	TF_NEEDFIN	0x000800	/* send FIN (implicit state) */
-#define	TF_NOPUSH	0x001000	/* don't push */
-#define	TF_REQ_CC	0x002000	/* have/will request CC */
-#define	TF_RCVD_CC	0x004000	/* a CC was received in SYN */
-#define	TF_SENDCCNEW	0x008000	/* send CCnew instead of CC in SYN */
-#define	TF_MORETOCOME	0x010000	/* More data to be appended to sock */
-#define	TF_LQ_OVERFLOW	0x020000	/* listen queue overflow */
-#define	TF_LASTIDLE	0x040000	/* connection was previously idle */
-#define	TF_RXWIN0SENT	0x080000	/* sent a receiver win 0 in response */
-#define	TF_FASTRECOVERY	0x100000	/* in NewReno Fast Recovery */
-#define	TF_WASFRECOVERY	0x200000	/* was in NewReno Fast Recovery */
-#define	TF_FIRSTACCACK	0x400000	/* Look for 1st acceptable ACK. */
-#define	TF_FASTREXMT	0x800000	/* Did Fast Retransmit. */
+#define	TF_ACKNOW	0x00000001	/* ack peer immediately */
+#define	TF_DELACK	0x00000002	/* ack, but try to delay it */
+#define	TF_NODELAY	0x00000004	/* don't delay packets to coalesce */
+#define	TF_NOOPT	0x00000008	/* don't use tcp options */
+#define	TF_SENTFIN	0x00000010	/* have sent FIN */
+#define	TF_REQ_SCALE	0x00000020	/* have/will request window scaling */
+#define	TF_RCVD_SCALE	0x00000040	/* other side has requested scaling */
+#define	TF_REQ_TSTMP	0x00000080	/* have/will request timestamps */
+#define	TF_RCVD_TSTMP	0x00000100	/* a timestamp was received in SYN */
+#define	TF_SACK_PERMIT	0x00000200	/* other side said I could SACK */
+#define	TF_NEEDSYN	0x00000400	/* send SYN (implicit state) */
+#define	TF_NEEDFIN	0x00000800	/* send FIN (implicit state) */
+#define	TF_NOPUSH	0x00001000	/* don't push */
+#define	TF_REQ_CC	0x00002000	/* have/will request CC */
+#define	TF_RCVD_CC	0x00004000	/* a CC was received in SYN */
+#define	TF_SENDCCNEW	0x00008000	/* send CCnew instead of CC in SYN */
+#define	TF_MORETOCOME	0x00010000	/* More data to be appended to sock */
+#define	TF_LQ_OVERFLOW	0x00020000	/* listen queue overflow */
+#define	TF_LASTIDLE	0x00040000	/* connection was previously idle */
+#define	TF_RXWIN0SENT	0x00080000	/* sent a receiver win 0 in response */
+#define	TF_FASTRECOVERY	0x00100000	/* in NewReno Fast Recovery */
+#define	TF_WASFRECOVERY	0x00200000	/* was in NewReno Fast Recovery */
+#define	TF_FIRSTACCACK	0x00400000	/* Look for 1st acceptable ACK. */
+#define	TF_FASTREXMT	0x00800000	/* Did Fast Retransmit. */
+#define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
 	int	t_force;		/* 1 if forcing out a byte */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
@@ -329,9 +331,15 @@ struct	tcpstat {
 	u_long	tcps_sndbyte;		/* data bytes sent */
 	u_long	tcps_sndrexmitpack;	/* data packets retransmitted */
 	u_long	tcps_sndrexmitbyte;	/* data bytes retransmitted */
+	u_long	tcps_sndfastrexmit;	/* Fast Retransmissions */
+	u_long	tcps_sndearlyrexmit;	/* early Fast Retransmissions */
+	u_long	tcps_sndlimited;	/* Limited Transmit packets */
 	u_long	tcps_sndrtobad;		/* spurious RTO retransmissions */
 	u_long	tcps_sndfastrexmitbad;	/* spurious Fast Retransmissions */
+	u_long	tcps_sndearlyrexmitbad;	/* spurious early Fast Retransmissions,
+					   a subset of tcps_sndfastrexmitbad */
 	u_long	tcps_eifeldetected;	/* Eifel-detected spurious rexmits */
+	u_long	tcps_rttcantdetect;	/* Eifel but not 1/2 RTT-detectable */
 	u_long	tcps_rttdetected;	/* RTT-detected spurious RTO rexmits */
 	u_long	tcps_sndacks;		/* ack-only packets sent */
 	u_long	tcps_sndprobe;		/* window probes sent */

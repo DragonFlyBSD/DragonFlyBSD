@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002-2003 Jeffrey Hsu
+ * Copyright (c) 2002-2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1994, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.17 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.18 2004/03/08 00:39:00 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -129,6 +129,10 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, drop_synfin, CTLFLAG_RW,
 static int tcp_do_limitedtransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, limitedtransmit, CTLFLAG_RW,
     &tcp_do_limitedtransmit, 0, "Enable RFC 3042 (Limited Transmit)");
+
+static int tcp_do_early_retransmit = 0;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, earlyretransmit, CTLFLAG_RW,
+    &tcp_do_early_retransmit, 0, "Early retransmit");
 
 static int tcp_do_rfc3390 = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
@@ -1019,7 +1023,8 @@ after_listen:
 					tcp_revert_congestion_state(tp);
 					++tcpstat.tcps_rttdetected;
 				}
-				tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT);
+				tp->t_flags &= ~(TF_FIRSTACCACK |
+						 TF_FASTREXMT | TF_EARLYREXMT);
 				/*
 				 * Recalculate the retransmit timer / rtt.
 				 *
@@ -1726,14 +1731,16 @@ trimthenstep6:
 					(void) tcp_output(tp);
 					goto drop;
 				} else if (tp->t_dupacks == tcprexmtthresh) {
-					tcp_seq onxt = tp->snd_nxt;
+					tcp_seq onxt;
 					u_int win;
+
 					if (tcp_do_newreno &&
 					    SEQ_LEQ(th->th_ack,
 					            tp->snd_recover)) {
 						tp->t_dupacks = 0;
 						break;
 					}
+fastretransmit:
 					if (tcp_do_eifel_detect &&
 					    (tp->t_flags & TF_RCVD_TSTMP)) {
 						tcp_save_congestion_state(tp);
@@ -1748,9 +1755,11 @@ trimthenstep6:
 					tp->snd_recover = tp->snd_max;
 					callout_stop(tp->tt_rexmt);
 					tp->t_rtttime = 0;
+					onxt = tp->snd_nxt;
 					tp->snd_nxt = th->th_ack;
 					tp->snd_cwnd = tp->t_maxseg;
 					(void) tcp_output(tp);
+					++tcpstat.tcps_sndfastrexmit;
 					KASSERT(tp->snd_limited <= 2,
 					    ("tp->snd_limited too big"));
 					tp->snd_cwnd = tp->snd_ssthresh +
@@ -1762,18 +1771,23 @@ trimthenstep6:
 				} else if (tcp_do_limitedtransmit) {
 					u_long oldcwnd = tp->snd_cwnd;
 					tcp_seq oldsndmax = tp->snd_max;
+					/* outstanding data */
+					uint32_t ownd =
+					    tp->snd_max - tp->snd_una;
 					u_int sent;
+
+#define	iceildiv(n, d)		(((n)+(d)-1) / (d))
 
 					KASSERT(tp->t_dupacks == 1 ||
 					    tp->t_dupacks == 2,
 					    ("dupacks not 1 or 2"));
 					if (tp->t_dupacks == 1)
 						tp->snd_limited = 0;
-					tp->snd_cwnd =
-					    (tp->snd_nxt - tp->snd_una) +
+					tp->snd_cwnd = ownd +
 					    (tp->t_dupacks - tp->snd_limited) *
 					    tp->t_maxseg;
 					(void) tcp_output(tp);
+					tp->snd_cwnd = oldcwnd;
 					sent = tp->snd_max - oldsndmax;
 					if (sent > tp->t_maxseg) {
 						KASSERT((tp->t_dupacks == 2 &&
@@ -1781,10 +1795,24 @@ trimthenstep6:
 						   (sent == tp->t_maxseg + 1 &&
 						    tp->t_flags & TF_SENTFIN),
 						    ("sent too much"));
+						KASSERT(sent <=
+							tp->t_maxseg * 2,
+						    ("sent too many segments"));
 						tp->snd_limited = 2;
-					} else if (sent > 0)
+						tcpstat.tcps_sndlimited += 2;
+					} else if (sent > 0) {
 						++tp->snd_limited;
-					tp->snd_cwnd = oldcwnd;
+						++tcpstat.tcps_sndlimited;
+					} else if (tcp_do_early_retransmit &&
+					    (tcp_do_eifel_detect &&
+					     (tp->t_flags & TF_RCVD_TSTMP)) &&
+					    tcp_do_newreno &&
+					    tp->t_dupacks + 1 >=
+					      iceildiv(ownd, tp->t_maxseg)) {
+						++tcpstat.tcps_sndearlyrexmit;
+						tp->t_flags |= TF_EARLYREXMT;
+						goto fastretransmit;
+					}
 					goto drop;
 				}
 			} else
@@ -1870,8 +1898,11 @@ process_ACK:
 		    (tp->t_flags & TF_FIRSTACCACK)) {
 			/* Eifel detection applicable. */
 			if (to.to_tsecr < tp->t_rexmtTS) {
-				tcp_revert_congestion_state(tp);
 				++tcpstat.tcps_eifeldetected;
+				tcp_revert_congestion_state(tp);
+				if (tp->t_rxtshift == 1 &&
+				    ticks >= tp->t_badrxtwin)
+					++tcpstat.tcps_rttcantdetect;
 			}
 		} else if (tp->t_rxtshift == 1 && ticks < tp->t_badrxtwin) {
 			tcp_revert_congestion_state(tp);
@@ -1920,7 +1951,7 @@ process_ACK:
 			goto step6;
 
 		/* Stop looking for an acceptable ACK since one was received. */
-		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT);
+		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
 
 		/*
 		 * When new data is acked, open the congestion window.

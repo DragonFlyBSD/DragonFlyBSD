@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.5 2003/08/14 23:09:33 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.6 2004/03/08 00:39:00 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -375,9 +376,11 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 	tp->snd_recover = tp->snd_recover_prev;
 	if (tp->t_flags & TF_WASFRECOVERY)
 	    ENTER_FASTRECOVERY(tp);
-	if (tp->t_flags & TF_FASTREXMT)
+	if (tp->t_flags & TF_FASTREXMT) {
 		++tcpstat.tcps_sndfastrexmitbad;
-	else
+		if (tp->t_flags & TF_EARLYREXMT)
+			++tcpstat.tcps_sndearlyrexmitbad;
+	} else
 		++tcpstat.tcps_sndrtobad;
 	tp->t_badrxtwin = 0;
 	tp->t_rxtshift = 0;
@@ -426,7 +429,7 @@ tcp_timer_rexmt(xtp)
 		 */
 		tp->t_badrxtwin = ticks + (tp->t_srtt >> (TCP_RTT_SHIFT + 1));
 		tcp_save_congestion_state(tp);
-		tp->t_flags &= ~TF_FASTREXMT;
+		tp->t_flags &= ~(TF_FASTREXMT | TF_EARLYREXMT);
 	}
 	tcpstat.tcps_rexmttimeo++;
 	if (tp->t_state == TCPS_SYN_SENT)
