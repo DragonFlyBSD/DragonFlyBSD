@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.57 2005/02/04 21:45:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.58 2005/02/04 22:06:01 okumoto Exp $
  */
 
 /*-
@@ -140,9 +140,6 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 #define	OPEN_BRACKET		'{'
 #define	CLOSE_BRACKET		'}'
 
-static char *VarPossiblyExpand(const char *, GNode *);
-static Var *VarFind(const char *, GNode *, int);
-static void VarAdd(const char *, const char *, GNode *);
 static Var *VarCreate(const char [], const char [], int);
 static void VarDestroy(Var *, Boolean);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
@@ -385,7 +382,7 @@ VarDestroy(Var *v, Boolean f)
  *-----------------------------------------------------------------------
  */
 void
-Var_Delete(char *name, GNode *ctxt)
+Var_Delete(const char *name, GNode *ctxt)
 {
     LstNode *ln;
 
@@ -499,6 +496,7 @@ Var_Append(const char *name, const char *val, GNode *ctxt)
 
     n = VarPossiblyExpand(name, ctxt);
     v = VarFind(n, ctxt, (ctxt == VAR_GLOBAL) ? FIND_ENV : 0);
+
     if (v == NULL) {
 	VarAdd(n, val, ctxt);
     } else {
@@ -603,7 +601,8 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
  *-----------------------------------------------------------------------
  */
 static char *
-VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *), void *datum)
+VarModify(char *str, Boolean (*modProc)(const char *, Boolean, Buffer *, void *),
+    void *datum)
 {
     Buffer  	  *buf;	    	    /* Buffer for the new string */
     Boolean 	  addSpace; 	    /* TRUE if need to add a space to the
@@ -872,7 +871,8 @@ VarREError(int err, regex_t *pat, const char *str)
  *-----------------------------------------------------------------------
  */
 char *
-Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr, Boolean *freePtr)
+Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
+    Boolean *freePtr)
 {
     char	    *tstr;    	/* Pointer into str */
     Var	    	    *v;	    	/* Variable in invocation */

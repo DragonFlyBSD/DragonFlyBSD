@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.11 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.12 2005/02/04 22:06:01 okumoto Exp $
  */
 
 #ifndef var_h_9cccafce
@@ -112,7 +112,7 @@ Boolean VarNoMatch(const char *, Boolean, struct Buffer *, void *);
 Boolean VarRESubstitute(const char *, Boolean, struct Buffer *, void *);
 Boolean VarSubstitute(const char *, Boolean, struct Buffer *, void *);
 
-void Var_Delete(char *, struct GNode *);
+void Var_Delete(const char *, struct GNode *);
 void Var_Set(const char *, const char *, struct GNode *);
 void Var_SetEnv(const char *, struct GNode *);
 void Var_Append(const char *, const char *, struct GNode *);
