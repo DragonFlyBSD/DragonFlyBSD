@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bktr/msp34xx.c,v 1.3 2003/12/12 21:18:04 rwatson Exp $
- * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.1 2004/05/15 17:54:13 joerg Exp $
+ * $DragonFly: src/sys/dev/video/bktr/msp34xx.c,v 1.2 2004/06/01 17:12:15 joerg Exp $
  */
 
 /*
@@ -130,7 +130,7 @@ struct msp3400c {
 	int dfp_regs[DFP_COUNT];
 
 	/* thread */
-	struct proc	    *kthread;
+	struct thread	    *kthread;
 	char                *threaddesc;
 
 	int                  active,restart,rmmod;
