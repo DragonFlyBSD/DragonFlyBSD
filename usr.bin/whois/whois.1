@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)whois.1	8.1 (Berkeley) 6/6/93
 .\" $FreeBSD: src/usr.bin/whois/whois.1,v 1.15.2.9 2002/11/17 15:05:55 mike Exp $
-.\" $DragonFly: src/usr.bin/whois/whois.1,v 1.2 2003/06/17 04:29:33 dillon Exp $
+.\" $DragonFly: src/usr.bin/whois/whois.1,v 1.3 2004/07/23 06:29:27 hmp Exp $
 .\"
 .Dd December 15, 2001
 .Dt WHOIS 1
@@ -41,8 +41,9 @@
 .Nd "Internet domain name and network number directory service"
 .Sh SYNOPSIS
 .Nm
-.Op Fl adgilmpQrR6
+.Op Fl aAbdgiIlmQrR6
 .Op Fl c Ar country-code | Fl h Ar host
+.Op Fl p Ar port
 .Ar name ...
 .Sh DESCRIPTION
 The
@@ -67,6 +68,16 @@ nor by
 whois database end with
 .Qq Li -ARIN . )
 .Pp
+.It Fl A
+Use the Asia/Pacific Network Information Center
+.Pq Tn APNIC
+database.
+It contains network numbers used in East Asia, Australia,
+New Zealand, and the Pacific islands.
+.It Fl b
+Use the Network Abuse Clearinghouse database.
+It contains addresses to which network abuse should be reported,
+indexed by domain name.
 .It Fl c Ar country-code
 This is the equivalent of using the
 .Fl h
@@ -102,8 +113,7 @@ Registry for Internet Numbers
 If a query to
 .Tn ARIN
 references
-.Tn APNIC ,
-.Tn LACNIC ,
+.Tn APNIC , LACNIC ,
 or
 .Tn RIPE ,
 that server will be queried also, provided that the
@@ -143,6 +153,11 @@ can be looked up by prefixing
 to the
 .Tn NIC
 handle in the query.)
+.It Fl I
+Use the Internet Assigned Numbers Authority
+.Pq Tn IANA
+database.
+It contains network information for top-level domains.
 .It Fl l
 Use the Latin American and Caribbean IP address Regional Registry
 .Pq Tn LACNIC
@@ -155,12 +170,12 @@ Use the Route Arbiter Database
 database.
 It contains route policy specifications for a large
 number of operators' networks.
-.It Fl p
-Use the Asia/Pacific Network Information Center
-.Pq Tn APNIC
-database.
-It contains network numbers used in East Asia, Australia,
-New Zealand, and the Pacific islands.
+.It Fl p Ar port
+Connect to the whois server on
+.Ar port .
+If this option is not specified,
+.Nm
+defaults to port 43.
 .It Fl Q
 Do a quick lookup.
 This means that
@@ -181,6 +196,11 @@ database.
 It contains network numbers and domain contact information
 for subdomains of
 .Pa .RU .
+This option is deprecated; use the
+.Fl c
+option with an argument of
+.Qq Li RU
+instead.
 .It Fl 6
 Use the IPv6 Resource Center
 .Pq Tn 6bone
@@ -232,6 +252,17 @@ option, which directs the query to
 .Tn 6bone .
 .Pp
 .Dl "whois -6 IPv6-IP-Address"
+.Pp
+The following example demonstrates how to query
+a whois server using a non-standard port, where
+.Dq Li query-data
+is the query to be sent to
+.Dq Li whois.example.com
+on port
+.Dq Li rwhois
+(written numerically as 4321).
+.Pp
+.Dl "whois -h whois.example.com -p rwhois query-data"
 .Sh SEE ALSO
 .Rs
 .%A Ken Harrenstien

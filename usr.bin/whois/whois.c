@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/whois/whois.c,v 1.3 2004/07/23 06:29:27 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -50,6 +50,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#define ABUSEHOST	"whois.abuse.net"
 #define	NICHOST		"whois.crsnic.net"
 #define	INICHOST	"whois.networksolutions.com"
 #define	DNICHOST	"whois.nic.mil"
@@ -62,16 +63,19 @@
 #define	MNICHOST	"whois.ra.net"
 #define	QNICHOST_TAIL	".whois-servers.net"
 #define	SNICHOST	"whois.6bone.net"
+#define IANAHOST	"whois.iana.org"
 #define	BNICHOST	"whois.registro.br"
 #define	WHOIS_SERVER_ID	"Whois Server: "
 #define	WHOIS_ORG_SERVER_ID	"Registrant Street1:Whois Server:"
 
+#define DEFAULT_PORT	"whois"
 #define WHOIS_RECURSE		0x01
 #define WHOIS_QUICK		0x02
 
 #define ishost(h) (isalnum((unsigned char)h) || h == '.' || h == '-')
 
 const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
+const char *port = DEFAULT_PORT;
 
 static char *choose_server(char *);
 static struct addrinfo *gethostinfo(char const *host, int exit_on_error);
@@ -92,10 +96,16 @@ main(int argc, char *argv[])
 
 	country = host = qnichost = NULL;
 	flags = use_qnichost = 0;
-	while ((ch = getopt(argc, argv, "ac:dgh:ilmpQrR6")) != -1) {
+	while ((ch = getopt(argc, argv, "aAbc:dgh:ilImp:QrR6")) != -1) {
 		switch (ch) {
 		case 'a':
 			host = ANICHOST;
+			break;
+		case 'A':
+			host = PNICHOST;
+			break;
+		case 'b':
+			host = ABUSEHOST;
 			break;
 		case 'c':
 			country = optarg;
@@ -112,6 +122,9 @@ main(int argc, char *argv[])
 		case 'i':
 			host = INICHOST;
 			break;
+		case 'I':
+			host = IANAHOST;
+			break;
 		case 'l':
 			host = LNICHOST;
 			break;
@@ -119,7 +132,7 @@ main(int argc, char *argv[])
 			host = MNICHOST;
 			break;
 		case 'p':
-			host = PNICHOST;
+			port = optarg;
 			break;
 		case 'Q':
 			flags |= WHOIS_QUICK;
@@ -209,7 +222,7 @@ gethostinfo(char const *host, int exit_on_error)
 	hints.ai_flags = 0;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
-	error = getaddrinfo(host, "whois", &hints, &res);
+	error = getaddrinfo(host, port, &hints, &res);
 	if (error) {
 		warnx("%s: %s", host, gai_strerror(error));
 		if (exit_on_error)
@@ -225,6 +238,7 @@ gethostinfo(char const *host, int exit_on_error)
 static void
 s_asprintf(char **ret, const char *format, ...)
 {
+
 	va_list ap;
 
 	va_start(ap, format);
@@ -316,7 +330,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: whois [-adgilmpQrR6] [-c country-code | -h hostname] "
-	    "name ...\n");
+	    "usage: whois [-aAbdgilImQrR6] [-c country-code | -h hostname] "
+	    "[-p port] name ...\n");
 	exit(EX_USAGE);
 }
