@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.3 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.4 2003/11/14 00:37:23 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -48,8 +48,7 @@ typedef enum modeventtype {
 
 typedef	struct module *module_t;
 
-typedef	int (*modeventhand_t)(module_t mod, int /*modeventtype_t*/ what,
-			      void *arg);
+typedef	int (*modeventhand_t)(module_t, int /*modeventtype_t*/, void *);
 
 /*
  * Struct for registering modules statically via SYSINIT.
@@ -96,12 +95,27 @@ struct mod_metadata {
 
 #ifdef _KERNEL
 
-#define MODULE_METADATA(uniquifier, type, data, cval)
+#define MODULE_METADATA(uniquifier, type, data, cval)			\
+	static struct mod_metadata _mod_metadata##uniquifier = {	\
+		MDT_STRUCT_VERSION,					\
+		type,							\
+		data,							\
+		cval							\
+	};								\
+	DATA_SET(modmetadata_set, _mod_metadata##uniquifier)
 
-#define MODULE_DEPEND(mod, dep, min, pref, max)
+#define MODULE_DEPEND(module, mdepend, vmin, vpref, vmax)		\
+	static struct mod_depend _##module##_depend_on_##mdepend = {	\
+		vmin,							\
+		vpref,							\
+		vmax							\
+	};								\
+	MODULE_METADATA(_md_##module##_on_##mdepend, MDT_DEPEND,	\
+	    &_##module##_depend_on_##mdepend, #mdepend)
 
-#define DECLARE_MODULE(name, data, sub, order) \
-    SYSINIT(name##module, sub, order, module_register_init, &data) \
+#define DECLARE_MODULE(name, data, sub, order) 				\
+    MODULE_METADATA(_md_##name, MDT_MODULE, &data, #name);		\
+    SYSINIT(name##module, sub, order, module_register_init, &data) 	\
     struct __hack
 
 #define MODULE_VERSION(mod, ver)

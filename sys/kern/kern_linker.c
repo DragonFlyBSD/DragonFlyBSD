@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_linker.c,v 1.41.2.3 2001/11/21 17:50:35 luigi Exp $
- * $DragonFly: src/sys/kern/kern_linker.c,v 1.13 2003/11/10 06:12:13 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_linker.c,v 1.14 2003/11/14 00:37:22 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -51,7 +51,10 @@
 int kld_debug = 0;
 #endif
 
+/* Metadata from the static kernel */
+SET_DECLARE(modmetadata_set, struct mod_metadata);
 MALLOC_DEFINE(M_LINKER, "kld", "kernel linker");
+
 linker_file_t linker_current_file;
 linker_file_t linker_kernel_file;
 
@@ -905,10 +908,43 @@ out:
     return error;
 }
 
+static struct mod_metadata *
+find_mod_metadata(const char *modname)
+{
+    int len;
+    struct mod_metadata **mdp;
+    struct mod_metadata *mdt;
+
+    /*
+     * Strip path prefixes and any dot extension
+     */
+    for (len = strlen(modname) - 1; len >= 0; --len) {
+	if (modname[len] == '/')
+	    break;
+    }
+    modname += len + 1;
+    for (len = 0; modname[len] && modname[len] != '.'; ++len)
+	;
+
+    /*
+     * Look for the module declaration
+     */
+    SET_FOREACH(mdp, modmetadata_set) {
+	mdt = *mdp;
+	if (mdt->md_type != MDT_MODULE)
+	    continue;
+	if (strlen(mdt->md_cval) == len &&
+	    strncmp(mdt->md_cval, modname, len) == 0
+	) {
+	    return(mdt);
+	}
+    }
+    return(NULL);
+}
+
 /*
  * Preloaded module support
  */
-
 static void
 linker_preload(void* arg)
 {
@@ -934,7 +970,18 @@ linker_preload(void* arg)
 	    printf("Preloaded module at %p does not have a type!\n", modptr);
 	    continue;
 	}
-	printf("Preloaded %s \"%s\" at %p.\n", modtype, modname, modptr);
+
+	/*
+	 * This is a hack at the moment, but what's in FreeBSD-5 is even 
+	 * worse so I'd rather the hack.
+	 */
+	printf("Preloaded %s \"%s\" at %p", modtype, modname, modptr);
+	if (find_mod_metadata(modname)) {
+	    printf(" (ignored, already in static kernel)\n");
+	    continue;
+	}
+	printf(".\n");
+
 	lf = linker_find_file_by_name(modname);
 	if (lf) {
 	    lf->userrefs++;

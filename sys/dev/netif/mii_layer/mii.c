@@ -37,7 +37,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/mii.c,v 1.6.2.2 2002/08/19 16:56:33 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.4 2003/08/27 09:38:31 rob Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/mii.c,v 1.5 2003/11/14 00:37:24 dillon Exp $
  */
 
 /*
@@ -50,6 +50,7 @@
 #include <sys/systm.h>
 #include <sys/socket.h>
 #include <sys/malloc.h>
+#include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h> 
 
@@ -325,3 +326,8 @@ mii_pollstat(mii)
 	     child = LIST_NEXT(child, mii_list))
 		(void) (*child->mii_service)(child, mii, MII_POLLSTAT);
 }
+
+static moduledata_t miibus_mod = { "miibus" };
+
+DECLARE_MODULE(miibus, miibus_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+
