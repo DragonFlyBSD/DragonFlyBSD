@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.19 2005/01/11 21:21:09 okumoto Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.20 2005/01/20 00:31:22 okumoto Exp $
 .\"
 .Dd December 2, 2004
 .Dt MAKE 1
@@ -1349,23 +1349,6 @@ Each source specifies a suffix to
 .Nm .
 If no sources are specified, any previous specified suffices are deleted.
 .El
-.Sh COMPATIBILITY
-Older versions of
-.Nm
-used
-.Ev MAKE
-instead of
-.Ev MAKEFLAGS .
-This was removed for POSIX compatibility.
-The internal variable
-.Va MAKE
-is set to the same value as
-.Va .MAKE ;
-support for this may be removed in the future.
-.Pp
-Most of the more esoteric features of
-.Nm
-should probably be avoided for greater compatibility.
 .Sh ENVIRONMENT
 The
 .Nm
@@ -1404,6 +1387,35 @@ directory.
 List all included makefiles in order visited:
 .Pp
 .Dl "make -V .MAKEFILE_LIST | tr \e\  \e\en"
+.Sh COMPATIBILITY
+Older versions of
+.Nm
+used
+.Ev MAKE
+instead of
+.Ev MAKEFLAGS .
+This was removed for POSIX compatibility.
+The internal variable
+.Va MAKE
+is set to the same value as
+.Va .MAKE ;
+support for this may be removed in the future.
+.Pp
+Most of the more esoteric features of
+.Nm
+should probably be avoided for greater compatibility.
+.Sh SEE ALSO
+.Xr mkdep 1 ,
+.Xr make.conf 5
+.Rs
+.%T "PMake - A Tutorial"
+.Re
+in
+.Pa /usr/share/doc/psd/12.make
+.Sh HISTORY
+A
+.Nm
+command appeared in PWB UNIX.
 .Sh BUGS
 The determination of
 .Va .OBJDIR
@@ -1459,15 +1471,3 @@ all:
      ...
 \&.endfor
 .Ed
-.Sh SEE ALSO
-.Xr mkdep 1 ,
-.Xr make.conf 5
-.Rs
-.%T "PMake - A Tutorial"
-.Re
-in
-.Pa /usr/share/doc/psd/12.make
-.Sh HISTORY
-A
-.Nm
-command appeared in PWB UNIX.
