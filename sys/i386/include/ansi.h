@@ -32,7 +32,7 @@
  *
  *	@(#)ansi.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/i386/include/ansi.h,v 1.18.2.4 2001/06/03 17:15:54 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/ansi.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/ansi.h,v 1.3 2003/08/10 19:10:42 asmodai Exp $
  */
 
 #ifndef _MACHINE_ANSI_H_
@@ -128,7 +128,7 @@ typedef	unsigned long long				__uint64_t;
  * Internal names for basic integral types.  Omit the typedef if
  * not possible for a machine/compiler combination.
  */
-typedef	__signed char		   __int8_t;
+typedef	signed char		   __int8_t;
 typedef	unsigned char		  __uint8_t;
 typedef	short			  __int16_t;
 typedef	unsigned short		 __uint16_t;
