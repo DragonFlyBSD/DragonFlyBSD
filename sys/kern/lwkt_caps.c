@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.3 2004/03/31 19:28:29 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_caps.c,v 1.4 2004/04/26 17:06:18 dillon Exp $
  */
 
 /*
@@ -881,12 +881,13 @@ caps_process_msg(caps_kinfo_t caps, caps_kmsg_t msg, struct caps_sys_get_args *u
 	caps_dequeue_msg(caps, msg);
 
     if (msg->km_xio.xio_bytes != 0) {
-	struct proc *rp = msg->km_mcaps->ci_td->td_proc;
-	KKASSERT(rp != NULL);
 	error = xio_copy_xtou(&msg->km_xio, uap->msg, 
 			    min(msg->km_xio.xio_bytes, uap->maxsize));
 	if (error) {
-	    printf("xio_copy_xtou: error %d from proc %d\n", error, rp->p_pid);
+	    if (msg->km_mcaps->ci_td && msg->km_mcaps->ci_td->td_proc) {
+		printf("xio_copy_xtou: error %d from proc %d\n", 
+			error, msg->km_mcaps->ci_td->td_proc->p_pid);
+	    }
 	    if (msgsize > uap->maxsize)
 		caps_dequeue_msg(caps, msg);
 	    msgsize = 0;
