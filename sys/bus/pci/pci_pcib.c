@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.3 2005/01/17 17:50:21 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci_pcib.c,v 1.4 2005/01/17 20:24:46 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -539,7 +539,7 @@ pcib_route_interrupt(device_t pcib, device_t dev, int pin)
 	 * which includes the ability to route interrupts.
 	 */
 	bus = device_get_parent(pcib);
-	intnum = PCI_ROUTE_INTERRUPT(device_get_parent(bus), pcib,
+	intnum = PCIB_ROUTE_INTERRUPT(device_get_parent(bus), pcib,
 	    parent_intpin + 1);
 	device_printf(pcib, "routed slot %d INT%c to irq %d\n",
 	    pci_get_slot(dev), 'A' + pin - 1, intnum);

@@ -24,7 +24,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/sys/pci/pci_if.m,v 1.2.2.1 2001/07/21 22:40:26 imp Exp $
-# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.4 2004/02/21 06:37:05 dillon Exp $
+# $DragonFly: src/sys/bus/pci/pci_if.m,v 1.5 2005/01/17 20:24:46 joerg Exp $
 #
 
 #include <sys/bus.h>
@@ -82,15 +82,4 @@ METHOD int disable_io {
 METHOD int assign_interrupt {
 	device_t        dev;
 	device_t        child;
-};
-
-
-#
-# Route an interrupt.  Returns a value suitable for stuffing into 
-# a device's interrupt register.
-#
-METHOD int route_interrupt {
-	device_t pcib;
-	device_t dev;
-	int pin;
 };
