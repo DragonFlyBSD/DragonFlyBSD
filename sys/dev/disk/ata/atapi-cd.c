@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.11 2004/03/08 13:31:57 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.12 2004/03/08 15:13:56 joerg Exp $
  */
 
 #include "opt_ata.h"
@@ -1673,7 +1673,7 @@ acd_send_cue(struct acd_softc *cdp, struct cdr_cuesheet *cuesheet)
 static int
 acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
 {
-    struct dvd_miscauth *d;
+    struct dvd_miscauth *d = NULL;
     u_int32_t lba = 0;
     int16_t length;
     int8_t ccb[16];
@@ -1763,8 +1763,7 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     default:
 	error = EINVAL;
     }
-    if (length)
-	free(d, M_ACD);
+    free(d, M_ACD);
     return error;
 }
 
