@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.5 2003/07/21 05:50:42 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.6 2003/07/26 19:25:18 rob Exp $
  */
 
 /*
@@ -1515,7 +1515,7 @@ tame_mouse(struct psm_softc *sc, mousestatus_t *status, unsigned char *buf)
 static int
 psmread(dev_t dev, struct uio *uio, int flag)
 {
-    register struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
+    struct psm_softc *sc = PSM_SOFTC(PSM_UNIT(dev));
     unsigned char buf[PSM_SMALLBUFSIZE];
     int error = 0;
     int s;
@@ -1979,7 +1979,7 @@ psmintr(void *arg)
 	MOUSE_BUTTON1DOWN,
 	MOUSE_BUTTON1DOWN | MOUSE_BUTTON3DOWN
     };
-    register struct psm_softc *sc = arg;
+    struct psm_softc *sc = arg;
     mousestatus_t ms;
     struct timeval tv;
     int x, y, z;

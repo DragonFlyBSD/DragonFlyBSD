@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.3 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.4 2003/07/26 19:27:41 rob Exp $
  */
 
 #include <sys/param.h>
@@ -125,8 +125,8 @@ cd9660_rrip_slink(p,ana)
 	ISO_RRIP_SLINK	*p;
 	ISO_RRIP_ANALYZE *ana;
 {
-	register ISO_RRIP_SLINK_COMPONENT *pcomp;
-	register ISO_RRIP_SLINK_COMPONENT *pcompe;
+	ISO_RRIP_SLINK_COMPONENT *pcomp;
+	ISO_RRIP_SLINK_COMPONENT *pcompe;
 	int len, wlen, cont;
 	char *outbuf, *inbuf;
 
@@ -494,9 +494,9 @@ cd9660_rrip_loop(isodir,ana,table)
 	ISO_RRIP_ANALYZE *ana;
 	RRIP_TABLE *table;
 {
-	register RRIP_TABLE *ptable;
-	register ISO_SUSP_HEADER *phead;
-	register ISO_SUSP_HEADER *pend;
+	RRIP_TABLE *ptable;
+	ISO_SUSP_HEADER *phead;
+	ISO_SUSP_HEADER *pend;
 	struct buf *bp = NULL;
 	char *pwhead;
 	u_char c;

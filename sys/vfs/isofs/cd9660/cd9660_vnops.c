@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.4 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.5 2003/07/26 19:27:41 rob Exp $
  */
 
 #include <sys/param.h>
@@ -208,8 +208,8 @@ cd9660_getattr(ap)
 
 {
 	struct vnode *vp = ap->a_vp;
-	register struct vattr *vap = ap->a_vap;
-	register struct iso_node *ip = VTOI(vp);
+	struct vattr *vap = ap->a_vap;
+	struct iso_node *ip = VTOI(vp);
 
 	vap->va_fsid	= dev2udev(ip->i_dev);
 	vap->va_fileid	= ip->i_number;
@@ -296,9 +296,9 @@ cd9660_read(ap)
 	} */ *ap;
 {
 	struct vnode *vp = ap->a_vp;
-	register struct uio *uio = ap->a_uio;
-	register struct iso_node *ip = VTOI(vp);
-	register struct iso_mnt *imp;
+	struct uio *uio = ap->a_uio;
+	struct iso_node *ip = VTOI(vp);
+	struct iso_mnt *imp;
 	struct buf *bp;
 	daddr_t lbn, rablock;
 	off_t diff;
@@ -467,7 +467,7 @@ cd9660_readdir(ap)
 		u_long *a_cookies;
 	} */ *ap;
 {
-	register struct uio *uio = ap->a_uio;
+	struct uio *uio = ap->a_uio;
 	struct isoreaddir *idp;
 	struct vnode *vdp = ap->a_vp;
 	struct iso_node *dp;
@@ -747,9 +747,9 @@ cd9660_strategy(ap)
 		struct buf *a_bp;
 	} */ *ap;
 {
-	register struct buf *bp = ap->a_bp;
-	register struct vnode *vp = bp->b_vp;
-	register struct iso_node *ip;
+	struct buf *bp = ap->a_bp;
+	struct vnode *vp = bp->b_vp;
+	struct iso_node *ip;
 	int error;
 
 	ip = VTOI(vp);

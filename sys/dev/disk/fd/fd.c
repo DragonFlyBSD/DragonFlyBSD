@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.8 2003/07/22 17:03:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.9 2003/07/26 19:25:18 rob Exp $
  *
  */
 
@@ -1686,7 +1686,7 @@ fdstate(fdc_p fdc)
 	unsigned blknum = 0, b_cylinder = 0;
 	fdu_t fdu = fdc->fdu;
 	fd_p fd;
-	register struct buf *bp;
+	struct buf *bp;
 	struct fd_formb *finfo = NULL;
 	size_t fdblk;
 
@@ -2181,7 +2181,7 @@ fdstate(fdc_p fdc)
 static int
 retrier(struct fdc_data *fdc)
 {
-	register struct buf *bp;
+	struct buf *bp;
 	struct fd_data *fd;
 	int fdu;
 

@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.4 2003/06/26 05:55:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.5 2003/07/26 19:27:41 rob Exp $
  */
 
 #include <sys/param.h>
@@ -94,9 +94,9 @@ cd9660_lookup(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	register struct vnode *vdp;	/* vnode for directory being searched */
-	register struct iso_node *dp;	/* inode for directory being searched */
-	register struct iso_mnt *imp;	/* file system that directory is in */
+	struct vnode *vdp;	/* vnode for directory being searched */
+	struct iso_node *dp;	/* inode for directory being searched */
+	struct iso_mnt *imp;	/* file system that directory is in */
 	struct buf *bp;			/* a buffer of directory entries */
 	struct iso_directory_record *ep = 0;/* the current directory entry */
 	int entryoffsetinblock;		/* offset of ep in bp's buffer */
@@ -407,7 +407,7 @@ cd9660_blkatoff(vp, offset, res, bpp)
 	struct buf **bpp;
 {
 	struct iso_node *ip;
-	register struct iso_mnt *imp;
+	struct iso_mnt *imp;
 	struct buf *bp;
 	daddr_t lbn;
 	int bsize, error;

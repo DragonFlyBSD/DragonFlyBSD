@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/ppc.c,v 1.26.2.5 2001/10/02 05:21:45 nsouch Exp $
- * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.3 2003/07/19 21:14:37 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppc/ppc.c,v 1.4 2003/07/26 19:25:18 rob Exp $
  *
  */
 
@@ -308,7 +308,7 @@ ppc_detect_port(struct ppc_data *ppc)
 static void
 ppc_reset_epp_timeout(struct ppc_data *ppc)
 {
-	register char r;
+	char r;
 
 	r = r_str(ppc);
 	w_str(ppc, r | 0x1);
@@ -1348,10 +1348,10 @@ ppc_exec_microseq(device_t dev, struct ppb_microseq **p_msq)
 	int i, iter, len;
 	int error;
 
-	register int reg;
-	register char mask;
-	register int accum = 0;
-	register char *ptr = 0;
+	int reg;
+	char mask;
+	int accum = 0;
+	char *ptr = 0;
 
 	struct ppb_microseq *stack = 0;
 

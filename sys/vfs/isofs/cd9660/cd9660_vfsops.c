@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.7 2003/07/22 17:03:32 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.8 2003/07/26 19:27:41 rob Exp $
  */
 
 #include <sys/param.h>
@@ -177,7 +177,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
  */
 static int
 cd9660_mount(mp, path, data, ndp, td)
-	register struct mount *mp;
+	struct mount *mp;
 	char *path;
 	caddr_t data;
 	struct nameidata *ndp;
@@ -272,7 +272,7 @@ iso_mountfs(
     struct thread *td,
     struct iso_args *argp
 ) {
-	register struct iso_mnt *isomp = (struct iso_mnt *)0;
+	struct iso_mnt *isomp = (struct iso_mnt *)0;
 	struct buf *bp = NULL;
 	struct buf *pribp = NULL, *supbp = NULL;
 	dev_t dev = devvp->v_rdev;
@@ -536,7 +536,7 @@ out:
 static int
 cd9660_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
-	register struct iso_mnt *isomp;
+	struct iso_mnt *isomp;
 	int error, flags = 0;
 
 	if (mntflags & MNT_FORCE)
@@ -585,7 +585,7 @@ cd9660_root(mp, vpp)
  * Get file system statistics.
  */
 int
-cd9660_statfs(struct mount *mp, register struct statfs *sbp, struct thread *td)
+cd9660_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct iso_mnt *isomp;
 
@@ -626,12 +626,12 @@ struct ifid {
 /* ARGSUSED */
 int
 cd9660_fhtovp(mp, fhp, vpp)
-	register struct mount *mp;
+	struct mount *mp;
 	struct fid *fhp;
 	struct vnode **vpp;
 {
 	struct ifid *ifhp = (struct ifid *)fhp;
-	register struct iso_node *ip;
+	struct iso_node *ip;
 	struct vnode *nvp;
 	int error;
 	
@@ -661,8 +661,8 @@ cd9660_checkexp(mp, nam, exflagsp, credanonp)
 	int *exflagsp;
 	struct ucred **credanonp;
 {
-	register struct netcred *np;
-	register struct iso_mnt *imp;
+	struct netcred *np;
+	struct iso_mnt *imp;
 
 	imp = VFSTOISOFS(mp);	
 
@@ -884,8 +884,8 @@ cd9660_vptofh(vp, fhp)
 	struct vnode *vp;
 	struct fid *fhp;
 {
-	register struct iso_node *ip = VTOI(vp);
-	register struct ifid *ifhp;
+	struct iso_node *ip = VTOI(vp);
+	struct ifid *ifhp;
 
 	ifhp = (struct ifid *)fhp;
 	ifhp->ifid_len = sizeof(struct ifid);

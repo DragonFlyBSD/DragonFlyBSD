@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_node.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_node.c,v 1.29.2.1 2000/07/08 14:35:56 bp Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.4 2003/07/06 21:23:50 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_node.c,v 1.5 2003/07/26 19:27:41 rob Exp $
  */
 
 #include <sys/param.h>
@@ -145,9 +145,9 @@ cd9660_ihashins(struct iso_node *ip)
  */
 static void
 cd9660_ihashrem(ip)
-	register struct iso_node *ip;
+	struct iso_node *ip;
 {
-	register struct iso_node *iq;
+	struct iso_node *iq;
 
 	lwkt_gettoken(&cd9660_ihash_token);
 	if ((iq = ip->i_next) != NULL)
@@ -173,7 +173,7 @@ cd9660_inactive(ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct thread *td = ap->a_td;
-	register struct iso_node *ip = VTOI(vp);
+	struct iso_node *ip = VTOI(vp);
 	int error = 0;
 
 	if (prtactive && vp->v_usecount != 0)
@@ -200,8 +200,8 @@ cd9660_reclaim(ap)
 		struct proc *a_p;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct iso_node *ip = VTOI(vp);
+	struct vnode *vp = ap->a_vp;
+	struct iso_node *ip = VTOI(vp);
 
 	if (prtactive && vp->v_usecount != 0)
 		vprint("cd9660_reclaim: pushing active", vp);
