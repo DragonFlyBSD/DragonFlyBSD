@@ -32,7 +32,7 @@
  *
  *	@(#)disklabel.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD$
- * $DragonFly: src/sys/sys/diskmbr.h,v 1.1 2003/11/10 06:12:17 dillon Exp $
+ * $DragonFly: src/sys/sys/diskmbr.h,v 1.2 2004/04/21 02:32:41 cpressey Exp $
  */
 
 #ifndef _SYS_DISKMBR_H_
@@ -70,9 +70,6 @@ struct dos_partition {
 #ifdef CTASSERT
 CTASSERT(sizeof (struct dos_partition) == DOSPARTSIZE);
 #endif
-
-void dos_partition_dec(void const *pp, struct dos_partition *d);
-void dos_partition_enc(void *pp, struct dos_partition *d);
 
 #define	DPSECT(s) ((s) & 0x3f)		/* isolate relevant bits of sector */
 #define	DPCYL(c, s) ((c) + (((s) & 0xc0)<<2)) /* and those that are cylinder */
