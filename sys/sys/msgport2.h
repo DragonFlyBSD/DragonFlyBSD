@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.4 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.5 2003/11/24 20:46:05 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -65,6 +65,13 @@ lwkt_replymsg(lwkt_msg_t msg, int error)
     lwkt_port_t port = msg->ms_reply_port;
     msg->ms_error = error;
     port->mp_replyport(port, msg);
+}
+
+static __inline
+void *
+lwkt_waitport(lwkt_port_t port, lwkt_msg_t msg)
+{
+    return(port->mp_waitport(port, msg));
 }
 
 #endif

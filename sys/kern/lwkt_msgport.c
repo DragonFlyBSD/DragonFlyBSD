@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.9 2003/11/21 22:46:08 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.10 2003/11/24 20:46:01 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -79,6 +79,10 @@
  *				MESSAGE FUNCTIONS			*
  ************************************************************************/
 
+static int lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg);
+static void *lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg);
+static void lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg);
+static void lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg);
 static void lwkt_replyport_remote(lwkt_msg_t msg);
 static void lwkt_putport_remote(lwkt_msg_t msg);
 
@@ -153,26 +157,43 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
  *	Initialize a port for use and assign it to the specified thread.
  */
 void
-lwkt_init_port(lwkt_port_t port, thread_t td)
+lwkt_initport(lwkt_port_t port, thread_t td)
 {
     bzero(port, sizeof(*port));
     TAILQ_INIT(&port->mp_msgq);
     port->mp_td = td;
-    port->mp_putport = lwkt_putport;
-    port->mp_waitport =  lwkt_waitport;
-    port->mp_replyport = lwkt_replyport;
-    port->mp_abortport = lwkt_abortport;
+    port->mp_putport = lwkt_default_putport;
+    port->mp_waitport =  lwkt_default_waitport;
+    port->mp_replyport = lwkt_default_replyport;
+    port->mp_abortport = lwkt_default_abortport;
 }
 
 /*
- * The rest of the procedures implement the kernel's port functions.  Userland
- * will have a different set of these
+ * lwkt_getport()
+ *
+ *	Retrieve the next message from the port's message queue, return NULL
+ *	if no messages are pending.
+ *
+ *	The calling thread MUST own the port.
  */
+void *
+lwkt_getport(lwkt_port_t port)
+{
+    lwkt_msg_t msg;
 
-#ifdef _KERNEL
+    KKASSERT(port->mp_td == curthread);
+
+    crit_enter();
+    if ((msg = TAILQ_FIRST(&port->mp_msgq)) != NULL) {
+	TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
+	msg->ms_flags &= ~MSGF_QUEUED;
+    }
+    crit_exit();
+    return(msg);
+}
 
 /*
- * lwkt_replyport()
+ * lwkt_default_replyport()
  *
  *	This function is typically assigned to the mp_replyport port vector.
  *
@@ -212,8 +233,9 @@ lwkt_replyport_remote(lwkt_msg_t msg)
     _lwkt_replyport(msg->ms_reply_port, msg);
 }
 
+static
 void
-lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
     crit_enter();
     if (msg->ms_flags & MSGF_ASYNC) {
@@ -227,7 +249,7 @@ lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 /*
- * lwkt_putport()
+ * lwkt_default_putport()
  *
  *	This function is typically assigned to the mp_putport port vector.
  *
@@ -237,8 +259,8 @@ lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
  *
  *	You must already be in a critical section when calling
  *	the inline function.  The _remote function will be in a critical
- *	section due to being called from the IPI, and lwkt_putport() enters
- *	a critical section.
+ *	section due to being called from the IPI, and lwkt_default_putport() 
+ *	enters a critical section.
  */
 static
 __inline
@@ -265,8 +287,9 @@ lwkt_putport_remote(lwkt_msg_t msg)
     _lwkt_putport(msg->ms_target_port, msg);
 }
 
+static
 int
-lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_default_putport(lwkt_port_t port, lwkt_msg_t msg)
 {
     crit_enter();
     msg->ms_flags &= ~MSGF_DONE;
@@ -276,7 +299,7 @@ lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
 }
 
 /*
- * lwkt_abortport()
+ * lwkt_default_abortport()
  *
  *	This function is typically assigned to the mp_abortport port vector.
  *
@@ -290,38 +313,15 @@ lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
  *	capabilities.  Remember that aborts are always optional so doing 
  *	nothing is perfectly reasonable.
  */
+static
 void
-lwkt_abortport(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_default_abortport(lwkt_port_t port, lwkt_msg_t msg)
 {
     /* NOP */
 }
 
 /*
- * lwkt_getport()
- *
- *	Retrieve the next message from the port's message queue, return NULL
- *	if no messages are pending.
- *
- *	The calling thread MUST own the port.
- */
-void *
-lwkt_getport(lwkt_port_t port)
-{
-    lwkt_msg_t msg;
-
-    KKASSERT(port->mp_td == curthread);
-
-    crit_enter();
-    if ((msg = TAILQ_FIRST(&port->mp_msgq)) != NULL) {
-	TAILQ_REMOVE(&port->mp_msgq, msg, ms_node);
-	msg->ms_flags &= ~MSGF_QUEUED;
-    }
-    crit_exit();
-    return(msg);
-}
-
-/*
- * lwkt_waitport()
+ * lwkt_default_waitport()
  *
  *	If msg is NULL, dequeue the next message from the port's message
  *	queue, block until a message is ready.  This function never
@@ -334,8 +334,9 @@ lwkt_getport(lwkt_port_t port)
  * 	on a port.  By virtue of owning the port it is controlled by our
  *	cpu and we can safely manipulate it's contents.
  */
+static
 void *
-lwkt_waitport(lwkt_port_t port, lwkt_msg_t msg)
+lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 {
     KKASSERT(port->mp_td == curthread);
 
@@ -387,6 +388,4 @@ lwkt_waitport(lwkt_port_t port, lwkt_msg_t msg)
     crit_exit();
     return(msg);
 }
-
-#endif
 

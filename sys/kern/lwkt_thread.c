@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.42 2003/11/21 22:46:08 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.43 2003/11/24 20:46:01 dillon Exp $
  */
 
 /*
@@ -79,6 +79,7 @@
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <stdlib.h>
+#include <machine/cpufunc.h>
 
 #endif
 
@@ -260,7 +261,7 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
-    lwkt_init_port(&td->td_msgport, td);
+    lwkt_initport(&td->td_msgport, td);
     pmap_init_thread(td);
     if (smp_active == 0 || gd == mycpu) {
 	crit_enter();
@@ -294,12 +295,16 @@ lwkt_rele(thread_t td)
     --td->td_refs;
 }
 
+#ifdef _KERNEL
+
 void
 lwkt_wait_free(thread_t td)
 {
     while (td->td_refs)
 	tsleep(td, 0, "tdreap", hz);
 }
+
+#endif
 
 void
 lwkt_free_thread(thread_t td)
