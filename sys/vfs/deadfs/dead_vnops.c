@@ -32,7 +32,7 @@
  *
  *	@(#)dead_vnops.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/miscfs/deadfs/dead_vnops.c,v 1.26 1999/08/28 00:46:42 peter Exp $
- * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.7 2004/03/01 06:33:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/deadfs/dead_vnops.c,v 1.8 2004/03/31 23:13:43 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -97,52 +97,41 @@ VNODEOP_SET(dead_vnodeop_opv_desc);
 
 /*
  * Trivial lookup routine that always fails.
+ *
+ * dead_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	       struct componentname *a_cnp)
  */
 /* ARGSUSED */
 static int
-dead_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+dead_lookup(struct vop_lookup_args *ap)
 {
-
 	*ap->a_vpp = NULL;
 	return (ENOTDIR);
 }
 
 /*
  * Open always fails as if device did not exist.
+ *
+ * dead_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct proc *a_p)
  */
 /* ARGSUSED */
 static int
-dead_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+dead_open(struct vop_open_args *ap)
 {
-
 	return (ENXIO);
 }
 
 /*
  * Vnode op for read
+ *
+ * dead_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
-dead_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+dead_read(struct vop_read_args *ap)
 {
-
 	if (chkvnlock(ap->a_vp))
 		panic("dead_read: lock");
 	/*
@@ -155,18 +144,14 @@ dead_read(ap)
 
 /*
  * Vnode op for write
+ *
+ * dead_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
  */
 /* ARGSUSED */
 static int
-dead_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+dead_write(struct vop_write_args *ap)
 {
-
 	if (chkvnlock(ap->a_vp))
 		panic("dead_write: lock");
 	return (EIO);
@@ -174,37 +159,27 @@ dead_write(ap)
 
 /*
  * Device ioctl operation.
+ *
+ * dead_ioctl(struct vnode *a_vp, int a_command, caddr_t a_data, int a_fflag,
+ *	      struct ucred *a_cred, struct proc *a_p)
  */
 /* ARGSUSED */
 static int
-dead_ioctl(ap)
-	struct vop_ioctl_args /* {
-		struct vnode *a_vp;
-		int  a_command;
-		caddr_t  a_data;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct proc *a_p;
-	} */ *ap;
+dead_ioctl(struct vop_ioctl_args *ap)
 {
-
 	if (!chkvnlock(ap->a_vp))
 		return (ENOTTY);
 	return (VCALL(ap->a_vp, VOFFSET(vop_ioctl), ap));
 }
 
-
 /*
  * Wait until the vnode has finished changing state.
+ *
+ * dead_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
+ *	     struct proc *a_p)
  */
 static int
-dead_lock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct proc *a_p;
-	} */ *ap;
+dead_lock(struct vop_lock_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -223,19 +198,13 @@ dead_lock(ap)
 
 /*
  * Wait until the vnode has finished changing state.
+ *
+ * dead_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
 static int
-dead_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+dead_bmap(struct vop_bmap_args *ap)
 {
-
 	if (!chkvnlock(ap->a_vp))
 		return (EIO);
 	return (VOP_BMAP(ap->a_vp, ap->a_bn, ap->a_vpp, ap->a_bnp, ap->a_runp, ap->a_runb));
@@ -243,15 +212,13 @@ dead_bmap(ap)
 
 /*
  * Print out the contents of a dead vnode.
+ *
+ * dead_print(struct vnode *a_vp)
  */
 /* ARGSUSED */
 static int
-dead_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+dead_print(struct vop_print_args *ap)
 {
-
 	printf("tag VT_NON, dead vnode\n");
 	return (0);
 }
@@ -260,9 +227,8 @@ dead_print(ap)
  * Empty vnode bad operation
  */
 static int
-dead_badop()
+dead_badop(void)
 {
-
 	panic("dead_badop called");
 	/* NOTREACHED */
 }
@@ -272,8 +238,7 @@ dead_badop()
  * in a state of change.
  */
 int
-chkvnlock(vp)
-	struct vnode *vp;
+chkvnlock(struct vnode *vp)
 {
 	int locked = 0;
 
@@ -291,8 +256,7 @@ chkvnlock(vp)
  * gets notified when that file is revoke()d.
  */
 static int
-dead_poll(ap)
-	struct vop_poll_args *ap;
+dead_poll(struct vop_poll_args *ap)
 {
 	return (POLLHUP);
 }
