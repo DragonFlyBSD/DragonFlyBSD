@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.10 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.11 2003/11/05 23:27:15 dillon Exp $
  */
 
 /*
@@ -670,8 +670,7 @@ aio_daemon(void *uproc)
 	mycp->p_fd = NULL;
 	cr = cratom(&mycp->p_ucred);
 	cr->cr_uid = 0;
-	uifree(cr->cr_uidinfo);
-	cr->cr_uidinfo = uifind(0);
+	uireplace(&cr->cr_uidinfo, uifind(0));
 	cr->cr_ngroups = 1;
 	cr->cr_groups[0] = 1;
 
