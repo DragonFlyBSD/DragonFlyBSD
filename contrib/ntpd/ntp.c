@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/ntp.c,v 1.44 2004/12/13 12:39:15 dtucker Exp $ */
+/*	$OpenBSD: ntp.c,v 1.50 2005/02/02 19:03:52 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -64,7 +64,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 {
 	int			 a, b, nfds, i, j, idx_peers, timeout, nullfd;
 	u_int			 pfd_elms = 0, idx2peer_elms = 0;
-	u_int			 listener_cnt, new_cnt;
+	u_int			 listener_cnt, new_cnt, sent_cnt;
 	pid_t			 pid;
 	struct pollfd		*pfd = NULL;
 	struct passwd		*pw;
@@ -90,7 +90,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 		fatal("getservbyname");
 
 	if ((pw = getpwnam(NTPD_USER)) == NULL)
-		fatal(NULL);
+		fatal("getpwnam");
 
 	if ((nullfd = open(_PATH_DEVNULL, O_RDWR, 0)) == -1)
 		fatal(NULL);
@@ -143,7 +143,7 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 	b = 1000000000 / tp.tv_nsec;	/* convert to Hz */
 	for (a = 0; b > 1; a--, b >>= 1);
 	conf->status.precision = a;
-	
+	conf->scale = 1;
 
 	log_info("ntp engine ready");
 
@@ -191,25 +191,28 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 		}
 
 		idx_peers = i;
+		sent_cnt = 0;
 		TAILQ_FOREACH(p, &conf->ntp_peers, entry) {
 			if (p->next > 0 && p->next < nextaction)
 				nextaction = p->next;
 			if (p->next > 0 && p->next <= time(NULL))
-				client_query(p);
+				if (client_query(p) == 0)
+					sent_cnt++;
 
 			if (p->deadline > 0 && p->deadline < nextaction)
 				nextaction = p->deadline;
 			if (p->deadline > 0 && p->deadline <= time(NULL)) {
-				log_debug("no reply from %s received in time",
-				    log_sockaddr(
-				    (struct sockaddr *)&p->addr->ss));
+				timeout = error_interval();
+				log_debug("no reply from %s received in time, "
+				    "next query %ds", log_sockaddr(
+				    (struct sockaddr *)&p->addr->ss), timeout);
 				if (p->trustlevel >= TRUSTLEVEL_BADPEER &&
 				    (p->trustlevel /= 2) < TRUSTLEVEL_BADPEER)
 					log_info("peer %s now invalid",
 					    log_sockaddr(
 					    (struct sockaddr *)&p->addr->ss));
 				client_nextaddr(p);
-				client_query(p);
+				set_next(p, timeout);
 			}
 
 			if (p->state == STATE_QUERY_SENT) {
@@ -219,6 +222,9 @@ ntp_main(int pipe_prnt[2], struct ntpd_conf *nconf)
 				i++;
 			}
 		}
+
+		if (sent_cnt == 0 && conf->settime)
+			priv_settime(0);	/* no good peers, don't wait */
 
 		if (ibuf_main->w.queued > 0)
 			pfd[PFD_PIPE_MAIN].events |= POLLOUT;
@@ -411,6 +417,7 @@ priv_adjtime(void)
 		conf->status.reftime = gettime();
 		conf->status.leap = LI_NOWARNING;
 		conf->status.stratum++;	/* one more than selected peer */
+		update_scale(offset_median);
 
 		if (peers[offset_cnt / 2]->addr->ss.ss_family == AF_INET)
 			conf->status.refid = ((struct sockaddr_in *)
@@ -455,3 +462,38 @@ priv_host_dns(char *name, u_int32_t peerid)
 	dlen = strlen(name) + 1;
 	imsg_compose(ibuf_main, IMSG_HOST_DNS, peerid, 0, name, dlen);
 }
+
+void
+update_scale(double offset)
+{
+	if (offset < 0)
+		offset = -offset;
+
+	if (offset > QSCALE_OFF_MAX)
+		conf->scale = 1;
+	else if (offset < QSCALE_OFF_MIN)
+		conf->scale = QSCALE_OFF_MAX / QSCALE_OFF_MIN;
+	else
+		conf->scale = QSCALE_OFF_MAX / offset;
+}
+
+time_t
+scale_interval(time_t requested)
+{
+	time_t interval, r;
+
+	interval = requested * conf->scale;
+	r = arc4random() % MAX(5, interval / 10);
+	return (interval + r);
+}
+
+time_t
+error_interval(void)
+{
+	time_t interval, r;
+
+	interval = INTERVAL_QUERY_PATHETIC * QSCALE_OFF_MAX / QSCALE_OFF_MIN;
+	r = arc4random() % (interval / 10);
+	return (interval + r);
+}
+

@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/server.c,v 1.19 2004/12/08 15:47:38 mickey Exp $ */
+/*	$OpenBSD: server.c,v 1.20 2004/12/22 05:36:11 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -32,16 +32,16 @@ int
 setup_listeners(struct servent *se, struct ntpd_conf *conf, u_int *cnt)
 {
 	struct listen_addr	*la;
-	struct ifaddrs		*ifap;
+	struct ifaddrs		*ifa, *ifap;
 	struct sockaddr		*sa;
 	u_int			 new_cnt = 0;
 	int			 tos = IPTOS_LOWDELAY;
 
 	if (conf->listen_all) {
-		if (getifaddrs(&ifap) == -1)
+		if (getifaddrs(&ifa) == -1)
 			fatal("getifaddrs");
 
-		for (; ifap != NULL; ifap = ifap->ifa_next) {
+		for (ifap = ifa; ifap != NULL; ifap = ifap->ifa_next) {
 			sa = ifap->ifa_addr;
 
 			if (sa->sa_family != AF_INET &&
@@ -56,7 +56,7 @@ setup_listeners(struct servent *se, struct ntpd_conf *conf, u_int *cnt)
 			TAILQ_INSERT_TAIL(&conf->listen_addrs, la, entry);
 		}
 
-		freeifaddrs(ifap);
+		freeifaddrs(ifa);
 	}
 
 	TAILQ_FOREACH(la, &conf->listen_addrs, entry) {
@@ -112,7 +112,7 @@ server_dispatch(int fd, struct ntpd_conf *conf)
 	if ((size = recvfrom(fd, &buf, sizeof(buf), 0,
 	    (struct sockaddr *)&fsa, &fsa_len)) == -1) {
 		if (errno == EHOSTUNREACH || errno == EHOSTDOWN ||
-		    errno == ENETDOWN) {
+		    errno == ENETUNREACH || errno == ENETDOWN) {
 			log_warn("recvfrom %s",
 			    log_sockaddr((struct sockaddr *)&fsa));
 			return (0);

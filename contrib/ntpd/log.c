@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/log.c,v 1.6 2004/07/12 09:22:38 dtucker Exp $ */
+/*	$OpenBSD: log.c,v 1.5 2004/07/11 03:05:50 dtucker Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>

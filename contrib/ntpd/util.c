@@ -1,4 +1,4 @@
-/*	$OpenBSD: src/usr.sbin/ntpd/util.c,v 1.10 2004/12/08 15:47:38 mickey Exp $ */
+/*	$OpenBSD: util.c,v 1.9 2004/11/12 17:24:52 henning Exp $ */
 
 /*
  * Copyright (c) 2004 Alexander Guy <alexander.guy@andern.org>
