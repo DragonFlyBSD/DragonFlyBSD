@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.8 2004/03/04 20:29:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.9 2004/03/04 20:40:48 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -78,7 +78,6 @@ static void usage(void);
 int
 main(int argc, char **argv)
 {
-
 	struct stat buf;
 	int ch, len;
 	char *p;
@@ -172,7 +171,7 @@ main(int argc, char **argv)
 	else
 		(void)snprintf(xxx, sizeof(xxx), "%s/%s/include",
 		    srcdir, machinename);
-	(void) symlink(xxx, path("machine"));
+	(void)symlink(xxx, path("machine"));
 	}
 
 	/*
@@ -187,10 +186,10 @@ main(int argc, char **argv)
 	else
 		(void)snprintf(xxx, sizeof(xxx), "%s/net/i4b/include/%s",
 		    srcdir, machinename);
-	(void) mkdir(path("net"), 0755);
-	(void) mkdir(path("net/i4b"), 0755);
-	(void) mkdir(path("net/i4b/include"), 0755);
-	(void) symlink(xxx, path("net/i4b/include/machine"));
+	(void)mkdir(path("net"), 0755);
+	(void)mkdir(path("net/i4b"), 0755);
+	(void)mkdir(path("net/i4b/include"), 0755);
+	(void)symlink(xxx, path("net/i4b/include/machine"));
 	}
 
 	{
@@ -199,7 +198,7 @@ main(int argc, char **argv)
 	    char yyy[64];
 	    int i;
 
-	    for (i = 0; i < sizeof(ary)/sizeof(ary[0]); ++i) {
+	    for (i = 0; i < sizeof(ary) / sizeof(ary[0]); ++i) {
 		if (*srcdir == 0)  {
 		    snprintf(xxx, sizeof(xxx), "../../emulation/%s/%s",
 			ary[i], machinename);
@@ -228,6 +227,7 @@ main(int argc, char **argv)
 static void
 get_srcdir(void)
 {
+	
 	if (realpath("../..", srcdir) == NULL)
 		errx(2, "Unable to find root of source tree");
 }
@@ -235,8 +235,9 @@ get_srcdir(void)
 static void
 usage(void)
 {
-		fprintf(stderr, "usage: config [-gpr] [-d destdir] sysname\n");
-		exit(1);
+	
+	fprintf(stderr, "usage: config [-gpr] [-d destdir] sysname\n");
+	exit(1);
 }
 
 /*
@@ -258,18 +259,18 @@ begin:
 		if (ch != ' ' && ch != '\t')
 			break;
 	if (ch == EOF)
-		return ((char *)EOF);
-	if (ch == '\\'){
+		return((char *)EOF);
+	if (ch == '\\') {
 		escaped_nl = 1;
 		goto begin;
 	}
 	if (ch == '\n') {
-		if (escaped_nl){
+		if (escaped_nl) {
 			escaped_nl = 0;
 			goto begin;
 		}
 		else
-			return (NULL);
+			return(NULL);
 	}
 	cp = line;
 	*cp++ = ch;
@@ -280,9 +281,9 @@ begin:
 	}
 	*cp = 0;
 	if (ch == EOF)
-		return ((char *)EOF);
-	(void) ungetc(ch, fp);
-	return (line);
+		return((char *)EOF);
+	(void)ungetc(ch, fp);
+	return(line);
 }
 
 /*
@@ -303,18 +304,18 @@ begin:
 		if (ch != ' ' && ch != '\t')
 			break;
 	if (ch == EOF)
-		return ((char *)EOF);
+		return((char *)EOF);
 	if (ch == '\\'){
 		escaped_nl = 1;
 		goto begin;
 	}
 	if (ch == '\n') {
-		if (escaped_nl){
+		if (escaped_nl) {
 			escaped_nl = 0;
 			goto begin;
 		}
 		else
-			return (NULL);
+			return(NULL);
 	}
 	cp = line;
 	if (ch == '"' || ch == '\'') {
@@ -339,12 +340,12 @@ begin:
 			*cp++ = ch;
 		}
 		if (ch != EOF)
-			(void) ungetc(ch, fp);
+			(void)ungetc(ch, fp);
 	}
 	*cp = 0;
 	if (ch == EOF)
-		return ((char *)EOF);
-	return (line);
+		return((char *)EOF);
+	return(line);
 }
 
 /*
@@ -356,12 +357,12 @@ path(char *file)
 	char *cp;
 
 	cp = malloc((size_t)(strlen(destdir) + (file ? strlen(file) : 0) + 2));
-	(void) strcpy(cp, destdir);
+	(void)strcpy(cp, destdir);
 	if (file) {
-		(void) strcat(cp, "/");
-		(void) strcat(cp, file);
+		(void)strcat(cp, "/");
+		(void)strcat(cp, file);
 	}
-	return (cp);
+	return(cp);
 }
 
 static void
@@ -374,14 +375,14 @@ configfile(void)
 	fi = fopen(PREFIX, "r");
 	if (!fi)
 		err(2, "%s", PREFIX);
-	fo = fopen(p=path("config.c.new"), "w");
+	fo = fopen(p = path("config.c.new"), "w");
 	if (!fo)
 		err(2, "%s", p);
 	fprintf(fo, "#include \"opt_config.h\"\n");
 	fprintf(fo, "#ifdef INCLUDE_CONFIG_FILE \n");
 	fprintf(fo, "static const char config[] = \"\\\n");
 	fprintf(fo, "START CONFIG FILE %s\\n\\\n___", PREFIX);
-	while (EOF != (i=getc(fi))) {
+	while (EOF != (i = getc(fi))) {
 		if (i == '\n') {
 			fprintf(fo, "\\n\\\n___");
 		} else if (i == '\"') {
@@ -435,7 +436,7 @@ moveifchanged(const char *from_name, const char *to_name)
 	if (!changed) {
 		p = mmap(NULL, tsize, PROT_READ, MAP_SHARED, from_fd, (off_t)0);
 #ifndef MAP_FAILED
-#define MAP_FAILED ((caddr_t) -1)
+#define MAP_FAILED ((caddr_t)-1)
 #endif
 		if (p == MAP_FAILED)
 			err(EX_OSERR, "mmap %s", from_name);

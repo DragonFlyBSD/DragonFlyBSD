@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.6 2004/03/04 20:29:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.7 2004/03/04 20:40:48 eirikn Exp $
  */
 
 /*
@@ -149,7 +149,7 @@ do_option(char *name)
 			fprintf(outf, "#define %s %s\n", name, value);
 		} /* else empty file */
 
-		(void) fclose(outf);
+		(void)fclose(outf);
 		return;
 	}
 	basefile = "";
@@ -195,7 +195,7 @@ do_option(char *name)
 				inw, basefile, ol->o_file);
 			tidy++;
 		} else {
-			op = (struct opt *) malloc(sizeof *op);
+			op = (struct opt *)malloc(sizeof(*op));
 			bzero(op, sizeof(*op));
 			op->op_name = inw;
 			op->op_value = invalue;
@@ -208,7 +208,7 @@ do_option(char *name)
 		if (cp == (char *)EOF)
 			break;
 	}
-	(void) fclose(inf);
+	(void)fclose(inf);
 	if (!tidy && ((value == NULL && oldvalue == NULL) ||
 	    (value && oldvalue && eq(value, oldvalue)))) {	
 		for (op = op_head; op != NULL; op = topp) {
@@ -222,7 +222,7 @@ do_option(char *name)
 
 	if (value && !seen) {
 		/* New option appears */
-		op = (struct opt *) malloc(sizeof *op);
+		op = (struct opt *)malloc(sizeof(*op));
 		bzero(op, sizeof(*op));
 		op->op_name = ns(name);
 		op->op_value = value ? ns(value) : NULL;
@@ -244,7 +244,7 @@ do_option(char *name)
 		free(op->op_value);
 		free(op);
 	}
-	(void) fclose(outf);
+	(void)fclose(outf);
 }
 
 /*
@@ -258,17 +258,17 @@ tooption(char *name)
 	struct opt_list *po;
 
 	/* "cannot happen"?  the otab list should be complete.. */
-	(void) strlcpy(nbuf, "options.h", sizeof(nbuf));
+	(void)strlcpy(nbuf, "options.h", sizeof(nbuf));
 
-	for (po = otab ; po != 0; po = po->o_next) {
+	for (po = otab; po != 0; po = po->o_next) {
 		if (eq(po->o_name, name)) {
 			strlcpy(nbuf, po->o_file, sizeof(nbuf));
 			break;
 		}
 	}
 
-	(void) strlcpy(hbuf, path(nbuf), sizeof(hbuf));
-	return (hbuf);
+	(void)strlcpy(hbuf, path(nbuf), sizeof(hbuf));
+	return(hbuf);
 }
 
 /*
@@ -289,7 +289,7 @@ read_options(void)
 		printf("no ident line specified\n");
 		exit(1);
 	}
-	(void) snprintf(fname, sizeof(fname), "../../conf/options");
+	(void)snprintf(fname, sizeof(fname), "../../conf/options");
 openit:
 	fp = fopen(fname, "r");
 	if (fp == 0) {
@@ -301,16 +301,16 @@ next:
 		(void) fclose(fp);
 		if (first == 1) {
 			first++;
-			(void) snprintf(fname, sizeof fname, "../../conf/options.%s", machinename);
+			(void)snprintf(fname, sizeof(fname), "../../conf/options.%s", machinename);
 			fp = fopen(fname, "r");
 			if (fp != 0)
 				goto next;
-			(void) snprintf(fname, sizeof fname, "options.%s", machinename);
+			(void)snprintf(fname, sizeof(fname), "options.%s", machinename);
 			goto openit;
 		}
 		if (first == 2) {
 			first++;
-			(void) snprintf(fname, sizeof fname, "options.%s", raisestr(ident));
+			(void)snprintf(fname, sizeof(fname), "options.%s", raisestr(ident));
 			fp = fopen(fname, "r");
 			if (fp != 0)
 				goto next;
@@ -322,7 +322,7 @@ next:
 	if (wd[0] == '#')
 	{
 		while (((wd = get_word(fp)) != (char *)EOF) && wd)
-		;
+			;
 		goto next;
 	}
 	this = ns(wd);
@@ -330,14 +330,16 @@ next:
 	if (val == (char *)EOF)
 		return;
 	if (val == 0) {
-		char *s = ns(this);
-		(void) snprintf(genopt, sizeof(genopt), "opt_%s.h", lower(s));
+		char *s;
+
+		s = ns(this);
+		(void)snprintf(genopt, sizeof(genopt), "opt_%s.h", lower(s));
 		val = genopt;
 		free(s);
 	}
 	val = ns(val);
 
-	for (po = otab ; po != 0; po = po->o_next) {
+	for (po = otab; po != 0; po = po->o_next) {
 		if (eq(po->o_name, this)) {
 			printf("%s: Duplicate option %s.\n",
 			       fname, this);
@@ -345,7 +347,7 @@ next:
 		}
 	}
 	
-	po = (struct opt_list *) malloc(sizeof *po);
+	po = (struct opt_list *)malloc(sizeof(*po));
 	bzero(po, sizeof(*po));
 	po->o_name = this;
 	po->o_file = val;
@@ -365,6 +367,6 @@ lower(char *str)
 			*str = tolower(*str);
 		str++;
 	}
-	return (cp);
+	return(cp);
 }
 

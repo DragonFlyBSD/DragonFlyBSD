@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.5 2004/03/04 20:29:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.6 2004/03/04 20:40:48 eirikn Exp $
  */
 
 /*
@@ -92,11 +92,11 @@ fl_lookup(char *file)
 {
 	struct file_list *fp;
 
-	for (fp = ftab ; fp != 0; fp = fp->f_next) {
+	for (fp = ftab; fp != 0; fp = fp->f_next) {
 		if (eq(fp->f_fn, file))
-			return (fp);
+			return(fp);
 	}
-	return (0);
+	return(0);
 }
 
 /*
@@ -107,11 +107,11 @@ fltail_lookup(char *file)
 {
 	struct file_list *fp;
 
-	for (fp = ftab ; fp != 0; fp = fp->f_next) {
+	for (fp = ftab; fp != 0; fp = fp->f_next) {
 		if (eq(tail(fp->f_fn), tail(file)))
-			return (fp);
+			return(fp);
 	}
-	return (0);
+	return(0);
 }
 
 /*
@@ -122,14 +122,14 @@ new_fent(void)
 {
 	struct file_list *fp;
 
-	fp = (struct file_list *) malloc(sizeof *fp);
-	bzero(fp, sizeof *fp);
+	fp = (struct file_list *)malloc(sizeof(*fp));
+	bzero(fp, sizeof(*fp));
 	if (fcur == 0)
 		fcur = ftab = fp;
 	else
 		fcur->f_next = fp;
 	fcur = fp;
-	return (fp);
+	return(fp);
 }
 
 /*
@@ -214,8 +214,8 @@ makefile(void)
 			    "Unknown %% construct in generic makefile: %s",
 			    line);
 	}
-	(void) fclose(ifp);
-	(void) fclose(ofp);
+	(void)fclose(ifp);
+	(void)fclose(ofp);
 	moveifchanged(path("Makefile.new"), path("Makefile"));
 
 	printf("Don't forget to do a ``make depend''\n");
@@ -244,7 +244,7 @@ read_files(void)
 		printf("no ident line specified\n");
 		exit(1);
 	}
-	(void) snprintf(fname, sizeof(fname), "../../conf/files");
+	(void)snprintf(fname, sizeof(fname), "../../conf/files");
 openit:
 	fp = fopen(fname, "r");
 	if (fp == 0)
@@ -259,21 +259,21 @@ next:
 	 */
 	wd = get_word(fp);
 	if (wd == (char *)EOF) {
-		(void) fclose(fp);
+		(void)fclose(fp);
 		if (first == 1) {
 			first++;
-			(void) snprintf(fname, sizeof(fname),
+			(void)snprintf(fname, sizeof(fname),
 			    "../../conf/files.%s", machinename);
 			fp = fopen(fname, "r");
 			if (fp != 0)
 				goto next;
-			(void) snprintf(fname, sizeof(fname),
+			(void)snprintf(fname, sizeof(fname),
 			    "files.%s", machinename);
 			goto openit;
 		}
 		if (first == 2) {
 			first++;
-			(void) snprintf(fname, sizeof(fname),
+			(void)snprintf(fname, sizeof(fname),
 			    "files.%s", raisestr(ident));
 			fp = fopen(fname, "r");
 			if (fp != 0)
@@ -436,8 +436,8 @@ nextparam:
 		exit(1);
 	}
 	if (std) {
-		dp = (struct device *) malloc(sizeof *dp);
-		bzero(dp, sizeof *dp);
+		dp = (struct device *)malloc(sizeof(*dp));
+		bzero(dp, sizeof(*dp));
 		init_dev(dp);
 		dp->d_name = ns(wd);
 		dp->d_type = PSEUDO_DEVICE;
@@ -514,15 +514,15 @@ opteq(char *cp, char *dp)
 {
 	char c, d;
 
-	for (; ; cp++, dp++) {
+	for (;; cp++, dp++) {
 		if (*cp != *dp) {
 			c = isupper(*cp) ? tolower(*cp) : *cp;
 			d = isupper(*dp) ? tolower(*dp) : *dp;
 			if (c != d)
-				return (0);
+				return(0);
 		}
 		if (*cp == 0)
-			return (1);
+			return(1);
 	}
 }
 
@@ -663,8 +663,8 @@ tail(char *fn)
 
 	cp = rindex(fn, '/');
 	if (cp == 0)
-		return (fn);
-	return (cp+1);
+		return(fn);
+	return(cp + 1);
 }
 
 /*
@@ -771,5 +771,5 @@ raisestr(char *str)
 			*str = toupper(*str);
 		str++;
 	}
-	return (cp);
+	return(cp);
 }

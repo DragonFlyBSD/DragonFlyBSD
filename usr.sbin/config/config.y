@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.5 2004/03/04 20:29:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.6 2004/03/04 20:40:48 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -142,8 +142,9 @@ Config_spec:
 	      } |
 	CPU Save_id
 	      = {
-		struct cputype *cp =
-		    (struct cputype *)malloc(sizeof (struct cputype));
+		struct cputype *cp;
+
+		cp = (struct cputype *)malloc(sizeof(struct cputype));
 		memset(cp, 0, sizeof(*cp));
 		cp->cpu_name = $2;
 		cp->cpu_next = cputype;
@@ -170,7 +171,9 @@ System_spec:
 System_id:
 	Save_id
 	      = {
-		struct opt *op = (struct opt *)malloc(sizeof (struct opt));
+		struct opt *op;
+
+		op = (struct opt *)malloc(sizeof(struct opt));
 		memset(op, 0, sizeof(*op));
 		op->op_name = ns("KERNEL");
 		op->op_ownfile = 0;
@@ -192,21 +195,21 @@ device_name:
 		= {
 			char buf[80];
 
-			(void) snprintf(buf, sizeof(buf), "%s%d", $1, $2);
+			(void)snprintf(buf, sizeof(buf), "%s%d", $1, $2);
 			$$ = ns(buf); free($1);
 		}
 	| Save_id NUMBER ID
 		= {
 			char buf[80];
 
-			(void) snprintf(buf, sizeof(buf), "%s%d%s", $1, $2, $3);
+			(void)snprintf(buf, sizeof(buf), "%s%d%s", $1, $2, $3);
 			$$ = ns(buf); free($1);
 		}
 	| Save_id NUMBER ID NUMBER
 		= {
 			char buf[80];
 
-			(void) snprintf(buf, sizeof(buf), "%s%d%s%d",
+			(void)snprintf(buf, sizeof(buf), "%s%d%s%d",
 			     $1, $2, $3, $4);
 			$$ = ns(buf); free($1);
 		}
@@ -214,7 +217,7 @@ device_name:
 		= {
 			char buf[80];
 
-			(void) snprintf(buf, sizeof(buf), "%s%d%s%d%s",
+			(void)snprintf(buf, sizeof(buf), "%s%d%s%d%s",
 			     $1, $2, $3, $4, $5);
 			$$ = ns(buf); free($1);
 		}
@@ -229,8 +232,10 @@ Opt_list:
 Option:
 	Save_id
 	      = {
-		struct opt *op = (struct opt *)malloc(sizeof (struct opt));
+		struct opt *op;
 		char *s;
+		
+		op = (struct opt *)malloc(sizeof(struct opt));
 		memset(op, 0, sizeof(*op));
 		op->op_name = $1;
 		op->op_next = opt;
@@ -246,7 +251,9 @@ Option:
 	      } |
 	Save_id EQUALS Opt_value
 	      = {
-		struct opt *op = (struct opt *)malloc(sizeof (struct opt));
+		struct opt *op;
+
+		op = (struct opt *)malloc(sizeof(struct opt));
 		memset(op, 0, sizeof(*op));
 		op->op_name = $1;
 		op->op_next = opt;
@@ -262,7 +269,7 @@ Opt_value:
 		= {
 			char buf[80];
 
-			(void) snprintf(buf, sizeof(buf), "%d", $1);
+			(void)snprintf(buf, sizeof(buf), "%d", $1);
 			$$ = ns(buf);
 		} ;
 
@@ -280,7 +287,9 @@ Mkopt_list:
 Mkoption:
 	Save_id EQUALS Opt_value
 	      = {
-		struct opt *op = (struct opt *)malloc(sizeof (struct opt));
+		struct opt *op;
+
+		op = (struct opt *)malloc(sizeof(struct opt));
 		memset(op, 0, sizeof(*op));
 		op->op_name = $1;
 		op->op_ownfile = 0;	/* for now */
@@ -419,7 +428,7 @@ newdev(struct device *dp)
 			}
 		}
 	}
-	np = (struct device *) malloc(sizeof *np);
+	np = (struct device *)malloc(sizeof(*np));
 	memset(np, 0, sizeof(*np));
 	*np = *dp;
 	np->d_next = 0;
@@ -445,27 +454,27 @@ connect(char *dev, int num)
 			if (eq(dp->d_name, dev))
 				break;
 		if (dp == 0) {
-			(void) snprintf(errbuf, sizeof(errbuf),
+			(void)snprintf(errbuf, sizeof(errbuf),
 			    "no %s's to wildcard", dev);
 			yyerror(errbuf);
-			return (0);
+			return(0);
 		}
-		return (1);
+		return(1);
 	}
 	for (dp = dtab; dp != 0; dp = dp->d_next) {
 		if ((num != dp->d_unit) || !eq(dev, dp->d_name))
 			continue;
 		if (dp->d_type != DEVICE) {
-			(void) snprintf(errbuf, sizeof(errbuf), 
+			(void)snprintf(errbuf, sizeof(errbuf), 
 			    "%s connected to non-device", dev);
 			yyerror(errbuf);
-			return (0);
+			return(0);
 		}
-		return (1);
+		return(1);
 	}
-	(void) snprintf(errbuf, sizeof(errbuf), "%s %d not defined", dev, num);
+	(void)snprintf(errbuf, sizeof(errbuf), "%s %d not defined", dev, num);
 	yyerror(errbuf);
-	return (0);
+	return(0);
 }
 
 void

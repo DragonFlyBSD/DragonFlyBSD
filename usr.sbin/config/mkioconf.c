@@ -32,7 +32,7 @@
  *
  * @(#)mkioconf.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.5 2004/01/31 03:26:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.6 2004/03/04 20:40:48 eirikn Exp $
  */
 
 #include <err.h>
@@ -51,9 +51,9 @@ devstr(struct device *dp)
 
     if (dp->d_unit >= 0) {
 	snprintf(buf, sizeof(buf), "%s%d", dp->d_name, dp->d_unit);
-	return buf;
+	return(buf);
     } else
-	return dp->d_name;
+	return(dp->d_name);
 }
 
 static void
@@ -148,7 +148,9 @@ write_devtab(FILE *fp)
 	count = 0;
 	fprintf(fp, "struct config_device config_devtab[] = {\n");
 	for (dp = dtab; dp != 0; dp = dp->d_next) {
-		char* n = devstr(dp);
+		char *n;
+
+		n = devstr(dp);
 		if (dp->d_type != DEVICE)
 			continue;
 		if (dp->d_unit == UNKNOWN)
@@ -188,6 +190,6 @@ newbus_ioconf(void)
 
 	write_devtab(fp);
 
-	(void) fclose(fp);
+	(void)fclose(fp);
 	moveifchanged(path("ioconf.c.new"), path("ioconf.c"));
 }

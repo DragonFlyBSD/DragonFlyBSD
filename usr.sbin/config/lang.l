@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.4 2004/03/04 20:29:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.5 2004/03/04 20:40:48 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -100,7 +100,7 @@ ID	[A-Za-z_][-A-Za-z_0-9]*
 				yylval.str = strdup(yytext);
 				return ID;
 			}
-			return i;
+			return(i);
 		}
 <INITIAL>{WORD}/[0-9]* {
 			int i;
@@ -110,65 +110,65 @@ ID	[A-Za-z_][-A-Za-z_0-9]*
 			if (i == CONTROLLER || i == DEVICE || i == DISK || i == TAPE ||
 			    i == PSEUDO_DEVICE || i == AT)
 				BEGIN NONUM;
-			return i;
+			return(i);
 		}
 <INITIAL>{ID}	{
 			BEGIN 0;
 			yylval.str = strdup(yytext);
-			return ID;
+			return(ID);
 		}
 \\\"[^"]+\\\"	{
 			BEGIN 0;
 			yytext[yyleng-2] = '"';
 			yytext[yyleng-1] = '\0';
 			yylval.str = strdup(yytext + 1);
-			return ID;
+			return(ID);
 		}
 \"[^"]+\"	{
 			BEGIN 0;
 			yytext[yyleng-1] = '\0';
 			yylval.str = strdup(yytext + 1);
-			return ID;
+			return(ID);
 		}
 <TOEOL>[^# \t\n]*	{
 			BEGIN 0;
 			yylval.str = strdup(yytext);
-			return ID;
+			return(ID);
 		}
 0[0-7]*		{
 			yylval.val = octal(yytext);
-			return NUMBER;
+			return(NUMBER);
 		}
 0x[0-9a-fA-F]+	{
 			yylval.val = hex(yytext);
-			return NUMBER;
+			return(NUMBER);
 		}
 -?[1-9][0-9]*	{
 			yylval.val = atoi(yytext);
-			return NUMBER;
+			return(NUMBER);
 		}
 [0-9]"."[0-9]*	{
-			yylval.val = (int) (60 * atof(yytext) + 0.5);
-			return FPNUMBER;
+			yylval.val = (int)(60 * atof(yytext) + 0.5);
+			return(FPNUMBER);
 		}
 "?"		{
 			yylval.val = -1;
-			return NUMBER;
+			return(NUMBER);
 		}
 \n/[ \t]	{
 			yyline++;
 		}
 \n		{
 			yyline++;
-			return SEMICOLON;
+			return(SEMICOLON);
 		}
 #.*		{	/* Ignored (comment) */;	}
 [ \t\f]*	{	/* Ignored (white space) */;	}
-";"		{	return SEMICOLON;		}
-","		{	return COMMA;			}
-"="		{	BEGIN TOEOL; return EQUALS;	}
-"@"		{	return AT;			}
-.		{	return yytext[0];		}
+";"		{	return(SEMICOLON);		}
+","		{	return(COMMA);			}
+"="		{	BEGIN TOEOL; return(EQUALS);	}
+"@"		{	return(AT);			}
+.		{	return(yytext[0]);		}
 
 %%
 /*
@@ -184,8 +184,8 @@ kw_lookup(char *word)
 
 	for (kp = key_words; kp->kt_name != 0; kp++)
 		if (eq(word, kp->kt_name))
-			return kp->kt_val;
-	return -1;
+			return(kp->kt_val);
+	return(-1);
 }
 
 /*
@@ -197,8 +197,8 @@ octal(char *str)
 {
 	int num;
 
-	(void) sscanf(str, "%o", &num);
-	return num;
+	(void)sscanf(str, "%o", &num);
+	return(num);
 }
 
 int
@@ -206,6 +206,6 @@ hex(char *str)
 {
 	int num;
 
-	(void) sscanf(str+2, "%x", &num);
-	return num;
+	(void)sscanf(str+2, "%x", &num);
+	return(num);
 }
