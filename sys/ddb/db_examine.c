@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_examine.c,v 1.27 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_examine.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_examine.c,v 1.4 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -45,8 +45,8 @@
 
 static char	db_examine_format[TOK_STRING_SIZE] = "x";
 
-static void	db_examine __P((db_addr_t, char *, int));
-static void	db_search __P((db_addr_t, int, db_expr_t, db_expr_t, u_int));
+static void	db_examine (db_addr_t, char *, int);
+static void	db_search (db_addr_t, int, db_expr_t, db_expr_t, u_int);
 
 /*
  * Examine (print) data.

@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_expr.c,v 1.13 1999/08/28 00:41:07 peter Exp $
- * $DragonFly: src/sys/ddb/db_expr.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_expr.c,v 1.3 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -38,11 +38,11 @@
 #include <ddb/db_access.h>
 #include <ddb/db_command.h>
 
-static boolean_t	db_add_expr __P((db_expr_t *valuep));
-static boolean_t	db_mult_expr __P((db_expr_t *valuep));
-static boolean_t	db_shift_expr __P((db_expr_t *valuep));
-static boolean_t	db_term __P((db_expr_t *valuep));
-static boolean_t	db_unary __P((db_expr_t *valuep));
+static boolean_t	db_add_expr (db_expr_t *valuep);
+static boolean_t	db_mult_expr (db_expr_t *valuep);
+static boolean_t	db_shift_expr (db_expr_t *valuep);
+static boolean_t	db_term (db_expr_t *valuep);
+static boolean_t	db_unary (db_expr_t *valuep);
 
 static boolean_t
 db_term(valuep)

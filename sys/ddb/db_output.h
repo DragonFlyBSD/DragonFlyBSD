@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.h,v 1.11 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_output.h,v 1.3 2003/08/27 10:47:13 rob Exp $
  */
 
 #ifndef _DDB_DB_OUTPUT_H_
@@ -39,8 +39,8 @@
  * Printing routines for kernel debugger.
  */
 
-void	db_end_line __P((void));
-void	db_force_whitespace __P((void));
-int	db_print_position __P((void));
+void	db_end_line (void);
+void	db_force_whitespace (void);
+int	db_print_position (void);
 
 #endif /* !_DDB_DB_OUTPUT_H_ */

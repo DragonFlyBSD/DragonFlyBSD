@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.h,v 1.12 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_lex.h,v 1.3 2003/08/27 10:47:13 rob Exp $
  */
 
 #ifndef _DDB_DB_LEX_H_
@@ -37,10 +37,10 @@
 /*
  * Lexical analyzer.
  */
-void	db_flush_lex __P((void));
-int	db_read_line __P((void));
-int	db_read_token __P((void));
-void	db_unread_token __P((int t));
+void	db_flush_lex (void);
+int	db_read_line (void);
+int	db_read_token (void);
+void	db_unread_token (int t);
 
 extern db_expr_t	db_tok_number;
 #define	TOK_STRING_SIZE		120

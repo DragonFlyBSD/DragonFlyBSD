@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_lex.c,v 1.18 1999/08/28 00:41:08 peter Exp $
- * $DragonFly: src/sys/ddb/db_lex.c,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_lex.c,v 1.3 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -42,10 +42,10 @@
 static char	db_line[120];
 static char *	db_lp, *db_endlp;
 
-static int	db_lex __P((void));
-static void 	db_flush_line __P((void));
-static int 	db_read_char __P((void));
-static void 	db_unread_char __P((int));
+static int	db_lex (void);
+static void 	db_flush_line (void);
+static int 	db_read_char (void);
+static void 	db_unread_char (int);
 
 int
 db_read_line()

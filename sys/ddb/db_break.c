@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_break.c,v 1.18 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_break.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_break.c,v 1.4 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -50,13 +50,13 @@ static db_breakpoint_t		db_next_free_breakpoint = &db_break_table[0];
 static db_breakpoint_t		db_free_breakpoints = 0;
 static db_breakpoint_t		db_breakpoint_list = 0;
 
-static db_breakpoint_t	db_breakpoint_alloc __P((void));
-static void	db_breakpoint_free __P((db_breakpoint_t bkpt));
-static void	db_delete_breakpoint __P((vm_map_t map, db_addr_t addr));
-static db_breakpoint_t	db_find_breakpoint __P((vm_map_t map, db_addr_t addr));
-static void	db_list_breakpoints __P((void));
-static void	db_set_breakpoint __P((vm_map_t map, db_addr_t addr,
-				       int count));
+static db_breakpoint_t	db_breakpoint_alloc (void);
+static void	db_breakpoint_free (db_breakpoint_t bkpt);
+static void	db_delete_breakpoint (vm_map_t map, db_addr_t addr);
+static db_breakpoint_t	db_find_breakpoint (vm_map_t map, db_addr_t addr);
+static void	db_list_breakpoints (void);
+static void	db_set_breakpoint (vm_map_t map, db_addr_t addr,
+				       int count);
 
 static db_breakpoint_t
 db_breakpoint_alloc()

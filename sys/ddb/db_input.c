@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_input.c,v 1.28.2.1 2002/03/08 16:37:10 yar Exp $
- * $DragonFly: src/sys/ddb/db_input.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_input.c,v 1.4 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -64,11 +64,11 @@ static int	db_lhist_nlines;
 #define	BLANK		' '
 #define	BACKUP		'\b'
 
-static int	cnmaygetc __P((void));
-static void	db_delete __P((int n, int bwd));
-static int	db_inputchar __P((int c));
-static void	db_putnchars __P((int c, int count));
-static void	db_putstring __P((char *s, int count));
+static int	cnmaygetc (void);
+static void	db_delete (int n, int bwd);
+static int	db_inputchar (int c);
+static void	db_putnchars (int c, int count);
+static void	db_putstring (char *s, int count);
 
 void
 db_putstring(s, count)

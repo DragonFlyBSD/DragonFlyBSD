@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_access.h,v 1.9 1999/08/28 00:41:05 peter Exp $
- * $DragonFly: src/sys/ddb/db_access.h,v 1.2 2003/06/17 04:28:20 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_access.h,v 1.3 2003/08/27 10:47:13 rob Exp $
  */
 
 #ifndef _DDB_DB_ACCESS_H_
@@ -37,8 +37,8 @@
 /*
  * Data access functions for debugger.
  */
-db_expr_t	db_get_value __P((db_addr_t addr, int size,
-				  boolean_t is_signed));
-void		db_put_value __P((db_addr_t addr, int size, db_expr_t value));
+db_expr_t	db_get_value (db_addr_t addr, int size,
+				  boolean_t is_signed);
+void		db_put_value (db_addr_t addr, int size, db_expr_t value);
 
 #endif /* !_DDB_DB_ACCESS_H_ */

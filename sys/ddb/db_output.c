@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.4 2003/08/27 10:47:13 rob Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ db_expr_t	db_tab_stop_width = 8;		/* how wide are tab stops? */
 	((((i) + db_tab_stop_width) / db_tab_stop_width) * db_tab_stop_width)
 db_expr_t	db_max_width = 79;		/* output line width */
 
-static void db_putchar __P((int c, void *arg));
+static void db_putchar (int c, void *arg);
 
 /*
  * Force pending whitespace.
