@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.19 2005/01/11 00:30:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.20 2005/01/11 05:51:46 okumoto Exp $
  */
 
 /*-
@@ -56,25 +56,6 @@
 #ifndef max
 #define	max(a,b)  ((a) > (b) ? (a) : (b))
 #endif
-
-/* Buf_AddByte adds a single byte to a buffer. */
-void
-Buf_AddByte(Buffer *bp, Byte byte)
-{
-	--bp->left;
-	if (bp->left <= 0) {
-		bp->left = 0;
-		BufExpand(bp, 1);
-
-		*bp->inPtr = byte;
-		bp->inPtr++;
-		bp->left--;
-	} else {
-		*bp->inPtr = byte;
-		bp->inPtr++;
-	}
-	*bp->inPtr = 0; /* Null-terminate */
-}
 
 /*
  * BufExpand --
@@ -96,6 +77,25 @@ BufExpand(Buffer *bp, size_t nb)
 		bp->size = newSize;
 		bp->left = newSize - (bp->inPtr - bp->buffer);
 	}
+}
+
+/* Buf_AddByte adds a single byte to a buffer. */
+void
+Buf_AddByte(Buffer *bp, Byte byte)
+{
+	--bp->left;
+	if (bp->left <= 0) {
+		bp->left = 0;
+		BufExpand(bp, 1);
+
+		*bp->inPtr = byte;
+		bp->inPtr++;
+		bp->left--;
+	} else {
+		*bp->inPtr = byte;
+		bp->inPtr++;
+	}
+	*bp->inPtr = 0; /* Null-terminate */
 }
 
 /*-
