@@ -1,5 +1,7 @@
 /**************************************************************************
 
+Copyright (c) 2004 Joerg Sonnenberger <joerg@bec.de>.  All rights reserved.
+
 Copyright (c) 2001-2003, Intel Corporation
 All rights reserved.
 
@@ -32,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.15 2004/06/02 14:42:51 eirikn Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.16 2004/06/04 16:32:11 joerg Exp $*/
 
 #include <dev/netif/em/if_em.h>
 
@@ -121,8 +123,6 @@ static void	em_stop(void *);
 static void	em_media_status(struct ifnet *, struct ifmediareq *);
 static int	em_media_change(struct ifnet *);
 static void	em_identify_hardware(struct adapter *);
-static int	em_allocate_pci_resources(struct adapter *);
-static void	em_free_pci_resources(struct adapter *);
 static void	em_local_timer(void *);
 static int	em_hardware_init(struct adapter *);
 static void	em_setup_interface(device_t, struct adapter *);
@@ -275,19 +275,21 @@ static int
 em_attach(device_t dev)
 {
 	struct adapter *adapter;
-	int s;
 	int tsize, rsize;
+	int i, val, rid;
 	int error = 0;
 
 	INIT_DEBUGOUT("em_attach: begin");
-	s = splimp();
 
 	adapter = device_get_softc(dev);
 
 	bzero(adapter, sizeof(struct adapter));
+
+	callout_init(&adapter->timer);
+	callout_init(&adapter->tx_fifo_timer);
+
 	adapter->dev = dev;
 	adapter->osdep.dev = dev;
-	adapter->unit = device_get_unit(dev);
 
 	/* SYSCTL stuff */
 	sysctl_ctx_init(&adapter->sysctl_ctx);
@@ -300,7 +302,7 @@ em_attach(device_t dev)
 
 	if (adapter->sysctl_tree == NULL) {
 		error = EIO;
-		goto err_sysctl;
+		goto fail;
 	}
 
 	SYSCTL_ADD_PROC(&adapter->sysctl_ctx,  
@@ -314,9 +316,6 @@ em_attach(device_t dev)
 			OID_AUTO, "stats", CTLTYPE_INT|CTLFLAG_RW, 
 			(void *)adapter, 0,
 			em_sysctl_stats, "I", "Statistics");
-
-	callout_init(&adapter->timer);
-	callout_init(&adapter->tx_fifo_timer);
 
 	/* Determine hardware revision */
 	em_identify_hardware(adapter);
@@ -388,11 +387,54 @@ em_attach(device_t dev)
 	 */
 	adapter->hw.report_tx_early = 1;
 
-	if (em_allocate_pci_resources(adapter)) {
-		device_printf(dev, "Allocation of PCI resources failed\n");
+	rid = EM_MMBA;
+	adapter->res_memory = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
+						     &rid, RF_ACTIVE);
+	if (!(adapter->res_memory)) {
+		device_printf(dev, "Unable to allocate bus resource: memory\n");
 		error = ENXIO;
-		goto err_pci;
+		goto fail;
 	}
+	adapter->osdep.mem_bus_space_tag = 
+	    rman_get_bustag(adapter->res_memory);
+	adapter->osdep.mem_bus_space_handle = 
+	    rman_get_bushandle(adapter->res_memory);
+	adapter->hw.hw_addr = (uint8_t *)&adapter->osdep.mem_bus_space_handle;
+
+	if (adapter->hw.mac_type > em_82543) {
+		/* Figure our where our IO BAR is ? */
+		rid = EM_MMBA;
+		for (i = 0; i < 5; i++) {
+			val = pci_read_config(dev, rid, 4);
+			if (val & 0x00000001) {
+				adapter->io_rid = rid;
+				break;
+			}
+			rid += 4;
+		}
+
+		adapter->res_ioport = bus_alloc_resource_any(dev,
+		    SYS_RES_IOPORT, &adapter->io_rid, RF_ACTIVE);
+		if (!(adapter->res_ioport)) {
+			device_printf(dev, "Unable to allocate bus resource: ioport\n");
+			error = ENXIO;
+			goto fail;
+		}
+
+		adapter->hw.reg_io_tag = rman_get_bustag(adapter->res_ioport);
+		adapter->hw.reg_io_handle = rman_get_bushandle(adapter->res_ioport);
+	}
+
+	rid = 0x0;
+	adapter->res_interrupt = bus_alloc_resource_any(dev, SYS_RES_IRQ,
+	    &rid, RF_SHAREABLE | RF_ACTIVE);
+	if (!(adapter->res_interrupt)) {
+		device_printf(dev, "Unable to allocate bus resource: interrupt\n");
+		error = ENXIO;
+		goto fail;
+	}
+
+	adapter->hw.back = &adapter->osdep;
 
 	/* Initialize eeprom parameters */
 	em_init_eeprom_params(&adapter->hw);
@@ -403,7 +445,7 @@ em_attach(device_t dev)
 	if (em_dma_malloc(adapter, tsize, &adapter->txdma, BUS_DMA_WAITOK)) {
 		device_printf(dev, "Unable to allocate TxDescriptor memory\n");
 		error = ENOMEM;
-		goto err_tx_desc;
+		goto fail;
 	}
 	adapter->tx_desc_base = (struct em_tx_desc *) adapter->txdma.dma_vaddr;
 
@@ -413,7 +455,7 @@ em_attach(device_t dev)
 	if (em_dma_malloc(adapter, rsize, &adapter->rxdma, BUS_DMA_NOWAIT)) {
 		device_printf(dev, "Unable to allocate rx_desc memory\n");
 		error = ENOMEM;
-		goto err_rx_desc;
+		goto fail;
 	}
 	adapter->rx_desc_base = (struct em_rx_desc *) adapter->rxdma.dma_vaddr;
 
@@ -421,24 +463,21 @@ em_attach(device_t dev)
 	if (em_hardware_init(adapter)) {
 		device_printf(dev, "Unable to initialize the hardware\n");
 		error = EIO;
-		goto err_hw_init;
+		goto fail;
 	}
 
 	/* Copy the permanent MAC address out of the EEPROM */
 	if (em_read_mac_addr(&adapter->hw) < 0) {
 		device_printf(dev, "EEPROM read error while reading mac address\n");
 		error = EIO;
-		goto err_mac_addr;
+		goto fail;
 	}
 
 	if (!em_is_valid_ether_addr(adapter->hw.mac_addr)) {
 		device_printf(dev, "Invalid mac address\n");
 		error = EIO;
-		goto err_mac_addr;
+		goto fail;
 	}
-
-	bcopy(adapter->hw.mac_addr, adapter->interface_data.ac_enaddr,
-	      ETHER_ADDR_LEN);
 
 	/* Setup OS specific network interface */
 	em_setup_interface(dev, adapter);
@@ -466,21 +505,20 @@ em_attach(device_t dev)
 		adapter->pcix_82544 = TRUE;
         else
 		adapter->pcix_82544 = FALSE;
+
+	error = bus_setup_intr(dev, adapter->res_interrupt, INTR_TYPE_NET,
+			   (void (*)(void *)) em_intr, adapter,
+			   &adapter->int_handler_tag);
+	if (error) {
+		device_printf(dev, "Error registering interrupt handler!\n");
+		goto fail;
+	}
+
 	INIT_DEBUGOUT("em_attach: end");
-	splx(s);
 	return(0);
 
-err_mac_addr:
-err_hw_init:
-	em_dma_free(adapter, &adapter->rxdma);
-err_rx_desc:
-	em_dma_free(adapter, &adapter->txdma);
-err_tx_desc:
-err_pci:
-	em_free_pci_resources(adapter);
-	sysctl_ctx_free(&adapter->sysctl_ctx);
-err_sysctl:
-	splx(s);
+fail:
+	em_detach(dev);
 	return(error);
 }
 
@@ -498,7 +536,6 @@ static int
 em_detach(device_t dev)
 {
 	struct adapter * adapter = device_get_softc(dev);
-	struct ifnet *ifp = &adapter->interface_data.ac_if;
 	int s;
 
 	INIT_DEBUGOUT("em_detach: begin");
@@ -506,11 +543,28 @@ em_detach(device_t dev)
 
 	adapter->in_detach = 1;
 
-	em_stop(adapter);
-	em_phy_hw_reset(&adapter->hw);
-	ether_ifdetach(&adapter->interface_data.ac_if);
-	em_free_pci_resources(adapter);
+	if (device_is_attached(dev)) {
+		em_stop(adapter);
+		em_phy_hw_reset(&adapter->hw);
+		ether_ifdetach(&adapter->interface_data.ac_if);
+	}
 	bus_generic_detach(dev);
+
+	if (adapter->res_interrupt != NULL) {
+		bus_teardown_intr(dev, adapter->res_interrupt, 
+				  adapter->int_handler_tag);
+		bus_release_resource(dev, SYS_RES_IRQ, 0, 
+				     adapter->res_interrupt);
+	}
+	if (adapter->res_memory != NULL) {
+		bus_release_resource(dev, SYS_RES_MEMORY, EM_MMBA, 
+				     adapter->res_memory);
+	}
+
+	if (adapter->res_ioport != NULL) {
+		bus_release_resource(dev, SYS_RES_IOPORT, adapter->io_rid, 
+				     adapter->res_ioport);
+	}
 
 	/* Free Transmit Descriptor ring */
 	if (adapter->tx_desc_base != NULL) {
@@ -523,9 +577,6 @@ em_detach(device_t dev)
 		em_dma_free(adapter, &adapter->rxdma);
 		adapter->rx_desc_base = NULL;
 	}
-
-	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
-	ifp->if_timer = 0;
 
 	adapter->sysctl_tree = NULL;
 	sysctl_ctx_free(&adapter->sysctl_ctx);
@@ -1481,6 +1532,7 @@ em_stop(void *arg)
 
 	/* Tell the stack that the interface is no longer active */
 	ifp->if_flags &= ~(IFF_RUNNING | IFF_OACTIVE);
+	ifp->if_timer = 0;
 }
 
 /*********************************************************************
@@ -1519,89 +1571,6 @@ em_identify_hardware(struct adapter * adapter)
 	    adapter->hw.mac_type == em_82547 ||
 	    adapter->hw.mac_type == em_82547_rev_2)
 		adapter->hw.phy_init_script = TRUE;
-}
-
-static int
-em_allocate_pci_resources(struct adapter *adapter)
-{
-	int i, val, rid;
-	device_t dev = adapter->dev;
-
-	rid = EM_MMBA;
-	adapter->res_memory = bus_alloc_resource_any(dev, SYS_RES_MEMORY,
-						     &rid, RF_ACTIVE);
-	if (!(adapter->res_memory)) {
-		device_printf(dev, "Unable to allocate bus resource: memory\n");
-		return(ENXIO);
-	}
-	adapter->osdep.mem_bus_space_tag = 
-	rman_get_bustag(adapter->res_memory);
-	adapter->osdep.mem_bus_space_handle = 
-	rman_get_bushandle(adapter->res_memory);
-	adapter->hw.hw_addr = (uint8_t *)&adapter->osdep.mem_bus_space_handle;
-
-	if (adapter->hw.mac_type > em_82543) {
-		/* Figure our where our IO BAR is ? */
-		rid = EM_MMBA;
-		for (i = 0; i < 5; i++) {
-			val = pci_read_config(dev, rid, 4);
-			if (val & 0x00000001) {
-				adapter->io_rid = rid;
-				break;
-			}
-			rid += 4;
-		}
-
-		adapter->res_ioport = bus_alloc_resource_any(dev,
-		    SYS_RES_IOPORT, &adapter->io_rid, RF_ACTIVE);
-		if (!(adapter->res_ioport)) {
-			device_printf(dev, "Unable to allocate bus resource: ioport\n");
-			return(ENXIO);  
-		}
-
-		adapter->hw.reg_io_tag = rman_get_bustag(adapter->res_ioport);
-		adapter->hw.reg_io_handle = rman_get_bushandle(adapter->res_ioport);
-	}
-
-	rid = 0x0;
-	adapter->res_interrupt = bus_alloc_resource_any(dev, SYS_RES_IRQ,
-	    &rid, RF_SHAREABLE | RF_ACTIVE);
-	if (!(adapter->res_interrupt)) {
-		device_printf(dev, "Unable to allocate bus resource: interrupt\n");
-		return(ENXIO);
-	}
-	if (bus_setup_intr(dev, adapter->res_interrupt, INTR_TYPE_NET,
-			   (void (*)(void *)) em_intr, adapter,
-			   &adapter->int_handler_tag)) {
-		device_printf(dev, "Error registering interrupt handler!\n");
-		return(ENXIO);
-	}
-
-	adapter->hw.back = &adapter->osdep;
-
-	return(0);
-}
-
-static void
-em_free_pci_resources(struct adapter *adapter)
-{
-	device_t dev = adapter->dev;
-
-	if (adapter->res_interrupt != NULL) {
-		bus_teardown_intr(dev, adapter->res_interrupt, 
-				  adapter->int_handler_tag);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, 
-				     adapter->res_interrupt);
-	}
-	if (adapter->res_memory != NULL) {
-		bus_release_resource(dev, SYS_RES_MEMORY, EM_MMBA, 
-				     adapter->res_memory);
-	}
-
-	if (adapter->res_ioport != NULL) {
-		bus_release_resource(dev, SYS_RES_IOPORT, adapter->io_rid, 
-				     adapter->res_ioport);
-	}
 }
 
 /*********************************************************************
@@ -1680,7 +1649,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_watchdog = em_watchdog;
 	ifp->if_snd.ifq_maxlen = adapter->num_tx_desc - 1;
 
-	ether_ifattach(ifp, adapter->interface_data.ac_enaddr);
+	ether_ifattach(ifp, adapter->hw.mac_addr);
 
 	if (adapter->hw.mac_type >= em_82543) {
 		ifp->if_capabilities = IFCAP_HWCSUM;

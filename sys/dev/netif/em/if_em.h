@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.6 2004/05/10 10:36:25 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.7 2004/06/04 16:32:11 joerg Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -329,8 +329,6 @@ typedef struct _DESCRIPTOR_PAIR
 /* Our adapter structure */
 struct adapter {
 	struct arpcom   interface_data;
-	struct adapter *next;
-	struct adapter *prev;
 	struct em_hw    hw;
 
 	/* FreeBSD operating-system-specific structures */
@@ -344,7 +342,6 @@ struct adapter {
 	struct callout		timer;
 	struct callout		tx_fifo_timer;
 	int             io_rid;
-	u_int8_t        unit;
 
 	/* Info about the board itself */
 	u_int32_t       part_num;
