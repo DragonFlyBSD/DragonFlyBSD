@@ -8,7 +8,7 @@
  * @(#)ip_nat.c     1.11 6/5/96 (C) 1995 Darren Reed
  * @(#)$Id: ip_nat.c,v 2.37.2.70 2002/08/28 12:45:48 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.22.2.8 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.8 2004/09/25 03:42:58 dillon Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_nat.c,v 1.9 2005/01/07 20:15:47 dillon Exp $
  */
 #if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(KERNEL) && !defined(_KERNEL)
 #define _KERNEL
@@ -2879,11 +2879,14 @@ void nat_log(nat, type)
 struct nat *nat;
 u_int type;
 {
+# ifndef LARGE_NAT
 	struct ipnat *np;
+	int rulen;
+# endif
 	struct natlog natl;
 	void *items[1];
 	size_t sizes[1];
-	int rulen, types[1];
+	int types[1];
 
 	natl.nl_inip = nat->nat_inip;
 	natl.nl_outip = nat->nat_outip;
