@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/killall/killall.c,v 1.5.2.4 2001/05/19 19:22:49 phk Exp $
- * $DragonFly: src/usr.bin/killall/killall.c,v 1.5 2004/01/24 09:02:28 dillon Exp $
+ * $DragonFly: src/usr.bin/killall/killall.c,v 1.6 2004/07/16 00:52:22 hmp Exp $
  */
 
 #include <sys/cdefs.h>
@@ -65,7 +65,7 @@ upper(const char *str)
 
 	strlcpy(buf, str, sizeof(buf));
 	for (s = buf; *s; s++)
-		*s = toupper(*s);
+		*s = toupper((unsigned char)*s);
 	return buf;
 }
 
@@ -183,7 +183,7 @@ main(int ac, char **av)
 				mflag++;
 				break;
 			default:
-				if (isalpha(**av)) {
+				if (isalpha((unsigned char)**av)) {
 					if (strncasecmp(*av, "sig", 3) == 0)
 						*av += 3;
 					for (sig = NSIG, p = sys_signame + 1;
@@ -194,7 +194,7 @@ main(int ac, char **av)
 						}
 					if (!sig)
 						nosig(*av);
-				} else if (isdigit(**av)) {
+				} else if (isdigit((unsigned char)**av)) {
 					sig = strtol(*av, &ep, 10);
 					if (!*av || *ep)
 						errx(1, "illegal signal number: %s", *av);
@@ -278,7 +278,7 @@ main(int ac, char **av)
 	if (st == -1)
 		err(1, "could not sysctl(KERN_PROC)");
 	if (size % sizeof(struct kinfo_proc) != 0) {
-		fprintf(stderr, "proc size mismatch (%d total, %d chunks)\n",
+		fprintf(stderr, "proc size mismatch (%zu total, %zu chunks)\n",
 			size, sizeof(struct kinfo_proc));
 		fprintf(stderr, "userland out of sync with kernel, recompile libkvm etc\n");
 		exit(1);
