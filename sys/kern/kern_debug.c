@@ -30,10 +30,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Adoped from:
+ * Adopted from:
  *	src/sys/kern/kern_shutdown.c
  *
- * $DragonFly: src/sys/kern/kern_debug.c,v 1.2 2003/09/04 18:56:35 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_debug.c,v 1.3 2003/10/05 16:12:00 hmp Exp $
  *
  */
 
