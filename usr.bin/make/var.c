@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.100 2005/02/15 11:15:11 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.101 2005/02/17 20:11:53 okumoto Exp $
  */
 
 /*-
@@ -974,7 +974,7 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';			/* modify input string */
 
-	vname = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */ 
+	vname = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */
 	vlen = strlen(vname);
 
 	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
