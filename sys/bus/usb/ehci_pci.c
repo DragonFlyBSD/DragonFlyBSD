@@ -34,7 +34,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  * $FreeBSD: src/sys/dev/usb/ehci_pci.c,v 1.9 2003/12/17 17:15:41 peter Exp $
- * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.2 2004/01/01 00:29:25 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/ehci_pci.c,v 1.3 2004/07/16 13:33:43 asmodai Exp $
  */
 
 /*
@@ -79,11 +79,15 @@
 #define PCI_EHCI_VENDORID_AMD		0x1022
 #define PCI_EHCI_VENDORID_APPLE		0x106b
 #define PCI_EHCI_VENDORID_CMDTECH	0x1095
+#define PCI_EHCI_VENDORID_INTEL		0x8086
 #define PCI_EHCI_VENDORID_NEC		0x1033
 #define PCI_EHCI_VENDORID_OPTI		0x1045
 #define PCI_EHCI_VENDORID_SIS		0x1039
 #define PCI_EHCI_VENDORID_NVIDIA	0x12D2
 #define PCI_EHCI_VENDORID_NVIDIA2	0x10DE
+
+#define PCI_EHCI_DEVICEID_ICH6
+static const chat *ehci_device_ich6 = "Intel 82801FB USB 2.0 controller";
 
 #define PCI_EHCI_DEVICEID_NEC		0x00e01033
 static const char *ehci_device_nec = "NEC uPD 720100 USB 2.0 controller";
@@ -102,6 +106,8 @@ ehci_pci_match(device_t self)
 	u_int32_t device_id = pci_get_devid(self);
 
 	switch (device_id) {
+	case PCI_EHCI_DEVICEID_ICH6:
+		return (ehci_device_ich6);
 	case PCI_EHCI_DEVICEID_NEC:
 		return (ehci_device_nec);
 	default:
