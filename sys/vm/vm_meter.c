@@ -32,7 +32,7 @@
  *
  *	@(#)vm_meter.c	8.4 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/vm/vm_meter.c,v 1.34.2.7 2002/10/10 19:28:22 dillon Exp $
- * $DragonFly: src/sys/vm/vm_meter.c,v 1.4 2003/07/03 17:24:04 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_meter.c,v 1.5 2003/07/03 18:20:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -77,7 +77,7 @@ SYSCTL_STRUCT(_vm, VM_LOADAVG, loadavg, CTLFLAG_RD,
     &averunnable, loadavg, "Machine loadaverage history");
 
 static int
-vmtotal(SYSCTL_HANDLER_ARGS)
+do_vmtotal(SYSCTL_HANDLER_ARGS)
 {
 	struct proc *p;
 	struct vmtotal total, *totalp;
@@ -175,6 +175,35 @@ vmtotal(SYSCTL_HANDLER_ARGS)
 	return (sysctl_handle_opaque(oidp, totalp, sizeof total, req));
 }
 
+static int
+do_vmstats(SYSCTL_HANDLER_ARGS)
+{
+	struct vmstats vms = vmstats;
+	return (sysctl_handle_opaque(oidp, &vms, sizeof(vms), req));
+}
+
+static int
+do_vmmeter(SYSCTL_HANDLER_ARGS)
+{
+	int boffset = offsetof(struct vmmeter, vmmeter_uint_begin);
+	int eoffset = offsetof(struct vmmeter, vmmeter_uint_end);
+	struct vmmeter vmm;
+	int i;
+
+	bzero(&vmm, sizeof(vmm));
+	for (i = 0; i < ncpus; ++i) {
+		int off;
+		struct globaldata *gd = globaldata_find(i);
+
+		for (off = boffset; off <= eoffset; off += sizeof(u_int)) {
+			*(u_int *)((char *)&vmm + off) +=
+				*(u_int *)((char *)&gd->gd_cnt + off);
+		}
+		
+	}
+	return (sysctl_handle_opaque(oidp, &vmm, sizeof(vmm), req));
+}
+
 /*
  * vcnt() -	accumulate statistics from the cnt structure for each cpu
  *
@@ -191,7 +220,7 @@ vcnt(SYSCTL_HANDLER_ARGS)
 {
 	int i;
 	int count = 0;
-	int offset = (int)arg1;
+	int offset = arg2;
 
 	for (i = 0; i < ncpus; ++i) {
 		struct globaldata *gd = globaldata_find(i);
@@ -200,86 +229,92 @@ vcnt(SYSCTL_HANDLER_ARGS)
 	return(SYSCTL_OUT(req, &count, sizeof(int)));
 }
 
-#define VMMETEROFF(var)	(void *)offsetof(struct vmmeter, var)
+#define VMMETEROFF(var)	offsetof(struct vmmeter, var)
 
-SYSCTL_PROC(_vm, VM_METER, vmmeter, CTLTYPE_OPAQUE|CTLFLAG_RD,
-    0, sizeof(struct vmtotal), vmtotal, "S,vmtotal", 
+SYSCTL_PROC(_vm, OID_AUTO, vmtotal, CTLTYPE_OPAQUE|CTLFLAG_RD,
+    0, sizeof(struct vmtotal), do_vmtotal, "S,vmtotal", 
+    "System virtual memory aggregate");
+SYSCTL_PROC(_vm, OID_AUTO, vmstats, CTLTYPE_OPAQUE|CTLFLAG_RD,
+    0, sizeof(struct vmstats), do_vmstats, "S,vmstats", 
     "System virtual memory statistics");
+SYSCTL_PROC(_vm, OID_AUTO, vmmeter, CTLTYPE_OPAQUE|CTLFLAG_RD,
+    0, sizeof(struct vmmeter), do_vmmeter, "S,vmmeter", 
+    "System per-cpu statistics");
 SYSCTL_NODE(_vm, OID_AUTO, stats, CTLFLAG_RW, 0, "VM meter stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, sys, CTLFLAG_RW, 0, "VM meter sys stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, vm, CTLFLAG_RW, 0, "VM meter vm stats");
 SYSCTL_NODE(_vm_stats, OID_AUTO, misc, CTLFLAG_RW, 0, "VM meter misc stats");
 
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_swtch, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_swtch), 0, vcnt, "IU", "Context switches");
-SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_coll, CTLTYPE_UINT|CTLFLAG_RW,
-	VMMETEROFF(v_intrans_coll), 0, vcnt, "IU", "");
-SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_wait, CTLTYPE_UINT|CTLFLAG_RW,
-	VMMETEROFF(v_intrans_wait), 0, vcnt, "IU", "");
+	0, VMMETEROFF(v_swtch), vcnt, "IU", "Context switches");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_coll, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_intrans_coll), vcnt, "IU", "");
+SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intrans_wait, CTLTYPE_UINT|CTLFLAG_RD,
+	0, VMMETEROFF(v_intrans_wait), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_trap, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_trap), 0, vcnt, "IU", "Traps");
+	0, VMMETEROFF(v_trap), vcnt, "IU", "Traps");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_syscall, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_syscall), 0, vcnt, "IU", "Syscalls");
+	0, VMMETEROFF(v_syscall), vcnt, "IU", "Syscalls");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_intr, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_intr), 0, vcnt, "IU", "Hardware interrupts");
+	0, VMMETEROFF(v_intr), vcnt, "IU", "Hardware interrupts");
 SYSCTL_PROC(_vm_stats_sys, OID_AUTO, v_soft, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_soft), 0, vcnt, "IU", "Software interrupts");
+	0, VMMETEROFF(v_soft), vcnt, "IU", "Software interrupts");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vm_faults, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vm_faults), 0, vcnt, "IU", "VM faults");
+	0, VMMETEROFF(v_vm_faults), vcnt, "IU", "VM faults");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_cow_faults, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_cow_faults), 0, vcnt, "IU", "COW faults");
+	0, VMMETEROFF(v_cow_faults), vcnt, "IU", "COW faults");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_cow_optim, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_cow_optim), 0, vcnt, "IU", "Optimized COW faults");
+	0, VMMETEROFF(v_cow_optim), vcnt, "IU", "Optimized COW faults");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_zfod, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_zfod), 0, vcnt, "IU", "Zero fill");
+	0, VMMETEROFF(v_zfod), vcnt, "IU", "Zero fill");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_ozfod, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_ozfod), 0, vcnt, "IU", "Optimized zero fill");
+	0, VMMETEROFF(v_ozfod), vcnt, "IU", "Optimized zero fill");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_swapin, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_swapin), 0, vcnt, "IU", "Swapin operations");
+	0, VMMETEROFF(v_swapin), vcnt, "IU", "Swapin operations");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_swapout, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_swapout), 0, vcnt, "IU", "Swapout operations");
+	0, VMMETEROFF(v_swapout), vcnt, "IU", "Swapout operations");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_swappgsin, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_swappgsin), 0, vcnt, "IU", "Swapin pages");
+	0, VMMETEROFF(v_swappgsin), vcnt, "IU", "Swapin pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_swappgsout, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_swappgsout), 0, vcnt, "IU", "Swapout pages");
+	0, VMMETEROFF(v_swappgsout), vcnt, "IU", "Swapout pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vnodein, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vnodein), 0, vcnt, "IU", "Vnodein operations");
+	0, VMMETEROFF(v_vnodein), vcnt, "IU", "Vnodein operations");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vnodeout, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vnodeout), 0, vcnt, "IU", "Vnodeout operations");
+	0, VMMETEROFF(v_vnodeout), vcnt, "IU", "Vnodeout operations");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vnodepgsin, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vnodepgsin), 0, vcnt, "IU", "Vnodein pages");
+	0, VMMETEROFF(v_vnodepgsin), vcnt, "IU", "Vnodein pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vnodepgsout, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vnodepgsout), 0, vcnt, "IU", "Vnodeout pages");
+	0, VMMETEROFF(v_vnodepgsout), vcnt, "IU", "Vnodeout pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_intrans, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_intrans), 0, vcnt, "IU", "In transit page blocking");
+	0, VMMETEROFF(v_intrans), vcnt, "IU", "In transit page blocking");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_reactivated, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_reactivated), 0, vcnt, "IU", "Reactivated pages");
+	0, VMMETEROFF(v_reactivated), vcnt, "IU", "Reactivated pages");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdwakeups, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_pdwakeups), 0, vcnt, "IU", "Pagedaemon wakeups");
+	0, VMMETEROFF(v_pdwakeups), vcnt, "IU", "Pagedaemon wakeups");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pdpages, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_pdpages), 0, vcnt, "IU", "Pagedaemon page scans");
+	0, VMMETEROFF(v_pdpages), vcnt, "IU", "Pagedaemon page scans");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_dfree, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_dfree), 0, vcnt, "IU", "");
+	0, VMMETEROFF(v_dfree), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_pfree, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_pfree), 0, vcnt, "IU", "");
+	0, VMMETEROFF(v_pfree), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_tfree, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_tfree), 0, vcnt, "IU", "");
+	0, VMMETEROFF(v_tfree), vcnt, "IU", "");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_forks, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_forks), 0, vcnt, "IU", "Number of fork() calls");
+	0, VMMETEROFF(v_forks), vcnt, "IU", "Number of fork() calls");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vforks, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vforks), 0, vcnt, "IU", "Number of vfork() calls");
+	0, VMMETEROFF(v_vforks), vcnt, "IU", "Number of vfork() calls");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_rforks, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_rforks), 0, vcnt, "IU", "Number of rfork() calls");
+	0, VMMETEROFF(v_rforks), vcnt, "IU", "Number of rfork() calls");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_kthreads, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_kthreads), 0, vcnt, "IU", "Number of fork() calls by kernel");
+	0, VMMETEROFF(v_kthreads), vcnt, "IU", "Number of fork() calls by kernel");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_forkpages, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_forkpages), 0, vcnt, "IU", "VM pages affected by fork()");
+	0, VMMETEROFF(v_forkpages), vcnt, "IU", "VM pages affected by fork()");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_vforkpages, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_vforkpages), 0, vcnt, "IU", "VM pages affected by vfork()");
+	0, VMMETEROFF(v_vforkpages), vcnt, "IU", "VM pages affected by vfork()");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_rforkpages, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_rforkpages), 0, vcnt, "IU", "VM pages affected by rfork()");
+	0, VMMETEROFF(v_rforkpages), vcnt, "IU", "VM pages affected by rfork()");
 SYSCTL_PROC(_vm_stats_vm, OID_AUTO, v_kthreadpages, CTLTYPE_UINT|CTLFLAG_RD,
-	VMMETEROFF(v_kthreadpages), 0, vcnt, "IU", "VM pages affected by fork() by kernel");
+	0, VMMETEROFF(v_kthreadpages), vcnt, "IU", "VM pages affected by fork() by kernel");
 
 SYSCTL_UINT(_vm_stats_vm, OID_AUTO,
 	v_page_size, CTLFLAG_RD, &vmstats.v_page_size, 0, "");

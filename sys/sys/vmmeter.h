@@ -32,7 +32,7 @@
  *
  *	@(#)vmmeter.h	8.2 (Berkeley) 7/10/94
  * $FreeBSD: src/sys/sys/vmmeter.h,v 1.21.2.2 2002/10/10 19:28:21 dillon Exp $
- * $DragonFly: src/sys/sys/vmmeter.h,v 1.3 2003/07/03 17:24:03 dillon Exp $
+ * $DragonFly: src/sys/sys/vmmeter.h,v 1.4 2003/07/03 18:20:02 dillon Exp $
  */
 
 #ifndef _SYS_VMMETER_H_
@@ -45,6 +45,7 @@ struct vmmeter {
 	/*
 	 * General system activity.
 	 */
+#define vmmeter_uint_begin	v_swtch
 	u_int v_swtch;		/* context switches */
 	u_int v_trap;		/* calls to trap */
 	u_int v_syscall;	/* calls to syscall() */
@@ -87,6 +88,7 @@ struct vmmeter {
 	u_int v_kthreadpages;	/* number of VM pages affected by fork() by kernel */
 	u_int v_intrans_coll;	/* intransit map collisions (total) */
 	u_int v_intrans_wait;	/* intransit map collisions which blocked */
+#define vmmeter_uint_end	v_intrans_wait
 };
 
 struct vmstats {
