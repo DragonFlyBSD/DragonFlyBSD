@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/usr.sbin/fdwrite/fdwrite.c,v 1.8.2.3 2001/07/19 13:21:19 joerg Exp $
- * $DragonFly: src/usr.sbin/fdwrite/fdwrite.c,v 1.4 2004/05/20 19:24:42 cpressey Exp $
+ * $DragonFly: src/usr.sbin/fdwrite/fdwrite.c,v 1.5 2004/12/03 22:51:47 liamfoy Exp $
  *
  */
 
@@ -17,12 +17,15 @@
 #include <paths.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include <unistd.h>
 
 #include <machine/ioctl_fd.h>
 
-int
+static int	format_track(int, int, int, int, int,
+				int, int, int, int);
+
+static int
 format_track(int fd, int cyl, int secs, int head, int rate,
              int gaplen, int secsize, int fill,int interleave)
 {
@@ -68,7 +71,8 @@ main(int argc, char **argv)
     int inputfd = -1, c, fdn = 0, i,j,fd;
     int bpt, verbose=1, nbytes=0, track;
     int interactive = 1, fdopts;
-    char *device= "/dev/fd0", *trackbuf = 0,*vrfybuf = 0;
+    const char *device = "/dev/fd0"; 
+    char *trackbuf = NULL,*vrfybuf = NULL;
     struct fd_type fdt;
     FILE *tty;
 
@@ -137,11 +141,11 @@ main(int argc, char **argv)
 	bpt = fdt.sectrac * (1<<fdt.secsize) * 128;
 	if(!trackbuf) {
 	    trackbuf = malloc(bpt);
-	    if(!trackbuf) errx(1, "malloc");
+	    if(!trackbuf) err(1, "malloc failed");
 	}
 	if(!vrfybuf) {
 	    vrfybuf = malloc(bpt);
-	    if(!vrfybuf) errx(1, "malloc");
+	    if(!vrfybuf) err(1, "malloc failed");
 	}
 
 	if(fdn == 1) {

@@ -7,11 +7,10 @@
 # ----------------------------------------------------------------------------
 #
 # $FreeBSD: src/usr.sbin/fdwrite/Makefile,v 1.5.2.1 2001/04/25 12:09:34 ru Exp $
-# $DragonFly: src/usr.sbin/fdwrite/Makefile,v 1.2 2003/06/17 04:29:53 dillon Exp $
+# $DragonFly: src/usr.sbin/fdwrite/Makefile,v 1.3 2004/12/03 22:51:47 liamfoy Exp $
 #
 #
 
 PROG=	fdwrite
-CFLAGS+=-Wall
-
+WARNS?=	6
 .include <bsd.prog.mk>
