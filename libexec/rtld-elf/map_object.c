@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/map_object.c,v 1.7.2.2 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.5 2005/02/05 22:54:49 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/map_object.c,v 1.6 2005/03/22 22:56:36 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -63,6 +63,7 @@ map_object(int fd, const char *path, const struct stat *sb)
     Elf_Phdr *phdyn;
     Elf_Phdr *phphdr;
     Elf_Phdr *phinterp;
+    Elf_Phdr *phtls;
     caddr_t mapbase;
     size_t mapsize;
     Elf_Off base_offset;
@@ -96,7 +97,7 @@ map_object(int fd, const char *path, const struct stat *sb)
     phdr = (Elf_Phdr *) ((char *)hdr + hdr->e_phoff);
     phlimit = phdr + hdr->e_phnum;
     nsegs = -1;
-    phdyn = phphdr = phinterp = NULL;
+    phdyn = phphdr = phinterp = phtls = NULL;
     segs = alloca(sizeof(segs[0]) * hdr->e_phnum);
     while (phdr < phlimit) {
 	switch (phdr->p_type) {
@@ -120,6 +121,9 @@ map_object(int fd, const char *path, const struct stat *sb)
 
 	case PT_DYNAMIC:
 	    phdyn = phdr;
+	    break;
+	case PT_TLS:
+	    phtls = phdr;
 	    break;
 	}
 
@@ -234,7 +238,14 @@ map_object(int fd, const char *path, const struct stat *sb)
     }
     if (phinterp != NULL)
 	obj->interp = (const char *) (obj->relocbase + phinterp->p_vaddr);
-
+    if (phtls != NULL) {
+	tls_dtv_generation++;
+	obj->tlsindex = ++tls_max_index;
+	obj->tlssize = phtls->p_memsz;
+	obj->tlsalign = phtls->p_align;
+	obj->tlsinitsize = phtls->p_filesz;
+	obj->tlsinit = mapbase + phtls->p_vaddr;
+    }
     return obj;
 }
 
@@ -299,6 +310,9 @@ obj_free(Obj_Entry *obj)
 {
     Objlist_Entry *elm;
 
+    if (obj->tls_done) {
+	free_tls_offset(obj);
+    }
     free(obj->origin_path);
     free(obj->path);
     while (obj->needed != NULL) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.5 2004/01/20 21:32:47 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.6 2005/03/22 22:56:36 davidxu Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -62,5 +62,21 @@ atomic_add_int(volatile int *p, int val)
 	: "ri"(val)
 	: "cc");
 }
+
+#define round(size, align) \
+	(((size) + (align) - 1) & ~((align) - 1))
+#define calculate_first_tls_offset(size, align) \
+	round(size, align)
+#define calculate_tls_offset(prev_offset, prev_size, size, align) \
+	round((prev_offset) + (size), align)
+#define calculate_tls_end(off, size) 	(off)
+
+typedef struct {
+    unsigned long ti_module;
+    unsigned long ti_offset;
+} tls_index;
+
+extern void *___tls_get_addr(tls_index *ti) __attribute__((__regparm__(1)));
+extern void *__tls_get_addr(tls_index *ti);
 
 #endif
