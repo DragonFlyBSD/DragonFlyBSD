@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbdi.c,v 1.103 2002/09/27 15:37:38 provos Exp $
  * $FreeBSD: src/sys/dev/usb/usbdi.c,v 1.84 2003/11/09 23:56:19 joe Exp $
- * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.6 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usbdi.c,v 1.7 2003/12/30 03:33:28 dillon Exp $
  */
 
 /*
@@ -947,7 +947,7 @@ usbd_do_request_flags_pipe(usbd_device_handle dev, usbd_pipe_handle pipe,
 
 #ifdef DIAGNOSTIC
 #if defined(__i386__) && defined(__FreeBSD__)
-	KASSERT(curthread->td_intr_nesting_level == 0,
+	KASSERT(mycpu->gd_intr_nesting_level == 0,
 	       	("usbd_do_request: in interrupt context"));
 #endif
 	if (dev->bus->intr_context) {
