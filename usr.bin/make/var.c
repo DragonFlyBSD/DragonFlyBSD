@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.15 2004/11/30 15:52:57 joerg Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.16 2004/12/01 01:10:17 joerg Exp $
  */
 
 /*-
@@ -771,6 +771,44 @@ VarGetPattern(GNode *ctxt, int err, char **tstr, int delim, int *flags,
     }
 }
 
+
+#ifdef POSIX
+
+
+/* In POSIX mode, variable assignments passed on the command line are
+ * propagated to sub makes through MAKEFLAGS.
+ */
+void
+Var_AddCmdLine(char *name)
+{
+    const Var *v;
+    LstNode ln;
+    Buffer buf;
+    static const char quotable[] = " \t\n\\'\"";
+    char *s;
+    int first = 1;
+
+    buf = Buf_Init (MAKE_BSIZE);
+
+    for (ln = Lst_First(VAR_CMD->context); ln != NULL;
+	ln = Lst_Succ(ln)) {
+	    if (!first)
+	    	Buf_AddByte(buf, ' ');
+	    first = 0;
+	    /* We assume variable names don't need quoting */
+	    v = (Var *)Lst_Datum(ln);
+	    Buf_AddBytes(buf, strlen(v->name), v->name);
+	    Buf_AddByte(buf, '=');
+	    for (s = Buf_GetAll(v->val, (int *)NULL); *s != '\0'; s++) {
+		if (strchr(quotable, *s))
+		    Buf_AddByte(buf, '\\');
+		Buf_AddByte(buf, *s);
+	    }
+    }
+    Var_Append(name, Buf_GetAll(buf, (int *)NULL), VAR_GLOBAL);
+    Buf_Destroy(buf, 1);
+}
+#endif
 
 /*-
  *-----------------------------------------------------------------------

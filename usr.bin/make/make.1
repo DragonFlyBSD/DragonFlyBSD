@@ -31,9 +31,9 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.12 2004/11/30 19:12:57 joerg Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.13 2004/12/01 01:10:17 joerg Exp $
 .\"
-.Dd July 29, 2004
+.Dd August 4, 2004
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -396,7 +396,12 @@ environment.
 .It Global variables
 Variables defined in the makefile or in included makefiles.
 .It Command line variables
-Variables defined as part of the command line.
+Variables defined as part of the command line and variables
+obtained from the
+.Ev MAKEFLAGS
+environment variable or the
+.Ic .MAKEFLAGS
+target.
 .It Local variables
 Variables that are defined specific to a certain target.
 The seven local variables are as follows:
@@ -559,9 +564,9 @@ Its contents are stored in
 .Nm Ns 's
 .Va .MAKEFLAGS
 variable.
-Anything specified on
+All options and variable assignments specified on
 .Nm Ns 's
-command line is appended to the
+command line are appended to the
 .Va .MAKEFLAGS
 variable which is then
 entered into the environment as
@@ -570,9 +575,12 @@ for all programs which
 .Nm
 executes.
 .It Va MFLAGS
-A synonym for
-.Va .MAKEFLAGS
-provided for backward compatibility.
+is provided for backward compatibility and
+contains all the options from the
+.Ev MAKEFLAGS
+environment variable plus any options specified on
+.Nm Ns 's
+command line.
 .It Va .TARGETS
 List of targets
 .Nm
@@ -1132,6 +1140,8 @@ The flags are as if typed to the shell, though the
 .Fl f
 option will have
 no effect.
+.It Ic .MFLAGS
+Same as above, for backward compatibility.
 .\" XXX: NOT YET!!!!
 .\" .It Ic .NOTPARALLEL
 .\" The named targets are executed in non parallel mode. If no targets are
