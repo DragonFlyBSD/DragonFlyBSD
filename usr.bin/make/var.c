@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.89 2005/02/14 09:55:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.90 2005/02/14 09:58:28 okumoto Exp $
  */
 
 /*-
@@ -916,7 +916,8 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	/*
 	 * Check if brackets contain a variable name.
 	 */
-	int	vlen;	/* length of variable name, after embedded variable
+	const char	*vname;
+	size_t	vlen;	/* length of variable name, after embedded variable
 			 * expansion */
 
 	/* build up expanded variable name in this buffer */
@@ -966,27 +967,27 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	haveModifier = (*tstr == ':');
 	*tstr = '\0';			/* modify input string */
 
-	rw_str = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */ 
-	vlen = strlen(rw_str);
+	vname = Buf_GetAll(buf, (size_t *)NULL);	/* REPLACE str */ 
+	vlen = strlen(vname);
 
-	v = VarFind(rw_str, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 
 	if ((v == NULL) &&
 	    (ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL) &&
-	    (vlen == 2) && (rw_str[1] == 'F' || rw_str[1] == 'D'))
+	    (vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))
 	{
 	    /*
 	     * Check for bogus D and F forms of local variables since we're
 	     * in a local context and the name is the right length.
 	     */
-	    if (strchr("!%*<>@", rw_str[0]) != NULL) {
+	    if (strchr("!%*<>@", vname[0]) != NULL) {
 		char    name[2];
 		char    *val;
 
 		/*
 		 * Well, it's local -- go look for it.
 		 */
-		name[0] = rw_str[0];
+		name[0] = vname[0];
 		name[1] = '\0';
 
 		v = VarFind(name, ctxt, 0);
@@ -998,7 +999,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		     */
 		    val = (char *)Buf_GetAll(v->val, (size_t *)NULL);
 
-		    if (rw_str[1] == 'D') {
+		    if (vname[1] == 'D') {
 			val = VarModify(val, VarHead, (void *)NULL);
 		    } else {
 			val = VarModify(val, VarTail, (void *)NULL);
@@ -1019,7 +1020,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	if (v == NULL) {
 	    if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
 		((vlen == 1) ||
-		 ((vlen == 2) && (rw_str[1] == 'F' || rw_str[1] == 'D'))))
+		 ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))))
 	    {
 		/*
 		 * If substituting a local variable in a non-local context,
@@ -1030,23 +1031,23 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * specially as they are the only four that will be set
 		 * when dynamic sources are expanded.
 		 */
-		if (strchr("!%*@", rw_str[0]) != NULL) {
+		if (strchr("!%*@", vname[0]) != NULL) {
 		    dynamic = TRUE;
 		} else {
 		    dynamic = FALSE;
 		}
 	    } else if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
 		       (vlen > 2) &&
-		       (rw_str[0] == '.') &&
-		       isupper((unsigned char)rw_str[1]))
+		       (vname[0] == '.') &&
+		       isupper((unsigned char)vname[1]))
 	    {
 		int	len;
 
 		len = vlen - 1;
-		if ((strncmp(rw_str, ".TARGET", len) == 0) ||
-		    (strncmp(rw_str, ".ARCHIVE", len) == 0) ||
-		    (strncmp(rw_str, ".PREFIX", len) == 0) ||
-		    (strncmp(rw_str, ".MEMBER", len) == 0))
+		if ((strncmp(vname, ".TARGET", len) == 0) ||
+		    (strncmp(vname, ".ARCHIVE", len) == 0) ||
+		    (strncmp(vname, ".PREFIX", len) == 0) ||
+		    (strncmp(vname, ".MEMBER", len) == 0))
 		{
 		    dynamic = TRUE;
 		} else {
@@ -1061,7 +1062,7 @@ Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * Still need to get to the end of the variable specification,
 		 * so kludge up a Var structure for the modifications
 		 */
-		v = VarCreate(rw_str, NULL, VAR_JUNK);
+		v = VarCreate(vname, NULL, VAR_JUNK);
 
 	    } else {
 		/*
