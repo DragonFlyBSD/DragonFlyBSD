@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.4 2004/01/31 03:26:56 dillon Exp $
  */
 
 #include <ctype.h>
@@ -134,17 +134,11 @@ Spec:
 Config_spec:
 	ARCH Save_id
 	    = {
-		if (!strcmp($2, "i386")) {
-			machine = MACHINE_I386;
-			machinename = "i386";
-		} else if (!strcmp($2, "pc98")) {
-			machine = MACHINE_PC98;
-			machinename = "pc98";
-		} else if (!strcmp($2, "alpha")) {
-			machine = MACHINE_ALPHA;
-			machinename = "alpha";
-		} else
-			yyerror("Unknown machine type");
+		if (machinename != NULL) {
+		    errx(1, "%d: only one machine directive is allowed",
+			yyline);
+		}
+		machinename = $2;
 	      } |
 	CPU Save_id
 	      = {

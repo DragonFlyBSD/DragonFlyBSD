@@ -32,7 +32,7 @@
  *
  * @(#)mkioconf.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.sbin/config/mkioconf.c,v 1.62 2000/01/29 18:14:59 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkioconf.c,v 1.5 2004/01/31 03:26:56 dillon Exp $
  */
 
 #include <err.h>
@@ -182,10 +182,7 @@ newbus_ioconf(void)
 	fprintf(fp, "\n");
 	fprintf(fp, "#include <sys/queue.h>\n");
 	fprintf(fp, "#include <sys/sysctl.h>\n");
-	if (machine == MACHINE_PC98)
-		fprintf(fp, "#include <pc98/pc98/pc98.h>\n");
-	else
-		fprintf(fp, "#include <bus/isa/isareg.h>\n");
+	fprintf(fp, "#include <bus/isa/isareg.h>\n");
 	fprintf(fp, "#include <sys/bus_private.h>\n");
 	fprintf(fp, "\n");
 

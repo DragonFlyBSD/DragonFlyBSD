@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.5 2004/01/31 03:26:56 dillon Exp $
  */
 
 /*
@@ -48,17 +48,6 @@
 #include "config.h"
 #include "y.tab.h"
 
-static	struct users {
-	int	u_default;
-	int	u_min;
-	int	u_max;
-} users[] = {
-	{ 8, 2, 512 },			/* MACHINE_I386 */
-	{ 8, 2, 512 },			/* MACHINE_PC98 */
-	{ 8, 2, 512 },			/* MACHINE_ALPHA */
-};
-#define	NUSERS	(sizeof (users) / sizeof (users[0]))
-
 static char *lower(char *);
 static void read_options(void);
 static void do_option(char *);
@@ -71,7 +60,6 @@ options(void)
 	struct cputype *cp;
 	struct opt_list *ol;
 	struct opt *op;
-	struct users *up;
 
 	/* Fake the cpu types as options. */
 	for (cp = cputype; cp != NULL; cp = cp->cpu_next) {
@@ -82,20 +70,15 @@ options(void)
 		opt = op;
 	}	
 
-	/* Initialize `maxusers'. */
-	if ((unsigned)machine > NUSERS) {
-		printf("maxusers config info isn't present, using i386\n");
-		up = &users[MACHINE_I386 - 1];
-	} else
-		up = &users[machine - 1];
 	if (maxusers == 0) {
 		/* printf("maxusers not specified; will auto-size\n"); */
 		/* maxusers = 0; */
-	} else if (maxusers < up->u_min) {
-		printf("minimum of %d maxusers assumed\n", up->u_min);
-		maxusers = up->u_min;
-	} else if (maxusers > up->u_max)
-		printf("warning: maxusers > %d (%d)\n", up->u_max, maxusers);
+	} else if (maxusers < 2) {
+		puts("minimum of 2 maxusers assumed");
+		maxusers = 2;
+	} else if (maxusers > 512) {
+		printf("warning: maxusers > 512 (%d)\n", maxusers);
+	}
 
 	/* Fake MAXUSERS as an option. */
 	op = (struct opt *)malloc(sizeof(*op));

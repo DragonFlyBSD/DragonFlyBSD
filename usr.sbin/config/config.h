@@ -32,7 +32,7 @@
  *
  *	@(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.h,v 1.35.2.1 2000/08/03 00:09:56 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.h,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/config.h,v 1.4 2004/01/31 03:26:56 dillon Exp $
  */
 
 /*
@@ -108,11 +108,7 @@ struct config {
  * it will build from ``Makefile.i386'' and use ``../i386/inline''
  * in the makerules, etc.
  */
-int	machine;
 char	*machinename;
-#define	MACHINE_I386	1
-#define MACHINE_PC98	2
-#define MACHINE_ALPHA	3
 
 /*
  * For each machine, a set of CPU's may be specified as supported.

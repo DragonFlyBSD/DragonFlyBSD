@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.6 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.7 2004/01/31 03:26:56 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -154,18 +154,11 @@ main(int argc, char **argv)
 	dtab = NULL;
 	if (yyparse())
 		exit(3);
-	switch (machine) {
-
-	case MACHINE_I386:
-	case MACHINE_PC98:
-	case MACHINE_ALPHA:
-		newbus_ioconf();	/* Print ioconf.c */
-		break;
-
-	default:
+	if (machinename == NULL) {
 		printf("Specify machine type, e.g. ``machine i386''\n");
 		exit(1);
 	}
+	newbus_ioconf();
 	/*
 	 * make symbolic links in compilation directory
 	 * for "sys" (to make genassym.c work along with #include <sys/xxx>)
