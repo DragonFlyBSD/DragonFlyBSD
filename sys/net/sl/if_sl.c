@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.14 2004/07/31 07:52:54 dillon Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.15 2004/09/16 04:49:32 dillon Exp $
  */
 
 /*
@@ -227,6 +227,8 @@ slattach(dummy)
 		sc->sc_fastq.ifq_maxlen = 32;
 		sc->sc_if.if_linkmib = sc;
 		sc->sc_if.if_linkmiblen = sizeof *sc;
+		callout_init(&sc->sc_oftimeout);
+		callout_init(&sc->sc_katimeout);
 		if_attach(&sc->sc_if);
 		bpfattach(&sc->sc_if, DLT_SLIP, SLIP_HDRLEN);
 	}
@@ -335,11 +337,11 @@ slclose(tp,flag)
 	if (sc != NULL) {
 		if (sc->sc_outfill) {
 			sc->sc_outfill = 0;
-			untimeout(sl_outfill, sc, sc->sc_ofhandle);
+			callout_stop(&sc->sc_oftimeout);
 		}
 		if (sc->sc_keepalive) {
 			sc->sc_keepalive = 0;
-			untimeout(sl_keepalive, sc, sc->sc_kahandle);
+			callout_stop(&sc->sc_katimeout);
 		}
 		if_down(&sc->sc_if);
 		sc->sc_flags &= SC_STATIC;
@@ -414,11 +416,11 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 		sc->sc_keepalive = *(u_int *)data * hz;
 		if (sc->sc_keepalive) {
 			sc->sc_flags |= SC_KEEPALIVE;
-			sc->sc_kahandle = timeout(sl_keepalive, sc,
-						  sc->sc_keepalive);
+			callout_reset(&sc->sc_katimeout, sc->sc_keepalive,
+					sl_keepalive, sc);
 		} else {
 			if ((sc->sc_flags & SC_KEEPALIVE) != 0) {
-				untimeout(sl_keepalive, sc, sc->sc_kahandle);
+				callout_stop(&sc->sc_katimeout);
 				sc->sc_flags &= ~SC_KEEPALIVE;
 			}
 		}
@@ -432,11 +434,11 @@ sltioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *p)
 		sc->sc_outfill = *(u_int *)data * hz;
 		if (sc->sc_outfill) {
 			sc->sc_flags |= SC_OUTWAIT;
-			sc->sc_ofhandle = timeout(sl_outfill, sc,
-						  sc->sc_outfill);
+			callout_reset(&sc->sc_oftimeout, sc->sc_outfill, 
+					sl_outfill, sc);
 		} else {
 			if ((sc->sc_flags & SC_OUTWAIT) != 0) {
-				untimeout(sl_outfill, sc, sc->sc_ofhandle);
+				callout_stop(&sc->sc_oftimeout);
 				sc->sc_flags &= ~SC_OUTWAIT;
 			}
 		}
@@ -996,7 +998,8 @@ sl_keepalive(chan)
 			pgsignal (sc->sc_ttyp->t_pgrp, SIGURG, 1);
 		else
 			sc->sc_flags |= SC_KEEPALIVE;
-		sc->sc_kahandle = timeout(sl_keepalive, sc, sc->sc_keepalive);
+		callout_reset(&sc->sc_katimeout, sc->sc_keepalive,
+				sl_keepalive, sc);
 	} else {
 		sc->sc_flags &= ~SC_KEEPALIVE;
 	}
@@ -1019,7 +1022,8 @@ sl_outfill(chan)
 			splx (s);
 		} else
 			sc->sc_flags |= SC_OUTWAIT;
-		sc->sc_ofhandle = timeout(sl_outfill, sc, sc->sc_outfill);
+		callout_reset(&sc->sc_oftimeout, sc->sc_outfill,
+				sl_outfill, sc);
 	} else {
 		sc->sc_flags &= ~SC_OUTWAIT;
 	}
