@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.16 2004/02/17 19:38:49 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.17 2004/06/24 16:49:13 drhodus Exp $
  */
 
 #include "opt_ddb.h"
@@ -309,6 +309,9 @@ boot(int howto)
 			 * unmount filesystems (thus forcing an fsck on reboot).
 			 */
 			printf("giving up on %d buffers\n", nbusy);
+#ifdef DDB
+			Debugger("busy buffer problem");
+#endif /* DDB */
 			DELAY(5000000);	/* 5 seconds */
 		} else {
 			printf("done\n");
