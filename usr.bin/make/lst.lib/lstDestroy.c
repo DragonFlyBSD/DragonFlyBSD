@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDestroy.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.10 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.11 2004/12/17 08:01:40 okumoto Exp $
  *
  * @(#)lstDestroy.c	8.1 (Berkeley) 6/6/93
  */
@@ -66,7 +66,6 @@ void
 Lst_Destroy(Lst *list, FreeProc *freeProc)
 {
     LstNode *ln;
-    LstNode *tln;
 
     if (!Lst_Valid(list)) {
 	/*
@@ -76,22 +75,19 @@ Lst_Destroy(Lst *list, FreeProc *freeProc)
 	return;
     }
 
-    if (list->lastPtr == NULL) {
+    if (list->firstPtr == NULL) {
 	free(list);
 	return;
     }
-    /* To ease scanning */
-    list->lastPtr->nextPtr = NULL;
-
-    if (freeProc) {
-	for (ln = list->firstPtr; ln != NULL; ln = tln) {
-	     tln = ln->nextPtr;
+    if (freeProc != NOFREE) {
+	while ((ln = list->firstPtr) != NULL) {
+	    list->firstPtr = ln->nextPtr;
 	     (*freeProc)(ln->datum);
 	     free(ln);
 	}
     } else {
-	for (ln = list->firstPtr; ln != NULL; ln = tln) {
-	     tln = ln->nextPtr;
+	while ((ln = list->firstPtr) != NULL) {
+	    list->firstPtr = ln->nextPtr;
 	     free(ln);
 	}
     }

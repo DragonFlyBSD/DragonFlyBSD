@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.20 2004/12/17 07:56:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.21 2004/12/17 08:01:40 okumoto Exp $
  */
 
 /*-
@@ -453,6 +453,7 @@ Suff_ClearSuffixes(void)
 {
 
     Lst_Concat(suffClean, sufflist, LST_CONCLINK);
+    free(sufflist);
     sufflist = Lst_Init();
     sNum = 1;
     suffNull = emptySuff;
@@ -2078,6 +2079,8 @@ sfnd_return:
 
     Lst_Concat(slst, srcs, LST_CONCLINK);
     Lst_Concat(slst, targs, LST_CONCLINK);
+    free(srcs);
+    free(targs);
 }
 
 /*-
