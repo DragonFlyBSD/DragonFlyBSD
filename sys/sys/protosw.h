@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.13 2004/06/07 07:01:36 dillon Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.14 2005/03/04 02:21:49 hsu Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -74,7 +74,7 @@ struct pr_output_info {
  */
 struct protosw {
 	short	pr_type;		/* socket type used for */
-	const struct	domain *pr_domain; /* domain protocol a member of */
+	const struct domain *pr_domain; /* domain protocol a member of */
 	short	pr_protocol;		/* protocol number */
 	short	pr_flags;		/* see below */
 /* protocol-protocol hooks */

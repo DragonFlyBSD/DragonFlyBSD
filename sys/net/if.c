@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.28 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.29 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -246,7 +246,7 @@ if_attach(struct ifnet *ifp)
 	ifp->if_snd.altq_tbr = NULL;
 	ifp->if_snd.altq_ifp = ifp;
 
-	if (domains)
+	if (!SLIST_EMPTY(&domains))
 		if_attachdomain1(ifp);
 
 	/* Announce the interface. */
@@ -277,11 +277,10 @@ if_attachdomain1(struct ifnet *ifp)
 
 	/* address family dependent data region */
 	bzero(ifp->if_afdata, sizeof(ifp->if_afdata));
-	for (dp = domains; dp; dp = dp->dom_next) {
+	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_ifattach)
 			ifp->if_afdata[dp->dom_family] =
 				(*dp->dom_ifattach)(ifp);
-	}
 	splx(s);
 }
 
@@ -371,11 +370,10 @@ if_detach(struct ifnet *ifp)
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
 
-	for (dp = domains; dp; dp = dp->dom_next) {
+	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_ifdetach && ifp->if_afdata[dp->dom_family])
 			(*dp->dom_ifdetach)(ifp,
 				ifp->if_afdata[dp->dom_family]);
-	}
 
 	ifindex2ifnet[ifp->if_index] = NULL;
 

@@ -32,7 +32,7 @@
  *
  *	From: @(#)ns_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_proto.c,v 1.10 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.6 2004/06/07 07:04:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.7 2005/03/04 02:21:49 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -97,9 +97,10 @@ struct protosw nssw[] = {
 }
 };
 
-struct domain nsdomain =
-    { AF_NS, "network systems", 0, 0, 0,
-      nssw, &nssw[sizeof(nssw)/sizeof(nssw[0])], 0,
-      rn_inithead, 16, sizeof(struct sockaddr_ns)};
+struct domain nsdomain = {
+	AF_NS, "network systems", NULL, NULL, NULL,
+	nssw, &nssw[sizeof(nssw)/sizeof(nssw[0])], SLIST_ENTRY_INITIALIZER,
+	rn_inithead, 16, sizeof(struct sockaddr_ns),
+};
 
 DOMAIN_SET(ns);

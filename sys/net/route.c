@@ -82,7 +82,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.16 2005/02/28 11:39:33 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.17 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -113,7 +113,7 @@ rtable_init(void **table)
 {
 	struct domain *dom;
 
-	for (dom = domains; dom; dom = dom->dom_next)
+	SLIST_FOREACH(dom, &domains, dom_next)
 		if (dom->dom_rtattach)
 			dom->dom_rtattach(&table[dom->dom_family],
 					  dom->dom_rtoffset);

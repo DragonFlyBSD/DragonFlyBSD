@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.8 2005/02/17 14:00:00 joerg Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.9 2005/03/04 02:21:48 hsu Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -964,17 +964,8 @@ static struct protosw ngsw[] = {
 };
 
 struct domain ngdomain = {
-	AF_NETGRAPH,
-	"netgraph",
-	0,
-	NULL,
-	NULL,
-	ngsw,
-	&ngsw[sizeof(ngsw) / sizeof(ngsw[0])],
-	0,
-	NULL,
-	0,
-	0
+	AF_NETGRAPH, "netgraph", NULL, NULL, NULL,
+	ngsw, &ngsw[sizeof(ngsw) / sizeof(ngsw[0])],
 };
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.7 2004/12/28 08:09:59 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.8 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -65,21 +65,21 @@ SYSINIT(domain, SI_SUB_PROTO_DOMAIN, SI_ORDER_FIRST, domaininit, NULL)
 static void	pffasttimo (void *);
 static void	pfslowtimo (void *);
 
-struct domain *domains;
+struct domainlist domains;
 
 static struct callout pffasttimo_ch;
 static struct callout pfslowtimo_ch;
 
 /*
  * Add a new protocol domain to the list of supported domains
- * Note: you cant unload it again because  a socket may be using it.
+ * Note: you cant unload it again because a socket may be using it.
  * XXX can't fail at this time.
  */
 static void
 net_init_domain(struct domain *dp)
 {
 	struct protosw *pr;
-	int	s;
+	int s;
 
 	s = splnet();
 	if (dp->dom_init)
@@ -92,7 +92,7 @@ net_init_domain(struct domain *dp)
 			(*pr->pr_init)();
 	}
 	/*
-	 * update global informatio about maximums
+	 * update global information about maximums
 	 */
 	max_hdr = max_linkhdr + max_protohdr;
 	max_datalen = MHLEN - max_hdr;
@@ -101,19 +101,17 @@ net_init_domain(struct domain *dp)
 
 /*
  * Add a new protocol domain to the list of supported domains
- * Note: you cant unload it again because  a socket may be using it.
+ * Note: you cant unload it again because a socket may be using it.
  * XXX can't fail at this time.
  */
 void
 net_add_domain(void *data)
 {
-	int	s;
-	struct domain *dp;
+	struct domain *dp = data;
+	int s;
 
-	dp = (struct domain *)data;
 	s = splnet();
-	dp->dom_next = domains;
-	domains = dp;
+	SLIST_INSERT_HEAD(&domains, dp, dom_next);
 	splx(s);
 	net_init_domain(dp);
 }
@@ -153,7 +151,7 @@ pffindtype(int family, int type)
 	struct domain *dp;
 	struct protosw *pr;
 
-	for (dp = domains; dp; dp = dp->dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_family == family)
 			goto found;
 	return (NULL);
@@ -174,7 +172,7 @@ pffindproto(int family, int protocol, int type)
 
 	if (family == 0)
 		return (NULL);
-	for (dp = domains; dp; dp = dp->dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next)
 		if (dp->dom_family == family)
 			goto found;
 	return (NULL);
@@ -197,7 +195,7 @@ pfctlinput(int cmd, struct sockaddr *sa)
 	struct domain *dp;
 	struct protosw *pr;
 
-	for (dp = domains; dp; dp = dp->dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_ctlinput)
 				(*pr->pr_ctlinput)(cmd, sa, (void *)NULL);
@@ -211,7 +209,7 @@ pfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 
 	if (!sa)
 		return;
-	for (dp = domains; dp; dp = dp->dom_next) {
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		/*
 		 * the check must be made by xx_ctlinput() anyways, to
 		 * make sure we use data item pointed to by ctlparam in
@@ -232,7 +230,7 @@ pfslowtimo(void *arg)
 	struct domain *dp;
 	struct protosw *pr;
 
-	for (dp = domains; dp; dp = dp->dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_slowtimo)
 				(*pr->pr_slowtimo)();
@@ -245,7 +243,7 @@ pffasttimo(void *arg)
 	struct domain *dp;
 	struct protosw *pr;
 
-	for (dp = domains; dp; dp = dp->dom_next)
+	SLIST_FOREACH(dp, &domains, dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_fasttimo)
 				(*pr->pr_fasttimo)();

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/keysock.c,v 1.1.2.4 2003/01/11 19:10:59 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.11 2004/06/03 15:04:51 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/keysock.c,v 1.12 2005/03/04 02:21:49 hsu Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -576,8 +576,9 @@ struct protosw keysw[] = {
 }
 };
 
-struct domain keydomain =
-    { PF_KEY, "key", key_init, 0, 0,
-      keysw, &keysw[sizeof(keysw)/sizeof(keysw[0])] };
+struct domain keydomain = {
+	PF_KEY, "key", key_init, NULL, NULL,
+	keysw, &keysw[sizeof(keysw)/sizeof(keysw[0])],
+};
 
 DOMAIN_SET(key);

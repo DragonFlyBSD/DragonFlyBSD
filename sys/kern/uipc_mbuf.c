@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.34 2005/02/20 00:20:43 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.35 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include "opt_param.h"
@@ -678,7 +678,7 @@ m_reclaim(void)
 	struct protosw *pr;
 
 	crit_enter();
-	for (dp = domains; dp; dp = dp->dom_next) {
+	SLIST_FOREACH(dp, &domains, dom_next) {
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 			if (pr->pr_drain)
 				(*pr->pr_drain)();

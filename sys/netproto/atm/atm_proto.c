@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_proto.c,v 1.3 1999/08/28 00:48:36 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.9 2005/02/01 00:51:50 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_proto.c,v 1.10 2005/03/04 02:21:49 hsu Exp $
  */
 
 /*
@@ -90,13 +90,8 @@ struct protosw atmsw[] = {
 };
 
 struct domain atmdomain = {
-	AF_ATM,
-	"atm",
-	atm_initialize,
-	0,
-	0, 
-	atmsw,
-	&atmsw[sizeof(atmsw) / sizeof(atmsw[0])]
+	AF_ATM, "atm", atm_initialize, NULL, NULL,
+	atmsw, &atmsw[sizeof(atmsw) / sizeof(atmsw[0])],
 };
 
 DOMAIN_SET(atm);

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_proto.c,v 1.21.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/kern/uipc_proto.c,v 1.4 2004/06/07 07:01:34 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_proto.c,v 1.5 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -52,28 +52,30 @@
 
 static struct protosw localsw[] = {
 { SOCK_STREAM,	&localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS,
-  0,		0,		0,		&uipc_ctloutput,
+  NULL,		NULL,		NULL,		&uipc_ctloutput,
   sync_soport,
-  0,		0,		0,		0,
+  NULL,		NULL,		NULL,		NULL,
   &uipc_usrreqs
 },
 { SOCK_DGRAM,	&localdomain,	0,		PR_ATOMIC|PR_ADDR|PR_RIGHTS,
-  0,		0,		0,		0,
+  NULL,		NULL,		NULL,		NULL,
   sync_soport,
-  0,		0,		0,		0,
+  NULL,		NULL,		NULL,		NULL,
   &uipc_usrreqs
 },
-{ 0,		0,		0,		0,
-  0,		0,		raw_ctlinput,	0,
+{ 0,		NULL,		0,		0,
+  NULL,		NULL,		raw_ctlinput,	NULL,
   sync_soport,
-  raw_init,	0,		0,		0,
+  raw_init,	NULL,		NULL,		NULL,
   &raw_usrreqs
 }
 };
 
-struct domain localdomain =
-    { AF_LOCAL, "local", unp_init, unp_externalize, unp_dispose,
-      localsw, &localsw[sizeof(localsw)/sizeof(localsw[0])] };
+struct domain localdomain = {
+	AF_LOCAL, "local", unp_init, unp_externalize, unp_dispose,
+	localsw, &localsw[sizeof(localsw)/sizeof(localsw[0])],
+};
+
 DOMAIN_SET(local);
 
 SYSCTL_NODE(_net, PF_LOCAL, local, CTLFLAG_RW, 0, "Local domain");

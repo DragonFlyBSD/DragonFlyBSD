@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.10 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.11 2005/03/04 02:21:48 hsu Exp $
  */
 
 /*
@@ -1050,7 +1050,7 @@ rn_init()
 #ifdef _KERNEL
 	struct domain *dom;
 
-	for (dom = domains; dom; dom = dom->dom_next)
+	SLIST_FOREACH(dom, &domains, dom_next)
 		if (dom->dom_maxrtkey > max_keylen)
 			max_keylen = dom->dom_maxrtkey;
 #endif

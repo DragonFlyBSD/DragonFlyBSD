@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.52 2005/02/12 18:56:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.53 2005/03/04 02:21:48 hsu Exp $
  */
 
 /*
@@ -1388,7 +1388,7 @@ vfs_hang_addrlist(struct mount *mp, struct netexport *nep,
 		 * Seems silly to initialize every AF when most are not used,
 		 * do so on demand here
 		 */
-		for (dom = domains; dom; dom = dom->dom_next)
+		SLIST_FOREACH(dom, &domains, dom_next)
 			if (dom->dom_family == i && dom->dom_rtattach) {
 				dom->dom_rtattach((void **) &nep->ne_rtable[i],
 				    dom->dom_rtoffset);

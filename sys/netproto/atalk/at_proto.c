@@ -20,7 +20,7 @@
  *	+1-313-763-0525
  *	netatalk@itd.umich.edu
  *
- * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.3 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.4 2005/03/04 02:21:49 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -36,9 +36,9 @@
 #include "ddp_var.h"
 #include "at_extern.h"
 
-extern struct domain	atalkdomain;
+extern struct domain atalkdomain;
 
-static struct protosw	atalksw[] = {
+static struct protosw atalksw[] = {
     {
 	/* Identifiers */
 	SOCK_DGRAM,	&atalkdomain,	ATPROTO_DDP,	PR_ATOMIC|PR_ADDR,
@@ -58,12 +58,12 @@ static struct protosw	atalksw[] = {
     },
 };
 
-static struct domain	atalkdomain = {
-    AF_APPLETALK,	"appletalk",	0,	0,	0,
-    atalksw, &atalksw[sizeof(atalksw)/sizeof(atalksw[0])],
-    0, rn_inithead,
-    8 * (u_long) &((struct sockaddr_at *) 0)->sat_addr,
-    sizeof(struct sockaddr_at)
+static struct domain atalkdomain = {
+	AF_APPLETALK, "appletalk", NULL, NULL, NULL,
+	atalksw, &atalksw[sizeof(atalksw)/sizeof(atalksw[0])],
+	SLIST_ENTRY_INITIALIZER,
+	rn_inithead, 8 * offsetof(struct sockaddr_at, sat_addr),
+	sizeof(struct sockaddr_at),
 };
 
 DOMAIN_SET(atalk);

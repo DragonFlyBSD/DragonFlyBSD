@@ -32,11 +32,13 @@
  *
  *	@(#)domain.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/domain.h,v 1.14 1999/12/29 04:24:40 peter Exp $
- * $DragonFly: src/sys/sys/domain.h,v 1.5 2005/02/01 16:09:37 hrs Exp $
+ * $DragonFly: src/sys/sys/domain.h,v 1.6 2005/03/04 02:21:49 hsu Exp $
  */
 
 #ifndef _SYS_DOMAIN_H_
 #define _SYS_DOMAIN_H_
+
+#include <sys/queue.h>
 
 /*
  * Structure per communications domain.
@@ -48,6 +50,8 @@
 struct	mbuf;
 struct	ifnet;
 
+SLIST_HEAD(domainlist, domain);
+
 struct	domain {
 	int	dom_family;		/* AF_xxx */
 	char	*dom_name;
@@ -58,7 +62,7 @@ struct	domain {
 						 * rights */
 	struct	protosw *dom_protosw;
 	struct	protosw *dom_protoswNPROTOSW;
-	struct	domain *dom_next;
+	SLIST_ENTRY(domain) dom_next;
 	int	(*dom_rtattach)(void **, int);	/* initialize routing table */
 	int	dom_rtoffset;		/* an arg to rtattach, in bits */
 	int	dom_maxrtkey;		/* for routing layer */
@@ -68,9 +72,10 @@ struct	domain {
 };
 
 #ifdef _KERNEL
-extern struct	domain *domains;
-extern struct	domain localdomain;
-extern void	net_add_domain(void *);
+extern struct domainlist domains;
+extern struct domain	 localdomain;
+
+extern void		net_add_domain(void *);
 
 #define DOMAIN_SET(name) \
 	SYSINIT(domain_ ## name, SI_SUB_PROTO_DOMAIN, SI_ORDER_SECOND, net_add_domain, & name ## domain)

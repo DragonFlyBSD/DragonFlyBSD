@@ -82,7 +82,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.22 2005/02/24 23:41:43 dillon Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.23 2005/03/04 02:21:48 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1205,8 +1205,9 @@ static struct protosw routesw[] = {
 }
 };
 
-static struct domain routedomain =
-    { PF_ROUTE, "route", 0, 0, 0,
-      routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])] };
+static struct domain routedomain = {
+	PF_ROUTE, "route", NULL, NULL, NULL,
+	routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])],
+};
 
 DOMAIN_SET(route);
