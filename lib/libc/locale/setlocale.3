@@ -1,3 +1,6 @@
+.\"	$NetBSD: src/lib/libc/locale/setlocale.3,v 1.21 2004/01/24 16:58:54 wiz Exp $
+.\"	$DragonFly: src/lib/libc/locale/setlocale.3,v 1.3 2005/03/12 00:18:01 joerg Exp $
+.\"
 .\" Copyright (c) 1993
 .\"	The Regents of the University of California.  All rights reserved.
 .\"
@@ -12,11 +15,7 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the University nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
@@ -33,10 +32,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\"	@(#)setlocale.3	8.1 (Berkeley) 6/9/93
-.\" $FreeBSD: src/lib/libc/locale/setlocale.3,v 1.15.2.7 2002/08/07 06:24:14 ache Exp $
-.\" $DragonFly: src/lib/libc/locale/setlocale.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
 .\"
-.Dd June 9, 1993
+.Dd May 30, 2003
 .Dt SETLOCALE 3
 .Os
 .Sh NAME
@@ -69,7 +66,6 @@ The
 .Fn setlocale
 function recognizes several categories of routines.
 These are the categories and the sets of routines they select:
-.Pp
 .Bl -tag -width LC_MONETARY
 .It Dv LC_ALL
 Set the entire locale generically.
@@ -81,21 +77,21 @@ and
 .Fn strxfrm .
 .It Dv LC_CTYPE
 Set a locale for the
-.Xr ctype 3 ,
-.Xr mbrune 3 ,
-.Xr multibyte 3
-and
-.Xr rune 3
+.Xr ctype 3
 functions.
 This controls recognition of upper and lower case,
 alphabetic or non-alphabetic characters,
-and so on.  The real work is done by the
+and so on.
+The real work is done by the
 .Fn setrunelocale
 function.
 .It Dv LC_MESSAGES
-Set a locale for message catalogs, see
-.Xr catopen 3
-function.
+Set a locale for message catalogs.
+This controls the selection of message catalogs by the
+.Xr catgets 3
+and
+.Xr gettext 3
+families of functions.
 .It Dv LC_MONETARY
 Set a locale for formatting monetary values;
 this affects the
@@ -135,9 +131,17 @@ to return the current locale.
 By default, C programs start in the
 .Li "\&""C""
 locale.
+The format of the locale string is described in
+.Xr nls 7 .
+.Pp
 The only function in the library that sets the locale is
 .Fn setlocale ;
 the locale is never changed as a side effect of some other routine.
+.Pp
+Changing the setting of
+.Dv LC_MESSAGES
+has no effect on catalogs that have already been opened by
+.Xr catopen 3 .
 .Pp
 The
 .Fn localeconv
@@ -164,19 +168,24 @@ struct lconv {
 	char	n_sep_by_space;
 	char	p_sign_posn;
 	char	n_sign_posn;
+	char	int_p_cs_precedes;
+	char	int_n_cs_precedes;
+	char	int_p_sep_by_space;
+	char	int_n_sep_by_space;
+	char	int_p_sign_posn;
+	char	int_n_sign_posn;
 };
 .Ed
 .Pp
 The individual fields have the following meanings:
-.Pp
-.Bl -tag -width mon_decimal_point
+.Bl -tag -width int_p_sep_by_space
 .It Fa decimal_point
-The decimal point character, except for currency values.
+The decimal point character, except for monetary values.
 .It Fa thousands_sep
 The separator between groups of digits
-before the decimal point, except for currency values.
+before the decimal point, except for monetary values.
 .It Fa grouping
-The sizes of the groups of digits, except for currency values.
+The sizes of the groups of digits, except for monetary values.
 This is a pointer to a vector of integers, each of size
 .Va char ,
 representing group size from low order digit groups
@@ -189,35 +198,35 @@ If the list is terminated with
 .Dv CHAR_MAX ,
 no more grouping is performed.
 .It Fa int_curr_symbol
-The standardized international currency symbol.
+The standardized (ISO 4217:1995) international currency symbol.
 .It Fa currency_symbol
 The local currency symbol.
 .It Fa mon_decimal_point
-The decimal point character for currency values.
+The decimal point character for monetary values.
 .It Fa mon_thousands_sep
-The separator for digit groups in currency values.
+The separator for digit groups in monetary values.
 .It Fa mon_grouping
 Like
 .Fa grouping
-but for currency values.
+but for monetary values.
 .It Fa positive_sign
-The character used to denote nonnegative currency values,
+The character used to denote nonnegative monetary values,
 usually the empty string.
 .It Fa negative_sign
-The character used to denote negative currency values,
+The character used to denote negative monetary values,
 usually a minus sign.
 .It Fa int_frac_digits
 The number of digits after the decimal point
-in an international-style currency value.
+in an internationally formatted monetary value.
 .It Fa frac_digits
 The number of digits after the decimal point
-in the local style for currency values.
+in an locally formatted monetary value.
 .It Fa p_cs_precedes
-1 if the currency symbol precedes the currency value
+1 if the currency symbol precedes the monetary value
 for nonnegative values, 0 if it follows.
 .It Fa p_sep_by_space
 1 if a space is inserted between the currency symbol
-and the currency value for nonnegative values, 0 otherwise.
+and the monetary value for nonnegative values, 0 otherwise.
 .It Fa n_cs_precedes
 Like
 .Fa p_cs_precedes
@@ -230,8 +239,45 @@ but for negative values.
 The location of the
 .Fa positive_sign
 with respect to a nonnegative quantity and the
+.Fa currency_symbol .
+.It Fa n_sign_posn
+Like
+.Fa p_sign_posn
+but for negative currency values.
+.It Fa int_p_cs_precedes
+1 if the currency symbol precedes the internationally
+formatted monetary value for nonnegative values, 0 if it follows.
+.It Fa int_n_cs_precedes
+Like
+.Fa int_p_cs_precedes
+but for negative values.
+.It Fa int_p_sep_by_space
+1 if a space is inserted between the currency symbol
+and the internationally formatted monetary value for
+nonnegative values, 0 otherwise.
+.It Fa int_n_sep_by_space
+Like
+.Fa int_p_sep_by_space
+but for negative values.
+.It Fa int_p_sign_posn
+The location of the
+.Fa positive_sign
+with respect to a nonnegative quantity and the
 .Fa currency_symbol ,
-coded as follows:
+for internationally formatted nonnegative monetary values.
+.It Fa int_n_sign_posn
+Like
+.Fa int_p_sign_posn
+but for negative values.
+.El
+.Pp
+The positional parameters in
+.Fa p_sign_posn ,
+.Fa n_sign_posn ,
+.Fa int_p_sign_posn
+and
+.Fa int_n_sign_posn
+are encoded as follows:
 .Bl -tag -width 3n -compact
 .It Li 0
 Parentheses around the entire string.
@@ -246,11 +292,6 @@ Just before
 Just after
 .Fa currency_symbol .
 .El
-.It Fa n_sign_posn
-Like
-.Fa p_sign_posn
-but for negative currency values.
-.El
 .Pp
 Unless mentioned above,
 an empty string as a value for a field
@@ -260,12 +301,6 @@ A
 .Dv CHAR_MAX
 result similarly denotes an unavailable value.
 .Sh RETURN VALUES
-Upon successful completion,
-.Fn setlocale
-returns the string associated with the specified
-.Fa category
-for the requested
-.Fa locale .
 The
 .Fn setlocale
 function returns
@@ -283,36 +318,61 @@ which may be altered by later calls to
 .Fn setlocale
 or
 .Fn localeconv .
-.Sh ERRORS
-No errors are defined.
-.Sh FILES
-.Bl -tag -width /usr/share/locale/locale/category -compact
-.It Pa $PATH_LOCALE/ Ns Em locale/category
-.It Pa /usr/share/locale/ Ns Em locale/category
-locale file for the locale
-.Em locale
-and the category
-.Em category .
-.El
+.Sh EXAMPLES
+The following code illustrates how a program can initialize the
+international environment for one language, while selectively
+modifying the program's locale such that regular expressions and
+string operations can be applied to text recorded in a different
+language:
+.Bd -literal
+	setlocale(LC_ALL, "de");
+	setlocale(LC_COLLATE, "fr");
+.Ed
+.Pp
+When a process is started, its current locale is set to the C or POSIX
+locale.
+An internationalized program that depends on locale data not defined in
+the C or POSIX locale must invoke the setlocale subroutine in the
+following manner before using any of the locale-specific information:
+.Bd -literal
+	setlocale(LC_ALL, "");
+.Ed
+.\" .Sh FILES							XXX
+.\" .Bl -tag -width /usr/share/locale/locale/category -compact	XXX
+.\" .It Pa $PATH_LOCALE/\fIlocale\fP/\fIcategory\fP		XXX
+.\" .It Pa /usr/share/locale/\fIlocale\fP/\fIcategory\fP	XXX
+.\" locale file for the locale \fIlocale\fP			XXX
+.\" and the category \fIcategory\fP.				XXX
+.\" .El
 .Sh SEE ALSO
-.Xr colldef 1 ,
-.Xr mklocale 1 ,
 .Xr catopen 3 ,
-.Xr ctype 3 ,
-.Xr mbrune 3 ,
-.Xr multibyte 3 ,
-.Xr rune 3 ,
-.Xr strcoll 3 ,
-.Xr strxfrm 3 ,
-.Xr euc 4 ,
-.Xr utf2 4
+.Xr gettext 3 ,
+.Xr nl_langinfo 3 ,
+.Xr nls 7
+.\" .Xr strcoll 3 ,						XXX
+.\" .Xr strxfrm 3						XXX
 .Sh STANDARDS
 The
 .Fn setlocale
 and
 .Fn localeconv
 functions conform to
-.St -isoC .
+.St -ansiC
+and
+.St -isoC-90 .
+.Pp
+The
+.Fa int_p_cs_precedes ,
+.Fa int_n_cs_precedes ,
+.Fa int_p_sep_by_space ,
+.Fa int_n_sep_by_space ,
+.Fa int_p_sign_posn
+and
+.Fa int_n_sign_posn
+members of
+.Ft struct lconv
+were introduced in
+.St -isoC-99 .
 .Sh HISTORY
 The
 .Fn setlocale
@@ -320,3 +380,29 @@ and
 .Fn localeconv
 functions first appeared in
 .Bx 4.4 .
+.Sh BUGS
+The current implementation supports only the
+.Li "\&""C""
+and
+.Li "\&""POSIX""
+locales for all but the
+.Dv LC_CTYPE
+locale.
+.Pp
+In spite of the gnarly currency support in
+.Fn localeconv ,
+the standards don't include any functions
+for generalized currency formatting.
+.Pp
+.Dv LC_COLLATE
+does not make sense for many languages.
+Use of
+.Dv LC_MONETARY
+could lead to misleading results until we have a real time currency
+conversion function.
+.Dv LC_NUMERIC
+and
+.Dv LC_TIME
+are personal choices and should not be wrapped up with the other categories.
+.Pp
+Multibyte locales aren't supported for static binaries.
