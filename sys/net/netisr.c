@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.14 2004/04/21 18:13:51 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.15 2004/04/23 10:21:08 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -141,7 +141,8 @@ cpu0_portfn(struct mbuf *m)
 
 /* ARGSUSED */
 lwkt_port_t
-cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused)
+cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused,
+	    int req __unused)
 {
     return (&netisr_cpu[0].td_msgport);
 }

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.32 2004/04/20 01:52:22 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.33 2004/04/23 10:21:07 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -419,7 +419,7 @@ kern_connect(int s, struct sockaddr *sa)
 		struct netmsg_so_notify msg;
 		lwkt_port_t port;
 
-		port = so->so_proto->pr_mport(so, sa);
+		port = so->so_proto->pr_mport(so, sa, PRU_PRED);
 		lwkt_initmsg(&msg.nm_lmsg, 
 			    &curthread->td_msgport,
 			    MSGF_PCATCH | MSGF_ABORTABLE,

@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.19 2004/04/20 01:52:28 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.20 2004/04/23 10:21:08 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -157,7 +157,7 @@ ip_mport(struct mbuf *m)
  * Map a TCP socket to a protocol processing thread.
  */
 lwkt_port_t
-tcp_soport(struct socket *so, struct sockaddr *nam)
+tcp_soport(struct socket *so, struct sockaddr *nam, int req)
 {
 	struct inpcb *inp;
 
@@ -201,7 +201,7 @@ tcp_addrport(in_addr_t faddr, in_port_t fport, in_addr_t laddr, in_port_t lport)
  * Map a UDP socket to a protocol processing thread.
  */
 lwkt_port_t
-udp_soport(struct socket *so, struct sockaddr *nam)
+udp_soport(struct socket *so, struct sockaddr *nam, int req)
 {
 	struct inpcb *inp;
 

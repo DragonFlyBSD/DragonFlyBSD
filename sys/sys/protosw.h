@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.8 2004/03/06 05:20:31 hsu Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.9 2004/04/23 10:21:08 hsu Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -88,7 +88,7 @@ struct protosw {
 	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
 					/* control output (from above) */
 /* user-protocol hook */
-	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *);
+	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *, int);
 /* utility hooks */
 	void	(*pr_init) (void);	/* initialization hook */
 	void	(*pr_fasttimo) (void);
@@ -151,14 +151,16 @@ struct protosw {
 #define	PRU_SOCKADDR		15	/* fetch socket's address */
 #define	PRU_PEERADDR		16	/* fetch peer's address */
 #define	PRU_CONNECT2		17	/* connect two sockets */
+#define PRU_SOPOLL		18
 /* begin for protocols internal use */
-#define	PRU_FASTTIMO		18	/* 200ms timeout */
-#define	PRU_SLOWTIMO		19	/* 500ms timeout */
-#define	PRU_PROTORCV		20	/* receive from below */
-#define	PRU_PROTOSEND		21	/* send to below */
+#define	PRU_FASTTIMO		19	/* 200ms timeout */
+#define	PRU_SLOWTIMO		20	/* 500ms timeout */
+#define	PRU_PROTORCV		21	/* receive from below */
+#define	PRU_PROTOSEND		22	/* send to below */
 /* end for protocol's internal use */
-#define PRU_SEND_EOF		22	/* send and close */
-#define PRU_NREQ		22
+#define PRU_SEND_EOF		23	/* send and close */
+#define	PRU_PRED		24
+#define PRU_NREQ		25
 
 #ifdef PRUREQUESTS
 char *prurequests[] = {
@@ -166,9 +168,9 @@ char *prurequests[] = {
 	"CONNECT",	"ACCEPT",	"DISCONNECT",	"SHUTDOWN",
 	"RCVD",		"SEND",		"ABORT",	"CONTROL",
 	"SENSE",	"RCVOOB",	"SENDOOB",	"SOCKADDR",
-	"PEERADDR",	"CONNECT2",	"FASTTIMO",	"SLOWTIMO",
-	"PROTORCV",	"PROTOSEND",
-	"SEND_EOF",
+	"PEERADDR",	"CONNECT2",	"SOPOLL",
+	"FASTTIMO",	"SLOWTIMO",	"PROTORCV",	"PROTOSEND",
+	"SEND_EOF",	"PREDICATE"
 };
 #endif
 
@@ -290,7 +292,7 @@ int	pru_rcvd_notsupp (struct socket *so, int flags);
 int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
 int	pru_sense_null (struct socket *so, struct stat *sb);
 
-struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *);
+struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *, int);
 
 #endif /* _KERNEL */
 

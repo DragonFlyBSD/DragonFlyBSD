@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.9 2004/04/20 01:52:22 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.10 2004/04/23 10:21:07 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -54,7 +54,7 @@ so_pru_abort(struct socket *so)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_abort)(so));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_ABORT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_abort), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_abort;
@@ -73,7 +73,7 @@ so_pru_accept(struct socket *so, struct sockaddr **nam)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_accept)(so, nam));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_ACCEPT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_accept), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_accept;
@@ -93,7 +93,7 @@ so_pru_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_attach)(so, proto, ai));
 
-	port = so->so_proto->pr_mport(NULL, NULL);
+	port = so->so_proto->pr_mport(NULL, NULL, PRU_ATTACH);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_attach), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_attach;
@@ -115,7 +115,7 @@ so_pru_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 		return ((*so->so_proto->pr_usrreqs->pru_bind)(so, nam, td));
 
 	/* Send mesg to thread for new address. */
-	port = so->so_proto->pr_mport(NULL, nam);
+	port = so->so_proto->pr_mport(NULL, nam, PRU_BIND);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_bind), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_bind;
@@ -136,7 +136,7 @@ so_pru_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td));
 
-	port = so->so_proto->pr_mport(so, nam);
+	port = so->so_proto->pr_mport(so, nam, PRU_CONNECT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_connect), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_connect;
@@ -163,7 +163,7 @@ so_pru_connect2(struct socket *so1, struct socket *so2)
 	 * code is never reached.
 	 */
 	panic("connect2 on socket type %d", so1->so_type);
-	port = so1->so_proto->pr_mport(so1, NULL);
+	port = so1->so_proto->pr_mport(so1, NULL, PRU_CONNECT2);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_connect2), lwkt_cmd_op_none);
 	msg.nm_prufn = so1->so_proto->pr_usrreqs->pru_connect2;
@@ -188,7 +188,7 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 		return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data,
 		    ifp, td));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_CONTROL);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_control), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_control;
@@ -212,7 +212,7 @@ so_pru_detach(struct socket *so)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_detach)(so));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_DETACH);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_detach), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_detach;
@@ -231,7 +231,7 @@ so_pru_disconnect(struct socket *so)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_disconnect)(so));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_DISCONNECT);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_disconnect), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_disconnect;
@@ -250,7 +250,7 @@ so_pru_listen(struct socket *so, struct thread *td)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_listen)(so, td));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_LISTEN);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_listen), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_listen;
@@ -270,7 +270,7 @@ so_pru_peeraddr(struct socket *so, struct sockaddr **nam)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_peeraddr)(so, nam));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_PEERADDR);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_peeraddr), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_peeraddr;
@@ -290,7 +290,7 @@ so_pru_rcvd(struct socket *so, int flags)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_rcvd)(so, flags));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_RCVD);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_rcvd), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvd;
@@ -310,7 +310,7 @@ so_pru_rcvoob(struct socket *so, struct mbuf *m, int flags)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_rcvoob)(so, m, flags));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_RCVOOB);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_rcvoob), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_rcvoob;
@@ -333,7 +333,7 @@ so_pru_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 		return ((*so->so_proto->pr_usrreqs->pru_send)(so, flags, m,
 		    addr, control, td));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_SEND);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_send), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_send;
@@ -357,7 +357,7 @@ so_pru_sense(struct socket *so, struct stat *sb)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_sense)(so, sb));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_SENSE);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_sense), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sense;
@@ -377,7 +377,7 @@ so_pru_shutdown(struct socket *so)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_shutdown)(so));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_SHUTDOWN);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_shutdown), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_shutdown;
@@ -396,7 +396,7 @@ so_pru_sockaddr(struct socket *so, struct sockaddr **nam)
 	if (!so->so_proto->pr_mport)
 		return ((*so->so_proto->pr_usrreqs->pru_sockaddr)(so, nam));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_SOCKADDR);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_sockaddr), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sockaddr;
@@ -418,7 +418,7 @@ so_pru_sopoll(struct socket *so, int events, struct ucred *cred,
 		return ((*so->so_proto->pr_usrreqs->pru_sopoll)(so, events,
 		    cred, td));
 
-	port = so->so_proto->pr_mport(so, NULL);
+	port = so->so_proto->pr_mport(so, NULL, PRU_SOPOLL);
 	lwkt_initmsg(&msg.nm_lmsg, &curthread->td_msgport, 0,
 		lwkt_cmd_func(netmsg_pru_sopoll), lwkt_cmd_op_none);
 	msg.nm_prufn = so->so_proto->pr_usrreqs->pru_sopoll;
