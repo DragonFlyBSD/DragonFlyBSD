@@ -1,0 +1,125 @@
+			    DRAGONFLY CDROM README FILE
+
+    This CDROM boots DragonFly BSD.  Basically what you get is a full base
+    system on CD with certain critical directories, such as /tmp, remounted
+    read-write using MFS.  Your existing hard drive is not effected by
+    booting this CDROM.
+
+    NOTE!!! DRAGONFLY IS UNDERGOING DEVELOPMENT AND CONSIDERED EXPERIMENTAL!
+    BSD RELATED EXPERIENCE IS REQUIRED TO USE THIS CDROM.
+
+    If you just want to play with DragonFly and not mess with your hard disk,
+    this CDROM boots into a fully operational console-based system, though
+    without swap it should be noted that you are limited by available memory.
+
+			    AUTOMATIC INSTALLATION
+
+    We are currently developing automatic installation tools.  There are none
+    on this CD.
+
+			    MANUAL INSTALLATION
+
+    Manual installation of DragonFly onto an HD involve the following sequence
+    of commands.  You must be familiar with BSD style UNIX systems to do
+    installations manually.  The primary IDE hard drive is typically 'ad0'
+    and DragonFly is typically installed onto the first slice.
+
+
+	# This COMPLETE WIPES and repartitions your hard drive
+	fdisk -IB ad0
+
+	# This installs boot blocks onto the HD and verifies their 
+	# installation.
+	boot0cfg -B ad0
+	boot0cfg -v ad0
+
+	# This creates an initial label on the first slice of the HD.  If
+	# you have problems booting you could try wiping the first 32 blocks
+	# of the slice with dd and then reinstalling the label
+	#
+	# dd if=/dev/zero of=/dev/ad0s1 bs=32k count=16
+	disklabel -B -r -w ad0s1 auto
+
+	# Edit the label.  Create various standard partitions.  The typical
+	# configurations is:
+	#
+	#	ad0s1a	256m		This will be your /
+	#	ad0s1b	1024m		This will be your swap
+	#	ad0s1c			(leave alone)
+	#	ad0s1d	256m		This will be your /var
+	#	ad0s1e	256m		This will be your /tmp
+	#	ad0s1f	8192m		This will be your /usr (min 4096m)
+	#	ad0s1g	*		All remaining space to yoru /home
+	#
+	disklabel -e ad0s1
+
+	# Newfs (format) the various filesystems.  Softupdates is not 
+	# normally enabled on the root filesystem.
+	#
+	newfs /dev/ad0s1a
+	newfs -U /dev/ad0s1d
+	newfs -U /dev/ad0s1e
+	newfs -U /dev/ad0s1f
+	newfs -U /dev/ad0s1g
+
+	# Mount the filesystems
+	#
+	mount /dev/ad0s1a /mnt
+	mkdir /mnt/var
+	mkdir /mnt/tmp
+	mkdir /mnt/usr
+	mkdir /mnt/home
+	mount /dev/ad0s1d /mnt/var
+	mount /dev/ad0s1e /mnt/tmp
+	mount /dev/ad0s1f /mnt/usr
+	mount /dev/ad0s1g /mnt/home
+
+	# Copy the CDRom onto the target.  cpdup won't cross mount boundaries
+	# on the source (e.g. the MFS remounts) so it takes a few commands.
+	#
+	cpdup / /mnt
+	cpdup /var /mnt/var
+	cpdup /etc /mnt/etc
+	cpdup /dev /mnt/dev
+
+	# Edit /mnt/etc/fstab to reflect the new mounts.  An example fstab
+	# file based on the above parameters exists as /mnt/etc/fstab.example
+	# which you can rename to /mnt/etc/fstab.
+	#
+	mv /mnt/etc/fstab.example /mnt/etc/fstab
+	vi /mnt/etc/fstab
+
+    Once you've duplicated the CD onto your HD you have to make some edits
+    so the system boots properly from your HD.  Primarily you must remove
+    or edit /mnt/boot/loader.conf
+
+	# Remove /mnt/boot/loader.conf so the kernel does not try to
+	# obtain the root filesystem from the CD.
+	#
+	rm /mnt/boot/loader.conf
+
+    At this point it should be possible to reboot.  The CD may be locked
+    since it is currently mounted.  Be careful of the CD drawer closing
+    on you when you open it during the reboot.  Remove the CD and allow
+    the system to boot from the HD.
+
+	# reboot
+	reboot
+	(remove CD when convenient, be careful of the CD drawer closing on you)
+
+    Once you have a working HD based system you can clean up /etc/rc.conf
+    to enable things like cron, sendmail, setup your networking, and so
+    forth.  If 'ifconfig' does not show your networking device you could
+    try to kldload it from /modules.  With a recognized network device
+    you can ifconfig its IP address or, if you have a DHCP server on your
+    network, use 'dhclient <interfacename>' to obtain an IP address from
+    the netweork.
+
+    This CD contains two pre-installed ports:  cvsup and mkisofs.  cvsup
+    can be used to obtain the DragonFly cvs repository, the FreeBSD ports
+    tree, and so on and so forth.  'man cvsup' for more information.
+    The cvsup example files are in /usr/share/examples/cvsup.  You will
+    primarily be interested in the DragonFly CVS repository, DragonFly-supfile,
+    and the FreeBSD ports, FreeBSD-ports-supfile.
+
+$DragonFly: src/nrelease/root/README,v 1.1 2003/12/01 21:14:02 dillon Exp $
