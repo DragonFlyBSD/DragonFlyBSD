@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.20 2004/09/10 14:02:00 joerg Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.21 2004/09/13 23:45:57 drhodus Exp $
  */
 
 #include "opt_compat.h"
@@ -319,6 +319,8 @@ if_detach(ifp)
 
 	/* Announce that the interface is gone. */
 	rt_ifannouncemsg(ifp, IFAN_DEPARTURE);
+
+	ifindex2ifnet[ifp->if_index] = NULL;
 
 	TAILQ_REMOVE(&ifnet, ifp, if_link);
 	splx(s);
