@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.1 2004/09/05 13:34:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.2 2004/09/15 00:21:09 joerg Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -304,7 +304,7 @@ owihap_shutdown(struct wi_softc *sc)
 	s = splnet();
 	sta = LIST_FIRST(&whi->sta_list);
 	while (sta) {
-		untimeout(wihap_sta_timeout, sta, sta->tmo);
+		callout_stop(&sta->tmo);
 		if (!sc->wi_gone) {
 			/* Disassociate station. */
 			if (sta->flags & WI_SIFLAGS_ASSOC)
@@ -364,8 +364,8 @@ wihap_sta_timeout(void *v)
 		    IEEE80211_REASON_ASSOC_EXPIRE);
 		sta->flags &= ~WI_SIFLAGS_ASSOC;
 
-		sta->tmo = timeout(wihap_sta_timeout, sta,
-		    hz * whi->inactivity_time);
+		callout_reset(&sta->tmo, hz * whi->inactivity_time,
+			      wihap_sta_timeout, sta);
 
 	} else if (sta->flags & WI_SIFLAGS_AUTHEN) {
 
@@ -394,7 +394,7 @@ wihap_sta_delete(struct wihap_sta_info *sta)
 	struct wihap_info	*whi = &sc->wi_hostap_info;
 	int i = sta->asid - 0xc001;
 
-	untimeout(wihap_sta_timeout, sta, sta->tmo);
+	callout_stop(&sta->tmo);
 
 	whi->asid_inuse_mask[i >> 4] &= ~(1UL << (i & 0xf));
 
@@ -425,6 +425,7 @@ wihap_sta_alloc(struct wi_softc *sc, u_int8_t *addr)
 		return(NULL);
 
 	bzero(sta, sizeof(struct wihap_sta_info));
+	callout_init(&sta->tmo);
 
 	/* Allocate an ASID. */
 	i=hash<<4;
@@ -999,9 +1000,8 @@ wihap_sta_is_assoc(struct wihap_info *whi, u_int8_t addr[])
 	sta = wihap_sta_find(whi, addr);
 	if (sta != NULL && (sta->flags & WI_SIFLAGS_ASSOC)) {
 		/* Keep it active. */
-		untimeout(wihap_sta_timeout, sta, sta->tmo);
-		sta->tmo = timeout(wihap_sta_timeout, sta,
-		    hz * whi->inactivity_time);
+		callout_reset(&sta->tmo, hz * whi->inactivity_time,
+			      wihap_sta_timeout, sta);
 		retval = 1;
 	}
 	splx(s);
@@ -1028,9 +1028,8 @@ owihap_check_tx(struct wihap_info *whi, u_int8_t addr[], u_int8_t *txrate)
 	sta = wihap_sta_find(whi, addr);
 	if (sta != NULL && (sta->flags & WI_SIFLAGS_ASSOC)) {
 		/* Keep it active. */
-		untimeout(wihap_sta_timeout, sta, sta->tmo);
-		sta->tmo = timeout(wihap_sta_timeout, sta,
-		    hz * whi->inactivity_time);
+		callout_reset(&sta->tmo, hz * whi->inactivity_time,
+			      wihap_sta_timeout, sta);
 		*txrate = txratetable[ sta->tx_curr_rate ];
 		splx(s);
 		return(1);
@@ -1093,9 +1092,8 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 		return(1);
 	}
 
-	untimeout(wihap_sta_timeout, sta, sta->tmo);
-	sta->tmo = timeout(wihap_sta_timeout, sta,
-	    hz * whi->inactivity_time);
+	callout_reset(&sta->tmo, hz * whi->inactivity_time,
+		      wihap_sta_timeout, sta);
 	sta->sig_info = le16toh(rxfrm->wi_q_info);
 
 	splx(s);
@@ -1205,8 +1203,8 @@ owihap_ioctl(struct wi_softc *sc, u_long command, caddr_t data)
 		}
 		sta = wihap_sta_alloc(sc, reqsta.addr);
 		sta->flags = reqsta.flags;
-		sta->tmo = timeout(wihap_sta_timeout, sta,
-		    hz * whi->inactivity_time);
+		callout_reset(&sta->tmo, hz * whi->inactivity_time,
+			      wihap_sta_timeout, sta);
 		splx(s);
 		break;
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.1 2004/09/05 13:34:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_owi.c,v 1.2 2004/09/15 00:21:09 joerg Exp $
  */
 
 /*
@@ -225,6 +225,7 @@ owi_generic_attach(device_t dev)
 	/* XXX maybe we need the splimp stuff here XXX */
 	sc = device_get_softc(dev);
 	ifp = &sc->arpcom.ac_if;
+	callout_init(&sc->wi_stat_timer);
 
 	error = bus_setup_intr(dev, sc->irq, INTR_TYPE_NET,
 	    wi_intr, sc, &sc->wi_intrhand);
@@ -455,7 +456,6 @@ owi_generic_attach(device_t dev)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
-	callout_handle_init(&sc->wi_stat_ch);
 	WI_UNLOCK(sc, s);
 
 	return(0);
@@ -839,7 +839,7 @@ wi_inquire(xsc)
 	sc = xsc;
 	ifp = &sc->arpcom.ac_if;
 
-	sc->wi_stat_ch = timeout(wi_inquire, sc, hz * 60);
+	callout_reset(&sc->wi_stat_timer, hz* 60, wi_inquire, sc);
 
 	/* Don't do this while we're transmitting */
 	if (ifp->if_flags & IFF_OACTIVE)
@@ -2147,7 +2147,7 @@ wi_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->wi_stat_ch = timeout(wi_inquire, sc, hz * 60);
+	callout_reset(&sc->wi_stat_timer, hz * 60, wi_inquire, sc);
 	WI_UNLOCK(sc, s);
 
 	return;
@@ -2445,7 +2445,7 @@ wi_stop(sc)
 		wi_cmd(sc, WI_CMD_DISABLE|sc->wi_portnum, 0, 0, 0);
 	}
 
-	untimeout(wi_inquire, sc, sc->wi_stat_ch);
+	callout_stop(&sc->wi_stat_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
 

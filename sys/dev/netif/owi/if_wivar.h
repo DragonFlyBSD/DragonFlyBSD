@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.8.2.3 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/if_wivar.h,v 1.1 2004/09/05 13:34:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/if_wivar.h,v 1.2 2004/09/15 00:21:09 joerg Exp $
  */
 
 #define WICACHE			/* turn on signal strength cache code */  
@@ -137,7 +137,7 @@ struct wi_softc	{
 	u_int32_t		wi_icv;
 	int			wi_icv_flag;
 	int			wi_ibss_port;
-	struct callout_handle	wi_stat_ch;
+	struct callout		wi_stat_timer;
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	struct mtx		wi_mtx;
 #endif

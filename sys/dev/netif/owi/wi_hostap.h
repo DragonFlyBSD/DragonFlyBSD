@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.h,v 1.3.2.3 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/wi_hostap.h,v 1.1 2004/09/05 13:34:56 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/wi_hostap.h,v 1.2 2004/09/15 00:21:09 joerg Exp $
  */
 
 #ifndef __WI_HOSTAP_H__
@@ -91,7 +91,7 @@ struct wihap_sta_info {
 	u_int8_t	tx_curr_rate;
 	u_int8_t	tx_max_rate;
 	u_int32_t	*challenge;
-	struct callout_handle	tmo;
+	struct callout	tmo;
 };
 
 #define WI_SIFLAGS_ASSOC	HOSTAP_FLAGS_ASSOC
