@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -55,6 +55,10 @@
  * Results:
  *	SUCCESS or FAILURE.
  *
+ *	l	list to manipulate
+ *	ln	node before which to insert d
+ *	d	datum to be inserted
+ *
  * Side Effects:
  *	the firstPtr field will be changed if ln is the first node in the
  *	list.
@@ -62,15 +66,11 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Insert (l, ln, d)
-    Lst	    	  	l;	/* list to manipulate */
-    LstNode	  	ln;	/* node before which to insert d */
-    void *	  	d;	/* datum to be inserted */
+Lst_Insert(Lst l, LstNode ln, void *d)
 {
-    register ListNode	nLNode;	/* new lnode for d */
-    register ListNode	lNode = (ListNode)ln;
-    register List 	list = (List)l;
-
+    ListNode	nLNode;	/* new lnode for d */
+    ListNode	lNode = (ListNode)ln;
+    List 	list = (List)l;
 
     /*
      * check validity of arguments
@@ -111,4 +111,3 @@ Lst_Insert (l, ln, d)
 
     return (SUCCESS);
 }
-

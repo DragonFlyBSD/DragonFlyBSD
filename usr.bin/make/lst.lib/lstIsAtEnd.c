@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstIsAtEnd.c,v 1.5 1999/08/28 01:03:53 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsAtEnd.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsAtEnd.c,v 1.3 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstIsAtEnd.c	8.1 (Berkeley) 6/6/93
  */
@@ -71,12 +71,10 @@
  *-----------------------------------------------------------------------
  */
 Boolean
-Lst_IsAtEnd (l)
-    Lst	    l;
+Lst_IsAtEnd(Lst l)
 {
-    register List list = (List) l;
+    List list = (List) l;
 
     return (!LstValid (l) || !list->isOpen ||
 	    (list->atEnd == Head) || (list->atEnd == Tail));
 }
-

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDatum.c,v 1.5 1999/08/28 01:03:48 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDatum.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDatum.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstDatum.c	8.1 (Berkeley) 6/6/93
  */
@@ -60,13 +60,12 @@
  *-----------------------------------------------------------------------
  */
 void *
-Lst_Datum (ln)
-    LstNode	ln;
+Lst_Datum(LstNode ln)
 {
+
     if (ln != NULL) {
 	return (((ListNode)ln)->datum);
     } else {
 	return ((void *) NULL);
     }
 }
-

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstIsEmpty.c,v 1.5 1999/08/28 01:03:54 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsEmpty.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsEmpty.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstIsEmpty.c	8.1 (Berkeley) 6/6/93
  */
@@ -62,9 +62,8 @@
  *-----------------------------------------------------------------------
  */
 Boolean
-Lst_IsEmpty (l)
-    Lst	l;
+Lst_IsEmpty(Lst l)
 {
+
     return ( ! LstValid (l) || LstIsEmpty(l));
 }
-

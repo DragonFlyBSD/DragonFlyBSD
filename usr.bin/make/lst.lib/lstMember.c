@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstMember.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstMember.c	8.1 (Berkeley) 6/6/93
  */
@@ -47,12 +47,10 @@
 #include    "lstInt.h"
 
 LstNode
-Lst_Member (l, d)
-    Lst	    	  	l;
-    void *	  	d;
+Lst_Member(Lst l, void *d)
 {
-    List    	  	list = (List) l;
-    register ListNode	lNode;
+    List    	list = (List) l;
+    ListNode	lNode;
 
     lNode = list->firstPtr;
     if (lNode == NULL) {

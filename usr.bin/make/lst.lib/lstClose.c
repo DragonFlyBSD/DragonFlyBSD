@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstClose.c,v 1.6 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.3 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstClose.c	8.1 (Berkeley) 6/6/93
  */
@@ -59,16 +59,18 @@
  * Results:
  *	None.
  *
+ * Arguments:
+ *	l	The list to close
+ *
  * Side Effects:
  *	The list is closed.
  *
  *-----------------------------------------------------------------------
  */
 void
-Lst_Close (l)
-    Lst	    l;	  	/* The list to close */
+Lst_Close(Lst l)
 {
-    register List 	list = (List) l;
+    List 	list = (List) l;
 
     if (LstValid(l) == TRUE) {
 	list->isOpen = FALSE;

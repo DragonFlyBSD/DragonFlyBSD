@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstForEachFrom.c,v 1.7 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstForEachFrom.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstForEachFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -62,19 +62,14 @@
  *
  *-----------------------------------------------------------------------
  */
-/*VARARGS2*/
 void
-Lst_ForEachFrom (l, ln, proc, d)
-    Lst	    	    	l;
-    LstNode    	  	ln;
-    register int	(*proc)(void *, void *);
-    register void *	d;
+Lst_ForEachFrom(Lst l, LstNode ln, int (*proc)(void *, void *), void *d)
 {
-    register ListNode	tln = (ListNode)ln;
-    register List 	list = (List)l;
-    register ListNode	next;
-    Boolean 	    	done;
-    int     	    	result;
+    ListNode	tln = (ListNode)ln;
+    List 	list = (List)l;
+    ListNode	next;
+    Boolean 	done;
+    int     	result;
 
     if (!LstValid (list) || LstIsEmpty (list)) {
 	return;
@@ -108,6 +103,4 @@ Lst_ForEachFrom (l, ln, proc, d)
 	}
 	tln = next;
     } while (!result && !LstIsEmpty(list) && !done);
-
 }
-

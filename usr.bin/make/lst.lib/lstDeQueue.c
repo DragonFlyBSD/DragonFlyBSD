@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDeQueue.c,v 1.6 1999/08/28 01:03:48 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDeQueue.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstDeQueue.c	8.1 (Berkeley) 6/6/93
  */
@@ -61,11 +61,10 @@
  *-----------------------------------------------------------------------
  */
 void *
-Lst_DeQueue (l)
-    Lst	    	  l;
+Lst_DeQueue(Lst l)
 {
-    void *	  rd;
-    register ListNode	tln;
+    void *	rd;
+    ListNode	tln;
 
     tln = (ListNode) Lst_First (l);
     if (tln == NULL) {
@@ -79,4 +78,3 @@ Lst_DeQueue (l)
 	return (rd);
     }
 }
-

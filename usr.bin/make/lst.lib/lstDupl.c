@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDupl.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDupl.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstDupl.c	8.1 (Berkeley) 6/6/93
  */
@@ -56,19 +56,20 @@
  * Results:
  *	The new Lst structure or NULL if failure.
  *
+ * Arguments:
+ *	l	the list to duplicate
+ *	copyProc A function to duplicate each void
+ *
  * Side Effects:
  *	A new list is created.
  *-----------------------------------------------------------------------
  */
 Lst
-Lst_Duplicate (l, copyProc)
-    Lst     	  l;	    	 /* the list to duplicate */
-    /* A function to duplicate each void * */
-    void *	  (*copyProc)(void *);
+Lst_Duplicate(Lst l, void *(*copyProc)(void *))
 {
-    register Lst 	nl;
-    register ListNode  	ln;
-    register List 	list = (List)l;
+    Lst 	nl;
+    ListNode  	ln;
+    List 	list = (List)l;
 
     if (!LstValid (l)) {
 	return (NULL);

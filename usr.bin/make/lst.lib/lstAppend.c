@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAppend.c,v 1.6 1999/08/28 01:03:45 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAppend.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstAppend.c	8.1 (Berkeley) 6/6/93
  */
@@ -54,6 +54,11 @@
  * Results:
  *	SUCCESS if all went well.
  *
+ * Arguments:
+ *	l	affected list
+ *	ln	node after which to append the datum
+ *	d	said datum
+ *
  * Side Effects:
  *	A new ListNode is created and linked in to the List. The lastPtr
  *	field of the List will be altered if ln is the last node in the
@@ -63,14 +68,11 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Append (l, ln, d)
-    Lst	  	l;	/* affected list */
-    LstNode	ln;	/* node after which to append the datum */
-    void *	d;	/* said datum */
+Lst_Append (Lst l, LstNode ln, void *d)
 {
-    register List 	list;
-    register ListNode	lNode;
-    register ListNode	nLNode;
+    List 	list;
+    ListNode	lNode;
+    ListNode	nLNode;
 
     if (LstValid (l) && (ln == NULL && LstIsEmpty (l))) {
 	goto ok;
@@ -111,4 +113,3 @@ Lst_Append (l, ln, d)
 
     return (SUCCESS);
 }
-

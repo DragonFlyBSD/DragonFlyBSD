@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFindFrom.c,v 1.7 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstFindFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -62,14 +62,10 @@
  *-----------------------------------------------------------------------
  */
 LstNode
-Lst_FindFrom (l, ln, d, cProc)
-    Lst		      	l;
-    register LstNode    ln;
-    register void * d;
-    register int	(*cProc)(void *, void *);
+Lst_FindFrom(Lst l, LstNode ln, void *d, int (*cProc)(void *, void *))
 {
-    register ListNode	tln;
-    Boolean		found = FALSE;
+    ListNode	tln;
+    Boolean	found = FALSE;
 
     if (!LstValid (l) || LstIsEmpty (l) || !LstNodeValid (ln, l)) {
 	return (NULL);
@@ -92,4 +88,3 @@ Lst_FindFrom (l, ln, d, cProc)
 	return (NULL);
     }
 }
-

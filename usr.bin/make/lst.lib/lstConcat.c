@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstConcat.c,v 1.7 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstConcat.c	8.1 (Berkeley) 6/6/93
  */
@@ -59,23 +59,25 @@
  * Results:
  *	SUCCESS if all went well. FAILURE otherwise.
  *
+ * Arguments:
+ *	l1	The list to which l2 is to be appended
+ *	l2	The list to append to l1
+ *	flags	LST_CONCNEW if LstNode's should be duplicated
+ *		LST_CONCLINK if should just be relinked
+ *
  * Side Effects:
  *	New elements are created and appended the the first list.
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Concat (l1, l2, flags)
-    Lst    	  	l1; 	/* The list to which l2 is to be appended */
-    Lst    	  	l2; 	/* The list to append to l1 */
-    int	   	  	flags;  /* LST_CONCNEW if LstNode's should be duplicated
-				 * LST_CONCLINK if should just be relinked */
+Lst_Concat(Lst l1, Lst l2, int flags)
 {
-    register ListNode  	ln;     /* original LstNode */
-    register ListNode  	nln;    /* new LstNode */
-    register ListNode  	last;   /* the last element in the list. Keeps
+    ListNode  	ln;     /* original LstNode */
+    ListNode  	nln;    /* new LstNode */
+    ListNode  	last;   /* the last element in the list. Keeps
 				 * bookkeeping until the end */
-    register List 	list1 = (List)l1;
-    register List 	list2 = (List)l2;
+    List 	list1 = (List)l1;
+    List 	list2 = (List)l2;
 
     if (!LstValid (l1) || !LstValid (l2)) {
 	return (FAILURE);
@@ -174,4 +176,3 @@ Lst_Concat (l1, l2, flags)
 
     return (SUCCESS);
 }
-

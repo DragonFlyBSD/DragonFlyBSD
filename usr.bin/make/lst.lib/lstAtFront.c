@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAtFront.c,v 1.6 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAtFront.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAtFront.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstAtFront.c	8.1 (Berkeley) 6/6/93
  */
@@ -61,11 +61,9 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_AtFront (l, d)
-    Lst		l;
-    void *	d;
+Lst_AtFront(Lst l, void *d)
 {
-    register LstNode	front;
+    LstNode	front;
 
     front = Lst_First (l);
     return (Lst_Insert (l, front, d));

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstSucc.c,v 1.5 1999/08/28 01:03:57 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.4 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
  *
  * @(#)lstSucc.c	8.1 (Berkeley) 6/6/93
  */
@@ -62,13 +62,12 @@
  *-----------------------------------------------------------------------
  */
 LstNode
-Lst_Succ (ln)
-    LstNode	ln;
+Lst_Succ(LstNode ln)
 {
+
     if (ln == NULL) {
 	return (NULL);
     } else {
 	return ((LstNode) ((ListNode) ln)->nextPtr);
     }
 }
-
