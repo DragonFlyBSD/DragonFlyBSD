@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)option.c	8.2 (Berkeley) 4/16/94
- * $FreeBSD: src/usr.bin/find/option.c,v 1.9.2.6 2003/02/22 16:33:24 des Exp $
- * $DragonFly: src/usr.bin/find/option.c,v 1.4 2003/11/03 19:31:29 eirikn Exp $
+ * $FreeBSD: src/usr.bin/find/option.c,v 1.23 2004/07/29 03:29:44 tjr Exp $
+ * $DragonFly: src/usr.bin/find/option.c,v 1.5 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -49,6 +49,8 @@
 #include <string.h>
 
 #include "find.h"
+
+int typecompare(const void *, const void *);
 
 /* NB: the following table must be sorted lexically. */
 static OPTION const options[] = {
@@ -64,20 +66,14 @@ static OPTION const options[] = {
 	{ "-cnewer",	c_newer,	f_newer,	F_TIME_C },
 	{ "-ctime",	c_Xtime,	f_Xtime,	F_TIME_C },
 	{ "-delete",	c_delete,	f_delete,	0 },
-	{ "-depth",	c_depth,	f_always_true,	0 },
+	{ "-depth",	c_depth,	f_depth,	0 },
 	{ "-empty",	c_empty,	f_empty,	0 },
 	{ "-exec",	c_exec,		f_exec,		0 },
 	{ "-execdir",	c_exec,		f_exec,		F_EXECDIR },
 	{ "-false",	c_simple,	f_not,		0 },
 	{ "-flags",	c_flags,	f_flags,	0 },
 	{ "-follow",	c_follow,	f_always_true,	0 },
-/*
- * NetBSD doesn't provide a getvfsbyname(), so this option
- * is not available if using a NetBSD kernel.
- */
-#if !defined(__NetBSD__)
 	{ "-fstype",	c_fstype,	f_fstype,	0 },
-#endif
 	{ "-group",	c_group,	f_group,	0 },
 	{ "-iname",	c_name,		f_name,		F_IGNCASE },
 	{ "-inum",	c_inum,		f_inum,		0 },
@@ -134,13 +130,13 @@ static OPTION const options[] = {
 PLAN *
 find_create(char ***argvp)
 {
-	register OPTION *p;
+	OPTION *p;
 	PLAN *new;
 	char **argv;
 
 	argv = *argvp;
 
-	if ((p = option(*argv)) == NULL)
+	if ((p = lookup_option(*argv)) == NULL)
 		errx(1, "%s: unknown option", *argv);
 	++argv;
 
@@ -150,10 +146,9 @@ find_create(char ***argvp)
 }
 
 OPTION *
-option(char *name)
+lookup_option(const char *name)
 {
 	OPTION tmp;
-	int typecompare(const void *, const void *);
 
 	tmp.name = name;
 	return ((OPTION *)bsearch(&tmp, options,
@@ -163,5 +158,5 @@ option(char *name)
 int
 typecompare(const void *a, const void *b)
 {
-	return (strcmp(((OPTION *)a)->name, ((OPTION *)b)->name));
+	return (strcmp(((const OPTION *)a)->name, ((const OPTION *)b)->name));
 }

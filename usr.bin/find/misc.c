@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)misc.c	8.2 (Berkeley) 4/1/94
- * $FreeBSD: src/usr.bin/find/misc.c,v 1.2.12.1 2000/06/23 18:38:46 roberto Exp $
- * $DragonFly: src/usr.bin/find/misc.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $FreeBSD: src/usr.bin/find/misc.c,v 1.7 2003/06/14 13:00:21 markm Exp $
+ * $DragonFly: src/usr.bin/find/misc.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -57,8 +57,8 @@
 void
 brace_subst(char *orig, char **store, char *path, int len)
 {
-	register int plen;
-	register char ch, *p;
+	int plen;
+	char ch, *p;
 
 	plen = strlen(path);
 	for (p = *store; (ch = *orig) != '\0'; ++orig)
@@ -80,7 +80,7 @@ brace_subst(char *orig, char **store, char *path, int len)
  *	input. If the input is 'y' then 1 is returned.
  */
 int
-queryuser(register char **argv)
+queryuser(char *argv[])
 {
 	int ch, first, nl;
 
@@ -106,18 +106,4 @@ queryuser(register char **argv)
 		(void)fflush(stderr);
 	}
         return (first == 'y');
-}
-
-/*
- * emalloc --
- *	malloc with error checking.
- */
-void *
-emalloc(u_int len)
-{
-	void *p;
-
-	if ((p = malloc(len)) == NULL)
-		err(1, NULL);
-	return (p);
 }

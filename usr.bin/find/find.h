@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)find.h	8.1 (Berkeley) 6/6/93
- *	$FreeBSD: src/usr.bin/find/find.h,v 1.6.2.7 2002/11/15 11:38:15 sheldonh Exp $
- *	$DragonFly: src/usr.bin/find/find.h,v 1.3 2003/11/03 19:31:29 eirikn Exp $
+ *	$FreeBSD: src/usr.bin/find/find.h,v 1.17 2004/05/28 17:17:15 eik Exp $
+ *	$DragonFly: src/usr.bin/find/find.h,v 1.4 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <regex.h>
@@ -58,6 +58,7 @@ typedef	struct _plandata *creat_f(struct _option *, char ***);
 #define	F_TIME2_C	0x00000020	/* one of -newer?c */
 #define	F_TIME2_T	0x00000040	/* one of -newer?t */
 #define F_MAXDEPTH	F_TIME_A	/* maxdepth vs. mindepth */
+#define F_DEPTH		F_TIME_A	/* -depth n vs. -d */
 /* command line function modifiers */
 #define	F_EQUAL		0x00000000	/* [acm]min [acm]time inum links size */
 #define	F_LESSTHAN	0x00000100
@@ -68,8 +69,10 @@ typedef	struct _plandata *creat_f(struct _option *, char ***);
 #define	F_MTMASK	0x00003000
 #define	F_MTFLAG	0x00000000	/* fstype */
 #define	F_MTTYPE	0x00001000
+#define	F_MTUNKNOWN	0x00002000
 #define	F_IGNCASE	0x00010000	/* iname ipath iregex */
 #define	F_EXACTTIME	F_IGNCASE	/* -[acm]time units syntax */
+#define F_EXECPLUS	0x00020000	/* -exec ... {} + */
 
 /* node definition */
 typedef struct _plandata {
@@ -85,6 +88,7 @@ typedef struct _plandata {
 			u_long _f_notflags;
 		} fl;
 		nlink_t _l_data;		/* link count */
+		short _d_data;			/* level depth (-1 to N) */
 		off_t _o_data;			/* file size */
 		time_t _t_data;			/* time value */
 		uid_t _u_data;			/* uid */
@@ -94,6 +98,12 @@ typedef struct _plandata {
 			char **_e_argv;		/* argv array */
 			char **_e_orig;		/* original strings */
 			int *_e_len;		/* allocated length */
+			int _e_pbnum;		/* base num. of args. used */
+			int _e_ppos;		/* number of arguments used */
+			int _e_pnummax;		/* max. number of arguments */
+			int _e_psize;		/* number of bytes of args. */
+			int _e_pbsize;		/* base num. of bytes of args */
+			int _e_psizemax;	/* max num. of bytes of args */
 		} ex;
 		char *_a_data[2];		/* array of char pointers */
 		char *_c_data;			/* char pointer */
@@ -102,6 +112,7 @@ typedef struct _plandata {
 } PLAN;
 #define	a_data	p_un._a_data
 #define	c_data	p_un._c_data
+#define	d_data	p_un._d_data
 #define fl_flags	p_un.fl._f_flags
 #define fl_notflags	p_un.fl._f_notflags
 #define	g_data	p_un._g_data
@@ -117,9 +128,15 @@ typedef struct _plandata {
 #define	e_argv	p_un.ex._e_argv
 #define	e_orig	p_un.ex._e_orig
 #define	e_len	p_un.ex._e_len
+#define e_pbnum	p_un.ex._e_pbnum
+#define e_ppos	p_un.ex._e_ppos
+#define e_pnummax p_un.ex._e_pnummax
+#define e_psize p_un.ex._e_psize
+#define e_pbsize p_un.ex._e_pbsize
+#define e_psizemax p_un.ex._e_psizemax
 
 typedef struct _option {
-	char *name;			/* option name */
+	const char *name;		/* option name */
 	creat_f *create;		/* create function */
 	exec_f *execute;		/* execute function */
 	int flags;

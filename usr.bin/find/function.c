@@ -34,13 +34,14 @@
  * SUCH DAMAGE.
  *
  * @(#)function.c  8.10 (Berkeley) 5/4/95
- * $FreeBSD: src/usr.bin/find/function.c,v 1.22.2.11 2002/11/15 11:38:15 sheldonh Exp $
- * $DragonFly: src/usr.bin/find/function.c,v 1.4 2004/11/28 21:17:07 liamfoy Exp $
+ * $FreeBSD: src/usr.bin/find/function.c,v 1.52 2004/07/29 03:33:55 tjr Exp $
+ * $DragonFly: src/usr.bin/find/function.c,v 1.5 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <sys/param.h>
 #include <sys/ucred.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/mount.h>
 #include <sys/timeb.h>
@@ -51,16 +52,23 @@
 #include <fnmatch.h>
 #include <fts.h>
 #include <grp.h>
+#include <limits.h>
 #include <pwd.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "find.h"
 
-time_t get_date (char *date, struct timeb *now);
+static PLAN *palloc(OPTION *);
+static long long find_parsenum(PLAN *, const char *, char *, char *);
+static long long find_parsetime(PLAN *, const char *, char *);
+static char *nextarg(OPTION *, char ***);
+
+extern char **environ;
 
 #define	COMPARE(a, b) do {						\
 	switch (plan->flags & F_ELG_MASK) {				\
@@ -93,7 +101,7 @@ palloc(OPTION *option)
  *	Parse a string of the form [+-]# and return the value.
  */
 static long long
-find_parsenum(PLAN *plan, char *option, char *vp, char *endch)
+find_parsenum(PLAN *plan, const char *option, char *vp, char *endch)
 {
 	long long value;
 	char *endchar, *str;	/* Pointer to character ending conversion. */
@@ -134,7 +142,7 @@ find_parsenum(PLAN *plan, char *option, char *vp, char *endch)
  *	Parse a string of the form [+-]([0-9]+[smhdw]?)+ and return the value.
  */
 static long long
-find_parsetime(PLAN *plan, char *option, char *vp)
+find_parsetime(PLAN *plan, const char *option, char *vp)
 {
 	long long secs, value;
 	char *str, *unit;	/* Pointer to character ending conversion. */
@@ -241,8 +249,6 @@ nextarg(OPTION *option, char ***argvp)
 int
 f_Xmin(PLAN *plan, FTSENT *entry)
 {
-	extern time_t now;
-
 	if (plan->flags & F_TIME_C) {
 		COMPARE((now - entry->fts_statp->st_ctime +
 		    60 - 1) / 60, plan->t_data);
@@ -283,33 +289,19 @@ c_Xmin(OPTION *option, char ***argvp)
 int
 f_Xtime(PLAN *plan, FTSENT *entry)
 {
-	extern time_t now;
-	int exact_time;
+	time_t xtime;
 
-	exact_time = plan->flags & F_EXACTTIME;
+	if (plan->flags & F_TIME_A)
+		xtime = entry->fts_statp->st_atime;
+	else if (plan->flags & F_TIME_C)
+		xtime = entry->fts_statp->st_ctime;
+	else
+		xtime = entry->fts_statp->st_mtime;
 
-	if (plan->flags & F_TIME_C) {
-		if (exact_time)
-			COMPARE(now - entry->fts_statp->st_ctime,
-			    plan->t_data);
-		else
-			COMPARE((now - entry->fts_statp->st_ctime +
-			    86400 - 1) / 86400, plan->t_data);
-	} else if (plan->flags & F_TIME_A) {
-		if (exact_time)
-			COMPARE(now - entry->fts_statp->st_atime,
-			    plan->t_data);
-		else
-			COMPARE((now - entry->fts_statp->st_atime +
-			    86400 - 1) / 86400, plan->t_data);
-	} else {
-		if (exact_time)
-			COMPARE(now - entry->fts_statp->st_mtime,
-			    plan->t_data);
-		else
-			COMPARE((now - entry->fts_statp->st_mtime +
-			    86400 - 1) / 86400, plan->t_data);
-	}
+	if (plan->flags & F_EXACTTIME)
+		COMPARE(now - xtime, plan->t_data);
+	else
+		COMPARE((now - xtime + 86400 - 1) / 86400, plan->t_data);
 }
 
 PLAN *
@@ -362,7 +354,7 @@ c_mXXdepth(OPTION *option, char ***argvp)
  *	True always.  Makes its best shot and continues on regardless.
  */
 int
-f_delete(PLAN *plan, FTSENT *entry)
+f_delete(PLAN *plan __unused, FTSENT *entry)
 {
 	/* ignore these from fts */
 	if (strcmp(entry->fts_accpath, ".") == 0 ||
@@ -402,7 +394,7 @@ f_delete(PLAN *plan, FTSENT *entry)
 }
 
 PLAN *
-c_delete(OPTION *option, char ***argvp)
+c_delete(OPTION *option, char ***argvp __unused)
 {
 
 	ftsoptions &= ~FTS_NOSTAT;	/* no optimise */
@@ -416,33 +408,72 @@ c_delete(OPTION *option, char ***argvp)
 
 
 /*
- * -depth functions --
+ * always_true --
  *
- *	Always true, causes descent of the directory hierarchy to be done
- *	so that all entries in a directory are acted on before the directory
- *	itself.
+ *	Always true, used for -maxdepth, -mindepth, -xdev and -follow
  */
 int
-f_always_true(PLAN *plan, FTSENT *entry)
+f_always_true(PLAN *plan __unused, FTSENT *entry __unused)
 {
 	return 1;
+}
+
+/*
+ * -depth functions --
+ *
+ *	With argument: True if the file is at level n.
+ *	Without argument: Always true, causes descent of the directory hierarchy
+ *	to be done so that all entries in a directory are acted on before the
+ *	directory itself.
+ */
+int
+f_depth(PLAN *plan, FTSENT *entry)
+{
+	if (plan->flags & F_DEPTH)
+		COMPARE(entry->fts_level, plan->d_data);
+	else
+		return 1;
 }
 
 PLAN *
 c_depth(OPTION *option, char ***argvp)
 {
-	isdepth = 1;
+	PLAN *new;
+	char *str;
 
-	return palloc(option);
+	new = palloc(option);
+
+	str = **argvp;
+	if (str && !(new->flags & F_DEPTH)) {
+		/* skip leading + or - */
+		if (*str == '+' || *str == '-')
+			str++;
+		/* skip sign */
+		if (*str == '+' || *str == '-')
+			str++;
+		if (isdigit(*str))
+			new->flags |= F_DEPTH;
+	}
+
+	if (new->flags & F_DEPTH) {	/* -depth n */
+		char *ndepth;
+
+		ndepth = nextarg(option, argvp);
+		new->d_data = find_parsenum(new, option->name, ndepth, NULL);
+	} else {			/* -d */
+		isdepth = 1;
+	}
+
+	return new;
 }
-
+ 
 /*
  * -empty functions --
  *
  *	True if the file or directory is empty
  */
 int
-f_empty(PLAN *plan, FTSENT *entry)
+f_empty(PLAN *plan __unused, FTSENT *entry)
 {
 	if (S_ISREG(entry->fts_statp->st_mode) &&
 	    entry->fts_statp->st_size == 0)
@@ -470,7 +501,7 @@ f_empty(PLAN *plan, FTSENT *entry)
 }
 
 PLAN *
-c_empty(OPTION *option, char ***argvp)
+c_empty(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions &= ~FTS_NOSTAT;
 
@@ -493,13 +524,19 @@ c_empty(OPTION *option, char ***argvp)
  *	of the user before executing the utility.
  */
 int
-f_exec(register PLAN *plan, FTSENT *entry)
+f_exec(PLAN *plan, FTSENT *entry)
 {
-	extern int dotfd;
-	register int cnt;
+	int cnt;
 	pid_t pid;
 	int status;
 	char *file;
+
+	if (entry == NULL && plan->flags & F_EXECPLUS) {
+		if (plan->e_ppos == plan->e_pbnum)
+			return (1);
+		plan->e_argv[plan->e_ppos] = NULL;
+		goto doexec;
+	}
 
 	/* XXX - if file/dir ends in '/' this will not work -- can it? */
 	if ((plan->flags & F_EXECDIR) && \
@@ -508,12 +545,24 @@ f_exec(register PLAN *plan, FTSENT *entry)
 	else
 		file = entry->fts_path;
 
-	for (cnt = 0; plan->e_argv[cnt]; ++cnt)
-		if (plan->e_len[cnt])
-			brace_subst(plan->e_orig[cnt], &plan->e_argv[cnt],
-			    file, plan->e_len[cnt]);
+	if (plan->flags & F_EXECPLUS) {
+		if ((plan->e_argv[plan->e_ppos] = strdup(file)) == NULL)
+			err(1, NULL);
+		plan->e_len[plan->e_ppos] = strlen(file);
+		plan->e_psize += plan->e_len[plan->e_ppos];
+		if (++plan->e_ppos < plan->e_pnummax &&
+		    plan->e_psize < plan->e_psizemax)
+			return (1);
+		plan->e_argv[plan->e_ppos] = NULL;
+	} else {
+		for (cnt = 0; plan->e_argv[cnt]; ++cnt)
+			if (plan->e_len[cnt])
+				brace_subst(plan->e_orig[cnt],
+				    &plan->e_argv[cnt], file,
+				    plan->e_len[cnt]);
+	}
 
-	if ((plan->flags & F_NEEDOK) && !queryuser(plan->e_argv))
+doexec:	if ((plan->flags & F_NEEDOK) && !queryuser(plan->e_argv))
 		return 0;
 
 	/* make sure find output is interspersed correctly with subprocesses */
@@ -534,6 +583,12 @@ f_exec(register PLAN *plan, FTSENT *entry)
 		warn("%s", plan->e_argv[0]);
 		_exit(1);
 	}
+	if (plan->flags & F_EXECPLUS) {
+		while (--plan->e_ppos >= plan->e_pbnum)
+			free(plan->e_argv[plan->e_ppos]);
+		plan->e_ppos = plan->e_pbnum;
+		plan->e_psize = plan->e_pbsize;
+	}
 	pid = waitpid(pid, &status, 0);
 	return (pid != -1 && WIFEXITED(status) && !WEXITSTATUS(status));
 }
@@ -549,8 +604,9 @@ PLAN *
 c_exec(OPTION *option, char ***argvp)
 {
 	PLAN *new;			/* node returned */
-	register int cnt;
-	register char **argv, **ap, *p;
+	long argmax;
+	int cnt, i;
+	char **argv, **ap, **ep, *p;
 
 	/* XXX - was in c_execdir, but seems unnecessary!?
 	ftsoptions &= ~FTS_NOSTAT;
@@ -563,24 +619,54 @@ c_exec(OPTION *option, char ***argvp)
 	for (ap = argv = *argvp;; ++ap) {
 		if (!*ap)
 			errx(1,
-			    "%s: no terminating \";\"", option->name);
+			    "%s: no terminating \";\" or \"+\"", option->name);
 		if (**ap == ';')
 			break;
+		if (**ap == '+' && ap != argv && strcmp(*(ap - 1), "{}") == 0) {
+			new->flags |= F_EXECPLUS;
+			break;
+		}
 	}
 
 	if (ap == argv)
 		errx(1, "%s: no command specified", option->name);
 
 	cnt = ap - *argvp + 1;
-	new->e_argv = (char **)emalloc((u_int)cnt * sizeof(char *));
-	new->e_orig = (char **)emalloc((u_int)cnt * sizeof(char *));
-	new->e_len = (int *)emalloc((u_int)cnt * sizeof(int));
+	if (new->flags & F_EXECPLUS) {
+		new->e_ppos = new->e_pbnum = cnt - 2;
+		if ((argmax = sysconf(_SC_ARG_MAX)) == -1) {
+			warn("sysconf(_SC_ARG_MAX)");
+			argmax = _POSIX_ARG_MAX;
+		}
+		argmax -= 1024;
+		for (ep = environ; *ep != NULL; ep++)
+			argmax -= strlen(*ep) + 1 + sizeof(*ep);
+		argmax -= 1 + sizeof(*ep);
+		new->e_pnummax = argmax / 16;
+		argmax -= sizeof(char *) * new->e_pnummax;
+		if (argmax <= 0)
+			errx(1, "no space for arguments");
+		new->e_psizemax = argmax;
+		new->e_pbsize = 0;
+		cnt += new->e_pnummax + 1;
+	}
+	if ((new->e_argv = malloc(cnt * sizeof(char *))) == NULL)
+		err(1, NULL);
+	if ((new->e_orig = malloc(cnt * sizeof(char *))) == NULL)
+		err(1, NULL);
+	if ((new->e_len = malloc(cnt * sizeof(int))) == NULL)
+		err(1, NULL);
 
 	for (argv = *argvp, cnt = 0; argv < ap; ++argv, ++cnt) {
 		new->e_orig[cnt] = *argv;
+		if (new->flags & F_EXECPLUS)
+			new->e_pbsize += strlen(*argv) + 1;
 		for (p = *argv; *p; ++p)
-			if (p[0] == '{' && p[1] == '}') {
-				new->e_argv[cnt] = emalloc((u_int)MAXPATHLEN);
+			if (!(new->flags & F_EXECPLUS) && p[0] == '{' &&
+			    p[1] == '}') {
+				if ((new->e_argv[cnt] =
+				    malloc(MAXPATHLEN)) == NULL)
+					err(1, NULL);
 				new->e_len[cnt] = MAXPATHLEN;
 				break;
 			}
@@ -589,9 +675,20 @@ c_exec(OPTION *option, char ***argvp)
 			new->e_len[cnt] = 0;
 		}
 	}
+	if (new->flags & F_EXECPLUS) {
+		new->e_psize = new->e_pbsize;
+		cnt--;
+		for (i = 0; i < new->e_pnummax; i++) {
+			new->e_argv[cnt] = NULL;
+			new->e_len[cnt] = 0;
+			cnt++;
+		}
+		argv = ap;
+		goto done;
+	}
 	new->e_argv[cnt] = new->e_orig[cnt] = NULL;
 
-	*argvp = argv + 1;
+done:	*argvp = argv + 1;
 	return new;
 }
 
@@ -646,7 +743,7 @@ c_flags(OPTION *option, char ***argvp)
  *	basis.
  */
 PLAN *
-c_follow(OPTION *option, char ***argvp)
+c_follow(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions &= ~FTS_PHYSICAL;
 	ftsoptions |= FTS_LOGICAL;
@@ -668,12 +765,15 @@ f_fstype(PLAN *plan, FTSENT *entry)
 	static int val_type, val_flags;
 	char *p, save[2];
 
+	if ((plan->flags & F_MTMASK) == F_MTUNKNOWN)
+		return 0;
+
 	/* Only check when we cross mount point. */
 	if (first || curdev != entry->fts_statp->st_dev) {
 		curdev = entry->fts_statp->st_dev;
 
 		/*
-		 * Statfs follows symlinks; find wants the link's file system,
+		 * Statfs follows symlinks; find wants the link's filesystem,
 		 * not where it points.
 		 */
 		if (entry->fts_info == FTS_SL ||
@@ -708,20 +808,19 @@ f_fstype(PLAN *plan, FTSENT *entry)
 	}
 	switch (plan->flags & F_MTMASK) {
 	case F_MTFLAG:
-		return (val_flags & plan->mt_data) != 0;
+		return val_flags & plan->mt_data;
 	case F_MTTYPE:
-		return (val_type == plan->mt_data);
+		return val_type == plan->mt_data;
 	default:
 		abort();
 	}
 }
 
-#if !defined(__NetBSD__)
 PLAN *
 c_fstype(OPTION *option, char ***argvp)
 {
 	char *fsname;
-	register PLAN *new;
+	PLAN *new;
 	struct vfsconf vfc;
 
 	fsname = nextarg(option, argvp);
@@ -755,10 +854,14 @@ c_fstype(OPTION *option, char ***argvp)
 		break;
 	}
 
-	errx(1, "%s: unknown file type", fsname);
-	/* NOTREACHED */
+	/*
+	 * We need to make filesystem checks for filesystems
+	 * that exists but aren't in the kernel work.
+	 */
+	fprintf(stderr, "Warning: Unknown filesystem type %s\n", fsname);
+	new->flags |= F_MTUNKNOWN;
+	return new;
 }
-#endif /* __NetBSD__ */
 
 /*
  * -group gname functions --
@@ -853,14 +956,14 @@ c_links(OPTION *option, char ***argvp)
  *	Always true - prints the current entry to stdout in "ls" format.
  */
 int
-f_ls(PLAN *plan, FTSENT *entry)
+f_ls(PLAN *plan __unused, FTSENT *entry)
 {
 	printlong(entry->fts_path, entry->fts_accpath, entry->fts_statp);
 	return 1;
 }
 
 PLAN *
-c_ls(OPTION *option, char ***argvp)
+c_ls(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions &= ~FTS_NOSTAT;
 	isoutput = 1;
@@ -947,13 +1050,13 @@ c_newer(OPTION *option, char ***argvp)
  *	of the getgrnam() 9.2.1 [POSIX.1] function returns NULL.
  */
 int
-f_nogroup(PLAN *plan, FTSENT *entry)
+f_nogroup(PLAN *plan __unused, FTSENT *entry)
 {
 	return group_from_gid(entry->fts_statp->st_gid, 1) == NULL;
 }
 
 PLAN *
-c_nogroup(OPTION *option, char ***argvp)
+c_nogroup(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions &= ~FTS_NOSTAT;
 
@@ -967,13 +1070,13 @@ c_nogroup(OPTION *option, char ***argvp)
  *	of the getpwuid() 9.2.2 [POSIX.1] function returns NULL.
  */
 int
-f_nouser(PLAN *plan, FTSENT *entry)
+f_nouser(PLAN *plan __unused, FTSENT *entry)
 {
 	return user_from_uid(entry->fts_statp->st_uid, 1) == NULL;
 }
 
 PLAN *
-c_nouser(OPTION *option, char ***argvp)
+c_nouser(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions &= ~FTS_NOSTAT;
 
@@ -1038,13 +1141,8 @@ c_perm(OPTION *option, char ***argvp)
 		++perm;
 	}
 
-	errno = 0;
-	if ((set = setmode(perm)) == NULL) {
-		if (!errno) 
-			errx(1, "%s: %s: illegal mode string", option->name, perm);
-		else
-			err(1, "malloc failed");
-	}
+	if ((set = setmode(perm)) == NULL)
+		errx(1, "%s: %s: illegal mode string", option->name, perm);
 
 	new->m_data = getmode(set, 0);
 	free(set);
@@ -1054,18 +1152,18 @@ c_perm(OPTION *option, char ***argvp)
 /*
  * -print functions --
  *
- *	Always true, causes the current pathame to be written to
+ *	Always true, causes the current pathname to be written to
  *	standard output.
  */
 int
-f_print(PLAN *plan, FTSENT *entry)
+f_print(PLAN *plan __unused, FTSENT *entry)
 {
 	(void)puts(entry->fts_path);
 	return 1;
 }
 
 PLAN *
-c_print(OPTION *option, char ***argvp)
+c_print(OPTION *option, char ***argvp __unused)
 {
 	isoutput = 1;
 
@@ -1075,11 +1173,11 @@ c_print(OPTION *option, char ***argvp)
 /*
  * -print0 functions --
  *
- *	Always true, causes the current pathame to be written to
+ *	Always true, causes the current pathname to be written to
  *	standard output followed by a NUL character
  */
 int
-f_print0(PLAN *plan, FTSENT *entry)
+f_print0(PLAN *plan __unused, FTSENT *entry)
 {
 	fputs(entry->fts_path, stdout);
 	fputc('\0', stdout);
@@ -1094,10 +1192,8 @@ f_print0(PLAN *plan, FTSENT *entry)
  *	Prune a portion of the hierarchy.
  */
 int
-f_prune(PLAN *plan, FTSENT *entry)
+f_prune(PLAN *plan __unused, FTSENT *entry)
 {
-	extern FTS *tree;
-
 	if (fts_set(tree, entry, FTS_SKIP))
 		err(1, "%s", entry->fts_path);
 	return 1;
@@ -1115,7 +1211,7 @@ int
 f_regex(PLAN *plan, FTSENT *entry)
 {
 	char *str;
-	size_t len;
+	int len;
 	regex_t *pre;
 	regmatch_t pmatch;
 	int errcode;
@@ -1175,7 +1271,7 @@ c_regex(OPTION *option, char ***argvp)
 /* c_simple covers c_prune, c_openparen, c_closeparen, c_not, c_or */
 
 PLAN *
-c_simple(OPTION *option, char ***argvp)
+c_simple(OPTION *option, char ***argvp __unused)
 {
 	return palloc(option);
 }
@@ -1318,11 +1414,11 @@ c_user(OPTION *option, char ***argvp)
 /*
  * -xdev functions --
  *
- *	Always true, causes find not to decend past directories that have a
+ *	Always true, causes find not to descend past directories that have a
  *	different device ID (st_dev, see stat() S5.6.2 [POSIX.1])
  */
 PLAN *
-c_xdev(OPTION *option, char ***argvp)
+c_xdev(OPTION *option, char ***argvp __unused)
 {
 	ftsoptions |= FTS_XDEV;
 
@@ -1337,8 +1433,8 @@ c_xdev(OPTION *option, char ***argvp)
 int
 f_expr(PLAN *plan, FTSENT *entry)
 {
-	register PLAN *p;
-	register int state = 0;
+	PLAN *p;
+	int state = 0;
 
 	for (p = plan->p_data[0];
 	    p && (state = (p->execute)(p, entry)); p = p->next);
@@ -1353,13 +1449,13 @@ f_expr(PLAN *plan, FTSENT *entry)
  */
 
 int
-f_openparen(PLAN *plan, FTSENT *entry)
+f_openparen(PLAN *plan __unused, FTSENT *entry __unused)
 {
 	abort();
 }
 
 int
-f_closeparen(PLAN *plan, FTSENT *entry)
+f_closeparen(PLAN *plan __unused, FTSENT *entry __unused)
 {
 	abort();
 }
@@ -1371,7 +1467,7 @@ f_closeparen(PLAN *plan, FTSENT *entry)
  * AND operator. Since AND is implicit, no node is allocated.
  */
 PLAN *
-c_and(OPTION *option, char ***argvp)
+c_and(OPTION *option __unused, char ***argvp __unused)
 {
 	return NULL;
 }
@@ -1384,8 +1480,8 @@ c_and(OPTION *option, char ***argvp)
 int
 f_not(PLAN *plan, FTSENT *entry)
 {
-	register PLAN *p;
-	register int state = 0;
+	PLAN *p;
+	int state = 0;
 
 	for (p = plan->p_data[0];
 	    p && (state = (p->execute)(p, entry)); p = p->next);
@@ -1403,8 +1499,8 @@ f_not(PLAN *plan, FTSENT *entry)
 int
 f_or(PLAN *plan, FTSENT *entry)
 {
-	register PLAN *p;
-	register int state = 0;
+	PLAN *p;
+	int state = 0;
 
 	for (p = plan->p_data[0];
 	    p && (state = (p->execute)(p, entry)); p = p->next);

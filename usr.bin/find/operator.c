@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/usr.bin/find/operator.c,v 1.5.6.1 2001/05/06 09:53:22 phk Exp $
- * $DragonFly: src/usr.bin/find/operator.c,v 1.4 2004/07/09 19:11:20 drhodus Exp $
+ * $FreeBSD: src/usr.bin/find/operator.c,v 1.14 2003/06/14 13:00:21 markm Exp $
+ * $DragonFly: src/usr.bin/find/operator.c,v 1.5 2005/02/13 23:49:53 cpressey Exp $
  *
  * @(#)operator.c	8.1 (Berkeley) 6/6/93
  */
@@ -47,11 +47,13 @@
 
 #include "find.h"
 
+static PLAN *yanknode(PLAN **);
+static PLAN *yankexpr(PLAN **);
+
 /*
  * yanknode --
  *	destructively removes the top from the plan
  */
-/* planp: pointer to top of plan (modified) */
 static PLAN *
 yanknode(PLAN **planp)
 {
@@ -70,11 +72,10 @@ yanknode(PLAN **planp)
  *	paren_squish.  In comments below, an expression is either a
  *	simple node or a f_expr node containing a list of simple nodes.
  */
-/* planp: pointer to top of plan (modified) */
 static PLAN *
 yankexpr(PLAN **planp)
 {
-	register PLAN *next;	/* temp node holding subexpression results */
+	PLAN *next;		/* temp node holding subexpression results */
 	PLAN *node;		/* pointer to returned node or expression */
 	PLAN *tail;		/* pointer to tail of subplan */
 	PLAN *subplan;		/* pointer to head of ( ) expression */
@@ -92,7 +93,7 @@ yankexpr(PLAN **planp)
 	if (node->execute == f_openparen)
 		for (tail = subplan = NULL;;) {
 			if ((next = yankexpr(planp)) == NULL)
-				err(1, "(: missing closing ')'");
+				errx(1, "(: missing closing ')'");
 			/*
 			 * If we find a closing ')' we store the collected
 			 * subplan in our '(' node and convert the node to
@@ -121,14 +122,13 @@ yankexpr(PLAN **planp)
 
 /*
  * paren_squish --
- *	replaces "parentheisized" plans in our search plan with "expr" nodes.
+ *	replaces "parenthesized" plans in our search plan with "expr" nodes.
  */
-/* plan: plan with ( ) nodes */
 PLAN *
 paren_squish(PLAN *plan)
 {
-	register PLAN *expr;	/* pointer to next expression */
-	register PLAN *tail;	/* pointer to tail of result plan */
+	PLAN *expr;		/* pointer to next expression */
+	PLAN *tail;		/* pointer to tail of result plan */
 	PLAN *result;		/* pointer to head of result plan */
 
 	result = tail = NULL;
@@ -161,13 +161,12 @@ paren_squish(PLAN *plan)
  * not_squish --
  *	compresses "!" expressions in our search plan.
  */
-/* plan: plan to process */
 PLAN *
 not_squish(PLAN *plan)
 {
-	register PLAN *next;	/* next node being processed */
-	register PLAN *node;	/* temporary node used in f_not processing */
-	register PLAN *tail;	/* pointer to tail of result plan */
+	PLAN *next;		/* next node being processed */
+	PLAN *node;		/* temporary node used in f_not processing */
+	PLAN *tail;		/* pointer to tail of result plan */
 	PLAN *result;		/* pointer to head of result plan */
 
 	tail = result = NULL;
@@ -225,12 +224,11 @@ not_squish(PLAN *plan)
  * or_squish --
  *	compresses -o expressions in our search plan.
  */
-/* plan: plan with ors to be squished */
 PLAN *
 or_squish(PLAN *plan)
 {
-	register PLAN *next;	/* next node being processed */
-	register PLAN *tail;	/* pointer to tail of result plan */
+	PLAN *next;		/* next node being processed */
+	PLAN *tail;		/* pointer to tail of result plan */
 	PLAN *result;		/* pointer to head of result plan */
 
 	tail = result = next = NULL;

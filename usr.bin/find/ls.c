@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  * @(#)ls.c	8.1 (Berkeley) 6/6/93
- * $FreeBSD: src/usr.bin/find/ls.c,v 1.5.6.3 2002/03/12 19:34:50 phantom Exp $
- * $DragonFly: src/usr.bin/find/ls.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $FreeBSD: src/usr.bin/find/ls.c,v 1.17 2004/01/20 09:27:03 des Exp $
+ * $DragonFly: src/usr.bin/find/ls.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -40,39 +40,39 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fts.h>
+#include <grp.h>
+#include <inttypes.h>
 #include <langinfo.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
+
+#include "find.h"
 
 /* Derived from the print routines in the ls(1) source code. */
 
-static void printlink (char *);
-static void printtime (time_t);
+static void printlink(char *);
+static void printtime(time_t);
 
-/*
-name: filename to print
-accpath: current valid path to filename
-sb: stat buffer
-*/
 void
 printlong(char *name, char *accpath, struct stat *sb)
 {
-	char modep[15], *user_from_uid(), *group_from_gid();
+	char modep[15];
 
-	(void)printf("%6lu %4qd ", (u_long) sb->st_ino, sb->st_blocks);
+	(void)printf("%6lu %8"PRId64" ", (u_long) sb->st_ino, sb->st_blocks);
 	(void)strmode(sb->st_mode, modep);
-	(void)printf("%s %3u %-*s %-*s ", modep, sb->st_nlink, UT_NAMESIZE,
-	    user_from_uid(sb->st_uid, 0), UT_NAMESIZE,
+	(void)printf("%s %3u %-*s %-*s ", modep, sb->st_nlink, MAXLOGNAME - 1,
+	    user_from_uid(sb->st_uid, 0), MAXLOGNAME - 1,
 	    group_from_gid(sb->st_gid, 0));
 
 	if (S_ISCHR(sb->st_mode) || S_ISBLK(sb->st_mode))
 		(void)printf("%3d, %3d ", major(sb->st_rdev),
 		    minor(sb->st_rdev));
 	else
-		(void)printf("%8qd ", sb->st_size);
+		(void)printf("%8"PRId64" ", sb->st_size);
 	printtime(sb->st_mtime);
 	(void)printf("%s", name);
 	if (S_ISLNK(sb->st_mode))
@@ -84,17 +84,17 @@ static void
 printtime(time_t ftime)
 {
 	char longstring[80];
-	static time_t now;
+	static time_t lnow;
 	const char *format;
 	static int d_first = -1;
 
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-	if (now == 0)
-		now = time(NULL);
+	if (lnow == 0)
+		lnow = time(NULL);
 
 #define	SIXMONTHS	((365 / 2) * 86400)
-	if (ftime + SIXMONTHS > now && ftime < now + SIXMONTHS)
+	if (ftime + SIXMONTHS > lnow && ftime < lnow + SIXMONTHS)
 		/* mmm dd hh:mm || dd mmm hh:mm */
 		format = d_first ? "%e %b %R " : "%b %e %R ";
 	else
@@ -108,7 +108,7 @@ static void
 printlink(char *name)
 {
 	int lnklen;
-	char path[MAXPATHLEN + 1];
+	char path[MAXPATHLEN];
 
 	if ((lnklen = readlink(name, path, MAXPATHLEN - 1)) == -1) {
 		warn("%s", name);

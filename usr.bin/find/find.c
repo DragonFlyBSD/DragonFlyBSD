@@ -34,8 +34,8 @@
  * SUCH DAMAGE.
  *
  * @(#)find.c	8.5 (Berkeley) 8/5/94
- * $FreeBSD: src/usr.bin/find/find.c,v 1.7.6.3 2001/05/06 09:53:22 phk Exp $
- * $DragonFly: src/usr.bin/find/find.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $FreeBSD: src/usr.bin/find/find.c,v 1.17 2004/05/28 17:17:15 eik Exp $
+ * $DragonFly: src/usr.bin/find/find.c,v 1.4 2005/02/13 23:49:53 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -46,12 +46,12 @@
 #include <fts.h>
 #include <regex.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "find.h"
 
-static int	find_compare(const FTSENT **s1, const FTSENT **s2);
+static int find_compare(const FTSENT * const *s1, const FTSENT * const *s2);
 
 /*
  * find_compare --
@@ -60,7 +60,7 @@ static int	find_compare(const FTSENT **s1, const FTSENT **s2);
  *	order within each directory.
  */
 static int
-find_compare(const FTSENT **s1, const FTSENT **s2)
+find_compare(const FTSENT * const *s1, const FTSENT * const *s2)
 {
 
 	return (strcoll((*s1)->fts_name, (*s2)->fts_name));
@@ -72,7 +72,7 @@ find_compare(const FTSENT **s1, const FTSENT **s2)
  *	command arguments.
  */
 PLAN *
-find_formplan(char **argv)
+find_formplan(char *argv[])
 {
 	PLAN *plan, *tail, *new;
 
@@ -110,23 +110,23 @@ find_formplan(char **argv)
 	 */
 	if (!isoutput) {
 		OPTION *p;
-		char **argv = 0;
+		char **argv1 = 0;
 
 		if (plan == NULL) {
-			p = option("-print");
-			new = (p->create)(p, &argv);
+			p = lookup_option("-print");
+			new = (p->create)(p, &argv1);
 			tail = plan = new;
 		} else {
-			p = option("(");
-			new = (p->create)(p, &argv);
+			p = lookup_option("(");
+			new = (p->create)(p, &argv1);
 			new->next = plan;
 			plan = new;
-			p = option(")");
-			new = (p->create)(p, &argv);
+			p = lookup_option(")");
+			new = (p->create)(p, &argv1);
 			tail->next = new;
 			tail = new;
-			p = option("-print");
-			new = (p->create)(p, &argv);
+			p = lookup_option("-print");
+			new = (p->create)(p, &argv1);
 			tail->next = new;
 			tail = new;
 		}
@@ -167,14 +167,11 @@ FTS *tree;			/* pointer to top of FTS hierarchy */
  * find_execute --
  *	take a search plan and an array of search paths and executes the plan
  *	over all FTSENT's returned for the given search paths.
- *
- * plan: search plan
- * paths: array of pathnames to traverse
  */
 int
-find_execute(PLAN *plan, char **paths)
+find_execute(PLAN *plan, char *paths[])
 {
-	register FTSENT *entry;
+	FTSENT *entry;
 	PLAN *p;
 	int rval;
 
@@ -183,6 +180,11 @@ find_execute(PLAN *plan, char **paths)
 		err(1, "ftsopen");
 
 	for (rval = 0; (entry = fts_read(tree)) != NULL;) {
+		if (maxdepth != -1 && entry->fts_level >= maxdepth) {
+			if (fts_set(tree, entry, FTS_SKIP))
+				err(1, "%s", entry->fts_path);
+		}
+
 		switch (entry->fts_info) {
 		case FTS_D:
 			if (isdepth)
@@ -222,13 +224,11 @@ find_execute(PLAN *plan, char **paths)
 		 * the work specified by the user on the command line.
 		 */
 		for (p = plan; p && (p->execute)(p, entry); p = p->next);
-
-		if (maxdepth != -1 && entry->fts_level >= maxdepth) {
-			if (fts_set(tree, entry, FTS_SKIP))
-			err(1, "%s", entry->fts_path);
-			continue;
-		}
 	}
+	/* Finish any pending -exec ... {} + functions. */
+	for (p = plan; p != NULL; p = p->next)
+		if (p->execute == f_exec && p->flags & F_EXECPLUS)
+			(p->execute)(p, NULL);
 	if (errno)
 		err(1, "fts_read");
 	return (rval);
