@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.9 2004/01/14 18:20:18 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.10 2004/01/15 08:05:40 joerg Exp $
  *
  */
 
@@ -55,7 +55,7 @@
 #include <machine/resource.h>
 #include <machine/md_var.h>		/* For the Alpha */
 #ifdef __i386__
-#include <machine/pci_cfgreg.h>
+#include <bus/pci/i386/pci_cfgreg.h>
 #endif
 
 #include <sys/pciio.h>
@@ -1554,7 +1554,8 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		    (cfg->intline == 255 || cfg->intline == 0) &&
 		    (cfg->intpin != 0) && (start == 0) && (end == ~0UL)) {
 			cfg->intline = pci_cfgintr(pci_get_bus(child),
-			    pci_get_slot(child), cfg->intpin);
+			    pci_get_slot(child), cfg->intpin,
+			    pci_get_irq(child));
 			if (cfg->intline != 255) {
 				pci_write_config(child, PCIR_INTLINE,
 				    cfg->intline, 1);

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.3 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.4 2004/01/15 08:05:41 joerg Exp $
  *
  */
 
@@ -36,7 +36,7 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include "pcibus.h"
-#include <machine/pci_cfgreg.h>
+#include <bus/pci/i386/pci_cfgreg.h>
 #include <machine/md_var.h>
 
 #include "opt_cpu.h"
@@ -335,7 +335,8 @@ nexus_pcib_probe(device_t dev)
 static int
 nexus_pcib_route_interrupt(device_t pcib, device_t dev, int pin)
 {
-	return(pci_cfgintr(pci_get_bus(dev), pci_get_slot(dev), pin));
+	return(pci_cfgintr(pci_get_bus(dev), pci_get_slot(dev), pin, 
+			   pci_get_irq(dev)));
 }
 
 static device_method_t nexus_pcib_methods[] = {
