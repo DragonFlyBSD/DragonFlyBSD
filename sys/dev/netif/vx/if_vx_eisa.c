@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/vx/if_vx_eisa.c,v 1.14 2000/01/29 14:50:31 peter Exp $
- * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.6 2003/12/07 19:23:40 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/vx/if_vx_eisa.c,v 1.7 2004/08/12 06:42:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -188,7 +188,7 @@ static device_method_t vx_eisa_methods[] = {
 static driver_t vx_eisa_driver = {
 	"vx",
 	vx_eisa_methods,
-	1,			/* unused */
+	sizeof(struct vx_softc)
 };
 
 static devclass_t vx_devclass;
