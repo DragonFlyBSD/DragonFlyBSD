@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.14 2004/04/10 20:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.15 2004/05/04 17:13:04 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -20,6 +20,9 @@
 #if defined(_KERNEL) || defined(_KERNEL_STRUCTURES)
 #ifndef _SYS_GLOBALDATA_H_
 #include <sys/globaldata.h>
+#endif
+#ifndef _MACHINE_CPUFUNC_H_
+#include <machine/cpufunc.h>
 #endif
 #endif
 
@@ -81,15 +84,19 @@ crit_exit(void)
     if (td->td_pri < 0)
 	crit_panic();
 #endif
-    if (td->td_pri < TDPRI_CRIT && td->td_gd->gd_reqflags)
+    cpu_mb1();	/* must flush td_pri before checking gd_reqflags */
+    if (td->td_gd->gd_reqflags && td->td_pri < TDPRI_CRIT)
 	lwkt_yield_quick();
 }
 
 static __inline void
 crit_exit_quick(struct thread *curtd)
 {
+    globaldata_t gd = curtd->td_gd;
+
     curtd->td_pri -= TDPRI_CRIT;
-    if (curtd->td_pri < TDPRI_CRIT && curtd->td_gd->gd_reqflags)
+    cpu_mb1();	/* must flush td_pri before checking gd_reqflags */
+    if (gd->gd_reqflags && curtd->td_pri < TDPRI_CRIT)
 	lwkt_yield_quick();
 }
 
