@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.46 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.47 2005/01/31 17:17:58 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1759,6 +1759,65 @@ STATNODE(numfullpathfail4);
 STATNODE(numfullpathfound);
 
 int
+cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **freebuf)
+{
+	char *bp, *buf;
+	int i, slash_prefixed;
+	struct filedesc *fdp;
+	struct namecache *ncp;
+
+	numfullpathcalls--;
+
+	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
+	bp = buf + MAXPATHLEN - 1;
+	*bp = '\0';
+	fdp = p->p_fd;
+	slash_prefixed = 0;
+	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
+		if (ncp->nc_flag & NCF_MOUNTPT) {
+			if (ncp->nc_mount == NULL) {
+				free(buf, M_TEMP);
+				return(EBADF);
+			}
+			ncp = ncp->nc_parent;
+			continue;
+		}
+		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
+			if (bp == buf) {
+				numfullpathfail4++;
+				free(buf, M_TEMP);
+				return(ENOMEM);
+			}
+			*--bp = ncp->nc_name[i];
+		}
+		if (bp == buf) {
+			numfullpathfail4++;
+			free(buf, M_TEMP);
+			return(ENOMEM);
+		}
+		*--bp = '/';
+		slash_prefixed = 1;
+		ncp = ncp->nc_parent;
+	}
+	if (ncp == NULL) {
+		numfullpathfail2++;
+		free(buf, M_TEMP);
+		return(ENOENT);
+	}
+	if (!slash_prefixed) {
+		if (bp == buf) {
+			numfullpathfail4++;
+			free(buf, M_TEMP);
+			return(ENOMEM);
+		}
+		*--bp = '/';
+	}
+	numfullpathfound++;
+	*retbuf = bp; 
+	*freebuf = buf;
+}
+
+int
 vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf) 
 {
 	char *bp, *buf;
@@ -1785,53 +1844,6 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 	if (ncp == NULL)
 		return (EINVAL);
 
-	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-	bp = buf + MAXPATHLEN - 1;
-	*bp = '\0';
-	fdp = p->p_fd;
-	slash_prefixed = 0;
-	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
-		if (ncp->nc_flag & NCF_MOUNTPT) {
-			if (ncp->nc_mount == NULL) {
-				free(buf, M_TEMP);
-				return(EBADF);
-			}
-			ncp = ncp->nc_parent;
-			continue;
-		}
-		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
-			if (bp == buf) {
-				numfullpathfail4++;
-				free(buf, M_TEMP);
-				return (ENOMEM);
-			}
-			*--bp = ncp->nc_name[i];
-		}
-		if (bp == buf) {
-			numfullpathfail4++;
-			free(buf, M_TEMP);
-			return (ENOMEM);
-		}
-		*--bp = '/';
-		slash_prefixed = 1;
-		ncp = ncp->nc_parent;
-	}
-	if (ncp == NULL) {
-		numfullpathfail2++;
-		free(buf, M_TEMP);
-		return (ENOENT);
-	}
-	if (!slash_prefixed) {
-		if (bp == buf) {
-			numfullpathfail4++;
-			free(buf, M_TEMP);
-			return (ENOMEM);
-		}
-		*--bp = '/';
-	}
-	numfullpathfound++;
-	*retbuf = bp; 
-	*freebuf = buf;
-	return (0);
+	numfullpathcalls--;
+	return(cache_fullpath(p, ncp, retbuf, freebuf));
 }
-
