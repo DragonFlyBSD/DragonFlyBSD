@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/imgact.h,v 1.22.2.2 2001/12/22 01:21:44 jwd Exp $
- * $DragonFly: src/sys/sys/imgact.h,v 1.4 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/sys/imgact.h,v 1.5 2004/01/20 18:41:51 dillon Exp $
  */
 
 #ifndef _SYS_IMGACT_H_
@@ -57,6 +57,7 @@ struct image_params {
 	struct vattr *attr;	/* attributes of file */
 	const char *image_header; /* head of file to exec */
 	unsigned long entry_addr; /* entry address of target executable */
+	char resident;		/* flag - resident image */
 	char vmspace_destroyed;	/* flag - we've blown away original vm space */
 	char interpreted;	/* flag - this executable is interpreted */
 	char interpreter_name[MAXSHELLCMDLEN]; /* name of the interpreter */
@@ -68,8 +69,10 @@ struct image_params {
 #ifdef _KERNEL
 enum	exec_path_segflg {PATH_SYSSPACE, PATH_USERSPACE};
 
+struct vmspace;
+int	exec_resident_imgact (struct image_params *);
 int	exec_check_permissions (struct image_params *);
-int	exec_new_vmspace (struct image_params *);
+int	exec_new_vmspace (struct image_params *, struct vmspace *vmres);
 int	exec_shell_imgact (struct image_params *);
 int	exec_copyin_args(struct image_args *, char *, enum exec_path_segflg,
 	char **, char **);

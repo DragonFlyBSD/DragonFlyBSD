@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/imgact_linux.c,v 1.35.2.2 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.5 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/imgact_linux.c,v 1.6 2004/01/20 18:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ exec_linux_imgact(imgp)
     /*
      * Destroy old process VM and create a new one (with a new stack)
      */
-    exec_new_vmspace(imgp);
+    exec_new_vmspace(imgp, NULL);
     vmspace = imgp->proc->p_vmspace;
 
     /*

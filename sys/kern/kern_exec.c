@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.18 2004/01/08 18:39:18 asmodai Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.19 2004/01/20 18:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -147,6 +147,7 @@ kern_execve(struct nameidata *ndp, struct image_args *args)
 	imgp->args = args;
 	imgp->attr = &attr;
 	imgp->entry_addr = 0;
+	imgp->resident = 0;
 	imgp->vmspace_destroyed = 0;
 	imgp->interpreted = 0;
 	imgp->interpreter_name[0] = 0;
@@ -210,6 +211,13 @@ interpret:
 		error = img_first(imgp);
 
 	/*
+	 *	If the vnode has a registered vmspace, exec the vmspace
+	 */
+	if (error == -1 && imgp->vp->v_resident) {
+		error = exec_resident_imgact(imgp);
+	}
+
+	/*
 	 *	Loop through the list of image activators, calling each one.
 	 *	An activator returns -1 if there is no match, 0 on success,
 	 *	and an error otherwise.
@@ -252,10 +260,13 @@ interpret:
 
 	/*
 	 * If custom stack fixup routine present for this process
-	 * let it do the stack setup.
+	 * let it do the stack setup.  If we are running a resident
+	 * image there is no auxinfo or other image activator context
+	 * so don't try to add fixups to the stack.
+	 *
 	 * Else stuff argument count as first item on stack
 	 */
-	if (p->p_sysent->sv_fixup)
+	if (p->p_sysent->sv_fixup && imgp->resident == 0)
 		(*p->p_sysent->sv_fixup)(&stack_base, imgp);
 	else
 		suword(--stack_base, imgp->args->argc);
@@ -566,13 +577,12 @@ exec_unmap_first_page(imgp)
  *	automatically in trap.c.
  */
 int
-exec_new_vmspace(imgp)
-	struct image_params *imgp;
+exec_new_vmspace(struct image_params *imgp, struct vmspace *vmcopy)
 {
 	int error;
 	struct vmspace *vmspace = imgp->proc->p_vmspace;
 	vm_offset_t stack_addr = USRSTACK - maxssiz;
-	vm_map_t map = &vmspace->vm_map;
+	vm_map_t map;
 
 	imgp->vmspace_destroyed = 1;
 
@@ -584,14 +594,21 @@ exec_new_vmspace(imgp)
 	/*
 	 * Blow away entire process VM, if address space not shared,
 	 * otherwise, create a new VM space so that other threads are
-	 * not disrupted
+	 * not disrupted.  If we are execing a resident vmspace we
+	 * create a duplicate of it and remap the stack.
 	 */
-	if (vmspace->vm_refcnt == 1) {
+	map = &vmspace->vm_map;
+	if (vmcopy) {
+		vmspace_exec(imgp->proc, vmcopy);
+		vmspace = imgp->proc->p_vmspace;
+		pmap_remove_pages(vmspace_pmap(vmspace), stack_addr, USRSTACK);
+		map = &vmspace->vm_map;
+	} else if (vmspace->vm_refcnt == 1) {
 		shmexit(vmspace);
 		pmap_remove_pages(vmspace_pmap(vmspace), 0, VM_MAXUSER_ADDRESS);
 		vm_map_remove(map, 0, VM_MAXUSER_ADDRESS);
 	} else {
-		vmspace_exec(imgp->proc);
+		vmspace_exec(imgp->proc, NULL);
 		vmspace = imgp->proc->p_vmspace;
 		map = &vmspace->vm_map;
 	}

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.8 2003/11/12 01:00:32 daver Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.9 2004/01/20 18:41:49 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -333,7 +333,7 @@ exec_coff_imgact(imgp)
 	       ((const char*)(imgp->image_header) + sizeof(struct filehdr) +
 		sizeof(struct aouthdr));
 
-	exec_new_vmspace(imgp);
+	exec_new_vmspace(imgp, NULL);
 	vmspace = imgp->proc->p_vmspace;
 
 	for (i = 0; i < nscns; i++) {

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/svr4/imgact_svr4.c,v 1.8.2.1 2001/11/03 01:41:09 ps Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.6 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/imgact_svr4.c,v 1.7 2004/01/20 18:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ exec_svr4_imgact(imgp)
     /*
      * Destroy old process VM and create a new one (with a new stack)
      */
-    exec_new_vmspace(imgp);
+    exec_new_vmspace(imgp, NULL);
     vmspace = imgp->proc->p_vmspace;
 
     /*

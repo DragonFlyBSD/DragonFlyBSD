@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/kern/imgact_gzip.c,v 1.40.2.1 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.4 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/kern/imgact_gzip.c,v 1.5 2004/01/20 18:41:51 dillon Exp $
  *
  * This module handles execution of a.out files which have been run through
  * "gzip".  This saves diskspace, but wastes cpu-cycles and VM.
@@ -222,7 +222,7 @@ do_aout_hdr(struct imgact_gzip * gz)
 	/*
 	 * Destroy old process VM and create a new one (with a new stack)
 	 */
-	exec_new_vmspace(gz->ip);
+	exec_new_vmspace(gz->ip, NULL);
 
 	vmspace = gz->ip->proc->p_vmspace;
 

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.15 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.16 2004/01/20 18:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -517,7 +517,7 @@ exec_elf_imgact(struct image_params *imgp)
 	 * From this point on, we may have resources that need to be freed.
 	 */
 
-	exec_new_vmspace(imgp);
+	exec_new_vmspace(imgp, NULL);
 
 	/*
 	 * Yeah, I'm paranoid.  There is every reason in the world to get

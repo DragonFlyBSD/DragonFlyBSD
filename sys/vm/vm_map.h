@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.10 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.11 2004/01/20 18:41:52 dillon Exp $
  */
 
 /*
@@ -225,6 +225,26 @@ struct vmspace {
 	int	vm_exitingcnt;	/* several procsses zombied in exit1 */
 	int	vm_upccount;	/* number of registered upcalls */
 	struct vmupcall *vm_upcalls; /* registered upcalls */
+};
+
+/*
+ * Resident executable holding structure.  A user program can take a snapshot
+ * of just its VM address space (typically done just after dynamic link
+ * libraries have completed loading) and register it as a resident 
+ * executable associated with the program binary's vnode, which is also
+ * locked into memory.  Future execs of the vnode will start with a copy
+ * of the resident vmspace instead of running the binary from scratch,
+ * avoiding both the kernel ELF loader *AND* all shared library mapping and
+ * relocation code, and will call a different entry point (the stack pointer
+ * is reset to the top of the stack) supplied when the vmspace was registered.
+ */
+struct vmresident {
+	struct vnode	*vr_vnode;		/* associated vnode */
+	TAILQ_ENTRY(vmresident) vr_link;	/* linked list of res sts */
+	struct vmspace	*vr_vmspace;		/* vmspace to fork */
+	intptr_t	vr_entry_addr;		/* registered entry point */
+	struct sysentvec *vr_sysent;		/* system call vects */
+	int		vr_id;			/* registration id */
 };
 
 /*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_aout.c,v 1.59.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/imgact_aout.c,v 1.7 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/kern/imgact_aout.c,v 1.8 2004/01/20 18:41:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -168,7 +168,7 @@ exec_aout_imgact(struct image_params *imgp)
 	/*
 	 * Destroy old process VM and create a new one (with a new stack)
 	 */
-	exec_new_vmspace(imgp);
+	exec_new_vmspace(imgp, NULL);
 
 	/*
 	 * The vm space can be changed by exec_new_vmspace

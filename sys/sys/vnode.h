@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.8 2003/09/28 03:44:09 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.9 2004/01/20 18:41:51 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -135,6 +135,7 @@ struct vnode {
 		short	vpi_revents;		/* what has happened */
 	} v_pollinfo;
 	struct proc *v_vxproc;			/* proc owning VXLOCK */
+	struct vmresident *v_resident;		/* optional vmresident */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */
