@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.19 2005/01/14 02:25:08 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.20 2005/01/31 22:29:59 joerg Exp $
  */
 
 /*
@@ -927,12 +927,8 @@ crfree(struct ucred *cr)
 		/*
 		 * Destroy empty prisons
 		 */
-		if (cr->cr_prison && !--cr->cr_prison->pr_ref) {
-			if (cr->cr_prison->pr_linux != NULL)
-				FREE(cr->cr_prison->pr_linux, M_PRISON);
-			varsymset_clean(&cr->cr_prison->pr_varsymset);
-			FREE(cr->cr_prison, M_PRISON);
-		}
+		if (jailed(cr))
+			prison_free(cr->cr_prison);
 		cr->cr_prison = NULL;	/* safety */
 
 		FREE((caddr_t)cr, M_CRED);
@@ -959,8 +955,8 @@ cratom(struct ucred **pcr)
 		uihold(newcr->cr_uidinfo);
 	if (newcr->cr_ruidinfo)
 		uihold(newcr->cr_ruidinfo);
-	if (newcr->cr_prison)
-		++newcr->cr_prison->pr_ref;
+	if (jailed(newcr))
+		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
 	crfree(oldcr);
 	*pcr = newcr;
@@ -984,8 +980,8 @@ crcopy(struct ucred *cr)
 		uihold(newcr->cr_uidinfo);
 	if (newcr->cr_ruidinfo)
 		uihold(newcr->cr_ruidinfo);
-	if (newcr->cr_prison)
-		++newcr->cr_prison->pr_ref;
+	if (jailed(newcr))
+		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
 	crfree(cr);
 	return (newcr);
@@ -1007,8 +1003,8 @@ crdup(cr)
 		uihold(newcr->cr_uidinfo);
 	if (newcr->cr_ruidinfo)
 		uihold(newcr->cr_ruidinfo);
-	if (newcr->cr_prison)
-		++newcr->cr_prison->pr_ref;
+	if (jailed(newcr))
+		prison_hold(newcr->cr_prison);
 	newcr->cr_ref = 1;
 	return (newcr);
 }

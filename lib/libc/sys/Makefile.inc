@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.3 (Berkeley) 10/24/94
 # $FreeBSD: src/lib/libc/sys/Makefile.inc,v 1.75.2.7 2003/04/22 17:31:18 trhodes Exp $
-# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.7 2004/11/23 19:05:53 eirikn Exp $
+# $DragonFly: src/lib/libc/sys/Makefile.inc,v 1.8 2005/01/31 22:29:59 joerg Exp $
 
 # sys sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/sys ${.CURDIR}/../libc/sys
@@ -90,7 +90,7 @@ MAN+=	_exit.2 accept.2 access.2 acct.2 adjtime.2 \
 	getpeername.2 getpgrp.2 getpid.2 getpriority.2 getrlimit.2 \
 	getrusage.2 getsid.2 getsockname.2 \
 	getsockopt.2 gettimeofday.2 getuid.2 \
-	intro.2 ioctl.2 issetugid.2 jail.2 kill.2 \
+	intro.2 ioctl.2 issetugid.2 jail.2 jail_attach.2 kill.2 \
 	kldfind.2 kldfirstmod.2 kldload.2 kldnext.2 kldstat.2 kldsym.2 \
 	kldunload.2 ktrace.2 kqueue.2 link.2 listen.2 lseek.2 \
 	madvise.2 mincore.2 minherit.2 mkdir.2 mkfifo.2 mknod.2 mlock.2 mmap.2 \

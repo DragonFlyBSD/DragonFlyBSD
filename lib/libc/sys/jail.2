@@ -7,7 +7,7 @@
 .\"----------------------------------------------------------------------------
 .\"
 .\"$FreeBSD: src/lib/libc/sys/jail.2,v 1.10.2.10 2002/12/12 05:26:38 trhodes Exp $
-.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\"$DragonFly: src/lib/libc/sys/jail.2,v 1.3 2005/01/31 22:29:59 joerg Exp $
 .\"
 .Dd April 28, 1999
 .Dt JAIL 2
@@ -30,10 +30,10 @@ system call sets up a jail and locks the current process in it.
 The argument is a pointer to a structure describing the prison:
 .Bd -literal -offset indent
 struct jail {
-	u_int32_t	version;
-        char 		*path;
-        char 		*hostname;
-        u_int32_t	ip_number;
+	uint32_t	version;
+	char 		*path;
+	char 		*hostname;
+	uint32_t	ip_number;
 };
 .Ed
 .Pp
@@ -53,9 +53,11 @@ from the inside of the prison.
 The
 .Dq Li ip_number
 can be set to the IP number assigned to the prison.
-.Sh PRISON?
+.Sh PRISON
 Once a process has been put in a prison, it and its decendants cannot escape
-the prison.  It is not possible to add a process to a preexisting prison.
+the prison.
+A process can be attached to a prison by calling
+.Xr jail_attach 2 .
 .Pp
 Inside the prison, the concept of "superuser" is very diluted.  In general,
 it can be assumed that nothing can be mangled from inside a prison which
@@ -75,6 +77,10 @@ It is possible to identify a process as jailed by examining
 it will show a field near the end of the line, either as
 a single hyphen for a process at large, or the hostname currently
 set for the prison for jailed processes.
+
+The program
+.Xr jls 8
+ca be used to identify all active jails.
 .Sh ERRORS
 .Fn jail
 will fail if:
@@ -93,7 +99,11 @@ Please consult the
 manual page for details.
 .Sh SEE ALSO
 .Xr chdir 2 ,
-.Xr chroot 2
+.Xr chroot 2 ,
+.Xr jail 8 ,
+.Xr jail_attach 2 ,
+.Xr jexec 8 ,
+.Xr jls 8
 .Sh HISTORY
 The
 .Fn jail

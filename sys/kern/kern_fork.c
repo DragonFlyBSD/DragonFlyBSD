@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.31 2005/01/19 19:05:21 eirikn Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.32 2005/01/31 22:29:59 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -373,10 +373,8 @@ again:
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
 
-	if (p2->p_ucred->cr_prison) {
-		p2->p_ucred->cr_prison->pr_ref++;
+	if (jailed(p2->p_ucred))
 		p2->p_flag |= P_JAILED;
-	}
 
 	if (p2->p_args)
 		p2->p_args->ar_ref++;

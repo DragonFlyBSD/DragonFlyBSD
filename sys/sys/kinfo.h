@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/sys/kinfo.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/sys/sys/kinfo.h,v 1.3 2005/01/31 22:29:59 joerg Exp $
  */
 
 #ifndef _SYS_KINFO_H
@@ -66,5 +66,14 @@ struct kinfo_clockinfo {
 	int	ci_stathz;	/* statistics clock frequency */
 	int	ci_profhz;	/* profiling clock frequency */
 };
+
+struct kinfo_prison {
+	int		 pr_version;
+	int		 pr_id;
+	char		 pr_path[MAXPATHLEN];
+	char 		 pr_host[MAXHOSTNAMELEN];
+	uint32_t	 pr_ip;
+};
+#define	KINFO_PRISON_VERSION	1
 
 #endif
