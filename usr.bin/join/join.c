@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)join.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/join/join.c,v 1.10.2.1 2002/06/18 05:14:49 jmallett Exp $
- * $DragonFly: src/usr.bin/join/join.c,v 1.5 2004/08/25 16:07:18 dillon Exp $
+ * $DragonFly: src/usr.bin/join/join.c,v 1.6 2005/01/16 21:40:42 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -564,8 +564,8 @@ jbad:				errx(1, "illegal option -- %s", ap);
 			if (ap[2] != '\0')
 				break;
 			for (p = argv + 2; *p; ++p) {
-				if (p[0][0] == '0' || (p[0][0] != '1' &&
-				    p[0][0] != '2' || p[0][1] != '.'))
+				if ((p[0][0] != '1' && p[0][0] != '2') ||
+				    p[0][1] != '.')
 					break;
 				len = strlen(*p);
 				if (len - 2 != strspn(*p + 2, "0123456789"))
