@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.9 2004/03/06 01:58:57 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.10 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -119,7 +119,7 @@ nsintr(struct netmsg *msg)
 	if ((m->m_flags & M_EXT || m->m_len < sizeof (struct idp)) &&
 	    (m = m_pullup(m, sizeof (struct idp))) == 0) {
 		idpstat.idps_toosmall++;
-		return;
+		goto out;
 	}
 
 	/*
@@ -164,7 +164,7 @@ nsintr(struct netmsg *msg)
 			else
 				error = NS_ERR_BADSUM_T;
 			ns_error(m, error, 0);
-			return;
+			goto out;
 		}
 	}
 	/*
@@ -187,7 +187,7 @@ nsintr(struct netmsg *msg)
 			 */
 			if (idp->idp_tc < NS_MAXHOPS) {
 				idp_forward(m);
-				return;
+				goto out;
 			}
 		}
 	/*
@@ -195,7 +195,7 @@ nsintr(struct netmsg *msg)
 	 */
 	} else if (!ns_hosteqnh(ns_thishost,idp->idp_dna.x_host)) {
 		idp_forward(m);
-		return;
+		goto out;
 	}
 	/*
 	 * Locate pcb for datagram.
@@ -214,21 +214,22 @@ nsintr(struct netmsg *msg)
 
 			    case NSPROTO_SPP:
 				    spp_input(m, nsp);
-				    return;
+				    goto out;
 
 			    case NSPROTO_ERROR:
 				    ns_err_input(m);
-				    return;
+				    goto out;
 			}
 		idp_input(m, nsp);
 	} else {
 		ns_error(m, NS_ERR_NOSOCK, 0);
 	}
-	return;
+	goto out;
 
 bad:
 	m_freem(m);
-	return;
+out:
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 u_char nsctlerrmap[PRC_NCMDS] = {

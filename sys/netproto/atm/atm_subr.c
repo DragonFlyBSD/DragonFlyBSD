@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.10 2004/03/06 01:58:56 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.11 2004/04/09 22:34:10 hsu Exp $
  */
 
 /*
@@ -910,6 +910,7 @@ atm_intr(struct netmsg *msg)
 	 * Drain any deferred calls
 	 */
 	STACK_DRAIN();
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 /*

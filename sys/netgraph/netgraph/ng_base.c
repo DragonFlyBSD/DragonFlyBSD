@@ -38,7 +38,7 @@
  *          Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_base.c,v 1.11.2.17 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.10 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netgraph/netgraph/ng_base.c,v 1.11 2004/04/09 22:34:09 hsu Exp $
  * $Whistle: ng_base.c,v 1.39 1999/01/28 23:54:53 julian Exp $
  */
 
@@ -2003,7 +2003,7 @@ ngintr(struct netmsg *pmsg)
 		}
 		splx(s);
 		if (ngq == NULL)
-			return;
+			goto out;
 		switch (ngq->flags) {
 		case NGQF_DATA:
 			hook = ngq->body.data.da_hook;
@@ -2032,6 +2032,8 @@ ngintr(struct netmsg *pmsg)
 			RETURN_QBLK(ngq);
 		}
 	}
+out:
+	lwkt_replymsg(&pmsg->nm_lmsg, 0);
 }
 
 

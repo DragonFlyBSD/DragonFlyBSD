@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.10 2004/03/06 01:58:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.11 2004/04/09 22:34:10 hsu Exp $
  */
 
 /*
@@ -53,6 +53,9 @@
 #include <sys/malloc.h>
 #include <sys/socket.h>
 #include <sys/syslog.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -531,6 +534,7 @@ arpintr(struct netmsg *msg)
 #endif
 	}
 	m_freem(m);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 #ifdef INET

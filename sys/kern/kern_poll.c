@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.8 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.9 2004/04/09 22:34:09 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -310,8 +310,7 @@ netisr_pollmore(struct netmsg *dummy __unused)
 	if (residual_burst > 0) {
 		schednetisr(NETISR_POLL);
 		/* will run immediately on return, followed by netisrs */
-		splx(s);
-		return ;
+		goto out;
 	}
 	/* here we can account time spent in netisr's in this tick */
 	microuptime(&t);
@@ -341,7 +340,9 @@ netisr_pollmore(struct netmsg *dummy __unused)
 		schednetisr(NETISR_POLL);
 		phase = 6;
 	}
+out:
 	splx(s);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 /*
@@ -416,6 +417,7 @@ netisr_poll(struct netmsg *dummy __unused)
 	schednetisr(NETISR_POLLMORE);
 	phase = 4;
 	splx(s);
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.20 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.21 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -856,14 +856,13 @@ struct netmsg_tcp_drain {
 	struct inpcbhead	*nm_head;
 };
 
-static int		/* really should be void XXX JH */
+static void
 tcp_drain_handler(struct netmsg *msg0)
 {
 	struct netmsg_tcp_drain *nm = (struct netmsg_tcp_drain *)msg0;
 
 	tcp_drain_oncpu(nm->nm_head);
-
-	return (0);	/* dummy return value */
+	lwkt_replymsg(&msg0->nm_lmsg, 0);
 }
 #endif
 

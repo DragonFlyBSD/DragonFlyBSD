@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.14 2004/03/24 21:46:07 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.15 2004/04/09 22:34:10 hsu Exp $ */
 
 /*
  *
@@ -48,6 +48,9 @@
 #include <sys/mbuf.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_atm.h>
@@ -774,12 +777,12 @@ natmintr(struct netmsg *msg)
     m_freem(m);
     if (npcb->npcb_inq == 0)
       FREE(npcb, M_PCB);			/* done! */
-    return;
+    goto out;
   }
 
   if (npcb->npcb_flags & NPCB_FREE) {
     m_freem(m);					/* drop */
-    return;
+    goto out;
   }
 
 #ifdef NEED_TO_RESTORE_IFP
@@ -805,5 +808,7 @@ m->m_pkthdr.rcvif = NULL;	/* null it out to be safe */
 #endif
     m_freem(m);
   }
+out:
+  lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 

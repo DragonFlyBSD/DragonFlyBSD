@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.12 2004/03/06 01:58:56 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.13 2004/04/09 22:34:10 hsu Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -85,6 +85,9 @@
 #include <sys/kernel.h>
 #include <sys/syslog.h>
 #include <sys/proc.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -318,10 +321,8 @@ ip6_input(struct netmsg *msg)
 				n = NULL;
 			}
 		}
-		if (n == NULL) {
-			m_freem(m);
-			return;	/*ENOBUFS*/
-		}
+		if (n == NULL)
+			goto bad;
 
 		m_copydata(m, 0, n->m_pkthdr.len, mtod(n, caddr_t));
 		n->m_len = n->m_pkthdr.len;
@@ -337,7 +338,7 @@ ip6_input(struct netmsg *msg)
 		if ((m = m_pullup(m, sizeof(struct ip6_hdr))) == 0) {
 			ip6stat.ip6s_toosmall++;
 			in6_ifstat_inc(inifp, ifs6_in_hdrerr);
-			return;
+			goto bad2;
 		}
 	}
 
@@ -359,9 +360,9 @@ ip6_input(struct netmsg *msg)
 	 */
 	odst = ip6->ip6_dst;
 	if (pfil_run_hooks(&inet6_pfil_hook, &m, m->m_pkthdr.rcvif, PFIL_IN))
-		return;
+		goto bad2;
 	if (m == NULL)			/* consumed by filter */
-		return;
+		goto bad2;
 	ip6 = mtod(m, struct ip6_hdr *);
 	srcrt = !IN6_ARE_ADDR_EQUAL(&odst, &ip6->ip6_dst);
 #endif /* PFIL_HOOKS */
@@ -380,7 +381,7 @@ ip6_input(struct netmsg *msg)
 			m = NULL;
 		}
 		if (!m)
-			return;
+			goto bad2;
 	}
 
 	/*
@@ -474,7 +475,7 @@ ip6_input(struct netmsg *msg)
 			icmp6_error(m, ICMP6_DST_UNREACH,
 			    ICMP6_DST_UNREACH_ADDR, 0);
 			/* m is already freed */
-			return;
+			goto bad2;
 		}
 
 		ours = 1;
@@ -676,7 +677,7 @@ ip6_input(struct netmsg *msg)
 #if 0	/*touches NULL pointer*/
 			in6_ifstat_inc(m->m_pkthdr.rcvif, ifs6_in_discard);
 #endif
-			return;	/* m have already been freed */
+			goto bad2;	/* m have already been freed */
 		}
 
 		/* adjust pointer */
@@ -699,7 +700,7 @@ ip6_input(struct netmsg *msg)
 			icmp6_error(m, ICMP6_PARAM_PROB,
 				    ICMP6_PARAMPROB_HEADER,
 				    (caddr_t)&ip6->ip6_plen - (caddr_t)ip6);
-			return;
+			goto bad2;
 		}
 #ifndef PULLDOWN_TEST
 		/* ip6_hopopts_input() ensures that mbuf is contiguous */
@@ -709,7 +710,7 @@ ip6_input(struct netmsg *msg)
 			sizeof(struct ip6_hbh));
 		if (hbh == NULL) {
 			ip6stat.ip6s_tooshort++;
-			return;
+			goto bad2;
 		}
 #endif
 		nxt = hbh->ip6h_nxt;
@@ -756,16 +757,13 @@ ip6_input(struct netmsg *msg)
 		 */
 		if (ip6_mrouter && ip6_mforward(ip6, m->m_pkthdr.rcvif, m)) {
 			ip6stat.ip6s_cantforward++;
-			m_freem(m);
-			return;
+			goto bad;
 		}
-		if (!ours) {
-			m_freem(m);
-			return;
-		}
+		if (!ours)
+			goto bad;
 	} else if (!ours) {
 		ip6_forward(m, srcrt);
-		return;
+		goto bad2;
 	}	
 
 	ip6 = mtod(m, struct ip6_hdr *);
@@ -840,9 +838,11 @@ ip6_input(struct netmsg *msg)
 
 		nxt = (*inet6sw[ip6_protox[nxt]].pr_input)(&m, &off, nxt);
 	}
-	return;
- bad:
+	goto bad2;
+bad:
 	m_freem(m);
+bad2:
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 /*

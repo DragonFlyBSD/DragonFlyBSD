@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.10 2004/04/05 18:53:03 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.11 2004/04/09 22:34:09 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -56,37 +56,13 @@ netisr_init(void)
 
 SYSINIT(netisr, SI_SUB_PROTO_BEGIN, SI_ORDER_FIRST, netisr_init, NULL);
 
-/*
- * We must construct a custom putport function (which runs in the context
- * of the message originator)
- * Our custom putport must check for self-referential messages, which can
- * occur when the so_upcall routine is called (e.g. nfs).  Self referential
- * messages are simply executed synchronously.
- */
-static int
-netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
-{
-    if (port->mp_td == curthread) {
-	struct netmsg *msg = (void *)lmsg;
-	return(msg->nm_handler(msg));
-    }
-    return(lwkt_default_putport(port, lmsg));
-}
-
 void
 netmsg_service_loop(void *arg)
 {
-    int error;
-    thread_t td;
     struct netmsg *msg;
 
-    td = curthread;
-    td->td_msgport.mp_putport = netmsg_put_port;
-
-    while ((msg = lwkt_waitport(&td->td_msgport, NULL))) {
-	error = msg->nm_handler(msg);
-	lwkt_replymsg(&msg->nm_lmsg, error);
-    }
+    while ((msg = lwkt_waitport(&curthread->td_msgport, NULL)))
+	msg->nm_handler(msg);
 }
 
 /*

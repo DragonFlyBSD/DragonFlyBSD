@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.5 2004/03/24 21:58:44 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.6 2004/04/09 22:34:09 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 #include <net/netisr.h>
 #include <net/netmsg.h>
 
-static int netmsg_pru_dispatcher(struct netmsg *msg);
+static void netmsg_pru_dispatcher(struct netmsg *msg);
 
 int
 so_pru_abort(struct socket *so)
@@ -460,7 +460,7 @@ so_pr_ctloutput(struct socket *so, struct sockopt *sopt)
  * If we convert all the pru_usrreq functions for all the protocols
  * to take a message directly, this layer can go away.
  */
-static int
+static void
 netmsg_pru_dispatcher(struct netmsg *msg)
 {
 	int error;
@@ -607,14 +607,14 @@ netmsg_pru_dispatcher(struct netmsg *msg)
 		panic("unknown netmsg %d", msg->nm_lmsg.ms_cmd);
 		break;
 	}
-	return(error);
+	lwkt_replymsg(&msg->nm_lmsg, error);
 }
 
 /*
  * If we convert all the protosw pr_ functions for all the protocols
  * to take a message directly, this layer can go away.
  */
-int
+void
 netmsg_pr_dispatcher(struct netmsg *msg)
 {
 	int error = 0;
@@ -639,6 +639,5 @@ netmsg_pr_dispatcher(struct netmsg *msg)
 		panic("unknown netmsg %d", msg->nm_lmsg.ms_cmd);
 		break;
 	}
-	return(error);
+	lwkt_replymsg(&msg->nm_lmsg, error);
 }
-

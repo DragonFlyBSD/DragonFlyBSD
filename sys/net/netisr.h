@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.11 2004/03/14 08:21:53 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.12 2004/04/09 22:34:09 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -79,7 +79,7 @@
 
 struct netmsg;
 
-typedef int (*netisr_fn_t)(struct netmsg *);
+typedef void (*netisr_fn_t)(struct netmsg *);
 
 /*
  * Base class.  All net messages must start with the same fields.
@@ -113,7 +113,7 @@ struct netmsg_pr_timeout {
  * for dispatching pr_ functions,
  * until they can be converted to message-passing
  */
-int netmsg_pr_dispatcher(struct netmsg *);
+void netmsg_pr_dispatcher(struct netmsg *);
 
 #define CMD_NETMSG_NEWPKT		(MSG_CMD_NETMSG | 0x0001)
 #define CMD_NETMSG_POLL			(MSG_CMD_NETMSG | 0x0002)

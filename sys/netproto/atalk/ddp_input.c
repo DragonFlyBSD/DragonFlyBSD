@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.6 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.7 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@ at2intr(struct netmsg *msg)
 	 * Phase 2 packet handling 
 	 */
 	ddp_input(m, m->m_pkthdr.rcvif, NULL, 2);
-	return;
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 void
@@ -58,7 +58,7 @@ at1intr(struct netmsg *msg)
 	 */
 	if (m->m_len < SZ_ELAPHDR && ((m = m_pullup(m, SZ_ELAPHDR)) == 0)) {
 		ddpstat.ddps_tooshort++;
-		return;
+		goto out;
 	}
 
 	/*
@@ -73,6 +73,8 @@ at1intr(struct netmsg *msg)
 		bcopy((caddr_t)elhp, (caddr_t)&elh, SZ_ELAPHDR);
 		ddp_input(m, m->m_pkthdr.rcvif, &elh, 1);
 	}
+out:
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return;
 }
 

@@ -34,7 +34,7 @@
  *	@(#)ipx_input.c
  *
  * $FreeBSD: src/sys/netipx/ipx_input.c,v 1.22.2.2 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.8 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_input.c,v 1.9 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -142,7 +142,7 @@ ipxintr(struct netmsg *msg)
 	if ((m->m_flags & M_EXT || m->m_len < sizeof(struct ipx)) &&
 	    (m = m_pullup(m, sizeof(struct ipx))) == 0) {
 		ipxstat.ipxs_toosmall++;
-		return;
+		goto out;
 	}
 
 	/*
@@ -188,7 +188,7 @@ ipxintr(struct netmsg *msg)
 	if (ipx->ipx_pt == IPXPROTO_NETBIOS) {
 		if (ipxnetbios) {
 			ipx_output_type20(m);
-			return;
+			goto out;
 		} else
 			goto bad;
 	}
@@ -223,7 +223,7 @@ ipxintr(struct netmsg *msg)
 			 */
 			if (ipx->ipx_tc < IPX_MAXHOPS) {
 				ipx_forward(m);
-				return;
+				goto out;
 			}
 		}
 	/*
@@ -238,7 +238,7 @@ ipxintr(struct netmsg *msg)
 
 		if (ia == NULL) {
 			ipx_forward(m);
-			return;
+			goto out;
 		}
 	}
 ours:
@@ -255,16 +255,18 @@ ours:
 			switch (ipx->ipx_pt) {
 			case IPXPROTO_SPX:
 				spx_input(m, ipxp);
-				return;
+				goto out;
 			}
 		ipx_input(m, ipxp);
 	} else
 		goto bad;
 
-	return;
+	goto out;
 
 bad:
 	m_freem(m);
+out:
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 void

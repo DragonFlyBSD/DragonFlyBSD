@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.15 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.16 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -248,6 +248,28 @@ tcp_cport(int cpu)
 	return (&tcp_thread[cpu].td_msgport);
 }
 
+/*
+ * We must construct a custom putport function (which runs in the context
+ * of the message originator)
+ * Our custom putport must check for self-referential messages, which can
+ * occur when the so_upcall routine is called (e.g. nfs).  Self referential
+ * messages are simply executed synchronously.
+ */
+static int
+netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
+{
+    /*
+     * If it's a synchronous message for the same thread,
+     * execute it directly.
+     */
+    if (!(lmsg->ms_flags & MSGF_ASYNC) && port->mp_td == curthread)
+	msg->nm_handler((struct netmsg *)msg);
+    else
+        lwkt_default_putport(port, lmsg);
+
+    return (EASYNC);
+}
+
 void
 tcp_thread_init(void)
 {
@@ -256,6 +278,7 @@ tcp_thread_init(void)
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(netmsg_service_loop, NULL, NULL, 
 			&tcp_thread[cpu], 0, cpu, "tcp_thread %d", cpu);
+		tcp_thread[cpu].td_msgport.mp_putport = netmsg_put_port;
 	}
 }
 
@@ -267,5 +290,6 @@ udp_thread_init(void)
 	for (cpu = 0; cpu < ncpus2; cpu++) {
 		lwkt_create(netmsg_service_loop, NULL, NULL,
 			&udp_thread[cpu], 0, cpu, "udp_thread %d", cpu);
+		udp_thread[cpu].td_msgport.mp_putport = netmsg_put_port;
 	}
 }

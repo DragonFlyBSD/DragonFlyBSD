@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.7 2004/03/06 01:58:54 hsu Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.8 2004/04/09 22:34:09 hsu Exp $
  */
 
 /*
@@ -58,6 +58,9 @@
 #include <sys/mbuf.h>
 #include <sys/malloc.h>
 #include <sys/socket.h>
+
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -114,6 +117,7 @@ Static void usbintr(struct netmsg *msg)
 
 	splx(s);
 
+	lwkt_replymsg(&msg->nm_lmsg, 0);
 	return;
 }
 

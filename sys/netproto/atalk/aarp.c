@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.7 2004/03/06 01:58:56 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.8 2004/04/09 22:34:10 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -282,7 +282,7 @@ aarpintr(struct netmsg *msg)
     switch( ntohs( ar->ar_pro )) {
     case ETHERTYPE_AT :
 	at_aarpinput( ac, m );
-	return;
+	goto out2;
 
     default:
 	break;
@@ -290,6 +290,8 @@ aarpintr(struct netmsg *msg)
 
 out:
     m_freem( m );
+out2:
+    lwkt_replymsg(&msg->nm_lmsg, 0);
 }
 
 static void

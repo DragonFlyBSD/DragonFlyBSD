@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.16 2004/04/07 09:36:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.17 2004/04/09 22:34:10 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -337,7 +337,7 @@ struct netmsg_transport_packet {
 	struct sockaddr_in	nm_nexthop;
 };
 
-static int
+static void
 transport_processing_handler(struct netmsg *msg0)
 {
 	struct netmsg_transport_packet *msg =
@@ -348,8 +348,7 @@ transport_processing_handler(struct netmsg *msg0)
 	ip = mtod(msg->nm_mbuf, struct ip *);
 	nexthop = msg->nm_hasnexthop ? &msg->nm_nexthop : NULL;
 	transport_processing_oncpu(msg->nm_mbuf, msg->nm_hlen, ip, nexthop);
-
-	return (0);
+	lwkt_replymsg(&msg0->nm_lmsg, 0);
 }
 
 /*
@@ -357,9 +356,9 @@ transport_processing_handler(struct netmsg *msg0)
  * try to reassemble.  Process options.  Pass to next level.
  */
 void
-ip_input(struct netmsg *msg)
+ip_input(struct netmsg *msg0)
 {
-	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+	struct mbuf *m = ((struct netmsg_packet *)msg0)->nm_packet;
 	struct ip *ip;
 	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;
@@ -1006,9 +1005,12 @@ DPRINTF(("ip_input: no SP, packet discarded\n"));/*XXX*/
 	} else {
 		transport_processing_oncpu(m, hlen, ip, args.next_hop);
 	}
+	lwkt_replymsg(&msg0->nm_lmsg, 0);
 	return;
+
 bad:
 	m_freem(m);
+	lwkt_replymsg(&msg0->nm_lmsg, 0);
 }
 
 /*
