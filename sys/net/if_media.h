@@ -1,6 +1,6 @@
 /*	$NetBSD: if_media.h,v 1.3 1997/03/26 01:19:27 thorpej Exp $	*/
 /* $FreeBSD: src/sys/net/if_media.h,v 1.9.2.4 2002/07/30 06:22:40 imp Exp $ */
-/* $DragonFly: src/sys/net/if_media.h,v 1.5 2004/05/06 20:46:37 dillon Exp $ */
+/* $DragonFly: src/sys/net/if_media.h,v 1.6 2004/07/28 08:47:55 joerg Exp $ */
 
 /*
  * Copyright (c) 1997
@@ -188,6 +188,8 @@ int	ifmedia_ioctl(struct ifnet *ifp, struct ifreq *ifr,
 #define	IFM_IEEE80211_OFDM48	16	/* OFDM 48Mbps */
 #define	IFM_IEEE80211_OFDM54	17	/* OFDM 54Mbps */
 #define	IFM_IEEE80211_OFDM72	18	/* OFDM 72Mbps */
+#define	IFM_IEEE80211_DS354k	19	/* Direct Sequence 354Kbps */
+#define	IFM_IEEE80211_DS512k	20	/* Direct Sequence 512Kbps */
 
 #define	IFM_IEEE80211_ADHOC	0x00000100	/* Operate in Adhoc mode */
 #define	IFM_IEEE80211_HOSTAP	0x00000200	/* Operate in Host AP mode */
