@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.14 2004/11/12 00:09:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.15 2005/01/08 18:57:48 dillon Exp $
  *
  */
 #include <sys/param.h>
@@ -408,6 +408,7 @@ smbfs_getpages(struct vop_getpages_args *ap)
 		ap->a_reqpage);
 #else
 	int i, error, nextoff, size, toff, npages, count;
+	int doclose;
 	struct uio uio;
 	struct iovec iov;
 	vm_offset_t kva;
@@ -450,7 +451,23 @@ smbfs_getpages(struct vop_getpages_args *ap)
 	uio.uio_rw = UIO_READ;
 	uio.uio_td = td;
 
-	error = smb_read(smp->sm_share, np->n_fid, &uio, &scred);
+	/*
+	 * This is kinda nasty.  Since smbfs is physically closing the
+	 * fid on close(), we have to reopen it if necessary.  There are
+	 * other races here too, such as if another process opens the same
+	 * file while we are blocked in read. XXX
+	 */
+	error = 0;
+	doclose = 0;
+	if (np->n_opencount == 0) {
+		error = smbfs_smb_open(np, SMB_AM_OPENREAD, &scred);
+		if (error == 0)
+			doclose = 1;
+	}
+	if (error == 0)
+		error = smb_read(smp->sm_share, np->n_fid, &uio, &scred);
+	if (doclose)
+		smbfs_smb_close(smp->sm_share, np->n_fid, NULL, &scred);
 	pmap_qremove(kva, npages);
 
 	relpbuf(bp, &smbfs_pbuf_freecnt);
@@ -540,6 +557,7 @@ smbfs_putpages(struct vop_putpages_args *ap)
 	vm_offset_t kva;
 	struct buf *bp;
 	int i, npages, count;
+	int doclose;
 	int *rtvals;
 	struct smbmount *smp;
 	struct smbnode *np;
@@ -576,7 +594,25 @@ smbfs_putpages(struct vop_putpages_args *ap)
 	SMBVDEBUG("ofs=%d,resid=%d\n",(int)uio.uio_offset, uio.uio_resid);
 
 	smb_makescred(&scred, td, cred);
-	error = smb_write(smp->sm_share, np->n_fid, &uio, &scred);
+
+	/*
+	 * This is kinda nasty.  Since smbfs is physically closing the
+	 * fid on close(), we have to reopen it if necessary.  There are
+	 * other races here too, such as if another process opens the same
+	 * file while we are blocked in read, or the file is open read-only
+	 * XXX
+	 */
+	error = 0;
+	doclose = 0;
+	if (np->n_opencount == 0) {
+		error = smbfs_smb_open(np, SMB_AM_OPENRW, &scred);
+		if (error == 0)
+			doclose = 1;
+	}
+	if (error == 0)
+		error = smb_write(smp->sm_share, np->n_fid, &uio, &scred);
+	if (doclose)
+		smbfs_smb_close(smp->sm_share, np->n_fid, NULL, &scred);
 /*	VOP_CLOSE(vp, FWRITE, cred, td);*/
 	SMBVDEBUG("paged write done: %d\n", error);
 
