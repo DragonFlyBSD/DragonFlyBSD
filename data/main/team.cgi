@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.26 2005/02/01 03:46:27 drhodus Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.27 2005/02/01 03:49:33 drhodus Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -43,6 +43,10 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 
 <tr><td valign="top"><a href="mailto:joe 'at' angerson 'dot' com">Joe Angerson</a></td>
 <td valign="top">The DragonFly Mascot Artwork</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:davidxu 'at' dragonflybsd 'dot' org">David Xu</a></td>
+<td valign="top">1:1 Threading library</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:jcoombs 'at' gwi 'dot' net">Joshua Coombs</a></td>
