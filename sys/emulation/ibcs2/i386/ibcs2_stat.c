@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.6 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.7 2003/08/11 15:40:52 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -84,6 +84,10 @@ cvt_statfs(sp, buf, len)
 {
 	struct ibcs2_statfs ssfs;
 
+	if (len < 0)
+		return (EINVAL);
+	else if (len > sizeof(ssfs))
+		len = sizeof(ssfs);
 	bzero(&ssfs, sizeof ssfs);
 	ssfs.f_fstyp = 0;
 	ssfs.f_bsize = sp->f_bsize;
