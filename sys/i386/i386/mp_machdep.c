@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.24 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.25 2004/03/05 19:29:17 hsu Exp $
  */
 
 #include "opt_cpu.h"
@@ -1940,7 +1940,7 @@ default_mp_table(int type)
 static int
 start_all_aps(u_int boot_addr)
 {
-	int     x, i, pg;
+	int     x, i, pg, n;
 	u_char  mpbiosreason;
 	u_long  mpbioswarmvec;
 	struct mdglobaldata *gd;
@@ -2049,6 +2049,13 @@ start_all_aps(u_int boot_addr)
 
 	/* set ncpus to 1 + highest logical cpu.  Not all may have come up */
 	ncpus = x;
+
+	/* round ncpus down to power of 2 */
+	n = ncpus;
+	while (n >>= 1)
+		++ncpus2_shift;
+	ncpus2 = 1 << ncpus2_shift;
+	ncpus2_mask = ncpus2 - 1;
 
 	/* build our map of 'other' CPUs */
 	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);

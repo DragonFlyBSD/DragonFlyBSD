@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.17 2004/01/30 05:42:18 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.18 2004/03/05 19:29:17 hsu Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -84,6 +84,9 @@ extern int bootverbose;		/* nonzero to print verbose messages */
 extern int maxusers;		/* system tune hint */
 
 extern int ncpus;		/* total number of cpus (real, hyper, virtual)*/
+extern int ncpus2;		/* ncpus rounded down to power of 2 */
+extern int ncpus2_shift;	/* log base 2 of ncpus2 */
+extern int ncpus2_mask;		/* ncpus2 - 1 */
 
 #ifdef	INVARIANTS		/* The option is always available */
 #define	KASSERT(exp,msg)	do { if (!(exp)) panic msg; } while (0)
