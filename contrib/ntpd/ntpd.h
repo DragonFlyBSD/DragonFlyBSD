@@ -1,4 +1,4 @@
-/*	$OpenBSD: ntpd.h,v 1.33 2004/08/12 16:33:59 henning Exp $ */
+/*	$OpenBSD: src/usr.sbin/ntpd/ntpd.h,v 1.41 2004/10/22 21:17:37 henning Exp $ */
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -21,6 +21,8 @@
 #include <sys/socket.h>
 #include <sys/queue.h>
 #include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <stdarg.h>
@@ -31,8 +33,6 @@
 #define	CONFFILE	"/etc/ntpd.conf"
 
 #define	READ_BUF_SIZE		65535
-#define	IDX2PEER_RESERVE	5
-#define	PFD_RESERVE		10
 
 #define	NTPD_OPT_VERBOSE	0x0001
 #define	NTPD_OPT_VERBOSE2	0x0002
@@ -50,6 +50,7 @@
 
 #define	QUERYTIME_MAX		15	/* single query might take n secs max */
 #define	OFFSET_ARRAY_SIZE	8
+#define	SETTIME_MIN_OFFSET	180	/* min offset for settime at start */
 
 enum client_state {
 	STATE_NONE,
@@ -82,6 +83,7 @@ struct ntp_status {
 	u_int32_t	refid;
 	double		reftime;
 	u_int8_t	poll;
+	u_int8_t	stratum;
 };
 
 struct ntp_offset {
@@ -111,8 +113,9 @@ struct ntp_peer {
 struct ntpd_conf {
 	TAILQ_HEAD(listen_addrs, listen_addr)	listen_addrs;
 	TAILQ_HEAD(ntp_peers, ntp_peer)		ntp_peers;
-	u_int8_t				opts;
 	u_int8_t				listen_all;
+	u_int8_t				settime;
+	u_int8_t				debug;
 	struct ntp_status			status;
 };
 
@@ -151,6 +154,7 @@ struct imsgbuf {
 enum imsg_type {
 	IMSG_NONE,
 	IMSG_ADJTIME,
+	IMSG_SETTIME,
 	IMSG_HOST_DNS
 };
 
@@ -191,10 +195,10 @@ int		 msgbuf_write(struct msgbuf *);
 void	 imsg_init(struct imsgbuf *, int);
 int	 imsg_read(struct imsgbuf *);
 int	 imsg_get(struct imsgbuf *, struct imsg *);
-int	 imsg_compose(struct imsgbuf *, int, u_int32_t, void *, u_int16_t);
-int	 imsg_compose_pid(struct imsgbuf *, int, pid_t, void *, u_int16_t);
-struct buf *imsg_create(struct imsgbuf *, int, u_int32_t, u_int16_t);
-struct buf *imsg_create_pid(struct imsgbuf *, int, pid_t, u_int16_t);
+int	 imsg_compose(struct imsgbuf *, enum imsg_type, u_int32_t, pid_t,
+	    void *, u_int16_t);
+struct buf	*imsg_create(struct imsgbuf *, enum imsg_type, u_int32_t, pid_t,
+		    u_int16_t);
 int	 imsg_add(struct buf *, void *, u_int16_t);
 int	 imsg_close(struct imsgbuf *, struct buf *);
 void	 imsg_free(struct imsg *);
@@ -202,11 +206,11 @@ void	 imsg_free(struct imsg *);
 /* ntp.c */
 pid_t	 ntp_main(int[2], struct ntpd_conf *);
 void	 ntp_adjtime(void);
+void	 ntp_settime(double);
 void	 ntp_host_dns(char *, u_int32_t);
 
 /* parse.y */
 int	 parse_config(char *, struct ntpd_conf *);
-int	 cmdline_symset(char *);
 
 /* config.c */
 int		 host(const char *, struct ntp_addr **);
@@ -227,7 +231,7 @@ int	client_peer_init(struct ntp_peer *);
 int	client_addr_init(struct ntp_peer *);
 int	client_nextaddr(struct ntp_peer *);
 int	client_query(struct ntp_peer *);
-int	client_dispatch(struct ntp_peer *);
+int	client_dispatch(struct ntp_peer *, u_int8_t);
 
 /* util.c */
 double			gettime(void);
