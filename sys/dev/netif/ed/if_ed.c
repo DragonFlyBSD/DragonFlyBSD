@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.224 2003/12/08 07:54:12 obrien Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.15 2004/07/23 07:16:25 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.16 2004/09/14 23:01:20 joerg Exp $
  */
 
 /*
@@ -1712,7 +1712,7 @@ ed_attach(device_t dev)
 	struct ed_softc *sc = device_get_softc(dev);
 	struct ifnet *ifp = &sc->arpcom.ac_if;
 
-	callout_handle_init(&sc->tick_ch);
+	callout_init(&sc->ed_timer);
 	/*
 	 * Set interface to stopped condition (reset)
 	 */
@@ -1812,8 +1812,7 @@ ed_stop(sc)
 	int     n = 5000;
 
 #ifndef ED_NO_MIIBUS
-	untimeout(ed_tick, sc, sc->tick_ch);
-	callout_handle_init(&sc->tick_ch);
+	callout_stop(&sc->ed_timer);
 #endif
 	if (sc->gone)
 		return;
@@ -1858,16 +1857,14 @@ ed_tick(arg)
 	struct mii_data *mii;
 	int s;
 
-	if (sc->gone) {
-		callout_handle_init(&sc->tick_ch);
+	if (sc->gone)
 		return;
-	}
 	s = splimp();
 	if (sc->miibus != NULL) {
 		mii = device_get_softc(sc->miibus);
 		mii_tick(mii);
 	}
-	sc->tick_ch = timeout(ed_tick, sc, hz);
+	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
 	splx(s);
 }
 #endif
@@ -2032,8 +2029,7 @@ ed_init(xsc)
 	ed_start(ifp);
 
 #ifndef ED_NO_MIIBUS
-	untimeout(ed_tick, sc, sc->tick_ch);
-	sc->tick_ch = timeout(ed_tick, sc, hz);
+	callout_reset(&sc->ed_timer, hz, ed_tick, sc);
 #endif
 	(void) splx(s);
 }

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_edvar.h,v 1.16 2003/10/31 18:31:58 brooks Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.5 2004/02/13 21:15:12 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_edvar.h,v 1.6 2004/09/14 23:01:20 joerg Exp $
  */
 
 #ifndef SYS_DEV_NETIF_ED_EDVAR_H
@@ -54,7 +54,7 @@ struct ed_softc {
 	device_t miibus;	/* MII bus for cards with MII. */
 	void	(*mii_writebits)(struct ed_softc *, u_int, int);
 	u_int	(*mii_readbits)(struct ed_softc *, int);
-	struct callout_handle tick_ch; /* Callout handle for ed_tick */
+	struct callout ed_timer; /* Callout handle for ed_tick */
 
 	int	nic_offset;	/* NIC (DS8390) I/O bus address offset */
 	int	asic_offset;	/* ASIC I/O bus address offset */
