@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/pim.h,v 1.1.2.1 2003/08/24 17:04:44 hsu Exp $
- * $DragonFly: src/sys/netinet/pim.h,v 1.2 2004/03/08 07:38:20 hsu Exp $
+ * $DragonFly: src/sys/netinet/pim.h,v 1.3 2004/09/23 16:44:32 joerg Exp $
  */
 
 #ifndef _NETINET_PIM_H_
@@ -45,31 +45,21 @@
 
 #include <sys/types.h>
 
-#ifndef _PIM_VT
-#ifndef BYTE_ORDER
-# error BYTE_ORDER is not defined!
-#endif
-#if (BYTE_ORDER != BIG_ENDIAN) && (BYTE_ORDER != LITTLE_ENDIAN)
-# error BYTE_ORDER must be defined to either BIG_ENDIAN or LITTLE_ENDIAN
-#endif
-#endif /* ! _PIM_VT */
-
 /*
  * PIM packet header
  */
 struct pim {
 #ifdef _PIM_VT
 	uint8_t		pim_vt;		/* PIM version and message type	*/
-#else /* ! _PIM_VT   */
-#if BYTE_ORDER == BIG_ENDIAN
+#elif _BYTE_ORDER == _BIG_ENDIAN
 	u_int		pim_vers:4,	/* PIM protocol version		*/
 			pim_type:4;	/* PIM message type		*/
-#endif
-#if BYTE_ORDER == LITTLE_ENDIAN
+#elif _BYTE_ORDER == _LITTLE_ENDIAN
 	u_int		pim_type:4,	/* PIM message type		*/
 			pim_vers:4;	/* PIM protocol version		*/
+#else
+#error "Byte order not implemented"
 #endif
-#endif /* ! _PIM_VT  */
 	uint8_t		pim_reserved;	/* Reserved			*/
 	uint16_t	pim_cksum;	/* IP-style checksum		*/
 };

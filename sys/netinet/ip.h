@@ -32,7 +32,7 @@
  *
  *	@(#)ip.h	8.2 (Berkeley) 6/1/94
  * $FreeBSD: src/sys/netinet/ip.h,v 1.17 1999/12/22 19:13:20 shin Exp $
- * $DragonFly: src/sys/netinet/ip.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip.h,v 1.3 2004/09/23 16:44:32 joerg Exp $
  */
 
 #ifndef _NETINET_IP_H_
@@ -50,16 +50,15 @@
 struct ip {
 #ifdef _IP_VHL
 	u_char	ip_vhl;			/* version << 4 | header length >> 2 */
-#else
-#if BYTE_ORDER == LITTLE_ENDIAN
+#elif _BYTE_ORDER == _LITTLE_ENDIAN
 	u_int	ip_hl:4,		/* header length */
 		ip_v:4;			/* version */
-#endif
-#if BYTE_ORDER == BIG_ENDIAN
+#elif _BYTE_ORDER == _BIG_ENDIAN
 	u_int	ip_v:4,			/* version */
 		ip_hl:4;		/* header length */
+#else
+#error "Byte order not implemented"
 #endif
-#endif /* not _IP_VHL */
 	u_char	ip_tos;			/* type of service */
 	u_short	ip_len;			/* total length */
 	u_short	ip_id;			/* identification */
@@ -145,13 +144,14 @@ struct	ip_timestamp {
 	u_char	ipt_code;		/* IPOPT_TS */
 	u_char	ipt_len;		/* size of structure (variable) */
 	u_char	ipt_ptr;		/* index of current entry */
-#if BYTE_ORDER == LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 	u_int	ipt_flg:4,		/* flags, see below */
 		ipt_oflw:4;		/* overflow counter */
-#endif
-#if BYTE_ORDER == BIG_ENDIAN
+#elif _BYTE_ORDER == _BIG_ENDIAN
 	u_int	ipt_oflw:4,		/* overflow counter */
 		ipt_flg:4;		/* flags, see below */
+#else
+#error "Byte order not implemented"
 #endif
 	union ipt_timestamp {
 		n_long	ipt_time[1];

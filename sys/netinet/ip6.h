@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip6.h,v 1.2.2.2 2001/07/03 11:01:46 ume Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip6.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip6.h,v 1.3 2004/09/23 16:44:32 joerg Exp $	*/
 /*	$KAME: ip6.h,v 1.18 2001/03/29 05:34:30 itojun Exp $	*/
 
 /*
@@ -98,14 +98,14 @@ struct ip6_hdr {
 #define IPV6_VERSION		0x60
 #define IPV6_VERSION_MASK	0xf0
 
-#if BYTE_ORDER == BIG_ENDIAN
+#if _BYTE_ORDER == _BIG_ENDIAN
 #define IPV6_FLOWINFO_MASK	0x0fffffff	/* flow info (28 bits) */
 #define IPV6_FLOWLABEL_MASK	0x000fffff	/* flow label (20 bits) */
-#else
-#if BYTE_ORDER == LITTLE_ENDIAN
+#elif _BYTE_ORDER == _LITTLE_ENDIAN
 #define IPV6_FLOWINFO_MASK	0xffffff0f	/* flow info (28 bits) */
 #define IPV6_FLOWLABEL_MASK	0xffff0f00	/* flow label (20 bits) */
-#endif /* LITTLE_ENDIAN */
+#else
+#error "Byte order not implemented"
 #endif
 #if 1
 /* ECN bits proposed by Sally Floyd */
@@ -196,15 +196,17 @@ struct ip6_frag {
 	u_int32_t ip6f_ident;		/* identification */
 } __attribute__((__packed__));
 
-#if BYTE_ORDER == BIG_ENDIAN
+#if _BYTE_ORDER == _BIG_ENDIAN
 #define IP6F_OFF_MASK		0xfff8	/* mask out offset from _offlg */
 #define IP6F_RESERVED_MASK	0x0006	/* reserved bits in ip6f_offlg */
 #define IP6F_MORE_FRAG		0x0001	/* more-fragments flag */
-#else /* BYTE_ORDER == LITTLE_ENDIAN */
+#elif _BYTE_ORDER == _LITTE_ENDIAN
 #define IP6F_OFF_MASK		0xf8ff	/* mask out offset from _offlg */
 #define IP6F_RESERVED_MASK	0x0600	/* reserved bits in ip6f_offlg */
 #define IP6F_MORE_FRAG		0x0100	/* more-fragments flag */
-#endif /* BYTE_ORDER == LITTLE_ENDIAN */
+#else
+#error "Byte order not implemented"
+#endif
 
 /*
  * Internet implementation parameters.

@@ -32,7 +32,7 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp.h,v 1.3 2004/09/23 16:44:32 joerg Exp $
  */
 
 #ifndef _NETINET_TCP_H_
@@ -53,13 +53,14 @@ struct tcphdr {
 	u_short	th_dport;		/* destination port */
 	tcp_seq	th_seq;			/* sequence number */
 	tcp_seq	th_ack;			/* acknowledgement number */
-#if BYTE_ORDER == LITTLE_ENDIAN
+#if _BYTE_ORDER == _LITTLE_ENDIAN
 	u_int	th_x2:4,		/* (unused) */
 		th_off:4;		/* data offset */
-#endif
-#if BYTE_ORDER == BIG_ENDIAN
+#elif _BYTE_ORDER == _BIG_ENDIAN
 	u_int	th_off:4,		/* data offset */
 		th_x2:4;		/* (unused) */
+#else
+#error "Byte order not implemented"
 #endif
 	u_char	th_flags;
 #define	TH_FIN	0x01
