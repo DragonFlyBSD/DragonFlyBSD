@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kgmon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/kgmon/kgmon.c,v 1.9 1999/08/28 01:16:42 peter Exp $
- * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.5 2004/04/21 21:29:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -154,7 +154,7 @@ main(int argc, char **argv)
 		reset(&kvmvars);
 	if (accessmode == O_RDWR)
 		setprof(&kvmvars, disp);
-	(void)fprintf(stdout, "kgmon: kernel profiling is %s.\n",
+	fprintf(stdout, "kgmon: kernel profiling is %s.\n",
 		      disp == GMON_PROF_OFF ? "off" :
 		      disp == GMON_PROF_HIRES ? "running (high resolution)" :
 		      disp == GMON_PROF_ON ? "running" :
@@ -191,10 +191,10 @@ openfiles(char *system, char *kmemf, struct kvmvars *kvp)
 		    (pflag &&
 		     (state == GMON_PROF_HIRES || state == GMON_PROF_ON))))
 			return (O_RDONLY);
-		(void)seteuid(0);
+		seteuid(0);
 		if (sysctl(mib, 3, NULL, NULL, &state, size) >= 0)
 			return (O_RDWR);
-		(void)seteuid(getuid());
+		seteuid(getuid());
 		kern_readonly(state);
 		return (O_RDONLY);
 	}
@@ -224,18 +224,17 @@ openfiles(char *system, char *kmemf, struct kvmvars *kvp)
 void
 kern_readonly(int mode)
 {
-
-	(void)fprintf(stderr, "kgmon: kernel read-only: ");
+	fprintf(stderr, "kgmon: kernel read-only: ");
 	if (pflag && (mode == GMON_PROF_HIRES || mode == GMON_PROF_ON))
-		(void)fprintf(stderr, "data may be inconsistent\n");
+		fprintf(stderr, "data may be inconsistent\n");
 	if (rflag)
-		(void)fprintf(stderr, "-r supressed\n");
+		fprintf(stderr, "-r supressed\n");
 	if (Bflag)
-		(void)fprintf(stderr, "-B supressed\n");
+		fprintf(stderr, "-B supressed\n");
 	if (bflag)
-		(void)fprintf(stderr, "-b supressed\n");
+		fprintf(stderr, "-b supressed\n");
 	if (hflag)
-		(void)fprintf(stderr, "-h supressed\n");
+		fprintf(stderr, "-h supressed\n");
 	rflag = Bflag = bflag = hflag = 0;
 }
 
@@ -282,12 +281,12 @@ setprof(struct kvmvars *kvp, int state)
 			goto bad;
 		if (oldstate == state)
 			return;
-		(void)seteuid(0);
+		seteuid(0);
 		if (sysctl(mib, 3, NULL, NULL, &state, sz) >= 0) {
-			(void)seteuid(getuid());
+			seteuid(getuid());
 			return;
 		}
-		(void)seteuid(getuid());
+		seteuid(getuid());
 	} else if (kvm_write(kvp->kd, (u_long)&p->state, (void *)&state, sz)
 	    == sz)
 		return;
@@ -302,7 +301,7 @@ bad:
 void
 dumpstate(struct kvmvars *kvp)
 {
-	register FILE *fp;
+	FILE *fp;
 	struct rawarc rawarc;
 	struct tostruct *tos;
 	u_long frompc;
@@ -469,7 +468,7 @@ reset(struct kvmvars *kvp)
 			errx(15, "tos zero: %s", kvm_geterr(kvp->kd));
 		return;
 	}
-	(void)seteuid(0);
+	seteuid(0);
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_PROF;
 	mib[2] = GPROF_COUNT;
@@ -481,6 +480,6 @@ reset(struct kvmvars *kvp)
 	mib[2] = GPROF_TOS;
 	if (sysctl(mib, 3, NULL, NULL, zbuf, kvp->gpm.tossize) < 0)
 		err(15, "tos zero");
-	(void)seteuid(getuid());
+	seteuid(getuid());
 	free(zbuf);
 }
