@@ -505,9 +505,11 @@ extern char *symtab_to_filename PARAMS ((struct symtab *));
 
 extern int read_relative_register_raw_bytes PARAMS ((int, char *));
 
+#if 0
 /* From readline (but not in any readline .h files).  */
 
 extern char *tilde_expand PARAMS ((char *));
+#endif
 
 /* Control types for commands */
 
