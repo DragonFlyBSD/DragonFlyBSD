@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.23 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.11 2003/09/03 16:30:12 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.12 2003/09/22 20:04:33 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -498,7 +498,7 @@ restart:
 		if ((atomic && resid > so->so_snd.sb_hiwat) ||
 		    clen > so->so_snd.sb_hiwat)
 			snderr(EMSGSIZE);
-		if (space < resid + clen &&
+		if (space < resid + clen && uio &&
 		    (atomic || space < so->so_snd.sb_lowat || space < clen)) {
 			if (so->so_state & SS_NBIO)
 				snderr(EWOULDBLOCK);
