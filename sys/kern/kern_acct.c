@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.11 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.12 2004/09/17 01:12:30 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -82,8 +82,8 @@ static void	acctwatch (void *);
  * Accounting callout handle used for periodic scheduling of
  * acctwatch.
  */
-static struct	callout_handle acctwatch_handle
-    = CALLOUT_HANDLE_INITIALIZER(&acctwatch_handle);
+static struct	callout acctwatch_handle;
+SYSINIT(acct, SI_SUB_DRIVERS, SI_ORDER_ANY, callout_init, &acctwatch_handle);
 
 /*
  * Accounting vnode pointer, and saved vnode pointer.
@@ -148,7 +148,7 @@ acct(uap)
 	 * close the file, and (if no new file was specified, leave).
 	 */
 	if (acctp != NULLVP || savacctp != NULLVP) {
-		untimeout(acctwatch, NULL, acctwatch_handle);
+		callout_stop(&acctwatch_handle);
 		error = vn_close((acctp != NULLVP ? acctp : savacctp),
 		    FWRITE | O_APPEND, td);
 		acctp = savacctp = NULLVP;
@@ -329,5 +329,5 @@ acctwatch(a)
 			log(LOG_NOTICE, "Accounting suspended\n");
 		}
 	}
-	acctwatch_handle = timeout(acctwatch, NULL, acctchkfreq * hz);
+	callout_reset(&acctwatch_handle, acctchkfreq * hz, acctwatch, NULL);
 }
