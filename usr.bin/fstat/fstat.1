@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)fstat.1	8.3 (Berkeley) 2/25/94
 .\" $FreeBSD: src/usr.bin/fstat/fstat.1,v 1.9.2.7 2002/06/21 15:26:59 charnier Exp $
-.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.2 2003/06/17 04:29:26 dillon Exp $
+.\" $DragonFly: src/usr.bin/fstat/fstat.1,v 1.3 2005/01/31 18:05:09 dillon Exp $
 .\"
 .Dd February 25, 1994
 .Dt FSTAT 1
@@ -41,7 +41,7 @@
 .Nd file status
 .Sh SYNOPSIS
 .Nm
-.Op Fl fmnv
+.Op Fl fmnvw
 .Op Fl M Ar core
 .Op Fl N Ar system
 .Op Fl p Ar pid
@@ -101,6 +101,8 @@ is running.  This
 is normal and  unavoidable since the rest of the system is running while
 .Nm
 itself is running.
+.It Fl w
+Wide mode.  Use a wider field for command names and file paths.
 .It Ar
 Restrict reports to the specified files.
 .El
@@ -133,11 +135,12 @@ In this case the remainder of the line doesn't
 correspond to the remaining headers -- the format of the line
 is described later under
 .Sx Sockets .
-.It Li MOUNT
+.It Li PATH
 If the
 .Fl n
 flag wasn't specified, this header is present and is the
-pathname that the filesystem the file resides in is mounted on.
+pathname representing the file.  If no path can be extracted, the mount
+point path will be displayed.
 .It Li DEV
 If the
 .Fl n

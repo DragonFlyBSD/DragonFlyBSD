@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.9 2004/09/03 20:37:58 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.10 2005/01/31 18:05:09 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -58,6 +58,7 @@
 #include <vfs/ufs/quota.h>
 #include <vfs/ufs/inode.h>
 #include <sys/mount.h>
+#include <sys/namecache.h>
 #include <nfs/nfsproto.h>
 #include <nfs/rpcv2.h>
 #include <nfs/nfs.h>
@@ -111,6 +112,10 @@ int 	checkfile; /* true if restricting to particular files or filesystems */
 int	nflg;	/* (numerical) display f.s. and rdev as dev_t */
 int	vflg;	/* display errors in locating kernel data objects etc... */
 int	mflg;	/* include memory-mapped files */
+int	wflg_mnt = 16;
+int	wflg_cmd = 10;
+int	pid_width = 5;
+int	ino_width = 6;
 
 
 struct file **ofiles;	/* buffer of pointers to file structures */
@@ -129,10 +134,10 @@ kvm_t *kd;
 
 void dofiles(struct kinfo_proc *kp);
 void dommap(struct kinfo_proc *kp);
-void vtrans(struct vnode *vp, int i, int flag);
+void vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag);
 int  ufs_filestat(struct vnode *vp, struct filestat *fsp);
 int  nfs_filestat(struct vnode *vp, struct filestat *fsp);
-char *getmnton(struct mount *m);
+char *getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp);
 void pipetrans(struct pipe *pi, int i, int flag);
 void socktrans(struct socket *sock, int i);
 void getinetproto(int number);
@@ -153,7 +158,7 @@ main(int argc, char **argv)
 	arg = 0;
 	what = KERN_PROC_ALL;
 	nlistf = memf = NULL;
-	while ((ch = getopt(argc, argv, "fmnp:u:vN:M:")) != -1)
+	while ((ch = getopt(argc, argv, "fmnp:u:vwN:M:")) != -1)
 		switch((char)ch) {
 		case 'f':
 			fsflg = 1;
@@ -190,6 +195,10 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			vflg = 1;
+			break;
+		case 'w':
+			wflg_mnt = 40;
+			wflg_cmd = 16;
 			break;
 		case '?':
 		default:
@@ -230,11 +239,16 @@ main(int argc, char **argv)
 	if ((p = kvm_getprocs(kd, what, arg, &cnt)) == NULL)
 		errx(1, "%s", kvm_geterr(kd));
 	if (nflg)
-		printf("%s",
-"USER     CMD          PID   FD  DEV    INUM       MODE SZ|DV R/W");
+		printf("USER     %-*.*s %*.*s   FD DEV              %*.*s MODE   SZ|DV R/W", 
+			wflg_cmd, wflg_cmd, "CMD",
+			pid_width, pid_width, "PID",
+			ino_width, ino_width, "INUM");
 	else
-		printf("%s",
-"USER     CMD          PID   FD MOUNT      INUM MODE         SZ|DV R/W");
+		printf("USER     %-*.*s %*.*s   FD %-*.*s %*.*s MODE           SZ|DV R/W", 
+			wflg_cmd, wflg_cmd, "CMD", 
+			pid_width, pid_width, "PID",
+			wflg_mnt, wflg_mnt, "PATH",
+			ino_width, ino_width, "INUM");
 	if (checkfile && fsflg == 0)
 		printf(" NAME\n");
 	else
@@ -253,7 +267,8 @@ main(int argc, char **argv)
 char	*Uname, *Comm;
 int	Pid;
 
-#define PREFIX(i) printf("%-8.8s %-10s %5d", Uname, Comm, Pid); \
+#define PREFIX(i) \
+	printf("%-8.8s %-*s %*d", Uname, wflg_cmd, Comm, pid_width, Pid); \
 	switch(i) { \
 	case TEXT: \
 		printf(" text"); \
@@ -303,21 +318,21 @@ dofiles(struct kinfo_proc *kp)
 	 * root directory vnode, if one
 	 */
 	if (filed.fd_rdir)
-		vtrans(filed.fd_rdir, RDIR, FREAD);
+		vtrans(filed.fd_rdir, filed.fd_nrdir, RDIR, FREAD);
 	/*
 	 * current working directory vnode
 	 */
-	vtrans(filed.fd_cdir, CDIR, FREAD);
+	vtrans(filed.fd_cdir, filed.fd_ncdir, CDIR, FREAD);
 	/*
 	 * ktrace vnode, if one
 	 */
 	if (p->p_tracep)
-		vtrans(p->p_tracep, TRACE, FREAD|FWRITE);
+		vtrans(p->p_tracep, NULL, TRACE, FREAD|FWRITE);
 	/*
 	 * text vnode, if one
 	 */
 	if (p->p_textvp)
-		vtrans(p->p_textvp, TEXT, FREAD);
+		vtrans(p->p_textvp, NULL, TEXT, FREAD);
 	/*
 	 * open files
 	 */
@@ -341,9 +356,10 @@ dofiles(struct kinfo_proc *kp)
 			    i, (void *)ofiles[i], Pid);
 			continue;
 		}
-		if (file.f_type == DTYPE_VNODE)
-			vtrans((struct vnode *)file.f_data, i, file.f_flag);
-		else if (file.f_type == DTYPE_SOCKET) {
+		if (file.f_type == DTYPE_VNODE) {
+			vtrans((struct vnode *)file.f_data, file.f_ncp, i, 
+				file.f_flag);
+		} else if (file.f_type == DTYPE_SOCKET) {
 			if (checkfile == 0)
 				socktrans((struct socket *)file.f_data, i);
 		}
@@ -357,8 +373,8 @@ dofiles(struct kinfo_proc *kp)
 #ifdef DTYPE_FIFO
 		else if (file.f_type == DTYPE_FIFO) {
 			if (checkfile == 0)
-				vtrans((struct vnode *)file.f_data, i,
-				    file.f_flag);
+				vtrans((struct vnode *)file.f_data, file.f_ncp,
+					i, file.f_flag);
 		}
 #endif
 		else {
@@ -419,7 +435,8 @@ dommap(struct kinfo_proc *kp)
 
 		switch (object.type) {
 		case OBJT_VNODE:
-			vtrans((struct vnode *)object.handle, MMAP, fflags);
+			vtrans((struct vnode *)object.handle, NULL, 
+				MMAP, fflags);
 			break;
 		default:
 			break;
@@ -428,12 +445,12 @@ dommap(struct kinfo_proc *kp)
 }
 
 void
-vtrans(struct vnode *vp, int i, int flag)
+vtrans(struct vnode *vp, struct namecache *ncp, int i, int flag)
 {
 	struct vnode vn;
 	struct filestat fst;
 	char rw[3], mode[15];
-	char *badtype = NULL, *filename, *getmnton();
+	char *badtype = NULL, *filename;
 
 	filename = badtype = NULL;
 	if (!KVM_READ(vp, &vn, sizeof (struct vnode))) {
@@ -499,14 +516,14 @@ vtrans(struct vnode *vp, int i, int flag)
 		return;
 	}
 	if (nflg)
-		(void)printf(" %2d,%-2d", major(fst.fsid), minor(fst.fsid));
+		(void)printf(" %3d,%-9d   ", major(fst.fsid), minor(fst.fsid));
 	else
-		(void)printf(" %-8s", getmnton(vn.v_mount));
+		(void)printf(" %-*s", wflg_mnt, getmnton(vn.v_mount, &vn.v_namecache, ncp));
 	if (nflg)
 		(void)sprintf(mode, "%o", fst.mode);
 	else
 		strmode(fst.mode, mode);
-	(void)printf(" %6ld %10s", fst.fileid, mode);
+	(void)printf(" %*ld %10s", ino_width, fst.fileid, mode);
 	switch (vn.v_type) {
 	case VBLK:
 	case VCHR: {
@@ -514,13 +531,13 @@ vtrans(struct vnode *vp, int i, int flag)
 
 		if (nflg || ((name = devname(fst.rdev, vn.v_type == VCHR ?
 		    S_IFCHR : S_IFBLK)) == NULL))
-			printf("  %2d,%-2d", major(fst.rdev), minor(fst.rdev));
+			printf(" %3d,%-4d", major(fst.rdev), minor(fst.rdev));
 		else
-			printf(" %6s", name);
+			printf(" %8s", name);
 		break;
 	}
 	default:
-		printf(" %6llu", fst.size);
+		printf(" %8llu", fst.size);
 	}
 	rw[0] = '\0';
 	if (flag & FREAD)
@@ -606,7 +623,7 @@ nfs_filestat(struct vnode *vp, struct filestat *fsp)
 
 
 char *
-getmnton(struct mount *m)
+getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 {
 	static struct mount mount;
 	static struct mtab {
@@ -614,11 +631,55 @@ getmnton(struct mount *m)
 		struct mount *m;
 		char mntonname[MNAMELEN];
 	} *mhead = NULL;
-	register struct mtab *mt;
+	struct mtab *mt;
+	struct namecache ncp_copy;
+	static char path[1024];
+	int i;
 
-	for (mt = mhead; mt != NULL; mt = mt->next)
+	/*
+	 * If no ncp is passed try to find one via ncplist.
+	 */
+	if (ncp == NULL) {
+		ncp = ncplist->tqh_first;
+	}
+
+	/*
+	 * If we have an ncp, traceback the path.  This is a kvm pointer.
+	 */
+	if (ncp) {
+		i = sizeof(path) - 1;
+		path[i] = 0;
+		while (ncp) {
+			if (!KVM_READ(ncp, &ncp_copy, sizeof(ncp_copy))) {
+				warnx("can't read ncp at %p", ncp);
+				return (NULL);
+			}
+			if (ncp_copy.nc_flag & NCF_MOUNTPT) {
+				ncp = ncp_copy.nc_parent;
+				continue;
+			}
+			if (i <= ncp_copy.nc_nlen)
+				break;
+			i -= ncp_copy.nc_nlen;
+			if (!KVM_READ(ncp_copy.nc_name, path + i, ncp_copy.nc_nlen)) {
+				warnx("can't read ncp %p path component at %p", ncp, ncp_copy.nc_name);
+				return (NULL);
+			}
+			path[--i] = '/';
+			ncp = ncp_copy.nc_parent;
+		}
+		if (i == sizeof(path) - 1)
+			path[--i] = '/';
+		return(path + i);
+	}
+
+	/*
+	 * If all else fails print out the mount point path
+	 */
+	for (mt = mhead; mt != NULL; mt = mt->next) {
 		if (m == mt->m)
 			return (mt->mntonname);
+	}
 	if (!KVM_READ(m, &mount, sizeof(struct mount))) {
 		warnx("can't read mount table at %p", (void *)m);
 		return (NULL);
