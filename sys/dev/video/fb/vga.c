@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.6 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.7 2004/02/24 19:42:19 joerg Exp $
  */
 
 #include "opt_vga.h"
@@ -456,7 +456,10 @@ static int comp_adpregs(u_char *buf1, u_char *buf2);
 static int probe_adapters(void);
 static int set_line_length(video_adapter_t *adp, int pixel);
 static int set_display_start(video_adapter_t *adp, int x, int y);
+
+#ifndef VGA_NO_MODE_CHANGE
 static void filll_io(int val, vm_offset_t d, size_t size);
+#endif
 
 #ifndef VGA_NO_MODE_CHANGE
 #ifdef VGA_WIDTH90
@@ -1316,6 +1319,7 @@ set_display_start(video_adapter_t *adp, int x, int y)
     return 0;
 }
 
+#ifndef VGA_NO_MODE_CHANGE
 #ifdef __i386__	/* XXX */
 static void
 fill(int val, void *d, size_t size)
@@ -1335,6 +1339,7 @@ filll_io(int val, vm_offset_t d, size_t size)
 	d += sizeof(u_int32_t);
     }
 }
+#endif /* VGA_NO_MODE_CHANGE */
 
 /* entry points */
 
