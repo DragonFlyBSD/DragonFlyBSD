@@ -1,6 +1,6 @@
 /*	$NetBSD: smc90cx6.c,v 1.38 2001/07/07 15:57:53 thorpej Exp $ */
 /*	$FreeBSD: src/sys/dev/cm/smc90cx6.c,v 1.1.2.3 2003/02/05 18:42:14 fjoe Exp $ */
-/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.10 2004/07/23 07:16:25 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/netif/cm/Attic/smc90cx6.c,v 1.11 2005/02/11 22:25:56 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994, 1995, 1998 The NetBSD Foundation, Inc.
@@ -318,7 +318,6 @@ cm_attach(dev)
 	ifp->if_ioctl = cm_ioctl;
 	ifp->if_watchdog  = cm_watchdog;
 	ifp->if_init = cm_init;
-	/* XXX IFQ_SET_READY(&ifp->if_snd); */
 	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
 	ifp->if_timer = 0;
 	ifp->if_flags = IFF_BROADCAST | IFF_SIMPLEX;

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.24 2005/02/01 16:09:37 hrs Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.25 2005/02/11 22:25:57 joerg Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -359,6 +359,13 @@ ip6_input(struct netmsg *msg)
 	}
 
 	ip6stat.ip6s_nxthist[ip6->ip6_nxt]++;
+
+#ifdef ALTQ
+	if (altq_input != NULL && (*altq_input)(m, AF_INET6) == 0) {
+		/* packet is dropped by traffic conditioner */
+		return(ENOBUFS);
+	}
+#endif
 
 	/*
 	 * Check with the firewall...

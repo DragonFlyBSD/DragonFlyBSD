@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.12 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.13 2005/02/11 22:25:57 joerg Exp $
  */
 
 /*
@@ -78,6 +78,7 @@
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include "if_vlan_var.h"
 
 #ifdef INET
@@ -229,7 +230,8 @@ vlan_clone_create(struct if_clone *ifc, int unit)
 	ifp->if_init = vlan_ifinit;
 	ifp->if_start = vlan_start;
 	ifp->if_ioctl = vlan_ioctl;
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 	ether_ifattach(ifp, ifv->ifv_ac.ac_enaddr);
 	/* Now undo some of the damage... */
 	ifp->if_data.ifi_type = IFT_L2VLAN;
@@ -267,13 +269,15 @@ vlan_start(struct ifnet *ifp)
 	struct ifnet *p;
 	struct ether_vlan_header *evl;
 	struct mbuf *m;
+	int error;
+	struct altq_pktattr pktattr;
 
 	ifv = ifp->if_softc;
 	p = ifv->ifv_p;
 
 	ifp->if_flags |= IFF_OACTIVE;
 	for (;;) {
-		IF_DEQUEUE(&ifp->if_snd, m);
+		m = ifq_dequeue(&ifp->if_snd);
 		if (m == 0)
 			break;
 		BPF_MTAP(ifp, m);
@@ -288,6 +292,15 @@ vlan_start(struct ifnet *ifp)
 			ifp->if_data.ifi_collisions++;
 			continue;
 		}
+
+		/*
+		 * If ALTQ is enabled on the parent interface, do
+		 * classification; the queueing discipline might
+		 * not require classification, but might require
+		 * the address family/header pointer in the pktattr.
+		 */
+		if (ifq_is_enabled(&p->if_snd))
+			altq_etherclassify(&p->if_snd, m, &pktattr);
 
 		/*
 		 * If the LINK0 flag is set, it means the underlying interface
@@ -346,14 +359,11 @@ vlan_start(struct ifnet *ifp)
 		 * Send it, precisely as ether_output() would have.
 		 * We are already running at splimp.
 		 */
-		if (IF_QFULL(&p->if_snd)) {
-			IF_DROP(&p->if_snd);
-				/* XXX stats */
+		error = ifq_enqueue(&p->if_snd, m, &pktattr);
+		if (error) {
 			ifp->if_oerrors++;
-			m_freem(m);
 			continue;
 		}
-		IF_ENQUEUE(&p->if_snd, m);
 		ifp->if_opackets++;
 		p->if_obytes += m->m_pkthdr.len;
 		if (m->m_flags & M_MCAST)

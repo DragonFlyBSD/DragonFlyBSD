@@ -32,7 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.166 2004/04/01 00:38:45 sam Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.19 2005/02/02 14:14:20 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.20 2005/02/11 22:25:56 joerg Exp $
  */
 
 /*
@@ -93,6 +93,7 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #include <netproto/802_11/ieee80211_var.h>
 #include <netproto/802_11/ieee80211_ioctl.h>
@@ -291,7 +292,8 @@ wi_attach(device_t dev)
 	ifp->if_start = wi_start;
 	ifp->if_watchdog = wi_watchdog;
 	ifp->if_init = wi_init;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 #ifdef DEVICE_POLLING
 	ifp->if_capabilities |= IFCAP_POLLING;
 #endif
@@ -548,8 +550,7 @@ wi_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 	}
 
 	if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
-	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 &&
-	    IF_QLEN(&ifp->if_snd) != NULL)
+	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 && !ifq_is_empty(&ifp->if_snd))
 		wi_start(ifp);
 }
 #endif /* DEVICE_POLLING */
@@ -595,7 +596,7 @@ wi_intr(void *arg)
 		wi_info_intr(sc);
 	if ((ifp->if_flags & IFF_OACTIVE) == 0 &&
 	    (sc->sc_flags & WI_FLAGS_OUTRANGE) == 0 &&
-	    IF_QLEN(&ifp->if_snd) != 0)
+	    !ifq_is_empty(&ifp->if_snd))
 		wi_start(ifp);
 
 	/* Re-enable interrupts. */
@@ -891,14 +892,14 @@ wi_start(struct ifnet *ifp)
 		} else {
 			if (ic->ic_state != IEEE80211_S_RUN)
 				break;
-			IFQ_POLL(&ifp->if_snd, m0);
+			m0 = ifq_poll(&ifp->if_snd);
 			if (m0 == NULL)
 				break;
 			if (sc->sc_txd[cur].d_len != 0) {
 				ifp->if_flags |= IFF_OACTIVE;
 				break;
 			}
-			IFQ_DEQUEUE(&ifp->if_snd, m0);
+			m0 = ifq_dequeue(&ifp->if_snd);
 			ifp->if_opackets++;
 			m_copydata(m0, 0, ETHER_HDR_LEN, 
 			    (caddr_t)&frmhdr.wi_ehdr);

@@ -71,7 +71,7 @@
  */
 
 /* $FreeBSD: src/sys/net/ppp_tty.c,v 1.43.2.1 2002/02/13 00:43:11 dillon Exp $ */
-/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.11 2004/09/16 04:39:31 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp_layer/ppp_tty.c,v 1.12 2005/02/11 22:25:57 joerg Exp $ */
 
 #include "opt_ppp.h"		/* XXX for ppp_defs.h */
 
@@ -92,6 +92,9 @@
 #ifdef __i386__
 #include <i386/isa/intr_machdep.h>
 #endif
+
+#include <net/if.h>
+#include <net/ifq_var.h>
 
 #ifdef PPP_FILTER
 #include <net/bpf.h>
@@ -777,6 +780,14 @@ pppstart(tp)
      */
     if (tp->t_oproc != NULL)
 	(*tp->t_oproc)(tp);
+
+    /*
+     * If ALTQ is enabled, don't invoke NETISR_PPP.
+     * pppintr() could loop without doing anything useful
+     * under rate-limiting.
+     */
+    if (ifq_is_enabled(&sc->sc_if.if_snd))
+	return 0;
 
     /*
      * If the transmit queue has drained and the tty has not hung up

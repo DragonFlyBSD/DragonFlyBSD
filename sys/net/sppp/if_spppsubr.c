@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.18 2004/09/16 14:56:32 joerg Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.19 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +56,7 @@
 #endif
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/if_types.h>
 #include <net/route.h>
@@ -400,7 +401,6 @@ static void sppp_keepalive(void *dummy);
 static void sppp_phase_network(struct sppp *sp);
 static void sppp_print_bytes(const u_char *p, u_short len);
 static void sppp_print_string(const char *p, u_short len);
-static void sppp_qflush(struct ifqueue *ifq);
 static void sppp_set_ip_addr(struct sppp *sp, u_long src);
 #ifdef INET6
 static void sppp_get_ip6_addrs(struct sppp *sp, struct in6_addr *src,
@@ -749,6 +749,7 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 	int s, rv = 0;
 	int ipproto = PPP_IP;
 	int debug = ifp->if_flags & IFF_DEBUG;
+	struct altq_pktattr pktattr;
 
 	s = splimp();
 
@@ -786,7 +787,12 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 		s = splimp();
 	}
 
-	ifq = &ifp->if_snd;
+	/*
+	 * if the queueing discipline needs packet classification,
+	 * do it before prepending link headers.
+	 */
+	ifq_classify(&ifp->if_snd, m, dst->sa_family, &pktattr);
+
 #ifdef INET
 	if (dst->sa_family == AF_INET) {
 		/* XXX Check mbuf length here? */
@@ -950,14 +956,24 @@ sppp_output(struct ifnet *ifp, struct mbuf *m,
 	 * Queue message on interface, and start output if interface
 	 * not yet active.
 	 */
-	if (IF_QFULL (ifq)) {
-		IF_DROP (&ifp->if_snd);
-		m_freem (m);
-		++ifp->if_oerrors;
-		splx (s);
-		return (rv? rv: ENOBUFS);
+	if (ifq != NULL) {
+		if (IF_QFULL(ifq)) {
+			IF_DROP(ifq);
+			m_freem(m);
+			rv = ENOBUFS;
+			ifq->ifq_drops++;
+		} else {
+			IF_ENQUEUE(ifq, m);
+			rv = 0;
+		}
+	} else {
+		rv = ifq_enqueue(&ifp->if_snd, m, &pktattr);
 	}
-	IF_ENQUEUE (ifq, m);
+	if (rv) {
+		++ifp->if_oerrors;
+		splx(s);
+		return(rv);
+	}
 	if (! (ifp->if_flags & IFF_OACTIVE))
 		(*ifp->if_start) (ifp);
 
@@ -1056,9 +1072,9 @@ sppp_flush(struct ifnet *ifp)
 {
 	struct sppp *sp = (struct sppp*) ifp;
 
-	sppp_qflush (&sp->pp_if.if_snd);
-	sppp_qflush (&sp->pp_fastq);
-	sppp_qflush (&sp->pp_cpq);
+	ifq_purge(&sp->pp_if.if_snd);
+	IF_DRAIN(&sp->pp_fastq);
+	IF_DRAIN(&sp->pp_cpq);
 }
 
 /*
@@ -1071,8 +1087,8 @@ sppp_isempty(struct ifnet *ifp)
 	int empty, s;
 
 	s = splimp();
-	empty = !sp->pp_fastq.ifq_head && !sp->pp_cpq.ifq_head &&
-		!sp->pp_if.if_snd.ifq_head;
+	empty = IF_QEMPTY(&sp->pp_fastq) && IF_QEMPTY(&sp->pp_cpq) &&
+		ifq_is_empty(&sp->pp_if.if_snd);
 	splx(s);
 	return (empty);
 }
@@ -1099,7 +1115,7 @@ sppp_dequeue(struct ifnet *ifp)
 	    (sppp_ncp_check(sp) || sp->pp_mode == IFF_CISCO)) {
 		IF_DEQUEUE(&sp->pp_fastq, m);
 		if (m == NULL)
-			IF_DEQUEUE (&sp->pp_if.if_snd, m);
+			m = ifq_dequeue(&sp->pp_if.if_snd);
 	}
 	splx(s);
 	return m;
@@ -1119,9 +1135,10 @@ sppp_pick(struct ifnet *ifp)
 
 	m = sp->pp_cpq.ifq_head;
 	if (m == NULL &&
-	    (sp->pp_phase == PHASE_NETWORK || sp->pp_mode == IFF_CISCO))
+	    (sp->pp_phase == PHASE_NETWORK || sp->pp_mode == IFF_CISCO)) {
 		if ((m = sp->pp_fastq.ifq_head) == NULL)
-			m = sp->pp_if.if_snd.ifq_head;
+			m = ifq_poll(&sp->pp_if.if_snd);
+	}
 	splx (s);
 	return (m);
 }
@@ -1288,7 +1305,7 @@ sppp_cisco_input(struct sppp *sp, struct mbuf *m)
 				sp->pp_loopcnt = 0;
 				if (ifp->if_flags & IFF_UP) {
 					if_down (ifp);
-					sppp_qflush (&sp->pp_cpq);
+					IF_DRAIN(&sp->pp_cpq);
 				}
 			}
 			++sp->pp_loopcnt;
@@ -1806,7 +1823,7 @@ sppp_cp_input(const struct cp *cp, struct sppp *sp, struct mbuf *m)
 			printf(SPP_FMT "loopback\n", SPP_ARGS(ifp));
 			sp->pp_loopcnt = MAXALIVECNT * 5;
 			if_down (ifp);
-			sppp_qflush (&sp->pp_cpq);
+			IF_DRAIN(&sp->pp_cpq);
 
 			/* Shut down the PPP link. */
 			/* XXX */
@@ -2413,7 +2430,7 @@ sppp_lcp_RCR(struct sppp *sp, struct lcp_header *h, int len)
 					SPP_ARGS(ifp));
 			if (ifp->if_flags & IFF_UP) {
 				if_down(ifp);
-				sppp_qflush(&sp->pp_cpq);
+				IF_DRAIN(&sp->pp_cpq);
 				/* XXX ? */
 				lcp.Down(sp);
 				lcp.Up(sp);
@@ -4646,24 +4663,6 @@ sppp_auth_send(const struct cp *cp, struct sppp *sp,
 }
 
 /*
- * Flush interface queue.
- */
-static void
-sppp_qflush(struct ifqueue *ifq)
-{
-	struct mbuf *m, *n;
-
-	n = ifq->ifq_head;
-	while ((m = n)) {
-		n = m->m_nextpkt;
-		m_freem (m);
-	}
-	ifq->ifq_head = 0;
-	ifq->ifq_tail = 0;
-	ifq->ifq_len = 0;
-}
-
-/*
  * Send keepalive packets, every 10 seconds.
  */
 static void
@@ -4690,7 +4689,7 @@ sppp_keepalive(void *dummy)
 			/* No keepalive packets got.  Stop the interface. */
 			printf (SPP_FMT "down\n", SPP_ARGS(ifp));
 			if_down (ifp);
-			sppp_qflush (&sp->pp_cpq);
+			IF_DRAIN(&sp->pp_cpq);
 			if (sp->pp_mode != IFF_CISCO) {
 				/* XXX */
 				/* Shut down the PPP link. */

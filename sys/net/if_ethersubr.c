@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.26 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.27 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -57,6 +57,7 @@
 #include <net/if_llc.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/ethernet.h>
 #include <net/bridge/bridge.h>
@@ -364,6 +365,7 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	struct ip_fw *rule = NULL;
 	int error = 0;
 	int s;
+	struct altq_pktattr pktattr;
 
 	/* Extract info from dummynet tag, ignore others */
 	while (m->m_type == MT_TAG) {
@@ -388,6 +390,8 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	}
 
 no_bridge:
+	if (ifq_is_enabled(&ifp->if_snd))
+		altq_etherclassify(&ifp->if_snd, m, &pktattr);
 	s = splimp();
 	if (IPFW_LOADED && ether_ipfw != 0) {
 		struct ether_header save_eh, *eh;
@@ -421,8 +425,7 @@ no_bridge:
 	 * Queue message on interface, update output statistics if
 	 * successful, and start output if interface not yet active.
 	 */
-	if (!IF_HANDOFF(&ifp->if_snd, m, ifp))
-		error = ENOBUFS;
+	error = ifq_handoff(ifp, m, &pktattr);
 	splx(s);
 	return (error);
 }
@@ -1094,3 +1097,73 @@ ether_crc32_be(const uint8_t *buf, size_t len)
 
 	return (crc);
 }
+
+#ifdef ALTQ
+/*
+ * find the size of ethernet header, and call classifier
+ */
+void
+altq_etherclassify(struct ifaltq *ifq, struct mbuf *m,
+		   struct altq_pktattr *pktattr)
+{
+	struct ether_header *eh;
+	uint16_t ether_type;
+	int hlen, af, hdrsize;
+	caddr_t hdr;
+
+	hlen = sizeof(struct ether_header);
+	eh = mtod(m, struct ether_header *);
+
+	ether_type = ntohs(eh->ether_type);
+	if (ether_type < ETHERMTU) {
+		/* ick! LLC/SNAP */
+		struct llc *llc = (struct llc *)(eh + 1);
+		hlen += 8;
+
+		if (m->m_len < hlen ||
+		    llc->llc_dsap != LLC_SNAP_LSAP ||
+		    llc->llc_ssap != LLC_SNAP_LSAP ||
+		    llc->llc_control != LLC_UI)
+			goto bad;  /* not snap! */
+
+		ether_type = ntohs(llc->llc_un.type_snap.ether_type);
+	}
+
+	if (ether_type == ETHERTYPE_IP) {
+		af = AF_INET;
+		hdrsize = 20;  /* sizeof(struct ip) */
+#ifdef INET6
+	} else if (ether_type == ETHERTYPE_IPV6) {
+		af = AF_INET6;
+		hdrsize = 40;  /* sizeof(struct ip6_hdr) */
+#endif
+	} else
+		goto bad;
+
+	while (m->m_len <= hlen) {
+		hlen -= m->m_len;
+		m = m->m_next;
+	}
+	hdr = m->m_data + hlen;
+	if (m->m_len < hlen + hdrsize) {
+		/*
+		 * ip header is not in a single mbuf.  this should not
+		 * happen in the current code.
+		 * (todo: use m_pulldown in the future)
+		 */
+		goto bad;
+	}
+	m->m_data += hlen;
+	m->m_len -= hlen;
+	ifq_classify(ifq, m, af, pktattr);
+	m->m_data -= hlen;
+	m->m_len += hlen;
+
+	return;
+
+bad:
+	pktattr->pattr_class = NULL;
+	pktattr->pattr_hdr = NULL;
+	pktattr->pattr_af = AF_UNSPEC;
+}
+#endif /* ALTQ */

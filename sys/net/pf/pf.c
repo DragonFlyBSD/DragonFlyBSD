@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf.c,v 1.19 2004/09/11 11:18:25 mlaier Exp $	*/
 /*	$OpenBSD: pf.c,v 1.433.2.2 2004/07/17 03:22:34 brad Exp $ */
 /* add	$OpenBSD: pf.c,v 1.448 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf.c,v 1.3 2004/12/21 02:54:15 hsu Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf.c,v 1.4 2005/02/11 22:25:57 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -1305,20 +1305,13 @@ pf_send_tcp(const struct pf_rule *r, sa_family_t af,
 	m = m_gethdr(MB_DONTWAIT, MT_HEADER);
 	if (m == NULL)
 		return;
-	m->m_pkthdr.pf_flags |= PF_MBUF_GENERATED;
+	m->m_pkthdr.fw_flags |= PF_MBUF_GENERATED;
 #ifdef ALTQ
 	if (r != NULL && r->qid) {
-		struct altq_tag *atag;
-
-		mtag = m_tag_get(PACKET_TAG_PF_QID, sizeof(*atag), MB_DONTWAIT);
-		if (mtag != NULL) {
-			atag = (struct altq_tag *)(mtag + 1);
-			atag->qid = r->qid;
-			/* add hints for ecn */
-			atag->af = af;
-			atag->hdr = mtod(m, struct ip *);
-			m_tag_prepend(m, mtag);
-		}
+		m->m_pkthdr.fw_flags |= ALTQ_MBUF_TAGGED;
+		m->m_pkthdr.altq_qid = r->qid;
+		m->m_pkthdr.ecn_af = af;
+		m->m_pkthdr.header = mtod(m, struct ip *);
 	}
 #endif
 	m->m_data += max_linkhdr;
@@ -1413,21 +1406,14 @@ pf_send_icmp(struct mbuf *m, u_int8_t type, u_int8_t code, sa_family_t af,
 	m0 = m_copypacket(m, MB_DONTWAIT);
 	if (m0 == NULL)
 		return;
-	m0->m_pkthdr.pf_flags |= PF_MBUF_GENERATED;
+	m0->m_pkthdr.fw_flags |= PF_MBUF_GENERATED;
 
 #ifdef ALTQ
 	if (r->qid) {
-		struct altq_tag *atag;
-
-		mtag = m_tag_get(PACKET_TAG_PF_QID, sizeof(*atag), MB_DONTWAIT);
-		if (mtag != NULL) {
-			atag = (struct altq_tag *)(mtag + 1);
-			atag->qid = r->qid;
-			/* add hints for ecn */
-			atag->af = af;
-			atag->hdr = mtod(m0, struct ip *);
-			m_tag_prepend(m0, mtag);
-		}
+		m->m_pkthdr.fw_flags |= ALTQ_MBUF_TAGGED;
+		m->m_pkthdr.altq_qid = r->qid;
+		m->m_pkthdr.ecn_af = af;
+		m->m_pkthdr.header = mtod(m0, struct ip *);
 	}
 #endif
 
@@ -1549,7 +1535,7 @@ pf_match_tag(struct mbuf *m, struct pf_rule *r, struct pf_rule *nat_rule,
 	if (*tag == -1) {	/* find mbuf tag */
 		if (nat_rule != NULL && nat_rule->tag)
 			*tag = nat_rule->tag;
-		else if (m->m_pkthdr.pf_flags & PF_MBUF_TAGGED)
+		else if (m->m_pkthdr.fw_flags & PF_MBUF_TAGGED)
 			*tag = m->m_pkthdr.pf_tag;
 		else
 			*tag = 0;
@@ -1565,7 +1551,7 @@ pf_tag_packet(struct mbuf *m, int tag)
 	if (tag <= 0)
 		return;
 
-	m->m_pkthdr.pf_flags |= PF_MBUF_TAGGED;
+	m->m_pkthdr.fw_flags |= PF_MBUF_TAGGED;
 	m->m_pkthdr.pf_tag = tag;
 }
 
@@ -4884,8 +4870,8 @@ pf_route(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	    (dir != PF_IN && dir != PF_OUT) || oifp == NULL)
 		panic("pf_route: invalid parameters");
 
-	if (((*m)->m_pkthdr.pf_flags & PF_MBUF_ROUTED) == 0) {
-		(*m)->m_pkthdr.pf_flags |= PF_MBUF_ROUTED;
+	if (((*m)->m_pkthdr.fw_flags & PF_MBUF_ROUTED) == 0) {
+		(*m)->m_pkthdr.fw_flags |= PF_MBUF_ROUTED;
 		(*m)->m_pkthdr.pf_routed = 1;
 	} else {
 		if ((*m)->m_pkthdr.pf_routed > 3) {
@@ -5054,8 +5040,8 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 	    (dir != PF_IN && dir != PF_OUT) || oifp == NULL)
 		panic("pf_route6: invalid parameters");
 
-	if (((*m)->m_pkthdr.pf_flags & PF_MBUF_ROUTED) == 0) {
-		(*m)->m_pkthdr.pf_flags |= PF_MBUF_ROUTED;
+	if (((*m)->m_pkthdr.fw_flags & PF_MBUF_ROUTED) == 0) {
+		(*m)->m_pkthdr.fw_flags |= PF_MBUF_ROUTED;
 		(*m)->m_pkthdr.pf_routed = 1;
 	} else {
 		if ((*m)->m_pkthdr.pf_routed > 3) {
@@ -5088,7 +5074,7 @@ pf_route6(struct mbuf **m, struct pf_rule *r, int dir, struct ifnet *oifp,
 
 	/* Cheat. */
 	if (r->rt == PF_FASTROUTE) {
-		m0->m_pkthdr.pf_flags |= PF_MBUF_GENERATED;
+		m0->m_pkthdr.fw_flags |= PF_MBUF_GENERATED;
 		ip6_output(m0, NULL, NULL, 0, NULL, NULL, NULL);
 		return;
 	}
@@ -5284,7 +5270,7 @@ pf_test(int dir, struct ifnet *ifp, struct mbuf **m0)
 	struct pf_pdesc		 pd;
 	int			 off, dirndx, pqid = 0;
 
-	if (!pf_status.running || (m->m_pkthdr.pf_flags & PF_MBUF_GENERATED))
+	if (!pf_status.running || (m->m_pkthdr.fw_flags & PF_MBUF_GENERATED))
 		return (PF_PASS);
 
 	kif = pfi_index2kif[ifp->if_index];
@@ -5462,21 +5448,13 @@ done:
 
 #ifdef ALTQ
 	if (action == PF_PASS && r->qid) {
-		struct m_tag	*mtag;
-		struct altq_tag	*atag;
-
-		mtag = m_tag_get(PACKET_TAG_PF_QID, sizeof(*atag), MB_DONTWAIT);
-		if (mtag != NULL) {
-			atag = (struct altq_tag *)(mtag + 1);
-			if (pqid || pd.tos == IPTOS_LOWDELAY)
-				atag->qid = r->pqid;
-			else
-				atag->qid = r->qid;
-			/* add hints for ecn */
-			atag->af = AF_INET;
-			atag->hdr = h;
-			m_tag_prepend(m, mtag);
-		}
+		m->m_pkthdr.fw_flags |= ALTQ_MBUF_TAGGED;
+		if (pd.tos == IPTOS_LOWDELAY)
+			m->m_pkthdr.altq_qid = r->pqid;
+		else
+			m->m_pkthdr.altq_qid = r->qid;
+		m->m_pkthdr.ecn_af = AF_INET;
+		m->m_pkthdr.header = h;
 	}
 #endif
 
@@ -5494,7 +5472,7 @@ done:
 		REASON_SET(&reason, PFRES_MEMORY);
 	}
 
-	m->m_pkthdr.pf_flags |= PF_MBUF_TRANSLATE_LOCALHOST;
+	m->m_pkthdr.fw_flags |= PF_MBUF_TRANSLATE_LOCALHOST;
 
 	if (log)
 		PFLOG_PACKET(kif, h, m, AF_INET, dir, reason, r, a, ruleset);
@@ -5582,14 +5560,14 @@ pf_test6(int dir, struct ifnet *ifp, struct mbuf **m0)
 	struct pfi_kif		*kif;
 	u_short			 action, reason = 0, log = 0;
 	struct mbuf		*m = *m0;
-	struct ip6_hdr		*h;
+	struct ip6_hdr		*h = NULL;
 	struct pf_rule		*a = NULL, *r = &pf_default_rule, *tr, *nr;
 	struct pf_state		*s = NULL;
 	struct pf_ruleset	*ruleset = NULL;
 	struct pf_pdesc		 pd;
 	int			 off, terminal = 0, dirndx;
 
-	if (!pf_status.running || (m->m_pkthdr.pf_flags & PF_MBUF_GENERATED))
+	if (!pf_status.running || (m->m_pkthdr.fw_flags & PF_MBUF_GENERATED))
 		return (PF_PASS);
 
 	kif = pfi_index2kif[ifp->if_index];
@@ -5780,21 +5758,13 @@ done:
 
 #ifdef ALTQ
 	if (action == PF_PASS && r->qid) {
-		struct m_tag	*mtag;
-		struct altq_tag	*atag;
-
-		mtag = m_tag_get(PACKET_TAG_PF_QID, sizeof(*atag), MB_DONTWAIT);
-		if (mtag != NULL) {
-			atag = (struct altq_tag *)(mtag + 1);
-			if (pd.tos == IPTOS_LOWDELAY)
-				atag->qid = r->pqid;
-			else
-				atag->qid = r->qid;
-			/* add hints for ecn */
-			atag->af = AF_INET6;
-			atag->hdr = h;
-			m_tag_prepend(m, mtag);
-		}
+		m->m_pkthdr.fw_flags |= ALTQ_MBUF_TAGGED;
+		if (pd.tos == IPTOS_LOWDELAY)
+			m->m_pkthdr.altq_qid = r->pqid;
+		else
+			m->m_pkthdr.altq_qid = r->qid;
+		m->m_pkthdr.ecn_af = AF_INET6;
+		m->m_pkthdr.header = h;
 	}
 #endif
 
@@ -5807,7 +5777,7 @@ done:
 		REASON_SET(&reason, PFRES_MEMORY);
 	}
 
-	m->m_pkthdr.pf_flags |= PF_MBUF_TRANSLATE_LOCALHOST;
+	m->m_pkthdr.fw_flags |= PF_MBUF_TRANSLATE_LOCALHOST;
 
 	if (log)
 		PFLOG_PACKET(kif, h, m, AF_INET6, dir, reason, r, a, ruleset);

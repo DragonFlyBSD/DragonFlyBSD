@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.25 2005/02/08 22:56:19 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.26 2005/02/11 22:25:57 joerg Exp $
  */
 
 #define _IP_VHL
@@ -407,6 +407,12 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		}
 	}
 #endif /* notdef */
+#ifdef ALTQ
+	/*
+	 * Disable packet drop hack.
+	 * Packetdrop should be done by queueing.
+	 */
+#else /* !ALTQ */
 	/*
 	 * Verify that we have any chance at all of being able to queue
 	 *      the packet or packet fragments
@@ -417,6 +423,7 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			ipstat.ips_odropped++;
 			goto bad;
 	}
+#endif /* !ALTQ */
 
 	/*
 	 * Look for broadcast address and

@@ -32,7 +32,7 @@
  *
  *	@(#)if_sl.c	8.6 (Berkeley) 2/1/94
  * $FreeBSD: src/sys/net/if_sl.c,v 1.84.2.2 2002/02/13 00:43:10 dillon Exp $
- * $DragonFly: src/sys/net/sl/if_sl.c,v 1.16 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/sl/if_sl.c,v 1.17 2005/02/11 22:25:57 joerg Exp $
  */
 
 /*
@@ -89,6 +89,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 
 #if INET
@@ -223,7 +224,8 @@ slattach(dummy)
 		sc->sc_if.if_type = IFT_SLIP;
 		sc->sc_if.if_ioctl = slioctl;
 		sc->sc_if.if_output = sloutput;
-		sc->sc_if.if_snd.ifq_maxlen = 50;
+		ifq_set_maxlen(&sc->sc_if.if_snd, 50);
+		ifq_set_ready(&sc->sc_if.if_snd);
 		sc->sc_fastq.ifq_maxlen = 32;
 		sc->sc_if.if_linkmib = sc;
 		sc->sc_if.if_linkmiblen = sizeof *sc;
@@ -471,8 +473,10 @@ sloutput(ifp, m, dst, rtp)
 {
 	struct sl_softc *sc = &sl_softc[ifp->if_dunit];
 	struct ip *ip;
-	struct ifqueue *ifq;
-	int s;
+	int error, s;
+	struct altq_pktattr pktattr;
+
+	ifq_classify(&ifp->if_snd, m, dst->sa_family, &pktattr);
 
 	/*
 	 * `Cannot happen' (see slioctl).  Someday we will extend
@@ -494,23 +498,29 @@ sloutput(ifp, m, dst, rtp)
 		m_freem(m);
 		return (EHOSTUNREACH);
 	}
-	ifq = &sc->sc_if.if_snd;
 	ip = mtod(m, struct ip *);
 	if (sc->sc_if.if_flags & SC_NOICMP && ip->ip_p == IPPROTO_ICMP) {
 		m_freem(m);
 		return (ENETRESET);		/* XXX ? */
 	}
-	if (ip->ip_tos & IPTOS_LOWDELAY)
-		ifq = &sc->sc_fastq;
 	s = splimp();
-	if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		m_freem(m);
-		splx(s);
-		sc->sc_if.if_oerrors++;
-		return (ENOBUFS);
+	if ((ip->ip_tos & IPTOS_LOWDELAY) && !ifq_is_enabled(&sc->sc_if.if_snd)) {
+		if (IF_QFULL(&sc->sc_fastq)) {
+			IF_DROP(&sc->sc_fastq);
+			m_freem(m);
+			error = ENOBUFS;
+		} else {
+			IF_ENQUEUE(&sc->sc_fastq, m);
+			error = 0;
+		}
+	} else {
+		error = ifq_enqueue(&sc->sc_if.if_snd, m, &pktattr);
 	}
-	IF_ENQUEUE(ifq, m);
+	if (error) {
+		sc->sc_if.if_oerrors++;
+		splx(s);
+		return (error);
+	}
 	if (sc->sc_ttyp->t_outq.c_cc == 0)
 		slstart(sc->sc_ttyp);
 	splx(s);
@@ -563,7 +573,7 @@ slstart(tp)
 		if (m)
 			sc->sc_if.if_omcasts++;		/* XXX */
 		else
-			IF_DEQUEUE(&sc->sc_if.if_snd, m);
+			m = ifq_dequeue(&sc->sc_if.if_snd);
 		splx(s);
 		if (m == NULL)
 			return 0;

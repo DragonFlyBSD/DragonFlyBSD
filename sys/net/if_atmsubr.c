@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_atmsubr.c,v 1.10.2.1 2001/03/06 00:29:26 obrien Exp $
- * $DragonFly: src/sys/net/if_atmsubr.c,v 1.11 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/net/if_atmsubr.c,v 1.12 2005/02/11 22:25:57 joerg Exp $
  */
 
 /*
@@ -51,6 +51,8 @@
 #include <sys/errno.h>
 
 #include <net/if.h>
+#include <net/if_var.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -101,9 +103,17 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	struct atmllc *atmllc;
 	struct atmllc *llc_hdr = NULL;
 	u_int32_t atm_flags;
+	struct altq_pktattr pktattr;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
 		gotoerr(ENETDOWN);
+
+	/*
+	 * if the queueing discipline needs packet classification,
+	 * do it before prepending link headers.
+	 */
+	ifq_classify(&ifp->if_snd, m,
+		     (dst != NULL ? dst->sa_family : AF_UNSPEC), &pktattr);
 
 	/*
 	 * check route
@@ -203,13 +213,12 @@ atm_output(struct ifnet *ifp, struct mbuf *m0, struct sockaddr *dst,
 	 * not yet active.
 	 */
 	s = splimp();
-	if (IF_QFULL(&ifp->if_snd)) {
-		IF_DROP(&ifp->if_snd);
+	error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
+	if (error) {
 		splx(s);
-		gotoerr(ENOBUFS);
+		return (ENOBUFS);
 	}
 	ifp->if_obytes += m->m_pkthdr.len;
-	IF_ENQUEUE(&ifp->if_snd, m);
 	if (!(ifp->if_flags & IFF_OACTIVE))
 		(*ifp->if_start)(ifp);
 	splx(s);
@@ -318,7 +327,7 @@ atm_ifattach(ifp)
 	ifp->if_input = atm_input;
 #endif
 	ifp->if_output = atm_output;
-	ifp->if_snd.ifq_maxlen = 50;	/* dummy */
+	ifq_set_maxlen(&ifp->if_snd, 50);
 	if_attach(ifp);
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)

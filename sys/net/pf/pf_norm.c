@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_norm.c,v 1.10 2004/08/14 15:32:40 dwmalone Exp $	*/
 /*	$OpenBSD: pf_norm.c,v 1.80.2.1 2004/04/30 21:46:33 brad Exp $ */
 /* add	$OpenBSD: pf_norm.c,v 1.87 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_norm.c,v 1.2 2005/02/11 22:25:57 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -954,7 +954,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason)
 		int	nomem = 0;
 
 		if (dir == PF_OUT) {
-			if (m->m_pkthdr.pf_flags & PF_MBUF_FRAGCACHE) {
+			if (m->m_pkthdr.fw_flags & PF_MBUF_FRAGCACHE) {
 				/* Already passed the fragment cache in the
 				 * input direction.  If we continued, it would
 				 * appear to be a dup and would be dropped.
@@ -982,7 +982,7 @@ pf_normalize_ip(struct mbuf **m0, int dir, struct pfi_kif *kif, u_short *reason)
 		}
 
 		if (dir == PF_IN)
-			m->m_pkthdr.pf_flags |= PF_MBUF_FRAGCACHE;
+			m->m_pkthdr.fw_flags |= PF_MBUF_FRAGCACHE;
 
 		if (frag != NULL && (frag->fr_flags & PFFRAG_DROP))
 			goto drop;

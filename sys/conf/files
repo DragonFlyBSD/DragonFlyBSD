@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.85 2005/01/31 23:44:34 joerg Exp $
+# $DragonFly: src/sys/conf/files,v 1.86 2005/02/11 22:25:56 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -777,6 +777,13 @@ vfs/ntfs/ntfs_vnops.c		optional ntfs
 vfs/ntfs/ntfs_subr.c		optional ntfs
 vfs/ntfs/ntfs_compr.c		optional ntfs
 vfs/ntfs/ntfs_ihash.c		optional ntfs
+net/altq/altq_cbq.c		optional altq
+net/altq/altq_hfsc.c		optional altq
+net/altq/altq_priq.c		optional altq
+net/altq/altq_red.c		optional altq
+net/altq/altq_rio.c		optional altq
+net/altq/altq_rmclass.c		optional altq
+net/altq/altq_subr.c		optional altq
 net/bpf.c			standard
 net/bpf_filter.c		optional bpf
 net/bridge/bridge.c		optional bridge

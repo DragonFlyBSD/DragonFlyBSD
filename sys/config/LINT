@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.46 2005/01/31 23:44:35 joerg Exp $
+# $DragonFly: src/sys/config/LINT,v 1.47 2005/02/11 22:25:56 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2796,3 +2796,16 @@ options	KTR_COMPILE=(KTR_ALL)	# Every trace class, see sys/ktr.h for
        	                     	# the different class numbers
 options	KTR_ENTRIES=1024
 options	KTR_VERBOSE=1
+
+# ALTQ
+options 	ALTQ		#alternate queueing
+options 	ALTQ_CBQ	#class based queueing
+options 	ALTQ_RED	#random early detection
+options 	ALTQ_RIO	#triple red for diffserv (needs RED)
+options 	ALTQ_HFSC	#hierarchical fair service curve
+options 	ALTQ_PRIQ	#priority queue
+#options 	ALTQ_NOPCC	#don't use processor cycle counter
+options 	ALTQ_DEBUG	#for debugging
+# you might want to set kernel timer to 1kHz if you use CBQ,
+# especially with 100baseT
+#options 	HZ=1000

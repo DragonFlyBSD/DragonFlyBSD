@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.2 2004/09/15 00:21:09 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/owi/Attic/owi_hostap.c,v 1.3 2005/02/11 22:25:56 joerg Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -65,6 +65,7 @@
 #include <sys/rman.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -1113,7 +1114,7 @@ owihap_data_input(struct wi_softc *sc, struct wi_frame *rxfrm, struct mbuf *m)
 
 		/* Queue up for repeating.
 		 */
-		IF_HANDOFF(&ifp->if_snd, m, ifp);
+		ifq_handoff(ifp, m, NULL);
 		return (!mcast);
 	}
 

@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.23 2005/01/26 00:37:39 joerg Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.24 2005/02/11 22:25:57 joerg Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -100,6 +100,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/bpf.h>
 
@@ -148,6 +149,7 @@ static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
 static void	ppp_ccp_closed (struct ppp_softc *);
 static void	ppp_inproc (struct ppp_softc *, struct mbuf *);
 static void	pppdumpm (struct mbuf *m0);
+static void	ppp_ifstart(struct ifnet *ifp);
 
 /*
  * Some useful mbuf macros not in mbuf.h.
@@ -205,7 +207,7 @@ pppintr(struct netmsg *msg)
     for (i = 0; i < NPPP; ++i, ++sc) {
 	s = splimp();
 	if (!(sc->sc_flags & SC_TBUSY)
-	    && (sc->sc_if.if_snd.ifq_head || sc->sc_fastq.ifq_head)) {
+	    && (!ifq_is_empty(&sc->sc_if.if_snd) || !IF_QEMPTY(&sc->sc_fastq))) {
 	    sc->sc_flags |= SC_TBUSY;
 	    splx(s);
 	    (*sc->sc_start)(sc);
@@ -242,7 +244,9 @@ pppattach(dummy)
 	sc->sc_if.if_hdrlen = PPP_HDRLEN;
 	sc->sc_if.if_ioctl = pppsioctl;
 	sc->sc_if.if_output = pppoutput;
-	sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
+	sc->sc_if.if_start = ppp_ifstart;
+	ifq_set_maxlen(&sc->sc_if.if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&sc->sc_if.if_snd);
 	sc->sc_inq.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_fastq.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_rawq.ifq_maxlen = IFQ_MAXLEN;
@@ -724,12 +728,15 @@ pppoutput(ifp, m0, dst, rtp)
     enum NPmode mode;
     int len;
     struct mbuf *m;
+    struct altq_pktattr pktattr;
 
     if (sc->sc_devp == NULL || (ifp->if_flags & IFF_RUNNING) == 0
 	|| ((ifp->if_flags & IFF_UP) == 0 && dst->sa_family != AF_UNSPEC)) {
 	error = ENETDOWN;	/* sort of */
 	goto bad;
     }
+
+    ifq_classify(&ifp->if_snd, m0, dst->sa_family, &pktattr);
 
     /*
      * Compute PPP header.
@@ -862,16 +869,25 @@ pppoutput(ifp, m0, dst, rtp)
 	sc->sc_npqtail = &m0->m_nextpkt;
     } else {
 	/* fastq and if_snd are emptied at spl[soft]net now */
-	ifq = (m0->m_flags & M_HIGHPRI)? &sc->sc_fastq: &ifp->if_snd;
-	if (IF_QFULL(ifq) && dst->sa_family != AF_UNSPEC) {
-	    IF_DROP(ifq);
+	if ((m0->m_flags & M_HIGHPRI) && !ifq_is_enabled(&sc->sc_if.if_snd)) {
+	    ifq = &sc->sc_fastq;
+	    if (IF_QFULL(ifq) && dst->sa_family != AF_UNSPEC) {
+	        IF_DROP(ifq);
+	        m_freem(m0);
+	        error = ENOBUFS;
+	    } else {
+	        IF_ENQUEUE(ifq, m0);
+	        error = 0;
+	    }
+	} else {
+	    error = ifq_enqueue(&sc->sc_if.if_snd, m0, &pktattr);
+	}
+	if (error) {
 	    splx(s);
 	    sc->sc_if.if_oerrors++;
 	    sc->sc_stats.ppp_oerrors++;
-	    error = ENOBUFS;
-	    goto bad;
+	    return (error);
 	}
-	IF_ENQUEUE(ifq, m0);
 	(*sc->sc_start)(sc);
     }
     getmicrotime(&ifp->if_lastchange);
@@ -898,6 +914,7 @@ ppp_requeue(sc)
     struct mbuf *m, **mpp;
     struct ifqueue *ifq;
     enum NPmode mode;
+    int error;
 
     for (mpp = &sc->sc_npqueue; (m = *mpp) != NULL; ) {
 	switch (PPP_PROTOCOL(mtod(m, u_char *))) {
@@ -915,13 +932,22 @@ ppp_requeue(sc)
 	     */
 	    *mpp = m->m_nextpkt;
 	    m->m_nextpkt = NULL;
-	    ifq = (m->m_flags & M_HIGHPRI)? &sc->sc_fastq: &sc->sc_if.if_snd;
-	    if (IF_QFULL(ifq)) {
-		IF_DROP(ifq);
-		sc->sc_if.if_oerrors++;
-		sc->sc_stats.ppp_oerrors++;
-	    } else
-		IF_ENQUEUE(ifq, m);
+	    if ((m->m_flags & M_HIGHPRI) && !ifq_is_enabled(&sc->sc_if.if_snd)) {
+		ifq = &sc->sc_fastq;
+		if (IF_QFULL(ifq)) {
+		    IF_DROP(ifq);
+		    error = ENOBUFS;
+		} else {
+		    IF_ENQUEUE(ifq, m);
+		    error = 0;
+		}
+	    } else {
+		error = ifq_enqueue(&sc->sc_if.if_snd, m, NULL);
+	    }
+	    if (error) {
+		    sc->sc_if.if_oerrors++;
+		    sc->sc_stats.ppp_oerrors++;
+	    }
 	    break;
 
 	case NPMODE_DROP:
@@ -974,7 +1000,7 @@ ppp_dequeue(sc)
      */
     IF_DEQUEUE(&sc->sc_fastq, m);
     if (m == NULL)
-	IF_DEQUEUE(&sc->sc_if.if_snd, m);
+	m = ifq_dequeue(&sc->sc_if.if_snd);
     if (m == NULL)
 	return NULL;
 
@@ -1561,4 +1587,17 @@ done:
 	*bp++ = '>';
     *bp = 0;
     printf("%s\n", buf);
+}
+
+/*
+ * a wrapper to transmit a packet from if_start since ALTQ uses
+ * if_start to send a packet.
+ */
+static void
+ppp_ifstart(struct ifnet *ifp)
+{
+	struct ppp_softc *sc;
+
+	sc = ifp->if_softc;
+	(*sc->sc_start)(sc);
 }

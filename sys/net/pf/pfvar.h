@@ -1,7 +1,7 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pfvar.h,v 1.8 2004/08/12 13:59:44 mlaier Exp $	*/
 /*	$OpenBSD: pfvar.h,v 1.187 2004/03/22 04:54:18 mcbride Exp $ */
 /* add	$OpenBSD: pfvar.h,v 1.194 2004/05/11 07:34:11 dhartmei Exp $ */
-/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.1 2004/09/19 22:32:47 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pfvar.h,v 1.2 2005/02/11 22:25:57 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -44,6 +44,11 @@
 
 #include <net/radix.h>
 #include <netinet/in.h>
+
+#ifdef _KERNEL
+#include <vm/vm_zone.h>
+#endif
+
 /*
  * XXX
  *  If we include <netipsec/keydb.h>, we need _KERNEL definition.

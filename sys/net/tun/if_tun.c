@@ -14,7 +14,7 @@
  * operation though.
  *
  * $FreeBSD: src/sys/net/if_tun.c,v 1.74.2.8 2002/02/13 00:43:11 dillon Exp $
- * $DragonFly: src/sys/net/tun/if_tun.c,v 1.16 2005/01/26 00:37:40 joerg Exp $
+ * $DragonFly: src/sys/net/tun/if_tun.c,v 1.17 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -42,6 +42,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 
@@ -69,6 +70,7 @@ static int tunoutput (struct ifnet *, struct mbuf *, struct sockaddr *,
 	    struct rtentry *rt);
 static int tunifioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static int tuninit (struct ifnet *);
+static void tunstart(struct ifnet *);
 
 static	d_open_t	tunopen;
 static	d_close_t	tunclose;
@@ -122,9 +124,11 @@ tuncreate(dev)
 	ifp->if_mtu = TUNMTU;
 	ifp->if_ioctl = tunifioctl;
 	ifp->if_output = tunoutput;
+	ifp->if_start = tunstart;
 	ifp->if_flags = IFF_POINTOPOINT | IFF_MULTICAST;
 	ifp->if_type = IFT_PPP;
-	ifp->if_snd.ifq_maxlen = ifqmaxlen;
+	ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+	ifq_set_ready(&ifp->if_snd);
 	ifp->if_softc = sc;
 	if_attach(ifp);
 	bpfattach(ifp, DLT_NULL, sizeof(u_int));
@@ -170,7 +174,6 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	int	s;
 	struct tun_softc *tp;
 	struct ifnet	*ifp;
-	struct mbuf	*m;
 
 	tp = dev->si_drv1;
 	ifp = &tp->tun_if;
@@ -178,16 +181,10 @@ tunclose(dev_t dev, int foo, int bar, struct thread *td)
 	tp->tun_flags &= ~TUN_OPEN;
 	tp->tun_pid = 0;
 
-	/*
-	 * junk all pending output
-	 */
-	do {
-		s = splimp();
-		IF_DEQUEUE(&ifp->if_snd, m);
-		splx(s);
-		if (m)
-			m_freem(m);
-	} while (m);
+	/* Junk all pending output. */
+	s = splimp();
+	ifq_purge(&ifp->if_snd);
+	splx(s);
 
 	if (ifp->if_flags & IFF_UP) {
 		s = splimp();
@@ -312,7 +309,8 @@ tunoutput(ifp, m0, dst, rt)
 	struct rtentry *rt;
 {
 	struct tun_softc *tp = ifp->if_softc;
-	int		s;
+	int error, s;
+	struct altq_pktattr pktattr;
 
 	TUNDEBUG ("%s: tunoutput\n", ifp->if_xname);
 
@@ -322,6 +320,12 @@ tunoutput(ifp, m0, dst, rt)
 		m_freem (m0);
 		return EHOSTDOWN;
 	}
+
+	/*
+	 * if the queueing discipline needs packet classification,
+	 * do it before prepending link headers.
+	 */
+	ifq_classify(&ifp->if_snd, m0, dst->sa_family, &pktattr);
 
 	/* BPF write needs to be handled specially */
 	if (dst->sa_family == AF_UNSPEC) {
@@ -382,15 +386,13 @@ tunoutput(ifp, m0, dst, rt)
 	}
 
 	s = splimp();
-	if (IF_QFULL(&ifp->if_snd)) {
-		IF_DROP(&ifp->if_snd);
-		m_freem(m0);
+	error = ifq_enqueue(&ifp->if_snd, m0, &pktattr);
+	if (error) {
 		splx(s);
 		ifp->if_collisions++;
 		return ENOBUFS;
 	}
 	ifp->if_obytes += m0->m_pkthdr.len;
-	IF_ENQUEUE(&ifp->if_snd, m0);
 	splx(s);
 	ifp->if_opackets++;
 
@@ -480,8 +482,10 @@ tunioctl(dev_t	dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 		break;
 	case FIONREAD:
 		s = splimp();
-		if (tp->tun_if.if_snd.ifq_head) {
-			struct mbuf *mb = tp->tun_if.if_snd.ifq_head;
+		if (!ifq_is_empty(&tp->tun_if.if_snd)) {
+			struct mbuf *mb;
+
+			mb = ifq_poll(&tp->tun_if.if_snd);
 			for( *(int *)data = 0; mb != 0; mb = mb->m_next) 
 				*(int *)data += mb->m_len;
 		} else
@@ -536,7 +540,7 @@ tunread(dev, uio, flag)
 
 	s = splimp();
 	do {
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd);
 		if (m0 == 0) {
 			if (flag & IO_NDELAY) {
 				splx(s);
@@ -710,7 +714,7 @@ tunpoll(dev_t dev, int events, struct thread *td)
 	TUNDEBUG("%s: tunpoll\n", ifp->if_xname);
 
 	if (events & (POLLIN | POLLRDNORM)) {
-		if (ifp->if_snd.ifq_len > 0) {
+		if (!ifq_is_empty(&ifp->if_snd)) {
 			TUNDEBUG("%s: tunpoll q=%d\n", ifp->if_xname,
 			    ifp->if_snd.ifq_len);
 			revents |= events & (POLLIN | POLLRDNORM);
@@ -724,4 +728,31 @@ tunpoll(dev_t dev, int events, struct thread *td)
 
 	splx(s);
 	return (revents);
+}
+
+/*
+ * Start packet transmission on the interface.
+ * when the interface queue is rate-limited by ALTQ,
+ * if_start is needed to drain packets from the queue in order
+ * to notify readers when outgoing packets become ready.
+ */
+static void
+tunstart(struct ifnet *ifp)
+{
+	struct tun_softc *tp = ifp->if_softc;
+	struct mbuf *m;
+
+	if (!ifq_is_enabled(&ifp->if_snd))
+		return;
+
+	m = ifq_poll(&ifp->if_snd);
+	if (m != NULL) {
+		if (tp->tun_flags & TUN_RWAIT) {
+			tp->tun_flags &= ~TUN_RWAIT;
+			wakeup((caddr_t)tp);
+		}
+		if (tp->tun_flags & TUN_ASYNC && tp->tun_sigio)
+			pgsigio(tp->tun_sigio, SIGIO, 0);
+		selwakeup(&tp->tun_rsel);
+	}
 }

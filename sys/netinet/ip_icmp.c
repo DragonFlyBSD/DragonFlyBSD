@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.19 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.20 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -237,7 +237,7 @@ icmp_error(n, type, code, dest, destifp)
 	nip->ip_vhl = IP_VHL_BORING;
 	nip->ip_p = IPPROTO_ICMP;
 	nip->ip_tos = 0;
-	m->m_pkthdr.pf_flags |= n->m_pkthdr.pf_flags & PF_MBUF_GENERATED;
+	m->m_pkthdr.fw_flags |= n->m_pkthdr.fw_flags & PF_MBUF_GENERATED;
 	icmp_reflect(m);
 
 freeit:
@@ -742,7 +742,7 @@ match:
 		bcopy((caddr_t)ip + optlen, ip + 1,
 		      m->m_len - sizeof(struct ip));
 	}
-	m->m_pkthdr.pf_flags &= PF_MBUF_GENERATED;
+	m->m_pkthdr.fw_flags &= PF_MBUF_GENERATED;
 	m->m_flags &= ~(M_BCAST|M_MCAST);
 	icmp_send(m, opts, ro);
 done:

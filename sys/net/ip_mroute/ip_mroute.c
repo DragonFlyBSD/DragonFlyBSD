@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.15 2004/09/16 23:30:10 joerg Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.16 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_mrouting.h"
@@ -57,6 +57,9 @@
 #ifdef PIM
 #include <netinet/pim.h>
 #include <netinet/pim_var.h>
+#endif
+#ifdef ALTQ
+#include <netinet/in_pcb.h>
 #endif
 #include <netinet/udp.h>
 
@@ -2119,6 +2122,12 @@ X_rsvp_input(struct mbuf *m, ...)
     int s;
     struct ifnet *ifp;
     int off, proto;
+#ifdef ALTQ
+    /* support IP_RECVIF used by rsvpd rel4.2a1 */
+    struct inpcb *inp;
+    struct socket *so;
+    struct mbuf *opts;
+#endif
     __va_list ap;
 
     __va_start(ap, m);
@@ -2154,7 +2163,11 @@ X_rsvp_input(struct mbuf *m, ...)
 	if (viftable[vifi].v_ifp == ifp)
 	    break;
 
+#ifdef ALTQ
+    if (vifi == numvifs || (so = viftable[vifi].v_rsvpd) == NULL) {
+#else
     if (vifi == numvifs || viftable[vifi].v_rsvpd == NULL) {
+#endif
 	/*
 	 * If the old-style non-vif-associated socket is set,
 	 * then use it.  Otherwise, drop packet since there
@@ -2180,6 +2193,26 @@ X_rsvp_input(struct mbuf *m, ...)
 	printf("rsvp_input: m->m_len = %d, sbspace() = %ld\n",
 	       m->m_len,sbspace(&(viftable[vifi].v_rsvpd->so_rcv)));
 
+#ifdef ALTQ
+    opts = NULL;
+    inp = (struct inpcb *)so->so_pcb;
+    if (inp->inp_flags & INP_CONTROLOPTS ||
+	inp->inp_socket->so_options & SO_TIMESTAMP)
+	ip_savecontrol(inp, &opts, ip, m);
+    if (sbappendaddr(&so->so_rcv,
+		     (struct sockaddr *)&rsvp_src,m, opts) == 0) {
+	m_freem(m);
+	if (opts)
+	    m_freem(opts);
+	if (rsvpdebug)
+	    printf("rsvp_input: Failed to append to socket\n");
+    }
+    else {
+	sorwakeup(so);
+	if (rsvpdebug)
+	    printf("rsvp_input: send packet up\n");
+    }
+#else /* !ALTQ */
     if (socket_send(viftable[vifi].v_rsvpd, m, &rsvp_src) < 0) {
 	if (rsvpdebug)
 	    printf("rsvp_input: Failed to append to socket\n");
@@ -2187,6 +2220,7 @@ X_rsvp_input(struct mbuf *m, ...)
 	if (rsvpdebug)
 	    printf("rsvp_input: send packet up\n");
     }
+#endif /* !ALTQ */
 
     splx(s);
 }

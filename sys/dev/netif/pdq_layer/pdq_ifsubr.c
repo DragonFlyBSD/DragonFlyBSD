@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.9 2005/02/10 00:09:17 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.10 2005/02/11 22:25:56 joerg Exp $
  *
  */
 
@@ -364,7 +364,7 @@ pdq_ifattach(
 
     ifp->if_ioctl = pdq_ifioctl;
     ifp->if_start = pdq_ifstart;
-    IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
+    ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
   
     fddi_ifattach(ifp);
 }

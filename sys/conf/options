@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.29 2005/01/31 23:44:34 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.30 2005/02/11 22:25:56 joerg Exp $
 #
 #        On the handling of kernel options
 #
@@ -256,6 +256,16 @@ ISP_TARGET_MODE		opt_isp.h
 ATA_STATIC_ID		opt_ata.h
 
 # Net stuff.
+# altq stuff
+ALTQ			opt_global.h
+ALTQ_CBQ		opt_altq.h
+ALTQ_RED		opt_altq.h
+ALTQ_RIO		opt_altq.h
+ALTQ_HFSC		opt_altq.h
+ALTQ_PRIQ		opt_altq.h
+ALTQ_NOPCC		opt_altq.h
+ALTQ_DEBUG		opt_altq.h
+
 ACCEPT_FILTER_DATA
 ACCEPT_FILTER_HTTP
 BOOTP			opt_bootp.h

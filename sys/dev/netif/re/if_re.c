@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.7 2005/01/25 19:35:11 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.8 2005/02/11 22:25:56 joerg Exp $
  */
 
 /*
@@ -122,6 +122,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -630,11 +631,15 @@ re_diag(struct re_softc *sc)
 
 	/*
 	 * Queue the packet, start transmission.
-	 * Note: IF_HANDOFF() ultimately calls re_start() for us.
+	 * Note: ifq_handoff() ultimately calls re_start() for us.
 	 */
 
 	CSR_WRITE_2(sc, RE_ISR, 0xFFFF);
-	IF_HANDOFF(&ifp->if_snd, m0, ifp);
+	error = ifq_handoff(ifp, m0, NULL);
+	if (error) {
+		m0 = NULL;
+		goto done;
+	}
 	m0 = NULL;
 
 	/* Wait for it to propagate through the chip */

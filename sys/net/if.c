@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $
- * $DragonFly: src/sys/net/if.c,v 1.27 2005/02/01 16:09:37 hrs Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.28 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -60,6 +60,7 @@
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/if_var.h>
+#include <net/ifq_var.h>
 #include <net/radix.h>
 #include <net/route.h>
 #include <machine/stdarg.h>
@@ -88,7 +89,6 @@ static void	if_attachdomain(void *);
 static void	if_attachdomain1(struct ifnet *);
 static int ifconf (u_long, caddr_t, struct thread *);
 static void ifinit (void *);
-static void if_qflush (struct ifqueue *);
 static void if_slowtimo (void *);
 static void link_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static int  if_rtdel (struct radix_node *, void *);
@@ -240,6 +240,12 @@ if_attach(struct ifnet *ifp)
 
 	EVENTHANDLER_INVOKE(ifnet_attach_event, ifp);
 
+	ifp->if_snd.altq_type = 0;
+	ifp->if_snd.altq_disc = NULL;
+	ifp->if_snd.altq_flags &= ALTQF_CANTCHANGE;
+	ifp->if_snd.altq_tbr = NULL;
+	ifp->if_snd.altq_ifp = ifp;
+
 	if (domains)
 		if_attachdomain1(ifp);
 
@@ -299,6 +305,11 @@ if_detach(struct ifnet *ifp)
 	 */
 	s = splnet();
 	if_down(ifp);
+
+	if (ifq_is_enabled(&ifp->if_snd))
+		altq_disable(&ifp->if_snd);
+	if (ifq_is_attached(&ifp->if_snd))
+		altq_detach(&ifp->if_snd);
 
 	/*
 	 * Remove address from ifnet_addrs[] and maybe decrement if_index.
@@ -877,7 +888,7 @@ if_unroute(struct ifnet *ifp, int flag, int fam)
 	TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 		if (fam == PF_UNSPEC || (fam == ifa->ifa_addr->sa_family))
 			pfctlinput(PRC_IFDOWN, ifa->ifa_addr);
-	if_qflush(&ifp->if_snd);
+	ifq_purge(&ifp->if_snd);
 	rt_ifmsg(ifp);
 }
 
@@ -929,24 +940,6 @@ if_up(struct ifnet *ifp)
 {
 
 	if_route(ifp, IFF_UP, AF_UNSPEC);
-}
-
-/*
- * Flush an interface queue.
- */
-static void
-if_qflush(struct ifqueue *ifq)
-{
-	struct mbuf *m, *n;
-
-	n = ifq->ifq_head;
-	while ((m = n) != 0) {
-		n = m->m_nextpkt;
-		m_freem(m);
-	}
-	ifq->ifq_head = 0;
-	ifq->ifq_tail = 0;
-	ifq->ifq_len = 0;
 }
 
 /*

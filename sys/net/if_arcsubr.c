@@ -1,6 +1,6 @@
 /*	$NetBSD: if_arcsubr.c,v 1.36 2001/06/14 05:44:23 itojun Exp $	*/
 /*	$FreeBSD: src/sys/net/if_arcsubr.c,v 1.1.2.5 2003/02/05 18:42:15 fjoe Exp $ */
-/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.13 2005/01/23 20:23:22 joerg Exp $ */
+/*	$DragonFly: src/sys/net/Attic/if_arcsubr.c,v 1.14 2005/02/11 22:25:57 joerg Exp $ */
 
 /*
  * Copyright (c) 1994, 1995 Ignatios Souvatzis
@@ -63,6 +63,7 @@
 #include <net/if_types.h>
 #include <net/if_arc.h>
 #include <net/if_arp.h>
+#include <net/ifq_var.h>
 #include <net/bpf.h>
 
 #if defined(INET) || defined(INET6)
@@ -113,9 +114,16 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	u_int8_t		atype, adst;
 	int			loop_copy = 0;
 	int			isphds;
+	struct altq_pktattr pktattr;
 
 	if ((ifp->if_flags & (IFF_UP | IFF_RUNNING)) != (IFF_UP | IFF_RUNNING))
 		return (ENETDOWN);	/* m, m1 aren't initialized yet */
+
+	/*
+	 * If the queueing discipline needs packet classification,
+	 * do it before prepending link headers.
+	 */
+	ifq_classify(&ifp->if_snd, m, dst->sa_family, &pktattr);
 
 	switch (dst->sa_family) {
 #ifdef INET
@@ -207,12 +215,8 @@ arc_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	BPF_MTAP(ifp, m);
 
-	if (!IF_HANDOFF(&ifp->if_snd, m, ifp)) {
-		m = NULL;
-		gotoerr(ENOBUFS);
-	}
-
-	return (0);
+	error = ifq_handoff(ifp, m, &pktattr);
+	return (error);
 
 bad:
 	if (m != NULL)

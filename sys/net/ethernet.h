@@ -2,7 +2,7 @@
  * Fundamental constants relating to ethernet.
  *
  * $FreeBSD: src/sys/net/ethernet.h,v 1.12.2.8 2002/12/01 14:03:09 sobomax Exp $
- * $DragonFly: src/sys/net/ethernet.h,v 1.10 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/ethernet.h,v 1.11 2005/02/11 22:25:57 joerg Exp $
  *
  */
 
@@ -375,6 +375,11 @@ extern	int (*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
         }						\
 	/* XXX: unlock */				\
 } while (0)
+
+struct altq_pktattr;
+struct ifaltq;
+
+void	altq_etherclassify(struct ifaltq *, struct mbuf *, struct altq_pktattr *);
 
 #else /* _KERNEL */
 

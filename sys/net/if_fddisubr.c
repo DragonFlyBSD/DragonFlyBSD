@@ -34,7 +34,7 @@
  *
  *	from: if_ethersubr.c,v 1.5 1994/12/13 22:31:45 wollman Exp
  * $FreeBSD: src/sys/net/if_fddisubr.c,v 1.41.2.8 2002/02/20 23:34:09 fjoe Exp $
- * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.15 2005/01/06 17:59:32 hsu Exp $
+ * $DragonFly: src/sys/net/Attic/if_fddisubr.c,v 1.16 2005/02/11 22:25:57 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -55,6 +55,7 @@
 #include <net/if_llc.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 
 #if defined(INET) || defined(INET6)
 #include <netinet/in.h>
@@ -136,9 +137,16 @@ fddi_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 	struct fddi_header *fh;
 	boolean_t hdrcmplt = FALSE;
 	int s, loop_copy = 0, error;
+	struct altq_pktattr pktattr;
 
 	if ((ifp->if_flags & (IFF_UP|IFF_RUNNING)) != (IFF_UP|IFF_RUNNING))
 		senderr(ENETDOWN);
+
+	/*
+	 * If the queueing discipline needs packet classification,
+	 * do it before prepending link headers.
+	 */
+	ifq_classify(&ifp->if_snd, m, dst->sa_family, &pktattr);
 
 	switch (dst->sa_family) {
 #ifdef INET
@@ -336,15 +344,14 @@ queue_it:
 	 * Queue message on interface, and start output if interface
 	 * not yet active.
 	 */
-	if (IF_QFULL(&ifp->if_snd)) {
-		IF_DROP(&ifp->if_snd);
+	error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
+	if (error) {
 		splx(s);
-		senderr(ENOBUFS);
+		return(ENOBUFS);
 	}
 	ifp->if_obytes += m->m_pkthdr.len;
 	if (m->m_flags & M_MCAST)
 		ifp->if_omcasts++;
-	IF_ENQUEUE(&ifp->if_snd, m);
 	if ((ifp->if_flags & IFF_OACTIVE) == 0)
 		(*ifp->if_start)(ifp);
 	splx(s);

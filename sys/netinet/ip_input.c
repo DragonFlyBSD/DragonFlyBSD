@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.45 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.46 2005/02/11 22:25:57 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -555,6 +555,12 @@ ip_input(struct mbuf *m)
 		goto bad;
 	}
 
+#ifdef ALTQ
+	if (altq_input != NULL && (*altq_input)(m, AF_INET) == 0) {
+		/* packet is dropped by traffic conditioner */
+		return;
+	}
+#endif
 	/*
 	 * Convert fields to host representation.
 	 */

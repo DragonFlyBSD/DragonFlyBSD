@@ -32,7 +32,7 @@
  *
  *	From: @(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_var.h,v 1.18.2.16 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if_var.h,v 1.23 2005/02/01 23:14:54 joerg Exp $
+ * $DragonFly: src/sys/net/if_var.h,v 1.24 2005/02/11 22:25:57 joerg Exp $
  */
 
 #ifndef	_NET_IF_VAR_H_
@@ -79,6 +79,8 @@ struct	ucred;
 #endif
 
 #include <sys/queue.h>		/* get TAILQ macros */
+
+#include <net/altq/if_altq.h>
 
 #ifdef _KERNEL
 #include <sys/eventhandler.h>
@@ -171,7 +173,7 @@ struct ifnet {
 		(void *);
 	int	(*if_resolvemulti)	/* validate/resolve multicast */
 		(struct ifnet *, struct sockaddr **, struct sockaddr *);
-	struct	ifqueue if_snd;		/* output queue */
+	struct	ifaltq if_snd;		/* output queue (includes altq) */
 	struct	ifprefixhead if_prefixhead; /* list of prefixes per if */
 	const uint8_t	*if_broadcastaddr;
 	void	*if_afdata[AF_MAX];
@@ -283,57 +285,6 @@ if_handoff(struct ifqueue *ifq, struct mbuf *m, struct ifnet *ifp, int adjust)
 	splx(s);
 	return (1);
 }
-
-#define	IFQ_ENQUEUE(ifq, m, err)					\
-do {									\
-	if (IF_QFULL(ifq)) {						\
-		m_freem(m);						\
-		(err) = ENOBUFS;					\
-	} else {							\
-		IF_ENQUEUE(ifq, m);					\
-		(err) = 0;						\
-	}								\
-	if (err)							\
-		(ifq)->ifq_drops++;					\
-} while (0)
-
-#define	IFQ_DEQUEUE(ifq, m)		IF_DEQUEUE(ifq, m)
-#define	IFQ_POLL(ifq, m)		IF_POLL(ifq, m)
-#define	IFQ_PURGE(ifq)			IF_DRAIN(ifq)
-
-#define	IFQ_SET_READY(ifq)		/* nothing */
-
-#define	IFQ_IS_EMPTY(ifq)		((ifq)->ifq_len == 0)
-#define	IFQ_INC_LEN(ifq)		((ifq)->ifq_len++)
-#define	IFQ_DEC_LEN(ifq)		(--(ifq)->ifq_len)
-#define	IFQ_INC_DROPS(ifq)		((ifq)->ifq_drops++)
-#define	IFQ_SET_MAXLEN(ifq, len)	((ifq)->ifq_maxlen = (len))
-#define	IFQ_SET_DRV_MAXLEN(ifq, len)	/* nothing */
-
-#define	IFQ_HANDOFF_ADJ(ifp, m, adj, err)				\
-do {									\
-	int len;							\
-	short mflags;							\
-									\
-	len = (m)->m_pkthdr.len;					\
-	mflags = (m)->m_flags;						\
-	IFQ_ENQUEUE(&(ifp)->if_snd, m, err);				\
-	if ((err) == 0) {						\
-		(ifp)->if_obytes += len + (adj);			\
-		if (mflags & M_MCAST)					\
-			(ifp)->if_omcasts++;				\
-		if (((ifp)->if_flags & IFF_OACTIVE) == 0)		\
-			(*(ifp)->if_start)(ifp);			\
-	}								\
-} while (0)
-
-#define	IFQ_HANDOFF(ifp, m, err)					\
-	IFQ_HANDOFF_ADJ(ifp, m, 0, err)
-
-#define	IFQ_DRV_DEQUEUE(ifq, m)	IF_DEQUEUE(ifq, m)
-#define	IFQ_DRV_PREPEND(ifq, m)	IF_PREPEND(ifq, m)
-#define	IFQ_DRV_IS_EMPTY(ifq)	IFQ_IS_EMPTY(ifq)
-#define	IFQ_DRV_PURGE(ifq)	IFQ_PURGE(ifq)
 
 /*
  * 72 was chosen below because it is the size of a TCP/IP

@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.3 2004/09/21 21:20:58 joerg Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.4 2005/02/11 22:25:57 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -80,7 +80,7 @@
 #endif /* INET6 */
 
 #ifdef ALTQ
-#include <altq/altq.h>
+#include <net/altq/altq.h>
 #endif
 
 #include <machine/limits.h>

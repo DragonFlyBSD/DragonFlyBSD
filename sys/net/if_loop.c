@@ -32,7 +32,7 @@
  *
  *	@(#)if_loop.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_loop.c,v 1.47.2.8 2003/06/01 01:46:11 silby Exp $
- * $DragonFly: src/sys/net/if_loop.c,v 1.13 2005/01/26 00:37:39 joerg Exp $
+ * $DragonFly: src/sys/net/if_loop.c,v 1.14 2005/02/11 22:25:57 joerg Exp $
  */
 
 /*
@@ -54,6 +54,7 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/ifq_var.h>
 #include <net/netisr.h>
 #include <net/route.h>
 #include <net/bpf.h>
@@ -91,6 +92,9 @@ int loioctl (struct ifnet *, u_long, caddr_t, struct ucred *);
 static void lortrequest (int, struct rtentry *, struct rt_addrinfo *);
 
 static void loopattach (void *);
+#ifdef ALTQ
+static void lo_altqstart(struct ifnet *);
+#endif
 PSEUDO_SET(loopattach, if_loop);
 
 int looutput (struct ifnet *ifp,
@@ -120,7 +124,11 @@ loopattach(void *dummy)
 		ifp->if_ioctl = loioctl;
 		ifp->if_output = looutput;
 		ifp->if_type = IFT_LOOP;
-		ifp->if_snd.ifq_maxlen = ifqmaxlen;
+		ifq_set_maxlen(&ifp->if_snd, ifqmaxlen);
+		ifq_set_ready(&ifp->if_snd);
+#ifdef ALTQ
+	        ifp->if_start = lo_altqstart;
+#endif
 		if_attach(ifp);
 		bpfattach(ifp, DLT_NULL, sizeof(u_int));
 	}
@@ -236,6 +244,37 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 		}
 #endif
 	}
+ 
+#ifdef ALTQ
+	/*
+	 * altq for loop is just for debugging.
+	 * only used when called for loop interface (not for
+	 * a simplex interface).
+	 */
+	if (ifq_is_enabled(&ifp->if_snd) && ifp->if_start == lo_altqstart) {
+		struct altq_pktattr pktattr;
+		int32_t *afp;
+	        int error, s;
+
+		/*
+		 * if the queueing discipline needs packet classification,
+		 * do it before prepending link headers.
+		 */
+		ifq_classify(&ifp->if_snd, m, af, &pktattr);
+
+		M_PREPEND(m, sizeof(int32_t), MB_DONTWAIT);
+		if (m == 0)
+			return(ENOBUFS);
+		afp = mtod(m, int32_t *);
+		*afp = (int32_t)af;
+
+	        s = splimp();
+		error = ifq_enqueue(&ifp->if_snd, m, &pktattr);
+		(*ifp->if_start)(ifp);
+		splx(s);
+		return (error);
+	}
+#endif /* ALTQ */
 
 	/* Deliver to upper layer protocol */
 	switch (af) {
@@ -276,6 +315,70 @@ if_simloop(struct ifnet *ifp, struct mbuf *m, int af, int hlen)
 	netisr_queue(isr, m);
 	return (0);
 }
+
+#ifdef ALTQ
+static void
+lo_altqstart(struct ifnet *ifp)
+{
+	struct mbuf *m;
+	int32_t af, *afp;
+	int s, isr;
+	
+	while (1) {
+		s = splimp();
+		m = ifq_dequeue(&ifp->if_snd);
+		splx(s);
+		if (m == NULL)
+			return;
+
+		afp = mtod(m, int32_t *);
+		af = *afp;
+		m_adj(m, sizeof(int32_t));
+
+		switch (af) {
+#ifdef INET
+		case AF_INET:
+			isr = NETISR_IP;
+			break;
+#endif
+#ifdef INET6
+		case AF_INET6:
+			m->m_flags |= M_LOOP;
+			isr = NETISR_IPV6;
+			break;
+#endif
+#ifdef IPX
+		case AF_IPX:
+			isr = NETISR_IPX;
+			break;
+#endif
+#ifdef NS
+		case AF_NS:
+			isr = NETISR_NS;
+			break;
+#endif
+#ifdef ISO
+		case AF_ISO:
+			isr = NETISR_ISO;
+			break;
+#endif
+#ifdef NETATALK
+		case AF_APPLETALK:
+			isr = NETISR_ATALK2;
+			break;
+#endif NETATALK
+		default:
+			printf("lo_altqstart: can't handle af%d\n", af);
+			m_freem(m);
+			return;
+		}
+
+		ifp->if_ipackets++;
+		ifp->if_ibytes += m->m_pkthdr.len;
+		netisr_queue(isr, m);
+	}
+}
+#endif /* ALTQ */
 
 /* ARGSUSED */
 static void

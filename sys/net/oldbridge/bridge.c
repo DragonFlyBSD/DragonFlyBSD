@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/bridge.c,v 1.16.2.25 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.12 2005/01/23 13:47:24 joerg Exp $
+ * $DragonFly: src/sys/net/oldbridge/Attic/bridge.c,v 1.13 2005/02/11 22:25:57 joerg Exp $
  */
 
 /*
@@ -100,7 +100,9 @@
 
 #include <net/if.h>
 #include <net/if_types.h>
+#include <net/if_llc.h>
 #include <net/if_var.h>
+#include <net/ifq_var.h>
 #include <net/pfil.h>
 
 #include <netinet/in.h> /* for struct arpcom */
@@ -777,7 +779,7 @@ bdg_forward(struct mbuf *m0, struct ether_header *const eh, struct ifnet *dst)
     struct ifnet *src;
     struct ifnet *ifp, *last;
     int shared = bdg_copy ; /* someone else is using the mbuf */
-    int once = 0;      /* loop only once */
+    int error, once = 0;      /* loop only once */
     struct ifnet *real_dst = dst ; /* real dst from ether_output */
     struct ip_fw_args args;
 
@@ -978,6 +980,8 @@ forward:
     for (;;) {
 	if (last) { /* need to forward packet leftover from previous loop */
 	    struct mbuf *m ;
+	    struct altq_pktattr pktattr;
+
 	    if (shared == 0 && once ) { /* no need to copy */
 		m = m0 ;
 		m0 = NULL ; /* original is gone */
@@ -988,6 +992,26 @@ forward:
 		    return m0 ; /* the original is still there... */
 		}
 	    }
+	    if (ifq_is_enabled(&last->if_snd)) {
+		    uint16_t ether_type;
+		    int af;
+
+		    /*
+		     * If the queueing discipline needs packet classification,
+		     * do it before prepending link headers.
+		     */
+		    ether_type = ntohs(eh->ether_type);
+		    if (ether_type == ETHERTYPE_IP)
+			    af = AF_INET;
+#ifdef INET6
+		    else if (ether_type == ETHERTYPE_IPV6)
+			    af = AF_INET6;
+#endif
+		    else
+			    af = AF_UNSPEC;
+		    ifq_classify(&last->if_snd, m, af, &pktattr);
+	    }
+
 	    /*
 	     * Add header (optimized for the common case of eh pointing
 	     * already into the mbuf) and execute last part of ether_output:
@@ -1006,7 +1030,8 @@ forward:
 		    return m0;
 		bcopy(&save_eh, mtod(m, struct ether_header *), ETHER_HDR_LEN);
 	    }
-	    if (!IF_HANDOFF(&last->if_snd, m, last)) {
+	    error = ifq_handoff(last, m, &pktattr);
+	    if (error != 0) {
 #if 0
 		BDG_MUTE(last); /* should I also mute ? */
 #endif
@@ -1023,7 +1048,10 @@ forward:
 	 * up and running, is not the source interface, and belongs to
 	 * the same cluster as the 'real_dst', then send here.
 	 */
-	if ( BDG_USED(ifp) && !BDG_MUTED(ifp) && !IF_QFULL(&ifp->if_snd)  &&
+	if ( BDG_USED(ifp) && !BDG_MUTED(ifp) &&
+#ifndef ALTQ
+	     !IF_QFULL(&ifp->if_snd) &&
+#endif
 	     (ifp->if_flags & (IFF_UP|IFF_RUNNING)) == (IFF_UP|IFF_RUNNING) &&
 	     ifp != src && BDG_SAMECLUSTER(ifp, real_dst) )
 	    last = ifp ;
