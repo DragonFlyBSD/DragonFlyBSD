@@ -1,7 +1,7 @@
 # Common defines for all of /sys/boot/i386/
 #
 # $FreeBSD: src/sys/boot/i386/Makefile.inc,v 1.4 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/Attic/Makefile.sub,v 1.1 2004/01/26 19:49:31 joerg Exp $
+# $DragonFly: src/sys/boot/i386/Attic/Makefile.inc,v 1.5 2004/01/28 19:24:11 dillon Exp $
 
 LOADER_ADDRESS?=	0x200000
 CFLAGS+=		-ffreestanding -mpreferred-stack-boundary=2

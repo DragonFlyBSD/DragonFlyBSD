@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/i386/loader/Makefile,v 1.66 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.4 2004/01/26 19:49:32 joerg Exp $
+# $DragonFly: src/sys/boot/i386/loader/Attic/Makefile,v 1.5 2004/01/28 19:24:14 dillon Exp $
 
 PROG=		loader
 STRIP=
@@ -110,7 +110,7 @@ FILESDIR_loader.conf=	/boot/defaults
 FILES+=	${.CURDIR}/loader.rc
 .endif
 
-.include "../Makefile.sub"
+.include "../Makefile.inc"
 
 # Cannot use ${OBJS} above this line
 .include <bsd.prog.mk>
