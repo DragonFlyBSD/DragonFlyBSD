@@ -3,7 +3,7 @@
  *
  * Simple benchmarking library
  *
- * $DragonFly: src/test/sysperf/blib.h,v 1.2 2003/11/19 00:59:19 dillon Exp $
+ * $DragonFly: src/test/sysperf/blib.h,v 1.3 2004/02/09 18:08:57 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -18,5 +18,6 @@
 
 void start_timing(void);
 int stop_timing(long long count, const char *ctl, ...);
+int stop_timing2(long long count, long long us, const char *ctl, ...);
 long long get_timing(void);
 
