@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.15 2004/02/16 21:06:54 joerg Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.16 2004/02/24 19:01:04 justin Exp $
  */
 
 #include <sys/types.h>
@@ -71,6 +71,30 @@ char *Status[] = {
 char *Docs[] = {
     NULL
 };
+
+/*
+ * Phrases work is currently commented out.  Remove comments here 
+ * and in header setup to enable.
+ *
+ * char *Phrases[] = {
+ *     "Tired of Penguins?  Switch totheDragon!",
+ *     "Dragging BSD, kicking and screaming, into the 21st century.",
+ *     "Best thing since sliced bread.",
+ *     "A new day and a new way.",
+ *     "The way BSD should be!",
+ *     "Here be Dragons.",
+ *     "DragonFly BSD, the logical successor to FreeBSD 4.x.",
+ *     "Use the Force: DragonFly release1 in June!"
+ *     "Catch the buzz!",
+ *     "When one wing isn't enough!",
+ *     "The best breed",
+ *     "A Dragonfly a day will keep Microsoft away."
+ * };
+ */
+ 
+/*
+ * suggested but not yet added: "BSD with style(9)"
+ */
 
 
 int
@@ -187,27 +211,36 @@ main(int ac, char **av)
     printf("</HEAD>\n");
     printf("<BODY>\n");
 
-    printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
-    printf("<TR><TD ALIGN=CENTER COLSPAN=2>");
-
-    printf("<TABLE BORDER=0 WIDTH=100%% BGCOLOR=\"#FFFFFF\">\n");
-    printf("<TR><TD VALIGN=\"bottom\" ALIGN=\"right\">");
+    printf("<TABLE BORDER=0 WIDTH=760 BGCOLOR=\"#FFFFFF\">\n");
+    printf("<TR><TD WIDTH=\"134\"><IMG SRC=\"/smalldf.jpg\"></TD>");
+    printf("<TD VALIGN=\"bottom\">");
 
     if (Title)
-	printf("<H2>%s</H2>", Title);
-    printf("</TD><TD ALIGN=\"right\"><IMG SRC=\"/smalldf.jpg\"></TD>");
-    printf("</TR><TR><TD COLSPAN=\"2\"><HR></TD>");
-    printf("</TR></TABLE>");
+	printf("<SPAN CLASS=\"pagetitle\">%s</SPAN>", Title);
+    else
+        printf("<SPAN CLASS=\"pagetitle\">The DragonFly BSD Project</SPAN>");
 
-    printf("</TD></TR>\n");
-    printf("<TR><TD VALIGN=top WIDTH=\"150\">");
+/*
+ *  Random phrase printer - commented out until more phrases notes, 
+ *  or just one picked.
+ *
+ *  printf("<BR><I><SMALL>\n");
+ *  srandom(time(NULL));
+ *  printf("%s", Phrases[random()%(sizeof(Phrases)/sizeof(Phrases[0]))]);
+ *  printf("</SMALL></I>
+ */
+ 
+    printf("</TD></TR>");
+     printf("<TR><TD COLSPAN=\"2\"><HR></TD></TR>");
+
+    printf("<TR><TD VALIGN=top>");
 
     generate_side_headers("main", "Main", Main);
     generate_side_headers("goals", "Goals", Goals);
     generate_side_headers("status", "Status", Status);
     generate_side_headers("docs", "Docs", Docs);
 
-    printf("</TD><TD WIDTH=100%% VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
+    printf("</TD><TD VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
     fflush(stdout);
     buildflush();
     printf("<PRE>\n");
@@ -248,10 +281,10 @@ generate_side_headers(char *section1, char *section2, char *files[])
     ) {
 	fileclass = " CLASS=\"selected\"";
     } else {
-	fileclass = "";
+	fileclass = " CLASS=\"unselected\"";
     }
 
-    printf("<TD%s><H2><A HREF=\"../%s\">%s</A></H2>",
+    printf("<TD%s><A HREF=\"../%s\">%s</A>",
 	fileclass, section1, section2);
 
     printf("</TD></TR>\n\t<TR><TD>\n<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n");
@@ -260,9 +293,9 @@ generate_side_headers(char *section1, char *section2, char *files[])
         if ((strcmp(files[i], FileName) == 0) &&
 	    (strcmp(section1, DirName) == 0) 
 	) {
-            fileclass = " CLASS=\"topLevelSelected\"";
+            fileclass = " CLASS=\"subselected\"";
 	} else {
-            fileclass = " CLASS=\"topLevel\"";
+            fileclass = " CLASS=\"subunselected\"";
 	}
       
         if ((ptr = strchr(files[i], '.')) != NULL &&
@@ -270,8 +303,10 @@ generate_side_headers(char *section1, char *section2, char *files[])
             strcmp(ptr + 1, "html") == 0)
         ) {
             len = ptr - files[i];
-            printf("\t<TR><TD%s><A HREF=\"/%s/%s\">%*.*s</A></TD></TR>\n",
-		fileclass,
+            printf("\t<TR><TD%s>", fileclass);
+            printf("&nbsp;&nbsp;&nbsp;&nbsp;");
+            printf("<A CLASS=\"nounderline\" ");
+            printf("HREF=\"/%s/%s\">%*.*s</A></TD></TR>\n",
 		section1, 
 		files[i], len, len, files[i]);
         }
