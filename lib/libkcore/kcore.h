@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libkcore/kcore.h,v 1.2 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/lib/libkcore/kcore.h,v 1.3 2005/02/03 17:28:40 joerg Exp $
  */
 
 #ifndef _KCORE_H
@@ -77,6 +77,7 @@ struct kinfo_proc;
 __BEGIN_DECLS;
 struct kcore_data
 	*kcore_open(const char *, const char *, char *);
+int	 kcore_wrapper_open(const char *, const char *, char *);
 int	 kcore_close(struct kcore_data *);
 
 int	 kcore_get_cpus(struct kcore_data *, int *);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.13 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.14 2005/02/03 17:28:40 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -77,9 +77,6 @@
 #ifdef USE_KCORE
 #  define KCORE_KINFO_WRAPPER
 #  include <kcore.h>
-
-struct kcore_data *KCORE_KVM_GLOBAL;
-
 #else
 #  include <kinfo.h>
 #endif
@@ -272,7 +269,7 @@ main(int argc, char **argv)
 	if ((kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf)) == 0)
 		errx(1, "kvm_openfiles: %s", buf);
 #ifdef USE_KCORE
-	if ((KCORE_KVM_GLOBAL = kcore_open(nlistf, memf, buf)) == NULL)
+	if (kcore_wrapper_open(nlistf, memf, buf))
 		errx(1, "kcore_open: %s", buf);
 #endif
 	if ((ret = kvm_nlist(kd, nl)) != 0) {
