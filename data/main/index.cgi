@@ -1,9 +1,13 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/index.cgi,v 1.7 2004/03/07 00:00:15 hmp Exp $
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.8 2004/07/12 18:12:28 dillon Exp $
 
 $TITLE(The DragonFly BSD Project)
-
+<h1>NEWS!</h1>
+<p>
+12-Jul-2004: DragonFly's first release, 1.0, is here!  Visit the download page for a
+list of download links for the ISO!
+</p>
 <h1>What is it?</h1>
 <p>
 DragonFly is an operating system and environment designed to be the logical
