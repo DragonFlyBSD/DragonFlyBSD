@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.2 2004/03/06 19:40:28 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.3 2004/03/06 23:19:01 dillon Exp $
  */
 
 #if defined(SMP) || defined(ALWAYS_MSG)
@@ -35,12 +35,13 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/msgport.h>
-#include <sys/msgport2.h>
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/socketops.h>
 #include <sys/thread.h>
+#include <sys/thread2.h>
+#include <sys/msgport2.h>
 
 #include <net/netisr.h>
 #include <net/netmsg.h>
