@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.11 2003/11/04 22:13:22 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.12 2003/11/05 20:24:37 dillon Exp $
  */
 
 /*
@@ -903,10 +903,14 @@ crfree(struct ucred *cr)
 		 * allocate a temporary credential, but don't
 		 * allocate a uidinfo structure.
 		 */
-		if (cr->cr_uidinfo != NULL)
-			uifree(cr->cr_uidinfo);
-		if (cr->cr_ruidinfo != NULL)
-			uifree(cr->cr_ruidinfo);
+		if (cr->cr_uidinfo != NULL) {
+			uidrop(cr->cr_uidinfo);
+			cr->cr_uidinfo = NULL;
+		}
+		if (cr->cr_ruidinfo != NULL) {
+			uidrop(cr->cr_ruidinfo);
+			cr->cr_ruidinfo = NULL;
+		}
 
 		/*
 		 * Destroy empty prisons
@@ -1070,15 +1074,11 @@ change_euid(uid_t euid)
 {
 	struct	proc *p = curproc;
 	struct	ucred *cr;
-	struct	uidinfo *uip;
 
 	KKASSERT(p != NULL);
-
 	cr = cratom(&p->p_ucred);
-	uip = cr->cr_uidinfo;
 	cr->cr_uid = euid;
-	cr->cr_uidinfo = uifind(euid);
-	uifree(uip);
+	uireplace(&cr->cr_uidinfo, uifind(euid));
 }
 
 /*
@@ -1092,16 +1092,13 @@ change_ruid(uid_t ruid)
 {
 	struct	proc *p = curproc;
 	struct	ucred *cr;
-	struct	uidinfo *uip;
 
 	KKASSERT(p != NULL);
 
 	cr = cratom(&p->p_ucred);
 	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
-	uip = cr->cr_ruidinfo;
 	/* It is assumed that pcred is not shared between processes */
 	cr->cr_ruid = ruid;
-	cr->cr_ruidinfo = uifind(ruid);
+	uireplace(&cr->cr_ruidinfo, uifind(ruid));
 	(void)chgproccnt(cr->cr_ruidinfo, 1, 0);
-	uifree(uip);
 }

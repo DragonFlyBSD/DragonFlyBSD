@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.15 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.16 2003/11/05 20:24:37 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -429,11 +429,8 @@ getrlimit(struct __getrlimit_args *uap)
  * expected to measure fine grained deltas.
  */
 void
-calcru(p, up, sp, ip)
-	struct proc *p;
-	struct timeval *up;
-	struct timeval *sp;
-	struct timeval *ip;
+calcru(struct proc *p, struct timeval *up, struct timeval *sp,
+	struct timeval *ip)
 {
 	struct thread *td = p->p_thread;
 	int s;
@@ -481,8 +478,7 @@ getrusage(struct getrusage_args *uap)
 }
 
 void
-ruadd(ru, ru2)
-	struct rusage *ru, *ru2;
+ruadd(struct rusage *ru, struct rusage *ru2)
 {
 	long *ip, *ip2;
 	int i;
@@ -502,8 +498,7 @@ ruadd(ru, ru2)
  * and copy when a limit is changed.
  */
 struct plimit *
-limcopy(lim)
-	struct plimit *lim;
+limcopy(struct plimit *lim)
 {
 	struct plimit *copy;
 
@@ -521,29 +516,27 @@ limcopy(lim)
  * size, etc.) for the uid and impose limits.
  */
 void
-uihashinit()
+uihashinit(void)
 {
 	uihashtbl = hashinit(maxproc / 16, M_UIDINFO, &uihash);
 }
 
 static struct uidinfo *
-uilookup(uid)
-	uid_t uid;
+uilookup(uid_t uid)
 {
 	struct	uihashhead *uipp;
 	struct	uidinfo *uip;
 
 	uipp = UIHASH(uid);
-	LIST_FOREACH(uip, uipp, ui_hash)
+	LIST_FOREACH(uip, uipp, ui_hash) {
 		if (uip->ui_uid == uid)
 			break;
-
+	}
 	return (uip);
 }
 
 static struct uidinfo *
-uicreate(uid)
-	uid_t uid;
+uicreate(uid_t uid)
 {
 	struct	uidinfo *uip, *norace;
 
@@ -569,8 +562,7 @@ uicreate(uid)
 }
 
 struct uidinfo *
-uifind(uid)
-	uid_t uid;
+uifind(uid_t uid)
 {
 	struct	uidinfo *uip;
 
@@ -581,24 +573,40 @@ uifind(uid)
 	return (uip);
 }
 
-int
-uifree(uip)
-	struct	uidinfo *uip;
+static __inline void
+uifree(struct uidinfo *uip)
 {
+	if (uip->ui_sbsize != 0)
+		/* XXX no %qd in kernel.  Truncate. */
+		printf("freeing uidinfo: uid = %d, sbsize = %ld\n",
+		    uip->ui_uid, (long)uip->ui_sbsize);
+	if (uip->ui_proccnt != 0)
+		printf("freeing uidinfo: uid = %d, proccnt = %ld\n",
+		    uip->ui_uid, uip->ui_proccnt);
+	LIST_REMOVE(uip, ui_hash);
+	FREE(uip, M_UIDINFO);
+}
 
-	if (--uip->ui_ref == 0) {
-		if (uip->ui_sbsize != 0)
-			/* XXX no %qd in kernel.  Truncate. */
-			printf("freeing uidinfo: uid = %d, sbsize = %ld\n",
-			    uip->ui_uid, (long)uip->ui_sbsize);
-		if (uip->ui_proccnt != 0)
-			printf("freeing uidinfo: uid = %d, proccnt = %ld\n",
-			    uip->ui_uid, uip->ui_proccnt);
-		LIST_REMOVE(uip, ui_hash);
-		FREE(uip, M_UIDINFO);
-		return (1);
-	}
-	return (0);
+void
+uihold(struct uidinfo *uip)
+{
+	++uip->ui_ref;
+	KKASSERT(uip->ui_ref > 0);
+}
+
+void
+uidrop(struct uidinfo *uip)
+{
+	KKASSERT(uip->ui_ref > 0);
+	if (--uip->ui_ref == 0)
+		uifree(uip);
+}
+
+void
+uireplace(struct uidinfo **puip, struct uidinfo *nuip)
+{
+	uidrop(*puip);
+	*puip = nuip;
 }
 
 /*
@@ -606,10 +614,7 @@ uifree(uip)
  * a given user is using.  When 'max' is 0, don't enforce a limit
  */
 int
-chgproccnt(uip, diff, max)
-	struct	uidinfo	*uip;
-	int	diff;
-	int	max;
+chgproccnt(struct uidinfo *uip, int diff, int max)
 {
 	/* don't allow them to exceed max, but allow subtraction */
 	if (diff > 0 && uip->ui_proccnt + diff > max && max != 0)
@@ -624,11 +629,7 @@ chgproccnt(uip, diff, max)
  * Change the total socket buffer size a user has used.
  */
 int
-chgsbsize(uip, hiwat, to, max)
-	struct	uidinfo	*uip;
-	u_long *hiwat;
-	u_long	to;
-	rlim_t	max;
+chgsbsize(struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max)
 {
 	rlim_t new;
 	int s;
@@ -647,3 +648,4 @@ chgsbsize(uip, hiwat, to, max)
 	splx(s);
 	return (1);
 }
+

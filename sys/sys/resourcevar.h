@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.4 2003/11/05 20:07:19 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.5 2003/11/05 20:24:38 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -94,24 +94,23 @@ struct uidinfo {
 };
 
 #ifdef _KERNEL
-#define uihold(uip)	(uip)->ui_ref++
+
 struct proc;
 
-void	 addupc_intr (struct proc *p, u_long pc, u_int ticks);
-void	 addupc_task (struct proc *p, u_long pc, u_int ticks);
-void	 calcru (struct proc *p, struct timeval *up, struct timeval *sp,
+void	addupc_intr (struct proc *p, u_long pc, u_int ticks);
+void	addupc_task (struct proc *p, u_long pc, u_int ticks);
+void	calcru (struct proc *p, struct timeval *up, struct timeval *sp,
 	    struct timeval *ip);
-int	 chgproccnt (struct uidinfo *uip, int diff, int max);
-int	 chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to,
-	    rlim_t max);
-int	 fuswintr (void *base);
-struct plimit
-	*limcopy (struct plimit *lim);
-void	 ruadd (struct rusage *ru, struct rusage *ru2);
-int	 suswintr (void *base, int word);
-struct uidinfo
-	*uifind (uid_t uid);
-int	 uifree (struct uidinfo *uip);
+int	chgproccnt (struct uidinfo *uip, int diff, int max);
+int	chgsbsize (struct uidinfo *uip, u_long *hiwat, u_long to, rlim_t max);
+int	fuswintr (void *base);
+struct plimit *limcopy (struct plimit *lim);
+void	ruadd (struct rusage *ru, struct rusage *ru2);
+int	suswintr (void *base, int word);
+struct uidinfo *uifind (uid_t uid);
+void	uihold (struct uidinfo *uip);
+void	uidrop (struct uidinfo *uip);
+void	uireplace (struct uidinfo **puip, struct uidinfo *nuip);
 void	uihashinit (void);
 #endif
 
