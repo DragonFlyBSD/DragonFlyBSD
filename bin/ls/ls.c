@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.4 2004/07/12 03:41:55 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -588,6 +588,7 @@ display(FTSENT *p, FTSENT *list)
 		maxblock = makenines(maxblock);
 		maxnlink = makenines(maxnlink);
 		maxsize = makenines(maxsize);
+		free(jinitmax);
 	}
 	bcfile = 0;
 	flags = NULL;
