@@ -1,8 +1,7 @@
-# $DragonFly: src/bin/varsym/Makefile,v 1.2 2003/11/10 23:58:59 dillon Exp $
+# $DragonFly: src/bin/varsym/Makefile,v 1.3 2004/09/26 16:09:13 asmodai Exp $
 
 PROG=	varsym
-#MLINKS=	varsym.1
 
-WARNS?=	2
+WARNS?=	6
 
 .include <bsd.prog.mk>
