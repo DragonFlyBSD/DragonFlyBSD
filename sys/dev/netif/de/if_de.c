@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.21 2005/02/21 04:44:22 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.22 2005/02/21 04:48:57 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -141,13 +141,9 @@ tulip_timeout_callback(
     tulip_softc_t * const sc = arg;
     int s = splimp();
 
-    TULIP_PERFSTART(timeout)
-
     sc->tulip_flags &= ~TULIP_TIMEOUTPENDING;
     sc->tulip_probe_timeout -= 1000 / TULIP_HZ;
     (sc->tulip_boardsw->bd_media_poll)(sc, TULIP_MEDIAPOLL_TIMER);
-
-    TULIP_PERFEND(timeout);
     splx(s);
 }
 
@@ -3317,7 +3313,6 @@ static void
 tulip_rx_intr(
     tulip_softc_t * const sc)
 {
-    TULIP_PERFSTART(rxintr)
     tulip_ringinfo_t * const ri = &sc->tulip_rxinfo;
     struct ifnet * const ifp = &sc->tulip_if;
     int fillok = 1;
@@ -3326,7 +3321,6 @@ tulip_rx_intr(
 #endif
 
     for (;;) {
-	TULIP_PERFSTART(rxget)
 	struct ether_header eh;
 	tulip_desc_t *eop = ri->ri_nextin;
 	int total_len = 0, last_offset = 0;
@@ -3380,8 +3374,6 @@ tulip_rx_intr(
 		    sc->tulip_dbg.dbg_rxintrs++;
 		    sc->tulip_dbg.dbg_rxpktsperintr[cnt]++;
 #endif
-		    TULIP_PERFEND(rxget);
-		    TULIP_PERFEND(rxintr);
 		    return;
 		}
 		total_len++;
@@ -3571,7 +3563,6 @@ tulip_rx_intr(
 #if defined(TULIP_DEBUG)
 	    sc->tulip_dbg.dbg_rxlowbufs++;
 #endif
-	    TULIP_PERFEND(rxget);
 	    continue;
 	}
 	/*
@@ -3624,21 +3615,18 @@ tulip_rx_intr(
 
 	if (sc->tulip_rxq.ifq_len >= TULIP_RXQ_TARGET)
 	    sc->tulip_flags &= ~TULIP_RXBUFSLOW;
-	TULIP_PERFEND(rxget);
     }
 
 #if defined(TULIP_DEBUG)
     sc->tulip_dbg.dbg_rxintrs++;
     sc->tulip_dbg.dbg_rxpktsperintr[cnt]++;
 #endif
-    TULIP_PERFEND(rxintr);
 }
 
 static int
 tulip_tx_intr(
     tulip_softc_t * const sc)
 {
-    TULIP_PERFSTART(txintr)
     tulip_ringinfo_t * const ri = &sc->tulip_txinfo;
     struct mbuf *m;
     int xmits = 0;
@@ -3762,7 +3750,6 @@ tulip_tx_intr(
     else if (xmits > 0)
 	sc->tulip_txtimer = TULIP_TXTIMER;
     sc->tulip_if.if_opackets += xmits;
-    TULIP_PERFEND(txintr);
     return descs;
 }
 
@@ -3801,7 +3788,6 @@ tulip_intr_handler(
     tulip_softc_t * const sc,
     int *progress_p)
 {
-    TULIP_PERFSTART(intr)
     u_int32_t csr;
 
     while ((csr = TULIP_CSR_READ(sc, csr_status)) & sc->tulip_intrmask) {
@@ -3892,7 +3878,6 @@ tulip_intr_handler(
 	tulip_reset(sc);
 	tulip_init(sc);
     }
-    TULIP_PERFEND(intr);
 }
 
 static void
@@ -3985,7 +3970,6 @@ tulip_txput(
     tulip_softc_t * const sc,
     struct mbuf *m)
 {
-    TULIP_PERFSTART(txput)
     tulip_ringinfo_t * const ri = &sc->tulip_txinfo;
     tulip_desc_t *eop, *nextout;
     int segcnt, free;
@@ -4257,13 +4241,10 @@ tulip_txput(
     ri->ri_nextout = nextout;
     ri->ri_free = free;
 
-    TULIP_PERFEND(txput);
-
     if (sc->tulip_flags & TULIP_TXPROBE_ACTIVE) {
 	TULIP_CSR_WRITE(sc, csr_txpoll, 1);
 	sc->tulip_if.if_flags |= IFF_OACTIVE;
 	sc->tulip_if.if_start = tulip_ifstart;
-	TULIP_PERFEND(txput);
 	return NULL;
     }
 
@@ -4304,7 +4285,6 @@ tulip_txput(
 	}
     }
     TULIP_CSR_WRITE(sc, csr_txpoll, 1);
-    TULIP_PERFEND(txput);
     return m;
 }
 
@@ -4404,7 +4384,6 @@ tulip_ifioctl(
     caddr_t data,
     struct ucred * cr)
 {
-    TULIP_PERFSTART(ifioctl)
     tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;
     struct ifaddr *ifa = (struct ifaddr *)data;
     struct ifreq *ifr = (struct ifreq *) data;
@@ -4538,7 +4517,6 @@ tulip_ifioctl(
     }
 
     splx(s);
-    TULIP_PERFEND(ifioctl);
     return error;
 }
 
@@ -4546,7 +4524,6 @@ static void
 tulip_ifstart(
     struct ifnet * const ifp)
 {
-    TULIP_PERFSTART(ifstart)
     tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;
 
     if (sc->tulip_if.if_flags & IFF_RUNNING) {
@@ -4563,15 +4540,12 @@ tulip_ifstart(
 	    }
 	}
     }
-
-    TULIP_PERFEND(ifstart);
 }
 
 static void
 tulip_ifwatchdog(
     struct ifnet *ifp)
 {
-    TULIP_PERFSTART(ifwatchdog)
     tulip_softc_t * const sc = (tulip_softc_t *)ifp->if_softc;
 
 #if defined(TULIP_DEBUG)
@@ -4618,28 +4592,6 @@ tulip_ifwatchdog(
 	tulip_reset(sc);
 	tulip_init(sc);
     }
-
-    TULIP_PERFEND(ifwatchdog);
-    TULIP_PERFMERGE(sc, perf_intr_cycles);
-    TULIP_PERFMERGE(sc, perf_ifstart_cycles);
-    TULIP_PERFMERGE(sc, perf_ifioctl_cycles);
-    TULIP_PERFMERGE(sc, perf_ifwatchdog_cycles);
-    TULIP_PERFMERGE(sc, perf_timeout_cycles);
-    TULIP_PERFMERGE(sc, perf_ifstart_one_cycles);
-    TULIP_PERFMERGE(sc, perf_txput_cycles);
-    TULIP_PERFMERGE(sc, perf_txintr_cycles);
-    TULIP_PERFMERGE(sc, perf_rxintr_cycles);
-    TULIP_PERFMERGE(sc, perf_rxget_cycles);
-    TULIP_PERFMERGE(sc, perf_intr);
-    TULIP_PERFMERGE(sc, perf_ifstart);
-    TULIP_PERFMERGE(sc, perf_ifioctl);
-    TULIP_PERFMERGE(sc, perf_ifwatchdog);
-    TULIP_PERFMERGE(sc, perf_timeout);
-    TULIP_PERFMERGE(sc, perf_ifstart_one);
-    TULIP_PERFMERGE(sc, perf_txput);
-    TULIP_PERFMERGE(sc, perf_txintr);
-    TULIP_PERFMERGE(sc, perf_rxintr);
-    TULIP_PERFMERGE(sc, perf_rxget);
 }
 
 /*

@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.8 2005/02/21 04:44:22 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.9 2005/02/21 04:48:57 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -569,35 +569,6 @@ struct _tulip_softc_t {
 	u_int32_t dbg_rxpktsperintr[TULIP_RXDESCS];
     } tulip_dbg;
 #endif
-#if defined(TULIP_PERFSTATS)
-#define	TULIP_PERF_CURRENT	0
-#define	TULIP_PERF_PREVIOUS	1
-#define	TULIP_PERF_TOTAL	2
-#define	TULIP_PERF_MAX		3
-    struct tulip_perfstats {
-	u_quad_t perf_intr_cycles;
-	u_quad_t perf_ifstart_cycles;
-	u_quad_t perf_ifstart_one_cycles;
-	u_quad_t perf_ifioctl_cycles;
-	u_quad_t perf_ifwatchdog_cycles;
-	u_quad_t perf_timeout_cycles;
-	u_quad_t perf_txput_cycles;
-	u_quad_t perf_txintr_cycles;
-	u_quad_t perf_rxintr_cycles;
-	u_quad_t perf_rxget_cycles;
-	unsigned perf_intr;
-	unsigned perf_ifstart;
-	unsigned perf_ifstart_one;
-	unsigned perf_ifioctl;
-	unsigned perf_ifwatchdog;
-	unsigned perf_timeout;
-	unsigned perf_txput;
-	unsigned perf_txintr;
-	unsigned perf_rxintr;
-	unsigned perf_rxget;
-    } tulip_perfstats[TULIP_PERF_MAX];
-#define	tulip_curperfstats		tulip_perfstats[TULIP_PERF_CURRENT]
-#endif
     struct ifqueue tulip_txq;
     struct ifqueue tulip_rxq;
     tulip_dot3_stats_t tulip_dot3stats;
@@ -834,36 +805,6 @@ static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
 #if !defined(TULIP_KVATOPHYS) && (!defined(TULIP_BUS_DMA) || defined(TULIP_BUS_DMA_NORX) || defined(TULIP_BUS_DMA_NOTX))
 #define	TULIP_KVATOPHYS(sc, va)		vtophys(va)
 #endif
-
-#if defined(TULIP_PERFSTATS)
-#define	TULIP_PERFMERGE(sc, member) \
-	do { (sc)->tulip_perfstats[TULIP_PERF_TOTAL].member \
-	     += (sc)->tulip_perfstats[TULIP_PERF_CURRENT].member; \
-	 (sc)->tulip_perfstats[TULIP_PERF_PREVIOUS].member \
-	      = (sc)->tulip_perfstats[TULIP_PERF_CURRENT].member; \
-	    (sc)->tulip_perfstats[TULIP_PERF_CURRENT].member = 0; } while (0)
-#define	TULIP_PERFSTART(name) const tulip_cycle_t perfstart_ ## name = TULIP_PERFREAD();
-#define	TULIP_PERFEND(name)	do { \
-	    (sc)->tulip_curperfstats.perf_ ## name ## _cycles += TULIP_PERFDIFF(perfstart_ ## name, TULIP_PERFREAD()); \
-	    (sc)->tulip_curperfstats.perf_ ## name ++; \
-	} while (0)
-#if defined(__i386__)
-typedef u_quad_t tulip_cycle_t;
-static __inline__ tulip_cycle_t
-TULIP_PERFREAD(
-    void)
-{
-    tulip_cycle_t x;
-    __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
-    return x;
-}
-#define	TULIP_PERFDIFF(s, f)	((f) - (s))
-#endif
-#else
-#define	TULIP_PERFSTART(name)	
-#define	TULIP_PERFEND(name)	do { } while (0)
-#define	TULIP_PERFMERGE(s,n)	do { } while (0)
-#endif /* TULIP_PERFSTATS */
 
 #define	TULIP_CRC32_POLY	0xEDB88320UL	/* CRC-32 Poly -- Little Endian */
 #define	TULIP_MAX_TXSEG		30
