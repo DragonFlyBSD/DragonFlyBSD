@@ -1,0 +1,13 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/system.h.patch,v 1.1 2004/06/17 18:05:17 joerg Exp $
+
+--- system.h.orig	2004-06-15 12:12:57.000000000 +0200
++++ system.h	2004-06-15 12:13:08.000000000 +0200
+@@ -577,7 +577,7 @@
+ #undef strdup
+  #pragma GCC poison calloc strdup
+ 
+-#if !defined(FLEX_SCANNER) && !defined(YYBISON)
++#if !defined(FLEX_SCANNER) && !defined(YYBISON) && !defined(YYBYACC)
+ #undef malloc
+ #undef realloc
+  #pragma GCC poison malloc realloc
