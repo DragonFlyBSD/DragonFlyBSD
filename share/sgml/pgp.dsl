@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/share/sgml/pgp.dsl,v 1.1.1.1 2004/04/02 09:36:40 hmp Exp $
+<!-- $DragonFly: doc/share/sgml/pgp.dsl,v 1.2 2004/04/08 18:25:51 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY docbook.dsl PUBLIC "-//Norman Walsh//DOCUMENT DocBook HTML Stylesheet//EN" CDATA DSSSL>

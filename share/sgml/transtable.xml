@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
-<!-- $DragonFly: doc/share/sgml/transtable.xml,v 1.1.1.1 2004/04/02 09:37:16 hmp Exp $
+<!-- $DragonFly: doc/share/sgml/transtable.xml,v 1.2 2004/04/08 18:25:51 justin Exp $ -->
 
 <!--
 
@@ -18,7 +18,7 @@
 <transtable>
   <cvs:keywords xmlns:cvs="http://www.FreeBSD.org/XML/CVS" version="1.0">
     <cvs:keyword name="freebsd">
-      $DragonFly: doc/share/sgml/transtable.xml,v 1.1.1.1 2004/04/02 09:37:16 hmp Exp $
+      $DragonFly: doc/share/sgml/transtable.xml,v 1.2 2004/04/08 18:25:51 justin Exp $
     </cvs:keyword>
   </cvs:keywords>
 
