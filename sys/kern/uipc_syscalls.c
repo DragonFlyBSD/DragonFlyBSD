@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.10 2003/08/24 21:37:15 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.11 2003/08/30 18:29:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1613,9 +1613,9 @@ do_sendfile(struct sendfile_args *uap, int compat)
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += uap->sysmsg_result;
+				sbytes += nuap.sysmsg_result;
 			else
-				hdtr_size += uap->sysmsg_result;
+				hdtr_size += nuap.sysmsg_result;
 		}
 	}
 
@@ -1858,9 +1858,9 @@ retry_space:
 			if (error)
 				goto done;
 			if (compat)
-				sbytes += uap->sysmsg_result;
+				sbytes += nuap.sysmsg_result;
 			else
-				hdtr_size += uap->sysmsg_result;
+				hdtr_size += nuap.sysmsg_result;
 	}
 
 done:
