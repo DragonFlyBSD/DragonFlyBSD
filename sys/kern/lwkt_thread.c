@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.37 2003/10/17 07:30:42 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.38 2003/10/26 13:59:58 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1160,8 +1160,6 @@ lwkt_inittoken(lwkt_token_t tok)
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.
- *
- * XXX should be renamed to lwkt_create()
  *
  * The thread will be entered with the MP lock held.
  */
