@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.3 2004/11/24 20:54:06 liamfoy Exp $
+# $DragonFly: site/data/main/Attic/release1_0.cgi,v 1.4 2004/11/26 17:39:34 liamfoy Exp $
 
 $TITLE(DragonFly - July 2004 Release 1.0A Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -71,8 +71,8 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TR><TD>theshell.com</TD>
 <TD>1.0A_REL image</TD>
 <TD>
-<A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>
-<A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
+<A HREF="http://www.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>,
+<A HREF="ftp://ftp.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>,
 <A HREF="rsync://rsync.theshell.com/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">rsync</A><TD></TR>
 
 <TR><TD>Fortunaty.net (Europe)</TD>
@@ -90,12 +90,21 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <TR><TD>Starkast.net (Sweden)</TD>
 <TD>1.0A_REL image</TD>
 <TD>
-<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>
+<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>,
 <A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
+
+<TR><TD>mirror.macomnet.net (Russia)</TD>
+<TD>1.0A_REL image</TD>
+<TD>
+<A HREF="http://mirror.macomnet.net/pub/DragonFlyBSD/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>,
+<A HREF="ftp://mirror.macomnet.net/pub/DragonFlyBSD/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>,
+<A HREF="rsync://mirror.macomnet.net/pub/DragonFlyBSD/iso-images/dfly-1.0A_REL.iso.gz">rsync</A><TD></TR>
 
 <TR><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
 <TD>1.0A_REL image</TD>
-<TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
+<TD>
+<A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>,
+<A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
 <TR><TD>BSDTech.com (Norway)</TD>
 <TD>1.0A_REL image</TD>
