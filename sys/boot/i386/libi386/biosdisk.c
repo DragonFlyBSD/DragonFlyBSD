@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.45 2004/09/21 06:46:44 wes Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.8 2004/10/24 18:36:05 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.9 2004/12/20 01:16:14 dillon Exp $
  */
 
 /*
@@ -135,7 +135,7 @@ struct devsw biosdisk = {
 static int	bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev);
 static void	bd_closedisk(struct open_disk *od);
 static int	bd_bestslice(struct open_disk *od);
-static void	bd_checkextended(struct open_disk *od, int slicenum);
+static void	bd_chainextended(struct open_disk *od, u_int32_t base, u_int32_t offset);
 
 /*
  * Translate between BIOS device numbers and our private unit numbers.
@@ -517,17 +517,34 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
     }
 
     /*
-     * copy the partition table, then pick up any extended partitions.
+     * copy the partition table, then pick up any extended partitions.  The
+     * base partition table always has four entries, even if some of them
+     * represented extended partitions.  However, any additional sub-extended
+     * partitions will be silently recursed and not included in the slice
+     * table.
      */
     bcopy(buf + DOSPARTOFF, &od->od_slicetab,
       sizeof(struct dos_partition) * NDOSPART);
-    od->od_nslices = 4;			/* extended slices start here */
-    for (i = 0; i < NDOSPART; i++)
-        bd_checkextended(od, i);
+    od->od_nslices = NDOSPART;
+
+    dptr = &od->od_slicetab[0];
+    for (i = 0; i < NDOSPART; i++, dptr++) {
+	if ((dptr->dp_typ == DOSPTYP_EXT) || (dptr->dp_typ == DOSPTYP_EXTLBA))
+	    bd_chainextended(od, dptr->dp_start, 0); /* 1st offset is zero */
+    }
     od->od_flags |= BD_PARTTABOK;
     dptr = &od->od_slicetab[0];
 
-    /* Is this a request for the whole disk? */
+    /*
+     * Overflow entries are not loaded into memory but we still keep
+     * track of the count.  Fix it up now.
+     */
+    if (od->od_nslices > NEXTDOSPART)
+	od->od_nslices = NEXTDOSPART;
+
+    /* 
+     * Is this a request for the whole disk? 
+     */
     if (dev->d_kind.biosdisk.slice == -1) {
 	sector = 0;
 	goto unsliced;
@@ -637,47 +654,89 @@ bd_opendisk(struct open_disk **odp, struct i386_devdesc *dev)
     return(error);
 }
 
+
 static void
-bd_checkextended(struct open_disk *od, int slicenum)
+bd_chainextended(struct open_disk *od, u_int32_t base, u_int32_t offset)
 {
-	char	buf[BIOSDISK_SECSIZE];
-	struct dos_partition *dp;
-	u_int base;
-	int i, start, end;
+        char   buf[BIOSDISK_SECSIZE];
+        struct dos_partition *dp1, *dp2;
+	int i;
 
-	dp = &od->od_slicetab[slicenum];
-	start = od->od_nslices;
-
-	if (dp->dp_size == 0)
-		goto done;
-	if (dp->dp_typ != DOSPTYP_EXT)
-		goto done;
-	if (bd_read(od, (daddr_t)dp->dp_start, 1, buf))
-		goto done;
-	if (((u_char)buf[0x1fe] != 0x55) || ((u_char)buf[0x1ff] != 0xaa)) {
-		DEBUG("no magic in extended table");
-		goto done;
+	if (bd_read(od, (daddr_t)(base + offset), 1, buf)) {
+                printf("\nerror reading extended partition table");
+		return;
 	}
-	base = dp->dp_start;
-	dp = (struct dos_partition *)(&buf[DOSPARTOFF]);
-	for (i = 0; i < NDOSPART; i++, dp++) {
-		if (dp->dp_size == 0)
-			continue;
-		if (od->od_nslices == NEXTDOSPART)
-			goto done;
-		dp->dp_start += base;
-		bcopy(dp, &od->od_slicetab[od->od_nslices], sizeof(*dp));
-		od->od_nslices++;
-	}
-	end = od->od_nslices;
 
 	/*
-	 * now, recursively check the slices we just added
+	 * dp1 points to the first record in the on-disk XPT,
+	 * dp2 points to the next entry in the in-memory parition table.
+	 *
+	 * NOTE: dp2 may be out of bounds if od_nslices >= NEXTDOSPART.
+	 *
+	 * NOTE: unlike the extended partitions in our primary dos partition
+	 * table, we do not record recursed extended partitions themselves 
+	 * in our in-memory partition table.
+	 *
+	 * NOTE: recording within our in-memory table must be breadth first
+	 * ot match what the kernel does.  Thus, two passes are required.
+	 *
+	 * NOTE: partitioning programs which support extended partitions seem
+	 * to always use the first entry for the user partition and the
+	 * second entry to chain, and also appear to disallow more then one
+	 * extended partition at each level.  Nevertheless we make our code
+	 * somewhat more generic (and the same as the kernel's own slice
+	 * scan).
 	 */
-	for (i = start; i < end; i++)
-		bd_checkextended(od, i);
-done:
-	return;
+	dp1 = (struct dos_partition *)(&buf[DOSPARTOFF]);
+	dp2 = &od->od_slicetab[od->od_nslices];
+
+	for (i = 0; i < NDOSPART; ++i, ++dp1) {
+		if (dp1->dp_scyl == 0 && dp1->dp_shd == 0 &&
+		    dp1->dp_ssect == 0 && dp1->dp_start == 0 && 
+		    dp1->dp_size == 0) {
+			continue;
+		}
+		if ((dp1->dp_typ == DOSPTYP_EXT) || 
+		    (dp1->dp_typ == DOSPTYP_EXTLBA)) {
+			/*
+			 * breadth first traversal, must skip in the 
+			 * first pass
+			 */
+			continue;
+		}
+
+		/*
+		 * Only load up the in-memory data if we haven't overflowed
+		 * our in-memory array.
+		 */
+		if (od->od_nslices < NEXTDOSPART) {
+			dp2->dp_typ = dp1->dp_typ;
+			dp2->dp_start = base + offset + dp1->dp_start;
+			dp2->dp_size = dp1->dp_size;
+		}
+		++od->od_nslices;
+		++dp2;
+	}
+
+	/*
+	 * Pass 2 - handle extended partitions.  Note that the extended
+	 * slice itself is not stored in the slice array when we recurse,
+	 * but any 'original' top-level extended slices are.  This is to
+	 * match what the kernel does.
+	 */
+	dp1 -= NDOSPART;
+	for (i = 0; i < NDOSPART; ++i, ++dp1) {
+		if (dp1->dp_scyl == 0 && dp1->dp_shd == 0 &&
+		    dp1->dp_ssect == 0 && dp1->dp_start == 0 && 
+		    dp1->dp_size == 0) {
+			continue;
+		}
+		if ((dp1->dp_typ == DOSPTYP_EXT) || 
+		    (dp1->dp_typ == DOSPTYP_EXTLBA)) {
+			bd_chainextended(od, base, dp1->dp_start);
+			continue;
+		}
+	}
 }
 
 /*
@@ -714,7 +773,6 @@ bd_bestslice(struct open_disk *od)
 
 	dp = &od->od_slicetab[0];
 	for (i = 0; i < od->od_nslices; i++, dp++) {
-
 		switch (dp->dp_typ) {
 		case DOSPTYP_386BSD:		/* FreeBSD */
 			pref = dp->dp_flag & 0x80 ? PREF_FBSD_ACT : PREF_FBSD;
