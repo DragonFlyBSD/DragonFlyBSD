@@ -33,7 +33,7 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.2 2003/06/17 04:28:20 dillon Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.3 2003/10/24 17:19:14 dillon Exp $
 
 TYPE="FreeBSD"
 REVISION="4.8"
@@ -87,6 +87,7 @@ fi
 
 touch version
 v=`cat version` u=${USER-root} d=`pwd` h=`hostname` t=`date`
+i=`make -V KERN_IDENT`
 cat << EOF > vers.c
 $COPYRIGHT
 char sccspad[32 - 4 /* sizeof(sccs) */] = { '\\0' };
@@ -95,6 +96,7 @@ char version[] = "${VERSION} #${v}: ${t}\\n    ${u}@${h}:${d}\\n";
 char ostype[] = "${TYPE}";
 char osrelease[] = "${RELEASE}";
 int osreldate = ${RELDATE};
+char kern_ident[] = "${i}";
 EOF
 
 echo `expr ${v} + 1` > version

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)uname.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/uname/uname.c,v 1.4.6.2 2002/10/17 07:47:29 jmallett Exp $
- * $DragonFly: src/usr.bin/uname/uname.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/uname/uname.c,v 1.3 2003/10/24 17:19:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -51,10 +51,12 @@
 #define	RFLAG	0x08
 #define	SFLAG	0x10
 #define	VFLAG	0x20
+#define	IFLAG   0x40
 
 typedef void (*get_t)(void);
-get_t get_platform, get_hostname, get_arch, get_release, get_sysname, get_version;
-
+get_t get_ident, get_platform, get_hostname, get_arch, get_release, get_sysname, get_version;
+  
+void native_ident(void);
 void native_platform(void);
 void native_hostname(void);
 void native_arch(void);
@@ -65,7 +67,7 @@ void print_uname(u_int);
 void setup_get(void);
 void usage(void);
 
-char *platform, *hostname, *arch, *release, *sysname, *version;
+char *ident, *platform, *hostname, *arch, *release, *sysname, *version;
 int space;
 
 int
@@ -77,10 +79,13 @@ main(int argc, char *argv[])
 	setup_get();
 	flags = 0;
 
-	while ((ch = getopt(argc, argv, "amnprsv")) != -1)
+	while ((ch = getopt(argc, argv, "aimnprsv")) != -1)
 		switch(ch) {
 		case 'a':
 			flags |= (MFLAG | NFLAG | RFLAG | SFLAG | VFLAG);
+			break;
+		case 'i':
+			flags |= IFLAG;
 			break;
 		case 'm':
 			flags |= MFLAG;
@@ -136,6 +141,7 @@ setup_get(void)
 	CHECK_ENV("v", version);
 	CHECK_ENV("m", platform);
 	CHECK_ENV("p", arch);
+	CHECK_ENV("i", ident);
 }
 
 #define	PRINT_FLAG(flags,flag,var)		\
@@ -158,6 +164,7 @@ print_uname(u_int flags)
 	PRINT_FLAG(flags, VFLAG, version);
 	PRINT_FLAG(flags, MFLAG, platform);
 	PRINT_FLAG(flags, PFLAG, arch);
+	PRINT_FLAG(flags, IFLAG, ident);
 	printf("\n");
 }
 
@@ -174,6 +181,19 @@ native_##var(void)				\
 	if (sysctl(mib, sizeof mib / sizeof mib[0],	\
 	   &buf, &len, NULL, 0) == -1)		\
 		err(1, "sysctl");
+
+#define	NATIVE_SYSCTLNAME_GET(var,name)		\
+void						\
+native_##var(void)				\
+{						\
+	size_t len;				\
+	static char buf[1024];			\
+	char **varp = &(var);			\
+						\
+	len = sizeof buf;			\
+	if (sysctlbyname(name, &buf, &len, NULL,\
+	    0) == -1)				\
+		err(1, "sysctlbyname");
 
 #define	NATIVE_SET				\
 	*varp = buf;				\
@@ -209,9 +229,12 @@ NATIVE_SYSCTL2_GET(platform, CTL_HW, HW_MACHINE) {
 NATIVE_SYSCTL2_GET(arch, CTL_HW, HW_MACHINE_ARCH) {
 } NATIVE_SET;
 
+NATIVE_SYSCTLNAME_GET(ident, "kern.ident") {
+} NATIVE_SET;
+
 void
 usage(void)
 {
-	fprintf(stderr, "usage: uname [-amnprsv]\n");
+	fprintf(stderr, "usage: uname [-aimnprsv]\n");
 	exit(1);
 }
