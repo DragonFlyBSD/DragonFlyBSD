@@ -16,8 +16,8 @@
  * 4. Modifications may be freely made to this file if the above conditions
  *    are met.
  *
- * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.3 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.5 2003/07/22 17:03:33 dillon Exp $
+ * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.6 2004/02/09 21:51:28 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -43,6 +43,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	int i;
 	int error;
 	int spl;
+	int chk_blockno;
 	caddr_t sa;
 	off_t blockno;
 	u_int iolen;
@@ -64,6 +65,12 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 		    devtoname(dev), dev->si_iosize_max);
 		dev->si_iosize_max = DFLTPHYS;
 	}
+
+	/* Don't check block number overflow for D_MEM */
+	if ((devsw(dev)->d_flags & D_TYPEMASK) == D_MEM)
+		chk_blockno = 0;
+	else
+		chk_blockno = 1;
 
 	for (i = 0; i < uio->uio_iovcnt; i++) {
 		while (uio->uio_iov[i].iov_len) {
@@ -97,7 +104,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 			bp->b_bufsize = bp->b_bcount;
 
 			blockno = bp->b_offset >> DEV_BSHIFT;
-			if ((daddr_t)blockno != blockno) {
+			if (chk_blockno && (daddr_t)blockno != blockno) {
 				error = EINVAL; /* blockno overflow */
 				goto doerror;
 			}
