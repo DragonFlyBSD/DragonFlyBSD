@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.18 2004/01/14 23:26:14 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.19 2004/01/18 12:32:04 dillon Exp $
  */
 
 /*
@@ -3231,6 +3231,8 @@ vm_map_lookup_done(vm_map_t map, vm_map_entry_t entry, int count)
 		vm_map_entry_release(count);
 }
 
+#ifdef ENABLE_VFS_IOOPT
+
 /*
  * Implement uiomove with VM operations.  This handles (and collateral changes)
  * support every combination of source object modification, and COW type
@@ -3467,6 +3469,8 @@ vm_uiomove(mapa, srcobject, cp, cnta, uaddra, npages)
 	}
 	return 0;
 }
+
+#endif
 
 /*
  * Performs the copy_on_write operations necessary to allow the virtual copies
