@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.10 2004/06/21 15:39:31 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.11 2004/09/15 14:24:33 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -128,6 +128,8 @@ mly_attach(struct mly_softc *sc)
 
     debug_called(1);
 
+    callout_init(&sc->mly_periodic);
+
     /*
      * Initialise per-controller queues.
      */
@@ -228,7 +230,7 @@ mly_detach(struct mly_softc *sc)
     debug_called(1);
 
     /* kill the periodic event */
-    untimeout(mly_periodic, sc, sc->mly_periodic);
+    callout_stop(&sc->mly_periodic);
 
     sc->mly_state |= MLY_STATE_SUSPEND;
 
@@ -810,7 +812,7 @@ mly_periodic(void *data)
 	}
     }
 
-    sc->mly_periodic = timeout(mly_periodic, sc, hz);
+    callout_reset(&sc->mly_periodic, hz, mly_periodic, sc);
 }
 
 /********************************************************************************

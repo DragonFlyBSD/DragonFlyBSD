@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mlyvar.h,v 1.1.2.2 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.3 2004/02/13 01:33:19 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mlyvar.h,v 1.4 2004/09/15 14:24:33 joerg Exp $
  */
 
 /********************************************************************************
@@ -218,7 +218,7 @@ struct mly_softc {
     u_int32_t			mly_event_change;	/* event status change indicator */
     u_int32_t			mly_event_counter;	/* next event for which we anticpiate status */
     u_int32_t			mly_event_waiting;	/* next event the controller will post status for */
-    struct callout_handle	mly_periodic;		/* periodic event handling */
+    struct callout		mly_periodic;		/* periodic event handling */
 
     /* CAM connection */
     TAILQ_HEAD(,ccb_hdr)	mly_cam_ccbq;			/* outstanding I/O from CAM */
