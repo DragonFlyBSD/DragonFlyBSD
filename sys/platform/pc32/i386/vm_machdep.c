@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.6 2003/06/19 06:26:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "npx.h"
@@ -156,6 +156,18 @@ cpu_fork(p1, p2, flags)
 	 * syscall.  This copies the user mode register values.  The
 	 * 16 byte offset saves space for vm86, and must match 
 	 * common_tss.esp0 (kernel stack pointer on entry from user mode)
+	 *
+	 * pcb_esp must allocate an additional call-return pointer below
+	 * the trap frame which will be restored by cpu_restore, and the
+	 * thread's td_sp pointer must allocate an additonal call-return
+	 * pointer below the pcb_esp call-return pointer to hold the LWKT
+	 * restore function pointer.
+	 *
+	 * The LWKT restore function pointer must be set to cpu_restore,
+	 * which is our standard heavy weight process switch-in function.
+	 * YYY eventually we should shortcut fork_return and fork_trampoline
+	 * to use the LWKT restore function directly so we can get rid of
+	 * all the extra crap we are setting up.
 	 */
 	p2->p_md.md_regs = (struct trapframe *)
 			    ((char *)p2->p_thread->td_pcb - 16) - 1;
@@ -172,6 +184,8 @@ cpu_fork(p1, p2, flags)
 	pcb2->pcb_esp = (int)p2->p_md.md_regs - sizeof(void *);
 	pcb2->pcb_ebx = (int)p2;		/* fork_trampoline argument */
 	pcb2->pcb_eip = (int)fork_trampoline;
+	p2->p_thread->td_sp = (char *)(pcb2->pcb_esp - sizeof(void *));
+	*(void **)p2->p_thread->td_sp = (void *)cpu_heavy_restore;
 	/*
 	 * pcb2->pcb_ldt:	duplicated below, if necessary.
 	 * pcb2->pcb_savefpu:	cloned above.
@@ -236,6 +250,13 @@ cpu_exit(p)
 {
 	struct pcb *pcb = p->p_thread->td_pcb; 
 
+	/*
+	 * This allows us to disassociate curproc from the thread.
+	 */
+	if (p->p_thread->td_switch == cpu_heavy_switch)
+	    p->p_thread->td_switch = cpu_exit_switch;
+	p->p_thread->td_proc = NULL;
+
 #if NNPX > 0
 	npxexit(p);
 #endif	/* NNPX */
@@ -259,7 +280,7 @@ cpu_exit(p)
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
 	cnt.v_swtch++;
-	cpu_switch(p);
+	lwkt_switch();
 	panic("cpu_exit");
 }
 

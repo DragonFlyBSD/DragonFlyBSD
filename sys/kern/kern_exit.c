@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.5 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.6 2003/06/20 02:09:56 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -361,16 +361,14 @@ exit1(p, rv)
 	p->p_thread->td_pcb->pcb_saveacc.faddr = (float *)NULL;
 #endif
 	/*
-	 * Clear curproc after we've done all operations
-	 * that could block, and before tearing down the rest
-	 * of the process state that might be used from clock, etc.
-	 * Also, can't clear curproc while we're still runnable,
-	 * as we're not on a run queue (we are current, just not
-	 * a proper proc any longer!).
+	 * cpu_exit is responsible for clearing curproc, since
+	 * it is heavily integrated with the thread/switching sequence.
+	 *
+	 * After this point we cannot block and we cannot become runnable
+	 * again.
 	 *
 	 * Other substructures are freed from wait().
 	 */
-	mycpu->gd_curthread->td_proc = NULL;
 	if (--p->p_limit->p_refcnt == 0) {
 		FREE(p->p_limit, M_SUBPROC);
 		p->p_limit = NULL;

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.7 2003/06/19 06:26:10 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.8 2003/06/20 02:09:59 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -444,7 +444,8 @@ void	sleepinit __P((void));
 int	suser __P((struct proc *));
 int	suser_xxx __P((struct ucred *cred, struct proc *proc, int flag));
 void	remrunqueue __P((struct proc *));
-void	cpu_switch __P((struct proc *));
+void	cpu_heavy_switch __P((struct thread *));
+void	cpu_lwkt_switch __P((struct thread *));
 void	unsleep __P((struct proc *));
 
 void	cpu_exit __P((struct proc *)) __dead2;

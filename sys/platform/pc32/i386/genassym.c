@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.7 2003/06/19 01:55:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.8 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -83,6 +83,7 @@ ASSYM(P_THREAD, offsetof(struct proc, p_thread));
 
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
+ASSYM(TD_SP, offsetof(struct thread, td_sp));
 
 #ifdef SMP
 ASSYM(P_ONCPU, offsetof(struct proc, p_oncpu));
@@ -200,9 +201,10 @@ ASSYM(GD_PRV_CADDR1, offsetof(struct globaldata, gd_prv_CADDR1));
 ASSYM(GD_PRV_CADDR2, offsetof(struct globaldata, gd_prv_CADDR2));
 ASSYM(GD_PRV_CADDR3, offsetof(struct globaldata, gd_prv_CADDR3));
 ASSYM(GD_PRV_PADDR1, offsetof(struct globaldata, gd_prv_PADDR1));
+#endif
 ASSYM(PS_IDLESTACK, offsetof(struct privatespace, idlestack));
 ASSYM(PS_IDLESTACK_TOP, sizeof(struct privatespace));
-#endif
+ASSYM(PS_SIZEOF, sizeof(struct privatespace));
 
 ASSYM(KCSEL, GSEL(GCODE_SEL, SEL_KPL));
 ASSYM(KDSEL, GSEL(GDATA_SEL, SEL_KPL));

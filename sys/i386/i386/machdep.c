@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.6 2003/06/19 06:26:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "apm.h"
@@ -967,13 +967,12 @@ cpu_halt(void)
 }
 
 /*
- * Hook to idle the CPU when possible.   This is disabled by default for
- * the SMP case as there is a small window of opportunity whereby a ready
- * process is delayed to the next clock tick.  It should be safe to enable
- * for SMP if power is a concern.
+ * cpu_idle() represents the idle LWKT.  You cannot return from this function
+ * (unless you want to blow things up!).  Instead we look for runnable threads
+ * and loop or halt as appropriate.  Giant is not held on entry to the thread.
  *
- * On -stable, cpu_idle() is called with interrupts disabled and must
- * return with them enabled.
+ * Note on cpu_idle_hlt:  On an SMP system this may cause the system to 
+ * halt until the next clock tick, even if a thread is ready YYY
  */
 #ifdef SMP
 static int	cpu_idle_hlt = 0;
@@ -986,14 +985,20 @@ SYSCTL_INT(_machdep, OID_AUTO, cpu_idle_hlt, CTLFLAG_RW,
 void
 cpu_idle(void)
 {
-	if (cpu_idle_hlt) {
-		/*
-		 * We must guarentee that hlt is exactly the instruction
-		 * following the sti.
-		 */
-		__asm __volatile("sti; hlt");
-	} else {
-		__asm __volatile("sti");
+	for (;;) {
+		__asm __volatile("cli");
+		lwkt_switch();
+		if (cpu_idle_hlt) {
+			/*
+			 * We must guarentee that hlt is exactly the instruction
+			 * following the sti.
+			 */
+			__asm __volatile("sti; hlt");
+		} else {
+			__asm __volatile("sti");
+		}
+		spl0();	/* unmask interrupts */
+		/* YYY BGL */
 	}
 }
 
@@ -1869,6 +1874,7 @@ init386(first)
 	thread0.td_proc = &proc0;
 	thread0.td_pcb = (struct pcb *)
 	    ((char *)proc0paddr + UPAGES*PAGE_SIZE - sizeof(struct pcb));
+	thread0.td_kstack = (char *)proc0paddr;
 
 	atdevbase = ISA_HOLE_START + KERNBASE;
 
@@ -1899,24 +1905,23 @@ init386(first)
 #ifdef SMP
 	gdt_segs[GPRIV_SEL].ssd_limit =
 		atop(sizeof(struct privatespace) - 1);
-	gdt_segs[GPRIV_SEL].ssd_base = (int) &SMP_prvspace[0];
+	gdt_segs[GPRIV_SEL].ssd_base = (int) &CPU_prvspace[0];
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(int) &SMP_prvspace[0].globaldata.gd_common_tss;
-	SMP_prvspace[0].globaldata.gd_prvspace = &SMP_prvspace[0];
-	gd = &SMP_prvspace[0].globaldata;
+		(int) &CPU_prvspace[0].globaldata.gd_common_tss;
 #else
 	gdt_segs[GPRIV_SEL].ssd_limit = atop(0 - 1);
 	gdt_segs[GPROC0_SEL].ssd_base = (int) &common_tss;
-	gd = &UP_globaldata;
 #endif
+	gd = &CPU_prvspace[0].globaldata;
+	gd->gd_prvspace = &CPU_prvspace[0];
 	/*
 	 * Note: on both UP and SMP curthread must be set non-NULL
 	 * early in the boot sequence because the system assumes
 	 * that 'curthread' is never NULL.
 	 */
 	/* YYY use prvspace for UP too and set here rather then later */
-	gd->gd_curthread = &gd->gd_idlethread;
-	TAILQ_INIT(&gd->gd_freethreads);
+	mi_gdinit(gd, 0);
+	cpu_gdinit(gd, 0);
 
 	for (x = 0; x < NGDT; x++) {
 #ifdef BDE_DEBUGGER
@@ -2068,7 +2073,33 @@ init386(first)
 	thread0.td_pcb->pcb_mpnest = 1;
 #endif
 	thread0.td_pcb->pcb_ext = 0;
+	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */
 	proc0.p_md.md_regs = &proc0_tf;
+}
+
+/*
+ * Initialize machine-dependant portions of the global data structure
+ *
+ *	YYY do we need to reserve pcb space for idlethread?
+ */
+void
+cpu_gdinit(struct globaldata *gd, int cpu)
+{
+	char *sp;
+	struct pcb *pcb;
+
+	if (cpu == 0)
+	    gd->gd_curthread = &thread0;
+	else
+	    gd->gd_curthread = &gd->gd_idlethread;
+	sp = gd->gd_prvspace->idlestack;
+	gd->gd_idlethread.td_kstack = sp;
+	pcb = (struct pcb *)(sp + sizeof(gd->gd_prvspace->idlestack)) - 1;
+	gd->gd_idlethread.td_pcb = pcb;
+	gd->gd_idlethread.td_sp = (char *)pcb - 16 - sizeof(void *);
+	gd->gd_idlethread.td_switch = cpu_lwkt_switch;
+	*(void **)gd->gd_idlethread.td_sp = cpu_idle_restore;
+	TAILQ_INIT(&gd->gd_tdfreeq);	/* for pmap_{new,dispose}_thread() */
 }
 
 #if defined(I586_CPU) && !defined(NO_F00F_HACK)

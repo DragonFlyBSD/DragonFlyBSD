@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.3 2003/06/20 02:09:59 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -100,8 +100,10 @@ struct proc;
 struct timeval;
 struct tty;
 struct uio;
+struct globaldata;
 
 void	Debugger __P((const char *msg));
+void	mi_gdinit __P((struct globaldata *gd, int cpu));
 int	dumpstatus __P((vm_offset_t addr, off_t count));
 int	nullop __P((void));
 int	eopnotsupp __P((void));

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/exception.s,v 1.65.2.3 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/exception.s,v 1.3 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "npx.h"
@@ -333,6 +333,11 @@ IDTVEC(int0x80_syscall)
 ENTRY(fork_trampoline)
 	call	_spl0
 
+	movl	_curthread,%eax		/* YYY heavy weight process must */
+	pushl	TD_PROC(%eax)		/* YYY remove itself from runq because */
+	call	remrunqueue		/* LWKT restore func doesn't do that */
+	addl	$4,%esp
+
 #ifdef SMP
 	cmpl	$0,_switchtime
 	jne	1f
@@ -345,7 +350,6 @@ ENTRY(fork_trampoline)
 	movl	%eax,_switchticks
 1:
 #endif
-
 	/*
 	 * cpu_set_fork_handler intercepts this function call to
 	 * have this call a non-return function to stay in kernel mode.

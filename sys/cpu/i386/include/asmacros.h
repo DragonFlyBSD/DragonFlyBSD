@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.2 2003/06/17 04:28:35 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/asmacros.h,v 1.3 2003/06/20 02:09:54 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
@@ -57,6 +57,7 @@
 #define HIDENAME(asmsym)	asmsym
 #endif
 
+#define ALIGN_PAGE	.p2align PAGE_SHIFT	/* page alignment */
 #define ALIGN_DATA	.p2align 2	/* 4 byte alignment, zero filled */
 #ifdef GPROF
 #define ALIGN_TEXT	.p2align 4,0x90	/* 16-byte alignment, nop filled */

@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.6 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.7 2003/06/20 02:09:56 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -353,7 +353,6 @@ proc0_init(void *dummy __unused)
 	vm_map_init(&vmspace0.vm_map, round_page(VM_MIN_ADDRESS),
 	    trunc_page(VM_MAXUSER_ADDRESS));
 	vmspace0.vm_map.pmap = vmspace_pmap(&vmspace0);
-	/*p->p_addr = proc0paddr;		*/		/* XXX */
 
 	/*
 	 * We continue to place resource usage info and signal
@@ -366,12 +365,6 @@ proc0_init(void *dummy __unused)
 	 * Charge root for one process.
 	 */
 	(void)chgproccnt(cred0.p_uidinfo, 1, 0);
-
-	/*
-	 * Initialize the current process pointer (curproc) before
-	 * any possible traps/probes to simplify trap processing.
-	 */
-	mycpu->gd_curthread = p->p_thread;
 
 }
 SYSINIT(p0init, SI_SUB_INTRINSIC, SI_ORDER_FIRST, proc0_init, NULL)
@@ -585,3 +578,14 @@ kick_init(const void *udata __unused)
 	setrunqueue(initproc);
 }
 SYSINIT(kickinit,SI_SUB_KTHREAD_INIT, SI_ORDER_FIRST, kick_init, NULL)
+
+/*
+ * Machine independant globaldata initialization
+ */
+void
+mi_gdinit(struct globaldata *gd, int cpu)
+{
+	lwkt_gdinit(gd);
+}
+
+

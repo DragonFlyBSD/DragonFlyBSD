@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.6 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.7 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "npx.h"
@@ -54,15 +54,7 @@
 
 #include "assym.s"
 
-
-/*****************************************************************************/
-/* Scheduling                                                                */
-/*****************************************************************************/
-
 	.data
-
-	.globl	_hlt_vector
-_hlt_vector:	.long	_cpu_idle	/* pointer to halt routine */
 
 	.globl	_panic
 
@@ -74,219 +66,21 @@ _tlb_flush_count:	.long	0
 
 	.text
 
-/*
- * When no processes are on the runq, cpu_switch() branches to _idle
- * to wait for something to come ready.
- */
-	ALIGN_TEXT
-	.type	_idle,@function
-_idle:
-	xorl	%ebp,%ebp
-	movl	%ebp,_switchtime
-
-#ifdef SMP
-
-	/* when called, we have the mplock, intr disabled */
-	/* use our idleproc's "context" */
-	movl	_IdlePTD, %ecx
-	movl	%cr3, %eax
-	cmpl	%ecx, %eax
-	je		2f
-#if defined(SWTCH_OPTIM_STATS)
-	decl	_swtch_optim_stats
-	incl	_tlb_flush_count
-#endif
-	movl	%ecx, %cr3
-2:
-	/* Keep space for nonexisting return addr, or profiling bombs */
-	movl	$gd_idlestack_top-4, %ecx	
-	addl	%fs:0, %ecx
-	movl	%ecx, %esp
-
-	/* update common_tss.tss_esp0 pointer */
-	movl	%ecx, _common_tss + TSS_ESP0
-
-	movl	_cpuid, %esi
-	btrl	%esi, _private_tss
-	jae	1f
-
-	movl	$gd_common_tssd, %edi
-	addl	%fs:0, %edi
-
-	/* move correct tss descriptor into GDT slot, then reload tr */
-	movl	_tss_gdt, %ebx			/* entry in GDT */
-	movl	0(%edi), %eax
-	movl	%eax, 0(%ebx)
-	movl	4(%edi), %eax
-	movl	%eax, 4(%ebx)
-	movl	$GPROC0_SEL*8, %esi		/* GSEL(entry, SEL_KPL) */
-	ltr	%si
-1:
-
-	sti
-
-	/*
-	 * XXX callers of cpu_switch() do a bogus splclock().  Locking should
-	 * be left to cpu_switch().
-	 *
-	 * NOTE: spl*() may only be called while we hold the MP lock (which 
-	 * we do).
-	 */
-	call	_spl0
-
-	cli
-
-	/*
-	 * _REALLY_ free the lock, no matter how deep the prior nesting.
-	 * We will recover the nesting on the way out when we have a new
-	 * proc to load.
-	 *
-	 * XXX: we had damn well better be sure we had it before doing this!
-	 */
-	movl	$FREE_LOCK, %eax
-	movl	%eax, _mp_lock
-
-	/* do NOT have lock, intrs disabled */
-	.globl	idle_loop
-idle_loop:
-
-	cmpl	$0,_smp_active
-	jne	1f
-	cmpl	$0,_cpuid
-	je	1f
-	jmp	2f
-
-1:
-	call	_procrunnable
-	testl	%eax,%eax
-	jnz	3f
-
-	/*
-	 * Handle page-zeroing in the idle loop.  Called with interrupts
-	 * disabled and the MP lock released.  Inside vm_page_zero_idle
-	 * we enable interrupts and grab the mplock as required.
-	 */
-	cmpl	$0,_do_page_zero_idle
-	je	2f
-
-	call	_vm_page_zero_idle		/* internal locking */
-	testl	%eax, %eax
-	jnz	idle_loop
-2:
-
-	/* enable intrs for a halt */
-	movl	$0, lapic_tpr			/* 1st candidate for an INT */
-	call	*_hlt_vector			/* wait for interrupt */
-	cli
-	jmp	idle_loop
-
-	/*
-	 * Note that interrupts must be enabled while obtaining the MP lock
-	 * in order to be able to take IPI's while blocked.
-	 */
-3:
-#ifdef GRAB_LOPRIO
-	movl	$LOPRIO_LEVEL, lapic_tpr	/* arbitrate for INTs */
-#endif
-	sti
-	call	_get_mplock
-	cli
-	call	_procrunnable
-	testl	%eax,%eax
-	CROSSJUMP(jnz, sw1a, jz)
-	call	_rel_mplock
-	jmp	idle_loop
-
-#else /* !SMP */
-
-	movl	$HIDENAME(tmpstk),%esp
-#if defined(OVERLY_CONSERVATIVE_PTD_MGMT)
-#if defined(SWTCH_OPTIM_STATS)
-	incl	_swtch_optim_stats
-#endif
-	movl	_IdlePTD, %ecx
-	movl	%cr3, %eax
-	cmpl	%ecx, %eax
-	je		2f
-#if defined(SWTCH_OPTIM_STATS)
-	decl	_swtch_optim_stats
-	incl	_tlb_flush_count
-#endif
-	movl	%ecx, %cr3
-2:
-#endif
-
-	/* update common_tss.tss_esp0 pointer */
-	movl	%esp, _common_tss + TSS_ESP0
-
-	movl	$0, %esi
-	btrl	%esi, _private_tss
-	jae	1f
-
-	movl	$_common_tssd, %edi
-
-	/* move correct tss descriptor into GDT slot, then reload tr */
-	movl	_tss_gdt, %ebx			/* entry in GDT */
-	movl	0(%edi), %eax
-	movl	%eax, 0(%ebx)
-	movl	4(%edi), %eax
-	movl	%eax, 4(%ebx)
-	movl	$GPROC0_SEL*8, %esi		/* GSEL(entry, SEL_KPL) */
-	ltr	%si
-1:
-
-	sti
-
-	/*
-	 * XXX callers of cpu_switch() do a bogus splclock().  Locking should
-	 * be left to cpu_switch().
-	 */
-	call	_spl0
-
-	ALIGN_TEXT
-idle_loop:
-	cli
-	call	_procrunnable
-	testl	%eax,%eax
-	CROSSJUMP(jnz, sw1a, jz)
-#ifdef	DEVICE_POLLING
-	call	_idle_poll
-#else	/* standard code */
-	call	_vm_page_zero_idle
-#endif
-	testl	%eax, %eax
-	jnz	idle_loop
-	call	*_hlt_vector			/* wait for interrupt */
-	jmp	idle_loop
-
-#endif /* SMP */
-
-CROSSJUMPTARGET(_idle)
-
-#if 0
-
-ENTRY(default_halt)
-	sti
-#ifndef SMP
-	hlt					/* XXX:	 until a wakeup IPI */
-#endif
-	ret
-
-#endif
 
 /*
- * cpu_switch()
+ * cpu_heavy_switch(next_thread)
+ *
+ *	Switch from the current thread to a new thread.  This entry
+ *	is normally called via the thread->td_switch function, and will
+ *	only be called when the current thread is a heavy weight process.
+ *
+ *	YYY disable interrupts once giant is removed.
  */
-ENTRY(cpu_switch)
-	
-	/* switch to new process. first, save context as needed */
+ENTRY(cpu_heavy_switch)
 	movl	_curthread,%ecx
 	movl	TD_PROC(%ecx),%ecx
 
-	/* if no process to save, don't bother */
-	testl	%ecx,%ecx
-	je	sw1
-
+	cli
 #ifdef SMP
 	movb	P_ONCPU(%ecx), %al		/* save "last" cpu */
 	movb	%al, P_LASTCPU(%ecx)
@@ -300,9 +94,11 @@ ENTRY(cpu_switch)
 #endif /* SMP */
 	btrl	%eax, VM_PMAP+PM_ACTIVE(%edx)
 
-	movl	_curthread,%edx
+	/*
+	 * Save general regs
+	 */
+	movl	P_THREAD(%ecx),%edx
 	movl	TD_PCB(%edx),%edx
-
 	movl	(%esp),%eax			/* Hardware registers */
 	movl	%eax,PCB_EIP(%edx)
 	movl	%ebx,PCB_EBX(%edx)
@@ -312,7 +108,20 @@ ENTRY(cpu_switch)
 	movl	%edi,PCB_EDI(%edx)
 	movl	%gs,PCB_GS(%edx)
 
-	/* test if debug regisers should be saved */
+	/*
+	 * Push the LWKT switch restore function, which resumes a heavy
+	 * weight process.  Note that the LWKT switcher is based on
+	 * TD_SP, while the heavy weight process switcher is based on
+	 * PCB_ESP.  TD_SP is usually one pointer pushed relative to
+	 * PCB_ESP.
+	 */
+	movl	P_THREAD(%ecx),%eax
+	pushl	$cpu_heavy_restore
+	movl	%esp,TD_SP(%eax)
+
+	/*
+	 * Save debug regs if necessary
+	 */
 	movb    PCB_FLAGS(%edx),%al
 	andb    $PCB_DBREGS,%al
 	jz      1f                              /* no, skip over */
@@ -332,6 +141,10 @@ ENTRY(cpu_switch)
 	movl    %eax,PCB_DR0(%edx)
 1:
  
+	/*
+	 * Save BGL nesting count.  Note that we hold the BGL with a
+	 * count of at least 1 on entry to cpu_heavy_switch().
+	 */
 #ifdef SMP
 	movl	_mp_lock, %eax
 	/* XXX FIXME: we should be saving the local APIC TPR */
@@ -343,8 +156,10 @@ ENTRY(cpu_switch)
 	movl	%eax, PCB_MPNEST(%edx)		/* store it */
 #endif /* SMP */
 
+	/*
+	 * Save the FP state if we have used the FP.
+	 */
 #if NNPX > 0
-	/* have we used fp, and need a save? */
 	movl	P_THREAD(%ecx),%ecx
 	cmpl	%ecx,_npxthread
 	jne	1f
@@ -357,52 +172,67 @@ ENTRY(cpu_switch)
 #endif	/* NNPX > 0 */
 
 	/*
-	 * out of processes, set curthread to the current cpu's
-	 * idlethread.  Note that idlethread.td_proc will be NULL.
+	 * Switch to the next thread, which was passed as an argument
+	 * to cpu_heavy_switch().  Due to the switch-restore function we pushed,
+	 * the argument is at 8(%esp).  Set the current thread, load the
+	 * stack pointer, and 'ret' into the switch-restore function.
 	 */
-#ifdef SMP
-	movl	$gd_idlethread, %edi
-	addl	%fs:0, %edi
-#else
-	movl	$_idlethread, %edi
-#endif
-	movl	%edi,_curthread
+	movl	8(%esp),%eax
+	movl	%eax,_curthread
+	movl	TD_SP(%eax),%esp
+	ret
 
-	/* save is done, now choose a new process or idle */
-sw1:
-	cli
-
-#ifdef SMP
-	/* Stop scheduling if smp_active goes zero and we are not BSP */
-	cmpl	$0,_smp_active
-	jne	1f
-	cmpl	$0,_cpuid
-	CROSSJUMP(je, _idle, jne)		/* wind down */
+/*
+ *  cpu_exit_switch()
+ *
+ *	The switch function is changed to this when a thread is going away
+ *	for good.  We have to ensure that the MMU state is not cached, and
+ *	we don't bother saving the existing thread state before switching.
+ */
+ENTRY(cpu_exit_switch)
+	movl	_IdlePTD,%ecx
+	movl	%cr3,%eax
+	cmpl	%ecx,%eax
+	je	1f
+	movl	%ecx,%cr3
 1:
-#endif
+	cli
+	movl	4(%esp),%eax
+	movl	%eax,_curthread
+	movl	TD_SP(%eax),%esp
+	ret
 
-sw1a:
-	call	_chooseproc			/* trash ecx, edx, ret eax*/
-	testl	%eax,%eax
-	CROSSJUMP(je, _idle, jne)		/* if no proc, idle */
-	movl	%eax,%ecx
-
-	xorl	%eax,%eax
-	andl	$~AST_RESCHED,_astpending
-
+/*
+ * cpu_heavy_restore()	(current thread in %eax on entry)
+ *
+ *	Restore the thread after an LWKT switch.  This entry is normally
+ *	called via the LWKT switch restore function, which was pulled 
+ *	off the thread stack and jumped to.
+ *
+ *	This entry is only called if the thread was previously saved
+ *	using cpu_heavy_switch() (the heavy weight process thread switcher).
+ *
+ *	YYY theoretically we do not have to restore everything here, a lot
+ *	of this junk can wait until we return to usermode.  But for now
+ *	we restore everything.
+ *
+ *	YYY STI/CLI sequencing.
+ */
+ENTRY(cpu_heavy_restore)
+	/* interrupts are disabled */
+	movl	TD_PCB(%eax),%edx
+	movl	TD_PROC(%eax),%ecx
 #ifdef	DIAGNOSTIC
-	cmpl	%eax,P_WCHAN(%ecx)
-	jne	badsw1
 	cmpb	$SRUN,P_STAT(%ecx)
 	jne	badsw2
 #endif
-	movl	P_THREAD(%ecx),%edx
-	movl	TD_PCB(%edx),%edx
 
 #if defined(SWTCH_OPTIM_STATS)
 	incl	_swtch_optim_stats
 #endif
-	/* switch address space */
+	/*
+	 * Restore the MMU address space
+	 */
 	movl	%cr3,%ebx
 	cmpl	PCB_CR3(%edx),%ebx
 	je	4f
@@ -414,6 +244,9 @@ sw1a:
 	movl	%ebx,%cr3
 4:
 
+	/*
+	 * Deal with the PCB extension, restore the private tss
+	 */
 #ifdef SMP
 	movl	_cpuid, %esi
 #else
@@ -431,6 +264,9 @@ sw1a:
 	 * stack pointer on entry from user mode.  Since the pcb is
 	 * at the top of the supervisor stack esp0 starts just below it.
 	 * We leave enough space for vm86 (16 bytes).
+	 *
+	 * common_tss.tss_esp0 is needed when user mode traps into the
+	 * kernel.
 	 */
 	leal	-16(%edx),%ebx
 	movl	%ebx, _common_tss + TSS_ESP0
@@ -443,8 +279,11 @@ sw1a:
 #else
 	movl	$_common_tssd, %edi
 #endif
+	/*
+	 * Move the correct TSS descriptor into the GDT slot, then reload
+	 * tr.   YYY not sure what is going on here
+	 */
 2:
-	/* move correct tss descriptor into GDT slot, then reload tr */
 	movl	_tss_gdt, %ebx			/* entry in GDT */
 	movl	0(%edi), %eax
 	movl	%eax, 0(%ebx)
@@ -452,6 +291,10 @@ sw1a:
 	movl	%eax, 4(%ebx)
 	movl	$GPROC0_SEL*8, %esi		/* GSEL(entry, SEL_KPL) */
 	ltr	%si
+
+	/*
+	 * Tell the pmap that our cpu is using the VMSPACE now.
+	 */
 3:
 	movl	P_VMSPACE(%ecx), %ebx
 #ifdef SMP
@@ -461,7 +304,9 @@ sw1a:
 #endif
 	btsl	%eax, VM_PMAP+PM_ACTIVE(%ebx)
 
-	/* restore context */
+	/*
+	 * Restore general registers.
+	 */
 	movl	PCB_EBX(%edx),%ebx
 	movl	PCB_ESP(%edx),%esp
 	movl	PCB_EBP(%edx),%ebp
@@ -469,6 +314,10 @@ sw1a:
 	movl	PCB_EDI(%edx),%edi
 	movl	PCB_EIP(%edx),%eax
 	movl	%eax,(%esp)
+
+	/*
+	 * SMP ickyness to direct interrupts.
+	 */
 
 #ifdef SMP
 #ifdef GRAB_LOPRIO				/* hold LOPRIO for INTs */
@@ -481,10 +330,11 @@ sw1a:
 	movl	_cpuid,%eax
 	movb	%al, P_ONCPU(%ecx)
 #endif /* SMP */
-	movl	P_THREAD(%ecx),%ecx		/* ecx = thread */
-	movl	%ecx, _curthread
-	movl	TD_PROC(%ecx),%ecx  /* YYY does %ecx need to be restored? */
 
+	/*
+	 * Restore the BGL nesting count.  Note that the nesting count will
+	 * be at least 1.
+	 */
 #ifdef SMP
 	movl	_cpu_lockid, %eax
 	orl	PCB_MPNEST(%edx), %eax		/* add next count from PROC */
@@ -492,6 +342,9 @@ sw1a:
 	/* XXX FIXME: we should be restoring the local APIC TPR */
 #endif /* SMP */
 
+	/*
+	 * Restore the user LDT if we have one
+	 */
 #ifdef	USER_LDT
 	cmpl	$0, PCB_USERLDT(%edx)
 	jnz	1f
@@ -506,13 +359,20 @@ sw1a:
 	popl	%edx
 2:
 #endif
-
-	/* This must be done after loading the user LDT. */
+	/*
+	 * Restore the %gs segment register, which must be done after
+	 * loading the user LDT.  Since user processes can modify the
+	 * register via procfs, this may result in a fault which is
+	 * detected by checking the fault address against cpu_switch_load_gs
+	 * in i386/i386/trap.c
+	 */
 	.globl	cpu_switch_load_gs
 cpu_switch_load_gs:
 	movl	PCB_GS(%edx),%gs
 
-	/* test if debug regisers should be restored */
+	/*
+	 * Restore the DEBUG register state if necessary.
+	 */
 	movb    PCB_FLAGS(%edx),%al
 	andb    $PCB_DBREGS,%al
 	jz      1f                              /* no, skip over */
@@ -535,8 +395,20 @@ cpu_switch_load_gs:
 	popl	%ebx
 	movl    %eax,%dr7
 1:
+#if 0
+	/*
+	 * Remove the heavy weight process from the heavy weight queue.
+	 * this will also have the side effect of removing the thread from
+	 * the run queue.  YYY temporary?
+	 *
+	 * LWKT threads stay on the run queue until explicitly removed.
+	 */
+	pushl	%ecx
+	call	remrunqueue
+	addl	$4,%esp
+#endif
 
-	sti
+	sti			/* XXX */
 	ret
 
 CROSSJUMPTARGET(sw1a)
@@ -622,3 +494,53 @@ ENTRY(savectx)
 
 1:
 	ret
+
+/*
+ * cpu_idle_restore()	(current thread in %eax on entry)
+ *
+ *	Don't bother setting up any regs other then %ebp so backtraces
+ *	don't die.  This restore function is used to bootstrap into the
+ *	cpu_idle() LWKT only, after that cpu_lwkt_*() will be used for
+ *	switching.
+ */
+ENTRY(cpu_idle_restore)
+	movl	$0,%ebp
+	pushl	$0
+	jmp	cpu_idle
+
+/*
+ * cpu_lwkt_switch()
+ *
+ *	Standard LWKT switching function.  Only non-scratch registers are
+ *	saved and we don't bother with the MMU state or anything else.
+ *	YYY BGL, SPL
+ */
+ENTRY(cpu_lwkt_switch)
+	movl	4(%esp),%eax
+	pushl	%ebp
+	pushl	%ebx
+	pushl	%esi
+	pushl	%edi
+	pushfl
+	movl	_curthread,%ecx
+	pushl	$cpu_lwkt_restore
+	cli
+	movl	%esp,TD_SP(%ecx)
+	movl	%eax,_curthread
+	movl	TD_SP(%eax),%esp
+	ret
+
+/*
+ * cpu_idle_restore()	(current thread in %eax on entry)
+ *
+ *	Don't bother setting up any regs other then %ebp so backtraces
+ *	don't die.
+ */
+ENTRY(cpu_lwkt_restore)
+	popfl
+	popl	%edi
+	popl	%esi
+	popl	%ebx
+	popl	%ebp
+	ret
+

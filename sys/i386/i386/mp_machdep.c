@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.4 2003/06/19 06:26:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.5 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -466,10 +466,10 @@ init_secondary(void)
 	int	x, myid = bootAP;
 	u_int	cr0;
 
-	gdt_segs[GPRIV_SEL].ssd_base = (int) &SMP_prvspace[myid];
+	gdt_segs[GPRIV_SEL].ssd_base = (int) &CPU_prvspace[myid];
 	gdt_segs[GPROC0_SEL].ssd_base =
-		(int) &SMP_prvspace[myid].globaldata.gd_common_tss;
-	SMP_prvspace[myid].globaldata.gd_prvspace = &SMP_prvspace[myid];
+		(int) &CPU_prvspace[myid].globaldata.gd_common_tss;
+	CPU_prvspace[myid].globaldata.gd_prvspace = &CPU_prvspace[myid];
 
 	for (x = 0; x < NGDT; x++) {
 		ssdtosd(&gdt_segs[x], &gdt[myid * NGDT + x].sd);
@@ -924,7 +924,7 @@ mptable_pass2(void)
 			/* same page frame as a previous IO apic? */
 			if (((vm_offset_t)SMPpt[NPTEPG-2-j] & PG_FRAME) ==
 			    (io_apic_address[i] & PG_FRAME)) {
-				ioapic[i] = (ioapic_t *)((u_int)SMP_prvspace
+				ioapic[i] = (ioapic_t *)((u_int)CPU_prvspace
 					+ (NPTEPG-2-j) * PAGE_SIZE
 					+ (io_apic_address[i] & PAGE_MASK));
 				break;
@@ -933,7 +933,7 @@ mptable_pass2(void)
 			if (((vm_offset_t)SMPpt[NPTEPG-2-j] & PG_FRAME) == 0) {
 				SMPpt[NPTEPG-2-j] = (pt_entry_t)(PG_V | PG_RW |
 				    pgeflag | (io_apic_address[i] & PG_FRAME));
-				ioapic[i] = (ioapic_t *)((u_int)SMP_prvspace
+				ioapic[i] = (ioapic_t *)((u_int)CPU_prvspace
 					+ (NPTEPG-2-j) * PAGE_SIZE
 					+ (io_apic_address[i] & PAGE_MASK));
 				break;
@@ -2145,16 +2145,16 @@ start_all_aps(u_int boot_addr)
 		/* prime data page for it to use */
 		gd->gd_cpuid = x;
 		gd->gd_cpu_lockid = x << 24;
-		gd->gd_curthread = &gd->gd_idlethread;
-		TAILQ_INIT(&gd->gd_freethreads);
+		mi_gdinit(gd, x);
+		cpu_gdinit(gd, x);
 		gd->gd_prv_CMAP1 = &SMPpt[pg + 1];
 		gd->gd_prv_CMAP2 = &SMPpt[pg + 2];
 		gd->gd_prv_CMAP3 = &SMPpt[pg + 3];
 		gd->gd_prv_PMAP1 = &SMPpt[pg + 4];
-		gd->gd_prv_CADDR1 = SMP_prvspace[x].CPAGE1;
-		gd->gd_prv_CADDR2 = SMP_prvspace[x].CPAGE2;
-		gd->gd_prv_CADDR3 = SMP_prvspace[x].CPAGE3;
-		gd->gd_prv_PADDR1 = (unsigned *)SMP_prvspace[x].PPAGE1;
+		gd->gd_prv_CADDR1 = CPU_prvspace[x].CPAGE1;
+		gd->gd_prv_CADDR2 = CPU_prvspace[x].CPAGE2;
+		gd->gd_prv_CADDR3 = CPU_prvspace[x].CPAGE3;
+		gd->gd_prv_PADDR1 = (unsigned *)CPU_prvspace[x].PPAGE1;
 
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
@@ -2164,7 +2164,7 @@ start_all_aps(u_int boot_addr)
 		outb(CMOS_DATA, BIOS_WARM);	/* 'warm-start' */
 #endif
 
-		bootSTK = &SMP_prvspace[x].idlestack[UPAGES*PAGE_SIZE];
+		bootSTK = &CPU_prvspace[x].idlestack[UPAGES*PAGE_SIZE];
 		bootAP = x;
 
 		/* attempt to start the Application Processor */

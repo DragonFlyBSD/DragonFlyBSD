@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globals.h,v 1.5.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.6 2003/06/19 01:55:05 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/globals.h,v 1.7 2003/06/20 02:09:54 dillon Exp $
  */
 
 #ifndef	_MACHINE_GLOBALS_H_
@@ -61,7 +61,7 @@ _get_mycpu(void)
 
 #else
 
-#define mycpu	(&UP_globaldata)
+#define mycpu	(&CPU_prvspace[0].globaldata)
 
 #endif
 

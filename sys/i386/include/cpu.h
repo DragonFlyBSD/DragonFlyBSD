@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.3 2003/06/19 01:55:05 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.4 2003/06/20 02:09:54 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -88,6 +88,7 @@
  * a non-locked orl.
  */
 #define	need_resched()		do { mycpu->gd_astpending = AST_RESCHED|AST_PENDING; } while (0)
+#define	clear_resched()		do { mycpu->gd_astpending &= ~AST_RESCHED; } while(0)
 #define	resched_wanted()	(mycpu->gd_astpending & AST_RESCHED)
 
 /*

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.5 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.6 2003/06/20 02:09:50 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -34,36 +34,38 @@
 
 #include "assym.s"
 
-#ifdef SMP
 	/*
-	 * Define layout of per-cpu address space.
-	 * This is "constructed" in locore.s on the BSP and in mp_machdep.c
-	 * for each AP.  DO NOT REORDER THESE WITHOUT UPDATING THE REST!
+	 * Define the layout of the per-cpu address space.  This is
+	 * "constructed" in locore.s on the BSP and in mp_machdep.c for
+	 * each AP.  DO NOT REORDER THESE WITHOUT UPDATING THE REST!
+	 *
+	 * On UP the per-cpu addrses space is simply placed in the data
+	 * segment.
 	 */
-	.globl	_SMP_prvspace, _lapic
-	.set	_SMP_prvspace,(MPPTDI << PDRSHIFT)
-	.set	_lapic,_SMP_prvspace + (NPTEPG-1) * PAGE_SIZE
+	.data
+#ifdef SMP
+	.globl	_CPU_prvspace, _lapic
+	.set	_CPU_prvspace,(MPPTDI << PDRSHIFT)
+	.set	_lapic,_CPU_prvspace + (NPTEPG-1) * PAGE_SIZE
 
 	.globl  gd_idlestack,gd_idlestack_top
 	.set    gd_idlestack,PS_IDLESTACK
 	.set    gd_idlestack_top,PS_IDLESTACK_TOP
+
+	.globl	globaldata
+	.set	globaldata,0
+#else
+	.globl	_CPU_prvspace
+	ALIGN_PAGE
+globaldata:
+_CPU_prvspace:
+	.space	PS_SIZEOF
 #endif
 
 	/*
 	 * Define layout of the global data.  On SMP this lives in
 	 * the per-cpu address space, otherwise it's in the data segment.
 	 */
-	.globl	globaldata
-#ifndef SMP
-	.globl	UP_globaldata
-	.data
-	ALIGN_DATA
-UP_globaldata:
-globaldata:
-	.space	GD_SIZEOF		/* in data segment */
-#else
-	.set	globaldata,0
-#endif
 	.globl	gd_curthread, gd_npxthread, gd_astpending
 	.globl	gd_common_tss, gd_switchtime, gd_switchticks, gd_idlethread
 	.set	gd_curthread,globaldata + GD_CURTHREAD

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.6 2003/06/19 06:26:06 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/pmap.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
  */
 
 /*
@@ -429,15 +429,15 @@ pmap_bootstrap(firstaddr, loadaddr)
 	    (cpu_apic_address & PG_FRAME));
 
 	/* BSP does this itself, AP's get it pre-set */
-	gd = &SMP_prvspace[0].globaldata;
+	gd = &CPU_prvspace[0].globaldata;
 	gd->gd_prv_CMAP1 = &SMPpt[1];
 	gd->gd_prv_CMAP2 = &SMPpt[2];
 	gd->gd_prv_CMAP3 = &SMPpt[3];
 	gd->gd_prv_PMAP1 = &SMPpt[4];
-	gd->gd_prv_CADDR1 = SMP_prvspace[0].CPAGE1;
-	gd->gd_prv_CADDR2 = SMP_prvspace[0].CPAGE2;
-	gd->gd_prv_CADDR3 = SMP_prvspace[0].CPAGE3;
-	gd->gd_prv_PADDR1 = (unsigned *)SMP_prvspace[0].PPAGE1;
+	gd->gd_prv_CADDR1 = CPU_prvspace[0].CPAGE1;
+	gd->gd_prv_CADDR2 = CPU_prvspace[0].CPAGE2;
+	gd->gd_prv_CADDR3 = CPU_prvspace[0].CPAGE3;
+	gd->gd_prv_PADDR1 = (unsigned *)CPU_prvspace[0].PPAGE1;
 #endif
 
 	invltlb();
@@ -849,11 +849,11 @@ pmap_new_thread()
 	struct thread *td;
 
 	/* HIPRI YYY */
-	if (mycpu->gd_freethreadcnt > 0) {
-		--mycpu->gd_freethreadcnt;
-		td = TAILQ_FIRST(&mycpu->gd_freethreads);
+	if (mycpu->gd_tdfreecount > 0) {
+		--mycpu->gd_tdfreecount;
+		td = TAILQ_FIRST(&mycpu->gd_tdfreeq);
 		KASSERT(td != NULL, ("unexpected null cache td"));
-		TAILQ_REMOVE(&mycpu->gd_freethreads, td, td_threadq);
+		TAILQ_REMOVE(&mycpu->gd_tdfreeq, td, td_threadq);
 	} else {
 		td = zalloc(thread_zone);
 		td->td_kstack = 
@@ -871,9 +871,9 @@ void
 pmap_dispose_thread(struct thread *td)
 {
 	/* HIPRI YYY */
-	if (mycpu->gd_freethreadcnt < CACHE_NTHREADS) {
-		++mycpu->gd_freethreadcnt;
-		TAILQ_INSERT_HEAD(&mycpu->gd_freethreads, td, td_threadq);
+	if (mycpu->gd_tdfreecount < CACHE_NTHREADS) {
+		++mycpu->gd_tdfreecount;
+		TAILQ_INSERT_HEAD(&mycpu->gd_tdfreeq, td, td_threadq);
 	} else {
 		if (td->td_kstack) {
 			kmem_free(kernel_map,
@@ -894,6 +894,7 @@ pmap_new_proc(struct proc *p, struct thread *td)
 	p->p_addr = (void *)td->td_kstack;
 	p->p_thread = td;
 	td->td_proc = p;
+	td->td_switch = cpu_heavy_switch;
 	bzero(p->p_addr, sizeof(*p->p_addr));
 #if 0
 

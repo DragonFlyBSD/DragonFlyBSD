@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.3 2003/06/20 02:09:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -75,6 +75,10 @@ SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
  * This sets the queue busy bit.
  * The process must be runnable.
  * This must be called at splhigh().
+ *
+ * YYY setrunqueue() is responsible for assigning a cpu to a user
+ * process.  If the LWKT thread corresponding to the rt, id, or normal
+ * queues is not running, it will be woken up.  YYY
  */
 void
 setrunqueue(struct proc *p)
@@ -101,6 +105,7 @@ setrunqueue(struct proc *p)
 	}
 	p->p_rqindex = pri;		/* remember the queue index */
 	TAILQ_INSERT_TAIL(q, p, p_procq);
+	lwkt_schedule(p->p_thread);
 }
 
 /*
@@ -135,8 +140,10 @@ remrunqueue(struct proc *p)
 			("remrunqueue: remove from empty queue"));
 		*which &= ~(1 << pri);
 	}
+	lwkt_deschedule(p->p_thread);
 }
 
+#if 0
 /*
  * procrunnable() returns a boolean true (non-zero) value if there are
  * any runnable processes.  This is intended to be called from the idle
@@ -149,7 +156,9 @@ procrunnable(void)
 {
 	return (rtqueuebits || queuebits || idqueuebits);
 }
+#endif
 
+#if 0
 /*
  * chooseproc() selects the next process to run.  Ideally, cpu_switch()
  * would have determined that there is a process available before calling
@@ -207,3 +216,6 @@ chooseproc(void)
 		*which &= ~(1 << pri);
 	return p;
 }
+
+#endif
+

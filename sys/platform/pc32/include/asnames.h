@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asnames.h,v 1.44.2.8 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.5 2003/06/18 18:29:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/Attic/asnames.h,v 1.6 2003/06/20 02:09:54 dillon Exp $
  */
 
 #ifndef _MACHINE_ASNAMES_H_
@@ -68,7 +68,7 @@
 #define _PTD				PTD
 #define _PTDpde				PTDpde
 #define _PTmap				PTmap
-#define _SMP_prvspace			SMP_prvspace
+#define _CPU_prvspace			CPU_prvspace
 #define _SMPpt				SMPpt
 #define _Xalign				Xalign
 #define _Xbnd				Xbnd

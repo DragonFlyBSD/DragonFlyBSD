@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.7 2003/06/19 06:26:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/globaldata.h,v 1.8 2003/06/20 02:09:54 dillon Exp $
  */
 
 /*
@@ -38,6 +38,9 @@
  * The reason for doing it via a struct is so that an array of pointers
  * to each CPU's data can be set up for things like "check curproc on all
  * other processors"
+ *
+ * NOTE! this structure needs to remain compatible between module accessors
+ * and the kernel, so we can't throw in lots of #ifdef's.
  */
 struct globaldata {
 	struct privatespace *gd_prvspace;	/* self-reference */
@@ -46,13 +49,12 @@ struct globaldata {
 	struct timeval	gd_switchtime;
 	struct i386tss	gd_common_tss;
 	int		gd_switchticks;
-	int		gd_freethreadcnt;	/* YYY */
-	TAILQ_HEAD(,thread) gd_freethreads;	/* YYY */
+	int		gd_tdfreecount;		/* new thread cache */
+	TAILQ_HEAD(,thread) gd_tdfreeq;		/* new thread cache */
+	TAILQ_HEAD(,thread) gd_tdrunq;		/* runnable threads */
 	struct segment_descriptor gd_common_tssd;
 	struct segment_descriptor *gd_tss_gdt;
-#ifdef USER_LDT
-	int		gd_currentldt;
-#endif
+	int		gd_currentldt;		/* USER_LDT */
 #ifdef SMP
 	u_int		gd_cpuid;
 	u_int		gd_cpu_lockid;
@@ -72,7 +74,6 @@ struct globaldata {
 	struct thread	gd_idlethread;
 };
 
-#ifdef SMP
 /*
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
@@ -83,21 +84,17 @@ struct privatespace {
 	struct globaldata globaldata;
 	char		__filler0[PAGE_SIZE - sizeof(struct globaldata)];
 
+#ifdef SMP
 	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
 	char		CPAGE1[PAGE_SIZE];
 	char		CPAGE2[PAGE_SIZE];
 	char		CPAGE3[PAGE_SIZE];
 	char		PPAGE1[PAGE_SIZE];
+#endif
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
 	char		idlestack[UPAGES * PAGE_SIZE];
 };
 
-extern struct privatespace SMP_prvspace[];
-
-#else
-
-extern struct globaldata   UP_globaldata;
-
-#endif
+extern struct privatespace CPU_prvspace[];
 

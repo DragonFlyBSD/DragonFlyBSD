@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.3 2003/06/19 01:55:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.4 2003/06/20 02:09:56 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -336,8 +336,9 @@ schedcpu(arg)
 				remrunqueue(p);
 				p->p_priority = p->p_usrpri;
 				setrunqueue(p);
-			} else
+			} else {
 				p->p_priority = p->p_usrpri;
+			}
 		}
 		splx(s);
 	}
@@ -830,6 +831,7 @@ mi_switch()
 	 * actually need splstatclock().
 	 */
 	x = splstatclock();
+	clear_resched();
 
 #ifdef SIMPLELOCK_DEBUG
 	if (p->p_simple_locks)
@@ -872,10 +874,16 @@ mi_switch()
 
 	/*
 	 * Pick a new current process and record its start time.
+	 * YYY lwkt_switch() will run the heavy weight process restoration
+	 * code, which removes the target thread and process from their
+	 * respective run queues to temporarily mimic 5.x behavior.
+	 * YYY the userland scheduler should pick only one user process
+	 * at a time to run per cpu.
 	 */
 	cnt.v_swtch++;
 	mycpu->gd_switchtime = new_switchtime;
-	cpu_switch(p);
+	lwkt_switch();
+	remrunqueue(p);
 	if (mycpu->gd_switchtime.tv_sec == 0)
 		microuptime(&mycpu->gd_switchtime);
 	mycpu->gd_switchticks = ticks;

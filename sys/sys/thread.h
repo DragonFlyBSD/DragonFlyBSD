@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.2 2003/06/19 06:26:10 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.3 2003/06/20 02:09:59 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -12,6 +12,7 @@
 
 struct proc;
 struct thread;
+struct globaldata;
 
 typedef TAILQ_HEAD(, thread) thread_list_t;
 
@@ -20,15 +21,28 @@ struct thread {
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     int		td_pri;		/* 0-31, 0=highest priority */
-    char	*td_kstack;	/* kernel stack */
-#if 0
     int		td_flags;	/* THF flags */
-    int		td_pri;		/* semi-static LWKT priority 0-31 */
+    char	*td_kstack;	/* kernel stack */
+    char	*td_sp;		/* kernel stack pointer for LWKT restore */
+    void	(*td_switch)(struct thread *ntd);
+    thread_list_t *td_waitq;
+#if 0
     int		td_bglcount;	/* big giant lock count */
 #endif
 };
 
 typedef struct thread *thread_t;
+
+/*
+ * Thread states.  Note that the RUNNING state is independant from the
+ * RUNQ/WAITQ state.  That is, a thread's queueing state can be manipulated
+ * while it is running.  If a thread is preempted it will always be moved
+ * back to the RUNQ if it isn't on it.
+ */
+
+#define TDF_RUNNING		0x0001	/* currently running */
+#define TDF_RUNQ		0x0002	/* on run queue */
+#define TDF_WAITQ		0x0004	/* on wait queue */
 
 /*
  * Thread priorities.  Typically only one thread from any given
@@ -53,6 +67,12 @@ typedef struct thread *thread_t;
 #ifdef _KERNEL
 
 extern struct vm_zone	*thread_zone;
+
+extern void lwkt_gdinit(struct globaldata *gd);
+extern void lwkt_switch(void);
+extern void lwkt_preempt(void);
+extern void lwkt_schedule(thread_t td);
+extern void lwkt_deschedule(thread_t td);
 
 #endif
 
