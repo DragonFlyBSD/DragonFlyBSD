@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.15 2003/09/19 08:02:27 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.16 2003/09/29 05:34:08 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -950,26 +950,41 @@ shutdown(struct shutdown_args *uap)
 }
 
 /*
- * setsockopt_args(int s, int level, int name, caddr_t val, int valsize)
+ * If sopt->sopt_td == NULL, then sopt->sopt_val is treated as an
+ * in kernel pointer instead of a userland pointer.  This allows us
+ * to manipulate socket options in the emulation code.
  */
-/* ARGSUSED */
 int
-setsockopt(struct setsockopt_args *uap)
+kern_setsockopt(int s, struct sockopt *sopt)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct file *fp;
-	struct sockopt sopt;
 	int error;
 
-	if (uap->val == 0 && uap->valsize != 0)
+	if (sopt->sopt_val == 0 && sopt->sopt_valsize != 0)
 		return (EFAULT);
-	if (uap->valsize < 0)
+	if (sopt->sopt_valsize < 0)
 		return (EINVAL);
 
-	error = holdsock(p->p_fd, uap->s, &fp);
+	error = holdsock(p->p_fd, s, &fp);
 	if (error)
 		return (error);
+
+	error = sosetopt((struct socket *)fp->f_data, sopt);
+	fdrop(fp, td);
+	return (error);
+}
+
+/*
+ * setsockopt_args(int s, int level, int name, caddr_t val, int valsize)
+ */
+int
+setsockopt(struct setsockopt_args *uap)
+{
+	struct thread *td = curthread;
+	struct sockopt sopt;
+	int error;
 
 	sopt.sopt_dir = SOPT_SET;
 	sopt.sopt_level = uap->level;
@@ -977,38 +992,54 @@ setsockopt(struct setsockopt_args *uap)
 	sopt.sopt_val = uap->val;
 	sopt.sopt_valsize = uap->valsize;
 	sopt.sopt_td = td;
-	error = sosetopt((struct socket *)fp->f_data, &sopt);
-	fdrop(fp, td);
+
+	error = kern_setsockopt(uap->s, &sopt);
 	return(error);
+}
+
+/*
+ * If sopt->sopt_td == NULL, then sopt->sopt_val is treated as an
+ * in kernel pointer instead of a userland pointer.  This allows us
+ * to manipulate socket options in the emulation code.
+ */
+int
+kern_getsockopt(int s, struct sockopt *sopt)
+{
+	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
+	struct file *fp;
+	int error;
+
+	if (sopt->sopt_val == 0 && sopt->sopt_valsize != 0)
+		return (EFAULT);
+	if (sopt->sopt_valsize < 0)
+		return (EINVAL);
+
+	error = holdsock(p->p_fd, s, &fp);
+	if (error)
+		return (error);
+
+	error = sogetopt((struct socket *)fp->f_data, sopt);
+	fdrop(fp, td);
+	return (error);
 }
 
 /*
  * getsockopt_Args(int s, int level, int name, caddr_t val, int *avalsize)
  */
-/* ARGSUSED */
 int
 getsockopt(struct getsockopt_args *uap)
 {
 	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	int	valsize, error;
-	struct	file *fp;
 	struct	sockopt sopt;
+	int	error, valsize;
 
-	error = holdsock(p->p_fd, uap->s, &fp);
-	if (error)
-		return (error);
 	if (uap->val) {
-		error = copyin((caddr_t)uap->avalsize, (caddr_t)&valsize,
-		    sizeof (valsize));
-		if (error) {
-			fdrop(fp, td);
+		error = copyin(uap->avalsize, &valsize, sizeof(valsize));
+		if (error)
 			return (error);
-		}
-		if (valsize < 0) {
-			fdrop(fp, td);
+		if (valsize < 0)
 			return (EINVAL);
-		}
 	} else {
 		valsize = 0;
 	}
@@ -1017,16 +1048,14 @@ getsockopt(struct getsockopt_args *uap)
 	sopt.sopt_level = uap->level;
 	sopt.sopt_name = uap->name;
 	sopt.sopt_val = uap->val;
-	sopt.sopt_valsize = (size_t)valsize; /* checked non-negative above */
+	sopt.sopt_valsize = valsize;
 	sopt.sopt_td = td;
 
-	error = sogetopt((struct socket *)fp->f_data, &sopt);
+	error = kern_getsockopt(uap->s, &sopt);
 	if (error == 0) {
 		valsize = sopt.sopt_valsize;
-		error = copyout((caddr_t)&valsize,
-				(caddr_t)uap->avalsize, sizeof (valsize));
+		error = copyout(&valsize, uap->avalsize, sizeof(valsize));
 	}
-	fdrop(fp, td);
 	return (error);
 }
 
