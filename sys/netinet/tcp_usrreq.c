@@ -32,7 +32,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.22 2004/05/08 02:38:36 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.23 2004/05/20 04:32:59 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -670,9 +670,9 @@ tcp_usr_send(struct socket *so, int flags, struct mbuf *m,
 			tcp_mss(tp, -1);
 		}
 		tp->snd_up = tp->snd_una + so->so_snd.sb_cc;
-		tp->t_force = 1;
+		tp->t_flags |= TF_FORCE;
 		error = tcp_output(tp);
-		tp->t_force = 0;
+		tp->t_flags &= ~TF_FORCE;
 	}
 	COMMON_END((flags & PRUS_OOB) ? PRU_SENDOOB : 
 		   ((flags & PRUS_EOF) ? PRU_SEND_EOF : PRU_SEND));

@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.19 2004/04/29 10:06:41 hmp Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.20 2004/05/20 04:32:59 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -76,8 +76,8 @@ struct tcpcb {
 	struct	tsegqe_head t_segq;
 	int	t_dupacks;		/* consecutive dup acks recd */
 	struct	tcptemp	*unused;	/* unused */
-
 	struct	callout *tt_rexmt;	/* retransmit timer */
+
 	struct	callout *tt_persist;	/* retransmit persistence */
 	struct	callout *tt_keep;	/* keepalive */
 	struct	callout *tt_2msl;	/* 2*msl TIME_WAIT timer */
@@ -111,14 +111,15 @@ struct tcpcb {
 #define	TF_FIRSTACCACK	0x00400000	/* Look for 1st acceptable ACK. */
 #define	TF_FASTREXMT	0x00800000	/* Did Fast Retransmit. */
 #define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
-	int	t_force;		/* 1 if forcing out a byte */
+#define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
+	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
+	tcp_seq	snd_recover;		/* for use with NewReno Fast Recovery */
 	tcp_seq	snd_max;		/* highest sequence number sent;
 					 * used to recognize retransmits
 					 */
 	tcp_seq	snd_nxt;		/* send next */
-	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_wl1;		/* window update seg seq number */
 	tcp_seq	snd_wl2;		/* window update seg ack number */
@@ -138,7 +139,6 @@ struct tcpcb {
 					 * linear switch
 					 */
 	u_long	snd_bandwidth;		/* calculated bandwidth or 0 */
-	tcp_seq	snd_recover;		/* for use in NewReno fast recovery */
 
 	u_int	t_maxopd;		/* mss plus options */
 

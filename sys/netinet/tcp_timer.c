@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.7 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.8 2004/05/20 04:32:59 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -341,9 +341,9 @@ tcp_timer_persist(xtp)
 		goto out;
 	}
 	tcp_setpersist(tp);
-	tp->t_force = 1;
+	tp->t_flags |= TF_FORCE;
 	(void) tcp_output(tp);
-	tp->t_force = 0;
+	tp->t_flags &= ~TF_FORCE;
 
 out:
 #ifdef TCPDEBUG

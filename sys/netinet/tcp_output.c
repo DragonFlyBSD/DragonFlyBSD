@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.11 2004/04/07 17:01:25 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.12 2004/05/20 04:32:59 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -178,7 +178,7 @@ again:
 	 * and timer expired, we will send what we can
 	 * and go to transmit state.
 	 */
-	if (tp->t_force) {
+	if (tp->t_flags & TF_FORCE) {
 		if (sendwin == 0) {
 			/*
 			 * If we still have some data to send, then
@@ -309,7 +309,7 @@ again:
 		    !(tp->t_flags & TF_NOPUSH)) {
 			goto send;
 		}
-		if (tp->t_force)			/* typ. timeout case */
+		if (tp->t_flags & TF_FORCE)		/* typ. timeout case */
 			goto send;
 		if (len >= tp->max_sndwnd / 2 && tp->max_sndwnd > 0)
 			goto send;
@@ -368,7 +368,7 @@ again:
 	 *
 	 * callout_active(tp->tt_persist)
 	 *	is true when we are in persist state.
-	 * tp->t_force
+	 * The TF_FORCE flag in tp->t_flags
 	 *	is set when we are called to send a persist packet.
 	 * callout_active(tp->tt_rexmt)
 	 *	is set when we are retransmitting
@@ -560,7 +560,7 @@ send:
 	 * the template for sends on this connection.
 	 */
 	if (len) {
-		if (tp->t_force && len == 1)
+		if ((tp->t_flags & TF_FORCE) && len == 1)
 			tcpstat.tcps_sndprobe++;
 		else if (SEQ_LT(tp->snd_nxt, tp->snd_max)) {
 			tcpstat.tcps_sndrexmitpack++;
@@ -752,7 +752,7 @@ send:
 	 * In transmit state, time the transmission and arrange for
 	 * the retransmit.  In persist state, just set snd_max.
 	 */
-	if (tp->t_force == 0 || !callout_active(tp->tt_persist)) {
+	if (!(tp->t_flags & TF_FORCE) || !callout_active(tp->tt_persist)) {
 		tcp_seq startseq = tp->snd_nxt;
 
 		/*
@@ -879,7 +879,8 @@ send:
 		 * We know that the packet was lost, so back out the
 		 * sequence number advance, if any.
 		 */
-		if (tp->t_force == 0 || !callout_active(tp->tt_persist)) {
+		if (!(tp->t_flags & TF_FORCE) ||
+		    !callout_active(tp->tt_persist)) {
 			/*
 			 * No need to check for TH_FIN here because
 			 * the TF_SENTFIN flag handles that case.
