@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.9 2003/06/30 23:54:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.10 2003/07/25 05:26:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -364,6 +364,7 @@ fill_eproc_td(thread_t td, struct eproc *ep, struct proc *xp)
 	ep->e_sticks = td->td_sticks;
 	ep->e_iticks = td->td_iticks;
 	ep->e_tdev = NOUDEV;
+	ep->e_cpuid = td->td_gd->gd_cpuid;
 	if (td->td_wmesg) {
 		strncpy(ep->e_wmesg, td->td_wmesg, WMESGLEN);
 		ep->e_wmesg[WMESGLEN] = 0;

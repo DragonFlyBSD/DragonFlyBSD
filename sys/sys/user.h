@@ -32,7 +32,7 @@
  *
  *	@(#)user.h	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/sys/user.h,v 1.24.2.1 2001/10/11 08:20:18 peter Exp $
- * $DragonFly: src/sys/sys/user.h,v 1.9 2003/07/13 05:45:12 dillon Exp $
+ * $DragonFly: src/sys/sys/user.h,v 1.10 2003/07/25 05:26:52 dillon Exp $
  */
 
 #ifndef _SYS_USER_H_
@@ -77,6 +77,7 @@ struct kinfo_proc {
 		u_int64_t e_uticks;		/* time accouting */
 		u_int64_t e_sticks;
 		u_int64_t e_iticks;
+		int	e_cpuid;		/* last scheduled on cpu */
 		pid_t	e_ppid;			/* parent process id */
 		pid_t	e_pgid;			/* process group id */
 		short	e_jobc;			/* job control counter */

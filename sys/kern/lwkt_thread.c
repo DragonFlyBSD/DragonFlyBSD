@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.26 2003/07/20 07:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.27 2003/07/25 05:26:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -188,6 +188,7 @@ lwkt_alloc_thread(struct thread *td)
  * lwkt_alloc_thread() and also used to initialize the per-cpu idlethread.
  *
  * NOTE!  called from low level boot code, we cannot do anything fancy!
+ * Only the low level boot code will call this function with gd != mycpu.
  */
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
@@ -197,11 +198,10 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_flags |= flags;
     td->td_gd = gd;
     td->td_pri = TDPRI_CRIT;
-    td->td_cpu = gd->gd_cpuid;	/* YYY don't really need this if have td_gd */
     lwkt_init_port(&td->td_msgport, td);
     pmap_init_thread(td);
     crit_enter();
-    TAILQ_INSERT_TAIL(&mycpu->gd_tdallq, td, td_allq);
+    TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
     crit_exit();
 }
 
@@ -511,7 +511,7 @@ lwkt_preempt(thread_t ntd, int critpri)
 	return;
     }
 #ifdef SMP
-    if (ntd->td_cpu != mycpu->gd_cpuid) {
+    if (ntd->td_gd != mycpu) {
 	++preempt_miss;
 	return;
     }
@@ -697,7 +697,7 @@ lwkt_schedule(thread_t td)
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
-		if (td->td_cpu == mycpu->gd_cpuid) {
+		if (td->td_gd == mycpu) {
 		    _lwkt_enqueue(td);
 		    if (td->td_preemptable) {
 			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
@@ -705,7 +705,7 @@ lwkt_schedule(thread_t td)
 			need_resched();
 		    }
 		} else {
-		    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
+		    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
 		}
 		lwkt_reltoken(&w->wa_token);
 	    } else {
@@ -718,7 +718,7 @@ lwkt_schedule(thread_t td)
 	     * do not own the thread there might be a race but the
 	     * target cpu will deal with it.
 	     */
-	    if (td->td_cpu == mycpu->gd_cpuid) {
+	    if (td->td_gd == mycpu) {
 		_lwkt_enqueue(td);
 		if (td->td_preemptable) {
 		    td->td_preemptable(td, TDPRI_CRIT);
@@ -726,7 +726,7 @@ lwkt_schedule(thread_t td)
 		    need_resched();
 		}
 	    } else {
-		lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
+		lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
 	    }
 	}
     }
@@ -745,19 +745,16 @@ void
 lwkt_acquire(thread_t td)
 {
     struct globaldata *gd;
-    int ocpu;
 
     gd = td->td_gd;
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
     while (td->td_flags & TDF_RUNNING)	/* XXX spin */
 	;
     if (gd != mycpu) {
-	ocpu = td->td_cpu;
 	crit_enter();
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
 	gd = mycpu;
 	td->td_gd = gd;
-	td->td_cpu = gd->gd_cpuid;
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq); /* protected by BGL */
 	crit_exit();
     }
@@ -793,10 +790,10 @@ lwkt_deschedule(thread_t td)
     if (td == curthread) {
 	_lwkt_dequeue(td);
     } else {
-	if (td->td_cpu == mycpu->gd_cpuid) {
+	if (td->td_gd == mycpu) {
 	    _lwkt_dequeue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_deschedule, td);
+	    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_deschedule, td);
 	}
     }
     crit_exit();
@@ -815,7 +812,7 @@ void
 lwkt_setpri(thread_t td, int pri)
 {
     KKASSERT(pri >= 0);
-    KKASSERT(td->td_cpu == mycpu->gd_cpuid);
+    KKASSERT(td->td_gd == mycpu);
     crit_enter();
     if (td->td_flags & TDF_RUNQ) {
 	_lwkt_dequeue(td);
@@ -921,10 +918,10 @@ lwkt_signal(lwkt_wait_t w, int count)
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_wait = NULL;
 	td->td_wmesg = NULL;
-	if (td->td_cpu == mycpu->gd_cpuid) {
+	if (td->td_gd == mycpu) {
 	    _lwkt_enqueue(td);
 	} else {
-	    lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_schedule, td);
+	    lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_schedule, td);
 	}
 	lwkt_regettoken(&w->wa_token);
     }

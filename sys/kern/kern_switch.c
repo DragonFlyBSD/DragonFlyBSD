@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.8 2003/07/11 17:42:10 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.9 2003/07/25 05:26:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -76,7 +76,7 @@ static int usched_optimal;
 SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
         &usched_optimal, 0, "Passive Release was nonoptimal");
 
-#define USCHED_COUNTER(td)	((td->td_cpu == mycpu->gd_cpuid) ? ++usched_optimal : ++usched_steal)
+#define USCHED_COUNTER(td)	((td->td_gd == mycpu) ? ++usched_optimal : ++usched_steal)
 
 /*
  * Initialize the run queues at boot time.
@@ -341,11 +341,11 @@ release_curproc(struct proc *p)
 	struct proc *np;
 
 #ifdef ONLY_ONE_USER_CPU
-	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_cpu == 0);
+	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_gd == mycpu);
 #endif
 	crit_enter();
 	clear_resched();
-	cpuid = p->p_thread->td_cpu;
+	cpuid = p->p_thread->td_gd->gd_cpuid;
 	p->p_flag |= P_CP_RELEASED;
 	if (p->p_flag & P_CURPROC) {
 		p->p_flag &= ~P_CURPROC;
@@ -405,12 +405,12 @@ acquire_curproc(struct proc *p)
 	 * will mess w/ this proc?  Or will it?  What about curprocmask?
 	 */
 #ifdef ONLY_ONE_USER_CPU
-	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_cpu == 0);
+	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_gd == mycpu);
 #endif
 	crit_enter();
 	p->p_flag &= ~P_CP_RELEASED;
 	while ((p->p_flag & P_CURPROC) == 0) {
-		cpuid = p->p_thread->td_cpu;	/* load/reload cpuid */
+		cpuid = p->p_thread->td_gd->gd_cpuid;	/* load/reload cpuid */
 		if ((curprocmask & (1 << cpuid)) == 0) {
 			curprocmask |= 1 << cpuid;
 			if ((np = chooseproc()) != NULL) {

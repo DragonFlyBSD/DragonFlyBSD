@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.3 2003/07/24 23:52:38 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.4 2003/07/25 05:26:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -222,13 +222,13 @@ _lwkt_replyport(lwkt_port_t port, lwkt_msg_t msg)
 {
     thread_t td = port->mp_td;
 
-    if (td->td_cpu == mycpu->gd_cpuid) {
+    if (td->td_gd == mycpu) {
 	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 	msg->ms_flags |= MSGF_DONE | MSGF_REPLY | MSGF_QUEUED;
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(td);
     } else {
-	lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_replyport_remote, msg);
+	lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_replyport_remote, msg);
     }
 }
 
@@ -270,14 +270,14 @@ _lwkt_putport(lwkt_port_t port, lwkt_msg_t msg)
 {
     thread_t td = port->mp_td;
 
-    if (td->td_cpu == mycpu->gd_cpuid) {
+    if (td->td_gd == mycpu) {
 	TAILQ_INSERT_TAIL(&port->mp_msgq, msg, ms_node);
 	msg->ms_flags |= MSGF_QUEUED;
 	if (port->mp_flags & MSGPORTF_WAITING)
 	    lwkt_schedule(td);
     } else {
 	msg->ms_target_port = port;
-	lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_putport_remote, msg);
+	lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_putport_remote, msg);
     }
 }
 
@@ -320,7 +320,7 @@ _lwkt_abortport(lwkt_port_t port)
     thread_t td = port->mp_td;
     lwkt_msg_t msg;
 
-    if (td->td_cpu == mycpu->gd_cpuid) {
+    if (td->td_gd == mycpu) {
 again:
 	msg = TAILQ_FIRST(&port->mp_msgq);
 	while (msg) {
@@ -333,7 +333,7 @@ again:
 	    msg = TAILQ_NEXT(msg, ms_node);
 	}
     } else {
-	lwkt_send_ipiq(td->td_cpu, (ipifunc_t)lwkt_abortport_remote, port);
+	lwkt_send_ipiq(td->td_gd->gd_cpuid, (ipifunc_t)lwkt_abortport_remote, port);
     }
 }
 
