@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.4 2004/12/30 21:41:04 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.5 2004/12/31 23:48:08 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -133,12 +133,40 @@ static void jrecord_write_path(struct jrecord *jrec,
 static void jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat);
 
 
+static int journal_setattr(struct vop_setattr_args *ap);
+static int journal_write(struct vop_write_args *ap);
+static int journal_fsync(struct vop_fsync_args *ap);
+static int journal_putpages(struct vop_putpages_args *ap);
+static int journal_setacl(struct vop_setacl_args *ap);
+static int journal_setextattr(struct vop_setextattr_args *ap);
+static int journal_ncreate(struct vop_ncreate_args *ap);
+static int journal_nmknod(struct vop_nmknod_args *ap);
+static int journal_nlink(struct vop_nlink_args *ap);
+static int journal_nsymlink(struct vop_nsymlink_args *ap);
+static int journal_nwhiteout(struct vop_nwhiteout_args *ap);
+static int journal_nremove(struct vop_nremove_args *ap);
 static int journal_nmkdir(struct vop_nmkdir_args *ap);
+static int journal_nrmdir(struct vop_nrmdir_args *ap);
+static int journal_nrename(struct vop_nrename_args *ap);
 
 static struct vnodeopv_entry_desc journal_vnodeop_entries[] = {
     { &vop_default_desc,		vop_journal_operate_ap },
     { &vop_mountctl_desc,		(void *)journal_mountctl },
+    { &vop_setattr_desc,		(void *)journal_setattr },
+    { &vop_write_desc,			(void *)journal_write },
+    { &vop_fsync_desc,			(void *)journal_fsync },
+    { &vop_putpages_desc,		(void *)journal_putpages },
+    { &vop_setacl_desc,			(void *)journal_setacl },
+    { &vop_setextattr_desc,		(void *)journal_setextattr },
+    { &vop_ncreate_desc,		(void *)journal_ncreate },
+    { &vop_nmknod_desc,			(void *)journal_nmknod },
+    { &vop_nlink_desc,			(void *)journal_nlink },
+    { &vop_nsymlink_desc,		(void *)journal_nsymlink },
+    { &vop_nwhiteout_desc,		(void *)journal_nwhiteout },
+    { &vop_nremove_desc,		(void *)journal_nremove },
     { &vop_nmkdir_desc,			(void *)journal_nmkdir },
+    { &vop_nrmdir_desc,			(void *)journal_nrmdir },
+    { &vop_nrename_desc,		(void *)journal_nrename },
     { NULL, NULL }
 };
 
@@ -417,6 +445,7 @@ journal_thread(void *info)
 	 * XXX notification on failure
 	 * XXX two-way acknowledgement stream in the return direction / xindex
 	 */
+	printf("write @%d,%d\n", jo->fifo.rindex & jo->fifo.mask, bytes);
 	bytes = res;
 	error = fp_write(jo->fp, 
 			jo->fifo.membase + (jo->fifo.rindex & jo->fifo.mask),
@@ -1139,7 +1168,306 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
 
 /************************************************************************
  *			JOURNAL VNOPS					*
- ************************************************************************/
+ ************************************************************************
+ *
+ * These are function shims replacing the normal filesystem ops.  We become
+ * responsible for calling the underlying filesystem ops.  We have the choice
+ * of executing the underlying op first and then generating the journal entry,
+ * or starting the journal entry, executing the underlying op, and then
+ * either completing or aborting it.  
+ *
+ * The journal is supposed to be a high-level entity, which generally means
+ * identifying files by name rather then by inode.  Supplying both allows
+ * the journal to be used both for inode-number-compatible 'mirrors' and
+ * for simple filesystem replication.
+ *
+ * Writes are particularly difficult to deal with because a single write may
+ * represent a hundred megabyte buffer or more, and both writes and truncations
+ * require the 'old' data to be written out as well as the new data if the
+ * log is reversable.  Other issues:
+ *
+ * - How to deal with operations on unlinked files (no path available),
+ *   but which may still be filesystem visible due to hard links.
+ *
+ * - How to deal with modifications made via a memory map.
+ *
+ * - Future cache coherency support will require cache coherency API calls
+ *   both prior to and after the call to the underlying VFS.
+ *
+ * ALSO NOTE: We do not have to shim compatibility VOPs like MKDIR which have
+ * new VFS equivalents (NMKDIR).
+ */
+
+static
+int
+journal_setattr(struct vop_setattr_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_SETATTR);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_write(struct vop_write_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_WRITE);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_fsync(struct vop_fsync_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    /* XXX synchronize pending journal records */
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_putpages(struct vop_putpages_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_PUTPAGES);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_setacl(struct vop_setacl_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_SETACL);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_setextattr(struct vop_setextattr_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_SETEXTATTR);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_ncreate(struct vop_ncreate_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_CREATE);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nmknod(struct vop_nmknod_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_MKNOD);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nlink(struct vop_nlink_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_LINK);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nsymlink(struct vop_nsymlink_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_SYMLINK);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nwhiteout(struct vop_nwhiteout_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_WHITEOUT);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nremove(struct vop_nremove_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_REMOVE);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
 
 static
 int
@@ -1169,6 +1497,53 @@ journal_nmkdir(struct vop_nmkdir_args *ap)
 	    save = jrecord_push(&jrec, JTYPE_MKDIR);
 	    jrecord_write_path(&jrec, JLEAF_PATH1, ap->a_ncp);
 	    jrecord_write_vattr(&jrec, ap->a_vap);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+
+static
+int
+journal_nrmdir(struct vop_nrmdir_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_RMDIR);
+	    jrecord_pop(&jrec, save);
+	    jrecord_done(&jrec, 0);
+	}
+    }
+    return (error);
+}
+
+static
+int
+journal_nrename(struct vop_nrename_args *ap)
+{
+    struct mount *mp;
+    struct journal *jo;
+    struct jrecord jrec;
+    void *save;		/* warning, save pointers do not always remain valid */
+    int error;
+
+    error = vop_journal_operate_ap(&ap->a_head);
+    mp = ap->a_head.a_ops->vv_mount;
+    if (error == 0) {
+	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
+	    jrecord_init(jo, &jrec, -1);
+	    save = jrecord_push(&jrec, JTYPE_RENAME);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
