@@ -1,7 +1,7 @@
 /*
  * pipe2.c
  *
- * $DragonFly: src/test/sysperf/pipe2.c,v 1.2 2004/03/31 20:27:09 dillon Exp $
+ * $DragonFly: src/test/sysperf/pipe2.c,v 1.3 2004/04/01 01:47:44 dillon Exp $
  */
 
 #include "blib.h"
@@ -36,9 +36,8 @@ main(int ac, char **av)
 	fprintf(stderr, "Illegal numerical suffix: %s\n", ptr);
 	exit(1);
     }
-    if (bytes <= 0 || bytes > 32 * 1024 * 1024) {
-	fprintf(stderr, 
-	    "valid byte range: 0-32m (k,m suffixes for KB and MB)\n");
+    if (bytes <= 0) {
+	fprintf(stderr, "I can't handle %d sized buffers\n", bytes);
 	exit(1);
     }
     if (ac >= 3)
@@ -49,6 +48,8 @@ main(int ac, char **av)
      */
     if (bytes < 4096)
 	divisor = 4096 / bytes;
+    else if (bytes > 1024 * 1024)
+	divisor = 2;
     else
 	divisor = 1;
 
