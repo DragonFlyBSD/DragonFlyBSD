@@ -24,14 +24,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_toshiba.c,v 1.8 2004/05/30 20:34:56 phk Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_toshiba.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_toshiba.c,v 1.4 2004/07/17 10:49:43 hmp Exp $
  */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
+#include <sys/systm.h>
 #include <sys/kernel.h>
 #include <sys/module.h>
 #include <sys/bus.h>
+#include <stdarg.h>
 
 #include "acpi.h"
 #include "acpivar.h"
