@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/iicbus/if_ic.c,v 1.8 1999/12/29 04:35:39 peter Exp $
- * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.11 2005/02/17 13:59:36 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ic/if_ic.c,v 1.12 2005/02/18 23:19:08 joerg Exp $
  */
 
 /*
@@ -46,6 +46,7 @@
 #include <sys/malloc.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_types.h>
 #include <net/netisr.h>
 
@@ -143,7 +144,7 @@ icattach(device_t dev)
 	ifp->if_type = IFT_PARA;
 	ifp->if_hdrlen = 0;
 	ifp->if_addrlen = 0;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 
 	if_attach(ifp);
 
