@@ -1,12 +1,13 @@
 #	From: @(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/Makefile,v 1.15.2.2 2000/10/31 09:43:57 dougb Exp $
-# $DragonFly: src/bin/Makefile,v 1.6 2003/12/01 02:20:13 dillon Exp $
+# $DragonFly: src/bin/Makefile,v 1.7 2004/08/12 08:08:03 dillon Exp $
 
 SUBDIR= cat \
 	chio \
 	chmod \
 	cp \
 	cpdup \
+	csh \
 	date \
 	dd \
 	df \
@@ -32,10 +33,6 @@ SUBDIR= cat \
 	sync \
 	test \
 	varsym
-
-.if !defined(NO_TCSH)
-SUBDIR+=csh
-.endif
 
 .if !defined(NO_SENDMAIL) && !defined(NOUUCP)
 SUBDIR+=rmail
