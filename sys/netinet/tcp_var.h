@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.30 2005/03/09 06:54:34 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.31 2005/03/10 08:19:27 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -409,8 +409,7 @@ struct tcpopt {
 	tcp_cc		to_ccecho;
 	u_int16_t	to_mss;
 	u_int8_t	to_requested_s_scale;
-	u_int8_t	to_pad;
-	int		to_nsackblocks;
+	u_int8_t	to_nsackblocks;
 	struct raw_sackblock *to_sackblocks;
 };
 
