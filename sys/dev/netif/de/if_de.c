@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.23 2005/02/21 04:58:34 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.24 2005/02/21 04:59:42 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -3376,14 +3376,6 @@ tulip_rx_intr(
 	    me->m_len = total_len - last_offset;
 
 	    eh = *mtod(ms, struct ether_header *);
-#if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	    if (sc->tulip_if.if_bpf != NULL) {
-		if (me == ms)
-		    bpf_tap(&sc->tulip_if, mtod(ms, caddr_t), total_len);
-		else
-		    bpf_mtap(&sc->tulip_if, ms);
-	    }
-#endif
 	    sc->tulip_flags |= TULIP_RXACT;
 	    accept = 1;
 	} else {
