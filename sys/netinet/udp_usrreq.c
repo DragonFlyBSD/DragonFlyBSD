@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.14 2004/03/06 07:30:43 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.15 2004/03/07 18:38:38 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -711,18 +712,17 @@ SYSCTL_PROC(_net_inet_udp, OID_AUTO, getcred, CTLTYPE_OPAQUE|CTLFLAG_RW,
     0, 0, udp_getcred, "S,ucred", "Get the ucred of a UDP connection");
 
 static int
-udp_output(inp, m, addr, control, td)
+udp_output(inp, m, dstaddr, control, td)
 	struct inpcb *inp;
 	struct mbuf *m;
-	struct sockaddr *addr;
+	struct sockaddr *dstaddr;
 	struct mbuf *control;
 	struct thread *td;
 {
 	struct udpiphdr *ui;
 	int len = m->m_pkthdr.len;
-	struct in_addr laddr;
-	struct sockaddr_in *sin;
-	int s = 0, error = 0;
+	struct sockaddr_in *sin;	/* really is initialized before use */
+	int error = 0;
 
 	if (control)
 		m_freem(control);		/* XXX */
@@ -732,29 +732,28 @@ udp_output(inp, m, addr, control, td)
 		goto release;
 	}
 
-	if (addr) {
-		sin = (struct sockaddr_in *)addr;
-		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
-		laddr = inp->inp_laddr;
+	if (inp->inp_lport == 0) {	/* unbound socket */
+		error = in_pcbbind(inp, (struct sockaddr *)NULL, td);
+		if (error)
+			goto release;
+	}
+
+	if (dstaddr != NULL) {		/* destination address specified */
 		if (inp->inp_faddr.s_addr != INADDR_ANY) {
+			/* already connected */
 			error = EISCONN;
 			goto release;
 		}
-		/*
-		 * Must block input while temporarily connected.
-		 */
-		s = splnet();
-		error = in_pcbconnect(inp, addr, td);
-		if (error) {
-			splx(s);
-			goto release;
-		}
+		sin = (struct sockaddr_in *)dstaddr;
+		prison_remote_ip(td, 0, &sin->sin_addr.s_addr);
 	} else {
 		if (inp->inp_faddr.s_addr == INADDR_ANY) {
+			/* no destination specified and not already connected */
 			error = ENOTCONN;
 			goto release;
 		}
 	}
+
 	/*
 	 * Calculate data length and get a mbuf
 	 * for UDP and IP headers.
@@ -762,8 +761,6 @@ udp_output(inp, m, addr, control, td)
 	M_PREPEND(m, sizeof(struct udpiphdr), M_DONTWAIT);
 	if (m == 0) {
 		error = ENOBUFS;
-		if (addr)
-			splx(s);
 		goto release;
 	}
 
@@ -774,10 +771,34 @@ udp_output(inp, m, addr, control, td)
 	ui = mtod(m, struct udpiphdr *);
 	bzero(ui->ui_x1, sizeof(ui->ui_x1));	/* XXX still needed? */
 	ui->ui_pr = IPPROTO_UDP;
-	ui->ui_src = inp->inp_laddr;
-	ui->ui_dst = inp->inp_faddr;
+
+	/*
+	 * Set destination address.
+	 */
+	if (dstaddr != NULL) {			/* use specified destination */
+		ui->ui_dst = sin->sin_addr;
+		ui->ui_dport = sin->sin_port;
+	} else {				/* use connected destination */
+		ui->ui_dst = inp->inp_faddr;
+		ui->ui_dport = inp->inp_fport;
+	}
+
+	/*
+	 * Set source address.
+	 */
+	if (inp->inp_laddr.s_addr == INADDR_ANY) { /* need to pick an address */
+		struct sockaddr_in *if_sin;
+
+		error = in_pcbladdr(inp, dstaddr, &if_sin);
+		if (error)
+			goto release;
+		ui->ui_src = if_sin->sin_addr;
+	} else {				/* use bound non-null address */
+		ui->ui_src = inp->inp_laddr;
+	}
 	ui->ui_sport = inp->inp_lport;
-	ui->ui_dport = inp->inp_fport;
+	KASSERT(inp->inp_lport != 0, ("inp lport should have been bound"));
+
 	ui->ui_ulen = htons((u_short)len + sizeof(struct udphdr));
 
 	/*
@@ -800,12 +821,6 @@ udp_output(inp, m, addr, control, td)
 	    (inp->inp_socket->so_options & (SO_DONTROUTE | SO_BROADCAST)),
 	    inp->inp_moptions, inp);
 
-	if (addr) {
-		in_pcbdisconnect(inp);
-		inp->inp_laddr = laddr;
-		in_pcbinsbindhash(inp);
-		splx(s);
-	}
 	return (error);
 
 release:
