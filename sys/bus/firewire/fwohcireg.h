@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohcireg.h,v 1.15 2004/01/06 14:24:01 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.6 2004/07/16 08:58:45 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohcireg.h,v 1.7 2004/07/16 09:10:50 asmodai Exp $
  *
  */
 #define		PCI_CBMEM		0x10
@@ -57,7 +57,7 @@
 #define		FW_DEVICE_TITSB43A	(0x8023 << 16)
 #define		FW_DEVICE_TITSB43AB23	(0x8024 << 16)
 #define		FW_DEVICE_TITSB82AA2	(0x8025 << 16)
-#define		FW_DEVICE_TITSB43AB21A	(0x8026 << 16)
+#define		FW_DEVICE_TITSB43AB21	(0x8026 << 16)
 #define		FW_DEVICE_TIPCI4410A	(0x8017 << 16)
 #define		FW_DEVICE_TIPCI4450	(0x8011 << 16)
 #define		FW_DEVICE_TIPCI4451	(0x8027 << 16)

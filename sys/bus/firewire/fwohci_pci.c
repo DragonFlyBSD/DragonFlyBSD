@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.6 2004/07/16 08:58:44 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.7 2004/07/16 09:10:50 asmodai Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -133,8 +133,8 @@ fwohci_pci_probe( device_t dev )
 		device_set_desc(dev, "Texas Instruments TSB43AB22/A");
 		return 0;
 	}
-	if (id == (FW_VENDORID_TI | FW_DEVICE_TITSB43AB21A)) {
-		device_set_desc(dev, "Texas Instruments TSB43AB21A");
+	if (id == (FW_VENDORID_TI | FW_DEVICE_TITSB43AB21)) {
+		device_set_desc(dev, "Texas Instruments TSB43AB21/A/AI/A-EP");
 		return 0;
 	}
 	if (id == (FW_VENDORID_TI | FW_DEVICE_TITSB43AB23)) {
