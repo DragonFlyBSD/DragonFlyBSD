@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.11 2004/05/19 22:52:57 dillon Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.12 2004/06/02 13:49:46 joerg Exp $
  *
  *  Digiboard driver.
  *
@@ -117,8 +117,8 @@ struct dgb_p {
 	int event;
 	int asyncflags;
 	u_long statusflags;
-	u_char *txptr;
-	u_char *rxptr;
+	volatile u_char *txptr;
+	volatile u_char *rxptr;
 	volatile struct board_chan *brdchan;
 	struct tty *tty;
 
@@ -1278,7 +1278,7 @@ dgbpoll(unit_c)
 					else
 						size=port->rxbufsize-rtail;
 
-					ptr=port->rxptr+rtail;
+					ptr=__DEVOLATILE(u_char *, port->rxptr+rtail);
 
 /* Helg: */
 					if( tp->t_rawq.c_cc + size > DGB_IBUFSIZE ) {
@@ -1402,7 +1402,7 @@ dgbpoll(unit_c)
 
 					towin(sc,port->txwin);
 
-					ocount=q_to_b(&tp->t_outq, port->txptr+whead, size);
+					ocount=q_to_b(&tp->t_outq, __DEVOLATILE(u_char *, port->txptr+whead), size);
 					whead+=ocount;
 
 					setwin(sc,0);
@@ -2043,7 +2043,7 @@ dgbstart(tp)
 
 		towin(sc,port->txwin);
 
-		ocount=q_to_b(&tp->t_outq, port->txptr+head, size);
+		ocount=q_to_b(&tp->t_outq, __DEVOLATILE(u_char *, port->txptr+head), size);
 		head+=ocount;
 		if(head>=port->txbufsize)
 			head-=port->txbufsize;
