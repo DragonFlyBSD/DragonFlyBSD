@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_command.c,v 1.34.2.2 2001/07/29 22:48:36 kris Exp $
- * $DragonFly: src/sys/ddb/db_command.c,v 1.3 2003/07/26 14:18:51 rob Exp $
+ * $DragonFly: src/sys/ddb/db_command.c,v 1.4 2003/07/28 04:56:35 hmp Exp $
  */
 
 /*
@@ -46,6 +46,8 @@
 #include <ddb/db_lex.h>
 #include <ddb/db_output.h>
 
+#include <machine/md_var.h>	/* needed for db_reset() */
+
 #include <setjmp.h>
 
 /*
@@ -62,6 +64,7 @@ extern struct linker_set	db_show_cmd_set;
 
 static db_cmdfcn_t	db_fncall;
 static db_cmdfcn_t	db_gdb;
+static db_cmdfcn_t	db_reset;
 
 /* XXX this is actually forward-static. */
 extern struct command	db_show_cmds[];
@@ -404,10 +407,12 @@ static struct command db_command_table[] = {
 	{ "next",	db_trace_until_matching_cmd,0,	0 },
 	{ "match",	db_trace_until_matching_cmd,0,	0 },
 	{ "trace",	db_stack_trace_cmd,	0,	0 },
+	{ "where",	db_stack_trace_cmd, 0,	0 },
 	{ "call",	db_fncall,		CS_OWN,	0 },
 	{ "show",	0,			0,	db_show_cmds },
 	{ "ps",		db_ps,			0,	0 },
 	{ "gdb",	db_gdb,			0,	0 },
+	{ "reset",	db_reset,		0,	0 },
 	{ (char *)0, }
 };
 
@@ -561,4 +566,15 @@ db_gdb (dummy1, dummy2, dummy3, dummy4)
 	db_printf("Next trap will enter %s\n",
 		   boothowto & RB_GDB ? "GDB remote protocol mode"
 				      : "DDB debugger");
+}
+
+static void
+db_reset (
+	db_expr_t dummy1,
+	boolean_t dummy2,
+	db_expr_t dummy3,
+	char * dummy4
+) {
+		
+		cpu_reset();
 }

@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.3 2003/07/08 06:27:23 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.4 2003/07/28 04:56:35 hmp Exp $
  */
 
 /*
@@ -135,6 +135,11 @@ db_cmdfcn_t	db_show_one_thread;
 db_cmdfcn_t	ipc_port_print;
 db_cmdfcn_t	vm_page_print;
 #endif
+
+/*
+ * Print backtrace. (Machine-Dependant)
+ */
+void		db_print_backtrace(void);
 
 /*
  * Command table.
