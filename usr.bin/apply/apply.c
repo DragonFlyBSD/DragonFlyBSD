@@ -35,7 +35,7 @@
  *
  * @(#)apply.c	8.4 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.bin/apply/apply.c,v 1.8.2.3 2001/08/01 23:28:04 obrien Exp $
- * $DragonFly: src/usr.bin/apply/apply.c,v 1.4 2004/06/19 12:34:52 hmp Exp $
+ * $DragonFly: src/usr.bin/apply/apply.c,v 1.5 2005/01/04 05:45:02 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -189,7 +189,7 @@ main(int argc, char *argv[])
 			err(1, NULL);
 
 		/* Expand command argv references. */
-		for (p = cmd, q = c; *p != '\0'; ++p)
+		for (p = cmd, q = c; *p != '\0'; ++p) {
 			if (p[0] == magic && isdigit(p[1]) && p[1] != '0') {
 				offset = snprintf(q, l, "%s",
 				    argv[(++p)[0] - '0']);
@@ -197,18 +197,21 @@ main(int argc, char *argv[])
 					err(1, "snprintf() failed");
 				q += offset;
 				l -= offset;
-			} else
+			} else {
 				*q++ = *p;
+			}
+		}
 
 		/* Terminate the command string. */
 		*q = '\0';
 
 		/* Run the command. */
-		if (debug)
-			(void)printf("%s\n", c);
-		else
+		if (debug) {
+			printf("%s\n", c);
+		} else {
 			if (exec_shell(c, shell, name))
 				rval = 1;
+		}
 	}
 
 	if (argc != 1)
@@ -232,7 +235,7 @@ exec_shell(const char *command, char *use_shell, char *use_name)
 	int omask, pstat;
 	sig_t intsave, quitsave;
 
-	if (!command)		/* just checking... */
+	if (command == NULL)		/* just checking... */
 		return(1);
 
 	omask = sigblock(sigmask(SIGCHLD));
@@ -248,17 +251,17 @@ exec_shell(const char *command, char *use_shell, char *use_name)
 	intsave = signal(SIGINT, SIG_IGN);
 	quitsave = signal(SIGQUIT, SIG_IGN);
 	pid = waitpid(pid, &pstat, 0);
-	(void)sigsetmask(omask);
-	(void)signal(SIGINT, intsave);
-	(void)signal(SIGQUIT, quitsave);
+	sigsetmask(omask);
+	signal(SIGINT, intsave);
+	signal(SIGQUIT, quitsave);
 	return(pid == -1 ? -1 : pstat);
 }
 
 void
 usage(void)
 {
-
-	(void)fprintf(stderr,
-	"usage: apply [-a magic] [-d] [-0123456789] command arguments ...\n");
+	fprintf(stderr,
+	    "usage: apply [-a magic] [-d] [-0123456789] "
+	    "command arguments ...\n");
 	exit(1);
 }
