@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.5 2004/01/24 22:18:12 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.6 2005/01/05 11:51:18 joerg Exp $
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
@@ -68,5 +68,11 @@ exit(status)
 
 	if (__cleanup)
 		(*__cleanup)();
+	_exit(status);
+}
+
+void
+_Exit(int status)
+{
 	_exit(status);
 }

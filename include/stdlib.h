@@ -32,7 +32,7 @@
  *
  *	@(#)stdlib.h	8.5 (Berkeley) 5/19/95
  * $FreeBSD: src/include/stdlib.h,v 1.16.2.5 2002/12/13 01:34:00 tjr Exp $
- * $DragonFly: src/include/stdlib.h,v 1.8 2004/08/15 16:01:11 joerg Exp $
+ * $DragonFly: src/include/stdlib.h,v 1.9 2005/01/05 11:51:18 joerg Exp $
  */
 
 #ifndef _STDLIB_H_
@@ -86,6 +86,7 @@ extern int __mb_cur_max;
 #define	MB_CUR_MAX	__mb_cur_max
 
 __BEGIN_DECLS
+void	 _Exit(int) __dead2;
 void	 abort(void) __dead2;
 int	 abs(int) __pure2;
 int	 atexit(void (*)(void));
