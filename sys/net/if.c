@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.10 2003/12/30 01:01:48 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.11 2003/12/30 03:56:00 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -92,6 +92,7 @@ SYSINIT(interfaces, SI_SUB_PROTO_IF, SI_ORDER_FIRST, ifinit, NULL)
 
 MALLOC_DEFINE(M_IFADDR, "ifaddr", "interface address");
 MALLOC_DEFINE(M_IFMADDR, "ether_multi", "link-level multicast address");
+MALLOC_DEFINE(M_CLONE, "clone", "interface cloning framework");
 
 int	ifqmaxlen = IFQ_MAXLEN;
 struct	ifnethead ifnet;	/* depend on static init XXX */
@@ -374,7 +375,7 @@ if_clone_create(name, len)
 {
 	struct if_clone *ifc;
 	char *dp;
-	int wildcard;
+	int wildcard, bytoff, bitoff;
 	int unit;
 	int err;
 
@@ -385,11 +386,40 @@ if_clone_create(name, len)
 	if (ifunit(name) != NULL)
 		return (EEXIST);
 
+	bytoff = bitoff = 0;
 	wildcard = (unit < 0);
+	/*
+	 * Find a free unit if none was given.
+	 */
+	if (wildcard) {
+		while ((bytoff < ifc->ifc_bmlen)
+		    && (ifc->ifc_units[bytoff] == 0xff))
+			bytoff++;
+		if (bytoff >= ifc->ifc_bmlen)
+			return (ENOSPC);
+		while ((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0)
+			bitoff++;
+		unit = (bytoff << 3) + bitoff;
+	}
 
-	err = (*ifc->ifc_create)(ifc, &unit);
+	if (unit > ifc->ifc_maxunit)
+		return (ENXIO);
+
+	err = (*ifc->ifc_create)(ifc, unit);
 	if (err != 0)
 		return (err);
+
+	if (!wildcard) {
+		bytoff = unit >> 3;
+		bitoff = unit - (bytoff << 3);
+	}
+
+	/*
+	 * Allocate the unit in the bitmap.
+	 */
+	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) == 0,
+	    ("%s: bit is already set", __func__));
+	ifc->ifc_units[bytoff] |= (1 << bitoff);
 
 	/* In the wildcard case, we need to update the name. */
 	if (wildcard) {
@@ -403,7 +433,7 @@ if_clone_create(name, len)
 			 */
 			panic("if_clone_create(): interface name too long");
 		}
-			
+
 	}
 
 	return (0);
@@ -418,9 +448,14 @@ if_clone_destroy(name)
 {
 	struct if_clone *ifc;
 	struct ifnet *ifp;
+	int bytoff, bitoff;
+	int unit;
 
-	ifc = if_clone_lookup(name, NULL);
+	ifc = if_clone_lookup(name, &unit);
 	if (ifc == NULL)
+		return (EINVAL);
+
+	if (unit < ifc->ifc_minifs)
 		return (EINVAL);
 
 	ifp = ifunit(name);
@@ -431,6 +466,15 @@ if_clone_destroy(name)
 		return (EOPNOTSUPP);
 
 	(*ifc->ifc_destroy)(ifp);
+
+	/*
+	 * Compute offset in the bitmap and deallocate the unit.
+	 */
+	bytoff = unit >> 3;
+	bitoff = unit - (bytoff << 3);
+	KASSERT((ifc->ifc_units[bytoff] & (1 << bitoff)) != 0,
+	    ("%s: bit is already cleared", __func__));
+	ifc->ifc_units[bytoff] &= ~(1 << bitoff);
 	return (0);
 }
 
@@ -484,9 +528,39 @@ void
 if_clone_attach(ifc)
 	struct if_clone *ifc;
 {
+	int bytoff, bitoff;
+	int err;
+	int len, maxclone;
+	int unit;
+
+	KASSERT(ifc->ifc_minifs - 1 <= ifc->ifc_maxunit,
+	    ("%s: %s requested more units then allowed (%d > %d)",
+	    __func__, ifc->ifc_name, ifc->ifc_minifs,
+	    ifc->ifc_maxunit + 1));
+	/*
+	 * Compute bitmap size and allocate it.
+	 */
+	maxclone = ifc->ifc_maxunit + 1;
+	len = maxclone >> 3;
+	if ((len << 3) < maxclone)
+		len++;
+	ifc->ifc_units = malloc(len, M_CLONE, M_WAITOK | M_ZERO);
+	ifc->ifc_bmlen = len;
 
 	LIST_INSERT_HEAD(&if_cloners, ifc, ifc_list);
 	if_cloners_count++;
+
+	for (unit = 0; unit < ifc->ifc_minifs; unit++) {
+		err = (*ifc->ifc_create)(ifc, unit);
+		KASSERT(err == 0,
+		    ("%s: failed to create required interface %s%d",
+		    __func__, ifc->ifc_name, unit));
+
+		/* Allocate the unit in the bitmap. */
+		bytoff = unit >> 3;
+		bitoff = unit - (bytoff << 3);
+		ifc->ifc_units[bytoff] |= (1 << bitoff);
+	}
 }
 
 /*
@@ -498,6 +572,7 @@ if_clone_detach(ifc)
 {
 
 	LIST_REMOVE(ifc, ifc_list);
+	free(ifc->ifc_units, M_CLONE);
 	if_cloners_count--;
 }
 

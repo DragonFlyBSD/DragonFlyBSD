@@ -1,6 +1,6 @@
 /*	$NetBSD: if_gre.c,v 1.42 2002/08/14 00:23:27 itojun Exp $ */
 /*	$FreeBSD: src/sys/net/if_gre.c,v 1.9.2.3 2003/01/23 21:06:44 sam Exp $ */
-/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.5 2003/08/07 21:17:24 dillon Exp $ */
+/*	$DragonFly: src/sys/net/gre/if_gre.c,v 1.6 2003/12/30 03:56:03 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -58,7 +58,6 @@
 #include <sys/proc.h>
 #include <sys/protosw.h>
 #include <machine/bus.h>
-#include <sys/rman.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <sys/sysctl.h>
@@ -94,21 +93,19 @@
 #define GREMTU	1476
 
 #define GRENAME	"gre"
-#define GRE_MAXUNIT 0x7fff
 
 static MALLOC_DEFINE(M_GRE, GRENAME, "Generic Routing Encapsulation");
-static struct rman greunits[1];
 
 struct gre_softc_head gre_softc_list;
 
-static int	gre_clone_create(struct if_clone *, int *);
+static int	gre_clone_create(struct if_clone *, int);
 static void	gre_clone_destroy(struct ifnet *);
 static int	gre_ioctl(struct ifnet *, u_long, caddr_t);
 static int	gre_output(struct ifnet *, struct mbuf *, struct sockaddr *,
 		    struct rtentry *rt);
 
-static struct if_clone gre_cloner =
-    IF_CLONE_INITIALIZER("gre", gre_clone_create, gre_clone_destroy);
+static struct if_clone gre_cloner = IF_CLONE_INITIALIZER("gre",
+    gre_clone_create, gre_clone_destroy, 0, IF_MAXUNIT);
 
 static int gre_compute_route(struct gre_softc *sc);
 
@@ -162,33 +159,16 @@ greattach(void)
 static int
 gre_clone_create(ifc, unit)
 	struct if_clone *ifc;
-	int *unit;
+	int unit;
 {
-	struct resource *r;
 	struct gre_softc *sc;
-
-	if (*unit > GRE_MAXUNIT)
-		return (ENXIO);
-
-	if (*unit < 0) {
-		r = rman_reserve_resource(greunits, 0, GRE_MAXUNIT, 1,
-		    RF_ALLOCATED | RF_ACTIVE, NULL);
-		if (r == NULL)
-			return (ENOSPC);
-		*unit = rman_get_start(r);
-	} else {
-		r = rman_reserve_resource(greunits, *unit, *unit, 1,
-		    RF_ALLOCATED | RF_ACTIVE, NULL);
-		if (r == NULL)
-			return (EEXIST);
-	}
 
 	sc = malloc(sizeof(struct gre_softc), M_GRE, M_WAITOK);
 	memset(sc, 0, sizeof(struct gre_softc));
 
 	sc->sc_if.if_name = GRENAME;
 	sc->sc_if.if_softc = sc;
-	sc->sc_if.if_unit = *unit;
+	sc->sc_if.if_unit = unit;
 	sc->sc_if.if_snd.ifq_maxlen = IFQ_MAXLEN;
 	sc->sc_if.if_type = IFT_OTHER;
 	sc->sc_if.if_addrlen = 0;
@@ -202,7 +182,6 @@ gre_clone_create(ifc, unit)
 	sc->sc_if.if_flags |= IFF_LINK0;
 	sc->encap = NULL;
 	sc->called = 0;
-	sc->r_unit = r;
 	if_attach(&sc->sc_if);
 	bpfattach(&sc->sc_if, DLT_NULL, sizeof(u_int32_t));
 	LIST_INSERT_HEAD(&gre_softc_list, sc, sc_list);
@@ -213,7 +192,6 @@ static void
 gre_clone_destroy(ifp)
 	struct ifnet *ifp;
 {
-	int err;
 	struct gre_softc *sc = ifp->if_softc;
 
 #ifdef INET
@@ -223,9 +201,6 @@ gre_clone_destroy(ifp)
 	LIST_REMOVE(sc, sc_list);
 	bpfdetach(ifp);
 	if_detach(ifp);
-
-	err = rman_release_resource(sc->r_unit);
-	KASSERT(err == 0, ("Unexpected error freeing resource"));
 
 	free(sc, M_GRE);
 }
@@ -761,22 +736,9 @@ gre_in_cksum(u_short *p, u_int len)
 static int
 gremodevent(module_t mod, int type, void *data)
 {
-	int err;
 
 	switch (type) {
 	case MOD_LOAD:
-		greunits->rm_type = RMAN_ARRAY;
-		greunits->rm_descr = "configurable if_gre units";
-		err = rman_init(greunits);
-		if (err != 0)
-			return (err);
-		err = rman_manage_region(greunits, 0, GRE_MAXUNIT);
-		if (err != 0) {
-			printf("%s: greunits: rman_manage_region: Failed %d\n",
-			    GRENAME, err);
-			rman_fini(greunits);
-			return (err);
-		}
 		greattach();
 		break;
 	case MOD_UNLOAD:
@@ -784,10 +746,6 @@ gremodevent(module_t mod, int type, void *data)
 
 		while (!LIST_EMPTY(&gre_softc_list))
 			gre_clone_destroy(&LIST_FIRST(&gre_softc_list)->sc_if);
-
-		err = rman_fini(greunits);
-		if (err != 0)
-			return (err);
 
 		break;
 	}

@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.7 2003/11/22 19:30:56 asmodai Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.8 2003/12/30 03:56:00 dillon Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -58,6 +58,7 @@ struct ifnet;
  */
 #define		IFNAMSIZ	16
 #define		IF_NAMESIZE	IFNAMSIZ
+#define		IF_MAXUNIT	0x7fff		/* if_unit is 15bits */
 
 #ifdef _KERNEL
 /*
@@ -67,13 +68,17 @@ struct if_clone {
 	LIST_ENTRY(if_clone) ifc_list;	/* on list of cloners */
 	const char *ifc_name;		/* name of device, e.g. `gif' */
 	size_t ifc_namelen;		/* length of name */
+	int ifc_minifs;			/* minimum number of interfaces */
+	int ifc_maxunit;		/* maximum unit number */
+	unsigned char *ifc_units;	/* bitmap to handle units */
+	int ifc_bmlen;			/* bitmap length */
 
-	int	(*ifc_create)(struct if_clone *, int *);
+	int	(*ifc_create)(struct if_clone *, int);
 	void	(*ifc_destroy)(struct ifnet *);
 };
 
-#define IF_CLONE_INITIALIZER(name, create, destroy)			\
-	{ { 0 }, name, sizeof(name) - 1, create, destroy }
+#define IF_CLONE_INITIALIZER(name, create, destroy, minifs, maxunit)	\
+	{ { 0 }, name, sizeof(name) - 1, minifs, maxunit, NULL, 0, create, destroy }
 #endif
 
 /*

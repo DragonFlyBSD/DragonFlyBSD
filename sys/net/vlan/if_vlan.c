@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/net/if_vlan.c,v 1.15.2.13 2003/02/14 22:25:58 fenner Exp $
- * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.4 2003/08/07 21:17:30 dillon Exp $
+ * $DragonFly: src/sys/net/vlan/if_vlan.c,v 1.5 2003/12/30 03:56:04 dillon Exp $
  */
 
 /*
@@ -71,7 +71,6 @@
 #include <sys/sysctl.h>
 #include <sys/systm.h>
 #include <machine/bus.h>	/* XXX: Shouldn't really be required! */
-#include <sys/rman.h>
 
 #include <net/bpf.h>
 #include <net/ethernet.h>
@@ -87,17 +86,15 @@
 #endif
 
 #define VLANNAME	"vlan"
-#define VLAN_MAXUNIT	0x7fff	/* ifp->if_unit is only 15 bits */
 
 SYSCTL_DECL(_net_link);
 SYSCTL_NODE(_net_link, IFT_L2VLAN, vlan, CTLFLAG_RW, 0, "IEEE 802.1Q VLAN");
 SYSCTL_NODE(_net_link_vlan, PF_LINK, link, CTLFLAG_RW, 0, "for consistency");
 
 static MALLOC_DEFINE(M_VLAN, "vlan", "802.1Q Virtual LAN Interface");
-static struct rman vlanunits[1];
 static LIST_HEAD(, ifvlan) ifv_list;
 
-static	int vlan_clone_create(struct if_clone *, int *);
+static	int vlan_clone_create(struct if_clone *, int);
 static	void vlan_clone_destroy(struct ifnet *);
 static	void vlan_start(struct ifnet *ifp);
 static	void vlan_ifinit(void *foo);
@@ -109,8 +106,8 @@ static	int vlan_setmulti(struct ifnet *ifp);
 static	int vlan_unconfig(struct ifnet *ifp);
 static	int vlan_config(struct ifvlan *ifv, struct ifnet *p);
 
-struct if_clone vlan_cloner =
-    IF_CLONE_INITIALIZER("vlan", vlan_clone_create, vlan_clone_destroy);
+struct if_clone vlan_cloner = IF_CLONE_INITIALIZER("vlan", vlan_clone_create,
+    vlan_clone_destroy, NVLAN, IF_MAXUNIT);
 
 /*
  * Program our multicast filter. What we're actually doing is
@@ -180,32 +177,13 @@ vlan_setmulti(struct ifnet *ifp)
 static int
 vlan_modevent(module_t mod, int type, void *data) 
 { 
-	int i;
-	int err;
 
 	switch (type) { 
 	case MOD_LOAD: 
-		vlanunits->rm_type = RMAN_ARRAY;
-		vlanunits->rm_descr = "configurable if_vlan units";
-		err = rman_init(vlanunits);
-		if (err != 0)
-			return (err);
-		err = rman_manage_region(vlanunits, 0, VLAN_MAXUNIT);
-		if (err != 0) {
-			printf("%s: vlanunits: rman_manage_region: Failed %d\n",
-			    VLANNAME, err);
-			rman_fini(vlanunits);
-			return (err);
-		}
 		LIST_INIT(&ifv_list);
 		vlan_input_p = vlan_input;
 		vlan_input_tag_p = vlan_input_tag;
 		if_clone_attach(&vlan_cloner);
-		for(i = 0; i < NVLAN; i ++) {
-			err = vlan_clone_create(&vlan_cloner, &i);
-			KASSERT(err == 0,
-			    ("Unexpected error creating initial VLANs"));
-		}
 		break; 
 	case MOD_UNLOAD: 
 		if_clone_detach(&vlan_cloner);
@@ -213,9 +191,6 @@ vlan_modevent(module_t mod, int type, void *data)
 		vlan_input_tag_p = NULL;
 		while (!LIST_EMPTY(&ifv_list))
 			vlan_clone_destroy(&LIST_FIRST(&ifv_list)->ifv_if);
-		err = rman_fini(vlanunits);
-		if (err != 0)
-			 return (err);
 		break;
 	} 
 	return 0; 
@@ -230,28 +205,11 @@ static moduledata_t vlan_mod = {
 DECLARE_MODULE(if_vlan, vlan_mod, SI_SUB_PSEUDO, SI_ORDER_ANY);
 
 static int
-vlan_clone_create(struct if_clone *ifc, int *unit)
+vlan_clone_create(struct if_clone *ifc, int unit)
 {
-	struct resource *r;
 	struct ifvlan *ifv;
 	struct ifnet *ifp;
 	int s;
-
-	if (*unit > VLAN_MAXUNIT)
-		return (ENXIO);
-
-	if (*unit < 0) {
-		r  = rman_reserve_resource(vlanunits, 0, VLAN_MAXUNIT, 1,
-		    RF_ALLOCATED | RF_ACTIVE, NULL);
-		if (r == NULL)
-			return (ENOSPC);
-		*unit = rman_get_start(r);
-	} else {
-		r  = rman_reserve_resource(vlanunits, *unit, *unit, 1,
-		    RF_ALLOCATED | RF_ACTIVE, NULL);
-		if (r == NULL)
-			return (EEXIST);
-	}
 
 	ifv = malloc(sizeof(struct ifvlan), M_VLAN, M_WAITOK);
 	memset(ifv, 0, sizeof(struct ifvlan));
@@ -264,8 +222,7 @@ vlan_clone_create(struct if_clone *ifc, int *unit)
 
 	ifp->if_softc = ifv;
 	ifp->if_name = "vlan";
-	ifp->if_unit = *unit;
-	ifv->r_unit = r;
+	ifp->if_unit = unit;
 	/* NB: flags are not set here */
 	ifp->if_linkmib = &ifv->ifv_mib;
 	ifp->if_linkmiblen = sizeof ifv->ifv_mib;
@@ -289,7 +246,6 @@ vlan_clone_destroy(struct ifnet *ifp)
 {
 	struct ifvlan *ifv = ifp->if_softc;
 	int s;
-	int err;
 
 	s = splnet();
 	LIST_REMOVE(ifv, ifv_list);
@@ -298,8 +254,6 @@ vlan_clone_destroy(struct ifnet *ifp)
 
 	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
 
-	err = rman_release_resource(ifv->r_unit);
-	KASSERT(err == 0, ("Unexpected error freeing resource"));
 	free(ifv, M_VLAN);
 }
 
