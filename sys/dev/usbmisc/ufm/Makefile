@@ -1,7 +1,7 @@
 # $FreeBSD: src/sys/modules/ufm/Makefile,v 1.1.2.1 2002/03/04 04:01:36 alfred Exp $
-# $DragonFly: src/sys/dev/usbmisc/ufm/Makefile,v 1.2 2003/06/17 04:28:47 dillon Exp $
+# $DragonFly: src/sys/dev/usbmisc/ufm/Makefile,v 1.3 2003/08/15 08:32:31 dillon Exp $
 
-.PATH:	${.CURDIR}/../../dev/usb
+.PATH:	${.CURDIR}/../../dev/usb ${.CURDIR}/../../../bus/usb
 KMOD=	ufm
 SRCS=	bus_if.h device_if.h vnode_if.h opt_usb.h ufm.c dsbr100io.h
 NOMAN=	YES

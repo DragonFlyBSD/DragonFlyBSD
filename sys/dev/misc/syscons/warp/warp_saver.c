@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/warp/warp_saver.c,v 1.7.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/warp/warp_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,9 +38,9 @@
 #include <sys/fbio.h>
 #include <sys/random.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "../syscons.h"
 
 static u_char *vid;
 static int blanked;

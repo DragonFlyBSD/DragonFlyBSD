@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/star/star_saver.c,v 1.23.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,9 +38,9 @@
 
 #include <machine/pc/display.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "../syscons.h"
 
 #ifdef PC98
 #include <pc98/pc98/pc98_machdep.h>

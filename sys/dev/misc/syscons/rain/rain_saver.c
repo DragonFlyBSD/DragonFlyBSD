@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.4 2003/08/03 17:27:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.5 2003/08/15 08:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,9 +38,9 @@
 #include <sys/fbio.h>
 #include <sys/random.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "../syscons.h"
 
 static u_char *vid;
 

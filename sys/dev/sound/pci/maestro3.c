@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/maestro3.c,v 1.2.2.11 2002/09/16 19:52:33 scottl Exp $
- * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.3 2003/08/07 21:17:13 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.4 2003/08/15 08:32:31 dillon Exp $
  */
 
 /*
@@ -61,10 +61,10 @@
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcivar.h>
 
-#include <gnu/dev/sound/pci/maestro3_reg.h>
-#include <gnu/dev/sound/pci/maestro3_dsp.h>
+#include "gnu/maestro3_reg.h"
+#include "gnu/maestro3_dsp.h"
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.3 2003/08/07 21:17:13 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/maestro3.c,v 1.4 2003/08/15 08:32:31 dillon Exp $");
 
 /* -------------------------------------------------------------------- */
 

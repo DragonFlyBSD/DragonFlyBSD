@@ -1,7 +1,7 @@
 /*	$NetBSD: i82365_isasubr.c,v 1.3 1999/10/15 06:07:27 haya Exp $	*/
 /*	$NetBSD: i82365_isa.c,v 1.11 1998/06/09 07:25:00 thorpej Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365_isa.c,v 1.13.2.1 2000/05/23 03:57:02 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365_isa.c,v 1.3 2003/08/07 21:16:57 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/pcic/Attic/i82365_isa.c,v 1.4 2003/08/15 08:32:29 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 Bill Sommerfeld.  All rights reserved.
@@ -48,8 +48,8 @@
 
 #include <bus/isa/isavar.h>
 
-#include <dev/misc/pccard/pccardreg.h>
-#include <dev/misc/pccard/pccardvar.h>
+#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccardvar.h>
 
 #include "i82365reg.h"
 #include "i82365var.h"

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/logo/logo_saver.c,v 1.8 1999/08/28 00:47:51 peter Exp $
- * $DragonFly: src/sys/dev/misc/syscons/logo/logo_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/logo/logo_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,9 +37,9 @@
 #include <sys/consio.h>
 #include <sys/fbio.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "../syscons.h"
 
 static u_char *vid;
 static int banksize, scrmode, bpsl, scrw, scrh;

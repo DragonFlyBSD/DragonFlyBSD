@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/fire/fire_saver.c,v 1.6.2.1 2000/05/10 14:01:23 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/fire/fire_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/fire/fire_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
  */
 
 /*
@@ -43,9 +43,9 @@
 #include <sys/fbio.h>
 #include <sys/random.h>
 
-#include <dev/fb/fbreg.h>
-#include <dev/fb/splashreg.h>
-#include <dev/syscons/syscons.h>
+#include <dev/video/fb/fbreg.h>
+#include <dev/video/fb/splashreg.h>
+#include "../syscons.h"
 
 #define X_SIZE 320
 #define Y_SIZE 200

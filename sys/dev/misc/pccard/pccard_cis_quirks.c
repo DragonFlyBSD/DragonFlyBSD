@@ -1,9 +1,3 @@
-/*	$NetBSD: pcmcia_cis_quirks.c,v 1.5 1999/10/11 17:50:21 thorpej Exp $	*/
-/* $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.2.2.1 2000/05/23 03:57:00 imp Exp $ */
-/* $DragonFly: src/sys/dev/misc/pccard/Attic/pccard_cis_quirks.c,v 1.2 2003/06/17 04:28:29 dillon Exp $ */
-
-#define	PCCARDDEBUG
-
 /*
  * Copyright (c) 1998 Marc Horowitz.  All rights reserved.
  *
@@ -31,7 +25,13 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: pcmcia_cis_quirks.c,v 1.5 1999/10/11 17:50:21 thorpej Exp $
+ * $FreeBSD: src/sys/dev/pccard/pccard_cis_quirks.c,v 1.2.2.1 2000/05/23 03:57:00 imp Exp $
+ * $DragonFly: src/sys/dev/misc/pccard/Attic/pccard_cis_quirks.c,v 1.3 2003/08/15 08:32:29 dillon Exp $
  */
+
+#define	PCCARDDEBUG
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -46,9 +46,9 @@
 #include <sys/rman.h>
 #include <machine/resource.h>
 
-#include <dev/pccard/pccarddevs.h>
-#include <dev/pccard/pccardreg.h>
-#include <dev/pccard/pccardvar.h>
+#include "pccarddevs.h"
+#include <bus/pccard/pccardreg.h>
+#include <bus/pccard/pccardvar.h>
 
 /* There are cards out there whose CIS flat-out lies.  This file
    contains struct pccard_function chains for those devices. */

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc_pccard.c,v 1.1.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_pccard.c,v 1.3 2003/08/07 21:17:05 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc_pccard.c,v 1.4 2003/08/15 08:32:30 dillon Exp $
  */
 
 /*
@@ -51,7 +51,7 @@
 #include <net/if_media.h>
 #include <net/if_mib.h>
 
-#include <dev/pccard/pccardvar.h>
+#include <bus/pccard/pccardvar.h>
 
 #include "dp83932var.h"
 #include "dp83932reg.h"

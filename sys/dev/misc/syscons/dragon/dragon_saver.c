@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/dragon/dragon_saver.c,v 1.1.2.1 2003/05/11 01:17:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
  */
 
 #include	<sys/param.h>
@@ -39,9 +39,9 @@
 
 #include	<sys/random.h>
 
-#include	<dev/fb/fbreg.h>
-#include	<dev/fb/splashreg.h>
-#include	<dev/syscons/syscons.h>
+#include	<dev/video/fb/fbreg.h>
+#include	<dev/video/fb/splashreg.h>
+#include	"../syscons.h"
 
 #define SAVER_NAME	 "dragon_saver"
 
