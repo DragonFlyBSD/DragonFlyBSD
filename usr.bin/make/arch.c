@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.48 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.41 2005/03/31 20:39:44 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.42 2005/03/31 22:16:35 okumoto Exp $
  */
 
 /*-
@@ -335,7 +335,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 
 			nameBuf = emalloc(sz);
 
-			Dir_Expand(memName, &dirSearchPath, &members);
+			Path_Expand(memName, &dirSearchPath, &members);
 			while (!Lst_IsEmpty(&members)) {
 				member = Lst_DeQueue(&members);
 				nsz = strlen(libName) + strlen(member) + 3;
@@ -1053,7 +1053,7 @@ Arch_MemMTime(GNode *gn)
  *-----------------------------------------------------------------------
  */
 void
-Arch_FindLib(GNode *gn, Lst *path)
+Arch_FindLib(GNode *gn, struct Path *path)
 {
 	char	*libName;	/* file name for archive */
 	size_t	sz;
@@ -1062,7 +1062,7 @@ Arch_FindLib(GNode *gn, Lst *path)
 	libName = emalloc(sz);
 	snprintf(libName, sz, "lib%s.a", &gn->name[2]);
 
-	gn->path = Dir_FindFile(libName, path);
+	gn->path = Path_FindFile(libName, path);
 
 	free(libName);
 

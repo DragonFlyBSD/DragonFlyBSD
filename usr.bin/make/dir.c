@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.35 2005/03/31 22:10:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.36 2005/03/31 22:16:35 okumoto Exp $
  */
 
 /*-
@@ -53,10 +53,10 @@
  *	Dir_HasWildcards Returns TRUE if the name given it needs to
  *			be wildcard-expanded.
  *
- *	Dir_Expand	Given a pattern and a path, return a Lst of names
+ *	Path_Expand	Given a pattern and a path, return a Lst of names
  *			which match the pattern on the search path.
  *
- *	Dir_FindFile	Searches for a file on a given search path.
+ *	Path_FindFile	Searches for a file on a given search path.
  *			If it exists, the entire path is returned.
  *			Otherwise NULL is returned.
  *
@@ -64,7 +64,7 @@
  *			is searched for along the default search path.
  *			The path and mtime fields of the node are filled in.
  *
- *	Dir_AddDir	Add a directory to a search path.
+ *	Path_AddDir	Add a directory to a search path.
  *
  *	Dir_MakeFlags	Given a search path and a command flag, create
  *			a string with each of the directories in the path
@@ -103,7 +103,7 @@
 #include "util.h"
 
 /*
- *	A search path consists of a Lst of Dir structures. A Dir structure
+ *	A search path consists of a list of Dir structures. A Dir structure
  *	has in it the name of the directory and a hash table of all the files
  *	in the directory. This is used to cut down on the number of system
  *	calls necessary to find implicit dependents and their like. Since
@@ -112,7 +112,7 @@
  *	hampers the style of some makefiles, they must be changed.
  *
  *	A list of all previously-read directories is kept in the
- *	openDirectories Lst. This list is checked first before a directory
+ *	openDirectories list. This list is checked first before a directory
  *	is opened.
  *
  *	The need for the caching of whole directories is brought about by
@@ -162,7 +162,7 @@
  *
  *	Another data structure maintained by this module is an mtime
  *	cache used when the searching of cached directories fails to find
- *	a file. In the past, Dir_FindFile would simply perform an access()
+ *	a file. In the past, Path_FindFile would simply perform an access()
  *	call in such a case to determine if the file could be found using
  *	just the name given. When this hit, however, all that was gained
  *	was the knowledge that the file existed. Given that an access() is
@@ -177,14 +177,24 @@ typedef struct Dir {
 	int	refCount;	/* No. of paths with this directory */
 	int	hits;		/* No. of times a file has been found here */
 	Hash_Table files;	/* Hash table of files in directory */
+	TAILQ_ENTRY(Dir) link;	/* allDirs link */
 } Dir;
 
+/*
+ * A path is a list of pointers to directories. These directories are
+ * reference counted so a directory can be on more than one path.
+ */
+struct PathElement {
+	struct Dir	*dir;	/* pointer to the directory */
+	TAILQ_ENTRY(PathElement) link;	/* path link */
+};
 
 /* main search path */
-Lst dirSearchPath = Lst_Initializer(dirSearchPath);
+struct Path dirSearchPath = TAILQ_HEAD_INITIALIZER(dirSearchPath);
 
 /* the list of all open directories */
-static Lst openDirectories = Lst_Initializer(openDirectories);
+static TAILQ_HEAD(, Dir) openDirectories =
+    TAILQ_HEAD_INITIALIZER(openDirectories);
 
 /*
  * Variables for gathering statistics on the efficiency of the hashing
@@ -197,7 +207,7 @@ static int bigmisses;	/* Sought by itself */
 
 static Dir *dot;	    /* contents of current directory */
 
-/* Results of doing a last-resort stat in Dir_FindFile --
+/* Results of doing a last-resort stat in Path_FindFile --
  * if we have to go to the system to find the file, we might as well
  * have its mtime on record.
  * XXX: If this is done way early, there's a chance other rules will
@@ -241,12 +251,10 @@ Dir_Init(void)
 void
 Dir_InitDot(void)
 {
-	LstNode *ln;
 
-	Dir_AddDir(&openDirectories, ".");
-	if ((ln = Lst_Last(&openDirectories)) == NULL)
+	dot = Path_AddDir(NULL, ".");
+	if (dot == NULL)
 		err(1, "cannot open current directory");
-	dot = Lst_Datum(ln);
 
 	/*
 	 * We always need to have dot around, so we increment its
@@ -366,7 +374,8 @@ DirMatchFiles(const char *pattern, const Dir *p, Lst *expansions)
  *-----------------------------------------------------------------------
  */
 static void
-DirExpandCurly(const char *word, const char *brace, Lst *path, Lst *expansions)
+DirExpandCurly(const char *word, const char *brace, struct Path *path,
+    Lst *expansions)
 {
 	const char *end;	/* Character after the closing brace */
 	const char *cp;		/* Current position in brace clause */
@@ -433,7 +442,7 @@ DirExpandCurly(const char *word, const char *brace, Lst *path, Lst *expansions)
 			case '?':
 			case '{':
 			case '[':
-				Dir_Expand(file, path, expansions);
+				Path_Expand(file, path, expansions);
 				goto next;
 			default:
 				break;
@@ -470,12 +479,12 @@ DirExpandCurly(const char *word, const char *brace, Lst *path, Lst *expansions)
  *-----------------------------------------------------------------------
  */
 static void
-DirExpandInt(const char *word, const Lst *path, Lst *expansions)
+DirExpandInt(const char *word, const struct Path *path, Lst *expansions)
 {
-	LstNode *ln;	    /* Current node */
+	struct PathElement *pe;
 
-	LST_FOREACH(ln, path)
-		DirMatchFiles(word, (Dir *)Lst_Datum(ln), expansions);
+	TAILQ_FOREACH(pe, path, link)
+		DirMatchFiles(word, pe->dir, expansions);
 }
 
 /*-
@@ -493,7 +502,7 @@ DirExpandInt(const char *word, const Lst *path, Lst *expansions)
  *-----------------------------------------------------------------------
  */
 void
-Dir_Expand(char *word, Lst *path, Lst *expansions)
+Path_Expand(char *word, struct Path *path, Lst *expansions)
 {
 	LstNode *ln;
 	char *cp;
@@ -541,12 +550,12 @@ Dir_Expand(char *word, Lst *path, Lst *expansions)
 					 */
 					sc = cp[1];
 					cp[1] = '\0';
-					dirpath = Dir_FindFile(word, path);
+					dirpath = Path_FindFile(word, path);
 					cp[1] = sc;
 					/*
 					 * dirpath is null if can't find the
 					 * leading component
-					 * XXX: Dir_FindFile won't find internal
+					 * XXX: Path_FindFile won't find internal
 					 * components. i.e. if the path contains
 					 * ../Etc/Object and we're looking for
 					 * Etc, * it won't be found. Ah well.
@@ -556,14 +565,15 @@ Dir_Expand(char *word, Lst *path, Lst *expansions)
 						char *dp =
 						    &dirpath[strlen(dirpath)
 						    - 1];
-						Lst tp = Lst_Initializer(tp);
+						struct Path tp =
+						    TAILQ_HEAD_INITIALIZER(tp);
 
 						if (*dp == '/')
 							*dp = '\0';
-						Dir_AddDir(&tp, dirpath);
+						Path_AddDir(&tp, dirpath);
 						DirExpandInt(cp + 1, &tp,
 						    expansions);
-						Lst_Destroy(&tp, NOFREE);
+						Path_Clear(&tp);
 					}
 				} else {
 					/*
@@ -597,9 +607,8 @@ Dir_Expand(char *word, Lst *path, Lst *expansions)
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_FindFile  --
+/**
+ * Path_FindFile
  *	Find the file with the given name along the given search path.
  *
  * Results:
@@ -613,16 +622,14 @@ Dir_Expand(char *word, Lst *path, Lst *expansions)
  *	already on the search path), its directory is added to the end
  *	of the path on the assumption that there will be more files in
  *	that directory later on. Sometimes this is true. Sometimes not.
- *-----------------------------------------------------------------------
  */
 char *
-Dir_FindFile(char *name, Lst *path)
+Path_FindFile(char *name, struct Path *path)
 {
 	char *p1;		/* pointer into p->name */
 	char *p2;		/* pointer into name */
-	LstNode *ln;		/* a list element */
 	char *file;		/* the current filename to check */
-	Dir *p;			/* current path member */
+	const struct PathElement *pe;	/* current path member */
 	char *cp;		/* final component of the name */
 	Boolean hasSlash;	/* true if 'name' contains a / */
 	struct stat stb;	/* Buffer for stat, if necessary */
@@ -664,10 +671,9 @@ Dir_FindFile(char *name, Lst *path)
 	 * and return the resulting string. If we don't find any such thing,
 	 * we go on to phase two...
 	 */
-	LST_FOREACH(ln, path) {
-		p = Lst_Datum(ln);
-		DEBUGF(DIR, ("%s...", p->name));
-		if (Hash_FindEntry(&p->files, cp) != NULL) {
+	TAILQ_FOREACH(pe, path, link) {
+		DEBUGF(DIR, ("%s...", pe->dir->name));
+		if (Hash_FindEntry(&pe->dir->files, cp) != NULL) {
 			DEBUGF(DIR, ("here..."));
 			if (hasSlash) {
 				/*
@@ -680,22 +686,22 @@ Dir_FindFile(char *name, Lst *path)
 				 * part of one of the components of p
 				 * along with all the rest of them (*p1 != '/').
 				 */
-				p1 = p->name + strlen(p->name) - 1;
+				p1 = pe->dir->name + strlen(pe->dir->name) - 1;
 				p2 = cp - 2;
-				while (p2 >= name && p1 >= p->name &&
+				while (p2 >= name && p1 >= pe->dir->name &&
 				    *p1 == *p2) {
 					p1 -= 1; p2 -= 1;
 				}
-				if (p2 >= name || (p1 >= p->name &&
+				if (p2 >= name || (p1 >= pe->dir->name &&
 				    *p1 != '/')) {
 					DEBUGF(DIR, ("component mismatch -- "
 					    "continuing..."));
 					continue;
 				}
 			}
-			file = str_concat(p->name, cp, STR_ADDSLASH);
+			file = str_concat(pe->dir->name, cp, STR_ADDSLASH);
 			DEBUGF(DIR, ("returning %s\n", file));
-			p->hits += 1;
+			pe->dir->hits += 1;
 			hits += 1;
 			return (file);
 		} else if (hasSlash) {
@@ -705,7 +711,7 @@ Dir_FindFile(char *name, Lst *path)
 			 * current search directory, we assume the file
 			 * doesn't exist and return NULL.
 			 */
-			for (p1 = p->name, p2 = name; *p1 && *p1 == *p2;
+			for (p1 = pe->dir->name, p2 = name; *p1 && *p1 == *p2;
 			    p1++, p2++)
 				continue;
 			if (*p1 == '\0' && p2 == cp - 1) {
@@ -743,10 +749,10 @@ Dir_FindFile(char *name, Lst *path)
 		Boolean	checkedDot = FALSE;
 
 		DEBUGF(DIR, ("failed. Trying subdirectories..."));
-		LST_FOREACH(ln, path) {
-			p = Lst_Datum(ln);
-			if (p != dot) {
-				file = str_concat(p->name, name, STR_ADDSLASH);
+		TAILQ_FOREACH(pe, path, link) {
+			if (pe->dir != dot) {
+				file = str_concat(pe->dir->name,
+				    name, STR_ADDSLASH);
 			} else {
 				/*
 				 * Checking in dot -- DON'T put a leading ./
@@ -764,7 +770,7 @@ Dir_FindFile(char *name, Lst *path)
 				 * We've found another directory to search. We
 				 * know there's a slash in 'file' because we put
 				 * one there. We nuke it after finding it and
-				 * call Dir_AddDir to add this new directory
+				 * call Path_AddDir to add this new directory
 				 * onto the existing search path. Once that's
 				 * done, we restore the slash and triumphantly
 				 * return the file name, knowing that should a
@@ -775,7 +781,7 @@ Dir_FindFile(char *name, Lst *path)
 				 */
 				cp = strrchr(file, '/');
 				*cp = '\0';
-				Dir_AddDir(path, file);
+				Path_AddDir(path, file);
 				*cp = '/';
 
 				/*
@@ -827,17 +833,15 @@ Dir_FindFile(char *name, Lst *path)
 	 */
 #ifdef notdef
 	cp[-1] = '\0';
-	Dir_AddDir(path, name);
+	Path_AddDir(path, name);
 	cp[-1] = '/';
 
 	bigmisses += 1;
-	ln = Lst_Last(path);
-	if (ln == NULL)
+	pe = TAILQ_LAST(path, Path);
+	if (pe == NULL)
 		return (NULL);
 
-	p = Lst_Datum(ln);
-
-	if (Hash_FindEntry(&p->files, cp) != NULL) {
+	if (Hash_FindEntry(&pe->dir->files, cp) != NULL) {
 		return (estrdup(name));
 
 	return (NULL);
@@ -888,7 +892,7 @@ Dir_MTime(GNode *gn)
 		return (Arch_MTime(gn));
 
 	else if (gn->path == NULL)
-		fullName = Dir_FindFile(gn->name, &dirSearchPath);
+		fullName = Path_FindFile(gn->name, &dirSearchPath);
 	else
 		fullName = gn->path;
 
@@ -925,7 +929,7 @@ Dir_MTime(GNode *gn)
 
 /*-
  *-----------------------------------------------------------------------
- * Dir_AddDir --
+ * Path_AddDir --
  *	Add the given name to the end of the given path.
  *
  * Results:
@@ -936,93 +940,109 @@ Dir_MTime(GNode *gn)
  *	read and hashed.
  *-----------------------------------------------------------------------
  */
-void
-Dir_AddDir(Lst *path, const char *name)
+struct Dir *
+Path_AddDir(struct Path *path, const char *name)
 {
-	LstNode *ln;		/* node in case Dir structure is found */
-	Dir *p;			/* pointer to new Path structure */
-	DIR *d;			/* for reading directory */
+	Dir *d;			/* pointer to new Path structure */
+	DIR *dir;		/* for reading directory */
+	struct PathElement *pe;
 	struct dirent *dp;	/* entry in directory */
 
-	LST_FOREACH(ln, &openDirectories)
-		if (strcmp(((const Dir *)Lst_Datum(ln))->name, name) == 0)
-			break;
-	if (ln != NULL) {
-		p = Lst_Datum(ln);
-		if (Lst_Member(path, p) == NULL) {
-			p->refCount += 1;
-			Lst_AtEnd(path, p);
+	/* check whether we know this directory */
+	TAILQ_FOREACH(d, &openDirectories, link) {
+		if (strcmp(d->name, name) == 0) {
+			/* Found it. */
+			if (path == NULL)
+				return (d);
+
+			/* Check whether its already on the path. */
+			TAILQ_FOREACH(pe, path, link) {
+				if (pe->dir == d)
+					return (d);
+			}
+			/* Add it to the path */
+			d->refCount += 1;
+			pe = emalloc(sizeof(*pe));
+			pe->dir = d;
+			TAILQ_INSERT_TAIL(path, pe, link);
+			return (d);
 		}
-	} else {
-		DEBUGF(DIR, ("Caching %s...", name));
+	}
 
-		if ((d = opendir(name)) != NULL) {
-			p = emalloc(sizeof(Dir));
-			p->name = estrdup(name);
-			p->hits = 0;
-			p->refCount = 1;
-			Hash_InitTable(&p->files, -1);
+	DEBUGF(DIR, ("Caching %s...", name));
 
-			while ((dp = readdir(d)) != NULL) {
+	if ((dir = opendir(name)) == NULL) {
+		DEBUGF(DIR, (" cannot open\n"));
+		return (NULL);
+	}
+
+	d = emalloc(sizeof(*d));
+	d->name = estrdup(name);
+	d->hits = 0;
+	d->refCount = 1;
+	Hash_InitTable(&d->files, -1);
+
+	while ((dp = readdir(dir)) != NULL) {
 #if defined(sun) && defined(d_ino) /* d_ino is a sunos4 #define	for d_fileno */
-				/*
-				 * The sun directory library doesn't check for
-				 * a 0 inode (0-inode slots just take up space),
-				 * so we have to do it ourselves.
-				 */
-				if (dp->d_fileno == 0)
-					continue;
+		/*
+		 * The sun directory library doesn't check for
+		 * a 0 inode (0-inode slots just take up space),
+		 * so we have to do it ourselves.
+		 */
+		if (dp->d_fileno == 0)
+			continue;
 #endif /* sun && d_ino */
 
-				/* Skip the '.' and '..' entries by checking
-				 * for them specifically instead of assuming
-				 * readdir() reuturns them in that order when
-				 * first going through a directory.  This is
-				 * needed for XFS over NFS filesystems since
-				 * SGI does not guarantee that these are the
-				 * first two entries returned from readdir().
-				 */
-				if (ISDOT(dp->d_name) || ISDOTDOT(dp->d_name))
-					continue;
+		/* Skip the '.' and '..' entries by checking
+		 * for them specifically instead of assuming
+		 * readdir() reuturns them in that order when
+		 * first going through a directory.  This is
+		 * needed for XFS over NFS filesystems since
+		 * SGI does not guarantee that these are the
+		 * first two entries returned from readdir().
+		 */
+		if (ISDOT(dp->d_name) || ISDOTDOT(dp->d_name))
+			continue;
 
-				Hash_CreateEntry(&p->files, dp->d_name,
-				    (Boolean *)NULL);
-			}
-			closedir(d);
-			Lst_AtEnd(&openDirectories, p);
-			if (path != &openDirectories)
-				Lst_AtEnd(path, p);
-		}
-		DEBUGF(DIR, ("done\n"));
+		Hash_CreateEntry(&d->files, dp->d_name, (Boolean *)NULL);
+	}
+	closedir(dir);
+
+	if (path != NULL) {
+		/* Add it to the path */
+		d->refCount += 1;
+		pe = emalloc(sizeof(*pe));
+		pe->dir = d;
+		TAILQ_INSERT_TAIL(path, pe, link);
+	}
+
+	/* Add to list of all directories */
+	TAILQ_INSERT_TAIL(&openDirectories, d, link);
+
+	DEBUGF(DIR, ("done\n"));
+
+	return (d);
+}
+
+/**
+ * Path_Duplicate
+ *	Duplicate a path. Ups the reference count for the directories.
+ */
+void
+Path_Duplicate(struct Path *dst, const struct Path *src)
+{
+	struct PathElement *ped, *pes;
+
+	TAILQ_FOREACH(pes, src, link) {
+		ped = emalloc(sizeof(*ped));
+		ped->dir = pes->dir;
+		ped->dir->refCount++;
+		TAILQ_INSERT_TAIL(dst, ped, link);
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_CopyDir --
- *	Callback function for duplicating a search path via Lst_Duplicate.
- *	Ups the reference count for the directory.
- *
- * Results:
- *	Returns the Dir it was given.
- *
- * Side Effects:
- *	The refCount of the path is incremented.
- *
- *-----------------------------------------------------------------------
- */
-void *
-Dir_CopyDir(void *p)
-{
-
-	((Dir *)p)->refCount += 1;
-
-	return (p);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * Dir_MakeFlags --
+/**
+ * Path_MakeFlags
  *	Make a string by taking all the directories in the given search
  *	path and preceding them by the given flag. Used by the suffix
  *	module to create variables for compilers based on suffix search
@@ -1032,25 +1052,19 @@ Dir_CopyDir(void *p)
  *	The string mentioned above. Note that there is no space between
  *	the given flag and each directory. The empty string is returned if
  *	Things don't go well.
- *
- * Side Effects:
- *	None
- *-----------------------------------------------------------------------
  */
 char *
-Dir_MakeFlags(const char *flag, const Lst *path)
+Path_MakeFlags(const char *flag, const struct Path *path)
 {
 	char *str;	/* the string which will be returned */
 	char *tstr;	/* the current directory preceded by 'flag' */
 	char *nstr;
-	LstNode *ln;	/* the node of the current directory */
-	Dir *p;		/* the structure describing the current directory */
+	const struct PathElement *pe;
 
 	str = estrdup("");
 
-	LST_FOREACH(ln, path) {
-		p = Lst_Datum(ln);
-		tstr = str_concat(flag, p->name, 0);
+	TAILQ_FOREACH(pe, path, link) {
+		tstr = str_concat(flag, pe->dir->name, 0);
 		nstr = str_concat(str, tstr, STR_ADDSPACE);
 		free(str);
 		free(tstr);
@@ -1060,91 +1074,55 @@ Dir_MakeFlags(const char *flag, const Lst *path)
 	return (str);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_Destroy --
- *	Nuke a directory descriptor, if possible. Callback procedure
- *	for the suffixes module when destroying a search path.
+/**
+ * Path_Clear
  *
- * Results:
- *	None.
- *
- * Side Effects:
- *	If no other path references this directory (refCount == 0),
- *	the Dir and all its data are freed.
- *
- *-----------------------------------------------------------------------
+ *	Destroy a path. This decrements the reference counts of all
+ *	directories of this path and, if a reference count goes 0,
+ *	destroys the directory object.
  */
 void
-Dir_Destroy(void *pp)
+Path_Clear(struct Path *path)
 {
-	Dir *p = pp;
+	struct PathElement *pe;
 
-	p->refCount -= 1;
-
-	if (p->refCount == 0) {
-		LstNode *ln;
-
-		if ((ln = Lst_Member(&openDirectories, p)) != NULL)
-			Lst_Remove(&openDirectories, ln);
-
-		Hash_DeleteTable(&p->files);
-		free(p->name);
-		free(p);
+	while ((pe = TAILQ_FIRST(path)) != NULL) {
+		pe->dir->refCount--;
+		TAILQ_REMOVE(path, pe, link);
+		if (pe->dir->refCount == 0) {
+			TAILQ_REMOVE(&openDirectories, pe->dir, link);
+			Hash_DeleteTable(&pe->dir->files);
+			free(pe->dir->name);
+			free(pe->dir);
+		}
+		free(pe);
 	}
 }
 
-/*-
- *-----------------------------------------------------------------------
- * Dir_ClearPath --
- *	Clear out all elements of the given search path. This is different
- *	from destroying the list, notice.
+/**
+ * Path_Concat
  *
- * Results:
- *	None.
- *
- * Side Effects:
- *	The path is set to the empty list.
- *
- *-----------------------------------------------------------------------
- */
-void
-Dir_ClearPath(Lst *path)
-{
-	Dir *p;
-
-	while (!Lst_IsEmpty(path)) {
-		p = Lst_DeQueue(path);
-		Dir_Destroy(p);
-	}
-}
-
-
-/*-
- *-----------------------------------------------------------------------
- * Dir_Concat --
  *	Concatenate two paths, adding the second to the end of the first.
- *	Makes sure to avoid duplicates.
- *
- * Results:
- *	None
+ *	Make sure to avoid duplicates.
  *
  * Side Effects:
  *	Reference counts for added dirs are upped.
- *
- *-----------------------------------------------------------------------
  */
 void
-Dir_Concat(Lst *path1, Lst *path2)
+Path_Concat(struct Path *path1, const struct Path *path2)
 {
-	LstNode *ln;
-	Dir *p;
+	struct PathElement *p1, *p2;
 
-	LST_FOREACH(ln, path2) {
-		p = Lst_Datum(ln);
-		if (Lst_Member(path1, p) == NULL) {
-			p->refCount += 1;
-			Lst_AtEnd(path1, p);
+	TAILQ_FOREACH(p2, path2, link) {
+		TAILQ_FOREACH(p1, path1, link) {
+			if (p1->dir == p2->dir)
+				break;
+		}
+		if (p1 == NULL) {
+			p1 = emalloc(sizeof(*p1));
+			p1->dir = p2->dir;
+			p1->dir->refCount++;
+			TAILQ_INSERT_TAIL(path1, p1, link);
 		}
 	}
 }
@@ -1153,8 +1131,7 @@ Dir_Concat(Lst *path1, Lst *path2)
 void
 Dir_PrintDirectories(void)
 {
-	const LstNode *ln;
-	const Dir *p;
+	const Dir *d;
 
 	printf("#*** Directory Cache:\n");
 	printf("# Stats: %d hits %d misses %d near misses %d losers (%d%%)\n",
@@ -1162,17 +1139,15 @@ Dir_PrintDirectories(void)
 	    (hits + bigmisses + nearmisses ?
 	    hits * 100 / (hits + bigmisses + nearmisses) : 0));
 	printf("# %-20s referenced\thits\n", "directory");
-	LST_FOREACH(ln, &openDirectories) {
-		p = Lst_Datum(ln);
-		printf("# %-20s %10d\t%4d\n", p->name, p->refCount, p->hits);
-	}
+	TAILQ_FOREACH(d, &openDirectories, link)
+		printf("# %-20s %10d\t%4d\n", d->name, d->refCount, d->hits);
 }
 
 void
-Dir_PrintPath(const Lst *path)
+Path_Print(const struct Path *path)
 {
-	const LstNode *ln;
+	const struct PathElement *p;
 
-	LST_FOREACH(ln, path)
-		printf("%s ", ((const Dir *)Lst_Datum(ln))->name);
+	TAILQ_FOREACH(p, path, link)
+		printf("%s ", p->dir->name);
 }

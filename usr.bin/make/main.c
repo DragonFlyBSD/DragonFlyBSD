@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.64 2005/03/19 00:19:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.65 2005/03/31 22:16:35 okumoto Exp $
  */
 
 /*-
@@ -59,6 +59,7 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/queue.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <err.h>
@@ -302,7 +303,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			MFLAGS_append("-k", NULL);
 			break;
 		case 'm':
-			Dir_AddDir(&sysIncPath, optarg);
+			Path_AddDir(&sysIncPath, optarg);
 			MFLAGS_append("-m", optarg);
 			break;
 		case 'n':
@@ -675,7 +676,7 @@ main(int argc, char **argv)
 	}
 	Dir_InitDot();		/* Initialize the "." directory */
 	if (objdir != curdir)
-		Dir_AddDir(&dirSearchPath, curdir);
+		Path_AddDir(&dirSearchPath, curdir);
 	Var_Set(".DIRECTIVE_MAKEENV", "YES", VAR_GLOBAL);
 	Var_Set(".CURDIR", curdir, VAR_GLOBAL);
 	Var_Set(".OBJDIR", objdir, VAR_GLOBAL);
@@ -722,15 +723,15 @@ main(int argc, char **argv)
 	 * add the directories from the DEFSYSPATH (more than one may be given
 	 * as dir1:...:dirn) to the system include path.
 	 */
-	if (Lst_IsEmpty(&sysIncPath)) {
+	if (TAILQ_EMPTY(&sysIncPath)) {
 		for (start = syspath; *start != '\0'; start = cp) {
 			for (cp = start; *cp != '\0' && *cp != ':'; cp++)
 				continue;
 			if (*cp == '\0') {
-				Dir_AddDir(&sysIncPath, start);
+				Path_AddDir(&sysIncPath, start);
 			} else {
 				*cp++ = '\0';
-				Dir_AddDir(&sysIncPath, start);
+				Path_AddDir(&sysIncPath, start);
 			}
 		}
 	}
@@ -745,7 +746,7 @@ main(int argc, char **argv)
 		Lst sysMkPath = Lst_Initializer(sysMkPath);
 		LstNode *ln;
 
-		Dir_Expand(PATH_DEFSYSMK, &sysIncPath, &sysMkPath);
+		Path_Expand(PATH_DEFSYSMK, &sysIncPath, &sysMkPath);
 		if (Lst_IsEmpty(&sysMkPath))
 			Fatal("make: no system rules (%s).", PATH_DEFSYSMK);
 		LST_FOREACH(ln, &sysMkPath) {
@@ -808,7 +809,7 @@ main(int argc, char **argv)
 			*ptr = '\0';
 
 			/* Add directory to search path */
-			Dir_AddDir(&dirSearchPath, vpath);
+			Path_AddDir(&dirSearchPath, vpath);
 
 			vpath = ptr + 1;
 		} while (savec != '\0');
@@ -989,9 +990,9 @@ ReadMakefile(const char *p)
 		}
 #endif
 		/* look in -I and system include directories. */
-		name = Dir_FindFile(fname, &parseIncPath);
+		name = Path_FindFile(fname, &parseIncPath);
 		if (!name)
-			name = Dir_FindFile(fname, &sysIncPath);
+			name = Path_FindFile(fname, &sysIncPath);
 		if (!name || !(stream = fopen(name, "r")))
 			return (FALSE);
 		MAKEFILE = fname = name;

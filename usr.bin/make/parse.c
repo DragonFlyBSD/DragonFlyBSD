@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.58 2005/03/19 10:44:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.59 2005/03/31 22:16:35 okumoto Exp $
  */
 
 /*-
@@ -130,10 +130,10 @@ IFile	    	curFile;	/* current makefile */
 static Lst includes = Lst_Initializer(includes);
 
 /* list of directories for "..." includes */
-Lst parseIncPath = Lst_Initializer(parseIncPath);
+struct Path parseIncPath = TAILQ_HEAD_INITIALIZER(parseIncPath);
 
 /* list of directories for <...> includes */
-Lst sysIncPath = Lst_Initializer(sysIncPath);
+struct Path sysIncPath = TAILQ_HEAD_INITIALIZER(sysIncPath);
 
 /*-
  * specType contains the SPECial TYPE of the current target. It is
@@ -796,7 +796,7 @@ ParseDoDependency(char *line)
 		 * Call on the suffix module to give us a path to
 		 * modify.
 		 */
-		Lst *path;
+		struct Path *path;
 
 		specType = ExPath;
 		path = Suff_GetPath(&line[5]);
@@ -825,11 +825,11 @@ ParseDoDependency(char *line)
 		 * use Dir_Destroy in the destruction of the path as the
 		 * Dir module could have added a directory to the path...
 		 */
-		Lst emptyPath = Lst_Initializer(emptyPath);
+		struct Path emptyPath = TAILQ_HEAD_INITIALIZER(emptyPath);
 
-		Dir_Expand(line, &emptyPath, &curTargs);
+		Path_Expand(line, &emptyPath, &curTargs);
+		Path_Clear(&emptyPath);
 
-		Lst_Destroy(&emptyPath, Dir_Destroy);
 	    } else {
 		/*
 		 * No wildcards, but we want to avoid code duplication,
@@ -954,7 +954,7 @@ ParseDoDependency(char *line)
 		break;
 	    case ExPath:
 		LST_FOREACH(ln, &paths)
-		    Dir_ClearPath(Lst_Datum(ln));
+		    Path_Clear(Lst_Datum(ln));
 		break;
 	    case Posix:
 		Var_Set("%POSIX", "1003.2", VAR_GLOBAL);
@@ -1024,7 +1024,7 @@ ParseDoDependency(char *line)
 		    break;
 		case ExPath:
 		    LST_FOREACH(ln, &paths)
-			Dir_AddDir(Lst_Datum(ln), line);
+			Path_AddDir(Lst_Datum(ln), line);
 		    break;
 		case Includes:
 		    Suff_AddInclude(line);
@@ -1438,7 +1438,7 @@ void
 Parse_AddIncludeDir(char *dir)
 {
 
-    Dir_AddDir(&parseIncPath, dir);
+    Path_AddDir(&parseIncPath, dir);
 }
 
 /*---------------------------------------------------------------------
@@ -1604,9 +1604,9 @@ ParseDoInclude(char *file)
 		newName = estrdup(file);
 	    else
 		newName = str_concat(Fname, file, STR_ADDSLASH);
-	    fullname = Dir_FindFile(newName, &parseIncPath);
+	    fullname = Path_FindFile(newName, &parseIncPath);
 	    if (fullname == NULL) {
-		fullname = Dir_FindFile(newName, &dirSearchPath);
+		fullname = Path_FindFile(newName, &dirSearchPath);
 	    }
 	    free(newName);
 	    *prefEnd = '/';
@@ -1625,9 +1625,9 @@ ParseDoInclude(char *file)
 	 * then on the .PATH search path, if not found in a -I directory.
 	 * XXX: Suffix specific?
 	 */
-	fullname = Dir_FindFile(file, &parseIncPath);
+	fullname = Path_FindFile(file, &parseIncPath);
 	if (fullname == NULL) {
-	    fullname = Dir_FindFile(file, &dirSearchPath);
+	    fullname = Path_FindFile(file, &dirSearchPath);
 	}
     }
 
@@ -1636,7 +1636,7 @@ ParseDoInclude(char *file)
 	 * Still haven't found the makefile. Look for it on the system
 	 * path as a last resort.
 	 */
-	fullname = Dir_FindFile(file, &sysIncPath);
+	fullname = Path_FindFile(file, &sysIncPath);
     }
 
     if (fullname == NULL) {
@@ -1773,9 +1773,9 @@ ParseTraditionalInclude(char *file)
      * Search for it first on the -I search path, then on the .PATH
      * search path, if not found in a -I directory.
      */
-    fullname = Dir_FindFile(file, &parseIncPath);
+    fullname = Path_FindFile(file, &parseIncPath);
     if (fullname == NULL) {
-        fullname = Dir_FindFile(file, &dirSearchPath);
+        fullname = Path_FindFile(file, &dirSearchPath);
     }
 
     if (fullname == NULL) {
@@ -1783,7 +1783,7 @@ ParseTraditionalInclude(char *file)
 	 * Still haven't found the makefile. Look for it on the system
 	 * path as a last resort.
 	 */
-	fullname = Dir_FindFile(file, &sysIncPath);
+	fullname = Path_FindFile(file, &sysIncPath);
     }
 
     if (fullname == NULL) {
