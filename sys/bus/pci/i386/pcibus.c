@@ -23,8 +23,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.7 2004/01/15 20:45:09 joerg Exp $
+ * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.8 2004/02/09 14:03:41 hmp Exp $
  *
  */
 
@@ -306,6 +306,8 @@ nexus_pcib_identify(driver_t *driver, device_t parent)
 		func = 0;
 		hdrtype = nexus_pcib_read_config(0, bus, slot, func,
 						 PCIR_HEADERTYPE, 1);
+		if ((hdrtype & ~PCIM_MFDEV) > 2)
+			continue;
 		if (hdrtype & PCIM_MFDEV)
 			pcifunchigh = 7;
 		else
