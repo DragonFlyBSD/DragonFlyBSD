@@ -31,8 +31,8 @@
  * SUCH DAMAGE.
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
- * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.23 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.12 2003/09/22 20:04:33 hsu Exp $
+ * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.13 2004/02/10 15:45:43 hmp Exp $
  */
 
 #include "opt_inet.h"
@@ -209,6 +209,12 @@ solisten(struct socket *so, int backlog, struct thread *td)
 	int s, error;
 
 	s = splnet();
+
+ 	if (so->so_state & (SS_ISCONNECTED | SS_ISCONNECTING)) {
+ 		splx(s);
+ 		return (EINVAL);
+ 	}
+
 	error = (*so->so_proto->pr_usrreqs->pru_listen)(so, td);
 	if (error) {
 		splx(s);
