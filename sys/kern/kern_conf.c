@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_conf.c,v 1.73.2.3 2003/03/10 02:18:25 imp Exp $
- * $DragonFly: src/sys/kern/kern_conf.c,v 1.9 2004/05/26 01:29:58 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_conf.c,v 1.10 2004/09/15 03:21:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -225,9 +225,12 @@ makeudev(int x, int y)
  * conflict, but userland will only see the particular device major that
  * has been installed with cdevsw_add().
  *
- * This routine creates an ad-hoc entry for the device.  The caller must
- * call reference_dev() to track additional references beyond the ad-hoc
- * entry.  If an entry already exists, this function will set (or override)
+ * This routine creates and returns an unreferenced ad-hoc entry for the
+ * device which will remain intact until the device is destroyed.  If the
+ * caller intends to store the device pointer it must call reference_dev()
+ * to retain a real reference to the device.
+ *
+ * If an entry already exists, this function will set (or override)
  * its cred requirements and name (XXX DEVFS interface).
  */
 dev_t
@@ -326,6 +329,11 @@ destroy_dev(dev_t dev)
 		LIST_REMOVE(dev, si_hash);
 		dev->si_flags &= ~SI_HASHED;
 	}
+
+	/*
+	 * We have to release the cdevsw reference before we replace the
+	 * device switch with dead_cdevsw.
+	 */
 	if (dead_cdevsw.d_port == NULL)
 		compile_devsw(&dead_cdevsw);
 	if (dev->si_devsw && dev->si_devsw != &dead_cdevsw)
