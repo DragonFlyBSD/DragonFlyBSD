@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.20 2004/05/09 22:56:22 hmp Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.21 2004/06/17 19:37:29 drhodus Exp $
  */
 
 #include "opt_cpu.h"
@@ -154,7 +154,7 @@ SYSCTL_INT(_hw,HW_FLOATINGPT, floatingpoint,
 	CTLFLAG_RD, &hw_float, 0, 
 	"Floatingpoint instructions executed in hardware");
 #if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
-int mmxopt = 0;
+int mmxopt = 1;
 SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
 	"MMX/XMM optimized bcopy/copyin/copyout support");
 #endif
