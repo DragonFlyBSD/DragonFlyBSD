@@ -27,7 +27,7 @@
  *
  *	from BSDI $Id: ktr.h,v 1.10.2.7 2000/03/16 21:44:42 cp Exp $
  * $FreeBSD: /repoman/r/ncvs/src/sys/sys/ktr.h,v 1.21 2003/03/11 20:07:22 jhb Exp $
- * $DragonFly: src/sys/sys/ktr.h,v 1.2 2005/02/12 21:09:46 eirikn Exp $
+ * $DragonFly: src/sys/sys/ktr.h,v 1.3 2005/03/08 01:08:40 hmp Exp $
  */
 
 /*
@@ -37,7 +37,9 @@
 #ifndef _SYS_KTR_H_
 #define	_SYS_KTR_H_
 
+#ifdef _KERNEL
 #include "opt_ktr.h"
+#endif
 
 /*
  * Trace classes
