@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.10 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.11 2004/01/08 18:48:07 asmodai Exp $
  */
 
 /*
@@ -2208,7 +2208,7 @@ svr4_sys_getmsg(struct svr4_sys_getmsg_args *uap)
 		if (st->s_cmd == SVR4_TI_CONNECT_REQUEST) {
 		        struct read_args ra;
 
-			/* More wierdness:  Again, I can't find documentation
+			/* More weirdness:  Again, I can't find documentation
 			 * to back this up, but when a process does a generic
 			 * "getmsg()" call it seems that the command field is
 			 * zero and the length of the data area is zero.  I

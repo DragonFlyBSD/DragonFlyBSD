@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/secure/lib/libcrypt/crypt-des.c,v 1.12 1999/09/20 12:39:20 markm Exp $
- * $DragonFly: src/secure/lib/libcrypt/crypt-des.c,v 1.2 2003/06/17 04:27:48 dillon Exp $
+ * $DragonFly: src/secure/lib/libcrypt/crypt-des.c,v 1.3 2004/01/08 18:48:07 asmodai Exp $
  *
  * This is an original implementation of the DES and the crypt(3) interfaces
  * by David Burren <davidb@werj.com.au>.
@@ -637,7 +637,7 @@ crypt_des(const char *key, const char *setting)
 		/*
 		 * Double check that we weren't given a short setting.
 		 * If we were, the above code will probably have created
-		 * wierd values for count and salt, but we don't really care.
+		 * weird values for count and salt, but we don't really care.
 		 * Just make sure the output string doesn't have an extra
 		 * NUL in it.
 		 */

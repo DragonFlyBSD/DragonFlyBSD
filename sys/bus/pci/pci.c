@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.7 2004/01/07 18:13:19 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.8 2004/01/08 18:48:07 asmodai Exp $
  *
  */
 
@@ -77,7 +77,7 @@ static void		pci_read_extcap(pcicfgregs *cfg);
 struct pci_quirk {
 	u_int32_t devid;	/* Vendor/device of the card */
 	int	type;
-#define PCI_QUIRK_MAP_REG	1 /* PCI map register in wierd place */
+#define PCI_QUIRK_MAP_REG	1 /* PCI map register in weird place */
 	int	arg1;
 	int	arg2;
 };

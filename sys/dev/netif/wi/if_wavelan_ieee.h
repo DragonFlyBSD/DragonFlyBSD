@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wavelan_ieee.h,v 1.12.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/if_wavelan_ieee.h,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/if_wavelan_ieee.h,v 1.3 2004/01/08 18:48:07 asmodai Exp $
  */
 
 #ifndef _IF_WAVELAN_IEEE_H
@@ -410,7 +410,7 @@ struct wi_rx_frame {
 	u_int8_t	wi_addr4[6];
 	u_int16_t	wi_dat_len;
 	/*
-	 * another wierdity with the drivers. they append a 802.3 header which
+	 * another weirdity with the drivers. they append a 802.3 header which
 	 * is somewhat redundant, since all the same data is provided in the
 	 * 802.11 header.
 	 */

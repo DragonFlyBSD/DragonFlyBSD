@@ -12,7 +12,7 @@
 # 08 Apr 2000
 #
 # $FreeBSD: src/release/scripts/checkindex.pl,v 1.1.2.1 2003/03/03 09:49:13 murray Exp $
-# $DragonFly: src/release/scripts/Attic/checkindex.pl,v 1.2 2003/06/17 04:27:21 dillon Exp $
+# $DragonFly: src/release/scripts/Attic/checkindex.pl,v 1.3 2004/01/08 18:48:07 asmodai Exp $
 #
 
 use Getopt::Long;
@@ -67,7 +67,7 @@ sub findAssignment($$) {
 #	    }
 #	    $code =~ /package_add\((\S+)\)/;
 #	    my($varName) = $1;
-#	    print STDERR "$lineMatch of $fileName is wierd\n";
+#	    print STDERR "$lineMatch of $fileName is weird\n";
 #	    print STDERR "Trying to find '$varName'\n";
 #	    while ($cnt > 0) {
 #		$cnt--;

@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/cfs/coda_venus.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_venus.c,v 1.9 1999/08/28 00:40:56 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_venus.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_venus.c,v 1.5 2004/01/08 18:48:07 asmodai Exp $
  * 
  */
 
@@ -417,7 +417,7 @@ venus_lookup(void *mdp, ViceFid *fid,
     /* NOTE:
      * Between version 1 and version 2 we have added an extra flag field
      * to this structure.  But because the string was at the end and because
-     * of the wierd way we represent strings by having the slot point to
+     * of the weird way we represent strings by having the slot point to
      * where the string characters are in the "heap", we can just slip the
      * flag parameter in after the string slot pointer and veni that don't
      * know better won't see this new flag field ...

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ed/if_ed.c,v 1.173.2.13 2001/11/03 00:36:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.7 2004/01/06 03:17:23 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ed/if_ed.c,v 1.8 2004/01/08 18:48:07 asmodai Exp $
  */
 
 /*
@@ -3092,7 +3092,7 @@ ed_hpp_writemem(sc, src, dst, len)
  * Write to HP PC Lan+ NIC memory.  Access to the NIC can be by using 
  * outsw() or via the memory mapped interface to the same register.
  * Writes have to be in word units; byte accesses won't work and may cause
- * the NIC to behave wierdly. Long word accesses are permitted if the ASIC
+ * the NIC to behave weirdly. Long word accesses are permitted if the ASIC
  * allows it.
  */
 
