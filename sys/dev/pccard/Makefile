@@ -1,6 +1,6 @@
-# $DragonFly: src/sys/dev/pccard/Makefile,v 1.1 2004/02/10 07:55:46 joerg Exp $
+# $DragonFly: src/sys/dev/pccard/Makefile,v 1.2 2004/12/08 20:36:39 joerg Exp $
 #
 
-SUBDIR=cardbus exca pccbb pcic
+SUBDIR=cardbus exca pccbb
 
 .include <bsd.subdir.mk>

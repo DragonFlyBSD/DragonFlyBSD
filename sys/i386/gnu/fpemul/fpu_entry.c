@@ -56,7 +56,7 @@
  * W. Metzenthen   June 1994.
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_entry.c,v 1.23 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.4 2003/08/07 21:17:20 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.5 2004/12/08 20:36:39 joerg Exp $
  *
  */
 
@@ -71,6 +71,10 @@
  | math_emulate() is the sole entry point for wm-FPU-emu                     |
  +---------------------------------------------------------------------------*/
 
+#include "opt_depricated.h"
+#ifndef I_WANT_DEPRICATED_STUFF
+#error "Add options I_WANT_DEPRICATED_STUFF to your kernel config and send a mail to kernel@"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>

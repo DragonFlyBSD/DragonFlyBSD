@@ -1,6 +1,6 @@
 /*-
  *  dgb.c $FreeBSD: src/sys/gnu/i386/isa/dgb.c,v 1.56.2.1 2001/02/26 04:23:09 jlemon Exp $
- *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.13 2004/09/17 00:28:44 joerg Exp $
+ *  dgb.c $DragonFly: src/sys/i386/gnu/isa/Attic/dgb.c,v 1.14 2004/12/08 20:36:39 joerg Exp $
  *
  *  Digiboard driver.
  *
@@ -30,6 +30,10 @@
 
 #include "opt_compat.h"
 #include "opt_dgb.h"
+#include "opt_depricated.h"
+#ifndef I_WANT_DEPRICATED_STUFF
+#error "Add options I_WANT_DEPRICATED_STUFF to your kernel config and send a mail to kernel@"
+#endif
 
 #include "use_dgb.h"
 

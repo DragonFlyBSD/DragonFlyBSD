@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.43 2004/11/12 16:38:06 drhodus Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.44 2004/12/08 20:36:39 joerg Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -274,9 +274,8 @@ options 	CYRIX_CACHE_REALLY_WORKS
 #
 options 	MATH_EMULATE		#Support for x87 emulation
 # Don't enable both of these in a real config.
-options 	GPL_MATH_EMULATE	#Support for x87 emulation via
+#options 	GPL_MATH_EMULATE	#Support for x87 emulation via
 					#new math emulator
-
 
 #####################################################################
 # COMPATIBILITY OPTIONS                                             
@@ -1697,12 +1696,13 @@ device		gsc0	at isa? port IO_GSC1 drq 3
 device		joy0	at isa? port IO_GAME
 device		cy0	at isa? irq 10 iomem 0xd4000 iosiz 0x2000
 options 	CY_PCI_FASTINTR		# Use with cy_pci unless irq is shared
-device		dgb0	at isa? port 0x220 iomem 0xfc000
-options 	NDGBPORTS=16		# Defaults to 16*NDGB
+#device		dgb0	at isa? port 0x220 iomem 0xfc000
+#options 	NDGBPORTS=16		# Defaults to 16*NDGB
 device		dgm0	at isa? port 0x104 iomem 0xd0000
 device		labpc0	at isa? port 0x260 irq 5
 device		rc0	at isa? port 0x220 irq 12
-device		rp0	at isa? port 0x280
+device		nrp
+#device		rp0	at isa? port 0x280
 # the port and irq for tw0 are fictitious
 device		tw0	at isa? port 0x380 irq 11
 device		si0	at isa? iomem 0xd0000 irq 12
@@ -2093,7 +2093,7 @@ options 	BKTR_NEW_MSP34XX_DRIVER
 device		pccard
 device		cardbus
 device		cbb
-device		pcic
+#device		pcic
 
 # You may need to reset all pccards after resuming
 options 	PCIC_RESUME_RESET	# reset after resume

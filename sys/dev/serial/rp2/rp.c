@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rp.c,v 1.33.2.2 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.14 2004/09/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/rp2/Attic/rp.c,v 1.15 2004/12/08 20:36:39 joerg Exp $
  */
 
 /* 
@@ -38,6 +38,10 @@
  */
 
 #include "opt_compat.h"
+#include "opt_depricated.h"
+#ifndef I_WANT_DEPRICATED_STUFF
+#error "Add options I_WANT_DEPRICATED_STUFF to your kernel config and send a mail to kernel@"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>

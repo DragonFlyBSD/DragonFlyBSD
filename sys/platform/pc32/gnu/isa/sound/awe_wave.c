@@ -20,8 +20,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * $DragonFly: src/sys/platform/pc32/gnu/isa/sound/Attic/awe_wave.c,v 1.3 2004/02/12 23:33:26 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/isa/sound/Attic/awe_wave.c,v 1.4 2004/12/08 20:36:39 joerg Exp $
  */
+
+#include "opt_depricated.h"
+#ifndef I_WANT_DEPRICATED_STUFF
+#error "Add options I_WANT_DEPRICATED_STUFF to your kernel config and send a mail to kernel@"
+#endif
 
 #include <stddef.h>
 

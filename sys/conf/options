@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.27 2004/10/25 19:14:30 dillon Exp $
+# $DragonFly: src/sys/conf/options,v 1.28 2004/12/08 20:36:39 joerg Exp $
 #
 #        On the handling of kernel options
 #
@@ -530,4 +530,5 @@ DCONS_POLL_HZ		opt_dcons.h
 DCONS_FORCE_CONSOLE	opt_dcons.h
 DCONS_FORCE_GDB		opt_dcons.h
 
-
+# depricated drivers and options
+I_WANT_DEPRICATED_STUFF	opt_depricated.h

@@ -1,6 +1,6 @@
 /*	$NetBSD: i82365.c,v 1.25 1999/10/15 06:07:27 haya Exp $	*/
 /* $FreeBSD: src/sys/dev/pcic/i82365.c,v 1.37 2002/11/17 04:52:37 imp Exp $ */
-/* $DragonFly: src/sys/dev/pccard/pcic/Attic/i82365.c,v 1.1 2004/02/10 07:55:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/pccard/pcic/Attic/i82365.c,v 1.2 2004/12/08 20:36:39 joerg Exp $ */
 
 /*
  * Copyright (c) 1997 Marc Horowitz.  All rights reserved.
@@ -30,6 +30,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include "opt_depricated.h"
+#ifndef I_WANT_DEPRICATED_STUFF
+#error "Add options I_WANT_DEPRICATED_STUFF to your kernel config and send a mail to kernel@"
+#endif
 
 #include <sys/param.h>
 #include <sys/systm.h>
