@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.5 2004/05/13 00:44:12 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.6 2004/05/13 01:34:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -221,6 +221,7 @@ sf_buf_free(struct sf_buf *sf)
 {
 	if (sf->refcnt == 0)
 		panic("sf_buf_free: freeing free sf_buf");
+	crit_enter();
 	sf->refcnt--;
 	if (sf->refcnt == 0 && (sf->flags & SFBA_ONFREEQ) == 0) {
 		KKASSERT(sf->aux1 == 0 && sf->aux2 == 0);
@@ -229,5 +230,6 @@ sf_buf_free(struct sf_buf *sf)
 		if (sf_buf_alloc_want > 0)
 			wakeup_one(&sf_buf_freelist);
 	}
+	crit_exit();
 }
 
