@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.13 2004/03/01 06:33:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.14 2004/04/11 18:17:21 cpressey Exp $
  */
 
 
@@ -103,18 +103,13 @@ static int	hpfs_checkexp (struct mount *, struct mbuf *,
 
 /*ARGSUSED*/
 static int
-hpfs_checkexp(mp, nam, exflagsp, credanonp)
+hpfs_checkexp(struct mount *mp,
 #if defined(__DragonFly__)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+	      struct sockaddr *nam,
 #else /* defined(__NetBSD__) */
-	struct mount *mp;
-	struct mbuf *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+	      struct mbuf *nam,
 #endif
+	      int *exflagsp, struct ucred **credanonp)
 {
 	struct netcred *np;
 	struct hpfsmount *hpm = VFSTOHPFS(mp);
@@ -134,20 +129,14 @@ hpfs_checkexp(mp, nam, exflagsp, credanonp)
 #if !defined(__DragonFly__)
 /*ARGSUSED*/
 static int
-hpfs_sysctl(name, namelen, oldp, oldlenp, newp, newlen, td)
-	int *name;
-	u_int namelen;
-	void *oldp;
-	size_t *oldlenp;
-	void *newp;
-	size_t newlen;
-	struct thread *td;
+hpfs_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp,
+	    size_t newlen, struct thread *td)
 {
 	return (EINVAL);
 }
 
 static int
-hpfs_mountroot()
+hpfs_mountroot(void)
 {
 	return (EINVAL);
 }
@@ -155,11 +144,10 @@ hpfs_mountroot()
 
 #if defined(__DragonFly__)
 static int
-hpfs_init (
-	struct vfsconf *vcp )
+hpfs_init(struct vfsconf *vcp)
 #else /* defined(__NetBSD__) */
 static void
-hpfs_init ()
+hpfs_init(void)
 #endif
 {
 	dprintf(("hpfs_init():\n"));
@@ -171,17 +159,13 @@ hpfs_init ()
 }
 
 static int
-hpfs_mount ( 
-	struct mount *mp,
+hpfs_mount(struct mount *mp,
 #if defined(__DragonFly__)
-	char *path,
-	caddr_t data,
+	   char *path, caddr_t data,
 #else /* defined(__NetBSD__) */
-	const char *path,
-	void *data,
+	   const char *path, void *data,
 #endif
-	struct nameidata *ndp,
-	struct thread *td )
+	   struct nameidata *ndp, struct thread *td)
 {
 	u_int		size;
 	int		err = 0;
@@ -309,11 +293,8 @@ success:
  * Common code for mount and mountroot
  */
 int
-hpfs_mountfs(devvp, mp, argsp, td)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct hpfs_args *argsp;
-	struct thread *td;
+hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
+	     struct thread *td)
 {
 	int error, ncount, ronly;
 	struct sublock *sup;
@@ -447,20 +428,14 @@ failed:
 
 #if !defined(__DragonFly__)
 static int
-hpfs_start (
-	struct mount *mp,
-	int flags,
-	struct thread *td )
+hpfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	return (0);
 }
 #endif
 
 static int
-hpfs_unmount( 
-	struct mount *mp,
-	int mntflags,
-	struct thread *td)
+hpfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error, flags, ronly;
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
@@ -503,9 +478,7 @@ hpfs_unmount(
 }
 
 static int
-hpfs_root(
-	struct mount *mp,
-	struct vnode **vpp )
+hpfs_root(struct mount *mp, struct vnode **vpp)
 {
 	int error = 0;
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
@@ -521,10 +494,7 @@ hpfs_root(
 }
 
 static int
-hpfs_statfs(
-	struct mount *mp,
-	struct statfs *sbp,
-	struct thread *td)
+hpfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 
@@ -555,22 +525,15 @@ hpfs_statfs(
 
 #if !defined(__DragonFly__)
 static int
-hpfs_sync (
-	struct mount *mp,
-	int waitfor,
-	struct ucred *cred,
-	struct thread *td)
+hpfs_sync(struct mount *mp, int waitfor, struct ucred *cred,
+	  struct thread *td)
 {
 	return (0);
 }
 
 static int
-hpfs_quotactl ( 
-	struct mount *mp,
-	int cmds,
-	uid_t uid,
-	caddr_t arg,
-	struct thread *td)
+hpfs_quotactl(struct mount *mp, int cmds, uid_t uid, caddr_t arg,
+	      struct thread *td)
 {
 	printf("hpfs_quotactl():\n");
 	return (EOPNOTSUPP);
@@ -579,10 +542,7 @@ hpfs_quotactl (
 
 /*ARGSUSED*/
 static int
-hpfs_fhtovp(
-	struct mount *mp,
-	struct fid *fhp,
-	struct vnode **vpp)
+hpfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct vnode *nvp;
 	struct hpfid *hpfhp = (struct hpfid *)fhp;
@@ -600,9 +560,7 @@ hpfs_fhtovp(
 }
 
 static int
-hpfs_vptofh(
-	struct vnode *vp,
-	struct fid *fhp)
+hpfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct hpfsnode *hpp;
 	struct hpfid *hpfhp;
@@ -616,10 +574,7 @@ hpfs_vptofh(
 }
 
 static int
-hpfs_vget(
-	struct mount *mp,
-	ino_t ino,
-	struct vnode **vpp) 
+hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp) 
 {
 	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 	struct vnode *vp;

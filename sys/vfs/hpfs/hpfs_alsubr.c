@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_alsubr.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.4 2003/08/07 21:17:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_alsubr.c,v 1.5 2004/04/11 18:17:21 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -60,11 +60,7 @@ int		hpfs_concatalsec (struct hpfsmount *, alsec_t *, alsec_t *,
  * Map file offset to disk offset. hpfsnode have to be locked.
  */
 int
-hpfs_hpbmap(hp, bn, bnp, runp)
-	struct hpfsnode *hp;
-	daddr_t  bn;
-	daddr_t *bnp;
-	int *runp;
+hpfs_hpbmap(struct hpfsnode *hp, daddr_t bn, daddr_t *bnp, int *runp)
 {
 	struct buf *bp;
 	alblk_t * abp;
@@ -159,10 +155,7 @@ dive:
  * AlBlk is initialized to contain AlLeafs.
  */
 int
-hpfs_allocalsec (
-	struct hpfsmount *hpmp,
-	lsn_t parlsn,
-	struct buf **bpp)
+hpfs_allocalsec(struct hpfsmount *hpmp, lsn_t parlsn, struct buf **bpp)
 {
 	alsec_t * asp;
 	struct buf * bp;
@@ -211,11 +204,8 @@ hpfs_allocalsec (
  * TOGETHER WITH FIXING ALL CHILDREN'S AlSecs (THEY HAVE GOT NEW PARENT).
  */
 int
-hpfs_splitalsec (
-	struct hpfsmount *hpmp,
-	alsec_t *asp,
-	alsec_t **naspp,
-	struct buf **nbpp)
+hpfs_splitalsec(struct hpfsmount *hpmp, alsec_t *asp, alsec_t **naspp,
+		struct buf **nbpp)
 {
 	alsec_t *nasp;
 	struct buf *nbp;
@@ -263,11 +253,8 @@ hpfs_splitalsec (
  * aanp[0].an_nextoff = aanp[1].an_nextoff;
  */
 int
-hpfs_concatalsec (
-	struct hpfsmount *hpmp,
-	alsec_t *as0p,
-	alsec_t *as1p,
-	alnode_t *aanp)
+hpfs_concatalsec(struct hpfsmount *hpmp, alsec_t *as0p, alsec_t *as1p,
+		 alnode_t *aanp)
 {
 	alblk_t *ab0p;
 	alblk_t *ab1p;
@@ -306,11 +293,8 @@ hpfs_concatalsec (
  * DOESN'T SET AlSec'S PARENT LSN.
  */
 int
-hpfs_alblk2alsec (
-	struct hpfsmount *hpmp,
-	alblk_t *abp,
-	alsec_t **naspp,
-	struct buf **nbpp)
+hpfs_alblk2alsec(struct hpfsmount *hpmp, alblk_t *abp, alsec_t **naspp,
+		 struct buf **nbpp)
 {
 	alsec_t *nasp;
 	alblk_t *nabp;
@@ -343,10 +327,7 @@ hpfs_alblk2alsec (
  * 
  */
 int
-hpfs_addextent (
-	struct hpfsmount *hpmp,
-	struct hpfsnode *hp,
-	u_long len)
+hpfs_addextent(struct hpfsmount *hpmp, struct hpfsnode *hp, u_long len)
 {
 	alblk_t *rabp;
 	alnode_t ranp[2];
@@ -553,12 +534,11 @@ retry:
  * concatenate new block! If we can't find one, then...
  */
 int
-hpfs_addextentr (
-	struct hpfsmount *hpmp,		/* Mix info */
-	lsn_t rlsn,			/* LSN containing AlSec */
-	alleaf_t *ralp,			/* AlLeaf to insert */
-	alnode_t *ranp,			/* New AlNodes' values */
-	u_long *resp)			/* Mix returning info */
+hpfs_addextentr(struct hpfsmount *hpmp,	/* Mix info */
+		lsn_t rlsn,		/* LSN containing AlSec */
+		alleaf_t *ralp,		/* AlLeaf to insert */
+		alnode_t *ranp,		/* New AlNodes' values */
+		u_long *resp)		/* Mix returning info */
 {
 	struct buf *rbp;
 	alsec_t *rasp;
@@ -754,11 +734,7 @@ fail:
  * THE TREE.
  */
 int
-hpfs_truncatealblk (
-	struct hpfsmount *hpmp,
-	alblk_t *abp,
-	lsn_t bn,
-	int *resp)
+hpfs_truncatealblk(struct hpfsmount *hpmp, alblk_t *abp, lsn_t bn, int *resp)
 {
 	int error;
 	alleaf_t *alp;

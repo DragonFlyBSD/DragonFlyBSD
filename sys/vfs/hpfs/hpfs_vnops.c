@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.12 2004/02/05 21:03:37 rob Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.13 2004/04/11 18:17:21 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -96,29 +96,25 @@ static int	hpfs_pathconf (struct vop_pathconf_args *ap);
 
 #if defined(__DragonFly__)
 int
-hpfs_getpages(ap)
-	struct vop_getpages_args *ap;
+hpfs_getpages(struct vop_getpages_args *ap)
 {
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_reqpage);
 }
 
 int
-hpfs_putpages(ap)
-	struct vop_putpages_args *ap;
+hpfs_putpages(struct vop_putpages_args *ap)
 {
 	return vnode_pager_generic_putpages(ap->a_vp, ap->a_m, ap->a_count,
 		ap->a_sync, ap->a_rtvals);
 }
 
+/*
+ * hpfs_fsync(struct vnode *a_vp, struct ucred *a_cred, int a_waitfor,
+ *	      struct proc *a_td)
+ */
 static int
-hpfs_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnode *a_vp;
-		struct ucred *a_cred;
-		int a_waitfor;
-		struct proc *a_td;
-	} */ *ap;
+hpfs_fsync(struct vop_fsync_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int s;
@@ -160,16 +156,12 @@ loop:
 
 #endif
 
+/*
+ * hpfs_ioctl(struct vnode *a_vp, u_long a_command, caddr_t a_data,
+ *	      int a_fflag, struct ucred *a_cred, struct proc *a_td)
+ */
 static int
-hpfs_ioctl (
-	struct vop_ioctl_args /* {
-		struct vnode *a_vp;
-		u_long a_command;
-		caddr_t a_data;
-		int a_fflag;
-		struct ucred *a_cred;
-		struct proc *a_td;
-	} */ *ap)
+hpfs_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -296,17 +288,12 @@ hpfs_ioctl (
 
 /*
  * Map file offset to disk offset.
+ *
+ * hpfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	     daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
 int
-hpfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+hpfs_bmap(struct vop_bmap_args *ap)
 {
 	struct hpfsnode *hp = VTOHP(ap->a_vp);
 	int error;
@@ -327,14 +314,12 @@ hpfs_bmap(ap)
 	return (error);
 }
 
+/*
+ * hpfs_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
+ */
 static int
-hpfs_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+hpfs_read(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -386,14 +371,12 @@ hpfs_read(ap)
 	return (error);
 }
 
+/*
+ * hpfs_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	      struct ucred *a_cred)
+ */
 static int
-hpfs_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+hpfs_write(struct vop_write_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -462,15 +445,12 @@ hpfs_write(ap)
 
 /*
  * XXXXX do we need hpfsnode locking inside?
+ *
+ * hpfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct proc *a_td)
  */
 static int
-hpfs_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct proc *a_td;
-	} */ *ap;
+hpfs_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -514,15 +494,12 @@ hpfs_getattr(ap)
 
 /*
  * XXXXX do we need hpfsnode locking inside?
+ *
+ * hpfs_setattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-hpfs_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+hpfs_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -619,12 +596,11 @@ hpfs_setattr(ap)
 
 /*
  * Last reference to an node.  If necessary, write or delete it.
+ *
+ * hpfs_inactive(struct vnode *a_vp)
  */
 int
-hpfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+hpfs_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -665,12 +641,11 @@ hpfs_inactive(ap)
 
 /*
  * Reclaim an inode so that it can be used for other purposes.
+ *
+ * hpfs_reclaim(struct vnode *a_vp)
  */
 int
-hpfs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+hpfs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -693,11 +668,11 @@ hpfs_reclaim(ap)
 	return (0);
 }
 
+/*
+ * hpfs_print(struct vnode *a_vp)
+ */
 static int
-hpfs_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+hpfs_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -714,12 +689,11 @@ hpfs_print(ap)
  *
  * In order to be able to swap to a file, the VOP_BMAP operation may not
  * deadlock on memory.  See hpfs_bmap() for details. XXXXXXX (not impl)
+ *
+ * hpfs_strategy(struct buf *a_bp)
  */
 int
-hpfs_strategy(ap)
-	struct vop_strategy_args /* {
-		struct buf *a_bp;
-	} */ *ap;
+hpfs_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct vnode *vp = ap->a_vp;
@@ -753,15 +727,12 @@ hpfs_strategy(ap)
 
 /*
  * XXXXX do we need hpfsnode locking inside?
+ *
+ * hpfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	       struct proc *a_td)
  */
 int
-hpfs_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct proc *a_td;
-	} */ *ap;
+hpfs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -831,16 +802,13 @@ hpfs_access(ap)
  * Open called.
  *
  * Nothing to do.
+ *
+ * hpfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct proc *a_td)
  */
 /* ARGSUSED */
 static int
-hpfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct proc *a_td;
-	} */ *ap;
+hpfs_open(struct vop_open_args *ap)
 {
 #if HPFS_DEBUG
 	struct vnode *vp = ap->a_vp;
@@ -860,16 +828,13 @@ hpfs_open(ap)
  * Close called.
  *
  * Update the times on the inode.
+ *
+ * hpfs_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *	      struct proc *a_td)
  */
 /* ARGSUSED */
 static int
-hpfs_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct proc *a_td;
-	} */ *ap;
+hpfs_close(struct vop_close_args *ap)
 {
 #if HPFS_DEBUG
 	struct vnode *vp = ap->a_vp;
@@ -882,10 +847,8 @@ hpfs_close(ap)
 }
 
 static int
-hpfs_de_uiomove (
-	struct hpfsmount *hpmp,
-	struct hpfsdirent *dep,
-	struct uio *uio)
+hpfs_de_uiomove(struct hpfsmount *hpmp, struct hpfsdirent *dep,
+		struct uio *uio)
 {
 	struct dirent cde;
 	int i, error;
@@ -917,15 +880,13 @@ static struct dirent hpfs_de_dot =
 	{ 0, sizeof(struct dirent), DT_DIR, 1, "." };
 static struct dirent hpfs_de_dotdot =
 	{ 0, sizeof(struct dirent), DT_DIR, 2, ".." };
+
+/*
+ * hpfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred,
+ *		int *a_ncookies, u_int **cookies)
+ */
 int
-hpfs_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_ncookies;
-		u_int **cookies;
-	} */ *ap;
+hpfs_readdir(struct vop_readdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct hpfsnode *hp = VTOHP(vp);
@@ -1141,13 +1102,12 @@ readdone:
 	return (0);
 }
 
+/*
+ * hpfs_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp)
+ */
 int
-hpfs_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+hpfs_lookup(struct vop_lookup_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct hpfsnode *dhp = VTOHP(dvp);
@@ -1268,13 +1228,12 @@ hpfs_lookup(ap)
 	return (error);
 }
 
+/*
+ * hpfs_remove(struct vnode *a_dvp, struct vnode *a_vp,
+ *		struct componentname *a_cnp)
+ */
 int
-hpfs_remove(ap)
-	struct vop_remove_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+hpfs_remove(struct vop_remove_args *ap)
 {
 	int error;
 
@@ -1288,14 +1247,12 @@ hpfs_remove(ap)
 	return (error);
 }
 
+/*
+ * hpfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap)
+ */
 int
-hpfs_create(ap)
-	struct vop_create_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+hpfs_create(struct vop_create_args *ap)
 {
 	int error;
 
@@ -1312,14 +1269,11 @@ hpfs_create(ap)
 
 /*
  * Return POSIX pathconf information applicable to NTFS filesystem
+ *
+ * hpfs_pathconf(struct vnode *a_vp, int a_name, t *a_retval)
  */
 int
-hpfs_pathconf(ap)
-	struct vop_pathconf_args /* {
-		struct vnode *a_vp;
-		int a_name;
-		t *a_retval;
-	} */ *ap;
+hpfs_pathconf(struct vop_pathconf_args *ap)
 {
 	switch (ap->a_name) {
 	case _PC_LINK_MAX:

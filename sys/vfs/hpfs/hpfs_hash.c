@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/fs/hpfs/hpfs_hash.c,v 1.1 1999/12/09 19:09:58 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.10 2004/03/01 06:33:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_hash.c,v 1.11 2004/04/11 18:17:21 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,7 @@ struct lock hpfs_hphash_lock;
  * Initialize inode hash table.
  */
 void
-hpfs_hphashinit()
+hpfs_hphashinit(void)
 {
 
 	lockinit (&hpfs_hphash_lock, 0, "hpfs_hphashlock", 0, 0);
@@ -93,9 +93,7 @@ hpfs_hphash_uninit(struct vfsconf *vfc)
  * to it. If it is in core, return it, even if it is locked.
  */
 struct hpfsnode *
-hpfs_hphashlookup(dev, ino)
-	dev_t dev;
-	lsn_t ino;
+hpfs_hphashlookup(dev_t dev, lsn_t ino)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;
@@ -111,10 +109,7 @@ hpfs_hphashlookup(dev, ino)
 }
 
 struct vnode *
-hpfs_hphashvget(dev, ino, td)
-	dev_t dev;
-	lsn_t ino;
-	struct thread *td;
+hpfs_hphashvget(dev_t dev, lsn_t ino, struct thread *td)
 {
 	struct hpfsnode *hp;
 	lwkt_tokref ilock;
@@ -158,8 +153,7 @@ loop:
  * Insert the hpfsnode into the hash table.
  */
 void
-hpfs_hphashins(hp)
-	struct hpfsnode *hp;
+hpfs_hphashins(struct hpfsnode *hp)
 {
 	struct hphashhead *hpp;
 	lwkt_tokref ilock;
@@ -175,8 +169,7 @@ hpfs_hphashins(hp)
  * Remove the inode from the hash table.
  */
 void
-hpfs_hphashrem(hp)
-	struct hpfsnode *hp;
+hpfs_hphashrem(struct hpfsnode *hp)
 {
 	lwkt_tokref ilock;
 
