@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.9 2003/10/09 22:27:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.10 2003/12/22 17:41:08 hsu Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -318,7 +318,7 @@ smbfs_getattr(ap)
 	struct vattr *va=ap->a_vap;
 	struct smbfattr fattr;
 	struct smb_cred scred;
-	u_int32_t oldsize;
+	u_quad_t oldsize;
 	int error;
 
 	SMBVDEBUG("%lx: '%s' %d\n", (long)vp, np->n_name, (vp->v_flag & VROOT) != 0);
