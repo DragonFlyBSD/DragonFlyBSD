@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe_tables.h,v 1.1.2.2 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe_tables.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe_tables.h,v 1.3 2004/01/05 17:40:00 drhodus Exp $
  */
 
 /*
@@ -144,6 +144,9 @@ struct twe_code_lookup twe_table_aen[] = {
     {"c verify complete",		0x2b},
     {"p overwrote bad sector during rebuild",	0x2c},
     {"p encountered bad sector during rebuild",	0x2d},
+    {"a replacement drive too small", 0x2e},
+    {"c array not previously initialized", 0x2f},
+    {"p drive not supported", 0x30},
     {"a aen queue full",		0xff},
     {NULL, 0},
     {"x unknown AEN",		0}

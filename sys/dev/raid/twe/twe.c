@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.4 2003/08/07 21:17:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.5 2004/01/05 17:40:00 drhodus Exp $
  */
 
 /*
@@ -61,6 +61,8 @@ static int	twe_wait_request(struct twe_request *tr);
 static int	twe_immediate_request(struct twe_request *tr);
 static void	twe_completeio(struct twe_request *tr);
 static void	twe_reset(struct twe_softc *sc);
+static void	twe_add_unit(struct twe_softc *sc, int unit);
+static void	twe_del_unit(struct twe_softc *sc, int unit);
 
 /*
  * Command I/O to controller.
@@ -190,18 +192,17 @@ twe_setup(struct twe_softc *sc)
     return(0);
 }
 
-/********************************************************************************
- * Locate disk devices and attach children to them.
- */
-void
-twe_init(struct twe_softc *sc)
+static void
+twe_add_unit(struct twe_softc *sc, int unit)
 {
     struct twe_drive		*dr;
-    int				i, table;
+    int				table;
     u_int16_t			dsize;
-    TWE_Param			*drives, *param;
+    TWE_Param			*drives = NULL, *param = NULL;
     TWE_Unit_Descriptor		*ud;
 
+    if (unit < 0 || unit > TWE_MAX_UNITS)
+	return;
 
     /*
      * The controller is in a safe state, so try to find drives attached to it.
@@ -211,52 +212,76 @@ twe_init(struct twe_softc *sc)
 	twe_printf(sc, "can't detect attached units\n");
 	return;
     }
-    
-    /*
-     * For each detected unit, create a child device.
-     */
-    for (i = 0, dr = &sc->twe_drive[0]; i < TWE_MAX_UNITS; i++, dr++) {
 
-	/* check that the drive is online */
-	if (!(drives->data[i] & TWE_PARAM_UNITSTATUS_Online))
-	    continue;
+    dr = &sc->twe_drive[unit];
+    /* check that the drive is online */
+    if (!(drives->data[unit] & TWE_PARAM_UNITSTATUS_Online))
+	goto out;
 
-	table = TWE_PARAM_UNITINFO + i;
+    table = TWE_PARAM_UNITINFO + unit;
 
-	if (twe_get_param_4(sc, table, TWE_PARAM_UNITINFO_Capacity, &dr->td_size)) {
-	    twe_printf(sc, "error fetching capacity for unit %d\n", i);
-	    continue;
-	}
-	if (twe_get_param_1(sc, table, TWE_PARAM_UNITINFO_Status, &dr->td_state)) {
-	    twe_printf(sc, "error fetching state for unit %d\n", i);
-	    continue;
-	}
-	if (twe_get_param_2(sc, table, TWE_PARAM_UNITINFO_DescriptorSize, &dsize)) {
-	    twe_printf(sc, "error fetching descriptor size for unit %d\n", i);
-	    continue;
-	}
-	if ((param = twe_get_param(sc, table, TWE_PARAM_UNITINFO_Descriptor, dsize - 3, NULL)) == NULL) {
-	    twe_printf(sc, "error fetching descriptor for unit %d\n", i);
-	    continue;
-	}
-	ud = (TWE_Unit_Descriptor *)param->data;
-	dr->td_type = ud->configuration;
-	free(param, M_DEVBUF);
-
-	/* build synthetic geometry as per controller internal rules */
-	if (dr->td_size > 0x200000) {
-	    dr->td_heads = 255;
-	    dr->td_sectors = 63;
-	} else {
-	    dr->td_heads = 64;
-	    dr->td_sectors = 32;
-	}
-	dr->td_cylinders = dr->td_size / (dr->td_heads * dr->td_sectors);
-	dr->td_unit = i;
-
-	twe_attach_drive(sc, dr);
+    if (twe_get_param_4(sc, table, TWE_PARAM_UNITINFO_Capacity, &dr->td_size)) {
+	twe_printf(sc, "error fetching capacity for unit %d\n", unit);
+	goto out;
     }
-    free(drives, M_DEVBUF);
+    if (twe_get_param_1(sc, table, TWE_PARAM_UNITINFO_Status, &dr->td_state)) {
+	twe_printf(sc, "error fetching state for unit %d\n", unit);
+	goto out;
+    }
+    if (twe_get_param_2(sc, table, TWE_PARAM_UNITINFO_DescriptorSize, &dsize)) {
+	twe_printf(sc, "error fetching descriptor size for unit %d\n", unit);
+	goto out;
+    }
+    if ((param = twe_get_param(sc, table, TWE_PARAM_UNITINFO_Descriptor, dsize - 3, NULL)) == NULL) {
+	twe_printf(sc, "error fetching descriptor for unit %d\n", unit);
+	goto out;
+    }
+    ud = (TWE_Unit_Descriptor *)param->data;
+    dr->td_type = ud->configuration;
+
+    /* build synthetic geometry as per controller internal rules */
+    if (dr->td_size > 0x200000) {
+	dr->td_heads = 255;
+	dr->td_sectors = 63;
+    } else {
+	dr->td_heads = 64;
+	dr->td_sectors = 32;
+    }
+    dr->td_cylinders = dr->td_size / (dr->td_heads * dr->td_sectors);
+    dr->td_unit = unit;
+
+    twe_attach_drive(sc, dr);
+
+out:
+    if (param != NULL)
+	free(param, M_DEVBUF);
+    if (drives != NULL)
+	free(drives, M_DEVBUF);
+}
+
+static void
+twe_del_unit(struct twe_softc *sc, int unit)
+{
+
+    if (unit < 0 || unit > TWE_MAX_UNITS)
+	return;
+
+    twe_detach_drive(sc, unit);
+}
+
+/********************************************************************************
+ * Locate disk devices and attach children to them.
+ */
+void
+twe_init(struct twe_softc *sc)
+{
+    int 		i;
+
+    /*
+     * Scan for drives
+     */
+    for (i = 0; i < TWE_MAX_UNITS; i++)
+	twe_add_unit(sc, i);
 
     /*
      * Initialise connection with controller.
@@ -448,6 +473,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 {
     struct twe_usercommand	*tu = (struct twe_usercommand *)addr;
     struct twe_paramcommand	*tp = (struct twe_paramcommand *)addr;
+    struct twe_drivecommand	*td = (struct twe_drivecommand *)addr;
     union twe_statrequest	*ts = (union twe_statrequest *)addr;
     TWE_Param			*param;
     void			*data;
@@ -461,10 +487,8 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	/* handle a command from userspace */
     case TWEIO_COMMAND:
 	/* get a request */
-	if (twe_get_request(sc, &tr)) {
-	    error = EBUSY;
-	    goto cmd_done;
-	}
+	while (twe_get_request(sc, &tr))
+	    tsleep(NULL, PPAUSE, "twioctl", hz);
 
 	/*
 	 * Save the command's request ID, copy the user-supplied command in,
@@ -474,14 +498,17 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	bcopy(&tu->tu_command, &tr->tr_command, sizeof(TWE_Command));
 	tr->tr_command.generic.request_id = srid;
 
-	/* if there's a data buffer, allocate and copy it in */
-	tr->tr_length = tu->tu_size;
+	/*
+	 * if there's a data buffer, allocate and copy it in.
+	 * Must be in multipled of 512 bytes.
+	 */
+	tr->tr_length = (tu->tu_size + 511) & ~511;
 	if (tr->tr_length > 0) {
 	    if ((tr->tr_data = malloc(tr->tr_length, M_DEVBUF, M_WAITOK)) == NULL) {
 		error = ENOMEM;
 		goto cmd_done;
 	    }
-	    if ((error = copyin(tu->tu_data, tr->tr_data, tr->tr_length)) != 0)
+	    if ((error = copyin(tu->tu_data, tr->tr_data, tu->tu_size)) != 0)
 		goto cmd_done;
 	    tr->tr_flags |= TWE_CMD_DATAIN | TWE_CMD_DATAOUT;
 	}
@@ -495,7 +522,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	
 	/* if there was a data buffer, copy it out */
 	if (tr->tr_length > 0)
-	    error = copyout(tr->tr_data, tu->tu_data, tr->tr_length);
+	    error = copyout(tr->tr_data, tu->tu_data, tu->tu_size);
 
     cmd_done:
 	/* free resources */
@@ -527,15 +554,13 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 	/* poll for an AEN */
     case TWEIO_AEN_POLL:
 	*arg = twe_dequeue_aen(sc);
-	if (*arg == -1)
-	    error = ENOENT;
 	break;
 
 	/* wait for another AEN to show up */
     case TWEIO_AEN_WAIT:
 	s = splbio();
-	while ((*arg = twe_dequeue_aen(sc)) == -1) {
-	    error = tsleep(&sc->twe_aen_queue, PCATCH, "tweaen", 0);
+	while ((*arg = twe_dequeue_aen(sc)) == TWE_AEN_QUEUE_EMPTY) {
+	    error = tsleep(&sc->twe_aen_queue, PRIBIO | PCATCH, "tweaen", 0);
 	    if (error == EINTR)
 		break;
 	}
@@ -572,6 +597,14 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
 
     case TWEIO_RESET:
 	twe_reset(sc);
+	break;
+
+    case TWEIO_ADD_UNIT:
+	twe_add_unit(sc, td->td_unit);
+	break;
+
+    case TWEIO_DEL_UNIT:
+	twe_del_unit(sc, td->td_unit);
 	break;
 
 	/* XXX implement ATA PASSTHROUGH */
@@ -867,7 +900,7 @@ twe_wait_request(struct twe_request *tr)
     twe_startio(tr->tr_sc);
     s = splbio();
     while (tr->tr_status == TWE_CMD_BUSY)
-	tsleep(tr, 0, "twewait", 0);
+	tsleep(tr, PRIBIO, "twewait", 0);
     splx(s);
     
     return(0);
@@ -932,7 +965,7 @@ twe_reset(struct twe_softc *sc)
     /*
      * Sleep for a short period to allow AENs to be signalled.
      */
-    tsleep(NULL, 0, "twereset", hz);
+    tsleep(NULL, PRIBIO, "twereset", hz);
 
     /*
      * Disable interrupts from the controller, and mask any accidental entry
@@ -1395,7 +1428,7 @@ twe_dequeue_aen(struct twe_softc *sc)
     debug_called(4);
 
     if (sc->twe_aen_tail == sc->twe_aen_head) {
-	result = -1;
+	result = TWE_AEN_QUEUE_EMPTY;
     } else {
 	result = sc->twe_aen_queue[sc->twe_aen_tail];
 	sc->twe_aen_tail = ((sc->twe_aen_tail + 1) % TWE_Q_LENGTH);
@@ -1447,7 +1480,7 @@ twe_wait_aen(struct twe_softc *sc, int aen, int timeout)
     sc->twe_wait_aen = aen;
     do {
 	twe_fetch_aen(sc);
-	tsleep(&sc->twe_wait_aen, 0, "twewaen", hz);
+	tsleep(&sc->twe_wait_aen, PZERO, "twewaen", hz);
 	if (sc->twe_wait_aen == -1)
 	    found = 1;
     } while ((time_second <= expiry) && !found);

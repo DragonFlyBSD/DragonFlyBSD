@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *      $FreeBSD: src/sys/dev/twe/twereg.h,v 1.1.2.4 2002/03/07 09:57:02 msmith Exp $
- *      $DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.3 2003/09/22 21:45:22 dillon Exp $
+ *      $DragonFly: src/sys/dev/raid/twe/twereg.h,v 1.4 2004/01/05 17:40:00 drhodus Exp $
  */
 
 /* 
@@ -120,6 +120,7 @@
 #define TWE_OP_FLUSH			0x0e
 #define TWE_OP_ABORT			0x0f
 #define TWE_OP_CHECKSTATUS		0x10
+#define TWE_OP_ATA_PASSTHROUGH		0x11
 #define TWE_OP_GET_PARAM		0x12
 #define TWE_OP_SET_PARAM		0x13
 #define TWE_OP_CREATEUNIT		0x14
@@ -128,7 +129,6 @@
 #define TWE_OP_SECTOR_INFO		0x1a
 #define TWE_OP_AEN_LISTEN		0x1c
 #define TWE_OP_CMD_PACKET		0x1d
-#define TWE_OP_ATA_PASSTHROUGH		0x1e
 #define TWE_OP_CMD_WITH_DATA		0x1f
 
 /* command status values */

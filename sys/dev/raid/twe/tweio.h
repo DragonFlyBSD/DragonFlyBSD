@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/tweio.h,v 1.1.2.2 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/tweio.h,v 1.2 2003/06/17 04:28:32 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/tweio.h,v 1.3 2004/01/05 17:40:00 drhodus Exp $
  */
 
 
@@ -91,3 +91,13 @@ struct twe_paramcommand {
  * Request a controller soft-reset
  */
 #define TWEIO_RESET		_IO  ('T', 106)
+
+/*
+ * Request a drive addition or deletion
+ */
+struct twe_drivecommand {
+    int		td_unit;
+};
+
+#define TWEIO_ADD_UNIT		_IOW ('U', 107, int)
+#define TWEIO_DEL_UNIT		_IOW ('U', 108, int)

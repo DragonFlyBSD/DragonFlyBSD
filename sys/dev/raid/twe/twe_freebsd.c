@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.7 2003/11/15 21:05:42 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.8 2004/01/05 17:40:00 drhodus Exp $
  */
 
 /*
@@ -137,7 +137,7 @@ static int	twe_probe(device_t dev);
 static int	twe_attach(device_t dev);
 static void	twe_free(struct twe_softc *sc);
 static int	twe_detach(device_t dev);
-static int	twe_shutdown(device_t dev);
+static void	twe_shutdown(device_t dev);
 static int	twe_suspend(device_t dev);
 static int	twe_resume(device_t dev);
 static void	twe_pci_intr(void *arg);
@@ -208,6 +208,18 @@ twe_attach(device_t dev)
      */
     sc = device_get_softc(dev);
     sc->twe_dev = dev;
+
+    sysctl_ctx_init(&sc->sysctl_ctx);
+    sc->sysctl_tree = SYSCTL_ADD_NODE(&sc->sysctl_ctx,
+	SYSCTL_STATIC_CHILDREN(_hw), OID_AUTO,
+	device_get_nameunit(dev), CTLFLAG_RD, 0, "");
+    if (sc->sysctl_tree == NULL) {
+	twe_printf(sc, "cannot add sysctl tree node\n");
+	return (ENXIO);
+    }
+    SYSCTL_ADD_STRING(&sc->sysctl_ctx, SYSCTL_CHILDREN(sc->sysctl_tree),
+	OID_AUTO, "driver_version", CTLFLAG_RD, "$Revision$", 0,
+	"TWE driver version");
 
     /*
      * Make sure we are going to be able to talk to this board.
@@ -355,6 +367,8 @@ twe_free(struct twe_softc *sc)
     /* destroy control device */
     if (sc->twe_dev_t != (dev_t)NULL)
 	destroy_dev(sc->twe_dev_t);
+
+    sysctl_ctx_free(&sc->sysctl_ctx);
 }
 
 /********************************************************************************
@@ -376,8 +390,7 @@ twe_detach(device_t dev)
     /*	
      * Shut the controller down.
      */
-    if ((error = twe_shutdown(dev)))
-	goto out;
+    twe_shutdown(dev);
 
     twe_free(sc);
 
@@ -393,26 +406,21 @@ twe_detach(device_t dev)
  * Note that we can assume that the bioq on the controller is empty, as we won't
  * allow shutdown if any device is open.
  */
-static int
+static void
 twe_shutdown(device_t dev)
 {
     struct twe_softc	*sc = device_get_softc(dev);
-    int			i, s, error;
+    int			i, s;
 
     debug_called(4);
 
     s = splbio();
-    error = 0;
 
     /* 
      * Delete all our child devices.
      */
     for (i = 0; i < TWE_MAX_UNITS; i++) {
-	if (sc->twe_drive[i].td_disk != 0) {
-	    if ((error = device_delete_child(sc->twe_dev, sc->twe_drive[i].td_disk)) != 0)
-		goto out;
-	    sc->twe_drive[i].td_disk = 0;
-	}
+	twe_detach_drive(sc, i);
     }
 
     /*
@@ -420,9 +428,7 @@ twe_shutdown(device_t dev)
      */
     twe_deinit(sc);
 
- out:
     splx(s);
-    return(error);
 }
 
 /********************************************************************************
@@ -489,7 +495,7 @@ twe_intrhook(void *arg)
 /********************************************************************************
  * Given a detected drive, attach it to the bio interface.
  *
- * This is called from twe_init.
+ * This is called from twe_add_unit.
  */
 void
 twe_attach_drive(struct twe_softc *sc, struct twe_drive *dr)
@@ -508,12 +514,30 @@ twe_attach_drive(struct twe_softc *sc, struct twe_drive *dr)
      * XXX It would make sense to test the online/initialising bits, but they seem to be
      * always set...
      */
-    sprintf(buf, "%s, %s", twe_describe_code(twe_table_unittype, dr->td_type),
+    sprintf(buf, "Unit %d, %s, %s",
+	    dr->td_unit,
+	    twe_describe_code(twe_table_unittype, dr->td_type),
 	    twe_describe_code(twe_table_unitstate, dr->td_state & TWE_PARAM_UNITSTATUS_MASK));
     device_set_desc_copy(dr->td_disk, buf);
 
     if ((error = bus_generic_attach(sc->twe_dev)) != 0)
 	twe_printf(sc, "bus_generic_attach returned %d\n", error);
+}
+
+/********************************************************************************
+ * Detach the specified unit if it exsists
+ *
+ * This is called from twe_del_unit.
+ */
+void
+twe_detach_drive(struct twe_softc *sc, int unit)
+{
+
+    if (sc->twe_drive[unit].td_disk != 0) {
+	if (device_delete_child(sc->twe_dev, sc->twe_drive[unit].td_disk) != 0)
+	    twe_printf(sc, "failed to delete unit %d\n", unit);
+	sc->twe_drive[unit].td_disk = 0;
+    }
 }
 
 /********************************************************************************
@@ -610,8 +634,9 @@ static struct cdevsw twed_cdevsw = {
     nommap,
     twed_strategy,
     twed_dump,
-    nopsize
+    nopsize,
 };
+
 
 /********************************************************************************
  * Handle open from generic layer.
@@ -707,7 +732,7 @@ twed_dump(dev_t dev)
     struct twed_softc	*twed_sc = (struct twed_softc *)dev->si_drv1;
     struct twe_softc	*twe_sc  = (struct twe_softc *)twed_sc->twed_controller;
     u_int		count, blkno, secsize;
-    vm_offset_t		addr = 0;
+    vm_paddr_t		addr = 0;
     long		blkcnt;
     int			dumppages = MAXDUMPPGS;
     int			error;
@@ -728,7 +753,7 @@ twed_dump(dev_t dev)
 	    dumppages = count / blkcnt;
 
 	for (i = 0; i < dumppages; ++i) {
-	    vm_offset_t a = addr + (i * PAGE_SIZE);
+	    vm_paddr_t a = addr + (i * PAGE_SIZE);
 	    if (is_physical_memory(a))
 		va = pmap_kenter_temporary(trunc_page(a), i);
 	    else
@@ -904,11 +929,25 @@ twe_free_request(struct twe_request *tr)
  * and we take care of that here as well.
  */
 static void
+twe_fillin_sgl(TWE_SG_Entry *sgl, bus_dma_segment_t *segs, int nsegments, int max_sgl)
+{
+    int i;
+
+    for (i = 0; i < nsegments; i++) {
+	sgl[i].address = segs[i].ds_addr;
+	sgl[i].length = segs[i].ds_len;
+    }
+    for (; i < max_sgl; i++) {				/* XXX necessary? */
+	sgl[i].address = 0;
+	sgl[i].length = 0;
+    }
+}
+		
+static void
 twe_setup_data_dmamap(void *arg, bus_dma_segment_t *segs, int nsegments, int error)
 {
     struct twe_request	*tr = (struct twe_request *)arg;
     TWE_Command		*cmd = &tr->tr_command;
-    int			i;
 
     debug_called(4);
 
@@ -927,30 +966,35 @@ twe_setup_data_dmamap(void *arg, bus_dma_segment_t *segs, int nsegments, int err
     case TWE_OP_GET_PARAM:
     case TWE_OP_SET_PARAM:
 	cmd->generic.sgl_offset = 2;
-	for (i = 0; i < nsegments; i++) {
-	    cmd->param.sgl[i].address = segs[i].ds_addr;
-	    cmd->param.sgl[i].length = segs[i].ds_len;
-	}
-	for (; i < TWE_MAX_SGL_LENGTH; i++) {		/* XXX necessary? */
-	    cmd->param.sgl[i].address = 0;
-	    cmd->param.sgl[i].length = 0;
-	}
+	twe_fillin_sgl(&cmd->param.sgl[0], segs, nsegments, TWE_MAX_SGL_LENGTH);
 	break;
     case TWE_OP_READ:
     case TWE_OP_WRITE:
 	cmd->generic.sgl_offset = 3;
-	for (i = 0; i < nsegments; i++) {
-	    cmd->io.sgl[i].address = segs[i].ds_addr;
-	    cmd->io.sgl[i].length = segs[i].ds_len;
-	}
-	for (; i < TWE_MAX_SGL_LENGTH; i++) {		/* XXX necessary? */
-	    cmd->io.sgl[i].address = 0;
-	    cmd->io.sgl[i].length = 0;
-	}
+	twe_fillin_sgl(&cmd->io.sgl[0], segs, nsegments, TWE_MAX_SGL_LENGTH);
+	break;
+    case TWE_OP_ATA_PASSTHROUGH:
+	cmd->generic.sgl_offset = 5;
+	twe_fillin_sgl(&cmd->ata.sgl[0], segs, nsegments, TWE_MAX_ATA_SGL_LENGTH);
 	break;
     default:
-	/* no s/g list, nothing to do */
-	break;
+	/*
+	 * Fall back to what the linux driver does.
+	 * Do this because the API may send an opcode
+	 * the driver knows nothing about and this will
+	 * at least stop PCIABRT's from hosing us.
+	 */
+	switch (cmd->generic.sgl_offset) {
+	case 2:
+	    twe_fillin_sgl(&cmd->param.sgl[0], segs, nsegments, TWE_MAX_SGL_LENGTH);
+	    break;
+	case 3:
+	    twe_fillin_sgl(&cmd->io.sgl[0], segs, nsegments, TWE_MAX_SGL_LENGTH);
+	    break;
+	case 5:
+	    twe_fillin_sgl(&cmd->ata.sgl[0], segs, nsegments, TWE_MAX_ATA_SGL_LENGTH);
+	    break;
+	}
     }
 }
 
