@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libcam/camlib.h,v 1.2 1999/08/28 00:04:06 peter Exp $
- * $DragonFly: src/lib/libcam/camlib.h,v 1.2 2003/06/17 04:26:48 dillon Exp $
+ * $DragonFly: src/lib/libcam/camlib.h,v 1.3 2003/08/07 21:22:38 dillon Exp $
  */
 /*
  * Buffer encoding/decoding routines taken from the original FreeBSD SCSI
@@ -65,115 +65,6 @@
 #ifndef _CAMLIB_H
 #define _CAMLIB_H
 
-#include <sys/cdefs.h>
-#include <sys/param.h>
-
-#include <cam/cam.h>
-#include <cam/cam_ccb.h>
-
-#define CAM_ERRBUF_SIZE 2048	/* sizeof the CAM libarary error string  */
-
-/*
- * Right now we hard code the transport layer device, but this will change
- * if we ever get more than one transport layer.
- */
-#define XPT_DEVICE	"/dev/xpt0"
-
-
-extern char cam_errbuf[];
-
-struct cam_device {
-	char 		device_path[MAXPATHLEN+1];/*
-						   * Pathname of the device 
-						   * given by the user. This
-						   * may be null if the
-						   * user states the device
-						   * name and unit number
-						   * separately.
-						   */
-	char		given_dev_name[DEV_IDLEN+1];/*
-						     * Device name given by
-						     * the user.
-						     */
-	u_int32_t	given_unit_number;	    /*
-						     * Unit number given by
-						     * the user.
-						     */
-	char		device_name[DEV_IDLEN+1];/* 
-						  * Name of the device, 
-						  * e.g. 'pass' 
-						  */
-	u_int32_t	dev_unit_num;	/* Unit number of the passthrough
-					 * device associated with this
-					 * particular device.
-					 */
-	
-	char		sim_name[SIM_IDLEN+1]; /* Controller name, e.g. 'ahc' */
-	u_int32_t	sim_unit_number; /* Controller unit number */
-	u_int32_t	bus_id;		 /* Controller bus number */
-	lun_id_t	target_lun;	 /* Logical Unit Number */
-	target_id_t	target_id;	 /* Target ID */
-	path_id_t	path_id;	 /* System SCSI bus number */
-	u_int16_t	pd_type;	 /* type of peripheral device */
-	struct scsi_inquiry_data inq_data;  /* SCSI Inquiry data */
-	u_int8_t	serial_num[252]; /* device serial number */
-	u_int8_t	serial_num_len;  /* length of the serial number */
-	u_int8_t	sync_period;	 /* Negotiated sync period */
-	u_int8_t	sync_offset;	 /* Negotiated sync offset */
-	u_int8_t	bus_width;	 /* Negotiated bus width */
-	int		fd;		 /* file descriptor for device */
-};
-
-__BEGIN_DECLS
-/* Basic utility commands */
-struct cam_device *	cam_open_device(const char *path, int flags);
-void			cam_close_device(struct cam_device *dev);
-void			cam_close_spec_device(struct cam_device *dev);
-struct cam_device *	cam_open_spec_device(const char *dev_name,
-					     int unit, int flags,
-					     struct cam_device *device);
-struct cam_device *	cam_open_btl(path_id_t path_id, target_id_t target_id,
-				     lun_id_t target_lun, int flags,
-				     struct cam_device *device);
-struct cam_device *	cam_open_pass(const char *path, int flags,
-				      struct cam_device *device);
-union ccb *		cam_getccb(struct cam_device *dev);
-void			cam_freeccb(union ccb *ccb);
-int			cam_send_ccb(struct cam_device *device, union ccb *ccb);
-char *			cam_path_string(struct cam_device *dev, char *str,
-					int len);
-struct cam_device *	cam_device_dup(struct cam_device *device);
-void			cam_device_copy(struct cam_device *src, 
-					struct cam_device *dst);
-int			cam_get_device(const char *path, char *dev_name,
-				       int devnamelen, int *unit);
-
-/*
- * Buffer encoding/decoding routines, from the old SCSI library.
- */
-int csio_decode(struct ccb_scsiio *csio, char *fmt, ...);
-int csio_decode_visit(struct ccb_scsiio *csio, char *fmt,
-		      void (*arg_put)(void *, int, void *, int, char *),
-		      void *puthook);
-int buff_decode(u_int8_t *buff, size_t len, char *fmt, ...);
-int buff_decode_visit(u_int8_t *buff, size_t len, char *fmt,
-		      void (*arg_put)(void *, int, void *, int, char *),
-		      void *puthook);
-int csio_build(struct ccb_scsiio *csio, u_int8_t *data_ptr,
-	       u_int32_t dxfer_len, u_int32_t flags, int retry_count,
-	       int timeout, char *cmd_spec, ...);
-int csio_build_visit(struct ccb_scsiio *csio, u_int8_t *data_ptr,
-		     u_int32_t dxfer_len, u_int32_t flags, int retry_count,
-		     int timeout, char *cmd_spec,
-		     int (*arg_get)(void *hook, char *field_name),
-		     void *gethook);
-int csio_encode(struct ccb_scsiio *csio, char *fmt, ...);
-int buff_encode_visit(u_int8_t *buff, size_t len, char *fmt,
-		      int (*arg_get)(void *hook, char *field_name),
-		      void *gethook);
-int csio_encode_visit(struct ccb_scsiio *csio, char *fmt,
-		      int (*arg_get)(void *hook, char *field_name),
-		      void *gethook);
-__END_DECLS
+#include <sys/camlib.h>
 
 #endif /* _CAMLIB_H */
