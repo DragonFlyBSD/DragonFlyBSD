@@ -15,7 +15,7 @@
  * improvements you might make to this program.
  *
  * $FreeBSD: src/usr.bin/units/units.c,v 1.6.2.2 2001/03/04 09:22:35 kris Exp $
- * $DragonFly: src/usr.bin/units/units.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/units/units.c,v 1.3 2005/02/02 06:22:30 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -69,6 +69,26 @@ char NULLUNIT[] = "";
 
 int unitcount;
 int prefixcount;
+
+
+static int	 addsubunit(char *[], char *);
+static int	 addunit(struct unittype *, char *, int);
+static void	 cancelunit(struct unittype *);
+static int	 compare(const void *, const void *);
+static int	 compareproducts(char **, char **);
+static int	 compareunits(struct unittype *, struct unittype *);
+static int	 completereduce(struct unittype *);
+static char	*dupstr(const char *);
+static void	 initializeunit(struct unittype *);
+static char	*lookupunit(const char *);
+static void	 readunits(const char *);
+static int	 reduceproduct(struct unittype *, int);
+static int	 reduceunit(struct unittype *);
+static void	 showanswer(struct unittype *, struct unittype *);
+static void	 showunit(struct unittype *);
+static void	 sortunit(struct unittype *);
+static void	 usage(void);
+static void	 zeroerror(void);
 
 
 char *
