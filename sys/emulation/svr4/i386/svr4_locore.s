@@ -4,22 +4,22 @@
 #include "../svr4_syscall.h"		/* system call numbers */
 
 /* $FreeBSD: src/sys/i386/svr4/svr4_locore.s,v 1.10.2.1 2000/07/07 00:38:51 obrien Exp $ */
-/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.4 2003/08/07 21:17:20 dillon Exp $ */
+/* $DragonFly: src/sys/emulation/svr4/i386/Attic/svr4_locore.s,v 1.5 2003/10/31 13:53:02 asmodai Exp $ */
 	
 NON_GPROF_ENTRY(svr4_sigcode)
 	call	*SVR4_SIGF_HANDLER(%esp)
-	leal	SVR4_SIGF_UC(%esp),%eax	# ucp (the call may have clobbered the
-					# copy at SIGF_UCP(%esp))
+	leal	SVR4_SIGF_UC(%esp),%eax	/* ucp (the call may have clobbered */
+					/* the copy at SIGF_UCP(%esp)) */
 #ifdef VM86
 #warning "VM86 doesn't work yet - do you really want this?"
 	testl	$PSL_VM,SVR4_UC_EFLAGS(%eax)
 	jnz	1f
 #endif
 	movl	SVR4_UC_GS(%eax),%gs
-1:	pushl	%eax			# pointer to ucontext
-	pushl	$1			# set context
+1:	pushl	%eax			/* pointer to ucontext */
+	pushl	$1			/* set context */
 	movl	$svr4_sys_context,%eax
-	int	$0x80	 		# enter kernel with args on stack
+	int	$0x80	 		/* enter kernel with args on stack */
 0:	jmp	0b
 
 	ALIGN_TEXT
