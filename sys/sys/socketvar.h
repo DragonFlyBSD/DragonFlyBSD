@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.9 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.10 2004/03/08 23:52:51 dillon Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -288,7 +288,8 @@ MALLOC_DECLARE(M_ACCF);
 #endif
 
 extern int	maxsockets;
-extern u_long	sb_max;
+extern u_long	sb_max;		/* nominal limit */
+extern u_long	sb_max_adj;	/* actual limit used by sbreserve() */
 extern struct	vm_zone *socket_zone;
 extern so_gen_t so_gencnt;
 

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.12 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.13 2004/03/08 23:52:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -116,6 +116,8 @@ static int nfs_privport = 0;
 SYSCTL_INT(_vfs_nfs, NFS_NFSPRIVPORT, nfs_privport, CTLFLAG_RW, &nfs_privport, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay, CTLFLAG_RW, &nfsrvw_procrastinate, 0, "");
 SYSCTL_INT(_vfs_nfs, OID_AUTO, gatherdelay_v3, CTLFLAG_RW, &nfsrvw_procrastinate_v3, 0, "");
+static int	nfs_soreserve = 65535;
+SYSCTL_INT(_vfs_nfs, OID_AUTO, soreserve, CTLFLAG_RW, &nfs_soreserve, 0, "");
 
 /*
  * NFS server system calls
@@ -336,10 +338,24 @@ nfssvc_addsock(struct file *fp, struct sockaddr *mynam, struct thread *td)
 		}
 	}
 #endif
+	/*
+	 * Reserve buffer space in the socket.  Note that due to bugs in
+	 * Linux's delayed-ack code, serious performance degredation may
+	 * occur with linux hosts if the minimum is used.
+	 */
 	if (so->so_type == SOCK_STREAM)
 		siz = NFS_MAXPACKET + sizeof (u_long);
 	else
 		siz = NFS_MAXPACKET;
+	if (siz < nfs_soreserve)
+	    siz = nfs_soreserve;
+	if (siz > sb_max_adj) {
+	    printf("Warning: vfs.nfs.soreserve (%d) "
+		"limited to adjusted sb_max (%ld)\n",
+		nfs_soreserve, sb_max_adj);
+	    siz = sb_max_adj;
+	}
+
 	error = soreserve(so, siz, siz, &td->td_proc->p_rlimit[RLIMIT_SBSIZE]);
 	if (error) {
 		if (mynam != NULL)
