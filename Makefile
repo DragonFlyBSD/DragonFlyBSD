@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.7 2004/04/24 04:38:49 drhodus Exp $
+# $DragonFly: src/Makefile,v 1.8 2004/08/18 16:37:15 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -11,8 +11,14 @@
 # crossworld	      - Just do the bootstrap, build, and cross-build steps
 # installworld        - Install everything built by "buildworld".
 # world               - buildworld + installworld.
-# buildkernel         - Rebuild the kernel and the kernel-modules.
-# nativekernel        - Rebuild the kernel using native tools via config.
+# buildkernel         - Rebuild the kernel and the kernel-modules from scratch
+#			using build/bootstrap/cross tools from the last
+#			buildworld.
+# nativekernel	      - Rebuild the kernel and the kernel-modules from scratch
+#		        using native tools.
+# quickkernel	      - rebuild the kernel quickly (build or native), skip
+#			the make depend step and do not clean out the obj
+#			modules.
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
@@ -63,21 +69,21 @@
 # Define the user-driven targets. These are listed here in alphabetical
 # order, but that's not important.
 #
-TGTS=	all all-man buildkernel buildworld crossworld quickworld \
-	realquickworld checkdpadd clean \
+TGTS=	all all-man buildkernel quickkernel nativekernel \
+	buildworld crossworld quickworld realquickworld checkdpadd clean \
 	cleandepend cleandir depend distribute distributeworld everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
-	mk most nativekernel obj objlink regress rerelease tags update
+	mk most obj objlink regress rerelease tags update
 
 BITGTS=	files includes
 BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}
 
 .ORDER: buildworld installworld
 .ORDER: buildworld distributeworld
-.ORDER: buildworld buildkernel
-.ORDER: buildkernel installkernel
-.ORDER: buildkernel reinstallkernel
+.ORDER: buildworld buildkernel nativekernel quickkernel
+.ORDER: buildkernel nativekernel quickkernel installkernel
+.ORDER: buildkernel nativekernel quickkernel reinstallkernel
 
 PATH=	/sbin:/bin:/usr/sbin:/usr/bin
 MAKE=	PATH=${PATH} make -m ${.CURDIR}/share/mk -f Makefile.inc1
