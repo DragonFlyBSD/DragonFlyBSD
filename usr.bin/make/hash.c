@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.12 2004/12/16 22:28:09 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.13 2004/12/16 23:22:15 okumoto Exp $
  */
 
 /* hash.c --
@@ -297,7 +297,7 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
  *---------------------------------------------------------
  */
 Hash_Entry *
-Hash_EnumFirst(Hash_Table *t, Hash_Search *searchPtr)
+Hash_EnumFirst(const Hash_Table *t, Hash_Search *searchPtr)
 {
 
 	searchPtr->tablePtr = t;
@@ -327,7 +327,7 @@ Hash_Entry *
 Hash_EnumNext(Hash_Search *searchPtr)
 {
 	Hash_Entry *e;
-	Hash_Table *t = searchPtr->tablePtr;
+	const Hash_Table *t = searchPtr->tablePtr;
 
 	/*
 	 * The hashEntryPtr field points to the most recently returned

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.19 2004/12/16 23:08:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.20 2004/12/16 23:22:15 okumoto Exp $
  */
 
 /*-
@@ -189,9 +189,6 @@ static Path *dot;	    /* contents of current directory */
 static Hash_Table mtimes;
 
 static int DirFindName(void *, void *);
-static int DirMatchFiles(char *, Path *, Lst);
-static void DirExpandCurly(char *, char *, Lst, Lst);
-static void DirExpandInt(char *, Lst, Lst);
 static int DirPrintWord(void *, void *);
 static int DirPrintDir(void *, void *);
 
@@ -304,9 +301,9 @@ DirFindName(void *p, void *dname)
  *-----------------------------------------------------------------------
  */
 Boolean
-Dir_HasWildcards(char *name)
+Dir_HasWildcards(const char *name)
 {
-	char *cp;
+	const char *cp;
 	int wild = 0, brace = 0, bracket = 0;
 
 	for (cp = name; *cp; cp++) {
@@ -354,7 +351,7 @@ Dir_HasWildcards(char *name)
  *-----------------------------------------------------------------------
  */
 static int
-DirMatchFiles(char *pattern, Path *p, Lst expansions)
+DirMatchFiles(const char *pattern, const Path *p, Lst expansions)
 {
 	Hash_Search search;   	/* Index into the directory's table */
 	Hash_Entry *entry;   	/* Current entry in the table */
@@ -402,11 +399,11 @@ DirMatchFiles(char *pattern, Path *p, Lst expansions)
  *-----------------------------------------------------------------------
  */
 static void
-DirExpandCurly(char *word, char *brace, Lst path, Lst expansions)
+DirExpandCurly(const char *word, const char *brace, Lst path, Lst expansions)
 {
-	char *end;	/* Character after the closing brace */
-	char *cp;	/* Current position in brace clause */
-	char *start;	/* Start of current piece of brace clause */
+	const char *end;	/* Character after the closing brace */
+	const char *cp;		/* Current position in brace clause */
+	const char *start;	/* Start of current piece of brace clause */
 	int bracelevel;	/* Number of braces we've seen. If we see a right brace
 			 * when this is 0, we've hit the end of the clause. */
 	char *file;	/* Current expansion */
@@ -489,7 +486,6 @@ DirExpandCurly(char *word, char *brace, Lst path, Lst expansions)
 	}
 }
 
-
 /*-
  *-----------------------------------------------------------------------
  * DirExpandInt --
@@ -507,7 +503,7 @@ DirExpandCurly(char *word, char *brace, Lst path, Lst expansions)
  *-----------------------------------------------------------------------
  */
 static void
-DirExpandInt(char *word, Lst path, Lst expansions)
+DirExpandInt(const char *word, Lst path, Lst expansions)
 {
 	LstNode ln;	    /* Current node */
 	Path *p;	    /* Directory in the node */
