@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.10 2004/06/21 15:39:31 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.11 2004/09/15 13:54:42 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,7 @@ struct pst_softc {
 struct pst_request {
     struct pst_softc		*psc;		/* pointer to softc */
     u_int32_t			mfa;		/* frame addreess */
-    struct callout_handle	timeout_handle; /* handle for untimeout */
+    struct callout		timeout;	/* handle for untimeout */
     struct buf			*bp;		/* associated bio ptr */
 };
 
@@ -101,7 +101,7 @@ static int pst_shutdown(device_t);
 static void pst_start(struct pst_softc *);
 static void pst_done(struct iop_softc *, u_int32_t, struct i2o_single_reply *);
 static int pst_rw(struct pst_request *);
-static void pst_timeout(struct pst_request *);
+static void pst_timeout(void *);
 static void bpack(int8_t *, int8_t *, int);
 
 /* local vars */
@@ -248,11 +248,9 @@ pst_start(struct pst_softc *psc)
 	    request->psc = psc;
 	    request->mfa = mfa;
 	    request->bp = bp;
-	    if (dumping)
-		request->timeout_handle.callout = NULL;
-	    else
-		request->timeout_handle =
-		    timeout((timeout_t*)pst_timeout, request, 10 * hz);
+	    callout_init(&request->timeout);
+	    if (!dumping)
+	        callout_reset(&request->timeout, 10 * hz, pst_timeout, request);
 	    bufq_remove(&psc->queue, bp);
 	    devstat_start_transaction(&psc->stats);
 	    if (pst_rw(request)) {
@@ -262,6 +260,7 @@ pst_start(struct pst_softc *psc)
 		biodone(request->bp);
 		iop_free_mfa(request->psc->iop, request->mfa);
 		psc->outstanding--;
+		callout_stop(&request->timeout);
 		free(request, M_PSTRAID);
 	    }
 	}
@@ -272,11 +271,11 @@ static void
 pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
 {
     struct pst_request *request =
-	(struct pst_request *)reply->transaction_context;
+        (struct pst_request *)reply->transaction_context;
     struct pst_softc *psc = request->psc;
     int s;
 
-    untimeout((timeout_t *)pst_timeout, request, request->timeout_handle);
+    callout_stop(&request->timeout);
     request->bp->b_resid = request->bp->b_bcount - reply->donecount;
     devstat_end_transaction_buf(&psc->stats, request->bp);
     if (reply->status) {
@@ -293,8 +292,9 @@ pst_done(struct iop_softc *sc, u_int32_t mfa, struct i2o_single_reply *reply)
 }
 
 static void
-pst_timeout(struct pst_request *request)
+pst_timeout(void *xrequest)
 {
+    struct pst_request *request = xrequest;
     int s = splbio();
 
     printf("pst: timeout mfa=0x%08x cmd=%s\n",
@@ -310,11 +310,8 @@ pst_timeout(struct pst_request *request)
 	splx(s);
 	return;
     }
-    if (dumping)
-	request->timeout_handle.callout = NULL;
-    else
-	request->timeout_handle =
-	    timeout((timeout_t*)pst_timeout, request, 10 * hz);
+    if (!dumping)
+	callout_reset(&request->timeout, 10 * hz, pst_timeout, request);
     if (pst_rw(request)) {
 	iop_free_mfa(request->psc->iop, request->mfa);
 	devstat_end_transaction_buf(&request->psc->stats, request->bp);
