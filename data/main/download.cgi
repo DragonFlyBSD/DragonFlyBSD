@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.76 2005/02/09 17:21:21 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.77 2005/02/10 14:40:09 liamfoy Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -294,6 +294,14 @@ cvsup, rsync, <a href="http://mirror.isp.net.au/cgi-bin/cvsweb.cgi/?cvsroot=drag
 <TD>Code</TD>
 <TD>
 cvsup, <a href="http://alxl.info/cgi-bin/cvsweb.cgi/">cvsweb</a>
+</TD>
+</TR>
+
+<TR>
+<TD>dragonflybsd.delphij.net (China)</TD>
+<TD>Code (<B>NOTE: China mirror only</B>)</TD>
+<TD>
+cvsup
 </TD>
 </TR>
 
