@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.11 2004/05/04 12:09:36 hmp Exp $
  */
 
 /*
@@ -703,7 +703,7 @@ lemac_probe(
      *  Check for correct memory base configuration.
      */
     if (vtophys(sc->le_membase) != sc->lemac_membase) {
-	printf("%s: lemac configuration error: expected iomem 0x%x actual 0x%x\n",
+	printf("%s: lemac configuration error: expected iomem 0x%llx actual 0x%x\n",
 	       sc->le_if.if_xname,
 	       vtophys(sc->le_membase), sc->lemac_membase);
 	return 0;
