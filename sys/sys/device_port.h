@@ -25,92 +25,38 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/device_port.h,v 1.1.2.1 2000/10/29 11:05:45 non Exp $
- * $DragonFly: src/sys/sys/device_port.h,v 1.3 2004/02/06 03:20:47 rob Exp $
+ * $DragonFly: src/sys/sys/device_port.h,v 1.4 2004/12/21 22:43:38 joerg Exp $
  */
 
-#if defined(__NetBSD__)
-# include <sys/device.h>
-#elif defined(__DragonFly__)
-# if __DragonFly_version >= 100000
-#  include <sys/module.h>
-#  include <sys/bus.h>
-# else
-#  include <sys/device.h>
-# endif
+#ifdef _SYS_DEVICE_PORT_H_
+#define	_SYS_DEVICE_PORT_H_
+
+#if !defined(_KERNEL) && !defined(_KERNEL_STRUCTURES)
+#error "This file should not be included by userland programs."
 #endif
+
+#include <sys/module.h>
+#include <sys/bus.h>
 
 /*
  * Macro's to cope with the differences between operating systems and versions. 
  */
 
-#if defined(__NetBSD__)
-# define DEVPORT_DEVICE			struct device
-# define DEVPORT_DEVNAME(dev)		(dev).dv_xname
-# define DEVPORT_DEVUNIT(dev)		(dev).dv_unit
+#define	DEVPORT_DEVICE			device_t
+#define	DEVPORT_DEVNAME(dev)		device_get_name(dev)
+#define	DEVPORT_DEVUNIT(dev)		device_get_unit(dev)
+#define	DEVPORT_ALLOC_SOFTC(dev)       device_get_softc(dev)
+#define	DEVPORT_GET_SOFTC(dev)         device_get_softc(dev)
 
-#elif defined(__DragonFly__)
-/*
- * FreeBSD (compatibility for struct device)
- */
-#if __DragonFly_version >= 100000
-# define DEVPORT_DEVICE			device_t
-# define DEVPORT_DEVNAME(dev)		device_get_name(dev)
-# define DEVPORT_DEVUNIT(dev)		device_get_unit(dev)
-# define DEVPORT_ALLOC_SOFTC(dev)       device_get_softc(dev)
-# define DEVPORT_GET_SOFTC(dev)         device_get_softc(dev)
+#define	UNCONF	1		/* print " not configured\n" */
 
-# define UNCONF	1		/* print " not configured\n" */
+#define	DEVPORT_PDEVICE			device_t
+#define	DEVPORT_PDEVUNIT(pdev)		device_get_unit(pdev)
+#define	DEVPORT_PDEVFLAGS(pdev)		device_get_flags(pdev)
+#define	DEVPORT_PDEVIOBASE(pdev)	bus_get_resource_start(pdev, SYS_RES_IOPORT, 0)
+#define	DEVPORT_PDEVIRQ(pdev)		bus_get_resource_start(pdev, SYS_RES_IRQ, 0)
+#define	DEVPORT_PDEVMADDR(pdev)		bus_get_resource_start(pdev, SYS_RES_MEMORY, 0)
+#define	DEVPORT_PDEVALLOC_SOFTC(pdev)	device_get_softc(pdev)
+#define	DEVPORT_PDEVGET_SOFTC(pdev)	device_get_softc(pdev)
 
-#else
-
-# define DEVPORT_DEVICE			struct device
-# define DEVPORT_DEVNAME(dev)		(dev).dv_xname
-# define DEVPORT_DEVUNIT(dev)		(dev).dv_unit
-# ifdef DEVPORT_ALLOCSOFTCFUNC
-#  define DEVPORT_ALLOC_SOFTC(dev)	(DEVPORT_ALLOCSOFTCFUNC)((dev).dv_unit)
-# else
-#  define DEVPORT_ALLOC_SOFTC(dev)	DEVPORT_ALLOCSOFTCFUNC_is_not_defined_prior_than_device_port_h
-# endif
-# ifdef DEVPORT_SOFTCARRAY
-#  define DEVPORT_GET_SOFTC(dev)	(DEVPORT_SOFTCARRAY)[(dev).dv_unit]
-# else
-#  define DEVPORT_GET_SOFTC(dev)	DEVPORT_SOFTCARRAY_is_not_defined_prior_than_device_port_h
-# endif
-
-#endif
-
-/*
- * PC-Card device driver (compatibility for struct pccard_devinfo *)
- */
-#if __DragonFly_version >= 100000
-# define DEVPORT_PDEVICE		device_t
-# define DEVPORT_PDEVUNIT(pdev)		device_get_unit(pdev)
-# define DEVPORT_PDEVFLAGS(pdev)	device_get_flags(pdev)
-# define DEVPORT_PDEVIOBASE(pdev)	bus_get_resource_start(pdev, SYS_RES_IOPORT, 0)
-# define DEVPORT_PDEVIRQ(pdev)		bus_get_resource_start(pdev, SYS_RES_IRQ, 0)
-# define DEVPORT_PDEVMADDR(pdev)	bus_get_resource_start(pdev, SYS_RES_MEMORY, 0)
-# define DEVPORT_PDEVALLOC_SOFTC(pdev)	device_get_softc(pdev)
-# define DEVPORT_PDEVGET_SOFTC(pdev)	device_get_softc(pdev)
-
-#else
-
-# define DEVPORT_PDEVICE		struct pccard_devinfo *
-# define DEVPORT_PDEVUNIT(pdev)		(pdev)->pd_unit
-# define DEVPORT_PDEVFLAGS(pdev)	(pdev)->pd_flags
-# define DEVPORT_PDEVIOBASE(pdev)	(pdev)->pd_iobase
-# define DEVPORT_PDEVIRQ(pdev)		(pdev)->pd_irq
-# define DEVPORT_PDEVMADDR(pdev)	(pdev)->pd_maddr
-# ifdef DEVPORT_ALLOCSOFTCFUNC
-#  define DEVPORT_PDEVALLOC_SOFTC(pdev)	(DEVPORT_ALLOCSOFTCFUNC)((pdev)->pd_unit)
-# else
-#  define DEVPORT_PDEVALLOC_SOFTC(pdev)	DEVPORT_ALLOCSOFTCFUNC_is_not_defined_prior_than_device_port_h
-# endif
-# ifdef DEVPORT_SOFTCARRAY
-#  define DEVPORT_PDEVGET_SOFTC(pdev)	(DEVPORT_SOFTCARRAY)[(pdev)->pd_unit]
-# else
-#  define DEVPORT_PDEVGET_SOFTC(pdev)	DEVPORT_SOFTCARRAY_is_not_defined_prior_than_device_port_h
-# endif
-#endif
-
-#endif /* __DragonFly */
-
+#endif /* _SYS_DEVICE_PORT_H_ */
