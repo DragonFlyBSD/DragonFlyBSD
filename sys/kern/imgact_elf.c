@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.25 2005/02/26 20:32:36 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.26 2005/03/08 12:30:32 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -541,6 +541,17 @@ exec_elf_imgact(struct image_params *imgp)
   						     phdr[i].p_memsz,
   						     phdr[i].p_filesz, prot)) != 0)
   				goto fail;
+
+			/*
+			 * If this segment contains the program headers,
+			 * remember their virtual address for the AT_PHDR
+			 * aux entry. Static binaries don't usually include
+			 * a PT_PHDR entry.
+			 */
+			if (phdr[i].p_offset == 0 &&
+			    hdr->e_phoff + hdr->e_phnum * hdr->e_phentsize
+				<= phdr[i].p_filesz)
+				proghdr = phdr[i].p_vaddr + hdr->e_phoff;
 
 			seg_addr = trunc_page(phdr[i].p_vaddr);
 			seg_size = round_page(phdr[i].p_memsz +
