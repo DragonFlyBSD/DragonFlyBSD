@@ -35,10 +35,11 @@
  *
  * @(#)fileno.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fileno.c,v 1.6 1999/08/28 00:01:01 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fileno.c,v 1.3 2004/06/07 20:35:41 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/fileno.c,v 1.4 2004/06/08 03:36:47 hmp Exp $
  */
 
 #include <stdio.h>
+#include "libc_private.h"
 
 /*
  * A subroutine version of the macro fileno.
@@ -48,5 +49,11 @@
 int
 fileno(FILE *fp)
 {
-	return (__sfileno(fp));
+	int fd;
+
+	FLOCKFILE(fp);
+	fd = __sfileno(fp);
+	FUNLOCKFILE(fp);
+
+	return (fd);
 }
