@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/atm_addr.c,v 1.4.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/atm_addr.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libatm/atm_addr.c,v 1.3 2004/09/23 21:39:08 geekgod Exp $
  */
 
 /*
@@ -234,7 +234,7 @@ format_atm_addr(addr)
 	 * Clear the returned string
 	 */
 	UM_ZERO(str, sizeof(str));
-	strcpy(str, "-");
+	strlcpy(str, "-", sizeof(str));
 
 	/*
 	 * Print format is determined by address type

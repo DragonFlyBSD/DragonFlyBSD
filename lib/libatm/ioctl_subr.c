@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  * $FreeBSD: src/lib/libatm/ioctl_subr.c,v 1.3.2.1 2001/09/28 16:52:10 dillon Exp $
- * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.3 2004/09/23 20:20:59 geekgod Exp $
+ * $DragonFly: src/lib/libatm/ioctl_subr.c,v 1.4 2004/09/23 21:39:08 geekgod Exp $
  */
 
 /*
@@ -216,7 +216,7 @@ get_subnet_mask(intf, mask)
 	 * Set up and issue the IOCTL
 	 */
 	UM_ZERO(&req, sizeof(req));
-	strcpy(req.ifr_name, intf);
+	strlcpy(req.ifr_name, intf, sizeof(req.ifr_name));
 	rc = ioctl(s, SIOCGIFNETMASK, (caddr_t)&req);
 	(void)close(s);
 	if (rc)
@@ -270,7 +270,7 @@ get_mtu(intf)
 	 * Set up and issue the IOCTL
 	 */
 	UM_ZERO(&req, sizeof(req));
-	strcpy(req.ifr_name, intf);
+	strlcpy(req.ifr_name, intf, sizeof(req.ifr_name));
 	rc = ioctl(s, SIOCGIFMTU, (caddr_t)&req);
 	(void)close(s);
 
@@ -340,7 +340,7 @@ verify_nif_name(name)
 	air.air_buf_addr = (caddr_t)nif_info;
 	air.air_buf_len = sizeof(struct air_netif_rsp);
 	UM_ZERO(air.air_netif_intf, sizeof(air.air_netif_intf));
-	strcpy(air.air_netif_intf, name);
+	strlcpy(air.air_netif_intf, name, sizeof(air.air_netif_intf));
 
 	/*
 	 * Issue the IOCTL
