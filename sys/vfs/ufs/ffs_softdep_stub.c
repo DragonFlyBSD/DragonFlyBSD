@@ -33,7 +33,7 @@
  *
  *	from: @(#)ffs_softdep_stub.c	9.1 (McKusick) 7/10/97
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep_stub.c,v 1.7.2.1 2000/12/28 11:01:45 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.5 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep_stub.c,v 1.6 2004/07/18 19:43:48 drhodus Exp $
  */
 
 /* 
@@ -123,7 +123,7 @@ softdep_freefile(struct vnode *pvp, ino_t ino, int mode)
 
 void 
 softdep_setup_directory_add(struct buf *bp, struct inode *dp, off_t diroffset,
-			    long newinum, struct buf *newdirbp)
+			    ino_t newinum, struct buf *newdirbp)
 {
 	panic("softdep_setup_directory_add called");
 }
@@ -145,7 +145,7 @@ softdep_setup_remove(struct buf *bp, struct inode *dp, struct inode *ip,
 
 void 
 softdep_setup_directory_change(struct buf *bp, struct inode *dp,
-			       struct inode *ip, long newinum, int isrmdir)
+			       struct inode *ip, ino_t newinum, int isrmdir)
 {
 	panic("softdep_setup_directory_change called");
 }

@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.18 2004/05/19 22:53:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.19 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -154,7 +154,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	if( path == NULL) {
 		/*
 		 ***
-		 * Mounting root file system
+		 * Mounting root filesystem
 		 ***
 		 */
 	
@@ -174,7 +174,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 
 	/*
 	 ***
-	 * Mounting non-root file system or updating a file system
+	 * Mounting non-root filesystem or updating a filesystem
 	 ***
 	 */
 
@@ -498,9 +498,9 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	newfs->fs_csp = fs->fs_csp;
 	newfs->fs_maxcluster = fs->fs_maxcluster;
 	newfs->fs_contigdirs = fs->fs_contigdirs;
-	/* The file system is still read-only. */
+	/* The filesystem is still read-only. */
 	newfs->fs_ronly = 1;
-	bcopy(newfs, fs, (u_int)fs->fs_sbsize);
+	bcopy(newfs, fs, (uint)fs->fs_sbsize);
 	if (fs->fs_sbsize < SBSIZE)
 		bp->b_flags |= B_INVAL;
 	brelse(bp);
@@ -524,7 +524,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 		error = bread(devvp, fsbtodb(fs, fs->fs_csaddr + i), size, &bp);
 		if (error)
 			return (error);
-		bcopy(bp->b_data, space, (u_int)size);
+		bcopy(bp->b_data, space, (uint)size);
 		space = (char *)space + size;
 		brelse(bp);
 	}
@@ -549,8 +549,7 @@ ffs_reload(struct mount *mp, struct ucred *cred, struct thread *td)
 	return(error);
 }
 
-static 
-int
+static int
 ffs_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct scaninfo *info = data;
@@ -565,8 +564,7 @@ ffs_reload_scan1(struct mount *mp, struct vnode *vp, void *data)
 	return(0);
 }
 
-static
-int
+static int
 ffs_reload_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
 {
 	struct scaninfo *info = data;
@@ -618,7 +616,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	int error, i, blks, size, ronly;
 	lwkt_tokref vlock;
 	int32_t *lp;
-	u_int64_t maxfilesize;					/* XXX */
+	uint64_t maxfilesize;					/* XXX */
 	size_t strsize;
 
 	/*
@@ -710,7 +708,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	ump->um_update = ffs_update;
 	ump->um_valloc = ffs_valloc;
 	ump->um_vfree = ffs_vfree;
-	bcopy(bp->b_data, ump->um_fs, (u_int)fs->fs_sbsize);
+	bcopy(bp->b_data, ump->um_fs, (uint)fs->fs_sbsize);
 	if (fs->fs_sbsize < SBSIZE)
 		bp->b_flags |= B_INVAL;
 	brelse(bp);
@@ -721,7 +719,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	blks = howmany(size, fs->fs_fsize);
 	if (fs->fs_contigsumsize > 0)
 		size += fs->fs_ncg * sizeof(int32_t);
-	size += fs->fs_ncg * sizeof(u_int8_t);
+	size += fs->fs_ncg * sizeof(uint8_t);
 	space = malloc((u_long)size, M_UFSMNT, M_WAITOK);
 	fs->fs_csp = space;
 	for (i = 0; i < blks; i += fs->fs_frag) {
@@ -733,7 +731,7 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 			free(fs->fs_csp, M_UFSMNT);
 			goto out;
 		}
-		bcopy(bp->b_data, space, (u_int)size);
+		bcopy(bp->b_data, space, (uint)size);
 		space = (char *)space + size;
 		brelse(bp);
 		bp = NULL;
@@ -744,8 +742,8 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 			*lp++ = fs->fs_contigsumsize;
 		space = lp;
 	}
-	size = fs->fs_ncg * sizeof(u_int8_t);
-	fs->fs_contigdirs = (u_int8_t *)space;
+	size = fs->fs_ncg * sizeof(uint8_t);
+	fs->fs_contigdirs = (uint8_t *)space;
 	bzero(fs->fs_contigdirs, size);
 	/* Compatibility for old filesystems 	   XXX */
 	if (fs->fs_avgfilesize <= 0)		/* XXX */
@@ -790,10 +788,10 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	}
 
 	ump->um_savedmaxfilesize = fs->fs_maxfilesize;		/* XXX */
-	maxfilesize = (u_int64_t)0x40000000 * fs->fs_bsize - 1;	/* XXX */
+	maxfilesize = (uint64_t)0x40000000 * fs->fs_bsize - 1;	/* XXX */
 	/* Enforce limit caused by vm object backing (32 bits vm_pindex_t). */
-	if (maxfilesize > (u_int64_t)0x80000000u * PAGE_SIZE - 1)
-		maxfilesize = (u_int64_t)0x80000000u * PAGE_SIZE - 1;
+	if (maxfilesize > (uint64_t)0x80000000u * PAGE_SIZE - 1)
+		maxfilesize = (uint64_t)0x80000000u * PAGE_SIZE - 1;
 	if (fs->fs_maxfilesize > maxfilesize)			/* XXX */
 		fs->fs_maxfilesize = maxfilesize;		/* XXX */
 	if (ronly == 0) {
@@ -821,7 +819,7 @@ out:
 }
 
 /*
- * Sanity checks for old file systems.
+ * Sanity checks for old filesystems.
  *
  * XXX - goes away some day.
  */
@@ -835,7 +833,7 @@ ffs_oldfscompat(struct fs *fs)
 	if (fs->fs_inodefmt < FS_44INODEFMT) {			/* XXX */
 #if 0
 		int i;						/* XXX */
-		u_int64_t sizepb = fs->fs_bsize;		/* XXX */
+		uint64_t sizepb = fs->fs_bsize;		/* XXX */
 								/* XXX */
 		fs->fs_maxfilesize = fs->fs_bsize * NDADDR - 1;	/* XXX */
 		for (i = 0; i < NIADDR; i++) {			/* XXX */
@@ -938,7 +936,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 }
 
 /*
- * Get file system statistics.
+ * Get filesystem statistics.
  */
 int
 ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
@@ -1007,7 +1005,7 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 	}
 
 	/*
-	 * Force stale file system control information to be flushed.
+	 * Force stale filesystem control information to be flushed.
 	 */
 	if (waitfor != MNT_LAZY) {
 		if (ump->um_mountp->mnt_flag & MNT_SOFTDEP)
@@ -1028,8 +1026,7 @@ ffs_sync(struct mount *mp, int waitfor, struct thread *td)
 	return (scaninfo.allerror);
 }
 
-static
-int
+static int
 ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 {
 	struct inode *ip;
@@ -1049,8 +1046,7 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	return(0);
 }
 
-static
-int 
+static int 
 ffs_sync_scan2(struct mount *mp, struct vnode *vp,
 	       lwkt_tokref_t vlock, void *data)
 {
@@ -1319,7 +1315,7 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 			size = (blks - i) * fs->fs_fsize;
 		bp = getblk(mp->um_devvp, fsbtodb(fs, fs->fs_csaddr + i),
 		    size, 0, 0);
-		bcopy(space, bp->b_data, (u_int)size);
+		bcopy(space, bp->b_data, (uint)size);
 		space = (char *)space + size;
 		if (waitfor != MNT_WAIT)
 			bawrite(bp);
@@ -1336,8 +1332,8 @@ ffs_sbupdate(struct ufsmount *mp, int waitfor)
 	bp = getblk(mp->um_devvp, SBLOCK, (int)fs->fs_sbsize, 0, 0);
 	fs->fs_fmod = 0;
 	fs->fs_time = time_second;
-	bcopy((caddr_t)fs, bp->b_data, (u_int)fs->fs_sbsize);
-	/* Restore compatibility to old file systems.		   XXX */
+	bcopy((caddr_t)fs, bp->b_data, (uint)fs->fs_sbsize);
+	/* Restore compatibility to old filesystems.		   XXX */
 	dfs = (struct fs *)bp->b_data;				/* XXX */
 	if (fs->fs_postblformat == FS_42POSTBLFMT)		/* XXX */
 		dfs->fs_nrpos = -1;				/* XXX */

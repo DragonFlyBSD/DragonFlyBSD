@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_readwrite.c	8.11 (Berkeley) 5/8/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_readwrite.c,v 1.65.2.14 2003/04/04 22:21:29 tegge Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.11 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_readwrite.c,v 1.12 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #define	BLKSIZE(a, b, c)	blksize(a, b, c)
@@ -108,7 +108,7 @@ ffs_read(struct vop_read_args *ap)
 		panic("ffs_read: type %d", vp->v_type);
 #endif
 	fs = ip->I_FS;
-	if ((u_int64_t)uio->uio_offset > fs->fs_maxfilesize)
+	if ((uint64_t)uio->uio_offset > fs->fs_maxfilesize)
 		return (EFBIG);
 
 	orig_resid = uio->uio_resid;
@@ -450,7 +450,7 @@ ffs_write(struct vop_write_args *ap)
 
 	fs = ip->I_FS;
 	if (uio->uio_offset < 0 ||
-	    (u_int64_t)uio->uio_offset + uio->uio_resid > fs->fs_maxfilesize) {
+	    (uint64_t)uio->uio_offset + uio->uio_resid > fs->fs_maxfilesize) {
 		if (object)
 			vm_object_vndeallocate(object);
 		return (EFBIG);
@@ -474,7 +474,7 @@ ffs_write(struct vop_write_args *ap)
 
 	/*
 	 * NOTE! These B_ flags are actually balloc-only flags, not buffer
-	 * flags.  They are similar to the BA_ flags in -current.
+	 * flags.  They are similar to the BA_ flags in fbsd.
 	 */
 	if (seqcount > B_SEQMAX)
 		flags = B_SEQMAX << B_SEQSHIFT;

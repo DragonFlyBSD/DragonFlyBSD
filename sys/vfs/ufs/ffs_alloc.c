@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.9 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.10 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -71,7 +71,7 @@ static ufs_daddr_t ffs_clusteralloc (struct inode *, int, ufs_daddr_t,
 	    int);
 static ino_t	ffs_dirpref (struct inode *);
 static ufs_daddr_t ffs_fragextend (struct inode *, int, long, int, int);
-static void	ffs_fserr (struct fs *, u_int, char *);
+static void	ffs_fserr (struct fs *, uint, char *);
 static u_long	ffs_hashalloc
 		    (struct inode *, int, long, int, allocfcn_t *);
 static ino_t	ffs_nodealloccg (struct inode *, int, ufs_daddr_t, int);
@@ -79,7 +79,7 @@ static ufs_daddr_t ffs_mapsearch (struct fs *, struct cg *, ufs_daddr_t,
 	    int);
 
 /*
- * Allocate a block in the file system.
+ * Allocate a block in the filesystem.
  *
  * The size of the requested block is given, which must be some
  * multiple of fs_fsize and <= fs_bsize.
@@ -111,7 +111,7 @@ ffs_alloc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t bpref, int size,
 	*bnp = 0;
 	fs = ip->i_fs;
 #ifdef DIAGNOSTIC
-	if ((u_int)size > fs->fs_bsize || fragoff(fs, size) != 0) {
+	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0) {
 		printf("dev = %s, bsize = %ld, size = %d, fs = %s\n",
 		    devtoname(ip->i_dev), (long)fs->fs_bsize, size,
 		    fs->fs_fsmnt);
@@ -151,8 +151,8 @@ ffs_alloc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t bpref, int size,
 	(void) chkdq(ip, (long)-btodb(size), cred, FORCE);
 #endif
 nospace:
-	ffs_fserr(fs, cred->cr_uid, "file system full");
-	uprintf("\n%s: write failed, file system is full\n", fs->fs_fsmnt);
+	ffs_fserr(fs, cred->cr_uid, "filesystem full");
+	uprintf("\n%s: write failed, filesystem is full\n", fs->fs_fsmnt);
 	return (ENOSPC);
 }
 
@@ -176,8 +176,8 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 	*bpp = 0;
 	fs = ip->i_fs;
 #ifdef DIAGNOSTIC
-	if ((u_int)osize > fs->fs_bsize || fragoff(fs, osize) != 0 ||
-	    (u_int)nsize > fs->fs_bsize || fragoff(fs, nsize) != 0) {
+	if ((uint)osize > fs->fs_bsize || fragoff(fs, osize) != 0 ||
+	    (uint)nsize > fs->fs_bsize || fragoff(fs, nsize) != 0) {
 		printf(
 		"dev = %s, bsize = %ld, osize = %d, nsize = %d, fs = %s\n",
 		    devtoname(ip->i_dev), (long)fs->fs_bsize, osize,
@@ -230,7 +230,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		allocbuf(bp, nsize);
 		bp->b_flags |= B_DONE;
-		bzero((char *)bp->b_data + osize, (u_int)nsize - osize);
+		bzero((char *)bp->b_data + osize, (uint)nsize - osize);
 		*bpp = bp;
 		return (0);
 	}
@@ -295,7 +295,7 @@ ffs_realloccg(struct inode *ip, ufs_daddr_t lbprev, ufs_daddr_t bpref,
 		ip->i_flag |= IN_CHANGE | IN_UPDATE;
 		allocbuf(bp, nsize);
 		bp->b_flags |= B_DONE;
-		bzero((char *)bp->b_data + osize, (u_int)nsize - osize);
+		bzero((char *)bp->b_data + osize, (uint)nsize - osize);
 		*bpp = bp;
 		return (0);
 	}
@@ -310,8 +310,8 @@ nospace:
 	/*
 	 * no space available
 	 */
-	ffs_fserr(fs, cred->cr_uid, "file system full");
-	uprintf("\n%s: write failed, file system is full\n", fs->fs_fsmnt);
+	ffs_fserr(fs, cred->cr_uid, "filesystem full");
+	uprintf("\n%s: write failed, filesystem is full\n", fs->fs_fsmnt);
 	return (ENOSPC);
 }
 
@@ -544,7 +544,7 @@ fail:
 }
 
 /*
- * Allocate an inode in the file system.
+ * Allocate an inode in the filesystem.
  *
  * If allocating a directory, use ffs_dirpref to select the inode.
  * If allocating in a directory, the following hierarchy is followed:
@@ -885,7 +885,7 @@ ffs_fragextend(struct inode *ip, int cg, long bprev, int osize, int nsize)
 	long bno;
 	int frags, bbase;
 	int i, error;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nffree < numfrags(fs, nsize - osize))
@@ -956,7 +956,7 @@ ffs_alloccg(struct inode *ip, int cg, ufs_daddr_t bpref, int size)
 	int i;
 	ufs_daddr_t bno, blkno;
 	int allocsiz, error, frags;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
 	if (fs->fs_cs(fs, cg).cs_nbfree == 0 && size == fs->fs_bsize)
@@ -1053,7 +1053,7 @@ ffs_alloccgblk(struct inode *ip, struct buf *bp, ufs_daddr_t bpref)
 	int cylno, pos, delta;
 	short *cylbp;
 	int i;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
 	cgp = (struct cg *)bp->b_data;
@@ -1170,7 +1170,7 @@ ffs_clusteralloc(struct inode *ip, int cg, ufs_daddr_t bpref, int len)
 	int i, got, run, bno, bit, map;
 	u_char *mapp;
 	int32_t *lp;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
 	if (fs->fs_maxcluster[cg] < len)
@@ -1277,7 +1277,7 @@ ffs_nodealloccg(struct inode *ip, int cg, ufs_daddr_t ipref, int mode)
 	struct fs *fs;
 	struct cg *cgp;
 	struct buf *bp;
-	u_int8_t *inosused;
+	uint8_t *inosused;
 	int error, start, len, loc, map, i;
 
 	fs = ip->i_fs;
@@ -1360,11 +1360,11 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 	struct buf *bp;
 	ufs_daddr_t blkno;
 	int i, error, cg, blk, frags, bbase;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
 	VOP_FREEBLKS(ip->i_devvp, fsbtodb(fs, bno), size);
-	if ((u_int)size > fs->fs_bsize || fragoff(fs, size) != 0 ||
+	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0 ||
 	    fragnum(fs, bno) + numfrags(fs, size) > fs->fs_frag) {
 		printf("dev=%s, bno = %ld, bsize = %ld, size = %ld, fs = %s\n",
 		    devtoname(ip->i_dev), (long)bno, (long)fs->fs_bsize, size,
@@ -1372,7 +1372,7 @@ ffs_blkfree(struct inode *ip, ufs_daddr_t bno, long size)
 		panic("ffs_blkfree: bad size");
 	}
 	cg = dtog(fs, bno);
-	if ((u_int)bno >= fs->fs_size) {
+	if ((uint)bno >= fs->fs_size) {
 		printf("bad block %ld, ino %lu\n",
 		    (long)bno, (u_long)ip->i_number);
 		ffs_fserr(fs, ip->i_uid, "bad block");
@@ -1469,15 +1469,15 @@ ffs_checkblk(struct inode *ip, ufs_daddr_t bno, long size)
 	struct cg *cgp;
 	struct buf *bp;
 	int i, error, frags, free;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	fs = ip->i_fs;
-	if ((u_int)size > fs->fs_bsize || fragoff(fs, size) != 0) {
+	if ((uint)size > fs->fs_bsize || fragoff(fs, size) != 0) {
 		printf("bsize = %ld, size = %ld, fs = %s\n",
 		    (long)fs->fs_bsize, size, fs->fs_fsmnt);
 		panic("ffs_checkblk: bad size");
 	}
-	if ((u_int)bno >= fs->fs_size)
+	if ((uint)bno >= fs->fs_size)
 		panic("ffs_checkblk: bad block %d", bno);
 	error = bread(ip->i_devvp, fsbtodb(fs, cgtod(fs, dtog(fs, bno))),
 		(int)fs->fs_cgsize, &bp);
@@ -1529,11 +1529,11 @@ ffs_freefile(struct vnode *pvp, ino_t ino, int mode)
 	struct inode *pip;
 	struct buf *bp;
 	int error, cg;
-	u_int8_t *inosused;
+	uint8_t *inosused;
 
 	pip = VTOI(pvp);
 	fs = pip->i_fs;
-	if ((u_int)ino >= fs->fs_ipg * fs->fs_ncg)
+	if ((uint)ino >= fs->fs_ipg * fs->fs_ncg)
 		panic("ffs_vfree: range: dev = (%d,%d), ino = %d, fs = %s",
 		    major(pip->i_dev), minor(pip->i_dev), ino, fs->fs_fsmnt);
 	cg = ino_to_cg(fs, ino);
@@ -1586,7 +1586,7 @@ ffs_mapsearch(struct fs *fs, struct cg *cgp, ufs_daddr_t bpref, int allocsiz)
 	ufs_daddr_t bno;
 	int start, len, loc, i;
 	int blk, field, subfield, pos;
-	u_int8_t *blksfree;
+	uint8_t *blksfree;
 
 	/*
 	 * find the fragment by searching through the free block
@@ -1598,13 +1598,13 @@ ffs_mapsearch(struct fs *fs, struct cg *cgp, ufs_daddr_t bpref, int allocsiz)
 		start = cgp->cg_frotor / NBBY;
 	blksfree = cg_blksfree(cgp);
 	len = howmany(fs->fs_fpg, NBBY) - start;
-	loc = scanc((u_int)len, (u_char *)&blksfree[start],
+	loc = scanc((uint)len, (u_char *)&blksfree[start],
 		(u_char *)fragtbl[fs->fs_frag],
 		(u_char)(1 << (allocsiz - 1 + (fs->fs_frag % NBBY))));
 	if (loc == 0) {
 		len = start + 1;
 		start = 0;
-		loc = scanc((u_int)len, (u_char *)&blksfree[0],
+		loc = scanc((uint)len, (u_char *)&blksfree[0],
 			(u_char *)fragtbl[fs->fs_frag],
 			(u_char)(1 << (allocsiz - 1 + (fs->fs_frag % NBBY))));
 		if (loc == 0) {
@@ -1726,13 +1726,13 @@ ffs_clusteracct(struct fs *fs, struct cg *cgp, ufs_daddr_t blkno, int cnt)
 }
 
 /*
- * Fserr prints the name of a file system with an error diagnostic.
+ * Fserr prints the name of a filesystem with an error diagnostic.
  *
  * The form of the error message is:
  *	fs: error message
  */
 static void
-ffs_fserr(struct fs *fs, u_int uid, char *cp)
+ffs_fserr(struct fs *fs, uint uid, char *cp)
 {
 	struct thread *td = curthread;
 	struct proc *p;

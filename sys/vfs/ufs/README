@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/ufs/ffs/README,v 1.4 1999/12/03 00:34:26 billf Exp $
-# $DragonFly: src/sys/vfs/ufs/README,v 1.3 2003/08/07 21:17:44 dillon Exp $
+# $DragonFly: src/sys/vfs/ufs/README,v 1.4 2004/07/18 19:43:48 drhodus Exp $
 
 Introduction
 
@@ -319,5 +319,3 @@ out of memory panic's, then you have max_softdeps set too high.
 The max_limit_hit and rush_requests show be reset to zero
 before each run. The minimum legal value for tickdelay is 2
 (if you set it below that, the code will use 2).
-
-

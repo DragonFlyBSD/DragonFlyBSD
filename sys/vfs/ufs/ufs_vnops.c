@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.13 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.14 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -306,9 +306,9 @@ ufs_access(struct vop_access_args *ap)
 #endif
 
 	/*
-	 * Disallow write attempts on read-only file systems;
+	 * Disallow write attempts on read-only filesystems;
 	 * unless the file is a socket, fifo, or a block or
-	 * character device resident on the file system.
+	 * character device resident on the filesystem.
 	 */
 	if (mode & VWRITE) {
 		switch (vp->v_type) {
@@ -471,9 +471,9 @@ ufs_setattr(struct vop_setattr_args *ap)
 	}
 	if (vap->va_size != VNOVAL) {
 		/*
-		 * Disallow write attempts on read-only file systems;
+		 * Disallow write attempts on read-only filesystems;
 		 * unless the file is a socket, fifo, or a block or
-		 * character device resident on the file system.
+		 * character device resident on the filesystem.
 		 */
 		switch (vp->v_type) {
 		case VDIR:
@@ -855,7 +855,7 @@ ufs_rename(struct vop_rename_args *ap)
 	if ((tcnp->cn_flags & CNP_HASBUF) == 0 ||
 	    (fcnp->cn_flags & CNP_HASBUF) == 0)
 		panic("ufs_rename: no name");
-#endif
+#endif /* DIAGNOSTIC */
 	/*
 	 * Check for cross-device rename.
 	 */
@@ -1647,7 +1647,7 @@ ufs_readlink(struct vop_readlink_args *ap)
 
 	isize = ip->i_size;
 	if ((isize < vp->v_mount->mnt_maxsymlinklen) ||
-	    (ip->i_din.di_blocks == 0)) {	/* XXX - for old fastlink support */
+	    (ip->i_din.di_blocks == 0)) {   /* XXX - for old fastlink support */
 		uiomove((char *)ip->i_shortlink, isize, ap->a_uio);
 		return (0);
 	}

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +32,7 @@
  *
  *	@(#)ufsmount.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ufs/ufsmount.h,v 1.17 1999/12/29 04:55:06 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.4 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufsmount.h,v 1.5 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_UFSMOUNT_H_
@@ -52,8 +52,8 @@ struct ufs_args {
 struct mfs_args {
 	char	*fspec;			/* name to export for statfs */
 	struct	export_args export;	/* if exported MFSes are supported */
-	caddr_t	base;			/* base of file system in memory */
-	u_long	size;			/* size of file system */
+	caddr_t	base;			/* base of filesystem in memory */
+	u_long	size;			/* size of filesystem */
 };
 
 #ifdef _KERNEL
@@ -81,10 +81,9 @@ struct ufsmount {
 		struct	fs *fs;			/* FFS */
 		struct	ext2_sb_info *e2fs;	/* EXT2FS */
 	} ufsmount_u;
-#define	um_fs	ufsmount_u.fs
-#define	um_e2fs	ufsmount_u.e2fs
-#define um_e2fsb ufsmount_u.e2fs->s_es
-
+#	define	um_fs	ufsmount_u.fs
+#	define	um_e2fs	ufsmount_u.e2fs
+#	define	um_e2fsb ufsmount_u.e2fs->s_es
 	struct	vnode *um_quotas[MAXQUOTAS];	/* pointer to quota files */
 	struct	ucred *um_cred[MAXQUOTAS];	/* quota file access cred */
 	u_long	um_nindir;			/* indirect ptrs per block */
@@ -98,7 +97,8 @@ struct ufsmount {
 	struct malloc_type *um_malloctype;	/* The inodes malloctype */
 	int	um_i_effnlink_valid;		/* i_effnlink valid? */
 	int	(*um_blkatoff) (struct vnode *, off_t, char **, struct buf **);
-	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *, struct thread *);
+	int	(*um_truncate) (struct vnode *, off_t, int, struct ucred *,
+				struct thread *);
 	int	(*um_update) (struct vnode *, int);
 	int	(*um_valloc) (struct vnode *, int, struct ucred *, struct vnode **);
 	int	(*um_vfree) (struct vnode *, ino_t, int);
@@ -120,7 +120,7 @@ struct ufsmount {
 #define VFSTOUFS(mp)	((struct ufsmount *)((mp)->mnt_data))
 
 /*
- * Macros to access file system parameters in the ufsmount structure.
+ * Macros to access filesystem parameters in the ufsmount structure.
  * Used by ufs_bmap.
  */
 #define MNINDIR(ump)			((ump)->um_nindir)
@@ -128,4 +128,4 @@ struct ufsmount {
 #define	is_sequential(ump, a, b)	((b) == (a) + ump->um_seqinc)
 #endif /* _KERNEL */
 
-#endif
+#endif /* !_UFS_UFS_UFSMOUNT_H_ */

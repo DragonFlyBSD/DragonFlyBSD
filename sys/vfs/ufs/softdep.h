@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright 1998, 2000 Marshall Kirk McKusick. All Rights Reserved.
  *
  * The soft updates code is derived from the appendix of a University
@@ -37,7 +37,7 @@
  *
  *	@(#)softdep.h	9.7 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/softdep.h,v 1.7.2.1 2000/06/22 19:27:42 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/softdep.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include <sys/queue.h>

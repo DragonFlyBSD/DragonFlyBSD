@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.10 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.11 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -156,8 +156,8 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 #ifdef DIAGNOSTIC
 		if (length != 0)
 			panic("ffs_truncate: partial truncate of symlink");
-#endif
-		bzero((char *)&oip->i_shortlink, (u_int)oip->i_size);
+#endif /* DIAGNOSTIC */
+		bzero((char *)&oip->i_shortlink, (uint)oip->i_size);
 		oip->i_size = 0;
 		oip->i_flag |= IN_CHANGE | IN_UPDATE;
 		return (UFS_UPDATE(ovp, 1));
@@ -259,7 +259,7 @@ ffs_truncate(struct vnode *vp, off_t length, int flags, struct ucred *cred,
 		size = blksize(fs, oip, lbn);
 		if (ovp->v_type != VDIR)
 			bzero((char *)bp->b_data + offset,
-			    (u_int)(size - offset));
+			    (uint)(size - offset));
 		/* Kirk's code has reallocbuf(bp, size, 1) here */
 		allocbuf(bp, size);
 		if (bp->b_bufsize == fs->fs_bsize)
@@ -472,9 +472,9 @@ ffs_indirtrunc(struct inode *ip, ufs_daddr_t lbn, ufs_daddr_t dbn,
 	bap = (ufs_daddr_t *)bp->b_data;
 	if (lastbn != -1) {
 		MALLOC(copy, ufs_daddr_t *, fs->fs_bsize, M_TEMP, M_WAITOK);
-		bcopy((caddr_t)bap, (caddr_t)copy, (u_int)fs->fs_bsize);
+		bcopy((caddr_t)bap, (caddr_t)copy, (uint)fs->fs_bsize);
 		bzero((caddr_t)&bap[last + 1],
-		    (u_int)(NINDIR(fs) - (last + 1)) * sizeof (ufs_daddr_t));
+		    (uint)(NINDIR(fs) - (last + 1)) * sizeof (ufs_daddr_t));
 		if (DOINGASYNC(vp)) {
 			bawrite(bp);
 		} else {

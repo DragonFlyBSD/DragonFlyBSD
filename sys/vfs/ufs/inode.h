@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -37,7 +37,7 @@
  *
  *	@(#)inode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/inode.h,v 1.28.2.2 2001/09/29 12:52:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.6 2004/05/03 16:06:27 joerg Exp $
+ * $DragonFly: src/sys/vfs/ufs/inode.h,v 1.7 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_INODE_H_
@@ -80,7 +80,7 @@ struct inode {
 	LIST_ENTRY(inode) i_hash;/* Hash chain. */
 	struct	vnode  *i_vnode;/* Vnode associated with this inode. */
 	struct	vnode  *i_devvp;/* Vnode for block I/O. */
-	u_int32_t i_flag;	/* flags, see below */
+	uint32_t i_flag;	/* flags, see below */
 	dev_t	  i_dev;	/* Device associated with the inode. */
 	ino_t	  i_number;	/* The identity of the inode. */
 	int	  i_effnlink;	/* i_nlink when I/O completes */
@@ -102,8 +102,8 @@ struct inode {
 	doff_t	  i_diroff;	/* Offset in dir, where we found last entry. */
 	doff_t	  i_offset;	/* Offset of free space in directory. */
 	ino_t	  i_ino;	/* Inode number of found directory. */
-	u_int32_t i_reclen;	/* Size of found directory entry. */
-	u_int32_t i_spare[3];	/* XXX actually non-spare (for ext2fs). */
+	uint32_t i_reclen;	/* Size of found directory entry. */
+	uint32_t i_spare[3];	/* XXX actually non-spare (for ext2fs). */
 
 	struct dirhash *i_dirhash; /* Hashing for large directories */
 	/*
@@ -166,8 +166,8 @@ struct indir {
 
 /* This overlays the fid structure (see mount.h). */
 struct ufid {
-	u_int16_t ufid_len;	/* Length of structure. */
-	u_int16_t ufid_pad;	/* Force 32-bit alignment. */
+	uint16_t ufid_len;	/* Length of structure. */
+	uint16_t ufid_pad;	/* Force 32-bit alignment. */
 	ino_t	  ufid_ino;	/* File number (ino). */
 	int32_t	  ufid_gen;	/* Generation number. */
 };

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.12 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.13 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include "opt_ufs.h"
@@ -79,7 +79,7 @@ SYSCTL_INT(_debug, OID_AUTO, dircheck, CTLFLAG_RW, &dirchk, 0, "");
 /*
  * Convert a component of a pathname into a pointer to a locked inode.
  * This is a very central and rather complicated routine.
- * If the file system is not maintained in a strict tree hierarchy,
+ * If the filesystem is not maintained in a strict tree hierarchy,
  * this can result in a deadlock situation (see comments in code below).
  *
  * The cnp->cn_nameiop argument is LOOKUP, CREATE, RENAME, or DELETE depending
@@ -584,7 +584,7 @@ found:
 	 * infrequently since we cannot avoid this race condition without
 	 * implementing a sophisticated deadlock detection algorithm.
 	 * Note also that this simple deadlock detection scheme will not
-	 * work if the file system has any hard links other than ".."
+	 * work if the filesystem has any hard links other than ".."
 	 * that point backwards in the directory structure.
 	 */
 	pdp = vdp;
@@ -729,7 +729,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	int newentrysize;
 	struct inode *dp;
 	struct buf *bp;
-	u_int dsize;
+	uint dsize;
 	struct direct *ep, *nep;
 	int error, ret, blkoff, loc, spacefree, flags;
 	char *dirbuf;
@@ -902,7 +902,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 	    dirp->d_reclen == spacefree))
 		ufsdirhash_add(dp, dirp, dp->i_offset + ((char *)ep - dirbuf));
 #endif
-	bcopy((caddr_t)dirp, (caddr_t)ep, (u_int)newentrysize);
+	bcopy((caddr_t)dirp, (caddr_t)ep, (uint)newentrysize);
 #ifdef UFS_DIRHASH
 	if (dp->i_dirhash != NULL)
 		ufsdirhash_checkblock(dp, dirbuf -
@@ -937,7 +937,7 @@ ufs_direnter(struct vnode *dvp, struct vnode *tvp, struct direct *dirp,
 		if (dp->i_dirhash != NULL)
 			ufsdirhash_dirtrunc(dp, dp->i_endoff);
 #endif
-		(void) UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred, td);
+		(void)UFS_TRUNCATE(dvp, (off_t)dp->i_endoff, IO_SYNC, cred, td);
 		if (tvp != NULL)
 			vn_lock(tvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	}

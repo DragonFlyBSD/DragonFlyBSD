@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.7 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.8 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -51,7 +51,7 @@
 #include "ffs_extern.h"
 
 /*
- * Balloc defines the structure of file system storage
+ * Balloc defines the structure of filesystem storage
  * by allocating the physical blocks on a device given
  * the inode and the logical block number in a file.
  *

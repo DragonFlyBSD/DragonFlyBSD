@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.13 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.14 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -369,7 +369,7 @@ struct scaninfo {
 };
 
 /*
- * Q_QUOTAON - set up a quota file for a particular file system.
+ * Q_QUOTAON - set up a quota file for a particular filesystem.
  */
 static int quotaon_scan(struct mount *mp, struct vnode *vp,
 		lwkt_tokref_t vlock, void *data);
@@ -439,8 +439,7 @@ quotaon(struct thread *td, struct mount *mp, int type, caddr_t fname)
 	return (error);
 }
 
-static
-int
+static int
 quotaon_scan(struct mount *mp, struct vnode *vp,
 	     lwkt_tokref_t vlock, void *data)
 {
@@ -510,8 +509,7 @@ quotaoff(struct thread *td, struct mount *mp, int type)
 	return (error);
 }
 
-static
-int
+static int
 quotaoff_scan(struct mount *mp, struct vnode *vp,
 	      lwkt_tokref_t vlock, void *data)
 {
@@ -689,8 +687,7 @@ qsync(struct mount *mp)
 	return (0);
 }
 
-static
-int
+static int
 qsync_scan(struct mount *mp, struct vnode *vp,
 	   lwkt_tokref_t vlock, void *data)
 {

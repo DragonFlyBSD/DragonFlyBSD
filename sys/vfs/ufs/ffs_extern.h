@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_extern.h	8.6 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_extern.h,v 1.30 2000/01/09 22:40:02 mckusick Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.5 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_extern.h,v 1.6 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_FFS_EXTERN_H
@@ -70,37 +70,37 @@ struct vop_bmap_args;
 struct vop_fsync_args;
 struct vop_reallocblks_args;
 
-int	ffs_alloc (struct inode *,
+int	ffs_alloc(struct inode *,
 	    ufs_daddr_t, ufs_daddr_t, int, struct ucred *, ufs_daddr_t *);
-int	ffs_balloc (struct vop_balloc_args *);
-int	ffs_blkatoff (struct vnode *, off_t, char **, struct buf **);
-void	ffs_blkfree (struct inode *, ufs_daddr_t, long);
-ufs_daddr_t ffs_blkpref (struct inode *, ufs_daddr_t, int, ufs_daddr_t *);
-int	ffs_bmap (struct vop_bmap_args *);
-void	ffs_clrblock (struct fs *, u_char *, ufs_daddr_t);
-int	ffs_fhtovp (struct mount *, struct fid *, struct vnode **);
-int	ffs_flushfiles (struct mount *, int, struct thread *);
-void	ffs_fragacct (struct fs *, int, int32_t [], int);
-int	ffs_freefile ( struct vnode *, ino_t, int );
-int	ffs_isblock (struct fs *, u_char *, ufs_daddr_t);
-int	ffs_isfreeblock (struct fs *, unsigned char *, ufs_daddr_t);
-int	ffs_mountfs (struct vnode *, struct mount *, struct thread *,
+int	ffs_balloc(struct vop_balloc_args *);
+int	ffs_blkatoff(struct vnode *, off_t, char **, struct buf **);
+void	ffs_blkfree(struct inode *, ufs_daddr_t, long);
+ufs_daddr_t ffs_blkpref(struct inode *, ufs_daddr_t, int, ufs_daddr_t *);
+int	ffs_bmap(struct vop_bmap_args *);
+void	ffs_clrblock(struct fs *, u_char *, ufs_daddr_t);
+int	ffs_fhtovp(struct mount *, struct fid *, struct vnode **);
+int	ffs_flushfiles(struct mount *, int, struct thread *);
+void	ffs_fragacct(struct fs *, int, int32_t [], int);
+int	ffs_freefile( struct vnode *, ino_t, int );
+int	ffs_isblock(struct fs *, u_char *, ufs_daddr_t);
+int	ffs_isfreeblock(struct fs *, unsigned char *, ufs_daddr_t);
+int	ffs_mountfs(struct vnode *, struct mount *, struct thread *,
 	     struct malloc_type *);
-int	ffs_mountroot (void);
-int	ffs_reallocblks (struct vop_reallocblks_args *);
-int	ffs_realloccg (struct inode *,
+int	ffs_mountroot(void);
+int	ffs_reallocblks(struct vop_reallocblks_args *);
+int	ffs_realloccg(struct inode *,
 	    ufs_daddr_t, ufs_daddr_t, int, int, struct ucred *, struct buf **);
-void	ffs_setblock (struct fs *, u_char *, ufs_daddr_t);
-int	ffs_statfs (struct mount *, struct statfs *, struct thread *);
-int	ffs_sync (struct mount *, int, struct thread *);
-int	ffs_truncate (struct vnode *, off_t, int, struct ucred *, struct thread *);
-int	ffs_unmount (struct mount *, int, struct thread *);
-int	ffs_update (struct vnode *, int);
-int	ffs_valloc (struct vnode *, int, struct ucred *, struct vnode **);
+void	ffs_setblock(struct fs *, u_char *, ufs_daddr_t);
+int	ffs_statfs(struct mount *, struct statfs *, struct thread *);
+int	ffs_sync(struct mount *, int, struct thread *);
+int	ffs_truncate(struct vnode *, off_t, int, struct ucred *, struct thread *);
+int	ffs_unmount(struct mount *, int, struct thread *);
+int	ffs_update(struct vnode *, int);
+int	ffs_valloc(struct vnode *, int, struct ucred *, struct vnode **);
 
-int	ffs_vfree (struct vnode *, ino_t, int);
-int	ffs_vget (struct mount *, ino_t, struct vnode **);
-int	ffs_vptofh (struct vnode *, struct fid *);
+int	ffs_vfree(struct vnode *, ino_t, int);
+int	ffs_vget(struct mount *, ino_t, struct vnode **);
+int	ffs_vptofh(struct vnode *, struct fid *);
 
 extern vop_t **ffs_vnodeop_p;
 extern vop_t **ffs_specop_p;
@@ -109,22 +109,22 @@ extern vop_t **ffs_fifoop_p;
 /*
  * Soft update function prototypes.
  */
-void	softdep_initialize (void);
-int	softdep_mount (struct vnode *, struct mount *, struct fs *);
-int	softdep_flushfiles (struct mount *, int, struct thread *);
-void	softdep_update_inodeblock (struct inode *, struct buf *, int);
-void	softdep_load_inodeblock (struct inode *);
-void	softdep_freefile (struct vnode *, ino_t, int);
-void	softdep_setup_freeblocks (struct inode *, off_t);
-void	softdep_setup_inomapdep (struct buf *, struct inode *, ino_t);
-void	softdep_setup_blkmapdep (struct buf *, struct fs *, ufs_daddr_t);
-void	softdep_setup_allocdirect (struct inode *, ufs_lbn_t, ufs_daddr_t,
+void	softdep_initialize(void);
+int	softdep_mount(struct vnode *, struct mount *, struct fs *);
+int	softdep_flushfiles(struct mount *, int, struct thread *);
+void	softdep_update_inodeblock(struct inode *, struct buf *, int);
+void	softdep_load_inodeblock(struct inode *);
+void	softdep_freefile(struct vnode *, ino_t, int);
+void	softdep_setup_freeblocks(struct inode *, off_t);
+void	softdep_setup_inomapdep(struct buf *, struct inode *, ino_t);
+void	softdep_setup_blkmapdep(struct buf *, struct fs *, ufs_daddr_t);
+void	softdep_setup_allocdirect(struct inode *, ufs_lbn_t, ufs_daddr_t,
 	    ufs_daddr_t, long, long, struct buf *);
-void	softdep_setup_allocindir_meta (struct buf *, struct inode *,
+void	softdep_setup_allocindir_meta(struct buf *, struct inode *,
 	    struct buf *, int, ufs_daddr_t);
-void	softdep_setup_allocindir_page (struct inode *, ufs_lbn_t,
+void	softdep_setup_allocindir_page(struct inode *, ufs_lbn_t,
 	    struct buf *, int, ufs_daddr_t, ufs_daddr_t, struct buf *);
-void	softdep_fsync_mountdev (struct vnode *);
-int	softdep_sync_metadata (struct vop_fsync_args *);
+void	softdep_fsync_mountdev(struct vnode *);
+int	softdep_sync_metadata(struct vop_fsync_args *);
 
 #endif /* !_UFS_FFS_EXTERN_H */

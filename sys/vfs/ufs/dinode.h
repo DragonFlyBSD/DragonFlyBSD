@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  * (c) UNIX System Laboratories, Inc.
@@ -37,14 +37,14 @@
  *
  *	@(#)dinode.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/ufs/ufs/dinode.h,v 1.7 1999/08/28 00:52:27 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/dinode.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_DINODE_H_
 #define _UFS_UFS_DINODE_H_
 
 /*
- * The root inode is the root of the file system.  Inode 0 can't be used for
+ * The root inode is the root of the filesystem.  Inode 0 can't be used for
  * normal purposes and historically bad blocks were linked to inode 1, thus
  * the root inode is 2.  (Inode 1 is no longer used for this purpose, however
  * numerous dump tapes make this assumption, so we are stuck with it).
@@ -71,13 +71,13 @@
 #define	NIADDR	3			/* Indirect addresses in inode. */
 
 struct dinode {
-	u_int16_t	di_mode;	/*   0: IFMT, permissions; see below. */
+	uint16_t	di_mode;	/*   0: IFMT, permissions; see below. */
 	int16_t		di_nlink;	/*   2: File link count. */
 	union {
-		u_int16_t oldids[2];	/*   4: Ffs: old user and group ids. */
+		uint16_t oldids[2];	/*   4: Ffs: old user and group ids. */
 		int32_t	  inumber;	/*   4: Lfs: inode number. */
 	} di_u;
-	u_int64_t	di_size;	/*   8: File byte count. */
+	uint64_t	di_size;	/*   8: File byte count. */
 	int32_t		di_atime;	/*  16: Last access time. */
 	int32_t		di_atimensec;	/*  20: Last access time. */
 	int32_t		di_mtime;	/*  24: Last modified time. */
@@ -86,11 +86,11 @@ struct dinode {
 	int32_t		di_ctimensec;	/*  36: Last inode change time. */
 	ufs_daddr_t	di_db[NDADDR];	/*  40: Direct disk blocks. */
 	ufs_daddr_t	di_ib[NIADDR];	/*  88: Indirect disk blocks. */
-	u_int32_t	di_flags;	/* 100: Status flags (chflags). */
+	uint32_t	di_flags;	/* 100: Status flags (chflags). */
 	int32_t		di_blocks;	/* 104: Blocks actually held. */
 	int32_t		di_gen;		/* 108: Generation number. */
-	u_int32_t	di_uid;		/* 112: File owner. */
-	u_int32_t	di_gid;		/* 116: File group. */
+	uint32_t	di_uid;		/* 112: File owner. */
+	uint32_t	di_gid;		/* 116: File group. */
 	int32_t		di_spare[2];	/* 120: Reserved; currently unused */
 };
 
@@ -127,4 +127,4 @@ struct dinode {
 #define	IFSOCK		0140000		/* UNIX domain socket. */
 #define	IFWHT		0160000		/* Whiteout. */
 
-#endif
+#endif /* !_UFS_UFS_DINODE_H_ */

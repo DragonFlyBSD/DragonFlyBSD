@@ -37,7 +37,7 @@
  *
  *	from: @(#)ffs_softdep.c	9.59 (McKusick) 6/21/00
  * $FreeBSD: src/sys/ufs/ffs/ffs_softdep.c,v 1.57.2.11 2002/02/05 18:46:53 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.15 2004/05/19 22:53:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_softdep.c,v 1.16 2004/07/18 19:43:48 drhodus Exp $
  */
 
 /*
@@ -142,66 +142,66 @@ static struct malloc_type *memtype[] = {
 /*
  * Internal function prototypes.
  */
-static	void softdep_error (char *, int);
-static	void drain_output (struct vnode *, int);
-static	int getdirtybuf (struct buf **, int);
-static	void clear_remove (struct thread *);
-static	void clear_inodedeps (struct thread *);
-static	int flush_pagedep_deps (struct vnode *, struct mount *,
+static	void softdep_error(char *, int);
+static	void drain_output(struct vnode *, int);
+static	int getdirtybuf(struct buf **, int);
+static	void clear_remove(struct thread *);
+static	void clear_inodedeps(struct thread *);
+static	int flush_pagedep_deps(struct vnode *, struct mount *,
 	    struct diraddhd *);
-static	int flush_inodedep_deps (struct fs *, ino_t);
-static	int handle_written_filepage (struct pagedep *, struct buf *);
-static  void diradd_inode_written (struct diradd *, struct inodedep *);
-static	int handle_written_inodeblock (struct inodedep *, struct buf *);
-static	void handle_allocdirect_partdone (struct allocdirect *);
-static	void handle_allocindir_partdone (struct allocindir *);
-static	void initiate_write_filepage (struct pagedep *, struct buf *);
-static	void handle_written_mkdir (struct mkdir *, int);
-static	void initiate_write_inodeblock (struct inodedep *, struct buf *);
-static	void handle_workitem_freefile (struct freefile *);
-static	void handle_workitem_remove (struct dirrem *);
-static	struct dirrem *newdirrem (struct buf *, struct inode *,
+static	int flush_inodedep_deps(struct fs *, ino_t);
+static	int handle_written_filepage(struct pagedep *, struct buf *);
+static  void diradd_inode_written(struct diradd *, struct inodedep *);
+static	int handle_written_inodeblock(struct inodedep *, struct buf *);
+static	void handle_allocdirect_partdone(struct allocdirect *);
+static	void handle_allocindir_partdone(struct allocindir *);
+static	void initiate_write_filepage(struct pagedep *, struct buf *);
+static	void handle_written_mkdir(struct mkdir *, int);
+static	void initiate_write_inodeblock(struct inodedep *, struct buf *);
+static	void handle_workitem_freefile(struct freefile *);
+static	void handle_workitem_remove(struct dirrem *);
+static	struct dirrem *newdirrem(struct buf *, struct inode *,
 	    struct inode *, int, struct dirrem **);
-static	void free_diradd (struct diradd *);
-static	void free_allocindir (struct allocindir *, struct inodedep *);
+static	void free_diradd(struct diradd *);
+static	void free_allocindir(struct allocindir *, struct inodedep *);
 static	int indir_trunc (struct inode *, ufs_daddr_t, int, ufs_lbn_t,
 	    long *);
-static	void deallocate_dependencies (struct buf *, struct inodedep *);
-static	void free_allocdirect (struct allocdirectlst *,
+static	void deallocate_dependencies(struct buf *, struct inodedep *);
+static	void free_allocdirect(struct allocdirectlst *,
 	    struct allocdirect *, int);
-static	int check_inode_unwritten (struct inodedep *);
-static	int free_inodedep (struct inodedep *);
-static	void handle_workitem_freeblocks (struct freeblks *);
-static	void merge_inode_lists (struct inodedep *);
-static	void setup_allocindir_phase2 (struct buf *, struct inode *,
+static	int check_inode_unwritten(struct inodedep *);
+static	int free_inodedep(struct inodedep *);
+static	void handle_workitem_freeblocks(struct freeblks *);
+static	void merge_inode_lists(struct inodedep *);
+static	void setup_allocindir_phase2(struct buf *, struct inode *,
 	    struct allocindir *);
-static	struct allocindir *newallocindir (struct inode *, int, ufs_daddr_t,
+static	struct allocindir *newallocindir(struct inode *, int, ufs_daddr_t,
 	    ufs_daddr_t);
-static	void handle_workitem_freefrag (struct freefrag *);
-static	struct freefrag *newfreefrag (struct inode *, ufs_daddr_t, long);
-static	void allocdirect_merge (struct allocdirectlst *,
+static	void handle_workitem_freefrag(struct freefrag *);
+static	struct freefrag *newfreefrag(struct inode *, ufs_daddr_t, long);
+static	void allocdirect_merge(struct allocdirectlst *,
 	    struct allocdirect *, struct allocdirect *);
-static	struct bmsafemap *bmsafemap_lookup (struct buf *);
-static	int newblk_lookup (struct fs *, ufs_daddr_t, int,
+static	struct bmsafemap *bmsafemap_lookup(struct buf *);
+static	int newblk_lookup(struct fs *, ufs_daddr_t, int,
 	    struct newblk **);
-static	int inodedep_lookup (struct fs *, ino_t, int, struct inodedep **);
-static	int pagedep_lookup (struct inode *, ufs_lbn_t, int,
+static	int inodedep_lookup(struct fs *, ino_t, int, struct inodedep **);
+static	int pagedep_lookup(struct inode *, ufs_lbn_t, int,
 	    struct pagedep **);
-static	void pause_timer (void *);
-static	int request_cleanup (int, int);
-static	int process_worklist_item (struct mount *, int);
-static	void add_to_worklist (struct worklist *);
+static	void pause_timer(void *);
+static	int request_cleanup(int, int);
+static	int process_worklist_item(struct mount *, int);
+static	void add_to_worklist(struct worklist *);
 
 /*
  * Exported softdep operations.
  */
-static	void softdep_disk_io_initiation (struct buf *);
-static	void softdep_disk_write_complete (struct buf *);
-static	void softdep_deallocate_dependencies (struct buf *);
-static	int softdep_fsync (struct vnode *);
-static	int softdep_process_worklist (struct mount *);
-static	void softdep_move_dependencies (struct buf *, struct buf *);
-static	int softdep_count_dependencies (struct buf *bp, int);
+static	void softdep_disk_io_initiation(struct buf *);
+static	void softdep_disk_write_complete(struct buf *);
+static	void softdep_deallocate_dependencies(struct buf *);
+static	int softdep_fsync(struct vnode *);
+static	int softdep_process_worklist(struct mount *);
+static	void softdep_move_dependencies(struct buf *, struct buf *);
+static	int softdep_count_dependencies(struct buf *bp, int);
 
 static struct bio_ops softdep_bioops = {
 	softdep_disk_io_initiation,		/* io_start */
@@ -244,9 +244,9 @@ static struct lockit {
 } lk = { 0, NOHOLDER };
 static int lockcnt;
 
-static	void acquire_lock (struct lockit *);
-static	void free_lock (struct lockit *);
-void	softdep_panic (char *);
+static	void acquire_lock(struct lockit *);
+static	void free_lock(struct lockit *);
+void	softdep_panic(char *);
 
 #define ACQUIRE_LOCK(lk)		acquire_lock(lk)
 #define FREE_LOCK(lk)			free_lock(lk)
@@ -295,7 +295,7 @@ softdep_panic(msg)
 }
 #endif /* DEBUG */
 
-static	int interlocked_sleep (struct lockit *, int, void *, int,
+static	int interlocked_sleep(struct lockit *, int, void *, int,
 	    const char *, int);
 
 /*
@@ -363,9 +363,9 @@ struct sema {
 	int	prio;
 	int	timo;
 };
-static	void sema_init (struct sema *, char *, int, int);
-static	int sema_get (struct sema *, struct lockit *);
-static	void sema_release (struct sema *);
+static	void sema_init(struct sema *, char *, int, int);
+static	int sema_get(struct sema *, struct lockit *);
+static	void sema_release(struct sema *);
 
 static void
 sema_init(semap, name, prio, timo)
@@ -437,9 +437,9 @@ sema_release(semap)
 #define WORKITEM_FREE(item, type) FREE(item, DtoM(type))
 
 #else /* DEBUG */
-static	void worklist_insert (struct workhead *, struct worklist *);
-static	void worklist_remove (struct worklist *);
-static	void workitem_free (struct worklist *, int);
+static	void worklist_insert(struct workhead *, struct worklist *);
+static	void worklist_remove(struct worklist *);
+static	void workitem_free(struct worklist *, int);
 
 #define WORKLIST_INSERT(head, item) worklist_insert(head, item)
 #define WORKLIST_REMOVE(item) worklist_remove(item)
@@ -1071,7 +1071,7 @@ top:
 
 /*
  * Executed during filesystem system initialization before
- * mounting any file systems.
+ * mounting any filesystems.
  */
 void 
 softdep_initialize()
@@ -1141,7 +1141,7 @@ softdep_mount(devvp, mp, fs)
 /*
  * Protecting the freemaps (or bitmaps).
  * 
- * To eliminate the need to execute fsck before mounting a file system
+ * To eliminate the need to execute fsck before mounting a filesystem
  * after a power failure, one must (conservatively) guarantee that the
  * on-disk copy of the bitmaps never indicate that a live inode or block is
  * free.  So, when a block or inode is allocated, the bitmap should be
@@ -1156,7 +1156,7 @@ softdep_mount(devvp, mp, fs)
  * that any additional link additions can be made dependent on the inode
  * allocation.
  * 
- * The ufs file system maintains a number of free block counts (e.g., per
+ * The ufs filesystem maintains a number of free block counts (e.g., per
  * cylinder group, per cylinder and per <cylinder, rotational position> pair)
  * in addition to the bitmaps.  These counts are used to improve efficiency
  * during allocation and therefore must be consistent with the bitmaps.
@@ -2279,7 +2279,7 @@ free_allocindir(aip, inodedep)
  * simply of the inode number.
  * 
  * As directory entries are added and deleted, the free space within a
- * directory block can become fragmented.  The ufs file system will compact
+ * directory block can become fragmented.  The ufs filesystem will compact
  * a fragmented directory block to make space for a new entry. When this
  * occurs, the offsets of previously added entries change. Any "diradd"
  * dependency structures corresponding to these entries must be updated with
@@ -2296,7 +2296,7 @@ softdep_setup_directory_add(bp, dp, diroffset, newinum, newdirbp)
 	struct buf *bp;		/* buffer containing directory block */
 	struct inode *dp;	/* inode for directory */
 	off_t diroffset;	/* offset of new entry in directory */
-	long newinum;		/* inode referenced by new directory entry */
+	ino_t newinum;		/* inode referenced by new directory entry */
 	struct buf *newdirbp;	/* non-NULL => contents of new mkdir */
 {
 	int offset;		/* offset of new entry within directory block */
@@ -2659,7 +2659,7 @@ softdep_setup_directory_change(bp, dp, ip, newinum, isrmdir)
 	struct buf *bp;		/* buffer containing directory block */
 	struct inode *dp;	/* inode for the directory being modified */
 	struct inode *ip;	/* inode for directory entry being removed */
-	long newinum;		/* new inode number for changed entry */
+	ino_t newinum;		/* new inode number for changed entry */
 	int isrmdir;		/* indicates if doing RMDIR */
 {
 	int offset;
@@ -3205,7 +3205,7 @@ initiate_write_inodeblock(inodedep, bp)
 /*
  * This routine is called during the completion interrupt
  * service routine for a disk write (from the procedure called
- * by the device driver to inform the file system caches of
+ * by the device driver to inform the filesystem caches of
  * a request completion).  It should be called early in this
  * procedure, before the block is made available to other
  * processes or other routines are called.
@@ -3750,7 +3750,7 @@ handle_written_filepage(pagedep, bp)
 /*
  * Writing back in-core inode structures.
  * 
- * The file system only accesses an inode's contents when it occupies an
+ * The filesystem only accesses an inode's contents when it occupies an
  * "in-core" inode structure.  These "in-core" structures are separate from
  * the page frames used to cache inode blocks.  Only the latter are
  * transferred to/from the disk.  So, when the updated contents of the

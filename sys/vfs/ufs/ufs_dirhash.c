@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Ian Dowse.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/ufs_dirhash.c,v 1.3.2.6 2002/04/10 21:41:14 dwmalone Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.4 2004/05/18 00:16:46 cpressey Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_dirhash.c,v 1.5 2004/07/18 19:43:48 drhodus Exp $
  */
 /*
  * This implements a hash-based lookup scheme for UFS directories.
@@ -159,7 +159,7 @@ ufsdirhash_build(struct inode *ip)
 		return (-1);
 	MALLOC(dh->dh_hash, doff_t **, narrays * sizeof(dh->dh_hash[0]),
 	    M_DIRHASH, M_NOWAIT | M_ZERO);
-	MALLOC(dh->dh_blkfree, u_int8_t *, nblocks * sizeof(dh->dh_blkfree[0]),
+	MALLOC(dh->dh_blkfree, uint8_t *, nblocks * sizeof(dh->dh_blkfree[0]),
 	    M_DIRHASH, M_NOWAIT);
 	if (dh->dh_hash == NULL || dh->dh_blkfree == NULL)
 		goto fail;
@@ -788,7 +788,7 @@ ufsdirhash_checkblock(struct inode *ip, char *buf, doff_t offset)
 static int
 ufsdirhash_hash(struct dirhash *dh, char *name, int namelen)
 {
-	u_int32_t hash;
+	uint32_t hash;
 
 	/*
 	 * We hash the name and then some ofther bit of data which is
@@ -929,7 +929,7 @@ ufsdirhash_recycle(int wanted)
 {
 	struct dirhash *dh;
 	doff_t **hash;
-	u_int8_t *blkfree;
+	uint8_t *blkfree;
 	int i, mem, narrays;
 
 	while (wanted + ufs_dirhashmem > ufs_dirhashmaxmem) {

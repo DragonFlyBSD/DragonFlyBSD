@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2001 Ian Dowse.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,12 +23,16 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ufs/ufs/dirhash.h,v 1.2.2.1 2001/08/01 19:33:39 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/dirhash.h,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/dirhash.h,v 1.3 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_DIRHASH_H_
 #define _UFS_UFS_DIRHASH_H_
 
+/*
+ * XXX DR: On the current directory hashing method; the performance
+ * on large directories is awful due to the lookup code path.
+ */ 
 /*
  * For fast operations on large directories, we maintain a hash
  * that maps the file name to the offset of the directory entry within

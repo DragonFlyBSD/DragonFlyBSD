@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1982, 1986, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -35,7 +35,7 @@
  *
  *	@(#)quota.h	8.3 (Berkeley) 8/19/94
  * $FreeBSD: src/sys/ufs/ufs/quota.h,v 1.15.2.1 2003/02/27 12:04:13 das Exp $
- * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.4 2003/08/20 09:56:34 rob Exp $
+ * $DragonFly: src/sys/vfs/ufs/quota.h,v 1.5 2004/07/18 19:43:48 drhodus Exp $
  */
 
 #ifndef _UFS_UFS_QUOTA_H_
@@ -99,12 +99,12 @@
  * structure).
  */
 struct dqblk {
-	u_int32_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
-	u_int32_t dqb_bsoftlimit;	/* preferred limit on disk blks */
-	u_int32_t dqb_curblocks;	/* current block count */
-	u_int32_t dqb_ihardlimit;	/* maximum # allocated inodes + 1 */
-	u_int32_t dqb_isoftlimit;	/* preferred inode limit */
-	u_int32_t dqb_curinodes;	/* current # allocated inodes */
+	uint32_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
+	uint32_t dqb_bsoftlimit;	/* preferred limit on disk blks */
+	uint32_t dqb_curblocks;	/* current block count */
+	uint32_t dqb_ihardlimit;	/* maximum # allocated inodes + 1 */
+	uint32_t dqb_isoftlimit;	/* preferred inode limit */
+	uint32_t dqb_curinodes;	/* current # allocated inodes */
 	time_t	  dqb_btime;		/* time limit for excessive disk use */
 	time_t	  dqb_itime;		/* time limit for excessive files */
 };
@@ -122,10 +122,10 @@ struct dqblk {
 struct dquot {
 	LIST_ENTRY(dquot) dq_hash;	/* hash list */
 	TAILQ_ENTRY(dquot) dq_freelist;	/* free list */
-	u_int16_t dq_flags;		/* flags, see below */
-	u_int16_t dq_type;		/* quota type of this dquot */
-	u_int32_t dq_cnt;		/* count of active references */
-	u_int32_t dq_id;		/* identifier this applies to */
+	uint16_t dq_flags;		/* flags, see below */
+	uint16_t dq_type;		/* quota type of this dquot */
+	uint32_t dq_cnt;		/* count of active references */
+	uint32_t dq_id;		/* identifier this applies to */
 	struct	ufsmount *dq_ump;	/* filesystem that this is taken from */
 	struct	dqblk dq_dqb;		/* actual usage & quotas */
 };
@@ -179,25 +179,25 @@ struct thread;
 struct ucred;
 struct vnode;
 
-int	chkdq (struct inode *, long, struct ucred *, int);
-int	chkiq (struct inode *, long, struct ucred *, int);
-void	dqinit (void);
-void	dqrele (struct vnode *, struct dquot *);
-int	getinoquota (struct inode *);
-int	getquota (struct mount *, u_long, int, caddr_t);
-int	qsync (struct mount *mp);
-int	quotaoff (struct thread *, struct mount *, int);
-int	quotaon (struct thread *, struct mount *, int, caddr_t);
-int	setquota (struct mount *, u_long, int, caddr_t);
-int	setuse (struct mount *, u_long, int, caddr_t);
-int	ufs_quotactl (struct mount *, int, uid_t, caddr_t, struct thread *);
+int	chkdq(struct inode *, long, struct ucred *, int);
+int	chkiq(struct inode *, long, struct ucred *, int);
+void	dqinit(void);
+void	dqrele(struct vnode *, struct dquot *);
+int	getinoquota(struct inode *);
+int	getquota(struct mount *, u_long, int, caddr_t);
+int	qsync(struct mount *mp);
+int	quotaoff(struct thread *, struct mount *, int);
+int	quotaon(struct thread *, struct mount *, int, caddr_t);
+int	setquota(struct mount *, u_long, int, caddr_t);
+int	setuse(struct mount *, u_long, int, caddr_t);
+int	ufs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 
 #else /* !_KERNEL */
 
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
-int	quotactl (const char *, int, int, void *);
+int	quotactl(const char *, int, int, void *);
 __END_DECLS
 
 #endif /* _KERNEL */
