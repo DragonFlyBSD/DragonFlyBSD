@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.16 2003/11/16 19:32:31 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.17 2003/11/18 01:15:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -767,12 +767,9 @@ exec_copyout_strings(struct image_params *imgp)
 	}
 
 	/*
-	 * Align the stack to a multiple of 0x20 to be friendly to high-end
-	 * cpus.  This is not strictly necessary since newer gcc's now use
-	 * a masking operation on the stack pointer instead of assuming
-	 * alignment, but it doesn't hurt either.
+	 * NOTE: don't bother aligning the stack here for GCC 2.x, it will
+	 * be done in crt1.o.  Note that GCC 3.x aligns the stack in main.
 	 */
-	vectp = (char **)((vm_offset_t)vectp & ~(vm_offset_t)0x1F);
 
 	/*
 	 * vectp also becomes our initial stack base
