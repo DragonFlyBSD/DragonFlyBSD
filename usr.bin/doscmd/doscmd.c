@@ -30,7 +30,7 @@
  *	BSDI doscmd.c,v 2.3 1996/04/08 19:32:30 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/doscmd.c,v 1.13.2.6 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.3 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/doscmd.c,v 1.4 2004/01/21 21:48:21 rob Exp $
  */
 
 #include <sys/types.h>
@@ -333,7 +333,7 @@ setup_boot(regcontext_t *REGS)
 
     R_AX = R_BX = R_CX = R_DX = R_SI = R_DI = R_BP = 0;
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
     /*
     ** init a few other context registers 
     */

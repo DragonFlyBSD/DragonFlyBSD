@@ -21,9 +21,12 @@
  * THEORY OF LIABILITY, WETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/usr.bin/at/panic.h,v 1.2 2004/01/21 21:48:21 rob Exp $
  */
 
-#ifdef __FreeBSD__
+
+#if defined (__FreeBSD__) || defined (__DragonFly__)
 #define __NORETURN
 #endif
 

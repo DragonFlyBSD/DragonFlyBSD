@@ -38,7 +38,7 @@
  *
  *	@(#)pathnames.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/m4/pathnames.h,v 1.1.1.1.14.2 2002/07/15 02:06:15 jmallett Exp $
- * $DragonFly: src/usr.bin/m4/pathnames.h,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/m4/pathnames.h,v 1.3 2004/01/21 21:48:21 rob Exp $
  */
 
 /*
@@ -52,7 +52,7 @@
 #endif
 
 #if defined(unix) || defined(__FreeBSD__) || defined(__NetBSD__) || \
-	defined(__OpenBSD__)
+	defined(__OpenBSD__) || defined (__DragonFly__)
 #define _PATH_DIVNAME	"/tmp/m4.0XXXXXXXXXX"	/* unix diversion files */
 #define UNIQUE		8			/* unique char location */
 #endif

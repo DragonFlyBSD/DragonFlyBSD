@@ -30,7 +30,7 @@
  *	BSDI signal.c,v 2.2 1996/04/08 19:33:06 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/signal.c,v 1.6.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/signal.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/signal.c,v 1.3 2004/01/21 21:48:21 rob Exp $
  */
 
 #include "doscmd.h"
@@ -64,7 +64,7 @@ sanity_check(struct sigframe *sf __unused)
 	fatal("attempting to return to vm86 while dead");
 }
 
-#if defined(__FreeBSD__) || defined(USE_VM86)
+#if defined(__FreeBSD__) || defined(USE_VM86) || defined (__DragonFly__)
 static void
 generichandler(struct sigframe sf)
 {

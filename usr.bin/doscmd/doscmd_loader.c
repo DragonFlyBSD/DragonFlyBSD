@@ -30,7 +30,7 @@
  *	BSDI doscmd_loader.c,v 2.3 1996/04/08 19:32:33 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/doscmd_loader.c,v 1.2.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/doscmd_loader.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/doscmd_loader.c,v 1.3 2004/01/21 21:48:21 rob Exp $
  */
 
 #include <stdio.h>
@@ -74,20 +74,20 @@ void
 main(int argc, char **argv, char **environ)
 {
     void (*entry_point)();
-#ifndef __FreeBSD__
+#ifndef __FreeBSD__ || !defined (__DragonFly__)
     int fd = open("/dev/mem", 0);
 #endif
     setgid(getgid());
     setuid(getuid());
 
-#ifndef __FreeBSD__
+#ifndef __FreeBSD__ || !defined (__DragonFly__)
     if (fd < 0)
 	err(1, "/dev/mem");
 #endif
 
     entry_point = (void (*)()) load_kernel();
 
-#ifndef __FreeBSD__
+#ifndef __FreeBSD__ || !defined (__DragonFly__)
     if (read(fd, 0, 0x500 != 0x500))
 	err(1, "/dev/mem");
 

@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.5 2004/01/16 07:45:22 dillon Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.6 2004/01/21 21:48:21 rob Exp $
  */
 
 
@@ -64,7 +64,7 @@ static void clnt_output( char *, char *, int, char * );
 
 void c_initialize( void );
 
-#if !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__DragonFly__)
 char * rindex();
 #endif
 
@@ -80,7 +80,7 @@ static void s_output( int, char **, char *, char *, int, char *, int, int );
 #define	DONT_EXTEND	0		/* alias for FALSE */
 
 #define	SVR4_CPP "/usr/ccs/lib/cpp"
-#ifdef __FreeBSD__
+#if defined (__FreeBSD__) || defined (__DragonFly__)
 #define	SUNOS_CPP "/usr/bin/cpp"
 #elif defined(__NetBSD__)
 #define SUNOS_CPP "/usr/bin/cpp"
@@ -121,7 +121,7 @@ static int argcount = FIXEDARGS;
 
 
 int nonfatalerrors;	/* errors */
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
 int inetdflag = 0;	/* Support for inetd  is now the default */
 #else
 int inetdflag;	/* Support for inetd  is now the default */
@@ -130,7 +130,7 @@ int pmflag;		/* Support for port monitors */
 int logflag;		/* Use syslog instead of fprintf for errors */
 int tblflag;		/* Support for dispatch table file */
 int mtflag = 0;		/* Support for MT */
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
 #define INLINE 0
 #else
 #define	INLINE 5
@@ -150,7 +150,7 @@ int newstyle;		/* newstyle of passing arguments (by value) */
 int Cflag = 0;		/* ANSI C syntax */
 int CCflag = 0;		/* C++ files */
 static int allfiles;   /* generate all files */
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
 int tirpcflag = 0;    /* generating code for tirpc, by default */
 #else
 int tirpcflag = 1;    /* generating code for tirpc, by default */
@@ -244,7 +244,7 @@ main(argc, argv)
  * add extension to filename
  */
 static char *
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
 extendfile(path, ext)
 	char *path;
 #else
@@ -255,7 +255,7 @@ extendfile(file, ext)
 {
 	char *res;
 	char *p;
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined (__DragonFly__)
 	char *file;
 
 	if ((file = rindex(path, '/')) == NULL)
@@ -544,7 +544,7 @@ h_output(infile, define, extend, outfile)
 	f_print(fout, "#include <rpc/rpc.h>\n");
 
 	if (mtflag) {
-#if !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__DragonFly__)
 		f_print(fout, "#include <synch.h>\n");
 		f_print(fout, "#include <thread.h>\n");
 #else
@@ -689,7 +689,7 @@ s_output(argc, argv, infile, define, extend, outfile, nomain, netflag)
 		f_print(fout, "#include <sys/types.h>\n");
 
 	f_print(fout, "#include <memory.h>\n");
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 	if (tirpcflag)
 #endif
 	f_print(fout, "#include <stropts.h>\n");
@@ -944,7 +944,7 @@ $(TARGETS_SVC.c:%%.c=%%.o) ");
 	if (mtflag)
 		f_print(fout, "\nCPPFLAGS += -D_REENTRANT\nCFLAGS += -g \nLDLIBS += -lnsl -lthread\n");
 	else
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 		f_print(fout, "\nCFLAGS += -g \nLDLIBS +=\n");
 #else
 		f_print(fout, "\nCFLAGS += -g \nLDLIBS += -lnsl\n");
@@ -962,7 +962,7 @@ $(TARGETS_CLNT.c) \n\n");
 	f_print(fout, "$(OBJECTS_SVC) : $(SOURCES_SVC.c) $(SOURCES_SVC.h) \
 $(TARGETS_SVC.c) \n\n");
 	f_print(fout, "$(CLIENT) : $(OBJECTS_CLNT) \n");
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 	f_print(fout, "\t$(CC) -o $(CLIENT) $(OBJECTS_CLNT) \
 $(LDLIBS) \n\n");
 #else
@@ -970,7 +970,7 @@ $(LDLIBS) \n\n");
 $(LDLIBS) \n\n");
 #endif
 	f_print(fout, "$(SERVER) : $(OBJECTS_SVC) \n");
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 	f_print(fout, "\t$(CC) -o $(SERVER) $(OBJECTS_SVC) $(LDLIBS)\n\n ");
 	f_print(fout, "clean:\n\t $(RM) -f core $(TARGETS) $(OBJECTS_CLNT) \
 $(OBJECTS_SVC) $(CLIENT) $(SERVER)\n\n");
@@ -1171,7 +1171,7 @@ parseargs(argc, argv, cmd)
 					 *  generating backward compatible
 					 *  code
 					 */
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 					tirpcflag = 1;
 #else
 					tirpcflag = 0;
@@ -1271,7 +1271,7 @@ parseargs(argc, argv, cmd)
 		}
 	} else {		/* 4.1 mode */
 		pmflag = 0;	/* set pmflag only in tirpcmode */
-#if !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__DragonFly__)
 		inetdflag = 1;	/* inetdflag is TRUE by default */
 #endif
 		if (cmd->nflag) { /* netid needs TIRPC */
@@ -1360,7 +1360,7 @@ remote procedures\n");
 	exit(1);
 }
 
-#if !defined(__FreeBSD__) && !defined(__NetBSD__)
+#if !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__Dragonfly__)
 char *
 rindex(sp, c)
 	register char *sp, c;

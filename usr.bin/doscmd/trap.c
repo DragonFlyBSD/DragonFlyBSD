@@ -30,7 +30,7 @@
  *	BSDI trap.c,v 2.3 1996/04/08 19:33:08 bostic Exp
  *
  * $FreeBSD: src/usr.bin/doscmd/trap.c,v 1.7.2.1 2002/04/25 11:04:51 tg Exp $
- * $DragonFly: src/usr.bin/doscmd/trap.c,v 1.2 2003/06/17 04:29:26 dillon Exp $
+ * $DragonFly: src/usr.bin/doscmd/trap.c,v 1.3 2004/01/21 21:48:21 rob Exp $
  */
 
 #include <machine/trap.h>
@@ -552,7 +552,7 @@ sigtrap(struct sigframe *sf)
 	if (resettrace(REGS))
 	    goto doh;
 
-#ifdef __FreeBSD__
+#if defined (__FreeBSD__) || defined (__DragonFly__)
     trapno = (int)sf->sf_siginfo;			/* XXX GROSTIC HACK ALERT */
 #else
     trapno = sc->sc_trapno;
