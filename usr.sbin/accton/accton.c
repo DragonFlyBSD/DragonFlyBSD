@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)accton.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/accton/accton.c,v 1.5 1999/08/28 01:15:10 peter Exp $
- * $DragonFly: src/usr.sbin/accton/accton.c,v 1.6 2004/12/25 06:41:47 swildner Exp $
+ * $DragonFly: src/usr.sbin/accton/accton.c,v 1.7 2004/12/25 14:20:09 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -52,7 +52,6 @@ main(int argc, char **argv)
 
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch(ch) {
-		case '?':
 		default:
 			usage();
 		}
