@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/cissio.h,v 1.1.2.1 2001/12/12 06:38:16 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/cissio.h,v 1.3 2005/02/12 00:23:02 joerg Exp $
  */
 
 /*
@@ -128,20 +128,20 @@ typedef struct {
     u_int32_t		Bus:6;
     u_int32_t		Mode:2;
     SCSI3Addr_struct	Target[2];
-} PhysDevAddr_struct __attribute__ ((__packed__));
+} PhysDevAddr_struct;
   
 typedef struct {
     u_int32_t		VolId:30;
     u_int32_t		Mode:2;
     u_int8_t		reserved[4];
-} LogDevAddr_struct __attribute__ ((__packed__));
+} LogDevAddr_struct;
 
 typedef union {
     u_int8_t		LunAddrBytes[8];
     SCSI3Addr_struct	SCSI3Lun[4];
     PhysDevAddr_struct	PhysDev;
     LogDevAddr_struct	LogDev;
-} LUNAddr_struct __attribute__ ((__packed__));
+} LUNAddr_struct;
 
 typedef struct {
     u_int8_t	CDBLen;
@@ -152,7 +152,7 @@ typedef struct {
     } Type __attribute__ ((__packed__));
     u_int16_t	Timeout;
     u_int8_t	CDB[16];
-} RequestBlock_struct __attribute__ ((__packed__));
+} RequestBlock_struct;
 
 typedef union {
     struct {
@@ -166,7 +166,7 @@ typedef union {
 	u_int8_t	offense_num;
 	u_int32_t	offense_value;
     } Invalid_Cmd __attribute__ ((__packed__));
-} MoreErrInfo_struct __attribute__ ((__packed__));
+} MoreErrInfo_struct;
 
 typedef struct {
     u_int8_t		ScsiStatus;
@@ -175,7 +175,7 @@ typedef struct {
     u_int32_t		ResidualCnt;
     MoreErrInfo_struct	MoreErrInfo;
     u_int8_t		SenseInfo[SENSEINFOBYTES];
-} ErrorInfo_struct __attribute__ ((__packed__));
+} ErrorInfo_struct;
 
 typedef struct {
     LUNAddr_struct	LUN_info;	/* 8 */
@@ -183,7 +183,7 @@ typedef struct {
     ErrorInfo_struct	error_info;	/* 48 */
     u_int16_t		buf_size;	/* 2 */
     u_int8_t		*buf;		/* 4 */
-} IOCTL_Command_struct __attribute__ ((__packed__));
+} IOCTL_Command_struct;
 
 /*
  * Note that we'd normally pass the struct in directly, but
