@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/gnu/usr.bin/perl/pod/Makefile.inc,v 1.2.2.2 2002/02/19 16:21:34 ru Exp $
-# $DragonFly: src/gnu/usr.bin/perl/pod/Attic/Makefile.inc,v 1.3 2004/01/26 19:22:47 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/perl/pod/Attic/Makefile.inc,v 1.4 2004/01/28 21:26:53 dillon Exp $
 #
 
 PERL5SRC?=	${.CURDIR}/../../../../../contrib/perl5
@@ -12,4 +12,4 @@ CLEANFILES+=	${PROG}.1 ${PROG}.PL
 
 STRIP=
 
-.include "../Makefile.sub"
+.include "../Makefile.inc"

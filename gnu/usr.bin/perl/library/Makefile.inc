@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/perl/library/Makefile.inc,v 1.5.2.4 2002/07/16 14:05:30 ru Exp $
-# $DragonFly: src/gnu/usr.bin/perl/library/Attic/Makefile.inc,v 1.3 2004/01/26 19:22:46 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/perl/library/Attic/Makefile.inc,v 1.4 2004/01/28 21:26:52 dillon Exp $
 
 PERL5SRC?=	${.CURDIR}/../../../../../contrib/perl5
 PERL5LIBSRC?=	${.CURDIR}/../../libperl
@@ -15,7 +15,7 @@ CFLAGS+=	-L${.OBJDIR}/../../libperl
 
 all:	lib/auto/${MODULE}.so
 
-.include "../Makefile.sub"
+.include "../Makefile.inc"
 
 CLEANFILES+= ext.libs
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/perl/Makefile.inc,v 1.12.2.5 2002/03/19 15:52:16 ru Exp $
-# $DragonFly: src/gnu/usr.bin/perl/Attic/Makefile.sub,v 1.1 2004/01/26 19:22:46 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/perl/Attic/Makefile.inc,v 1.4 2004/01/28 21:26:51 dillon Exp $
 
 PERL5SRC?= ${.CURDIR}/../../../../contrib/perl5
 PERL5LIBSRC?= ${.CURDIR}/../libperl
