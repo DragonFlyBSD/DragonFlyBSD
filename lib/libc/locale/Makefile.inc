@@ -1,12 +1,12 @@
 #	from @(#)Makefile.inc	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/libc/locale/Makefile.inc,v 1.16.2.5 2002/10/24 11:00:52 tjr Exp $
-# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.4 2003/12/01 23:38:23 drhodus Exp $
+# $DragonFly: src/lib/libc/locale/Makefile.inc,v 1.5 2003/12/02 15:08:38 drhodus Exp $
 
 # locale sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/locale ${.CURDIR}/../libc/locale
 
 SRCS+=	ansi.c big5.c collate.c collcmp.c euc.c fix_grouping.c frune.c \
-	isctype.c \
+	gbk.c gb18030.c isctype.c \
 	ldpart.c lmessages.c lmonetary.c lnumeric.c localeconv.c mbrune.c \
         mskanji.c nl_langinfo.c nomacros.c none.c rune.c \
 	runetype.c setinvalidrune.c setlocale.c setrunelocale.c table.c \
