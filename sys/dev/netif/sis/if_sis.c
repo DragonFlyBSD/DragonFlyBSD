@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.12 2004/04/14 18:24:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sis/if_sis.c,v 1.13 2004/04/16 14:21:58 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sis.c,v 1.13.4.24 2003/03/05 18:42:33 njl Exp $
  */
@@ -1501,7 +1501,7 @@ sis_rxeof(struct sis_softc *sc)
 	while(SIS_OWNDESC(&sc->sis_ldata.sis_rx_list[i])) {
 
 #ifdef DEVICE_POLLING
-		if (ifp->if_ipending & IFF_POLLING) {
+		if (ifp->if_flags & IFF_POLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
@@ -1718,7 +1718,7 @@ sis_intr(void *arg)
 	ifp = &sc->arpcom.ac_if;
 
 #ifdef DEVICE_POLLING
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		return;
 	if (ether_poll_register(sis_poll, ifp)) { /* ok, disable interrupts */
 		CSR_WRITE_4(sc, SIS_IER, 0);
@@ -2015,7 +2015,7 @@ sis_init(void *xsc)
 	 * ... only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		CSR_WRITE_4(sc, SIS_IER, 0);
 	else
 #endif /* DEVICE_POLLING */

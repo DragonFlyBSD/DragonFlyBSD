@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.11 2004/04/16 14:21:57 joerg Exp $
  */
 
 /*
@@ -1212,7 +1212,7 @@ fxp_intr(void *xsc)
 #ifdef DEVICE_POLLING
 	struct ifnet *ifp = &sc->sc_if;
 
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		return;
 	if (ether_poll_register(fxp_poll, ifp)) {
 		/* disable interrupts */
@@ -1808,7 +1808,7 @@ fxp_init(void *xsc)
 	 * ... but only do that if we are not polling. And because (presumably)
 	 * the default is interrupts on, we need to disable them explicitly!
 	 */
-	if ( ifp->if_ipending & IFF_POLLING )
+	if ( ifp->if_flags & IFF_POLLING )
 		CSR_WRITE_1(sc, FXP_CSR_SCB_INTRCNTL, FXP_SCB_INTR_DISABLE);
 	else
 #endif /* DEVICE_POLLING */

@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.9 2004/04/07 05:45:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.10 2004/04/16 14:21:58 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
  */
@@ -1379,7 +1379,7 @@ static void nge_rxeof(sc)
 		u_int32_t		extsts;
 
 #ifdef DEVICE_POLLING
-		if (ifp->if_ipending & IFF_POLLING) {
+		if (ifp->if_flags & IFF_POLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
@@ -1647,7 +1647,7 @@ static void nge_intr(arg)
 	ifp = &sc->arpcom.ac_if;
 
 #ifdef DEVICE_POLLING
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		return;
 	if (ether_poll_register(nge_poll, ifp)) { /* ok, disable interrupts */
 		CSR_WRITE_4(sc, NGE_IER, 0);
@@ -2024,7 +2024,7 @@ static void nge_init(xsc)
 	 * ... only enable interrupts if we are not polling, make sure
 	 * they are off otherwise.
 	 */
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		CSR_WRITE_4(sc, NGE_IER, 0);
 	else
 #endif /* DEVICE_POLLING */

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.11 2004/04/07 05:45:27 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.12 2004/04/16 14:21:57 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
  */
@@ -2486,7 +2486,7 @@ static void dc_rxeof(sc)
 	while(!(sc->dc_ldata->dc_rx_list[i].dc_status & DC_RXSTAT_OWN)) {
 
 #ifdef DEVICE_POLLING
-		if (ifp->if_ipending & IFF_POLLING) {
+		if (ifp->if_flags & IFF_POLLING) {
 			if (sc->rxcycles <= 0)
 				break;
 			sc->rxcycles--;
@@ -2892,7 +2892,7 @@ static void dc_intr(arg)
 	ifp = &sc->arpcom.ac_if;
 
 #ifdef DEVICE_POLLING
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		return;
 	if (ether_poll_register(dc_poll, ifp)) { /* ok, disable interrupts */
 		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
@@ -3247,7 +3247,7 @@ static void dc_init(xsc)
 	 * the case of polling. Some cards (e.g. fxp) turn interrupts on
 	 * after a reset.
 	 */
-	if (ifp->if_ipending & IFF_POLLING)
+	if (ifp->if_flags & IFF_POLLING)
 		CSR_WRITE_4(sc, DC_IMR, 0x00000000);
 	else
 #endif

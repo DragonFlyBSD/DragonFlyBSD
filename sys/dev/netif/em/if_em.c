@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.10 2004/04/07 05:45:27 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.11 2004/04/16 14:21:57 joerg Exp $*/
 
 #include "if_em.h"
 
@@ -866,7 +866,7 @@ em_init(void *arg)
          * Only enable interrupts if we are not polling, make sure
          * they are off otherwise.
          */
-        if (ifp->if_ipending & IFF_POLLING)
+        if (ifp->if_flags & IFF_POLLING)
                 em_disable_intr(adapter);
         else
 #endif /* DEVICE_POLLING */
@@ -929,7 +929,7 @@ em_intr(void *arg)
         ifp = &adapter->interface_data.ac_if;  
 
 #ifdef DEVICE_POLLING
-        if (ifp->if_ipending & IFF_POLLING)
+        if (ifp->if_flags & IFF_POLLING)
                 return;
 
         if (ether_poll_register(em_poll, ifp)) {

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.185 2004/03/13 02:35:03 brooks Exp $ 
- * $DragonFly: src/sys/net/if.c,v 1.16 2004/03/24 02:08:33 hsu Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.17 2004/04/16 14:21:57 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -1032,7 +1032,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 
 	case SIOCGIFFLAGS:
 		ifr->ifr_flags = ifp->if_flags;
-		ifr->ifr_flagshigh = ifp->if_ipending >> 16;
+		ifr->ifr_flagshigh = ifp->if_flags >> 16;
 		break;
 
 	case SIOCGIFCAP:
@@ -1072,8 +1072,6 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 			splx(s);
 		}
 		ifp->if_flags = (ifp->if_flags & IFF_CANTCHANGE) |
-			(new_flags &~ IFF_CANTCHANGE);
-		ifp->if_ipending = (ifp->if_ipending & IFF_CANTCHANGE) |
 			(new_flags &~ IFF_CANTCHANGE);
 		if (new_flags & IFF_PPROMISC) {
 			/* Permanently promiscuous mode requested */
@@ -1334,7 +1332,7 @@ ifpromisc(ifp, pswitch)
 	int oldflags;
 
 	oldflags = ifp->if_flags;
-	if (ifp->if_ipending & IFF_PPROMISC) {
+	if (ifp->if_flags & IFF_PPROMISC) {
 		/* Do nothing if device is in permanently promiscuous mode */
 		ifp->if_pcount += pswitch ? 1 : -1;
 		return (0);
@@ -1359,7 +1357,7 @@ ifpromisc(ifp, pswitch)
 		    ifp->if_xname);
 	}
 	ifr.ifr_flags = ifp->if_flags;
-	ifr.ifr_flagshigh = ifp->if_ipending >> 16;
+	ifr.ifr_flagshigh = ifp->if_flags >> 16;
 	error = (*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 				 (struct ucred *)NULL);
 	if (error == 0)
@@ -1473,7 +1471,7 @@ if_allmulti(ifp, onswitch)
 		if (ifp->if_amcount++ == 0) {
 			ifp->if_flags |= IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
-			ifr.ifr_flagshigh = ifp->if_ipending >> 16;
+			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 					      (struct ucred *)NULL);
 		}
@@ -1484,7 +1482,7 @@ if_allmulti(ifp, onswitch)
 			ifp->if_amcount = 0;
 			ifp->if_flags &= ~IFF_ALLMULTI;
 			ifr.ifr_flags = ifp->if_flags;
-			ifr.ifr_flagshigh = ifp->if_ipending >> 16;
+			ifr.ifr_flagshigh = ifp->if_flags >> 16;
 			error = ifp->if_ioctl(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 					      (struct ucred *)NULL);
 		}
@@ -1702,12 +1700,12 @@ if_setlladdr(struct ifnet *ifp, const u_char *lladdr, int len)
 	if ((ifp->if_flags & IFF_UP) != 0) {
 		ifp->if_flags &= ~IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
-		ifr.ifr_flagshigh = ifp->if_ipending >> 16;
+		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 				 (struct ucred *)NULL);
 		ifp->if_flags |= IFF_UP;
 		ifr.ifr_flags = ifp->if_flags;
-		ifr.ifr_flagshigh = ifp->if_ipending >> 16;
+		ifr.ifr_flagshigh = ifp->if_flags >> 16;
 		(*ifp->if_ioctl)(ifp, SIOCSIFFLAGS, (caddr_t)&ifr,
 				 (struct ucred *)NULL);
 #ifdef INET

@@ -32,7 +32,7 @@
  *
  *	@(#)if.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if.h,v 1.58.2.9 2002/08/30 14:23:38 sobomax Exp $
- * $DragonFly: src/sys/net/if.h,v 1.9 2004/03/16 16:58:16 joerg Exp $
+ * $DragonFly: src/sys/net/if.h,v 1.10 2004/04/16 14:21:57 joerg Exp $
  */
 
 #ifndef _NET_IF_H_
@@ -140,14 +140,6 @@ struct if_data {
 #define	IFF_LINK2	0x4000		/* per link layer defined bit */
 #define	IFF_ALTPHYS	IFF_LINK2	/* use alternate physical connection */
 #define	IFF_MULTICAST	0x8000		/* supports multicast */
-
-/*
- * The following flag(s) ought to go in if_flags, but we cannot change
- * struct ifnet because of binary compatibility, so we store them in
- * if_ipending, which is not used so far.
- * If possible, make sure the value is not conflicting with other
- * IFF flags, so we have an easier time when we want to merge them.
- */
 #define	IFF_POLLING	0x10000		/* Interface is in polling mode. */
 #define	IFF_PPROMISC	0x20000		/* user-requested promisc mode */
 

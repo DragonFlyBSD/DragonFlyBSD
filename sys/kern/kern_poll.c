@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.10 2004/04/11 05:14:47 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.11 2004/04/16 14:21:58 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -409,7 +409,7 @@ netisr_poll(struct netmsg *msg)
 		for (i = 0 ; i < poll_handlers ; i++) {
 			if (pr[i].handler &&
 			    pr[i].ifp->if_flags & IFF_RUNNING) {
-				pr[i].ifp->if_ipending &= ~IFF_POLLING;
+				pr[i].ifp->if_flags &= ~IFF_POLLING;
 				pr[i].handler(pr[i].ifp, POLL_DEREGISTER, 1);
 			}
 			pr[i].handler=NULL;
@@ -442,7 +442,7 @@ ether_poll_register(poll_handler_t *h, struct ifnet *ifp)
 		return 0;
 	if ( !(ifp->if_flags & IFF_UP) )	/* must be up		*/
 		return 0;
-	if (ifp->if_ipending & IFF_POLLING)	/* already polling	*/
+	if (ifp->if_flags & IFF_POLLING)	/* already polling	*/
 		return 0;
 
 	s = splhigh();
@@ -467,7 +467,7 @@ ether_poll_register(poll_handler_t *h, struct ifnet *ifp)
 	pr[poll_handlers].handler = h;
 	pr[poll_handlers].ifp = ifp;
 	poll_handlers++;
-	ifp->if_ipending |= IFF_POLLING;
+	ifp->if_flags |= IFF_POLLING;
 	splx(s);
 	return 1; /* polling enabled in next call */
 }
@@ -484,14 +484,14 @@ ether_poll_deregister(struct ifnet *ifp)
 	int i;
 	int s = splimp();
 	
-	if ( !ifp || !(ifp->if_ipending & IFF_POLLING) ) {
+	if ( !ifp || !(ifp->if_flags & IFF_POLLING) ) {
 		splx(s);
 		return 0;
 	}
 	for (i = 0 ; i < poll_handlers ; i++)
 		if (pr[i].ifp == ifp) /* found it */
 			break;
-	ifp->if_ipending &= ~IFF_POLLING; /* found or not... */
+	ifp->if_flags &= ~IFF_POLLING; /* found or not... */
 	if (i == poll_handlers) {
 		splx(s);
 		printf("ether_poll_deregister: ifp not found!!!\n");

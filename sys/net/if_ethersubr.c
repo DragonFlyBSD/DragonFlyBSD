@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.12 2004/03/16 23:06:11 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.13 2004/04/16 14:21:57 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -663,7 +663,7 @@ ether_demux(ifp, eh, m)
 	    && (eh->ether_dhost[0] & 1) == 0
 	    && bcmp(eh->ether_dhost,
 	      IFP2AC(ifp)->ac_enaddr, ETHER_ADDR_LEN) != 0
-	    && (ifp->if_ipending & IFF_PPROMISC) == 0) {
+	    && (ifp->if_flags & IFF_PPROMISC) == 0) {
 		m_freem(m);
 		return;
 	}
