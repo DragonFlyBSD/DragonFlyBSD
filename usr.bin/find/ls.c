@@ -32,7 +32,7 @@
  *
  * @(#)ls.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/find/ls.c,v 1.17 2004/01/20 09:27:03 des Exp $
- * $DragonFly: src/usr.bin/find/ls.c,v 1.5 2005/02/14 00:39:04 cpressey Exp $
+ * $DragonFly: src/usr.bin/find/ls.c,v 1.6 2005/02/22 01:52:44 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,10 @@
 #include <unistd.h>
 
 #include "find.h"
+
+#ifndef PRId64
+#define	PRId64 "lld"
+#endif
 
 /* Derived from the print routines in the ls(1) source code. */
 
