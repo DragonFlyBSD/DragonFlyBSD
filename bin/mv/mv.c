@@ -35,8 +35,8 @@
  *
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
- * $FreeBSD: src/bin/mv/mv.c,v 1.24.2.5 2002/08/19 00:26:41 johan Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.5 2004/05/03 18:54:37 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -200,14 +200,25 @@ do_move(char *from, char *to)
 		struct statfs sfs;
 		char path[PATH_MAX];
 
-		/* Can't mv(1) a mount point. */
-		if (realpath(from, path) == NULL) {
-			warnx("cannot resolve %s: %s", from, path);
+		/*
+		 * If the source is a symbolic link and is on another
+		 * filesystem, it can be recreated at the destination.
+		 */
+		if (lstat(from, &sb) == -1) {
+			warn("%s", from);
 			return (1);
 		}
-		if (!statfs(path, &sfs) && !strcmp(path, sfs.f_mntonname)) {
-			warnx("cannot rename a mount point");
-			return (1);
+		if (!S_ISLNK(sb.st_mode)) {
+			/* Can't mv(1) a mount point. */
+			if (realpath(from, path) == NULL) {
+				warnx("cannot resolve %s: %s", from, path);
+				return (1);
+			}
+			if (!statfs(path, &sfs) &&
+			    !strcmp(path, sfs.f_mntonname)) {
+				warnx("cannot rename a mount point");
+				return (1);
+			}
 		}
 	} else {
 		warn("rename %s to %s", from, to);
