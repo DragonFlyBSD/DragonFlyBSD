@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.16 2005/03/03 19:50:33 hsu Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.17 2005/03/04 00:01:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -141,10 +141,7 @@ link_elf_init(void* arg)
 
     dp = (Elf_Dyn*) &_DYNAMIC;
     if (dp) {
-	ef = malloc(sizeof(struct elf_file), M_LINKER, M_NOWAIT | M_ZERO);
-	if (ef == NULL)
-	    panic("link_elf_init: Can't create linker structures for kernel");
-
+	ef = malloc(sizeof(struct elf_file), M_LINKER, M_INTWAIT | M_ZERO);
 	ef->address = 0;
 #ifdef SPARSE_MAPPING
 	ef->object = 0;
