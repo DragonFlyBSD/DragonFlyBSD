@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.11 2004/01/29 01:43:47 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.12 2004/01/31 08:59:01 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -101,6 +101,8 @@ upgrade_etc:
 	rm -rf ${DESTDIR}/usr/libexec/elf
 	rm -rf ${DESTDIR}/usr/libexec/aout
 	rm -rf ${DESTDIR}/usr/libexec/gcc2
+	csh -c "rm -f ${DESTDIR}/usr/bin/{genassym,gensetdefs}"
+	csh -c "rm -f ${DESTDIR}/usr/share/man/{man8,cat8}/{genassym,gensetdefs}*"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{cc1,cc1obj,cc1plus,cpp,cpp0}"
 	csh -c "rm -f ${DESTDIR}/usr/libexec/{f771,objformat}"
 	csh -c "rm -f ${DESTDIR}/usr/lib/{crtbegin.o,crtbeginS.o,crtend.o}"
