@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tput.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/tput/tput.c,v 1.7.6.3 2002/08/17 14:52:50 tjr Exp $
- * $DragonFly: src/usr.bin/tput/tput.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tput/tput.c,v 1.4 2005/02/04 20:00:25 cpressey Exp $
  */
 
 #include <termios.h>
@@ -50,13 +50,14 @@
 
 static void   prlongname(char *);
 static void   usage(void);
-static char **process(char *, char *, char **);
+static char **process(const char *, const char *, char **);
 
 int
 main(int argc, char **argv)
 {
 	int ch, exitval, n;
-	char *cptr, *p, *term, buf[1024], tbuf[1024];
+	char *cptr, *term, buf[1024], tbuf[1024];
+	const char *p;
 
 	term = NULL;
 	while ((ch = getopt(argc, argv, "T:")) != -1)
@@ -121,7 +122,7 @@ prlongname(char *buf)
 }
 
 static char **
-process(char *cap, char *str, char **argv)
+process(const char *cap, const char *str, char **argv)
 {
 	static char errfew[] =
 	    "not enough arguments (%d) for capability `%s'";
@@ -129,7 +130,7 @@ process(char *cap, char *str, char **argv)
 	    "too many arguments (%d) for capability `%s'";
 	static char erresc[] =
 	    "unknown %% escape `%c' for capability `%s'";
-	char *cp;
+	const char *cp;
 	int arg_need, arg_rows, arg_cols;
 
 	/* Count how many values we need for this capability. */
