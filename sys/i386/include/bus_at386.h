@@ -68,7 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/i386/include/Attic/bus_at386.h,v 1.2 2003/06/17 04:28:35 dillon Exp $ */
+/* $DragonFly: src/sys/i386/include/Attic/bus_at386.h,v 1.3 2003/07/23 07:14:15 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_
@@ -1156,12 +1156,21 @@ bus_space_copy_region_4(bus_space_tag_t tag, bus_space_handle_t bsh1,
  *	void bus_space_barrier(bus_space_tag_t tag, bus_space_handle_t bsh,
  *			       bus_size_t offset, bus_size_t len, int flags);
  *
- * Note: the i386 does not currently require barriers, but we must
- * provide the flags to MI code.
+ * Note that BUS_SPACE_BARRIER_WRITE doesn't do anything other than
+ * prevent reordering by the compiler; all Intel x86 processors currently
+ * retire operations outside the CPU in program order.
  */
-#define	bus_space_barrier(t, h, o, l, f)	\
-	((void)((void)(t), (void)(h), (void)(o), (void)(l), (void)(f)))
 #define	BUS_SPACE_BARRIER_READ	0x01		/* force read barrier */
 #define	BUS_SPACE_BARRIER_WRITE	0x02		/* force write barrier */
+
+static __inline void
+bus_space_barrier(bus_space_tag_t tag, bus_space_handle_t bsh,
+		bus_size_t offset, bus_size_t len, int flags)
+{
+	if (flags & BUS_SPACE_BARRIER_READ)
+		__asm __volatile("lock; addl $0,0(%esp)" : : : "memory");
+	else
+		__asm __volatile("" : : : "memory");
+}
 
 #endif /* _I386_BUS_AT386_H_ */

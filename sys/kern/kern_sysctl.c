@@ -38,7 +38,7 @@
  *
  *	@(#)kern_sysctl.c	8.4 (Berkeley) 4/14/94
  * $FreeBSD: src/sys/kern/kern_sysctl.c,v 1.92.2.9 2003/05/01 22:48:09 trhodes Exp $
- * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.7 2003/07/19 21:14:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sysctl.c,v 1.8 2003/07/23 07:14:18 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -94,7 +94,6 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 	struct sysctl_oid_list *parent = oidp->oid_parent;
 	struct sysctl_oid *p;
 	struct sysctl_oid *q;
-	int n;
 
 	/*
 	 * First check if another oid with the same name already
@@ -116,13 +115,10 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 	 * 100 to leave space for pre-assigned oid numbers.
 	 */
 	if (oidp->oid_number == OID_AUTO) {
-		/* First, find the highest oid in the parent list >99 */
-		n = 99;
-		SLIST_FOREACH(p, parent, oid_link) {
-			if (p->oid_number > n)
-				n = p->oid_number;
-		}
-		oidp->oid_number = n + 1;
+		static int newoid = 100;
+		oidp->oid_number = newoid++;
+		if (newoid == 0x7fffffff)
+			panic("out of oids");
 	}
 
 	/*
@@ -142,8 +138,30 @@ void sysctl_register_oid(struct sysctl_oid *oidp)
 
 void sysctl_unregister_oid(struct sysctl_oid *oidp)
 {
+	struct sysctl_oid *p;
+	int error;
 
-	SLIST_REMOVE(oidp->oid_parent, oidp, sysctl_oid, oid_link);
+	error = ENOENT;
+	if (oidp->oid_number == OID_AUTO) {
+		error = EINVAL;
+	} else {
+		SLIST_FOREACH(p, oidp->oid_parent, oid_link) {
+			if (p == oidp) {
+				SLIST_REMOVE(oidp->oid_parent, oidp,
+						sysctl_oid, oid_link);
+				error = 0;
+				break;
+			}
+		}
+	}
+
+	/*
+	 * This can happen when a module fails to register and is
+	 * being unloaded afterwards.  It should not be a panic()
+	 * for normal use.
+	 */
+	if (error)
+		printf("%s: failed to unregister sysctl\n", __func__);
 }
 
 /* Initialize a new context to keep track of dynamically added sysctls. */
@@ -560,7 +578,7 @@ sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen,
 			if (!sysctl_sysctl_next_ls(lsp, 0, 0, next+1, 
 				len, level+1, oidpp))
 				return 0;
-			goto next;
+			goto emptynode;
 		}
 
 		if (oidp->oid_number < *name)
@@ -589,6 +607,8 @@ sysctl_sysctl_next_ls(struct sysctl_oid_list *lsp, int *name, u_int namelen,
 			return (0);
 	next:
 		namelen = 1;
+		*len = level;
+	emptynode:
 		*len = level;
 	}
 	return 1;
@@ -1299,6 +1319,7 @@ ogetkerninfo(struct getkerninfo_args *uap)
 {
 	int error, name[6];
 	size_t size;
+	u_int needed = 0;
 
 	switch (uap->op & 0xff00) {
 
@@ -1361,17 +1382,15 @@ ogetkerninfo(struct getkerninfo_args *uap)
 		/*
 		 * this is pretty crude, but it's just enough for uname()
 		 * from BSDI's 1.x libc to work.
+		 * *size gives the size of the buffer before the call, and
+		 * the amount of data copied after a successful call.
+		 * If successful, the return value is the amount of data
+		 * available, which can be larger than *size.
 		 *
-		 * In particular, it doesn't return the same results when
-		 * the supplied buffer is too small.  BSDI's version apparently
-		 * will return the amount copied, and set the *size to how
-		 * much was needed.  The emulation framework here isn't capable
-		 * of that, so we just set both to the amount copied.
-		 * BSDI's 2.x product apparently fails with ENOMEM in this
-		 * scenario.
+		 * BSDI's 2.x product apparently fails with ENOMEM if
+		 * *size is too small.
 		 */
 
-		u_int needed;
 		u_int left;
 		char *s;
 
@@ -1394,13 +1413,15 @@ ogetkerninfo(struct getkerninfo_args *uap)
 
 		needed = sizeof(bsdi_si) + (s - bsdi_strings);
 
-		if (uap->where == NULL) {
+		if (uap->where == NULL || (uap->size == NULL)) {
 			/* process is asking how much buffer to supply.. */
 			size = needed;
 			error = 0;
 			break;
 		}
 
+		if ((error = copyin(uap->size, &size, sizeof(size))) != 0)
+				break;
 
 		/* if too much buffer supplied, trim it down */
 		if (size > needed)

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.6 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.7 2003/07/23 07:14:19 dillon Exp $
  */
 
 /*
@@ -72,14 +72,15 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/lock.h>
 #include <sys/vmmeter.h>
 #include <sys/mman.h>
 #include <sys/vnode.h>
 #include <sys/resourcevar.h>
+#include <sys/shm.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_page.h>
@@ -201,6 +202,12 @@ vm_init2(void) {
 static __inline void
 vmspace_dofree(struct vmspace *vm)
 {
+	/*
+	 * Make sure any SysV shm is freed, it might not have in
+	 * exit1()
+	 */
+	shmexit(vm);
+
 	/*
 	 * Lock the map, to wait out all other references to it.
 	 * Delete all of the mappings and pages they hold, then call

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_ipc.c,v 1.13.2.2 2000/07/01 14:33:49 bsd Exp $ */
-/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.4 2003/06/25 03:55:57 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_ipc.c,v 1.5 2003/07/23 07:14:18 dillon Exp $ */
 /*	$NetBSD: sysv_ipc.c,v 1.7 1994/06/29 06:33:11 cgd Exp $	*/
 
 /*
@@ -261,8 +261,7 @@ shmfork(p1, p2)
 
 /* called from kern_exit.c */
 void
-shmexit(p)
-	struct proc *p;
+shmexit(struct vmspace *vm)
 {
 	return;
 }

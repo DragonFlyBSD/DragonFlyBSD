@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.4 2003/07/19 21:14:39 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.5 2003/07/23 07:14:18 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -93,7 +93,7 @@ struct shmmap_state {
 static void shm_deallocate_segment __P((struct shmid_ds *));
 static int shm_find_segment_by_key __P((key_t));
 static struct shmid_ds *shm_find_segment_by_shmid __P((int));
-static int shm_delete_mapping __P((struct proc *, struct shmmap_state *));
+static int shm_delete_mapping __P((struct vmspace *vm, struct shmmap_state *));
 static void shmrealloc __P((void));
 static void shminit __P((void *));
 
@@ -192,9 +192,7 @@ shm_deallocate_segment(shmseg)
 }
 
 static int
-shm_delete_mapping(p, shmmap_s)
-	struct proc *p;
-	struct shmmap_state *shmmap_s;
+shm_delete_mapping(struct vmspace *vm, struct shmmap_state *shmmap_s)
 {
 	struct shmid_ds *shmseg;
 	int segnum, result;
@@ -203,7 +201,7 @@ shm_delete_mapping(p, shmmap_s)
 	segnum = IPCID_TO_IX(shmmap_s->shmid);
 	shmseg = &shmsegs[segnum];
 	size = round_page(shmseg->shm_segsz);
-	result = vm_map_remove(&p->p_vmspace->vm_map, shmmap_s->va, shmmap_s->va + size);
+	result = vm_map_remove(&vm->vm_map, shmmap_s->va, shmmap_s->va + size);
 	if (result != KERN_SUCCESS)
 		return EINVAL;
 	shmmap_s->shmid = -1;
@@ -241,7 +239,7 @@ shmdt(struct shmdt_args *uap)
 			break;
 	if (i == shminfo.shmseg)
 		return EINVAL;
-	return shm_delete_mapping(p, shmmap_s);
+	return shm_delete_mapping(p->p_vmspace, shmmap_s);
 }
 
 #ifndef _SYS_SYSPROTO_H_
@@ -640,18 +638,19 @@ shmfork(p1, p2)
 }
 
 void
-shmexit(p)
-	struct proc *p;
+shmexit(struct vmspace *vm)
 {
-	struct shmmap_state *shmmap_s;
+	struct shmmap_state *base, *shm;
 	int i;
 
-	shmmap_s = (struct shmmap_state *)p->p_vmspace->vm_shm;
-	for (i = 0; i < shminfo.shmseg; i++, shmmap_s++)
-		if (shmmap_s->shmid != -1)
-			shm_delete_mapping(p, shmmap_s);
-	free((caddr_t)p->p_vmspace->vm_shm, M_SHM);
-	p->p_vmspace->vm_shm = NULL;
+	if ((base = (struct shmmap_state *)vm->vm_shm) != NULL) {
+		vm->vm_shm = NULL;
+		for (i = 0, shm = base; i < shminfo.shmseg; i++, shm++) {
+			if (shm->shmid != -1)
+				shm_delete_mapping(vm, shm);
+		}
+		free(base, M_SHM);
+	}
 }
 
 static void
