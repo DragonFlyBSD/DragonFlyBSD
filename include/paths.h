@@ -32,7 +32,7 @@
  *
  *	@(#)paths.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/include/paths.h,v 1.9.6.4 2002/07/19 07:53:41 jmallett Exp $
- * $DragonFly: src/include/paths.h,v 1.3 2003/08/07 21:19:26 dillon Exp $
+ * $DragonFly: src/include/paths.h,v 1.4 2005/03/16 06:56:20 joerg Exp $
  */
 
 #ifndef _PATHS_H_
@@ -59,7 +59,12 @@
 #define	_PATH_DRUM	__SYS_PATH_DRUM
 #define	_PATH_ETC	"/etc"
 #define	_PATH_FTPUSERS	"/etc/ftpusers"
+#define	_PATH_I18NMODULE	"/usr/lib/i18n"
+#define	_PATH_ESDB	"/usr/share/i18n/esdb"
+#define	_PATH_ICONV	"/usr/share/i18n/iconv"
+#define	_PATH_CSMAPPER	"/usr/share/i18n/csmapper"
 #define	_PATH_KMEM	__SYS_PATH_KMEM
+#define	_PATH_LOCALE	"/usr/share/locale"
 #define	_PATH_LOGIN	"/usr/bin/login"
 #define	_PATH_MAILDIR	"/var/mail"
 #define	_PATH_MAN	"/usr/share/man"
