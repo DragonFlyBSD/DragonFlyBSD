@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.13 2004/01/16 05:15:21 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.14 2004/01/18 03:55:17 justin Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -84,17 +84,18 @@ coming weeks.
     </TR>
     </TABLE>
 </UL>
-<CENTER><H2>DAILY SNAPSHOTS</H2></CENTER>
+<CENTER><H2>Daily Snapshots</H2></CENTER>
 <P>
-For people who do not want to go through the repetetive stages of installing
-FreeBSD 4.8, doing a DragonFly cvsup etc; well now you have a choice!
+People who do not want to go through the repetitive stages of installing
+FreeBSD 4.8, doing a DragonFly cvsup etc; now have a choice!
 </P>
 <P>
 Simon 'corecode' Schubert (corecode at fs.ei.tum.de) has
 offered to provide <B>Daily Snapshots</B> of DragonFly.  The snapshots are
 available on FTP and HTTP.  <B>PLEASE NOTE</B>, due to the experimental
-nature of this server, it incur some downtime, so please be patient and
-do try again in some minutes or hours.
+nature of this server, it may incur some downtime.  If you are unable to 
+download a snapshot, please be patient and try again later, or 
+try the esat.net mirror.
 </P>
 <P>Download Details:</P>
 <UL>
