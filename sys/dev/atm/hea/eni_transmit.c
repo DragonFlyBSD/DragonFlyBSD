@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_transmit.c,v 1.6 1999/12/21 08:24:35 eivind Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_transmit.c,v 1.5 2004/01/08 18:39:17 asmodai Exp $
  */
 
 /*
@@ -519,7 +519,7 @@ retry:
 		 * using TX channel 0. Also, round length up to a word
 		 * size which should only effect the last buffer in the
 		 * chain. This works because the PDU length is maintained
-		 * seperately and we're not really adjusting the buffer's
+		 * separately and we're not really adjusting the buffer's
 		 * idea of its length.
 		 */
 		KB_DATASTART ( m, buf_addr, u_long );

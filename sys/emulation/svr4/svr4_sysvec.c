@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_sysvec.c,v 1.10.2.2 2002/07/09 14:12:43 robert Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.9 2003/11/12 01:00:33 daver Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_sysvec.c,v 1.10 2004/01/08 18:39:18 asmodai Exp $
  */
 
 /* XXX we use functions that might not exist. */
@@ -234,7 +234,7 @@ svr4_fixup(register_t **stack_base, struct image_params *imgp)
 
 /*
  * Search an alternate path before passing pathname arguments on
- * to system calls. Useful for keeping a seperate 'emulation tree'.
+ * to system calls. Useful for keeping a separate 'emulation tree'.
  *
  * If cflag is set, we check if an attempt can be made to create
  * the named file, i.e. we check if the directory it should

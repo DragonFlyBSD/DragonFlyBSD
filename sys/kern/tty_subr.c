@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/tty_subr.c,v 1.32 1999/08/28 00:46:21 peter Exp $
- * $DragonFly: src/sys/kern/tty_subr.c,v 1.3 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/tty_subr.c,v 1.4 2004/01/08 18:39:18 asmodai Exp $
  */
 
 /*
@@ -495,7 +495,7 @@ b_to_q(src, amount, clistp)
 
 		/*
 		 * Clear quote bits if they aren't known to be clear.
-		 * The following could probably be made into a seperate
+		 * The following could probably be made into a separate
 		 * "bitzero()" routine, but why bother?
 		 */
 		if (isset(cblockp->c_quote, CBQSIZE * NBBY - 1)) {

@@ -28,7 +28,7 @@
  *
  *	from: svr4_util.c,v 1.5 1995/01/22 23:44:50 christos Exp
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_util.c,v 1.7 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.7 2003/09/23 05:03:50 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_util.c,v 1.8 2004/01/08 18:39:18 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@ const char      ibcs2_emul_path[] = "/compat/ibcs2";
 
 /*
  * Search an alternate path before passing pathname arguments on
- * to system calls. Useful for keeping a seperate 'emulation tree'.
+ * to system calls. Useful for keeping a separate 'emulation tree'.
  *
  * If cflag is set, we check if an attempt can be made to create
  * the named file, i.e. we check if the directory it should

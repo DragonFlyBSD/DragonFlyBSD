@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux.h,v 1.41.2.4 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.6 2003/11/10 06:12:11 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux.h,v 1.7 2004/01/08 18:39:18 asmodai Exp $
  */
 
 #ifndef _I386_LINUX_LINUX_H_
@@ -49,7 +49,7 @@ MALLOC_DECLARE(M_LINUX);
 #endif
 
 /*
- * Provide a seperate set of types for the Linux types.
+ * Provide a separate set of types for the Linux types.
  */
 typedef int		l_int;
 typedef int32_t		l_long;

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.h,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.h,v 1.4 2004/01/08 18:39:17 asmodai Exp $ */
 /*
  * LSI MPT Host Adapter FreeBSD Wrapper Definitions (CAM version)
  *
@@ -144,7 +144,7 @@
  * assume we have 480-48 == 432 bytes to have simple SG elements and/or
  * chain elements. If we assume 32 bit addressing, this works out to
  * 54 SG or chain elements. If we assume 5 chain elements, then we have
- * a maximum of 49 seperate actual SG segments.
+ * a maximum of 49 separate actual SG segments.
  */
 
 #define MPT_SGL_MAX		49

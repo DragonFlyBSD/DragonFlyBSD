@@ -37,7 +37,7 @@
  *
  *	@(#)kern_shutdown.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_shutdown.c,v 1.72.2.12 2002/02/21 19:15:10 dillon Exp $
- * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.14 2003/11/16 02:41:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_shutdown.c,v 1.15 2004/01/08 18:39:18 asmodai Exp $
  */
 
 #include "opt_ddb.h"
@@ -597,7 +597,7 @@ panic(const char *fmt, ...)
 	__va_end(ap);
 	printf("panic: %s\n", buf);
 #ifdef SMP
-	/* three seperate prints in case of an unmapped page and trap */
+	/* three separate prints in case of an unmapped page and trap */
 	printf("mp_lock = %08x; ", mp_lock);
 	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_mroute.c,v 1.2.2.9 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.4 2004/01/06 03:17:27 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_mroute.c,v 1.5 2004/01/08 18:39:18 asmodai Exp $	*/
 /*	$KAME: ip6_mroute.c,v 1.58 2001/12/18 02:36:31 itojun Exp $	*/
 
 /*
@@ -1248,7 +1248,7 @@ ip6_mdq(m, ifp, rt)
 /*
  * Macro to send packet on mif.  Since RSVP packets don't get counted on
  * input, they shouldn't get counted on output, so statistics keeping is
- * seperate.
+ * separate.
  */
 
 #define MC6_SEND(ip6, mifp, m) do {				\

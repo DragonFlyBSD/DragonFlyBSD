@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_access.c,v 1.17.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_access.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_access.c,v 1.3 2004/01/08 18:39:19 asmodai Exp $
  */
 
 #include <stdlib.h>
@@ -195,7 +195,7 @@ void load_securenets()
  *   package does not ship with FreeBSD, we use the built-in support
  *   by default. Users can recompile the server with the tcp-wrapper library
  *   if they already have it installed and want to use hosts.allow and
- *   hosts.deny to control access instead of having a seperate securenets
+ *   hosts.deny to control access instead of having a separate securenets
  *   file.)
  *
  *   If no /var/yp/securenets file is present, the host access checks

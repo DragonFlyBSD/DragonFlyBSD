@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.44 2003/12/07 04:20:39 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.45 2004/01/08 18:39:18 asmodai Exp $
  */
 
 /*
@@ -1044,7 +1044,7 @@ trap_fatal(frame, eva)
         		frame->tf_eflags & PSL_VM ? "vm86" :
 			ISPL(frame->tf_cs) == SEL_UPL ? "user" : "kernel");
 #ifdef SMP
-	/* three seperate prints in case of a trap on an unmapped page */
+	/* three separate prints in case of a trap on an unmapped page */
 	printf("mp_lock = %08x; ", mp_lock);
 	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);
@@ -1154,7 +1154,7 @@ dblfault_handler()
 	printf("esp = 0x%x\n", gd->gd_common_tss.tss_esp);
 	printf("ebp = 0x%x\n", gd->gd_common_tss.tss_ebp);
 #ifdef SMP
-	/* three seperate prints in case of a trap on an unmapped page */
+	/* three separate prints in case of a trap on an unmapped page */
 	printf("mp_lock = %08x; ", mp_lock);
 	printf("cpuid = %d; ", mycpu->gd_cpuid);
 	printf("lapic.id = %08x\n", lapic.id);

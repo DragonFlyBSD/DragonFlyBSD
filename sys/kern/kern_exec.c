@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.17 2003/11/18 01:15:42 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.18 2004/01/08 18:39:18 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -801,7 +801,7 @@ exec_copyout_strings(struct image_params *imgp)
 		destp++;
 	}
 
-	/* a null vector table pointer seperates the argp's from the envp's */
+	/* a null vector table pointer separates the argp's from the envp's */
 	suword(vectp++, 0);
 
 	suword(&arginfo->ps_envstr, (long)(intptr_t)vectp);

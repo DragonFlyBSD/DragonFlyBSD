@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/bootsect.h,v 1.7 1999/08/28 00:48:06 peter Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/bootsect.h,v 1.2 2003/06/17 04:28:47 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/bootsect.h,v 1.3 2004/01/08 18:39:18 asmodai Exp $ */
 /*	$NetBSD: bootsect.h,v 1.9 1997/11/17 15:36:17 ws Exp $	*/
 
 /*
@@ -75,7 +75,7 @@ struct bootsector710 {
 #ifdef	atari
 /*
  * The boot sector on a gemdos fs is a little bit different from the msdos fs
- * format. Currently there is no need to declare a seperate structure, the
+ * format. Currently there is no need to declare a separate structure, the
  * bootsector33 struct will do.
  */
 #if 0

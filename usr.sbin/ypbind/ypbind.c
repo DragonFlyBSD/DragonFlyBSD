@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypbind/ypbind.c,v 1.30.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.3 2004/01/08 18:39:19 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -646,7 +646,7 @@ struct sockaddr_in *addr;
 /*
  * The right way to send RPC broadcasts.
  * Use the clnt_broadcast() RPC service. Unfortunately, clnt_broadcast()
- * blocks while waiting for replies, so we have to fork off seperate
+ * blocks while waiting for replies, so we have to fork off separate
  * broadcaster processes that do the waiting and then transmit their
  * results back to the parent for processing. We also have to remember
  * to save the name of the domain we're trying to bind in a global

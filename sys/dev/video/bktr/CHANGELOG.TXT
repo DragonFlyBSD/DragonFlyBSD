@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/CHANGELOG.TXT,v 1.8.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/CHANGELOG.TXT,v 1.3 2004/01/08 18:39:17 asmodai Exp $ */
 /*
  * MAINTAINER = Roger Hardiman <roger@freebsd.org>
  */
@@ -401,7 +401,7 @@
                     New NetBSD code from Bernd Ernesti<bernd@arresum.inka.de>
 
 2.00  25 Sep 1999 Roger Hardiman <roger@freebsd.org>
-                  Split the driver into seperate tuner, card and audio sections.
+                  Split the driver into separate tuner, card and audio sections.
 		  Update tuner code for FM radio to use datasheet equations.
 
 2.01  27 Sep 1999 Roger Hardiman <roger@freebsd.org>
