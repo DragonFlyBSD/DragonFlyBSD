@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_ioctl.c,v 1.6 1999/12/08 12:00:48 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.4 2003/06/23 18:12:13 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_ioctl.c,v 1.5 2003/06/23 18:22:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 
 #if defined(DEBUG_SVR4)
 	if (fp->f_type == DTYPE_SOCKET) {
-	        struct socket *so = fp->f_data;
+	        struct socket *so = (struct socket *)fp->f_data;
 		DPRINTF(("<<< IN: so_state = 0x%x\n", so->so_state));
 	}
 #endif
@@ -154,7 +154,7 @@ svr4_sys_ioctl(struct svr4_sys_ioctl_args *uap)
 	}
 #if defined(DEBUG_SVR4)
 	if (fp->f_type == DTYPE_SOCKET) {
-	        struct socket *so = fp->f_data;
+	        struct socket *so = (struct socket *)fp->f_data;
 		DPRINTF((">>> OUT: so_state = 0x%x\n", so->so_state));
 	}
 #endif
