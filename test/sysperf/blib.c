@@ -3,7 +3,7 @@
  *
  * Simple benchmarking library
  *
- * $DragonFly: src/test/sysperf/blib.c,v 1.3 2004/03/20 01:51:01 dillon Exp $
+ * $DragonFly: src/test/sysperf/blib.c,v 1.4 2004/03/20 02:02:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -36,7 +36,7 @@ stop_timing(long long count, const char *ctl, ...)
     vprintf(ctl, va);
     va_end(va);
 
-    printf("%6.3fs %lld loops = %6.3fuS/loop\n",
+    printf(" %6.3fs %lld loops = %6.3fuS/loop\n",
 	(double)us / 1000000.0,
 	count,
 	(double)us / (double)count
