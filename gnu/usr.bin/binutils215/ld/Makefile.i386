@@ -1,6 +1,6 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile.i386,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile.i386,v 1.2 2004/12/20 13:21:38 asmodai Exp $
 
-TARGET_TUPLE?=	i386-unknown-dragonfly
+TARGET_TUPLE?=	i386-just-dragonfly
 
 .if ${TARGET_ARCH} == "i386"
 NATIVE_EMULATION=	elf_i386

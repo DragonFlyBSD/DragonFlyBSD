@@ -1,6 +1,6 @@
-# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile.amd64,v 1.1 2004/12/20 13:14:44 asmodai Exp $
+# $DragonFly: src/gnu/usr.bin/binutils215/ld/Attic/Makefile.amd64,v 1.2 2004/12/20 13:21:38 asmodai Exp $
 
-TARGET_TUPLE?=	x86_64-unknown-dragonfly
+TARGET_TUPLE?=	x86_64-just-dragonfly
 
 NATIVE_EMULATION=	elf_x86_64
 HOST=	${TARGET_TUPLE}
