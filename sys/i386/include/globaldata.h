@@ -28,7 +28,7 @@
  *	should not include this file.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.14 2003/06/29 03:28:43 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/globaldata.h,v 1.15 2003/07/04 00:25:48 dillon Exp $
  */
 
 #ifndef _MACHINE_GLOBALDATA_H_
@@ -84,6 +84,9 @@ struct mdglobaldata {
  * This is the upper (0xff800000) address space layout that is per-cpu.
  * It is setup in locore.s and pmap.c for the BSP and in mp_machdep.c for
  * each AP.  genassym helps export this to the assembler code.
+ *
+ * WARNING!  page-bounded fields are hardwired for SMPpt[] setup in
+ * i386/i386/mp_machdep.c and locore.s.
  */
 struct privatespace {
 	/* page 0 - data page */
@@ -91,13 +94,13 @@ struct privatespace {
 	char		__filler0[PAGE_SIZE - sizeof(struct mdglobaldata)];
 
 	/* page 1..4 - CPAGE1,CPAGE2,CPAGE3,PPAGE1 */
-	char		CPAGE1[PAGE_SIZE];
-	char		CPAGE2[PAGE_SIZE];
-	char		CPAGE3[PAGE_SIZE];
-	char		PPAGE1[PAGE_SIZE];
+	char		CPAGE1[PAGE_SIZE];		/* SMPpt[1] */
+	char		CPAGE2[PAGE_SIZE];		/* SMPpt[2] */
+	char		CPAGE3[PAGE_SIZE];		/* SMPpt[3] */
+	char		PPAGE1[PAGE_SIZE];		/* SMPpt[4] */
 
 	/* page 5..4+UPAGES - idle stack (UPAGES pages) */
-	char		idlestack[UPAGES * PAGE_SIZE];
+	char		idlestack[UPAGES * PAGE_SIZE];	/* SMPpt[5..] */
 };
 
 extern struct privatespace CPU_prvspace[];
