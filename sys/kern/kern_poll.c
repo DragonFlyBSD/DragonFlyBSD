@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.7 2004/01/30 05:42:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.8 2004/03/06 01:58:54 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,9 @@
 #endif
 #endif
 
-static void netisr_poll(struct mbuf *);	/* the two netisr handlers	*/
-static void netisr_pollmore(struct mbuf *);
+/* the two netisr handlers */
+static void netisr_poll(struct netmsg *);
+static void netisr_pollmore(struct netmsg *);
 
 void init_device_poll(void);		/* init routine			*/
 void hardclock_device_poll(void);	/* hook from hardclock		*/
@@ -299,7 +300,7 @@ static struct timeval poll_start_t;
 
 /* ARGSUSED */
 static void
-netisr_pollmore(struct mbuf *dummy __unused)
+netisr_pollmore(struct netmsg *dummy __unused)
 {
 	struct timeval t;
 	int kern_load;
@@ -350,7 +351,7 @@ netisr_pollmore(struct mbuf *dummy __unused)
  */
 /* ARGSUSED */
 static void
-netisr_poll(struct mbuf *dummy __unused)
+netisr_poll(struct netmsg *dummy __unused)
 {
 	static int reg_frac_count;
 	int i, cycles;

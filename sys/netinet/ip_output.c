@@ -32,7 +32,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.11 2004/03/06 01:58:55 hsu Exp $
  */
 
 #define _IP_VHL
@@ -59,6 +59,7 @@
 #include <sys/in_cksum.h>
 
 #include <net/if.h>
+#include <net/netisr.h>
 #ifdef PFIL_HOOKS
 #include <net/pfil.h>
 #endif
@@ -893,6 +894,7 @@ spd_done:
 			}
 			if (ia) {	/* tell ip_input "dont filter" */
 				struct m_hdr tag;
+				struct netmsg_packet msg;
 
 				tag.mh_type = MT_TAG;
 				tag.mh_flags = PACKET_TAG_IPFORWARD;
@@ -910,7 +912,8 @@ spd_done:
 				    CSUM_IP_CHECKED | CSUM_IP_VALID;
 				ip->ip_len = htons(ip->ip_len);
 				ip->ip_off = htons(ip->ip_off);
-				ip_input((struct mbuf *)&tag);
+				msg.nm_packet = (struct mbuf *)&tag;
+				ip_input((struct netmsg *)&msg);
 				goto done;
 			}
 			/* Some of the logic for this was

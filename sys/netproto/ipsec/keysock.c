@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/keysock.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.5 2003/11/09 02:22:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/keysock.c,v 1.6 2004/03/06 01:58:56 hsu Exp $	*/
 /*	$KAME: keysock.c,v 1.25 2001/08/13 20:07:41 itojun Exp $	*/
 
 /*
@@ -580,7 +580,7 @@ extern struct domain keydomain;
 struct protosw keysw[] = {
 { SOCK_RAW,	&keydomain,	PF_KEY_V2,	PR_ATOMIC|PR_ADDR,
   0,		(pr_output_t *)key_output,	raw_ctlinput, 0,
-  0,
+  cpu0_soport,
   raw_init,	0,		0,		0,
   &key_usrreqs
 }

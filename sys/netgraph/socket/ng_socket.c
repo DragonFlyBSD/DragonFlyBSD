@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_socket.c,v 1.11.2.6 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.6 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/netgraph/socket/ng_socket.c,v 1.7 2004/03/06 01:58:55 hsu Exp $
  * $Whistle: ng_socket.c,v 1.28 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -283,7 +283,7 @@ ngc_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 ***************************************************************/
 
 static int
-ngd_attach(struct socket *so, int proto, struct thread *td)
+ngd_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ngpcb *const pcbp = sotongpcb(so);
 
@@ -947,7 +947,7 @@ static struct protosw ngsw[] = {
 		NG_CONTROL,
 		PR_ATOMIC | PR_ADDR /* | PR_RIGHTS */,
 		0, 0, 0, 0,
-		NULL,
+		cpu0_soport,
 		0, 0, 0, 0,
 		&ngc_usrreqs
 	},
@@ -957,7 +957,7 @@ static struct protosw ngsw[] = {
 		NG_DATA,
 		PR_ATOMIC | PR_ADDR,
 		0, 0, 0, 0,
-		NULL,
+		cpu0_soport,
 		0, 0, 0, 0,
 		&ngd_usrreqs
 	}

@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.10 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.11 2004/03/06 01:58:55 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -303,8 +303,9 @@ static struct	sockaddr_in ipaddr = { sizeof(ipaddr), AF_INET };
  * try to reassemble.  Process options.  Pass to next level.
  */
 void
-ip_input(struct mbuf *m)
+ip_input(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ip *ip;
 	struct ipq *fp;
 	struct in_ifaddr *ia = NULL;

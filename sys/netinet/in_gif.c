@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.5 2003/08/23 11:18:00 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet/in_gif.c,v 1.6 2004/03/06 01:58:55 hsu Exp $	*/
 /*	$KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $	*/
 
 /*
@@ -73,7 +73,7 @@ extern  struct domain inetdomain;
 struct protosw in_gif_protosw =
 { SOCK_RAW,	&inetdomain,	0/*IPPROTO_IPV[46]*/,	PR_ATOMIC|PR_ADDR,
   in_gif_input, rip_output,	0,	rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 };

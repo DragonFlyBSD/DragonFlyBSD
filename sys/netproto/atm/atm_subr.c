@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_subr.c,v 1.7 2000/02/13 03:31:59 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.9 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_subr.c,v 1.10 2004/03/06 01:58:56 hsu Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ struct sp_info	atm_attributes_pool = {
  */
 static void	atm_compact (struct atm_time *);
 static KTimeout_ret	atm_timexp (void *);
-static void	atm_intr(struct mbuf *);
+static void	atm_intr(struct netmsg *);
 
 /*
  * Local variables
@@ -880,8 +880,9 @@ atm_stack_drain()
  *
  */
 static void
-atm_intr(struct mbuf *m)
+atm_intr(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	caddr_t		cp;
 	atm_intr_func_t	func;
 	void		*token;

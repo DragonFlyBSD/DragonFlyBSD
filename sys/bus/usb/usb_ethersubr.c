@@ -31,7 +31,7 @@
  *
  *
  * $FreeBSD: src/sys/dev/usb/usb_ethersubr.c,v 1.17 2003/11/14 11:09:45 johan Exp $
- * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.6 2003/12/30 01:01:44 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb_ethersubr.c,v 1.7 2004/03/06 01:58:54 hsu Exp $
  */
 
 /*
@@ -73,10 +73,9 @@ Static struct ifqueue usbq_rx;
 Static struct ifqueue usbq_tx;
 Static int mtx_inited = 0;
 
-Static void usbintr(struct mbuf *m);
-
-Static void usbintr(struct mbuf *m)	/* dummy mbuf */
+Static void usbintr(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct ether_header	*eh;
 	struct usb_qdat		*q;
 	struct ifnet		*ifp;

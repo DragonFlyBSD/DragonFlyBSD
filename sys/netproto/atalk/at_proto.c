@@ -20,7 +20,7 @@
  *	+1-313-763-0525
  *	netatalk@itd.umich.edu
  *
- * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.2 2003/08/07 21:17:33 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/at_proto.c,v 1.3 2004/03/06 01:58:56 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -51,8 +51,7 @@ static struct protosw	atalksw[] = {
 	 * they be included in the kernel.
 	 */
 	0,		ddp_output,	0,		0,
-	/* socket-protocol interface. deprecated */
-	NULL,
+	cpu0_soport,
 	/* utility routines. */
 	ddp_init,	0,		0,		0,
 	&ddp_usrreqs

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.9 2004/01/06 03:17:27 dillon Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.10 2004/03/06 01:58:55 hsu Exp $
  */
 
 /*
@@ -119,7 +119,7 @@ SYSCTL_INT(_net_link_ether_inet, OID_AUTO, proxyall, CTLFLAG_RW,
 static void	arp_rtrequest (int, struct rtentry *, struct rt_addrinfo *);
 static void	arprequest (struct ifnet *,
 			struct in_addr *, struct in_addr *, u_char *);
-static void	arpintr(struct mbuf *);
+static void	arpintr(struct netmsg *);
 static void	arptfree (struct llinfo_arp *);
 static void	arptimer (void *);
 static struct llinfo_arp
@@ -492,8 +492,9 @@ arpresolve(ifp, rt, m, dst, desten, rt0)
  * then the protocol-specific routine is called.
  */
 static void
-arpintr(struct mbuf *m)
+arpintr(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct arphdr *ar;
 	u_short ar_hrd;
 

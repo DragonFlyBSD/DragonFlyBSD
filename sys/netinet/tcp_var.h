@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.10 2004/03/02 20:41:13 rob Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.11 2004/03/06 01:58:55 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -492,7 +492,7 @@ struct tcptemp *
 	 tcp_maketemplate (struct tcpcb *);
 void	 tcp_fillheaders (struct tcpcb *, void *, void *);
 struct lwkt_port *
-	 tcp_soport(struct socket *);
+	 tcp_soport(struct socket *, struct sockaddr *nam);
 struct tcpcb *
 	 tcp_timers (struct tcpcb *, int);
 void	 tcp_trace (int, int, struct tcpcb *, void *, struct tcphdr *,

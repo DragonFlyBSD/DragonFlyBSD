@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/xform_ipip.c,v 1.3.2.1 2003/01/24 05:11:36 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.5 2003/11/09 02:22:36 dillon Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/xform_ipip.c,v 1.6 2004/03/06 01:58:56 hsu Exp $	*/
 /*	$OpenBSD: ip_ipip.c,v 1.25 2002/06/10 18:04:55 itojun Exp $ */
 /*
  * The authors of this code are John Ioannidis (ji@tla.org),
@@ -657,7 +657,7 @@ static struct ipprotosw ipe4_protosw[] = {
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   (pr_in_input_t*) ip4_input,
 		0, 		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
@@ -665,7 +665,7 @@ static struct ipprotosw ipe4_protosw[] = {
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   (pr_in_input_t*) ip4_input,
 		0,	 	0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 }

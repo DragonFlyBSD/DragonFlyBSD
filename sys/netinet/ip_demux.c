@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.5 2004/03/05 20:00:03 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.6 2004/03/06 01:58:55 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -42,8 +42,8 @@ static int      ip_mthread_enable = 0;
 SYSCTL_INT(_net_inet_ip, OID_AUTO, mthread_enable, CTLFLAG_RW,
     &ip_mthread_enable, 0, "");
 
-static int
-INP_MPORT_HASH(in_addr_t src, in_addr_t dst, int sport, int dport)
+static __inline int
+INP_MPORT_HASH(in_addr_t src, in_addr_t dst, in_port_t sport, in_port_t dport)
 {
 	/*
 	 * Use low order bytes.
@@ -58,14 +58,19 @@ INP_MPORT_HASH(in_addr_t src, in_addr_t dst, int sport, int dport)
 #endif
 }
 
+/*
+ * Map a packet to a protocol processing thread.
+ */
 lwkt_port_t
 ip_mport(struct mbuf *m)
 {
 	struct ip *ip = mtod(m, struct ip *);
-	int hlen;
+	int iphlen;
 	struct tcphdr *th;
 	struct udphdr *uh;
+	int off;
 	lwkt_port_t port;
+	int cpu;
 
 	if (ip_mthread_enable == 0)
 		return (&netisr_cpu[0].td_msgport);
@@ -82,30 +87,51 @@ ip_mport(struct mbuf *m)
 	if (ntohs(ip->ip_off) & (IP_MF | IP_OFFMASK))
 		return (&netisr_cpu[0].td_msgport);
 
-	hlen = ip->ip_hl << 2;
+	iphlen = ip->ip_hl << 2;
 
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
-		if (m->m_len < sizeof(struct tcpiphdr) &&
-		    (m = m_pullup(m, sizeof(struct tcpiphdr))) == NULL) {
+		if (m->m_len < iphlen + sizeof(struct tcphdr) &&
+		    (m = m_pullup(m, iphlen + sizeof(struct tcphdr))) == NULL) {
 			tcpstat.tcps_rcvshort++;
 			return (NULL);
 		}
+		th = (struct tcphdr *)((caddr_t)ip + iphlen);
+		off = th->th_off << 2;
+		if (off < sizeof(struct tcphdr) || off > ip->ip_len) {
+			tcpstat.tcps_rcvbadoff++;
+			return (NULL);
+		}
+		if (m->m_len < sizeof(struct ip) + off) {
+		    m = m_pullup(m, sizeof(struct ip) + off);
+		    if (m == NULL) {
+			tcpstat.tcps_rcvshort++;
+			return (NULL);
+		    }
+		    ip = mtod(m, struct ip *);
+		    th = (struct tcphdr *)((caddr_t)ip + iphlen);
+		}
 
-		th = (struct tcphdr *)((caddr_t)ip + hlen);
-		port = &tcp_thread[INP_MPORT_HASH(ip->ip_src.s_addr,
-		    ip->ip_dst.s_addr, th->th_sport, th->th_dport)].td_msgport;
+		cpu = INP_MPORT_HASH(ip->ip_src.s_addr, ip->ip_dst.s_addr,
+		    th->th_sport, th->th_dport);
+		port = &tcp_thread[cpu].td_msgport;
 		break;
 	case IPPROTO_UDP:
-		if (m->m_len < hlen + sizeof(struct udphdr) &&
-		    (m = m_pullup(m, hlen + sizeof(struct udphdr))) == NULL) {
+		if (m->m_len < iphlen + sizeof(struct udphdr) &&
+		    (m = m_pullup(m, iphlen + sizeof(struct udphdr))) == NULL) {
 			udpstat.udps_hdrops++;
 			return (NULL);
 		}
+		uh = (struct udphdr *)((caddr_t)ip + iphlen);
 
-		uh = (struct udphdr *)((caddr_t)ip + hlen);
-		port = &udp_thread[INP_MPORT_HASH(ip->ip_src.s_addr,
-		    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport)].td_msgport;
+		if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
+		    in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif)) {
+			cpu = 0;
+		} else {
+			cpu = INP_MPORT_HASH(ip->ip_src.s_addr,
+			    ip->ip_dst.s_addr, uh->uh_sport, uh->uh_dport);
+		}
+		port = &udp_thread[cpu].td_msgport;
 		break;
 	default:
 		port = &netisr_cpu[0].td_msgport;
@@ -116,22 +142,74 @@ ip_mport(struct mbuf *m)
 	return (port);
 }
 
+/*
+ * Map a TCP socket to a protocol processing thread.
+ */
 lwkt_port_t
-tcp_soport(struct socket *so)
+tcp_soport(struct socket *so, struct sockaddr *nam)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp;
+
+	/*
+	 * The following processing all take place on Protocol Thread 0:
+	 *   only bind() and connect() have a non-null nam parameter
+	 *   attach() has a null socket parameter
+	 *   Fast and slow timeouts pass in two NULLs
+	 */
+	if (nam != NULL || so == NULL)
+		return (&tcp_thread[0].td_msgport);
+
+	/*
+	 * Already bound and connected.  For TCP connections, the
+	 * (faddr, fport, laddr, lport) association cannot change now.
+	 *
+	 * Note: T/TCP code needs some reorganization to fit into
+	 * this model.  XXX JH
+	 */
+	inp = sotoinpcb(so);
+	if (!inp)		/* connection reset by peer */
+		return (&tcp_thread[0].td_msgport);
+
+	/*
+	 * Rely on type-stable memory and check in protocol handler
+	 * to fix race condition here w/ deallocation of inp.  XXX JH
+	 */
 
 	return (&tcp_thread[INP_MPORT_HASH(inp->inp_laddr.s_addr,
-	    inp->inp_faddr.s_addr, inp->inp_lport, inp->inp_fport)].td_msgport);
+	    inp->inp_faddr.s_addr, inp->inp_lport,
+	    inp->inp_fport)].td_msgport);
 }
 
+/*
+ * Map a UDP socket to a protocol processing thread.
+ */
 lwkt_port_t
-udp_soport(struct socket *so)
+udp_soport(struct socket *so, struct sockaddr *nam)
 {
-	struct inpcb *inp = sotoinpcb(so);
+	struct inpcb *inp;
+
+	/*
+	 * The following processing all take place on Protocol Thread 0:
+	 *   only bind() and connect() have a non-null nam parameter
+	 *   attach() has a null socket parameter
+	 *   Fast and slow timeouts pass in two NULLs
+	 */
+	if (nam != NULL || so == NULL)
+		return (&udp_thread[0].td_msgport);
+
+	inp = sotoinpcb(so);
+
+	if (IN_MULTICAST(ntohl(inp->inp_laddr.s_addr)))
+		return (&udp_thread[0].td_msgport);
+
+	/*
+	 * Rely on type-stable memory and check in protocol handler
+	 * to fix race condition here w/ deallocation of inp.  XXX JH
+	 */
 
 	return (&udp_thread[INP_MPORT_HASH(inp->inp_laddr.s_addr,
-	    inp->inp_faddr.s_addr, inp->inp_lport, inp->inp_fport)].td_msgport);
+	    inp->inp_faddr.s_addr, inp->inp_lport,
+	    inp->inp_fport)].td_msgport);
 }
 
 void

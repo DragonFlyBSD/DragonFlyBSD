@@ -1,6 +1,6 @@
 /*	$NetBSD: natm.c,v 1.5 1996/11/09 03:26:26 chuck Exp $	*/
 /* $FreeBSD: src/sys/netnatm/natm.c,v 1.12 2000/02/13 03:32:03 peter Exp $ */
-/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.10 2004/03/05 16:57:16 hsu Exp $ */
+/* $DragonFly: src/sys/netproto/natm/natm.c,v 1.11 2004/03/06 01:58:57 hsu Exp $ */
 
 /*
  *
@@ -69,7 +69,7 @@ static u_long natm0_recvspace = 16*1024;
 /*
  * FreeBSD new usrreqs supersedes pr_usrreq.
  */
-static int natm_usr_attach (struct socket *, int, struct pru_attach_info *ai);
+static int natm_usr_attach (struct socket *, int, struct pru_attach_info *);
 static int natm_usr_detach (struct socket *);
 static int natm_usr_connect (struct socket *, struct sockaddr *,
 				 struct thread *);
@@ -719,7 +719,7 @@ int natm5_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp,
   return (ENOPROTOOPT);
 }
 
-static void natmintr(struct mbuf *);
+static void natmintr(struct netmsg *);
 
 #if defined(__DragonFly__)
 static void
@@ -747,8 +747,9 @@ natm_init()
  * we really need it.
  */
 static void
-natmintr(struct mbuf *m)
+natmintr(struct netmsg *msg)
 {
+  struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
   int s;
   struct socket *so;
   struct natmpcb *npcb;

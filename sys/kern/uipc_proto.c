@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/uipc_proto.c,v 1.21.2.1 2002/03/09 05:22:23 dd Exp $
- * $DragonFly: src/sys/kern/uipc_proto.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_proto.c,v 1.3 2004/03/06 01:58:54 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -53,19 +53,19 @@
 static struct protosw localsw[] = {
 { SOCK_STREAM,	&localdomain,	0,	PR_CONNREQUIRED|PR_WANTRCVD|PR_RIGHTS,
   0,		0,		0,		&uipc_ctloutput,
-  0,
+  NULL,
   0,		0,		0,		0,
   &uipc_usrreqs
 },
 { SOCK_DGRAM,	&localdomain,	0,		PR_ATOMIC|PR_ADDR|PR_RIGHTS,
   0,		0,		0,		0,
-  0,
+  NULL,
   0,		0,		0,		0,
   &uipc_usrreqs
 },
 { 0,		0,		0,		0,
   0,		0,		raw_ctlinput,	0,
-  0,
+  NULL,
   raw_init,	0,		0,		0,
   &raw_usrreqs
 }

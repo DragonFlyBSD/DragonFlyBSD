@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.14 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.15 2004/03/06 01:58:54 hsu Exp $
  */
 
 #ifdef _KERNEL
@@ -60,6 +60,9 @@
 #ifdef SMP
 #include <machine/smp.h>
 #endif
+
+#include <sys/malloc.h>
+MALLOC_DEFINE(M_LWKTMSG, "lwkt message", "lwkt message");
 
 #else
 

@@ -3,12 +3,13 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.7 2003/11/23 00:28:01 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.8 2004/03/06 01:58:54 hsu Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
 #include <sys/msgport.h>
 #include <sys/msgport2.h>
 #include <sys/proc.h>
@@ -20,15 +21,6 @@
 #include <net/netisr.h>
 #include <machine/cpufunc.h>
 #include <machine/ipl.h>
-
-struct netmsg {
-    struct lwkt_msg	nm_lmsg;
-    struct mbuf		*nm_packet;
-    netisr_fn_t		nm_handler;
-};
-
-#define CMD_NETMSG_NEWPKT	(MSG_CMD_NETMSG | 0x0001)
-#define CMD_NETMSG_POLL		(MSG_CMD_NETMSG | 0x0002)
 
 static struct netisr netisrs[NETISR_MAX];
 
@@ -54,18 +46,9 @@ netmsg_service_loop(void *arg)
     struct netmsg *msg;
 
     while ((msg = lwkt_waitport(&curthread->td_msgport, NULL))) {
-	struct mbuf *m = msg->nm_packet;
-	netisr_fn_t handler = msg->nm_handler;
-
-	if (handler) {
-		handler(m);
-	} else if (m) {
-		while (m->m_type == MT_TAG)
-			m = m->m_next;
-		KKASSERT(m != NULL);
-		m_freem(m);
-	}
-	free(msg, M_TEMP);
+	msg->nm_handler(msg);
+	if (msg->nm_lmsg.ms_flags & MSGF_ASYNC)
+	    free(msg, M_LWKTMSG);
     }
 }
 
@@ -89,7 +72,7 @@ int
 netisr_queue(int num, struct mbuf *m)
 {
     struct netisr *ni;
-    struct netmsg *pmsg;
+    struct netmsg_packet *pmsg;
     lwkt_port_t port;
 
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
@@ -98,15 +81,15 @@ netisr_queue(int num, struct mbuf *m)
     ni = &netisrs[num];
     if (ni->ni_handler == NULL) {
 	printf("netisr_queue: unregistered isr %d\n", num);
-	return EIO;
+	return (EIO);
     }
 
-    /* use better message allocation system with limits later XXX JH */
-    if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
-	return ENOBUFS;
-
     if (!(port = ni->ni_mport(m)))
-	return EIO;
+	return (EIO);
+
+    /* use better message allocation system with limits later XXX JH */
+    if (!(pmsg = malloc(sizeof(struct netmsg_packet), M_LWKTMSG, M_NOWAIT)))
+	return (ENOBUFS);
 
     lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_NEWPKT);
     pmsg->nm_packet = m;
@@ -144,10 +127,16 @@ cpu0_portfn(struct mbuf *m)
     return (&netisr_cpu[0].td_msgport);
 }
 
+/* ARGSUSED */
+lwkt_port_t
+cpu0_soport(struct socket *so __unused, struct sockaddr *nam __unused)
+{
+    return (&netisr_cpu[0].td_msgport);
+}
+
 /*
  * This function is used to call the netisr handler from the appropriate
- * netisr thread for polling and other purposes.  pmsg->nm_packet will be
- * undefined.  At the moment operation is restricted to non-packet ISRs only.
+ * netisr thread for polling and other purposes.
  */
 void
 schednetisr(int num)
@@ -159,7 +148,7 @@ schednetisr(int num)
     KASSERT((num > 0 && num <= (sizeof(netisrs)/sizeof(netisrs[0]))),
 	("schednetisr: bad isr %d", num));
 
-    if (!(pmsg = malloc(sizeof(struct netmsg), M_TEMP, M_NOWAIT)))
+    if (!(pmsg = malloc(sizeof(struct netmsg), M_LWKTMSG, M_NOWAIT)))
 	return;
 
     lwkt_initmsg(&pmsg->nm_lmsg, port, CMD_NETMSG_POLL);

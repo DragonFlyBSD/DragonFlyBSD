@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_proto.c,v 1.6.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_proto.c,v 1.5 2004/03/06 01:58:56 hsu Exp $	*/
 /*	$KAME: in6_proto.c,v 1.91 2001/05/27 13:28:35 itojun Exp $	*/
 
 /*
@@ -153,19 +153,19 @@ static struct pr_usrreqs nousrreqs;
 struct ip6protosw inet6sw[] = {
 { 0,		&inet6domain,	IPPROTO_IPV6,	0,
   0,		0,		0,		0,
-  0,
+  cpu0_soport,
   ip6_init,	0,		frag6_slowtimo,	frag6_drain,
   &nousrreqs,
 },
 { SOCK_DGRAM,	&inet6domain,	IPPROTO_UDP,	PR_ATOMIC|PR_ADDR,
   udp6_input,	0,		udp6_ctlinput,	ip6_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &udp6_usrreqs,
 },
 { SOCK_STREAM,	&inet6domain,	IPPROTO_TCP,	PR_CONNREQUIRED|PR_WANTRCVD|PR_LISTEN,
   tcp6_input,	0,		tcp6_ctlinput,	tcp_ctloutput,
-  0,
+  cpu0_soport,
 #ifdef INET	/* don't call initialization and timeout routines twice */
   0,		0,		0,		tcp_drain,
 #else
@@ -175,38 +175,38 @@ struct ip6protosw inet6sw[] = {
 },
 { SOCK_RAW,	&inet6domain,	IPPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   rip6_input,	rip6_output,	rip6_ctlinput,	rip6_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip6_usrreqs
 },
 { SOCK_RAW,	&inet6domain,	IPPROTO_ICMPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   icmp6_input,	rip6_output,	rip6_ctlinput,	rip6_ctloutput,
-  0,
+  cpu0_soport,
   icmp6_init,	icmp6_fasttimo,	0,		0,
   &rip6_usrreqs
 },
-{ SOCK_RAW,	&inet6domain,	IPPROTO_DSTOPTS,PR_ATOMIC|PR_ADDR,
+{ SOCK_RAW,	&inet6domain,	IPPROTO_DSTOPTS, PR_ATOMIC|PR_ADDR,
   dest6_input,	0,	 	0,		0,
-  0,	
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
-{ SOCK_RAW,	&inet6domain,	IPPROTO_ROUTING,PR_ATOMIC|PR_ADDR,
+{ SOCK_RAW,	&inet6domain,	IPPROTO_ROUTING, PR_ATOMIC|PR_ADDR,
   route6_input,	0,	 	0,		0,
-  0,	
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
-{ SOCK_RAW,	&inet6domain,	IPPROTO_FRAGMENT,PR_ATOMIC|PR_ADDR,
+{ SOCK_RAW,	&inet6domain,	IPPROTO_FRAGMENT, PR_ATOMIC|PR_ADDR,
   frag6_input,	0,	 	0,		0,
-  0,	
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #ifdef IPSEC
 { SOCK_RAW,	&inet6domain,	IPPROTO_AH,	PR_ATOMIC|PR_ADDR,
   ah6_input,	0,		0,		0,
-  0,	
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs,
 },
@@ -215,14 +215,14 @@ struct ip6protosw inet6sw[] = {
   esp6_input,	0,
   esp6_ctlinput,
   0,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs,
 },
 #endif
 { SOCK_RAW,	&inet6domain,	IPPROTO_IPCOMP,	PR_ATOMIC|PR_ADDR,
   ipcomp6_input, 0,	 	0,		0,
-  0,	
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs,
 },
@@ -230,27 +230,27 @@ struct ip6protosw inet6sw[] = {
 #ifdef INET
 { SOCK_RAW,	&inet6domain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap6_input,	rip6_output, 	0,		rip6_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,	0,		0,		0,
   &rip6_usrreqs
 },
 #endif /* INET */
 { SOCK_RAW,	&inet6domain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap6_input, rip6_output,	0,		rip6_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,	0,		0,		0,
   &rip6_usrreqs
 },
 { SOCK_RAW,     &inet6domain,	IPPROTO_PIM,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   pim6_input,	rip6_output,	0,              rip6_ctloutput,
-  0,
+  cpu0_soport,
   0,            0,              0,              0,
   &rip6_usrreqs
 },
 /* raw wildcard */
 { SOCK_RAW,	&inet6domain,	0,		PR_ATOMIC|PR_ADDR,
   rip6_input,	rip6_output,	0,		rip6_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip6_usrreqs
 },

@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.5 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.6 2004/03/06 01:58:55 hsu Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -96,71 +96,73 @@
 #include <netns/ns_if.h>
 #endif
 
+#include <net/netisr.h>		/* for cpu0_soport */
+
 extern	struct domain inetdomain;
 static	struct pr_usrreqs nousrreqs;
 
 struct ipprotosw inetsw[] = {
 { 0,		&inetdomain,	0,		0,
   0,		0,		0,		0,
-  0,
+  cpu0_soport,
   ip_init,	0,		ip_slowtimo,	ip_drain,
   &nousrreqs
 },
 { SOCK_DGRAM,	&inetdomain,	IPPROTO_UDP,	PR_ATOMIC|PR_ADDR,
   udp_input,	0,		udp_ctlinput,	ip_ctloutput,
-  0,
+  udp_soport,
   udp_init,	0,		0,		0,
   &udp_usrreqs
 },
 { SOCK_STREAM,	&inetdomain,	IPPROTO_TCP,
 	PR_CONNREQUIRED|PR_IMPLOPCL|PR_WANTRCVD,
   tcp_input,	0,		tcp_ctlinput,	tcp_ctloutput,
-  0,
+  tcp_soport,
   tcp_init,	0,		tcp_slowtimo,	tcp_drain,
   &tcp_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   rip_input,	0,		rip_ctlinput,	rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_ICMP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   icmp_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_IGMP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   igmp_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   igmp_init,	igmp_fasttimo,	igmp_slowtimo,	0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_RSVP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   rsvp_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
 #ifdef IPSEC
 { SOCK_RAW,	&inetdomain,	IPPROTO_AH,	PR_ATOMIC|PR_ADDR,
   ah4_input,	0,	 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #ifdef IPSEC_ESP
 { SOCK_RAW,	&inetdomain,	IPPROTO_ESP,	PR_ATOMIC|PR_ADDR,
   esp4_input,	0,	 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #endif
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPCOMP,	PR_ATOMIC|PR_ADDR,
   ipcomp4_input, 0,	 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
@@ -168,45 +170,45 @@ struct ipprotosw inetsw[] = {
 #ifdef FAST_IPSEC
 { SOCK_RAW,	&inetdomain,	IPPROTO_AH,	PR_ATOMIC|PR_ADDR,
   ipsec4_common_input,	0, 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_ESP,	PR_ATOMIC|PR_ADDR,
   ipsec4_common_input,	0, 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPCOMP,	PR_ATOMIC|PR_ADDR,
   ipsec4_common_input,	0, 	0,		0,
-  0,	  
+  cpu0_soport,
   0,		0,		0,		0,
   &nousrreqs
 },
 #endif /* FAST_IPSEC */
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV4,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap4_input,	0,	 	0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,		0,		0,		0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_MOBILE,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap4_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,	0,		0,		0,
   &rip_usrreqs
 },
 { SOCK_RAW,	&inetdomain,	IPPROTO_GRE,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap4_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,	0,		0,		0,
   &rip_usrreqs
 },
 # ifdef INET6
 { SOCK_RAW,	&inetdomain,	IPPROTO_IPV6,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   encap4_input,	0,	 	0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   encap_init,	0,		0,		0,
   &rip_usrreqs
 },
@@ -214,7 +216,7 @@ struct ipprotosw inetsw[] = {
 #ifdef IPDIVERT
 { SOCK_RAW,	&inetdomain,	IPPROTO_DIVERT,	PR_ATOMIC|PR_ADDR,
   div_input,	0,	 	0,		ip_ctloutput,
-  0,
+  cpu0_soport,
   div_init,	0,		0,		0,
   &div_usrreqs,
 },
@@ -222,7 +224,7 @@ struct ipprotosw inetsw[] = {
 #ifdef IPXIP
 { SOCK_RAW,	&inetdomain,	IPPROTO_IDP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   ipxip_input,	0,		ipxip_ctlinput,	0,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
@@ -230,7 +232,7 @@ struct ipprotosw inetsw[] = {
 #ifdef NSIP
 { SOCK_RAW,	&inetdomain,	IPPROTO_IDP,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   idpip_input,	0,		nsip_ctlinput,	0,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
@@ -238,7 +240,7 @@ struct ipprotosw inetsw[] = {
 #ifdef PIM
 { SOCK_RAW,	&inetdomain,	IPPROTO_PIM,	PR_ATOMIC|PR_ADDR|PR_LASTHDR,
   pim_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   0,		0,		0,		0,
   &rip_usrreqs
 },
@@ -246,7 +248,7 @@ struct ipprotosw inetsw[] = {
 	/* raw wildcard */
 { SOCK_RAW,	&inetdomain,	0,		PR_ATOMIC|PR_ADDR,
   rip_input,	0,		0,		rip_ctloutput,
-  0,
+  cpu0_soport,
   rip_init,	0,		0,		0,
   &rip_usrreqs
 },

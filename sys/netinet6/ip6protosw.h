@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6protosw.h,v 1.2.2.4 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.3 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6protosw.h,v 1.4 2004/03/06 01:58:56 hsu Exp $	*/
 /*	$KAME: ip6protosw.h,v 1.25 2001/09/26 06:13:03 keiichi Exp $	*/
 
 /*
@@ -117,6 +117,8 @@ struct ip6ctlparam {
 	u_int8_t ip6c_nxt;		/* final next header field */
 };
 
+struct lwkt_port;
+
 struct ip6protosw {
 	short	pr_type;		/* socket type used for */
 	struct	domain *pr_domain;	/* domain protocol a member of */
@@ -133,10 +135,7 @@ struct ip6protosw {
 	int	(*pr_ctloutput)		/* control output (from above) */
 			(struct socket *, struct sockopt *);
 
-/* user-protocol hook */
-	int	(*pr_usrreq)		/* user request: see list below */
-			(struct socket *, int, struct mbuf *,
-			     struct mbuf *, struct mbuf *, struct proc *);
+	struct lwkt_port *(*pr_soport) (struct socket *, struct sockaddr *);
 
 /* utility hooks */
 	void	(*pr_init)		/* initialization hook */

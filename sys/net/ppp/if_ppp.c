@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.11 2004/01/06 03:17:26 dillon Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.12 2004/03/06 01:58:55 hsu Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -139,7 +139,7 @@ static void	pppattach (void *);
 PSEUDO_SET(pppattach, if_ppp);
 
 static int	pppsioctl (struct ifnet *ifp, u_long cmd, caddr_t data);
-static void	pppintr (struct mbuf *m);
+static void	pppintr (struct netmsg *msg);
 
 static void	ppp_requeue (struct ppp_softc *);
 static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
@@ -1057,8 +1057,9 @@ ppp_dequeue(sc)
  * Software interrupt routine, called at spl[soft]net.
  */
 static void
-pppintr(struct mbuf *m)
+pppintr(struct netmsg *msg)
 {
+    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
     struct ppp_softc *sc;
     int i, s;
 

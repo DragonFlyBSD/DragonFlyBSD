@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.7 2003/11/23 20:22:59 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.8 2004/03/06 01:58:54 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -75,9 +75,73 @@
 
 #ifdef _KERNEL
 
-struct mbuf;
+#include <sys/protosw.h>
 
-typedef void (*netisr_fn_t)(struct mbuf *);
+struct netmsg;
+
+typedef void (*netisr_fn_t)(struct netmsg *);
+
+/*
+ * Base class.  All net messages must start with the same fields.
+ */
+struct netmsg {
+    struct lwkt_msg	nm_lmsg;
+    netisr_fn_t		nm_handler;
+};
+
+struct netmsg_packet {
+    struct lwkt_msg	nm_lmsg;
+    netisr_fn_t		nm_handler;
+    struct mbuf		*nm_packet;
+};
+
+struct netmsg_pr_ctloutput {
+    struct lwkt_msg	nm_lmsg;
+    netisr_fn_t		nm_handler;
+    int			(*nm_prfn) (struct socket *, struct sockopt *);
+    struct socket	*nm_so;
+    struct sockopt	*nm_sopt;
+};
+
+struct netmsg_pr_timeout {
+    struct lwkt_msg	nm_lmsg;
+    netisr_fn_t		nm_handler;
+    void		(*nm_prfn) (void);
+};
+
+/*
+ * for dispatching pr_ functions,
+ * until they can be converted to message-passing
+ */
+void netmsg_pr_dispatcher(struct netmsg *);
+
+#define CMD_NETMSG_NEWPKT		(MSG_CMD_NETMSG | 0x0001)
+#define CMD_NETMSG_POLL			(MSG_CMD_NETMSG | 0x0002)
+
+#define CMD_NETMSG_PRU_ABORT		(MSG_CMD_NETMSG | 0x0003)
+#define CMD_NETMSG_PRU_ACCEPT		(MSG_CMD_NETMSG | 0x0004)
+#define CMD_NETMSG_PRU_ATTACH		(MSG_CMD_NETMSG | 0x0005)
+#define CMD_NETMSG_PRU_BIND		(MSG_CMD_NETMSG | 0x0006)
+#define CMD_NETMSG_PRU_CONNECT		(MSG_CMD_NETMSG | 0x0007)
+#define CMD_NETMSG_PRU_CONNECT2		(MSG_CMD_NETMSG | 0x0008)
+#define CMD_NETMSG_PRU_CONTROL		(MSG_CMD_NETMSG | 0x0009)
+#define CMD_NETMSG_PRU_DETACH		(MSG_CMD_NETMSG | 0x000a)
+#define CMD_NETMSG_PRU_DISCONNECT	(MSG_CMD_NETMSG | 0x000b)
+#define CMD_NETMSG_PRU_LISTEN		(MSG_CMD_NETMSG | 0x000c)
+#define CMD_NETMSG_PRU_PEERADDR		(MSG_CMD_NETMSG | 0x000d)
+#define CMD_NETMSG_PRU_RCVD		(MSG_CMD_NETMSG | 0x000e)
+#define CMD_NETMSG_PRU_RCVOOB		(MSG_CMD_NETMSG | 0x000f)
+#define CMD_NETMSG_PRU_SEND		(MSG_CMD_NETMSG | 0x0010)
+#define CMD_NETMSG_PRU_SENSE		(MSG_CMD_NETMSG | 0x0011)
+#define CMD_NETMSG_PRU_SHUTDOWN		(MSG_CMD_NETMSG | 0x0012)
+#define CMD_NETMSG_PRU_SOCKADDR		(MSG_CMD_NETMSG | 0x0013)
+#define CMD_NETMSG_PRU_SOSEND		(MSG_CMD_NETMSG | 0x0014)
+#define CMD_NETMSG_PRU_SORECEIVE	(MSG_CMD_NETMSG | 0x0015)
+#define CMD_NETMSG_PRU_SOPOLL		(MSG_CMD_NETMSG | 0x0016)
+
+#define CMD_NETMSG_PR_CTLOUTPUT		(MSG_CMD_NETMSG | 0x0017)
+#define CMD_NETMSG_PR_TIMEOUT		(MSG_CMD_NETMSG | 0x0018)
+
 typedef lwkt_port_t (*lwkt_portfn_t)(struct mbuf *);
 
 struct netisr {
@@ -94,6 +158,6 @@ int		netisr_unregister(int);
 void		netmsg_service_loop(void *arg);
 void		schednetisr(int);
 
-#endif
+#endif	/* KERNEL */
 
 #endif	/* _NET_NETISR_H_ */

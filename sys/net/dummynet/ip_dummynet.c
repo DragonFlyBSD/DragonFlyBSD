@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_dummynet.c,v 1.24.2.22 2003/05/13 09:31:06 maxim Exp $
- * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.5 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/dummynet/ip_dummynet.c,v 1.6 2004/03/06 01:58:55 hsu Exp $
  */
 
 #if !defined(KLD_MODULE)
@@ -80,6 +80,7 @@
 #include <netinet/in_var.h>
 #include <netinet/ip.h>
 #include <net/ipfw/ip_fw.h>
+#include <net/netisr.h>
 #include "ip_dummynet.h"
 #include <netinet/ip_var.h>
 
@@ -432,8 +433,13 @@ transmit_event(struct dn_pipe *pipe)
 	    break ;
 
 	case DN_TO_IP_IN :
-	    ip_input((struct mbuf *)pkt) ;
+	    {
+	    struct netmsg_packet msg;
+
+	    msg.nm_packet = (struct mbuf *)&pkt;
+	    ip_input((struct netmsg *)&msg) ;
 	    break ;
+	    }
 
 	case DN_TO_BDG_FWD :
 	    if (!BDG_LOADED) {

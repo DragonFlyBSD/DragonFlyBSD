@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_usrreq.c,v 1.6 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.8 2004/03/05 16:57:16 hsu Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_usrreq.c,v 1.9 2004/03/06 01:58:56 hsu Exp $
  */
 
 /*
@@ -45,7 +45,6 @@ static int	atm_dgram_attach (struct socket *, int,
 static int	atm_dgram_control (struct socket *, u_long, caddr_t, 
 			struct ifnet *, struct thread *);
 static int	atm_dgram_info (caddr_t);
-
 
 /*
  * New-style socket request routines

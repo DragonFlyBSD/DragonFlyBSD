@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.9 2004/03/05 16:57:15 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.10 2004/03/06 01:58:54 hsu Exp $
  */
 
 
@@ -1060,7 +1060,7 @@ extern struct domain routedomain;		/* or at least forward */
 static struct protosw routesw[] = {
 { SOCK_RAW,	&routedomain,	0,		PR_ATOMIC|PR_ADDR,
   0,		route_output,	raw_ctlinput,	0,
-  0,
+  cpu0_soport,
   raw_init,	0,		0,		0,
   &route_usrreqs
 }

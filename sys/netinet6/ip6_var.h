@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.4 2003/12/02 08:00:22 asmodai Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.5 2004/03/06 01:58:56 hsu Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -300,7 +300,8 @@ int	icmp6_ctloutput (struct socket *, struct sockopt *sopt);
 struct in6_ifaddr;
 void	ip6_init (void);
 void	ip6intr (void);
-void	ip6_input (struct mbuf *);
+struct netmsg;
+void	ip6_input (struct netmsg *);
 struct in6_ifaddr *ip6_getdstifaddr (struct mbuf *);
 void	ip6_freepcbopts (struct ip6_pktopts *);
 void	ip6_freemoptions (struct ip6_moptions *);

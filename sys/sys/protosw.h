@@ -32,7 +32,7 @@
  *
  *	@(#)protosw.h	8.1 (Berkeley) 6/2/93
  * $FreeBSD: src/sys/sys/protosw.h,v 1.28.2.2 2001/07/03 11:02:01 ume Exp $
- * $DragonFly: src/sys/sys/protosw.h,v 1.6 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/sys/protosw.h,v 1.7 2004/03/06 01:58:57 hsu Exp $
  */
 
 #ifndef _SYS_PROTOSW_H_
@@ -83,7 +83,7 @@ struct protosw {
 	int	(*pr_ctloutput)(struct socket *, struct sockopt *);
 					/* control output (from above) */
 /* user-protocol hook */
-	void	*pr_ousrreq;
+	struct lwkt_port *(*pr_mport)(struct socket *, struct sockaddr *);
 /* utility hooks */
 	void	(*pr_init) (void);	/* initialization hook */
 	void	(*pr_fasttimo) (void);
@@ -237,16 +237,55 @@ struct pr_usrreqs {
 				     struct ucred *cred, struct thread *td);
 };
 
+typedef int (*pru_abort_fn_t) (struct socket *so);
+typedef int (*pru_accept_fn_t) (struct socket *so, struct sockaddr **nam);
+typedef int (*pru_attach_fn_t) (struct socket *so, int proto,
+					struct pru_attach_info *ai);
+typedef int (*pru_bind_fn_t) (struct socket *so, struct sockaddr *nam,
+					struct thread *td);
+typedef int (*pru_connect_fn_t) (struct socket *so, struct sockaddr *nam,
+					struct thread *td);
+typedef int (*pru_connect2_fn_t) (struct socket *so1, struct socket *so2);
+typedef int (*pru_control_fn_t) (struct socket *so, u_long cmd, caddr_t data,
+					struct ifnet *ifp,
+					struct thread *td);
+typedef int (*pru_detach_fn_t) (struct socket *so);
+typedef int (*pru_disconnect_fn_t) (struct socket *so);
+typedef int (*pru_listen_fn_t) (struct socket *so, struct thread *td);
+typedef int (*pru_peeraddr_fn_t) (struct socket *so, struct sockaddr **nam);
+typedef int (*pru_rcvd_fn_t) (struct socket *so, int flags);
+typedef int (*pru_rcvoob_fn_t) (struct socket *so, struct mbuf *m, int flags);
+typedef int (*pru_send_fn_t) (struct socket *so, int flags, struct mbuf *m, 
+					struct sockaddr *addr,
+					struct mbuf *control,
+					struct thread *td);
+typedef int (*pru_sense_fn_t) (struct socket *so, struct stat *sb);
+typedef int (*pru_shutdown_fn_t) (struct socket *so);
+typedef int (*pru_sockaddr_fn_t) (struct socket *so, struct sockaddr **nam);
+typedef int (*pru_sosend_fn_t) (struct socket *so, struct sockaddr *addr,
+					struct uio *uio, struct mbuf *top,
+					struct mbuf *control, int flags,
+					struct thread *td);
+typedef int (*pru_soreceive_fn_t) (struct socket *so, struct sockaddr **paddr,
+					struct uio *uio, struct mbuf **mp0,
+					struct mbuf **controlp,
+					int *flagsp);
+typedef int (*pru_sopoll_fn_t) (struct socket *so, int events,
+					struct ucred *cred,
+					struct thread *td);
+
 int	pru_accept_notsupp (struct socket *so, struct sockaddr **nam);
 int	pru_connect_notsupp (struct socket *so, struct sockaddr *nam,
-				 struct thread *td);
+				struct thread *td);
 int	pru_connect2_notsupp (struct socket *so1, struct socket *so2);
 int	pru_control_notsupp (struct socket *so, u_long cmd, caddr_t data,
-				 struct ifnet *ifp, struct thread *td);
+				struct ifnet *ifp, struct thread *td);
 int	pru_listen_notsupp (struct socket *so, struct thread *td);
 int	pru_rcvd_notsupp (struct socket *so, int flags);
 int	pru_rcvoob_notsupp (struct socket *so, struct mbuf *m, int flags);
 int	pru_sense_null (struct socket *so, struct stat *sb);
+
+struct lwkt_port *cpu0_soport(struct socket *, struct sockaddr *);
 
 #endif /* _KERNEL */
 
@@ -258,7 +297,7 @@ int	pru_sense_null (struct socket *so, struct stat *sb);
  */
 #define	PRC_IFDOWN		0	/* interface transition */
 #define	PRC_ROUTEDEAD		1	/* select new route if possible ??? */
-#define	PRC_IFUP		2 	/* interface has come back up */
+#define	PRC_IFUP		2	/* interface has come back up */
 #define	PRC_QUENCH2		3	/* DEC congestion bit says slow down */
 #define	PRC_QUENCH		4	/* some one said to slow down */
 #define	PRC_MSGSIZE		5	/* message size forced drop */
@@ -324,6 +363,6 @@ void	pfctlinput (int, struct sockaddr *);
 void	pfctlinput2 (int, struct sockaddr *, void *);
 struct protosw *pffindproto (int family, int protocol, int type);
 struct protosw *pffindtype (int family, int type);
-#endif
+#endif	/* _KERNEL */
 
-#endif
+#endif	/* _SYS_PROTOSW_H_ */

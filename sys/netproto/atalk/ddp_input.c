@@ -3,7 +3,7 @@
  * All Rights Reserved.  See COPYRIGHT.
  *
  * $FreeBSD: src/sys/netatalk/ddp_input.c,v 1.12 2000/02/13 03:31:58 peter Exp $
- * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.5 2003/09/16 05:03:13 hsu Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_input.c,v 1.6 2004/03/06 01:58:56 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <net/if.h>
+#include <net/netisr.h>
 #include <net/route.h>
 #include <net/intrq.h>
 
@@ -35,8 +36,9 @@ static void     ddp_input(struct mbuf *, struct ifnet *, struct elaphdr *, int);
  * Could probably merge these two code segments a little better...
  */
 void
-at2intr(struct mbuf *m)
+at2intr(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 
 	/*
 	 * Phase 2 packet handling 
@@ -46,8 +48,9 @@ at2intr(struct mbuf *m)
 }
 
 void
-at1intr(struct mbuf *m)
+at1intr(struct netmsg *msg)
 {
+	struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
 	struct elaphdr *elhp, elh;
 
 	/*

@@ -3,7 +3,7 @@
  * All Rights Reserved.
  *
  * $FreeBSD: src/sys/netatalk/aarp.c,v 1.12.2.2 2001/06/23 20:43:09 iedowse Exp $
- * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.6 2004/02/06 09:17:40 rob Exp $
+ * $DragonFly: src/sys/netproto/atalk/aarp.c,v 1.7 2004/03/06 01:58:56 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -16,6 +16,7 @@
 #include <sys/syslog.h>
 
 #include <net/if.h>
+#include <net/netisr.h>
 
 #include <netinet/in.h>
 #undef s_net
@@ -254,9 +255,9 @@ aarpresolve( ac, m, destsat, desten )
 }
 
 void
-aarpintr( m )
-    struct mbuf		*m;
+aarpintr(struct netmsg *msg)
 {
+    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;   
     struct arphdr	*ar;
     struct arpcom	*ac;
 
