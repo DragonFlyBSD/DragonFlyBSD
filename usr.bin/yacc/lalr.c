@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/lalr.c,v 1.7 1999/08/28 01:07:59 peter Exp $
- * $DragonFly: src/usr.bin/yacc/lalr.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/lalr.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)lalr.c	5.3 (Berkeley) 6/1/90
  */
@@ -522,7 +522,7 @@ add_lookback_edge(int stateno, int ruleno, int gotono)
 
 
 static short **
-transpose(short **R, int n)
+transpose(short **old_R, int n)
 {
   short **new_R;
   short **temp_R;
@@ -535,7 +535,7 @@ transpose(short **R, int n)
 
   for (i = 0; i < n; i++)
     {
-      sp = R[i];
+      sp = old_R[i];
       if (sp)
 	{
 	  while (*sp >= 0)
@@ -562,7 +562,7 @@ transpose(short **R, int n)
 
   for (i = 0; i < n; i++)
     {
-      sp = R[i];
+      sp = old_R[i];
       if (sp)
 	{
 	  while (*sp >= 0)

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/output.c,v 1.13.2.3 2001/10/05 03:03:14 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/output.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/output.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)output.c	5.7 (Berkeley) 5/24/93
  */
@@ -619,9 +619,9 @@ matching_vector(int vector)
 static int
 pack_vector(int vector)
 {
-    int i, j, k, l;
+    int i, j, k;
     int t;
-    int loc;
+    int loc = 0;
     int ok;
     short *from;
     short *to;
@@ -946,7 +946,7 @@ static void
 output_debug(void)
 {
     int i, j, k, max;
-    char **symnam, *s;
+    const char **symnam, *s;
 
     ++outline;
     fprintf(code_file, "#define YYFINAL %d\n", final_state);
@@ -964,7 +964,7 @@ output_debug(void)
     ++outline;
     fprintf(code_file, "#define YYMAXTOKEN %d\n", max);
 
-    symnam = (char **) MALLOC((max+1)*sizeof(char *));
+    symnam = MALLOC((max+1)*sizeof(char *));
     if (symnam == 0) no_space();
 
     /* Note that it is  not necessary to initialize the element		*/

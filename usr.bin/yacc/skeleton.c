@@ -36,7 +36,7 @@
  * @(#)skeleton.c	5.8 (Berkeley) 4/29/95
  *
  * $FreeBSD: src/usr.bin/yacc/skeleton.c,v 1.28.2.1 2001/07/19 05:46:39 peter Exp $
- * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/skeleton.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 #include "defs.h"
@@ -53,8 +53,7 @@
 /*  the body either are not useful outside of semantic actions or	*/
 /*  are conditional.							*/
 
-char *banner[] =
-{
+const char *banner[] = {
     "#include <stdlib.h>",
     "#define YYBYACC 1",
     "#define YYMAJOR 1",
@@ -69,12 +68,10 @@ char *banner[] =
     "#else",
     "static int yygrowstack();",
     "#endif",
-    0
+    NULL
 };
 
-
-char *tables[] =
-{
+const char *tables[] = {
     "extern const short yylhs[];",
     "extern const short yylen[];",
     "extern const short yydefred[];",
@@ -88,12 +85,10 @@ char *tables[] =
     "extern char *yyname[];",
     "extern char *yyrule[];",
     "#endif",
-    0
+    NULL
 };
 
-
-char *header[] =
-{
+const char *header[] = {
     "#if YYDEBUG",
     "#include <stdio.h>",
     "#endif",
@@ -121,12 +116,10 @@ char *header[] =
     "short *yysslim;",
     "YYSTYPE *yyvs;",
     "int yystacksize;",
-    0
+    NULL
 };
 
-
-char *body[] =
-{
+const char *body[] = {
     "/* allocate initial stack or double stack size, up to YYMAXDEPTH */",
     "static int yygrowstack()",
     "{",
@@ -323,12 +316,10 @@ char *body[] =
     "    yyval = yyvsp[1-yym];",
     "    switch (yyn)",
     "    {",
-    0
+    NULL
 };
 
-
-char *trailer[] =
-{
+const char *trailer[] = {
     "    }",
     "    yyssp -= yym;",
     "    yystate = *yyssp;",
@@ -385,16 +376,16 @@ char *trailer[] =
     "yyaccept:",
     "    return (0);",
     "}",
-    0
+    NULL
 };
 
 
 void
-write_section(char **section)
+write_section(const char **section)
 {
     int c;
     int i;
-    char *s;
+    const char *s;
     FILE *f;
 
     f = code_file;

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/verbose.c,v 1.6 1999/08/28 01:08:03 peter Exp $
- * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/verbose.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)verbose.c	5.3 (Berkeley) 1/20/91
  */
@@ -324,7 +324,7 @@ print_shifts(action *p)
 
 
 static void
-print_reductions(action *p, int defred)
+print_reductions(action *p, int defreduc)
 {
     int k, anyreds;
     action *q;
@@ -345,7 +345,7 @@ print_reductions(action *p, int defred)
     {
 	for (; p; p = p->next)
 	{
-	    if (p->action_code == REDUCE && p->number != defred)
+	    if (p->action_code == REDUCE && p->number != defreduc)
 	    {
 		k = p->number - 2;
 		if (p->suppressed == 0)
@@ -354,8 +354,8 @@ print_reductions(action *p, int defred)
 	    }
 	}
 
-        if (defred > 0)
-	    fprintf(verbose_file, "\t.  reduce %d\n", defred - 2);
+        if (defreduc > 0)
+	    fprintf(verbose_file, "\t.  reduce %d\n", defreduc - 2);
     }
 }
 
@@ -365,15 +365,15 @@ print_gotos(int stateno)
 {
     int i, k;
     int as;
-    short *to_state;
+    short *loc_to_state;
     shifts *sp;
 
     putc('\n', verbose_file);
     sp = shift_table[stateno];
-    to_state = sp->shift;
+    loc_to_state = sp->shift;
     for (i = 0; i < sp->nshifts; ++i)
     {
-	k = to_state[i];
+	k = loc_to_state[i];
 	as = accessing_symbol[k];
 	if (ISVAR(as))
 	    fprintf(verbose_file, "\t%s  goto %d\n", symbol_name[as], k);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/yacc/reader.c,v 1.8.2.1 2001/10/05 03:00:44 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/reader.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/reader.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  *
  * @(#)reader.c	5.7 (Berkeley) 1/20/91
  */
@@ -57,7 +57,8 @@ int ntags, tagmax;
 char **tag_table;
 
 char saw_eof, unionized;
-char *cptr, *line;
+const char *cptr;
+char *line;
 int linesize;
 
 bucket *goal;
@@ -137,8 +138,8 @@ get_line(void)
 
     if (saw_eof || (c = getc(f)) == EOF)
     {
-	if (line) { FREE(line); line = 0; }
-	cptr = 0;
+	if (line) { FREE(line); line = NULL; }
+	cptr = NULL;
 	saw_eof = 1;
 	return;
     }
@@ -196,7 +197,7 @@ dup_line(void)
 static void
 skip_comment(void)
 {
-    char *s;
+    const char *s;
 
     int st_lineno = lineno;
     char *st_line = dup_line();
@@ -214,7 +215,7 @@ skip_comment(void)
 	if (*s == '\n')
 	{
 	    get_line();
-	    if (line == 0)
+	    if (line == NULL)
 		unterminated_comment(st_lineno, st_line, st_cptr);
 	    s = cptr;
 	}
@@ -227,7 +228,7 @@ skip_comment(void)
 static int
 nextc(void)
 {
-    char *s;
+    const char *s;
 
     if (line == 0)
     {
@@ -290,7 +291,7 @@ static int
 keyword(void)
 {
     int c;
-    char *t_cptr = cptr;
+    const char *t_cptr = cptr;
 
     c = *++cptr;
     if (isalpha(c))
@@ -391,7 +392,7 @@ copy_text(void)
     int need_newline = 0;
     int t_lineno = lineno;
     char *t_line = dup_line();
-    char *t_cptr = t_line + (cptr - line - 2);
+    const char *t_cptr = t_line + (cptr - line - 2);
 
     if (*cptr == '\n')
     {
@@ -418,7 +419,7 @@ loop:
 	{
 	    int s_lineno = lineno;
 	    char *s_line = dup_line();
-	    char *s_cptr = s_line + (cptr - line - 1);
+	    const char *s_cptr = s_line + (cptr - line - 1);
 
 	    quote = c;
 	    putc(c, f);
@@ -469,7 +470,7 @@ loop:
 	{
 	    int c_lineno = lineno;
 	    char *c_line = dup_line();
-	    char *c_cptr = c_line + (cptr - line - 1);
+	    const char *c_cptr = c_line + (cptr - line - 1);
 
 	    putc('*', f);
 	    ++cptr;
@@ -522,7 +523,7 @@ copy_union(void)
     int depth;
     int u_lineno = lineno;
     char *u_line = dup_line();
-    char *u_cptr = u_line + (cptr - line - 6);
+    const char *u_cptr = u_line + (cptr - line - 6);
 
     if (unionized) over_unionized(cptr - 6);
     unionized = 1;
@@ -564,7 +565,7 @@ loop:
 	{
 	    int s_lineno = lineno;
 	    char *s_line = dup_line();
-	    char *s_cptr = s_line + (cptr - line - 1);
+	    const char *s_cptr = s_line + (cptr - line - 1);
 
 	    quote = c;
 	    for (;;)
@@ -621,7 +622,7 @@ loop:
 	{
 	    int c_lineno = lineno;
 	    char *c_line = dup_line();
-	    char *c_cptr = c_line + (cptr - line - 1);
+	    const char *c_cptr = c_line + (cptr - line - 1);
 
 	    putc('*', text_file);
 	    if (dflag) putc('*', union_file);
@@ -678,7 +679,7 @@ get_literal(void)
     bucket *bp;
     int s_lineno = lineno;
     char *s_line = dup_line();
-    char *s_cptr = s_line + (cptr - line);
+    const char *s_cptr = s_line + (cptr - line);
 
     quote = *cptr++;
     cinc = 0;
@@ -689,7 +690,7 @@ get_literal(void)
 	if (c == '\n') unterminated_string(s_lineno, s_line, s_cptr);
 	if (c == '\\')
 	{
-	    char *c_cptr = cptr - 1;
+	    const char *c_cptr = cptr - 1;
 
 	    c = *cptr++;
 	    switch (c)
@@ -866,7 +867,7 @@ get_tag(void)
     char *s;
     int t_lineno = lineno;
     char *t_line = dup_line();
-    char *t_cptr = t_line + (cptr - line);
+    const char *t_cptr = t_line + (cptr - line);
 
     ++cptr;
     c = nextc();
@@ -1176,7 +1177,7 @@ advance_to_start(void)
 {
     int c;
     bucket *bp;
-    char *s_cptr;
+    const char *s_cptr;
     int s_lineno;
 
     for (;;)
@@ -1810,7 +1811,7 @@ static void
 pack_grammar(void)
 {
     int i, j;
-    int assoc, prec;
+    int assoc, loc_prec;
 
     ritem = (short *) MALLOC(nitems*sizeof(short));
     if (ritem == 0) no_space();
@@ -1840,13 +1841,13 @@ pack_grammar(void)
 	rlhs[i] = plhs[i]->index;
 	rrhs[i] = j;
 	assoc = TOKEN;
-	prec = 0;
+	loc_prec = 0;
 	while (pitem[j])
 	{
 	    ritem[j] = pitem[j]->index;
 	    if (pitem[j]->class == TERM)
 	    {
-		prec = pitem[j]->prec;
+		loc_prec = pitem[j]->prec;
 		assoc = pitem[j]->assoc;
 	    }
 	    ++j;
@@ -1855,7 +1856,7 @@ pack_grammar(void)
 	++j;
 	if (rprec[i] == UNDEFINED)
 	{
-	    rprec[i] = prec;
+	    rprec[i] = loc_prec;
 	    rassoc[i] = assoc;
 	}
     }

@@ -35,7 +35,7 @@
  *
  * @(#)mkpar.c	5.3 (Berkeley) 1/20/91
  * $FreeBSD: src/usr.bin/yacc/mkpar.c,v 1.10 1999/08/28 01:08:01 peter Exp $
- * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/mkpar.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -101,7 +101,7 @@ get_shifts(int stateno)
 {
     action *actions, *temp;
     shifts *sp;
-    short *to_state;
+    short *loc_to_state;
     int i, k;
     int symbol;
 
@@ -109,10 +109,10 @@ get_shifts(int stateno)
     sp = shift_table[stateno];
     if (sp)
     {
-	to_state = sp->shift;
+	loc_to_state = sp->shift;
 	for (i = sp->nshifts - 1; i >= 0; i--)
 	{
-	    k = to_state[i];
+	    k = loc_to_state[i];
 	    symbol = accessing_symbol[k];
 	    if (ISTOKEN(symbol))
 	    {
@@ -197,15 +197,15 @@ static void
 find_final_state(void)
 {
     int goal, i;
-    short *to_state;
+    short *loc_to_state;
     shifts *p;
 
     p = shift_table[0];
-    to_state = p->shift;
+    loc_to_state = p->shift;
     goal = ritem[1];
     for (i = p->nshifts - 1; i >= 0; --i)
     {
-	final_state = to_state[i];
+	final_state = loc_to_state[i];
 	if (accessing_symbol[final_state] == goal) break;
     }
 }

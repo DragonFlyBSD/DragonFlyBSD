@@ -35,7 +35,7 @@
  *
  *	@(#)defs.h	5.6 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/defs.h,v 1.8.2.1 2001/10/05 03:00:19 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/defs.h,v 1.4 2003/11/06 19:30:05 eirikn Exp $
+ * $DragonFly: src/usr.bin/yacc/defs.h,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 #include <assert.h>
@@ -225,24 +225,23 @@ extern char lflag;
 extern char rflag;
 extern char tflag;
 extern char vflag;
-extern char *symbol_prefix;
+extern const char *symbol_prefix;
 
-extern char *myname;
-extern char *cptr;
+extern const char *cptr;
 extern char *line;
 extern int lineno;
 extern int outline;
 
-extern char *banner[];
-extern char *tables[];
-extern char *header[];
-extern char *body[];
-extern char *trailer[];
+extern const char *banner[];
+extern const char *tables[];
+extern const char *header[];
+extern const char *body[];
+extern const char *trailer[];
 
 extern char *action_file_name;
 extern char *code_file_name;
 extern char *defines_file_name;
-extern char *input_file_name;
+extern const char *input_file_name;
 extern char *output_file_name;
 extern char *text_file_name;
 extern char *union_file_name;
@@ -316,49 +315,48 @@ char *allocate(unsigned);
 void closure(short *, int);
 void create_symbol_table(void);
 void default_action_warning(void);
-void dollar_error(int, char *, char *);
+void dollar_error(int, const char *, const char *);
 void dollar_warning(int, int);
-void done(int);
-void fatal(char *msg);
+void fatal(const char *msg);
 void finalize_closure(void);
 void free_parser(void);
 void free_symbols(void);
 void free_symbol_table(void);
-void illegal_character(char *);
-void illegal_tag(int, char *, char *);
+void illegal_character(const char *);
+void illegal_tag(int, const char *, const char *);
 void lalr(void);
 bucket *lookup(char *);
 void lr0(void);
-bucket *make_bucket(char *);
+bucket *make_bucket(const char *);
 void make_parser(void);
 void no_grammar(void);
 void no_space(void);
-void open_error(char *);
+void open_error(const char *);
 void output(void);
-void over_unionized(char *);
+void over_unionized(const char *);
 void prec_redeclared(void);
 void reader(void);
 void reflexive_transitive_closure(unsigned *, int);
-void reprec_warning(char *);
+void reprec_warning(const char *);
 void restarted_warning(void);
-void retyped_warning(char *);
-void revalued_warning(char *);
+void retyped_warning(const char *);
+void revalued_warning(const char *);
 void set_first_derives(void);
-void syntax_error(int, char *, char *);
+void syntax_error(int, const char *, const char *);
 void terminal_lhs(int);
-void terminal_start(char *);
-void tokenized_start(char *);
-void undefined_goal(char *);
-void undefined_symbol_warning(char *);
+void terminal_start(const char *);
+void tokenized_start(const char *);
+void undefined_goal(const char *);
+void undefined_symbol_warning(const char *);
 void unexpected_EOF(void);
 void unknown_rhs(int);
-void unterminated_action(int, char *, char *);
-void unterminated_comment(int, char *, char *);
-void unterminated_string(int, char *, char *);
-void unterminated_text(int, char *, char *);
-void unterminated_union(int, char *, char *);
+void unterminated_action(int, const char *, const char *);
+void unterminated_comment(int, const char *, const char *);
+void unterminated_string(int, const char *, const char *);
+void unterminated_text(int, const char *, const char *);
+void unterminated_union(int, const char *, const char *);
 void untyped_lhs(void);
-void untyped_rhs(int, char *);
-void used_reserved(char *);
+void untyped_rhs(int, const char *);
+void used_reserved(const char *);
 void verbose(void);
-void write_section(char **);
+void write_section(const char **);

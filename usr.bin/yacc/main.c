@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989 The Regents of the University of California. All rights reserved.
  * @(#)main.c	5.5 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/main.c,v 1.12 2000/01/10 20:26:24 kris Exp $
- * $DragonFly: src/usr.bin/yacc/main.c,v 1.4 2004/04/07 20:43:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/yacc/main.c,v 1.5 2005/01/05 15:26:05 joerg Exp $
  */
 
 #include <signal.h>
@@ -51,9 +51,9 @@ char rflag;
 char tflag;
 char vflag;
 
-char *symbol_prefix;
-char *file_prefix = "y";
-char *temp_form = "yacc.XXXXXXXXXXX";
+const char *symbol_prefix;
+const char *file_prefix = "y";
+const char *temp_form = "yacc.XXXXXXXXXXX";
 
 int lineno;
 int outline;
@@ -61,7 +61,7 @@ int outline;
 char *action_file_name;
 char *code_file_name;
 char *defines_file_name;
-char *input_file_name = "";
+const char *input_file_name = "";
 char *output_file_name;
 char *text_file_name;
 char *union_file_name;
@@ -100,6 +100,7 @@ char  *rassoc;
 short **derives;
 char *nullable;
 
+static void cleanup(void);
 static void create_file_names(void);
 static void getargs(int, char **);
 static void onintr(int);
@@ -108,20 +109,25 @@ static void set_signals(void);
 static void usage(void);
 
 
-void
-done(int k)
+static void
+cleanup()
 {
     if (action_file) { fclose(action_file); unlink(action_file_name); }
     if (text_file) { fclose(text_file); unlink(text_file_name); }
     if (union_file) { fclose(union_file); unlink(union_file_name); }
-    exit(k);
 }
 
 
 static void
-onintr(int signo)
+onintr(int signo __unused)
 {
-    done(1);
+    if (action_file)
+	unlink(action_file_name);
+    if (text_file)
+	unlink(text_file_name);
+    if (union_file)
+	unlink(union_file_name);
+    _exit(1);
 }
 
 
@@ -284,7 +290,7 @@ static void
 create_file_names(void)
 {
     int i, len;
-    char *tmpdir;
+    const char *tmpdir;
 
     tmpdir = getenv("TMPDIR");
     if (tmpdir == 0) tmpdir = "/tmp";
@@ -472,6 +478,7 @@ open_files(void)
 int
 main(int argc, char **argv)
 {
+    atexit(cleanup);
     set_signals();
     getargs(argc, argv);
     open_files();
@@ -481,7 +488,6 @@ main(int argc, char **argv)
     make_parser();
     verbose();
     output();
-    done(0);
+    exit(0);
     /*NOTREACHED*/
-    return (0);
 }
