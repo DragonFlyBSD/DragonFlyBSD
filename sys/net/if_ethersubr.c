@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.9 2004/03/14 15:36:54 joerg Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.10 2004/03/15 08:25:50 joerg Exp $
  */
 
 #include "opt_atalk.h"
@@ -822,6 +822,12 @@ ether_ifattach(struct ifnet *ifp, uint8_t *lla)
 	sdl->sdl_type = IFT_ETHER;
 	sdl->sdl_alen = ifp->if_addrlen;
 	bcopy(lla, LLADDR(sdl), ifp->if_addrlen);
+	/*
+	 * XXX Keep the current drivers happy.
+	 * XXX Remove once all drivers have been cleaned up
+	 */
+	if (lla != IFP2AC(ifp)->ac_enaddr)
+		bcopy(lla, IFP2AC(ifp)->ac_enaddr, ifp->if_addrlen);
 	bpfattach(ifp, DLT_EN10MB, sizeof(struct ether_header));
 	if (ng_ether_attach_p != NULL)
 		(*ng_ether_attach_p)(ifp);
