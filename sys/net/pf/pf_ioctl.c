@@ -1,6 +1,6 @@
 /*	$FreeBSD: src/sys/contrib/pf/net/pf_ioctl.c,v 1.12 2004/08/12 14:15:42 mlaier Exp $	*/
 /*	$OpenBSD: pf_ioctl.c,v 1.112.2.2 2004/07/24 18:28:12 brad Exp $ */
-/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.2 2004/09/19 23:54:02 dillon Exp $ */
+/*	$DragonFly: src/sys/net/pf/pf_ioctl.c,v 1.3 2004/09/21 21:20:58 joerg Exp $ */
 
 /*
  * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
@@ -250,7 +250,7 @@ pfattach(void)
 	/* default rule should never be garbage collected */
 	pf_default_rule.entries.tqe_prev = &pf_default_rule.entries.tqe_next;
 	pf_default_rule.action = PF_PASS;
-	pf_default_rule.nr = -1;
+	pf_default_rule.nr = (uint32_t)(-1);
 
 	/* initialize default timeouts */
 	my_timeout[PFTM_TCP_FIRST_PACKET] = 120;	/* First TCP packet */
@@ -543,7 +543,7 @@ pf_rm_rule(struct pf_rulequeue *rulequeue, struct pf_rule *rule)
 		}
 		TAILQ_REMOVE(rulequeue, rule, entries);
 		rule->entries.tqe_prev = NULL;
-		rule->nr = -1;
+		rule->nr = (uint32_t)(-1);
 	}
 
 	if (rule->states > 0 || rule->src_nodes > 0 ||
@@ -1200,7 +1200,7 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		pf_tbladdr_copyout(&pr->rule.dst.addr);
 		for (i = 0; i < PF_SKIP_COUNT; ++i)
 			if (rule->skip[i].ptr == NULL)
-				pr->rule.skip[i].nr = -1;
+				pr->rule.skip[i].nr = (uint32_t)(-1);
 			else
 				pr->rule.skip[i].nr =
 				    rule->skip[i].ptr->nr;
@@ -1520,9 +1520,9 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 		bcopy(state, &ps->state, sizeof(struct pf_state));
 		ps->state.rule.nr = state->rule.ptr->nr;
 		ps->state.nat_rule.nr = (state->nat_rule.ptr == NULL) ?
-		    -1 : state->nat_rule.ptr->nr;
+		    (uint32_t)(-1) : state->nat_rule.ptr->nr;
 		ps->state.anchor.nr = (state->anchor.ptr == NULL) ?
-		    -1 : state->anchor.ptr->nr;
+		    (uint32_t)(-1) : state->anchor.ptr->nr;
 		splx(s);
 		ps->state.expire = pf_state_expires(state);
 		if (ps->state.expire > time_second)
@@ -1564,9 +1564,11 @@ pfioctl(dev_t dev, u_long cmd, caddr_t addr, int flags, struct thread *td)
 				    sizeof(pstore.u.ifname));
 				pstore.rule.nr = state->rule.ptr->nr;
 				pstore.nat_rule.nr = (state->nat_rule.ptr ==
-				    NULL) ? -1 : state->nat_rule.ptr->nr;
+				    NULL) ? (uint32_t)(-1)
+					  : state->nat_rule.ptr->nr;
 				pstore.anchor.nr = (state->anchor.ptr ==
-				    NULL) ? -1 : state->anchor.ptr->nr;
+				    NULL) ? (uint32_t)(-1)
+					  : state->anchor.ptr->nr;
 				pstore.creation = secs - pstore.creation;
 				pstore.expire = pf_state_expires(state);
 				if (pstore.expire > secs)
