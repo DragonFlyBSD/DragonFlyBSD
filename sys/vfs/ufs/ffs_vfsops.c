@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.22 2004/08/19 14:42:46 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.23 2004/08/24 14:01:57 drhodus Exp $
  */
 
 #include "opt_quota.h"
@@ -925,6 +925,7 @@ ffs_flushfiles(struct mount *mp, int flags, struct thread *td)
 		error = vflush(mp, 0, SKIPSYSTEM|flags);
 		if (error)
 			return (error);
+		/* Find out how many quota files  we have open. */
 		for (i = 0; i < MAXQUOTAS; i++) {
 			if (ump->um_quotas[i] == NULLVP)
 				continue;
@@ -1053,6 +1054,9 @@ ffs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
 	 * call unless there's a good chance that we have work to do.
 	 */
 	ip = VTOI(vp);
+	/* Restart out whole search if this guy is locked
+	 * or is being reclaimed.
+	 */
 	if (vp->v_type == VNON || ((ip->i_flag &
 	     (IN_ACCESS | IN_CHANGE | IN_MODIFIED | IN_UPDATE)) == 0 &&
 	     TAILQ_EMPTY(&vp->v_dirtyblkhd))) {
@@ -1184,6 +1188,7 @@ restart:
 			ip->i_dquot[i] = NODQUOT;
 	}
 #endif
+
 	/*
 	 * Put it onto its hash chain and lock it so that other requests for
 	 * this inode will block if they arrive while we are sleeping waiting

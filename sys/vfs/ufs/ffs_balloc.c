@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_balloc.c	8.8 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_balloc.c,v 1.26.2.1 2002/10/10 19:48:20 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.8 2004/07/18 19:43:48 drhodus Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_balloc.c,v 1.9 2004/08/24 14:01:57 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -97,8 +97,21 @@ ffs_balloc(struct vop_balloc_args *ap)
 	 */
 	nb = lblkno(fs, ip->i_size);
 	if (nb < NDADDR && nb < lbn) {
+		/*
+		 * The filesize prior to this write can fit in direct
+		 * blocks (ex. gragmentation is possibly done)
+		 * we are now extending the file write beyond
+		 * the block which has end of the file prior to this write.
 		osize = blksize(fs, ip, nb);
+		/*
+		 * osize gives disk allocated size in the last block. It is
+		 * either in fragments or a file system block size.
+		 */
 		if (osize < fs->fs_bsize && osize > 0) {
+			/* A few fragments are already allocated, since the
+			 * current extends beyond this block allocated the
+			 * complete block as fragments are on in last block.
+			 */
 			error = ffs_realloccg(ip, nb,
 				ffs_blkpref(ip, nb, (int)nb, &ip->i_db[0]),
 				osize, (int)fs->fs_bsize, cred, &bp);
@@ -108,6 +121,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 				softdep_setup_allocdirect(ip, nb,
 				    dbtofsb(fs, bp->b_blkno), ip->i_db[nb],
 				    fs->fs_bsize, osize, bp);
+			/* adjust the inode size, we just grew */
 			ip->i_size = smalllblktosize(fs, nb + 1);
 			ip->i_db[nb] = dbtofsb(fs, bp->b_blkno);
 			ip->i_flag |= IN_CHANGE | IN_UPDATE;
@@ -115,6 +129,7 @@ ffs_balloc(struct vop_balloc_args *ap)
 				bwrite(bp);
 			else
 				bawrite(bp);
+			/* bp is already released here */
 		}
 	}
 	/*
