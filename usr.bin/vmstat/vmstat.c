@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.3 2003/07/03 18:34:00 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,44 +69,42 @@
 struct nlist namelist[] = {
 #define	X_CPTIME	0
 	{ "_cp_time" },
-#define X_SUM		1
-	{ "_cnt" },
-#define	X_BOOTTIME	2
+#define	X_BOOTTIME	1
 	{ "_boottime" },
-#define X_HZ		3
+#define X_HZ		2
 	{ "_hz" },
-#define X_STATHZ	4
+#define X_STATHZ	3
 	{ "_stathz" },
-#define X_NCHSTATS	5
+#define X_NCHSTATS	4
 	{ "_nchstats" },
-#define	X_INTRNAMES	6
+#define	X_INTRNAMES	5
 	{ "_intrnames" },
-#define	X_EINTRNAMES	7
+#define	X_EINTRNAMES	6
 	{ "_eintrnames" },
 #define	X_INTRCNT	8
 	{ "_intrcnt" },
-#define	X_EINTRCNT	9
+#define	X_EINTRCNT	8
 	{ "_eintrcnt" },
-#define	X_KMEMSTATISTICS	10
+#define	X_KMEMSTATISTICS	9
 	{ "_kmemstatistics" },
-#define	X_KMEMBUCKETS	11
+#define	X_KMEMBUCKETS	10
 	{ "_bucket" },
-#define	X_ZLIST		12
+#define	X_ZLIST		11
 	{ "_zlist" },
 #ifdef notyet
-#define	X_DEFICIT	13
+#define	X_DEFICIT	12
 	{ "_deficit" },
-#define	X_FORKSTAT	14
+#define	X_FORKSTAT	13
 	{ "_forkstat" },
-#define X_REC		15
+#define X_REC		14
 	{ "_rectime" },
-#define X_PGIN		16
+#define X_PGIN		15
 	{ "_pgintime" },
-#define	X_XSTATS	17
+#define	X_XSTATS	16
 	{ "_xstats" },
-#define X_END		18
+#define X_END		17
 #else
-#define X_END		13
+#define X_END		18
 #endif
 	{ "" },
 };
@@ -123,7 +121,8 @@ long select_generation;
 char **specified_devices;
 devstat_select_mode select_mode;
 
-struct	vmmeter sum, osum;
+struct	vmmeter vmm, ovmm;
+struct	vmstats vms, ovms;
 
 int	winlines = 20;
 int	nflag = 0;
@@ -398,6 +397,9 @@ dovmstat(interval, reps)
 	void needhdr();
 	int mib[2];
 	size_t size;
+	int vmm_size = sizeof(vmm);
+	int vms_size = sizeof(vms);
+	int vmt_size = sizeof(total);
 
 	uptime = getuptime();
 	halfuptime = uptime / 2;
@@ -457,45 +459,49 @@ dovmstat(interval, reps)
 			break;
 		}
 
-		kread(X_SUM, &sum, sizeof(sum));
-		size = sizeof(total);
-		mib[0] = CTL_VM;
-		mib[1] = VM_METER;
-		if (sysctl(mib, 2, &total, &size, NULL, 0) < 0) {
-			printf("Can't get kerninfo: %s\n", strerror(errno));
-			bzero(&total, sizeof(total));
+		if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
+			perror("sysctlbyname: vm.vmstats");
+			exit(1);
 		}
+		if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
+			perror("sysctlbyname: vm.vmstats");
+			exit(1);
+		} 
+		if (sysctlbyname("vm.vmtotal", &total, &vmt_size, NULL, 0)) {
+			perror("sysctlbyname: vm.vmtotal");
+			exit(1);
+		} 
 		(void)printf("%2d %1d %1d",
 		    total.t_rq - 1, total.t_dw + total.t_pw, total.t_sw);
-#define vmstat_pgtok(a) ((a) * sum.v_page_size >> 10)
+#define vmstat_pgtok(a) ((a) * vms.v_page_size >> 10)
 #define	rate(x)	(((x) + halfuptime) / uptime)	/* round */
 		(void)printf(" %7ld %6ld ",
 		    (long)vmstat_pgtok(total.t_avm), (long)vmstat_pgtok(total.t_free));
 		(void)printf("%4lu ",
-		    (u_long)rate(sum.v_vm_faults - osum.v_vm_faults));
+		    (u_long)rate(vmm.v_vm_faults - ovmm.v_vm_faults));
 		(void)printf("%3lu ",
-		    (u_long)rate(sum.v_reactivated - osum.v_reactivated));
+		    (u_long)rate(vmm.v_reactivated - ovmm.v_reactivated));
 		(void)printf("%3lu ",
-		    (u_long)rate(sum.v_swapin + sum.v_vnodein -
-		    (osum.v_swapin + osum.v_vnodein)));
+		    (u_long)rate(vmm.v_swapin + vmm.v_vnodein -
+		    (ovmm.v_swapin + ovmm.v_vnodein)));
 		(void)printf("%3lu ",
-		    (u_long)rate(sum.v_swapout + sum.v_vnodeout -
-		    (osum.v_swapout + osum.v_vnodeout)));
+		    (u_long)rate(vmm.v_swapout + vmm.v_vnodeout -
+		    (ovmm.v_swapout + ovmm.v_vnodeout)));
 		(void)printf("%3lu ",
-		    (u_long)rate(sum.v_tfree - osum.v_tfree));
+		    (u_long)rate(vmm.v_tfree - ovmm.v_tfree));
 		(void)printf("%3lu ",
-		    (u_long)rate(sum.v_pdpages - osum.v_pdpages));
+		    (u_long)rate(vmm.v_pdpages - ovmm.v_pdpages));
 		devstats();
 		(void)printf("%4lu %4lu %3lu ",
-		    (u_long)rate(sum.v_intr - osum.v_intr),
-		    (u_long)rate(sum.v_syscall - osum.v_syscall),
-		    (u_long)rate(sum.v_swtch - osum.v_swtch));
+		    (u_long)rate(vmm.v_intr - ovmm.v_intr),
+		    (u_long)rate(vmm.v_syscall - ovmm.v_syscall),
+		    (u_long)rate(vmm.v_swtch - ovmm.v_swtch));
 		cpustats();
 		(void)printf("\n");
 		(void)fflush(stdout);
 		if (reps >= 0 && --reps <= 0)
 			break;
-		osum = sum;
+		ovmm = vmm;
 		uptime = interval;
 		/*
 		 * We round upward to avoid losing low-frequency events
@@ -542,26 +548,6 @@ needhdr()
 	hdrcnt = 1;
 }
 
-#ifdef notyet
-void
-dotimes()
-{
-	u_int pgintime, rectime;
-
-	kread(X_REC, &rectime, sizeof(rectime));
-	kread(X_PGIN, &pgintime, sizeof(pgintime));
-	kread(X_SUM, &sum, sizeof(sum));
-	(void)printf("%u reclaims, %u total time (usec)\n",
-	    sum.v_pgrec, rectime);
-	(void)printf("average: %u usec / reclaim\n", rectime / sum.v_pgrec);
-	(void)printf("\n");
-	(void)printf("%u page ins, %u total time (msec)\n",
-	    sum.v_pgin, pgintime / 10);
-	(void)printf("average: %8.1f msec / page in\n",
-	    pgintime / (sum.v_pgin * 10.0));
-}
-#endif
-
 long
 pct(top, bot)
 	long top, bot;
@@ -581,47 +567,56 @@ dosum()
 {
 	struct nchstats nchstats;
 	long nchtotal;
+	int vms_size = sizeof(vms);
+	int vmm_size = sizeof(vmm);
 
-	kread(X_SUM, &sum, sizeof(sum));
-	(void)printf("%9u cpu context switches\n", sum.v_swtch);
-	(void)printf("%9u device interrupts\n", sum.v_intr);
-	(void)printf("%9u software interrupts\n", sum.v_soft);
-	(void)printf("%9u traps\n", sum.v_trap);
-	(void)printf("%9u system calls\n", sum.v_syscall);
-	(void)printf("%9u kernel threads created\n", sum.v_kthreads);
-	(void)printf("%9u  fork() calls\n", sum.v_forks);
-	(void)printf("%9u vfork() calls\n", sum.v_vforks);
-	(void)printf("%9u rfork() calls\n", sum.v_rforks);
-	(void)printf("%9u swap pager pageins\n", sum.v_swapin);
-	(void)printf("%9u swap pager pages paged in\n", sum.v_swappgsin);
-	(void)printf("%9u swap pager pageouts\n", sum.v_swapout);
-	(void)printf("%9u swap pager pages paged out\n", sum.v_swappgsout);
-	(void)printf("%9u vnode pager pageins\n", sum.v_vnodein);
-	(void)printf("%9u vnode pager pages paged in\n", sum.v_vnodepgsin);
-	(void)printf("%9u vnode pager pageouts\n", sum.v_vnodeout);
-	(void)printf("%9u vnode pager pages paged out\n", sum.v_vnodepgsout);
-	(void)printf("%9u page daemon wakeups\n", sum.v_pdwakeups);
-	(void)printf("%9u pages examined by the page daemon\n", sum.v_pdpages);
-	(void)printf("%9u pages reactivated\n", sum.v_reactivated);
-	(void)printf("%9u copy-on-write faults\n", sum.v_cow_faults);
-	(void)printf("%9u copy-on-write optimized faults\n", sum.v_cow_optim);
-	(void)printf("%9u zero fill pages zeroed\n", sum.v_zfod);
-	(void)printf("%9u zero fill pages prezeroed\n", sum.v_ozfod);
-	(void)printf("%9u intransit blocking page faults\n", sum.v_intrans);
-	(void)printf("%9u total VM faults taken\n", sum.v_vm_faults);
-	(void)printf("%9u pages affected by kernel thread creation\n", sum.v_kthreadpages);
-	(void)printf("%9u pages affected by  fork()\n", sum.v_forkpages);
-	(void)printf("%9u pages affected by vfork()\n", sum.v_vforkpages);
-	(void)printf("%9u pages affected by rfork()\n", sum.v_rforkpages);
-	(void)printf("%9u pages freed\n", sum.v_tfree);
-	(void)printf("%9u pages freed by daemon\n", sum.v_dfree);
-	(void)printf("%9u pages freed by exiting processes\n", sum.v_pfree);
-	(void)printf("%9u pages active\n", sum.v_active_count);
-	(void)printf("%9u pages inactive\n", sum.v_inactive_count);
-	(void)printf("%9u pages in VM cache\n", sum.v_cache_count);
-	(void)printf("%9u pages wired down\n", sum.v_wire_count);
-	(void)printf("%9u pages free\n", sum.v_free_count);
-	(void)printf("%9u bytes per page\n", sum.v_page_size);
+	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
+		perror("sysctlbyname: vm.vmstats");
+		exit(1);
+	}
+	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
+		perror("sysctlbyname: vm.vmstats");
+		exit(1);
+	} 
+	(void)printf("%9u cpu context switches\n", vmm.v_swtch);
+	(void)printf("%9u device interrupts\n", vmm.v_intr);
+	(void)printf("%9u software interrupts\n", vmm.v_soft);
+	(void)printf("%9u traps\n", vmm.v_trap);
+	(void)printf("%9u system calls\n", vmm.v_syscall);
+	(void)printf("%9u kernel threads created\n", vmm.v_kthreads);
+	(void)printf("%9u  fork() calls\n", vmm.v_forks);
+	(void)printf("%9u vfork() calls\n", vmm.v_vforks);
+	(void)printf("%9u rfork() calls\n", vmm.v_rforks);
+	(void)printf("%9u swap pager pageins\n", vmm.v_swapin);
+	(void)printf("%9u swap pager pages paged in\n", vmm.v_swappgsin);
+	(void)printf("%9u swap pager pageouts\n", vmm.v_swapout);
+	(void)printf("%9u swap pager pages paged out\n", vmm.v_swappgsout);
+	(void)printf("%9u vnode pager pageins\n", vmm.v_vnodein);
+	(void)printf("%9u vnode pager pages paged in\n", vmm.v_vnodepgsin);
+	(void)printf("%9u vnode pager pageouts\n", vmm.v_vnodeout);
+	(void)printf("%9u vnode pager pages paged out\n", vmm.v_vnodepgsout);
+	(void)printf("%9u page daemon wakeups\n", vmm.v_pdwakeups);
+	(void)printf("%9u pages examined by the page daemon\n", vmm.v_pdpages);
+	(void)printf("%9u pages reactivated\n", vmm.v_reactivated);
+	(void)printf("%9u copy-on-write faults\n", vmm.v_cow_faults);
+	(void)printf("%9u copy-on-write optimized faults\n", vmm.v_cow_optim);
+	(void)printf("%9u zero fill pages zeroed\n", vmm.v_zfod);
+	(void)printf("%9u zero fill pages prezeroed\n", vmm.v_ozfod);
+	(void)printf("%9u intransit blocking page faults\n", vmm.v_intrans);
+	(void)printf("%9u total VM faults taken\n", vmm.v_vm_faults);
+	(void)printf("%9u pages affected by kernel thread creation\n", vmm.v_kthreadpages);
+	(void)printf("%9u pages affected by  fork()\n", vmm.v_forkpages);
+	(void)printf("%9u pages affected by vfork()\n", vmm.v_vforkpages);
+	(void)printf("%9u pages affected by rfork()\n", vmm.v_rforkpages);
+	(void)printf("%9u pages freed\n", vmm.v_tfree);
+	(void)printf("%9u pages freed by daemon\n", vmm.v_dfree);
+	(void)printf("%9u pages freed by exiting processes\n", vmm.v_pfree);
+	(void)printf("%9u pages active\n", vms.v_active_count);
+	(void)printf("%9u pages inactive\n", vms.v_inactive_count);
+	(void)printf("%9u pages in VM cache\n", vms.v_cache_count);
+	(void)printf("%9u pages wired down\n", vms.v_wire_count);
+	(void)printf("%9u pages free\n", vms.v_free_count);
+	(void)printf("%9u bytes per page\n", vms.v_page_size);
 	kread(X_NCHSTATS, &nchstats, sizeof(nchstats));
 	nchtotal = nchstats.ncs_goodhits + nchstats.ncs_neghits +
 	    nchstats.ncs_badhits + nchstats.ncs_falsehits +

@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.4 2003/07/01 00:19:36 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.5 2003/07/03 18:33:58 dillon Exp $
  */
 
 
@@ -99,11 +99,9 @@ static struct nlist nlst[] = {
 
 #define X_BUFSPACE	3
 	{ "_bufspace" },	/* K in buffer cache */
-#define X_CNT           4
-    { "_cnt" },		        /* struct vmmeter cnt */
 
 /* Last pid */
-#define X_LASTPID	5
+#define X_LASTPID	4
     { "_nextpid" },		
     { 0 }
 };
@@ -152,7 +150,6 @@ static unsigned long cp_time_offset;
 static unsigned long avenrun_offset;
 static unsigned long lastpid_offset;
 static long lastpid;
-static unsigned long cnt_offset;
 static unsigned long bufspace_offset;
 static long cnt;
 
@@ -273,7 +270,6 @@ struct statics *statics;
     cp_time_offset = nlst[X_CP_TIME].n_value;
     avenrun_offset = nlst[X_AVENRUN].n_value;
     lastpid_offset =  nlst[X_LASTPID].n_value;
-    cnt_offset = nlst[X_CNT].n_value;
     bufspace_offset = nlst[X_BUFSPACE].n_value;
 
     /* this is used in calculating WCPU -- calculate it ahead of time */
@@ -377,24 +373,33 @@ struct system_info *si;
 
     /* sum memory & swap statistics */
     {
-	struct vmmeter sum;
+	struct vmmeter vmm;
+	struct vmstats vms;
+	int vms_size = sizeof(vms);
+	int vmm_size = sizeof(vmm);
 	static unsigned int swap_delay = 0;
 	static int swapavail = 0;
 	static int swapfree = 0;
 	static int bufspace = 0;
 
-        (void) getkval(cnt_offset, (int *)(&sum), sizeof(sum),
-		   "_cnt");
+	if (sysctlbyname("vm.vmstats", &vms, &vms_size, NULL, 0)) {
+		perror("sysctlbyname: vm.vmstats");
+		exit(1);
+	}
+	if (sysctlbyname("vm.vmmeter", &vmm, &vmm_size, NULL, 0)) {
+		perror("sysctlbyname: vm.vmstats");
+		exit(1);
+	}
         (void) getkval(bufspace_offset, (int *)(&bufspace), sizeof(bufspace),
 		   "_bufspace");
 
 	/* convert memory stats to Kbytes */
-	memory_stats[0] = pagetok(sum.v_active_count);
-	memory_stats[1] = pagetok(sum.v_inactive_count);
-	memory_stats[2] = pagetok(sum.v_wire_count);
-	memory_stats[3] = pagetok(sum.v_cache_count);
+	memory_stats[0] = pagetok(vms.v_active_count);
+	memory_stats[1] = pagetok(vms.v_inactive_count);
+	memory_stats[2] = pagetok(vms.v_wire_count);
+	memory_stats[3] = pagetok(vms.v_cache_count);
 	memory_stats[4] = bufspace / 1024;
-	memory_stats[5] = pagetok(sum.v_free_count);
+	memory_stats[5] = pagetok(vms.v_free_count);
 	memory_stats[6] = -1;
 
 	/* first interval */
@@ -405,12 +410,12 @@ struct system_info *si;
 
 	/* compute differences between old and new swap statistic */
 	else {
-	    swap_stats[4] = pagetok(((sum.v_swappgsin - swappgsin)));
-	    swap_stats[5] = pagetok(((sum.v_swappgsout - swappgsout)));
+	    swap_stats[4] = pagetok(((vmm.v_swappgsin - swappgsin)));
+	    swap_stats[5] = pagetok(((vmm.v_swappgsout - swappgsout)));
 	}
 
-        swappgsin = sum.v_swappgsin;
-	swappgsout = sum.v_swappgsout;
+        swappgsin = vmm.v_swappgsin;
+	swappgsout = vmm.v_swappgsout;
 
 	/* call CPU heavy swapmode() only for changes */
         if (swap_stats[4] > 0 || swap_stats[5] > 0 || swap_delay == 0) {
@@ -587,9 +592,11 @@ char *(*get_userid)();
     /* generate "STATE" field */
     switch (state = PP(pp, p_stat)) {
 	case SRUN:
+#if 0
 	    if (smpmode && PP(pp, p_oncpu) != 0xff)
 		sprintf(status, "CPU%d", PP(pp, p_oncpu));
 	    else
+#endif
 		strcpy(status, "RUN");
 	    break;
 	case SSLEEP:
@@ -641,7 +648,10 @@ char *(*get_userid)();
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
 	    status,
+#if 0
 	    smpmode ? PP(pp, p_lastcpu) : 0,
+#endif
+	    0,
 	    format_time(cputime),
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
