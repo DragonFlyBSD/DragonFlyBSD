@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.26 2005/02/11 22:25:57 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.27 2005/03/04 04:38:47 hsu Exp $
  */
 
 #define _IP_VHL
@@ -1774,7 +1774,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 	struct ip_mreq mreq;
 	struct ifnet *ifp;
 	struct ip_moptions *imo = *imop;
-	struct sockaddr_in *dst;
 	int ifindex;
 	int s;
 
@@ -1918,23 +1917,22 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * the route to the given multicast address.
 		 */
 		if (mreq.imr_interface.s_addr == INADDR_ANY) {
-			struct route ro;
+			struct sockaddr_in dst;
+			struct rtentry *rt;
 
-			bzero(&ro, sizeof ro);
-			dst = (struct sockaddr_in *)&ro.ro_dst;
-			dst->sin_len = sizeof *dst;
-			dst->sin_family = AF_INET;
-			dst->sin_addr = mreq.imr_multiaddr;
-			rtalloc(&ro);
-			if (ro.ro_rt == NULL) {
+			bzero(&dst, sizeof(struct sockaddr_in));
+			dst.sin_len = sizeof(struct sockaddr_in);
+			dst.sin_family = AF_INET;
+			dst.sin_addr = mreq.imr_multiaddr;
+			rt = rtlookup((struct sockaddr *)&dst);
+			if (rt == NULL) {
 				error = EADDRNOTAVAIL;
 				splx(s);
 				break;
 			}
-			--ro.ro_rt->rt_refcnt;
-			ifp = ro.ro_rt->rt_ifp;
-		}
-		else {
+			--rt->rt_refcnt;
+			ifp = rt->rt_ifp;
+		} else {
 			ifp = ip_multicast_if(&mreq.imr_interface, NULL);
 		}
 
