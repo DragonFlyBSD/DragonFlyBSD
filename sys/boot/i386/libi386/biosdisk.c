@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosdisk.c,v 1.40 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.6 2004/06/21 03:38:52 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosdisk.c,v 1.7 2004/09/30 18:32:00 dillon Exp $
  */
 
 /*
@@ -891,9 +891,14 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	/* correct sector number for 1-based BIOS numbering */
 	sec++;
 
-	/* Loop retrying the operation a couple of times.  The BIOS may also retry. */
+	/*
+	 * Loop retrying the operation a couple of times.  The BIOS may also
+	 * retry.
+	 */
 	for (retry = 0; retry < 3; retry++) {
-	    /* if retrying, reset the drive */
+	    /*
+	     * If retrying, reset the drive.
+	     */
 	    if (retry > 0) {
 		v86.ctl = V86_FLAGS;
 		v86.addr = 0x13;
@@ -902,34 +907,33 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86int();
 	    }
 	    
-	    if(cyl > 1023) {
-	        /* use EDD if the disk supports it, otherwise, return error */
-	        if(od->od_flags & BD_MODEEDD1) {
-		    static unsigned short packet[8];
+	    /*
+	     * Always use EDD if the disk supports it, otherwise fall back
+	     * to CHS mode (returning an error if the cylinder number is
+	     * too large).
+	     */
+	    if (od->od_flags & BD_MODEEDD1) {
+		static unsigned short packet[8];
 
-		    packet[0] = 0x10;
-		    packet[1] = x;
-		    packet[2] = VTOPOFF(xp);
-		    packet[3] = VTOPSEG(xp);
-		    packet[4] = dblk & 0xffff;
-		    packet[5] = dblk >> 16;
-		    packet[6] = 0;
-		    packet[7] = 0;
-		    v86.ctl = V86_FLAGS;
-		    v86.addr = 0x13;
-		    v86.eax = 0x4200;
-		    v86.edx = od->od_unit;
-		    v86.ds = VTOPSEG(packet);
-		    v86.esi = VTOPOFF(packet);
-		    v86int();
-		    result = (v86.efl & 0x1);
-		    if(result == 0)
-		      break;
-		} else {
-		    result = 1;
+		packet[0] = 0x10;
+		packet[1] = x;
+		packet[2] = VTOPOFF(xp);
+		packet[3] = VTOPSEG(xp);
+		packet[4] = dblk & 0xffff;
+		packet[5] = dblk >> 16;
+		packet[6] = 0;
+		packet[7] = 0;
+		v86.ctl = V86_FLAGS;
+		v86.addr = 0x13;
+		v86.eax = 0x4200;
+		v86.edx = od->od_unit;
+		v86.ds = VTOPSEG(packet);
+		v86.esi = VTOPOFF(packet);
+		v86int();
+		result = (v86.efl & 0x1);
+		if (result == 0)
 		    break;
-		}
-	    } else {
+	    } else if (cyl < 1024) {
 	        /* Use normal CHS addressing */
 	        v86.ctl = V86_FLAGS;
 		v86.addr = 0x13;
@@ -941,7 +945,10 @@ bd_read(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86int();
 		result = (v86.efl & 0x1);
 		if (result == 0)
-		  break;
+		    break;
+	    } else {
+		result = 1;
+		break;
 	    }
 	}
 	
@@ -1034,9 +1041,14 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 	dblk += x;
 	resid -= x;
 
-	/* Loop retrying the operation a couple of times.  The BIOS may also retry. */
+	/*
+	 * Loop retrying the operation a couple of times.  The BIOS may also
+	 * retry.
+	 */
 	for (retry = 0; retry < 3; retry++) {
-	    /* if retrying, reset the drive */
+	    /*
+	     * If retrying, reset the drive.
+	     */
 	    if (retry > 0) {
 		v86.ctl = V86_FLAGS;
 		v86.addr = 0x13;
@@ -1044,36 +1056,35 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86.edx = od->od_unit;
 		v86int();
 	    }
-	    
-	    if(cyl > 1023) {
-	        /* use EDD if the disk supports it, otherwise, return error */
-	        if(od->od_flags & BD_MODEEDD1) {
-		    static unsigned short packet[8];
 
-		    packet[0] = 0x10;
-		    packet[1] = x;
-		    packet[2] = VTOPOFF(xp);
-		    packet[3] = VTOPSEG(xp);
-		    packet[4] = dblk & 0xffff;
-		    packet[5] = dblk >> 16;
-		    packet[6] = 0;
-		    packet[7] = 0;
-		    v86.ctl = V86_FLAGS;
-		    v86.addr = 0x13;
-			/* Should we Write with verify ?? 0x4302 ? */
-		    v86.eax = 0x4300;
-		    v86.edx = od->od_unit;
-		    v86.ds = VTOPSEG(packet);
-		    v86.esi = VTOPOFF(packet);
-		    v86int();
-		    result = (v86.efl & 0x1);
-		    if(result == 0)
-		      break;
-		} else {
-		    result = 1;
+	    /*
+	     * Always use EDD if the disk supports it, otherwise fall back
+	     * to CHS mode (returning an error if the cylinder number is
+	     * too large).
+	     */
+	    if (od->od_flags & BD_MODEEDD1) {
+		static unsigned short packet[8];
+
+		packet[0] = 0x10;
+		packet[1] = x;
+		packet[2] = VTOPOFF(xp);
+		packet[3] = VTOPSEG(xp);
+		packet[4] = dblk & 0xffff;
+		packet[5] = dblk >> 16;
+		packet[6] = 0;
+		packet[7] = 0;
+		v86.ctl = V86_FLAGS;
+		v86.addr = 0x13;
+		    /* Should we Write with verify ?? 0x4302 ? */
+		v86.eax = 0x4300;
+		v86.edx = od->od_unit;
+		v86.ds = VTOPSEG(packet);
+		v86.esi = VTOPOFF(packet);
+		v86int();
+		result = (v86.efl & 0x1);
+		if (result == 0)
 		    break;
-		}
-	    } else {
+	    } else if (cyl < 1024) {
 	        /* Use normal CHS addressing */
 	        v86.ctl = V86_FLAGS;
 		v86.addr = 0x13;
@@ -1085,7 +1096,10 @@ bd_write(struct open_disk *od, daddr_t dblk, int blks, caddr_t dest)
 		v86int();
 		result = (v86.efl & 0x1);
 		if (result == 0)
-		  break;
+		    break;
+	    } else {
+		result = 1;
+		break;
 	    }
 	}
 	

@@ -45,7 +45,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot1.s,v 1.23 2003/08/22 01:59:28 imp Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.8 2004/07/27 19:37:17 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot1.S,v 1.9 2004/09/30 18:31:58 dillon Exp $
  */
 
 #include "../bootasm.h"
@@ -314,8 +314,43 @@ return: 	retw				// To caller
 //
 // %dl	- byte     - drive number
 // stack - 10 bytes - EDD Packet
-//
-read:	 	push %dx			// Save
+
+read:
+		/*
+		 * Try EDD mode first.  If not enabled or no BIOS support
+		 * exists, fall back to CHS mode.
+		 */
+		testb	$FL_PACKET,%cs:BOOT1_ORIGIN+flags-start
+		jz	read.1
+
+		/*
+		 * BIOS: check extensions present
+		 */
+		mov	$0x55aa,%bx
+		push	%dx
+		movb	$0x41,%ah
+		int	$0x13
+		pop	%dx
+		jc	read.1			/* BIOS error return */
+		cmp	$0xaa55,%bx		/* check for proper magic */
+		jne	read.1
+		testb $0x1,%cl			/* packet interface support? */
+		jz	read.1
+
+		/*
+		 * Issue packet command.
+		 * BIOS: Extended read command
+		 */
+		mov	%bp,%si
+		movb	$0x42,%ah
+		int	$0x13
+		retw
+
+		/*
+		 * Fallback to CHS mode
+		 */
+read.1:
+		push %dx			// Save
 		movb $0x8,%ah			// BIOS: Get drive
 		int $0x13			//  parameters
 		movb %dh,%ch			// Max head number
@@ -338,7 +373,7 @@ read:	 	push %dx			// Save
 		pop %dx				// Restore
 		cmpl $0x3ff,%eax		// Cylinder number supportable?
 		sti				// Enable interrupts
-		ja read.7			// No, try EDD
+		ja ereturn			// No, failed
 		xchgb %al,%ah			// Set up cylinder
 		rorb $0x2,%al			//  number
 		orb %ch,%al			// Merge
@@ -374,24 +409,8 @@ read.4: 	movzbw %bl,%ax	 		// Sectors read
 read.5: 	shlb %bl			//  buffer
 		add %bl,0x5(%bp)		//  pointer,
 		sub %al,0x2(%bp)		//  block count
-		ja read				// If not done
+		ja read.1			// If not done
 read.6: 	retw				// To caller
-read.7:		testb $FL_PACKET,%cs:BOOT1_ORIGIN+flags-start // LBA support enabled?
-		jz ereturn			// No, so return an error
-		mov $0x55aa,%bx			// Magic
-		push %dx			// Save
-		movb $0x41,%ah			// BIOS: Check
-		int $0x13			//  extensions present
-		pop %dx				// Restore
-		jc return			// If error, return an error
-		cmp $0xaa55,%bx			// Magic?
-		jne ereturn			// No, so return an error
-		testb $0x1,%cl			// Packet interface?
-		jz ereturn			// No, so return an error
-		mov %bp,%si			// Disk packet
-		movb $0x42,%ah			// BIOS: Extended
-		int $0x13			//  read
-		retw				// To caller
 
 // Messages
 
