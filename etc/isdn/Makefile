@@ -1,12 +1,11 @@
 # $FreeBSD: src/etc/isdn/Makefile,v 1.4.2.5 2002/08/07 16:31:40 ru Exp $
-# $DragonFly: src/etc/isdn/Makefile,v 1.2 2003/06/17 04:24:47 dillon Exp $
+# $DragonFly: src/etc/isdn/Makefile,v 1.3 2005/01/11 23:01:31 swildner Exp $
 
 I4BETCPROG=	answer			\
 		isdntel.sh		\
 		record			\
 		tell			\
-		tell-record		\
-		unknown_incoming
+		tell-record
 
 I4BETCFILE=	holidays.D		\
 		isdnd.rates.A		\
@@ -24,3 +23,6 @@ install:
 		for i in ${I4BETCFILE} ; do \
 		  ${INSTALL} -o root -g wheel -m 600 $$i ${DESTDIR}/etc/isdn ; \
 		done
+.if !exists(${DESTDIR}/etc/isdn/unknown_incoming)
+		${INSTALL} -o root -g wheel -m 700 unknown_incoming ${DESTDIR}/etc/isdn
+.endif
