@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)diskpart.c	8.3 (Berkeley) 11/30/94
  * $FreeBSD: src/usr.sbin/diskpart/diskpart.c,v 1.11.2.2 2002/12/04 16:24:08 roam Exp $
- * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/diskpart/Attic/diskpart.c,v 1.5 2004/03/20 17:46:47 cpressey Exp $
  */
 
 /*
@@ -112,7 +112,7 @@ int
 main(int argc, char **argv)
 {
 	struct disklabel *dp;
-	register int curcyl, spc, def, part, layout, j;
+	int curcyl, spc, def, part, layout, j;
 	int threshhold, numcyls[NPARTITIONS], startcyl[NPARTITIONS];
 	int totsize = 0;
 	char *lp, *tyname;
@@ -382,12 +382,12 @@ promptfordisk(char *name)
 	fprintf(stderr,
 		"%s: unknown disk type, want to supply parameters (y/n)? ",
 		name);
-	(void) mygets(buf);
+	mygets(buf);
 	if (*buf != 'y')
 		return ((struct disklabel *)0);
 	for (;;) {
 		fprintf(stderr, "Disk/controller type (%s)? ", dktypenames[1]);
-		(void) mygets(buf);
+		mygets(buf);
 		if (buf[0] == 0) {
 			dp->d_type = 1;
 			break;
@@ -405,7 +405,7 @@ promptfordisk(char *name)
 gettype:
 	dp->d_flags = 0;
 	fprintf(stderr, "type (winchester|removable|simulated)? ");
-	(void) mygets(buf);
+	mygets(buf);
 	if (strcmp(buf, "removable") == 0)
 		dp->d_flags = D_REMOVABLE;
 	else if (strcmp(buf, "simulated") == 0)
@@ -419,7 +419,7 @@ gettype:
 	if (dp->d_type == DTYPE_SMD)
 	   fprintf(stderr, "Do %ss support bad144 bad block forwarding (yes)? ",
 		dp->d_typename);
-	(void) mygets(buf);
+	mygets(buf);
 	if (*buf != 'n')
 		dp->d_flags |= D_BADSECT;
 	for (fp = fields; fp->f_name != NULL; fp++) {
@@ -444,7 +444,7 @@ again:
 	}
 	fprintf(stderr, "sectors/cylinder (%d)? ",
 	    dp->d_nsectors * dp->d_ntracks);
-	(void) mygets(buf);
+	mygets(buf);
 	if (buf[0] == 0)
 		dp->d_secpercyl = dp->d_nsectors * dp->d_ntracks;
 	else
@@ -452,7 +452,7 @@ again:
 	fprintf(stderr, "Drive-type-specific parameters, <cr> to terminate:\n");
 	for (i = 0; i < NDDATA; i++) {
 		fprintf(stderr, "d%d? ", i);
-		(void) mygets(buf);
+		mygets(buf);
 		if (buf[0] == 0)
 			break;
 		dp->d_drivedata[i] = atol(buf);
@@ -462,7 +462,7 @@ again:
 
 gettype(char *t, char **names)
 {
-	register char **nm;
+	char **nm;
 
 	for (nm = names; *nm; nm++)
 		if (ustrcmp(t, *nm) == 0)
@@ -472,8 +472,7 @@ gettype(char *t, char **names)
 	return (-1);
 }
 
-ustrcmp(s1, s2)
-	register char *s1, *s2;
+ustrcmp(char *s1, char *s2)
 {
 #define	lower(c)	(islower(c) ? (c) : tolower(c))
 

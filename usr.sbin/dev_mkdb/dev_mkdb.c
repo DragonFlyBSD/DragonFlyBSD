@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dev_mkdb.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.4.2.1 2001/11/25 18:34:09 iedowse Exp $
- * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/dev_mkdb/dev_mkdb.c,v 1.5 2004/03/20 17:46:47 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,8 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	register DIR *dirp;
-	register struct dirent *dp;
+	DIR *dirp;
+	struct dirent *dp;
 	struct stat sb;
 	struct {
 		mode_t type;
@@ -92,10 +92,10 @@ main(int argc, char **argv)
 		dirname = _PATH_DEV;
 
 	if (!fflag) {
-		(void)snprintf(dbname, sizeof(dbtmp), "%sdev.db", _PATH_VARRUN);
-		(void)snprintf(dbtmp, sizeof(dbtmp), "%sdev.tmp", _PATH_VARRUN);
+		snprintf(dbname, sizeof(dbtmp), "%sdev.db", _PATH_VARRUN);
+		snprintf(dbtmp, sizeof(dbtmp), "%sdev.tmp", _PATH_VARRUN);
 	} else
-		(void)snprintf(dbtmp, sizeof(dbtmp), "%s.tmp", dbname);
+		snprintf(dbtmp, sizeof(dbtmp), "%s.tmp", dbname);
 
 	if (chdir(dirname))
 		err(1, "%s", dirname);
@@ -142,7 +142,7 @@ main(int argc, char **argv)
 		if ((db->put)(db, &key, &data, 0))
 			err(1, "dbput %s", dbtmp);
 	}
-	(void)(db->close)(db);
+	(db->close)(db);
 	if (rename(dbtmp, dbname))
 		err(1, "rename %s to %s", dbtmp, dbname);
 	exit(0);
@@ -151,6 +151,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: dev_mkdb [-f file] [directory]\n");
+	fprintf(stderr, "usage: dev_mkdb [-f file] [directory]\n");
 	exit(1);
 }

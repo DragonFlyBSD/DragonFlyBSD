@@ -21,7 +21,7 @@
  *	- Initial distribution.
  *
  * $FreeBSD: src/usr.sbin/slstat/slstat.c,v 1.14 1999/08/28 01:20:00 peter Exp $
- * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.4 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/slstat/slstat.c,v 1.5 2004/03/20 17:46:48 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -63,9 +63,7 @@ int	unit;
 int	name[6];
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int c, i;
 	size_t len;
@@ -141,7 +139,7 @@ main(argc, argv)
 #define AMT (sizeof(*sc) - 2 * sizeof(sc->sc_comp.tstate))
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "usage: slstat [-i interval] [-vr] [unit]\n");
 	exit(1);
@@ -156,9 +154,9 @@ u_char	signalled;			/* set if alarm goes off "early" */
  * First line printed at top of screen is always cumulative.
  */
 static void
-intpr()
+intpr(void)
 {
-	register int line = 0;
+	int line = 0;
 	int oldmask;
 	struct sl_softc *sc, *osc;
 	size_t len;
@@ -173,9 +171,9 @@ intpr()
 		    (errno != ENOMEM || len != AMT))
 			err(1, "sysctl linkspecific");
 
-		(void)signal(SIGALRM, catchalarm);
+		signal(SIGALRM, catchalarm);
 		signalled = 0;
-		(void)alarm(interval);
+		alarm(interval);
 
 		if ((line % 20) == 0) {
 			printf("%8.8s %6.6s %6.6s %6.6s %6.6s",
@@ -225,7 +223,7 @@ intpr()
 		}
 		sigsetmask(oldmask);
 		signalled = 0;
-		(void)alarm(interval);
+		alarm(interval);
 		bcopy((char *)sc, (char *)osc, AMT);
 	}
 }
@@ -235,8 +233,7 @@ intpr()
  * Sets a flag to not wait for the alarm.
  */
 static void
-catchalarm(sig)
-	int sig;
+catchalarm(int sig)
 {
 	signalled = 1;
 }

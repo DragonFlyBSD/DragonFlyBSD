@@ -13,7 +13,7 @@
  *      other than his own.
  *
  * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
- * $DragonFly: src/usr.sbin/ac/ac.c,v 1.5 2003/11/15 20:33:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ac/ac.c,v 1.6 2004/03/20 17:46:47 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -69,7 +69,7 @@ static int	Flags = 0;
 static struct user_list *Users = NULL;
 static struct tty_list *Ttys = NULL;
 
-#define NEW(type) (type *)malloc(sizeof (type))
+#define NEW(type) (type *)malloc(sizeof(type))
 
 #define	AC_W	1				/* not _PATH_WTMP */
 #define	AC_D	2				/* daily totals (ignore -p) */
@@ -116,7 +116,7 @@ struct tty_list *
 add_tty(char *name)
 {
 	struct tty_list *tp;
-	register char *rcp;
+	char *rcp;
 
 	Flags |= AC_T;
 
@@ -128,8 +128,8 @@ add_tty(char *name)
 		tp->ret = 0;
 		name++;
 	}
-	(void)strncpy(tp->name, name, sizeof (tp->name) - 1);
-	tp->name[sizeof (tp->name) - 1] = '\0';
+	strncpy(tp->name, name, sizeof(tp->name) - 1);
+	tp->name[sizeof(tp->name) - 1] = '\0';
 	if ((rcp = strchr(tp->name, '*')) != NULL) {	/* wild card */
 		*rcp = '\0';
 		tp->len = strlen(tp->name);	/* match len bytes only */
@@ -155,7 +155,7 @@ do_tty(char *name)
 			if (strncmp(name, tp->name, tp->len) == 0)
 				return tp->ret;
 		} else {
-			if (strncmp(name, tp->name, sizeof (tp->name)) == 0)
+			if (strncmp(name, tp->name, sizeof(tp->name)) == 0)
 				return tp->ret;
 		}
 	}
@@ -173,7 +173,7 @@ on_console(struct utmp_list *head)
 
 	for (up = head; up; up = up->next) {
 		if (strncmp(up->usr.ut_line, Console,
-		    sizeof (up->usr.ut_line)) == 0)
+		    sizeof(up->usr.ut_line)) == 0)
 			return 1;
 	}
 	return 0;
@@ -204,8 +204,8 @@ update_user(struct user_list *head, char *name, time_t secs)
 	if ((up = NEW(struct user_list)) == NULL)
 		errx(1, "malloc failed");
 	up->next = head;
-	(void)strncpy(up->name, name, sizeof (up->name) - 1);
-	up->name[sizeof (up->name) - 1] = '\0';	/* paranoid! */
+	strncpy(up->name, name, sizeof(up->name) - 1);
+	up->name[sizeof(up->name) - 1] = '\0';	/* paranoid! */
 	up->secs = secs;
 	Total += secs;
 	return up;
@@ -217,7 +217,7 @@ main(int argc, char **argv)
 	FILE *fp;
 	int c;
 
-	(void) setlocale(LC_TIME, "");
+	setlocale(LC_TIME, "");
 
 	fp = NULL;
 	while ((c = getopt(argc, argv, "Dc:dpt:w:")) != -1) {
@@ -283,7 +283,7 @@ main(int argc, char **argv)
 void
 show(char *name, time_t secs)
 {
-	(void)printf("\t%-*s %8.2f\n", UT_NAMESIZE, name,
+	printf("\t%-*s %8.2f\n", UT_NAMESIZE, name,
 	    ((double)secs / 3600));
 }
 
@@ -310,7 +310,7 @@ show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
 
 	if (d_first < 0)
 		d_first = (*nl_langinfo(D_MD_ORDER) == 'd');
-	(void)strftime(date, sizeof (date),
+	strftime(date, sizeof(date),
 		       d_first ? "%e %b  total" : "%b %e  total",
 		       localtime(&yesterday));
 
@@ -328,7 +328,7 @@ show_today(struct user_list *users, struct utmp_list *logins, time_t secs)
 		up->secs = 0;			/* for next day */
 	}
  	if (secs)
-		(void)printf("%s %11.2f\n", date, ((double)secs / 3600));
+		printf("%s %11.2f\n", date, ((double)secs / 3600));
 }
 
 /*
@@ -344,15 +344,15 @@ log_out(struct utmp_list *head, struct utmp *up)
 
 	for (lp = head, lp2 = NULL; lp != NULL; )
 		if (*up->ut_line == '~' || strncmp(lp->usr.ut_line, up->ut_line,
-		    sizeof (up->ut_line)) == 0) {
+		    sizeof(up->ut_line)) == 0) {
 			secs = up->ut_time - lp->usr.ut_time;
 			Users = update_user(Users, lp->usr.ut_name, secs);
 #ifdef DEBUG
 			if (Debug)
 				printf("%-.*s %-.*s: %-.*s logged out (%2d:%02d:%02d)\n",
 				    19, ctime(&up->ut_time),
-				    sizeof (lp->usr.ut_line), lp->usr.ut_line,
-				    sizeof (lp->usr.ut_name), lp->usr.ut_name,
+				    sizeof(lp->usr.ut_line), lp->usr.ut_line,
+				    sizeof(lp->usr.ut_name), lp->usr.ut_name,
 				    secs / 3600, (secs % 3600) / 60, secs % 60);
 #endif
 			/*
@@ -408,8 +408,8 @@ log_in(struct utmp_list *head, struct utmp *up)
 		/*
 		 * this allows us to pick the right logout
 		 */
-		(void)strncpy(up->ut_line, Console, sizeof (up->ut_line) - 1);
-		up->ut_line[sizeof (up->ut_line) - 1] = '\0'; /* paranoid! */
+		strncpy(up->ut_line, Console, sizeof(up->ut_line) - 1);
+		up->ut_line[sizeof(up->ut_line) - 1] = '\0'; /* paranoid! */
 	}
 #endif
 	/*
@@ -427,14 +427,14 @@ log_in(struct utmp_list *head, struct utmp *up)
 		errx(1, "malloc failed");
 	lp->next = head;
 	head = lp;
-	memmove((char *)&lp->usr, (char *)up, sizeof (struct utmp));
+	memmove((char *)&lp->usr, (char *)up, sizeof(struct utmp));
 #ifdef DEBUG
 	if (Debug) {
 		printf("%-.*s %-.*s: %-.*s logged in", 19,
-		    ctime(&lp->usr.ut_time), sizeof (up->ut_line),
-		       up->ut_line, sizeof (up->ut_name), up->ut_name);
+		    ctime(&lp->usr.ut_time), sizeof(up->ut_line),
+		       up->ut_line, sizeof(up->ut_name), up->ut_name);
 		if (*up->ut_host)
-			printf(" (%-.*s)", sizeof (up->ut_host), up->ut_host);
+			printf(" (%-.*s)", sizeof(up->ut_host), up->ut_host);
 		putchar('\n');
 	}
 #endif
@@ -499,10 +499,10 @@ ac(FILE *fp)
 			break;
 		}
 	}
-	(void)fclose(fp);
+	fclose(fp);
 	if (!(Flags & AC_W))
 		usr.ut_time = time((time_t *)0);
-	(void)strcpy(usr.ut_line, "~");
+	strcpy(usr.ut_line, "~");
 
 	if (Flags & AC_D) {
 		ltm = localtime(&usr.ut_time);
@@ -535,7 +535,7 @@ ac(FILE *fp)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 #ifdef CONSOLE_TTY
 	    "ac [-dp] [-c console] [-t tty] [-w wtmp] [users ...]\n");
 #else

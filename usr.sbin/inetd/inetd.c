@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.5 2004/03/20 17:46:48 cpressey Exp $
  */
 
 /*
@@ -224,7 +224,7 @@ void		setup(struct servtab *);
 #ifdef IPSEC
 void		ipsecsetup(struct servtab *);
 #endif
-void		unregisterrpc(register struct servtab *sep);
+void		unregisterrpc(struct servtab *sep);
 static struct conninfo *search_conn(struct servtab *sep, int ctrl);
 static int	room_conn(struct servtab *sep, struct conninfo *conn);
 static void	addchild_conn(struct conninfo *conn, pid_t pid);
@@ -502,9 +502,9 @@ main(int argc, char **argv)
 #define	DUMMYSIZE	100
 		char dummy[DUMMYSIZE];
 
-		(void)memset(dummy, 'x', DUMMYSIZE - 1);
+		memset(dummy, 'x', DUMMYSIZE - 1);
 		dummy[DUMMYSIZE - 1] = '\0';
-		(void)setenv("inetd_dummy", dummy, 1);
+		setenv("inetd_dummy", dummy, 1);
 	}
 
 	if (pipe(signalpipe) != 0) {
@@ -642,7 +642,7 @@ main(int argc, char **argv)
 			    }
 			    syslog(LOG_INFO,"%s from %s", sep->se_service, pname);
 		    }
-		    (void) sigblock(SIGBLOCK);
+		    sigblock(SIGBLOCK);
 		    pid = 0;
 		    /*
 		     * Fork for all external services, builtins which need to
@@ -651,11 +651,11 @@ main(int argc, char **argv)
 		     */
 		    if (dofork) {
 			    if (sep->se_count++ == 0)
-				(void)gettimeofday(&sep->se_time, (struct timezone *)NULL);
+				gettimeofday(&sep->se_time, (struct timezone *)NULL);
 			    else if (toomany > 0 && sep->se_count >= toomany) {
 				struct timeval now;
 
-				(void)gettimeofday(&now, (struct timezone *)NULL);
+				gettimeofday(&now, (struct timezone *)NULL);
 				if (now.tv_sec - sep->se_time.tv_sec >
 				    CNT_INTVL) {
 					sep->se_time = now;
@@ -823,7 +823,7 @@ main(int argc, char **argv)
 						  sep->se_service, pwd->pw_gid);
 						_exit(EX_OSERR);
 					}
-					(void) initgroups(pwd->pw_name,
+					initgroups(pwd->pw_name,
 							pwd->pw_gid);
 					if (setuid(pwd->pw_uid) < 0) {
 						syslog(LOG_ERR,
@@ -1102,7 +1102,7 @@ config(void)
 				syslog(LOG_ERR, "%s/%s unknown RPC service",
 					sep->se_service, sep->se_proto);
 				if (sep->se_fd != -1)
-					(void) close(sep->se_fd);
+					close(sep->se_fd);
 				sep->se_fd = -1;
 					continue;
 			}
@@ -1111,7 +1111,7 @@ config(void)
 					unregisterrpc(sep);
 				sep->se_rpc_prog = rpc->r_number;
 				if (sep->se_fd != -1)
-					(void) close(sep->se_fd);
+					close(sep->se_fd);
 				sep->se_fd = -1;
 			}
 		}
@@ -1139,7 +1139,7 @@ config(void)
 		freeconfig(sep);
 		free(sep);
 	}
-	(void) sigsetmask(omask);
+	sigsetmask(omask);
 }
 
 void
@@ -1164,9 +1164,9 @@ unregisterrpc(struct servtab *sep)
         for (i = sep->se_rpc_lowvers; i <= sep->se_rpc_highvers; i++)
                 pmap_unset(sep->se_rpc_prog, i);
         if (sep->se_fd != -1)
-                (void) close(sep->se_fd);
+                close(sep->se_fd);
         sep->se_fd = -1;
-	(void) sigsetmask(omask);
+	sigsetmask(omask);
 }
 
 void
@@ -1247,7 +1247,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 	ipsecsetup(sep);
 #endif
 	if (sep->se_family == AF_UNIX) {
-		(void) unlink(sep->se_ctrladdr_un.sun_path);
+		unlink(sep->se_ctrladdr_un.sun_path);
 		umask(0777); /* Make socket with conservative permissions */
 	}
 	if (bind(sep->se_fd, (struct sockaddr *)&sep->se_ctrladdr,
@@ -1257,7 +1257,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 				sep->se_service, sep->se_proto);
 		syslog(LOG_ERR, "%s/%s: bind: %m",
 		    sep->se_service, sep->se_proto);
-		(void) close(sep->se_fd);
+		close(sep->se_fd);
 		sep->se_fd = -1;
 		if (!timingout) {
 			timingout = 1;
@@ -1283,7 +1283,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
                         syslog(LOG_ERR,
 			       "%s/%s: unsupported address family for rpc",
                                sep->se_service, sep->se_proto);
-                        (void) close(sep->se_fd);
+                        close(sep->se_fd);
                         sep->se_fd = -1;
                         return;
 		}
@@ -1291,7 +1291,7 @@ setsockopt(fd, SOL_SOCKET, opt, (char *)&on, sizeof (on))
 				(struct sockaddr*)&sep->se_ctrladdr, &len) < 0){
                         syslog(LOG_ERR, "%s/%s: getsockname: %m",
                                sep->se_service, sep->se_proto);
-                        (void) close(sep->se_fd);
+                        close(sep->se_fd);
                         sep->se_fd = -1;
                         return;
                 }
@@ -1395,7 +1395,7 @@ close_sep(struct servtab *sep)
 	if (sep->se_fd >= 0) {
 		if (FD_ISSET(sep->se_fd, &allsock))
 			disable(sep);
-		(void) close(sep->se_fd);
+		close(sep->se_fd);
 		sep->se_fd = -1;
 	}
 	sep->se_count = 0;
@@ -1528,7 +1528,7 @@ void
 endconfig(void)
 {
 	if (fconfig) {
-		(void) fclose(fconfig);
+		fclose(fconfig);
 		fconfig = NULL;
 	}
 }
@@ -1972,7 +1972,7 @@ again:
 		int c;
 
 		c = getc(fconfig);
-		(void) ungetc(c, fconfig);
+		ungetc(c, fconfig);
 		if (c == ' ' || c == '\t')
 			if ((cp = nextline(fconfig)))
 				goto again;
@@ -2029,9 +2029,9 @@ inetd_setproctitle(const char *a, int s)
 	if (getpeername(s, (struct sockaddr *)&ss, &size) == 0) {
 		getnameinfo((struct sockaddr *)&ss, size, pbuf, sizeof(pbuf),
 			    NULL, 0, NI_NUMERICHOST|NI_WITHSCOPEID);
-		(void) sprintf(buf, "%s [%s]", a, pbuf);
+		sprintf(buf, "%s [%s]", a, pbuf);
 	} else
-		(void) sprintf(buf, "%s", a);
+		sprintf(buf, "%s", a);
 	setproctitle("%s", buf);
 }
 
