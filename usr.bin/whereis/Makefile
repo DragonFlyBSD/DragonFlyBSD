@@ -1,7 +1,8 @@
-# $FreeBSD: src/usr.bin/whereis/Makefile,v 1.2.8.2 2001/04/25 14:04:39 ru Exp $
-# $DragonFly: src/usr.bin/whereis/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
+# $FreeBSD: src/usr.bin/whereis/Makefile,v 1.7 2002/12/30 09:48:40 obrien Exp $
+# $DragonFly: src/usr.bin/whereis/Makefile,v 1.3 2004/03/25 16:39:40 drhodus Exp $
 
-SCRIPTS=whereis.pl
+PROG=	whereis
 MAN=	whereis.1
+WARNS?=	5
 
 .include <bsd.prog.mk>
