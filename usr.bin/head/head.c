@@ -33,10 +33,8 @@
  * @(#) Copyright (c) 1980, 1987, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)head.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/head/head.c,v 1.10.2.1 2002/02/16 12:29:04 dwmalone Exp $
- * $DragonFly: src/usr.bin/head/head.c,v 1.4 2004/11/28 20:20:42 liamfoy Exp $
+ * $DragonFly: src/usr.bin/head/head.c,v 1.5 2005/03/12 11:10:02 liamfoy Exp $
  */
-
-#include <sys/types.h>
 
 #include <ctype.h>
 #include <err.h>
@@ -69,12 +67,12 @@ main(int argc, char **argv)
 		switch(ch) {
 		case 'c':
 			bytecnt = strtol(optarg, &ep, 10);
-			if (*ep || bytecnt <= 0)
+			if (*ep != NULL || bytecnt <= 0)
 				errx(1, "illegal byte count -- %s", optarg);
 			break;
 		case 'n':
 			linecnt = strtol(optarg, &ep, 10);
-			if (*ep || linecnt <= 0)
+			if (*ep != NULL || linecnt <= 0)
 				errx(1, "illegal line count -- %s", optarg);
 			break;
 		default:
@@ -95,7 +93,7 @@ main(int argc, char **argv)
 				continue;
 			}
 			if (argc > 1) {
-				(void)printf("%s==> %s <==\n",
+				printf("%s==> %s <==\n",
 				    first ? "" : "\n", *argv);
 				first = 0;
 			}
@@ -103,7 +101,7 @@ main(int argc, char **argv)
 				head(fp, linecnt);
 			else
 				head_bytes(fp, bytecnt);
-			(void)fclose(fp);
+			fclose(fp);
 		}
 	} else if (bytecnt == -1)
 		head(stdin, linecnt);
@@ -157,10 +155,10 @@ obsolete(char **argv)
 		if (ap[0] != '-' || ap[1] == '-' || !isdigit(ap[1]))
 			return;
 		if ((ap = malloc(strlen(*argv) + 2)) == NULL)
-			err(1, NULL);
+			err(1, "malloc failed");
 		ap[0] = '-';
 		ap[1] = 'n';
-		(void)strcpy(ap + 2, *argv + 1);
+		strcpy(ap + 2, *argv + 1);
 		*argv = ap;
 	}
 }
@@ -168,7 +166,6 @@ obsolete(char **argv)
 static void
 usage(void)
 {
-
-	(void)fprintf(stderr, "usage: head [-n lines | -c bytes] [file ...]\n");
+	fprintf(stderr, "usage: head [-n lines | -c bytes] [file ...]\n");
 	exit(1);
 }
