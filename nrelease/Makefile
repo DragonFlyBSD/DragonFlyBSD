@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.19 2004/11/11 19:45:19 cpressey Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.20 2004/12/20 09:11:56 dillon Exp $
 #
 
 ISODIR ?= /usr/release
@@ -103,16 +103,16 @@ fetchpkgs:
 .endfor
 
 buildworld1:
-	( cd ${.CURDIR}/..; make buildworld CCVER=${WORLD_CCVER} )
+	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make buildworld )
 
 buildworld2:
-	( cd ${.CURDIR}/..; make -DNOTOOLS -DNOCLEAN buildworld CCVER=${WORLD_CCVER} )
+	( cd ${.CURDIR}/..; CCVER=${WORLD_CCVER} make -DNOTOOLS -DNOCLEAN buildworld )
 
 buildkernel1:
-	( cd ${.CURDIR}/..; make buildkernel KERNCONF=${KERNCONF} CCVER=${KERNEL_CCVER} )
+	( cd ${.CURDIR}/..; CCVER=${KERNEL_CCVER} make buildkernel KERNCONF=${KERNCONF} )
 
 buildkernel2:
-	( cd ${.CURDIR}/..; make -DNOCLEAN buildkernel KERNCONF=${KERNCONF} CCVER=${KERNEL_CCVER} )
+	( cd ${.CURDIR}/..; CCVER=${KERNEL_CCVER} make -DNOCLEAN buildkernel KERNCONF=${KERNCONF} )
 
 # note that we do not want to mess with any /usr/obj directories not related
 # to buildworld, buildkernel, or nrelease, so we must supply the proper
