@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.15 2004/05/19 22:53:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.16 2004/05/26 07:45:24 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -293,7 +293,7 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return error;
-	if (count_udev(devvp) > 0 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
 		return EBUSY;
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);
