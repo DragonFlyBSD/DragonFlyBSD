@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/include/db_machdep.h,v 1.16 1999/10/04 13:55:35 marcel Exp $
- * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.4 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/db_machdep.h,v 1.5 2003/11/07 06:00:32 dillon Exp $
  */
 
 #ifndef _MACHINE_DB_MACHDEP_H_
@@ -41,10 +41,14 @@ typedef	vm_offset_t	db_addr_t;	/* address - unsigned */
 typedef	int		db_expr_t;	/* expression - signed */
 
 typedef struct i386_saved_state db_regs_t;
+
+#ifdef _KERNEL
 extern db_regs_t	ddb_regs;	/* register state */
 #define	DDB_REGS	(&ddb_regs)
 
-#define	PC_REGS(regs)	((db_addr_t)(regs)->tf_eip)
+extern	db_addr_t	PC_REGS(db_regs_t *regs);
+extern	db_addr_t	SP_REGS(db_regs_t *regs);
+#endif
 
 #define	BKPT_INST	0xcc		/* breakpoint instruction */
 #define	BKPT_SIZE	(1)		/* size of breakpoint inst */

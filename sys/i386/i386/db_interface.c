@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_interface.c,v 1.48.2.1 2000/07/07 00:38:46 obrien Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.6 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_interface.c,v 1.7 2003/11/07 06:00:31 dillon Exp $
  */
 
 /*
@@ -296,6 +296,40 @@ db_write_bytes(addr, size, data)
 
 	    invltlb();
 	}
+}
+
+/*
+ * The debugger sometimes needs to know the actual KVM address represented
+ * by the instruction pointer, stack pointer, or base pointer.  Normally
+ * the actual KVM address is simply the contents of the register.  However,
+ * if the debugger is entered from the BIOS or VM86 we need to figure out
+ * the offset from the segment register.
+ */
+db_addr_t
+PC_REGS(db_regs_t *regs)
+{
+    struct soft_segment_descriptor softseg;
+
+    sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_cs & 0xffff)].sd, &softseg);
+    return(regs->tf_eip + softseg.ssd_base);
+}
+
+db_addr_t
+SP_REGS(db_regs_t *regs)
+{
+    struct soft_segment_descriptor softseg;
+
+    sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_ss & 0xffff)].sd, &softseg);
+    return(regs->tf_esp + softseg.ssd_base);
+}
+
+db_addr_t
+BP_REGS(db_regs_t *regs)
+{
+    struct soft_segment_descriptor softseg;
+
+    sdtossd(&gdt[mycpu->gd_cpuid * NGDT + IDXSEL(regs->tf_ds & 0xffff)].sd, &softseg);
+    return(regs->tf_esp + softseg.ssd_base);
 }
 
 /*

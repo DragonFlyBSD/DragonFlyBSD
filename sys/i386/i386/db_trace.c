@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/i386/i386/db_trace.c,v 1.35.2.3 2002/02/21 22:31:25 silby Exp $
- * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.6 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/db_trace.c,v 1.7 2003/11/07 06:00:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -283,10 +283,10 @@ db_stack_trace_cmd(addr, have_addr, count, modif)
 		count = 1024;
 
 	if (!have_addr) {
-		frame = (struct i386_frame *)ddb_regs.tf_ebp;
+		frame = (struct i386_frame *)BP_REGS(&ddb_regs);
 		if (frame == NULL)
-			frame = (struct i386_frame *)(ddb_regs.tf_esp - 4);
-		callpc = (db_addr_t)ddb_regs.tf_eip;
+			frame = (struct i386_frame *)(SP_REGS(&ddb_regs) - 4);
+		callpc = PC_REGS(&ddb_regs);
 	} else if (!INKERNEL(addr)) {
 		pid = (addr % 16) + ((addr >> 4) % 16) * 10 +
 		    ((addr >> 8) % 16) * 100 + ((addr >> 12) % 16) * 1000 +
@@ -296,11 +296,11 @@ db_stack_trace_cmd(addr, have_addr, count, modif)
 		 * so fall back to the default case.
 		 */
 		if ((curproc != NULL) && (pid == curproc->p_pid)) {
-			frame = (struct i386_frame *)ddb_regs.tf_ebp;
+			frame = (struct i386_frame *)BP_REGS(&ddb_regs);
 			if (frame == NULL)
 				frame = (struct i386_frame *)
-				    (ddb_regs.tf_esp - 4);
-			callpc = (db_addr_t)ddb_regs.tf_eip;
+				    (SP_REGS(&ddb_regs) - 4);
+			callpc = PC_REGS(&ddb_regs);
 		} else {
 
 			/* sx_slock(&allproc_lock); */
@@ -362,11 +362,11 @@ db_stack_trace_cmd(addr, have_addr, count, modif)
 				if ((instr & 0x00ffffff) == 0x00e58955) {
 					/* pushl %ebp; movl %esp, %ebp */
 					actframe = (struct i386_frame *)
-					    (ddb_regs.tf_esp - 4);
+					    (SP_REGS(&ddb_regs) - 4);
 				} else if ((instr & 0x0000ffff) == 0x0000e589) {
 					/* movl %esp, %ebp */
 					actframe = (struct i386_frame *)
-					    ddb_regs.tf_esp;
+					    SP_REGS(&ddb_regs);
 					if (ddb_regs.tf_ebp == 0) {
 						/* Fake caller's frame better. */
 						frame = actframe;
@@ -374,11 +374,11 @@ db_stack_trace_cmd(addr, have_addr, count, modif)
 				} else if ((instr & 0x000000ff) == 0x000000c3) {
 					/* ret */
 					actframe = (struct i386_frame *)
-					    (ddb_regs.tf_esp - 4);
+					    (SP_REGS(&ddb_regs) - 4);
 				} else if (offset == 0) {
 					/* Probably a symbol in assembler code. */
 					actframe = (struct i386_frame *)
-					    (ddb_regs.tf_esp - 4);
+					    (SP_REGS(&ddb_regs) - 4);
 				}
 			} else if (!strcmp(name, "fork_trampoline")) {
 				/*
