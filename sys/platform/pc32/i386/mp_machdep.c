@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.26 2004/03/29 07:36:48 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.27 2004/05/27 19:21:49 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -415,6 +415,10 @@ mp_announce(void)
 
 /*
  * AP cpu's call this to sync up protected mode.
+ *
+ * WARNING!  We must ensure that the cpu is sufficiently initialized to
+ * be able to use to the FP for our optimized bzero/bcopy code before
+ * we enter more mainstream C code.
  */
 void
 init_secondary(void)
@@ -465,8 +469,16 @@ init_secondary(void)
 	cr0 = rcr0();
 	cr0 &= ~(CR0_CD | CR0_NW | CR0_EM);
 	load_cr0(cr0);
+	pmap_set_opt();		/* PSE/4MB pages, etc */
 
-	pmap_set_opt();
+	/* set up CPU registers and state */
+	cpu_setregs();
+
+	/* set up FPU state on the AP */
+	npxinit(__INITIAL_NPXCW__);
+
+	/* set up SSE registers */
+	enable_sse();
 }
 
 
@@ -2369,15 +2381,6 @@ ap_init(void)
 	mycpu->gd_other_cpus = smp_startup_mask & ~(1 << mycpu->gd_cpuid);
 
 	printf("SMP: AP CPU #%d Launched!\n", mycpu->gd_cpuid);
-
-	/* set up CPU registers and state */
-	cpu_setregs();
-
-	/* set up FPU state on the AP */
-	npxinit(__INITIAL_NPXCW__);
-
-	/* set up SSE registers */
-	enable_sse();
 
 	/* A quick check from sanity claus */
 	apic_id = (apic_id_to_logical[(lapic.id & 0x0f000000) >> 24]);
