@@ -7,7 +7,7 @@
  *
  * Dump the mountlist and related vnodes.
  *
- * $DragonFly: src/test/debug/vnodeinfo.c,v 1.1 2004/10/07 00:05:03 dillon Exp $
+ * $DragonFly: src/test/debug/vnodeinfo.c,v 1.2 2004/10/08 18:31:24 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -151,41 +151,53 @@ dumpvp(kvm_t *kd, struct vnode *vp, int whichlist)
     printf("    vnode %p usecnt %d holdcnt %d type=%s flags %08x",
 	vp, vn.v_usecount, vn.v_holdcnt, vtype(vn.v_type), vn.v_flag);
     if (vn.v_flag & VROOT)
-	printf(" ROOT");
+	printf(" VROOT");
     if (vn.v_flag & VTEXT)
-	printf(" TEXT");
+	printf(" VTEXT");
     if (vn.v_flag & VSYSTEM)
-	printf(" SYSTEM");
+	printf(" VSYSTEM");
     if (vn.v_flag & VISTTY)
-	printf(" ISTTY");
+	printf(" VISTTY");
+#ifdef VXLOCK
     if (vn.v_flag & VXLOCK)
-	printf(" XLOCK");
+	printf(" VXLOCK");
     if (vn.v_flag & VXWANT)
-	printf(" XWANT");
+	printf(" VXWANT");
+#endif
+#ifdef VRECLAIMED
+    if (vn.v_flag & VRECLAIMED)
+	printf(" VRECLAIMED");
+    if (vn.v_flag & VINACTIVE)
+	printf(" VINACTIVE");
+#endif
     if (vn.v_flag & VBWAIT)
-	printf(" BWAIT");
+	printf(" VBWAIT");
     if (vn.v_flag & VOBJBUF)
-	printf(" OBJBUF");
+	printf(" VOBJBUF");
     if (vn.v_flag & VAGE)
-	printf(" AGE");
+	printf(" VAGE");
     if (vn.v_flag & VOLOCK)
-	printf(" OLOCK");
+	printf(" VOLOCK");
     if (vn.v_flag & VOWANT)
-	printf(" OWANT");
+	printf(" VOWANT");
+#ifdef VDOOMED
     if (vn.v_flag & VDOOMED)
-	printf(" DOOMED");
+	printf(" VDOOMED");
+#endif
     if (vn.v_flag & VFREE)
-	printf(" FREE");
+	printf(" VFREE");
+#ifdef VINFREE
     if (vn.v_flag & VINFREE)
-	printf(" INFREE");
+	printf(" VINFREE");
+#endif
     if (vn.v_flag & VONWORKLST)
-	printf(" ONWORKLST");
+	printf(" VONWORKLST");
     if (vn.v_flag & VMOUNT)
-	printf(" MOUNT");
+	printf(" VMOUNT");
     if (vn.v_flag & VOBJDIRTY)
-	printf(" OBJDIRTY");
+	printf(" VOBJDIRTY");
     if (vn.v_flag & VPLACEMARKER)
-	printf(" PLACEMARKER");
+	printf(" VPLACEMARKER");
     printf("\n");
 
     if (vn.v_lock.lk_sharecount || vn.v_lock.lk_waitcount || 
