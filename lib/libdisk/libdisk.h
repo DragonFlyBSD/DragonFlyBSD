@@ -7,7 +7,7 @@
 * ----------------------------------------------------------------------------
 *
 * $FreeBSD: src/lib/libdisk/libdisk.h,v 1.32.2.8 2002/01/07 07:53:29 dillon Exp $
-* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.2 2003/06/17 04:26:49 dillon Exp $
+* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.3 2004/07/11 20:28:15 drhodus Exp $
 *
 */
 
@@ -189,7 +189,7 @@ CheckRules(struct disk *);
  */
 
 char **
-Disk_Names();
+Disk_Names(void);
 /* Return char** with all disk's names (wd0, wd1 ...).  You must free
  * each pointer, as well as the array by hand
  */
