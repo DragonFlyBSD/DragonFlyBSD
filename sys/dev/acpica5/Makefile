@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/modules/acpi/acpi/Makefile,v 1.3 2004/01/08 16:38:32 njl Exp $
-# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.5 2004/08/02 18:41:50 dillon Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile,v 1.6 2004/09/16 20:50:00 joerg Exp $
 
 .include "Makefile.inc"
 
@@ -60,9 +60,12 @@ SRCS+=	utxface.c
 #
 SRCS+=  acpi.c acpi_acad.c acpi_battery.c acpi_button.c acpi_cmbat.c acpi_cpu.c
 SRCS+=  acpi_ec.c acpi_isab.c acpi_lid.c
-SRCS+=  acpi_package.c acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c
-SRCS+=  acpi_pcib_pci.c acpi_powerres.c acpi_resource.c acpi_thermal.c
-SRCS+=  acpi_timer.c acpi_pci_link.c
+SRCS+=  acpi_package.c
+# The PCI part of ACPI5 doesn't work with the current infrastructure
+# SRCS+=	acpi_pci.c acpi_pcib.c acpi_pcib_acpi.c acpi_pcib_pci.c
+# SRCS+=	acpi_pci_link.c
+SRCS+=  acpi_powerres.c acpi_resource.c acpi_thermal.c
+SRCS+=  acpi_timer.c
 SRCS+=  OsdDebug.c
 SRCS+=  OsdHardware.c OsdInterrupt.c OsdMemory.c OsdSchedule.c
 SRCS+=  OsdStream.c OsdSynch.c OsdTable.c OsdEnvironment.c
