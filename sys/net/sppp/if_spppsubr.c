@@ -18,7 +18,7 @@
  * From: Version 2.4, Thu Apr 30 17:17:21 MSD 1997
  *
  * $FreeBSD: src/sys/net/if_spppsubr.c,v 1.59.2.13 2002/07/03 15:44:41 joerg Exp $
- * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.17 2004/09/16 03:54:37 dillon Exp $
+ * $DragonFly: src/sys/net/sppp/if_spppsubr.c,v 1.18 2004/09/16 14:56:32 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -97,16 +97,7 @@
 
 #include "if_sppp.h"
 
-#if defined(__DragonFly__)
-# define UNTIMEOUT(fun, arg, handle) untimeout(fun, arg, handle)
-# define TIMEOUT(fun, arg1, arg2, handle) handle = timeout(fun, arg1, arg2)
-# define IOCTL_CMD_T	u_long
-#else
-# define UNTIMEOUT(fun, arg, handle) untimeout(fun, arg)
-# define TIMEOUT(fun, arg1, arg2, handle) timeout(fun, arg1, arg2)
-# define IOCTL_CMD_T	int
-#endif
-
+#define IOCTL_CMD_T	u_long
 #define MAXALIVECNT     3               /* max. alive packets */
 
 /*
