@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.18 2004/06/02 14:42:58 eirikn Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.19 2004/08/10 22:05:30 dillon Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -166,8 +166,8 @@ static void	pppdumpm (struct mbuf *m0);
  * We steal two bits in the mbuf m_flags, to mark high-priority packets
  * for output, and received packets following lost/corrupted packets.
  */
-#define M_HIGHPRI	0x2000	/* output packet for sc_fastq */
-#define M_ERRMARK	0x4000	/* steal a bit in mbuf m_flags */
+#define M_HIGHPRI	M_PROTO2	/* output packet for sc_fastq */
+#define M_ERRMARK	M_PROTO3	/* steal a bit in mbuf m_flags */
 
 
 #ifdef PPP_COMPRESS
