@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_bio.c,v 1.130 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.18 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.19 2005/03/04 00:44:48 dillon Exp $
  */
 
 
@@ -148,7 +148,8 @@ nfs_getpages(struct vop_getpages_args *ap)
 	/*
 	 * Use an MSF_BUF as a medium to retrieve data from the pages.
 	 */
-	msf = msf_buf_alloc(pages, npages, 0);
+	msf_map_pagelist(&msf, pages, npages, 0);
+	KKASSERT(msf);
 	kva = msf_buf_kva(msf);
 
 	iov.iov_base = (caddr_t) kva;
@@ -288,7 +289,8 @@ nfs_putpages(struct vop_putpages_args *ap)
 	/*
 	 * Use an MSF_BUF as a medium to retrieve data from the pages.
 	 */
-	msf = msf_buf_alloc(pages, npages, 0);
+	msf_map_pagelist(&msf, pages, npages, 0);
+	KKASSERT(msf);
 	kva = msf_buf_kva(msf);
 
 	iov.iov_base = (caddr_t) kva;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2005 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Hiten Pandya <hmp@backplane.com> and Matthew Dillon
@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.7 2005/03/01 06:18:18 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.8 2005/03/04 00:44:46 dillon Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -75,15 +75,32 @@ MALLOC_DECLARE(M_MSFBUF);
  *
  */
 
+/*
+ * Type of mapping.
+ *
+ * MSF_TYPE_PGLIST - mapping based on raw list of pages.
+ * MSF_TYPE_XIO    - mapping based on an XIO.
+ * MSF_TYPE_UBUF   - mapping based on an arbitrary user buffer.
+ * MSF_TYPE_KBUF   - mapping based on an arbitrary kernel buffer.
+ */
+enum msf_type { MSF_TYPE_UNKNOWN, MSF_TYPE_PGLIST, MSF_TYPE_XIO,
+				MSF_TYPE_UBUF, MSF_TYPE_KBUF };
+
 struct msf_buf {
-	LIST_ENTRY(msf_buf)  active_list; /* active list of buffers */
-	TAILQ_ENTRY(msf_buf) free_list;   /* free list of buffers */
-	vm_offset_t 	m_kva;    	      /* KVA offset */
-	cpumask_t    	m_cpumask;	      /* CPU mask for synchronization */
-	struct xio  	m_xio;  	      /* xio embedded */
-	int         	m_refcnt; 	      /* map usage tracking */
-	int          	m_flags; 	      /* control flags */
+	TAILQ_ENTRY(msf_buf) free_list;	/* free list of buffers */
+	vm_offset_t 	ms_kva;			/* KVA offset */
+	cpumask_t    	ms_cpumask;		/* CPU mask for synchronization */
+	struct xio		*ms_xio;		/* xio being used */
+	struct xio  	ms_internal_xio;/* xio embedded */
+	int         	ms_refcnt;		/* map usage tracking */
+	int          	ms_flags;		/* control flags */
+	enum msf_type   ms_type;		/* type of mapped data  */ 
 };
+
+/* Flags. */
+#define	MSF_ONFREEQ 	0x0001	/* currently on the freelist */
+#define	MSF_CATCH   	0x0004	/* allow interruption */
+#define	MSF_CPUPRIVATE	0x0008	/* sync mapping to current cpu only */
 
 #if defined(_KERNEL)
 
@@ -94,21 +111,24 @@ static __inline
 vm_offset_t
 msf_buf_kva(struct msf_buf *msf)
 {
-	return (msf->m_kva);
+	return (msf->ms_kva);
 }
 
 /*
  * Return a reference to the underlying pages of an MSF_BUF
  */
 static __inline
-vm_page_t *
+struct vm_page **
 msf_buf_pages(struct msf_buf *msf)
 {
-	return (msf->m_xio.xio_pages);
+	return (msf->ms_xio->xio_pages);
 }
 
 /* API function prototypes */
-struct msf_buf	*msf_buf_alloc(vm_page_t *, int, int);
+int msf_map_pagelist(struct msf_buf **, struct vm_page **, int, int);
+int msf_map_xio(struct msf_buf **, struct xio *, int);
+int msf_map_ubuf(struct msf_buf **, void *, size_t, int);
+int msf_map_kbuf(struct msf_buf **, void *, size_t, int);
 void	msf_buf_free(struct msf_buf *);
 void	msf_buf_ref(struct msf_buf *);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004 The DragonFly Project.  All rights reserved.
+ * Copyright (c) 2004,2005 The DragonFly Project.  All rights reserved.
  *
  * This code is derived from software contributed to The DragonFly Project
  * by Hiten Pandya <hmp@backplane.com> and Matthew Dillon
@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.9 2005/03/02 18:42:08 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.10 2005/03/04 00:44:44 dillon Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -68,15 +68,18 @@
 #include <sys/sfbuf.h>
 #include <sys/sysctl.h>
 #include <sys/thread.h>
-#include <sys/thread2.h>
 #include <sys/xio.h>
 #include <sys/msfbuf.h>
 
 #include <vm/vm.h>
+#include <vm/vm_param.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_page.h>
 #include <vm/pmap.h>
+
+#include <sys/thread2.h>
+#include <vm/vm_page2.h>
 
 MALLOC_DEFINE(M_MSFBUF, "MSFBUF", "direct-copy buffers");
 
@@ -85,60 +88,52 @@ LIST_HEAD(msf_buf_list, msf_buf);
 
 TAILQ_HEAD(, msf_buf) msf_buf_freelist;
 
-/* hash table for tracking msf_bufs */
-static struct msf_buf_list *msf_buf_hashtable;
-static u_long msf_buf_hashmask;
-
 /* indicate shortage of available msf_bufs */
 static u_int msf_buf_alloc_want;
 
 /* base of the msf_buf map */
 static vm_offset_t msf_base;
 static struct msf_buf *msf_bufs;
+static int msf_buf_hits;
+static int msf_buf_misses;
 
-static int num_msf_bufs = 256; /* magic value */
-SYSCTL_INT(_kern_ipc, OID_AUTO, msfbufs, CTLFLAG_RD, &num_msf_bufs,
+static int msf_buf_count = 256; /* magic value */
+SYSCTL_INT(_kern_ipc, OID_AUTO, msf_bufs, CTLFLAG_RD, &msf_buf_count,
+	0, "number of direct-copy buffers available");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msf_hits, CTLFLAG_RD, &msf_buf_hits,
+	0, "number of direct-copy buffers available");
+SYSCTL_INT(_kern_ipc, OID_AUTO, msf_misses, CTLFLAG_RD, &msf_buf_misses,
 	0, "number of direct-copy buffers available");
 
 static void
 msf_buf_init(void *__dummy)
 {
+	struct msf_buf *msf;
 	int i;
 	
 	msf_buf_alloc_want = 0;
-	TUNABLE_INT_FETCH("kern.ipc.msfbufs", &num_msf_bufs);
+	TUNABLE_INT_FETCH("kern.ipc.msfbufs", &msf_buf_count);
 
-	msf_buf_hashtable = hashinit(num_msf_bufs, M_TEMP, &msf_buf_hashmask);
 	TAILQ_INIT(&msf_buf_freelist);
 
 	msf_base = kmem_alloc_nofault(kernel_map,
-					num_msf_bufs * XIO_INTERNAL_SIZE);
+					msf_buf_count * XIO_INTERNAL_SIZE);
 
-	msf_bufs = malloc(num_msf_bufs * sizeof(struct msf_buf), M_MSFBUF,
+	msf_bufs = malloc(msf_buf_count * sizeof(struct msf_buf), M_MSFBUF,
 			M_WAITOK|M_ZERO);
 
 	/* Initialize the free list with necessary information. */
-	for (i = 0; i < num_msf_bufs; i++) {
-		msf_bufs[i].m_kva = msf_base + i * XIO_INTERNAL_SIZE;
-		msf_bufs[i].m_flags |= SFBA_ONFREEQ;
-		xio_init(&msf_bufs[i].m_xio);
+	for (i = 0; i < msf_buf_count; i++) {
+		msf = &msf_bufs[i];
+		msf->ms_kva = msf_base + i * XIO_INTERNAL_SIZE;
+		msf->ms_flags = MSF_ONFREEQ;
+		msf->ms_type = MSF_TYPE_UNKNOWN;
+		msf->ms_xio = &msf->ms_internal_xio;
+		xio_init(&msf->ms_internal_xio);
 		TAILQ_INSERT_TAIL(&msf_buf_freelist, &msf_bufs[i], free_list);
 	}
 }
 SYSINIT(msf_buf, SI_SUB_MBUF, SI_ORDER_ANY, msf_buf_init, NULL);
-
-/*
- * Hash the base page of an MSF's array of pages.
- */
-static __inline
-int
-msf_buf_hash(vm_page_t base_m)
-{
-    int hv;
-
-    hv = ((int)base_m / sizeof(vm_page_t)) + ((int)base_m >> 12);
-    return(hv & msf_buf_hashmask);
-}
 
 /*
  * Get an msf_buf from the freelist; if none are available
@@ -149,99 +144,200 @@ msf_buf_hash(vm_page_t base_m)
  * use for system calls.
  *
  */
-struct msf_buf *
-msf_buf_alloc(vm_page_t *pg_ary, int npages, int flags)
+static struct msf_buf *
+msf_alloc(vm_page_t firstpage, int flags)
 {
-	struct msf_buf_list *hash_chain;
 	struct msf_buf *msf;
-	globaldata_t gd;
-	int error, pflags;
-	int i;
+	int pflags;
+	int error;
 
-	KKASSERT(npages != 0 && npages <= XIO_INTERNAL_SIZE);
-
-	gd = mycpu;
 	crit_enter();
-	hash_chain = &msf_buf_hashtable[msf_buf_hash(*pg_ary)];
-	LIST_FOREACH(msf, hash_chain, active_list) {
-		if (msf->m_xio.xio_npages == npages) {
-			for (i = npages - 1; i >= 0; --i) {
-				if (msf->m_xio.xio_pages[i] != pg_ary[i])
-					break;
-			}
-			if (i >= 0)
-				continue;
-			/*
-			 * found existing mapping
-			 */
-			if (msf->m_flags & SFBA_ONFREEQ) {
-			    TAILQ_REMOVE(&msf_buf_freelist, msf, free_list);
-			    msf->m_flags &= ~SFBA_ONFREEQ;
-			}
-
-			goto done;
-		}
-	}
-
-	/*
-	 * Didn't find old mapping.  Get a buffer off the freelist.  We
-	 * may have to remove and skip buffers with non-zero ref counts 
-	 * that were lazily allocated.
-	 *
-	 * If the freelist is empty, we block until something becomes
-	 * available.  This usually happens pretty quickly because sf_bufs
-	 * and msf_bufs are supposed to be temporary mappings.
-	 */
-	while ((msf = TAILQ_FIRST(&msf_buf_freelist)) == NULL) {
-		pflags = (flags & SFB_CATCH) ? PCATCH : 0;
-		++msf_buf_alloc_want;
-		error = tsleep(&msf_buf_freelist, pflags, "msfbuf", 0);
-		--msf_buf_alloc_want;
-		if (error)
-			goto done2;
-	}
-	
-	/*
-	 * We are finished when we find an msf_buf with ref. count of
-	 * 0.  Theoretically, we do not have to remove it from the
-	 * freelist but it's a good idea to do so to preserve LRU
-	 * operation for the (1) never seen before case and
-	 * (2) accidently recycled due to prior cached uses not removing
-	 * the buffer case.
-	 */
-	KKASSERT(msf->m_flags & SFBA_ONFREEQ);
-	TAILQ_REMOVE(&msf_buf_freelist, msf, free_list);
-	msf->m_flags &= ~SFBA_ONFREEQ;
-
-	/* Remove previous mapping from hash table and overwrite new one */
-	if (msf->m_xio.xio_pages[0] != NULL)
-		LIST_REMOVE(msf, active_list);
-	 
-	LIST_INSERT_HEAD(hash_chain, msf, active_list);
-
-	for (i = 0; i < npages; ++i)
-		msf->m_xio.xio_pages[i] = pg_ary[i];
-
-	msf->m_xio.xio_npages = npages;
-	msf->m_xio.xio_bytes = npages * PAGE_SIZE;
-
-	/*
-	 * Successful MSF setup, bump the ref count and enter the pages.
-	 */
-done:
-	++msf->m_refcnt;
-	if ((flags & SFB_CPUPRIVATE)) {
-		pmap_qenter2(msf->m_kva, msf->m_xio.xio_pages, 
-			    msf->m_xio.xio_npages, &msf->m_cpumask);
+	if (firstpage && (msf = firstpage->msf_hint) != NULL &&
+		(msf->ms_flags & MSF_ONFREEQ)
+	) {
+		KKASSERT(msf->ms_refcnt == 0);
+		msf->ms_flags &= ~MSF_ONFREEQ;
+		msf->ms_refcnt = 1;
+		TAILQ_REMOVE(&msf_buf_freelist, msf, free_list);
+		--msf_buf_count;
+		++msf_buf_hits;
 	} else {
-		pmap_qenter(msf->m_kva, msf->m_xio.xio_pages,
-			    msf->m_xio.xio_npages);
-		msf->m_cpumask = (cpumask_t)-1;
-	}
-done2:
+		/*
+		 * Get a buffer off the freelist.  If the freelist is empty, we
+		 * block until something becomes available; this happens quite
+		 * quickly anyway because MSFBUFs are supposed to be temporary
+		 * mappings.
+		 *
+		 * If the SFB_CATCH flag was provided, then we allow the sleep
+		 * to be interruptible.
+		 */
+		for (;;) {
+			if ((msf = TAILQ_FIRST(&msf_buf_freelist)) != NULL) {
+				KKASSERT(msf->ms_refcnt == 0);
+				--msf_buf_count;
+				TAILQ_REMOVE(&msf_buf_freelist, msf, free_list);
+				msf->ms_flags &= ~MSF_ONFREEQ;
+				msf->ms_refcnt = 1;
+				firstpage->msf_hint = msf;
+				break;
+			}
+			pflags = (flags & SFB_CATCH) ? PCATCH : 0;
+			++msf_buf_alloc_want;
+			error = tsleep(&msf_buf_freelist, pflags, "msfbuf", 0);
+			--msf_buf_alloc_want;
+			if (error)
+					break;
+		}
+		++msf_buf_misses;
+    }
 	crit_exit();
 	return (msf);
 }
+
+static
+void
+msf_map_msf(struct msf_buf *msf, int flags)
+{
+#ifdef SMP
+	if (flags & SFB_CPUPRIVATE) {
+		pmap_qenter2(msf->ms_kva, msf->ms_xio->xio_pages, 
+			    msf->ms_xio->xio_npages, &msf->ms_cpumask);
+	} else {
+		pmap_qenter(msf->ms_kva, msf->ms_xio->xio_pages,
+			    msf->ms_xio->xio_npages);
+		msf->ms_cpumask = (cpumask_t)-1;
+	}
+#else
+	pmap_qenter2(msf->ms_kva, msf->ms_xio->xio_pages, 
+			msf->ms_xio->xio_npages, &msf->ms_cpumask);
+#endif
+}
+
+int
+msf_map_pagelist(struct msf_buf **msfp, vm_page_t *list, int npages, int flags)
+{
+	struct msf_buf *msf;
+	int i;
+
+	KKASSERT(npages != 0 && npages <= XIO_INTERNAL_PAGES);
+
+	if ((msf = msf_alloc(list[0], flags)) != NULL) {
+		KKASSERT(msf->ms_xio == &msf->ms_internal_xio);
+		for (i = 0; i < npages; ++i)
+			msf->ms_internal_xio.xio_pages[i] = list[i];
+		msf->ms_internal_xio.xio_npages = npages;
+		msf->ms_internal_xio.xio_bytes = npages << PAGE_SHIFT;
+		msf->ms_type = MSF_TYPE_PGLIST;
+		msf_map_msf(msf, flags);
+		*msfp = msf;
+		return (0);
+	} else {
+		*msfp = NULL;
+		return (ENOMEM);
+	}
+}
+
+int
+msf_map_xio(struct msf_buf **msfp, struct xio *xio, int flags)
+{
+	struct msf_buf *msf;
+
+	KKASSERT(xio != NULL && xio->xio_npages > 0);
+	KKASSERT(xio->xio_npages <= XIO_INTERNAL_PAGES);
+
+	if ((msf = msf_alloc(xio->xio_pages[0], flags)) != NULL) {
+		msf->ms_type = MSF_TYPE_XIO;
+		msf->ms_xio = xio;
+		msf_map_msf(msf, flags);
+		*msfp = msf;
+		return(0);
+	} else {
+		*msfp = NULL;
+		return(ENOMEM);
+	}
+}
+
+int
+msf_map_ubuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
+{
+	struct msf_buf *msf;
+	vm_paddr_t paddr;
+	int error;
+
+	if (nbytes > XIO_INTERNAL_SIZE) {
+		*msfp = NULL;
+		return (ERANGE);
+	}
+
+	if ((paddr = pmap_kextract((vm_offset_t)base)) != 0)
+		msf = msf_alloc(PHYS_TO_VM_PAGE(paddr), flags);
+	else
+		msf = msf_alloc(NULL, flags);
+
+	if (msf == NULL) {
+		error = ENOENT;
+	} else {
+		error = xio_init_ubuf(&msf->ms_internal_xio, base, nbytes, 0);
+		if (error == 0) {
+			KKASSERT(msf->ms_xio == &msf->ms_internal_xio);
+			msf_map_msf(msf, flags);
+			msf->ms_type = MSF_TYPE_UBUF;
+		} else {
+			msf_buf_free(msf);
+			msf = NULL;
+		}
+	}
+	*msfp = msf;
+	return (error);
+}
+
+int
+msf_map_kbuf(struct msf_buf **msfp, void *base, size_t nbytes, int flags)
+{
+	struct msf_buf *msf;
+	vm_paddr_t paddr;
+	int error;
+
+	if (nbytes > XIO_INTERNAL_SIZE) {
+		*msfp = NULL;
+		return (ERANGE);
+	}
+
+	if ((paddr = pmap_kextract((vm_offset_t)base)) != 0)
+		msf = msf_alloc(PHYS_TO_VM_PAGE(paddr), flags);
+	else
+		msf = msf_alloc(NULL, flags);
+
+	if (msf == NULL) {
+		error = ENOENT;
+	} else {
+		error = xio_init_kbuf(&msf->ms_internal_xio, base, nbytes);
+		if (error == 0) {
+			KKASSERT(msf->ms_xio == &msf->ms_internal_xio);
+			msf_map_msf(msf, flags);
+			msf->ms_type = MSF_TYPE_KBUF;
+		} else {
+			msf_buf_free(msf);
+			msf = NULL;
+		}
+	}
+	*msfp = msf;
+	return (error);
+}
+
+#if 0
+/*
+ * Iterate through the specified uio calling the function with a kernel buffer
+ * containing the data until the uio has been exhausted.
+ */
+int
+msf_uio_iterate(struct uio *uio, 
+				int (*callback)(void *info, char *buf, int bytes),
+				void *info)
+{
+}
+
+#endif
 
 #if 0
 /*
@@ -250,10 +346,10 @@ done2:
 void
 msf_buf_ref(struct msf_buf *msf)
 {
-	if (msf->m_refcnt == 0)
+	if (msf->ms_refcnt == 0)
 		panic("msf_buf_ref: referencing a free msf_buf");
 	crit_enter();
-	++msf->m_refcnt;
+	++msf->ms_refcnt;
 	crit_exit();
 }
 #endif
@@ -269,16 +365,23 @@ msf_buf_ref(struct msf_buf *msf)
 void
 msf_buf_free(struct msf_buf *msf)
 {
-	crit_enter();
-	KKASSERT(msf->m_refcnt > 0);
+	KKASSERT(msf->ms_refcnt > 0);
 
-	msf->m_refcnt--;
-	if (msf->m_refcnt == 0) {
-		KKASSERT((msf->m_flags & SFBA_ONFREEQ) == 0);
+	crit_enter();
+	if (--msf->ms_refcnt == 0) {
+		KKASSERT((msf->ms_flags & MSF_ONFREEQ) == 0);
+
+		if (msf->ms_type == MSF_TYPE_UBUF || msf->ms_type == MSF_TYPE_KBUF)
+			xio_release(msf->ms_xio);
+
+		msf->ms_type = MSF_TYPE_UNKNOWN;
+		msf->ms_flags |= MSF_ONFREEQ;
+		msf->ms_xio = &msf->ms_internal_xio;
 		TAILQ_INSERT_TAIL(&msf_buf_freelist, msf, free_list);
-		msf->m_flags |= SFBA_ONFREEQ;
+		++msf_buf_count;
 		if (msf_buf_alloc_want > 0)
 			wakeup_one(&msf_buf_freelist);
 	}
 	crit_exit();
 }
+

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.17 2005/02/22 21:35:33 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.18 2005/03/04 00:44:49 dillon Exp $
  */
 
 /*
@@ -110,6 +110,7 @@
 
 TAILQ_HEAD(pglist, vm_page);
 
+struct msf_buf;
 struct vm_page {
 	TAILQ_ENTRY(vm_page) pageq;	/* vm_page_queues[] list (P)	*/
 	struct vm_page	*hnext;		/* hash table link (O,P)	*/
@@ -134,10 +135,13 @@ struct vm_page {
 #if PAGE_SIZE == 4096
 	u_char	valid;			/* map of valid DEV_BSIZE chunks */
 	u_char	dirty;			/* map of dirty DEV_BSIZE chunks */
+	u_char	unused1;
+	u_char	unused2;
 #elif PAGE_SIZE == 8192
 	u_short	valid;			/* map of valid DEV_BSIZE chunks */
 	u_short	dirty;			/* map of dirty DEV_BSIZE chunks */
 #endif
+	struct msf_buf *msf_hint; 	/* first page of an msfbuf map */
 };
 
 /*
