@@ -4,7 +4,7 @@
 # Check the LINT configuration file in sys/i386/conf, for an
 # exhaustive list of options.
 #
-# $DragonFly: src/sys/config/GENERIC,v 1.20 2004/09/26 01:52:48 dillon Exp $
+# $DragonFly: src/sys/config/GENERIC,v 1.21 2004/11/12 02:21:19 drhodus Exp $
 
 machine		i386
 cpu		I386_CPU
@@ -128,7 +128,7 @@ device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
 device		ida		# Compaq Smart RAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
-device		twe		# 3ware Escalade 8000's
+device		twe		# 3ware Escalade 7000/8000's
 device		twa		# 3ware Escalade 9000's
 device		pst		# Promise Supertrack
 
