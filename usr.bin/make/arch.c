@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.11 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.12 2004/11/14 20:13:12 dillon Exp $
  */
 
 /*-
@@ -339,15 +339,17 @@ Arch_ParseArchive (char **linePtr, Lst nodeLst, GNode *ctxt)
 	    char  *member;
 	    size_t sz = MAXPATHLEN;
 	    size_t nsz;
+
 	    nameBuf = emalloc(sz);
 
 	    Dir_Expand(memName, dirSearchPath, members);
 	    while (!Lst_IsEmpty(members)) {
 		member = (char *)Lst_DeQueue(members);
-		nsz = strlen(libName) + strlen(member) + 3;
-		if (sz > nsz)
-			nameBuf = erealloc(nameBuf, sz = nsz * 2);
-
+		nsz = strlen(libName) + strlen(member) + 3; /* 3 = ()+\0 */
+		if (sz < nsz) {
+			sz = nsz * 2;
+			nameBuf = erealloc(nameBuf, sz);
+		}
 		snprintf(nameBuf, sz, "%s(%s)", libName, member);
 		free(member);
 		gn = Targ_FindNode (nameBuf, TARG_CREATE);
