@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/cmds.c,v 1.11.2.2 2000/07/01 12:24:23 ps Exp $
- * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/tip/tip/cmds.c,v 1.4 2004/08/19 23:26:12 joerg Exp $
  */
 
 #include "tipconf.h"
@@ -58,8 +58,8 @@ char	null = '\0';
 char	*sep[] = { "second", "minute", "hour" };
 static char *argv[10];		/* argument vector for take and put */
 
-void	timeout();		/* timeout function called on alarm */
-static void	stopsnd();		/* SIGINT handler during file transfers */
+void		timeout(int);		/* timeout function called on alarm */
+static void	stopsnd(int);		/* SIGINT handler during file transfers */
 static void	intcopy();		/* interrupt routine for file transfers */
 
 void suspend(char);
@@ -382,7 +382,7 @@ pipefile(void)
  * Interrupt service routine for FTP
  */
 void
-stopsnd(void)
+stopsnd(int __dummy)
 {
 
 	stop = 1;
@@ -597,7 +597,7 @@ tryagain:
 }
 
 void
-timeout(void)
+timeout(int __dummy)
 {
 	signal(SIGALRM, timeout);
 	timedout = 1;

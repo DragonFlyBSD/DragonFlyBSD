@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tip.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tip/tip/tip.c,v 1.12.2.2 2001/06/02 08:08:24 phk Exp $
- * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.3 2003/11/03 19:31:33 eirikn Exp $
+ * $DragonFly: src/usr.bin/tip/tip/tip.c,v 1.4 2004/08/19 23:26:12 joerg Exp $
  */
 
 /*
@@ -71,7 +71,7 @@ int	disc = OTTYDISC;		/* tip normally runs this way */
 #endif
 
 void	intprompt();
-void	timeout();
+void	timeout(int);
 void	killchild();
 void	cleanup();
 void	tipdone();
