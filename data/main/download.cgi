@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.69 2005/01/15 02:15:44 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.70 2005/01/19 22:46:30 cpressey Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -151,15 +151,6 @@ rsync
 <TD>University of Chicago (Illinois, USA)</TD>
 <TD>Official ISOs</TD>
 <TD><a href="ftp://cvsup.math.uic.edu/dragonflybsd/">FTP</a></TD>
-</TR>
-
-<TR>
-<TD>dragonfly.the-bofh.org (Holland)</TD>
-<TD>Daily snapshots, official ISOs</TD>
-<TD>
-<a href="http://dragonfly.the-bofh.org/">HTTP</a>, 
-<a href="ftp://dragonfly.the-bofh.org/">FTP</a>, 
-</TD>
 </TR>
 
 <TR>
