@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstSucc.c,v 1.5 1999/08/28 01:03:57 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.6 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstSucc.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	return the successor to a given node
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -68,6 +69,6 @@ Lst_Succ(LstNode ln)
     if (ln == NULL) {
 	return (NULL);
     } else {
-	return ((LstNode) ((ListNode) ln)->nextPtr);
+	return (ln->nextPtr);
     }
 }

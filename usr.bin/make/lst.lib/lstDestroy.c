@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDestroy.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.6 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstDestroy.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Nuke a list and all its resources
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -62,13 +63,12 @@
  *-----------------------------------------------------------------------
  */
 void
-Lst_Destroy(Lst l, void (*freeProc)(void *))
+Lst_Destroy(Lst list, void (*freeProc)(void *))
 {
-    ListNode	ln;
-    ListNode	tln = NULL;
-    List 	list = (List)l;
+    LstNode	ln;
+    LstNode	tln = NULL;
 
-    if (l == NULL || ! l) {
+    if (list == NULL || ! list) {
 	/*
 	 * Note the check for l == (Lst)0 to catch uninitialized static Lst's.
 	 * Gross, but useful.
@@ -80,7 +80,7 @@ Lst_Destroy(Lst l, void (*freeProc)(void *))
     if (list->lastPtr != NULL)
 	list->lastPtr->nextPtr = NULL;
     else {
-	free (l);
+	free (list);
 	return;
     }
 
@@ -97,5 +97,5 @@ Lst_Destroy(Lst l, void (*freeProc)(void *))
 	}
     }
 
-    free (l);
+    free (list);
 }

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstEnQueue.c,v 1.6 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstEnQueue.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstEnQueue.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstEnQueue.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Treat the list as a queue and place a datum at its end
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -64,7 +65,7 @@ ReturnStatus
 Lst_EnQueue(Lst l, void *d)
 {
 
-    if (LstValid (l) == FALSE) {
+    if (Lst_Valid (l) == FALSE) {
 	return (FAILURE);
     }
 

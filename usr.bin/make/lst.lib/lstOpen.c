@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstOpen.c,v 1.5 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstOpen.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstOpen.c	8.1 (Berkeley) 6/6/93
  */
@@ -48,7 +48,8 @@
  *	the list forever. Lst_IsAtEnd must be used to determine when to stop.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -70,12 +71,12 @@ ReturnStatus
 Lst_Open(Lst l)
 {
 
-	if (LstValid (l) == FALSE) {
+	if (Lst_Valid (l) == FALSE) {
 		return (FAILURE);
 	}
-	((List) l)->isOpen = TRUE;
-	((List) l)->atEnd = LstIsEmpty (l) ? Head : Unknown;
-	((List) l)->curPtr = NULL;
+	l->isOpen = TRUE;
+	l->atEnd = Lst_IsEmpty (l) ? LstHead : LstUnknown;
+	l->curPtr = NULL;
 
 	return (SUCCESS);
 }

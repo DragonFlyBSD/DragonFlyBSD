@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstRemove.c,v 1.6 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstRemove.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Remove an element from a list
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -62,35 +63,32 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Remove(Lst l, LstNode ln)
+Lst_Remove(Lst list, LstNode ln)
 {
-    List 	list = (List) l;
-    ListNode	lNode = (ListNode) ln;
 
-    if (!LstValid (l) ||
-	!LstNodeValid (ln, l)) {
+    if (!Lst_Valid (list) || !Lst_NodeValid (ln, list)) {
 	    return (FAILURE);
     }
 
     /*
      * unlink it from the list
      */
-    if (lNode->nextPtr != NULL) {
-	lNode->nextPtr->prevPtr = lNode->prevPtr;
+    if (ln->nextPtr != NULL) {
+	ln->nextPtr->prevPtr = ln->prevPtr;
     }
-    if (lNode->prevPtr != NULL) {
-	lNode->prevPtr->nextPtr = lNode->nextPtr;
+    if (ln->prevPtr != NULL) {
+	ln->prevPtr->nextPtr = ln->nextPtr;
     }
 
     /*
      * if either the firstPtr or lastPtr of the list point to this node,
      * adjust them accordingly
      */
-    if (list->firstPtr == lNode) {
-	list->firstPtr = lNode->nextPtr;
+    if (list->firstPtr == ln) {
+	list->firstPtr = ln->nextPtr;
     }
-    if (list->lastPtr == lNode) {
-	list->lastPtr = lNode->prevPtr;
+    if (list->lastPtr == ln) {
+	list->lastPtr = ln->prevPtr;
     }
 
     /*
@@ -99,19 +97,19 @@ Lst_Remove(Lst l, LstNode ln)
      * previous one was non-existent (prevPtr == NULL), we set the
      * end to be Unknown, since it is.
      */
-    if (list->isOpen && (list->curPtr == lNode)) {
+    if (list->isOpen && (list->curPtr == ln)) {
 	list->curPtr = list->prevPtr;
 	if (list->curPtr == NULL) {
-	    list->atEnd = Unknown;
+	    list->atEnd = LstUnknown;
 	}
     }
 
     /*
      * the only way firstPtr can still point to ln is if ln is the last
-     * node on the list (the list is circular, so lNode->nextptr == lNode in
+     * node on the list (the list is circular, so ln->nextptr == ln in
      * this case). The list is, therefore, empty and is marked as such
      */
-    if (list->firstPtr == lNode) {
+    if (list->firstPtr == ln) {
 	list->firstPtr = NULL;
     }
 
@@ -119,12 +117,11 @@ Lst_Remove(Lst l, LstNode ln)
      * note that the datum is unmolested. The caller must free it as
      * necessary and as expected.
      */
-    if (lNode->useCount == 0) {
-	free (ln);
+    if (ln->useCount == 0) {
+	free(ln);
     } else {
-	lNode->flags |= LN_DELETED;
+	ln->flags |= LN_DELETED;
     }
 
     return (SUCCESS);
 }
-

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Insert a new datum before an old one
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -66,24 +67,22 @@
  *-----------------------------------------------------------------------
  */
 ReturnStatus
-Lst_Insert(Lst l, LstNode ln, void *d)
+Lst_Insert(Lst list, LstNode ln, void *d)
 {
-    ListNode	nLNode;	/* new lnode for d */
-    ListNode	lNode = (ListNode)ln;
-    List 	list = (List)l;
+    LstNode	nLNode;	/* new lnode for d */
 
     /*
      * check validity of arguments
      */
-    if (LstValid (l) && (LstIsEmpty (l) && ln == NULL))
+    if (Lst_Valid (list) && (Lst_IsEmpty (list) && ln == NULL))
 	goto ok;
 
-    if (!LstValid (l) || LstIsEmpty (l) || !LstNodeValid (ln, l)) {
+    if (!Lst_Valid (list) || Lst_IsEmpty (list) || !Lst_NodeValid (ln, list)) {
 	return (FAILURE);
     }
 
     ok:
-    PAlloc (nLNode, ListNode);
+    nLNode = emalloc(sizeof(*nLNode));
 
     nLNode->datum = d;
     nLNode->useCount = nLNode->flags = 0;
@@ -96,15 +95,15 @@ Lst_Insert(Lst l, LstNode ln, void *d)
 	}
 	list->firstPtr = list->lastPtr = nLNode;
     } else {
-	nLNode->prevPtr = lNode->prevPtr;
-	nLNode->nextPtr = lNode;
+	nLNode->prevPtr = ln->prevPtr;
+	nLNode->nextPtr = ln;
 
 	if (nLNode->prevPtr != NULL) {
 	    nLNode->prevPtr->nextPtr = nLNode;
 	}
-	lNode->prevPtr = nLNode;
+	ln->prevPtr = nLNode;
 
-	if (lNode == list->firstPtr) {
+	if (ln == list->firstPtr) {
 	    list->firstPtr = nLNode;
 	}
     }

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInit.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstInit.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Initialize a new linked list.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -65,15 +66,15 @@
 Lst
 Lst_Init(Boolean circ)
 {
-    List	nList;
+    Lst	nList;
 
-    PAlloc (nList, List);
+    nList = emalloc(sizeof(*nList));
 
     nList->firstPtr = NULL;
     nList->lastPtr = NULL;
     nList->isOpen = FALSE;
     nList->isCirc = circ;
-    nList->atEnd = Unknown;
+    nList->atEnd = LstUnknown;
 
-    return ((Lst)nList);
+    return (nList);
 }

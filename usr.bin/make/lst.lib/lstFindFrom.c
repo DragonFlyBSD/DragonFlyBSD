@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstFindFrom.c,v 1.7 1999/08/28 01:03:50 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.5 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstFindFrom.c,v 1.6 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstFindFrom.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Find a node on a list from a given starting point. Used by Lst_Find.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -64,14 +65,14 @@
 LstNode
 Lst_FindFrom(Lst l, LstNode ln, void *d, int (*cProc)(void *, void *))
 {
-    ListNode	tln;
+    LstNode	tln;
     Boolean	found = FALSE;
 
-    if (!LstValid (l) || LstIsEmpty (l) || !LstNodeValid (ln, l)) {
+    if (!Lst_Valid (l) || Lst_IsEmpty (l) || !Lst_NodeValid (ln, l)) {
 	return (NULL);
     }
 
-    tln = (ListNode)ln;
+    tln = ln;
 
     do {
 	if ((*cProc) (tln->datum, d) == 0) {
@@ -80,10 +81,10 @@ Lst_FindFrom(Lst l, LstNode ln, void *d, int (*cProc)(void *, void *))
 	} else {
 	    tln = tln->nextPtr;
 	}
-    } while (tln != (ListNode)ln && tln != NULL);
+    } while (tln != ln && tln != NULL);
 
     if (found) {
-	return ((LstNode)tln);
+	return (tln);
     } else {
 	return (NULL);
     }

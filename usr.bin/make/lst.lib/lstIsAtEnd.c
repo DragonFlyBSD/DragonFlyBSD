@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstIsAtEnd.c,v 1.5 1999/08/28 01:03:53 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsAtEnd.c,v 1.3 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstIsAtEnd.c,v 1.4 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstIsAtEnd.c	8.1 (Berkeley) 6/6/93
  */
@@ -49,7 +49,8 @@
  *	used to determine when to stop.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -71,10 +72,9 @@
  *-----------------------------------------------------------------------
  */
 Boolean
-Lst_IsAtEnd(Lst l)
+Lst_IsAtEnd(Lst list)
 {
-    List list = (List) l;
 
-    return (!LstValid (l) || !list->isOpen ||
-	    (list->atEnd == Head) || (list->atEnd == Tail));
+    return (!Lst_Valid (list) || !list->isOpen ||
+	    (list->atEnd == LstHead) || (list->atEnd == LstTail));
 }

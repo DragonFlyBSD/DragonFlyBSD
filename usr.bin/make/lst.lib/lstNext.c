@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstNext.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstNext.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstNext.c	8.1 (Berkeley) 6/6/93
  */
@@ -49,7 +49,8 @@
  *	used to determine when to stop.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -67,30 +68,28 @@
  *-----------------------------------------------------------------------
  */
 LstNode
-Lst_Next(Lst l)
+Lst_Next(Lst list)
 {
-    ListNode	tln;
-    List 	list = (List)l;
+    LstNode	tln;
 
-    if ((LstValid (l) == FALSE) ||
-	(list->isOpen == FALSE)) {
+    if ((Lst_Valid (list) == FALSE) || (list->isOpen == FALSE)) {
 	    return (NULL);
     }
 
     list->prevPtr = list->curPtr;
 
     if (list->curPtr == NULL) {
-	if (list->atEnd == Unknown) {
+	if (list->atEnd == LstUnknown) {
 	    /*
 	     * If we're just starting out, atEnd will be Unknown.
 	     * Then we want to start this thing off in the right
 	     * direction -- at the start with atEnd being Middle.
 	     */
 	    list->curPtr = tln = list->firstPtr;
-	    list->atEnd = Middle;
+	    list->atEnd = LstMiddle;
 	} else {
 	    tln = NULL;
-	    list->atEnd = Tail;
+	    list->atEnd = LstTail;
 	}
     } else {
 	tln = list->curPtr->nextPtr;
@@ -100,14 +99,14 @@ Lst_Next(Lst l)
 	    /*
 	     * If back at the front, then we've hit the end...
 	     */
-	    list->atEnd = Tail;
+	    list->atEnd = LstTail;
 	} else {
 	    /*
 	     * Reset to Middle if gone past first.
 	     */
-	    list->atEnd = Middle;
+	    list->atEnd = LstMiddle;
 	}
     }
 
-    return ((LstNode)tln);
+    return (tln);
 }

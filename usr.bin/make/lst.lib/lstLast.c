@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstLast.c,v 1.5 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstLast.c,v 1.3 2004/11/12 21:41:54 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstLast.c,v 1.4 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstLast.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Return the last element of a list
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -60,13 +61,12 @@
  *-----------------------------------------------------------------------
  */
 LstNode
-Lst_Last (l)
-    Lst	    l;
+Lst_Last(Lst l)
 {
-    if (!LstValid(l) || LstIsEmpty (l)) {
+
+    if (!Lst_Valid(l) || Lst_IsEmpty (l)) {
 	return (NULL);
     } else {
-	return ((LstNode)((List)l)->lastPtr);
+	return (l->lastPtr);
     }
 }
-

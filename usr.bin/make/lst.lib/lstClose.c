@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstClose.c,v 1.6 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.3 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.4 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstClose.c	8.1 (Berkeley) 6/6/93
  */
@@ -49,7 +49,8 @@
  *	used to determine when to stop.
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------
@@ -68,13 +69,11 @@
  *-----------------------------------------------------------------------
  */
 void
-Lst_Close(Lst l)
+Lst_Close(Lst list)
 {
-    List 	list = (List) l;
 
-    if (LstValid(l) == TRUE) {
+    if (Lst_Valid(list) == TRUE) {
 	list->isOpen = FALSE;
-	list->atEnd = Unknown;
+	list->atEnd = LstUnknown;
     }
 }
-

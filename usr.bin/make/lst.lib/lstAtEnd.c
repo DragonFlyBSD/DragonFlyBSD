@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstAtEnd.c,v 1.6 1999/08/28 01:03:46 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAtEnd.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstAtEnd.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstAtEnd.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,7 +44,8 @@
  *	Add a node at the end of the list
  */
 
-#include	"lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 /*-
  *-----------------------------------------------------------------------

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstMember.c,v 1.6 1999/08/28 01:03:55 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.4 2004/12/08 11:07:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstMember.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
  *
  * @(#)lstMember.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,25 +44,25 @@
  *	See if a given datum is on a given list.
  */
 
-#include    "lstInt.h"
+#include "make.h"
+#include "lst.h"
 
 LstNode
-Lst_Member(Lst l, void *d)
+Lst_Member(Lst list, void *d)
 {
-    List    	list = (List) l;
-    ListNode	lNode;
+    LstNode	lNode;
 
     lNode = list->firstPtr;
     if (lNode == NULL) {
-	return NULL;
+	return (NULL);
     }
 
     do {
 	if (lNode->datum == d) {
-	    return (LstNode)lNode;
+	    return (lNode);
 	}
 	lNode = lNode->nextPtr;
     } while (lNode != NULL && lNode != list->firstPtr);
 
-    return NULL;
+    return (NULL);
 }
