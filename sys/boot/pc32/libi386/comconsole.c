@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/pc32/libi386/comconsole.c,v 1.5 2004/06/26 22:37:10 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/libi386/comconsole.c,v 1.6 2004/06/26 23:41:09 dillon Exp $
  */
 
 #include <stand.h>
@@ -81,6 +81,12 @@ comc_init(int arg)
     outb(COMPORT + com_dlbh, COMC_BPS(COMSPEED) >> 8);
     outb(COMPORT + com_cfcr, COMC_FMT);
     outb(COMPORT + com_mcr, MCR_RTS | MCR_DTR);
+
+    /*
+     * Enable the FIFO so the serial port output in dual console mode doesn't
+     * interfere so much with the disk twiddle.
+     */
+    outb(COMPORT + com_fifo, FIFO_ENABLE);
 
     /*
      * Give the serial port a little time to settle after asserting RTS and

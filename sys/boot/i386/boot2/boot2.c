@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.8 2004/06/26 22:37:09 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/boot2/Attic/boot2.c,v 1.9 2004/06/26 23:41:06 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -53,7 +53,7 @@
 #define RBF_SERIAL	(1 << RBX_SERIAL)
 #define RBF_VIDEO	(1 << RBX_VIDEO)
 
-/* pass: -a, -s, -r, -d, -c, -v, -h, -C, -g, -m, -p, -D */
+/* pass: -a, -s, -r, -d, -c, -v, -h, -C, -g, -m, -p, -V */
 #define RBX_MASK	0x2005ffff
 
 #define PATH_CONFIG	"/boot.config"
@@ -122,7 +122,7 @@ static void putchar(int);
 static uint32_t memsize(void);
 static int drvread(void *, unsigned, unsigned);
 static int keyhit(unsigned);
-static int xputc(int);
+static void xputc(int);
 static int xgetc(int);
 static int getc(int);
 
@@ -587,9 +587,11 @@ putchar(int c)
 static int
 drvread(void *buf, unsigned lba, unsigned nblk)
 {
-    static unsigned c = 0x2d5c7c2f;
+    static unsigned c = 0x2d5c7c2f;	/* twiddle */
 
-    printf("%c\b", c = c << 8 | c >> 24);
+    c = (c << 8) | (c >> 24);
+    xputc(c);
+    xputc('\b');
     v86.ctl = V86_ADDR | V86_CALLF | V86_FLAGS;
     v86.addr = XREADORG;		/* call to xread in boot1 */
     v86.es = VTOPSEG(buf);
@@ -625,14 +627,13 @@ keyhit(unsigned ticks)
     }
 }
 
-static int
+static void
 xputc(int c)
 {
     if (opts & RBF_VIDEO)
 	putc(c);
     if (opts & RBF_SERIAL)
 	sio_putc(c);
-    return c;
 }
 
 static int
