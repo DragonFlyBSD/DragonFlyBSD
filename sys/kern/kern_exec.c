@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.22 2004/04/11 00:10:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.23 2004/04/19 20:07:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -532,7 +532,7 @@ exec_map_first_page(struct image_params *imgp)
 		}
 	}
 
-	vm_page_wire(ma[0]);
+	vm_page_hold(ma[0]);
 	vm_page_wakeup(ma[0]);
 	splx(s);
 
@@ -553,7 +553,7 @@ exec_unmap_first_page(imgp)
 		sf_buf_free(imgp->firstpage);
 		imgp->firstpage = NULL;
 		imgp->image_header = NULL;
-		vm_page_unwire(m, 1);
+		vm_page_unhold(m);
 	}
 }
 
