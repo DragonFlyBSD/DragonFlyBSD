@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.36 2004/09/17 01:08:13 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.37 2004/09/17 01:09:09 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -144,7 +144,7 @@ roundrobin(void *arg)
 #ifdef SMP
 	lwkt_send_ipiq_mask(mycpu->gd_other_cpus, roundrobin_remote, NULL);
 #endif
- 	callout_reset(roundrobin_callout, sched_quantum, roundrobin, NULL);
+ 	callout_reset(&roundrobin_callout, sched_quantum, roundrobin, NULL);
 }
 
 #ifdef SMP
