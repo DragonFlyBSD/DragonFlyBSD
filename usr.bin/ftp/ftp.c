@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.bin/ftp/ftp.c,v 1.28.2.5 2002/07/25 15:29:18 ume Exp $	*/
-/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.5 2004/01/22 19:39:13 dillon Exp $	*/
+/* $DragonFly: src/usr.bin/ftp/Attic/ftp.c,v 1.6 2004/06/19 18:55:48 joerg Exp $	*/
 /*	$NetBSD: ftp.c,v 1.29.2.1 1997/11/18 01:01:04 mellon Exp $	*/
 
 /*
@@ -1333,6 +1333,7 @@ initconn(void)
 			prt[1] &= 0xff;
 			error = 0;
 epsv_done:
+			;
 		} else
 			error = 1;
 

@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: scan.l,v 1.8 1995/10/23 13:38:51 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/scan.l,v 1.5 2004/06/19 18:55:48 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -552,6 +552,7 @@ icon(base)
 		break;
 		/* LINTED (enumeration values not handled in switch) */
 	default:
+		break;
 	}
 
 	if (typ != QUAD && typ != UQUAD) {

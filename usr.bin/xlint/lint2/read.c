@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: read.c,v 1.2 1995/07/03 21:24:59 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/read.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/read.c,v 1.5 2004/06/19 18:55:48 joerg Exp $
  */
 
 #include <stdio.h>
@@ -613,6 +613,7 @@ inptype(cp, epp)
 		break;
 		/* LINTED (enumeration value(s) not handled in switch) */
 	default:
+		break;
 	}
 
 	*epp = cp;
@@ -783,6 +784,7 @@ gettlen(cp, epp)
 		break;
 		/* LINTED (enumeration value(s) not handled in switch) */
 	default:
+		break;
 	}
 
 	*epp = cp;

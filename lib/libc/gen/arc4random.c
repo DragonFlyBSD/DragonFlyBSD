@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libc/gen/arc4random.c,v 1.4 2000/01/27 23:06:13 jasone Exp $ */
-/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.3 2004/06/06 10:58:31 hmp Exp $ */
+/* $DragonFly: src/lib/libc/gen/arc4random.c,v 1.4 2004/06/19 18:55:47 joerg Exp $ */
 
 /*
  * Arc4 random number generator for OpenBSD.
@@ -40,6 +40,8 @@ struct arc4_stream {
 
 static int rs_initialized;
 static struct arc4_stream rs;
+
+static inline u_int8_t	arc4_getbyte(struct arc4_stream *);
 
 static inline void
 arc4_init(as)
@@ -107,8 +109,7 @@ arc4_stir(as)
 }
 
 static inline u_int8_t
-arc4_getbyte(as)
-	struct arc4_stream *as;
+arc4_getbyte(struct arc4_stream *as)
 {
 	u_int8_t si, sj;
 

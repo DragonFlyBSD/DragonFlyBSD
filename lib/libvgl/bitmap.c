@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libvgl/bitmap.c,v 1.4 1999/11/08 11:37:39 yokota Exp $
- * $DragonFly: src/lib/libvgl/bitmap.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libvgl/bitmap.c,v 1.3 2004/06/19 18:55:47 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -151,6 +151,7 @@ WriteVerticalLine(VGLBitmap *dst, int x, int y, int width, byte *line)
     break;
 
   default:
+    break;
   }
 }
 
@@ -245,6 +246,7 @@ read_planar:
     bcopy(address, line, width);
     break;
   default:
+    break;
   }
 }
 

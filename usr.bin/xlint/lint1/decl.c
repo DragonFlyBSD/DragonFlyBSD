@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/xlint/lint1/decl.c,v 1.2.8.2 2001/07/19 09:19:47 kris Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/decl.c,v 1.4 2004/06/19 18:55:48 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -479,6 +479,7 @@ tdeferr(td, t)
 		break;
 		/* LINTED (enumeration values not handled in switch) */
 	default:
+		break;
 	}
 
 	/* Anything other is not accepted. */

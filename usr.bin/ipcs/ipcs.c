@@ -25,7 +25,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/ipcs/ipcs.c,v 1.12.2.4 2003/04/08 11:01:34 tjr Exp $
- * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.5 2003/11/21 22:46:14 dillon Exp $
+ * $DragonFly: src/usr.bin/ipcs/ipcs.c,v 1.6 2004/06/19 18:55:48 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -204,8 +204,8 @@ main(int argc, char **argv)
 			if (symbols[i].n_value == 0)
 				warnx("symbol %s not found",
 				    symbols[i].n_name);
-		break;
 #endif
+		break;
 	}
 
 	if ((display & (MSGINFO | MSGTOTAL)) &&

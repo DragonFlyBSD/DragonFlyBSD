@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getgrouplist.c	8.2 (Berkeley) 12/8/94
- * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.3 2004/06/06 15:05:55 hmp Exp $
+ * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.4 2004/06/19 18:55:47 joerg Exp $
  */
 
 /*
@@ -83,6 +83,7 @@ getgrouplist(uname, agroup, groups, grpcnt)
 			}
 		}
 skip:
+		;
 	}
 	endgrent();
 	*grpcnt = ngroups;

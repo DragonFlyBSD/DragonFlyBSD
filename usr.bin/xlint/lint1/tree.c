@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: tree.c,v 1.12 1995/10/02 17:37:57 jpo Exp $
- * $DragonFly: src/usr.bin/xlint/lint1/tree.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint1/tree.c,v 1.5 2004/06/19 18:55:48 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -1133,6 +1133,7 @@ typeok(op, arg, ln, rn)
 		break;
 		/* LINTED (enumeration values not handled in switch) */
 	default:
+		break;
 	}
 
 	if (mp->m_badeop &&
@@ -3577,6 +3578,7 @@ chkmisc(tn, vctx, tctx, eqwarn, fcall, rvdisc, szof)
 		return;
 		/* LINTED (enumeration values not handled in switch) */
 	default:
+		break;
 	}
 
 	cvctx = mp->m_vctx;
@@ -3916,6 +3918,7 @@ precconf(tn)
 		break;
 		/* LINTED (enumeration values not handled in switch) */
 	default:
+		break;
 	}
 
 	if (warn) {
