@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_xl.c,v 1.72.2.28 2003/10/08 06:01:57 murray Exp $
- * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.7 2004/01/24 06:34:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/xl/if_xl.c,v 1.8 2004/01/24 06:40:34 dillon Exp $
  */
 
 /*
@@ -1600,7 +1600,6 @@ xl_attach(dev)
 	ifp->if_capabilities = 0;
 	if (sc->xl_type == XL_TYPE_905B) {
 		ifp->if_start = xl_start_90xB;
-		ifp->if_hwassist = XL905B_CSUM_FEATURES;
 		ifp->if_capabilities |= IFCAP_HWCSUM;
 	} else {
 		ifp->if_start = xl_start;
@@ -1609,7 +1608,15 @@ xl_attach(dev)
 	ifp->if_init = xl_init;
 	ifp->if_baudrate = 10000000;
 	ifp->if_snd.ifq_maxlen = XL_TX_LIST_CNT - 1;
-	ifp->if_capenable = ifp->if_capabilities;
+	/*
+	 * NOTE: features disabled by default.  This seems to corrupt
+	 * tx packet data one out of a million packets or so and then
+	 * generates a good checksum so the receiver doesn't
+	 * know the packet is bad 
+	 */
+	ifp->if_capenable = 0; /*ifp->if_capabilities;*/
+	if (ifp->if_capenable & IFCAP_TXCSUM)
+		ifp->if_hwassist = XL905B_CSUM_FEATURES;
 
 	/*
 	 * Now we have to see what sort of media we have.
