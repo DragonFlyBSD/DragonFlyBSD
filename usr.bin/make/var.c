@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.124 2005/03/03 23:33:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.125 2005/03/04 23:43:33 okumoto Exp $
  */
 
 /*-
@@ -904,6 +904,65 @@ VarExpand(Var *v, GNode *ctxt, Boolean err)
 	return (result);
 }
 
+/**
+ * Select only those words that match the modifier.
+ */
+static char *
+modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
+{
+	const char	*cur;
+	const char	*end;
+	char		*patt;
+	char		*ptr;
+	char		*newValue;
+
+	for (cur = mod + 1; *cur != '\0'; cur++) {
+		if (cur[0] == endc) {
+			break;
+		} else if (cur[0] == ':') {
+			break;
+		} else if ((cur[0] == '\\') &&
+			   (cur[1] == ':' || cur[1] == endc)) {
+			cur++;
+		}
+	}
+	end = cur;
+
+	/*
+	 * Compress the \:'s out of the pattern, so allocate enough
+	 * room to hold the uncompressed pattern and compress the
+	 * pattern into the space. (note that cur started at mod+1
+	 * so cur-mod takes the null byte into account)
+	 */
+	patt = emalloc(cur - mod);
+	ptr = patt;
+	for (cur = mod + 1; cur != end; cur++) {
+		if ((cur[0] == '\\') &&
+		    (cur[1] == ':' || cur[1] == endc)) {
+			cur++;
+		}
+		*ptr = *cur;
+		ptr++;
+	}
+	*ptr = '\0';
+
+	if (*mod == 'M' || *mod == 'm') {
+		newValue = VarModify(value, VarMatch, patt);
+	} else {
+		newValue = VarModify(value, VarNoMatch, patt);
+	}
+	free(patt);
+
+	*consumed += (end - mod);
+
+	if (*end == ':') {
+		*consumed += 1;	/* include colin as part of modifier */
+	}
+
+	return (newValue);
+}
+
+
 /*
  * Now we need to apply any modifiers the user wants applied.
  * These are:
@@ -951,57 +1010,12 @@ ParseModifier(const char input[], char tstr[],
 		case 'N':
 		case 'M':
 		{
-			const char	*cur;
-			const char	*end;
-			char		*patt;
-			char		*ptr;
+			size_t	consumed = 0;
 
-			readonly = TRUE;
+			readonly = TRUE; /* tstr isn't modified here */
 
-			for (cur = tstr + 1; *cur != '\0'; cur++) {
-				if (cur[0] == endc) {
-					break;
-				} else if (cur[0] == ':') {
-					break;
-				} else if ((cur[0] == '\\') &&
-					   (cur[1] == ':' || cur[1] == endc)) {
-					cur++;
-				}
-			}
-			end = cur;
-
-			/*
-			 * Need to compress the \:'s out of the pattern, so
-			 * allocate enough room to hold the uncompressed
-			 * pattern (note that cur started at tstr+1, so
-			 * cur - tstr takes the null byte into account) and
-			 * compress the pattern into the space.
-			 */
-			patt = emalloc(cur - tstr);
-			ptr = patt;
-			for (cur = tstr + 1; cur != end; cur++) {
-				if ((cur[0] == '\\') &&
-				    (cur[1] == ':' || cur[1] == endc)) {
-					cur++;
-				}
-				*ptr = *cur;
-				ptr++;
-			}
-			*ptr = '\0';
-
-			if (*tstr == 'M' || *tstr == 'm') {
-				newStr = VarModify(rw_str, VarMatch, patt);
-			} else {
-				newStr = VarModify(rw_str, VarNoMatch, patt);
-			}
-			free(patt);
-
-			/* skip over next modifier */
-			if (*end == ':') {
-				tstr = end + 1;
-			} else {
-				tstr = end;
-			}
+			newStr = modifier_M(tstr, rw_str, endc, &consumed);
+			tstr += consumed;
 			break;
 		}
 		case 'S':
