@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.10 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.11 2004/11/13 00:06:16 dillon Exp $
  */
 
 /* arch.c */
@@ -96,10 +96,9 @@ void str_init(void);
 void str_end(void);
 char *str_concat(const char *, char *, int);
 char **brk_string(char *, int *, Boolean);
-char *Str_FindSubstring(char *, char *);
-int Str_Match(char *, char *);
-char *Str_SYSVMatch(char *, char *, int *len);
-void Str_SYSVSubst(Buffer, char *, char *, int);
+int Str_Match(const char *, const char *);
+const char *Str_SYSVMatch(const char *, const char *, int *len);
+void Str_SYSVSubst(Buffer, const char *, const char *, int);
 
 /* suff.c */
 void Suff_ClearSuffixes(void);

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.12 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.13 2004/11/13 00:06:16 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1848,7 +1848,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
     char *ecp;
 
     if (commandShell->noPrint) {
-	ecp = Str_FindSubstring(cp, commandShell->noPrint);
+	ecp = strstr(cp, commandShell->noPrint);
 	while (ecp != NULL) {
 	    if (cp != ecp) {
 		*ecp = '\0';
@@ -1876,7 +1876,7 @@ JobOutput(Job *job, char *cp, char *endp, int msg)
 		while (*cp == ' ' || *cp == '\t' || *cp == '\n') {
 		    cp++;
 		}
-		ecp = Str_FindSubstring(cp, commandShell->noPrint);
+		ecp = strstr(cp, commandShell->noPrint);
 	    } else {
 		return cp;
 	    }
