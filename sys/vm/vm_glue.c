@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.3 2003/06/18 18:30:13 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.4 2003/06/19 06:26:10 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -204,6 +204,7 @@ vm_fork(p1, p2, flags)
 	int flags;
 {
 	register struct user *up;
+	struct thread *td2;
 
 	if ((flags & RFPROC) == 0) {
 		/*
@@ -238,8 +239,8 @@ vm_fork(p1, p2, flags)
 			shmfork(p1, p2);
 	}
 
-	pmap_new_proc(p2);
-	pmap_new_thread(p2);
+	td2 = pmap_new_thread();
+	pmap_new_proc(p2, td2);
 
 	up = p2->p_addr;
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.5 2003/06/19 01:55:05 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.6 2003/06/19 06:26:06 dillon Exp $
  */
 
 #include "apm.h"
@@ -1863,7 +1863,8 @@ init386(first)
 	 */
 	safepri = cpl;
 
-	proc0.p_addr = proc0paddr;
+	thread0.td_kstack = (void *)proc0paddr;
+	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
 	thread0.td_proc = &proc0;
 	thread0.td_pcb = (struct pcb *)
@@ -1915,6 +1916,7 @@ init386(first)
 	 */
 	/* YYY use prvspace for UP too and set here rather then later */
 	gd->gd_curthread = &gd->gd_idlethread;
+	TAILQ_INIT(&gd->gd_freethreads);
 
 	for (x = 0; x < NGDT; x++) {
 #ifdef BDE_DEBUGGER

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.5 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.6 2003/06/19 06:26:06 dillon Exp $
  */
 
 /*
@@ -844,29 +844,44 @@ retry:
  * Create a new thread and optionally associate it with a (new) process.
  */
 struct thread *
-pmap_new_thread(struct proc *p)
+pmap_new_thread()
 {
-	struct thread *td = zalloc(thread_zone);
-	if (p) {
-		p->p_thread = td;
-		td->td_proc = p;
-		td->td_pcb = (struct pcb *)
-				((char *)p->p_addr + UPAGES * PAGE_SIZE) - 1;
+	struct thread *td;
+
+	/* HIPRI YYY */
+	if (mycpu->gd_freethreadcnt > 0) {
+		--mycpu->gd_freethreadcnt;
+		td = TAILQ_FIRST(&mycpu->gd_freethreads);
+		KASSERT(td != NULL, ("unexpected null cache td"));
+		TAILQ_REMOVE(&mycpu->gd_freethreads, td, td_threadq);
+	} else {
+		td = zalloc(thread_zone);
+		td->td_kstack = 
+		    (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
 	}
+	td->td_pcb = (struct pcb *)(td->td_kstack + UPAGES * PAGE_SIZE) - 1;
 	return(td);
 }
 
 /*
- * Dispose of a thread, unlink from its related proc (if any)
+ * Dispose of a thread, unlink it from its related proc (if any).  Keep
+ * CACHE_NTHREAD threads around for fast-startup.
  */
 void
 pmap_dispose_thread(struct thread *td)
 {
-	if (td->td_proc) {
-		td->td_proc->p_thread = NULL;
-		td->td_proc = NULL;
+	/* HIPRI YYY */
+	if (mycpu->gd_freethreadcnt < CACHE_NTHREADS) {
+		++mycpu->gd_freethreadcnt;
+		TAILQ_INSERT_HEAD(&mycpu->gd_freethreads, td, td_threadq);
+	} else {
+		if (td->td_kstack) {
+			kmem_free(kernel_map,
+			    (vm_offset_t)td->td_kstack, UPAGES * PAGE_SIZE);
+			td->td_kstack = NULL;
+		}
+		zfree(thread_zone, td);
 	}
-	zfree(thread_zone, td);
 }
 
 /*
@@ -874,9 +889,14 @@ pmap_dispose_thread(struct thread *td)
  * This routine directly affects the fork perf for a process.
  */
 void
-pmap_new_proc(p)
-	struct proc *p;
+pmap_new_proc(struct proc *p, struct thread *td)
 {
+	p->p_addr = (void *)td->td_kstack;
+	p->p_thread = td;
+	td->td_proc = p;
+	bzero(p->p_addr, sizeof(*p->p_addr));
+#if 0
+
 	int i, updateneeded;
 	vm_object_t upobj;
 	vm_page_t m;
@@ -935,16 +955,25 @@ pmap_new_proc(p)
 	}
 	if (updateneeded)
 		invltlb();
+#endif
 }
 
 /*
  * Dispose the UPAGES for a process that has exited.
  * This routine directly impacts the exit perf of a process.
  */
-void
-pmap_dispose_proc(p)
-	struct proc *p;
+struct thread *
+pmap_dispose_proc(struct proc *p)
 {
+	struct thread *td;
+
+	if ((td = p->p_thread) != NULL) {
+	    p->p_thread = NULL;
+	    td->td_proc = NULL;
+	}
+	p->p_addr = NULL;
+	return(td);
+#if 0
 	int i;
 	vm_object_t upobj;
 	vm_page_t m;
@@ -981,6 +1010,7 @@ pmap_dispose_proc(p)
 		p->p_upages_obj = NULL;
 		vm_object_deallocate(upobj);
 	}
+#endif
 }
 
 /*
@@ -990,6 +1020,7 @@ void
 pmap_swapout_proc(p)
 	struct proc *p;
 {
+#if 0
 	int i;
 	vm_object_t upobj;
 	vm_page_t m;
@@ -1005,6 +1036,7 @@ pmap_swapout_proc(p)
 		vm_page_unwire(m, 0);
 		pmap_kremove( (vm_offset_t) p->p_addr + PAGE_SIZE * i);
 	}
+#endif
 }
 
 /*
@@ -1014,6 +1046,7 @@ void
 pmap_swapin_proc(p)
 	struct proc *p;
 {
+#if 0
 	int i,rv;
 	vm_object_t upobj;
 	vm_page_t m;
@@ -1038,6 +1071,7 @@ pmap_swapin_proc(p)
 		vm_page_wakeup(m);
 		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE);
 	}
+#endif
 }
 
 /***************************************************

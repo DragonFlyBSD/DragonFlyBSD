@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.6 2003/06/19 01:55:07 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.7 2003/06/19 06:26:10 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -134,7 +134,11 @@ struct	proc {
 	struct filedesc_to_leader *p_fdtol; /* Ptr to tracking node */
 	struct	pstats *p_stats;	/* Accounting/statistics (PROC ONLY). */
 	struct	plimit *p_limit;	/* Process limits. */
+#if 0
 	struct	vm_object *p_upages_obj;/* Upages object */
+#else
+	void		*p_dummy1;
+#endif
 	struct	procsig *p_procsig;
 #define p_sigacts	p_procsig->ps_sigacts
 #define p_sigignore	p_procsig->ps_sigignore

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.1 2003/06/18 23:05:12 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.2 2003/06/19 06:26:10 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -20,9 +20,8 @@ struct thread {
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
     int		td_pri;		/* 0-31, 0=highest priority */
+    char	*td_kstack;	/* kernel stack */
 #if 0
-    void	*td_stack;	/* base of thread stack */
-    int		td_stackSize;	/* size of thread stack */
     int		td_flags;	/* THF flags */
     int		td_pri;		/* semi-static LWKT priority 0-31 */
     int		td_bglcount;	/* big giant lock count */
@@ -48,6 +47,8 @@ typedef struct thread *thread_t;
 #define THPRI_USER_NORM		27	/* user scheduler normal */
 #define THPRI_USER_IDLE		29	/* user scheduler idle */
 #define THPRI_IDLE_THREAD	31	/* the idle thread */
+
+#define CACHE_NTHREADS		4
 
 #ifdef _KERNEL
 
