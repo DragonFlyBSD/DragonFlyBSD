@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/re/if_re.c,v 1.25 2004/06/09 14:34:01 naddy Exp $
- * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.4 2004/08/02 13:22:32 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/re/if_re.c,v 1.5 2004/08/02 13:35:02 joerg Exp $
  */
 
 /*
