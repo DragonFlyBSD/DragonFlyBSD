@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.1 2004/01/15 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.2 2004/01/18 18:47:31 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -190,6 +190,7 @@ ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
 	mask = splbio();
 	if (sc->state & IPS_OFFLINE) {
 		splx(mask);
+		free(waiter, M_DEVBUF);
 		return EIO;
 	}
 	command = SLIST_FIRST(&sc->free_cmd_list);
