@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.18 2004/06/26 17:03:47 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.19 2004/06/27 03:22:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -831,7 +831,7 @@ _lf_print_lock(const struct lockf *lock)
 		printf("no process waiting for range\n");
 	else
 		printf("blocked locks:");
-	TAILQ_FOREACH(range, &lock->lf_range, lf_link)
+	TAILQ_FOREACH(range, &lock->lf_blocked, lf_link)
 		printf("\t%lld..%lld type %s waiting on %p\n",
 		       range->lf_start, range->lf_end,
 		       range->lf_type == F_RDLCK ? "shared" : "exclusive",
