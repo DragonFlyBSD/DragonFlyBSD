@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.49 2005/02/01 14:43:44 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.50 2005/02/02 21:34:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -379,7 +379,7 @@ cache_lock(struct namecache *ncp)
 			didwarn = 1;
 			printf("[diagnostic] cache_lock: blocked on %p", ncp);
 			if ((ncp->nc_flag & NCF_MOUNTPT) && ncp->nc_mount)
-			    printf(" [MOUNTPT %s]\n", ncp->nc_mount->mnt_stat.f_mntonname);
+			    printf(" [MOUNTFROM %s]\n", ncp->nc_mount->mnt_stat.f_mntfromname);
 			else
 			    printf(" \"%*.*s\"\n",
 				ncp->nc_nlen, ncp->nc_nlen,
@@ -1763,16 +1763,19 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 {
 	char *bp, *buf;
 	int i, slash_prefixed;
-	struct filedesc *fdp;
+	struct namecache *fd_nrdir;
 
 	numfullpathcalls--;
 
 	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
 	*bp = '\0';
-	fdp = p->p_fd;
+	if (p != NULL)
+		fd_nrdir = p->p_fd->fd_nrdir;
+	else
+		fd_nrdir = NULL;
 	slash_prefixed = 0;
-	while (ncp && ncp != fdp->fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
+	while (ncp && ncp != fd_nrdir && (ncp->nc_flag & NCF_ROOT) == 0) {
 		if (ncp->nc_flag & NCF_MOUNTPT) {
 			if (ncp->nc_mount == NULL) {
 				free(buf, M_TEMP);
@@ -1803,7 +1806,7 @@ cache_fullpath(struct proc *p, struct namecache *ncp, char **retbuf, char **free
 		free(buf, M_TEMP);
 		return(ENOENT);
 	}
-	if ((ncp->nc_flag & NCF_ROOT) && ncp != fdp->fd_nrdir) {
+	if (p != NULL && (ncp->nc_flag & NCF_ROOT) && ncp != fd_nrdir) {
 		bp = buf + MAXPATHLEN - 1;
 		*bp = '\0';
 		slash_prefixed = 0;

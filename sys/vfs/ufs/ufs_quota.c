@@ -35,7 +35,7 @@
  *
  *	@(#)ufs_quota.c	8.5 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_quota.c,v 1.27.2.3 2002/01/15 10:33:32 phk Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.17 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_quota.c,v 1.18 2005/02/02 21:34:19 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -187,7 +187,7 @@ chkdqchg(struct inode *ip, long change, struct ucred *cred, int type)
 		if ((dq->dq_flags & DQ_BLKS) == 0 &&
 		    ip->i_uid == cred->cr_uid) {
 			uprintf("\n%s: write failed, %s disk limit reached\n",
-			    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+			    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 			    quotatypes[type]);
 			dq->dq_flags |= DQ_BLKS;
 		}
@@ -203,7 +203,7 @@ chkdqchg(struct inode *ip, long change, struct ucred *cred, int type)
 			    VFSTOUFS(ITOV(ip)->v_mount)->um_btime[type];
 			if (ip->i_uid == cred->cr_uid)
 				uprintf("\n%s: warning, %s %s\n",
-				    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+				    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 				    quotatypes[type], "disk quota exceeded");
 			return (0);
 		}
@@ -211,7 +211,7 @@ chkdqchg(struct inode *ip, long change, struct ucred *cred, int type)
 			if ((dq->dq_flags & DQ_BLKS) == 0 &&
 			    ip->i_uid == cred->cr_uid) {
 				uprintf("\n%s: write failed, %s %s\n",
-				    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+				    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 				    quotatypes[type],
 				    "disk quota exceeded for too long");
 				dq->dq_flags |= DQ_BLKS;
@@ -300,7 +300,7 @@ chkiqchg(struct inode *ip, long change, struct ucred *cred, int type)
 		if ((dq->dq_flags & DQ_INODS) == 0 &&
 		    ip->i_uid == cred->cr_uid) {
 			uprintf("\n%s: write failed, %s inode limit reached\n",
-			    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+			    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 			    quotatypes[type]);
 			dq->dq_flags |= DQ_INODS;
 		}
@@ -316,7 +316,7 @@ chkiqchg(struct inode *ip, long change, struct ucred *cred, int type)
 			    VFSTOUFS(ITOV(ip)->v_mount)->um_itime[type];
 			if (ip->i_uid == cred->cr_uid)
 				uprintf("\n%s: warning, %s %s\n",
-				    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+				    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 				    quotatypes[type], "inode quota exceeded");
 			return (0);
 		}
@@ -324,7 +324,7 @@ chkiqchg(struct inode *ip, long change, struct ucred *cred, int type)
 			if ((dq->dq_flags & DQ_INODS) == 0 &&
 			    ip->i_uid == cred->cr_uid) {
 				uprintf("\n%s: write failed, %s %s\n",
-				    ITOV(ip)->v_mount->mnt_stat.f_mntonname,
+				    ITOV(ip)->v_mount->mnt_stat.f_mntfromname,
 				    quotatypes[type],
 				    "inode quota exceeded for too long");
 				dq->dq_flags |= DQ_INODS;

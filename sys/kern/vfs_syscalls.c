@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.57 2005/02/01 21:52:11 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.58 2005/02/02 21:34:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -76,6 +76,7 @@
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
 static void checkdirs (struct vnode *olddp, struct namecache *ncp);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
+static int chroot_visible_mnt(struct mount *mp, struct proc *p);
 static int getutimes (const struct timeval *, struct timespec *);
 static int setfown (struct vnode *, uid_t, gid_t);
 static int setfmode (struct vnode *, int);
@@ -806,8 +807,10 @@ int
 kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 {
 	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp;
 	struct statfs *sp;
+	char *fullpath, *freepath;
 	int error;
 
 	if ((error = nlookup(nd)) != 0)
@@ -816,6 +819,14 @@ kern_statfs(struct nlookupdata *nd, struct statfs *buf)
 	sp = &mp->mnt_stat;
 	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
+
+	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
+	if (error)
+		return(error);
+	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
+	free(freepath, M_TEMP);
+
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
 	/* Only root should have access to the fsid's. */
@@ -853,6 +864,7 @@ kern_fstatfs(int fd, struct statfs *buf)
 	struct file *fp;
 	struct mount *mp;
 	struct statfs *sp;
+	char *fullpath, *freepath;
 	int error;
 
 	KKASSERT(p);
@@ -866,8 +878,17 @@ kern_fstatfs(int fd, struct statfs *buf)
 	error = VFS_STATFS(mp, sp, td);
 	if (error)
 		return (error);
+
+	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
+	if (error)
+		return(error);
+	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
+	free(freepath, M_TEMP);
+
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	bcopy(sp, buf, sizeof(*buf));
+
 	/* Only root should have access to the fsid's. */
 	if (suser(td))
 		buf->f_fsid.val[0] = buf->f_fsid.val[1] = 0;
@@ -902,10 +923,18 @@ int
 getfsstat(struct getfsstat_args *uap)
 {
 	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct mount *mp, *nmp;
 	struct statfs *sp, *sfsp;
 	lwkt_tokref ilock;
 	long count, maxcount, error;
+	int is_chrooted;
+	char *freepath, *fullpath;
+
+	if (p != NULL && (p->p_fd->fd_nrdir->nc_flag & NCF_ROOT) == 0)
+		is_chrooted = 1;
+	else
+		is_chrooted = 0;
 
 	maxcount = uap->bufsize / sizeof(struct statfs);
 	sfsp = uap->buf;
@@ -917,6 +946,12 @@ getfsstat(struct getfsstat_args *uap)
 			continue;
 		}
 		if (sfsp && count < maxcount) {
+			if (is_chrooted && !chroot_visible_mnt(mp, p)) {
+				lwkt_gettokref(&ilock);
+				nmp = TAILQ_NEXT(mp, mnt_list);
+				vfs_unbusy(mp, td);
+				continue;
+			}
 			sp = &mp->mnt_stat;
 			/*
 			 * If MNT_NOWAIT or MNT_LAZY is specified, do not
@@ -932,6 +967,15 @@ getfsstat(struct getfsstat_args *uap)
 				continue;
 			}
 			sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
+
+			error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
+			if (error)
+				return(error);
+			bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+			strlcpy(sp->f_mntonname, fullpath,
+				sizeof(sp->f_mntonname));
+			free(freepath, M_TEMP);
+
 			error = copyout(sp, sfsp, sizeof(*sp));
 			if (error) {
 				vfs_unbusy(mp, td);
@@ -3278,10 +3322,12 @@ int
 fhstatfs(struct fhstatfs_args *uap)
 {
 	struct thread *td = curthread;
+	struct proc *p = td->td_proc;
 	struct statfs *sp;
 	struct mount *mp;
 	struct vnode *vp;
 	struct statfs sb;
+	char *fullpath, *freepath;
 	fhandle_t fh;
 	int error;
 
@@ -3296,6 +3342,11 @@ fhstatfs(struct fhstatfs_args *uap)
 
 	if ((mp = vfs_getvfs(&fh.fh_fsid)) == NULL)
 		return (ESTALE);
+
+	if (p != NULL && (p->p_fd->fd_nrdir->nc_flag & NCF_ROOT) == 0 &&
+	    !chroot_visible_mnt(mp, p))
+		return (ESTALE);
+
 	if ((error = VFS_FHTOVP(mp, &fh.fh_fid, &vp)))
 		return (error);
 	mp = vp->v_mount;
@@ -3303,6 +3354,14 @@ fhstatfs(struct fhstatfs_args *uap)
 	vput(vp);
 	if ((error = VFS_STATFS(mp, sp, td)) != 0)
 		return (error);
+
+	error = cache_fullpath(p, mp->mnt_ncp, &fullpath, &freepath);
+	if (error)
+		return(error);
+	bzero(sp->f_mntonname, sizeof(sp->f_mntonname));
+	strlcpy(sp->f_mntonname, fullpath, sizeof(sp->f_mntonname));
+	free(freepath, M_TEMP);
+
 	sp->f_flags = mp->mnt_flag & MNT_VISFLAGMASK;
 	if (suser(td)) {
 		bcopy(sp, &sb, sizeof(sb));
@@ -3564,3 +3623,34 @@ vfs_bufstats(void)
         }
 }
 #endif
+
+static int
+chroot_visible_mnt(struct mount *mp, struct proc *p)
+{
+	struct namecache *ncp;
+	/*
+	 * First check if this file system is below
+	 * the chroot path.
+	 */
+	ncp = mp->mnt_ncp;
+	while (ncp != NULL && ncp != p->p_fd->fd_nrdir)
+		ncp = ncp->nc_parent;
+	if (ncp == NULL) {
+		/*
+		 * This is not below the chroot path.
+		 *
+		 * Check if the chroot path is on the same filesystem,
+		 * by determing if we have to cross a mount point
+		 * before reaching mp->mnt_ncp.
+		 */
+		ncp = p->p_fd->fd_nrdir;
+		while (ncp != NULL && ncp != mp->mnt_ncp) {
+			if (ncp->nc_flag & NCF_MOUNTPT) {
+				ncp = NULL;
+				break;
+			}
+			ncp = ncp->nc_parent;
+		}
+	}
+	return(ncp != NULL);
+}

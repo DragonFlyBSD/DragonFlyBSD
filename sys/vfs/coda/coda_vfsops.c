@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.18 2004/11/12 00:09:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.19 2005/02/02 21:34:18 joerg Exp $
  * 
  */
 
@@ -388,7 +388,6 @@ coda_nb_statfs(struct mount *vfsp, struct statfs *sbp, struct thread *td)
     sbp->f_files = NB_SFS_SIZ;
     sbp->f_ffree = NB_SFS_SIZ;
     bcopy((caddr_t)&(vfsp->mnt_stat.f_fsid), (caddr_t)&(sbp->f_fsid), sizeof (fsid_t));
-    snprintf(sbp->f_mntonname, sizeof(sbp->f_mntonname), "/coda");
     snprintf(sbp->f_mntfromname, sizeof(sbp->f_mntfromname), "CODA");
 /*  MARK_INT_SAT(CODA_STATFS_STATS); */
     return(0);

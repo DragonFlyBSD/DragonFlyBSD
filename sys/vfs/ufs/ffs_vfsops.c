@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.29 2004/12/17 00:18:44 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.30 2005/02/02 21:34:19 joerg Exp $
  */
 
 #include "opt_quota.h"
@@ -352,19 +352,6 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 		 ********************
 		 */
 
-		/*
-		 * Since this is a new mount, we want the names for
-		 * the device and the mount point copied in.  If an
-		 * error occurs,  the mountpoint is discarded by the
-		 * upper level code.
-		 */
-		/* Save "last mounted on" info for mount point (NULL pad)*/
-		copyinstr(	path,				/* mount point*/
-				mp->mnt_stat.f_mntonname,	/* save area*/
-				MNAMELEN - 1,			/* max size*/
-				&size);				/* real size*/
-		bzero( mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
-
 		/* Save "mounted from" info for mount point (NULL pad)*/
 		copyinstr(	args.fspec,			/* device name*/
 				mp->mnt_stat.f_mntfromname,	/* save area*/
@@ -380,8 +367,8 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 
 dostatfs:
 	/*
-	 * Initialize FS stat information in mount struct; uses both
-	 * mp->mnt_stat.f_mntonname and mp->mnt_stat.f_mntfromname
+	 * Initialize FS stat information in mount struct; uses
+	 * mp->mnt_stat.f_mntfromname.
 	 *
 	 * This code is common to root and non-root mounts
 	 */
@@ -754,15 +741,6 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	dev->si_mountpoint = mp;
 	ffs_oldfscompat(fs);
 
-	/*
-	 * Set FS local "last mounted on" information (NULL pad)
-	 */
-	copystr(	mp->mnt_stat.f_mntonname,	/* mount point*/
-			fs->fs_fsmnt,			/* copy area*/
-			sizeof(fs->fs_fsmnt) - 1,	/* max size*/
-			&strsize);			/* real size*/
-	bzero( fs->fs_fsmnt + strsize, sizeof(fs->fs_fsmnt) - strsize);
-
 	if( mp->mnt_flag & MNT_ROOTFS) {
 		/*
 		 * Root mount; update timestamp in mount structure.
@@ -948,8 +926,6 @@ ffs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	sbp->f_ffree = fs->fs_cstotal.cs_nifree;
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
-		bcopy((caddr_t)mp->mnt_stat.f_mntonname,
-			(caddr_t)&sbp->f_mntonname[0], MNAMELEN);
 		bcopy((caddr_t)mp->mnt_stat.f_mntfromname,
 			(caddr_t)&sbp->f_mntfromname[0], MNAMELEN);
 	}

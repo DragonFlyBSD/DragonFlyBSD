@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.11 2004/12/17 00:18:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.12 2005/02/02 21:34:18 joerg Exp $
  */
 
 /* udf_vfsops.c */
@@ -196,8 +196,6 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	imp->im_flags = args.flags;
 
-	copyinstr(path, mp->mnt_stat.f_mntonname, MNAMELEN - 1, &size);
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
 	copyinstr(args.fspec, mp->mnt_stat.f_mntfromname, MNAMELEN - 1, &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	udf_statfs(mp, &mp->mnt_stat, td);
@@ -475,7 +473,6 @@ udf_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	sbp->f_ffree = 0;
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 

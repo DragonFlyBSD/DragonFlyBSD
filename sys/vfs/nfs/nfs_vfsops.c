@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.23 2004/12/17 00:18:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.24 2005/02/02 21:34:18 joerg Exp $
  */
 
 #include "opt_bootp.h"
@@ -345,7 +345,6 @@ nfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	}
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 	m_freem(mrep);
@@ -625,7 +624,6 @@ nfs_mountdiskless(char *path, char *which, int mountflag,
 		FREE(nam, M_SONAME);
 		return (error);
 	}
-	(void) copystr(which, mp->mnt_stat.f_mntonname, MNAMELEN - 1, 0);
 	*mpp = mp;
 	return (0);
 }
@@ -928,7 +926,6 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	nmp->nm_fhsize = argp->fhsize;
 	bcopy((caddr_t)argp->fh, (caddr_t)nmp->nm_fh, argp->fhsize);
 	bcopy(hst, mp->mnt_stat.f_mntfromname, MNAMELEN);
-	bcopy(pth, mp->mnt_stat.f_mntonname, MNAMELEN);
 	nmp->nm_nam = nam;
 	/* Set up the sockets and per-host congestion */
 	nmp->nm_sotype = argp->sotype;

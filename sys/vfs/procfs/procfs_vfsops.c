@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.10 2004/12/17 00:18:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.11 2005/02/02 21:34:18 joerg Exp $
  */
 
 /*
@@ -84,9 +84,6 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mp->mnt_flag |= MNT_LOCAL;
 	mp->mnt_data = 0;
 	vfs_getnewfsid(mp);
-
-	(void) copyinstr(path, (caddr_t)mp->mnt_stat.f_mntonname, MNAMELEN, &size);
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
 
 	size = sizeof("procfs") - 1;
 	bcopy("procfs", mp->mnt_stat.f_mntfromname, size);
@@ -145,7 +142,6 @@ procfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
 		bcopy(&mp->mnt_stat.f_fsid, &sbp->f_fsid, sizeof(sbp->f_fsid));
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 

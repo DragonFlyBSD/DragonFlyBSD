@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.25 2004/12/29 02:42:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.26 2005/02/02 21:34:18 joerg Exp $
  */
 
 
@@ -229,19 +229,6 @@ hpfs_mount(struct mount *mp,
 	 ********************
 	 */
 
-	/*
-	 * Since this is a new mount, we want the names for
-	 * the device and the mount point copied in.  If an
-	 * error occurs,  the mountpoint is discarded by the
-	 * upper level code.
-	 */
-	/* Save "last mounted on" info for mount point (NULL pad)*/
-	copyinstr(	path,				/* mount point*/
-			mp->mnt_stat.f_mntonname,	/* save area*/
-			MNAMELEN - 1,			/* max size*/
-			&size);				/* real size*/
-	bzero( mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
-
 	/* Save "mounted from" info for mount point (NULL pad)*/
 	copyinstr(	args.fspec,			/* device name*/
 			mp->mnt_stat.f_mntfromname,	/* save area*/
@@ -254,8 +241,8 @@ hpfs_mount(struct mount *mp,
 		goto error_2;
 
 	/*
-	 * Initialize FS stat information in mount struct; uses both
-	 * mp->mnt_stat.f_mntonname and mp->mnt_stat.f_mntfromname
+	 * Initialize FS stat information in mount struct; uses
+	 * mp->mnt_stat.f_mntfromname.
 	 *
 	 * This code is common to root and non-root mounts
 	 */
@@ -499,8 +486,6 @@ hpfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	sbp->f_ffree = 0;
 	sbp->f_files = 0;
 	if (sbp != &mp->mnt_stat) {
-		bcopy((caddr_t)mp->mnt_stat.f_mntonname,
-			(caddr_t)&sbp->f_mntonname[0], MNAMELEN);
 		bcopy((caddr_t)mp->mnt_stat.f_mntfromname,
 			(caddr_t)&sbp->f_mntfromname[0], MNAMELEN);
 	}

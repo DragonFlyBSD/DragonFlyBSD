@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.16 2004/12/17 00:18:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.17 2005/02/02 21:34:18 joerg Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -200,10 +200,6 @@ smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 			    (S_IRWXU|S_IRWXG|S_IRWXO)) | S_IFDIR;
 
 /*	simple_lock_init(&smp->sm_npslock);*/
-	error = copyinstr(path, mp->mnt_stat.f_mntonname, MNAMELEN - 1, &size);
-	if (error)
-		goto bad;
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
 	pc = mp->mnt_stat.f_mntfromname;
 	pe = pc + sizeof(mp->mnt_stat.f_mntfromname);
 	bzero(pc, MNAMELEN);
@@ -414,7 +410,6 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 		sbp->f_fsid = mp->mnt_stat.f_fsid;	/* file system id */
 		sbp->f_owner = mp->mnt_stat.f_owner;	/* user that mounted the filesystem */
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;	/* type of filesystem */
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 	strncpy(sbp->f_fstypename, mp->mnt_vfc->vfc_name, MFSNAMELEN);

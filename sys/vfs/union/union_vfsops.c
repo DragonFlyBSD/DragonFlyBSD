@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.18 2004/12/17 00:18:47 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.19 2005/02/02 21:34:19 joerg Exp $
  */
 
 /*
@@ -249,9 +249,6 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mp->mnt_data = (qaddr_t) um;
 	vfs_getnewfsid(mp);
 
-	(void) copyinstr(path, mp->mnt_stat.f_mntonname, MNAMELEN - 1, &size);
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
-
 	switch (um->um_op) {
 	case UNMNT_ABOVE:
 		cp = "<above>:";
@@ -276,8 +273,6 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 
 	(void)union_statfs(mp, &mp->mnt_stat, td);
 
-	UDEBUG(("union_mount: from %s, on %s\n",
-		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntonname));
 	return (0);
 
 bad:
@@ -446,7 +441,6 @@ union_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	if (sbp != &mp->mnt_stat) {
 		sbp->f_type = mp->mnt_vfc->vfc_typenum;
 		bcopy(&mp->mnt_stat.f_fsid, &sbp->f_fsid, sizeof(sbp->f_fsid));
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 	return (0);

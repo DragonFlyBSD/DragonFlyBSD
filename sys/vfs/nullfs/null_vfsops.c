@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.15 2004/12/17 00:18:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.16 2005/02/02 21:34:18 joerg Exp $
  */
 
 /*
@@ -190,14 +190,12 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mp->mnt_data = (qaddr_t) xmp;
 	vfs_getnewfsid(mp);
 
-	(void) copyinstr(path, mp->mnt_stat.f_mntonname, MNAMELEN - 1, &size);
-	bzero(mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
 	(void) copyinstr(args.target, mp->mnt_stat.f_mntfromname, MNAMELEN - 1,
 	    &size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	(void)nullfs_statfs(mp, &mp->mnt_stat, td);
 	NULLFSDEBUG("nullfs_mount: lower %s, alias at %s\n",
-		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntonname);
+		mp->mnt_stat.f_mntfromname, mp->mnt_stat.f_mntfromname);
 	return (0);
 }
 
@@ -305,7 +303,6 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 	sbp->f_ffree = mstat.f_ffree;
 	if (sbp != &mp->mnt_stat) {
 		bcopy(&mp->mnt_stat.f_fsid, &sbp->f_fsid, sizeof(sbp->f_fsid));
-		bcopy(mp->mnt_stat.f_mntonname, sbp->f_mntonname, MNAMELEN);
 		bcopy(mp->mnt_stat.f_mntfromname, sbp->f_mntfromname, MNAMELEN);
 	}
 	return (0);

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.20 2004/12/17 00:18:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.21 2005/02/02 21:34:18 joerg Exp $
  */
 
 
@@ -314,19 +314,6 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	mfsp->mfs_active = 1;
 	bufq_init(&mfsp->buf_queue);
 
-	/*
-	 * Since this is a new mount, we want the names for
-	 * the device and the mount point copied in.  If an
-	 * error occurs,  the mountpoint is discarded by the
-	 * upper level code.
-	 */
-	/* Save "last mounted on" info for mount point (NULL pad)*/
-	copyinstr(	path,				/* mount point*/
-			mp->mnt_stat.f_mntonname,	/* save area*/
-			MNAMELEN - 1,			/* max size*/
-			&size);				/* real size*/
-	bzero( mp->mnt_stat.f_mntonname + size, MNAMELEN - size);
-
 	/* Save "mounted from" info for mount point (NULL pad)*/
 	copyinstr(	args.fspec,			/* device name*/
 			mp->mnt_stat.f_mntfromname,	/* save area*/
@@ -341,8 +328,8 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	}
 
 	/*
-	 * Initialize FS stat information in mount struct; uses both
-	 * mp->mnt_stat.f_mntonname and mp->mnt_stat.f_mntfromname
+	 * Initialize FS stat information in mount struct; uses
+	 * mp->mnt_stat.f_mntfromname.
 	 *
 	 * This code is common to root and non-root mounts
 	 */

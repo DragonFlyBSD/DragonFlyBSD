@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_rrip.c	8.6 (Berkeley) 12/5/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_rrip.c,v 1.17 1999/08/28 00:46:06 peter Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.7 2004/04/12 23:18:55 cpressey Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_rrip.c,v 1.8 2005/02/02 21:34:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -121,14 +121,15 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 {
 	ISO_RRIP_SLINK_COMPONENT *pcomp;
 	ISO_RRIP_SLINK_COMPONENT *pcompe;
-	int len, wlen, cont;
-	char *outbuf, *inbuf;
+	int error, len, wlen, cont;
+	char *outbuf, *inbuf, *freebuf;
 
 	pcomp = (ISO_RRIP_SLINK_COMPONENT *)p->component;
 	pcompe = (ISO_RRIP_SLINK_COMPONENT *)((char *)p + isonum_711(p->h.length));
 	len = *ana->outlen;
 	outbuf = ana->outbuf;
 	cont = ana->cont;
+	freebuf = NULL;
 
 	/*
 	 * Gathering a Symbolic name from each component with path
@@ -173,7 +174,10 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 			/* same as above */
 			outbuf -= len;
 			len = 0;
-			inbuf = ana->imp->im_mountp->mnt_stat.f_mntonname;
+			error = cache_fullpath(NULL, ana->imp->im_mountp->mnt_ncp,
+					       &inbuf, &freebuf);
+			if (error)
+				goto bad;
 			wlen = strlen(inbuf);
 			break;
 
@@ -197,19 +201,17 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 			break;
 		}
 
-		if (len + wlen > ana->maxlen) {
-			/* indicate error to caller */
-			ana->cont = 1;
-			ana->fields = 0;
-			ana->outbuf -= *ana->outlen;
-			*ana->outlen = 0;
-			return 0;
-		}
+		if (len + wlen > ana->maxlen)
+			goto bad;
 
 		bcopy(inbuf,outbuf,wlen);
 		outbuf += wlen;
 		len += wlen;
 
+		if (freebuf != NULL) {
+			free(freebuf, M_TEMP);
+			freebuf = NULL;
+		}
 	}
 	ana->outbuf = outbuf;
 	*ana->outlen = len;
@@ -219,6 +221,13 @@ cd9660_rrip_slink(ISO_RRIP_SLINK *p, ISO_RRIP_ANALYZE *ana)
 		ana->fields &= ~ISO_SUSP_SLINK;
 		return ISO_SUSP_SLINK;
 	}
+	return 0;
+
+bad:
+	ana->cont = 1;
+	ana->fields = 0;
+	ana->outbuf -= *ana->outlen;
+	*ana->outlen = 0;
 	return 0;
 }
 

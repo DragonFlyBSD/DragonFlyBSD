@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lookup.c	8.15 (Berkeley) 6/16/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_lookup.c,v 1.33.2.7 2001/09/22 19:22:13 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.16 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_lookup.c,v 1.17 2005/02/02 21:34:19 joerg Exp $
  */
 
 #include "opt_ufs.h"
@@ -604,7 +604,7 @@ ufs_dirbad(struct inode *ip, doff_t offset, char *how)
 
 	mp = ITOV(ip)->v_mount;
 	(void)printf("%s: bad dir ino %lu at offset %ld: %s\n",
-	    mp->mnt_stat.f_mntonname, (u_long)ip->i_number, (long)offset, how);
+	    mp->mnt_stat.f_mntfromname, (u_long)ip->i_number, (long)offset, how);
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		panic("ufs_dirbad: bad dir");
 }

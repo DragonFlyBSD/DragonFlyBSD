@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.50 2004/12/17 00:18:07 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.51 2005/02/02 21:34:18 joerg Exp $
  */
 
 /*
@@ -1320,8 +1320,7 @@ vfs_unmountall(void)
 		error = dounmount(mp, MNT_FORCE, td);
 		if (error) {
 			TAILQ_REMOVE(&mountlist, mp, mnt_list);
-			printf("unmount of %s failed (",
-			    mp->mnt_stat.f_mntonname);
+			printf("unmount of filesystem mounted from %s failed (", mp->mnt_stat.f_mntfromname);
 			if (error == EBUSY)
 				printf("BUSY)\n");
 			else
