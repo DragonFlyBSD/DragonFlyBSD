@@ -151,20 +151,38 @@ FreeBSD 4.0  |      |  |  |  | NetBSD 1.4.2    |             |
  |   FreeBSD 4.5 |    |      |    |            |             |
  |      |         \   |      |    |            |           BSD/OS 4.3
  |   FreeBSD 4.6   \  |      |    |        OpenBSD 3.1       |
- |      |           \ |      | NetBSD 1.5.3    |             v
- |   FreeBSD 4.6.2 Mac OS X  |    |            |
- |      |            10.2    |    v            |
- |   FreeBSD 4.7      |      |                 |
- |      |             |   NetBSD 1.6           |
- |   FreeBSD 4.8      |      |                 |
- |      |             |      |             OpenBSD 3.2
- |      v             |      |                 |
- |                    |      |                 |
-FreeBSD 5.0	      |      |                 |
- |                    |      |                 |
-FreeBSD 5.0-current   |   NetBSD -current  OpenBSD -current
- |                    |      |                 |
- v                    v      v                 v
+ |      |           \ |      | NetBSD 1.5.3    |       	     |
+ |   FreeBSD 4.6.2 Mac OS X  |    |            |             |
+ |      |            10.2    |    v            |             |
+ |   FreeBSD 4.7      |      |                 |             |
+ |      |             |   NetBSD 1.6       OpenBSD 3.2       |
+ |   FreeBSD 4.8      |      |    |            |             |
+ |      |             |      | NetBSD 1.6.1    |             |
+ |      |--------.    |      |    |        OpenBSD 3.3     BSD/OS 5.0
+ |      |         \   |      |    |            |             |
+ |   FreeBSD 4.9   |  |      |    |        OpenBSD 3.4     BSD/OS 5.1 ISE
+ |      |          |  |      |    |            |
+ |      |          |  |      | NetBSD 1.6.2    |
+ |      |          |  |      |    |            |
+ |      |          |  |      |    |        OpenBSD 3.5
+ |      |          |  |      |    v            |
+ |   FreeBSD 4.10  |  |      |                 |
+ |      |          |  |      |                 |
+ |      v           `-|------|-----------------|---------------------.
+ |                    |      |                 |                      \
+FreeBSD 5.0           |      |                 |                       |
+ |                    |      |                 |                       |
+FreeBSD 5.1           |   NetBSD -current  OpenBSD -current        DragonFly 1.0
+ |          \         |      |                 |                       |
+ |           ----- Mac OS X  |                 |                       |
+ |                   10.3    |                 |                       |
+FreeBSD 5.2           |      |                 |                       |
+ |      |             |      |                 |                       |
+ |   FreeBSD 5.2.1    |      |                 |                       |
+ |                    |      |                 |                       |
+FreeBSD 6 -current    |      |                 |                       |
+ |                    |      |                 |                       |
+ v                    v      v                 v                       v
 
 Time
 ----------------
@@ -177,6 +195,7 @@ was the announcement in Usenet or if it was available as tape.
 	the 4.4BSD Operating System.
 [APL] Apple website [http://www.apple.com/macosx/]
 [BSDI] Berkeley Software Design, Inc.
+[DFD] DragonFly BSD Project, The.
 [DOC] README, COPYRIGHT on tape.
 [FBD] FreeBSD Project, The.
 [KB]  Keith Bostic. BSD2.10 available from Usenix. comp.unix.sources,
@@ -372,7 +391,20 @@ FreeBSD 5.0		2003-01-17 [FBD]
 				FreeBSD 5.0 is a separate branch off of
 				-current, similar to 3.0.
 FreeBSD 4.8		2003-04-03 [FBD]
-
+NetBSD 1.6.1		2003-04-21 [NBD] (patch release)
+OpenBSD 3.3		2003-05-01 [OBD]
+BSD/OS 5.0		2003-05-?? [WRS]
+FreeBSD 5.1		2003-06-09 [FBD]
+Mac OS X 10.3		2003-10-24 [APL]
+FreeBSD 4.9		2003-10-28 [FBD]
+BSD/OS 5.1 ISE		2003-10-?? [WRS] (final version)
+OpenBSD 3.4		2003-11-01 [OBD]
+FreeBSD 5.2		2004-01-12 [FBD]
+FreeBSD 5.2.1		2004-02-22 [FBD] (patch release)
+NetBSD 1.6.2		2004-03-01 [NBD] (patch release)
+OpenBSD 3.5		2004-04-01 [OBD]
+FreeBSD 4.10		2004-05-27 [FBD]
+DragonFly 1.0		2004-07-12 [DFD]
 
 Bibliography
 ------------------------
@@ -387,6 +419,10 @@ Company, Inc., 1994. ISBN 0-201-54777-5
 McKusick, Marshall Kirk, Keith Bostic, Michael J Karels, and John
 Quarterman. The Design and Implementation of the 4.4BSD Operating
 System. Reading, Mass. Addison-Wesley, 1996. ISBN 0-201-54979-4
+
+McKusick, Marshall Kirk, George Neville-Neil. The Design and
+Implementation of the FreeBSD Operating System.
+Addison-Wesley Professional, Published: Aug 2, 2004. ISBN 0-201-70245-2
 
 Doug McIlroy. Research Unix Reader.
 
@@ -426,8 +462,8 @@ original BSD announcements from Usenet or tapes.
 Steven M. Schultz for providing 2.8BSD, 2.10BSD, 2.11BSD manual pages.
 
 --
-Copyright (c) 1997-2001 Wolfram Schneider <wosch@FreeBSD.ORG>
-URL: ftp://ftp.freebsd.org/pub/FreeBSD/branches/-current/src/share/misc/bsd-family-tree
+Copyright (c) 1997-2004 Wolfram Schneider <wosch@FreeBSD.ORG>
+URL: http://cvsweb.freebsd.org/src/share/misc/bsd-family-tree
 
 $FreeBSD: src/share/misc/bsd-family-tree,v 1.21.2.14 2003/04/07 05:22:13 murray Exp $
-$DragonFly: src/share/misc/bsd-family-tree,v 1.2 2003/06/17 04:37:01 dillon Exp $
+$DragonFly: src/share/misc/bsd-family-tree,v 1.3 2004/10/14 15:04:47 geekgod Exp $
