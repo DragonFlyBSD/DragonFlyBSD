@@ -1,0 +1,83 @@
+.\" $DragonFly: src/sbin/rconfig/rconfig.8,v 1.1 2004/06/18 02:46:46 dillon Exp $
+.Dd June 17, 2004
+.Dt RCONFIG 8
+.Os
+.Sh NAME
+.Nm rconfig
+.Nd Remote Configuration Client/Server
+.Sh SYNOPSIS
+.Nm
+.Bk -words
+.Op Fl a
+.Op Fl W Ar workdir
+.Op Fl T Ar tagdir
+.Op Fl C Ar configfiles
+.Op Fl s
+.Op Fl v
+.Ek
+.Sh DESCRIPTION
+The
+.Nm
+utility provides simple remote configurator functionality.  In client mode
+.Nm
+will broadcast a request for the specified configuration tag over available
+interfaces (or you can specify an IP), locate a server capable of supplying
+the tag, then connect to, download, and run the script associate with the
+tag.  In server mode
+.Nm
+will listen on port 257 for broadcast requests (UDP) and connections (TCP).
+Note that UDP based requests are only responded to if the requested tag
+is available.  You can run the server on multiple machines on the LAN
+serving different tags or, if you wish to provide a backup, serving the
+same tags, or a mix.  The client will use the first matching tag it encounters.
+.Pp
+The following command line options are available when operating in client mode:
+.Bl -tag -width Fl
+.It Fl a
+.Nm
+will broadcast a request for the 'auto' tag on all available interfaces.
+No additional arguments are necessary.
+.It Fl W Ar workdir
+Specify the working directory for script downloads.  The default is
+.Pa /tmp .
+.It Fl v
+Verbose mode prints additional information during program execution.
+.It host[:tag]
+Specify any number of remote IP addresses or broadcast addresses.  If no
+tag is specified 
+.Nm
+defaults to 'auto'.  If you specify just a tag using :tag the broadcast 
+address for all available interfaces will be used.  The
+.Fl a
+option should not be used in that case.
+.El
+.Pp
+The following command line options are available when operating in server mode:
+.Bl -tag -width Fl
+.It Fl a
+.Nm
+will bind to and listen on all available interfaces.  If this option is not
+used you must specify a particular IP address or addresses to bind to.  The
+server listens on port 257 for both UDP and TCP.
+.It Fl T Ar tagdir
+Specify the directory containing the tag scripts.  The default is
+.Pa /usr/local/etc/rconfig .
+Tag scripts are in the form:
+.Pa tagname.sh .
+.It Fl C Ar configfiles
+Specify server configuration files (currently unused).
+.It Fl s
+This option is required to operate
+.Nm
+as a server.
+.It Fl v
+Verbose mode prints additional information during program execution.
+.It bind_address
+Specify any number of IP addresses or hostnames corresponding to machien
+local addresses that the server will bind to and listen on.
+.El
+.Pp
+.Sh SEE ALSO
+.Xr dhclient 8 
+.Sh AUTHORS
+This program was written by Matthew Dillon.
