@@ -24,15 +24,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldunload/kldunload.c,v 1.10 1999/09/08 05:46:47 bde Exp $
- * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.3 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.4 2005/03/09 16:59:40 liamfoy Exp $
  */
+#include <sys/param.h>
+#include <sys/linker.h>
 
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/param.h>
-#include <sys/linker.h>
 
 static void
 usage(void)
@@ -48,14 +48,17 @@ main(int argc, char** argv)
     int c;
     int verbose = 0;
     int fileid = 0;
-    char* filename = 0;
+    long tmp;
+    char *ep;
+    char* filename = NULL;
 
     while ((c = getopt(argc, argv, "i:n:v")) != -1)
 	switch (c) {
 	case 'i':
-	    fileid = atoi(optarg);
-	    if (!fileid)
-		errx(1, "Invalid ID %s", optarg);
+	    tmp = strtol(optarg, &ep, 10);
+	    if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
+		errx(1, "invalid file id: %s", optarg);
+	    fileid = (int)tmp;
 	    break;
 	case 'n':
 	    filename = optarg;
@@ -69,18 +72,18 @@ main(int argc, char** argv)
     argc -= optind;
     argv += optind;
 
-    if (!fileid && !filename && (argc == 1)) {
+    if (!fileid && filename == NULL && (argc == 1)) {
 	filename = *argv;
 	argc--;
     }
     
-    if (argc != 0 || (fileid && filename))
+    if (argc != 0 || (fileid && filename != NULL))
 	usage();
 
-    if (fileid == 0 && filename == 0)
+    if (fileid == 0 && filename == NULL)
 	usage();
 
-    if (filename) {
+    if (filename != NULL) {
 	if ((fileid = kldfind(filename)) < 0)
 	    err(1, "can't find file %s", filename);
     }
