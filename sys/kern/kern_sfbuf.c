@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.6 2004/05/13 01:34:03 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -200,13 +200,22 @@ sf_buf_tosf(caddr_t addr)
 	return(dtosf(addr));
 }
 
+#if 0
+
+/*
+ * Add a reference to a buffer (currently unused)
+ */
 void
 sf_buf_ref(struct sf_buf *sf)
 {
 	if (sf->refcnt == 0)
 		panic("sf_buf_ref: referencing a free sf_buf");
+	crit_enter();
 	sf->refcnt++;
+	crit_exit();
 }
+
+#endif
 
 /*
  * Lose a reference to an sf_buf. When none left, detach mapped page
