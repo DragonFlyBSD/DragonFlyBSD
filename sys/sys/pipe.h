@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.3 2004/02/20 17:11:08 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.4 2004/03/28 08:25:46 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -71,7 +71,6 @@ struct pipebuf {
  * Information to support direct transfers between processes for pipes.
  */
 struct pipemapping {
-	vm_offset_t	kva;		/* kernel virtual address */
 	vm_size_t	cnt;		/* number of chars in buffer */
 	vm_size_t	pos;		/* current position of transfer */
 	int		npages;		/* number of pages */

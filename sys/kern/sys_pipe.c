@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.14 2004/02/20 17:11:07 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.15 2004/03/28 08:25:48 dillon Exp $
  */
 
 /*
@@ -155,17 +155,12 @@ MALLOC_DEFINE(M_PIPE, "pipe", "pipe structures");
 static int pipe_maxbig = LIMITBIGPIPES;
 static int pipe_maxcache = PIPEQ_MAX_CACHE;
 static int pipe_nbig;
-static int pipe_kva;
 static int pipe_bcache_alloc;
 static int pipe_bkmem_alloc;
-static int pipe_dcache_alloc;
-static int pipe_dkmem_alloc;
 
 SYSCTL_NODE(_kern, OID_AUTO, pipe, CTLFLAG_RW, 0, "Pipe operation");
 SYSCTL_INT(_kern_pipe, OID_AUTO, nbig,
         CTLFLAG_RD, &pipe_nbig, 0, "numer of big pipes allocated");
-SYSCTL_INT(_kern_pipe, OID_AUTO, kva,
-        CTLFLAG_RD, &pipe_kva, 0, "kva reserved by pipes");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxcache,
         CTLFLAG_RW, &pipe_maxcache, 0, "max pipes cached per-cpu");
 SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
@@ -173,12 +168,8 @@ SYSCTL_INT(_kern_pipe, OID_AUTO, maxbig,
 #if !defined(NO_PIPE_SYSCTL_STATS)
 SYSCTL_INT(_kern_pipe, OID_AUTO, bcache_alloc,
         CTLFLAG_RW, &pipe_bcache_alloc, 0, "pipe buffer from pcpu cache");
-SYSCTL_INT(_kern_pipe, OID_AUTO, dcache_alloc,
-        CTLFLAG_RW, &pipe_dcache_alloc, 0, "pipe direct buf from pcpu cache");
 SYSCTL_INT(_kern_pipe, OID_AUTO, bkmem_alloc,
         CTLFLAG_RW, &pipe_bkmem_alloc, 0, "pipe buffer from kmem");
-SYSCTL_INT(_kern_pipe, OID_AUTO, dkmem_alloc,
-        CTLFLAG_RW, &pipe_dkmem_alloc, 0, "pipe direct buf from kmem");
 #endif
 
 static void pipeclose (struct pipe *cpipe);
@@ -302,7 +293,6 @@ pipespace(struct pipe *cpipe, int size)
 			vm_object_deallocate(object);
 			return (ENOMEM);
 		}
-		pipe_kva += size;
 		pipe_free_kmem(cpipe);
 		cpipe->pipe_buffer.object = object;
 		cpipe->pipe_buffer.buffer = buffer;
@@ -310,8 +300,6 @@ pipespace(struct pipe *cpipe, int size)
 		++pipe_bkmem_alloc;
 	} else {
 		++pipe_bcache_alloc;
-		if (cpipe->pipe_map.kva)
-			++pipe_dcache_alloc;
 	}
 	cpipe->pipe_buffer.in = 0;
 	cpipe->pipe_buffer.out = 0;
@@ -451,13 +439,10 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 		 */
 		} else if ((size = rpipe->pipe_map.cnt) &&
 			   (rpipe->pipe_state & PIPE_DIRECTW)) {
-			caddr_t	va;
 			if (size > (u_int) uio->uio_resid)
 				size = (u_int) uio->uio_resid;
-
-			va = (caddr_t) rpipe->pipe_map.kva +
-			    rpipe->pipe_map.pos;
-			error = uiomove(va, size, uio);
+			error = uiomove_fromphys(rpipe->pipe_map.ms,
+					rpipe->pipe_map.pos, size, uio);
 			if (error)
 				break;
 			nread += size;
@@ -581,34 +566,17 @@ pipe_build_write_buffer(wpipe, uio)
 		wpipe->pipe_map.ms[i] = m;
 	}
 
-/*
- * set up the control block
- */
+	/*
+	 * set up the control block
+	 */
 	wpipe->pipe_map.npages = i;
 	wpipe->pipe_map.pos =
 	    ((vm_offset_t) uio->uio_iov->iov_base) & PAGE_MASK;
 	wpipe->pipe_map.cnt = size;
 
-/*
- * and map the buffer
- */
-	if (wpipe->pipe_map.kva == 0) {
-		/*
-		 * We need to allocate space for an extra page because the
-		 * address range might (will) span pages at times.
-		 */
-		wpipe->pipe_map.kva = kmem_alloc_pageable(kernel_map,
-			wpipe->pipe_buffer.size + PAGE_SIZE);
-		pipe_kva += wpipe->pipe_buffer.size + PAGE_SIZE;
-		++pipe_dkmem_alloc;
-	}
-	pmap_qenter(wpipe->pipe_map.kva, wpipe->pipe_map.ms,
-		wpipe->pipe_map.npages);
-
-/*
- * and update the uio data
- */
-
+	/*
+	 * and update the uio data
+	 */
 	uio->uio_iov->iov_len -= size;
 	uio->uio_iov->iov_base += size;
 	if (uio->uio_iov->iov_len == 0)
@@ -627,19 +595,10 @@ pipe_destroy_write_buffer(wpipe)
 {
 	int i;
 
-	if (wpipe->pipe_map.kva) {
-		pmap_qremove(wpipe->pipe_map.kva, wpipe->pipe_map.npages);
-
-		if (pipe_kva > MAXPIPEKVA) {
-			vm_offset_t kva = wpipe->pipe_map.kva;
-			wpipe->pipe_map.kva = 0;
-			kmem_free(kernel_map, kva,
-				wpipe->pipe_buffer.size + PAGE_SIZE);
-			pipe_kva -= wpipe->pipe_buffer.size + PAGE_SIZE;
-		}
-	}
-	for (i = 0; i < wpipe->pipe_map.npages; i++)
+	for (i = 0; i < wpipe->pipe_map.npages; i++) {
 		vm_page_unhold(wpipe->pipe_map.ms[i]);
+		wpipe->pipe_map.ms[i] = NULL;	/* sanity */
+	}
 	wpipe->pipe_map.npages = 0;
 }
 
@@ -652,18 +611,29 @@ static void
 pipe_clone_write_buffer(wpipe)
 	struct pipe *wpipe;
 {
+	struct uio uio;
+	struct iovec iov;
 	int size;
 	int pos;
 
 	size = wpipe->pipe_map.cnt;
 	pos = wpipe->pipe_map.pos;
-	bcopy((caddr_t) wpipe->pipe_map.kva + pos,
-	    (caddr_t) wpipe->pipe_buffer.buffer, size);
 
 	wpipe->pipe_buffer.in = size;
 	wpipe->pipe_buffer.out = 0;
 	wpipe->pipe_buffer.cnt = size;
 	wpipe->pipe_state &= ~PIPE_DIRECTW;
+
+	iov.iov_base = wpipe->pipe_buffer.buffer;
+	iov.iov_len = size;
+	uio.uio_iov = &iov;
+	uio.uio_iovcnt = 1;
+	uio.uio_offset = 0;
+	uio.uio_resid = size;
+	uio.uio_segflg = UIO_SYSSPACE;
+	uio.uio_rw = UIO_READ;
+	uio.uio_td = curthread;
+	uiomove_fromphys(wpipe->pipe_map.ms, pos, size, &uio);
 
 	pipe_destroy_write_buffer(wpipe);
 }
@@ -715,14 +685,21 @@ retry:
 		goto retry;
 	}
 
+	/*
+	 * Build our direct-write buffer
+	 */
 	wpipe->pipe_state |= PIPE_DIRECTW;
-
 	error = pipe_build_write_buffer(wpipe, uio);
 	if (error) {
 		wpipe->pipe_state &= ~PIPE_DIRECTW;
 		goto error1;
 	}
 
+	/*
+	 * Wait until the receiver has snarfed the data.  Since we are likely
+	 * going to sleep we optimize the case and yield synchronously,
+	 * possibly avoiding the tsleep().
+	 */
 	error = 0;
 	while (!error && (wpipe->pipe_state & PIPE_DIRECTW)) {
 		if (wpipe->pipe_state & PIPE_EOF) {
@@ -828,9 +805,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 		 * away on us.
 		 */
 		if ((uio->uio_iov->iov_len >= PIPE_MINDIRECT) &&
-		    (fp->f_flag & FNONBLOCK) == 0 &&
-			(wpipe->pipe_map.kva || (pipe_kva < LIMITPIPEKVA)) &&
-			(uio->uio_iov->iov_len >= PIPE_MINDIRECT)) {
+		    (fp->f_flag & FNONBLOCK) == 0) {
 			error = pipe_direct_write( wpipe, uio);
 			if (error)
 				break;
@@ -868,7 +843,12 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 		if ((space < uio->uio_resid) && (orig_resid <= PIPE_BUF))
 			space = 0;
 
-		if (space > 0 && (wpipe->pipe_buffer.cnt < PIPE_SIZE)) {
+		/* 
+		 * Write to fill, read size handles write hysteresis.  Also
+		 * additional restrictions can cause select-based non-blocking
+		 * writes to spin.
+		 */
+		if (space > 0) {
 			if ((error = pipelock(wpipe,1)) == 0) {
 				int size;	/* Transfer size */
 				int segsize;	/* first segment to transfer */
@@ -953,7 +933,9 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 
 		} else {
 			/*
-			 * If the "read-side" has been blocked, wake it up now.
+			 * If the "read-side" has been blocked, wake it up now
+			 * and yield to let it drain synchronously rather
+			 * then block.
 			 */
 			if (wpipe->pipe_state & PIPE_WANTR) {
 				wpipe->pipe_state &= ~PIPE_WANTR;
@@ -1155,7 +1137,6 @@ pipe_free_kmem(struct pipe *cpipe)
 	if (cpipe->pipe_buffer.buffer != NULL) {
 		if (cpipe->pipe_buffer.size > PIPE_SIZE)
 			--pipe_nbig;
-		pipe_kva -= cpipe->pipe_buffer.size;
 		kmem_free(kernel_map,
 			(vm_offset_t)cpipe->pipe_buffer.buffer,
 			cpipe->pipe_buffer.size);
@@ -1163,16 +1144,9 @@ pipe_free_kmem(struct pipe *cpipe)
 		cpipe->pipe_buffer.object = NULL;
 	}
 #ifndef PIPE_NODIRECT
-	if (cpipe->pipe_map.kva != NULL) {
-		pipe_kva -= cpipe->pipe_buffer.size + PAGE_SIZE;
-		kmem_free(kernel_map,
-			cpipe->pipe_map.kva,
-			cpipe->pipe_buffer.size + PAGE_SIZE);
-		cpipe->pipe_map.cnt = 0;
-		cpipe->pipe_map.kva = 0;
-		cpipe->pipe_map.pos = 0;
-		cpipe->pipe_map.npages = 0;
-	}
+	cpipe->pipe_map.cnt = 0;
+	cpipe->pipe_map.pos = 0;
+	cpipe->pipe_map.npages = 0;
 #endif
 }
 

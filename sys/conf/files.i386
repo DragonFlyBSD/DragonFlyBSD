@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.21 2004/02/24 18:09:12 joerg Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.22 2004/03/28 08:25:54 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -223,6 +223,7 @@ i386/i386/support.s		standard
 i386/i386/swtch.s		standard
 i386/i386/sys_machdep.c		standard
 i386/i386/trap.c		standard
+i386/i386/uio_machdep.c		standard
 i386/i386/userconfig.c		optional	userconfig
 i386/i386/vm86.c		standard
 i386/i386/vm_machdep.c		standard
