@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.111 2005/03/01 20:31:29 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.112 2005/03/01 23:19:39 okumoto Exp $
  */
 
 /*-
@@ -82,6 +82,7 @@
  * XXX: There's a lot of duplication in these functions.
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1730,14 +1731,17 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
  * if it exists.
  */
 static char *
-VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
-	Boolean *freePtr)
+VarParseShort(const char input[], GNode *ctxt, Boolean err,
+	size_t *lengthPtr, Boolean *freePtr)
 {
 	char	name[2];
 	Var	*v;
 
-	name[0] = input[1];
+	name[0] = input[0];
 	name[1] = '\0';
+
+	/* consume character */
+	*lengthPtr += 1;
 
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
@@ -1750,7 +1754,6 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		}
 
 		*freePtr = TRUE;
-		*lengthPtr = 2;
 		return (result);
 	}
 
@@ -1763,26 +1766,28 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	 * will be set when dynamic sources are expanded.
 	 */
 	if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
-		*freePtr = FALSE;
-		*lengthPtr = 2;
 
 		/* XXX: It looks like $% and $! are reversed here */
-		switch (input[1]) {
+		switch (name[0]) {
 		case '@':
-			return ("$(.TARGET)");
+			*freePtr = TRUE;
+			return (estrdup("$(.TARGET)"));
 		case '%':
-			return ("$(.ARCHIVE)");
+			*freePtr = TRUE;
+			return (estrdup("$(.ARCHIVE)"));
 		case '*':
-			return ("$(.PREFIX)");
+			*freePtr = TRUE;
+			return (estrdup("$(.PREFIX)"));
 		case '!':
-			return ("$(.MEMBER)");
+			*freePtr = TRUE;
+			return (estrdup("$(.MEMBER)"));
 		default:
+			*freePtr = FALSE;
 			return (err ? var_Error : varNoError);
 		}
 	}
 
 	*freePtr = FALSE;
-	*lengthPtr = 2;
 	return (err ? var_Error : varNoError);
 }
 
@@ -1811,18 +1816,23 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
  *-----------------------------------------------------------------------
  */
 char *
-Var_Parse(char *foo, GNode *ctxt, Boolean err, size_t *lengthPtr,
-    Boolean *freePtr)
+Var_Parse(char *foo, GNode *ctxt, Boolean err,
+	size_t *lengthPtr, Boolean *freePtr)
 {
 	const char *input = foo;
 
-	if (input[1] == '\0') {
+	/* assert(input[0] == '$'); */
+
+	/* consume '$' */
+	input += 1;
+	*lengthPtr += 1;
+
+	if (input[0] == '\0') {
 		/* Error, there is only a dollar sign in the input string. */
 		*freePtr = FALSE;
-		*lengthPtr = 1;
 		return (err ? var_Error : varNoError);
 
-	} else if (input[1] == OPEN_PAREN || input[1] == OPEN_BRACE) {
+	} else if (input[0] == OPEN_PAREN || input[0] == OPEN_BRACE) {
 		/* multi letter variable name */
 		return (VarParseLong(foo, ctxt, err, lengthPtr, freePtr));
 
