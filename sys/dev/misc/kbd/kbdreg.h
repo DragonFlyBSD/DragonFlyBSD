@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbdreg.h,v 1.9.2.2 2001/07/30 16:46:44 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.3 2003/11/10 06:12:05 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbdreg.h,v 1.4 2004/09/05 21:19:19 dillon Exp $
  */
 
 #ifndef _DEV_KBD_KBDREG_H_
@@ -90,6 +90,7 @@ struct keyboard {
 #define KB_DELAY1	500
 #define KB_DELAY2	100
 	unsigned long	kb_count;	/* # of processed key strokes */
+	int		kb_pref;	/* keyboard preference */
 	u_char		kb_lastact[NUM_KEYS/2];
 };
 
@@ -98,10 +99,13 @@ struct keyboard {
 #define KBD_INVALID(k)		((k)->kb_flags &= ~KB_VALID)
 #define KBD_HAS_DEVICE(k)	(!((k)->kb_flags & KB_NO_DEVICE))
 #define KBD_FOUND_DEVICE(k)	((k)->kb_flags &= ~KB_NO_DEVICE)
+#define KBD_LOST_DEVICE(k)	((k)->kb_flags |= KB_NO_DEVICE)
 #define KBD_IS_PROBED(k)	((k)->kb_flags & KB_PROBED)
 #define KBD_PROBE_DONE(k)	((k)->kb_flags |= KB_PROBED)
+#define KBD_LOST_PROBE(k)	((k)->kb_flags &= ~KB_PROBED)
 #define KBD_IS_INITIALIZED(k)	((k)->kb_flags & KB_INITIALIZED)
 #define KBD_INIT_DONE(k)	((k)->kb_flags |= KB_INITIALIZED)
+#define KBD_LOST_INIT(k)	((k)->kb_flags &= ~KB_INITIALIZED)
 #define KBD_IS_CONFIGURED(k)	((k)->kb_flags & KB_REGISTERED)
 #define KBD_CONFIG_DONE(k)	((k)->kb_flags |= KB_REGISTERED)
 #define KBD_IS_BUSY(k)		((k)->kb_flags & KB_BUSY)
@@ -183,8 +187,10 @@ int			kbd_register(keyboard_t *kbd);
 int			kbd_unregister(keyboard_t *kbd);
 keyboard_switch_t	*kbd_get_switch(char *driver);
 void			kbd_init_struct(keyboard_t *kbd, char *name, int type,
-					int unit, int config, int port,
-					int port_size);
+					int unit, int config, int pref,
+					int port, int port_size);
+void			kbd_reinit_struct(keyboard_t *kbd,
+					int config, int pref);
 void			kbd_set_maps(keyboard_t *kbd, struct keymap *keymap,
 				     struct accentmap *accmap,
 				     struct fkeytab *fkeymap, int fkeymap_size);
@@ -245,6 +251,9 @@ int			kbd_detach(keyboard_t *kbd);
 #define LED_SCR		(1 << 2)
 #define LED_MASK	(LED_CAP | LED_NUM | LED_SCR)
 */
+
+#define KB_PRI_ATKBD	50
+#define KB_PRI_USB	60
 
 kbd_get_fkeystr_t	genkbd_get_fkeystr;
 kbd_diag_t		genkbd_diag;

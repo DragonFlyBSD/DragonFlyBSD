@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.10 2004/05/19 22:52:42 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.11 2004/09/05 21:19:19 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -106,25 +106,24 @@ kbd_realloc_array(void)
 }
 
 /*
- * Low-level keyboard driver functions
+ * Low-level keyboard driver functions.
+ *
  * Keyboard subdrivers, such as the AT keyboard driver and the USB keyboard
  * driver, call these functions to initialize the keyboard_t structure
  * and register it to the virtual keyboard driver `kbd'.
+ *
+ * The reinit call is made when a driver has partially detached a keyboard
+ * but does not unregistered it, then wishes to reinitialize it later on.
+ * This is how the USB keyboard driver handles the 'default' keyboard,
+ * because unregistering the keyboard associated with the console will
+ * destroy its console association forever.
  */
-
-/* initialize the keyboard_t structure */
 void
-kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
-		int port, int port_size)
+kbd_reinit_struct(keyboard_t *kbd, int config, int pref)
 {
-	kbd->kb_flags = KB_NO_DEVICE;	/* device has not been found */
-	kbd->kb_name = name;
-	kbd->kb_type = type;
-	kbd->kb_unit = unit;
+	kbd->kb_flags |= KB_NO_DEVICE;	/* device has not been found */
 	kbd->kb_config = config & ~KB_CONF_PROBE_ONLY;
 	kbd->kb_led = 0;		/* unknown */
-	kbd->kb_io_base = port;
-	kbd->kb_io_size = port_size;
 	kbd->kb_data = NULL;
 	kbd->kb_keymap = NULL;
 	kbd->kb_accentmap = NULL;
@@ -132,8 +131,23 @@ kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
 	kbd->kb_fkeytab_size = 0;
 	kbd->kb_delay1 = KB_DELAY1;	/* these values are advisory only */
 	kbd->kb_delay2 = KB_DELAY2;
-	kbd->kb_count = 0L;
+	kbd->kb_count = 0;
+	kbd->kb_pref = pref;
 	bzero(kbd->kb_lastact, sizeof(kbd->kb_lastact));
+}
+
+/* initialize the keyboard_t structure */
+void
+kbd_init_struct(keyboard_t *kbd, char *name, int type, int unit, int config,
+		int pref, int port, int port_size)
+{
+	kbd->kb_flags = 0;
+	kbd->kb_name = name;
+	kbd->kb_type = type;
+	kbd->kb_unit = unit;
+	kbd->kb_io_base = port;
+	kbd->kb_io_size = port_size;
+	kbd_reinit_struct(kbd, config, pref);
 }
 
 void
@@ -272,6 +286,11 @@ int
 kbd_find_keyboard(char *driver, int unit)
 {
 	int i;
+	int pref;
+	int pref_index;
+
+	pref = 0;
+	pref_index = -1;
 
 	for (i = 0; i < keyboards; ++i) {
 		if (keyboard[i] == NULL)
@@ -282,9 +301,12 @@ kbd_find_keyboard(char *driver, int unit)
 			continue;
 		if ((unit != -1) && (keyboard[i]->kb_unit != unit))
 			continue;
-		return i;
+		if (pref <= keyboard[i]->kb_pref) {
+			pref = keyboard[i]->kb_pref;
+			pref_index = i;
+		}
 	}
-	return -1;
+	return (pref_index);
 }
 
 /* allocate a keyboard */
