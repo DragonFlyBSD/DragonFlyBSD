@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.5 2004/06/26 03:03:59 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.6 2004/06/26 22:37:11 dillon Exp $
  */
 
 /*
@@ -134,15 +134,19 @@ main(void)
      * but some console attributes may depend on reading from eg. the boot
      * device, which we can't do yet.
      *
-     * We can use printf() etc. once this is done.
-     * If the previous boot stage has requested a serial console, prefer that.
+     * We can use printf() etc. once this is done.   The previous boot stage
+     * might have requested a video or serial preference, in which case we
+     * set it.  If neither is specified or both are specified we leave the
+     * console environment variable alone, defaulting to dual boot.
      */
-    if (initial_howto & RB_VIDEO)
-	setenv("console", "vidconsole", 1);
-    if (initial_howto & RB_SERIAL)
-	setenv("console", "comconsole", 1);
-    if (initial_howto & RB_MUTE)
+    if (initial_howto & RB_MUTE) {
 	setenv("console", "nullconsole", 1);
+    } else if ((initial_howto & (RB_VIDEO|RB_SERIAL)) != (RB_VIDEO|RB_SERIAL)) {
+	if (initial_howto & RB_VIDEO)
+	    setenv("console", "vidconsole", 1);
+	if (initial_howto & RB_SERIAL)
+	    setenv("console", "comconsole", 1);
+    }
     cons_probe();
 
     /*

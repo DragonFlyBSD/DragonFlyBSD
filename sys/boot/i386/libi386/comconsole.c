@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.4 2004/06/25 05:37:58 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.5 2004/06/26 22:37:10 dillon Exp $
  */
 
 #include <stand.h>
@@ -82,9 +82,13 @@ comc_init(int arg)
     outb(COMPORT + com_cfcr, COMC_FMT);
     outb(COMPORT + com_mcr, MCR_RTS | MCR_DTR);
 
-    do
+    /*
+     * Give the serial port a little time to settle after asserting RTS and
+     * DTR, then drain any pending garbage.
+     */
+    delay(1000000 / 10);
+    while (comc_ischar())
         inb(COMPORT + com_data);
-    while (inb(COMPORT + com_lsr) & LSR_RXRDY);
 
     return(0);
 }

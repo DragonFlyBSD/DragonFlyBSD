@@ -13,7 +13,7 @@
  * purpose.
  *
  * $FreeBSD: src/sys/boot/i386/boot2/boot2.c,v 1.64 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.7 2004/03/04 00:06:58 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/boot2/boot2.c,v 1.8 2004/06/26 22:37:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/disklabel.h>
@@ -32,9 +32,6 @@
 #include "boot2.h"
 #include "lib.h"
 
-#define IO_KEYBOARD	1
-#define IO_SERIAL	2
-
 #define SECOND		18	/* Circa that many ticks in a second. */
 
 #define RBX_ASKNAME	0x0	/* -a */
@@ -49,9 +46,12 @@
 #define RBX_MUTE	0x10	/* -m */
 #define RBX_PAUSE	0x12	/* -p */
 #define RBX_NOINTR	0x1c	/* -n */
-#define RBX_DUAL	0x1d	/* -D */
+#define RBX_VIDEO	0x1d	/* -V */
 #define RBX_PROBEKBD	0x1e	/* -P */
 /* 0x1f is reserved for the historical RB_BOOTINFO option */
+
+#define RBF_SERIAL	(1 << RBX_SERIAL)
+#define RBF_VIDEO	(1 << RBX_VIDEO)
 
 /* pass: -a, -s, -r, -d, -c, -v, -h, -C, -g, -m, -p, -D */
 #define RBX_MASK	0x2005ffff
@@ -61,7 +61,6 @@
 #define PATH_KERNEL	"/kernel"
 
 #define ARGS		0x900
-#define NOPT		12
 #define NDEV		3
 #define MEM_BASE	0x12
 #define MEM_EXT 	0x15
@@ -76,11 +75,13 @@
 #define TYPE_MAXHARD	TYPE_DA
 #define TYPE_FD		2
 
+#define NOPT		12
+
 extern uint32_t _end;
 
-static const char optstr[NOPT] = "DhaCgmnPprsv";
+static const char optstr[NOPT] = { "VhaCgmnPprsv" };
 static const unsigned char flags[NOPT] = {
-    RBX_DUAL,
+    RBX_VIDEO,
     RBX_SERIAL,
     RBX_ASKNAME,
     RBX_CDROM,
@@ -110,7 +111,6 @@ static char cmd[512];
 static char kname[1024];
 static uint32_t opts;
 static struct bootinfo bootinfo;
-static uint8_t ioctrl = IO_KEYBOARD;
 
 void exit(int);
 static void load(void);
@@ -237,13 +237,22 @@ main(void)
     if ((ino = lookup(PATH_CONFIG)))
 	fsread(ino, cmd, sizeof(cmd));
 
-    if (*cmd) {
+    if (cmd[0]) {
 	printf("%s: %s", PATH_CONFIG, cmd);
 	if (parse())
 	    autoboot = 0;
 	/* Do not process this command twice */
 	*cmd = 0;
     }
+
+    /*
+     * Setup our (serial) console after processing the config file
+     */
+    if ((opts & (RBF_SERIAL|RBF_VIDEO)) == 0)
+	opts |= RBF_SERIAL|RBF_VIDEO;
+    if (opts & RBF_SERIAL)
+	sio_init();
+
 
     /*
      * Try to exec stage 3 boot loader. If interrupted by a keypress,
@@ -266,14 +275,14 @@ main(void)
 	       "boot: ",
 	       dsk.drive & DRV_MASK, dev_nm[dsk.type], dsk.unit,
 	       'a' + dsk.part, kname);
-	if (ioctrl & IO_SERIAL)
+	if (opts & RBF_SERIAL)
 	    sio_flush();
 	if (!autoboot || keyhit(5*SECOND))
 	    getstr();
 	else
 	    putchar('\n');
 	autoboot = 0;
-	if (parse())
+	if (cmd[0] == 0 || parse())
 	    putchar('\a');
 	else
 	    load();
@@ -392,28 +401,29 @@ parse()
     while ((c = *arg++)) {
 	if (c == ' ' || c == '\t' || c == '\n')
 	    continue;
-	for (p = arg; *p && *p != '\n' && *p != ' ' && *p != '\t'; p++);
+	for (p = arg; *p && *p != '\n' && *p != ' ' && *p != '\t'; p++)
+	    ;
 	if (*p)
 	    *p++ = 0;
 	if (c == '-') {
 	    while ((c = *arg++)) {
-		for (i = 0; c != optstr[i]; i++)
-		    if (i == NOPT - 1)
-			return -1;
-		opts ^= 1 << flags[i];
+		for (i = NOPT - 1; i >= 0; --i) {
+		    if (optstr[i] == c) {
+			opts ^= 1 << flags[i];
+			goto ok;
+		    }
+		}
+		return(-1);
+		ok: ;	/* ugly but save space */
 	    }
-	    if (opts & 1 << RBX_PROBEKBD) {
+	    if (opts & (1 << RBX_PROBEKBD)) {
 		i = *(uint8_t *)PTOV(0x496) & 0x10;
 		if (!i) {
 		    printf("NO KB\n");
-		    opts |= 1 << RBX_DUAL | 1 << RBX_SERIAL;
+		    opts |= RBF_VIDEO | RBF_SERIAL;
 		}
 		opts &= ~(1 << RBX_PROBEKBD);
 	    }
-	    ioctrl = opts & 1 << RBX_DUAL ? (IO_SERIAL|IO_KEYBOARD) :
-		     opts & 1 << RBX_SERIAL ? IO_SERIAL : IO_KEYBOARD;
-	    if (ioctrl & IO_SERIAL)
-	        sio_init();
 	} else {
 	    for (q = arg--; *q && *q != '('; q++);
 	    if (*q) {
@@ -618,9 +628,9 @@ keyhit(unsigned ticks)
 static int
 xputc(int c)
 {
-    if (ioctrl & IO_KEYBOARD)
+    if (opts & RBF_VIDEO)
 	putc(c);
-    if (ioctrl & IO_SERIAL)
+    if (opts & RBF_SERIAL)
 	sio_putc(c);
     return c;
 }
@@ -631,9 +641,9 @@ xgetc(int fn)
     if (opts & 1 << RBX_NOINTR)
 	return 0;
     for (;;) {
-	if (ioctrl & IO_KEYBOARD && getc(1))
+	if ((opts & RBF_VIDEO) && getc(1))
 	    return fn ? 1 : getc(0);
-	if (ioctrl & IO_SERIAL && sio_ischar())
+	if ((opts & RBF_SERIAL) && sio_ischar())
 	    return fn ? 1 : sio_getc();
 	if (fn)
 	    return 0;
