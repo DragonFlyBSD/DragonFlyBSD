@@ -1,6 +1,6 @@
 #	from: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/share/mk/bsd.prog.mk,v 1.86.2.17 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.prog.mk,v 1.5 2004/07/21 13:34:27 joerg Exp $
+# $DragonFly: src/share/mk/bsd.prog.mk,v 1.6 2004/07/26 14:29:11 joerg Exp $
 
 .include <bsd.init.mk>
 
@@ -30,7 +30,7 @@ LDADD+=	${OBJCLIBS}
 .endif
 
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
-.for _PATCH in ${SRCS:T:N*.h.patch:M*.patch}
+.for _PATCH in ${SRCS:T:N*.no_obj.patch:N*.h.patch:M*.patch}
 .for _OBJ in ${_PATCH:R:R:S/$/.o/}
 OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
 .endfor

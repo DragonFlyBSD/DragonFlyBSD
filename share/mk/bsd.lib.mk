@@ -1,6 +1,6 @@
 #	from: @(#)bsd.lib.mk	5.26 (Berkeley) 5/2/91
 # $FreeBSD: src/share/mk/bsd.lib.mk,v 1.91.2.15 2002/08/07 16:31:50 ru Exp $
-# $DragonFly: src/share/mk/bsd.lib.mk,v 1.6 2004/03/22 20:58:15 dillon Exp $
+# $DragonFly: src/share/mk/bsd.lib.mk,v 1.7 2004/07/26 14:29:11 joerg Exp $
 #
 
 .include <bsd.init.mk>
@@ -148,7 +148,7 @@ all: objwarn
 
 .if defined(LIB) && !empty(LIB) || defined(SHLIB_NAME)
 OBJS+=  ${SRCS:N*.h:N*.patch:R:S/$/.o/g}
-.for _PATCH in ${SRCS:T:N*.h.patch:M*.patch}
+.for _PATCH in ${SRCS:T:N*.no_obj.patch:N*.h.patch:M*.patch}
 .for _OBJ in ${_PATCH:R:R:S/$/.o/}
 OBJS:=	${OBJS:N${_OBJ}} ${_OBJ}
 .endfor
