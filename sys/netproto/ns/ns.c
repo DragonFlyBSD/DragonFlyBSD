@@ -32,14 +32,14 @@
  *
  *	@(#)ns.c	8.2 (Berkeley) 11/15/93
  * $FreeBSD: src/sys/netns/ns.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns.c,v 1.7 2004/03/23 22:19:08 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/ns.c,v 1.8 2004/05/04 11:54:40 hmp Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#include <sys/ioctl.h>
+#include <sys/sockio.h>
 #include <sys/protosw.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
@@ -233,7 +233,7 @@ ns_control(so, cmd, data, ifp)
 		}
 		if (ifra->ifra_addr.sns_family == AF_NS &&
 					    (hostIsNew || dstIsNew))
-			error = ns_ifinit(ifp, (struct ns_ifra_addr *)ia,
+			error = ns_ifinit(ifp, (struct ns_ifaddr *)ia,
 						&ifra->ifra_addr, 0);
 		return (error);
 
