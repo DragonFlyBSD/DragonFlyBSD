@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.10 2004/11/14 20:05:25 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.11 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -184,13 +184,11 @@ CompatRunCommand (void *cmdp, void *gnp)
     int 	  reason;   	/* Reason for child's death */
     int	    	  status;   	/* Description of child's death */
     int	    	  cpid;	    	/* Child actually found */
-    ReturnStatus  stat;	    	/* Status of fork */
+    ReturnStatus  rstat;	/* Status of fork */
     LstNode 	  cmdNode;  	/* Node where current command is located */
     char    	  **av;	    	/* Argument vector for thing to exec */
     int	    	  argc;	    	/* Number of arguments in av or 0 if not
 				 * dynamically allocated */
-    Boolean 	  local;    	/* TRUE if command should be executed
-				 * locally */
     int		  internal;	/* Various values.. */
     char	  *cmd = (char *) cmdp;
     GNode	  *gn = (GNode *) gnp;
@@ -313,8 +311,6 @@ CompatRunCommand (void *cmdp, void *gnp)
 	av += 1;
     }
 
-    local = TRUE;
-
     /*
      * Fork and execute the single command. If the fork fails, we abort.
      */
@@ -323,15 +319,11 @@ CompatRunCommand (void *cmdp, void *gnp)
 	Fatal("Could not fork");
     }
     if (cpid == 0) {
-	if (local) {
-	    execvp(av[0], av);
-	    (void) write (STDERR_FILENO, av[0], strlen (av[0]));
-	    (void) write (STDERR_FILENO, ":", 1);
-	    (void) write (STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
-	    (void) write (STDERR_FILENO, "\n", 1);
-	} else {
-	    (void)execv(av[0], av);
-	}
+	execvp(av[0], av);
+	(void) write (STDERR_FILENO, av[0], strlen (av[0]));
+	(void) write (STDERR_FILENO, ":", 1);
+	(void) write (STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
+	(void) write (STDERR_FILENO, "\n", 1);
 	exit(1);
     }
 
@@ -351,13 +343,13 @@ CompatRunCommand (void *cmdp, void *gnp)
      */
     while (1) {
 
-	while ((stat = wait(&reason)) != cpid) {
-	    if (stat == -1 && errno != EINTR) {
+	while ((rstat = wait(&reason)) != cpid) {
+	    if (rstat == -1 && errno != EINTR) {
 		break;
 	    }
 	}
 
-	if (stat > -1) {
+	if (rstat > -1) {
 	    if (WIFSTOPPED(reason)) {
 		status = WSTOPSIG(reason);		/* stopped */
 	    } else if (WIFEXITED(reason)) {
@@ -392,7 +384,7 @@ CompatRunCommand (void *cmdp, void *gnp)
 	    }
 	    break;
 	} else {
-	    Fatal ("error in wait: %d", stat);
+	    Fatal ("error in wait: %d", rstat);
 	    /*NOTREACHED*/
 	}
     }

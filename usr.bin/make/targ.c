@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.11 2004/11/24 07:15:46 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.12 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -439,12 +439,12 @@ Targ_PrintCmd (void *cmd, void *dummy __unused)
  *-----------------------------------------------------------------------
  */
 char *
-Targ_FmtTime (time_t time)
+Targ_FmtTime (time_t modtime)
 {
     struct tm	  	*parts;
     static char	  	buf[128];
 
-    parts = localtime(&time);
+    parts = localtime(&modtime);
 
     strftime(buf, sizeof buf, "%H:%M:%S %b %d, %Y", parts);
     buf[sizeof(buf) - 1] = '\0';
@@ -556,6 +556,8 @@ TargPrintNode (void *gnp, void *passp)
 		printf("! "); break;
 	    case OP_DOUBLEDEP:
 		printf(":: "); break;
+	    default:
+		break;
 	}
 	Targ_PrintType (gn->type);
 	Lst_ForEach (gn->children, TargPrintName, (void *)0);

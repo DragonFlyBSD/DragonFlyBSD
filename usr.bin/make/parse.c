@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.13 2004/11/24 07:15:46 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.14 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -1107,11 +1107,11 @@ ParseDoDependency (char *line)
 	     * If it was .NULL, the source is the suffix to use when a file
 	     * has no valid suffix.
 	     */
-	    char  savec;
+	    char  savech;
 	    while (*cp && !isspace ((unsigned char) *cp)) {
 		cp++;
 	    }
-	    savec = *cp;
+	    savech = *cp;
 	    *cp = '\0';
 	    switch (specType) {
 		case Suffixes:
@@ -1132,8 +1132,8 @@ ParseDoDependency (char *line)
 		default:
 		    break;
 	    }
-	    *cp = savec;
-	    if (savec != '\0') {
+	    *cp = savech;
+	    if (savech != '\0') {
 		cp++;
 	    }
 	    while (*cp && isspace ((unsigned char) *cp)) {
@@ -1166,7 +1166,7 @@ ParseDoDependency (char *line)
 	    }
 
 	    if (*cp == '(') {
-		GNode	  *gn;
+		GNode	  *gnp;
 
 		sources = Lst_Init (FALSE);
 		if (Arch_ParseArchive (&line, sources, VAR_CMD) != SUCCESS) {
@@ -1176,8 +1176,8 @@ ParseDoDependency (char *line)
 		}
 
 		while (!Lst_IsEmpty (sources)) {
-		    gn = (GNode *) Lst_DeQueue (sources);
-		    ParseDoSrc (tOp, gn->name, curSrcs);
+		    gnp = (GNode *) Lst_DeQueue (sources);
+		    ParseDoSrc (tOp, gnp->name, curSrcs);
 		}
 		Lst_Destroy (sources, NOFREE);
 		cp = line;
@@ -1451,7 +1451,7 @@ Parse_DoVar (char *line, GNode *ctxt)
     } else if (type == VAR_SHELL) {
 	Boolean	freeCmd = FALSE; /* TRUE if the command needs to be freed, i.e.
 				  * if any variable expansion was performed */
-	char *res, *err;
+	char *res, *error;
 
 	if (strchr(cp, '$') != NULL) {
 	    /*
@@ -1463,12 +1463,12 @@ Parse_DoVar (char *line, GNode *ctxt)
 	    freeCmd = TRUE;
 	}
 
-	res = Cmd_Exec(cp, &err);
+	res = Cmd_Exec(cp, &error);
 	Var_Set(line, res, ctxt);
 	free(res);
 
-	if (err)
-	    Parse_Error(PARSE_WARNING, err, cp);
+	if (error)
+	    Parse_Error(PARSE_WARNING, error, cp);
 
 	if (freeCmd)
 	    free(cp);
@@ -2057,7 +2057,8 @@ ParseSkipLine(int skip)
                 Buf_ReplaceLastByte(buf, (Byte)' ');
                 lineno++;
 
-                while ((c = ParseReadc()) == ' ' || c == '\t');
+                while ((c = ParseReadc()) == ' ' || c == '\t')
+		    continue;
 
                 if (c == EOF)
                     break;
@@ -2253,6 +2254,8 @@ test_char:
 		    semiNL = TRUE;
 		}
 		break;
+	    default:
+		break;
 	    }
 	    /*
 	     * Copy in the previous character and save this one in lastc.
@@ -2329,6 +2332,8 @@ test_char:
 			For_Run();
 		    line = ParseReadLine();
 		}
+		break;
+	    default:
 		break;
 	    }
 	}

@@ -25,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.6 2004/11/18 02:01:39 dillon Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.7 2004/11/24 07:19:14 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -169,7 +169,7 @@ DieHorribly(void)
 /*
  * Finish --
  *	Called when aborting due to errors in child shell to signal
- *	abnormal exit.
+ *	abnormal exit, with the number of errors encountered in Make_Make.
  *
  * Results:
  *	None
@@ -178,8 +178,7 @@ DieHorribly(void)
  *	The program exits
  */
 void
-Finish(errors)
-	int errors;	/* number of errors encountered in Make_Make */
+Finish(int errors)
 {
 	Fatal("%d error%s", errors, errors == 1 ? "" : "s");
 }
@@ -189,8 +188,7 @@ Finish(errors)
  *	malloc, but die on error.
  */
 void *
-emalloc(len)
-	size_t len;
+emalloc(size_t len)
 {
 	void *p;
 
@@ -204,8 +202,7 @@ emalloc(len)
  *	strdup, but die on error.
  */
 char *
-estrdup(str)
-	const char *str;
+estrdup(const char *str)
 {
 	char *p;
 
@@ -219,9 +216,7 @@ estrdup(str)
  *	realloc, but die on error.
  */
 void *
-erealloc(ptr, size)
-	void *ptr;
-	size_t size;
+erealloc(void *ptr, size_t size)
 {
 	if ((ptr = realloc(ptr, size)) == NULL)
 		enomem();
@@ -233,7 +228,7 @@ erealloc(ptr, size)
  *	die when out of memory.
  */
 void
-enomem()
+enomem(void)
 {
 	err(2, NULL);
 }
@@ -243,8 +238,7 @@ enomem()
  *	Remove a file carefully, avoiding directories.
  */
 int
-eunlink(file)
-	const char *file;
+eunlink(const char *file)
 {
 	struct stat st;
 
@@ -260,9 +254,7 @@ eunlink(file)
 
 
 int
-PrintAddr(a, b)
-    void * a;
-    void * b __unused;
+PrintAddr(void *a, void *b __unused)
 {
     printf("%p ", a);
     return 0;

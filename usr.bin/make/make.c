@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.9 2004/11/24 07:15:46 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.10 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -491,8 +491,8 @@ Make_Update (GNode *cgn)
      * of this node.
      */
     if (Lst_Open (cgn->iParents) == SUCCESS) {
-	char    *p1;
-	char	*cpref = Var_Value(PREFIX, cgn, &p1);
+	char    *ptr;
+	char	*cpref = Var_Value(PREFIX, cgn, &ptr);
 
 	while ((ln = Lst_Next (cgn->iParents)) != NULL) {
 	    pgn = (GNode *)Lst_Datum (ln);
@@ -501,7 +501,7 @@ Make_Update (GNode *cgn)
 		Var_Set (PREFIX, cpref, pgn);
 	    }
 	}
-	free(p1);
+	free(ptr);
 	Lst_Close (cgn->iParents);
     }
 }

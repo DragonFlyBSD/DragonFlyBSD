@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.12 2004/11/24 07:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.13 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -464,6 +464,8 @@ DirExpandCurly(char *word, char *brace, Lst path, Lst expansions)
 	    case '[':
 		Dir_Expand(file, path, expansions);
 		goto next;
+	    default:
+		break;
 	    }
 	}
 	if (*cp2 == '\0') {

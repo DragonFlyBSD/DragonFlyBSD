@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.11 2004/11/13 00:06:16 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.12 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -172,9 +172,7 @@ VarCmp (void *v, void *name)
  *-----------------------------------------------------------------------
  */
 static void
-VarPossiblyExpand(name, ctxt)
-	char	**name;
-	GNode	*ctxt;
+VarPossiblyExpand(char **name, GNode *ctxt)
 {
 	if (strchr(*name, '$') != NULL)
 		*name = Var_Subst(NULL, *name, ctxt, 0);
@@ -889,6 +887,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			return("$(.PREFIX)");
 		    case '!':
 			return("$(.MEMBER)");
+		    default:
+			break;
 		}
 	    }
 	    /*
@@ -995,6 +995,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			return(val);
 		    }
 		    break;
+		default:
+		    break;
 		}
 	    }
 	}
@@ -1020,6 +1022,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    case '*':
 		    case '!':
 			dynamic = TRUE;
+			break;
+		    default:
 			break;
 		}
 	    } else if ((vlen > 2) && (str[0] == '.') &&
@@ -1213,11 +1217,11 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		case 'S':
 		{
 		    VarPattern 	    pattern;
-		    char	    delim;
+		    char	    del;
 		    Buffer  	    buf;    	/* Buffer for patterns */
 
 		    pattern.flags = 0;
-		    delim = tstr[1];
+		    del = tstr[1];
 		    tstr += 2;
 
 		    /*
@@ -1238,16 +1242,16 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		     * the delimiter (expand the variable substitution).
 		     * The result is left in the Buffer buf.
 		     */
-		    for (cp = tstr; *cp != '\0' && *cp != delim; cp++) {
+		    for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
 			if ((*cp == '\\') &&
-			    ((cp[1] == delim) ||
+			    ((cp[1] == del) ||
 			     (cp[1] == '$') ||
 			     (cp[1] == '\\')))
 			{
 			    Buf_AddByte(buf, (Byte)cp[1]);
 			    cp++;
 			} else if (*cp == '$') {
-			    if (cp[1] != delim) {
+			    if (cp[1] != del) {
 				/*
 				 * If unescaped dollar sign not before the
 				 * delimiter, assume it's a variable
@@ -1281,14 +1285,14 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		     * If lhs didn't end with the delimiter, complain and
 		     * return NULL
 		     */
-		    if (*cp != delim) {
+		    if (*cp != del) {
 			*lengthPtr = cp - start + 1;
 			if (*freePtr) {
 			    free(str);
 			}
 			Buf_Destroy(buf, TRUE);
 			Error("Unclosed substitution for %s (%c missing)",
-			      v->name, delim);
+			      v->name, del);
 			return (var_Error);
 		    }
 
@@ -1313,16 +1317,16 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    buf = Buf_Init(0);
 
 		    tstr = cp + 1;
-		    for (cp = tstr; *cp != '\0' && *cp != delim; cp++) {
+		    for (cp = tstr; *cp != '\0' && *cp != del; cp++) {
 			if ((*cp == '\\') &&
-			    ((cp[1] == delim) ||
+			    ((cp[1] == del) ||
 			     (cp[1] == '&') ||
 			     (cp[1] == '\\') ||
 			     (cp[1] == '$')))
 			{
 			    Buf_AddByte(buf, (Byte)cp[1]);
 			    cp++;
-			} else if ((*cp == '$') && (cp[1] != delim)) {
+			} else if ((*cp == '$') && (cp[1] != del)) {
 			    char    *cp2;
 			    int	    len;
 			    Boolean freeIt;
@@ -1346,14 +1350,14 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    /*
 		     * If didn't end in delimiter character, complain
 		     */
-		    if (*cp != delim) {
+		    if (*cp != del) {
 			*lengthPtr = cp - start + 1;
 			if (*freePtr) {
 			    free(str);
 			}
 			Buf_Destroy(buf, TRUE);
 			Error("Unclosed substitution for %s (%c missing)",
-			      v->name, delim);
+			      v->name, del);
 			return (var_Error);
 		    }
 
@@ -1428,6 +1432,8 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			case '1':
 			    pattern.flags |= VAR_SUB_ONE;
 			    continue;
+			default:
+			    break;
 			}
 			break;
 		    }
@@ -1500,10 +1506,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 #ifdef SUNSHCMD
 		case 's':
 		    if (tstr[1] == 'h' && (tstr[2] == endc || tstr[2] == ':')) {
-			char *err;
-			newStr = Cmd_Exec (str, &err);
-			if (err)
-			    Error (err, str);
+			char *error;
+			newStr = Cmd_Exec (str, &error);
+			if (error)
+			    Error (error, str);
 			cp = tstr + 2;
 			termc = *cp;
 			break;

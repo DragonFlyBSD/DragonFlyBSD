@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.10 2004/11/24 07:19:14 dillon Exp $
  */
 
 /*-
@@ -729,6 +729,8 @@ do_string_compare:
 			} else {
 			    t = (left > right ? True : False);
 			}
+			break;
+		    default:
 			break;
 		    }
 		}
