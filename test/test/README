@@ -1,4 +1,4 @@
-$DragonFly: src/test/test/README,v 1.16 2004/08/18 08:56:53 dillon Exp $
+$DragonFly: src/test/test/README,v 1.17 2004/08/18 09:02:08 dillon Exp $
 			README FOR /usr/src/test/test
 
     This is just a dummy directory that committers use to test the
@@ -8,5 +8,5 @@ $DragonFly: src/test/test/README,v 1.16 2004/08/18 08:56:53 dillon Exp $
 
     Thanks Matt, it works.
 
-    more testing 8
+    more testing 9
 
