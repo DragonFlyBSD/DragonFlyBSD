@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_fcntl.c,v 1.7 1999/12/12 10:27:04 newton Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.12 2003/08/25 18:48:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_fcntl.c,v 1.13 2003/08/26 05:30:29 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -436,14 +436,11 @@ svr4_sys_llseek(struct svr4_sys_llseek_args *v)
 int
 svr4_sys_access(struct svr4_sys_access_args *uap)
 {
-	struct thread *td = curthread;	/* XXX */
 	struct access_args cup;
 	int error;
 
 	caddr_t sg = stackgap_init();
 	CHECKALTEXIST(&sg, SCARG(uap, path));
-
-	KKASSERT(p);
 
 	SCARG(&cup, path) = SCARG(uap, path);
 	SCARG(&cup, flags) = SCARG(uap, flags);
@@ -551,7 +548,6 @@ svr4_sys_fcntl(struct svr4_sys_fcntl_args *uap)
 	struct fcntl_args		fa;
 	int                             *retval;
 
-	KKASSERT(p);
 	retval = &uap->sysmsg_result;
 
 	SCARG(&fa, fd) = SCARG(uap, fd);
