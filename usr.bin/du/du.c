@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.4 2003/10/04 20:36:43 hmp Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.5 2004/07/04 10:28:38 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -158,8 +158,8 @@ main(int argc, char **argv)
 				valp = vals_base2;
 				break;
 			case 'k':
-				if (!hflag)
-					putenv("BLOCKSIZE=1024");
+				hflag = 0;
+				putenv("BLOCKSIZE=1024");
 				break;
 			case 'r':		 /* Compatibility. */
 				break;
