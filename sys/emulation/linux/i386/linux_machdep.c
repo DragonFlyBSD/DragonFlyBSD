@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_machdep.c,v 1.6.2.4 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.8 2003/08/07 21:17:18 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_machdep.c,v 1.9 2003/08/20 07:13:27 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -113,12 +113,16 @@ linux_execve(struct linux_execve_args *args)
 		printf(ARGS(execve, "%s"), args->path);
 #endif
 
-	bsd.sysmsg_result = 0;
+	/*
+	 * Note: inherit and set the full 64 bit syscall return
+	 * value so a successful execve() sets %edx to 0.
+	 */
+	bsd.sysmsg_result64 = args->sysmsg_result64;
 	bsd.fname = args->path;
 	bsd.argv = args->argp;
 	bsd.envv = args->envp;
 	error = execve(&bsd);
-	args->sysmsg_result = bsd.sysmsg_result;
+	args->sysmsg_result64 = bsd.sysmsg_result64;
 	return(error);
 }
 

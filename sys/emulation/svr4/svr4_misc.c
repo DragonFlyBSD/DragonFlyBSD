@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.11 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.12 2003/08/20 07:13:30 dillon Exp $
  */
 
 /*
@@ -176,14 +176,15 @@ svr4_sys_execv(struct svr4_sys_execv_args *uap)
 	int error;
 
 	sg = stackgap_init();
-	CHECKALTEXIST(&sg, SCARG(uap, path));
+	CHECKALTEXIST(&sg, uap->path);
 
-	SCARG(&ap, fname) = SCARG(uap, path);
-	SCARG(&ap, argv) = SCARG(uap, argp);
-	SCARG(&ap, envv) = NULL;
-	ap.sysmsg_result = 0;
+	/* note: parts of result64 may be maintained or cleared by execve */
+	ap.sysmsg_result64 = uap->sysmsg_result64;
+	ap.fname = uap->path;
+	ap.argv = uap->argp;
+	ap.envv = NULL;
 	error = execve(&ap);
-	uap->sysmsg_result = ap.sysmsg_result;
+	uap->sysmsg_result64 = ap.sysmsg_result64;
 	return(error);
 }
 

@@ -46,7 +46,7 @@
  *	@(#)sun_misc.c	8.1 (Berkeley) 6/18/93
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_misc.c,v 1.34 1999/09/29 15:12:09 marcel Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.7 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_misc.c,v 1.8 2003/08/20 07:13:25 dillon Exp $
  */
 
 /*
@@ -190,12 +190,15 @@ ibcs2_execv(struct ibcs2_execv_args *uap)
 	caddr_t sg = stackgap_init();
 	int error;
 
-        CHECKALTEXIST(&sg, SCARG(uap, path));
-	SCARG(&ea, fname) = SCARG(uap, path);
-	SCARG(&ea, argv) = SCARG(uap, argp);
-	SCARG(&ea, envv) = NULL;
+        CHECKALTEXIST(&sg, uap->path);
+
+	/* note: parts of result64 may be maintained or cleared by execve */
+	ea.sysmsg_result64 = uap->sysmsg_result64;
+	ea.fname = uap->path;
+	ea.argv = uap->argp;
+	ea.envv = NULL;
 	error = execve(&ea);
-	uap->sysmsg_result = ea.sysmsg_result;
+	uap->sysmsg_result64 = ea.sysmsg_result64;
 	return(error);
 }
 
