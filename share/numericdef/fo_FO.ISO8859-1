@@ -1,0 +1,12 @@
+# $DragonFly: src/share/numericdef/Attic/fo_FO.ISO8859-1,v 1.1 2004/08/28 22:39:04 asmodai Exp $
+#
+# WARNING: spaces may be essential at the end of lines
+# WARNING: empty lines are essential too
+#
+# decimal_point
+,
+# thousands_sep
+.
+# grouping, separated by ;
+3;3
+# EOF
