@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.11 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.12 2004/11/13 22:42:39 dillon Exp $
  */
 
 /*-
@@ -2273,7 +2273,7 @@ test_char:
 
 	/*
 	 * Strip trailing blanks and tabs from the line.
-	 * Do not strip a blank or tab that is preceeded by
+	 * Do not strip a blank or tab that is preceded by
 	 * a '\'
 	 */
 	ep = line;

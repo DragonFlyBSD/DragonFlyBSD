@@ -36,7 +36,7 @@
 .\"
 .\"	@(#)tutorial.ms	8.1 (Berkeley) 8/18/93
 .\" $FreeBSD: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.8.2.2 2000/11/24 10:08:45 ru Exp $
-.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.2 2003/06/17 04:29:29 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.3 2004/11/13 22:42:43 dillon Exp $
 .\"
 .so stubs
 .EH 'PSD:12-%''PMake \*- A Tutorial'
@@ -603,7 +603,7 @@ likely freeze if you execute something that produces thousands of
 bytes of output (8 Kb is the limit on many UNIX systems).
 .LP
 The value of a variable may be retrieved by enclosing the variable
-name in parentheses or curly braces and preceeding the whole thing
+name in parentheses or curly braces and preceding the whole thing
 with a dollar sign.
 .LP
 For example, to set the variable CFLAGS to the string
@@ -2641,7 +2641,7 @@ character is replaced by the
 unless it is preceded by a backslash.
 You are allowed to use any character except
 colon or exclamation point to separate the two strings. This so-called
-delimiter character may be placed in either string by preceeding it
+delimiter character may be placed in either string by preceding it
 with a backslash.
 .IP T
 .Ix 0 def :T

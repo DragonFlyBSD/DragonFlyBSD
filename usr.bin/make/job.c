@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.13 2004/11/13 00:06:16 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.14 2004/11/13 22:42:39 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -1991,7 +1991,7 @@ end_loop:
 	     * Need to send the output to the screen. Null terminate it
 	     * first, overwriting the newline character if there was one.
 	     * So long as the line isn't one we should filter (according
-	     * to the shell description), we print the line, preceeded
+	     * to the shell description), we print the line, preceded
 	     * by a target banner if this target isn't the same as the
 	     * one for which we last printed something.
 	     * The rest of the data in the buffer are then shifted down

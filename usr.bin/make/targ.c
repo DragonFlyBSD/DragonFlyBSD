@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.10 2004/11/13 22:42:39 dillon Exp $
  */
 
 /*-
@@ -578,7 +578,7 @@ TargPrintNode (void *gnp, void *passp)
  *	0.
  *
  * Side Effects:
- *	The name of each file is printed preceeded by #\t
+ *	The name of each file is printed preceded by #\t
  *
  *-----------------------------------------------------------------------
  */

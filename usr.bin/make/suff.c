@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.10 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.11 2004/11/13 22:42:39 dillon Exp $
  */
 
 /*-
@@ -823,7 +823,7 @@ Suff_GetPath (char *sname)
  *	The searchPath field of all the suffixes is extended by the
  *	directories in dirSearchPath. If paths were specified for the
  *	".h" suffix, the directories are stuffed into a global variable
- *	called ".INCLUDES" with each directory preceeded by a -I. The same
+ *	called ".INCLUDES" with each directory preceded by a -I. The same
  *	is done for the ".a" suffix, except the variable is called
  *	".LIBS" and the flag is -L.
  *-----------------------------------------------------------------------
