@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.14 2004/07/02 04:41:01 hsu Exp $
  */
 
 #include "opt_inet6.h"

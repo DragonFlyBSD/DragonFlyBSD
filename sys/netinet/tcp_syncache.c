@@ -1,4 +1,10 @@
-/*-
+/*
+ * Copyright (c) 2003-2004 Jeffrey M. Hsu.  All rights reserved.
+ *
+ * All advertising materials mentioning features or use of this software
+ * must display the following acknowledgement:
+ *   This product includes software developed by Jeffrey M. Hsu.
+ *
  * Copyright (c) 2001 Networks Associates Technologies, Inc.
  * All rights reserved.
  *
@@ -32,7 +38,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.13 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.14 2004/07/02 04:41:01 hsu Exp $
  */
 
 #include "opt_inet6.h"

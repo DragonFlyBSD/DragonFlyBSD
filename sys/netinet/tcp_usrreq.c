@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	From: @(#)tcp_usrreq.c	8.2 (Berkeley) 1/3/94
  * $FreeBSD: src/sys/netinet/tcp_usrreq.c,v 1.51.2.17 2002/10/11 11:46:44 ume Exp $
- * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.23 2004/05/20 04:32:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_usrreq.c,v 1.24 2004/07/02 04:41:01 hsu Exp $
  */
 
 #include "opt_ipsec.h"

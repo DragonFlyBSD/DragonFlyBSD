@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)udp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/udp_var.h,v 1.22.2.1 2001/02/18 07:12:25 luigi Exp $
- * $DragonFly: src/sys/netinet/udp_var.h,v 1.10 2004/06/03 18:30:03 joerg Exp $
+ * $DragonFly: src/sys/netinet/udp_var.h,v 1.11 2004/07/02 04:41:01 hsu Exp $
  */
 
 #ifndef _NETINET_UDP_VAR_H_

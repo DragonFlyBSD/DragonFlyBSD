@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.31 2004/06/24 08:15:17 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.32 2004/07/02 04:41:01 hsu Exp $
  */
 
 #define	_IP_VHL

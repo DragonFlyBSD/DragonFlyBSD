@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2003-2004 Jeffrey M. Hsu.  All rights reserved.
  * Copyright (c) 1982, 1986, 1988, 1990, 1993, 1995
  *	The Regents of the University of California.  All rights reserved.
  *
@@ -32,7 +33,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.34 2004/06/24 07:45:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.35 2004/07/02 04:41:01 hsu Exp $
  */
 
 #include "opt_compat.h"
