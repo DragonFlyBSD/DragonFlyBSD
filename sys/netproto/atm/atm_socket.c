@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_socket.c,v 1.4 1999/08/28 00:48:37 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.5 2004/02/26 14:25:29 joerg Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_socket.c,v 1.6 2004/03/05 19:17:25 hsu Exp $
  */
 
 /*
@@ -76,10 +76,11 @@ static struct t_atm_cause	atm_sock_cause = {
  *
  */
 int
-atm_sock_attach(so, send, recv)
+atm_sock_attach(so, send, recv, rl)
 	struct socket	*so;
 	u_long		send;
 	u_long		recv;
+	struct rlimit	*rl;
 {
 	Atm_pcb		*atp = sotoatmpcb(so);
 	int		err;
@@ -100,7 +101,7 @@ atm_sock_attach(so, send, recv)
 	 * Reserve socket buffer space, if not already done
 	 */
 	if ((so->so_snd.sb_hiwat == 0) || (so->so_rcv.sb_hiwat == 0)) {
-		err = soreserve(so, send, recv);
+		err = soreserve(so, send, recv, rl);
 		if (err)
 			return (err);
 	}

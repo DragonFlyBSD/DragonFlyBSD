@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1280,6 +1280,7 @@ spp_usrreq(so, req, m, nam, controlp)
 	struct mbuf *mm;
 	struct sockbuf *sb;
 
+#ifdef OBSOLETE		/* not converted to FreeBSD usrreq style XXX */
 	if (req == PRU_CONTROL)
                 return (ns_control(so, (int)m, (caddr_t)nam,
 			(struct ifnet *)controlp));
@@ -1518,6 +1519,7 @@ release:
 	if (m != NULL)
 		m_freem(m);
 	splx(s);
+#endif
 	return (error);
 }
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_aal5.c,v 1.6 1999/10/09 23:24:59 green Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.6 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_aal5.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 /*
@@ -48,7 +48,8 @@ u_long		atm_aal5_recvspace = 64 * 1024;	/* XXX */
 /*
  * Local functions
  */
-static int	atm_aal5_attach (struct socket *, int, struct thread *);
+static int	atm_aal5_attach (struct socket *, int,
+			struct pru_attach_info *);
 static int	atm_aal5_detach (struct socket *);
 static int	atm_aal5_bind (struct socket *, struct sockaddr *, 
 			struct thread *);
@@ -224,10 +225,10 @@ static Atm_attributes	atm_aal5_defattr = {
  *
  */
 static int
-atm_aal5_attach(so, proto, td)
+atm_aal5_attach(so, proto, ai)
 	struct socket	*so;
 	int		proto;
-	struct thread	*td;
+	struct pru_attach_info *ai;
 {
 	Atm_pcb		*atp;
 
@@ -236,7 +237,8 @@ atm_aal5_attach(so, proto, td)
 	/*
 	 * Do general attach stuff
 	 */
-	err = atm_sock_attach(so, atm_aal5_sendspace, atm_aal5_recvspace);
+	err = atm_sock_attach(so, atm_aal5_sendspace, atm_aal5_recvspace,
+			      ai->sb_rlimit);
 	if (err)
 		ATM_RETERR(err);
 
@@ -360,7 +362,8 @@ atm_aal5_connect(struct socket *so, struct sockaddr *addr, thread_t td)
 
 		size = atp->atp_attr.aal.v.aal5.forward_max_SDU_size;
 		if (size != T_ATM_ABSENT)
-			if (!sbreserve(&so->so_snd, size, so, td->td_proc)) {
+			if (!sbreserve(&so->so_snd, size, so,
+				       &td->td_proc->p_rlimit[RLIMIT_SBSIZE])) {
 				err = ENOBUFS;
 				ATM_OUTRO();
 			}

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/atm_var.h,v 1.2 1999/08/28 00:48:39 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.7 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/atm_var.h,v 1.8 2004/03/05 19:17:25 hsu Exp $
  *
  */
 
@@ -168,7 +168,8 @@ int		atm_create_stack (Atm_connvc *, struct stack_list *,
 			void (*)(int, void *, int, int) );
 
 	/* atm_socket.c */
-int		atm_sock_attach (struct socket *, u_long, u_long);
+int		atm_sock_attach (struct socket *, u_long, u_long,
+			struct rlimit *);
 int		atm_sock_detach (struct socket *);
 int		atm_sock_bind (struct socket *, struct sockaddr *);
 int		atm_sock_listen (struct socket *, Atm_endpoint *);

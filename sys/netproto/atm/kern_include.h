@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/netatm/kern_include.h,v 1.3 1999/08/28 00:48:40 peter Exp $
- *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.4 2004/02/06 09:17:40 rob Exp $
+ *	@(#) $DragonFly: src/sys/netproto/atm/kern_include.h,v 1.5 2004/03/05 19:17:25 hsu Exp $
  *
  */
 
@@ -56,6 +56,7 @@
 #include <sys/conf.h>
 #include <sys/domain.h>
 #include <sys/protosw.h>
+#include <sys/resourcevar.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/syslog.h>

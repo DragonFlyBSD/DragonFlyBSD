@@ -32,7 +32,7 @@
  *
  *	@(#)idp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/idp_usrreq.c,v 1.9 1999/08/28 00:49:47 peter Exp $
- * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/idp_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -390,6 +390,7 @@ idp_usrreq(so, req, m, nam, control)
 	int req;
 	struct mbuf *m, *nam, *control;
 {
+#ifdef OBSOLETE		/* not converted to new FreeBSD usrreq style XXX */
 	struct nspcb *nsp = sotonspcb(so);
 	int error = 0;
 
@@ -545,6 +546,8 @@ release:
 	if (m != NULL)
 		m_freem(m);
 	return (error);
+#endif
+	return (0);
 }
 /*ARGSUSED*/
 int
@@ -554,6 +557,7 @@ idp_raw_usrreq(so, req, m, nam, control)
 	struct mbuf *m, *nam, *control;
 {
 	int error = 0;
+#ifdef OBSOLETE		/* not converted to new FreeBSD usrreq style XXX */
 	struct nspcb *nsp = sotonspcb(so);
 
 	switch (req) {
@@ -580,6 +584,7 @@ idp_raw_usrreq(so, req, m, nam, control)
 	default:
 		error = idp_usrreq(so, req, m, nam, control);
 	}
+#endif
 	return (error);
 }
 

@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.6 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -1612,15 +1612,15 @@ spx_shutdown(so)
 }
 
 static int
-spx_sp_attach(so, proto, td)
+spx_sp_attach(so, proto, ai)
 	struct socket *so;
 	int proto;
-	struct thread *td;
+	struct pru_attach_info *ai;
 {
 	int error;
 	struct ipxpcb *ipxp;
 
-	error = spx_attach(so, proto, td);
+	error = spx_attach(so, proto, ai);
 	if (error == 0) {
 		ipxp = sotoipxpcb(so);
 		((struct spxpcb *)ipxp->ipxp_pcb)->s_flags |=

@@ -2,7 +2,7 @@
  * Copyright (c) 1990,1994 Regents of The University of Michigan.
  * All Rights Reserved.  See COPYRIGHT.
  *
- * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.6 2003/11/08 07:57:51 dillon Exp $
+ * $DragonFly: src/sys/netproto/atalk/ddp_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -37,7 +37,7 @@ static u_long	ddp_sendspace = DDP_MAXSZ; /* Max ddp size + 1 (ddp_type) */
 static u_long	ddp_recvspace = 10 * ( 587 + sizeof( struct sockaddr_at ));
 
 static int
-ddp_attach(struct socket *so, int proto, struct thread *td)
+ddp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 {
 	struct ddpcb	*ddp;
 	int		error = 0;
@@ -55,7 +55,7 @@ ddp_attach(struct socket *so, int proto, struct thread *td)
 	if (error) {
 	    return (error);
 	}
-	return (soreserve( so, ddp_sendspace, ddp_recvspace ));
+	return (soreserve( so, ddp_sendspace, ddp_recvspace, ai->sb_rlimit ));
 }
 
 static int

@@ -34,7 +34,7 @@
  *	@(#)ipx_pcb.c
  *
  * $FreeBSD: src/sys/netipx/ipx_pcb.c,v 1.18.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.6 2003/08/07 21:17:37 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_pcb.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
 static struct	ipx_addr zeroipx_addr;
 
 int
-ipx_pcballoc(struct socket *so, struct ipxpcb *head, struct thread *td)
+ipx_pcballoc(struct socket *so, struct ipxpcb *head)
 {
 	struct ipxpcb *ipxp;
 
