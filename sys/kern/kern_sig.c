@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.3 2003/06/22 04:31:04 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1173,7 +1173,7 @@ psignal(p, sig)
 		 * runnable and can look at the signal.  But don't make
 		 * the process runnable, leave it stopped.
 		 */
-		if (p->p_wchan && p->p_flag & P_SINTR)
+		if (p->p_wchan && (p->p_flag & P_SINTR))
 			unsleep(p);
 		goto out;
 
