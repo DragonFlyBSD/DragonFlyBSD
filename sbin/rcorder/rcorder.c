@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$NetBSD: rcorder.c,v 1.7 2000/08/04 07:33:55 enami Exp $
- *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.4 2003/12/11 20:50:21 dillon Exp $
+ *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.5 2003/12/11 22:08:31 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -54,6 +54,8 @@ int debug = 0;
 #else
 # define	DPRINTF(args)
 #endif
+
+int provide;
 
 #define REQUIRE_STR	"# REQUIRE:"
 #define REQUIRE_LEN	(sizeof(REQUIRE_STR) - 1)
@@ -94,6 +96,7 @@ struct provnode {
 	flag		in_progress;
 	filenode	*fnode;
 	provnode	*next, *last;
+	char		*name;
 };
 
 struct f_provnode {
@@ -155,7 +158,7 @@ main(int argc, char **argv)
 {
 	int ch;
 
-	while ((ch = getopt(argc, argv, "dk:s:o:")) != -1)
+	while ((ch = getopt(argc, argv, "dpk:s:o:")) != -1)
 		switch (ch) {
 		case 'd':
 #ifdef DEBUG
@@ -172,6 +175,9 @@ main(int argc, char **argv)
 			break;
 		case 'o':
 			strnode_add(&onetime_list, optarg, 0);
+			break;
+		case 'p':
+			provide = 1;
 			break;
 		default:
 			/* XXX should crunch it? */
@@ -344,6 +350,7 @@ add_provide(filenode *fnode, char *s)
 	pnode->fnode = fnode;
 	pnode->next = head->next;
 	pnode->last = head;
+	pnode->name = strdup(s);
 	head->next = pnode;
 	if (pnode->next != NULL)
 		pnode->next->last = pnode;
@@ -538,6 +545,7 @@ make_fake_provision(filenode *node)
 	pnode->fnode = node;
 	pnode->next = head->next;
 	pnode->last = head;
+	pnode->name = strdup(buffer);
 	head->next = pnode;
 	if (pnode->next != NULL)
 		pnode->next->last = pnode;
@@ -572,7 +580,7 @@ insert_before(void)
 		fake_prov_entry = make_fake_provision(bl_list->node);
 
 		entry = Hash_CreateEntry(provide_hash, bl_list->s, &new);
-		if (new == 1)
+		if (new == 1 && !provide)
 			warnx("file `%s' is before unknown provision `%s'", bl_list->node->filename, bl_list->s);
 
 		for (pnode = Hash_GetValue(entry); pnode; pnode = pnode->next) {
@@ -790,16 +798,40 @@ generate_ordering(void)
 	 * executed only once for every strongly connected set of
 	 * nodes.
 	 */
-	if (onetime_list) {
-		struct strnodelist *scan;
+	if (provide) {
+		/*
+		 * List all keywords provided by the listed files
+		 */
 		filenode *file;
+		f_provnode *f_prov;
+		provnode *prov;
+
+		for (file = fn_head->next; file; file = file->next) {
+		    for (f_prov = file->prov_list; f_prov; f_prov = f_prov->next) {
+			if (strncmp(f_prov->pnode->name, "fake_", 5) != 0)
+			    printf("%s\n", f_prov->pnode->name);
+		    }
+		}
+	} else if (onetime_list) {
+		/*
+		 * Only list dependanacies required to start particular
+		 * keywords.
+		 */
+		strnodelist *scan;
+		filenode *file;
+		f_provnode *f_prov;
+		provnode *prov;
 
 		for (scan = onetime_list; scan; scan = scan->next) {
 		    for (file = fn_head->next; file; file = file->next) {
-			if (strcmp(scan->s, file->filename) == 0) {
-			    do_file(file);
-			    break;
+			for (f_prov = file->prov_list; f_prov; f_prov = f_prov->next) {
+			    if (strcmp(scan->s, f_prov->pnode->name) == 0) {
+				do_file(file);
+				break;
+			    }
 			}
+			if (f_prov)
+			    break;
 		    }
 		}
 	} else {
