@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.9 2004/07/12 18:56:49 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.10 2004/07/12 21:02:34 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -75,17 +75,22 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
-<td valign="top">Code cleanness and userland utilities
+<tr><td valign="top"><a href="mailto:andre 'at' digirati 'dot' com 'dot' br">Andre Nathan</a> </td>
+<td valign="top">Code cleanup, 'route show'
+</td>
+</tr>
+
+<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:eirikn 'at' kerneled 'dot' com">Eirik Nygaard</a> </td>
+<td bgcolor="#DDDDDD" valign="top">Code cleanness and userland utilities
 (commit access)</td>
 </tr>
 
-<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
-<td bgcolor="#DDDDDD" valign="top">Anything and Everything
+<tr><td valign="top"><a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
+<td valign="top">Anything and Everything
 (commit access)</td></tr>
 
 <tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
-<td bgcolor="#DDDDDD" valign="top">Janitorial work
+<td bgcolor="#DDDDDD" valign="top">Janitorial work, Installer
 (commit access)</td></tr>
 
 <!--
@@ -129,9 +134,21 @@ to the DragonFly project.  Here's a partial list.
 </td>
 </tr>
 
-<tr><td valign="top"><a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
+<tr><td valign="top">
+<a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
 <td valign="top">Secretarial work, documentation, website cleanup
 (commit access)</td>
+</tr>
+
+<tr><td bgcolor="#DDDDDD" valign="top">
+<a href="mailto:qhwt+dragonfly-website 'at' les 'dot' ath 'dot' cx">YONETANI Tomokazu</a></td>
+<td bgcolor="#DDDDDD" valign="top">ACPI
+</td>
+</tr>
+
+<tr><td valign="top"><a href="mailto:geekgod 'at' geekgod 'dot' net">Scott Ullrich</a></td>
+<td valign="top">Installer
+</td>
 </tr>
 
 </table>
