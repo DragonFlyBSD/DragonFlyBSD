@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_systimer.c,v 1.5 2004/11/20 20:25:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_systimer.c,v 1.6 2005/03/27 19:25:09 dillon Exp $
  */
 
 /*
@@ -60,9 +60,10 @@
 
 /*
  * Execute ready systimers.  Called directly from the platform-specific
- * one-shot timer clock interrupt (e.g. clkintr()).  Systimer functions are
- * responsible for calling hardclock, statclock, and other finely-timed
- * routines.
+ * one-shot timer clock interrupt (e.g. clkintr()) or via an IPI.  May
+ * be called simultaniously on multiple cpus and always operations on 
+ * the current cpu's queue.  Systimer functions are responsible for calling
+ * hardclock, statclock, and other finely-timed routines.
  */
 void
 systimer_intr(sysclock_t *timep, struct intrframe *frame)
@@ -115,10 +116,6 @@ systimer_intr(sysclock_t *timep, struct intrframe *frame)
 	    systimer_add(info);
 	}
     }
-    if (info)
-	gd->gd_nextclock = info->time;
-    else
-	gd->gd_nextclock = 0;
     --gd->gd_syst_nest;
     crit_exit();
 }
@@ -135,7 +132,6 @@ systimer_add(systimer_t info)
 	systimer_t scan2;
 	scan1 = TAILQ_FIRST(&gd->gd_systimerq);
 	if (scan1 == NULL || (int)(scan1->time - info->time) > 0) {
-	    gd->gd_nextclock = info->time;
 	    cputimer_intr_reload(info->time - cputimer_count());
 	    TAILQ_INSERT_HEAD(&gd->gd_systimerq, info, node);
 	} else {

@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.20 2004/11/20 20:25:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.21 2005/03/27 19:25:07 dillon Exp $
  */
 
 /*
@@ -174,12 +174,14 @@ clkintr(struct intrframe frame)
 	timer0_running = 0;
 
 	/*
-	 * XXX this could be done more efficiently by using a bitmask?
+	 * XXX the dispatcher needs work.  right now we call systimer_intr()
+	 * directly or via IPI for any cpu with systimers queued, which is
+	 * usually *ALL* of them.  We need a better way to do this.
 	 */
 	timer1_count = cputimer_count();
 	for (n = 0; n < ncpus; ++n) {
 	    gscan = globaldata_find(n);
-	    if (gscan->gd_nextclock == 0)
+	    if (TAILQ_FIRST(&gscan->gd_systimerq) == NULL)
 		continue;
 	    if (gscan != gd) {
 		lwkt_send_ipiq(gscan, (ipifunc_t)systimer_intr, &timer1_count);
