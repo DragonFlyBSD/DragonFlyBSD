@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.14 2004/07/31 07:52:50 dillon Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.15 2004/09/14 15:49:54 joerg Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -503,19 +503,21 @@ void		m_chtype(struct mbuf *m, int type);
 
 /* Packet tag for use with PACKET_ABI_COMPAT */
 #define	PACKET_TAG_IPSEC_IN_DONE		1  /* IPsec applied, in */
+/* struct tdb_indent */
 #define	PACKET_TAG_IPSEC_OUT_DONE		2  /* IPsec applied, out */
+/* struct tdb_indent */
 #define	PACKET_TAG_IPSEC_IN_CRYPTO_DONE		3  /* NIC IPsec crypto done */
+/* struct tdb_indent, never added */
 #define	PACKET_TAG_IPSEC_OUT_CRYPTO_NEEDED	4  /* NIC IPsec crypto req'ed */
-#define	PACKET_TAG_IPSEC_IN_COULD_DO_CRYPTO	5  /* NIC notifies IPsec */
+/* struct tdb_indent, never added */
 #define	PACKET_TAG_IPSEC_PENDING_TDB		6  /* Reminder to do IPsec */
-#define	PACKET_TAG_BRIDGE			7  /* Bridge processing done */
-#define	PACKET_TAG_GIF				8  /* GIF processing done */
-#define	PACKET_TAG_GRE				9  /* GRE processing done */
-#define	PACKET_TAG_IN_PACKET_CHECKSUM		10 /* NIC checksumming done */
+/* struct tdb_indent, never added */
 #define	PACKET_TAG_ENCAP			11 /* Encap.  processing */
-#define	PACKET_TAG_IPSEC_SOCKET			12 /* IPSEC socket ref */
+/* struct ifnet *, the GIF interface */
 #define	PACKET_TAG_IPSEC_HISTORY		13 /* IPSEC history */
+/* struct ipsec_history */
 #define	PACKET_TAG_IPV6_INPUT			14 /* IPV6 input processing */
+/* struct ip6aux */
 
 /*
  * As a temporary and low impact solution to replace the even uglier
@@ -533,9 +535,11 @@ void		m_chtype(struct mbuf *m, int type);
 
 /* Packet tags used in the FreeBSD network stack */
 #define	PACKET_TAG_DUMMYNET			15 /* dummynet info */
-#define	PACKET_TAG_IPFW				16 /* ipfw classification */
+/* struct dn_pkt as fake mbuf */
 #define	PACKET_TAG_DIVERT			17 /* divert info */
+/* uint16_t, encoded in m_data */
 #define	PACKET_TAG_IPFORWARD			18 /* ipforward info */
+/* struct sockaddr_in * as m_data */
 
 /* Packet tag routines */
 struct	m_tag 	*m_tag_alloc(u_int32_t, int, int, int);
