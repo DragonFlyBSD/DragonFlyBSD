@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.29 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.30 2005/02/04 21:24:06 okumoto Exp $
  */
 
 /*-
@@ -417,6 +417,7 @@ Arch_ParseArchive(char **linePtr, Lst *nodeLst, GNode *ctxt)
 static int
 ArchFindArchive(const void *ar, const void *archName)
 {
+
 	return (strcmp(archName, ((const Arch *)ar)->name));
 }
 

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) Max Okumoto
+ * Copyright (c) 2005 Max Okumoto
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -39,7 +39,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.29 2005/01/27 10:25:19 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.30 2005/02/04 21:24:06 okumoto Exp $
  */
 
 /*
@@ -67,6 +67,7 @@
 inline size_t
 Buf_Size(const Buffer *buf)
 {
+
 	return (buf->end - buf->buf);
 }
 
@@ -93,6 +94,7 @@ BufExpand(Buffer *bp, size_t nb)
 inline void
 Buf_AddByte(Buffer *bp, Byte byte)
 {
+
 	BufExpand(bp, 1);
 
 	*bp->end = byte;
@@ -124,6 +126,7 @@ Buf_AddBytes(Buffer *bp, size_t len, const Byte *bytes)
 Byte *
 Buf_GetAll(Buffer *bp, size_t *len)
 {
+
 	if (len != NULL)
 		*len = Buf_Size(bp);
 
@@ -166,6 +169,7 @@ Buf_Init(size_t size)
 void
 Buf_Destroy(Buffer *buf, Boolean freeData)
 {
+
 	if (freeData)
 		free(buf->buf);
 	free(buf);
@@ -178,6 +182,7 @@ Buf_Destroy(Buffer *buf, Boolean freeData)
 void
 Buf_ReplaceLastByte(Buffer *bp, Byte byte)
 {
+
 	if (bp->end == bp->buf) {
 		Buf_AddByte(bp, byte);
 	} else {
