@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.8 2005/03/18 22:08:08 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.9 2005/03/21 19:18:51 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -112,7 +112,7 @@ int			quiet_mode;
 int			iff_flag = IFF_POINTOPOINT;
 int			multicast_mode  = NO_MULTICAST;
 int			multicast_scope;
-struct sockaddr_in	multicast_addr;;
+struct sockaddr_in	multicast_addr;
 
 /*
  * Alarm interval. Don't forget to change the down time check in ruptime
@@ -139,13 +139,15 @@ struct	neighbor *neighbors;
 struct	whod mywd;
 struct	servent *sp;
 int	s, utmpf;
+volatile sig_atomic_t got_sigalrm, got_sighup;
 
 #define	WHDRSIZE	(sizeof(mywd) - sizeof(mywd.wd_we))
 
 void	 run_as(uid_t *, gid_t *);
 int	 configure(int);
-void	 getboottime(int);
-void	 onalrm(int);
+void	 getboottime(void);
+void	 onalrm(void);
+void	 onsignal(int);
 void	 quit(const char *);
 void	 rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
 int	 verify(char *, int);
@@ -202,7 +204,7 @@ main(int argc, char *argv[])
 #ifndef DEBUG
 	daemon(1, 0);
 #endif
-	signal(SIGHUP, getboottime);
+	signal(SIGHUP, onsignal);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);
 	sp = getservbyname("who", "udp");
 	if (sp == NULL) {
@@ -228,7 +230,7 @@ main(int argc, char *argv[])
 		syslog(LOG_ERR, "%s: %m", _PATH_UTMP);
 		exit(1);
 	}
-	getboottime(0);
+	getboottime();
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		syslog(LOG_ERR, "socket: %m");
 		exit(1);
@@ -251,8 +253,8 @@ main(int argc, char *argv[])
 	if (!configure(s))
 		exit(1);
 	if (!quiet_mode) {
-		signal(SIGALRM, onalrm);
-		onalrm(0);
+		signal(SIGALRM, onsignal);
+		onalrm();
 	}
 	for (;;) {
 		struct whod wd;
@@ -260,9 +262,21 @@ main(int argc, char *argv[])
 
 		cc = recvfrom(s, (char *)&wd, sizeof(struct whod), 0,
 			(struct sockaddr *)&from, &len);
-		if (cc <= 0) {
-			if (cc < 0 && errno != EINTR)
+		if (cc == 0)
+			continue;
+		if (cc < 0) {
+			if (errno == EINTR) {
+				if (got_sigalrm == 1) {
+					onalrm();
+					got_sigalrm = 0;
+				}
+				else if (got_sighup == 1) {
+					getboottime();
+					got_sighup = 0;
+				}
+			} else {
 				syslog(LOG_WARNING, "recv: %m");
+			}
 			continue;
 		}
 		if (from.sin_port != sp->s_port && !insecure_mode) {
@@ -324,7 +338,6 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-
 	fprintf(stderr, "usage: rwhod [-i] [-p] [-l] [-m [ttl]]\n");
 	exit(1);
 }
@@ -369,16 +382,24 @@ verify(char *name, int maxlen)
 	return (size > 0);
 }
 
+void
+onsignal(int signo)
+{
+	if (signo == SIGALRM)
+		got_sigalrm = 1;
+	if (signo == SIGHUP)
+		got_sighup = 1;
+}
+
 int	utmptime;
 int	utmpent;
-int	utmpsize = 0;
+int	utmpsize;
 struct	utmp *utmp;
 int	alarmcount;
 
 void
-onalrm(int signo __unused)
+onalrm(void)
 {
-	/* XXX BAD SIGNAL HANDLER */
 	struct neighbor *np;
 	struct whoent *we = mywd.wd_we, *wlast;
 	int i;
@@ -389,7 +410,7 @@ onalrm(int signo __unused)
 
 	now = time(NULL);
 	if (alarmcount % 10 == 0)
-		getboottime(0);
+		getboottime();
 	alarmcount++;
 	fstat(utmpf, &stb);
 	if ((stb.st_mtime != utmptime) || (stb.st_size > utmpsize)) {
@@ -483,9 +504,8 @@ done:
 }
 
 void
-getboottime(int signo __unused)
+getboottime(void)
 {
-	/* XXX BAD SIGNAL HANDLER */
 	int mib[2];
 	size_t size;
 	struct timeval tm;
