@@ -27,7 +27,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.4 2004/03/19 17:00:04 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.5 2004/03/24 21:58:44 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -180,6 +180,9 @@ int
 so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
     struct thread *td)
 {
+	return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data, ifp,
+	    td));
+#ifdef gag	/* does copyin and copyout deep inside stack XXX JH */
 	int error;
 	struct netmsg_pru_control msg;
 	lwkt_port_t port;
@@ -199,6 +202,7 @@ so_pru_control(struct socket *so, u_long cmd, caddr_t data, struct ifnet *ifp,
 	msg.nm_td = td;
 	error = lwkt_domsg(port, &msg.nm_lmsg);
 	return (error);
+#endif
 }
 
 int
