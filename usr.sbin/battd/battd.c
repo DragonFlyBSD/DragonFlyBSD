@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.2 2005/02/01 18:32:01 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.3 2005/02/01 19:51:28 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -64,7 +64,6 @@ struct battd_conf {
 	int	alert_per;	/* Percentage to alert user on */
 	int	alert_time; 	/* User can also alert when there is only X amount of minutes left */
 	int	alert_status;	/* Alert when battery is either high, low, critical */ 
-	int	f_device; 	/* Enabled device */
 	const char	*apm_dev; 	/* APM Device */
 	const char	*exec_cmd; 	/* Command to execute if desired */	
 };
@@ -218,7 +217,7 @@ main(int argc, char **argv)
 	opts->alert_time = 0;
 	opts->alert_status = -1;
 	opts->exec_cmd = NULL;
-	opts->f_device = 0;
+	opts->apm_dev = APM_DEVICE;
 
 	while ((c = getopt(argc, argv, "de:Ep:s:c:f:ht:T")) != -1) {
 		switch (c) {
@@ -244,7 +243,6 @@ main(int argc, char **argv)
 		case 'f':
 			/* Don't use /dev/apm use optarg. */
 			opts->apm_dev = optarg;
-			opts->f_device = 1;
 			break;
 		case 'h':
 			/* Print usage and be done! */
@@ -296,8 +294,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	fp_device = open(opts->f_device == 1 ?
-			opts->apm_dev : APM_DEVICE, O_RDONLY);
+	if ((fp_device = open(opts->apm_dev, O_RDONLY)) < 0)
+		err(1, "open failed: %s", opts->apm_dev);
 
 	/* 
 	 * Before we become a daemon, first check whether
@@ -366,12 +364,11 @@ main(int argc, char **argv)
 			if (opts->alert_per) {
 				if (check_percent(ai.ai_batt_life)) {
 					if (f_debug) {
-						printf("Invaild percentage (%d) recieved from %s.",
-							ai.ai_batt_life,
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+						printf("Invaild percentage (%d) recieved from %s.\n",
+							ai.ai_batt_life, opts->apm_dev);
 					} else {
 						syslog(LOG_ERR, "Invaild percentage recieved from %s.",
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+							opts->apm_dev);
 					}
 					continue;
 				}
@@ -390,12 +387,11 @@ main(int argc, char **argv)
 			if (opts->alert_time) {
 				if (check_time(ai.ai_batt_time)) {
 					if (f_debug) {
-						printf("Invaild time value (%d) recieved from %s.",
-							ai.ai_batt_time,
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+						printf("Invaild time value (%d) recieved from %s.\n",
+							ai.ai_batt_time, opts->apm_dev);
 					} else {
 						syslog(LOG_ERR, "Invaild time value recieved from %s.",
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+							opts->apm_dev);
 					}
 					continue;
 				}
@@ -422,12 +418,11 @@ main(int argc, char **argv)
 			if (opts->alert_status != -1) {
 				if (check_stat(ai.ai_batt_stat)) {
 					if (f_debug) {
-						printf("Invaild status value (%d) recieved from %s.",
-							ai.ai_batt_life,
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+						printf("Invaild status value (%d) recieved from %s.\n",
+							ai.ai_batt_life, opts->apm_dev);
 					} else {	
 						syslog(LOG_ERR, "Invaild status value recieved from %s.",
-							opts->f_device ? opts->apm_dev : APM_DEVICE);
+							opts->apm_dev);
 					}
 					continue;
 				}
