@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # $Id: pfi,v 1.4 2004/08/06 23:26:05 cpressey Exp $
-# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.4 2005/03/07 17:30:09 cpressey Exp $
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.5 2005/03/07 17:44:40 cpressey Exp $
 #
 
 # PROVIDE: pfi
@@ -22,8 +22,6 @@ get_pfi_config()
 		echo " found!"
 		tr -d "\r" < $1/pfi.conf > /etc/pfi.conf
 		echo "pfi_found_on_device='$2'" >> /etc/pfi.conf
-		echo "#@@@@@" >>/etc/rc.conf
-		cat /etc/pfi.conf >>/etc/rc.conf
 		if [ -r /etc/defaults/pfi.conf ]; then
 			. /etc/defaults/pfi.conf
 		fi
@@ -94,6 +92,12 @@ pfi_start()
 		echo '' >/etc/pfi.conf
 	fi
 
+	# Tack pfi.conf onto the end of rc.conf, so that variables in
+	# pfi.conf are available to the rc subsystem (for pfi_rc_actions.)
+
+	cp /etc/rc.conf /etc/rc.conf.orig
+	cat /etc/pfi.conf >>/etc/rc.conf
+
 	if [ -r /etc/defaults/pfi.conf ]; then
 		. /etc/defaults/pfi.conf
 	fi
@@ -153,12 +157,9 @@ pfi_start()
 		done
 	fi
 
-	# Now remove the copy of pfi.conf that we tacked onto
-	# the end of rc.conf so the above would work
+	# Restore the original rc.conf.
 
-	awk '$1=="#@@@@@" || cut { cut = 1 } !cut { print $0 }' \
-	    </etc/rc.conf >/etc/rc.conf.new
-	mv /etc/rc.conf.new /etc/rc.conf
+	mv /etc/rc.conf.orig /etc/rc.conf
 
 	# Set up auto-login if requested.
 
