@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/cc1plus/Makefile,v 1.22.2.1 2002/06/20 23:13:31 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.4 2004/01/28 16:41:17 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc/cc1plus/Attic/Makefile,v 1.5 2004/01/29 01:39:48 dillon Exp $
 
 .include "../Makefile.inc"
 
@@ -10,7 +10,7 @@ SRCS=	parse.y y.tab.h parse.h
 SRCS+=	call.c class.c cvt.c decl.c decl2.c errfn.c error.c except.c expr.c \
 	friend.c init.c lex.c method.c pt.c ptree.c repo.c rtti.c \
 	search.c semantics.c sig.c spew.c tree.c typeck.c typeck2.c xref.c
-BINDIR=	/usr/libexec/gcc2
+BINDIR=	/usr/libexec/binutils212
 NOMAN=	1
 NOSHARED=yes
 

@@ -23,7 +23,7 @@ This paragraph is here to try to keep Sun CC from dying.
 The number of chars here seems crucial!!!!  */
 
 /* $FreeBSD: src/contrib/gcc/gcc.c,v 1.17.2.9 2002/06/20 23:12:28 obrien Exp $ */
-/* $DragonFly: src/contrib/gcc/Attic/gcc.c,v 1.4 2004/01/23 10:59:51 joerg Exp $ */
+/* $DragonFly: src/contrib/gcc/Attic/gcc.c,v 1.5 2004/01/29 01:39:44 dillon Exp $ */
 
 /* This program is the user interface to the C compiler and possibly to
 other compilers.  It is used because compilation is a complicated procedure
@@ -1398,6 +1398,9 @@ static const char *standard_startfile_prefix_2 = "/usr/lib/";
 
 #ifndef CCVER
 #error CCVER not defined
+#endif
+#ifndef BINUTILS
+#error BINUTILS not defined
 #endif
 
 #ifndef TOOLDIR_BASE_PREFIX
@@ -3131,17 +3134,17 @@ process_command (argc, argv)
   /* Use 2 as fourth arg meaning try just the machine as a suffix,
      as well as trying the machine and the version.  */
 #ifdef FREEBSD_NATIVE
-  add_prefix (&exec_prefixes, PREFIX"/libexec/" CCVER "/", "BINUTILS",
+  add_prefix (&exec_prefixes, PREFIX"/libexec/" BINUTILS "/", "BINUTILS",
 	      0, 0, NULL_PTR);
   switch (objformat)
     {
     case OBJFMT_AOUT:
       n_switches++;		/* add implied -maout */
-      add_prefix (&exec_prefixes, PREFIX"/libexec/" CCVER "/aout/", "BINUTILS",
+      add_prefix (&exec_prefixes, PREFIX"/libexec/" BINUTILS "/aout/", "BINUTILS",
 		  0, 0, NULL_PTR);
       break;
     case OBJFMT_ELF:
-      add_prefix (&exec_prefixes, PREFIX"/libexec/" CCVER "/elf/", "BINUTILS",
+      add_prefix (&exec_prefixes, PREFIX"/libexec/" BINUTILS "/elf/", "BINUTILS",
 		  0, 0, NULL_PTR);
       break;
     case OBJFMT_UNKNOWN:

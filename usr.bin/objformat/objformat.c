@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.6 2004/01/28 16:41:18 joerg Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.7 2004/01/29 01:39:41 dillon Exp $
  */
 
 #include <err.h>
@@ -36,7 +36,10 @@
 
 #define OBJFORMAT	0
 #define COMPILER	1
-#define BINUTILS	2
+#define BINUTILS1	2
+#define BINUTILS2	3
+
+#define arysize(ary)	(sizeof(ary)/sizeof((ary)[0]))
 
 struct command {
 	const char *cmd;
@@ -48,36 +51,36 @@ static struct command commands[] = {
 	{"c++",		COMPILER},
 	{"c++filt",	COMPILER},
 	{"cc",		COMPILER},
-	{"cpp",		COMPILER},
-	{"f77",		COMPILER},
+	{"cpp",		BINUTILS1},
+	{"f77",		BINUTILS1},
 	{"g++",		COMPILER},
 	{"gcc",		COMPILER},
 	{"gcov",	COMPILER},
-	{"addr2line",	BINUTILS},
-	{"ar",		BINUTILS},
-	{"as",		BINUTILS},
-	{"gasp",	BINUTILS},
-	{"gdb",		BINUTILS},
-	{"ld",		BINUTILS},
-	{"nm",		BINUTILS},
-	{"objcopy",	BINUTILS},
-	{"objdump",	BINUTILS},
-	{"ranlib",	BINUTILS},
-	{"size",	BINUTILS},
-	{"strings",	BINUTILS},
-	{"strip",	BINUTILS},
-	{"objformat",	OBJFORMAT},
-	{0, 0}
+	{"addr2line",	BINUTILS2},
+	{"ar",		BINUTILS2},
+	{"as",		BINUTILS2},
+	{"gasp",	BINUTILS2},
+	{"gdb",		BINUTILS2},
+	{"ld",		BINUTILS2},
+	{"nm",		BINUTILS2},
+	{"objcopy",	BINUTILS2},
+	{"objdump",	BINUTILS2},
+	{"ranlib",	BINUTILS2},
+	{"size",	BINUTILS2},
+	{"strings",	BINUTILS2},
+	{"strip",	BINUTILS2},
+	{"objformat",	OBJFORMAT}
 };
 
 int
 main(int argc, char **argv)
 {
-	struct command *cmds = commands;
+	struct command *cmds;
 	char objformat[32];
 	char *path, *chunk;
 	char *cmd, *newcmd = NULL;
 	char *objformat_path;
+	char *ccver;
 	const char *env_name = NULL;
 	const char *env_value;
 	const char *env_default = NULL;
@@ -96,30 +99,38 @@ main(int argc, char **argv)
 	else
 		cmd = argv[0];
 
-	for (;cmds->cmd; cmds++)
+	for (cmds = commands; cmds < &commands[arysize(commands)]; ++cmds) {
 		if (strcmp(cmd, cmds->cmd) == 0)
-		{
-			switch (cmds->type)
-			{
-			case COMPILER:
-				env_name = "CCVER";
-				env_default = "gcc2";
-				base_path = "/usr/bin";
-				use_objformat = 0;
-				break;
-			case BINUTILS:
-				env_name = "BINUTILSVER";
-				env_default = "binutils212";
-				base_path = "/usr/libexec";
-				use_objformat = 1;
-				break;
-			case OBJFORMAT:
-				break;
-			default:
-				err(1, "unknown command type");
+			break;
+	}
+	if (cmds) {
+		switch (cmds->type) {
+		case COMPILER:
+			env_name = "CCVER";
+			env_default = "gcc2";
+			base_path = "/usr/bin";
+			use_objformat = 0;
+			break;
+		case BINUTILS2:
+			use_objformat = 1;
+			/* fall through */
+		case BINUTILS1:
+			env_default = "binutils212";
+			env_name = "BINUTILSVER";
+			base_path = "/usr/libexec";
+			if ((ccver = getenv("CCVER")) != NULL) {
+			    if (strcmp(ccver, "gcc3") == 0)
+				;/* change binutils env_default here XXX */
+			    /* etc */
 			}
 			break;
+		case OBJFORMAT:
+			break;
+		default:
+			err(1, "unknown command type");
+			break;
 		}
+	}
 
 	/*
 	 * The objformat command itself doesn't need another exec
@@ -156,23 +167,25 @@ main(int argc, char **argv)
 			free(newcmd);
 			newcmd = NULL;
 		}
-		if (use_objformat)
+		if (use_objformat) {
 			asprintf(&newcmd, "%s%s/%s/%s/%s",
 				chunk, base_path, env_value, objformat, cmd);
-		else
+		} else {
 			asprintf(&newcmd, "%s%s/%s/%s",
 				chunk, base_path, env_value, cmd);
+		}
 		if (newcmd == NULL)
 			err(1, "cannot allocate memory");
 
 		argv[0] = newcmd;
 		execv(newcmd, argv);
 	}
-	if (use_objformat)
+	if (use_objformat) {
 		err(1, "in path [%s]%s/%s/%s/%s",
 			objformat_path, base_path, env_value, objformat, cmd);
-	else
+	} else {
 		err(1, "in path [%s]%s/%s/%s",
 			objformat_path, base_path, env_value, cmd);
+	}
 }
 
