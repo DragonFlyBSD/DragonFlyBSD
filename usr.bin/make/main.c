@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.24 2004/12/01 02:02:14 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.25 2004/12/01 15:44:20 joerg Exp $
  */
 
 /*-
@@ -83,6 +83,8 @@
 #include "pathnames.h"
 
 #define WANT_ENV_MKLVL	1
+#define	MKLVL_MAXVAL	500
+#define	MKLVL_ENVVAR	"__MKLVL__"
 
 #define	MAKEFLAGS	".MAKEFLAGS"
 
@@ -393,6 +395,30 @@ chdir_verify_path(char *path, char *obpath)
 	return 0;
 }
 
+/*
+ * In lieu of a good way to prevent every possible looping in
+ * make(1), stop there from being more than MKLVL_MAXVAL processes forked
+ * by make(1), to prevent a forkbomb from happening, in a dumb and
+ * mechanical way.
+ */
+static void
+check_make_level(void)
+{
+#ifdef WANT_ENV_MKLVL
+	char	*value = getenv(MKLVL_ENVVAR);
+	int	level = (value == NULL) ? 0 : atoi(value);
+
+	if (level < 0) {
+		errc(2, EAGAIN, "Invalid value for recursion level (%d).", level);
+	} else if (level > MKLVL_MAXVAL) {
+		errc(2, EAGAIN, "Max recursion level (%d) exceeded.", MKLVL_MAXVAL);
+	} else {
+		char new_value[32];
+		sprintf(new_value, "%d", level + 1);
+		setenv(MKLVL_ENVVAR, new_value, 1);
+	}
+#endif /* WANT_ENV_MKLVL */
+}
 
 /*-
  * main --
@@ -418,12 +444,6 @@ main(int argc, char **argv)
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
 	struct stat sa;
 	char *p, *p1, *path, *pathp;
-#ifdef WANT_ENV_MKLVL
-#define	MKLVL_MAXVAL	500
-#define	MKLVL_ENVVAR	"__MKLVL__"
-	int iMkLvl = 0;
-	char *szMkLvl = getenv(MKLVL_ENVVAR);
-#endif	/* WANT_ENV_MKLVL */
 	char mdpath[MAXPATHLEN];
 	char obpath[MAXPATHLEN];
 	char cdpath[MAXPATHLEN];
@@ -445,24 +465,14 @@ main(int argc, char **argv)
 	 */
 	struct sigaction sa;
 
-#ifdef WANT_ENV_MKLVL
-	if ((iMkLvl = szMkLvl ? atoi(szMkLvl) : 0) < 0) {
-	  iMkLvl = 0;
-	}
-	if (iMkLvl++ > MKLVL_MAXVAL) {
-	  errc(2, EAGAIN, 
-	       "Max recursion level (%d) exceeded.", MKLVL_MAXVAL);
-	}
-	bzero(szMkLvl = emalloc(32), 32);
-	sprintf(szMkLvl, "%d", iMkLvl);
-	setenv(MKLVL_ENVVAR, szMkLvl, 1);
-#endif /* WANT_ENV_MKLVL */
-
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
 	sa.sa_handler = catch_child;
 	sigaction(SIGCHLD, &sa, NULL);
 	}
+
+	check_make_level();
+
 
 #ifdef RLIMIT_NOFILE
 	/*
@@ -595,11 +605,7 @@ main(int argc, char **argv)
 	 * (Note this is *not* MAKEFLAGS since /bin/make uses that and it's
 	 * in a different format).
 	 */
-#ifdef POSIX
 	Main_ParseArgLine(getenv("MAKEFLAGS"));
-#else
-	Main_ParseArgLine(getenv("MAKE"));
-#endif
 
 	MainParseArgs(argc, argv);
 
@@ -748,11 +754,7 @@ main(int argc, char **argv)
 
 	/* Install all the flags into the MAKE envariable. */
 	if (((p = Var_Value(MAKEFLAGS, VAR_GLOBAL, &p1)) != NULL) && *p)
-#ifdef POSIX
 		setenv("MAKEFLAGS", p, 1);
-#else
-		setenv("MAKE", p, 1);
-#endif
 	free(p1);
 
 	/*

@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.13 2004/11/30 19:12:57 joerg Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.14 2004/12/01 15:44:20 joerg Exp $
  */
 
 /*-
@@ -78,6 +78,8 @@ static char 	    meta[256];
 
 static GNode	    *curTarg = NULL;
 static GNode	    *ENDNode;
+static sig_atomic_t interrupted;
+
 static void CompatInterrupt(int);
 static int CompatMake(void *, void *);
 static int shellneed(char *);
@@ -100,6 +102,16 @@ CompatInit(void)
     meta[0] = 1;
 }
 
+/*
+ * Interrupt handler - set flag and defer handling to the main code
+ */
+static void
+CompatCatchSig(int signo)
+{
+
+	interrupted = signo;
+}
+
 /*-
  *-----------------------------------------------------------------------
  * CompatInterrupt --
@@ -119,6 +131,17 @@ static void
 CompatInterrupt (int signo)
 {
     GNode   *gn;
+    sigset_t nmask, omask;
+
+    sigemptyset(&nmask);
+    sigaddset(&nmask, SIGINT);
+    sigaddset(&nmask, SIGTERM);
+    sigaddset(&nmask, SIGHUP);
+    sigaddset(&nmask, SIGQUIT);
+    sigprocmask(SIG_SETMASK, &nmask, &omask);
+
+    /* prevent recursion in evaluation of .INTERRUPT */
+    interrupted = 0;
 
     if ((curTarg != NULL) && !Targ_Precious (curTarg)) {
 	char	  *p1;
@@ -128,18 +151,20 @@ CompatInterrupt (int signo)
 	    printf ("*** %s removed\n", file);
 	}
 	free(p1);
-
-	/*
-	 * Run .INTERRUPT only if hit with interrupt signal
-	 */
-	if (signo == SIGINT) {
-	    gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
-	    if (gn != NULL) {
-		Lst_ForEach(gn->commands, Compat_RunCommand, (void *)gn);
-	    }
-	}
-
     }
+
+    /*
+     * Run .INTERRUPT only if hit with interrupt signal
+     */
+    if (signo == SIGINT) {
+	gn = Targ_FindNode(".INTERRUPT", TARG_NOCREATE);
+	if (gn != NULL) {
+	    Lst_ForEach(gn->commands, Compat_RunCommand, (void *)gn);
+	}
+    }
+
+    sigprocmask(SIG_SETMASK, &omask, NULL);
+
     if (signo == SIGQUIT)
 	exit(signo);
     (void) signal(signo, SIG_DFL);
@@ -370,10 +395,12 @@ Compat_RunCommand (void *cmdp, void *gnp)
     while (1) {
 
 	while ((rstat = wait(&reason)) != cpid) {
-	    if (rstat == -1 && errno != EINTR) {
-		break;
+	    if (interrupted || (rstat == -1 && errno != EINTR)) {
+		    break;
 	    }
 	}
+	if (interrupted)
+	    CompatInterrupt(interrupted);
 
 	if (rstat > -1) {
 	    if (WIFSTOPPED(reason)) {
@@ -656,16 +683,16 @@ Compat_Run(Lst targs)
     CompatInit();
 
     if (signal(SIGINT, SIG_IGN) != SIG_IGN) {
-	signal(SIGINT, CompatInterrupt);
+	signal(SIGINT, CompatCatchSig);
     }
     if (signal(SIGTERM, SIG_IGN) != SIG_IGN) {
-	signal(SIGTERM, CompatInterrupt);
+	signal(SIGTERM, CompatCatchSig);
     }
     if (signal(SIGHUP, SIG_IGN) != SIG_IGN) {
-	signal(SIGHUP, CompatInterrupt);
+	signal(SIGHUP, CompatCatchSig);
     }
     if (signal(SIGQUIT, SIG_IGN) != SIG_IGN) {
-	signal(SIGQUIT, CompatInterrupt);
+	signal(SIGQUIT, CompatCatchSig);
     }
 
     ENDNode = Targ_FindNode(".END", TARG_CREATE);

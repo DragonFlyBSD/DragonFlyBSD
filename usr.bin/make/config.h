@@ -38,7 +38,7 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.5 2004/12/01 02:02:14 joerg Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.6 2004/12/01 15:44:20 joerg Exp $
  */
 
 #define	DEFSHELL	1			/* Bourne shell */
@@ -79,15 +79,6 @@
  */
 #define	LIBSUFF	".a"
 #define	RECHECK
-
-/*
- * POSIX
- *	Adhere to the POSIX 1003.2 draft for the make(1) program.
- *	- Use MAKEFLAGS instead of MAKE to pick arguments from the
- *	  environment.
- *	- Allow empty command lines if starting with tab.
- */
-#define	POSIX
 
 /*
  * SYSVINCLUDE

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.18 2004/12/01 15:17:28 joerg Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.19 2004/12/01 15:44:20 joerg Exp $
  */
 
 /*-
@@ -142,9 +142,7 @@ typedef enum {
     Parallel,	    /* .PARALLEL */
     ExPath,	    /* .PATH */
     Phony,	    /* .PHONY */
-#ifdef POSIX
     Posix,	    /* .POSIX */
-#endif
     Precious,	    /* .PRECIOUS */
     ExShell,	    /* .SHELL */
     Silent,	    /* .SILENT */
@@ -198,9 +196,7 @@ static struct {
 { ".PARALLEL",	  Parallel,	0 },
 { ".PATH",	  ExPath,	0 },
 { ".PHONY",	  Phony,	OP_PHONY },
-#ifdef POSIX
 { ".POSIX",	  Posix,	0 },
-#endif
 { ".PRECIOUS",	  Precious, 	OP_PRECIOUS },
 { ".RECURSIVE",	  Attribute,	OP_MAKE },
 { ".SHELL", 	  ExShell,    	0 },
@@ -1033,11 +1029,9 @@ ParseDoDependency (char *line)
 	    case ExPath:
 		Lst_ForEach(paths, ParseClearPath, (void *)NULL);
 		break;
-#ifdef POSIX
 	    case Posix:
 		Var_Set("%POSIX", "1003.2", VAR_GLOBAL);
 		break;
-#endif
 	    default:
 		break;
 	}
@@ -2434,9 +2428,6 @@ Parse_File(char *name, FILE *stream)
 		 * If a line starts with a tab, it can only hope to be
 		 * a creation command.
 		 */
-#ifndef POSIX
-	    shellCommand:
-#endif
 		for (cp = line + 1; isspace ((unsigned char) *cp); cp++) {
 		    continue;
 		}
@@ -2480,10 +2471,6 @@ Parse_File(char *name, FILE *stream)
 		 * line's script, we assume it's actually a shell command
 		 * and add it to the current list of targets.
 		 */
-#ifndef POSIX
-		Boolean	nonSpace = FALSE;
-#endif
-
 		cp = line;
 		if (isspace((unsigned char) line[0])) {
 		    while ((*cp != '\0') && isspace((unsigned char) *cp)) {
@@ -2492,44 +2479,24 @@ Parse_File(char *name, FILE *stream)
 		    if (*cp == '\0') {
 			goto nextLine;
 		    }
-#ifndef POSIX
-		    while ((*cp != ':') && (*cp != '!') && (*cp != '\0')) {
-			nonSpace = TRUE;
-			cp++;
-		    }
-#endif
 		}
 
-#ifndef POSIX
-		if (*cp == '\0') {
-		    if (inLine) {
-			Parse_Error (PARSE_WARNING,
-				     "Shell command needs a leading tab");
-			goto shellCommand;
-		    } else if (nonSpace) {
-			Parse_Error (PARSE_FATAL, "Missing operator");
-		    }
-		} else {
-#endif
-		    ParseFinishLine();
+		ParseFinishLine();
 
-		    cp = Var_Subst (NULL, line, VAR_CMD, TRUE);
-		    free (line);
-		    line = cp;
+		cp = Var_Subst (NULL, line, VAR_CMD, TRUE);
+		free (line);
+		line = cp;
 
-		    /*
-		     * Need a non-circular list for the target nodes
-		     */
-		    if (targets)
-			Lst_Destroy(targets, NOFREE);
+		/*
+		 * Need a non-circular list for the target nodes
+		 */
+		if (targets)
+		    Lst_Destroy(targets, NOFREE);
 
-		    targets = Lst_Init (FALSE);
-		    inLine = TRUE;
+		targets = Lst_Init (FALSE);
+		inLine = TRUE;
 
-		    ParseDoDependency (line);
-#ifndef POSIX
-		}
-#endif
+		ParseDoDependency (line);
 	    }
 
 	    nextLine:
