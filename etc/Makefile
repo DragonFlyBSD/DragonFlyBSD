@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.36 2005/01/10 05:00:37 y0netan1 Exp $
+# $DragonFly: src/etc/Makefile,v 1.37 2005/01/10 19:56:17 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -313,8 +313,6 @@ distrib-dirs:
 	mtree -deU -f ${.CURDIR}/mtree/BSD.usr.dist -p ${DESTDIR}/usr
 	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
-	mtree -deU -f ${.CURDIR}/mtree/BSD.include.dist \
-		-p ${DESTDIR}/usr/libdata/perl/5.00503/mach
 .if !defined(NO_SENDMAIL)
 	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
 .endif
