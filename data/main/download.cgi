@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.52 2004/07/20 04:37:49 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.53 2004/07/24 15:09:54 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -260,6 +260,15 @@ rsync
 <TD>
 <a href="http://ftp.csie.chu.edu.tw">HTTP</a>, 
 <a href="ftp://ftp.csie.chu.edu.tw">FTP</a>
+</TD>
+</TR>
+
+<TR>
+<TD>Providence University (Taiwan)</TD>
+<TD>Daily snapshots, official ISOs</TD>
+<TD>
+<a href="http://dragonflybsd.cs.pu.edu.tw/">HTTP</a>,
+<a href="ftp://dragonflybsd.cs.pu.edu.tw/DragonFLYBSD">FTP</a>
 </TD>
 </TR>
 
