@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.5 2005/01/31 22:29:15 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/ttyname.c,v 1.6 2005/02/02 05:42:01 dillon Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -53,7 +53,7 @@
 #include <db.h>
 #include "libc_private.h"
 
-static char buf[sizeof(_PATH_DEV) + MAXNAMLEN] = _PATH_DEV;
+static char static_buf[sizeof(_PATH_DEV) + MAXNAMLEN] = _PATH_DEV;
 static char *oldttyname __P((int, struct stat *));
 static char *ttyname_threaded(int fd);
 static char *ttyname_unthreaded(int fd);
@@ -128,9 +128,7 @@ ttyname_threaded(int fd)
 				return (NULL);
 			}
 			ttyname_init = 1;
-			return (NULL);
 		}
-		ttyname_init = 1;
 		_pthread_mutex_unlock(&ttyname_lock);
 	}
 
@@ -175,9 +173,9 @@ ttyname_unthreaded(int fd)
 		key.size = sizeof(bkey);
 		if (!(db->get)(db, &key, &data, 0)) {
 			bcopy(data.data,
-			    buf + sizeof(_PATH_DEV) - 1, data.size);
+			    static_buf + sizeof(_PATH_DEV) - 1, data.size);
 			(void)(db->close)(db);
-			return (buf);
+			return (static_buf);
 		}
 		(void)(db->close)(db);
 	}
@@ -186,7 +184,7 @@ ttyname_unthreaded(int fd)
 
 static char *
 oldttyname(fd, sb)
-	int fd;
+	int fd __unused;
 	struct stat *sb;
 {
 	struct dirent *dirp;
@@ -199,13 +197,13 @@ oldttyname(fd, sb)
 	while ( (dirp = readdir(dp)) ) {
 		if (dirp->d_fileno != sb->st_ino)
 			continue;
-		bcopy(dirp->d_name, buf + sizeof(_PATH_DEV) - 1,
+		bcopy(dirp->d_name, static_buf + sizeof(_PATH_DEV) - 1,
 		    dirp->d_namlen + 1);
-		if (stat(buf, &dsb) || sb->st_dev != dsb.st_dev ||
+		if (stat(static_buf, &dsb) || sb->st_dev != dsb.st_dev ||
 		    sb->st_ino != dsb.st_ino)
 			continue;
 		(void)closedir(dp);
-		return (buf);
+		return (static_buf);
 	}
 	(void)closedir(dp);
 	return (NULL);
