@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.71 2005/02/27 10:57:24 swildner Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.72 2005/03/17 08:22:38 swildner Exp $
  */
 
 #include "use_apm.h"
@@ -149,9 +149,6 @@ SYSCTL_INT(_debug, OID_AUTO, swtch_optim_stats,
 SYSCTL_INT(_debug, OID_AUTO, tlb_flush_count,
 	CTLFLAG_RD, &tlb_flush_count, 0, "");
 #endif
-
-static int	ispc98 = 0;
-SYSCTL_INT(_machdep, OID_AUTO, ispc98, CTLFLAG_RD, &ispc98, 0, "");
 
 int physmem = 0;
 int cold = 1;
