@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.48 2004/07/15 12:29:48 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.49 2004/07/15 16:36:05 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -27,8 +27,8 @@ for the release is:
 </b><br /> </p>
 <p><b>NOTICE!  RELEASE UPDATED TO 1.0A TO FIX A SERIOUS FDISK/SLICE ISSUE
 WITH THE INSTALLER.  An xdelta (/usr/ports/misc/xdelta) patch is available
-for people who have downloaded the original 1.0REL iso, and a new ISO is
-being propagated to our mirrors.  To apply the delta, unzip the 1.0REL ISO,
+for people who have downloaded the original 1.0REL iso, and a new ISO has
+been propagated to our mirrors.  To apply the delta, unzip the 1.0REL ISO,
 apply the delta, and then run md5 on the result to ensure that it matches
 the 1.0A_REL (ungzipped) ISO.</b></p>
 
@@ -62,7 +62,7 @@ will improperly resize the target slice when it is not the last slice,
 to be the same size as the last slice, leading to a corrupt disk!  
 1.0A fixes the problem and is now online and there is an xdelta available at:
 <A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0_REL-1.0A_REL.xdelta">dfly-1.0_REL-1.0A_REL.xdelta (master site)</A>.
-The 1.0A ISO is being propagated to our mirrors now.  If you have the original
+The 1.0A ISO has been propagated to our mirrors.  If you have the original
 release iso please use the xdelta program and the above xdelta patch on the
 gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 </p>
@@ -99,28 +99,26 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 -->
 
 <TR><TD>Fortunaty.net (Europe)</TD>
-<TD>1.0_REL image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
-<!-- This mirror appears to have an incomplete copy
 <TR><TD>univie.ac.at</TD>
-<TD>1.0_REL image</TD>
-<TD><A HREF="http://ftp.univie.ac.at/systems/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
--->
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://ftp.univie.ac.at/systems/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>hp48.org</TD>
 <TD>1.0A_REL image</TD>
 <TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>Starkast.net (Sweden)</TD>
-<TD>1.0_REL image</TD>
+<TD>1.0A_REL image</TD>
 <TD>
-<A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>
-<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+<A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
+<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>1.0_REL image</TD>
-<TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
 <TR><TD>BSDTech.com (Norway)</TD>
 <TD>1.0A_REL image</TD>
@@ -129,10 +127,10 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 <A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A></TD></TR>
 
 <TR><TD>AllBSD.org (Japan)</TD>
-<TD>1.0_REL image</TD>
-<TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
-<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>, 
-<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0REL.iso.gz">rysnc</A></TD></TR>
+<TD>1.0A_REL image</TD>
+<TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">HTTP</A>, 
+<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>, 
+<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0A_REL.iso.gz">rysnc</A></TD></TR>
 
 <TR><TD>Pieter from Holland (EU)</TD>
 <TD>1.0A_REL image</TD>
@@ -144,14 +142,16 @@ gunzipped ISO to patch it to 1.0A, then check the MD5 of the result.</b>
 
 <!--
 <TR><TD>Dragonflybsd.org (California, USA)</TD>
-<TD>1.0_REL image</TD>
+<TD>1.0A_REL image</TD>
 <TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0A_REL.iso.gz">FTP</A>
 (<I>try to find another site first)</I></TD></TR>
 -->
 
+<!--
 <TR><TD>EnergyHQ</TD>
 <TD>1.0_REL image</TD>
 <TD><A HREF="http://www.energyhq.es.eu.org/files/dfly-1.0REL.iso.gz.torrent">BitTorrent</A></TD></TR>
+-->
 
 <!-- end of REL links -->
 <TR>
@@ -319,7 +319,7 @@ this section.</TD>
 
 <TR>
 <TD><B>Crescent Anchor.</B>
-Crescent Anchor will be providing DragonFly BSD 1.0 on CD-ROM for a
+Crescent Anchor will be providing DragonFly 1.0A on CD-ROM for a
 nominal fee.  Part of your purchase from Crescent Anchor will be contributed
 back to support continuing DragonFly development via the forthcoming 
 nonprofit
