@@ -32,7 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.h,v 1.1.2.13 2003/06/09 21:43:41 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.4 2004/03/17 04:59:41 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.h,v 1.5 2004/04/16 23:18:14 dillon Exp $*/
 
 #ifndef _EM_H_DEFINED_
 #define _EM_H_DEFINED_
@@ -201,7 +201,7 @@ POSSIBILITY OF SUCH DAMAGE.
  *              1 - Wait for autonegotiation to complete
  *              0 - Don't wait for autonegotiation to complete
  */
-#define WAIT_FOR_AUTO_NEG_DEFAULT       1
+#define WAIT_FOR_AUTO_NEG_DEFAULT       0
 
 /*
  * EM_MASTER_SLAVE is only defined to enable a workaround for a known compatibility issue
