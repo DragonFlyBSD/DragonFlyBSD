@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.4 2003/10/27 21:12:29 asmodai Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.5 2003/11/26 14:24:46 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -113,6 +113,7 @@ ata_dmainit(struct ata_channel *ch, int device,
     switch (ch->chiptype) {
 
     case 0x24db8086:	/* Intel ICH5 */
+    case 0x24ca8086:	/* Intel ICH4 mobile */
     case 0x24cb8086:	/* Intel ICH4 */
     case 0x248a8086:	/* Intel ICH3 mobile */ 
     case 0x248b8086:	/* Intel ICH3 */
