@@ -93,7 +93,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_attr.c,v 1.2 2005/02/21 13:47:21 davidxu Exp $
  */
 
 #include <errno.h>
@@ -321,6 +321,8 @@ _pthread_attr_init(pthread_attr_t *attr)
 	int	ret;
 	pthread_attr_t	pattr;
 
+	_thr_check_init();
+
 	/* Allocate memory for the attribute object: */
 	if ((pattr = (pthread_attr_t) malloc(sizeof(struct pthread_attr))) == NULL)
 		/* Insufficient memory: */
@@ -329,7 +331,6 @@ _pthread_attr_init(pthread_attr_t *attr)
 		/* Initialise the attribute object with the defaults: */
 		memcpy(pattr, &_pthread_attr_default,
 		    sizeof(struct pthread_attr));
-		pattr->guardsize_attr = _thr_guard_default;
 
 		/* Return a pointer to the attribute object: */
 		*attr = pattr;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_stack.c,v 1.9 2004/10/06 08:11:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.2 2005/02/21 13:47:21 davidxu Exp $
  */
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -79,7 +79,7 @@ static LIST_HEAD(, stack)	mstackq = LIST_HEAD_INITIALIZER(mstackq);
  *    |       Red Zone (guard page)       | red zone for 2nd thread
  *    |                                   |
  *    +-----------------------------------+
- *    |  stack 2 - PTHREAD_STACK_DEFAULT  | top of 2nd thread stack
+ *    |  stack 2 - _thr_stack_default     | top of 2nd thread stack
  *    |                                   |
  *    |                                   |
  *    |                                   |
@@ -90,7 +90,7 @@ static LIST_HEAD(, stack)	mstackq = LIST_HEAD_INITIALIZER(mstackq);
  *    |       Red Zone                    | red zone for 1st thread
  *    |                                   |
  *    +-----------------------------------+
- *    |  stack 1 - PTHREAD_STACK_DEFAULT  | top of 1st thread stack
+ *    |  stack 1 - _thr_stack_default     | top of 1st thread stack
  *    |                                   |
  *    |                                   |
  *    |                                   |
@@ -101,7 +101,7 @@ static LIST_HEAD(, stack)	mstackq = LIST_HEAD_INITIALIZER(mstackq);
  *    |       Red Zone                    |
  *    |                                   | red zone for main thread
  *    +-----------------------------------+
- *    | USRSTACK - PTHREAD_STACK_INITIAL  | top of main thread stack
+ *    | USRSTACK - _thr_stack_initial     | top of main thread stack
  *    |                                   | ^
  *    |                                   | |
  *    |                                   | |
@@ -188,7 +188,7 @@ _thr_stack_alloc(struct pthread_attr *attr)
 	else {
 		/* Allocate a stack from usrstack. */
 		if (last_stack == NULL)
-			last_stack = _usrstack - THR_STACK_INITIAL -
+			last_stack = _usrstack - _thr_stack_initial -
 			    _thr_guard_default;
 
 		/* Allocate a new stack. */

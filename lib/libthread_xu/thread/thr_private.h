@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.2 2005/02/21 13:47:21 davidxu Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -265,14 +265,14 @@ struct pthread_attr {
 /*
  * Miscellaneous definitions.
  */
-#define THR_STACK_DEFAULT			0x100000
+#define THR_STACK_DEFAULT		(sizeof(void *) / 4 * 1024 * 1024)
 
 /*
  * Maximum size of initial thread's stack.  This perhaps deserves to be larger
  * than the stacks of other threads, since many applications are likely to run
  * almost entirely on this stack.
  */
-#define THR_STACK_INITIAL			0x200000
+#define THR_STACK_INITIAL		(THR_STACK_DEFAULT * 2)
 
 /*
  * Define the different priority ranges.  All applications have thread
@@ -644,6 +644,8 @@ SCLASS struct pthread_cond_attr _pthread_condattr_default
 
 SCLASS pid_t		_thr_pid		SCLASS_PRESET(0);
 SCLASS int		_thr_guard_default;
+SCLASS int		_thr_stack_default	SCLASS_PRESET(THR_STACK_DEFAULT);
+SCLASS int		_thr_stack_initial	SCLASS_PRESET(THR_STACK_INITIAL);
 SCLASS int		_thr_page_size;
 /* Garbage thread count. */
 SCLASS int              _gc_count               SCLASS_PRESET(0);
