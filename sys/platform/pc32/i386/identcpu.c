@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1992 Terrence R. Lambert.
  * Copyright (c) 1982, 1987, 1990 The Regents of the University of California.
+ * Copyright (c) 1992 Terrence R. Lambert.
  * Copyright (c) 1997 KATO Takenori.
  * Copyright (c) 2001 Tamotsu Hattori.
  * Copyright (c) 2001 Mitsuru IWASAKI.
@@ -39,7 +39,7 @@
  *
  *	from: Id: machdep.c,v 1.193 1996/06/18 01:22:04 bde Exp
  * $FreeBSD: src/sys/i386/i386/identcpu.c,v 1.80.2.15 2003/04/11 17:06:41 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.4 2003/07/13 05:51:17 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/identcpu.c,v 1.5 2003/09/29 15:44:47 hmp Exp $
  */
 
 #include "opt_cpu.h"
