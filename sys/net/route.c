@@ -32,7 +32,7 @@
  *
  *	@(#)route.c	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.c,v 1.59.2.10 2003/01/17 08:04:00 ru Exp $
- * $DragonFly: src/sys/net/route.c,v 1.10 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/route.c,v 1.11 2004/12/28 08:09:59 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -66,7 +66,7 @@ rtable_init(void **table)
 	for (dom = domains; dom; dom = dom->dom_next)
 		if (dom->dom_rtattach)
 			dom->dom_rtattach(&table[dom->dom_family],
-			    dom->dom_rtoffset);
+					  dom->dom_rtoffset);
 }
 
 void
@@ -81,8 +81,9 @@ route_init()
  */
 
 /*
- * Lookup and fill in the ro_rt rtentry field in a route structure given
- * an address in the ro_dst field.
+ * Lookup and fill in the "ro_rt" rtentry field in a route structure given
+ * an address in the ro_dst field.  Always send a report and always
+ * clone routes.
  */
 void
 rtalloc(struct route *ro)
@@ -90,29 +91,30 @@ rtalloc(struct route *ro)
 	rtalloc_ign(ro, 0UL);
 }
 
+/*
+ * Lookup and fill in the "ro_rt" rtentry field in a route structure given
+ * an address in the ro_dst field.  Always send a report and optionally
+ * clone routes when RTF_CLONING or RTF_PRCLONING are not being ignored.
+ */
 void
 rtalloc_ign(struct route *ro, u_long ignore)
 {
-	int s;
-
 	if (ro->ro_rt != NULL) {
 		if (ro->ro_rt->rt_ifp != NULL && ro->ro_rt->rt_flags & RTF_UP)
 			return;
-		s = splnet(); /* XXX probably always at splnet here already */
 		rtfree(ro->ro_rt);
 		ro->ro_rt = NULL;
-		splx(s);
 	}
 	ro->ro_rt = rtlookup(&ro->ro_dst, 1, ignore);
 }
 
 /*
- * Look up the route that matches the given 'dst' address.
+ * Look up the route that matches the given "dst" address.
  *
- * Create a cloned route if the route is a cloning route
- * and RTF_CLONING or RTF_PRCLONING are not being ignored.
+ * Create and return a cloned route if "dst" matches a cloning route
+ * and the RTF_CLONING and RTF_PRCLONING flags are not being ignored.
  *
- * In either case, the returned route has its refcnt incremented.
+ * Any route returned has its refcnt incremented.
  */
 struct rtentry *
 rtlookup(struct sockaddr *dst, int report, u_long ignflags)
@@ -135,17 +137,13 @@ rtlookup(struct sockaddr *dst, int report, u_long ignflags)
 			err = rtrequest(RTM_RESOLVE, dst, NULL, NULL, 0,
 					&clonedroute);
 			if (err != 0) {
-				/* use original route on clone failure */
+				/* use master cloning route on clone failure */
 				rt->rt_refcnt++;
 				goto reportmiss;
-			} else {
-				rt = clonedroute;	/* use cloned route */
 			}
+			rt = clonedroute;  /* return cloned route to caller */
 			if (clonedroute->rt_flags & RTF_XRESOLVE) {
-				/*
-				 * The new cloned route needs external
-				 * resolution.
-				 */
+				/* Cloned route needs external resolution. */
 				msgtype = RTM_RESOLVE;
 				goto reportmsg;
 			}

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.21 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.22 2004/12/28 08:09:59 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -823,7 +823,7 @@ send:
 	if (isipv6) {
 		/*
 		 * ip6_plen is not need to be filled now, and will be filled
-		 * in ip6_output.
+		 * in ip6_output().
 		 */
 		th->th_sum = in6_cksum(m, IPPROTO_TCP, sizeof(struct ip6_hdr),
 				       sizeof(struct tcphdr) + optlen + len);
@@ -935,7 +935,8 @@ send:
 
 		/* TODO: IPv6 IP6TOS_ECT bit on */
 		error = ip6_output(m, inp->in6p_outputopts, &inp->in6p_route,
-		    (so->so_options & SO_DONTROUTE), NULL, NULL, inp);
+				   (so->so_options & SO_DONTROUTE), NULL, NULL,
+				   inp);
 	} else {
 		struct rtentry *rt;
 		ip->ip_len = m->m_pkthdr.len;
@@ -962,7 +963,7 @@ send:
 			ip->ip_off |= IP_DF;
 
 		error = ip_output(m, inp->inp_options, &inp->inp_route,
-		    (so->so_options & SO_DONTROUTE), NULL, inp);
+				  (so->so_options & SO_DONTROUTE), NULL, inp);
 	}
 	if (error) {
 
@@ -1043,8 +1044,8 @@ tcp_setpersist(tp)
 	/*
 	 * Start/restart persistance timer.
 	 */
-	TCPT_RANGESET(tt, t * tcp_backoff[tp->t_rxtshift],
-		      TCPTV_PERSMIN, TCPTV_PERSMAX);
+	TCPT_RANGESET(tt, t * tcp_backoff[tp->t_rxtshift], TCPTV_PERSMIN,
+		      TCPTV_PERSMAX);
 	callout_reset(tp->tt_persist, tt, tcp_timer_persist, tp);
 	if (tp->t_rxtshift < TCP_MAXRXTSHIFT)
 		tp->t_rxtshift++;

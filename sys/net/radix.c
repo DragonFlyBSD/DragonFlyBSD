@@ -32,7 +32,7 @@
  *
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  * $FreeBSD: src/sys/net/radix.c,v 1.20.2.3 2002/04/28 05:40:25 suz Exp $
- * $DragonFly: src/sys/net/radix.c,v 1.8 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/radix.c,v 1.9 2004/12/28 08:09:59 hsu Exp $
  */
 
 /*
@@ -66,18 +66,17 @@ static struct radix_node
     *rn_search(const char *, struct radix_node *),
     *rn_search_m(const char *, struct radix_node *, const char *);
 
-static int max_keylen;
 static struct radix_mask *rn_mkfreelist;
 static struct radix_node_head *mask_rnhead;
-static char *addmask_key;
-static char *rn_zeros, *rn_ones;
 
-#define rn_masktop (mask_rnhead->rnh_treetop)
+static int max_keylen;
+static char *rn_zeros, *rn_ones;
+static char *addmask_key;
 
 static int rn_lexobetter(char *m, char *n);
 static struct radix_mask *
     rn_new_radix_mask(struct radix_node *tt, struct radix_mask *nextmask);
-static int
+static boolean_t
     rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip);
 
 static __inline struct radix_mask *
@@ -89,7 +88,7 @@ MKGet(struct radix_mask **l)
 		m = *l;
 		*l = m->rm_next;
 	} else {
-		R_Malloc(m, struct radix_mask *, sizeof (*(m)));
+		R_Malloc(m, struct radix_mask *, sizeof *m);
 	}
 	return m;
 }
@@ -211,7 +210,7 @@ rn_lookup(char *key, char *mask, struct radix_node_head *head)
 	return x;
 }
 
-static int
+static boolean_t
 rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
 {
 	char *cp = trial, *cp2 = leaf->rn_key, *cp3 = leaf->rn_mask;
@@ -227,8 +226,8 @@ rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
 	cp2 += skip;
 	for (cp += skip; cp < cplim; cp++, cp2++, cp3++)
 		if ((*cp ^ *cp2) & *cp3)
-			return 0;
-	return 1;
+			return FALSE;
+	return TRUE;
 }
 
 struct radix_node *
@@ -327,16 +326,16 @@ on1:
 }
 
 #ifdef RN_DEBUG
-int	rn_nodenum;
-struct	radix_node *rn_clist;
-int	rn_saveinfo;
-int	rn_debug =  1;
+int rn_nodenum;
+struct radix_node *rn_clist;
+int rn_saveinfo;
+boolean_t rn_debug =  TRUE;
 #endif
 
 static struct radix_node *
 rn_newpair(char *key, int indexbit, struct radix_node nodes[2])
 {
-	struct radix_node *leaf = nodes, *interior = leaf + 1;
+	struct radix_node *leaf = &nodes[0], *interior = &nodes[1];
 
 	interior->rn_bit = indexbit;
 	interior->rn_bmask = 0x80 >> (indexbit & 0x7);
@@ -370,6 +369,7 @@ rn_insert(char *key, struct radix_node_head *head, boolean_t *dupentry,
 	char *cp = key + head_off;
 	int b;
 	struct radix_node *tt;
+
 	/*
 	 * Find first bit at which the key and t->rn_key differ
 	 */
@@ -460,15 +460,15 @@ rn_addmask(char *netmask, boolean_t search, int skip)
 	if (m0 < last_zeroed)
 		bzero(addmask_key + m0, last_zeroed - m0);
 	*addmask_key = last_zeroed = mlen;
-	x = rn_search(addmask_key, rn_masktop);
+	x = rn_search(addmask_key, mask_rnhead->rnh_treetop);
 	if (bcmp(addmask_key, x->rn_key, mlen) != 0)
 		x = NULL;
 	if (x != NULL || search)
 		return (x);
-	R_Malloc(x, struct radix_node *, max_keylen + 2 * sizeof (*x));
+	R_Malloc(x, struct radix_node *, max_keylen + 2 * (sizeof *x));
 	if ((saved_x = x) == NULL)
 		return (NULL);
-	bzero(x, max_keylen + 2 * sizeof (*x));
+	bzero(x, max_keylen + 2 * (sizeof *x));
 	netmask = cp = (char *)(x + 2);
 	bcopy(addmask_key, cp, mlen);
 	x = rn_insert(cp, mask_rnhead, &maskduplicated, x);
@@ -1009,16 +1009,17 @@ rn_inithead(void **head, int off)
 	struct radix_node_head *rnh;
 	struct radix_node *root, *left, *right;
 
-	if (*head)
+	if (*head != NULL)	/* already initialized */
 		return (1);
-	R_Malloc(rnh, struct radix_node_head *, sizeof (*rnh));
+
+	R_Malloc(rnh, struct radix_node_head *, sizeof *rnh);
 	if (rnh == NULL)
 		return (0);
-	bzero(rnh, sizeof (*rnh));
+	bzero(rnh, sizeof *rnh);
 	*head = rnh;
 
 	root = rn_newpair(rn_zeros, off, rnh->rnh_nodes);
-	right = rnh->rnh_nodes + 2;
+	right = &rnh->rnh_nodes[2];
 	root->rn_parent = root;
 	root->rn_flags = RNF_ROOT | RNF_ACTIVE;
 	root->rn_right = right;

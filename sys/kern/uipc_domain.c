@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_domain.c	8.2 (Berkeley) 10/18/93
  * $FreeBSD: src/sys/kern/uipc_domain.c,v 1.22.2.1 2001/07/03 11:01:37 ume Exp $
- * $DragonFly: src/sys/kern/uipc_domain.c,v 1.6 2004/12/21 02:42:41 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_domain.c,v 1.7 2004/12/28 08:09:59 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -85,10 +85,9 @@ net_init_domain(struct domain *dp)
 	if (dp->dom_init)
 		(*dp->dom_init)();
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
-		if (pr->pr_usrreqs == 0)
+		if (pr->pr_usrreqs == NULL)
 			panic("domaininit: %ssw[%d] has no usrreqs!",
-			      dp->dom_name, 
-			      (int)(pr - dp->dom_protosw));
+			      dp->dom_name, pr - dp->dom_protosw);
 		if (pr->pr_init)
 			(*pr->pr_init)();
 	}
@@ -149,9 +148,7 @@ domaininit(void *dummy)
 
 
 struct protosw *
-pffindtype(family, type)
-	int family;
-	int type;
+pffindtype(int family, int type)
 {
 	struct domain *dp;
 	struct protosw *pr;
@@ -159,46 +156,43 @@ pffindtype(family, type)
 	for (dp = domains; dp; dp = dp->dom_next)
 		if (dp->dom_family == family)
 			goto found;
-	return (0);
+	return (NULL);
+
 found:
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 		if (pr->pr_type && pr->pr_type == type)
 			return (pr);
-	return (0);
+	return (NULL);
 }
 
 struct protosw *
-pffindproto(family, protocol, type)
-	int family;
-	int protocol;
-	int type;
+pffindproto(int family, int protocol, int type)
 {
 	struct domain *dp;
 	struct protosw *pr;
-	struct protosw *maybe = 0;
+	struct protosw *maybe = NULL;
 
 	if (family == 0)
-		return (0);
+		return (NULL);
 	for (dp = domains; dp; dp = dp->dom_next)
 		if (dp->dom_family == family)
 			goto found;
-	return (0);
+	return (NULL);
+
 found:
 	for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++) {
 		if ((pr->pr_protocol == protocol) && (pr->pr_type == type))
 			return (pr);
 
 		if (type == SOCK_RAW && pr->pr_type == SOCK_RAW &&
-		    pr->pr_protocol == 0 && maybe == (struct protosw *)0)
+		    pr->pr_protocol == 0 && maybe == (struct protosw *)NULL)
 			maybe = pr;
 	}
 	return (maybe);
 }
 
 void
-pfctlinput(cmd, sa)
-	int cmd;
-	struct sockaddr *sa;
+pfctlinput(int cmd, struct sockaddr *sa)
 {
 	struct domain *dp;
 	struct protosw *pr;
@@ -206,14 +200,11 @@ pfctlinput(cmd, sa)
 	for (dp = domains; dp; dp = dp->dom_next)
 		for (pr = dp->dom_protosw; pr < dp->dom_protoswNPROTOSW; pr++)
 			if (pr->pr_ctlinput)
-				(*pr->pr_ctlinput)(cmd, sa, (void *)0);
+				(*pr->pr_ctlinput)(cmd, sa, (void *)NULL);
 }
 
 void
-pfctlinput2(cmd, sa, ctlparam)
-	int cmd;
-	struct sockaddr *sa;
-	void *ctlparam;
+pfctlinput2(int cmd, struct sockaddr *sa, void *ctlparam)
 {
 	struct domain *dp;
 	struct protosw *pr;
@@ -236,8 +227,7 @@ pfctlinput2(cmd, sa, ctlparam)
 }
 
 static void
-pfslowtimo(arg)
-	void *arg;
+pfslowtimo(void *arg)
 {
 	struct domain *dp;
 	struct protosw *pr;
@@ -250,8 +240,7 @@ pfslowtimo(arg)
 }
 
 static void
-pffasttimo(arg)
-	void *arg;
+pffasttimo(void *arg)
 {
 	struct domain *dp;
 	struct protosw *pr;

@@ -32,7 +32,7 @@
  *
  *	@(#)if_ethersubr.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/if_ethersubr.c,v 1.70.2.33 2003/04/28 15:45:53 archie Exp $
- * $DragonFly: src/sys/net/if_ethersubr.c,v 1.23 2004/12/24 04:54:49 dillon Exp $
+ * $DragonFly: src/sys/net/if_ethersubr.c,v 1.24 2004/12/28 08:09:59 hsu Exp $
  */
 
 #include "opt_atalk.h"
@@ -112,8 +112,8 @@ void	(*ng_ether_detach_p)(struct ifnet *ifp);
 int	(*vlan_input_p)(struct ether_header *eh, struct mbuf *m);
 int	(*vlan_input_tag_p)(struct mbuf *m, uint16_t t);
 
-static int	ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
-			     struct rtentry *);
+static int ether_output(struct ifnet *, struct mbuf *, struct sockaddr *,
+			struct rtentry *);
 
 /*
  * bridge support
@@ -124,19 +124,25 @@ bdg_forward_t *bdg_forward_ptr;
 bdgtakeifaces_t *bdgtakeifaces_ptr;
 struct bdg_softc *ifp2sc;
 
-static	int ether_resolvemulti(struct ifnet *, struct sockaddr **,
-		struct sockaddr *);
-const uint8_t	etherbroadcastaddr[ETHER_ADDR_LEN] = {
+static int ether_resolvemulti(struct ifnet *, struct sockaddr **,
+			      struct sockaddr *);
+
+const uint8_t etherbroadcastaddr[ETHER_ADDR_LEN] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
-#define gotoerr(e) do { error = (e); goto bad;} while (0)
+#define gotoerr(e) do { error = (e); goto bad; } while (0)
 #define IFP2AC(ifp) ((struct arpcom *)(ifp))
 
-int
-ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
-	struct ip_fw **rule, struct ether_header *eh, int shared);
+static boolean_t ether_ipfw_chk(struct mbuf **m0, struct ifnet *dst,
+				struct ip_fw **rule, struct ether_header *eh,
+				boolean_t shared);
+
 static int ether_ipfw;
+SYSCTL_DECL(_net_link);
+SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
+SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
+	   &ether_ipfw, 0, "Pass ether pkts through firewall");
 
 /*
  * Ethernet output routine.
@@ -161,11 +167,13 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 
 	M_PREPEND(m, sizeof(struct ether_header), MB_DONTWAIT);
 	if (m == NULL)
-		gotoerr(ENOBUFS);
+		return (ENOBUFS);
 	eh = mtod(m, struct ether_header *);
 	edst = eh->ether_dhost;
 
-	/* Fill in the destination ethernet address and frame type. */
+	/*
+	 * Fill in the destination ethernet address and frame type.
+	 */
 	switch (dst->sa_family) {
 #ifdef INET
 	case AF_INET:
@@ -177,7 +185,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 #ifdef INET6
 	case AF_INET6:
 		if (!nd6_storelladdr(&ac->ac_if, rt, m, dst, edst))
-			return (0);		/* Something bad happened. */
+			return (0);		/* Something bad happenned. */
 		eh->ether_type = htons(ETHERTYPE_IPV6);
 		break;
 #endif
@@ -213,12 +221,16 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			struct llc llc;
 
 			M_PREPEND(m, sizeof(struct llc), MB_DONTWAIT);
+			eh = mtod(m, struct ether_header *);
+			edst = eh->ether_dhost;
 			llc.llc_dsap = llc.llc_ssap = LLC_SNAP_LSAP;
 			llc.llc_control = LLC_UI;
 			bcopy(at_org_code, llc.llc_snap_org_code,
 			      sizeof at_org_code);
 			llc.llc_snap_ether_type = htons(ETHERTYPE_AT);
-			bcopy(&llc, mtod(m, caddr_t), sizeof(struct llc));
+			bcopy(&llc,
+			      mtod(m, caddr_t) + sizeof(struct ether_header),
+			      sizeof(struct llc));
 			eh->ether_type = htons(m->m_pkthdr.len);
 			hlen = sizeof(struct llc) + ETHER_HDR_LEN;
 		} else {
@@ -228,7 +240,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			return (0);
 		break;
 	  }
-#endif /* NETATALK */
+#endif
 #ifdef NS
 	case AF_NS:
 		switch(ns_nettype) {
@@ -241,8 +253,10 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 			break;
 		case 0xe0e0:	/* Novell 802.2 and Token-Ring */
 			M_PREPEND(m, 3, MB_DONTWAIT);
+			eh = mtod(m, struct ether_header *);
+			edst = eh->ether_dhost;
 			eh->ether_type = htons(m->m_pkthdr.len);
-			cp = mtod(m, u_char *);
+			cp = mtod(m, u_char *) + sizeof(struct ether_header);
 			*cp++ = 0xE0;
 			*cp++ = 0xE0;
 			*cp++ = 0x03;
@@ -264,7 +278,7 @@ ether_output(struct ifnet *ifp, struct mbuf *m, struct sockaddr *dst,
 		if (bcmp(edst, &ns_broadhost, ETHER_ADDR_LEN) == 0)
 			m->m_flags |= M_BCAST;
 		break;
-#endif /* NS */
+#endif
 	case pseudo_AF_HDRCMPLT:
 	case AF_UNSPEC:
 		loop_copy = -1; /* if this is for us, don't do it */
@@ -351,15 +365,18 @@ ether_output_frame(struct ifnet *ifp, struct mbuf *m)
 	int s;
 
 	/* Extract info from dummynet tag, ignore others */
-	for (; m->m_type == MT_TAG; m = m->m_next)
-		if (m->m_flags == PACKET_TAG_DUMMYNET)
+	while (m->m_type == MT_TAG) {
+		if (m->m_flags == PACKET_TAG_DUMMYNET) {
 			rule = ((struct dn_pkt *)m)->rule;
-
-	if (rule)	/* packet was already bridged */
+			break;
+		}
+		m = m->m_next;
+	}
+	if (rule != NULL)		/* packet was already bridged */
 		goto no_bridge;
 
-	if (BDG_ACTIVE(ifp) ) {
-		struct ether_header *eh; /* a ptr suffices */
+	if (BDG_ACTIVE(ifp)) {
+		struct ether_header *eh;	/* a pointer suffices */
 
 		m->m_pkthdr.rcvif = NULL;
 		eh = mtod(m, struct ether_header *);
@@ -378,13 +395,14 @@ no_bridge:
 		eh = mtod(m, struct ether_header *);
 		save_eh = *eh;
 		m_adj(m, ETHER_HDR_LEN);
-		if (ether_ipfw_chk(&m, ifp, &rule, eh, 0) == 0) {
-			if (m) {
+		if (!ether_ipfw_chk(&m, ifp, &rule, eh, FALSE)) {
+			if (m != NULL) {
 				m_freem(m);
 				return ENOBUFS; /* pkt dropped */
 			} else
 				return 0;	/* consumed e.g. in a pipe */
 		}
+		eh = mtod(m, struct ether_header *);
 		/* packet was ok, restore the ethernet header */
 		if ((void *)(eh + 1) == (void *)m->m_data) {
 			m->m_data -= ETHER_HDR_LEN ;
@@ -395,7 +413,7 @@ no_bridge:
 			if (m == NULL) /* nope... */
 				return ENOBUFS;
 			bcopy(&save_eh, mtod(m, struct ether_header *),
-			    ETHER_HDR_LEN);
+			      ETHER_HDR_LEN);
 		}
 	}
 
@@ -411,35 +429,35 @@ no_bridge:
 
 /*
  * ipfw processing for ethernet packets (in and out).
- * The second parameter is NULL from ether_demux, and ifp from
- * ether_output_frame. This section of code could be used from
+ * The second parameter is NULL from ether_demux(), and ifp from
+ * ether_output_frame(). This section of code could be used from
  * bridge.c as well as long as we use some extra info
- * to distinguish that case from ether_output_frame();
+ * to distinguish that case from ether_output_frame().
  */
-int
+static boolean_t
 ether_ipfw_chk(
 	struct mbuf **m0,
 	struct ifnet *dst,
 	struct ip_fw **rule,
 	struct ether_header *eh,
-	int shared)
+	boolean_t shared)
 {
 	struct ether_header save_eh = *eh;	/* might be a ptr in m */
 	struct ip_fw_args args;
 	int i;
 
 	if (*rule != NULL && fw_one_pass)
-		return 1; /* dummynet packet, already partially processed */
+		return TRUE; /* dummynet packet, already partially processed */
 
 	/*
-	 * I need some amt of data to be contiguous, and in case others need
-	 * the packet (shared==1) also better be in the first mbuf.
+	 * I need some amount of data to be contiguous, and in case others
+	 * need the packet (shared==TRUE), it also better be in the first mbuf.
 	 */
 	i = min((*m0)->m_pkthdr.len, max_protohdr);
 	if (shared || (*m0)->m_len < i) {
 		*m0 = m_pullup(*m0, i);
 		if (*m0 == NULL)
-			return 0;
+			return FALSE;
 	}
 
 	args.m = *m0;		/* the packet we are looking at		*/
@@ -452,11 +470,11 @@ ether_ipfw_chk(
 	*m0 = args.m;
 	*rule = args.rule;
 
-	if ((i & IP_FW_PORT_DENY_FLAG) || *m0 == NULL) /* drop */
-		return 0;
+	if ((i & IP_FW_PORT_DENY_FLAG) || *m0 == NULL)	/* drop */
+		return FALSE;
 
-	if (i == 0) /* a PASS rule.  */
-		return 1;
+	if (i == 0)					/* a PASS rule.  */
+		return TRUE;
 
 	if (DUMMYNET_LOADED && (i & IP_FW_PORT_DYNT_FLAG)) {
 		/*
@@ -468,10 +486,10 @@ ether_ipfw_chk(
 		if (shared) {
 			m = m_copypacket(*m0, MB_DONTWAIT);
 			if (m == NULL)
-				return 0;
+				return FALSE;
 		} else {
-			m = *m0 ; /* pass the original to dummynet */
-			*m0 = NULL ; /* and nothing back to the caller */
+			m = *m0 ;	/* pass the original to dummynet */
+			*m0 = NULL ;	/* and nothing back to the caller */
 		}
 		/*
 		 * Prepend the header, optimize for the common case of
@@ -483,20 +501,20 @@ ether_ipfw_chk(
 			m->m_pkthdr.len += ETHER_HDR_LEN ;
 		} else {
 			M_PREPEND(m, ETHER_HDR_LEN, MB_DONTWAIT);
-			if (m == NULL) /* nope... */
-				return 0;
+			if (m == NULL)
+				return FALSE;
 			bcopy(&save_eh, mtod(m, struct ether_header *),
-			    ETHER_HDR_LEN);
+			      ETHER_HDR_LEN);
 		}
 		ip_dn_io_ptr(m, (i & 0xffff),
-			dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
-		return 0;
+			     dst ? DN_TO_ETH_OUT: DN_TO_ETH_DEMUX, &args);
+		return FALSE;
 	}
 	/*
 	 * XXX at some point add support for divert/forward actions.
 	 * If none of the above matches, we have to drop the pkt.
 	 */
-	return 0;
+	return FALSE;
 }
 
 /*
@@ -568,7 +586,7 @@ ether_input(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 	}
 
 	/* Check for bridging mode */
-	if (BDG_ACTIVE(ifp) ) {
+	if (BDG_ACTIVE(ifp)) {
 		struct ifnet *bif;
 
 		/* Check with bridging code */
@@ -613,18 +631,20 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 {
 	int isr;
 	u_short ether_type;
-#if defined(NETATALK)
+	struct ip_fw *rule = NULL;
+#ifdef NETATALK
 	struct llc *l;
 #endif
-	struct ip_fw *rule = NULL;
 
 	/* Extract info from dummynet tag, ignore others */
-	for (;m->m_type == MT_TAG; m = m->m_next)
+	while (m->m_type == MT_TAG) {
 		if (m->m_flags == PACKET_TAG_DUMMYNET) {
 			rule = ((struct dn_pkt *)m)->rule;
 			ifp = m->m_next->m_pkthdr.rcvif;
+			break;
 		}
-
+		m = m->m_next;
+	}
 	if (rule)	/* packet was already bridged */
 		goto post_stats;
 
@@ -652,17 +672,17 @@ ether_demux(struct ifnet *ifp, struct ether_header *eh, struct mbuf *m)
 			m->m_flags |= M_BCAST;
 		else
 			m->m_flags |= M_MCAST;
-	}
-	if (m->m_flags & (M_BCAST|M_MCAST))
 		ifp->if_imcasts++;
+	}
 
 post_stats:
 	if (IPFW_LOADED && ether_ipfw != 0) {
-		if (ether_ipfw_chk(&m, NULL, &rule, eh, 0 ) == 0) {
-			if (m)
+		if (!ether_ipfw_chk(&m, NULL, &rule, eh, FALSE)) {
+			if (m != NULL)
 				m_freem(m);
 			return;
 		}
+		eh = mtod(m, struct ether_header *);
 	}
 
 	ether_type = ntohs(eh->ether_type);
@@ -684,6 +704,13 @@ post_stats:
 		isr = NETISR_ARP;
 		break;
 #endif
+
+#ifdef INET6
+	case ETHERTYPE_IPV6:
+		isr = NETISR_IPV6;
+		break;
+#endif
+
 #ifdef IPX
 	case ETHERTYPE_IPX:
 		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
@@ -691,17 +718,14 @@ post_stats:
 		isr = NETISR_IPX;
 		break;
 #endif
-#ifdef INET6
-	case ETHERTYPE_IPV6:
-		isr = NETISR_IPV6;
-		break;
-#endif
+
 #ifdef NS
 	case 0x8137: /* Novell Ethernet_II Ethernet TYPE II */
 		isr = NETISR_NS;
 		break;
 
-#endif /* NS */
+#endif
+
 #ifdef NETATALK
 	case ETHERTYPE_AT:
 		isr = NETISR_ATALK1;
@@ -709,22 +733,22 @@ post_stats:
 	case ETHERTYPE_AARP:
 		isr = NETISR_AARP;
 		break;
-#endif /* NETATALK */
+#endif
+
 	case ETHERTYPE_VLAN:
-		/* XXX lock ? */
 		if (vlan_input_p != NULL)
 			(*vlan_input_p)(eh, m);
 		else {
 			m->m_pkthdr.rcvif->if_noproto++;
 			m_freem(m);
 		}
-		/* XXX unlock ? */
 		return;
+
 	default:
 #ifdef IPX
 		if (ef_inputp && ef_inputp(ifp, eh, m) == 0)
 			return;
-#endif /* IPX */
+#endif
 #ifdef NS
 		checksum = mtod(m, ushort *);
 		/* Novell 802.3 */
@@ -738,7 +762,7 @@ post_stats:
 			isr = NETISR_NS;
 			break;
 		}
-#endif /* NS */
+#endif
 #ifdef NETATALK
 		if (ether_type > ETHERMTU)
 			goto dropanyway;
@@ -762,7 +786,7 @@ post_stats:
 			}
 		}
 dropanyway:
-#endif /* NETATALK */
+#endif
 		if (ng_ether_input_orphan_p != NULL)
 			(*ng_ether_input_orphan_p)(ifp, m, eh);
 		else
@@ -788,17 +812,17 @@ ether_ifattach_bpf(struct ifnet *ifp, uint8_t *lla, u_int dlt, u_int hdrlen)
 	struct ifaddr *ifa;
 	struct sockaddr_dl *sdl;
 
-	ifp->if_output = ether_output;
-	ifp->if_input = ether_input_internal;
 	ifp->if_type = IFT_ETHER;
 	ifp->if_addrlen = ETHER_ADDR_LEN;
-	ifp->if_broadcastaddr = etherbroadcastaddr;
-	ifp->if_hdrlen = 14;
+	ifp->if_hdrlen = ETHER_HDR_LEN;
 	if_attach(ifp);
 	ifp->if_mtu = ETHERMTU;
-	ifp->if_resolvemulti = ether_resolvemulti;
 	if (ifp->if_baudrate == 0)
 		ifp->if_baudrate = 10000000;
+	ifp->if_output = ether_output;
+	ifp->if_input = ether_input_internal;
+	ifp->if_resolvemulti = ether_resolvemulti;
+	ifp->if_broadcastaddr = etherbroadcastaddr;
 	ifa = ifnet_addrs[ifp->if_index - 1];
 	KASSERT(ifa != NULL, ("%s: no lladdr!\n", __FUNCTION__));
 	sdl = (struct sockaddr_dl *)ifa->ifa_addr;
@@ -839,11 +863,6 @@ ether_ifdetach(struct ifnet *ifp)
 	if (BDG_LOADED)
 		bdgtakeifaces_ptr();
 }
-
-SYSCTL_DECL(_net_link);
-SYSCTL_NODE(_net_link, IFT_ETHER, ether, CTLFLAG_RW, 0, "Ethernet");
-SYSCTL_INT(_net_link_ether, OID_AUTO, ipfw, CTLFLAG_RW,
-	    &ether_ipfw,0,"Pass ether pkts through firewall");
 
 int
 ether_ioctl(struct ifnet *ifp, int command, caddr_t data)
@@ -964,7 +983,7 @@ ether_resolvemulti(
 		if (!IN_MULTICAST(ntohl(sin->sin_addr.s_addr)))
 			return EADDRNOTAVAIL;
 		MALLOC(sdl, struct sockaddr_dl *, sizeof *sdl, M_IFMADDR,
-		       M_WAITOK|M_ZERO);
+		       M_WAITOK | M_ZERO);
 		sdl->sdl_len = sizeof *sdl;
 		sdl->sdl_family = AF_LINK;
 		sdl->sdl_index = ifp->if_index;
@@ -991,7 +1010,7 @@ ether_resolvemulti(
 		if (!IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr))
 			return EADDRNOTAVAIL;
 		MALLOC(sdl, struct sockaddr_dl *, sizeof *sdl, M_IFMADDR,
-		       M_WAITOK|M_ZERO);
+		       M_WAITOK | M_ZERO);
 		sdl->sdl_len = sizeof *sdl;
 		sdl->sdl_family = AF_LINK;
 		sdl->sdl_index = ifp->if_index;

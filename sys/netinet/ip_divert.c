@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.16 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.17 2004/12/28 08:09:59 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -107,7 +107,7 @@ static u_long	div_sendspace = DIVSNDQ;	/* XXX sysctl ? */
 static u_long	div_recvspace = DIVRCVQ;	/* XXX sysctl ? */
 
 /* Optimization: have this preinitialized */
-static struct sockaddr_in divsrc = { sizeof(divsrc), AF_INET };
+static struct sockaddr_in divsrc = { sizeof divsrc, AF_INET };
 
 /*
  * Initialize divert connection block queue.
@@ -161,7 +161,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 
 	/* Assure header */
 	if (m->m_len < sizeof(struct ip) &&
-	    (m = m_pullup(m, sizeof(struct ip))) == 0)
+	    (m = m_pullup(m, sizeof(struct ip))) == NULL)
 		return;
 	ip = mtod(m, struct ip *);
 
@@ -190,7 +190,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	/*
 	 * Record the incoming interface name whenever we have one.
 	 */
-	bzero(&divsrc.sin_zero, sizeof(divsrc.sin_zero));
+	bzero(&divsrc.sin_zero, sizeof divsrc.sin_zero);
 	if (m->m_pkthdr.rcvif) {
 		/*
 		 * Hide the actual interface name in there in the
@@ -210,7 +210,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 		 * this iface name will come along for the ride.
 		 * (see div_output for the other half of this.)
 		 */
-		snprintf(divsrc.sin_zero, sizeof(divsrc.sin_zero),
+		snprintf(divsrc.sin_zero, sizeof divsrc.sin_zero,
 			    m->m_pkthdr.rcvif->if_xname);
 	}
 
@@ -225,7 +225,7 @@ divert_packet(struct mbuf *m, int incoming, int port, int rule)
 	}
 	if (sa) {
 		if (sbappendaddr(&sa->so_rcv, (struct sockaddr *)&divsrc,
-				m, (struct mbuf *)0) == 0)
+				m, (struct mbuf *)NULL) == 0)
 			m_freem(m);
 		else
 			sorwakeup(sa);
@@ -275,9 +275,9 @@ div_output(struct socket *so, struct mbuf *m,
 		 * The name is user supplied data so don't trust its size
 		 * or that it is zero terminated.
 		 */
-		for (i = 0; sin->sin_zero[i] && i < sizeof(sin->sin_zero); i++)
+		for (i = 0; sin->sin_zero[i] && i < sizeof sin->sin_zero; i++)
 			;
-		if ( i > 0 && i < sizeof(sin->sin_zero))
+		if ( i > 0 && i < sizeof sin->sin_zero)
 			m->m_pkthdr.rcvif = ifunit(sin->sin_zero);
 	}
 
@@ -290,7 +290,7 @@ div_output(struct socket *so, struct mbuf *m,
 		 * Don't allow both user specified and setsockopt options,
 		 * and don't allow packet length sizes that will crash
 		 */
-		if (((ip->ip_hl != (sizeof (*ip) >> 2)) && inp->inp_options) ||
+		if (((ip->ip_hl != (sizeof *ip) >> 2) && inp->inp_options) ||
 		     ((u_short)ntohs(ip->ip_len) > m->m_pkthdr.len)) {
 			error = EINVAL;
 			goto cantsend;
@@ -316,7 +316,7 @@ div_output(struct socket *so, struct mbuf *m,
 			 */
 			struct	ifaddr *ifa;
 
-			bzero(sin->sin_zero, sizeof(sin->sin_zero));
+			bzero(sin->sin_zero, sizeof sin->sin_zero);
 			sin->sin_port = 0;
 			ifa = ifa_ifwithaddr((struct sockaddr *) sin);
 			if (ifa == NULL) {
@@ -359,8 +359,10 @@ div_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	inp->inp_ip_p = proto;
 	inp->inp_vflag |= INP_IPV4;
 	inp->inp_flags |= INP_HDRINCL;
-	/* The socket is always "connected" because
-	   we always know "where" to send the packet */
+	/*
+	 * The socket is always "connected" because
+	 * we always know "where" to send the packet.
+	 */
 	so->so_state |= SS_ISCONNECTED;
 	return 0;
 }
@@ -371,7 +373,7 @@ div_detach(struct socket *so)
 	struct inpcb *inp;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		panic("div_detach");
 	in_pcbdetach(inp);
 	return 0;
@@ -387,7 +389,7 @@ div_abort(struct socket *so)
 static int
 div_disconnect(struct socket *so)
 {
-	if ((so->so_state & SS_ISCONNECTED) == 0)
+	if (!(so->so_state & SS_ISCONNECTED))
 		return ENOTCONN;
 	return div_abort(so);
 }
@@ -430,8 +432,8 @@ div_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *nam,
 	 struct mbuf *control, struct thread *td)
 {
 	/* Packet must have a header (but that's about it) */
-	if (m->m_len < sizeof (struct ip) &&
-	    (m = m_pullup(m, sizeof (struct ip))) == 0) {
+	if (m->m_len < sizeof(struct ip) &&
+	    (m = m_pullup(m, sizeof(struct ip))) == NULL) {
 		ipstat.ips_toosmall++;
 		m_freem(m);
 		return EINVAL;

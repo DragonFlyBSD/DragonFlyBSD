@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.40 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.41 2004/12/28 08:09:59 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -490,31 +490,27 @@ ip_input(struct mbuf *m)
 	args.next_hop = NULL;
 
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
-	for (; m && m->m_type == MT_TAG; m = m->m_next) {
+	while (m != NULL && m->m_type == MT_TAG) {
 		switch(m->_m_tag_id) {
+		case PACKET_TAG_DUMMYNET:
+			args.rule = ((struct dn_pkt *)m)->rule;
+			break;
+		case PACKET_TAG_DIVERT:
+			args.divert_rule = (int)m->m_hdr.mh_data & 0xffff;
+			break;
+		case PACKET_TAG_IPFORWARD:
+			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
+			break;
 		default:
 			printf("ip_input: unrecognised MT_TAG tag %d\n",
 			    m->_m_tag_id);
 			break;
-
-		case PACKET_TAG_DUMMYNET:
-			args.rule = ((struct dn_pkt *)m)->rule;
-			break;
-
-		case PACKET_TAG_DIVERT:
-			args.divert_rule = (int)m->m_hdr.mh_data & 0xffff;
-			break;
-
-		case PACKET_TAG_IPFORWARD:
-			args.next_hop = (struct sockaddr_in *)m->m_hdr.mh_data;
-			break;
 		}
+		m = m->m_next;
 	}
+	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_input: no HDR"));
 
-	KASSERT(m != NULL && (m->m_flags & M_PKTHDR) != 0,
-	    ("ip_input: no HDR"));
-
-	if (args.rule) {	/* dummynet already filtered us */
+	if (args.rule != NULL) {	/* dummynet already filtered us */
 		ip = mtod(m, struct ip *);
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 		goto iphack;
@@ -555,7 +551,7 @@ ip_input(struct mbuf *m)
 			sum = in_cksum(m, hlen);
 		}
 	}
-	if (sum) {
+	if (sum != 0) {
 		ipstat.ips_badsum++;
 		goto bad;
 	}
@@ -633,19 +629,19 @@ iphack:
 		 * If we've been forwarded from the output side, then
 		 * skip the firewall a second time
 		 */
-		if (args.next_hop)
+		if (args.next_hop != NULL)
 			goto ours;
 
 		args.m = m;
 		i = ip_fw_chk_ptr(&args);
 		m = args.m;
 
-		if ( (i & IP_FW_PORT_DENY_FLAG) || m == NULL) { /* drop */
-			if (m)
+		if ((i & IP_FW_PORT_DENY_FLAG) || m == NULL) {	/* drop */
+			if (m != NULL)
 				m_freem(m);
 			return;
 		}
-		ip = mtod(m, struct ip *); /* just in case m changed */
+		ip = mtod(m, struct ip *);	/* just in case m changed */
 		if (i == 0 && args.next_hop == NULL)	/* common case */
 			goto pass;
 		if (DUMMYNET_LOADED && (i & IP_FW_PORT_DYNT_FLAG)) {
@@ -765,7 +761,8 @@ pass:
 	}
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr))) {
 		struct in_multi *inm;
-		if (ip_mrouter) {
+
+		if (ip_mrouter != NULL) {
 			/*
 			 * If we are acting as a multicast router, all
 			 * incoming multicast packets are passed to the
@@ -774,7 +771,7 @@ pass:
 			 * ip_mforward() returns a non-zero value, the packet
 			 * must be discarded, else it may be accepted below.
 			 */
-			if (ip_mforward &&
+			if (ip_mforward != NULL &&
 			    ip_mforward(ip, m->m_pkthdr.rcvif, m, NULL) != 0) {
 				ipstat.ips_cantforward++;
 				m_freem(m);
@@ -1713,7 +1710,7 @@ ip_rtaddr(struct in_addr dst, struct route *rt)
 			rt->ro_rt = NULL;
 		}
 		sin->sin_family = AF_INET;
-		sin->sin_len = sizeof(*sin);
+		sin->sin_len = sizeof *sin;
 		sin->sin_addr = dst;
 		rtalloc_ign(rt, RTF_PRCLONING);
 	}
@@ -1879,7 +1876,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 	 * Cache the destination address of the packet; this may be
 	 * changed by use of 'ipfw fwd'.
 	 */
-	pkt_dst = next_hop ? next_hop->sin_addr : ip->ip_dst;
+	pkt_dst = (next_hop != NULL) ? next_hop->sin_addr : ip->ip_dst;
 
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
@@ -1988,7 +1985,7 @@ ip_forward(struct mbuf *m, int using_srcrt, struct sockaddr_in *next_hop)
 		}
 	}
 
-	if (next_hop) {
+	if (next_hop != NULL) {
 		/* Pass IPFORWARD info if available */
 		tag.mh_type = MT_TAG;
 		tag.mh_flags = PACKET_TAG_IPFORWARD;

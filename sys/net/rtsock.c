@@ -32,7 +32,7 @@
  *
  *	@(#)rtsock.c	8.7 (Berkeley) 10/12/95
  * $FreeBSD: src/sys/net/rtsock.c,v 1.44.2.11 2002/12/04 14:05:41 ru Exp $
- * $DragonFly: src/sys/net/rtsock.c,v 1.17 2004/12/21 02:54:14 hsu Exp $
+ * $DragonFly: src/sys/net/rtsock.c,v 1.18 2004/12/28 08:09:59 hsu Exp $
  */
 
 
@@ -66,7 +66,7 @@ static struct route_cb {
 
 static struct	sockaddr route_dst = { 2, PF_ROUTE, };
 static struct	sockaddr route_src = { 2, PF_ROUTE, };
-static struct	sockaddr sa_zero   = { sizeof(sa_zero), AF_INET, };
+static struct	sockaddr sa_zero   = { sizeof sa_zero, AF_INET, };
 static struct	sockproto route_proto = { PF_ROUTE, };
 
 struct walkarg {
@@ -306,7 +306,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 	if (!(m->m_flags & M_PKTHDR))
 		panic("route_output");
 	len = m->m_pkthdr.len;
-	if (len < sizeof(*rtm) ||
+	if (len < sizeof *rtm ||
 	    len != mtod(m, struct rt_msghdr *)->rtm_msglen) {
 		info.sa_dst = NULL;
 		gotoerr(EINVAL);
@@ -322,7 +322,7 @@ route_output(struct mbuf *m, struct socket *so, ...)
 		gotoerr(EPROTONOSUPPORT);
 	}
 	rtm->rtm_pid = oi->p_pid;
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.rti_addrs = rtm->rtm_addrs;
 	if (rt_xaddrs((char *)(rtm + 1), len + (char *)rtm, &info)) {
 		info.sa_dst = NULL;
@@ -763,7 +763,7 @@ rt_ifmsg(ifp)
 
 	if (route_cb.any_count == 0)
 		return;
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	m = rt_msg1(RTM_IFINFO, &info);
 	if (m == NULL)
 		return;
@@ -785,7 +785,7 @@ rt_ifamsg(int cmd, struct ifaddr *ifa)
 	struct sockaddr *sa;
 	struct ifnet *ifp = ifa->ifa_ifp;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.sa_ifaaddr = sa = ifa->ifa_addr;
 	info.sa_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
 	info.sa_netmask = ifa->ifa_netmask;
@@ -818,7 +818,7 @@ rt_rtmsg(int cmd, struct ifaddr *ifa, int error, struct rtentry *rt)
 	if (rt == NULL)
 		return;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.sa_netmask = rt_mask(rt);
 	info.sa_dst = sa = rt_key(rt);
 	info.sa_gateway = rt->rt_gateway;
@@ -883,7 +883,7 @@ rt_newmaddrmsg(cmd, ifma)
 	if (route_cb.any_count == 0)
 		return;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.sa_ifaaddr = ifma->ifma_addr;
 	if (ifp != NULL && TAILQ_FIRST(&ifp->if_addrhead) != NULL)
 		info.sa_ifpaddr = TAILQ_FIRST(&ifp->if_addrhead)->ifa_addr;
@@ -923,7 +923,7 @@ rt_ifannouncemsg(ifp, what)
 	if (route_cb.any_count == 0)
 		return;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 
 	m = rt_msg1(RTM_IFANNOUNCE, &info);
 	if (m == NULL)
@@ -931,7 +931,7 @@ rt_ifannouncemsg(ifp, what)
 
 	ifan = mtod(m, struct if_announcemsghdr *);
 	ifan->ifan_index = ifp->if_index;
-	strlcpy(ifan->ifan_name, ifp->if_xname, sizeof(ifan->ifan_name));
+	strlcpy(ifan->ifan_name, ifp->if_xname, sizeof ifan->ifan_name);
 	ifan->ifan_what = what;
 
 	route_proto.sp_protocol = 0;
@@ -955,7 +955,7 @@ sysctl_dumpentry(rn, vw)
 	if (w->w_op == NET_RT_FLAGS && !(rt->rt_flags & w->w_arg))
 		return 0;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	info.sa_dst = rt_key(rt);
 	info.sa_gateway = rt->rt_gateway;
 	info.sa_netmask = rt_mask(rt);
@@ -977,7 +977,7 @@ sysctl_dumpentry(rn, vw)
 		rtm->rtm_index = rt->rt_ifp->if_index;
 		rtm->rtm_errno = rtm->rtm_pid = rtm->rtm_seq = 0;
 		rtm->rtm_addrs = info.rti_addrs;
-		error = SYSCTL_OUT(w->w_req, (caddr_t)rtm, size);
+		error = SYSCTL_OUT(w->w_req, rtm, size);
 		return (error);
 	}
 	return (error);
@@ -993,7 +993,7 @@ sysctl_iflist(af, w)
 	struct	rt_addrinfo info;
 	int	len, error = 0;
 
-	bzero(&info, sizeof(info));
+	bzero(&info, sizeof info);
 	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		if (w->w_arg && w->w_arg != ifp->if_index)
 			continue;
@@ -1009,7 +1009,7 @@ sysctl_iflist(af, w)
 			ifm->ifm_flags = (u_short)ifp->if_flags;
 			ifm->ifm_data = ifp->if_data;
 			ifm->ifm_addrs = info.rti_addrs;
-			error = SYSCTL_OUT(w->w_req,(caddr_t)ifm, len);
+			error = SYSCTL_OUT(w->w_req, ifm, len);
 			if (error)
 				return (error);
 		}
@@ -1057,7 +1057,7 @@ sysctl_rtsock(SYSCTL_HANDLER_ARGS)
 	if (namelen != 3)
 		return (EINVAL);
 	af = name[0];
-	bzero(&w, sizeof(w));
+	bzero(&w, sizeof w);
 	w.w_op = name[1];
 	w.w_arg = name[2];
 	w.w_req = req;
@@ -1102,6 +1102,6 @@ static struct protosw routesw[] = {
 
 static struct domain routedomain =
     { PF_ROUTE, "route", 0, 0, 0,
-      routesw, &routesw[sizeof(routesw)/sizeof(routesw[0])] };
+      routesw, &routesw[(sizeof routesw)/(sizeof routesw[0])] };
 
 DOMAIN_SET(route);

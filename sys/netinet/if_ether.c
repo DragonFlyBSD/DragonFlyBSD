@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.21 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.22 2004/12/28 08:09:59 hsu Exp $
  */
 
 /*
@@ -157,7 +157,7 @@ arp_rtrequest(int req, struct rtentry *rt, struct rt_addrinfo *info)
 	struct sockaddr *gate = rt->rt_gateway;
 	struct llinfo_arp *la = rt->rt_llinfo;
 
-	struct sockaddr_dl null_sdl = { sizeof(null_sdl), AF_LINK };
+	struct sockaddr_dl null_sdl = { sizeof null_sdl, AF_LINK };
 	static boolean_t arpinit_done;
 	static int arp_inuse, arp_allocated;	/* for debugging only */
 
@@ -416,8 +416,8 @@ arpresolve(
 	}
 	if (la == NULL || rt == NULL) {
 		log(LOG_DEBUG, "arpresolve: can't allocate llinfo for %s%s%s\n",
-			inet_ntoa(SIN(dst)->sin_addr), la ? "la" : "",
-				rt ? "rt" : "");
+		    inet_ntoa(SIN(dst)->sin_addr), la ? "la" : " ",
+		    rt ? "rt" : "");
 		m_freem(m);
 		return (0);
 	}
@@ -560,9 +560,9 @@ in_arpinput(struct mbuf *m)
 	struct ifnet *ifp = m->m_pkthdr.rcvif;
 	struct ether_header *eh;
 	struct arc_header *arh;
-	struct iso88025_header *th = (struct iso88025_header *)0;
+	struct iso88025_header *th = (struct iso88025_header *)NULL;
 	struct iso88025_sockaddr_dl_data *trld;
-	struct llinfo_arp *la = 0;
+	struct llinfo_arp *la = NULL;
 	struct rtentry *rt;
 	struct ifaddr *ifa;
 	struct in_ifaddr *ia;
@@ -843,8 +843,7 @@ reply:
  * to create an interface route to a (direct) destination.
  */
 static void
-arptfree(la)
-	struct llinfo_arp *la;
+arptfree(struct llinfo_arp *la)
 {
 	struct rtentry *rt = la->la_rt;
 	struct sockaddr_dl *sdl;
@@ -852,8 +851,9 @@ arptfree(la)
 	if (rt == NULL)
 		panic("arptfree");
 	sdl = SDL(rt->rt_gateway);
-	if (sdl && ((rt->rt_refcnt > 0 && sdl->sdl_family == AF_LINK) ||
-	    (rt->rt_flags & RTF_STATIC))) {
+	if (sdl != NULL &&
+	    ((rt->rt_refcnt > 0 && sdl->sdl_family == AF_LINK) ||
+	     (rt->rt_flags & RTF_STATIC))) {
 		sdl->sdl_alen = 0;
 		la->la_preempt = la->la_asked = 0;
 		rt->rt_flags &= ~RTF_REJECT;
@@ -868,7 +868,7 @@ static struct llinfo_arp *
 arplookup(in_addr_t addr, boolean_t create, boolean_t proxy)
 {
 	struct rtentry *rt;
-	static struct sockaddr_inarp sin = { sizeof(sin), AF_INET };
+	static struct sockaddr_inarp sin = { sizeof sin, AF_INET };
 	const char *why = NULL;
 
 	sin.sin_addr.s_addr = addr;

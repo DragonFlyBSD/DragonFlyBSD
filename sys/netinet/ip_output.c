@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.23 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.24 2004/12/28 08:09:59 hsu Exp $
  */
 
 #define _IP_VHL
@@ -123,12 +123,12 @@ extern	struct protosw inetsw[];
  */
 int
 ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
-	int flags, struct ip_moptions *imo, struct inpcb *inp)
+	  int flags, struct ip_moptions *imo, struct inpcb *inp)
 {
 	struct ip *ip;
 	struct ifnet *ifp = NULL;	/* keep compiler happy */
 	struct mbuf *m;
-	int hlen = sizeof (struct ip);
+	int hlen = sizeof(struct ip);
 	int len, off, error = 0;
 	struct sockaddr_in *dst = NULL;	/* keep compiler happy */
 	struct in_ifaddr *ia = NULL;
@@ -154,13 +154,8 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	args.divert_rule = 0;			/* divert cookie */
 
 	/* Grab info from MT_TAG mbufs prepended to the chain. */
-	for (; m0 && m0->m_type == MT_TAG; m0 = m0->m_next) {
+	while (m0 != NULL && m0->m_type == MT_TAG) {
 		switch(m0->_m_tag_id) {
-		default:
-			printf("ip_output: unrecognised MT_TAG tag %d\n",
-			    m0->_m_tag_id);
-			break;
-
 		case PACKET_TAG_DUMMYNET:
 			/*
 			 * the packet was already tagged, so part of the
@@ -169,29 +164,31 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 			 */
 			args.rule = ((struct dn_pkt *)m0)->rule;
 			opt = NULL ;
-			ro = & ( ((struct dn_pkt *)m0)->ro ) ;
+			ro = &((struct dn_pkt *)m0)->ro;
 			imo = NULL ;
 			dst = ((struct dn_pkt *)m0)->dn_dst ;
 			ifp = ((struct dn_pkt *)m0)->ifp ;
 			flags = ((struct dn_pkt *)m0)->flags ;
 			break;
-
 		case PACKET_TAG_DIVERT:
 			args.divert_rule = (int)m0->m_data & 0xffff;
 			break;
-
 		case PACKET_TAG_IPFORWARD:
 			args.next_hop = (struct sockaddr_in *)m0->m_data;
 			break;
+		default:
+			printf("ip_output: unrecognised MT_TAG tag %d\n",
+			    m0->_m_tag_id);
+			break;
 		}
+		m0 = m0->m_next;
 	}
 	m = m0;
-
-	KASSERT(!m || (m->m_flags & M_PKTHDR), ("ip_output: no HDR"));
+	KASSERT(m != NULL && (m->m_flags & M_PKTHDR), ("ip_output: no HDR"));
 
 	if (ro == NULL) {
 		ro = &iproute;
-		bzero(ro, sizeof(*ro));
+		bzero(ro, sizeof *ro);
 	}
 
 	if (args.rule != NULL) {	/* dummynet already saw us */
@@ -239,13 +236,13 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	    (!(ro->ro_rt->rt_flags & RTF_UP) ||
 	     dst->sin_family != AF_INET ||
 	     dst->sin_addr.s_addr != pkt_dst.s_addr)) {
-		RTFREE(ro->ro_rt);
+		rtfree(ro->ro_rt);
 		ro->ro_rt = (struct rtentry *)NULL;
 	}
 	if (ro->ro_rt == NULL) {
-		bzero(dst, sizeof(*dst));
+		bzero(dst, sizeof *dst);
 		dst->sin_family = AF_INET;
-		dst->sin_len = sizeof(*dst);
+		dst->sin_len = sizeof *dst;
 		dst->sin_addr = pkt_dst;
 	}
 	/*
@@ -473,7 +470,7 @@ sendit:
 	case IPSEC_POLICY_NONE:
 		/* no need to do IPsec. */
 		goto skip_ipsec;
-	
+
 	case IPSEC_POLICY_IPSEC:
 		if (sp->req == NULL) {
 			/* acquire a policy */
@@ -488,11 +485,11 @@ sendit:
 	}
     {
 	struct ipsec_output_state state;
-	bzero(&state, sizeof(state));
+	bzero(&state, sizeof state);
 	state.m = m;
 	if (flags & IP_ROUTETOIF) {
 		state.ro = &iproute;
-		bzero(&iproute, sizeof(iproute));
+		bzero(&iproute, sizeof iproute);
 	} else
 		state.ro = ro;
 	state.dst = (struct sockaddr *)dst;
@@ -623,7 +620,7 @@ skip_ipsec:
 			if (tdbi->spi == sp->req->sav->spi &&
 			    tdbi->proto == sp->req->sav->sah->saidx.proto &&
 			    bcmp(&tdbi->dst, &sp->req->sav->sah->saidx.dst,
-				 sizeof (union sockaddr_union)) == 0) {
+				 sizeof(union sockaddr_union)) == 0) {
 				/*
 				 * No IPsec processing is needed, free
 				 * reference to SP.
@@ -895,11 +892,10 @@ spd_done:
 			 * This rewrites the cached route in a local PCB.
 			 * Is this what we want to do?
 			 */
-			bcopy(dst, &ro_fwd->ro_dst, sizeof(*dst));
-
+			bcopy(dst, &ro_fwd->ro_dst, sizeof *dst);
 			ro_fwd->ro_rt = NULL;
-			rtalloc_ign(ro_fwd, RTF_PRCLONING);
 
+			rtalloc_ign(ro_fwd, RTF_PRCLONING);
 			if (ro_fwd->ro_rt == NULL) {
 				ipstat.ips_noroute++;
 				error = EHOSTUNREACH;
@@ -911,14 +907,14 @@ spd_done:
 			ro_fwd->ro_rt->rt_use++;
 			if (ro_fwd->ro_rt->rt_flags & RTF_GATEWAY)
 				dst = (struct sockaddr_in *)
-					ro_fwd->ro_rt->rt_gateway;
+				    ro_fwd->ro_rt->rt_gateway;
 			if (ro_fwd->ro_rt->rt_flags & RTF_HOST)
 				isbroadcast =
 				    (ro_fwd->ro_rt->rt_flags & RTF_BROADCAST);
 			else
 				isbroadcast = in_broadcast(dst->sin_addr, ifp);
-			if (ro->ro_rt)
-				RTFREE(ro->ro_rt);
+			if (ro->ro_rt != NULL)
+				rtfree(ro->ro_rt);
 			ro->ro_rt = ro_fwd->ro_rt;
 			dst = (struct sockaddr_in *)&ro_fwd->ro_dst;
 
@@ -1009,8 +1005,8 @@ pass:
 			m->m_pkthdr.len = tmp;
 		}
 #endif
-		error = (*ifp->if_output)(ifp, m,
-				(struct sockaddr *)dst, ro->ro_rt);
+		error = (*ifp->if_output)(ifp, m, (struct sockaddr *)dst,
+					  ro->ro_rt);
 		goto done;
 	}
 
@@ -1052,9 +1048,9 @@ pass:
 				ia->ia_ifa.if_opackets++;
 				ia->ia_ifa.if_obytes += m->m_pkthdr.len;
 			}
-			
 			error = (*ifp->if_output)(ifp, m,
-			    (struct sockaddr *)dst, ro->ro_rt);
+						  (struct sockaddr *)dst,
+						  ro->ro_rt);
 		} else
 			m_freem(m);
 	}
@@ -1063,7 +1059,7 @@ pass:
 		ipstat.ips_fragmented++;
 
 done:
-	if (ro == &iproute && ro->ro_rt) {
+	if (ro == &iproute && ro->ro_rt != NULL) {
 		RTFREE(ro->ro_rt);
 		ro->ro_rt = NULL;
 	}
@@ -1152,7 +1148,7 @@ ip_fragment(struct ip *ip, struct mbuf **m_frag, int mtu,
 			goto smart_frag_failure;
 		off = ((off - hlen) & ~7) + hlen;
 		newlen = (~PAGE_MASK) & mtu;
-		if ((newlen + sizeof (struct ip)) > mtu) {
+		if ((newlen + sizeof(struct ip)) > mtu) {
 			/* we failed, go back the default */
 smart_frag_failure:
 			newlen = len;
@@ -1177,7 +1173,7 @@ smart_frag_failure:
 	for (nfrags = 1; off < ip->ip_len; off += len, nfrags++) {
 		struct ip *mhip;	/* ip header on the fragment */
 		struct mbuf *m;
-		int mhlen = sizeof (struct ip);
+		int mhlen = sizeof(struct ip);
 
 		MGETHDR(m, MB_DONTWAIT, MT_HEADER);
 		if (m == NULL) {
@@ -1194,8 +1190,8 @@ smart_frag_failure:
 		m->m_data += max_linkhdr;
 		mhip = mtod(m, struct ip *);
 		*mhip = *ip;
-		if (hlen > sizeof (struct ip)) {
-			mhlen = ip_optcopy(ip, mhip) + sizeof (struct ip);
+		if (hlen > sizeof(struct ip)) {
+			mhlen = ip_optcopy(ip, mhip) + sizeof(struct ip);
 			mhip->ip_vhl = IP_MAKE_VHL(IPVERSION, mhlen >> 2);
 		}
 		m->m_len = mhlen;
@@ -1283,17 +1279,14 @@ in_delayed_cksum(struct mbuf *m)
  * XXX This routine assumes that the packet has no options in place.
  */
 static struct mbuf *
-ip_insertoptions(m, opt, phlen)
-	struct mbuf *m;
-	struct mbuf *opt;
-	int *phlen;
+ip_insertoptions(struct mbuf *m, struct mbuf *opt, int *phlen)
 {
 	struct ipoption *p = mtod(opt, struct ipoption *);
 	struct mbuf *n;
 	struct ip *ip = mtod(m, struct ip *);
 	unsigned optlen;
 
-	optlen = opt->m_len - sizeof(p->ipopt_dst);
+	optlen = opt->m_len - sizeof p->ipopt_dst;
 	if (optlen + (u_short)ip->ip_len > IP_MAXPACKET) {
 		*phlen = 0;
 		return (m);		/* XXX should fail */
@@ -1334,15 +1327,14 @@ ip_insertoptions(m, opt, phlen)
  * omitting those not copied during fragmentation.
  */
 int
-ip_optcopy(ip, jp)
-	struct ip *ip, *jp;
+ip_optcopy(struct ip *ip, struct ip *jp)
 {
 	u_char *cp, *dp;
 	int opt, optlen, cnt;
 
 	cp = (u_char *)(ip + 1);
 	dp = (u_char *)(jp + 1);
-	cnt = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof (struct ip);
+	cnt = (IP_VHL_HL(ip->ip_vhl) << 2) - sizeof(struct ip);
 	for (; cnt > 0; cnt -= optlen, cp += optlen) {
 		opt = cp[0];
 		if (opt == IPOPT_EOL)
@@ -1354,10 +1346,10 @@ ip_optcopy(ip, jp)
 			continue;
 		}
 
-		KASSERT(cnt >= IPOPT_OLEN + sizeof(*cp),
+		KASSERT(cnt >= IPOPT_OLEN + sizeof *cp,
 		    ("ip_optcopy: malformed ipv4 option"));
 		optlen = cp[IPOPT_OLEN];
-		KASSERT(optlen >= IPOPT_OLEN + sizeof(*cp) && optlen <= cnt,
+		KASSERT(optlen >= IPOPT_OLEN + sizeof *cp && optlen <= cnt,
 		    ("ip_optcopy: malformed ipv4 option"));
 
 		/* bogus lengths should have been caught by ip_dooptions */
@@ -1377,9 +1369,7 @@ ip_optcopy(ip, jp)
  * IP socket option processing.
  */
 int
-ip_ctloutput(so, sopt)
-	struct socket *so;
-	struct sockopt *sopt;
+ip_ctloutput(struct socket *so, struct sockopt *sopt)
 {
 	struct	inpcb *inp = sotoinpcb(so);
 	int	error, optval;
@@ -1410,7 +1400,7 @@ ip_ctloutput(so, sopt)
 			m->m_len = sopt->sopt_valsize;
 			error = sooptcopyin(sopt, mtod(m, char *), m->m_len,
 					    m->m_len);
-			
+
 			return (ip_pcbopts(sopt->sopt_name, &inp->inp_options,
 					   m));
 		}
@@ -1681,10 +1671,10 @@ ip_pcbopts(int optname, struct mbuf **pcbopt, struct mbuf *m)
 		if (opt == IPOPT_NOP)
 			optlen = 1;
 		else {
-			if (cnt < IPOPT_OLEN + sizeof(*cp))
+			if (cnt < IPOPT_OLEN + sizeof *cp)
 				goto bad;
 			optlen = cp[IPOPT_OLEN];
-			if (optlen < IPOPT_OLEN + sizeof(*cp) || optlen > cnt)
+			if (optlen < IPOPT_OLEN + sizeof *cp || optlen > cnt)
 				goto bad;
 		}
 		switch (opt) {
@@ -1712,7 +1702,7 @@ ip_pcbopts(int optname, struct mbuf **pcbopt, struct mbuf *m)
 			 * Move first hop before start of options.
 			 */
 			bcopy(&cp[IPOPT_OFFSET+1], mtod(m, caddr_t),
-			    sizeof(struct in_addr));
+			      sizeof(struct in_addr));
 			/*
 			 * Then copy rest of options back
 			 * to close up the deleted entry.
@@ -1777,7 +1767,6 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 	struct ip_mreq mreq;
 	struct ifnet *ifp;
 	struct ip_moptions *imo = *imop;
-	struct route ro;
 	struct sockaddr_in *dst;
 	int ifindex;
 	int s;
@@ -1787,8 +1776,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * No multicast option buffer attached to the pcb;
 		 * allocate one and initialize to default values.
 		 */
-		imo = (struct ip_moptions*)malloc(sizeof(*imo), M_IPMOPTS,
-		    M_WAITOK);
+		imo = malloc(sizeof *imo, M_IPMOPTS, M_WAITOK);
 
 		if (imo == NULL)
 			return (ENOBUFS);
@@ -1869,8 +1857,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 			imo->imo_multicast_ttl = ttl;
 		} else {
 			u_int ttl;
-			error = sooptcopyin(sopt, &ttl, sizeof ttl,
-					    sizeof ttl);
+			error = sooptcopyin(sopt, &ttl, sizeof ttl, sizeof ttl);
 			if (error)
 				break;
 			if (ttl > 255)
@@ -1889,12 +1876,14 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 */
 		if (sopt->sopt_valsize == 1) {
 			u_char loop;
+
 			error = sooptcopyin(sopt, &loop, 1, 1);
 			if (error)
 				break;
 			imo->imo_multicast_loop = !!loop;
 		} else {
 			u_int loop;
+
 			error = sooptcopyin(sopt, &loop, sizeof loop,
 					    sizeof loop);
 			if (error)
@@ -1922,9 +1911,11 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * the route to the given multicast address.
 		 */
 		if (mreq.imr_interface.s_addr == INADDR_ANY) {
-			bzero(&ro, sizeof(ro));
+			struct route ro;
+
+			bzero(&ro, sizeof ro);
 			dst = (struct sockaddr_in *)&ro.ro_dst;
-			dst->sin_len = sizeof(*dst);
+			dst->sin_len = sizeof *dst;
 			dst->sin_family = AF_INET;
 			dst->sin_addr = mreq.imr_multiaddr;
 			rtalloc(&ro);
@@ -1933,8 +1924,8 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 				splx(s);
 				break;
 			}
+			--ro.ro_rt->rt_refcnt;
 			ifp = ro.ro_rt->rt_ifp;
-			rtfree(ro.ro_rt);
 		}
 		else {
 			ifp = ip_multicast_if(&mreq.imr_interface, NULL);
@@ -1974,7 +1965,7 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		 * address list for the given interface.
 		 */
 		if ((imo->imo_membership[i] =
-		    in_addmulti(&mreq.imr_multiaddr, ifp)) == NULL) {
+		     in_addmulti(&mreq.imr_multiaddr, ifp)) == NULL) {
 			error = ENOBUFS;
 			splx(s);
 			break;
@@ -2018,8 +2009,8 @@ ip_setmoptions(struct sockopt *sopt, struct ip_moptions **imop)
 		for (i = 0; i < imo->imo_num_memberships; ++i) {
 			if ((ifp == NULL ||
 			     imo->imo_membership[i]->inm_ifp == ifp) &&
-			     imo->imo_membership[i]->inm_addr.s_addr ==
-			     mreq.imr_multiaddr.s_addr)
+			    imo->imo_membership[i]->inm_addr.s_addr ==
+			    mreq.imr_multiaddr.s_addr)
 				break;
 		}
 		if (i == imo->imo_num_memberships) {
@@ -2148,11 +2139,8 @@ ip_freemoptions(struct ip_moptions *imo)
  * replicating that code here.
  */
 static void
-ip_mloopback(ifp, m, dst, hlen)
-	struct ifnet *ifp;
-	struct mbuf *m;
-	struct sockaddr_in *dst;
-	int hlen;
+ip_mloopback(struct ifnet *ifp, struct mbuf *m, struct sockaddr_in *dst,
+	     int hlen)
 {
 	struct ip *ip;
 	struct mbuf *copym;
