@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.15 2004/04/07 05:15:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.16 2004/04/19 16:33:49 cpressey Exp $
  */
 
 /*
@@ -385,8 +385,7 @@ bad:
  * nb: Must be called with the nfs_sndlock() set on the mount point.
  */
 static int
-nfs_reconnect(rep)
-	struct nfsreq *rep;
+nfs_reconnect(struct nfsreq *rep)
 {
 	struct nfsreq *rp;
 	struct nfsmount *nmp = rep->r_nmp;
@@ -414,8 +413,7 @@ nfs_reconnect(rep)
  * NFS disconnect. Clean up and unlink.
  */
 void
-nfs_disconnect(nmp)
-	struct nfsmount *nmp;
+nfs_disconnect(struct nfsmount *nmp)
 {
 	struct socket *so;
 
@@ -428,8 +426,7 @@ nfs_disconnect(nmp)
 }
 
 void
-nfs_safedisconnect(nmp)
-	struct nfsmount *nmp;
+nfs_safedisconnect(struct nfsmount *nmp)
 {
 	struct nfsreq dummyreq;
 
@@ -455,11 +452,8 @@ nfs_safedisconnect(nmp)
  * - do any cleanup required by recoverable socket errors (?)
  */
 int
-nfs_send(so, nam, top, rep)
-	struct socket *so;
-	struct sockaddr *nam;
-	struct mbuf *top;
-	struct nfsreq *rep;
+nfs_send(struct socket *so, struct sockaddr *nam, struct mbuf *top,
+	 struct nfsreq *rep)
 {
 	struct sockaddr *sendnam;
 	int error, soflags, flags;
@@ -752,8 +746,7 @@ errout:
  */
 /* ARGSUSED */
 int
-nfs_reply(myrep)
-	struct nfsreq *myrep;
+nfs_reply(struct nfsreq *myrep)
 {
 	struct nfsreq *rep;
 	struct nfsmount *nmp = myrep->r_nmp;
@@ -931,15 +924,9 @@ nfsmout:
  * nb: always frees up mreq mbuf list
  */
 int
-nfs_request(vp, mrest, procnum, td, cred, mrp, mdp, dposp)
-	struct vnode *vp;
-	struct mbuf *mrest;
-	int procnum;
-	struct thread *td;
-	struct ucred *cred;
-	struct mbuf **mrp;
-	struct mbuf **mdp;
-	caddr_t *dposp;
+nfs_request(struct vnode *vp, struct mbuf *mrest, int procnum,
+	    struct thread *td, struct ucred *cred, struct mbuf **mrp,
+	    struct mbuf **mdp, caddr_t *dposp)
 {
 	struct mbuf *mrep, *m2;
 	struct nfsreq *rep;
@@ -1230,16 +1217,9 @@ nfsmout:
  * siz arg. is used to decide if adding a cluster is worthwhile
  */
 int
-nfs_rephead(siz, nd, slp, err, cache, frev, mrq, mbp, bposp)
-	int siz;
-	struct nfsrv_descript *nd;
-	struct nfssvc_sock *slp;
-	int err;
-	int cache;
-	u_quad_t *frev;
-	struct mbuf **mrq;
-	struct mbuf **mbp;
-	caddr_t *bposp;
+nfs_rephead(int siz, struct nfsrv_descript *nd, struct nfssvc_sock *slp,
+	    int err, int cache, u_quad_t *frev, struct mbuf **mrq,
+	    struct mbuf **mbp, caddr_t *bposp)
 {
 	u_int32_t *tl;
 	struct mbuf *mreq;
@@ -1387,8 +1367,7 @@ nfs_rephead(siz, nd, slp, err, cache, frev, mrq, mbp, bposp)
  * sure to set the r_retry field to 0 (implies nm_retry == 0).
  */
 void
-nfs_timer(arg)
-	void *arg;	/* never used */
+nfs_timer(void *arg /* never used */)
 {
 	struct nfsreq *rep;
 	struct mbuf *m;
@@ -1520,8 +1499,7 @@ nfs_timer(arg)
  * to terminate any outstanding RPCs.
  */
 int
-nfs_nmcancelreqs(nmp)
-	struct nfsmount *nmp;
+nfs_nmcancelreqs(struct nfsmount *nmp)
 {
 	struct nfsreq *req;
 	int i, s1, s2;
@@ -1561,8 +1539,7 @@ nfs_nmcancelreqs(nmp)
  */
 
 static void
-nfs_softterm(rep)
-	struct nfsreq *rep;
+nfs_softterm(struct nfsreq *rep)
 {
 	rep->r_flags |= R_SOFTTERM;
 
@@ -1650,8 +1627,7 @@ nfs_sndlock(struct nfsreq *rep)
  * Unlock the stream socket for others.
  */
 void
-nfs_sndunlock(rep)
-	struct nfsreq *rep;
+nfs_sndunlock(struct nfsreq *rep)
 {
 	int *statep = &rep->r_nmp->nm_state;
 
@@ -1667,8 +1643,7 @@ nfs_sndunlock(rep)
 }
 
 static int
-nfs_rcvlock(rep)
-	struct nfsreq *rep;
+nfs_rcvlock(struct nfsreq *rep)
 {
 	int *statep = &rep->r_nmp->nm_state;
 	int slpflag;
@@ -1732,8 +1707,7 @@ nfs_rcvlock(rep)
  * Unlock the stream socket for others.
  */
 static void
-nfs_rcvunlock(rep)
-	struct nfsreq *rep;
+nfs_rcvunlock(struct nfsreq *rep)
 {
 	int *statep = &rep->r_nmp->nm_state;
 
@@ -1765,9 +1739,7 @@ nfs_rcvunlock(rep)
  *	with TCP.  Use vfs.nfs.realign_count and realign_test to check this.
  */
 static void
-nfs_realign(pm, hsiz)
-	struct mbuf **pm;
-	int hsiz;
+nfs_realign(struct mbuf **pm, int hsiz)
 {
 	struct mbuf *m;
 	struct mbuf *n = NULL;
@@ -1811,10 +1783,7 @@ nfs_realign(pm, hsiz)
  * - fill in the cred struct.
  */
 int
-nfs_getreq(nd, nfsd, has_header)
-	struct nfsrv_descript *nd;
-	struct nfsd *nfsd;
-	int has_header;
+nfs_getreq(struct nfsrv_descript *nd, struct nfsd *nfsd, int has_header)
 {
 	int len, i;
 	u_int32_t *tl;
@@ -2082,10 +2051,7 @@ nfs_msg(struct thread *td, char *server, char *msg)
  * be called with M_WAIT from an nfsd.
  */
 void
-nfsrv_rcv(so, arg, waitflag)
-	struct socket *so;
-	void *arg;
-	int waitflag;
+nfsrv_rcv(struct socket *so, void *arg, int waitflag)
 {
 	struct nfssvc_sock *slp = (struct nfssvc_sock *)arg;
 	struct mbuf *m;
@@ -2200,9 +2166,7 @@ dorecs:
  * can sleep.
  */
 static int
-nfsrv_getstream(slp, waitflag)
-	struct nfssvc_sock *slp;
-	int waitflag;
+nfsrv_getstream(struct nfssvc_sock *slp, int waitflag)
 {
 	struct mbuf *m, **mpp;
 	char *cp1, *cp2;
@@ -2331,10 +2295,8 @@ nfsrv_getstream(slp, waitflag)
  * Parse an RPC header.
  */
 int
-nfsrv_dorec(slp, nfsd, ndp)
-	struct nfssvc_sock *slp;
-	struct nfsd *nfsd;
-	struct nfsrv_descript **ndp;
+nfsrv_dorec(struct nfssvc_sock *slp, struct nfsd *nfsd,
+	    struct nfsrv_descript **ndp)
 {
 	struct nfsrv_rec *rec;
 	struct mbuf *m;
@@ -2374,8 +2336,7 @@ nfsrv_dorec(slp, nfsd, ndp)
  * running nfsds will go look for the work in the nfssvc_sock list.
  */
 void
-nfsrv_wakenfsd(slp)
-	struct nfssvc_sock *slp;
+nfsrv_wakenfsd(struct nfssvc_sock *slp)
 {
 	struct nfsd *nd;
 

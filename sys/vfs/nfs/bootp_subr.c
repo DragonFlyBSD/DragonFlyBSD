@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.7 2004/04/16 15:11:53 joerg Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.8 2004/04/19 16:33:49 cpressey Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -294,8 +294,7 @@ void bootpc_init(void);
 
 #ifdef BOOTP_DEBUG
 void
-bootpboot_p_sa(struct sockaddr *sa,
-	       struct sockaddr *ma)
+bootpboot_p_sa(struct sockaddr *sa, struct sockaddr *ma)
 {
 	if (sa == NULL) {
 		printf("(sockaddr *) <null>");
@@ -584,8 +583,7 @@ bootpc_received(struct bootpc_globalcontext *gctx,
 }
 
 static int
-bootpc_call(struct bootpc_globalcontext *gctx,
-	    struct thread *td)
+bootpc_call(struct bootpc_globalcontext *gctx, struct thread *td)
 {
 	struct socket *so;
 	struct sockaddr_in *sin, dst;
@@ -1329,10 +1327,8 @@ print_in_addr(struct in_addr addr)
 }
 
 static void
-bootpc_compose_query(ifctx, gctx, td)
-	struct bootpc_ifcontext *ifctx;
-	struct bootpc_globalcontext *gctx;
-	struct thread *td;
+bootpc_compose_query(struct bootpc_ifcontext *ifctx,
+		     struct bootpc_globalcontext *gctx, struct thread *td)
 {
 	unsigned char *vendp;
 	unsigned char vendor_client[64];
@@ -1419,9 +1415,7 @@ bootpc_hascookie(struct bootp_packet *bp)
 
 static void
 bootpc_tag_helper(struct bootpc_tagcontext *tctx,
-		  unsigned char *start,
-		  int len,
-		  int tag)
+		  unsigned char *start, int len, int tag)
 {
 	unsigned char *j;
 	unsigned char *ej;
@@ -1464,10 +1458,8 @@ bootpc_tag_helper(struct bootpc_tagcontext *tctx,
 
 
 static unsigned char *
-bootpc_tag(struct bootpc_tagcontext *tctx,
-	   struct bootp_packet *bp,
-	   int len,
-	   int tag)
+bootpc_tag(struct bootpc_tagcontext *tctx, struct bootp_packet *bp,
+	   int len, int tag)
 {
 	unsigned char *j;
 	unsigned char *ej;
@@ -1506,10 +1498,8 @@ bootpc_tag(struct bootpc_tagcontext *tctx,
 
 
 static void
-bootpc_decode_reply(nd, ifctx, gctx)
-	struct nfsv3_diskless *nd;
-	struct bootpc_ifcontext *ifctx;
-	struct bootpc_globalcontext *gctx;
+bootpc_decode_reply(struct nfsv3_diskless *nd, struct bootpc_ifcontext *ifctx,
+		    struct bootpc_globalcontext *gctx)
 {
 	char *p;
 	unsigned int ip;

@@ -1,6 +1,6 @@
 /*	$NetBSD: krpc_subr.c,v 1.12.4.1 1996/06/07 00:52:26 cgd Exp $	*/
 /* $FreeBSD: src/sys/nfs/krpc_subr.c,v 1.13.2.1 2000/11/20 21:17:14 tegge Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.4 2003/08/07 21:17:42 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/krpc_subr.c,v 1.5 2004/04/19 16:33:49 cpressey Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -125,11 +125,10 @@ struct rpc_reply {
  * Returns non-zero error on failure.
  */
 int
-krpc_portmap(sin,  prog, vers, portp, td)
-	struct sockaddr_in *sin;		/* server address */
-	u_int prog, vers;	/* host order */
-	u_int16_t *portp;	/* network order */
-	struct thread *td;
+krpc_portmap(struct sockaddr_in *sin,	/* server address */
+	     u_int prog, u_int vers,	/* host order */
+	     u_int16_t *portp,		/* network order */
+	     struct thread *td)
 {
 	struct sdata {
 		u_int32_t prog;		/* call program */
@@ -186,12 +185,10 @@ krpc_portmap(sin,  prog, vers, portp, td)
  * the address from whence the response came is saved there.
  */
 int
-krpc_call(sa, prog, vers, func, data, from_p, td)
-	struct sockaddr_in *sa;
-	u_int prog, vers, func;
-	struct mbuf **data;	/* input/output */
-	struct sockaddr **from_p;	/* output */
-	struct thread *td;
+krpc_call(struct sockaddr_in *sa, u_int prog, u_int vers, u_int func,
+	  struct mbuf **data,		/* input/output */
+	  struct sockaddr **from_p,	/* output */
+	  struct thread *td)
 {
 	struct socket *so;
 	struct sockaddr_in *sin, ssin;
@@ -457,9 +454,7 @@ struct xdr_string {
 };
 
 struct mbuf *
-xdr_string_encode(str, len)
-	char *str;
-	int len;
+xdr_string_encode(char *str, int len)
 {
 	struct mbuf *m;
 	struct xdr_string *xs;

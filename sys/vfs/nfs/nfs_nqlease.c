@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.14 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.15 2004/04/19 16:33:49 cpressey Exp $
  */
 
 
@@ -170,16 +170,10 @@ extern struct nfsstats nfsstats;
  *     queue yet. (Ditto for the splsoftclock() and splx(s) calls)
  */
 int
-nqsrv_getlease(vp, duration, flags, slp, td, nam, cachablep, frev, cred)
-	struct vnode *vp;
-	u_int32_t *duration;
-	int flags;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct sockaddr *nam;
-	int *cachablep;
-	u_quad_t *frev;
-	struct ucred *cred;
+nqsrv_getlease(struct vnode *vp, u_int32_t *duration, int flags,
+	       struct nfssvc_sock *slp, struct thread *td,
+	       struct sockaddr *nam, int *cachablep, u_quad_t *frev,
+	       struct ucred *cred)
 {
 	struct nqlease *lp;
 	struct nqfhhashhead *lpp = NULL;
@@ -337,7 +331,7 @@ doreply:
  */
 void
 nqnfs_lease_check(struct vnode *vp, struct thread *td,
-	struct ucred *cred, int flag)
+		  struct ucred *cred, int flag)
 {
 	u_int32_t duration = 0;
 	int cache;
@@ -347,14 +341,12 @@ nqnfs_lease_check(struct vnode *vp, struct thread *td,
 		td, (struct sockaddr *)0, &cache, &frev, cred);
 }
 
+/*
+ * nqnfs_vop_lease_check(struct vnode *a_vp, struct thread *a_td,
+ *			 struct ucred *a_cred, int a_flag)
+ */
 int
-nqnfs_vop_lease_check(ap)
-	struct vop_lease_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-		struct ucred *a_cred;
-		int a_flag;
-	} */ *ap;
+nqnfs_vop_lease_check(struct vop_lease_args *ap)
 {
 	u_int32_t duration = 0;
 	int cache;
@@ -371,10 +363,7 @@ nqnfs_vop_lease_check(ap)
  * Add a host to an nqhost structure for a lease.
  */
 static void
-nqsrv_addhost(lph, slp, nam)
-	struct nqhost *lph;
-	struct nfssvc_sock *slp;
-	struct sockaddr *nam;
+nqsrv_addhost(struct nqhost *lph, struct nfssvc_sock *slp, struct sockaddr *nam)
 {
 	struct sockaddr_in *saddr;
 	struct socket *nsso;
@@ -400,9 +389,7 @@ nqsrv_addhost(lph, slp, nam)
  * Update the lease expiry time and position it in the timer queue correctly.
  */
 static void
-nqsrv_instimeq(lp, duration)
-	struct nqlease *lp;
-	u_int32_t duration;
+nqsrv_instimeq(struct nqlease *lp, u_int32_t duration)
 {
 	struct nqlease *tlp;
 	time_t newexpiry;
@@ -439,10 +426,7 @@ nqsrv_instimeq(lp, duration)
  * The local host is indicated by the special value of NQLOCALSLP for slp.
  */
 static int
-nqsrv_cmpnam(slp, nam, lph)
-	struct nfssvc_sock *slp;
-	struct sockaddr *nam;
-	struct nqhost *lph;
+nqsrv_cmpnam(struct nfssvc_sock *slp, struct sockaddr *nam, struct nqhost *lph)
 {
 	struct sockaddr_in *saddr;
 	struct sockaddr *addr;
@@ -481,12 +465,9 @@ nqsrv_cmpnam(slp, nam, lph)
  * Send out eviction notice messages to all other hosts for the lease.
  */
 static void
-nqsrv_send_eviction(vp, lp, slp, nam, cred)
-	struct vnode *vp;
-	struct nqlease *lp;
-	struct nfssvc_sock *slp;
-	struct sockaddr *nam;
-	struct ucred *cred;
+nqsrv_send_eviction(struct vnode *vp, struct nqlease *lp,
+		    struct nfssvc_sock *slp, struct sockaddr *nam,
+		    struct ucred *cred)
 {
 	struct nqhost *lph = &lp->lc_host;
 	int siz;
@@ -594,8 +575,7 @@ nextone:
  * this server OR when it expires do to timeout.
  */
 static void
-nqsrv_waitfor_expiry(lp)
-	struct nqlease *lp;
+nqsrv_waitfor_expiry(struct nqlease *lp)
 {
 	struct nqhost *lph;
 	int i;
@@ -636,7 +616,7 @@ tryagain:
  *   else dequeue and free
  */
 void
-nqnfs_serverd()
+nqnfs_serverd(void)
 {
 	struct nqlease *lp;
 	struct nqhost *lph;
@@ -719,7 +699,7 @@ nqnfs_serverd()
  */
 int
 nqnfsrv_getlease(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-	struct thread *td, struct mbuf **mrq)
+		 struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -776,7 +756,7 @@ nqnfsrv_getlease(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
  */
 int
 nqnfsrv_vacated(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-	struct thread *td, struct mbuf **mrq)
+		struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -894,9 +874,7 @@ nfsmout:
  * Client vacated message function.
  */
 static int
-nqnfs_vacated(vp, cred)
-	struct vnode *vp;
-	struct ucred *cred;
+nqnfs_vacated(struct vnode *vp, struct ucred *cred)
 {
 	caddr_t cp;
 	int i;
@@ -945,10 +923,8 @@ nfsmout:
  * Called for client side callbacks
  */
 int
-nqnfs_callback(nmp, mrep, md, dpos)
-	struct nfsmount *nmp;
-	struct mbuf *mrep, *md;
-	caddr_t dpos;
+nqnfs_callback(struct nfsmount *nmp, struct mbuf *mrep, struct mbuf *md,
+	       caddr_t dpos)
 {
 	struct vnode *vp;
 	u_int32_t *tl;
@@ -1008,13 +984,8 @@ nqnfs_callback(nmp, mrep, md, dpos)
  * the list asynchronously.
  */
 int
-nqnfs_clientd(nmp, cred, ncd, flag, argp, td)
-	struct nfsmount *nmp;
-	struct ucred *cred;
-	struct nfsd_cargs *ncd;
-	int flag;
-	caddr_t argp;
-	struct thread *td;
+nqnfs_clientd(struct nfsmount *nmp, struct ucred *cred, struct nfsd_cargs *ncd,
+	      int flag, caddr_t argp, struct thread *td)
 {
 	struct nfsnode *np;
 	struct vnode *vp;
@@ -1219,8 +1190,7 @@ nqnfs_lease_updatetime(int deltat)
  * Lock a server lease.
  */
 static void
-nqsrv_locklease(lp)
-	struct nqlease *lp;
+nqsrv_locklease(struct nqlease *lp)
 {
 
 	while (lp->lc_flag & LC_LOCKED) {
@@ -1235,8 +1205,7 @@ nqsrv_locklease(lp)
  * Unlock a server lease.
  */
 static void
-nqsrv_unlocklease(lp)
-	struct nqlease *lp;
+nqsrv_unlocklease(struct nqlease *lp)
 {
 
 	lp->lc_flag &= ~LC_LOCKED;
@@ -1249,12 +1218,8 @@ nqsrv_unlocklease(lp)
  * Update a client lease.
  */
 void
-nqnfs_clientlease(nmp, np, rwflag, cachable, expiry, frev)
-	struct nfsmount *nmp;
-	struct nfsnode *np;
-	int rwflag, cachable;
-	time_t expiry;
-	u_quad_t frev;
+nqnfs_clientlease(struct nfsmount *nmp, struct nfsnode *np, int rwflag,
+		  int cachable, time_t expiry, u_quad_t frev)
 {
 	struct nfsnode *tp;
 

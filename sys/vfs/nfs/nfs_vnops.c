@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.20 2004/04/08 22:32:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.21 2004/04/19 16:33:49 cpressey Exp $
  */
 
 
@@ -280,7 +280,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, access_cache_misses, CTLFLAG_RD,
 			 | NFSV3ACCESS_DELETE | NFSV3ACCESS_LOOKUP)
 static int
 nfs3_access_otw(struct vnode *vp, int wmode,
-	struct thread *td, struct ucred *cred)
+		struct thread *td, struct ucred *cred)
 {
 	const int v3 = 1;
 	u_int32_t *tl;
@@ -317,15 +317,12 @@ nfsmout:
  * For nfs version 2, just return ok. File accesses may fail later.
  * For nfs version 3, use the access rpc to check accessibility. If file modes
  * are changed on the server, accesses might still fail later.
+ *
+ * nfs_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	      struct thread *a_td)
  */
 static int
-nfs_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int error = 0;
@@ -473,16 +470,13 @@ nfs_access(ap)
  * and that deletion is not in progress.
  * For paged in text files, you will need to flush the page cache
  * if consistency is lost.
+ *
+ * nfs_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	    struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-nfs_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -577,17 +571,13 @@ nfs_open(ap)
  * for NQNFS         - do nothing now, since 2 is dealt with via leases and
  *                     1 should be dealt with via an fsync() system call for
  *                     cases where write errors are important.
+ *
+ * nfs_close(struct vnodeop_desc *a_desc, struct vnode *a_vp, int a_fflag,
+ *	     struct ucred *a_cred, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-nfs_close(ap)
-	struct vop_close_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -628,15 +618,12 @@ nfs_close(ap)
 
 /*
  * nfs getattr call from vfs.
+ *
+ * nfs_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-nfs_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -680,16 +667,13 @@ nfsmout:
 
 /*
  * nfs setattr call.
+ *
+ * nfs_setattr(struct vnodeop_desc *a_desc, struct vnode *a_vp,
+ *		struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-nfs_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -785,7 +769,7 @@ nfs_setattr(ap)
  */
 static int
 nfs_setattrrpc(struct vnode *vp, struct vattr *vap,
-	struct ucred *cred, struct thread *td)
+	       struct ucred *cred, struct thread *td)
 {
 	struct nfsv2_sattr *sp;
 	caddr_t cp;
@@ -833,15 +817,12 @@ nfsmout:
 
 /*
  * 'cached' nfs directory lookup
+ *
+ * nfs_lookup(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
+ *	      struct vnode **a_vpp, struct componentname *a_cnp)
  */
 static int
-nfs_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nfs_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode *dvp = ap->a_dvp;
@@ -1066,15 +1047,12 @@ nfsmout:
 /*
  * nfs read call.
  * Just call nfs_bioread() to do the work.
+ *
+ * nfs_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	    struct ucred *a_cred)
  */
 static int
-nfs_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfs_read(struct vop_read_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -1091,14 +1069,11 @@ nfs_read(ap)
 
 /*
  * nfs readlink call
+ *
+ * nfs_readlink(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
  */
 static int
-nfs_readlink(ap)
-	struct vop_readlink_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-	} */ *ap;
+nfs_readlink(struct vop_readlink_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -1210,10 +1185,7 @@ nfsmout:
  * nfs write call
  */
 int
-nfs_writerpc(vp, uiop, iomode, must_commit)
-	struct vnode *vp;
-	struct uio *uiop;
-	int *iomode, *must_commit;
+nfs_writerpc(struct vnode *vp, struct uio *uiop, int *iomode, int *must_commit)
 {
 	u_int32_t *tl;
 	caddr_t cp;
@@ -1324,11 +1296,8 @@ nfsmout:
  * mode set to specify the file type and the size field for rdev.
  */
 static int
-nfs_mknodrpc(dvp, vpp, cnp, vap)
-	struct vnode *dvp;
-	struct vnode **vpp;
-	struct componentname *cnp;
-	struct vattr *vap;
+nfs_mknodrpc(struct vnode *dvp, struct vnode **vpp, struct componentname *cnp,
+	     struct vattr *vap)
 {
 	struct nfsv2_sattr *sp;
 	u_int32_t *tl;
@@ -1412,16 +1381,13 @@ nfsmout:
 /*
  * nfs mknod vop
  * just call nfs_mknodrpc() to do the work.
+ *
+ * nfs_mknod(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	     struct componentname *a_cnp, struct vattr *a_vap)
  */
 /* ARGSUSED */
 static int
-nfs_mknod(ap)
-	struct vop_mknod_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+nfs_mknod(struct vop_mknod_args *ap)
 {
 	return nfs_mknodrpc(ap->a_dvp, ap->a_vpp, ap->a_cnp, ap->a_vap);
 }
@@ -1429,15 +1395,12 @@ nfs_mknod(ap)
 static u_long create_verf;
 /*
  * nfs file create call
+ *
+ * nfs_create(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	      struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-nfs_create(ap)
-	struct vop_create_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+nfs_create(struct vop_create_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -1567,15 +1530,12 @@ nfsmout:
  *	     call nfs_sillyrename() to set it up
  *     else
  *	  do the remove rpc
+ *
+ * nfs_remove(struct vnodeop_desc *a_desc, struct vnode *a_dvp,
+ *	      struct vnode *a_vp, struct componentname *a_cnp)
  */
 static int
-nfs_remove(ap)
-	struct vop_remove_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode * a_dvp;
-		struct vnode * a_vp;
-		struct componentname * a_cnp;
-	} */ *ap;
+nfs_remove(struct vop_remove_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -1632,7 +1592,6 @@ nfs_remove(ap)
 int
 nfs_removeit(struct sillyrename *sp)
 {
-
 	return (nfs_removerpc(sp->s_dvp, sp->s_name, sp->s_namlen,
 		sp->s_cred, NULL));
 }
@@ -1641,12 +1600,8 @@ nfs_removeit(struct sillyrename *sp)
  * Nfs remove rpc, called from nfs_remove() and nfs_removeit().
  */
 static int
-nfs_removerpc(dvp, name, namelen, cred, td)
-	struct vnode *dvp;
-	const char *name;
-	int namelen;
-	struct ucred *cred;
-	struct thread *td;
+nfs_removerpc(struct vnode *dvp, const char *name, int namelen,
+	      struct ucred *cred, struct thread *td)
 {
 	u_int32_t *tl;
 	caddr_t cp;
@@ -1674,17 +1629,13 @@ nfsmout:
 
 /*
  * nfs file rename call
+ *
+ * nfs_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *	      struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *	      struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-nfs_rename(ap)
-	struct vop_rename_args  /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+nfs_rename(struct vop_rename_args *ap)
 {
 	struct vnode *fvp = ap->a_fvp;
 	struct vnode *tvp = ap->a_tvp;
@@ -1761,10 +1712,8 @@ out:
  * nfs file rename rpc called from nfs_remove() above
  */
 static int
-nfs_renameit(sdvp, scnp, sp)
-	struct vnode *sdvp;
-	struct componentname *scnp;
-	struct sillyrename *sp;
+nfs_renameit(struct vnode *sdvp, struct componentname *scnp,
+	     struct sillyrename *sp)
 {
 	return (nfs_renamerpc(sdvp, scnp->cn_nameptr, scnp->cn_namelen,
 		sdvp, sp->s_name, sp->s_namlen, scnp->cn_cred, scnp->cn_td));
@@ -1774,15 +1723,9 @@ nfs_renameit(sdvp, scnp, sp)
  * Do an nfs rename rpc. Called from nfs_rename() and nfs_renameit().
  */
 static int
-nfs_renamerpc(fdvp, fnameptr, fnamelen, tdvp, tnameptr, tnamelen, cred, td)
-	struct vnode *fdvp;
-	const char *fnameptr;
-	int fnamelen;
-	struct vnode *tdvp;
-	const char *tnameptr;
-	int tnamelen;
-	struct ucred *cred;
-	struct thread *td;
+nfs_renamerpc(struct vnode *fdvp, const char *fnameptr, int fnamelen,
+	      struct vnode *tdvp, const char *tnameptr, int tnamelen,
+	      struct ucred *cred, struct thread *td)
 {
 	u_int32_t *tl;
 	caddr_t cp;
@@ -1818,14 +1761,12 @@ nfsmout:
 
 /*
  * nfs hard link create call
+ *
+ * nfs_link(struct vnode *a_tdvp, struct vnode *a_vp,
+ *	    struct componentname *a_cnp)
  */
 static int
-nfs_link(ap)
-	struct vop_link_args /* {
-		struct vnode *a_tdvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nfs_link(struct vop_link_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *tdvp = ap->a_tdvp;
@@ -1878,16 +1819,13 @@ nfsmout:
 
 /*
  * nfs symbolic link create call
+ *
+ * nfs_symlink(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp, struct vattr *a_vap,
+ *		char *a_target)
  */
 static int
-nfs_symlink(ap)
-	struct vop_symlink_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-		char *a_target;
-	} */ *ap;
+nfs_symlink(struct vop_symlink_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -1978,15 +1916,12 @@ nfsmout:
 
 /*
  * nfs make dir call
+ *
+ * nfs_mkdir(struct vnode *a_dvp, struct vnode **a_vpp,
+ *	     struct componentname *a_cnp, struct vattr *a_vap)
  */
 static int
-nfs_mkdir(ap)
-	struct vop_mkdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode **a_vpp;
-		struct componentname *a_cnp;
-		struct vattr *a_vap;
-	} */ *ap;
+nfs_mkdir(struct vop_mkdir_args *ap)
 {
 	struct vnode *dvp = ap->a_dvp;
 	struct vattr *vap = ap->a_vap;
@@ -2062,14 +1997,12 @@ nfsmout:
 
 /*
  * nfs remove directory call
+ *
+ * nfs_rmdir(struct vnode *a_dvp, struct vnode *a_vp,
+ *	     struct componentname *a_cnp)
  */
 static int
-nfs_rmdir(ap)
-	struct vop_rmdir_args /* {
-		struct vnode *a_dvp;
-		struct vnode *a_vp;
-		struct componentname *a_cnp;
-	} */ *ap;
+nfs_rmdir(struct vop_rmdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *dvp = ap->a_dvp;
@@ -2109,14 +2042,11 @@ nfsmout:
 
 /*
  * nfs readdir call
+ *
+ * nfs_readdir(struct vnode *a_vp, struct uio *a_uio, struct ucred *a_cred)
  */
 static int
-nfs_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-	} */ *ap;
+nfs_readdir(struct vop_readdir_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -2576,9 +2506,7 @@ nfsmout:
  * nfs_rename() completes, but...
  */
 static int
-nfs_sillyrename(dvp, vp, cnp)
-	struct vnode *dvp, *vp;
-	struct componentname *cnp;
+nfs_sillyrename(struct vnode *dvp, struct vnode *vp, struct componentname *cnp)
 {
 	struct sillyrename *sp;
 	struct nfsnode *np;
@@ -2631,13 +2559,8 @@ bad:
  * *npp != NULL --> update the file handle in the vnode
  */
 static int
-nfs_lookitup(dvp, name, len, cred, td, npp)
-	struct vnode *dvp;
-	const char *name;
-	int len;
-	struct ucred *cred;
-	struct thread *td;
-	struct nfsnode **npp;
+nfs_lookitup(struct vnode *dvp, const char *name, int len, struct ucred *cred,
+	     struct thread *td, struct nfsnode **npp)
 {
 	u_int32_t *tl;
 	caddr_t cp;
@@ -2755,17 +2678,12 @@ nfsmout:
  *    Kernel Write might not be enabled and also figured copyout() would do
  *    a lot more work than bcopy() and also it currently happens in the
  *    context of the swapper process (2).
+ *
+ * nfs_bmap(struct vnode *a_vp, daddr_t a_bn, struct vnode **a_vpp,
+ *	    daddr_t *a_bnp, int *a_runp, int *a_runb)
  */
 static int
-nfs_bmap(ap)
-	struct vop_bmap_args /* {
-		struct vnode *a_vp;
-		daddr_t  a_bn;
-		struct vnode **a_vpp;
-		daddr_t *a_bnp;
-		int *a_runp;
-		int *a_runb;
-	} */ *ap;
+nfs_bmap(struct vop_bmap_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -2787,8 +2705,7 @@ nfs_bmap(ap)
  * request.
  */
 static int
-nfs_strategy(ap)
-	struct vop_strategy_args *ap;
+nfs_strategy(struct vop_strategy_args *ap)
 {
 	struct buf *bp = ap->a_bp;
 	struct thread *td;
@@ -2820,36 +2737,27 @@ nfs_strategy(ap)
  * Mmap a file
  *
  * NB Currently unsupported.
+ *
+ * nfs_mmap(struct vnode *a_vp, int a_fflags, struct ucred *a_cred,
+ *	    struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-nfs_mmap(ap)
-	struct vop_mmap_args /* {
-		struct vnode *a_vp;
-		int  a_fflags;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfs_mmap(struct vop_mmap_args *ap)
 {
-
 	return (EINVAL);
 }
 
 /*
  * fsync vnode op. Just call nfs_flush() with commit == 1.
+ *
+ * nfs_fsync(struct vnodeop_desc *a_desc, struct vnode *a_vp,
+ *	     struct ucred * a_cred, int a_waitfor, struct thread *a_td)
  */
 /* ARGSUSED */
 static int
-nfs_fsync(ap)
-	struct vop_fsync_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode * a_vp;
-		struct ucred * a_cred;
-		int  a_waitfor;
-		struct thread * a_td;
-	} */ *ap;
+nfs_fsync(struct vop_fsync_args *ap)
 {
-
 	return (nfs_flush(ap->a_vp, ap->a_waitfor, ap->a_td, 1));
 }
 
@@ -2859,11 +2767,7 @@ nfs_fsync(ap)
  *	associated with the vnode.
  */
 static int
-nfs_flush(vp, waitfor, td, commit)
-	struct vnode *vp;
-	int waitfor;
-	struct thread *td;
-	int commit;
+nfs_flush(struct vnode *vp, int waitfor, struct thread *td, int commit)
 {
 	struct nfsnode *np = VTONFS(vp);
 	struct buf *bp;
@@ -3098,16 +3002,12 @@ done:
 /*
  * NFS advisory byte-level locks.
  * Currently unsupported.
+ *
+ * nfs_advlock(struct vnode *a_vp, caddr_t a_id, int a_op, struct flock *a_fl,
+ *		int a_flags)
  */
 static int
-nfs_advlock(ap)
-	struct vop_advlock_args /* {
-		struct vnode *a_vp;
-		caddr_t  a_id;
-		int  a_op;
-		struct flock *a_fl;
-		int  a_flags;
-	} */ *ap;
+nfs_advlock(struct vop_advlock_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
@@ -3121,12 +3021,11 @@ nfs_advlock(ap)
 
 /*
  * Print out the contents of an nfsnode.
+ *
+ * nfs_print(struct vnode *a_vp)
  */
 static int
-nfs_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+nfs_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -3143,12 +3042,11 @@ nfs_print(ap)
  * Just call nfs_writebp() with the force argument set to 1.
  *
  * NOTE: B_DONE may or may not be set in a_bp on call.
+ *
+ * nfs_bwrite(struct vnode *a_bp)
  */
 static int
-nfs_bwrite(ap)
-	struct vop_bwrite_args /* {
-		struct vnode *a_bp;
-	} */ *ap;
+nfs_bwrite(struct vop_bwrite_args *ap)
 {
 	return (nfs_writebp(ap->a_bp, 1, curthread));
 }
@@ -3159,10 +3057,7 @@ nfs_bwrite(ap)
  * B_CACHE if this is a VMIO buffer.
  */
 int
-nfs_writebp(bp, force, td)
-	struct buf *bp;
-	int force;
-	struct thread *td;
+nfs_writebp(struct buf *bp, int force, struct thread *td)
 {
 	int s;
 	int oldflags = bp->b_flags;
@@ -3223,15 +3118,12 @@ nfs_writebp(bp, force, td)
  * nfs special file access vnode op.
  * Essentially just get vattr and then imitate iaccess() since the device is
  * local to the client.
+ *
+ * nfsspec_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		  struct thread *a_td)
  */
 static int
-nfsspec_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfsspec_access(struct vop_access_args *ap)
 {
 	struct vattr *vap;
 	gid_t *gp;
@@ -3288,15 +3180,12 @@ found:
 
 /*
  * Read wrapper for special devices.
+ *
+ * nfsspec_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		struct ucred *a_cred)
  */
 static int
-nfsspec_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfsspec_read(struct vop_read_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
@@ -3310,15 +3199,12 @@ nfsspec_read(ap)
 
 /*
  * Write wrapper for special devices.
+ *
+ * nfsspec_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		 struct ucred *a_cred)
  */
 static int
-nfsspec_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfsspec_write(struct vop_write_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
@@ -3334,15 +3220,12 @@ nfsspec_write(ap)
  * Close wrapper for special devices.
  *
  * Update the times on the nfsnode then do device close.
+ *
+ * nfsspec_close(struct vnode *a_vp, int a_fflag, struct ucred *a_cred,
+ *		 struct thread *a_td)
  */
 static int
-nfsspec_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+nfsspec_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -3365,15 +3248,12 @@ nfsspec_close(ap)
 
 /*
  * Read wrapper for fifos.
+ *
+ * nfsfifo_read(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		struct ucred *a_cred)
  */
 static int
-nfsfifo_read(ap)
-	struct vop_read_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfsfifo_read(struct vop_read_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
@@ -3387,15 +3267,12 @@ nfsfifo_read(ap)
 
 /*
  * Write wrapper for fifos.
+ *
+ * nfsfifo_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *		 struct ucred *a_cred)
  */
 static int
-nfsfifo_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfsfifo_write(struct vop_write_args *ap)
 {
 	struct nfsnode *np = VTONFS(ap->a_vp);
 
@@ -3411,14 +3288,11 @@ nfsfifo_write(ap)
  * Close wrapper for fifos.
  *
  * Update the times on the nfsnode then do fifo close.
+ *
+ * nfsfifo_close(struct vnode *a_vp, int a_fflag, struct thread *a_td)
  */
 static int
-nfsfifo_close(ap)
-	struct vop_close_args /* {
-		struct vnode *a_vp;
-		int  a_fflag;
-		struct thread *a_td;
-	} */ *ap;
+nfsfifo_close(struct vop_close_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_syscalls.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_syscalls.c,v 1.58.2.1 2000/11/26 02:30:06 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.14 2004/03/09 02:52:10 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_syscalls.c,v 1.15 2004/04/19 16:33:49 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -722,8 +722,7 @@ done:
  * reassigned during cleanup.
  */
 static void
-nfsrv_zapsock(slp)
-	struct nfssvc_sock *slp;
+nfsrv_zapsock(struct nfssvc_sock *slp)
 {
 	struct nfsuid *nuidp, *nnuidp;
 	struct nfsrv_descript *nwp, *nnwp;
@@ -777,8 +776,7 @@ nfsrv_zapsock(slp)
  * is no longer valid, you can throw it away.
  */
 void
-nfsrv_slpderef(slp)
-	struct nfssvc_sock *slp;
+nfsrv_slpderef(struct nfssvc_sock *slp)
 {
 	if (--(slp->ns_sref) == 0 && (slp->ns_flag & SLP_VALID) == 0) {
 		TAILQ_REMOVE(&nfssvc_sockhead, slp, ns_chain);
@@ -790,9 +788,7 @@ nfsrv_slpderef(slp)
  * Lock a socket against others.
  */
 int
-nfs_slplock(slp, wait)
-	struct nfssvc_sock *slp;
-	int wait;
+nfs_slplock(struct nfssvc_sock *slp, int wait)
 {
 	int *statep = &slp->ns_solock;
 
@@ -810,8 +806,7 @@ nfs_slplock(slp, wait)
  * Unlock the stream socket for others.
  */
 void
-nfs_slpunlock(slp)
-	struct nfssvc_sock *slp;
+nfs_slpunlock(struct nfssvc_sock *slp)
 {
 	int *statep = &slp->ns_solock;
 
@@ -830,8 +825,7 @@ nfs_slpunlock(slp)
  * corruption.
  */
 void
-nfsrv_init(terminating)
-	int terminating;
+nfsrv_init(int terminating)
 {
 	struct nfssvc_sock *slp, *nslp;
 
@@ -881,10 +875,7 @@ nfsrv_init(terminating)
  * Add entries to the server monitor log.
  */
 static void
-nfsd_rt(sotype, nd, cacherep)
-	int sotype;
-	struct nfsrv_descript *nd;
-	int cacherep;
+nfsd_rt(int sotype, struct nfsrv_descript *nd, int cacherep)
 {
 	struct drt *rt;
 
@@ -995,15 +986,9 @@ nfssvc_iod(struct thread *td)
  * on this mount point porpous out of the kernel and do it.
  */
 int
-nfs_getauth(nmp, rep, cred, auth_str, auth_len, verf_str, verf_len, key)
-	struct nfsmount *nmp;
-	struct nfsreq *rep;
-	struct ucred *cred;
-	char **auth_str;
-	int *auth_len;
-	char *verf_str;
-	int *verf_len;
-	NFSKERBKEY_T key;		/* return session key */
+nfs_getauth(struct nfsmount *nmp, struct nfsreq *rep,
+	    struct ucred *cred, char **auth_str, int *auth_len, char *verf_str,
+	    int *verf_len, NFSKERBKEY_T key /* return session key */)
 {
 	int error = 0;
 
@@ -1057,13 +1042,8 @@ nfs_getauth(nmp, rep, cred, auth_str, auth_len, verf_str, verf_len, key)
  * Get a nickname authenticator and verifier.
  */
 int
-nfs_getnickauth(nmp, cred, auth_str, auth_len, verf_str, verf_len)
-	struct nfsmount *nmp;
-	struct ucred *cred;
-	char **auth_str;
-	int *auth_len;
-	char *verf_str;
-	int verf_len;
+nfs_getnickauth(struct nfsmount *nmp, struct ucred *cred, char **auth_str,
+		int *auth_len, char *verf_str, int verf_len)
 {
 	struct nfsuid *nuidp;
 	u_int32_t *nickp, *verfp;
@@ -1125,14 +1105,9 @@ nfs_getnickauth(nmp, cred, auth_str, auth_len, verf_str, verf_len)
  * Save the current nickname in a hash list entry on the mount point.
  */
 int
-nfs_savenickauth(nmp, cred, len, key, mdp, dposp, mrep)
-	struct nfsmount *nmp;
-	struct ucred *cred;
-	int len;
-	NFSKERBKEY_T key;
-	struct mbuf **mdp;
-	char **dposp;
-	struct mbuf *mrep;
+nfs_savenickauth(struct nfsmount *nmp, struct ucred *cred, int len,
+		 NFSKERBKEY_T key, struct mbuf **mdp, char **dposp,
+		 struct mbuf *mrep)
 {
 	struct nfsuid *nuidp;
 	u_int32_t *tl;

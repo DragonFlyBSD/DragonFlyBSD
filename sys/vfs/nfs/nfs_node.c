@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.9 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.10 2004/04/19 16:33:49 cpressey Exp $
  */
 
 
@@ -68,7 +68,7 @@ static u_long nfsnodehash;
  * and build nfsnode free list.
  */
 void
-nfs_nhinit()
+nfs_nhinit(void)
 {
 	nfsnode_zone = zinit("NFSNODE", sizeof(struct nfsnode), 0, 0, 1);
 	nfsnodehashtbl = hashinit(desiredvnodes, M_NFSHASH, &nfsnodehash);
@@ -187,12 +187,11 @@ loop:
 	return (0);
 }
 
+/*
+ * nfs_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 int
-nfs_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+nfs_inactive(struct vop_inactive_args *ap)
 {
 	struct nfsnode *np;
 	struct sillyrename *sp;
@@ -237,12 +236,11 @@ nfs_inactive(ap)
 
 /*
  * Reclaim an nfsnode so that it can be used for other purposes.
+ *
+ * nfs_reclaim(struct vnode *a_vp)
  */
 int
-nfs_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+nfs_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct nfsnode *np = VTONFS(vp);
@@ -296,12 +294,11 @@ nfs_reclaim(ap)
 #if 0
 /*
  * Lock an nfsnode
+ *
+ * nfs_lock(struct vnode *a_vp)
  */
 int
-nfs_lock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+nfs_lock(struct vop_lock_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -348,12 +345,11 @@ nfs_lock(ap)
 
 /*
  * Unlock an nfsnode
+ *
+ * nfs_unlock(struct vnode *a_vp)
  */
 int
-nfs_unlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+nfs_unlock(struct vop_unlock_args *ap)
 {
 #if 0
 	struct vnode* vp = ap->a_vp;
@@ -375,13 +371,11 @@ nfs_unlock(ap)
 
 /*
  * Check for a locked nfsnode
+ *
+ * nfs_islocked(struct vnode *a_vp, struct thread *a_td)
  */
 int
-nfs_islocked(ap)
-	struct vop_islocked_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+nfs_islocked(struct vop_islocked_args *ap)
 {
 	return VTONFS(ap->a_vp)->n_flag & NLOCKED ? 1 : 0;
 }

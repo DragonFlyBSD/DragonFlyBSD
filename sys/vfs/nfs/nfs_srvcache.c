@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_srvcache.c	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_srvcache.c,v 1.21 2000/02/13 03:32:06 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.5 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_srvcache.c,v 1.6 2004/04/19 16:33:49 cpressey Exp $
  */
 
 /*
@@ -133,7 +133,7 @@ static int nfsv2_repstat[NFS_NPROCS] = {
  * Initialize the server request cache list
  */
 void
-nfsrv_initcache()
+nfsrv_initcache(void)
 {
 
 	nfsrvhashtbl = hashinit(desirednfsrvcache, M_NFSD, &nfsrvhash);
@@ -155,10 +155,8 @@ nfsrv_initcache()
  * Update/add new request at end of lru list
  */
 int
-nfsrv_getcache(nd, slp, repp)
-	struct nfsrv_descript *nd;
-	struct nfssvc_sock *slp;
-	struct mbuf **repp;
+nfsrv_getcache(struct nfsrv_descript *nd, struct nfssvc_sock *slp,
+	       struct mbuf **repp)
 {
 	struct nfsrvcache *rp;
 	struct mbuf *mb;
@@ -270,10 +268,7 @@ loop:
  * Update a request cache entry after the rpc has been done
  */
 void
-nfsrv_updatecache(nd, repvalid, repmbuf)
-	struct nfsrv_descript *nd;
-	int repvalid;
-	struct mbuf *repmbuf;
+nfsrv_updatecache(struct nfsrv_descript *nd, int repvalid, struct mbuf *repmbuf)
 {
 	struct nfsrvcache *rp;
 
@@ -334,7 +329,7 @@ loop:
  * Clean out the cache. Called when the last nfsd terminates.
  */
 void
-nfsrv_cleancache()
+nfsrv_cleancache(void)
 {
 	struct nfsrvcache *rp, *nextrp;
 

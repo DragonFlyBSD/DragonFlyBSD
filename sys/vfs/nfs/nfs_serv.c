@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_serv.c  8.8 (Berkeley) 7/31/95
  * $FreeBSD: src/sys/nfs/nfs_serv.c,v 1.93.2.6 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.13 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_serv.c,v 1.14 2004/04/19 16:33:49 cpressey Exp $
  */
 
 /*
@@ -172,7 +172,7 @@ ndclear(struct nameidata *nd)
  */
 int
 nfsrv3_access(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
-	struct thread *td, struct mbuf **mrq)
+	      struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -242,11 +242,8 @@ nfsmout:
  * nfs getattr service
  */
 int
-nfsrv_getattr(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_getattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	      struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -299,11 +296,8 @@ nfsmout:
  * nfs setattr service
  */
 int
-nfsrv_setattr(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_setattr(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	      struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -448,11 +442,8 @@ nfsmout:
  * nfs lookup rpc
  */
 int
-nfsrv_lookup(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_lookup(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -642,11 +633,8 @@ nfsmout:
  * nfs readlink service
  */
 int
-nfsrv_readlink(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_readlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	       struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -755,11 +743,8 @@ nfsmout:
  * nfs read service
  */
 int
-nfsrv_read(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_read(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	   struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -1006,11 +991,8 @@ nfsmout:
  * nfs write service
  */
 int
-nfsrv_write(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_write(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	    struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -1215,11 +1197,8 @@ nfsmout:
  * Jan. 1994.
  */
 int
-nfsrv_writegather(ndp, slp, td, mrq)
-	struct nfsrv_descript **ndp;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_writegather(struct nfsrv_descript **ndp, struct nfssvc_sock *slp,
+		  struct thread *td, struct mbuf **mrq)
 {
 	struct iovec *ivp;
 	struct mbuf *mp;
@@ -1589,11 +1568,8 @@ nfsrvw_coalesce(struct nfsrv_descript *owp, struct nfsrv_descript *nfsd)
  * now does a truncate to 0 length via. setattr if it already exists
  */
 int
-nfsrv_create(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_create(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -1873,11 +1849,8 @@ nfsmout:
  * nfs v3 mknod service
  */
 int
-nfsrv_mknod(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_mknod(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	    struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2056,11 +2029,8 @@ nfsmout:
  * nfs remove service
  */
 int
-nfsrv_remove(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_remove(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2147,11 +2117,8 @@ nfsmout:
  * nfs rename service
  */
 int
-nfsrv_rename(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_rename(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2369,11 +2336,8 @@ nfsmout:
  * nfs link service
  */
 int
-nfsrv_link(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_link(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	   struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2483,11 +2447,8 @@ nfsmout:
  * nfs symbolic link service
  */
 int
-nfsrv_symlink(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_symlink(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	      struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2658,11 +2619,8 @@ nfsmout:
  * nfs mkdir service
  */
 int
-nfsrv_mkdir(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_mkdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	    struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2795,11 +2753,8 @@ nfsmout:
  * nfs rmdir service
  */
 int
-nfsrv_rmdir(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_rmdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	    struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -2937,11 +2892,8 @@ struct flrep {
 };
 
 int
-nfsrv_readdir(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_readdir(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	      struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3232,11 +3184,8 @@ nfsmout:
 }
 
 int
-nfsrv_readdirplus(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_readdirplus(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+		  struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3571,11 +3520,8 @@ nfsmout:
  * nfs commit service
  */
 int
-nfsrv_commit(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_commit(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3708,11 +3654,8 @@ nfsmout:
  * nfs statfs service
  */
 int
-nfsrv_statfs(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_statfs(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3795,11 +3738,8 @@ nfsmout:
  * nfs fsinfo service
  */
 int
-nfsrv_fsinfo(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_fsinfo(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	     struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3877,11 +3817,8 @@ nfsmout:
  * nfs pathconf service
  */
 int
-nfsrv_pathconf(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_pathconf(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	       struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep, *md = nfsd->nd_md;
 	struct sockaddr *nam = nfsd->nd_nam;
@@ -3956,11 +3893,8 @@ nfsmout:
  */
 /* ARGSUSED */
 int
-nfsrv_null(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_null(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	   struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep;
 	caddr_t bpos;
@@ -3981,11 +3915,8 @@ nfsrv_null(nfsd, slp, td, mrq)
  */
 /* ARGSUSED */
 int
-nfsrv_noop(nfsd, slp, td, mrq)
-	struct nfsrv_descript *nfsd;
-	struct nfssvc_sock *slp;
-	struct thread *td;
-	struct mbuf **mrq;
+nfsrv_noop(struct nfsrv_descript *nfsd, struct nfssvc_sock *slp,
+	   struct thread *td, struct mbuf **mrq)
 {
 	struct mbuf *mrep = nfsd->nd_mrep;
 	caddr_t bpos;
@@ -4022,7 +3953,7 @@ nfsrv_noop(nfsd, slp, td, mrq)
  */
 static int
 nfsrv_access(struct vnode *vp, int flags, struct ucred *cred,
-	int rdonly, struct thread *td, int override)
+	     int rdonly, struct thread *td, int override)
 {
 	struct vattr vattr;
 	int error;

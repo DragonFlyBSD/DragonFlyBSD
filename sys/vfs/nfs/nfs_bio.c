@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_bio.c	8.9 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_bio.c,v 1.83.2.4 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.12 2004/02/13 18:52:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_bio.c,v 1.13 2004/04/19 16:33:49 cpressey Exp $
  */
 
 
@@ -74,16 +74,12 @@ extern struct nfsstats nfsstats;
 
 /*
  * Vnode op for VM getpages.
+ *
+ * nfs_getpages(struct vnode *a_vp, vm_page_t *a_m, int a_count,
+ *		int a_reqpage, vm_ooffset_t a_offset)
  */
 int
-nfs_getpages(ap)
-	struct vop_getpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_reqpage;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+nfs_getpages(struct vop_getpages_args *ap)
 {
 	struct thread *td = curthread;		/* XXX */
 	int i, error, nextoff, size, toff, count, npages;
@@ -230,17 +226,12 @@ nfs_getpages(ap)
 
 /*
  * Vnode op for VM putpages.
+ *
+ * nfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_sync,
+ *		int *a_rtvals, vm_ooffset_t a_offset)
  */
 int
-nfs_putpages(ap)
-	struct vop_putpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_sync;
-		int *a_rtvals;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+nfs_putpages(struct vop_putpages_args *ap)
 {
 	struct thread *td = curthread;
 	struct uio uio;
@@ -707,15 +698,12 @@ again:
 
 /*
  * Vnode op for write using bio
+ *
+ * nfs_write(struct vnode *a_vp, struct uio *a_uio, int a_ioflag,
+ *	     struct ucred *a_cred)
  */
 int
-nfs_write(ap)
-	struct vop_write_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		int  a_ioflag;
-		struct ucred *a_cred;
-	} */ *ap;
+nfs_write(struct vop_write_args *ap)
 {
 	int biosize;
 	struct uio *uio = ap->a_uio;
@@ -1135,7 +1123,7 @@ nfs_getcacheblk(struct vnode *vp, daddr_t bn, int size, struct thread *td)
  */
 int
 nfs_vinvalbuf(struct vnode *vp, int flags,
-	struct thread *td, int intrflg)
+	      struct thread *td, int intrflg)
 {
 	struct nfsnode *np = VTONFS(vp);
 	struct nfsmount *nmp = VFSTONFS(vp->v_mount);

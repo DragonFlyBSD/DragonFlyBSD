@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.13 2004/04/07 05:15:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.14 2004/04/19 16:33:49 cpressey Exp $
  */
 
 /*
@@ -564,7 +564,7 @@ LIST_HEAD(nfsnodehashhead, nfsnode);
 int nfs_webnamei (struct nameidata *, struct vnode *, struct proc *);
 
 u_quad_t
-nfs_curusec() 
+nfs_curusec(void) 
 {
 	struct timeval tv;
 	
@@ -578,11 +578,7 @@ nfs_curusec()
  * (just used to decide if a cluster is a good idea)
  */
 struct mbuf *
-nfsm_reqh(vp, procid, hsiz, bposp)
-	struct vnode *vp;
-	u_long procid;
-	int hsiz;
-	caddr_t *bposp;
+nfsm_reqh(struct vnode *vp, u_long procid, int hsiz, caddr_t *bposp)
 {
 	struct mbuf *mb;
 	u_int32_t *tl;
@@ -626,20 +622,10 @@ nfsm_reqh(vp, procid, hsiz, bposp)
  * Returns the head of the mbuf list.
  */
 struct mbuf *
-nfsm_rpchead(cr, nmflag, procid, auth_type, auth_len, auth_str, verf_len,
-	verf_str, mrest, mrest_len, mbp, xidp)
-	struct ucred *cr;
-	int nmflag;
-	int procid;
-	int auth_type;
-	int auth_len;
-	char *auth_str;
-	int verf_len;
-	char *verf_str;
-	struct mbuf *mrest;
-	int mrest_len;
-	struct mbuf **mbp;
-	u_int32_t *xidp;
+nfsm_rpchead(struct ucred *cr, int nmflag, int procid, int auth_type,
+	     int auth_len, char *auth_str, int verf_len, char *verf_str,
+	     struct mbuf *mrest, int mrest_len, struct mbuf **mbp,
+	     u_int32_t *xidp)
 {
 	struct mbuf *mb;
 	u_int32_t *tl;
@@ -782,11 +768,7 @@ nfsm_rpchead(cr, nmflag, procid, auth_type, auth_len, auth_str, verf_len,
  * copies mbuf chain to the uio scatter/gather list
  */
 int
-nfsm_mbuftouio(mrep, uiop, siz, dpos)
-	struct mbuf **mrep;
-	struct uio *uiop;
-	int siz;
-	caddr_t *dpos;
+nfsm_mbuftouio(struct mbuf **mrep, struct uio *uiop, int siz, caddr_t *dpos)
 {
 	char *mbufcp, *uiocp;
 	int xfer, left, len;
@@ -858,11 +840,7 @@ nfsm_mbuftouio(mrep, uiop, siz, dpos)
  * NOTE: can ony handle iovcnt == 1
  */
 int
-nfsm_uiotombuf(uiop, mq, siz, bpos)
-	struct uio *uiop;
-	struct mbuf **mq;
-	int siz;
-	caddr_t *bpos;
+nfsm_uiotombuf(struct uio *uiop, struct mbuf **mq, int siz, caddr_t *bpos)
 {
 	char *uiocp;
 	struct mbuf *mp, *mp2;
@@ -944,12 +922,7 @@ nfsm_uiotombuf(uiop, mq, siz, bpos)
  * cases. (The macros use the vars. dpos and dpos2)
  */
 int
-nfsm_disct(mdp, dposp, siz, left, cp2)
-	struct mbuf **mdp;
-	caddr_t *dposp;
-	int siz;
-	int left;
-	caddr_t *cp2;
+nfsm_disct(struct mbuf **mdp, caddr_t *dposp, int siz, int left, caddr_t *cp2)
 {
 	struct mbuf *mp, *mp2;
 	int siz2, xfer;
@@ -1007,11 +980,7 @@ nfsm_disct(mdp, dposp, siz, left, cp2)
  * Advance the position in the mbuf chain.
  */
 int
-nfs_adv(mdp, dposp, offs, left)
-	struct mbuf **mdp;
-	caddr_t *dposp;
-	int offs;
-	int left;
+nfs_adv(struct mbuf **mdp, caddr_t *dposp, int offs, int left)
 {
 	struct mbuf *m;
 	int s;
@@ -1034,11 +1003,7 @@ nfs_adv(mdp, dposp, offs, left)
  * Copy a string into mbufs for the hard cases...
  */
 int
-nfsm_strtmbuf(mb, bpos, cp, siz)
-	struct mbuf **mb;
-	char **bpos;
-	const char *cp;
-	long siz;
+nfsm_strtmbuf(struct mbuf **mb, char **bpos, const char *cp, long siz)
 {
 	struct mbuf *m1 = NULL, *m2;
 	long left, xfer, len, tlen;
@@ -1100,8 +1065,7 @@ nfsm_strtmbuf(mb, bpos, cp, siz)
  * Called once to initialize data structures...
  */
 int
-nfs_init(vfsp)
-	struct vfsconf *vfsp;
+nfs_init(struct vfsconf *vfsp)
 {
 	int i;
 
@@ -1176,8 +1140,7 @@ nfs_init(vfsp)
 }
 
 int
-nfs_uninit(vfsp)
-	struct vfsconf *vfsp;
+nfs_uninit(struct vfsconf *vfsp)
 {
 
 	untimeout(nfs_timer, (void *)NULL, nfs_timer_handle);
@@ -1206,12 +1169,8 @@ nfs_uninit(vfsp)
  *    copy the attributes to *vaper
  */
 int
-nfs_loadattrcache(vpp, mdp, dposp, vaper, dontshrink)
-	struct vnode **vpp;
-	struct mbuf **mdp;
-	caddr_t *dposp;
-	struct vattr *vaper;
-	int dontshrink;
+nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
+		  struct vattr *vaper, int dontshrink)
 {
 	struct vnode *vp = *vpp;
 	struct vattr *vap;
@@ -1375,9 +1334,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, acdebug, CTLFLAG_RW, &nfs_acdebug, 0, "");
  * otherwise return an error
  */
 int
-nfs_getattrcache(vp, vaper)
-	struct vnode *vp;
-	struct vattr *vaper;
+nfs_getattrcache(struct vnode *vp, struct vattr *vaper)
 {
 	struct nfsnode *np;
 	struct vattr *vap;
@@ -1466,17 +1423,10 @@ nfs_getattrcache(vp, vaper)
  * released by the caller.
  */
 int
-nfs_namei(ndp, fhp, len, slp, nam, mdp, dposp, retdirp, td, kerbflag, pubflag)
-	struct nameidata *ndp;
-	fhandle_t *fhp;
-	int len;
-	struct nfssvc_sock *slp;
-	struct sockaddr *nam;
-	struct mbuf **mdp;
-	caddr_t *dposp;
-	struct vnode **retdirp;
-	struct thread *td;
-	int kerbflag, pubflag;
+nfs_namei(struct nameidata *ndp, fhandle_t *fhp, int len,
+	  struct nfssvc_sock *slp, struct sockaddr *nam, struct mbuf **mdp,
+	  caddr_t *dposp, struct vnode **retdirp, struct thread *td,
+	  int kerbflag, int pubflag)
 {
 	int i, rem;
 	struct mbuf *md;
@@ -1747,10 +1697,7 @@ out:
  * boundary and only trims off the back end
  */
 void
-nfsm_adj(mp, len, nul)
-	struct mbuf *mp;
-	int len;
-	int nul;
+nfsm_adj(struct mbuf *mp, int len, int nul)
 {
 	struct mbuf *m;
 	int count, i;
@@ -1809,14 +1756,9 @@ nfsm_adj(mp, len, nul)
  * doesn't get too big...
  */
 void
-nfsm_srvwcc(nfsd, before_ret, before_vap, after_ret, after_vap, mbp, bposp)
-	struct nfsrv_descript *nfsd;
-	int before_ret;
-	struct vattr *before_vap;
-	int after_ret;
-	struct vattr *after_vap;
-	struct mbuf **mbp;
-	char **bposp;
+nfsm_srvwcc(struct nfsrv_descript *nfsd, int before_ret,
+	    struct vattr *before_vap, int after_ret, struct vattr *after_vap,
+	    struct mbuf **mbp, char **bposp)
 {
 	struct mbuf *mb = *mbp, *mb2;
 	char *bpos = *bposp;
@@ -1840,12 +1782,8 @@ nfsm_srvwcc(nfsd, before_ret, before_vap, after_ret, after_vap, mbp, bposp)
 }
 
 void
-nfsm_srvpostopattr(nfsd, after_ret, after_vap, mbp, bposp)
-	struct nfsrv_descript *nfsd;
-	int after_ret;
-	struct vattr *after_vap;
-	struct mbuf **mbp;
-	char **bposp;
+nfsm_srvpostopattr(struct nfsrv_descript *nfsd, int after_ret,
+		   struct vattr *after_vap, struct mbuf **mbp, char **bposp)
 {
 	struct mbuf *mb = *mbp, *mb2;
 	char *bpos = *bposp;
@@ -1866,10 +1804,8 @@ nfsm_srvpostopattr(nfsd, after_ret, after_vap, mbp, bposp)
 }
 
 void
-nfsm_srvfattr(nfsd, vap, fp)
-	struct nfsrv_descript *nfsd;
-	struct vattr *vap;
-	struct nfs_fattr *fp;
+nfsm_srvfattr(struct nfsrv_descript *nfsd, struct vattr *vap,
+	      struct nfs_fattr *fp)
 {
 
 	fp->fa_nlink = txdr_unsigned(vap->va_nlink);
@@ -1915,16 +1851,9 @@ nfsm_srvfattr(nfsd, vap, fp)
  *	- if not lockflag unlock it with VOP_UNLOCK()
  */
 int
-nfsrv_fhtovp(fhp, lockflag, vpp, cred, slp, nam, rdonlyp, kerbflag, pubflag)
-	fhandle_t *fhp;
-	int lockflag;
-	struct vnode **vpp;
-	struct ucred *cred;
-	struct nfssvc_sock *slp;
-	struct sockaddr *nam;
-	int *rdonlyp;
-	int kerbflag;
-	int pubflag;
+nfsrv_fhtovp(fhandle_t *fhp, int lockflag, struct vnode **vpp,
+	     struct ucred *cred, struct nfssvc_sock *slp, struct sockaddr *nam,
+	     int *rdonlyp, int kerbflag, int pubflag)
 {
 	struct thread *td = curthread; /* XXX */
 	struct mount *mp;
@@ -2001,8 +1930,7 @@ nfsrv_fhtovp(fhp, lockflag, vpp, cred, slp, nam, rdonlyp, kerbflag, pubflag)
  * transformed this to all zeroes in both cases, so check for it.
  */
 int
-nfs_ispublicfh(fhp)
-	fhandle_t *fhp;
+nfs_ispublicfh(fhandle_t *fhp)
 {
 	char *cp = (char *)fhp;
 	int i;
@@ -2022,10 +1950,7 @@ nfs_ispublicfh(fhp)
  * don't need to be saved to store "struct in_addr", which is only 4 bytes.
  */
 int
-netaddr_match(family, haddr, nam)
-	int family;
-	union nethostaddr *haddr;
-	struct sockaddr *nam;
+netaddr_match(int family, union nethostaddr *haddr, struct sockaddr *nam)
 {
 	struct sockaddr_in *inetaddr;
 
@@ -2048,10 +1973,7 @@ static nfsuint64 nfs_nullcookie = { { 0, 0 } };
  * logical byte offset given.
  */
 nfsuint64 *
-nfs_getcookie(np, off, add)
-	struct nfsnode *np;
-	off_t off;
-	int add;
+nfs_getcookie(struct nfsnode *np, off_t off, int add)
 {
 	struct nfsdmap *dp, *dp2;
 	int pos;
@@ -2106,8 +2028,7 @@ nfs_getcookie(np, off, add)
  * Done mainly to avoid the use of stale offset cookies.
  */
 void
-nfs_invaldir(vp)
-	struct vnode *vp;
+nfs_invaldir(struct vnode *vp)
 {
 	struct nfsnode *np = VTONFS(vp);
 
@@ -2133,8 +2054,7 @@ nfs_invaldir(vp)
  * writes are not clusterable.
  */
 void
-nfs_clearcommit(mp)
-	struct mount *mp;
+nfs_clearcommit(struct mount *mp)
 {
 	struct vnode *vp, *nvp;
 	struct buf *bp, *nbp;
@@ -2166,9 +2086,7 @@ nfs_clearcommit(mp)
  * numbers not specified for the associated procedure.
  */
 int
-nfsrv_errmap(nd, err)
-	struct nfsrv_descript *nd;
-	int err;
+nfsrv_errmap(struct nfsrv_descript *nd, int err)
 {
 	short *defaulterrp, *errp;
 
@@ -2206,9 +2124,7 @@ nfsrv_object_create(struct vnode *vp)
  *  that used to be here.)
  */
 void
-nfsrvw_sort(list, num)
-        gid_t *list;
-        int num;
+nfsrvw_sort(gid_t *list, int num)
 {
 	int i, j;
 	gid_t v;
@@ -2227,8 +2143,7 @@ nfsrvw_sort(list, num)
  * copy credentials making sure that the result can be compared with bcmp().
  */
 void
-nfsrv_setcred(incred, outcred)
-	struct ucred *incred, *outcred;
+nfsrv_setcred(struct ucred *incred, struct ucred *outcred)
 {
 	int i;
 
