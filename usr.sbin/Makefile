@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.9 2004/05/27 18:15:42 dillon Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.10 2004/06/20 02:36:01 hmp Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR=	IPXrouted \
@@ -10,6 +10,7 @@ SUBDIR=	IPXrouted \
 	amd \
 	ancontrol \
 	arp \
+	asf \
 	atm \
 	bootparamd \
 	burncd \
