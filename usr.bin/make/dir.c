@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.34 2005/03/31 22:07:21 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.35 2005/03/31 22:10:02 okumoto Exp $
  */
 
 /*-
@@ -48,35 +48,35 @@
  *	implicit sources.
  *
  * The interface for this module is:
- *	Dir_Init  	    Initialize the module.
+ *	Dir_Init	Initialize the module.
  *
- *	Dir_HasWildcards    Returns TRUE if the name given it needs to
- *	    	  	    be wildcard-expanded.
+ *	Dir_HasWildcards Returns TRUE if the name given it needs to
+ *			be wildcard-expanded.
  *
- *	Dir_Expand	    Given a pattern and a path, return a Lst of names
- *	    	  	    which match the pattern on the search path.
+ *	Dir_Expand	Given a pattern and a path, return a Lst of names
+ *			which match the pattern on the search path.
  *
- *	Dir_FindFile	    Searches for a file on a given search path.
- *	    	  	    If it exists, the entire path is returned.
- *	    	  	    Otherwise NULL is returned.
+ *	Dir_FindFile	Searches for a file on a given search path.
+ *			If it exists, the entire path is returned.
+ *			Otherwise NULL is returned.
  *
- *	Dir_MTime 	    Return the modification time of a node. The file
- *	    	  	    is searched for along the default search path.
- *	    	  	    The path and mtime fields of the node are filled
- *	    	  	    in.
+ *	Dir_MTime	Return the modification time of a node. The file
+ *			is searched for along the default search path.
+ *			The path and mtime fields of the node are filled in.
  *
- *	Dir_AddDir	    Add a directory to a search path.
+ *	Dir_AddDir	Add a directory to a search path.
  *
- *	Dir_MakeFlags	    Given a search path and a command flag, create
- *	    	  	    a string with each of the directories in the path
- *	    	  	    preceded by the command flag and all of them
- *	    	  	    separated by a space.
+ *	Dir_MakeFlags	Given a search path and a command flag, create
+ *			a string with each of the directories in the path
+ *			preceded by the command flag and all of them
+ *			separated by a space.
  *
- *	Dir_Destroy	    Destroy an element of a search path. Frees up all
- *	    	  	    things that can be freed for the element as long
- *	    	  	    as the element is no longer referenced by any other
- *	    	  	    search path.
- *	Dir_ClearPath	    Resets a search path to the empty list.
+ *	Dir_Destroy	Destroy an element of a search path. Frees up all
+ *			things that can be freed for the element as long
+ *			as the element is no longer referenced by any other
+ *			search path.
+ *
+ *	Dir_ClearPath	Resets a search path to the empty list.
  *
  * For debugging:
  *	Dir_PrintDirectories	Print stats about the directory cache.
@@ -173,11 +173,10 @@
  */
 
 typedef struct Dir {
-	char	*name;	    	/* Name of directory */
-	int	refCount;	/* Number of paths with this directory */
-	int	hits;		/* Number of times a file in this dirextory has
-				 * been found  */
-	Hash_Table files;    	/* Hash table of files in directory */
+	char	*name;		/* Name of directory */
+	int	refCount;	/* No. of paths with this directory */
+	int	hits;		/* No. of times a file has been found here */
+	Hash_Table files;	/* Hash table of files in directory */
 } Dir;
 
 
@@ -304,7 +303,7 @@ Dir_HasWildcards(const char *name)
 /*-
  *-----------------------------------------------------------------------
  * DirMatchFiles --
- * 	Given a pattern and a Dir structure, see if any files
+ *	Given a pattern and a Dir structure, see if any files
  *	match the pattern and add their names to the 'expansions' list if
  *	any do. This is incomplete -- it doesn't take care of patterns like
  *	src / *src / *.c properly (just *.c on any of the directories), but it
@@ -321,9 +320,9 @@ Dir_HasWildcards(const char *name)
 static int
 DirMatchFiles(const char *pattern, const Dir *p, Lst *expansions)
 {
-	Hash_Search search;   	/* Index into the directory's table */
-	Hash_Entry *entry;   	/* Current entry in the table */
-	Boolean isDot;    	/* TRUE if the directory being searched is . */
+	Hash_Search search;	/* Index into the directory's table */
+	Hash_Entry *entry;	/* Current entry in the table */
+	Boolean isDot;		/* TRUE if the directory being searched is . */
 
 	isDot = (*p->name == '.' && p->name[1] == '\0');
 
@@ -375,7 +374,7 @@ DirExpandCurly(const char *word, const char *brace, Lst *path, Lst *expansions)
 	int bracelevel;	/* Number of braces we've seen. If we see a right brace
 			 * when this is 0, we've hit the end of the clause. */
 	char *file;	/* Current expansion */
-	int otherLen; 	/* The length of the other pieces of the expansion
+	int otherLen;	/* The length of the other pieces of the expansion
 			 * (chars before and after the clause in 'word') */
 	char *cp2;	/* Pointer for checking for wildcards in
 			 * expansion before calling Dir_Expand */
@@ -881,14 +880,14 @@ Dir_FindFile(char *name, Lst *path)
 int
 Dir_MTime(GNode *gn)
 {
-	char *fullName;  	/* the full pathname of name */
+	char *fullName;		/* the full pathname of name */
 	struct stat stb;	/* buffer for finding the mod time */
 	Hash_Entry *entry;
 
 	if (gn->type & OP_ARCHV)
 		return (Arch_MTime(gn));
 
-    	else if (gn->path == NULL)
+	else if (gn->path == NULL)
 		fullName = Dir_FindFile(gn->name, &dirSearchPath);
 	else
 		fullName = gn->path;
