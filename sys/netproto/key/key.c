@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netkey/key.c,v 1.16.2.13 2002/07/24 18:17:40 ume Exp $	*/
-/*	$DragonFly: src/sys/netproto/key/key.c,v 1.9 2004/08/02 13:22:33 joerg Exp $	*/
+/*	$DragonFly: src/sys/netproto/key/key.c,v 1.10 2004/09/16 22:35:30 joerg Exp $	*/
 /*	$KAME: key.c,v 1.191 2001/06/27 10:46:49 sakane Exp $	*/
 
 /*
@@ -126,6 +126,9 @@
  *   field hits 0 (= no external reference other than from SA header.
  */
 
+#ifndef IPSEC_DEBUG2
+static struct callout key_timehandler_ch;
+#endif
 u_int32_t key_debug_level = 0;
 static u_int key_spi_trycnt = 1000;
 static u_int32_t key_spi_minval = 0x100;
@@ -4416,7 +4419,7 @@ key_timehandler(void)
 
 #ifndef IPSEC_DEBUG2
 	/* do exchange to tick time !! */
-	(void)timeout((void *)key_timehandler, (void *)0, hz);
+	callout_reset(&key_timehandler_ch, hz, key_timehandler, NULL);
 #endif /* IPSEC_DEBUG2 */
 
 	splx(s);
@@ -7244,7 +7247,7 @@ key_init()
 #endif
 
 #ifndef IPSEC_DEBUG2
-	timeout((void *)key_timehandler, (void *)0, hz);
+	callout_reset(&key_timehandler_ch, hz, key_timehandler, hz);
 #endif /*IPSEC_DEBUG2*/
 
 	/* initialize key statistics */
