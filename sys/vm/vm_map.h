@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.13 2004/03/12 23:09:37 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.14 2004/05/24 07:25:36 hmp Exp $
  */
 
 /*
@@ -248,6 +248,7 @@ struct vmresident {
 	int		vr_id;			/* registration id */
 };
 
+#ifdef _KERNEL
 /*
  *	Macros:		vm_map_lock, etc.
  *	Function:
@@ -350,6 +351,8 @@ _vm_map_lock_upgrade(vm_map_t map, struct thread *td) {
 		(map)->lock.lk_flags &= ~LK_CANRECURSE; \
 		lwkt_reltoken(&ilock); \
 	} while(0)
+
+#endif /* _KERNEL */
 
 /*
  *	Functions implemented as macros
