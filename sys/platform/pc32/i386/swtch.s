@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.26 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.27 2003/09/16 20:03:35 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -227,8 +227,16 @@ ENTRY(cpu_heavy_restore)
 	movl	TD_PCB(%eax),%edx		/* EDX = PCB */
 	movl	TD_PROC(%eax),%ecx
 #ifdef	DIAGNOSTIC
+	/*
+	 * A heavy weight process will normally be in an SRUN state
+	 * but can also be preempted while it is entering a SZOMB
+	 * (zombie) state.
+	 */
 	cmpb	$SRUN,P_STAT(%ecx)
+	je	1f
+	cmpb	$SZOMB,P_STAT(%ecx)
 	jne	badsw2
+1:
 #endif
 
 #if defined(SWTCH_OPTIM_STATS)
