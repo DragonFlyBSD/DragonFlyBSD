@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.53 2005/03/04 03:48:25 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.54 2005/03/09 06:57:29 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -318,7 +318,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	 * segment.  If it provides all of our data, drop us.
 	 */
 	if (p != NULL) {
-		int i;
+		tcp_seq_diff_t i;
 
 		/* conversion to int (in i) handles seq wraparound */
 		i = p->tqe_th->th_seq + p->tqe_len - th->th_seq;
@@ -361,7 +361,7 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	 * if they are completely covered, dequeue them.
 	 */
 	while (q) {
-		int i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
+		tcp_seq_diff_t i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
 		tcp_seq qend = q->tqe_th->th_seq + q->tqe_len;
 		struct tseg_qent *nq;
 
