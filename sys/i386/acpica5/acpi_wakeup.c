@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.30 2003/11/03 22:18:57 jhb Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.2 2004/06/27 08:52:45 dillon Exp $
+ * $FreeBSD: src/sys/i386/acpica/acpi_wakeup.c,v 1.33 2004/05/06 02:18:58 njl Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_wakeup.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,13 +37,10 @@
 #include <sys/sysctl.h>
 
 #include <vm/vm.h>
-#include <vm/vm_param.h>
 #include <vm/pmap.h>
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_map.h>
-#include <vm/vm_kern.h>
-#include <vm/vm_extern.h>
 
 #include <machine/bus.h>
 #include <machine/cpufunc.h>

@@ -24,14 +24,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.23 2004/04/09 18:14:32 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_resource.c,v 1.24 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_resource.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/bus.h>
+#include <sys/module.h>
 
 #include <machine/bus.h>
 #include <machine/resource.h>

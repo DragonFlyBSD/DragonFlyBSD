@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.5 2004/04/09 18:14:32 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_isab.c,v 1.7 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_isab.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 /*
@@ -35,17 +35,15 @@
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
+#include <sys/module.h>
 
 #include "acpi.h"
-
 #include "acpivar.h"
 #include <bus/isa/isavar.h>
 
-/*
- * Hooks for the ACPI CA debugging infrastructure
- */
+/* Hooks for the ACPI CA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("ISA_ACPI")
 
@@ -53,7 +51,6 @@ struct acpi_isab_softc {
 	device_t	ap_dev;
 	ACPI_HANDLE	ap_handle;
 };
-
 
 static int	acpi_isab_probe(device_t bus);
 static int	acpi_isab_attach(device_t bus);
@@ -94,14 +91,14 @@ static int
 acpi_isab_probe(device_t dev)
 {
 
-	if ((acpi_get_type(dev) == ACPI_TYPE_DEVICE) &&
+	if (acpi_get_type(dev) == ACPI_TYPE_DEVICE &&
 	    !acpi_disabled("isa") &&
 	    devclass_get_device(isab_devclass, 0) == dev &&
 	    (acpi_MatchHid(dev, "PNP0A05") || acpi_MatchHid(dev, "PNP0A06"))) {
 		device_set_desc(dev, "ACPI Generic ISA bridge");
-		return(0);
+		return (0);
 	}
-	return(ENXIO);
+	return (ENXIO);
 }
 
 static int
@@ -124,9 +121,9 @@ acpi_isab_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 	struct acpi_isab_softc *sc = device_get_softc(dev);
 
 	switch (which) {
-	case  ACPI_IVAR_HANDLE:
+	case ACPI_IVAR_HANDLE:
 		*result = (uintptr_t)sc->ap_handle;
-		return(0);
+		return (0);
 	}
-	return(ENOENT);
+	return (ENOENT);
 }

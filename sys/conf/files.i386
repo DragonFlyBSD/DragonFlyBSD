@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.24 2004/04/29 17:25:03 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.25 2004/07/05 00:07:32 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -287,7 +287,7 @@ dev/video/pcvt/i386/pcvt_kbd.c		optional	vt
 dev/video/pcvt/i386/pcvt_out.c		optional	vt
 dev/video/pcvt/i386/pcvt_sup.c		optional	vt
 dev/video/pcvt/i386/pcvt_vtf.c		optional	vt
-i386/isa/pmtimer.c			optional	acpica acpica5 pmtimer
+i386/isa/pmtimer.c			optional	acpica pmtimer
 # XXX drhodus
 i386/isa/prof_machdep.c			optional	profiling-routine
 dev/serial/rc/rc.c			optional	rc

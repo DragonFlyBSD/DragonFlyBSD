@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.60 2004/06/27 08:52:36 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.61 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -2505,7 +2505,6 @@ Debugger(const char *msg)
 }
 #endif /* no DDB */
 
-#ifndef APIC_IO
 #include <machine/apicvar.h>
 
 /*
@@ -2604,7 +2603,6 @@ lapic_set_lvt_triggermode(u_int apic_id, u_int lvt, u_char edgetrigger)
 {
 	return (ENXIO);
 }
-#endif
 
 #include <sys/disklabel.h>
 

@@ -24,14 +24,15 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.45 2004/05/06 02:57:24 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_thermal.c,v 1.47 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_thermal.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/proc.h>
 #include <sys/reboot.h>
@@ -200,12 +201,6 @@ acpi_tz_attach(device_t dev)
      */
     if ((error = acpi_tz_establish(sc)) != 0)
 	goto out;
-
-    /*
-     * XXX Call _INI if it exists.  ACPICA should do this but only handles
-     * Device objects for now.
-     */
-    AcpiEvaluateObject(sc->tz_handle, "_INI", NULL, NULL);
 
     /*
      * Register for any Notify events sent to this zone.

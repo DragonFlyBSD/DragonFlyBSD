@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.24 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_acad.c,v 1.26 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_acad.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -33,10 +33,10 @@
 #include <sys/bus.h>
 
 #include <machine/bus.h>
-#include <machine/resource.h>
 #include <sys/rman.h>
 #include <sys/ioccom.h>
 #include <sys/malloc.h>
+#include <sys/module.h>
 #include <sys/conf.h>
 #include <sys/power.h>
 
@@ -118,11 +118,9 @@ acpi_acad_get_status(void *context)
 static void
 acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 {
-    device_t dev = context;
+    device_t dev;
 
-    ACPI_VPRINT(dev, acpi_device_get_parent_softc(dev),
-		"Notify 0x%x\n", notify);
-
+    dev = (device_t)context;
     switch (notify) {
     case ACPI_DEVICE_CHECK_PNP:
     case ACPI_DEVICE_CHECK_EXISTENCE:
@@ -131,6 +129,7 @@ acpi_acad_notify_handler(ACPI_HANDLE h, UINT32 notify, void *context)
 	AcpiOsQueueForExecution(OSD_PRIORITY_LO, acpi_acad_get_status, context);
 	break;
     default:
+	device_printf(dev, "unknown notify %#x\n", notify);
 	break;
     }
 }

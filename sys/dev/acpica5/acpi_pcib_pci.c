@@ -24,16 +24,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.7 2004/05/10 18:26:22 jhb Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pcib_pci.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pcib_pci.c,v 1.9 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pcib_pci.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
 
 #include <sys/param.h>
 #include <sys/bus.h>
-#include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/malloc.h>
+#include <sys/module.h>
 
 #include "acpi.h"
 
@@ -44,12 +45,9 @@
 #include <bus/pci/pcivar.h>
 #include <bus/pci/pcireg.h>
 #include <bus/pci/pcib_private.h>
-
 #include "pcib_if.h"
 
-/*
- * Hooks for the ACPI CA debugging infrastructure
- */
+/* Hooks for the ACPI CA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("PCI_PCI")
 
@@ -58,18 +56,19 @@ struct acpi_pcib_softc {
     ACPI_HANDLE		ap_handle;
     ACPI_BUFFER		ap_prt;		/* interrupt routing table */
 };
-	
+
 struct acpi_pcib_lookup_info {
-    UINT32	address;
-    ACPI_HANDLE	handle;
+    UINT32		address;
+    ACPI_HANDLE		handle;
 };
-	
+
 static int		acpi_pcib_pci_probe(device_t bus);
 static int		acpi_pcib_pci_attach(device_t bus);
 static int		acpi_pcib_pci_resume(device_t bus);
-static int		acpi_pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result);
+static int		acpi_pcib_read_ivar(device_t dev, device_t child,
+			    int which, uintptr_t *result);
 static int		acpi_pcib_pci_route_interrupt(device_t pcib,
-    device_t dev, int pin);
+			    device_t dev, int pin);
 
 static device_method_t acpi_pcib_pci_methods[] = {
     /* Device interface */
@@ -112,13 +111,13 @@ static int
 acpi_pcib_pci_probe(device_t dev)
 {
 
-    if ((pci_get_class(dev) != PCIC_BRIDGE) ||
-	(pci_get_subclass(dev) != PCIS_BRIDGE_PCI) ||
+    if (pci_get_class(dev) != PCIC_BRIDGE ||
+	pci_get_subclass(dev) != PCIS_BRIDGE_PCI ||
 	acpi_disabled("pci"))
 	return (ENXIO);
     if (acpi_get_handle(dev) == NULL)
 	return (ENXIO);
-    if (!pci_cfgregopen())
+    if (pci_cfgregopen() == 0)
 	return (ENXIO);
 
     device_set_desc(dev, "ACPI PCI-PCI bridge");
@@ -149,14 +148,14 @@ acpi_pcib_pci_resume(device_t dev)
 static int
 acpi_pcib_read_ivar(device_t dev, device_t child, int which, uintptr_t *result)
 {
-    struct acpi_pcib_softc	*sc = device_get_softc(dev);
+    struct acpi_pcib_softc *sc = device_get_softc(dev);
 
     switch (which) {
-    case  ACPI_IVAR_HANDLE:
+    case ACPI_IVAR_HANDLE:
 	*result = (uintptr_t)sc->ap_handle;
-	return(0);
+	return (0);
     }
-    return(pcib_read_ivar(dev, child, which, result));
+    return (pcib_read_ivar(dev, child, which, result));
 }
 
 static int

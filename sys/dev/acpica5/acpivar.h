@@ -25,8 +25,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.64 2004/05/06 08:04:34 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpivar.h,v 1.69 2004/05/28 07:15:55 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpivar.h,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "bus_if.h"
@@ -83,8 +83,18 @@ struct acpi_device {
 
     /* Resources */
     struct resource_list	ad_rl;
-
 };
+
+struct acpi_prw_data {
+    ACPI_HANDLE		gpe_handle;
+    int			gpe_bit;
+    int			lowest_wake;
+    void		*power_res;
+};
+
+/* Flags for each device defined in the AML namespace. */
+#define ACPI_FLAG_WAKE_CAPABLE	0x1
+#define ACPI_FLAG_WAKE_ENABLED	0x2
 
 #if defined(__DragonFly__)
 /*
@@ -146,62 +156,30 @@ struct acpi_device {
 #define ACPI_IVAR_MAGIC		0x101
 #define ACPI_IVAR_PRIVATE	0x102
 
-static __inline ACPI_HANDLE
-acpi_get_handle(device_t dev)
-{
-    uintptr_t up;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, &up))
-	return (NULL);
-    return ((ACPI_HANDLE)up);
+/*
+ * Accessor functions for our ivars.  Default value for BUS_READ_IVAR is
+ * (type) 0.  The <sys/bus.h> accessor functions don't check return values.
+ */
+#define __ACPI_BUS_ACCESSOR(varp, var, ivarp, ivar, type)	\
+								\
+static __inline type varp ## _get_ ## var(device_t dev)		\
+{								\
+    uintptr_t v = 0;						\
+    BUS_READ_IVAR(device_get_parent(dev), dev,			\
+	ivarp ## _IVAR_ ## ivar, &v);				\
+    return ((type) v);						\
+}								\
+								\
+static __inline void varp ## _set_ ## var(device_t dev, type t)	\
+{								\
+    uintptr_t v = (uintptr_t) t;				\
+    BUS_WRITE_IVAR(device_get_parent(dev), dev,			\
+	ivarp ## _IVAR_ ## ivar, v);				\
 }
 
-static __inline int
-acpi_set_handle(device_t dev, ACPI_HANDLE h)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)h;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_HANDLE, up));
-}
-
-static __inline int
-acpi_get_magic(device_t dev)
-{
-    uintptr_t up;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, &up))
-	return(0);
-    return ((int)up);
-}
-
-static __inline int
-acpi_set_magic(device_t dev, int m)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)m;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_MAGIC, up));
-}
-
-static __inline void *
-acpi_get_private(device_t dev)
-{
-    uintptr_t up;
-
-    if (BUS_READ_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, &up))
-	return (NULL);
-    return ((void *)up);
-}
-
-static __inline int
-acpi_set_private(device_t dev, void *p)
-{
-    uintptr_t up;
-
-    up = (uintptr_t)p;
-    return (BUS_WRITE_IVAR(device_get_parent(dev), dev, ACPI_IVAR_PRIVATE, up));
-}
+__ACPI_BUS_ACCESSOR(acpi, handle, ACPI, HANDLE, ACPI_HANDLE)
+__ACPI_BUS_ACCESSOR(acpi, magic, ACPI, MAGIC, int)
+__ACPI_BUS_ACCESSOR(acpi, private, ACPI, PRIVATE, void *)
 
 static __inline ACPI_OBJECT_TYPE
 acpi_get_type(device_t dev)
@@ -217,7 +195,7 @@ acpi_get_type(device_t dev)
 }
 
 #ifdef ACPI_DEBUGGER
-extern void		acpi_EnterDebugger(void);
+void		acpi_EnterDebugger(void);
 #endif
 
 #ifdef ACPI_DEBUG
@@ -233,68 +211,69 @@ extern void		acpi_EnterDebugger(void);
 } while (0)
 
 #define ACPI_DEVINFO_PRESENT(x)	(((x) & 0x9) == 9)
-extern BOOLEAN		acpi_DeviceIsPresent(device_t dev);
-extern BOOLEAN		acpi_BatteryIsPresent(device_t dev);
-extern BOOLEAN		acpi_MatchHid(device_t dev, char *hid);
-extern ACPI_STATUS	acpi_GetHandleInScope(ACPI_HANDLE parent, char *path,
-					      ACPI_HANDLE *result);
-extern uint32_t		acpi_TimerDelta(uint32_t end, uint32_t start);
-extern ACPI_BUFFER	*acpi_AllocBuffer(int size);
-extern ACPI_STATUS	acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp,
-						    UINT32 *number);
-extern ACPI_STATUS	acpi_GetInteger(ACPI_HANDLE handle, char *path,
-					UINT32 *number);
-extern ACPI_STATUS	acpi_SetInteger(ACPI_HANDLE handle, char *path,
-					UINT32 number);
-extern ACPI_STATUS	acpi_ForeachPackageObject(ACPI_OBJECT *obj, 
-				void (*func)(ACPI_OBJECT *comp, void *arg),
-				void *arg);
-extern ACPI_STATUS	acpi_FindIndexedResource(ACPI_BUFFER *buf, int index,
-						 ACPI_RESOURCE **resp);
-extern ACPI_STATUS	acpi_AppendBufferResource(ACPI_BUFFER *buf,
-						  ACPI_RESOURCE *res);
-extern ACPI_STATUS	acpi_OverrideInterruptLevel(UINT32 InterruptNumber);
-extern ACPI_STATUS	acpi_SetIntrModel(int model);
-extern ACPI_STATUS	acpi_SetSleepState(struct acpi_softc *sc, int state);
-extern ACPI_STATUS	acpi_Startup(void);
-extern ACPI_STATUS	acpi_Enable(struct acpi_softc *sc);
-extern ACPI_STATUS	acpi_Disable(struct acpi_softc *sc);
-extern void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
-					uint8_t notify);
-struct resource *	acpi_bus_alloc_gas(device_t dev, int *rid,
-					   ACPI_GENERIC_ADDRESS *gas);
+BOOLEAN		acpi_DeviceIsPresent(device_t dev);
+BOOLEAN		acpi_BatteryIsPresent(device_t dev);
+BOOLEAN		acpi_MatchHid(device_t dev, char *hid);
+ACPI_STATUS	acpi_GetHandleInScope(ACPI_HANDLE parent, char *path,
+		    ACPI_HANDLE *result);
+uint32_t	acpi_TimerDelta(uint32_t end, uint32_t start);
+ACPI_BUFFER	*acpi_AllocBuffer(int size);
+ACPI_STATUS	acpi_ConvertBufferToInteger(ACPI_BUFFER *bufp,
+		    UINT32 *number);
+ACPI_STATUS	acpi_GetInteger(ACPI_HANDLE handle, char *path,
+		    UINT32 *number);
+ACPI_STATUS	acpi_SetInteger(ACPI_HANDLE handle, char *path,
+		    UINT32 number);
+ACPI_STATUS	acpi_ForeachPackageObject(ACPI_OBJECT *obj, 
+		    void (*func)(ACPI_OBJECT *comp, void *arg), void *arg);
+ACPI_STATUS	acpi_FindIndexedResource(ACPI_BUFFER *buf, int index,
+		    ACPI_RESOURCE **resp);
+ACPI_STATUS	acpi_AppendBufferResource(ACPI_BUFFER *buf,
+		    ACPI_RESOURCE *res);
+ACPI_STATUS	acpi_OverrideInterruptLevel(UINT32 InterruptNumber);
+ACPI_STATUS	acpi_SetIntrModel(int model);
+ACPI_STATUS	acpi_SetSleepState(struct acpi_softc *sc, int state);
+int		acpi_wake_init(device_t dev, int type);
+int		acpi_wake_set_enable(device_t dev, int enable);
+int		acpi_wake_sleep_prep(device_t dev, int sstate);
+int		acpi_wake_run_prep(device_t dev);
+ACPI_STATUS	acpi_Startup(void);
+ACPI_STATUS	acpi_Enable(struct acpi_softc *sc);
+ACPI_STATUS	acpi_Disable(struct acpi_softc *sc);
+void		acpi_UserNotify(const char *subsystem, ACPI_HANDLE h,
+		    uint8_t notify);
+struct resource *acpi_bus_alloc_gas(device_t dev, int *rid,
+		    ACPI_GENERIC_ADDRESS *gas);
 
 struct acpi_parse_resource_set {
     void	(*set_init)(device_t dev, void *arg, void **context);
     void	(*set_done)(device_t dev, void *context);
-    void	(*set_ioport)(device_t dev, void *context, u_int32_t base,
-			      u_int32_t length);
-    void	(*set_iorange)(device_t dev, void *context,
-			       u_int32_t low, u_int32_t high, 
-			       u_int32_t length, u_int32_t align);
-    void	(*set_memory)(device_t dev, void *context, u_int32_t base,
-			      u_int32_t length);
-    void	(*set_memoryrange)(device_t dev, void *context, u_int32_t low,
-				   u_int32_t high, u_int32_t length,
-				   u_int32_t align);
+    void	(*set_ioport)(device_t dev, void *context, uint32_t base,
+		    uint32_t length);
+    void	(*set_iorange)(device_t dev, void *context, uint32_t low,
+		    uint32_t high, uint32_t length, uint32_t align);
+    void	(*set_memory)(device_t dev, void *context, uint32_t base,
+		    uint32_t length);
+    void	(*set_memoryrange)(device_t dev, void *context, uint32_t low,
+		    uint32_t high, uint32_t length, uint32_t align);
     void	(*set_irq)(device_t dev, void *context, u_int32_t *irq,
-			   int count, int trig, int pol);
+		    int count, int trig, int pol);
     void	(*set_drq)(device_t dev, void *context, u_int32_t *drq,
-			   int count);
+		    int count);
     void	(*set_start_dependant)(device_t dev, void *context,
-				       int preference);
+		    int preference);
     void	(*set_end_dependant)(device_t dev, void *context);
 };
 
-extern struct acpi_parse_resource_set	acpi_res_parse_set;
-extern ACPI_STATUS	acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
-			    struct acpi_parse_resource_set *set, void *arg);
+extern struct	acpi_parse_resource_set acpi_res_parse_set;
+ACPI_STATUS	acpi_parse_resources(device_t dev, ACPI_HANDLE handle,
+		    struct acpi_parse_resource_set *set, void *arg);
 
 /* ACPI event handling */
-extern UINT32	acpi_event_power_button_sleep(void *context);
-extern UINT32	acpi_event_power_button_wake(void *context);
-extern UINT32	acpi_event_sleep_button_sleep(void *context);
-extern UINT32	acpi_event_sleep_button_wake(void *context);
+UINT32		acpi_event_power_button_sleep(void *context);
+UINT32		acpi_event_power_button_wake(void *context);
+UINT32		acpi_event_sleep_button_sleep(void *context);
+UINT32		acpi_event_sleep_button_wake(void *context);
 
 #define ACPI_EVENT_PRI_FIRST      0
 #define ACPI_EVENT_PRI_DEFAULT    10000
@@ -306,8 +285,7 @@ EVENTHANDLER_DECLARE(acpi_sleep_event, acpi_event_handler_t);
 EVENTHANDLER_DECLARE(acpi_wakeup_event, acpi_event_handler_t);
 
 /* Device power control. */
-extern ACPI_STATUS	acpi_pwr_switch_consumer(ACPI_HANDLE consumer,
-						 int state);
+ACPI_STATUS	acpi_pwr_switch_consumer(ACPI_HANDLE consumer, int state);
 
 /* Misc. */
 static __inline struct acpi_softc *
@@ -329,32 +307,30 @@ acpi_get_verbose(struct acpi_softc *sc)
     return (0);
 }
 
-extern char	*acpi_name(ACPI_HANDLE handle);
-extern int	acpi_avoid(ACPI_HANDLE handle);
-extern int	acpi_disabled(char *subsys);
-extern void	acpi_device_enable_wake_capability(ACPI_HANDLE h, int enable);
-extern void	acpi_device_enable_wake_event(ACPI_HANDLE h);
-extern int	acpi_machdep_init(device_t dev);
-extern void	acpi_install_wakeup_handler(struct acpi_softc *sc);
-extern int	acpi_sleep_machdep(struct acpi_softc *sc, int state);
+char		*acpi_name(ACPI_HANDLE handle);
+int		acpi_avoid(ACPI_HANDLE handle);
+int		acpi_disabled(char *subsys);
+int		acpi_machdep_init(device_t dev);
+void		acpi_install_wakeup_handler(struct acpi_softc *sc);
+int		acpi_sleep_machdep(struct acpi_softc *sc, int state);
 
 /* Battery Abstraction. */
 struct acpi_battinfo;
 struct acpi_battdesc;
 
-extern int	acpi_battery_register(int, int);
-extern int	acpi_battery_get_battinfo(int, struct acpi_battinfo *);
-extern int	acpi_battery_get_units(void);
-extern int	acpi_battery_get_info_expire(void);
-extern int	acpi_battery_get_battdesc(int, struct acpi_battdesc *);
+int		acpi_battery_register(int, int);
+int		acpi_battery_get_battinfo(int, struct acpi_battinfo *);
+int		acpi_battery_get_units(void);
+int		acpi_battery_get_info_expire(void);
+int		acpi_battery_get_battdesc(int, struct acpi_battdesc *);
 
-extern int	acpi_cmbat_get_battinfo(int, struct acpi_battinfo *);
+int		acpi_cmbat_get_battinfo(int, struct acpi_battinfo *);
 
 /* Embedded controller. */
-extern void	acpi_ec_ecdt_probe(device_t);
+void		acpi_ec_ecdt_probe(device_t);
 
 /* AC adapter interface. */
-extern int	acpi_acad_get_acline(int *);
+int		acpi_acad_get_acline(int *);
 
 /* Package manipulation convenience functions. */
 #define ACPI_PKG_VALID(pkg, size)				\
@@ -378,5 +354,5 @@ ACPI_HANDLE	acpi_GetReference(ACPI_HANDLE scope, ACPI_OBJECT *obj);
 
 #ifdef ACPI_USE_THREADS
 /* ACPI task kernel thread initialization. */
-extern int	acpi_task_thread_init(void);
+int		acpi_task_thread_init(void);
 #endif

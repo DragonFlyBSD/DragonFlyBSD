@@ -24,8 +24,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.36 2004/05/07 05:22:37 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.4 2004/06/27 09:08:44 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_cpu.c,v 1.41 2004/06/24 00:38:51 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_cpu.c,v 1.5 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -68,11 +68,6 @@ struct acpi_cx {
 };
 #define MAX_CX_STATES	 8
 
-struct acpi_cx_stats {
-    int			 long_slp;	/* Count of sleeps >= trans_lat. */
-    int			 short_slp;	/* Count of sleeps < trans_lat. */
-};
-
 struct acpi_cpu_softc {
     device_t		 cpu_dev;
     ACPI_HANDLE		 cpu_handle;
@@ -82,6 +77,7 @@ struct acpi_cpu_softc {
     struct resource	*cpu_p_cnt;	/* Throttling control register */
     struct acpi_cx	 cpu_cx_states[MAX_CX_STATES];
     int			 cpu_cx_count;	/* Number of valid Cx states. */
+    int			 cpu_prev_sleep;/* Last idle sleep duration. */
 };
 
 #define CPU_GET_REG(reg, width) 					\
@@ -121,15 +117,13 @@ static uint32_t		 cpu_duty_width;
 static uint32_t		 cpu_smi_cmd;	/* Value to write to SMI_CMD. */
 static uint8_t		 cpu_pstate_cnt;/* Register to take over throttling. */
 static uint8_t		 cpu_cst_cnt;	/* Indicate we are _CST aware. */
-static uint32_t		 cpu_rid;	/* Driver-wide resource id. */
-static uint32_t		 cpu_quirks;	/* Indicate any hardware bugs. */
+static int		 cpu_rid;	/* Driver-wide resource id. */
+static int		 cpu_quirks;	/* Indicate any hardware bugs. */
 
 /* Runtime state. */
 static int		 cpu_cx_count;	/* Number of valid states */
-static uint32_t		 cpu_cx_next;	/* State to use for next sleep. */
-static uint32_t		 cpu_non_c3;	/* Index of lowest non-C3 state. */
-static struct acpi_cx_stats cpu_cx_stats[MAX_CX_STATES];
-static int		 cpu_idle_busy;	/* Count of CPUs in acpi_cpu_idle. */
+static int		 cpu_non_c3;	/* Index of lowest non-C3 state. */
+static u_int		 cpu_cx_stats[MAX_CX_STATES];/* Cx usage history. */
 
 /* Values for sysctl. */
 static uint32_t		 cpu_throttle_state;
@@ -161,7 +155,7 @@ static void	acpi_cpu_c1(void);
 static void	acpi_cpu_notify(ACPI_HANDLE h, UINT32 notify, void *context);
 static int	acpi_cpu_quirks(struct acpi_cpu_softc *sc);
 static int	acpi_cpu_throttle_sysctl(SYSCTL_HANDLER_ARGS);
-static int	acpi_cpu_history_sysctl(SYSCTL_HANDLER_ARGS);
+static int	acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS);
 static int	acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS);
 
 static device_method_t acpi_cpu_methods[] = {
@@ -372,13 +366,12 @@ acpi_cpu_shutdown(device_t dev)
     /* Disable any entry to the idle function. */
     cpu_cx_count = 0;
 
-    /* Wait for all processors to exit acpi_cpu_idle(). */
+    /* Signal and wait for all processors to exit acpi_cpu_idle(). */
 #ifdef SMP
     /*smp_rendezvous(NULL, NULL, NULL, NULL);*/
     KKASSERT(0);	/* XXX use rendezvous */
 #endif
-    while (cpu_idle_busy > 0)
-	DELAY(1);
+    DELAY(1);
 
     return_VALUE (0);
 }
@@ -548,6 +541,9 @@ done:
     /* If no valid registers were found, don't attach. */
     if (sc->cpu_cx_count == 0)
 	return (ENXIO);
+
+    /* Use initial sleep value of 1 sec. to start with lowest idle state. */
+    sc->cpu_prev_sleep = 1000000;
 
     return (0);
 }
@@ -758,9 +754,9 @@ acpi_cpu_startup_cx()
 		    "lowest Cx sleep state to use");
     SYSCTL_ADD_PROC(&acpi_cpu_sysctl_ctx,
 		    SYSCTL_CHILDREN(acpi_cpu_sysctl_tree),
-		    OID_AUTO, "cx_history", CTLTYPE_STRING | CTLFLAG_RD,
-		    NULL, 0, acpi_cpu_history_sysctl, "A",
-		    "count of full sleeps for Cx state / short sleeps");
+		    OID_AUTO, "cx_usage", CTLTYPE_STRING | CTLFLAG_RD,
+		    NULL, 0, acpi_cpu_usage_sysctl, "A",
+		    "percent usage for each Cx state");
 
 #ifdef notyet
     /* Signal platform that we can handle _CST notification. */
@@ -772,7 +768,6 @@ acpi_cpu_startup_cx()
 #endif
 
     /* Take over idling from cpu_idle_default_hook(). */
-    cpu_cx_next = cpu_cx_lowest;
     KKASSERT(0);
     /* XXX only set this if ncpus == 1, for now XXX */
     cpu_idle_hook = acpi_cpu_idle;
@@ -822,8 +817,10 @@ acpi_cpu_throttle_set(uint32_t speed)
 }
 
 /*
- * Idle the CPU in the lowest state possible.
- * This function is called with interrupts disabled.
+ * Idle the CPU in the lowest state possible.  This function is called with
+ * interrupts disabled.  Note that once it re-enables interrupts, a task
+ * switch can occur so do not access shared data (i.e. the softc) after
+ * interrupts are re-enabled.
  */
 static void
 acpi_cpu_idle()
@@ -831,7 +828,7 @@ acpi_cpu_idle()
     struct	acpi_cpu_softc *sc;
     struct	acpi_cx *cx_next;
     uint32_t	start_time, end_time;
-    int		bm_active, i, asleep;
+    int		bm_active, cx_next_idx, i;
 
     /* If disabled, return immediately. */
     if (cpu_cx_count == 0) {
@@ -850,109 +847,83 @@ acpi_cpu_idle()
 	return;
     }
 
-    /* Record that a CPU is in the idle function. */
-    atomic_add_int(&cpu_idle_busy, 1);
+    /*
+     * If we slept 100 us or more, use the lowest Cx state.  Otherwise,
+     * find the lowest state that has a latency less than or equal to
+     * the length of our last sleep.
+     */
+    cx_next_idx = cpu_cx_lowest;
+    if (sc->cpu_prev_sleep < 100)
+	for (i = cpu_cx_lowest; i >= 0; i--)
+	    if (sc->cpu_cx_states[i].trans_lat <= sc->cpu_prev_sleep) {
+		cx_next_idx = i;
+		break;
+	    }
 
     /*
      * Check for bus master activity.  If there was activity, clear
      * the bit and use the lowest non-C3 state.  Note that the USB
      * driver polling for new devices keeps this bit set all the
-     * time if USB is enabled.
+     * time if USB is loaded.
      */
     AcpiGetRegister(ACPI_BITREG_BUS_MASTER_STATUS, &bm_active,
 		    ACPI_MTX_DO_NOT_LOCK);
     if (bm_active != 0) {
 	AcpiSetRegister(ACPI_BITREG_BUS_MASTER_STATUS, 1,
 			ACPI_MTX_DO_NOT_LOCK);
-	cpu_cx_next = min(cpu_cx_next, cpu_non_c3);
+	cx_next_idx = min(cx_next_idx, cpu_non_c3);
     }
 
-    /* Perform the actual sleep based on the Cx-specific semantics. */
-    cx_next = &sc->cpu_cx_states[cpu_cx_next];
-    switch (cx_next->type) {
-    case ACPI_STATE_C0:
-	panic("acpi_cpu_idle: attempting to sleep in C0");
-	/* NOTREACHED */
-    case ACPI_STATE_C1:
-	/* Execute HLT (or equivalent) and wait for an interrupt. */
+    /* Select the next state and update statistics. */
+    cx_next = &sc->cpu_cx_states[cx_next_idx];
+    cpu_cx_stats[cx_next_idx]++;
+    KASSERT(cx_next->type != ACPI_STATE_C0, ("acpi_cpu_idle: C0 sleep"));
+
+    /*
+     * Execute HLT (or equivalent) and wait for an interrupt.  We can't
+     * calculate the time spent in C1 since the place we wake up is an
+     * ISR.  Assume we slept one quantum and return.
+     */
+    if (cx_next->type == ACPI_STATE_C1) {
+	sc->cpu_prev_sleep = 1000000 / hz;
 	acpi_cpu_c1();
+	return;
+    }
 
-	/*
-	 * We can't calculate the time spent in C1 since the place we
-	 * wake up is an ISR.  Use a constant time of 1 ms.
-	 */
-	start_time = 0;
-	end_time = 1000;
-	break;
-    case ACPI_STATE_C2:
-	/*
-	 * Read from P_LVLx to enter C2, checking time spent asleep.
-	 * Use the ACPI timer for measuring sleep time.  Since we need to
-	 * get the time very close to the CPU start/stop clock logic, this
-	 * is the only reliable time source.
-	 */
-	AcpiHwLowLevelRead(32, &start_time, &AcpiGbl_FADT->XPmTmrBlk);
-	CPU_GET_REG(cx_next->p_lvlx, 1);
-
-	/*
-	 * Read the end time twice.  Since it may take an arbitrary time
-	 * to enter the idle state, the first read may be executed before
-	 * the processor has stopped.  Doing it again provides enough
-	 * margin that we are certain to have a correct value.
-	 */
-	AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
-	AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
-	ACPI_ENABLE_IRQS();
-	break;
-    case ACPI_STATE_C3:
-    default:
-	/* Disable bus master arbitration and enable bus master wakeup. */
+    /* For C3, disable bus master arbitration and enable bus master wake. */
+    if (cx_next->type == ACPI_STATE_C3) {
 	AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 1, ACPI_MTX_DO_NOT_LOCK);
 	AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 1, ACPI_MTX_DO_NOT_LOCK);
+    }
 
-	/* Read from P_LVLx to enter C3, checking time spent asleep. */
-	AcpiHwLowLevelRead(32, &start_time, &AcpiGbl_FADT->XPmTmrBlk);
-	CPU_GET_REG(cx_next->p_lvlx, 1);
+    /*
+     * Read from P_LVLx to enter C2(+), checking time spent asleep.
+     * Use the ACPI timer for measuring sleep time.  Since we need to
+     * get the time very close to the CPU start/stop clock logic, this
+     * is the only reliable time source.
+     */
+    AcpiHwLowLevelRead(32, &start_time, &AcpiGbl_FADT->XPmTmrBlk);
+    CPU_GET_REG(cx_next->p_lvlx, 1);
 
-	/* Read the end time twice.  See comment for C2 above. */
-	AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
-	AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
+    /*
+     * Read the end time twice.  Since it may take an arbitrary time
+     * to enter the idle state, the first read may be executed before
+     * the processor has stopped.  Doing it again provides enough
+     * margin that we are certain to have a correct value.
+     */
+    AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
+    AcpiHwLowLevelRead(32, &end_time, &AcpiGbl_FADT->XPmTmrBlk);
 
-	/* Enable bus master arbitration and disable bus master wakeup. */
+    /* Enable bus master arbitration and disable bus master wakeup. */
+    if (cx_next->type == ACPI_STATE_C3) {
 	AcpiSetRegister(ACPI_BITREG_ARB_DISABLE, 0, ACPI_MTX_DO_NOT_LOCK);
 	AcpiSetRegister(ACPI_BITREG_BUS_MASTER_RLD, 0, ACPI_MTX_DO_NOT_LOCK);
-	ACPI_ENABLE_IRQS();
-	break;
     }
 
     /* Find the actual time asleep in microseconds, minus overhead. */
     end_time = acpi_TimerDelta(end_time, start_time);
-    asleep = PM_USEC(end_time) - cx_next->trans_lat;
-
-    /* Record statistics */
-    if (asleep < cx_next->trans_lat)
-	cpu_cx_stats[cpu_cx_next].short_slp++;
-    else
-	cpu_cx_stats[cpu_cx_next].long_slp++;
-
-    /*
-     * If we slept 100 us or more, use the lowest Cx state.
-     * Otherwise, find the lowest state that has a latency less than
-     * or equal to the length of our last sleep.
-     */
-    if (asleep >= 100)
-	cpu_cx_next = cpu_cx_lowest;
-    else {
-	for (i = cpu_cx_lowest; i >= 0; i--) {
-	    if (sc->cpu_cx_states[i].trans_lat <= asleep) {
-		cpu_cx_next = i;
-		break;
-	    }
-	}
-    }
-
-    /* Decrement reference count checked by acpi_cpu_shutdown(). */
-    atomic_subtract_int(&cpu_idle_busy, 1);
+    sc->cpu_prev_sleep = PM_USEC(end_time) - cx_next->trans_lat;
+    ACPI_ENABLE_IRQS();
 }
 
 /* Put the CPU in C1 in a machine-dependant way. */
@@ -1076,16 +1047,25 @@ acpi_cpu_throttle_sysctl(SYSCTL_HANDLER_ARGS)
 }
 
 static int
-acpi_cpu_history_sysctl(SYSCTL_HANDLER_ARGS)
+acpi_cpu_usage_sysctl(SYSCTL_HANDLER_ARGS)
 {
     struct sbuf	 sb;
     char	 buf[128];
     int		 i;
+    uintmax_t	 fract, sum, whole;
 
+    sum = 0;
+    for (i = 0; i < cpu_cx_count; i++)
+	sum += cpu_cx_stats[i];
     sbuf_new(&sb, buf, sizeof(buf), SBUF_FIXEDLEN);
     for (i = 0; i < cpu_cx_count; i++) {
-	sbuf_printf(&sb, "%u/%u ", cpu_cx_stats[i].long_slp,
-		    cpu_cx_stats[i].short_slp);
+	if (sum > 0) {
+	    whole = (uintmax_t)cpu_cx_stats[i] * 100;
+	    fract = (whole % sum) * 100;
+	    sbuf_printf(&sb, "%u.%02u%% ", (u_int)(whole / sum),
+		(u_int)(fract / sum));
+	} else
+	    sbuf_printf(&sb, "0%% ");
     }
     sbuf_trim(&sb);
     sbuf_finish(&sb);
@@ -1113,9 +1093,7 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     if (val < 0 || val > cpu_cx_count - 1)
 	return (EINVAL);
 
-    /* Use the new value for the next idle slice. */
     cpu_cx_lowest = val;
-    cpu_cx_next = val;
 
     /* If not disabling, cache the new lowest non-C3 state. */
     cpu_non_c3 = 0;
@@ -1127,7 +1105,7 @@ acpi_cpu_cx_lowest_sysctl(SYSCTL_HANDLER_ARGS)
     }
 
     /* Reset the statistics counters. */
-    memset(cpu_cx_stats, 0, sizeof(cpu_cx_stats));
+    bzero(cpu_cx_stats, sizeof(cpu_cx_stats));
 
     return (0);
 }

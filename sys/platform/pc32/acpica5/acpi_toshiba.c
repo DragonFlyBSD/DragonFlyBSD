@@ -23,13 +23,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/acpica/acpi_toshiba.c,v 1.7 2004/04/14 03:32:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.2 2004/06/27 08:52:45 dillon Exp $
+ * $FreeBSD: src/sys/i386/acpica/acpi_toshiba.c,v 1.8 2004/05/30 20:34:56 phk Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/Attic/acpi_toshiba.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/bus.h>
 
 #include "acpi.h"

@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.14 2004/04/14 03:34:11 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pci_link.c,v 1.16 2004/06/14 18:54:14 jhb Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci_link.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_acpi.h"
@@ -642,7 +642,7 @@ acpi_pci_link_set_irq(struct acpi_pci_link_entry *link, UINT8 irq)
 		error = AE_OK;
 	} else {
 		ACPI_DEBUG_PRINT((ACPI_DB_WARN,
-		    "couldn't set IRQ %d to interrupt link %d - %s\n",
+		    "couldn't set IRQ %d to PCI interrupt link %d - %s\n",
 		    irq, link->current_irq, acpi_name(link->handle)));
 		link->current_irq = 0;
 		error = AE_ERROR;

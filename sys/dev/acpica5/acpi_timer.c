@@ -24,13 +24,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.32 2004/04/24 16:25:00 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.33 2004/05/30 20:08:23 phk Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_timer.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/bus.h>
 #include <sys/kernel.h>
+#include <sys/module.h>
 #include <sys/sysctl.h>
 #if __FreeBSD_version >= 500000
 #include <sys/timetc.h>

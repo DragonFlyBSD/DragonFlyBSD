@@ -1,3 +1,4 @@
-# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.1 2004/06/27 08:52:39 dillon Exp $
+# $DragonFly: src/sys/dev/acpica5/Makefile.inc,v 1.2 2004/07/05 00:07:35 dillon Exp $
 
-SYSACPICA?= contrib/dev/acpica-unix-20031203
+SYSACPICA_VERSION?=	20040527
+SYSACPICA?= contrib/dev/acpica-unix-${SYSACPICA_VERSION}

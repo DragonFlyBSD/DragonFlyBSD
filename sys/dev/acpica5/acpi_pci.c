@@ -25,8 +25,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.15 2004/05/06 02:18:58 njl Exp $
- * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.2 2004/06/27 08:52:39 dillon Exp $
+ * $FreeBSD: src/sys/dev/acpica/acpi_pci.c,v 1.16 2004/05/29 04:32:50 njl Exp $
+ * $DragonFly: src/sys/dev/acpica5/acpi_pci.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -39,7 +39,6 @@
 #include <sys/module.h>
 
 #include "acpi.h"
-
 #include "acpivar.h"
 
 #include <sys/pciio.h>
@@ -50,29 +49,27 @@
 #include "pcib_if.h"
 #include "pci_if.h"
 
-/*
- * Hooks for the ACPI CA debugging infrastructure
- */
+/* Hooks for the ACPI CA debugging infrastructure. */
 #define _COMPONENT	ACPI_BUS
 ACPI_MODULE_NAME("PCI")
 
 struct acpi_pci_devinfo {
-	struct pci_devinfo ap_dinfo;
-	ACPI_HANDLE	ap_handle;
+	struct pci_devinfo	ap_dinfo;
+	ACPI_HANDLE		ap_handle;
 };
 
 static int	acpi_pci_probe(device_t dev);
 static int	acpi_pci_attach(device_t dev);
 static int	acpi_pci_read_ivar(device_t dev, device_t child, int which,
-    uintptr_t *result);
+		    uintptr_t *result);
 static int	acpi_pci_child_location_str_method(device_t cbdev,
-    device_t child, char *buf, size_t buflen);
+		    device_t child, char *buf, size_t buflen);
 
 
 static int	acpi_pci_set_powerstate_method(device_t dev, device_t child,
-    int state);
+		    int state);
 static ACPI_STATUS acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level,
-    void *context, void **status);
+		    void *context, void **status);
 
 static device_method_t acpi_pci_methods[] = {
 	/* Device interface */
@@ -224,22 +221,22 @@ acpi_pci_save_handle(ACPI_HANDLE handle, UINT32 level, void *context,
 	ACPI_FUNCTION_TRACE((char *)(uintptr_t)__func__);
 
 	if (ACPI_FAILURE(acpi_GetInteger(handle, "_ADR", &address)))
-		return_ACPI_STATUS(AE_OK);
+		return_ACPI_STATUS (AE_OK);
 	slot = address >> 16;
 	func = address & 0xffff;
 	if (device_get_children((device_t)context, &devlist, &devcount) != 0)
-		return_ACPI_STATUS(AE_OK);
+		return_ACPI_STATUS (AE_OK);
 	for (i = 0; i < devcount; i++) {
 		dinfo = device_get_ivars(devlist[i]);
 		if (dinfo->ap_dinfo.cfg.func == func &&
 		    dinfo->ap_dinfo.cfg.slot == slot) {
 			dinfo->ap_handle = handle;
 			free(devlist, M_TEMP);
-			return_ACPI_STATUS(AE_OK);
+			return_ACPI_STATUS (AE_OK);
 		}
 	}
 	free(devlist, M_TEMP);
-	return_ACPI_STATUS(AE_OK);
+	return_ACPI_STATUS (AE_OK);
 }
 
 static int
@@ -248,11 +245,9 @@ acpi_pci_probe(device_t dev)
 
 	if (pcib_get_bus(dev) < 0)
 		return (ENXIO);
-	
-	device_set_desc(dev, "ACPI PCI bus");
-
 	if (acpi_get_handle(dev) == NULL)
 		return (ENXIO);
+	device_set_desc(dev, "ACPI PCI bus");
 	return (0);
 }
 
@@ -282,7 +277,7 @@ acpi_pci_attach(device_t dev)
 	 * these devices.
 	 */
 	pci_add_children(dev, busno, sizeof(struct acpi_pci_devinfo));
-	(void) AcpiWalkNamespace(ACPI_TYPE_DEVICE, acpi_get_handle(dev), 1,
+	AcpiWalkNamespace(ACPI_TYPE_DEVICE, acpi_get_handle(dev), 1,
 	    acpi_pci_save_handle, dev, NULL);
 
 	return (bus_generic_attach(dev));

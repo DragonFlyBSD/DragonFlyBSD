@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.15 2004/05/11 20:06:32 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.2 2004/06/27 08:52:45 dillon Exp $
+ * $FreeBSD: src/sys/i386/acpica/madt.c,v 1.17 2004/06/10 20:03:46 jhb Exp $
+ * $DragonFly: src/sys/platform/pc32/acpica5/madt.c,v 1.3 2004/07/05 00:07:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,11 +58,6 @@
 #define	NIOAPICS		32	/* Max number of I/O APICs */
 #define	NLAPICS			32	/* Max number of local APICs */
 
-typedef struct {
-	APIC_HEADER_DEF
-} APIC_HEADER;
-
-
 typedef	void madt_entry_handler(APIC_HEADER *entry, void *arg);
 
 /* These two arrays are indexed by APIC IDs. */
@@ -72,10 +67,9 @@ struct ioapic_info {
 } ioapics[NIOAPICS];
 
 struct lapic_info {
-	u_int la_present:1;
 	u_int la_enabled:1;
-	u_int la_apic_id:8;
-} lapics[NLAPICS + 1];
+	u_int la_acpi_id:8;
+} lapics[NLAPICS];
 
 static int madt_found_sci_override;
 static MULTIPLE_APIC_TABLE *madt;
@@ -206,10 +200,8 @@ madt_probe(void)
 	XSDT_DESCRIPTOR *xsdt;
 	int i, count;
 
-#if 0
 	if (resource_disabled("acpi", 0))
 		return (ENXIO);
-#endif
 
 	/*
 	 * Map in the RSDP.  Since ACPI uses AcpiOsMapMemory() which in turn
@@ -455,18 +447,17 @@ madt_probe_cpus_handler(APIC_HEADER *entry, void *arg)
 			printf("MADT: Found CPU APIC ID %d ACPI ID %d: %s\n",
 			    proc->LocalApicId, proc->ProcessorId,
 			    proc->ProcessorEnabled ? "enabled" : "disabled");
-		if (proc->ProcessorId > NLAPICS)
+		if (!proc->ProcessorEnabled)
+			break;
+		if (proc->LocalApicId >= NLAPICS)
 			panic("%s: CPU ID %d too high", __func__,
-			    proc->ProcessorId);
-		la = &lapics[proc->ProcessorId];
-		KASSERT(la->la_present == 0,
-		    ("Duplicate local ACPI ID %d", proc->ProcessorId));
-		la->la_present = 1;
-		la->la_apic_id = proc->LocalApicId;
-		if (proc->ProcessorEnabled) {
-			la->la_enabled = 1;
-			lapic_create(proc->LocalApicId, 0);
-		}
+			    proc->LocalApicId);
+		la = &lapics[proc->LocalApicId];
+		KASSERT(la->la_enabled == 0,
+		    ("Duplicate local APIC ID %d", proc->LocalApicId));
+		la->la_enabled = 1;
+		la->la_acpi_id = proc->ProcessorId;
+		lapic_create(proc->LocalApicId, 0);
 		break;
 	}
 }
@@ -553,14 +544,17 @@ interrupt_trigger(UINT16 TriggerMode, UINT8 Source)
 static int
 madt_find_cpu(u_int acpi_id, u_int *apic_id)
 {
+	int i;
 
-	if (!lapics[acpi_id].la_present)
-		return (ENOENT);
-	*apic_id = lapics[acpi_id].la_apic_id;
-	if (lapics[acpi_id].la_enabled)
+	for (i = 0; i < NLAPICS; i++) {
+		if (!lapics[i].la_enabled)
+			continue;
+		if (lapics[i].la_acpi_id != acpi_id)
+			continue;
+		*apic_id = i;
 		return (0);
-	else
-		return (ENXIO);
+	}
+	return (ENOENT);
 }
 
 /*
@@ -760,8 +754,9 @@ madt_parse_ints(APIC_HEADER *entry, void *arg __unused)
 static void
 madt_set_ids(void *dummy)
 {
+	struct lapic_info *la;
 	struct mdglobaldata *md;
-	u_int i, j;
+	u_int i;
 
 	if (madt == NULL)
 		return;
@@ -770,19 +765,14 @@ madt_set_ids(void *dummy)
 			continue;
 		md = (struct mdglobaldata *)globaldata_find(i);
 		KKASSERT(md != NULL);
-		for (j = 0; j < NLAPICS + 1; j++) {
-			if (!lapics[j].la_present || !lapics[j].la_enabled)
-				continue;
-			if (lapics[j].la_apic_id == md->gd_apic_id) {
-				md->gd_acpi_id = j;
-				if (bootverbose)
-					printf("APIC: CPU %u has ACPI ID %u\n",
-					    i, j);
-				break;
-			}
-		}
-		if (j == NLAPICS + 1)
-			panic("Unable to find ACPI ID for CPU %d", i);
+		la = &lapics[md->gd_apic_id];
+		if (!la->la_enabled)
+			panic("APIC: CPU with APIC ID %u is not enabled",
+			    md->gd_apic_id);
+		md->gd_acpi_id = la->la_acpi_id;
+		if (bootverbose)
+			printf("APIC: CPU %u has ACPI ID %u\n", i,
+			    la->la_acpi_id);
 	}
 }
 SYSINIT(madt_set_ids, SI_SUB_CPU, SI_ORDER_ANY, madt_set_ids, NULL)

@@ -2,7 +2,7 @@
  *
  * Name: acfreebsd.h - OS specific defines, etc.
  *       $Revision: 11 $
- *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.1 2004/02/21 06:48:08 dillon Exp $
+ *	 $DragonFly: src/sys/dev/acpica5/acdragonfly.h,v 1.2 2004/07/05 00:07:35 dillon Exp $
  *
  *****************************************************************************/
 
@@ -117,13 +117,6 @@
 
 #ifndef __ACDRAGONFLY_H_
 #define __ACDRAGONFLY_H_
-
-/*
- * Some systems' ASL may have problems because they look for names 
- * of Microsoft operating systems.  To override this, set hw.acpi.os_name
- * to the appropriate string.
- */
-#define ACPI_OS_NAME                "DragonFly"
 
 /* DragonFly uses GCC */
 
