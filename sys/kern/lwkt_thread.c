@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.27 2003/07/25 05:26:50 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.28 2003/07/25 05:51:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -578,7 +578,8 @@ lwkt_preempt(thread_t ntd, int critpri)
 void
 lwkt_yield_quick(void)
 {
-    thread_t td = curthread;
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
 
     /*
      * gd_reqflags is cleared in splz if the cpl is 0.  If we were to clear
@@ -590,7 +591,7 @@ lwkt_yield_quick(void)
      * XXX from crit_exit() only called after last crit section is released.
      * If called directly will run splz() even if in a critical section.
      */
-    if (mycpu->gd_reqflags)
+    if (gd->gd_reqflags)
 	splz();
 
     /*
@@ -599,7 +600,7 @@ lwkt_yield_quick(void)
      * preemption and MP without actually doing preemption or MP, because a
      * lot of code assumes that wakeup() does not block.
      */
-    if (untimely_switch && mycpu->gd_intr_nesting_level == 0) {
+    if (untimely_switch && gd->gd_intr_nesting_level == 0) {
 	crit_enter();
 	/*
 	 * YYY temporary hacks until we disassociate the userland scheduler
@@ -612,7 +613,7 @@ lwkt_yield_quick(void)
 	    lwkt_switch();		/* will not reenter yield function */
 	    lwkt_deschedule_self();	/* make sure we are descheduled */
 	}
-	crit_exit_noyield();
+	crit_exit_noyield(td);
     }
 }
 

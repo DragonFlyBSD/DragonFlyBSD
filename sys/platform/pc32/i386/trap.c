@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.27 2003/07/24 23:52:36 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.28 2003/07/25 05:51:15 dillon Exp $
  */
 
 /*
@@ -196,11 +196,9 @@ passive_release(struct thread *td)
  */
 
 static __inline void
-userenter(void)
+userenter(struct thread *curtd)
 {
-	struct thread *td = curthread;
-
-	td->td_release = passive_release;
+	curtd->td_release = passive_release;
 }
 
 static __inline void
@@ -305,11 +303,13 @@ void
 trap(frame)
 	struct trapframe frame;
 {
-	struct proc *p = curproc;
+	struct thread *td = curthread;
+	struct proc *p;
 	u_quad_t sticks = 0;
 	int i = 0, ucode = 0, type, code;
 	vm_offset_t eva;
 
+	p = td->td_proc;
 #ifdef DDB
 	if (db_active) {
 		eva = (frame.tf_trapno == T_PAGEFLT ? rcr2() : 0);
@@ -415,7 +415,7 @@ restart:
         if ((ISPL(frame.tf_cs) == SEL_UPL) || (frame.tf_eflags & PSL_VM)) {
 		/* user trap */
 
-		userenter();
+		userenter(td);
 
 		sticks = curthread->td_sticks;
 		p->p_md.md_regs = &frame;
@@ -1205,10 +1205,10 @@ syscall2(struct trapframe frame)
 	 * updated by the clock interrupt.  Also use this opportunity
 	 * to lazy-raise our LWKT priority.
 	 */
-	userenter();
-	crit_enter();
+	userenter(td);
+	crit_enter_quick(td);
 	sticks = curthread->td_sticks;
-	crit_exit();
+	crit_exit_quick(td);
 
 	p->p_md.md_regs = &frame;
 	params = (caddr_t)frame.tf_esp + sizeof(int);
@@ -1368,6 +1368,7 @@ bad:
 void
 sendsys2(struct trapframe frame)
 {
+	struct globaldata *gd;
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	register_t orig_tf_eflags;
@@ -1397,10 +1398,10 @@ sendsys2(struct trapframe frame)
 	 * updated by the clock interrupt.  Also use this opportunity
 	 * to lazy-raise our LWKT priority.
 	 */
-	userenter();
-	crit_enter();
+	userenter(td);
+	crit_enter_quick(td);
 	sticks = curthread->td_sticks;
-	crit_exit();
+	crit_exit_quick(td);
 
 	p->p_md.md_regs = &frame;
 	orig_tf_eflags = frame.tf_eflags;
@@ -1429,12 +1430,13 @@ sendsys2(struct trapframe frame)
 	 * A critical section is necessary to interlock against interrupts
 	 * returning system messages to the thread cache.
 	 */
-	crit_enter();
-	if ((sysmsg = mycpu->gd_freesysmsg) != NULL) {
-	    mycpu->gd_freesysmsg = sysmsg->lmsg.opaque.ms_sysnext;
-	    crit_exit();
+	gd = td->td_gd;
+	crit_enter_quick(td);
+	if ((sysmsg = gd->gd_freesysmsg) != NULL) {
+	    gd->gd_freesysmsg = sysmsg->lmsg.opaque.ms_sysnext;
+	    crit_exit_quick(td);
 	} else {
-	    crit_exit();
+	    crit_exit_quick(td);
 	    sysmsg = malloc(sizeof(*sysmsg), M_SYSMSG, M_WAITOK);
 	}
 
@@ -1489,6 +1491,7 @@ sendsys2(struct trapframe frame)
 	 * fork_trampoline function.
 	 */
 	error = (*callp->sy_call)(sysmsg);
+	gd = td->td_gd;	/* RELOAD, might have switched cpus */
 
 bad1:
 	/*
@@ -1496,10 +1499,10 @@ bad1:
 	 * the sysmsg to the free pool.
 	 */
 	if (error != EASYNC) {
-		crit_enter();
-		sysmsg->lmsg.opaque.ms_sysnext = mycpu->gd_freesysmsg;
-		mycpu->gd_freesysmsg = sysmsg;
-		crit_exit();
+		crit_enter_quick(td);
+		sysmsg->lmsg.opaque.ms_sysnext = gd->gd_freesysmsg;
+		gd->gd_freesysmsg = sysmsg;
+		crit_exit_quick(td);
 		if (error == 0) {
 			error = suword(&umsg->u.ms_result32 + 0, p->p_retval[0]);
 			error = suword(&umsg->u.ms_result32 + 1, p->p_retval[1]);

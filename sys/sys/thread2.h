@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.8 2003/07/12 17:54:36 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.9 2003/07/25 05:51:19 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -22,6 +22,9 @@
  * set mycpu->gd_reqflags to indicate that work needs to be done, which
  * lwkt_yield_quick() takes care of.
  *
+ * Some of these routines take a struct thread pointer as an argument.  This
+ * pointer MUST be curthread and is only passed as an optimization.
+ *
  * Synchronous switching and blocking is allowed while in a critical section.
  */
 
@@ -30,19 +33,27 @@ crit_enter(void)
 {
     struct thread *td = curthread;
 
+#ifdef INVARIANTS
     if (td->td_pri < 0)
 	crit_panic();
+#endif
     td->td_pri += TDPRI_CRIT;
 }
 
 static __inline void
-crit_exit_noyield(void)
+crit_enter_quick(struct thread *curtd)
 {
-    thread_t td = curthread;
+    curtd->td_pri += TDPRI_CRIT;
+}
 
-    td->td_pri -= TDPRI_CRIT;
-    if (td->td_pri < 0)
+static __inline void
+crit_exit_noyield(struct thread *curtd)
+{
+    curtd->td_pri -= TDPRI_CRIT;
+#ifdef INVARIANTS
+    if (curtd->td_pri < 0)
 	crit_panic();
+#endif
 }
 
 static __inline void
@@ -51,9 +62,19 @@ crit_exit(void)
     thread_t td = curthread;
 
     td->td_pri -= TDPRI_CRIT;
+#ifdef INVARIANTS
     if (td->td_pri < 0)
 	crit_panic();
-    if (td->td_pri < TDPRI_CRIT && mycpu->gd_reqflags)
+#endif
+    if (td->td_pri < TDPRI_CRIT && td->td_gd->gd_reqflags)
+	lwkt_yield_quick();
+}
+
+static __inline void
+crit_exit_quick(struct thread *curtd)
+{
+    curtd->td_pri -= TDPRI_CRIT;
+    if (curtd->td_pri < TDPRI_CRIT && curtd->td_gd->gd_reqflags)
 	lwkt_yield_quick();
 }
 
