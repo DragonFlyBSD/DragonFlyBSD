@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.h,v 1.22.2.7 2002/03/18 08:37:33 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.3 2004/02/18 00:37:08 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.h,v 1.4 2004/02/18 02:47:38 dillon Exp $
  */
 
 /* structure describing an ATA disk request */
@@ -49,7 +49,6 @@ struct ad_request {
     struct buf			*bp;		/* associated bio ptr */
     u_int8_t			tag;		/* tag ID of this request */
     int				serv;		/* request had service */
-    struct ata_dmaentry		*dmatab;	/* DMA transfer table */
     TAILQ_ENTRY(ad_request)	chain;		/* list management */
 };
 

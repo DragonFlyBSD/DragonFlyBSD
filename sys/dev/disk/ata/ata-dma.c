@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.13 2004/02/18 02:01:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.14 2004/02/18 02:47:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -62,22 +62,28 @@ static int hpt_cable80(struct ata_device *);
 	 (atadev->unit == ATA_SLAVE && \
 	 atadev->channel->devices & ATA_ATAPI_SLAVE))
 
-void *
-ata_dmaalloc(struct ata_channel *ch, int device, int flags)
+int
+ata_dmaalloc(struct ata_device *atadev, int flags)
 {
-    void *dmatab;
+    struct ata_channel *ch = atadev->channel;
 
     KKASSERT(ch->dma_mpipe.max_count != 0);
-    dmatab = mpipe_alloc(&ch->dma_mpipe, flags);
-    KKASSERT(((uintptr_t)dmatab & PAGE_MASK) == 0);
-    return (dmatab);
+    atadev->dmastate.dmatab = mpipe_alloc(&ch->dma_mpipe, flags);
+    KKASSERT(((uintptr_t)atadev->dmastate.dmatab & PAGE_MASK) == 0);
+    if (atadev->dmastate.dmatab)
+	return(0);
+    return(ENOBUFS);
 }
 
 void
-ata_dmafree(struct ata_channel *ch, void *dmatab)
+ata_dmafree(struct ata_device *atadev)
 {
-    if (dmatab)
-	mpipe_free(&ch->dma_mpipe, dmatab);
+    struct ata_channel *ch = atadev->channel;
+
+    if (atadev->dmastate.dmatab) {
+	mpipe_free(&ch->dma_mpipe, atadev->dmastate.dmatab);
+	atadev->dmastate.dmatab = NULL;
+    }
 }
 
 void
@@ -1220,19 +1226,20 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 }
 
 int
-ata_dmasetup(struct ata_channel *ch, int device, struct ata_dmaentry *dmatab,
-	     caddr_t data, int32_t count)
+ata_dmasetup(struct ata_device *atadev, caddr_t data, int32_t count)
 {
+    struct ata_channel *ch = atadev->channel;
+    struct ata_dmastate *ds = &atadev->dmastate;
     u_int32_t dma_count, dma_base;
     int i = 0;
 
     if (((uintptr_t)data & ch->alignment) || (count & ch->alignment)) {
-	ata_printf(ch, device, "non aligned DMA transfer attempted\n");
+	ata_prtdev(atadev, "non aligned DMA transfer attempted\n");
 	return -1;
     }
 
     if (!count) {
-	ata_printf(ch, device, "zero length DMA transfer attempted\n");
+	ata_prtdev(atadev, "zero length DMA transfer attempted\n");
 	return -1;
     }
     
@@ -1242,11 +1249,11 @@ ata_dmasetup(struct ata_channel *ch, int device, struct ata_dmaentry *dmatab,
     count -= dma_count;
 
     while (count) {
-	dmatab[i].base = dma_base;
-	dmatab[i].count = (dma_count & 0xffff);
+	ds->dmatab[i].base = dma_base;
+	ds->dmatab[i].count = (dma_count & 0xffff);
 	i++; 
 	if (i >= ATA_DMA_ENTRIES) {
-	    ata_printf(ch, device, "too many segments in DMA table\n");
+	    ata_prtdev(atadev, "too many segments in DMA table\n");
 	    return -1;
 	}
 	dma_base = vtophys(data);
@@ -1254,39 +1261,45 @@ ata_dmasetup(struct ata_channel *ch, int device, struct ata_dmaentry *dmatab,
 	data += imin(count, PAGE_SIZE);
 	count -= imin(count, PAGE_SIZE);
     }
-    dmatab[i].base = dma_base;
-    dmatab[i].count = (dma_count & 0xffff) | ATA_DMA_EOT;
+    ds->dmatab[i].base = dma_base;
+    ds->dmatab[i].count = (dma_count & 0xffff) | ATA_DMA_EOT;
     return 0;
 }
 
-void
-ata_dmastart(struct ata_channel *ch, int device, 
-	     struct ata_dmaentry *dmatab, int dir)
+int
+ata_dmastart(struct ata_device *atadev, caddr_t data, int32_t count, int dir)
 {
+    struct ata_channel *ch = atadev->channel;
+    struct ata_dmastate *ds = &atadev->dmastate;
+
     ch->flags |= ATA_DMA_ACTIVE;
-    ATA_OUTL(ch->r_bmio, ATA_BMDTP_PORT, vtophys(dmatab));
+    ATA_OUTL(ch->r_bmio, ATA_BMDTP_PORT, vtophys(ds->dmatab));
     ATA_OUTB(ch->r_bmio, ATA_BMCMD_PORT, dir ? ATA_BMCMD_WRITE_READ : 0);
     ATA_OUTB(ch->r_bmio, ATA_BMSTAT_PORT, 
 	 (ATA_INB(ch->r_bmio, ATA_BMSTAT_PORT) | 
 	  (ATA_BMSTAT_INTERRUPT | ATA_BMSTAT_ERROR)));
     ATA_OUTB(ch->r_bmio, ATA_BMCMD_PORT, 
 	 ATA_INB(ch->r_bmio, ATA_BMCMD_PORT) | ATA_BMCMD_START_STOP);
+    return(0);
 }
 
 int
 ata_dmadone(struct ata_device *atadev)
 {
     struct ata_channel *ch;
+    struct ata_dmastate *ds;
     int error;
 
     ch = atadev->channel;
+    ds = &atadev->dmastate;
 
     ATA_OUTB(ch->r_bmio, ATA_BMCMD_PORT, 
 		ATA_INB(ch->r_bmio, ATA_BMCMD_PORT) & ~ATA_BMCMD_START_STOP);
-    ch->flags &= ~ATA_DMA_ACTIVE;
     error = ATA_INB(ch->r_bmio, ATA_BMSTAT_PORT);
     ATA_OUTB(ch->r_bmio, ATA_BMSTAT_PORT, 
 	     error | ATA_BMSTAT_INTERRUPT | ATA_BMSTAT_ERROR);
+    ch->flags &= ~ATA_DMA_ACTIVE;
+    ds->flags = 0;
     return error & ATA_BMSTAT_MASK;
 }
 

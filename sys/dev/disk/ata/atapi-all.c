@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.7 2004/02/18 00:50:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.8 2004/02/18 02:47:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -162,8 +162,7 @@ atapi_detach(struct ata_device *atadev)
 	    bp->b_error = ENXIO;
 	    biodone(bp);
 	}
-	if (request->dmatab)
-	    ata_dmafree(atadev->channel, request->dmatab);
+	ata_dmafree(atadev);
 	free(request, M_ATAPI);
     }
     free(atadev->result, M_ATAPI);
@@ -199,11 +198,10 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
 	request->driver = driver;
     }
     if (atadev->mode >= ATA_DMA) {
-	request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit, M_NOWAIT);
-	if (request->dmatab == NULL) {
+	if (ata_dmaalloc(atadev, M_NOWAIT) != 0) {
 	    printf("WARNING: atapi_queue_cmd: ata_dmaalloc() would block\n");
-	    request->dmatab = ata_dmaalloc(atadev->channel,
-					atadev->unit, M_WAITOK);
+	    error = ata_dmaalloc(atadev, M_WAITOK);
+	    KKASSERT(error != 0);
 	}
     }
 
@@ -232,8 +230,7 @@ atapi_queue_cmd(struct ata_device *atadev, int8_t *ccb, caddr_t data,
     error = request->error;
     if (error)
 	 bcopy(&request->sense, atadev->result, sizeof(struct atapi_reqsense));
-    if (request->dmatab)
-	ata_dmafree(atadev->channel, request->dmatab);
+    ata_dmafree(atadev);
     free(request, M_ATAPI);
     return error;
 }
@@ -301,8 +298,7 @@ atapi_transfer(struct atapi_request *request)
 	 ((request->ccb[0] == ATAPI_WRITE ||
 	   request->ccb[0] == ATAPI_WRITE_BIG) &&
 	  !(atadev->channel->flags & ATA_ATAPI_DMA_RO))) &&
-	!ata_dmasetup(atadev->channel, atadev->unit, request->dmatab,
-		      (void *)request->data, request->bytecount)) {
+	!ata_dmasetup(atadev, (void *)request->data, request->bytecount)) {
 	request->flags |= ATPR_F_DMA_USED;
     }
 
@@ -314,8 +310,8 @@ atapi_transfer(struct atapi_request *request)
 	ata_prtdev(atadev, "failure to send ATAPI packet command\n");
 
     if (request->flags & ATPR_F_DMA_USED)
-	ata_dmastart(atadev->channel, atadev->unit, 
-		     request->dmatab, request->flags & ATPR_F_READ);
+	ata_dmastart(atadev, request->data, request->bytecount,
+		     request->flags & ATPR_F_READ);
 
     /* command interrupt device ? just return */
     if (atadev->param->drq_type == ATAPI_DRQT_INTR)
@@ -612,8 +608,7 @@ atapi_finish(struct atapi_request *request)
 #endif
     if (request->callback) {
 	if (!((request->callback)(request))) {
-	    if (request->dmatab)
-		ata_dmafree(request->device->channel, request->dmatab);
+	    ata_dmafree(request->device);
 	    free(request, M_ATAPI);
 	}
     }

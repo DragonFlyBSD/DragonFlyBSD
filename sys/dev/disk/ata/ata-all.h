@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.h,v 1.26.2.12 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.6 2004/02/18 02:01:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.h,v 1.7 2004/02/18 02:47:38 dillon Exp $
  */
 
 #ifndef _SYS_MPIPE_H_
@@ -163,6 +163,18 @@ struct ata_dmaentry {
     u_int32_t count;
 };  
 
+struct ata_dmastate {
+    bus_dma_tag_t	ddmatag;	/* data DMA tag */
+    bus_dmamap_t	ddmamap;	/* data DMA map */
+    bus_dma_tag_t	cdmatag;	/* control DMA tag */
+    bus_dmamap_t	cdmamap;	/* control DMA map */
+    struct ata_dmaentry	*dmatab;	/* DMA transfer table */
+    bus_addr_t		mdmatab;	/* bus address of dmatab */
+    int			flags;		/* debugging	*/
+#define	ATA_DS_ACTIVE	0x01		/* debugging */
+#define	ATA_DS_READ	0x02		/* transaction is a read */
+};
+
 /* structure describing an ATA/ATAPI device */
 struct ata_device {
     struct ata_channel		*channel;
@@ -182,6 +194,7 @@ struct ata_device {
     int				mode;		/* transfermode */
     int				cmd;		/* last cmd executed */
     void			*result;	/* misc data */
+    struct ata_dmastate		dmastate;
 };
 
 /* structure describing an ATA channel */
@@ -270,12 +283,12 @@ int ata_wmode(struct ata_params *);
 int ata_umode(struct ata_params *);
 int ata_find_dev(device_t, u_int32_t, u_int32_t);
 
-void *ata_dmaalloc(struct ata_channel *, int, int);
-void ata_dmafree(struct ata_channel *, void *buf);
+int ata_dmaalloc(struct ata_device *, int);
+void ata_dmafree(struct ata_device *);
 void ata_dmafreetags(struct ata_channel *);
 void ata_dmainit(struct ata_device *, int, int, int);
-int ata_dmasetup(struct ata_channel *, int, struct ata_dmaentry *, caddr_t, int);
-void ata_dmastart(struct ata_channel *, int, struct ata_dmaentry *, int);
+int ata_dmasetup(struct ata_device *, caddr_t, int);
+int ata_dmastart(struct ata_device *, caddr_t, int32_t, int);
 int ata_dmastatus(struct ata_channel *);
 int ata_dmadone(struct ata_device *);
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.12 2004/02/18 01:35:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.13 2004/02/18 02:47:38 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -252,6 +252,7 @@ ad_detach(struct ata_device *atadev, int flush) /* get rid of flush XXX SOS */
 	biodone(request->bp);
 	ad_free(request);
     }
+    ata_dmafree(atadev);
     while ((bp = bufq_first(&adp->queue))) {
 	bufq_remove(&adp->queue, bp); 
 	bp->b_error = ENXIO;
@@ -421,8 +422,7 @@ ad_start(struct ata_device *atadev)
     if (bp->b_flags & B_READ) 
 	request->flags |= ADR_F_READ;
     if (adp->device->mode >= ATA_DMA) {
-	request->dmatab = ata_dmaalloc(atadev->channel, atadev->unit, M_NOWAIT);
-	if (request->dmatab == NULL) {
+	if (ata_dmaalloc(atadev, M_NOWAIT) != 0) {
 	    mpipe_free(&atadev->channel->req_mpipe, request);
 	    ata_prtdev(atadev, "pipeline full allocated dmabuf in ad_start\n");
 	    /* do not revert to PIO, wait for ad_start after I/O completion */
@@ -490,8 +490,7 @@ ad_transfer(struct ad_request *request)
 	/* does this drive & transfer work with DMA ? */
 	request->flags &= ~ADR_F_DMA_USED;
 	if (adp->device->mode >= ATA_DMA &&
-	    !ata_dmasetup(adp->device->channel, adp->device->unit,
-			  request->dmatab, request->data, request->bytecount)) {
+	    !ata_dmasetup(adp->device, request->data, request->bytecount)) {
 	    request->flags |= ADR_F_DMA_USED;
 	    request->currentsize = request->bytecount;
 
@@ -540,8 +539,8 @@ ad_transfer(struct ad_request *request)
 	    }
 
 	    /* start transfer, return and wait for interrupt */
-	    ata_dmastart(adp->device->channel, adp->device->unit,
-			 request->dmatab, request->flags & ADR_F_READ);
+	    ata_dmastart(adp->device, request->data, request->bytecount,
+			request->flags & ADR_F_READ);
 	    return ATA_OP_CONTINUES;
 	}
 
@@ -802,8 +801,8 @@ ad_service(struct ad_softc *adp, int change)
 	    ad_invalidatequeue(adp, NULL);
 	    return ATA_OP_FINISHED;
 	}
-	ata_dmastart(adp->device->channel, adp->device->unit,
-		     request->dmatab, request->flags & ADR_F_READ);
+	ata_dmastart(adp->device, request->data, request->bytecount,
+		    request->flags & ADR_F_READ);
 	return ATA_OP_CONTINUES;
     }
     return ATA_OP_FINISHED;
@@ -813,9 +812,7 @@ static void
 ad_free(struct ad_request *request)
 {
     int s = splbio();
-
-    if (request->dmatab)
-	ata_dmafree(request->softc->device->channel, request->dmatab);
+    ata_dmafree(request->softc->device);
     request->softc->tags[request->tag] = NULL;
     mpipe_free(&request->softc->device->channel->req_mpipe, request);
     splx(s);
