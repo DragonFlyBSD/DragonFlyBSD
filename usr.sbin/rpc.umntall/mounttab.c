@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/mounttab.c,v 1.2.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/mounttab.c,v 1.3 2005/04/02 20:49:56 joerg Exp $
  */
 
 #include <sys/syslog.h>
@@ -44,7 +44,7 @@
 
 struct mtablist *mtabhead;
 
-static void badline(char *field, char *bad);
+static void badline(const char *field, const char *bad);
 
 /*
  * Add an entry to PATH_MOUNTTAB for each mounted NFS filesystem,
@@ -73,7 +73,7 @@ read_mtab() {
 	char *hostp, *dirp, *cp;
 	char str[STRSIZ];
 	char *timep, *endp;
-	time_t time;
+	time_t mnt_time;
 	u_long ultmp;
 	FILE *mtabfile;
 
@@ -85,7 +85,7 @@ read_mtab() {
 			return (0);
 		}
 	}
-	time = 0;
+	mnt_time = 0;
 	mtabpp = &mtabhead;
 	while (fgets(str, STRSIZ, mtabfile) != NULL) {
 		cp = str;
@@ -112,13 +112,13 @@ read_mtab() {
 			badline("time", timep);
 			continue;
 		}
-		time = ultmp;
+		mnt_time = ultmp;
 		if ((mtabp = malloc(sizeof (struct mtablist))) == NULL) {
 			syslog(LOG_ERR, "malloc");
 			fclose(mtabfile);
 			return (0);
 		}
-		mtabp->mtab_time = time;
+		mtabp->mtab_time = mnt_time;
 		memmove(mtabp->mtab_host, hostp, RPCMNT_NAMELEN);
 		mtabp->mtab_host[RPCMNT_NAMELEN - 1] = '\0';
 		memmove(mtabp->mtab_dirp, dirp, RPCMNT_PATHLEN);
@@ -217,7 +217,7 @@ free_mtab() {
  * Print bad lines to syslog.
  */
 static void
-badline(char *field, char *bad) {
+badline(const char *field, const char *bad) {
 	syslog(LOG_ERR, "bad mounttab %s field '%s'", field,
 	    (bad == NULL) ? "<null>" : bad);
 }

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.3.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.5 2004/12/18 22:48:13 swildner Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.6 2005/04/02 20:49:56 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -32,6 +32,7 @@
 #include <sys/mount.h>
 
 #include <rpc/rpc.h>
+#include <rpc/pmap_clnt.h>
 #include <nfs/rpcv2.h>
 
 #include <err.h>
@@ -189,7 +190,7 @@ do_umntall(char *hostname) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = 0;
 	memmove(&saddr.sin_addr, hp->h_addr, MIN(hp->h_length,
-	    sizeof(saddr.sin_addr)));
+	    (int)sizeof(saddr.sin_addr)));
 	pertry.tv_sec = 3;
 	pertry.tv_usec = 0;
 	if (fastopt)
@@ -232,7 +233,7 @@ do_umount(char *hostname, char *dirp) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = 0;
 	memmove(&saddr.sin_addr, hp->h_addr, MIN(hp->h_length,
-	    sizeof(saddr.sin_addr)));
+		(int)sizeof(saddr.sin_addr)));
 	pertry.tv_sec = 3;
 	pertry.tv_usec = 0;
 	if (fastopt)
