@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.1 2003/10/20 04:48:42 dillon Exp $
+ * $DragonFly: src/sys/checkpt/Attic/checkpt.c,v 1.2 2003/10/20 06:50:49 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -222,7 +222,7 @@ ckpt_thaw_proc(struct proc *p, struct file *fp)
 
 	if ((error = elf_gethdr(fp, ehdr)) != 0)
 		goto done;
-	nbyte = sizeof(Elf_Phdr)*ehdr->e_phnum; 
+	nbyte = sizeof(Elf_Phdr) * ehdr->e_phnum; 
 	phdr = malloc(nbyte, M_TEMP, M_WAITOK); 
 
 	/* fetch description of program writable mappings */
@@ -393,6 +393,7 @@ mmap_phdr(struct file *fp, Elf_Phdr *phdr)
 	if ((error = fp_mmap(addr, len, prot, flags, fp, pos, &addr)) != 0) {
 		PRINTF(("mmap failed: %d\n", error);	   );
 	}
+	PRINTF(("map @%08x-%08x fileoff %08x-%08x\n", (int)addr, (int)((char *)addr + len), (int)pos, (int)(pos + len)));
 	TRACE_EXIT;
 	return error;
 }
@@ -515,8 +516,6 @@ elf_gettextvp(struct proc *p, struct file *fp)
 	    vminfo.cvm_daddr >= (caddr_t)VM_MAXUSER_ADDRESS ||
 	    vminfo.cvm_taddr >= (caddr_t)VM_MAXUSER_ADDRESS
 	) {
-	    printf("failed %08x\n", vminfo.cvm_dsize);
-	    printf("failed %08x\n", vminfo.cvm_tsize);
 	    error = ERANGE;
 	    goto done;
 	}
@@ -567,8 +566,8 @@ elf_getfiles(struct proc *p, struct file *fp)
 	for (i = 0; i < filecount; i++) {
 		struct ckpt_fileinfo *cfi= &cfi_base[i];
 		if (cfi->cfi_index < 0 || cfi->cfi_index >=  p->p_fd->fd_nfiles) {
-			PRINTF(("can't currently restore fd: %d\n");
-			       cfi->cfi_index);
+			PRINTF(("can't currently restore fd: %d\n",
+			       cfi->cfi_index));
 			goto done;
 		}
 		if ((error = ckpt_fhtovp(&cfi->cfi_fh, &vp)) != 0)

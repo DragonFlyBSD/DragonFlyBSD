@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.11 2003/10/20 04:47:32 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.12 2003/10/20 06:50:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -869,12 +869,12 @@ generic_elf_coredump(struct proc *p, struct file *fp, off_t limit)
 	if (error == 0) {
 		Elf_Phdr *php;
 		int i;
+		int nbytes;
 
 		php = (Elf_Phdr *)((char *)hdr + sizeof(Elf_Ehdr)) + 1;
 		for (i = 0;  i < seginfo.count;  i++) {
-			int nbytes;
-			error = fp_write(fp, (caddr_t)php->p_vaddr, php->p_filesz, 
-					 &nbytes);
+			error = fp_write(fp, (caddr_t)php->p_vaddr,
+					php->p_filesz, &nbytes);
 			if (error != 0)
 				break;
 			php++;
@@ -1224,7 +1224,7 @@ static void
 elf_putfiles(struct proc *p, void *dst, int *off)
 {
 	int i, error;
-	struct ckpt_filehdr *cfh;
+	struct ckpt_filehdr *cfh = NULL;
 	struct ckpt_fileinfo *cfi;
 	struct file *fp;	
 	struct vnode *vp;
@@ -1234,33 +1234,30 @@ elf_putfiles(struct proc *p, void *dst, int *off)
 	 */
 	if (dst) {
 		cfh = (struct ckpt_filehdr *)((char *)dst + *off);
-		*off += sizeof(struct ckpt_filehdr); 
 		cfh->cfh_nfiles = 0;		
-		/*
-		 * ignore STDIN/STDERR/STDOUT
-		 */
-		for (i = 3; i < p->p_fd->fd_nfiles; i++) {
-			if ((fp = p->p_fd->fd_ofiles[i]) != NULL && fp->f_type == DTYPE_VNODE) {	
-				cfh->cfh_nfiles++;
-				printf("saving fd: %d\n", i);
-				cfi = (struct ckpt_fileinfo *)((char *)dst + *off);
-				cfi->cfi_index = i;
-				cfi->cfi_flags = fp->f_flag;
-				cfi->cfi_offset = fp->f_offset;
-				vp = (struct vnode *)fp->f_data;
-				cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
-				error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
-
-				*off += sizeof(struct ckpt_fileinfo);
-			}
-		}
-	} else {
-		*off += sizeof(struct ckpt_filehdr); 
-		for (i = 0; i < p->p_fd->fd_nfiles; i++) 
-			if ((fp = p->p_fd->fd_ofiles[i]) != NULL  && fp->f_type == DTYPE_VNODE) 	
-				*off += sizeof(struct ckpt_fileinfo);
 	}
-	
+	*off += sizeof(struct ckpt_filehdr); 
+
+	/*
+	 * ignore STDIN/STDERR/STDOUT
+	 */
+	for (i = 3; i < p->p_fd->fd_nfiles; i++) {
+		if ((fp = p->p_fd->fd_ofiles[i]) == NULL)
+			continue;
+		if (fp->f_type != DTYPE_VNODE)
+			continue;
+		if (dst) {
+			cfh->cfh_nfiles++;
+			cfi = (struct ckpt_fileinfo *)((char *)dst + *off);
+			cfi->cfi_index = i;
+			cfi->cfi_flags = fp->f_flag;
+			cfi->cfi_offset = fp->f_offset;
+			vp = (struct vnode *)fp->f_data;
+			cfi->cfi_fh.fh_fsid = vp->v_mount->mnt_stat.f_fsid;
+			error = VFS_VPTOFH(vp, &cfi->cfi_fh.fh_fid);
+		}
+		*off += sizeof(struct ckpt_fileinfo);
+	}
 }
 
 static void
