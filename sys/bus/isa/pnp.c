@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/isa/pnp.c,v 1.5.2.1 2002/10/14 09:31:09 nyan Exp $
- *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.4 2003/11/08 02:55:16 dillon Exp $
+ *	$DragonFly: src/sys/bus/isa/pnp.c,v 1.5 2004/04/07 05:54:32 dillon Exp $
  *      from: pnp.c,v 1.11 1999/05/06 22:11:19 peter Exp
  */
 
@@ -537,13 +537,7 @@ pnp_create_devices(device_t parent, pnp_id *p, int csn,
 			isa_set_vendorid(dev, p->vendor_id);
 			isa_set_serial(dev, p->serial);
 			isa_set_logicalid(dev, logical_id);
-			csnldn = malloc(sizeof *csnldn, M_DEVBUF, M_NOWAIT);
-			if (!csnldn) {
-				device_printf(parent,
-					      "out of memory\n");
-				scanning = 0;
-				break;
-			}
+			csnldn = malloc(sizeof *csnldn, M_DEVBUF, M_WAITOK);
 			csnldn->csn = csn;
 			csnldn->ldn = ldn;
 			ISA_SET_CONFIG_CALLBACK(parent, dev,
@@ -593,18 +587,14 @@ pnp_read_bytes(int amount, u_char **resourcesp, int *spacep, int *lenp)
 
 	if (space == 0) {
 		space = 1024;
-		resources = malloc(space, M_TEMP, M_NOWAIT);
-		if (!resources)
-			return ENOMEM;
+		resources = malloc(space, M_TEMP, M_WAITOK);
 	}
 	
 	if (len + amount > space) {
 		int extra = 1024;
 		while (len + amount > space + extra)
 			extra += 1024;
-		newres = malloc(space + extra, M_TEMP, M_NOWAIT);
-		if (!newres)
-			return ENOMEM;
+		newres = malloc(space + extra, M_TEMP, M_WAITOK);
 		bcopy(resources, newres, len);
 		free(resources, M_TEMP);
 		resources = newres;

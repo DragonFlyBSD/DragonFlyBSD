@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppbconf.c,v 1.17.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.4 2003/08/07 21:16:47 dillon Exp $
+ * $DragonFly: src/sys/bus/ppbus/ppbconf.c,v 1.5 2004/04/07 05:54:41 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -87,10 +87,7 @@ ppbus_add_child(device_t dev, int order, const char *name, int unit)
 	device_t child;
         
 	/* allocate ivars for the new ppbus child */
-	ppbdev = malloc(sizeof(struct ppb_device), M_PPBUSDEV, M_NOWAIT);
-	if (!ppbdev)
-		return NULL;
-	bzero(ppbdev, sizeof *ppbdev);
+	ppbdev = malloc(sizeof(struct ppb_device), M_PPBUSDEV, M_WAITOK | M_ZERO);
 
 	/* initialize the ivars */
 	ppbdev->name = name;

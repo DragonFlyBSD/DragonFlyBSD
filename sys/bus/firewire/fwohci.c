@@ -33,7 +33,7 @@
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.72 2004/01/22 14:41:17 simokawa Exp $
  * $FreeBSD: src/sys/dev/firewire/fwohci.c,v 1.1.2.19 2003/05/01 06:24:37 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.6 2004/02/05 17:51:44 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci.c,v 1.7 2004/04/07 05:54:27 dillon Exp $
  */
 
 #define ATRQ_CH 0
@@ -1931,7 +1931,7 @@ busresetout:
 			goto sidout;
 		}
 		plen -= 4; /* chop control info */
-		buf = (u_int32_t *)malloc(OHCI_SIDSIZE, M_FW, M_NOWAIT);
+		buf = (u_int32_t *)malloc(OHCI_SIDSIZE, M_FW, M_INTWAIT);
 		if (buf == NULL) {
 			device_printf(fc->dev, "malloc failed\n");
 			goto sidout;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa.c,v 1.132.2.5 2002/03/03 05:42:50 nyan Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.4 2004/02/24 18:10:04 joerg Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa.c,v 1.5 2004/04/07 05:54:35 dillon Exp $
  */
 
 /*
@@ -170,11 +170,7 @@ isa_alloc_resourcev(device_t child, int type, int *rid,
 	if (re == NULL)
 		return NULL;
 
-	bsre = malloc(sizeof (struct resource *) * ressz, M_DEVBUF, M_NOWAIT);
-	if (bsre == NULL) {
-		resource_list_release(rl, bus, child, type, *rid, re);
-		return NULL;
-	}
+	bsre = malloc(sizeof(struct resource *) * ressz, M_DEVBUF, M_INTWAIT);
 	bsre[0] = re;
 
 	for (i = linear_cnt, k = 1; i < count; i = j, k++) {

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isa_common.c,v 1.16.2.1 2000/09/16 15:49:52 roger Exp $
- * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.4 2003/08/27 11:42:34 rob Exp $
+ * $DragonFly: src/sys/bus/isa/isa_common.c,v 1.5 2004/04/07 05:54:32 dillon Exp $
  */
 /*
  * Modifications for Intel architecture by Garrett A. Wollman.
@@ -524,10 +524,7 @@ isa_add_child(device_t dev, int order, const char *name, int unit)
 	device_t child;
 	struct	isa_device *idev;
 
-	idev = malloc(sizeof(struct isa_device), M_ISADEV, M_NOWAIT);
-	if (!idev)
-		return 0;
-	bzero(idev, sizeof *idev);
+	idev = malloc(sizeof(struct isa_device), M_ISADEV, M_WAITOK | M_ZERO);
 
 	resource_list_init(&idev->id_resources);
 	TAILQ_INIT(&idev->id_configs);
@@ -946,10 +943,7 @@ isa_add_config(device_t dev, device_t child,
 	struct isa_device* idev = DEVTOISA(child);
 	struct isa_config_entry *newice, *ice;
 
-	newice = malloc(sizeof *ice, M_DEVBUF, M_NOWAIT);
-	if (!newice)
-		return ENOMEM;
-
+	newice = malloc(sizeof *ice, M_DEVBUF, M_WAITOK);
 	newice->ice_priority = priority;
 	newice->ice_config = *config;
 	

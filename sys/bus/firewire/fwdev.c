@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwdev.c,v 1.36 2004/01/22 14:41:17 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.7 2004/02/05 17:51:43 joerg Exp $
+ * $DragonFly: src/sys/bus/firewire/fwdev.c,v 1.8 2004/04/07 05:54:27 dillon Exp $
  *
  */
 
@@ -629,11 +629,7 @@ out:
 			err = EINVAL;
 			break;
 		}
-		fwb = (struct fw_bind *)malloc(sizeof (struct fw_bind), M_FW, M_NOWAIT);
-		if(fwb == NULL){
-			err = ENOMEM;
-			break;
-		}
+		fwb = malloc(sizeof (struct fw_bind), M_FW, M_WAITOK);
 		fwb->start = ((u_int64_t)bindreq->start.hi << 32) |
 		    bindreq->start.lo;
 		fwb->end = fwb->start +  bindreq->len;

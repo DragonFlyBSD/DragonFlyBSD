@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mca/mca_bus.c,v 1.7.2.1 2000/03/17 23:55:48 peter Exp $
- * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.4 2004/02/21 06:37:05 dillon Exp $
+ * $DragonFly: src/sys/bus/mca/Attic/mca_bus.c,v 1.5 2004/04/07 05:54:39 dillon Exp $
  */
 
 /*
@@ -266,14 +266,8 @@ mca_probe (device_t dev)
 
 	for (slot = 0; slot < MCA_MAX_SLOTS; slot++) {
 
-		if (!m_dev) {
-			m_dev = (struct mca_device *)malloc(sizeof(*m_dev),
-		 					    M_DEVBUF, M_NOWAIT);
-			if (!m_dev) {
-				device_printf(dev, "cannot malloc mca_device");
-				break;
-			}
-		}
+		if (m_dev == NULL)
+			m_dev = malloc(sizeof(*m_dev), M_DEVBUF, M_WAITOK);
 		bzero(m_dev, sizeof(*m_dev));
 
 		/* Select adapter setup regs */
