@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.29 2004/04/05 05:30:10 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.30 2004/04/12 13:18:11 eirikn Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -697,7 +697,7 @@ bootstrap-tools:
     bin/hostname bin/kill \
     sbin/sysctl \
     usr.bin/yacc usr.bin/colldef usr.bin/uudecode usr.bin/xinstall \
-    usr.bin/m4 usr.bin/rpcgen usr.bin/make gnu/usr.bin/awk usr.bin/file \
+    usr.bin/m4 usr.bin/rpcgen usr.bin/make usr.bin/awk usr.bin/file \
     usr.bin/find usr.bin/lex usr.bin/sed usr.bin/uname usr.bin/touch \
     usr.bin/mkdep usr.bin/mktemp usr.bin/lorder usr.bin/file2c \
     usr.bin/tsort usr.bin/tr usr.bin/join usr.bin/wc usr.bin/basename \

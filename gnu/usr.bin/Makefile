@@ -1,11 +1,11 @@
 # $FreeBSD: src/gnu/usr.bin/Makefile,v 1.51 2000/01/16 00:11:34 obrien Exp $
-# $DragonFly: src/gnu/usr.bin/Makefile,v 1.7 2004/03/22 20:57:37 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/Makefile,v 1.8 2004/04/12 13:18:11 eirikn Exp $
 #
 # Note that gcc2 is only built under the i386 architecture.  Other
 # architectures require gcc3.
 
-SUBDIR= awk bc cpio dc dialog diff diff3 gperf \
-	grep groff gzip man patch ptx rcs sdiff send-pr sort tar texinfo
+SUBDIR= bc cpio dc dialog diff diff3 gperf grep groff gzip man patch ptx rcs \
+        sdiff send-pr sort tar texinfo
 
 .if !defined(NO_CVS)
 SUBDIR+=cvs
