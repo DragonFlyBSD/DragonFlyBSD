@@ -1,6 +1,6 @@
 # Makefile for libpcap
 # $FreeBSD: src/lib/libpcap/Makefile,v 1.24.2.4 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libpcap/Makefile,v 1.5 2004/07/21 16:13:42 drhodus Exp $
+# $DragonFly: src/lib/libpcap/Makefile,v 1.6 2004/07/23 13:03:20 eirikn Exp $
 
 LIB=    pcap
 SRCS=	grammar.y tokdefs.h pcap-bpf.c version.h \
@@ -39,5 +39,11 @@ version.h: ${PCAP_DISTDIR}/VERSION
 
 tokdefs.h: grammar.h
 	ln -sf grammar.h tokdefs.h
+
+#
+# Apply patches
+#
+CONTRIBDIR=${PCAP_DISTDIR}
+SRCS+=nametoaddr.c.patch
 
 .include <bsd.lib.mk>

@@ -1,0 +1,12 @@
+$DragonFly: src/lib/libpcap/Attic/nametoaddr.c.patch,v 1.1 2004/07/23 13:03:20 eirikn Exp $
+--- nametoaddr.c.orig	2004-07-23 14:56:23.000000000 +0000
++++ nametoaddr.c	2004-07-23 14:56:38.000000000 +0000
+@@ -391,7 +391,7 @@
+  */
+ #if !defined(sgi) && !defined(__NetBSD__) && !defined(__FreeBSD__) && \
+        !defined(_UNICOSMP)
+-extern int ether_hostton(char *, struct ether_addr *);
++extern int ether_hostton(const char *, struct ether_addr *);
+ #endif
+ 
+ /* Use the os supplied routines */
