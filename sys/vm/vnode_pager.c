@@ -39,7 +39,7 @@
  *
  *	from: @(#)vnode_pager.c	7.5 (Berkeley) 4/20/91
  * $FreeBSD: src/sys/vm/vnode_pager.c,v 1.116.2.7 2002/12/31 09:34:51 dillon Exp $
- * $DragonFly: src/sys/vm/vnode_pager.c,v 1.17 2004/12/10 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/vm/vnode_pager.c,v 1.18 2005/03/02 18:42:09 hmp Exp $
  */
 
 /*
@@ -307,7 +307,7 @@ vnode_pager_setsize(struct vnode *vp, vm_ooffset_t nsize)
 				 * Clear out partial-page garbage in case
 				 * the page has been mapped.
 				 */
-				sf = sf_buf_alloc(m, SFBA_QUICK);
+				sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
 				kva = sf_buf_kva(sf);
 				bzero((caddr_t)kva + base, size);
 				sf_buf_free(sf);

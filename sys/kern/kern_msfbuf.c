@@ -36,7 +36,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  * 	src/sys/kern/kern_sfbuf.c,v 1.7 2004/05/13 19:46:18 dillon
  *
- * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.8 2005/03/01 01:20:03 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_msfbuf.c,v 1.9 2005/03/02 18:42:08 hmp Exp $
  */
 /*
  * MSFBUFs cache linear multi-page ephermal mappings and operate similar
@@ -144,7 +144,7 @@ msf_buf_hash(vm_page_t base_m)
  * Get an msf_buf from the freelist; if none are available
  * than it will block.
  *
- * If SFBA_PCATCH was specified in 'flags' than the sleep is
+ * If SFB_CATCH was specified in 'flags' than the sleep is
  * block is interruptable by signals etc; this flag is normally
  * use for system calls.
  *
@@ -193,7 +193,7 @@ msf_buf_alloc(vm_page_t *pg_ary, int npages, int flags)
 	 * and msf_bufs are supposed to be temporary mappings.
 	 */
 	while ((msf = TAILQ_FIRST(&msf_buf_freelist)) == NULL) {
-		pflags = (flags & SFBA_PCATCH) ? PCATCH : 0;
+		pflags = (flags & SFB_CATCH) ? PCATCH : 0;
 		++msf_buf_alloc_want;
 		error = tsleep(&msf_buf_freelist, pflags, "msfbuf", 0);
 		--msf_buf_alloc_want;
@@ -230,7 +230,7 @@ msf_buf_alloc(vm_page_t *pg_ary, int npages, int flags)
 	 */
 done:
 	++msf->m_refcnt;
-	if ((flags & SFBA_QUICK)) {
+	if ((flags & SFB_CPUPRIVATE)) {
 		pmap_qenter2(msf->m_kva, msf->m_xio.xio_pages, 
 			    msf->m_xio.xio_npages, &msf->m_cpumask);
 	} else {

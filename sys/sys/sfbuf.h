@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/sfbuf.h,v 1.7 2004/12/30 07:01:52 cpressey Exp $
+ * $DragonFly: src/sys/sys/sfbuf.h,v 1.8 2005/03/02 18:42:09 hmp Exp $
  */
 
 #ifndef _SFBUF_H_
@@ -46,9 +46,9 @@ struct sf_buf {
 /*
  * sf_buf_alloc() flags (not all are stored in sf->flags)
  */
-#define SFBA_QUICK	0x0001		/* sync mapping to current cpu only */
+#define SFB_CPUPRIVATE	0x0001		/* sync mapping to current cpu only */
 #define SFBA_ONFREEQ	0x0002		/* on the free queue (lazy move) */
-#define SFBA_PCATCH	0x0004		/* allow interruption */
+#define SFB_CATCH	0x0004		/* allow interruption */
 
 static __inline vm_offset_t
 sf_buf_kva(struct sf_buf *sf)

@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.11 2004/08/24 21:53:38 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.12 2005/03/02 18:42:08 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -120,7 +120,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 			 * cache hit
 			 *
 			 * We must invalidate the TLB entry based on whether
-			 * it need only be valid on the local cpu (SFBA_QUICK),
+			 * it need only be valid on the local cpu (SFB_CPUPRIVATE),
 			 * or on all cpus.  This is conditionalized and in
 			 * most cases no system-wide invalidation should be
 			 * needed.
@@ -129,7 +129,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 			 * on the 0->1 transition. 
 			 */
 			++sf->refcnt;
-			if ((flags & SFBA_QUICK) && sfbuf_quick) {
+			if ((flags & SFB_CPUPRIVATE) && sfbuf_quick) {
 				if ((sf->cpumask & gd->gd_cpumask) == 0) {
 					pmap_kenter_sync_quick(sf->kva);
 					sf->cpumask |= gd->gd_cpumask;
@@ -151,7 +151,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 	 */
 	for (;;) {
 		if ((sf = TAILQ_FIRST(&sf_buf_freelist)) == NULL) {
-			pflags = (flags & SFBA_PCATCH) ? PCATCH : 0;
+			pflags = (flags & SFB_CATCH) ? PCATCH : 0;
 			++sf_buf_alloc_want;
 			error = tsleep(&sf_buf_freelist, pflags, "sfbufa", 0);
 			--sf_buf_alloc_want;
@@ -184,7 +184,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 	LIST_INSERT_HEAD(hash_chain, sf, list_entry);
 	sf->refcnt = 1;
 	sf->m = m;
-	if ((flags & SFBA_QUICK) && sfbuf_quick) {
+	if ((flags & SFB_CPUPRIVATE) && sfbuf_quick) {
 		pmap_kenter_quick(sf->kva, sf->m->phys_addr);
 		sf->cpumask = gd->gd_cpumask;
 	} else {

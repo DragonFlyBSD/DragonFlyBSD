@@ -34,7 +34,7 @@
  *
  * @(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/i386/i386/uio_machdep.c,v 1.1 2004/03/21 20:28:36 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/uio_machdep.c,v 1.7 2004/08/18 09:16:16 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/uio_machdep.c,v 1.8 2005/03/02 18:42:08 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ uiomove_fromphys(vm_page_t *ma, vm_offset_t offset, int n, struct uio *uio)
 		page_offset = offset & PAGE_MASK;
 		cnt = min(cnt, PAGE_SIZE - page_offset);
 		m = ma[offset >> PAGE_SHIFT];
-		sf = sf_buf_alloc(m, SFBA_QUICK);
+		sf = sf_buf_alloc(m, SFB_CPUPRIVATE);
 		cp = (char *)sf_buf_kva(sf) + page_offset;
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
