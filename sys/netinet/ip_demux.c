@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.32 2005/03/23 07:27:56 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.33 2005/03/23 07:47:40 hsu Exp $
  */
 
 /*
@@ -107,36 +107,33 @@ ip_lengthcheck(struct mbuf **mp)
 	struct tcphdr *th;
 	int thoff;				/* TCP data offset */
 
-	/*
-	 * The packet must be at least the size of an IP header
-	 */
+	/* The packet must be at least the size of an IP header. */
 	if (m->m_pkthdr.len < sizeof(struct ip)) {
 		ipstat.ips_tooshort++;
 		m_free(m);
 		return FALSE;
 	}
 
-	/*
-	 * The first mbuf must entirely contain the IP header
-	 */
-	if (m->m_len < sizeof(struct ip) &&
-	    (m = m_pullup(m, sizeof(struct ip))) == NULL) {
-		ipstat.ips_toosmall++;
-		return FALSE;
+	/* The fixed IP header must reside completely in the first mbuf. */
+	if (m->m_len < sizeof(struct ip)) {
+		m = m_pullup(m, sizeof(struct ip));
+		if (m == NULL) {
+			ipstat.ips_toosmall++;
+			return FALSE;
+		}
 	}
+
 	ip = mtod(m, struct ip *);
 
-	/*
-	 * Extract the actual IP header length and do a bounds check.  The
-	 * first mbuf must entirely contain the extended IP header.
-	 */
+	/* Bound check the packet's stated IP header length. */
 	iphlen = ip->ip_hl << 2;
-	iplen = ntohs(ip->ip_len);
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
 		m_free(m);
 		return FALSE;
 	}
+
+	/* The full IP header must reside completely in the one mbuf. */
 	if (m->m_len < iphlen) {
 		m = m_pullup(m, iphlen);
 		if (m == NULL) {
@@ -145,6 +142,15 @@ ip_lengthcheck(struct mbuf **mp)
 		}
 		ip = mtod(m, struct ip *);
 	}
+
+	iplen = ntohs(ip->ip_len);
+
+	/*
+	 * Fragments other than the first fragment don't have much
+	 * length information.
+	 */
+	if (ntohs(ip->ip_off) & IP_OFFMASK)
+		goto ipcheckonly;
 
 	/*
 	 * The TCP/IP or UDP/IP header must be entirely contained within
@@ -155,50 +161,21 @@ ip_lengthcheck(struct mbuf **mp)
 	 * the potentially trimmed down length is still sufficient to hold
 	 * the header(s).
 	 */
-	if ((ntohs(ip->ip_off) & IP_OFFMASK) == 0) {
-		switch (ip->ip_p) {
-		case IPPROTO_TCP:
-			if (iplen < iphlen + sizeof(struct tcphdr)) {
-				++tcpstat.tcps_rcvshort;
-				m_free(m);
-				return FALSE;
-			}
-			if (m->m_len < iphlen + sizeof(struct tcphdr)) {
-				m = m_pullup(m, iphlen + sizeof(struct tcphdr));
-				if (m == NULL) {
-					tcpstat.tcps_rcvshort++;
-					return FALSE;
-				}
-				ip = mtod(m, struct ip *);
-			}
-			break;
-		case IPPROTO_UDP:
-			if (iplen < iphlen + sizeof(struct udphdr)) {
-				++udpstat.udps_hdrops;
-				m_free(m);
-				return FALSE;
-			}
-			if (m->m_len < iphlen + sizeof(struct udphdr)) {
-				m = m_pullup(m, iphlen + sizeof(struct udphdr));
-				if (m == NULL) {
-					udpstat.udps_hdrops++;
-					return FALSE;
-				}
-				ip = mtod(m, struct ip *);
-			}
-			break;
-		default:
-			if (iplen < iphlen) {
-				++ipstat.ips_badlen;
-				m_free(m);
-				return FALSE;
-			}
-			break;
-		}
-	}
-
 	switch (ip->ip_p) {
 	case IPPROTO_TCP:
+		if (iplen < iphlen + sizeof(struct tcphdr)) {
+			++tcpstat.tcps_rcvshort;
+			m_free(m);
+			return FALSE;
+		}
+		if (m->m_len < iphlen + sizeof(struct tcphdr)) {
+			m = m_pullup(m, iphlen + sizeof(struct tcphdr));
+			if (m == NULL) {
+				tcpstat.tcps_rcvshort++;
+				return FALSE;
+			}
+			ip = mtod(m, struct ip *);
+		}
 		th = (struct tcphdr *)((caddr_t)ip + iphlen);
 		thoff = th->th_off << 2;
 		if (thoff < sizeof(struct tcphdr) ||
@@ -213,6 +190,28 @@ ip_lengthcheck(struct mbuf **mp)
 				tcpstat.tcps_rcvshort++;
 				return FALSE;
 			}
+		}
+		break;
+	case IPPROTO_UDP:
+		if (iplen < iphlen + sizeof(struct udphdr)) {
+			++udpstat.udps_hdrops;
+			m_free(m);
+			return FALSE;
+		}
+		if (m->m_len < iphlen + sizeof(struct udphdr)) {
+			m = m_pullup(m, iphlen + sizeof(struct udphdr));
+			if (m == NULL) {
+				udpstat.udps_hdrops++;
+				return FALSE;
+			}
+		}
+		break;
+	default:
+ipcheckonly:
+		if (iplen < iphlen) {
+			++ipstat.ips_badlen;
+			m_free(m);
+			return FALSE;
 		}
 		break;
 	}
