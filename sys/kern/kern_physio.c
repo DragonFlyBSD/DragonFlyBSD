@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.4 2003/11/14 09:51:47 simokawa Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.6 2004/02/09 21:51:28 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.7 2004/02/10 00:50:03 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -67,7 +67,7 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	}
 
 	/* Don't check block number overflow for D_MEM */
-	if ((devsw(dev)->d_flags & D_TYPEMASK) == D_MEM)
+	if ((dev_dflags(dev) & D_TYPEMASK) == D_MEM)
 		chk_blockno = 0;
 	else
 		chk_blockno = 1;
