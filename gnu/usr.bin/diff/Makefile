@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/diff/Makefile,v 1.13 1999/11/26 12:29:48 phk Exp $
-# $DragonFly: src/gnu/usr.bin/diff/Makefile,v 1.4 2004/04/13 14:55:02 eirikn Exp $
+# $DragonFly: src/gnu/usr.bin/diff/Makefile,v 1.5 2004/07/21 15:28:16 drhodus Exp $
 
 .PATH: ${.CURDIR}/../../../contrib/diffutils-2.8.1/src \
        ${.CURDIR}/../../../contrib/diffutils-2.8.1/lib \
@@ -21,8 +21,6 @@ CFLAGS+=-I${.CURDIR}/../../../contrib/diffutils-2.8.1/src
 CFLAGS+=-I${.CURDIR}/../../../contrib/diffutils-2.8.1/lib
 CFLAGS+=-DHAVE_CONFIG_H
 CFLAGS+=-DPR_PROGRAM=\"/usr/bin/pr\"
-# current contrib/diff needs __FreeBSD__ defined
-CFLAGS+=-D__FreeBSD__
 
 SUBDIR+=doc
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/grep/Makefile,v 1.23 2000/01/18 09:52:00 ru Exp $
-# $DragonFly: src/gnu/usr.bin/grep/Makefile,v 1.3 2004/02/03 10:14:15 rob Exp $
+# $DragonFly: src/gnu/usr.bin/grep/Makefile,v 1.4 2004/07/21 15:28:16 drhodus Exp $
 
 GREP_LIBZ=YES
 
@@ -8,8 +8,6 @@ SRCS=	dfa.c getopt.c getopt1.c grep.c kwset.c obstack.c savedir.c search.c \
 	stpcpy.c
 
 CFLAGS+=-I${.CURDIR} -DHAVE_CONFIG_H
-# contrib/grep needs __FreeBSD__ defined
-CFLAGS+=-D__FreeBSD__
 
 LINKS+=	${BINDIR}/grep ${BINDIR}/egrep \
 	${BINDIR}/grep ${BINDIR}/fgrep
