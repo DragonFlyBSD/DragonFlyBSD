@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libalias/alias_db.c,v 1.21.2.14 2002/07/24 03:21:24 luigi Exp $
- * $DragonFly: src/lib/libalias/alias_db.c,v 1.2 2003/06/17 04:26:41 dillon Exp $
+ * $DragonFly: src/lib/libalias/alias_db.c,v 1.3 2003/08/08 04:18:33 dillon Exp $
  */
 
 /*
@@ -2639,7 +2639,7 @@ PacketAliasCheckNewLink(void)
 
 /* Firewall include files */
 #include <net/if.h>
-#include <netinet/ip_fw.h>
+#include <net/ipfw/ip_fw.h>
 #include <string.h>
 #include <err.h>
 

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,13 +47,13 @@
 
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <ufs/ufs/ufsmount.h>
-#include <msdosfs/msdosfsmount.h>
-#include <ntfs/ntfsmount.h>
-#include <isofs/cd9660/cd9660_mount.h>	/* XXX need isofs in include */
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/msdosfs/msdosfsmount.h>
+#include <vfs/ntfs/ntfsmount.h>
+#include <vfs/isofs/cd9660/cd9660_mount.h>	/* XXX need isofs in include */
 
 #include <arpa/inet.h>
 

@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.10 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/setup.c,v 1.17.2.4 2002/06/24 05:10:41 dillon Exp $
- * $DragonFly: src/sbin/fsck/setup.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck/setup.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #define DKTYPENAMES
@@ -41,8 +41,8 @@
 #include <sys/disklabel.h>
 #include <sys/file.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include <ctype.h>
 #include <err.h>

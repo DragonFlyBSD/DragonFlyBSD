@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <err.h>
@@ -46,9 +46,9 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/fs.h>
 #include <sys/disklabel.h>
 #include <sys/file.h>
 #include <sys/mman.h>

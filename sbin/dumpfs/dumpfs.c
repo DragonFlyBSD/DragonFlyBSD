@@ -33,13 +33,13 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dumpfs.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/sbin/dumpfs/dumpfs.c,v 1.13.2.1 2001/01/22 18:10:11 iedowse Exp $
- * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dumpfs/dumpfs.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <fcntl.h>

@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.bin/truss/Makefile,v 1.10.2.2 2002/07/23 09:18:30 ru Exp $
-# $DragonFly: src/usr.bin/truss/Makefile,v 1.2 2003/06/17 04:29:33 dillon Exp $
+# $DragonFly: src/usr.bin/truss/Makefile,v 1.3 2003/08/08 04:18:44 dillon Exp $
 
 PROG=	truss
 SRCS=	main.c setup.c syscalls.c syscalls.h ioctl.c
@@ -15,7 +15,7 @@ CLEANFILES+=i386l-syscalls.master syscalls.master linux_syscalls.h \
 
 .SUFFIXES: .master
 
-i386l-syscalls.master:	${.CURDIR}/../../sys/i386/linux/syscalls.master
+i386l-syscalls.master:	${.CURDIR}/../../sys/emulation/linux/i386/syscalls.master
 	cp ${.ALLSRC} i386l-syscalls.master
 
 linux_syscalls.h:	i386l-syscalls.master

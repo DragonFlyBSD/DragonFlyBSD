@@ -2,7 +2,7 @@
  * Miscellaneous support routines..
  *
  * $FreeBSD: src/release/sysinstall/misc.c,v 1.40.2.1 2001/09/27 06:51:09 murray Exp $
- * $DragonFly: src/release/sysinstall/Attic/misc.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/misc.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -43,7 +43,7 @@
 #include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/mount.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/ufsmount.h>
 #include <sys/reboot.h>
 #include <sys/disklabel.h>
 

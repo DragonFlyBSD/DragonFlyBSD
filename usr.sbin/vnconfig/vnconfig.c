@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.3 2003/08/08 04:18:49 dillon Exp $
  */
 
 #include <ctype.h>
@@ -58,7 +58,7 @@
 #include <sys/module.h>
 #include <sys/stat.h>
 #include <sys/vnioctl.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/ufsmount.h>
 
 #define LINESIZE	1024
 #define ZBUFSIZE	32768

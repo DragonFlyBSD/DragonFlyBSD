@@ -33,13 +33,13 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/restore/main.c,v 1.10.2.3 2001/10/02 08:30:17 cjc Exp $
- * $DragonFly: src/sbin/restore/main.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/main.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 #include <protocols/dumprestore.h>
 
 #include <err.h>

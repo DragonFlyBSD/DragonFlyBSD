@@ -70,13 +70,13 @@
  *	$Id: g711conv.c,v 1.5 1999/12/13 21:25:24 hm Exp $
  *
  * $FreeBSD: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.4.2.1 2001/08/01 17:45:02 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/g711conv/g711conv.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
  *
  *---------------------------------------------------------------------------*/
 
 #include <stdio.h>
 #include <unistd.h>
-#include <machine/i4b_ioctl.h>
+#include <i4b_machine/i4b_ioctl.h>
 
 /* copy from CCITT G.711 specifications */
 

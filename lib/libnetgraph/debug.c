@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/debug.c,v 1.5.2.1 2000/05/01 18:09:54 archie Exp $
- * $DragonFly: src/lib/libnetgraph/debug.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libnetgraph/debug.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
  * $Whistle: debug.c,v 1.24 1999/01/24 01:15:33 archie Exp $
  */
 
@@ -52,37 +52,37 @@
 #include <net/bpf.h>
 
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_socket.h>
+#include <netgraph/socket/ng_socket.h>
 
 #include "netgraph.h"
 #include "internal.h"
 
-#include <netgraph/ng_UI.h>
-#include <netgraph/ng_async.h>
-#include <netgraph/ng_bpf.h>
-#include <netgraph/ng_cisco.h>
-#include <netgraph/ng_echo.h>
-#include <netgraph/ng_ether.h>
-#include <netgraph/ng_frame_relay.h>
-#include <netgraph/ng_hole.h>
-#include <netgraph/ng_iface.h>
-#include <netgraph/ng_ksocket.h>
-#include <netgraph/ng_lmi.h>
-#include <netgraph/ng_ppp.h>
-#include <netgraph/ng_pppoe.h>
-#include <netgraph/ng_rfc1490.h>
-#include <netgraph/ng_socket.h>
-#include <netgraph/ng_tee.h>
-#include <netgraph/ng_tty.h>
-#include <netgraph/ng_vjc.h>
+#include <netgraph/UI/ng_UI.h>
+#include <netgraph/async/ng_async.h>
+#include <netgraph/bpf/ng_bpf.h>
+#include <netgraph/cisco/ng_cisco.h>
+#include <netgraph/echo/ng_echo.h>
+#include <netgraph/ether/ng_ether.h>
+#include <netgraph/frame_relay/ng_frame_relay.h>
+#include <netgraph/hole/ng_hole.h>
+#include <netgraph/iface/ng_iface.h>
+#include <netgraph/ksocket/ng_ksocket.h>
+#include <netgraph/lmi/ng_lmi.h>
+#include <netgraph/ppp/ng_ppp.h>
+#include <netgraph/pppoe/ng_pppoe.h>
+#include <netgraph/rfc1490/ng_rfc1490.h>
+#include <netgraph/socket/ng_socket.h>
+#include <netgraph/tee/ng_tee.h>
+#include <netgraph/tty/ng_tty.h>
+#include <netgraph/vjc/ng_vjc.h>
 #ifdef	WHISTLE
 #include <machine/../isa/df_def.h>
 #include <machine/../isa/if_wfra.h>
 #include <machine/../isa/ipac.h>
 #include <netgraph/ng_df.h>
 #include <netgraph/ng_ipac.h>
-#include <netgraph/ng_mppc.h>
-#include <netgraph/ng_pptpgre.h>
+#include <netgraph/mppc/ng_mppc.h>
+#include <netgraph/pptpgre/ng_pptpgre.h>
 #include <netgraph/ng_tn.h>
 #endif
 

@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libcam/Makefile,v 1.6.2.2 2001/04/25 10:04:22 ru Exp $
-# $DragonFly: src/lib/libcam/Makefile,v 1.2 2003/06/17 04:26:48 dillon Exp $
+# $DragonFly: src/lib/libcam/Makefile,v 1.3 2003/08/08 04:18:33 dillon Exp $
 
 MAINTAINER=ken@FreeBSD.ORG
 
@@ -33,7 +33,7 @@ MLINKS+=cam.3 cam_open_device.3 \
 	cam_cdbparse.3 csio_encode_visit.3 \
 	cam_cdbparse.3 buff_encode_visit.3
 
-.PATH: ${.CURDIR}/../../sys/cam/scsi ${.CURDIR}/../../sys/cam
+.PATH: ${.CURDIR}/../../sys/bus/cam/scsi ${.CURDIR}/../../sys/bus/cam
 
 SDIR= ${.CURDIR}/../../sys
 CFLAGS+=-I${.CURDIR} -I${SDIR}

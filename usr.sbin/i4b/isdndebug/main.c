@@ -28,7 +28,7 @@
  *	------------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdndebug/main.c,v 1.8.2.1 2001/08/01 17:45:04 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdndebug/main.c,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdndebug/main.c,v 1.3 2003/08/08 04:18:45 dillon Exp $
  *
  *      last edit-date: [Mon May 21 10:09:23 2001]
  *
@@ -48,8 +48,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <machine/i4b_debug.h>
-#include <machine/i4b_ioctl.h>
+#include <i4b_machine/i4b_debug.h>
+#include <i4b_machine/i4b_ioctl.h>
 
 char *bin_str(unsigned long val, int length);
 

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/raycontrol/raycontrol.c,v 1.1.2.3 2002/12/16 08:39:41 roam Exp $
- * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/raycontrol/Attic/raycontrol.c,v 1.3 2003/08/08 04:18:48 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +44,8 @@
 #include <net/ethernet.h>
 #include <net/if_ieee80211.h>
 
-#include <dev/ray/if_rayreg.h>
-#include <dev/ray/if_raymib.h>
+#include <dev/netif/ray/if_rayreg.h>
+#include <dev/netif/ray/if_raymib.h>
 
 #include <stdio.h>
 #include <string.h>

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/spppcontrol/spppcontrol.c,v 1.7.2.2 2002/04/24 18:47:22 joerg Exp $
- * $DragonFly: src/sbin/spppcontrol/spppcontrol.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/spppcontrol/spppcontrol.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -33,7 +33,7 @@
 
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/if_sppp.h>
+#include <net/sppp/if_sppp.h>
 
 #include <err.h>
 #include <stdio.h>

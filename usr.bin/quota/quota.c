@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/quota/quota.c,v 1.11.2.5 2002/11/30 23:54:21 iedowse Exp $
- * $DragonFly: src/usr.bin/quota/quota.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/quota/quota.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  */
 
 /*
@@ -54,7 +54,7 @@
 #include <rpc/pmap_prot.h>
 #include <rpcsvc/rquota.h>
 
-#include <ufs/ufs/quota.h>
+#include <vfs/ufs/quota.h>
 
 #include <ctype.h>
 #include <err.h>

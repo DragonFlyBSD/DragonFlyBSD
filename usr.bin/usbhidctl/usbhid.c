@@ -1,6 +1,6 @@
 /*	$NetBSD: usbhid.c,v 1.14 2000/07/03 02:51:37 matt Exp $	*/
 /*	$FreeBSD: src/usr.bin/usbhidctl/usbhid.c,v 1.6.2.1 2002/04/03 16:48:25 joe Exp $ */
-/*	$DragonFly: src/usr.bin/usbhidctl/usbhid.c,v 1.2 2003/06/17 04:29:33 dillon Exp $ */
+/*	$DragonFly: src/usr.bin/usbhidctl/usbhid.c,v 1.3 2003/08/08 04:18:44 dillon Exp $ */
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -49,8 +49,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <libusbhid.h>
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
 int verbose = 0;
 int all = 0;

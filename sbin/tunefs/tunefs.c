@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tunefs.c	8.2 (Berkeley) 4/19/94
  * $FreeBSD: src/sbin/tunefs/tunefs.c,v 1.11.2.5 2001/10/14 21:50:39 iedowse Exp $
- * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/tunefs/tunefs.c,v 1.3 2003/08/08 04:18:41 dillon Exp $
  */
 
 /*
@@ -43,8 +43,8 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/ufsmount.h>
 
 #include <err.h>
 #include <fcntl.h>

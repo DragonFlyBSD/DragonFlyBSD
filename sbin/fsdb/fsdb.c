@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,9 +40,9 @@
 #include <pwd.h>
 #include <string.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/fs.h>
 
 #include "fsdb.h"
 #include "fsck.h"

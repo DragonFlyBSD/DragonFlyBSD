@@ -4,7 +4,7 @@
  *	Block cache for dump
  *
  * $FreeBSD: src/sbin/dump/cache.c,v 1.1.2.1 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/cache.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/cache.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -18,9 +18,9 @@
 #include <ufs/fsdir.h>
 #include <ufs/inode.h>
 #else
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 #endif
 
 #include <protocols/dumprestore.h>

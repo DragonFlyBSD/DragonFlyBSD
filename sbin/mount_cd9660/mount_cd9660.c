@@ -40,14 +40,14 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
- * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/cdio.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/mount.h>
-#include <sys/../isofs/cd9660/cd9660_mount.h>
+#include <sys/../vfs/isofs/cd9660/cd9660_mount.h>
 
 #include <err.h>
 #include <errno.h>

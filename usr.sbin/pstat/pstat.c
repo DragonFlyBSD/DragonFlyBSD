@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,12 +42,12 @@
 #include <sys/ucred.h>
 #define _KERNEL
 #include <sys/file.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 #include <sys/mount.h>
 #include <sys/uio.h>
 #include <sys/namei.h>
-#include <miscfs/union/union.h>
+#include <vfs/union/union.h>
 #undef _KERNEL
 #include <sys/stat.h>
 #include <nfs/rpcv2.h>

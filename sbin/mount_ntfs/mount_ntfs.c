@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3.2.2 2001/10/12 22:08:43 semenu Exp $
- * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_ntfs/mount_ntfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  *
  */
 
@@ -38,7 +38,7 @@
 #define NTFS
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <ntfs/ntfsmount.h>
+#include <vfs/ntfs/ntfsmount.h>
 #include <ctype.h>
 #include <err.h>
 #include <grp.h>

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -42,9 +42,9 @@
 #include <sys/mount.h>
 #include <sys/resource.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <errno.h>

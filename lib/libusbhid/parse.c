@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libusbhid/parse.c,v 1.6.2.1 2002/04/03 15:54:00 joe Exp $
- * $DragonFly: src/lib/libusbhid/parse.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libusbhid/parse.c,v 1.3 2003/08/08 04:18:35 dillon Exp $
  */
 
 #include <assert.h>
@@ -34,8 +34,8 @@
 #include <string.h>
 #include <sys/time.h>
 
-#include <dev/usb/usb.h>
-#include <dev/usb/usbhid.h>
+#include <bus/usb/usb.h>
+#include <bus/usb/usbhid.h>
 
 #include "libusbhid.h"
 #include "usbvar.h"

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tty.c,v 1.21.2.3 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/tty.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/tty.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,10 +45,10 @@
 #include <unistd.h>
 #ifndef NONETGRAPH
 #include <netgraph.h>
-#include <netgraph/ng_async.h>
+#include <netgraph/async/ng_async.h>
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_ppp.h>
-#include <netgraph/ng_tty.h>
+#include <netgraph/ppp/ng_ppp.h>
+#include <netgraph/tty/ng_tty.h>
 #endif
 
 #include "layer.h"

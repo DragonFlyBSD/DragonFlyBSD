@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/pppd.h,v 1.13 1999/08/28 01:19:08 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/pppd.h,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/pppd.h,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 /*
@@ -31,7 +31,7 @@
 #include <sys/param.h>		/* for MAXPATHLEN and BSD4_4, if defined */
 #include <sys/types.h>		/* for u_int32_t, if defined */
 #include <sys/time.h>		/* for struct timeval */
-#include <net/ppp_defs.h>
+#include <net/ppp_layer/ppp_defs.h>
 
 #if __STDC__
 #include <stdarg.h>

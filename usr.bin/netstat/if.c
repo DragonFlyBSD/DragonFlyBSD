@@ -32,7 +32,7 @@
  *
  * @(#)if.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/if.c,v 1.32.2.9 2001/09/17 14:35:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/if.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/if.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -45,15 +45,15 @@
 #include <net/if_var.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
-#include <netipx/ipx.h>
-#include <netipx/ipx_if.h>
+#include <netproto/ipx/ipx.h>
+#include <netproto/ipx/ipx_if.h>
 #ifdef NS
-#include <netns/ns.h>
-#include <netns/ns_if.h>
+#include <netproto/ns/ns.h>
+#include <netproto/ns/ns_if.h>
 #endif
 #ifdef ISO
 #include <netiso/iso.h>

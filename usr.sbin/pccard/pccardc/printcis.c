@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardc/printcis.c,v 1.11.2.2 2001/05/09 18:41:57 dmlb Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/printcis.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/printcis.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
  */
 
 /* 
@@ -39,8 +39,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <pccard/cardinfo.h>
-#include <pccard/cis.h>
+#include <bus/pccard/cardinfo.h>
+#include <bus/pccard/cis.h>
 
 #include "readcis.h"
 

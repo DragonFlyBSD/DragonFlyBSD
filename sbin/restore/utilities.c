@@ -32,14 +32,14 @@
  *
  * @(#)utilities.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/utilities.c,v 1.8.2.2 2001/07/30 10:30:08 dd Exp $
- * $DragonFly: src/sbin/restore/utilities.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/utilities.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
 
 #include <errno.h>
 #include <stdio.h>

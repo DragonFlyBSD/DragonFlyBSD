@@ -32,7 +32,7 @@
  *
  * @(#)itime.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dump/itime.c,v 1.3.2.1 2001/08/01 06:29:35 obrien Exp $
- * $DragonFly: src/sbin/dump/itime.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/itime.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <ufs/inode.h>
 #include <ufs/fs.h>
 #else
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 #endif
 
 #include <protocols/dumprestore.h>

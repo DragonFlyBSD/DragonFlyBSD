@@ -30,7 +30,7 @@
  *	$Id: defs.h,v 1.10 1999/12/13 21:25:26 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntel/defs.h,v 1.6.2.1 2001/08/01 17:45:06 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntel/defs.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntel/defs.h,v 1.3 2003/08/08 04:18:45 dillon Exp $
  *
  *      last edit-date: [Mon Dec 13 21:53:50 1999]
  *
@@ -54,7 +54,7 @@
 #endif
 #include <sys/param.h>
 
-#include <machine/i4b_ioctl.h>
+#include <i4b_machine/i4b_ioctl.h>
 
 #define GOOD	0
 #define	ERROR	(-1)

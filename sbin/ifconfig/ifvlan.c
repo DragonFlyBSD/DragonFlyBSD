@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
- * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/ifconfig/ifvlan.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  *
  * $FreeBSD: src/sbin/ifconfig/ifvlan.c,v 1.2 1999/08/28 00:13:09 peter Exp $
  */
@@ -47,7 +47,7 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_var.h>
-#include <net/if_vlan_var.h>
+#include <net/vlan/if_vlan_var.h>
 #include <net/route.h>
 
 #include <ctype.h>

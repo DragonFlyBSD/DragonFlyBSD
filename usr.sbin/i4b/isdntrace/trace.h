@@ -38,7 +38,7 @@
  *	$Id: trace.h,v 1.12 2000/02/14 16:25:22 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdntrace/trace.h,v 1.6.2.1 2001/08/01 17:45:08 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdntrace/trace.h,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdntrace/trace.h,v 1.3 2003/08/08 04:18:45 dillon Exp $
  *
  *      last edit-date: [Mon Feb 14 14:43:40 2000]
  *
@@ -60,8 +60,8 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_trace.h>
+#include <i4b_machine/i4b_ioctl.h>
+#include <i4b_machine/i4b_trace.h>
 
 #include "pcause_1tr6.h"	/* obsolete german national ISDN */
 #include "pcause_q850.h"

@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/options.c,v 1.20.2.2 2002/08/31 18:16:01 dwmalone Exp $
- * $DragonFly: src/usr.sbin/pppd/options.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/options.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <ctype.h>
@@ -58,7 +58,7 @@
 #include "ipxcp.h"
 #endif /* IPX_CHANGE */
 
-#include <net/ppp_comp.h>
+#include <net/ppp_layer/ppp_comp.h>
 
 #define FALSE	0
 #define TRUE	1

@@ -30,14 +30,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 
-#include <msdosfs/msdosfsmount.h>
+#include <vfs/msdosfs/msdosfsmount.h>
 
 #include <ctype.h>
 #include <err.h>

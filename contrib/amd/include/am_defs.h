@@ -40,7 +40,7 @@
  *
  * $Id: am_defs.h,v 1.11 1999/09/18 08:38:05 ezk Exp $
  * $FreeBSD: src/contrib/amd/include/am_defs.h,v 1.8 1999/11/05 11:58:03 obrien Exp $
- * $DragonFly: src/contrib/amd/include/am_defs.h,v 1.2 2003/06/17 04:23:57 dillon Exp $
+ * $DragonFly: src/contrib/amd/include/am_defs.h,v 1.3 2003/08/08 04:18:29 dillon Exp $
  *
  */
 
@@ -763,7 +763,7 @@ struct sockaddr_dl;
 # error do not include this file here because on netbsd/openbsd it
 # error causes errors with other header files.  Instead, add it to the
 # error specific conf/nfs_prot_*.h file.
-# include <ufs/ufs/ufsmount.h>
+# include <vfs/ufs/ufsmount.h>
 #endif	/* HAVE_UFS_UFS_UFSMOUNT_H */
 
 /*
@@ -1118,7 +1118,7 @@ extern char *nc_sperror(void);
  * Actions to take if <ufs/ufs_mount.h> exists.
  */
 #ifdef HAVE_UFS_UFS_MOUNT_H
-# include <ufs/ufs/ufsmount.h>
+# include <vfs/ufs/ufsmount.h>
 #endif /* HAVE_UFS_UFS_MOUNT_H */
 
 /*

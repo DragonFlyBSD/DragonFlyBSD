@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.9.2.2 2001/07/30 10:22:57 dd Exp $
- * $DragonFly: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/lptcontrol/lptcontrol.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
  */
 
 #include <ctype.h>
@@ -40,7 +40,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <dev/ppbus/lptio.h>
+#include <dev/misc/lpt/lptio.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>

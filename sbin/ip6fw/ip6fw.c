@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -79,7 +79,7 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
-#include <netinet6/ip6_fw.h>
+#include <net/ip6fw/ip6_fw.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 

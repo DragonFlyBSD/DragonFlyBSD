@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,9 +44,9 @@
 #include <ufs/fsdir.h>
 #include <ufs/inode.h>
 #else
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 #endif
 
 #include <protocols/dumprestore.h>

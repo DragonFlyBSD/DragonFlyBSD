@@ -1,7 +1,3 @@
-/* $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $ */
-/* $DragonFly: src/lib/libstand/cd9660.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
-/*	$NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $	*/
-
 /*
  * Copyright (C) 1996 Wolfgang Solfrank.
  * Copyright (C) 1996 TooLs GmbH.
@@ -31,6 +27,10 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $
+ * $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $
+ * $DragonFly: src/lib/libstand/cd9660.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
  */
 
 /*

@@ -32,14 +32,14 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
 #include <protocols/dumprestore.h>
 
 #include <setjmp.h>

@@ -30,7 +30,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsirand/fsirand.c,v 1.7.2.1 2000/07/01 06:23:36 ps Exp $
- * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsirand/fsirand.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  */
 
 #include <sys/disklabel.h>
@@ -38,8 +38,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/dinode.h>
 
 #include <err.h>
 #include <errno.h>

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pciconf/pciconf.c,v 1.11.2.3 2002/09/17 22:09:15 jdp Exp $
- * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pciconf/pciconf.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -41,7 +41,7 @@
 #include <sys/pciio.h>
 #include <sys/queue.h>
 
-#include <pci/pcireg.h>
+#include <bus/pci/pcireg.h>
 
 #include "pathnames.h"
 

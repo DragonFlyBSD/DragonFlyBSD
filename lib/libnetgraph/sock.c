@@ -37,14 +37,14 @@
  * Author: Archie Cobbs <archie@whistle.com>
  *
  * $FreeBSD: src/lib/libnetgraph/sock.c,v 1.2 2000/01/28 00:48:27 archie Exp $
- * $DragonFly: src/lib/libnetgraph/sock.c,v 1.2 2003/06/17 04:26:50 dillon Exp $
+ * $DragonFly: src/lib/libnetgraph/sock.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
  * $Whistle: sock.c,v 1.12 1999/01/20 00:57:23 archie Exp $
  */
 
 #include <sys/types.h>
 #include <stdarg.h>
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_socket.h>
+#include <netgraph/socket/ng_socket.h>
 
 #include "netgraph.h"
 #include "internal.h"

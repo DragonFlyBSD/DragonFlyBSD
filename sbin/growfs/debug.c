@@ -37,7 +37,7 @@
  *
  * $TSHeader: src/sbin/growfs/debug.c,v 1.3 2000/12/12 19:31:00 tomsoft Exp $
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
- * $DragonFly: src/sbin/growfs/debug.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/growfs/debug.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  *
  * $FreeBSD: src/sbin/growfs/debug.c,v 1.3.2.1 2001/07/16 15:02:13 tomsoft Exp $
  */
@@ -46,8 +46,8 @@
 #include <sys/param.h>
 
 #include <stdio.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include "debug.h"
 

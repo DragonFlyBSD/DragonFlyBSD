@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 1/4/94
 # $FreeBSD: src/include/Makefile,v 1.109.2.27 2003/01/24 05:12:29 sam Exp $
-# $DragonFly: src/include/Makefile,v 1.3 2003/08/07 21:26:08 dillon Exp $
+# $DragonFly: src/include/Makefile,v 1.4 2003/08/08 04:18:32 dillon Exp $
 #
 # Doing a make install builds /usr/include
 #
@@ -33,22 +33,45 @@ SHDRS=	soundcard.h joystick.h
 LHDRS=	aio.h errno.h fcntl.h inttypes.h linker_set.h poll.h syslog.h \
 	termios.h ucontext.h
 
+# directories which also contain header files that need to be coiped.
+# Other directories, like 'bus' and 'netproto', are created using mtree.
+#
+# XXX allow these directories to not contain header files.
 LDIRS=	net netgraph netinet netinet6 sys vm
 
+# Subdirectories containing header files to copy.  In symlink mode 
+# the subdirectory will be symlinked.  Care must be taken to adjust
+# LSYMSUBDIRS below to remove subdirectories whos parent directories.
+# If you make a mistake, part of your source tree might get overwritten
+# when buildworld is run.
+#
 LSUBDIRS=	bus/cam bus/cam/scsi \
 	emulation/posix4 \
+	emulation/linux \
 	vfs/msdosfs vfs/nfs vfs/ntfs vfs/nwfs \
-	vfs/ufs \
-	bus/cam bus/pccard \
+	vfs/ufs vfs/smbfs \
+	net/vlan net/ipfw net/ip6fw net/dummynet net/sppp net/ip_mroute \
+	net/bridge net/tun net/ppp net/ppp_layer net/sl \
+	netgraph/UI netgraph/async netgraph/bpf netgraph/bridge \
+	netgraph/cisco netgraph/echo netgraph/eiface netgraph/etf \
+	netgraph/ether netgraph/fec netgraph/frame_relay netgraph/hole \
+	netgraph/iface netgraph/ksocket netgraph/l2tp netgraph/lmi \
+	netgraph/mppc netgraph/one2many netgraph/ppp \
+	netgraph/pppoe netgraph/pptpgre netgraph/rfc1490 netgraph/socket \
+	netgraph/tee netgraph/tty netgraph/vjc \
+	bus/cam bus/usb bus/pccard bus/pci bus/isa \
 	netproto/atalk netproto/atm netproto/ipsec netproto/ipx \
 	netproto/key netproto/natm netproto/ncp netproto/ns netproto/smb \
 	netproto/atm/ipatm netproto/atm/sigpvc netproto/atm/spans \
-	netproto/atm/uni \
-#	dev/an dev/firewire dev/ppbus dev/usb dev/wi \
+	netproto/atm/uni
 
-# For SHARED=symlinks, cam and netatm are symlinks, so cam/scsi and netatm/*
-# are taken care of
-LSYMSUBDIRS=	${LSUBDIRS:Ncam/scsi:Nnetatm/*}
+LSUBDIRS3= vfs/isofs/cd9660 net/i4b/include \
+	dev/misc/lpt dev/netif/wi
+
+# For SHARED=symlinks, bus/cam and netproto/atm are symlinks, so cam/scsi
+# and netproto/atm/* are taken care of
+LSYMSUBDIRS=	${LSUBDIRS:Nbus/cam/scsi:Nnetproto/atm/*:Nnet/*:Nnetgraph/*}
+LSYMSUBDIRS3=	${LSUBDIRS3:Nnet/*}
 
 # Define SHARED to indicate whether you want symbolic links to the system
 # source (``symlinks''), or a separate copy (``copies'').  ``symlinks'' is
@@ -83,10 +106,13 @@ INCSLINKS+=	emulation/posix4/$i ${INCLUDEDIR}/$i
 .endfor
 INCSLINKS+=	bus/cam ${INCLUDEDIR}/cam
 INCSLINKS+=	vfs/msdosfs ${INCLUDEDIR}/msdosfs
+INCSLINKS+=	vfs/isofs ${INCLUDEDIR}/isofs
+INCSLINKS+=	vfs/mfs ${INCLUDEDIR}/mfs
 INCSLINKS+=	vfs/nfs ${INCLUDEDIR}/nfs
 INCSLINKS+=	vfs/ntfs ${INCLUDEDIR}/ntfs
 INCSLINKS+=	vfs/nwfs ${INCLUDEDIR}/nwfs
 INCSLINKS+=	vfs ${INCLUDEDIR}/fs
+INCSLINKS+=	emulation ${INCLUDEDIR}/compat
 INCSLINKS+=	netproto/atalk ${INCLUDEDIR}/netatalk
 INCSLINKS+=	netproto/atm ${INCLUDEDIR}/netatm
 INCSLINKS+=	netproto/ipsec ${INCLUDEDIR}/netipsec
@@ -98,15 +124,17 @@ INCSLINKS+=	netproto/ns ${INCLUDEDIR}/netns
 INCSLINKS+=	netproto/smb ${INCLUDEDIR}/netsmb
 INCSLINKS+=	bus/pccard ${INCLUDEDIR}/pccard
 
-copies:
-.for i in ${LDIRS} ${LSYMSUBDIRS} machine crypto
+mtree_setup:
+.for i in ${LDIRS} ${LSYMSUBDIRS} ${LSYMSUBDIRS3} machine crypto
 	if [ -h ${DESTDIR}/usr/include/$i ]; then \
 		rm -f ${DESTDIR}/usr/include/$i; \
 	fi
 .endfor
 	mtree -deU -f ${.CURDIR}/../etc/mtree/BSD.include.dist \
 		-p ${DESTDIR}/usr/include
-.for i in ${LDIRS} ${LSUBDIRS}
+
+copies:		mtree_setup
+.for i in ${LDIRS} ${LSUBDIRS} ${LSUBDIRS3}
 	cd ${.CURDIR}/../sys; \
 		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 $i/*.h \
 		${DESTDIR}/usr/include/$i
@@ -124,11 +152,16 @@ copies:
 		${DESTDIR}/usr/include/machine/pc
 .endif
 .endif
+.if exists(${.CURDIR}/../sys/net/i4b/include/${MACHINE_ARCH})
+	cd ${.CURDIR}/../sys/net/i4b/include/${MACHINE_ARCH}; \
+		${INSTALL} -C -o ${BINOWN} -g ${BINGRP} -m 444 *.h \
+		${DESTDIR}/usr/include/i4b_machine
+.endif
 .for i in ${SHDRS}
 	ln -sf ../sys/$i ${DESTDIR}/usr/include/machine/$i
 .endfor
 
-symlinks:
+symlinks:	mtree_setup
 	@${ECHO} "Setting up symlinks to kernel source tree..."
 .for i in ${LDIRS}
 	rm -rf ${DESTDIR}/usr/include/$i
@@ -140,8 +173,14 @@ symlinks:
 	rm -rf ${DESTDIR}/usr/include/$i
 	ln -s ../../../sys/$i ${DESTDIR}/usr/include/$i
 .endfor
+.for i in ${LSYMSUBDIRS3}
+	rm -rf ${DESTDIR}/usr/include/$i
+	ln -s ../../../../sys/$i ${DESTDIR}/usr/include/$i
+.endfor
 	rm -rf ${DESTDIR}/usr/include/machine
 	ln -s ../../sys/${MACHINE_ARCH}/include ${DESTDIR}/usr/include/machine
+	rm -rf ${DESTDIR}/usr/include/i4b_machine
+	ln -s ../../sys/net/i4b/include/${MACHINE_ARCH} ${DESTDIR}/usr/include/i4b_machine
 
 .include <bsd.prog.mk>
 

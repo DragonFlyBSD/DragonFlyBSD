@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.2 2003/06/17 04:26:51 dillon Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.3 2003/08/08 04:18:34 dillon Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -70,9 +70,9 @@
 
 #include <sys/param.h>
 #include <sys/time.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/fs.h>
 #include "stand.h"
 #include "string.h"
 

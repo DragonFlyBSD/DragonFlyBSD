@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/usr.sbin/fwcontrol/fwcontrol.c,v 1.1.2.8 2003/05/01 06:26:35 simokawa Exp $
- * $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/fwcontrol/fwcontrol.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -40,8 +40,8 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/errno.h>
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/iec13213.h>
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/iec13213.h>
 
 #include <netinet/in.h>
 #include <fcntl.h>

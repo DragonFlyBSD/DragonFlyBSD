@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_ufs.c	8.4 (Berkeley) 4/26/95
  * $FreeBSD: src/sbin/mount/mount_ufs.c,v 1.16.2.3 2001/08/01 08:27:29 obrien Exp $
- * $DragonFly: src/sbin/mount/mount_ufs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount/mount_ufs.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/ufsmount.h>
 
 #include "extern.h"
 #include "mntopts.h"

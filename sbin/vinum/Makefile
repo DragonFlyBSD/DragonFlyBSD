@@ -1,5 +1,5 @@
 # $FreeBSD: src/sbin/vinum/Makefile,v 1.12.2.2 2001/08/01 09:13:24 obrien Exp $
-# $DragonFly: src/sbin/vinum/Makefile,v 1.2 2003/06/17 04:27:34 dillon Exp $
+# $DragonFly: src/sbin/vinum/Makefile,v 1.3 2003/08/08 04:18:41 dillon Exp $
 
 MAINTAINER  =  grog@FreeBSD.org
 PROG=	vinum
@@ -10,6 +10,6 @@ CFLAGS+=	-I${.CURDIR}/../../sys -Wall -DVINUMDEBUG
 DPADD=	${LIBUTIL} ${LIBREADLINE} ${LIBTERMCAP}
 LDADD=	-lreadline -ltermcap -ldevstat
 
-.PATH: ${.CURDIR}/../../sys/dev/vinum
+.PATH: ${.CURDIR}/../../sys/dev/raid/vinum
 
 .include <bsd.prog.mk>

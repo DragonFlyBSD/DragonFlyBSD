@@ -25,7 +25,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 # $FreeBSD: src/usr.sbin/setkey/Makefile,v 1.1.2.5 2001/04/25 14:05:11 ru Exp $
-# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
+# $DragonFly: src/usr.sbin/setkey/Makefile,v 1.3 2003/08/08 04:18:48 dillon Exp $
 
 PROG=	setkey
 SRCS=	setkey.c parse.y token.l
@@ -38,7 +38,7 @@ YFLAGS+=-d
 
 # libpfkey.
 # ipsec_strerror.c is for avoiding shlib reference to non-exported function.
-.PATH: ${.CURDIR}/../../lib/libipsec ${.CURDIR}/../../sys/netkey
+.PATH: ${.CURDIR}/../../lib/libipsec ${.CURDIR}/../../sys/netproto/key
 SRCS+= pfkey.c pfkey_dump.c key_debug.c ipsec_strerror.c
 CFLAGS+=-I${.CURDIR}/../../lib/libipsec -I${.CURDIR}/../../sys/netkey
 

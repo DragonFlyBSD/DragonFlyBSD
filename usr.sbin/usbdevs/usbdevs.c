@@ -1,6 +1,6 @@
 /*	$NetBSD: usbdevs.c,v 1.17 2001/02/19 23:22:48 cgd Exp $	*/
 /*	$FreeBSD: src/usr.sbin/usbdevs/usbdevs.c,v 1.5.2.3 2002/11/13 15:15:21 joe Exp $	*/
-/*	$DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/usbdevs/usbdevs.c,v 1.3 2003/08/08 04:18:48 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -46,7 +46,7 @@
 #include <unistd.h>
 #include <err.h>
 #include <errno.h>
-#include <dev/usb/usb.h>
+#include <bus/usb/usb.h>
 #if defined(__FreeBSD__)
 #include <sys/ioctl.h>
 #endif

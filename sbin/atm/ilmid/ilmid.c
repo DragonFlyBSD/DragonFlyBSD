@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 /*
@@ -57,10 +57,10 @@
 #include <netatm/atm_sap.h>
 #include <netatm/atm_sys.h>
 #include <netatm/atm_ioctl.h>
-#include <dev/hea/eni_stats.h>
-#include <dev/hfa/fore_aali.h>
-#include <dev/hfa/fore_slave.h>
-#include <dev/hfa/fore_stats.h>
+#include <dev/atm/hea/eni_stats.h>
+#include <dev/atm/hfa/fore_aali.h>
+#include <dev/atm/hfa/fore_slave.h>
+#include <dev/atm/hfa/fore_stats.h>
 
 #include <err.h>
 #include <errno.h>

@@ -32,7 +32,7 @@
  *
  * @(#)dumprmt.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/dump/dumprmt.c,v 1.14.2.1 2000/07/01 06:31:52 ps Exp $
- * $DragonFly: src/sbin/dump/dumprmt.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/dumprmt.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@
 
 #include <ufs/inode.h>
 #else
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 #endif
 
 #include <netinet/in.h>

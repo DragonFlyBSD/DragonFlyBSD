@@ -32,7 +32,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/netstat/netgraph.c,v 1.3.2.2 2001/08/10 09:07:09 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/netgraph.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  *
  * $Id: atalk.c,v 1.11 1998/07/06 21:01:22 bde Exp $
  */
@@ -48,8 +48,8 @@
 
 #include <netgraph.h>
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_socket.h>
-#include <netgraph/ng_socketvar.h>
+#include <netgraph/socket/ng_socket.h>
+#include <netgraph/socket/ng_socketvar.h>
 
 #include <nlist.h>
 #include <errno.h>

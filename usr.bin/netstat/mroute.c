@@ -37,7 +37,7 @@
  *	@(#)mroute.c	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/usr.bin/netstat/mroute.c,v 1.11.2.4 2001/09/17 14:53:17 ru Exp $
- * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/mroute.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 #include <netinet/in.h>
 #include <netinet/igmp.h>
 #include <net/route.h>
-#include <netinet/ip_mroute.h>
+#include <net/ip_mroute/ip_mroute.h>
 
 #include <stdio.h>
 #include <stdlib.h>

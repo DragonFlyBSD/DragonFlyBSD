@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_lfs.c	8.3 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.11 1999/10/09 11:54:09 phk Exp $
- * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/ufsmount.h>
 
 #include "mntopts.h"
 

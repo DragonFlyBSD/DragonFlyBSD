@@ -1,7 +1,7 @@
 set -e
 
 # $FreeBSD: src/usr.bin/kdump/mkioctls,v 1.15.2.5 2002/11/15 18:22:31 ru Exp $
-# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.2 2003/06/17 04:29:27 dillon Exp $
+# $DragonFly: src/usr.bin/kdump/mkioctls,v 1.3 2003/08/08 04:18:43 dillon Exp $
 
 if [ "x$1" = "x-s" ]; then
 	use_switch=1
@@ -20,10 +20,12 @@ LC_ALL=C; export LC_ALL
 # Build a list of headers that have ioctls in them.
 # XXX should we use an ANSI cpp?
 # XXX netipx conflicts with netns (leave out netns).
+# XXX leave out bus/ and netproto/ because even though they are
+# the 'real' directories, they are duped by softlinks in /usr/include.
 ioctl_includes=`
 	cd $1
 	find -s * -name '*.h' -follow |
-		egrep -v '^(netns)/' |
+		egrep -v '^(netns)/|^(bus)/|^(netproto)' |
 		xargs egrep -l \
 '^#[ 	]*define[ 	]+[A-Za-z_][A-Za-z0-9_]*[ 	]+_IO[^a-z0-9_]' |
 		awk '{printf("#include <%s>\\\\n", $1)}'
@@ -50,7 +52,7 @@ BEGIN {
 	print "#include <netatm/atm_sap.h>"
 	print "#include <netatm/atm_sys.h>"
 	print "#include <netinet/in.h>"
-	print "#include <netinet/ip_mroute.h>"
+	print "#include <net/ip_mroute/ip_mroute.h>"
 	print "#include <netinet6/in6_var.h>"
 	print "#include <netinet6/nd6.h>"
 	print "#include <netinet6/ip6_mroute.h>"

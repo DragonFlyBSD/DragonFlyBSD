@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardc/rdreg.c,v 1.12 1999/08/28 01:17:33 peter Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/rdreg.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/rdreg.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
  */
 
 #include <err.h>
@@ -35,7 +35,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#include <pccard/cardinfo.h>
+#include <bus/pccard/cardinfo.h>
 
 void
 dumpslot(sl)

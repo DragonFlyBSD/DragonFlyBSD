@@ -29,15 +29,15 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/quot/quot.c,v 1.11.2.4 2002/03/15 18:12:41 mikeh Exp $
- * $DragonFly: src/usr.sbin/quot/quot.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/quot/quot.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/time.h>
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ufs/inode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/inode.h>
 
 #include <err.h>
 #include <fcntl.h>

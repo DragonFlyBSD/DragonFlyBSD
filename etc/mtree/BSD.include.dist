@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.3 2003/08/07 21:26:07 dillon Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.4 2003/08/08 04:18:32 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -15,20 +15,26 @@
 	..
 	pccard
 	..
+	usb
+	..
+	pci
+	..
+	isa
+	..
     ..
     crypto
     ..
     dev
-        an
-        ..
-        firewire
-        ..
-        ppbus
-        ..
-        usb
-        ..
-        wi
-        ..
+	misc
+	    lpt
+	    ..
+	..
+	netif
+	    wi
+	    ..
+	..
+	raid
+	..
     ..
     netproto
 	atalk
@@ -61,6 +67,8 @@
     emulation
 	posix4
 	..
+	linux
+	..
     ..
     vfs
 	msdosfs
@@ -74,6 +82,8 @@
 	ufs
 	..
 	mfs
+	..
+	smbfs
 	..
 	isofs
 	    cd9660
@@ -92,9 +102,89 @@
         pc
         ..
     ..
+    i4b_machine
+    ..
     net
+	vlan
+	..
+	ipfw
+	..
+	ip6fw
+	..
+	ppp
+	..
+	ppp_layer
+	..
+	sl
+	..
+	dummynet
+	..
+	sppp
+	..
+	ip_mroute
+	..
+	bridge
+	..
+	tun
+	..
+	i4b
+	    include
+	    ..
+	..
     ..
     netgraph
+	UI
+	..
+	async
+	..
+	bpf
+	..
+	bridge
+	..
+	cisco
+	..
+	echo
+	..
+	eiface
+	..
+	etf
+	..
+	ether
+	..
+	fec
+	..
+	frame_relay
+	..
+	hole
+	..
+	iface
+	..
+	ksocket
+	..
+	l2tp
+	..
+	lmi
+	..
+	mppc
+	..
+	one2many
+	..
+	ppp
+	..
+	pppoe
+	..
+	pptpgre
+	..
+	rfc1490
+	..
+	socket
+	..
+	tee
+	..
+	tty
+	..
+	vjc
+	..
     ..
     netinet
     ..
@@ -105,8 +195,6 @@
     openssl
     ..
     pccard
-    ..
-    posix4
     ..
     protocols
     ..

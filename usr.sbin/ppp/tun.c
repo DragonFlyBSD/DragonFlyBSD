@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/tun.c,v 1.20.2.4 2002/09/01 02:12:32 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/tun.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/tun.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -36,7 +36,7 @@
 #include <net/route.h>
 #include <netinet/in.h>
 #include <net/if_types.h>
-#include <net/if_tun.h>
+#include <net/tun/if_tun.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <sys/un.h>

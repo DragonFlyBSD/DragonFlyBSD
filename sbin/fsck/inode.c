@@ -32,15 +32,15 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <pwd.h>

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ether.c,v 1.9.2.14 2002/09/01 02:12:26 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/ether.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/ether.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -39,10 +39,10 @@
 #include <net/route.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
-#include <netgraph/ng_ether.h>
+#include <netgraph/ether/ng_ether.h>
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_pppoe.h>
-#include <netgraph/ng_socket.h>
+#include <netgraph/pppoe/ng_pppoe.h>
+#include <netgraph/socket/ng_socket.h>
 
 #include <errno.h>
 #include <stdio.h>

@@ -25,7 +25,7 @@
  * OR MODIFICATIONS.
  *
  * $FreeBSD: src/usr.sbin/pppd/ccp.c,v 1.10 1999/08/28 01:19:00 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/ccp.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppd/ccp.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <string.h>
@@ -36,7 +36,7 @@
 #include "pppd.h"
 #include "fsm.h"
 #include "ccp.h"
-#include <net/ppp_comp.h>
+#include <net/ppp_layer/ppp_comp.h>
 
 /*
  * Protocol entry points from main code.

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,8 @@
 #include <ufs/inode.h>
 #include <ufs/fs.h>
 #else
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 #endif
 
 #include <protocols/dumprestore.h>

@@ -37,11 +37,11 @@
  *	@(#)portald.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/mount_portal/portald.h,v 1.5 1999/08/28 00:13:37 peter Exp $
- * $DragonFly: src/sbin/mount_portal/portald.h,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_portal/portald.h,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/cdefs.h>
-#include <miscfs/portal/portal.h>
+#include <vfs/portal/portal.h>
 
 /*
  * Meta-chars in an RE.  Paths in the config file containing

@@ -32,14 +32,14 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 
 #include <ctype.h>
 #include <errno.h>

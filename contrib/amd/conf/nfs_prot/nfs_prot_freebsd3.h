@@ -40,7 +40,7 @@
  *
  * $Id: nfs_prot_freebsd3.h,v 1.4 1999/03/30 17:22:54 ezk Exp $
  * $FreeBSD: src/contrib/amd/conf/nfs_prot/nfs_prot_freebsd3.h,v 1.7 1999/09/15 05:45:14 obrien Exp $
- * $DragonFly: src/contrib/amd/conf/nfs_prot/nfs_prot_freebsd3.h,v 1.2 2003/06/17 04:23:57 dillon Exp $
+ * $DragonFly: src/contrib/amd/conf/nfs_prot/nfs_prot_freebsd3.h,v 1.3 2003/08/08 04:18:29 dillon Exp $
  *
  */
 
@@ -69,7 +69,7 @@ struct nfs_fh3;
 # include <nfs/nfs.h>
 #endif /* HAVE_NFS_NFS_H */
 #ifdef	HAVE_UFS_UFS_UFSMOUNT_H
-# include <ufs/ufs/ufsmount.h>
+# include <vfs/ufs/ufsmount.h>
 #endif	/* HAVE_UFS_UFS_UFSMOUNT_H */
 
 /*

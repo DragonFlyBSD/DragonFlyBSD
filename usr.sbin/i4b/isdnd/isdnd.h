@@ -28,7 +28,7 @@
  *	-----------------------------
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/isdnd.h,v 1.6.2.5 2002/04/24 18:50:07 joerg Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.h,v 1.2 2003/06/17 04:29:54 dillon Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/isdnd.h,v 1.3 2003/08/08 04:18:45 dillon Exp $
  *
  *      last edit-date: [Mon Dec 31 12:42:58 2001]
  *
@@ -68,10 +68,10 @@
 #include <sys/rtprio.h>
 #endif
 
-#include <net/if_sppp.h>
+#include <net/sppp/if_sppp.h>
 
-#include <machine/i4b_ioctl.h>
-#include <machine/i4b_cause.h>
+#include <i4b_machine/i4b_ioctl.h>
+#include <i4b_machine/i4b_cause.h>
 
 #include "config.h"		/* compile time configuration	*/
 #include "pathnames.h"		/* location of files		*/

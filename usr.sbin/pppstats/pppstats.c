@@ -31,7 +31,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppstats/pppstats.c,v 1.13 1999/08/28 01:19:11 peter Exp $
- * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <stdio.h>
@@ -47,12 +47,12 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <net/ppp_defs.h>
+#include <net/ppp_layer/ppp_defs.h>
 
 #ifndef STREAMS
 #include <sys/socket.h>		/* *BSD, Linux, NeXT, Ultrix etc. */
 #include <net/if.h>
-#include <net/if_ppp.h>
+#include <net/ppp/if_ppp.h>
 
 #else	/* STREAMS */
 #include <sys/stropts.h>	/* SVR4, Solaris 2, SunOS 4, OSF/1, etc. */

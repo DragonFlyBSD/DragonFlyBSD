@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/usr.sbin/sicontrol/sicontrol.c,v 1.12.2.1 2000/12/11 01:03:39 obrien Exp $
- * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sicontrol/sicontrol.c,v 1.3 2003/08/08 04:18:48 dillon Exp $
  */
 
 #include <ctype.h>
@@ -47,7 +47,7 @@
 #include <sys/ioctl.h>
 #include <sys/tty.h>
 
-#include <dev/si/si.h>
+#include <dev/serial/si/si.h>
 
 struct lv {
 	char	*lv_name;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/contrib/pnpinfo/pnpinfo.c,v 1.7 1999/09/05 17:27:05 peter Exp $
- * $DragonFly: src/contrib/pnpinfo/pnpinfo.c,v 1.2 2003/06/17 04:24:06 dillon Exp $
+ * $DragonFly: src/contrib/pnpinfo/pnpinfo.c,v 1.3 2003/08/08 04:18:31 dillon Exp $
  */
 
 #include <sys/time.h>
@@ -37,7 +37,7 @@
 
 #include <machine/cpufunc.h>
 
-#include <isa/pnpreg.h>
+#include <bus/isa/pnpreg.h>
 
 #ifdef DEBUG
 #define	DEB(x) x

@@ -18,7 +18,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw2.c,v 1.4.2.13 2003/05/27 22:21:11 gshapiro Exp $
- * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/ipfw2.c,v 1.3 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -49,9 +49,9 @@
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
-#include <netinet/ip_fw.h>
+#include <net/ipfw/ip_fw.h>
 #include <net/route.h> /* def. of struct route */
-#include <netinet/ip_dummynet.h>
+#include <net/dummynet/ip_dummynet.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 

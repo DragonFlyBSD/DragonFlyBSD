@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/sbin/ip6fw/ip6fw.8,v 1.3.2.12 2003/02/23 20:17:15 trhodes Exp $
-.\" $DragonFly: src/sbin/ip6fw/ip6fw.8,v 1.2 2003/06/17 04:27:33 dillon Exp $
+.\" $DragonFly: src/sbin/ip6fw/ip6fw.8,v 1.3 2003/08/08 04:18:38 dillon Exp $
 .\"
 .\"	$KAME$
 .\"
@@ -329,7 +329,7 @@ A range may only be specified as the first value,
 and the length of the port list is limited to
 .Dv IPV6_FW_MAX_PORTS
 (as defined in
-.Pa /usr/src/sys/netinet6/ip6_fw.h )
+.Pa /usr/src/sys/net/ip6fw/ip6_fw.h )
 ports.
 .Pp
 Fragmented packets which have a non-zero offset (i.e. not the first

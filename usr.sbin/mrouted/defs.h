@@ -8,7 +8,7 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/defs.h,v 1.12.2.1 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.3 2003/08/08 04:18:46 dillon Exp $
  * defs.h,v 3.8.4.15 1998/03/01 02:51:42 fenner Exp
  */
 
@@ -50,7 +50,7 @@
 #undef rtentry
 #endif
 #endif
-#include <netinet/ip_mroute.h>
+#include <net/ip_mroute/ip_mroute.h>
 #ifdef RSRR
 #include <sys/un.h>
 #endif /* RSRR */

@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <netinet/in.h>
 #include <netipx/ipx.h>
 #include <netatalk/at.h>
-#include <netgraph/ng_socket.h>
+#include <netgraph/socket/ng_socket.h>
 
 #ifdef NS
 #include <netns/ns.h>

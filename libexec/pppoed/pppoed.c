@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/pppoed/pppoed.c,v 1.2.6.8 2002/06/17 02:21:25 brian Exp $
- * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/pppoed/pppoed.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -37,10 +37,10 @@
 #include <net/ethernet.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
-#include <netgraph/ng_ether.h>
+#include <netgraph/ether/ng_ether.h>
 #include <netgraph/ng_message.h>
-#include <netgraph/ng_pppoe.h>
-#include <netgraph/ng_socket.h>
+#include <netgraph/pppoe/ng_pppoe.h>
+#include <netgraph/socket/ng_socket.h>
 
 #include <errno.h>
 #include <paths.h>

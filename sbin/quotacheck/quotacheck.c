@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotacheck.c	8.3 (Berkeley) 1/29/94
  * $FreeBSD: src/sbin/quotacheck/quotacheck.c,v 1.11 1999/08/28 00:14:01 peter Exp $
- * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/quotacheck/quotacheck.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 /*
@@ -45,9 +45,9 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/quota.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/quota.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <errno.h>

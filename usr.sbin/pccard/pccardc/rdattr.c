@@ -22,6 +22,8 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * $DragonFly: src/usr.sbin/pccard/pccardc/Attic/rdattr.c,v 1.2 2003/08/08 04:18:46 dillon Exp $
  */
 
 #include <err.h>
@@ -31,7 +33,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include <pccard/cardinfo.h>
+#include <bus/pccard/cardinfo.h>
 
 int
 rdattr_main(argc, argv)

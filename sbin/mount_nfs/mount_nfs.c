@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.3 2003/08/05 07:45:42 asmodai Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.4 2003/08/08 04:18:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -48,10 +48,10 @@
 #include <rpc/pmap_clnt.h>
 #include <rpc/pmap_prot.h>
 
-#include <nfs/rpcv2.h>
-#include <nfs/nfsproto.h>
-#include <nfs/nfs.h>
-#include <nfs/nqnfs.h>
+#include <vfs/nfs/rpcv2.h>
+#include <vfs/nfs/nfsproto.h>
+#include <vfs/nfs/nfs.h>
+#include <vfs/nfs/nqnfs.h>
 
 #include <arpa/inet.h>
 

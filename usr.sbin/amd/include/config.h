@@ -1,6 +1,6 @@
 /* 
  * $FreeBSD: src/usr.sbin/amd/include/config.h,v 1.15.2.1 2001/08/29 08:46:52 alfred Exp $
- * $DragonFly: src/usr.sbin/amd/include/config.h,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/amd/include/config.h,v 1.3 2003/08/08 04:18:44 dillon Exp $
  *
  * portions derived from 
  *	$NetBSD: config.h,v 1.11 1998/08/08 22:33:37 christos Exp $
@@ -1883,10 +1883,10 @@
 /* Define if you have the <tmpfs/tmp.h> header file.  */
 /* #undef HAVE_TMPFS_TMP_H */
 
-/* Define if you have the <ufs/ufs/ufsmount.h> header file.  */
+/* Define if you have the <vfs/ufs/ufsmount.h> header file.  */
 #define HAVE_UFS_UFS_UFSMOUNT_H 1
 
-/* Define if you have the <ufs/ufs_mount.h> header file.  */
+/* Define if you have the <vfs/ufs_mount.h> header file.  */
 #define HAVE_UFS_UFS_MOUNT_H 1
 
 /* Define if you have the <unistd.h> header file.  */

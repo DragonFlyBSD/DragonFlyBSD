@@ -39,7 +39,7 @@
  *
  * @(#) Copyright (c) 2000 Christoph Herrmann, Thomas-Henning von Kamptz Copyright (c) 1980, 1989, 1993 The Regents of the University of California. All rights reserved.
  * $FreeBSD: src/sbin/growfs/growfs.c,v 1.4.2.2 2001/08/14 12:45:11 chm Exp $
- * $DragonFly: src/sbin/growfs/growfs.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/growfs/growfs.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
  */
 
 /* ********************************************************** INCLUDES ***** */
@@ -56,8 +56,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 
 #include "debug.h"
 

@@ -36,13 +36,13 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_union.c	8.5 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_union/mount_union.c,v 1.12 1999/10/09 11:54:14 phk Exp $
- * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mount.h>
 
-#include <miscfs/union/union.h>
+#include <vfs/union/union.h>
 
 #include <err.h>
 #include <stdio.h>

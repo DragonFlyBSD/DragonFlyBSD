@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm_fore200.c,v 1.3.2.1 2000/07/01 06:02:14 ps Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm_fore200.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm_fore200.c,v 1.3 2003/08/08 04:18:36 dillon Exp $
  */
 
 /*
@@ -45,9 +45,9 @@
 #include <netatm/atm_sap.h>
 #include <netatm/atm_sys.h>
 #include <netatm/atm_ioctl.h>
-#include <dev/hfa/fore_aali.h>
-#include <dev/hfa/fore_slave.h>
-#include <dev/hfa/fore_stats.h>
+#include <dev/atm/hfa/fore_aali.h>
+#include <dev/atm/hfa/fore_slave.h>
+#include <dev/atm/hfa/fore_stats.h>
 
 #include <errno.h>
 #include <libatm.h>

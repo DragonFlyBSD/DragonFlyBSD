@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 #include <protocols/dumprestore.h>
 
 #include <errno.h>

@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  * 
  * $FreeBSD: src/usr.sbin/fwcontrol/fwdv.c,v 1.2.2.4 2003/04/28 03:29:18 simokawa Exp $
- * $DragonFly: src/usr.sbin/fwcontrol/fwdv.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/fwcontrol/fwdv.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/ioctl.h>
@@ -52,8 +52,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <dev/firewire/firewire.h>
-#include <dev/firewire/iec68113.h>
+#include <bus/firewire/firewire.h>
+#include <bus/firewire/iec68113.h>
 
 #define DEBUG		0
 #define FIX_FRAME	1

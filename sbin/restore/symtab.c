@@ -32,7 +32,7 @@
  *
  * @(#)symtab.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/restore/symtab.c,v 1.7.2.1 2001/12/19 14:54:14 tobez Exp $
- * $DragonFly: src/sbin/restore/symtab.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/symtab.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 
 #include <errno.h>
 #include <fcntl.h>

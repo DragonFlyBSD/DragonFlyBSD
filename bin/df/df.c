@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.2 2003/06/17 04:22:49 dillon Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.3 2003/08/08 04:18:29 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -46,8 +46,8 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/sysctl.h>
-#include <ufs/ufs/ufsmount.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/ufsmount.h>
+#include <vfs/ufs/fs.h>
 
 #include <err.h>
 #include <errno.h>

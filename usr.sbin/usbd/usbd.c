@@ -1,6 +1,6 @@
 /*	$NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $	*/
 /*	$FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.10.2.6 2002/12/31 09:05:27 maxim Exp $	*/
-/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.2 2003/06/17 04:30:03 dillon Exp $	*/
+/*	$DragonFly: src/usr.sbin/usbd/usbd.c,v 1.3 2003/08/08 04:18:48 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -63,7 +63,7 @@
 #include <sys/wait.h>
 #include <regex.h>
 
-#include <dev/usb/usb.h>
+#include <bus/usb/usb.h>
 
 /* default name of configuration file
  */

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
  */
 
 /*
@@ -46,7 +46,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/wait.h>
-#include <ufs/ufs/quota.h>
+#include <vfs/ufs/quota.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>

@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,8 +45,8 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#include <ufs/ufs/dinode.h>
-#include <ufs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/dir.h>
 #include <protocols/dumprestore.h>
 
 #include <err.h>

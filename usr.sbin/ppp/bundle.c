@@ -24,14 +24,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/bundle.c,v 1.84.2.12 2002/09/01 02:12:22 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/bundle.c,v 1.3 2003/08/08 04:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <net/if.h>
-#include <net/if_tun.h>		/* For TUNS* ioctls */
+#include <net/tun/if_tun.h>		/* For TUNS* ioctls */
 #include <net/route.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>

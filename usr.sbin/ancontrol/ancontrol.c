@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp $
- * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/ancontrol/ancontrol.c,v 1.3 2003/08/08 04:18:44 dillon Exp $
  *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
  * @(#) $FreeBSD: src/usr.sbin/ancontrol/ancontrol.c,v 1.1.2.9 2003/02/01 03:25:13 ambrisko Exp
@@ -48,7 +48,7 @@
 #include <net/if_var.h>
 #include <net/ethernet.h>
 
-#include <dev/an/if_aironet_ieee.h>
+#include <dev/netif/an/if_aironet_ieee.h>
 
 #include <stdio.h>
 #include <string.h>

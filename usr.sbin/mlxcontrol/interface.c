@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/usr.sbin/mlxcontrol/interface.c,v 1.2.2.1 2000/04/24 19:44:46 msmith Exp $
- *	$DragonFly: src/usr.sbin/mlxcontrol/interface.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ *	$DragonFly: src/usr.sbin/mlxcontrol/interface.c,v 1.3 2003/08/08 04:18:46 dillon Exp $
  */
 
 #include <fcntl.h>
@@ -34,8 +34,8 @@
 #include <string.h>
 #include <cam/scsi/scsi_all.h>
 
-#include <dev/mlx/mlxio.h>
-#include <dev/mlx/mlxreg.h>
+#include <dev/raid/mlx/mlxio.h>
+#include <dev/raid/mlx/mlxreg.h>
 
 #include "mlxcontrol.h"
 

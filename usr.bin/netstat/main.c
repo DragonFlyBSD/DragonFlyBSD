@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.2 2003/06/17 04:29:30 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.3 2003/08/08 04:18:43 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -43,7 +43,7 @@
 
 #include <netinet/in.h>
 
-#include <netgraph/ng_socket.h>
+#include <netgraph/socket/ng_socket.h>
 
 #include <ctype.h>
 #include <err.h>

@@ -32,7 +32,7 @@
  *
  * @(#)tape.c	8.4 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/tape.c,v 1.12.2.3 2002/02/23 22:32:51 iedowse Exp $
- * $DragonFly: src/sbin/dump/tape.c,v 1.2 2003/06/17 04:27:32 dillon Exp $
+ * $DragonFly: src/sbin/dump/tape.c,v 1.3 2003/08/08 04:18:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,8 +46,8 @@
 #include <ufs/fs.h>
 #include <ufs/inode.h>
 #else
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
 #endif
 
 #include <protocols/dumprestore.h>

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 /*
@@ -45,10 +45,10 @@
 #include <sys/file.h>
 #include <sys/mount.h>
 
-#include <ufs/ufs/dir.h>
-#include <ufs/ufs/dinode.h>
-#include <ufs/ffs/fs.h>
-#include <ufs/ufs/ufsmount.h>
+#include <vfs/ufs/dir.h>
+#include <vfs/ufs/dinode.h>
+#include <vfs/ufs/fs.h>
+#include <vfs/ufs/ufsmount.h>
 
 #include <ctype.h>
 #include <err.h>

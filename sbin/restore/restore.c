@@ -32,12 +32,12 @@
  *
  * @(#)restore.c	8.3 (Berkeley) 9/13/94
  * $FreeBSD: src/sbin/restore/restore.c,v 1.7.2.1 2002/03/01 21:32:28 iedowse Exp $
- * $DragonFly: src/sbin/restore/restore.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/restore/restore.c,v 1.3 2003/08/08 04:18:40 dillon Exp $
  */
 
 #include <sys/types.h>
 
-#include <ufs/ufs/dinode.h>
+#include <vfs/ufs/dinode.h>
 
 #include <stdio.h>
 #include <string.h>
