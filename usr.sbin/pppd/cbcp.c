@@ -18,7 +18,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/cbcp.c,v 1.4 1999/08/28 01:19:00 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/cbcp.c,v 1.4 2004/11/05 07:27:20 dillon Exp $
  */
 
 #include <stdio.h>
@@ -131,12 +131,10 @@ cbcp_input(unit, inpacket, pktlen)
     GETCHAR(id, inp);
     GETSHORT(len, inp);
 
-#if 0
-    if (len > pktlen) {
+    if (len < CBCP_MINLEN || len > pktlen) {
         syslog(LOG_ERR, "CBCP packet: invalid length");
         return;
     }
-#endif
 
     len -= CBCP_MINLEN;
  
@@ -270,11 +268,15 @@ cbcp_recvreq(us, pckt, pcktlen)
 
     address[0] = 0;
 
-    while (len) {
+    while (len > 1) {
         syslog(LOG_DEBUG, "length: %d", len);
 
 	GETCHAR(type, pckt);
 	GETCHAR(opt_len, pckt);
+
+	if (len < opt_len)
+		break;
+	len -= opt_len;
 
 	if (opt_len > 2)
 	    GETCHAR(delay, pckt);
@@ -304,7 +306,6 @@ cbcp_recvreq(us, pckt, pcktlen)
 	case CB_CONF_LIST:
 	    break;
 	}
-	len -= opt_len;
     }
 
     cbcp_resp(us);
@@ -398,10 +399,13 @@ cbcp_recvack(us, pckt, len)
     int opt_len;
     char address[256];
 
-    if (len) {
+    if (len > 1) {
         GETCHAR(type, pckt);
 	GETCHAR(opt_len, pckt);
      
+	if (opt_len > len)
+		return;
+
 	if (opt_len > 2)
 	    GETCHAR(delay, pckt);
 
