@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.13 2003/10/09 22:27:26 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.14 2003/10/10 22:01:13 dillon Exp $
  */
 
 
@@ -75,8 +75,8 @@
 #include "rpcv2.h"
 #include "nfsproto.h"
 #include "nfs.h"
-#include "nfsnode.h"
 #include "nfsmount.h"
+#include "nfsnode.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
 #include "nqnfs.h"
@@ -397,7 +397,6 @@ nfs_access(ap)
 				}
 			}
 		}
-		return (error);
 	} else {
 		if ((error = nfsspec_access(ap)) != 0)
 			return (error);
@@ -425,22 +424,41 @@ nfs_access(ap)
 			auio.uio_rw = UIO_READ;
 			auio.uio_td = ap->a_td;
 
-			if (vp->v_type == VREG)
+			if (vp->v_type == VREG) {
 				error = nfs_readrpc(vp, &auio);
-			else if (vp->v_type == VDIR) {
+			} else if (vp->v_type == VDIR) {
 				char* bp;
 				bp = malloc(NFS_DIRBLKSIZ, M_TEMP, M_WAITOK);
 				aiov.iov_base = bp;
 				aiov.iov_len = auio.uio_resid = NFS_DIRBLKSIZ;
 				error = nfs_readdirrpc(vp, &auio);
 				free(bp, M_TEMP);
-			} else if (vp->v_type == VLNK)
+			} else if (vp->v_type == VLNK) {
 				error = nfs_readlinkrpc(vp, &auio);
-			else
+			} else {
 				error = EACCES;
+			}
 		}
-		return (error);
 	}
+	/*
+	 * [re]record creds for reading and/or writing if access
+	 * was granted.
+	 */
+	if (error == 0) {
+		if ((ap->a_mode & VREAD) && ap->a_cred != np->n_rucred) {
+			crhold(ap->a_cred);
+			if (np->n_rucred)
+				crfree(np->n_rucred);
+			np->n_rucred = ap->a_cred;
+		}
+		if ((ap->a_mode & VWRITE) && ap->a_cred != np->n_wucred) {
+			crhold(ap->a_cred);
+			if (np->n_wucred)
+				crfree(np->n_wucred);
+			np->n_wucred = ap->a_cred;
+		}
+	}
+	return(error);
 }
 
 /*
@@ -637,7 +655,7 @@ nfs_getattr(ap)
 
 	if (v3 && nfsaccess_cache_timeout > 0) {
 		nfsstats.accesscache_misses++;
-		nfs3_access_otw(vp, NFSV3ACCESS_ALL, ap->a_td, NFSVPCRED(vp));
+		nfs3_access_otw(vp, NFSV3ACCESS_ALL, ap->a_td, nfs_vpcred(vp, ND_CHECK));
 		if (nfs_getattrcache(vp, ap->a_vap) == 0)
 			return (0);
 	}
@@ -645,7 +663,7 @@ nfs_getattr(ap)
 	nfsstats.rpccnt[NFSPROC_GETATTR]++;
 	nfsm_reqhead(vp, NFSPROC_GETATTR, NFSX_FH(v3));
 	nfsm_fhtom(vp, v3);
-	nfsm_request(vp, NFSPROC_GETATTR, ap->a_td, NFSVPCRED(vp));
+	nfsm_request(vp, NFSPROC_GETATTR, ap->a_td, nfs_vpcred(vp, ND_CHECK));
 	if (!error) {
 		nfsm_loadattr(vp, ap->a_vap);
 	}
@@ -1056,7 +1074,7 @@ nfs_readlinkrpc(struct vnode *vp, struct uio *uiop)
 	nfsstats.rpccnt[NFSPROC_READLINK]++;
 	nfsm_reqhead(vp, NFSPROC_READLINK, NFSX_FH(v3));
 	nfsm_fhtom(vp, v3);
-	nfsm_request(vp, NFSPROC_READLINK, uiop->uio_td, NFSVPCRED(vp));
+	nfsm_request(vp, NFSPROC_READLINK, uiop->uio_td, nfs_vpcred(vp, ND_CHECK));
 	if (v3)
 		nfsm_postop_attr(vp, attrflag);
 	if (!error) {
@@ -1109,7 +1127,7 @@ nfs_readrpc(struct vnode *vp, struct uio *uiop)
 			*tl++ = txdr_unsigned(len);
 			*tl = 0;
 		}
-		nfsm_request(vp, NFSPROC_READ, uiop->uio_td, NFSVPCRED(vp));
+		nfsm_request(vp, NFSPROC_READ, uiop->uio_td, nfs_vpcred(vp, ND_READ));
 		if (v3) {
 			nfsm_postop_attr(vp, attrflag);
 			if (error) {
@@ -1188,7 +1206,7 @@ nfs_writerpc(vp, uiop, iomode, must_commit)
 			*tl = x;	/* size of this write */
 		}
 		nfsm_uiotom(uiop, len);
-		nfsm_request(vp, NFSPROC_WRITE, uiop->uio_td, NFSVPCRED(vp));
+		nfsm_request(vp, NFSPROC_WRITE, uiop->uio_td, nfs_vpcred(vp, ND_WRITE));
 		if (v3) {
 			wccflag = NFSV3_WCCCHK;
 			nfsm_wcc_data(vp, wccflag);
@@ -1467,6 +1485,16 @@ again:
 	if (!error) {
 		if (cnp->cn_flags & CNP_MAKEENTRY)
 			cache_enter(dvp, NCPNULL, newvp, cnp);
+		/*
+		 * The new np may have enough info for access
+		 * checks, make sure rucred and wucred are
+		 * initialized for read and write rpc's.
+		 */
+		np = VTONFS(newvp);
+		if (np->n_rucred == NULL)
+			np->n_rucred = crhold(cnp->cn_cred);
+		if (np->n_wucred == NULL)
+			np->n_wucred = crhold(cnp->cn_cred);
 		*ap->a_vpp = newvp;
 	}
 	VTONFS(dvp)->n_flag |= NMODIFIED;
@@ -2124,7 +2152,7 @@ nfs_readdirrpc(struct vnode *vp, struct uio *uiop)
 			*tl++ = cookie.nfsuquad[0];
 		}
 		*tl = txdr_unsigned(nmp->nm_readdirsize);
-		nfsm_request(vp, NFSPROC_READDIR, uiop->uio_td, NFSVPCRED(vp));
+		nfsm_request(vp, NFSPROC_READDIR, uiop->uio_td, nfs_vpcred(vp, ND_READ));
 		if (v3) {
 			nfsm_postop_attr(vp, attrflag);
 			if (!error) {
@@ -2311,7 +2339,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 		*tl++ = dnp->n_cookieverf.nfsuquad[1];
 		*tl++ = txdr_unsigned(nmp->nm_readdirsize);
 		*tl = txdr_unsigned(nmp->nm_rsize);
-		nfsm_request(vp, NFSPROC_READDIRPLUS, uiop->uio_td, NFSVPCRED(vp));
+		nfsm_request(vp, NFSPROC_READDIRPLUS, uiop->uio_td, nfs_vpcred(vp, ND_READ));
 		nfsm_postop_attr(vp, attrflag);
 		if (error) {
 			m_freem(mrep);
@@ -2642,7 +2670,7 @@ nfs_commit(struct vnode *vp, u_quad_t offset, int cnt, struct thread *td)
 	txdr_hyper(offset, tl);
 	tl += 2;
 	*tl = txdr_unsigned(cnt);
-	nfsm_request(vp, NFSPROC_COMMIT, td, NFSVPCRED(vp));
+	nfsm_request(vp, NFSPROC_COMMIT, td, nfs_vpcred(vp, ND_WRITE));
 	nfsm_wcc_data(vp, wccflag);
 	if (!error) {
 		nfsm_dissect(tl, u_int32_t *, NFSX_V3WRITEVERF);
@@ -3267,7 +3295,7 @@ nfsspec_close(ap)
 				vattr.va_atime = np->n_atim;
 			if (np->n_flag & NUPD)
 				vattr.va_mtime = np->n_mtim;
-			(void)VOP_SETATTR(vp, &vattr, NFSVPCRED(vp), ap->a_td);
+			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE), ap->a_td);
 		}
 	}
 	return (VOCALL(spec_vnodeop_p, VOFFSET(vop_close), ap));
@@ -3349,7 +3377,7 @@ nfsfifo_close(ap)
 				vattr.va_atime = np->n_atim;
 			if (np->n_flag & NUPD)
 				vattr.va_mtime = np->n_mtim;
-			(void)VOP_SETATTR(vp, &vattr, NFSVPCRED(vp), ap->a_td);
+			(void)VOP_SETATTR(vp, &vattr, nfs_vpcred(vp, ND_WRITE), ap->a_td);
 		}
 	}
 	return (VOCALL(fifo_vnodeop_p, VOFFSET(vop_close), ap));

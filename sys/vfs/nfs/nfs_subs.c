@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.9 2003/09/23 05:03:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.10 2003/10/10 22:01:13 dillon Exp $
  */
 
 /*
@@ -69,10 +69,10 @@
 #include "rpcv2.h"
 #include "nfsproto.h"
 #include "nfs.h"
+#include "nfsmount.h"
 #include "nfsnode.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
-#include "nfsmount.h"
 #include "nqnfs.h"
 #include "nfsrtt.h"
 

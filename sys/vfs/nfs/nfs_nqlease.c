@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_nqlease.c	8.9 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_nqlease.c,v 1.50 2000/02/13 03:32:05 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.11 2003/09/03 14:30:57 hmp Exp $
+ * $DragonFly: src/sys/vfs/nfs/Attic/nfs_nqlease.c,v 1.12 2003/10/10 22:01:13 dillon Exp $
  */
 
 
@@ -73,8 +73,8 @@
 #include "nfsm_subs.h"
 #include "xdr_subs.h"
 #include "nqnfs.h"
-#include "nfsnode.h"
 #include "nfsmount.h"
+#include "nfsnode.h"
 
 static MALLOC_DEFINE(M_NQMHOST, "NQNFS Host", "Nqnfs host address table");
 
@@ -872,7 +872,7 @@ nqnfs_getlease(struct vnode *vp, int rwflag, struct thread *td)
 	*tl++ = txdr_unsigned(rwflag);
 	*tl = txdr_unsigned(nmp->nm_leaseterm);
 	reqtime = time_second;
-	nfsm_request(vp, NQNFSPROC_GETLEASE, td, NFSVPCRED(vp));
+	nfsm_request(vp, NQNFSPROC_GETLEASE, td, nfs_vpcred(vp, rwflag));
 	np = VTONFS(vp);
 	nfsm_dissect(tl, u_int32_t *, 4 * NFSX_UNSIGNED);
 	cachable = fxdr_unsigned(int, *tl++);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.7 2003/08/07 21:17:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.8 2003/10/10 22:01:13 dillon Exp $
  */
 
 
@@ -53,8 +53,8 @@
 #include "rpcv2.h"
 #include "nfsproto.h"
 #include "nfs.h"
-#include "nfsnode.h"
 #include "nfsmount.h"
+#include "nfsnode.h"
 
 static vm_zone_t nfsnode_zone;
 static LIST_HEAD(nfsnodehashhead, nfsnode) *nfsnodehashtbl;
@@ -277,6 +277,14 @@ nfs_reclaim(ap)
 	}
 	if (np->n_fhsize > NFS_SMALLFH) {
 		FREE((caddr_t)np->n_fhp, M_NFSBIGFH);
+	}
+	if (np->n_rucred) {
+		crfree(np->n_rucred);
+		np->n_rucred = NULL;
+	}
+	if (np->n_wucred) {
+		crfree(np->n_wucred);
+		np->n_wucred = NULL;
 	}
 
 	cache_purge(vp);

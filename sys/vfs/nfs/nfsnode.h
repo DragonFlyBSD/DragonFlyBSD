@@ -35,7 +35,7 @@
  *
  *	@(#)nfsnode.h	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/nfs/nfsnode.h,v 1.32.2.1 2001/06/26 04:20:11 bp Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.5 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsnode.h,v 1.6 2003/10/10 22:01:13 dillon Exp $
  */
 
 
@@ -75,16 +75,19 @@ struct nfsdmap {
 
 /*
  * The nfsnode is the nfs equivalent to ufs's inode. Any similarity
- * is purely coincidental.
- * There is a unique nfsnode allocated for each active file,
- * each current directory, each mounted-on file, text file, and the root.
+ * is purely coincidental.  There is a unique nfsnode allocated for
+ * each active file, each current directory, each mounted-on file,
+ * text file, and the root.
+ *
  * An nfsnode is 'named' by its file handle. (nget/nfs_node.c)
- * If this structure exceeds 256 bytes (it is currently 256 using 4.4BSD-Lite
- * type definitions), file handles of > 32 bytes should probably be split out
- * into a separate MALLOC()'d data structure. (Reduce the size of nfsfh_t by
- * changing the definition in nfsproto.h of NFS_SMALLFH.)
- * NB: Hopefully the current order of the fields is such that everything will
- *     be well aligned and, therefore, tightly packed.
+ *
+ * File handles are accessed via n_fhp, which will point to n_fh if the
+ * file handle is small enough (<= NFS_SMALLFH).  Otherwise the file handle 
+ * will be allocated.
+ *
+ * DragonFly does not pass ucreds to read and write operations, since such
+ * operations are not possible unless the ucred has already been validated.
+ * Validating ucreds are stored in nfsnode to pass on to NFS read/write RPCs.
  */
 struct nfsnode {
 	struct lock		n_lock;
@@ -102,6 +105,8 @@ struct nfsnode {
 	time_t			n_ctime;	/* Prev create time. */
 	time_t			n_expiry;	/* Lease expiry time */
 	nfsfh_t			*n_fhp;		/* NFS File Handle */
+	struct ucred		*n_rucred;
+	struct ucred		*n_wucred;
 	struct vnode		*n_vnode;	/* associated vnode */
 	struct lockf		*n_lockf;	/* Locking record of file */
 	int			n_error;	/* Save write error value */
@@ -183,6 +188,19 @@ void
 nfs_rsunlock(struct nfsnode *np, struct thread *td)
 {
 	(void)lockmgr(&np->n_rslock, LK_RELEASE, NULL, td);
+}
+
+static __inline
+struct ucred *
+nfs_vpcred(struct vnode *vp, int ndflag)
+{
+	struct nfsnode *np = VTONFS(vp);
+
+	if (np && (ndflag & ND_WRITE) && np->n_wucred)
+		return(np->n_wucred);
+	if (np && (ndflag & ND_READ) && np->n_rucred)
+		return(np->n_rucred);
+	return(VFSTONFS((vp)->v_mount)->nm_cred);
 }
 
 extern	vop_t	**fifo_nfsv2nodeop_p;

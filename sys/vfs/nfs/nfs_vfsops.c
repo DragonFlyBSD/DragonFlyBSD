@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.8 2003/08/20 09:56:33 rob Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.9 2003/10/10 22:01:13 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -64,8 +64,8 @@
 #include "rpcv2.h"
 #include "nfsproto.h"
 #include "nfs.h"
-#include "nfsnode.h"
 #include "nfsmount.h"
+#include "nfsnode.h"
 #include "xdr_subs.h"
 #include "nfsm_subs.h"
 #include "nfsdiskless.h"
@@ -333,7 +333,7 @@ nfs_fsinfo(struct nfsmount *nmp, struct vnode *vp, struct thread *td)
 	nfsstats.rpccnt[NFSPROC_FSINFO]++;
 	nfsm_reqhead(vp, NFSPROC_FSINFO, NFSX_FH(1));
 	nfsm_fhtom(vp, 1);
-	nfsm_request(vp, NFSPROC_FSINFO, td, NFSVPCRED(vp));
+	nfsm_request(vp, NFSPROC_FSINFO, td, nfs_vpcred(vp, ND_READ));
 	nfsm_postop_attr(vp, retattr);
 	if (!error) {
 		nfsm_dissect(fsp, struct nfsv3_fsinfo *, NFSX_V3FSINFO);
