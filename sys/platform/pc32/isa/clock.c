@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.14 2004/04/04 08:00:06 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.15 2004/07/20 04:12:08 dillon Exp $
  */
 
 /*
@@ -560,17 +560,13 @@ calibrate_clocks(void)
 	if (tsc_present) 
 		tsc_freq = rdtsc() - old_tsc;
 
-	if (bootverbose) {
-		if (tsc_present)
-		        printf("TSC clock: %u Hz, ", tsc_freq);
-	        printf("i8254 clock: %u Hz\n", tot_count);
-	}
+	if (tsc_present)
+		printf("TSC clock: %u Hz, ", tsc_freq);
+	printf("i8254 clock: %u Hz\n", tot_count);
 	return (tot_count);
 
 fail:
-	if (bootverbose)
-	        printf("failed, using default i8254 clock of %u Hz\n",
-		       cputimer_freq);
+	printf("failed, using default i8254 clock of %u Hz\n", cputimer_freq);
 	return (cputimer_freq);
 }
 
@@ -1079,4 +1075,31 @@ _TSTMP(u_int32_t x)
 	tsc[i] = 0; /* mark last entry */
 }
 #endif /* KERN_TIMESTAMP */
+
+/*
+ *
+ */
+
+static int
+hw_i8254_timestamp(SYSCTL_HANDLER_ARGS)
+{
+    sysclock_t count;
+    __uint64_t tscval;
+    char buf[32];
+
+    crit_enter();
+    count = cputimer_count();
+    if (tsc_present)
+	tscval = rdtsc();
+    else
+	tscval = 0;
+    crit_exit();
+    snprintf(buf, sizeof(buf), "%08x %016llx", count, (long long)tscval);
+    return(SYSCTL_OUT(req, buf, strlen(buf) + 1));
+}
+
+SYSCTL_NODE(_hw, OID_AUTO, i8254, CTLFLAG_RW, 0, "I8254");
+SYSCTL_UINT(_hw_i8254, OID_AUTO, freq, CTLFLAG_RD, &cputimer_freq, 0, "");
+SYSCTL_PROC(_hw_i8254, OID_AUTO, timestamp, CTLTYPE_STRING|CTLFLAG_RD,
+		0, 0, hw_i8254_timestamp, "A", "");
 
