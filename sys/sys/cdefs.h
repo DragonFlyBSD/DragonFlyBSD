@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.13 2005/02/03 17:11:54 joerg Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.14 2005/02/04 22:28:23 joerg Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -151,15 +151,9 @@
 
 #else
 
-#if !__GNUC_PREREQ__(2, 5)
+#if !__GNUC_PREREQ__(2, 7)
 #define __dead2
 #define __pure2
-#define __unused
-#endif
-
-#if __GNUC__ == 2 && __GNUC_MINOR__ >= 5 && __GNUC_MINOR__ < 7
-#define __dead2		__attribute__((__noreturn__))
-#define __pure2		__attribute__((__const__))
 #define __unused
 #endif
 
@@ -186,29 +180,24 @@
 #define __used		__unused
 #endif
 
-/* XXX: should use `#if __STDC_VERSION__ < 199901'. */
-#if !__GNUC_PREREQ__(2, 7)
+#endif	/* LINT */
+
+#if !__GNUC_PREREQ__(2, 7) && __STDC_VERSION < 199901
 #define __func__        NULL
 #endif
 
-#endif	/* LINT */
-
-/* XXX: should use `#if __STDC_VERSION__ < 199901'. */
-#if !(__GNUC__ == 2 && __GNUC_MINOR__ >= 7 || __GNUC__ >= 3)
-#define	__func__	NULL
-#endif
-
-#if __GNUC__ >= 2 && !defined(__STRICT_ANSI__) || __STDC_VERSION__ >= 199901
+#if (__GNUC_PREREQ__(2, 0) && !defined(__STRICT_ANSI)) || \
+    __STDC_VERSION__ >= 199901
 #define	__LONG_LONG_SUPPORTED
 #endif
 
 /*
- * GCC 2.95 provides `__restrict' as an extention to C90 to support the
- * C99-specific `restrict' type qualifier.  We happen to use `__restrict' as
- * a way to define the `restrict' type qualifier without disturbing older
+ * GCC 2.95 and later provides `__restrict' as an extention to C90 to support
+ * the C99-specific `restrict' type qualifier.  We happen to use `__restrict'
+ * as a way to define the `restrict' type qualifier without disturbing older
  * software that is unaware of C99 keywords.
  */
-#if !(__GNUC__ == 2 && __GNUC_MINOR__ == 95)
+#if !__GNUC_PREREQ__(2, 95)
 #if __STDC_VERSION__ < 199901
 #define	__restrict
 #else
@@ -224,11 +213,11 @@
  *
  * The printf0like macro for GCC 2 uses DragonFly specific compiler extensions.
  */
-#if __GNUC__ < 2 || __GNUC__ == 2 && __GNUC_MINOR__ < 7
+#if !__GNUC_PREREQ__(2, 7)
 #define	__printflike(fmtarg, firstvararg)
 #define	__scanflike(fmtarg, firstvararg)
 #define	__printf0like(fmtarg, firstvararg)
-#elif __GNUC__ >= 3
+#elif __GNUC_PREREQ__(3, 0)
 #define	__printflike(fmtarg, firstvararg) \
             __attribute__((__nonnull__(fmtarg), \
 			  __format__ (__printf__, fmtarg, firstvararg)))
@@ -246,7 +235,7 @@
 	    __attribute__((__format__ (__scanf__, fmtarg, firstvararg)))
 #endif
 
-#if __GNUC__ < 3
+#if !__GNUC_PREREQ__(3, 0)
 #define __ARRAY_ZERO	0
 #else
 #define __ARRAY_ZERO
@@ -292,7 +281,6 @@
 #ifdef __GNUC__
 #define __strong_reference(sym,aliassym)	\
 	extern __typeof (sym) aliassym __attribute__ ((__alias__ (#sym)));
-#ifdef __STDC__
 #define	__weak_reference(sym,alias)	\
 	__asm__(".weak " #alias);	\
 	__asm__(".equ "  #alias ", " #sym)
@@ -300,15 +288,6 @@
 	__asm__(".section .gnu.warning." #sym);	\
 	__asm__(".asciz \"" msg "\"");	\
 	__asm__(".previous")
-#else
-#define	__weak_reference(sym,alias)	\
-	__asm__(".weak alias");		\
-	__asm__(".equ alias, sym")
-#define	__warn_references(sym,msg)	\
-	__asm__(".section .gnu.warning.sym"); \
-	__asm__(".asciz \"msg\"");	\
-	__asm__(".previous")
-#endif	/* __STDC__ */
 #endif	/* __GNUC__ */
 
 #if defined(__GNUC__)
@@ -435,6 +414,11 @@
 #define	__XSI_VISIBLE		0
 #define	__BSD_VISIBLE		0
 #define	__ISO_C_VISIBLE		1990
+#elif defined(_C99_SOURCE)	/* Localism to specify strict C99 env. */
+#define	__POSIX_VISIBLE		0
+#define	__XSI_VISIBLE		0
+#define	__BSD_VISIBLE		0
+#define	__ISO_C_VISIBLE		1999
 #else				/* Default environment: show everything. */
 #define	__POSIX_VISIBLE		200112
 #define	__XSI_VISIBLE		600
