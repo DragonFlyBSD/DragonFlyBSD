@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.38 2005/02/07 20:39:01 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.39 2005/03/13 15:58:56 eirikn Exp $
  */
 
 /*
@@ -625,7 +625,6 @@ vm_map_lookup_entry(vm_map_t map, vm_offset_t address,
 		} else {
 			tmp = RB_LEFT(tmp, rb_entry);
 		}
-		*entry = last;
 	}
 	*entry = last;
 	return (FALSE);
