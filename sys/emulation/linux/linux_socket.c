@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.15 2003/10/15 06:38:46 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.16 2004/01/09 21:49:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -422,6 +422,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 {
 	struct linux_accept_args linux_args;
 	struct sockaddr *sa = NULL;
+	union fcntl_dat dat = { 0 };
 	int error, sa_len;
 
 	error = copyin(args, &linux_args, sizeof(linux_args));
@@ -465,7 +466,7 @@ linux_accept(struct linux_accept_args *args, int *res)
 	 * accepted one, so we must clear the flags in the new descriptor.
 	 * Ignore any errors, because we already have an open fd.
 	 */
-	kern_fcntl(*res, F_SETFL, 0);
+	kern_fcntl(*res, F_SETFL, &dat);
 	return (0);
 }
 
@@ -481,6 +482,7 @@ linux_getsockname(struct linux_getsockname_args *args, int *res)
 	struct linux_getsockname_args linux_args;
 	struct sockaddr *sa = NULL;
 	int error, sa_len;
+         
 
 	error = copyin(args, &linux_args, sizeof(linux_args));
 	if (error)
