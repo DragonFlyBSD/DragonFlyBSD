@@ -1,4 +1,4 @@
-$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/target.c.patch,v 1.2 2004/10/24 18:05:10 joerg Exp $
+$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/target.c.patch,v 1.3 2005/01/12 11:24:24 joerg Exp $
 
 --- target.c	Mon Aug 26 12:18:33 2002
 +++ target.c	Sun Oct 13 10:51:32 2002
@@ -7,7 +7,7 @@ $DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/target.c.patch,v 1.2 2004/10/2
         ++t)
      {
 -      if ((*t)->to_stratum == core_stratum)
-+      if ((*t)->to_stratum == (kernel_debugging ? kcore_stratum : core_stratum))
++      if ((*t)->to_stratum == (kernel_debugging ? kgdb_stratum : core_stratum))
  	{
  	  runable = *t;
  	  ++count;

@@ -1,5 +1,5 @@
 /* $FreeBSD: ports/devel/gdb6/files/kvm-fbsd.c,v 1.2 2004/06/20 22:22:02 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.2 2004/10/24 18:05:10 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd.c,v 1.3 2005/01/12 11:24:24 joerg Exp $ */
 
 /* Kernel core dump functions below target vector, for GDB.
    Copyright 1986, 1987, 1989, 1991, 1992, 1993, 1994, 1995
@@ -36,14 +36,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <sys/param.h>
 #include <sys/user.h>
 #include <machine/frame.h>
-//#include <sys/proc.h>
-//#include <sys/sysctl.h>
-//#include <sys/time.h>
-//#include <sys/user.h>
 
 #include <ctype.h>
-//#include <errno.h>
-//#include <signal.h>
 #include <fcntl.h>
 #include <kvm.h>
 #include <sys/sysctl.h>
@@ -54,7 +48,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include "gdb_string.h"
 #include "frame.h"  /* required by inferior.h */
 #include "inferior.h"
-//#include "symtab.h"
 #include "symfile.h"
 #include "objfiles.h"
 #include "command.h"
@@ -70,10 +63,10 @@ static void
 kcore_files_info (struct target_ops *);
 
 static void
-kcore_close (int);
+kgdb_close (int);
 
 static void
-get_kcore_registers (int);
+kgdb_get_registers (int);
 
 
 	/*
@@ -90,7 +83,7 @@ static kvm_t		*core_kd;
 static struct pcb	cur_pcb;
 static struct kinfo_proc *cur_proc;
 
-static struct target_ops kcore_ops;
+static struct target_ops kgdb_ops;
 
 int kernel_debugging;
 int kernel_writablecore;
@@ -221,7 +214,7 @@ set_context (CORE_ADDR addr)
 
 /* ARGSUSED */
 static void
-kcore_close (int quitting)
+kgdb_close (int quitting)
 {
 
   inferior_ptid = null_ptid;	/* Avoid confusion from thread stuff.  */
@@ -238,7 +231,7 @@ kcore_close (int quitting)
 /* This routine opens and sets up the core file bfd.  */
 
 static void
-kcore_open (char *filename /* the core file */, int from_tty)
+kgdb_open (char *filename /* the core file */, int from_tty)
 {
   kvm_t *kd;
   const char *p;
@@ -288,10 +281,10 @@ kcore_open (char *filename /* the core file */, int from_tty)
 
   discard_cleanups (old_chain);		/* Don't free filename any more.  */
   core_file = filename;
-  unpush_target (&kcore_ops);
-  ontop = !push_target (&kcore_ops);
+  unpush_target (&kgdb_ops);
+  ontop = !push_target (&kgdb_ops);
 
-  /* Note unpush_target (above) calls kcore_close.  */
+  /* Note unpush_target (above) calls kgdb_close.  */
   core_kd = kd;
 
   /* Print out the panic string if there is one.  */
@@ -336,11 +329,11 @@ kcore_open (char *filename /* the core file */, int from_tty)
 }
 
 static void
-kcore_detach (char *args, int from_tty)
+kgdb_detach (char *args, int from_tty)
 {
   if (args)
     error ("Too many arguments");
-  unpush_target (&kcore_ops);
+  unpush_target (&kgdb_ops);
   reinit_frame_cache ();
   if (from_tty)
     printf_filtered ("No kernel core file now.\n");
@@ -354,7 +347,7 @@ kcore_detach (char *args, int from_tty)
 
 /* ARGSUSED */
 static void
-get_kcore_registers (int regno)
+kgdb_gdb_registers (int regno)
 {
 
   /* XXX - Only read the pcb when set_context() is called.
@@ -363,11 +356,11 @@ get_kcore_registers (int regno)
      grab a new copy of the pcb...  */
 
   /* Zero out register set then fill in the ones we know about.  */
-  fetch_kcore_registers (&cur_pcb);
+  kgdb_fetch_registers (&cur_pcb);
 }
 
 static void
-kcore_files_info (t)
+kgdb_files_info (t)
   struct target_ops *t;
 {
   printf_filtered ("\t`%s'\n", core_file);
@@ -434,25 +427,25 @@ xfer_umem (CORE_ADDR memaddr, char *myaddr, int len, int write /* ignored */)
 }
 
 void
-_initialize_kcorelow (void)
+_initialize_kgdblow (void)
 {
-  kcore_ops.to_shortname = "kcore";
-  kcore_ops.to_longname = "Kernel core dump file";
-  kcore_ops.to_doc =
+  kgdb_ops.to_shortname = "kgdb";
+  kgdb_ops.to_longname = "Kernel core dump file";
+  kgdb_ops.to_doc =
     "Use a core file as a target.  Specify the filename of the core file.";
-  kcore_ops.to_open = kcore_open;
-  kcore_ops.to_close = kcore_close;
-  kcore_ops.to_attach = find_default_attach;
-  kcore_ops.to_detach = kcore_detach;
-  kcore_ops.to_fetch_registers = get_kcore_registers;
-  kcore_ops.to_xfer_memory = xfer_kmem;
-  kcore_ops.to_files_info = kcore_files_info;
-  kcore_ops.to_create_inferior = find_default_create_inferior;
-  kcore_ops.to_stratum = kcore_stratum;
-  kcore_ops.to_has_memory = 1;
-  kcore_ops.to_has_stack = 1;
-  kcore_ops.to_has_registers = 1;
-  kcore_ops.to_magic = OPS_MAGIC;
+  kgdb_ops.to_open = kgdb_open;
+  kgdb_ops.to_close = kgdb_close;
+  kgdb_ops.to_attach = find_default_attach;
+  kgdb_ops.to_detach = kgdb_detach;
+  kgdb_ops.to_fetch_registers = kgdb_gdb_registers;
+  kgdb_ops.to_xfer_memory = xfer_kmem;
+  kgdb_ops.to_files_info = kgdb_files_info;
+  kgdb_ops.to_create_inferior = find_default_create_inferior;
+  kgdb_ops.to_stratum = kgdb_stratum;
+  kgdb_ops.to_has_memory = 1;
+  kgdb_ops.to_has_stack = 1;
+  kgdb_ops.to_has_registers = 1;
+  kgdb_ops.to_magic = OPS_MAGIC;
 
-  add_target (&kcore_ops);
+  add_target (&kgdb_ops);
 }

@@ -1,5 +1,5 @@
 /* $FreeBSD: ports/devel/gdb6/files/kvm-fbsd-i386.h,v 1.1 2004/06/20 22:22:02 obrien Exp $ */
-/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd-i386.h,v 1.2 2004/10/24 18:05:10 joerg Exp $ */
+/* $DragonFly: src/gnu/usr.bin/gdb/gdb/Attic/kvm-fbsd-i386.h,v 1.3 2005/01/12 11:24:24 joerg Exp $ */
 
 /* Kernel core dump functions below target vector, for GDB on FreeBSD/i386.
    Copyright 1986, 1987, 1989, 1991, 1992, 1993, 1994, 1995
@@ -103,7 +103,7 @@ fbsd_kern_frame_saved_pc (struct frame_info *fi)
 }
 
 static void
-fetch_kcore_registers (struct pcb *pcb)
+kgdb_fetch_registers (struct pcb *pcb)
 {
   int i;
   int noreg;

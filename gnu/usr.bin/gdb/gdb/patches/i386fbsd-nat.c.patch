@@ -1,0 +1,17 @@
+$DragonFly: src/gnu/usr.bin/gdb/gdb/patches/Attic/i386fbsd-nat.c.patch,v 1.1 2005/01/12 11:24:24 joerg Exp $
+
+Index: i386fbsd-nat.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/gdb-6.2.1/gdb/i386fbsd-nat.c,v
+retrieving revision 1.1
+diff -u -r1.1 i386fbsd-nat.c
+--- i386fbsd-nat.c	24 Oct 2004 19:56:25 -0000	1.1
++++ i386fbsd-nat.c	12 Jan 2005 11:20:57 -0000
+@@ -141,7 +141,4 @@
+       }
+   }
+ #endif
+-
+-  /* Support debugging kernel virtual memory images.  */
+-  bsd_kvm_add_target (i386fbsd_supply_pcb);
+ }

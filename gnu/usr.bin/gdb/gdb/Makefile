@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.5 2004/11/17 12:27:59 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/gdb/gdb/Makefile,v 1.6 2005/01/12 11:24:24 joerg Exp $
 
 .include "../Makefile.inc"
 
@@ -27,7 +27,7 @@ SRCS+=	nm.h observer.h tm.h xm.h
 
 # libgdb
 SRCS+=	annotate.c arch-utils.c auxv.c ax-gdb.c ax-general.c bcache.c
-SRCS+=	bfd-target.c block.c blockframe.c breakpoint.c bsd-kvm.c buildsym.c
+SRCS+=	bfd-target.c block.c blockframe.c breakpoint.c buildsym.c
 SRCS+=	c-exp.y c-lang.c c-typeprint.c c-valprint.c charset.c cli-cmds.c
 SRCS+=	cli-decode.c cli-dump.c cli-interp.c cli-logging.c cli-out.c
 SRCS+=	cli-script.c cli-setshow.c cli-utils.c coff-pe-read.c coffread.c
