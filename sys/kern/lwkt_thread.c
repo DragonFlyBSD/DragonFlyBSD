@@ -23,12 +23,19 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	Each cpu in a system has its own self-contained light weight kernel
- *	thread scheduler, which means that generally speaking we only need
- *	to use a critical section to avoid problems.  Foreign thread 
- *	scheduling is queued via (async) IPIs.
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.40 2003/11/03 02:08:35 dillon Exp $
+ */
+
+/*
+ * Each cpu in a system has its own self-contained light weight kernel
+ * thread scheduler, which means that generally speaking we only need
+ * to use a critical section to avoid problems.  Foreign thread 
+ * scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.39 2003/11/03 00:39:07 dillon Exp $
+ * NOTE: on UP machines smp_active is defined to be 0.  On SMP machines
+ * smp_active is 0 prior to SMP activation, then it is 1.  The LWKT module
+ * uses smp_active to optimize UP builds and to avoid sending IPIs during
+ * early boot (primarily interrupt and network thread initialization).
  */
 
 #include <sys/param.h>
@@ -55,9 +62,7 @@
 
 #include <machine/stdarg.h>
 #include <machine/ipl.h>
-#ifdef SMP
 #include <machine/smp.h>
-#endif
 
 static int untimely_switch = 0;
 SYSCTL_INT(_lwkt, OID_AUTO, untimely_switch, CTLFLAG_RW, &untimely_switch, 0, "");
@@ -81,6 +86,11 @@ SYSCTL_QUAD(_lwkt, OID_AUTO, ipiq_fifofull, CTLFLAG_RW, &ipiq_fifofull, 0, "");
 /*
  * These helper procedures handle the runq, they can only be called from
  * within a critical section.
+ *
+ * WARNING!  Prior to SMP being brought up it is possible to enqueue and
+ * dequeue threads belonging to other cpus, so be sure to use td->td_gd
+ * instead of 'mycpu' when referencing the globaldata structure.   Once
+ * SMP live enqueuing and dequeueing only occurs on the current cpu.
  */
 static __inline
 void
@@ -88,7 +98,7 @@ _lwkt_dequeue(thread_t td)
 {
     if (td->td_flags & TDF_RUNQ) {
 	int nq = td->td_pri & TDPRI_MASK;
-	struct globaldata *gd = mycpu;
+	struct globaldata *gd = td->td_gd;
 
 	td->td_flags &= ~TDF_RUNQ;
 	TAILQ_REMOVE(&gd->gd_tdrunq[nq], td, td_threadq);
@@ -102,7 +112,7 @@ _lwkt_enqueue(thread_t td)
 {
     if ((td->td_flags & TDF_RUNQ) == 0) {
 	int nq = td->td_pri & TDPRI_MASK;
-	struct globaldata *gd = mycpu;
+	struct globaldata *gd = td->td_gd;
 
 	td->td_flags |= TDF_RUNQ;
 	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
@@ -146,13 +156,14 @@ lwkt_init_wait(lwkt_wait_t w)
 
 /*
  * Create a new thread.  The thread must be associated with a process context
- * or LWKT start address before it can be scheduled.
+ * or LWKT start address before it can be scheduled.  If the target cpu is
+ * -1 the thread will be created on the current cpu.
  *
  * If you intend to create a thread without a process context this function
  * does everything except load the startup and switcher function.
  */
 thread_t
-lwkt_alloc_thread(struct thread *td)
+lwkt_alloc_thread(struct thread *td, int cpu)
 {
     void *stack;
     int flags = 0;
@@ -179,7 +190,10 @@ lwkt_alloc_thread(struct thread *td)
 	stack = (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
 	flags |= TDF_ALLOCATED_STACK;
     }
-    lwkt_init_thread(td, stack, flags, mycpu);
+    if (cpu < 0)
+	lwkt_init_thread(td, stack, flags, mycpu);
+    else
+	lwkt_init_thread(td, stack, flags, globaldata_find(cpu));
     return(td);
 }
 
@@ -187,13 +201,24 @@ lwkt_alloc_thread(struct thread *td)
  * Initialize a preexisting thread structure.  This function is used by
  * lwkt_alloc_thread() and also used to initialize the per-cpu idlethread.
  *
- * NOTE!  called from low level boot code, we cannot do anything fancy!
- * Only the low level boot code will call this function with gd != mycpu.
- *
  * All threads start out in a critical section at a priority of
  * TDPRI_KERN_DAEMON.  Higher level code will modify the priority as
- * appropriate.
+ * appropriate.  This function may send an IPI message when the 
+ * requested cpu is not the current cpu and consequently gd_tdallq may
+ * not be initialized synchronously from the point of view of the originating
+ * cpu.
+ *
+ * NOTE! we have to be careful in regards to creating threads for other cpus
+ * if SMP has not yet been activated.
  */
+static void
+lwkt_init_thread_remote(void *arg)
+{
+    thread_t td = arg;
+
+    TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
+}
+
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 {
@@ -204,9 +229,13 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     td->td_pri = TDPRI_KERN_DAEMON + TDPRI_CRIT;
     lwkt_init_port(&td->td_msgport, td);
     pmap_init_thread(td);
-    crit_enter();
-    TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
-    crit_exit();
+    if (smp_active == 0 || gd == mycpu) {
+	crit_enter();
+	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
+	crit_exit();
+    } else {
+	lwkt_send_ipiq(gd->gd_cpuid, lwkt_init_thread_remote, td);
+    }
 }
 
 void
@@ -717,7 +746,7 @@ lwkt_schedule(thread_t td)
 		TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 		--w->wa_count;
 		td->td_wait = NULL;
-		if (td->td_gd == mycpu) {
+		if (smp_active == 0 || td->td_gd == mycpu) {
 		    _lwkt_enqueue(td);
 		    if (td->td_preemptable) {
 			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
@@ -738,7 +767,7 @@ lwkt_schedule(thread_t td)
 	     * do not own the thread there might be a race but the
 	     * target cpu will deal with it.
 	     */
-	    if (td->td_gd == mycpu) {
+	    if (smp_active == 0 || td->td_gd == mycpu) {
 		_lwkt_enqueue(td);
 		if (td->td_preemptable) {
 		    td->td_preemptable(td, TDPRI_CRIT);
@@ -1167,13 +1196,13 @@ lwkt_inittoken(lwkt_token_t tok)
  */
 int
 lwkt_create(void (*func)(void *), void *arg,
-    struct thread **tdp, thread_t template, int tdflags,
+    struct thread **tdp, thread_t template, int tdflags, int cpu,
     const char *fmt, ...)
 {
     thread_t td;
     va_list ap;
 
-    td = lwkt_alloc_thread(template);
+    td = lwkt_alloc_thread(template, cpu);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);
@@ -1233,7 +1262,7 @@ kthread_create(void (*func)(void *), void *arg,
     thread_t td;
     va_list ap;
 
-    td = lwkt_alloc_thread(NULL);
+    td = lwkt_alloc_thread(NULL, -1);
     if (tdp)
 	*tdp = td;
     cpu_set_thread_handler(td, kthread_exit, func, arg);

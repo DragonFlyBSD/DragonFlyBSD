@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.14 2003/10/25 17:39:22 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.15 2003/11/03 02:08:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -672,7 +672,8 @@ sched_thread_init(void)
     int cpuid = mycpu->gd_cpuid;
 
     lwkt_create(sched_thread, NULL, NULL, &mycpu->gd_schedthread, 
-	TDF_STOPREQ, "usched %d", cpuid);
+		TDF_STOPREQ, -1,
+		"usched %d", cpuid);
     curprocmask &= ~(1 << cpuid);	/* schedule user proc on cpu */
 #ifdef ONLY_ONE_USER_CPU
     if (cpuid)

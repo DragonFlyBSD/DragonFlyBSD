@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/include/smp.h,v 1.50.2.5 2001/02/13 22:32:45 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.7 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/include/smp.h,v 1.8 2003/11/03 02:08:33 dillon Exp $
  *
  */
 
@@ -158,6 +158,8 @@ extern volatile int		smp_idle_loops;
 
 #endif /* !LOCORE */
 #else	/* !SMP && !APIC_IO */
+
+#define	smp_active	0	/* smp_active always 0 on UP machines */
 
 #endif
 

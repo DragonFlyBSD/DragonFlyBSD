@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.35 2003/10/16 22:26:42 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.36 2003/11/03 02:08:36 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -176,7 +176,7 @@ struct thread {
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
 #define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
 
-#define TDF_ONALLQ		0x0100	/* on gd_tdallq */
+#define TDF_UNUSED0100		0x0100
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
 #define TDF_ALLOCATED_STACK	0x0400	/* zalloc allocated stack */
 #define TDF_VERBOSE		0x0800	/* verbose on exit */
@@ -222,7 +222,7 @@ struct thread {
 
 extern struct vm_zone	*thread_zone;
 
-extern struct thread *lwkt_alloc_thread(struct thread *template);
+extern struct thread *lwkt_alloc_thread(struct thread *template, int cpu);
 extern void lwkt_init_thread(struct thread *td, void *stack, int flags,
 	struct globaldata *gd);
 extern void lwkt_set_comm(thread_t td, const char *ctl, ...);
@@ -266,7 +266,7 @@ extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 
 extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
-			    struct thread *template, int tdflags,
+			    struct thread *template, int tdflags, int cpu,
 			    const char *ctl, ...);
 extern void lwkt_exit (void) __dead2;
 
