@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_fsm.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_fsm.h,v 1.14 1999/11/07 04:18:30 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp_fsm.h,v 1.3 2004/08/11 02:36:22 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_fsm.h,v 1.4 2004/09/22 05:00:06 joerg Exp $
  */
 
 #ifndef _NETINET_TCP_FSM_H_
@@ -107,7 +107,7 @@ int	tcp_acounts[TCP_NSTATES][PRU_NREQ];
 #endif
 
 #ifdef	TCPSTATES
-char *tcpstates[] = {
+char char *tcpstates[] = {
 	"TERMINATING",
 	"CLOSED",	"LISTEN",	"SYN_SENT",	"SYN_RCVD",
 	"ESTABLISHED",	"CLOSE_WAIT",	"FIN_WAIT_1",	"CLOSING",
