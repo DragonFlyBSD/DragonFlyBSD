@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.6 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.7 2004/03/08 03:22:46 dillon Exp $
  */
 
 #include <ctype.h>
@@ -98,7 +98,7 @@ ID	[A-Za-z_][-A-Za-z_0-9]*
 			if ((i = kw_lookup(yytext)) == -1)
 			{
 				yylval.str = strdup(yytext);
-				return ID;
+				return(ID);
 			}
 			return(i);
 		}
@@ -206,6 +206,6 @@ hex(char *str)
 {
 	int num;
 
-	(void)sscanf(str+2, "%x", &num);
+	(void)sscanf(str + 2, "%x", &num);
 	return(num);
 }

@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.9 2004/03/05 08:03:31 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.10 2004/03/08 03:22:46 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ options(void)
 	/* Fake the cpu types as options. */
 	for (cp = cputype; cp != NULL; cp = cp->cpu_next) {
 		op = (struct opt *)malloc(sizeof(*op));
-		memset(op, 0, sizeof(*op));
+		bzero(op, sizeof(*op));
 		op->op_name = ns(cp->cpu_name);
 		op->op_next = opt;
 		opt = op;
@@ -82,7 +82,7 @@ options(void)
 
 	/* Fake MAXUSERS as an option. */
 	op = (struct opt *)malloc(sizeof(*op));
-	memset(op, 0, sizeof(*op));
+	bzero(op, sizeof(*op));
 	op->op_name = "MAXUSERS";
 	snprintf(buf, sizeof(buf), "%d", maxusers);
 	op->op_value = ns(buf);

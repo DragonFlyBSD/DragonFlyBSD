@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.10 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.11 2004/03/08 03:22:46 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -76,11 +76,13 @@ static void usage(void);
  * system given a description of the desired system.
  */
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
 	struct stat buf;
-	int ch, len;
+	int ch, len, i;
 	char *p;
+	char linksrc[64], linkdest[MAXPATHLEN];
+	static char *emus[] = { "linux", "svr4" };
 
 	while ((ch = getopt(argc, argv, "d:gprn")) != -1)
 		switch (ch) {
@@ -158,57 +160,48 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	newbus_ioconf();
+	
 	/*
 	 * make symbolic links in compilation directory
 	 * for "sys" (to make genassym.c work along with #include <sys/xxx>)
 	 * and similarly for "machine".
 	 */
-	{
-	char xxx[MAXPATHLEN];
 	if (*srcdir == '\0')
-		(void)snprintf(xxx, sizeof(xxx), "../../%s/include",
+		snprintf(linkdest, sizeof(linkdest), "../../%s/include",
 		    machinename);
 	else
-		(void)snprintf(xxx, sizeof(xxx), "%s/%s/include",
+		snprintf(linkdest, sizeof(linkdest), "%s/%s/include",
 		    srcdir, machinename);
-	(void)symlink(xxx, path("machine"));
-	}
+	symlink(linkdest, path("machine"));
 
 	/*
 	 * XXX check directory structure for architecture subdirectories and
 	 * create the symlinks automatically XXX
 	 */
-	{
-	char xxx[MAXPATHLEN];
 	if (*srcdir == '\0')
-		(void)snprintf(xxx, sizeof(xxx), "../../../../../net/i4b/include/%s",
+		snprintf(linkdest, sizeof(linkdest),
+		    "../../../../../net/i4b/include/%s",
 		    machinename);
 	else
-		(void)snprintf(xxx, sizeof(xxx), "%s/net/i4b/include/%s",
+		snprintf(linkdest, sizeof(linkdest), "%s/net/i4b/include/%s",
 		    srcdir, machinename);
-	(void)mkdir(path("net"), 0755);
-	(void)mkdir(path("net/i4b"), 0755);
-	(void)mkdir(path("net/i4b/include"), 0755);
-	(void)symlink(xxx, path("net/i4b/include/machine"));
-	}
+	mkdir(path("net"), 0755);
+	mkdir(path("net/i4b"), 0755);
+	mkdir(path("net/i4b/include"), 0755);
+	symlink(linkdest, path("net/i4b/include/machine"));
 
-	{
-	    static char *ary[] = { "linux", "svr4" };
-	    char xxx[MAXPATHLEN];
-	    char yyy[64];
-	    int i;
-
-	    for (i = 0; i < sizeof(ary) / sizeof(ary[0]); ++i) {
+	for (i = 0; i < sizeof(emus) / sizeof(emus[0]); ++i) {
 		if (*srcdir == 0)  {
-		    snprintf(xxx, sizeof(xxx), "../../emulation/%s/%s",
-			ary[i], machinename);
+			snprintf(linkdest, sizeof(linkdest),
+			    "../../emulation/%s/%s",
+			    emus[i], machinename);
 		} else {
-		    snprintf(xxx, sizeof(xxx), "%s/emulation/%s/%s",
-			srcdir, ary[i], machinename);
+			snprintf(linkdest, sizeof(linkdest),
+			    "%s/emulation/%s/%s",
+			    srcdir, emus[i], machinename);
 		}
-		snprintf(yyy, sizeof(yyy), "arch_%s", ary[i]);
-		symlink(xxx, path(yyy));
-	    }
+		snprintf(linksrc, sizeof(linksrc), "arch_%s", emus[i]);
+		symlink(linkdest, path(linksrc));
 	}
 
 	options();			/* make options .h files */
@@ -216,7 +209,7 @@ main(int argc, char **argv)
 	headers();			/* make a lot of .h files */
 	configfile();			/* put config file into kernel*/
 	printf("Kernel build directory is %s\n", p);
-	exit(0);
+	exit(EX_OK);
 }
 
 /*
@@ -305,7 +298,7 @@ begin:
 			break;
 	if (ch == EOF)
 		return((char *)EOF);
-	if (ch == '\\'){
+	if (ch == '\\') {
 		escaped_nl = 1;
 		goto begin;
 	}

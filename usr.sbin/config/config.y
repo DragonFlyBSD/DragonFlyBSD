@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.7 2004/03/04 20:44:49 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.8 2004/03/08 03:22:46 dillon Exp $
  */
 
 #include <ctype.h>
@@ -145,7 +145,7 @@ Config_spec:
 		struct cputype *cp;
 
 		cp = (struct cputype *)malloc(sizeof(struct cputype));
-		memset(cp, 0, sizeof(*cp));
+		bzero(cp, sizeof(*cp));
 		cp->cpu_name = $2;
 		cp->cpu_next = cputype;
 		cputype = cp;
@@ -174,7 +174,7 @@ System_id:
 		struct opt *op;
 
 		op = (struct opt *)malloc(sizeof(struct opt));
-		memset(op, 0, sizeof(*op));
+		bzero(op, sizeof(*op));
 		op->op_name = ns("KERNEL");
 		op->op_ownfile = 0;
 		op->op_next = mkopt;
@@ -233,10 +233,9 @@ Option:
 	Save_id
 	      = {
 		struct opt *op;
-		char *s;
 		
 		op = (struct opt *)malloc(sizeof(struct opt));
-		memset(op, 0, sizeof(*op));
+		bzero(op, sizeof(*op));
 		op->op_name = $1;
 		op->op_next = opt;
 		op->op_value = 0;
@@ -246,7 +245,7 @@ Option:
 		 */
 		op->op_line = yyline;
 		opt = op;
-		if ((s = strchr(op->op_name, '=')))
+		if (strchr(op->op_name, '=') != NULL)
 			errx(1, "line %d: The `=' in options should not be quoted", yyline);
 	      } |
 	Save_id EQUALS Opt_value
@@ -254,7 +253,7 @@ Option:
 		struct opt *op;
 
 		op = (struct opt *)malloc(sizeof(struct opt));
-		memset(op, 0, sizeof(*op));
+		bzero(op, sizeof(*op));
 		op->op_name = $1;
 		op->op_next = opt;
 		op->op_value = $3;
@@ -290,7 +289,7 @@ Mkoption:
 		struct opt *op;
 
 		op = (struct opt *)malloc(sizeof(struct opt));
-		memset(op, 0, sizeof(*op));
+		bzero(op, sizeof(*op));
 		op->op_name = $1;
 		op->op_ownfile = 0;	/* for now */
 		op->op_next = mkopt;
@@ -429,7 +428,7 @@ newdev(struct device *dp)
 		}
 	}
 	np = (struct device *)malloc(sizeof(*np));
-	memset(np, 0, sizeof(*np));
+	bzero(np, sizeof(*np));
 	*np = *dp;
 	np->d_next = NULL;
 	if (curp == NULL)
@@ -486,8 +485,8 @@ init_dev(struct device *dp)
 	dp->d_conn = 0;
 	dp->d_disabled = 0;
 	dp->d_flags = 0;
-	dp->d_bus = dp->d_lun = dp->d_target = dp->d_drive = dp->d_unit = \
-		dp->d_count = UNKNOWN;
+	dp->d_bus = dp->d_lun = dp->d_target = dp->d_drive = dp->d_unit =
+	    dp->d_count = UNKNOWN;
 	dp->d_port = NULL;
 	dp->d_portn = -1;
 	dp->d_irq = -1;
