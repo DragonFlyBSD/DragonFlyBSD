@@ -28,23 +28,25 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/spray/spray.c,v 1.5.2.2 2001/07/30 10:23:00 dd Exp $
- * $DragonFly: src/usr.sbin/spray/spray.c,v 1.3 2004/11/16 19:06:29 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/spray/spray.c,v 1.4 2005/03/19 17:43:18 liamfoy Exp $
  */
-
-#include <err.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include <rpc/rpc.h>
 #include <rpcsvc/spray.h>
+
+#include <err.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #ifndef SPRAYOVERHEAD
 #define SPRAYOVERHEAD	86
 #endif
 
-static void usage(void);
-static void print_xferstats(unsigned int, int, double);
+static void	usage(void);
+static void	print_xferstats(unsigned int, int, double);
+static int	getnum(const char *);
 
 /* spray buffer */
 char spray_buffer[SPRAYMAX];
@@ -70,13 +72,13 @@ main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "c:d:l:")) != -1) {
 		switch (c) {
 		case 'c':
-			count = atoi(optarg);
+			count = getnum(optarg);
 			break;
 		case 'd':
-			delay = atoi(optarg);
+			delay = getnum(optarg);
 			break;
 		case 'l':
-			length = atoi(optarg);
+			length = getnum(optarg);
 			break;
 		default:
 			usage();
@@ -119,9 +121,10 @@ main(int argc, char *argv[])
 	
 
 	/* create connection with server */
-	if ((cl = clnt_create(*argv, SPRAYPROG, SPRAYVERS, "udp")) == NULL)
+	if ((cl = clnt_create(*argv, SPRAYPROG, SPRAYVERS, "udp")) == NULL) {
 		clnt_pcreateerror(getprogname());
-
+		exit(1);
+	}
 
 	/*
 	 * For some strange reason, RPC 4.0 sets the default timeout, 
@@ -145,7 +148,7 @@ main(int argc, char *argv[])
 	fflush (stdout);
 
 	for (i = 0; i < count; i++) {
-		clnt_call(cl, SPRAYPROC_SPRAY, xdr_sprayarr, &host_array, xdr_void, NULL, ONE_WAY);
+		clnt_call(cl, SPRAYPROC_SPRAY, (xdrproc_t)xdr_sprayarr, &host_array, xdr_void, NULL, ONE_WAY);
 
 		if (delay) {
 			usleep(delay);
@@ -154,7 +157,7 @@ main(int argc, char *argv[])
 
 
 	/* Collect statistics from server */
-	if (clnt_call(cl, SPRAYPROC_GET, xdr_void, NULL, xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS) {
+	if (clnt_call(cl, SPRAYPROC_GET, xdr_void, NULL, (xdrproc_t)xdr_spraycumul, &host_stats, TIMEOUT) != RPC_SUCCESS) {
 		clnt_perror(cl, getprogname());
 		exit(1);
 	}
@@ -208,6 +211,18 @@ print_xferstats(u_int packets, int packetlen, double xfertime)
 	printf("bytes/sec\n");
 }
 
+static int
+getnum(const char *arg)
+{
+	char *ep;
+	long tmp;
+
+	tmp = strtol(arg, &ep, 10);
+	if (*ep != NULL || tmp < INT_MIN || tmp > INT_MAX)
+		errx(1, "invalid value: %s", arg);
+
+	return((int)tmp);
+}
 
 static void
 usage(void)
