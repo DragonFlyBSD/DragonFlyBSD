@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.11 2004/12/09 19:16:03 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.12 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -80,8 +80,6 @@ typedef enum {
 struct Lst {
 	LstNode  	firstPtr; /* first node in list */
 	LstNode  	lastPtr;  /* last node in list */
-	Boolean	  	isCirc;	  /* true if the list should be considered
-				   * circular */
 	/*
 	 * fields for sequential access
 	 */
@@ -114,7 +112,7 @@ typedef	void FreeProc(void *);
  * Creation/destruction functions
  */
 /* Create a new list */
-Lst		Lst_Init(Boolean);
+Lst		Lst_Init(void);
 /* Duplicate an existing list */
 Lst		Lst_Duplicate(Lst, DuplicateProc *);
 /* Destroy an old one */

@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.33 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.34 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -559,11 +559,11 @@ main(int argc, char **argv)
 			machine_cpu = "unknown";
 	}
 
-	create = Lst_Init(FALSE);
-	makefiles = Lst_Init(FALSE);
-	envFirstVars = Lst_Init(FALSE);
+	create = Lst_Init();
+	makefiles = Lst_Init();
+	envFirstVars = Lst_Init();
 	expandVars = TRUE;
-	variables = Lst_Init(FALSE);
+	variables = Lst_Init();
 	beSilent = FALSE;		/* Print commands as executed */
 	ignoreErrors = FALSE;		/* Pay attention to non-zero returns */
 	noExecute = FALSE;		/* Execute all commands */
@@ -741,7 +741,7 @@ main(int argc, char **argv)
 	if (!noBuiltins) {
 		LstNode ln;
 
-		sysMkPath = Lst_Init(FALSE);
+		sysMkPath = Lst_Init();
 		Dir_Expand(_PATH_DEFSYSMK, sysIncPath, sysMkPath);
 		if (Lst_IsEmpty(sysMkPath))
 			Fatal("make: no system rules (%s).", _PATH_DEFSYSMK);

@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.16 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.17 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -333,7 +333,7 @@ Arch_ParseArchive(char **linePtr, Lst nodeLst, GNode *ctxt)
 	     */
 	    free(buf);
 	} else if (Dir_HasWildcards(memName)) {
-	    Lst	  members = Lst_Init(FALSE);
+	    Lst	  members = Lst_Init();
 	    char  *member;
 	    size_t sz = MAXPATHLEN;
 	    size_t nsz;
@@ -1189,7 +1189,7 @@ void
 Arch_Init(void)
 {
 
-    archives = Lst_Init(FALSE);
+    archives = Lst_Init();
 }
 
 /*-

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInsert.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInsert.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
  *
  * @(#)lstInsert.c	8.1 (Berkeley) 6/6/93
  */
@@ -88,11 +88,7 @@ Lst_Insert(Lst list, LstNode ln, void *d)
     nLNode->useCount = nLNode->flags = 0;
 
     if (ln == NULL) {
-	if (list->isCirc) {
-	    nLNode->prevPtr = nLNode->nextPtr = nLNode;
-	} else {
-	    nLNode->prevPtr = nLNode->nextPtr = NULL;
-	}
+	nLNode->prevPtr = nLNode->nextPtr = NULL;
 	list->firstPtr = list->lastPtr = nLNode;
     } else {
 	nLNode->prevPtr = ln->prevPtr;

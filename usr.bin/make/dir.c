@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.20 2004/12/16 23:22:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.21 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -208,8 +208,8 @@ void
 Dir_Init(void)
 {
 
-	dirSearchPath = Lst_Init(FALSE);
-	openDirectories = Lst_Init(FALSE);
+	dirSearchPath = Lst_Init();
+	openDirectories = Lst_Init();
 	Hash_InitTable(&mtimes, 0);
 }
 
@@ -620,7 +620,7 @@ Dir_Expand(char *word, Lst path, Lst expansions)
 
 						if (*dp == '/')
 							*dp = '\0';
-						path = Lst_Init(FALSE);
+						path = Lst_Init();
 						Dir_AddDir(path, dirpath);
 						DirExpandInt(cp + 1, path,
 						    expansions);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInit.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.5 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.6 2004/12/16 23:24:10 okumoto Exp $
  *
  * @(#)lstInit.c	8.1 (Berkeley) 6/6/93
  */
@@ -55,16 +55,13 @@
  * Results:
  *	The created list.
  *
- * Arguments:
- *	 circ	TRUE if the list should be made circular
- *
  * Side Effects:
  *	A list is created, what else?
  *
  *-----------------------------------------------------------------------
  */
 Lst
-Lst_Init(Boolean circ)
+Lst_Init(void)
 {
     Lst	nList;
 
@@ -73,7 +70,6 @@ Lst_Init(Boolean circ)
     nList->firstPtr = NULL;
     nList->lastPtr = NULL;
     nList->isOpen = FALSE;
-    nList->isCirc = circ;
     nList->atEnd = LstUnknown;
 
     return (nList);

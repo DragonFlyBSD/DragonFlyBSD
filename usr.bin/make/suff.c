@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.16 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.17 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -443,7 +443,7 @@ Suff_ClearSuffixes(void)
 {
 
     Lst_Concat(suffClean, sufflist, LST_CONCLINK);
-    sufflist = Lst_Init(FALSE);
+    sufflist = Lst_Init();
     sNum = 1;
     suffNull = emptySuff;
     /*
@@ -453,7 +453,7 @@ Suff_ClearSuffixes(void)
      * suffNull should not have parents.
      */
     Lst_Destroy(suffNull->children, NOFREE);
-    suffNull->children = Lst_Init(FALSE);
+    suffNull->children = Lst_Init();
 }
 
 /*-
@@ -595,8 +595,8 @@ Suff_AddTransform(char *line)
 	gn = Lst_Datum(ln);
 	Lst_Destroy(gn->commands, NOFREE);
 	Lst_Destroy(gn->children, NOFREE);
-	gn->commands = Lst_Init(FALSE);
-	gn->children = Lst_Init(FALSE);
+	gn->commands = Lst_Init();
+	gn->children = Lst_Init();
     }
 
     gn->type = OP_TRANSFORM;
@@ -775,10 +775,10 @@ Suff_AddSuffix(char *str)
 
 	s->name = estrdup(str);
 	s->nameLen = strlen (s->name);
-	s->searchPath = Lst_Init(FALSE);
-	s->children = Lst_Init(FALSE);
-	s->parents = Lst_Init(FALSE);
-	s->ref = Lst_Init(FALSE);
+	s->searchPath = Lst_Init();
+	s->children = Lst_Init();
+	s->parents = Lst_Init();
+	s->ref = Lst_Init();
 	s->sNum = sNum++;
 	s->flags = 0;
 	s->refCount = 0;
@@ -852,8 +852,8 @@ Suff_DoPaths(void)
 	return;
     }
 
-    inIncludes = Lst_Init(FALSE);
-    inLibs = Lst_Init(FALSE);
+    inIncludes = Lst_Init();
+    inLibs = Lst_Init();
 
     while ((ln = Lst_Next(sufflist)) != NULL) {
 	s = Lst_Datum(ln);
@@ -986,7 +986,7 @@ SuffAddSrc(void *sp, void *lsp)
 	targ->children += 1;
 	Lst_AtEnd(ls->l, s2);
 #ifdef DEBUG_SRC
-	s2->cp = Lst_Init(FALSE);
+	s2->cp = Lst_Init();
 	Lst_AtEnd(targ->cp, s2);
 	printf("1 add %x %x to %x:", targ, s2, ls->l);
 	Lst_ForEach(ls->l, PrintAddr, (void *)NULL);
@@ -1004,7 +1004,7 @@ SuffAddSrc(void *sp, void *lsp)
     targ->children += 1;
     Lst_AtEnd(ls->l, s2);
 #ifdef DEBUG_SRC
-    s2->cp = Lst_Init(FALSE);
+    s2->cp = Lst_Init();
     Lst_AtEnd(targ->cp, s2);
     printf("2 add %x %x to %x:", targ, s2, ls->l);
     Lst_ForEach(ls->l, PrintAddr, (void *)NULL);
@@ -1234,7 +1234,7 @@ SuffFindCmds (Src *targ, Lst slst)
 		    ret->children = 0;
 		    targ->children += 1;
 #ifdef DEBUG_SRC
-		    ret->cp = Lst_Init(FALSE);
+		    ret->cp = Lst_Init();
 		    printf("3 add %x %x\n", targ, ret);
 		    Lst_AtEnd(targ->cp, ret);
 #endif
@@ -1292,7 +1292,7 @@ SuffExpandChildren(void *cgnp, void *pgnp)
 	cp = Var_Subst(NULL, cgn->name, pgn, TRUE);
 
 	if (cp != NULL) {
-	    Lst	    members = Lst_Init(FALSE);
+	    Lst	    members = Lst_Init();
 
 	    if (cgn->type & OP_ARCHV) {
 		/*
@@ -1431,7 +1431,7 @@ SuffExpandChildren(void *cgnp, void *pgnp)
 	/*
 	 * Expand the word along the chosen path
 	 */
-	exp = Lst_Init(FALSE);
+	exp = Lst_Init();
 	Dir_Expand(cgn->name, path, exp);
 
 	while (!Lst_IsEmpty(exp)) {
@@ -1745,8 +1745,8 @@ SuffFindNormalDeps(GNode *gn, Lst slst)
      * Begin at the beginning...
      */
     ln = Lst_First(sufflist);
-    srcs = Lst_Init(FALSE);
-    targs = Lst_Init(FALSE);
+    srcs = Lst_Init();
+    targs = Lst_Init();
 
     /*
      * We're caught in a catch-22 here. On the one hand, we want to use any
@@ -1788,7 +1788,7 @@ SuffFindNormalDeps(GNode *gn, Lst slst)
 	    target->parent = NULL;
 	    target->children = 0;
 #ifdef DEBUG_SRC
-	    target->cp = Lst_Init(FALSE);
+	    target->cp = Lst_Init();
 #endif
 
 	    /*
@@ -1832,7 +1832,7 @@ SuffFindNormalDeps(GNode *gn, Lst slst)
 	targ->children = 0;
 	targ->pref = estrdup(sopref);
 #ifdef DEBUG_SRC
-	targ->cp = Lst_Init(FALSE);
+	targ->cp = Lst_Init();
 #endif
 
 	/*
@@ -2226,10 +2226,10 @@ void
 Suff_Init(void)
 {
 
-    sufflist = Lst_Init(FALSE);
-    suffClean = Lst_Init(FALSE);
-    srclist = Lst_Init(FALSE);
-    transforms = Lst_Init(FALSE);
+    sufflist = Lst_Init();
+    suffClean = Lst_Init();
+    srclist = Lst_Init();
+    transforms = Lst_Init();
 
     sNum = 0;
     /*
@@ -2241,11 +2241,11 @@ Suff_Init(void)
 
     suffNull->name = estrdup("");
     suffNull->nameLen = 0;
-    suffNull->searchPath = Lst_Init(FALSE);
+    suffNull->searchPath = Lst_Init();
     Dir_Concat(suffNull->searchPath, dirSearchPath);
-    suffNull->children = Lst_Init(FALSE);
-    suffNull->parents = Lst_Init(FALSE);
-    suffNull->ref = Lst_Init(FALSE);
+    suffNull->children = Lst_Init();
+    suffNull->parents = Lst_Init();
+    suffNull->ref = Lst_Init();
     suffNull->sNum = sNum++;
     suffNull->flags = SUFF_NULL;
     suffNull->refCount = 1;

@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.13 2004/12/16 00:17:05 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.14 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -782,7 +782,7 @@ Make_Run(Lst targs)
     Lst		    examine; 	/* List of targets to examine */
     int	    	    errors; 	/* Number of errors the Job module reports */
 
-    toBeMade = Lst_Init(FALSE);
+    toBeMade = Lst_Init();
 
     examine = Lst_Duplicate(targs, NOCOPY);
     numNodes = 0;

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.29 2004/12/16 21:38:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.30 2004/12/16 23:24:09 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2185,8 +2185,8 @@ Job_Init(int maxproc)
     struct sigaction sa;
 
     fifoFd = -1;
-    jobs = Lst_Init(FALSE);
-    stoppedJobs = Lst_Init(FALSE);
+    jobs = Lst_Init();
+    stoppedJobs = Lst_Init();
     env = getenv("MAKE_JOBS_FIFO");
 
     if (env == NULL && maxproc > 1) {

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstConcat.c,v 1.7 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
  *
  * @(#)lstConcat.c	8.1 (Berkeley) 6/6/93
  */
@@ -85,12 +85,11 @@ Lst_Concat(Lst list1, Lst list2, int flags)
     if (flags == LST_CONCLINK) {
 	if (list2->firstPtr != NULL) {
 	    /*
-	     * We set the nextPtr of the
-	     * last element of list two to be NULL to make the loop easier and
-	     * so we don't need an extra case should the first list turn
-	     * out to be non-circular -- the final element will already point
-	     * to NULL space and the first element will be untouched if it
-	     * existed before and will also point to NULL space if it didn't.
+	     * We set the nextPtr of the last element of list two to be NULL
+	     * to make the loop easier and so we don't need an extra case --
+	     * the final element will already point to NULL space and the first
+	     * element will be untouched if it existed before and will also
+	     * point to NULL space if it didn't.
 	     */
 	    list2->lastPtr->nextPtr = NULL;
 	    /*
@@ -108,15 +107,6 @@ Lst_Concat(Lst list1, Lst list2, int flags)
 		list1->firstPtr = list2->firstPtr;
 	    }
 	    list1->lastPtr = list2->lastPtr;
-	}
-	if (list1->isCirc && list1->firstPtr != NULL) {
-	    /*
-	     * If the first list is supposed to be circular and it is (now)
-	     * non-empty, we must make sure it's circular by linking the
-	     * first element to the last and vice versa
-	     */
-	    list1->firstPtr->prevPtr = list1->lastPtr;
-	    list1->lastPtr->nextPtr = list1->firstPtr;
 	}
 	free(list2);
     } else if (list2->firstPtr != NULL) {
@@ -154,23 +144,7 @@ Lst_Concat(Lst list1, Lst list2, int flags)
 	 * of list one.
 	 */
 	list1->lastPtr = last;
-
-	/*
-	 * The circularity of both list one and list two must be corrected
-	 * for -- list one because of the new nodes added to it; list two
-	 * because of the alteration of list2->lastPtr's nextPtr to ease the
-	 * above for loop.
-	 */
-	if (list1->isCirc) {
-	    list1->lastPtr->nextPtr = list1->firstPtr;
-	    list1->firstPtr->prevPtr = list1->lastPtr;
-	} else {
-	    last->nextPtr = NULL;
-	}
-
-	if (list2->isCirc) {
-	    list2->lastPtr->nextPtr = list2->firstPtr;
-	}
+	last->nextPtr = NULL;
     }
 
     return (SUCCESS);

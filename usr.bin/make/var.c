@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.22 2004/12/16 22:20:12 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.23 2004/12/16 23:24:09 okumoto Exp $
  */
 
 /*-
@@ -1947,7 +1947,7 @@ Var_Init(void)
 
     VAR_GLOBAL = Targ_NewGN("Global");
     VAR_CMD = Targ_NewGN("Command");
-    allVars = Lst_Init(FALSE);
+    allVars = Lst_Init();
 
 }
 

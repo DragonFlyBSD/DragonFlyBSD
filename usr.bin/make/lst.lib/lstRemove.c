@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstRemove.c,v 1.6 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.6 2004/12/10 19:22:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.7 2004/12/16 23:24:10 okumoto Exp $
  *
  * @(#)lstRemove.c	8.1 (Berkeley) 6/6/93
  */
@@ -106,8 +106,7 @@ Lst_Remove(Lst list, LstNode ln)
 
     /*
      * the only way firstPtr can still point to ln is if ln is the last
-     * node on the list (the list is circular, so ln->nextptr == ln in
-     * this case). The list is, therefore, empty and is marked as such
+     * node on the list. The list is, therefore, empty and is marked as such
      */
     if (list->firstPtr == ln) {
 	list->firstPtr = NULL;

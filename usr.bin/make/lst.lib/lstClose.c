@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstClose.c,v 1.6 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.4 2004/12/08 11:26:39 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstClose.c,v 1.5 2004/12/16 23:24:10 okumoto Exp $
  *
  * @(#)lstClose.c	8.1 (Berkeley) 6/6/93
  */
@@ -44,9 +44,8 @@
  *	Close a list for sequential access.
  *	The sequential functions access the list in a slightly different way.
  *	CurPtr points to their idea of the current node in the list and they
- *	access the list based on it. Because the list is circular, Lst_Next
- *	and Lst_Prev will go around the list forever. Lst_IsAtEnd must be
- *	used to determine when to stop.
+ *	access the list based on it. Lst_IsAtEnd must be used to determine
+ *	when to stop.
  */
 
 #include "make.h"
