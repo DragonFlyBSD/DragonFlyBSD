@@ -1,5 +1,5 @@
 #	$NetBSD: Makefile,v 1.8 2004/01/01 02:44:09 mrg Exp $
-# $DragonFly: src/usr.bin/gzip/Makefile,v 1.1 2004/10/26 11:19:31 joerg Exp $
+# $DragonFly: src/usr.bin/gzip/Makefile,v 1.2 2004/10/31 10:26:26 joerg Exp $
 
 PROG=		gzip
 SRCS=		gzip.c
@@ -11,7 +11,7 @@ WARNS=		6
 
 NOSHARED?=	yes
 
-.if !defined(GZIP_UNCOMPRESS)
+.if defined(NO_GZIP_UNCOMPRESS)
 CFLAGS+=	-DNO_COMPRESS_SUPPORT
 .endif
 .if defined(GZIP_UNBZIP2)
