@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.6 2003/07/29 21:13:49 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.7 2003/07/29 21:24:33 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -33,13 +33,13 @@
 
 static MALLOC_DEFINE(M_ZONE, "ZONE", "Zone header");
 
-#define ZONE_ERROR_INVALID 0
-#define ZONE_ERROR_NOTFREE 1
-#define ZONE_ERROR_ALREADYFREE 2
+#define	ZONE_ERROR_INVALID 0
+#define	ZONE_ERROR_NOTFREE 1
+#define	ZONE_ERROR_ALREADYFREE 2
 
-#define ZONE_ROUNDING	32
+#define	ZONE_ROUNDING	32
 
-#define ZENTRY_FREE	0x12342378
+#define	ZENTRY_FREE	0x12342378
 
 static void *zget(vm_zone_t z);
 
