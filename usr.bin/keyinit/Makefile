@@ -1,8 +1,9 @@
 #	@(#)Makefile	5.6 (Berkeley) 3/5/91
 # $FreeBSD: src/usr.bin/keyinit/Makefile,v 1.6.6.1 2001/04/25 11:29:24 ru Exp $
-# $DragonFly: src/usr.bin/keyinit/Makefile,v 1.2 2003/06/17 04:29:27 dillon Exp $
+# $DragonFly: src/usr.bin/keyinit/Makefile,v 1.3 2005/01/16 21:14:51 cpressey Exp $
 
 PROG=	keyinit
+WARNS?=	6
 SRCS=	skeyinit.c
 
 CFLAGS+= -D_SKEY_INTERNAL
