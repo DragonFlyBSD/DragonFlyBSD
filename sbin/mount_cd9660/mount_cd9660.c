@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_cd9660.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mount_cd9660/mount_cd9660.c,v 1.15.2.3 2001/03/14 12:05:01 bp Exp $
- * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.4 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_cd9660/mount_cd9660.c,v 1.5 2005/04/02 21:43:15 dillon Exp $
  */
 
 #include <sys/cdio.h>
@@ -67,11 +67,11 @@ struct mntopt mopts[] = {
 	{ "rrip", 1, ISOFSMNT_NORRIP, 1 },
 	{ "joliet", 1, ISOFSMNT_NOJOLIET, 1 },
 	{ "strictjoliet", 1, ISOFSMNT_BROKENJOLIET, 1 },
-	{ NULL }
+	MOPT_NULL
 };
 
-int	get_ssector(const char *dev);
-void	usage(void);
+static int	get_ssector(const char *dev);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -176,7 +176,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
@@ -184,7 +184,7 @@ usage(void)
 	exit(EX_USAGE);
 }
 
-int
+static int
 get_ssector(const char *dev)
 {
 	struct ioc_toc_header h;

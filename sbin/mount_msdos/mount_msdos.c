@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/mount_msdos/mount_msdos.c,v 1.19.2.1 2000/07/20 10:35:13 kris Exp $
- * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_msdos/mount_msdos.c,v 1.7 2005/04/02 21:41:06 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ static struct mntopt mopts[] = {
 	{ "shortnames", 0, MSDOSFSMNT_SHORTNAME, 1 },
 	{ "longnames", 0, MSDOSFSMNT_LONGNAME, 1 },
 	{ "nowin95", 0, MSDOSFSMNT_NOWIN95, 1 },
-	{ NULL }
+	MOPT_NULL
 };
 
 static gid_t	a_gid(char *);
@@ -185,7 +185,7 @@ main(int argc, char **argv)
 	exit (0);
 }
 
-gid_t
+static gid_t
 a_gid(char *s)
 {
 	struct group *gr;
@@ -204,7 +204,7 @@ a_gid(char *s)
 	return (gid);
 }
 
-uid_t
+static uid_t
 a_uid(char *s)
 {
 	struct passwd *pw;
@@ -223,7 +223,7 @@ a_uid(char *s)
 	return (uid);
 }
 
-mode_t
+static mode_t
 a_mask(char *s)
 {
 	int done, rv;
@@ -240,7 +240,7 @@ a_mask(char *s)
 	return (rv);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s\n%s\n", 
@@ -249,7 +249,7 @@ usage(void)
 	exit(EX_USAGE);
 }
 
-void
+static void
 load_u2wtable (struct msdosfs_args *pargs, char *name)
 {
 	FILE *f;
@@ -314,7 +314,7 @@ code, code + 1, code + 2, code + 3, code + 4, code + 5, code + 6, code + 7) != 8
 	fclose(f);
 }
 
-void
+static void
 load_ultable (struct msdosfs_args *pargs, char *name)
 {
 	int i;

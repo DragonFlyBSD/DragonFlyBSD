@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_union.c	8.5 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_union/mount_union.c,v 1.12 1999/10/09 11:54:14 phk Exp $
- * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_union/mount_union.c,v 1.7 2005/04/02 21:42:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@
 
 static struct mntopt mopts[] = {
 	MOPT_STDOPTS,
-	{ NULL }
+	MOPT_NULL
 };
 
 static int	subdir(const char *, const char *);
@@ -122,7 +122,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-int
+static int
 subdir(const char *p, const char *dir)
 {
 	int l;
@@ -137,7 +137,7 @@ subdir(const char *p, const char *dir)
 	return (0);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr,
