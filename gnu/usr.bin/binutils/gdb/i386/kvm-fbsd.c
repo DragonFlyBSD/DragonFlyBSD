@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/gnu/usr.bin/binutils/gdb/i386/kvm-fbsd.c,v 1.17.4.3 2001/12/17 23:06:06 peter Exp $ */
-/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.5 2004/01/16 07:45:20 dillon Exp $ */
+/* $DragonFly: src/gnu/usr.bin/binutils/gdb/i386/Attic/kvm-fbsd.c,v 1.6 2004/03/10 23:26:45 dillon Exp $ */
 
 #define _KERNEL_STRUCTURES
 
@@ -66,11 +66,11 @@ static int xfer_umem PARAMS ((CORE_ADDR, char *, int, int));
 
 static CORE_ADDR ksym_lookup PARAMS ((const char *));
 
-static int read_pcb PARAMS ((int, CORE_ADDR));
+static int read_pcb PARAMS ((int, CORE_ADDR, CORE_ADDR));
 
-static struct proc * curProc PARAMS ((void));
+static struct thread * curThread PARAMS ((void));
 
-static int set_proc_context PARAMS ((CORE_ADDR paddr));
+static int set_thread_context PARAMS ((CORE_ADDR paddr));
 
 static void kcore_open PARAMS ((char *filename, int from_tty));
 
@@ -103,7 +103,7 @@ static int kernel_core_file_hook PARAMS ((int fd, CORE_ADDR addr,
 					  char *buf, int len));
 
 static struct kinfo_proc * kvm_getprocs PARAMS ((int cfd, int op,
-						CORE_ADDR proc, int *cnt));
+						CORE_ADDR td, int *cnt));
 
 extern struct target_ops kcore_ops;	/* Forward decl */
 
@@ -113,7 +113,7 @@ int kernel_writablecore = 0;
 
 static char *core_file;
 static int core_kd = -1;
-static struct proc *cur_proc;
+static struct thread *cur_td;
 static CORE_ADDR kernel_start;
 
 static int ncpus;
@@ -191,21 +191,26 @@ const char *name;
 	return SYMBOL_VALUE_ADDRESS (sym);
 }
 
-static struct proc *
-curProc ()
+static struct thread *
+curThread ()
 {
     CORE_ADDR td_ptr_addr;
     CORE_ADDR td_ptr;
+#if 0
     CORE_ADDR p_ptr_addr;
     CORE_ADDR p_ptr;
+#endif
 
     td_ptr_addr = prv_start + offsetof(struct mdglobaldata, mi.gd_curthread);
     if (kvread(td_ptr_addr, &td_ptr) != 0)
 	error ("cannot read thread pointer at %08x\n", td_ptr_addr);
+    return((void *)td_ptr);
+#if 0
     p_ptr_addr = td_ptr + offsetof(struct thread, td_proc);
     if (kvread(p_ptr_addr, &p_ptr) != 0)
 	error ("cannot read proc pointer at %08x\n", p_ptr_addr);
     return((void *)p_ptr);
+#endif
 }
 
 /*
@@ -213,18 +218,15 @@ curProc ()
  * system address paddr.
  */
 static int
-set_proc_context (paddr)
+set_thread_context (paddr)
 	CORE_ADDR paddr;
 {
-  struct proc p;
-
   if (paddr < kernel_start)
     return (1);
 
-  cur_proc = (struct proc *)paddr;
-  printf("CURPROC %08x\n", cur_proc);
+  cur_td = (struct thread *)paddr;
 #ifdef notyet
-  set_kernel_boundaries (cur_proc);
+  set_kernel_boundaries (cur_td);
 #endif
 
   /* Fetch all registers from core file */
@@ -350,7 +352,7 @@ your %s; do ``info files''", target_longname);
     }
 
   /* we may need this later */
-  cur_proc = (struct proc *)curProc ();
+  cur_td = curThread ();
   /* Now, set up the frame cache, and print the top of stack */
   flush_cached_frames ();
   set_current_frame (create_new_frame (read_fp (), read_pc ()));
@@ -390,21 +392,20 @@ get_kcore_registers (int regno)
     void *pcb;
 
     /* find the pcb for the current process */
-    if (cur_proc == NULL)
-	error ("cur_proc is NULL");
-    if (kvread(&cur_proc->p_thread, &td))
-	error ("cannot read cur_proc->p_thread at %p", cur_proc);
+    if (cur_td == NULL)
+	error ("cur_td is NULL");
+    td = cur_td;
     if (kvread(&td->td_pcb, &pcb))
-	error ("cannot read cur_proc->p_thread->td_pcb at %p", td);
+	error ("cannot read cur_td->td_pcb at %p", td);
     /*
      * Hack, gdb using newer structures need to deal with older elements
      * XXX look up the offset in the debug info ?
      */
     if (pcb == (void *)0xff800000) {
 	if (kvread(&td->td_pcb - 1, &pcb))
-	    error ("cannot read cur_proc->p_thread->td_pcb at %p", td);
+	    error ("cannot read cur_td->td_pcb at %p", td);
     }
-    if (read_pcb(core_kd, (CORE_ADDR)pcb) < 0)
+    if (read_pcb(core_kd, (CORE_ADDR)pcb, (CORE_ADDR)td) < 0)
 	error ("cannot read pcb at %p", pcb);
 }
 
@@ -475,11 +476,11 @@ xfer_umem (memaddr, myaddr, len, write)
      int write; /* ignored */
 {
   int n;
-  struct proc proc;
+  struct thread thread;
 
-  if (cur_proc == NULL || kvread (cur_proc, &proc))
-    error ("cannot read proc at %#x", cur_proc);
-  n = kvm_uread (core_kd, &proc, memaddr, myaddr, len) ;
+  if (cur_td == NULL || kvread (cur_td, &thread))
+    error ("cannot read thread at %#x", cur_td);
+  n = kvm_uread (core_kd, &thread, memaddr, myaddr, len) ;
 
   if (n < 0)
     return 0;
@@ -529,13 +530,13 @@ set_proc_cmd (char *arg, int from_tty)
     paddr = (CORE_ADDR)parse_and_eval_address (arg);
     /* assume it's a proc pointer if it's in the kernel */
     if (paddr >= kernel_start) {
-	if (set_proc_context(paddr))
+	if (set_thread_context(paddr))
 	error("invalid proc address");
     } else {
 	kp = kvm_getprocs(core_kd, KERN_PROC_PID, paddr, &cnt);
 	if (!cnt)
 	    error("invalid pid");
-	if (set_proc_context((CORE_ADDR)kp->kp_eproc.e_paddr))
+	if (set_thread_context((CORE_ADDR)kp->kp_proc.p_thread))
 	    error("invalid proc address");
     }
 }
@@ -585,10 +586,10 @@ set_cpu_cmd (arg, from_tty)
     paddr = ksym_lookup ("dumppcb") - KERNOFF;
   else
     paddr = kvtophys (cfd, curpcb);
-  read_pcb (cfd, paddr);
+  read_pcb (cfd, paddr, NULL);
   printf ("initial pcb at %lx\n", (unsigned long)paddr);
 
-  if ((cur_proc = curProc()))
+  if ((cur_td = curThread()))
     target_fetch_registers (-1);
 
   /* Now, set up the frame cache, and print the top of stack */
@@ -645,7 +646,7 @@ kvm_open (efile, cfile, sfile, perm, errout)
     paddr = ksym_lookup ("dumppcb") - KERNOFF;
   else
     paddr = kvtophys (cfd, curpcb);
-  read_pcb (cfd, paddr);
+  read_pcb (cfd, paddr, NULL);
   printf ("initial pcb at physical address 0x%08lx\n", (unsigned long)paddr);
 
   return (cfd);
@@ -937,12 +938,19 @@ kvtophys (fd, addr)
   return (addr);
 }
 
+/*
+ * Read the pcb (setup for backtrace etc).  If a thread pointer is supplied
+ * and the thread is not marked as currently running then get the saved
+ * stack pointer from the thread rather then from the pcb.
+ */
 static int
-read_pcb (int fd, CORE_ADDR pcbaddr)
+read_pcb (int fd, CORE_ADDR pcbaddr, CORE_ADDR tdaddr)
 {
     int i;
     int noreg;
     CORE_ADDR npcbaddr;
+    CORE_ADDR ntdaddr;
+    struct thread thread;
 
     /* need this for the `proc' command to work */
     /* this is a bad hack XXX */
@@ -951,9 +959,38 @@ read_pcb (int fd, CORE_ADDR pcbaddr)
     else
 	npcbaddr = pcbaddr;
 
+    if (tdaddr && INKERNEL(tdaddr))
+	ntdaddr = kvtophys(fd, tdaddr);
+    else
+	ntdaddr = tdaddr;
+
+    if (tdaddr) {
+	if (physrd (fd, (CORE_ADDR)ntdaddr, (char *)&thread, sizeof thread) < 0) {
+	    error ("cannot read thread at %x\n", pcbaddr);
+	    return (-1);
+	}
+    }
+
     if (physrd (fd, (CORE_ADDR)npcbaddr, (char *)&pcb, sizeof pcb) < 0) {
 	error ("cannot read pcb at %x\n", pcbaddr);
 	return (-1);
+    }
+
+    /*
+     * This is a nasty hack for DragonFly, but it works.  The PCB is not
+     * fully used for pure threads which are switched out.  These threads
+     * store partial contexts on their stacks instead and do not bother
+     * keeping the stack frame (ebp) intact either.  This hack allows us
+     * to get working backtraces for such threads.
+     */
+    if (tdaddr && (thread.td_flags & TDF_RUNNING) == 0 && thread.td_proc == NULL) {
+	pcb.pcb_esp = thread.td_sp;
+	tdaddr = thread.td_sp + 5 * sizeof(void *);
+	if (INKERNEL(tdaddr))
+	    ntdaddr = kvtophys(fd, tdaddr);
+	else
+	    ntdaddr = tdaddr;
+	physrd (fd, (CORE_ADDR)ntdaddr, (char *)&pcb.pcb_ebp, sizeof(pcb.pcb_ebp));
     }
     printf("PCB @%08x EIP=%08x ESP=%08x EBP=%08x\n", npcbaddr, pcb.pcb_eip, pcb.pcb_esp, pcb.pcb_ebp);
 
