@@ -39,7 +39,7 @@
  *
  *	@(#)vm_mmap.c	8.4 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_mmap.c,v 1.108.2.6 2002/07/02 20:06:19 dillon Exp $
- * $DragonFly: src/sys/vm/vm_mmap.c,v 1.13 2003/09/26 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_mmap.c,v 1.14 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -901,7 +901,7 @@ mlock(struct mlock_args *uap)
 		return (error);
 #endif
 
-	error = vm_map_user_pageable(&p->p_vmspace->vm_map, addr, addr + size, FALSE);
+	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, FALSE);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 
@@ -953,7 +953,7 @@ munlock(struct munlock_args *uap)
 		return (error);
 #endif
 
-	error = vm_map_user_pageable(&p->p_vmspace->vm_map, addr, addr + size, TRUE);
+	error = vm_map_unwire(&p->p_vmspace->vm_map, addr, addr + size, TRUE);
 	return (error == KERN_SUCCESS ? 0 : ENOMEM);
 }
 

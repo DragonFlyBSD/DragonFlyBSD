@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.10 2003/09/14 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.11 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -1886,7 +1886,7 @@ again1:
 				OFF_TO_IDX(tmp_addr - VM_MIN_KERNEL_ADDRESS));
 			tmp_addr += PAGE_SIZE;
 		}
-		vm_map_pageable(map, addr, addr + size, FALSE);
+		vm_map_wire(map, addr, addr + size, FALSE);
 
 		splx(s);
 		return ((void *)addr);

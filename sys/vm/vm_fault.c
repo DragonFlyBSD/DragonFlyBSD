@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.7 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.8 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -740,7 +740,7 @@ readrest:
 
 		/*
 		 * To avoid trying to write_lock the map while another process
-		 * has it read_locked (in vm_map_pageable), we do not try for
+		 * has it read_locked (in vm_map_wire), we do not try for
 		 * write permission.  If the page is still writable, we will
 		 * get write permission.  If it is not, or has been marked
 		 * needs_copy, we enter the mapping without write permission,

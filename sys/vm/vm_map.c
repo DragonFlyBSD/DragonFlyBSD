@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.12 2003/09/26 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.13 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -1676,7 +1676,7 @@ vm_map_inherit(vm_map_t map, vm_offset_t start, vm_offset_t end,
  * Implement the semantics of mlock
  */
 int
-vm_map_user_pageable(map, start, real_end, new_pageable)
+vm_map_unwire(map, start, real_end, new_pageable)
 	vm_map_t map;
 	vm_offset_t start;
 	vm_offset_t real_end;
@@ -1840,7 +1840,7 @@ done:
 }
 
 /*
- *	vm_map_pageable:
+ *	vm_map_wire:
  *
  *	Sets the pageability of the specified address
  *	range in the target map.  Regions specified
@@ -1854,7 +1854,7 @@ done:
  *	reserve map entries for kernel_map.
  */
 int
-vm_map_pageable(vm_map_t map, vm_offset_t start, 
+vm_map_wire(vm_map_t map, vm_offset_t start, 
 	vm_offset_t real_end, boolean_t new_pageable)
 {
 	vm_map_entry_t entry;

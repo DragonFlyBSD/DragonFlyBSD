@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.6 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.7 2003/10/02 21:00:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -588,7 +588,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
 	/*
 	 * Wire down the pages
 	 */
-	vm_map_pageable(kernel_map,
+	vm_map_wire(kernel_map,
 			(vm_offset_t) segbase,
 			(vm_offset_t) segbase + segs[i]->p_memsz,
 			FALSE);

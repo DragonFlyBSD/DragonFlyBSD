@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.12 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.13 2003/10/02 21:00:20 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -88,7 +88,7 @@ pread (struct proc *procp, unsigned int addr, unsigned int *retval) {
 	if (!rv) {
 		vm_object_reference (object);
 
-		rv = vm_map_pageable (kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 			*retval = 0;
 			bcopy ((caddr_t)kva + page_offset,
@@ -174,7 +174,7 @@ pwrite (struct proc *procp, unsigned int addr, unsigned int datum) {
 	if (!rv) {
 		vm_object_reference (object);
 
-		rv = vm_map_pageable (kernel_map, kva, kva + PAGE_SIZE, 0);
+		rv = vm_map_wire (kernel_map, kva, kva + PAGE_SIZE, 0);
 		if (!rv) {
 		  bcopy (&datum, (caddr_t)kva + page_offset, sizeof datum);
 		}

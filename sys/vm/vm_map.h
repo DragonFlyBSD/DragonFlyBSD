@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.7 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.8 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -384,8 +384,8 @@ int vm_map_lookup (vm_map_t *, vm_offset_t, vm_prot_t, vm_map_entry_t *, vm_obje
     vm_pindex_t *, vm_prot_t *, boolean_t *);
 void vm_map_lookup_done (vm_map_t, vm_map_entry_t, int);
 boolean_t vm_map_lookup_entry (vm_map_t, vm_offset_t, vm_map_entry_t *);
-int vm_map_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
-int vm_map_user_pageable (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
+int vm_map_wire (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
+int vm_map_unwire (vm_map_t, vm_offset_t, vm_offset_t, boolean_t);
 int vm_map_clean (vm_map_t, vm_offset_t, vm_offset_t, boolean_t, boolean_t);
 int vm_map_protect (vm_map_t, vm_offset_t, vm_offset_t, vm_prot_t, boolean_t);
 int vm_map_remove (vm_map_t, vm_offset_t, vm_offset_t);

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.9 2003/09/26 19:23:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.10 2003/10/02 21:00:20 hmp Exp $
  */
 
 /*
@@ -183,12 +183,12 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 
 	/*
 	 * Guarantee that there are pages already in this object before
-	 * calling vm_map_pageable.  This is to prevent the following
+	 * calling vm_map_wire.  This is to prevent the following
 	 * scenario:
 	 *
 	 * 1) Threads have swapped out, so that there is a pager for the
 	 * kernel_object. 2) The kmsg zone is empty, and so we are
-	 * kmem_allocing a new page for it. 3) vm_map_pageable calls vm_fault;
+	 * kmem_allocing a new page for it. 3) vm_map_wire calls vm_fault;
 	 * there is no page, but there is a pager, so we call
 	 * pager_data_request.  But the kmsg zone is empty, so we must
 	 * kmem_alloc. 4) goto 1 5) Even if the kmsg zone is not empty: when
@@ -196,7 +196,7 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 	 * non-zero data.  kmem_alloc is defined to return zero-filled memory.
 	 *
 	 * We're intentionally not activating the pages we allocate to prevent a
-	 * race with page-out.  vm_map_pageable will wire the pages.
+	 * race with page-out.  vm_map_wire will wire the pages.
 	 */
 
 	for (i = 0; i < size; i += PAGE_SIZE) {
@@ -215,7 +215,7 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 	 * And finally, mark the data as non-pageable.
 	 */
 
-	(void) vm_map_pageable(map, (vm_offset_t) addr, addr + size, FALSE);
+	(void) vm_map_wire(map, (vm_offset_t) addr, addr + size, FALSE);
 
 	return (addr);
 }
