@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.3 2003/09/18 21:22:56 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.4 2003/12/01 23:50:20 drhodus Exp $
  */
 
 /*
@@ -848,8 +848,8 @@ uniqid_hash:
  * loaded shared object, whose library search path will be searched.
  *
  * The search order is:
- *   rpath in the referencing file
  *   LD_LIBRARY_PATH
+ *   rpath in the referencing file
  *   ldconfig hints
  *   /usr/lib
  */
