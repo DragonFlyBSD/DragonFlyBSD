@@ -1,5 +1,5 @@
 /* $FreeBSD: src/usr.sbin/pkg_install/lib/lib.h,v 1.29.2.12 2003/06/09 17:01:26 lioux Exp $ */
-/* $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.2 2003/06/17 04:29:59 dillon Exp $ */
+/* $DragonFly: src/usr.sbin/pkg_install/lib/Attic/lib.h,v 1.3 2003/11/19 15:17:29 hmp Exp $ */
 
 /*
  * FreeBSD install - a package for the installation and maintainance
@@ -83,6 +83,15 @@
 /* The name of the "prefix" environment variable given to scripts */
 #define PKG_PREFIX_VNAME	"PKG_PREFIX"
 
+/*
+ * Version of the package tools - increase only when some
+ * functionality used by bsd.port.mk is changed, added or removed
+ */
+#define PKG_INSTALL_VERSION	20030417
+
+#define PKG_WRAPCONF_FNAME	"/var/db/pkg_install.conf"
+#define main(argc, argv)	real_main(argc, argv)
+
 /* Version numbers to assist with changes in package file format */
 #define PLIST_FMT_VER_MAJOR	1
 #define PLIST_FMT_VER_MINOR	1
@@ -91,8 +100,8 @@ enum _plist_t {
     PLIST_FILE, PLIST_CWD, PLIST_CMD, PLIST_CHMOD,
     PLIST_CHOWN, PLIST_CHGRP, PLIST_COMMENT, PLIST_IGNORE,
     PLIST_NAME, PLIST_UNEXEC, PLIST_SRC, PLIST_DISPLAY,
-    PLIST_PKGDEP, PLIST_MTREE, PLIST_DIR_RM, PLIST_IGNORE_INST,
-    PLIST_OPTION, PLIST_ORIGIN, PLIST_DEPORIGIN
+    PLIST_PKGDEP, PLIST_CONFLICTS, PLIST_MTREE, PLIST_DIR_RM, 
+    PLIST_IGNORE_INST, PLIST_OPTION, PLIST_ORIGIN, PLIST_DEPORIGIN
 };
 typedef enum _plist_t plist_t;
 
@@ -192,6 +201,7 @@ Boolean 	make_preserve_name(char *, int, const char *, const char *);
 
 /* For all */
 int		pkg_perform(char **);
+int		real_main(int, char **);
 
 /* Query installed packages */
 char		**matchinstalled(match_t, char **, int *);

@@ -17,7 +17,7 @@
  * This is the main body of the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.57.2.15 2002/09/25 23:22:13 bmah Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.3 2003/11/19 15:17:29 hmp Exp $
  */
 
 #include <err.h>
@@ -70,13 +70,16 @@ pkg_do(char *pkg)
     int code;
     PackingList p;
     struct stat sb;
-    int inPlace;
+    int inPlace, conflictsfound, errcode;
     /* support for separate pre/post install scripts */
     int new_m = 0;
     char pre_script[FILENAME_MAX] = INSTALL_FNAME;
     char post_script[FILENAME_MAX];
     char pre_arg[FILENAME_MAX], post_arg[FILENAME_MAX];
+    char *conflict[2];
+    char **matched;
 
+    conflictsfound = 0;
     code = 0;
     zapLogDir = 0;
     LogDir[0] = '\0';
@@ -245,6 +248,35 @@ pkg_do(char *pkg)
 	      Plist.name);
 	code = 1;
 	goto success;	/* close enough for government work */
+    }
+
+    /* Now check the packing list for conflicts */
+    for (p = Plist.head; p != NULL; p = p->next) {
+	if (p->type == PLIST_CONFLICTS) {
+	    conflict[0] = strdup(p->name);
+	    conflict[1] = NULL;
+	    matched = matchinstalled(MATCH_GLOB, conflict, &errcode);
+	    free(conflict[0]);
+	    if (errcode == 0 && matched != NULL) {
+		int i;
+		for (i = 0; matched[i] != NULL; i++)
+		    if (isinstalledpkg(matched[i])) {
+			warnx("package '%s' conflicts with %s", Plist.name,
+				matched[i]);
+			conflictsfound = 1;
+		    }
+	    }
+
+	    continue;
+	}
+    }
+    if(conflictsfound) {
+	if(!Force) {
+	    warnx("please use pkg_delete first to remove conflicting package(s) or -f to force installation");
+	    code = 1;
+	    goto bomb;
+	} else
+	    warnx("-f specified; proceeding anyway");
     }
 
     /* Now check the packing list for dependencies */

@@ -17,7 +17,7 @@
  * General packing list routines.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/lib/plist.c,v 1.29.2.10 2002/08/31 19:38:55 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/plist.c,v 1.3 2003/11/19 15:17:29 hmp Exp $
  */
 
 #include "lib.h"
@@ -240,6 +240,8 @@ plist_cmd(const char *s, char **arg)
 	return PLIST_DISPLAY;
     else if (!strcmp(cmd, "pkgdep"))
 	return PLIST_PKGDEP;
+    else if (!strcmp(cmd, "conflicts"))
+	return PLIST_CONFLICTS;
     else if (!strcmp(cmd, "mtree"))
 	return PLIST_MTREE;
     else if (!strcmp(cmd, "dirrm"))
@@ -360,6 +362,10 @@ write_plist(Package *pkg, FILE *fp)
 
 	case PLIST_PKGDEP:
 	    fprintf(fp, "%cpkgdep %s\n", CMD_CHAR, plist->name);
+	    break;
+
+	case PLIST_CONFLICTS:
+	    fprintf(fp, "%cconflicts %s\n", CMD_CHAR, plist->name);
 	    break;
 
 	case PLIST_MTREE:
