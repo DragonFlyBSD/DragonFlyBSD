@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/mbuf.9,v 1.27.2.1 2003/05/28 13:53:18 yar Exp $
-.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.2 2003/06/17 04:37:01 dillon Exp $
+.\" $DragonFly: src/share/man/man9/mbuf.9,v 1.3 2004/12/18 21:55:21 liamfoy Exp $
 .\"
 .Dd October 17, 2000
 .Dt MBUF 9
@@ -242,14 +242,14 @@ on failure.
 The
 .Fa how
 argument is to be set to
-.Dv M_WAIT
+.Dv MB_WAIT
 or
-.Dv M_DONTWAIT .
+.Dv MB_DONTWAIT .
 It specifies whether the caller is willing to block if necessary.
 If
 .Fa how
 is set to
-.Dv M_WAIT ,
+.Dv MB_WAIT ,
 a failed allocation will result in the caller being put
 to sleep for a designated
 kern.ipc.mbuf_wait
@@ -261,7 +261,7 @@ functions and macros have the same argument because they may
 at some point need to allocate new mbufs.
 .Pp
 Programmers should be careful not to confuse the mbuf allocation flag
-.Dv M_DONTWAIT
+.Dv MB_DONTWAIT
 with the
 .Xr malloc 9
 allocation flag,
