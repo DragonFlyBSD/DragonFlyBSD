@@ -31,7 +31,7 @@
  *
  * @(#) Copyright (c) 1997, 1998, 1999 Bill Paul. All rights reserved.
  * $FreeBSD: src/usr.sbin/wicontrol/wicontrol.c,v 1.9.2.7 2002/08/03 07:24:17 imp Exp $
- * $DragonFly: src/usr.sbin/wicontrol/Attic/wicontrol.c,v 1.4 2004/07/27 17:07:01 hmp Exp $
+ * $DragonFly: src/usr.sbin/wicontrol/Attic/wicontrol.c,v 1.5 2004/07/27 17:43:28 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -87,11 +87,8 @@ int listaps;
  * Print a value a la the %b format of the kernel's printf
  * (ripped screaming from ifconfig/ifconfig.c)
  */
-void
-printb(s, v, bits)
-	char *s;
-	char *bits;
-	unsigned short v;
+static void
+printb(const char *s, uint32_t v, const char *bits)
 {
 	int i, any = 0;
 	char c;
@@ -395,7 +392,7 @@ wi_printkeys(struct wi_req *wreq)
 	}
 
 	return;
-};
+}
 
 void
 wi_printwords(struct wi_req *wreq)
