@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.9 2004/01/07 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/clock.c,v 1.10 2004/01/08 08:11:12 dillon Exp $
  */
 
 /*
@@ -136,8 +136,6 @@ u_int	stat_imask = SWI_CLOCK_MASK;
 #endif
 u_int	timer_freq = TIMER_FREQ;
 int	timer0_max_count;
-int	timer0_frac_adjust;
-int	timer0_frac_accum;	/* fractional adjustments to match frequency */
 u_int	timer0_frac_freq;
 u_int	tsc_freq;
 int	tsc_is_broken;
@@ -202,6 +200,9 @@ SYSCTL_OPAQUE(_debug, OID_AUTO, i8254_timecounter, CTLFLAG_RD,
 static void
 clkintr(struct clockframe frame)
 {
+	int phase;
+	int delta;
+
 	if (timecounter->tc_get_timecount == i8254_get_timecount) {
 		clock_lock();
 		if (i8254_ticked) {
@@ -221,19 +222,37 @@ clkintr(struct clockframe frame)
 		 * If we did not do this a high frequency would cause the
 		 * actual interrupt rate to seriously diverge from 'hz'.
 		 */
-		timer0_frac_accum += timer0_frac_adjust;
-		if (timer0_frac_accum >= timer0_frac_freq) {
-			timer0_frac_accum -= timer0_frac_freq;
-			outb(TIMER_CNTR0, (timer0_max_count + 1) & 0xff);
-			outb(TIMER_CNTR0, (timer0_max_count + 1) >> 8);
-			++i8254_offset;
-		} else {
-			outb(TIMER_CNTR0, timer0_max_count & 0xff);
-			outb(TIMER_CNTR0, timer0_max_count >> 8);
-		}
 		clkintr_pending = 0;
 		clock_unlock();
 	}
+
+	/*
+	 * Use the previously synchronized timecounter value to phase-sync
+	 * our hz clock interrupt.  We do this by reloading the initial count
+	 * register of timer0, which takes effect the next time it reloads.
+	 */
+	phase = 1000000 / timer0_frac_freq;
+	delta = timecounter->tc_microtime.tv_usec % phase;
+#if 1
+	clock_lock();
+	if (delta < (phase >> 1)) {
+		/*
+		 * Current time is a bit past what we expect, speed up the
+		 * clock interrupt.
+		 */
+		outb(TIMER_CNTR0, timer0_max_count & 0xff);
+		outb(TIMER_CNTR0, timer0_max_count >> 8);
+	} else {
+		/*
+		 * Current time is a bit before what we expect, slow down
+		 * the clock interrupt.
+		 */
+		outb(TIMER_CNTR0, (timer0_max_count + 1) & 0xff);
+		outb(TIMER_CNTR0, (timer0_max_count + 1) >> 8);
+		++i8254_offset;	/* take into account extra count for tc==8254*/
+	}
+	clock_unlock();
+#endif
 
 	timer_func(&frame);
 
@@ -254,7 +273,6 @@ clkintr(struct clockframe frame)
 		i8254_offset = i8254_get_timecount(NULL);
 		i8254_lastcount = 0;
 		timer0_max_count = TIMER_DIV(new_rate);
-		timer0_frac_adjust = FRAC_ADJUST(new_rate);
 		timer0_frac_freq = new_rate;
 		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
 		outb(TIMER_CNTR0, timer0_max_count & 0xff);
@@ -703,7 +721,6 @@ set_timer_freq(u_int freq, int intr_freq)
 	clock_lock();
 	timer_freq = freq;
 	new_timer0_max_count = hardclock_max_count = TIMER_DIV(intr_freq);
-	timer0_frac_adjust = FRAC_ADJUST(intr_freq);
 	timer0_frac_freq = intr_freq;
 	if (new_timer0_max_count != timer0_max_count) {
 		timer0_max_count = new_timer0_max_count;
