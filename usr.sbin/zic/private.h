@@ -14,7 +14,7 @@
  * zic from this file.
  *
  * $FreeBSD: src/usr.sbin/zic/private.h,v 1.3 1999/08/28 01:21:18 peter Exp $
- * $DragonFly: src/usr.sbin/zic/private.h,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/zic/private.h,v 1.3 2004/02/29 16:55:28 joerg Exp $
  *
  * @(#)private.h	7.48
  */
@@ -84,19 +84,17 @@
 /* Unlike <ctype.h>'s isdigit, this also works if c < 0 | c > UCHAR_MAX.  */
 #define is_digit(c) ((unsigned)(c) - '0' <= 9)
 
-#define P(x) x
-
 /*
 ** Private function declarations.
 */
-char *	icalloc P((int nelem, int elsize));
-char *	icatalloc P((char * old, const char * new));
-char *	icpyalloc P((const char * string));
-char *	imalloc P((int n));
-void *	irealloc P((void * pointer, int size));
-void	icfree P((char * pointer));
-void	ifree P((char * pointer));
-char *	scheck P((const char *string, const char *format));
+char	*icalloc(int nelem, int elsize);
+char	*icatalloc(char *old, const char *new);
+char	*icpyalloc(const char *string);
+char	*imalloc(int n);
+void	*irealloc(void * pointer, int size);
+void	 icfree(char * pointer);
+void	 ifree(char * pointer);
+char	*scheck(const char *string, const char *format);
 
 /*
 ** Finally, some convenience items.

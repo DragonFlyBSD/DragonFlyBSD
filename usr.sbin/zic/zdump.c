@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)zdump.c	7.28";
 /*
  * @(#)zdump.c	7.28
  * $FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.3 2004/02/29 16:55:28 joerg Exp $
  */
 /*
 ** This code has been made independent of the rest of the time
@@ -118,44 +118,33 @@ static char	elsieid[] = "@(#)zdump.c	7.28";
 #define TZ_DOMAIN "tz"
 #endif /* !defined TZ_DOMAIN */
 
-#ifndef P
-#ifdef __STDC__
-#define P(x)	x
-#endif /* defined __STDC__ */
-#ifndef __STDC__
-#define P(x)	()
-#endif /* !defined __STDC__ */
-#endif /* !defined P */
-
 extern char **	environ;
 extern char *	tzname[2];
 
-static char *	abbr P((struct tm * tmp));
-static long	delta P((struct tm * newp, struct tm * oldp));
-static time_t	hunt P((char * name, time_t lot, time_t	hit));
-static size_t	longest;
-static char *	progname;
-static void	show P((char * zone, time_t t, int v));
-static void     usage(void);
+static char	*abbr(struct tm *tmp);
+static long	 delta(struct tm *newp, struct tm *oldp);
+static time_t	 hunt(char *name, time_t lot, time_t hit);
+static size_t	 longest;
+static char	*progname;
+static void	 show(char *zone, time_t t, int v);
+static void	 usage(void);
 
 int
-main(argc, argv)
-int	argc;
-char *	argv[];
+main(int argc, char *argv[])
 {
-	register int		i;
-	register int		c;
-	register int		vflag;
-	register char *		cutoff;
-	register int		cutyear;
-	register long		cuttime;
-	char **			fakeenv;
-	time_t			now;
-	time_t			t;
-	time_t			newt;
-	time_t			hibit;
-	struct tm		tm;
-	struct tm		newtm;
+	int i;
+	int c;
+	int vflag;
+	char *cutoff;
+	int cutyear;
+	long cuttime;
+	char **fakeenv;
+	time_t now;
+	time_t t;
+	time_t newt;
+	time_t hibit;
+	struct tm tm;
+	struct tm newtm;
 
 	INITIALIZE(cuttime);
 #if HAVE_GETTEXT - 0
@@ -192,8 +181,8 @@ char *	argv[];
 	for (hibit = 1; (hibit << 1) != 0; hibit <<= 1)
 		continue;
 	{
-		register int	from;
-		register int	to;
+		int from;
+		int to;
 
 		for (i = 0;  environ[i] != NULL;  ++i)
 			continue;
@@ -279,10 +268,7 @@ usage(void)
 }
 
 static time_t
-hunt(name, lot, hit)
-char *	name;
-time_t	lot;
-time_t	hit;
+hunt(char *name, time_t lot, time_t hit)
 {
 	time_t		t;
 	struct tm	lotm;
@@ -315,9 +301,7 @@ time_t	hit;
 */
 
 static long
-delta(newp, oldp)
-struct tm *	newp;
-struct tm *	oldp;
+delta(struct tm *newp, struct tm *oldp)
 {
 	long	result;
 	int	tmy;
@@ -338,10 +322,7 @@ struct tm *	oldp;
 }
 
 static void
-show(zone, t, v)
-char *	zone;
-time_t	t;
-int	v;
+show(char *zone, time_t t, int v)
 {
 	struct tm *	tmp;
 
@@ -362,11 +343,10 @@ int	v;
 }
 
 static char *
-abbr(tmp)
-struct tm *	tmp;
+abbr(struct tm *tmp)
 {
-	register char *	result;
-	static char	nada;
+	char * result;
+	static char nada;
 
 	if (tmp->tm_isdst != 0 && tmp->tm_isdst != 1)
 		return &nada;

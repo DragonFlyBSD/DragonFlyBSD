@@ -7,24 +7,22 @@ static char	elsieid[] = "@(#)scheck.c	8.15";
 /*
  * @(#)scheck.c	8.15
  * $FreeBSD: src/usr.sbin/zic/scheck.c,v 1.4 1999/08/28 01:21:19 peter Exp $
- * $DragonFly: src/usr.sbin/zic/scheck.c,v 1.2 2003/06/17 04:30:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/zic/scheck.c,v 1.3 2004/02/29 16:55:28 joerg Exp $
  */
 /*LINTLIBRARY*/
 
 #include "private.h"
 
 char *
-scheck(string, format)
-const char * const	string;
-const char * const	format;
+scheck(const char * const string, const char * const format)
 {
-	register char *		fbuf;
-	register const char *	fp;
-	register char *		tp;
-	register int		c;
-	register char *		result;
-	char			dummy;
-	static char		nada;
+	char *fbuf;
+	const char *fp;
+	char *tp;
+	int c;
+	char *result;
+	char dummy;
+	static char nada;
 
 	result = &nada;
 	if (string == NULL || format == NULL)
