@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ppp/ip.c,v 1.78.2.11 2002/09/01 02:12:27 brian Exp $
- * $DragonFly: src/usr.sbin/ppp/ip.c,v 1.2 2003/06/17 04:30:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/ppp/ip.c,v 1.3 2004/08/09 19:54:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -162,6 +162,19 @@ PortMatch(int op, u_short pport, u_short rport)
   }
 }
 
+char *
+toprototxt(int cproto)
+{
+  static char prototxt[16];
+  struct protoent *pe;
+
+  if ((pe = getprotobynumber(cproto)) == NULL)
+    snprintf(prototxt, sizeof(prototxt), "%d", cproto);
+  else
+    snprintf(prototxt, sizeof(prototxt), "%s", pe->p_name);
+  return prototxt;
+}
+
 /*
  * Check a packet against the given filter
  * Returns 0 to accept the packet, non-zero to drop the packet.
@@ -188,7 +201,7 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
   int match;			/* true if condition matched */
   int mindata;			/* minimum data size or zero */
   const struct filterent *fp = filter->rule;
-  char dbuff[100], dstip[16], prototxt[16];
+  char dbuff[100], dstip[16];
   struct protoent *pe;
   struct ncpaddr srcaddr, dstaddr;
   const char *payload;		/* IP payload */
@@ -240,10 +253,6 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
     cproto = pip->ip_p;
   }
 
-  if ((pe = getprotobynumber(cproto)) == NULL)
-    snprintf(prototxt, sizeof prototxt, "%d", cproto);
-  else
-    snprintf(prototxt, sizeof prototxt, "%s", pe->p_name);
   gotinfo = estab = syn = finrst = didname = 0;
   sport = dport = 0;
 
@@ -357,7 +366,7 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
 
           if (datalen < mindata) {
             log_Printf(LogFILTER, " error: proto %s must be at least"
-                       " %d octets\n", prototxt, mindata);
+                       " %d octets\n", toprototxt(cproto), mindata);
             return 1;
           }
 
@@ -368,7 +377,7 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
                        ", estab = %d, syn = %d, finrst = %d",
                        estab, syn, finrst);
             }
-            log_Printf(LogDEBUG, " Filter: proto = %s, %s\n", prototxt, dbuff);
+            log_Printf(LogDEBUG, " Filter: proto = %s, %s\n", toprototxt(cproto), dbuff);
           }
           gotinfo = 1;
         }
@@ -425,7 +434,8 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
             if (log_IsKept(LogFILTER)) {
               snprintf(dstip, sizeof dstip, "%s", ncpaddr_ntoa(&dstaddr));
               log_Printf(LogFILTER, "%sbound rule = %d accept %s "
-                         "src = %s:%d dst = %s:%d\n", filter->name, n, prototxt,
+                         "src = %s:%d dst = %s:%d\n", filter->name, n,
+			 toprototxt(cproto),
                          ncpaddr_ntoa(&srcaddr), sport, dstip, dport);
             }
           }
@@ -435,7 +445,7 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
             snprintf(dstip, sizeof dstip, "%s", ncpaddr_ntoa(&dstaddr));
             log_Printf(LogFILTER,
                        "%sbound rule = %d deny %s src = %s/%d dst = %s/%d\n",
-                       filter->name, n, prototxt,
+                       filter->name, n, toprototxt(cproto),
                        ncpaddr_ntoa(&srcaddr), sport, dstip, dport);
           }
           return 1;
@@ -451,7 +461,7 @@ FilterCheck(const unsigned char *packet, u_int32_t family,
     snprintf(dstip, sizeof dstip, "%s", ncpaddr_ntoa(&dstaddr));
     log_Printf(LogFILTER,
                "%sbound rule = implicit deny %s src = %s/%d dst = %s/%d\n",
-               filter->name, prototxt, ncpaddr_ntoa(&srcaddr), sport,
+               filter->name, toprototxt(cproto), ncpaddr_ntoa(&srcaddr), sport,
                dstip, dport);
   }
 
