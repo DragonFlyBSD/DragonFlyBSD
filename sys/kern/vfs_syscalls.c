@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.56 2005/02/01 13:55:49 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.57 2005/02/01 21:52:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -937,7 +937,7 @@ getfsstat(struct getfsstat_args *uap)
 				vfs_unbusy(mp, td);
 				return (error);
 			}
-			sfsp += sizeof(*sp);
+			++sfsp;
 		}
 		count++;
 		lwkt_gettokref(&ilock);
