@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.49 1999/12/12 16:30:34 peter Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.2 2003/06/17 04:28:42 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.3 2004/03/15 06:10:51 dillon Exp $
  */
 
 
@@ -123,8 +123,12 @@ vfs_opv_recalc(void)
 	for (i = 0; i < vnodeopv_num; i++) {
 		opv = vnodeopv_descs[i];
 		opv_desc_vector_p = opv->opv_desc_vector_p;
+#if 0
+		/* old vector may be in-use by vnodes */
+		/* XXX fixme, pre-allocate enough vectors? */
 		if (*opv_desc_vector_p)
 			FREE(*opv_desc_vector_p, M_VNODE);
+#endif
 		MALLOC(*opv_desc_vector_p, vop_t **,
 		       vfs_opv_numops * sizeof(vop_t *), M_VNODE, M_WAITOK);
 		if (*opv_desc_vector_p == NULL)
