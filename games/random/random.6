@@ -30,8 +30,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)random.6	8.2 (Berkeley) 3/31/94
-.\" $FreeBSD: src/games/random/random.6,v 1.3.2.3 2003/02/15 10:34:35 seanc Exp $
-.\" $DragonFly: src/games/random/random.6,v 1.2 2003/06/17 04:25:24 dillon Exp $
+.\" $FreeBSD: src/games/random/random.6,v 1.8 2005/01/18 08:57:18 ru Exp $
+.\" $DragonFly: src/games/random/random.6,v 1.3 2005/03/02 06:59:23 cpressey Exp $
 .\"
 .Dd February 8, 2003
 .Dt RANDOM 6
@@ -41,13 +41,15 @@
 .Nd random lines from a file or random numbers
 .Sh SYNOPSIS
 .Nm
-.Op Fl er
+.Op Fl elrUuw
 .Op Fl f Ar filename
 .Op Ar denominator
 .Sh DESCRIPTION
 .Nm Random
-has two distinct modes of operations.  The default is to read in lines
-from stdin and randomly write them out to stdout with a probability of
+has two distinct modes of operations.
+The default is to read in lines
+from the standard input and randomly write them out
+to the standard output with a probability of
 1 /
 .Ar denominator .
 The default
@@ -57,7 +59,8 @@ being displayed.
 .Pp
 The second mode of operation is to read in a file from
 .Ar filename
-and randomize the contents of the file and send it back out to stdout.
+and randomize the contents of the file and send it back out to
+standard output.
 The contents can be randomized based off of newlines or based off of
 space characters as determined by
 .Xr isspace 3 .
@@ -84,41 +87,44 @@ The
 .Fl f
 option is used to specify the
 .Ar filename
-to read from.  stdin is used if the filename is set to "-".
+to read from.
+Standard input is used if
+.Ar filename
+is set to
+.Sq Fl .
 .It Fl l
 Randomize the input via newlines (the default).
 .It Fl r
 The
 .Fl r
 option guarantees that the output is unbuffered.
-.It Fl u
-Tells
-.Xr random 6
-not to select the same line or word from a file more than once (the
-default).  This does not guarantee uniqueness if there are two of the
-same tokens from the input, but it does prevent selecting the same
-token more than once.
 .It Fl U
 Tells
 .Xr random 6
 that it is okay for it to reuse any given line or word when creating a
 randomized output.
+.It Fl u
+Tells
+.Xr random 6
+not to select the same line or word from a file more than once (the
+default).
+This does not guarantee uniqueness if there are two of the
+same tokens from the input, but it does prevent selecting the same
+token more than once.
 .It Fl w
 Randomize words separated by
 .Xr isspace 3
 instead of newlines.
 .El
 .Sh SEE ALSO
-.Xr fortune 6 ,
-.Xr random 3
-.Sh BUGS
-There is no index used when printing out tokens from the list which
-makes rather slow for large files (10MB+).  If this were used in
-performance sensitive areas, I'd do something about it.  For smaller
-files, however, it should still be quite fast and efficient.
+.Xr random 3 ,
+.Xr fortune 6
 .Sh HISTORY
-Original
-.Xr random 6
-game was brought in from BSD 4.4 Lite by jkh in 1994.  The
+The
 functionality to randomizing lines and words was added in 2003 by
-seanc.
+.An "Sean Chittenden" Aq seanc@FreeBSD.org .
+.Sh BUGS
+No index is used when printing out tokens from the list which
+makes it rather slow for large files (10MB+).
+For smaller
+files, however, it should still be quite fast and efficient.

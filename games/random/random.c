@@ -35,8 +35,8 @@
  *
  * @(#) Copyright (c) 1994 The Regents of the University of California.  All rights reserved.
  * @(#)random.c	8.5 (Berkeley) 4/5/94
- * $FreeBSD: src/games/random/random.c,v 1.16 2004/10/03 15:34:15 stefanf Exp $
- * $DragonFly: src/games/random/random.c,v 1.3 2005/03/02 05:00:21 cpressey Exp $
+ * $FreeBSD: src/games/random/random.c,v 1.17 2005/02/09 18:22:15 ru Exp $
+ * $DragonFly: src/games/random/random.c,v 1.4 2005/03/02 06:59:23 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -179,6 +179,6 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: random [-elruUw] [-f filename] [denominator]\n");
+	fprintf(stderr, "usage: random [-elrUuw] [-f filename] [denominator]\n");
 	exit(1);
 }
