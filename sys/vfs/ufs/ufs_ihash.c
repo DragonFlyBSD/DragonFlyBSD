@@ -32,7 +32,7 @@
  *
  *	@(#)ufs_ihash.c	8.7 (Berkeley) 5/17/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_ihash.c,v 1.20 1999/08/28 00:52:29 peter Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.9 2003/11/16 04:14:45 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_ihash.c,v 1.10 2004/01/15 20:17:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -78,9 +78,10 @@ ufs_ihashlookup(dev, inum)
 	struct inode *ip;
 
 	lwkt_gettoken(&ufs_ihash_token);
-	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next)
+	for (ip = INOHASH(dev, inum)->lh_first; ip; ip = ip->i_hash.le_next) {
 		if (inum == ip->i_number && dev == ip->i_dev)
 			break;
+	}
 	lwkt_reltoken(&ufs_ihash_token);
 
 	if (ip)
