@@ -25,10 +25,10 @@
 .\" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 .\" THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 .\"
-.\" $FreeBSD: src/usr.bin/sockstat/sockstat.1,v 1.6.2.7 2001/08/16 13:17:04 ru Exp $
-.\" $DragonFly: src/usr.bin/sockstat/sockstat.1,v 1.2 2003/06/17 04:29:31 dillon Exp $
+.\" $FreeBSD: src/usr.bin/sockstat/sockstat.1,v 1.19 2004/08/25 16:36:17 roam Exp $
+.\" $DragonFly: src/usr.bin/sockstat/sockstat.1,v 1.3 2005/01/04 18:56:58 joerg Exp $
 .\"
-.Dd April 13, 1999
+.Dd August 25, 2004
 .Dt SOCKSTAT 1
 .Os
 .Sh NAME
@@ -37,6 +37,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl 46clu
+.Op Fl p Ar ports
 .Sh DESCRIPTION
 The
 .Nm
@@ -58,6 +59,13 @@ Show
 Show connected sockets.
 .It Fl l
 Show listening sockets.
+.It Fl p Ar ports
+Only show Internet sockets if either the local or foreign port number
+is on the specified list.
+The
+.Ar ports
+argument is a comma-separated list of port numbers and ranges
+specified as first and last port separated by a dash.
 .It Fl u
 Show
 .Dv AF_LOCAL
@@ -97,23 +105,38 @@ The transport protocol associated with the socket for Internet
 sockets, or the type of socket (stream or datagram) for
 .Ux
 sockets.
-.It Li ADDRESS
-.No ( Ux
-sockets only)
-For bound sockets, this is the filename of the socket.
-For other sockets, it is the name, PID and file descriptor number of
-the peer, or
-.Dq Li "(none)"
-if the socket is neither bound nor connected.
 .It Li LOCAL ADDRESS
-(Internet sockets only)
-The address the local end of the socket is bound to (see
+For Internet sockets, this is the address the local end of the socket
+is bound to (see
 .Xr getsockname 2 ) .
+For bound
+.Ux
+sockets, it is the socket's filename.
+For other
+.Ux
+sockets, it is a right arrow followed by the endpoint's filename, or
+.Dq Li ??
+if the endpoint could not be determined.
 .It Li FOREIGN ADDRESS
 (Internet sockets only)
 The address the foreign end of the socket is bound to (see
 .Xr getpeername 2 ) .
 .El
+.Pp
+Note that TCP sockets in the
+.Dv AF_INET
+or
+.Dv AF_INET6
+domains that are not in one of the
+.Dv LISTEN ,
+.Dv SYN_SENT ,
+or
+.Dv ESTABLISHED
+states may not be shown by
+.Nm ;
+use
+.Xr netstat 1
+to examine them instead.
 .Sh SEE ALSO
 .Xr fstat 1 ,
 .Xr netstat 1 ,
