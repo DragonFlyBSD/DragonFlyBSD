@@ -1,0 +1,53 @@
+# $DragonFly: src/test/stress/fsstress/README,v 1.1 2004/05/07 17:51:02 dillon Exp $
+To: dillon@FreeBSD.ORG
+Subject: Andi Kleen: Re: [LTP] New NFS test added.
+Date: Wed, 19 Dec 2001 19:03:27 -0800
+Message-ID: <13537.1008817407@winston.freebsd.org>
+From: Jordan Hubbard <jkh@winston.freebsd.org>
+
+JFYI
+------- Forwarded Message
+
+Return-Path: ak@suse.de
+Delivery-Date: Wed Dec 19 16:47:53 2001
+Return-Path: <ak@suse.de>
+Received: from Cantor.suse.de (ns.suse.de [213.95.15.193])
+	by winston.freebsd.org (8.11.6/8.11.6) with ESMTP id fBK0lqG13262
+	for <jkh@winston.freebsd.org>; Wed, 19 Dec 2001 16:47:52 -0800 (PST)
+	(envelope-from ak@suse.de)
+Received: from Hermes.suse.de (Hermes.suse.de [213.95.15.136])
+	by Cantor.suse.de (Postfix) with ESMTP
+	id 7F5061E80D; Thu, 20 Dec 2001 01:47:57 +0100 (MET)
+Date: Thu, 20 Dec 2001 01:47:56 +0100
+From: Andi Kleen <ak@suse.de>
+To: Robert Williamson <robbiew@us.ibm.com>
+Cc: ltp-list@lists.sourceforge.net, jkh@winston.freebsd.org
+Subject: Re: [LTP] New NFS test added.
+Message-ID: <20011220014756.A17649@wotan.suse.de>
+References: <OFDA678DAF.AD1785B7-ON85256B26.007E1BD2@raleigh.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <OFDA678DAF.AD1785B7-ON85256B26.007E1BD2@raleigh.ibm.com>
+User-Agent: Mutt/1.3.22.1i
+
+On Tue, Dec 18, 2001 at 05:01:44PM -0600, Robert Williamson wrote:
+> The guys at Apple have allowed us to add "fsx-linux", which is a great test
+> for hammering NFS.  The test has already been added to the CVS tree, and
+> included in the runtest scripts.  It will be included in the next
+> release...early January.  Thanks again to the guys at Apple.
+
+If you're interested I also ported fsstress from the XFS test suite to 
+build/work without XFS. It does some different tests from fsx/doio,
+basically all VFS operations on a tree of files and i found some bugs
+with it in the past. 
+
+It's in ftp://zero.aec.at/pub/ak/stress/xfsstress-noxfs.tar.gz
+
+If the XFS group doesn't mind it may make sense to put it into LTP too.
+
+
+- -Andi
+
+------- End of Forwarded Message
+
