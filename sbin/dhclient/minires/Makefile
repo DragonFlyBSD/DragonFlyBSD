@@ -1,10 +1,8 @@
 # minires
 # $FreeBSD: src/sbin/dhclient/minires/Makefile,v 1.4.2.2 2002/07/19 18:46:27 ru Exp $
-# $DragonFly: src/sbin/dhclient/minires/Attic/Makefile,v 1.2 2003/06/17 04:27:32 dillon Exp $
+# $DragonFly: src/sbin/dhclient/minires/Attic/Makefile,v 1.3 2005/01/04 19:58:54 joerg Exp $
 
-DIST_DIR= ${.CURDIR}/../../../contrib/isc-dhcp
-
-.PATH: ${DIST_DIR}/minires
+.include "${.CURDIR}/../Makefile.common"
 
 LIB=	res
 INTERNALLIB=		true

@@ -1,0 +1,8 @@
+# $DragonFly: src/usr.sbin/dhcp/Attic/Makefile.common,v 1.1 2005/01/04 19:58:53 joerg Exp $
+
+DIST_DIR= ${.CURDIR}/../../../contrib/dhcp-3.0
+CURSUBDIR?=	${.CURDIR:C|^.*/||}
+CONTRIBDIR=	${DIST_DIR}/${CURSUBDIR}
+DHCLIENT_DIR=	../../sbin/dhclient
+
+.PATH:	${CONTRIBDIR}

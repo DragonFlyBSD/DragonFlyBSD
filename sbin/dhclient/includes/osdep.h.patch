@@ -1,0 +1,12 @@
+$DragonFly: src/sbin/dhclient/includes/Attic/osdep.h.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+--- osdep.h.orig	2004-06-14 23:08:44.000000000 +0200
++++ osdep.h	2004-06-24 17:17:36.000000000 +0200
+@@ -89,7 +89,7 @@
+ #  include "cf/netbsd.h"
+ #endif
+ 
+-#ifdef __FreeBSD__
++#if defined(__FreeBSD__) || defined(__DragonFly__)
+ #  include "cf/freebsd.h"
+ #endif
+ 

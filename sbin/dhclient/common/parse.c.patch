@@ -1,0 +1,23 @@
+$DragonFly: src/sbin/dhclient/common/Attic/parse.c.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+--- parse.c.orig	2004-06-17 22:54:38.000000000 +0200
++++ parse.c	2004-06-24 16:36:17.000000000 +0200
+@@ -405,6 +405,7 @@
+ {
+ 	const char *val;
+ 	enum dhcp_token token;
++	int32_t num;
+ 
+ 	token = next_token (&val, (unsigned *)0, cfile);
+ 	if (token != NUMBER) {
+@@ -412,9 +413,9 @@
+ 		skip_to_semi (cfile);
+ 		return;
+ 	}
+-	convert_num (cfile, (unsigned char *)timep, val, 10, 32);
++	convert_num (cfile, (unsigned char *)&num, val, 10, 32);
+ 	/* Unswap the number - convert_num returns stuff in NBO. */
+-	*timep = ntohl (*timep); /* XXX */
++	*timep = ntohl (num);
+ 
+ 	parse_semi (cfile);
+ }

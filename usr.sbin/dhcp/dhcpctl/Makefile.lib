@@ -1,0 +1,13 @@
+# $DragonFly: src/usr.sbin/dhcp/dhcpctl/Attic/Makefile.lib,v 1.1 2005/01/04 19:58:54 joerg Exp $
+
+.include "${.CURDIR}/../Makefile.common"
+
+LIB=	dhcpctl
+
+SRCS=	callback.c dhcpctl.c remote.c
+
+INCS=	dhcpctl.h
+
+MAN=	dhcpctl.3
+
+.include <bsd.lib.mk>

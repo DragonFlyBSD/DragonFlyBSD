@@ -1,0 +1,89 @@
+$DragonFly: src/sbin/dhclient/includes/Attic/dhcpd.h.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+--- dhcpd.h.orig	2004-11-24 18:39:16.000000000 +0100
++++ dhcpd.h	2005-01-04 19:11:18.000000000 +0100
+@@ -90,6 +90,9 @@
+ 	 (((x) >> OPTION_HASH_EXP) & \
+ 	  (OPTION_HASH_PTWO - 1))) % OPTION_HASH_SIZE;
+ 
++#define NOLINK 0
++#define HAVELINK 1
++
+ enum dhcp_shutdown_state {
+ 	shutdown_listeners,
+ 	shutdown_omapi_connections,
+@@ -255,7 +258,7 @@
+ } dhcp_control_object_t;
+ 
+ /* Lease states: */
+-typedef enum {
++typedef enum  {
+ 	FTS_FREE = 1,
+ 	FTS_ACTIVE = 2,
+ 	FTS_EXPIRED = 3,
+@@ -263,7 +266,7 @@
+ 	FTS_ABANDONED = 5,
+ 	FTS_RESET = 6,
+ 	FTS_BACKUP = 7
+-} binding_state_t;
++} __packed binding_state_t;
+ 
+ /* FTS_LAST is the highest value that is valid for a lease binding state. */
+ #define FTS_LAST FTS_BACKUP
+@@ -306,9 +309,9 @@
+ #	define EPHEMERAL_FLAGS		(MS_NULL_TERMINATION | \
+ 					 UNICAST_BROADCAST_HACK)
+ 
+-	binding_state_t __attribute__ ((mode (__byte__))) binding_state;
+-	binding_state_t __attribute__ ((mode (__byte__))) next_binding_state;
+-	binding_state_t __attribute__ ((mode (__byte__))) desired_binding_state;
++	binding_state_t binding_state;
++	binding_state_t next_binding_state;
++	binding_state_t desired_binding_state;
+ 	
+ 	struct lease_state *state;
+ 
+@@ -774,6 +777,11 @@
+ 	unsigned remote_id_len;		/* Length of Remote ID. */
+ 
+ 	char name [IFNAMSIZ];		/* Its name... */
++	int ieee80211;			/* True if media is ieee802.11 */
++	int havemedia;			/* True if we have a media table */
++	int linkstate;			/* True if we have link */
++	int polling;			/* True if polling is enabled */
++	int forcediscover;		/* True if a discover is needed */
+ 	int index;			/* Its index. */
+ 	int rfdesc;			/* Its read file descriptor. */
+ 	int wfdesc;			/* Its write file descriptor, if
+@@ -1836,6 +1844,9 @@
+ extern const char *path_dhclient_pid;
+ extern char *path_dhclient_script;
+ extern int interfaces_requested;
++#ifdef ENABLE_POLLING_MODE
++extern int polling_interval;
++#endif
+ 
+ extern struct client_config top_level_config;
+ 
+@@ -1849,6 +1860,10 @@
+ void send_decline PROTO ((void *));
+ 
+ void state_reboot PROTO ((void *));
++#ifdef ENABLE_POLLING_MODE
++void state_background PROTO ((void *));
++void state_polling PROTO ((void *));
++#endif
+ void state_init PROTO ((void *));
+ void state_selecting PROTO ((void *));
+ void state_requesting PROTO ((void *));
+@@ -1856,6 +1871,11 @@
+ void state_stop PROTO ((void *));
+ void state_panic PROTO ((void *));
+ 
++#if defined(DRAGONFLY_FUTURE)
++void set_ieee80211 PROTO ((struct interface_info *));
++#endif
++int interface_active PROTO ((struct interface_info *));
++
+ void bind_lease PROTO ((struct client_state *));
+ 
+ void make_client_options PROTO ((struct client_state *,

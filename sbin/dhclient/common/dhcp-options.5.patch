@@ -1,0 +1,33 @@
+$DragonFly: src/sbin/dhclient/common/Attic/dhcp-options.5.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+--- dhcp-options.5.orig	2004-06-10 19:59:15.000000000 +0200
++++ dhcp-options.5	2004-06-24 16:36:09.000000000 +0200
+@@ -421,7 +421,10 @@
+ the domain-name option to specify the domain name).  See RFC 1035 for
+ character set restrictions.  This option is only honored by
+ .B dhclient-script(8)
+-if the hostname for the client machine is not set.
++if the hostname for the client machine is not set (i.e., set to the empty
++string in
++.B rc.conf(5)
++).
+ .RE
+ .PP
+ .B option \fBieee802-3-encapsulation\fR \fIflag\fR\fB;\fR
+@@ -644,7 +647,7 @@
+ This option specifies whether the client should configure its IP
+ layer to allow forwarding of datagrams with non-local source routes
+ (see Section 3.3.5 of [4] for a discussion of this topic).  A value
+-of false means disallow forwarding of such datagrams, and a value of true
++of 0 means disallow forwarding of such datagrams, and a value of true
+ means allow forwarding.
+ .RE
+ .PP
+@@ -938,7 +941,7 @@
+ .PP
+ This option specifies whether or not the client should negotiate the
+ use of trailers (RFC 893 [14]) when using the ARP protocol.  A value
+-of false indicates that the client should not attempt to use trailers.  A
++of 0 indicates that the client should not attempt to use trailers.  A
+ value of true means that the client should attempt to use trailers.
+ .RE
+ .PP

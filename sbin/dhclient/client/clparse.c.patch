@@ -1,0 +1,12 @@
+$DragonFly: src/sbin/dhclient/client/Attic/clparse.c.patch,v 1.1 2005/01/04 19:58:54 joerg Exp $
+--- clparse.c.orig	2004-06-10 19:59:11.000000000 +0200
++++ clparse.c	2004-06-24 16:35:45.000000000 +0200
+@@ -776,7 +776,7 @@
+ 		if (status != ISC_R_SUCCESS)
+ 			log_fatal ("Can't record interface %s: %s",
+ 				   name, isc_result_totext (status));
+-		strcpy (ip -> name, name);
++		strlcpy (ip -> name, name, IFNAMSIZ);
+ 		if (dummy_interfaces) {
+ 			interface_reference (&ip -> next,
+ 					     dummy_interfaces, MDL);
