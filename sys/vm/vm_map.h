@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.h,v 1.54.2.5 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_map.h,v 1.5 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_map.h,v 1.6 2003/08/25 17:01:13 dillon Exp $
  */
 
 /*
@@ -363,7 +363,7 @@ struct pmap;
 vm_map_t vm_map_create (struct pmap *, vm_offset_t, vm_offset_t);
 int vm_map_delete (vm_map_t, vm_offset_t, vm_offset_t);
 int vm_map_find (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t *, vm_size_t, boolean_t, vm_prot_t, vm_prot_t, int);
-int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_offset_t *);
+int vm_map_findspace (vm_map_t, vm_offset_t, vm_size_t, vm_offset_t, vm_offset_t *);
 int vm_map_inherit (vm_map_t, vm_offset_t, vm_offset_t, vm_inherit_t);
 void vm_map_init (struct vm_map *, vm_offset_t, vm_offset_t);
 int vm_map_insert (vm_map_t, vm_object_t, vm_ooffset_t, vm_offset_t, vm_offset_t, vm_prot_t, vm_prot_t, int);

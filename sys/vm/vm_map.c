@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.8 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.9 2003/08/25 17:01:13 dillon Exp $
  */
 
 /*
@@ -662,21 +662,40 @@ vm_map_insert(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 /*
  * Find sufficient space for `length' bytes in the given map, starting at
  * `start'.  The map must be locked.  Returns 0 on success, 1 on no space.
+ *
+ * This function will returned an arbitrarily aligned pointer.  If no
+ * particular alignment is required you should pass align as 1.  Note that
+ * the map may return PAGE_SIZE aligned pointers if all the lengths used in
+ * the map are a multiple of PAGE_SIZE, even if you pass a smaller align
+ * argument.
+ *
+ * 'align' should be a power of 2 but is not required to be.
  */
 int
-vm_map_findspace(map, start, length, addr)
-	vm_map_t map;
-	vm_offset_t start;
-	vm_size_t length;
-	vm_offset_t *addr;
+vm_map_findspace(
+	vm_map_t map,
+	vm_offset_t start,
+	vm_size_t length,
+	vm_offset_t align,
+	vm_offset_t *addr)
 {
 	vm_map_entry_t entry, next;
 	vm_offset_t end;
+	vm_offset_t align_mask;
 
 	if (start < map->min_offset)
 		start = map->min_offset;
 	if (start > map->max_offset)
 		return (1);
+
+	/*
+	 * If the alignment is not a power of 2 we will have to use
+	 * a mod/division, set align_mask to a special value.
+	 */
+	if ((align | (align - 1)) + 1 != (align << 1))
+		align_mask = (vm_offset_t)-1;
+	else
+		align_mask = align - 1;
 
 	/*
 	 * Look for the first possible address; if there's already something
@@ -699,11 +718,22 @@ vm_map_findspace(map, start, length, addr)
 	 */
 	for (;; start = (entry = next)->end) {
 		/*
+		 * Adjust the proposed start by the requested alignment,
+		 * be sure that we didn't wrap the address.
+		 */
+		if (align_mask == (vm_offset_t)-1)
+			end = ((start + align - 1) / align) * align;
+		else
+			end = (start + align_mask) & ~align_mask;
+		if (end < start)
+			return (1);
+		start = end;
+		/*
 		 * Find the end of the proposed new region.  Be sure we didn't
-		 * go beyond the end of the map, or wrap around the address;
-		 * if so, we lose.  Otherwise, if this is the last entry, or
-		 * if the proposed new region fits before the next entry, we
-		 * win.
+		 * go beyond the end of the map, or wrap around the address.
+		 * Then check to see if this is the last entry or if the 
+		 * proposed end fits in the gap between this and the next
+		 * entry.
 		 */
 		end = start + length;
 		if (end > map->max_offset || end < start)
@@ -748,7 +778,7 @@ vm_map_find(vm_map_t map, vm_object_t object, vm_ooffset_t offset,
 
 	vm_map_lock(map);
 	if (find_space) {
-		if (vm_map_findspace(map, start, length, addr)) {
+		if (vm_map_findspace(map, start, length, 1, addr)) {
 			vm_map_unlock(map);
 			if (map == kmem_map || map == mb_map)
 				splx(s);

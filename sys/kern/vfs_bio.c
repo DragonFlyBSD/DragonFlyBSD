@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.11 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.12 2003/08/25 17:01:10 dillon Exp $
  */
 
 /*
@@ -1713,7 +1713,8 @@ restart:
 			vm_map_lock(buffer_map);
 
 			if (vm_map_findspace(buffer_map,
-				vm_map_min(buffer_map), maxsize, &addr)) {
+				    vm_map_min(buffer_map), maxsize,
+				    maxsize, &addr)) {
 				/*
 				 * Uh oh.  Buffer map is to fragmented.  We
 				 * must defragment the map.

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.5 2003/07/26 22:10:02 rob Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.6 2003/08/25 17:01:13 dillon Exp $
  */
 
 /*
@@ -167,7 +167,7 @@ kmem_alloc(map, size)
 	 * offset within the kernel map.
 	 */
 	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, &addr)) {
+	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
 		return (0);
 	}
@@ -319,7 +319,7 @@ kmem_malloc(map, size, flags)
 	 * offset within the kernel map.
 	 */
 	vm_map_lock(map);
-	if (vm_map_findspace(map, vm_map_min(map), size, &addr)) {
+	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
 		if (map == mb_map) {
 			mb_map_full = TRUE;
@@ -441,7 +441,7 @@ kmem_alloc_wait(map, size)
 		 * to lock out sleepers/wakers.
 		 */
 		vm_map_lock(map);
-		if (vm_map_findspace(map, vm_map_min(map), size, &addr) == 0)
+		if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr) == 0)
 			break;
 		/* no space now; see if we can ever get space */
 		if (vm_map_max(map) - vm_map_min(map) < size) {
