@@ -32,7 +32,7 @@
  *
  *	@(#)fifo_vnops.c	8.10 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/miscfs/fifofs/fifo_vnops.c,v 1.45.2.4 2003/04/22 10:11:24 bde Exp $
- * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.8 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/fifofs/fifo_vnops.c,v 1.9 2003/09/03 12:58:05 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -463,18 +463,40 @@ fifo_poll(ap)
 	} */ *ap;
 {
 	struct file filetmp;
-	int revents = 0;
+	int events, revents = 0;
 
-	if (ap->a_events & (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND)) {
+	events = ap_events &
+		(POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND);
+	if (events) {
+		/*
+		 * Tell socket poll to ignore EOF so hat we block if there
+		 * is no writer (and no data).
+		 */
+		if (events & (POLLIN | POLLRDNORM)) {
+			events &= ~(POLLIN | POLLRDNORM);
+			events |= POLLINIGNEOF;
+		}
 		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_readsock;
 		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, ap->a_events, ap->a_cred,
+			revents |= soo_poll(&filetmp, events, ap->a_cred,
 			    ap->a_td);
+
+		/*
+		 * If POLLIN or POLLRDNORM was requested and POLLINIGNEOF was
+		 * not then convert POLLINIGNEOF back to POLLIN.
+		 */
+		events = ap_events & (POLLIN | POLLRDNORM | POLLINIGNEOF);
+		if ((events & (POLLIN | POLLRDNORM)) &&
+			!(events & POLLINIGNEOF) && (revents & POLLINIGNEOF)) {
+			revents &= ~POLLINIGNEOF;
+			revents |= (events & (POLLIN | POLLRDNORM));
+		}
 	}
-	if (ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND)) {
+	events = ap->a_events & (POLLOUT | POLLWRNORM | POLLWRBAND);
+	if (events) {
 		filetmp.f_data = (caddr_t)ap->a_vp->v_fifoinfo->fi_writesock;
 		if (filetmp.f_data)
-			revents |= soo_poll(&filetmp, ap->a_events, ap->a_cred,
+			revents |= soo_poll(&filetmp, events, ap->a_cred,
 			    ap->a_td);
 	}
 	return (revents);

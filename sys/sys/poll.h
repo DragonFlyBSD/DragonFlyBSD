@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/poll.h,v 1.6.2.1 2000/08/21 12:25:58 sheldonh Exp $
- * $DragonFly: src/sys/sys/poll.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/poll.h,v 1.4 2003/09/03 12:58:05 hmp Exp $
  */
 
 #ifndef _SYS_POLL_H_
@@ -62,6 +62,11 @@ struct pollfd {
 #define	POLLWRNORM	POLLOUT		/* no write type differentiation */
 #define	POLLRDBAND	0x0080		/* OOB/Urgent readable data */
 #define	POLLWRBAND	0x0100		/* OOB/Urgent data can be written */
+
+/*
+ * FreeBSD extension.
+ */
+#define	POLLINIGNEOF	0x2000   	/* POLLIN, except ignore EOF */
 
 /*
  * FreeBSD extensions: polling on a regular file might return one

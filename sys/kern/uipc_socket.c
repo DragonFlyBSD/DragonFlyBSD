@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.23 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.9 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.10 2003/09/03 12:58:05 hmp Exp $
  */
 
 #include "opt_inet.h"
@@ -1489,6 +1489,11 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 		if (soreadable(so))
 			revents |= events & (POLLIN | POLLRDNORM);
 
+	if (events & POLLINIGNEOF)
+		if (so->so_rcv.sb_cc >= so->so_rcv.sb_lowat ||
+			!TAILQ_EMPTY(&so->so_comp) || so->so_error)
+			revents |= POLLINIGNEOF;
+
 	if (events & (POLLOUT | POLLWRNORM))
 		if (sowriteable(so))
 			revents |= events & (POLLOUT | POLLWRNORM);
@@ -1498,7 +1503,9 @@ sopoll(struct socket *so, int events, struct ucred *cred, struct thread *td)
 			revents |= events & (POLLPRI | POLLRDBAND);
 
 	if (revents == 0) {
-		if (events & (POLLIN | POLLPRI | POLLRDNORM | POLLRDBAND)) {
+		if (events &
+			(POLLIN | POLLINIGNEOF POLLPRI | POLLRDNORM |
+			 POLLRDBAND)) {
 			selrecord(td, &so->so_rcv.sb_sel);
 			so->so_rcv.sb_flags |= SB_SEL;
 		}
