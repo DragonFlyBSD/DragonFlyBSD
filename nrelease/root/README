@@ -76,12 +76,18 @@
 
 	# Copy the CDRom onto the target.  cpdup won't cross mount boundaries
 	# on the source (e.g. the MFS remounts) so it takes a few commands.
-	#
 	cpdup / /mnt
 	cpdup /var /mnt/var
 	cpdup /etc /mnt/etc
 	cpdup /dev /mnt/dev
 	cpdup /usr /mnt/usr
+
+	# Cleanup.  Also, with /tmp a partition it is usually reasonable
+	# to make /var/tmp a softlink to /tmp
+	#
+	chmod 1777 /mnt/tmp
+	rm -rf /mnt/var/tmp
+	ln -s /tmp /mnt/var/tmp
 
 	# Edit /mnt/etc/fstab to reflect the new mounts.  An example fstab
 	# file based on the above parameters exists as /mnt/etc/fstab.example
@@ -189,5 +195,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.3 2003/12/02 20:19:39 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.4 2003/12/04 00:01:14 dillon Exp $
 
