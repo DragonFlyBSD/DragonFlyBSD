@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.6 2004/11/12 22:42:36 dillon Exp $
  */
 
 /* hash.c --
@@ -64,7 +64,7 @@ static void RebuildTable(Hash_Table *);
  * at which we rebuild the table to make it larger.
  */
 
-#define rebuildLimit 8
+#define	rebuildLimit 8
 
 /*
  *---------------------------------------------------------

@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.5 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.6 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -174,7 +174,7 @@ For_Eval (line)
 	buf = Buf_Init(0);
 	sub = Var_Subst(NULL, ptr, VAR_GLOBAL, FALSE);
 
-#define ADDWORD() \
+#define	ADDWORD() \
 	Buf_AddBytes(buf, ptr - wrd, (Byte *) wrd), \
 	Buf_AddByte(buf, (Byte) '\0'), \
 	Lst_AtFront(forLst, (void *) Buf_GetAll(buf, &varlen)), \
@@ -191,8 +191,7 @@ For_Eval (line)
 		    ptr++;
 		wrd = ptr--;
 	    }
-	if (DEBUG(FOR))
-	    (void) fprintf(stderr, "For: Iterator %s List %s\n", forVar, sub);
+	DEBUGF(FOR, ("For: Iterator %s List %s\n", forVar, sub));
 	if (ptr - wrd > 0)
 	    ADDWORD();
 	else
@@ -210,8 +209,7 @@ For_Eval (line)
 
 	if (strncmp(ptr, "endfor", 6) == 0 &&
 	    (isspace((unsigned char) ptr[6]) || !ptr[6])) {
-	    if (DEBUG(FOR))
-		(void) fprintf(stderr, "For: end for %d\n", forLevel);
+	    DEBUGF(FOR, ("For: end for %d\n", forLevel));
 	    if (--forLevel < 0) {
 		Parse_Error (level, "for-less endfor");
 		return 0;
@@ -220,8 +218,7 @@ For_Eval (line)
 	else if (strncmp(ptr, "for", 3) == 0 &&
 		 isspace((unsigned char) ptr[3])) {
 	    forLevel++;
-	    if (DEBUG(FOR))
-		(void) fprintf(stderr, "For: new loop %d\n", forLevel);
+	    DEBUGF(FOR, ("For: new loop %d\n", forLevel));
 	}
     }
 
@@ -257,8 +254,7 @@ ForExec(namep, argp)
     For *arg = (For *) argp;
     int len;
     Var_Set(arg->var, name, VAR_GLOBAL);
-    if (DEBUG(FOR))
-	(void) fprintf(stderr, "--- %s = %s\n", arg->var, name);
+    DEBUGF(FOR, ("--- %s = %s\n", arg->var, name));
     Parse_FromString(Var_Subst(arg->var, (char *) Buf_GetAll(arg->buf, &len),
 			       VAR_GLOBAL, FALSE));
     Var_Delete(arg->var, VAR_GLOBAL);

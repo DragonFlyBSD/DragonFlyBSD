@@ -38,7 +38,7 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.3 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.4 2004/11/12 22:42:36 dillon Exp $
  */
 
 #define	DEFSHELL	1			/* Bourne shell */
@@ -52,8 +52,8 @@
  *	created on the local machine at once. Note that if you set this
  *	to 0, nothing will ever happen...
  */
-#define DEFMAXJOBS	4
-#define DEFMAXLOCAL	1
+#define	DEFMAXJOBS	4
+#define	DEFMAXLOCAL	1
 
 /*
  * INCLUDES
@@ -64,8 +64,8 @@
  *	.INCLUDES dependency lines. Similarly for LIBRARIES and .LIBS
  *	See suff.c for more details.
  */
-#define INCLUDES
-#define LIBRARIES
+#define	INCLUDES
+#define	LIBRARIES
 
 /*
  * LIBSUFF
@@ -92,7 +92,7 @@
  *	  environment.
  *	- Allow empty command lines if starting with tab.
  */
-#define POSIX
+#define	POSIX
 
 /*
  * SYSVINCLUDE
@@ -100,8 +100,8 @@
  * SYSVVARSUB
  *	Recognize system V like ${VAR:x=y} variable substitutions
  */
-#define SYSVINCLUDE
-#define SYSVVARSUB
+#define	SYSVINCLUDE
+#define	SYSVVARSUB
 
 /*
  * SUNSHCMD
@@ -110,7 +110,7 @@
  *		${VAR:sh}	# Return the command substitution of the value
  *				# of ${VAR}
  */
-#define SUNSHCMD
+#define	SUNSHCMD
 
 #if !defined(__svr4__) && !defined(__SVR4) && !defined(__ELF__)
 # ifndef RANLIBMAG

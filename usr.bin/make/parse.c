@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.9 2004/11/12 22:28:05 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.10 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -1255,7 +1255,7 @@ Parse_IsVar (line)
     Boolean wasSpace = FALSE;	/* set TRUE if found a space */
     Boolean haveName = FALSE;	/* Set TRUE if have a variable name */
     int level = 0;
-#define ISEQOPERATOR(c) \
+#define	ISEQOPERATOR(c) \
 	(((c) == '+') || ((c) == ':') || ((c) == '?') || ((c) == '!'))
 
     /*
@@ -1807,8 +1807,7 @@ Parse_FromString(str)
 {
     IFile         *oldFile;	/* state associated with this file */
 
-    if (DEBUG(FOR))
-	(void) fprintf(stderr, "%s\n----\n", str);
+    DEBUGF(FOR, ("%s\n----\n", str));
 
     oldFile = (IFile *) emalloc (sizeof (IFile));
     oldFile->lineno = lineno;

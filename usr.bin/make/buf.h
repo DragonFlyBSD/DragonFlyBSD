@@ -38,7 +38,7 @@
  *
  *	from: @(#)buf.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.h,v 1.9 1999/08/28 01:03:26 peter Exp $
- * $DragonFly: src/usr.bin/make/buf.h,v 1.4 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/buf.h,v 1.5 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -47,7 +47,7 @@
  */
 
 #ifndef _BUF_H
-#define _BUF_H
+#define	_BUF_H
 
 #include    "sprite.h"
 
@@ -66,7 +66,7 @@ typedef struct Buffer {
 	(void) (--(bp)->left <= 0 ? Buf_OvAddByte(bp, byte), 1 : \
 		(*(bp)->inPtr++ = (byte), *(bp)->inPtr = 0), 1)
 
-#define BUF_ERROR 256
+#define	BUF_ERROR 256
 
 void Buf_OvAddByte(Buffer, int);
 void Buf_AddBytes(Buffer, int, const Byte *);

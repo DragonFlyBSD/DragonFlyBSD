@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.8 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.9 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -110,9 +110,9 @@ typedef struct _Suff {
     char         *name;	    	/* The suffix itself */
     int		 nameLen;	/* Length of the suffix */
     short	 flags;      	/* Type of suffix */
-#define SUFF_INCLUDE	  0x01	    /* One which is #include'd */
-#define SUFF_LIBRARY	  0x02	    /* One which contains a library */
-#define SUFF_NULL 	  0x04	    /* The empty suffix */
+#define	SUFF_INCLUDE	  0x01	    /* One which is #include'd */
+#define	SUFF_LIBRARY	  0x02	    /* One which contains a library */
+#define	SUFF_NULL 	  0x04	    /* The empty suffix */
     Lst    	 searchPath;	/* The path along which files of this suffix
 				 * may be found */
     int          sNum;	      	/* The suffix number */
@@ -413,25 +413,19 @@ SuffInsert (l, s)
     }
 
     Lst_Close (l);
-    if (DEBUG(SUFF)) {
-	printf("inserting %s(%d)...", s->name, s->sNum);
-    }
+    DEBUGF(SUFF, ("inserting %s(%d)...", s->name, s->sNum));
     if (ln == NULL) {
-	if (DEBUG(SUFF)) {
-	    printf("at end of list\n");
-	}
+	DEBUGF(SUFF, ("at end of list\n"));
 	(void)Lst_AtEnd (l, (void *)s);
 	s->refCount++;
 	(void)Lst_AtEnd(s->ref, (void *) l);
     } else if (s2->sNum != s->sNum) {
-	if (DEBUG(SUFF)) {
-	    printf("before %s(%d)\n", s2->name, s2->sNum);
-	}
+	DEBUGF(SUFF, ("before %s(%d)\n", s2->name, s2->sNum));
 	(void)Lst_Insert (l, ln, (void *)s);
 	s->refCount++;
 	(void)Lst_AtEnd(s->ref, (void *) l);
-    } else if (DEBUG(SUFF)) {
-	printf("already there\n");
+    } else {
+	DEBUGF(SUFF, ("already there\n"));
     }
 }
 
@@ -624,10 +618,8 @@ Suff_AddTransform (line)
     /*
      * link the two together in the proper relationship and order
      */
-    if (DEBUG(SUFF)) {
-	printf("defining transformation from `%s' to `%s'\n",
-		s->name, t->name);
-    }
+    DEBUGF(SUFF, ("defining transformation from `%s' to `%s'\n",
+	   s->name, t->name));
     SuffInsert (t->children, s);
     SuffInsert (s->parents, t);
 
@@ -670,10 +662,8 @@ Suff_EndTransform(gnp, dummy)
 	if (!SuffParseTransform(gn->name, &s, &t))
 		return (0);
 
-	if (DEBUG(SUFF)) {
-	    printf("deleting transformation from `%s' to `%s'\n",
-		    s->name, t->name);
-	}
+	DEBUGF(SUFF, ("deleting transformation from `%s' to `%s'\n",
+	       s->name, t->name));
 
 	/*
 	 * Remove the source from the target's children list. We check for a
@@ -689,8 +679,8 @@ Suff_EndTransform(gnp, dummy)
 	 * Remove the target from the source's parents list
 	 */
 	SuffRemove(s->parents, t);
-    } else if ((gn->type & OP_TRANSFORM) && DEBUG(SUFF)) {
-	printf("transformation %s complete\n", gn->name);
+    } else if (gn->type & OP_TRANSFORM) {
+	DEBUGF(SUFF, ("transformation %s complete\n", gn->name));
     }
 
     return(dummy ? 0 : 0);
@@ -1164,9 +1154,7 @@ SuffFindThem (srcs, slst)
     while (!Lst_IsEmpty (srcs)) {
 	s = (Src *) Lst_DeQueue (srcs);
 
-	if (DEBUG(SUFF)) {
-	    printf ("\ttrying %s...", s->file);
-	}
+	DEBUGF(SUFF, ("\ttrying %s...", s->file));
 
 	/*
 	 * A file is considered to exist if either a node exists in the
@@ -1189,16 +1177,14 @@ SuffFindThem (srcs, slst)
 	    break;
 	}
 
-	if (DEBUG(SUFF)) {
-	    printf ("not there\n");
-	}
+	DEBUGF(SUFF, ("not there\n"));
 
 	SuffAddLevel (srcs, s);
 	Lst_AtEnd(slst, (void *) s);
     }
 
-    if (DEBUG(SUFF) && rs) {
-	printf ("got it\n");
+    if (rs) {
+	DEBUGF(SUFF, ("got it\n"));
     }
     return (rs);
 }
@@ -1284,9 +1270,7 @@ SuffFindCmds (targ, slst)
 		    Lst_AtEnd(targ->cp, (void *) ret);
 #endif
 		    Lst_AtEnd(slst, (void *) ret);
-		    if (DEBUG(SUFF)) {
-			printf ("\tusing existing source %s\n", s->name);
-		    }
+		    DEBUGF(SUFF, ("\tusing existing source %s\n", s->name));
 		    return (ret);
 		}
 	    }
@@ -1337,9 +1321,7 @@ SuffExpandChildren(cgnp, pgnp)
      * the children list.
      */
     if (strchr(cgn->name, '$') != (char *)NULL) {
-	if (DEBUG(SUFF)) {
-	    printf("Expanding \"%s\"...", cgn->name);
-	}
+	DEBUGF(SUFF, ("Expanding \"%s\"...", cgn->name));
 	cp = Var_Subst(NULL, cgn->name, pgn, TRUE);
 
 	if (cp != (char *)NULL) {
@@ -1428,9 +1410,7 @@ SuffExpandChildren(cgnp, pgnp)
 	    while(!Lst_IsEmpty(members)) {
 		gn = (GNode *)Lst_DeQueue(members);
 
-		if (DEBUG(SUFF)) {
-		    printf("%s...", gn->name);
-		}
+		DEBUGF(SUFF, ("%s...", gn->name));
 		if (Lst_Member(pgn->children, (void *)gn) == NULL) {
 		    (void)Lst_Append(pgn->children, prevLN, (void *)gn);
 		    prevLN = Lst_Succ(prevLN);
@@ -1451,9 +1431,7 @@ SuffExpandChildren(cgnp, pgnp)
 	ln = Lst_Member(pgn->children, (void *)cgn);
 	pgn->unmade--;
 	Lst_Remove(pgn->children, ln);
-	if (DEBUG(SUFF)) {
-	    printf("\n");
-	}
+	DEBUGF(SUFF, ("\n"));
     } else if (Dir_HasWildcards(cgn->name)) {
 	Lst 	exp;	    /* List of expansions */
 	Lst 	path;	    /* Search path along which to expand */
@@ -1469,16 +1447,12 @@ SuffExpandChildren(cgnp, pgnp)
 	cp = cgn->name + strlen(cgn->name);
 	ln = Lst_Find(sufflist, (void *)cp, SuffSuffIsSuffixP);
 
-	if (DEBUG(SUFF)) {
-	    printf("Wildcard expanding \"%s\"...", cgn->name);
-	}
+	DEBUGF(SUFF, ("Wildcard expanding \"%s\"...", cgn->name));
 
 	if (ln != NULL) {
 	    Suff    *s = (Suff *)Lst_Datum(ln);
 
-	    if (DEBUG(SUFF)) {
-		printf("suffix is \"%s\"...", s->name);
-	    }
+	    DEBUGF(SUFF, ("suffix is \"%s\"...", s->name));
 	    path = s->searchPath;
 	} else {
 	    /*
@@ -1499,9 +1473,7 @@ SuffExpandChildren(cgnp, pgnp)
 	     */
 	    cp = (char *)Lst_DeQueue(exp);
 
-	    if (DEBUG(SUFF)) {
-		printf("%s...", cp);
-	    }
+	    DEBUGF(SUFF, ("%s...", cp));
 	    gn = Targ_FindNode(cp, TARG_CREATE);
 
 	    /*
@@ -1528,9 +1500,7 @@ SuffExpandChildren(cgnp, pgnp)
 	ln = Lst_Member(pgn->children, (void *)cgn);
 	pgn->unmade--;
 	Lst_Remove(pgn->children, ln);
-	if (DEBUG(SUFF)) {
-	    printf("\n");
-	}
+	DEBUGF(SUFF, ("\n"));
     }
 
     return(0);
@@ -1614,9 +1584,7 @@ SuffApplyTransform(tGn, sGn, t, s)
 
     gn = (GNode *)Lst_Datum(ln);
 
-    if (DEBUG(SUFF)) {
-	printf("\tapplying %s -> %s to \"%s\"\n", s->name, t->name, tGn->name);
-    }
+    DEBUGF(SUFF, ("\tapplying %s -> %s to \"%s\"\n", s->name, t->name, tGn->name));
 
     /*
      * Record last child for expansion purposes
@@ -1722,9 +1690,7 @@ SuffFindArchiveDeps(gn, slst)
 	/*
 	 * Didn't know what it was -- use .NULL suffix if not in make mode
 	 */
-	if (DEBUG(SUFF)) {
-	    printf("using null suffix\n");
-	}
+	DEBUGF(SUFF, ("using null suffix\n"));
 	ms = suffNull;
     }
 
@@ -1753,11 +1719,9 @@ SuffFindArchiveDeps(gn, slst)
 	    /*
 	     * Got one -- apply it
 	     */
-	    if (!SuffApplyTransform(gn, mem, (Suff *)Lst_Datum(ln), ms) &&
-		DEBUG(SUFF))
-	    {
-		printf("\tNo transformation from %s -> %s\n",
-		       ms->name, ((Suff *)Lst_Datum(ln))->name);
+	    if (!SuffApplyTransform(gn, mem, (Suff *)Lst_Datum(ln), ms)) {
+		DEBUGF(SUFF, ("\tNo transformation from %s -> %s\n",
+		       ms->name, ((Suff *)Lst_Datum(ln))->name));
 	    }
 	}
     }
@@ -1899,9 +1863,7 @@ SuffFindNormalDeps(gn, slst)
      * Handle target of unknown suffix...
      */
     if (Lst_IsEmpty(targs) && suffNull != NULL) {
-	if (DEBUG(SUFF)) {
-	    printf("\tNo known suffix on %s. Using .NULL suffix\n", gn->name);
-	}
+	DEBUGF(SUFF, ("\tNo known suffix on %s. Using .NULL suffix\n", gn->name));
 
 	targ = (Src *)emalloc(sizeof (Src));
 	targ->file = estrdup(gn->name);
@@ -1922,12 +1884,10 @@ SuffFindNormalDeps(gn, slst)
 	if (Lst_IsEmpty(gn->commands) && Lst_IsEmpty(gn->children))
 	    SuffAddLevel(srcs, targ);
 	else {
-	    if (DEBUG(SUFF))
-		printf("not ");
+	    DEBUGF(SUFF, ("not "));
 	}
 
-	if (DEBUG(SUFF))
-	    printf("adding suffix rules\n");
+	DEBUGF(SUFF, ("adding suffix rules\n"));
 
 	(void)Lst_AtEnd(targs, (void *)targ);
     }
@@ -1975,9 +1935,7 @@ SuffFindNormalDeps(gn, slst)
     Lst_ForEach(gn->children, SuffExpandChildren, (void *)gn);
 
     if (targ == NULL) {
-	if (DEBUG(SUFF)) {
-	    printf("\tNo valid suffix on %s\n", gn->name);
-	}
+	DEBUGF(SUFF, ("\tNo valid suffix on %s\n", gn->name));
 
 sfnd_abort:
 	/*
@@ -2220,9 +2178,7 @@ SuffFindDeps (gn, slst)
 	gn->type |= OP_DEPS_FOUND;
     }
 
-    if (DEBUG(SUFF)) {
-	printf ("SuffFindDeps (%s)\n", gn->name);
-    }
+    DEBUGF(SUFF, ("SuffFindDeps (%s)\n", gn->name));
 
     if (gn->type & OP_ARCHV) {
 	SuffFindArchiveDeps(gn, slst);

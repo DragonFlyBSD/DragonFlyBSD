@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.8 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -372,9 +372,7 @@ VarAdd (name, val, ctxt)
 
     (void) Lst_AtFront (ctxt->context, (void *)v);
     (void) Lst_AtEnd (allVars, (void *) v);
-    if (DEBUG(VAR)) {
-	printf("%s:%s = %s\n", ctxt->name, name, val);
-    }
+    DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
 }
 
 
@@ -422,9 +420,7 @@ Var_Delete(name, ctxt)
 {
     LstNode 	  ln;
 
-    if (DEBUG(VAR)) {
-	printf("%s:delete %s\n", ctxt->name, name);
-    }
+    DEBUGF(VAR, ("%s:delete %s\n", ctxt->name, name));
     ln = Lst_Find(ctxt->context, (void *)name, VarCmp);
     if (ln != NULL) {
 	Var 	  *v;
@@ -478,9 +474,7 @@ Var_Set (name, val, ctxt)
 	Buf_Discard(v->val, Buf_Size(v->val));
 	Buf_AddBytes(v->val, strlen(val), (Byte *)val);
 
-	if (DEBUG(VAR)) {
-	    printf("%s:%s = %s\n", ctxt->name, name, val);
-	}
+	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
     }
     /*
      * Any variables given on the command line are automatically exported
@@ -549,10 +543,8 @@ Var_Append (name, val, ctxt)
 	Buf_AddByte(v->val, (Byte)' ');
 	Buf_AddBytes(v->val, strlen(val), (Byte *)val);
 
-	if (DEBUG(VAR)) {
-	    printf("%s:%s = %s\n", ctxt->name, name,
-		   (char *) Buf_GetAll(v->val, (int *)NULL));
-	}
+	DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, 
+	       (char *) Buf_GetAll(v->val, (int *)NULL)));
 
 	if (v->flags & VAR_FROM_ENV) {
 	    /*
@@ -1138,7 +1130,7 @@ VarRESubstitute(word, addSpace, buf, patternp)
     int added;
     int flags = 0;
 
-#define MAYBE_ADD_SPACE()		\
+#define	MAYBE_ADD_SPACE()		\
 	if (addSpace && !added)		\
 	    Buf_AddByte(buf, ' ');	\
 	added = 1
@@ -1322,7 +1314,7 @@ VarGetPattern(ctxt, err, tstr, delim, flags, length, pattern)
     if (length == NULL)
 	length = &junk;
 
-#define IS_A_MATCH(cp, delim) \
+#define	IS_A_MATCH(cp, delim) \
     ((cp[0] == '\\') && ((cp[1] == delim) ||  \
      (cp[1] == '\\') || (cp[1] == '$') || (pattern && (cp[1] == '&'))))
 
@@ -1768,9 +1760,7 @@ Var_Parse (str, ctxt, err, lengthPtr, freePtr)
 	    char	*newStr;    /* New value to return */
 	    char	termc;	    /* Character which terminated scan */
 
-	    if (DEBUG(VAR)) {
-		printf("Applying :%c to \"%s\"\n", *tstr, str);
-	    }
+	    DEBUGF(VAR, ("Applying :%c to \"%s\"\n", *tstr, str));
 	    switch (*tstr) {
 	        case 'U':
 			if (tstr[1] == endc || tstr[1] == ':') {
@@ -2239,9 +2229,7 @@ Var_Parse (str, ctxt, err, lengthPtr, freePtr)
 		    }
 		}
 	    }
-	    if (DEBUG(VAR)) {
-		printf("Result is \"%s\"\n", newStr);
-	    }
+	    DEBUGF(VAR, ("Result is \"%s\"\n", newStr));
 
 	    if (*freePtr) {
 		free (str);

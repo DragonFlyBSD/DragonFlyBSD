@@ -38,7 +38,7 @@
  *
  *	from: @(#)list.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/list.h,v 1.8 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/list.h,v 1.4 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/list.h,v 1.5 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*
@@ -48,7 +48,7 @@
  */
 
 #ifndef _LIST
-#define _LIST
+#define	_LIST
 
 #ifndef _SPRITE
 #include "sprite.h"
@@ -129,7 +129,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  *
  * ----------------------------------------------------------------------------
  */
-#define List_InitElement(elementPtr) \
+#define	List_InitElement(elementPtr) \
     (elementPtr)->prevPtr = (List_Links *) NULL; \
     (elementPtr)->nextPtr = (List_Links *) NULL;
 
@@ -161,7 +161,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define LIST_FORALL(headerPtr, itemPtr) \
+#define	LIST_FORALL(headerPtr, itemPtr) \
         for (itemPtr = List_First(headerPtr); \
              !List_IsAtEnd((headerPtr),itemPtr); \
              itemPtr = List_Next(itemPtr))
@@ -179,7 +179,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define List_IsEmpty(headerPtr) \
+#define	List_IsEmpty(headerPtr) \
         ((headerPtr) == (headerPtr)->nextPtr)
 
 /*
@@ -196,7 +196,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  */
 
 
-#define List_IsAtEnd(headerPtr, itemPtr) \
+#define	List_IsAtEnd(headerPtr, itemPtr) \
         ((itemPtr) == (headerPtr))
 
 
@@ -213,7 +213,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define List_First(headerPtr) ((headerPtr)->nextPtr)
+#define	List_First(headerPtr) ((headerPtr)->nextPtr)
 
 /*
  * ----------------------------------------------------------------------------
@@ -228,7 +228,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define List_Last(headerPtr) ((headerPtr)->prevPtr)
+#define	List_Last(headerPtr) ((headerPtr)->prevPtr)
 
 /*
  * ----------------------------------------------------------------------------
@@ -244,7 +244,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define List_Prev(itemPtr) ((itemPtr)->prevPtr)
+#define	List_Prev(itemPtr) ((itemPtr)->prevPtr)
 
 /*
  * ----------------------------------------------------------------------------
@@ -260,7 +260,7 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define List_Next(itemPtr) ((itemPtr)->nextPtr)
+#define	List_Next(itemPtr) ((itemPtr)->nextPtr)
 
 
 /*
@@ -290,12 +290,12 @@ void 	List_Move();    /* move an element elsewhere in a list */
  * ----------------------------------------------------------------------------
  */
 
-#define LIST_AFTER(itemPtr) ((List_Links *) itemPtr)
+#define	LIST_AFTER(itemPtr) ((List_Links *) itemPtr)
 
-#define LIST_BEFORE(itemPtr) (((List_Links *) itemPtr)->prevPtr)
+#define	LIST_BEFORE(itemPtr) (((List_Links *) itemPtr)->prevPtr)
 
-#define LIST_ATFRONT(headerPtr) ((List_Links *) headerPtr)
+#define	LIST_ATFRONT(headerPtr) ((List_Links *) headerPtr)
 
-#define LIST_ATREAR(headerPtr) (((List_Links *) headerPtr)->prevPtr)
+#define	LIST_ATREAR(headerPtr) (((List_Links *) headerPtr)->prevPtr)
 
 #endif /* _LIST */

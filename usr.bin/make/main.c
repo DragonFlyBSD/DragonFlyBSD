@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.11 2004/11/12 22:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.12 2004/11/12 22:42:36 dillon Exp $
  */
 
 static
@@ -1158,6 +1158,28 @@ bad:
     res = emalloc(1);
     *res = '\0';
     return res;
+}
+ 
+/*-
+ * Debug --
+ *	Print a debugging message given its format.
+ *
+ * Results:
+ *	None.
+ *
+ * Side Effects:
+ *	The message is printed.
+ */
+/* VARARGS */
+void
+Debug(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	(void)vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	(void)fflush(stderr);
 }
 
 /*-

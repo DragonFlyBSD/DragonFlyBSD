@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.6 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.7 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -46,7 +46,7 @@
  *	Header for using the list library
  */
 #ifndef _LST_H_
-#define _LST_H_
+#define	_LST_H_
 
 #include	<sys/param.h>
 #ifdef __STDC__
@@ -66,11 +66,11 @@ typedef	struct	LstNode	*LstNode;
  *	not to be freed.
  * NOCOPY performs similarly when given as the copyProc to Lst_Duplicate.
  */
-#define NOFREE		((void (*)(void *)) 0)
-#define NOCOPY		((void * (*)(void *)) 0)
+#define	NOFREE		((void (*)(void *)) 0)
+#define	NOCOPY		((void * (*)(void *)) 0)
 
-#define LST_CONCNEW	0   /* create new LstNode's when using Lst_Concat */
-#define LST_CONCLINK	1   /* relink LstNode's when using Lst_Concat */
+#define	LST_CONCNEW	0   /* create new LstNode's when using Lst_Concat */
+#define	LST_CONCLINK	1   /* relink LstNode's when using Lst_Concat */
 
 /*
  * Creation/destruction functions

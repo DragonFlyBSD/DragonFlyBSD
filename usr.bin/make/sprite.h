@@ -37,7 +37,7 @@
  *
  *	from: @(#)sprite.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/sprite.h,v 1.9 1999/08/28 01:03:36 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.3 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/sprite.h,v 1.4 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*
@@ -47,7 +47,7 @@
  */
 
 #ifndef _SPRITE
-#define _SPRITE
+#define	_SPRITE
 
 /*
  * A boolean type is defined as an integer, not an enum. This allows a
@@ -56,15 +56,15 @@
 
 typedef int Boolean;
 #ifndef TRUE
-#define TRUE	1
+#define	TRUE	1
 #endif /* TRUE */
 #ifndef FALSE
-#define FALSE	0
+#define	FALSE	0
 #endif /* FALSE */
 
 typedef int  ReturnStatus;
 
-#define SUCCESS		0
-#define FAILURE		1
+#define	SUCCESS		0
+#define	FAILURE		1
 
 #endif /* _SPRITE */

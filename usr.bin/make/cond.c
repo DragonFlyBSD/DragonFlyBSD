@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.7 2004/11/12 22:02:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.8 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -656,10 +656,8 @@ do_string_compare:
 		    string = (char *)Buf_GetAll(buf, (int *)0);
 		    Buf_Destroy(buf, FALSE);
 
-		    if (DEBUG(COND)) {
-			printf("lhs = \"%s\", rhs = \"%s\", op = %.2s\n",
-			       lhs, string, op);
-		    }
+		    DEBUGF(COND, ("lhs = \"%s\", rhs = \"%s\", op = %.2s\n",
+			   lhs, string, op));
 		    /*
 		     * Null-terminate rhs and perform the comparison.
 		     * t is set to the result.
@@ -716,10 +714,8 @@ do_string_compare:
 			}
 		    }
 
-		    if (DEBUG(COND)) {
-			printf("left = %f, right = %f, op = %.2s\n", left,
-			       right, op);
-		    }
+		    DEBUGF(COND, ("left = %f, right = %f, op = %.2s\n", left,
+			   right, op));
 		    switch(op[0]) {
 		    case '!':
 			if (op[1] != '=') {

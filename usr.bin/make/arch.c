@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.9 2004/11/12 22:28:05 dillon Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.10 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -117,7 +117,7 @@ static void ArchFree(void *);
 static struct ar_hdr *ArchStatMember(char *, char *, Boolean);
 static FILE *ArchFindMember(char *, char *, struct ar_hdr *, char *);
 #if defined(__svr4__) || defined(__SVR4) || defined(__ELF__)
-#define SVR4ARCHIVES
+#define	SVR4ARCHIVES
 static int ArchSVR4Entry(Arch *, char *, size_t, FILE *);
 #endif
 
@@ -463,7 +463,7 @@ ArchStatMember (archive, member, hash)
     Boolean	  hash;	      /* TRUE if archive should be hashed if not
     			       * already so. */
 {
-#define AR_MAX_NAME_LEN	    (sizeof(arh.ar_name)-1)
+#define	AR_MAX_NAME_LEN	    (sizeof(arh.ar_name)-1)
     FILE *	  arch;	      /* Stream to archive */
     int		  size;       /* Size of archive member */
     char	  *cp;	      /* Useful character pointer */
@@ -617,8 +617,11 @@ ArchStatMember (archive, member, hash)
 			goto badarch;
 		memName[elen] = '\0';
 		fseek (arch, -elen, SEEK_CUR);
+		/* XXX Multiple levels may be asked for, make this conditional
+		 * on one, and use DEBUGF.
+		 */
 		if (DEBUG(ARCH) || DEBUG(MAKE)) {
-		    printf("ArchStat: Extended format entry for %s\n", memName);
+		    fprintf(stderr, "ArchStat: Extended format entry for %s\n", memName);
 		}
 	    }
 #endif
@@ -683,8 +686,8 @@ ArchSVR4Entry(ar, name, size, arch)
 	size_t size;
 	FILE *arch;
 {
-#define ARLONGNAMES1 "//"
-#define ARLONGNAMES2 "/ARFILENAMES"
+#define	ARLONGNAMES1 "//"
+#define	ARLONGNAMES2 "/ARFILENAMES"
     size_t entry;
     char *ptr, *eptr;
 
@@ -692,9 +695,7 @@ ArchSVR4Entry(ar, name, size, arch)
 	strncmp(name, ARLONGNAMES2, sizeof(ARLONGNAMES2) - 1) == 0) {
 
 	if (ar->fnametab != NULL) {
-	    if (DEBUG(ARCH)) {
-		printf("Attempted to redefine an SVR4 name table\n");
-	    }
+	    DEBUGF(ARCH, ("Attempted to redefine an SVR4 name table\n"));
 	    return -1;
 	}
 
@@ -706,9 +707,7 @@ ArchSVR4Entry(ar, name, size, arch)
 	ar->fnamesize = size;
 
 	if (fread(ar->fnametab, size, 1, arch) != 1) {
-	    if (DEBUG(ARCH)) {
-		printf("Reading an SVR4 name table failed\n");
-	    }
+	    DEBUGF(ARCH, ("Reading an SVR4 name table failed\n"));
 	    return -1;
 	}
 	eptr = ar->fnametab + size;
@@ -725,9 +724,7 @@ ArchSVR4Entry(ar, name, size, arch)
 	    default:
 		break;
 	    }
-	if (DEBUG(ARCH)) {
-	    printf("Found svr4 archive name table with %d entries\n", entry);
-	}
+	DEBUGF(ARCH, ("Found svr4 archive name table with %zu entries\n", entry));
 	return 0;
     }
 
@@ -736,22 +733,16 @@ ArchSVR4Entry(ar, name, size, arch)
 
     entry = (size_t) strtol(&name[1], &eptr, 0);
     if ((*eptr != ' ' && *eptr != '\0') || eptr == &name[1]) {
-	if (DEBUG(ARCH)) {
-	    printf("Could not parse SVR4 name %s\n", name);
-	}
+	DEBUGF(ARCH, ("Could not parse SVR4 name %s\n", name));
 	return 2;
     }
     if (entry >= ar->fnamesize) {
-	if (DEBUG(ARCH)) {
-	    printf("SVR4 entry offset %s is greater than %d\n",
-		   name, ar->fnamesize);
-	}
+	DEBUGF(ARCH, ("SVR4 entry offset %s is greater than %zu\n",
+		name, ar->fnamesize));
 	return 2;
     }
 
-    if (DEBUG(ARCH)) {
-	printf("Replaced %s with %s\n", name, &ar->fnametab[entry]);
-    }
+    DEBUGF(ARCH, ("Replaced %s with %s\n", name, &ar->fnametab[entry]));
 
     (void) strncpy(name, &ar->fnametab[entry], MAXPATHLEN);
     name[MAXPATHLEN] = '\0';
@@ -872,6 +863,9 @@ ArchFindMember (archive, member, arhPtr, mode)
 			return NULL;
 		}
 		ename[elen] = '\0';
+		/*
+		 * XXX choose one.
+		 */
 		if (DEBUG(ARCH) || DEBUG(MAKE)) {
 		    printf("ArchFind: Extended format entry for %s\n", ename);
 		}
@@ -1177,6 +1171,7 @@ Arch_LibOODate (gn)
 	if (arhPtr != NULL) {
 	    modTimeTOC = (int) strtol(arhPtr->ar_date, NULL, 10);
 
+	    /* XXX choose one. */
 	    if (DEBUG(ARCH) || DEBUG(MAKE)) {
 		printf("%s modified %s...", RANLIBMAG, Targ_FmtTime(modTimeTOC));
 	    }

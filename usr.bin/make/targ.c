@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.7 2004/11/12 22:11:33 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.8 2004/11/12 22:42:36 dillon Exp $
  */
 
 /*-
@@ -91,7 +91,7 @@ static Lst        allTargets;	/* the list of all targets found so far */
 static Lst	  allGNs;	/* List of all the GNodes */
 static Hash_Table targets;	/* a hash table of same */
 
-#define HTSIZE	191		/* initial size of hash table */
+#define	HTSIZE	191		/* initial size of hash table */
 
 static int TargPrintOnlySrc(void *, void *);
 static int TargPrintName(void *, void *);
@@ -486,8 +486,8 @@ Targ_PrintType (type)
 {
     int    tbit;
 
-#define PRINTBIT(attr)	case CONCAT(OP_,attr): printf("." #attr " "); break
-#define PRINTDBIT(attr) case CONCAT(OP_,attr): if (DEBUG(TARG)) printf("." #attr " "); break
+#define	PRINTBIT(attr)	case CONCAT(OP_,attr): printf("." #attr " "); break
+#define	PRINTDBIT(attr) case CONCAT(OP_,attr): DEBUGF(TARG, ("." #attr " ")); break
 
     type &= ~OP_OPMASK;
 
@@ -508,7 +508,7 @@ Targ_PrintType (type)
 	    PRINTBIT(NOTMAIN);
 	    PRINTDBIT(LIB);
 	    /*XXX: MEMBER is defined, so CONCAT(OP_,MEMBER) gives OP_"%" */
-	    case OP_MEMBER: if (DEBUG(TARG)) printf(".MEMBER "); break;
+	    case OP_MEMBER: DEBUGF(TARG, (".MEMBER ")); break;
 	    PRINTDBIT(ARCHV);
 	}
     }
