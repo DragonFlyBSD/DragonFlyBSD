@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/main.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #define _DEFINE
@@ -940,16 +941,18 @@ main(argc, argv, envp)
 				*p++ = '\0';
 				if (*p != '\0')
 				{
-					ep = sm_malloc_x(strlen(p) + 1);
-					cleanstrcpy(ep, p, MAXNAME);
+					i = strlen(p) + 1;
+					ep = sm_malloc_x(i);
+					cleanstrcpy(ep, p, i);
 					macdefine(&BlankEnvelope.e_macro,
 						  A_HEAP, 's', ep);
 				}
 			}
 			if (*optarg != '\0')
 			{
-				ep = sm_malloc_x(strlen(optarg) + 1);
-				cleanstrcpy(ep, optarg, MAXNAME);
+				i = strlen(optarg) + 1;
+				ep = sm_malloc_x(i);
+				cleanstrcpy(ep, optarg, i);
 				macdefine(&BlankEnvelope.e_macro, A_HEAP,
 					  'r', ep);
 			}

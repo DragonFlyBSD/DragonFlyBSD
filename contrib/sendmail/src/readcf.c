@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/readcf.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -2552,7 +2553,7 @@ setoption(opt, val, safe, sticky, e)
 			break;
 		p = newstr(ep);
 		if (!safe)
-			cleanstrcpy(p, p, MAXNAME);
+			cleanstrcpy(p, p, strlen(p) + 1);
 		macdefine(&CurEnv->e_macro, A_TEMP, mid, p);
 		break;
 

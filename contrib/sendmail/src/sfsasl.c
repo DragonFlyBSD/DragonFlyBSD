@@ -6,6 +6,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/sfsasl.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sm/gen.h>
@@ -101,6 +102,11 @@ sasl_open(fp, info, flags, rpool)
 	struct sasl_info *si = (struct sasl_info *) info;
 
 	so = (struct sasl_obj *) sm_malloc(sizeof(struct sasl_obj));
+	if (so == NULL)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
 	so->fp = si->fp;
 	so->conn = si->conn;
 
@@ -139,6 +145,8 @@ sasl_close(fp)
 	struct sasl_obj *so;
 
 	so = (struct sasl_obj *) fp->f_cookie;
+	if (so == NULL)
+		return 0;
 	if (so->fp != NULL)
 	{
 		sm_io_close(so->fp, SM_TIME_DEFAULT);
@@ -447,6 +455,11 @@ tls_open(fp, info, flags, rpool)
 	struct tls_info *ti = (struct tls_info *) info;
 
 	so = (struct tls_obj *) sm_malloc(sizeof(struct tls_obj));
+	if (so == NULL)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
 	so->fp = ti->fp;
 	so->con = ti->con;
 
@@ -483,6 +496,8 @@ tls_close(fp)
 	struct tls_obj *so;
 
 	so = (struct tls_obj *) fp->f_cookie;
+	if (so == NULL)
+		return 0;
 	if (so->fp != NULL)
 	{
 		sm_io_close(so->fp, SM_TIME_DEFAULT);

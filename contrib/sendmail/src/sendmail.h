@@ -8,6 +8,8 @@
  * By using this file, you agree to the terms and conditions set
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
+ *
+ * $DragonFly: src/contrib/sendmail/src/Attic/sendmail.h,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 /*
@@ -1052,6 +1054,7 @@ struct rewrite
 #define MATCHZERO	CANONHOST
 
 #define MAXMATCH	9	/* max params per rewrite */
+#define MAX_MAP_ARGS	10	/* max arguments for map */
 
 /* external <==> internal mapping table */
 struct metamac

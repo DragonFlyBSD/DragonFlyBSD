@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/map.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -383,7 +384,7 @@ map_rewrite(map, s, slen, av)
 			if (c != '%')
 			{
   pushc:
-				if (--len <= 0)
+				if (len-- <= 1)
 				     break;
 				*bp++ = c;
 				continue;
@@ -394,8 +395,9 @@ map_rewrite(map, s, slen, av)
 				goto pushc;
 			if (!(isascii(c) && isdigit(c)))
 			{
+				if (len-- <= 1)
+				     break;
 				*bp++ = '%';
-				--len;
 				goto pushc;
 			}
 			for (avp = av; --c >= '0' && *avp != NULL; avp++)

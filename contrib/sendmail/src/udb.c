@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/udb.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -176,7 +177,7 @@ udbexpand(a, sendq, aliaslevel, e)
 	keylen = sm_strlcpyn(keybuf, sizeof keybuf, 2, user, ":maildrop");
 
 	/* if name is too long, assume it won't match */
-	if (keylen > sizeof keybuf)
+	if (keylen >= sizeof keybuf)
 		return EX_OK;
 
 	/* build actual database key */

@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/queue.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -4154,10 +4155,10 @@ readqf(e, openonly)
 			/*
 			**  count size before chompheader() destroys the line.
 			**  this isn't accurate due to macro expansion, but
-			**  better than before. "+3" to skip H?? at least.
+			**  better than before. "-3" to skip H?? at least.
 			*/
 
-			hdrsize += strlen(bp + 3);
+			hdrsize += strlen(bp) - 3;
 			(void) chompheader(&bp[1], CHHDR_QUEUE, NULL, e);
 			break;
 
@@ -4274,8 +4275,11 @@ readqf(e, openonly)
 			}
 			else
 				qflags |= QPRIMARY;
-			q = parseaddr(++p, NULLADDR, RF_COPYALL, '\0', NULL, e,
-				      true);
+			if (*p != '\0')
+				q = parseaddr(++p, NULLADDR, RF_COPYALL, '\0',
+						NULL, e, true);
+			else
+				q = NULL;
 			if (q != NULL)
 			{
 				/* make sure we keep the current qgrp */

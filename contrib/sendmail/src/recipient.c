@@ -9,6 +9,7 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
+ * $DragonFly: src/contrib/sendmail/src/Attic/recipient.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
@@ -169,6 +170,7 @@ sendtolist(list, ctladdr, sendq, aliaslevel, e)
 	SM_NONVOLATILE char delimiter;		/* the address delimiter */
 	SM_NONVOLATILE int naddrs;
 	SM_NONVOLATILE int i;
+	char *endp;
 	char *oldto = e->e_to;
 	char *SM_NONVOLATILE bufp;
 	char buf[MAXNAME + 1];
@@ -206,6 +208,7 @@ sendtolist(list, ctladdr, sendq, aliaslevel, e)
 	}
 	else
 		bufp = sm_malloc_x(i);
+	endp = bufp + i;
 
 	SM_TRY
 	{
@@ -217,12 +220,16 @@ sendtolist(list, ctladdr, sendq, aliaslevel, e)
 			auto char *delimptr;
 			register ADDRESS *a;
 
+			SM_ASSERT(p < endp);
+
 			/* parse the address */
 			while ((isascii(*p) && isspace(*p)) || *p == ',')
 				p++;
+			SM_ASSERT(p < endp);
 			a = parseaddr(p, NULLADDR, RF_COPYALL, delimiter,
 				      &delimptr, e, true);
 			p = delimptr;
+			SM_ASSERT(p < endp);
 			if (a == NULL)
 				continue;
 			a->q_next = al;
