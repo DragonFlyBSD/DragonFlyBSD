@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86.c,v 1.31.2.2 2001/10/05 06:18:55 peter Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.10 2004/06/01 22:24:10 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86.c,v 1.11 2004/08/07 03:42:37 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -583,7 +583,14 @@ vm86_intcall(int intnum, struct vm86frame *vmf)
 
 	vmf->vmf_trapno = intnum;
 	error = vm86_bioscall(vmf);
+#if 0
+	/*
+	 * removed.  This causes more problems then it solves, we will
+	 * have to find another way to detect inappropriate 8254 writes
+	 * from the bios
+	 */
 	timer_restore();
+#endif
 	crit_exit();
 	return(error);
 }
