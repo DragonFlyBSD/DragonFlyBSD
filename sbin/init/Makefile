@@ -1,12 +1,15 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/sbin/init/Makefile,v 1.20.2.4 2001/08/01 06:37:01 obrien Exp $
-# $DragonFly: src/sbin/init/Makefile,v 1.2 2003/06/17 04:27:33 dillon Exp $
+# $DragonFly: src/sbin/init/Makefile,v 1.3 2004/11/17 19:15:57 dillon Exp $
 
 PROG=	init
 MAN=	init.8
 MLINKS=	init.8 securelevel.8
 BINMODE=500
-INSTALLFLAGS=-fschg -b -B.bak
+INSTALLFLAGS= -b -B.bak
+.if !defined(NOFSCHG)
+INSTALLFLAGS+= -fschg
+.endif
 CFLAGS+=-DDEBUGSHELL -DSECURE -DLOGIN_CAP -DCOMPAT_SYSV_INIT
 DPADD=	${LIBUTIL} ${LIBCRYPT}
 LDADD=	-lutil -lcrypt

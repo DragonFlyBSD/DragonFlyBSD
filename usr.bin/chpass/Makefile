@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.2 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/chpass/Makefile,v 1.20.2.3 2001/12/19 04:49:11 dd Exp $
-# $DragonFly: src/usr.bin/chpass/Makefile,v 1.2 2003/06/17 04:29:25 dillon Exp $
+# $DragonFly: src/usr.bin/chpass/Makefile,v 1.3 2004/11/17 19:15:59 dillon Exp $
 
 PROG=	chpass
 CFLAGS+=-Wall
@@ -66,7 +66,9 @@ beforeinstall:
 		chflags noschg ${DESTDIR}${BINDIR}/$i || true
 .endfor
 
+.if !defined(NOFSCHG)
 afterinstall:
 	-chflags schg ${DESTDIR}${BINDIR}/chpass
+.endif
 
 .include <bsd.prog.mk>

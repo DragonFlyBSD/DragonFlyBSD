@@ -1,6 +1,6 @@
 # From:	@(#)Makefile	8.3 (Berkeley) 4/2/94
 # $FreeBSD: src/usr.bin/passwd/Makefile,v 1.40.2.3 2002/07/17 19:08:22 ru Exp $
-# $DragonFly: src/usr.bin/passwd/Makefile,v 1.3 2003/08/05 07:45:43 asmodai Exp $
+# $DragonFly: src/usr.bin/passwd/Makefile,v 1.4 2004/11/17 19:16:05 dillon Exp $
 
 # NOPAM is used by PicoBSD
 
@@ -89,7 +89,9 @@ beforeinstall:
 		chflags noschg ${DESTDIR}${BINDIR}/$i || true
 .endfor
 
+.if !defined(NOFSCHG)
 afterinstall:
 	-chflags schg ${DESTDIR}${BINDIR}/passwd
+.endif
 
 .include <bsd.prog.mk>

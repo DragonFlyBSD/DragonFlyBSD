@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 7/19/93
 # $FreeBSD: src/usr.bin/su/Makefile,v 1.29.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/usr.bin/su/Makefile,v 1.3 2003/08/05 07:45:44 asmodai Exp $
+# $DragonFly: src/usr.bin/su/Makefile,v 1.4 2004/11/17 19:16:09 dillon Exp $
 
 PROG=	su
 SRCS=	su.c
@@ -24,6 +24,8 @@ DISTRIBUTION=	krb5
 .endif
 
 BINMODE=4555
+.if !defined(NOFSCHG)
 INSTALLFLAGS=-fschg
+.endif
 
 .include <bsd.prog.mk>
