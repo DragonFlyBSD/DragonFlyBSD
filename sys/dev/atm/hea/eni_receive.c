@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.6 2003/09/15 23:38:12 hsu Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.7 2005/02/01 00:05:28 joerg Exp $
  */
 
 /*
@@ -657,7 +657,6 @@ eni_recv_drain ( eup )
 	u_long		DMA_Rdptr;
 	u_long		dma_wrp;
 	u_long		start, stop;
-	int		que = 0;
 	int		s;
 
 	s = splimp();
