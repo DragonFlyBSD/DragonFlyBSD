@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/objformat/objformat.c,v 1.6 1998/10/24 02:01:30 jdp Exp $
- * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.9 2004/01/30 02:35:02 dillon Exp $
+ * $DragonFly: src/usr.bin/objformat/objformat.c,v 1.10 2004/01/31 09:14:24 dillon Exp $
  */
 
 #include <err.h>
@@ -33,6 +33,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+/*
+ * System default compiler is still gcc2 for the IA32 architecture,
+ * unless overriden.  For other architectures we have to use gcc3.
+ */
+#ifndef CCVER_DEFAULT
+#ifdef __i386__
+#define CCVER_DEFAULT "gcc2"
+#else
+#define CCVER_DEFAULT "gcc3"
+#endif
+#endif
+#ifndef BINUTILSVER_DEFAULT
+#define BINUTILSVER_DEFAULT "binutils212"
+#endif
 
 #define OBJFORMAT	0
 #define COMPILER	1
@@ -104,10 +119,13 @@ main(int argc, char **argv)
 	}
 
 	if ((ccver = getenv("CCVER")) == NULL)
-		ccver = "gcc2";
+		ccver = CCVER_DEFAULT;
 	if ((buver = getenv("BINUTILSVER")) == NULL) {
-		buver = "binutils212";
-		/* check ccver against gcc3, change default binutils here XXX */
+		buver = BINUTILSVER_DEFAULT;
+		/*
+		 * XXX auto-select buver based on ccver if buver is
+		 * not otherwise specified
+		 */
 	}
 
 	if (cmds) {
