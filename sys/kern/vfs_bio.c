@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.19 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.20 2004/03/11 20:14:46 hmp Exp $
  */
 
 /*
@@ -2273,7 +2273,7 @@ loop:
 		if (vmio) {
 			bp->b_flags |= B_VMIO;
 #if defined(VFS_BIO_DEBUG)
-			if (vp->v_type != VREG && vp->v_type != VBLK)
+			if (vn_canvmio(vp) != TRUE)
 				printf("getblk: vmioing file type %d???\n", vp->v_type);
 #endif
 		} else {
