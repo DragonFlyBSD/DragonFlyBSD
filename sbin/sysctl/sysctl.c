@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.9 2005/01/14 06:51:38 joerg Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.10 2005/01/18 03:13:52 cpressey Exp $
  */
 
 #ifdef __i386__
@@ -516,7 +516,11 @@ show_var(int *oid, size_t nlen)
 	case 'A':
 		if (!nflag)
 			printf("%s%s", name, sep);
-		fwrite(p, len, 1, stdout);
+		for (j = 0; j < len; j++) {
+			if (p[j] == '\0')
+				break;
+		}
+		fwrite(p, j, 1, stdout);
 		return (0);
 		
 	case 'I':
