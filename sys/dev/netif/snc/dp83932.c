@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/snc/dp83932.c,v 1.1.2.2 2003/02/11 08:52:00 nyan Exp $	*/
-/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.12 2005/01/23 20:21:31 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/netif/snc/Attic/dp83932.c,v 1.13 2005/02/20 02:54:21 joerg Exp $	*/
 /*	$NecBSD: dp83932.c,v 1.5 1999/07/29 05:08:44 kmatsuda Exp $	*/
 /*	$NetBSD: if_snc.c,v 1.18 1998/04/25 21:27:40 scottr Exp $	*/
 
@@ -77,6 +77,7 @@
 
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
@@ -192,7 +193,8 @@ sncconfig(sc, media, nmedia, defmedia, eaddr)
 	ifp->if_watchdog = sncwatchdog;
         ifp->if_init = sncinit;
         ifp->if_mtu = ETHERMTU;
-        ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+        ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Initialize media goo. */
 	ifmedia_init(&sc->sc_media, 0, snc_mediachange,
@@ -355,8 +357,8 @@ outloop:
 		return;
 	}
 
-	IF_DEQUEUE(&ifp->if_snd, m);
-	if (m == 0)
+	m = ifq_poll(&ifp->if_snd);
+	if (m == NULL)
 		return;
 
 	/* We need the header for m_pkthdr.len. */
@@ -364,17 +366,16 @@ outloop:
 		panic("%s: sncstart: no header mbuf",
 		      device_get_nameunit(sc->sc_dev));
 
-	BPF_MTAP(ifp, m);
-
 	/*
 	 * If there is nothing in the o/p queue, and there is room in
 	 * the Tx ring, then send the packet directly.  Otherwise append
 	 * it to the o/p queue.
 	 */
-	if ((sonicput(sc, m, mtd_next)) == 0) {
-		IF_PREPEND(&ifp->if_snd, m);
+	if ((sonicput(sc, m, mtd_next)) == 0)
 		return;
-	}
+	m = ifq_dequeue(&ifp->if_snd);
+
+	BPF_MTAP(ifp, m);
 
 	sc->mtd_prev = sc->mtd_free;
 	sc->mtd_free = mtd_next;
