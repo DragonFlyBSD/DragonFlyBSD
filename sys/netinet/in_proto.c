@@ -32,7 +32,7 @@
  *
  *	@(#)in_proto.c	8.2 (Berkeley) 2/9/95
  * $FreeBSD: src/sys/netinet/in_proto.c,v 1.53.2.7 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/in_proto.c,v 1.10 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/in_proto.c,v 1.11 2005/01/31 21:44:10 joerg Exp $
  */
 
 #include "opt_ipdivert.h"
@@ -260,8 +260,6 @@ struct protosw inetsw[] = {
   &rip_usrreqs
 },
 };
-
-extern int in_inithead (void **, int);
 
 struct domain inetdomain =
     { AF_INET, "internet", 0, 0, 0,

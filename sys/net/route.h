@@ -82,7 +82,7 @@
  *
  *	@(#)route.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/net/route.h,v 1.36.2.5 2002/02/01 11:48:01 ru Exp $
- * $DragonFly: src/sys/net/route.h,v 1.11 2005/01/26 23:09:57 hsu Exp $
+ * $DragonFly: src/sys/net/route.h,v 1.12 2005/01/31 21:44:10 joerg Exp $
  */
 
 #ifndef _NET_ROUTE_H_
@@ -384,6 +384,8 @@ RTFREE(struct rtentry *rt)
 	else
 		--rt->rt_refcnt;
 }
+
+int	in_inithead(void **, int);
 #endif
 
 #endif
