@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.17 2004/05/19 22:52:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.18 2004/07/06 19:06:16 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -125,6 +125,7 @@ acdattach(struct ata_device *atadev)
     }
 
     ata_set_name(atadev, "acd", cdp->lun);
+    ata_command(atadev, ATA_C_ATAPI_RESET, 0, 0, 0, ATA_IMMEDIATE);
     acd_get_cap(cdp);
 
     /* if this is a changer device, allocate the neeeded lun's */
