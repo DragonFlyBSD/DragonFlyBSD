@@ -23,7 +23,7 @@
 # SUCH DAMAGE.
 #
 #	$FreeBSD: src/lib/libpam/libpam/Makefile,v 1.12.2.12 2002/07/22 14:21:49 ru Exp $
-#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.3 2003/08/05 07:45:41 asmodai Exp $
+#	$DragonFly: src/lib/libpam/libpam/Attic/Makefile,v 1.4 2003/11/10 06:14:44 dillon Exp $
 
 PAMDIR=		${.CURDIR}/../../../contrib/libpam
 MODOBJDIR=	../modules
@@ -84,17 +84,10 @@ _EXTRADEPEND:	pam_static.c
 	    ${.ALLSRC}
 
 .if ${OBJFORMAT} == elf
-CLEANFILES+=	setdef0.o _pam_static_modules.o setdef1.o \
-		setdef0.c setdef1.c setdefs.h
+CLEANFILES+=	_pam_static_modules.o
 
-pam_static_modules.o:	setdef0.o pam_static.o _pam_static_modules.o setdef1.o
+pam_static_modules.o:	pam_static.o _pam_static_modules.o
 	${LD} -o ${.TARGET} -r ${.ALLSRC}
-
-setdef0.o:	setdef0.c setdefs.h
-setdef1.o:	setdef1.c setdefs.h
-
-setdef0.c setdef1.c setdefs.h:	_pam_static_modules.o
-	gensetdefs ${.ALLSRC}
 
 _pam_static_modules.o:	${STATIC_MODULES}
 	${LD} -o ${.TARGET} -r --whole-archive ${.ALLSRC}

@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libstand/Makefile,v 1.14.2.10 2002/07/22 14:21:50 ru Exp $
-# $DragonFly: src/lib/libstand/Makefile,v 1.2 2003/06/17 04:26:51 dillon Exp $
+# $DragonFly: src/lib/libstand/Makefile,v 1.3 2003/11/10 06:14:44 dillon Exp $
 #
 # Originally from	$NetBSD: Makefile,v 1.21 1997/10/26 22:08:38 lukem Exp $
 #
@@ -40,6 +40,10 @@ SRCS+=	bcmp.c bcopy.c bzero.c ffs.c index.c memccpy.c memchr.c memcmp.c \
         memcpy.c memmove.c memset.c qdivrem.c rindex.c strcat.c strchr.c \
         strcmp.c strcpy.c strcspn.c strlen.c strncat.c strncmp.c strncpy.c \
 	strpbrk.c strrchr.c strsep.c strspn.c strstr.c strtok.c swab.c
+.endif
+.PATH:  ${.CURDIR}/../libc/quad
+.if ${MACHINE_ARCH} == "i386"
+SRCS+=  ucmpdi2.c
 .endif
 .if ${MACHINE_ARCH} == "alpha"
 .PATH: ${.CURDIR}/../libc/alpha/string
@@ -136,7 +140,7 @@ SRCS+=	arp.c ether.c inet_ntoa.c in_cksum.c net.c udp.c netif.c rpc.c
 SRCS+=	bootp.c rarp.c bootparam.c
 
 # boot filesystems
-SRCS+=	ufs.c nfs.c cd9660.c tftp.c zipfs.c bzipfs.c
+SRCS+=	ufs.c nfs.c cd9660.c tftp.c zipfs.c bzipfs.c gzipfs.c
 SRCS+=	netif.c nfs.c
 SRCS+=	dosfs.c ext2fs.c
 SRCS+=	splitfs.c

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.3 2003/11/09 02:34:03 dillon Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.4 2003/11/10 06:14:44 dillon Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -125,6 +125,7 @@ extern struct fs_ops ufs_fsops;
 extern struct fs_ops tftp_fsops;
 extern struct fs_ops nfs_fsops;
 extern struct fs_ops cd9660_fsops;
+extern struct fs_ops gzipfs_fsops;
 extern struct fs_ops zipfs_fsops;
 extern struct fs_ops bzipfs_fsops;
 extern struct fs_ops dosfs_fsops;

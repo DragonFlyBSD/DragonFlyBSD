@@ -24,10 +24,11 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.4 2003/10/12 00:43:17 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.5 2003/11/10 06:14:44 dillon Exp $
  */
 
 #include <sys/disklabel.h>
+#include <sys/diskmbr.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>

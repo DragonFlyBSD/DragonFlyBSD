@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/disk.c,v 1.50.2.15 2001/12/30 09:56:12 phk Exp $
- * $DragonFly: src/lib/libdisk/Attic/disk.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/disk.c,v 1.3 2003/11/10 06:14:40 dillon Exp $
  *
  */
 
@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <sys/disklabel.h>
 #include <sys/diskslice.h>
+#include <sys/diskmbr.h>
 #include <paths.h>
 #include "libdisk.h"
 

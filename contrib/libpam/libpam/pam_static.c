@@ -4,7 +4,7 @@
  *
  * $Id: pam_static.c,v 1.4 1996/12/01 03:14:13 morgan Exp $
  * $FreeBSD: src/contrib/libpam/libpam/pam_static.c,v 1.2.6.2 2001/06/11 15:28:12 markm Exp $
- * $DragonFly: src/contrib/libpam/libpam/Attic/pam_static.c,v 1.2 2003/06/17 04:24:03 dillon Exp $
+ * $DragonFly: src/contrib/libpam/libpam/Attic/pam_static.c,v 1.3 2003/11/10 06:14:38 dillon Exp $
  *
  * $Log: pam_static.c,v $
  * Revision 1.4  1996/12/01 03:14:13  morgan
@@ -27,18 +27,17 @@
 
 #include "pam_private.h"
 
+SET_DECLARE(_pam_static_modules, struct pam_module);
+
 /* This whole file is only used for PAM_STATIC */
 
 #ifdef PAM_STATIC
-
-extern struct linker_set _pam_static_modules;
 
 /* Return pointer to data structure used to define a static module */
 struct pam_module * _pam_open_static_handler(char *path) {
     int i;
     char *lpath = path, *end;
-    struct pam_module **static_modules =
-	(struct pam_module **)_pam_static_modules.ls_items;
+    struct pam_module **pamp;
 
     if (strchr(lpath, '/')) {
         /* ignore path and leading "/" */
@@ -54,16 +53,15 @@ struct pam_module * _pam_open_static_handler(char *path) {
     }
 
     /* now go find the module */
-    for (i = 0; static_modules[i] != NULL; i++) {
-	D(("%s=?%s\n", lpath, static_modules[i]->name));
-        if (static_modules[i]->name &&
-	    ! strcmp(static_modules[i]->name, lpath)) {
-	    break;
+    SET_FOREACH(pamp, _pam_static_modules) {
+	D(("%s=?%s\n", lpath, (*pamp)->name));
+        if ((*pamp)->name && !strcmp((*pamp)->name, lpath)) {
+	    free(lpath);
+	    return (*pamp);
 	}
     }
-
     free(lpath);
-    return (static_modules[i]);
+    return(NULL);
 }
 
 /* Return pointer to function requested from static module
