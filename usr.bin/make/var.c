@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.117 2005/03/01 23:26:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.118 2005/03/01 23:27:25 okumoto Exp $
  */
 
 /*-
@@ -1585,6 +1585,27 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	haveModifier = (*tstr == ':');
 
 	v = VarFind(vname, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
+	if (v != NULL) {
+		Buf_Destroy(buf, TRUE);
+
+		if (haveModifier) {
+			return (ParseModifier(input, tstr,
+					startc, endc, dynamic, v,
+					ctxt, err, lengthPtr, freePtr));
+		} else {
+			char	*result;
+
+			result = VarExpand(v, ctxt, err);
+
+			if (v->flags & VAR_FROM_ENV) {
+				VarDestroy(v, TRUE);
+			}
+
+			*freePtr = TRUE;
+			*lengthPtr = consumed;
+			return (result);
+		}
+	}
 
 	if ((v == NULL) &&
 	    (ctxt != VAR_CMD) && (ctxt != VAR_GLOBAL) &&
@@ -1628,6 +1649,27 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		    return (val);
 		}
 	    }
+	}
+	if (v != NULL) {
+		Buf_Destroy(buf, TRUE);
+
+		if (haveModifier) {
+			return (ParseModifier(input, tstr,
+					startc, endc, dynamic, v,
+					ctxt, err, lengthPtr, freePtr));
+		} else {
+			char	*result;
+
+			result = VarExpand(v, ctxt, err);
+
+			if (v->flags & VAR_FROM_ENV) {
+				VarDestroy(v, TRUE);
+			}
+
+			*freePtr = TRUE;
+			*lengthPtr = consumed;
+			return (result);
+		}
 	}
 
 	dynamic = FALSE;
@@ -1706,24 +1748,26 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	    }
 	}
 
-	Buf_Destroy(buf, TRUE);
+	{
+		Buf_Destroy(buf, TRUE);
 
-	if (haveModifier) {
-		return (ParseModifier(input, tstr,
-				startc, endc, dynamic, v,
-				ctxt, err, lengthPtr, freePtr));
-	} else {
-		char	*result;
+		if (haveModifier) {
+			return (ParseModifier(input, tstr,
+					startc, endc, dynamic, v,
+					ctxt, err, lengthPtr, freePtr));
+		} else {
+			char	*result;
 
-		result = VarExpand(v, ctxt, err);
+			result = VarExpand(v, ctxt, err);
 
-		if (v->flags & VAR_FROM_ENV) {
-			VarDestroy(v, TRUE);
+			if (v->flags & VAR_FROM_ENV) {
+				VarDestroy(v, TRUE);
+			}
+
+			*freePtr = TRUE;
+			*lengthPtr = consumed;
+			return (result);
 		}
-
-		*freePtr = TRUE;
-		*lengthPtr = consumed;
-		return (result);
 	}
     }
 }
