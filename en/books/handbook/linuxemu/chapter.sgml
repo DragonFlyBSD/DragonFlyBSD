@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/linuxemu/chapter.sgml,v 1.112 2004/03/15 19:30:40 trhodes Exp $
-     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.1 2004/06/25 15:24:34 justin Exp $
+     $DragonFly: doc/en/books/handbook/linuxemu/chapter.sgml,v 1.2 2004/06/29 20:28:51 justin Exp $
 -->
 
 <chapter id="linuxemu">
@@ -1553,10 +1553,7 @@ export PATH</programlisting>
     <sect2 id="installation">
       <title>Installation of FreeBSD</title>
 
-      <para>First you have to install FreeBSD. There are several ways to do
-	this (FreeBSD&nbsp;4.3 was installed via FTP, FreeBSD&nbsp;4.5 directly from
-	the RELEASE CD) for more informations read the <xref
-	linkend="install-diff-media">.</para>
+      <para>First you have to install FreeBSD.</para>
 
       <sect3 id="disk-layout">
 	<title>Disk Layout</title>

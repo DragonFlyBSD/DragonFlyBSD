@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/x11/chapter.sgml,v 1.136 2004/04/18 00:30:53 ale Exp $
-     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.1 2004/06/25 15:24:35 justin Exp $
+     $DragonFly: doc/en/books/handbook/x11/chapter.sgml,v 1.2 2004/06/29 20:28:51 justin Exp $
 -->
 
 <chapter id="x11">
@@ -289,17 +289,6 @@
       4.X</application> is now the default version of the X Window System on
       FreeBSD.</para>
 
-    <para>The FreeBSD setup program offers users the opportunity to install
-      and configure <application>&xfree86; 4.X</application> during installation
-      (covered in <xref linkend="x-server">).  To install and run
-      <application>&xfree86; 3.X</application>, wait until after the base
-      FreeBSD system is installed, and then install
-      <application>&xfree86;</application>.  For example, to build and install
-      <application>&xfree86; 3.X</application> from the ports collection:</para>
-
-    <screen>&prompt.root; <userinput>cd /usr/ports/x11/XFree86</userinput>
-&prompt.root; <userinput>make all install clean</userinput></screen>
-
     <para>Alternatively, either version of <application>&xfree86;</application>
       can be installed directly from the FreeBSD binaries provided on the
       <ulink url="http://www.XFree86.org/">&xfree86; web site</ulink>.  A binary
@@ -425,8 +414,7 @@
         </keycombo> simultaneously.</para>
 
 	<note><para>If the mouse does not work, be sure the device
-	  has been configured.  See <xref linkend="mouse">
-	  in the &os; install chapter.</para></note>
+	  has been configured.  See &man.moused.8 for more information</para></note>
 
       <indexterm><primary>XFree86 4 Tuning</primary></indexterm>
 
@@ -1218,12 +1206,8 @@ DisplayManager.requestPort:     0</screen>
         <title>Installing GNOME</title>
 
         <para>The easiest way to install
-          <application>GNOME</application> is through the
-          <quote>Desktop Configuration</quote> menu during the FreeBSD
-	  installation process as described in <xref
-	  linkend="default-desktop"> of Chapter&nbsp;2.  It can also
-          be easily installed from a package or the ports
-          collection:</para>
+          <application>GNOME</application> is with a package or 
+	  through the ports collection:</para>
 
         <para>To install the <application>GNOME</application> package
           from the network, simply type:</para>
@@ -1372,10 +1356,7 @@ DisplayManager.requestPort:     0</screen>
 
         <para>Just as with <application>GNOME</application> or any
           other desktop environment, the easiest way to install
-          <application>KDE</application> is through the <quote>Desktop
-          Configuration</quote> menu during the FreeBSD installation
-	  process as described in <xref linkend="default-desktop"> of Chapter
-	  2.  Once again, the software can be easily installed from a package
+          <application>KDE</application> is from a package
 	  or from the ports collection:</para>
 
         <para>To install the <application>KDE</application> package
