@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/lib/libutil/login.conf.5,v 1.22.2.18 2003/05/10 23:30:54 murray Exp $
-.\" $DragonFly: src/lib/libutil/login.conf.5,v 1.3 2004/03/11 12:28:53 hmp Exp $
+.\" $DragonFly: src/lib/libutil/login.conf.5,v 1.4 2004/04/22 16:52:55 dillon Exp $
 .\"
 .Dd November 22, 1996
 .Dt LOGIN.CONF 5
@@ -166,6 +166,7 @@ notation may be used.
 .It "sbsize	size		Maximum permitted socketbuffer size.
 .It "vmemoryuse	size		Maximum permitted total VM useage per process.
 .It "stacksize	size		Maximum stack size limit.
+.It "posixlocks size            Maximum number of POSIX-type advisory-mode locks.
 .El
 .Pp
 These resource limit entries actually specify both the maximum

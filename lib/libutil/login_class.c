@@ -22,7 +22,7 @@
  * High-level routines relating to use of the user capabilities database
  *
  * $FreeBSD: src/lib/libutil/login_class.c,v 1.14.2.3 2002/08/06 07:07:52 ache Exp $
- * $DragonFly: src/lib/libutil/login_class.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/login_class.c,v 1.3 2004/04/22 16:52:55 dillon Exp $
  */
 
 #include <stdio.h>
@@ -47,18 +47,21 @@ static struct login_res {
     rlim_t (*who)(login_cap_t *, const char *, rlim_t, rlim_t);
     int why;
 } resources[] = {
-    { "cputime",      login_getcaptime, RLIMIT_CPU      },
-    { "filesize",     login_getcapsize, RLIMIT_FSIZE    },
-    { "datasize",     login_getcapsize, RLIMIT_DATA     },
-    { "stacksize",    login_getcapsize, RLIMIT_STACK    },
-    { "memoryuse",    login_getcapsize, RLIMIT_RSS      },
-    { "memorylocked", login_getcapsize, RLIMIT_MEMLOCK  },
-    { "maxproc",      login_getcapnum,  RLIMIT_NPROC    },
-    { "openfiles",    login_getcapnum,  RLIMIT_NOFILE   },
-    { "coredumpsize", login_getcapsize, RLIMIT_CORE     },
-    { "sbsize",       login_getcapsize,	RLIMIT_SBSIZE	},
-    { "vmemoryuse",   login_getcapsize,	RLIMIT_VMEM	},
-    { NULL,	      0,		0 	        }
+    { "cputime",	login_getcaptime,	RLIMIT_CPU	},
+    { "filesize",	login_getcapsize,	RLIMIT_FSIZE	},
+    { "datasize",	login_getcapsize,	RLIMIT_DATA	},
+    { "stacksize",	login_getcapsize,	RLIMIT_STACK	},
+    { "memoryuse",	login_getcapsize,	RLIMIT_RSS	},
+    { "memorylocked",	login_getcapsize,	RLIMIT_MEMLOCK	},
+    { "maxproc",	login_getcapnum,	RLIMIT_NPROC	},
+    { "openfiles",	login_getcapnum,	RLIMIT_NOFILE	},
+    { "coredumpsize",	login_getcapsize,	RLIMIT_CORE	},
+    { "sbsize",		login_getcapsize,	RLIMIT_SBSIZE	},
+    { "vmemoryuse",	login_getcapsize,	RLIMIT_VMEM	},
+#ifdef RLIMIT_POSIXLOCKS
+    { "posixlocks",	login_getcapnum,	RLIMIT_POSIXLOCKS },
+#endif
+    { NULL,		0,			0		}
 };
 
 

@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)getrlimit.2	8.1 (Berkeley) 6/4/93
 .\" $FreeBSD: src/lib/libc/sys/getrlimit.2,v 1.10.2.5 2001/12/14 18:34:00 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.2 2003/06/17 04:26:47 dillon Exp $
+.\" $DragonFly: src/lib/libc/sys/getrlimit.2,v 1.3 2004/04/22 16:52:55 dillon Exp $
 .\"
 .Dd June 4, 1993
 .Dt GETRLIMIT 2
@@ -99,6 +99,9 @@ Stack extension is performed automatically by the system.
 The maximum size (in bytes) of socket buffer usage for this user.
 This limits the amount of network memory, and hence the amount of
 mbufs, that this user may hold at any time.
+.It Li RLIMIT_POSIXLOCK
+The maximum number of POSIX-type advisory-mode locks available to
+this user.
 .El
 .Pp
 A resource limit is specified as a soft limit and a hard limit.  When a

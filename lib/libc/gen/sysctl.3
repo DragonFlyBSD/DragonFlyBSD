@@ -31,7 +31,7 @@
 .\"
 .\"	@(#)sysctl.3	8.4 (Berkeley) 5/9/95
 .\" $FreeBSD: src/lib/libc/gen/sysctl.3,v 1.33.2.13 2002/04/07 04:57:14 dd Exp $
-.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/sysctl.3,v 1.3 2004/04/22 16:52:55 dillon Exp $
 .\"
 .Dd January 23, 2001
 .Dt SYSCTL 3
@@ -318,7 +318,7 @@ The types of data currently available are process information,
 system vnodes, the open file entries, routing table entries,
 virtual memory statistics, load average history, and clock rate
 information.
-.Bl -column "KERNXMAXFILESPERPROCXXX" "struct clockrateXXX" -offset indent
+.Bl -column "KERNXMAXPOSIXLOCKSPERUIDXXX" "struct clockrateXXX" -offset indent
 .It Sy "Second level name	Type	Changeable"
 .It "KERN\_ARGMAX	integer	no"
 .It "KERN\_BOOTFILE	string	yes"
@@ -330,6 +330,7 @@ information.
 .It "KERN\_JOB\_CONTROL	integer	no"
 .It "KERN\_MAXFILES	integer	yes"
 .It "KERN\_MAXFILESPERPROC	integer	yes"
+.It "KERN\_MAXPOSIXLOCKSPERUID	integer	yes"
 .It "KERN\_MAXPROC	integer	no"
 .It "KERN\_MAXPROCPERUID	integer	yes"
 .It "KERN\_MAXVNODES	integer	yes"

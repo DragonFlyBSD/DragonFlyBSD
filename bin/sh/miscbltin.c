@@ -35,7 +35,7 @@
  *
  * @(#)miscbltin.c	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/miscbltin.c,v 1.22.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/miscbltin.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/miscbltin.c,v 1.4 2004/04/22 16:52:53 dillon Exp $
  */
 
 /*
@@ -345,6 +345,9 @@ static const struct limits limits[] = {
 #ifdef RLIMIT_SBSIZE
 	{ "sbsize",		"bytes",	RLIMIT_SBSIZE,	   1, 'b' },
 #endif
+#ifdef RLIMIT_POSIXLOCK
+	{ "posixlocks",		(char *)0,	RLIMIT_POSIXLOCK,  1, 'k' },
+#endif
 	{ (char *) 0,		(char *)0,	0,		   0, '\0' }
 };
 
@@ -361,7 +364,7 @@ ulimitcmd(int argc __unused, char **argv __unused)
 	struct rlimit	limit;
 
 	what = 'f';
-	while ((optc = nextopt("HSatfdsmcnuvlb")) != '\0')
+	while ((optc = nextopt("HSatfdsmcnuvlbk")) != '\0')
 		switch (optc) {
 		case 'H':
 			how = HARD;
