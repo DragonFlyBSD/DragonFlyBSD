@@ -36,7 +36,7 @@
  *
  * @(#)buf_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/buf_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/buf_subs.c,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/buf_subs.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -463,7 +463,7 @@ wr_fin(void)
 	if (bufpt > buf) {
 		memset(bufpt, 0, bufend - bufpt);
 		bufpt = bufend;
-		(void)buf_flush(blksz);
+		buf_flush(blksz);
 	}
 }
 

@@ -32,7 +32,7 @@
  *
  * @(#)gfmt.c	8.6 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/gfmt.c,v 1.10.2.2 2001/08/01 05:26:12 obrien Exp $
- * $DragonFly: src/bin/stty/gfmt.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/stty/gfmt.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -60,12 +60,12 @@ gprint(struct termios *tp, struct winsize *wp __unused, int ldisc __unused)
 {
 	struct cchar *cp;
 
-	(void)printf("gfmt1:cflag=%lx:iflag=%lx:lflag=%lx:oflag=%lx:",
+	printf("gfmt1:cflag=%lx:iflag=%lx:lflag=%lx:oflag=%lx:",
 	    (u_long)tp->c_cflag, (u_long)tp->c_iflag, (u_long)tp->c_lflag,
 	    (u_long)tp->c_oflag);
 	for (cp = cchars1; cp->name; ++cp)
-		(void)printf("%s=%x:", cp->name, tp->c_cc[cp->sub]);
-	(void)printf("ispeed=%lu:ospeed=%lu\n",
+		printf("%s=%x:", cp->name, tp->c_cc[cp->sub]);
+	printf("ispeed=%lu:ospeed=%lu\n",
 	    (u_long)cfgetispeed(tp), (u_long)cfgetospeed(tp));
 }
 
@@ -85,7 +85,7 @@ gread(struct termios *tp, char *s)
 		if (!(ep = strchr(p, '=')))
 			gerr(p);
 		*ep++ = '\0';
-		(void)sscanf(ep, "%lx", &tmp);
+		sscanf(ep, "%lx", &tmp);
 
 #define	CHK(s)	(*p == s[0] && !strcmp(p, s))
 		if (CHK("cflag")) {
@@ -97,7 +97,7 @@ gread(struct termios *tp, char *s)
 			continue;
 		}
 		if (CHK("ispeed")) {
-			(void)sscanf(ep, "%ld", &tmp);
+			sscanf(ep, "%ld", &tmp);
 			tp->c_ispeed = tmp;
 			continue;
 		}
@@ -110,14 +110,14 @@ gread(struct termios *tp, char *s)
 			continue;
 		}
 		if (CHK("ospeed")) {
-			(void)sscanf(ep, "%ld", &tmp);
+			sscanf(ep, "%ld", &tmp);
 			tp->c_ospeed = tmp;
 			continue;
 		}
 		for (cp = cchars1; cp->name != NULL; ++cp)
 			if (CHK(cp->name)) {
 				if (cp->sub == VMIN || cp->sub == VTIME)
-					(void)sscanf(ep, "%ld", &tmp);
+					sscanf(ep, "%ld", &tmp);
 				tp->c_cc[cp->sub] = tmp;
 				break;
 			}

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.5 2004/07/22 11:52:33 asmodai Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -133,7 +133,7 @@ main(int argc, char *argv[])
 	char *bp = tcapbuf;
 #endif
 
-	(void)setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	/* Terminal defaults to -Cq, non-terminal defaults to -1. */
 	if (isatty(STDOUT_FILENO)) {
@@ -316,7 +316,7 @@ main(int argc, char *argv[])
 				f_color = 1;
 		}
 #else
-		(void)fprintf(stderr, "Color support not compiled in.\n");
+		fprintf(stderr, "Color support not compiled in.\n");
 #endif /*COLORLS*/
 
 #ifdef COLORLS
@@ -327,8 +327,8 @@ main(int argc, char *argv[])
 		 * for "stty oxtabs" mode.
 		 */
 		f_notabs = 1;
-		(void)signal(SIGINT, colorquit);
-		(void)signal(SIGQUIT, colorquit);
+		signal(SIGINT, colorquit);
+		signal(SIGQUIT, colorquit);
 		parsecolors(getenv("LSCOLORS"));
 	}
 #endif
@@ -365,7 +365,7 @@ main(int argc, char *argv[])
 		if (f_kblocks)
 			blocksize = 2;
 		else {
-			(void)getbsize(&notused, &blocksize);
+			getbsize(&notused, &blocksize);
 			blocksize /= 512;
 		}
 	}
@@ -469,7 +469,7 @@ traverse(int argc, char *argv[], int options)
 			display(p, chp);
 
 			if (!f_recursive && chp != NULL)
-				(void)fts_set(ftsp, p, FTS_SKIP);
+				fts_set(ftsp, p, FTS_SKIP);
 			break;
 		default:
 			break;
@@ -639,9 +639,9 @@ display(FTSENT *p, FTSENT *list)
 			btotal += sp->st_blocks;
 			if (f_longform) {
 				if (f_numericonly) {
-					(void)snprintf(nuser, sizeof(nuser),
+					snprintf(nuser, sizeof(nuser),
 					    "%u", sp->st_uid);
-					(void)snprintf(ngroup, sizeof(ngroup),
+					snprintf(ngroup, sizeof(ngroup),
 					    "%u", sp->st_gid);
 					user = nuser;
 					group = ngroup;
@@ -672,9 +672,9 @@ display(FTSENT *p, FTSENT *list)
 					err(1, NULL);
 
 				np->user = &np->data[0];
-				(void)strcpy(np->user, user);
+				strcpy(np->user, user);
 				np->group = &np->data[ulen + 1];
-				(void)strcpy(np->group, group);
+				strcpy(np->group, group);
 
 				if (S_ISCHR(sp->st_mode) ||
 				    S_ISBLK(sp->st_mode))
@@ -682,7 +682,7 @@ display(FTSENT *p, FTSENT *list)
 
 				if (f_flags) {
 					np->flags = &np->data[ulen + glen + 2];
-					(void)strcpy(np->flags, flags);
+					strcpy(np->flags, flags);
 					free(flags);
 				}
 				cur->fts_pointer = np;
@@ -700,15 +700,15 @@ display(FTSENT *p, FTSENT *list)
 	if (needstats) {
 		d.bcfile = bcfile;
 		d.btotal = btotal;
-		(void)snprintf(buf, sizeof(buf), "%lu", maxblock);
+		snprintf(buf, sizeof(buf), "%lu", maxblock);
 		d.s_block = strlen(buf);
 		d.s_flags = maxflags;
 		d.s_group = maxgroup;
-		(void)snprintf(buf, sizeof(buf), "%lu", maxinode);
+		snprintf(buf, sizeof(buf), "%lu", maxinode);
 		d.s_inode = strlen(buf);
-		(void)snprintf(buf, sizeof(buf), "%lu", maxnlink);
+		snprintf(buf, sizeof(buf), "%lu", maxnlink);
 		d.s_nlink = strlen(buf);
-		(void)snprintf(buf, sizeof(buf), "%llu", maxsize);
+		snprintf(buf, sizeof(buf), "%llu", maxsize);
 		d.s_size = strlen(buf);
 		d.s_user = maxuser;
 	}

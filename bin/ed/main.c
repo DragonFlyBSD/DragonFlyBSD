@@ -28,7 +28,7 @@
  * @(#) Copyright (c) 1993 Andrew Moore, Talke Studio. All rights reserved.
  * @(#)main.c,v 1.1 1994/02/01 00:34:42 alm Exp
  * $FreeBSD: src/bin/ed/main.c,v 1.14.2.4 2001/08/01 02:36:03 obrien Exp $
- * $DragonFly: src/bin/ed/main.c,v 1.6 2004/09/26 16:32:47 asmodai Exp $
+ * $DragonFly: src/bin/ed/main.c,v 1.7 2004/11/07 20:54:51 eirikn Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ main(int argc, char **argv)
 	(void) &argv;
 #endif
 
-	(void)setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	red = (n = strlen(argv[0])) > 2 && argv[0][n - 3] == 'r';
 top:

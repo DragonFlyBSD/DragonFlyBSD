@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pax.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pax.c,v 1.13.2.4 2002/11/07 15:29:53 imp Exp $
- * $DragonFly: src/bin/pax/pax.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/pax/pax.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -225,7 +225,7 @@ main(int argc, char **argv)
 	char *tmpdir;
 	size_t tdlen;
 
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 	listf = stderr;
 	/*
 	 * Keep a reference to cwd, so we can always come back home.
@@ -336,7 +336,7 @@ gen_init(void)
 	 */
 	if (getrlimit(RLIMIT_DATA , &reslimit) == 0){
 		reslimit.rlim_cur = reslimit.rlim_max;
-		(void)setrlimit(RLIMIT_DATA , &reslimit);
+		setrlimit(RLIMIT_DATA , &reslimit);
 	}
 
 	/*
@@ -345,7 +345,7 @@ gen_init(void)
 	 */
 	if (getrlimit(RLIMIT_FSIZE , &reslimit) == 0){
 		reslimit.rlim_cur = reslimit.rlim_max;
-		(void)setrlimit(RLIMIT_FSIZE , &reslimit);
+		setrlimit(RLIMIT_FSIZE , &reslimit);
 	}
 
 	/*
@@ -353,7 +353,7 @@ gen_init(void)
 	 */
 	if (getrlimit(RLIMIT_STACK , &reslimit) == 0){
 		reslimit.rlim_cur = reslimit.rlim_max;
-		(void)setrlimit(RLIMIT_STACK , &reslimit);
+		setrlimit(RLIMIT_STACK , &reslimit);
 	}
 
 	/*
@@ -361,7 +361,7 @@ gen_init(void)
 	 */
 	if (getrlimit(RLIMIT_RSS , &reslimit) == 0){
 		reslimit.rlim_cur = reslimit.rlim_max;
-		(void)setrlimit(RLIMIT_RSS , &reslimit);
+		setrlimit(RLIMIT_RSS , &reslimit);
 	}
 
 	/*

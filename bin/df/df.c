@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)df.c	8.9 (Berkeley) 5/8/95
  * $FreeBSD: src/bin/df/df.c,v 1.23.2.9 2002/07/01 00:14:24 iedowse Exp $
- * $DragonFly: src/bin/df/df.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/df/df.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -235,7 +235,7 @@ main(int argc, char **argv)
 				if (mount(fstype, mntpt, MNT_RDONLY,
 				    &mdev) != 0) {
 					rv = ufs_df(*argv, &maxwidths) || rv;
-					(void)rmdir(mntpt);
+					rmdir(mntpt);
 					free(mntpath);
 					continue;
 				} else if (statfs(mntpt, &statfsbuf) == 0) {
@@ -245,8 +245,8 @@ main(int argc, char **argv)
 					warn("%s", *argv);
 					rv = 1;
 				}
-				(void)unmount(mntpt, 0);
-				(void)rmdir(mntpt);
+				unmount(mntpt, 0);
+				rmdir(mntpt);
 				free(mntpath);
 				continue;
 			}
@@ -303,7 +303,7 @@ regetmntinfo(struct statfs **mntbufp, long mntsize, char **vfslist)
 		if (checkvfsname(mntbuf[i].f_fstypename, vfslist))
 			continue;
 		if (!nflag)
-			(void)statfs(mntbuf[i].f_mntonname,&mntbuf[j]);
+			statfs(mntbuf[i].f_mntonname,&mntbuf[j]);
 		else if (i != j)
 			mntbuf[j] = mntbuf[i];
 		j++;
@@ -355,11 +355,11 @@ prthumanval(double bytes)
 	unit = unit_adjust(&bytes);
 
 	if (bytes == 0)
-		(void)printf("     0B");
+		printf("     0B");
 	else if (bytes > 10)
-		(void)printf(" %5.0f%c", bytes, "BKMGTPE"[unit]);
+		printf(" %5.0f%c", bytes, "BKMGTPE"[unit]);
 	else
-		(void)printf(" %5.1f%c", bytes, "BKMGTPE"[unit]);
+		printf(" %5.1f%c", bytes, "BKMGTPE"[unit]);
 }
 
 /*
@@ -393,40 +393,40 @@ prtstat(struct statfs *sfsp, struct maxwidths *mwp)
 		mwp->used = imax(mwp->used, strlen("Used"));
 		mwp->avail = imax(mwp->avail, strlen("Avail"));
 
-		(void)printf("%-*s %-*s %*s %*s Capacity", mwp->mntfrom,
+		printf("%-*s %-*s %*s %*s Capacity", mwp->mntfrom,
 		    "Filesystem", mwp->total, header, mwp->used, "Used",
 		    mwp->avail, "Avail");
 		if (iflag) {
 			mwp->iused = imax(mwp->iused, strlen("  iused"));
 			mwp->ifree = imax(mwp->ifree, strlen("ifree"));
-			(void)printf(" %*s %*s %%iused", mwp->iused - 2,
+			printf(" %*s %*s %%iused", mwp->iused - 2,
 			    "iused", mwp->ifree, "ifree");
 		}
-		(void)printf("  Mounted on\n");
+		printf("  Mounted on\n");
 	}
-	(void)printf("%-*s", mwp->mntfrom, sfsp->f_mntfromname);
+	printf("%-*s", mwp->mntfrom, sfsp->f_mntfromname);
 	used = sfsp->f_blocks - sfsp->f_bfree;
 	availblks = sfsp->f_bavail + used;
 	if (hflag) {
 		prthuman(sfsp, used);
 	} else {
-		(void)printf(" %*ld %*ld %*ld", mwp->total,
+		printf(" %*ld %*ld %*ld", mwp->total,
 	            fsbtoblk(sfsp->f_blocks, sfsp->f_bsize, blocksize),
 		    mwp->used, fsbtoblk(used, sfsp->f_bsize, blocksize),
 	            mwp->avail, fsbtoblk(sfsp->f_bavail, sfsp->f_bsize,
 		    blocksize));
 	}
-	(void)printf(" %5.0f%%",
+	printf(" %5.0f%%",
 	    availblks == 0 ? 100.0 : (double)used / (double)availblks * 100.0);
 	if (iflag) {
 		inodes = sfsp->f_files;
 		used = inodes - sfsp->f_ffree;
-		(void)printf(" %*ld %*ld %4.0f%% ", mwp->iused, used,
+		printf(" %*ld %*ld %4.0f%% ", mwp->iused, used,
 		    mwp->ifree, sfsp->f_ffree, inodes == 0 ? 100.0 :
 		    (double)used / (double)inodes * 100.0);
 	} else
-		(void)printf("  ");
-	(void)printf("  %s\n", sfsp->f_mntonname);
+		printf("  ");
+	printf("  %s\n", sfsp->f_mntonname);
 }
 
 /*
@@ -503,7 +503,7 @@ ufs_df(char *file, struct maxwidths *mwp)
 		return (1);
 	}
 	if (bread((off_t)SBOFF, &sblock, SBSIZE) == 0) {
-		(void)close(rfd);
+		close(rfd);
 		return (1);
 	}
 	sfsp = &statfsbuf;
@@ -525,7 +525,7 @@ ufs_df(char *file, struct maxwidths *mwp)
 	memmove(&sfsp->f_mntonname[0], mntpt, (size_t)MNAMELEN);
 	memmove(&sfsp->f_mntfromname[0], file, (size_t)MNAMELEN);
 	prtstat(sfsp, mwp);
-	(void)close(rfd);
+	close(rfd);
 	return (0);
 }
 
@@ -534,11 +534,11 @@ bread(off_t off, void *buf, int cnt)
 {
 	ssize_t nr;
 
-	(void)lseek(rfd, off, SEEK_SET);
+	lseek(rfd, off, SEEK_SET);
 	if ((nr = read(rfd, buf, (size_t)cnt)) != (ssize_t)cnt) {
 		/* Probably a dismounted disk if errno == EIO. */
 		if (errno != EIO)
-			(void)fprintf(stderr, "\ndf: %lld: %s\n",
+			fprintf(stderr, "\ndf: %lld: %s\n",
 			    (long long)off, strerror(nr > 0 ? EIO : errno));
 		return (0);
 	}
@@ -549,7 +549,7 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: df [-b | -H | -h | -k | -m | -P] [-ailn] [-t type] [file | filesystem ...]\n");
 	exit(EX_USAGE);
 }

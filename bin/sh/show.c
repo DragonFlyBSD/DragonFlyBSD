@@ -35,7 +35,7 @@
  *
  * @(#)show.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/show.c,v 1.11.2.3 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/show.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/show.c,v 1.3 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -290,9 +290,9 @@ sh_trace(const char *fmt, ...)
 	va_list va;
 	va_start(va, fmt);
 	if (tracefile != NULL) {
-		(void) vfprintf(tracefile, fmt, va);
+		vfprintf(tracefile, fmt, va);
 		if (strchr(fmt, '\n'))
-			(void) fflush(tracefile);
+			fflush(tracefile);
 	}
 	va_end(va);
 }

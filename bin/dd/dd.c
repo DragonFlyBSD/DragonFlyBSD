@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)dd.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/dd.c,v 1.27.2.3 2001/08/01 01:37:35 obrien Exp $
- * $DragonFly: src/bin/dd/dd.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/dd/dd.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -79,12 +79,12 @@ const	u_char *ctab;		/* conversion table */
 int
 main(int argc __unused, char **argv)
 {
-	(void)setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 	jcl(argv);
 	setup();
 
-	(void)signal(SIGINFO, summaryx);
-	(void)signal(SIGINT, terminate);
+	signal(SIGINFO, summaryx);
+	signal(SIGINT, terminate);
 
 	atexit(summary);
 
@@ -193,7 +193,7 @@ setup(void)
 		ctab = casetab;
 	}
 
-	(void)gettimeofday(&tv, (struct timezone *)NULL);
+	gettimeofday(&tv, (struct timezone *)NULL);
 	st.start = tv.tv_sec + tv.tv_usec * 1e-6; 
 }
 
@@ -217,7 +217,7 @@ getfdtype(IO *io)
 				if (type & D_DISK) {
 					const int one = 1;
 
-					(void)ioctl(io->fd, DIOCWLABEL, &one);
+					ioctl(io->fd, DIOCWLABEL, &one);
 				}
 				io->flags |= ISSEEK;
 			}
@@ -452,6 +452,6 @@ dd_out(int force)
 
 	/* Reassemble the output block. */
 	if (out.dbcnt)
-		(void)memmove(out.db, out.dbp - out.dbcnt, out.dbcnt);
+		memmove(out.db, out.dbp - out.dbcnt, out.dbcnt);
 	out.dbp = out.db + out.dbcnt;
 }

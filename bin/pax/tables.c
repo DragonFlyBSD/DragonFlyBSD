@@ -36,7 +36,7 @@
  *
  * @(#)tables.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/tables.c,v 1.13.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tables.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/tables.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -178,8 +178,8 @@ chk_lnk(ARCHD *arcn)
 			 */
 			if (--pt->nlink <= 1) {
 				*ppt = pt->fow;
-				(void)free((char *)pt->name);
-				(void)free((char *)pt);
+				free((char *)pt->name);
+				free((char *)pt);
 			}
 			return(1);
 		}
@@ -198,7 +198,7 @@ chk_lnk(ARCHD *arcn)
 			ltab[indx] = pt;
 			return(0);
 		}
-		(void)free((char *)pt);
+		free((char *)pt);
 	}
 
 	paxwarn(1, "Hard link table out of memory");
@@ -254,8 +254,8 @@ purg_lnk(ARCHD *arcn)
 	 * remove and free it
 	 */
 	*ppt = pt->fow;
-	(void)free((char *)pt->name);
-	(void)free((char *)pt);
+	free((char *)pt->name);
+	free((char *)pt);
 }
 
 /*
@@ -288,8 +288,8 @@ lnk_end(void)
 		while (pt != NULL) {
 			ppt = pt;
 			pt = ppt->fow;
-			(void)free((char *)ppt->name);
-			(void)free((char *)ppt);
+			free((char *)ppt->name);
+			free((char *)ppt);
 		}
 	}
 	return;
@@ -347,7 +347,7 @@ ftime_start(void)
 		    tempfile);
 		return(-1);
 	}
-	(void)unlink(tempfile);
+	unlink(tempfile);
 
 	return(0);
 }
@@ -460,7 +460,7 @@ chk_ftime(ARCHD *arcn)
 		paxwarn(1, "File time table ran out of memory");
 
 	if (pt != NULL)
-		(void)free((char *)pt);
+		free((char *)pt);
 	return(-1);
 }
 
@@ -538,7 +538,7 @@ add_name(char *oname, int onamelen, char *nname)
 			if (strcmp(nname, pt->nname) == 0)
 				return(0);
 
-			(void)free((char *)pt->nname);
+			free((char *)pt->nname);
 			if ((pt->nname = strdup(nname)) == NULL) {
 				paxwarn(1, "Cannot update rename table");
 				return(-1);
@@ -557,9 +557,9 @@ add_name(char *oname, int onamelen, char *nname)
 				ntab[indx] = pt;
 				return(0);
 			}
-			(void)free((char *)pt->oname);
+			free((char *)pt->oname);
 		}
-		(void)free((char *)pt);
+		free((char *)pt);
 	}
 	paxwarn(1, "Interactive rename table out of memory");
 	return(-1);
@@ -994,7 +994,7 @@ add_atdir(char *fname, dev_t dev, ino_t ino, time_t mtime, time_t atime)
 			atab[indx] = pt;
 			return;
 		}
-		(void)free((char *)pt);
+		free((char *)pt);
 	}
 
 	paxwarn(1, "Directory access time reset table ran out of memory");
@@ -1051,8 +1051,8 @@ get_atdir(dev_t dev, ino_t ino, time_t *mtime, time_t *atime)
 	*ppt = pt->fow;
 	*mtime = pt->mtime;
 	*atime = pt->atime;
-	(void)free((char *)pt->name);
-	(void)free((char *)pt);
+	free((char *)pt->name);
+	free((char *)pt);
 	return(0);
 }
 
@@ -1099,7 +1099,7 @@ dir_start(void)
 	 */
 	memcpy(tempbase, _TFILE_BASE, sizeof(_TFILE_BASE));
 	if ((dirfd = mkstemp(tempfile)) >= 0) {
-		(void)unlink(tempfile);
+		unlink(tempfile);
 		return(0);
 	}
 	paxwarn(1, "Unable to create temporary file for directory times: %s",
@@ -1199,7 +1199,7 @@ proc_dir(void)
 			set_ftime(name, dblk.mtime, dblk.atime, 0);
 	}
 
-	(void)close(dirfd);
+	close(dirfd);
 	dirfd = -1;
 	if (cnt != dircnt)
 		paxwarn(1,"Unable to set mode and times for created directories");

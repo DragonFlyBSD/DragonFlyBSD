@@ -36,7 +36,7 @@
  *
  * @(#)tty_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/tty_subs.c,v 1.11.2.1 2001/08/01 05:03:12 obrien Exp $
- * $DragonFly: src/bin/pax/tty_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/tty_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -73,9 +73,9 @@ tty_init(void)
 		if ((ttyoutf = fdopen(ttyfd, "w")) != NULL) {
 			if ((ttyinf = fdopen(ttyfd, "r")) != NULL)
 				return(0);
-			(void)fclose(ttyoutf);
+			fclose(ttyoutf);
 		}
-		(void)close(ttyfd);
+		close(ttyfd);
 	}
 
 	if (iflag) {
@@ -98,9 +98,9 @@ tty_prnt(const char *fmt, ...)
 	va_start(ap, fmt);
 	if (ttyoutf == NULL)
 		return;
-	(void)vfprintf(ttyoutf, fmt, ap);
+	vfprintf(ttyoutf, fmt, ap);
 	va_end(ap);
-	(void)fflush(ttyoutf);
+	fflush(ttyoutf);
 }
 
 /*
@@ -146,14 +146,14 @@ paxwarn(int set, const char *fmt, ...)
 	 * line by itself
 	 */
 	if (vflag && vfpart) {
-		(void)fflush(listf);
-		(void)fputc('\n', stderr);
+		fflush(listf);
+		fputc('\n', stderr);
 		vfpart = 0;
 	}
-	(void)fprintf(stderr, "%s: ", argv0);
-	(void)vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "%s: ", argv0);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
-	(void)fputc('\n', stderr);
+	fputc('\n', stderr);
 }
 
 /*
@@ -174,18 +174,18 @@ syswarn(int set, int errnum, const char *fmt, ...)
 	 * line by itself
 	 */
 	if (vflag && vfpart) {
-		(void)fflush(listf);
-		(void)fputc('\n', stderr);
+		fflush(listf);
+		fputc('\n', stderr);
 		vfpart = 0;
 	}
-	(void)fprintf(stderr, "%s: ", argv0);
-	(void)vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "%s: ", argv0);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 
 	/*
 	 * format and print the errno
 	 */
 	if (errnum > 0)
-		(void)fprintf(stderr, " <%s>", strerror(errnum));
-	(void)fputc('\n', stderr);
+		fprintf(stderr, " <%s>", strerror(errnum));
+	fputc('\n', stderr);
 }

@@ -35,7 +35,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/options.c,v 1.15.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/options.c,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/options.c,v 1.4 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <signal.h>
@@ -184,8 +184,8 @@ options(int cmdline)
 					argptr++;
 			} else {
 				if (c == 'p' && !val && privileged) {
-					(void) setuid(getuid());
-					(void) setgid(getgid());
+					setuid(getuid());
+					setgid(getgid());
 				}
 				setoption(c, val);
 			}
@@ -222,8 +222,8 @@ minus_o(char *name, int val)
 		for (i = 0; i < NOPTS; i++)
 			if (equal(name, optlist[i].name)) {
 				if (!val && privileged && equal(name, "privileged")) {
-					(void) setuid(getuid());
-					(void) setgid(getgid());
+					setuid(getuid());
+					setgid(getgid());
 				}
 				setoption(optlist[i].letter, val);
 				return;
@@ -439,7 +439,7 @@ atend:
 			}
 			else {
 				out1fmt("Illegal option -%c\n", c);
-				(void) unsetvar("OPTARG");
+				unsetvar("OPTARG");
 			}
 			c = '?';
 			goto bad;
@@ -458,7 +458,7 @@ atend:
 			}
 			else {
 				out1fmt("No arg for -%c option\n", c);
-				(void) unsetvar("OPTARG");
+				unsetvar("OPTARG");
 				c = '?';
 			}
 			goto bad;

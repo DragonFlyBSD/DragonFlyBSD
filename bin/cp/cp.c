@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)cp.c	8.2 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/cp/cp.c,v 1.24.2.7 2002/09/24 12:41:04 mckay Exp $
- * $DragonFly: src/bin/cp/cp.c,v 1.8 2004/08/25 01:23:15 dillon Exp $
+ * $DragonFly: src/bin/cp/cp.c,v 1.9 2004/11/07 20:54:51 eirikn Exp $
  */
 
 /*
@@ -315,7 +315,7 @@ copy(char **argv, enum op type, int fts_options)
 				badcp = rval = 1;
 				continue;
 			}
-			(void)strncat(target_mid, p, nlen);
+			strncat(target_mid, p, nlen);
 			to.p_end = target_mid + nlen;
 			*to.p_end = 0;
 			STRIP_TRAILING_SLASH(to);
@@ -363,7 +363,7 @@ copy(char **argv, enum op type, int fts_options)
 				    to.p_path, curr->fts_path);
 				badcp = rval = 1;
 				if (S_ISDIR(curr->fts_statp->st_mode))
-					(void)fts_set(ftsp, curr, FTS_SKIP);
+					fts_set(ftsp, curr, FTS_SKIP);
 				continue;
 			}
 			if (!S_ISDIR(curr->fts_statp->st_mode) &&
@@ -385,7 +385,7 @@ copy(char **argv, enum op type, int fts_options)
 			if (!Rflag && !rflag) {
 				warnx("%s is a directory (not copied).",
 				    curr->fts_path);
-				(void)fts_set(ftsp, curr, FTS_SKIP);
+				fts_set(ftsp, curr, FTS_SKIP);
 				badcp = rval = 1;
 				break;
 			}
@@ -437,7 +437,7 @@ copy(char **argv, enum op type, int fts_options)
 			break;
 		}
 		if (vflag && !badcp)
-			(void)printf("%s -> %s\n", curr->fts_path, to.p_path);
+			printf("%s -> %s\n", curr->fts_path, to.p_path);
 	}
 	if (errno)
 		err(1, "fts_read");

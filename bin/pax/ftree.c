@@ -36,7 +36,7 @@
  *
  * @(#)ftree.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ftree.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ftree.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/ftree.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -210,7 +210,7 @@ ftree_sel(ARCHD *arcn)
 		return;
 
 	if (ftent != NULL)
-		(void)fts_set(ftsp, ftent, FTS_SKIP);
+		fts_set(ftsp, ftent, FTS_SKIP);
 }
 
 /*
@@ -242,7 +242,7 @@ ftree_chk(void)
 			paxwarn(1,"WARNING! These file names were not selected:");
 			++wban;
 		}
-		(void)fprintf(stderr, "%s\n", ft->fname);
+		fprintf(stderr, "%s\n", ft->fname);
 	}
 }
 
@@ -265,7 +265,7 @@ ftree_arg(void)
 	 * close off the current file tree
 	 */
 	if (ftsp != NULL) {
-		(void)fts_close(ftsp);
+		fts_close(ftsp);
 		ftsp = NULL;
 	}
 

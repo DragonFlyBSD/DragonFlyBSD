@@ -36,7 +36,7 @@
  *
  * @(#)pat_rep.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/pat_rep.c,v 1.15.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/pat_rep.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/pat_rep.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -140,7 +140,7 @@ rep_add(char *str)
 		regerror(res, &(rep->rcmp), rebuf, sizeof(rebuf));
 		paxwarn(1, "%s while compiling regular expression %s", rebuf, str);
 #	endif
-		(void)free((char *)rep);
+		free((char *)rep);
 		return(-1);
 	}
 
@@ -152,11 +152,11 @@ rep_add(char *str)
 	*pt1++ = *str;
 	if ((pt2 = strchr(pt1, *str)) == NULL) {
 #		ifdef NET2_REGEX
-		(void)free((char *)rep->rcmp);
+		free((char *)rep->rcmp);
 #		else
 		regfree(&(rep->rcmp));
 #		endif
-		(void)free((char *)rep);
+		free((char *)rep);
 		paxwarn(1, "Invalid replacement string %s", str);
 		return(-1);
 	}
@@ -181,11 +181,11 @@ rep_add(char *str)
 			break;
 		default:
 #			ifdef NET2_REGEX
-			(void)free((char *)rep->rcmp);
+			free((char *)rep->rcmp);
 #			else
 			regfree(&(rep->rcmp));
 #			endif
-			(void)free((char *)rep);
+			free((char *)rep);
 			*pt1 = *str;
 			paxwarn(1, "Invalid replacement string option %s", str);
 			return(-1);
@@ -279,7 +279,7 @@ pat_chk(void)
 			paxwarn(1, "WARNING! These patterns were not matched:");
 			++wban;
 		}
-		(void)fprintf(stderr, "%s\n", pt->pstr);
+		fprintf(stderr, "%s\n", pt->pstr);
 	}
 }
 
@@ -401,7 +401,7 @@ pat_sel(ARCHD *arcn)
 		return(-1);
 	}
 	*ppt = pt->fow;
-	(void)free((char *)pt);
+	free((char *)pt);
 	arcn->pat = NULL;
 	return(0);
 }
@@ -619,7 +619,7 @@ mod_name(ARCHD *arcn)
 		if (arcn->name[1] == '\0') {
 			arcn->name[0] = '.';
 		} else {
-			(void)memmove(arcn->name, &arcn->name[1],
+			memmove(arcn->name, &arcn->name[1],
 			    strlen(arcn->name));
 			arcn->nlen--;
 		}
@@ -633,7 +633,7 @@ mod_name(ARCHD *arcn)
 		if (arcn->ln_name[1] == '\0') {
 			arcn->ln_name[0] = '.';
 		} else {
-			(void)memmove(arcn->ln_name, &arcn->ln_name[1],
+			memmove(arcn->ln_name, &arcn->ln_name[1],
 			    strlen(arcn->ln_name));
 			arcn->ln_nlen--;
 		}
@@ -880,7 +880,7 @@ rep_name(char *name, int *nlen, int prnt)
 	 * (the user already saw that substitution go by)
 	 */
 	pt = rephead;
-	(void)strcpy(buf1, name);
+	strcpy(buf1, name);
 	inpt = buf1;
 	outpt = nname;
 	endpt = outpt + PAXPATHLEN;
@@ -994,10 +994,10 @@ rep_name(char *name, int *nlen, int prnt)
 		 */
 		if (prnt && (pt->flgs & PRNT)) {
 			if (*nname == '\0')
-				(void)fprintf(stderr,"%s >> <empty string>\n",
+				fprintf(stderr,"%s >> <empty string>\n",
 				    name);
 			else
-				(void)fprintf(stderr,"%s >> %s\n", name, nname);
+				fprintf(stderr,"%s >> %s\n", name, nname);
 		}
 
 		/*

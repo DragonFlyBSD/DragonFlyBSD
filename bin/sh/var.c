@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.6 2004/10/01 20:38:40 dillon Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.7 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <unistd.h>
@@ -317,7 +317,7 @@ setvareq(char *s, int flags)
 				chkmail(1);
 			if ((vp->flags & VEXPORT) && localevar(s)) {
 				putenv(s);
-				(void) setlocale(LC_ALL, "");
+				setlocale(LC_ALL, "");
 			}
 			INTON;
 			return;
@@ -333,7 +333,7 @@ setvareq(char *s, int flags)
 	*vpp = vp;
 	if ((vp->flags & VEXPORT) && localevar(s)) {
 		putenv(s);
-		(void) setlocale(LC_ALL, "");
+		setlocale(LC_ALL, "");
 	}
 	INTON;
 }
@@ -554,7 +554,7 @@ exportcmd(int argc, char **argv)
 						vp->flags |= flag;
 						if ((vp->flags & VEXPORT) && localevar(vp->text)) {
 							putenv(vp->text);
-							(void) setlocale(LC_ALL, "");
+							setlocale(LC_ALL, "");
 						}
 						goto found;
 					}
@@ -667,7 +667,7 @@ poplocalvars(void)
 			memcpy(optlist, lvp->text, sizeof optlist);
 			ckfree(lvp->text);
 		} else if ((lvp->flags & (VUNSET|VSTRFIXED)) == VUNSET) {
-			(void)unsetvar(vp->text);
+			unsetvar(vp->text);
 		} else {
 			if ((vp->flags & VTEXTFIXED) == 0)
 				ckfree(vp->text);

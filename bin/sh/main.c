@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/28/95
  * $FreeBSD: src/bin/sh/main.c,v 1.18.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/main.c,v 1.4 2004/10/01 20:30:25 dillon Exp $
+ * $DragonFly: src/bin/sh/main.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -99,7 +99,7 @@ main(int argc, char *argv[])
 #if PROFILE
 	monitor(4, etext, profile_buf, sizeof profile_buf, 50);
 #endif
-	(void) setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 	state = 0;
 	if (setjmp(jmploc.loc)) {
 		/*

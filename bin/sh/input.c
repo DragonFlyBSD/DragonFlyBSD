@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
  * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.4 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -191,7 +191,7 @@ retry:
 			nr = 0;
 		else {
 			/* XXX - BUFSIZE should redesign so not necessary */
-			(void) strcpy(parsenextc, rl_cp);
+			strcpy(parsenextc, rl_cp);
 		}
 	} else
 #endif
@@ -401,7 +401,7 @@ setinputfile(const char *fname, int push)
 void
 setinputfd(int fd, int push)
 {
-	(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
 	if (push) {
 		pushfile();
 		parsefile->buf = ckmalloc(BUFSIZ);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mkdir.c	8.2 (Berkeley) 1/25/94
  * $FreeBSD: src/bin/mkdir/mkdir.c,v 1.19.2.2 2001/08/01 04:42:37 obrien Exp $
- * $DragonFly: src/bin/mkdir/mkdir.c,v 1.5 2004/10/18 18:42:01 eirikn Exp $
+ * $DragonFly: src/bin/mkdir/mkdir.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -110,7 +110,7 @@ main(int argc, char **argv)
 				warn("%s", *argv);
 			success = 0;
 		} else if (vflag)
-			(void)printf("%s\n", *argv);
+			printf("%s\n", *argv);
 		
 		if (!success)
 			exitval = 1;
@@ -165,11 +165,11 @@ build(char *path, mode_t omode)
 			 */
 			oumask = umask(0);
 			numask = oumask & ~(S_IWUSR | S_IXUSR);
-			(void)umask(numask);
+			umask(numask);
 			first = 0;
 		}
 		if (last)
-			(void)umask(oumask);
+			umask(oumask);
 		if (stat(path, &sb)) {
 			if (errno != ENOENT ||
 			    mkdir(path, last ? omode : 
@@ -193,7 +193,7 @@ build(char *path, mode_t omode)
 		    *p = '/';
 	}
 	if (!first && !last)
-		(void)umask(oumask);
+		umask(oumask);
 	return (retval);
 }
 
@@ -201,6 +201,6 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: mkdir [-pv] [-m mode] directory ...\n");
+	fprintf(stderr, "usage: mkdir [-pv] [-m mode] directory ...\n");
 	exit (EX_USAGE);
 }

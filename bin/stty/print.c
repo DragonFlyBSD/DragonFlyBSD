@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/stty/print.c,v 1.12.2.2 2001/07/04 22:40:00 kris Exp $
- * $DragonFly: src/bin/stty/print.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/stty/print.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -90,7 +90,7 @@ print(struct termios *tp, struct winsize *wp, int ldisc, enum FMT fmt)
 	if (fmt >= BSD)
 		cnt += printf(" %d rows; %d columns;", wp->ws_row, wp->ws_col);
 	if (cnt)
-		(void)printf("\n");
+		printf("\n");
 
 #define	on(f)	((tmp & (f)) != 0)
 #define put(n, f, d) \
@@ -188,7 +188,7 @@ print(struct termios *tp, struct winsize *wp, int ldisc, enum FMT fmt)
 	if (fmt == POSIX) {
 		binit("cchars");
 		for (p = cchars1; p->name; ++p) {
-			(void)snprintf(buf1, sizeof(buf1), "%s = %s;",
+			snprintf(buf1, sizeof(buf1), "%s = %s;",
 			    p->name, ccval(p, cc[p->sub]));
 			bput(buf1);
 		}
@@ -199,19 +199,19 @@ print(struct termios *tp, struct winsize *wp, int ldisc, enum FMT fmt)
 			if (fmt != BSD && cc[p->sub] == p->def)
 				continue;
 #define	WD	"%-8s"
-			(void)snprintf(buf1 + cnt * 8, sizeof(buf1) - cnt * 8,
+			snprintf(buf1 + cnt * 8, sizeof(buf1) - cnt * 8,
 			    WD, p->name);
-			(void)snprintf(buf2 + cnt * 8, sizeof(buf2) - cnt * 8,
+			snprintf(buf2 + cnt * 8, sizeof(buf2) - cnt * 8,
 			    WD, ccval(p, cc[p->sub]));
 			if (++cnt == LINELENGTH / 8) {
 				cnt = 0;
-				(void)printf("%s\n", buf1);
-				(void)printf("%s\n", buf2);
+				printf("%s\n", buf1);
+				printf("%s\n", buf2);
 			}
 		}
 		if (cnt) {
-			(void)printf("%s\n", buf1);
-			(void)printf("%s\n", buf2);
+			printf("%s\n", buf1);
+			printf("%s\n", buf2);
 		}
 	}
 }
@@ -224,7 +224,7 @@ binit(const char *lb)
 {
 
 	if (col) {
-		(void)printf("\n");
+		printf("\n");
 		col = 0;
 	}
 	label = lb;
@@ -239,7 +239,7 @@ bput(const char *s)
 		return;
 	}
 	if ((col + strlen(s)) > LINELENGTH) {
-		(void)printf("\n\t");
+		printf("\n\t");
 		col = printf("%s", s) + 8;
 		return;
 	}
@@ -253,7 +253,7 @@ ccval(struct cchar *p, int c)
 	char *bp;
 
 	if (p->sub == VMIN || p->sub == VTIME) {
-		(void)snprintf(buf, sizeof(buf), "%d", c);
+		snprintf(buf, sizeof(buf), "%d", c);
 		return (buf);
 	}
 	if (c == _POSIX_VDISABLE)

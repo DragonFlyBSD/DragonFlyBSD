@@ -35,7 +35,7 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/util.c,v 1.20.2.5 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.3 2003/12/27 17:49:38 drhodus Exp $
+ * $DragonFly: src/bin/ls/util.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -150,7 +150,7 @@ prn_octal(const char *s)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 #ifdef COLORLS
 	"usage: ls [-ABCFGHLPRTWabcdfghiklmnoqrstuwx1]"
 #else

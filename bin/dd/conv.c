@@ -36,7 +36,7 @@
  *
  * @(#)conv.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/conv.c,v 1.15 1999/09/13 21:47:10 green Exp $
- * $DragonFly: src/bin/dd/conv.c,v 1.4 2004/01/28 16:25:29 joerg Exp $
+ * $DragonFly: src/bin/dd/conv.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -146,7 +146,7 @@ block(void)
 		 * input block.
 		 */
 		if (ch != '\n' && in.dbcnt < cbsz) {
-			(void)memmove(in.db, in.dbp - in.dbcnt, in.dbcnt);
+			memmove(in.db, in.dbp - in.dbcnt, in.dbcnt);
 			break;
 		}
 
@@ -157,7 +157,7 @@ block(void)
 
 		/* Pad short records with spaces. */
 		if (cnt < cbsz)
-			(void)memset(outp, ctab ? ctab[' '] : ' ', cbsz - cnt);
+			memset(outp, ctab ? ctab[' '] : ' ', cbsz - cnt);
 		else {
 			/*
 			 * If the next character wouldn't have ended the
@@ -196,8 +196,8 @@ block_close(void)
 	 */
 	if (in.dbcnt) {
 		++st.trunc;
-		(void)memmove(out.dbp, in.dbp - in.dbcnt, in.dbcnt);
-		(void)memset(out.dbp + in.dbcnt, ctab ? ctab[' '] : ' ',
+		memmove(out.dbp, in.dbp - in.dbcnt, in.dbcnt);
+		memset(out.dbp + in.dbcnt, ctab ? ctab[' '] : ' ',
 		    cbsz - in.dbcnt);
 		out.dbcnt += cbsz;
 	}
@@ -233,7 +233,7 @@ unblock(void)
 			;
 		if (t >= inp) {
 			cnt = t - inp + 1;
-			(void)memmove(out.dbp, inp, cnt);
+			memmove(out.dbp, inp, cnt);
 			out.dbp += cnt;
 			out.dbcnt += cnt;
 		}
@@ -242,7 +242,7 @@ unblock(void)
 			dd_out(0);
 	}
 	if (in.dbcnt)
-		(void)memmove(in.db, in.dbp - in.dbcnt, in.dbcnt);
+		memmove(in.db, in.dbp - in.dbcnt, in.dbcnt);
 	in.dbp = in.db + in.dbcnt;
 }
 
@@ -258,7 +258,7 @@ unblock_close(void)
 			;
 		if (t >= in.db) {
 			cnt = t - in.db + 1;
-			(void)memmove(out.dbp, in.db, cnt);
+			memmove(out.dbp, in.db, cnt);
 			out.dbp += cnt;
 			out.dbcnt += cnt;
 		}

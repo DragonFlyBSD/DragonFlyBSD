@@ -35,7 +35,7 @@
  *
  *	@(#)bltin.h	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/bltin/bltin.h,v 1.10.2.2 2002/07/19 04:38:54 tjr Exp $
- * $DragonFly: src/bin/sh/bltin/bltin.h,v 1.3 2004/03/19 18:39:41 cpressey Exp $
+ * $DragonFly: src/bin/sh/bltin/bltin.h,v 1.4 2004/11/07 20:54:52 eirikn Exp $
  */
 
 /*
@@ -63,17 +63,17 @@
 #define INITARGS(argv)
 #define warnx1(a, b, c) {				\
 	char buf[64];					\
-	(void)snprintf(buf, sizeof(buf), a);		\
+	snprintf(buf, sizeof(buf), a);			\
 	error("%s", buf);				\
 }
 #define warnx2(a, b, c) {				\
 	char buf[64];					\
-	(void)snprintf(buf, sizeof(buf), a, b);		\
+	snprintf(buf, sizeof(buf), a, b);		\
 	error("%s", buf);				\
 }
 #define warnx3(a, b, c) {				\
 	char buf[64];					\
-	(void)snprintf(buf, sizeof(buf), a, b, c);	\
+	snprintf(buf, sizeof(buf), a, b, c);		\
 	error("%s", buf);				\
 }
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd.c	8.3 (Berkeley) 4/1/94
  * $FreeBSD: src/bin/pwd/pwd.c,v 1.9.2.3 2002/06/17 11:04:22 tjr Exp $
- * $DragonFly: src/bin/pwd/pwd.c,v 1.3 2004/01/28 16:25:29 joerg Exp $
+ * $DragonFly: src/bin/pwd/pwd.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -64,7 +64,7 @@ main(int argc, char *argv[])
 			usage();
 		if ((p = realpath(argv[1], buf)) == NULL)
 			err(1, "%s", argv[1]);
-		(void)printf("%s\n", p);
+		printf("%s\n", p);
 		exit(0);
 	}
 
@@ -105,9 +105,9 @@ usage(void)
 {
 
 	if (strcmp(getprogname(), "realpath") == 0)
-		(void)fprintf(stderr, "usage: realpath [path]\n");
+		fprintf(stderr, "usage: realpath [path]\n");
 	else
-		(void)fprintf(stderr, "usage: pwd [-LP]\n");
+		fprintf(stderr, "usage: pwd [-LP]\n");
   	exit(1);
 }
 

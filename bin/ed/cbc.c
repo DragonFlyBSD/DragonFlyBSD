@@ -38,7 +38,7 @@
  *
  * @(#)cbc.c,v 1.2 1994/02/01 00:34:36 alm Exp
  * $FreeBSD: src/bin/ed/cbc.c,v 1.12.2.1 2001/07/04 22:32:18 kris Exp $
- * $DragonFly: src/bin/ed/cbc.c,v 1.5 2004/10/30 13:34:49 liamfoy Exp $
+ * $DragonFly: src/bin/ed/cbc.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -201,7 +201,7 @@ get_keyword(void)
 void
 des_error(const char *s)
 {
-	(void)sprintf(errmsg, "%s", s ? s : strerror(errno));
+	sprintf(errmsg, "%s", s ? s : strerror(errno));
 }
 
 /*
@@ -286,7 +286,7 @@ expand_des_key(char *obuf, char *inbuf)
 	/*
 	 * no special leader -- ASCII
 	 */
-	(void)strncpy(obuf, inbuf, 8);
+	strncpy(obuf, inbuf, 8);
 }
 
 /*****************
@@ -357,7 +357,7 @@ cbc_encode(char *msgbuf, int n, FILE *fp)
 	/*
 	 *  Pad the last block randomly
 	 */
-	(void)MEMCPY(BUFFER(msgbuf + n), BUFFER(pvec), 8 - n);
+	MEMCPY(BUFFER(msgbuf + n), BUFFER(pvec), 8 - n);
 	CHAR(msgbuf, 7) = n;
 	for (n = 0; n < 8; n++)
 		CHAR(msgbuf, n) ^= CHAR(ivec, n);
@@ -395,7 +395,7 @@ cbc_decode(char *msgbuf, FILE *fp)
 				return EOF;
 			}
 		} else
-			(void)ungetc(c, fp);
+			ungetc(c, fp);
 		return n;
 	}
 	if (n > 0)

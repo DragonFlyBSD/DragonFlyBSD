@@ -32,7 +32,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mv.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/bin/mv/mv.c,v 1.24.2.6 2004/03/24 08:34:36 pjd Exp $
- * $DragonFly: src/bin/mv/mv.c,v 1.7 2004/10/30 13:34:49 liamfoy Exp $
+ * $DragonFly: src/bin/mv/mv.c,v 1.8 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -109,7 +109,7 @@ main(int argc, char **argv)
 	/* It's a directory, move each file into it. */
 	if (strlen(argv[argc - 1]) > sizeof(path) - 1)
 		errx(1, "%s: destination pathname too long", *argv);
-	(void)strcpy(path, argv[argc - 1]);
+	strcpy(path, argv[argc - 1]);
 	baselen = strlen(path);
 	endp = &path[baselen];
 	if (!baselen || *(endp - 1) != '/') {
@@ -166,11 +166,11 @@ do_move(char *from, char *to)
 				printf("%s not overwritten\n", to);
 			return (0);
 		} else if (iflg) {
-			(void)fprintf(stderr, "overwrite %s? %s", to, YESNO);
+			fprintf(stderr, "overwrite %s? %s", to, YESNO);
 			ask = 1;
 		} else if (access(to, W_OK) && !stat(to, &sb)) {
 			strmode(sb.st_mode, modep);
-			(void)fprintf(stderr, "override %s%s%s/%s for %s? %s",
+			fprintf(stderr, "override %s%s%s/%s for %s? %s",
 			    modep + 1, modep[9] == ' ' ? "" : " ",
 			    user_from_uid((unsigned long)sb.st_uid, 0),
 			    group_from_gid((unsigned long)sb.st_gid, 0), to, YESNO);
@@ -181,7 +181,7 @@ do_move(char *from, char *to)
 			while (ch != '\n' && ch != EOF)
 				ch = getchar();
 			if (first != 'y' && first != 'Y') {
-				(void)fprintf(stderr, "not overwritten\n");
+				fprintf(stderr, "not overwritten\n");
 				return (0);
 			}
 		}
@@ -262,7 +262,7 @@ fastcopy(char *from, char *to, struct stat *sbp)
 		if (errno == EEXIST && unlink(to) == 0)
 			continue;
 		warn("%s", to);
-		(void)close(from_fd);
+		close(from_fd);
 		return (1);
 	}
 	while ((nread = read(from_fd, bp, (size_t)blen)) > 0)
@@ -274,11 +274,11 @@ fastcopy(char *from, char *to, struct stat *sbp)
 		warn("%s", from);
 err:		if (unlink(to))
 			warn("%s: remove", to);
-		(void)close(from_fd);
-		(void)close(to_fd);
+		close(from_fd);
+		close(to_fd);
 		return (1);
 	}
-	(void)close(from_fd);
+	close(from_fd);
 
 	oldmode = sbp->st_mode & ALLPERMS;
 	if (fchown(to_fd, sbp->st_uid, sbp->st_gid)) {
@@ -374,7 +374,7 @@ void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 		      "usage: mv [-f | -i | -n] [-v] source target",
 		      "       mv [-f | -i | -n] [-v] source ... directory");
 	exit(EX_USAGE);

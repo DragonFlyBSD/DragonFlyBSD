@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1987, 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)date.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/date/date.c,v 1.32.2.6 2001/10/31 17:31:51 dillon Exp $
- * $DragonFly: src/bin/date/date.c,v 1.7 2004/10/30 13:34:49 liamfoy Exp $
+ * $DragonFly: src/bin/date/date.c,v 1.8 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -80,7 +80,7 @@ main(int argc, char **argv)
 
 	v = NULL;
 	fmt = NULL;
-	(void) setlocale(LC_TIME, "");
+	setlocale(LC_TIME, "");
 	tz.tz_dsttime = tz.tz_minuteswest = 0;
 	rflag = 0;
 	jflag = nflag = 0;
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 			set_timezone = 1;
 			break;
 		case 'u':		/* do everything in UTC */
-			(void)setenv("TZ", "UTC0", 1);
+			setenv("TZ", "UTC0", 1);
 			break;
 		case 'v':
 			v = vary_append(v, optarg);
@@ -163,8 +163,8 @@ main(int argc, char **argv)
 		usage();
 	}
 	vary_destroy(v);
-	(void)strftime(buf, sizeof(buf), format, &lt);
-	(void)printf("%s\n", buf);
+	strftime(buf, sizeof(buf), format, &lt);
+	printf("%s\n", buf);
 	exit(retval);
 }
 
@@ -290,7 +290,7 @@ badformat(void)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: date [-jnu] [-d dst] [-r seconds] [-t west] "
 	    "[-v[+|-]val[ymwdHMS]] ... ",
 	    "            "

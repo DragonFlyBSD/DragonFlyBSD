@@ -36,7 +36,7 @@
  *
  * @(#)gen_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/gen_subs.c,v 1.12.2.4 2002/03/12 17:49:17 phantom Exp $
- * $DragonFly: src/bin/pax/gen_subs.c,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/gen_subs.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -89,8 +89,8 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 * if not verbose, just print the file name
 	 */
 	if (!vflag) {
-		(void)fprintf(fp, "%s\n", arcn->name);
-		(void)fflush(fp);
+		fprintf(fp, "%s\n", arcn->name);
+		fflush(fp);
 		return;
 	}
 
@@ -115,7 +115,7 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 */
 	if (strftime(f_date,DATELEN,timefrmt,localtime(&(sbp->st_mtime))) == 0)
 		f_date[0] = '\0';
-	(void)fprintf(fp, "%s%2u %-*s %-*s ", f_mode, sbp->st_nlink,
+	fprintf(fp, "%s%2u %-*s %-*s ", f_mode, sbp->st_nlink,
 		UT_NAMESIZE, name_uid(sbp->st_uid, 1), UT_GRPSIZE,
 		name_gid(sbp->st_gid, 1));
 
@@ -124,31 +124,31 @@ ls_list(ARCHD *arcn, time_t now, FILE *fp)
 	 */
 	if ((arcn->type == PAX_CHR) || (arcn->type == PAX_BLK))
 #		ifdef NET2_STAT
-		(void)fprintf(fp, "%4u,%4u ", MAJOR(sbp->st_rdev),
+		fprintf(fp, "%4u,%4u ", MAJOR(sbp->st_rdev),
 		    MINOR(sbp->st_rdev));
 #		else
-		(void)fprintf(fp, "%4lu,%4lu ", (unsigned long)MAJOR(sbp->st_rdev),
+		fprintf(fp, "%4lu,%4lu ", (unsigned long)MAJOR(sbp->st_rdev),
 		    (unsigned long)MINOR(sbp->st_rdev));
 #		endif
 	else {
 #		ifdef NET2_STAT
-		(void)fprintf(fp, "%9lu ", sbp->st_size);
+		fprintf(fp, "%9lu ", sbp->st_size);
 #		else
-		(void)fprintf(fp, "%9qu ", sbp->st_size);
+		fprintf(fp, "%9qu ", sbp->st_size);
 #		endif
 	}
 
 	/*
 	 * print name and link info for hard and soft links
 	 */
-	(void)fprintf(fp, "%s %s", f_date, arcn->name);
+	fprintf(fp, "%s %s", f_date, arcn->name);
 	if ((arcn->type == PAX_HLK) || (arcn->type == PAX_HRG))
-		(void)fprintf(fp, " == %s\n", arcn->ln_name);
+		fprintf(fp, " == %s\n", arcn->ln_name);
 	else if (arcn->type == PAX_SLK)
-		(void)fprintf(fp, " => %s\n", arcn->ln_name);
+		fprintf(fp, " => %s\n", arcn->ln_name);
 	else
-		(void)putc('\n', fp);
-	(void)fflush(fp);
+		putc('\n', fp);
+	fflush(fp);
 	return;
 }
 

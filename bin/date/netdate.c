@@ -32,7 +32,7 @@
  *
  * @(#)netdate.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/date/netdate.c,v 1.11.2.1 2001/05/12 17:14:22 fenner Exp $
- * $DragonFly: src/bin/date/netdate.c,v 1.5 2004/09/26 16:29:49 asmodai Exp $
+ * $DragonFly: src/bin/date/netdate.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ netsettime(time_t tval)
 		warn("gethostname");
 		goto bad;
 	}
-	(void)strncpy(msg.tsp_name, hostname, sizeof(msg.tsp_name) - 1);
+	strncpy(msg.tsp_name, hostname, sizeof(msg.tsp_name) - 1);
 	msg.tsp_name[sizeof(msg.tsp_name) - 1] = '\0';
 	msg.tsp_seq = htons((u_short)0);
 	msg.tsp_time.tv_sec = htonl((u_long)tval);
@@ -164,7 +164,7 @@ loop:
 			waittime = WAITDATEACK;
 			goto loop;
 		case TSP_DATEACK:
-			(void)close(s);
+			close(s);
 			return (0);
 		default:
 			warnx("wrong ack received from timed: %s",
@@ -177,6 +177,6 @@ loop:
 		warnx("can't reach time daemon, time set locally");
 
 bad:
-	(void)close(s);
+	close(s);
 	return (retval = 2);
 }

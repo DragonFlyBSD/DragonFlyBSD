@@ -5,7 +5,7 @@
  * Largely rewritten by J.T. Conklin (jtc@wimsey.com)
  *
  * $FreeBSD: src/bin/expr/expr.y,v 1.14.2.3 2001/08/01 02:37:46 obrien Exp $
- * $DragonFly: src/bin/expr/expr.y,v 1.4 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/expr/expr.y,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -316,8 +316,8 @@ struct val *a, *b;
 		to_string (b);	
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) == 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i == b->u.i));
 	}
 
@@ -337,8 +337,8 @@ struct val *a, *b;
 		to_string (b);
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) > 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i > b->u.i));
 	}
 
@@ -358,8 +358,8 @@ struct val *a, *b;
 		to_string (b);
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) < 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i < b->u.i));
 	}
 
@@ -379,8 +379,8 @@ struct val *a, *b;
 		to_string (b);
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) >= 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i >= b->u.i));
 	}
 
@@ -400,8 +400,8 @@ struct val *a, *b;
 		to_string (b);
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) <= 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i <= b->u.i));
 	}
 
@@ -421,8 +421,8 @@ struct val *a, *b;
 		to_string (b);
 		r = make_integer ((quad_t)(strcoll (a->u.s, b->u.s) != 0));
 	} else {
-		(void)to_integer(a);
-		(void)to_integer(b);
+		to_integer(a);
+		to_integer(b);
 		r = make_integer ((quad_t)(a->u.i != b->u.i));
 	}
 

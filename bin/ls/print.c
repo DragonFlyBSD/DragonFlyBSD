@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.6 2004/09/26 15:53:25 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.7 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -129,8 +129,8 @@ printscol(DISPLAY *dp)
 	for (p = dp->list; p; p = p->fts_link) {
 		if (IS_NOPRINT(p))
 			continue;
-		(void)printaname(p, dp->s_inode, dp->s_block);
-		(void)putchar('\n');
+		printaname(p, dp->s_inode, dp->s_block);
+		putchar('\n');
 	}
 }
 
@@ -160,34 +160,34 @@ printlong(DISPLAY *dp)
 #endif
 
 	if (dp->list->fts_level != FTS_ROOTLEVEL && (f_longform || f_size))
-		(void)printf("total %lu\n", howmany(dp->btotal, blocksize));
+		printf("total %lu\n", howmany(dp->btotal, blocksize));
 
 	for (p = dp->list; p; p = p->fts_link) {
 		if (IS_NOPRINT(p))
 			continue;
 		sp = p->fts_statp;
 		if (f_inode)
-			(void)printf("%*lu ", dp->s_inode, (u_long)sp->st_ino);
+			printf("%*lu ", dp->s_inode, (u_long)sp->st_ino);
 		if (f_size)
-			(void)printf("%*lld ",
+			printf("%*lld ",
 			    dp->s_block, howmany(sp->st_blocks, blocksize));
 		strmode(sp->st_mode, buf);
 		np = p->fts_pointer;
-		(void)printf("%s %*u %-*s  %-*s  ", buf, dp->s_nlink,
+		printf("%s %*u %-*s  %-*s  ", buf, dp->s_nlink,
 		    sp->st_nlink, dp->s_user, np->user, dp->s_group,
 		    np->group);
 		if (f_flags)
-			(void)printf("%-*s ", dp->s_flags, np->flags);
+			printf("%-*s ", dp->s_flags, np->flags);
 		if (S_ISCHR(sp->st_mode) || S_ISBLK(sp->st_mode))
 			if (minor(sp->st_rdev) > 255 || minor(sp->st_rdev) < 0)
-				(void)printf("%3d, 0x%08x ",
+				printf("%3d, 0x%08x ",
 				    major(sp->st_rdev),
 				    (u_int)minor(sp->st_rdev));
 			else
-				(void)printf("%3d, %3d ",
+				printf("%3d, %3d ",
 				    major(sp->st_rdev), minor(sp->st_rdev));
 		else if (dp->bcfile)
-			(void)printf("%*s%*lld ",
+			printf("%*s%*lld ",
 			    8 - dp->s_size, "", dp->s_size, sp->st_size);
 		else
 			printsize(dp->s_size, sp->st_size);
@@ -201,16 +201,16 @@ printlong(DISPLAY *dp)
 		if (f_color)
 			color_printed = colortype(sp->st_mode);
 #endif
-		(void)printname(p->fts_name);
+		printname(p->fts_name);
 #ifdef COLORLS
 		if (f_color && color_printed)
 			endcolor(0);
 #endif
 		if (f_type)
-			(void)printtype(sp->st_mode);
+			printtype(sp->st_mode);
 		if (S_ISLNK(sp->st_mode))
 			printlink(p);
-		(void)putchar('\n');
+		putchar('\n');
 	}
 }
 
@@ -300,7 +300,7 @@ printcol(DISPLAY *dp)
 		++numrows;
 
 	if (dp->list->fts_level != FTS_ROOTLEVEL && (f_longform || f_size))
-		(void)printf("total %lu\n", howmany(dp->btotal, blocksize));
+		printf("total %lu\n", howmany(dp->btotal, blocksize));
 
 	/* counter if f_sortacross, else case-by-case */
 	base = 0;
@@ -322,12 +322,12 @@ printcol(DISPLAY *dp)
 			    <= endcol) {
 				if (f_sortacross && col + 1 >= numcols)
 					break;
-				(void)putchar(f_notabs ? ' ' : '\t');
+				putchar(f_notabs ? ' ' : '\t');
 				chcnt = cnt;
 			}
 			endcol += colwidth;
 		}
-		(void)putchar('\n');
+		putchar('\n');
 	}
 }
 
@@ -398,7 +398,7 @@ printtype(u_int mode)
 
 	if (f_slash) {
 		if ((mode & S_IFMT) == S_IFDIR) {
-			(void)putchar('/');
+			putchar('/');
 			return (1);
 		}
 		return (0);
@@ -406,25 +406,25 @@ printtype(u_int mode)
 
 	switch (mode & S_IFMT) {
 	case S_IFDIR:
-		(void)putchar('/');
+		putchar('/');
 		return (1);
 	case S_IFIFO:
-		(void)putchar('|');
+		putchar('|');
 		return (1);
 	case S_IFLNK:
-		(void)putchar('@');
+		putchar('@');
 		return (1);
 	case S_IFSOCK:
-		(void)putchar('=');
+		putchar('=');
 		return (1);
 	case S_IFWHT:
-		(void)putchar('%');
+		putchar('%');
 		return (1);
 	default:
 		break;
 	}
 	if (mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
-		(void)putchar('*');
+		putchar('*');
 		return (1);
 	}
 	return (0);
@@ -434,7 +434,7 @@ printtype(u_int mode)
 static int
 putch(int c)
 {
-	(void)putchar(c);
+	putchar(c);
 	return 0;
 }
 
@@ -443,7 +443,7 @@ writech(int c)
 {
 	char tmp = c;
 
-	(void)write(STDOUT_FILENO, &tmp, 1);
+	write(STDOUT_FILENO, &tmp, 1);
 	return 0;
 }
 
@@ -570,8 +570,8 @@ colorquit(int sig)
 {
 	endcolor(sig);
 
-	(void)signal(sig, SIG_DFL);
-	(void)kill(getpid(), sig);
+	signal(sig, SIG_DFL);
+	kill(getpid(), sig);
 }
 
 #endif /* COLORLS */
@@ -584,17 +584,17 @@ printlink(FTSENT *p)
 	char path[MAXPATHLEN + 1];
 
 	if (p->fts_level == FTS_ROOTLEVEL)
-		(void)snprintf(name, sizeof(name), "%s", p->fts_name);
+		snprintf(name, sizeof(name), "%s", p->fts_name);
 	else
-		(void)snprintf(name, sizeof(name),
+		snprintf(name, sizeof(name),
 		    "%s/%s", p->fts_parent->fts_accpath, p->fts_name);
 	if ((lnklen = readlink(name, path, sizeof(path) - 1)) == -1) {
-		(void)fprintf(stderr, "\nls: %s: %s\n", name, strerror(errno));
+		fprintf(stderr, "\nls: %s: %s\n", name, strerror(errno));
 		return;
 	}
 	path[lnklen] = '\0';
-	(void)printf(" -> ");
-	(void)printname(path);
+	printf(" -> ");
+	printname(path);
 }
 
 static void
@@ -606,12 +606,12 @@ printsize(size_t width, off_t bytes)
 		unit = unit_adjust(&bytes);
 
 		if (bytes == 0)
-			(void)printf("%*s ", width, "0B");
+			printf("%*s ", width, "0B");
 		else
-			(void)printf("%*lld%c ", width - 1, bytes,
+			printf("%*lld%c ", width - 1, bytes,
 			    "BKMGTPE"[unit]);
 	} else
-		(void)printf("%*lld ", width, bytes);
+		printf("%*lld ", width, bytes);
 }
 
 /*

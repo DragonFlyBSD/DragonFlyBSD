@@ -36,7 +36,7 @@
  *
  * @(#)cpio.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cpio.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cpio.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/cpio.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -166,7 +166,7 @@ cpio_endwr(void)
 	last.nlen = sizeof(TRAILER) - 1;
 	last.type = PAX_REG;
 	last.sb.st_nlink = 1;
-	(void)strcpy(last.name, TRAILER);
+	strcpy(last.name, TRAILER);
 	return((*frmt->wr)(&last));
 }
 

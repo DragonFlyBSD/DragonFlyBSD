@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.11 2004/09/26 15:55:37 asmodai Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.12 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -298,7 +298,7 @@ main(int argc, char **argv)
 			err(1, "gethostname");
 		if (sflag && (p = strchr(hostname, '.')))
 			*p = '\0';
-		(void)printf("%s\n", hostname);
+		printf("%s\n", hostname);
 	}
 	exit(0);
 }

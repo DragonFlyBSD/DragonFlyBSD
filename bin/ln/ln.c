@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.4 2004/08/30 19:27:21 eirikn Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -223,14 +223,14 @@ linkit(const char *target, const char *source, int isdir)
 		return (1);
 	}
 	if (vflag)
-		(void)printf("%s %c> %s\n", source, linkch, target);
+		printf("%s %c> %s\n", source, linkch, target);
 	return (0);
 }
 
 void
 usage(void)
 {
-	(void)fprintf(stderr, "%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n",
 	    "usage: ln [-fhinsv] file1 file2",
 	    "       ln [-fhinsv] file ... directory",
 	    "       link file1 file2");

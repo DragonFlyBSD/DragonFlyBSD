@@ -32,7 +32,7 @@
  *
  * @(#)key.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/stty/key.c,v 1.11.2.2 2001/10/15 13:45:05 dd Exp $
- * $DragonFly: src/bin/stty/key.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/stty/key.c,v 1.5 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -195,10 +195,10 @@ f_extproc(struct info *ip)
 
 	if (ip->off) {
 		int tmp = 0;
-		(void)ioctl(ip->fd, TIOCEXT, &tmp);
+		ioctl(ip->fd, TIOCEXT, &tmp);
 	} else {
 		int tmp = 1;
-		(void)ioctl(ip->fd, TIOCEXT, &tmp);
+		ioctl(ip->fd, TIOCEXT, &tmp);
 	}
 }
 
@@ -272,14 +272,14 @@ void
 f_size(struct info *ip)
 {
 
-	(void)printf("%d %d\n", ip->win.ws_row, ip->win.ws_col);
+	printf("%d %d\n", ip->win.ws_row, ip->win.ws_col);
 }
 
 void
 f_speed(struct info *ip)
 {
 
-	(void)printf("%lu\n", (u_long)cfgetospeed(&ip->t));
+	printf("%lu\n", (u_long)cfgetospeed(&ip->t));
 }
 
 void

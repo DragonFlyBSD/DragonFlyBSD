@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)kill.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $
- * $DragonFly: src/bin/kill/kill.c,v 1.4 2004/10/18 18:43:37 eirikn Exp $
+ * $DragonFly: src/bin/kill/kill.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -162,9 +162,9 @@ printsignals(FILE *fp)
 	for (n = 1; n < sys_nsig; n++) {
 		fprintf(fp, "%s", sys_signame[n]);
 		if (n == (sys_nsig / 2) || n == (sys_nsig - 1))
-			(void)fprintf(fp, "\n");
+			fprintf(fp, "\n");
 		else
-			(void)fprintf(fp, " ");
+			fprintf(fp, " ");
 	}
 }
 
@@ -172,7 +172,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: kill [-s signal_name] pid ...",
 		"       kill -l [exit_status]",
 		"       kill -signal_name pid ...",

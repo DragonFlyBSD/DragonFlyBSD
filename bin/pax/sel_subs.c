@@ -36,7 +36,7 @@
  *
  * @(#)sel_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/sel_subs.c,v 1.11.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/sel_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/sel_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -412,7 +412,7 @@ trng_add(char *str)
 		 */
 		if (str_sec(str, &(pt->low_time)) < 0) {
 			paxwarn(1, "Illegal lower time range %s", str);
-			(void)free((char *)pt);
+			free((char *)pt);
 			goto out;
 		}
 		pt->flgs |= HASLOW;
@@ -424,7 +424,7 @@ trng_add(char *str)
 		 */
 		if (str_sec(up_pt, &(pt->high_time)) < 0) {
 			paxwarn(1, "Illegal upper time range %s", up_pt);
-			(void)free((char *)pt);
+			free((char *)pt);
 			goto out;
 		}
 		pt->flgs |= HASHIGH;
@@ -436,7 +436,7 @@ trng_add(char *str)
 			if (pt->low_time > pt->high_time) {
 				paxwarn(1, "Upper %s and lower %s time overlap",
 					up_pt, str);
-				(void)free((char *)pt);
+				free((char *)pt);
 				return(-1);
 			}
 		}

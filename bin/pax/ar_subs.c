@@ -36,7 +36,7 @@
  *
  * @(#)ar_subs.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_subs.c,v 1.13.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/ar_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -136,8 +136,8 @@ list(void)
 	 * all done, let format have a chance to cleanup, and make sure that
 	 * the patterns supplied by the user were all matched
 	 */
-	(void)(*frmt->end_rd)();
-	(void)sigprocmask(SIG_BLOCK, &s_mask, NULL);
+	(*frmt->end_rd)();
+	sigprocmask(SIG_BLOCK, &s_mask, NULL);
 	ar_close();
 	pat_chk();
 }
@@ -196,7 +196,7 @@ extract(void)
 			 * file is not selected. skip past any file data and
 			 * padding and go back for the next archive member
 			 */
-			(void)rd_skip(arcn->skip + arcn->pad);
+			rd_skip(arcn->skip + arcn->pad);
 			continue;
 		}
 
@@ -214,16 +214,16 @@ extract(void)
 			if (uflag && Dflag) {
 				if ((arcn->sb.st_mtime <= sb.st_mtime) &&
 				    (arcn->sb.st_ctime <= sb.st_ctime)) {
-					(void)rd_skip(arcn->skip + arcn->pad);
+					rd_skip(arcn->skip + arcn->pad);
 					continue;
 				}
 			} else if (Dflag) {
 				if (arcn->sb.st_ctime <= sb.st_ctime) {
-					(void)rd_skip(arcn->skip + arcn->pad);
+					rd_skip(arcn->skip + arcn->pad);
 					continue;
 				}
 			} else if (arcn->sb.st_mtime <= sb.st_mtime) {
-				(void)rd_skip(arcn->skip + arcn->pad);
+				rd_skip(arcn->skip + arcn->pad);
 				continue;
 			}
 		}
@@ -238,7 +238,7 @@ extract(void)
 			 * a bad name mod, skip and purge name from link table
 			 */
 			purg_lnk(arcn);
-			(void)rd_skip(arcn->skip + arcn->pad);
+			rd_skip(arcn->skip + arcn->pad);
 			continue;
 		}
 
@@ -250,16 +250,16 @@ extract(void)
 			if (Yflag && Zflag) {
 				if ((arcn->sb.st_mtime <= sb.st_mtime) &&
 				    (arcn->sb.st_ctime <= sb.st_ctime)) {
-					(void)rd_skip(arcn->skip + arcn->pad);
+					rd_skip(arcn->skip + arcn->pad);
 					continue;
 				}
 			} else if (Yflag) {
 				if (arcn->sb.st_ctime <= sb.st_ctime) {
-					(void)rd_skip(arcn->skip + arcn->pad);
+					rd_skip(arcn->skip + arcn->pad);
 					continue;
 				}
 			} else if (arcn->sb.st_mtime <= sb.st_mtime) {
-				(void)rd_skip(arcn->skip + arcn->pad);
+				rd_skip(arcn->skip + arcn->pad);
 				continue;
 			}
 		}
@@ -268,7 +268,7 @@ extract(void)
 			if (vflag > 1)
 				ls_list(arcn, now, listf);
 			else {
-				(void)fputs(arcn->name, listf);
+				fputs(arcn->name, listf);
 				vfpart = 1;
 			}
 		}
@@ -295,12 +295,12 @@ extract(void)
 			else
 				res = node_creat(arcn);
 
-			(void)rd_skip(arcn->skip + arcn->pad);
+			rd_skip(arcn->skip + arcn->pad);
 			if (res < 0)
 				purg_lnk(arcn);
 
 			if (vflag && vfpart) {
-				(void)putc('\n', listf);
+				putc('\n', listf);
 				vfpart = 0;
 			}
 			continue;
@@ -310,7 +310,7 @@ extract(void)
 		 * over the data and purge the name from hard link table
 		 */
 		if ((fd = file_creat(arcn)) < 0) {
-			(void)rd_skip(arcn->skip + arcn->pad);
+			rd_skip(arcn->skip + arcn->pad);
 			purg_lnk(arcn);
 			continue;
 		}
@@ -321,11 +321,11 @@ extract(void)
 		res = (*frmt->rd_data)(arcn, fd, &cnt);
 		file_close(arcn, fd);
 		if (vflag && vfpart) {
-			(void)putc('\n', listf);
+			putc('\n', listf);
 			vfpart = 0;
 		}
 		if (!res)
-			(void)rd_skip(cnt + arcn->pad);
+			rd_skip(cnt + arcn->pad);
 
 		/*
 		 * if required, chdir around.
@@ -341,8 +341,8 @@ extract(void)
 	 * all patterns supplied by the user were matched; block off signals
 	 * to avoid chance for multiple entry into the cleanup code.
 	 */
-	(void)(*frmt->end_rd)();
-	(void)sigprocmask(SIG_BLOCK, &s_mask, NULL);
+	(*frmt->end_rd)();
+	sigprocmask(SIG_BLOCK, &s_mask, NULL);
 	ar_close();
 	proc_dir();
 	pat_chk();
@@ -465,7 +465,7 @@ wr_archive(ARCHD *arcn, int is_app)
 			if (vflag > 1)
 				ls_list(arcn, now, listf);
 			else {
-				(void)fputs(arcn->name, listf);
+				fputs(arcn->name, listf);
 				vfpart = 1;
 			}
 		}
@@ -486,7 +486,7 @@ wr_archive(ARCHD *arcn, int is_app)
 			 * so we are done messing with this file
 			 */
 			if (vflag && vfpart) {
-				(void)putc('\n', listf);
+				putc('\n', listf);
 				vfpart = 0;
 			}
 			rdfile_close(arcn, &fd);
@@ -504,7 +504,7 @@ wr_archive(ARCHD *arcn, int is_app)
 		res = (*frmt->wr_data)(arcn, fd, &cnt);
 		rdfile_close(arcn, &fd);
 		if (vflag && vfpart) {
-			(void)putc('\n', listf);
+			putc('\n', listf);
 			vfpart = 0;
 		}
 		if (res < 0)
@@ -528,7 +528,7 @@ wr_archive(ARCHD *arcn, int is_app)
 		(*frmt->end_wr)();
 		wr_fin();
 	}
-	(void)sigprocmask(SIG_BLOCK, &s_mask, NULL);
+	sigprocmask(SIG_BLOCK, &s_mask, NULL);
 	ar_close();
 	if (tflag)
 		proc_dir();
@@ -616,7 +616,7 @@ append(void)
 	 * reading the archive may take a long time. If verbose tell the user
 	 */
 	if (vflag) {
-		(void)fprintf(listf,
+		fprintf(listf,
 			"%s: Reading archive to position at the end...", argv0);
 		vfpart = 1;
 	}
@@ -678,7 +678,7 @@ append(void)
 	 * tell the user we are done reading.
 	 */
 	if (vflag && vfpart) {
-		(void)fputs("done.\n", listf);
+		fputs("done.\n", listf);
 		vfpart = 0;
 	}
 
@@ -811,7 +811,7 @@ copy(void)
 					arcn->name);
 				continue;
 			}
-			(void)strncpy(dest_pt, arcn->name + res, drem);
+			strncpy(dest_pt, arcn->name + res, drem);
 			dirbuf[PAXPATHLEN] = '\0';
 
 			/*
@@ -866,7 +866,7 @@ copy(void)
 		}
 
 		if (vflag) {
-			(void)fputs(arcn->name, listf);
+			fputs(arcn->name, listf);
 			vfpart = 1;
 		}
 		++flcnt;
@@ -881,7 +881,7 @@ copy(void)
 			res = chk_same(arcn);
 		if (res <= 0) {
 			if (vflag && vfpart) {
-				(void)putc('\n', listf);
+				putc('\n', listf);
 				vfpart = 0;
 			}
 			continue;
@@ -901,7 +901,7 @@ copy(void)
 			if (res < 0)
 				purg_lnk(arcn);
 			if (vflag && vfpart) {
-				(void)putc('\n', listf);
+				putc('\n', listf);
 				vfpart = 0;
 			}
 			continue;
@@ -931,7 +931,7 @@ copy(void)
 		rdfile_close(arcn, &fdsrc);
 
 		if (vflag && vfpart) {
-			(void)putc('\n', listf);
+			putc('\n', listf);
 			vfpart = 0;
 		}
 	}
@@ -941,7 +941,7 @@ copy(void)
 	 * patterns were selected block off signals to avoid chance for
 	 * multiple entry into the cleanup code.
 	 */
-	(void)sigprocmask(SIG_BLOCK, &s_mask, NULL);
+	sigprocmask(SIG_BLOCK, &s_mask, NULL);
 	ar_close();
 	proc_dir();
 	ftree_chk();

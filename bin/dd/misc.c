@@ -36,7 +36,7 @@
  *
  * @(#)misc.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/misc.c,v 1.18.2.1 2001/08/01 01:40:03 obrien Exp $
- * $DragonFly: src/bin/dd/misc.c,v 1.4 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/dd/misc.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -58,29 +58,29 @@ summary(void)
 	double secs;
 	char buf[100];
 
-	(void)gettimeofday(&tv, (struct timezone *)NULL);
+	gettimeofday(&tv, (struct timezone *)NULL);
 	secs = tv.tv_sec + tv.tv_usec * 1e-6 - st.start;
 	if (secs < 1e-6)
 		secs = 1e-6;
 	/* Use snprintf(3) so that we don't reenter stdio(3). */
-	(void)snprintf(buf, sizeof(buf),
+	snprintf(buf, sizeof(buf),
 	    "%llu+%llu records in\n%llu+%llu records out\n",
 	    st.in_full, st.in_part, st.out_full, st.out_part);
-	(void)write(STDERR_FILENO, buf, strlen(buf));
+	write(STDERR_FILENO, buf, strlen(buf));
 	if (st.swab) {
-		(void)snprintf(buf, sizeof(buf), "%llu odd length swab %s\n",
+		snprintf(buf, sizeof(buf), "%llu odd length swab %s\n",
 		     st.swab, (st.swab == 1) ? "block" : "blocks");
-		(void)write(STDERR_FILENO, buf, strlen(buf));
+		write(STDERR_FILENO, buf, strlen(buf));
 	}
 	if (st.trunc) {
-		(void)snprintf(buf, sizeof(buf), "%llu truncated %s\n",
+		snprintf(buf, sizeof(buf), "%llu truncated %s\n",
 		     st.trunc, (st.trunc == 1) ? "block" : "blocks");
-		(void)write(STDERR_FILENO, buf, strlen(buf));
+		write(STDERR_FILENO, buf, strlen(buf));
 	}
-	(void)snprintf(buf, sizeof(buf),
+	snprintf(buf, sizeof(buf),
 	    "%llu bytes transferred in %.6f secs (%.0f bytes/sec)\n",
 	    st.bytes, secs, st.bytes / secs);
-	(void)write(STDERR_FILENO, buf, strlen(buf));
+	write(STDERR_FILENO, buf, strlen(buf));
 }
 
 /* ARGSUSED */

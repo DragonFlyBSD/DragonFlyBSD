@@ -36,7 +36,7 @@
  *
  * @(#)file_subs.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/file_subs.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/file_subs.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/file_subs.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -605,7 +605,7 @@ chk_path( char *name, uid_t st_uid, gid_t st_gid)
 		 */
 		retval = 0;
 		if (pids)
-			(void)set_ids(name, st_uid, st_gid);
+			set_ids(name, st_uid, st_gid);
 
 		/*
 		 * make sure the user doen't have some strange umask that
@@ -898,7 +898,7 @@ rdfile_close(ARCHD *arcn, int *fd)
 	if (*fd < 0)
 		return;
 
-	(void)close(*fd);
+	close(*fd);
 	*fd = -1;
 	if (!tflag)
 		return;

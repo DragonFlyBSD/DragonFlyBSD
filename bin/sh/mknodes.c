@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mknodes.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/mknodes.c,v 1.11.2.3 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/mknodes.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/mknodes.c,v 1.3 2004/11/07 20:54:52 eirikn Exp $
  */
 
 /*
@@ -418,9 +418,9 @@ error(const char *msg, ...)
 	va_list va;
 	va_start(va, msg);
 
-	(void) fprintf(stderr, "line %d: ", linno);
-	(void) vfprintf(stderr, msg, va);
-	(void) fputc('\n', stderr);
+	fprintf(stderr, "line %d: ", linno);
+	vfprintf(stderr, msg, va);
+	fputc('\n', stderr);
 
 	va_end(va);
 
@@ -436,6 +436,6 @@ savestr(const char *s)
 
 	if ((p = malloc(strlen(s) + 1)) == NULL)
 		error("Out of space");
-	(void) strcpy(p, s);
+	strcpy(p, s);
 	return p;
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rm.c	8.5 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/rm/rm.c,v 1.29.2.5 2002/07/12 07:25:48 tjr Exp $
- * $DragonFly: src/bin/rm/rm.c,v 1.9 2004/11/06 19:37:44 liamfoy Exp $
+ * $DragonFly: src/bin/rm/rm.c,v 1.10 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/stat.h>
@@ -212,7 +212,7 @@ rm_tree(char **argv)
 			/* Pre-order: give user chance to skip. */
 			if (!fflag && !check(p->fts_path, p->fts_accpath,
 			    p->fts_statp)) {
-				(void)fts_set(fts, p, FTS_SKIP);
+				fts_set(fts, p, FTS_SKIP);
 				p->fts_number = SKIPPED;
 			}
 			else if (!uid &&
@@ -251,7 +251,7 @@ rm_tree(char **argv)
 				rval = rmdir(p->fts_accpath);
 				if (rval == 0 || (fflag && errno == ENOENT)) {
 					if (rval == 0 && vflag)
-						(void)printf("%s\n",
+						printf("%s\n",
 						    p->fts_path);
 					continue;
 				}
@@ -261,7 +261,7 @@ rm_tree(char **argv)
 				rval = undelete(p->fts_accpath);
 				if (rval == 0 && (fflag && errno == ENOENT)) {
 					if (vflag)
-						(void)printf("%s\n",
+						printf("%s\n",
 						    p->fts_path);
 					continue;
 				}
@@ -282,7 +282,7 @@ rm_tree(char **argv)
 				rval = unlink(p->fts_accpath);
 				if (rval == 0 || (fflag && errno == ENOENT)) {
 					if (rval == 0 && vflag)
-						(void)printf("%s\n",
+						printf("%s\n",
 						    p->fts_path);
 					continue;
 				}
@@ -354,7 +354,7 @@ rm_file(char **argv)
 			eval = 1;
 		}
 		if (vflag && rval == 0)
-			(void)printf("%s\n", f);
+			printf("%s\n", f);
 	}
 }
 
@@ -434,7 +434,7 @@ check(const char *path, const char *name, struct stat *sp)
 
 	/* Check -i first. */
 	if (iflag)
-		(void)fprintf(stderr, "remove %s? ", path);
+		fprintf(stderr, "remove %s? ", path);
 	else {
 		/*
 		 * If it's not a symbolic link and it's unwritable and we're
@@ -453,7 +453,7 @@ check(const char *path, const char *name, struct stat *sp)
 		strmode(sp->st_mode, modep);
 		if ((flagsp = fflagstostr(sp->st_flags)) == NULL)
 			err(1, NULL);
-		(void)fprintf(stderr, "override %s%s%s/%s %s%sfor %s? ",
+		fprintf(stderr, "override %s%s%s/%s %s%sfor %s? ",
 		    modep + 1, modep[9] == ' ' ? "" : " ",
 		    user_from_uid(sp->st_uid, 0),
 		    group_from_gid(sp->st_gid, 0),
@@ -461,7 +461,7 @@ check(const char *path, const char *name, struct stat *sp)
 		    path);
 		free(flagsp);
 	}
-	(void)fflush(stderr);
+	fflush(stderr);
 
 	first = ch = getchar();
 	while (ch != '\n' && ch != EOF)
@@ -548,7 +548,7 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 	    "usage: rm [-f | -i] [-dIPRrvW] file ...",
 	    "       unlink file");
 	exit(EX_USAGE);

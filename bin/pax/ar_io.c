@@ -36,7 +36,7 @@
  *
  * @(#)ar_io.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/ar_io.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/ar_io.c,v 1.8 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/ar_io.c,v 1.9 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -100,7 +100,7 @@ ar_open(char *name)
 	struct mtget mb;
 
 	if (arfd != -1)
-		(void)close(arfd);
+		close(arfd);
 	arfd = -1;
 	can_unlnk = did_io = io_ok = invld_rec = 0;
 	artyp = ISREG;
@@ -161,7 +161,7 @@ ar_open(char *name)
 	 */
 	if (fstat(arfd, &arsb) < 0) {
 		syswarn(0, errno, "Failed stat on %s", arcname);
-		(void)close(arfd);
+		close(arfd);
 		arfd = -1;
 		can_unlnk = 0;
 		return(-1);
@@ -169,7 +169,7 @@ ar_open(char *name)
 	if (S_ISDIR(arsb.st_mode)) {
 		paxwarn(0, "Cannot write an archive on top of a directory %s",
 		    arcname);
-		(void)close(arfd);
+		close(arfd);
 		arfd = -1;
 		can_unlnk = 0;
 		return(-1);
@@ -314,11 +314,11 @@ ar_close(void)
 	 */
 	if (vflag && (artyp == ISTAPE)) {
 		if (vfpart)
-			(void)putc('\n', listf);
-		(void)fprintf(listf,
+			putc('\n', listf);
+		fprintf(listf,
 			"%s: Waiting for tape drive close to complete...",
 			argv0);
-		(void)fflush(listf);
+		fflush(listf);
 	}
 
 	/*
@@ -327,7 +327,7 @@ ar_close(void)
 	 */
 	if (can_unlnk && (fstat(arfd, &arsb) == 0) && (S_ISREG(arsb.st_mode)) &&
 	    (arsb.st_size == 0)) {
-		(void)unlink(arcname);
+		unlink(arcname);
 		can_unlnk = 0;
 	}
 
@@ -338,16 +338,16 @@ ar_close(void)
 	if ((act == LIST || act == EXTRACT) && nflag && zpid > 0)
 		kill(zpid, SIGINT);
 
-	(void)close(arfd);
+	close(arfd);
 
 	/* Do not exit before child to ensure data integrity */
 	if (zpid > 0)
 		waitpid(zpid, &status, 0);
 
 	if (vflag && (artyp == ISTAPE)) {
-		(void)fputs("done.\n", listf);
+		fputs("done.\n", listf);
 		vfpart = 0;
-		(void)fflush(listf);
+		fflush(listf);
 	}
 	arfd = -1;
 
@@ -373,7 +373,7 @@ ar_close(void)
 	 * Print out a summary of I/O for this archive volume.
 	 */
 	if (vfpart) {
-		(void)putc('\n', listf);
+		putc('\n', listf);
 		vfpart = 0;
 	}
 
@@ -384,27 +384,27 @@ ar_close(void)
 	 */
 	if (frmt == NULL) {
 #	ifdef NET2_STAT
-		(void)fprintf(listf, "%s: unknown format, %lu bytes skipped.\n",
+		fprintf(listf, "%s: unknown format, %lu bytes skipped.\n",
 #	else
-		(void)fprintf(listf, "%s: unknown format, %qu bytes skipped.\n",
+		fprintf(listf, "%s: unknown format, %qu bytes skipped.\n",
 #	endif
 		    argv0, rdcnt);
-		(void)fflush(listf);
+		fflush(listf);
 		flcnt = 0;
 		return;
 	}
 
 	if (strcmp(NM_CPIO, argv0) == 0)
-		(void)fprintf(listf, "%qu blocks\n", (rdcnt ? rdcnt : wrcnt) / 5120);
+		fprintf(listf, "%qu blocks\n", (rdcnt ? rdcnt : wrcnt) / 5120);
 	else if (strcmp(NM_TAR, argv0) != 0)
-		(void)fprintf(listf,
+		fprintf(listf,
 #	ifdef NET2_STAT
 		    "%s: %s vol %d, %lu files, %lu bytes read, %lu bytes written.\n",
 #	else
 		    "%s: %s vol %d, %lu files, %qu bytes read, %qu bytes written.\n",
 #	endif
 		    argv0, frmt->name, arvol-1, flcnt, rdcnt, wrcnt);
-	(void)fflush(listf);
+	fflush(listf);
 	flcnt = 0;
 }
 
@@ -1223,7 +1223,7 @@ ar_next(void)
 		 */
 		if (ar_open(buf) >= 0) {
 			if (freeit) {
-				(void)free(arcname);
+				free(arcname);
 				freeit = 0;
 			}
 			if ((arcname = strdup(buf)) == NULL) {

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)sleep.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/sleep/sleep.c,v 1.9.2.1 2001/08/01 05:23:25 obrien Exp $
- * $DragonFly: src/bin/sleep/sleep.c,v 1.5 2004/10/25 18:25:36 liamfoy Exp $
+ * $DragonFly: src/bin/sleep/sleep.c,v 1.6 2004/11/07 20:54:52 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -113,7 +113,7 @@ main(int argc, char **argv)
 	}
 
 	if (!neg && (time_to_sleep.tv_sec > 0 || time_to_sleep.tv_nsec > 0))
-		(void)nanosleep(&time_to_sleep, (struct timespec *)NULL);
+		nanosleep(&time_to_sleep, (struct timespec *)NULL);
 
 	exit(0);
 }
@@ -122,6 +122,6 @@ static void
 usage(void)
 {
 
-	(void)fprintf(stderr, "usage: sleep seconds\n");
+	fprintf(stderr, "usage: sleep seconds\n");
 	exit(1);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)util.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/util.c,v 1.9.2.3 2002/07/19 07:54:51 jmallett Exp $
- * $DragonFly: src/bin/rcp/util.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
+ * $DragonFly: src/bin/rcp/util.c,v 1.4 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -113,7 +113,7 @@ susystem(char *s, int userid)
 		return (127);
 
 	case 0:
-		(void)setuid(userid);
+		setuid(userid);
 		execl(_PATH_BSHELL, "sh", "-c", s, (char *)NULL);
 		_exit(127);
 	}
@@ -121,8 +121,8 @@ susystem(char *s, int userid)
 	qstat = signal(SIGQUIT, SIG_IGN);
 	if (waitpid(pid, &status, 0) < 0)
 		status = -1;
-	(void)signal(SIGINT, istat);
-	(void)signal(SIGQUIT, qstat);
+	signal(SIGINT, istat);
+	signal(SIGQUIT, qstat);
 	return (status);
 }
 

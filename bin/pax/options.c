@@ -36,7 +36,7 @@
  *
  * @(#)options.c	8.2 (Berkeley) 4/18/94
  * $FreeBSD: src/bin/pax/options.c,v 1.13.2.3 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/options.c,v 1.5 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/options.c,v 1.6 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -365,10 +365,10 @@ pax_options(int argc, char **argv)
 				break;
 			}
 			paxwarn(1, "Unknown -x format: %s", optarg);
-			(void)fputs("pax: Known -x formats are:", stderr);
+			fputs("pax: Known -x formats are:", stderr);
 			for (i = 0; i < (sizeof(fsub)/sizeof(FSUB)); ++i)
-				(void)fprintf(stderr, " %s", fsub[i].name);
-			(void)fputs("\n\n", stderr);
+				fprintf(stderr, " %s", fsub[i].name);
+			fputs("\n\n", stderr);
 			pax_usage();
 			break;
 		case 'z':
@@ -1178,10 +1178,10 @@ cpio_options(int argc, char **argv)
 				    sizeof(fsub)/sizeof(FSUB), sizeof(FSUB), c_frmt)) != NULL)
 					break;
 				paxwarn(1, "Unknown -H format: %s", optarg);
-				(void)fputs("cpio: Known -H formats are:", stderr);
+				fputs("cpio: Known -H formats are:", stderr);
 				for (i = 0; i < (sizeof(fsub)/sizeof(FSUB)); ++i)
-					(void)fprintf(stderr, " %s", fsub[i].name);
-				(void)fputs("\n\n", stderr);
+					fprintf(stderr, " %s", fsub[i].name);
+				fputs("\n\n", stderr);
 				cpio_usage();
 				break;
 			case 'L':
@@ -1269,13 +1269,13 @@ printflg(unsigned int flg)
 	int nxt;
 	int pos = 0;
 
-	(void)fprintf(stderr,"%s: Invalid combination of options:", argv0);
+	fprintf(stderr,"%s: Invalid combination of options:", argv0);
 	while ((nxt = ffs(flg)) != 0) {
 		flg = flg >> nxt;
 		pos += nxt;
-		(void)fprintf(stderr, " -%c", flgch[pos-1]);
+		fprintf(stderr, " -%c", flgch[pos-1]);
 	}
-	(void)putc('\n', stderr);
+	putc('\n', stderr);
 }
 
 /*
@@ -1326,7 +1326,7 @@ bad_opt(void)
 	 */
 	paxwarn(1,"These format options are not supported");
 	while ((opt = opt_next()) != NULL)
-		(void)fprintf(stderr, "\t%s = %s\n", opt->name, opt->value);
+		fprintf(stderr, "\t%s = %s\n", opt->name, opt->value);
 	pax_usage();
 	return(0);
 }
@@ -1515,29 +1515,29 @@ no_op(void)
 void
 pax_usage(void)
 {
-	(void)fputs("usage: pax [-cdnvz] [-E limit] [-f archive] ", stderr);
-	(void)fputs("[-s replstr] ... [-U user] ...", stderr);
-	(void)fputs("\n	   [-G group] ... ", stderr);
-	(void)fputs("[-T [from_date][,to_date]] ... ", stderr);
-	(void)fputs("[pattern ...]\n", stderr);
-	(void)fputs("       pax -r [-cdiknuvzDYZ] [-E limit] ", stderr);
-	(void)fputs("[-f archive] [-o options] ... \n", stderr);
-	(void)fputs("	   [-p string] ... [-s replstr] ... ", stderr);
-	(void)fputs("[-U user] ... [-G group] ...\n	   ", stderr);
-	(void)fputs("[-T [from_date][,to_date]] ... ", stderr);
-	(void)fputs(" [pattern ...]\n", stderr);
-	(void)fputs("       pax -w [-dituvzHLPX] [-b blocksize] ", stderr);
-	(void)fputs("[ [-a] [-f archive] ] [-x format] \n", stderr);
-	(void)fputs("	   [-B bytes] [-s replstr] ... ", stderr);
-	(void)fputs("[-o options] ... [-U user] ...", stderr);
-	(void)fputs("\n	   [-G group] ... ", stderr);
-	(void)fputs("[-T [from_date][,to_date][/[c][m]]] ... ", stderr);
-	(void)fputs("[file ...]\n", stderr);
-	(void)fputs("       pax -r -w [-diklntuvDHLPXYZ] ", stderr);
-	(void)fputs("[-p string] ... [-s replstr] ...", stderr);
-	(void)fputs("\n	   [-U user] ... [-G group] ... ", stderr);
-	(void)fputs("[-T [from_date][,to_date][/[c][m]]] ... ", stderr);
-	(void)fputs("\n	   [file ...] directory\n", stderr);
+	fputs("usage: pax [-cdnvz] [-E limit] [-f archive] ", stderr);
+	fputs("[-s replstr] ... [-U user] ...", stderr);
+	fputs("\n	   [-G group] ... ", stderr);
+	fputs("[-T [from_date][,to_date]] ... ", stderr);
+	fputs("[pattern ...]\n", stderr);
+	fputs("       pax -r [-cdiknuvzDYZ] [-E limit] ", stderr);
+	fputs("[-f archive] [-o options] ... \n", stderr);
+	fputs("	   [-p string] ... [-s replstr] ... ", stderr);
+	fputs("[-U user] ... [-G group] ...\n	   ", stderr);
+	fputs("[-T [from_date][,to_date]] ... ", stderr);
+	fputs(" [pattern ...]\n", stderr);
+	fputs("       pax -w [-dituvzHLPX] [-b blocksize] ", stderr);
+	fputs("[ [-a] [-f archive] ] [-x format] \n", stderr);
+	fputs("	   [-B bytes] [-s replstr] ... ", stderr);
+	fputs("[-o options] ... [-U user] ...", stderr);
+	fputs("\n	   [-G group] ... ", stderr);
+	fputs("[-T [from_date][,to_date][/[c][m]]] ... ", stderr);
+	fputs("[file ...]\n", stderr);
+	fputs("       pax -r -w [-diklntuvDHLPXYZ] ", stderr);
+	fputs("[-p string] ... [-s replstr] ...", stderr);
+	fputs("\n	   [-U user] ... [-G group] ... ", stderr);
+	fputs("[-T [from_date][,to_date][/[c][m]]] ... ", stderr);
+	fputs("\n	   [file ...] directory\n", stderr);
 	exit(1);
 }
 
@@ -1549,9 +1549,9 @@ pax_usage(void)
 void
 tar_usage(void)
 {
-	(void)fputs("usage: tar [-]{crtux}[-befhjmopqsvwyzHLOPXZ014578] [blocksize] ",
+	fputs("usage: tar [-]{crtux}[-befhjmopqsvwyzHLOPXZ014578] [blocksize] ",
 		 stderr);
-	(void)fputs("[archive] [replstr] [-C directory] [-I file] [file ...]\n",
+	fputs("[archive] [replstr] [-C directory] [-I file] [file ...]\n",
 	    stderr);
 	exit(1);
 }
@@ -1564,10 +1564,10 @@ tar_usage(void)
 void
 cpio_usage(void)
 {
-	(void)fputs("usage: cpio -o [-aABcLvVzZ] [-C bytes] [-H format] [-O archive]\n", stderr);
-	(void)fputs("               [-F archive] < name-list [> archive]\n", stderr);
-	(void)fputs("       cpio -i [-bBcdfmnrsStuvVzZ6] [-C bytes] [-E file] [-H format]\n", stderr);
-	(void)fputs("               [-I archive] [-F archive] [pattern...] [< archive]\n", stderr);
-	(void)fputs("       cpio -p [-adlLmuvV] destination-directory < name-list\n", stderr);
+	fputs("usage: cpio -o [-aABcLvVzZ] [-C bytes] [-H format] [-O archive]\n", stderr);
+	fputs("               [-F archive] < name-list [> archive]\n", stderr);
+	fputs("       cpio -i [-bBcdfmnrsStuvVzZ6] [-C bytes] [-E file] [-H format]\n", stderr);
+	fputs("               [-I archive] [-F archive] [pattern...] [< archive]\n", stderr);
+	fputs("       cpio -p [-adlLmuvV] destination-directory < name-list\n", stderr);
 	exit(1);
 }

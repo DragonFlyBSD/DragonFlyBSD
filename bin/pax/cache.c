@@ -36,7 +36,7 @@
  *
  * @(#)cache.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/pax/cache.c,v 1.12.2.1 2001/08/01 05:03:11 obrien Exp $
- * $DragonFly: src/bin/pax/cache.c,v 1.4 2004/10/30 13:34:50 liamfoy Exp $
+ * $DragonFly: src/bin/pax/cache.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -211,9 +211,9 @@ name_uid(uid_t uid, int frc)
 		ptr->uid = uid;
 		ptr->valid = INVALID;
 #		ifdef NET2_STAT
-		(void)snprintf(ptr->name, sizeof(ptr->name), "%u", uid);
+		snprintf(ptr->name, sizeof(ptr->name), "%u", uid);
 #		else
-		(void)snprintf(ptr->name, sizeof(ptr->name), "%lu",
+		snprintf(ptr->name, sizeof(ptr->name), "%lu",
 			       (unsigned long)uid);
 #		endif
 		if (frc == 0)
@@ -225,7 +225,7 @@ name_uid(uid_t uid, int frc)
 		if (ptr == NULL)
 			return(pw->pw_name);
 		ptr->uid = uid;
-		(void)strncpy(ptr->name, pw->pw_name, UNMLEN - 1);
+		strncpy(ptr->name, pw->pw_name, UNMLEN - 1);
 		ptr->name[UNMLEN-1] = '\0';
 		ptr->valid = VALID;
 	}
@@ -282,9 +282,9 @@ name_gid(gid_t gid, int frc)
 		ptr->gid = gid;
 		ptr->valid = INVALID;
 #		ifdef NET2_STAT
-		(void)snprintf(ptr->name, sizeof(ptr->name), "%u", gid);
+		snprintf(ptr->name, sizeof(ptr->name), "%u", gid);
 #		else
-		(void)snprintf(ptr->name, sizeof(ptr->name), "%lu",
+		snprintf(ptr->name, sizeof(ptr->name), "%lu",
 			       (unsigned long)gid);
 #		endif
 		if (frc == 0)
@@ -296,7 +296,7 @@ name_gid(gid_t gid, int frc)
 		if (ptr == NULL)
 			return(gr->gr_name);
 		ptr->gid = gid;
-		(void)strncpy(ptr->name, gr->gr_name, GNMLEN - 1);
+		strncpy(ptr->name, gr->gr_name, GNMLEN - 1);
 		ptr->name[GNMLEN-1] = '\0';
 		ptr->valid = VALID;
 	}
@@ -356,7 +356,7 @@ uid_name(char *name, uid_t *uid)
 		*uid = pw->pw_uid;
 		return(0);
 	}
-	(void)strncpy(ptr->name, name, UNMLEN - 1);
+	strncpy(ptr->name, name, UNMLEN - 1);
 	ptr->name[UNMLEN-1] = '\0';
 	if ((pw = getpwnam(name)) == NULL) {
 		ptr->valid = INVALID;
@@ -420,7 +420,7 @@ gid_name(char *name, gid_t *gid)
 		return(0);
 	}
 
-	(void)strncpy(ptr->name, name, GNMLEN - 1);
+	strncpy(ptr->name, name, GNMLEN - 1);
 	ptr->name[GNMLEN-1] = '\0';
 	if ((gr = getgrnam(name)) == NULL) {
 		ptr->valid = INVALID;
