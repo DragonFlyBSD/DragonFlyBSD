@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.7 2003/09/12 00:43:31 daver Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.8 2003/09/14 16:35:58 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1160,7 +1160,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 #ifndef COMPAT_43
 		error = ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd,
 								 data,
-								 ifp, p));
+								 ifp, td));
 #else
 	    {
 		int ocmd = cmd;
