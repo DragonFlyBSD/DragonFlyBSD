@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.10 2004/06/17 16:45:29 justin Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.11 2004/09/13 17:13:22 dillon Exp $
 
 $TITLE(DragonFly - Forums)
 <p>
@@ -18,6 +18,9 @@ for general discussion.</p>
     <li>Bug Reporting -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.bugs">
 		news://nntp.dragonflybsd.org/dragonfly.bugs</a></li>
+    <li>Non-kernel General/Users Related -
+	<a href="news://nntp.dragonflybsd.org/dragonfly.users">
+		news://nntp.dragonflybsd.org/dragonfly.users</a></li>
     <li>Kernel Related -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.kernel">
 		news://nntp.dragonflybsd.org/dragonfly.kernel</a></li>
@@ -43,6 +46,7 @@ list for experimentation and remember to unsubscribe from it when you are done
 include HTML sent to any of the lists will be blocked as spam.</p>
 <ul>
     <li>Bug Reporting - bugs-request at lists.dragonflybsd.org</li>
+    <li>General/User - users-request at lists.dragonflybsd.org</li>
     <li>Kernel Related - kernel-request at lists.dragonflybsd.org</li>
     <li>Patch Submissions - submit-request at lists.dragonflybsd.org</li>
     <li>Commit Messages - commits-request at lists.dragonflybsd.org</li>
