@@ -1,5 +1,5 @@
 /*	$NetBSD: getopt_long.c,v 1.16 2003/10/27 00:12:42 lukem Exp $	*/
-/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.11 2005/03/14 12:36:25 joerg Exp $ */
+/*	$DragonFly: src/lib/libc/stdlib/getopt_long.c,v 1.12 2005/03/14 14:26:16 joerg Exp $ */
 
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -50,11 +50,13 @@
 #define	__DECONST(type, var)	((type)(uintptr_t)(const void *)(var))
 #endif
 
+#ifdef REPLACE_GETOPT
 int	opterr = 1;		/* if error message should be printed */
 int	optind = 1;		/* index into parent argv vector */
 int	optopt = '?';		/* character checked for validity */
 int	optreset;		/* reset getopt */
 char    *optarg;		/* argument associated with option */
+#endif
 
 #define IGNORE_FIRST	(*options == '-' || *options == '+')
 #define PRINT_ERROR	((opterr) && ((*options != ':') \
@@ -441,6 +443,7 @@ recheck:
 	return retval;
 }
 
+#ifdef REPLACE_GETOPT
 /*
  * getopt --
  *	Parse argc/argv argument vector.
@@ -452,6 +455,7 @@ getopt(int nargc, char * const *nargv, const char *options)
 {
 	return getopt_internal(nargc, nargv, options, 0);
 }
+#endif
 
 /*
  * getopt_long --
