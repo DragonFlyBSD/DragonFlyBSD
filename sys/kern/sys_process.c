@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.13 2003/10/02 21:00:20 hmp Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.14 2003/10/15 21:52:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -273,9 +273,9 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	int write, tmp, s;
 
 	write = 0;
-	if (req == PT_TRACE_ME)
+	if (req == PT_TRACE_ME) {
 		p = curp;
-	else {
+	} else {
 		if ((p = pfind(pid)) == NULL)
 			return ESRCH;
 	}
@@ -455,6 +455,13 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		/* fallthrough */
 	case PT_READ_I:
 	case PT_READ_D:
+		/*
+		 * NOTE! uio_offset represents the offset in the target
+		 * process.  The iov is in the current process (the guy
+		 * making the ptrace call) so uio_td must be the current
+		 * process (though for a SYSSPACE transfer it doesn't
+		 * really matter).
+		 */
 		tmp = 0;
 		/* write = 0 set above */
 		iov.iov_base = write ? (caddr_t)&data : (caddr_t)&tmp;
@@ -465,7 +472,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		uio.uio_resid = sizeof(int);
 		uio.uio_segflg = UIO_SYSSPACE;
 		uio.uio_rw = write ? UIO_WRITE : UIO_READ;
-		uio.uio_td = p->p_thread;
+		uio.uio_td = curp->p_thread;
 		error = procfs_domem(curp, p, NULL, &uio);
 		if (uio.uio_resid != 0) {
 			/*
@@ -485,6 +492,12 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		return (error);
 
 	case PT_IO:
+		/*
+		 * NOTE! uio_offset represents the offset in the target
+		 * process.  The iov is in the current process (the guy
+		 * making the ptrace call) so uio_td must be the current
+		 * process.
+		 */
 		piod = addr;
 		iov.iov_base = piod->piod_addr;
 		iov.iov_len = piod->piod_len;
@@ -493,7 +506,7 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 		uio.uio_offset = (off_t)(uintptr_t)piod->piod_offs;
 		uio.uio_resid = piod->piod_len;
 		uio.uio_segflg = UIO_USERSPACE;
-		uio.uio_td = p->p_thread;
+		uio.uio_td = curp->p_thread;
 		switch (piod->piod_op) {
 		case PIOD_READ_D:
 		case PIOD_READ_I:

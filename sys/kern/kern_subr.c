@@ -37,7 +37,7 @@
  *
  *	@(#)kern_subr.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_subr.c,v 1.31.2.2 2002/04/21 08:09:37 bde Exp $
- * $DragonFly: src/sys/kern/kern_subr.c,v 1.13 2003/10/15 08:43:37 daver Exp $
+ * $DragonFly: src/sys/kern/kern_subr.c,v 1.14 2003/10/15 21:52:38 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -56,11 +56,14 @@
 #include <vm/vm_page.h>
 #include <vm/vm_map.h>
 
+/*
+ * UIO_READ:	copy the kernelspace cp to the user or kernelspace UIO
+ * UIO_WRITE:	copy the user or kernelspace UIO to cp
+ *
+ * For userspace UIO's, uio_td must be the current thread.
+ */
 int
-uiomove(cp, n, uio)
-	caddr_t cp;
-	int n;
-	struct uio *uio;
+uiomove(caddr_t cp, int n, struct uio *uio)
 {
 	struct iovec *iov;
 	u_int cnt;
