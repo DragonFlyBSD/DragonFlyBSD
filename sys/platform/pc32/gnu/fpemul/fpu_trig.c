@@ -57,7 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_trig.c,v 1.10 1999/08/28 00:42:52 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_trig.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_trig.c,v 1.4 2005/01/06 08:33:11 asmodai Exp $
  *
  */
 
@@ -267,7 +267,7 @@ static void
 fxtract(void)
 {
 	FPU_REG *st_new_ptr;
-	register FPU_REG *st1_ptr = FPU_st0_ptr;	/* anticipate */
+	FPU_REG *st1_ptr = FPU_st0_ptr;	/* anticipate */
 
 	if (STACK_OVERFLOW) {
 		stack_overflow();

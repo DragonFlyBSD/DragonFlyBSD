@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.10 2004/09/18 19:08:07 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.11 2005/01/06 08:33:11 asmodai Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -829,7 +829,7 @@ mse_getlogi(tag, handle, dx, dy, but)
 	int *dy;
 	int *but;
 {
-	register char x, y;
+	char x, y;
 
 	bus_space_write_1(tag, handle, MSE_PORTC, MSE_HOLD | MSE_RXLOW);
 	x = bus_space_read_1(tag, handle, MSE_PORTA);
@@ -904,7 +904,7 @@ mse_getati(tag, handle, dx, dy, but)
 	int *dy;
 	int *but;
 {
-	register char byte;
+	char byte;
 
 	bus_space_write_1(tag, handle, MSE_PORTA, MSE_INPORT_MODE);
 	bus_space_write_1(tag, handle, MSE_PORTB, MSE_INPORT_HOLD);

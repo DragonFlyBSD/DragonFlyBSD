@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.10 2004/09/18 22:01:49 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.11 2005/01/06 08:33:11 asmodai Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -6984,7 +6984,7 @@ fail:
 #ifndef SYM_CONF_IOMAPPED
 static int sym_regtest (hcb_p np)
 {
-	register volatile u32 data;
+	volatile u32 data;
 	/*
 	 *  chip registers may NOT be cached.
 	 *  write 0xffffffff to a read only register area,

@@ -57,7 +57,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_aux.c,v 1.11 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_aux.c,v 1.3 2003/08/07 21:17:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_aux.c,v 1.4 2005/01/06 08:33:11 asmodai Exp $
  *
  */
 
@@ -179,7 +179,7 @@ fxch_i()
 {
 	/* fxch st(i) */
 	FPU_REG t;
-	register FPU_REG *sti_ptr = &st(FPU_rm);
+	FPU_REG *sti_ptr = &st(FPU_rm);
 
 	if (FPU_st0_tag == TW_Empty) {
 		if (sti_ptr->tag == TW_Empty) {

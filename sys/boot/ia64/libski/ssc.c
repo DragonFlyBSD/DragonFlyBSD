@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/ia64/libski/ssc.c,v 1.4 2003/09/08 09:11:32 obrien Exp $
- * $DragonFly: src/sys/boot/ia64/libski/ssc.c,v 1.1 2003/11/10 06:08:37 dillon Exp $
+ * $DragonFly: src/sys/boot/ia64/libski/ssc.c,v 1.2 2005/01/06 08:33:11 asmodai Exp $
  */
 
 #include <stand.h>
@@ -40,8 +40,8 @@
 u_int64_t
 ssc(u_int64_t in0, u_int64_t in1, u_int64_t in2, u_int64_t in3, int which)
 {
-	register u_int64_t psr;
-	register u_int64_t ret0 __asm("r8");
+	u_int64_t psr;
+	u_int64_t ret0 __asm("r8");
 
 	__asm __volatile("mov %0=psr;;" : "=r"(psr));
 	__asm __volatile("mov r15=%1\n\t"

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/k6_mem.c,v 1.4.2.2 2002/09/16 21:58:41 dwmalone Exp $
- * $DragonFly: src/sys/i386/i386/Attic/k6_mem.c,v 1.4 2004/10/14 03:05:52 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/k6_mem.c,v 1.5 2005/01/06 08:33:11 asmodai Exp $
  *
  */
 
@@ -82,7 +82,7 @@ static struct mem_range_ops k6_mrops = {
 static __inline int
 k6_mrmake(struct mem_range_desc *desc, u_int32_t *mtrr) {
 	u_int32_t len = 0, wc, uc;
-	register int bit;
+	int bit;
 
 	if (desc->mr_base &~ 0xfffe0000)
 		return EINVAL;
