@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_fw2.c,v 1.6.2.12 2003/04/08 10:42:32 maxim Exp $
- * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.8 2004/03/09 15:00:06 hmp Exp $
+ * $DragonFly: src/sys/net/ipfw/ip_fw2.c,v 1.9 2004/03/11 17:22:52 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1487,7 +1487,7 @@ check_body:
 
 				if (proto == IPPROTO_TCP) {
 					wildcard = 0;
-					pi = &tcbinfo;
+					pi = &tcbinfo[mycpu->gd_cpuid];
 				} else if (proto == IPPROTO_UDP) {
 					wildcard = 1;
 					pi = &udbinfo;

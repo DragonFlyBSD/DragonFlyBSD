@@ -14,7 +14,7 @@
  * This software is provided ``AS IS'' without any warranties of any kind.
  *
  * $FreeBSD: src/sys/netinet/ip_fw.c,v 1.131.2.39 2003/01/20 02:23:07 iedowse Exp $
- * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.7 2004/03/09 15:00:06 hmp Exp $
+ * $DragonFly: src/sys/net/ipfw/Attic/ip_fw.c,v 1.8 2004/03/11 17:22:52 joerg Exp $
  */
 
 #define        DEB(x)
@@ -1321,13 +1321,11 @@ again:
 				    continue;
 
 			    if (oif)
-				P = in_pcblookup_hash(&tcbinfo, dst_ip,
-				   dst_port, src_ip, src_port, 0,
-				   oif);
+				P = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
+				   dst_ip, dst_port, src_ip, src_port, 0, oif);
 			    else
-				P = in_pcblookup_hash(&tcbinfo, src_ip,
-				   src_port, dst_ip, dst_port, 0,
-				   NULL);
+				P = in_pcblookup_hash(&tcbinfo[mycpu->gd_cpuid],
+				   src_ip, src_port, dst_ip, dst_port, 0, NULL);
 
 			    if (P && P->inp_socket) {
 				if (f->fw_flg & IP_FW_F_UID) {
