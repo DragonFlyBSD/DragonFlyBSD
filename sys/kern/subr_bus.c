@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.22 2005/02/03 23:54:22 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.23 2005/02/04 03:32:37 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -1059,7 +1059,6 @@ device_probe_and_attach(device_t dev)
 	if (bootverbose && !device_is_quiet(dev)) {
 		device_t tmp;
 
-		printf("ATTACH ");
 		printf("%s", device_get_nameunit(dev));
 		for (tmp = dev->parent; tmp; tmp = tmp->parent) {
 		    const char *desc;
@@ -1071,11 +1070,13 @@ device_probe_and_attach(device_t dev)
 		}
 		printf("\n");
 	}
-	error = DEVICE_ATTACH(dev);
 	if (!device_is_quiet(dev))
 		device_print_child(bus, dev);
+	error = DEVICE_ATTACH(dev);
 	if (error == 0) {
 		dev->state = DS_ATTACHED;
+		if (bootverbose && !device_is_quiet(dev))
+			device_print_child(bus, dev);
 	} else {
 		printf("device_probe_and_attach: %s%d attach returned %d\n",
 		       dev->driver->name, dev->unit, error);
@@ -1880,7 +1881,12 @@ bus_print_child_header(device_t dev, device_t child)
 		retval += device_printf(child, "<%s>", device_get_desc(child));
 	else
 		retval += printf("%s", device_get_nameunit(child));
-
+	if (bootverbose) {
+		if (child->state != DS_ATTACHED)
+			printf(" [tentative]");
+		else
+			printf(" [attached!]");
+	}
 	return(retval);
 }
 
