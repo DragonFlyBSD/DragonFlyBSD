@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.4 2005/02/19 01:43:06 swildner Exp $
  */
 
 /*
@@ -642,11 +642,7 @@ main(int argc, char **argv)
 	int c, fd;
 	int (*dialog_utc)(unsigned char *, unsigned char *, int, int);
 
-#if defined(__alpha__)
-	dialog_utc = dialog_yesno;
-#else
 	dialog_utc = dialog_noyes;
-#endif
 
 	while ((c = getopt(argc, argv, "n")) != -1) {
 		switch(c) {
