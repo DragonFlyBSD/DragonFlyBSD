@@ -30,7 +30,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.2 2004/02/19 15:48:26 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio_pccard.c,v 1.3 2004/05/31 20:48:41 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -80,12 +80,9 @@ static driver_t sio_pccard_driver = {
 static int
 sio_pccard_match(device_t dev)
 {
-	int		error = 0;
 	u_int32_t	fcn = PCCARD_FUNCTION_UNSPEC;
 
 	fcn = pccard_get_function(dev);
-	if (error != 0)
-		return (error);
 	/*
 	 * If a serial card, we are likely the right driver.  However,
 	 * some serial cards are better servered by other drivers, so
