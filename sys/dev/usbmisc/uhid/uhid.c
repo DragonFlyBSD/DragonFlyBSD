@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uhid.c,v 1.46 2001/11/13 06:24:55 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uhid.c,v 1.65 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.10 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uhid/uhid.c,v 1.11 2004/03/15 02:27:57 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -252,7 +252,7 @@ USB_ATTACH(uhid)
 	    uaa->revision == 0x???? */) { /* XXX should use revision */
 		/* The report descriptor for the Wacom Graphire is broken. */
 		size = sizeof uhid_graphire_report_descr;
-		desc = malloc(size, M_USBDEV, M_WAITOK);
+		desc = malloc(size, M_USBDEV, M_INTWAIT);
 		err = USBD_NORMAL_COMPLETION;
 		memcpy(desc, uhid_graphire_report_descr, size);
 	} else {

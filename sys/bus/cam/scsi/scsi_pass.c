@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.9 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.10 2004/03/15 02:27:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -304,7 +304,7 @@ passregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->state = PASS_STATE_NORMAL;
 	softc->pd_type = SID_TYPE(&cgd->inq_data);
 	bufq_init(&softc->buf_queue);

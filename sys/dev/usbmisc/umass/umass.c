@@ -26,7 +26,7 @@
  *
  * $NetBSD: umass.c,v 1.28 2000/04/02 23:46:53 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/umass.c,v 1.96 2003/12/19 12:19:11 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.9 2004/03/15 01:10:45 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umass/umass.c,v 1.10 2004/03/15 02:27:57 dillon Exp $
  */
 
 /*
@@ -2155,7 +2155,7 @@ umass_cam_rescan(void *addr)
 	union ccb *ccb;
 
 	sc->rescan_timeout.callout = NULL;
-	ccb = malloc(sizeof(union ccb), M_USBDEV, M_WAITOK|M_ZERO);
+	ccb = malloc(sizeof(union ccb), M_USBDEV, M_INTWAIT|M_ZERO);
 
 	DPRINTF(UDMASS_SCSI, ("scbus%d: scanning for %s:%d:%d:%d\n",
 		cam_sim_path(sc->umass_sim),

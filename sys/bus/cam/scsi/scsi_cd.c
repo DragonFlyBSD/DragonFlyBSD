@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.12 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.13 2004/03/15 02:27:56 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -706,7 +706,7 @@ cdregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&softc->pending_ccbs);
 	STAILQ_INIT(&softc->mode_queue);
 	softc->state = CD_STATE_PROBE;
@@ -1987,7 +1987,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOCPLAYTRACKS\n"));
@@ -2077,7 +2077,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOCPLAYMSF\n"));
@@ -2116,7 +2116,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
@@ -2145,7 +2145,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 				  ("trying to do CDIOCREADSUBCHANNEL\n"));
 
 			data = malloc(sizeof(struct cd_sub_channel_info), 
-				      M_TEMP, M_INTWAIT);
+				      M_TEMP, M_WAITOK);
 
 			if ((len > sizeof(struct cd_sub_channel_info)) ||
 			    (len < sizeof(struct cd_sub_channel_header))) {
@@ -2189,7 +2189,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 				  ("trying to do CDIOREADTOCHEADER\n"));
 
 			th = malloc(sizeof(struct ioc_toc_header), M_TEMP,
-				    M_INTWAIT);
+				    M_WAITOK);
 			error = cdreadtoc(periph, 0, 0, (u_int8_t *)th, 
 				          sizeof (*th), /*sense_flags*/0);
 			if (error) {
@@ -2222,8 +2222,8 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOREADTOCENTRYS\n"));
 
-			data = malloc(sizeof(*data), M_TEMP, M_INTWAIT);
-			lead = malloc(sizeof(*lead), M_TEMP, M_INTWAIT);
+			data = malloc(sizeof(*data), M_TEMP, M_WAITOK);
+			lead = malloc(sizeof(*lead), M_TEMP, M_WAITOK);
 
 			if (te->data_len < sizeof(struct cd_toc_entry)
 			 || (te->data_len % sizeof(struct cd_toc_entry)) != 0
@@ -2343,7 +2343,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 			CAM_DEBUG(periph->path, CAM_DEBUG_SUBTRACE, 
 				  ("trying to do CDIOREADTOCENTRY\n"));
 
-			data = malloc(sizeof(*data), M_TEMP, M_INTWAIT);
+			data = malloc(sizeof(*data), M_TEMP, M_WAITOK);
 
 			if (te->address_format != CD_MSF_FORMAT
 			    && te->address_format != CD_LBA_FORMAT) {
@@ -2410,7 +2410,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(params.mode_buf, M_TEMP);
@@ -2439,7 +2439,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(params.mode_buf, M_TEMP);
@@ -2467,7 +2467,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP, 
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(params.mode_buf, M_TEMP);
@@ -2497,7 +2497,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(params.mode_buf, M_TEMP);
@@ -2525,7 +2525,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(params.mode_buf, M_TEMP);
@@ -2553,7 +2553,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
 				free(&params, M_TEMP);
@@ -2579,7 +2579,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 			
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {
@@ -2606,7 +2606,7 @@ cdioctl(dev_t dev, u_long cmd, caddr_t addr, int flag, struct thread *td)
 
 			params.alloc_len = sizeof(union cd_mode_data_6_10);
 			params.mode_buf = malloc(params.alloc_len, M_TEMP,
-						 M_INTWAIT | M_ZERO);
+						 M_WAITOK | M_ZERO);
 
 			error = cdgetmode(periph, &params, AUDIO_PAGE);
 			if (error) {

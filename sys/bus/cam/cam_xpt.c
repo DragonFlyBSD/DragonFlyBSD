@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.11 2004/03/15 01:10:30 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.12 2004/03/15 02:27:54 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -5213,7 +5213,7 @@ proberegister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_TEMP, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof(*softc), M_TEMP, M_INTWAIT | M_ZERO);
 	TAILQ_INIT(&softc->request_ccbs);
 	TAILQ_INSERT_TAIL(&softc->request_ccbs, &request_ccb->ccb_h,
 			  periph_links.tqe);

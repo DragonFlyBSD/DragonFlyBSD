@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.9 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.10 2004/03/15 02:27:56 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -1450,7 +1450,7 @@ saregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof (*softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof (*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->scsi_rev = SID_ANSI_REV(&cgd->inq_data);
 	softc->state = SA_STATE_NORMAL;
 	softc->fileno = (daddr_t) -1;

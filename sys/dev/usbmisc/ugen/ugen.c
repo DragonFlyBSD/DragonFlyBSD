@@ -2,7 +2,7 @@
  * $NetBSD: ugen.c,v 1.27 1999/10/28 12:08:38 augustss Exp $
  * $NetBSD: ugen.c,v 1.59 2002/07/11 21:14:28 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/ugen.c,v 1.81 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.10 2004/02/11 15:13:05 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ugen/ugen.c,v 1.11 2004/03/15 02:27:56 dillon Exp $
  */
 
 /* 
@@ -1096,7 +1096,7 @@ ugen_get_cdesc(struct ugen_softc *sc, int index, int *lenp)
 		len = UGETW(tdesc->wTotalLength);
 		if (lenp)
 			*lenp = len;
-		cdesc = malloc(len, M_TEMP, M_WAITOK);
+		cdesc = malloc(len, M_TEMP, M_INTWAIT);
 		memcpy(cdesc, tdesc, len);
 		DPRINTFN(5,("ugen_get_cdesc: current, len=%d\n", len));
 	} else {
@@ -1107,7 +1107,7 @@ ugen_get_cdesc(struct ugen_softc *sc, int index, int *lenp)
 		DPRINTFN(5,("ugen_get_cdesc: index=%d, len=%d\n", index, len));
 		if (lenp)
 			*lenp = len;
-		cdesc = malloc(len, M_TEMP, M_WAITOK);
+		cdesc = malloc(len, M_TEMP, M_INTWAIT);
 		err = usbd_get_config_desc_full(sc->sc_udev, index, cdesc, len);
 		if (err) {
 			free(cdesc, M_TEMP);

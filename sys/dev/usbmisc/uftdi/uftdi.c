@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uftdi.c,v 1.13 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/uftdi.c,v 1.10 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.6 2004/02/11 15:13:05 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uftdi/uftdi.c,v 1.7 2004/03/15 02:27:56 dillon Exp $
  */
 
 /*
@@ -172,7 +172,7 @@ USB_ATTACH(uftdi)
 	usbd_status err;
 	struct ucom_softc *ucom = &sc->sc_ucom;
 	DPRINTFN(10,("\nuftdi_attach: sc=%p\n", sc));
-	devinfo = malloc(1024, M_USBDEV, M_WAITOK);
+	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
 
 	ucom->sc_dev = self;
 	ucom->sc_udev = dev;

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.7 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.8 2004/03/15 02:27:56 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -378,7 +378,7 @@ chregister(struct cam_periph *periph, void *arg)
 		return(CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	softc->state = CH_STATE_PROBE;
 	periph->softc = softc;
 	cam_extend_set(chperiphs, periph->unit_number, periph);

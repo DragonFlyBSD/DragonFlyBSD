@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.6 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.7 2004/03/15 02:27:56 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -179,7 +179,7 @@ targopen(dev_t dev, int flags, int fmt, struct proc *p)
 	make_dev(&targ_cdevsw, minor(dev), UID_ROOT, GID_WHEEL, 0600,
 			 "targ%d", lminor(dev));
 	MALLOC(softc, struct targ_softc *, sizeof(*softc), M_TARG,
-	       M_WAITOK | M_ZERO);
+	       M_INTWAIT | M_ZERO);
 	dev->si_drv1 = softc;
 	softc->state = TARG_STATE_OPENED;
 	softc->periph = NULL;

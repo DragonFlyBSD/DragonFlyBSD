@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.7 2004/03/12 03:23:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.8 2004/03/15 02:27:56 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -394,7 +394,7 @@ targbhctor(struct cam_periph *periph, void *arg)
 	cpi = (struct ccb_pathinq *)arg;
 
 	/* Allocate our per-instance private storage */
-	softc = malloc(sizeof(*softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof(*softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	TAILQ_INIT(&softc->pending_queue);
 	TAILQ_INIT(&softc->work_queue);
 	softc->accept_tio_list = NULL;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/umct.c,v 1.5 2003/11/16 12:13:39 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.2 2004/03/15 01:10:45 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umct/umct.c,v 1.3 2004/03/15 02:27:57 dillon Exp $
  */
 
 /*
@@ -169,7 +169,7 @@ USB_ATTACH(umct)
 	int i;
 
 	dev = uaa->device;
-	devinfo = malloc(1024, M_USBDEV, M_WAITOK | M_ZERO);
+	devinfo = malloc(1024, M_USBDEV, M_INTWAIT | M_ZERO);
 	bzero(sc, sizeof(struct umct_softc));
 	ucom = &sc->sc_ucom;
 	ucom->sc_dev = self;

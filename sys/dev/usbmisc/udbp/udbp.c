@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/udbp.c,v 1.24 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.2 2004/02/11 15:13:05 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/udbp/Attic/udbp.c,v 1.3 2004/03/15 02:27:56 dillon Exp $
  */
 
 /* Driver for arbitrary double bulk pipe devices.
@@ -328,11 +328,11 @@ USB_ATTACH(udbp)
 	if (!sc->sc_bulkout_xfer) {
 		goto bad;
 	}
-	sc->sc_bulkin_buffer = malloc(UDBP_BUFFERSIZE, M_USBDEV, M_WAITOK);
+	sc->sc_bulkin_buffer = malloc(UDBP_BUFFERSIZE, M_USBDEV, M_INTWAIT);
 	if (!sc->sc_bulkin_buffer) {
 		goto bad;
 	}
-	sc->sc_bulkout_buffer = malloc(UDBP_BUFFERSIZE, M_USBDEV, M_WAITOK);
+	sc->sc_bulkout_buffer = malloc(UDBP_BUFFERSIZE, M_USBDEV, M_INTWAIT);
 	if (!sc->sc_bulkout_xfer || !sc->sc_bulkout_buffer) {
 		goto bad;
 	}

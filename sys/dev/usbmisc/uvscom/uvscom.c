@@ -25,7 +25,7 @@
  *
  * $NetBSD: usb/uvscom.c,v 1.1 2002/03/19 15:08:42 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uvscom.c,v 1.19 2003/11/16 12:26:10 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.6 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uvscom/uvscom.c,v 1.7 2004/03/15 02:27:57 dillon Exp $
  */
 
 /*
@@ -266,7 +266,7 @@ USB_ATTACH(uvscom)
 	usbd_status err;
 	int i;
 
-	devinfo = malloc(1024, M_USBDEV, M_WAITOK);
+	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uvscom_softc));

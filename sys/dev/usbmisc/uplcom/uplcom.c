@@ -1,7 +1,7 @@
 /*
  * $NetBSD: uplcom.c,v 1.21 2001/11/13 06:24:56 lukem Exp $
  * $FreeBSD: src/sys/dev/usb/uplcom.c,v 1.17 2003/11/16 13:13:16 akiyama Exp $
- * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.6 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uplcom/uplcom.c,v 1.7 2004/03/15 02:27:57 dillon Exp $
  */
 
 /*-
@@ -294,7 +294,7 @@ USB_ATTACH(uplcom)
 	usbd_status err;
 	int i;
 
-	devinfo = malloc(1024, M_USBDEV, M_WAITOK);
+	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
 	ucom = &sc->sc_ucom;
 
 	bzero(sc, sizeof (struct uplcom_softc));

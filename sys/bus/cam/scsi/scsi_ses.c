@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.8 2004/03/12 03:23:19 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.9 2004/03/15 02:27:56 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -344,7 +344,7 @@ sesregister(struct cam_periph *periph, void *arg)
 		return (CAM_REQ_CMP_ERR);
 	}
 
-	softc = malloc(sizeof (struct ses_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	softc = malloc(sizeof (struct ses_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	periph->softc = softc;
 	softc->periph = periph;
 

@@ -2,7 +2,7 @@
  * $NetBSD: umodem.c,v 1.5 1999/01/08 11:58:25 augustss Exp $
  * $NetBSD: umodem.c,v 1.45 2002/09/23 05:51:23 simonb Exp $
  * $FreeBSD: src/sys/dev/usb/umodem.c,v 1.48 2003/08/24 17:55:55 obrien Exp $
- * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.9 2004/01/08 18:56:20 asmodai Exp $
+ * $DragonFly: src/sys/dev/usbmisc/umodem/umodem.c,v 1.10 2004/03/15 02:27:57 dillon Exp $
  */
 
 /*-
@@ -250,7 +250,7 @@ USB_ATTACH(umodem)
 	int i;
 	struct ucom_softc *ucom;
 
-	devinfo = malloc(1024, M_USBDEV, M_WAITOK);
+	devinfo = malloc(1024, M_USBDEV, M_INTWAIT);
 	usbd_devinfo(dev, 0, devinfo);
 	ucom = &sc->sc_ucom;
 	ucom->sc_dev = self;
