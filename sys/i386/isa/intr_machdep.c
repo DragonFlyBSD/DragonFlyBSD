@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.22 2004/04/10 20:55:22 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/intr_machdep.c,v 1.23 2004/07/24 20:21:34 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -792,7 +792,7 @@ cpu_intr_preempt(struct thread *td, int critpri)
 	if ((curthread->td_cpl & (1 << info->irq)) == 0)
 		lwkt_preempt(td, critpri);
 	else
-		need_lwkt_resched();
+		need_lwkt_resched(); /* XXX may not be required */
 }
 
 static int

@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.34 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.35 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -310,7 +310,7 @@ proc0_init(void *dummy __unused)
 	p->p_sysent = &aout_sysvec;
 	TAILQ_INIT(&p->p_sysmsgq);
 
-	p->p_flag = P_INMEM | P_SYSTEM | P_CP_RELEASED;
+	p->p_flag = P_INMEM | P_SYSTEM;
 	p->p_stat = SRUN;
 	p->p_nice = NZERO;
 	p->p_rtprio.type = RTP_PRIO_NORMAL;
@@ -558,7 +558,8 @@ start_init(void *dummy)
 		 * release it.
 		 */
 		if ((error = execve(&args)) == 0) {
-			acquire_curproc(p);
+			if (p->p_thread->td_gd->gd_uschedcp != p)
+				acquire_curproc(p);
 			rel_mplock();
 			return;
 		}

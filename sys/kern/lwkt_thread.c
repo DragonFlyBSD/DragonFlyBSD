@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.65 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.66 2004/07/24 20:21:35 dillon Exp $
  */
 
 /*
@@ -503,6 +503,14 @@ lwkt_switch(void)
 	}
 #endif
 	ntd->td_flags |= TDF_PREEMPT_DONE;
+
+	/*
+	 * XXX.  The interrupt may have woken a thread up, we need to properly
+	 * set the reschedule flag if the originally interrupted thread is at
+	 * a lower priority.
+	 */
+	if (gd->gd_runqmask > (2 << (ntd->td_pri & TDPRI_MASK)) - 1)
+	    need_lwkt_resched();
 	/* YYY release mp lock on switchback if original doesn't need it */
     } else {
 	/*
@@ -531,6 +539,11 @@ lwkt_switch(void)
 		lwkt_drain_token_requests();
 #endif
 
+	/*
+	 * If an LWKT reschedule was requested, well that is what we are
+	 * doing now so clear it.
+	 */
+	clear_lwkt_resched();
 again:
 	if (gd->gd_runqmask) {
 	    int nq = bsrl(gd->gd_runqmask);
@@ -669,18 +682,19 @@ lwkt_preempt(thread_t ntd, int critpri)
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
 
     td = gd->gd_curthread;
-    need_lwkt_resched();
     if ((ntd->td_pri & TDPRI_MASK) <= (td->td_pri & TDPRI_MASK)) {
 	++preempt_miss;
 	return;
     }
     if ((td->td_pri & ~TDPRI_MASK) > critpri) {
 	++preempt_miss;
+	need_lwkt_resched();
 	return;
     }
 #ifdef SMP
     if (ntd->td_gd != gd) {
 	++preempt_miss;
+	need_lwkt_resched();
 	return;
     }
 #endif
@@ -693,14 +707,17 @@ lwkt_preempt(thread_t ntd, int critpri)
      */
     if (ntd->td_toks != NULL) {
 	++preempt_miss;
+	need_lwkt_resched();
 	return;
     }
     if (td == ntd || ((td->td_flags | ntd->td_flags) & TDF_PREEMPT_LOCK)) {
 	++preempt_weird;
+	need_lwkt_resched();
 	return;
     }
     if (ntd->td_preempted) {
 	++preempt_hit;
+	need_lwkt_resched();
 	return;
     }
 #ifdef SMP
@@ -718,10 +735,15 @@ lwkt_preempt(thread_t ntd, int critpri)
     if (mpheld == 0 && ntd->td_mpcount && !cpu_try_mplock()) {
 	ntd->td_mpcount -= td->td_mpcount;
 	++preempt_miss;
+	need_lwkt_resched();
 	return;
     }
 #endif
 
+    /*
+     * Since we are able to preempt the current thread, there is no need to
+     * call need_lwkt_resched().
+     */
     ++preempt_hit;
     ntd->td_preempted = td;
     td->td_flags |= TDF_PREEMPT_LOCK;
@@ -827,15 +849,14 @@ lwkt_yield(void)
  */
 static __inline
 void
-_lwkt_schedule_post(thread_t ntd, int cpri)
+_lwkt_schedule_post(globaldata_t gd, thread_t ntd, int cpri)
 {
     if (ntd->td_preemptable) {
 	ntd->td_preemptable(ntd, cpri);	/* YYY +token */
-    } else {
-	if ((ntd->td_flags & TDF_NORESCHED) == 0) {
-	    if ((ntd->td_pri & TDPRI_MASK) >= TDPRI_KERN_USER)
-		need_lwkt_resched();
-	}
+    } else if ((ntd->td_flags & TDF_NORESCHED) == 0 &&
+	(ntd->td_pri & TDPRI_MASK) > (gd->gd_curthread->td_pri & TDPRI_MASK)
+    ) {
+	need_lwkt_resched();
     }
 }
 
@@ -888,15 +909,15 @@ lwkt_schedule(thread_t td)
 		--w->wa_count;
 		td->td_wait = NULL;
 #ifdef SMP
-		if (td->td_gd == mycpu) {
+		if (td->td_gd == mygd) {
 		    _lwkt_enqueue(td);
-		    _lwkt_schedule_post(td, TDPRI_CRIT);
+		    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 		} else {
 		    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 		}
 #else
 		_lwkt_enqueue(td);
-		_lwkt_schedule_post(td, TDPRI_CRIT);
+		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 #endif
 		lwkt_reltoken(&wref);
 	    } else {
@@ -912,13 +933,13 @@ lwkt_schedule(thread_t td)
 #ifdef SMP
 	    if (td->td_gd == mygd) {
 		_lwkt_enqueue(td);
-		_lwkt_schedule_post(td, TDPRI_CRIT);
+		_lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 	    } else {
 		lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	    }
 #else
 	    _lwkt_enqueue(td);
-	    _lwkt_schedule_post(td, TDPRI_CRIT);
+	    _lwkt_schedule_post(mygd, td, TDPRI_CRIT);
 #endif
 	}
     }
@@ -1020,6 +1041,32 @@ lwkt_setpri_self(int pri)
 	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
     }
     crit_exit();
+}
+
+/*
+ * Determine if there is a runnable thread at a higher priority then
+ * the current thread.  lwkt_setpri() does not check this automatically.
+ * Return 1 if there is, 0 if there isn't.
+ *
+ * Example: if bit 31 of runqmask is set and the current thread is priority
+ * 30, then we wind up checking the mask: 0x80000000 against 0x7fffffff.  
+ *
+ * If nq reaches 31 the shift operation will overflow to 0 and we will wind
+ * up comparing against 0xffffffff, a comparison that will always be false.
+ */
+int
+lwkt_checkpri_self(void)
+{
+    globaldata_t gd = mycpu;
+    thread_t td = gd->gd_curthread;
+    int nq = td->td_pri & TDPRI_MASK;
+
+    while (gd->gd_runqmask > (__uint32_t)(2 << nq) - 1) {
+	if (TAILQ_FIRST(&gd->gd_tdrunq[nq + 1]))
+	    return(1);
+	++nq;
+    }
+    return(0);
 }
 
 /*

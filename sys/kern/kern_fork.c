@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.27 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.28 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -367,13 +367,8 @@ again:
 	 * Duplicate sub-structures as needed.
 	 * Increase reference counts on shared objects.
 	 * The p_stats and p_sigacts substructs are set in vm_fork.
-	 *
-	 * P_CP_RELEASED indicates that the process is starting out in
-	 * the kernel (in the fork trampoline).  The flag will be cleared
-	 * when the new process calls userret() and acquires its current
-	 * process designation for the return to userland.
 	 */
-	p2->p_flag = P_INMEM | P_CP_RELEASED;
+	p2->p_flag = P_INMEM;
 	if (p1->p_flag & P_PROFIL)
 		startprofclock(p2);
 	p2->p_ucred = crhold(p1->p_ucred);
@@ -515,9 +510,12 @@ again:
 	 * interactive programs when they are first started.  If the child
 	 * is not a batch program it's priority will be corrected by the
 	 * scheduler.
+	 *
+	 * The interactivity model always starts at 0 (par value).
 	 */
 	p2->p_estcpu_fork = p2->p_estcpu = 
 		ESTCPULIM(p1->p_estcpu + ESTCPURAMP);
+	p2->p_interactive = 0;
 
 	/*
 	 * This begins the section where we must prevent the parent
@@ -630,6 +628,10 @@ start_forked_proc(struct proc *p1, struct proc *p2)
 	 * Move from SIDL to RUN queue, and activate the process's thread.
 	 * Activation of the thread effectively makes the process "a"
 	 * current process, so we do not setrunqueue().
+	 *
+	 * YYY setrunqueue works here but we should clean up the trampoline
+	 * code so we just schedule the LWKT thread and let the trampoline
+	 * deal with the userland scheduler on return to userland.
 	 */
 	KASSERT(p2 && p2->p_stat == SIDL,
 	    ("cannot start forked process, bad status: %p", p2));

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.33 2004/06/10 22:11:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.34 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -223,13 +223,33 @@ schedcpu(void *arg)
 		if (p->p_stat == SSLEEP || p->p_stat == SSTOP)
 			p->p_slptime++;
 		p->p_pctcpu = (p->p_pctcpu * ccpu) >> FSHIFT;
+
 		/*
 		 * If the process has slept the entire second,
 		 * stop recalculating its priority until it wakes up.
+		 *
+		 * Note that interactive calculations do not occur for
+		 * long sleeps (because that isn't necessarily indicative
+		 * of an interactive process).
 		 */
 		if (p->p_slptime > 1)
 			continue;
-		s = splhigh();	/* prevent state changes and protect run queue */
+		/* prevent state changes and protect run queue */
+		s = splhigh();
+		/*
+		 * p_cpticks runs at ESTCPUFREQ but must be divided by the
+		 * load average for par-100% use.  Higher p_interactive
+		 * values mean less interactive, lower values mean more 
+		 * interactive.
+		 */
+		if ((((fixpt_t)p->p_cpticks * cload(loadfac)) >> FSHIFT)  >
+		    ESTCPUFREQ / 4) {
+			if (p->p_interactive < 127)
+				++p->p_interactive;
+		} else {
+			if (p->p_interactive > -127)
+				--p->p_interactive;
+		}
 		/*
 		 * p_pctcpu is only for ps.
 		 */
@@ -504,7 +524,7 @@ xwakeup(struct xwait *w)
 			p->p_slptime = 0;
 			p->p_stat = SRUN;
 			if (p->p_flag & P_INMEM) {
-				setrunqueue(p);
+				lwkt_schedule(td);
 			} else {
 				p->p_flag |= P_SWAPINREQ;
 				wakeup((caddr_t)&proc0);
@@ -542,7 +562,15 @@ restart:
 				p->p_slptime = 0;
 				p->p_stat = SRUN;
 				if (p->p_flag & P_INMEM) {
-					setrunqueue(p);
+					/*
+					 * LWKT scheduled now, there is no
+					 * userland runq interaction until
+					 * the thread tries to return to user
+					 * mode.
+					 *
+					 * setrunqueue(p); 
+					 */
+					lwkt_schedule(td);
 				} else {
 					p->p_flag |= P_SWAPINREQ;
 					wakeup((caddr_t)&proc0);
@@ -608,11 +636,10 @@ mi_switch(struct proc *p)
 	}
 
 	/*
-	 * Pick a new current process and record its start time.  If we
-	 * are in a SSTOPped state we deschedule ourselves.  YYY this needs
-	 * to be cleaned up, remember that LWKTs stay on their run queue
-	 * which works differently then the user scheduler which removes
-	 * the process from the runq when it runs it.
+	 * If we are in a SSTOPped state we deschedule ourselves.  
+	 * YYY this needs to be cleaned up, remember that LWKTs stay on
+	 * their run queue which works differently then the user scheduler
+	 * which removes the process from the runq when it runs it.
 	 */
 	mycpu->gd_cnt.v_swtch++;
 	if (p->p_stat == SSTOP)
@@ -647,8 +674,18 @@ setrunnable(struct proc *p)
 		break;
 	}
 	p->p_stat = SRUN;
+
+	/*
+	 * The process is controlled by LWKT at this point, we do not mess
+	 * around with the userland scheduler until the thread tries to 
+	 * return to user mode.
+	 */
+#if 0
 	if (p->p_flag & P_INMEM)
 		setrunqueue(p);
+#endif
+	if (p->p_flag & P_INMEM)
+		lwkt_schedule(p->p_thread);
 	splx(s);
 	if (p->p_slptime > 1)
 		updatepri(p);
@@ -681,7 +718,8 @@ clrrunnable(struct proc *p, int stat)
 void
 resetpriority(struct proc *p)
 {
-	unsigned int newpriority;
+	int newpriority;
+	int interactive;
 	int opq;
 	int npq;
 
@@ -704,11 +742,22 @@ resetpriority(struct proc *p)
 
 	/*
 	 * NORMAL priorities fall through.  These are based on niceness
-	 * and cpu use.
+	 * and cpu use.  Lower numbers == higher priorities.
 	 */
-	newpriority = NICE_ADJUST(p->p_nice - PRIO_MIN) +
-			p->p_estcpu / ESTCPURAMP;
+	newpriority = (int)(NICE_ADJUST(p->p_nice - PRIO_MIN) +
+			p->p_estcpu / ESTCPURAMP);
+
+	/*
+	 * p_interactive is -128 to +127 and represents very long term
+	 * interactivity or batch (whereas estcpu is a much faster variable).
+	 * Interactivity can modify the priority by up to 8 units either way.
+	 * (8 units == approximately 4 nice levels).
+	 */
+	interactive = p->p_interactive / 10;
+	newpriority += interactive;
+
 	newpriority = min(newpriority, MAXPRI);
+	newpriority = max(newpriority, 0);
 	npq = newpriority / PPQ;
 	crit_enter();
 	opq = (p->p_priority & PRIMASK) / PPQ;
@@ -740,25 +789,23 @@ loadav(void *arg)
 	int i, nrun;
 	struct loadavg *avg;
 	struct proc *p;
+	thread_t td;
 
 	avg = &averunnable;
 	nrun = 0;
 	FOREACH_PROC_IN_SYSTEM(p) {
-		thread_t td;
-		if (p->p_flag & P_CP_RELEASED) {
-		    if ((td = p->p_thread) != NULL) {
-			if (td->td_flags & (TDF_RUNQ|TDF_RUNNING))
-			    nrun++;
-		    }
-		} else {
-		    switch (p->p_stat) {
-		    case SRUN:
-		    case SIDL:
-			    nrun++;
-			    break;
-		    default:
-			    break;
-		    }
+		switch (p->p_stat) {
+		case SRUN:
+			if ((td = p->p_thread) == NULL)
+				break;
+			if (td->td_flags & TDF_BLOCKED)
+				break;
+			/* fall through */
+		case SIDL:
+			nrun++;
+			break;
+		default:
+			break;
 		}
 	}
 	for (i = 0; i < 3; i++)

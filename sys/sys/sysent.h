@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.7 2004/06/04 20:35:39 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.8 2004/07/24 20:21:35 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -61,7 +61,7 @@ struct vnode;
 struct sysentvec {
 	int		sv_size;	/* number of entries */
 	struct sysent	*sv_table;	/* pointer to sysent */
-	u_int		sv_mask;	/* optional mask to index */
+	u_int		sv_mask;	/* optional mask to index, else -1 */
 	int		sv_sigsize;	/* size of signal translation table */
 	int		*sv_sigtbl;	/* signal translation table */
 	int		sv_errsize;	/* size of errno translation table */

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.52 2004/07/23 13:19:42 hmp Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.53 2004/07/24 20:21:35 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -189,7 +189,7 @@ struct	proc {
 	struct	vnode *p_textvp;	/* Vnode of executable. */
 
 	char	p_lock;			/* Process lock (prevent swap) count. */
-	short	p_priority;		/* overall process priority */
+	short	p_priority;		/* overall priority (lower==better) */
 	char	p_rqindex;		/* Run queue index */
 
 	unsigned int	p_stops;	/* procfs event bitmask */
@@ -212,7 +212,7 @@ struct	proc {
 
 	sigset_t p_sigmask;	/* Current signal mask. */
 	stack_t	p_sigstk;	/* sp & on stack state variable */
-	u_char	p_unused00;	/* (used to be p_priority) */
+	char	p_interactive;	/* long term interactivity par-0 */
 	char	p_nice;		/* Process "nice" value. */
 
 	struct 	pgrp *p_pgrp;	/* Pointer to process group. */
@@ -287,8 +287,7 @@ struct	proc {
 /* Marked a kernel thread */
 #define	P_ONRUNQ	0x100000 /* on a user scheduling run queue */
 #define	P_KTHREADP	0x200000 /* Process is really a kernel thread */
-#define P_CP_RELEASED	0x400000 /* directly schedule LWKT, ignore user schd */
-
+#define P_UNUSED400000	0x400000
 #define	P_DEADLKTREAT   0x800000 /* lock aquisition - deadlock treatment */
 
 #define	P_JAILED	0x1000000 /* Process is in jail */
@@ -448,6 +447,7 @@ int	suser_cred (struct ucred *cred, int flag);
 void	remrunqueue (struct proc *);
 void	release_curproc (struct proc *curp);
 void	acquire_curproc (struct proc *curp);
+void	select_curproc(struct globaldata *);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);
 void	unsleep (struct thread *);

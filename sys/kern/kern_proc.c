@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.15 2004/06/10 22:11:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.16 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -462,17 +462,14 @@ sysctl_out_proc(struct proc *p, struct thread *td, struct sysctl_req *req, int d
 		xproc = *p;
 
 		/*
-		 * Fixup p_stat from SRUN to SSLEEP if the process scheduler
-		 * does not own the process and the thread scheduler says it
-		 * isn't running or runnable.
+		 * Fixup p_stat from SRUN to SSLEEP if the LWKT thread is
+		 * in a thread-blocked state.
 		 *
 		 * XXX temporary fix which might become permanent (I'd rather
 		 * not pollute the thread scheduler with knowlege about 
 		 * processes).
 		 */
-		if ((p->p_flag & P_CP_RELEASED) && p->p_stat == SRUN &&
-		    td && (td->td_flags & (TDF_RUNNING|TDF_RUNQ)) == 0
-		) {
+		if (p->p_stat == SRUN && td && (td->td_flags & TDF_BLOCKED)) {
 			xproc.p_stat = SSLEEP;
 		}
 	} else if (td) {

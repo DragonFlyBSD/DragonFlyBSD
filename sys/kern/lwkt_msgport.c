@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.28 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.29 2004/07/24 20:21:35 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -587,10 +587,12 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
     if (msg == NULL) {
 	if ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL) {
 	    port->mp_flags |= MSGPORTF_WAITING;
+	    td->td_flags |= TDF_BLOCKED;
 	    do {
 		lwkt_deschedule_self(td);
 		lwkt_switch();
 	    } while ((msg = TAILQ_FIRST(&port->mp_msgq)) == NULL);
+	    td->td_flags &= ~TDF_BLOCKED;
 	    port->mp_flags &= ~MSGPORTF_WAITING;
 	}
 	_lwkt_pullmsg(port, msg);
@@ -631,10 +633,10 @@ lwkt_default_waitport(lwkt_port_t port, lwkt_msg_t msg)
 		     * an interruptable wait and a disk wait.  YYY eventually
 		     * move P_SINTR to TDF_SINTR to reduce duplication.
 		     */
-		    td->td_flags |= TDF_SINTR;
+		    td->td_flags |= TDF_SINTR | TDF_BLOCKED;
 		    lwkt_deschedule_self(td);
 		    lwkt_switch();
-		    td->td_flags &= ~TDF_SINTR;
+		    td->td_flags &= ~(TDF_SINTR | TDF_BLOCKED);
 		} while ((msg->ms_flags & MSGF_DONE) == 0);
 		port->mp_flags &= ~MSGPORTF_WAITING; /* saved by the BGL */
 	    }

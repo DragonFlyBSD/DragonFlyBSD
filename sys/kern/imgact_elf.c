@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/imgact_elf.c,v 1.73.2.13 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/kern/imgact_elf.c,v 1.20 2004/06/08 10:14:45 hsu Exp $
+ * $DragonFly: src/sys/kern/imgact_elf.c,v 1.21 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -90,7 +90,7 @@ SYSCTL_INT(_debug, OID_AUTO, elf_legacy_coredump, CTLFLAG_RW,
 static struct sysentvec elf_freebsd_sysvec = {
         SYS_MAXSYSCALL,
         sysent,
-        0,
+        -1,
         0,
         0,
         0,

@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.14 2004/07/24 09:51:18 asmodai Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.15 2004/07/24 20:21:35 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -123,6 +123,7 @@
 #define PRIBASE_NORMAL		128
 #define PRIBASE_IDLE		256
 #define PRIBASE_THREAD		384	/* huh? */
+#define PRIBASE_NULL		512
 
 #define PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
 #define PUSRFLAG1	0x0200	/* Subsystem specific flag */

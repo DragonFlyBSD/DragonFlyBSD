@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.24 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.25 2004/07/24 20:21:35 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -321,8 +321,12 @@ faultin(struct proc *p)
 
 		s = splhigh();
 
+		/*
+		 * The process is in the kernel and controlled by LWKT,
+		 * so we just schedule it rather then call setrunqueue().
+		 */
 		if (p->p_stat == SRUN)
-			setrunqueue(p);
+			lwkt_schedule(p->p_thread);
 
 		p->p_flag |= P_INMEM;
 

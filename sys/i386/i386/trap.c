@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.53 2004/07/06 01:52:24 hmp Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.54 2004/07/24 20:21:33 dillon Exp $
  */
 
 /*
@@ -172,14 +172,10 @@ SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 
 /*
- * USER->KERNEL transition.  Do not transition us out of userland from the
- * point of view of the userland scheduler unless we actually have to
- * switch.  Switching typically occurs when a process blocks in the kernel.
- *
- * passive_release is called from within a critical section and the BGL will
- * still be held.  This function is NOT called for preemptions, only for
- * switchouts.  Note that other elements of the system (uio_yield()) assume
- * that the user cruft will be released when lwkt_switch() is called.
+ * Passive USER->KERNEL transition.  This only occurs if we block in the
+ * kernel while still holding our userland priority.  We have to fixup our
+ * priority in order to avoid potential deadlocks before we allow the system
+ * to switch us to another thread.
  */
 static void
 passive_release(struct thread *td)
@@ -187,6 +183,7 @@ passive_release(struct thread *td)
 	struct proc *p = td->td_proc;
 
 	td->td_release = NULL;
+	lwkt_setpri_self(TDPRI_KERN_USER);
 	release_curproc(p);
 }
 
@@ -203,30 +200,12 @@ userenter(struct thread *curtd)
 }
 
 /*
- * Reacquire our current process designation.  This will not return until
- * we have it.  Our LWKT priority will be adjusted for our return to
- * userland.  acquire_curproc() also handles cleaning up P_CP_RELEASED.
+ * Handle signals, upcalls, profiling, and other AST's and/or tasks that
+ * must be completed before we can return to or try to return to userland.
  *
- * This is always the last step before returning to user mode.
- */
-static __inline void
-userexit(struct proc *p)
-{
-	struct thread *td = p->p_thread;
-
-	td->td_release = NULL;
-	if (p->p_flag & P_CP_RELEASED)
-		++slow_release;
-	else
-		++fast_release;
-	acquire_curproc(p);
-}
-
-/*
- * userret() handles signals, upcalls, and deals with system profiling
- * charges.  Note that td_sticks is a 64 bit quantity, but there's no
- * point doing 64 arithmatic on the delta calculation so the absolute
- * tick values are truncated to an integer.
+ * Note that td_sticks is a 64 bit quantity, but there's no point doing 64
+ * arithmatic on the delta calculation so the absolute tick values are
+ * truncated to an integer.
  */
 static void
 userret(struct proc *p, struct trapframe *frame, int sticks)
@@ -249,17 +228,6 @@ userret(struct proc *p, struct trapframe *frame, int sticks)
 	}
 
 	/*
-	 * If a reschedule has been requested then we release the current
-	 * process in order to shift the current process designation to
-	 * another user process and/or to switch to a higher priority
-	 * kernel thread at userexit() time. 
-	 */
-	if (any_resched_wanted()) {
-		p->p_thread->td_release = NULL;
-		release_curproc(p);
-	}
-
-	/*
 	 * Charge system time if profiling.  Note: times are in microseconds.
 	 */
 	if (p->p_flag & P_PROFIL) {
@@ -272,6 +240,88 @@ userret(struct proc *p, struct trapframe *frame, int sticks)
 	 */
 	while ((sig = CURSIG(p)) != 0)
 		postsig(sig);
+}
+
+/*
+ * Cleanup from userenter and any passive release that might have occured.
+ * We must reclaim the current-process designation before we can return
+ * to usermode.  We also handle both LWKT and USER reschedule requests.
+ */
+static __inline void
+userexit(struct proc *p)
+{
+	struct thread *td = p->p_thread;
+	globaldata_t gd = td->td_gd;
+
+#if 0
+	/*
+	 * If a user reschedule is requested force a new process to be
+	 * chosen by releasing the current process.  Our process will only
+	 * be chosen again if it has a considerably better priority.
+	 */
+	if (user_resched_wanted())
+		release_curproc(p);
+#endif
+
+again:
+	/*
+	 * Handle a LWKT reschedule request first.  Since our passive release
+	 * is still in place we do not have to do anything special.
+	 */
+	if (lwkt_resched_wanted())
+		lwkt_switch();
+
+	/*
+	 * Acquire the current process designation if we do not own it.
+	 * Note that acquire_curproc() does not reset the user reschedule
+	 * bit on purpose, because we may need to accumulate over several
+	 * threads waking up at the same time.
+	 *
+	 * NOTE: userland scheduler cruft: because processes are removed
+	 * from the userland scheduler's queue we run through loops to try
+	 * to figure out which is the best of [ existing, waking-up ]
+	 * threads.
+	 */
+	if (p != gd->gd_uschedcp) {
+		++slow_release;
+		acquire_curproc(p);
+		/* We may have switched cpus on acquisition */
+		gd = td->td_gd;
+	} else {
+		++fast_release;
+	}
+
+	/*
+	 * Reduce our priority in preparation for a return to userland.  If
+	 * our passive release function was still in place, our priority was
+	 * never raised and does not need to be reduced.
+	 */
+	if (td->td_release == NULL)
+		lwkt_setpri_self(TDPRI_USER_NORM);
+	td->td_release = NULL;
+
+	/*
+	 * After reducing our priority there might be other kernel-level
+	 * LWKTs that now have a greater priority.  Run them as necessary.
+	 * We don't have to worry about losing cpu to userland because
+	 * we still control the current-process designation and we no longer
+	 * have a passive release function installed.
+	 */
+	if (lwkt_checkpri_self())
+		lwkt_switch();
+
+	/*
+	 * If a userland reschedule is [still] pending we may not be the best
+	 * selected process.  Select a better one.  If another LWKT resched
+	 * is pending the trap will be re-entered.
+	 */
+	if (user_resched_wanted()) {
+		select_curproc(gd);
+		if (p != gd->gd_uschedcp) {
+			lwkt_setpri_self(TDPRI_KERN_USER);
+			goto again;
+		}
+	}
 }
 
 #ifdef DEVICE_POLLING
@@ -1185,7 +1235,6 @@ syscall2(struct trapframe frame)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	caddr_t params;
-	int i;
 	struct sysent *callp;
 	register_t orig_tf_eflags;
 	int sticks;
@@ -1241,9 +1290,7 @@ syscall2(struct trapframe frame)
 		}
 	}
 
- 	if (p->p_sysent->sv_mask)
- 		code &= p->p_sysent->sv_mask;
-
+	code &= p->p_sysent->sv_mask;
  	if (code >= p->p_sysent->sv_size)
  		callp = &p->p_sysent->sv_table[0];
   	else
@@ -1254,13 +1301,17 @@ syscall2(struct trapframe frame)
 	/*
 	 * copyin is MP aware, but the tracing code is not
 	 */
-	if (params && (i = narg * sizeof(register_t)) &&
-	    (error = copyin(params, (caddr_t)(&args.nosys.usrmsg + 1), (u_int)i))) {
+	if (narg && params) {
+		error = copyin(params, (caddr_t)(&args.nosys.usrmsg + 1),
+				narg * sizeof(register_t));
+		if (error) {
 #ifdef KTRACE
-		if (KTRPOINT(td, KTR_SYSCALL))
-			ktrsyscall(p->p_tracep, code, narg, (void *)(&args.nosys.usrmsg + 1));
+			if (KTRPOINT(td, KTR_SYSCALL))
+				ktrsyscall(p->p_tracep, code, narg,
+					(void *)(&args.nosys.usrmsg + 1));
 #endif
-		goto bad;
+			goto bad;
+		}
 	}
 
 #if 0
