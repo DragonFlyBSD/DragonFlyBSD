@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.3 2004/04/01 17:58:02 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.4 2004/04/29 17:31:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -53,8 +53,6 @@ LIST_HEAD(sf_buf_list, sf_buf);
 static struct sf_buf_list *sf_buf_hashtable;
 static u_long sf_buf_hashmask;
 
-#define	SF_BUF_HASH(m)	(((m) - vm_page_array) & sf_buf_hashmask)
-
 static TAILQ_HEAD(, sf_buf) sf_buf_freelist;
 static u_int sf_buf_alloc_want;
 
@@ -63,6 +61,16 @@ static struct sf_buf *sf_bufs;
 
 static int sfbuf_quick = 1;
 SYSCTL_INT(_debug, OID_AUTO, sfbuf_quick, CTLFLAG_RW, &sfbuf_quick, 0, "");
+
+static __inline
+int
+sf_buf_hash(vm_page_t m)
+{
+    int hv;
+
+    hv = ((int)m / sizeof(vm_page_t)) + ((int)m >> 12);
+    return(hv & sf_buf_hashmask);
+}
 
 /*
  * Allocate a pool of sf_bufs (sendfile(2) or "super-fast" if you prefer. :-))
@@ -98,7 +106,7 @@ sf_buf_alloc(struct vm_page *m, int flags)
 
 	gd = mycpu;
 	crit_enter();
-	hash_chain = &sf_buf_hashtable[SF_BUF_HASH(m)];
+	hash_chain = &sf_buf_hashtable[sf_buf_hash(m)];
 	LIST_FOREACH(sf, hash_chain, list_entry) {
 		if (sf->m == m) {
 			/*
