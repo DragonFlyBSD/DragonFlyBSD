@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.unix.c,v 1.8 1999/11/16 02:57:13 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.unix.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.unix.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -289,7 +289,7 @@ getmailstatus() {
 		mailbox = 0;
 #else
 		omstat.st_mtime = 0;
-#endif PERMANENT_MAILBOX
+#endif /* PERMANENT_MAILBOX */
 	}
 }
 
@@ -297,7 +297,7 @@ ckmailstatus() {
 	if(!mailbox
 #ifdef MAILCKFREQ
 		    || moves < laststattime + MAILCKFREQ
-#endif MAILCKFREQ
+#endif /* MAILCKFREQ */
 							)
 		return;
 	laststattime = moves;
@@ -307,7 +307,7 @@ ckmailstatus() {
 		mailbox = 0;
 #else
 		nmstat.st_mtime = 0;
-#endif PERMANENT_MAILBOX
+#endif /* PERMANENT_MAILBOX */
 	} else if(nmstat.st_mtime > omstat.st_mtime) {
 		if(nmstat.st_size)
 			newmail();
@@ -409,12 +409,12 @@ readmail() {
 	}
 #else DEF_MAILREADER
 	(void) page_file(mailbox, FALSE);
-#endif DEF_MAILREADER
+#endif /* DEF_MAILREADER */
 	/* get new stat; not entirely correct: there is a small time
 	   window where we do not see new mail */
 	getmailstatus();
 }
-#endif MAIL
+#endif /* MAIL */
 
 regularize(s)	/* normalize file name - we don't like ..'s or /'s */
 char *s;

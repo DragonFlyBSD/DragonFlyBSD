@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.lev.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.lev.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.lev.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.lev.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 #include "def.mkroom.h"
@@ -19,7 +19,7 @@ extern char nul[];
 #include	"def.wseg.h"
 extern struct wseg *wsegs[32], *wheads[32];
 extern long wgrowtime[32];
-#endif NOWORM
+#endif /* NOWORM */
 
 boolean level_exists[MAXLEVEL+1];
 
@@ -30,7 +30,7 @@ xchar lev;
 #ifndef NOWORM
 	struct wseg *wtmp, *wtmp2;
 	int tmp;
-#endif NOWORM
+#endif /* NOWORM */
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
 	if(lev >= 0 && lev <= MAXLEVEL)
@@ -54,7 +54,7 @@ xchar lev;
 #ifndef QUEST
 	bwrite(fd,(char *) rooms,sizeof(rooms));
 	bwrite(fd,(char *) doors,sizeof(doors));
-#endif QUEST
+#endif /* QUEST */
 	fgold = 0;
 	ftrap = 0;
 	fmon = 0;
@@ -69,7 +69,7 @@ xchar lev;
 		wsegs[tmp] = 0;
 	}
 	bwrite(fd,(char *) wgrowtime,sizeof(wgrowtime));
-#endif NOWORM
+#endif /* NOWORM */
 }
 
 bwrite(fd,loc,num)
@@ -160,7 +160,7 @@ xchar lev;
 	struct trap *trap;
 #ifndef NOWORM
 	struct wseg *wtmp;
-#endif NOWORM
+#endif /* NOWORM */
 	int tmp;
 	long omoves;
 	int hpid;
@@ -240,7 +240,7 @@ xchar lev;
 #ifndef QUEST
 	mread(fd, (char *)rooms, sizeof(rooms));
 	mread(fd, (char *)doors, sizeof(doors));
-#endif QUEST
+#endif /* QUEST */
 #ifndef NOWORM
 	mread(fd, (char *)wsegs, sizeof(wsegs));
 	for(tmp = 1; tmp < 32; tmp++) if(wsegs[tmp]){
@@ -253,7 +253,7 @@ xchar lev;
 		}
 	}
 	mread(fd, (char *)wgrowtime, sizeof(wgrowtime));
-#endif NOWORM
+#endif /* NOWORM */
 }
 
 mread(fd, buf, len)

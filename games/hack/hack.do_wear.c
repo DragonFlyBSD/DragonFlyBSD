@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.do_wear.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.do_wear.c,v 1.3 1999/11/16 02:57:03 billf Exp $ */
-/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.do_wear.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 #include <stdio.h>
@@ -67,7 +67,7 @@ doremring() {
 	/* NOTREACHED */
 #ifdef lint
 	return(0);
-#endif lint
+#endif /* lint */
 }
 
 dorr(otmp) struct obj *otmp; {

@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.shk.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.shk.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.shk.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.shk.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 #ifdef QUEST
@@ -25,7 +25,7 @@ shk_move(){ return(0); }
 replshk(mtmp,mtmp2) struct monst *mtmp, *mtmp2; {}
 char *shkname(){ return(""); }
 
-#else QUEST
+#else /* QUEST */
 #include	"hack.mfndpos.h"
 #include	"def.mkroom.h"
 #include	"def.eshk.h"
@@ -716,7 +716,7 @@ int tmp, ac;
 #ifdef MAIL
 		if(obj->otyp == SCR_MAIL)
 			tmp = rnd(5);
-#endif MAIL
+#endif /* MAIL */
 		break;
 	case POTION_SYM:
 		tmp = 10*rnd(50);
@@ -905,7 +905,7 @@ struct monst *shkp;
 #ifdef STUPID
 		    /* cater for stupid compilers */
 		    int zz;
-#endif STUPID
+#endif /* STUPID */
 		    if(uondoor && (ib = sobj_at(ICE_BOX, nx, ny))) {
 			nix = nx; niy = ny; chi = i; break;
 		    }
@@ -916,7 +916,7 @@ struct monst *shkp;
 			(appr && (zz = GDIST(nix,niy)) && zz > GDIST(nx,ny))
 #else
 			(appr && GDIST(nx,ny) < GDIST(nix,niy))
-#endif STUPID
+#endif /* STUPID */
 			) {
 			    nix = nx;
 			    niy = ny;
@@ -970,7 +970,7 @@ int fall;
 	}
     }
 }
-#endif QUEST
+#endif /* QUEST */
 
 online(x,y) {
 	return(x==u.ux || y==u.uy ||
@@ -984,6 +984,6 @@ struct monst *mtmp;
 	return( mtmp->mtame || index("1TVWZi&, ", mtmp->data->mlet)
 #ifndef QUEST
 		|| (mtmp->isshk && ESHK(mtmp)->following)
-#endif QUEST
+#endif /* QUEST */
 		);
 }

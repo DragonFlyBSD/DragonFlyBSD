@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.save.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.save.c,v 1.4 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.save.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.save.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 extern char genocided[60];	/* defined in Decl.c */
@@ -21,7 +21,7 @@ dosave(){
 	}
 #ifdef lint
 	return(0);
-#endif lint
+#endif /* lint */
 }
 
 #ifndef NOSAVEONHANGUP
@@ -29,7 +29,7 @@ hangup(){
 	(void) dosave0(1);
 	exit(1);
 }
-#endif NOSAVEONHANGUP
+#endif /* NOSAVEONHANGUP */
 
 /* returns 1 if save successful */
 dosave0(hu) int hu; {
@@ -165,7 +165,7 @@ int fd;
 	}
 #ifndef QUEST
 	setsee();  /* only to recompute seelx etc. - these weren't saved */
-#endif QUEST
+#endif /* QUEST */
 	docrt();
 	restoring = FALSE;
 	return(1);
@@ -181,7 +181,7 @@ int fd;
 #ifdef lint
 	/* suppress "used before set" warning from lint */
 	otmp2 = 0;
-#endif lint
+#endif /* lint */
 	while(1) {
 		mread(fd, (char *) &xl, sizeof(xl));
 		if(xl == -1) break;
@@ -216,7 +216,7 @@ int fd;
 #ifdef lint
 	/* suppress "used before set" warning from lint */
 	mtmp2 = 0;
-#endif lint
+#endif /* lint */
 	while(1) {
 		mread(fd, (char *) &xl, sizeof(xl));
 		if(xl == -1) break;

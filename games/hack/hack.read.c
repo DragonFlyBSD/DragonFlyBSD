@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.read.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.read.c,v 1.6 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.read.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.read.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 
@@ -33,7 +33,7 @@ doread() {
 	case SCR_MAIL:
 		readmail(/* scroll */);
 		break;
-#endif MAIL
+#endif /* MAIL */
 	case SCR_ENCHANT_ARMOR:
 	    {	struct obj *otmp = some_armor();
 		if(!otmp) {
@@ -224,11 +224,11 @@ doread() {
 			int oux = u.ux, ouy = u.uy;
 			tele();
 			if(dist(oux, ouy) > 100) known = TRUE;
-#else QUEST
+#else /* QUEST */
 			int uroom = inroom(u.ux, u.uy);
 			tele();
 			if(uroom != inroom(u.ux, u.uy)) known = TRUE;
-#endif QUEST
+#endif /* QUEST */
 		}
 		break;
 	case SCR_GOLD_DETECTION:
@@ -350,7 +350,7 @@ doread() {
 				} else if(lev->seen) continue;
 #ifndef QUEST
 				if(num != ROOM)
-#endif QUEST
+#endif /* QUEST */
 				{
 				  lev->seen = lev->new = 1;
 				  if(lev->scrsym == ' ' || !lev->scrsym)
@@ -472,7 +472,7 @@ boolean on;
 #ifdef QUEST
 		pline("The cave lights up around you, then fades.");
 		return;
-#else QUEST
+#else /* QUEST */
 		if(levl[u.ux][u.uy].typ == CORR) {
 		    pline("The corridor lights up around you, then fades.");
 		    return;
@@ -481,13 +481,13 @@ boolean on;
 		    return;
 		} else
 		    pline("The room is lit.");
-#endif QUEST
+#endif /* QUEST */
 	}
 
 do_it:
 #ifdef QUEST
 	return;
-#else QUEST
+#else /* QUEST */
 	if(levl[u.ux][u.uy].lit == on)
 		return;
 	if(levl[u.ux][u.uy].typ == DOOR) {
@@ -517,7 +517,7 @@ do_it:
 			}
 		}
 	if(!on) seehx = 0;
-#endif	QUEST
+#endif /* QUEST */
 }
 
 /* Test whether we may genocide all monsters with symbol  ch  */

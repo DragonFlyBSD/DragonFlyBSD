@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.cmd.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.cmd.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.cmd.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.cmd.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include	"hack.h"
 #include	"def.func_tab.h"
@@ -14,10 +14,10 @@ doprring(),doprgold(),dodiscovered(),dotypeinv(),dolook(),doset(),
 doup(), dodown(), done1(), donull(), dothrow(), doextcmd(), dodip(), dopray();
 #ifdef SHELL
 int dosh();
-#endif SHELL
+#endif /* SHELL */
 #ifdef SUSPEND
 int dosuspend();
-#endif SUSPEND
+#endif /* SUSPEND */
 
 struct func_tab cmdlist[]={
 	'\020', doredotopl,
@@ -25,7 +25,7 @@ struct func_tab cmdlist[]={
 	'\024', dotele,
 #ifdef SUSPEND
 	'\032', dosuspend,
-#endif SUSPEND
+#endif /* SUSPEND */
 	'a', doapply,
 /*	'A' : UNUSED */
 /*	'b', 'B' : go sw */
@@ -68,7 +68,7 @@ struct func_tab cmdlist[]={
 	'?', dohelp,
 #ifdef SHELL
 	'!', dosh,
-#endif SHELL
+#endif /* SHELL */
 	'.', donull,
 	' ', donull,
 	',', dopickup,
@@ -129,7 +129,7 @@ char *cmd;
 			u.ux0 = u.ux + u.dx;
 			u.uy0 = u.uy + u.dy;
 		}
-#endif QUEST
+#endif /* QUEST */
 		domove();
 		return;
 	}
@@ -158,7 +158,7 @@ char *cmd;
 		if(cmd[2] == '-') flags.run += 1;
 		goto rush;
 	}
-#endif QUEST
+#endif /* QUEST */
 	while(tlist->f_char) {
 		if(*cmd == tlist->f_char){
 			res = (*(tlist->f_funct))();
@@ -296,7 +296,7 @@ isroom(x,y)  x,y; {		/* what about POOL? */
 	return(isok(x,y) && (levl[x][y].typ == ROOM ||
 				(levl[x][y].typ >= LDOOR && flags.run >= 6)));
 }
-#endif QUEST
+#endif /* QUEST */
 
 isok(x,y) int x,y; {
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */

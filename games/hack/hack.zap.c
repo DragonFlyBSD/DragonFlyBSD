@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.zap.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.zap.c,v 1.4 1999/11/16 10:26:38 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.zap.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.zap.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 
@@ -64,7 +64,7 @@ struct obj *otmp;
 	case WAN_PROBING:
 		mstatusline(mtmp);
 		break;
-#endif WAN_PROBING
+#endif /* WAN_PROBING */
 	default:
 		impossible("What an interesting wand (%u)", otmp->otyp);
 	}
@@ -111,7 +111,7 @@ struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 	case WAN_SPEED_MONSTER:
 #ifdef WAN_PROBING
 	case WAN_PROBING:
-#endif WAN_PROBING
+#endif /* WAN_PROBING */
 		res = FALSE;
 		break;
 	default:

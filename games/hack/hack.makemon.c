@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.makemon.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.makemon.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.makemon.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.makemon.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include	"hack.h"
 extern char fut_geno[];
@@ -90,7 +90,7 @@ gotmon:
 #ifndef NOWORM
 	if(ptr->mlet == 'w' && getwn(mtmp))
 		initworm(mtmp);
-#endif NOWORM
+#endif /* NOWORM */
 
 	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
 		coord enexto();
@@ -166,7 +166,7 @@ struct monst *mtmp;
 
 #ifndef NOWORM
 	if(ch == 'w' && mtmp->mx) return;	/* do not relocate worms */
-#endif NOWORM
+#endif /* NOWORM */
 	do {
 		tx = rn1(COLNO-3,2);
 		ty = rn2(ROWNO);

@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mkobj.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mkobj.c,v 1.5 1999/11/16 10:26:37 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mkobj.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.mkobj.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 
@@ -76,7 +76,7 @@ int otyp;
 		/* if tins are to be identified, need to adapt doname() etc */
 		if(otmp->otyp == TIN)
 			otmp->spe = rnd(...);
-#endif NOT_YET_IMPLEMENTED
+#endif /* NOT_YET_IMPLEMENTED */
 		/* fall into next case */
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;

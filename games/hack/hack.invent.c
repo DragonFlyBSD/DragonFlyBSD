@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.invent.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.invent.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.invent.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.invent.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include	"hack.h"
 #include	<stdio.h>
@@ -14,7 +14,7 @@ static char *xprname();
 #ifndef NOWORM
 #include	"def.wseg.h"
 extern struct wseg *wsegs[32];
-#endif NOWORM
+#endif /* NOWORM */
 
 #define	NOINVSYM	'#'
 
@@ -176,7 +176,7 @@ int x,y;
 	struct monst *mtmp;
 #ifndef NOWORM
 	struct wseg *wtmp;
-#endif NOWORM
+#endif /* NOWORM */
 
 	m_atseg = 0;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
@@ -190,7 +190,7 @@ int x,y;
 			return(mtmp);
 		    }
 		}
-#endif NOWORM
+#endif /* NOWORM */
 	}
 	return(0);
 }

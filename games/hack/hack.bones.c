@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.bones.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.bones.c,v 1.4 1999/11/16 10:26:35 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.bones.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.bones.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include "hack.h"
 extern char plname[PL_NSIZ];
@@ -88,7 +88,7 @@ int fd,x,y,ok;
 	(void) close(fd);
 #ifdef WIZARD
 	if(!wizard)	/* duvel!frans: don't remove bones while debugging */
-#endif WiZARD
+#endif /* WiZARD */
 	    if(unlink(bones) < 0){
 		pline("Cannot unlink %s .", bones);
 		return(0);

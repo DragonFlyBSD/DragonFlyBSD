@@ -1,9 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.ioctl.c - version 1.0.2 */
 /* $FreeBSD: src/games/hack/hack.ioctl.c,v 1.2 1999/09/12 07:01:23 marcel Exp $
-/* $DragonFly: src/games/hack/hack.ioctl.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+   $DragonFly: src/games/hack/hack.ioctl.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $
 
-/* This cannot be part of hack.tty.c (as it was earlier) since on some
+   This cannot be part of hack.tty.c (as it was earlier) since on some
    systems (e.g. MUNIX) the include files <termio.h> and <sgtty.h>
    define the same constants, and the C preprocessor complains. */
 #include <stdio.h>
@@ -14,7 +14,7 @@ struct ltchars ltchars, ltchars0;
 #else
 #include	<termio.h>	/* also includes part of <sgtty.h> */
 struct termio termio;
-#endif BSD
+#endif /* BSD */
 
 getioctls() {
 #ifdef BSD
@@ -22,7 +22,7 @@ getioctls() {
 	(void) ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars0);
 #else
 	(void) ioctl(fileno(stdin), (int) TCGETA, &termio);
-#endif BSD
+#endif /* BSD */
 }
 
 setioctls() {
@@ -30,7 +30,7 @@ setioctls() {
 	(void) ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars);
 #else
 	(void) ioctl(fileno(stdin), (int) TCSETA, &termio);
-#endif BSD
+#endif /* BSD */
 }
 
 #ifdef SUSPEND		/* implies BSD */
@@ -47,9 +47,9 @@ dosuspend() {
 	} else {
 		pline("I don't think your shell has job control.");
 	}
-#else SIGTSTP
+#else /* SIGTSTP */
 	pline("Sorry, it seems we have no SIGTSTP here. Try ! or S.");
-#endif SIGTSTP
+#endif /* SIGTSTP */
 	return(0);
 }
-#endif SUSPEND
+#endif /* SUSPEND */

@@ -32,7 +32,7 @@
  *
  * @(#)hack.tty.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hack/hack.tty.c,v 1.6.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/hack/hack.tty.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hack/hack.tty.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $
  */
 
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
@@ -51,7 +51,7 @@
 #define	V7
 #else
 #define USG
-#endif BSD
+#endif /* BSD */
 
 /*
  * Some systems may have getchar() return EOF for various reasons, and
@@ -59,7 +59,7 @@
  */
 #ifndef BSD
 #define	NR_OF_EOFS	20
-#endif BSD
+#endif /* BSD */
 
 
 #ifdef USG
@@ -94,7 +94,7 @@
 #define GTTY(x)		(gtty(0, x))
 #define STTY(x)		(stty(0, x))
 
-#endif USG
+#endif /* USG */
 
 #if 0
 extern short ospeed;
@@ -165,7 +165,7 @@ int change = 0;
 		/* be satisfied with one character; no timeout */
 		curttyb.c_cc[VMIN] = 1;		/* was VEOF */
 		curttyb.c_cc[VTIME] = 0;	/* was VEOL */
-#endif USG
+#endif /* USG */
 		change++;
 	}
 	if(change){
@@ -295,7 +295,7 @@ parse()
 		inputline[1] = getchar();
 #ifdef QUEST
 		if(inputline[1] == foo) inputline[2] = getchar(); else
-#endif QUEST
+#endif /* QUEST */
 		inputline[2] = 0;
 	}
 	if(foo == 'm' || foo == 'M'){
@@ -328,7 +328,7 @@ readchar() {
 	}
 #else
 		end_of_input();
-#endif NR_OF_EOFS
+#endif /* NR_OF_EOFS */
 	if(flags.toplin == 1)
 		flags.toplin = 2;
 	return((char) sym);

@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.eat.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.eat.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.eat.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.eat.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
@@ -227,7 +227,7 @@ gotit:
 				setsee();
 				pline("Your vision improves.");
 			} else
-#endif QUEST
+#endif /* QUEST */
 			if(otmp->otyp == FORTUNE_COOKIE) {
 			  if(Blind) {
 			    pline("This cookie has a scrap of paper inside!");
@@ -416,7 +416,7 @@ int tp = 0;
 	case 'y':
 #ifdef QUEST
 		u.uhorizon++;
-#endif QUEST
+#endif /* QUEST */
 		/* fall into next case */
 	case 'B':
 		Confusion = 50;

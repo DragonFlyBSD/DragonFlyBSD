@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mklev.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mklev.c,v 1.6 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mklev.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.mklev.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -128,7 +128,7 @@ makelevel()
 #ifndef QUEST
 #ifdef WIZARD
 	if(wizard && getenv("SHOPTYPE")) mkshop(); else
-#endif WIZARD
+#endif /* WIZARD */
  	if(dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3) mkshop();
 	else
 	if(dlevel > 6 && !rn2(7)) mkzoo(ZOO);
@@ -138,7 +138,7 @@ makelevel()
 	if(dlevel > 11 && !rn2(6)) mkzoo(MORGUE);
 	else
 	if(dlevel > 18 && !rn2(6)) mkswamp();
-#endif QUEST
+#endif /* QUEST */
 }
 
 makerooms() {
@@ -266,7 +266,7 @@ boolean discarded;		/* piece of a discarded area */
 	if(rsmax >= MAXRS) {
 #ifdef WIZARD
 		if(wizard) pline("MAXRS may be too small.");
-#endif WIZARD
+#endif /* WIZARD */
 		return;
 	}
 	rsmax++;
@@ -388,7 +388,7 @@ chk:
 #ifdef WIZARD
 			    if(wizard && !secret)
 				pline("Strange area [%d,%d] in maker().",x,y);
-#endif WIZARD
+#endif /* WIZARD */
 				if(!rn2(3)) return(0);
 				if(x < lowx)
 					lowx = x+xlim+1;

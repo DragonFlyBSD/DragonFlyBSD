@@ -1,7 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.mhitu.c - version 1.0.3 */
 /* $FreeBSD: src/games/hack/hack.mhitu.c,v 1.4 1999/11/16 10:26:36 marcel Exp $ */
-/* $DragonFly: src/games/hack/hack.mhitu.c,v 1.2 2003/06/17 04:25:24 dillon Exp $ */
+/* $DragonFly: src/games/hack/hack.mhitu.c,v 1.3 2004/11/06 12:29:17 eirikn Exp $ */
 
 #include	"hack.h"
 extern struct monst *makemon();
@@ -287,7 +287,7 @@ struct monst *mtmp;
 #ifndef NOWORM
 	case 'w':
 		if(tmp) wormhit(mtmp);
-#endif NOWORM
+#endif /* NOWORM */
 		break;
 	case 'X':
 		(void) hitu(mtmp,rnd(5));
