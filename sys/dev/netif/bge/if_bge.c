@@ -31,9 +31,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.7 2003/11/04 17:29:33 drhodus Exp $
+ * $DragonFly: src/sys/dev/netif/bge/if_bge.c,v 1.8 2003/11/05 05:30:29 drhodus Exp $
  *
- * $FreeBSD: src/sys/dev/bge/if_bge.c,v 1.3.2.22 2003/05/11 18:00:55 ps Exp $
  */
 
 /*
@@ -1167,7 +1166,7 @@ bge_chipinit(sc)
 	    BGE_MODECTL_BYTESWAP_DATA|BGE_MODECTL_WORDSWAP_DATA|
 	    BGE_MODECTL_MAC_ATTN_INTR|BGE_MODECTL_HOST_SEND_BDS|
 	    BGE_MODECTL_NO_RX_CRC|BGE_MODECTL_TX_NO_PHDR_CSUM|
-	    BGE_MODECTL_RX_NO_PHDR_CSUM|BGE_MODECTL_RX_NO_PHDR_CSUM);
+	    BGE_MODECTL_RX_NO_PHDR_CSUM);
 
 	/*
 	 * Disable memory write invalidate.  Apparently it is not supported
@@ -2066,7 +2065,7 @@ bge_rxeof(sc)
 		}
 #endif
 		eh = mtod(m, struct ether_header *);
-		m->m_pkthdr.len = m->m_len = cur_rx->bge_len - ETHER_CRC_LEN;
+		m->m_pkthdr.len = m->m_len = cur_rx->bge_len;
 		m->m_pkthdr.rcvif = ifp;
 
 		/* Remove header from mbuf and pass it on. */
