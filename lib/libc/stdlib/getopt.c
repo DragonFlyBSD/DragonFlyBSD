@@ -1,3 +1,5 @@
+/*	$NetBSD: getopt.c,v 1.26 2003/08/07 16:43:40 agc Exp $	*/
+
 /*
  * Copyright (c) 1987, 1993, 1994
  *	The Regents of the University of California.  All rights reserved.
@@ -32,7 +34,7 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.3 2004/07/15 04:10:33 hmp Exp $
  */
 
 #include <stdio.h>
@@ -56,62 +58,75 @@ char	*optarg;		/* argument associated with option */
 int
 getopt(nargc, nargv, ostr)
 	int nargc;
-	char * const *nargv;
+	char * const nargv[];
 	const char *ostr;
 {
-	extern char *__progname;
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
 
-	if (optreset || !*place) {		/* update scanning pointer */
+	if (optreset || *place == 0) {		/* update scanning pointer */
 		optreset = 0;
-		if (optind >= nargc || *(place = nargv[optind]) != '-') {
+		place = nargv[optind];
+		if (optind >= nargc || *place++ != '-') {
+			/* Argument is absent or is not an option */
 			place = EMSG;
 			return (-1);
 		}
-		if (place[1] && *++place == '-') {	/* found "--" */
+		optopt = *place++;
+		if (optopt == '-' && *place == 0) {
+			/* "--" => end of options */
 			++optind;
 			place = EMSG;
 			return (-1);
 		}
-	}					/* option letter okay? */
-	if ((optopt = (int)*place++) == (int)':' ||
-	    !(oli = strchr(ostr, optopt))) {
-		/*
-		 * if the user didn't specify '-' as an option,
-		 * assume it means -1.
-		 */
-		if (optopt == (int)'-')
-			return (-1);
-		if (!*place)
+		if (optopt == 0) {
+			/* Solitary '-', treat as a '-' option
+			   if the program (eg su) is looking for it. */
+			place = EMSG;
+			if (strchr(ostr, '-') == NULL)
+				return (-1);
+			optopt = '-';
+		}
+	} else
+		optopt = *place++;
+
+	/* See if option letter is one the caller wanted... */
+	if (optopt == ':' || (oli = strchr(ostr, optopt)) == NULL) {
+		if (*place == 0)
 			++optind;
-		if (opterr && *ostr != ':' && optopt != BADCH)
+		if (opterr && *ostr != ':')
 			(void)fprintf(stderr,
-			    "%s: illegal option -- %c\n", __progname, optopt);
+			    "%s: illegal option -- %c\n", getprogname(),
+			    optopt);
 		return (BADCH);
 	}
-	if (*++oli != ':') {			/* don't need argument */
+
+	/* Does this option need an argument? */
+	if (oli[1] != ':') {
+		/* don't need argument */
 		optarg = NULL;
-		if (!*place)
+		if (*place == 0)
 			++optind;
-	}
-	else {					/* need an argument */
-		if (*place)			/* no white space */
+	} else {
+		/* Option-argument is either the rest of this argument or the
+		   entire next argument. */
+		if (*place)
 			optarg = place;
-		else if (nargc <= ++optind) {	/* no arg */
+		else if (nargc > ++optind)
+			optarg = nargv[optind];
+		else {
+			/* option-argument absent */
 			place = EMSG;
 			if (*ostr == ':')
 				return (BADARG);
 			if (opterr)
 				(void)fprintf(stderr,
 				    "%s: option requires an argument -- %c\n",
-				    __progname, optopt);
+				    getprogname(), optopt);
 			return (BADCH);
 		}
-	 	else				/* white space */
-			optarg = nargv[optind];
 		place = EMSG;
 		++optind;
 	}
-	return (optopt);			/* dump back option letter */
+	return (optopt);			/* return option letter */
 }
