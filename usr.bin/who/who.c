@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/who/who.c,v 1.9.2.4 2002/12/21 00:44:58 tjr Exp $
- * $DragonFly: src/usr.bin/who/who.c,v 1.5 2004/10/29 17:09:09 liamfoy Exp $
+ * $DragonFly: src/usr.bin/who/who.c,v 1.6 2005/02/15 14:15:16 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -104,7 +104,7 @@ main(int argc, char **argv)
 	argv += optind;
 
 	if (argc >= 2 && strcmp(argv[0], "am") == 0 &&
-	    (strcmp(argv[1], "i") == 0 || strcmp(argv[1], "I") == 0)) {
+	    strcasecmp(argv[1], "i") == 0) {
 		/* "who am i" or "who am I", equivalent to -m */
 		mflag = 1;
 		argc -= 2;
@@ -143,13 +143,13 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-
 	fprintf(stderr, "usage: who [-bHmqsTu] [am I] [file]\n");
 	exit(1);
 }
 
 static void
-print_boottime(void) {
+print_boottime(void)
+{
 	struct timeval boottime;
 	size_t size;
 
@@ -163,7 +163,6 @@ print_boottime(void) {
 static void
 heading(void)
 {
-
 	printf("%-*s ", UT_NAMESIZE, "NAME");
 	if (Tflag)
 		printf("S ");
