@@ -28,7 +28,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_sem.c,v 1.16 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 
 #include <sys/queue.h>
@@ -188,7 +188,7 @@ _sem_wait(sem_t *sem)
 				return (0);
 		}
 		oldcancel = _thr_cancel_enter(curthread);
-		retval = _thr_umtx_wait(&(*sem)->count, 0, NULL);
+		retval = _thr_umtx_wait(&(*sem)->count, 0, NULL, 0);
 		_thr_cancel_leave(curthread, oldcancel);
 	} while (retval == 0);
 	errno = retval;
@@ -224,7 +224,8 @@ _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 		clock_gettime(CLOCK_REALTIME, &ts);
 		TIMESPEC_SUB(&ts2, abstime, &ts);
 		oldcancel = _thr_cancel_enter(curthread);
-		retval = _thr_umtx_wait(&(*sem)->count, 0, &ts2);
+		retval = _thr_umtx_wait(&(*sem)->count, 0, &ts2,
+					CLOCK_REALTIME);
 		_thr_cancel_leave(curthread, oldcancel);
 	} while (retval == 0);
 	errno = retval;

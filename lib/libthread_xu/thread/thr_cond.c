@@ -23,7 +23,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.2 2005/02/26 02:04:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.3 2005/03/15 11:24:23 davidxu Exp $
  */
 
 #include <stdlib.h>
@@ -225,11 +225,13 @@ cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 		if (cancel) {
 			THR_CLEANUP_PUSH(curthread, cond_cancel_handler, &cci);
 			oldcancel = _thr_cancel_enter(curthread);
-			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp);
+			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp,
+				cv->c_clockid);
 			_thr_cancel_leave(curthread, oldcancel);
 			THR_CLEANUP_POP(curthread, 0);
 		} else {
-			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp);
+			ret = _thr_umtx_wait(&cv->c_seqno, seq, tsp,
+				cv->c_clockid);
 		}
 
 		THR_LOCK_ACQUIRE(curthread, &cv->c_lock);

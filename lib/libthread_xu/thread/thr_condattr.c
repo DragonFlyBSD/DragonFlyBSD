@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_condattr.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 #include <stdlib.h>
 #include <string.h>
@@ -93,7 +93,8 @@ _pthread_condattr_setclock(const pthread_condattr_t *attr,
 {
 	if (attr == NULL || *attr == NULL)
 		return (EINVAL);
-	if (clock_id != CLOCK_REALTIME)
+	if (clock_id != CLOCK_REALTIME ||
+	    clock_id != CLOCK_MONOTONIC)
 		return (EINVAL);
 	(*attr)->c_clockid = clock_id;
 	return (0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrier.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 
 #include <errno.h>
@@ -99,7 +99,7 @@ _pthread_barrier_wait(pthread_barrier_t *barrier)
 		cycle = bar->b_cycle;
 		THR_UMTX_UNLOCK(curthread, &bar->b_lock);
 		do {
-			_thr_umtx_wait(&bar->b_cycle, cycle, NULL);
+			_thr_umtx_wait(&bar->b_cycle, cycle, NULL, 0);
 			/* test cycle to avoid bogus wakeup */
 		} while (cycle == bar->b_cycle);
 		ret = 0;

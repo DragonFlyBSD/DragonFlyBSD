@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -177,7 +177,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 		 * send signal to it immediately after we return.
 		 */
 		while (start_arg.started == 0)
-			_thr_umtx_wait(&start_arg.started, 0, 0);
+			_thr_umtx_wait(&start_arg.started, 0, NULL, 0);
 		ret = 0;
 	} else {
 		ret = EAGAIN;

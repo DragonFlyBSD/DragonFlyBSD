@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_join.c,v 1.28 2003/12/09 02:20:56 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 #include <errno.h>
 #include <pthread.h>
@@ -85,7 +85,7 @@ _pthread_join(pthread_t pthread, void **thread_return)
 	oldcancel = _thr_cancel_enter(curthread);
 
 	while ((state = pthread->state) != PS_DEAD) {
-		_thr_umtx_wait(&pthread->state, state, NULL);
+		_thr_umtx_wait(&pthread->state, state, NULL, 0);
 	}
 
 	_thr_cancel_leave(curthread, oldcancel);

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_umtx.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 
 /*
@@ -184,7 +184,8 @@ __thr_umtx_timedlock(volatile umtx_t *mtx, const struct timespec *timeout)
 }
 
 int
-_thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout)
+_thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout,
+	int clockid)
 {
     struct timespec ts, ts2, ts3;
     int timo, ret = 0;
@@ -204,8 +205,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout)
         (timeout->tv_sec == 0 && timeout->tv_nsec <= 0))
 	return (ETIMEDOUT);
 
-    /* XXX there should have MONO timer! */
-    clock_gettime(CLOCK_REALTIME, &ts);
+    clock_gettime(clockid, &ts);
     TIMESPEC_ADD(&ts, &ts, timeout);
     ts2 = *timeout;
 
@@ -226,7 +226,7 @@ _thr_umtx_wait(volatile umtx_t *mtx, int exp, const struct timespec *timeout)
 		break;
 	    }
 	}
-	clock_gettime(CLOCK_REALTIME, &ts3);
+	clock_gettime(clockid, &ts3);
 	TIMESPEC_SUB(&ts2, &ts, &ts3);
 	if (ts2.tv_sec < 0 || (ts2.tv_sec == 0 && ts2.tv_nsec <= 0)) {
 	    ret = ETIMEDOUT;

@@ -29,7 +29,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.2 2005/02/20 01:58:00 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.3 2005/03/15 11:24:23 davidxu Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,7 @@ _thr_suspend_check(struct pthread *curthread)
 			cycle = curthread->cycle;
 			THR_UNLOCK(curthread);
 			_thr_signal_unblock(curthread);
-			_thr_umtx_wait(&curthread->cycle, cycle, NULL);
+			_thr_umtx_wait(&curthread->cycle, cycle, NULL, 0);
 			_thr_signal_block(curthread);
 			THR_LOCK(curthread);
 		}

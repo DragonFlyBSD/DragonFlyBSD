@@ -59,7 +59,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_fork.c,v 1.34 2003/11/05 18:18:45 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
  */
 #include <errno.h>
 #include <string.h>
@@ -129,7 +129,7 @@ _fork(void)
 	while (tmp) {
 		waiters++;
 		THR_UMTX_UNLOCK(curthread, &_thr_atfork_lock);
-		_thr_umtx_wait(&inprogress, tmp, NULL);
+		_thr_umtx_wait(&inprogress, tmp, NULL, 0);
 		THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
 		waiters--;
 		tmp = inprogress;
