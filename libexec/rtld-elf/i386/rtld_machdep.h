@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.4 2003/10/05 23:06:45 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.5 2004/01/20 21:32:47 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -61,31 +61,6 @@ atomic_add_int(volatile int *p, int val)
 	: "+m"(*p)
 	: "ri"(val)
 	: "cc");
-}
-
-/*
- * Optimized version of the calculation y = ky + m (mod p)
- * See elf_uniqid() for details
- */
-static inline u_int32_t
-uniqid_hash_block(u_int32_t hash, u_int32_t key, u_int32_t block)
-{
-    int ret;
-
-    __asm __const (	"mull	%2\n\t"
-			"lea	(%%edx,%%edx,4),%%edx\n\t"
-			"addl	%%edx,%%eax\n\t"
-			"lea	0x5(%%eax),%%edx\n\t"
-			"jnc	1f\n\t"
-			"movl	%%edx,%%eax\n\t"
-			"1:; addl	%3,%%eax\n\t"
-			"lea	0x5(%%eax),%%edx\n\t"
-			"jnc	1f\n\t"
-			"movl	%%edx,%%eax\n\t"
-			"1:;\n\t"
-	: "=a"(ret) : "a"(hash), "rm"(key), "g"(block) : "cc", "dx");
-
-    return ret;
 }
 
 #endif

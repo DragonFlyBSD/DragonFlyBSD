@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.2 2004/01/20 21:14:00 dillon Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.3 2004/01/20 21:32:43 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -183,7 +183,7 @@ main(int argc, char *argv[])
 
 		if (is_shlib) {
 			rval |= 1;
-			warnx("%s: prebinding not supported on shared libraries.", *argv);
+			warnx("%s: resident not supported on shared libraries.", *argv);
 			continue;
 		}
 

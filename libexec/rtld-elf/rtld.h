@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.3 2003/09/18 21:22:56 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.4 2004/01/20 21:32:46 dillon Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -161,8 +161,6 @@ typedef struct Struct_Obj_Entry {
     Objlist dldags;		/* Object belongs to these dlopened DAGs (%) */
     Objlist dagmembers;		/* DAG has these members (%) */
     dev_t dev;			/* Object's filesystem's device */
-
-    u_int32_t uniqid;		/* Unique ID (hash) of the object */
     ino_t ino;			/* Object's inode number */
 } Obj_Entry;
 
@@ -185,9 +183,6 @@ extern void *xmalloc(size_t);
 extern void *xrealloc(void *, size_t);
 extern char *xstrdup(const char *);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
-
-extern int prebind_load (Obj_Entry *, Obj_Entry *);
-extern int prebind_save (Obj_Entry *, Obj_Entry *);
 
 /*
  * Function declarations.
