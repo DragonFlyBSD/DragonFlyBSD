@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.55 2004/03/06 01:58:54 hsu Exp $
+# $DragonFly: src/sys/conf/files,v 1.56 2004/03/12 22:38:14 joerg Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -591,6 +591,9 @@ vfs/isofs/cd9660/cd9660_rrip.c	optional cd9660
 vfs/isofs/cd9660/cd9660_util.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vfsops.c	optional cd9660
 vfs/isofs/cd9660/cd9660_vnops.c	optional cd9660
+vfs/udf/osta.c			optional udf
+vfs/udf/udf_vfsops.c		optional udf
+vfs/udf/udf_vnops.c		optional udf
 kern/imgact_aout.c	standard
 kern/imgact_elf.c	standard
 kern/imgact_resident.c	standard

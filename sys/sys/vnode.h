@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.12 2004/03/07 12:09:04 eirikn Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.13 2004/03/12 22:38:15 joerg Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -71,7 +71,7 @@ enum vtagtype	{
 	VT_NON, VT_UFS, VT_NFS, VT_MFS, VT_PC, VT_LFS, VT_LOFS, VT_FDESC,
 	VT_PORTAL, VT_NULL, VT_UMAP, VT_KERNFS, VT_PROCFS, VT_AFS, VT_ISOFS,
 	VT_UNION, VT_MSDOSFS, VT_TFS, VT_VFS, VT_CODA, VT_NTFS,
-	VT_HPFS, VT_NWFS, VT_SMBFS
+	VT_HPFS, VT_NWFS, VT_SMBFS, VT_UDF
 };
 
 /*
