@@ -1,0 +1,20 @@
+# The files usbdevs.h and usbdevs_data.h are generated from usbdevs
+#
+# $DragonFly: src/sys/bus/usb/Attic/Makefile.usbdevs,v 1.1 2003/08/22 23:51:55 dillon Exp $
+
+AWK=	awk
+UNAME=	uname
+RM=	rm
+
+# The targets are always remade.
+
+.PHONY=	regen
+
+all:
+	@echo "Only the 'regen' target may be used to regenerate the"
+	@echo "usbdevs.h and usbdevs_data.h header files"
+
+regen:	usbdevs devlist2h.awk
+	/bin/rm -f ${.CURDIR}/usbdevs.h ${.CURDIR}/usbdevs_data.h
+	cd ${.CURDIR} && ${AWK} -v type=USB -v os=`${UNAME} -s` -f devlist2h.awk usbdevs
+

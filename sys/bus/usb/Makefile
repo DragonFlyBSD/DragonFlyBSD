@@ -1,21 +1,33 @@
-# The files usbdevs.h and usbdevs_data.h are generated from usbdevs
+# Makefile - module build for usb.ko
 #
-# $FreeBSD: src/sys/dev/usb/Makefile.usbdevs,v 1.1.2.2 2000/05/07 14:36:41 n_hibma Exp $
-# $DragonFly: src/sys/bus/usb/Makefile,v 1.3 2003/08/15 01:19:54 dillon Exp $
+# $DragonFly: src/sys/bus/usb/Makefile,v 1.4 2003/08/22 23:51:55 dillon Exp $
 
-AWK=	awk
-UNAME=	uname
-RM=	rm
+S		 = ${.CURDIR}/../..
+.PATH:		 $S/bus/pci
 
-# The targets are always remade.
+KMOD		 = usb
+SRCS		 = bus_if.h device_if.h usb_if.h usb_if.c \
+		   vnode_if.h \
+		   opt_usb.h \
+		   hid.c hid.h usbhid.h \
+		   uhub.c \
+		   usb.c usb.h \
+		   usb_mem.h \
+		   usb_port.h \
+		   usb_quirks.c usb_quirks.h \
+		   usb_subr.c \
+		   usbdevs.h usbdevs_data.h \
+		   usbdi.c usbdi.h usbdivar.h \
+		   usbdi_util.c usbdi_util.h \
+		   usb_ethersubr.c
 
-.PHONY=	regen
+SRCS		+= uhci_pci.c uhci.c uhcireg.h uhcivar.h
+SRCS		+= ohci_pci.c ohci.c ohcireg.h ohcivar.h
+SRCS		+= opt_bus.h pci_if.h
 
-all:
-	@echo "Only the 'regen' target may be used to regenerate the"
-	@echo "usbdevs.h and usbdevs_data.h header files"
+NOMAN		 =
 
-regen:	usbdevs devlist2h.awk
-	/bin/rm -f usbdevs.h usbdevs_data.h
-	${AWK} -v type=USB -v os=`${UNAME} -s` -f devlist2h.awk usbdevs
+.include <bsd.kmod.mk>
 
+regen:
+	cd ${.CURDIR} && ${MAKE} -f Makefile.usbdevs regen
