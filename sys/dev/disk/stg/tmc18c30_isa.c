@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.5 2004/02/12 00:00:18 dillon Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -46,9 +46,6 @@
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/disklabel.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500001
-#include <sys/bio.h>
-#endif
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>

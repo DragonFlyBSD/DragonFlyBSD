@@ -25,15 +25,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_compat.h,v 1.1.2.3 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.5 2004/01/05 17:40:00 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_compat.h,v 1.6 2004/02/12 00:00:19 dillon Exp $
  */
 /*
  * Portability and compatibility interfaces.
  */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 /******************************************************************************
- * FreeBSD
+ * DragonFly
  */
 #define TWE_SUPPORTED_PLATFORM
 
@@ -181,7 +181,7 @@ typedef struct bio_queue_head		twe_bioq;
 # define TWE_BIO_STATS_END(bp)		devstat_end_transaction_bio(&((struct twed_softc *)TWE_BIO_SOFTC(bp))->twed_stats, bp)
 #endif
 
-#endif /* FreeBSD */
+#endif /* DragonFly */
 
 #ifndef TWE_SUPPORTED_PLATFORM
 #error platform not supported

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500.c,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.5 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500.c,v 1.6 2004/02/12 00:00:14 dillon Exp $	*/
 /*	$NecBSD: ncr53c500.c,v 1.30.12.3 2001/06/26 07:31:41 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -42,9 +42,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500001
-#include <sys/bio.h>
-#endif	/* __FreeBSD__ */
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
@@ -72,7 +69,7 @@
 #include <i386/Cbus/dev/ncr53c500hwtab.h>
 #endif /* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <machine/clock.h>
 #include <machine/cpu.h>
 #include <machine/bus_pio.h>
@@ -88,7 +85,7 @@
 #include "ncr53c500var.h"
 
 #include "ncr53c500hwtab.h"
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly__ */
 
 #define	NCV_MAX_DATA_SIZE	(64 * 1024)
 #define	NCV_DELAY_MAX		(2 * 1000 * 1000)

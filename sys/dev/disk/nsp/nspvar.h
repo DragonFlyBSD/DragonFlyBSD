@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nspvar.h,v 1.1.2.4 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nspvar.h,v 1.3 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nspvar.h,v 1.4 2004/02/12 00:00:16 dillon Exp $	*/
 /*	$NecBSD: nspvar.h,v 1.7.14.5 2001/06/29 06:27:54 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -53,7 +53,7 @@ struct nsp_softc {
 	void *sc_ih;
 #endif	/* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	bus_space_tag_t sc_iot;
 	bus_space_handle_t sc_ioh;
 	bus_space_tag_t sc_memt;
@@ -67,7 +67,7 @@ struct nsp_softc {
 	struct resource *mem_res;
 
 	void *nsp_intrhand;
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 	int sc_tmaxcnt;				/* timeout count */
 	int sc_seltout;				/* selection timeout counter */

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/i2outil.h,v 1.1.2.1 2000/09/21 20:33:50 msmith Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/i2outil.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/i2outil.h,v 1.4 2004/02/12 00:00:19 dillon Exp $ */
 /****************************************************************
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000 Adaptec Corporation.
@@ -91,7 +91,7 @@
 
 #define I2OUTIL_REV 1_5_4  /* I2OUtil header file revision string */
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
+#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__DragonFly__))
 # if (KERN_VERSION < 3)
 #  include "i2omsg.h"      /* Include the Base Message file */
 # else

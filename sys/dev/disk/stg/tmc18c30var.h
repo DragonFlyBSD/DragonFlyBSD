@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30var.h,v 1.1.2.4 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30var.h,v 1.3 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30var.h,v 1.4 2004/02/12 00:00:18 dillon Exp $	*/
 /*	$NecBSD: tmc18c30var.h,v 1.12.18.2 2001/06/13 05:51:23 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -53,7 +53,7 @@ struct stg_softc {
 	void *sc_ih;
 #endif	/* __NetBSD__ */
 
-#ifdef	__FreeBSD__
+#ifdef	__DragonFly__
 	bus_space_tag_t sc_iot;
 	bus_space_tag_t sc_memt;
 	bus_space_handle_t sc_ioh;
@@ -66,7 +66,7 @@ struct stg_softc {
 	struct resource *mem_res;
 
 	void *stg_intrhand;
-#endif	/* __FreeBSD__ */
+#endif	/* __DragonFly__ */
 
 	int sc_tmaxcnt;
 	u_int sc_chip;			/* chip type */

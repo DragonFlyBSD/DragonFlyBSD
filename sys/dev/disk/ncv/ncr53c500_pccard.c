@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.5 2004/02/12 00:00:14 dillon Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -41,9 +41,6 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/disklabel.h>
-#if defined(__FreeBSD__) && __FreeBSD_version >= 500001
-#include <sys/bio.h>
-#endif
 #include <sys/buf.h>
 #include <sys/queue.h>
 #include <sys/malloc.h>
@@ -69,9 +66,6 @@
 
 #include	<sys/kernel.h>
 #include	<sys/module.h>
-#if !defined(__FreeBSD__) || __FreeBSD_version < 500014
-#include	<sys/select.h>
-#endif
 #include	<bus/pccard/cardinfo.h>
 #include	<bus/pccard/slot.h>
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/i2omsg.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/i2omsg.h,v 1.3 2003/08/07 21:17:08 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/i2omsg.h,v 1.4 2004/02/12 00:00:19 dillon Exp $ */
 /****************************************************************
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000 Adaptec Corporation.
@@ -115,7 +115,7 @@
 
 
 
-#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
+#if ((defined(KERNEL) || defined(_KERNEL)) && defined(__DragonFly__))
 # if (KERN_VERSION < 3)
 #  include "i2otypes.h"
 # else

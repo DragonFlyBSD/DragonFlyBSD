@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp.c,v 1.1.2.6 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.5 2003/08/27 10:35:17 rob Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp.c,v 1.6 2004/02/12 00:00:16 dillon Exp $	*/
 /*	$NecBSD: nsp.c,v 1.21.12.6 2001/06/29 06:27:52 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -71,7 +71,7 @@
 #include <i386/Cbus/dev/nspvar.h>
 #endif /* __NetBSD__ */
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <machine/clock.h>
 #include <machine/cpu.h>
 #include <machine/bus_pio.h>
@@ -84,7 +84,7 @@
 #include <bus/cam/scsi/scsi_low.h>
 #include "nspreg.h"
 #include "nspvar.h"
-#endif /* __FreeBSD__ */
+#endif /* __DragonFly__ */
 
 /***************************************************
  * USER SETTINGS

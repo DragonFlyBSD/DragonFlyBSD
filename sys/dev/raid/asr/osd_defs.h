@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/osd_defs.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/osd_defs.h,v 1.2 2003/06/17 04:28:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/osd_defs.h,v 1.3 2004/02/12 00:00:19 dillon Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -57,7 +57,7 @@
 # define _DPT_LINUX
 #elif (defined(__bsdi__))
 # define _DPT_BSDI
-#elif (defined(__FreeBSD__))
+#elif (defined(__DragonFly__))
 # undef _DPT_FREE_BSD
 # define _DPT_FREE_BSD
 #else

@@ -1,6 +1,6 @@
 /*	$NetBSD: uaudio.c,v 1.41 2001/01/23 14:04:13 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/sound/usb/uaudio.c,v 1.6.2.2 2002/11/06 21:18:17 joe Exp $: */
-/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.4 2003/08/07 21:17:13 dillon Exp $: */
+/*	$DragonFly: src/sys/dev/sound/usb/uaudio.c,v 1.5 2004/02/12 00:00:19 dillon Exp $: */
 
 /*
  * Copyright (c) 1999 The NetBSD Foundation, Inc.
@@ -60,7 +60,7 @@
 #include <sys/proc.h>
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/device.h>
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 #include <sys/module.h>
 #include <sys/bus.h>
 #include <sys/conf.h>
@@ -73,7 +73,7 @@
 #include <dev/audio_if.h>
 #include <dev/mulaw.h>
 #include <dev/auconv.h>
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 #include <dev/sound/pcm/sound.h>	/* XXXXX */
 #include <dev/sound/chip.h>
 #endif
@@ -117,7 +117,7 @@ struct mixerctl {
 	int		minval, maxval;
 	u_int		delta;
 	u_int		mul;
-#if defined(__FreeBSD__) /* XXXXX */
+#if defined(__DragonFly__) /* XXXXX */
 	unsigned	ctl;
 #else
 	u_int8_t	class;
@@ -171,7 +171,7 @@ struct chan {
 	} chanbufs[UAUDIO_NCHANBUFS];
 
 	struct uaudio_softc *sc; /* our softc */
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	u_int32_t format;
 	int	precision;
 	int	channels;
@@ -358,7 +358,7 @@ Static struct audio_device uaudio_device = {
 	"uaudio"
 };
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 Static int	audio_attach_mi(device_t);
 Static void	uaudio_init_params(struct uaudio_softc * sc, struct chan *ch);
 
@@ -382,7 +382,7 @@ Static void	uaudio_init_params(struct uaudio_softc * sc, struct chan *ch);
 
 USB_DECLARE_DRIVER(uaudio);
 
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 
 USB_DECLARE_DRIVER_INIT(uaudio,
 		DEVMETHOD(device_suspend, bus_generic_suspend),
@@ -424,7 +424,7 @@ USB_ATTACH(uaudio)
 	usbd_devinfo(uaa->device, 0, devinfo);
 	USB_ATTACH_SETUP;
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	printf(": %s\n", devinfo);
 #endif
 
@@ -486,7 +486,7 @@ USB_ATTACH(uaudio)
 		printf("%s: %d mixer controls\n", USBDEVNAME(sc->sc_dev),
 		    sc->sc_nctls);
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	usbd_add_drv_event(USB_EVENT_DRIVER_ATTACH, sc->sc_udev,
 			   USBDEV(sc->sc_dev));
 #endif
@@ -496,7 +496,7 @@ USB_ATTACH(uaudio)
 	audio_attach_mi(&uaudio_hw_if, sc, &sc->sc_dev);
 #elif defined(__NetBSD__)
 	sc->sc_audiodev = audio_attach_mi(&uaudio_hw_if, sc, &sc->sc_dev);
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 	sc->sc_dying = 0;
 	if (audio_attach_mi(sc->sc_dev)) {
 		printf("audio_attach_mi failed\n");
@@ -547,7 +547,7 @@ uaudio_detach(device_ptr_t self, int flags)
 
 	return (rv);
 }
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__)
 
 USB_DETACH(uaudio)
 {
@@ -698,7 +698,7 @@ uaudio_mixer_add_ctl(struct uaudio_softc *sc, struct mixerctl *mc)
 		DPRINTF(("uaudio_mixer_add_ctl: wValue=%04x",mc->wValue[0]));
 		for (i = 1; i < mc->nchan; i++)
 			DPRINTF((",%04x", mc->wValue[i]));
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 		DPRINTF((" wIndex=%04x type=%d "
 			 "min=%d max=%d\n",
 			 mc->wIndex, mc->type, 
@@ -844,11 +844,11 @@ uaudio_add_mixer(struct uaudio_softc *sc, usb_descriptor_t *v,
 
 	bm = d1->bmControls;
 	mix.wIndex = MAKE(d->bUnitId, sc->sc_ac_iface);
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	mix.class = -1;
 #endif
 	mix.type = MIX_SIGNED_16;
-#if !defined(__FreeBSD__)	/* XXXXX */
+#if !defined(__DragonFly__)	/* XXXXX */
 	mix.ctlunit = AudioNvolume;
 #endif
 
@@ -875,7 +875,7 @@ uaudio_add_mixer(struct uaudio_softc *sc, usb_descriptor_t *v,
 						mix.wValue[k++] = 
 							MAKE(p+c+1, o+1);
 				}
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 			sprintf(mix.ctlname, "mix%d-%s", d->bUnitId,
 				uaudio_id_name(sc, dps, d->baSourceId[i]));
 #endif
@@ -912,7 +912,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 	uByte *ctls = d->bmaControls;
 	int ctlsize = d->bControlSize;
 	int nchan = (d->bLength - 7) / ctlsize;
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	int srcId = d->bSourceId;
 #endif
 	u_int fumask, mmask, cmask;
@@ -930,7 +930,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 		cmask |= GET(chan);
 	}
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	DPRINTFN(1,("uaudio_add_feature: bUnitId=%d bSourceId=%d, "
 		    "%d channels, mmask=0x%04x, cmask=0x%04x\n", 
 		    d->bUnitId, srcId, nchan, mmask, cmask));
@@ -960,13 +960,13 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 		}
 #undef GET
 
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 		mix.class = -1;	/* XXX */
 #endif
 		switch (ctl) {
 		case MUTE_CONTROL:
 			mix.type = MIX_ON_OFF;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -977,7 +977,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case VOLUME_CONTROL:
 			mix.type = MIX_SIGNED_16;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			/* mix.ctl = SOUND_MIXER_VOLUME; */
 			mix.ctl = SOUND_MIXER_PCM;
 #else
@@ -989,7 +989,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case BASS_CONTROL:
 			mix.type = MIX_SIGNED_8;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_BASS;
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1000,7 +1000,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case MID_CONTROL:
 			mix.type = MIX_SIGNED_8;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1011,7 +1011,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case TREBLE_CONTROL:
 			mix.type = MIX_SIGNED_8;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_TREBLE;
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1025,7 +1025,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case AGC_CONTROL:
 			mix.type = MIX_ON_OFF;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1036,7 +1036,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case DELAY_CONTROL:
 			mix.type = MIX_UNSIGNED_16;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1047,7 +1047,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case BASS_BOOST_CONTROL:
 			mix.type = MIX_ON_OFF;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_NRDEVICES;	/* XXXXX */
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1058,7 +1058,7 @@ uaudio_add_feature(struct uaudio_softc *sc, usb_descriptor_t *v,
 			break;
 		case LOUDNESS_CONTROL:
 			mix.type = MIX_ON_OFF;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 			mix.ctl = SOUND_MIXER_LOUD;	/* Is this correct ? */
 #else
 			sprintf(mix.ctlname, "fea%d-%s-%s", unit,
@@ -1097,11 +1097,11 @@ uaudio_add_processing_updown(struct uaudio_softc *sc, usb_descriptor_t *v,
 	mix.wIndex = MAKE(d->bUnitId, sc->sc_ac_iface);
 	mix.nchan = 1;
 	mix.wValue[0] = MAKE(UD_MODE_SELECT_CONTROL, 0);
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	mix.class = -1;
 #endif
 	mix.type = MIX_ON_OFF;	/* XXX */
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 	mix.ctlunit = "";
 	sprintf(mix.ctlname, "pro%d-mode", d->bUnitId);
 #endif
@@ -1132,11 +1132,11 @@ uaudio_add_processing(struct uaudio_softc *sc, usb_descriptor_t *v,
 		mix.wIndex = MAKE(d->bUnitId, sc->sc_ac_iface);
 		mix.nchan = 1;
 		mix.wValue[0] = MAKE(XX_ENABLE_CONTROL, 0);
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 		mix.class = -1;
 #endif
 		mix.type = MIX_ON_OFF;
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 		mix.ctlunit = "";
 		sprintf(mix.ctlname, "pro%d.%d-enable", d->bUnitId, ptype);
 #endif
@@ -1181,11 +1181,11 @@ uaudio_add_extension(struct uaudio_softc *sc, usb_descriptor_t *v,
 		mix.wIndex = MAKE(d->bUnitId, sc->sc_ac_iface);
 		mix.nchan = 1;
 		mix.wValue[0] = MAKE(UA_EXT_ENABLE, 0);
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 		mix.class = -1;
 #endif
 		mix.type = MIX_ON_OFF;
-#if !defined(__FreeBSD__)
+#if !defined(__DragonFly__)
 		mix.ctlunit = "";
 		sprintf(mix.ctlname, "ext%d-enable", d->bUnitId);
 #endif
@@ -2201,7 +2201,7 @@ uaudio_chan_pintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 #endif
 
 	ch->transferred += cb->size;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	/* s = spltty(); */
 	s = splhigh();
 	chn_intr(ch->pcm_ch);
@@ -2320,7 +2320,7 @@ uaudio_chan_rintr(usbd_xfer_handle xfer, usbd_private_handle priv,
 
 	/* Call back to upper layer */
 	ch->transferred += cb->size;
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 	s = spltty();
 	chn_intr(ch->pcm_ch);
 	splx(s);
@@ -2547,7 +2547,7 @@ uaudio_set_speed(struct uaudio_softc *sc, int endpt, u_int speed)
 }
 
 
-#if defined(__FreeBSD__)
+#if defined(__DragonFly__)
 /************************************************************/
 void
 uaudio_init_params(struct uaudio_softc *sc, struct chan *ch)

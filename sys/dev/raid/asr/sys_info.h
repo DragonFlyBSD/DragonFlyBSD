@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/sys_info.h,v 1.1.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.4 2003/11/15 21:05:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/sys_info.h,v 1.5 2004/02/12 00:00:19 dillon Exp $ */
 /*
  * Copyright (c) 1996-1999 Distributed Processing Technology Corporation
  * All rights reserved.
@@ -54,7 +54,7 @@
 
 #if (defined(KERNEL) && defined(__bsdi__))
 # include        "i386/isa/dpt_osd_util.h"
-#elif ((defined(KERNEL) || defined(_KERNEL)) && defined(__FreeBSD__))
+#elif ((defined(KERNEL) || defined(_KERNEL)) && defined(__DragonFly__))
 # if (KERN_VERSION < 3)
 #  include        "i386/isa/dpt_osd_util.h"
 # else
