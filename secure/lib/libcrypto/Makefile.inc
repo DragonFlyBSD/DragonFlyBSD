@@ -1,5 +1,5 @@
 # $FreeBSD: src/secure/lib/libcrypto/Makefile.inc,v 1.7.2.11 2003/02/20 15:07:32 nectar Exp $
-# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.4 2004/03/21 17:33:19 dillon Exp $
+# $DragonFly: src/secure/lib/libcrypto/Makefile.inc,v 1.5 2004/03/23 07:47:14 dillon Exp $
 
 LCRYPTO_SRC=	${.CURDIR}/../../../crypto/openssl
 LCRYPTO_DOC=	${.CURDIR}/../../../crypto/openssl/doc
@@ -81,27 +81,28 @@ buildinf.h:
 	echo "  #define DATE \"`LC_ALL=C date`\""; \
 	echo "#endif" ) > ${.TARGET}
 
-openssl/opensslconf.h: openssl ../../lib/libcrypto/opensslconf-${MACHINE_ARCH}.h
-	cp ${.ALLSRC:Nopenssl} ${.TARGET}
+openssl/opensslconf.h: openssl/.dummy ../../lib/libcrypto/opensslconf-${MACHINE_ARCH}.h
+	cp ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 
-openssl/evp.h: openssl ${LCRYPTO_SRC}/crypto/evp/evp.h
+openssl/evp.h: openssl/.dummy ${LCRYPTO_SRC}/crypto/evp/evp.h
 .if !defined(MAKE_IDEA) || ${MAKE_IDEA} != YES
-	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl} > ${.TARGET}
+	sed '/^#ifndef OPENSSL_NO_IDEA$$/,/^#endif$$/d' ${.ALLSRC:Nopenssl/.dummy} > ${.TARGET}
 .else
-	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl} ${.TARGET}
+	${INSTALL} -C -m 444 ${.ALLSRC:Nopenssl/.dummy} ${.TARGET}
 .endif
 
 SRCS+=	${HDRS:T:S;^;openssl/;}
 .for h in ${HDRS:S/^/${LCRYPTO_SRC}\/crypto\//}
-openssl/${h:T}: openssl ${h}
+openssl/${h:T}: openssl/.dummy ${h}
 	${INSTALL} -C -m 444 ${h} openssl
 .endfor
 
-# This fixes a parallel-make issue with mkdir races
-# that sometimes cause buildworld -j N to fail.
+# mkdir the required directory as its own target, so multiple
+# mkdir commands do not race against each other.
 #
-openssl:
+openssl/.dummy:
 	mkdir -p openssl
+	if [ ! -f ${.TARGET} ]; then touch ${.TARGET}; fi
 
 MANDIR=	${SHAREDIR}/openssl/man/man
 
