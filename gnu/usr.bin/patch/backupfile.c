@@ -19,7 +19,7 @@
    Some algorithms adapted from GNU Emacs.
  *
  * $FreeBSD: src/gnu/usr.bin/patch/backupfile.c,v 1.4.6.2 2002/04/30 20:40:02 gad Exp $
- * $DragonFly: src/gnu/usr.bin/patch/Attic/backupfile.c,v 1.2 2003/06/17 04:25:46 dillon Exp $
+ * $DragonFly: src/gnu/usr.bin/patch/Attic/backupfile.c,v 1.3 2004/09/06 13:24:05 joerg Exp $
  */
 
 #include "config.h"
@@ -76,7 +76,7 @@ enum backup_type backup_type = none;
    to numbered) backup file name. */
 char *simple_backup_suffix = "~";
 
-int		 argmatch(char *_arg, char **_optlist);
+int		 argmatch(char *_arg, const char **_optlist);
 const char	*basename(const char *_name);
 char		*dirname(const char *_path);
 static char	*concat(const char *_str1, const char *_str2);
@@ -264,7 +264,7 @@ dirname(const char *path)
    or -2 if it is ambiguous (is a prefix of more than one element). */
 
 int
-argmatch(char *arg, char **optlist)
+argmatch(char *arg, const char **optlist)
 {
   int i;			/* Temporary index in OPTLIST. */
   int arglen;			/* Length of ARG. */
