@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-all.c,v 1.50.2.45 2003/03/12 14:47:12 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.12 2004/02/18 00:50:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-all.c,v 1.13 2004/02/18 02:01:37 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -290,6 +290,7 @@ ata_detach(device_t dev)
     ch->device[MASTER].mode = ATA_PIO;
     ch->device[SLAVE].mode = ATA_PIO;
     ch->devices = 0;
+    ata_dmafreetags(ch);
 
     bus_teardown_intr(dev, ch->r_irq, ch->ih);
     bus_release_resource(dev, SYS_RES_IRQ, ATA_IRQ_RID, ch->r_irq);
