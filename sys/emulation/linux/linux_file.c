@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.12 2003/10/21 01:05:09 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.13 2003/11/10 20:57:16 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -166,7 +166,7 @@ linux_lseek(struct linux_lseek_args *args)
     tmp_args.whence = args->whence;
     tmp_args.sysmsg_result = 0;
     error = lseek(&tmp_args);
-    args->sysmsg_result = tmp_args.sysmsg_result;
+    args->sysmsg_offset = tmp_args.sysmsg_offset;
     return error;
 }
 
@@ -188,7 +188,7 @@ linux_llseek(struct linux_llseek_args *args)
 	bsd_args.fd = args->fd;
 	bsd_args.offset = off;
 	bsd_args.whence = args->whence;
-	bsd_args.sysmsg_result = 0;
+	bsd_args.sysmsg_offset = 0;
 
 	if ((error = lseek(&bsd_args)))
 		return error;

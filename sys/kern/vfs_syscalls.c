@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.23 2003/11/03 18:49:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.24 2003/11/10 20:57:18 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1446,7 +1446,7 @@ unlink(struct unlink_args *uap)
 }
 
 int
-kern_lseek(int fd, off_t offset, int whence, int *res)
+kern_lseek(int fd, off_t offset, int whence, off_t *res)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -1491,7 +1491,7 @@ lseek(struct lseek_args *uap)
 	int error;
 
 	error = kern_lseek(uap->fd, uap->offset, uap->whence,
-	    &uap->sysmsg_result);
+	    &uap->sysmsg_offset);
 
 	return (error);
 }
