@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.36 2003/09/26 19:23:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.37 2003/10/02 19:26:35 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1662,7 +1662,7 @@ physmap_done:
 #endif
 
 	/*
-	 * hw.maxmem is a size in bytes; we also allow k, m, and g suffixes
+	 * hw.physmem is a size in bytes; we also allow k, m, and g suffixes
 	 * for the appropriate modifiers.  This overrides MAXMEM.
 	 */
 	if ((cp = getenv("hw.physmem")) != NULL) {
