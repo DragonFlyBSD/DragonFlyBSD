@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_bridge.c,v 1.1.2.5 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.4 2003/08/07 21:54:32 dillon Exp $
+ * $DragonFly: src/sys/netgraph/bridge/ng_bridge.c,v 1.5 2003/08/14 23:26:38 dillon Exp $
  */
 
 /*
@@ -72,13 +72,13 @@
 #include <net/ethernet.h>
 
 #include <netinet/in.h>
-#include <net/ipwf/ip_fw.h>
+#include <net/ipfw/ip_fw.h>
 
 #include <netgraph/ng_message.h>
 #include <netgraph/netgraph.h>
 #include <netgraph/ng_parse.h>
 #include "ng_bridge.h"
-#include <netgraph/ng_ether.h>
+#include <netgraph/ether/ng_ether.h>
 
 /* Per-link private data */
 struct ng_bridge_link {
