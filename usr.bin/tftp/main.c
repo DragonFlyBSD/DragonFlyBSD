@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tftp/main.c,v 1.8.2.3 2002/05/14 22:08:07 bsd Exp $
- * $DragonFly: src/usr.bin/tftp/main.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tftp/main.c,v 1.4 2003/11/04 16:52:01 drhodus Exp $
  */
 
 /* Many bug fixes are from Jim Guyton <guyton@rand-unix> */
@@ -73,7 +73,8 @@ int	connected;
 char	mode[32];
 char	line[200];
 int	margc;
-char	*margv[20];
+#define	MAX_MARGV	20
+char	*margv[MAX_MARGV];
 char	*prompt = "tftp";
 jmp_buf	toplevel;
 volatile int txrx_error;
@@ -647,7 +648,7 @@ makeargv(void)
 	margc = 0;
 	if ((cp = strchr(line, '\n')))
 		*cp = '\0';
-	for (cp = line; *cp;) {
+	for (cp = line; margc < MAX_MARGV -1 && *cp;) {
 		while (isspace(*cp))
 			cp++;
 		if (*cp == '\0')
