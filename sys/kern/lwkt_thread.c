@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.2 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.3 2003/06/21 17:31:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -316,6 +316,15 @@ lwkt_deschedule(thread_t td)
 }
 
 /*
+ * Initialize a thread wait queue
+ */
+void
+lwkt_wait_init(lwkt_wait_t w)
+{
+    TAILQ_INIT(&w->wa_waitq);
+}
+
+/*
  * This function deschedules the current thread and blocks on the specified
  * wait queue.  We obtain ownership of the wait queue in order to block
  * on it.  A generation number is used to interlock the wait queue in case
@@ -327,20 +336,21 @@ lwkt_deschedule(thread_t td)
  * Note: wait queue signals normally ping-pong the cpu as an optimization.
  */
 void
-lwkt_block(lwkt_wait_t w)
+lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen)
 {
     thread_t td = curthread;
-    int gen;
 
-    gen = td->td_gen;
     lwkt_gettoken(&w->wa_token);
-    if (w->wa_gen == gen) {
+    if (w->wa_gen == *gen) {
 	_lwkt_dequeue(td);
 	TAILQ_INSERT_TAIL(&w->wa_waitq, td, td_threadq);
 	++w->wa_count;
 	td->td_wait = w;
+	td->td_wmesg = wmesg;
 	lwkt_switch();
     }
+    /* token might be lost, doesn't matter for gen update */
+    *gen = w->wa_gen;
     lwkt_reltoken(&w->wa_token);
 }
 
@@ -366,6 +376,7 @@ lwkt_signal(lwkt_wait_t w)
 	--w->wa_count;
 	TAILQ_REMOVE(&w->wa_waitq, td, td_threadq);
 	td->td_wait = NULL;
+	td->td_wmesg = NULL;
 	if (td->td_cpu == mycpu->gd_cpu) {
 	    _lwkt_enqueue(td);
 	} else {

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.6 2003/06/20 02:09:56 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.7 2003/06/21 17:31:19 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -281,6 +281,14 @@ exit1(p, rv)
 	}
 
 	/*
+	 * Once we set SZOMB the process can get reaped.  To prevent this
+	 * from occuring we obtain an exclusive access lock on the underlying
+	 * thread which will not be released until the thread has been
+	 * completed switched out.
+	 */
+	lwkt_exlock(&curthread->td_rwlock, "exit");
+
+	/*
 	 * Remove proc from allproc queue and pidhash chain.
 	 * Place onto zombproc.  Unlink from parent's child list.
 	 */
@@ -363,9 +371,6 @@ exit1(p, rv)
 	/*
 	 * cpu_exit is responsible for clearing curproc, since
 	 * it is heavily integrated with the thread/switching sequence.
-	 *
-	 * After this point we cannot block and we cannot become runnable
-	 * again.
 	 *
 	 * Other substructures are freed from wait().
 	 */
@@ -451,6 +456,21 @@ loop:
 
 		nfound++;
 		if (p->p_stat == SZOMB) {
+			/*
+			 * This is a tad nasty because lwkt_*() functions can
+			 * block, causing our information to become out of
+			 * date.
+			 *
+			 * YYY there may be some inefficiency here.
+			 */
+			if ((p->p_flag & P_EXITINTERLOCK) == 0) {
+			    lwkt_exlock(&p->p_thread->td_rwlock, "reap");
+			    p->p_flag |= P_EXITINTERLOCK;
+			    lwkt_exunlock(&p->p_thread->td_rwlock);
+			    goto loop;
+			}
+			KASSERT(p->p_lock == 0, ("p_lock not 0! %p", p));
+
 			/* charge childs scheduling cpu usage to parent */
 			if (curproc->p_pid != 1) {
 				curproc->p_estcpu =
@@ -533,11 +553,6 @@ loop:
 				p->p_procsig = NULL;
 			}
 
-			/*
-			 * Give machine-dependent layer a chance
-			 * to free anything that cpu_exit couldn't
-			 * release while still running in process context.
-			 */
 			vm_waitproc(p);
 			zfree(proc_zone, p);
 			nprocs--;

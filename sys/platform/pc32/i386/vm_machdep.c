@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.7 2003/06/20 02:09:50 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.8 2003/06/21 17:31:08 dillon Exp $
  */
 
 #include "npx.h"
@@ -79,6 +79,7 @@
 #include <vm/vm_extern.h>
 
 #include <sys/user.h>
+#include <sys/thread2.h>
 
 #ifdef PC98
 #include <pc98/pc98/pc98.h>
@@ -248,18 +249,16 @@ void
 cpu_exit(p)
 	register struct proc *p;
 {
-	struct pcb *pcb = p->p_thread->td_pcb; 
-
-	/*
-	 * This allows us to disassociate curproc from the thread.
-	 */
-	if (p->p_thread->td_switch == cpu_heavy_switch)
-	    p->p_thread->td_switch = cpu_exit_switch;
-	p->p_thread->td_proc = NULL;
+	struct pcb *pcb;
 
 #if NNPX > 0
 	npxexit(p);
 #endif	/* NNPX */
+
+	/*
+	 * Cleanup the PCB
+	 */
+	pcb = curthread->td_pcb;
 	if (pcb->pcb_ext != 0) {
 	        /* 
 		 * XXX do we need to move the TSS off the allocated pages 
@@ -280,6 +279,16 @@ cpu_exit(p)
                 pcb->pcb_flags &= ~PCB_DBREGS;
         }
 	cnt.v_swtch++;
+
+	/*
+	 * Set a special switch function which will release td_rwlock after
+	 * the thread has been derferenced.
+	 */
+	crit_enter();
+	KASSERT(curthread->td_switch == cpu_heavy_switch,
+	    ("cpu_exit: unexpected switchout"));
+	curthread->td_switch = cpu_exit_switch;
+	lwkt_deschedule_self();
 	lwkt_switch();
 	panic("cpu_exit");
 }

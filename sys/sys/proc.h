@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.9 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.10 2003/06/21 17:31:22 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -291,6 +291,7 @@ struct	proc {
 #define	P_OLDMASK	0x2000000 /* need to restore mask before pause */
 #define	P_ALTSTACK	0x4000000 /* have alternate signal stack */
 #define	P_INEXEC	0x8000000 /* Process is in execve(). */
+#define P_EXITINTERLOCK	0x10000000 /* Reaping process exit interlock */
 
 /*
  * MOVE TO ucred.h?

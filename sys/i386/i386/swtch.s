@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.8 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.9 2003/06/21 17:31:08 dillon Exp $
  */
 
 #include "npx.h"
@@ -191,18 +191,48 @@ ENTRY(cpu_heavy_switch)
  *	The switch function is changed to this when a thread is going away
  *	for good.  We have to ensure that the MMU state is not cached, and
  *	we don't bother saving the existing thread state before switching.
+ *
+ *	At this point we are in a critical section and this cpu owns the
+ *	thread's token, which serves as an interlock until the switchout is
+ *	complete.
  */
 ENTRY(cpu_exit_switch)
+	/*
+	 * Get us out of the vmspace
+	 */
 	movl	_IdlePTD,%ecx
 	movl	%cr3,%eax
 	cmpl	%ecx,%eax
 	je	1f
 	movl	%ecx,%cr3
+	movl	_curthread,%ecx
 1:
+	/*
+	 * Switch to the next thread.
+	 */
 	cli
 	movl	4(%esp),%eax
 	movl	%eax,_curthread
 	movl	TD_SP(%eax),%esp
+
+	/*
+	 * We are now effectively the next thread, transfer ownership to
+	 * this thread and release the original thread's RW lock, which
+	 * will allow it to be reaped.   Messy but rock solid.
+	 */
+	addl	$TD_RWLOCK,%ecx
+	movl	%eax,RW_OWNER(%ecx)
+	pushl	%eax
+	pushl	%ecx
+	call	lwkt_exunlock
+	addl	$4,%esp
+	popl	%eax
+
+	/*
+	 * Restore the next thread's state and resume it.  Note: the
+	 * restore function assumes that the next thread's address is
+	 * in %eax.
+	 */
 	ret
 
 /*

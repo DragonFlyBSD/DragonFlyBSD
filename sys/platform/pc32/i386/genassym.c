@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.9 2003/06/21 07:54:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/genassym.c,v 1.10 2003/06/21 17:31:08 dillon Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -86,6 +86,9 @@ ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_SP, offsetof(struct thread, td_sp));
 ASSYM(TD_PRI, offsetof(struct thread, td_pri));
 ASSYM(TD_MACH, offsetof(struct thread, td_mach));
+ASSYM(TD_RWLOCK, offsetof(struct thread, td_rwlock));
+
+ASSYM(RW_OWNER, offsetof(struct lwkt_rwlock, rw_owner));
 
 ASSYM(MTD_CPL, offsetof(struct mi_thread, mtd_cpl));
 

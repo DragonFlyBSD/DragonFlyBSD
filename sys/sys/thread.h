@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.4 2003/06/21 07:54:57 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.5 2003/06/21 17:31:22 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -102,7 +102,7 @@ typedef struct lwkt_cpu_msg {
  * reader/writer lock
  */
 typedef struct lwkt_rwlock {
-    lwkt_token	rw_token;
+    lwkt_wait	rw_wait;
     thread_t	rw_owner;
     int		rw_count;
 } lwkt_rwlock;
@@ -121,6 +121,7 @@ struct thread {
     TAILQ_ENTRY(thread) td_threadq;
     struct proc	*td_proc;	/* (optional) associated process */
     struct pcb	*td_pcb;	/* points to pcb and top of kstack */
+    const char	*td_wmesg;	/* string name for blockage */
     int		td_cpu;		/* cpu owning the thread */
     int		td_pri;		/* 0-31, 0=highest priority */
     int		td_flags;	/* THF flags */
@@ -129,8 +130,11 @@ struct thread {
     char	*td_sp;		/* kernel stack pointer for LWKT restore */
     void	(*td_switch)(struct thread *ntd);
     lwkt_wait_t td_wait;	/* thread sitting on wait structure */
+    lwkt_rwlock	td_rwlock;	/* thread arbitration */
     struct mi_thread td_mach;
 };
+
+#define td_token	td_rwlock.rw_token
 
 /*
  * Thread flags.  Note that the RUNNING state is independant from the
@@ -158,6 +162,7 @@ struct thread {
 #define TDPRI_KERN_USER		10	/* kernel / block in syscall */
 #define TDPRI_SOFT_NORM		14	/* kernel / normal */
 #define TDPRI_SOFT_TIMER	16	/* kernel / timer */
+#define TDPRI_EXITING		19	/* exiting thread */
 #define TDPRI_INT_SUPPORT	20	/* kernel / high priority support */
 #define TDPRI_INT_LOW		27	/* low priority interrupt */
 #define TDPRI_INT_MED		28	/* medium priority interrupt */
@@ -173,6 +178,7 @@ struct thread {
 
 extern struct vm_zone	*thread_zone;
 
+extern void lwkt_wait_init(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
 extern void lwkt_preempt(void);
@@ -183,11 +189,16 @@ extern void lwkt_deschedule_self(void);
 extern void lwkt_yield(void);
 extern void lwkt_yield_quick(void);
 
-extern void lwkt_block(lwkt_wait_t w);
+extern void lwkt_block(lwkt_wait_t w, const char *wmesg, int *gen);
 extern void lwkt_signal(lwkt_wait_t w);
 extern void lwkt_gettoken(lwkt_token_t tok);
 extern void lwkt_reltoken(lwkt_token_t tok);
 extern int  lwkt_regettoken(lwkt_token_t tok);
+extern void lwkt_rwlock_init(lwkt_rwlock_t lock);
+extern void lwkt_exlock(lwkt_rwlock_t lock, const char *wmesg);
+extern void lwkt_shlock(lwkt_rwlock_t lock, const char *wmesg);
+extern void lwkt_exunlock(lwkt_rwlock_t lock);
+extern void lwkt_shunlock(lwkt_rwlock_t lock);
 
 #endif
 

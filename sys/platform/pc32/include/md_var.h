@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.4 2003/06/20 02:09:54 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/md_var.h,v 1.5 2003/06/21 17:31:14 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -83,6 +83,7 @@ void	cpu_switch_load_gs __P((void)) __asm(__STRING(cpu_switch_load_gs));
 void	cpu_heavy_restore __P((void));	/* cannot be called from C */
 void	cpu_lwkt_restore __P((void));	/* cannot be called from C */
 void	cpu_idle_restore __P((void));	/* cannot be called from C */
+void	cpu_exit_idleptd __P((void)); 	/* disassociate proc MMU */
 void	cpu_exit_switch __P((struct thread *next));
 void	doreti_iret __P((void)) __asm(__STRING(doreti_iret));
 void	doreti_iret_fault __P((void)) __asm(__STRING(doreti_iret_fault));

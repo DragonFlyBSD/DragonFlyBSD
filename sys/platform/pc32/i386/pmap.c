@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.8 2003/06/21 07:54:56 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.9 2003/06/21 17:31:08 dillon Exp $
  */
 
 /*
@@ -858,7 +858,13 @@ pmap_new_thread()
 		td = zalloc(thread_zone);
 		td->td_kstack = 
 		    (void *)kmem_alloc(kernel_map, UPAGES * PAGE_SIZE);
+		lwkt_rwlock_init(&td->td_rwlock);
 	}
+
+	/*
+	 * Sometimes td_pcb is moved around YYY.  Make sure that it is
+	 * properly initialized.
+	 */
 	td->td_pcb = (struct pcb *)(td->td_kstack + UPAGES * PAGE_SIZE) - 1;
 	return(td);
 }
