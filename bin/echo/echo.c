@@ -33,15 +33,14 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)echo.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/echo/echo.c,v 1.8.2.1 2001/08/01 02:33:32 obrien Exp $
- * $DragonFly: src/bin/echo/echo.c,v 1.4 2003/09/28 14:39:14 hmp Exp $
+ * $DragonFly: src/bin/echo/echo.c,v 1.5 2004/07/26 10:25:55 hmp Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int main (int, char *[]);
-
+/* ARGSUSED */
 int
 main(int argc __unused, char **argv)
 {
@@ -68,5 +67,6 @@ main(int argc __unused, char **argv)
 	}
 	if (!nflag)
 		putchar('\n');
+
 	exit(0);
 }
