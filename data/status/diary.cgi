@@ -1,11 +1,11 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.6 2003/12/01 21:36:43 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.7 2003/12/19 04:08:38 justin Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
 <P>
-<LI>Thru 1 December 2003 
+<LI>Mon 1 December 2003 
 <UL>
     <P>
     A great deal of new infrastructure is starting to come to fruition.
@@ -35,7 +35,7 @@ $TITLE(DragonFly - Big-Picture Status)
     <P>
 </UL>
 <P>
-<LI>Thru 18 October 2003 
+<LI>Sat 18 October 2003 
 <UL>
     <P>
     Wow, October already!  Good progress is being made on several fronts.
@@ -67,7 +67,7 @@ $TITLE(DragonFly - Big-Picture Status)
     LWKT subsystem (which is mostly self contained) to userland.
 </UL>
 <P>
-<LI>Thru 27 August 2003 - Slab Allocator, __P removal
+<LI>Wed 27 August 2003 - Slab Allocator, __P removal
 <UL>
     <P>
     DragonFly now has slab allocator for the kernel!  The allocator is
@@ -86,7 +86,7 @@ $TITLE(DragonFly - Big-Picture Status)
     investigating documentation and source code reorganization.
 </UL>
 <P>
-<LI>Thru 10 August 2003 - Source Reorganization
+<LI>Sun 10 August 2003 - Source Reorganization
 <UL>
     <P>
     A major source tree reorganization has been accomplished, including 
