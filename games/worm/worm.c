@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)worm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/worm/worm.c,v 1.9 1999/12/07 02:01:27 billf Exp $
- * $DragonFly: src/games/worm/worm.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/worm/worm.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -76,17 +76,17 @@ int start_len = LENGTH;
 char lastch;
 char outbuf[BUFSIZ];
  
-void crash __P((void));
-void display __P((struct body *, char));
-void leave __P((int));
-void life __P((void));
-void newpos __P((struct body *));
-void prize __P((void));
-void process __P((char));
-long rnd __P((int));
-void setup __P((void));
-void suspend __P((int));
-void wake __P((int));
+void crash (void);
+void display (struct body *, char);
+void leave (int);
+void life (void);
+void newpos (struct body *);
+void prize (void);
+void process (char);
+long rnd (int);
+void setup (void);
+void suspend (int);
+void wake (int);
 
 int
 main(argc, argv)

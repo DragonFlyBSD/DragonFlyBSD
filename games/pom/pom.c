@@ -35,7 +35,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pom.c       8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/pom/pom.c,v 1.9 1999/11/30 03:49:09 billf Exp $
- * $DragonFly: src/games/pom/pom.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/pom/pom.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -64,9 +64,9 @@
 #define	Nzero	  55.204723	/* lunar mean long of node at EPOCH */
 #define isleap(y) ((((y) % 4) == 0 && ((y) % 100) != 0) || ((y) % 400) == 0)
 
-static void	adj360 __P((double *));
-static double	dtor __P((double));
-static double	potm __P((double));
+static void	adj360 (double *);
+static double	dtor (double);
+static double	potm (double);
 
 int
 main()

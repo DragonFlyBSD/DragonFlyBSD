@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/print.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/print.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/print.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 # include	"mille.h"
@@ -44,8 +44,8 @@
 # define	COMP_STRT	20
 # define	CARD_STRT	2
 
-static void show_card __P((int, int, CARD, CARD *));
-static void show_score __P((int, int, int, int *));
+static void show_card (int, int, CARD, CARD *);
+static void show_score (int, int, int, int *);
 
 void
 prboard() {

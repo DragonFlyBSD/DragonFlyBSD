@@ -2,7 +2,7 @@
  * misc.c  Phantasia miscellaneous support routines
  *
  * $FreeBSD: src/games/phantasia/misc.c,v 1.7 1999/11/16 02:57:34 billf Exp $
- * $DragonFly: src/games/phantasia/misc.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/phantasia/misc.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 #include <string.h>
@@ -1445,7 +1445,7 @@ readmessage()
 error(whichfile)
 	char	*whichfile;
 {
-	int	(*funcp) __P((const char *, ...));
+	int	(*funcp) (const char *, ...);
 
     if (Windows)
 	{

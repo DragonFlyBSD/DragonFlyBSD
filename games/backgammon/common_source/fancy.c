@@ -32,7 +32,7 @@
  *
  * @(#)fancy.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/backgammon/common_source/fancy.c,v 1.7 1999/11/30 03:48:25 billf Exp $
- * $DragonFly: src/games/backgammon/common_source/fancy.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/backgammon/common_source/fancy.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -81,7 +81,7 @@ int	oldw;
 int	realr;
 int	realc;
 
-int	addbuf __P((int));
+int	addbuf (int);
 
 fboard ()  {
 	int	i, j, l;

@@ -32,7 +32,7 @@
  *
  * @(#)end.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/end.c,v 1.5 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/end.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/end.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 # include	"mille.h"
@@ -42,8 +42,8 @@
  */
 
 #ifndef EXTRAP
-void extrapolate __P((PLAY *));
-void undoex __P((void));
+void extrapolate (PLAY *);
+void undoex (void);
 #endif
 
 /*

@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wump.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/wump/wump.c,v 1.13.2.1 2000/08/17 06:24:54 jhb Exp $
- * $DragonFly: src/games/wump/wump.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/wump/wump.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -107,20 +107,20 @@ char answer[20];			/* user input */
 int 	bats_nearby(void);
 void 	cave_init(void);
 void 	clear_things_in_cave(void);
-void 	display_room_stats __P((void));
-int 	getans __P((const char *prompt));
+void 	display_room_stats (void);
+int 	getans (const char *prompt);
 void 	initialize_things_in_cave(void);
 void 	instructions(void);
-int 	int_compare __P((const void *va, const void *vb));
+int 	int_compare (const void *va, const void *vb);
 void 	jump(int where);
 void 	kill_wump(void);
-int 	move_to __P((char *room_number));
+int 	move_to (char *room_number);
 void 	move_wump(void);
 void 	no_arrows(void);
 void 	pit_kill(void);
 int 	pit_nearby(void);
 void 	pit_survive(void);
-int 	shoot __P((char *room_list));
+int 	shoot (char *room_list);
 void 	shoot_self(void);
 int 	take_action(void);
 void 	usage(void);

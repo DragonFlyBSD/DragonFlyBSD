@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pig.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/games/pig/pig.c,v 1.7 1999/11/30 03:49:08 billf Exp $
- * $DragonFly: src/games/pig/pig.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/pig/pig.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +44,8 @@
 #include <string.h>
 #include <unistd.h>
 
-void pigout __P((char *, int));
-void usage __P((void));
+void pigout (char *, int);
+void usage (void);
 
 int
 main(argc, argv)

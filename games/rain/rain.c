@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rain.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rain/rain.c,v 1.8.2.1 2001/03/05 11:54:10 kris Exp $
- * $DragonFly: src/games/rain/rain.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rain/rain.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -51,7 +51,7 @@
 
 volatile sig_atomic_t sig_caught = 0;
 
-static void onsig __P((int sig));
+static void onsig (int sig);
 
 int
 main(int argc, char **argv)

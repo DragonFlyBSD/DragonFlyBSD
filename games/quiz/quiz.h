@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)quiz.h	8.1 (Berkeley) 5/31/93
+ * $DragonFly: src/games/quiz/quiz.h,v 1.2 2003/11/12 14:53:54 eirikn Exp $
  */
 
 #define	TRUE		1
@@ -56,6 +57,6 @@ typedef struct qentry {
 
 extern char rxperr[];
 
-int	 rxp_compile __P((char *));
-char	*rxp_expand __P((void));
-int	 rxp_match __P((char *));
+int	 rxp_compile (char *);
+char	*rxp_expand (void);
+int	 rxp_match (char *);

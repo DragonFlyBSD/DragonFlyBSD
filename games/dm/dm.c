@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dm.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/dm/dm.c,v 1.8 1999/12/10 02:54:18 billf Exp $
- * $DragonFly: src/games/dm/dm.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/dm/dm.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -59,15 +59,15 @@ static int	priority = 0;		/* priority game runs at */
 static char	*game,			/* requested game */
 		*gametty;		/* from tty? */
 
-void c_day __P((char *, char *, char *));
-void c_tty __P((char *));
-void c_game __P((char *, char *, char *, char *));
-void hour __P((int));
-double load __P((void));
-void nogamefile __P((void));
-void play __P((char **));
-void read_config __P((void));
-int users __P((void));
+void c_day (char *, char *, char *);
+void c_tty (char *);
+void c_game (char *, char *, char *, char *);
+void hour (int);
+double load (void);
+void nogamefile (void);
+void play (char **);
+void read_config (void);
+int users (void);
 
 int
 main(argc, argv)

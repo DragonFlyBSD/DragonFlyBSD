@@ -32,12 +32,12 @@
  *
  * @(#)com1.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com1.c,v 1.7.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com1.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com1.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include "externs.h"
 
-void	 convert __P((int));
+void	 convert (int);
 
 int
 battlestar_move(thataway, token)

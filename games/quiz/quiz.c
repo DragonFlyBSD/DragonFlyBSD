@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quiz.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/quiz/quiz.c,v 1.12 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/quiz.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/quiz/quiz.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -57,16 +57,16 @@ static QE qlist;
 static int catone, cattwo, tflag;
 static u_int qsize;
 
-char	*appdstr __P((char *, char *, size_t));
-void	 downcase __P((char *));
-void	 err __P((const char *, ...));
-void	 get_cats __P((char *, char *));
-void	 get_file __P((char *));
-char	*next_cat __P((char *));
-void	 quiz __P((void));
-void	 score __P((u_int, u_int, u_int));
-void	 show_index __P((void));
-void	 usage __P((void));
+char	*appdstr (char *, char *, size_t);
+void	 downcase (char *);
+void	 err (const char *, ...);
+void	 get_cats (char *, char *);
+void	 get_file (char *);
+char	*next_cat (char *);
+void	 quiz (void);
+void	 score (u_int, u_int, u_int);
+void	 show_index (void);
+void	 usage (void);
 
 int
 main(argc, argv)

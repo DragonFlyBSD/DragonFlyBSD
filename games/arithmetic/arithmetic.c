@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)arithmetic.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/arithmetic/arithmetic.c,v 1.10 1999/12/12 06:40:28 billf Exp $
- * $DragonFly: src/games/arithmetic/arithmetic.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/arithmetic/arithmetic.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 /*
@@ -85,13 +85,13 @@ int nright, nwrong;
 time_t qtime;
 #define	NQUESTS	20
 
-static void usage __P((void));
-int getrandom __P((int, int, int));
-void intr __P((int));
-int opnum __P((int));
-void penalise __P((int, int, int));
-int problem __P((void));
-void showstats __P((void));
+static void usage (void);
+int getrandom (int, int, int);
+void intr (int);
+int opnum (int);
+void penalise (int, int, int);
+int problem (void);
+void showstats (void);
 
 /*
  * Select keys from +-x/ to be asked addition, subtraction, multiplication,

@@ -7,7 +7,7 @@
  * v2.0 featuring strict ANSI/POSIX conformance, November 1993.
  *
  * $FreeBSD: src/games/bs/bs.c,v 1.9 2000/02/21 03:07:31 billf Exp $
- * $DragonFly: src/games/bs/bs.c,v 1.3 2003/08/31 21:32:09 drhodus Exp $
+ * $DragonFly: src/games/bs/bs.c,v 1.4 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include <assert.h>
@@ -142,9 +142,9 @@ static int salvo, blitz, closepack;
 
 #define	PR	(void)addstr
 
-static bool checkplace __P((int, ship_t *, int));
-static int getcoord __P((int));
-int playagain __P((void));
+static bool checkplace (int, ship_t *, int);
+static int getcoord (int);
+int playagain (void);
 
 static void uninitgame(sig)
 /* end the game, either normally or due to signal */

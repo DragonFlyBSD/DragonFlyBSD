@@ -32,7 +32,7 @@
  *
  * @(#)fly.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/fly.c,v 1.6.2.1 2001/03/05 11:45:36 kris Exp $
- * $DragonFly: src/games/battlestar/fly.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/fly.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include "externs.h"
@@ -51,13 +51,13 @@ int gclock = 120;		/* gtime for all the flights in the game */
 char cross = 0;
 sig_t oldsig;
 
-static void	blast __P((void));
-static void	endfly __P((void));
-static void	moveenemy __P((int));
-static void	notarget __P((void));
-static void	succumb __P((int));
-static void	screen __P((void));
-static void	target __P((void));
+static void	blast (void);
+static void	endfly (void);
+static void	moveenemy (int);
+static void	notarget (void);
+static void	succumb (int);
+static void	screen (void);
+static void	target (void);
 
 void
 succumb(sig)

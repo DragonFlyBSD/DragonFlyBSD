@@ -39,7 +39,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/games/caesar/caesar.c,v 1.8.2.1 2000/08/17 06:13:06 jhb Exp $
- * $DragonFly: src/games/caesar/caesar.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/caesar/caesar.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  *
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)caesar.c    8.1 (Berkeley) 5/31/93
@@ -70,7 +70,7 @@ double stdf[26] = {
 	2.62, 0.81, 1.88, 0.23,  2.07, 0.06,
 };
 
-void printit __P((char *));
+void printit (char *);
 
 int
 main(argc, argv)

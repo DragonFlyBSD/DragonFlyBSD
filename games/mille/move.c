@@ -32,7 +32,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/mille/move.c,v 1.6 1999/12/12 06:17:24 billf Exp $
- * $DragonFly: src/games/mille/move.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/mille/move.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 #include <termios.h>
@@ -56,10 +56,10 @@ const char	*Movenames[] = {
 		"M_DISCARD", "M_DRAW", "M_PLAY", "M_ORDER"
 	};
 
-static void check_go __P((void));
-static void getmove __P((void));
-static int haspicked __P((PLAY *));
-static bool playcard __P((PLAY *));
+static void check_go (void);
+static void getmove (void);
+static int haspicked (PLAY *);
+static bool playcard (PLAY *);
 
 void
 domove()

@@ -32,14 +32,14 @@
  *
  * @(#)com6.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/battlestar/com6.c,v 1.9.2.1 2001/03/05 11:45:35 kris Exp $
- * $DragonFly: src/games/battlestar/com6.c,v 1.2 2003/06/17 04:25:22 dillon Exp $
+ * $DragonFly: src/games/battlestar/com6.c,v 1.3 2003/11/12 14:53:52 eirikn Exp $
  */
 
 #include <signal.h>
 #include "externs.h"
 #include "pathnames.h"
 
-static void post __P((unsigned int ch));
+static void post (unsigned int ch);
 
 int
 launch()

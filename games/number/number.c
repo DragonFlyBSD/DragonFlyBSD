@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)number.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/games/number/number.c,v 1.12 1999/12/12 03:22:35 billf Exp $
- * $DragonFly: src/games/number/number.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/number/number.c,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -69,12 +69,12 @@ static const char	*name1[] = {
 	"novemdecillion",		"vigintillion",
 };
 
-void	convert __P((char *));
-int	number __P((char *, int));
-void	pfract __P((int));
-void	toobig __P((void));
-int	unit __P((int, char *));
-void	usage __P((void));
+void	convert (char *);
+int	number (char *, int);
+void	pfract (int);
+void	toobig (void);
+int	unit (int, char *);
+void	usage (void);
 
 int lflag;
 

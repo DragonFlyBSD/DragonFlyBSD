@@ -32,7 +32,7 @@
  *
  *	@(#)hangman.h	8.1 (Berkeley) 5/31/93
  *	$FreeBSD: src/games/hangman/hangman.h,v 1.3 1999/12/10 03:22:59 billf Exp $
- *	$DragonFly: src/games/hangman/hangman.h,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ *	$DragonFly: src/games/hangman/hangman.h,v 1.3 2003/11/12 14:53:53 eirikn Exp $
  */
 
 # include	<stdlib.h>
@@ -81,13 +81,13 @@ extern FILE	*Dict;
 
 extern off_t	Dict_size;
 
-void	die __P((int));
-void	endgame __P((void));
-void	getguess __P((void));
-void	getword __P((void));
-void	playgame __P((void));
-void	prdata __P((void));
-void	prman __P((void));
-void	prword __P((void));
-char	readch __P((void));
-void	setup __P((void));
+void	die (int);
+void	endgame (void);
+void	getguess (void);
+void	getword (void);
+void	playgame (void);
+void	prdata (void);
+void	prman (void);
+void	prword (void);
+char	readch (void);
+void	setup (void);

@@ -36,7 +36,7 @@
  *
  * @(#)rxp.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/quiz/rxp.c,v 1.5 1999/12/12 02:29:54 billf Exp $
- * $DragonFly: src/games/quiz/rxp.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/quiz/rxp.c,v 1.3 2003/11/12 14:53:54 eirikn Exp $
  */
 
 /*
@@ -78,9 +78,9 @@ typedef short Rxp_t;			/* type for regexp tokens */
 static Rxp_t rxpbuf[RXP_LINE_SZ];	/* compiled regular expression buffer */
 char rxperr[128];			/* parser error message */
 
-static int	 rxp__compile __P((char *, int));
-static char	*rxp__expand __P((int));
-static int	 rxp__match __P((char *, int, Rxp_t *, Rxp_t *, char *));
+static int	 rxp__compile (char *, int);
+static char	*rxp__expand (int);
+static int	 rxp__match (char *, int, Rxp_t *, Rxp_t *, char *);
 
 int
 rxp_compile(s)
