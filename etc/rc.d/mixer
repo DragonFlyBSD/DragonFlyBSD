@@ -1,10 +1,10 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/mixer,v 1.4 2004/08/28 14:15:18 asmodai Exp $
+# $DragonFly: src/etc/rc.d/mixer,v 1.5 2004/11/08 18:33:17 joerg Exp $
 #
 
 # PROVIDE: mixer
-# REQUIRE: lkm
+# REQUIRE: aftermountlkm
 
 . /etc/rc.subr
 
