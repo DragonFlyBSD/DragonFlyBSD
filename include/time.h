@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)time.h	8.3 (Berkeley) 1/21/94
- * $DragonFly: src/include/time.h,v 1.4 2003/11/15 19:28:42 asmodai Exp $
+ * $DragonFly: src/include/time.h,v 1.5 2005/01/27 01:50:01 joerg Exp $
  */
 
 #ifndef _TIME_H_
@@ -85,6 +85,11 @@ typedef	__time_t	time_t;
 typedef	__clockid_t	clockid_t;
 #endif
 
+#ifndef _SIZE_T_DECLARED
+#define _SIZE_T_DECLARED
+typedef	__size_t	size_t;
+#endif
+
 #ifndef _TIMER_T_DECLARED
 #define _TIMER_T_DECLARED
 typedef	__timer_t	timer_t;
@@ -127,7 +132,7 @@ double difftime (time_t, time_t);
 struct tm *gmtime (const time_t *);
 struct tm *localtime (const time_t *);
 time_t mktime (struct tm *);
-__size_t strftime (char *, __size_t, const char *, const struct tm *);
+size_t strftime (char *, size_t, const char *, const struct tm *);
 time_t time (time_t *);
 
 #ifndef _ANSI_SOURCE
