@@ -10,7 +10,7 @@
  * callout.c,v 3.8.4.8 1998/01/06 01:58:45 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/callout.c,v 1.12 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/callout.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include "defs.h"
@@ -34,13 +34,13 @@ static void print_Q(void);
 #endif
 
 void
-callout_init()
+callout_init(void)
 {
     Q = (struct timeout_q *) 0;
 }
 
 void
-free_all_callouts()
+free_all_callouts(void)
 {
     struct timeout_q *p;
 
@@ -57,8 +57,7 @@ free_all_callouts()
  * happen.
  */
 void
-age_callout_queue(elapsed_time)
-    int elapsed_time;
+age_callout_queue(int elapsed_time)
 {
     struct timeout_q *ptr;
     int i = 0;
@@ -84,7 +83,7 @@ age_callout_queue(elapsed_time)
  * Return -1 if there are no events pending.
  */
 int
-timer_nextTimer()
+timer_nextTimer(void)
 {
     if (Q) {
 	if (Q->time < 0) {

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mtree.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/mtree.c,v 1.8.2.3 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/mtree.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/mtree.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -56,9 +56,7 @@ char fullpath[MAXPATHLEN];
 static void usage(void);
 
 int
-main(argc, argv)
-	int argc;
-	char *argv[];
+main(int argc, char **argv)
 {
 	int ch;
 	char *dir, *p;
@@ -163,7 +161,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr,
 "usage: mtree [-LPUcdeinqrux] [-f spec] [-K key] [-k key] [-p path] [-s seed]\n"

@@ -1,7 +1,7 @@
 /*	$OpenBSD: mailwrapper.c,v 1.6 1999/12/17 05:06:28 mickey Exp $	*/
 /*	$NetBSD: mailwrapper.c,v 1.3 1999/05/29 18:18:15 christos Exp $	*/
 /* $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4.2.3 2001/10/01 12:52:47 dd Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $ */
+/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -59,8 +59,7 @@ static void freearg(struct arglist *, int);
 extern const char *__progname;	/* from crt0.o */
 
 static void
-initarg(al)
-	struct arglist *al;
+initarg(struct arglist *al)
 {
 	al->argc = 0;
 	al->maxc = 10;
@@ -69,10 +68,7 @@ initarg(al)
 }
 
 static void
-addarg(al, arg, copy)
-	struct arglist *al;
-	const char *arg;
-	int copy;
+addarg(struct arglist *al, const char *arg, int copy)
 {
 	char **argv2;
 
@@ -97,9 +93,7 @@ addarg(al, arg, copy)
 }
 
 static void
-freearg(al, copy)
-	struct arglist *al;
-	int copy;
+freearg(struct arglist *al, int copy)
 {
 	size_t i;
 	if (copy)
@@ -109,10 +103,7 @@ freearg(al, copy)
 }
 
 int
-main(argc, argv, envp)
-	int argc;
-	char *argv[];
-	char *envp[];
+main(int argc, char **argv, char **envp)
 {
 	FILE *config;
 	char *line, *cp, *from, *to, *ap;

@@ -32,7 +32,7 @@
  *
  * @(#)create.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/create.c,v 1.18.2.3 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/create.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/create.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -56,6 +56,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <vis.h>
 #include "mtree.h"
 #include "extern.h"
@@ -82,7 +83,7 @@ static int	statd(FTS *, FTSENT *, uid_t *, gid_t *, mode_t *,
 static void	statf(int, FTSENT *);
 
 void
-cwalk()
+cwalk(void)
 {
 	register FTS *t;
 	register FTSENT *p;
@@ -141,9 +142,7 @@ cwalk()
 }
 
 static void
-statf(indent, p)
-	int indent;
-	FTSENT *p;
+statf(int indent, FTSENT *p)
 {
 	struct group *gr;
 	struct passwd *pw;
@@ -268,13 +267,8 @@ statf(indent, p)
 #define	MAXS 16
 
 static int
-statd(t, parent, puid, pgid, pmode, pflags)
-	FTS *t;
-	FTSENT *parent;
-	uid_t *puid;
-	gid_t *pgid;
-	mode_t *pmode;
-	u_long *pflags;
+statd(FTS *t, FTSENT *parent, uid_t *puid, gid_t *pgid, mode_t *pmode,
+      u_long *pflags)
 {
 	register FTSENT *p;
 	register gid_t sgid;
@@ -391,8 +385,7 @@ statd(t, parent, puid, pgid, pmode, pflags)
 }
 
 static int
-dsort(a, b)
-	const FTSENT **a, **b;
+dsort(const FTSENT **a, const FTSENT **b)
 {
 	if (S_ISDIR((*a)->fts_statp->st_mode)) {
 		if (!S_ISDIR((*b)->fts_statp->st_mode))
@@ -402,30 +395,13 @@ dsort(a, b)
 	return (strcmp((*a)->fts_name, (*b)->fts_name));
 }
 
-#if __STDC__
-#include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
-
 void
-#if __STDC__
 output(int indent, int *offset, const char *fmt, ...)
-#else
-output(indent, offset, fmt, va_alist)
-	int indent;
-	int *offset;
-	char *fmt;
-        va_dcl
-#endif
 {
 	va_list ap;
 	char buf[1024];
-#if __STDC__
+
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 

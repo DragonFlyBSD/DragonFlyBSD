@@ -32,7 +32,7 @@
  *
  * @(#)spec.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/spec.c,v 1.13.2.1 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -55,7 +55,7 @@ static void	 set(char *, NODE *);
 static void	 unset(char *, NODE *);
 
 NODE *
-spec()
+spec(void)
 {
 	register NODE *centry, *last;
 	register char *p;
@@ -166,9 +166,7 @@ noparent:		errx(1, "line %d: no parent node", lineno);
 }
 
 static void
-set(t, ip)
-	char *t;
-	NODE *ip;
+set(char *t, NODE *ip)
 {
 	register int type;
 	char *kw, *val = NULL;
@@ -308,9 +306,7 @@ set(t, ip)
 }
 
 static void
-unset(t, ip)
-	char *t;
-	register NODE *ip;
+unset(char *t, register NODE *ip)
 {
 	register char *p;
 

@@ -32,7 +32,7 @@
  *
  * @(#)misc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/misc.c,v 1.8.2.1 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/misc.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/misc.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -82,9 +82,7 @@ static KEY keylist[] = {
 };
 
 u_int
-parsekey(name, needvaluep)
-	char *name;
-	int *needvaluep;
+parsekey(char *name, int *needvaluep)
 {
 	KEY *k, tmp;
 	int keycompare(const void *, const void *);
@@ -101,15 +99,13 @@ parsekey(name, needvaluep)
 }
 
 int
-keycompare(a, b)
-	const void *a, *b;
+keycompare(const void *a, const void *b)
 {
 	return (strcmp(((KEY *)a)->name, ((KEY *)b)->name));
 }
 
 char *
-flags_to_string(fflags)
-	u_long fflags;
+flags_to_string(u_long fflags)
 {
 	char *string;
 

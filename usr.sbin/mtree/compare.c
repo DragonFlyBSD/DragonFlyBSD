@@ -32,7 +32,7 @@
  *
  * @(#)compare.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -69,10 +69,7 @@ static char *ftype(u_int);
 	}
 
 int
-compare(name, s, p)
-	char *name;
-	register NODE *s;
-	register FTSENT *p;
+compare(char *name, register NODE *s, register FTSENT *p)
 {
 	extern int uflag;
 	u_long len, val;
@@ -301,8 +298,7 @@ typeerr:		LABEL;
 }
 
 char *
-inotype(type)
-	u_int type;
+inotype(u_int type)
 {
 	switch(type & S_IFMT) {
 	case S_IFBLK:
@@ -326,8 +322,7 @@ inotype(type)
 }
 
 static char *
-ftype(type)
-	u_int type;
+ftype(u_int type)
 {
 	switch(type) {
 	case F_BLOCK:
@@ -351,8 +346,7 @@ ftype(type)
 }
 
 char *
-rlink(name)
-	char *name;
+rlink(char *name)
 {
 	static char lbuf[MAXPATHLEN];
 	register int len;

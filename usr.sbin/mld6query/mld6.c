@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mld6query/mld6.c,v 1.1.1.1.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.3 2003/11/22 11:38:13 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/uio.h>
@@ -265,7 +265,7 @@ quit(int signum) {
 }
 
 void
-usage()
+usage(void)
 {
 	(void)fprintf(stderr, "usage: mld6query ifname [addr]\n");
 	exit(1);

@@ -32,7 +32,7 @@
  *
  * @(#)verify.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/verify.c,v 1.10.2.2 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.3 2003/11/03 19:31:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static void	miss(NODE *, char *);
 static int	vwalk(void);
 
 int
-verify()
+verify(void)
 {
 	int rval;
 
@@ -71,7 +71,7 @@ verify()
 }
 
 static int
-vwalk()
+vwalk(void)
 {
 	register FTS *t;
 	register FTSENT *p;
@@ -155,9 +155,7 @@ extra:
 }
 
 static void
-miss(p, tail)
-	register NODE *p;
-	register char *tail;
+miss(register NODE *p, register char *tail)
 {
 	register int create;
 	register char *tp;
