@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.8 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.9 2005/04/02 21:46:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -61,21 +61,22 @@
 
 int debug, fstab_style, verbose;
 
-char   *catopt(char *, const char *);
-struct statfs
-       *getmntpt(const char *);
-int	hasopt(const char *, const char *);
-int	ismounted(struct fstab *, struct statfs *, int);
-int	isremountable(const char *);
-void	mangle(char *, int *, const char **);
-char   *update_options(char *, char *, int);
-int	mountfs(const char *, const char *, const char *,
-			int, const char *, const char *);
-void	remopt(char *, const char *);
-void	prmount(struct statfs *);
-void	putfsent(const struct statfs *);
-void	usage(void);
-char   *flags2opts(int);
+static char  *catopt(char *, const char *);
+static struct statfs
+             *getmntpt(const char *);
+static int    hasopt(const char *, const char *);
+static int    ismounted(struct fstab *, struct statfs *, int);
+static int    isremountable(const char *);
+static void   mangle(char *, int *, const char **);
+static char  *update_options(char *, char *, int);
+static int    mountfs(const char *, const char *, const char *,
+		      int, const char *, const char *);
+static void   remopt(char *, const char *);
+static void   prmount(struct statfs *);
+static void   putfsent(const struct statfs *);
+static void   usage(void);
+static char  *flags2opts(int);
+static char  *xstrdup(const char *str);
 
 /* Map from mount options to printable formats. */
 static struct opt {
@@ -301,7 +302,7 @@ main(int argc, char **argv)
 	exit(rval);
 }
 
-int
+static int
 ismounted(struct fstab *fs, struct statfs *mntbuf, int mntsize)
 {
 	int i;
@@ -318,7 +319,7 @@ ismounted(struct fstab *fs, struct statfs *mntbuf, int mntsize)
 	return (0);
 }
 
-int
+static int
 isremountable(const char *vfsname)
 {
 	const char **cp;
@@ -329,7 +330,7 @@ isremountable(const char *vfsname)
 	return (0);
 }
 
-int
+static int
 hasopt(const char *mntopts, const char *option)
 {
 	int negative, found;
@@ -340,7 +341,7 @@ hasopt(const char *mntopts, const char *option)
 		option += 2;
 	} else
 		negative = 0;
-	optbuf = strdup(mntopts);
+	optbuf = xstrdup(mntopts);
 	found = 0;
 	for (opt = optbuf; (opt = strtok(opt, ",")) != NULL; opt = NULL) {
 		if (opt[0] == 'n' && opt[1] == 'o') {
@@ -353,7 +354,7 @@ hasopt(const char *mntopts, const char *option)
 	return (found);
 }
 
-int
+static int
 mountfs(const char *vfstype, const char *spec, const char *name, int flags,
         const char *options, const char *mntopts)
 {
@@ -388,7 +389,7 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 			mntopts = "";
 		}
 	}
-	optbuf = catopt(strdup(mntopts), options);
+	optbuf = catopt(xstrdup(mntopts), options);
 
 	if (strcmp(name, "/") == 0)
 		flags |= MNT_UPDATE;
@@ -484,7 +485,7 @@ mountfs(const char *vfstype, const char *spec, const char *name, int flags,
 	return (0);
 }
 
-void
+static void
 prmount(struct statfs *sfp)
 {
 	int flags;
@@ -518,7 +519,7 @@ prmount(struct statfs *sfp)
 	printf(")\n");
 }
 
-struct statfs *
+static struct statfs *
 getmntpt(const char *name)
 {
 	struct statfs *mntbuf;
@@ -533,7 +534,7 @@ getmntpt(const char *name)
 	return (NULL);
 }
 
-char *
+static char *
 catopt(char *s0, const char *s1)
 {
 	size_t i;
@@ -548,14 +549,14 @@ catopt(char *s0, const char *s1)
 			errx(1, "malloc failed");
 		snprintf(cp, i, "%s,%s", s0, s1);
 	} else
-		cp = strdup(s1);
+		cp = xstrdup(s1);
 
 	if (s0)
 		free(s0);
 	return (cp);
 }
 
-void
+static void
 mangle(char *options, int *argcp, const char **argv)
 {
 	char *p, *s;
@@ -581,7 +582,7 @@ mangle(char *options, int *argcp, const char **argv)
 }
 
 
-char *
+static char *
 update_options(char *opts, char *fstab, int curflags)
 {
 	char *o, *p;
@@ -589,7 +590,7 @@ update_options(char *opts, char *fstab, int curflags)
 	char *expopt, *newopt, *tmpopt;
 
 	if (opts == NULL)
-		return strdup("");
+		return xstrdup("");
 
 	/* remove meta options from list */
 	remopt(fstab, MOUNT_META_OPTION_FSTAB);
@@ -636,7 +637,7 @@ update_options(char *opts, char *fstab, int curflags)
 	return newopt;
 }
 
-void
+static void
 remopt(char *string, const char *opt)
 {
 	char *o, *p, *r;
@@ -658,7 +659,7 @@ remopt(char *string, const char *opt)
 	*r = '\0';
 }
 
-void
+static void
 usage(void)
 {
 
@@ -669,7 +670,7 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 putfsent(const struct statfs *ent)
 {
 	struct fstab *fst;
@@ -694,7 +695,7 @@ putfsent(const struct statfs *ent)
 }
 
 
-char *
+static char *
 flags2opts(int flags)
 {
 	char *res;
@@ -716,4 +717,14 @@ flags2opts(int flags)
 	if (flags & MNT_SUIDDIR)	res = catopt(res, "suiddir");
 
 	return res;
+}
+
+static char*
+xstrdup(const char *str)
+{
+	char* ret = strdup(str);
+	if(ret == NULL) {
+		errx(1, "strdup failed (could not allocate memory)");
+	}
+	return ret;
 }
