@@ -2,7 +2,7 @@
      The FreeBSD Documentation Project
 
      $FreeBSD: doc/en_US.ISO8859-1/books/handbook/introduction/chapter.sgml,v 1.98 2004/05/06 11:37:24 den Exp $
-     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.4 2004/08/02 18:47:43 justin Exp $
+     $DragonFly: doc/en/books/handbook/introduction/chapter.sgml,v 1.5 2004/12/31 03:47:05 dillon Exp $
 -->
 
 <chapter id="introduction">
@@ -257,7 +257,7 @@
 	of degree for special applications or projects, and in ways not
 	generally possible with operating systems from most major
 	commercial vendors.  Here is just a sampling of some of the
-	applications in which people are currently using FreeBSD:</para>
+	applications in which people are currently using DragonFly:</para>
     
       <itemizedlist>
 	<listitem>
