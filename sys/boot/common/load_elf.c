@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/load_elf.c,v 1.29 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/load_elf.c,v 1.4 2004/09/09 03:47:08 joerg Exp $
+ * $DragonFly: src/sys/boot/common/load_elf.c,v 1.5 2005/02/20 16:30:39 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -266,8 +266,6 @@ __elfN(loadimage)(struct preloaded_file *fp, elf_file_t ef, u_int64_t off)
 #else
 	off = - (off & 0xff000000u);	/* i386 relocates after locore */
 #endif
-#else
-	off = 0;		/* alpha is direct mapped for kernels */
 #endif
     }
     ef->off = off;

@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/boot/common/Makefile.inc,v 1.16 2003/06/26 03:51:57 peter Exp $
-# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.3 2003/11/10 06:08:31 dillon Exp $
+# $DragonFly: src/sys/boot/common/Makefile.inc,v 1.4 2005/02/20 16:30:39 swildner Exp $
 
 SRCS+=	bcache.c boot.c commands.c console.c devopen.c interp.c 
 SRCS+=	interp_backslash.c interp_parse.c ls.c misc.c 
@@ -11,7 +11,7 @@ SRCS+=	load_elf32.c load_elf64.c
 .if ${MACHINE_ARCH} == "powerpc"
 SRCS+=	load_elf32.c
 .endif
-.if ${MACHINE_ARCH} == "sparc64" || ${MACHINE_ARCH} == "ia64" || ${MACHINE_ARCH} == "alpha"
+.if ${MACHINE_ARCH} == "sparc64" || ${MACHINE_ARCH} == "ia64"
 SRCS+=	load_elf64.c
 .endif
 
