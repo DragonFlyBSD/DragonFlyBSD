@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.3 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.4 2003/06/29 05:29:31 dillon Exp $
  *
  */
 
@@ -139,7 +139,8 @@ unregister_int(int intr, inthand2_t handler)
 }
 
 /*
- * Dispatch an interrupt.
+ * Dispatch an interrupt.  If there's nothing to do we have a stray
+ * interrupt and can just return, leaving the interrupt masked.
  */
 void
 sched_ithd(int intr)
@@ -147,15 +148,20 @@ sched_ithd(int intr)
     thread_t td;
 
     if ((td = ithreads[intr]) != NULL) {
-	if (intlists[intr] == NULL)
+	if (intlists[intr] == NULL) {
 	    printf("sched_ithd: stray interrupt %d\n", intr);
-	else
+	} else {
 	    lwkt_schedule(td);
+	    lwkt_preempt(td, intr);
+	}
     } else {
 	printf("sched_ithd: stray interrupt %d\n", intr);
     }
 }
 
+/*
+ * Interrupt threads run this as their main loop.
+ */
 static void
 ithread_handler(void *arg)
 {
@@ -171,7 +177,14 @@ ithread_handler(void *arg)
 	    rec->handler(rec->argument);
 	}
 	ithread_done(intr);
-	KKASSERT(curthread->td_pri == TDPRI_CRIT);
+
+	/*
+	 * temporary sanity check.  If we preempted another thread we
+	 * are placed in another critical section by that thread which
+	 * will be released when we block and resume the original thread.
+	 */
+	KKASSERT(curthread->td_pri == TDPRI_CRIT ||
+	    (curthread->td_preempted && curthread->td_pri == 2 * TDPRI_CRIT));
     }
     crit_exit();	/* not reached */
 }

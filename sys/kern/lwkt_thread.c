@@ -27,7 +27,7 @@
  *	thread scheduler, which means that generally speaking we only need
  *	to use a critical section to prevent hicups.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.9 2003/06/29 03:28:44 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.10 2003/06/29 05:29:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -206,7 +206,7 @@ lwkt_switch(void)
     thread_t td = curthread;
     thread_t ntd;
 
-    if (mycpu->gd_intr_nesting_level)
+    if (mycpu->gd_intr_nesting_level && td->td_preempted == NULL)
 	panic("lwkt_switch: cannot switch from within an interrupt\n");
 
     crit_enter();
@@ -216,6 +216,7 @@ lwkt_switch(void)
 	 * thread.
 	 */
 	td->td_preempted = NULL;
+	td->td_pri -= TDPRI_CRIT;
 	ntd->td_flags &= ~TDF_PREEMPTED;
     } else if ((ntd = TAILQ_FIRST(&mycpu->gd_tdrunq)) != NULL) {
 	TAILQ_REMOVE(&mycpu->gd_tdrunq, ntd, td_threadq);
@@ -226,6 +227,36 @@ lwkt_switch(void)
     if (td != ntd)
 	td->td_switch(ntd);
     crit_exit();
+}
+
+/*
+ * The target thread preempts the current thread.  The target thread
+ * structure must be stable and preempt-safe (e.g. an interrupt thread).
+ * When the target thread blocks the current thread will be resumed.
+ *
+ * XXX the target runs in a critical section so it does not open the original
+ * thread up to additional interrupts that the original thread believes it
+ * is blocking.
+ *
+ * Normal kernel threads should not preempt other normal kernel threads
+ * as it breaks the assumptions kernel threads are allowed to make.  Note
+ * that preemption does not mess around with the current thread's RUNQ
+ * state.
+ */
+void
+lwkt_preempt(struct thread *ntd, int id)
+{
+    struct thread *td = curthread;
+
+    crit_enter();
+    if (ntd->td_preempted == NULL) {
+	ntd->td_preempted = curthread;
+	td->td_flags |= TDF_PREEMPTED;
+	ntd->td_pri += TDPRI_CRIT;
+	while (td->td_flags & TDF_PREEMPTED)
+	    ntd->td_switch(ntd);
+    }
+    crit_exit_noyield();
 }
 
 /*

@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.4 2003/06/28 04:16:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.5 2003/06/29 05:29:31 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -254,17 +254,10 @@ hardclock(frame)
 	 * relatively high clock interrupt priority any longer than necessary.
 	 */
 	if (TAILQ_FIRST(&callwheel[ticks & callwheelmask]) != NULL) {
-		if (CLKF_BASEPRI(frame)) {
-			/*
-			 * Save the overhead of a software interrupt;
-			 * it will happen as soon as we return, so do it now.
-			 */
-			(void)splsoftclock();
-			softclock();
-		} else
-			setsoftclock();
-	} else if (softticks + 1 == ticks)
+		setsoftclock();
+	} else if (softticks + 1 == ticks) {
 		++softticks;
+	}
 }
 
 /*

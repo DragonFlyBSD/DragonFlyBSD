@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.13 2003/06/29 03:28:46 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.14 2003/06/29 05:29:31 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -198,7 +198,7 @@ extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_init_wait(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
-extern void lwkt_preempt(void);
+extern void lwkt_preempt(thread_t ntd, int id);
 extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(void);
 extern void lwkt_deschedule(thread_t td);
