@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.24 2003/10/16 23:59:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.25 2003/10/17 07:30:42 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -85,7 +85,6 @@ static fixpt_t cexp[3] = {
 
 static void	endtsleep (void *);
 static void	loadav (void *arg);
-static void	maybe_resched (struct proc *chk);
 static void	roundrobin (void *arg);
 static void	schedcpu (void *arg);
 static void	updatepri (struct proc *p);
@@ -109,38 +108,6 @@ sysctl_kern_quantum(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_PROC(_kern, OID_AUTO, quantum, CTLTYPE_INT|CTLFLAG_RW,
 	0, sizeof sched_quantum, sysctl_kern_quantum, "I", "");
-
-/*
- * Arrange to reschedule if necessary by checking to see if the current
- * process is on the highest priority user scheduling queue.  This may
- * be run from an interrupt so we have to follow any preemption chains
- * back to the original process.
- */
-static void
-maybe_resched(struct proc *chk)
-{
-	struct proc *cur = lwkt_preempted_proc();
-
-	if (cur == NULL)
-		return;
-
-	/*
-	 * Check the user queue (realtime, normal, idle).  Lower numbers
-	 * indicate higher priority queues.  Lower numbers are also better
-	 * for p_priority.
-	 */
-	if (chk->p_rtprio.type < cur->p_rtprio.type) {
-		need_resched();
-	} else if (chk->p_rtprio.type == cur->p_rtprio.type) {
-		if (chk->p_rtprio.type == RTP_PRIO_NORMAL) {
-			if (chk->p_priority / PPQ < cur->p_priority / PPQ)
-				need_resched();
-		} else {
-			if (chk->p_rtprio.prio < cur->p_rtprio.prio)
-				need_resched();
-		}
-	}
-}
 
 int 
 roundrobin_interval(void)
@@ -589,7 +556,6 @@ xwakeup(struct xwait *w)
 			p->p_stat = SRUN;
 			if (p->p_flag & P_INMEM) {
 				setrunqueue(p);
-				maybe_resched(p);
 			} else {
 				p->p_flag |= P_SWAPINREQ;
 				wakeup((caddr_t)&proc0);
@@ -629,8 +595,6 @@ restart:
 				p->p_stat = SRUN;
 				if (p->p_flag & P_INMEM) {
 					setrunqueue(p);
-					if (p->p_flag & P_CURPROC)
-					    maybe_resched(p);
 				} else {
 					p->p_flag |= P_SWAPINREQ;
 					wakeup((caddr_t)&proc0);
@@ -762,8 +726,6 @@ setrunnable(struct proc *p)
 	if ((p->p_flag & P_INMEM) == 0) {
 		p->p_flag |= P_SWAPINREQ;
 		wakeup((caddr_t)&proc0);
-	} else {
-		maybe_resched(p);
 	}
 }
 
@@ -794,8 +756,6 @@ clrrunnable(struct proc *p, int stat)
  * Compute the priority of a process when running in user mode.
  * Arrange to reschedule if the resulting priority is better
  * than that of the current process.
- *
- * YYY real time / idle procs do not use p_priority XXX
  */
 void
 resetpriority(struct proc *p)
@@ -804,20 +764,39 @@ resetpriority(struct proc *p)
 	int opq;
 	int npq;
 
-	if (p->p_rtprio.type != RTP_PRIO_NORMAL)
+	/*
+	 * Set p_priority for general process comparisons
+	 */
+	switch(p->p_rtprio.type) {
+	case RTP_PRIO_REALTIME:
+		p->p_priority = PRIBASE_REALTIME + p->p_rtprio.prio;
 		return;
+	case RTP_PRIO_NORMAL:
+		break;
+	case RTP_PRIO_IDLE:
+		p->p_priority = PRIBASE_IDLE + p->p_rtprio.prio;
+		return;
+	case RTP_PRIO_THREAD:
+		p->p_priority = PRIBASE_THREAD + p->p_rtprio.prio;
+		return;
+	}
+
+	/*
+	 * NORMAL priorities fall through.  These are based on niceness
+	 * and cpu use.
+	 */
 	newpriority = NICE_ADJUST(p->p_nice - PRIO_MIN) +
 			p->p_estcpu / ESTCPURAMP;
 	newpriority = min(newpriority, MAXPRI);
 	npq = newpriority / PPQ;
 	crit_enter();
-	opq = p->p_priority / PPQ;
+	opq = (p->p_priority & PRIMASK) / PPQ;
 	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ) && opq != npq) {
 		/*
 		 * We have to move the process to another queue
 		 */
 		remrunqueue(p);
-		p->p_priority = newpriority;
+		p->p_priority = PRIBASE_NORMAL + newpriority;
 		setrunqueue(p);
 	} else {
 		/*
@@ -825,10 +804,9 @@ resetpriority(struct proc *p)
 		 * up later.
 		 */
 		KKASSERT(opq == npq || (p->p_flag & P_ONRUNQ) == 0);
-		p->p_priority = newpriority;
+		p->p_priority = PRIBASE_NORMAL + newpriority;
 	}
 	crit_exit();
-	maybe_resched(p);
 }
 
 /*
@@ -891,14 +869,24 @@ sched_setup(dummy)
  * is that the system will 90% forget that the process used a lot of CPU
  * time in 5 * loadav seconds.  This causes the system to favor processes
  * which haven't run much recently, and to round-robin among other processes.
+ *
+ * WARNING!
  */
 void
-schedclock(struct proc *p)
+schedclock(void *dummy)
 {
-	p->p_cpticks++;
-	p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
-	if ((p->p_estcpu % PPQ) == 0)
-		resetpriority(p);
+	struct thread *td;
+	struct proc *p;
+
+	td = curthread;
+	if ((p = td->td_proc) != NULL) {
+		p->p_cpticks++;
+		p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
+		if ((p->p_estcpu % PPQ) == 0 && try_mplock()) {
+			resetpriority(p);
+			rel_mplock();
+		}
+	}
 }
 
 static

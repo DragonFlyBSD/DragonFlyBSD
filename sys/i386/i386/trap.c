@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.35 2003/10/16 22:26:35 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.36 2003/10/17 07:30:43 dillon Exp $
  */
 
 /*
@@ -175,19 +175,25 @@ MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
  * point of view of the userland scheduler unless we actually have to
  * switch.
  *
- * usertdsw is called from within a critical section and the BGL will still
- * be held.  This function is NOT called for preemptions, only for switchouts.
+ * passive_release is called from within a critical section and the BGL will
+ * still be held.  This function is NOT called for preemptions, only for
+ * switchouts.  We only actually release our P_CURPROC designation when we
+ * are going to sleep, otherwise another process might be assigned P_CURPROC
+ * unnecessarily.
  */
 static void
 passive_release(struct thread *td)
 {
 	struct proc *p = td->td_proc;
 
-	lwkt_setpri_self(TDPRI_KERN_USER);
-	if (p->p_flag & P_CURPROC)
-		release_curproc(p, (td->td_flags & TDF_RUNQ) == 0);
-	if ((p->p_flag & P_CURPROC) == 0)
+	if ((p->p_flag & P_CP_RELEASED) == 0) {
+		p->p_flag |= P_CP_RELEASED;
+		lwkt_setpri_self(TDPRI_KERN_USER);
+	}
+	if ((p->p_flag & P_CURPROC) && (td->td_flags & TDF_RUNQ) == 0) {
 		td->td_release = NULL;
+		release_curproc(p);
+	}
 }
 
 /*
@@ -210,19 +216,20 @@ userexit(struct proc *p)
 	/*
 	 * Reacquire our P_CURPROC status and adjust the LWKT priority
 	 * for our return to userland.  We can fast path the case where
-	 * td_release was not called and P_CURPROC is still set, otherwise
-	 * do it the slow way.
+	 * td_release was not called by checking particular proc flags.
+	 * Otherwise we do it the slow way.
 	 *
 	 * Lowering our priority may make other higher priority threads
 	 * runnable. lwkt_setpri_self() does not switch away, so call
 	 * lwkt_maybe_switch() to deal with it.
 	 */
-	if (td->td_release && (p->p_flag & P_CURPROC)) {
+	td->td_release = NULL;
+	if ((p->p_flag & (P_CP_RELEASED|P_CURPROC)) == P_CURPROC) {
 		++fast_release;
-		td->td_release = NULL;
 	} else {
 		++slow_release;
 		acquire_curproc(p);
+
 		switch(p->p_rtprio.type) {
 		case RTP_PRIO_IDLE:
 			lwkt_setpri_self(TDPRI_USER_IDLE);
@@ -235,8 +242,8 @@ userexit(struct proc *p)
 			lwkt_setpri_self(TDPRI_USER_NORM);
 			break;
 		}
-		lwkt_maybe_switch();
 	}
+	lwkt_maybe_switch();
 }
 
 
@@ -253,18 +260,22 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 	}
 
 	/*
-	 * If a reschedule has been requested then the easiest solution
-	 * is to run our passive release function which will possibly
-	 * shift our P_CURPROC designation to another user process. 
-	 *
-	 * A reschedule can also occur due to a higher priority LWKT thread
-	 * becoming runable, we have to call lwkt_maybe_switch() to deal
-	 * with it.
+	 * If a reschedule has been requested then we release the current
+	 * process in order to shift our P_CURPROC designation to another
+	 * user process.  userexit() will reacquire P_CURPROC and block
+	 * there.
 	 */
 	if (resched_wanted()) {
-		if (curthread->td_release)
-			passive_release(curthread);
-		lwkt_maybe_switch();
+		p->p_thread->td_release = NULL;
+		if ((p->p_flag & P_CP_RELEASED) == 0) {
+			p->p_flag |= P_CP_RELEASED;
+			lwkt_setpri_self(TDPRI_KERN_USER);
+		}
+		if (p->p_flag & P_CURPROC) {
+			release_curproc(p);
+		} else {
+			clear_resched();
+		}
 	}
 
 	/*

@@ -28,7 +28,7 @@
  *	to use a critical section to avoid problems.  Foreign thread 
  *	scheduling is queued via (async) IPIs.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.36 2003/10/15 23:27:06 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.37 2003/10/17 07:30:42 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1111,8 +1111,10 @@ lwkt_gentoken(lwkt_token_t tok, int *gen)
 }
 
 /*
- * Re-acquire a token that might have been lost.  Returns the generation 
- * number of the token.
+ * Re-acquire a token that might have been lost.   The generation number
+ * is bumped and returned regardless of whether the token had been lost
+ * or not (because we only have cpu granularity we have to bump the token
+ * either way).
  */
 int
 lwkt_regettoken(lwkt_token_t tok)
@@ -1141,8 +1143,8 @@ lwkt_regettoken(lwkt_token_t tok)
 #endif
 	}
 #endif
-	++tok->t_gen;
     }
+    ++tok->t_gen;
     return(tok->t_gen);
 }
 
@@ -1340,12 +1342,14 @@ lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg)
 
 /*
  * Send a message to several target cpus.  Typically used for scheduling.
+ * The message will not be sent to stopped cpus.
  */
 void
 lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
 {
     int cpuid;
 
+    mask &= ~stopped_cpus;
     while (mask) {
 	    cpuid = bsfl(mask);
 	    lwkt_send_ipiq(cpuid, func, arg);

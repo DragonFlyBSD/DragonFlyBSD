@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.33 2003/10/16 23:59:13 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.34 2003/10/17 07:30:40 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -179,8 +179,7 @@ struct	proc {
 	struct	vnode *p_textvp;	/* Vnode of executable. */
 
 	char	p_lock;			/* Process lock (prevent swap) count. */
-	u_char	p_unused01;		/* Which cpu we are on */
-	u_char	p_unused02;		/* Last cpu we were on */
+	short	p_priority;		/* overall process priority */
 	char	p_rqindex;		/* Run queue index */
 
 	unsigned int	p_stops;	/* procfs event bitmask */
@@ -203,7 +202,7 @@ struct	proc {
 
 	sigset_t p_sigmask;	/* Current signal mask. */
 	stack_t	p_sigstk;	/* sp & on stack state variable */
-	u_char	p_priority;	/* Tracks user sched queue */
+	u_char	p_unused00;	/* (used to be p_priority) */
 	char	p_nice;		/* Process "nice" value. */
 
 	struct 	pgrp *p_pgrp;	/* Pointer to process group. */
@@ -419,7 +418,7 @@ int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	resetpriority (struct proc *);
 int	roundrobin_interval (void);
 void	resched_cpus(u_int32_t mask);
-void	schedclock (struct proc *);
+void	schedclock (void *dummy);
 void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *, int stat);
 void	setrunqueue (struct proc *);
@@ -428,7 +427,7 @@ int	suser (struct thread *td);
 int	suser_proc (struct proc *p);
 int	suser_cred (struct ucred *cred, int flag);
 void	remrunqueue (struct proc *);
-void	release_curproc (struct proc *curp, int force);
+void	release_curproc (struct proc *curp);
 void	acquire_curproc (struct proc *curp);
 void	cpu_heavy_switch (struct thread *);
 void	cpu_lwkt_switch (struct thread *);

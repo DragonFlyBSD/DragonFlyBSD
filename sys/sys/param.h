@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.7 2003/10/16 23:59:13 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.8 2003/10/17 07:30:40 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -110,6 +110,11 @@
  * insignificant.
  */
 #define	MAXPRI	127		/* Priorities range from 0 through MAXPRI. */
+#define PRIMASK	127
+#define PRIBASE_REALTIME	0
+#define PRIBASE_NORMAL		128
+#define PRIBASE_IDLE		256
+#define PRIBASE_THREAD		384	/* huh? */
 
 #define	PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
 #define PUSRFLAG1	0x0200	/* Subsystem specific flag */

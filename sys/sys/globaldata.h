@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.17 2003/10/02 22:27:00 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.18 2003/10/17 07:30:40 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -94,7 +94,9 @@ struct globaldata {
 	int		gd_psdiv;		/* profile kern/kern_clock.c */
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;
-	struct thread	gd_schedthread;
+	short		gd_upri;		/* userland scheduler helper */
+	short		gd_unused01;
+	struct thread	gd_schedthread;		/* userland scheduler helper */
 	struct thread	gd_idlethread;
 	SLGlobalData	gd_slab;		/* slab allocator */
 	int		gd_vme_kdeficit;	/* vm_map_entry reservation */

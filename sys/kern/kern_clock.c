@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.11 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.12 2003/10/17 07:30:42 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -494,9 +494,17 @@ statclock(frame)
 	mycpu->gd_psdiv = psdiv;
 	mycpu->gd_psticks = psticks + psdiv;
 
-	if (p != NULL) {
-		schedclock(p);
+	/*
+	 * XXX YYY DragonFly... need to rewrite all of this,
+	 * only schedclock is distributed at the moment
+	 */
+	schedclock(NULL);
+#ifdef SMP
+	if (smp_started && invltlb_ok && !cold && !panicstr) /* YYY */
+		lwkt_send_ipiq_mask(mycpu->gd_other_cpus, schedclock, NULL);
+#endif
 
+	if (p != NULL) {
 		/* Update resource usage integrals and maximums. */
 		if ((pstats = p->p_stats) != NULL &&
 		    (ru = &pstats->p_ru) != NULL &&
