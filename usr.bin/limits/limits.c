@@ -21,7 +21,7 @@
  * Display/change(+runprogram)/eval resource limits.
  *
  * $FreeBSD: src/usr.bin/limits/limits.c,v 1.7.2.3 2003/05/22 09:26:57 sheldonh Exp $
- * $DragonFly: src/usr.bin/limits/limits.c,v 1.3 2004/04/22 17:08:07 dillon Exp $
+ * $DragonFly: src/usr.bin/limits/limits.c,v 1.4 2005/01/12 01:20:26 cpressey Exp $
  */
 
 #include <err.h>
@@ -217,7 +217,7 @@ static struct {
 #endif
       }
     },
-    { NULL }
+    { NULL, NULL, NULL, NULL, NULL, NULL, {} }
 };
 
 static struct {
@@ -321,7 +321,7 @@ main(int argc, char *argv[])
 	default:
 	case ':': /* Without arg */
 	    if ((p = strchr(rcs_string, optopt)) != NULL) {
-		int rcswhich = p - rcs_string;
+		rcswhich = p - rcs_string;
 
 		/*
 		 * Backwards compatibility with earlier kernel which might
