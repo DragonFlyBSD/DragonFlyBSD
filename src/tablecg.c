@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.22 2004/03/05 10:37:22 hmp Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.23 2004/03/05 14:00:57 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -224,62 +224,66 @@ main(int ac, char **av)
     /*
      * Generate the table structure after processing the web page so
      * we can populate the tags properly.
-     */     
-    printf("<HTML>\n");
-    printf("<HEAD>\n");
+     */
+    printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+    printf("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" ");
+    printf("\n \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">\n");
+    printf("<html xmlns=\"http://www.w3.org/1999/xhtml\">\n");
+    printf("<head>\n");
 
     if (Title)
-	printf("<TITLE>%s</TITLE>\n", Title);
+	printf("<title>%s</title>\n", Title);
     else
-	printf("<TITLE>DragonFly</TITLE>\n");
+	printf("<title>DragonFly</title>\n");
 
-    printf("<link href=\"../favicon.ico\" rel=\"shortcut icon\">\n");
-    printf("<LINK REL=\"stylesheet\" HREF=\"../stylesheet.css\" TYPE=\"text/css\">");
-    printf("</HEAD>\n");
-    printf("<BODY>\n");
+    printf("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\n");
+    printf("<link href=\"../favicon.ico\" rel=\"shortcut icon\"/>\n");
+    printf("<link rel=\"stylesheet\" href=\"../stylesheet.css\" type=\"text/css\"/>");
+    printf("</head>\n");
+    printf("<body>\n");
 
-    printf("<TABLE BORDER=0 WIDTH=760 BGCOLOR=\"#FFFFFF\">\n");
-    printf("<TR><TD WIDTH=\"134\"><IMG SRC=\"../smalldf.jpg\"></TD>");
-    printf("<TD VALIGN=\"bottom\">");
+    printf("<table border=\"0\" width=\"760\" bgcolor=\"#FFFFFF\">\n");
+    printf("<tr><td width=\"134\"><img src=\"../smalldf.jpg\" alt=\"\"/></td>\n");
+    printf("<td valign=\"bottom\">");
 
     if (Title)
-	printf("<SPAN CLASS=\"pagetitle\">%s</SPAN>", Title);
+	printf("<span class=\"pagetitle\">%s</span>", Title);
     else
-        printf("<SPAN CLASS=\"pagetitle\">The DragonFly BSD Project</SPAN>");
+        printf("<span class=\"pagetitle\">The DragonFly BSD Project</span>");
 
 /*
  *  Random phrase printer - commented out until more phrases notes, 
  *  or just one picked.
  *
- *  printf("<BR><I><SMALL>\n");
+ *  printf("<br/><i><small>\n");
  *  srandom(time(NULL));
  *  printf("%s", Phrases[random()%(sizeof(Phrases)/sizeof(Phrases[0]))]);
- *  printf("</SMALL></I>
+ *  printf("</small></i>
  */
  
-    printf("</TD></TR>");
-     printf("<TR><TD COLSPAN=\"2\"><HR></TD></TR>");
+    printf("</td></tr>");
+     printf("<tr><td colspan=\"2\"><hr /></td></tr>");
 
-    printf("<TR><TD VALIGN=top>");
+    printf("<tr><td valign=\"top\">");
 
     generate_side_headers("main", "Main", Main);
     generate_side_headers("goals", "Goals", Goals);
     generate_side_headers("status", "Status", Status);
     generate_side_headers("docs", "Docs", Docs);
 
-    printf("</TD><TD VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
+    printf("</td><td valign=\"top\" bgcolor=\"#ffffff\">");
     fflush(stdout);
     buildflush();
-    printf("<PRE>\n");
+    printf("<pre>\n");
     fflush(stdout);
-    printf("</PRE>\n");
+    printf("</pre>\n");
 
     /*
      * Finish table structure and add terminators.
      */
-    printf("</TD></TR></TABLE>\n");
-    printf("</BODY>\n");
-    printf("</HTML>\n");
+    printf("</td></tr></table>\n");
+    printf("</body>\n");
+    printf("</html>\n");
     return(0);
 }
 
@@ -300,48 +304,52 @@ generate_side_headers(char *section1, char *section2, char *files[])
     int i;
     const char *fileclass = "";
 
-    printf("\n<TABLE BORDER=\"0\" CELLPADDING=\"4\" WIDTH=\"100%%\">\n");
-    printf("\t<TR>");
+    printf("\n<table border=\"0\" cellpadding=\"4\" width=\"100%%\">\n");
+    printf("\t<tr>");
 
     if (strcmp(FileName, "index.cgi") == 0 &&
 	strcmp(section1, DirName) == 0
     ) {
-	fileclass = " CLASS=\"selected\"";
+	fileclass = " class=\"selected\"";
     } else {
-	fileclass = " CLASS=\"unselected\"";
+	fileclass = " class=\"unselected\"";
     }
 
-    printf("<TD%s><A HREF=\"../%s\">%s</A>",
+    printf("<td%s><a href=\"../%s\">%s</a></td></tr>\n",
 	fileclass, section1, section2);
 
-    printf("</TD></TR>\n\t<TR><TD>\n<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n");
+	if (files[0] != NULL) {
+        printf("\t<tr><td>\n");
+		printf("<!-- I am here (1) -->\n");
+		printf("<table border=\"0\" width=\"100%%\">\n");
 
-    for (i = 0; files[i] != NULL; i++) {
-        if ((strcmp(files[i], FileName) == 0) &&
-	    (strcmp(section1, DirName) == 0) 
-	) {
-            fileclass = " CLASS=\"subselected\"";
-	} else {
-            fileclass = " CLASS=\"subunselected\"";
-	}
+    	for (i = 0; files[i] != NULL; i++) {
+        	if ((strcmp(files[i], FileName) == 0) &&
+	    	    (strcmp(section1, DirName) == 0) 
+		) {
+        	    fileclass = " class=\"subselected\"";
+		} else {
+        	    fileclass = " class=\"subunselected\"";
+		}
       
-        if ((ptr = strchr(files[i], '.')) != NULL &&
-            (strcmp(ptr + 1, "cgi") == 0 ||
-            strcmp(ptr + 1, "html") == 0)
-        ) {
-            len = ptr - files[i];
-            printf("\t<TR><TD%s>", fileclass);
-            printf("&nbsp;&nbsp;&nbsp;&nbsp;");
-            printf("<A CLASS=\"nounderline\" ");
-            printf("HREF=\"../%s/%s\">%*.*s</A></TD></TR>\n",
-		section1, 
-		files[i], len, len, files[i]);
-        }
+        	if ((ptr = strchr(files[i], '.')) != NULL &&
+            	(strcmp(ptr + 1, "cgi") == 0 ||
+            	strcmp(ptr + 1, "html") == 0)
+        	) {
+            	len = ptr - files[i];
+            	printf("\t<tr><td%s>", fileclass);
+            	printf("&nbsp;&nbsp;&nbsp;&nbsp;");
+            	printf("<a class=\"nounderline\" ");
+            	printf("href=\"../%s/%s\">%*.*s</a></td></tr>\n",
+			section1, 
+			files[i], len, len, files[i]);
+        	}
+    	}
+    	printf("</table>\n</td></tr>\n");
+	}
 
-    }
-    printf("</TABLE>\n</TD>");
-    printf("</TR>\n\t<TR><TD WIDTH=100%%></TD></TR>\n");
-    printf("</TABLE>\n");
+    printf("\t<tr><td width=\"100%%\">&nbsp;</td></tr>\n");
+    printf("</table>\n");
 }
 
 static void
@@ -380,7 +388,7 @@ buildout(const char *ptr, int len)
 {
     if (OBuf == NULL) {
 	OMax = 1024*1024;
-	OBuf = malloc(OMax);
+	OBuf = safe_malloc(OMax);
     }
     if (OSize + len > OMax)
 	len = OMax - OSize;
@@ -403,7 +411,7 @@ choppath(const char *path)
     char *nptr;
 
     if ((ptr = strrchr(path, '/')) != NULL) {
-	nptr = malloc(ptr - path + 1);
+	nptr = safe_malloc(ptr - path + 1);
 	bcopy(path, nptr, ptr - path);
 	nptr[ptr - path] = 0;
     } else {
