@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.43 2004/12/04 10:14:27 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.44 2004/12/04 21:48:25 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1575,7 +1575,7 @@ trimthenstep6:
 	 */
 	if (thflags & TH_RST) {
 		if (SEQ_GEQ(th->th_seq, tp->last_ack_sent) &&
-		    SEQ_LT(th->th_seq, tp->last_ack_sent + tp->rcv_wnd)) {
+		    SEQ_LEQ(th->th_seq, tp->last_ack_sent + tp->rcv_wnd)) {
 			switch (tp->t_state) {
 
 			case TCPS_SYN_RECEIVED:
