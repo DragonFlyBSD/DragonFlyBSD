@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.2 2003/06/17 04:28:51 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.3 2003/07/23 06:21:01 dillon Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_
@@ -74,7 +74,7 @@
 
 #define	tcp_sendseqinit(tp) \
 	(tp)->snd_una = (tp)->snd_nxt = (tp)->snd_max = (tp)->snd_up = \
-	    (tp)->snd_recover = (tp)->snd_high = (tp)->iss
+	    (tp)->snd_recover = (tp)->iss
 
 #define TCP_PAWS_IDLE	(24 * 24 * 60 * 60 * hz)
 					/* timestamp wrap-around time */
