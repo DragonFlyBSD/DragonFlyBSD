@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.7 2004/07/15 01:18:17 hmp Exp $
+# $DragonFly: site/data/goals/Attic/iomodel.cgi,v 1.8 2004/10/07 15:57:29 justin Exp $
 
 $TITLE(DragonFly - I/O Device Operations)
 
@@ -37,7 +37,7 @@ serialized to the device thread because they aren't.  See the messaging
 section for more information.</p>
 <p>
 It should also be noted that the device interface is being designed with
-the flexibility to allow devices to operate as user processes rather then
+the flexibility to allow devices to operate as user processes rather than
 as kernel-only threads.  Though we probably will not achieve this capability
 for some time, the intention is to eventually be able to do it.  There are
 innumerable advantages to being able to transparently pull things like 
