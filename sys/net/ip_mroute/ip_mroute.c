@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.14 2004/08/03 01:59:58 hsu Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.15 2004/09/16 23:30:10 joerg Exp $
  */
 
 #include "opt_mrouting.h"
@@ -97,8 +97,8 @@ SYSCTL_OPAQUE(_net_inet_ip, OID_AUTO, viftable, CTLFLAG_RD,
 
 static u_char		nexpire[MFCTBLSIZ];
 
-static struct callout_handle expire_upcalls_ch;
-
+static struct callout expire_upcalls_ch;
+static struct callout tbf_reprocess_q_ch;
 #define		EXPIRE_TIMEOUT	(hz / 4)	/* 4x / second		*/
 #define		UPCALL_EXPIRE	6		/* number of timeouts	*/
 
@@ -148,7 +148,7 @@ static MALLOC_DEFINE(M_BWMETER, "bwmeter", "multicast upcall bw meters");
  */
 #define BW_METER_BUCKETS	1024
 static struct bw_meter *bw_meter_timers[BW_METER_BUCKETS];
-static struct callout_handle bw_meter_ch;
+static struct callout bw_meter_ch;
 #define BW_METER_PERIOD (hz)		/* periodical handling of bw meters */
 
 /*
@@ -157,7 +157,7 @@ static struct callout_handle bw_meter_ch;
  */
 static struct bw_upcall	bw_upcalls[BW_UPCALLS_MAX];
 static u_int	bw_upcalls_n; /* # of pending upcalls */
-static struct callout_handle bw_upcalls_ch;
+static struct callout bw_upcalls_ch;
 #define BW_UPCALLS_PERIOD (hz)		/* periodical flush of bw upcalls */
 
 #ifdef PIM
@@ -574,13 +574,18 @@ ip_mrouter_init(struct socket *so, int version)
     bzero((caddr_t)nexpire, sizeof(nexpire));
 
     pim_assert = 0;
-
-    expire_upcalls_ch = timeout(expire_upcalls, NULL, EXPIRE_TIMEOUT);
-
     bw_upcalls_n = 0;
     bzero((caddr_t)bw_meter_timers, sizeof(bw_meter_timers));
-    bw_upcalls_ch = timeout(expire_bw_upcalls_send, NULL, BW_UPCALLS_PERIOD);
-    bw_meter_ch = timeout(expire_bw_meter_process, NULL, BW_METER_PERIOD);
+
+    callout_init(&expire_upcalls_ch);
+    callout_init(&bw_upcalls_ch);
+    callout_init(&bw_meter_ch);
+    callout_init(&tbf_reprocess_q_ch);
+
+    callout_reset(&expire_upcalls_ch, EXPIRE_TIMEOUT, expire_upcalls, NULL);
+    callout_reset(&bw_upcalls_ch, BW_UPCALLS_PERIOD,
+		  expire_bw_upcalls_send, NULL);
+    callout_reset(&bw_meter_ch, BW_METER_PERIOD, expire_bw_meter_process, NULL);
 
     mrt_api_config = 0;
 
@@ -627,12 +632,13 @@ X_ip_mrouter_done(void)
     numvifs = 0;
     pim_assert = 0;
 
-    untimeout(expire_upcalls, NULL, expire_upcalls_ch);
+    callout_stop(&expire_upcalls_ch);
 
     mrt_api_config = 0;
     bw_upcalls_n = 0;
-    untimeout(expire_bw_upcalls_send, NULL, bw_upcalls_ch);
-    untimeout(expire_bw_meter_process, NULL, bw_meter_ch);
+    callout_stop(&bw_upcalls_ch);
+    callout_stop(&bw_meter_ch);
+    callout_stop(&tbf_reprocess_q_ch);
 
     /*
      * Free all multicast forwarding cache entries.
@@ -1431,7 +1437,7 @@ expire_upcalls(void *unused)
 	}
     }
     splx(s);
-    expire_upcalls_ch = timeout(expire_upcalls, NULL, EXPIRE_TIMEOUT);
+    callout_reset(&expire_upcalls_ch, EXPIRE_TIMEOUT, expire_upcalls, NULL);
 }
 
 /*
@@ -1786,7 +1792,8 @@ tbf_control(struct vif *vifp, struct mbuf *m, struct ip *ip, u_long p_len)
 	    tbf_send_packet(vifp, m);
 	} else {			/* no, queue packet and try later */
 	    tbf_queue(vifp, m);
-	    timeout(tbf_reprocess_q, (caddr_t)vifp, TBF_REPROCESS);
+	    callout_reset(&tbf_reprocess_q_ch, TBF_REPROCESS,
+	    		  tbf_reprocess_q, vifp);
 	}
     } else if (t->tbf_q_len < t->tbf_max_q_len) {
 	/* finite queue length, so queue pkts and process queue */
@@ -1874,7 +1881,8 @@ tbf_reprocess_q(void *xvifp)
     tbf_update_tokens(vifp);
     tbf_process_q(vifp);
     if (vifp->v_tbf->tbf_q_len)
-	timeout(tbf_reprocess_q, (caddr_t)vifp, TBF_REPROCESS);
+	callout_reset(&tbf_reprocess_q_ch, TBF_REPROCESS,
+		      tbf_reprocess_q, vifp);
 }
 
 /* function that will selectively discard a member of the queue
@@ -2742,7 +2750,8 @@ expire_bw_upcalls_send(void *unused)
 {
     bw_upcalls_send();
     
-    bw_upcalls_ch = timeout(expire_bw_upcalls_send, NULL, BW_UPCALLS_PERIOD);
+    callout_reset(&bw_upcalls_ch, BW_UPCALLS_PERIOD,
+    		  expire_bw_upcalls_send, NULL);
 }
 
 /*
@@ -2755,7 +2764,8 @@ expire_bw_meter_process(void *unused)
     if (mrt_api_config & MRT_MFC_BW_UPCALL)
 	bw_meter_process();
     
-    bw_meter_ch = timeout(expire_bw_meter_process, NULL, BW_METER_PERIOD);
+    callout_reset(&bw_meter_ch, BW_METER_PERIOD,
+    		  expire_bw_meter_process, NULL);
 }
 
 /*
