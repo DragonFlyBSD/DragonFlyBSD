@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.16 2003/11/05 23:26:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.17 2003/11/27 19:57:37 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -123,6 +123,10 @@ rfork(struct rfork_args *uap)
 	struct proc *p = curproc;
 	struct proc *p2;
 	int error;
+
+	/* Don't allow kernel only flags */
+	if ((uap->flags & RFKERNELONLY) != 0)
+		return (EINVAL);
 
 	error = fork1(p, uap->flags, &p2);
 	if (error == 0) {
