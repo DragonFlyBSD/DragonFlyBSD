@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.1 2001/03/09 01:13:24 tmm Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.4 2004/04/13 13:49:00 eirikn Exp $
  */
 
 /*-
@@ -663,7 +663,12 @@ Suff_EndTransform(gnp, dummy)
     {
 	Suff	*s, *t;
 
-	(void)SuffParseTransform(gn->name, &s, &t);
+	/*
+	 * SuffParseTransform() may fail for special rules which are not
+	 * actual transformation rules (e.g., .DEFAULT).
+	 */
+	if (!SuffParseTransform(gn->name, &s, &t))
+		return (0);
 
 	if (DEBUG(SUFF)) {
 	    printf("deleting transformation from `%s' to `%s'\n",
