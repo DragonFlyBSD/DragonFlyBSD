@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/config/LINT,v 1.5 2003/08/24 23:07:07 hsu Exp $
+# $DragonFly: src/sys/config/LINT,v 1.6 2003/09/06 21:56:30 drhodus Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -615,6 +615,7 @@ options 	IPFILTER_LOG		#ipfilter logging
 options 	IPFILTER_DEFAULT_BLOCK	#block all packets by default
 options 	IPSTEALTH		#support for stealth forwarding
 options 	TCPDEBUG
+options		NS			# NETNS support
 
 # The MBUF_STRESS_TEST option enables options which create
 # various random failures / extreme cases related to mbuf
