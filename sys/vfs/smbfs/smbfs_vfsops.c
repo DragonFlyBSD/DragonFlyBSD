@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.11 2004/03/19 17:06:06 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.12 2004/05/03 05:19:50 cpressey Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -132,7 +132,7 @@ int smbfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 static int
 smbfs_mount(struct mount *mp, char *path, caddr_t data, 
-	struct nameidata *ndp, struct thread *td)
+	    struct nameidata *ndp, struct thread *td)
 {
 	struct smbfs_args args; 	  /* will hold data from mount request */
 	struct smbmount *smp = NULL;
@@ -339,10 +339,7 @@ smbfs_root(struct mount *mp, struct vnode **vpp)
  */
 /* ARGSUSED */
 static int
-smbfs_start(mp, flags, td)
-	struct mount *mp;
-	int flags;
-	struct thread *td;
+smbfs_start(struct mount *mp, int flags, struct thread *td)
 {
 	SMBVDEBUG("flags=%04x\n", flags);
 	return 0;
@@ -353,12 +350,8 @@ smbfs_start(mp, flags, td)
  */
 /* ARGSUSED */
 static int
-smbfs_quotactl(mp, cmd, uid, arg, td)
-	struct mount *mp;
-	int cmd;
-	uid_t uid;
-	caddr_t arg;
-	struct thread *td;
+smbfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
+		struct thread *td)
 {
 	SMBVDEBUG("return EOPNOTSUPP\n");
 	return EOPNOTSUPP;
@@ -380,7 +373,6 @@ smbfs_init(struct vfsconf *vfsp)
 int
 smbfs_uninit(struct vfsconf *vfsp)
 {
-
 	SMBVDEBUG("done.\n");
 	return 0;
 }
@@ -431,10 +423,7 @@ smbfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
  */
 /* ARGSUSED */
 static int
-smbfs_sync(mp, waitfor, td)
-	struct mount *mp;
-	int waitfor;
-	struct thread *td;
+smbfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct vnode *vp;
 	int error, allerror = 0;
@@ -471,22 +460,15 @@ loop:
  * smbfs flat namespace lookup. Unsupported.
  */
 /* ARGSUSED */
-static int smbfs_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+static int smbfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 	return (EOPNOTSUPP);
 }
 
 /* ARGSUSED */
-static int smbfs_fhtovp(mp, fhp, nam, vpp, exflagsp, credanonp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct sockaddr *nam;
-	struct vnode **vpp;
-	int *exflagsp;
-	struct ucred **credanonp;
+static int smbfs_fhtovp(struct mount *mp, struct fid *fhp,
+			struct sockaddr *nam, struct vnode **vpp,
+			int *exflagsp, struct ucred **credanonp)
 {
 	return (EINVAL);
 }
@@ -496,9 +478,7 @@ static int smbfs_fhtovp(mp, fhp, nam, vpp, exflagsp, credanonp)
  */
 /* ARGSUSED */
 static int
-smbfs_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+smbfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	return (EINVAL);
 }

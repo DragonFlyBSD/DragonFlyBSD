@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_io.c,v 1.3.2.3 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.10 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_io.c,v 1.11 2004/05/03 05:19:50 cpressey Exp $
  *
  */
 #include <sys/param.h>
@@ -236,7 +236,7 @@ smbfs_readvnode(struct vnode *vp, struct uio *uiop, struct ucred *cred)
 
 int
 smbfs_writevnode(struct vnode *vp, struct uio *uiop,
-	struct ucred *cred, int ioflag)
+		 struct ucred *cred, int ioflag)
 {
 	struct thread *td;
 	struct smbmount *smp = VTOSMBFS(vp);
@@ -401,16 +401,12 @@ smbfs_doio(struct buf *bp, struct ucred *cr, struct thread *td)
 /*
  * Vnode op for VM getpages.
  * Wish wish .... get rid from multiple IO routines
+ *
+ * smbfs_getpages(struct vnode *a_vp, vm_page_t *a_m, int a_count,
+ *		  int a_reqpage, vm_ooffset_t a_offset)
  */
 int
-smbfs_getpages(ap)
-	struct vop_getpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_reqpage;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+smbfs_getpages(struct vop_getpages_args *ap)
 {
 #ifdef SMBFS_RWGENERIC
 	return vnode_pager_generic_getpages(ap->a_vp, ap->a_m, ap->a_count,
@@ -523,17 +519,12 @@ smbfs_getpages(ap)
  * possible bug: all IO done in sync mode
  * Note that vop_close always invalidate pages before close, so it's
  * not necessary to open vnode.
+ *
+ * smbfs_putpages(struct vnode *a_vp, vm_page_t *a_m, int a_count, int a_sync,
+ *		  int *a_rtvals, vm_ooffset_t a_offset)
  */
 int
-smbfs_putpages(ap)
-	struct vop_putpages_args /* {
-		struct vnode *a_vp;
-		vm_page_t *a_m;
-		int a_count;
-		int a_sync;
-		int *a_rtvals;
-		vm_ooffset_t a_offset;
-	} */ *ap;
+smbfs_putpages(struct vop_putpages_args *ap)
 {
 	int error;
 	struct vnode *vp = ap->a_vp;
@@ -613,11 +604,7 @@ smbfs_putpages(ap)
  * doing the flush, just wait for completion.
  */
 int
-smbfs_vinvalbuf(vp, flags, td, intrflg)
-	struct vnode *vp;
-	int flags;
-	struct thread *td;
-	int intrflg;
+smbfs_vinvalbuf(struct vnode *vp, int flags, struct thread *td, int intrflg)
 {
 	struct smbnode *np = VTOSMB(vp);
 	int error = 0, slpflag, slptimeo;
