@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.155 2005/03/16 00:13:38 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.156 2005/03/16 00:13:56 okumoto Exp $
  */
 
 /*-
@@ -1689,12 +1689,13 @@ ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffe
 }
 
 static char *
-ParseRestEnd(VarParser *vp, Buffer *buf, size_t *consumed, Boolean *freePtr)
+ParseRestEnd(VarParser *vp, Buffer *buf, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
 	Var		*v;
 	char		*value;
+	size_t		consumed = vp->ptr - vp->input;
 
 	vname = Buf_GetAll(buf, &vlen);
 
@@ -1724,9 +1725,9 @@ ParseRestEnd(VarParser *vp, Buffer *buf, size_t *consumed, Boolean *freePtr)
 		if (((vlen == 1)) ||
 		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
 			if (strchr("!%*@", vname[0]) != NULL) {
-				value = emalloc(*consumed + 1);
-				strncpy(value, vp->input, *consumed);
-				value[*consumed] = '\0';
+				value = emalloc(consumed + 1);
+				strncpy(value, vp->input, consumed);
+				value[consumed] = '\0';
 
 				*freePtr = TRUE;
 				return (value);
@@ -1739,9 +1740,9 @@ ParseRestEnd(VarParser *vp, Buffer *buf, size_t *consumed, Boolean *freePtr)
 			    (strncmp(vname, ".ARCHIVE", vlen - 1) == 0) ||
 			    (strncmp(vname, ".PREFIX", vlen - 1) == 0) ||
 			    (strncmp(vname, ".MEMBER", vlen - 1) == 0)) {
-				value = emalloc(*consumed + 1);
-				strncpy(value, vp->input, *consumed);
-				value[*consumed] = '\0';
+				value = emalloc(consumed + 1);
+				strncpy(value, vp->input, consumed);
+				value[consumed] = '\0';
 
 				*freePtr = TRUE;
 				return (value);
@@ -1817,9 +1818,11 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	ptr = vp->ptr + 1;
 	while (*ptr != '\0') {
 		if (*ptr == endc) {
-			*consumed += 1;	/* consume closing paren or brace */
-			result = ParseRestEnd(vp, buf, consumed, freePtr);
+			vp->ptr = ptr;
+			vp->ptr++;	/* consume closing paren or brace */
+			result = ParseRestEnd(vp, buf, freePtr);
 			Buf_Destroy(buf, TRUE);
+			*consumed = vp->ptr - vp->input;
 			return (result);
 
 		} else if (*ptr == ':') {
@@ -1858,6 +1861,8 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	 */
 	Buf_Destroy(buf, TRUE);
 	*freePtr = FALSE;
+	vp->ptr = ptr;
+	*consumed = vp->ptr - vp->input;
 	return (var_Error);
 }
 
