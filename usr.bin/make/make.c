@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.15 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.16 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -309,17 +309,14 @@ Make_HandleUse(GNode *cgn, GNode *pgn)
 	     Lst_Concat(pgn->commands, cgn->commands, LST_CONCNEW);
 	}
 
-	if (Lst_Open(cgn->children) == SUCCESS) {
-	    while ((ln = Lst_Next(cgn->children)) != NULL) {
-		gn = Lst_Datum(ln);
+	for (ln = Lst_First(cgn->children); ln != NULL; ln = Lst_Succ(ln)) {
+	    gn = Lst_Datum(ln);
 
-		if (Lst_Member(pgn->children, gn) == NULL) {
-		    Lst_AtEnd(pgn->children, gn);
-		    Lst_AtEnd(gn->parents, pgn);
-		    pgn->unmade += 1;
-		}
+	    if (Lst_Member(pgn->children, gn) == NULL) {
+		Lst_AtEnd(pgn->children, gn);
+		Lst_AtEnd(gn->parents, pgn);
+		pgn->unmade += 1;
 	    }
-	    Lst_Close(cgn->children);
 	}
 
 	pgn->type |= cgn->type & ~(OP_OPMASK | OP_USE | OP_TRANSFORM);
@@ -377,6 +374,8 @@ Make_Update(GNode *cgn)
     char  	*cname;		/* the child's name */
     LstNode	*ln;	 	/* Element in parents and iParents lists */
     char	*p1;
+    char        *ptr;
+    char	*cpref;
 
     cname = Var_Value(TARGET, cgn, &p1);
     free(p1);
@@ -446,35 +445,33 @@ Make_Update(GNode *cgn)
 #endif
     }
 
-    if (Lst_Open(cgn->parents) == SUCCESS) {
-	while ((ln = Lst_Next(cgn->parents)) != NULL) {
-	    pgn = Lst_Datum(ln);
-	    if (pgn->make) {
-		pgn->unmade -= 1;
+    for (ln = Lst_First(cgn->parents); ln != NULL; ln = Lst_Succ(ln)) {
+	pgn = Lst_Datum(ln);
+	if (pgn->make) {
+	    pgn->unmade -= 1;
 
-		if (!(cgn->type & (OP_EXEC | OP_USE))) {
-		    if (cgn->made == MADE) {
-			pgn->childMade = TRUE;
-			if (pgn->cmtime < cgn->mtime) {
-			    pgn->cmtime = cgn->mtime;
-			}
-		    } else {
-			Make_TimeStamp(pgn, cgn);
+	    if (!(cgn->type & (OP_EXEC | OP_USE))) {
+		if (cgn->made == MADE) {
+		    pgn->childMade = TRUE;
+		    if (pgn->cmtime < cgn->mtime) {
+			pgn->cmtime = cgn->mtime;
 		    }
-		}
-		if (pgn->unmade == 0) {
-		    /*
-		     * Queue the node up -- any unmade predecessors will
-		     * be dealt with in MakeStartJobs.
-		     */
-		    Lst_EnQueue(toBeMade, pgn);
-		} else if (pgn->unmade < 0) {
-		    Error("Graph cycles through %s", pgn->name);
+		} else {
+		    Make_TimeStamp(pgn, cgn);
 		}
 	    }
+	    if (pgn->unmade == 0) {
+		/*
+		 * Queue the node up -- any unmade predecessors will
+		 * be dealt with in MakeStartJobs.
+		 */
+		Lst_EnQueue(toBeMade, pgn);
+	    } else if (pgn->unmade < 0) {
+		Error("Graph cycles through %s", pgn->name);
+	    }
 	}
-	Lst_Close(cgn->parents);
     }
+
     /*
      * Deal with successor nodes. If any is marked for making and has an unmade
      * count of 0, has not been made and isn't in the examination queue,
@@ -495,20 +492,15 @@ Make_Update(GNode *cgn)
      * Set the .PREFIX and .IMPSRC variables for all the implied parents
      * of this node.
      */
-    if (Lst_Open(cgn->iParents) == SUCCESS) {
-	char    *ptr;
-	char	*cpref = Var_Value(PREFIX, cgn, &ptr);
-
-	while ((ln = Lst_Next(cgn->iParents)) != NULL) {
-	    pgn = Lst_Datum (ln);
-	    if (pgn->make) {
-		Var_Set(IMPSRC, cname, pgn);
-		Var_Set(PREFIX, cpref, pgn);
-	    }
+    cpref = Var_Value(PREFIX, cgn, &ptr);
+    for (ln = Lst_First(cgn->iParents); ln != NULL; ln = Lst_Succ(ln)) {
+	pgn = Lst_Datum (ln);
+	if (pgn->make) {
+	    Var_Set(IMPSRC, cname, pgn);
+	    Var_Set(PREFIX, cpref, pgn);
 	}
-	free(ptr);
-	Lst_Close(cgn->iParents);
     }
+    free(ptr);
 }
 
 /*-

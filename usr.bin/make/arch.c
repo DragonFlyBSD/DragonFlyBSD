@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.19 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.20 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -1017,11 +1017,7 @@ Arch_MemMTime(GNode *gn)
     char    	  *nameStart,
 		  *nameEnd;
 
-    if (Lst_Open(gn->parents) != SUCCESS) {
-	gn->mtime = 0;
-	return (0);
-    }
-    while ((ln = Lst_Next(gn->parents)) != NULL) {
+    for (ln = Lst_First(gn->parents); ln != NULL; ln = Lst_Succ(ln)) {
 	pgn = Lst_Datum(ln);
 
 	if (pgn->type & OP_ARCHV) {
@@ -1048,9 +1044,6 @@ Arch_MemMTime(GNode *gn)
 	    break;
 	}
     }
-
-    Lst_Close(gn->parents);
-
     return (gn->mtime);
 }
 

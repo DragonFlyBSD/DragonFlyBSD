@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstInit.c,v 1.6 1999/08/28 01:03:52 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.7 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstInit.c,v 1.8 2004/12/17 07:56:08 okumoto Exp $
  *
  * @(#)lstInit.c	8.1 (Berkeley) 6/6/93
  */
@@ -69,8 +69,6 @@ Lst_Init(void)
 
     nList->firstPtr = NULL;
     nList->lastPtr = NULL;
-    nList->isOpen = FALSE;
-    nList->atEnd = LstUnknown;
 
     return (nList);
 }

@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.23 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.24 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -505,15 +505,9 @@ static void
 DirExpandInt(const char *word, Lst *path, Lst *expansions)
 {
 	LstNode *ln;	    /* Current node */
-	Path *p;	    /* Directory in the node */
 
-	if (Lst_Open(path) == SUCCESS) {
-		while ((ln = Lst_Next(path)) != NULL) {
-			p = Lst_Datum(ln);
-			DirMatchFiles(word, p, expansions);
-		}
-		Lst_Close(path);
-	}
+	for (ln = Lst_First(path); ln != NULL; ln = Lst_Succ(ln))
+		DirMatchFiles(word, (Path *)Lst_Datum(ln), expansions);
 }
 
 /*-
@@ -715,12 +709,6 @@ Dir_FindFile(char *name, Lst *path)
 		return (estrdup(name));
 	}
 
-	if (Lst_Open(path) == FAILURE) {
-		DEBUGF(DIR, ("couldn't open path, file not found\n"));
-		misses += 1;
-		return (NULL);
-	}
-
 	/*
 	 * We look through all the directories on the path seeking one which
 	 * contains the final component of the given name and whose final
@@ -729,7 +717,7 @@ Dir_FindFile(char *name, Lst *path)
 	 * and return the resulting string. If we don't find any such thing,
 	 * we go on to phase two...
 	 */
-	while ((ln = Lst_Next(path)) != NULL) {
+	for (ln = Lst_First(path); ln != NULL; ln = Lst_Succ(ln)) {
 		p = Lst_Datum(ln);
 		DEBUGF(DIR, ("%s...", p->name));
 		if (Hash_FindEntry(&p->files, cp) != NULL) {
@@ -760,7 +748,6 @@ Dir_FindFile(char *name, Lst *path)
 			}
 			file = str_concat(p->name, cp, STR_ADDSLASH);
 			DEBUGF(DIR, ("returning %s\n", file));
-			Lst_Close(path);
 			p->hits += 1;
 			hits += 1;
 			return (file);
@@ -775,7 +762,6 @@ Dir_FindFile(char *name, Lst *path)
 			    p1++, p2++)
 				continue;
 			if (*p1 == '\0' && p2 == cp - 1) {
-				Lst_Close(path);
 				if (*cp == '\0' || ISDOT(cp) || ISDOTDOT(cp)) {
 					DEBUGF(DIR, ("returning %s\n", name));
 					return (estrdup(name));
@@ -810,8 +796,7 @@ Dir_FindFile(char *name, Lst *path)
 		Boolean	checkedDot = FALSE;
 
 		DEBUGF(DIR, ("failed. Trying subdirectories..."));
-		Lst_Open(path);
-		while ((ln = Lst_Next(path)) != NULL) {
+		for (ln = Lst_First(path); ln != NULL; ln = Lst_Succ(ln)) {
 			p = Lst_Datum(ln);
 			if (p != dot) {
 				file = str_concat(p->name, name, STR_ADDSLASH);
@@ -827,8 +812,6 @@ Dir_FindFile(char *name, Lst *path)
 
 			if (stat(file, &stb) == 0) {
 				DEBUGF(DIR, ("got it.\n"));
-
-				Lst_Close(path);
 
 				/*
 				 * We've found another directory to search. We
@@ -866,7 +849,6 @@ Dir_FindFile(char *name, Lst *path)
 		}
 
 		DEBUGF(DIR, ("failed. "));
-		Lst_Close(path);
 
 		if (checkedDot) {
 			/*
@@ -1119,16 +1101,13 @@ Dir_MakeFlags(char *flag, Lst *path)
 
 	str = estrdup("");
 
-	if (Lst_Open(path) == SUCCESS) {
-		while ((ln = Lst_Next(path)) != NULL) {
-			p = Lst_Datum(ln);
-			tstr = str_concat(flag, p->name, 0);
-			nstr = str_concat(str, tstr, STR_ADDSPACE);
-			free(str);
-			free(tstr);
-			str = nstr;
-		}
-		Lst_Close(path);
+	for (ln = Lst_First(path); ln != NULL; ln = Lst_Succ(ln)) {
+		p = Lst_Datum(ln);
+		tstr = str_concat(flag, p->name, 0);
+		nstr = str_concat(str, tstr, STR_ADDSPACE);
+		free(str);
+		free(tstr);
+		str = nstr;
 	}
 
 	return (str);
@@ -1236,13 +1215,9 @@ Dir_PrintDirectories(void)
 	    (hits + bigmisses + nearmisses ?
 	    hits * 100 / (hits + bigmisses + nearmisses) : 0));
 	printf("# %-20s referenced\thits\n", "directory");
-	if (Lst_Open(openDirectories) == SUCCESS) {
-		while ((ln = Lst_Next(openDirectories)) != NULL) {
-			p = Lst_Datum(ln);
-			printf("# %-20s %10d\t%4d\n", p->name, p->refCount,
-			    p->hits);
-		}
-		Lst_Close(openDirectories);
+	for (ln = Lst_First(openDirectories); ln != NULL; ln = Lst_Succ(ln)) {
+		p = Lst_Datum(ln);
+		printf("# %-20s %10d\t%4d\n", p->name, p->refCount, p->hits);
 	}
 }
 

@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.14 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.15 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -80,15 +80,6 @@ typedef enum {
 struct Lst {
 	LstNode  	*firstPtr; /* first node in list */
 	LstNode  	*lastPtr;  /* last node in list */
-	/*
-	 * fields for sequential access
-	 */
-	LstWhere	atEnd;	  /* Where in the list the last access was */
-	Boolean	  	isOpen;	  /* true if list has been Lst_Open'ed */
-	LstNode  	*curPtr;  /* current node, if open. NULL if
-				   * *just* opened */
-	LstNode  	*prevPtr; /* Previous node, if open. Used by
-				   * Lst_Remove */
 };
 typedef	struct	Lst Lst;
 
@@ -173,19 +164,6 @@ void		Lst_ForEach(Lst *, DoProc *, void *);
  * beginning of the list again.
  */
 void		Lst_ForEachFrom(Lst *, LstNode *, DoProc *, void *);
-/*
- * these functions are for dealing with a list as a table, of sorts.
- * An idea of the "current element" is kept and used by all the functions
- * between Lst_Open() and Lst_Close().
- */
-/* Open the list */
-ReturnStatus	Lst_Open(Lst *);
-/* Next element please */
-LstNode		*Lst_Next(Lst *);
-/* Done yet? */
-Boolean		Lst_IsAtEnd(Lst *);
-/* Finish table access */
-void		Lst_Close(Lst *);
 
 /*
  * for using the list as a queue

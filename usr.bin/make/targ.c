@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.16 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.17 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -285,10 +285,7 @@ Targ_FindList(Lst *names, int flags)
 
     nodes = Lst_Init();
 
-    if (Lst_Open(names) == FAILURE) {
-	return (nodes);
-    }
-    while ((ln = Lst_Next(names)) != NULL) {
+    for (ln = Lst_First(names); ln != NULL; ln = Lst_Succ(ln)) {
 	name = Lst_Datum(ln);
 	gn = Targ_FindNode(name, flags);
 	if (gn != NULL) {
@@ -305,7 +302,6 @@ Targ_FindList(Lst *names, int flags)
 	    Error("\"%s\" -- target unknown.", name);
 	}
     }
-    Lst_Close(names);
     return (nodes);
 }
 

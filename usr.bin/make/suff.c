@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.19 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.20 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -402,23 +402,19 @@ SuffRemove(Lst *l, Suff *s)
 static void
 SuffInsert(Lst *l, Suff *s)
 {
-    LstNode 	  *ln;		/* current element in l we're examining */
-    Suff          *s2 = NULL;	/* the suffix descriptor in this element */
+    LstNode *ln;	/* current element in l we're examining */
+    Suff *s2;		/* the suffix descriptor in this element */
 
-    if (Lst_Open(l) == FAILURE) {
-	return;
-    }
-    while ((ln = Lst_Next(l)) != NULL) {
+    s2 = NULL;
+    for (ln = Lst_First(l); ln != NULL; ln = Lst_Succ(ln)) {
 	s2 = Lst_Datum(ln);
-	if (s2->sNum >= s->sNum) {
+	if (s2->sNum >= s->sNum)
 	    break;
-	}
     }
     if (s2 == NULL) {
 	    DEBUGF(SUFF, ("inserting an empty list?..."));
     }
 
-    Lst_Close(l);
     DEBUGF(SUFF, ("inserting %s(%d)...", s->name, s->sNum));
     if (ln == NULL) {
 	DEBUGF(SUFF, ("at end of list\n"));
@@ -862,14 +858,10 @@ Suff_DoPaths(void)
     Lst	    	*inIncludes;	/* Cumulative .INCLUDES path */
     Lst	    	*inLibs;	/* Cumulative .LIBS path */
 
-    if (Lst_Open(sufflist) == FAILURE) {
-	return;
-    }
-
     inIncludes = Lst_Init();
     inLibs = Lst_Init();
 
-    while ((ln = Lst_Next(sufflist)) != NULL) {
+    for (ln = Lst_First(sufflist); ln != NULL; ln = Lst_Succ(ln)) {
 	s = Lst_Datum(ln);
 	if (!Lst_IsEmpty(s->searchPath)) {
 #ifdef INCLUDES
@@ -896,8 +888,6 @@ Suff_DoPaths(void)
 
     Lst_Destroy(inIncludes, Dir_Destroy);
     Lst_Destroy(inLibs, Dir_Destroy);
-
-    Lst_Close(sufflist);
 }
 
 /*-
@@ -1055,6 +1045,7 @@ SuffAddLevel(Lst *l, Src *targ)
  *----------------------------------------------------------------------
  * SuffRemoveSrc --
  *	Free all src structures in list that don't have a reference count
+ *	XXX this actually frees only the first of these.
  *
  * Results:
  *	True if a src was removed
@@ -1066,21 +1057,19 @@ SuffAddLevel(Lst *l, Src *targ)
 static int
 SuffRemoveSrc(Lst *l)
 {
-    LstNode *ln;
+    LstNode *ln, *ln1;
     Src *s;
     int t = 0;
 
-    if (Lst_Open(l) == FAILURE) {
-	return (0);
-    }
 #ifdef DEBUG_SRC
     printf("cleaning %lx: ", (unsigned long) l);
     Lst_ForEach(l, PrintAddr, (void *)NULL);
     printf("\n");
 #endif
 
+    for (ln = Lst_First(l); ln != NULL; ln = ln1) {
+	ln1 = Lst_Succ(ln);
 
-    while ((ln = Lst_Next(l)) != NULL) {
 	s = (Src *)Lst_Datum(ln);
 	if (s->children == 0) {
 	    free(s->file);
@@ -1101,8 +1090,7 @@ SuffRemoveSrc(Lst *l)
 	    Lst_Remove(l, ln);
 	    free(s);
 	    t |= 1;
-	    Lst_Close(l);
-	    return TRUE;
+	    return (TRUE);
 	}
 #ifdef DEBUG_SRC
 	else {
@@ -1112,8 +1100,6 @@ SuffRemoveSrc(Lst *l)
 	}
 #endif
     }
-
-    Lst_Close(l);
 
     return (t);
 }
@@ -1204,10 +1190,9 @@ SuffFindCmds (Src *targ, Lst *slst)
     char    	  	*cp;
 
     t = targ->node;
-    Lst_Open(t->children);
     prefLen = strlen(targ->pref);
 
-    while ((ln = Lst_Next(t->children)) != NULL) {
+    for (ln = Lst_First(t->children); ln != NULL; ln = Lst_Succ(ln)) {
 	s = Lst_Datum(ln);
 
 	cp = strrchr(s->name, '/');
@@ -1259,7 +1244,6 @@ SuffFindCmds (Src *targ, Lst *slst)
 	    }
 	}
     }
-    Lst_Close(t->children);
     return (NULL);
 }
 

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstRemove.c,v 1.6 1999/08/28 01:03:56 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.8 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstRemove.c,v 1.9 2004/12/17 07:56:08 okumoto Exp $
  *
  * @(#)lstRemove.c	8.1 (Berkeley) 6/6/93
  */
@@ -89,19 +89,6 @@ Lst_Remove(Lst *list, LstNode *ln)
     }
     if (list->lastPtr == ln) {
 	list->lastPtr = ln->prevPtr;
-    }
-
-    /*
-     * Sequential access stuff. If the node we're removing is the current
-     * node in the list, reset the current node to the previous one. If the
-     * previous one was non-existent (prevPtr == NULL), we set the
-     * end to be Unknown, since it is.
-     */
-    if (list->isOpen && (list->curPtr == ln)) {
-	list->curPtr = list->prevPtr;
-	if (list->curPtr == NULL) {
-	    list->atEnd = LstUnknown;
-	}
     }
 
     /*

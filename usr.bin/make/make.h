@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.13 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.14 2004/12/17 07:56:08 okumoto Exp $
  */
 
 /*-
@@ -136,6 +136,9 @@ typedef struct GNode {
 
     Lst            *context;   /* The local variables */
     Lst            *commands;  /* Creation commands */
+
+    /* current command executing in compat mode */
+    LstNode	   *compat_command;
 
     struct _Suff    *suffix;	/* Suffix for the node (determined by
 				 * Suff_FindDeps and opaque to everyone
