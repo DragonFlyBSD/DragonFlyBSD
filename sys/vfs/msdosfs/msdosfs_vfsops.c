@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.21 2004/11/12 00:09:36 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.22 2004/12/17 00:18:26 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -731,7 +731,7 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	mp->mnt_stat.f_fsid.val[0] = dev2udev(dev);
 	mp->mnt_stat.f_fsid.val[1] = mp->mnt_vfc->vfc_typenum;
 	mp->mnt_flag |= MNT_LOCAL;
-	vfs_add_vnodeops(&mp->mnt_vn_ops, msdosfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, msdosfs_vnodeop_entries);
 	dev->si_mountpoint = mp;
 
 	return 0;

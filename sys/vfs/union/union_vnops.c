@@ -36,7 +36,7 @@
  *
  *	@(#)union_vnops.c	8.32 (Berkeley) 6/23/95
  * $FreeBSD: src/sys/miscfs/union/union_vnops.c,v 1.72 1999/12/15 23:02:14 eivind Exp $
- * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.17 2004/11/12 00:09:55 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vnops.c,v 1.18 2004/12/17 00:18:47 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -791,7 +791,7 @@ union_close(struct vop_close_args *ap)
 		--un->un_openl;
 		vp = un->un_lowervp;
 	}
-	ap->a_head.a_ops = vp->v_ops;
+	ap->a_head.a_ops = *vp->v_ops;
 	ap->a_vp = vp;
 	return(vop_close_ap(ap));
 }
@@ -831,7 +831,7 @@ union_access(struct vop_access_args *ap)
 	}
 
 	if ((vp = union_lock_upper(un, td)) != NULLVP) {
-		ap->a_head.a_ops = vp->v_ops;
+		ap->a_head.a_ops = *vp->v_ops;
 		ap->a_vp = vp;
 		error = vop_access_ap(ap);
 		union_unlock_upper(vp, td);
@@ -840,7 +840,7 @@ union_access(struct vop_access_args *ap)
 
 	if ((vp = un->un_lowervp) != NULLVP) {
 		vn_lock(vp, LK_EXCLUSIVE | LK_RETRY, td);
-		ap->a_head.a_ops = vp->v_ops;
+		ap->a_head.a_ops = *vp->v_ops;
 		ap->a_vp = vp;
 
 		/*
@@ -1116,7 +1116,7 @@ union_lease(struct vop_lease_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
-	ap->a_head.a_ops = ovp->v_ops;
+	ap->a_head.a_ops = *ovp->v_ops;
 	ap->a_vp = ovp;
 	return (vop_lease_ap(ap));
 }
@@ -1130,7 +1130,7 @@ union_ioctl(struct vop_ioctl_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
-	ap->a_head.a_ops = ovp->v_ops;
+	ap->a_head.a_ops = *ovp->v_ops;
 	ap->a_vp = ovp;
 	return(vop_ioctl_ap(ap));
 }
@@ -1144,7 +1144,7 @@ union_poll(struct vop_poll_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
-	ap->a_head.a_ops = ovp->v_ops;
+	ap->a_head.a_ops = *ovp->v_ops;
 	ap->a_vp = ovp;
 	return(vop_poll_ap(ap));
 }
@@ -1183,7 +1183,7 @@ union_mmap(struct vop_mmap_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
-	ap->a_head.a_ops = ovp->v_ops;
+	ap->a_head.a_ops = *ovp->v_ops;
 	ap->a_vp = ovp;
 	return (vop_mmap_ap(ap));
 }
@@ -1593,7 +1593,7 @@ union_readdir(struct vop_readdir_args *ap)
 	int error = 0;
 
 	if ((uvp = union_lock_upper(un, td)) != NULLVP) {
-		ap->a_head.a_ops = uvp->v_ops;
+		ap->a_head.a_ops = *uvp->v_ops;
 		ap->a_vp = uvp;
 		error = vop_readdir_ap(ap);
 		union_unlock_upper(uvp, td);
@@ -1616,7 +1616,7 @@ union_readlink(struct vop_readlink_args *ap)
 	vp = union_lock_other(un, td);
 	KASSERT(vp != NULL, ("union_readlink: backing vnode missing!"));
 
-	ap->a_head.a_ops = vp->v_ops;
+	ap->a_head.a_ops = *vp->v_ops;
 	ap->a_vp = vp;
 	error = vop_readlink_ap(ap);
 	union_unlock_other(vp, td);
@@ -1808,7 +1808,7 @@ union_pathconf(struct vop_pathconf_args *ap)
 	vp = union_lock_other(un, td);
 	KASSERT(vp != NULL, ("union_pathconf: backing vnode missing!"));
 
-	ap->a_head.a_ops = vp->v_ops;
+	ap->a_head.a_ops = *vp->v_ops;
 	ap->a_vp = vp;
 	error = vop_pathconf_ap(ap);
 	union_unlock_other(vp, td);
@@ -1825,7 +1825,7 @@ union_advlock(struct vop_advlock_args *ap)
 {
 	struct vnode *ovp = OTHERVP(ap->a_vp);
 
-	ap->a_head.a_ops = ovp->v_ops;
+	ap->a_head.a_ops = *ovp->v_ops;
 	ap->a_vp = ovp;
 	return (vop_advlock_ap(ap));
 }

@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.16 2004/11/18 20:04:26 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.17 2004/12/17 00:18:09 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -94,7 +94,7 @@ TAILQ_HEAD(namecache_list, namecache);
  * into lower layer VOP calls.
  *
  * Many new API VOP operations do not pass vnodes.  In these cases the
- * operations vector is typically obtained via nc_mount->mnt_vn_ops.
+ * operations vector is typically obtained via nc_mount->mnt_vn_use_ops.
  */
 struct namecache {
     LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_vnops.c	8.27 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_vnops.c,v 1.131.2.8 2003/01/02 17:26:19 bde Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.24 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_vnops.c,v 1.25 2004/12/17 00:18:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -2014,11 +2014,11 @@ ufs_vinit(struct mount *mntp, struct vnode **vpp)
 	switch(vp->v_type = IFTOVT(ip->i_mode)) {
 	case VCHR:
 	case VBLK:
-		vp->v_ops = mntp->mnt_vn_spec_ops;
+		vp->v_ops = &mntp->mnt_vn_spec_ops;
 		addaliasu(vp, ip->i_rdev);
 		break;
 	case VFIFO:
-		vp->v_ops = mntp->mnt_vn_fifo_ops;
+		vp->v_ops = &mntp->mnt_vn_fifo_ops;
 		break;
 	default:
 		break;

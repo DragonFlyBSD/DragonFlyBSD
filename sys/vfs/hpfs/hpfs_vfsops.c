@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.23 2004/11/12 00:09:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.24 2004/12/17 00:18:22 dillon Exp $
  */
 
 
@@ -393,7 +393,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 		hpfs_bmdeinit(hpmp);
 		goto failed;
 	}
-	vfs_add_vnodeops(&mp->mnt_vn_ops, hpfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, hpfs_vnodeop_entries);
 
 	error = hpfs_root(mp, &vp);
 	if (error) {
@@ -612,8 +612,7 @@ hpfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 	MALLOC(hp, struct hpfsnode *, sizeof(struct hpfsnode), 
 		M_HPFSNO, M_WAITOK);
 
-	error = getnewvnode(VT_HPFS, hpmp->hpm_mp, hpmp->hpm_mp->mnt_vn_ops,
-			    &vp, VLKTIMEOUT, 0);
+	error = getnewvnode(VT_HPFS, hpmp->hpm_mp, &vp, VLKTIMEOUT, 0);
 	if (error) {
 		printf("hpfs_vget: can't get new vnode\n");
 		FREE(hp, M_HPFSNO);

@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.12 2004/10/12 19:21:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.13 2004/12/17 00:18:46 dillon Exp $
  */
 
 /*
@@ -199,7 +199,7 @@ umap_bypass(struct vop_generic_args *ap)
 	 * Call the operation on the lower layer with the modified argument
 	 * structure.  We have to adjust a_fm to point at the lower layer.
 	 */
-	ap->a_ops = (*(vps_p[0]))->v_ops;
+	ap->a_ops = *(*(vps_p[0]))->v_ops;
 	error = vop_vnoperate_ap(ap);
 
 	/*

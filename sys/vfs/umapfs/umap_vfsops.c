@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.14 2004/11/12 00:09:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.15 2004/12/17 00:18:46 dillon Exp $
  */
 
 /*
@@ -197,7 +197,7 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 	    amp->info_gmapdata[i][1]);
 #endif
 
-	vfs_add_vnodeops(&mp->mnt_vn_ops, umap_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, umap_vnodeop_entries);
 
 	/*
 	 * Save reference.  Each mount also holds

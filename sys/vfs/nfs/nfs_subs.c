@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.23 2004/11/12 00:09:37 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.24 2004/12/17 00:18:28 dillon Exp $
  */
 
 /*
@@ -1241,12 +1241,12 @@ nfs_loadattrcache(struct vnode **vpp, struct mbuf **mdp, caddr_t *dposp,
 	if (vp->v_type != vtyp) {
 		vp->v_type = vtyp;
 		if (vp->v_type == VFIFO) {
-			vp->v_ops = vp->v_mount->mnt_vn_fifo_ops;
+			vp->v_ops = &vp->v_mount->mnt_vn_fifo_ops;
 		} else if (vp->v_type == VCHR || vp->v_type == VBLK) {
-			vp->v_ops = vp->v_mount->mnt_vn_spec_ops;
+			vp->v_ops = &vp->v_mount->mnt_vn_spec_ops;
 			addaliasu(vp, rdev);
 		} else {
-			vp->v_ops = vp->v_mount->mnt_vn_ops;
+			vp->v_ops = &vp->v_mount->mnt_vn_use_ops;
 		}
 		np->n_mtime = mtime.tv_sec;
 	}

@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.14 2004/10/19 09:29:46 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.15 2004/12/17 00:18:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,7 +128,7 @@ loop:
 	 */
 	MALLOC(pfs, struct pfsnode *, sizeof(struct pfsnode), M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_PROCFS, mp, mp->mnt_vn_ops, vpp, 0, 0);
+	error = getnewvnode(VT_PROCFS, mp, vpp, 0, 0);
 	if (error) {
 		FREE(pfs, M_TEMP);
 		goto out;

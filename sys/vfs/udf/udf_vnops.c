@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.10 2004/11/12 00:09:51 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.11 2004/12/17 00:18:36 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -175,7 +175,7 @@ udf_allocv(struct mount *mp, struct vnode **vpp)
 	int error;
 	struct vnode *vp;
 
-	error = getnewvnode(VT_UDF, mp, mp->mnt_vn_ops, &vp, 0, 0);
+	error = getnewvnode(VT_UDF, mp, &vp, 0, 0);
 	if (error) {
 		printf("udf_allocv: failed to allocate new vnode\n");
 		return(error);

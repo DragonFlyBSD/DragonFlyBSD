@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.20 2004/11/12 00:09:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.21 2004/12/17 00:18:30 dillon Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -301,7 +301,7 @@ null_bypass(struct vop_generic_args *ap)
 	 * lower vp's vop_ops structure.
 	 */
 	if (vps_p[0] && *vps_p[0]) {
-		ap->a_ops = (*(vps_p[0]))->v_ops;
+		ap->a_ops = *(*(vps_p[0]))->v_ops;
 		error = vop_vnoperate_ap(ap);
 	} else {
 		printf("null_bypass: no map for %s\n", descp->vdesc_name);

@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.10 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.11 2004/12/17 00:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -293,24 +293,8 @@ VNODEOP_DESC_INIT_NCP_CRED(nremove);
 VNODEOP_DESC_INIT_NCP_CRED(nrmdir);
 VNODEOP_DESC_INIT_NCP2_CRED(nrename);
 
-/*
- * The DO_OPS macro basicallys calls ops->blah(&ap) but is also responsible
- * for checking vv_flags and executing additional hook functions.
- *
- * NOTE: vop_vnoperate_ap() rolls its own DO_OPS equivalent.
- */
-#define DO_OPS(ops, error, ap, vop_field)				\
-	if (ops->vv_flags & VVF_HOOK_MASK) {				\
-		if (ops->vv_flags & VVF_JOURNAL_HOOK) 			\
-			error = ops->vv_jops->vop_field(ap);		\
-		else							\
-			error = 0;					\
-		if (error == 0)						\
-			error = ops->vop_field(ap);			\
-	} else {							\
-		error = ops->vop_field(ap);				\
-	}								\
-
+#define DO_OPS(ops, error, ap, vop_field)	\
+	error = ops->vop_field(ap);
 
 /************************************************************************
  *		PRIMARY HIGH LEVEL VNODE OPERATIONS CALLS		*
@@ -1496,16 +1480,44 @@ vop_vnoperate_ap(struct vop_generic_args *ap)
 	int error;
 
 	ops = ap->a_ops;
-	if (ops->vv_flags & VVF_HOOK_MASK) {
-		if (ops->vv_flags & VVF_JOURNAL_HOOK)
-			error = VOCALL(ops->vv_jops, ap);
-		else
-			error = 0;
-		if (error == 0)
-			error = VOCALL(ops, ap);
-	} else {
-		error = VOCALL(ops, ap);
-	}
+	error = VOCALL(ops, ap);
+
+	return (error);
+}
+
+/*
+ * This routine is called by the cache coherency layer to execute the actual
+ * VFS operation.  If a journaling layer is present we call though it, else
+ * we call the native VOP functions.
+ */
+int
+vop_cache_operate_ap(struct vop_generic_args *ap)
+{
+	struct vop_ops *ops;
+	int error;
+
+	ops = ap->a_ops;
+	if (ops->vv_mount->mnt_vn_journal_ops)
+		error = VOCALL(ops->vv_mount->mnt_vn_journal_ops, ap);
+	else
+		error = VOCALL(ops->vv_mount->mnt_vn_norm_ops, ap);
+	return (error);
+}
+
+
+/*
+ * This routine is called by the journaling layer to execute the actual
+ * VFS operation.
+ */
+int
+vop_journal_operate_ap(struct vop_generic_args *ap)
+{
+	struct vop_ops *ops;
+	int error;
+
+	ops = ap->a_ops;
+	error = VOCALL(ops->vv_mount->mnt_vn_norm_ops, ap);
+
 	return (error);
 }
 

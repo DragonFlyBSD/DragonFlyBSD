@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.28 2004/11/12 00:09:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.29 2004/12/17 00:18:44 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -789,9 +789,9 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		fs->fs_clean = 0;
 		(void) ffs_sbupdate(ump, MNT_WAIT);
 	}
-	vfs_add_vnodeops(&mp->mnt_vn_ops, ffs_vnodeop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, ffs_specop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, ffs_fifoop_entries); 
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ffs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, ffs_specop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, ffs_fifoop_entries); 
 
 	return (0);
 out:
@@ -1110,8 +1110,7 @@ restart:
 	    ump->um_malloctype, M_WAITOK);
 
 	/* Allocate a new vnode/inode. */
-	error = getnewvnode(VT_UFS, mp, mp->mnt_vn_ops, &vp,
-			    VLKTIMEOUT, LK_CANRECURSE);
+	error = getnewvnode(VT_UFS, mp, &vp, VLKTIMEOUT, LK_CANRECURSE);
 	if (error) {
 		*vpp = NULL;
 		free(ip, ump->um_malloctype);

@@ -36,7 +36,7 @@
  *	@(#)umap_subr.c	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_subr.c,v 1.19 1999/09/04 11:51:41 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.12 2004/10/12 19:21:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_subr.c,v 1.13 2004/12/17 00:18:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,7 +201,7 @@ umap_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 	MALLOC(xp, struct umap_node *, sizeof(struct umap_node),
 	    M_TEMP, M_WAITOK);
 
-	error = getnewvnode(VT_UMAP, mp, mp->mnt_vn_ops, vpp, 0, 0);
+	error = getnewvnode(VT_UMAP, mp, vpp, 0, 0);
 	if (error) {
 		FREE(xp, M_TEMP);
 		return (error);

@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.16 2004/10/12 19:21:04 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.17 2004/12/17 00:18:30 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -231,7 +231,7 @@ retry:
 	MALLOC(np, struct null_node *, sizeof(struct null_node),
 	       M_NULLFSNODE, M_WAITOK);
 
-	error = getnewvnode(VT_NULL, mp, mp->mnt_vn_ops, vpp, 0, LK_CANRECURSE);
+	error = getnewvnode(VT_NULL, mp, vpp, 0, LK_CANRECURSE);
 	if (error) {
 		FREE(np, M_NULLFSNODE);
 		return (error);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_node.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_node.c,v 1.36.2.3 2002/01/05 22:25:04 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.17 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_node.c,v 1.18 2004/12/17 00:18:28 dillon Exp $
  */
 
 
@@ -150,8 +150,7 @@ loop:
 	 */
 	np = zalloc(nfsnode_zone);
 		
-	error = getnewvnode(VT_NFS, mntp, mntp->mnt_vn_ops, &nvp,
-				0, LK_NOPAUSE);
+	error = getnewvnode(VT_NFS, mntp, &nvp, 0, LK_NOPAUSE);
 	if (error) {
 		if (nfs_node_hash_lock < 0)
 			wakeup(&nfs_node_hash_lock);

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.49 2004/12/14 18:46:08 hsu Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.50 2004/12/17 00:18:07 dillon Exp $
  */
 
 /*
@@ -737,7 +737,7 @@ bdevvp(dev_t dev, struct vnode **vpp)
 		*vpp = NULLVP;
 		return (ENXIO);
 	}
-	error = getnewvnode(VT_NON, NULL, spec_vnode_vops, &nvp, 0, 0);
+	error = getspecialvnode(VT_NON, NULL, &spec_vnode_vops, &nvp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -871,7 +871,7 @@ vclean(struct vnode *vp, int flags, struct thread *td)
 	/*
 	 * Done with purge, notify sleepers of the grim news.
 	 */
-	vp->v_ops = dead_vnode_vops;
+	vp->v_ops = &dead_vnode_vops;
 	vn_pollgone(vp);
 	vp->v_tag = VT_NON;
 }

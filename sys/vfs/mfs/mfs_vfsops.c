@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.19 2004/10/12 19:20:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.20 2004/12/17 00:18:25 dillon Exp $
  */
 
 
@@ -288,7 +288,7 @@ mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 */
 	MALLOC(mfsp, struct mfsnode *, sizeof *mfsp, M_MFSNODE, M_WAITOK);
 
-	err = getnewvnode(VT_MFS, NULL, mfs_vnode_vops, &devvp, 0, 0);
+	err = getspecialvnode(VT_MFS, NULL, &mfs_vnode_vops, &devvp, 0, 0);
 	if (err) {
 		FREE(mfsp, M_MFSNODE);
 		goto error_1;

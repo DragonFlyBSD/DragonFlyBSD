@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.9 2004/09/30 19:00:19 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.10 2004/12/17 00:18:34 dillon Exp $
  */
 
 /*
@@ -92,7 +92,7 @@ procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	bcopy("procfs", mp->mnt_stat.f_mntfromname, size);
 	bzero(mp->mnt_stat.f_mntfromname + size, MNAMELEN - size);
 	procfs_statfs(mp, &mp->mnt_stat, td);
-	vfs_add_vnodeops(&mp->mnt_vn_ops, procfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, procfs_vnodeop_entries);
 
 	return (0);
 }

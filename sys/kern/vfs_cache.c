@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.45 2004/12/08 18:53:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.46 2004/12/17 00:18:07 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -833,7 +833,7 @@ force:
 		/*
 		 * Get the parent directory and resolve its ncp.
 		 */
-		error = vop_nlookupdotdot(dvp->v_ops, dvp, &pvp, cred);
+		error = vop_nlookupdotdot(*dvp->v_ops, dvp, &pvp, cred);
 		if (error) {
 			printf("lookupdotdot failed %d %p\n", error, pvp);
 			break;
@@ -1393,7 +1393,7 @@ restart:
 	 */
 	KKASSERT((ncp->nc_flag & NCF_MOUNTPT) == 0);
 	ncp->nc_error = VOP_NRESOLVE(ncp, cred);
-	/*vop_nresolve(ncp->nc_parent->nc_vp->v_ops, ncp, cred);*/
+	/*vop_nresolve(*ncp->nc_parent->nc_vp->v_ops, ncp, cred);*/
 	if (ncp->nc_error == EAGAIN) {
 		printf("[diagnostic] cache_resolve: EAGAIN ncp %p %*.*s\n",
 			ncp, ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);

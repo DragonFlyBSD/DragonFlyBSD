@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.23 2004/11/12 00:09:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.24 2004/12/17 00:18:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -513,9 +513,9 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 		supbp = NULL;
 	}
 
-	vfs_add_vnodeops(&mp->mnt_vn_ops, cd9660_vnodeop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, cd9660_specop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, cd9660_fifoop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, cd9660_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, cd9660_specop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, cd9660_fifoop_entries);
 
 	return 0;
 out:
@@ -713,7 +713,7 @@ again:
 		return (0);
 
 	/* Allocate a new vnode/iso_node. */
-	error = getnewvnode(VT_ISOFS, mp, mp->mnt_vn_ops, &vp, 0, 0);
+	error = getnewvnode(VT_ISOFS, mp, &vp, 0, 0);
 	if (error) {
 		*vpp = NULLVP;
 		return (error);
@@ -848,11 +848,11 @@ again:
 	 */
 	switch (vp->v_type = IFTOVT(ip->inode.iso_mode)) {
 	case VFIFO:
-		vp->v_ops = mp->mnt_vn_fifo_ops;
+		vp->v_ops = &mp->mnt_vn_fifo_ops;
 		break;
 	case VCHR:
 	case VBLK:
-		vp->v_ops = mp->mnt_vn_spec_ops;
+		vp->v_ops = &mp->mnt_vn_spec_ops;
 		addaliasu(vp, ip->inode.iso_rdev);
 		break;
 	default:

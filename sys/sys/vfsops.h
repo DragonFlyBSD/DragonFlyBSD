@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.9 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.10 2004/12/17 00:18:09 dillon Exp $
  */
 
 /*
@@ -570,16 +570,13 @@ struct vop_nrename_args {
  */
 struct vop_ops {
 	struct vop_ops	*vv_new;	/* vfs_recalc_vnodeops() only */
-	struct mount	*vv_mount;	/* may be NULL */
+	struct mount	*vv_mount;
 	int		vv_refs;
 	int		vv_flags;	/* see VVF_* flags below */
 
-	struct vop_ops	*vv_jops;	/* VVF_JOURNAL_HOOK */
-	struct vop_ops	*vv_cops;	/* VVF_CCOHERENCY_HOOK */
+	void		*vv_unused1;
+	void		*vv_unused2;
 
-	/* XXX Journaling control */
-	/* XXX Cache Coherency functions (local/remote/clustered) */
-	/* XXX Other */
 	int		vv_reserved[62]; /* (temporary) reduce recompile pain */
 
 #define vop_ops_first_field	vop_default
@@ -651,16 +648,14 @@ struct vop_ops {
 #define vop_ops_last_field	vop_nrename
 };
 
-#define VVF_JOURNAL_HOOK	0x0001		/* FUTURE */
-#define VVF_CCOHERENCY_HOOK	0x0002		/* FUTURE */
+#define VVF_JOURNAL_LAYER	0x0001
+#define VVF_COHERENCY_LAYER	0x0002
 #define VVF_UNUSED_04		0x0004
 #define VVF_UNUSED_08		0x0008
 #define VVF_NOATIME		0x0010		/* FUTURE */
 #define VVF_RDONLY		0x0020		/* FUTURE */
 #define VVF_NOCLUSTER		0x0040		/* FUTURE */
 #define VVF_SUIDDIR		0x0080		/* FUTURE */
-
-#define VVF_HOOK_MASK		(VVF_JOURNAL_HOOK|VVF_CCOHERENCY_HOOK)
 
 /*
  * vop_vfsset() operations
@@ -887,6 +882,8 @@ int vop_nrename(struct vop_ops *ops, struct namecache *fncp,
  * filesystem.  When a filesystem chains a vop_ops it just uses VOCALLs.
  */
 int vop_vnoperate_ap(struct vop_generic_args *ap);
+int vop_cache_operate_ap(struct vop_generic_args *ap);
+int vop_journal_operate_ap(struct vop_generic_args *ap);
 int vop_islocked_ap(struct vop_islocked_args *ap);
 int vop_lookup_ap(struct vop_lookup_args *ap);
 int vop_create_ap(struct vop_create_args *ap);
@@ -1028,85 +1025,85 @@ extern struct vnodeop_desc vop_nrename_desc;
  * vop_*() call.
  */
 #define VOP_ISLOCKED(vp, td)				\
-	vop_islocked((vp)->v_ops, vp, td)
+	vop_islocked(*(vp)->v_ops, vp, td)
 #define VOP_OPEN(vp, mode, cred, fp, td)		\
-	vop_open((vp)->v_ops, vp, mode, cred, fp, td)
+	vop_open(*(vp)->v_ops, vp, mode, cred, fp, td)
 #define VOP_CLOSE(vp, fflag, td)			\
-	vop_close((vp)->v_ops, vp, fflag, td)
+	vop_close(*(vp)->v_ops, vp, fflag, td)
 #define VOP_ACCESS(vp, mode, cred, td)			\
-	vop_access((vp)->v_ops, vp, mode, cred, td)
+	vop_access(*(vp)->v_ops, vp, mode, cred, td)
 #define VOP_GETATTR(vp, vap, td)			\
-	vop_getattr((vp)->v_ops, vp, vap, td)
+	vop_getattr(*(vp)->v_ops, vp, vap, td)
 #define VOP_SETATTR(vp, vap, cred, td)			\
-	vop_setattr((vp)->v_ops, vp, vap, cred, td)
+	vop_setattr(*(vp)->v_ops, vp, vap, cred, td)
 #define VOP_READ(vp, uio, ioflag, cred)			\
-	vop_read((vp)->v_ops, vp, uio, ioflag, cred)
+	vop_read(*(vp)->v_ops, vp, uio, ioflag, cred)
 #define VOP_WRITE(vp, uio, ioflag, cred)		\
-	vop_write((vp)->v_ops, vp, uio, ioflag, cred)
+	vop_write(*(vp)->v_ops, vp, uio, ioflag, cred)
 #define VOP_LEASE(vp, td, cred, flag)			\
-	vop_lease((vp)->v_ops, vp, td, cred, flag)
+	vop_lease(*(vp)->v_ops, vp, td, cred, flag)
 #define VOP_IOCTL(vp, command, data, fflag, cred, td)	\
-	vop_ioctl((vp)->v_ops, vp, command, data, fflag, cred, td)
+	vop_ioctl(*(vp)->v_ops, vp, command, data, fflag, cred, td)
 #define VOP_POLL(vp, events, cred, td)			\
-	vop_poll((vp)->v_ops, vp, events, cred, td)
+	vop_poll(*(vp)->v_ops, vp, events, cred, td)
 #define VOP_KQFILTER(vp, kn)				\
-	vop_kqfilter((vp)->v_ops, vp, kn)
+	vop_kqfilter(*(vp)->v_ops, vp, kn)
 #define VOP_REVOKE(vp, flags)				\
-	vop_revoke((vp)->v_ops, vp, flags)
+	vop_revoke(*(vp)->v_ops, vp, flags)
 #define VOP_MMAP(vp, fflags, cred, td)			\
-	vop_mmap((vp)->v_ops, vp, fflags, cred, td)
+	vop_mmap(*(vp)->v_ops, vp, fflags, cred, td)
 #define VOP_FSYNC(vp, waitfor, td)			\
-	vop_fsync((vp)->v_ops, vp, waitfor, td)
+	vop_fsync(*(vp)->v_ops, vp, waitfor, td)
 #define VOP_READDIR(vp, uio, cred, eofflag, ncookies, cookies)		\
-	vop_readdir((vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
+	vop_readdir(*(vp)->v_ops, vp, uio, cred, eofflag, ncookies, cookies)
 #define VOP_READLINK(vp, uio, cred)			\
-	vop_readlink((vp)->v_ops, vp, uio, cred)
+	vop_readlink(*(vp)->v_ops, vp, uio, cred)
 #define VOP_INACTIVE(vp, td)				\
-	vop_inactive((vp)->v_ops, vp, td)
+	vop_inactive(*(vp)->v_ops, vp, td)
 #define VOP_RECLAIM(vp, td)				\
-	vop_reclaim((vp)->v_ops, vp, td)
+	vop_reclaim(*(vp)->v_ops, vp, td)
 #define VOP_LOCK(vp, flags, td)				\
-	vop_lock((vp)->v_ops, vp, flags, td)
+	vop_lock(*(vp)->v_ops, vp, flags, td)
 #define VOP_UNLOCK(vp, flags, td)			\
-	vop_unlock((vp)->v_ops, vp, flags, td)
+	vop_unlock(*(vp)->v_ops, vp, flags, td)
 #define VOP_BMAP(vp, bn, vpp, bnp, runp, runb)		\
-	vop_bmap((vp)->v_ops, vp, bn, vpp, bnp, runp, runb)
+	vop_bmap(*(vp)->v_ops, vp, bn, vpp, bnp, runp, runb)
 #define VOP_STRATEGY(vp, bp)				\
-	vop_strategy((vp)->v_ops, vp, bp)
+	vop_strategy(*(vp)->v_ops, vp, bp)
 #define VOP_PRINT(vp)					\
-	vop_print((vp)->v_ops, vp)
+	vop_print(*(vp)->v_ops, vp)
 #define VOP_PATHCONF(vp, name, retval)			\
-	vop_pathconf((vp)->v_ops, vp, name, retval)
+	vop_pathconf(*(vp)->v_ops, vp, name, retval)
 #define VOP_ADVLOCK(vp, id, op, fl, flags)		\
-	vop_advlock((vp)->v_ops, vp, id, op, fl, flags)
+	vop_advlock(*(vp)->v_ops, vp, id, op, fl, flags)
 #define VOP_BALLOC(vp, offset, size, cred, flags, bpp)	\
-	vop_balloc((vp)->v_ops, vp, offset, size, cred, flags, bpp)
+	vop_balloc(*(vp)->v_ops, vp, offset, size, cred, flags, bpp)
 #define VOP_REALLOCBLKS(vp, buflist)			\
-	vop_reallocblks((vp)->v_ops, vp, buflist)
+	vop_reallocblks(*(vp)->v_ops, vp, buflist)
 #define VOP_GETPAGES(vp, m, count, reqpage, off)	\
-	vop_getpages((vp)->v_ops, vp, m, count, reqpage, off)
+	vop_getpages(*(vp)->v_ops, vp, m, count, reqpage, off)
 #define VOP_PUTPAGES(vp, m, count, sync, rtvals, off)	\
-	vop_putpages((vp)->v_ops, vp, m, count, sync, rtvals, off)
+	vop_putpages(*(vp)->v_ops, vp, m, count, sync, rtvals, off)
 #define VOP_FREEBLKS(vp, addr, length)			\
-	vop_freeblks((vp)->v_ops, vp, addr, length)
+	vop_freeblks(*(vp)->v_ops, vp, addr, length)
 #define VOP_BWRITE(vp, bp)				\
-	vop_bwrite((vp)->v_ops, vp, bp)
+	vop_bwrite(*(vp)->v_ops, vp, bp)
 #define VOP_GETACL(vp, type, aclp, cred, td)		\
-	vop_getacl((vp)->v_ops, vp, type, aclp, cred, td)
+	vop_getacl(*(vp)->v_ops, vp, type, aclp, cred, td)
 #define VOP_SETACL(vp, type, aclp, cred, td)		\
-	vop_setacl((vp)->v_ops, vp, type, aclp, cred, td)
+	vop_setacl(*(vp)->v_ops, vp, type, aclp, cred, td)
 #define VOP_ACLCHECK(vp, type, aclp, cred, td)		\
-	vop_aclcheck((vp)->v_ops, vp, type, aclp, cred, td)
+	vop_aclcheck(*(vp)->v_ops, vp, type, aclp, cred, td)
 #define VOP_GETEXTATTR(vp, name, uio, cred, td)		\
-	vop_getextattr((vp)->v_ops, vp, name, uio, cred, td)
+	vop_getextattr(*(vp)->v_ops, vp, name, uio, cred, td)
 #define VOP_SETEXTATTR(vp, name, uio, cred, td)		\
-	vop_setextattr((vp)->v_ops, vp, name, uio, cred, td)
+	vop_setextattr(*(vp)->v_ops, vp, name, uio, cred, td)
 #define VOP_CREATEVOBJECT(vp, td)			\
-	vop_createvobject((vp)->v_ops, vp, td)
+	vop_createvobject(*(vp)->v_ops, vp, td)
 #define VOP_DESTROYVOBJECT(vp)				\
-	vop_destroyvobject((vp)->v_ops, vp)
+	vop_destroyvobject(*(vp)->v_ops, vp)
 #define VOP_GETVOBJECT(vp, objpp)			\
-	vop_getvobject((vp)->v_ops, vp, objpp)
+	vop_getvobject(*(vp)->v_ops, vp, objpp)
 /* no VOP_VFSSET() */
 
 /*
@@ -1117,25 +1114,25 @@ extern struct vnodeop_desc vop_nrename_desc;
  * the VFS's.
  */
 #define VOP_OLD_LOOKUP(dvp, vpp, cnp)			\
-	vop_lookup((dvp)->v_ops, dvp, vpp, cnp)
+	vop_lookup(*(dvp)->v_ops, dvp, vpp, cnp)
 #define VOP_OLD_CREATE(dvp, vpp, cnp, vap)		\
-	vop_create((dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_create(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_MKDIR(dvp, vpp, cnp, vap)		\
-	vop_mkdir((dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_mkdir(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_MKNOD(dvp, vpp, cnp, vap)		\
-	vop_mknod((dvp)->v_ops, dvp, vpp, cnp, vap)
+	vop_mknod(*(dvp)->v_ops, dvp, vpp, cnp, vap)
 #define VOP_OLD_LINK(tdvp, vp, cnp)			\
-	vop_link((tdvp)->v_ops, tdvp, vp, cnp)
+	vop_link(*(tdvp)->v_ops, tdvp, vp, cnp)
 #define VOP_OLD_SYMLINK(dvp, vpp, cnp, vap, target)	\
-	vop_symlink((dvp)->v_ops, dvp, vpp, cnp, vap, target)
+	vop_symlink(*(dvp)->v_ops, dvp, vpp, cnp, vap, target)
 #define VOP_OLD_WHITEOUT(dvp, cnp, flags)		\
-	vop_whiteout((dvp)->v_ops, dvp, cnp, flags)
+	vop_whiteout(*(dvp)->v_ops, dvp, cnp, flags)
 #define VOP_OLD_RENAME(fdvp, fvp, fcnp, tdvp, tvp, tcnp) \
-	vop_rename((fdvp)->v_ops, fdvp, fvp, fcnp, tdvp, tvp, tcnp)
+	vop_rename(*(fdvp)->v_ops, fdvp, fvp, fcnp, tdvp, tvp, tcnp)
 #define VOP_OLD_RMDIR(dvp, vp, cnp)			\
-	vop_rmdir((dvp)->v_ops, dvp, vp, cnp)
+	vop_rmdir(*(dvp)->v_ops, dvp, vp, cnp)
 #define VOP_OLD_REMOVE(dvp, vp, cnp)			\
-	vop_remove((dvp)->v_ops, dvp, vp, cnp)
+	vop_remove(*(dvp)->v_ops, dvp, vp, cnp)
 
 /*
  * 'NEW' VOP calls.  These calls use namespaces as an operational basis
@@ -1145,25 +1142,25 @@ extern struct vnodeop_desc vop_nrename_desc;
  * routines.
  */
 #define VOP_NRESOLVE(ncp, cred)				\
-	vop_nresolve((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
+	vop_nresolve((ncp)->nc_mount->mnt_vn_use_ops, ncp, cred)
 #define VOP_NCREATE(ncp, vpp, cred, vap)		\
-	vop_ncreate((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+	vop_ncreate((ncp)->nc_mount->mnt_vn_use_ops, ncp, vpp, cred, vap)
 #define VOP_NMKDIR(ncp, vpp, cred, vap)			\
-	vop_nmkdir((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+	vop_nmkdir((ncp)->nc_mount->mnt_vn_use_ops, ncp, vpp, cred, vap)
 #define VOP_NMKNOD(ncp, vpp, cred, vap)			\
-	vop_nmknod((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap)
+	vop_nmknod((ncp)->nc_mount->mnt_vn_use_ops, ncp, vpp, cred, vap)
 #define VOP_NLINK(ncp, vp, cred)			\
-	vop_nlink((ncp)->nc_mount->mnt_vn_ops, ncp, vp, cred)
+	vop_nlink((ncp)->nc_mount->mnt_vn_use_ops, ncp, vp, cred)
 #define VOP_NSYMLINK(ncp, vpp, cred, vap, target)	\
-	vop_nsymlink((ncp)->nc_mount->mnt_vn_ops, ncp, vpp, cred, vap, target)
+	vop_nsymlink((ncp)->nc_mount->mnt_vn_use_ops, ncp, vpp, cred, vap, target)
 #define VOP_NWHITEOUT(ncp, cred, flags)			\
-	vop_nwhiteout((ncp)->nc_mount->mnt_vn_ops, ncp, cred, flags)
+	vop_nwhiteout((ncp)->nc_mount->mnt_vn_use_ops, ncp, cred, flags)
 #define VOP_NRENAME(fncp, tncp, cred)			\
-	vop_nrename((fncp)->nc_mount->mnt_vn_ops, fncp, tncp, cred)
+	vop_nrename((fncp)->nc_mount->mnt_vn_use_ops, fncp, tncp, cred)
 #define VOP_NRMDIR(ncp, cred)				\
-	vop_nrmdir((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
+	vop_nrmdir((ncp)->nc_mount->mnt_vn_use_ops, ncp, cred)
 #define VOP_NREMOVE(ncp, cred)				\
-	vop_nremove((ncp)->nc_mount->mnt_vn_ops, ncp, cred)
+	vop_nremove((ncp)->nc_mount->mnt_vn_use_ops, ncp, cred)
 
 #endif
 

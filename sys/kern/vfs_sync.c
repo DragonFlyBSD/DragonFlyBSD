@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_sync.c,v 1.1 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_sync.c,v 1.2 2004/12/17 00:18:07 dillon Exp $
  */
 
 /*
@@ -342,7 +342,7 @@ vfs_allocate_syncvnode(struct mount *mp)
 	int error;
 
 	/* Allocate a new vnode */
-	error = getnewvnode(VT_VFS, mp, sync_vnode_vops, &vp, 0, 0);
+	error = getspecialvnode(VT_VFS, mp, &sync_vnode_vops, &vp, 0, 0);
 	if (error) {
 		mp->mnt_syncer = NULL;
 		return (error);

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_denode.c,v 1.47.2.3 2002/08/22 16:20:15 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.18 2004/10/27 08:57:48 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_denode.c,v 1.19 2004/12/17 00:18:26 dillon Exp $ */
 /*	$NetBSD: msdosfs_denode.c,v 1.28 1998/02/10 14:10:00 mrg Exp $	*/
 
 /*-
@@ -293,8 +293,7 @@ again:
 	 */
 
 	/* getnewvnode() does a vref() on the vnode */
-	error = getnewvnode(VT_MSDOSFS, mntp, mntp->mnt_vn_ops, &nvp,
-			    VLKTIMEOUT, 0);
+	error = getnewvnode(VT_MSDOSFS, mntp, &nvp, VLKTIMEOUT, 0);
 	if (error) {
 		*depp = NULL;
 		FREE(ldep, M_MSDOSFSNODE);

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_node.c,v 1.3.2.8 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.16 2004/10/12 19:21:05 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_node.c,v 1.17 2004/12/17 00:18:32 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -166,7 +166,7 @@ rescan:
 	 * elsewhere if MALLOC should block.
 	 */
 	MALLOC(np, struct nwnode *, sizeof *np, M_NWNODE, M_WAITOK | M_ZERO);
-	error = getnewvnode(VT_NWFS, mp, mp->mnt_vn_ops, &vp, 0, 0);
+	error = getnewvnode(VT_NWFS, mp, &vp, 0, 0);
 	if (error) {
 		*vpp = NULL;
 		FREE(np, M_NWNODE);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.22 2004/10/12 19:21:01 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.23 2004/12/17 00:18:28 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -957,9 +957,9 @@ mountnfs(struct nfs_args *argp, struct mount *mp, struct sockaddr *nam,
 	/*
 	 * Install vop_ops for our vnops
 	 */
-	vfs_add_vnodeops(&mp->mnt_vn_ops, nfsv2_vnodeop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_spec_ops, nfsv2_specop_entries);
-	vfs_add_vnodeops(&mp->mnt_vn_fifo_ops, nfsv2_fifoop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, nfsv2_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_spec_ops, nfsv2_specop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_fifo_ops, nfsv2_fifoop_entries);
 
 	/*
 	 * A reference count is needed on the nfsnode representing the

@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.23 2004/11/12 00:09:28 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.24 2004/12/17 00:18:14 dillon Exp $
  * 
  */
 
@@ -1872,7 +1872,7 @@ make_coda_node(ViceFid *fid, struct mount *vfsp, short type)
 	cp = coda_alloc();
 	cp->c_fid = *fid;
 	
-	err = getnewvnode(VT_CODA, vfsp, vfsp->mnt_vn_ops, &vp, 0, 0);
+	err = getnewvnode(VT_CODA, vfsp, &vp, 0, 0);
 	if (err) {                                                
 	    panic("coda: getnewvnode returned error %d\n", err);   
 	}                                                         

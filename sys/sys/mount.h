@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.14 2004/11/12 00:09:27 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.15 2004/12/17 00:18:09 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -146,7 +146,18 @@ struct mount {
 	u_int		mnt_iosize_max;		/* max IO request size */
 	struct vnodelst	mnt_reservedvnlist;	/* (future) dirty vnode list */
 	int		mnt_nvnodelistsize;	/* # of vnodes on this mount */
-	struct vop_ops	*mnt_vn_ops;		/* for use by the VFS */
+
+	/*
+	 * ops vectors have a fixed stacking order.  All primary calls run
+	 * through mnt_vn_ops.  This field is typically assigned to 
+	 * mnt_vn_norm_ops.  If journaling has been enabled this field is
+	 * usually assigned to mnt_vn_journal_ops.
+	 */
+	struct vop_ops	*mnt_vn_use_ops;	/* current ops set */
+
+	struct vop_ops	*mnt_vn_coherency_ops;	/* cache coherency ops */
+	struct vop_ops	*mnt_vn_journal_ops;	/* journaling ops */
+	struct vop_ops  *mnt_vn_norm_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_spec_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
 	struct namecache *mnt_ncp;		/* NCF_MNTPT ncp */
@@ -516,6 +527,9 @@ int	unmount (const char *, int);
 int	fhopen (const struct fhandle *, int);
 int	fhstat (const struct fhandle *, struct stat *);
 int	fhstatfs (const struct fhandle *, struct statfs *);
+
+int	journal_attach(struct mount *mp);
+int	journal_detach(struct mount *mp);
 
 /* C library stuff */
 void	endvfsent (void);

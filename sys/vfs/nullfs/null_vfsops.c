@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.14 2004/11/12 00:09:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.15 2004/12/17 00:18:30 dillon Exp $
  */
 
 /*
@@ -158,7 +158,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 	 */
 	xmp->nullm_vfs = lowerrootvp->v_mount;
 
-	vfs_add_vnodeops(&mp->mnt_vn_ops, null_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, null_vnodeop_entries);
 
 	/*
 	 * Save reference.  Each mount also holds

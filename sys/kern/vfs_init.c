@@ -70,7 +70,7 @@
  *
  *	@(#)vfs_init.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/vfs_init.c,v 1.59 2002/04/30 18:44:32 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_init.c,v 1.7 2004/10/12 19:20:46 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_init.c,v 1.8 2004/12/17 00:18:07 dillon Exp $
  */
 /*
  * Manage vnode VOP operations vectors
@@ -109,7 +109,7 @@ vfs_add_vnodeops_sysinit(const void *data)
 {
 	const struct vnodeopv_desc *vdesc = data;
 
-	vfs_add_vnodeops(vdesc->opv_desc_vector, vdesc->opv_desc_ops);
+	vfs_add_vnodeops(NULL, vdesc->opv_desc_vector, vdesc->opv_desc_ops);
 }
 
 /*
@@ -124,7 +124,8 @@ vfs_rm_vnodeops_sysinit(const void *data)
 }
 
 void
-vfs_add_vnodeops(struct vop_ops **vops_pp, struct vnodeopv_entry_desc *descs)
+vfs_add_vnodeops(struct mount *mp, struct vop_ops **vops_pp,
+		struct vnodeopv_entry_desc *descs)
 {
 	struct vnodeopv_node *node;
 	struct vop_ops *ops;
@@ -137,9 +138,18 @@ vfs_add_vnodeops(struct vop_ops **vops_pp, struct vnodeopv_entry_desc *descs)
 	}
 	node->ops = ops;
 	node->descs = descs;
+	ops->vv_mount = mp;
 	++ops->vv_refs;
 	TAILQ_INSERT_TAIL(&vnodeopv_list, node, entry);
 	vfs_recalc_vnodeops();
+	if (mp) {
+		if (mp->mnt_vn_coherency_ops)
+			mp->mnt_vn_use_ops = mp->mnt_vn_coherency_ops;
+		else if (mp->mnt_vn_journal_ops)
+			mp->mnt_vn_use_ops = mp->mnt_vn_journal_ops;
+		else
+			mp->mnt_vn_use_ops = mp->mnt_vn_norm_ops;
+	}
 }
 
 void
@@ -147,6 +157,7 @@ vfs_rm_vnodeops(struct vop_ops **vops_pp)
 {
 	struct vop_ops *ops = *vops_pp;
 	struct vnodeopv_node *node;
+	struct mount *mp;
 
 	if (ops == NULL)
 		return;
@@ -164,6 +175,14 @@ vfs_rm_vnodeops(struct vop_ops **vops_pp)
 	KKASSERT(ops != NULL && ops->vv_refs > 0);
 	if (--ops->vv_refs == 0) {
 		*vops_pp = NULL;
+		if ((mp = ops->vv_mount) != NULL) {
+			if (mp->mnt_vn_coherency_ops)
+				mp->mnt_vn_use_ops = mp->mnt_vn_coherency_ops;
+			else if (mp->mnt_vn_journal_ops)
+				mp->mnt_vn_use_ops = mp->mnt_vn_journal_ops;
+			else
+				mp->mnt_vn_use_ops = mp->mnt_vn_norm_ops;
+		}
 		free(ops, M_VNODEOP);
 	}
 	vfs_recalc_vnodeops();

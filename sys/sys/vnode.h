@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.27 2004/11/18 13:09:53 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.28 2004/12/17 00:18:09 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -64,25 +64,93 @@
  */
 TAILQ_HEAD(buflists, buf);
 
+/*
+ * Range locks protect offset ranges in files and directories at a high
+ * level, allowing the actual I/O to be broken down into smaller pieces.
+ * Range locks will eventually be integrated into the clustered cache
+ * coherency infrastructure.
+ *
+ * We use a simple data structure for now, but eventually this should 
+ * probably be a btree or red-black tree.
+ */
+struct vrangelock;
+
+TAILQ_HEAD(vrangelock_list, vrangelock);
+
+struct vrangehead {
+	struct vrangelock_list	vh_list;
+};
+
+struct vrangelock {
+	TAILQ_ENTRY(vrangelock) vr_node;
+	int		vr_flags;
+	off_t		vr_offset;
+	off_t		vr_length;
+};
+
+#define RNGL_WAITING	0x0001		/* waiting for lock, else has lock */
+#define RNGL_CHECK	0x0002		/* check for work on unlock */
+#define RNGL_SHARED	0x0004		/* shared lock, else exclusive */
+#define RNGL_ONLIST	0x0008		/* sanity check */
+
+static __inline
+void
+vrange_init(struct vrangelock *vr, int flags, off_t offset, off_t length)
+{
+	vr->vr_flags = flags;
+	vr->vr_offset = offset;
+	vr->vr_length = length;
+}
+
+#ifdef _KERNEL
+
+void	vrange_lock(struct vnode *vp, struct vrangelock *vr);
+void	vrange_unlock(struct vnode *vp, struct vrangelock *vr);
+
+static __inline
+void
+vrange_lock_shared(struct vnode *vp, struct vrangelock *vr, 
+		    off_t offset, off_t length)
+{
+	vrange_init(vr, RNGL_SHARED, offset, length);
+	vrange_lock(vp, vr);
+}
+
+static __inline
+void
+vrange_lock_excl(struct vnode *vp, struct vrangelock *vr,
+		    off_t offset, off_t length)
+{
+	vrange_init(vr, 0, offset, length);
+	vrange_lock(vp, vr);
+}
+
+#endif
 
 /*
- * Reading or writing any of these items requires holding the appropriate lock.
- * v_freelist is locked by the global vnode_free_list token.
- * v_mntvnodes is locked by the global mntvnodes token.
- * v_flag, v_usecount, v_holdcount and v_writecount are
- *    locked by the v_interlock token.
- * v_pollinfo is locked by the lock contained inside it.
+ * The vnode infrastructure is being reorgranized.  Most reference-related
+ * fields are locked by the BGL, and most file I/O related operations and
+ * vnode teardown functions are locked by the vnode lock.
+ *
+ * File read operations require a shared lock, file write operations require
+ * an exclusive lock.  Most directory operations (read or write) currently
+ * require an exclusive lock due to the side effects stored in the directory
+ * inode (which we intend to fix).
+ *
+ * File reads and writes are further protected by a range lock.  The intention
+ * is to be able to break I/O operations down into more easily managed pieces
+ * so vm_page arrays can be passed through rather then UIOs.  This work will
+ * occur in multiple stages.  The range locks will also eventually be used to
+ * deal with clustered cache coherency issues and, more immediately, to
+ * protect operations associated with the kernel-managed journaling module.
  *
  * NOTE: XXX v_opencount currently only used by specfs.  It should be used
  *	 universally.  
  *
- * NOTE: The v_vnlock pointer is now an embedded lock structure, v_lock.
- *	 v_lock is currently locked exclusively for writes but when a
- *	 range lock is added later on it will be locked shared for writes
- *	 and a range will be exclusively reserved in the rangelock space.
- *	 v_lock is currently locked exclusively for directory modifying
- *	 operations but when we start locking namespaces it will no longer
- *	 be used for that function, only for the actual I/O on the directory.
+ * NOTE: The vnode operations vector, v_ops, is a double-indirect that
+ *	 typically points to &v_mount->mnt_vn_use_ops.  We use a double
+ *	 pointer because mnt_vn_use_ops may change dynamically when e.g.
+ *	 journaling is turned on or off.
  */
 struct vnode {
 	u_long	v_flag;				/* vnode flags (see below) */
@@ -92,7 +160,7 @@ struct vnode {
 	int	v_opencount;			/* number of explicit opens */
 	u_long	v_id;				/* capability identifier */
 	struct	mount *v_mount;			/* ptr to vfs we are in */
-	struct  vop_ops *v_ops;			/* mount, vops, other things */
+	struct  vop_ops **v_ops;		/* vnode operations vector */
 	TAILQ_ENTRY(vnode) v_freelist;		/* vnode freelist */
 	TAILQ_ENTRY(vnode) v_nmntvnodes;	/* vnodes for mount point */
 	struct	buflists v_cleanblkhd;		/* clean blocklist head */
@@ -127,6 +195,7 @@ struct vnode {
 		short	vpi_revents;		/* what has happened */
 	} v_pollinfo;
 	struct vmresident *v_resident;		/* optional vmresident */
+	struct vrangehead v_range;		/* range lock */
 #ifdef	DEBUG_LOCKS
 	const char *filename;			/* Source file doing locking */
 	int line;				/* Line number doing locking */
@@ -520,8 +589,11 @@ void	cvtnstat (struct stat *sb, struct nstat *nsb);
 struct vnode *allocvnode(int lktimeout, int lkflags);
 struct vnode *allocvnode_placemarker(void);
 void freevnode_placemarker(struct vnode *);
-int	getnewvnode (enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
+int	getnewvnode (enum vtagtype tag, struct mount *mp, 
 		    struct vnode **vpp, int timo, int lkflags);
+int	getspecialvnode (enum vtagtype tag, struct mount *mp, 
+		    struct vop_ops **ops, struct vnode **vpp, int timo, 
+		    int lkflags);
 int	lease_check (struct vop_lease_args *ap);
 int	spec_vnoperate (struct vop_generic_args *);
 int	speedup_syncer (void);
@@ -530,7 +602,8 @@ int	vcount (struct vnode *vp);
 int	vfinddev (dev_t dev, enum vtype type, struct vnode **vpp);
 void	vfs_add_vnodeops_sysinit (const void *);
 void	vfs_rm_vnodeops_sysinit (const void *);
-void	vfs_add_vnodeops(struct vop_ops **, struct vnodeopv_entry_desc *);
+void	vfs_add_vnodeops(struct mount *, struct vop_ops **,
+			struct vnodeopv_entry_desc *);
 void	vfs_rm_vnodeops(struct vop_ops **);
 int	vflush (struct mount *mp, int rootrefs, int flags);
 int	vmntvnodescan(struct mount *mp, int flags,
@@ -626,7 +699,6 @@ void	vfs_sync_init(void);
 
 void	vn_syncer_add_to_worklist(struct vnode *, int);
 void	vnlru_proc_wait(void);
-
 
 extern	struct vop_ops *default_vnode_vops;
 extern	struct vop_ops *spec_vnode_vops;

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.24 2004/11/12 00:09:38 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.25 2004/12/17 00:18:29 dillon Exp $
  */
 
 
@@ -512,7 +512,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 		(ntmp->ntm_flag & NTFS_MFLAG_ALLNAMES)?" allnames,":"",
 		ntmp->ntm_uid, ntmp->ntm_gid, ntmp->ntm_mode));
 
-	vfs_add_vnodeops(&mp->mnt_vn_ops, ntfs_vnodeop_entries);
+	vfs_add_vnodeops(mp, &mp->mnt_vn_norm_ops, ntfs_vnodeop_entries);
 
 	/*
 	 * We read in some system nodes to do not allow 
@@ -921,9 +921,7 @@ ntfs_vgetex(struct mount *mp, ino_t ino, u_int32_t attrtype, char *attrname,
 		return (0);
 	}
 
-	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, 
-			    ntmp->ntm_mountp->mnt_vn_ops, &vp,
-			    VLKTIMEOUT, 0);
+	error = getnewvnode(VT_NTFS, ntmp->ntm_mountp, &vp, VLKTIMEOUT, 0);
 	if(error) {
 		ntfs_frele(fp);
 		ntfs_ntput(ip);

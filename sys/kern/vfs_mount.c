@@ -67,7 +67,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_mount.c,v 1.2 2004/10/19 05:55:34 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_mount.c,v 1.3 2004/12/17 00:18:07 dillon Exp $
  */
 
 /*
@@ -128,15 +128,54 @@ vfs_mount_init(void)
  * vx_unlock() the vnode.
  */
 int
-getnewvnode(enum vtagtype tag, struct mount *mp, struct vop_ops *ops,
+getnewvnode(enum vtagtype tag, struct mount *mp,
+		struct vnode **vpp, int lktimeout, int lkflags)
+{
+	struct vnode *vp;
+
+	KKASSERT(mp != NULL);
+
+	vp = allocvnode(lktimeout, lkflags);
+	vp->v_tag = tag;
+	vp->v_data = NULL;
+
+	/*
+	 * By default the vnode is assigned the mount point's normal
+	 * operations vector.
+	 */
+	vp->v_ops = &mp->mnt_vn_use_ops;
+
+	/*
+	 * Placing the vnode on the mount point's queue makes it visible.
+	 * VNON prevents it from being messed with, however.
+	 */
+	insmntque(vp, mp);
+	vfs_object_create(vp, curthread);
+
+	/*
+	 * A VX locked & refd vnode is returned.
+	 */
+	*vpp = vp;
+	return (0);
+}
+
+/*
+ * This function creates vnodes with special operations vectors.  The
+ * mount point is optional.
+ *
+ * This routine is being phased out.
+ */
+int
+getspecialvnode(enum vtagtype tag, struct mount *mp,
+		struct vop_ops **ops_pp,
 		struct vnode **vpp, int lktimeout, int lkflags)
 {
 	struct vnode *vp;
 
 	vp = allocvnode(lktimeout, lkflags);
 	vp->v_tag = tag;
-	vp->v_ops = ops;
 	vp->v_data = NULL;
+	vp->v_ops = ops_pp;
 
 	/*
 	 * Placing the vnode on the mount point's queue makes it visible.
@@ -770,7 +809,7 @@ vflush_scan(struct mount *mp, struct vnode *vp, void *data)
 			vgone(vp);
 		} else {
 			vclean(vp, 0, info->td);
-			vp->v_ops = spec_vnode_vops;
+			vp->v_ops = &spec_vnode_vops;
 			insmntque(vp, NULL);
 		}
 		return(0);
