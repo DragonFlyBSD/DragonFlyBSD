@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)touch.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/touch/touch.c,v 1.11.2.2 2002/07/28 06:52:15 eric Exp $
- * $DragonFly: src/usr.bin/touch/touch.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/touch/touch.c,v 1.4 2004/08/15 15:06:58 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -49,11 +49,11 @@
 #include <time.h>
 #include <unistd.h>
 
-int	rw(char *, struct stat *, int);
-void	stime_arg1(char *, struct timeval *);
-void	stime_arg2(char *, int, struct timeval *);
-void	stime_file(char *, struct timeval *);
-void	usage(void);
+static int	rw(const char *, const struct stat *, int);
+static void	stime_arg1(const char *, struct timeval *);
+static void	stime_arg2(const char *, int, struct timeval *);
+static void	stime_file(const char *, struct timeval *);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -64,7 +64,7 @@ main(int argc, char **argv)
 	char *p;
 
 	aflag = cflag = fflag = mflag = timeset = 0;
-	if (gettimeofday(&tv[0], NULL))
+	if (gettimeofday(&tv[0], NULL) == -1)
 		err(1, "gettimeofday");
 
 	while ((ch = getopt(argc, argv, "acfmr:t:")) != -1)
@@ -89,7 +89,6 @@ main(int argc, char **argv)
 			timeset = 1;
 			stime_arg1(optarg, tv);
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -105,7 +104,7 @@ main(int argc, char **argv)
 	 * is an 8 or 10 digit number, use the obsolete time specification.
 	 */
 	if (!timeset && argc > 1) {
-		(void)strtol(argv[0], &p, 10);
+		strtol(argv[0], &p, 10);
 		len = p - argv[0];
 		if (*p == '\0' && (len == 8 || len == 10)) {
 			timeset = 1;
@@ -176,8 +175,8 @@ main(int argc, char **argv)
 
 #define	ATOI2(ar)	((ar)[0] - '0') * 10 + ((ar)[1] - '0'); (ar) += 2;
 
-void
-stime_arg1(char *arg, struct timeval *tvp)
+static void
+stime_arg1(const char *arg, struct timeval *tvp)
 {
 	time_t now;
 	struct tm *t;
@@ -192,7 +191,7 @@ stime_arg1(char *arg, struct timeval *tvp)
 		t->tm_sec = 0;		/* Seconds defaults to 0. */
 	else {
 		if (strlen(p + 1) != 2)
-			goto terr;
+			goto failed;
 		*p++ = '\0';
 		t->tm_sec = ATOI2(p);
 	}
@@ -225,20 +224,22 @@ stime_arg1(char *arg, struct timeval *tvp)
 		t->tm_min = ATOI2(arg);
 		break;
 	default:
-		goto terr;
+		goto failed;
 	}
 
 	t->tm_isdst = -1;		/* Figure out DST. */
 	tvp[0].tv_sec = tvp[1].tv_sec = mktime(t);
 	if (tvp[0].tv_sec == -1)
-terr:		errx(1,
-	"out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
+		goto failed;
 
 	tvp[0].tv_usec = tvp[1].tv_usec = 0;
+
+failed:
+	errx(1, "out of range or illegal time specification: [[CC]YY]MMDDhhmm[.SS]");
 }
 
-void
-stime_arg2(char *arg, int year, struct timeval *tvp)
+static void
+stime_arg2(const char *arg, int year, struct timeval *tvp)
 {
 	time_t now;
 	struct tm *t;
@@ -261,14 +262,13 @@ stime_arg2(char *arg, int year, struct timeval *tvp)
 	t->tm_isdst = -1;		/* Figure out DST. */
 	tvp[0].tv_sec = tvp[1].tv_sec = mktime(t);
 	if (tvp[0].tv_sec == -1)
-		errx(1,
-	"out of range or illegal time specification: MMDDhhmm[yy]");
+		errx(1, "out of range or illegal time specification: MMDDhhmm[yy]");
 
 	tvp[0].tv_usec = tvp[1].tv_usec = 0;
 }
 
-void
-stime_file(char *fname, struct timeval *tvp)
+static void
+stime_file(const char *fname, struct timeval *tvp)
 {
 	struct stat sb;
 
@@ -278,11 +278,12 @@ stime_file(char *fname, struct timeval *tvp)
 	TIMESPEC_TO_TIMEVAL(tvp + 1, &sb.st_mtimespec);
 }
 
-int
-rw(char *fname, struct stat *sbp, int force)
+static int
+rw(const char *fname, const struct stat *sbp, int force)
 {
-	int fd, needed_chmod, rval;
+	int fd, needed_chmod;
 	u_char byte;
+	const char *warn_msg = "%s";
 
 	/* Try regular files. */
 	if (!S_ISREG(sbp->st_mode)) {
@@ -290,46 +291,47 @@ rw(char *fname, struct stat *sbp, int force)
 		return (1);
 	}
 
-	needed_chmod = rval = 0;
+	needed_chmod = 0;
 	if ((fd = open(fname, O_RDWR, 0)) == -1) {
 		if (!force || chmod(fname, DEFFILEMODE))
-			goto err;
+			goto failed;
 		if ((fd = open(fname, O_RDWR, 0)) == -1)
-			goto err;
+			goto failed;
 		needed_chmod = 1;
 	}
 
 	if (sbp->st_size != 0) {
 		if (read(fd, &byte, sizeof(byte)) != sizeof(byte))
-			goto err;
+			goto failed;
 		if (lseek(fd, (off_t)0, SEEK_SET) == -1)
-			goto err;
+			goto failed;
 		if (write(fd, &byte, sizeof(byte)) != sizeof(byte))
-			goto err;
+			goto failed;
 	} else {
-		if (write(fd, &byte, sizeof(byte)) != sizeof(byte)) {
-err:			rval = 1;
-			warn("%s", fname);
-		} else if (ftruncate(fd, (off_t)0)) {
-			rval = 1;
-			warn("%s: file modified", fname);
+		if (write(fd, &byte, sizeof(byte)) != sizeof(byte))
+			goto failed;
+		if (ftruncate(fd, (off_t)0)) {
+			warn_msg = "%s: file modified";
+			goto failed;
 		}
 	}
 
-	if (close(fd) && rval != 1) {
-		rval = 1;
-		warn("%s", fname);
+	if (close(fd))
+		goto failed;
+	if (needed_chmod && chmod(fname, sbp->st_mode)) {
+		warn_msg = "%s: permissions modified";
+		goto failed;
 	}
-	if (needed_chmod && chmod(fname, sbp->st_mode) && rval != 1) {
-		rval = 1;
-		warn("%s: permissions modified", fname);
-	}
-	return (rval);
+	return(0);
+
+failed:
+	warn("%s", warn_msg);
+	return(1);
 }
 
-void
+static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: touch [-acfm] [-r file] [-t [[CC]YY]MMDDhhmm[.SS]] file ...\n");
+	fprintf(stderr, "usage: touch [-acfm] [-r file] [-t [[CC]YY]MMDDhhmm[.SS]] file ...\n");
 	exit(1);
 }
