@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.4 2003/08/15 14:55:04 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.5 2003/08/15 20:45:33 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -141,7 +141,6 @@ tcp_output(tp)
 	 * If there is some data or critical controls (SYN, RST)
 	 * to send, then transmit; otherwise, investigate further.
 	 */
-	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
 	if ((tp->snd_max == tp->snd_una) &&
 	    (ticks - tp->t_rcvtime) >= tp->t_rxtcur) {
 		/*
@@ -166,13 +165,11 @@ tcp_output(tp)
 		else     
 			tp->snd_cwnd = tp->t_maxseg * ss_fltsz;
 	}
-	tp->t_flags &= ~TF_LASTIDLE;
-	if (idle) {
-		if (tp->t_flags & TF_MORETOCOME) {
-			tp->t_flags |= TF_LASTIDLE;
-			idle = 0;
-		}
-	}
+	idle = (tp->t_flags & TF_LASTIDLE) || (tp->snd_max == tp->snd_una);
+	if (idle && (tp->t_flags & TF_MORETOCOME))
+		tp->t_flags |= TF_LASTIDLE;
+	else
+		tp->t_flags &= ~TF_LASTIDLE;
 again:
 	sendalot = 0;
 	off = tp->snd_nxt - tp->snd_una;
