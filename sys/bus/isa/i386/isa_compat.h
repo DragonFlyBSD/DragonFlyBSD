@@ -24,11 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/isa_compat.h,v 1.27.2.11 2002/10/05 18:31:48 scottl Exp $
- * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.3 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/i386/isa_compat.h,v 1.4 2003/11/22 09:50:35 asmodai Exp $
  */
 
 #include "use_vt.h"
-#include "use_wdc.h"
 #include "use_cx.h"
 #include "use_el.h"
 #include "use_le.h"
@@ -73,7 +72,6 @@ struct old_isa_driver {
 };
 
 extern struct isa_driver  vtdriver;
-extern struct isa_driver wdcdriver;
 extern struct isa_driver  cxdriver;
 extern struct isa_driver  eldriver;
 extern struct isa_driver  ledriver;
@@ -170,9 +168,6 @@ static struct old_isa_driver old_drivers[] = {
 
 /* BIO */
 
-#if NWDC > 0
-	{ INTR_TYPE_BIO, &wdcdriver },
-#endif
 #if NMCD > 0
 	{ INTR_TYPE_BIO, &mcddriver },
 #endif

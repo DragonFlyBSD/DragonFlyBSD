@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.7 2003/10/01 18:21:44 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.8 2003/11/22 09:50:35 asmodai Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -244,8 +244,6 @@ emulation/ibcs2/i386/ibcs2_xenix.c	optional	ibcs2
 emulation/ibcs2/i386/ibcs2_xenix_sysent.c optional	ibcs2
 emulation/ibcs2/coff/imgact_coff.c	optional	ibcs2
 i386/isa/asc.c				optional	asc
-i386/isa/atapi.c			optional	wdc	\
-	warning "The wdc driver is obsolete.  Please use the ata driver!"
 i386/isa/clock.c			standard
 dev/serial/cronyx/cronyx.c		optional	cx
 dev/video/ctx/ctx.c			optional	ctx
@@ -358,15 +356,6 @@ dev/sound/isa/i386/spkr/spkr.c		optional	speaker
 dev/serial/stl/stallion.c		optional	stl
 dev/misc/tw/tw.c			optional	tw
 dev/video/i386/vesa/vesa.c		optional	vga vesa
-dev/disk/wd/wd.c			optional	wd	\
-	warning "The wd  driver is obsolete.  Please use the atadisk driver!"
-dev/disk/wd/wd.c			optional	wdc
-dev/disk/wcd/wd_cd.c			optional	wcd wdc	\
-	warning "The wcd driver is obsolete.  Please use the atapicd driver!"
-dev/disk/wfd/wfd.c			optional	wfd wdc	\
-	warning "The wfd driver is obsolete.  Please use the atapifd driver!"
-dev/disk/wst/wst.c			optional	wst wdc	\
-	warning "The wst driver is obsolete.  Please use the atapist driver!"
 dev/disk/wt/wt.c			optional	wt
 emulation/linux/i386/imgact_linux.c	optional	compat_linux
 emulation/linux/i386/linux_dummy.c	optional	compat_linux
@@ -506,4 +495,3 @@ netproto/smb/smb_smb.c			optional	netsmb
 netproto/smb/smb_subr.c			optional	netsmb
 netproto/smb/smb_trantcp.c		optional	netsmb
 netproto/smb/smb_usr.c			optional	netsmb
-bus/pci/ide_pci.c			optional	wdc pci
