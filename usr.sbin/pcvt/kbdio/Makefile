@@ -1,3 +1,5 @@
+#	$DragonFly: src/usr.sbin/pcvt/kbdio/Attic/Makefile,v 1.2 2004/03/31 20:22:13 cpressey Exp $
+
 .if !exists(${.CURDIR}/../Makefile.inc)
 error:
 	@echo
@@ -19,8 +21,8 @@ YFLAGS+= -v	# verbose
 
 LFLAGS+= -I
 
-DPADD=	${LIBM} ${LIBY} ${LIBL}
-LDADD=	-lm -ly -ll
+DPADD=	${LIBM} ${LIBL}
+LDADD=	-lm -ll
 
 NOMAN=
 
