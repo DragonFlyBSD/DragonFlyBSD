@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.17 2003/10/21 01:05:09 daver Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.18 2004/01/17 21:23:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -1117,7 +1117,7 @@ fdfree(struct proc *p)
 			i = 0;
 			fpp = fdp->fd_ofiles;
 			for (i = 0, fpp = fdp->fd_ofiles;
-			     i < fdp->fd_lastfile;
+			     i <= fdp->fd_lastfile;
 			     i++, fpp++) {
 				if (*fpp == NULL ||
 				    (*fpp)->f_type != DTYPE_VNODE)
