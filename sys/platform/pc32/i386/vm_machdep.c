@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.29 2004/04/10 20:55:20 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.30 2004/04/30 00:59:52 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -129,7 +129,7 @@ cpu_fork(p1, p2, flags)
 #if NNPX > 0
 	/* Ensure that p1's pcb is up to date. */
 	if (mdcpu->gd_npxthread == p1->p_thread)
-		npxsave(&p1->p_thread->td_pcb->pcb_save);
+		npxsave(p1->p_thread->td_savefpu);
 #endif
 
 	/* Copy p1's pcb. */

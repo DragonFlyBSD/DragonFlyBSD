@@ -24,19 +24,23 @@
  *
  *	Machine independant code should not directly include this file.
  *
- * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.5 2003/07/10 04:47:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/include/thread.h,v 1.6 2004/04/30 00:59:54 dillon Exp $
  */
 
 #ifndef	_MACHINE_THREAD_H_
 #define	_MACHINE_THREAD_H_
 
+union savefpu;
+
 struct md_thread {
     unsigned int	mtd_cpl;
+    union savefpu	*mtd_savefpu;
 };
 
 #ifdef _KERNEL
 
-#define td_cpl	td_mach.mtd_cpl
+#define td_cpl		td_mach.mtd_cpl
+#define td_savefpu	td_mach.mtd_savefpu
 
 /*
  * mycpu() retrieves the base of the current cpu's globaldata structure.

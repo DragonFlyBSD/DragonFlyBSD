@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/vm86bios.s,v 1.15.2.1 2000/05/16 06:58:07 dillon Exp $
- * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.11 2003/08/25 19:50:28 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/vm86bios.s,v 1.12 2004/04/30 00:59:52 dillon Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -70,11 +70,9 @@ ENTRY(vm86_bioscall)
 	testl	%ecx,%ecx
 	je 	1f			/* no curthread/npxthread */
 	pushl	%edx
-	movl	TD_PCB(%ecx),%ecx
-	addl	$PCB_SAVEFPU,%ecx
-	pushl	%ecx
+	pushl	TD_SAVEFPU(%ecx)
 	call	npxsave
-	popl	%ecx
+	popl	%ecx			/* pop argument (now garabge) */
 	popl	%edx			/* recover our pcb */
 #endif
 
@@ -95,7 +93,10 @@ ENTRY(vm86_bioscall)
 	movl	PCPU(curthread),%ebx
 	movl	TD_PCB(%ebx),%eax	/* save curpcb */
 	pushl	%eax			/* save curpcb */
+	pushl	TD_SAVEFPU(%ebx)	/* save fpu pointer */
 	movl	%edx,TD_PCB(%ebx)	/* set curpcb to vm86pcb */
+	leal	PCB_SAVEFPU(%edx),%eax	/* new savefpu pointer */
+	movl	%eax,TD_SAVEFPU(%ebx)
 
 	movl	PCPU(tss_gdt),%ebx	/* entry in GDT */
 	movl	0(%ebx),%eax
@@ -173,6 +174,7 @@ ENTRY(vm86_biosret)
 	ltr	%si
 
 	movl	PCPU(curthread),%eax
+	popl	TD_SAVEFPU(%eax)	/* restore savefpu pointer */
 	popl	TD_PCB(%eax)		/* restore curpcb */
 	movl	SCR_ARGFRAME(%edx),%edx	/* original stack frame */
 	movl	TF_TRAPNO(%edx),%eax	/* return (trapno) */

@@ -4,7 +4,7 @@
  * (C) 1991 Linus Torvalds
  *
  * $FreeBSD: src/sys/i386/i386/math_emu.h,v 1.7.2.1 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/math_emu.h,v 1.4 2003/06/18 18:29:55 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/math_emu.h,v 1.5 2004/04/30 00:59:52 dillon Exp $
  */
 #ifndef _LINUX_MATH_EMU_H
 #define _LINUX_MATH_EMU_H
@@ -70,7 +70,7 @@ struct i387_struct {
 	int32_t	st_space[20];	/* 8*10 bytes for each FP-reg = 80 bytes */
 };
 
-#define I387 (*(struct i387_struct *)&((curthread->td_pcb)->pcb_save.sv_87))
+#define I387 (*(struct i387_struct *)(&curthread->td_savefpu->sv_87))
 #define SWD (*(struct swd *) &I387.swd)
 #define ROUNDING ((I387.cwd >> 10) & 3)
 #define PRECISION ((I387.cwd >> 8) & 3)

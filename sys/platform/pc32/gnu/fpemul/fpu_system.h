@@ -55,7 +55,7 @@
  *
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_system.h,v 1.7.2.1 2001/08/15 01:23:49 peter Exp $
- * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_system.h,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/gnu/fpemul/Attic/fpu_system.h,v 1.3 2004/04/30 00:59:48 dillon Exp $
  *
  */
 
@@ -70,7 +70,7 @@
 #include <linux/kernel.h>
 */
 
-#define I387 (*(union i387_union *)&(((struct pcb *)curproc->p_addr)->pcb_save.sv_87))
+#define I387	(*(union i387_union *)(&curthread->td_savefpu->sv_87))
 #define FPU_info		(I387.soft.frame)
 
 #define FPU_CS			(*(unsigned short *) &(FPU_info->tf_cs))

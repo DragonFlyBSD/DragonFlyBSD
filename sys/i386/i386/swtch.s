@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.32 2004/04/29 17:24:58 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/swtch.s,v 1.33 2004/04/30 00:59:52 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -143,8 +143,7 @@ ENTRY(cpu_heavy_switch)
 	 */
 	cmpl	%ebx,PCPU(npxthread)
 	jne	1f
-	addl	$PCB_SAVEFPU,%edx
-	pushl	%edx
+	pushl	TD_SAVEFPU(%ebx)
 	call	npxsave			/* do it in a big C function */
 	addl	$4,%esp			/* EAX, ECX, EDX trashed */
 1:
@@ -399,6 +398,7 @@ sw0_2:	.asciz	"cpu_switch: not SRUN"
 
 /*
  * savectx(pcb)
+ *
  * Update pcb, saving current processor state.
  */
 ENTRY(savectx)
@@ -437,8 +437,7 @@ ENTRY(savectx)
 	je	1f
 
 	pushl	%ecx
-	movl	TD_PCB(%eax),%eax
-	leal	PCB_SAVEFPU(%eax),%eax
+	movl	TD_SAVEFPU(%eax),%eax
 	pushl	%eax
 	pushl	%eax
 	call	npxsave
@@ -447,7 +446,7 @@ ENTRY(savectx)
 	popl	%ecx
 
 	pushl	$PCB_SAVEFPU_SIZE
-	leal	PCB_SAVEFPU(%ecx),%ecx
+	leal    PCB_SAVEFPU(%ecx),%ecx
 	pushl	%ecx
 	pushl	%eax
 	call	bcopy
@@ -550,9 +549,7 @@ ENTRY(cpu_lwkt_switch)
 	 */
 	cmpl	%ebx,PCPU(npxthread)
 	jne	1f
-	movl	TD_PCB(%ebx),%edx		/* EDX = PCB */
-	addl	$PCB_SAVEFPU,%edx
-	pushl	%edx
+	pushl	TD_SAVEFPU(%ebx)
 	call	npxsave			/* do it in a big C function */
 	addl	$4,%esp			/* EAX, ECX, EDX trashed */
 1:

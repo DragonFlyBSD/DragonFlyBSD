@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.14 2004/04/29 17:25:02 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/npx.c,v 1.15 2004/04/30 00:59:55 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -128,13 +128,13 @@ void	stop_emulating	(void);
 #endif	/* __GNUC__ */
 
 #ifndef CPU_DISABLE_SSE
-#define GET_FPU_EXSW_PTR(pcb) \
+#define GET_FPU_EXSW_PTR(td) \
 	(cpu_fxsr ? \
-		&(pcb)->pcb_save.sv_xmm.sv_ex_sw : \
-		&(pcb)->pcb_save.sv_87.sv_ex_sw)
+		&(td)->td_savefpu->sv_xmm.sv_ex_sw : \
+		&(td)->td_savefpu->sv_87.sv_ex_sw)
 #else /* CPU_DISABLE_SSE */
-#define GET_FPU_EXSW_PTR(pcb) \
-	(&(pcb)->pcb_save.sv_87.sv_ex_sw)
+#define GET_FPU_EXSW_PTR(td) \
+	(&(td)->td_savefpu->sv_87.sv_ex_sw)
 #endif /* CPU_DISABLE_SSE */
 
 typedef u_char bool_t;
@@ -545,7 +545,7 @@ npxinit(control)
 		fninit();
 #endif
 	fldcw(&control);
-	fpusave(&curthread->td_pcb->pcb_save);
+	fpusave(curthread->td_savefpu);
 	start_emulating();
 }
 
@@ -557,14 +557,14 @@ npxexit(struct proc *p)
 {
 
 	if (p->p_thread == mdcpu->gd_npxthread)
-		npxsave(&curthread->td_pcb->pcb_save);
+		npxsave(curthread->td_savefpu);
 #ifdef NPX_DEBUG
 	if (npx_exists) {
 		u_int	masked_exceptions;
 
 		masked_exceptions = 
-		    curthread->td_pcb->pcb_save.sv_87.sv_env.en_cw
-		    & curthread->td_pcb->pcb_save.sv_87.sv_env.en_sw & 0x7f;
+		    curthread->td_savefpu->sv_87.sv_env.en_cw
+		    & curthread->td_savefpu->sv_87.sv_env.en_sw & 0x7f;
 		/*
 		 * Log exceptions that would have trapped with the old
 		 * control word (overflow, divide by 0, and invalid operand).
@@ -790,7 +790,7 @@ npx_intr(dummy)
 		panic("npxintr from non-current process");
 	}
 
-	exstat = GET_FPU_EXSW_PTR(curthread->td_pcb);
+	exstat = GET_FPU_EXSW_PTR(curthread);
 	outb(0xf0, 0);
 	fnstsw(exstat);
 	fnstcw(&control);
@@ -866,7 +866,7 @@ npxdna()
 	 * Record new context early in case frstor causes an IRQ13.
 	 */
 	mdcpu->gd_npxthread = curthread;
-	exstat = GET_FPU_EXSW_PTR(curthread->td_pcb);
+	exstat = GET_FPU_EXSW_PTR(curthread);
 	*exstat = 0;
 	/*
 	 * The following frstor may cause an IRQ13 when the state being
@@ -880,7 +880,7 @@ npxdna()
 	 * fnsave are broken, so our treatment breaks fnclex if it is the
 	 * first FPU instruction after a context switch.
 	 */
-	fpurstor(&curthread->td_pcb->pcb_save);
+	fpurstor(curthread->td_savefpu);
 
 	return (1);
 }

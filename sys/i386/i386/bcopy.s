@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.1 2004/04/29 17:24:58 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/bcopy.s,v 1.2 2004/04/30 00:59:52 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -164,35 +164,31 @@ ENTRY(asm_generic_bcopy)
 	 * In order for the kernel to be able to use the FPU:
 	 *
 	 *	(1) The kernel may not already be using the fpu
-	 *	(2) If the fpu is owned by the application, we must save
-	 *	    and restore its state.
-	 *	(3) Our thread begins using the FPU, we clts (clear CR0_TS)
-	 *	    to prevent an FP fault, fninit, and set our thread as
-	 *	    the npxthread.
 	 *
+	 *	(2) If the fpu is owned by the application, we must save
+	 *	    its state.  If the fpu is not owned by the application
+	 *	    the application's saved fp state may already exist
+	 *	    in TD_SAVEFPU.
+	 *
+	 *	(3) We cannot allow the kernel overwrite the application's
+	 *	    FPU state with our own, so we allocate space on the
+	 *	    stack and create a new TD_SAVEFPU, saving the old
+	 *	    pointer.
+	 *	    
 	 *	(4) While we are using the FP unit, an interrupt may come
 	 *	    along and preempt us, causing our FP state to be saved.
-	 *	    We will fault/restore upon resumption.
+	 *	    We will fault/restore upon resumption.  Our FP state
+	 *	    will be saved on the stack.
 	 *
-	 *	(5) To cleanup we have to restore the original application's
-	 *	    FP state, which means restoring any saved state, CR0_TS,
-	 *	    and npxthread settings as appropriate.
+	 *	(5) To clean up we throw away our FP state and, zero out
+	 *	    npxthread to indicate that the application's FP state
+	 *	    is stored in TD_SAVEFPU, and we then restore the original
+	 *	    TD_SAVEFPU.
 	 *
-	 *	    However, as an optimization we can instead copy the
-	 *	    saved state to the PCB, clear npxthread, and set CR0_TS,
-	 *	    which will allow additional bcopy's to use the FP unit
-	 *	    at virtually no cost and cause the application to trap
-	 *	    when it tries to use the FP unit again.
-	 *
-	 *	    So, why choose one over another?  Well, having to save
-	 *	    and restore the FP state eats a lot of cycles.  Many 
-	 *	    kernel operations actually wind up looping on a bcopy
-	 *	    (e.g. the PIPE/SFBUF case), or looping in userland without
-	 *	    any intervening FP ops.  Our minimum copy size check
-	 *	    (2048) avoids the use of FP for the smaller copies that
-	 *	    are more likely to be intermingled with user FP ops, so
-	 *	    it is my belief that saving the user FP state to the PCB
-	 *	    is a better solution then restoring it.
+	 *	    We do not attempt to restore the application's FP state.
+	 *	    We set the TS bit to guarentee that the application will
+	 *	    fault when it next tries to access the FP (to restore its
+	 *	    state).
 	 *
 	 *  NOTE: fxsave requires a 16-byte aligned address
 	 *
@@ -205,22 +201,20 @@ ENTRY(asm_generic_bcopy)
 	jb	missfunc ;			\
 	btsl	$1,PCPU(kernel_fpu_lock) ;	\
 	jc	missfunc ;			\
+	pushl	%ebx ;				\
 	pushl	%ebp ;				\
 	movl	%esp, %ebp ;			\
-	smsw	%ax ;				\
-	movl	PCPU(npxthread),%edx ;		\
-	testl	%edx,%edx ;			\
-	jz	100f ;				\
-	clts ;					\
+	movl	PCPU(curthread),%edx ;		\
+	movl	TD_SAVEFPU(%edx),%ebx ;		\
 	subl	$512,%esp ;			\
 	andl	$0xfffffff0,%esp ;		\
-	fxsave	0(%esp) ;			\
+	movl	%esp,TD_SAVEFPU(%edx) ;		\
+	cmpl	%edx,PCPU(npxthread) ;		\
+	jne	100f ;				\
+	fxsave	0(%ebx) ;			\
 100: ;						\
-	pushl	%eax ;				\
-	pushl	%edx ;				\
-	movl	PCPU(curthread),%edx ;		\
-	movl	%edx,PCPU(npxthread) ;		\
 	clts ;					\
+	movl	%edx,PCPU(npxthread) ;		\
 	fninit ;				\
 	pushl	$mmx_onfault
 
@@ -230,24 +224,15 @@ ENTRY(asm_generic_bcopy)
 	MMX_RESTORE_BLOCK2
 
 #define MMX_RESTORE_BLOCK2			\
-	popl	%edx ;				\
-	popl	%eax ;				\
-	testl	%edx,%edx ;			\
-	jz	100f ;				\
-	movl	%esp,%esi ;			\
-	movl	PCPU(curthread),%edi ;		\
-	movl	TD_PCB(%edi),%edi ;		\
-	addl	$PCB_SAVEFPU,%edi ;		\
-	movl    $512>>2,%ecx ;			\
-	cld ;					\
-	rep ;					\
-	movsl ;					\
-	orb	$CR0_TS,%al ;			\
-100: ;						\
-	movl	%ebp,%esp ;			\
-	popl	%ebp ;				\
+	movl	PCPU(curthread),%edx ;		\
 	movl	$0,PCPU(npxthread) ;		\
+	movl	%ebx,TD_SAVEFPU(%edx) ;		\
+	smsw	%ax ;				\
+	movl	%ebp,%esp ;			\
+	orb	$CR0_TS,%al ;			\
+	popl	%ebp ;				\
 	lmsw	%ax ;				\
+	popl	%ebx ;				\
 	movl	$0,PCPU(kernel_fpu_lock)
 
 	/*
