@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.7 2003/11/19 00:51:24 dillon Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.8 2004/01/21 19:40:57 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -63,6 +63,8 @@ TARGETS+=	tags
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
+
+${.TARGETS}:
 
 .endif
 
