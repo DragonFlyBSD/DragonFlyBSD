@@ -3,3 +3,4 @@ Makefile.am.common
 Makefile.in
 configure
 configure.in
+appl/telnet/telnet/
