@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.38 2005/03/17 17:28:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.39 2005/04/06 18:39:53 dillon Exp $
  */
 
 
@@ -736,13 +736,23 @@ nfs_setattr(struct vop_setattr_args *ap)
 				return (EROFS);
 
 			/*
-			 * We run vnode_pager_setsize() early (why?),
-			 * we must set np->n_size now to avoid vinvalbuf
-			 * V_SAVE races that might setsize a lower
-			 * value.
+			 * This is nasty.  The RPCs we send to flush pending
+			 * data often return attribute information which is
+			 * cached via a callback to nfs_loadattrcache(), which
+			 * has the effect of changing our notion of the file
+			 * size.  Due to flushed appends and other operations
+			 * the file size can be set to virtually anything, 
+			 * including values that do not match either the old
+			 * or intended file size.
+			 *
+			 * When this condition is detected we must loop to
+			 * try the operation again.  Hopefully no more
+			 * flushing is required on the loop so it works the
+			 * second time around.  THIS CASE ALMOST ALWAYS
+			 * HAPPENS!
 			 */
-
 			tsize = np->n_size;
+again:
 			error = nfs_meta_setsize(vp, ap->a_td, vap->va_size);
 
  			if (np->n_flag & NLMODIFIED) {
@@ -750,30 +760,34 @@ nfs_setattr(struct vop_setattr_args *ap)
  				error = nfs_vinvalbuf(vp, 0, ap->a_td, 1);
  			    else
  				error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1);
- 			    if (error) {
-				np->n_size = tsize;
-				vnode_pager_setsize(vp, np->n_size);
- 				return (error);
-			    }
  			}
-			/* 
-			 * np->n_size has already been set to vap->va_size
-			 * in nfs_meta_setsize(). We must set it again since
-			 * nfs_loadattrcache() could be called through
-			 * nfs_meta_setsize() and could modify np->n_size.
-			 *
-			 * (note that nfs_loadattrcache() will have called
-			 * vnode_pager_setsize() for us in that case).
+			/*
+			 * note: this loop case almost always happens at 
+			 * least once per truncation.
 			 */
-			np->n_vattr.va_size = np->n_size = vap->va_size;
+			if (error == 0 && np->n_size != vap->va_size)
+				goto again;
+			np->n_vattr.va_size = vap->va_size;
 			break;
 		}
   	} else if ((vap->va_mtime.tv_sec != VNOVAL ||
 		vap->va_atime.tv_sec != VNOVAL) && (np->n_flag & NLMODIFIED) &&
 		vp->v_type == VREG &&
-  		(error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1)) == EINTR)
+  		(error = nfs_vinvalbuf(vp, V_SAVE, ap->a_td, 1)) == EINTR
+	) {
 		return (error);
+	}
 	error = nfs_setattrrpc(vp, vap, ap->a_cred, ap->a_td);
+
+	/*
+	 * Sanity check if a truncation was issued.  This should only occur
+	 * if multiple processes are racing on the same file.
+	 */
+	if (error == 0 && vap->va_size != VNOVAL && 
+	    np->n_size != vap->va_size) {
+		printf("NFS ftruncate: server disagrees on the file size: %lld/%lld/%lld\n", tsize, vap->va_size, np->n_size);
+		goto again;
+	}
 	if (error && vap->va_size != VNOVAL) {
 		np->n_size = np->n_vattr.va_size = tsize;
 		vnode_pager_setsize(vp, np->n_size);
