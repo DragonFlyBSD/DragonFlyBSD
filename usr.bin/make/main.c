@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.118 2005/02/13 13:33:56 harti Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.65 2005/03/31 22:16:35 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.66 2005/04/05 07:55:02 joerg Exp $
  */
 
 /*-
@@ -179,9 +179,10 @@ MainParseArgs(int argc, char **argv)
 {
 	int c;
 
+rearg:
 	optind = 1;	/* since we're called more than once */
 #define OPTFLAGS "BC:D:E:I:PSV:Xd:ef:ij:km:nqrstv"
-rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
+	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		switch(c) {
 		case 'C':
 			if (chdir(optarg) == -1)
@@ -356,10 +357,10 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			if (!**argv)
 				Punt("illegal (null) argument.");
 			if (**argv == '-') {
-				if ((*argv)[1])
-					optind = 0;     /* -flag... */
-				else
-					optind = 1;     /* - */
+				if ((*argv)[1]) {
+					argc++;
+					argv--;
+				}
 				goto rearg;
 			}
 			Lst_AtEnd(&create, estrdup(*argv));
