@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.30 2004/06/24 16:29:46 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.31 2004/06/28 16:39:35 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -20,9 +20,9 @@ system.  Make sure you read the
 this is not an automated installation.</p>
 
 <p>
-The 
-most recent reasonably stable <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-20040623.iso.gz">dfly-20040623.iso.gz</a>
-(2004-06-23) is available.
+<B>The DragonFly 1.0-RC1 SNAP is now Ready!</B> You can download the release
+candidate via: <a href="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0RC1.iso.gz">dfly-1.0RC1.iso.gz</a>
+(2004-06-28) is available.
 </p>
 <p>
 If you are looking for the most recent version possible,
