@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ums.c,v 1.64 2003/11/09 09:17:22 tanimura Exp $
- * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.12 2004/05/19 22:52:51 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ums/ums.c,v 1.13 2004/09/14 23:29:44 dillon Exp $
  */
 
 /*
@@ -108,7 +108,7 @@ struct ums_softc {
 	struct hid_location sc_loc_x, sc_loc_y, sc_loc_z;
 	struct hid_location *sc_loc_btn;
 
-	usb_callout_t callout_handle;	/* for spurious button ups */
+	struct callout sc_timeout;	/* for spurious button ups */
 
 	int sc_enabled;
 	int sc_disconnected;	/* device is gone */
@@ -463,11 +463,10 @@ ums_intr(xfer, addr, status)
 		 */
 		if (sc->flags & UMS_SPUR_BUT_UP &&
 		    dx == 0 && dy == 0 && dz == 0 && buttons == 0) {
-			usb_callout(sc->callout_handle, MS_TO_TICKS(50 /*msecs*/),
+			callout_reset(&sc->sc_timeout, MS_TO_TICKS(50),
 				    ums_add_to_queue_timeout, (void *) sc);
 		} else {
-			usb_uncallout(sc->callout_handle,
-				      ums_add_to_queue_timeout, (void *) sc);
+			callout_stop(&sc->sc_timeout);
 			ums_add_to_queue(sc, dx, dy, dz, buttons);
 		}
 	}
@@ -548,7 +547,7 @@ ums_enable(v)
 	sc->status.button = sc->status.obutton = 0;
 	sc->status.dx = sc->status.dy = sc->status.dz = 0;
 
-	callout_handle_init((struct callout_handle *)&sc->callout_handle);
+	callout_init(&sc->sc_timeout);
 
 	/* Set up interrupt pipe. */
 	err = usbd_open_pipe_intr(sc->sc_iface, sc->sc_ep_addr,
@@ -570,7 +569,7 @@ ums_disable(priv)
 {
 	struct ums_softc *sc = priv;
 
-	usb_uncallout(sc->callout_handle, ums_add_to_queue_timeout, sc);
+	callout_stop(&sc->sc_timeout);
 
 	/* Disable interrupts. */
 	usbd_abort_pipe(sc->sc_intrpipe);
