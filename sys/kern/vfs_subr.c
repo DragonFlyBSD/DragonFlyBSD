@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.28 2004/03/28 07:54:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.29 2004/04/08 17:56:48 dillon Exp $
  */
 
 /*
@@ -813,7 +813,6 @@ getnewvnode(tag, mp, vops, vpp)
 		bzero(vp, sizeof(*vp));
 		vp->v_interlock = lwkt_token_pool_get(vp);
 		lwkt_token_init(&vp->v_pollinfo.vpi_token);
-		vp->v_dd = vp;
 		cache_purge(vp);
 		TAILQ_INIT(&vp->v_namecache);
 		numvnodes++;

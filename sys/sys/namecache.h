@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.2 2003/10/09 22:27:20 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.3 2004/04/08 17:56:46 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -47,14 +47,9 @@ TAILQ_HEAD(namecache_list, namecache);
  * vnodes cached by the system will reference one or more associated namecache
  * structures.
  *
- * STAGE-2:	nc_parent mostly unused because we cannot yet guarentee
- *		consistency in the topology.  nc_dvp_data and nc_dvp_id
- *		are used instead but will be removed in stage-3.
- *
- *		nc_dvp_data/nc_dvp_id used temporarily because nc_parent
- *		not yet useable, will be removed in STAGE-3.
- *
- * STAGE-3:	nc_parent guarenteed to not be NULL, used exclusively.
+ * The namecache is disjoint, there may not always be a path to the system
+ * root through nc_parent links.  If a namecache entry has no parent, that
+ * entry will not be hashed and can only be 'found' via '.' or '..'.
  */
 struct namecache {
     LIST_ENTRY(namecache) nc_hash;	/* hash chain (nc_parent,name) */
@@ -63,8 +58,6 @@ struct namecache {
     struct namecache_list  nc_list;	/* list of children */
     struct namecache *nc_parent;	/* namecache entry for parent */
     struct	vnode *nc_vp;		/* vnode representing name or NULL */
-    uintptr_t	nc_dvp_data;		/* hash key helper STAGE-2 ONLY */
-    u_long	nc_dvp_id;		/* hash key helper STAGE-2 ONLY */
     int		nc_refs;		/* ref count prevents deletion */
     u_short	nc_flag;
     u_char	nc_nlen;		/* The length of the name, 255 max */

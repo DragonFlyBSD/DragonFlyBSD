@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.13 2004/03/12 22:38:15 joerg Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.14 2004/04/08 17:56:46 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -124,14 +124,7 @@ struct vnode {
 	struct	lock *v_vnlock;			/* used for non-locking fs's */
 	enum	vtagtype v_tag;			/* type of underlying data */
 	void 	*v_data;			/* private data for fs */
-
-	/*
-	 * YYY note: v_dd, v_ddid will become obsolete once the namecache
-	 * code is finished.
-	 */
 	struct namecache_list v_namecache;	/* associated nc entries */
-	struct	vnode *v_dd;			/* .. vnode */
-	u_long	v_ddid;				/* .. capability identifier */
 	struct	{
 		struct	lwkt_token vpi_token;	/* lock to protect below */
 		struct	selinfo vpi_selinfo;	/* identity of poller(s) */

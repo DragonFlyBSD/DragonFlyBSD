@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.14 2004/04/02 05:46:02 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.15 2004/04/08 17:56:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,6 +189,51 @@ cache_drop(struct namecache *ncp)
 	_cache_drop(ncp);
 }
 
+static void
+cache_link_parent(struct namecache *ncp, struct namecache *par)
+{
+	KKASSERT(ncp->nc_parent == NULL);
+	ncp->nc_parent = par;
+	if (TAILQ_EMPTY(&par->nc_list)) {
+		if (par->nc_vp)
+			vhold(par->nc_vp);
+	}
+	TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
+}
+
+static void
+cache_unlink_parent(struct namecache *ncp)
+{
+	struct namecache *par;
+
+	if ((par = ncp->nc_parent) != NULL) {
+		ncp->nc_parent = NULL;
+		par = cache_hold(par);
+		TAILQ_REMOVE(&par->nc_list, ncp, nc_entry);
+		if (par->nc_vp && TAILQ_EMPTY(&par->nc_list))
+			vdrop(par->nc_vp);
+		cache_drop(par);
+	}
+}
+
+static struct namecache *
+cache_alloc(struct vnode *vp)
+{
+	struct namecache *ncp;
+
+	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK|M_ZERO);
+	TAILQ_INIT(&ncp->nc_list);
+	ncp->nc_vp = vp;
+	if (vp != NULL) {
+		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
+		++numcache;
+	} else {
+		TAILQ_INSERT_HEAD(&ncneglist, ncp, nc_vnode);
+		++numneg;
+	}
+	return(ncp);
+}
+
 /*
  * Try to destroy a namecache entry.  The entry is disassociated from its
  * vnode or ncneglist and reverted to an UNRESOLVED state.
@@ -313,6 +358,25 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 
 	numcalls++;
 
+	/*
+	 * Obtain the namecache entry associated with dvp, creating one if
+	 * necessary.  If we have to create one we have insufficient 
+	 * information to hash it or even supply the name, but we still
+	 * need one so we can link it in.
+	 *
+	 * NOTE: in this stage of development, the passed 'par' is
+	 * almost always NULL.
+	 */
+	if (par == NULL) {
+		if ((par = TAILQ_FIRST(&dvp->v_namecache)) == NULL)
+			par = cache_alloc(dvp);
+	}
+
+	/*
+	 * Deal with "." and "..".  In this stage of code development we leave
+	 * the returned ncpp NULL.  Note that if the namecache is disjoint,
+	 * we won't find a vnode for "..".
+	 */
 	if (cnp->cn_nameptr[0] == '.') {
 		if (cnp->cn_namelen == 1) {
 			*vpp = dvp;
@@ -323,33 +387,46 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 		if (cnp->cn_namelen == 2 && cnp->cn_nameptr[1] == '.') {
 			dotdothits++;
 			numposhits++;	/* include in total statistics */
-			if (dvp->v_dd->v_id != dvp->v_ddid ||
-			    (cnp->cn_flags & CNP_MAKEENTRY) == 0) {
-				dvp->v_ddid = 0;
+			if ((cnp->cn_flags & CNP_MAKEENTRY) == 0)
+				return (0);
+			if (par->nc_parent == NULL ||
+			    par->nc_parent->nc_vp == NULL) {
 				return (0);
 			}
-			*vpp = dvp->v_dd;
+			*vpp = par->nc_parent->nc_vp;
 			return (-1);
 		}
 	}
 
+	/*
+	 * Try to locate an existing entry
+	 */
 	hash = fnv_32_buf(cnp->cn_nameptr, cnp->cn_namelen, FNV1_32_INIT);
-	hash = fnv_32_buf(&dvp->v_id, sizeof(dvp->v_id), hash);
+	hash = fnv_32_buf(&par, sizeof(par), hash);
+	if (nczapcheck)
+	    printf("DVP %p/%p %08x %*.*s\n", dvp, par, hash, cnp->cn_namelen, cnp->cn_namelen, cnp->cn_nameptr);
 	LIST_FOREACH(ncp, (NCHHASH(hash)), nc_hash) {
 		numchecks++;
+		if (nczapcheck) {
+		    printf("TEST ncp par=%p %*.*s\n",
+			ncp->nc_parent, ncp->nc_nlen, ncp->nc_nlen,
+			ncp->nc_name);
+		}
 		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0 &&
-		    /* ncp->nc_parent == par instead of dvp STAGE-3 */
-		    ncp->nc_dvp_data == (uintptr_t)dvp && /* STAGE-2 only */
-		    ncp->nc_dvp_id == dvp->v_id && /* STAGE-2 only */
+		    ncp->nc_parent == par &&
 		    ncp->nc_nlen == cnp->cn_namelen &&
 		    bcmp(ncp->nc_name, cnp->cn_nameptr, ncp->nc_nlen) == 0
 		) {
+			if (nczapcheck)
+			    printf("GOOD\n");
 			cache_hold(ncp);
 			break;
 		}
 	}
 
-	/* We failed to find an entry */
+	/*
+	 * If we failed to locate an entry, return 0 (indicates failure).
+	 */
 	if (ncp == NULL) {
 		if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 			nummisszap++;
@@ -360,7 +437,9 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 		return (0);
 	}
 
-	/* We don't want to have an entry, so dump it */
+	/*
+	 * If we found an entry, but we don't want to have one, we zap it.
+	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) == 0) {
 		numposzaps++;
 		gd->gd_nchstats->ncs_badhits++;
@@ -368,7 +447,9 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 		return (0);
 	}
 
-	/* We found a "positive" match, return the vnode */
+	/*
+	 * If the vnode is not NULL then return the positive match.
+	 */
 	if (ncp->nc_vp) {
 		numposhits++;
 		gd->gd_nchstats->ncs_goodhits++;
@@ -377,7 +458,11 @@ cache_lookup(struct vnode *dvp, struct namecache *par, struct vnode **vpp,
 		return (-1);
 	}
 
-	/* We found a negative match, and want to create it, so purge */
+	/*
+	 * If the vnode is NULL we found a negative match.  If we want to
+	 * create it, purge the negative match and return failure (as if
+	 * we hadn't found a match in the first place).
+	 */
 	if (cnp->cn_nameiop == NAMEI_CREATE) {
 		numnegzaps++;
 		gd->gd_nchstats->ncs_badhits++;
@@ -424,58 +509,28 @@ cache_mount(struct vnode *dvp, struct vnode *tvp)
 		numchecks++;
 		if (ncp->nc_vp == tvp &&
 		    ncp->nc_nlen == 0 &&
-		    /* ncp->nc_parent == par STAGE-3 par instad of dvp */
-		    ncp->nc_dvp_data == (uintptr_t)dvp && /* STAGE-2 only */
-		    ncp->nc_dvp_id == dvp->v_id /* STAGE-2 only */
+		    ncp->nc_parent &&
+		    ncp->nc_parent->nc_vp == dvp 
 		) {
 			return;
 		}
 	}
 
-	/*
-	 * STAGE-2 par can be NULL
-	 * STAGE-3 par is passed as argument and cannot be NULL
-	 */
-	par = TAILQ_FIRST(&dvp->v_namecache);
+	if ((par = TAILQ_FIRST(&dvp->v_namecache)) == NULL)
+		par = cache_alloc(dvp);
 
 	/*
 	 * Otherwise create a new linkage.
 	 */
-	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK | M_ZERO);
-
-	TAILQ_INIT(&ncp->nc_list);
+	ncp = cache_alloc(tvp);
 	ncp->nc_flag = NCF_MOUNTPT;
-	if (par != NULL) {
-		/* STAGE-3 par never NULL */
-		ncp->nc_parent = par;
-		if (TAILQ_EMPTY(&par->nc_list)) {
-			if (par->nc_vp)
-				vhold(par->nc_vp);
-		}
-		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
-	}
-	ncp->nc_dvp_data = (uintptr_t)dvp; /* STAGE-2 ONLY */
-	ncp->nc_dvp_id = dvp->v_id; 	/* STAGE-2 ONLY */
-
-	/*
-	 * Linkup the target vnode.  The target vnode is NULL if this is
-	 * to be a negative cache entry.
-	 */
-	++numcache;
-	ncp->nc_vp = tvp;
-	TAILQ_INSERT_HEAD(&tvp->v_namecache, ncp, nc_vnode);
-#if 0
-	if (tvp->v_type == VDIR) {
-		vp->v_dd = dvp;
-		vp->v_ddid = dvp->v_id;
-	}
-#endif
+	cache_link_parent(ncp, par);
 
 	/*
 	 * Hash table
 	 */
 	hash = fnv_32_buf("", 0, FNV1_32_INIT);
-	hash = fnv_32_buf(&ncp->nc_dvp_id, sizeof(ncp->nc_dvp_id), hash);
+	hash = fnv_32_buf(&dvp->v_id, sizeof(dvp->v_id), hash);
 	nchpp = NCHHASH(hash);
 	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
 
@@ -489,33 +544,48 @@ void
 cache_enter(struct vnode *dvp, struct namecache *par, struct vnode *vp, struct componentname *cnp)
 {
 	struct namecache *ncp;
+	struct namecache *bpar;
 	struct nchashhead *nchpp;
 	u_int32_t hash;
-
-	/* YYY use par */
+	char *name;
 
 	/*
-	 * "." and ".." are degenerate cases, they are not added to the
-	 * cache.
+	 * If the directory has no namecache entry we must associate one with
+	 * it.  The name of the entry is not known so it isn't hashed.
 	 */
-	if (cnp->cn_nameptr[0] == '.') {
-		if (cnp->cn_namelen == 1) {
-			return;
-		}
-		if (cnp->cn_namelen == 2 && cnp->cn_nameptr[1] == '.') {
-			if (vp) {
-				dvp->v_dd = vp;
-				dvp->v_ddid = vp->v_id;
-			} else {
-				dvp->v_dd = dvp;
-				dvp->v_ddid = 0;
-			}
-			return;
-		}
+	if (par == NULL) {
+		if ((par = TAILQ_FIRST(&dvp->v_namecache)) == NULL)
+			par = cache_alloc(dvp);
 	}
 
-	if (nczapcheck)
-	    printf("ENTER '%*.*s' %p ", (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr, vp);
+	/*
+	 * This may be a bit confusing.  "." and ".." are 'virtual' entries.
+	 * We do not actually create a namecache entry representing either.
+	 * However, the ".." case is used to linkup a potentially disjoint
+	 * directory with its parent, to disconnect a directory from its
+	 * parent, or to change an existing linkage that may no longer be
+	 * correct (as might occur when a subdirectory is renamed).
+	 */
+
+	if (cnp->cn_namelen == 1 && cnp->cn_nameptr[0] == '.')
+		return;
+	if (cnp->cn_namelen == 2 && cnp->cn_nameptr[0] == '.' &&
+	    cnp->cn_nameptr[1] == '.'
+	) {
+		if (vp == NULL) {
+			if (par->nc_parent)
+				cache_unlink_parent(par);
+		} else {
+			if ((ncp = TAILQ_FIRST(&vp->v_namecache)) == NULL)
+				ncp = cache_alloc(vp);
+			cache_hold(par);
+			if (par->nc_parent)
+				cache_unlink_parent(par);
+			cache_link_parent(par, ncp); /* ncp is parent of par */
+			cache_drop(par);
+		}
+		return;
+	}
 
 	/*
 	 * Locate other entries associated with this vnode and zap them,
@@ -534,63 +604,42 @@ again:
 	}
 
 	hash = fnv_32_buf(cnp->cn_nameptr, cnp->cn_namelen, FNV1_32_INIT);
-	hash = fnv_32_buf(&dvp->v_id, sizeof(dvp->v_id), hash);
+	bpar = par;
+	hash = fnv_32_buf(&bpar, sizeof(bpar), hash);
 
-	ncp = malloc(sizeof(*ncp), M_VFSCACHE, M_WAITOK | M_ZERO);
-	ncp->nc_name = malloc(cnp->cn_namelen, M_VFSCACHE, M_WAITOK);
-	TAILQ_INIT(&ncp->nc_list);
+	if (nczapcheck)
+	    printf("ENTER %p/%p %08x '%*.*s' %p ", dvp, par, hash, (int)cnp->cn_namelen, (int)cnp->cn_namelen, cnp->cn_nameptr, vp);
+
+
+	name = malloc(cnp->cn_namelen, M_VFSCACHE, M_WAITOK);
+	ncp = cache_alloc(vp);
 	if (nczapcheck)
 	    printf("alloc\n");
 
 	/*
 	 * Linkup the parent pointer, bump the parent vnode's hold
 	 * count when we go from 0->1 children.  
-	 *
-	 * STAGE-2 par may be NULL
-	 * STAGE-3 par may not be NULL, nc_dvp_* removed
 	 */
-	par = TAILQ_FIRST(&dvp->v_namecache);
-	if (par != NULL) {
-		ncp->nc_parent = par;
-		if (TAILQ_EMPTY(&par->nc_list)) {
-			if (par->nc_vp)
-				vhold(par->nc_vp);
-		}
-		TAILQ_INSERT_HEAD(&par->nc_list, ncp, nc_entry);
-	}
-	ncp->nc_dvp_data = (uintptr_t)dvp;
-	ncp->nc_dvp_id = dvp->v_id;
+	cache_link_parent(ncp, par);
 
 	/*
 	 * Add to the hash table
 	 */
+	ncp->nc_name = name;
 	ncp->nc_nlen = cnp->cn_namelen;
 	bcopy(cnp->cn_nameptr, ncp->nc_name, cnp->cn_namelen);
 	nchpp = NCHHASH(hash);
 	LIST_INSERT_HEAD(nchpp, ncp, nc_hash);
-
 	ncp->nc_flag |= NCF_HASHED;
 
 	/*
-	 * Linkup the target vnode.  The target vnode is NULL if this is
-	 * to be a negative cache entry.
+	 * If the target vnode is NULL if this is to be a negative cache
+	 * entry.
 	 */
-	ncp->nc_vp = vp;
 	if (vp == NULL) {
-		++numneg;
-		TAILQ_INSERT_HEAD(&ncneglist, ncp, nc_vnode);
 		ncp->nc_flag &= ~NCF_WHITEOUT;
 		if (cnp->cn_flags & CNP_ISWHITEOUT)
 			ncp->nc_flag |= NCF_WHITEOUT;
-	} else {
-		++numcache;
-		if (!TAILQ_EMPTY(&ncp->nc_list))
-			vhold(vp);
-		TAILQ_INSERT_HEAD(&vp->v_namecache, ncp, nc_vnode);
-		if (vp->v_type == VDIR) {
-			vp->v_dd = dvp;
-			vp->v_ddid = dvp->v_id;
-		}
 	}
 
 	/*
@@ -707,8 +756,6 @@ restart: /* YYY hack, fix me */
 		nextid++;
 	} while (nextid == vp->v_id || nextid == 0);
 	vp->v_id = nextid;
-	vp->v_dd = vp;
-	vp->v_ddid = 0;
 }
 
 /*
@@ -904,15 +951,9 @@ __getcwd(struct __getcwd_args *uap)
 			vp = vp->v_mount->mnt_vnodecovered;
 			continue;
 		}
-		if (vp->v_dd->v_id != vp->v_ddid) {
-			numcwdfail1++;
-			free(buf, M_TEMP);
-			return (ENOTDIR);
-		}
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
-			/* ncp->nc_parent == par STAGE-3 */
-			if (ncp->nc_dvp_data == (uintptr_t)vp->v_dd &&
-			    ncp->nc_dvp_id == vp->v_ddid) {
+			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
+			    ncp->nc_nlen > 0) {
 				break;
 			}
 		}
@@ -936,7 +977,7 @@ __getcwd(struct __getcwd_args *uap)
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		vp = vp->v_dd;
+		vp = ncp->nc_parent->nc_vp;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
@@ -1001,17 +1042,11 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf)
 			vp = vp->v_mount->mnt_vnodecovered;
 			continue;
 		}
-		if (vp != textvp && vp->v_dd->v_id != vp->v_ddid) {
-			numfullpathfail1++;
-			free(buf, M_TEMP);
-			return (ENOTDIR);
-		}
 		TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
 			if (vp == textvp)
 				break;
-			/* ncp->nc_parent == par STAGE-3 */
-			if (ncp->nc_dvp_data == (uintptr_t)vp->v_dd &&
-			    ncp->nc_dvp_id == vp->v_ddid) {
+			if (ncp->nc_parent && ncp->nc_parent->nc_vp &&
+			    ncp->nc_nlen > 0) {
 				break;
 			}
 		}
@@ -1035,7 +1070,7 @@ textvp_fullpath(struct proc *p, char **retbuf, char **retfreebuf)
 		}
 		*--bp = '/';
 		slash_prefixed = 1;
-		vp = vp->v_dd;
+		vp = ncp->nc_parent->nc_vp;
 	}
 	if (!slash_prefixed) {
 		if (bp == buf) {
