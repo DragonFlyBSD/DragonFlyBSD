@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.28 2005/02/14 17:09:58 joerg Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.29 2005/02/14 17:11:12 joerg Exp $*/
 
 #include "if_em.h"
 #include <net/ifq_var.h>
@@ -1645,6 +1645,7 @@ em_setup_interface(device_t dev, struct adapter *adapter)
 	ifp->if_start = em_start;
 	ifp->if_watchdog = em_watchdog;
 	ifq_set_maxlen(&ifp->if_snd, adapter->num_tx_desc - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	ether_ifattach(ifp, adapter->hw.mac_addr);
 
