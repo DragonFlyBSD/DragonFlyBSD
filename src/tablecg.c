@@ -6,10 +6,11 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.18 2004/03/01 19:48:25 joerg Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.19 2004/03/01 21:36:14 joerg Exp $
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -104,10 +105,6 @@ main(int ac, char **av)
     FILE *fi;
     char *base;
     int i;
-    char buf[50];
-    /* one week in future */
-    time_t t = time(NULL) + 604800;
-
 
     /*
      * Process options
@@ -131,12 +128,6 @@ main(int ac, char **av)
      * Output headers and HTML start.
      */
     printf("Content-Type: text/html\r\n");
-    /* 
-     * The Expires: header should keep these pages cached, as some 
-     * search engines assume they should not since cgi = dynamic
-     */
-    strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
-    printf("Expires: %s\r\n", buf);
 
     if (FilePath == NULL) {
 	fprintf(stderr, "%s: no file specified\n", av[0]);
@@ -174,6 +165,11 @@ main(int ac, char **av)
 	char buf[256];
 	char *las;
 	char *ptr;
+	struct stat sb;
+
+	fstat(fileno(fi), &sb);
+	strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&sb.st_mtime));
+	printf("Last-Modified: %s\r\n", buf);	
 
 	while (fgets(buf, sizeof(buf), fi) != NULL) {
 	    if (buf[0] == '#')
@@ -205,9 +201,13 @@ main(int ac, char **av)
 	fclose(fi);
     }
     /*
+     * End request header first.
+     */
+    printf("\r\n");
+    /*
      * Generate the table structure after processing the web page so
      * we can populate the tags properly.
-     */
+     */     
     printf("<HTML>\n");
     printf("<HEAD>\n");
 
