@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1987, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)wc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/wc/wc.c,v 1.11.2.1 2002/08/25 02:47:04 tjr Exp $
- * $DragonFly: src/usr.bin/wc/wc.c,v 1.3 2003/10/04 20:36:55 hmp Exp $
+ * $DragonFly: src/usr.bin/wc/wc.c,v 1.4 2005/01/11 20:03:11 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -60,10 +60,10 @@ main(int argc, char **argv)
 {
 	int ch, errors, total;
 
-	(void) setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 
-	while ((ch = getopt(argc, argv, "clmw")) != -1)
-		switch((char)ch) {
+	while ((ch = getopt(argc, argv, "clmw")) != -1) {
+		switch (ch) {
 		case 'l':
 			doline = 1;
 			break;
@@ -82,6 +82,7 @@ main(int argc, char **argv)
 		default:
 			usage();
 		}
+	}
 	argv += optind;
 	argc -= optind;
 
@@ -91,28 +92,28 @@ main(int argc, char **argv)
 
 	errors = 0;
 	total = 0;
-	if (!*argv) {
-		if (cnt((char *)NULL) != 0)
+	if (*argv == NULL) {
+		if (cnt(NULL) != 0)
 			++errors;
 		else
-			(void)printf("\n");
+			printf("\n");
 	}
 	else do {
 		if (cnt(*argv) != 0)
 			++errors;
 		else
-			(void)printf(" %s\n", *argv);
+			printf(" %s\n", *argv);
 		++total;
 	} while(*++argv);
 
 	if (total > 1) {
 		if (doline)
-			(void)printf(" %7qu", tlinect);
+			printf(" %7qu", tlinect);
 		if (doword)
-			(void)printf(" %7qu", twordct);
+			printf(" %7qu", twordct);
 		if (dochar || domulti)
-			(void)printf(" %7qu", tcharct);
-		(void)printf(" total\n");
+			printf(" %7qu", tcharct);
+		printf(" total\n");
 	}
 	exit(errors == 0 ? 0 : 1);
 }
@@ -149,21 +150,22 @@ cnt(const char *file)
 			while ((len = read(fd, buf, MAXBSIZE))) {
 				if (len == -1) {
 					warn("%s: read", file);
-					(void)close(fd);
+					close(fd);
 					return (1);
 				}
 				charct += len;
-				for (p = buf; len--; ++p)
+				for (p = buf; len--; ++p) {
 					if (*p == '\n')
 						++linect;
+				}
 			}
 			tlinect += linect;
-			(void)printf(" %7qu", linect);
+			printf(" %7qu", linect);
 			if (dochar) {
 				tcharct += charct;
-				(void)printf(" %7qu", charct);
+				printf(" %7qu", charct);
 			}
-			(void)close(fd);
+			close(fd);
 			return (0);
 		}
 		/*
@@ -173,13 +175,13 @@ cnt(const char *file)
 		if (dochar || domulti) {
 			if (fstat(fd, &sb)) {
 				warn("%s: fstat", file);
-				(void)close(fd);
+				close(fd);
 				return (1);
 			}
 			if (S_ISREG(sb.st_mode)) {
-				(void)printf(" %7lld", (long long)sb.st_size);
+				printf(" %7lld", (long long)sb.st_size);
 				tcharct += sb.st_size;
-				(void)close(fd);
+				close(fd);
 				return (0);
 			}
 		}
@@ -192,7 +194,7 @@ word:	gotsp = 1;
 	while ((nread = read(fd, buf + len, MAXBSIZE - len)) != 0) {
 		if (nread == -1) {
 			warn("%s: read", file);
-			(void)close(fd);
+			close(fd);
 			return (1);
 		}
 		len += nread;
@@ -230,23 +232,23 @@ word:	gotsp = 1;
 	}
 	if (doline) {
 		tlinect += linect;
-		(void)printf(" %7qu", linect);
+		printf(" %7qu", linect);
 	}
 	if (doword) {
 		twordct += wordct;
-		(void)printf(" %7qu", wordct);
+		printf(" %7qu", wordct);
 	}
 	if (dochar || domulti) {
 		tcharct += charct;
-		(void)printf(" %7qu", charct);
+		printf(" %7qu", charct);
 	}
-	(void)close(fd);
+	close(fd);
 	return (0);
 }
 
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: wc [-clmw] [file ...]\n");
+	fprintf(stderr, "usage: wc [-clmw] [file ...]\n");
 	exit(1);
 }
