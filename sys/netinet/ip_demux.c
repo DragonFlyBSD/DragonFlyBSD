@@ -30,7 +30,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.26 2004/08/03 00:04:13 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.27 2004/08/28 18:33:03 dillon Exp $
  */
 
 /*
@@ -109,6 +109,7 @@ ip_mport(struct mbuf **mptr)
 {
 	struct ip *ip;
 	int iphlen;
+	int iplen;
 	struct tcphdr *th;
 	struct udphdr *uh;
 	struct mbuf *m = *mptr;
@@ -142,6 +143,7 @@ ip_mport(struct mbuf **mptr)
 	 * first mbuf must entirely contain the extended IP header.
 	 */
 	iphlen = ip->ip_hl << 2;
+	iplen = ntohs(ip->ip_len);
 	if (iphlen < sizeof(struct ip)) {	/* minimum header length */
 		ipstat.ips_badhlen++;
 		m_freem(m);
@@ -161,10 +163,20 @@ ip_mport(struct mbuf **mptr)
 	 * The TCP/IP or UDP/IP header must be entirely contained within
 	 * the first fragment of a packet.  Packet filters will break if they
 	 * aren't.
+	 *
+	 * Since the packet will be trimmed to ip_len we must also make sure
+	 * the potentially trimmed down length is still sufficient to hold
+	 * the header(s).
 	 */
 	if ((ntohs(ip->ip_off) & IP_OFFMASK) == 0) {
 		switch (ip->ip_p) {
 		case IPPROTO_TCP:
+			if (iplen < iphlen + sizeof(struct tcphdr)) {
+				++tcpstat.tcps_rcvshort;
+				m_freem(m);
+				*mptr = NULL;
+				return (NULL);
+			}
 			if (m->m_len < iphlen + sizeof(struct tcphdr)) {
 				m = m_pullup(m, iphlen + sizeof(struct tcphdr));
 				if (m == NULL) {
@@ -176,6 +188,12 @@ ip_mport(struct mbuf **mptr)
 			}
 			break;
 		case IPPROTO_UDP:
+			if (iplen < iphlen + sizeof(struct udphdr)) {
+				++udpstat.udps_hdrops;
+				m_freem(m);
+				*mptr = NULL;
+				return (NULL);
+			}
 			if (m->m_len < iphlen + sizeof(struct udphdr)) {
 				m = m_pullup(m, iphlen + sizeof(struct udphdr));
 				if (m == NULL) {
@@ -187,6 +205,12 @@ ip_mport(struct mbuf **mptr)
 			}
 			break;
 		default:
+			if (iplen < iphlen) {
+				++ipstat.ips_badlen;
+				m_freem(m);
+				*mptr = NULL;
+				return (NULL);
+			}
 			break;
 		}
 	}
