@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.5 (Berkeley) 3/31/94
 # $FreeBSD: src/sbin/Makefile,v 1.77.2.9 2002/08/08 09:03:46 ru Exp $
-# $DragonFly: src/sbin/Makefile,v 1.3 2003/07/24 06:35:38 dillon Exp $
+# $DragonFly: src/sbin/Makefile,v 1.4 2003/12/11 23:56:04 dillon Exp $
 #
 # XXX MISSING:		icheck ncheck
 
@@ -63,6 +63,7 @@ SUBDIR=	adjkerntz \
 	route \
 	routed \
 	rtsol \
+	rcrun \
 	savecore \
 	shutdown \
 	slattach \
