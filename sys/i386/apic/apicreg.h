@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1996, by Peter Wemm and Steve Passe, All rights reserved.
- * Copyright (c) 2003, by Matthew Dillon, All rights reserved.
+ * Copyright (c) 2003 by Matthew Dillon, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/apic.h,v 1.14.2.2 2003/03/21 21:46:15 jhb Exp $
- * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.1 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/apic/Attic/apicreg.h,v 1.2 2004/06/28 02:57:11 drhodus Exp $
  */
 
 #ifndef _MACHINE_APICREG_H_

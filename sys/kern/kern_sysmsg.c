@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003,2004 Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2003, 2004 Matthew Dillon <dillon@backplane.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.1 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_sysmsg.c,v 1.2 2004/06/28 02:57:11 drhodus Exp $
  */
 
 /*

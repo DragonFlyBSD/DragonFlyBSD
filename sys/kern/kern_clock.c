@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2004, Matthew Dillon <dillon@backplane.com>
+ * Copyright (c) 2004 Matthew Dillon <dillon@backplane.com>
  * Copyright (c) 1997, 1998 Poul-Henning Kamp <phk@FreeBSD.org>
  * Copyright (c) 1982, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -39,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.19 2004/04/03 05:30:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.20 2004/06/28 02:57:11 drhodus Exp $
  */
 
 #include "opt_ntp.h"

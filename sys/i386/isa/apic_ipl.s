@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 1997, by Steve Passe,  All rights reserved.
- * Copyright (c) 2003, by Matthew Dillon,  All rights reserved.
+ * Copyright (c) 2003 by Matthew Dillon,  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/apic_ipl.s,v 1.27.2.2 2000/09/30 02:49:35 ps Exp $
- * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.7 2003/07/06 21:23:49 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/apic_ipl.s,v 1.8 2004/06/28 02:57:11 drhodus Exp $
  */
 
 	.data

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, Matthew Dillon, All rights reserved.
+ * Copyright (c) 2003 Matthew Dillon, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,7 +22,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/lock.h,v 1.11.2.2 2000/09/30 02:49:34 ps Exp $
- * $DragonFly: src/sys/amd64/include/Attic/lock.h,v 1.1 2004/02/02 08:05:52 dillon Exp $
+ * $DragonFly: src/sys/amd64/include/Attic/lock.h,v 1.2 2004/06/28 02:57:11 drhodus Exp $
  */
 
 #ifndef _MACHINE_LOCK_H_

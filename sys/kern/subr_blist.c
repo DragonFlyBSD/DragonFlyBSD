@@ -2,7 +2,7 @@
 /*
  * BLIST.C -	Bitmap allocator/deallocator, using a radix tree with hinting
  *
- *	(c)Copyright 1998, Matthew Dillon.  Terms for use and redistribution
+ *	(c)Copyright 1998 Matthew Dillon.  Terms for use and redistribution
  *	are covered by the BSD Copyright as found in /usr/src/COPYRIGHT.
  *
  *	This module implements a general bitmap allocator/deallocator.  The
@@ -61,7 +61,7 @@
  *	This code can be compiled stand-alone for debugging.
  *
  * $FreeBSD: src/sys/kern/subr_blist.c,v 1.5.2.2 2003/01/12 09:23:12 dillon Exp $
- * $DragonFly: src/sys/kern/subr_blist.c,v 1.3 2003/11/09 02:22:36 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_blist.c,v 1.4 2004/06/28 02:57:11 drhodus Exp $
  */
 
 #ifdef _KERNEL

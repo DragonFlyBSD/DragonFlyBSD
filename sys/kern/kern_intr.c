@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, Matthew Dillon <dillon@backplane.com> All rights reserved.
+ * Copyright (c) 2003 Matthew Dillon <dillon@backplane.com> All rights reserved.
  * Copyright (c) 1997, Stefan Esser <se@freebsd.org> All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.16 2004/06/28 02:33:04 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.17 2004/06/28 02:57:11 drhodus Exp $
  *
  */
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003-2004.  Hiten Pandya <hmp@backplane.com>.
+ * Copyright (c) 2003, 2004 Hiten Pandya <hmp@backplane.com>.
  * 
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.1 2004/04/02 05:46:03 hmp Exp $
+ * $DragonFly: src/test/pcpu/ncache-stats.c,v 1.2 2004/06/28 02:57:11 drhodus Exp $
  */
 
 #include <sys/param.h>

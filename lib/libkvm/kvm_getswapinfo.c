@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, Matthew Dillon.  All Rights Reserved.
+ * Copyright (c) 1999 Matthew Dillon.  All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided under the terms of the BSD
@@ -7,7 +7,7 @@
  *
  * @(#) Copyright (c) 1999
  * $FreeBSD: src/lib/libkvm/kvm_getswapinfo.c,v 1.10.2.4 2003/01/12 09:23:13 dillon Exp $
- * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.3 2004/04/11 21:28:03 cpressey Exp $
+ * $DragonFly: src/lib/libkvm/kvm_getswapinfo.c,v 1.4 2004/06/28 02:57:10 drhodus Exp $
  */
 
 #define	_KERNEL_STRUCTURES
