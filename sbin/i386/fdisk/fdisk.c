@@ -23,8 +23,8 @@
  * any improvements or extensions that they make and grant Carnegie Mellon
  * the rights to redistribute these changes.
  *
- * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.12 2003/11/20 08:24:33 des Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.8 2004/03/08 07:50:03 hmp Exp $
+ * $FreeBSD: /repoman/r/ncvs/src/sbin/i386/fdisk/fdisk.c,v 1.36.2.14 2004/01/30 14:40:47 harti Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.9 2004/07/08 17:50:46 cpressey Exp $
  */
 
 #include <sys/disklabel.h>
