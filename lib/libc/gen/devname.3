@@ -31,7 +31,7 @@
 .\"
 .\"     @(#)devname.3	8.2 (Berkeley) 4/29/95
 .\" $FreeBSD: src/lib/libc/gen/devname.3,v 1.7.2.7 2003/03/15 15:11:05 trhodes Exp $
-.\" $DragonFly: src/lib/libc/gen/devname.3,v 1.2 2003/06/17 04:26:42 dillon Exp $
+.\" $DragonFly: src/lib/libc/gen/devname.3,v 1.3 2004/01/04 20:20:16 eirikn Exp $
 .\"
 .Dd July 18, 1999
 .Dt DEVNAME 3
@@ -64,11 +64,7 @@ To find the right name,
 .Fn devname
 first searches the device database created by
 .Xr dev_mkdb 8 ;
-if that fails, it asks the kernel via the
-.Va kern.devname
-sysctl.
-If it was still unable to come up with a suitable name,
-it will format the information encapsulated in
+if that fails, it will format the information encapsulated in
 .Fa dev
 and
 .Fa type

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/devname.c,v 1.2.2.2 2001/07/31 20:10:19 tmm Exp $
- * $DragonFly: src/lib/libc/gen/devname.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libc/gen/devname.c,v 1.3 2004/01/04 20:20:16 eirikn Exp $
  *
  * @(#)devname.c	8.2 (Berkeley) 4/29/95
  */
@@ -49,9 +49,7 @@
 #include <sys/stat.h>
 
 static char *
-xdevname(dev, type)
-	dev_t dev;
-	mode_t type;
+xdevname(dev_t dev, mode_t type)
 {
 	struct {
 		mode_t type;
@@ -83,9 +81,7 @@ xdevname(dev, type)
 }
 
 char *
-devname(dev, type)
-	dev_t dev;
-	mode_t type;
+devname(dev_t dev, mode_t type)
 {
 	static char buf[30];	 /* XXX: pick up from <sys/conf.h> */
 	int i;
@@ -97,6 +93,8 @@ devname(dev, type)
 	if (r != NULL)
 		return (r);
 
+#if 0
+	/* The kern.devname sysctl does not exist */
 	/* Then ask the kernel. */
 	if ((type & S_IFMT) == S_IFCHR) {
 		j = sizeof(buf);
@@ -104,6 +102,7 @@ devname(dev, type)
 		if (i == 0)
 		    return (buf);
 	}
+#endif
 
 	/* Finally just format it */
 	r = buf;
