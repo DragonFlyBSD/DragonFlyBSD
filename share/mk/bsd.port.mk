@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.22 2004/11/27 13:22:26 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.23 2004/11/28 22:29:19 joerg Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -45,6 +45,10 @@ CCVER=	gcc34
 
 .else
 
+.if !defined(BEFOREPORTMK)
+.undef PORTSDIR
+.endif
+
 .undef BEFOREPORTMK
 .undef AFTERPORTMK
 
@@ -77,14 +81,18 @@ TARGETS+=	reinstall
 TARGETS+=	install
 TARGETS+=	tags
 
-.undef PORTSDIR
+.if !defined(_DFPORTS_REDIRECT)
+_DFPORTS_REDIRECT=
 .if !make(package-depends-list) && !make(all-depends-list) && \
     !make(run-depends-list) && !make(build-depends-list) && \
-    !make(describe) && !defined(DFPORTS_WARNING)
+    !make(describe)
 .BEGIN:
 	@echo "WARNING, USING DRAGONFLY OVERRIDE ${DFPORTSDIR}/${PORTPATH}"
 	cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS}
-DFPORTS_WARNING=
+.else
+.BEGIN:
+	@cd ${DFPORTSDIR}/${PORTPATH} && ${MAKE} -B ${.TARGETS} 
+.endif
 .endif
 
 .if !empty(.TARGETS)
@@ -104,6 +112,14 @@ X_WINDOW_SYSTEM?=	xfree86-4
 CAT?=			cat
 PREFIX?=		/usr
 PERL_LEVEL?=		5
+LOCALBASE?=		/usr/local
+SED?=			/usr/bin/sed
+ECHO_CMD?=		echo
+GREP?=			/usr/bin/grep
+AWK?=			/usr/bin/awk
+UNAME?=			/usr/bin/uname
+EXPR?=			/bin/expr
+HAVE_SDL?=
 
 # WORKAROUND to get portupgrade working
 # Taken from: ${PORTSDIR}/Mk/bsd.port.mk
