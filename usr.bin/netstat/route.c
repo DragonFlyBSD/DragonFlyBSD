@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.5 2004/01/06 03:17:21 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.6 2004/09/14 00:27:18 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -660,6 +660,7 @@ fmt_sockaddr(struct sockaddr *sa, struct sockaddr *mask, int flags)
 			switch (sdl->sdl_type) {
 
 			case IFT_ETHER:
+			case IFT_L2VLAN:
 				if (sdl->sdl_alen == ETHER_ADDR_LEN) {
 					cp = ether_ntoa((struct ether_addr *)
 					    (sdl->sdl_data + sdl->sdl_nlen));
