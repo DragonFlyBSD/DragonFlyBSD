@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.15 2004/01/28 16:41:16 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.16 2004/01/29 01:56:04 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -222,8 +222,10 @@ USRDIRS=	usr/bin usr/bin/gcc2 usr/bin/gcc3 \
 		usr/lib/compat/aout usr/games \
 		usr/libdata/gcc2 usr/libdata/gcc2/ldscripts \
 		usr/libdata/gcc3 usr/libdata/gcc3/ldscripts \
-		usr/libexec/gcc2 usr/libexec/gcc3 \
-		usr/libexec/binutils212/${OBJFORMAT} \
+		usr/libexec/gcc3 \
+		usr/libexec/binutils212/ \
+		usr/libexec/binutils212/elf \
+		usr/libexec/binutils212/aout \
 		usr/sbin usr/share/misc \
 		usr/share/dict \
 		usr/share/groff_font/devX100 \

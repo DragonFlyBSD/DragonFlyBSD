@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.7 2004/01/28 16:41:16 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.8 2004/01/29 01:56:05 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -162,8 +162,6 @@
 	    ..
 	    elf
 	    ..
-	..
-	gcc2
 	..
 	gcc3
 	..
