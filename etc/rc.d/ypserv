@@ -2,7 +2,7 @@
 #
 # $NetBSD: ypserv,v 1.5 2000/09/19 13:04:39 lukem Exp $
 # $FreeBSD: src/etc/rc.d/ypserv,v 1.7 2003/07/09 03:21:03 mtm Exp $
-# $DragonFly: src/etc/rc.d/ypserv,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/ypserv,v 1.3 2003/11/19 12:49:07 eirikn Exp $
 #
 
 # PROVIDE: ypserv
@@ -17,6 +17,10 @@ start_precmd="ypserv_precmd"
 
 load_rc_config $name
 case ${OSTYPE} in
+DragonFly)
+	rcvar="nis_server_enable"
+	command_args="${nis_server_flags}"
+	;;
 FreeBSD)
 	rcvar="nis_server_enable"
 	command_args="${nis_server_flags}"
