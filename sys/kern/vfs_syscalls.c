@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.27 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.28 2003/11/14 19:31:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1182,7 +1182,7 @@ kern_mkfifo(struct nameidata *nd, int mode)
 
 	bwillwrite();
 	error = namei(nd);
-	if (error);
+	if (error)
 		return (error);
 	if (nd->ni_vp != NULL) {
 		NDFREE(nd, NDF_ONLY_PNBUF);
