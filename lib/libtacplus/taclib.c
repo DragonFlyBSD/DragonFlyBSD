@@ -24,10 +24,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libtacplus/taclib.c,v 1.2.2.2 2002/10/09 08:50:42 pst Exp $
- *	$DragonFly: src/lib/libtacplus/taclib.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ *	$DragonFly: src/lib/libtacplus/taclib.c,v 1.3 2004/08/19 21:25:58 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>

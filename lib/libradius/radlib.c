@@ -24,10 +24,10 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libradius/radlib.c,v 1.4.2.3 2002/06/17 02:24:57 brian Exp $
- *	$DragonFly: src/lib/libradius/radlib.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ *	$DragonFly: src/lib/libradius/radlib.c,v 1.3 2004/08/19 21:25:58 joerg Exp $
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
