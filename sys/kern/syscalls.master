@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.17 2005/01/14 04:19:49 dillon Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.18 2005/01/31 17:35:35 joerg Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -633,3 +633,4 @@
 468	STD	BSD	{ int mountctl(const char *path, int op, int fd, const void *ctl, int ctllen, void *buf, int buflen); }
 469	STD	BSD	{ int umtx_sleep(volatile const int *ptr, int value, int timeout); }
 470	STD	BSD	{ int umtx_wakeup(volatile const int *ptr, int count); }
+471	STD	BSD	{ int jail_attach(int jid); }
