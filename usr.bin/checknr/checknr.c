@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.5 2005/03/01 06:54:32 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.6 2005/03/01 22:32:14 cpressey Exp $
  */
 
 /*
@@ -201,14 +201,17 @@ main(int argc, char **argv)
 			if (i % 6 != 0)
 				usage();
 			/* look for empty macro slots */
-			for (i=0; br[i].opbr; i++)
+			for (i = 0; br[i].opbr; i++)
 				;
-			for (cp=argv[1]+3; cp[-1]; cp += 6) {
+			for (cp = argv[1] + 3; cp[-1]; cp += 6) {
 				br[i].opbr = malloc(3);
 				strncpy(br[i].opbr, cp, 2);
 				br[i].clbr = malloc(3);
-				strncpy(br[i].clbr, cp+3, 2);
-				addmac(br[i].opbr);	/* knows pairs are also known cmds */
+				strncpy(br[i].clbr, cp + 3, 2);
+				/*
+				 * known pairs are also known cmds
+				 */
+				addmac(br[i].opbr);
 				addmac(br[i].clbr);
 				i++;
 			}
@@ -219,7 +222,7 @@ main(int argc, char **argv)
 			i = strlen(argv[1]) - 2;
 			if (i % 3 != 0)
 				usage();
-			for (cp=argv[1]+3; cp[-1]; cp += 3) {
+			for (cp = argv[1] + 3; cp[-1]; cp += 3) {
 				if (cp[2] && cp[2] != '.')
 					usage();
 				strncpy(b1, cp, 2);
@@ -246,7 +249,7 @@ main(int argc, char **argv)
 	nfiles = argc - 1;
 
 	if (nfiles > 0) {
-		for (i=1; i<argc; i++) {
+		for (i = 1; i < argc; i++) {
 			cfilename = argv[i];
 			f = fopen(cfilename, "r");
 			if (f == NULL)
@@ -265,7 +268,8 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	"usage: checknr [-a.xx.yy.xx.yy...] [-c.xx.xx.xx...] [-s] [-f] file\n");
+	    "usage: checknr [-sf] [-a.xx.yy.xx.yy...] [-c.xx.xx.xx...] "
+	    "file\n");
 	exit(1);
 }
 
@@ -277,12 +281,12 @@ process(FILE *f)
 	int pl;
 
 	stktop = -1;
-	for (lineno = 1; fgets(line, sizeof line, f); lineno++) {
+	for (lineno = 1; fgets(line, sizeof(line), f); lineno++) {
 		if (line[0] == '.') {
 			/*
 			 * find and isolate the macro/command name.
 			 */
-			strncpy(mac, line+1, 4);
+			strncpy(mac, line + 1, 4);
 			if (isspace(mac[0])) {
 				pe(lineno);
 				printf("Empty command\n");
@@ -313,9 +317,9 @@ process(FILE *f)
 		 * At this point we process the line looking
 		 * for \s and \f.
 		 */
-		for (i=0; line[i]; i++)
-			if (line[i]=='\\' && (i==0 || line[i-1]!='\\')) {
-				if (!sflag && line[++i]=='s') {
+		for (i = 0; line[i]; i++) {
+			if (line[i] == '\\' && (i == 0 || line[i-1] != '\\')) {
+				if (!sflag && line[++i] == 's') {
 					pl = line[++i];
 					if (isdigit(pl)) {
 						n = pl - '0';
@@ -338,7 +342,7 @@ process(FILE *f)
 						stk[stktop].parm = n;
 						stk[stktop].lno = lineno;
 					}
-				} else if (!fflag && line[i]=='f') {
+				} else if (!fflag && line[i] == 'f') {
 					n = line[++i];
 					if (n == 'P') {
 						if (stk[stktop].opno == FT) {
@@ -355,12 +359,13 @@ process(FILE *f)
 					}
 				}
 			}
+		}
 	}
 	/*
 	 * We've hit the end and look at all this stuff that hasn't been
 	 * matched yet!  Complain, complain.
 	 */
-	for (i=stktop; i>=0; i--) {
+	for (i = stktop; i >= 0; i--) {
 		complain(i);
 	}
 }
@@ -388,7 +393,8 @@ prop(int i)
 		break;
 	default:
 		printf("Bug: stk[%d].opno = %d = .%s, .%s",
-			i, stk[i].opno, br[stk[i].opno].opbr, br[stk[i].opno].clbr);
+			i, stk[i].opno, br[stk[i].opno].opbr,
+			br[stk[i].opno].clbr);
 	}
 }
 
@@ -404,7 +410,7 @@ chkcmd(const char *mac)
 		stktop--;	/* OK. Pop & forget */
 	else {
 		/* No. Maybe it's an opener */
-		for (i=0; br[i].opbr; i++) {
+		for (i = 0; br[i].opbr; i++) {
 			if (eq(mac, br[i].opbr)) {
 				/* Found. Push it. */
 				stktop++;
@@ -438,17 +444,19 @@ nomatch(const char *mac)
 	 * If we find one, it suggests that the stuff in
 	 * between is supposed to match itself.
 	 */
-	for (j=stktop; j>=0; j--)
-		if (eq(mac,br[stk[j].opno].clbr)) {
+	for (j = stktop; j >= 0; j--) {
+		if (eq(mac, br[stk[j].opno].clbr)) {
 			/* Found.  Make a good diagnostic. */
-			if (j == stktop-2) {
+			if (j == stktop - 2) {
 				/*
 				 * Check for special case \fx..\fR and don't
 				 * complain.
 				 */
-				if (stk[j+1].opno==FT && stk[j+1].parm!='R'
-				 && stk[j+2].opno==FT && stk[j+2].parm=='R') {
-					stktop = j -1;
+				if (stk[j + 1].opno == FT &&
+				    stk[j + 1].parm != 'R' &&
+				    stk[j + 2].opno == FT &&
+				    stk[j + 2].parm == 'R') {
+					stktop = j - 1;
 					return;
 				}
 				/*
@@ -456,17 +464,20 @@ nomatch(const char *mac)
 				 * they were intended to match, so we mention
 				 * them together.
 				 */
-				pe(stk[j+1].lno);
-				prop(j+1);
-				printf(" does not match %d: ", stk[j+2].lno);
-				prop(j+2);
+				pe(stk[j + 1].lno);
+				prop(j + 1);
+				printf(" does not match %d: ", stk[j + 2].lno);
+				prop(j + 2);
 				printf("\n");
-			} else for (i=j+1; i <= stktop; i++) {
-				complain(i);
+			} else {
+				for (i = j + 1; i <= stktop; i++) {
+					complain(i);
+				}
 			}
-			stktop = j-1;
+			stktop = j - 1;
 			return;
 		}
+	}
 	/* Didn't find one.  Throw this away. */
 	pe(lineno);
 	printf("Unmatched .%s\n", mac);
@@ -491,7 +502,6 @@ pe(int mylineno)
 static void
 checkknown(const char *mac)
 {
-
 	if (eq(mac, "."))
 		return;
 	if (binsrch(mac) >= 0)
@@ -542,7 +552,7 @@ addmac(const char *mac)
 {
 	char **src, **dest, **loc;
 
-	if (binsrch(mac) >= 0){	/* it's OK to redefine something */
+	if (binsrch(mac) >= 0) {	/* it's OK to redefine something */
 #ifdef DEBUG
 		printf("binsrch(%s) -> already in table\n", mac);
 #endif DEBUG
@@ -550,18 +560,20 @@ addmac(const char *mac)
 	}
 	/* binsrch sets slot as a side effect */
 #ifdef DEBUG
-printf("binsrch(%s) -> %d\n", mac, slot);
+	printf("binsrch(%s) -> %d\n", mac, slot);
 #endif
 	loc = &knowncmds[slot];
-	src = &knowncmds[ncmds-1];
-	dest = src+1;
+	src = &knowncmds[ncmds - 1];
+	dest = src + 1;
 	while (dest > loc)
 		*dest-- = *src--;
 	*loc = malloc(3);
 	strcpy(*loc, mac);
 	ncmds++;
 #ifdef DEBUG
-printf("after: %s %s %s %s %s, %d cmds\n", knowncmds[slot-2], knowncmds[slot-1], knowncmds[slot], knowncmds[slot+1], knowncmds[slot+2], ncmds);
+	printf("after: %s %s %s %s %s, %d cmds\n", knowncmds[slot-2],
+		knowncmds[slot-1], knowncmds[slot], knowncmds[slot+1],
+		knowncmds[slot+2], ncmds);
 #endif
 }
 
@@ -577,10 +589,10 @@ binsrch(const char *mac)
 	int mid;	/* mid point in binary search */
 	int top, bot;	/* boundaries of bin search, inclusive */
 
-	top = ncmds-1;
+	top = ncmds - 1;
 	bot = 0;
 	while (top >= bot) {
-		mid = (top+bot)/2;
+		mid = (top + bot) / 2;
 		p = knowncmds[mid];
 		d = p[0] - mac[0];
 		if (d == 0)
