@@ -1,5 +1,5 @@
 
-			GCC-3.3-20040126 AS USED BY DRAGONFLY
+			GCC-3.4-20040126 AS USED BY DRAGONFLY
 
     This directory contains a selected set of files from the gnu 
     gcc-3.4-20040618 distribution.  The entire distribution is 188MB but
