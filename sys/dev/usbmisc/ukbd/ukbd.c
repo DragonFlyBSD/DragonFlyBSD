@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/usb/ukbd.c,v 1.45 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.12 2004/12/14 02:27:00 dillon Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ukbd/ukbd.c,v 1.13 2005/02/21 20:48:28 swildner Exp $
  */
 
 /*
@@ -430,7 +430,7 @@ Static int		keycode2scancode(int keycode, int shift, int up);
 /* local variables */
 
 /* the initial key map, accent map and fkey strings */
-#ifdef UKBD_DFLT_KEYMAP
+#if defined(UKBD_DFLT_KEYMAP) && !defined(KLD_MODULE)
 #define KBD_DFLT_KEYMAP
 #include "ukbdmap.h"
 #endif
