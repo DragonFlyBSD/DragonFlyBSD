@@ -1,5 +1,5 @@
 # $FreeBSD: src/usr.sbin/traceroute/Makefile,v 1.11.2.3 2001/06/23 10:07:29 ru Exp $
-# $DragonFly: src/usr.sbin/traceroute/Makefile,v 1.2 2003/06/17 04:30:03 dillon Exp $
+# $DragonFly: src/usr.sbin/traceroute/Makefile,v 1.3 2004/08/27 18:07:49 asmodai Exp $
 
 PROG=	traceroute
 MAN=	traceroute.8
@@ -14,6 +14,8 @@ CFLAGS+=-DIPSEC
 # > 1000ms times is plain useless.  Uncomment this to enable variable precision
 # reporting, ie: print a variable precision from 0.001ms through 1000ms
 # CFLAGS+=-DSANE_PRECISION
+
+.PATH:	${TRACEROUTE_DISTDIR}
 
 SRCS=	version.c traceroute.c
 CLEANFILES+=	version.c
