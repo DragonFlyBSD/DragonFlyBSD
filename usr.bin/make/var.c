@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.71 2005/02/09 11:52:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.72 2005/02/09 20:26:53 okumoto Exp $
  */
 
 /*-
@@ -140,11 +140,48 @@ GNode          *VAR_CMD;      /* variables defined on the command-line */
 #define	OPEN_BRACKET		'{'
 #define	CLOSE_BRACKET		'}'
 
-static Var *VarCreate(const char [], const char [], int);
-static void VarDestroy(Var *, Boolean);
 static char *VarGetPattern(GNode *, int, char **, int, int *, size_t *,
 			   VarPattern *);
 static int VarPrintVar(void *, void *);
+
+/*
+ * Create a Var object.
+ *
+ * @param name		Name of variable.
+ * @param value		Value of variable.
+ * @param flags		Flags set on variable.
+ */
+static Var *
+VarCreate(const char name[], const char value[], int flags)
+{
+	Var *v;
+
+	v = emalloc(sizeof(Var));
+	v->name	= estrdup(name);
+	v->val	= Buf_Init(0);
+	v->flags	= flags;
+
+	if (value != NULL) {
+		Buf_Append(v->val, value);
+	}
+	return (v);
+}
+
+/*
+ * Destroy a Var object.
+ *
+ * @param v	Object to destroy.
+ * @param f     true if internal buffer in Buffer object is to be
+ *		removed.
+ */
+static void
+VarDestroy(Var *v, Boolean f)
+{
+
+	Buf_Destroy(v->val, f);
+	free(v->name);
+	free(v);
+}
 
 /*-
  *-----------------------------------------------------------------------
@@ -329,47 +366,10 @@ VarFind(const char *name, GNode *ctxt, int flags)
 static void
 VarAdd(const char *name, const char *val, GNode *ctxt)
 {
+
     Lst_AtFront(&ctxt->context, VarCreate(name, val, 0));
 
     DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
-}
-
-/*
- * Create a Var object.
- *
- * @param name		Name of variable.
- * @param value		Value of variable.
- * @param flags		Flags set on variable.
- */
-static Var *
-VarCreate(const char name[], const char value[], int flags)
-{
-    Var *v;
-
-    v = emalloc(sizeof(Var));
-    v->name	= estrdup(name);
-    v->val	= Buf_Init(0);
-    v->flags	= flags;
-
-    if (value != NULL) {
-	Buf_Append(v->val, value);
-    }
-    return (v);
-}
-
-/*
- * Destroy a Var object.
- *
- * @param v	Object to destroy.
- * @param f     true if internal buffer in Buffer object is to be
- *		removed.
- */
-static void
-VarDestroy(Var *v, Boolean f)
-{
-    Buf_Destroy(v->val, f);
-    free(v->name);
-    free(v);
 }
 
 /*-
