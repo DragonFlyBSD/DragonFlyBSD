@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.6 2004/01/06 03:21:18 dillon Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.7 2004/04/16 15:11:53 joerg Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -411,12 +411,8 @@ bootpboot_p_iflist(void)
 	struct ifaddr *ifa;
 	
 	printf("Interface list:\n");
-	for (ifp = TAILQ_FIRST(&ifnet);
-	     ifp != NULL;
-	     ifp = TAILQ_NEXT(ifp, if_link)) {
-		for (ifa = TAILQ_FIRST(&ifp->if_addrhead);
-		     ifa != NULL;
-		     ifa = TAILQ_NEXT(ifa, ifa_link))
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
+		TAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link)
 			if (ifa->ifa_addr->sa_family == AF_INET)
 				bootpboot_p_if(ifp, ifa);
 	}
@@ -1060,9 +1056,7 @@ bootpc_fakeup_interface(struct bootpc_ifcontext *ifctx,
 	/* Get HW address */
 	
 	sdl = NULL;
-	for (ifa = TAILQ_FIRST(&ifctx->ifp->if_addrhead);
-	     ifa != NULL;
-	     ifa = TAILQ_NEXT(ifa,ifa_link))
+	TAILQ_FOREACH(ifa, &ifctx->ifp->if_addrhead, ifa_link)
 		if (ifa->ifa_addr->sa_family == AF_LINK &&
 		    (sdl = ((struct sockaddr_dl *) ifa->ifa_addr)) != NULL &&
 		    sdl->sdl_type == IFT_ETHER)
@@ -1732,9 +1726,7 @@ bootpc_init(void)
 	       __XSTRING(BOOTP_WIRED_TO));
 #endif
 	bzero(&ifctx->ireq, sizeof(ifctx->ireq));
-	for (ifp = TAILQ_FIRST(&ifnet);
-	     ifp != NULL;
-	     ifp = TAILQ_NEXT(ifp, if_link)) {
+	TAILQ_FOREACH(ifp, &ifnet, if_link) {
 		strlcpy(ifctx->ireq.ifr_name, ifp->if_xname,
 			 sizeof(ifctx->ireq.ifr_name));
 #ifdef BOOTP_WIRED_TO
