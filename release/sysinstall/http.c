@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/release/sysinstall/http.c,v 1.2.2.5 2002/06/24 03:46:55 matusita Exp $
- * $DragonFly: src/release/sysinstall/Attic/http.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/http.c,v 1.3 2003/12/01 09:29:11 asmodai Exp $
  */
 
 #include "sysinstall.h"
@@ -224,7 +224,7 @@ mediaGetHTTP(Device *dev, char *file, Boolean probe)
 	    variable_get(VAR_HTTP_PATH), file, variable_get(VAR_HTTP_FTP_MODE));
 
     if (isDebug()) {
-	msgDebug("sending http request: %s",req);
+	msgDebug("sending http request: %s\n",req);
     }
     write(s,req,strlen(req));
 
