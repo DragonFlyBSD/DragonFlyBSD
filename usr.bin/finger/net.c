@@ -35,7 +35,7 @@
  *
  * @(#)net.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $
- * $DragonFly: src/usr.bin/finger/net.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/finger/net.c,v 1.4 2004/07/16 19:07:56 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -57,7 +57,7 @@ extern int lflag;		/* XXX finger.h? */
 extern int Tflag;		/* XXX finger.h? */
 extern sa_family_t family;
 
-static void cleanup(int sig);;
+static void cleanup(int sig);
 static int do_protocol(const char *name, const struct addrinfo *ai);
 static void trying(const struct addrinfo *ai);
 
