@@ -28,7 +28,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.1 2005/03/06 05:02:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/iwi/if_iwi.c,v 1.2 2005/03/07 10:13:22 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -1663,14 +1663,13 @@ iwi_start(struct ifnet *ifp)
 		m0 = ifq_poll(&ifp->if_snd);
 		if (m0 == NULL)
 			break;
- 
-		m0 = ifq_dequeue(&ifp->if_snd);
 
 		if (sc->tx_queued >= IWI_TX_RING_SIZE - 4) {
-			IF_PREPEND(&ifp->if_snd, m0);
 			ifp->if_flags |= IFF_OACTIVE;
 			break;
 		}
+ 
+		m0 = ifq_dequeue(&ifp->if_snd);
 
 #if NBPFILTER > 0
 		BPF_MTAP(ifp, m0);
