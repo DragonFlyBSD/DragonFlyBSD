@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.8 2004/03/05 00:10:31 hmp Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.9 2004/03/08 00:44:36 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -378,8 +378,12 @@ tcp_stats(u_long off __unused, char *name, int af __unused)
 		"\t\t%lu data packet%s (%lu byte%s)\n");
 	p2(tcps_sndrexmitpack, tcps_sndrexmitbyte,
 		"\t\t%lu data packet%s (%lu byte%s) retransmitted\n");
+	p2a(tcps_sndfastrexmit, tcps_sndearlyrexmit,
+		"\t\t%lu Fast Retransmit%s (%lu early)\n");
+	p(tcps_sndlimited, "\t\t%lu packet%s sent by Limited Transmit\n");
 	p(tcps_sndrtobad, "\t\t%lu spurious RTO retransmit%s\n");
-	p(tcps_sndfastrexmitbad, "\t\t%lu spurious Fast Retransmit%s\n");
+	p2a(tcps_sndfastrexmitbad, tcps_sndearlyrexmitbad,
+		"\t\t%lu spurious Fast Retransmit%s (%lu early)\n");
 	p(tcps_eifeldetected, "\t\t%lu Eifel-detected spurious retransmit%s\n");
 	p(tcps_rttdetected, "\t\t%lu RTT-detected spurious retransmit%s\n");
 	p(tcps_mturesent, "\t\t%lu resend%s initiated by MTU discovery\n");
