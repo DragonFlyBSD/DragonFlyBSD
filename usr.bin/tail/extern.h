@@ -33,7 +33,7 @@
  *	@(#)extern.h	8.1 (Berkeley) 6/6/93
  *
  * $FreeBSD: src/usr.bin/tail/extern.h,v 1.4.6.2 2001/12/19 20:29:29 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/extern.h,v 1.5 2004/12/27 21:06:39 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/extern.h,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #define	WR(p, size) do { \
@@ -59,20 +59,20 @@ struct file_info {
 
 typedef struct file_info file_info_t;
 
-enum STYLE { NOTSET = 0, FBYTES, FLINES, RBYTES, RLINES, REVERSE };
+enum STYLE { FBYTES, FLINES, RBYTES, RLINES, REVERSE };
 
 void follow(file_info_t *, enum STYLE, off_t);
 void forward(FILE *, enum STYLE, off_t, struct stat *);
 void reverse(FILE *, enum STYLE, off_t, struct stat *);
 
-int bytes(FILE *, off_t);
-int lines(FILE *, off_t);
+int display_bytes(FILE *, off_t);
+int display_lines(FILE *, off_t);
 
 void ierr(void);
 void oerr(void);
 int mapprint(struct mapinfo *, off_t, off_t);
 int maparound(struct mapinfo *, off_t);
-void showfilename(int index, const char *filename);
+void showfilename(int, const char *);
 
 extern int Fflag, fflag, rflag, rval, no_files;
-extern char *fname;
+extern const char *fname;

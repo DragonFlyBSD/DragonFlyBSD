@@ -35,7 +35,7 @@
  *
  * @(#)reverse.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/reverse.c,v 1.9.2.3 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/reverse.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tail/reverse.c,v 1.4 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -84,11 +84,11 @@ reverse(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 		switch(style) {
 		case FBYTES:
 		case RBYTES:
-			bytes(fp, off);
+			display_bytes(fp, off);
 			break;
 		case FLINES:
 		case RLINES:
-			lines(fp, off);
+			display_lines(fp, off);
 			break;
 		case REVERSE:
 			r_buf(fp);
@@ -182,8 +182,8 @@ typedef struct bf {
 static void
 r_buf(FILE *fp)
 {
-	BF *mark, *tl, *tr;
-	int ch, len, llen;
+	BF *mark, *tl = NULL, *tr = NULL;
+	int ch = 0, len, llen;
 	char *p;
 	off_t enomem;
 

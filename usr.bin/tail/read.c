@@ -35,7 +35,7 @@
  *
  * @(#)read.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/read.c,v 1.6.8.1 2001/01/24 08:41:14 ru Exp $
- * $DragonFly: src/usr.bin/tail/read.c,v 1.3 2003/10/04 20:36:52 hmp Exp $
+ * $DragonFly: src/usr.bin/tail/read.c,v 1.4 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -50,7 +50,7 @@
 #include "extern.h"
 
 /*
- * bytes -- read bytes to an offset from the end and display.
+ * display_bytes -- read bytes to an offset from the end and display.
  *
  * This is the function that reads to a byte offset from the end of the input,
  * storing the data in a wrap-around buffer which is then displayed.  If the
@@ -60,7 +60,7 @@
  * the end.
  */
 int
-bytes(FILE *fp, off_t off)
+display_bytes(FILE *fp, off_t off)
 {
 	int ch, len, tlen;
 	char *ep, *p, *t;
@@ -109,14 +109,14 @@ bytes(FILE *fp, off_t off)
 	} else {
 		if (wrap && (len = ep - p))
 			WR(p, len);
-		if (len = p - sp)
+		if ((len = p - sp) != 0)
 			WR(sp, len);
 	}
 	return 0;
 }
 
 /*
- * lines -- read lines to an offset from the end and display.
+ * display_lines -- read lines to an offset from the end and display.
  *
  * This is the function that reads to a line offset from the end of the input,
  * storing the data in an array of buffers which is then displayed.  If the
@@ -126,15 +126,15 @@ bytes(FILE *fp, off_t off)
  * the end.
  */
 int
-lines(FILE *fp, off_t off)
+display_lines(FILE *fp, off_t off)
 {
 	struct {
-		u_int blen;
-		u_int len;
+		ssize_t blen;
+		ssize_t len;
 		char *l;
 	} *lines;
 	int ch;
-	char *p;
+	char *p = NULL;
 	int blen, cnt, recno, wrap;
 	char *sp;
 

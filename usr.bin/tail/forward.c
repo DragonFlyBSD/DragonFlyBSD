@@ -35,7 +35,7 @@
  *
  * @(#)forward.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/forward.c,v 1.11.6.7 2003/01/07 05:26:22 tjr Exp $
- * $DragonFly: src/usr.bin/tail/forward.c,v 1.5 2004/12/27 21:06:39 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/forward.c,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -141,7 +141,7 @@ forward(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 				return;
 			}
 		} else
-			if (bytes(fp, off))
+			if (display_bytes(fp, off))
 				return;
 		break;
 	case RLINES:
@@ -160,9 +160,12 @@ forward(FILE *fp, enum STYLE style, off_t off, struct stat *sbp)
 				return;
 			}
 		} else
-			if (lines(fp, off))
+			if (display_lines(fp, off))
 				return;
 		break;
+	case REVERSE:
+		errx(1, "internal error: forward style cannot be REVERSE");
+		/* NOTREACHED */
 	}
 
 	while ((ch = getc(fp)) != EOF) {
@@ -232,14 +235,14 @@ rlines(FILE *fp, off_t off, struct stat *sbp)
  */
 
 static void
-show(file_info_t *file, int index)
+show(file_info_t *file, int at_index)
 {
 	int ch, first;
 
 	first = 1;
 	while ((ch = getc(file->fp)) != EOF) {
 		if (first && no_files > 1) {
-			showfilename(index, file->file_name);
+			showfilename(at_index, file->file_name);
 			first = 0;
 		}
 		if (putchar(ch) == EOF)
@@ -255,18 +258,18 @@ show(file_info_t *file, int index)
 }
 
 void
-showfilename(int index, const char *filename)
+showfilename(int at_index, const char *filename)
 {
 	static int last_index = -1;
 	static int continuing = 0;
 
-	if (last_index == index)
+	if (last_index == at_index)
 		return;
 	if (continuing)
 		printf("\n");
 	printf("==> %s <==\n", filename);
 	continuing = 1;
-	last_index = index;
+	last_index = at_index;
 }
 
 static void

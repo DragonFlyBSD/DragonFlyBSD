@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)tail.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/tail/tail.c,v 1.6.2.2 2001/12/19 20:29:31 iedowse Exp $
- * $DragonFly: src/usr.bin/tail/tail.c,v 1.5 2004/12/27 21:06:39 dillon Exp $
+ * $DragonFly: src/usr.bin/tail/tail.c,v 1.6 2005/03/01 21:37:33 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -50,75 +50,43 @@
 #include "extern.h"
 
 int Fflag, fflag, rflag, rval, no_files;
-char *fname;
+const char *fname;
 
 file_info_t *files;
 
 static void obsolete(char **);
 static void usage(void);
+static void getarg(int, enum STYLE, enum STYLE, enum STYLE *, int *, off_t *);
 
 int
 main(int argc, char **argv)
 {
 	struct stat sb;
 	FILE *fp;
-	off_t off;
+	off_t off = 0;
 	enum STYLE style;
+	int style_set;
 	int i, ch;
 	file_info_t *file;
-	char *p;
-
-	/*
-	 * Tail's options are weird.  First, -n10 is the same as -n-10, not
-	 * -n+10.  Second, the number options are 1 based and not offsets,
-	 * so -n+1 is the first line, and -c-1 is the last byte.  Third, the
-	 * number options for the -r option specify the number of things that
-	 * get displayed, not the starting point in the file.  The one major
-	 * incompatibility in this version as compared to historical versions
-	 * is that the 'r' option couldn't be modified by the -lbc options,
-	 * i.e. it was always done in lines.  This version treats -rc as a
-	 * number of characters in reverse order.  Finally, the default for
-	 * -r is the entire file, not 10 lines.
-	 */
-#define	ARG(units, forward, backward) {					\
-	if (style)							\
-		usage();						\
-	off = strtoll(optarg, &p, 10) * (units);                        \
-	if (*p)								\
-		errx(1, "illegal offset -- %s", optarg);		\
-	switch(optarg[0]) {						\
-	case '+':							\
-		if (off)						\
-			off -= (units);					\
-			style = (forward);				\
-		break;							\
-	case '-':							\
-		off = -off;						\
-		/* FALLTHROUGH */					\
-	default:							\
-		style = (backward);					\
-		break;							\
-	}								\
-}
 
 	obsolete(argv);
-	style = NOTSET;
+	style_set = 0;
 	while ((ch = getopt(argc, argv, "Fb:c:fn:r")) != -1)
 		switch(ch) {
 		case 'F':	/* -F is superset of (and implies) -f */
 			Fflag = fflag = 1;
 			break;
 		case 'b':
-			ARG(512, FBYTES, RBYTES);
+			getarg(512, FBYTES, RBYTES, &style, &style_set, &off);
 			break;
 		case 'c':
-			ARG(1, FBYTES, RBYTES);
+			getarg(1, FBYTES, RBYTES, &style, &style_set, &off);
 			break;
 		case 'f':
 			fflag = 1;
 			break;
 		case 'n':
-			ARG(1, FLINES, RLINES);
+			getarg(1, FLINES, RLINES, &style, &style_set, &off);
 			break;
 		case 'r':
 			rflag = 1;
@@ -149,7 +117,7 @@ main(int argc, char **argv)
 	 * If style not specified, the default is the whole file for -r, and
 	 * the last 10 lines if not -r.
 	 */
-	if (style == NOTSET) {
+	if (!style_set) {
 		if (rflag) {
 			off = 0;
 			style = REVERSE;
@@ -225,6 +193,47 @@ main(int argc, char **argv)
 }
 
 /*
+ * Tail's options are weird.  First, -n10 is the same as -n-10, not
+ * -n+10.  Second, the number options are 1 based and not offsets,
+ * so -n+1 is the first line, and -c-1 is the last byte.  Third, the
+ * number options for the -r option specify the number of things that
+ * get displayed, not the starting point in the file.  The one major
+ * incompatibility in this version as compared to historical versions
+ * is that the 'r' option couldn't be modified by the -lbc options,
+ * i.e. it was always done in lines.  This version treats -rc as a
+ * number of characters in reverse order.  Finally, the default for
+ * -r is the entire file, not 10 lines.
+ */
+static void
+getarg(int units, enum STYLE forward_style, enum STYLE backward_style,
+       enum STYLE *style, int *style_set, off_t *off)
+{
+	char *p;
+
+	if (*style_set)
+		usage();
+
+	*off = strtoll(optarg, &p, 10) * units;
+	if (*p != '\0')
+		errx(1, "illegal offset -- %s", optarg);
+	switch (optarg[0]) {
+	case '+':
+		if (*off != 0)
+			*off -= (units);
+		*style = forward_style;
+		break;
+	case '-':
+		*off = -*off;
+		/* FALLTHROUGH */
+	default:
+		*style = backward_style;
+		break;
+	}
+
+	*style_set = 1;
+}
+
+/*
  * Convert the obsolete argument form into something that getopt can handle.
  * This means that anything of the form [+-][0-9][0-9]*[lbc][Ffr] that isn't
  * the option argument for a -b, -c or -n option gets converted.
@@ -236,7 +245,7 @@ obsolete(char **argv)
 	size_t len;
 	char *start;
 
-	while (ap = *++argv) {
+	while ((ap = *++argv) != NULL) {
 		/* Return if "--" or not an option of any form. */
 		if (ap[0] != '-') {
 			if (ap[0] != '+')
