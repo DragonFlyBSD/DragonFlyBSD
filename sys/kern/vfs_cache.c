@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.36 2004/10/07 10:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.37 2004/10/07 20:18:33 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1611,6 +1611,9 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 
 	error = cache_lookup(dvp, vpp, cnp);
 
+	/*
+	 * failure if error == 0, do a physical lookup
+	 */
 	if (!error) 
 		return (VOP_CACHEDLOOKUP(dvp, vpp, cnp));
 
@@ -1621,18 +1624,20 @@ vfs_cache_lookup(struct vop_lookup_args *ap)
 	vpid = vp->v_id;
 	cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 	if (dvp == vp) {   /* lookup on "." */
-		vref(vp);
+		/* already ref'd from cache_lookup() */
 		error = 0;
 	} else if (flags & CNP_ISDOTDOT) {
 		VOP_UNLOCK(dvp, NULL, 0, td);
 		cnp->cn_flags |= CNP_PDIRUNLOCK;
 		error = vget(vp, NULL, LK_EXCLUSIVE, td);
+		vrele(vp);
 		if (!error && lockparent && (flags & CNP_ISLASTCN)) {
 			if ((error = vn_lock(dvp, NULL, LK_EXCLUSIVE, td)) == 0)
 				cnp->cn_flags &= ~CNP_PDIRUNLOCK;
 		}
 	} else {
 		error = vget(vp, NULL, LK_EXCLUSIVE, td);
+		vrele(vp);
 		if (!lockparent || error || !(flags & CNP_ISLASTCN)) {
 			VOP_UNLOCK(dvp, NULL, 0, td);
 			cnp->cn_flags |= CNP_PDIRUNLOCK;

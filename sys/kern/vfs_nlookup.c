@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.5 2004/10/07 10:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_nlookup.c,v 1.6 2004/10/07 20:18:33 dillon Exp $
  */
 /*
  * nlookup() is the 'new' namei interface.  Rather then return directory and
@@ -580,6 +580,7 @@ fail:
 int
 naccess(struct namecache *ncp, int vmode, struct ucred *cred)
 {
+    struct namecache *par;
     struct vnode *vp;
     struct vattr va;
     int error;
@@ -594,11 +595,13 @@ naccess(struct namecache *ncp, int vmode, struct ucred *cred)
 	if (((vmode & VCREATE) && ncp->nc_vp == NULL) ||
 	    ((vmode & VDELETE) && ncp->nc_vp != NULL)
 	) {
-	    if (ncp->nc_parent == NULL) {
+	    if ((par = ncp->nc_parent) == NULL) {
 		if (error != EAGAIN)
 			error = EROFS;
 	    } else {
-		error = naccess(ncp->nc_parent, VWRITE, cred);
+		cache_hold(par);
+		error = naccess(par, VWRITE, cred);
+		cache_drop(par);
 	    }
 	}
 	if ((vmode & VEXCL) && ncp->nc_vp != NULL)
