@@ -1,6 +1,6 @@
 #	@(#)Makefile.inc	8.6 (Berkeley) 5/4/95
 # $FreeBSD: src/lib/libc/gen/Makefile.inc,v 1.62.2.19 2003/02/21 13:46:16 phantom Exp $
-# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.3 2004/01/06 15:38:09 eirikn Exp $
+# $DragonFly: src/lib/libc/gen/Makefile.inc,v 1.4 2004/06/06 13:32:27 hmp Exp $
 
 # machine-independent gen sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/gen ${.CURDIR}/../libc/gen
@@ -29,7 +29,8 @@ SRCS+=  _rand48.c _spinlock_stub.c alarm.c arc4random.c assert.c \
 	sigsetops.c sleep.c srand48.c stringlist.c strtofflags.c \
 	sysconf.c sysctl.c sysctlbyname.c sysctlnametomib.c \
 	syslog.c telldir.c termios.c time.c times.c timezone.c ttyname.c \
-	ttyslot.c ualarm.c uname.c unvis.c usleep.c utime.c valloc.c vis.c \
+	ttyslot.c ualarm.c ulimit.c uname.c unvis.c usleep.c utime.c \
+	valloc.c vis.c \
 	wait.c wait3.c waitpid.c
 
 # machine-dependent gen sources
@@ -56,7 +57,7 @@ MAN+=	alarm.3 arc4random.3 clock.3 \
 	siginterrupt.3 signal.3 sigsetops.3 sleep.3 stringlist.3 \
 	strtofflags.3 sysconf.3 sysctl.3 syslog.3 tcgetpgrp.3 \
 	tcsendbreak.3 tcsetattr.3 tcsetpgrp.3 time.3 times.3 timezone.3 \
-	ttyname.3 tzset.3 ualarm.3 ucontext.3 uname.3 \
+	ttyname.3 tzset.3 ualarm.3 ucontext.3 ulimit.3 uname.3 \
 	unvis.3 usleep.3 utime.3 valloc.3 vis.3
 
 MLINKS+=arc4random.3 arc4random_addrandom.3 arc4random.3 arc4random_stir.3
