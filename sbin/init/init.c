@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)init.c	8.1 (Berkeley) 7/15/93
  * $FreeBSD: src/sbin/init/init.c,v 1.38.2.8 2001/10/22 11:27:32 des Exp $
- * $DragonFly: src/sbin/init/init.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/init/init.c,v 1.5 2003/12/18 04:12:38 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -185,6 +185,7 @@ main(int argc, char **argv)
 	int c;
 	struct sigaction sa;
 	sigset_t mask;
+	struct stat sts;
 
 
 	/* Dispose of random users. */
@@ -246,6 +247,11 @@ invalid:
 	 */
 	if (setlogin("root") < 0)
 		warning("setlogin() failed: %m");
+
+	if (stat("/dev/null", &sts) < 0) {
+		warning("/dev MAY BE CORRUPT! /dev/null is missing!\n");
+		sleep(5);
+	}
 
 	/*
 	 * This code assumes that we always get arguments through flags,
