@@ -11,7 +11,7 @@
  * ditto for my modifications (John-Mark Gurney, 1997)
  *
  * $FreeBSD: src/usr.sbin/mixer/mixer.c,v 1.11.2.6 2001/07/30 10:22:58 dd Exp $
- * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.4 2004/04/15 12:38:02 joerg Exp $
+ * $DragonFly: src/usr.sbin/mixer/mixer.c,v 1.5 2004/04/15 12:50:07 joerg Exp $
  */
 
 #include <err.h>
@@ -25,13 +25,13 @@
 #define LEFT(vol) (vol & 0x7f)
 #define RIGHT(vol) ((vol >> 8) & 0x7f)
 
-const char *names[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_NAMES;
-const char *defaultdev = "/dev/mixer";
+static const char *names[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_NAMES;
+static const char *defaultdev = "/dev/mixer";
 
-void usage(int devmask, int recmask);
-int res_name(const char *name, int mask);
-void print_recsrc(int recsrc);
-void print_recsrc_short(int recsrc);
+static void	usage(int devmask, int recmask);
+static int	res_name(const char *name, int mask);
+static void	print_recsrc(int recsrc);
+static void	print_recsrc_short(int recsrc);
 
 void
 usage(int devmask, int recmask)
@@ -43,21 +43,23 @@ usage(int devmask, int recmask)
 	       "       mixer [-f device] [-s] {^|+|-|=}rec recdev ...\n"
 	       "       mixer -h\n");
 	printf(" devices: ");
-	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++)
+	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if ((1 << i) & devmask)  {
 			if (n)
 				printf(", ");
 			printf("%s", names[i]);
 			n = 1;
 		}
+	}
 	printf("\n rec devices: ");
-	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++)
+	for (i = 0, n = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if ((1 << i) & recmask)  {
 			if (n)
 				printf(", ");
 			printf("%s", names[i]);
 			n = 1;
 		}
+	}
 	printf("\n");
 	exit(1);
 }
@@ -71,7 +73,10 @@ res_name(const char *name, int mask)
 		if ((1 << i) & mask && !strcmp(names[i], name))
 			break;
 
-	return i == SOUND_MIXER_NRDEVICES ? -1 : i;
+	if (i == SOUND_MIXER_NRDEVICES)
+		return(-1);
+
+	return(i);
 }
 
 void
@@ -80,17 +85,19 @@ print_recsrc(int recsrc)
 	int i, n = 0;
 	printf("Recording source: ");
 
-	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++)
+	for (i = 0; i < SOUND_MIXER_NRDEVICES; i++) {
 		if ((1 << i) & recsrc) {
 			if (n)
 				printf(", ");
 			printf("%s", names[i]);
 			n = 1;
 		}
+	}
 	printf("\n");
 }
 
-void print_recsrc_short(int recsrc)
+void
+print_recsrc_short(int recsrc)
 {
 	int i, first;
 
@@ -108,7 +115,7 @@ void print_recsrc_short(int recsrc)
 }
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	int i, mset, fd, dev;
 	int devmask = 0, recmask = 0, recsrc = 0, orecsrc;
@@ -159,11 +166,11 @@ main(int argc, char *argv[])
 				continue;
 			}
 			if (shortflag)
-				printf("%s %d:%d ", names[i], LEFT(mset), 
-						RIGHT(mset));
+				printf("%s %d:%d ", names[i], LEFT(mset),
+				       RIGHT(mset));
 			else
-				printf("Mixer %-8s is currently set to %3d:%d\n", 
-						names[i], LEFT(mset), RIGHT(mset));
+				printf("Mixer %-8s is currently set to %3d:%d\n",
+				       names[i], LEFT(mset), RIGHT(mset));
 		}
 		if (ioctl(fd, SOUND_MIXER_READ_RECSRC, &recsrc) == -1)
 			err(1, "SOUND_MIXER_READ_RECSRC");
@@ -248,10 +255,11 @@ main(int argc, char *argv[])
 				continue;
 			}
 			if (shortflag)
-				printf("%s %d:%d ", names[dev], LEFT(mset), RIGHT(mset));
+				printf("%s %d:%d ", names[dev], LEFT(mset),
+				       RIGHT(mset));
 			else
 				printf("Mixer %-8s is currently set to %3d:%d\n",
-				  names[dev], LEFT(mset), RIGHT(mset));
+				       names[dev], LEFT(mset), RIGHT(mset));
 
 			argc--; argv++;
 			break;
@@ -279,7 +287,7 @@ main(int argc, char *argv[])
 				r = 100;
 
 			printf("Setting the mixer %s to %d:%d.\n", names[dev],
-			    l, r);
+			       l, r);
 
 			l |= r << 8;
 			if (ioctl(fd, MIXER_WRITE(dev), &l) == -1)
