@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.21 2004/12/17 00:18:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -935,30 +935,30 @@ null_getvobject(struct vop_getvobject_args *ap)
  * Global vfs data structures
  */
 struct vnodeopv_entry_desc null_vnodeop_entries[] = {
-	{ &vop_default_desc,		(void *) null_bypass },
-	{ &vop_access_desc,		(void *) null_access },
-	{ &vop_createvobject_desc,	(void *) null_createvobject },
-	{ &vop_destroyvobject_desc,	(void *) null_destroyvobject },
-	{ &vop_getattr_desc,		(void *) null_getattr },
-	{ &vop_getvobject_desc,		(void *) null_getvobject },
-	{ &vop_inactive_desc,		(void *) null_inactive },
-	{ &vop_islocked_desc,		(void *) null_islocked },
-	{ &vop_lock_desc,		(void *) null_lock },
-	{ &vop_lookup_desc,		(void *) null_lookup },
-	{ &vop_open_desc,		(void *) null_open },
-	{ &vop_print_desc,		(void *) null_print },
-	{ &vop_reclaim_desc,		(void *) null_reclaim },
-	{ &vop_rename_desc,		(void *) null_rename },
-	{ &vop_setattr_desc,		(void *) null_setattr },
-	{ &vop_unlock_desc,		(void *) null_unlock },
-	{ &vop_revoke_desc,		(void *) null_revoke },
+	{ &vop_default_desc,		(vnodeopv_entry_t) null_bypass },
+	{ &vop_access_desc,		(vnodeopv_entry_t) null_access },
+	{ &vop_createvobject_desc,	(vnodeopv_entry_t) null_createvobject },
+	{ &vop_destroyvobject_desc,	(vnodeopv_entry_t) null_destroyvobject },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) null_getattr },
+	{ &vop_getvobject_desc,		(vnodeopv_entry_t) null_getvobject },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) null_inactive },
+	{ &vop_islocked_desc,		(vnodeopv_entry_t) null_islocked },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) null_lock },
+	{ &vop_lookup_desc,		(vnodeopv_entry_t) null_lookup },
+	{ &vop_open_desc,		(vnodeopv_entry_t) null_open },
+	{ &vop_print_desc,		(vnodeopv_entry_t) null_print },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) null_reclaim },
+	{ &vop_rename_desc,		(vnodeopv_entry_t) null_rename },
+	{ &vop_setattr_desc,		(vnodeopv_entry_t) null_setattr },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) null_unlock },
+	{ &vop_revoke_desc,		(vnodeopv_entry_t) null_revoke },
 
-	{ &vop_nresolve_desc,		(void *) null_nresolve },
-	{ &vop_ncreate_desc,		(void *) null_ncreate },
-	{ &vop_nmkdir_desc,		(void *) null_nmkdir },
-	{ &vop_nremove_desc,		(void *) null_nremove },
-	{ &vop_nrmdir_desc,		(void *) null_nrmdir },
-	{ &vop_nrename_desc,		(void *) null_nrename },
+	{ &vop_nresolve_desc,		(vnodeopv_entry_t) null_nresolve },
+	{ &vop_ncreate_desc,		(vnodeopv_entry_t) null_ncreate },
+	{ &vop_nmkdir_desc,		(vnodeopv_entry_t) null_nmkdir },
+	{ &vop_nremove_desc,		(vnodeopv_entry_t) null_nremove },
+	{ &vop_nrmdir_desc,		(vnodeopv_entry_t) null_nrmdir },
+	{ &vop_nrename_desc,		(vnodeopv_entry_t) null_nrename },
 	{ NULL, NULL }
 };
 

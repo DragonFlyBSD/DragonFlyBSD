@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.21 2004/11/12 00:09:48 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -88,39 +88,39 @@ static int smbfs_getextattr(struct vop_getextattr_args *ap);
 
 struct vnodeopv_entry_desc smbfs_vnodeop_entries[] = {
 	{ &vop_default_desc,		vop_defaultop },
-	{ &vop_access_desc,		(void *) smbfs_access },
-	{ &vop_advlock_desc,		(void *) smbfs_advlock },
-	{ &vop_bmap_desc,		(void *) smbfs_bmap },
-	{ &vop_close_desc,		(void *) smbfs_closel },
-	{ &vop_create_desc,		(void *) smbfs_create },
-	{ &vop_fsync_desc,		(void *) smbfs_fsync },
-	{ &vop_getattr_desc,		(void *) smbfs_getattr },
-	{ &vop_getpages_desc,		(void *) smbfs_getpages },
-	{ &vop_inactive_desc,		(void *) smbfs_inactive },
-	{ &vop_ioctl_desc,		(void *) smbfs_ioctl },
-	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_link_desc,		(void *) smbfs_link },
-	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_lookup_desc,		(void *) smbfs_lookup },
-	{ &vop_mkdir_desc,		(void *) smbfs_mkdir },
-	{ &vop_mknod_desc,		(void *) smbfs_mknod },
-	{ &vop_open_desc,		(void *) smbfs_open },
-	{ &vop_pathconf_desc,		(void *) smbfs_pathconf },
-	{ &vop_print_desc,		(void *) smbfs_print },
-	{ &vop_putpages_desc,		(void *) smbfs_putpages },
-	{ &vop_read_desc,		(void *) smbfs_read },
-	{ &vop_readdir_desc,		(void *) smbfs_readdir },
-	{ &vop_reclaim_desc,		(void *) smbfs_reclaim },
-	{ &vop_remove_desc,		(void *) smbfs_remove },
-	{ &vop_rename_desc,		(void *) smbfs_rename },
-	{ &vop_rmdir_desc,		(void *) smbfs_rmdir },
-	{ &vop_setattr_desc,		(void *) smbfs_setattr },
-	{ &vop_strategy_desc,		(void *) smbfs_strategy },
-	{ &vop_symlink_desc,		(void *) smbfs_symlink },
-	{ &vop_unlock_desc,		(void *) vop_stdunlock },
-	{ &vop_write_desc,		(void *) smbfs_write },
-	{ &vop_getextattr_desc, 	(void *) smbfs_getextattr },
-/*	{ &vop_setextattr_desc,		(void *) smbfs_setextattr },*/
+	{ &vop_access_desc,		(vnodeopv_entry_t) smbfs_access },
+	{ &vop_advlock_desc,		(vnodeopv_entry_t) smbfs_advlock },
+	{ &vop_bmap_desc,		(vnodeopv_entry_t) smbfs_bmap },
+	{ &vop_close_desc,		(vnodeopv_entry_t) smbfs_closel },
+	{ &vop_create_desc,		(vnodeopv_entry_t) smbfs_create },
+	{ &vop_fsync_desc,		(vnodeopv_entry_t) smbfs_fsync },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) smbfs_getattr },
+	{ &vop_getpages_desc,		(vnodeopv_entry_t) smbfs_getpages },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) smbfs_inactive },
+	{ &vop_ioctl_desc,		(vnodeopv_entry_t) smbfs_ioctl },
+	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
+	{ &vop_link_desc,		(vnodeopv_entry_t) smbfs_link },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
+	{ &vop_lookup_desc,		(vnodeopv_entry_t) smbfs_lookup },
+	{ &vop_mkdir_desc,		(vnodeopv_entry_t) smbfs_mkdir },
+	{ &vop_mknod_desc,		(vnodeopv_entry_t) smbfs_mknod },
+	{ &vop_open_desc,		(vnodeopv_entry_t) smbfs_open },
+	{ &vop_pathconf_desc,		(vnodeopv_entry_t) smbfs_pathconf },
+	{ &vop_print_desc,		(vnodeopv_entry_t) smbfs_print },
+	{ &vop_putpages_desc,		(vnodeopv_entry_t) smbfs_putpages },
+	{ &vop_read_desc,		(vnodeopv_entry_t) smbfs_read },
+	{ &vop_readdir_desc,		(vnodeopv_entry_t) smbfs_readdir },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) smbfs_reclaim },
+	{ &vop_remove_desc,		(vnodeopv_entry_t) smbfs_remove },
+	{ &vop_rename_desc,		(vnodeopv_entry_t) smbfs_rename },
+	{ &vop_rmdir_desc,		(vnodeopv_entry_t) smbfs_rmdir },
+	{ &vop_setattr_desc,		(vnodeopv_entry_t) smbfs_setattr },
+	{ &vop_strategy_desc,		(vnodeopv_entry_t) smbfs_strategy },
+	{ &vop_symlink_desc,		(vnodeopv_entry_t) smbfs_symlink },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
+	{ &vop_write_desc,		(vnodeopv_entry_t) smbfs_write },
+	{ &vop_getextattr_desc, 	(vnodeopv_entry_t) smbfs_getextattr },
+/*	{ &vop_setextattr_desc,		(vnodeopv_entry_t) smbfs_setextattr },*/
 	{ NULL, NULL }
 };
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vnops.c	8.11 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vnops.c,v 1.47.2.1 2001/05/22 02:06:43 bp Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.16 2004/10/12 19:20:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vnops.c,v 1.17 2005/02/15 08:32:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -68,24 +68,24 @@ static int	mfs_getpages (struct vop_getpages_args *); /* XXX */
  */
 struct vop_ops *mfs_vnode_vops;
 static struct vnodeopv_entry_desc mfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(void *) mfs_badop },
-	{ &vop_bmap_desc,		(void *) mfs_bmap },
+	{ &vop_default_desc,		(vnodeopv_entry_t) mfs_badop },
+	{ &vop_bmap_desc,		(vnodeopv_entry_t) mfs_bmap },
 	{ &vop_bwrite_desc,		vop_defaultop },
-	{ &vop_close_desc,		(void *) mfs_close },
-	{ &vop_createvobject_desc,	(void *) vop_stdcreatevobject },
-	{ &vop_destroyvobject_desc,	(void *) vop_stddestroyvobject },
-	{ &vop_freeblks_desc,		(void *) mfs_freeblks },
-	{ &vop_fsync_desc,		(void *) mfs_fsync },
-	{ &vop_getpages_desc,		(void *) mfs_getpages },
-	{ &vop_getvobject_desc,		(void *) vop_stdgetvobject },
-	{ &vop_inactive_desc,		(void *) mfs_inactive },
+	{ &vop_close_desc,		(vnodeopv_entry_t) mfs_close },
+	{ &vop_createvobject_desc,	(vnodeopv_entry_t) vop_stdcreatevobject },
+	{ &vop_destroyvobject_desc,	(vnodeopv_entry_t) vop_stddestroyvobject },
+	{ &vop_freeblks_desc,		(vnodeopv_entry_t) mfs_freeblks },
+	{ &vop_fsync_desc,		(vnodeopv_entry_t) mfs_fsync },
+	{ &vop_getpages_desc,		(vnodeopv_entry_t) mfs_getpages },
+	{ &vop_getvobject_desc,		(vnodeopv_entry_t) vop_stdgetvobject },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) mfs_inactive },
 	{ &vop_ioctl_desc,		vop_enotty },
 	{ &vop_islocked_desc,		vop_defaultop },
 	{ &vop_lock_desc,		vop_defaultop },
-	{ &vop_open_desc,		(void *) mfs_open },
-	{ &vop_print_desc,		(void *) mfs_print },
-	{ &vop_reclaim_desc,		(void *) mfs_reclaim },
-	{ &vop_strategy_desc,		(void *) mfs_strategy },
+	{ &vop_open_desc,		(vnodeopv_entry_t) mfs_open },
+	{ &vop_print_desc,		(vnodeopv_entry_t) mfs_print },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) mfs_reclaim },
+	{ &vop_strategy_desc,		(vnodeopv_entry_t) mfs_strategy },
 	{ &vop_unlock_desc,		vop_defaultop },
 	{ NULL, NULL }
 };

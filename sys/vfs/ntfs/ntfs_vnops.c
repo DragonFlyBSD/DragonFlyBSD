@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.21 2005/01/31 21:41:00 joerg Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.22 2005/02/15 08:32:18 joerg Exp $
  *
  */
 
@@ -839,30 +839,30 @@ ntfs_pathconf(void *v)
 struct vnodeopv_entry_desc ntfs_vnodeop_entries[] = {
 	{ &vop_default_desc,	vop_defaultop },
 
-	{ &vop_getattr_desc,	(void *)ntfs_getattr },
-	{ &vop_inactive_desc,	(void *)ntfs_inactive },
-	{ &vop_reclaim_desc,	(void *)ntfs_reclaim },
-	{ &vop_print_desc,	(void *)ntfs_print },
-	{ &vop_pathconf_desc,	(void *)ntfs_pathconf },
+	{ &vop_getattr_desc,	(vnodeopv_entry_t)ntfs_getattr },
+	{ &vop_inactive_desc,	(vnodeopv_entry_t)ntfs_inactive },
+	{ &vop_reclaim_desc,	(vnodeopv_entry_t)ntfs_reclaim },
+	{ &vop_print_desc,	(vnodeopv_entry_t)ntfs_print },
+	{ &vop_pathconf_desc,	(vnodeopv_entry_t)ntfs_pathconf },
 
-	{ &vop_islocked_desc,	(void *)vop_stdislocked },
-	{ &vop_unlock_desc,	(void *)vop_stdunlock },
-	{ &vop_lock_desc,	(void *)vop_stdlock },
-	{ &vop_lookup_desc,	(void *)ntfs_lookup },
+	{ &vop_islocked_desc,	(vnodeopv_entry_t)vop_stdislocked },
+	{ &vop_unlock_desc,	(vnodeopv_entry_t)vop_stdunlock },
+	{ &vop_lock_desc,	(vnodeopv_entry_t)vop_stdlock },
+	{ &vop_lookup_desc,	(vnodeopv_entry_t)ntfs_lookup },
 
-	{ &vop_access_desc,	(void *)ntfs_access },
-	{ &vop_close_desc,	(void *)ntfs_close },
-	{ &vop_open_desc,	(void *)ntfs_open },
-	{ &vop_readdir_desc,	(void *)ntfs_readdir },
-	{ &vop_fsync_desc,	(void *)ntfs_fsync },
+	{ &vop_access_desc,	(vnodeopv_entry_t)ntfs_access },
+	{ &vop_close_desc,	(vnodeopv_entry_t)ntfs_close },
+	{ &vop_open_desc,	(vnodeopv_entry_t)ntfs_open },
+	{ &vop_readdir_desc,	(vnodeopv_entry_t)ntfs_readdir },
+	{ &vop_fsync_desc,	(vnodeopv_entry_t)ntfs_fsync },
 
-	{ &vop_bmap_desc,	(void *)ntfs_bmap },
-	{ &vop_getpages_desc,	(void *)ntfs_getpages },
-	{ &vop_putpages_desc,	(void *)ntfs_putpages },
-	{ &vop_strategy_desc,	(void *)ntfs_strategy },
-	{ &vop_bwrite_desc,	(void *)vop_stdbwrite },
-	{ &vop_read_desc,	(void *)ntfs_read },
-	{ &vop_write_desc,	(void *)ntfs_write },
+	{ &vop_bmap_desc,	(vnodeopv_entry_t)ntfs_bmap },
+	{ &vop_getpages_desc,	(vnodeopv_entry_t)ntfs_getpages },
+	{ &vop_putpages_desc,	(vnodeopv_entry_t)ntfs_putpages },
+	{ &vop_strategy_desc,	(vnodeopv_entry_t)ntfs_strategy },
+	{ &vop_bwrite_desc,	(vnodeopv_entry_t)vop_stdbwrite },
+	{ &vop_read_desc,	(vnodeopv_entry_t)ntfs_read },
+	{ &vop_write_desc,	(vnodeopv_entry_t)ntfs_write },
 
 	{ NULL, NULL }
 };

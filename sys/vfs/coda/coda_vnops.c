@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.24 2004/12/17 00:18:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.25 2005/02/15 08:32:18 joerg Exp $
  * 
  */
 
@@ -111,46 +111,46 @@ static int coda_lockdebug = 0;
 /* Definition of the vnode operation vector */
 
 struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
-    { &vop_default_desc, (void *)coda_vop_error },
-    { &vop_lookup_desc, (void *)coda_lookup },		/* lookup */
-    { &vop_create_desc, (void *)coda_create },		/* create */
-    { &vop_mknod_desc, (void *)coda_vop_error },	/* mknod */
-    { &vop_open_desc, (void *)coda_open },		/* open */
-    { &vop_close_desc, (void *)coda_close },		/* close */
-    { &vop_access_desc, (void *)coda_access },		/* access */
-    { &vop_getattr_desc, (void *)coda_getattr },	/* getattr */
-    { &vop_setattr_desc, (void *)coda_setattr },	/* setattr */
-    { &vop_read_desc, (void *)coda_read },		/* read */
-    { &vop_write_desc, (void *)coda_write },		/* write */
-    { &vop_ioctl_desc, (void *)coda_ioctl },		/* ioctl */
-    { &vop_mmap_desc, (void *)coda_vop_error },		/* mmap */
-    { &vop_fsync_desc, (void *)coda_fsync },		/* fsync */
-    { &vop_remove_desc, (void *)coda_remove },		/* remove */
-    { &vop_link_desc, (void *)coda_link },		/* link */
-    { &vop_rename_desc, (void *)coda_rename },		/* rename */
-    { &vop_mkdir_desc, (void *)coda_mkdir },		/* mkdir */
-    { &vop_rmdir_desc, (void *)coda_rmdir },		/* rmdir */
-    { &vop_symlink_desc, (void *)coda_symlink },	/* symlink */
-    { &vop_readdir_desc, (void *)coda_readdir },	/* readdir */
-    { &vop_readlink_desc, (void *)coda_readlink },	/* readlink */
-    { &vop_inactive_desc, (void *)coda_inactive },	/* inactive */
-    { &vop_reclaim_desc, (void *)coda_reclaim },	/* reclaim */
-    { &vop_lock_desc, (void *)coda_lock },		/* lock */
-    { &vop_unlock_desc, (void *)coda_unlock },		/* unlock */
-    { &vop_bmap_desc, (void *)coda_bmap },		/* bmap */
-    { &vop_strategy_desc, (void *)coda_strategy },	/* strategy */
-    { &vop_print_desc, (void *)coda_vop_error },	/* print */
-    { &vop_islocked_desc, (void *)coda_islocked },	/* islocked */
-    { &vop_pathconf_desc, (void *)coda_vop_error },	/* pathconf */
-    { &vop_advlock_desc, (void *)coda_vop_nop },	/* advlock */
-    { &vop_bwrite_desc, (void *)coda_vop_error },	/* bwrite */
-    { &vop_lease_desc, (void *)coda_vop_nop },		/* lease */
-    { &vop_poll_desc, (void *) vop_stdpoll },		/* poll */
-    { &vop_getpages_desc, (void *)coda_fbsd_getpages },	/* pager intf.*/
-    { &vop_putpages_desc, (void *)coda_fbsd_putpages },	/* pager intf.*/
-    { &vop_createvobject_desc,      (void *) vop_stdcreatevobject },
-    { &vop_destroyvobject_desc,     (void *) vop_stddestroyvobject },
-    { &vop_getvobject_desc,         (void *) vop_stdgetvobject },
+    { &vop_default_desc, (vnodeopv_entry_t)coda_vop_error },
+    { &vop_lookup_desc, (vnodeopv_entry_t)coda_lookup },	/* lookup */
+    { &vop_create_desc, (vnodeopv_entry_t)coda_create },	/* create */
+    { &vop_mknod_desc, (vnodeopv_entry_t)coda_vop_error },	/* mknod */
+    { &vop_open_desc, (vnodeopv_entry_t)coda_open },		/* open */
+    { &vop_close_desc, (vnodeopv_entry_t)coda_close },		/* close */
+    { &vop_access_desc, (vnodeopv_entry_t)coda_access },	/* access */
+    { &vop_getattr_desc, (vnodeopv_entry_t)coda_getattr },	/* getattr */
+    { &vop_setattr_desc, (vnodeopv_entry_t)coda_setattr },	/* setattr */
+    { &vop_read_desc, (vnodeopv_entry_t)coda_read },		/* read */
+    { &vop_write_desc, (vnodeopv_entry_t)coda_write },		/* write */
+    { &vop_ioctl_desc, (vnodeopv_entry_t)coda_ioctl },		/* ioctl */
+    { &vop_mmap_desc, (vnodeopv_entry_t)coda_vop_error },	/* mmap */
+    { &vop_fsync_desc, (vnodeopv_entry_t)coda_fsync },		/* fsync */
+    { &vop_remove_desc, (vnodeopv_entry_t)coda_remove },	/* remove */
+    { &vop_link_desc, (vnodeopv_entry_t)coda_link },		/* link */
+    { &vop_rename_desc, (vnodeopv_entry_t)coda_rename },	/* rename */
+    { &vop_mkdir_desc, (vnodeopv_entry_t)coda_mkdir },		/* mkdir */
+    { &vop_rmdir_desc, (vnodeopv_entry_t)coda_rmdir },		/* rmdir */
+    { &vop_symlink_desc, (vnodeopv_entry_t)coda_symlink },	/* symlink */
+    { &vop_readdir_desc, (vnodeopv_entry_t)coda_readdir },	/* readdir */
+    { &vop_readlink_desc, (vnodeopv_entry_t)coda_readlink },	/* readlink */
+    { &vop_inactive_desc, (vnodeopv_entry_t)coda_inactive },	/* inactive */
+    { &vop_reclaim_desc, (vnodeopv_entry_t)coda_reclaim },	/* reclaim */
+    { &vop_lock_desc, (vnodeopv_entry_t)coda_lock },		/* lock */
+    { &vop_unlock_desc, (vnodeopv_entry_t)coda_unlock },	/* unlock */
+    { &vop_bmap_desc, (vnodeopv_entry_t)coda_bmap },		/* bmap */
+    { &vop_strategy_desc, (vnodeopv_entry_t)coda_strategy },	/* strategy */
+    { &vop_print_desc, (vnodeopv_entry_t)coda_vop_error },	/* print */
+    { &vop_islocked_desc, (vnodeopv_entry_t)coda_islocked },	/* islocked */
+    { &vop_pathconf_desc, (vnodeopv_entry_t)coda_vop_error },	/* pathconf */
+    { &vop_advlock_desc, (vnodeopv_entry_t)coda_vop_nop },	/* advlock */
+    { &vop_bwrite_desc, (vnodeopv_entry_t)coda_vop_error },	/* bwrite */
+    { &vop_lease_desc, (vnodeopv_entry_t)coda_vop_nop },	/* lease */
+    { &vop_poll_desc, vop_stdpoll },		/* poll */
+    { &vop_getpages_desc, (vnodeopv_entry_t)coda_fbsd_getpages }, /* pager intf.*/
+    { &vop_putpages_desc, (vnodeopv_entry_t)coda_fbsd_putpages }, /* pager intf.*/
+    { &vop_createvobject_desc,      vop_stdcreatevobject },
+    { &vop_destroyvobject_desc,     vop_stddestroyvobject },
+    { &vop_getvobject_desc,         vop_stdgetvobject },
 
 #if	0
 
@@ -162,9 +162,9 @@ struct vnodeopv_entry_desc coda_vnodeop_entries[] = {
 #define UFS_UPDATE(aa, bb) VFSTOUFS((aa)->v_mount)->um_update(aa, bb)
 
     missing
-    { &vop_reallocblks_desc,	(void *) ufs_missingop },
-    { &vop_lookup_desc,		(void *) ufs_lookup },
-    { &vop_whiteout_desc,	(void *) ufs_whiteout },
+    { &vop_reallocblks_desc,	(vnodeopv_entry_t) ufs_missingop },
+    { &vop_lookup_desc,		(vnodeopv_entry_t) ufs_lookup },
+    { &vop_whiteout_desc,	(vnodeopv_entry_t) ufs_whiteout },
 #endif
     { NULL, NULL }
 };

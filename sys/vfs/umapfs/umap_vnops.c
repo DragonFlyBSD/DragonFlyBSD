@@ -35,7 +35,7 @@
  *
  *	@(#)umap_vnops.c	8.6 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vnops.c,v 1.30 1999/08/30 07:08:04 bde Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.13 2004/12/17 00:18:46 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vnops.c,v 1.14 2005/02/15 08:32:19 joerg Exp $
  */
 
 /*
@@ -482,14 +482,14 @@ umap_rename(struct vop_rename_args *ap)
  *
  */
 struct vnodeopv_entry_desc umap_vnodeop_entries[] = {
-	{ &vop_default_desc,		(void *) umap_bypass },
-	{ &vop_getattr_desc,		(void *) umap_getattr },
-	{ &vop_inactive_desc,		(void *) umap_inactive },
-	{ &vop_lock_desc,		(void *) umap_lock },
-	{ &vop_print_desc,		(void *) umap_print },
-	{ &vop_reclaim_desc,		(void *) umap_reclaim },
-	{ &vop_rename_desc,		(void *) umap_rename },
-	{ &vop_unlock_desc,		(void *) umap_unlock },
+	{ &vop_default_desc,		(vnodeopv_entry_t) umap_bypass },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) umap_getattr },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) umap_inactive },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) umap_lock },
+	{ &vop_print_desc,		(vnodeopv_entry_t) umap_print },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) umap_reclaim },
+	{ &vop_rename_desc,		(vnodeopv_entry_t) umap_rename },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) umap_unlock },
 	{ NULL, NULL }
 };
 

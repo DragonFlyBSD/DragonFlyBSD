@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vnops.c	8.19 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vnops.c,v 1.62 1999/12/15 23:01:51 eivind Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.13 2004/11/12 00:09:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vnops.c,v 1.14 2005/02/15 08:32:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -843,27 +843,27 @@ cd9660_advlock(ap)
  * Global vfs data structures for cd9660
  */
 struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
-	{ &vop_default_desc,		(void *) vop_defaultop },
-	{ &vop_access_desc,		(void *) cd9660_access },
-	{ &vop_advlock_desc,            (void *) cd9660_advlock },
-	{ &vop_bmap_desc,		(void *) cd9660_bmap },
-	{ &vop_lookup_desc,		(void *) cd9660_lookup },
-	{ &vop_getattr_desc,		(void *) cd9660_getattr },
-	{ &vop_inactive_desc,		(void *) cd9660_inactive },
-	{ &vop_ioctl_desc,		(void *) cd9660_ioctl },
-	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_pathconf_desc,		(void *) cd9660_pathconf },
-	{ &vop_print_desc,		(void *) cd9660_print },
-	{ &vop_read_desc,		(void *) cd9660_read },
-	{ &vop_readdir_desc,		(void *) cd9660_readdir },
-	{ &vop_readlink_desc,		(void *) cd9660_readlink },
-	{ &vop_reclaim_desc,		(void *) cd9660_reclaim },
-	{ &vop_setattr_desc,		(void *) cd9660_setattr },
-	{ &vop_strategy_desc,		(void *) cd9660_strategy },
-	{ &vop_unlock_desc,		(void *) vop_stdunlock },
-	{ &vop_getpages_desc,		(void *) cd9660_getpages },
-	{ &vop_putpages_desc,		(void *) cd9660_putpages },
+	{ &vop_default_desc,		(vnodeopv_entry_t) vop_defaultop },
+	{ &vop_access_desc,		(vnodeopv_entry_t) cd9660_access },
+	{ &vop_advlock_desc,            (vnodeopv_entry_t) cd9660_advlock },
+	{ &vop_bmap_desc,		(vnodeopv_entry_t) cd9660_bmap },
+	{ &vop_lookup_desc,		(vnodeopv_entry_t) cd9660_lookup },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) cd9660_getattr },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) cd9660_inactive },
+	{ &vop_ioctl_desc,		(vnodeopv_entry_t) cd9660_ioctl },
+	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
+	{ &vop_pathconf_desc,		(vnodeopv_entry_t) cd9660_pathconf },
+	{ &vop_print_desc,		(vnodeopv_entry_t) cd9660_print },
+	{ &vop_read_desc,		(vnodeopv_entry_t) cd9660_read },
+	{ &vop_readdir_desc,		(vnodeopv_entry_t) cd9660_readdir },
+	{ &vop_readlink_desc,		(vnodeopv_entry_t) cd9660_readlink },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) cd9660_reclaim },
+	{ &vop_setattr_desc,		(vnodeopv_entry_t) cd9660_setattr },
+	{ &vop_strategy_desc,		(vnodeopv_entry_t) cd9660_strategy },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
+	{ &vop_getpages_desc,		(vnodeopv_entry_t) cd9660_getpages },
+	{ &vop_putpages_desc,		(vnodeopv_entry_t) cd9660_putpages },
 	{ NULL, NULL }
 };
 
@@ -871,30 +871,30 @@ struct vnodeopv_entry_desc cd9660_vnodeop_entries[] = {
  * Special device vnode ops
  */
 struct vnodeopv_entry_desc cd9660_specop_entries[] = {
-	{ &vop_default_desc,		(void *) spec_vnoperate },
-	{ &vop_access_desc,		(void *) cd9660_access },
-	{ &vop_getattr_desc,		(void *) cd9660_getattr },
-	{ &vop_inactive_desc,		(void *) cd9660_inactive },
-	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_print_desc,		(void *) cd9660_print },
-	{ &vop_reclaim_desc,		(void *) cd9660_reclaim },
-	{ &vop_setattr_desc,		(void *) cd9660_setattr },
-	{ &vop_unlock_desc,		(void *) vop_stdunlock },
+	{ &vop_default_desc,		(vnodeopv_entry_t) spec_vnoperate },
+	{ &vop_access_desc,		(vnodeopv_entry_t) cd9660_access },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) cd9660_getattr },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) cd9660_inactive },
+	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
+	{ &vop_print_desc,		(vnodeopv_entry_t) cd9660_print },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) cd9660_reclaim },
+	{ &vop_setattr_desc,		(vnodeopv_entry_t) cd9660_setattr },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
 	{ NULL, NULL }
 };
 
 struct vnodeopv_entry_desc cd9660_fifoop_entries[] = {
-	{ &vop_default_desc,		(void *) fifo_vnoperate },
-	{ &vop_access_desc,		(void *) cd9660_access },
-	{ &vop_getattr_desc,		(void *) cd9660_getattr },
-	{ &vop_inactive_desc,		(void *) cd9660_inactive },
-	{ &vop_islocked_desc,		(void *) vop_stdislocked },
-	{ &vop_lock_desc,		(void *) vop_stdlock },
-	{ &vop_print_desc,		(void *) cd9660_print },
-	{ &vop_reclaim_desc,		(void *) cd9660_reclaim },
-	{ &vop_setattr_desc,		(void *) cd9660_setattr },
-	{ &vop_unlock_desc,		(void *) vop_stdunlock },
+	{ &vop_default_desc,		(vnodeopv_entry_t) fifo_vnoperate },
+	{ &vop_access_desc,		(vnodeopv_entry_t) cd9660_access },
+	{ &vop_getattr_desc,		(vnodeopv_entry_t) cd9660_getattr },
+	{ &vop_inactive_desc,		(vnodeopv_entry_t) cd9660_inactive },
+	{ &vop_islocked_desc,		(vnodeopv_entry_t) vop_stdislocked },
+	{ &vop_lock_desc,		(vnodeopv_entry_t) vop_stdlock },
+	{ &vop_print_desc,		(vnodeopv_entry_t) cd9660_print },
+	{ &vop_reclaim_desc,		(vnodeopv_entry_t) cd9660_reclaim },
+	{ &vop_setattr_desc,		(vnodeopv_entry_t) cd9660_setattr },
+	{ &vop_unlock_desc,		(vnodeopv_entry_t) vop_stdunlock },
 	{ NULL, NULL }
 };
 

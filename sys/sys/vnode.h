@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.30 2004/12/29 02:40:03 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.31 2005/02/15 08:32:18 joerg Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -441,6 +441,7 @@ extern struct lwkt_token mntvnode_token;
 #define	VOPARG_OFFSETTO(S_TYPE,S_OFFSET,STRUCT_P) \
 	((S_TYPE)(((char*)(STRUCT_P))+(S_OFFSET)))
 
+typedef int (*vnodeopv_entry_t)(struct vop_generic_args *);
 
 /*
  * This structure is used to configure the new vnodeops vector.  The entry
@@ -449,7 +450,7 @@ extern struct lwkt_token mntvnode_token;
  */
 struct vnodeopv_entry_desc {
 	struct vnodeop_desc *opve_op;
-	int	(*opve_func)(struct vop_generic_args *ap);
+	vnodeopv_entry_t opve_func;
 };
 
 struct vnodeopv_desc {
