@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.3 2004/01/06 21:08:22 justin Exp $
 
 $TITLE(DragonFly - VFS/filesystem Device Operations)
 <CENTER>The Light Weight Kernel Threading Model</CENTER>
@@ -23,10 +23,10 @@ between cpus.
     and switch between threads within a cpu's domain without any locking 
     whatsoever.  No MP lock, nothing except a simple critical section.
     <P>
-    (2) A Thread will never be moved to another cpu while it is running, and
-    a thread will never be preemptive switched to a non-interrupt thread.  If
+    (2) A thread will never be moved to another cpu while it is running, and
+    a thread will never be preemptively switched to a non-interrupt thread.  If
     an interrupt thread preempts the current thread, then the moment the 
-    interrupt thread completes or blocks the preempted thread will resume 
+    interrupt thread completes or blocks, the preempted thread will resume 
     regardless of its scheduling state.  For example, a thread might get 
     preempted after calling lwkt_deschedule_self() but before it actually
     switches out.  This is ok because control will be returned to it
