@@ -1,9 +1,12 @@
 /*
  * UPCALL1.C
  *
- *	Test upcall performance.
+ *	Test upcall performance.  WARNING!  This test does not reflect 
+ *	reality... the test is effectively making two system calls for
+ *	each upcall when under normal conditions no system calls should be
+ *	necessary when handling an upcall.
  *
- * $DragonFly: src/test/sysperf/upcall1.c,v 1.1 2003/11/21 06:58:28 dillon Exp $
+ * $DragonFly: src/test/sysperf/upcall1.c,v 1.2 2003/11/21 07:04:20 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -26,6 +29,9 @@ int
 main(int ac, char **av)
 {
 	id = upc_register(&upc, callused_wrapper, myfunc, "blah");
+	printf("Warning: extra system calls in test means performance\n");
+	printf("does not reflect reality.  Divide times by 3 for raw\n");
+	printf("per-upcall overhead (approximately)\n");
 	printf("register upcall %d\n", id);
 	printf("try to dispatch the upcall\n");
 	upc_control(UPC_CONTROL_DISPATCH, id, NULL);
