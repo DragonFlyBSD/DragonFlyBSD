@@ -1,6 +1,6 @@
 /*	$NetBSD: usb_subr.c,v 1.76 2000/04/27 15:26:50 augustss Exp $	*/
 /*	$FreeBSD: src/sys/dev/usb/usb_subr.c,v 1.23.2.8 2003/01/17 17:46:24 joe Exp $	*/
-/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.2 2003/06/17 04:28:32 dillon Exp $	*/
+/*	$DragonFly: src/sys/bus/usb/usb_subr.c,v 1.3 2003/06/19 00:58:32 dillon Exp $	*/
 
 /*
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
@@ -1016,7 +1016,7 @@ usbd_new_device(device_ptr_t parent, usbd_bus_handle bus, int depth,
 usbd_status
 usbd_reload_device_desc(usbd_device_handle dev)
 {
-	usbd_status err;
+	usbd_status err = 0;
 	int i;
 
 	/* Get the full device descriptor. */
