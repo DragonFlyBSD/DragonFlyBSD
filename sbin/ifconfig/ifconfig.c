@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.16 2005/03/04 01:22:37 cpressey Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.17 2005/03/04 01:47:54 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -1240,7 +1240,7 @@ tunnel_status(int s)
 
 	if (ioctl(s, srccmd, (caddr_t)ifrp) < 0)
 		return;
-#ifdef INET6
+#if defined(INET6) && defined(__KAME__) && defined(KAME_SCOPEID)
 	if (ifrp->ifr_addr.sa_family == AF_INET6)
 		in6_fillscopeid((struct sockaddr_in6 *)&ifrp->ifr_addr);
 #endif
@@ -1253,7 +1253,7 @@ tunnel_status(int s)
 
 	if (ioctl(s, dstcmd, (caddr_t)ifrp) < 0)
 		return;
-#ifdef INET6
+#if defined(INET6) && defined(__KAME__) && defined(KAME_SCOPEID)
 	if (ifrp->ifr_addr.sa_family == AF_INET6)
 		in6_fillscopeid((struct sockaddr_in6 *)&ifrp->ifr_addr);
 #endif
@@ -1298,17 +1298,17 @@ in_status(int s __unused, struct rt_addrinfo *info)
 }
 
 #ifdef INET6
+#if defined(__KAME__) && defined(KAME_SCOPEID)
 void
 in6_fillscopeid(struct sockaddr_in6 *sin6)
 {
-#if defined(__KAME__) && defined(KAME_SCOPEID)
 	if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr)) {
 		sin6->sin6_scope_id =
 			ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
 		sin6->sin6_addr.s6_addr[2] = sin6->sin6_addr.s6_addr[3] = 0;
 	}
-#endif
 }
+#endif /* defined(__KAME__) && defined(KAME_SCOPEID) */
 
 void
 in6_status(int s __unused, struct rt_addrinfo *info)
