@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/link_elf.c,v 1.24 1999/12/24 15:33:36 bde Exp $
- * $DragonFly: src/sys/kern/link_elf.c,v 1.15 2004/11/12 00:09:23 dillon Exp $
+ * $DragonFly: src/sys/kern/link_elf.c,v 1.16 2005/03/03 19:50:33 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -63,7 +63,6 @@ static void	link_elf_unload_module(linker_file_t);
 static int	link_elf_lookup_set(linker_file_t, const char *,
 			void ***, void ***, int *);
 
-
 static struct linker_class_ops link_elf_class_ops = {
     link_elf_load_module,
 };
@@ -83,6 +82,7 @@ static struct linker_file_ops link_elf_module_ops = {
     link_elf_unload_module,
     link_elf_lookup_set
 };
+
 typedef struct elf_file {
     caddr_t		address;	/* Relocation address */
 #ifdef SPARSE_MAPPING
@@ -141,10 +141,9 @@ link_elf_init(void* arg)
 
     dp = (Elf_Dyn*) &_DYNAMIC;
     if (dp) {
-	ef = malloc(sizeof(struct elf_file), M_LINKER, M_NOWAIT);
+	ef = malloc(sizeof(struct elf_file), M_LINKER, M_NOWAIT | M_ZERO);
 	if (ef == NULL)
 	    panic("link_elf_init: Can't create linker structures for kernel");
-	bzero(ef, sizeof(*ef));
 
 	ef->address = 0;
 #ifdef SPARSE_MAPPING
@@ -173,7 +172,7 @@ link_elf_init(void* arg)
 	    if (sizeptr)
 		linker_kernel_file->size = *(size_t *)sizeptr;
 	}
-	(void)parse_module_symbols(linker_kernel_file);
+	parse_module_symbols(linker_kernel_file);
 	linker_current_file = linker_kernel_file;
 	linker_kernel_file->flags |= LINKER_FILE_LINKED;
     }
@@ -351,10 +350,9 @@ link_elf_load_module(const char *filename, linker_file_t *result)
     if (baseptr == NULL || sizeptr == NULL || dynptr == NULL)
 	return (EINVAL);
 
-    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK);
+    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
     if (ef == NULL)
 	return (ENOMEM);
-    bzero(ef, sizeof(*ef));
     ef->modptr = modptr;
     ef->address = *(caddr_t *)baseptr;
 #ifdef SPARSE_MAPPING
@@ -385,7 +383,7 @@ link_elf_load_module(const char *filename, linker_file_t *result)
 	linker_file_unload(lf);
 	return error;
     }
-    (void)parse_module_symbols(lf);
+    parse_module_symbols(lf);
     lf->flags |= LINKER_FILE_LINKED;
     *result = lf;
     return (0);
@@ -550,8 +548,7 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     base_vlimit = round_page(segs[1]->p_vaddr + segs[1]->p_memsz);
     mapsize = base_vlimit - base_vaddr;
 
-    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK);
-    bzero(ef, sizeof(*ef));
+    ef = malloc(sizeof(struct elf_file), M_LINKER, M_WAITOK | M_ZERO);
 #ifdef SPARSE_MAPPING
     ef->object = vm_object_allocate(OBJT_DEFAULT, mapsize >> PAGE_SHIFT);
     if (ef->object == NULL) {
@@ -642,12 +639,11 @@ link_elf_load_file(const char* filename, linker_file_t* result)
     nbytes = hdr->e_shnum * hdr->e_shentsize;
     if (nbytes == 0 || hdr->e_shoff == 0)
 	goto nosyms;
-    shdr = malloc(nbytes, M_LINKER, M_WAITOK);
+    shdr = malloc(nbytes, M_LINKER, M_WAITOK | M_ZERO);
     if (shdr == NULL) {
 	error = ENOMEM;
 	goto out;
     }
-    bzero(shdr, nbytes);
     error = vn_rdwr(UIO_READ, vp,
 		    (caddr_t)shdr, nbytes, hdr->e_shoff,
 		    UIO_SYSSPACE, IO_NODELOCKED, p->p_ucred, &resid, td);
