@@ -37,7 +37,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.5 2004/11/12 21:41:51 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.6 2004/11/12 21:46:09 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2750,12 +2750,6 @@ Job_ParseShell(line)
 	    commandShell->ignErr = "%s\n";
 	}
     }
-
-    /*
-     * Do not free up the words themselves, since they might be in use by the
-     * shell specification...
-     */
-    free(words);
     return SUCCESS;
 }
 
