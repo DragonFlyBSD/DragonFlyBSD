@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1988 Regents of the University of California. All rights reserved.
  * @(#)wall.c	5.14 (Berkeley) 3/2/91
  * $FreeBSD: src/usr.bin/rwall/rwall.c,v 1.8.2.1 2001/02/18 02:27:54 kris Exp $
- * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.4 2004/09/15 19:58:05 joerg Exp $
+ * $DragonFly: src/usr.bin/rwall/rwall.c,v 1.5 2005/02/14 18:06:28 liamfoy Exp $
  */
 
 /*
@@ -42,19 +42,18 @@
  * is entitled "Mechanisms for Broadcast and Selective Broadcast".
  */
 
+#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/uio.h>
+
 #include <err.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <utmp.h>
 
 #include <rpc/rpc.h>
 #include <rpcsvc/rwall.h>
@@ -62,13 +61,14 @@
 static size_t	mbufsize;
 static char	*mbuf;
 
-static void	makemsg(char *);
+static void	makemsg(const char *);
 static void	usage(void);
 
 int
 main(int argc, char **argv)
 {
-	char *wallhost, res;
+	const char *wallhost;
+	char *res;
 	CLIENT *cl;
 	struct timeval tv;
 	int c;
@@ -107,7 +107,7 @@ main(int argc, char **argv)
 
 	tv.tv_sec = 15;		/* XXX ?? */
 	tv.tv_usec = 0;
-	if (clnt_call(cl, WALLPROC_WALL, xdr_wrapstring, &mbuf, xdr_void,
+	if (clnt_call(cl, WALLPROC_WALL, (xdrproc_t)xdr_wrapstring, &mbuf, xdr_void,
 		      &res, tv) != RPC_SUCCESS) {
 		/*
 		 * An error occurred while calling the server.
@@ -128,7 +128,7 @@ usage(void)
 }
 
 static void
-makemsg(char *fname)
+makemsg(const char *fname)
 {
 	struct tm *lt;
 	struct passwd *pw;
@@ -144,7 +144,7 @@ makemsg(char *fname)
 		err(1, "can't open temporary file");
 	
 	if (unlink(tmpname) == -1)
-		err(1, "unlink failed");
+		err(1, "unlink failed: %s", tmpname);
 
 	if ((whom = getlogin()) == NULL)
 		whom = (pw = getpwuid(getuid())) ? pw->pw_name : "???";
@@ -179,7 +179,7 @@ makemsg(char *fname)
 		err(1, "can't stat temporary file");
 	mbufsize = (size_t)sbuf.st_size;
 	if ((mbuf = malloc(mbufsize)) == NULL)
-		err(1, "out of memory");
+		err(1, "malloc failed");
 	if (fread(mbuf, sizeof(*mbuf), mbufsize, fp) != mbufsize)
 		err(1, "can't read temporary file");
 	if (close(fd))
