@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.79 2005/02/10 11:33:37 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.80 2005/02/11 01:09:48 okumoto Exp $
  */
 
 /*-
@@ -1825,7 +1825,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 		int expand;
 		for (;;) {
 		    if (str[1] == OPEN_PAREN || str[1] == OPEN_BRACE) {
-			size_t		l;
+			size_t		ln;
 			const char	*p = str + 2;
 
 			/*
@@ -1850,8 +1850,8 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 			    continue;
 			}
 
-			l = p - (str + 2);
-			if (var[l] == '\0' && strncmp(var, str + 2, l) == 0) {
+			ln = p - (str + 2);
+			if (var[ln] == '\0' && strncmp(var, str + 2, ln) == 0) {
 			    expand = TRUE;
 			} else {
 			    /*
