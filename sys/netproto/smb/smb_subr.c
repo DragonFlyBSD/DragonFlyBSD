@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_subr.c,v 1.1.2.2 2001/09/03 08:55:11 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.11 2004/03/19 17:06:08 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_subr.c,v 1.12 2004/06/20 22:29:10 hmp Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -370,7 +370,7 @@ kthread_create2(void (*func)(void *), void *arg,
 	__va_list ap;
 	struct proc *p2;
 
-	if (!proc0.p_stats || proc0.p_stats->p_start.tv_sec == 0) {
+	if (!proc0.p_stats || proc0.p_thread->td_start.tv_sec == 0) {
 		panic("kthread_create called too soon");
 	}
 

@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.33 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.34 2004/06/20 22:29:10 hmp Exp $
  */
 
 #include "opt_init_path.h"
@@ -398,7 +398,7 @@ proc0_post(void *dummy __unused)
 	 * time from the file system.  Pretend that proc0 started now.
 	 */
 	FOREACH_PROC_IN_SYSTEM(p) {
-		microtime(&p->p_stats->p_start);
+		microtime(&p->p_thread->td_start);
 	}
 
 	/*

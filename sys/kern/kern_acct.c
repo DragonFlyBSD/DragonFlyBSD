@@ -38,7 +38,7 @@
  *
  *	@(#)kern_acct.c	8.1 (Berkeley) 6/14/93
  * $FreeBSD: src/sys/kern/kern_acct.c,v 1.23.2.1 2002/07/24 18:33:55 johan Exp $
- * $DragonFly: src/sys/kern/kern_acct.c,v 1.10 2004/04/21 15:39:02 justin Exp $
+ * $DragonFly: src/sys/kern/kern_acct.c,v 1.11 2004/06/20 22:29:10 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -200,9 +200,9 @@ acct_process(struct proc *p)
 	acct.ac_stime = encode_comp_t(st.tv_sec, st.tv_usec);
 
 	/* (3) The elapsed time the commmand ran (and its starting time) */
-	acct.ac_btime = p->p_stats->p_start.tv_sec;
+	acct.ac_btime = p->p_thread->td_start.tv_sec;
 	microtime(&tmp);
-	timevalsub(&tmp, &p->p_stats->p_start);
+	timevalsub(&tmp, &p->p_thread->td_start);
 	acct.ac_etime = encode_comp_t(tmp.tv_sec, tmp.tv_usec);
 
 	/* (4) The average amount of memory used */

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.6 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.7 2004/06/20 22:29:10 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -522,7 +522,7 @@ saveuser(KINFO *ki)
 		 * If it's here fill in these fields, otherwise, just
 		 * leave them 0.
 		 */
-		usp->u_start = KI_EPROC(ki)->e_stats.p_start;
+		usp->u_start = KI_THREAD(ki)->td_start;
 		usp->u_ru = KI_EPROC(ki)->e_stats.p_ru;
 		usp->u_cru = KI_EPROC(ki)->e_stats.p_cru;
 		usp->u_valid = 1;

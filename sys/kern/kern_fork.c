@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.26 2004/06/12 03:09:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.27 2004/06/20 22:29:10 hmp Exp $
  */
 
 #include "opt_ktrace.h"
@@ -558,7 +558,7 @@ again:
 	/*
 	 * Make child runnable and add to run queue.
 	 */
-	microtime(&(p2->p_stats->p_start));
+	microtime(&p2->p_thread->td_start);
 	p2->p_acflag = AFORK;
 
 	/*

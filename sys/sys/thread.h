@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.54 2004/06/17 01:30:27 hmp Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.55 2004/06/20 22:29:10 hmp Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -24,6 +24,9 @@
 #endif
 #ifndef _SYS_MSGPORT_H_
 #include <sys/msgport.h>	/* lwkt_port */
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>   	/* struct timeval */
 #endif
 
 struct globaldata;
@@ -234,6 +237,7 @@ struct thread {
     int		td_unused001;
     int		td_unused002;
 #endif
+    struct timeval td_start;	/* start time for a thread/process */
     char	td_comm[MAXCOMLEN+1]; /* typ 16+1 bytes */
     struct thread *td_preempted; /* we preempted this thread */
     struct caps_kinfo *td_caps;	/* list of client and server registrations */

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.50 2004/06/04 20:35:39 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.51 2004/06/20 22:29:10 hmp Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -120,6 +120,10 @@ struct	pargs {
  * are always addressable except for those marked "(PROC ONLY)" below,
  * which might be addressable only on a processor on which the process
  * is running.
+ *
+ * NOTE!  The process start time is stored in the thread structure associated
+ * with the process.  If the process is a Zombie, then this field will be
+ * inaccessible due to the thread structure being free'd in kern_wait1().
  */
 
 struct jail;
