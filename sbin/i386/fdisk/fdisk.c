@@ -24,7 +24,7 @@
  * the rights to redistribute these changes.
  *
  * $FreeBSD: src/sbin/i386/fdisk/fdisk.c,v 1.36.2.11 2002/04/25 21:02:21 trhodes Exp $
- * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.5 2003/11/10 06:14:44 dillon Exp $
+ * $DragonFly: src/sbin/i386/fdisk/fdisk.c,v 1.6 2004/02/03 07:13:10 rob Exp $
  */
 
 #include <sys/disklabel.h>
@@ -117,7 +117,7 @@ typedef struct cmd {
 
 
 static int B_flag  = 0;		/* replace boot code */
-static int I_flag  = 0;		/* use entire disk for FreeBSD */
+static int I_flag  = 0;		/* use entire disk for DragonFly */
 static int a_flag  = 0;		/* set active partition */
 static char *b_flag = NULL;	/* path to boot code */
 static int i_flag  = 0;		/* replace partition data */
@@ -172,7 +172,7 @@ struct part_type
 	,{0x94, "Amoeba bad block table"}
 	,{0x9F, "BSD/OS"}
 	,{0xA0, "Suspend to Disk"}
-	,{0xA5, "FreeBSD/NetBSD/386BSD"}
+	,{0xA5, "DragonFly/FreeBSD/NetBSD/386BSD"}
 	,{0xA6, "OpenBSD"}
 	,{0xA7, "NEXTSTEP"}
 	,{0xA9, "NetBSD"}
@@ -545,7 +545,7 @@ struct dos_partition *partp = ((struct dos_partition *) &mboot.parts) + i - 1;
 	}
 
 	do {
-		Decimal("sysid (165=FreeBSD)", partp->dp_typ, tmp);
+		Decimal("sysid (165=DragonFly)", partp->dp_typ, tmp);
 		Decimal("start", partp->dp_start, tmp);
 		Decimal("size", partp->dp_size, tmp);
 		if (!sanitize_partition(partp)) {
@@ -1122,7 +1122,7 @@ process_geometry(command)
 	    warnx(
 	"WARNING line %d: number of cylinders (%d) may be out-of-range\n\
     (must be within 1-1024 for normal BIOS operation, unless the entire disk\n\
-    is dedicated to FreeBSD)",
+    is dedicated to DragonFly)",
 		    current_line_number, dos_cyls);
 	}
 
