@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.16 2004/08/30 05:17:14 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.17 2004/08/30 06:17:16 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -528,7 +528,7 @@
             ..
             fi_FI.ISO8859-15
             ..
-            fo_FO.ISO8859-15
+            fo_FO.ISO8859-1
             ..
             fr_BE.ISO8859-1
             ..
