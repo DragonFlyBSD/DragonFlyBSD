@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)chflags.c	8.5 (Berkeley) 4/1/94
  * $FreeBSD: src/usr.bin/chflags/chflags.c,v 1.7.2.3 2001/08/01 23:09:18 obrien Exp $
- * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.3 2003/10/02 17:42:26 hmp Exp $
+ * $DragonFly: src/usr.bin/chflags/chflags.c,v 1.4 2004/11/29 20:27:30 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -47,8 +47,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int	main(int, char *[]);
-void	usage(void);
+static void	usage(void);
 
 int
 main(int argc, char **argv)
@@ -57,28 +56,26 @@ main(int argc, char **argv)
 	FTSENT *p;
 	u_long clear, set;
 	long val;
-	int Hflag, Lflag, Pflag, Rflag, ch, fts_options, oct, rval;
+	int Hflag, Lflag, Rflag, ch, fts_options, oct, rval;
 	char *flags, *ep;
 
-	Hflag = Lflag = Pflag = Rflag = 0;
+	Hflag = Lflag = Rflag = 0;
 	while ((ch = getopt(argc, argv, "HLPR")) != -1)
 		switch (ch) {
 		case 'H':
 			Hflag = 1;
-			Lflag = Pflag = 0;
+			Lflag = 0;
 			break;
 		case 'L':
 			Lflag = 1;
-			Hflag = Pflag = 0;
+			Hflag = 0;
 			break;
 		case 'P':
-			Pflag = 1;
 			Hflag = Lflag = 0;
 			break;
 		case 'R':
 			Rflag = 1;
 			break;
-		case '?':
 		default:
 			usage();
 		}
@@ -123,10 +120,9 @@ main(int argc, char **argv)
 	for (rval = 0; (p = fts_read(ftsp)) != NULL;) {
 		switch (p->fts_info) {
 		case FTS_D:
-			if (Rflag)		/* Change it at FTS_DP. */
-				continue;
-			fts_set(ftsp, p, FTS_SKIP);
-			break;
+			if (!Rflag)		/* Change it at FTS_DP if we're recursive. */	
+				fts_set(ftsp, p, FTS_SKIP);
+			continue;
 		case FTS_DNR:			/* Warn, chflag, continue. */
 			warnx("%s: %s", p->fts_path, strerror(p->fts_errno));
 			rval = 1;
@@ -164,10 +160,10 @@ main(int argc, char **argv)
 	exit(rval);
 }
 
-void
+static void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 	    "usage: chflags [-R [-H | -L | -P]] flags file ...\n");
 	exit(1);
 }
