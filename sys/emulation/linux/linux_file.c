@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.14 2003/11/13 04:04:42 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.15 2003/11/15 00:40:06 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -617,7 +617,7 @@ linux_rename(struct linux_rename_args *args)
 	}
 #ifdef DEBUG
 	if (ldebug(rename))
-		printf(ARGS(rename, "%s, %s"), args->from, args->to);
+		printf(ARGS(rename, "%s, %s"), from, to);
 #endif
 	NDINIT(&fromnd, NAMEI_DELETE, CNP_WANTPARENT | CNP_SAVESTART,
 	    UIO_SYSSPACE, from, td);
@@ -702,7 +702,7 @@ linux_truncate(struct linux_truncate_args *args)
 		return (error);
 #ifdef DEBUG
 	if (ldebug(truncate))
-		printf(ARGS(truncate, "%s, %ld"), args->path,
+		printf(ARGS(truncate, "%s, %ld"), path,
 		    (long)args->length);
 #endif
 	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
@@ -714,6 +714,30 @@ linux_truncate(struct linux_truncate_args *args)
 }
 
 int
+linux_truncate64(struct linux_truncate64_args *args)
+{
+	struct thread *td = curthread;
+	struct nameidata nd;
+	char *path;
+	int error;
+
+	error = linux_copyin_path(args->path, &path, LINUX_PATH_EXISTS);
+	if (error)
+		return (error);
+#ifdef DEBUG
+	if (ldebug(truncate64))
+		printf(ARGS(truncate64, "%s, %lld"), path,
+		    (off_t)args->length);
+#endif
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_SYSSPACE, path, td);
+
+	error = kern_truncate(&nd, args->length);
+
+	linux_free_path(&path);
+	return error;
+}
+
+int
 linux_ftruncate(struct linux_ftruncate_args *args)
 {
 	int error;
@@ -722,6 +746,21 @@ linux_ftruncate(struct linux_ftruncate_args *args)
 	if (ldebug(ftruncate))
 		printf(ARGS(ftruncate, "%d, %ld"), args->fd,
 		    (long)args->length);
+#endif
+	error = kern_ftruncate(args->fd, args->length);
+
+	return error;
+}
+
+int
+linux_ftruncate64(struct linux_ftruncate64_args *args)
+{
+	int error;
+
+#ifdef DEBUG
+	if (ldebug(ftruncate))
+		printf(ARGS(ftruncate64, "%d, %lld"), args->fd,
+		    (off_t)args->length);
 #endif
 	error = kern_ftruncate(args->fd, args->length);
 
