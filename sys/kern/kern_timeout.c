@@ -70,7 +70,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.12 2004/09/17 00:18:09 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.13 2004/09/17 09:53:27 dillon Exp $
  */
 /*
  * DRAGONFLY BGL STATUS
@@ -99,6 +99,8 @@
  * The per-cpu augmentation was done by Matthew Dillon.
  */
 
+#include "opt_ddb.h"
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/callout.h>
@@ -107,7 +109,7 @@
 #include <sys/thread.h>
 #include <sys/thread2.h>
 #include <machine/ipl.h>
-#include "opt_ddb.h"
+#include <ddb/ddb.h>
 
 #ifndef MAX_SOFTCLOCK_STEPS
 #define MAX_SOFTCLOCK_STEPS 100 /* Maximum allowed value of steps. */
@@ -250,7 +252,8 @@ hardclock_softtick(globaldata_t gd)
 /*
  * This procedure is the main loop of our per-cpu helper thread.  The
  * sc->isrunning flag prevents us from racing hardclock_softtick() and
- * a critical section is sufficient to interlock sc->curticks.
+ * a critical section is sufficient to interlock sc->curticks and protect
+ * us from remote IPI's / list removal.
  *
  * The thread starts with the MP lock held and not in a critical section.
  * The loop itself is MP safe while individual callbacks may or may not
@@ -264,7 +267,6 @@ softclock_handler(void *arg)
 	struct callout_tailq *bucket;
 	void (*c_func)(void *);
 	void *c_arg;
-	int c_flags;
 #ifdef SMP
 	int mpsafe = 0;
 #endif
@@ -276,15 +278,40 @@ loop:
 		bucket = &sc->callwheel[sc->softticks & callwheelmask];
 
 		for (c = TAILQ_FIRST(bucket); c; c = sc->next) {
-			sc->next = TAILQ_NEXT(c, c_links.tqe);
-			if (c->c_time != sc->softticks)
+			if (c->c_time != sc->softticks) {
+				sc->next = TAILQ_NEXT(c, c_links.tqe);
 				continue;
+			}
+#ifdef SMP
+			if (c->c_flags & CALLOUT_MPSAFE) {
+				if (mpsafe == 0) {
+					mpsafe = 1;
+					rel_mplock();
+				}
+			} else {
+				/*
+				 * The request might be removed while we 
+				 * are waiting to get the MP lock.  If it
+				 * was removed sc->next will point to the
+				 * next valid request or NULL, loop up.
+				 */
+				if (mpsafe) {
+					mpsafe = 0;
+					sc->next = c;
+					get_mplock();
+					if (c != sc->next)
+						continue;
+				}
+			}
+#endif
+			sc->next = TAILQ_NEXT(c, c_links.tqe);
 			TAILQ_REMOVE(bucket, c, c_links.tqe);
+
 			c_func = c->c_func;
 			c_arg = c->c_arg;
-			c_flags = c->c_flags;
 			c->c_func = NULL;
 			KKASSERT(c->c_flags & CALLOUT_DID_INIT);
+
 			if (c->c_flags & CALLOUT_LOCAL_ALLOC) {
 				c->c_flags = CALLOUT_LOCAL_ALLOC |
 					     CALLOUT_DID_INIT;
@@ -294,19 +321,6 @@ loop:
 				c->c_flags &= ~CALLOUT_PENDING;
 			}
 			crit_exit();
-#ifdef SMP
-			if (c_flags & CALLOUT_MPSAFE) {
-				if (mpsafe == 0) {
-					mpsafe = 1;
-					rel_mplock();
-				}
-			} else {
-				if (mpsafe) {
-					mpsafe = 0;
-					get_mplock();
-				}
-			}
-#endif
 			c_func(c_arg);
 			crit_enter();
 			/* NOTE: list may have changed */
