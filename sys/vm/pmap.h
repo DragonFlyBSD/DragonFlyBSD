@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.9 2004/01/18 12:29:50 dillon Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.10 2004/04/01 17:58:08 dillon Exp $
  */
 
 /*
@@ -112,8 +112,6 @@ void		 pmap_growkernel (vm_offset_t);
 void		 pmap_init (vm_paddr_t, vm_paddr_t);
 boolean_t	 pmap_is_modified (vm_page_t m);
 boolean_t	 pmap_ts_referenced (vm_page_t m);
-void		 pmap_kenter (vm_offset_t va, vm_paddr_t pa);
-void		 pmap_kremove (vm_offset_t);
 vm_offset_t	 pmap_map (vm_offset_t, vm_paddr_t, vm_paddr_t, int);
 void		 pmap_object_init_pt (pmap_t pmap, vm_offset_t addr,
 		    vm_object_t object, vm_pindex_t pindex, vm_offset_t size,
@@ -130,6 +128,12 @@ void		 pmap_protect (pmap_t, vm_offset_t, vm_offset_t,
 		    vm_prot_t);
 void		 pmap_qenter (vm_offset_t, vm_page_t *, int);
 void		 pmap_qremove (vm_offset_t, int);
+void		 pmap_kenter (vm_offset_t, vm_paddr_t);
+void		 pmap_kenter_quick (vm_offset_t, vm_paddr_t);
+void		 pmap_kenter_sync (vm_offset_t);
+void		 pmap_kenter_sync_quick (vm_offset_t);
+void		 pmap_kremove (vm_offset_t);
+void		 pmap_kremove_quick (vm_offset_t);
 void		 pmap_reference (pmap_t);
 void		 pmap_release (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);

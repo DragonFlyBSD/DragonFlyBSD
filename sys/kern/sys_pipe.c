@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.16 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.17 2004/04/01 17:58:02 dillon Exp $
  */
 
 /*
@@ -180,7 +180,6 @@ static __inline void pipeunlock (struct pipe *cpipe);
 static __inline void pipeselwakeup (struct pipe *cpipe);
 #ifndef PIPE_NODIRECT
 static int pipe_build_write_buffer (struct pipe *wpipe, struct uio *uio);
-static void pipe_destroy_write_buffer (struct pipe *wpipe);
 static int pipe_direct_write (struct pipe *wpipe, struct uio *uio);
 static void pipe_clone_write_buffer (struct pipe *wpipe);
 #endif
@@ -435,20 +434,20 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 			nread += size;
 #ifndef PIPE_NODIRECT
 		/*
-		 * Direct copy, bypassing a kernel buffer.
+		 * Direct copy, bypassing a kernel buffer.  We cannot mess
+		 * with the direct-write buffer until PIPE_DIRECTIP is
+		 * cleared.  In order to prevent the pipe_write code from
+		 * racing itself in direct_write, we set DIRECTIP when we
+		 * clear DIRECTW after we have exhausted the buffer.
 		 */
-		} else if ((size = rpipe->pipe_map.cnt) &&
-			   (rpipe->pipe_state & PIPE_DIRECTW)) {
-			if (size > (u_int) uio->uio_resid)
-				size = (u_int) uio->uio_resid;
-			error = uiomove_fromphys(rpipe->pipe_map.ms,
-					rpipe->pipe_map.pos, size, uio);
+		} else if (rpipe->pipe_map.xio_bytes &&
+			   (rpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == PIPE_DIRECTW) {
+			error = xio_uio_copy(&rpipe->pipe_map, uio, &size);
 			if (error)
 				break;
 			nread += size;
-			rpipe->pipe_map.pos += size;
-			rpipe->pipe_map.cnt -= size;
-			if (rpipe->pipe_map.cnt == 0) {
+			if (rpipe->pipe_map.xio_bytes == 0) {
+				rpipe->pipe_state |= PIPE_DIRECTIP;
 				rpipe->pipe_state &= ~PIPE_DIRECTW;
 				wakeup(rpipe);
 			}
@@ -538,41 +537,19 @@ pipe_build_write_buffer(wpipe, uio)
 	struct pipe *wpipe;
 	struct uio *uio;
 {
+	int error;
 	u_int size;
-	int i;
-	vm_offset_t addr, endaddr;
-	vm_paddr_t paddr;
 
 	size = (u_int) uio->uio_iov->iov_len;
 	if (size > wpipe->pipe_buffer.size)
 		size = wpipe->pipe_buffer.size;
+	if (size > XIO_INTERNAL_SIZE)
+		size = XIO_INTERNAL_SIZE;
 
-	endaddr = round_page((vm_offset_t)uio->uio_iov->iov_base + size);
-	addr = trunc_page((vm_offset_t)uio->uio_iov->iov_base);
-	for (i = 0; addr < endaddr; addr += PAGE_SIZE, i++) {
-		vm_page_t m;
-
-		if (vm_fault_quick((caddr_t)addr, VM_PROT_READ) < 0 ||
-		    (paddr = pmap_kextract(addr)) == 0) {
-			int j;
-
-			for (j = 0; j < i; j++)
-				vm_page_unhold(wpipe->pipe_map.ms[j]);
-			return (EFAULT);
-		}
-
-		m = PHYS_TO_VM_PAGE(paddr);
-		vm_page_hold(m);
-		wpipe->pipe_map.ms[i] = m;
-	}
-
-	/*
-	 * set up the control block
-	 */
-	wpipe->pipe_map.npages = i;
-	wpipe->pipe_map.pos =
-	    ((vm_offset_t) uio->uio_iov->iov_base) & PAGE_MASK;
-	wpipe->pipe_map.cnt = size;
+	error = xio_init_ubuf(&wpipe->pipe_map, uio->uio_iov->iov_base, 
+				size, XIOF_READ);
+	if (error)
+		return(error);
 
 	/*
 	 * and update the uio data
@@ -587,22 +564,6 @@ pipe_build_write_buffer(wpipe, uio)
 }
 
 /*
- * unmap and unwire the process buffer
- */
-static void
-pipe_destroy_write_buffer(wpipe)
-	struct pipe *wpipe;
-{
-	int i;
-
-	for (i = 0; i < wpipe->pipe_map.npages; i++) {
-		vm_page_unhold(wpipe->pipe_map.ms[i]);
-		wpipe->pipe_map.ms[i] = NULL;	/* sanity */
-	}
-	wpipe->pipe_map.npages = 0;
-}
-
-/*
  * In the case of a signal, the writing process might go away.  This
  * code copies the data into the circular buffer so that the source
  * pages can be freed without loss of data.
@@ -611,31 +572,17 @@ static void
 pipe_clone_write_buffer(wpipe)
 	struct pipe *wpipe;
 {
-	struct uio uio;
-	struct iovec iov;
 	int size;
-	int pos;
 
-	size = wpipe->pipe_map.cnt;
-	pos = wpipe->pipe_map.pos;
+	size = wpipe->pipe_map.xio_bytes;
 
 	wpipe->pipe_buffer.in = size;
 	wpipe->pipe_buffer.out = 0;
 	wpipe->pipe_buffer.cnt = size;
-	wpipe->pipe_state &= ~PIPE_DIRECTW;
+	wpipe->pipe_state &= ~(PIPE_DIRECTW | PIPE_DIRECTIP);
 
-	iov.iov_base = wpipe->pipe_buffer.buffer;
-	iov.iov_len = size;
-	uio.uio_iov = &iov;
-	uio.uio_iovcnt = 1;
-	uio.uio_offset = 0;
-	uio.uio_resid = size;
-	uio.uio_segflg = UIO_SYSSPACE;
-	uio.uio_rw = UIO_READ;
-	uio.uio_td = curthread;
-	uiomove_fromphys(wpipe->pipe_map.ms, pos, size, &uio);
-
-	pipe_destroy_write_buffer(wpipe);
+	xio_copy_xtok(&wpipe->pipe_map, wpipe->pipe_buffer.buffer, size);
+	xio_release(&wpipe->pipe_map);
 }
 
 /*
@@ -653,7 +600,7 @@ pipe_direct_write(wpipe, uio)
 	int error;
 
 retry:
-	while (wpipe->pipe_state & PIPE_DIRECTW) {
+	while (wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) {
 		if (wpipe->pipe_state & PIPE_WANTR) {
 			wpipe->pipe_state &= ~PIPE_WANTR;
 			wakeup(wpipe);
@@ -661,13 +608,13 @@ retry:
 		wpipe->pipe_state |= PIPE_WANTW;
 		error = tsleep(wpipe, PCATCH, "pipdww", 0);
 		if (error)
-			goto error1;
+			goto error2;
 		if (wpipe->pipe_state & PIPE_EOF) {
 			error = EPIPE;
-			goto error1;
+			goto error2;
 		}
 	}
-	wpipe->pipe_map.cnt = 0;	/* transfer not ready yet */
+	KKASSERT(wpipe->pipe_map.xio_bytes == 0);
 	if (wpipe->pipe_buffer.cnt > 0) {
 		if (wpipe->pipe_state & PIPE_WANTR) {
 			wpipe->pipe_state &= ~PIPE_WANTR;
@@ -677,10 +624,10 @@ retry:
 		wpipe->pipe_state |= PIPE_WANTW;
 		error = tsleep(wpipe, PCATCH, "pipdwc", 0);
 		if (error)
-			goto error1;
+			goto error2;
 		if (wpipe->pipe_state & PIPE_EOF) {
 			error = EPIPE;
-			goto error1;
+			goto error2;
 		}
 		goto retry;
 	}
@@ -688,12 +635,11 @@ retry:
 	/*
 	 * Build our direct-write buffer
 	 */
-	wpipe->pipe_state |= PIPE_DIRECTW;
+	wpipe->pipe_state |= PIPE_DIRECTW | PIPE_DIRECTIP;
 	error = pipe_build_write_buffer(wpipe, uio);
-	if (error) {
-		wpipe->pipe_state &= ~PIPE_DIRECTW;
+	if (error)
 		goto error1;
-	}
+	wpipe->pipe_state &= ~PIPE_DIRECTIP;
 
 	/*
 	 * Wait until the receiver has snarfed the data.  Since we are likely
@@ -704,7 +650,7 @@ retry:
 	while (!error && (wpipe->pipe_state & PIPE_DIRECTW)) {
 		if (wpipe->pipe_state & PIPE_EOF) {
 			pipelock(wpipe, 0);
-			pipe_destroy_write_buffer(wpipe);
+			xio_release(&wpipe->pipe_map);
 			pipeunlock(wpipe);
 			pipeselwakeup(wpipe);
 			error = EPIPE;
@@ -717,7 +663,6 @@ retry:
 		pipeselwakeup(wpipe);
 		error = tsleep(wpipe, PCATCH|PNORESCHED, "pipdwt", 0);
 	}
-
 	pipelock(wpipe,0);
 	if (wpipe->pipe_state & PIPE_DIRECTW) {
 		/*
@@ -725,13 +670,26 @@ retry:
 		 * the process that might be going away.
 		 */
 		pipe_clone_write_buffer(wpipe);
+		KKASSERT((wpipe->pipe_state & PIPE_DIRECTIP) == 0);
 	} else {
-		pipe_destroy_write_buffer(wpipe);
+		KKASSERT(wpipe->pipe_state & PIPE_DIRECTIP);
+		xio_release(&wpipe->pipe_map);
+		wpipe->pipe_state &= ~PIPE_DIRECTIP;
 	}
 	pipeunlock(wpipe);
 	return (error);
 
+	/*
+	 * Direct-write error, clear the direct write flags.
+	 */
 error1:
+	wpipe->pipe_state &= ~(PIPE_DIRECTW | PIPE_DIRECTIP);
+	/* fallthrough */
+
+	/*
+	 * General error, wakeup the other side if it happens to be sleeping.
+	 */
+error2:
 	wakeup(wpipe);
 	return (error);
 }
@@ -762,7 +720,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 	 */
 	if ((uio->uio_resid > PIPE_SIZE) &&
 		(pipe_nbig < pipe_maxbig) &&
-		(wpipe->pipe_state & PIPE_DIRECTW) == 0 &&
+		(wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) == 0 &&
 		(wpipe->pipe_buffer.size <= PIPE_SIZE) &&
 		(wpipe->pipe_buffer.cnt == 0)) {
 
@@ -821,7 +779,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 		 * reader goes away.
 		 */
 	retrywrite:
-		while (wpipe->pipe_state & PIPE_DIRECTW) {
+		while (wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) {
 			if (wpipe->pipe_state & PIPE_WANTR) {
 				wpipe->pipe_state &= ~PIPE_WANTR;
 				wakeup(wpipe);
@@ -857,7 +815,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 				 * It is possible for a direct write to
 				 * slip in on us... handle it here...
 				 */
-				if (wpipe->pipe_state & PIPE_DIRECTW) {
+				if (wpipe->pipe_state & (PIPE_DIRECTW|PIPE_DIRECTIP)) {
 					pipeunlock(wpipe);
 					goto retrywrite;
 				}
@@ -1031,10 +989,11 @@ pipe_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 		return (0);
 
 	case FIONREAD:
-		if (mpipe->pipe_state & PIPE_DIRECTW)
-			*(int *)data = mpipe->pipe_map.cnt;
-		else
+		if (mpipe->pipe_state & PIPE_DIRECTW) {
+			*(int *)data = mpipe->pipe_map.xio_bytes;
+		} else {
 			*(int *)data = mpipe->pipe_buffer.cnt;
+		}
 		return (0);
 
 	case FIOSETOWN:
@@ -1144,9 +1103,9 @@ pipe_free_kmem(struct pipe *cpipe)
 		cpipe->pipe_buffer.object = NULL;
 	}
 #ifndef PIPE_NODIRECT
-	cpipe->pipe_map.cnt = 0;
-	cpipe->pipe_map.pos = 0;
-	cpipe->pipe_map.npages = 0;
+	KKASSERT(cpipe->pipe_map.xio_bytes == 0 &&
+		cpipe->pipe_map.xio_offset == 0 &&
+		cpipe->pipe_map.xio_npages == 0);
 #endif
 }
 
@@ -1196,12 +1155,11 @@ pipeclose(struct pipe *cpipe)
 		pipe_free_kmem(cpipe);
 		free(cpipe, M_PIPE);
 	} else {
-		KKASSERT(cpipe->pipe_map.npages == 0);
-
+		KKASSERT(cpipe->pipe_map.xio_npages == 0 &&
+			cpipe->pipe_map.xio_bytes == 0 &&
+			cpipe->pipe_map.xio_offset == 0);
 		cpipe->pipe_state = 0;
 		cpipe->pipe_busy = 0;
-		cpipe->pipe_map.cnt = 0;
-		cpipe->pipe_map.pos = 0;
 		cpipe->pipe_peer = gd->gd_pipeq;
 		gd->gd_pipeq = cpipe;
 		++gd->gd_pipeqcount;
@@ -1251,7 +1209,7 @@ filt_piperead(struct knote *kn, long hint)
 
 	kn->kn_data = rpipe->pipe_buffer.cnt;
 	if ((kn->kn_data == 0) && (rpipe->pipe_state & PIPE_DIRECTW))
-		kn->kn_data = rpipe->pipe_map.cnt;
+		kn->kn_data = rpipe->pipe_map.xio_bytes;
 
 	if ((rpipe->pipe_state & PIPE_EOF) ||
 	    (wpipe == NULL) || (wpipe->pipe_state & PIPE_EOF)) {

@@ -22,7 +22,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.2 2004/03/29 15:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sfbuf.c,v 1.3 2004/04/01 17:58:02 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,11 +32,15 @@
 #include <sys/malloc.h>
 #include <sys/queue.h>
 #include <sys/sfbuf.h>
+#include <sys/globaldata.h>
+#include <sys/thread.h>
+#include <sys/sysctl.h>
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_page.h>
 #include <vm/pmap.h>
+#include <sys/thread2.h>
 
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
@@ -57,6 +61,9 @@ static u_int sf_buf_alloc_want;
 static vm_offset_t sf_base;
 static struct sf_buf *sf_bufs;
 
+static int sfbuf_quick = 1;
+SYSCTL_INT(_debug, OID_AUTO, sfbuf_quick, CTLFLAG_RW, &sfbuf_quick, 0, "");
+
 /*
  * Allocate a pool of sf_bufs (sendfile(2) or "super-fast" if you prefer. :-))
  */
@@ -72,6 +79,7 @@ sf_buf_init(void *arg)
 	    M_NOWAIT | M_ZERO);
 	for (i = 0; i < nsfbufs; i++) {
 		sf_bufs[i].kva = sf_base + i * PAGE_SIZE;
+		sf_bufs[i].flags |= SFBA_ONFREEQ;
 		TAILQ_INSERT_TAIL(&sf_buf_freelist, &sf_bufs[i], free_entry);
 	}
 }
@@ -80,48 +88,95 @@ sf_buf_init(void *arg)
  * Get an sf_buf from the freelist. Will block if none are available.
  */
 struct sf_buf *
-sf_buf_alloc(struct vm_page *m)
+sf_buf_alloc(struct vm_page *m, int flags)
 {
 	struct sf_buf_list *hash_chain;
 	struct sf_buf *sf;
-	int s;
+	globaldata_t gd;
 	int error;
+	int pflags;
 
-	s = splimp();
+	gd = mycpu;
+	crit_enter();
 	hash_chain = &sf_buf_hashtable[SF_BUF_HASH(m)];
 	LIST_FOREACH(sf, hash_chain, list_entry) {
 		if (sf->m == m) {
-			if (sf->refcnt == 0) {
-				/* reclaim cached entry off freelist */
-				TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
-			}
+			/*
+			 * cache hit
+			 *
+			 * We must invalidate the TLB entry based on whether
+			 * it need only be valid on the local cpu (SFBA_QUICK),
+			 * or on all cpus.  This is conditionalized and in
+			 * most cases no system-wide invalidation should be
+			 * needed.
+			 *
+			 * Note: we do not remove the entry from the freelist
+			 * on the 0->1 transition. 
+			 */
 			++sf->refcnt;
+			if ((flags & SFBA_QUICK) && sfbuf_quick) {
+				if ((sf->cpumask & gd->gd_cpumask) == 0) {
+					pmap_kenter_sync_quick(sf->kva);
+					sf->cpumask |= gd->gd_cpumask;
+				}
+			} else {
+				if (sf->cpumask != (cpumask_t)-1) {
+					pmap_kenter_sync(sf->kva);
+					sf->cpumask = (cpumask_t)-1;
+				}
+			}
 			goto done;	/* found existing mapping */
 		}
 	}
 
 	/*
-	 * Didn't find old mapping.  Get a buffer off the freelist.
+	 * Didn't find old mapping.  Get a buffer off the freelist.  We
+	 * may have to remove and skip buffers with non-zero ref counts 
+	 * that were lazily allocated.
 	 */
-	while ((sf = TAILQ_FIRST(&sf_buf_freelist)) == NULL) {
-		++sf_buf_alloc_want;
-		error = tsleep(&sf_buf_freelist, PCATCH, "sfbufa", 0);
-		--sf_buf_alloc_want;
-
-		/* If we got a signal, don't risk going back to sleep. */
-		if (error)
-			goto done;
+	for (;;) {
+		if ((sf = TAILQ_FIRST(&sf_buf_freelist)) == NULL) {
+			pflags = (flags & SFBA_PCATCH) ? PCATCH : 0;
+			++sf_buf_alloc_want;
+			error = tsleep(&sf_buf_freelist, pflags, "sfbufa", 0);
+			--sf_buf_alloc_want;
+			if (error)
+				goto done;
+		} else {
+			/*
+			 * We may have to do delayed removals for referenced
+			 * sf_buf's here in addition to locating a sf_buf
+			 * to reuse.  The sf_bufs must be removed.
+			 *
+			 * We are finished when we find an sf_buf with a
+			 * refcnt of 0.  We theoretically do not have to
+			 * remove it from the freelist but it's a good idea
+			 * to do so to preserve LRU operation for the
+			 * (1) never before seen before case and (2) 
+			 * accidently recycled due to prior cached uses not
+			 * removing the buffer case.
+			 */
+			KKASSERT(sf->flags & SFBA_ONFREEQ);
+			TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
+			sf->flags &= ~SFBA_ONFREEQ;
+			if (sf->refcnt == 0)
+				break;
+		}
 	}
-	TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
-
 	if (sf->m != NULL)	/* remove previous mapping from hash table */
 		LIST_REMOVE(sf, list_entry);
 	LIST_INSERT_HEAD(hash_chain, sf, list_entry);
 	sf->refcnt = 1;
 	sf->m = m;
-	pmap_qenter(sf->kva, &sf->m, 1);
+	if ((flags & SFBA_QUICK) && sfbuf_quick) {
+		pmap_kenter_quick(sf->kva, sf->m->phys_addr);
+		sf->cpumask = gd->gd_cpumask;
+	} else {
+		pmap_kenter(sf->kva, sf->m->phys_addr);
+		sf->cpumask = (cpumask_t)-1;
+	}
 done:
-	splx(s);
+	crit_exit();
 	return (sf);
 }
 
@@ -143,7 +198,9 @@ sf_buf_ref(struct sf_buf *sf)
 
 /*
  * Lose a reference to an sf_buf. When none left, detach mapped page
- * and release resources back to the system.
+ * and release resources back to the system.  Note that the sfbuf's
+ * removal from the freelist is delayed, so it may in fact already be
+ * on the free list.  This is the optimal (and most likely) scenario.
  *
  * Must be called at splimp.
  */
@@ -153,9 +210,10 @@ sf_buf_free(struct sf_buf *sf)
 	if (sf->refcnt == 0)
 		panic("sf_buf_free: freeing free sf_buf");
 	sf->refcnt--;
-	if (sf->refcnt == 0) {
+	if (sf->refcnt == 0 && (sf->flags & SFBA_ONFREEQ) == 0) {
 		KKASSERT(sf->aux1 == 0 && sf->aux2 == 0);
 		TAILQ_INSERT_TAIL(&sf_buf_freelist, sf, free_entry);
+		sf->flags |= SFBA_ONFREEQ;
 		if (sf_buf_alloc_want > 0)
 			wakeup_one(&sf_buf_freelist);
 	}

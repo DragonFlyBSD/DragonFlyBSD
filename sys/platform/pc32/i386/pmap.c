@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.32 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.33 2004/04/01 17:58:00 dillon Exp $
  */
 
 /*
@@ -689,7 +689,7 @@ pmap_extract_vmpage(pmap_t pmap, vm_offset_t va, int prot)
  * note that in order for the mapping to take effect -- you
  * should do a invltlb after doing the pmap_kenter...
  */
-PMAP_INLINE void 
+void 
 pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 {
 	unsigned *pte;
@@ -704,10 +704,38 @@ pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 	pmap_inval_flush(&info);
 }
 
+void
+pmap_kenter_quick(vm_offset_t va, vm_paddr_t pa)
+{
+	unsigned *pte;
+	unsigned npte;
+
+	npte = pa | PG_RW | PG_V | pgeflag;
+	pte = (unsigned *)vtopte(va);
+	*pte = npte;
+	cpu_invlpg((void *)va);
+}
+
+void
+pmap_kenter_sync(vm_offset_t va)
+{
+	pmap_inval_info info;
+
+	pmap_inval_init(&info);
+	pmap_inval_add(&info, kernel_pmap, va);
+	pmap_inval_flush(&info);
+}
+
+void
+pmap_kenter_sync_quick(vm_offset_t va)
+{
+	cpu_invlpg((void *)va);
+}
+
 /*
  * remove a page from the kernel pagetables
  */
-PMAP_INLINE void
+void
 pmap_kremove(vm_offset_t va)
 {
 	unsigned *pte;
@@ -718,6 +746,15 @@ pmap_kremove(vm_offset_t va)
 	pte = (unsigned *)vtopte(va);
 	*pte = 0;
 	pmap_inval_flush(&info);
+}
+
+void
+pmap_kremove_quick(vm_offset_t va)
+{
+	unsigned *pte;
+	pte = (unsigned *)vtopte(va);
+	*pte = 0;
+	cpu_invlpg((void *)va);
 }
 
 /*
@@ -870,7 +907,7 @@ pmap_swapout_proc(struct proc *p)
 			panic("pmap_swapout_proc: upage already missing???");
 		vm_page_dirty(m);
 		vm_page_unwire(m, 0);
-		pmap_kremove( (vm_offset_t) p->p_addr + PAGE_SIZE * i);
+		pmap_kremove((vm_offset_t)p->p_addr + (PAGE_SIZE * i));
 	}
 #endif
 }
@@ -891,7 +928,7 @@ pmap_swapin_proc(struct proc *p)
 
 		m = vm_page_grab(upobj, i, VM_ALLOC_NORMAL | VM_ALLOC_RETRY);
 
-		pmap_kenter(((vm_offset_t) p->p_addr) + i * PAGE_SIZE,
+		pmap_kenter((vm_offset_t)p->p_addr + (i * PAGE_SIZE),
 			VM_PAGE_TO_PHYS(m));
 
 		if (m->valid != VM_PAGE_BITS_ALL) {
@@ -1001,7 +1038,7 @@ pmap_pinit0(struct pmap *pmap)
 {
 	pmap->pm_pdir =
 		(pd_entry_t *)kmem_alloc_pageable(kernel_map, PAGE_SIZE);
-	pmap_kenter((vm_offset_t) pmap->pm_pdir, (vm_offset_t) IdlePTD);
+	pmap_kenter((vm_offset_t)pmap->pm_pdir, (vm_offset_t) IdlePTD);
 	pmap->pm_count = 1;
 	pmap->pm_active = 0;
 	pmap->pm_ptphint = NULL;
@@ -1046,7 +1083,7 @@ pmap_pinit(struct pmap *pmap)
 	vm_page_flag_clear(ptdpg, PG_MAPPED | PG_BUSY); /* not usually mapped*/
 	ptdpg->valid = VM_PAGE_BITS_ALL;
 
-	pmap_kenter((vm_offset_t) pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
+	pmap_kenter((vm_offset_t)pmap->pm_pdir, VM_PAGE_TO_PHYS(ptdpg));
 	if ((ptdpg->flags & PG_ZERO) == 0)
 		bzero(pmap->pm_pdir, PAGE_SIZE);
 
@@ -1107,7 +1144,7 @@ pmap_release_free_page(struct pmap *pmap, vm_page_t p)
 		bzero(pde + KPTDI, nkpt * PTESIZE);
 		pde[MPPTDI] = 0;
 		pde[APTDPTDI] = 0;
-		pmap_kremove((vm_offset_t) pmap->pm_pdir);
+		pmap_kremove((vm_offset_t)pmap->pm_pdir);
 	}
 
 	if (pmap->pm_ptphint && (pmap->pm_ptphint->pindex == p->pindex))

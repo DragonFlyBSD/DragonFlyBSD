@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.29 2004/03/29 15:46:18 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.30 2004/04/01 17:58:02 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1557,7 +1557,7 @@ retry_lookup:
 		 * Get a sendfile buf. We usually wait as long as necessary,
 		 * but this wait can be interrupted.
 		 */
-		if ((sf = sf_buf_alloc(pg)) == NULL) {
+		if ((sf = sf_buf_alloc(pg, SFBA_PCATCH)) == NULL) {
 			s = splvm();
 			vm_page_unwire(pg, 0);
 			if (pg->wire_count == 0 && pg->object == NULL)

@@ -19,7 +19,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/sys/pipe.h,v 1.16 1999/12/29 04:24:45 peter Exp $
- * $DragonFly: src/sys/sys/pipe.h,v 1.4 2004/03/28 08:25:46 dillon Exp $
+ * $DragonFly: src/sys/sys/pipe.h,v 1.5 2004/04/01 17:58:06 dillon Exp $
  */
 
 #ifndef _SYS_PIPE_H_
@@ -28,8 +28,11 @@
 #ifndef _KERNEL
 #include <sys/time.h>			/* for struct timespec */
 #include <sys/select.h>			/* for struct selinfo */
-#include <vm/vm.h>			/* for vm_page_t */
 #include <machine/param.h>		/* for PAGE_SIZE */
+#endif
+
+#if !defined(_SYS_XIO_H_)
+#include <sys/xio.h>			/* for struct xio */
 #endif
 
 /*
@@ -51,8 +54,6 @@
 #define PIPE_MINDIRECT	8192
 #endif
 
-#define PIPENPAGES	(BIG_PIPE_SIZE / PAGE_SIZE + 1)
-
 /*
  * Pipe buffer information.
  * Separate in, out, cnt are used to simplify calculations.
@@ -68,28 +69,19 @@ struct pipebuf {
 };
 
 /*
- * Information to support direct transfers between processes for pipes.
- */
-struct pipemapping {
-	vm_size_t	cnt;		/* number of chars in buffer */
-	vm_size_t	pos;		/* current position of transfer */
-	int		npages;		/* number of pages */
-	vm_page_t	ms[PIPENPAGES];	/* pages in source process */
-};
-
-/*
  * Bits in pipe_state.
  */
-#define PIPE_ASYNC	0x004	/* Async? I/O. */
-#define PIPE_WANTR	0x008	/* Reader wants some characters. */
-#define PIPE_WANTW	0x010	/* Writer wants space to put characters. */
-#define PIPE_WANT	0x020	/* Pipe is wanted to be run-down. */
-#define PIPE_SEL	0x040	/* Pipe has a select active. */
-#define PIPE_EOF	0x080	/* Pipe is in EOF condition. */
-#define PIPE_LOCK	0x100	/* Process has exclusive access to pointers/data. */
-#define PIPE_LWANT	0x200	/* Process wants exclusive access to pointers/data. */
-#define PIPE_DIRECTW	0x400	/* Pipe direct write active. */
-#define PIPE_DIRECTOK	0x800	/* Direct mode ok. */
+#define PIPE_ASYNC	0x0004	/* Async? I/O. */
+#define PIPE_WANTR	0x0008	/* Reader wants some characters. */
+#define PIPE_WANTW	0x0010	/* Writer wants space to put characters. */
+#define PIPE_WANT	0x0020	/* Pipe is wanted to be run-down. */
+#define PIPE_SEL	0x0040	/* Pipe has a select active. */
+#define PIPE_EOF	0x0080	/* Pipe is in EOF condition. */
+#define PIPE_LOCK	0x0100	/* Process has exclusive access to pointers/data. */
+#define PIPE_LWANT	0x0200	/* Process wants exclusive access to pointers/data. */
+#define PIPE_DIRECTW	0x0400	/* Pipe direct write active. */
+#define PIPE_DIRECTOK	0x0800	/* Direct mode ok. */
+#define PIPE_DIRECTIP	0x1000	/* Direct write buffer build in progress */
 
 /*
  * Per-pipe data structure.
@@ -97,7 +89,7 @@ struct pipemapping {
  */
 struct pipe {
 	struct	pipebuf pipe_buffer;	/* data storage */
-	struct	pipemapping pipe_map;	/* pipe mapping for direct I/O */
+	struct  xio pipe_map;		/* mapping for direct I/O */
 	struct	selinfo pipe_sel;	/* for compat with select */
 	struct	timespec pipe_atime;	/* time of last access */
 	struct	timespec pipe_mtime;	/* time of last modify */
