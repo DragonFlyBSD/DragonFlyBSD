@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.44 2005/02/28 12:00:10 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.45 2005/03/02 19:39:51 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -294,7 +294,6 @@ static sig_atomic_t interrupted;
 #define	W_SETEXITSTATUS(st, val) W_SETMASKED(st, val, WEXITSTATUS)
 
 
-static int JobCondPassSig(void *, void *);
 static void JobPassSig(int);
 static int JobPrintCommand(void *, void *);
 static int JobSaveCommand(void *, void *);
@@ -326,26 +325,26 @@ JobCatchSig(int signo)
 /*-
  *-----------------------------------------------------------------------
  * JobCondPassSig --
- *	Pass a signal to a job if USE_PGRP is defined.
- *
- * Results:
- *	=== 0
+ *	Pass a signal to all jobs
  *
  * Side Effects:
  *	None, except the job may bite it.
  *
  *-----------------------------------------------------------------------
  */
-static int
-JobCondPassSig(void *jobp, void *signop)
+static void
+JobCondPassSig(int signo)
 {
-    Job	*job = jobp;
-    int	signo = *(int *)signop;
+	LstNode	*ln;
+	Job	*job;
 
-    DEBUGF(JOB, ("JobCondPassSig passing signal %d to child %d.\n",
-	signo, job->pid));
-    KILL(job->pid, signo);
-    return (0);
+	LST_FOREACH(ln, &jobs) {
+		job = Lst_Datum(ln);
+
+		DEBUGF(JOB, ("JobCondPassSig passing signal %d to child %d.\n",
+		    signo, job->pid));
+		KILL(job->pid, signo);
+	}
 }
 
 /*-
@@ -373,7 +372,7 @@ JobPassSig(int signo)
     sigprocmask(SIG_SETMASK, &nmask, &omask);
 
     DEBUGF(JOB, ("JobPassSig(%d) called.\n", signo));
-    Lst_ForEach(&jobs, JobCondPassSig, &signo);
+    JobCondPassSig(signo);
 
     /*
      * Deal with proper cleanup based on the signal received. We only run
@@ -412,7 +411,7 @@ JobPassSig(int signo)
     KILL(getpid(), signo);
 
     signo = SIGCONT;
-    Lst_ForEach(&jobs, JobCondPassSig, &signo);
+    JobCondPassSig(signo);
 
     sigprocmask(SIG_SETMASK, &omask, NULL);
     sigprocmask(SIG_SETMASK, &omask, NULL);
@@ -455,7 +454,7 @@ JobCmpPid(const void *job, const void *pid)
  *	made and return non-zero to signal that the end of the commands
  *	was reached. These commands are later attached to the postCommands
  *	node and executed by Job_Finish when all things are done.
- *	This function is called from JobStart via Lst_ForEach.
+ *	This function is called from JobStart via LST_FOREACH.
  *
  * Results:
  *	Always 0, unless the command was "..."
@@ -1401,6 +1400,7 @@ JobStart(GNode *gn, int flags, Job *previous)
     Boolean	  cmdsOK;     /* true if the nodes commands were all right */
     Boolean 	  noExec;     /* Set true if we decide not to run the job */
     int		  tfd;	      /* File descriptor for temp file */
+    LstNode	  *ln;
 
     if (interrupted) {
         JobPassSig(interrupted);
@@ -1513,7 +1513,10 @@ JobStart(GNode *gn, int flags, Job *previous)
 	     * We can do all the commands at once. hooray for sanity
 	     */
 	    numCommands = 0;
-	    Lst_ForEach(&gn->commands, JobPrintCommand, job);
+	    LST_FOREACH(ln, &gn->commands) {
+		if (JobPrintCommand(Lst_Datum(ln), job))
+		    break;
+	    }
 
 	    /*
 	     * If we didn't print out any commands to the shell script,
@@ -1539,7 +1542,10 @@ JobStart(GNode *gn, int flags, Job *previous)
 	 * doesn't do any harm in this case and may do some good.
 	 */
 	if (cmdsOK) {
-	    Lst_ForEach(&gn->commands, JobPrintCommand, job);
+	    LST_FOREACH(ln, &gn->commands) {
+		if (JobPrintCommand(Lst_Datum(ln), job))
+		    break;
+	    }
 	}
 	/*
 	 * Don't execute the shell, thank you.
