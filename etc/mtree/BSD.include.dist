@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.include.dist,v 1.32.2.14 2003/01/24 09:47:07 roam Exp $
-# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.7 2004/01/28 16:41:16 joerg Exp $
+# $DragonFly: src/etc/mtree/BSD.include.dist,v 1.8 2004/02/26 13:06:19 joerg Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -203,8 +203,6 @@
     objc
     ..
     openssl
-    ..
-    pccard
     ..
     protocols
     ..
