@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.2 2004/06/20 20:54:09 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.3 2004/06/21 00:03:41 joerg Exp $
 
 .include "../Makefile.inc"
 .include "${STOPDIR}/cc_tools/Makefile.tools"
@@ -47,6 +47,6 @@ depend: cc_prep
 .ORDER: cc_prep ${SRCS}
 
 cc_prep: .PHONY
-	cd ${STOPDIR}/cc_prep; make depend
+	cd ${STOPDIR}/cc_prep; ${MAKE} depend
 
 .include <bsd.lib.mk>
