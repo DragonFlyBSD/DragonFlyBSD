@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/rain/rain_saver.c,v 1.5.2.1 2000/05/10 16:26:47 obrien Exp $
- * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.2 2003/06/17 04:28:47 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/rain/rain_saver.c,v 1.3 2003/08/03 11:39:57 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +46,11 @@ static u_char *vid;
 
 #define SCRW 320
 #define SCRH 200
+#ifdef MAX
+#undef MAX
+#else
 #define MAX 63
+#endif
 
 static u_char rain_pal[768];
 static int blanked;
