@@ -34,7 +34,7 @@
  *
  * @(#)getopt.c	8.3 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/stdlib/getopt.c,v 1.2.2.2 2001/08/26 03:36:04 jkoshy Exp $
- * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.5 2005/03/29 20:05:02 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/getopt.c,v 1.6 2005/03/31 16:01:15 joerg Exp $
  */
 
 #include <stdio.h>
@@ -43,7 +43,7 @@
 #include <unistd.h>
 
 int	opterr = 1,		/* if error message should be printed */
-	optind,			/* index into parent argv vector */
+	optind = 1,		/* index into parent argv vector */
 	optopt,			/* character checked for validity */
 	optreset;		/* reset getopt */
 char	*optarg;		/* argument associated with option */
