@@ -1,7 +1,7 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/lib/libbind/Makefile,v 1.6 2004/06/27 08:43:54 dillon Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.7 2004/09/20 15:32:59 asmodai Exp $
 
-BIND_DIR=${.CURDIR}/../../contrib/bind-9.2.4rc4
+BIND_DIR=${.CURDIR}/../../contrib/bind-9.2.4rc7
 
 # note: lib/bind/include/isc/list.h must come before lib/isc/include/isc/list.h
 #

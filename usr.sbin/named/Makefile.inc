@@ -1,11 +1,11 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.5 2004/06/26 16:09:38 dillon Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.6 2004/09/20 15:33:00 asmodai Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
 
-BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.2.4rc4
+BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.2.4rc7
 
 VER=		9.2.4rc4
 
