@@ -2,7 +2,7 @@
  * Copyright (c) 2003 Jeffrey Hsu
  * All rights reserved.
  *
- * $DragonFly: src/sys/netinet/ip_demux.c,v 1.9 2004/03/22 06:38:17 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_demux.c,v 1.10 2004/03/23 22:30:49 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -71,9 +71,6 @@ ip_mport(struct mbuf *m)
 	int thoff;				/* TCP data offset */
 	lwkt_port_t port;
 	int cpu;
-
-	if (ip_mthread_enable == 0)
-		return (&netisr_cpu[0].td_msgport);
 
 	if (m->m_pkthdr.len < sizeof(struct ip)) {
 		ipstat.ips_tooshort++;
@@ -148,6 +145,9 @@ ip_mport(struct mbuf *m)
 		break;
 	}
 	KKASSERT(port->mp_putport != NULL);
+
+	if (ip_mthread_enable == 0)
+		return (&netisr_cpu[0].td_msgport);
 
 	return (port);
 }
