@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.50 2004/07/16 18:15:51 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.51 2004/07/19 19:19:19 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -328,15 +328,21 @@ this section.</TD>
 </TR>
 
 <TR>
-<TD><B>Crescent Anchor.</B>
+<TD><B>Crescent Anchor</B><br>
 Crescent Anchor will be providing DragonFly 1.0A on CD-ROM for a
 nominal fee.  Part of your purchase from Crescent Anchor will be contributed
 back to support continuing DragonFly development via the forthcoming 
-nonprofit
-company.  Please visit the Crescent Anchor site for details, pricing, 
-and other
-offers</TD>
+nonprofit company.  Please visit the Crescent Anchor site for details, 
+pricing, and other offers.  </TD>
 <TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A>
+</TR>
+
+<TR>
+<TD><B>Linux Bazar</B><br>
+Linux Bazar is a low-cost supplier of software CDs.  Shipping is only to 
+addresses within India.
+</TD>
+<TD><A HREF="http://www.LinuxBazar.com/">http://www.LinuxBazar.com/</A>
 </TR>
 
 </TABLE>
