@@ -32,10 +32,10 @@
  *
  * @(#)utility.c	8.4 (Berkeley) 5/30/95
  * $FreeBSD: src/libexec/telnetd/utility.c,v 1.13.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/utility.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/telnetd/utility.c,v 1.3 2004/02/13 03:49:50 dillon Exp $
  */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include <locale.h>
 #include <sys/utsname.h>
 #endif
@@ -365,7 +365,7 @@ putchr(int cc)
 	*putlocation++ = cc;
 }
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static char fmtstr[] = { "%+" };
 #else
 static char fmtstr[] = { "%l:%M%P on %A, %d %B %Y" };
@@ -377,7 +377,7 @@ putf(char *cp, char *where)
 	char *slash;
 	time_t t;
 	char db[100];
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	static struct utsname kerninfo;
 
 	if (!*kerninfo.sysname)
@@ -415,7 +415,7 @@ putf(char *cp, char *where)
 			break;
 
 		case 'd':
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			setlocale(LC_TIME, "");
 #endif
 			(void)time(&t);
@@ -423,7 +423,7 @@ putf(char *cp, char *where)
 			putstr(db);
 			break;
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		case 's':
 			putstr(kerninfo.sysname);
 			break;

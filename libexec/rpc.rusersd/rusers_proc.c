@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rpc.rusersd/rusers_proc.c,v 1.10 1999/08/28 00:09:56 peter Exp $
- * $DragonFly: src/libexec/rpc.rusersd/rusers_proc.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/rpc.rusersd/rusers_proc.c,v 1.3 2004/02/13 03:49:48 dillon Exp $
  */
 
 #ifdef DEBUG
@@ -156,7 +156,7 @@ getidle(char *tty, char *display)
         idle = 0;
         if (*tty == 'X') {
                 u_long kbd_idle, mouse_idle;
-#if	!defined(__FreeBSD__)
+#if !defined(__DragonFly__) && !defined(__FreeBSD__)
                 kbd_idle = getidle("kbd", NULL);
 #else
                 kbd_idle = getidle("vga", NULL);

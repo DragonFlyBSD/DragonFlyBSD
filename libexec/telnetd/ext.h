@@ -32,7 +32,7 @@
  *
  *	@(#)ext.h	8.2 (Berkeley) 12/15/93
  * $FreeBSD: src/libexec/telnetd/ext.h,v 1.7.2.4 2002/04/13 11:07:12 markm Exp $
- * $DragonFly: src/libexec/telnetd/ext.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/telnetd/ext.h,v 1.3 2004/02/13 03:49:50 dillon Exp $
  */
 
 /*
@@ -198,7 +198,9 @@ extern struct {
 #   ifdef ultrix
 #    define DEFAULT_IM	"\r\n\r\nULTRIX (%h) (%t)\r\n\r\r\n\r"
 #   else
-#    ifdef __FreeBSD__
+#    if defined(__DragonFly__)
+#     define DEFAULT_IM  "\r\n\r\nDragonFly (%h) (%t)\r\n\r\r\n\r"
+#    elif defined(__FreeBSD__)
 #     define DEFAULT_IM  "\r\n\r\nFreeBSD (%h) (%t)\r\n\r\r\n\r"
 #    else
 #    define DEFAULT_IM	"\r\n\r\n4.4 BSD UNIX (%h) (%t)\r\n\r\r\n\r"

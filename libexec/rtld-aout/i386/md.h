@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/i386/md.h,v 1.18 1999/08/28 00:10:08 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/i386/Attic/md.h,v 1.3 2003/11/14 03:54:31 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/i386/Attic/md.h,v 1.4 2004/02/13 03:49:50 dillon Exp $
  */
 
 #ifndef __MD_H__
@@ -62,9 +62,9 @@
 #endif
 
 /*
- * FreeBSD does it differently
+ * DragonFly does it differently
  */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define N_SET_FLAG(ex,f)	(oldmagic ? (0) :			\
 				  (netzmagic == 0 ?			\
 					N_SETMAGIC(ex,			\

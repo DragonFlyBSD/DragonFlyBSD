@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-aout/i386/md.c,v 1.17 1999/08/28 00:10:07 peter Exp $
- * $DragonFly: src/libexec/rtld-aout/i386/Attic/md.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-aout/i386/Attic/md.c,v 1.3 2004/02/13 03:49:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -256,7 +256,7 @@ long	*savep;
 
 #ifndef RTLD
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 int	netzmagic;
 #endif
 
@@ -275,7 +275,7 @@ int		magic, flags;
 	else
 		N_SETMAGIC((*hp), magic, MID_I386, flags);
 #endif
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (oldmagic)
 		hp->a_midmag = magic;
 	else if (netzmagic)

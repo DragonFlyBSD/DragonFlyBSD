@@ -8,7 +8,7 @@
  * please let me know.  <gwr@mc.com>
  *
  * $FreeBSD: src/libexec/bootpd/getether.c,v 1.9.2.3 2003/02/15 05:36:01 kris Exp $
- * $DragonFly: src/libexec/bootpd/getether.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/bootpd/getether.c,v 1.3 2004/02/13 03:49:47 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -111,7 +111,7 @@ getether(ifname, eap)
 #endif /* SUNOS */
 
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 /* Thanks to John Brezak <brezak@ch.hp.com> for this code. */
 #include <sys/ioctl.h>
 #include <sys/time.h>
