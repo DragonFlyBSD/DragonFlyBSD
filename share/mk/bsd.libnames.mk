@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.libnames.mk,v 1.28.2.10 2002/08/08 09:33:28 ru Exp $
-# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.7 2004/11/24 22:51:01 joerg Exp $
+# $DragonFly: src/share/mk/bsd.libnames.mk,v 1.8 2004/12/18 17:28:05 asmodai Exp $
 #
 # The include file <bsd.libnames.mk> define library names. 
 # Other include files (e.g. bsd.prog.mk, bsd.lib.mk) include this 
@@ -60,6 +60,7 @@ LIBKVM?=	${DESTDIR}${LIBDIR}/libkvm.a
 LIBL?=		${DESTDIR}${LIBDIR}/libl.a
 LIBLN?=		"don't use LIBLN, use LIBL"
 LIBM?=		${DESTDIR}${LIBDIR}/libm.a
+LIBMAGIC?=	${DESTDIR}${LIBDIR}/libmagic.a
 LIBMD?=		${DESTDIR}${LIBDIR}/libmd.a
 LIBMENU?=	${DESTDIR}${LIBDIR}/libmenu.a
 .if !defined(NO_SENDMAIL)
