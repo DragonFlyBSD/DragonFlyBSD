@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.incs.mk,v 1.3.2.1 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.incs.mk,v 1.3 2003/08/08 04:18:41 dillon Exp $
+# $DragonFly: src/share/mk/bsd.incs.mk,v 1.4 2004/04/05 05:30:13 dillon Exp $
 
 .if !target(__<bsd.init.mk>__)
 .error bsd.incs.mk cannot be included directly.
@@ -77,5 +77,9 @@ installincludes:
 .endif
 .endif !target(installincludes)
 
+# include files are not installed when building bootstrap programs
+#
+.if !defined(BOOTSTRAPPING)
 realinstall: installincludes
 .ORDER: beforeinstall installincludes
+.endif

@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.9 2004/03/22 20:58:15 dillon Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.10 2004/04/05 05:30:13 dillon Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -7,19 +7,43 @@
 #
 # +++ variables +++
 #
-# DESTDIR	Change the tree where the file gets installed. [not set]
+# DESTDIR	Change the tree where the file gets installed. [not set].
+#		Typical usage is ${DESTDIR}/usr/bin/...  Note that this
+#		variable is not used to determine where programs access
+#		auxillary data, only where everything is installed.
 #
 # DISTDIR	Change the tree where the file for a distribution
 # 		gets installed (see /usr/src/release/Makefile). [not set]
 #
-# USRDATA_PREFIX This is a companion to TOOLS_PREFIX, and is set to
-#		TOOLS_PREFIX by default.  It controls where an entity
-#		should look for ${USRDATA_PREFIX}/usr/... data.  For
-#		example in a buildworld the compiler and includes are
-#		installed in one place (in /usr/obj somewhere), but
-#		will eventually be installworld'd and so these programs
-#		are expected to access /usr data from somewhere other
-#		then where they were initially built/installed.
+# TOOLS_PREFIX	Change the tree where the program will search for auxillary
+#		program binaries.  Defaults to <empty>.  e.g. usage is in
+#		the typical form ${TOOLS_PREFIX}/usr/libexec/...
+#
+#		This is primarily used when generating cross-building tools
+#		where the cross-building tools must exec auxillary binaries
+#		which are themselves cross-built tools.
+#
+#		This variable specifies how a program looks for data, it does
+#		NOT specify where a program installs data.
+#
+# USRDATA_PREFIX
+#		Change the tree where the program will search for auxillary
+#		data files.  Defaults to ${TOOLS_PREFIX}
+#
+#		Note that while auxillary program binaries and auxillary
+#		data files are usually installed in the same tree, there
+#		are cases where they might not be.  For example, when
+#		buildworld generates the cross compile tools it must install
+#		auxillary binaries in the ctools obj hiearchy but those
+#		binaries must access data from the world obj hierarchy.
+#
+#		This variable specifies how a program looks for data, it does
+#		NOT specify where a program installs data.
+#
+# INCLUDEDIR
+#		Change the tree where header files are to be installed.
+#		Defaults to /usr/include.  Note that use of INCLUDEDIR
+#		is typically prefixed by ${DESTDIR}.
 #
 # COPY		The flag passed to the install program to cause the binary
 #		to be copied rather than moved.  This is to be used when
@@ -123,8 +147,6 @@
 # NLSOWN	National Language Support files owner. [${SHAREGRP}]
 #
 # NLSMODE	National Language Support files mode. [${NOBINMODE}]
-#
-# INCLUDEDIR	Base path for standard C include files [/usr/include]
 
 .if !target(__<bsd.own.mk>__)
 __<bsd.own.mk>__:
@@ -151,7 +173,9 @@ LIBOWN?=	${BINOWN}
 LIBGRP?=	${BINGRP}
 LIBMODE?=	${NOBINMODE}
 
+TOOLS_PREFIX?=
 USRDATA_PREFIX?= ${TOOLS_PREFIX}
+INCLUDEDIR?=	/usr/include
 
 # Share files
 SHAREDIR?=	/usr/share
@@ -178,8 +202,6 @@ NLSDIR?=	${SHAREDIR}/nls
 NLSGRP?=	${SHAREOWN}
 NLSOWN?=	${SHAREGRP}
 NLSMODE?=	${NOBINMODE}
-
-INCLUDEDIR?=	/usr/include
 
 # Common variables
 .if !defined(DEBUG_FLAGS)

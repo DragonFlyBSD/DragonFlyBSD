@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.28 2004/04/04 01:08:18 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.29 2004/04/05 05:30:10 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -205,7 +205,7 @@ TMPPID!=	echo $$$$
 #
 BMAKEENV=	MAKEOBJDIRPREFIX=${BTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
-		DESTDIR= \
+		DESTDIR=${BTOOLSDEST} \
 		INSTALL="sh ${.CURDIR}/tools/install.sh"
 
 BMAKE=		${BMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
@@ -225,9 +225,9 @@ TMAKE=		${TMAKEENV} ${MAKE} -f Makefile.inc1 -DBOOTSTRAPPING \
 # cross-tool stage
 #
 # note: TOOLS_PREFIX points to the obj root holding the cross
-#	compiler binaries, while INCS_PREFIX points to the obj root holding
-#	the target environment (and also determines where cross-built
-#	libraries and crt*.o are installed).
+#	compiler binaries, while USRDATA_PREFIX points to the obj root 
+#	holding the target environment (and also determines where cross-built
+#	libraries, crt*.o, and include files are installed).
 #
 XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		OBJTREE=${OBJTREE} \
@@ -236,7 +236,8 @@ XMAKEENV=	MAKEOBJDIRPREFIX=${CTOOLSDEST} \
 		TOOLS_PREFIX=${CTOOLSDEST} \
 		USRDATA_PREFIX=${WORLDDEST}
 
-XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB
+XMAKE=		${XMAKEENV} ${MAKE} -f Makefile.inc1 -DNO_FORTRAN -DNO_GDB \
+		-DBOOTSTRAPPING
 
 # world stage, note the strict path and note that TOOLS_PREFIX is left
 # unset and USRDATA_PREFIX (which defaults to TOOLS_PREFIX) is set to empty,
