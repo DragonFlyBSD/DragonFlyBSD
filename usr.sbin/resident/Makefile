@@ -1,8 +1,8 @@
-# $DragonFly: src/usr.sbin/resident/Makefile,v 1.1 2004/01/20 18:46:22 dillon Exp $
+# $DragonFly: src/usr.sbin/resident/Makefile,v 1.2 2005/01/17 01:49:24 cpressey Exp $
 
 PROG=	resident
 SRCS=	resident.c
-WARNS?=	5
+WARNS?=	6
 MAN=    resident.8
 
 .include <bsd.prog.mk>
