@@ -31,7 +31,7 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.18 2004/12/16 21:28:28 okumoto Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.19 2005/01/11 21:21:09 okumoto Exp $
 .\"
 .Dd December 2, 2004
 .Dt MAKE 1
@@ -472,7 +472,7 @@ In addition,
 .Nm
 sets or knows about the following internal variables or environment
 variables:
-.Bl -tag -width ".Va MAKEFILE_LIST"
+.Bl -tag -width ".Va .MAKEFILE_LIST"
 .It Va \&$
 A single dollar sign
 .Ql \&$ ,
@@ -592,7 +592,7 @@ executes; compare with the
 .Ic .MAKEFLAGS
 special target below.
 .It Va MFLAGS
-is provided for backward compatibility and
+This variable is provided for backward compatibility and
 contains all the options from the
 .Ev MAKEFLAGS
 environment variable plus any options specified on
@@ -1443,7 +1443,7 @@ For loops are expanded before tests, so a fragment such as:
 won't work, and should be rewritten as:
 .Bd -literal -offset indent
 \&.for ARCH in ${SHARED_ARCHS}
-\&.if ${MACHINE} == ${ARCH} 
+\&.if ${MACHINE} == ${ARCH}
      ...
 \&.endif
 \&.endfor
