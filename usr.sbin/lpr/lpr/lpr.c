@@ -39,7 +39,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.3 2004/03/22 22:32:51 cpressey Exp $
  */
 
 /*
@@ -525,7 +525,7 @@ main(int argc, char *argv[])
 static void
 copy(const struct printer *pp, int f, const char n[])
 {
-	register int fd, i, nr, nc;
+	int fd, i, nr, nc;
 	char buf[BUFSIZ];
 
 	if (format == 'p')
@@ -567,9 +567,9 @@ copy(const struct printer *pp, int f, const char n[])
 static const char *
 linked(const char *file)
 {
-	register char *cp;
+	char *cp;
 	static char buf[MAXPATHLEN];
-	register int ret;
+	int ret;
 
 	if (*file != '/') {
 		if (getcwd(buf, sizeof(buf)) == NULL)
@@ -606,7 +606,7 @@ static void
 card(int c, const char *p2)
 {
 	char buf[BUFSIZ];
-	register char *p1 = buf;
+	char *p1 = buf;
 	size_t len = 2;
 
 	*p1++ = c;
@@ -624,7 +624,7 @@ card(int c, const char *p2)
 static int
 nfile(char *n)
 {
-	register int f;
+	int f;
 	int oldumask = umask(0);		/* should block signals */
 
 	seteuid(euid);
@@ -656,7 +656,7 @@ nfile(char *n)
 static void
 cleanup(int signo __unused)
 {
-	register int i;
+	int i;
 
 	signal(SIGHUP, SIG_IGN);
 	signal(SIGINT, SIG_IGN);
@@ -780,7 +780,7 @@ static char *
 itoa(int i)
 {
 	static char b[10] = "########";
-	register char *p;
+	char *p;
 
 	p = &b[8];
 	do
@@ -830,8 +830,8 @@ usage(void)
 static void
 mktemps(const struct printer *pp)
 {
-	register int len, fd, n;
-	register char *cp;
+	int len, fd, n;
+	char *cp;
 	char buf[BUFSIZ];
 
 	(void) snprintf(buf, sizeof(buf), "%s/.seq", pp->spool_dir);
@@ -871,7 +871,7 @@ mktemps(const struct printer *pp)
 static char *
 lmktemp(const struct printer *pp, const char *id, int num, int len)
 {
-	register char *s;
+	char *s;
 
 	if ((s = malloc(len)) == NULL)
 		errx(1, "out of memory");

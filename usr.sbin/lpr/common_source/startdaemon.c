@@ -32,7 +32,7 @@
  *
  * @(#)startdaemon.c	8.2 (Berkeley) 4/17/94
  * $FreeBSD: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.8.2.2 2002/04/26 18:24:40 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -58,7 +58,7 @@ int
 startdaemon(const struct printer *pp)
 {
 	struct sockaddr_un un;
-	register int s, n;
+	int s, n;
 	int connectres;
 	char c;
 

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/filters/lpf.c,v 1.6.2.2 2001/10/13 19:01:45 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/filters/lpf.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/filters/lpf.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -43,6 +43,8 @@
  *	and it is written with some style.
  *	modified by kls to use register references instead of arrays
  *	to try to gain a little speed.
+ *	further modified to let the compiler figure out which
+ *	variables should be registers; they're very good at it these days.
  */
 
 #include <signal.h>
@@ -66,11 +68,11 @@ char	*host;		/* user's machine name */
 char	*acctfile;	/* accounting information file */
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
-	register FILE *p = stdin, *o = stdout;
-	register int i, col;
-	register char *cp;
+	FILE *p = stdin, *o = stdout;
+	int i, col;
+	char *cp;
 	int done, linedone, maxrep;
 	char *limit;
 	int ch;

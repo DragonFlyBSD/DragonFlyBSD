@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printjob.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/printjob.c,v 1.22.2.32 2002/06/19 23:58:16 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/printjob.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/printjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -144,9 +144,9 @@ void
 printjob(struct printer *pp)
 {
 	struct stat stb;
-	register struct jobqueue *q, **qp;
+	struct jobqueue *q, **qp;
 	struct jobqueue **queue;
-	register int i, nitems;
+	int i, nitems;
 	off_t pidoff;
 	pid_t printpid;
 	int errcnt, jobcount, tempfd;
@@ -364,7 +364,7 @@ char ifonts[4][40] = {
 static int
 printit(struct printer *pp, char *file)
 {
-	register int i;
+	int i;
 	char *cp;
 	int bombed, didignorehdr;
 
@@ -593,8 +593,8 @@ pass2:
 static int
 print(struct printer *pp, int format, char *file)
 {
-	register int n, i;
-	register char *prog;
+	int n, i;
+	char *prog;
 	int fi, fo;
 	FILE *fp;
 	char *av[15], buf[BUFSIZ];
@@ -1350,7 +1350,7 @@ banner(struct printer *pp, char *name1, char *name2)
 static char *
 scnline(int key, char *p, int c)
 {
-	register int scnwidth;
+	int scnwidth;
 
 	for (scnwidth = WIDTH; --scnwidth;) {
 		key <<= 1;
@@ -1364,8 +1364,8 @@ scnline(int key, char *p, int c)
 static void
 scan_out(struct printer *pp, int scfd, char *scsp, int dlm)
 {
-	register char *strp;
-	register int nchrs, j;
+	char *strp;
+	int nchrs, j;
 	char outbuf[LINELEN+1], *sp, c, cc;
 	int d, scnhgt;
 
@@ -1420,9 +1420,9 @@ dropit(int c)
 static void
 sendmail(struct printer *pp, char *userid, int bombed)
 {
-	register int i;
+	int i;
 	int p[2], s;
-	register const char *cp;
+	const char *cp;
 	struct stat stb;
 	FILE *fp;
 
@@ -1701,7 +1701,7 @@ openpr(const struct printer *pp)
 static void
 opennet(const struct printer *pp)
 {
-	register int i;
+	int i;
 	int resp;
 	u_long port;
 	char *ep;
@@ -1753,7 +1753,7 @@ opennet(const struct printer *pp)
 static void
 opentty(const struct printer *pp)
 {
-	register int i;
+	int i;
 
 	for (i = 1; ; i = i < 32 ? i << 1 : i) {
 		pfd = open(pp->lp, pp->rw ? O_RDWR : O_WRONLY);
@@ -1782,7 +1782,7 @@ opentty(const struct printer *pp)
 static void
 openrem(const struct printer *pp)
 {
-	register int i;
+	int i;
 	int resp;
 	void (*savealrm)(int);
 

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)recvjob.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/recvjob.c,v 1.14.2.13 2002/06/19 01:46:48 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/recvjob.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/recvjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -134,7 +134,7 @@ recvjob(const char *printer)
 static int
 readjob(struct printer *pp)
 {
-	register int size;
+	int size;
 	int cfcnt, dfcnt;
 	char *cp, *clastp, *errmsg;
 	char givenid[32], givenhost[MAXHOSTNAMELEN];
@@ -244,7 +244,7 @@ readjob(struct printer *pp)
 static int
 readfile(struct printer *pp, char *file, size_t size)
 {
-	register char *cp;
+	char *cp;
 	char buf[BUFSIZ];
 	size_t amt, i;
 	int err, fd, j;
@@ -332,7 +332,7 @@ static int
 read_number(const char *fn)
 {
 	char lin[80];
-	register FILE *fp;
+	FILE *fp;
 
 	if ((fp = fopen(fn, "r")) == NULL)
 		return (0);

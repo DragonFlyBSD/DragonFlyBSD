@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pac.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/pac/pac.c,v 1.10.2.4 2002/04/26 18:17:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/pac/pac.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/pac/pac.c,v 1.3 2004/03/22 22:32:51 cpressey Exp $
  */
 
 /*
@@ -206,9 +206,9 @@ account(FILE *acctf)
 {
 	char linebuf[BUFSIZ];
 	double t;
-	register char *cp, *cp2;
-	register struct hent *hp;
-	register int ic;
+	char *cp, *cp2;
+	struct hent *hp;
+	int ic;
 
 	while (fgets(linebuf, BUFSIZ, acctf) != NULL) {
 		cp = linebuf;
@@ -247,8 +247,8 @@ static void
 dumpit(void)
 {
 	struct hent **base;
-	register struct hent *hp, **ap;
-	register int hno, runs;
+	struct hent *hp, **ap;
+	int hno, runs;
 	size_t c;
 	float feet;
 
@@ -285,8 +285,8 @@ dumpit(void)
 static void
 rewrite(void)
 {
-	register struct hent *hp;
-	register int i;
+	struct hent *hp;
+	int i;
 	FILE *acctf;
 
 	if ((acctf = fopen(sumfile, "w")) == NULL) {
@@ -325,8 +325,8 @@ rewrite(void)
 static struct hent *
 enter(const char name[])
 {
-	register struct hent *hp;
-	register int h;
+	struct hent *hp;
+	int h;
 
 	if ((hp = lookup(name)) != NULL)
 		return(hp);
@@ -350,8 +350,8 @@ enter(const char name[])
 static struct hent *
 lookup(const char name[])
 {
-	register int h;
-	register struct hent *hp;
+	int h;
+	struct hent *hp;
 
 	h = hash(name);
 	for (hp = hashtab[h]; hp != NULL; hp = hp->h_link)
@@ -367,8 +367,8 @@ lookup(const char name[])
 static int
 hash(const char name[])
 {
-	register int h;
-	register const char *cp;
+	int h;
+	const char *cp;
 
 	for (cp = name, h = 0; *cp; h = (h << 2) + *cp++)
 		;
@@ -381,8 +381,8 @@ hash(const char name[])
 static int
 any(int ch, const char str[])
 {
-	register int c = ch;
-	register const char *cp = str;
+	int c = ch;
+	const char *cp = str;
 
 	while (*cp)
 		if (*cp++ == c)
@@ -398,8 +398,8 @@ any(int ch, const char str[])
 static int
 qucmp(const void *a, const void *b)
 {
-	register const struct hent *h1, *h2;
-	register int r;
+	const struct hent *h1, *h2;
+	int r;
 
 	h1 = *(const struct hent * const *)a;
 	h2 = *(const struct hent * const *)b;

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cmds.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/cmds.c,v 1.14.2.16 2002/07/25 23:29:39 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/cmds.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/cmds.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -99,7 +99,7 @@ static void (*generic_wrapup)(int _last_status);   /* perform rtn wrap-up */
 
 void
 generic(void (*specificrtn)(struct printer *_pp), int cmdopts,
-    void (*initrtn)(int _argc, char *_argv[]), int argc, char *argv[])
+    void (*initrtn)(int _argc, char **_argv), int argc, char **argv)
 {
 	int cmdstatus, more, targc;
 	struct printer myprinter, *pp;
@@ -601,7 +601,7 @@ have_res:
  */
 
 void
-clean_gi(int argc, char *argv[])
+clean_gi(int argc, char **argv)
 {
 
 	/* init some fields before 'clean' is called for each queue */
@@ -632,7 +632,7 @@ clean_gi(int argc, char *argv[])
 }
 
 void
-tclean_gi(int argc, char *argv[])
+tclean_gi(int argc, char **argv)
 {
 
 	/* only difference between 'clean' and 'tclean' is one value */
@@ -895,7 +895,7 @@ disable_q(struct printer *pp)
  * `-msg' was around).
  */
 void
-down_gi(int argc, char *argv[])
+down_gi(int argc, char **argv)
 {
 
 	/* If `-msg' was specified, then this routine has nothing to do. */
@@ -942,7 +942,7 @@ down_q(struct printer *pp)
  * Exit lpc
  */
 void
-quit(int argc __unused, char *argv[] __unused)
+quit(int argc __unused, char **argv __unused)
 {
 	exit(0);
 }
@@ -983,7 +983,7 @@ restart_q(struct printer *pp)
  * parameter to indicate the end of the queue list and start of msg text.
  */
 void
-setstatus_gi(int argc __unused, char *argv[] __unused)
+setstatus_gi(int argc __unused, char **argv __unused)
 {
 
 	if (generic_msg == NULL) {
@@ -1034,8 +1034,8 @@ void
 status(struct printer *pp)
 {
 	struct stat stbuf;
-	register int fd, i;
-	register struct dirent *dp;
+	int fd, i;
+	struct dirent *dp;
 	DIR *dirp;
 	char file[MAXPATHLEN];
 
@@ -1116,9 +1116,9 @@ time_t	mtime;
  * Put the specified jobs at the top of printer queue.
  */
 void
-topq(int argc, char *argv[])
+topq(int argc, char **argv)
 {
-	register int i;
+	int i;
 	struct stat stbuf;
 	int cmdstatus, changed;
 	struct printer myprinter, *pp = &myprinter;
@@ -1208,9 +1208,9 @@ touch(struct jobqueue *jq)
 static int
 doarg(char *job)
 {
-	register struct jobqueue **qq;
-	register int jobnum, n;
-	register char *cp, *machine;
+	struct jobqueue **qq;
+	int jobnum, n;
+	char *cp, *machine;
 	int cnt = 0;
 	FILE *fp;
 

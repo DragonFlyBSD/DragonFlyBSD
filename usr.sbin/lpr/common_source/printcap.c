@@ -38,7 +38,7 @@
  * 	From: @(#)common.c	8.5 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/usr.sbin/lpr/common_source/printcap.c,v 1.6.2.3 2002/04/28 23:29:10 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/printcap.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/printcap.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <errno.h>
@@ -356,7 +356,6 @@ free_printer(struct printer *pp)
 	init_printer(pp);
 }
 
-
 /* 
  * The following routines are part of what would be a sensible library 
  * interface to capability databases.  Maybe someday this will become

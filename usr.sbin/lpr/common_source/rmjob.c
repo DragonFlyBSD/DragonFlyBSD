@@ -32,7 +32,7 @@
  *
  * @(#)rmjob.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/rmjob.c,v 1.12.2.5 2001/06/25 01:00:56 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -75,7 +75,7 @@ static	void	do_unlink(char *_file);
 void
 rmjob(const char *printer)
 {
-	register int i, nitems;
+	int i, nitems;
 	int assasinated = 0;
 	struct dirent **files;
 	char *cp;
@@ -151,8 +151,8 @@ rmjob(const char *printer)
 int
 lockchk(struct printer *pp, char *slockf)
 {
-	register FILE *fp;
-	register int i, n;
+	FILE *fp;
+	int i, n;
 
 	seteuid(euid);
 	if ((fp = fopen(slockf, "r")) == NULL) {
@@ -228,8 +228,8 @@ do_unlink(char *file)
 int
 chk(char *file)
 {
-	register int *r, n;
-	register char **u, *cp;
+	int *r, n;
+	char **u, *cp;
 	FILE *cfp;
 
 	/*

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpc.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/lpc.c,v 1.13.2.11 2002/07/26 03:12:07 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.3 2003/11/04 17:03:11 drhodus Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/lpc.c,v 1.4 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ static int	margc;
 static char	*margv[MAX_MARGV];
 uid_t		uid, euid;
 
-int			 main(int _argc, char *_argv[]);
+int			 main(int _argc, char **_argv);
 static void		 cmdscanner(void);
 static struct cmd	*getcmd(const char *_name);
 static void		 intr(int _signo);
@@ -81,9 +81,9 @@ static void		 makeargv(void);
 static int		 ingroup(const char *_grname);
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	euid = geteuid();
 	uid = getuid();
@@ -140,7 +140,7 @@ lpc_prompt(void)
 static void
 cmdscanner(void)
 {
-	register struct cmd *c;
+	struct cmd *c;
 	static EditLine *el;
 	static History *hist;
 	size_t len;
@@ -226,9 +226,9 @@ cmdscanner(void)
 static struct cmd *
 getcmd(const char *name)
 {
-	register const char *p, *q;
-	register struct cmd *c, *found;
-	register int nmatches, longest;
+	const char *p, *q;
+	struct cmd *c, *found;
+	int nmatches, longest;
 
 	longest = 0;
 	nmatches = 0;
@@ -257,9 +257,9 @@ getcmd(const char *name)
 static void
 makeargv(void)
 {
-	register char *cp;
-	register char **argp = margv;
-	register int n = 0;
+	char *cp;
+	char **argp = margv;
+	int n = 0;
 
 	margc = 0;
 	for (cp = cmdline; *cp && (size_t)(cp - cmdline) < sizeof(cmdline) &&
@@ -285,12 +285,12 @@ makeargv(void)
  * Help command.
  */
 void
-help(int argc, char *argv[])
+help(int argc, char **argv)
 {
-	register struct cmd *c;
+	struct cmd *c;
 
 	if (argc == 1) {
-		register int i, j, w;
+		int i, j, w;
 		int columns, width = 0, lines;
 
 		printf("Commands may be abbreviated.  Commands are:\n\n");
@@ -324,7 +324,8 @@ help(int argc, char *argv[])
 		return;
 	}
 	while (--argc > 0) {
-		register char *arg;
+		char *arg;
+
 		arg = *++argv;
 		c = getcmd(arg);
 		if (c == (struct cmd *)-1)
@@ -346,8 +347,8 @@ ingroup(const char *grname)
 	static struct group *gptr=NULL;
 	static int ngroups = 0;
 	static gid_t groups[NGROUPS];
-	register gid_t gid;
-	register int i;
+	gid_t gid;
+	int i;
 
 	if (gptr == NULL) {
 		if ((gptr = getgrnam(grname)) == NULL) {

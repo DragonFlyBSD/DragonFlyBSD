@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lpq.c	8.3 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpq/lpq.c,v 1.7.2.4 2001/07/22 02:51:53 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpq/lpq.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpq/lpq.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -163,7 +163,7 @@ looperr:
 static int
 ckqueue(const struct printer *pp)
 {
-	register struct dirent *d;
+	struct dirent *d;
 	DIR *dirp;
 	char *spooldir;
 

@@ -37,7 +37,7 @@
  *
  * @(#)common.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/common.c,v 1.12.2.17 2002/07/14 23:58:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/common.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/common.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -75,9 +75,9 @@ static int compar(const void *_p1, const void *_p2);
 int
 getline(FILE *cfp)
 {
-	register int linel = 0;
-	register char *lp = line;
-	register int c;
+	int linel = 0;
+	char *lp = line;
+	int c;
 
 	while ((c = getc(cfp)) != '\n' && (size_t)(linel+1) < sizeof(line)) {
 		if (c == EOF)
@@ -105,8 +105,8 @@ getline(FILE *cfp)
 int
 getq(const struct printer *pp, struct jobqueue *(*namelist[]))
 {
-	register struct dirent *d;
-	register struct jobqueue *q, **queue;
+	struct dirent *d;
+	struct jobqueue *q, **queue;
 	size_t arraysz, entrysz, nitems;
 	struct stat stbuf;
 	DIR *dirp;
@@ -461,8 +461,8 @@ lpd_gettime(struct timespec *tsp, char *strp, size_t strsize)
 void
 trstat_init(struct printer *pp, const char *fname, int filenum)
 {
-	register const char *srcp;
-	register char *destp, *endp;
+	const char *srcp;
+	char *destp, *endp;
 
 	/*
 	 * Figure out the job id of this file.  The filename should be

@@ -32,7 +32,7 @@
  *
  * @(#)displayq.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/displayq.c,v 1.15.2.8 2001/08/30 09:27:41 kris Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -89,8 +89,8 @@ static void	warn(const struct printer *_pp);
 void
 displayq(struct printer *pp, int format)
 {
-	register struct jobqueue *q;
-	register int i, nitems, fd, ret;
+	struct jobqueue *q;
+	int i, nitems, fd, ret;
 	char *cp, *endp;
 	struct jobqueue **queue;
 	struct stat statb;
@@ -281,9 +281,9 @@ header(void)
 void
 inform(const struct printer *pp, char *cf)
 {
-	register int copycnt;
-	char	 savedname[MAXPATHLEN+1];
-	FILE	*cfp;
+	int copycnt;
+	char savedname[MAXPATHLEN+1];
+	FILE *cfp;
 
 	/*
 	 * There's a chance the control file has gone away
@@ -378,8 +378,8 @@ inform(const struct printer *pp, char *cf)
 int
 inlist(char *uname, char *cfile)
 {
-	register int *r, n;
-	register char **u, *cp;
+	int *r, n;
+	char **u, *cp;
 
 	if (users == 0 && requests == 0)
 		return(1);

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)lpd.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.4 2004/03/22 22:32:50 cpressey Exp $
  */
 
 /*
@@ -620,7 +620,7 @@ errloop:
 static int
 ckqueue(struct printer *pp)
 {
-	register struct dirent *d;
+	struct dirent *d;
 	DIR *dirp;
 	char *spooldir;
 
@@ -647,7 +647,7 @@ static void
 chkhost(struct sockaddr *f, int ch_opts)
 {
 	struct addrinfo hints, *res, *r;
-	register FILE *hostf;
+	FILE *hostf;
 	char hostbuf[NI_MAXHOST], ip[NI_MAXHOST];
 	char serv[NI_MAXSERV];
 	char *syserr, *usererr;

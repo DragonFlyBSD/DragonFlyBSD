@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)lptest.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/lptest/lptest.c,v 1.2.8.2 2001/10/13 18:52:36 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lptest/lptest.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/lptest/lptest.c,v 1.3 2004/03/22 22:32:51 cpressey Exp $
  */
 
 #include <stdlib.h>
@@ -47,7 +47,7 @@ int
 main(int argc, char **argv)
 {
 	int len, count;
-	register int i, j, fc, nc;
+	int i, j, fc, nc;
 	char outbuf[BUFSIZ];
 
 	setbuf(stdout, outbuf);
@@ -71,6 +71,6 @@ main(int argc, char **argv)
 		}
 		putchar('\n');
 	}
-	(void) fflush(stdout);
+	fflush(stdout);
 	exit(0);
 }
