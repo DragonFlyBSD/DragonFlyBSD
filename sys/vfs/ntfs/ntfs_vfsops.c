@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vfsops.c,v 1.20.2.5 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.21 2004/08/28 19:02:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vfsops.c,v 1.22 2004/09/30 19:00:11 dillon Exp $
  */
 
 
@@ -99,8 +99,7 @@ static int	ntfs_sync (struct mount *, int, struct ucred *,
 
 #if defined(__DragonFly__)
 struct sockaddr;
-static int	ntfs_mount (struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *);
+static int	ntfs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	ntfs_init (struct vfsconf *);
 static int	ntfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
@@ -156,7 +155,7 @@ static int
 ntfs_mountroot(void)
 {
 	struct mount *mp;
-	extern struct vnode *rootvp;
+	struct vnode *rootvp;
 	struct thread *td = curthread;	/* XXX */
 	struct ntfs_args args;
 	lwkt_tokref ilock;
@@ -223,12 +222,14 @@ ntfs_mount(struct mount *mp,
 #else
 	   const char *path, void *data,
 #endif
-	   struct nameidata *ndp, struct thread *td)
+	   struct thread *td)
 {
 	size_t		size;
 	int		err = 0;
 	struct vnode	*devvp;
 	struct ntfs_args args;
+	struct nameidata nd;
+	struct vnode *rootvp;
 
 #ifdef __DragonFly__
 	/*
@@ -299,14 +300,14 @@ ntfs_mount(struct mount *mp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(ndp);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	err = namei(&nd);
 	if (err) {
 		/* can't get devvp!*/
 		goto error_1;
 	}
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	devvp = ndp->ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
 
 #if defined(__DragonFly__)
 	if (!vn_isdisk(devvp, &err)) 
@@ -434,7 +435,7 @@ ntfs_mountfs(struct vnode *devvp, struct mount *mp, struct ntfs_args *argsp,
 	if (devvp->v_object)
 		ncount -= 1;
 #endif
-	if (ncount > 1 && devvp != rootvp)
+	if (ncount > 1)
 		return (EBUSY);
 #if defined(__DragonFly__)
 	VN_LOCK(devvp, LK_EXCLUSIVE | LK_RETRY, td);

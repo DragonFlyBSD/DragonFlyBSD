@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.15 2004/05/26 19:11:08 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.16 2004/09/30 18:59:53 dillon Exp $
  * 
  */
 
@@ -113,7 +113,6 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
 	   char *path,		/* path covered: ignored by the fs-layer */
 	   caddr_t data,	/* Need to define a data type for this in
 				 * netbsd? */
-	   struct nameidata *ndp, /* Clobber this to lookup the device name */
 	   struct thread *td)	/* The ever-famous proc pointer */
 {
     struct vnode *dvp;
@@ -124,6 +123,7 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     ViceFid rootfid;
     ViceFid ctlfid;
     int error;
+    struct nameidata nd;
 
     ENTRY;
 
@@ -137,9 +137,9 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     }
     
     /* Validate mount device.  Similar to getmdev(). */
-    NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, data, td);
-    error = namei(ndp);
-    dvp = ndp->ni_vp;
+    NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, data, td);
+    error = namei(&nd);
+    dvp = nd.ni_vp;
 
     if (error) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);
@@ -148,12 +148,12 @@ coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
     if (dvp->v_type != VCHR) {
 	MARK_INT_FAIL(CODA_MOUNT_STATS);
 	vrele(dvp);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
+	NDFREE(&nd, NDF_ONLY_PNBUF);
 	return(ENXIO);
     }
     udev = dvp->v_udev;
     vrele(dvp);
-    NDFREE(ndp, NDF_ONLY_PNBUF);
+    NDFREE(&nd, NDF_ONLY_PNBUF);
 
 #if 0	/* YYY huh? what paranoia is this? */
     /*

@@ -37,7 +37,7 @@
  *
  *
  * $FreeBSD: src/sys/kern/vfs_default.c,v 1.28.2.7 2003/01/10 18:23:26 bde Exp $
- * $DragonFly: src/sys/kern/vfs_default.c,v 1.14 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_default.c,v 1.15 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -112,9 +112,6 @@ VNODEOP_SET(default_vnodeop_opv_desc);
 int
 vop_eopnotsupp(struct vop_generic_args *ap)
 {
-	/*
-	printf("vop_notsupp[%s]\n", ap->a_desc->vdesc_name);
-	*/
 	return (EOPNOTSUPP);
 }
 
@@ -158,13 +155,21 @@ vop_panic(struct vop_generic_args *ap)
 /*
  * vop_noresolve { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
  *
+ * XXX OLD API ROUTINE!  WHEN ALL VFSs HAVE BEEN CLEANED UP THIS PROCEDURE
+ * WILL BE REMOVED.  This procedure exists for all VFSs which have not
+ * yet implemented vop_resolve().  It converts vop_resolve() into a 
+ * vop_lookup() and does appropriate translations.
+ *
  * Resolve a ncp for VFSs which do not support the VOP.  Eventually all
  * VFSs will support this VOP and this routine can be removed, since
  * vop_resolve() is far less complex then the older LOOKUP/CACHEDLOOKUP
  * API.
  *
- * A locked ncp is passed in to be resolved.  An NCP is resolved by
- * calling cache_setvp() on it.  No vnode locks are retained and the
+ * A locked ncp is passed in to be resolved.  The NCP is resolved by
+ * figuring out the vnode (if any) and calling cache_setvp() to attach the
+ * vnode to the entry.  If the entry represents a non-existant node then
+ * cache_setvp() is called with a NULL vnode to resolve the entry into a
+ * negative cache entry.  No vnode locks are retained and the
  * ncp is left locked on return.
  */
 static int
@@ -177,6 +182,8 @@ vop_noresolve(struct vop_resolve_args *ap)
 	struct componentname cnp;
 
 	ncp = ap->a_ncp;	/* locked namecache node */
+	if (ncp->nc_flag & NCF_MOUNTPT)	/* can't cross a mount point! */
+		return(EPERM);
 	if (ncp->nc_parent == NULL)
 		return(EPERM);
 	if ((dvp = ncp->nc_parent->nc_vp) == NULL)
@@ -188,13 +195,18 @@ vop_noresolve(struct vop_resolve_args *ap)
 	cnp.cn_flags = CNP_ISLASTCN;
 	cnp.cn_nameptr = ncp->nc_name;
 	cnp.cn_namelen = ncp->nc_nlen;
-	/* creds */
-	/* td */
+	cnp.cn_cred = ap->a_cred;
+	cnp.cn_td = curthread; /* XXX */
+
+	/*
+	 * vop_lookup() always returns vp locked.  dvp may or may not be
+	 * left locked depending on CNP_PDIRUNLOCK.
+	 */
 	error = vop_lookup(ap->a_head.a_ops, dvp, &vp, &cnp);
 	if (error == 0) {
 		KKASSERT(vp != NULL);
 		cache_setvp(ncp, vp);
-		vrele(vp);
+		vput(vp);
 	} else if (error == ENOENT) {
 		KKASSERT(vp == NULL);
 		if (cnp.cn_flags & CNP_ISWHITEOUT)
@@ -205,8 +217,67 @@ vop_noresolve(struct vop_resolve_args *ap)
 		vrele(dvp);
 	else
 		vput(dvp);
-	return(error);
+	return (error);
 }
+
+#if 0
+
+/*
+ * vop_noremove { struct namecache *a_ncp }	XXX STOPGAP FUNCTION
+ *
+ * Remove the file/dir represented by a_ncp.
+ *
+ * XXX ultra difficult.  A number of existing filesystems, including UFS,
+ *     assume that the directory will remain locked and the lookup will
+ *     store the directory offset and other things in the directory inode
+ *     for the later VOP_REMOVE to use.  We have to move all that
+ *     functionality into e.g. UFS's VOP_REMOVE itself.
+ */
+static int
+vop_nonremove(struct vop_nremove_args *ap)
+{
+	struct namecache *ncfile;
+	struct namecache *ncdir;
+	struct componentname cnd;
+	struct vnode *vp;
+	struct vnode *vpd;
+	thread_t td;
+	int error;
+
+	td = curthread;
+	ncfile = ap->a_ncp;
+	ncdir = ncfile->nc_parent;
+
+	if ((error = cache_vget(ncdir, ap->a_cred, LK_EXCLUSIVE, &vpd)) != 0)
+		return (error);
+	if ((error = cache_vget(ncfile, ap->a_cred, LK_EXCLUSIVE, &vp)) != 0) {
+		vput(vpd);
+		return (error);
+	}
+	bzero(&cnd, sizeof(cnd));
+	cnd.cn_nameiop = NAMEI_DELETE;
+	cnd.cn_td = td;
+	cnd.cn_cred = ap->a_cred;
+	cnd.cn_nameptr = ncfile->nc_name;
+	cnd.cn_namelen = ncfile->nc_nlen;
+	error = VOP_REMOVE(vpd, NCPNULL, vp, &cnd);
+	vput(vp);
+	vput(vpd);
+
+	/*
+	 * Re-resolve the ncp to match the fact that the file has been
+	 * deleted from the namespace.  If an error occured leave the ncp
+	 * unresolved (meaning that we have no idea what the correct state
+	 * is).
+	 */
+	cache_setunresolved(ncfile);
+	if (error == 0)
+		cache_setvp(ncfile, NULL);
+        return (error);
+}
+
+#endif
+
 
 static int
 vop_nolookup(ap)

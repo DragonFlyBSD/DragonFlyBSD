@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.12 2004/05/19 22:52:55 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.13 2004/09/30 18:59:38 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -38,6 +38,7 @@
 #include <sys/proc.h>
 #include <sys/mount.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <sys/systm.h>
@@ -94,9 +95,8 @@ newstat_copyout(struct stat *buf, void *ubuf)
 int
 linux_newstat(struct linux_newstat_args *args)
 {
-	struct thread *td = curthread;
 	struct stat buf;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -107,13 +107,12 @@ linux_newstat(struct linux_newstat_args *args)
 	if (ldebug(newstat))
 		printf(ARGS(newstat, "%s, *"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_SYSSPACE, path, td);
-
-	error = kern_stat(&nd, &buf);
-
-	if (error == 0)
-		error = newstat_copyout(&buf, args->buf);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_stat(&nd, &buf);
+		if (error == 0)
+			error = newstat_copyout(&buf, args->buf);
+	}
 	linux_free_path(&path);
 	return (error);
 }
@@ -121,9 +120,8 @@ linux_newstat(struct linux_newstat_args *args)
 int
 linux_newlstat(struct linux_newlstat_args *args)
 {
-	struct thread *td = curthread;
 	struct stat sb;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -134,13 +132,12 @@ linux_newlstat(struct linux_newlstat_args *args)
 	if (ldebug(newlstat))
 		printf(ARGS(newlstat, "%s, *"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_SYSSPACE, path, td);
-
-	error = kern_stat(&nd, &sb);
-
-	if (error == 0)
-		error = newstat_copyout(&sb, args->buf);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = kern_stat(&nd, &sb);
+		if (error == 0)
+			error = newstat_copyout(&sb, args->buf);
+	}
 	linux_free_path(&path);
 	return (error);
 }
@@ -365,8 +362,7 @@ stat64_copyout(struct stat *buf, void *ubuf)
 int
 linux_stat64(struct linux_stat64_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat buf;
 	char *path;
 	int error;
@@ -378,13 +374,12 @@ linux_stat64(struct linux_stat64_args *args)
 	if (ldebug(stat64))
 		printf(ARGS(stat64, "%s, *"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-		UIO_SYSSPACE, path, td);
-
-	error = kern_stat(&nd, &buf);
-
-	if (error == 0)
-		error = stat64_copyout(&buf, args->statbuf);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_stat(&nd, &buf);
+		if (error == 0)
+			error = stat64_copyout(&buf, args->statbuf);
+	}
 	linux_free_path(&path);
 	return (error);
 }
@@ -392,8 +387,7 @@ linux_stat64(struct linux_stat64_args *args)
 int
 linux_lstat64(struct linux_lstat64_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat sb;
 	char *path;
 	int error;
@@ -405,13 +399,12 @@ linux_lstat64(struct linux_lstat64_args *args)
 	if (ldebug(lstat64))
 		printf(ARGS(lstat64, "%s, *"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_SYSSPACE, path, td);
-
-	error = kern_stat(&nd, &sb);
-
-	if (error == 0)
-		error = stat64_copyout(&sb, args->statbuf);
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, 0);
+	if (error == 0) {
+		error = kern_stat(&nd, &sb);
+		if (error == 0)
+			error = stat64_copyout(&sb, args->statbuf);
+	}
 	linux_free_path(&path);
 	return (error);
 }

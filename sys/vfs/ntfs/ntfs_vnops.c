@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ntfs/ntfs_vnops.c,v 1.9.2.4 2002/08/06 19:35:18 semenu Exp $
- * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.15 2004/09/26 01:24:57 dillon Exp $
+ * $DragonFly: src/sys/vfs/ntfs/ntfs_vnops.c,v 1.16 2004/09/30 19:00:11 dillon Exp $
  *
  */
 
@@ -797,7 +797,7 @@ ntfs_lookup(struct vop_lookup_args *ap)
 	}
 
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(dvp, NCPNULL, *ap->a_vpp, cnp);
+		cache_enter(dvp, *ap->a_vpp, cnp);
 
 	return (error);
 }

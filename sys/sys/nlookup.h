@@ -31,11 +31,17 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/nlookup.h,v 1.1 2004/09/28 00:25:31 dillon Exp $
+ * $DragonFly: src/sys/sys/nlookup.h,v 1.2 2004/09/30 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_NLOOKUP_H_
 #define	_SYS_NLOOKUP_H_
+
+struct vattr;
+struct mount;
+struct namecache;
+struct thread;
+struct ucred;
 
 /*
  * nlookup component
@@ -46,7 +52,12 @@ struct nlcomponent {
 };
 
 /*
- * Encapsulation of nlookup parameters
+ * Encapsulation of nlookup parameters.
+ *
+ * Note on nl_flags and nl_op: nl_flags supports a simplified subset of 
+ * namei's original CNP flags.  nl_op (e.g. NAMEI_*) does no in any way
+ * effect the state of the returned namecache and is only used to enforce
+ * access checks.
  */
 struct nlookupdata {
 	struct namecache *nl_ncp;	/* start-point and result */
@@ -61,12 +72,12 @@ struct nlookupdata {
 	int		nl_loopcnt;	/* symlinks encountered */
 };
 
-#define NLC_FOLLOW		CNP_FOLLOW
-#define NLC_NOCROSSMOUNT	CNP_NOCROSSMOUNT
-#define NLC_HASBUF		CNP_HASBUF
-#define NLC_ISWHITEOUT		CNP_ISWHITEOUT
-#define NLC_WILLBEDIR		CNP_WILLBEDIR
-#define NLC_NCPISLOCKED		CNP_LOCKLEAF
+#define NLC_FOLLOW		0x00000001	/* follow leaf symlink */
+#define NLC_NOCROSSMOUNT	0x00000002	/* do not cross mount points */
+#define NLC_HASBUF		0x00000004	/* nl_path is allocated */
+#define NLC_ISWHITEOUT		0x00000008
+#define NLC_WILLBEDIR		0x00000010
+#define NLC_NCPISLOCKED		0x00000020
 
 #ifdef _KERNEL
 
@@ -74,10 +85,12 @@ int nlookup_init(struct nlookupdata *, const char *, enum uio_seg, int);
 void nlookup_done(struct nlookupdata *);
 struct namecache *nlookup_simple(const char *str, enum uio_seg seg, 
 				int niflags, int *error);
+int nlookup_mp(struct mount *mp, struct namecache **ncpp);
 int nlookup(struct nlookupdata *);
 int nreadsymlink(struct nlookupdata *nd, struct namecache *ncp, 
 				struct nlcomponent *nlc);
-
+int naccess(struct namecache *ncp, int vmode, struct ucred *cred);
+int naccess_va(struct vattr *va, int vmode, struct ucred *cred);
 
 #endif
 

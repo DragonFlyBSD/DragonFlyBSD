@@ -37,7 +37,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.2 2003/11/03 15:57:33 daver Exp $
+ * $DragonFly: src/sys/emulation/43bsd/43bsd_stats.c,v 1.3 2004/09/30 18:59:35 dillon Exp $
  * 	from: DragonFly kern/kern_descrip.c,v 1.16
  *	from: DragonFly kern/vfs_syscalls.c,v 1.21
  *
@@ -55,6 +55,7 @@
 #include <sys/stat.h>
 #include <sys/kern_syscall.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 
 static int
 compat_43_copyout_stat(struct stat *st, struct ostat *uaddr)
@@ -101,35 +102,33 @@ ofstat(struct ofstat_args *uap)
 int
 ostat(struct ostat_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = compat_43_copyout_stat(&st, uap->ub);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = compat_43_copyout_stat(&st, uap->ub);
+		nlookup_done(&nd);
+	}
 	return (error);
 }
 
 int
 olstat(struct olstat_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = compat_43_copyout_stat(&st, uap->ub);
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = compat_43_copyout_stat(&st, uap->ub);
+		nlookup_done(&nd);
+	}
 	return (error);
 }

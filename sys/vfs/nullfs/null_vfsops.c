@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.11 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.12 2004/09/30 19:00:13 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ static int	nullfs_fhtovp(struct mount *mp, struct fid *fidp,
 static int	nullfs_checkexp(struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
 static int	nullfs_mount(struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td);
+				  struct thread *td);
 static int	nullfs_quotactl(struct mount *mp, int cmd, uid_t uid,
 				     caddr_t arg, struct thread *td);
 static int	nullfs_root(struct mount *mp, struct vnode **vpp);
@@ -82,8 +82,7 @@ static int	nullfs_extattrctl(struct mount *mp, int cmd,
  * Mount null layer
  */
 static int
-nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	     struct thread *td)
+nullfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	int error = 0;
 	struct null_args args;
@@ -92,6 +91,7 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	struct null_mount *xmp;
 	u_int size;
 	int isvnunlocked = 0;
+	struct nameidata nd;
 
 	NULLFSDEBUG("nullfs_mount(mp = %p)\n", (void *)mp);
 
@@ -100,7 +100,6 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		return (EOPNOTSUPP);
-		/* return VFS_MOUNT(MOUNTTONULLMOUNT(mp)->nullm_vfs, path, data, ndp, p);*/
 	}
 
 	/*
@@ -122,9 +121,9 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	/*
 	 * Find lower node
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
 		UIO_USERSPACE, args.target, td);
-	error = namei(ndp);
+	error = namei(&nd);
 	/*
 	 * Re-lock vnode.
 	 */
@@ -133,15 +132,15 @@ nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 
 	if (error)
 		return (error);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
+	NDFREE(&nd, NDF_ONLY_PNBUF);
 
 	/*
 	 * Sanity check on lower vnode
 	 */
-	lowerrootvp = ndp->ni_vp;
+	lowerrootvp = nd.ni_vp;
 
-	vrele(ndp->ni_dvp);
-	ndp->ni_dvp = NULLVP;
+	vrele(nd.ni_dvp);
+	nd.ni_dvp = NULLVP;
 
 	/*
 	 * Check multi null mount to avoid `lock against myself' panic.

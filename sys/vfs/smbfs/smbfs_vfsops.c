@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vfsops.c,v 1.2.2.5 2003/01/17 08:20:26 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.13 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vfsops.c,v 1.14 2004/09/30 19:00:21 dillon Exp $
  */
 #include "opt_netsmb.h"
 #ifndef NETSMB
@@ -81,8 +81,7 @@ SYSCTL_INT(_vfs_smbfs, OID_AUTO, debuglevel, CTLFLAG_RW, &smbfs_debuglevel, 0, "
 static MALLOC_DEFINE(M_SMBFSHASH, "SMBFS hash", "SMBFS hash table");
 
 
-static int smbfs_mount(struct mount *, char *, caddr_t,
-			struct nameidata *, struct thread *);
+static int smbfs_mount(struct mount *, char *, caddr_t, struct thread *);
 static int smbfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int smbfs_root(struct mount *, struct vnode **);
 static int smbfs_start(struct mount *, int, struct thread *);
@@ -133,8 +132,7 @@ MODULE_DEPEND(smbfs, libmchain, 1, 1, 1);
 int smbfs_pbuf_freecnt = -1;	/* start out unlimited */
 
 static int
-smbfs_mount(struct mount *mp, char *path, caddr_t data, 
-	    struct nameidata *ndp, struct thread *td)
+smbfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct smbfs_args args; 	  /* will hold data from mount request */
 	struct smbmount *smp = NULL;

@@ -36,7 +36,7 @@
  *	@(#)umap_vfsops.c	8.8 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/umapfs/umap_vfsops.c,v 1.31.2.2 2001/09/11 09:49:53 kris Exp $
- * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.11 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/umapfs/Attic/umap_vfsops.c,v 1.12 2004/09/30 19:00:27 dillon Exp $
  */
 
 /*
@@ -64,7 +64,7 @@ static int	umapfs_fhtovp (struct mount *mp, struct fid *fidp,
 static int	umapfs_checkexp (struct mount *mp, struct sockaddr *nam,
 				    int *extflagsp, struct ucred **credanonp);
 static int	umapfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td);
+				  struct thread *td);
 static int	umapfs_quotactl (struct mount *mp, int cmd, uid_t uid,
 				     caddr_t arg, struct thread *td);
 static int	umapfs_root (struct mount *mp, struct vnode **vpp);
@@ -86,13 +86,13 @@ static int	umapfs_extattrctl (struct mount *mp, int cmd,
  * Mount umap layer
  */
 static int
-umapfs_mount(struct mount *mp, char *path, caddr_t data,
-	struct nameidata *ndp, struct thread *td)
+umapfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct umap_args args;
 	struct vnode *lowerrootvp, *vp;
 	struct vnode *umapm_rootvp;
 	struct umap_mount *amp;
+	struct nameidata nd;
 	u_int size;
 	int error;
 #ifdef DEBUG
@@ -114,7 +114,6 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data,
 	 */
 	if (mp->mnt_flag & MNT_UPDATE) {
 		return (EOPNOTSUPP);
-		/* return (VFS_MOUNT(MOUNTTOUMAPMOUNT(mp)->umapm_vfs, path, data, ndp, td));*/
 	}
 
 	/*
@@ -127,22 +126,22 @@ umapfs_mount(struct mount *mp, char *path, caddr_t data,
 	/*
 	 * Find lower node
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT | CNP_LOCKLEAF,
 		UIO_USERSPACE, args.target, td);
-	error = namei(ndp);
+	error = namei(&nd);
 	if (error)
 		return (error);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
+	NDFREE(&nd, NDF_ONLY_PNBUF);
 
 	/*
 	 * Sanity check on lower vnode
 	 */
-	lowerrootvp = ndp->ni_vp;
+	lowerrootvp = nd.ni_vp;
 #ifdef DEBUG
 	printf("vp = %p, check for VDIR...\n", (void *)lowerrootvp);
 #endif
-	vrele(ndp->ni_dvp);
-	ndp->ni_dvp = 0;
+	vrele(nd.ni_dvp);
+	nd.ni_dvp = 0;
 
 	if (lowerrootvp->v_type != VDIR) {
 		vput(lowerrootvp);

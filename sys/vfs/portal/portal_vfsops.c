@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.11 2004/08/28 19:02:25 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.12 2004/09/30 19:00:17 dillon Exp $
  */
 
 /*
@@ -63,7 +63,7 @@ extern struct vnodeopv_entry_desc portal_vnodeop_entries[];
 static MALLOC_DEFINE(M_PORTALFSMNT, "PORTAL mount", "PORTAL mount structure");
 
 static int	portal_mount (struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td);
+				  struct thread *td);
 static int	portal_unmount (struct mount *mp, int mntflags,
 				    struct thread *td);
 static int	portal_root (struct mount *mp, struct vnode **vpp);
@@ -74,8 +74,7 @@ static int	portal_statfs (struct mount *mp, struct statfs *sbp,
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-portal_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	     struct thread *td)
+portal_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct file *fp;
 	struct portal_args args;

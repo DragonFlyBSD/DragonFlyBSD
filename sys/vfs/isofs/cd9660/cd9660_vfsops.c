@@ -37,7 +37,7 @@
  *
  *	@(#)cd9660_vfsops.c	8.18 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_vfsops.c,v 1.74.2.7 2002/04/08 09:39:29 bde Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.20 2004/08/28 19:02:15 dillon Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_vfsops.c,v 1.21 2004/09/30 18:59:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,8 +69,7 @@ extern struct vnodeopv_entry_desc cd9660_fifoop_entries[];
 MALLOC_DEFINE(M_ISOFSMNT, "ISOFS mount", "ISOFS mount structure");
 MALLOC_DEFINE(M_ISOFSNODE, "ISOFS node", "ISOFS vnode private part");
 
-static int cd9660_mount (struct mount *,
-	    char *, caddr_t, struct nameidata *, struct thread *);
+static int cd9660_mount (struct mount *, char *, caddr_t, struct thread *);
 static int cd9660_unmount (struct mount *, int, struct thread *);
 static int cd9660_root (struct mount *, struct vnode **);
 static int cd9660_statfs (struct mount *, struct statfs *, struct thread *);
@@ -146,6 +145,7 @@ static int
 iso_mountroot(struct mount *mp, struct thread *td)
 {
 	struct iso_args args;
+	struct vnode *rootvp;
 	int error;
 
 	if ((error = bdevvp(rootdev, &rootvp))) {
@@ -180,8 +180,7 @@ iso_mountroot(struct mount *mp, struct thread *td)
  * mount system call
  */
 static int
-cd9660_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	     struct thread *td)
+cd9660_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct vnode *devvp;
 	struct iso_args args;
@@ -189,6 +188,7 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	int error;
 	mode_t accessmode;
 	struct iso_mnt *imp = 0;
+	struct nameidata nd;
 
 	if ((mp->mnt_flag & MNT_ROOTFS) != 0) {
 		return (iso_mountroot(mp, td));
@@ -214,11 +214,11 @@ cd9660_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(ndp)))
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	if ((error = namei(&nd)))
 		return (error);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	devvp = ndp->ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -292,12 +292,11 @@ iso_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
-	 * (except for root, which might share swap device for miniroot).
 	 * Flush out any old buffers remaining from a previous use.
 	 */
 	if ((error = vfs_mountedon(devvp)))
 		return error;
-	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0)
 		return EBUSY;
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)))
 		return (error);

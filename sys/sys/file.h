@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.10 2004/05/13 23:49:25 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.11 2004/09/30 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -56,6 +56,7 @@ struct file;
 struct ucred;
 struct vnode;
 struct lwkt_port;
+struct namecache;
 
 struct	fileops {
 	struct lwkt_port *fo_port;
@@ -108,6 +109,7 @@ struct file {
 	caddr_t	f_data;		/* vnode or socket */
 	int	f_count;	/* reference count */
 	int	f_msgcount;	/* reference count from message queue */
+	struct namecache *f_ncp; /* ncp (required for directories) */
 };
 
 LIST_HEAD(filelist, file);

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.30 2004/09/26 01:24:56 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.31 2004/09/30 19:00:08 dillon Exp $
  */
 
 
@@ -952,7 +952,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 				cnp->cn_flags |= CNP_CACHETIMEOUT;
 				cnp->cn_timeout = toval;
 			}
-			cache_enter(dvp, NCPNULL, NULL, cnp);
+			cache_enter(dvp, NULL, cnp);
 		}
 		nfsm_postop_attr(dvp, attrflag);
 		m_freem(mrep);
@@ -1032,7 +1032,7 @@ nfs_lookup(struct vop_lookup_args *ap)
 	if ((cnp->cn_flags & CNP_MAKEENTRY) &&
 	    (cnp->cn_nameiop != NAMEI_DELETE || !(flags & CNP_ISLASTCN))) {
 		np->n_ctime = np->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, NCPNULL, newvp, cnp);
+		cache_enter(dvp, newvp, cnp);
 	}
 	*vpp = newvp;
 	m_freem(mrep);
@@ -1384,7 +1384,7 @@ nfsmout:
 			vput(newvp);
 	} else {
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, NCPNULL, newvp, cnp);
+			cache_enter(dvp, newvp, cnp);
 		*vpp = newvp;
 	}
 	VTONFS(dvp)->n_flag |= NMODIFIED;
@@ -1516,7 +1516,7 @@ nfsmout:
 	}
 	if (!error) {
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, NCPNULL, newvp, cnp);
+			cache_enter(dvp, newvp, cnp);
 		/*
 		 * The new np may have enough info for access
 		 * checks, make sure rucred and wucred are
@@ -2449,7 +2449,7 @@ nfs_readdirplusrpc(struct vnode *vp, struct uio *uiop)
 				dp->d_type =
 				    IFTODT(VTTOIF(np->n_vattr.va_type));
 				ndp->ni_vp = newvp;
-			        cache_enter(ndp->ni_dvp, NCPNULL, ndp->ni_vp, cnp);
+			        cache_enter(ndp->ni_dvp, ndp->ni_vp, cnp);
 			    }
 			} else {
 			    /* Just skip over the file handle */

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.20 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.21 2004/09/30 19:00:08 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -115,7 +115,7 @@ static void	nfs_decode_args (struct nfsmount *nmp,
 static int	mountnfs (struct nfs_args *,struct mount *,
 			struct sockaddr *,char *,char *,struct vnode **);
 static int	nfs_mount ( struct mount *mp, char *path, caddr_t data,
-			struct nameidata *ndp, struct thread *td);
+			struct thread *td);
 static int	nfs_unmount ( struct mount *mp, int mntflags,
 			struct thread *td);
 static int	nfs_root ( struct mount *mp, struct vnode **vpp);
@@ -574,7 +574,6 @@ nfs_mountroot(mp)
 
 	mp->mnt_flag |= MNT_ROOTFS;
 	mp->mnt_vnodecovered = NULLVP;
-	rootvp = vp;
 	vfs_unbusy(mp, td);
 
 	/*
@@ -783,8 +782,7 @@ nfs_decode_args(nmp, argp)
  */
 /* ARGSUSED */
 static int
-nfs_mount(struct mount *mp, char *path, caddr_t data,
-	struct nameidata *ndp, struct thread *td)
+nfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	int error;
 	struct nfs_args args;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.16 2004/03/01 06:33:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.17 2004/09/30 18:59:38 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -43,6 +43,7 @@
 #include <sys/malloc.h>
 #include <sys/mount.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/proc.h>
 #include <sys/sysproto.h>
 #include <sys/tty.h>
@@ -508,8 +509,7 @@ linux_unlink(struct linux_unlink_args *args)
 int
 linux_chdir(struct linux_chdir_args *args)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char *path;
 	int error;
 
@@ -520,11 +520,11 @@ linux_chdir(struct linux_chdir_args *args)
 	if (ldebug(chdir))
 		printf(ARGS(chdir, "%s"), path);
 #endif
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_SYSSPACE,
-	    path, td);
-
-	error = kern_chdir(&nd);
-
+	error = nlookup_init(&nd, path, UIO_SYSSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_chdir(&nd);
+		nlookup_done(&nd);
+	}
 	linux_free_path(&path);
 	return(error);
 }

@@ -36,7 +36,7 @@
  *	@(#)fdesc_vfsops.c	8.4 (Berkeley) 1/21/94
  *
  * $FreeBSD: src/sys/miscfs/fdesc/fdesc_vfsops.c,v 1.22.2.3 2002/08/23 17:42:39 njl Exp $
- * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.8 2004/08/17 18:57:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/fdesc/fdesc_vfsops.c,v 1.9 2004/09/30 18:59:54 dillon Exp $
  */
 
 /*
@@ -62,7 +62,7 @@ extern struct vnodeopv_entry_desc fdesc_vnodeop_entries[];
 static MALLOC_DEFINE(M_FDESCMNT, "FDESC mount", "FDESC mount structure");
 
 static int	fdesc_mount (struct mount *mp, char *path, caddr_t data,
-				 struct nameidata *ndp, struct thread *td);
+				 struct thread *td);
 static int	fdesc_unmount (struct mount *mp, int mntflags,
 				   struct thread *td);
 static int	fdesc_statfs (struct mount *mp, struct statfs *sbp,
@@ -72,8 +72,7 @@ static int	fdesc_statfs (struct mount *mp, struct statfs *sbp,
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-fdesc_mount(struct mount *mp, char *path, caddr_t data,
-	struct nameidata *ndp, struct thread *td)
+fdesc_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	int error = 0;
 	struct fdescmount *fmp;

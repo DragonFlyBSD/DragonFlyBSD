@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.6 2004/09/28 00:25:31 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.7 2004/09/30 18:59:50 dillon Exp $
  */
 
 /*
@@ -96,7 +96,7 @@ struct vop_islocked_args {
 struct vop_resolve_args {
 	struct vop_generic_args a_head;
 	struct namecache *a_ncp;
-	struct componentname *a_cnp;
+	struct ucred *a_cred;
 };
 
 struct vop_lookup_args {
@@ -252,6 +252,12 @@ struct vop_remove_args {
 	struct namecache *a_par;
 	struct vnode *a_vp;
 	struct componentname *a_cnp;
+};
+
+struct vop_nremove_args {
+	struct vop_generic_args a_head;
+	struct namecache *a_ncp;		/* locked namespace */
+	struct ucred *a_cred;
 };
 
 struct vop_link_args {
@@ -578,7 +584,8 @@ struct vop_ops {
 	int	(*vop_destroyvobject)(struct vop_destroyvobject_args *);
 	int	(*vop_getvobject)(struct vop_getvobject_args *);
 	int	(*vop_vfsset)(struct vop_vfsset_args *);
-#define vop_ops_last_field	vop_vfsset
+	int	(*vop_nremove)(struct vop_nremove_args *);
+#define vop_ops_last_field	vop_nremove
 };
 
 #define VVF_JOURNAL_HOOK	0x0001		/* FUTURE */
@@ -628,6 +635,7 @@ union vop_args_union {
 	struct vop_mmap_args vu_mmap;
 	struct vop_fsync_args vu_fsync;
 	struct vop_remove_args vu_remove;
+	struct vop_nremove_args vu_nremove;
 	struct vop_link_args vu_link;
 	struct vop_rename_args vu_rename;
 	struct vop_mkdir_args vu_mkdir;
@@ -672,7 +680,7 @@ union vop_args_union {
  * in a message and dispatch it to the correct thread.
  */
 int vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td);
-int vop_resolve(struct vop_ops *ops, struct namecache *ncp);
+int vop_resolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred);
 int vop_lookup(struct vop_ops *ops, struct vnode *dvp, 
 		struct vnode **vpp, struct componentname *cnp);
 int vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp, 
@@ -776,6 +784,8 @@ int vop_getvobject(struct vop_ops *ops,
 		struct vnode *vp, struct vm_object **objpp);
 int vop_vfsset(struct vop_ops *ops, int op, const char *opstr);
 
+int vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred);
+
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
  * nullfs or unionfs needs to push down into another VFS, changing the 
@@ -808,6 +818,7 @@ int vop_revoke_ap(struct vop_revoke_args *ap);
 int vop_mmap_ap(struct vop_mmap_args *ap);
 int vop_fsync_ap(struct vop_fsync_args *ap);
 int vop_remove_ap(struct vop_remove_args *ap);
+int vop_nremove_ap(struct vop_nremove_args *ap);
 int vop_link_ap(struct vop_link_args *ap);
 int vop_rename_ap(struct vop_rename_args *ap);
 int vop_mkdir_ap(struct vop_mkdir_args *ap);
@@ -868,6 +879,7 @@ extern struct vnodeop_desc vop_revoke_desc;
 extern struct vnodeop_desc vop_mmap_desc;
 extern struct vnodeop_desc vop_fsync_desc;
 extern struct vnodeop_desc vop_remove_desc;
+extern struct vnodeop_desc vop_nremove_desc;
 extern struct vnodeop_desc vop_link_desc;
 extern struct vnodeop_desc vop_rename_desc;
 extern struct vnodeop_desc vop_mkdir_desc;

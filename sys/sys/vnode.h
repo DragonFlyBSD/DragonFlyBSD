@@ -32,7 +32,7 @@
  *
  *	@(#)vnode.h	8.7 (Berkeley) 2/4/94
  * $FreeBSD: src/sys/sys/vnode.h,v 1.111.2.19 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/sys/vnode.h,v 1.22 2004/09/04 23:12:53 dillon Exp $
+ * $DragonFly: src/sys/sys/vnode.h,v 1.23 2004/09/30 18:59:51 dillon Exp $
  */
 
 #ifndef _SYS_VNODE_H_
@@ -192,8 +192,15 @@ struct vnode {
 #define	IO_SEQSHIFT	16		/* seq heuristic in upper 16 bits */
 
 /*
- *  Modes.  Some values same as Ixxx entries from inode.h for now.
+ * Modes.  Note that these V-modes must match file S_I*USR, SUID, SGID,
+ * and SVTX flag bits.
+ *
+ * VCREATE, VDELETE, and VEXCL may only be used in naccess() calls.
  */
+#define VDELETE	040000		/* delete if the file/dir exists */
+#define VCREATE	020000		/* create if the file/dir does not exist */
+#define VEXCL	010000		/* error if the file/dir already exists */
+
 #define	VSUID	04000		/* set user id on execution */
 #define	VSGID	02000		/* set group id on execution */
 #define	VSVTX	01000		/* save swapped text even after use */
@@ -253,6 +260,7 @@ extern	int		vttoif_tab[];
  * Global vnode data.
  */
 extern	struct vnode *rootvnode;	/* root (i.e. "/") vnode */
+extern  struct namecache *rootncp;	/* root (i.e. "/") namecache */
 extern	int desiredvnodes;		/* number of vnodes desired */
 extern	time_t syncdelay;		/* max time to delay syncing data */
 extern	time_t filedelay;		/* time to delay syncing files */

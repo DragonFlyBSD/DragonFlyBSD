@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_misc.c,v 1.13.2.7 2003/01/14 21:33:58 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.23 2004/09/28 00:25:34 dillon Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_misc.c,v 1.24 2004/09/30 18:59:43 dillon Exp $
  */
 
 /*
@@ -610,7 +610,7 @@ svr4_sys_fchroot(struct svr4_sys_fchroot_args *uap)
 		return error;
 	vp = (struct vnode *) fp->f_data;
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-	if (vp->v_type != VDIR)
+	if (vp->v_type != VDIR || fp->f_ncp == NULL)
 		error = ENOTDIR;
 	else
 		error = VOP_ACCESS(vp, VEXEC, cred, td);
@@ -623,7 +623,7 @@ svr4_sys_fchroot(struct svr4_sys_fchroot_args *uap)
 		cache_drop(fdp->fd_nrdir);
 	}
 	fdp->fd_rdir = vp;
-	fdp->fd_nrdir = cache_vptoncp(vp);	/* stopgap */
+	fdp->fd_nrdir = cache_hold(fp->f_ncp);	/* stopgap */
 	return 0;
 }
 

@@ -32,7 +32,7 @@
  *
  *	@(#)mount.h	8.21 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/sys/mount.h,v 1.89.2.7 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/sys/mount.h,v 1.12 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/sys/mount.h,v 1.13 2004/09/30 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_MOUNT_H_
@@ -145,6 +145,7 @@ struct mount {
 	struct vop_ops	*mnt_vn_ops;		/* for use by the VFS */
 	struct vop_ops	*mnt_vn_spec_ops;	/* for use by the VFS */
 	struct vop_ops	*mnt_vn_fifo_ops;	/* for use by the VFS */
+	struct namecache *mnt_ncp;		/* NCF_MNTPT ncp */
 };
 #endif /* _KERNEL || _KERNEL_STRUCTURES */
 
@@ -339,13 +340,14 @@ TAILQ_HEAD(mntlist, mount);	/* struct mntlist */
  * Operations supported on mounted file system.
  */
 #ifdef __STDC__
+struct nlookupdata;
 struct nameidata;
 struct mbuf;
 #endif
 
 struct vfsops {
 	int	(*vfs_mount)	(struct mount *mp, char *path, caddr_t data,
-				    struct nameidata *ndp, struct thread *td);
+				    struct thread *td);
 	int	(*vfs_start)	(struct mount *mp, int flags,
 				    struct thread *td);
 	int	(*vfs_unmount)	(struct mount *mp, int mntflags,
@@ -371,8 +373,8 @@ struct vfsops {
 					struct thread *td);
 };
 
-#define VFS_MOUNT(MP, PATH, DATA, NDP, P) \
-	(*(MP)->mnt_op->vfs_mount)(MP, PATH, DATA, NDP, P)
+#define VFS_MOUNT(MP, PATH, DATA, P) \
+	(*(MP)->mnt_op->vfs_mount)(MP, PATH, DATA, P)
 #define VFS_START(MP, FLAGS, P)	  (*(MP)->mnt_op->vfs_start)(MP, FLAGS, P)
 #define VFS_UNMOUNT(MP, FORCE, P) (*(MP)->mnt_op->vfs_unmount)(MP, FORCE, P)
 #define VFS_ROOT(MP, VPP)	  (*(MP)->mnt_op->vfs_root)(MP, VPP)

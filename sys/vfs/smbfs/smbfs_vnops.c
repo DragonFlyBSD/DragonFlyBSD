@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/smbfs/smbfs_vnops.c,v 1.2.2.8 2003/04/04 08:57:23 tjr Exp $
- * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.17 2004/09/26 01:25:00 dillon Exp $
+ * $DragonFly: src/sys/vfs/smbfs/smbfs_vnops.c,v 1.18 2004/09/30 19:00:21 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -525,7 +525,7 @@ smbfs_create(struct vop_create_args *ap)
 		return error;
 	*vpp = vp;
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(dvp, NCPNULL, vp, cnp);
+		cache_enter(dvp, vp, cnp);
 	return error;
 }
 
@@ -1265,7 +1265,7 @@ smbfs_lookup(struct vop_lookup_args *ap)
 	}
 	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 /*		VTOSMB(*vpp)->n_ctime = VTOSMB(*vpp)->n_vattr.va_ctime.tv_sec;*/
-		cache_enter(dvp, NCPNULL, *vpp, cnp);
+		cache_enter(dvp, *vpp, cnp);
 	}
 	return 0;
 }

@@ -1,5 +1,5 @@
 /* $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/msdosfs/Attic/msdosfs_vfsops.c,v 1.60.2.8 2004/03/02 09:43:04 tjr Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.18 2004/08/17 18:57:34 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.19 2004/09/30 19:00:04 dillon Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -96,7 +96,7 @@ static int	msdosfs_fhtovp (struct mount *, struct fid *,
 static int	msdosfs_checkexp (struct mount *, struct sockaddr *, 
 				    int *, struct ucred **);
 static int	msdosfs_mount (struct mount *, char *, caddr_t,
-				   struct nameidata *, struct thread *);
+				   struct thread *);
 static int	msdosfs_root (struct mount *, struct vnode **);
 static int	msdosfs_statfs (struct mount *, struct statfs *,
 				    struct thread *);
@@ -164,6 +164,7 @@ msdosfs_mountroot(void)
 	size_t size;
 	int error;
 	struct msdosfs_args args;
+	struct vnode *rootvp;
 
 	if (root_device->dv_class != DV_DISK)
 		return (ENODEV);
@@ -224,8 +225,7 @@ msdosfs_mountroot(void)
  * special file to treat as a filesystem.
  */
 static int
-msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	      struct thread *td)
+msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct vnode *devvp;	  /* vnode for blk device to mount */
 	struct msdosfs_args args; /* will hold data from mount request */
@@ -235,6 +235,7 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	int error, flags;
 	mode_t accessmode;
 	struct proc *p = td->td_proc;
+	struct nameidata nd;
 
 	KKASSERT(p);
 
@@ -298,12 +299,12 @@ msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	error = namei(ndp);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	error = namei(&nd);
 	if (error)
 		return (error);
-	devvp = ndp->ni_vp;
-	NDFREE(ndp, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -381,13 +382,12 @@ mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
-	 * (except for root, which might share swap device for miniroot).
 	 * Flush out any old buffers remaining from a previous use.
 	 */
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
 	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.7 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.8 2004/09/30 19:00:23 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -100,8 +100,7 @@ MALLOC_DEFINE(M_UDFNODE, "UDF node", "UDF node structure");
 MALLOC_DEFINE(M_UDFMOUNT, "UDF mount", "UDF mount structure");
 MALLOC_DEFINE(M_UDFFENTRY, "UDF fentry", "UDF file entry structure");
 
-static int udf_mount(struct mount *, char *, caddr_t, struct nameidata *,
-		     struct thread *);
+static int udf_mount(struct mount *, char *, caddr_t, struct thread *);
 static int udf_unmount(struct mount *, int, struct thread *);
 static int udf_root(struct mount *, struct vnode **);
 static int udf_statfs(struct mount *, struct statfs *, struct thread *);
@@ -133,14 +132,14 @@ MODULE_VERSION(udf, 1);
 static int udf_mountfs(struct vnode *, struct mount *, struct thread *);
 
 static int
-udf_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	  struct thread *td)
+udf_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct vnode *devvp;	/* vnode of the mount device */
 	struct udf_args args;
 	struct udf_mnt *imp = 0;
 	size_t size;
 	int error;
+	struct nameidata nd;
 
 	if ((mp->mnt_flag & MNT_RDONLY) == 0)
 		return (EROFS);
@@ -162,11 +161,11 @@ udf_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	}
 
 	/* Check that the mount device exists */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(ndp)))
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	if ((error = namei(&nd)))
 		return(error);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	devvp = ndp->ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
 
 	if (vn_isdisk(devvp, &error) == 0) {
 		vrele(devvp);

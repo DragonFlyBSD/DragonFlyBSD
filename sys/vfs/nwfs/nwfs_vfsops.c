@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vfsops.c,v 1.6.2.6 2001/10/25 19:18:54 dillon Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.11 2004/08/17 18:57:35 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vfsops.c,v 1.12 2004/09/30 19:00:15 dillon Exp $
  */
 #include "opt_ncp.h"
 #ifndef NCP
@@ -69,8 +69,7 @@ SYSCTL_NODE(_vfs, OID_AUTO, nwfs, CTLFLAG_RW, 0, "Netware file system");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, version, CTLFLAG_RD, &nwfs_version, 0, "");
 SYSCTL_INT(_vfs_nwfs, OID_AUTO, debuglevel, CTLFLAG_RW, &nwfs_debuglevel, 0, "");
 
-static int nwfs_mount(struct mount *, char *, caddr_t,
-			struct nameidata *, struct thread *);
+static int nwfs_mount(struct mount *, char *, caddr_t, struct thread *);
 static int nwfs_quotactl(struct mount *, int, uid_t, caddr_t, struct thread *);
 static int nwfs_root(struct mount *, struct vnode **);
 static int nwfs_start(struct mount *, int, struct thread *);
@@ -143,8 +142,7 @@ nwfs_initnls(struct nwmount *nmp) {
  * data - addr in user space of mount params 
  */
 static int
-nwfs_mount(struct mount *mp, char *path, caddr_t data, 
-	   struct nameidata *ndp, struct thread *td)
+nwfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct nwfs_args args; 	  /* will hold data from mount request */
 	size_t size;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.20 2004/08/28 19:02:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.21 2004/09/30 18:59:57 dillon Exp $
  */
 
 
@@ -87,8 +87,7 @@ static int	hpfs_sync (struct mount *, int, struct ucred *,
 
 #if defined(__DragonFly__)
 struct sockaddr;
-static int	hpfs_mount (struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *);
+static int	hpfs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	hpfs_init (struct vfsconf *);
 static int	hpfs_checkexp (struct mount *, struct sockaddr *,
 				   int *, struct ucred **);
@@ -167,13 +166,14 @@ hpfs_mount(struct mount *mp,
 #else /* defined(__NetBSD__) */
 	   const char *path, void *data,
 #endif
-	   struct nameidata *ndp, struct thread *td)
+	   struct thread *td)
 {
 	u_int		size;
 	int		err = 0;
 	struct vnode	*devvp;
 	struct hpfs_args args;
 	struct hpfsmount *hpmp = 0;
+	struct nameidata nd;
 
 	dprintf(("hpfs_mount():\n"));
 	/*
@@ -216,14 +216,15 @@ hpfs_mount(struct mount *mp,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(ndp);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	err = namei(&nd);
 	if (err) {
 		/* can't get devvp!*/
 		goto error_1;
 	}
 
-	devvp = ndp->ni_vp;
+	devvp = nd.ni_vp;
+	/* XXX NDFREE */
 
 #if defined(__DragonFly__)
 	if (!vn_isdisk(devvp, &err)) 
@@ -321,7 +322,7 @@ hpfs_mountfs(struct vnode *devvp, struct mount *mp, struct hpfs_args *argsp,
 	if (devvp->v_object)
 		ncount -= 1;
 #endif
-	if (ncount > 0 && devvp != rootvp)
+	if (ncount > 0)
 		return (EBUSY);
 
 #if defined(__DragonFly__)

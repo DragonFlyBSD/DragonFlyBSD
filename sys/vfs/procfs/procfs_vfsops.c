@@ -37,7 +37,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/miscfs/procfs/procfs_vfsops.c,v 1.32.2.1 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.8 2004/08/28 19:02:27 dillon Exp $
+ * $DragonFly: src/sys/vfs/procfs/procfs_vfsops.c,v 1.9 2004/09/30 19:00:19 dillon Exp $
  */
 
 /*
@@ -55,7 +55,7 @@
 extern struct vnodeopv_entry_desc procfs_vnodeop_entries[];
 
 static int	procfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td);
+				  struct thread *td);
 static int	procfs_statfs (struct mount *mp, struct statfs *sbp,
 				   struct thread *td);
 static int	procfs_unmount (struct mount *mp, int mntflags,
@@ -68,8 +68,7 @@ static int	procfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-procfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	     struct thread *td)
+procfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	size_t size;
 	int error;

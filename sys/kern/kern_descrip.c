@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.28 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.29 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -952,6 +952,10 @@ ffree(struct file *fp)
 	KASSERT((fp->f_count == 0), ("ffree: fp_fcount not 0!"));
 	LIST_REMOVE(fp, f_list);
 	crfree(fp->f_cred);
+	if (fp->f_ncp) {
+	    cache_drop(fp->f_ncp);
+	    fp->f_ncp = NULL;
+	}
 	nfiles--;
 	free(fp, M_FILE);
 }

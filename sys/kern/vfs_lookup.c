@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_lookup.c	8.4 (Berkeley) 2/16/94
  * $FreeBSD: src/sys/kern/vfs_lookup.c,v 1.38.2.3 2001/08/31 19:36:49 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.16 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_lookup.c,v 1.17 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -539,7 +539,6 @@ unionlookup:
 			dpunlocked = 1;
 			goto bad2;
 		}
-		cache_mount(dp, tdp);
 		vrele(dp);
 		ndp->ni_vp = dp = tdp;
 	}

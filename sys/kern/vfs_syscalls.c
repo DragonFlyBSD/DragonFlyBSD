@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.39 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.40 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -58,6 +58,7 @@
 #include <sys/vnode.h>
 #include <sys/proc.h>
 #include <sys/namei.h>
+#include <sys/nlookup.h>
 #include <sys/dirent.h>
 #include <sys/extattr.h>
 #include <sys/kern_syscall.h>
@@ -73,7 +74,7 @@
 #include <sys/file2.h>
 
 static int checkvp_chdir (struct vnode *vn, struct thread *td);
-static void checkdirs (struct vnode *olddp);
+static void checkdirs (struct vnode *olddp, struct namecache *ncp);
 static int chroot_refuse_vdir_fds (struct filedesc *fdp);
 static int getutimes (const struct timeval *, struct timespec *);
 static int setfown (struct vnode *, uid_t, gid_t);
@@ -103,14 +104,16 @@ mount(struct mount_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct vnode *vp;
+	struct namecache *ncp;
 	struct mount *mp;
 	struct vfsconf *vfsp;
 	int error, flag = 0, flag2 = 0;
 	struct vattr va;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	char fstypename[MFSNAMELEN];
 	lwkt_tokref vlock;
 	lwkt_tokref ilock;
+	struct nlcomponent nlc;
 
 	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
@@ -130,17 +133,45 @@ mount(struct mount_args *uap)
 	 */
 	if (suser(td)) 
 		SCARG(uap, flags) |= MNT_NOSUID | MNT_NODEV;
+
 	/*
-	 * Get vnode to be covered
+	 * Lookup the requested path and extract the ncp and vnode.
 	 */
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    SCARG(uap, path), td);
-	if ((error = namei(&nd)) != 0)
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		if ((error = nlookup(&nd)) == 0) {
+			if (nd.nl_ncp->nc_vp == NULL)
+				error = ENOENT;
+		}
+	}
+	if (error) {
+		nlookup_done(&nd);
 		return (error);
-	NDFREE(&nd, NDF_ONLY_PNBUF);
-	vp = nd.ni_vp;
+	}
+
+	/*
+	 * Extract the locked+refd ncp and cleanup the nd structure
+	 */
+	ncp = nd.nl_ncp;
+	nd.nl_ncp = NULL;
+	nlookup_done(&nd);
+
+	/*
+	 * now we have the locked ref'd ncp and unreferenced vnode.
+	 */
+	vp = ncp->nc_vp;
+	if ((error = vget(vp, NULL, LK_EXCLUSIVE, td)) != 0) {
+		cache_put(ncp);
+		return (error);
+	}
+	cache_unlock(ncp);
+
+	/*
+	 * Now we have an unlocked ref'd ncp and a locked ref'd vp
+	 */
 	if (SCARG(uap, flags) & MNT_UPDATE) {
 		if ((vp->v_flag & VROOT) == 0) {
+			cache_drop(ncp);
 			vput(vp);
 			return (EINVAL);
 		}
@@ -153,6 +184,7 @@ mount(struct mount_args *uap)
 		 */
 		if ((SCARG(uap, flags) & MNT_RELOAD) &&
 		    ((mp->mnt_flag & MNT_RDONLY) == 0)) {
+			cache_drop(ncp);
 			vput(vp);
 			return (EOPNOTSUPP);	/* Needs translation */
 		}
@@ -162,16 +194,19 @@ mount(struct mount_args *uap)
 		 */
 		if (mp->mnt_stat.f_owner != p->p_ucred->cr_uid &&
 		    (error = suser(td))) {
+			cache_drop(ncp);
 			vput(vp);
 			return (error);
 		}
 		if (vfs_busy(mp, LK_NOWAIT, NULL, td)) {
+			cache_drop(ncp);
 			vput(vp);
 			return (EBUSY);
 		}
 		lwkt_gettoken(&vlock, vp->v_interlock);
 		if ((vp->v_flag & VMOUNT) != 0 ||
 		    vp->v_mountedhere != NULL) {
+			cache_drop(ncp);
 			lwkt_reltoken(&vlock);
 			vfs_unbusy(mp, td);
 			vput(vp);
@@ -191,34 +226,41 @@ mount(struct mount_args *uap)
 	if ((error = VOP_GETATTR(vp, &va, td)) ||
 	    (va.va_uid != p->p_ucred->cr_uid &&
 	     (error = suser(td)))) {
+		cache_drop(ncp);
 		vput(vp);
 		return (error);
 	}
 	if ((error = vinvalbuf(vp, V_SAVE, td, 0, 0)) != 0) {
+		cache_drop(ncp);
 		vput(vp);
 		return (error);
 	}
 	if (vp->v_type != VDIR) {
+		cache_drop(ncp);
 		vput(vp);
 		return (ENOTDIR);
 	}
 	if ((error = copyinstr(SCARG(uap, type), fstypename, MFSNAMELEN, NULL)) != 0) {
+		cache_drop(ncp);
 		vput(vp);
 		return (error);
 	}
-	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next)
+	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
 		if (!strcmp(vfsp->vfc_name, fstypename))
 			break;
+	}
 	if (vfsp == NULL) {
 		linker_file_t lf;
 
 		/* Only load modules for root (very important!) */
 		if ((error = suser(td)) != 0) {
+			cache_drop(ncp);
 			vput(vp);
 			return error;
 		}
 		error = linker_load_file(fstypename, &lf);
 		if (error || lf == NULL) {
+			cache_drop(ncp);
 			vput(vp);
 			if (lf == NULL)
 				error = ENODEV;
@@ -226,12 +268,14 @@ mount(struct mount_args *uap)
 		}
 		lf->userrefs++;
 		/* lookup again, see if the VFS was loaded */
-		for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next)
+		for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
 			if (!strcmp(vfsp->vfc_name, fstypename))
 				break;
+		}
 		if (vfsp == NULL) {
 			lf->userrefs--;
 			linker_file_unload(lf);
+			cache_drop(ncp);
 			vput(vp);
 			return (ENODEV);
 		}
@@ -240,6 +284,7 @@ mount(struct mount_args *uap)
 	if ((vp->v_flag & VMOUNT) != 0 ||
 	    vp->v_mountedhere != NULL) {
 		lwkt_reltoken(&vlock);
+		cache_drop(ncp);
 		vput(vp);
 		return (EBUSY);
 	}
@@ -286,7 +331,7 @@ update:
 	 * XXX The final recipients of VFS_MOUNT just overwrite the ndp they
 	 * get.  No freeing of cn_pnbuf.
 	 */
-	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), &nd, td);
+	error = VFS_MOUNT(mp, SCARG(uap, path), SCARG(uap, data), td);
 	if (mp->mnt_flag & MNT_UPDATE) {
 		if (mp->mnt_kern_flag & MNTK_WANTRDWR)
 			mp->mnt_flag &= ~MNT_RDONLY;
@@ -301,14 +346,25 @@ update:
 		vp->v_flag &= ~VMOUNT;
 		lwkt_reltoken(&vlock);
 		vrele(vp);
+		cache_drop(ncp);
 		return (error);
 	}
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	/*
-	 * Put the new filesystem on the mount list after root.
+	 * Put the new filesystem on the mount list after root.  The mount
+	 * point gets its own mnt_ncp which is a special ncp linking the
+	 * vnode-under to the root of the new mount.  The lookup code
+	 * detects the mount point going forward and detects the special
+	 * mnt_ncp via NCP_MOUNTPT going backwards.
 	 */
 	cache_purge(vp);
 	if (!error) {
+		nlc.nlc_nameptr = "";
+		nlc.nlc_namelen = 0;
+		mp->mnt_ncp = cache_nlookup(ncp, &nlc);
+		mp->mnt_ncp->nc_flag |= NCF_MOUNTPT;
+		cache_drop(ncp);
+		/* XXX get the root of the fs and cache_setvp(mnt_ncp...) */
 		lwkt_gettoken(&vlock, vp->v_interlock);
 		vp->v_flag &= ~VMOUNT;
 		vp->v_mountedhere = mp;
@@ -316,7 +372,8 @@ update:
 		lwkt_gettoken(&ilock, &mountlist_token);
 		TAILQ_INSERT_TAIL(&mountlist, mp, mnt_list);
 		lwkt_reltoken(&ilock);
-		checkdirs(vp);
+		checkdirs(vp, mp->mnt_ncp);
+		cache_unlock(mp->mnt_ncp);	/* leave ref intact */
 		VOP_UNLOCK(vp, NULL, 0, td);
 		error = vfs_allocate_syncvnode(mp);
 		vfs_unbusy(mp, td);
@@ -332,6 +389,7 @@ update:
 		mp->mnt_vfc->vfc_refcount--;
 		vfs_unbusy(mp, td);
 		free(mp, M_MOUNT);
+		cache_drop(ncp);
 		vput(vp);
 	}
 	return (error);
@@ -341,9 +399,13 @@ update:
  * Scan all active processes to see if any of them have a current
  * or root directory onto which the new filesystem has just been
  * mounted. If so, replace them with the new mount point.
+ *
+ * The passed ncp is ref'd and locked (from the mount code) and
+ * must be associated with the vnode representing the root of the
+ * mount point.
  */
 static void
-checkdirs(struct vnode *olddp)
+checkdirs(struct vnode *olddp, struct namecache *ncp)
 {
 	struct filedesc *fdp;
 	struct vnode *newdp;
@@ -355,6 +417,13 @@ checkdirs(struct vnode *olddp)
 	mp = olddp->v_mountedhere;
 	if (VFS_ROOT(mp, &newdp))
 		panic("mount: lost mount");
+	cache_setvp(ncp, newdp);
+
+	if (rootvnode == olddp) {
+		vref(newdp);
+		vfs_cache_setroot(newdp, cache_hold(ncp));
+	}
+
 	FOREACH_PROC_IN_SYSTEM(p) {
 		fdp = p->p_fd;
 		if (fdp->fd_cdir == olddp) {
@@ -362,21 +431,15 @@ checkdirs(struct vnode *olddp)
 			vref(newdp);
 			fdp->fd_cdir = newdp;
 			cache_drop(fdp->fd_ncdir);
-			fdp->fd_ncdir = cache_vptoncp(newdp);
+			fdp->fd_ncdir = cache_hold(ncp);
 		}
 		if (fdp->fd_rdir == olddp) {
 			vrele(fdp->fd_rdir);
 			vref(newdp);
 			fdp->fd_rdir = newdp;
 			cache_drop(fdp->fd_nrdir);
-			fdp->fd_nrdir = cache_vptoncp(newdp);
+			fdp->fd_nrdir = cache_hold(ncp);
 		}
-	}
-	if (rootvnode == olddp) {
-		vrele(rootvnode);
-		vref(newdp);
-		rootvnode = newdp;
-		vfs_cache_setroot(rootvnode);
 	}
 	vput(newdp);
 }
@@ -511,6 +574,8 @@ dounmount(struct mount *mp, int flags, struct thread *td)
 	if ((coveredvp = mp->mnt_vnodecovered) != NULLVP) {
 		coveredvp->v_mountedhere = NULL;
 		vrele(coveredvp);
+		cache_drop(mp->mnt_ncp);
+		mp->mnt_ncp = NULL;
 	}
 	mp->mnt_vfc->vfc_refcount--;
 	if (!TAILQ_EMPTY(&mp->mnt_nvnodelist))
@@ -771,9 +836,11 @@ fchdir(struct fchdir_args *uap)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
-	struct vnode *vp, *tdp;
+	struct vnode *vp, *ovp;
 	struct mount *mp;
 	struct file *fp;
+	struct namecache *ncp, *oncp;
+	struct namecache *nct;
 	int error;
 
 	if ((error = getvnode(fdp, SCARG(uap, fd), &fp)) != 0)
@@ -781,49 +848,73 @@ fchdir(struct fchdir_args *uap)
 	vp = (struct vnode *)fp->f_data;
 	vref(vp);
 	vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
-	if (vp->v_type != VDIR)
+	if (vp->v_type != VDIR || fp->f_ncp == NULL)
 		error = ENOTDIR;
 	else
 		error = VOP_ACCESS(vp, VEXEC, p->p_ucred, td);
-	while (!error && (mp = vp->v_mountedhere) != NULL) {
-		if (vfs_busy(mp, 0, NULL, td))
-			continue;
-		error = VFS_ROOT(mp, &tdp);
-		vfs_unbusy(mp, td);
-		if (error)
-			break;
-		vput(vp);
-		vp = tdp;
-	}
 	if (error) {
 		vput(vp);
 		return (error);
 	}
-	VOP_UNLOCK(vp, NULL, 0, td);
-	vrele(fdp->fd_cdir);
-	fdp->fd_cdir = vp;
-	fdp->fd_ncdir = cache_vptoncp(vp);
-	return (0);
+	ncp = cache_hold(fp->f_ncp);
+	while (!error && (mp = vp->v_mountedhere) != NULL) {
+		error = nlookup_mp(mp, &nct);
+		if (error == 0) {
+			cache_unlock(nct);	/* leave ref intact */
+			vput(vp);
+			vp = nct->nc_vp;
+			error = vget(vp, NULL, LK_SHARED, td);
+			KKASSERT(error == 0);
+			cache_drop(ncp);
+			ncp = nct;
+		}
+	}
+	if (error == 0) {
+		ovp = fdp->fd_cdir;
+		oncp = fdp->fd_ncdir;
+		VOP_UNLOCK(vp, NULL, 0, td);	/* leave ref intact */
+		fdp->fd_cdir = vp;
+		fdp->fd_ncdir = ncp;
+		cache_drop(oncp);
+		vrele(ovp);
+	} else {
+		cache_drop(ncp);
+		vput(vp);
+	}
+	return (error);
 }
 
 int
-kern_chdir(struct nameidata *nd)
+kern_chdir(struct nlookupdata *nd)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
+	struct vnode *vp, *ovp;
+	struct namecache *oncp;
 	int error;
 
-	if ((error = namei(nd)) != 0)
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	if ((error = checkvp_chdir(nd->ni_vp, td)) == 0) {
-		vrele(fdp->fd_cdir);
-		cache_drop(fdp->fd_ncdir);
-		fdp->fd_cdir = nd->ni_vp;
-		fdp->fd_ncdir = cache_vptoncp(nd->ni_vp);	/* stopgap */
-		vref(fdp->fd_cdir);
+	if ((vp = nd->nl_ncp->nc_vp) == NULL)
+		return (ENOENT);
+	if ((error = vget(vp, NULL, LK_SHARED, td)) != 0)
+		return (error);
+
+	error = checkvp_chdir(vp, td);
+	VOP_UNLOCK(vp, NULL, 0, td);
+	if (error == 0) {
+		ovp = fdp->fd_cdir;
+		oncp = fdp->fd_ncdir;
+		cache_unlock(nd->nl_ncp);	/* leave reference intact */
+		fdp->fd_ncdir = nd->nl_ncp;
+		fdp->fd_cdir = vp;
+		cache_drop(oncp);
+		vrele(ovp);
+		nd->nl_ncp = NULL;
+	} else {
+		vrele(vp);
 	}
-	NDFREE(nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
 	return (error);
 }
 
@@ -835,15 +926,14 @@ kern_chdir(struct nameidata *nd)
 int
 chdir(struct chdir_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-	    uap->path, td);
-
-	error = kern_chdir(&nd);
-
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_chdir(&nd);
+		nlookup_done(&nd);
+	}
 	return (error);
 }
 
@@ -886,17 +976,17 @@ SYSCTL_INT(_kern, OID_AUTO, chroot_allow_open_directories, CTLFLAG_RW,
      &chroot_allow_open_directories, 0, "");
 
 /*
- * Chroot to the specified vnode.  vp must be locked and referenced on
- * call, and will be left locked and referenced on return.  This routine
- * may acquire additional refs on the vnode when associating it with
- * the process's root and/or jail dirs.
+ * chroot to the specified namecache entry.  We obtain the vp from the
+ * namecache data.  The passed ncp must be locked and referenced and will
+ * remain locked and referenced on return.
  */
-int
-kern_chroot(struct vnode *vp)
+static int
+kern_chroot(struct namecache *ncp)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp = p->p_fd;
+	struct vnode *vp;
 	int error;
 
 	/*
@@ -913,22 +1003,30 @@ kern_chroot(struct vnode *vp)
 		if ((error = chroot_refuse_vdir_fds(fdp)) != 0)
 			return (error);
 	}
+	if ((vp = ncp->nc_vp) == NULL)
+		return (ENOENT);
+
+	if ((error = vget(vp, NULL, LK_SHARED, td)) != 0)
+		return (error);
 
 	/*
 	 * Check the validity of vp as a directory to change to and 
 	 * associate it with rdir/jdir.
 	 */
-	if ((error = checkvp_chdir(vp, td)) == 0) {
+	error = checkvp_chdir(vp, td);
+	VOP_UNLOCK(vp, NULL, 0, td);	/* leave reference intact */
+	if (error == 0) {
 		vrele(fdp->fd_rdir);
+		fdp->fd_rdir = vp;	/* reference inherited by fd_rdir */
 		cache_drop(fdp->fd_nrdir);
-		fdp->fd_rdir = vp;
-		vref(fdp->fd_rdir);
-		fdp->fd_nrdir = cache_vptoncp(vp);
+		fdp->fd_nrdir = cache_hold(ncp);
 		if (fdp->fd_jdir == NULL) {
 			fdp->fd_jdir = vp;
 			vref(fdp->fd_jdir);
-			fdp->fd_njdir = cache_vptoncp(vp);
+			fdp->fd_njdir = cache_hold(ncp);
 		}
+	} else {
+		vrele(vp);
 	}
 	return (error);
 }
@@ -943,15 +1041,14 @@ int
 chroot(struct chroot_args *uap)
 {
 	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	int error;
 
 	KKASSERT(td->td_proc);
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF, UIO_USERSPACE,
-		SCARG(uap, path), td);
-	if ((error = namei(&nd)) == 0) {
-		error = kern_chroot(nd.ni_vp);
-		NDFREE(&nd, ~(NDF_NO_FREE_PNBUF | NDF_NO_VP_PUT));
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_chroot(nd.nl_ncp);
+		nlookup_done(&nd);
 	}
 	return (error);
 }
@@ -984,7 +1081,9 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 	int cmode, flags;
 	struct file *nfp;
 	int type, indx, error;
+	int ndxerror;
 	struct flock lf;
+	struct nlookupdata ndx;
 
 	if ((oflags & O_ACCMODE) == O_ACCMODE)
 		return (EINVAL);
@@ -1000,6 +1099,14 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 	 * the descriptor while we are blocked in vn_open()
 	 */
 	fhold(fp);
+
+	/*
+	 * XXX temporary hack so we can record the namecache pointer 
+	 * associated with an open descriptor.
+	 */
+	ndxerror = nlookup_init(&ndx, nd->ni_dirp, nd->ni_segflg,
+	    ((nd->ni_cnd.cn_flags & CNP_FOLLOW) ? NLC_FOLLOW : 0));
+
 	error = vn_open(nd, flags, cmode);
 	if (error) {
 		/*
@@ -1017,6 +1124,7 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 		    (error =
 			dupfdopen(fdp, indx, p->p_dupfd, flags, error)) == 0) {
 			*res = indx;
+			nlookup_done(&ndx);
 			return (0);
 		}
 		/*
@@ -1030,6 +1138,7 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 
 		if (error == ERESTART)
 			error = EINTR;
+		nlookup_done(&ndx);
 		return (error);
 	}
 	p->p_dupfd = 0;
@@ -1051,6 +1160,7 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 		vn_close(vp, flags & FMASK, td);
 		fdrop(fp, td);
 		*res = indx;
+		nlookup_done(&ndx);
 		return 0;
 	}
 
@@ -1082,6 +1192,7 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 				fdrop(fp, td);
 			}
 			fdrop(fp, td);
+			nlookup_done(&ndx);
 			return (error);
 		}
 		vn_lock(vp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
@@ -1091,6 +1202,26 @@ kern_open(struct nameidata *nd, int oflags, int mode, int *res)
 	KASSERT(!vn_canvmio(vp) || VOP_GETVOBJECT(vp, NULL) == 0,
 		("open: vmio vnode has no backing object after vn_open"));
 	VOP_UNLOCK(vp, NULL, 0, td);
+
+	/*
+	 * If the vp is a directory locate the ncp to store with the file
+	 * descriptor.  XXX temporary.  We may eventually wish to do this
+	 * permanently as it would provide an invaluable diagnostic tool,
+	 * but first the entire open path needs to be converted from
+	 * namei to nlookup so we can avoid having to do a double-lookup.
+	 *
+	 * The primary purpose of storing the ncp with the file pointer is
+	 * so it can be used in fchdir() and fchroot() syscalls, allowing
+	 * us to retain an unbroken namecache topology.
+	 */
+	if (ndxerror == 0 && vp->v_type == VDIR) {
+		if ((ndxerror = nlookup(&ndx)) == 0) {
+			fp->f_ncp = ndx.nl_ncp;
+			ndx.nl_ncp = NULL;
+			cache_unlock(fp->f_ncp);
+		}
+	}
+	nlookup_done(&ndx);
 
 	/*
 	 * release our private reference, leaving the one associated with the
@@ -1622,17 +1753,22 @@ access(struct access_args *uap)
 }
 
 int
-kern_stat(struct nameidata *nd, struct stat *st)
+kern_stat(struct nlookupdata *nd, struct stat *st)
 {
-	struct thread *td = curthread;
 	int error;
+	struct vnode *vp;
+	thread_t td;
 
-	error = namei(nd);
-	if (error)
+	if ((error = nlookup(nd)) != 0)
 		return (error);
-	error = vn_stat(nd->ni_vp, st, td);
-	NDFREE(nd, NDF_ONLY_PNBUF);
-	vput(nd->ni_vp);
+	if ((vp = nd->nl_ncp->nc_vp) == NULL)
+		return (ENOENT);
+
+	td = curthread;
+	if ((error = vget(vp, NULL, LK_SHARED, td)) != 0)
+		return (error);
+	error = vn_stat(vp, st, td);
+	vput(vp);
 	return (error);
 }
 
@@ -1644,18 +1780,17 @@ kern_stat(struct nameidata *nd, struct stat *st)
 int
 stat(struct stat_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, uap->path, td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = copyout(&st, uap->ub, sizeof(*uap->ub));
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, NLC_FOLLOW);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = copyout(&st, uap->ub, sizeof(*uap->ub));
+		nlookup_done(&nd);
+	}
 	return (error);
 }
 
@@ -1667,18 +1802,17 @@ stat(struct stat_args *uap)
 int
 lstat(struct lstat_args *uap)
 {
-	struct thread *td = curthread;
-	struct nameidata nd;
+	struct nlookupdata nd;
 	struct stat st;
 	int error;
 
-	NDINIT(&nd, NAMEI_LOOKUP, CNP_LOCKLEAF | CNP_NOOBJ,
-	    UIO_USERSPACE, SCARG(uap, path), td);
-
-	error = kern_stat(&nd, &st);
-
-	if (error == 0)
-		error = copyout(&st, uap->ub, sizeof(*uap->ub));
+	error = nlookup_init(&nd, uap->path, UIO_USERSPACE, 0);
+	if (error == 0) {
+		error = kern_stat(&nd, &st);
+		if (error == 0)
+			error = copyout(&st, uap->ub, sizeof(*uap->ub));
+		nlookup_done(&nd);
+	}
 	return (error);
 }
 

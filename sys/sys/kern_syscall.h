@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.18 2004/06/05 16:34:07 dillon Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.19 2004/09/30 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -36,7 +36,9 @@ union fcntl_dat;
 struct image_args;
 struct mbuf;
 struct msghdr;
+struct namecache;
 struct nameidata;
+struct nlookupdata;
 struct rlimit;
 struct rusage;
 struct sigaction;
@@ -117,10 +119,10 @@ int kern_socketpair(int domain, int type, int protocol, int *sockv);
  * Prototypes for syscalls in kern/vfs_syscalls.c
  */
 int kern_access(struct nameidata *nd, int aflags);
-int kern_chdir(struct nameidata *nd);
+int kern_chdir(struct nlookupdata *nd);
 int kern_chmod(struct nameidata *nd, int mode);
 int kern_chown(struct nameidata *nd, int uid, int gid);
-int kern_chroot(struct vnode *vp);
+/*int kern_chroot(struct namecache *ncp);*/
 int kern_fstatfs(int fd, struct statfs *buf);
 int kern_ftruncate(int fd, off_t length);
 int kern_futimes(int fd, struct timeval *tptr);
@@ -134,7 +136,7 @@ int kern_open(struct nameidata *nd, int flags, int mode, int *res);
 int kern_readlink(struct nameidata *nd, char *buf, int count, int *res);
 int kern_rename(struct nameidata *fromnd, struct nameidata *tond);
 int kern_rmdir(struct nameidata *nd);
-int kern_stat(struct nameidata *nd, struct stat *st);
+int kern_stat(struct nlookupdata *nd, struct stat *st);
 int kern_statfs(struct nameidata *nd, struct statfs *buf);
 int kern_symlink(char *path, struct nameidata *nd);
 int kern_truncate(struct nameidata *nd, off_t length);

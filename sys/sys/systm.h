@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.22 2004/09/30 10:18:07 joerg Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.23 2004/09/30 18:59:50 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -76,7 +76,6 @@ extern long dumplo;		/* offset into dumpdev */
 extern dev_t rootdev;		/* root device */
 extern dev_t rootdevs[2];	/* possible root devices */
 extern char *rootdevnames[2];	/* names of possible root devices */
-extern struct vnode *rootvp;	/* vnode equivalent to above */
 
 extern int boothowto;		/* reboot flags, from console subsystem */
 extern int bootverbose;		/* nonzero to print verbose messages */

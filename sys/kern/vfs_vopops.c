@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.7 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.8 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,6 +128,13 @@
 		VDESC_NO_OFFSET,					\
 		VDESC_NO_OFFSET)
 
+#define VNODEOP_DESC_INIT_NCP_CRED(name)				\
+	VNODEOP_DESC_INIT(name, 0, NULL, 				\
+		VDESC_NO_OFFSET,					\
+		__offsetof(VARGSSTRUCT(name), a_cred),			\
+		VDESC_NO_OFFSET,					\
+		VDESC_NO_OFFSET)
+
 #define VNODEOP_DESC_INIT_DVP_VPP_CNP(name)				\
 	static int VOFFNAME(name)[] = { 				\
 		__offsetof(VARGSSTRUCT(name), a_dvp),			\
@@ -172,7 +179,7 @@
 
 VNODEOP_DESC_INIT_SIMPLE(default);
 VNODEOP_DESC_INIT_VP(islocked);
-VNODEOP_DESC_INIT_NCP(resolve);
+VNODEOP_DESC_INIT_NCP_CRED(resolve);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(lookup);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(cachedlookup);
 VNODEOP_DESC_INIT_DVP_VPP_CNP(create);
@@ -193,6 +200,7 @@ VNODEOP_DESC_INIT_VP(revoke);
 VNODEOP_DESC_INIT_VP_CRED(mmap);
 VNODEOP_DESC_INIT_VP(fsync);
 VNODEOP_DESC_INIT_DVP_VP_CNP(remove);
+VNODEOP_DESC_INIT_NCP_CRED(nremove);
 VNODEOP_DESC_INIT_TDVP_VP_CNP(link);
 
 static int VOFFNAME(rename)[] = { 
@@ -284,7 +292,7 @@ vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 }
 
 int
-vop_resolve(struct vop_ops *ops, struct namecache *ncp)
+vop_resolve(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
 {
 	struct vop_resolve_args ap;
 	int error;
@@ -292,6 +300,7 @@ vop_resolve(struct vop_ops *ops, struct namecache *ncp)
 	ap.a_head.a_desc = &vop_resolve_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_ncp = ncp;
+	ap.a_cred = cred;
 
 	DO_OPS(ops, error, &ap, vop_resolve);
 	return(error);
@@ -646,6 +655,21 @@ vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_cnp = cnp;
 
 	DO_OPS(ops, error, &ap, vop_remove);
+	return(error);
+}
+
+int
+vop_nremove(struct vop_ops *ops, struct namecache *ncp, struct ucred *cred)
+{
+	struct vop_nremove_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_nremove_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_ncp = ncp;
+	ap.a_cred = cred;
+
+	DO_OPS(ops, error, &ap, vop_nremove);
 	return(error);
 }
 
@@ -1425,6 +1449,15 @@ vop_remove_ap(struct vop_remove_args *ap)
 	int error;
 
 	DO_OPS(ap->a_head.a_ops, error, ap, vop_remove);
+	return(error);
+}
+
+int
+vop_nremove_ap(struct vop_nremove_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_nremove);
 	return(error);
 }
 

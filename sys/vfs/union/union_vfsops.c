@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.14 2004/08/17 18:57:36 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.15 2004/09/30 19:00:29 dillon Exp $
  */
 
 /*
@@ -61,7 +61,7 @@ static MALLOC_DEFINE(M_UNIONFSMNT, "UNION mount", "UNION mount structure");
 
 extern int	union_init (struct vfsconf *);
 static int	union_mount (struct mount *mp, char *path, caddr_t data,
-				 struct nameidata *ndp, struct thread *td);
+				 struct thread *td);
 static int	union_root (struct mount *mp, struct vnode **vpp);
 static int	union_statfs (struct mount *mp, struct statfs *sbp,
 				  struct thread *td);
@@ -72,8 +72,7 @@ static int	union_unmount (struct mount *mp, int mntflags,
  * Mount union filesystem
  */
 static int
-union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	    struct thread *td)
+union_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	int error = 0;
 	struct union_args args;
@@ -81,6 +80,7 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	struct vnode *upperrootvp = NULLVP;
 	struct union_mount *um = 0;
 	struct ucred *cred = 0;
+	struct nameidata nd;
 	char *cp = 0;
 	int len;
 	u_int size;
@@ -134,10 +134,10 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	 * Obtain upper vnode by calling namei() on the path.  The
 	 * upperrootvp will be turned referenced but not locked.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT,
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW | CNP_WANTPARENT,
 		UIO_USERSPACE, args.target, td);
 
-	error = namei(ndp);
+	error = namei(&nd);
 
 #if 0
 	if (lowerrootvp->v_tag == VT_UNION)
@@ -146,10 +146,10 @@ union_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
 	if (error)
 		goto bad;
 
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	upperrootvp = ndp->ni_vp;
-	vrele(ndp->ni_dvp);
-	ndp->ni_dvp = NULL;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	upperrootvp = nd.ni_vp;
+	vrele(nd.ni_dvp);
+	nd.ni_dvp = NULL;
 
 	UDEBUG(("mount_root UPPERVP %p locked = %d\n", upperrootvp,
 	    VOP_ISLOCKED(upperrootvp, NULL)));

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.17 2004/08/28 19:02:14 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.18 2004/09/30 18:59:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1223,7 +1223,7 @@ hpfs_lookup(struct vop_lookup_args *ap)
 		if ((flags & CNP_MAKEENTRY) &&
 		    (!(flags & CNP_ISLASTCN) || 
 		     (nameiop != NAMEI_DELETE && nameiop != NAMEI_CREATE)))
-			cache_enter(dvp, NCPNULL, *ap->a_vpp, cnp);
+			cache_enter(dvp, *ap->a_vpp, cnp);
 	}
 	return (error);
 }

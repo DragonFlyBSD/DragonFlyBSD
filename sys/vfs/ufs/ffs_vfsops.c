@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_vfsops.c	8.31 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_vfsops.c,v 1.117.2.10 2002/06/23 22:34:52 iedowse Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.24 2004/08/28 19:02:30 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_vfsops.c,v 1.25 2004/09/30 19:00:25 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -67,8 +67,7 @@ static MALLOC_DEFINE(M_FFSNODE, "FFS node", "FFS vnode private part");
 static int	ffs_sbupdate (struct ufsmount *, int);
 static int	ffs_reload (struct mount *,struct ucred *,struct thread *);
 static int	ffs_oldfscompat (struct fs *);
-static int	ffs_mount (struct mount *, char *, caddr_t,
-				struct nameidata *, struct thread *);
+static int	ffs_mount (struct mount *, char *, caddr_t, struct thread *);
 static int	ffs_init (struct vfsconf *);
 
 static struct vfsops ufs_vfsops = {
@@ -136,7 +135,6 @@ static int
 ffs_mount(struct mount *mp,		/* mount struct pointer */
           char *path,			/* path to mount point */
           caddr_t data,			/* arguments to FS specific mount */
-          struct nameidata *ndp,	/* mount point credentials */
           struct thread	*td)		/* process requesting mount */
 {
 	size_t		size;
@@ -149,6 +147,8 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	int error, flags, ronly = 0;
 	mode_t accessmode;
 	struct ucred *cred;
+	struct nameidata nd;
+	struct vnode *rootvp;
 
 	KKASSERT(td->td_proc);
 	cred = td->td_proc->p_ucred;
@@ -218,7 +218,7 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 			ronly = 1;
 		}
 		if (!err && (mp->mnt_flag & MNT_RELOAD))
-			err = ffs_reload(mp, ndp->ni_cnd.cn_cred, td);
+			err = ffs_reload(mp, NULL, td);
 		if (err) {
 			goto error_1;
 		}
@@ -287,15 +287,15 @@ ffs_mount(struct mount *mp,		/* mount struct pointer */
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	err = namei(ndp);
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	err = namei(&nd);
 	if (err) {
 		/* can't get devvp!*/
 		goto error_1;
 	}
 
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	devvp = ndp->ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
 
 	if (!vn_isdisk(devvp, &err))
 		goto error_2;
@@ -633,13 +633,12 @@ ffs_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td,
 	/*
 	 * Disallow multiple mounts of the same device.
 	 * Disallow mounting of a device that is currently in use
-	 * (except for root, which might share swap device for miniroot).
 	 * Flush out any old buffers remaining from a previous use.
 	 */
 	error = vfs_mountedon(devvp);
 	if (error)
 		return (error);
-	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
 	vn_lock(devvp, NULL, LK_EXCLUSIVE | LK_RETRY, td);
 	error = vinvalbuf(devvp, V_SAVE, td, 0, 0);

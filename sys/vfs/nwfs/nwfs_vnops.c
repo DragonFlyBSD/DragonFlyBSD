@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/nwfs/nwfs_vnops.c,v 1.6.2.3 2001/03/14 11:26:59 bp Exp $
- * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.15 2004/09/26 01:24:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/nwfs/nwfs_vnops.c,v 1.16 2004/09/30 19:00:15 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -441,7 +441,7 @@ nwfs_create(struct vop_create_args *ap)
 			*vpp = vp;
 		}
 		if (cnp->cn_flags & CNP_MAKEENTRY)
-			cache_enter(dvp, NCPNULL, vp, cnp);
+			cache_enter(dvp, vp, cnp);
 	}
 	return (error);
 }
@@ -1029,7 +1029,7 @@ printf("dvp %d:%d:%d\n", (int)mp, (int)dvp->v_flag & VROOT, (int)flags & CNP_ISD
 	}
 	if ((cnp->cn_flags & CNP_MAKEENTRY)/* && !islastcn*/) {
 		VTONW(*vpp)->n_ctime = VTONW(*vpp)->n_vattr.va_ctime.tv_sec;
-		cache_enter(dvp, NCPNULL, *vpp, cnp);
+		cache_enter(dvp, *vpp, cnp);
 	}
 	return (0);
 }

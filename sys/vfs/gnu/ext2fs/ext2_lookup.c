@@ -5,7 +5,7 @@
  *  University of Utah, Department of Computer Science
  *
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_lookup.c,v 1.21.2.3 2002/11/17 02:02:42 bde Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.13 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_lookup.c,v 1.14 2004/09/30 18:59:56 dillon Exp $
  */
 /*
  * Copyright (c) 1989, 1993
@@ -542,7 +542,7 @@ searchloop:
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
 	if ((cnp->cn_flags & CNP_MAKEENTRY) && nameiop != NAMEI_CREATE)
-		cache_enter(vdp, NCPNULL, *vpp, cnp);
+		cache_enter(vdp, *vpp, cnp);
 	return (ENOENT);
 
 found:
@@ -689,7 +689,7 @@ found:
 	 * Insert name into cache if appropriate.
 	 */
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, NCPNULL, *vpp, cnp);
+		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 

@@ -39,7 +39,7 @@
  *	@(#)procfs_vfsops.c	8.7 (Berkeley) 5/10/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vfsops.c,v 1.2.2.3 2001/10/15 20:42:01 des Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.6 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vfsops.c,v 1.7 2004/09/30 18:59:41 dillon Exp $
  */
 
 /*
@@ -58,7 +58,7 @@
 extern struct vnodeopv_entry_desc linprocfs_vnodeop_entries[];
 
 static int	linprocfs_mount (struct mount *mp, char *path, caddr_t data,
-				  struct nameidata *ndp, struct thread *td);
+				  struct thread *td);
 static int	linprocfs_statfs (struct mount *mp, struct statfs *sbp,
 				   struct thread *td);
 static int	linprocfs_unmount (struct mount *mp, int mntflags,
@@ -71,11 +71,10 @@ static int	linprocfs_unmount (struct mount *mp, int mntflags,
  */
 /* ARGSUSED */
 static int
-linprocfs_mount(mp, path, data, ndp, td)
+linprocfs_mount(mp, path, data, td)
 	struct mount *mp;
 	char *path;
 	caddr_t data;
-	struct nameidata *ndp;
 	struct thread *td;
 {
 	size_t size;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.7 2004/08/28 19:02:29 dillon Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.8 2004/09/30 19:00:23 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -1004,7 +1004,7 @@ lookloop:
 
 			/* Put this entry in the cache */
 			if (flags & CNP_MAKEENTRY)
-				cache_enter(dvp, NCPNULL, *vpp, a->a_cnp);
+				cache_enter(dvp, *vpp, a->a_cnp);
 		}
 	} else {
 		/* Name wasn't found on this pass.  Do another pass? */
@@ -1017,7 +1017,7 @@ lookloop:
 
 		/* Enter name into cache as non-existant */
 		if (flags & CNP_MAKEENTRY)
-			cache_enter(dvp, NCPNULL, *vpp, a->a_cnp);
+			cache_enter(dvp, *vpp, a->a_cnp);
 
 		if ((flags & CNP_ISLASTCN) &&
 		    (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)) {

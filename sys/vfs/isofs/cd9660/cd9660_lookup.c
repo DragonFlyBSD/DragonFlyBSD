@@ -39,7 +39,7 @@
  *
  *	@(#)cd9660_lookup.c	8.2 (Berkeley) 1/23/94
  * $FreeBSD: src/sys/isofs/cd9660/cd9660_lookup.c,v 1.23.2.2 2001/11/04 06:19:47 dillon Exp $
- * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.12 2004/04/24 04:32:04 drhodus Exp $
+ * $DragonFly: src/sys/vfs/isofs/cd9660/cd9660_lookup.c,v 1.13 2004/09/30 18:59:59 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -309,7 +309,7 @@ notfound:
 	 * Insert name into cache (as non-existent) if appropriate.
 	 */
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, NCPNULL, *vpp, cnp);
+		cache_enter(vdp, *vpp, cnp);
 	if (nameiop == NAMEI_CREATE || nameiop == NAMEI_RENAME)
 		return (EROFS);
 	return (ENOENT);
@@ -389,7 +389,7 @@ found:
 	 * Insert name into cache if appropriate.
 	 */
 	if (cnp->cn_flags & CNP_MAKEENTRY)
-		cache_enter(vdp, NCPNULL, *vpp, cnp);
+		cache_enter(vdp, *vpp, cnp);
 	return (0);
 }
 

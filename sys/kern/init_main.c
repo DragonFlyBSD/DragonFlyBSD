@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.37 2004/09/28 00:25:29 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.38 2004/09/30 18:59:48 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -92,7 +92,6 @@ int cmask = CMASK;
 extern	struct user *proc0paddr;
 extern int fallback_elf_brand;
 
-struct	vnode *rootvp;
 int	boothowto = 0;		/* initialized so that it can be patched */
 SYSCTL_INT(_debug, OID_AUTO, boothowto, CTLFLAG_RD, &boothowto, 0, "");
 
@@ -455,21 +454,25 @@ start_init(void *dummy)
 	char *var, *path, *next, *s;
 	char *ucp, **uap, *arg0, *arg1;
 	struct proc *p;
-	struct namecache *rootncp;
+	struct mount *mp;
+	struct vnode *vp;
 
 	p = curproc;
 
 	/* Get the vnode for '/'.  Set p->p_fd->fd_cdir to reference it. */
-	if (VFS_ROOT(TAILQ_FIRST(&mountlist), &rootvnode))
+	mp = TAILQ_FIRST(&mountlist);
+	if (VFS_ROOT(mp, &vp))
 		panic("cannot find root vnode");
-	p->p_fd->fd_cdir = rootvnode;
+	if (mp->mnt_ncp == NULL)
+		mp->mnt_ncp = cache_allocroot(vp);
+	p->p_fd->fd_cdir = vp;
 	vref(p->p_fd->fd_cdir);
-	p->p_fd->fd_rdir = rootvnode;
+	p->p_fd->fd_rdir = vp;
 	vref(p->p_fd->fd_rdir);
-	rootncp = vfs_cache_setroot(rootvnode);
-	VOP_UNLOCK(rootvnode, NULL, 0, curthread);
-	p->p_fd->fd_ncdir = cache_hold(rootncp);
-	p->p_fd->fd_nrdir = cache_hold(rootncp);
+	vfs_cache_setroot(vp, cache_hold(mp->mnt_ncp));
+	VOP_UNLOCK(vp, NULL, 0, curthread); /* leave ref intact */
+	p->p_fd->fd_ncdir = cache_hold(mp->mnt_ncp);
+	p->p_fd->fd_nrdir = cache_hold(mp->mnt_ncp);
 
 	/*
 	 * Need just enough stack to hold the faked-up "execve()" arguments.

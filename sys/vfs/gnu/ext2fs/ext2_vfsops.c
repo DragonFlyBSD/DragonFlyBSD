@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.19 2004/08/28 19:02:12 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.20 2004/09/30 18:59:56 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -76,8 +76,7 @@ extern struct vnodeopv_entry_desc ext2_fifoop_entries[];
 
 static int ext2_fhtovp (struct mount *, struct fid *, struct vnode **);
 static int ext2_flushfiles (struct mount *mp, int flags, struct thread *td);
-static int ext2_mount (struct mount *,
-	    char *, caddr_t, struct nameidata *, struct thread *);
+static int ext2_mount (struct mount *, char *, caddr_t, struct thread *);
 static int ext2_mountfs (struct vnode *, struct mount *, struct thread *);
 static int ext2_reload (struct mount *mountp, struct ucred *cred,
 			struct thread *p);
@@ -135,6 +134,7 @@ ext2_mountroot(void)
 	struct ext2_sb_info *fs;
 	struct mount *mp;
 	struct thread *td = curthread;
+	struct vnode *rootvp;
 	struct ufsmount *ump;
 	u_int size;
 	int error;
@@ -185,7 +185,7 @@ ext2_mountroot(void)
 static int
 ext2_mount(struct mount *mp, char *path,
 	   caddr_t data,	/* this is actually a (struct ufs_args *) */
-	   struct nameidata *ndp, struct thread *td)
+	   struct thread *td)
 {
 	struct vnode *devvp;
 	struct ufs_args args;
@@ -195,6 +195,7 @@ ext2_mount(struct mount *mp, char *path,
 	int error, flags;
 	mode_t accessmode;
 	struct ucred *cred;
+	struct nameidata nd;
 
 	if ((error = copyin(data, (caddr_t)&args, sizeof (struct ufs_args))) != 0)
 		return (error);
@@ -223,7 +224,7 @@ ext2_mount(struct mount *mp, char *path,
 			fs->s_rd_only = 1;
 		}
 		if (!error && (mp->mnt_flag & MNT_RELOAD))
-			error = ext2_reload(mp, ndp->ni_cnd.cn_cred, td);
+			error = ext2_reload(mp, proc0.p_ucred, td);
 		if (error)
 			return (error);
 		devvp = ump->um_devvp;
@@ -273,11 +274,11 @@ ext2_mount(struct mount *mp, char *path,
 	 * Not an update, or updating the name: look up the name
 	 * and verify that it refers to a sensible block device.
 	 */
-	NDINIT(ndp, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
-	if ((error = namei(ndp)) != 0)
+	NDINIT(&nd, NAMEI_LOOKUP, CNP_FOLLOW, UIO_USERSPACE, args.fspec, td);
+	if ((error = namei(&nd)) != 0)
 		return (error);
-	NDFREE(ndp, NDF_ONLY_PNBUF);
-	devvp = ndp->ni_vp;
+	NDFREE(&nd, NDF_ONLY_PNBUF);
+	devvp = nd.ni_vp;
 
 	if (!vn_isdisk(devvp, &error)) {
 		vrele(devvp);
@@ -657,7 +658,7 @@ ext2_mountfs(struct vnode *devvp, struct mount *mp, struct thread *td)
 	 */
 	if ((error = vfs_mountedon(devvp)) != 0)
 		return (error);
-	if (count_udev(devvp->v_udev) > 0 && devvp != rootvp)
+	if (count_udev(devvp->v_udev) > 0)
 		return (EBUSY);
 	if ((error = vinvalbuf(devvp, V_SAVE, td, 0, 0)) != 0)
 		return (error);

@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.17 2004/08/28 19:02:17 dillon Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.18 2004/09/30 19:00:01 dillon Exp $
  */
 
 
@@ -69,8 +69,7 @@ MALLOC_DEFINE(M_MFSNODE, "MFS node", "MFS vnode private part");
 extern struct vop_ops *mfs_vnode_vops;
 
 static int	mfs_mount (struct mount *mp,
-			char *path, caddr_t data, struct nameidata *ndp, 
-			struct thread *td);
+			char *path, caddr_t data, struct thread *td);
 static int	mfs_start (struct mount *mp, int flags, struct thread *td);
 static int	mfs_statfs (struct mount *mp, struct statfs *sbp, 
 			struct thread *td);
@@ -211,8 +210,7 @@ mfsstrategy(struct buf *bp)
  */
 /* ARGSUSED */
 static int
-mfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
-	  struct thread *td)
+mfs_mount(struct mount *mp, char *path, caddr_t data, struct thread *td)
 {
 	struct vnode *devvp;
 	struct mfs_args args;
