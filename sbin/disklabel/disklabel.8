@@ -34,7 +34,7 @@
 .\"
 .\"	@(#)disklabel.8	8.2 (Berkeley) 4/19/94
 .\" $FreeBSD: src/sbin/disklabel/disklabel.8,v 1.15.2.22 2003/04/17 17:56:34 trhodes Exp $
-.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.3 2004/03/11 12:28:53 hmp Exp $
+.\" $DragonFly: src/sbin/disklabel/disklabel.8,v 1.4 2004/05/09 22:55:31 cpressey Exp $
 .\"
 .Dd July 30, 1999
 .Dt DISKLABEL 8
@@ -109,9 +109,10 @@ can install bootstrap code.
 .Pp
 The disk label resides close to or at the beginning of each disk slice.
 For faster access, the kernel maintains a copy in core at all times.  By
-default, most
+default, most forms of the
 .Nm
-access the in-core copy of the label.  To access the raw (on-disk) copy, use the
+command access the in-core copy of the label.  To access the raw (on-disk)
+copy, use the
 .Fl r
 option.  This option allows a label to be installed on a disk without kernel
 support for a label, such as when labels are first installed on a system; it
