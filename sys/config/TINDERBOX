@@ -8,9 +8,9 @@
 #
 #	http://ps.catpa.com/tinderbox/
 #
-# Tinderbox maintained by:	Hiten Pandya (hmp@nxad.com)
+# Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.8 2004/02/10 14:59:20 hmp Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.9 2004/02/10 15:00:00 hmp Exp $
 
 machine		i386
 cpu		I686_CPU
