@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.9 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.10 2004/11/14 20:05:25 dillon Exp $
  */
 
 /*-
@@ -61,6 +61,7 @@
 #include    <ctype.h>
 #include    <errno.h>
 #include    <signal.h>
+#include    <unistd.h>
 #include    "make.h"
 #include    "hash.h"
 #include    "dir.h"
@@ -324,10 +325,10 @@ CompatRunCommand (void *cmdp, void *gnp)
     if (cpid == 0) {
 	if (local) {
 	    execvp(av[0], av);
-	    (void) write (2, av[0], strlen (av[0]));
-	    (void) write (2, ":", 1);
-	    (void) write (2, strerror(errno), strlen(strerror(errno)));
-	    (void) write (2, "\n", 1);
+	    (void) write (STDERR_FILENO, av[0], strlen (av[0]));
+	    (void) write (STDERR_FILENO, ":", 1);
+	    (void) write (STDERR_FILENO, strerror(errno), strlen(strerror(errno)));
+	    (void) write (STDERR_FILENO, "\n", 1);
 	} else {
 	    (void)execv(av[0], av);
 	}

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.14 2004/11/13 22:42:39 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.15 2004/11/14 20:05:25 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -112,6 +112,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 #include "make.h"
 #include "hash.h"
 #include "dir.h"
@@ -1213,7 +1214,7 @@ JobExec(Job *job, char **argv)
 #endif /* REMOTE */
 	   (void) execv(shellPath, argv);
 
-	(void) write(2, "Could not execute shell\n",
+	(void) write(STDERR_FILENO, "Could not execute shell\n",
 		     sizeof("Could not execute shell"));
 	_exit(1);
     } else {

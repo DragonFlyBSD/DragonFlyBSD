@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.10 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.11 2004/11/14 20:05:25 dillon Exp $
  */
 
 /*-
@@ -938,7 +938,7 @@ Dir_MTime (GNode *gn)
 	/*
 	 * Only do this once -- the second time folks are checking to
 	 * see if the file was actually updated, so we need to actually go
-	 * to the file system.
+	 * to the filesystem.
 	 */
 	DEBUGF(DIR, ("Using cached time %s for %s\n",
 	       Targ_FmtTime((time_t)(long)Hash_GetValue(entry)), fullName));
@@ -1017,7 +1017,7 @@ Dir_AddDir (Lst path, char *name)
 		 * specifically instead of assuming readdir() reuturns them in
 		 * that order when first going through a directory.  This is
 		 * needed for XFS over NFS filesystems since SGI does not
-		 * guarantee that these are * the first two entries returned
+		 * guarantee that these are the first two entries returned
 		 * from readdir().
 		 */
 		if (ISDOT(dp->d_name) || ISDOTDOT(dp->d_name))

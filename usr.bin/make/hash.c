@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.7 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.8 2004/11/14 20:05:25 dillon Exp $
  */
 
 /* hash.c --
@@ -48,6 +48,7 @@
  * 	table.  Hash tables grow automatically as the amount of
  * 	information increases.
  */
+#include <unistd.h>
 #include "sprite.h"
 #include "make.h"
 #include "hash.h"
@@ -279,7 +280,7 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
 			return;
 		}
 	}
-	(void) write(2, "bad call to Hash_DeleteEntry\n", 29);
+	(void) write(STDERR_FILENO, "bad call to Hash_DeleteEntry\n", 29);
 	abort();
 }
 

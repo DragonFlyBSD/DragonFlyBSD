@@ -37,7 +37,7 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.9 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.10 2004/11/14 20:05:25 dillon Exp $
  */
 
 /*-
@@ -69,7 +69,7 @@
  * The structure for an individual graph node. Each node has several
  * pieces of data associated with it.
  *	1) the name of the target it describes
- *	2) the location of the target file in the file system.
+ *	2) the location of the target file in the filesystem.
  *	3) the type of operator used to define its sources (qv. parse.c)
  *	4) whether it is involved in this invocation of make
  *	5) whether the target has been remade

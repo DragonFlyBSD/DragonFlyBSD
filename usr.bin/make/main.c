@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.14 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.15 2004/11/14 20:05:25 dillon Exp $
  */
 
 /*-
@@ -78,6 +78,7 @@
 #else
 #include <varargs.h>
 #endif
+#include <unistd.h>
 #include "make.h"
 #include "hash.h"
 #include "dir.h"
@@ -145,8 +146,6 @@ static char *objdir;			/* where we chdir'ed to */
 static void
 MainParseArgs(int argc, char **argv)
 {
-	extern int optind;
-	extern char *optarg;
 	char *p;
 	int c;
 

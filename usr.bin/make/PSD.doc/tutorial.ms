@@ -36,7 +36,7 @@
 .\"
 .\"	@(#)tutorial.ms	8.1 (Berkeley) 8/18/93
 .\" $FreeBSD: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.8.2.2 2000/11/24 10:08:45 ru Exp $
-.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.3 2004/11/13 22:42:43 dillon Exp $
+.\" $DragonFly: src/usr.bin/make/PSD.doc/tutorial.ms,v 1.4 2004/11/14 20:05:26 dillon Exp $
 .\"
 .so stubs
 .EH 'PSD:12-%''PMake \*- A Tutorial'
@@ -1244,7 +1244,7 @@ and
 .B \-L )
 and various other information on how PMake was configured.
 .Ix 0 ref configuration
-.Ix 0 ref makefile system
+.Ix 0 ref makefilesystem
 .IP \fB\-i\fP
 .Ix 0 def flags -i
 If you give this flag, PMake will ignore non-zero status returned
@@ -2401,7 +2401,7 @@ flag. This variable can then be used as an argument for the compiler
 in the normal fashion. The
 .CW .h
 suffix is already marked in this way in the system makefile.
-.Ix 0 ref makefile system
+.Ix 0 ref makefilesystem
 E.g. if you have
 .DS
 \&.SUFFIXES       : .bitmap
