@@ -10,7 +10,7 @@
 #
 # Tinderbox maintained by:	Hiten Pandya (hmp@leaf.dragonflybsd.org)
 #
-# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.13 2004/09/06 17:23:22 joerg Exp $
+# $DragonFly: src/sys/config/Attic/TINDERBOX,v 1.14 2004/11/12 02:24:28 drhodus Exp $
 
 machine		i386
 cpu		I686_CPU
@@ -19,12 +19,12 @@ maxusers	0
 
 # ADD TEST OPTIONS HERE
 options		DDB
+options         DDB_UNATTENDED
 options		INVARIANTS
 options		INVARIANT_SUPPORT
-device		acpica5			# ACPI SUPPORT
 
 
-#makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
+makeoptions	DEBUG=-g		#Build kernel with gdb(1) debug symbols
 
 options 	MATH_EMULATE		#Support for x87 emulation
 options 	INET			#InterNETworking
@@ -54,6 +54,11 @@ options 	P1003_1B		#Posix P1003_1B real-time extensions
 options 	_KPOSIX_PRIORITY_SCHEDULING
 options 	ICMP_BANDLIM		#Rate limit bad replies
 options 	KBD_INSTALL_CDEV	# install a CDEV entry in /dev
+options		AHC_REG_PRETTY_PRINT    # Print register bitfields in debug
+               	                        # output.  Adds ~128k to driver.
+options		AHD_REG_PRETTY_PRINT    # Print register bitfields in debug 
+               	                        # output.  Adds ~215k to driver.
+
 
 # To make an SMP kernel, the next two are needed
 #options 	SMP			# Symmetric MultiProcessor Kernel
@@ -126,7 +131,9 @@ device		aac		# Adaptec FSA RAID, Dell PERC2/PERC3
 device		ida		# Compaq Smart RAID
 device		amr		# AMI MegaRAID
 device		mlx		# Mylex DAC960 family
-device		twe		# 3ware Escalade
+device		twe		# 3ware Escalade 7000/8000's
+device		twa		# 3ware Escalade 9000's
+device		pst		# Promise Supertrack
 
 # atkbdc0 controls both the keyboard and the PS/2 mouse
 device		atkbdc0	at isa? port IO_KBD
@@ -185,12 +192,15 @@ device		vx		# 3Com 3c590, 3c595 (``Vortex'')
 # PCI Ethernet NICs that use the common MII bus controller code.
 # NOTE: Be sure to keep the 'device miibus' line in order to use these NICs!
 device		miibus		# MII bus support
+device		bfe             # Broadcom BCM440x 10/100 Ethernet
 device		dc		# DEC/Intel 21143 and various workalikes
 device		fxp		# Intel EtherExpress PRO/100B (82557, 82558)
 device		pcn		# AMD Am79C97x PCI 10/100 NICs
 device		rl		# RealTek 8129/8139
+device		re              # RealTek 8139C+/8169
 device		sf		# Adaptec AIC-6915 (``Starfire'')
 device		sis		# Silicon Integrated Systems SiS 900/SiS 7016
+device		sk              # SysKonnect GEnesis, LinkSys EG1023, D-Link
 device		ste		# Sundance ST201 (D-Link DFE-550TX)
 device		tl		# Texas Instruments ThunderLAN
 device		tx		# SMC EtherPower II (83c170 ``EPIC'')
@@ -207,13 +217,14 @@ device		ep
 device		fe0	at isa? disable port 0x300
 # Xircom Ethernet
 device		xe
+# Generic 802.11 stack, used by wi
+device         wlan
 # PRISM I IEEE 802.11b wireless NIC.
 device		awi
 # WaveLAN/IEEE 802.11 wireless NICs. Note: the WaveLAN/IEEE really
 # exists only as a PCMCIA device, so there is no ISA attachment needed
 # and resources will always be dynamically assigned by the pccard code.
 device		wi
-device		wlan
 # Aironet 4500/4800 802.11 wireless NICs. Note: the declaration below will
 # work for PCMCIA and PCI cards, as well as ISA cards set to ISA PnP
 # mode (the factory default). If you set the switches on your ISA
@@ -247,6 +258,7 @@ pseudo-device	bpf		#Berkeley packet filter
 # USB support
 device		uhci		# UHCI PCI->USB interface
 device		ohci		# OHCI PCI->USB interface
+device		ehic		# USB 2 Support
 device		usb		# USB Bus (required)
 device		ugen		# Generic
 device		uhid		# "Human Interface Devices"
