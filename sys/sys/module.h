@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/module.h,v 1.14.2.3 2002/03/17 11:07:45 alfred Exp $
- * $DragonFly: src/sys/sys/module.h,v 1.7 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/module.h,v 1.8 2004/03/18 18:51:56 dillon Exp $
  */
 
 #ifndef _SYS_MODULE_H_
@@ -118,6 +118,13 @@ struct mod_metadata {
     SYSINIT(name##module, sub, order, module_register_init, &data) 	\
     struct __hack
 
+#define MODULE_VERSION(module, version)					\
+	static struct mod_version _##module##_version = {		\
+		version							\
+	};								\
+	MODULE_METADATA(_##module##_version, MDT_VERSION,		\
+	    &_##module##_version, #module)
+
 /*
  * This is used to declare a module name that is the same as the KLD
  * name so the kernel can avoid double-loading modules.  It is typically
@@ -126,8 +133,6 @@ struct mod_metadata {
  */
 #define DECLARE_DUMMY_MODULE(name)					\
     MODULE_METADATA(_md_##name, MDT_MODULE, NULL, #name)
-
-#define MODULE_VERSION(mod, ver)
 
 void module_register_init(const void *data);
 struct linker_file;
