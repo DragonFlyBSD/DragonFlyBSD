@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.9 2004/11/12 19:45:36 joerg Exp $
+$DragonFly: src/UPDATING,v 1.10 2004/11/23 02:20:40 hmp Exp $
 
 Updating Information for DragonFly users.
 
@@ -38,7 +38,7 @@ FreeBSD.  Note that the DragonFly buildworld target does not try to reuse
 make depend information, it starts from scratch, so no pre-cleaning of the
 object hierarchy is necessary.
 
-	# get the CVS pository (it is placed in /home/dcvs, 500MB).
+	# get the CVS repository (it is placed in /home/dcvs, 500MB).
 	# Please use the -h option and a mirror site to pull the 
 	# initial repository, but feel free to use the main repository
 	# machine to pull updates.
@@ -98,7 +98,7 @@ Note: most people run cvsup via a root cron job to keep the repository up to
 date.  Please limit such automatic updates to once a day and try to randomize
 the hour and minute in the cron job a bit to avoid pileups.
 
-	# get the CVS pository (it is placed in /home/dcvs)
+	# get the CVS repository (it is placed in /home/dcvs)
 	cvsup /usr/share/examples/cvsup/DragonFly-supfile
 	# install the source from the CVS hierarchy
 	cd /usr
