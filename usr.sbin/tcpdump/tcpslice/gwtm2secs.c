@@ -19,7 +19,7 @@
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.4 1999/08/28 05:11:32 peter Exp $
- * $DragonFly: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/gwtm2secs.c,v 1.3 2004/04/23 17:55:11 cpressey Exp $
  */
 
 /*
@@ -35,37 +35,38 @@ static int days_in_month[] =
 #define IS_LEAP_YEAR(year)	\
 	(year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))
 
-time_t gwtm2secs( struct tm *tm )
-	{
+time_t gwtm2secs(struct tm *tm)
+{
 	int i, days, year;
 
 	year = tm->tm_year;
 
-	/* Allow for year being specified with either 2 digits or 4 digits.
+	/*
+	 * Allow for year being specified with either 2 digits or 4 digits.
 	 * 2-digit years are either 19xx or 20xx - a simple heuristic
 	 * distinguishes them, since we can't represent any time < 1970.
 	 */
-	if ( year < 100 )
-		if ( year >= 70 )
+	if (year < 100) {
+		if (year >= 70)
 			year += 1900;
 		else
 			year += 2000;
+	}
 
 	days = 0;
-	for ( i = 1970; i < year; ++i )
-		{
+	for (i = 1970; i < year; ++i) {
 		days += 365;
-		if ( IS_LEAP_YEAR(i) )
+		if (IS_LEAP_YEAR(i))
 			++days;
-		}
+	}
 
-	for ( i = 0; i < tm->tm_mon; ++i )
+	for (i = 0; i < tm->tm_mon; ++i)
 		days += days_in_month[i];
 
-	if ( IS_LEAP_YEAR(year) && tm->tm_mon > 1 ) /* 1 is February */
+	if (IS_LEAP_YEAR(year) && tm->tm_mon > 1)	/* 1 is February */
 		++days;
 
 	days += tm->tm_mday - 1; /* -1 since days are numbered starting at 1 */
 
-	return days * 86400 + tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
-	}
+	return(days * 86400 + tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec);
+}
