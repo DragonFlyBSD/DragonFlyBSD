@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.15 2003/11/21 05:29:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.16 2003/11/29 18:56:22 drhodus Exp $
  */
 
 /*
@@ -1806,6 +1806,17 @@ vm_map_unwire(map, start, real_end, new_pageable)
 		 * becomes completely unwired, unwire its physical pages and
 		 * mappings.
 		 */
+		/*
+		 * The map entries are processed in a loop, checking to
+		 * make sure the entry is wired and asserting it has a wired
+		 * count. However, another loop was inserted more-or-less in
+		 * the middle of the unwiring path. This loop picks up the
+		 * "entry" loop variable from the first loop without first
+		 * setting it to start_entry. Naturally, the secound loop
+		 * is never entered and the pages backing the entries are
+		 * never unwired. This can lead to a leak of wired pages.
+		 */
+		entry = start_entry;
 		while ((entry != &map->header) && (entry->start < end)) {
 			KASSERT(entry->eflags & MAP_ENTRY_USER_WIRED, ("expected USER_WIRED on entry %p", entry));
 			entry->eflags &= ~MAP_ENTRY_USER_WIRED;
