@@ -1,85 +1,85 @@
-#
-# Copyright (c) 1998 Robert Nordier
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms are freely
-# permitted provided that the above copyright notice and this
-# paragraph and the following disclaimer are duplicated in all
-# such forms.
-#
-# This software is provided "AS IS" and without any express or
-# implied warranties, including, without limitation, the implied
-# warranties of merchantability and fitness for a particular
-# purpose.
-#
+/*
+ * Copyright (c) 1998 Robert Nordier
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are freely
+ * permitted provided that the above copyright notice and this
+ * paragraph and the following disclaimer are duplicated in all
+ * such forms.
+ *
+ * This software is provided "AS IS" and without any express or
+ * implied warranties, including, without limitation, the implied
+ * warranties of merchantability and fitness for a particular
+ * purpose.
+ *
+ * $FreeBSD: src/sys/boot/i386/btx/btxldr/Makefile,v 1.17 2004/04/27 19:45:16 ru Exp $
+ * $DragonFly: src/sys/boot/pc32/btx/btxldr/btxldr.S,v 1.1 2004/06/25 00:38:38 dillon Exp $
+ */
 
-# $FreeBSD: src/sys/boot/i386/btx/btxldr/btxldr.s,v 1.13 2003/11/06 21:33:17 jhb Exp $
-# $DragonFly: src/sys/boot/i386/btx/btxldr/Attic/btxldr.s,v 1.3 2003/11/10 06:08:35 dillon Exp $
+/*
+ * Prototype BTX loader program, written in a couple of hours.  The
+ * real thing should probably be more flexible, and in C.
+ */
 
-#
-# Prototype BTX loader program, written in a couple of hours.  The
-# real thing should probably be more flexible, and in C.
-#
-
-#
-# Memory locations.
-#
+/*
+ * Memory locations.
+ */
 		.set MEM_STUB,0x600		# Real mode stub
 		.set MEM_ESP,0x1000		# New stack pointer
 		.set MEM_TBL,0x5000		# BTX page tables
 		.set MEM_ENTRY,0x9010		# BTX entry point
 		.set MEM_DATA,start+0x1000	# Data segment
-#
-# Segment selectors.
-#
+/*
+ * Segment selectors.
+ */
 		.set SEL_SCODE,0x8		# 4GB code
 		.set SEL_SDATA,0x10		# 4GB data
 		.set SEL_RCODE,0x18		# 64K code
 		.set SEL_RDATA,0x20		# 64K data
-#
-# Paging constants.
-#
+/*
+ * Paging constants.
+ */
 		.set PAG_SIZ,0x1000		# Page size
 		.set PAG_ENT,0x4		# Page entry size
-#
-# Screen constants.
-#
+/*
+ * Screen constants.
+ */
 		.set SCR_MAT,0x7		# Mode/attribute
 		.set SCR_COL,0x50		# Columns per row
 		.set SCR_ROW,0x19		# Rows per screen
-#
-# BIOS Data Area locations.
-#
+/*
+ * BIOS Data Area locations.
+ */
 		.set BDA_MEM,0x413		# Free memory
 		.set BDA_SCR,0x449		# Video mode
 		.set BDA_POS,0x450		# Cursor position
-#
-# Required by aout gas inadequacy.
-#
+/*
+ * Required by aout gas inadequacy.
+ */
 		.set SIZ_STUB,0x1a		# Size of stub
-#
-# We expect to be loaded by boot2 at the origin defined in ./Makefile.
-#
+/*
+ * We expect to be loaded by boot2 at the origin defined in ./Makefile.
+ */
 		.globl start
-#
-# BTX program loader for ELF clients.
-#
+/*
+ * BTX program loader for ELF clients.
+ */
 start:		cld				# String ops inc
 		movl $m_logo,%esi		# Identify
 		call putstr			#  ourselves
 		movzwl BDA_MEM,%eax		# Get base memory
 		shll $0xa,%eax			#  in bytes
 		movl %eax,%ebp			# Base of user stack
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_mem,%esi		# Display
 		call hexout			#  amount of
 		call putstr			#  base memory
-')
+#endif
 		lgdt gdtdesc			# Load new GDT
-#
-# Relocate caller's arguments.
-#
-ifdef(`BTXLDR_VERBOSE',`
+/*
+ * Relocate caller's arguments.
+ */
+#ifdef BTXLDR_VERBOSE
 		movl $m_esp,%esi		# Display
 		movl %esp,%eax			#  caller
 		call hexout			#  stack
@@ -92,37 +92,37 @@ start.1:	movl (%ebx),%eax		# Get argument and
 		call hexout			# Display it
 		loop start.1			# Till done
 		call putstr			# End message
-')
+#endif
 		movl $0x48,%ecx 		# Allocate space
 		subl %ecx,%ebp			#  for bootinfo
 		movl 0x18(%esp,1),%esi		# Source: bootinfo
 		cmpl $0x0, %esi			# If the bootinfo pointer
-		je start_null_bi		#  is null, don't copy it
+		je start_null_bi		#  is null, do not copy it
 		movl %ebp,%edi			# Destination
 		rep				# Copy
 		movsb				#  it
 		movl %ebp,0x18(%esp,1)		# Update pointer
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_rel_bi,%esi		# Display
 		movl %ebp,%eax			#  bootinfo
 		call hexout			#  relocation
 		call putstr			#  message
-')
+#endif
 start_null_bi:	movl $0x18,%ecx 		# Allocate space
 		subl %ecx,%ebp			#  for arguments
 		leal 0x4(%esp,1),%esi		# Source
 		movl %ebp,%edi			# Destination
 		rep				# Copy
 		movsb				#  them
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_rel_args,%esi		# Display
 		movl %ebp,%eax			#  argument
 		call hexout			#  relocation
 		call putstr			#  message
-')
-#
-# Set up BTX kernel.
-#
+#endif
+/*
+ * Set up BTX kernel.
+ */
 		movl $MEM_ESP,%esp		# Set up new stack
 		movl $MEM_DATA,%ebx		# Data segment
 		movl $m_vers,%esi		# Display BTX
@@ -150,51 +150,51 @@ ifdef(`BTXLDR_VERBOSE',`
 		addl $MEM_TBL,%edi		#  address
 		pushl %edi			# Save load address
 		movzwl 0xa(%ebx),%ecx		# Image size
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		pushl %ecx			# Save image size
-')
+#endif
 		rep				# Relocate
 		movsb				#  BTX
 		movl %esi,%ebx			# Keep place
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_rel_btx,%esi		# Restore
 		popl %eax			#  parameters
 		call hexout			#  and
-')
+#endif
 		popl %ebp			#  display
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl %ebp,%eax			#  the
 		call hexout			#  relocation
 		call putstr			#  message
-')
+#endif
 		addl $PAG_SIZ,%ebp		# Display
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_base,%esi		#  the
 		movl %ebp,%eax			#  user
 		call hexout			#  base
 		call putstr			#  address
-')
-#
-# Set up ELF-format client program.
-#
+#endif
+/*
+ * Set up ELF-format client program.
+ */
 		cmpl $0x464c457f,(%ebx) 	# ELF magic number?
 		je start.3			# Yes
 		movl $e_fmt,%esi		# Display error
 		call putstr			#  message
 start.2:	jmp start.2			# Hang
 start.3:
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_elf,%esi		# Display ELF
 		call putstr			#  message
 		movl $m_segs,%esi		# Format string
-')
+#endif
 		movl $0x2,%edi			# Segment count
 		movl 0x1c(%ebx),%edx		# Get e_phoff
 		addl %ebx,%edx			# To pointer
 		movzwl 0x2c(%ebx),%ecx		# Get e_phnum
 start.4:	cmpl $0x1,(%edx)		# Is p_type PT_LOAD?
 		jne start.6			# No
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl 0x4(%edx),%eax		# Display
 		call hexout			#  p_offset
 		movl 0x8(%edx),%eax		# Display
@@ -204,7 +204,7 @@ ifdef(`BTXLDR_VERBOSE',`
 		movl 0x14(%edx),%eax		# Display
 		call hexout			#  p_memsz
 		call putstr			# End message
-')
+#endif
 		pushl %esi			# Save
 		pushl %edi			#  working
 		pushl %ecx			#  registers
@@ -229,10 +229,10 @@ start.5:	popl %ecx			# Restore
 start.6:	addl $0x20,%edx 		# To next entry
 		loop start.4			# Till done
 start.7:
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 		movl $m_done,%esi		# Display done
 		call putstr			#  message
-')
+#endif
 		movl $start.8,%esi		# Real mode stub
 		movl $MEM_STUB,%edi		# Destination
 		movl $start.9-start.8,%ecx	# Size
@@ -253,14 +253,14 @@ start.8:	xorw %ax,%ax			# Data
 		ljmp $0,$MEM_ENTRY		# Jump to BTX entry point
 start.9:
 		.code32
-#
-# Output message [ESI] followed by EAX in hex.
-#
+/*
+ * Output message [ESI] followed by EAX in hex.
+ */
 hexout: 	pushl %eax			# Save
 		call putstr			# Display message
 		popl %eax			# Restore
 		pushl %esi			# Save
-		pushl %edi			#  caller's
+		pushl %edi			# callers
 		movl $buf,%edi			# Buffer
 		pushl %edi			# Save
 		call hex32			# To hex
@@ -276,19 +276,19 @@ hexout.1:	lodsb				# Get a char
 hexout.2:	decl %esi			# Adjust for inc
 		call putstr			# Display hex
 		popl %edi			# Restore
-		popl %esi			#  caller's
+		popl %esi			# callers
 		ret				# To caller
-#
-# Output zero-terminated string [ESI] to the console.
-#
+/*
+ * Output zero-terminated string [ESI] to the console.
+ */
 putstr.0:	call putchr			# Output char
 putstr: 	lodsb				# Load char
 		testb %al,%al			# End of string?
 		jne putstr.0			# No
 		ret				# To caller
-#
-# Output character AL to the console.
-#
+/*
+ * Output character AL to the console.
+ */
 putchr: 	pusha				# Save
 		xorl %ecx,%ecx			# Zero for loops
 		movb $SCR_MAT,%ah		# Mode/attribute
@@ -327,9 +327,9 @@ putchr.3:	cmpb $SCR_ROW,%dh		# Beyond screen?
 putchr.4:	movw %dx,(%ebx) 		# Update position
 		popa				# Restore
 		ret				# To caller
-#
-# Convert EAX, AX, or AL to hex, saving the result to [EDI].
-#
+/*
+ * Convert EAX, AX, or AL to hex, saving the result to [EDI].
+ */
 hex32:		pushl %eax			# Save
 		shrl $0x10,%eax 		# Do upper
 		call hex16			#  16
@@ -350,9 +350,9 @@ hex8.1: 	andb $0xf,%al			# Get lower 4
 
 		.data
 		.p2align 4
-#
-# Global descriptor table.
-#
+/*
+ * Global descriptor table.
+ */
 gdt:		.word 0x0,0x0,0x0,0x0		# Null entry
 		.word 0xffff,0x0,0x9a00,0xcf	# SEL_SCODE
 		.word 0xffff,0x0,0x9200,0xcf	# SEL_SDATA
@@ -361,13 +361,13 @@ gdt:		.word 0x0,0x0,0x0,0x0		# Null entry
 gdt.1:
 gdtdesc:	.word gdt.1-gdt-1		# Limit
 		.long gdt			# Base
-#
-# Messages.
-#
+/*
+ * Messages.
+ */
 m_logo: 	.asciz " \nBTX loader 1.00  "
 m_vers: 	.asciz "BTX version is \0\n"
 e_fmt:		.asciz "Error: Client format not supported\n"
-ifdef(`BTXLDR_VERBOSE',`
+#ifdef BTXLDR_VERBOSE
 m_mem:		.asciz "Starting in protected mode (base mem=\0)\n"
 m_esp:		.asciz "Arguments passed (esp=\0):\n"
 m_args: 	.asciz"<howto="
@@ -390,8 +390,8 @@ m_segs: 	.asciz "text segment: offset="
 		.asciz " filesz="
 		.asciz " memsz=\0\n"
 m_done: 	.asciz "Loading complete\n"
-')
-#
-# Uninitialized data area.
-#
+#endif
+/*
+ * Uninitialized data area.
+ */
 buf:						# Scratch buffer
