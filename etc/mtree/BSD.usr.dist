@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.usr.dist,v 1.188.2.40 2003/02/14 22:38:14 nectar Exp $
-# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.14 2004/06/26 02:56:48 drhodus Exp $
+# $DragonFly: src/etc/mtree/BSD.usr.dist,v 1.15 2004/08/29 09:46:37 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -638,8 +638,6 @@
             cat3
             ..
             cat4
-                alpha
-                ..
                 i386
                 ..
             ..
@@ -650,8 +648,6 @@
             cat7
             ..
             cat8
-                alpha
-                ..
                 i386
                 ..
             ..
@@ -671,8 +667,6 @@
                 cat3
                 ..
                 cat4
-                    alpha
-                    ..
                     i386
                     ..
                 ..
@@ -683,8 +677,6 @@
                 cat7
                 ..
                 cat8
-                    alpha
-                    ..
                     i386
                     ..
                 ..
@@ -747,8 +739,6 @@
             man3
             ..
             man4
-                alpha
-                ..
                 i386
                 ..
             ..
@@ -759,8 +749,6 @@
             man7
             ..
             man8
-                alpha
-                ..
                 i386
                 ..
             ..

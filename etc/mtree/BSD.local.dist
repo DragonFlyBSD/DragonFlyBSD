@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
-# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.5 2003/12/18 19:46:09 drhodus Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.6 2004/08/29 09:46:37 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -26,13 +26,9 @@
             ..
             site_perl
                 5.005
-                    alpha-freebsd
-                        auto
-                        ..
-                    ..
                     auto
                     ..
-                    i386-freebsd
+                    i386-dragonfly
                         auto
                         ..
                     ..
@@ -126,8 +122,6 @@
             cat3
             ..
             cat4
-                alpha
-                ..
                 i386
                 ..
             ..
@@ -138,8 +132,6 @@
             cat7
             ..
             cat8
-                alpha
-                ..
                 i386
                 ..
             ..
