@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.18 2004/03/12 22:05:53 joerg Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.19 2004/07/29 08:50:07 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -215,6 +215,7 @@ void	*realloc (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
 void	*reallocf (void *addr, unsigned long size,
 		      struct malloc_type *type, int flags);
+char	*strdup (const char *, struct malloc_type *);
 
 #endif /* _KERNEL */
 
