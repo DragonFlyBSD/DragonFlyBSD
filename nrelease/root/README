@@ -18,21 +18,30 @@
 
 			    AUTOMATIC INSTALLATION
 
-    We are currently developing automatic installation tools.  This cd 
-    contains 'rconfig', which is a client/server protocol and examples in
+    There are currently two installation tools available.  We haven't quite
+    finished the USB/floppy key'd headless installation but what is available
+    is the installer (login as 'installer') and rconfig. 
+
+    The installer can be run from the serial console or a VTY and provides
+    a straightforward UI to install DragonFly on your HD.
+
+    rconfig is a client/server protocol which requires a server (typically on
+    the same network).  An example server setup can be found in
     /usr/share/examples/rconfig.  If you have multiple machines you can setup
     an installation script and run rconfig on a server and then install the
     clients from CD boot with network connectivity (e.g. dhclient <blah>)
-    and, typically, 'rconfig -a'.
+    and then, typically, 'rconfig -a'.
 
-    You can also just boot from the CD, copy the sample script to /tmp, edit,
-    and run it directly (assuming that blowing away your existing disk is ok).
+    You can also just boot from the CD, login as 'root' to get a shell
+    prompt, copy the sample script to /tmp, edit, and run it directly
+    (assuming that blowing away your existing disk is ok).
 
 
 				  CONSOLE OPERATION
 
     The second stage boot (boot2) and third stage boot (loader) default
-    to dual serial & video console I/O.  You can direct the boot output
+    to dual serial & video console I/O.  The system will also throw a login
+    prompt up on ttyd0 by default.  You can direct the boot output
     to just the serial port by creating the file /boot.config with the
     line '-h', or to just the screen using '-V'.  If you wish to leave
     boot2 in dual I/O mode but want the third stage to use just one or the
@@ -161,6 +170,18 @@
 	#
 	mv /mnt/etc/fstab.example /mnt/etc/fstab
 	vi /mnt/etc/fstab
+
+	# Edit /mnt/etc/ttys, adding ttyv1 back in (it is left out on the CD
+	# so the installer has a low numbered vty to play with)
+	#
+	vi /mnt/etc/ttys
+
+	# chroot into the HD and edit the password file to remove the
+	# 'installer' user.
+	#
+	chroot /mnt /bin/csh
+	% vipw	(remove 'installer' user, :wq out)
+	% ^D	(exit the chroot)
 
 	# save out your disklabel just in case.  It's a good idea to save
 	# it to /etc so you can get at it from your backups.  You do intend
@@ -305,5 +326,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.14 2004/06/28 04:18:55 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.15 2004/07/11 18:09:54 dillon Exp $
 
