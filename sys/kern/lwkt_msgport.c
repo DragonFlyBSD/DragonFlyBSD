@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.10 2003/11/24 20:46:01 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.11 2003/11/24 23:56:07 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -64,11 +64,11 @@
 #else
 
 #include <sys/stdint.h>
-#include <liblwkt/thread.h>
+#include <libcaps/thread.h>
 #include <sys/thread.h>
 #include <sys/msgport.h>
 #include <sys/errno.h>
-#include <liblwkt/globaldata.h>
+#include <libcaps/globaldata.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 

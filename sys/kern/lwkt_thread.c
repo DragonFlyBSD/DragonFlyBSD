@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.43 2003/11/24 20:46:01 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.44 2003/11/24 23:56:07 dillon Exp $
  */
 
 /*
@@ -71,11 +71,11 @@
 #else
 
 #include <sys/stdint.h>
-#include <liblwkt/thread.h>
+#include <libcaps/thread.h>
 #include <sys/thread.h>
 #include <sys/msgport.h>
 #include <sys/errno.h>
-#include <liblwkt/globaldata.h>
+#include <libcaps/globaldata.h>
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
 #include <stdlib.h>
@@ -220,7 +220,7 @@ lwkt_alloc_thread(struct thread *td, int cpu)
 #ifdef _KERNEL
 	stack = (void *)kmem_alloc(kernel_map, THREAD_STACK);
 #else
-	stack = liblwkt_alloc_stack(THREAD_STACK);
+	stack = libcaps_alloc_stack(THREAD_STACK);
 #endif
 	flags |= TDF_ALLOCATED_STACK;
     }
@@ -328,7 +328,7 @@ lwkt_free_thread(thread_t td)
 #ifdef _KERNEL
 	    kmem_free(kernel_map, (vm_offset_t)td->td_kstack, THREAD_STACK);
 #else
-	    liblwkt_free_stack(td->td_kstack, THREAD_STACK);
+	    libcaps_free_stack(td->td_kstack, THREAD_STACK);
 #endif
 	    /* gd invalid */
 	    td->td_kstack = NULL;
