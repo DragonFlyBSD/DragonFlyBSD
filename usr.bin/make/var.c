@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.103 2005/02/18 01:19:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.104 2005/02/18 01:20:09 okumoto Exp $
  */
 
 /*-
@@ -1695,55 +1695,23 @@ VarParseLong(char foo[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	}
 }
 
+/**
+ * If it's not bounded by braces of some sort, life is much simpler.
+ * We just need to check for the first character and return the value
+ * if it exists.
+ */
 static char *
 VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 	Boolean *freePtr)
 {
-	/*
-	 * If it's not bounded by braces of some sort, life is much simpler.
-	 * We just need to check for the first character and return the value
-	 * if it exists.
-	 */
-	Var	*v;		/* Variable in invocation */
 	char	name[2];
+	Var	*v;
 
 	name[0] = input[1];
 	name[1] = '\0';
 
 	v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
-	if (v == NULL) {
-		if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
-			/*
-			 * If substituting a local variable in a non-local
-			 * context, assume it's for dynamic source stuff. We
-			 * have to handle this specially and return the
-			 * longhand for the variable with the dollar sign
-			 * escaped so it makes it back to the caller. Only
-			 * four of the local variables are treated specially
-			 * as they are the only four that will be set when
-			 * dynamic sources are expanded.
-			 */
-			/* XXX: It looks like $% and $! are reversed here */
-			*freePtr = FALSE;
-			*lengthPtr = 2;
-			switch (input[1]) {
-			case '@':
-				return ("$(.TARGET)");
-			case '%':
-				return ("$(.ARCHIVE)");
-			case '*':
-				return ("$(.PREFIX)");
-			case '!':
-				return ("$(.MEMBER)");
-			default:
-				return (err ? var_Error : varNoError);
-			}
-		} else {
-			*freePtr = FALSE;
-			*lengthPtr = 2;
-			return (err ? var_Error : varNoError);
-		}
-	} else {
+	if (v != NULL) {
 		char   *result;
 
 		result = VarExpand(v, ctxt, err);
@@ -1756,6 +1724,37 @@ VarParseShort(const char input[], GNode *ctxt, Boolean err, size_t *lengthPtr,
 		*lengthPtr = 2;
 		return (result);
 	}
+
+	/*
+	 * If substituting a local variable in a non-local context, assume
+	 * it's for dynamic source stuff. We have to handle this specially
+	 * and return the longhand for the variable with the dollar sign
+	 * escaped so it makes it back to the caller. Only four of the local
+	 * variables are treated specially as they are the only four that
+	 * will be set when dynamic sources are expanded.
+	 */
+	if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
+		*freePtr = FALSE;
+		*lengthPtr = 2;
+
+		/* XXX: It looks like $% and $! are reversed here */
+		switch (input[1]) {
+		case '@':
+			return ("$(.TARGET)");
+		case '%':
+			return ("$(.ARCHIVE)");
+		case '*':
+			return ("$(.PREFIX)");
+		case '!':
+			return ("$(.MEMBER)");
+		default:
+			return (err ? var_Error : varNoError);
+		}
+	}
+
+	*freePtr = FALSE;
+	*lengthPtr = 2;
+	return (err ? var_Error : varNoError);
 }
 
 /*-
