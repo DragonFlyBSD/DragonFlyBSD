@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.18 2004/08/02 13:22:34 joerg Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.19 2004/09/16 15:15:51 joerg Exp $
  */
 
 /*
@@ -151,7 +151,7 @@ SYSCTL_INT(_vfs_nfs, OID_AUTO, bufpackets, CTLFLAG_RW, &nfs_bufpackets, 0, "");
 static int nfs_backoff[8] = { 2, 4, 8, 16, 32, 64, 128, 256, };
 int nfsrtton = 0;
 struct nfsrtt nfsrtt;
-struct callout_handle	nfs_timer_handle;
+struct callout	nfs_timer_handle;
 
 static int	nfs_msg (struct thread *,char *,char *);
 static int	nfs_rcvlock (struct nfsreq *);
@@ -1488,7 +1488,7 @@ nfs_timer(void *arg /* never used */)
 	}
 #endif /* NFS_NOSERVER */
 	splx(s);
-	nfs_timer_handle = timeout(nfs_timer, (void *)0, nfs_ticks);
+	callout_reset(&nfs_timer_handle, nfs_ticks, nfs_timer, NULL);
 }
 
 /*

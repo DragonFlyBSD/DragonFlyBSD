@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: /repoman/r/ncvs/src/sys/nfsclient/nfs_subs.c,v 1.128 2004/04/14 23:23:55 peadar Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.20 2004/08/17 18:57:34 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.21 2004/09/16 15:15:51 joerg Exp $
  */
 
 /*
@@ -1069,6 +1069,7 @@ nfs_init(struct vfsconf *vfsp)
 {
 	int i;
 
+	callout_init(&nfs_timer_handle);
 	nfsmount_zone = zinit("NFSMOUNT", sizeof(struct nfsmount), 0, 0, 1);
 
 	nfs_mount_type = vfsp->vfc_typenum;
@@ -1142,8 +1143,7 @@ nfs_init(struct vfsconf *vfsp)
 int
 nfs_uninit(struct vfsconf *vfsp)
 {
-
-	untimeout(nfs_timer, (void *)NULL, nfs_timer_handle);
+	callout_stop(&nfs_timer_handle);
 	nfs_mount_type = -1;
 #ifndef NFS_NOSERVER
 	default_vnode_vops->vop_lease = nfs_prev_vop_lease_check;
