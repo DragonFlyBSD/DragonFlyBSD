@@ -9,7 +9,7 @@
  * Trace and dump the kernel namecache hierarchy.  If a path is specified
  * the trace begins there, otherwise the trace begins at the root.
  *
- * $DragonFly: src/test/debug/ncptrace.c,v 1.1 2004/10/03 06:12:34 dillon Exp $
+ * $DragonFly: src/test/debug/ncptrace.c,v 1.2 2004/10/06 05:13:20 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -34,7 +34,11 @@
 #include <nlist.h>
 
 struct nlist Nl[] = {
+#ifdef CINV_PARENT
     { "_rootncp" },
+#else
+    { "_rootnamecache" },
+#endif
     { NULL }
 };
 
@@ -55,7 +59,11 @@ main(int ac, char **av)
 	perror("kvm_nlist");
 	exit(1);
     }
+#ifdef CINV_PARENT
     kkread(kd, Nl[0].n_value, &ncptr, sizeof(ncptr));
+#else
+    ncptr = (void *)Nl[0].n_value;
+#endif
     if (ac == 1) {
 	dumpncp(kd, 0, ncptr, NULL);
     } else {
@@ -113,14 +121,24 @@ dumpncp(kvm_t *kd, int tab, struct namecache *ncptr, const char *path)
     else
 	haschildren = 0;
 
+    if (path)
+	printf("ELM ");
+    else
+	printf("%*.*s%s ", tab, tab, "", name);
+    printf("[ncp=%p par=%p %04x vp=%p", 
+	    ncptr, ncp.nc_parent, ncp.nc_flag, ncp.nc_vp);
+    if (ncp.nc_timeout)
+	printf(" timo=%d", ncp.nc_timeout);
+    if (ncp.nc_refs)
+	printf(" refs=%d", ncp.nc_refs);
+    if (ncp.nc_exlocks)
+	printf(" LOCKED(%d,td=%p)", ncp.nc_exlocks, ncp.nc_locktd);
+    printf("]");
+
     if (path) {
-	printf("ELM [ncp=%p par=%p %04x vp=%p] %s\n", 
-		ncptr, ncp.nc_parent, ncp.nc_flag, 
-		ncp.nc_vp, name);
+	printf(" %s\n", name);
     } else {
-	printf("%*.*s%s [ncp=%p par=%p %04x vp=%p]%s\n", tab, tab, "", name, 
-		ncptr, ncp.nc_parent, ncp.nc_flag, ncp.nc_vp,
-		haschildren ? " {" : "");
+	printf("%s\n", haschildren ? " {" : "");
     }
     for (ncscan = ncp.nc_list.tqh_first; ncscan; ncscan = ncp.nc_entry.tqe_next) {
 	kkread(kd, (u_long)ncscan, &ncp, sizeof(ncp));

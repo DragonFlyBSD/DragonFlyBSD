@@ -1,6 +1,10 @@
 Scripts and Tools to help with Debugging DragonFly.
-$DragonFly: src/test/debug/README,v 1.1 2004/06/26 13:09:52 hmp Exp $
+$DragonFly: src/test/debug/README,v 1.2 2004/10/06 05:13:20 dillon Exp $
 
 Files in this directory:
 
 	gdb.kernel -	kernel debugging macro set for GDB
+	ncptrace.c -	trace the kernel's namecache hierarchy
+	ttyinfo.c  -	extract clist information and check the
+			block counts.
+			
