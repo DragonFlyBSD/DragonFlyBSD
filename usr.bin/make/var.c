@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.150 2005/03/12 12:04:56 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.151 2005/03/12 12:05:21 okumoto Exp $
  */
 
 /*-
@@ -1254,7 +1254,6 @@ ParseModifier(const char input[], const char tstr[],
 	VarParser *vp, size_t *lengthPtr, Boolean *freePtr)
 {
 	char		*value;
-	const char	*cp;
 	size_t		used;
 
 	value = VarExpand(v, vp);
@@ -1282,11 +1281,11 @@ ParseModifier(const char input[], const char tstr[],
 			break;
 		default:
 			if (tstr[1] == endc || tstr[1] == ':') {
-				char	termc;
-				Buffer	*buf;
-
-				switch (*tstr) {
+				switch (tstr[0]) {
 				case 'L':
+					{
+					const char	*cp;
+					Buffer		*buf;
 					buf = Buf_Init(MAKE_BSIZE);
 					for (cp = value; *cp; cp++)
 						Buf_AddByte(buf, (Byte)tolower(*cp));
@@ -1294,25 +1293,25 @@ ParseModifier(const char input[], const char tstr[],
 					newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 					Buf_Destroy(buf, FALSE);
 
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
+					}
 				case 'O':
 					newStr = VarSortWords(value, SortIncreasing);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				case 'Q':
 					newStr = Var_Quote(value);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				case 'T':
 					newStr = VarModify(value, VarTail, (void *)NULL);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				case 'U':
+					{
+					const char	*cp;
+					Buffer		*buf;
 					buf = Buf_Init(MAKE_BSIZE);
 					for (cp = value; *cp; cp++)
 						Buf_AddByte(buf, (Byte)toupper(*cp));
@@ -1320,26 +1319,24 @@ ParseModifier(const char input[], const char tstr[],
 					newStr = (char *)Buf_GetAll(buf, (size_t *)NULL);
 					Buf_Destroy(buf, FALSE);
 
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
+					}
 				case 'H':
 					newStr = VarModify(value, VarHead, (void *)NULL);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				case 'E':
 					newStr = VarModify(value, VarSuffix, (void *)NULL);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				case 'R':
 					newStr = VarModify(value, VarRoot, (void *)NULL);
-					cp = tstr + 1;
-					termc = *cp;
+					tstr += (tstr[1] == ':') ? 2 : 1;
 					break;
 				default:
 				    {
+					const char	*cp;
 #ifdef SYSVVARSUB
 					/*
 					 * This can either be a bogus modifier or a
@@ -1407,41 +1404,37 @@ ParseModifier(const char input[], const char tstr[],
 						 * the whole string. Note the pattern
 						 * is anchored at the end.
 						 */
-						termc = *--cp;
+						--cp;
 						delim = '\0';
 						newStr = VarModify(value, VarSYSVMatch, &pattern);
 
 						free(pattern.lhs);
 						free(pattern.rhs);
 
-						termc = endc;
+						tstr = (endc == ':') ? (cp + 1) : cp;
 					} else
 #endif
 					{
 						Error("Unknown modifier '%c'\n", *tstr);
-						for (cp = tstr + 1;
-						     *cp != ':' && *cp != endc && *cp != '\0';
-						     cp++)
-							continue;
-						termc = *cp;
+						for (cp = tstr + 1; *cp != '\0'; cp++) {
+							if (*cp == ':' && *cp == endc) {
+								break;
+							}
+						}
+						tstr = (*cp == ':') ? (cp + 1) : cp;
 						newStr = var_Error;
 					}
 				    }
 				    break;
 				}
-				if (termc == '\0') {
-					Error("Unclosed variable specification for %s",
-					      v->name);
-				}
-				tstr = (termc == ':') ? (cp + 1) : cp;
+
 			} else {
-				char	termc;
 #ifdef SUNSHCMD
 				if ((tstr[0] == 's') &&
 				    (tstr[1] == 'h') &&
 				    (tstr[2] == endc || tstr[2] == ':')) {
-					const char *error;
-					Buffer *buf;
+					const char	*error;
+					Buffer		*buf;
 
 					buf = Cmd_Exec(value, &error);
 					newStr = Buf_GetAll(buf, NULL);
@@ -1449,11 +1442,11 @@ ParseModifier(const char input[], const char tstr[],
 
 					if (error)
 						Error(error, value);
-					cp = tstr + 2;
-					termc = *cp;
+					tstr = (tstr[2] == ':') ? (tstr + 2 + 1) : tstr + 2;
 				} else
 #endif
 				{
+					const char	*cp;
 #ifdef SYSVVARSUB
 					/*
 					 * This can either be a bogus modifier or a
@@ -1521,31 +1514,29 @@ ParseModifier(const char input[], const char tstr[],
 						 * the whole string. Note the pattern
 						 * is anchored at the end.
 						 */
-						termc = *--cp;
+						--cp;
 						delim = '\0';
 						newStr = VarModify(value, VarSYSVMatch, &pattern);
 
 						free(pattern.lhs);
 						free(pattern.rhs);
 
-						termc = endc;
+						tstr = (endc == ':') ? (cp + 1) : cp;
 					} else
 #endif
 					{
 						Error("Unknown modifier '%c'\n", *tstr);
-						for (cp = tstr + 1;
-						     *cp != ':' && *cp != endc && *cp != '\0';
-						     cp++)
-							continue;
-						termc = *cp;
+						for (cp = tstr + 1; *cp != '\0'; cp++) {
+							if (*cp == ':' || *cp == endc) {
+								break;
+							}
+						}
 						newStr = var_Error;
+						tstr = (*cp == ':') ? (cp + 1) : cp;
 					}
+
 				}
-				if (termc == '\0') {
-					Error("Unclosed variable specification for %s",
-					      v->name);
-				}
-				tstr = (termc == ':') ? (cp + 1) : cp;
+
 			}
 			break;
 		}
