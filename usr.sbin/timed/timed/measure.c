@@ -32,7 +32,7 @@
  *
  * @(#)measure.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/measure.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.6 2004/09/05 02:16:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.7 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -126,7 +126,7 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 
 	FD_ZERO(&ready);
 
-	(void)gettimeofday(&tdone, 0);
+	gettimeofday(&tdone, 0);
 	mstotvround(&tout, maxmsec);
 	timevaladd(&tdone, &tout);		/* when we give up */
 
@@ -135,7 +135,7 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 	rcvcount = 0;
 	trials = 0;
 	while (rcvcount < MSGS) {
-		(void)gettimeofday(&tcur, 0);
+		gettimeofday(&tcur, 0);
 
 		/*
 		 * keep sending until we have sent the max
@@ -172,7 +172,7 @@ measure(u_long maxmsec,			/* wait this many msec at most */
 			FD_SET(sock_raw, &ready);
 			count = select(sock_raw+1, &ready, (fd_set *)0,
 				       (fd_set *)0, &tout);
-			(void)gettimeofday(&tcur, (struct timezone *)0);
+			gettimeofday(&tcur, (struct timezone *)0);
 			if (count <= 0)
 				break;
 
@@ -276,7 +276,7 @@ quit:
 			fprintf(fd,
 				"measure: %s failed after %d trials\n",
 				hname, trials);
-			(void)fflush(fd);
+			fflush(fd);
 		}
 	}
 

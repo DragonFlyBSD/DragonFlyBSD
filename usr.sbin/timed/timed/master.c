@@ -32,7 +32,7 @@
  *
  * @(#)master.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/master.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.7 2004/09/05 02:16:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/master.c,v 1.8 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -85,7 +85,7 @@ master(void)
 		if (ntp->status == MASTER)
 			masterup(ntp);
 	}
-	(void)gettimeofday(&ntime, 0);
+	gettimeofday(&ntime, 0);
 	pollingtime = ntime.tv_sec+3;
 	if (justquit)
 		polls = 0;
@@ -96,14 +96,14 @@ master(void)
  *	to update all timers.
  */
 loop:
-	(void)gettimeofday(&ntime, 0);
+	gettimeofday(&ntime, 0);
 	wait.tv_sec = pollingtime - ntime.tv_sec;
 	if (wait.tv_sec < 0)
 		wait.tv_sec = 0;
 	wait.tv_usec = 0;
 	msg = readmsg(TSP_ANY, ANYADDR, &wait, 0);
 	if (!msg) {
-		(void)gettimeofday(&ntime, 0);
+		gettimeofday(&ntime, 0);
 		if (ntime.tv_sec >= pollingtime) {
 			pollingtime = ntime.tv_sec + SAMPLEINTVL;
 			get_goodgroup(0);
@@ -176,7 +176,7 @@ loop:
 			}
 
 			mchgdate(msg);
-			(void)gettimeofday(&ntime, 0);
+			gettimeofday(&ntime, 0);
 			pollingtime = ntime.tv_sec + SAMPLEINTVL;
 			break;
 
@@ -204,7 +204,7 @@ loop:
 			}
 
 			mchgdate(msg);
-			(void)gettimeofday(&ntime, 0);
+			gettimeofday(&ntime, 0);
 			pollingtime = ntime.tv_sec + SAMPLEINTVL;
 			break;
 
@@ -228,7 +228,7 @@ loop:
 				break;
 			if (fromnet->status == MASTER) {
 				pollingtime = 0;
-				(void)addmach(msg->tsp_name, &from,fromnet);
+				addmach(msg->tsp_name, &from,fromnet);
 			}
 			taddr = from;
 			strlcpy(tname, msg->tsp_name, sizeof(tname));
@@ -286,7 +286,7 @@ loop:
 			 * do not want to call synch() while waiting
 			 * to be killed!
 			 */
-			(void)gettimeofday(&ntime, (struct timezone *)0);
+			gettimeofday(&ntime, (struct timezone *)0);
 			pollingtime = ntime.tv_sec + SAMPLEINTVL;
 			break;
 
@@ -311,7 +311,7 @@ loop:
 				syslog(LOG_WARNING,
 				"loop breakage: no reply from %s=%s to QUIT",
 				    htp->name, inet_ntoa(htp->addr.sin_addr));
-				(void)remmach(htp);
+				remmach(htp);
 			}
 
 		case TSP_TEST:
@@ -354,7 +354,7 @@ mchgdate(struct tsp *msg)
 	strlcpy(olddate, date(), sizeof(olddate));
 
 	/* adjust time for residence on the queue */
-	(void)gettimeofday(&otime, 0);
+	gettimeofday(&otime, 0);
 	adj_msg_time(msg,&otime);
 
 	timevalsub(&ntime, &msg->tsp_time, &otime);
@@ -366,7 +366,7 @@ mchgdate(struct tsp *msg)
 		synch(tvtomsround(ntime));
 	} else {
 		logwtmp("|", "date", "");
-		(void)settimeofday(&msg->tsp_time, 0);
+		settimeofday(&msg->tsp_time, 0);
 		logwtmp("{", "date", "");
 		spreadtime();
 	}
@@ -389,7 +389,7 @@ synch(long mydelta)
 	if (slvcount > 0) {
 		if (trace)
 			fprintf(fd, "measurements starting at %s\n", date());
-		(void)gettimeofday(&check, 0);
+		gettimeofday(&check, 0);
 		for (htp = self.l_fwd; htp != &self; htp = htp->l_fwd) {
 			if (htp->noanswer != 0) {
 				measure_status = measure(500, 100,
@@ -410,18 +410,18 @@ synch(long mydelta)
 						fprintf(fd,
 					"purging %s for not answering ICMP\n",
 							htp->name);
-						(void)fflush(fd);
+						fflush(fd);
 					}
 					htp = remmach(htp);
 				}
 			} else {
 				htp->delta = measure_delta;
 			}
-			(void)gettimeofday(&stop, 0);
+			gettimeofday(&stop, 0);
 			timevalsub(&stop, &stop, &check);
 			if (stop.tv_sec >= 1) {
 				if (trace)
-					(void)fflush(fd);
+					fflush(fd);
 				/*
 				 * ack messages periodically
 				 */
@@ -430,7 +430,7 @@ synch(long mydelta)
 				if (0 != readmsg(TSP_TRACEON,ANYADDR,
 						 &wait,0))
 					traceon();
-				(void)gettimeofday(&check, 0);
+				gettimeofday(&check, 0);
 			}
 		}
 		if (trace)
@@ -466,7 +466,7 @@ spreadtime(void)
 	for (htp = self.l_fwd; htp != &self; htp = htp->l_fwd) {
 		to.tsp_type = TSP_SETTIME;
 		strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
-		(void)gettimeofday(&to.tsp_time, 0);
+		gettimeofday(&to.tsp_time, 0);
 		answer = acksend(&to, &htp->addr, htp->name,
 				 TSP_ACK, 0, htp->noanswer);
 		if (answer == 0) {
@@ -480,7 +480,7 @@ spreadtime(void)
 					fprintf(fd,
 					     "purging %s for not answering",
 						htp->name);
-					(void)fflush(fd);
+					fflush(fd);
 				}
 				htp = remmach(htp);
 			}
@@ -715,7 +715,7 @@ masterup(struct netinfo *net)
 	 * we do not tell them to start using our time, before we have
 	 * found a good master.
 	 */
-	(void)gettimeofday(&net->slvwait, 0);
+	gettimeofday(&net->slvwait, 0);
 }
 
 void
@@ -737,12 +737,12 @@ newslave(struct tsp *msg)
 	 * If we are stable, send our time to the slave.
 	 * Do not go crazy if the date has been changed.
 	 */
-	(void)gettimeofday(&now, 0);
+	gettimeofday(&now, 0);
 	if (now.tv_sec >= fromnet->slvwait.tv_sec+3
 	    || now.tv_sec < fromnet->slvwait.tv_sec) {
 		to.tsp_type = TSP_SETTIME;
 		strlcpy(to.tsp_name, hostname, sizeof(to.tsp_name));
-		(void)gettimeofday(&to.tsp_time, 0);
+		gettimeofday(&to.tsp_time, 0);
 		answer = acksend(&to, &htp->addr,
 				 htp->name, TSP_ACK,
 				 0, htp->noanswer);
@@ -821,7 +821,7 @@ traceoff(char *msg)
 	prthp(CLK_TCK);
 	if (trace) {
 		fprintf(fd, msg, date());
-		(void)fclose(fd);
+		fclose(fd);
 		fd = 0;
 	}
 #ifdef GPROF

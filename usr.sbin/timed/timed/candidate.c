@@ -32,7 +32,7 @@
  *
  * @(#)candidate.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/candidate.c,v 1.5 1999/08/28 01:20:16 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.4 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/candidate.c,v 1.5 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -84,10 +84,10 @@ again:
 		return(SLAVE);
 	}
 
-	(void)gettimeofday(&then, 0);
+	gettimeofday(&then, 0);
 	then.tv_sec += 3;
 	for (;;) {
-		(void)gettimeofday(&wait, 0);
+		gettimeofday(&wait, 0);
 		timevalsub(&wait,&then,&wait);
 		resp = readmsg(TSP_ANY, ANYADDR, &wait, net);
 		if (!resp)
@@ -96,7 +96,7 @@ again:
 		switch (resp->tsp_type) {
 
 		case TSP_ACCEPT:
-			(void)addmach(resp->tsp_name, &from,fromnet);
+			addmach(resp->tsp_name, &from,fromnet);
 			break;
 
 		case TSP_MASTERUP:
@@ -107,7 +107,7 @@ again:
 			 */
 			if (++loop_lim < 5
 			    && !good_host_name(resp->tsp_name)) {
-				(void)addmach(resp->tsp_name, &from,fromnet);
+				addmach(resp->tsp_name, &from,fromnet);
 				suppress(&from, resp->tsp_name, net);
 				goto again;
 			}
@@ -144,7 +144,7 @@ again:
 			break;
 
 		case TSP_SLAVEUP:
-			(void)addmach(resp->tsp_name, &from,fromnet);
+			addmach(resp->tsp_name, &from,fromnet);
 			break;
 
 		case TSP_SETDATE:

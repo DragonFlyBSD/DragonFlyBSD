@@ -32,7 +32,7 @@
  *
  * @(#)correct.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/correct.c,v 1.4 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.7 2004/09/05 02:16:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/correct.c,v 1.8 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -69,7 +69,7 @@ correct(long avdelta)
 			    || corr >= MAXADJ*1000
 			    || corr <= -MAXADJ*1000) {
 				htp->need_set = 0;
-				(void)gettimeofday(&to.tsp_time,0);
+				gettimeofday(&to.tsp_time,0);
 				timevaladd(&to.tsp_time, &adjlocal);
 				to.tsp_type = TSP_SETTIME;
 			} else {
@@ -89,7 +89,7 @@ correct(long avdelta)
 						fprintf(fd,
 					     "purging %s for not answering\n",
 							htp->name);
-						(void)fflush(fd);
+						fflush(fd);
 					}
 					htp = remmach(htp);
 				}
@@ -156,7 +156,7 @@ adjclock(struct timeval *corr)
 		syslog(LOG_WARNING,
 		       "clock correction %ld sec too large to adjust",
 		       adj.tv_sec);
-		(void) gettimeofday(&now, 0);
+		gettimeofday(&now, 0);
 		timevaladd(&now, corr);
 		if (settimeofday(&now, 0) < 0)
 			syslog(LOG_ERR, "settimeofday: %m");

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timed.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/timed.c,v 1.9 1999/08/28 01:20:19 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.7 2004/09/05 02:16:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/timed.c,v 1.8 2004/09/05 02:20:15 dillon Exp $
  */
 
 #define TSPTYPES
@@ -220,7 +220,7 @@ main(int argc, char *argv[])
 	}
 
 	/* choose a unique seed for random number generation */
-	(void)gettimeofday(&ntime, 0);
+	gettimeofday(&ntime, 0);
 	srandom(ntime.tv_sec + ntime.tv_usec);
 
 	sequence = random();     /* initial seq number */
@@ -228,7 +228,7 @@ main(int argc, char *argv[])
 	/* rounds kernel variable time to multiple of 5 ms. */
 	ntime.tv_sec = 0;
 	ntime.tv_usec = -((ntime.tv_usec/1000) % 5) * 1000;
-	(void)adjtime(&ntime, (struct timeval *)0);
+	adjtime(&ntime, (struct timeval *)0);
 
 	for (nt = nets; nt; nt = nt->next) {
 		nentp = getnetbyname(nt->name);
@@ -334,7 +334,7 @@ main(int argc, char *argv[])
 		ntp = NULL;
 	}
 	if (ntp)
-		(void) free((char *)ntp);
+		free((char *)ntp);
 	if (nettab == NULL)
 		errx(1, "no network usable");
 
@@ -389,7 +389,7 @@ main(int argc, char *argv[])
 		setstatus();
 		if (!(status & MASTER) && sock_raw != -1) {
 			/* sock_raw is not being used now */
-			(void)close(sock_raw);
+			close(sock_raw);
 			sock_raw = -1;
 		}
 
@@ -400,7 +400,7 @@ main(int argc, char *argv[])
 
 	} else {
 		if (sock_raw != -1) {
-			(void)close(sock_raw);
+			close(sock_raw);
 			sock_raw = -1;
 		}
 
@@ -462,7 +462,7 @@ suppress(struct sockaddr_in *addr, char *name, struct netinfo *net)
 	syslog(LOG_NOTICE, "suppressing false master %s", tname);
 	msg.tsp_type = TSP_QUIT;
 	strlcpy(msg.tsp_name, hostname, sizeof(msg.tsp_name));
-	(void)acksend(&msg, &tgt, tname, TSP_ACK, 0, 1);
+	acksend(&msg, &tgt, tname, TSP_ACK, 0, 1);
 }
 
 void
@@ -690,7 +690,7 @@ date(void)
 	struct	timeval tv;
 	time_t	tv_sec;
 
-	(void)gettimeofday(&tv, (struct timezone *)0);
+	gettimeofday(&tv, (struct timezone *)0);
 	tv_sec = tv.tv_sec;
 	return (ctime(&tv_sec));
 }
@@ -779,21 +779,21 @@ get_goodgroup(int force)
 	 */
 	if (!innetgr(goodgroup, &hostname[0], 0,0)) {
 		if (trace)
-			(void)fprintf(fd, "get_goodgroup: %s not in %s\n",
+			fprintf(fd, "get_goodgroup: %s not in %s\n",
 				      &hostname[0], goodgroup);
 		return;
 	}
 	if (trace)
-		(void)fprintf(fd, "get_goodgroup: %s in %s\n",
+		fprintf(fd, "get_goodgroup: %s in %s\n",
 				  &hostname[0], goodgroup);
 
 	/* mark the entire netgroup as trusted */
-	(void)setnetgrent(goodgroup);
+	setnetgrent(goodgroup);
 	while (getnetgrent(&mach,&usr,&dom)) {
 		if (0 != mach)
 			add_good_host(mach,0);
 	}
-	(void)endnetgrent();
+	endnetgrent();
 
 	/* update list of slaves */
 	for (htp = self.l_fwd; htp != &self; htp = htp->l_fwd) {

@@ -32,7 +32,7 @@
  *
  * @(#)readmsg.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/readmsg.c,v 1.5.2.3 2001/08/31 08:02:05 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.5 2004/09/05 02:16:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/readmsg.c,v 1.6 2004/09/05 02:20:15 dillon Exp $
  */
 
 #include "globals.h"
@@ -166,11 +166,11 @@ again:
 	 * right one, return it, otherwise insert it in the linked list.
 	 */
 
-	(void)gettimeofday(&rtout, 0);
+	gettimeofday(&rtout, 0);
 	timevaladd(&rtout, intvl);
 	FD_ZERO(&ready);
 	for (;;) {
-		(void)gettimeofday(&rtime, 0);
+		gettimeofday(&rtime, 0);
 		timevalsub(&rwait, &rtout, &rtime);
 		if (rwait.tv_sec < 0)
 			rwait.tv_sec = rwait.tv_usec = 0;
@@ -217,7 +217,7 @@ again:
 			      inet_ntoa(from.sin_addr));
 			continue;
 		}
-		(void)gettimeofday(&from_when, (struct timezone *)0);
+		gettimeofday(&from_when, (struct timezone *)0);
 		bytehostorder(&msgin);
 
 		if (msgin.tsp_vers > TSPVERSION) {
