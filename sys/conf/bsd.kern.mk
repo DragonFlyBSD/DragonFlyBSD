@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.kern.mk,v 1.17.2.1 2001/08/01 16:56:56 obrien Exp $
-# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.3 2004/02/04 21:09:17 rob Exp $
+# $DragonFly: src/sys/conf/bsd.kern.mk,v 1.4 2004/02/16 19:57:39 dillon Exp $
 
 #
 # Warning flags for compiling the kernel and components of the kernel.
@@ -39,6 +39,11 @@ CFLAGS+=	-mpreferred-stack-boundary=2
 .if ${MACHINE_ARCH} == "alpha"
 CFLAGS+=	-mno-fp-regs -Wa,-mev56
 .endif
+
+# Require the proper use of 'extern' for variables.  -fno-common will
+# cause duplicate declarations to generate a link error.
+#
+CFLAGS+=	-fno-common
 
 # Prevent GCC 3.x from making certain libc based inline optimizations
 #

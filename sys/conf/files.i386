@@ -2,7 +2,7 @@
 # files marked standard are always included.
 #
 # $FreeBSD: src/sys/conf/files.i386,v 1.307.2.38 2003/01/02 20:41:33 kan Exp $
-# $DragonFly: src/sys/conf/Attic/files.i386,v 1.13 2004/02/14 21:12:38 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/files.i386,v 1.14 2004/02/16 19:57:39 dillon Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -10,13 +10,13 @@
 #
 linux_genassym.o		optional	compat_linux		   \
 	dependency 	"$S/emulation/linux/i386/linux_genassym.c"		   \
-	compile-with	"${CC} ${CFLAGS} -c ${.IMPSRC}"			   \
+	compile-with	"${CC} ${CFLAGS:N-fno-common} -c ${.IMPSRC}"	   \
 	no-obj no-implicit-rule						   \
 	clean		"linux_genassym.o"
 #
 svr4_genassym.o			optional	compat_svr4		   \
 	dependency 	"$S/emulation/svr4/i386/svr4_genassym.c"			   \
-	compile-with	"${CC} ${CFLAGS} -c ${.IMPSRC}"			   \
+	compile-with	"${CC} ${CFLAGS:N-fno-commmon} -c ${.IMPSRC}"	   \
 	no-obj no-implicit-rule						   \
 	clean		"svr4_genassym.o"
 #
