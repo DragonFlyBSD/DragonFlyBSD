@@ -1,7 +1,7 @@
 /*
  * MISC.C
  *
- * $DragonFly: src/bin/cpdup/misc.c,v 1.4 2004/06/09 07:40:15 cpressey Exp $
+ * $DragonFly: src/bin/cpdup/misc.c,v 1.5 2004/08/25 01:38:50 dillon Exp $
  */
 
 #include "cpdup.h"
@@ -29,8 +29,10 @@ logerr(const char *ctl, ...)
 char *
 mprintf(const char *ctl, ...)
 {
-    char *ptr = NULL;
+    char *ptr;
     va_list va;
+
+    ptr = NULL;
 
     va_start(va, ctl);
     if (vasprintf(&ptr, ctl, va) < 0)
@@ -74,4 +76,3 @@ fatal(const char *ctl, ...)
 	exit(1);
     }
 }
-

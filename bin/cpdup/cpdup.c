@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.6 2004/07/22 13:09:02 asmodai Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.7 2004/08/25 01:38:50 dillon Exp $
  */
 
 /*-
@@ -56,6 +56,7 @@
 
 #define HSIZE	16384
 #define HMASK	(HSIZE-1)
+#define HASHF 16
 
 const char *MD5CacheFile;
 
@@ -79,6 +80,8 @@ struct hlink {
     struct hlink *prev;
     int nlinked;
 };
+
+struct hlink *hltable[HASHF];
 
 typedef struct MD5Node {
     struct MD5Node *md_Next;
@@ -129,7 +132,6 @@ char *MD5SCache;		/* cache source directory name */
 MD5Node *MD5Base;
 int MD5SCacheDirLen;
 int MD5SCacheDirty;
-
 
 int
 main(int ac, char **av)
@@ -260,10 +262,6 @@ main(int ac, char **av)
     exit((i == 0) ? 0 : 1);
 }
 
-#define HASHF 16
-
-struct hlink *hltable[HASHF];
-
 static struct hlink *
 hltlookup(struct stat *stp)
 {
@@ -285,9 +283,9 @@ hltadd(struct stat *stp, const char *path)
     struct hlink *new;
     int n;
 
-    if (!(new = (struct hlink *)malloc(sizeof (struct hlink)))) {
+    if (!(new = malloc(sizeof (struct hlink)))) {
         fprintf(stderr, "out of memory\n");
-        exit(10);
+        exit(EXIT_FAILURE);
     }
 
     /* initialize and link the new element into the table */
@@ -327,14 +325,16 @@ DoCopy(const char *spath, const char *dpath, dev_t sdevNo, dev_t ddevNo)
 {
     struct stat st1;
     struct stat st2;
-    int r = 0;
-    int mres = 0;
-    int st2Valid = 0;
-    struct hlink *hln = NULL;
+    int r, mres, st2Valid;
+    struct hlink *hln;
     List list;
-    u_int64_t size = 0;
+    u_int64_t size;
 
     InitList(&list);
+
+    r = mres = st2Valid = 0;
+    size = 0;
+    hln = NULL;
 
     if (lstat(spath, &st1) != 0)
 	return(0);
@@ -945,7 +945,9 @@ int
 AddList(List *list, const char *name, int n)
 {
     Node *node;
-    int hv = shash(name);
+    int hv;
+
+    hv = shash(name);
 
     /*
      * Scan against wildcards.  Only a node value of 1 can be a wildcard
@@ -970,6 +972,10 @@ AddList(List *list, const char *name, int n)
 	}
     }
     node = malloc(sizeof(Node) + strlen(name) + 1);
+    if (node == NULL) {
+        fprintf(stderr, "out of memory\n");
+        exit(EXIT_FAILURE);
+    }
 
     node->no_Next = list->li_Node.no_Next;
     list->li_Node.no_Next = node;
@@ -986,7 +992,9 @@ AddList(List *list, const char *name, int n)
 static int
 shash(const char *s)
 {
-    int hv = 0xA4FB3255;
+    int hv;
+
+    hv = 0xA4FB3255;
 
     while (*s) {
 	if (*s == '*' || *s == '?' || 
@@ -1055,8 +1063,8 @@ YesNo(const char *path)
 {
     int ch, first;
 
-    (void)fprintf(stderr, "remove %s (Yes/No) [No]? ", path);
-    (void)fflush(stderr);
+    fprintf(stderr, "remove %s (Yes/No) [No]? ", path);
+    fflush(stderr);
 
     first = ch = getchar();
     while (ch != '\n' && ch != EOF)
@@ -1144,7 +1152,14 @@ md5_cache(const char *spath, int sdirlen)
 	while (c != EOF) {
 	    MD5Node *node = *pnode = malloc(sizeof(MD5Node));
 	    char *s;
-	    int nlen = 0;
+	    int nlen;
+
+	    nlen = 0;
+
+	    if (pnode == NULL || node == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	    }
 
 	    bzero(node, sizeof(MD5Node));
 	    node->md_Code = fextract(fi, -1, &c, ' ');
@@ -1188,7 +1203,12 @@ md5_lookup(const char *sfile)
 	}
     }
     if (node == NULL) {
-	node = *pnode = malloc(sizeof(MD5Node));
+
+	if ((node = *pnode = malloc(sizeof(MD5Node))) == NULL) {
+		fprintf(stderr,"out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+
 	bzero(node, sizeof(MD5Node));
 	node->md_Name = strdup(sfile);
     }
@@ -1212,8 +1232,10 @@ md5_check(const char *spath, const char *dpath)
     const char *sfile;
     char *dcode;
     int sdirlen;
-    int r = -1;
+    int r;
     MD5Node *node;
+
+    r = -1;
 
     if ((sfile = strrchr(spath, '/')) != NULL)
 	++sfile;
@@ -1290,7 +1312,9 @@ md5_check(const char *spath, const char *dpath)
 static int
 xrename(const char *src, const char *dst, u_long flags)
 {
-    int r = 0;
+    int r;
+
+    r = 0;
 
     if ((r = rename(src, dst)) < 0) {
 	chflags(dst, 0);
@@ -1303,8 +1327,9 @@ xrename(const char *src, const char *dst, u_long flags)
 static int
 xlink(const char *src, const char *dst, u_long flags)
 {
-    int r = 0;
-    int e;
+    int r, e;
+
+    r = 0;
 
     if ((r = link(src, dst)) < 0) {
 	chflags(src, 0);
@@ -1319,10 +1344,20 @@ xlink(const char *src, const char *dst, u_long flags)
 static char *
 fextract(FILE *fi, int n, int *pc, int skip)
 {
-    int i = 0;
-    int imax = (n < 0) ? 64 : n + 1;
-    char *s = malloc(imax);
-    int c = *pc;
+    int i;
+    int c;
+    int imax;
+    char *s;
+
+    i = 0;
+    c = *pc;
+    imax = (n < 0) ? 64 : n + 1;
+
+    s = malloc(imax);
+    if (s == NULL) {
+	fprintf(stderr, "out of memory\n");
+	exit(EXIT_FAILURE);
+    }
 
     while (c != EOF) {
 	if (n == 0 || (n < 0 && (c == ' ' || c == '\n')))
@@ -1332,6 +1367,10 @@ fextract(FILE *fi, int n, int *pc, int skip)
 	if (i == imax) {
 	    imax += 64;
 	    s = realloc(s, imax);
+    	    if (s == NULL) {
+                fprintf(stderr, "out of memory\n");
+  	        exit(EXIT_FAILURE);
+ 	    }
 	}
 	if (n > 0)
 	    --n;
@@ -1358,4 +1397,3 @@ doMD5File(const char *filename, char *buf)
     }
     return MD5File(filename, buf);
 }
-

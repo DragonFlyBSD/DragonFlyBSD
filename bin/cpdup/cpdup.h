@@ -1,20 +1,21 @@
 /*
  * CPDUP.H
  *
- * $DragonFly: src/bin/cpdup/cpdup.h,v 1.1 2003/12/01 02:20:14 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.h,v 1.2 2004/08/25 01:38:50 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/time.h>
-#include <sys/file.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <sys/file.h>
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include <utime.h>
 #include <dirent.h>
 #include <signal.h>
