@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlxvar.h,v 1.5.2.3 2001/06/25 04:37:51 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.4 2004/05/19 22:52:47 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlxvar.h,v 1.5 2004/09/15 14:31:22 joerg Exp $
  */
 
 /*
@@ -147,7 +147,7 @@ struct mlx_softc
 #define MLX_STATE_SHUTDOWN	(1<<1)	/* controller is shut down */
 #define MLX_STATE_OPEN		(1<<2)	/* control device is open */
 #define MLX_STATE_SUSPEND	(1<<3)	/* controller is suspended */
-    struct callout_handle mlx_timeout;	/* periodic status monitor */
+    struct callout	mlx_timeout;	/* periodic status monitor */
     time_t		mlx_lastpoll;	/* last time_second we polled for status */
     u_int16_t		mlx_lastevent;	/* sequence number of the last event we recorded */
     int			mlx_currevent;	/* sequence number last time we looked */

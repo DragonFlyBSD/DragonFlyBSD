@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.9 2004/06/21 15:39:31 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.10 2004/09/15 14:31:22 joerg Exp $
  */
 
 /*
@@ -172,7 +172,7 @@ mlx_free(struct mlx_softc *sc)
     debug_called(1);
 
     /* cancel status timeout */
-    untimeout(mlx_periodic, sc, sc->mlx_timeout);
+    callout_stop(&sc->mlx_timeout);
 
     /* throw away any command buffers */
     while ((mc = TAILQ_FIRST(&sc->mlx_freecmds)) != NULL) {
@@ -292,6 +292,7 @@ mlx_attach(struct mlx_softc *sc)
     int				rid, error, fwminor, hscode, hserror, hsparam1, hsparam2, hsmsg;
 
     debug_called(1);
+    callout_init(&sc->mlx_timeout);
 
     /*
      * Initialise per-controller queues.
@@ -489,7 +490,7 @@ mlx_attach(struct mlx_softc *sc)
     /*
      * Start the timeout routine.
      */
-    sc->mlx_timeout = timeout(mlx_periodic, sc, hz);
+    callout_reset(&sc->mlx_timeout, hz, mlx_periodic, sc);
 
     /* print a little information about the controller */
     mlx_describe_controller(sc);
@@ -1059,7 +1060,7 @@ mlx_periodic(void *data)
     mlx_done(sc);
 
     /* reschedule another poll next second or so */
-    sc->mlx_timeout = timeout(mlx_periodic, sc, hz);
+    callout_reset(&sc->mlx_timeout, hz, mlx_periodic, sc);
 }
 
 /********************************************************************************
