@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.20 2005/02/21 03:04:00 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.21 2005/02/21 03:37:44 joerg Exp $
  */
 
 /*
@@ -250,31 +250,12 @@ struct isa_driver ledriver = {
 
 static unsigned le_intrs[NLE];
 
-#define LE_INL(sc, reg) \
-({ u_int data; \
-        __asm __volatile("inl %1, %0": "=a" (data): "d" ((u_short)((sc)->le_iobase + (reg)))); \
-        data; })
-
-#define LE_OUTL(sc, reg, data) \
-	({__asm __volatile("outl %0, %1"::"a" ((u_int)(data)), "d" ((u_short)((sc)->le_iobase + (reg))));})
-
-#define LE_INW(sc, reg) \
-({ u_short data; \
-        __asm __volatile("inw %1, %0": "=a" (data): "d" ((u_short)((sc)->le_iobase + (reg)))); \
-        data; })
-
-
-#define LE_OUTW(sc, reg, data) \
-	({__asm __volatile("outw %0, %1"::"a" ((u_short)(data)), "d" ((u_short)((sc)->le_iobase + (reg))));})
-
-#define LE_INB(sc, reg) \
-({ u_char data; \
-        __asm __volatile("inb %1, %0": "=a" (data): "d" ((u_short)((sc)->le_iobase + (reg)))); \
-        data; })
-
-
-#define LE_OUTB(sc, reg, data) \
-	({__asm __volatile("outb %0, %1"::"a" ((u_char)(data)), "d" ((u_short)((sc)->le_iobase + (reg))));})
+#define LE_INL(sc, reg)		inl((sc)->le_iobase + (reg))
+#define	LE_OUTL(sc, reg, data)	outl((sc)->le_iobase + (reg), data)
+#define LE_INW(sc, reg)		inw((sc)->le_iobase + (reg))
+#define	LE_OUTW(sc, reg, data)	outw((sc)->le_iobase + (reg), data)
+#define LE_INB(sc, reg)		inb((sc)->le_iobase + (reg))
+#define	LE_OUTB(sc, reg, data)	outb((sc)->le_iobase + (reg), data)
 
 static int
 le_probe(struct isa_device *dvp)
