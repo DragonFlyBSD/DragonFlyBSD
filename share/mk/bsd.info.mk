@@ -1,7 +1,7 @@
 # $FreeBSD: src/share/mk/bsd.info.mk,v 1.57.2.7 2003/05/21 13:00:46 ru Exp $
-# $DragonFly: src/share/mk/bsd.info.mk,v 1.4 2005/01/06 01:20:01 swildner Exp $
+# $DragonFly: src/share/mk/bsd.info.mk,v 1.5 2005/01/06 14:54:57 swildner Exp $
 #
-# The include file <bsd.info.mk> handles installing GNU (tech)info files.
+# The include file <bsd.info.mk> handles installing GNU (tex)info files.
 # Texinfo is a documentation system that uses a single source
 # file to produce both on-line information and printed output.
 #
@@ -168,24 +168,24 @@ ${INFO}.texi: ${SRCS}
 .endif
 
 # tex garbage
-.if ${FORMATS:Mps} || ${FORMATS:Mdvi} || ${FORMATS:Mlatin1}
+.if !empty(FORMATS:Mps) || !empty(FORMATS:Mdvi) || !empty(FORMATS:Mlatin1)
 .for _f in aux cp fn ky log out pg toc tp vr dvi
 CLEANFILES+=	${INFO:S/$/.${_f}/} ${INFO:S/$/-la.${_f}/}
 .endfor
 CLEANFILES+=	${INFO:S/$/-la.texi/} ${INFO:S/$/-la.sed/}
 .endif
 
-.if ${FORMATS:Mhtml}
+.if !empty(FORMATS:Mhtml)
 CLEANFILES+=	${INFO:S/$/.info.*.html/} ${INFO:S/$/.info/}
 .endif
 
 .if !defined(NOINFO) && defined(INFO)
 install: ${INSTALLINFODIRS}
-.if ${IFILES:N*.html}
+.if !empty(IFILES:N*.html)
 	${INSTALL} -o ${INFOOWN} -g ${INFOGRP} -m ${INFOMODE} \
 		${IFILES:N*.html} ${DESTDIR}${INFODIR}
 .endif
-.if ${FORMATS:Mhtml}
+.if !empty(FORMATS:Mhtml)
 	${INSTALL} -o ${INFOOWN} -g ${INFOGRP} -m ${INFOMODE} \
 		${INFO:S/$/.info.*.html/} ${DESTDIR}${INFODIR}
 .endif
