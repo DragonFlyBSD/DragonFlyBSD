@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.20 2004/05/05 19:51:15 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.5 2004/07/05 00:07:35 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.6 2004/09/15 16:33:09 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -36,8 +36,8 @@
 #include <sys/uio.h>
 
 #include "acpi.h"
-#include <dev/acpica/acpivar.h>
-#include <dev/acpica/acpiio.h>
+#include <dev/acpica5/acpivar.h>
+#include <dev/acpica5/acpiio.h>
 
 static device_t	acpi_dev;
 
