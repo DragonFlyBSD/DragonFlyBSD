@@ -1,0 +1,25 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/root.c.patch,v 1.1 2005/01/25 14:00:18 joerg Exp $
+Index: root.c
+===================================================================
+RCS file: /home/joerg/wd/repository/dragonflybsd/src/contrib/cvs-1.12.9/src/root.c,v
+retrieving revision 1.1
+diff -u -r1.1 root.c
+--- root.c	3 Aug 2004 18:08:51 -0000	1.1
++++ root.c	24 Jan 2005 16:56:08 -0000
+@@ -507,10 +507,14 @@
+ #ifdef CLIENT_SUPPORT
+     newroot->isremote = (newroot->method != local_method);
+ 
+-    if (readonlyfs && newroot->isremote)
+-	error (1, 0,
++    if (newroot->isremote && readonlyfs) {
++	/* downgrade readonlyfs settings via environment */
++	if (readonlyfs < 0)
++	    error (1, 0,
+ "Read-only repository feature unavailable with remote roots (cvsroot = %s)",
+ 	       cvsroot_copy);
++	readonlyfs = 0;
++    }
+ 
+     if ((newroot->method != local_method)
+ #ifdef CLIENT_SUPPORT

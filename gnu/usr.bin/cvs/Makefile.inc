@@ -1,10 +1,9 @@
-# $DragonFly: src/gnu/usr.bin/cvs/Makefile.inc,v 1.3 2004/08/03 18:11:54 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/Makefile.inc,v 1.4 2005/01/25 14:00:18 joerg Exp $
 #
 
 .if !defined(CVSDIR)
 
 CVSDIR=		$(.CURDIR)/../../../../contrib/cvs-1.12.9
-CONTRIBDIR=	${CVSDIR}
 
 .if exists(${.OBJDIR}/../lib)
 LIBCVSDIR=	${.OBJDIR}/../lib

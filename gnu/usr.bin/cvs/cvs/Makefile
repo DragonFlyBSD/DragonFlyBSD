@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.32.2.6 2003/01/21 23:06:51 peter Exp $
-# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.6 2004/05/20 02:27:56 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cvs/cvs/Makefile,v 1.7 2005/01/25 14:00:18 joerg Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -23,18 +23,15 @@ SRCS=	add.c admin.c annotate.c buffer.c \
 	recurse.c release.c remove.c repos.c root.c rsh-client.c run.c \
 	scramble.c server.c socket-client.c status.c subr.c tag.c update.c \
 	vers_ts.c version.c watch.c wrapper.c zlib.c \
-	${.OBJDIR}/main.c ${.OBJDIR}/diff.c
+	main.c diff.c ${PATCHES}
 
-${.OBJDIR}/main.c: main.c.patch
-	patch -o ${.TARGET} -i ${.ALLSRC} ${CONTRIBDIR}/src/main.c
-
-${.OBJDIR}/diff.c: diff.c.patch
-	patch -o ${.TARGET} -i ${.ALLSRC} ${CONTRIBDIR}/src/diff.c
+PATCHES=main.c.patch diff.c.patch root.c.patch
+CONTRIBDIR=	${CVSDIR}/src
 
 ${.OBJDIR}/cvs.1: cvs.1.patch
-	patch -o ${.TARGET} -i ${.ALLSRC} ${CONTRIBDIR}/doc/cvs.1
+	patch -o ${.TARGET} -i ${.ALLSRC} ${CVSDIR}/doc/cvs.1
 
-CLEANFILES+= ${.OBJDIR}/main.c ${.OBJDIR}/diff.c ${.OBJDIR}/cvs.1
+CLEANFILES+= ${.OBJDIR}/cvs.1
 
 CFLAGS+= -I${.CURDIR} -I../lib -DHAVE_CONFIG_H \
 	 -I${CVSDIR}/src -I${CVSDIR}/lib -I${CVSDIR}/diff -I.
