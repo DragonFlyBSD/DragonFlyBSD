@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.47 2005/01/14 11:30:16 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.48 2005/01/26 09:44:21 joerg Exp $
  */
 
 /*-
@@ -145,14 +145,19 @@ static char *objdir;			/* where we chdir'ed to */
 static void
 MFLAGS_append(const char *flag, char *arg)
 {
-
 	Var_Append(MAKEFLAGS, flag, VAR_GLOBAL);
-	if (arg != NULL)
-		Var_Append(MAKEFLAGS, arg, VAR_GLOBAL);
+	if (arg != NULL) {
+		char *str = MAKEFLAGS_quote(arg);
+		Var_Append(MAKEFLAGS, str, VAR_GLOBAL);
+		free(str);
+	}
 
 	Var_Append("MFLAGS", flag, VAR_GLOBAL);
-	if (arg != NULL)
-		Var_Append("MFLAGS", arg, VAR_GLOBAL);
+	if (arg != NULL) {
+		char *str = MAKEFLAGS_quote(arg);
+		Var_Append("MFLAGS", str, VAR_GLOBAL);
+		free(str);
+	}
 }
 
 /*-
@@ -341,6 +346,11 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 	 */
 	for (argv += optind, argc -= optind; *argv; ++argv, --argc)
 		if (Parse_IsVar(*argv)) {
+			char *ptr = MAKEFLAGS_quote(*argv);
+
+			Var_Append(MAKEFLAGS, ptr, VAR_GLOBAL);
+			free(ptr);
+
 			Parse_DoVar(*argv, VAR_CMD);
 		} else {
 			if (!**argv)
@@ -372,7 +382,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
  *	Only those that come from the various arguments.
  */
 void
-Main_ParseArgLine(char *line)
+Main_ParseArgLine(char *line, int mflags)
 {
 	char **argv;			/* Manufactured argument vector */
 	int argc;			/* Number of arguments in argv */
@@ -384,7 +394,10 @@ Main_ParseArgLine(char *line)
 	if (!*line)
 		return;
 
-	argv = brk_string(line, &argc, TRUE);
+	if (mflags)
+		argv = MAKEFLAGS_break(line, &argc);
+	else
+		argv = brk_string(line, &argc, TRUE);
 	MainParseArgs(argc, argv);
 }
 
@@ -619,7 +632,7 @@ main(int argc, char **argv)
 	 * (Note this is *not* MAKEFLAGS since /bin/make uses that and it's
 	 * in a different format).
 	 */
-	Main_ParseArgLine(getenv("MAKEFLAGS"));
+	Main_ParseArgLine(getenv("MAKEFLAGS"), 1);
 
 	MainParseArgs(argc, argv);
 

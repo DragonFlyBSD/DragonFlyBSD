@@ -39,10 +39,10 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.25 2005/01/08 22:27:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.26 2005/01/26 09:44:21 joerg Exp $
  */
 
 /* main.c */
-void Main_ParseArgLine(char *);
+void Main_ParseArgLine(char *, int);
 char *Cmd_Exec(const char *, const char **);
 #endif /* nonints_h_33c5dafb */

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.39 2005/01/24 09:38:01 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.40 2005/01/26 09:44:21 joerg Exp $
  */
 
 /*-
@@ -1046,7 +1046,7 @@ ParseDoDependency(char *line)
 	 * set the initial character to a null-character so the loop to
 	 * get sources won't get anything
 	 */
-	Main_ParseArgLine(line);
+	Main_ParseArgLine(line, 0);
 	*line = '\0';
     } else if (specType == ExShell) {
 	if (Job_ParseShell(line) != SUCCESS) {

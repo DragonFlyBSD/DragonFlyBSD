@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.2 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.3 2005/01/26 09:44:21 joerg Exp $
  */
 
 #include "sprite.h"
@@ -55,6 +55,8 @@ struct Buffer;
 void str_init(void);
 char *str_concat(const char *, const char *, int);
 char **brk_string(char *, int *, Boolean);
+char *MAKEFLAGS_quote(const char *);
+char **MAKEFLAGS_break(const char *, int *);
 int Str_Match(const char *, const char *);
 const char *Str_SYSVMatch(const char *, const char *, int *);
 void Str_SYSVSubst(struct Buffer *, const char *, const char *, int);
