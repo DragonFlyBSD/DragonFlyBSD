@@ -1,0 +1,17 @@
+$DragonFly: src/gnu/usr.bin/cc34/cc_prep/patches/genconditions.c.patch,v 1.1 2004/06/17 23:28:39 joerg Exp $
+
+--- genconditions.c.orig	2004-06-17 22:10:18.000000000 +0200
++++ genconditions.c	2004-06-17 22:10:47.000000000 +0200
+@@ -125,11 +125,7 @@
+    array initializers, fall back to assuming that all conditions\n\
+    potentially vary at run time.  It works in 3.0.1 and later; 3.0\n\
+    only when not optimizing.  */\n\
+-#if (GCC_VERSION >= 3001) || ((GCC_VERSION == 3000) && !__OPTIMIZE__)\n\
+-# define MAYBE_EVAL(expr) (__builtin_constant_p(expr) ? (int) (expr) : -1)\n\
+-#else\n\
+-# define MAYBE_EVAL(expr) -1\n\
+-#endif\n");
++# define MAYBE_EVAL(expr) -1\n");
+ }
+ 
+ /* Write out one entry in the conditions table, using the data pointed
