@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.2 2004/07/28 14:34:57 justin Exp $
+# $DragonFly: site/data/docs/Attic/donations.cgi,v 1.3 2004/08/12 15:36:20 justin Exp $
 
 $TITLE(DragonFly - Donations)
 
@@ -96,7 +96,21 @@ not responsible for any transactions.
         </td>
 </tr>
 
-
+<!-- posted 12/08/2004 -->
+<tr>
+        <td>
+                Robert Garrett<br />
+                rgarrett24 at cox dot net<br />
+		Oklahoma City, Oklahoma
+                
+        </td>
+        <td>
+        x86 laptop with DragonFly support and enough disk space for build/makeworld
+        </td>
+        <td>
+	DragonFly work while on the road
+        </td>
+</tr>
 
 
 
