@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_commands.c,v 1.8 2004/01/01 10:22:10 mbr 
- * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.2 2004/02/25 15:46:54 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_commands.c,v 1.3 2004/02/26 14:07:21 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -555,6 +555,7 @@ ips_ffdc_reset(ips_softc_t *sc)
 		free(status, M_DEVBUF);
 		device_printf(sc->dev, "ERROR: unable to get a command! "
 		    "can't send ffdc reset!\n");
+		return 1;
 	}
 	if (COMMAND_ERROR(status)) {
 		free(status, M_DEVBUF);
