@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips.c,v 1.6 2003/11/27 08:37:36 mbr
- * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.4 2004/05/19 22:52:47 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips.c,v 1.5 2004/07/09 16:15:06 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -175,18 +175,13 @@ error:
 
 static int
 ips_add_waiting_command(ips_softc_t *sc, int (*callback)(ips_command_t *),
-    void *data, unsigned long flags)
+    void *data)
 {
 	intrmask_t mask;
 	ips_command_t *command;
 	ips_wait_list_t *waiter;
-	unsigned long memflags = 0;
 
-	if (IPS_NOWAIT_FLAG & flags)
-		memflags = M_NOWAIT;
-	waiter = malloc(sizeof(ips_wait_list_t), M_DEVBUF, memflags);
-	if (waiter == NULL)
-		return ENOMEM;
+	waiter = malloc(sizeof(ips_wait_list_t), M_DEVBUF, M_INTWAIT);
 	mask = splbio();
 	if (sc->state & IPS_OFFLINE) {
 		splx(mask);
@@ -264,7 +259,7 @@ ips_get_free_cmd(ips_softc_t *sc, int (*callback)(ips_command_t *), void *data,
 		splx(mask);
 		if (flags & IPS_NOWAIT_FLAG)
 			return EAGAIN;
-		return ips_add_waiting_command(sc, callback, data, flags);
+		return ips_add_waiting_command(sc, callback, data);
 	}
 	SLIST_REMOVE_HEAD(&sc->free_cmd_list, next);
 	sc->used_commands++;
