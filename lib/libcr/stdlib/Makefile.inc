@@ -1,16 +1,16 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libcr/stdlib/Attic/Makefile.inc,v 1.3 2003/07/24 21:41:55 dillon Exp $
+# $DragonFly: src/lib/libcr/stdlib/Attic/Makefile.inc,v 1.4 2004/01/31 13:38:48 joerg Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libcr/stdlib
 
 MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c bsearch.c calloc.c div.c \
-	exit.c getenv.c getopt.c getsubopt.c hcreate.c heapsort.c labs.c \
-	ldiv.c malloc.c merge.c putenv.c qsort.c radixsort.c rand.c random.c \
-	reallocf.c realpath.c setenv.c strhash.c strtol.c strtoll.c strtoq.c \
-	strtoul.c strtoull.c strtouq.c system.c tdelete.c tfind.c tsearch.c \
-	twalk.c
+	exit.c getenv.c getopt.c getopt_long.c getsubopt.c hcreate.c \
+	heapsort.c labs.c ldiv.c malloc.c merge.c putenv.c qsort.c radixsort.c \
+	rand.c random.c reallocf.c realpath.c setenv.c strhash.c strtol.c \
+	strtoll.c strtoq.c strtoul.c strtoull.c strtouq.c system.c tdelete.c \
+	tfind.c tsearch.c twalk.c
 
 .if ${MACHINE_ARCH} == "alpha"
 #  XXX Temporary until the assumption that a long is 32-bits is resolved
