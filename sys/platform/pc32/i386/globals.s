@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/globals.s,v 1.13.2.1 2000/05/16 06:58:06 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.17 2003/07/12 17:54:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/globals.s,v 1.18 2003/08/24 22:36:43 hsu Exp $
  */
 
 #include "opt_user_ldt.h"
@@ -39,7 +39,7 @@
 	 * "constructed" in locore.s on the BSP and in mp_machdep.c for
 	 * each AP.  DO NOT REORDER THESE WITHOUT UPDATING THE REST!
 	 *
-	 * On UP the per-cpu addrses space is simply placed in the data
+	 * On UP the per-cpu address space is simply placed in the data
 	 * segment.
 	 */
 	.data

@@ -4,7 +4,7 @@
  *	Implements the architecture independant portion of the LWKT 
  *	subsystem.
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.29 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.30 2003/08/24 22:36:43 hsu Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -132,7 +132,7 @@ struct thread {
     const char	*td_wmesg;	/* string name for blockage */
     void	*td_wchan;	/* waiting on channel */
     int		td_pri;		/* 0-31, 31=highest priority (note 1) */
-    int		td_flags;	/* THF flags */
+    int		td_flags;	/* TDF flags */
     int		td_gen;		/* wait queue chasing generation number */
 				/* maybe preempt */
     void	(*td_preemptable)(struct thread *td, int critpri);
@@ -259,7 +259,6 @@ extern void lwkt_wait_ipiq(int dcpu, int seq);
 extern void lwkt_process_ipiq(void);
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
-
 
 extern int  lwkt_create (void (*func)(void *), void *arg, struct thread **ptd,
 			    struct thread *template, int tdflags,
