@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.24 2004/01/27 23:56:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.25 2004/02/10 07:34:42 dillon Exp $
  */
 
 /*
@@ -195,6 +195,7 @@ vntblinit()
 		    (5 * (sizeof(struct vm_object) + sizeof(struct vnode))));
 
 	minvnodes = desiredvnodes / 4;
+	lwkt_inittoken(&mountlist_token);
 	lwkt_inittoken(&mntvnode_token);
 	lwkt_inittoken(&mntid_token);
 	lwkt_inittoken(&spechash_token);
@@ -737,6 +738,7 @@ getnewvnode(tag, mp, vops, vpp)
 		vp = (struct vnode *) zalloc(vnode_zone);
 		bzero((char *) vp, sizeof *vp);
 		lwkt_inittoken(&vp->v_interlock);
+		lwkt_inittoken(&vp->v_pollinfo.vpi_token);
 		vp->v_dd = vp;
 		cache_purge(vp);
 		TAILQ_INIT(&vp->v_namecache);

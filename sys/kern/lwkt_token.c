@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.1 2004/02/09 21:13:18 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.2 2004/02/10 07:34:42 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -89,7 +89,7 @@ SYSCTL_INT(_lwkt, OID_AUTO, token_debug, CTLFLAG_RW, &token_debug, 0, "");
 
 typedef struct lwkt_gettoken_req {
     lwkt_token_t tok;
-    int		cpu;
+    globaldata_t cpu;
 } lwkt_gettoken_req;
 
 /*
@@ -105,7 +105,7 @@ typedef struct lwkt_gettoken_req {
  * a token, but do we really only need to disable IPIs ?
  *
  * YYY certain tokens could be made to act like mutexes when performance
- * would be better (e.g. t_cpu == -1).  This is not yet implemented.
+ * would be better (e.g. t_cpu == NULL).  This is not yet implemented.
  *
  * YYY the tokens replace 4.x's simplelocks for the most part, but this
  * means that 4.x does not expect a switch so for now we cannot switch
@@ -125,10 +125,10 @@ void
 lwkt_gettoken_remote(void *arg)
 {
     lwkt_gettoken_req *req = arg;
-    if (req->tok->t_cpu == mycpu->gd_cpuid) {
+    if (req->tok->t_cpu == mycpu) {
 #ifdef INVARIANTS
 	if (token_debug)
-	    printf("GT(%d,%d) ", req->tok->t_cpu, req->cpu);
+	    printf("GT(%d,%d) ", req->tok->t_cpu->gd_cpuid, req->cpu->gd_cpuid);
 #endif
 	req->tok->t_cpu = req->cpu;
 	req->tok->t_reqcpu = req->cpu;	/* YYY leave owned by target cpu */
@@ -160,24 +160,23 @@ lwkt_gettoken(lwkt_token_t tok)
     }
 #endif
 #ifdef SMP
-    while (tok->t_cpu != mycpu->gd_cpuid) {
+    while (tok->t_cpu != mycpu) {
 	struct lwkt_gettoken_req req;
 	int seq;
-	int dcpu;
+	globaldata_t dcpu;
 
-	req.cpu = mycpu->gd_cpuid;
+	req.cpu = mycpu;
 	req.tok = tok;
-	dcpu = (volatile int)tok->t_cpu;
-	KKASSERT(dcpu >= 0 && dcpu < ncpus);
+	dcpu = tok->t_cpu;
 #ifdef INVARIANTS
 	if (token_debug)
-	    printf("REQT%d ", dcpu);
+	    printf("REQT%d ", dcpu->gd_cpuid);
 #endif
-	seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	lwkt_wait_ipiq(dcpu, seq);
+	seq = lwkt_send_ipiq(dcpu->gd_cpuid, lwkt_gettoken_remote, &req);
+	lwkt_wait_ipiq(dcpu->gd_cpuid, seq);
 #ifdef INVARIANTS
 	if (token_debug)
-	    printf("REQR%d ", tok->t_cpu);
+	    printf("REQR%d ", tok->t_cpu->gd_cpuid);
 #endif
     }
 #endif
@@ -197,7 +196,7 @@ lwkt_trytoken(lwkt_token_t tok)
 {
     crit_enter();
 #ifdef SMP
-    if (tok->t_cpu != mycpu->gd_cpuid) {
+    if (tok->t_cpu != mycpu) {
 	crit_exit();
 	return(0);
     } 
@@ -226,7 +225,7 @@ lwkt_reltoken(lwkt_token_t tok)
 {
     int gen;
 
-    if (tok->t_cpu == mycpu->gd_cpuid) {
+    if (tok->t_cpu == mycpu) {
 	tok->t_cpu = tok->t_reqcpu;
     }
     gen = tok->t_gen;
@@ -246,7 +245,7 @@ lwkt_reltoken(lwkt_token_t tok)
 int
 lwkt_gentoken(lwkt_token_t tok, int *gen)
 {
-    if (tok->t_cpu == mycpu->gd_cpuid && tok->t_gen == *gen)
+    if (tok->t_cpu == mycpu && tok->t_gen == *gen)
 	return(0);
     *gen = lwkt_regettoken(tok);
     return(-1);
@@ -262,26 +261,25 @@ int
 lwkt_regettoken(lwkt_token_t tok)
 {
     /* assert we are in a critical section */
-    if (tok->t_cpu != mycpu->gd_cpuid) {
+    if (tok->t_cpu != mycpu) {
 #ifdef SMP
-	while (tok->t_cpu != mycpu->gd_cpuid) {
+	while (tok->t_cpu != mycpu) {
 	    struct lwkt_gettoken_req req;
 	    int seq;
-	    int dcpu;
+	    globaldata_t dcpu;
 
-	    req.cpu = mycpu->gd_cpuid;
+	    req.cpu = mycpu;
 	    req.tok = tok;
-	    dcpu = (volatile int)tok->t_cpu;
-	    KKASSERT(dcpu >= 0 && dcpu < ncpus);
+	    dcpu = tok->t_cpu;
 #ifdef INVARIANTS
 	    if (token_debug)
-		printf("REQT%d ", dcpu);
+		printf("REQT%d ", dcpu->gd_cpuid);
 #endif
-	    seq = lwkt_send_ipiq(dcpu, lwkt_gettoken_remote, &req);
-	    lwkt_wait_ipiq(dcpu, seq);
+	    seq = lwkt_send_ipiq(dcpu->gd_cpuid, lwkt_gettoken_remote, &req);
+	    lwkt_wait_ipiq(dcpu->gd_cpuid, seq);
 #ifdef INVARIATNS
 	    if (token_debug)
-		printf("REQR%d ", tok->t_cpu);
+		printf("REQR%d ", tok->t_cpu->gd_cpuid);
 #endif
 	}
 #endif
@@ -296,6 +294,7 @@ lwkt_inittoken(lwkt_token_t tok)
     /*
      * Zero structure and set cpu owner and reqcpu to cpu 0.
      */
-    bzero(tok, sizeof(*tok));
+    tok->t_cpu = tok->t_reqcpu = mycpu;
+    tok->t_gen = 0;
 }
 

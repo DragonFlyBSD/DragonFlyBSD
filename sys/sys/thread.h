@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.40 2004/01/30 05:42:18 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.41 2004/02/10 07:34:43 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -76,8 +76,8 @@ struct intrframe;
  * token you are requesting.
  */
 typedef struct lwkt_token {
-    int		t_cpu;		/* the current owner of the token */
-    int		t_reqcpu;	/* return ownership to this cpu on release */
+    struct globaldata *t_cpu;	/* the current owner of the token */
+    struct globaldata *t_reqcpu;/* return ownership to this cpu on release */
     int		t_gen;		/* generation number */
 } lwkt_token;
 
