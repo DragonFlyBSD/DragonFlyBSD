@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_iod.c,v 1.1.2.2 2002/04/23 03:45:01 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.9 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_iod.c,v 1.10 2004/06/21 05:31:47 dillon Exp $
  */
  
 #include <sys/param.h>
@@ -570,6 +570,7 @@ smb_iod_sendall(struct smbiod *iod)
 			}
 			break;
 		    default:
+			break;
 		}
 		if (herror)
 			break;
