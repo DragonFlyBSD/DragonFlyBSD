@@ -32,7 +32,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fdc.h,v 1.20.2.3 2002/02/03 14:08:46 nyan Exp $
- * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fdc.h,v 1.3 2004/01/11 16:45:16 joerg Exp $
  *
  */
 
@@ -133,3 +133,13 @@ static __inline T fdc_get_ ## A(device_t dev)				\
 	return (T) v;							\
 }
 FDC_ACCESSOR(fdunit,	FDUNIT,	int)
+
+int	fdc_alloc_resources(struct fdc_data *fdc);
+void	fdc_release_resources(struct fdc_data *fdc);
+int	fdc_attach(device_t dev);
+int	fdc_print_child(device_t me, device_t child);
+int	fdc_read_ivar(device_t dev, device_t child, int which, u_long *result);
+void	fdout_wr(fdc_p fdc, u_int8_t v);
+int	fd_cmd(struct fdc_data *fdc, int n_out, ...);
+
+extern	devclass_t fdc_devclass;

@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.11 2003/11/09 02:22:34 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.12 2004/01/11 16:45:16 joerg Exp $
  *
  */
 
@@ -177,7 +177,7 @@ static struct fd_type fd_types[NUMTYPES] =
 /***********************************************************************\
 * Per controller structure.						*
 \***********************************************************************/
-static devclass_t fdc_devclass;
+devclass_t fdc_devclass;
 
 /***********************************************************************\
 * Per drive structure.							*
@@ -285,7 +285,7 @@ static int volatile fd_debug = 0;
 #define TRACE1(arg1, arg2)
 #endif /* FDC_DEBUG */
 
-static void
+void
 fdout_wr(fdc_p fdc, u_int8_t v)
 {
 	bus_space_write_1(fdc->portt, fdc->porth, FDOUT+fdc->port_off, v);
@@ -314,14 +314,6 @@ fdctl_wr_isa(fdc_p fdc, u_int8_t v)
 {
 	bus_space_write_1(fdc->ctlt, fdc->ctlh, 0, v);
 }
-
-#if NCARD > 0
-static void
-fdctl_wr_pcmcia(fdc_p fdc, u_int8_t v)
-{
-	bus_space_write_1(fdc->portt, fdc->porth, FDCTL+fdc->port_off, v);
-}
-#endif
 
 #if 0
 
@@ -378,7 +370,7 @@ fdc_err(struct fdc_data *fdc, const char *s)
  * # of output bytes, output bytes as ints ...,
  * # of input bytes, input bytes as ints ...
  */
-static int
+int
 fd_cmd(struct fdc_data *fdc, int n_out, ...)
 {
 	u_char cmd;
@@ -539,7 +531,7 @@ fd_read_status(fdc_p fdc, int fdsu)
 /*                      autoconfiguration stuff                             */
 /****************************************************************************/
 
-static int
+int
 fdc_alloc_resources(struct fdc_data *fdc)
 {
 	device_t dev;
@@ -644,7 +636,7 @@ fdc_alloc_resources(struct fdc_data *fdc)
 	return 0;
 }
 
-static void
+void
 fdc_release_resources(struct fdc_data *fdc)
 {
 	device_t dev;
@@ -686,7 +678,7 @@ static struct isa_pnp_id fdc_ids[] = {
 	{0}
 };
 
-static int
+int
 fdc_read_ivar(device_t dev, device_t child, int which, u_long *result)
 {
 	struct fdc_ivars *ivars = device_get_ivars(child);
@@ -766,73 +758,6 @@ out:
 	return (error);
 }
 
-#if NCARD > 0
-
-static int
-fdc_pccard_probe(device_t dev)
-{
-	int	error;
-	struct	fdc_data *fdc;
-
-	fdc = device_get_softc(dev);
-	bzero(fdc, sizeof *fdc);
-	fdc->fdc_dev = dev;
-	fdc->fdctl_wr = fdctl_wr_pcmcia;
-
-	fdc->flags |= FDC_ISPCMCIA | FDC_NODMA;
-
-	/* Attempt to allocate our resources for the duration of the probe */
-	error = fdc_alloc_resources(fdc);
-	if (error)
-		goto out;
-
-	/* First - lets reset the floppy controller */
-	fdout_wr(fdc, 0);
-	DELAY(100);
-	fdout_wr(fdc, FDO_FRST);
-
-	/* see if it can handle a command */
-	if (fd_cmd(fdc, 3, NE7CMD_SPECIFY, NE7_SPEC_1(3, 240), 
-		   NE7_SPEC_2(2, 0), 0)) {
-		error = ENXIO;
-		goto out;
-	}
-
-	device_set_desc(dev, "Y-E Data PCMCIA floppy");
-	fdc->fdct = FDC_NE765;
-
-out:
-	fdc_release_resources(fdc);
-	return (error);
-}
-
-static int
-fdc_pccard_detach(device_t dev)
-{
-	struct	fdc_data *fdc;
-	int	error;
-
-	fdc = device_get_softc(dev);
-
-	/* have our children detached first */
-	if ((error = bus_generic_detach(dev)))
-		return (error);
-
-	if ((fdc->flags & FDC_ATTACHED) == 0) {
-		device_printf(dev, "already unloaded\n");
-		return (0);
-	}
-	fdc->flags &= ~FDC_ATTACHED;
-
-	BUS_TEARDOWN_INTR(device_get_parent(dev), dev, fdc->res_irq,
-			  fdc->fdc_intr);
-	fdc_release_resources(fdc);
-	device_printf(dev, "unload\n");
-	return (0);
-}
-
-#endif /* NCARD > 0 */
-
 /*
  * Add a child device to the fdc controller.  It will then be probed etc.
  */
@@ -858,7 +783,7 @@ fdc_add_child(device_t dev, const char *name, int unit)
 		device_disable(child);
 }
 
-static int
+int
 fdc_attach(device_t dev)
 {
 	struct	fdc_data *fdc;
@@ -904,7 +829,7 @@ fdc_attach(device_t dev)
 	return (bus_generic_attach(dev));
 }
 
-static int
+int
 fdc_print_child(device_t me, device_t child)
 {
 	int retval = 0;
@@ -940,35 +865,6 @@ static driver_t fdc_driver = {
 };
 
 DRIVER_MODULE(fdc, isa, fdc_driver, fdc_devclass, 0, 0);
-
-#if NCARD > 0
-
-static device_method_t fdc_pccard_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		fdc_pccard_probe),
-	DEVMETHOD(device_attach,	fdc_attach),
-	DEVMETHOD(device_detach,	fdc_pccard_detach),
-	DEVMETHOD(device_shutdown,	bus_generic_shutdown),
-	DEVMETHOD(device_suspend,	bus_generic_suspend),
-	DEVMETHOD(device_resume,	bus_generic_resume),
-
-	/* Bus interface */
-	DEVMETHOD(bus_print_child,	fdc_print_child),
-	DEVMETHOD(bus_read_ivar,	fdc_read_ivar),
-	/* Our children never use any other bus interface methods. */
-
-	{ 0, 0 }
-};
-
-static driver_t fdc_pccard_driver = {
-	"fdc",
-	fdc_pccard_methods,
-	sizeof(struct fdc_data)
-};
-
-DRIVER_MODULE(fdc, pccard, fdc_pccard_driver, fdc_devclass, 0, 0);
-
-#endif /* NCARD > 0 */
 
 /******************************************************************/
 /*

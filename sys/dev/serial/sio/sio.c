@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.10 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.11 2004/01/11 16:45:17 joerg Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -40,7 +40,6 @@
 #include "opt_compat.h"
 #include "opt_ddb.h"
 #include "opt_sio.h"
-#include "use_card.h"
 #include "use_pci.h"
 #ifdef __i386__
 #include "use_puc.h"
@@ -97,6 +96,7 @@
 #include <machine/resource.h>
 
 #include "sioreg.h"
+#include "sio_private.h"
 
 #ifdef COM_ESP
 #include "../ic_layer/esp.h"
@@ -114,29 +114,6 @@
 				 | ((mynor) & 0x1f))
 #define	UNIT_TO_MINOR(unit)	((((unit) & ~0x1fU) << (8 + 3)) \
 				 | ((unit) & 0x1f))
-
-#ifdef COM_MULTIPORT
-/* checks in flags for multiport and which is multiport "master chip"
- * for a given card
- */
-#define	COM_ISMULTIPORT(flags)	((flags) & 0x01)
-#define	COM_MPMASTER(flags)	(((flags) >> 8) & 0x0ff)
-#define	COM_NOTAST4(flags)	((flags) & 0x04)
-#endif /* COM_MULTIPORT */
-
-#define	COM_CONSOLE(flags)	((flags) & 0x10)
-#define	COM_FORCECONSOLE(flags)	((flags) & 0x20)
-#define	COM_LLCONSOLE(flags)	((flags) & 0x40)
-#define	COM_DEBUGGER(flags)	((flags) & 0x80)
-#define	COM_LOSESOUTINTS(flags)	((flags) & 0x08)
-#define	COM_NOFIFO(flags)		((flags) & 0x02)
-#define COM_ST16650A(flags)	((flags) & 0x20000)
-#define COM_C_NOPROBE		(0x40000)
-#define COM_NOPROBE(flags)	((flags) & COM_C_NOPROBE)
-#define COM_C_IIR_TXRDYBUG	(0x80000)
-#define COM_IIR_TXRDYBUG(flags)	((flags) & COM_C_IIR_TXRDYBUG)
-#define	COM_TI16754(flags)	((flags) & 0x200000)
-#define	COM_FIFOSIZE(flags)	(((flags) & 0xff000000) >> 24)
 
 #define	com_scr		7	/* scratch register for 16450-16550 (R/W) */
 
@@ -180,121 +157,9 @@ static	char const * const	error_desc[] = {
 	"tty-level buffer overflow",
 };
 
-#define	CE_NTYPES			3
-#define	CE_RECORD(com, errnum)		(++(com)->delta_error_counts[errnum])
-
-/* types.  XXX - should be elsewhere */
-typedef u_int	Port_t;		/* hardware port */
-typedef u_char	bool_t;		/* boolean */
-
-/* queue of linear buffers */
-struct lbq {
-	u_char	*l_head;	/* next char to process */
-	u_char	*l_tail;	/* one past the last char to process */
-	struct lbq *l_next;	/* next in queue */
-	bool_t	l_queued;	/* nonzero if queued */
-};
-
-/* com device structure */
-struct com_s {
-	u_int	flags;		/* Copy isa device flags */
-	u_char	state;		/* miscellaneous flag bits */
-	bool_t  active_out;	/* nonzero if the callout device is open */
-	u_char	cfcr_image;	/* copy of value written to CFCR */
-#ifdef COM_ESP
-	bool_t	esp;		/* is this unit a hayes esp board? */
-#endif
-	u_char	extra_state;	/* more flag bits, separate for order trick */
-	u_char	fifo_image;	/* copy of value written to FIFO */
-	bool_t	hasfifo;	/* nonzero for 16550 UARTs */
-	bool_t	st16650a;	/* Is a Startech 16650A or RTS/CTS compat */
-	bool_t	loses_outints;	/* nonzero if device loses output interrupts */
-	u_char	mcr_image;	/* copy of value written to MCR */
-#ifdef COM_MULTIPORT
-	bool_t	multiport;	/* is this unit part of a multiport device? */
-#endif /* COM_MULTIPORT */
-	bool_t	no_irq;		/* nonzero if irq is not attached */
-	bool_t  gone;		/* hardware disappeared */
-	bool_t	poll;		/* nonzero if polling is required */
-	bool_t	poll_output;	/* nonzero if polling for output is required */
-	int	unit;		/* unit	number */
-	int	dtr_wait;	/* time to hold DTR down on close (* 1/hz) */
-	u_int	tx_fifo_size;
-	u_int	wopeners;	/* # processes waiting for DCD in open() */
-
-	/*
-	 * The high level of the driver never reads status registers directly
-	 * because there would be too many side effects to handle conveniently.
-	 * Instead, it reads copies of the registers stored here by the
-	 * interrupt handler.
-	 */
-	u_char	last_modem_status;	/* last MSR read by intr handler */
-	u_char	prev_modem_status;	/* last MSR handled by high level */
-
-	u_char	hotchar;	/* ldisc-specific char to be handled ASAP */
-	u_char	*ibuf;		/* start of input buffer */
-	u_char	*ibufend;	/* end of input buffer */
-	u_char	*ibufold;	/* old input buffer, to be freed */
-	u_char	*ihighwater;	/* threshold in input buffer */
-	u_char	*iptr;		/* next free spot in input buffer */
-	int	ibufsize;	/* size of ibuf (not include error bytes) */
-	int	ierroff;	/* offset of error bytes in ibuf */
-
-	struct lbq	obufq;	/* head of queue of output buffers */
-	struct lbq	obufs[2];	/* output buffers */
-
-	bus_space_tag_t		bst;
-	bus_space_handle_t	bsh;
-
-	Port_t	data_port;	/* i/o ports */
-#ifdef COM_ESP
-	Port_t	esp_port;
-#endif
-	Port_t	int_id_port;
-	Port_t	modem_ctl_port;
-	Port_t	line_status_port;
-	Port_t	modem_status_port;
-	Port_t	intr_ctl_port;	/* Ports of IIR register */
-
-	struct tty	*tp;	/* cross reference */
-
-	/* Initial state. */
-	struct termios	it_in;	/* should be in struct tty */
-	struct termios	it_out;
-
-	/* Lock state. */
-	struct termios	lt_in;	/* should be in struct tty */
-	struct termios	lt_out;
-
-	bool_t	do_timestamp;
-	bool_t	do_dcd_timestamp;
-	struct timeval	timestamp;
-	struct timeval	dcd_timestamp;
-	struct	pps_state pps;
-
-	u_long	bytes_in;	/* statistics */
-	u_long	bytes_out;
-	u_int	delta_error_counts[CE_NTYPES];
-	u_long	error_counts[CE_NTYPES];
-
-	u_long	rclk;
-
-	struct resource *irqres;
-	struct resource *ioportres;
-	void *cookie;
-
-	/*
-	 * Data area for output buffers.  Someday we should build the output
-	 * buffer queue without copying data.
-	 */
-	u_char	obuf1[256];
-	u_char	obuf2[256];
-};
-
 #ifdef COM_ESP
 static	int	espattach	(struct com_s *com, Port_t esp_port);
 #endif
-static	int	sioattach	(device_t dev, int rid, u_long rclk);
 static	int	sio_isa_attach	(device_t dev);
 
 static	timeout_t siobusycheck;
@@ -307,7 +172,6 @@ static	void	siointr		(void *arg);
 static	int	commctl		(struct com_s *com, int bits, int how);
 static	int	comparam	(struct tty *tp, struct termios *t);
 static	inthand2_t siopoll;
-static	int	sioprobe	(device_t dev, int xrid, u_long rclk);
 static	int	sio_isa_probe	(device_t dev);
 static	void	siosettimeout	(void);
 static	int	siosetwater	(struct com_s *com, speed_t speed);
@@ -316,12 +180,6 @@ static	void	comstop		(struct tty *tp, int rw);
 static	timeout_t comwakeup;
 static	void	disc_optim	(struct tty	*tp, struct termios *t,
 				     struct com_s *com);
-
-#if NCARD > 0
-static	int	sio_pccard_attach (device_t dev);
-static	int	sio_pccard_detach (device_t dev);
-static	int	sio_pccard_probe (device_t dev);
-#endif /* NCARD > 0 */
 
 #if NPCI > 0
 static	int	sio_pci_attach (device_t dev);
@@ -337,7 +195,7 @@ static	int	sio_puc_probe (device_t dev);
 static char driver_name[] = "sio";
 
 /* table and macro for fast conversion from a unit number to its com struct */
-static	devclass_t	sio_devclass;
+devclass_t	sio_devclass;
 #define	com_addr(unit)	((struct com_s *) \
 			 devclass_get_softc(sio_devclass, unit))
 
@@ -354,23 +212,6 @@ static driver_t sio_isa_driver = {
 	sio_isa_methods,
 	sizeof(struct com_s),
 };
-
-#if NCARD > 0
-static device_method_t sio_pccard_methods[] = {
-	/* Device interface */
-	DEVMETHOD(device_probe,		sio_pccard_probe),
-	DEVMETHOD(device_attach,	sio_pccard_attach),
-	DEVMETHOD(device_detach,	sio_pccard_detach),
-
-	{ 0, 0 }
-};
-
-static driver_t sio_pccard_driver = {
-	driver_name,
-	sio_pccard_methods,
-	sizeof(struct com_s),
-};
-#endif /* NCARD > 0 */
 
 #if NPCI > 0
 static device_method_t sio_pci_methods[] = {
@@ -515,70 +356,6 @@ sysctl_machdep_comdefaultrate(SYSCTL_HANDLER_ARGS)
 
 SYSCTL_PROC(_machdep, OID_AUTO, conspeed, CTLTYPE_INT | CTLFLAG_RW,
 	    0, 0, sysctl_machdep_comdefaultrate, "I", "");
-
-#define SET_FLAG(dev, bit) device_set_flags(dev, device_get_flags(dev) | (bit))
-#define CLR_FLAG(dev, bit) device_set_flags(dev, device_get_flags(dev) & ~(bit))
-
-#if NCARD > 0
-static int
-sio_pccard_probe(dev)
-	device_t	dev;
-{
-	/* Do not probe IRQ - pccard doesn't turn on the interrupt line */
-	/* until bus_setup_intr */
-	SET_FLAG(dev, COM_C_NOPROBE);
-
-	return (sioprobe(dev, 0, 0UL));
-}
-
-static int
-sio_pccard_attach(dev)
-	device_t	dev;
-{
-	return (sioattach(dev, 0, 0UL));
-}
-
-/*
- *	sio_detach - unload the driver and clear the table.
- *	XXX TODO:
- *	This is usually called when the card is ejected, but
- *	can be caused by a modunload of a controller driver.
- *	The idea is to reset the driver's view of the device
- *	and ensure that any driver entry points such as
- *	read and write do not hang.
- */
-static int
-sio_pccard_detach(dev)
-	device_t	dev;
-{
-	struct com_s	*com;
-
-	com = (struct com_s *) device_get_softc(dev);
-	if (com == NULL) {
-		device_printf(dev, "NULL com in siounload\n");
-		return (0);
-	}
-	com->gone = 1;
-	if (com->irqres) {
-		bus_teardown_intr(dev, com->irqres, com->cookie);
-		bus_release_resource(dev, SYS_RES_IRQ, 0, com->irqres);
-	}
-	if (com->ioportres)
-		bus_release_resource(dev, SYS_RES_IOPORT, 0, com->ioportres);
-	if (com->tp && (com->tp->t_state & TS_ISOPEN)) {
-		device_printf(dev, "still open, forcing close\n");
-		com->tp->t_gen++;
-		ttyclose(com->tp);
-		ttwakeup(com->tp);
-		ttwwakeup(com->tp);
-	} else {
-		if (com->ibuf != NULL)
-			free(com->ibuf, M_DEVBUF);
-	}
-	device_printf(dev, "unloaded\n");
-	return (0);
-}
-#endif /* NCARD > 0 */
 
 #if NPCI > 0
 struct pci_ids {
@@ -786,7 +563,7 @@ sio_isa_probe(dev)
 	return (sioprobe(dev, 0, 0UL));
 }
 
-static int
+int
 sioprobe(dev, xrid, rclk)
 	device_t	dev;
 	int		xrid;
@@ -1176,7 +953,7 @@ sio_isa_attach(dev)
 	return (sioattach(dev, 0, 0UL));
 }
 
-static int
+int
 sioattach(dev, xrid, rclk)
 	device_t	dev;
 	int		xrid;
@@ -3426,9 +3203,6 @@ siogdbputc(c)
 #endif
 
 DRIVER_MODULE(sio, isa, sio_isa_driver, sio_devclass, 0, 0);
-#if NCARD > 0
-DRIVER_MODULE(sio, pccard, sio_pccard_driver, sio_devclass, 0, 0);
-#endif
 #if NPCI > 0
 DRIVER_MODULE(sio, pci, sio_pci_driver, sio_devclass, 0, 0);
 #endif
