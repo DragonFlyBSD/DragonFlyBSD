@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_lfs.c	8.3 (Berkeley) 3/27/94
  * $FreeBSD: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.11 1999/10/09 11:54:09 phk Exp $
- * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.6 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/mount_ext2fs/mount_ext2fs.c,v 1.7 2005/04/03 15:46:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,7 @@ struct mntopt mopts[] = {
 	MOPT_FORCE,
 	MOPT_SYNC,
 	MOPT_UPDATE,
-	{ NULL }
+	MOPT_NULL
 };
 
 static void	usage(void) __dead2;
