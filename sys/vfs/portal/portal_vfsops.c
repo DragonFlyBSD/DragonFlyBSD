@@ -36,7 +36,7 @@
  *	@(#)portal_vfsops.c	8.11 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vfsops.c,v 1.26.2.2 2001/07/26 20:37:16 iedowse Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.6 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vfsops.c,v 1.7 2004/04/23 17:35:58 cpressey Exp $
  */
 
 /*
@@ -72,12 +72,8 @@ static int	portal_statfs (struct mount *mp, struct statfs *sbp,
  * Mount the per-process file descriptors (/dev/fd)
  */
 static int
-portal_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+portal_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	     struct thread *td)
 {
 	struct file *fp;
 	struct portal_args args;
@@ -152,10 +148,7 @@ portal_mount(mp, path, data, ndp, td)
 }
 
 static int
-portal_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+portal_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	int error, flags = 0;
 
@@ -198,9 +191,7 @@ portal_unmount(mp, mntflags, td)
 }
 
 static int
-portal_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+portal_root(struct mount *mp, struct vnode **vpp)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct vnode *vp;
@@ -216,10 +207,7 @@ portal_root(mp, vpp)
 }
 
 static int
-portal_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+portal_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 
 	sbp->f_flags = 0;

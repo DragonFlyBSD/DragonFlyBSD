@@ -36,7 +36,7 @@
  *	@(#)portal_vnops.c	8.14 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/miscfs/portal/portal_vnops.c,v 1.38 1999/12/21 06:29:00 chris Exp $
- * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.10 2004/03/05 16:57:16 hsu Exp $
+ * $DragonFly: src/sys/vfs/portal/portal_vnops.c,v 1.11 2004/04/23 17:35:58 cpressey Exp $
  */
 
 /*
@@ -80,9 +80,7 @@ static int	portal_reclaim (struct vop_reclaim_args *ap);
 static int	portal_setattr (struct vop_setattr_args *ap);
 
 static void
-portal_closefd(td, fd)
-	struct thread *td;
-	int fd;
+portal_closefd(struct thread *td, int fd)
 {
 	int error;
 	struct close_args ua;
@@ -100,14 +98,12 @@ portal_closefd(td, fd)
 /*
  * vp is the current namei directory
  * cnp is the name to locate in that directory...
+ *
+ * portal_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		 struct componentname *a_cnp)
  */
 static int
-portal_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+portal_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode **vpp = ap->a_vpp;
@@ -171,9 +167,7 @@ bad:;
 }
 
 static int
-portal_connect(so, so2)
-	struct socket *so;
-	struct socket *so2;
+portal_connect(struct socket *so, struct socket *so2)
 {
 	/* from unp_connect, bypassing the namei stuff... */
 	struct socket *so3;
@@ -202,14 +196,12 @@ portal_connect(so, so2)
 	return (unp_connect2(so, so2));
 }
 
+/*
+ * portal_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		struct thread *a_td)
+ */
 static int
-portal_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+portal_open(struct vop_open_args *ap)
 {
 	struct socket *so = 0;
 	struct portalnode *pt;
@@ -437,14 +429,12 @@ bad:;
 	return (error);
 }
 
+/*
+ * portal_getattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		  struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-portal_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+portal_getattr(struct vop_getattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
@@ -482,16 +472,13 @@ portal_getattr(ap)
 	return (0);
 }
 
+/*
+ * portal_setattr(struct vnode *a_vp, struct vattr *a_vap,
+ *		  struct ucred *a_cred, struct thread *a_td)
+ */
 static int
-portal_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+portal_setattr(struct vop_setattr_args *ap)
 {
-
 	/*
 	 * Can't mess with the root vnode
 	 */
@@ -507,19 +494,14 @@ portal_setattr(ap)
 /*
  * Fake readdir, just return empty directory.
  * It is hard to deal with '.' and '..' so don't bother.
+ *
+ * portal_readdir(struct vnode *a_vp, struct uio *a_uio,
+ *		  struct ucred *a_cred, int *a_eofflag,
+ *		  u_long *a_cookies, int a_ncookies)
  */
 static int
-portal_readdir(ap)
-	struct vop_readdir_args /* {
-		struct vnode *a_vp;
-		struct uio *a_uio;
-		struct ucred *a_cred;
-		int *a_eofflag;
-		u_long *a_cookies;
-		int a_ncookies;
-	} */ *ap;
+portal_readdir(struct vop_readdir_args *ap)
 {
-
 	/*
 	 * We don't allow exporting portal mounts, and currently local
 	 * requests do not need cookies.
@@ -530,23 +512,21 @@ portal_readdir(ap)
 	return (0);
 }
 
+/*
+ * portal_inactive(struct vnode *a_vp, struct thread *a_td)
+ */
 static int
-portal_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+portal_inactive(struct vop_inactive_args *ap)
 {
-
 	VOP_UNLOCK(ap->a_vp, NULL, 0, ap->a_td);
 	return (0);
 }
 
+/*
+ * portal_reclaim(struct vnode *a_vp)
+ */
 static int
-portal_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+portal_reclaim(struct vop_reclaim_args *ap)
 {
 	struct portalnode *pt = VTOPORTAL(ap->a_vp);
 
@@ -563,15 +543,13 @@ portal_reclaim(ap)
 
 /*
  * Print out the contents of a Portal vnode.
+ *
+ * portal_print(struct vnode *a_vp)
  */
 /* ARGSUSED */
 static int
-portal_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+portal_print(struct vop_print_args *ap)
 {
-
 	printf("tag VT_PORTAL, portal vnode\n");
 	return (0);
 }
@@ -581,7 +559,7 @@ portal_print(ap)
  * Portal "should never get here" operation
  */
 static int
-portal_badop()
+portal_badop(void)
 {
 
 	panic("portal: bad op");
