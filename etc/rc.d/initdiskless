@@ -25,7 +25,7 @@
 # SUCH DAMAGE.
 #
 # $FreeBSD: src/etc/rc.d/initdiskless,v 1.24 2003/06/30 21:47:06 brooks Exp $
-# $DragonFly: src/etc/rc.d/initdiskless,v 1.5 2004/01/26 17:21:15 rob Exp $
+# $DragonFly: src/etc/rc.d/initdiskless,v 1.6 2004/08/25 01:53:39 dillon Exp $
 #
 # PROVIDE: initdiskless
 # KEYWORD: DragonFly 
@@ -38,7 +38,7 @@ dummy_rc_command "$1"
 # memory filesystems.  The kernel has run BOOTP and configured an interface
 # (otherwise it would not have been able to mount the NFS root!)
 #
-# The following directories are scanned.  Each sucessive directory overrides
+# The following directories are scanned.  Each successive directory overrides
 # (is merged into) the previous one.
 #
 #	/conf/base		universal base

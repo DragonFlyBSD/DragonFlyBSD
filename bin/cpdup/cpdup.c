@@ -42,7 +42,7 @@
  *
  *	- Can do MD5 consistancy checks
  *
- * $DragonFly: src/bin/cpdup/cpdup.c,v 1.7 2004/08/25 01:38:50 dillon Exp $
+ * $DragonFly: src/bin/cpdup/cpdup.c,v 1.8 2004/08/25 01:53:38 dillon Exp $
  */
 
 /*-
@@ -244,7 +244,7 @@ main(int ac, char **av)
 	duration *= 1000000;
 	duration += end.tv_usec - start.tv_usec;
 	if (duration == 0) duration = 1;
-	logstd("cpdup completed sucessfully\n");
+	logstd("cpdup completed successfully\n");
 	logstd("%lld bytes source %lld bytes read %lld bytes written (%.1fX speedup)\n",
 	    (long long)CountSourceBytes,
 	    (long long)CountReadBytes,

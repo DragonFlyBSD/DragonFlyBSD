@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_var.h,v 1.2.2.4 2003/01/23 21:06:47 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.8 2004/06/24 08:15:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_var.h,v 1.9 2004/08/25 01:53:36 dillon Exp $	*/
 /*	$KAME: ip6_var.h,v 1.62 2001/05/03 14:51:48 itojun Exp $	*/
 
 /*
@@ -168,7 +168,7 @@ struct	ip6stat {
 	u_quad_t ip6s_localout;		/* total ip packets generated here */
 	u_quad_t ip6s_odropped;		/* lost packets due to nobufs, etc. */
 	u_quad_t ip6s_reassembled;	/* total packets reassembled ok */
-	u_quad_t ip6s_fragmented;	/* datagrams sucessfully fragmented */
+	u_quad_t ip6s_fragmented;	/* datagrams successfully fragmented */
 	u_quad_t ip6s_ofragments;	/* output fragments created */
 	u_quad_t ip6s_cantfrag;		/* don't fragment flag was set, etc. */
 	u_quad_t ip6s_badoptions;	/* error in option processing */

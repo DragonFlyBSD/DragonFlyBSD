@@ -5,7 +5,7 @@
  * Compile this file with -DNO_DEFLATE to avoid the compression code.
  *
  * $FreeBSD: src/lib/libz/gzio.c,v 1.5.2.3 2003/04/12 20:23:25 jmz Exp $
- * $DragonFly: src/lib/libz/Attic/gzio.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libz/Attic/gzio.c,v 1.3 2004/08/25 01:53:39 dillon Exp $
  */
 
 #include <stdio.h>
@@ -232,7 +232,7 @@ int ZEXPORT gzsetparams (file, level, strategy)
 /* ===========================================================================
      Read a byte from a gz_stream; update next_in and avail_in. Return EOF
    for end of file.
-   IN assertion: the stream s has been sucessfully opened for reading.
+   IN assertion: the stream s has been successfully opened for reading.
 */
 local int get_byte(s)
     gz_stream *s;
@@ -257,7 +257,7 @@ local int get_byte(s)
     mode to transparent if the gzip magic header is not present; set s->err
     to Z_DATA_ERROR if the magic header is present but the rest of the header
     is incorrect.
-    IN assertion: the stream s has already been created sucessfully;
+    IN assertion: the stream s has already been created successfully;
        s->stream.avail_in is zero for the first time, but may be non-zero
        for concatenated .gz files.
 */

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getnetgrent.c,v 1.26 1999/11/04 04:16:27 ache Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getnetgrent.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getnetgrent.c,v 1.4 2004/08/25 01:53:39 dillon Exp $
  *
  * @(#)getnetgrent.c	8.2 (Berkeley) 4/27/95
  */
@@ -433,8 +433,8 @@ parse_netgrp(group)
 	if (lp->l_parsed) {
 #ifdef DEBUG
 		/*
-		 * This error message is largely superflous since the
-		 * code handles the error condition sucessfully, and
+		 * This error message is largely superfluous since the
+		 * code handles the error condition successfully, and
 		 * spewing it out from inside libc can actually hose
 		 * certain programs.
 		 */

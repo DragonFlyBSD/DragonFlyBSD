@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstSucc.c,v 1.5 1999/08/28 01:03:57 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.2 2003/06/17 04:29:29 dillon Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstSucc.c,v 1.3 2004/08/25 01:53:39 dillon Exp $
  *
  * @(#)lstSucc.c	8.1 (Berkeley) 6/6/93
  */
@@ -49,7 +49,7 @@
 /*-
  *-----------------------------------------------------------------------
  * Lst_Succ --
- *	Return the sucessor to the given node on its list.
+ *	Return the successor to the given node on its list.
  *
  * Results:
  *	The successor of the node, if it exists (note that on a circular

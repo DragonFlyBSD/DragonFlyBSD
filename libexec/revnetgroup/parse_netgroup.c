@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/revnetgroup/parse_netgroup.c,v 1.7 1999/08/28 00:09:48 peter Exp $
- * $DragonFly: src/libexec/revnetgroup/parse_netgroup.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/revnetgroup/parse_netgroup.c,v 1.3 2004/08/25 01:53:39 dillon Exp $
  */
 
 /*
@@ -201,8 +201,8 @@ parse_netgrp(group)
 	if (lp->l_parsed) {
 #ifdef DEBUG
 		/*
-		 * This error message is largely superflous since the
-		 * code handles the error condition sucessfully, and
+		 * This error message is largely superfluous since the
+		 * code handles the error condition successfully, and
 		 * spewing it out from inside libc can actually hose
 		 * certain programs.
 		 */

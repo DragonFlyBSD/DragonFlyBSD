@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_vcm.c,v 1.3 1999/08/28 00:41:47 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.5 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_vcm.c,v 1.6 2004/08/25 01:53:38 dillon Exp $
  */
 
 /*
@@ -107,7 +107,7 @@ eni_instvcc(cup, cvp)
  *	cvp	pointer to common VCC entry
  *
  * Returns:
- *	0	open sucessful
+ *	0	open successful
  *	err	open failed
  *
  */
@@ -212,7 +212,7 @@ eni_openvcc ( cup, cvp )
  *	cvp	pointer to common VCC entry
  *
  * Returns:
- *	0	close sucessful
+ *	0	close successful
  *	err	close failed
  *
  */

@@ -14,7 +14,7 @@
  * of the author.  This software is distributed AS-IS.
  *
  * $FreeBSD: src/sys/kern/vfs_aio.c,v 1.70.2.28 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/vfs_aio.c,v 1.12 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_aio.c,v 1.13 2004/08/25 01:53:38 dillon Exp $
  */
 
 /*
@@ -1349,7 +1349,7 @@ no_kqueue:
 	/*
 	 * If we don't have a free AIO process, and we are below our quota, then
 	 * start one.  Otherwise, depend on the subsequent I/O completions to
-	 * pick-up this job.  If we don't sucessfully create the new process
+	 * pick-up this job.  If we don't successfully create the new process
 	 * (thread) due to resource issues, we return an error for now (EAGAIN),
 	 * which is likely not the correct thing to do.
 	 */
