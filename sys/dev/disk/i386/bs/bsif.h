@@ -1,6 +1,6 @@
 /*	$NecBSD: bsif.h,v 1.5 1997/10/23 20:52:34 honda Exp $	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsif.h,v 1.12.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.6 2004/02/13 01:04:14 joerg Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.7 2004/09/18 18:47:20 dillon Exp $ */
 /*
  * Copyright (c) HONDA Naofumi, KATO Takenori, 1996.  All rights reserved.
  * 
@@ -58,7 +58,7 @@
 	struct scsi_link sc_link;
 
 #define	OS_DEPEND_MISC_HEADER			\
-	struct callout_handle timeout_ch;
+	struct callout	timeout_ch;
 #endif	/* __FreeBSD__ */
 
 #if	defined(__NetBSD__)

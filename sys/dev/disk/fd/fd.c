@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.17 2004/06/02 19:31:01 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.18 2004/09/18 18:44:41 dillon Exp $
  *
  */
 
@@ -198,8 +198,8 @@ struct fd_data {
 #define FD_NO_TRACK -2
 	int	track;		/* where we think the head is */
 	int	options;	/* user configurable options, see ioctl_fd.h */
-	struct	callout_handle toffhandle;
-	struct	callout_handle tohandle;
+	struct	callout	toffhandle;
+	struct	callout	tohandle;
 	struct	devstat device_stats;
 	device_t dev;
 	fdu_t	fdu;
@@ -974,8 +974,8 @@ fd_probe(device_t dev)
 	fd->fdc = fdc;
 	fd->fdsu = fdsu;
 	fd->options = 0;
-	callout_handle_init(&fd->toffhandle);
-	callout_handle_init(&fd->tohandle);
+	callout_init(&fd->toffhandle);
+	callout_init(&fd->tohandle);
 
 	switch (fdt) {
 	case RTCFDT_12M:
@@ -1046,7 +1046,7 @@ fd_detach(device_t dev)
 	struct	fd_data *fd;
 
 	fd = device_get_softc(dev);
-	untimeout(fd_turnoff, fd, fd->toffhandle);
+	callout_stop(&fd->toffhandle);
 
 	return (0);
 }
@@ -1443,7 +1443,7 @@ fdstrategy(struct buf *bp)
  	bp->b_pblkno = bp->b_blkno;
 	s = splbio();
 	bufqdisksort(&fdc->head, bp);
-	untimeout(fd_turnoff, fd, fd->toffhandle); /* a good idea */
+	callout_stop(&fd->toffhandle);
 
 	/* Tell devstat we are starting on the transaction */
 	devstat_start_transaction(&fd->device_stats);
@@ -1622,8 +1622,7 @@ fdstate(fdc_p fdc)
 	TRACE1("fd%d", fdu);
 	TRACE1("[%s]", fdstates[fdc->state]);
 	TRACE1("(0x%x)", fd->flags);
-	untimeout(fd_turnoff, fd, fd->toffhandle);
-	fd->toffhandle = timeout(fd_turnoff, fd, 4 * hz);
+	callout_reset(&fd->toffhandle, 4 * hz, fd_turnoff, fd);
 	switch (fdc->state)
 	{
 	case DEVIDLE:
@@ -1878,7 +1877,8 @@ fdstate(fdc_p fdc)
 			 */
 			if (read && !fdcpio(fdc,bp->b_flags,
 			    bp->b_data+fd->skip,fdblk)) {
-				fd->tohandle = timeout(fd_iotimeout, fdc, hz);
+				callout_reset(&fd->tohandle, hz,
+						fd_iotimeout, fdc);
 				return(0);      /* will return later */
 			};
 
@@ -1887,7 +1887,7 @@ fdstate(fdc_p fdc)
 		 * await completion interrupt
 		 */
 		fdc->state = IOCOMPLETE;
-		fd->tohandle = timeout(fd_iotimeout, fdc, hz);
+		callout_reset(&fd->tohandle, hz, fd_iotimeout, fdc);
 		return (0);	/* will return later */
 	case PIOREAD:
 		/* 
@@ -1898,7 +1898,7 @@ fdstate(fdc_p fdc)
 		fdc->state = IOCOMPLETE;
 		/* FALLTHROUGH */
 	case IOCOMPLETE: /* IO DONE, post-analyze */
-		untimeout(fd_iotimeout, fdc, fd->tohandle);
+		callout_stop(&fd->tohandle);
 
 		if (fd_read_status(fdc, fd->fdsu)) {
 			if (!(fdc->flags & FDC_NODMA))

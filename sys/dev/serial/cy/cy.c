@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.11 2004/05/19 22:52:48 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.12 2004/09/18 18:42:07 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -404,8 +404,7 @@ static	u_int	com_events;	/* input chars + weighted output completions */
 static	bool_t	sio_registered;
 static	int	sio_timeout;
 static	int	sio_timeouts_until_log;
-static	struct	callout_handle sio_timeout_handle
-    = CALLOUT_HANDLE_INITIALIZER(&sio_timeout_handle);
+static	struct	callout	sio_timeout_handle;
 #if 0 /* XXX */
 static struct tty	*sio_tty[NSIO];
 #else
@@ -621,6 +620,7 @@ cyattach_common(cy_iobase, cy_align)
 	splx(s);
 
 	if (!sio_registered) {
+		callout_init(&sio_timeout_handle);
 		register_swi(SWI_TTY, siopoll, NULL, "cy");
 		sio_registered = TRUE;
 	}
@@ -2510,7 +2510,7 @@ siosettimeout()
 	 * Otherwise set it to max(1/200, 1/hz).
 	 * Enable timeouts iff some device is open.
 	 */
-	untimeout(comwakeup, (void *)NULL, sio_timeout_handle);
+	callout_stop(&sio_timeout_handle);
 	sio_timeout = hz;
 	someopen = FALSE;
 	for (unit = 0; unit < NSIO; ++unit) {
@@ -2528,13 +2528,13 @@ siosettimeout()
 	}
 	if (someopen) {
 		sio_timeouts_until_log = hz / sio_timeout;
-		sio_timeout_handle = timeout(comwakeup, (void *)NULL,
-					     sio_timeout);
+		callout_reset(&sio_timeout_handle, sio_timeout,
+				comwakeup, NULL);
 	} else {
 		/* Flush error messages, if any. */
 		sio_timeouts_until_log = 1;
 		comwakeup((void *)NULL);
-		untimeout(comwakeup, (void *)NULL, sio_timeout_handle);
+		callout_stop(&sio_timeout_handle);
 	}
 }
 
@@ -2545,7 +2545,7 @@ comwakeup(chan)
 	struct com_s	*com;
 	int		unit;
 
-	sio_timeout_handle = timeout(comwakeup, (void *)NULL, sio_timeout);
+	callout_reset(&sio_timeout_handle, sio_timeout, comwakeup, NULL);
 
 #if 0
 	/*

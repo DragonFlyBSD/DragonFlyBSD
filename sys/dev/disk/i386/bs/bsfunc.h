@@ -1,6 +1,6 @@
 /*	$NecBSD: bsfunc.h,v 1.1 1997/07/18 09:19:03 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
-/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.h,v 1.4 2004/08/02 13:22:32 joerg Exp $ */
+/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.h,v 1.5 2004/09/18 18:47:20 dillon Exp $ */
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -214,10 +214,8 @@ bs_start_timeout(bsc)
 	if ((bsc->sc_flags & BSSTARTTIMEOUT) == 0)
 	{
 		bsc->sc_flags |= BSSTARTTIMEOUT;
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		bsc->timeout_ch =
-#endif
-		timeout(bstimeout, bsc, BS_TIMEOUT_INTERVAL);
+		callout_reset(&bsc->timeout_ch, BS_TIMEOUT_INTERVAL,
+				bstimeout, bsc);
 	}
 }
 
@@ -228,12 +226,7 @@ bs_terminate_timeout(bsc)
 
 	if (bsc->sc_flags & BSSTARTTIMEOUT)
 	{
-#if defined(__DragonFly__) || defined(__FreeBSD__)
-		untimeout(bstimeout, bsc,
-				  bsc->timeout_ch);
-#else
-		untimeout(bstimeout, bsc);
-#endif
+		callout_stop(&bsc->timeout_ch);
 		bsc->sc_flags &= ~BSSTARTTIMEOUT;
 	}
 }

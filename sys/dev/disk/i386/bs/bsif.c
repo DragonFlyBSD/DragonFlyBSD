@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.7 2004/06/21 15:45:41 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.8 2004/09/18 18:47:20 dillon Exp $
  */
 
 #if	0
@@ -150,7 +150,7 @@ bsprobe(dev)
 		return rv;
 	}
 	bsc = malloc(sizeof(struct bs_softc), M_TEMP, M_WAITOK | M_ZERO);
-	callout_handle_init(&bsc->timeout_ch);
+	callout_init(&bsc->timeout_ch);
 	bscdata[unit] = bsc;
 	bsc->unit = unit;
 
