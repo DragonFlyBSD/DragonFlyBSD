@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.4 2003/11/18 23:49:54 dillon Exp $
  */
 
 /*-
@@ -139,6 +139,7 @@ typedef struct Var {
 				     * should be destroyed when done with
 				     * it. Used by Var_Parse for undefined,
 				     * modified variables */
+#define VAR_TO_ENV	8	    /* Place variable in environment */
 }  Var;
 
 /* Var*Pattern flags */
@@ -486,8 +487,28 @@ Var_Set (name, val, ctxt)
      * Any variables given on the command line are automatically exported
      * to the environment (as per POSIX standard)
      */
-    if (ctxt == VAR_CMD) {
+    if (ctxt == VAR_CMD || (v != (Var *)NIL && (v->flags & VAR_TO_ENV))) {
 	setenv(name, val, 1);
+    }
+}
+
+/*
+ * Var_SetEnv --
+ *	Set the VAR_TO_ENV flag on a variable
+ */
+void
+Var_SetEnv (char *name, GNode *ctxt)
+{
+    register Var   *v;
+
+    v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
+    if (v) {
+	if ((v->flags & VAR_TO_ENV) == 0) {
+	    v->flags | VAR_TO_ENV;
+	    setenv(v->name, Buf_GetAll(v->val, NULL), 1);
+	}
+    } else {
+	Error("Cannot set environment flag on non-existant variable %s", name);
     }
 }
 

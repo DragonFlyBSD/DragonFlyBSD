@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.1 2002/12/26 14:36:38 ru Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.4 2003/11/18 23:49:54 dillon Exp $
  */
 
 /*-
@@ -2397,6 +2397,20 @@ ParseFinishLine()
     }
 }
 
+static char *
+stripvarname(char *cp)
+{
+    char *cp2;
+
+    while (isspace((unsigned char)*cp))
+	++cp;
+    cp2 = cp;
+    while (*cp2 && !isspace((unsigned char)*cp2))
+	++cp2;
+    *cp2 = 0;
+    return(cp);
+}
+
 
 /*-
  *---------------------------------------------------------------------
@@ -2444,19 +2458,12 @@ Parse_File(name, stream)
 		    ParseDoError(cp + 5);
 	            goto nextLine;	    
 		} else if (strncmp(cp, "undef", 5) == 0) {
-		    char *cp2;
-		    for (cp += 5; isspace((unsigned char) *cp); cp++) {
-			continue;
-		    }
-
-		    for (cp2 = cp; !isspace((unsigned char) *cp2) &&
-				   (*cp2 != '\0'); cp2++) {
-			continue;
-		    }
-
-		    *cp2 = '\0';
-
+		    cp = stripvarname(cp + 5);
 		    Var_Delete(cp, VAR_GLOBAL);
+		    goto nextLine;
+		} else if (strncmp(cp, "makeenv", 7) == 0) {
+		    cp = stripvarname(cp + 7);
+		    Var_SetEnv(cp, VAR_GLOBAL);
 		    goto nextLine;
 		}
 	    }

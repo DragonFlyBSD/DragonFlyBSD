@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.4 2003/11/18 23:49:54 dillon Exp $
  */
 
 /* arch.c */
@@ -137,6 +137,7 @@ void Targ_PrintGraph(int);
 /* var.c */
 void Var_Delete(char *, GNode *);
 void Var_Set(char *, char *, GNode *);
+void Var_SetEnv(char *, GNode *);
 void Var_Append(char *, char *, GNode *);
 Boolean Var_Exists(char *, GNode *);
 char *Var_Value(char *, GNode *, char **);
