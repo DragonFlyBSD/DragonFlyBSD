@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.15 2004/11/30 17:39:41 joerg Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.16 2004/11/30 19:12:57 joerg Exp $
  */
 
 /* arch.c */
@@ -53,6 +53,7 @@ void Arch_End(void);
 
 /* compat.c */
 void Compat_Run(Lst);
+int Compat_RunCommand(void *, void *);
 
 /* cond.c */
 int Cond_Eval(char *);

@@ -31,9 +31,9 @@
 .\"
 .\"	from: @(#)make.1	8.4 (Berkeley) 3/19/94
 .\" $FreeBSD: src/usr.bin/make/make.1,v 1.29.2.15 2002/12/17 19:01:18 seanc Exp $
-.\" $DragonFly: src/usr.bin/make/make.1,v 1.11 2004/11/30 18:18:06 joerg Exp $
+.\" $DragonFly: src/usr.bin/make/make.1,v 1.12 2004/11/30 19:12:57 joerg Exp $
 .\"
-.Dd April 12, 2004
+.Dd July 29, 2004
 .Dt MAKE 1
 .Os
 .Sh NAME
@@ -321,10 +321,11 @@ dependencies may be followed by a creation script, unless the
 .Sq Ic ::
 operator is used.
 .Pp
-If the first or first two characters of the command line are
-.Sq Ic @
-and/or
+If the first characters of the command line are
+.Sq Ic @ ,
 .Sq Ic \- ,
+and/or
+.Sq Ic + ,
 the command is treated specially.
 A
 .Sq Ic @
@@ -332,6 +333,11 @@ causes the command not to be echoed before it is executed.
 A
 .Sq Ic \-
 causes any non-zero exit status of the command line to be ignored.
+A
+.Sq Ic +
+causes the command to be executed even if
+.Fl n
+is specified on the command line.
 .Sh VARIABLE ASSIGNMENTS
 Variables in
 .Nm
