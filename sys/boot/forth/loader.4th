@@ -23,7 +23,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/loader.4th,v 1.24 2002/05/24 02:28:58 gordon Exp $
-\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.4 2004/10/14 08:44:34 dillon Exp $
+\ $DragonFly: src/sys/boot/forth/loader.4th,v 1.5 2004/10/14 09:06:21 dillon Exp $
 
 s" arch-alpha" environment? [if] [if]
 	s" loader_version" environment?  [if]
@@ -135,10 +135,11 @@ only forth definitions also support-functions
 : start  ( -- ) ( throws: abort & user-defined )
   s" boot.nfsroot.path" getenv? if
     s" kernel.BOOTP" s" kernel" setenv
+    s" /boot/defaults/loader-bootp.conf" initialize
   else
     s" kernel" s" kernel" setenv
+    s" /boot/defaults/loader.conf" initialize
   then
-  s" /boot/defaults/loader.conf" initialize
   include_conf_files
   include_nextboot_file
   \ Will *NOT* try to load kernel and modules if no configuration file
