@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.27 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.28 2005/01/22 11:14:30 okumoto Exp $
  */
 
 /*-
@@ -186,6 +186,7 @@ static void SuffFindNormalDeps(GNode *, Lst *);
 static int SuffPrintName(void *, void *);
 static int SuffPrintSuff(void *, void *);
 static int SuffPrintTrans(void *, void *);
+static int PrintAddr(void *, void *);
 
 	/*************** Lst Predicates ****************/
 /*-
@@ -2335,3 +2336,16 @@ Suff_PrintAll(void)
     printf("#*** Transformations:\n");
     Lst_ForEach(&transforms, SuffPrintTrans, (void *)NULL);
 }
+
+#ifdef DEBUG_SRC
+/*
+ * Printaddr --
+ * 	Print the address of a node, used as an interative function.
+ */
+int
+PrintAddr(void *a, void *b __unused)
+{
+    printf("%p ", a);
+    return (0);
+}
+#endif /* DEBUG_SRC */

@@ -35,7 +35,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.2 2005/01/06 21:06:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.3 2005/01/22 11:14:30 okumoto Exp $
  */
 
 #include <sys/types.h>
@@ -76,7 +76,6 @@ void Error(const char *, ...);
 void Fatal(const char *, ...);
 void Punt(const char *, ...);
 void DieHorribly(void);
-int PrintAddr(void *, void *);
 void Finish(int);
 char *estrdup(const char *);
 void *emalloc(size_t);

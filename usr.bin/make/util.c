@@ -25,7 +25,7 @@
  *    without specific prior written permission.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.12 2005/01/06 21:06:25 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.13 2005/01/22 11:14:30 okumoto Exp $
  */
 
 #include <sys/stat.h>
@@ -255,14 +255,3 @@ eunlink(const char *file)
 	return (unlink(file));
 }
 
-/*
- * Printaddr --
- * 	Print the address of a node, used as an interative function.
- */
-int
-PrintAddr(void *a, void *b __unused)
-{
-
-    printf("%p ", a);
-    return (0);
-}
