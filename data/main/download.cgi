@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.75 2005/02/05 05:21:02 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.76 2005/02/09 17:21:21 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -278,14 +278,6 @@ cvsup, <a href="http://dragon.BSDTech.com/DragonFly/">source/dfports snapshots</
 <TD>
 <a href="http://grappa.unix-ag.uni-kl.de/cgi-bin/cvsweb/?cvsroot=dragonfly">cvsweb</a>, 
 cvsup, cvsync, rsync, anoncvs
-</TD>
-</TR>
-
-<TR>
-<TD>dragonfly.the-bofh.org (Holland)</TD>
-<TD>Code</TD>
-<TD>
-cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TD>
 </TR>
 
