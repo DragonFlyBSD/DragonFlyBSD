@@ -1,28 +1,16 @@
-# $FreeBSD: src/kerberos5/lib/libvers/Makefile,v 1.3.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/kerberos5/lib/libvers/Makefile,v 1.3 2004/03/22 20:58:08 dillon Exp $
+# $FreeBSD: src/kerberos5/lib/libvers/Makefile,v 1.8 2004/02/05 18:51:50 ru Exp $
+# $DragonFly: src/kerberos5/lib/libvers/Makefile,v 1.4 2005/01/16 14:25:46 eirikn Exp $
 
-LIB=		vers
-INTERNALLIB=	YES
+LIB=	vers
+INTERNALLIB=
+SRCS=	print_version.c print_version.h
+CFLAGS+=-I.
 
-CFLAGS+=	-I${KRB5DIR}/include \
-		-I${ROKENOBJDIR} \
-		-I${KRB5DIR}/lib/roken \
-		-I${.OBJDIR}
+CLEANFILES= print_version.h
 
-SRCS=		\
-		print_version.c	\
-		print_version.h
+print_version.h:
+	${MAKEPRINTVERSION} ${.TARGET}
 
 .include <bsd.lib.mk>
 
-.PATH:		${KRB5DIR}/lib/vers
-
-build-tools:	make-print-version.nx
-
-print_version.h: make-print-version.nx
-	./make-print-version.nx print_version.h
-
-make-print-version.nx: make-print-version.c
-	${NXCC} ${NXCFLAGS} ${NXLDFLAGS} ${.ALLSRC} ${NXLDLIBS} -o ${.TARGET}
-
-CLEANFILES+=	make-print-version.nx print_version.h
+.PATH: ${KRB5DIR}/lib/vers

@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.52 2005/01/05 22:03:51 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.53 2005/01/16 14:25:45 eirikn Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -831,7 +831,7 @@ _fortran= gnu/usr.bin/cc34/f771
 
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
-_libkrb5= kerberos5/lib/libroken kerberos5/lib/libvers \
+_libkrb5= kerberos5/bintools kerberos5/lib/libroken kerberos5/lib/libvers \
     kerberos5/lib/libasn1 kerberos5/lib/libhdb kerberos5/lib/libsl
 .endif
 
@@ -841,7 +841,7 @@ _sysinstall= release/sysinstall
 
 build-tools:
 .for _tool in ${_gcc2_tools} ${_gcc34_tools} \
-	      ${_fortran} ${_libroken4} ${_libkrb5} \
+	      ${_fortran} ${_libkrb5} \
 	      ${_share} ${_sysinstall}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
@@ -923,6 +923,8 @@ _prebuild_libs=	lib/libarchive
 _generic_libs=	gnu/lib
 
 .if !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
+_prebuild_libs+=	lib/libutil
+_prebuild_libs+=	kerberos5/tools
 _prebuild_libs+=	kerberos5/lib/libasn1
 _prebuild_libs+=	kerberos5/lib/libgssapi
 _prebuild_libs+=	kerberos5/lib/libkrb5

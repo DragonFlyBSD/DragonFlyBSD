@@ -1,37 +1,26 @@
-# $FreeBSD: src/kerberos5/libexec/kdc/Makefile,v 1.3.2.4 2002/07/25 09:33:15 ru Exp $
-# $DragonFly: src/kerberos5/libexec/kdc/Makefile,v 1.4 2004/09/28 18:17:37 joerg Exp $
+# $FreeBSD: src/kerberos5/libexec/kdc/Makefile,v 1.17 2004/02/05 18:51:51 ru Exp $
+# $DragonFly: src/kerberos5/libexec/kdc/Makefile,v 1.5 2005/01/16 14:25:46 eirikn Exp $
 
-PROG=		kdc
-SRCS=		\
-	config.c	\
-	connect.c	\
-	kdc_locl.h	\
-	kerberos5.c	\
-	log.c		\
-	main.c		\
+PROG=	kdc
+MAN=	kdc.8
+
+SRCS=	524.c \
+	config.c \
+	connect.c \
+	kerberos4.c \
+	kerberos5.c \
+	log.c \
+	main.c \
 	misc.c
 
-CFLAGS+=	-I${KRB5DIR}/include \
-		-I${KRB5DIR}/kdc \
-		-I${KRB5DIR}/lib/krb5 \
-		-I${KRB5DIR}/lib/asn1 \
-		-I${KRB5DIR}/lib/hdb \
-		-I${KRB5DIR}/lib/roken \
-		-I${KRB5DIR}/kuser \
-		-I${ASN1OBJDIR} \
-		-I${HDBOBJDIR} \
-		-I${.OBJDIR}
-LDADD=		-L${KRB5OBJDIR} -lkrb5 \
-		-L${HDBOBJDIR} -lhdb -L${ROKENOBJDIR} -lroken \
-		-L${VERSOBJDIR} -lvers \
-		${_krb4libs} \
-		-L${ASN1OBJDIR} -lasn1 -lcrypto -lmd -lcrypt -lcom_err \
-		-lutil
-DPADD=		${LIBKRB5} ${LIBKAFS5} ${LIBHDB} ${LIBROKEN} ${_krb4deps} \
-		${LIBASN1} ${LIBCRYPTO} ${LIBMD} ${LIBCRYPT} ${LIBCOM_ERR} \
-		${LIBUTIL}
-MAN=		kdc.8
+CFLAGS+=-I${KRB5DIR}/lib/krb5 -I${KRB5DIR}/lib/asn1 -I${KRB5DIR}/lib/roken \
+	${LDAPCFLAGS}
+DPADD=	${LIBHDB} ${LIBKRB5} ${LIBROKEN} ${LIBVERS} \
+	${LIBASN1} ${LIBCRYPTO} ${LIBCRYPT} ${LIBCOM_ERR} ${LDAPDPADD}
+LDADD=	-lhdb -lkrb5 -lroken ${LIBVERS} \
+	-lasn1 -lcrypto -lcrypt -lcom_err ${LDAPLDADD}
+LDFLAGS=${LDAPLDFLAGS}
 
 .include <bsd.prog.mk>
 
-.PATH:	${KRB5DIR}/kdc
+.PATH: ${KRB5DIR}/kdc

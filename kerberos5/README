@@ -1,3 +1,5 @@
+$DragonFly: src/kerberos5/README,v 1.2 2005/01/16 14:25:45 eirikn Exp $
+
 This subtree is world-exportable, as it does not contain any
 cryptographic code.
 

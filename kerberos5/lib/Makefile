@@ -1,5 +1,7 @@
-# $FreeBSD: src/kerberos5/lib/Makefile,v 1.2.2.4 2002/07/25 09:33:14 ru Exp $
-# $DragonFly: src/kerberos5/lib/Makefile,v 1.3 2003/08/05 07:45:40 asmodai Exp $
+# $FreeBSD: src/kerberos5/lib/Makefile,v 1.10 2004/01/31 08:15:52 ru Exp $
+# $DragonFly: src/kerberos5/lib/Makefile,v 1.4 2005/01/16 14:25:46 eirikn Exp $
 
-SUBDIR=	libroken libvers libasn1 libhdb libkrb5 libkadm5clnt libkadm5srv libsl libgssapi libtelnet
+SUBDIR=	libasn1 libgssapi libhdb libkadm5clnt libkadm5srv \
+	libkafs5 libkrb5 libroken libsl libvers
+
 .include <bsd.subdir.mk>

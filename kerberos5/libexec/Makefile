@@ -1,6 +1,6 @@
-# $FreeBSD: src/kerberos5/libexec/Makefile,v 1.2.2.1 2002/04/30 14:57:42 nectar Exp $
-# $DragonFly: src/kerberos5/libexec/Makefile,v 1.2 2003/06/17 04:26:17 dillon Exp $
+# $FreeBSD: src/kerberos5/libexec/Makefile,v 1.6 2004/01/30 11:06:48 mr Exp $
+# $DragonFly: src/kerberos5/libexec/Makefile,v 1.3 2005/01/16 14:25:46 eirikn Exp $
 
-SUBDIR=	ipropd-master ipropd-slave hpropd k5admind kdc k5passwdd telnetd
+SUBDIR=	ipropd-master ipropd-slave hprop hpropd kadmind kdc kpasswdd
 
 .include <bsd.subdir.mk>

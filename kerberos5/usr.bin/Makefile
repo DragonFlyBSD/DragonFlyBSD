@@ -1,6 +1,7 @@
-# $FreeBSD: src/kerberos5/usr.bin/Makefile,v 1.3.2.3 2002/04/30 14:57:43 nectar Exp $
-# $DragonFly: src/kerberos5/usr.bin/Makefile,v 1.2 2003/06/17 04:26:18 dillon Exp $
+# $FreeBSD: src/kerberos5/usr.bin/Makefile,v 1.11 2004/01/31 08:15:56 ru Exp $
+# $DragonFly: src/kerberos5/usr.bin/Makefile,v 1.3 2005/01/16 14:25:47 eirikn Exp $
 
-SUBDIR=	k5admin k5destroy k5init k5list k5passwd k5su krb5-config telnet
+SUBDIR=	kadmin kdestroy kinit klist kpasswd krb5-config ksu \
+	verify_krb5_conf
 
 .include <bsd.subdir.mk>

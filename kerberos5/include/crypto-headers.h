@@ -1,5 +1,5 @@
-/* $FreeBSD: src/kerberos5/include/crypto-headers.h,v 1.1.2.2 2003/02/13 20:15:26 nectar Exp $ */
-/* $DragonFly: src/kerberos5/include/crypto-headers.h,v 1.2 2003/06/17 04:26:17 dillon Exp $ */
+/* $FreeBSD: src/kerberos5/include/crypto-headers.h,v 1.2 2003/01/21 14:08:24 nectar Exp $ */
+/* $DragonFly: src/kerberos5/include/crypto-headers.h,v 1.3 2005/01/16 14:25:46 eirikn Exp $ */
 #ifndef __crypto_headers_h__
 #define __crypto_headers_h__
 #define OPENSSL_DES_LIBDES_COMPATIBILITY
