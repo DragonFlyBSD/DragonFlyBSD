@@ -32,7 +32,7 @@
  *
  *	@(#)extern.h	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/extern.h,v 1.9 1999/08/27 23:14:50 peter Exp $
- * $DragonFly: src/bin/ps/extern.h,v 1.5 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/extern.h,v 1.6 2004/06/21 00:47:57 hmp Exp $
  */
 
 struct kinfo;
@@ -45,6 +45,7 @@ extern int eval, fscale, mempages, nlistread, rawcpu, cflag;
 extern int sumrusage, termwidth, totwidth;
 extern VAR var[];
 extern VARENT *vhead;
+extern struct timeval btime;
 
 __BEGIN_DECLS
 void	 command (const KINFO *, const VARENT *);

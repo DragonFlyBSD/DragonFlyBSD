@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.11 2004/06/10 22:11:39 dillon Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.12 2004/06/21 00:47:57 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -348,7 +348,15 @@ started(const KINFO *k, const VARENT *ve)
 	if (use_ampm < 0)
 		use_ampm = (*nl_langinfo(T_FMT_AMPM) != '\0');
 
-	then = k->ki_u.u_start.tv_sec;
+	if (KI_THREAD(k)->td_proc != NULL) {
+		then = k->ki_u.u_start.tv_sec;
+	} else {
+		then = KI_THREAD(k)->td_start.tv_sec;
+		if (then < btime.tv_sec) {
+			then = btime.tv_sec;
+		}
+	}
+
 	tp = localtime(&then);
 	if (!now)
 		(void)time(&now);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ps.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ps/ps.c,v 1.30.2.6 2002/07/04 08:30:37 sobomax Exp $
- * $DragonFly: src/bin/ps/ps.c,v 1.7 2004/06/20 22:29:10 hmp Exp $
+ * $DragonFly: src/bin/ps/ps.c,v 1.8 2004/06/21 00:47:57 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -95,6 +95,9 @@ static void	 dynsizevars (KINFO *);
 static void	 sizevars (void);
 static void	 usage (void);
 static uid_t	*getuids(const char *, int *);
+
+struct timeval btime;
+static size_t btime_size = sizeof(struct timeval);
 
 static char dfmt[] = "pid tt state time command";
 static char jfmt[] = "user pid ppid pgid sess jobc state tt time command";
@@ -322,6 +325,15 @@ main(int argc, char **argv)
 	 * and adjusting header widths as appropriate.
 	 */
 	scanvars();
+
+	/*
+	 * Get boot time
+	 */
+	if (sysctlbyname("kern.boottime", &btime, &btime_size, NULL, 0) < 0) {
+		perror("sysctl: kern.boottime");
+		exit(EXIT_FAILURE);
+	}
+
 	/*
 	 * get proc list
 	 */
