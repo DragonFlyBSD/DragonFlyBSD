@@ -81,6 +81,7 @@
 	cpdup /var /mnt/var
 	cpdup /etc /mnt/etc
 	cpdup /dev /mnt/dev
+	cpdup /usr /mnt/usr
 
 	# Edit /mnt/etc/fstab to reflect the new mounts.  An example fstab
 	# file based on the above parameters exists as /mnt/etc/fstab.example
@@ -103,6 +104,10 @@
     on you when you open it during the reboot.  Remove the CD and allow
     the system to boot from the HD.
 
+    WARNING do not just hit reset, the kernel may not have written out
+    all the pending data to your HD.  Either unmount the HD partitions
+    or type reboot.
+
 	# reboot
 	reboot
 	(remove CD when convenient, be careful of the CD drawer closing on you)
@@ -122,4 +127,4 @@
     primarily be interested in the DragonFly CVS repository, DragonFly-supfile,
     and the FreeBSD ports, FreeBSD-ports-supfile.
 
-$DragonFly: src/nrelease/root/README,v 1.1 2003/12/01 21:14:02 dillon Exp $
+$DragonFly: src/nrelease/root/README,v 1.2 2003/12/01 23:19:16 dillon Exp $
