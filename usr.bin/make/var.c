@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.18 2004/12/01 15:06:55 joerg Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.19 2004/12/01 15:09:44 joerg Exp $
  */
 
 /*-
@@ -1174,38 +1174,6 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 
 	    DEBUGF(VAR, ("Applying :%c to \"%s\"\n", *tstr, str));
 	    switch (*tstr) {
-		case 'U':
-			if (tstr[1] == endc || tstr[1] == ':') {
-				Buffer buf;
-				buf = Buf_Init(MAKE_BSIZE);
-				for (cp = str; *cp ; cp++)
-					Buf_AddByte(buf, (Byte) toupper(*cp));
-
-				Buf_AddByte(buf, (Byte) '\0');
-				newStr = (char *) Buf_GetAll(buf, (int *) NULL);
-				Buf_Destroy(buf, FALSE);
-
-				cp = tstr + 1;
-				termc = *cp;
-				break;
-			}
-			/* FALLTHROUGH */
-		case 'L':
-			if (tstr[1] == endc || tstr[1] == ':') {
-				Buffer buf;
-				buf = Buf_Init(MAKE_BSIZE);
-				for (cp = str; *cp ; cp++)
-					Buf_AddByte(buf, (Byte) tolower(*cp));
-
-				Buf_AddByte(buf, (Byte) '\0');
-				newStr = (char *) Buf_GetAll(buf, (int *) NULL);
-				Buf_Destroy(buf, FALSE);
-
-				cp = tstr + 1;
-				termc = *cp;
-				break;
-			}
-			/* FALLTHROUGH */
 		case 'N':
 		case 'M':
 		{
@@ -1508,6 +1476,22 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    free(pattern.matches);
 		    break;
 		}
+		case 'L':
+		    if (tstr[1] == endc || tstr[1] == ':') {
+			Buffer buf;
+			buf = Buf_Init(MAKE_BSIZE);
+			for (cp = str; *cp ; cp++)
+			    Buf_AddByte(buf, (Byte) tolower(*cp));
+
+			Buf_AddByte(buf, (Byte) '\0');
+			newStr = (char *) Buf_GetAll(buf, (int *) NULL);
+			Buf_Destroy(buf, FALSE);
+
+			cp = tstr + 1;
+			termc = *cp;
+			break;
+		    }
+		    /* FALLTHROUGH */
 		case 'O':
 		    if (tstr[1] == endc || tstr[1] == ':') {
 			newStr = VarSortWords(str, SortIncreasing);
@@ -1532,6 +1516,22 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			break;
 		    }
 		    /*FALLTHRU*/
+		case 'U':
+		    if (tstr[1] == endc || tstr[1] == ':') {
+			Buffer buf;
+			buf = Buf_Init(MAKE_BSIZE);
+			for (cp = str; *cp ; cp++)
+			    Buf_AddByte(buf, (Byte) toupper(*cp));
+
+			Buf_AddByte(buf, (Byte) '\0');
+			newStr = (char *) Buf_GetAll(buf, (int *) NULL);
+			Buf_Destroy(buf, FALSE);
+
+			cp = tstr + 1;
+			termc = *cp;
+			break;
+		    }
+		    /* FALLTHROUGH */
 		case 'H':
 		    if (tstr[1] == endc || tstr[1] == ':') {
 			newStr = VarModify (str, VarHead, (void *)0);
@@ -1606,37 +1606,48 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			 * Now we break this sucker into the lhs and
 			 * rhs. We must null terminate them of course.
 			 */
-			for (cp = tstr; *cp != '='; cp++)
-			    continue;
-			pattern.lhs = tstr;
-			pattern.leftLen = cp - tstr;
-			*cp++ = '\0';
+			cp = tstr;
 
-			pattern.rhs = cp;
-			cnt = 1;
-			while (cnt) {
-			    if (*cp == endc)
-				cnt--;
-			    else if (*cp == startc)
-				cnt++;
-			    if (cnt)
-				cp++;
+			delim = '=';
+			if ((pattern.lhs = VarGetPattern(ctxt,
+			    err, &cp, delim, &pattern.flags, &pattern.leftLen,
+			    NULL)) == NULL) {
+				/* was: goto cleanup */
+				*lengthPtr = cp - start + 1;
+				if (*freePtr)
+				    free(str);
+				if (delim != '\0')
+				    Fatal("Unclosed substitution for %s (%c missing)",
+					  v->name, delim);
+				return (var_Error);
 			}
-			pattern.rightLen = cp - pattern.rhs;
-			*cp = '\0';
+
+			delim = endc;
+			if ((pattern.rhs = VarGetPattern(ctxt,
+			    err, &cp, delim, NULL, &pattern.rightLen,
+			    &pattern)) == NULL) {
+				/* was: goto cleanup */
+				*lengthPtr = cp - start + 1;
+				if (*freePtr)
+				    free(str);
+				if (delim != '\0')
+				    Fatal("Unclosed substitution for %s (%c missing)",
+					  v->name, delim);
+				return (var_Error);
+			}
 
 			/*
 			 * SYSV modifications happen through the whole
 			 * string. Note the pattern is anchored at the end.
 			 */
+			termc = *--cp;
+			delim = '\0';
 			newStr = VarModify(str, VarSYSVMatch,
 					   (void *)&pattern);
 
-			/*
-			 * Restore the nulled characters
-			 */
-			pattern.lhs[pattern.leftLen] = '=';
-			pattern.rhs[pattern.rightLen] = endc;
+			free(pattern.lhs);
+			free(pattern.rhs);
+
 			termc = endc;
 		    } else
 #endif
