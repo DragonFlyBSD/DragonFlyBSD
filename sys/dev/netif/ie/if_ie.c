@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.15 2004/09/15 17:58:18 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.16 2004/09/15 20:05:13 joerg Exp $
  */
 
 /*
@@ -1775,13 +1775,13 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 	ie_softc[unit].scb->ie_command = (u_short) cmd;
 
 	if (IE_ACTION_COMMAND(cmd) && pcmd) {
-		(*ie_softc[unit].ie_chan_attn) (unit);
-
 		/*
 		 * According to the packet driver, the minimum timeout
 		 * should be .369 seconds.
 		 */
 		int timer = 370;
+
+		(*ie_softc[unit].ie_chan_attn) (unit);
 
 		/*
 		 * Now spin-lock waiting for status.  This is not a very
