@@ -113,7 +113,7 @@
  * such license, approval or letter.
  *
  *****************************************************************************/
-/* $DragonFly: src/sys/contrib/dev/acpica/Attic/evgpeblk.c,v 1.1 2003/09/24 03:32:15 drhodus Exp $                                                               */
+/* $DragonFly: src/sys/contrib/dev/acpica/Attic/evgpeblk.c,v 1.2 2004/06/02 11:46:11 joerg Exp $                                                               */
 
 #include "acpi.h"
 #include "acevents.h"
@@ -252,7 +252,7 @@ AcpiEvSaveMethodInfo (
  *
  ******************************************************************************/
 
-ACPI_STATUS
+static ACPI_STATUS
 AcpiEvInstallGpeBlock (
     ACPI_GPE_BLOCK_INFO     *GpeBlock)
 {
@@ -301,7 +301,7 @@ AcpiEvInstallGpeBlock (
  *
  ******************************************************************************/
 
-ACPI_STATUS
+static ACPI_STATUS
 AcpiEvCreateGpeInfoBlocks (
     ACPI_GPE_BLOCK_INFO     *GpeBlock)
 {
@@ -440,7 +440,7 @@ ErrorExit:
  *
  ******************************************************************************/
 
-ACPI_STATUS
+static ACPI_STATUS
 AcpiEvCreateGpeBlock (
     char                    *Pathname,
     ACPI_GENERIC_ADDRESS    *GpeBlockAddress,

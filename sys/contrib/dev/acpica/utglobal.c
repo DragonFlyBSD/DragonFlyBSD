@@ -113,7 +113,7 @@
  * such license, approval or letter.
  *
  *****************************************************************************/
-/* $DragonFly: src/sys/contrib/dev/acpica/Attic/utglobal.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $                                                               */
+/* $DragonFly: src/sys/contrib/dev/acpica/Attic/utglobal.c,v 1.2 2004/06/02 11:46:11 joerg Exp $                                                               */
 
 #define __UTGLOBAL_C__
 #define DEFINE_ACPI_GLOBALS
@@ -487,7 +487,7 @@ AcpiUtGetRegionName (
         return ("InvalidSpaceId");
     }
 
-    return ((char *) AcpiGbl_RegionTypes[SpaceId]);
+    return(__DECONST(char *, AcpiGbl_RegionTypes[SpaceId]));
 }
 
 
@@ -525,7 +525,7 @@ AcpiUtGetEventName (
         return ("InvalidEventID");
     }
 
-    return ((char *) AcpiGbl_EventTypes[EventId]);
+    return(__DECONST(char *, AcpiGbl_EventTypes[EventId]));
 }
 
 
@@ -595,10 +595,10 @@ AcpiUtGetTypeName (
 
     if (Type > ACPI_TYPE_INVALID)
     {
-        return ((char *) AcpiGbl_BadType);
+        return(__DECONST(char *, AcpiGbl_BadType));
     }
 
-    return ((char *) AcpiGbl_NsTypeNames[Type]);
+    return(__DECONST(char *, AcpiGbl_NsTypeNames[Type]));
 }
 
 

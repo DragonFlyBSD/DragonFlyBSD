@@ -1,4 +1,4 @@
-/* $DragonFly: src/sys/contrib/dev/acpica/Attic/hwregs.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $                                                               */
+/* $DragonFly: src/sys/contrib/dev/acpica/Attic/hwregs.c,v 1.2 2004/06/02 11:46:11 joerg Exp $                                                               */
 /*******************************************************************************
  *
  * Module Name: hwregs - Read/write access functions for the various ACPI
@@ -242,8 +242,8 @@ AcpiGetSleepTypeData (
     /*
      * Evaluate the namespace object containing the values for this state
      */
-    Status = AcpiNsEvaluateByName ((char *) AcpiGbl_DbSleepStates[SleepState],
-                    NULL, &ObjDesc);
+    Status = AcpiNsEvaluateByName (
+        __DECONST(char *, AcpiGbl_DbSleepStates[SleepState]), NULL, &ObjDesc);
     if (ACPI_FAILURE (Status))
     {
         ACPI_DEBUG_PRINT ((ACPI_DB_EXEC, "%s while evaluating SleepState [%s]\n",
