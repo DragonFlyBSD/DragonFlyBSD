@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/iostat/iostat.c,v 1.17.2.2 2001/07/19 04:15:42 kris Exp $
- * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/iostat/iostat.c,v 1.3 2003/07/29 23:15:36 drhodus Exp $
  */
 /*
  * Parts of this program are derived from the original FreeBSD iostat
@@ -675,6 +675,6 @@ cpustats(void)
 	for (state = 0; state < CPUSTATES; ++state)
 		time += cur.cp_time[state];
 	for (state = 0; state < CPUSTATES; ++state)
-		printf("%3.0f",
+		printf(" %2.0f",
 		       100. * cur.cp_time[state] / (time ? time : 1));
 }
