@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/journal.h,v 1.1 2005/02/28 17:40:51 dillon Exp $
+ * $DragonFly: src/sys/sys/journal.h,v 1.2 2005/03/05 05:08:30 dillon Exp $
  */
 
 #ifndef _SYS_JOURNAL_H_
@@ -220,6 +220,7 @@ struct journal_subrecord {
 
 #define JMASK_NESTED		0x8000	/* data is a nested recursion */
 #define JMASK_LAST		0x4000
+#define JMASK_SUBRECORD		0x0400
 
 #define JLEAF_PAD		0x0000
 #define JLEAF_ABORT		0x0001
@@ -262,7 +263,7 @@ struct journal_subrecord {
 #define JLEAF_PPID		0x040B
 #define JLEAF_COMM		0x040C
 #define JLEAF_ATTRNAME		0x040D
-#define JLEAF_RESERVED_0E	0x040E
+#define JLEAF_PATH_REF		0x040E
 #define JLEAF_RESERVED_0F	0x040F
 #define JLEAF_SYMLINKDATA	0x0410
 #define JLEAF_SEEKPOS		0x0411

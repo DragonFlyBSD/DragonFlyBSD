@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.10 2005/03/04 21:37:27 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.11 2005/03/05 05:08:27 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -723,22 +723,20 @@ journal_reserve(struct journal *jo, struct journal_rawrecbeg **rawpp,
 }
 
 /*
- * Extend a previous reservation by the specified number of payload bytes.
- * If it is not possible to extend the existing reservation due to either
- * another thread having reserved space after us or due to a boundary
- * condition, the current reservation will be committed and possibly
- * truncated and a new reservation with the specified payload size will
- * be created. *rawpp is set to the new reservation in this case but the
- * caller cannot depend on a comparison with the old rawp to determine if
+ * Attempt to extend the stream record by <bytes> worth of payload space.
+ *
+ * If it is possible to extend the existing stream record no truncation
+ * occurs and the record is extended as specified.  A pointer to the 
+ * truncation offset within the payload space is returned.
+ *
+ * If it is not possible to do this the existing stream record is truncated
+ * and committed, and a new stream record of size <bytes> is created.  A
+ * pointer to the base of the new stream record's payload space is returned.
+ *
+ * *rawpp is set to the new reservation in the case of a new record but
+ * the caller cannot depend on a comparison with the old rawp to determine if
  * this case occurs because we could end up using the same memory FIFO
- * offset for the new stream record.
- *
- * In either case this function will return a pointer to the base of the
- * extended payload space.
- *
- * If a new stream block is created the caller needs to recalculate payload
- * byte counts, if the same stream block is used the caller needs to extend
- * its current notion of the payload byte count.
+ * offset for the new stream record.  Use *newstreamrecp instead.
  */
 static void *
 journal_extend(struct journal *jo, struct journal_rawrecbeg **rawpp, 
@@ -760,18 +758,18 @@ journal_extend(struct journal *jo, struct journal_rawrecbeg **rawpp,
     wbase = (char *)rawp - jo->fifo.membase;
 
     /*
-     * If the aligned record size does not change we can trivially extend
-     * the record.
+     * If the aligned record size does not change we can trivially adjust
+     * the record size.
      */
     if (nsize == osize) {
 	rawp->recsize += bytes;
-	return((char *)rawp + rawp->recsize - bytes);
+	return((char *)(rawp + 1) + truncbytes);
     }
 
     /*
      * If the fifo's write index hasn't been modified since we made the
      * reservation and we do not hit any boundary conditions, we can 
-     * trivially extend the record.
+     * trivially make the record smaller or larger.
      */
     if ((jo->fifo.windex & jo->fifo.mask) == wbase + osize) {
 	availtoend = jo->fifo.size - wbase;
@@ -781,7 +779,7 @@ journal_extend(struct journal *jo, struct journal_rawrecbeg **rawpp,
 	if (nsize <= avail && nsize <= availtoend) {
 	    jo->fifo.windex += nsize - osize;
 	    rawp->recsize += bytes;
-	    return((char *)rawp + rawp->recsize - bytes);
+	    return((char *)(rawp + 1) + truncbytes);
 	}
     }
 
@@ -1132,11 +1130,20 @@ jrecord_write(struct jrecord *jrec, int16_t rectype, int bytes)
 				jrec->stream_reserved - jrec->stream_residual,
 				JREC_DEFAULTSIZE, &pusheditout);
 	if (pusheditout) {
+	    /*
+	     * If a pushout occured, the pushed out stream record was
+	     * truncated as specified and the new record is exactly the
+	     * extension size specified.
+	     */
 	    jrec->stream_reserved = JREC_DEFAULTSIZE;
 	    jrec->stream_residual = JREC_DEFAULTSIZE;
 	    jrec->parent = NULL;	/* no longer accessible */
 	    jrec->pushptrgood = 0;	/* restored parents in pops no good */
 	} else {
+	    /*
+	     * If no pushout occured the stream record is NOT truncated and
+	     * IS extended.
+	     */
 	    jrec->stream_reserved += JREC_DEFAULTSIZE;
 	    jrec->stream_residual += JREC_DEFAULTSIZE;
 	}
@@ -1148,6 +1155,8 @@ jrecord_write(struct jrecord *jrec, int16_t rectype, int bytes)
     jrec->last = last;
     jrec->residual = bytes;		/* remaining data to be posted */
     jrec->residual_align = -bytes & 7;	/* post-data alignment required */
+    jrec->stream_ptr += sizeof(*last);	/* current write pointer */
+    jrec->stream_residual -= sizeof(*last); /* space remaining in stream */
     return(last);
 }
 
@@ -1403,11 +1412,89 @@ jrecord_write_cred(struct jrecord *jrec, struct thread *td, struct ucred *cred)
 
 /*
  * Write out information required to identify a vnode
+ *
+ * XXX this needs work.  We should write out the inode number as well,
+ * and in fact avoid writing out the file path for seqential writes
+ * occuring within e.g. a certain period of time.
  */
 static void
 jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
 {
-    /* XXX */
+    struct namecache *ncp;
+
+    TAILQ_FOREACH(ncp, &vp->v_namecache, nc_vnode) {
+	if ((ncp->nc_flag & (NCF_UNRESOLVED|NCF_DESTROYED)) == 0)
+	    break;
+    }
+    if (ncp)
+	jrecord_write_path(jrec, JLEAF_PATH_REF, ncp);
+}
+
+#if 0
+/*
+ * Write out the current contents of the file within the specified
+ * range.  This is typically called from within an UNDO section.  A
+ * locked vnode must be passed.
+ */
+static int
+jrecord_write_filearea(struct jrecord *jrec, struct vnode *vp, 
+			off_t begoff, off_t endoff)
+{
+}
+#endif
+
+/*
+ * Write out the data represented by a pagelist
+ */
+static void
+jrecord_write_pagelist(struct jrecord *jrec, int16_t rectype,
+			struct vm_page **pglist, int *rtvals, int pgcount,
+			off_t offset)
+{
+    struct msf_buf *msf;
+    int error;
+    int b;
+    int i;
+
+    i = 0;
+    while (i < pgcount) {
+	/*
+	 * Find the next valid section.  Skip any invalid elements
+	 */
+	if (rtvals[i] != VM_PAGER_OK) {
+	    ++i;
+	    offset += PAGE_SIZE;
+	    continue;
+	}
+
+	/*
+	 * Figure out how big the valid section is, capping I/O at what the
+	 * MSFBUF can represent.
+	 */
+	b = i;
+	while (i < pgcount && i - b != XIO_INTERNAL_PAGES && 
+	       rtvals[i] == VM_PAGER_OK
+	) {
+	    ++i;
+	}
+
+	/*
+	 * And write it out.
+	 */
+	if (i - b) {
+	    error = msf_map_pagelist(&msf, pglist + b, i - b, 0);
+	    if (error == 0) {
+		printf("RECORD PUTPAGES %d\n", msf_buf_bytes(msf));
+		jrecord_leaf(jrec, JLEAF_SEEKPOS, &offset, sizeof(offset));
+		jrecord_leaf(jrec, rectype, 
+			     msf_buf_kva(msf), msf_buf_bytes(msf));
+		msf_buf_free(msf);
+	    } else {
+		printf("jrecord_write_pagelist: mapping failure\n");
+	    }
+	    offset += (off_t)(i - b) << PAGE_SHIFT;
+	}
+    }
 }
 
 /*
@@ -1426,11 +1513,13 @@ jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio)
     struct jwuio_info info = { jrec, rectype };
     int error;
 
-    jrecord_leaf(jrec, JLEAF_SEEKPOS, &uio->uio_offset, 
-		 sizeof(uio->uio_offset));
-    error = msf_uio_iterate(uio, jrecord_write_uio_callback, &info);
-    if (error)
-	printf("XXX warning uio iterate failed %d\n", error);
+    if (uio->uio_segflg != UIO_NOCOPY) {
+	jrecord_leaf(jrec, JLEAF_SEEKPOS, &uio->uio_offset, 
+		     sizeof(uio->uio_offset));
+	error = msf_uio_iterate(uio, jrecord_write_uio_callback, &info);
+	if (error)
+	    printf("XXX warning uio iterate failed %d\n", error);
+    }
 }
 
 static int
@@ -1581,6 +1670,8 @@ journal_fsync(struct vop_fsync_args *ap)
 
 /*
  * Journal vop_putpages { a_vp, a_m, a_count, a_sync, a_rtvals, a_offset }
+ *
+ * note: a_count is in bytes.
  */
 static
 int
@@ -1594,12 +1685,13 @@ journal_putpages(struct vop_putpages_args *ap)
 
     error = vop_journal_operate_ap(&ap->a_head);
     mp = ap->a_head.a_ops->vv_mount;
-    if (error == 0) {
+    if (error == 0 && ap->a_count > 0) {
 	TAILQ_FOREACH(jo, &mp->mnt_jlist, jentry) {
 	    jrecord_init(jo, &jrec, -1);
 	    save = jrecord_push(&jrec, JTYPE_PUTPAGES);
 	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
-	    /* XXX pagelist */
+	    jrecord_write_pagelist(&jrec, JLEAF_FILEDATA, 
+			ap->a_m, ap->a_rtvals, btoc(ap->a_count), ap->a_offset);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
