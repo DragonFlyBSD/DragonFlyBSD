@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/caching.cgi,v 1.4 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/goals/Attic/caching.cgi,v 1.5 2004/04/16 13:23:37 justin Exp $
 
 $TITLE(DragonFly - A Scaleable Caching Infrastructure)
 
@@ -8,10 +8,10 @@ $TITLE(DragonFly - A Scaleable Caching Infrastructure)
 <p>
 Our goal is to create a flexible dual-purpose caching infrastructure which
 mimics the well known and mature MESI (Modified Exclusive Shared Invalid)
-over a broad range of configurations.  The primary purpose of this
+model over a broad range of configurations.  The primary purpose of this
 infrastructure will be to protect I/O operations and live memory mappings.
 For example, a range-based MESI model would allow multiple processes to
-simultaniously operate both reads and writes on different portions of a single
+simultaneously operate both reads and writes on different portions of a single
 file.  If we implement the infrastructure properly we can extend it into
 a networked-clustered environment, getting us a long ways towards achieving
 a single-system-image capability.</p>

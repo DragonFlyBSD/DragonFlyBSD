@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.8 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.9 2004/04/16 13:23:37 justin Exp $
 
 $TITLE(DragonFly - Light Weight Kernel Threading Model)
 
@@ -30,7 +30,7 @@ between cpus.</p>
     interrupt thread completes or blocks, the preempted thread will resume 
     regardless of its scheduling state.  For example, a thread might get 
     preempted after calling lwkt_deschedule_self() but before it actually
-    switches out.  This is ok because control will be returned to it
+    switches out.  This is OK because control will be returned to it
     directly after the interrupt thread completes or blocks.</li>
     <li>
     Due to (2) above, a thread can cache information obtained through the
@@ -54,8 +54,8 @@ between cpus.</p>
 </ol>
 <p>
 In addition to these key features, the LWKT model allows for both FAST
-interrupt preemption *AND* threaded interrupt preemption.  FAST interrupts
-may preempt the current thread when it is not in a critical section.
+interrupt preemption <em>AND</em> threaded interrupt preemption.  FAST 
+interrupts may preempt the current thread when it is not in a critical section.
 Threaded interrupts may also preempt the current thread.  The LWKT system
 will switch to the threaded interrupt and then switch back to the original
 when the threaded interrupt blocks or completes.  It is our intention to
@@ -85,9 +85,9 @@ synchronization API.  The API may be used to place target cpu(s) into a
 known state while one is operating on a sensitive data structure.  This
 interface is primarily used to deal with MMU pagetable updates.  For
 example, it is not safe to check and clear the modify bit on a page table
-entry and then remove the page table entry, even if holding the proper lock,
-because a userland process running on another cpu may be accessing or
-modifying that page and create a race between the TLB writeback on the
+entry and then remove the page table entry, even if holding the proper lock.
+This is because a userland process running on another cpu may be accessing or
+modifying that page, which will create a race between the TLB writeback on the
 target cpu and your attempt to clear the page table entry.   The proper
 solution is to place all cpus that might be able to issue a writeback
 on the page table entry (meaning all cpus in the pmap's pm_active mask)
@@ -98,8 +98,8 @@ The API implemented by DragonFly is deadlock-free.  Multiple cpu
 synchronization activities are allowed to operate in parallel and this 
 includes any threads which are mastering a cpu synchronization event for
 the duration of mastering.  Even with this flexibility, since the cpu 
-synchronization interface operates in a controlled environment the call
-back functions tend to work just like the callback functions used in the
+synchronization interface operates in a controlled environment the callback
+functions tend to work just like the callback functions used in the
 IPI messaging subsystem.</p>
 
 <h2>Serializing Tokens</h2>

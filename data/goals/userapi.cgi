@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.6 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.7 2004/04/16 13:23:37 justin Exp $
 
 $TITLE(DragonFly - User API)
 
@@ -18,7 +18,7 @@ general terms the system call list itself can create portability problems.</p>
 It is a goal of this project to (1) make all actual system calls message-based,
 (2) pass structural information through capability and element lists
 instead of as raw structures, and (3) implement a generic 'middle layer'
-that looks kinda like an emulation layer, managed by the kernel but loaded
+that looks somewhat like an emulation layer, managed by the kernel but loaded
 into userspace.  This layer implements all standard system call APIs
 and converts them into the appropriate message(s).</p>
 <p>For example, Linux emulation would
@@ -33,7 +33,7 @@ back out again into the emulation layer.</p>
 Another huge advantage of converting system calls to message-based entities
 is that it completely solves the userland threads issue.  One no longer needs
 multiple kernel contexts or stacks to deal with multiple userland threads,
-one needs only *one* kernel context and stack per user process.  Userland
+one needs only <em>one</em> kernel context and stack per user process.  Userland
 threads would still use rfork() to create a real process for each CPU on the
 system, but all other operations would use a thread-aware emulation layer.
 In fact, nearly all userland upcalls would be issued by the emulation layer
@@ -64,10 +64,11 @@ a thread-aware emulation layer would work:</p>
 <p>
 And there you have it.  The only 'real' system calls DragonFly would implement
 would be message-passing primitives for sending, receiving, and waiting.
-Everything else would go through the emulation layer.  Of course on the
+Everything else would go through the emulation layer.  Of course, on the
 kernel side the message command will wind up hitting a dispatch table almost
-as big as the one we have in 4.x.  But as more and more subsystems become
-message-based the syscall messages become more integrated with those subsystems
+as big as the one that exist in FreeBSD 4.x.  But as more and more 
+subsystems become message-based, the syscall messages
+become more integrated with those subsystems
 and the overhead of dealing with a 'message' could actually wind up being
 less then the overhead of dealing with discrete system calls.  Portability
 becomes far easier to accomplish because the 'emulation layer' provides a
@@ -76,7 +77,7 @@ kernel expects, and the emulation layer can be updated along with the kernel
 (or a backwards compatible version can be created) which makes portability
 issues transparent to a userland binary.</p>
 <p>
-Plus we get all the advantages that a message-passing model provides,
+Plus, we get all the advantages that a message-passing model provides,
 including a very easy way to wedge into system calls for debugging or other
 purposes, and a very easy way to create a security layer in the kernel
 which could, for example, disable or alter certain classes of system calls
