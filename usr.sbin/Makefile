@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.16 2004/11/12 19:45:36 joerg Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.17 2004/12/01 15:04:43 joerg Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR=	IPXrouted \
@@ -84,6 +84,7 @@ SUBDIR=	IPXrouted \
 	quotaon \
 	rarpd \
 	raycontrol \
+	rdate \
 	repquota \
 	resident \
 	rip6query \
