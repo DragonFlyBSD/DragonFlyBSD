@@ -10,7 +10,7 @@
  * incompatible with the protocol description in the RFC file, it must be
  * called by a name other than "ssh" or "Secure Shell".
  *
- * $DragonFly: src/crypto/openssh/Attic/buffer.c,v 1.3 2003/09/16 16:59:41 dillon Exp $
+ * $DragonFly: src/crypto/openssh/Attic/buffer.c,v 1.4 2003/09/17 02:01:05 dillon Exp $
  */
 
 #include "includes.h"
@@ -25,10 +25,11 @@ RCSID("$OpenBSD: buffer.c,v 1.16 2002/06/26 08:54:18 markus Exp $");
 void
 buffer_init(Buffer *buffer)
 {
-	buffer->alloc = 4096;
-	buffer->buf = xmalloc(buffer->alloc);
-	buffer->offset = 0;
-	buffer->end = 0;
+	const u_int len = 4096;
+
+	bzero(buffer, sizeof(Buffer));
+	buffer->buf = xmalloc(len);
+	buffer->alloc = len;
 }
 
 /* Frees any memory used for the buffer. */
@@ -36,8 +37,10 @@ buffer_init(Buffer *buffer)
 void
 buffer_free(Buffer *buffer)
 {
-	memset(buffer->buf, 0, buffer->alloc);
-	xfree(buffer->buf);
+	if (buffer->alloc > 0) {
+		memset(buffer->buf, 0, buffer->alloc);
+		xfree(buffer->buf);
+	}
 }
 
 /*
