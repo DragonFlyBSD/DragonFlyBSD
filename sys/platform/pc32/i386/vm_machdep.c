@@ -39,7 +39,7 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.24 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.25 2003/11/03 17:11:18 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -383,15 +383,15 @@ setredzone(pte, vaddr)
 /*
  * Convert kernel VA to physical address
  */
-u_long
+vm_paddr_t
 kvtop(void *addr)
 {
-	vm_offset_t va;
+	vm_paddr_t pa;
 
-	va = pmap_kextract((vm_offset_t)addr);
-	if (va == 0)
+	pa = pmap_kextract((vm_offset_t)addr);
+	if (pa == 0)
 		panic("kvtop: zero page frame");
-	return((int)va);
+	return (pa);
 }
 
 /*

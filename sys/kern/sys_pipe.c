@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.12 2003/09/03 14:19:06 hmp Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.13 2003/11/03 17:11:21 dillon Exp $
  */
 
 /*
@@ -549,7 +549,8 @@ pipe_build_write_buffer(wpipe, uio)
 {
 	u_int size;
 	int i;
-	vm_offset_t addr, endaddr, paddr;
+	vm_offset_t addr, endaddr;
+	vm_paddr_t paddr;
 
 	size = (u_int) uio->uio_iov->iov_len;
 	if (size > wpipe->pipe_buffer.size)

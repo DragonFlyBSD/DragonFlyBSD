@@ -68,7 +68,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* $FreeBSD: src/sys/i386/include/bus_at386.h,v 1.8.2.3 2002/03/03 05:42:50 nyan Exp $ */
-/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.5 2003/08/07 21:17:22 dillon Exp $ */
+/* $DragonFly: src/sys/cpu/i386/include/bus_at386.h,v 1.6 2003/11/03 17:11:19 dillon Exp $ */
 
 #ifndef _I386_BUS_AT386_H_
 #define _I386_BUS_AT386_H_
@@ -93,15 +93,15 @@
 /*
  * Bus address and size types
  */
-typedef u_int bus_addr_t;
-typedef u_int bus_size_t;
+typedef u_int32_t bus_addr_t;
+typedef u_int32_t bus_size_t;
 
 #define BUS_SPACE_MAXSIZE_24BIT	0xFFFFFF
 #define BUS_SPACE_MAXSIZE_32BIT 0xFFFFFFFF
 #define BUS_SPACE_MAXSIZE	(64 * 1024) /* Maximum supported size */
 #define BUS_SPACE_MAXADDR_24BIT	0xFFFFFF
 #define BUS_SPACE_MAXADDR_32BIT 0xFFFFFFFF
-#define BUS_SPACE_MAXADDR	0xFFFFFFFF
+#define BUS_SPACE_MAXADDR	BUS_SPACE_MAXADDR_32BIT
 
 #define BUS_SPACE_UNRESTRICTED	(~0)
 
@@ -829,7 +829,7 @@ static __inline void
 bus_space_set_multi_1(bus_space_tag_t tag, bus_space_handle_t bsh,
 		      bus_size_t offset, u_int8_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -851,7 +851,7 @@ static __inline void
 bus_space_set_multi_2(bus_space_tag_t tag, bus_space_handle_t bsh,
 		     bus_size_t offset, u_int16_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -873,7 +873,7 @@ static __inline void
 bus_space_set_multi_4(bus_space_tag_t tag, bus_space_handle_t bsh,
 		      bus_size_t offset, u_int32_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -917,7 +917,7 @@ static __inline void
 bus_space_set_region_1(bus_space_tag_t tag, bus_space_handle_t bsh,
 		       bus_size_t offset, u_int8_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -939,7 +939,7 @@ static __inline void
 bus_space_set_region_2(bus_space_tag_t tag, bus_space_handle_t bsh,
 		       bus_size_t offset, u_int16_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -961,7 +961,7 @@ static __inline void
 bus_space_set_region_4(bus_space_tag_t tag, bus_space_handle_t bsh,
 		       bus_size_t offset, u_int32_t value, size_t count)
 {
-	bus_addr_t addr = bsh + offset;
+	bus_space_handle_t addr = bsh + offset;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -1011,8 +1011,8 @@ bus_space_copy_region_1(bus_space_tag_t tag, bus_space_handle_t bsh1,
 			bus_size_t off1, bus_space_handle_t bsh2,
 			bus_size_t off2, size_t count)
 {
-	bus_addr_t addr1 = bsh1 + off1;
-	bus_addr_t addr2 = bsh2 + off2;
+	bus_space_handle_t addr1 = bsh1 + off1;
+	bus_space_handle_t addr2 = bsh2 + off2;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -1057,8 +1057,8 @@ bus_space_copy_region_2(bus_space_tag_t tag, bus_space_handle_t bsh1,
 			bus_size_t off1, bus_space_handle_t bsh2,
 			bus_size_t off2, size_t count)
 {
-	bus_addr_t addr1 = bsh1 + off1;
-	bus_addr_t addr2 = bsh2 + off2;
+	bus_space_handle_t addr1 = bsh1 + off1;
+	bus_space_handle_t addr2 = bsh2 + off2;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)
@@ -1103,8 +1103,8 @@ bus_space_copy_region_4(bus_space_tag_t tag, bus_space_handle_t bsh1,
 			bus_size_t off1, bus_space_handle_t bsh2,
 			bus_size_t off2, size_t count)
 {
-	bus_addr_t addr1 = bsh1 + off1;
-	bus_addr_t addr2 = bsh2 + off2;
+	bus_space_handle_t addr1 = bsh1 + off1;
+	bus_space_handle_t addr2 = bsh2 + off2;
 
 #if defined(_I386_BUS_PIO_H_)
 #if defined(_I386_BUS_MEMIO_H_)

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.7 2003/10/15 16:03:04 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.8 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -117,7 +117,7 @@ struct vm_page {
 
 	vm_object_t object;		/* which object am I in (O,P)*/
 	vm_pindex_t pindex;		/* offset into object (O,P) */
-	vm_offset_t phys_addr;		/* physical address of page */
+	vm_paddr_t phys_addr;		/* physical address of page */
 	struct md_page md;		/* machine dependant stuff */
 	u_short	queue;			/* page queue index */
 	u_short	flags,			/* see below */
@@ -413,7 +413,7 @@ vm_page_t vm_page_lookup (vm_object_t, vm_pindex_t);
 void vm_page_remove (vm_page_t);
 void vm_page_rename (vm_page_t, vm_object_t, vm_pindex_t);
 vm_offset_t vm_page_startup (vm_offset_t, vm_offset_t, vm_offset_t);
-vm_page_t vm_add_new_page (vm_offset_t pa);
+vm_page_t vm_add_new_page (vm_paddr_t pa);
 void vm_page_unmanage (vm_page_t);
 void vm_page_unwire (vm_page_t, int);
 void vm_page_wire (vm_page_t);
@@ -431,7 +431,7 @@ vm_page_t _vm_page_list_find (int, int);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 
-int vm_contig_pg_alloc(u_long, u_long, u_long, u_long, u_long);
+int vm_contig_pg_alloc(u_long, vm_paddr_t, vm_paddr_t, u_long, u_long);
 vm_offset_t vm_contig_pg_kmap(int, u_long, vm_map_t);
 void vm_contig_pg_free(int, u_long);
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.14 2003/10/15 16:48:04 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.15 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -158,7 +158,7 @@ vm_set_page_size(void)
  *	Must be called at splhigh().
  */
 vm_page_t
-vm_add_new_page(vm_offset_t pa)
+vm_add_new_page(vm_paddr_t pa)
 {
 	vm_page_t m;
 	struct vpgqueues *vpq;
@@ -195,18 +195,19 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 {
 	vm_offset_t mapped;
 	struct vm_page **bucket;
-	vm_size_t npages, page_range;
-	vm_offset_t new_end;
+	vm_size_t npages;
+	vm_paddr_t page_range;
+	vm_paddr_t new_end;
 	int i;
-	vm_offset_t pa;
+	vm_paddr_t pa;
 	int nblocks;
-	vm_offset_t last_pa;
+	vm_paddr_t last_pa;
 
 	/* the biggest memory array is the second group of pages */
-	vm_offset_t end;
-	vm_offset_t biggestone, biggestsize;
+	vm_paddr_t end;
+	vm_paddr_t biggestone, biggestsize;
 
-	vm_offset_t total;
+	vm_paddr_t total;
 
 	total = 0;
 	biggestsize = 0;
@@ -220,7 +221,7 @@ vm_page_startup(vm_offset_t starta, vm_offset_t enda, vm_offset_t vaddr)
 	}
 
 	for (i = 0; phys_avail[i + 1]; i += 2) {
-		int size = phys_avail[i + 1] - phys_avail[i];
+		vm_paddr_t size = phys_avail[i + 1] - phys_avail[i];
 
 		if (size > biggestsize) {
 			biggestone = i;

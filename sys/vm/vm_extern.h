@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.5 2003/08/27 01:43:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.6 2003/11/03 17:11:23 dillon Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -85,7 +85,7 @@ int vm_fault_user_wire (vm_map_t, vm_offset_t, vm_offset_t);
 void vm_fork (struct proc *, struct proc *, int);
 void vm_waitproc (struct proc *);
 int vm_mmap (vm_map_t, vm_offset_t *, vm_size_t, vm_prot_t, vm_prot_t, int, void *, vm_ooffset_t);
-vm_offset_t vm_page_alloc_contig (vm_offset_t, vm_offset_t, vm_offset_t, vm_offset_t);
+vm_offset_t vm_page_alloc_contig (vm_offset_t, vm_paddr_t, vm_paddr_t, vm_offset_t);
 void vm_set_page_size (void);
 struct vmspace *vmspace_alloc (vm_offset_t, vm_offset_t);
 struct vmspace *vmspace_fork (struct vmspace *);

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.22 2003/09/02 20:11:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.23 2003/11/03 17:11:18 dillon Exp $
  */
 
 /*
@@ -149,8 +149,8 @@ static int protection_codes[8];
 static struct pmap kernel_pmap_store;
 pmap_t kernel_pmap;
 
-vm_offset_t avail_start;	/* PA of first available physical page */
-vm_offset_t avail_end;		/* PA of last available physical page */
+vm_paddr_t avail_start;	/* PA of first available physical page */
+vm_paddr_t avail_end;		/* PA of last available physical page */
 vm_offset_t virtual_avail;	/* VA of first avail page (after kernel bss) */
 vm_offset_t virtual_end;	/* VA of last avail page (end of kernel AS) */
 static boolean_t pmap_initialized = FALSE;	/* Has pmap_init completed? */
@@ -307,8 +307,8 @@ pmap_pte_quick(pmap_t pmap, vm_offset_t va)
  */
 void
 pmap_bootstrap(firstaddr, loadaddr)
-	vm_offset_t firstaddr;
-	vm_offset_t loadaddr;
+	vm_paddr_t firstaddr;
+	vm_paddr_t loadaddr;
 {
 	vm_offset_t va;
 	pt_entry_t *pte;
@@ -494,7 +494,7 @@ pmap_set_opt(void)
  */
 void
 pmap_init(phys_start, phys_end)
-	vm_offset_t phys_start, phys_end;
+	vm_paddr_t phys_start, phys_end;
 {
 	int i;
 	int initial_pvs;
@@ -666,7 +666,7 @@ get_ptbase(pmap_t pmap)
  *	This function may not be called from an interrupt if the pmap is
  *	not kernel_pmap.
  */
-vm_offset_t 
+vm_paddr_t 
 pmap_extract(pmap_t pmap, vm_offset_t va)
 {
 	vm_offset_t rtval;
@@ -698,7 +698,7 @@ pmap_extract(pmap_t pmap, vm_offset_t va)
  * should do a invltlb after doing the pmap_kenter...
  */
 PMAP_INLINE void 
-pmap_kenter(vm_offset_t va, vm_offset_t pa)
+pmap_kenter(vm_offset_t va, vm_paddr_t pa)
 {
 	unsigned *pte;
 	unsigned npte, opte;
@@ -731,7 +731,7 @@ pmap_kremove(vm_offset_t va)
  *	specified memory.
  */
 vm_offset_t
-pmap_map(vm_offset_t virt, vm_offset_t start, vm_offset_t end, int prot)
+pmap_map(vm_offset_t virt, vm_paddr_t start, vm_paddr_t end, int prot)
 {
 	while (start < end) {
 		pmap_kenter(virt, start);
@@ -816,6 +816,7 @@ retry:
 
 /*
  * Create a new thread and optionally associate it with a (new) process.
+ * NOTE! the new thread's cpu may not equal the current cpu.
  */
 void
 pmap_init_thread(thread_t td)
@@ -1870,9 +1871,9 @@ void
 pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	   boolean_t wired)
 {
-	vm_offset_t pa;
+	vm_paddr_t pa;
 	unsigned *pte;
-	vm_offset_t opa;
+	vm_paddr_t opa;
 	vm_offset_t origpte, newpte;
 	vm_page_t mpte;
 
@@ -1921,8 +1922,8 @@ pmap_enter(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_prot_t prot,
 	 * Page Directory table entry not valid, we need a new PT page
 	 */
 	if (pte == NULL) {
-		panic("pmap_enter: invalid page directory, pdir=%p, va=0x%x\n",
-			(void *)pmap->pm_pdir[PTDPTDI], va);
+		panic("pmap_enter: invalid page directory pdir=%x, va=0x%x\n",
+		     (unsigned) pmap->pm_pdir[PTDPTDI], va);
 	}
 
 	pa = VM_PAGE_TO_PHYS(m) & PG_FRAME;
@@ -2064,7 +2065,7 @@ static vm_page_t
 pmap_enter_quick(pmap_t pmap, vm_offset_t va, vm_page_t m, vm_page_t mpte)
 {
 	unsigned *pte;
-	vm_offset_t pa;
+	vm_paddr_t pa;
 
 	/*
 	 * In the case that a page table page is not
@@ -2156,7 +2157,7 @@ retry:
  * to be used for panic dumps.
  */
 void *
-pmap_kenter_temporary(vm_offset_t pa, int i)
+pmap_kenter_temporary(vm_paddr_t pa, int i)
 {
 	pmap_kenter((vm_offset_t)crashdumpmap + (i * PAGE_SIZE), pa);
 	return ((void *)crashdumpmap);
@@ -2582,7 +2583,7 @@ pmap_kernel(void)
  *	required.
  */
 void
-pmap_zero_page(vm_offset_t phys)
+pmap_zero_page(vm_paddr_t phys)
 {
 	struct mdglobaldata *gd = mdcpu;
 
@@ -2612,7 +2613,7 @@ pmap_zero_page(vm_offset_t phys)
  *	off and size may not cover an area beyond a single hardware page.
  */
 void
-pmap_zero_page_area(vm_offset_t phys, int off, int size)
+pmap_zero_page_area(vm_paddr_t phys, int off, int size)
 {
 	struct mdglobaldata *gd = mdcpu;
 
@@ -2640,7 +2641,7 @@ pmap_zero_page_area(vm_offset_t phys, int off, int size)
  *	is required.
  */
 void
-pmap_copy_page(vm_offset_t src, vm_offset_t dst)
+pmap_copy_page(vm_paddr_t src, vm_paddr_t dst)
 {
 	struct mdglobaldata *gd = mdcpu;
 
@@ -2918,7 +2919,7 @@ pmap_page_protect(vm_page_t m, vm_prot_t prot)
 	}
 }
 
-vm_offset_t
+vm_paddr_t
 pmap_phys_address(int ppn)
 {
 	return (i386_ptob(ppn));
@@ -3056,7 +3057,7 @@ i386_protection_init(void)
  * a time.
  */
 void *
-pmap_mapdev(vm_offset_t pa, vm_size_t size)
+pmap_mapdev(vm_paddr_t pa, vm_size_t size)
 {
 	vm_offset_t va, tmpva, offset;
 	unsigned *pte;
@@ -3264,7 +3265,7 @@ pads(pmap_t pm)
 }
 
 void
-pmap_pvdump(vm_offset_t pa)
+pmap_pvdump(vm_paddr_t pa)
 {
 	pv_entry_t pv;
 	vm_page_t m;

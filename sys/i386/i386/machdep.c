@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.40 2003/10/25 17:36:22 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.41 2003/11/03 17:11:18 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -237,10 +237,11 @@ SYSCTL_PROC(_machdep, OID_AUTO, msgbuf_clear, CTLTYPE_INT|CTLFLAG_RW,
 	&msgbuf_clear, 0, sysctl_machdep_msgbuf_clear, "I",
 	"Clear kernel message buffer");
 
-int bootverbose = 0, Maxmem = 0;
+int bootverbose = 0;
+vm_paddr_t Maxmem = 0;
 long dumplo;
 
-vm_offset_t phys_avail[10];
+vm_paddr_t phys_avail[10];
 
 /* must be 2 less so 0 0 can signal end of chunks */
 #define PHYS_AVAIL_ARRAY_END ((sizeof(phys_avail) / sizeof(vm_offset_t)) - 2)
@@ -274,7 +275,7 @@ cpu_startup(dummy)
 #ifdef PERFMON
 	perfmon_init();
 #endif
-	printf("real memory  = %u (%uK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
+	printf("real memory  = %llu (%lluK bytes)\n", ptoa(Maxmem), ptoa(Maxmem) / 1024);
 	/*
 	 * Display any holes after the first chunk of extended memory.
 	 */
@@ -283,9 +284,9 @@ cpu_startup(dummy)
 
 		printf("Physical memory chunk(s):\n");
 		for (indx = 0; phys_avail[indx + 1] != 0; indx += 2) {
-			unsigned int size1 = phys_avail[indx + 1] - phys_avail[indx];
+			vm_paddr_t size1 = phys_avail[indx + 1] - phys_avail[indx];
 
-			printf("0x%08x - 0x%08x, %u bytes (%u pages)\n",
+			printf("0x%08llx - 0x%08llx, %llu bytes (%llu pages)\n",
 			    phys_avail[indx], phys_avail[indx + 1] - 1, size1,
 			    size1 / PAGE_SIZE);
 		}
@@ -1460,7 +1461,7 @@ physmap_done:
 
 	if (atop(physmap[physmap_idx + 1]) != Maxmem &&
 	    (boothowto & RB_VERBOSE))
-		printf("Physical memory use set to %uK\n", Maxmem * 4);
+		printf("Physical memory use set to %lluK\n", Maxmem * 4);
 
 	/*
 	 * If Maxmem has been increased beyond what the system has detected,

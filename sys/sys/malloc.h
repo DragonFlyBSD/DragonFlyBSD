@@ -32,7 +32,7 @@
  *
  *	@(#)malloc.h	8.5 (Berkeley) 5/3/95
  * $FreeBSD: src/sys/sys/malloc.h,v 1.48.2.2 2002/03/16 02:19:16 archie Exp $
- * $DragonFly: src/sys/sys/malloc.h,v 1.12 2003/10/20 16:50:39 dillon Exp $
+ * $DragonFly: src/sys/sys/malloc.h,v 1.13 2003/11/03 17:11:22 dillon Exp $
  */
 
 #ifndef _SYS_MALLOC_H_
@@ -202,7 +202,7 @@ MALLOC_DECLARE(M_IOV);
 void	contigfree (void *addr, unsigned long size,
 			struct malloc_type *type);
 void	*contigmalloc (unsigned long size, struct malloc_type *type,
-			   int flags, unsigned long low, unsigned long high,
+			   int flags, vm_paddr_t low, vm_paddr_t high,
 			   unsigned long alignment, unsigned long boundary);
 void	free (void *addr, struct malloc_type *type);
 void	*malloc (unsigned long size, struct malloc_type *type, int flags);

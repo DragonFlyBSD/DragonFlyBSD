@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.15 2003/10/08 00:10:56 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.16 2003/11/03 17:11:21 dillon Exp $
  */
 
 /*
@@ -3212,7 +3212,7 @@ int
 vmapbuf(struct buf *bp)
 {
 	caddr_t addr, v, kva;
-	vm_offset_t pa;
+	vm_paddr_t pa;
 	int pidx;
 	int i;
 	struct vm_page *m;

@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
- * $DragonFly: src/sys/vm/vm_kern.h,v 1.6 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.7 2003/11/03 17:11:23 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_
@@ -80,7 +80,7 @@ extern u_int vm_kmem_size;
 extern vm_offset_t kernel_vm_end;
 /* XXX - elsewhere? */
 struct malloc_type;
-extern void *contigmalloc_map(u_long, struct malloc_type *, int, u_long, u_long,
-			   u_long, u_long, vm_map_t);
+extern void *contigmalloc_map(u_long, struct malloc_type *, int,
+		vm_paddr_t, vm_paddr_t, u_long, u_long, vm_map_t);
 
 #endif				/* _VM_VM_KERN_H_ */

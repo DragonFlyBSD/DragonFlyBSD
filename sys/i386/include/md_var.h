@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/md_var.h,v 1.35.2.4 2003/01/22 20:14:53 jhb Exp $
- * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.11 2003/10/24 14:10:45 daver Exp $
+ * $DragonFly: src/sys/i386/include/Attic/md_var.h,v 1.12 2003/11/03 17:11:19 dillon Exp $
  */
 
 #ifndef _MACHINE_MD_VAR_H_
@@ -37,7 +37,7 @@
  * Miscellaneous machine-dependent declarations.
  */
 
-extern	int	Maxmem;
+extern	vm_paddr_t	Maxmem;
 extern	u_int	atdevbase;	/* offset in virtual memory of ISA io mem */
 extern	void	(*bcopy_vector) (const void *from, void *to, size_t len);
 extern	int	busdma_swi_pending;
@@ -106,7 +106,7 @@ int	i586_copyout (const void *kaddr, void *udaddr, size_t len);
 void	i686_pagezero (void *addr);
 void	init_AMD_Elan_sc520(void);
 int	is_physical_memory (vm_offset_t addr);
-u_long	kvtop (void *addr);
+vm_paddr_t kvtop (void *addr);
 void	setidt (int idx, alias_for_inthand_t *func, int typ, int dpl,
 		    int selec);
 void	userconfig (void);

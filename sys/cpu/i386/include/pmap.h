@@ -43,7 +43,7 @@
  *	from: hp300: @(#)pmap.h	7.2 (Berkeley) 12/16/90
  *	from: @(#)pmap.h	7.4 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/pmap.h,v 1.65.2.3 2001/10/03 07:15:37 peter Exp $
- * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.4 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/pmap.h,v 1.5 2003/11/03 17:11:19 dillon Exp $
  */
 
 #ifndef _MACHINE_PMAP_H_
@@ -71,7 +71,7 @@
 /* Our various interpretations of the above */
 #define PG_W		PG_AVAIL1	/* "Wired" pseudoflag */
 #define	PG_MANAGED	PG_AVAIL2
-#define	PG_FRAME	(~PAGE_MASK)
+#define	PG_FRAME	(~((vm_paddr_t)PAGE_MASK))
 #define	PG_PROT		(PG_RW|PG_U)	/* all protection bits . */
 #define PG_N		(PG_NC_PWT|PG_NC_PCD)	/* Non-cacheable */
 
@@ -163,10 +163,11 @@ extern pd_entry_t IdlePTD;	/* physical address of "Idle" state directory */
  *		Extract the physical page address associated
  *		kernel virtual address.
  */
-static __inline vm_offset_t
+static __inline vm_paddr_t
 pmap_kextract(vm_offset_t va)
 {
-	vm_offset_t pa;
+	vm_paddr_t pa;
+
 	if ((pa = (vm_offset_t) PTD[va >> PDRSHIFT]) & PG_PS) {
 		pa = (pa & ~(NBPDR - 1)) | (va & (NBPDR - 1));
 	} else {
@@ -243,18 +244,18 @@ extern struct ppro_vmtrr PPro_vmtrr[NPPROVMTRR];
 
 extern caddr_t	CADDR1;
 extern pt_entry_t *CMAP1;
-extern vm_offset_t avail_end;
-extern vm_offset_t avail_start;
+extern vm_paddr_t avail_end;
+extern vm_paddr_t avail_start;
 extern vm_offset_t clean_eva;
 extern vm_offset_t clean_sva;
-extern vm_offset_t phys_avail[];
+extern vm_paddr_t phys_avail[];
 extern char *ptvmmap;		/* poor name! */
 extern vm_offset_t virtual_avail;
 extern vm_offset_t virtual_end;
 
-void	pmap_bootstrap ( vm_offset_t, vm_offset_t);
+void	pmap_bootstrap ( vm_paddr_t, vm_paddr_t);
 pmap_t	pmap_kernel (void);
-void	*pmap_mapdev (vm_offset_t, vm_size_t);
+void	*pmap_mapdev (vm_paddr_t, vm_size_t);
 void	pmap_unmapdev (vm_offset_t, vm_size_t);
 unsigned *pmap_pte (pmap_t, vm_offset_t) __pure2;
 vm_page_t pmap_use_pt (pmap_t, vm_offset_t);

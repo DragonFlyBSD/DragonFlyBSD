@@ -37,7 +37,7 @@
  *
  *	from: @(#)vmparam.h	5.9 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/include/vmparam.h,v 1.32.2.1 2000/04/02 08:47:01 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.5 2003/10/19 00:23:23 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/vmparam.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
  */
 
 
@@ -91,7 +91,7 @@
  * messy at times, but hey, we'll do anything to save a page :-)
  */
 
-#define VM_MAX_KERNEL_ADDRESS	VADDR(KPTDI+NKPDE, 0)
+#define VM_MAX_KERNEL_ADDRESS	VADDR(KPTDI+NKPDE-1, NPTEPG-1)
 #define VM_MIN_KERNEL_ADDRESS	VADDR(PTDPTDI, PTDPTDI)
 
 #define	KERNBASE		VADDR(KPTDI, 0)
@@ -102,7 +102,7 @@
 #define UPT_MAX_ADDRESS		VADDR(PTDPTDI, PTDPTDI)
 #define UPT_MIN_ADDRESS		VADDR(PTDPTDI, 0)
 
-#define VM_MAXUSER_ADDRESS	VADDR(UMAXPTDI, UMAXPTEOFF)
+#define VM_MAXUSER_ADDRESS	VADDR(PTDPTDI, 0)
 
 #define USRSTACK		VM_MAXUSER_ADDRESS
 

@@ -35,7 +35,7 @@
  *
  *	from: @(#)param.h	5.8 (Berkeley) 6/28/91
  * $FreeBSD: src/sys/i386/include/param.h,v 1.54.2.8 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.5 2003/10/19 00:13:18 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/param.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
  */
 
 #ifndef _MACHINE_PARAM_H_
@@ -193,14 +193,14 @@
  */
 #define trunc_page(x)		((x) & ~PAGE_MASK)
 #define round_page(x)		(((x) + PAGE_MASK) & ~PAGE_MASK)
-#define trunc_4mpage(x)		((unsigned)(x) & ~PDRMASK)
-#define round_4mpage(x)		((((unsigned)(x)) + PDRMASK) & ~PDRMASK)
+#define trunc_4mpage(x)		((x) & ~PDRMASK)
+#define round_4mpage(x)		((((x)) + PDRMASK) & ~PDRMASK)
 
-#define atop(x)			((unsigned)(x) >> PAGE_SHIFT)
-#define ptoa(x)			((unsigned)(x) << PAGE_SHIFT)
+#define atop(x)			((x) >> PAGE_SHIFT)
+#define ptoa(x)			((x) << PAGE_SHIFT)
 
-#define i386_btop(x)		((unsigned)(x) >> PAGE_SHIFT)
-#define i386_ptob(x)		((unsigned)(x) << PAGE_SHIFT)
+#define i386_btop(x)		((x) >> PAGE_SHIFT)
+#define i386_ptob(x)		((x) << PAGE_SHIFT)
 
 #define	pgtok(x)		((x) * (PAGE_SIZE / 1024))
 

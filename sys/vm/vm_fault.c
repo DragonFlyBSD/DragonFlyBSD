@@ -67,7 +67,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_fault.c,v 1.108.2.8 2002/02/26 05:49:27 silby Exp $
- * $DragonFly: src/sys/vm/vm_fault.c,v 1.8 2003/10/02 21:00:20 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_fault.c,v 1.9 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -978,7 +978,8 @@ vm_fault_unwire(map, start, end)
 	vm_offset_t start, end;
 {
 
-	vm_offset_t va, pa;
+	vm_offset_t va;
+	vm_paddr_t pa;
 	pmap_t pmap;
 
 	pmap = vm_map_pmap(map);
@@ -990,7 +991,7 @@ vm_fault_unwire(map, start, end)
 
 	for (va = start; va < end; va += PAGE_SIZE) {
 		pa = pmap_extract(pmap, va);
-		if (pa != (vm_offset_t) 0) {
+		if (pa != 0) {
 			pmap_change_wiring(pmap, va, FALSE);
 			vm_page_unwire(PHYS_TO_VM_PAGE(pa), 1);
 		}

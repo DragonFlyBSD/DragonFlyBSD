@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/pmap.h,v 1.33.2.4 2002/03/06 22:44:24 silby Exp $
- * $DragonFly: src/sys/vm/pmap.h,v 1.7 2003/08/20 08:03:01 rob Exp $
+ * $DragonFly: src/sys/vm/pmap.h,v 1.8 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -101,18 +101,18 @@ void		 pmap_clear_reference (vm_page_t m);
 void		 pmap_collect (void);
 void		 pmap_copy (pmap_t, pmap_t, vm_offset_t, vm_size_t,
 		    vm_offset_t);
-void		 pmap_copy_page (vm_offset_t, vm_offset_t);
+void		 pmap_copy_page (vm_paddr_t, vm_paddr_t);
 void		 pmap_destroy (pmap_t);
 void		 pmap_enter (pmap_t, vm_offset_t, vm_page_t, vm_prot_t,
 		    boolean_t);
-vm_offset_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
+vm_paddr_t	 pmap_extract (pmap_t pmap, vm_offset_t va);
 void		 pmap_growkernel (vm_offset_t);
-void		 pmap_init (vm_offset_t, vm_offset_t);
+void		 pmap_init (vm_paddr_t, vm_paddr_t);
 boolean_t	 pmap_is_modified (vm_page_t m);
 boolean_t	 pmap_ts_referenced (vm_page_t m);
-void		 pmap_kenter (vm_offset_t va, vm_offset_t pa);
+void		 pmap_kenter (vm_offset_t va, vm_paddr_t pa);
 void		 pmap_kremove (vm_offset_t);
-vm_offset_t	 pmap_map (vm_offset_t, vm_offset_t, vm_offset_t, int);
+vm_offset_t	 pmap_map (vm_offset_t, vm_paddr_t, vm_paddr_t, int);
 void		 pmap_object_init_pt (pmap_t pmap, vm_offset_t addr,
 		    vm_object_t object, vm_pindex_t pindex, vm_offset_t size,
 		    int pagelimit);
@@ -120,7 +120,7 @@ boolean_t	 pmap_page_exists_quick (pmap_t pmap, vm_page_t m);
 void		 pmap_page_protect (vm_page_t m, vm_prot_t prot);
 void		 pmap_pageable (pmap_t, vm_offset_t, vm_offset_t,
 		    boolean_t);
-vm_offset_t	 pmap_phys_address (int);
+vm_paddr_t	 pmap_phys_address (int);
 void		 pmap_pinit (pmap_t);
 void		 pmap_pinit0 (pmap_t);
 void		 pmap_pinit2 (pmap_t);
@@ -132,8 +132,8 @@ void		 pmap_reference (pmap_t);
 void		 pmap_release (pmap_t);
 void		 pmap_remove (pmap_t, vm_offset_t, vm_offset_t);
 void		 pmap_remove_pages (pmap_t, vm_offset_t, vm_offset_t);
-void		 pmap_zero_page (vm_offset_t);
-void		 pmap_zero_page_area (vm_offset_t, int off, int size);
+void		 pmap_zero_page (vm_paddr_t);
+void		 pmap_zero_page_area (vm_paddr_t, int off, int size);
 void		 pmap_prefault (pmap_t, vm_offset_t, vm_map_entry_t);
 int		 pmap_mincore (pmap_t pmap, vm_offset_t addr);
 void		 pmap_init_proc (struct proc *p, struct thread *td);
@@ -143,7 +143,7 @@ void		 pmap_swapout_proc (struct proc *p);
 void		 pmap_swapin_proc (struct proc *p);
 void		 pmap_activate (struct proc *p);
 vm_offset_t	 pmap_addr_hint (vm_object_t obj, vm_offset_t addr, vm_size_t size);
-void		*pmap_kenter_temporary (vm_offset_t pa, int i);
+void		*pmap_kenter_temporary (vm_paddr_t pa, int i);
 void		 pmap_init2 (void);
 
 #endif /* _KERNEL */

@@ -32,7 +32,7 @@
  *
  *	@(#)types.h	8.3 (Berkeley) 1/5/94
  * $FreeBSD: src/sys/i386/include/types.h,v 1.19.2.1 2001/03/21 10:50:58 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.5 2003/08/27 01:43:07 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/types.h,v 1.6 2003/11/03 17:11:19 dillon Exp $
  */
 
 #ifndef _MACHINE_TYPES_H_
@@ -68,5 +68,7 @@ typedef unsigned int *pt_entry_t;
 
 /* Interrupt mask (spl, xxx_imask, etc) */
 typedef __uint32_t		intrmask_t;
+typedef __int64_t		intmax_t;
+typedef __uint64_t		uintmax_t;
 
 #endif /* !_MACHINE_TYPES_H_ */

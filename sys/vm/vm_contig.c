@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
- * $DragonFly: src/sys/vm/vm_contig.c,v 1.1 2003/10/15 16:48:04 hmp Exp $
+ * $DragonFly: src/sys/vm/vm_contig.c,v 1.2 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -160,8 +160,8 @@ vm_contig_pg_clean(int queue)
 int
 vm_contig_pg_alloc(
 	unsigned long size,
-	unsigned long low,
-	unsigned long high,
+	vm_paddr_t low,
+	vm_paddr_t high,
 	unsigned long alignment,
 	unsigned long boundary)
 {
@@ -352,8 +352,8 @@ contigmalloc(
 	unsigned long size,	/* should be size_t here and for malloc() */
 	struct malloc_type *type,
 	int flags,
-	unsigned long low,
-	unsigned long high,
+	vm_paddr_t low,
+	vm_paddr_t high,
 	unsigned long alignment,
 	unsigned long boundary)
 {
@@ -366,8 +366,8 @@ contigmalloc_map(
 	unsigned long size,	/* should be size_t here and for malloc() */
 	struct malloc_type *type,
 	int flags,
-	unsigned long low,
-	unsigned long high,
+	vm_paddr_t low,
+	vm_paddr_t high,
 	unsigned long alignment,
 	unsigned long boundary,
 	vm_map_t map)
@@ -397,8 +397,8 @@ contigfree(void *addr, unsigned long size, struct malloc_type *type)
 vm_offset_t
 vm_page_alloc_contig(
 	vm_offset_t size,
-	vm_offset_t low,
-	vm_offset_t high,
+	vm_paddr_t low,
+	vm_paddr_t high,
 	vm_offset_t alignment)
 {
 	return ((vm_offset_t)contigmalloc_map(size, M_DEVBUF, M_NOWAIT, low,

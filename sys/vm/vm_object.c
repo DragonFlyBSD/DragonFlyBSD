@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.10 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.11 2003/11/03 17:11:23 dillon Exp $
  */
 
 /*
@@ -1902,7 +1902,7 @@ DB_SHOW_COMMAND(vmopag, vm_object_print_pages)
 			object = TAILQ_NEXT(object, object_list)) {
 		vm_pindex_t idx, fidx;
 		vm_pindex_t osize;
-		vm_offset_t pa = -1, padiff;
+		vm_paddr_t pa = -1, padiff;
 		int rcount;
 		vm_page_t m;
 

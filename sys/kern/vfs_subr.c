@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.22 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.23 2003/11/03 17:11:21 dillon Exp $
  */
 
 /*
@@ -73,6 +73,7 @@
 #include <vm/vm.h>
 #include <vm/vm_object.h>
 #include <vm/vm_extern.h>
+#include <vm/vm_kern.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_page.h>
@@ -181,7 +182,18 @@ void
 vntblinit()
 {
 
-	desiredvnodes = maxproc + vmstats.v_page_count / 4;
+	/*
+	 * Desired vnodes is a result of the physical page count
+	 * and the size of kernel's heap.  It scales in proportion
+	 * to the amount of available physical memory.  This can
+	 * cause trouble on 64-bit and large memory platforms.
+	 */
+	/* desiredvnodes = maxproc + vmstats.v_page_count / 4; */
+	desiredvnodes =
+		min(maxproc + vmstats.v_page_count /4,
+		    2 * (VM_MAX_KERNEL_ADDRESS - VM_MIN_KERNEL_ADDRESS) /
+		    (5 * (sizeof(struct vm_object) + sizeof(struct vnode))));
+
 	minvnodes = desiredvnodes / 4;
 	lwkt_inittoken(&mntvnode_token);
 	lwkt_inittoken(&mntid_token);
