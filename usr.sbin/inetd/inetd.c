@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)from: inetd.c	8.4 (Berkeley) 4/13/94
  * $FreeBSD: src/usr.sbin/inetd/inetd.c,v 1.80.2.11 2003/04/05 13:39:18 dwmalone Exp $
- * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.7 2005/02/17 14:00:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/inetd/inetd.c,v 1.8 2005/03/21 19:26:14 liamfoy Exp $
  */
 
 /*
@@ -313,7 +313,7 @@ main(int argc, char **argv)
 	struct passwd *pwd;
 	struct group *grp;
 	struct sigaction sa, saalrm, sachld, sahup, sapipe;
-	int tmpint, ch, dofork;
+	int ch, dofork;
 	pid_t pid;
 	char buf[50];
 #ifdef LOGIN_CAP
