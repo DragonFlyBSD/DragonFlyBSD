@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd December 7, 2001
+.Dd August 30, 2004
 .Dt STYLE 9
 .Os
 .Sh NAME
@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.13 2004/07/26 06:35:31 asmodai Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.14 2004/09/03 18:40:13 dillon Exp $
  */
 
 /*
@@ -633,18 +633,37 @@ Use ANSI function declarations instead.
 Long parameter lists are wrapped so that the first parameter on each line
 lines up.
 .Pp
-Variable numbers of arguments should look like this.
+Try to avoid using obsolete functions such as:
+.Xr ftime 3 ,
+.Xr getwd 3 ,
+.Xr index 3 ,
+.Xr rindex 3 ,
+.Xr mktemp 3 ,
+.Xr utimes 3
+and
+.Xr wcswcs 3 .
+.Pp
+All new code must avoid using unbounded string functions.  For example,
+.Xr strlcpy 3
+should be used instead of
+.Xr strcpy 3 ,
+and
+.Xr snprintf 3
+should be used instead of
+.Xr sprintf 3 .
+.Pp
+Varargs procedures should be formatted as follows:
 .Bd -literal
 #include <stdarg.h>
 
 void
 vaf(const char *fmt, ...)
 {
-	va_list ap;
+	va_list va;
 
-	va_start(ap, fmt);
+	va_start(va, fmt);
 	STUFF;
-	va_end(ap);
+	va_end(va);
 	/* No return needed for void functions. */
 }
 .Ed
