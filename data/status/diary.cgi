@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.11 2004/02/16 21:06:08 joerg Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.12 2004/02/17 07:17:52 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -37,6 +37,16 @@ $TITLE(DragonFly - Big-Picture Status)
 	<LI>GCC 3.3.3 and Binutils 2.14 have been integrated into base.
 	<LI>An aggregated Client/Server Directory Services syscall API has
 	    been completed
+	<LI>An amiga-style 'resident' utility program + kernel support has 
+	    been implemented, and prelinking support has been removed 
+	    (because the resident utility is much better).  You can make any
+	    dynamically loaded ELF binary resident with this utility.  The
+	    system will load the program and do all shared library mappings 
+	    and relocations, then will snapshot the vmspace.  All future
+	    executions of the program simply make a copy of the saved
+	    vmspace and skip almost right to main().  Kernel overhead is
+	    fairly low, also.  It still isn't as fast as a static binary
+	    but it is considerably faster then non-resident dynamic binaries.
     </UL>
 </UL>
 <P>
