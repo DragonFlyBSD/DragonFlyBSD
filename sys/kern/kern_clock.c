@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.8 2003/07/11 23:26:16 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.9 2003/07/12 03:10:35 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -484,10 +484,11 @@ statclock(frame)
 
 	/*
 	 * bump psticks and check against gd_psticks.  When we hit the
-	 * 1*hz mark (psdiv ticks) we do the more expensive stuff.
+	 * 1*hz mark (psdiv ticks) we do the more expensive stuff.  If
+	 * psdiv changes we reset everything to avoid confusion.
 	 */
 	++psticks;
-	if (psticks < mycpu->gd_psticks || psdiv == mycpu->gd_psdiv)
+	if (psticks < mycpu->gd_psticks && psdiv == mycpu->gd_psdiv)
 		return;
 
 	mycpu->gd_psdiv = psdiv;
