@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.5 2004/03/13 21:08:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.6 2004/03/27 01:46:10 cpressey Exp $
  */
 
 #include "timedc.h"
@@ -172,7 +172,7 @@ makeargv(void)
 	char **argp = margv;
 
 	margc = 0;
-	for (cp = cmdline; margv < MAX_MARGV -1 && *cp;) {
+	for (cp = cmdline; margc < MAX_MARGV - 1 && *cp;) {
 		while (isspace(*cp))
 			cp++;
 		if (*cp == '\0')
