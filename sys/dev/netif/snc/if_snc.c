@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/snc/if_snc.c,v 1.2.2.1 2000/10/21 03:30:03 nyan Exp $
- * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.4 2003/11/20 22:07:31 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/snc/Attic/if_snc.c,v 1.5 2005/02/19 15:47:44 swildner Exp $
  */
 
 /*
@@ -59,7 +59,7 @@
 #include <net/bpf.h>
 #include "opt_bdg.h"
 #ifdef BRIDGE
-#include <net/bridge.h>
+#include <net/bridge/bridge.h>
 #endif
 
 #include "dp83932reg.h"
