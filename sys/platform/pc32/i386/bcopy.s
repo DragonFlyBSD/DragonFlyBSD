@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.2 2004/04/30 00:59:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bcopy.s,v 1.3 2004/04/30 02:59:14 dillon Exp $
  */
 /*
  * bcopy(source:%esi, target:%edi, count:%ecx)
@@ -192,6 +192,16 @@ ENTRY(asm_generic_bcopy)
 	 *
 	 *  NOTE: fxsave requires a 16-byte aligned address
 	 *
+	 *  NOTE: RACES (which are ok): 
+	 *
+	 *	+ interrupt saves fp state after we check npxthread but
+	 *	  before we call fxsave
+	 *	+ interrupt saves application fp state after we change
+	 *	  TD_SAVEFPU.  Data will be ignored.
+	 *	+ interrupt occurs in critical section.  interrupt will be
+	 *	  delayed until we return or block (unless we check for
+	 *	  pending interrupts but I'm not going to bother for now).
+	 *
 	 *  MMX+XMM (SSE2): Typical on Athlons, later P4s. 128 bit media insn.
 	 *  MMX: Typical on XPs and P3s.  64 bit media insn.
 	 */
@@ -208,16 +218,27 @@ ENTRY(asm_generic_bcopy)
 	movl	TD_SAVEFPU(%edx),%ebx ;		\
 	subl	$512,%esp ;			\
 	andl	$0xfffffff0,%esp ;		\
-	movl	%esp,TD_SAVEFPU(%edx) ;		\
+	addl	$TDPRI_CRIT,TD_PRI(%edx) ;	\
 	cmpl	%edx,PCPU(npxthread) ;		\
 	jne	100f ;				\
 	fxsave	0(%ebx) ;			\
 100: ;						\
-	clts ;					\
+	movl	%esp,TD_SAVEFPU(%edx) ;		\
 	movl	%edx,PCPU(npxthread) ;		\
+	clts ;					\
 	fninit ;				\
+	subl	$TDPRI_CRIT,TD_PRI(%edx) ;	\
 	pushl	$mmx_onfault
 
+	/*
+	 *  NOTE: RACES (which are ok): 
+	 *
+	 *	+ interrupt occurs after we store NULL to npxthread.  No
+	 *	  state will be saved (because npxthread is NULL).  Thread
+	 *	  switches never restore npxthread, only a DNA trap does that.
+	 *	+ we can safely restore TD_SAFEFPU after NULLing npxthread.
+	 *	+ we can safely set TS any time after NULLing npxthread.
+	 */
 
 #define MMX_RESTORE_BLOCK			\
 	addl	$4,%esp ;			\
