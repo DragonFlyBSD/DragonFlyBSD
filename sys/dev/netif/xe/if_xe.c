@@ -25,7 +25,7 @@
  *
  *	$Id: if_xe.c,v 1.20 1999/06/13 19:17:40 scott Exp $
  * $FreeBSD: src/sys/dev/xe/if_xe.c,v 1.13.2.6 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.15 2005/01/23 20:23:22 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/xe/if_xe.c,v 1.16 2005/02/20 04:02:14 joerg Exp $
  */
 
 /*
@@ -129,6 +129,7 @@
  
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
 #include <net/if_media.h>
@@ -535,7 +536,8 @@ xe_attach (device_t dev) {
   scp->ifp->if_ioctl = xe_ioctl;
   scp->ifp->if_watchdog = xe_watchdog;
   scp->ifp->if_init = xe_init;
-  scp->ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+  ifq_set_maxlen(&scp->ifp->if_snd, IFQ_MAXLEN);
+  ifq_set_ready(&scp->ifp->if_snd);
 
   /* Initialise the ifmedia structure */
   ifmedia_init(scp->ifm, 0, xe_media_change, xe_media_status);
@@ -685,7 +687,7 @@ xe_start(struct ifnet *ifp) {
    * Loop while there are packets to be sent, and space to send them.
    */
   while (1) {
-    IF_DEQUEUE(&ifp->if_snd, mbp);	/* Suck a packet off the send queue */
+    mbp = ifq_poll(&ifp->if_snd);	/* Suck a packet off the send queue */
 
     if (mbp == NULL) {
       /*
@@ -700,11 +702,11 @@ xe_start(struct ifnet *ifp) {
     }
 
     if (xe_pio_write_packet(scp, mbp) != 0) {
-      IF_PREPEND(&ifp->if_snd, mbp);	/* Push the packet back onto the queue */
       ifp->if_flags |= IFF_OACTIVE;
       return;
     }
 
+    mbp = ifq_dequeue(&ifp->if_snd);
     BPF_MTAP(ifp, mbp);
 
     ifp->if_timer = 5;			/* In case we don't hear from the card again */
