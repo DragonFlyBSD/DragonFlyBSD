@@ -24,7 +24,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/ddb/db_output.c,v 1.26 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_output.c,v 1.5 2003/11/09 02:22:34 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_output.c,v 1.6 2004/09/03 08:50:47 eirikn Exp $
  */
 
 /*
@@ -187,3 +187,35 @@ db_end_line()
 	if (db_output_position >= db_max_width)
 	    db_printf("\n");
 }
+
+/*
+ * Simple pager
+ */
+int
+db_more(int *nl)
+{
+	++*nl;
+	if (*nl == 20) {
+		int c;
+
+		db_printf("--More--");
+		c = cngetc();
+		db_printf("\r");
+		/*
+		 * A whole screenfull or just one line?
+		 */
+		switch (c) {
+		case '\n':		/* just one line */
+			*nl = 19;
+			break;
+		case ' ':
+			*nl = 0;	/* another screenfull */
+			break;
+		default:		/* exit */
+			db_printf("\n");
+			return(-1);
+		}
+	}
+	return(0);
+}
+

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/db_ps.c,v 1.20 1999/08/28 00:41:09 peter Exp $
- * $DragonFly: src/sys/ddb/db_ps.c,v 1.10 2004/07/24 20:27:19 dillon Exp $
+ * $DragonFly: src/sys/ddb/db_ps.c,v 1.11 2004/09/03 08:50:47 eirikn Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -39,34 +39,6 @@
 #include <sys/cons.h>
 
 #include <ddb/ddb.h>
-
-static int
-db_more(int *nl)
-{
-	++*nl;
-	if (*nl == 20) {
-		int c;
-
-		db_printf("--More--");
-		c = cngetc();
-		db_printf("\r");
-		/*
-		 * A whole screenfull or just one line?
-		 */
-		switch (c) {
-		case '\n':		/* just one line */
-			*nl = 19;
-			break;
-		case ' ':
-			*nl = 0;	/* another screenfull */
-			break;
-		default:		/* exit */
-			db_printf("\n");
-			return(-1);
-		}
-	}
-	return(0);
-}
 
 static void db_dump_td_tokens(thread_t td);
 

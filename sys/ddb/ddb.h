@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/ddb/ddb.h,v 1.24.2.2 2002/08/30 22:27:49 gibbs Exp $
- * $DragonFly: src/sys/ddb/ddb.h,v 1.6 2003/11/08 03:06:53 dillon Exp $
+ * $DragonFly: src/sys/ddb/ddb.h,v 1.7 2004/09/03 08:50:47 eirikn Exp $
  */
 
 /*
@@ -81,6 +81,7 @@ extern db_expr_t db_tab_stop_width;
 
 struct vm_map;
 
+int		db_more(int *nl);
 void		db_check_interrupt (void);
 void		db_clear_watchpoints (void);
 db_addr_t	db_disasm (db_addr_t loc, boolean_t altfmt, db_regs_t *regs);
