@@ -37,17 +37,15 @@
  *
  * $Id: vinumutil.c,v 1.14 1999/12/30 07:04:02 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumutil.c,v 1.15 2000/02/29 06:16:44 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.4 2005/01/24 17:57:36 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vinumutil.c,v 1.5 2005/01/25 23:09:42 joerg Exp $
  */
 
 /* This file contains utility routines used both in kernel and user context */
 
 #include <dev/raid/vinum/vinumhdr.h>
 #include <dev/raid/vinum/statetexts.h>
-#ifndef _KERNEL
 #include <stdio.h>
 extern jmp_buf command_fail;				    /* return on a failed command */
-#endif
 
 static char numeric_state[32];				    /* temporary buffer for ASCII conversions */
 #define STATECOUNT(x) (sizeof (x##statetext) / sizeof (char *))
@@ -224,21 +222,11 @@ sizespec(char *spec)
 		return size * sign * 1024 * 1024 * 1024;
 	    }
 	}
-#ifdef _KERNEL
-	throw_rude_remark(EINVAL, "Invalid length specification: %s", spec);
-#else
 	fprintf(stderr, "Invalid length specification: %s", spec);
 	longjmp(command_fail, -1);
-#endif
     }
-#ifdef _KERNEL
-    throw_rude_remark(EINVAL, "Missing length specification");
-#else
     fprintf(stderr, "Missing length specification");
     longjmp(command_fail, -1);
-#endif
-    /* NOTREACHED */
-    return -1;
 }
 
 /*

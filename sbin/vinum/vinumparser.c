@@ -35,7 +35,7 @@
  *
  * $Id: vinumparser.c,v 1.21 2000/12/20 03:44:13 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinumparser.c,v 1.20.2.5 2001/05/28 05:56:27 grog Exp $
- * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.5 2005/01/24 17:57:36 dillon Exp $
+ * $DragonFly: src/sbin/vinum/vinumparser.c,v 1.6 2005/01/25 23:09:42 joerg Exp $
  */
 
 /*
@@ -60,27 +60,10 @@
 
 #include <sys/param.h>
 #include <dev/raid/vinum/vinumkw.h>
-#ifdef _KERNEL
-#include <sys/systm.h>
-#include <sys/conf.h>
-#include <machine/setjmp.h>
-/* All this mess for a single struct definition */
-#include <sys/uio.h>
-#include <sys/proc.h>
-#include <sys/namei.h>
-#include <sys/disklabel.h>
-#include <sys/mount.h>
-
-#include "vinumvar.h"
-#include "vinumio.h"
-#include "vinumext.h"
-#define iswhite(c) ((c == ' ') || (c == '\t'))		    /* check for white space */
-#else /* userland */
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #define iswhite isspace					    /* use the ctype macro */
-#endif
 
 /* enum keyword is defined in vinumvar.h */
 
@@ -119,13 +102,11 @@ struct _keywords keywords[] =
     keypair(prefer),
     keypair(rename),
     keypair(detached),
-#ifndef _KERNEL						    /* for vinum(8) only */
 #ifdef VINUMDEBUG
     keypair(debug),
 #endif
     keypair(stripe),
     keypair(mirror),
-#endif
     keypair(attach),
     keypair(detach),
     keypair(printconfig),
@@ -167,7 +148,6 @@ struct _keywords keywords[] =
 };
 struct keywordset keyword_set = KEYWORDSET(keywords);
 
-#ifndef _KERNEL
 struct _keywords flag_keywords[] =
 {flagkeypair(f),
     flagkeypair(d),
@@ -177,8 +157,6 @@ struct _keywords flag_keywords[] =
     flagkeypair(w)
 };
 struct keywordset flag_set = KEYWORDSET(flag_keywords);
-
-#endif
 
 /*
  * Take a blank separated list of tokens and turn it into a list of
