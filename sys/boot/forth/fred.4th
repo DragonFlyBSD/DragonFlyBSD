@@ -24,7 +24,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/Attic/fred.4th,v 1.5 2004/01/20 16:29:27 eirikn Exp $
+\ $DragonFly: src/sys/boot/forth/Attic/fred.4th,v 1.6 2004/01/22 12:04:58 eirikn Exp $
 
 marker task-beastie.4th
 
@@ -72,7 +72,7 @@ variable rebootkey
 at-xy ."         `--{__________) [0m" 1+
 ;
 
-: boring-beastie ( x y -- )
+: boring-fred ( x y -- )
 	2dup at-xy ." " 1+
 	2dup at-xy ." " 1+
 	2dup at-xy ." ,--,           |           ,--," 1+
@@ -98,11 +98,11 @@ at-xy ."         `--{__________) [0m" 1+
 	s" loader_color" getenv
 	dup -1 = if
 		drop
-		boring-beastie
+		boring-fred
 		exit
 	then
 	s" YES" compare-insensitive 0<> if
-		boring-beastie
+		boring-fred
 		exit
 	then
 	technicolor-beastie
