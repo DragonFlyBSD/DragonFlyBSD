@@ -1,0 +1,119 @@
+.\" Copyright (c) 2005 The DragonFly Project.  All rights reserved.
+.\"
+.\" This code is derived from software contributed to The DragonFly Project
+.\" by Sarunas Vancevicius and Maxime Labelle. 
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\" 3. Neither the name of The DragonFly Project nor the names of its
+.\"    contributors may be used to endorse or promote products derived
+.\"    from this software without specific, prior written permission.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+.\" ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+.\" LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+.\" FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE
+.\" COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+.\" INCIDENTAL, SPECIAL, EXEMPLARY OR CONSEQUENTIAL DAMAGES (INCLUDING,
+.\" BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+.\" AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+.\" OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/usr.sbin/battd/Attic/battd.1,v 1.1 2005/02/01 17:16:36 liamfoy Exp $
+ 
+.Dd January 1, 2005
+.Dt BATTD 1
+.Os
+.Sh NAME
+.Nm battd
+.Nd Battery status monitoring daemon 
+.Sh SYNOPSIS
+.Nm
+.Op Fl dEhT
+.Op Fl p Ar percentage
+.Op Fl t Ar minutes
+.Op Fl s Ar status
+.Op Fl f Ar device
+.Op Fl c Ar seconds
+.Sh DESCRIPTION
+The
+.Nm
+daemon monitors the status of the battery or batteries present in the system.
+The daemon will alert all users on the system
+and may execute a supplied command once a particular criteria has  been
+met.   The  criterias  are  based on the percentage remaining, the time
+remaining and the status of the battery.
+.Pp
+The options are as follows:
+.Bl -tag -width indent
+.It Fl c Ar seconds
+Interval in seconds for checking the battery status, default is
+.Ar 30 .
+.It Fl d
+Start
+.Nm
+in debug mode.
+.It Fl e Ar command
+Execute
+.Ar command
+once condition has been met.
+.It Fl E
+Do not continue executing after a condition has been met.
+.It Fl f Ar device
+Specifies a different device path to be used in place of the default
+.It Fl h 
+Print
+.Nm 
+usage.
+.It Fl p Ar percent
+Alert the user when the remaining battery life has reached approximately
+.Ar percent .
+.It Fl s Ar status
+Alert the user when the remaining battery status has reached High, Low or
+.It Fl t Ar minutes
+Alert the user when the remaining battery time has reached approximately
+.Ar minutes.
+.It Fl T
+Use as default along with percentage default alert. This will alert you once
+the system has roughly 10 minutes remaining.
+.El
+.Pp
+By default,
+.Nm
+will alert users once the battery or batteries have roughly 10% of power remaining.
+.Sh EXAMPLES
+.Bl -tag -width indent
+.It Li "battd -p 50 -s low"
+Alert users when the battery percentage has reached 50% and once again when the status
+reaches low.
+.It Li "battd -t 15"
+Alert users when the battery has 15 minutes worth of power remaining.
+.It Li "battd -p 30 -e program -c 10"
+Alert users when the battery percentage has reached 50% and execute the command 'program'.
+Increase the interval between checking the battery to 10 seconds.
+.El
+.Sh SEE ALSO
+.Xr apm 8 ,
+.Xr apmd 8 ,
+.Xr syslogd 8
+.Sh HISTORY
+The
+.Nm
+command first appeared in DragonFly.
+.Sh AUTHORS
+.An Liam J. Foy Aq liamfoy@dragonflybsd.org
+.Pp
+Man page contributions by:
+.An Maxime Labelle Aq mlabelle@vt220.com
+.An Sarunas Vancevicius Aq svan@redbrick.dcu.ie
