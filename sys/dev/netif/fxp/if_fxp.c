@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.21 2005/02/12 04:15:52 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.22 2005/02/12 04:18:05 joerg Exp $
  */
 
 /*
@@ -672,6 +672,7 @@ fxp_attach(device_t dev)
 	 * TX descriptors.
 	 */
 	ifq_set_maxlen(&ifp->if_snd, FXP_NTXCB - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	splx(s);
 	return (0);
