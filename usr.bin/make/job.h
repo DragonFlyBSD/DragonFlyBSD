@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.10 2004/11/24 07:24:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.11 2004/11/30 17:39:41 joerg Exp $
  */
 
 /*-
@@ -57,8 +57,8 @@
  * before coming out to see if a child has finished. SEL_SEC is the number of
  * seconds and SEL_USEC is the number of micro-seconds
  */
-#define	SEL_SEC		0
-#define	SEL_USEC	100000
+#define	SEL_SEC		2
+#define	SEL_USEC	0
 #endif /* !USE_KQUEUE */
 
 

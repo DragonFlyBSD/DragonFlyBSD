@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.14 2004/11/24 07:20:50 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.15 2004/11/30 17:39:41 joerg Exp $
  */
 
 /* arch.c */
@@ -60,7 +60,7 @@ void Cond_End(void);
 
 /* for.c */
 int For_Eval(char *);
-void For_Run (void);
+void For_Run(int);
 
 /* main.c */
 void Main_ParseArgLine(char *);
@@ -87,7 +87,7 @@ void Parse_AddIncludeDir(char *);
 void Parse_File(char *, FILE *);
 void Parse_Init(void);
 void Parse_End(void);
-void Parse_FromString(char *);
+void Parse_FromString(char *, int);
 Lst Parse_MainName(void);
 
 /* str.c */
