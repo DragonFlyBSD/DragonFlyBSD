@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.42 2004/07/12 19:04:27 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.43 2004/07/12 20:49:49 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -114,6 +114,10 @@ Daily DragonFly events and news are reported at the
 <TR><TD>Pieter from Holland</TD>
 <TD>REL image</TD>
 <TD><A HREF="http://15pc221.sshunet.nl/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+
+<TR><TD>RPI.edu (NY, USA)</TD>
+<TD>REL image</TD>
+<TD><A HREF="http://www.acm.cs.rpi.edu/~tbw/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>Dragonflybsd.org (California, USA)</TD>
 <TD>REL image</TD>
