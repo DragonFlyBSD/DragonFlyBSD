@@ -1,5 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/goals/Attic/threads.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
 
 $TITLE(DragonFly - VFS/filesystem Device Operations)
 <CENTER>The Light Weight Kernel Threading Model</CENTER>
@@ -17,14 +18,14 @@ between cpus.
     (1) Each cpu in the system has its own self-contained LWKT scheduler.
     Threads are locked to their cpus by design and can only be moved to other
     cpus under certain special circumstances.  Any LWKT scheduling operation 
-    on a particular cpu is executed only on that cpu and not executed on other
-    cpus.  This means that the core LWKT scheduler can schedule, deschedule, 
-    and switch between threads within its domain without any locking 
-    whatsoever.  No MP lock, no nothing.
+    on a particular cpu is only directly executed on that cpu.
+    This means that the core LWKT scheduler can schedule, deschedule, 
+    and switch between threads within a cpu's domain without any locking 
+    whatsoever.  No MP lock, nothing except a simple critical section.
     <P>
     (2) A Thread will never be moved to another cpu while it is running, and
     a thread will never be preemptive switched to a non-interrupt thread.  If
-    an interrupt thread preempts the current thread then the moment the 
+    an interrupt thread preempts the current thread, then the moment the 
     interrupt thread completes or blocks the preempted thread will resume 
     regardless of its scheduling state.  For example, a thread might get 
     preempted after calling lwkt_deschedule_self() but before it actually
@@ -51,7 +52,7 @@ between cpus.
     does not switch threads under these circumstances.
 </UL>
 <P>
-In addition to these key features the LWKT model allows for both FAST
+In addition to these key features, the LWKT model allows for both FAST
 interrupt preemption *AND* threaded interrupt preemption.  FAST interrupts
 may preempt the current thread when it is not in a critical section.
 Threaded interrupts may also preempt the current thread.  The LWKT system
@@ -66,14 +67,14 @@ to operate across all cpus.
 The LWKT model implements a token passing primitive rather then a mutex
 primitive.  Tokens are owned by cpus rather then by threads, and a change
 of ownership is protected by a critical section (another cpu has to IPI message
-you to pull your token away from ou).  A token can be made to act almost like
-a mutex by releasing it to NOCPU but generally speaking a token is either
+you to pull your token away from you).  A token can be made to act almost like
+a mutex by releasing it to NOCPU, but generally speaking a token is either
 passively released (left owned by the current cpu), or actively handed off to
 another cpu.  The release mechanism used depends on the circumstances.  A
 token that is ping-ponging (typical in a pipe) is best served by an active
 hand off, for example.  The primary advantage of the token over the mutex
 is that it costs almost nothing to acquire a token that your cpu already owns,
-and costs even *LESS* to release a token because you in-effect do not actually
+and costs even *LESS* to release a token because you effectively do not actually
 have to release it.  The biggest disadvantage is that acquiring a token owned
 by another CPU requires a synchronous IPI message.  This disadvantage can
 be partially compensated for by having the release go to NOCPU (then the token

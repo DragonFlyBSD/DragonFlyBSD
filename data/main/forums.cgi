@@ -1,12 +1,13 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
 
 $TITLE(DragonFly - Forums)
 <P>
 The DragonFly project has several forums for discussions.  These forums
 may be accessed through newsgroups or mailing lists.  Posts to newsgroups
 will be forwarded to the appropriate mailing list and vise versa.
-When testing newsgroup access be aware that posts may be delayed up to
+When testing newsgroup access, be aware that posts may be delayed up to
 5 minutes.  Please use the 'test' newsgroup for any test postings / 
 experimentation.
 <P>

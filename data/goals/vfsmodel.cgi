@@ -1,5 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/goals/Attic/vfsmodel.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
 
 $TITLE(DragonFly - VFS/filesystem Device Operations)
 <CENTER>The New VFS Model</CENTER>
@@ -12,7 +13,7 @@ messaging API.  Second, the current VFS API has one of the single most
 complex interfaces in the system... VOP_LOOKUP and friends which resolve
 file paths.  Fixing VFS involves two major pieces of work. 
 <P>
-First the VOP_LOOKUP interface and VFS cache will be completely redone.  All
+First, the VOP_LOOKUP interface and VFS cache will be completely redone.  All
 file paths will be loaded in an unresolved state into the VFS cache by the
 kernel before *ANY* VFS operation is initiated.  The kernel will basically
 recurse down the VFS cache and when it hits a leaf it will start creating new
@@ -20,15 +21,15 @@ entries to represent the unresolved path elements.  The tail of the snake
 will then be handed to VFS_LOOKUP() for resolution.  VFS_LOOKUP() will be 
 able to return a new VFS pointer if further resolution is required (for
 example, it hits a mount point.  The kernel will no longer pass random
-user-supplied strings (and certainly not using user address space!) to the
+user supplied strings (and certainly not using user address space!) to the
 VFS subsystem.
 <P>
 Second, the VOP interface in general will be converted to a messaging
 interface.  All direct userspace addresses will be resolved into VM object
 ranges by the kernel.  The VOP interface will *NOT* handle direct userspace
-addrseses any more.  As a messaging interface VOPs can still operate 
-synchronously and initially that is what we will do.  But the intention is
-to thread most of the VOP interface (i.e. replace the massive-reentrancy 
+addresses any more.  As a messaging interface VOPs can still operate 
+synchronously, and initially that is what we will do.  But the intention is
+to thread most of the VOP interface (i.e. replace the massive reentrancy 
 model with a serialized threaded messaging model).   For a high performance
 filesystem running multiple threads (one per cpu) we can theoretically
 achieve the same level of performance that a massively reentrant model can 

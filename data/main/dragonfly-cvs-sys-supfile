@@ -1,5 +1,7 @@
 # DRAGONFLY-CVS-SUPFILE
 #
+# $DragonFly: site/data/main/Attic/dragonfly-cvs-sys-supfile,v 1.2 2003/08/11 02:24:49 dillon Exp $
+#
 # This file will by default maintain a copy of the DragonFly BSD CVS tree
 # in /home/dcvs.
 #

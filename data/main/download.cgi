@@ -1,5 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -18,7 +19,7 @@ If you want just the cvs sys hierarchy you can use this supfile:
 <P>
 It is recommended that you run cvsup from once a day to once a week to keep
 the cvs tree up to date.  Please do not run cvsup on an automatic basis more
-then once a day.  Once downloaded you can check out the sourcebase using cvs.
+then once a day.  Once downloaded, you can check out the sourcebase using cvs.
 If you are already using /usr/src to hold FreeBSD sources you should check
 the sourcebase out into a different directory.  Once you have done the
 initial checkout you can update the source tree using 'cvs update' from

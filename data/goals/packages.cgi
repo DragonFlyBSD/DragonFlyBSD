@@ -1,10 +1,11 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/goals/Attic/packages.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
 
 $TITLE(DragonFly - Packaging up the UserLand)
 <CENTER>Dealing with Package Installation</CENTER>
 <P>
-Applications are such a godaweful mess these days that it is hard to come
+Applications are such a godawful mess these days that it is hard to come
 up with a packaging and installation system that can achieve seemless
 installation and flawless operation.  I have come to the conclusion that
 the crux of the problem is that even seemingly minor updates to third
@@ -17,7 +18,7 @@ third party library being upgraded.
 <P>
 We need to have the luxury and ability to upgrade only the particular
 package we want without blowing up applications that depend on said package.
-This isn't to say that it is desireable.  Instead we say that it is 
+This isn't to say that it is desirable.  Instead we say that it is 
 necessary because it allows us to do piecemeal upgrades (as well as
 piecemeal updates to the packaging system's database itself)
 without having to worry about blowing up other things in the process.
@@ -26,9 +27,9 @@ periods of a few days to a few months where a few packages might not be,
 and certain very large packages could wind up depending on an old version
 of some library for a very long time.  We need to be able to support that.
 We also need to be able to support versioned support/configuration directories
-that might be hardwired by a port.  Whenever such conflicts occur the
+that might be hardwired by a port.  Whenever such conflicts occur, the
 packaging system needs to version the supporting directories as well. 
-So if two incompatible versions of package X both need /usr/local/etc/X
+If two incompatible versions of package X both need /usr/local/etc/X
 we would wind up with /usr/local/etc/X:VERSION1 and /usr/local/etc/X:VERSION2.
 <P>
 I believe it is possible to accomplish this goal by explicitly versioning
@@ -38,8 +39,8 @@ directories like /usr/lib, /usr/local/lib, even /usr/local/etc, and
 basically makes only the particular version of the particular libraries
 and/or files the package needs visible to it, and everything else would
 be invisible.  By enforcing visibility you would know very quickly if you
-mis-specified your package dependancies because your package would not
-be able to find libraries or supporting files that exist but that
+specified your package dependancies incorrectly because your package would not
+be able to find libraries or supporting files that exist, but that
 you did not realize it needed.
 For example, if the package says a program depends on version 1.5 of the
 ncurses library, then version 1.5 is all that would be visible to the program

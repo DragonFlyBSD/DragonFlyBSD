@@ -1,5 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/goals/Attic/userapi.cgi,v 1.2 2003/08/11 02:24:47 dillon Exp $
 
 $TITLE(DragonFly - User API)
 <CENTER>Creating a Portable User API</CENTER>
@@ -7,7 +8,7 @@ $TITLE(DragonFly - User API)
 Most standard UNIXes employ a system call table through which many types
 of data, including raw structures, are passed back and forth.   The biggest
 obstacle to the ability for user programs to interoperate with kernels
-which are older or newer then themselves is the fact that these raw structures
+which are older or newer than themselves is the fact that these raw structures
 often change.  The worst offenders are things like network interfaces, route
 table ioctls, ipfw, and raw process structures for ps, vmstat, etc.  But even
 non-descript system calls like stat() and readdir() have issues.  In more
@@ -17,8 +18,9 @@ It is a goal of this project to (1) make all actual system calls message-based,
 (2) pass structural information through capability and element lists
 instead of as raw structures, and (3) implement a generic 'middle layer'
 that looks kinda like an emulation layer, managed by the kernel but loaded
-into userspace, which implements all standard system call APIs and converts
-them to the appropriate message(s).  So, for example, linux emulation would
+into userspace.  This layer layer implements all standard system call APIs
+and converts them into the appropriate message(s).
+For example, linux emulation would
 operate in (kernel-protected) userland rather then in kernelland.  FreeBSD
 emulation would work the same way.  In fact, even 'native' programs will
 run through an emulation layer in order to see the system call we all know
@@ -62,7 +64,7 @@ read(int fd, void *buf, size_t nbytes)
 <P>
 And there you have it.  The only 'real' system calls DragonFly would implement
 would be message-passing primitives for sending, receiving, and waiting.
-Everything else would go through the emulation layer.  Of course, on the
+Everything else would go through the emulation layer.  Of course on the
 kernel side the message command will wind up hitting a dispatch table almost
 as big as the one we have in 4.x.  But as more and more subsystems become
 message-based the syscall messages become more integrated with those subsystems

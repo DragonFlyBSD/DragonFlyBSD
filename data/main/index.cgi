@@ -1,5 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
+# $DragonFly: site/data/main/Attic/index.cgi,v 1.2 2003/08/11 02:24:49 dillon Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -9,7 +10,7 @@ DragonFly is an operating system and environment designed to be the logical
 continuation of the FreeBSD-4.x OS series.  These operating systems belong
 in the same class as Linux in that they are based on UNIX ideals and APIs.
 DragonFly is a fork in the path, so to speak, giving the BSD base an opportunity
-to grow in entirely new direction from the one taken in the FreeBSD-5 series.
+to grow in an entirely new direction from the one taken in the FreeBSD-5 series.
 <P>
 It is our belief that the correct choice of features and algorithms can
 yield the potential for excellent scaleability,
@@ -20,7 +21,7 @@ but wide-ranging set of goals will lay the groundwork for future growth.
 The existing BSD cores, including FreeBSD-5, are still primarily based on
 models which could at best be called 'strained' as they are applied to modern
 systems.  The true innovation has given way to basically just laying on hacks
-to add features such as encrypted disks and security layering that in a
+to add features, such as encrypted disks and security layering that in a
 better environment could be developed at far less cost and with far greater
 flexibility.
 <P>
@@ -38,5 +39,5 @@ the way, but it is possible to do better.
 <P>
 DragonFly is going to be a multi-year project at the very least.  Achieving
 our goal set will require a great deal of groundwork just to reposition
-existing mechainisms to fit the new models.  The Goals link will take you
+existing mechanisms to fit the new models.  The Goals link will take you
 to a more detailed description of what we hope to accomplish.

@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
-# $DragonFly: site/data/status/Attic/index.cgi,v 1.2 2003/08/11 01:31:17 dillon Exp $
 #
+# $DragonFly: site/data/status/Attic/index.cgi,v 1.3 2003/08/11 02:24:52 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 <P><B>Caching</B> - not started
@@ -12,7 +12,7 @@ $TITLE(DragonFly - Big-Picture Status)
 <BR><B>Packages</B> - not started
 <P>
 This section lists project (self) assignments and sub-projects that we have
-brainstormed about that developers could dig their teeth in.  Related 
+brainstormed about that developers could dig their teeth in to.  Related 
 discussions will be in the kernel list and submissions should be posted to
 the submit list.
 <UL>
