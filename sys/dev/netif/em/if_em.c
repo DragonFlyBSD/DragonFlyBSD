@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
 /*$FreeBSD: src/sys/dev/em/if_em.c,v 1.2.2.15 2003/06/09 22:10:15 pdeuskar Exp $*/
-/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.23 2004/12/24 01:27:08 dillon Exp $*/
+/*$DragonFly: src/sys/dev/netif/em/if_em.c,v 1.24 2004/12/24 02:19:45 dillon Exp $*/
 
 #include "if_em.h"
 
@@ -903,7 +903,6 @@ em_poll(struct ifnet *ifp, enum poll_cmd cmd, int count)
 static void
 em_intr(void *arg)
 {
-	uint32_t loop_cnt = EM_MAX_INTR;
 	uint32_t reg_icr;
 	struct ifnet *ifp;
 	struct adapter *adapter = arg;
