@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.19 2004/06/02 19:30:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.20 2004/06/23 06:52:26 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -746,7 +746,7 @@ ad_service(struct ad_softc *adp, int change)
 	      device[ATA_DEV(device)].driver))->outstanding > 0) {
 	    ATA_OUTB(adp->device->channel->r_io, ATA_DRIVE, ATA_D_IBM | device);
 	    adp = adp->device->channel->device[ATA_DEV(device)].driver;
-	    DELAY(1);
+	    DELAY(10);
 	}
     }
     adp->device->channel->status =
