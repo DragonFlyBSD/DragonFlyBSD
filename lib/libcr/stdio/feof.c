@@ -35,10 +35,11 @@
  *
  * @(#)feof.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/feof.c,v 1.6 1999/08/28 00:00:57 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/feof.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/feof.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
+#include "libc_private.h"
 
 /*
  * A subroutine version of the macro feof.
@@ -46,8 +47,7 @@
 #undef feof
 
 int
-feof(fp)
-	FILE *fp;
+feof(FILE *fp)
 {
-	return (__sfeof(fp));
+	return(__sfeof(fp));
 }

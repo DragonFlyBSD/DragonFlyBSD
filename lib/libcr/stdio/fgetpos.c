@@ -35,20 +35,18 @@
  *
  * @(#)fgetpos.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fgetpos.c,v 1.8 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fgetpos.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fgetpos.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 #include "libc_private.h"
 
 int
-fgetpos(fp, pos)
-	FILE *fp;
-	fpos_t *pos;
+fgetpos(FILE *fp, fpos_t *pos)
 {
 	int retval;
 	FLOCKFILE(fp);
-	retval = (*pos = ftello(fp)) == (fpos_t)-1;
+	retval = (*pos = ftello(fp)) == (fpos_t)-1 ? -1 : 0;
 	FUNLOCKFILE(fp);
 	return(retval);
 }

@@ -34,15 +34,14 @@
  * SUCH DAMAGE.
  *
  * @(#)setbuf.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/stdio/Attic/setbuf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 #include "local.h"
 
 void
-setbuf(fp, buf)
-	FILE *fp;
-	char *buf;
+setbuf(FILE *fp, char *buf)
 {
 	(void) setvbuf(fp, buf, buf ? _IOFBF : _IONBF, BUFSIZ);
 }

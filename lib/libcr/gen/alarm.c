@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)alarm.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/gen/Attic/alarm.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
  */
 
 /*
@@ -44,7 +45,7 @@ alarm(secs)
 	unsigned int secs;
 {
 	struct itimerval it, oitv;
-	register struct itimerval *itp = &it;
+	struct itimerval *itp = &it;
 
 	timerclear(&itp->it_interval);
 	itp->it_value.tv_sec = secs;

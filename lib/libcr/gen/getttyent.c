@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getttyent.c,v 1.11 1999/11/04 04:16:27 ache Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getttyent.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getttyent.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)getttyent.c	8.1 (Berkeley) 6/4/93
  */
@@ -56,7 +56,7 @@ struct ttyent *
 getttynam(tty)
 	const char *tty;
 {
-	register struct ttyent *t;
+	struct ttyent *t;
 
 	if (strncmp(tty, "/dev/", 5) == 0)
 		tty += 5;
@@ -72,8 +72,8 @@ struct ttyent *
 getttyent()
 {
 	static struct ttyent tty;
-	register char *p;
-	register int c;
+	char *p;
+	int c;
 	size_t i;
 
 	if (!tf && !setttyent())
@@ -164,10 +164,10 @@ getttyent()
  */
 static char *
 skip(p)
-	register char *p;
+	char *p;
 {
-	register char *t;
-	register int c, q;
+	char *t;
+	int c, q;
 
 	for (q = 0, t = p; (c = *p) != '\0'; p++) {
 		if (c == '"') {
@@ -198,7 +198,7 @@ skip(p)
 
 static char *
 value(p)
-	register char *p;
+	char *p;
 {
 
 	return ((p = index(p, '=')) ? ++p : NULL);
@@ -243,7 +243,7 @@ isttystat(tty, flag)
 	const char *tty;
 	int flag;
 {
-	register struct ttyent *t;
+	struct ttyent *t;
 
 	return ((t = getttynam(tty)) == NULL) ? 0 : !!(t->ty_status & flag);
 }

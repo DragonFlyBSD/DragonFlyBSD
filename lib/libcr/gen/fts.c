@@ -33,7 +33,7 @@
  * $OpenBSD: fts.c,v 1.22 1999/10/03 19:22:22 millert Exp $
  *
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/fts.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/fts.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)fts.c	8.6 (Berkeley) 8/14/94
  * $FreeBSD: src/lib/libc/gen/fts.c,v 1.14.2.4 2001/06/01 22:00:34 kris Exp $
@@ -77,12 +77,12 @@ static int	 fts_safe_changedir (FTS *, FTSENT *, int, char *);
 FTS *
 fts_open(argv, options, compar)
 	char * const *argv;
-	register int options;
+	int options;
 	int (*compar) (const FTSENT **, const FTSENT **);
 {
-	register FTS *sp;
-	register FTSENT *p, *root;
-	register int nitems;
+	FTS *sp;
+	FTSENT *p, *root;
+	int nitems;
 	FTSENT *parent, *tmp;
 	int len;
 
@@ -188,10 +188,10 @@ mem1:	free(sp);
 static void
 fts_load(sp, p)
 	FTS *sp;
-	register FTSENT *p;
+	FTSENT *p;
 {
-	register int len;
-	register char *cp;
+	int len;
+	char *cp;
 
 	/*
 	 * Load the stream structure for the next traversal.  Since we don't
@@ -215,7 +215,7 @@ int
 fts_close(sp)
 	FTS *sp;
 {
-	register FTSENT *freep, *p;
+	FTSENT *freep, *p;
 	int saved_errno;
 
 	/*
@@ -268,12 +268,12 @@ fts_close(sp)
 
 FTSENT *
 fts_read(sp)
-	register FTS *sp;
+	FTS *sp;
 {
 	struct stat sb;
-	register FTSENT *p, *tmp;
-	register int instr;
-	register char *t;
+	FTSENT *p, *tmp;
+	int instr;
+	char *t;
 	int saved_errno;
 
 	/* If finished or unrecoverable error, return NULL. */
@@ -478,10 +478,10 @@ fts_set(sp, p, instr)
 
 FTSENT *
 fts_children(sp, instr)
-	register FTS *sp;
+	FTS *sp;
 	int instr;
 {
-	register FTSENT *p;
+	FTSENT *p;
 	int fd;
 
 	if (instr != 0 && instr != FTS_NAMEONLY) {
@@ -560,12 +560,12 @@ fts_children(sp, instr)
  */
 static FTSENT *
 fts_build(sp, type)
-	register FTS *sp;
+	FTS *sp;
 	int type;
 {
-	register struct dirent *dp;
-	register FTSENT *p, *head;
-	register int nitems;
+	struct dirent *dp;
+	FTSENT *p, *head;
+	int nitems;
 	FTSENT *cur, *tail;
 	DIR *dirp;
 	void *oldaddr;
@@ -824,12 +824,12 @@ mem1:				saved_errno = errno;
 static u_short
 fts_stat(sp, p, follow)
 	FTS *sp;
-	register FTSENT *p;
+	FTSENT *p;
 	int follow;
 {
-	register FTSENT *t;
-	register dev_t dev;
-	register ino_t ino;
+	FTSENT *t;
+	dev_t dev;
+	ino_t ino;
 	struct stat *sbp, sb;
 	int saved_errno;
 
@@ -908,9 +908,9 @@ static FTSENT *
 fts_sort(sp, head, nitems)
 	FTS *sp;
 	FTSENT *head;
-	register int nitems;
+	int nitems;
 {
-	register FTSENT **ap, *p;
+	FTSENT **ap, *p;
 
 	/*
 	 * Construct an array of pointers to the structures and call qsort(3).
@@ -940,9 +940,9 @@ static FTSENT *
 fts_alloc(sp, name, namelen)
 	FTS *sp;
 	char *name;
-	register int namelen;
+	int namelen;
 {
-	register FTSENT *p;
+	FTSENT *p;
 	size_t len;
 
 	/*
@@ -977,9 +977,9 @@ fts_alloc(sp, name, namelen)
 
 static void
 fts_lfree(head)
-	register FTSENT *head;
+	FTSENT *head;
 {
-	register FTSENT *p;
+	FTSENT *p;
 
 	/* Free a linked list of structures. */
 	while ((p = head)) {

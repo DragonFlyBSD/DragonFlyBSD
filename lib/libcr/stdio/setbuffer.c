@@ -35,16 +35,13 @@
  *
  * @(#)setbuffer.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/setbuffer.c,v 1.5 1999/08/28 00:01:15 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/setbuffer.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/setbuffer.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 
 void
-setbuffer(fp, buf, size)
-	register FILE *fp;
-	char *buf;
-	int size;
+setbuffer(FILE *fp, char *buf, int size)
 {
 
 	(void)setvbuf(fp, buf, buf ? _IOFBF : _IONBF, (size_t)size);
@@ -54,8 +51,7 @@ setbuffer(fp, buf, size)
  * set line buffering
  */
 int
-setlinebuf(fp)
-	FILE *fp;
+setlinebuf(FILE *fp)
 {
 
 	return (setvbuf(fp, (char *)NULL, _IOLBF, (size_t)0));

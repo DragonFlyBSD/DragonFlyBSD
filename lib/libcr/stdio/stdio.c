@@ -35,7 +35,7 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/stdio.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/stdio.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <fcntl.h>
@@ -48,13 +48,10 @@
  * These maintain the `known seek offset' for seek optimisation.
  */
 int
-__sread(cookie, buf, n)
-	void *cookie;
-	char *buf;
-	int n;
+__sread(void *cookie, char *buf, int n)
 {
-	register FILE *fp = cookie;
-	register int ret;
+	FILE *fp = cookie;
+	int ret;
 
 	ret = _read(fp->_file, buf, (size_t)n);
 	/* if the read succeeded, update the current offset */
@@ -66,12 +63,9 @@ __sread(cookie, buf, n)
 }
 
 int
-__swrite(cookie, buf, n)
-	void *cookie;
-	char const *buf;
-	int n;
+__swrite(void *cookie, char const *buf, int n)
 {
-	register FILE *fp = cookie;
+	FILE *fp = cookie;
 
 	if (fp->_flags & __SAPP)
 		(void) lseek(fp->_file, (off_t)0, SEEK_END);
@@ -80,13 +74,10 @@ __swrite(cookie, buf, n)
 }
 
 fpos_t
-__sseek(cookie, offset, whence)
-	void *cookie;
-	fpos_t offset;
-	int whence;
+__sseek(void *cookie, fpos_t offset, int whence)
 {
-	register FILE *fp = cookie;
-	register off_t ret;
+	FILE *fp = cookie;
+	off_t ret;
 
 	ret = lseek(fp->_file, (off_t)offset, whence);
 	if (ret == -1)
@@ -99,8 +90,7 @@ __sseek(cookie, offset, whence)
 }
 
 int
-__sclose(cookie)
-	void *cookie;
+__sclose(void *cookie)
 {
 
 	return (_close(((FILE *)cookie)->_file));

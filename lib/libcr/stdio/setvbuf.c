@@ -35,7 +35,7 @@
  *
  * @(#)setvbuf.c	8.2 (Berkeley) 11/16/93
  * $FreeBSD: src/lib/libc/stdio/setvbuf.c,v 1.7 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/setvbuf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/setvbuf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -48,13 +48,9 @@
  * a buffer.
  */
 int
-setvbuf(fp, buf, mode, size)
-	register FILE *fp;
-	char *buf;
-	register int mode;
-	register size_t size;
+setvbuf(FILE *fp, char *buf, int mode, size_t size)
 {
-	register int ret, flags;
+	int ret, flags;
 	size_t iosize;
 	int ttyflag;
 

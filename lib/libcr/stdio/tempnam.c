@@ -32,7 +32,7 @@
  *
  * @(#)tempnam.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/tempnam.c,v 1.8 1999/10/24 11:57:24 ache Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/tempnam.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/tempnam.c,v 1.4 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -49,8 +49,7 @@ __warn_references(tempnam,
 extern char *_mktemp (char *);
 
 char *
-tempnam(dir, pfx)
-	const char *dir, *pfx;
+tempnam(const char *dir, const char *pfx)
 {
 	int sverrno;
 	char *f, *name;

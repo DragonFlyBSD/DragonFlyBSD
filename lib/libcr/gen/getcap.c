@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getcap.c,v 1.11.2.2 2001/01/15 06:48:09 gad Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getcap.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getcap.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)getcap.c	8.3 (Berkeley) 3/25/94
  */
@@ -112,7 +112,7 @@ cgetcap(buf, cap, type)
 	char *buf, *cap;
 	int type;
 {
-	register char *bp, *cp;
+	char *bp, *cp;
 
 	bp = buf;
 	for (;;) {
@@ -193,7 +193,7 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 	int fd, depth;
 {
 	DB *capdbp;
-	register char *r_end, *rp, **db_p;
+	char *r_end, *rp, **db_p;
 	int myfd, eof, foundit, retval, clen;
 	char *record, *cbuf;
 	int tc_not_resolved;
@@ -278,8 +278,8 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 		 */
 		{
 		char buf[BUFSIZ];
-		register char *b_end, *bp;
-		register int c;
+		char *b_end, *bp;
+		int c;
 
 		/*
 		 * Loop invariants:
@@ -391,8 +391,8 @@ getent(cap, len, db_array, fd, name, depth, nfield)
 	 * references in it ...
 	 */
 tc_exp:	{
-		register char *newicap, *s;
-		register int newilen;
+		char *newicap, *s;
+		int newilen;
 		u_int ilen;
 		int diff, iret, tclen;
 		char *icap, *scan, *tc, *tcstart, *tcend;
@@ -572,7 +572,7 @@ int
 cgetmatch(buf, name)
 	char *buf, *name;
 {
-	register char *np, *bp;
+	char *np, *bp;
 
 	/*
 	 * Start search at beginning of record.
@@ -642,7 +642,7 @@ cgetclose()
  */
 int
 cgetnext(bp, db_array)
-        register char **bp;
+        char **bp;
 	char **db_array;
 {
 	size_t len;
@@ -785,8 +785,8 @@ cgetstr(buf, cap, str)
 	char *buf, *cap;
 	char **str;
 {
-	register u_int m_room;
-	register char *bp, *mp;
+	u_int m_room;
+	char *bp, *mp;
 	int len;
 	char *mem;
 
@@ -829,7 +829,7 @@ cgetstr(buf, cap, str)
 			if (*bp == ':' || *bp == '\0')
 				break;	/* drop unfinished escape */
 			if ('0' <= *bp && *bp <= '7') {
-				register int n, i;
+				int n, i;
 
 				n = 0;
 				i = 3;	/* maximum of three octal digits */
@@ -913,8 +913,8 @@ int
 cgetustr(buf, cap, str)
 	char *buf, *cap, **str;
 {
-	register u_int m_room;
-	register char *bp, *mp;
+	u_int m_room;
+	char *bp, *mp;
 	int len;
 	char *mem;
 
@@ -983,9 +983,9 @@ cgetnum(buf, cap, num)
 	char *buf, *cap;
 	long *num;
 {
-	register long n;
-	register int base, digit;
-	register char *bp;
+	long n;
+	int base, digit;
+	char *bp;
 
 	/*
 	 * Find numeric capability cap

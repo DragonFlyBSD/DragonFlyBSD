@@ -27,37 +27,21 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/asprintf.c,v 1.6 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/asprintf.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/asprintf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 int
-#if __STDC__
 asprintf(char **str, char const *fmt, ...)
-#else
-asprintf(str, fmt, va_alist)
-	char **str;
-	const char *fmt;
-	va_dcl
-#endif
 {
 	int ret;
 	va_list ap;
 	FILE f;
 
-#if __STDC__
-	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	f._file = -1;
 	f._flags = __SWR | __SSTR | __SALC;
 	f._bf._base = f._p = (unsigned char *)malloc(128);
@@ -66,15 +50,17 @@ asprintf(str, fmt, va_alist)
 		errno = ENOMEM;
 		return (-1);
 	}
-	f._bf._size = f._w = 127;		/* Leave room for the NULL */
+	f._bf._size = f._w = 127;		/* Leave room for the NUL */
+	va_start(ap, fmt);
 	ret = vfprintf(&f, fmt, ap);
-	*f._p = '\0';
 	va_end(ap);
-	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);
-	if (f._bf._base == NULL) {
+	if (ret < 0) {
+		free(f._bf._base);
+		*str = NULL;
 		errno = ENOMEM;
-		ret = -1;
+		return (-1);
 	}
+	*f._p = '\0';
 	*str = (char *)f._bf._base;
 	return (ret);
 }

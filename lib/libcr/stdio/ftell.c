@@ -35,7 +35,7 @@
  *
  * @(#)ftell.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/lib/libc/stdio/ftell.c,v 1.11 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/ftell.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/ftell.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -48,10 +48,9 @@
  * standard ftell function.
  */
 long
-ftell(fp)
-	register FILE *fp;
+ftell(FILE *fp)
 {
-	register off_t rv;
+	off_t rv;
 	rv = ftello(fp);
 	if ((long)rv != rv) {
 		errno = EOVERFLOW;
@@ -64,10 +63,9 @@ ftell(fp)
  * ftello: return current offset.
  */
 off_t
-ftello(fp)
-	register FILE *fp;
+ftello(FILE *fp)
 {
-	register fpos_t pos;
+	fpos_t pos;
 
 	if (fp->_seek == NULL) {
 		errno = ESPIPE;			/* historic practice */

@@ -34,8 +34,8 @@
 .\" SUCH DAMAGE.
 .\"
 .\"     @(#)rand.3	8.1 (Berkeley) 6/4/93
-.\" $FreeBSD: src/lib/libc/stdlib/rand.3,v 1.4.2.5 2001/12/14 18:33:58 ru Exp $
-.\" $DragonFly: src/lib/libcr/stdlib/Attic/rand.3,v 1.2 2003/06/17 04:26:46 dillon Exp $
+.\" $FreeBSD: src/lib/libc/stdlib/rand.3,v 1.14 2003/09/08 19:57:15 ru Exp $
+.\" $DragonFly: src/lib/libcr/stdlib/Attic/rand.3,v 1.3 2004/07/05 17:31:02 eirikn Exp $
 .\"
 .Dd May 25, 1999
 .Dt RAND 3
@@ -43,6 +43,7 @@
 .Sh NAME
 .Nm rand ,
 .Nm srand ,
+.Nm sranddev ,
 .Nm rand_r
 .Nd bad random number generator
 .Sh LIBRARY
@@ -51,6 +52,8 @@
 .In stdlib.h
 .Ft void
 .Fn srand "unsigned seed"
+.Ft void
+.Fn sranddev void
 .Ft int
 .Fn rand void
 .Ft int
@@ -67,7 +70,7 @@ function computes a sequence of pseudo-random integers in the range
 of 0 to
 .Dv RAND_MAX
 (as defined by the header file
-.Aq Pa stdlib.h ) .
+.In stdlib.h ) .
 .Pp
 The
 .Fn srand
@@ -85,14 +88,24 @@ If no
 value is provided, the functions are automatically
 seeded with a value of 1.
 .Pp
+The
+.Fn sranddev
+function initializes a seed using the
+.Xr random 4
+random number device which returns good random numbers,
+suitable for cryptographic use.
+.Pp
+The
 .Fn rand_r
+function
 provides the same functionality as
 .Fn rand .
 A pointer to the context value
 .Fa ctx
 must be supplied by the caller.
 .Sh SEE ALSO
-.Xr random 3
+.Xr random 3 ,
+.Xr random 4
 .Sh STANDARDS
 The
 .Fn rand

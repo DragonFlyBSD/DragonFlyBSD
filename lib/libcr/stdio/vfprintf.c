@@ -35,7 +35,7 @@
  *
  * @(#)vfprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfprintf.c,v 1.22.2.5 2002/10/12 10:46:37 schweikh Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vfprintf.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vfprintf.c,v 1.4 2004/07/05 17:31:00 eirikn Exp $
  */
 
 /*
@@ -51,11 +51,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include "libc_private.h"
 #include "local.h"
@@ -138,8 +134,8 @@ __sbprintf(FILE *fp, const char *fmt, va_list ap)
 static char *
 __ultoa(u_long val, char *endp, int base, int octzero, char *xdigs)
 {
-	register char *cp = endp;
-	register long sval;
+	char *cp = endp;
+	long sval;
 
 	/*
 	 * Handle the three cases separately, in the hope of getting

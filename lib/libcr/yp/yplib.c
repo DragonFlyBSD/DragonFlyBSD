@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/yp/yplib.c,v 1.34.2.2 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/lib/libcr/yp/Attic/yplib.c,v 1.2 2003/06/17 04:26:47 dillon Exp $
+ * $DragonFly: src/lib/libcr/yp/Attic/yplib.c,v 1.3 2004/07/05 17:31:02 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -101,10 +101,9 @@ static char _yp_domain[MAXHOSTNAMELEN];
 int _yplib_timeout = 10;
 
 #ifdef YPMATCHCACHE
-static void ypmatch_cache_delete(ypdb, prev, cur)
-	struct dom_binding	*ypdb;
-	struct ypmatch_ent	*prev;
-	struct ypmatch_ent	*cur;
+static void
+ypmatch_cache_delete(struct dom_binding *ypdb, struct ypmatch_ent *prev,
+    struct ypmatch_ent *cur)
 {
 	if (prev == NULL)
 		ypdb->cache = cur->ypc_next;
@@ -121,8 +120,8 @@ static void ypmatch_cache_delete(ypdb, prev, cur)
 	return;
 }
 
-static void ypmatch_cache_flush(ypdb)
-	struct dom_binding	*ypdb;
+static void
+ypmatch_cache_flush(struct dom_binding *ypdb)
 {
 	struct ypmatch_ent	*n, *c = ypdb->cache;
 
@@ -135,8 +134,8 @@ static void ypmatch_cache_flush(ypdb)
 	return;
 }
 
-static void ypmatch_cache_expire(ypdb)
-	struct dom_binding	*ypdb;
+static void
+ypmatch_cache_expire(struct dom_binding *ypdb)
 {
 	struct ypmatch_ent	*c = ypdb->cache;
 	struct ypmatch_ent	*n, *p = NULL;
@@ -158,11 +157,9 @@ static void ypmatch_cache_expire(ypdb)
 	return;
 }
 
-static void ypmatch_cache_insert(ypdb, map, key, val)
-	struct dom_binding	*ypdb;
-	char			*map;
-	keydat			*key;
-	valdat			*val;
+static void
+ypmatch_cache_insert(struct dom_binding *ypdb, char *map, keydat *key,
+    valdat *val)
 {
 	struct ypmatch_ent	*new;
 
@@ -231,11 +228,9 @@ static void ypmatch_cache_insert(ypdb, map, key, val)
 	return;
 }
 
-static bool_t ypmatch_cache_lookup(ypdb, map, key, val)
-	struct dom_binding	*ypdb;
-	char			*map;
-	keydat			*key;
-	valdat			*val;
+static bool_t
+ypmatch_cache_lookup(struct dom_binding *ypdb, char *map, keydat *key,
+    valdat *val)
 {
 	struct ypmatch_ent	*c = ypdb->cache;
 
@@ -262,8 +257,7 @@ static bool_t ypmatch_cache_lookup(ypdb, map, key, val)
 #endif
 
 char *
-ypbinderr_string(incode)
-	int incode;
+ypbinderr_string(int incode)
 {
 	static char err[80];
 	switch (incode) {
@@ -281,9 +275,7 @@ ypbinderr_string(incode)
 }
 
 int
-_yp_dobind(dom, ypdb)
-	char *dom;
-	struct dom_binding **ypdb;
+_yp_dobind(char *dom, struct dom_binding **ypdb)
 {
 	static pid_t pid = -1;
 	char path[MAXPATHLEN];
@@ -555,8 +547,7 @@ gotit:
 }
 
 static void
-_yp_unbind(ypb)
-	struct dom_binding *ypb;
+_yp_unbind(struct dom_binding *ypb)
 {
 	struct sockaddr_in check;
 	int checklen = sizeof(struct sockaddr_in);
@@ -586,15 +577,13 @@ _yp_unbind(ypb)
 }
 
 int
-yp_bind(dom)
-	char *dom;
+yp_bind(char *dom)
 {
 	return (_yp_dobind(dom, NULL));
 }
 
 void
-yp_unbind(dom)
-	char *dom;
+yp_unbind(char *dom)
 {
 	struct dom_binding *ypb, *ypbp;
 
@@ -615,13 +604,8 @@ yp_unbind(dom)
 }
 
 int
-yp_match(indomain, inmap, inkey, inkeylen, outval, outvallen)
-	char *indomain;
-	char *inmap;
-	const char *inkey;
-	int inkeylen;
-	char **outval;
-	int *outvallen;
+yp_match(char *indomain, char *inmap, const char *inkey, int inkeylen,
+    char **outval, int *outvallen)
 {
 	struct dom_binding *ysd;
 	struct ypresp_val yprv;
@@ -693,8 +677,7 @@ again:
 }
 
 int
-yp_get_default_domain(domp)
-char **domp;
+yp_get_default_domain(char **domp)
 {
 	*domp = NULL;
 	if (_yp_domain[0] == '\0')
@@ -705,13 +688,8 @@ char **domp;
 }
 
 int
-yp_first(indomain, inmap, outkey, outkeylen, outval, outvallen)
-	char *indomain;
-	char *inmap;
-	char **outkey;
-	int *outkeylen;
-	char **outval;
-	int *outvallen;
+yp_first(char *indomain, char *inmap, char **outkey, int *outkeylen,
+    char **outval, int *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_nokey yprnk;
@@ -762,15 +740,8 @@ again:
 }
 
 int
-yp_next(indomain, inmap, inkey, inkeylen, outkey, outkeylen, outval, outvallen)
-	char *indomain;
-	char *inmap;
-	char *inkey;
-	int inkeylen;
-	char **outkey;
-	int *outkeylen;
-	char **outval;
-	int *outvallen;
+yp_next(char *indomain, char *inmap, char *inkey, int inkeylen,
+    char **outkey, int *outkeylen, char **outval, int *outvallen)
 {
 	struct ypresp_key_val yprkv;
 	struct ypreq_key yprk;
@@ -824,10 +795,7 @@ again:
 }
 
 int
-yp_all(indomain, inmap, incallback)
-	char *indomain;
-	char *inmap;
-	struct ypall_callback *incallback;
+yp_all(char *indomain, char *inmap, struct ypall_callback *incallback)
 {
 	struct ypreq_nokey yprnk;
 	struct dom_binding *ysd;
@@ -885,10 +853,7 @@ again:
 }
 
 int
-yp_order(indomain, inmap, outorder)
-	char *indomain;
-	char *inmap;
-	int *outorder;
+yp_order(char *indomain, char *inmap, int *outorder)
 {
  	struct dom_binding *ysd;
 	struct ypresp_order ypro;
@@ -940,10 +905,7 @@ again:
 }
 
 int
-yp_master(indomain, inmap, outname)
-	char *indomain;
-	char *inmap;
-	char **outname;
+yp_master(char *indomain, char *inmap, char **outname)
 {
 	struct dom_binding *ysd;
 	struct ypresp_master yprm;
@@ -983,10 +945,9 @@ again:
 	xdr_free(xdr_ypresp_master, (char *)&yprm);
 	return (r);
 }
+
 int
-yp_maplist(indomain, outmaplist)
-	char *indomain;
-	struct ypmaplist **outmaplist;
+yp_maplist(char *indomain, struct ypmaplist **outmaplist)
 {
 	struct dom_binding *ysd;
 	struct ypresp_maplist ypml;
@@ -1023,8 +984,7 @@ again:
 }
 
 char *
-yperr_string(incode)
-	int incode;
+yperr_string(int incode)
 {
 	static char err[80];
 
@@ -1069,8 +1029,7 @@ yperr_string(incode)
 }
 
 int
-ypprot_err(incode)
-	unsigned int incode;
+ypprot_err(unsigned int incode)
 {
 	switch (incode) {
 	case YP_TRUE:
@@ -1100,8 +1059,7 @@ ypprot_err(incode)
 }
 
 int
-_yp_check(dom)
-	char **dom;
+_yp_check(char **dom)
 {
 	char *unused;
 

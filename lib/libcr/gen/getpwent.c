@@ -32,7 +32,7 @@
  *
  * @(#)getpwent.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/lib/libc/gen/getpwent.c,v 1.53.2.2 2001/03/05 09:52:13 obrien Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/getpwent.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/getpwent.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -283,7 +283,7 @@ static int
 __hashpw(key)
 	DBT *key;
 {
-	register char *p, *t;
+	char *p, *t;
 	static u_int max;
 	static char *line;
 	DBT data;
@@ -489,7 +489,7 @@ ingr(grp, name)
 	const char *grp;
 	const char *name;
 {
-	register struct group *gr;
+	struct group *gr;
 
 	if ((gr = getgrnam(grp)) == NULL)
 		return(0);

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/vis.c,v 1.5.8.2 2001/03/05 09:44:34 obrien Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/vis.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/vis.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)vis.c	8.1 (Berkeley) 7/19/93
  */
@@ -49,9 +49,9 @@
  */
 char *
 vis(dst, c, flag, nextc)
-	register char *dst;
+	char *dst;
 	int c, nextc;
-	register int flag;
+	int flag;
 {
 	c = (unsigned char)c;
 
@@ -170,11 +170,11 @@ done:
  */
 int
 strvis(dst, src, flag)
-	register char *dst;
-	register const char *src;
+	char *dst;
+	const char *src;
 	int flag;
 {
-	register char c;
+	char c;
 	char *start;
 
 	for (start = dst; (c = *src); )
@@ -185,9 +185,9 @@ strvis(dst, src, flag)
 
 int
 strvisx(dst, src, len, flag)
-	register char *dst;
-	register const char *src;
-	register size_t len;
+	char *dst;
+	const char *src;
+	size_t len;
 	int flag;
 {
 	int c;

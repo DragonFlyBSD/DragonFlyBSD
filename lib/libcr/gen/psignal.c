@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/psignal.c,v 1.5 2000/01/27 23:06:19 jasone Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/psignal.c,v 1.2 2003/06/17 04:26:42 dillon Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/psignal.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)psignal.c	8.1 (Berkeley) 6/4/93
  */
@@ -49,7 +49,7 @@ psignal(sig, s)
 	unsigned int sig;
 	const char *s;
 {
-	register const char *c;
+	const char *c;
 
 	if (sig < NSIG)
 		c = sys_siglist[sig];

@@ -35,17 +35,13 @@
  *
  * @(#)vfscanf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/vfscanf.c,v 1.14.2.2 2002/04/17 14:58:23 ache Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/vfscanf.c,v 1.3 2004/03/13 19:46:56 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/vfscanf.c,v 1.4 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <string.h>
 
 #include "collate.h"

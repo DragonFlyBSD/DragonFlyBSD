@@ -35,7 +35,7 @@
  *
  * @(#)fgets.c	8.2 (Berkeley) 12/22/93
  * $FreeBSD: src/lib/libc/stdio/fgets.c,v 1.9 1999/08/28 00:01:00 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fgets.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fgets.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -49,14 +49,11 @@
  * Return first argument, or NULL if no characters were read.
  */
 char *
-fgets(buf, n, fp)
-	char *buf;
-	register int n;
-	register FILE *fp;
+fgets(char *buf, int n, FILE *fp)
 {
-	register size_t len;
-	register char *s;
-	register unsigned char *p, *t;
+	size_t len;
+	char *s;
+	unsigned char *p, *t;
 
 	if (n <= 0)		/* sanity check */
 		return (NULL);

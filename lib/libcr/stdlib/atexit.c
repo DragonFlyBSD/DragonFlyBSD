@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/atexit.c,v 1.3.6.1 2002/03/10 20:28:40 tegge Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/atexit.c,v 1.4 2004/03/13 19:46:56 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/atexit.c,v 1.5 2004/07/05 17:31:02 eirikn Exp $
  *
  * @(#)atexit.c	8.2 (Berkeley) 7/3/94
  */
@@ -183,5 +183,4 @@ __cxa_finalize(void *dso)
 		}
 	}
 	THREAD_UNLOCK();
-	return (0);
 }

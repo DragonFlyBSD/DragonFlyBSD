@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fopen.c,v 1.3.2.1 2001/03/05 10:53:51 obrien Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fopen.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fopen.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  *
  * @(#)fopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -48,9 +48,7 @@
 #include "local.h"
 
 FILE *
-fopen(file, mode)
-	const char *file;
-	const char *mode;
+fopen(const char *file, const char *mode)
 {
 	FILE *fp;
 	int f;

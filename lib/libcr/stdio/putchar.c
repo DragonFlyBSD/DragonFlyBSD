@@ -35,7 +35,7 @@
  *
  * @(#)putchar.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/putchar.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/putchar.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/putchar.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -47,11 +47,10 @@
  * A subroutine version of the macro putchar
  */
 int
-putchar(c)
-	int c;
+putchar(int c)
 {
 	int retval;
-	register FILE *so = stdout;
+	FILE *so = stdout;
 
 	FLOCKFILE(so);
 	retval = __sputc(c, so);

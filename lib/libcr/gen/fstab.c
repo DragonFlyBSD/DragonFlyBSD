@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/fstab.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/fstab.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)fstab.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/gen/fstab.c,v 1.8 2000/01/27 23:06:15 jasone Exp $
@@ -196,7 +196,7 @@ getfsent()
 
 struct fstab *
 getfsspec(name)
-	register const char *name;
+	const char *name;
 {
 	if (setfsent())
 		while (fstabscan())
@@ -207,7 +207,7 @@ getfsspec(name)
 
 struct fstab *
 getfsfile(name)
-	register const char *name;
+	const char *name;
 {
 	if (setfsent())
 		while (fstabscan())

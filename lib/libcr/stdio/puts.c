@@ -35,7 +35,7 @@
  *
  * @(#)puts.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/puts.c,v 1.7 1999/08/28 00:01:12 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/puts.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/puts.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -47,8 +47,7 @@
  * Write the given string to stdout, appending a newline.
  */
 int
-puts(s)
-	char const *s;
+puts(char const *s)
 {
 	int retval;
 	size_t c = strlen(s);

@@ -32,7 +32,7 @@
  *
  * @(#)syslog.c	8.5 (Berkeley) 4/29/95
  * $FreeBSD: src/lib/libc/gen/syslog.c,v 1.21.2.3 2002/11/18 11:49:55 ru Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/syslog.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/syslog.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -130,11 +130,11 @@ syslog(pri, fmt, va_alist)
 void
 vsyslog(pri, fmt, ap)
 	int pri;
-	register const char *fmt;
+	const char *fmt;
 	va_list ap;
 {
-	register int cnt;
-	register char ch, *p;
+	int cnt;
+	char ch, *p;
 	time_t now;
 	int fd, saved_errno;
 	char *stdp, tbuf[2048], fmt_cpy[1024], timbuf[26];
@@ -224,7 +224,7 @@ vsyslog(pri, fmt, ap)
 	/* Output to stderr if requested. */
 	if (LogStat & LOG_PERROR) {
 		struct iovec iov[2];
-		register struct iovec *v = iov;
+		struct iovec *v = iov;
 
 		v->iov_base = stdp;
 		v->iov_len = cnt - (stdp - tbuf);
@@ -258,7 +258,7 @@ vsyslog(pri, fmt, ap)
 	if (LogStat & LOG_CONS &&
 	    (fd = _open(_PATH_CONSOLE, O_WRONLY|O_NONBLOCK, 0)) >= 0) {
 		struct iovec iov[2];
-		register struct iovec *v = iov;
+		struct iovec *v = iov;
 
 		p = strchr(tbuf, '>') + 1;
 		v->iov_base = p;

@@ -35,7 +35,7 @@
  *
  * @(#)fwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fwrite.c,v 1.7 1999/08/28 00:01:07 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fwrite.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fwrite.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -48,10 +48,7 @@
  * Return the number of whole objects written.
  */
 size_t
-fwrite(buf, size, count, fp)
-	const void *buf;
-	size_t size, count;
-	FILE *fp;
+fwrite(const void *buf, size_t size, size_t count, FILE *fp)
 {
 	size_t n;
 	struct __suio uio;

@@ -35,7 +35,7 @@
  *
  * @(#)setmode.c	8.2 (Berkeley) 3/25/94
  * $FreeBSD: src/lib/libc/gen/setmode.c,v 1.5.2.1 2001/03/05 09:34:10 obrien Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/setmode.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/setmode.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -82,8 +82,8 @@ getmode(bbox, omode)
 	void *bbox;
 	mode_t omode;
 {
-	register BITCMD *set;
-	register mode_t clrval, newmode, value;
+	BITCMD *set;
+	mode_t clrval, newmode, value;
 
 	set = (BITCMD *)bbox;
 	newmode = omode;
@@ -149,7 +149,7 @@ common:			if (set->cmd2 & CMD2_CLR) {
 
 #define	ADDCMD(a, b, c, d)						\
 	if (set >= endset) {						\
-		register BITCMD *newset;				\
+		BITCMD *newset;				\
 		setlen += SET_LEN_INCR;					\
 		newset = realloc(saveset, sizeof(BITCMD) * setlen);	\
 		if (!saveset)						\
@@ -164,10 +164,10 @@ common:			if (set->cmd2 & CMD2_CLR) {
 
 void *
 setmode(p)
-	register char *p;
+	char *p;
 {
-	register int perm, who;
-	register char op;
+	int perm, who;
+	char op;
 	BITCMD *set, *saveset, *endset;
 	sigset_t sigset, sigoset;
 	mode_t mask;
@@ -335,8 +335,8 @@ apply:		if (!*p)
 static BITCMD *
 addcmd(set, op, who, oparg, mask)
 	BITCMD *set;
-	register int oparg, who;
-	register int op;
+	int oparg, who;
+	int op;
 	u_int mask;
 {
 	switch (op) {
@@ -382,7 +382,7 @@ addcmd(set, op, who, oparg, mask)
 #ifdef SETMODE_DEBUG
 static void
 dumpmode(set)
-	register BITCMD *set;
+	BITCMD *set;
 {
 	for (; set->cmd; ++set)
 		(void)printf("cmd: '%c' bits %04o%s%s%s%s%s%s\n",
@@ -403,10 +403,10 @@ dumpmode(set)
  */
 static void
 compress_mode(set)
-	register BITCMD *set;
+	BITCMD *set;
 {
-	register BITCMD *nset;
-	register int setbits, clrbits, Xbits, op;
+	BITCMD *nset;
+	int setbits, clrbits, Xbits, op;
 
 	for (nset = set;;) {
 		/* Copy over any 'u', 'g' and 'o' commands. */

@@ -35,16 +35,14 @@
  *
  * @(#)fputc.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fputc.c,v 1.7 1999/08/28 00:01:03 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fputc.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fputc.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
 #include "libc_private.h"
 
 int
-fputc(c, fp)
-	int c;
-	register FILE *fp;
+fputc(int c, FILE *fp)
 {
 	int retval;
 	FLOCKFILE(fp);

@@ -32,7 +32,7 @@
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/mktemp.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/mktemp.c,v 1.4 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -53,9 +53,7 @@ static const unsigned char padchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
 int
-mkstemps(path, slen)
-	char *path;
-	int slen;
+mkstemps(char *path, int slen)
 {
 	int fd;
 
@@ -63,8 +61,7 @@ mkstemps(path, slen)
 }
 
 int
-mkstemp(path)
-	char *path;
+mkstemp(char *path)
 {
 	int fd;
 
@@ -72,15 +69,13 @@ mkstemp(path)
 }
 
 char *
-mkdtemp(path)
-	char *path;
+mkdtemp(char *path)
 {
 	return (_gettemp(path, (int *)NULL, 1, 0) ? path : (char *)NULL);
 }
 
 char *
-_mktemp(path)
-	char *path;
+_mktemp(char *path)
 {
 	return (_gettemp(path, (int *)NULL, 0, 0) ? path : (char *)NULL);
 }
@@ -89,20 +84,15 @@ __warn_references(mktemp,
     "warning: mktemp() possibly used unsafely; consider using mkstemp()");
 
 char *
-mktemp(path)
-	char *path;
+mktemp(char *path)
 {
 	return (_mktemp(path));
 }
 
 static int
-_gettemp(path, doopen, domkdir, slen)
-	char *path;
-	register int *doopen;
-	int domkdir;
-	int slen;
+_gettemp(char *path, int *doopen, int domkdir, int slen)
 {
-	register char *start, *trv, *suffp;
+	char *start, *trv, *suffp;
 	char *pad;
 	struct stat sbuf;
 	int rval;

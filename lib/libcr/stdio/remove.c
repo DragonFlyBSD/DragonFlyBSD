@@ -35,7 +35,7 @@
  *
  * @(#)remove.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/remove.c,v 1.6.2.1 2000/09/20 04:43:12 jkh Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/remove.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/remove.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -44,8 +44,7 @@
 #include <stdio.h>
 
 int
-remove(file)
-	const char *file;
+remove(const char *file)
 {
 	struct stat sb;
 

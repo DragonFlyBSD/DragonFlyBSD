@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/ttyname.c,v 1.10.6.2 2002/10/15 19:46:46 fjoe Exp $
- * $DragonFly: src/lib/libcr/gen/Attic/ttyname.c,v 1.3 2003/11/12 20:21:27 eirikn Exp $
+ * $DragonFly: src/lib/libcr/gen/Attic/ttyname.c,v 1.4 2004/07/05 17:30:59 eirikn Exp $
  *
  * @(#)ttyname.c	8.2 (Berkeley) 1/27/94
  */
@@ -73,8 +73,8 @@ ttyname(int fd)
 char           *
 __ttyname_r_basic(int fd, char *buf, size_t len)
 {
-	register struct dirent *dirp;
-	register DIR   *dp;
+	struct dirent *dirp;
+	DIR   *dp;
 	struct stat     dsb;
 	struct stat     sb;
 	char           *rval;
@@ -199,8 +199,8 @@ oldttyname(fd, sb)
 	int fd;
 	struct stat *sb;
 {
-	register struct dirent *dirp;
-	register DIR *dp;
+	struct dirent *dirp;
+	DIR *dp;
 	struct stat dsb;
 
 	if ((dp = opendir(_PATH_DEV)) == NULL)

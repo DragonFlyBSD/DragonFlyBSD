@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/makebuf.c,v 1.1.1.1.14.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/makebuf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/makebuf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  *
  * @(#)makebuf.c	8.1 (Berkeley) 6/4/93
  */
@@ -54,11 +54,10 @@
  * optimisation) right after the fstat() that finds the buffer size.
  */
 void
-__smakebuf(fp)
-	register FILE *fp;
+__smakebuf(FILE *fp)
 {
-	register void *p;
-	register int flags;
+	void *p;
+	int flags;
 	size_t size;
 	int couldbetty;
 
@@ -87,10 +86,7 @@ __smakebuf(fp)
  * Internal routine to determine `proper' buffering for a file.
  */
 int
-__swhatbuf(fp, bufsize, couldbetty)
-	register FILE *fp;
-	size_t *bufsize;
-	int *couldbetty;
+__swhatbuf(FILE *fp, size_t *bufsize, int *couldbetty)
 {
 	struct stat st;
 

@@ -35,9 +35,10 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fvwrite.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fvwrite.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,22 +52,22 @@
  * to the three different kinds of output buffering is handled here.
  */
 int
-__sfvwrite(fp, uio)
-	register FILE *fp;
-	register struct __suio *uio;
+__sfvwrite(FILE *fp, struct __suio *uio)
 {
-	register size_t len;
-	register char *p;
-	register struct __siov *iov;
-	register int w, s;
+	size_t len;
+	char *p;
+	struct __siov *iov;
+	int w, s;
 	char *nl;
 	int nlknown, nldist;
 
 	if ((len = uio->uio_resid) == 0)
 		return (0);
 	/* make sure we can write */
-	if (cantwrite(fp))
+	if (cantwrite(fp)) {
+		errno = EBADF;
 		return (EOF);
+	}
 
 #define	MIN(a, b) ((a) < (b) ? (a) : (b))
 #define	COPY(n)	  (void)memcpy((void *)fp->_p, (void *)p, (size_t)(n))

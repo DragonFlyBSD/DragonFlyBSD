@@ -35,7 +35,7 @@
  *
  * @(#)fread.c	8.2 (Berkeley) 12/11/93
  * $FreeBSD: src/lib/libc/stdio/fread.c,v 1.7 1999/08/28 00:01:04 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fread.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fread.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -44,14 +44,11 @@
 #include "libc_private.h"
 
 size_t
-fread(buf, size, count, fp)
-	void *buf;
-	size_t size, count;
-	register FILE *fp;
+fread(void *buf, size_t size, size_t count, FILE *fp)
 {
-	register size_t resid;
-	register char *p;
-	register int r;
+	size_t resid;
+	char *p;
+	int r;
 	size_t total;
 
 	/*

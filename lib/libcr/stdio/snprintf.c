@@ -35,28 +35,15 @@
  *
  * @(#)snprintf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/snprintf.c,v 1.12 1999/08/28 00:01:16 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/snprintf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/snprintf.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <limits.h>
 #include <stdio.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
-#if __STDC__
 int
 snprintf(char *str, size_t n, char const *fmt, ...)
-#else
-int
-snprintf(str, n, fmt, va_alist)
-	char *str;
-	size_t n;
-	char *fmt;
-	va_dcl
-#endif
 {
 	size_t on;
 	int ret;
@@ -68,11 +55,7 @@ snprintf(str, n, fmt, va_alist)
 		n--;
 	if (n > INT_MAX)
 		n = INT_MAX;
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	f._file = -1;
 	f._flags = __SWR | __SSTR;
 	f._bf._base = f._p = (unsigned char *)str;

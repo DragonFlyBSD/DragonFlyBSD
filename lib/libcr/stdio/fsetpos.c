@@ -35,7 +35,7 @@
  *
  * @(#)fsetpos.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fsetpos.c,v 1.7 1999/08/28 00:01:05 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/fsetpos.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/fsetpos.c,v 1.3 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -45,9 +45,7 @@
  * fsetpos: like fseek.
  */
 int
-fsetpos(iop, pos)
-	FILE *iop;
-	const fpos_t *pos;
+fsetpos(FILE *iop, const fpos_t *pos)
 {
 	return (fseeko(iop, (off_t)*pos, SEEK_SET));
 }

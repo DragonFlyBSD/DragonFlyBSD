@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)times.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/gen/Attic/times.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -46,7 +47,7 @@
 
 clock_t
 times(tp)
-	register struct tms *tp;
+	struct tms *tp;
 {
 	struct rusage ru;
 	struct timeval t;

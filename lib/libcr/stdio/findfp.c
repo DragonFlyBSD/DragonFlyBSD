@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libcr/stdio/Attic/findfp.c,v 1.3 2003/11/12 20:21:28 eirikn Exp $
+ * $DragonFly: src/lib/libcr/stdio/Attic/findfp.c,v 1.4 2004/07/05 17:31:00 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -87,12 +87,12 @@ static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 #define THREAD_LOCK()	if (__isthreaded) _SPINLOCK(&thread_lock)
 #define THREAD_UNLOCK()	if (__isthreaded) _SPINUNLOCK(&thread_lock)
 
-static struct glue *
-moreglue(n)
-	register int n;
+static
+struct glue *
+moreglue(int n)
 {
-	register struct glue *g;
-	register FILE *p;
+	struct glue *g;
+	FILE *p;
 	static FILE empty;
 
 	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE));
@@ -111,11 +111,11 @@ moreglue(n)
  * Find a free FILE for fopen et al.
  */
 FILE *
-__sfp()
+__sfp(void)
 {
-	register FILE *fp;
-	register int n;
-	register struct glue *g;
+	FILE *fp;
+	int n;
+	struct glue *g;
 
 	if (!__sdidinit)
 		__sinit();
@@ -155,9 +155,9 @@ __warn_references(f_prealloc,
 	"warning: this program uses f_prealloc(), which is not recommended.");
 
 void
-f_prealloc()
+f_prealloc(void)
 {
-	register struct glue *g;
+	struct glue *g;
 	int n;
 
 	n = getdtablesize() - FOPEN_MAX + 20;		/* 20 for slop. */
@@ -175,7 +175,7 @@ f_prealloc()
  * The name `_cleanup' is, alas, fairly well known outside stdio.
  */
 void
-_cleanup()
+_cleanup(void)
 {
 	/* (void) _fwalk(fclose); */
 	(void) _fwalk(__sflush);		/* `cheating' */
@@ -185,7 +185,7 @@ _cleanup()
  * __sinit() is called whenever stdio's internal variables must be set up.
  */
 void
-__sinit()
+__sinit(void)
 {
 	/* make sure we clean up on exit */
 	__cleanup = _cleanup;		/* conservative */

@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)timezone.c	8.1 (Berkeley) 6/4/93
+ * $DragonFly: src/lib/libcr/gen/Attic/timezone.c,v 1.3 2004/07/05 17:30:59 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -57,7 +58,7 @@ timezone(zone, dst)
 	int	zone,
 		dst;
 {
-	register char	*beg,
+	char	*beg,
 			*end;
 
 	if ( (beg = getenv("TZNAME")) ) {	/* set in environment */
@@ -107,11 +108,11 @@ static struct zone {
  */
 char *
 _tztab(zone,dst)
-	register int	zone;
+	int	zone;
 	int	dst;
 {
-	register struct zone	*zp;
-	register char	sign;
+	struct zone	*zp;
+	char	sign;
 
 	for (zp = zonetab; zp->offset != -1;++zp)	/* static tables */
 		if (zp->offset == zone) {
