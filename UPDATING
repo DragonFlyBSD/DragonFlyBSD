@@ -1,4 +1,4 @@
-$DragonFly: src/UPDATING,v 1.6 2003/11/18 00:34:20 dillon Exp $
+$DragonFly: src/UPDATING,v 1.7 2004/04/22 23:24:19 dillon Exp $
 
 Updating Information for DragonFly users.
 
@@ -10,44 +10,115 @@ mailing list with the details.
 
 ------------------------------------------------------------------------------
 
-> Compiling DragonFly
+> Upgrading to DragonFly from FreeBSD
 ---------------------
 
-Compiling DragonFly requires an ISO C90 or higher compliant compiler.
-Compilers which support this are, amongst others: The GNU C Compiler, The
-Intel C++ Compiler, and The TenDRA Compiler.
+You can build the DragonFly world and DragonFly kernels on a FreeBSD-4.x or
+FreeBSD-5.x machine and then install DragonFly over FreeBSD, replacing
+FreeBSD.  Note that the DragonFly buildworld target does not try to reuse
+make depend information, it starts from scratch, so no pre-cleaning of the
+object hierarchy is necessary.
 
-You can do DragonFly buildworld/buildkernel/installworld/installkernel
-on FreeBSD-stable boxen as well as DragonFly boxen.
+	# get the CVS pository (it is placed in /home/dcvs, 500MB).
+	# Please use the -h option and a mirror site to pull the 
+	# initial repository, but feel free to use the main repository
+	# machine to pull updates.
+	cvsup /usr/share/examples/cvsup/DragonFly-supfile
+	# install the source from the CVS hierarchy (remove preexisting
+	# FreeBSD src first) (500MB)
+	cd /usr
+	rm -rf src
+	cvs -R -d /home/dcvs checkout src
+	cvs -R -d /home/dcvs checkout dfports
 
-Due to source tree reorganizations at various times header files may have
-moved or been deleted, leaving stale header files in /usr/include.  This
-can also cause 'make depend' to fail due to make depend getting confused
-about old header files.
-
-The easiest way to deal with include file messes is to reinstall /usr/include
-from scratch as follows:
-
-	rm -rf /usr/include	# safer to type this verses /usr/include/*
-	mkdir /usr/include
+	# build it (500MB used in /usr/obj)
+	#
 	cd /usr/src
-	make installincludes
-
-If your have trouble doing builds due to the make depend stage failing, the
-easiest solution is to wipe your object tree and rebuild/reinstall.
-
-	rm -rf /usr/obj		# safer to type this verses /usr/obj/*
-	mkdir /usr/obj
-	cd /usr/src
-	make buildkernel KERNCONF=<KERNELNAME>
-	make installkernel
 	make buildworld
+	make buildkernel KERNCONF=<KERNELNAME>
+
+Once you have built DragonFly you have to install it over FreeBSD.  Since
+DragonFly does not track changes made by FreeBSD to its include file 
+hierarchy and include file pollution can cause all sorts of unexpected
+compilation issues to come up, it is best to wipe your include hierarchy
+prior to installing DragonFly.  Note that you should not wipe any installed
+FreeBSD header files or binaries until after you have successfully completed
+the build steps above.
+
+	rm -rf /usr/include
+	mkdir /usr/include
+	make installkernel KERNCONF=<KERNELNAME>
 	make installworld
 
-If you are using 'config' manually, note that building kernels via the manual
-config / /usr/src/sys/compile/BLAH procedure only works reliably on an
-uptodate DragonFly box.  The official way to build kernels is via the
-'make buildkernel KERNCONf=<KERNELNAME>' target from /usr/src.
+Then you need to upgrade your /etc.  DragonFly's 'make upgrade' target 
+will unconditionally upgrade the /etc files that sysops do not usually
+mess around with, such as the files in /etc/rc.d.  If you are unsure we 
+recommend that you make a backup of your /etc before applying this step.
+Note that DragonFly's RC system is basically RCNG from FreeBSD-5, but
+there are some differences in the contents of the RC files.
+
+	make upgrade
+
+Finally we recommend that you do an 'ls -lta BLAH' for /bin, /sbin, /usr/bin,
+/usr/bin, and /usr/lib, and remove any stale files that you find.
+
+------------------------------------------------------------------------------
+
+> Upgrading DragonFly on an existing DragonFly system.
+---------------------
+
+The best way to upgrade DragonFly is to maintain a copy of the DragonFly
+CVS repository via cvsup and to checkout the source base and DragonFly
+ports via this repository.   The repository is stored in /home/dcvs by
+default and requires about 500MB of disk space.  The checked out source
+tree (/usr/src) requires about 500MB of disk space, and the build will
+eat around 500MB of space out of /usr/obj.  To maintain the build you 
+should reserve at least 2GB of disk space, and 3GB if you have the space.
+
+Note: most people run cvsup via a root cron job to keep the repository up to
+date.  Please limit such automatic updates to once a day and try to randomize
+the hour and minute in the cron job a bit to avoid pileups.
+
+	# get the CVS pository (it is placed in /home/dcvs)
+	cvsup /usr/share/examples/cvsup/DragonFly-supfile
+	# install the source from the CVS hierarchy
+	cd /usr
+	cvs -R -d /home/dcvs checkout src
+	cvs -R -d /home/dcvs checkout dfports
+
+Once you have the repository and broken out sources you can decide whether to
+update your sources from the repository automatically or manually.  Since
+you are tracking changes made to DragonFly, it is usually a good idea to
+update the sources manually:
+
+	cd /usr/src
+	cvs update
+
+To upgrade a DragonFly system from sources you run the following sequence:
+
+	cd /usr/src
+	make buildworld
+	make buildkernel KERNCONF=<KERNELNAME>
+	make installkernel KERNCONF=<KERNELNAME>
+	make installworld
+
+You will also want to run the 'upgrade' target to upgrade your /etc.  The
+upgrade target is aware of stale files created by older DragonFly 
+installations and should delete them automatically.
+
+	make upgrade
+
+If you are using 'config' manually from /usr/src/sys/i386/conf/BLAH, note 
+that the build will use the current DragonFly environment rather then
+the post-build environment from the last buildworld.   For this reason manual
+configs are discouraged.  The proper way to build a kernel is to use the
+'buildkernel' or 'quickkernel' target in /usr/src.
+
+Once you've done a full build of the world and kernel you can do incremental
+upgrades of either by using the 'quickworld' and 'quickkernel' targets
+instead of 'buildworld' and 'buildkernel'.  If you have any problems with
+the quick targets, try doing a cvsup, cvs update, and then a full buildworld
+and buildkernel as shown above, before asking for help.
 
 > Kerberos IV
 -------------
