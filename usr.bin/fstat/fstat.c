@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)fstat.c	8.3 (Berkeley) 5/2/95
  * $FreeBSD: src/usr.bin/fstat/fstat.c,v 1.21.2.7 2001/11/21 10:49:37 dwmalone Exp $
- * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.10 2005/01/31 18:05:09 dillon Exp $
+ * $DragonFly: src/usr.bin/fstat/fstat.c,v 1.11 2005/03/17 02:01:12 dillon Exp $
  */
 
 #define	_KERNEL_STRUCTURES
@@ -98,6 +98,8 @@
 #define	MMAP	-5
 
 DEVS *devs;
+
+static void make_printable(char *buf, int len);
 
 #ifdef notdef
 struct nlist nl[] = {
@@ -306,6 +308,7 @@ dofiles(struct kinfo_proc *kp)
 	Uname = user_from_uid(ep->e_ucred.cr_uid, 0);
 	Pid = p->p_pid;
 	Comm = kp->kp_thread.td_comm;
+	make_printable(Comm, strlen(Comm));
 
 	if (p->p_fd == NULL)
 		return;
@@ -665,6 +668,7 @@ getmnton(struct mount *m, struct namecache_list *ncplist, struct namecache *ncp)
 				warnx("can't read ncp %p path component at %p", ncp, ncp_copy.nc_name);
 				return (NULL);
 			}
+			make_printable(path + i, ncp_copy.nc_nlen);
 			path[--i] = '/';
 			ncp = ncp_copy.nc_parent;
 		}
@@ -907,4 +911,16 @@ usage(void)
 	(void)fprintf(stderr,
  "usage: fstat [-fmnv] [-p pid] [-u user] [-N system] [-M core] [file ...]\n");
 	exit(1);
+}
+
+static 
+void
+make_printable(char *buf, int len)
+{
+    while (len > 0) {
+	if (!isprint(*buf)) 
+		*buf = '?';
+	++buf;
+	--len;
+    }
 }
