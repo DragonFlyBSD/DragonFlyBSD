@@ -48,7 +48,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ie/if_ie.c,v 1.72.2.4 2003/03/27 21:01:49 mdodd Exp $
- * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.10 2004/04/07 05:45:28 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ie/if_ie.c,v 1.11 2004/06/01 17:30:30 joerg Exp $
  */
 
 /*
@@ -1446,9 +1446,9 @@ iestart(struct ifnet *ifp)
 		 * See if bpf is listening on this interface, let it see the
 		 * packet before we commit it to the wire.
 		 */
-		if (ie->arpcom.ac_if.if_bpf)
-			bpf_tap(&ie->arpcom.ac_if,
-				(void *)ie->xmit_cbuffs[ie->xmit_count], len);
+		BPF_TAP(&ie->arpcom.ac_if,
+		    __DEVOLATILE(u_char *, ie->xmit_cbuffs[ie->xmit_count]),
+		    len);
 
 		ie->xmit_buffs[ie->xmit_count]->ie_xmit_flags =
 		    IE_XMIT_LAST|len;
@@ -1796,7 +1796,7 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 		 * According to the packet driver, the minimum timeout
 		 * should be .369 seconds, which we round up to .37.
 		 */
-		ch = timeout(chan_attn_timeout, &timedout,
+		ch = timeout(chan_attn_timeout, __DEVOLATILE(int *, &timedout),
 			     37 * hz / 100);
 		/* ignore cast-qual */
 
@@ -1812,7 +1812,7 @@ command_and_wait(int unit, int cmd, volatile void *pcmd, int mask)
 				break;
 		}
 
-		untimeout(chan_attn_timeout, (caddr_t)&timedout, ch);
+		untimeout(chan_attn_timeout, __DEVOLATILE(int *, &timedout), ch);
 		/* ignore cast-qual */
 
 		return (timedout);
