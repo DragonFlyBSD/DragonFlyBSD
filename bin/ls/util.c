@@ -35,7 +35,7 @@
  *
  * @(#)util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/util.c,v 1.20.2.5 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/util.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ls/util.c,v 1.3 2003/12/27 17:49:38 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -152,9 +152,9 @@ usage(void)
 {
 	(void)fprintf(stderr,
 #ifdef COLORLS
-	"usage: ls [-ABCFGHLPRTWabcdfghiklnoqrstu1]"
+	"usage: ls [-ABCFGHLPRTWabcdfghiklmnoqrstuwx1]"
 #else
-	"usage: ls [-ABCFHLPRTWabcdfghiklnoqrstu1]"
+	"usage: ls [-ABCFHLPRTWabcdfghiklmnoqrstuwx1]"
 #endif
 		      " [file ...]\n");
 	exit(1);
