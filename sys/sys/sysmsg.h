@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.2 2003/08/12 02:36:15 dillon Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.3 2003/08/12 04:58:23 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -10,7 +10,10 @@
 #ifdef _KERNEL
 
 #ifndef _SYS_CALLOUT_H_
-#include <sys/callout.h>
+#include <sys/callout.h>	/* for struct callout */
+#endif
+#ifndef _SYS_TIME_H_
+#include <sys/time.h>		/* for struct timespec */
 #endif
 
 /*
