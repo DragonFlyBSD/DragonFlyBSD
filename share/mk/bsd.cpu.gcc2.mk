@@ -1,9 +1,10 @@
 # $FreeBSD: src/share/mk/bsd.cpu.mk,v 1.2.2.5 2002/07/19 08:09:32 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.3 2004/06/15 07:53:32 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.cpu.gcc2.mk,v 1.4 2004/06/20 00:43:28 joerg Exp $
 
 # Set default baseline values of CPUTYPE based on MACHINE_ARCH -- this is
 # the minimum CPU type we support for each architecture
 
+_CPUCFLAGS =
 .if ${MACHINE_ARCH} == "i386"
 CPUTYPE ?= i386
 .elif ${MACHINE_ARCH} == "alpha"
