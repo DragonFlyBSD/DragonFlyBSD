@@ -32,7 +32,7 @@
  *
  *	@(#)resourcevar.h	8.4 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/resourcevar.h,v 1.16.2.1 2000/09/07 19:13:55 truckman Exp $
- * $DragonFly: src/sys/sys/resourcevar.h,v 1.5 2003/11/05 20:24:38 dillon Exp $
+ * $DragonFly: src/sys/sys/resourcevar.h,v 1.6 2003/11/05 23:26:21 dillon Exp $
  */
 
 #ifndef	_SYS_RESOURCEVAR_H_
@@ -40,6 +40,10 @@
 
 #include <sys/resource.h>
 #include <sys/queue.h>
+
+#ifndef _SYS_VARSYM_H_
+#include <sys/varsym.h>
+#endif
 
 /*
  * Kernel per-process accounting / statistics
@@ -91,6 +95,7 @@ struct uidinfo {
 	long	ui_proccnt;		/* number of processes */
 	uid_t	ui_uid;			/* uid */
 	int	ui_ref;			/* reference count */
+	struct varsymset ui_varsymset;	/* variant symlinks */
 };
 
 #ifdef _KERNEL

@@ -1,4 +1,4 @@
- $DragonFly: src/sys/kern/syscalls.master,v 1.6 2003/10/24 14:10:46 daver Exp $
+ $DragonFly: src/sys/kern/syscalls.master,v 1.7 2003/11/05 23:26:20 dillon Exp $
 
 ; @(#)syscalls.master	8.2 (Berkeley) 1/13/94
 ; $FreeBSD: src/sys/kern/syscalls.master,v 1.72.2.10 2002/07/12 08:22:46 alfred Exp $
@@ -521,6 +521,7 @@
 			    struct kevent *eventlist, int nevents, \
 			    const struct timespec *timeout); }
 
+; 364-392 used by FreeBSD-current
 364	UNIMPL	NOHIDE	nosys
 365	UNIMPL	NOHIDE	nosys
 366	UNIMPL	NOHIDE	nosys
@@ -552,3 +553,64 @@
 392	UNIMPL	NOHIDE	nosys
 393	STD	BSD	{ int sendfile(int fd, int s, off_t offset, size_t nbytes, \
 				struct sf_hdtr *hdtr, off_t *sbytes, int flags); }
+; 394-439 used by FreeBSD-current
+394	UNIMPL	NOHIDE	nosys
+395	UNIMPL	NOHIDE	nosys
+396	UNIMPL	NOHIDE	nosys
+397	UNIMPL	NOHIDE	nosys
+398	UNIMPL	NOHIDE	nosys
+399	UNIMPL	NOHIDE	nosys
+400	UNIMPL	NOHIDE	nosys
+401	UNIMPL	NOHIDE	nosys
+402	UNIMPL	NOHIDE	nosys
+403	UNIMPL	NOHIDE	nosys
+404	UNIMPL	NOHIDE	nosys
+405	UNIMPL	NOHIDE	nosys
+406	UNIMPL	NOHIDE	nosys
+407	UNIMPL	NOHIDE	nosys
+408	UNIMPL	NOHIDE	nosys
+409	UNIMPL	NOHIDE	nosys
+410	UNIMPL	NOHIDE	nosys
+411	UNIMPL	NOHIDE	nosys
+412	UNIMPL	NOHIDE	nosys
+413	UNIMPL	NOHIDE	nosys
+414	UNIMPL	NOHIDE	nosys
+415	UNIMPL	NOHIDE	nosys
+416	UNIMPL	NOHIDE	nosys
+417	UNIMPL	NOHIDE	nosys
+418	UNIMPL	NOHIDE	nosys
+419	UNIMPL	NOHIDE	nosys
+420	UNIMPL	NOHIDE	nosys
+421	UNIMPL	NOHIDE	nosys
+422	UNIMPL	NOHIDE	nosys
+423	UNIMPL	NOHIDE	nosys
+424	UNIMPL	NOHIDE	nosys
+425	UNIMPL	NOHIDE	nosys
+426	UNIMPL	NOHIDE	nosys
+427	UNIMPL	NOHIDE	nosys
+428	UNIMPL	NOHIDE	nosys
+429	UNIMPL	NOHIDE	nosys
+430	UNIMPL	NOHIDE	nosys
+431	UNIMPL	NOHIDE	nosys
+432	UNIMPL	NOHIDE	nosys
+433	UNIMPL	NOHIDE	nosys
+434	UNIMPL	NOHIDE	nosys
+435	UNIMPL	NOHIDE	nosys
+436	UNIMPL	NOHIDE	nosys
+437	UNIMPL	NOHIDE	nosys
+438	UNIMPL	NOHIDE	nosys
+439	UNIMPL	NOHIDE	nosys
+; 440-449 reserved for FreeBSD-5.x growth
+440	UNIMPL	NOHIDE	nosys
+441	UNIMPL	NOHIDE	nosys
+442	UNIMPL	NOHIDE	nosys
+443	UNIMPL	NOHIDE	nosys
+444	UNIMPL	NOHIDE	nosys
+445	UNIMPL	NOHIDE	nosys
+446	UNIMPL	NOHIDE	nosys
+447	UNIMPL	NOHIDE	nosys
+448	UNIMPL	NOHIDE	nosys
+449	UNIMPL	NOHIDE	nosys
+; 450 DragonFly system calls
+450	STD	BSD	{ int varsym_set(int level, const char *name, const char *data); }
+451	STD	BSD	{ int varsym_get(int mask, const char *wild, char *buf, int bufsize); }

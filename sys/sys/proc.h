@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.34 2003/10/17 07:30:40 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.35 2003/11/05 23:26:21 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -54,6 +54,7 @@
 #include <sys/ucred.h>
 #include <sys/event.h>			/* For struct klist */
 #include <sys/thread.h>
+#include <sys/varsym.h>
 #ifdef _KERNEL
 #include <sys/globaldata.h>
 #endif
@@ -149,11 +150,9 @@ struct	proc {
 	struct	proc *p_pptr;	 	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
 	LIST_HEAD(, proc) p_children;	/* Pointer to list of children. */
+	struct callout_handle p_ithandle; /* for scheduling p_realtimer */
+	struct	varsymset p_varsymset;
 
-	struct callout_handle p_ithandle; /*
-					      * Callout handle for scheduling
-					      * p_realtimer.
-					      */
 /* The following fields are all zeroed upon creation in fork. */
 #define	p_startzero	p_oppid
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.42 2003/11/03 22:50:11 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/machdep.c,v 1.43 2003/11/05 23:26:18 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -1707,6 +1707,7 @@ init386(int first)
 	proc0.p_addr = (void *)thread0.td_kstack;
 	proc0.p_thread = &thread0;
 	proc0.p_flag |= P_CP_RELEASED;	/* early set.  See also init_main.c */
+	varsymset_init(&proc0.p_varsymset, NULL);
 	thread0.td_flags |= TDF_RUNNING;
 	thread0.td_proc = &proc0;
 	thread0.td_switch = cpu_heavy_switch;	/* YYY eventually LWKT */

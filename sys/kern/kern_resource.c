@@ -37,7 +37,7 @@
  *
  *	@(#)kern_resource.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_resource.c,v 1.55.2.5 2001/11/03 01:41:08 ps Exp $
- * $DragonFly: src/sys/kern/kern_resource.c,v 1.16 2003/11/05 20:24:37 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_resource.c,v 1.17 2003/11/05 23:26:20 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -558,6 +558,7 @@ uicreate(uid_t uid)
 	uip->ui_proccnt = 0;
 	uip->ui_sbsize = 0;
 	uip->ui_ref = 0;
+	varsymset_init(&uip->ui_varsymset, NULL);
 	return (uip);
 }
 
@@ -584,6 +585,7 @@ uifree(struct uidinfo *uip)
 		printf("freeing uidinfo: uid = %d, proccnt = %ld\n",
 		    uip->ui_uid, uip->ui_proccnt);
 	LIST_REMOVE(uip, ui_hash);
+	varsymset_clean(&uip->ui_varsymset);
 	FREE(uip, M_UIDINFO);
 }
 

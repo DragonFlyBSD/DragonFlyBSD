@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.13 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.15 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.16 2003/11/05 23:26:20 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -429,8 +429,7 @@ again:
 			 * Shared file descriptor table, and
 			 * different process leaders 
 			 */
-			fdtol = filedesc_to_leader_alloc(p1->p_fdtol,
-							 p2);
+			fdtol = filedesc_to_leader_alloc(p1->p_fdtol, p2);
 		}
 	}
 	p2->p_fdtol = fdtol;
@@ -474,6 +473,7 @@ again:
 	p2->p_pptr = pptr;
 	LIST_INSERT_HEAD(&pptr->p_children, p2, p_sibling);
 	LIST_INIT(&p2->p_children);
+	varsymset_init(&p2->p_varsymset, &p1->p_varsymset);
 
 #ifdef KTRACE
 	/*

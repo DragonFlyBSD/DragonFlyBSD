@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_exec.c,v 1.107.2.15 2002/07/30 15:40:46 nectar Exp $
- * $DragonFly: src/sys/kern/kern_exec.c,v 1.12 2003/09/23 05:03:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exec.c,v 1.13 2003/11/05 23:26:20 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -337,6 +337,11 @@ interpret:
 			change_euid(attr.va_uid);
 		if (attr.va_mode & VSGID)
 			p->p_ucred->cr_gid = attr.va_gid;
+
+		/*
+		 * Clear local varsym variables
+		 */
+		varsymset_clean(&p->p_varsymset);
 	} else {
 		if (p->p_ucred->cr_uid == p->p_ucred->cr_ruid &&
 		    p->p_ucred->cr_gid == p->p_ucred->cr_rgid)
