@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.16 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.17 2004/12/17 08:13:30 okumoto Exp $
  */
 
 /*-
@@ -331,7 +331,7 @@ CondDoMake(int argLen, char *arg)
     Boolean result;
 
     arg[argLen] = '\0';
-    if (Lst_Find(create, arg, CondStrMatch) == NULL) {
+    if (Lst_Find(&create, arg, CondStrMatch) == NULL) {
 	result = FALSE;
     } else {
 	result = TRUE;
@@ -361,7 +361,7 @@ CondDoExists(int argLen, char *arg)
     char    *path;
 
     arg[argLen] = '\0';
-    path = Dir_FindFile(arg, dirSearchPath);
+    path = Dir_FindFile(arg, &dirSearchPath);
     if (path != NULL) {
 	result = TRUE;
 	free(path);

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstDestroy.c,v 1.7 1999/08/28 01:03:49 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.11 2004/12/17 08:01:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstDestroy.c,v 1.12 2004/12/17 08:13:30 okumoto Exp $
  *
  * @(#)lstDestroy.c	8.1 (Berkeley) 6/6/93
  */
@@ -67,18 +67,9 @@ Lst_Destroy(Lst *list, FreeProc *freeProc)
 {
     LstNode *ln;
 
-    if (!Lst_Valid(list)) {
-	/*
-	 * Note the check to catch uninitialized static Lst's.
-	 * Gross, but useful.
-	 */
+    if (list->firstPtr == NULL)
 	return;
-    }
 
-    if (list->firstPtr == NULL) {
-	free(list);
-	return;
-    }
     if (freeProc != NOFREE) {
 	while ((ln = list->firstPtr) != NULL) {
 	    list->firstPtr = ln->nextPtr;
@@ -88,9 +79,8 @@ Lst_Destroy(Lst *list, FreeProc *freeProc)
     } else {
 	while ((ln = list->firstPtr) != NULL) {
 	    list->firstPtr = ln->nextPtr;
-	     free(ln);
+	    free(ln);
 	}
     }
-
-    free(list);
+    list->lastPtr = NULL;
 }

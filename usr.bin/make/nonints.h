@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.20 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.21 2004/12/17 08:13:30 okumoto Exp $
  */
 
 /* arch.c */
@@ -89,7 +89,7 @@ void Parse_File(char *, FILE *);
 void Parse_Init(void);
 void Parse_End(void);
 void Parse_FromString(char *, int);
-Lst *Parse_MainName(void);
+void Parse_MainName(Lst *);
 
 /* str.c */
 void str_init(void);
@@ -121,7 +121,7 @@ void Targ_Init(void);
 void Targ_End(void);
 GNode *Targ_NewGN(char *);
 GNode *Targ_FindNode(char *, int);
-Lst *Targ_FindList(Lst *, int);
+void Targ_FindList(Lst *, Lst *, int);
 Boolean Targ_Ignore(GNode *);
 Boolean Targ_Silent(GNode *);
 Boolean Targ_Precious(GNode *);

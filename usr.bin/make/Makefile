@@ -1,13 +1,13 @@
 #	@(#)Makefile	5.2 (Berkeley) 12/28/90
 # $FreeBSD: src/usr.bin/make/Makefile,v 1.13.2.1 2001/05/25 08:33:40 sobomax Exp $
-# $DragonFly: src/usr.bin/make/Makefile,v 1.14 2004/12/17 07:56:08 okumoto Exp $
+# $DragonFly: src/usr.bin/make/Makefile,v 1.15 2004/12/17 08:13:30 okumoto Exp $
 
 PROG=	make
 CFLAGS+=-I${.CURDIR}
 SRCS=	arch.c buf.c compat.c cond.c dir.c for.c hash.c job.c main.c \
 	make.c parse.c str.c suff.c targ.c util.c var.c var_modify.c
 SRCS+=	lstAppend.c lstConcat.c lstDeQueue.c lstDestroy.c \
-	lstDupl.c lstFindFrom.c lstForEachFrom.c lstInit.c lstInsert.c \
+	lstDupl.c lstFindFrom.c lstForEachFrom.c lstInsert.c \
 	lstMember.c lstRemove.c
 .PATH:	${.CURDIR}/lst.lib
 

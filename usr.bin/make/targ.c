@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.18 2004/12/17 08:09:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.19 2004/12/17 08:13:30 okumoto Exp $
  */
 
 /*-
@@ -87,7 +87,9 @@
 #include	  "hash.h"
 #include	  "dir.h"
 
-static Lst        *allTargets;	/* the list of all targets found so far */
+/* the list of all targets found so far */
+static Lst allTargets = Lst_Initializer(allTargets);
+
 static Hash_Table targets;	/* a hash table of same */
 
 #define	HTSIZE	191		/* initial size of hash table */
@@ -112,7 +114,6 @@ void
 Targ_Init(void)
 {
 
-    allTargets = Lst_Init();
     Hash_InitTable(&targets, HTSIZE);
 }
 
@@ -132,7 +133,7 @@ void
 Targ_End(void)
 {
 
-    Lst_Destroy(allTargets, NOFREE);
+    Lst_Destroy(&allTargets, NOFREE);
     Hash_DeleteTable(&targets);
 }
 
@@ -168,14 +169,14 @@ Targ_NewGN(char *name)
     gn->childMade = FALSE;
     gn->order = 0;
     gn->mtime = gn->cmtime = 0;
-    gn->iParents = Lst_Init();
-    gn->cohorts = Lst_Init();
-    gn->parents = Lst_Init();
-    gn->children = Lst_Init();
-    gn->successors = Lst_Init();
-    gn->preds = Lst_Init();
-    gn->context = Lst_Init();
-    gn->commands = Lst_Init();
+    Lst_Init(&gn->iParents);
+    Lst_Init(&gn->cohorts);
+    Lst_Init(&gn->parents);
+    Lst_Init(&gn->children);
+    Lst_Init(&gn->successors);
+    Lst_Init(&gn->preds);
+    Lst_Init(&gn->context);
+    Lst_Init(&gn->commands);
     gn->suffix = NULL;
 
     return (gn);
@@ -208,7 +209,7 @@ Targ_FindNode(char *name, int flags)
 	if (isNew) {
 	    gn = Targ_NewGN(name);
 	    Hash_SetValue (he, gn);
-	    Lst_AtEnd(allTargets, gn);
+	    Lst_AtEnd(&allTargets, gn);
 	}
     } else {
 	he = Hash_FindEntry(&targets, name);
@@ -236,15 +237,12 @@ Targ_FindNode(char *name, int flags)
  *	an error message will be printed for each name which can't be found.
  * -----------------------------------------------------------------------
  */
-Lst *
-Targ_FindList(Lst *names, int flags)
+void
+Targ_FindList(Lst *nodes, Lst *names, int flags)
 {
-    Lst            *nodes;	/* result list */
     LstNode	   *ln;		/* name list element */
     GNode	   *gn;		/* node in tLn */
     char    	   *name;
-
-    nodes = Lst_Init();
 
     for (ln = Lst_First(names); ln != NULL; ln = Lst_Succ(ln)) {
 	name = Lst_Datum(ln);
@@ -257,13 +255,12 @@ Targ_FindList(Lst *names, int flags)
 	     */
 	    Lst_AtEnd(nodes, gn);
 	    if (gn->type & OP_DOUBLEDEP) {
-		Lst_Concat(nodes, gn->cohorts, LST_CONCNEW);
+		Lst_Concat(nodes, &gn->cohorts, LST_CONCNEW);
 	    }
 	} else if (flags == TARG_NOCREATE) {
 	    Error("\"%s\" -- target unknown.", name);
 	}
     }
-    return (nodes);
 }
 
 /*-
@@ -500,15 +497,15 @@ TargPrintNode(void *gnp, void *passp)
 		    printf("# unmade\n");
 		}
 	    }
-	    if (!Lst_IsEmpty (gn->iParents)) {
+	    if (!Lst_IsEmpty(&gn->iParents)) {
 		printf("# implicit parents: ");
-		Lst_ForEach(gn->iParents, TargPrintName, (void *)NULL);
+		Lst_ForEach(&gn->iParents, TargPrintName, (void *)NULL);
 		fputc('\n', stdout);
 	    }
 	}
-	if (!Lst_IsEmpty (gn->parents)) {
+	if (!Lst_IsEmpty(&gn->parents)) {
 	    printf("# parents: ");
-	    Lst_ForEach(gn->parents, TargPrintName, (void *)NULL);
+	    Lst_ForEach(&gn->parents, TargPrintName, (void *)NULL);
 	    fputc('\n', stdout);
 	}
 
@@ -524,12 +521,12 @@ TargPrintNode(void *gnp, void *passp)
 		break;
 	}
 	Targ_PrintType(gn->type);
-	Lst_ForEach(gn->children, TargPrintName, (void *)NULL);
+	Lst_ForEach(&gn->children, TargPrintName, (void *)NULL);
 	fputc('\n', stdout);
-	Lst_ForEach(gn->commands, Targ_PrintCmd, (void *)NULL);
+	Lst_ForEach(&gn->commands, Targ_PrintCmd, (void *)NULL);
 	printf("\n\n");
 	if (gn->type & OP_DOUBLEDEP) {
-	    Lst_ForEach(gn->cohorts, TargPrintNode, &pass);
+	    Lst_ForEach(&gn->cohorts, TargPrintNode, &pass);
 	}
     }
     return (0);
@@ -576,10 +573,10 @@ Targ_PrintGraph(int pass)
 {
 
     printf("#*** Input graph:\n");
-    Lst_ForEach(allTargets, TargPrintNode, &pass);
+    Lst_ForEach(&allTargets, TargPrintNode, &pass);
     printf("\n\n");
     printf("#\n#   Files that are only sources:\n");
-    Lst_ForEach(allTargets, TargPrintOnlySrc, (void *)NULL);
+    Lst_ForEach(&allTargets, TargPrintOnlySrc, (void *)NULL);
     printf("#*** Global Variables:\n");
     Var_Dump(VAR_GLOBAL);
     printf("#*** Command-line Variables:\n");

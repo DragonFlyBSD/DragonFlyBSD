@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.15 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.16 2004/12/17 08:13:30 okumoto Exp $
  */
 
 /*-
@@ -71,7 +71,7 @@
 static int  	  forLevel = 0;  	/* Nesting level	*/
 static char	 *forVar;		/* Iteration variable	*/
 static Buffer	  forBuf;		/* Commands in loop	*/
-static Lst	  *forLst;		/* List of items	*/
+static Lst	forLst;		/* List of items	*/
 
 /*
  * State of a for loop.
@@ -79,7 +79,7 @@ static Lst	  *forLst;		/* List of items	*/
 typedef struct _For {
     Buffer	  buf;			/* Unexpanded buffer	*/
     char*	  var;			/* Index name		*/
-    Lst  	  *lst;			/* List of variables	*/
+    Lst  	  lst;			/* List of variables	*/
     int  	  lineno;		/* Line #		*/
 } For;
 
@@ -167,14 +167,14 @@ For_Eval(char *line)
 	/*
 	 * Make a list with the remaining words
 	 */
-	forLst = Lst_Init();
+	Lst_Init(&forLst);
 	buf = Buf_Init(0);
 	sub = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
 
 #define	ADDWORD() \
 	Buf_AddBytes(buf, ptr - wrd, (Byte *)wrd), \
 	Buf_AddByte(buf, (Byte)'\0'), \
-	Lst_AtFront(forLst, Buf_GetAll(buf, &varlen)), \
+	Lst_AtFront(&forLst, Buf_GetAll(buf, &varlen)), \
 	Buf_Destroy(buf, FALSE)
 
 	for (ptr = sub; *ptr && isspace((unsigned char)*ptr); ptr++)
@@ -276,19 +276,22 @@ For_Run(int lineno)
 {
     For arg;
 
-    if (forVar == NULL || forBuf == NULL || forLst == NULL)
+    if (forVar == NULL || forBuf == NULL)
 	return;
     arg.var = forVar;
     arg.buf = forBuf;
-    arg.lst = forLst;
+
+    /* move the forLst to the arg to get it free for nested for's */
+    Lst_Init(&arg.lst);
+    Lst_Concat(&arg.lst, &forLst, LST_CONCLINK);
+
     arg.lineno = lineno;
     forVar = NULL;
     forBuf = NULL;
-    forLst = NULL;
 
-    Lst_ForEach(arg.lst, ForExec, &arg);
+    Lst_ForEach(&arg.lst, ForExec, &arg);
 
     free(arg.var);
-    Lst_Destroy(arg.lst, free);
+    Lst_Destroy(&arg.lst, free);
     Buf_Destroy(arg.buf, TRUE);
 }

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/lst.lib/lstConcat.c,v 1.7 1999/08/28 01:03:47 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.9 2004/12/17 08:01:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.lib/Attic/lstConcat.c,v 1.10 2004/12/17 08:13:30 okumoto Exp $
  *
  * @(#)lstConcat.c	8.1 (Berkeley) 6/6/93
  */
@@ -94,6 +94,7 @@ Lst_Concat(Lst *list1, Lst *list2, int flags)
 	    list1->firstPtr = list2->firstPtr;
 	list1->lastPtr = list2->lastPtr;
 
+	Lst_Init(list2);
     } else {
 	/*
 	 * The loop simply goes through the entire
