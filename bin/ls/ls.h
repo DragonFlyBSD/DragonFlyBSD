@@ -36,12 +36,13 @@
  *
  *	from: @(#)ls.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ls/ls.h,v 1.11.2.4 2002/07/08 06:59:27 tjr Exp $
- * $DragonFly: src/bin/ls/ls.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ls/ls.h,v 1.3 2004/09/26 15:53:25 asmodai Exp $
  */
 
 #define NO_PRINT	1
 
 extern long blocksize;		/* block size units */
+extern int termwidth;
 
 extern int f_accesstime;	/* use time of last access */
 extern int f_flags;		/* show flags associated with a file */

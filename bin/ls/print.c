@@ -35,7 +35,7 @@
  *
  * @(#)print.c	8.4 (Berkeley) 4/17/94
  * $FreeBSD: src/bin/ls/print.c,v 1.19.2.7 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/print.c,v 1.5 2004/07/22 11:39:02 asmodai Exp $
+ * $DragonFly: src/bin/ls/print.c,v 1.6 2004/09/26 15:53:25 asmodai Exp $
  */
 
 #include <sys/param.h>
@@ -218,7 +218,6 @@ void
 printstream(DISPLAY *dp)
 {
 	FTSENT *p;
-	extern int termwidth;
 	int chcnt;
 
 	for (p = dp->list, chcnt = 0; p; p = p->fts_link) {
@@ -242,7 +241,6 @@ printstream(DISPLAY *dp)
 void
 printcol(DISPLAY *dp)
 {
-	extern int termwidth;
 	static FTSENT **array;
 	static int lastentries = -1;
 	FTSENT *p;
