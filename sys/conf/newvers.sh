@@ -33,11 +33,33 @@
 #
 #	@(#)newvers.sh	8.1 (Berkeley) 4/20/94
 # $FreeBSD: src/sys/conf/newvers.sh,v 1.44.2.30 2003/04/04 07:02:46 murray Exp $
-# $DragonFly: src/sys/conf/newvers.sh,v 1.9 2004/07/18 03:11:15 drhodus Exp $
+# $DragonFly: src/sys/conf/newvers.sh,v 1.10 2004/10/22 23:43:25 dillon Exp $
+
+tag="\$Name:  $"
+
+# Set BRANCH based on TAG, remove any DragonFly_ prefix to the tag.
+# If there is no tag set the branch name to CURRENT. 
+#
+BRANCH="`echo $tag | awk '{ print $2; }' | sed -e 's/DragonFly_//'`"
+
+# This case occurs if we have checked out without a tag (i.e. HEAD), either
+# implicitly or explicitly.
+#
+if [ "X${BRANCH}" = "X$" ]; then
+    BRANCH="CURRENT"
+fi
+if [ "X${BRANCH}" = "XHEAD" ]; then
+    BRANCH="CURRENT"
+fi
+
+# This case occurs if the $Name:  $ field has not been expanded.
+#
+if [ "X${BRANCH}" = "X" ]; then
+    BRANCH="UNKNOWN"
+fi
 
 TYPE="DragonFly"
 REVISION="1.1"
-BRANCH="CURRENT"
 RELEASE="${REVISION}-${BRANCH}"
 VERSION="${TYPE} ${RELEASE}"
 
