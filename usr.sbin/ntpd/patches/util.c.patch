@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/util.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- util.c.orig	2004-07-11 00:24:20.000000000 +0200
++++ util.c	2004-11-09 20:30:48.000000000 +0100
+@@ -18,6 +18,8 @@
+ 
+ #include <sys/time.h>
+ 
++#include <limits.h>
++
+ #include "ntpd.h"
+ 
+ double

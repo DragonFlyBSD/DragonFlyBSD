@@ -1,0 +1,13 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntp_msg.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- ntp_msg.c.orig	2004-11-09 20:42:49.000000000 +0100
++++ ntp_msg.c	2004-11-09 20:43:02.000000000 +0100
+@@ -136,7 +136,7 @@
+ 		/* XXX */
+ 	}
+ 
+-	if (sendto(fd, &buf, len, 0, sa, SA_LEN(sa)) != len) {
++	if (sendto(fd, &buf, len, 0, sa, sa->sa_len) != len) {
+ 		if (errno == ENOBUFS || errno == EHOSTUNREACH ||
+ 		    errno == ENETDOWN || errno == EHOSTDOWN) {
+ 			/* logging is futile */

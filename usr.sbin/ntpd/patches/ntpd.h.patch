@@ -1,0 +1,21 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/ntpd.h.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- ntpd.h.orig	2004-11-09 20:36:49.000000000 +0100
++++ ntpd.h	2004-11-09 20:43:28.000000000 +0100
+@@ -19,6 +19,7 @@
+ #include <sys/types.h>
+ #include <sys/uio.h>
+ #include <sys/socket.h>
++#include <sys/time.h>
+ #include <sys/queue.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+@@ -205,7 +206,7 @@
+ void	 ntp_host_dns(char *, u_int32_t);
+ 
+ /* parse.y */
+-int	 parse_config(char *, struct ntpd_conf *);
++int	 parse_config(const char *, struct ntpd_conf *);
+ int	 cmdline_symset(char *);
+ 
+ /* config.c */

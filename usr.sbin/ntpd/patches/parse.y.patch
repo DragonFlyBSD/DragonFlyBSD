@@ -1,0 +1,22 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/parse.y.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- parse.y.orig	2004-11-09 20:43:57.000000000 +0100
++++ parse.y	2004-11-09 20:44:55.000000000 +0100
+@@ -40,7 +40,7 @@
+ static int			 lineno = 1;
+ static int			 errors = 0;
+ static int			 pdebug = 1;
+-char				*infile;
++const char			*infile;
+ 
+ int	 yyerror(const char *, ...);
+ int	 yyparse(void);
+@@ -476,7 +476,7 @@
+ }
+ 
+ int
+-parse_config(char *filename, struct ntpd_conf *xconf)
++parse_config(const char *filename, struct ntpd_conf *xconf)
+ {
+ 	struct sym		*sym, *next;
+ 

@@ -1,0 +1,27 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/log.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- log.c.orig	2004-11-09 20:32:47.000000000 +0100
++++ log.c	2004-11-09 20:34:22.000000000 +0100
+@@ -39,12 +39,10 @@
+ void
+ log_init(int n_debug)
+ {
+-	extern char	*__progname;
+-
+ 	debug = n_debug;
+ 
+ 	if (!debug)
+-		openlog(__progname, LOG_PID | LOG_NDELAY, LOG_DAEMON);
++		openlog(getprogname(), LOG_PID | LOG_NDELAY, LOG_DAEMON);
+ 
+ 	tzset();
+ }
+@@ -162,7 +160,7 @@
+ {
+ 	static char	buf[NI_MAXHOST];
+ 
+-	if (getnameinfo(sa, SA_LEN(sa), buf, sizeof(buf), NULL, 0,
++	if (getnameinfo(sa, sa->sa_len, buf, sizeof(buf), NULL, 0,
+ 	    NI_NUMERICHOST))
+ 		return ("(unknown)");
+ 	else

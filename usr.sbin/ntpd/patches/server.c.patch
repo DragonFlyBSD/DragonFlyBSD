@@ -1,0 +1,22 @@
+$DragonFly: src/usr.sbin/ntpd/patches/Attic/server.c.patch,v 1.1 2004/11/09 20:05:42 joerg Exp $
+
+--- server.c.orig	2004-11-09 20:34:55.000000000 +0100
++++ server.c	2004-11-09 20:38:09.000000000 +0100
+@@ -51,7 +51,7 @@
+ 			    NULL)
+ 				fatal("setup_listeners calloc");
+ 
+-			memcpy(&la->sa, sa, SA_LEN(sa));
++			memcpy(&la->sa, sa, sa->sa_len);
+ 			TAILQ_INSERT_TAIL(&conf->listen_addrs, la, entry);
+ 		}
+ 
+@@ -83,7 +83,7 @@
+ 			fatal("socket");
+ 
+ 		if (bind(la->fd, (struct sockaddr *)&la->sa,
+-		    SA_LEN((struct sockaddr *)&la->sa)) == -1)
++		    ((struct sockaddr *)&la->sa)->sa_len) == -1)
+ 			fatal("bind");
+ 	}
+ 
