@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.19 2004/03/01 21:36:14 joerg Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.20 2004/03/01 22:23:37 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -42,6 +42,7 @@ static void buildout(const char *ptr, int len);
 static void buildflush(void);
 static const char *choppath(const char *path);
 static const char *filecomp(const char *path);
+static time_t parse_http_date(const char *header);
 
 char *Main[] = {
     "bugs.cgi",
@@ -127,7 +128,6 @@ main(int ac, char **av)
     /*
      * Output headers and HTML start.
      */
-    printf("Content-Type: text/html\r\n");
 
     if (FilePath == NULL) {
 	fprintf(stderr, "%s: no file specified\n", av[0]);
@@ -156,7 +156,6 @@ main(int ac, char **av)
     }
     if ((base = getenv("QUERY_STRING")) != NULL)
 	process_vars(base, strlen(base));
-    fflush(stdout);
 
     /*
      * Process body
@@ -166,10 +165,23 @@ main(int ac, char **av)
 	char *las;
 	char *ptr;
 	struct stat sb;
+	time_t t;
 
 	fstat(fileno(fi), &sb);
+	if ((t = parse_http_date("HTTP_IF_MODIFIED_SINCE")) != 0) {
+	    if (t >= sb.st_mtime) {
+		printf("Status: 304 Not Modified");
+		return(0);	
+	    }
+	}
+	if ((t = parse_http_date("HTTP_IF_UNMODIFIED_SINCE")) != 0) {
+	    if (t < sb.st_mtime) {
+		printf("Status: 304 Not Modified");
+		return(0);	
+	    }
+	}
 	strftime(buf,sizeof buf, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&sb.st_mtime));
-	printf("Last-Modified: %s\r\n", buf);	
+	printf("Last-Modified: %s\n", buf);	
 
 	while (fgets(buf, sizeof(buf), fi) != NULL) {
 	    if (buf[0] == '#')
@@ -203,7 +215,8 @@ main(int ac, char **av)
     /*
      * End request header first.
      */
-    printf("\r\n");
+    printf("Content-Type: text/html\n");
+    printf("\n");
     /*
      * Generate the table structure after processing the web page so
      * we can populate the tags properly.
@@ -428,4 +441,22 @@ safe_strdup(const char *ptr)
 	exit(1);
     }
     return (str);
+}
+
+static time_t
+parse_http_date(const char *header)
+{
+    char *val;
+    size_t len;
+    struct tm t;
+    if ((val = getenv(header)) == NULL)
+    	return 0;
+    len = strlen(val);
+    if (len == strptime(val, "%a, %d %b %Y %H:%M:%S GMT", &t) - val)
+    	return mktime(&t);
+    if (len == strptime(val, "%a %b %d %H:%M:%S %Y", &t) - val)
+    	return mktime(&t);
+    if (len == strptime(val, "%A %d-%b-%C %H:%M:%S GMT", &t) - val)
+    	return mktime(&t);
+    return 0;
 }
