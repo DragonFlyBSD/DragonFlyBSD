@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-disk.c,v 1.60.2.24 2003/01/30 07:19:59 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.11 2004/02/18 00:50:00 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-disk.c,v 1.12 2004/02/18 01:35:59 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -320,7 +320,7 @@ addump(dev_t dev)
     struct ad_softc *adp = dev->si_drv1;
     struct ad_request request;
     u_int count, blkno, secsize;
-    vm_offset_t addr = 0;
+    vm_paddr_t addr = 0;
     long blkcnt;
     int dumppages = MAXDUMPPGS;
     int error;
@@ -346,7 +346,7 @@ addump(dev_t dev)
 	    dumppages = count / blkcnt;
 
 	for (i = 0; i < dumppages; ++i) {
-	    vm_offset_t a = addr + (i * PAGE_SIZE);
+	    vm_paddr_t a = addr + (i * PAGE_SIZE);
 	    if (is_physical_memory(a))
 		va = pmap_kenter_temporary(trunc_page(a), i);
 	    else
@@ -671,10 +671,8 @@ ad_interrupt(struct ad_request *request)
 	(request->flags & (ADR_F_READ | ADR_F_ERROR)) == ADR_F_READ) {
 
 	/* ready to receive data? */
-	if ((adp->device->channel->status & ATA_S_READY) == 0) {
-	    ata_prtdev(adp->device, "read interrupt arrived early %08x\n",
-		(int)adp->device->channel->status);
-	}
+	if ((adp->device->channel->status & ATA_S_READY) == 0)
+	    ata_prtdev(adp->device, "read interrupt arrived early");
 
 	if (ata_wait(adp->device, (ATA_S_READY | ATA_S_DSC | ATA_S_DRQ)) != 0) {
 	    ata_prtdev(adp->device, "read error detected (too) late");
