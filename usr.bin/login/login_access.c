@@ -6,7 +6,7 @@
   *
   * Author: Wietse Venema, Eindhoven University of Technology, The Netherlands.
   *
-  * $DragonFly: src/usr.bin/login/login_access.c,v 1.2 2003/10/04 20:36:48 hmp Exp $
+  * $DragonFly: src/usr.bin/login/login_access.c,v 1.3 2004/06/19 17:28:28 cpressey Exp $
   */
 
 #ifdef LOGIN_ACCESS
@@ -134,7 +134,7 @@ static int list_match(char *list, char *item, int (*match_fn)())
 
 /* netgroup_match - match group against machine or user */
 
-static int netgroup_match(gid_t group, char *machine, char *user)
+static int netgroup_match(char *group, char *machine, char *user)
 {
 #ifdef NIS
     static char *mydomain = 0;
