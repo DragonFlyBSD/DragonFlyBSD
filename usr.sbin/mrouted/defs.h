@@ -8,7 +8,7 @@
  *
  *
  * $FreeBSD: src/usr.sbin/mrouted/defs.h,v 1.12.2.1 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.4 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/defs.h,v 1.5 2003/11/06 19:46:42 eirikn Exp $
  * defs.h,v 3.8.4.15 1998/03/01 02:51:42 fenner Exp
  */
 
@@ -57,14 +57,6 @@
 
 /*XXX*/
 typedef u_int u_int32;
-
-#ifndef __P
-#ifdef __STDC__
-#define __P(x)	x
-#else
-#define __P(x)	()
-#endif
-#endif
 
 typedef void (*cfunc_t)(void *);
 typedef void (*ihfunc_t)(int, fd_set *);

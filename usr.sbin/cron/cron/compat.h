@@ -17,17 +17,8 @@
 
 /*
  * $FreeBSD: src/usr.sbin/cron/cron/compat.h,v 1.5 1999/08/28 01:15:49 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/compat.h,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/compat.h,v 1.3 2003/11/06 19:46:42 eirikn Exp $
  */
-
-#ifndef __P
-# ifdef __STDC__
-#  define __P(x) x
-# else
-#  define __P(x) ()
-#  define const
-# endif
-#endif
 
 #if defined(UNIXPC) || defined(unixpc)
 # define UNIXPC 1

@@ -28,7 +28,7 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.3 2003/11/03 19:31:37 eirikn Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $
  */
 
 /*
@@ -58,7 +58,7 @@ static MINT *MODULUS;
 static char *fetchsecretkey( uid_t );
 static void writecache( char *, char *, des_block * );
 static int readcache( char *, char *, des_block * );
-static void extractdeskey __P (( MINT *, des_block * ));
+static void extractdeskey ( MINT *, des_block * );
 static int storesecretkey( uid_t, keybuf );
 static keystatus pk_crypt( uid_t, char *, netobj *, des_block *, int);
 static int nodefaultkeys = 0;

@@ -13,7 +13,7 @@
  *      other than his own.
  *
  * $FreeBSD: src/usr.sbin/ac/ac.c,v 1.14.2.2 2002/03/12 19:55:04 phantom Exp $
- * $DragonFly: src/usr.sbin/ac/ac.c,v 1.3 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.sbin/ac/ac.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -90,8 +90,8 @@ struct utmp_list	*log_in(struct utmp_list *, struct utmp *);
 struct utmp_list	*log_out(struct utmp_list *, struct utmp *);
 int			on_console(struct utmp_list *);
 void			show(char *, time_t);
-void			show_today __P((struct user_list *, struct utmp_list *,
-			    time_t));
+void			show_today(struct user_list *, struct utmp_list *,
+			    time_t);
 void			show_users(struct user_list *);
 struct user_list	*update_user(struct user_list *, char *, time_t);
 void			usage(void);

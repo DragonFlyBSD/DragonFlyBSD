@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -149,7 +149,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -299,14 +299,6 @@ int ip_addlen = 0;		     	/* Workaround for Option bug #2     */
  * max macro, with weird case to avoid conflicts
  */
 #define	MaX(a,b)	((a) > (b) ? (a) : (b))
-
-#ifndef __P
-#ifdef __STDC__
-#define __P(x)	x
-#else
-#define __P(x)	()
-#endif
-#endif
 
 typedef int (*callback_t)(int, u_char *, int, struct igmp *, int,
 			struct sockaddr *, int *, struct timeval *);
