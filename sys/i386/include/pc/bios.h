@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/pc/bios.h,v 1.7.2.3 2001/10/21 03:16:56 yokota Exp $
- * $DragonFly: src/sys/i386/include/pc/Attic/bios.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/pc/Attic/bios.h,v 1.3 2003/11/08 02:55:19 dillon Exp $
  */
 
 /* 
@@ -169,6 +169,22 @@ struct bios_args {
  *     i	= int (32 bits)
  *     p	= pointer (converted to seg:offset)
  *     C,D,U 	= selector (corresponding to code/data/utility segment)
+ *
+ * GetDevNodes(0x01, nodenumptr, nodebuf, control, biossel)
+ *
+ *	Required.  if *nodenumptr is 0 the system bios will return the
+ *	first node.  On return *nodenumptr will contain the next node
+ *	number or 0xFFh if no more nodes exist.
+ *
+ *	Control flag: bit 1: do not get info for how the device will be
+ *			     configured for the next boot.
+ *		      bit 0: do not get info on how the device is configured
+ *			     right now.
+ *		      bit 0 or bit 1 must be set. 0 is illegal, both are
+ *			     illegal.
+ *
+ * 	Returns %ax 0 if success, !0 if an error (bit 7 set) or warning
+ *	occured.
  */
 #define PNP_COUNT_DEVNODES	"sppD",		0x00
 #define PNP_GET_DEVNODE		"sppsD",	0x01

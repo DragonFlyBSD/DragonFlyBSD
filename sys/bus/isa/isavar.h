@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/isavar.h,v 1.16.2.2 2000/10/29 13:07:56 nyan Exp $
- * $DragonFly: src/sys/bus/isa/isavar.h,v 1.4 2003/08/27 11:42:34 rob Exp $
+ * $DragonFly: src/sys/bus/isa/isavar.h,v 1.5 2003/11/08 02:55:16 dillon Exp $
  */
 
 #ifndef _ISA_ISAVAR_H_
@@ -113,8 +113,16 @@ enum isa_device_ivars {
 	ISA_IVAR_VENDORID,
 	ISA_IVAR_SERIAL,
 	ISA_IVAR_LOGICALID,
-	ISA_IVAR_COMPATID
+	ISA_IVAR_COMPATID,
+	ISA_IVAR_CONFIGATTR
 };
+
+/*
+ * ISA_IVAR_CONFIGATTR bits
+ */
+#define ISACFGATTR_CANDISABLE	(1 << 0)	/* can be disabled */
+#define ISACFGATTR_DYNAMIC	(1 << 1)	/* dynamic configuration */
+#define ISACFGATTR_MULTI	(1 << 2)	/* multiple configurations */
 
 /*
  * Simplified accessors for isa devices
@@ -144,6 +152,7 @@ ISA_ACCESSOR(vendorid, VENDORID, int)
 ISA_ACCESSOR(serial, SERIAL, int)
 ISA_ACCESSOR(logicalid, LOGICALID, int)
 ISA_ACCESSOR(compatid, COMPATID, int)
+ISA_ACCESSOR(configattr, CONFIGATTR, int)
 
 extern intrmask_t isa_irq_pending(void);
 extern intrmask_t isa_irq_mask(void);

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.6 2003/11/07 18:28:52 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.7 2003/11/08 02:55:17 dillon Exp $
  */
 
 /*
@@ -476,6 +476,10 @@ struct pnp_sysdev
     u_int32_t	devid;
     u_int8_t	type[3];
     u_int16_t	attrib;
+    /* device-specific data comes here */
+    u_int8_t	devdata[0];
+} __attribute__((__packed__));
+
 #define PNPATTR_NODISABLE	(1<<0)	/* can't be disabled */
 #define PNPATTR_NOCONFIG	(1<<1)	/* can't be configured */
 #define PNPATTR_OUTPUT		(1<<2)	/* can be primary output */
@@ -483,18 +487,17 @@ struct pnp_sysdev
 #define PNPATTR_BOOTABLE	(1<<4)	/* can be booted from */
 #define PNPATTR_DOCK		(1<<5)	/* is a docking station */
 #define PNPATTR_REMOVEABLE	(1<<6)	/* device is removeable */
+
+#define PNPATTR_CONFIG(a)	(((a) >> 7) & 0x03)
 #define PNPATTR_CONFIG_STATIC	0x00
 #define PNPATTR_CONFIG_DYNAMIC	0x01
 #define PNPATTR_CONFIG_DYNONLY	0x03
-#define PNPATTR_CONFIG(a)	(((a) >> 7) & 0x03)
-    /* device-specific data comes here */
-    u_int8_t	devdata[0];
-} __packed;
 
 /* We have to cluster arguments within a 64k range for the bios16 call */
 struct pnp_sysdevargs
 {
     u_int16_t	next;
+    u_int16_t	pad;
     struct pnp_sysdev node;
 };
 
@@ -529,7 +532,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	return;
 
     /* ACPI already active */
-    if (devlass_get_softc(devclass_find("ACPI"), 0) != NULL)
+    if (devclass_get_softc(devclass_find("ACPI"), 0) != NULL)
 	return;
     
     bzero(&args, sizeof(args));
@@ -552,11 +555,15 @@ pnpbios_identify(driver_t *driver, device_t parent)
     for (currdev = 0, left = ndevs; (currdev != 0xff) && (left > 0); left--) {
 	bzero(pd, bigdev);
 	pda->next = currdev;
+
 	/* get current configuration */
 	if ((error = bios16(&args, PNP_GET_DEVNODE, &pda->next, &pda->node, 1))) {
 	    printf("pnpbios: error %d making BIOS16 call\n", error);
 	    break;
 	}
+	if (bootverbose)
+	    printf("pnp_get_devnode cd=%d nxt=%d size=%d handle=%d devid=%08x type=%02x%02x%02x, attrib=%04x\n", currdev, pda->next, pd->size, pd->handle, pd->devid, pd->type[0], pd->type[1], pd->type[2], pd->attrib);
+
 	if ((error = (args.r.eax & 0xff))) {
 	    if (bootverbose)
 		printf("pnpbios: %s 0x%x fetching node %d\n", error & 0x80 ? "error" : "warning", error, currdev);
@@ -578,7 +585,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	    continue;
 	if (!strcmp(pnp_eisaformat(pd->devid), "PNP0003"))	/* APIC */
 	    continue;
-	
+
 	/* Add the device and parse its resources */
 	dev = BUS_ADD_CHILD(parent, ISA_ORDER_PNP, NULL, -1);
 	isa_set_vendorid(dev, pd->devid);
@@ -588,14 +595,15 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	 * It appears that some PnP BIOS doesn't allow us to re-enable
 	 * the embedded system device once it is disabled.  We shall
 	 * mark all system device nodes as "cannot be disabled", regardless
-	 * of actual settings in the device attribute byte.
-	 * XXX
+	 * of actual settings in the device attribute byte.  XXX
+	 */
+#if 0
 	isa_set_configattr(dev, 
 	    ((pd->attrib & PNPATTR_NODISABLE) ?  0 : ISACFGATTR_CANDISABLE) |
 	    ((!(pd->attrib & PNPATTR_NOCONFIG) && 
 		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
 		? ISACFGATTR_DYNAMIC : 0));
-	 */
+#endif
 	isa_set_configattr(dev, 
 	    (!(pd->attrib & PNPATTR_NOCONFIG) && 
 		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
@@ -603,7 +611,7 @@ pnpbios_identify(driver_t *driver, device_t parent)
 
 	ISA_SET_CONFIG_CALLBACK(parent, dev, pnpbios_set_config, 0);
 	pnp_parse_resources(dev, &pd->devdata[0],
-			    pd->size - sizeof(struct pnp_sysdev));
+			    pd->size - sizeof(struct pnp_sysdev), 0);
 	if (!device_get_desc(dev))
 	    device_set_desc_copy(dev, pnp_eisaformat(pd->devid));
 

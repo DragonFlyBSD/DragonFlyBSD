@@ -23,8 +23,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/isa/pnpvar.h,v 1.4 1999/12/29 04:54:36 peter Exp $
- *	$DragonFly: src/sys/bus/isa/pnpvar.h,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $FreeBSD: src/sys/isa/pnpvar.h,v 1.6 2001/09/05 03:54:28 yokota Exp $
+ * $DragonFly: src/sys/bus/isa/pnpvar.h,v 1.3 2003/11/08 02:55:16 dillon Exp $
  */
 
 #ifndef _ISA_PNPVAR_H_
@@ -53,8 +53,20 @@ u_char  pnp_read(int d); /* currently unused, but who knows... */
 	 | (PNP_HEXTONUM(s[6]) << 24)		\
 	 | (PNP_HEXTONUM(s[5]) << 28))
 
+struct isa_config;
+
+typedef int pnp_scan_cb(device_t dev, u_char tag, u_char *res, int len,
+			struct isa_config *config, int ldn);
+
 char *pnp_eisaformat(u_int32_t id);
-void pnp_parse_resources(device_t dev, u_char *resources, int len);
+void pnp_printf(u_int32_t id, char *fmt, ...);
+void pnp_parse_resources(device_t dev, u_char *resources, int len, int ldn);
+u_char *pnp_parse_dependant(device_t dev, u_char *resources, int len,
+			    struct isa_config *config, int ldn);
+u_char *pnp_scan_resources(device_t dev, u_char *resources, int len,
+			   struct isa_config *config, int ldn, pnp_scan_cb *cb);
+
+void pnp_check_quirks(u_int32_t vendor_id, u_int32_t logical_id, int ldn, struct isa_config *config);
 
 #endif /* _KERNEL */
 
