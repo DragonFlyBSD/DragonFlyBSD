@@ -34,7 +34,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.30 2004/09/10 18:23:55 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.31 2005/01/19 17:41:20 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -180,6 +180,7 @@ lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
  * lwkt_initport()
  *
  *	Initialize a port for use and assign it to the specified thread.
+ *	The default reply function is to return the message to the originator.
  */
 void
 lwkt_initport(lwkt_port_t port, thread_t td)
@@ -193,6 +194,10 @@ lwkt_initport(lwkt_port_t port, thread_t td)
     port->mp_abortport = lwkt_default_abortport;
 }
 
+/*
+ * Similar to the standard initport, this function simply marks the message
+ * as being done and does not attempt to return it to an originating port.
+ */
 void
 lwkt_initport_null_rport(lwkt_port_t port, thread_t td)
 {
