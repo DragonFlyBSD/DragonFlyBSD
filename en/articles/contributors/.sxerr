@@ -1,0 +1,91 @@
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:1:78:W: cannot generate system identifier for public text "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:2:79:W: cannot generate system identifier for public text "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:3:78:W: cannot generate system identifier for public text "-//DragonFlyBSD//ENTITIES DocBook Author Entities//EN"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:4:74:W: cannot generate system identifier for public text "-//DragonFlyBSD//ENTITIES DocBook Team Entities//EN"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:7:84:W: cannot generate system identifier for public text "-//DragonFlyBSD//ENTITIES DocBook Trademark Entities//EN"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:8:4:E: reference to entity "man" for which no system identifier could be generated
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:2:0: entity was defined here
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:9:8:E: reference to entity "authors" for which no system identifier could be generated
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:3:0: entity was defined here
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:10:11:E: reference to entity "trademarks" for which no system identifier could be generated
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:7:0: entity was defined here
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:15:0:E: reference to entity "ARTICLE" for which no system identifier could be generated
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:1:0: entity was defined here
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:15:0:E: DTD did not contain element declaration for document type name
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:17:8:E: element "ARTICLE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:18:14:E: element "ARTICLEINFO" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:19:10:E: element "TITLE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:21:13:E: element "ABSTRACT" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:22:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:28:12:E: there is no attribute "ID"
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:28:30:E: element "SECT1" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:29:10:E: element "TITLE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:31:9:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:8:15:E: element "ITEMIZEDLIST" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:9:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:10:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:10:13:E: general entity "a.dillon" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:13:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:14:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:14:13:E: general entity "a.rob" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:17:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:18:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:18:13:E: general entity "a.hsu" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:21:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:22:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:22:13:E: general entity "a.eirikn" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:25:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:26:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:26:13:E: general entity "a.hmp" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:29:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:30:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:30:13:E: general entity "a.cpressey" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:33:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:34:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:34:13:E: general entity "a.drhodus" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:37:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:38:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:38:13:E: general entity "a.asmodai" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:41:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:42:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:42:13:E: general entity "a.justin" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:45:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:46:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.team.sgml:46:13:E: general entity "a.joerg" not defined and no default entity
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:41:24:E: element "SECT1" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:42:10:E: element "TITLE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:44:9:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.docteam.sgml:8:15:E: element "ITEMIZEDLIST" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.docteam.sgml:9:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.docteam.sgml:10:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.docteam.sgml:13:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.docteam.sgml:14:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:56:27:E: element "SECT1" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:57:10:E: element "TITLE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/article.sgml:59:9:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:7:15:E: element "ITEMIZEDLIST" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:8:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:9:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:10:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:13:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:14:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:15:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:18:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:19:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:20:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:23:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:24:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:25:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:28:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:29:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:30:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:33:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:34:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:35:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:38:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:39:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:40:7:E: element "EMAIL" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:43:13:E: element "LISTITEM" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:44:11:E: element "PARA" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:44:24:E: element "QUOTE" undefined
+/usr/local/bin/sx:/usr/home/devel/beaver/doc/en/articles/contributors/contrib.additional.sgml:45:7:E: element "EMAIL" undefined

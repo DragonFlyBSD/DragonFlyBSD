@@ -1,0 +1,132 @@
+<!-- FreeBSD Documentation Project, Extended DocBook DTD
+
+     This DTD builds upon the DocBook 4.1 DTD. It extends it in order to
+     add some new elements.
+
+     The comment style and section headings are drawn from the DocBook DTD.
+
+     The FPI for this DTD is "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN"
+
+     $DragonFly: doc/share/sgml/dragonfly41.dtd,v 1.1.1.1 2004/04/02 09:36:40 hmp Exp $
+-->
+
+<!-- ..................................................................... -->
+<!-- Parameter entities .................................................. -->
+
+<!-- These parameter entities have specific meanings, and default to 
+     "IGNORE". The SGML parser is free to redefine them to "INCLUDE" to
+     cause special processing.                                             -->
+
+<!ENTITY % output.html  "IGNORE">    <!-- HTML output is being generated   -->
+<!ENTITY % output.html.images "IGNORE"> <!-- HTML with images -->
+<!ENTITY % output.print "IGNORE">    <!-- Print output is being generated  -->
+<!ENTITY % output.print.pdf "IGNORE"> <!-- PDF output -->
+
+<!-- ..................................................................... -->
+<!-- Entities for element classes and mixtures ........................... -->
+
+<!-- Character level classes -->
+<!ENTITY % local.tech.char.class "|HostID|Username|Groupname|Devicename|MakeTarget|MakeVar">
+
+<!ENTITY % local.cptr.char.mix "|CO">
+
+<!-- OS Version attributes ...............................................
+
+     Each element has three attributes which specify which version(s) of
+     FreeBSD the element's content applies to.  It is up to the
+     pre-processor to include or exclude elements based on the value of
+     these attributes.                                                     -->
+<!ENTITY % local.common.attrib
+     "OSVersionMin        CDATA        #IMPLIED
+      OSVersionMax        CDATA        #IMPLIED
+      OSVersionIn         CDATA        #IMPLIED">
+
+<!-- Altered general entities ............................................
+
+     The HTML 4.0 DTD includes some new ISO entities. Most browsers don't
+     support them yet. Change the definition of some of these entities to
+     character strings that the browsers will support.
+
+     This does not apply when generating printed output, so these are 
+     contained within a %output.html; marked section.
+
+     As browser technology improves, these definitions can be removed.     -->
+
+<![ %output.html; [
+<!ENTITY bdquo  ",,">
+<!ENTITY ldquo  "``">
+<!ENTITY rdquo  "''">
+<!ENTITY lsquo  "`">
+<!ENTITY rsquo  "'">
+<!ENTITY mdash  "--">
+<!ENTITY ndash  "-">
+<!ENTITY hellip "...">
+<!ENTITY dollar "$">
+]]>
+
+<!ENTITY % filename.element "IGNORE">
+
+<!-- Pull in the original DTD -->
+<!ENTITY % orig-docbook PUBLIC "-//OASIS//DTD DocBook V4.1//EN">
+%orig-docbook;
+
+<!-- ...................................................................... -->
+<!-- Inline, link, and ubiquitous elements ................................ -->
+
+<!-- Technical and computer terms ......................................... -->
+
+<!ELEMENT HostID - - ((%cptr.char.mix;)+)>
+<!ATTLIST HostID
+                --
+                Role: More specific information about this hostname.
+                If not specified then the default is 'hostname'.
+                --
+                Role    (Hostname
+                        |Domainname
+                        |FQDN
+                        |IPAddr
+                        |IP6Addr                
+                        |Netmask
+                        |MAC)      #IMPLIED
+                %common.attrib;
+>
+
+<!ELEMENT Username - - ((%cptr.char.mix;)+)>
+<!ATTLIST Username
+                %common.attrib;
+>
+
+<!ELEMENT Groupname - - ((%cptr.char.mix;)+)>
+<!ATTLIST Groupname
+                %common.attrib;
+>
+
+<!ELEMENT Devicename - - ((%cptr.char.mix;)+)>
+<!ATTLIST Devicename
+                %common.attrib;
+>
+
+<!ELEMENT MakeTarget - - ((%cptr.char.mix;)+)>
+<!ATTLIST MakeTarget
+                %common.attrib;
+>
+
+<!ELEMENT MakeVar - - ((%cptr.char.mix;)+)>
+<!ATTLIST MakeVar
+                %common.attrib;
+>
+
+<!-- The content model for <filename> was changed between DocBook 3.1 and
+     4.1.  Specifically, <envar> was disallowed.  There's a suggestion from
+     the DocBook maintainers that this may have been a mistake.  In the
+     meantime, explicitly allow it here. 
+
+     In addition, allow our custom addition, <makevar> -->
+<!ELEMENT Filename - - (%smallcptr.char.mix;|Envar|MakeVar)+>
+
+<!-- ...................................................................... -->
+<!-- General entities for reuse ........................................... -->
+
+<!ENTITY prompt.root		"<prompt>#</prompt>">
+<!ENTITY prompt.user		"<prompt>%</prompt>">
+

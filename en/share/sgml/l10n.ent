@@ -1,0 +1,10 @@
+<!-- -*- sgml -*-
+     DocBook Language Specific Entities for Localization (en).
+
+     $DragonFly: doc/en/share/sgml/l10n.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+     $DragonFly: doc/en/share/sgml/l10n.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+-->
+
+<!-- docformat navi -->
+<!ENTITY docnavi.single-html "Single HTML">
+<!ENTITY docnavi.split-html  "Split HTML">

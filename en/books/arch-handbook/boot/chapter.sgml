@@ -1,0 +1,1024 @@
+<!--
+The FreeBSD Documentation Project
+
+Copyright (c) 2002 Sergey Lyubka <devnull@uptsoft.com>
+All rights reserved
+$DragonFly: doc/en/books/arch-handbook/boot/chapter.sgml,v 1.1.1.1 2004/04/02 09:35:51 hmp Exp $
+-->
+
+<chapter id="boot">
+  <chapterinfo>
+    <authorgroup>
+      <author>
+        <firstname>Sergey</firstname>
+	<surname>Lyubka</surname>
+	<contrib>Contributed by </contrib>
+      </author> <!-- devnull@uptsoft.com  12 Jun 2002 -->
+    </authorgroup>
+  </chapterinfo>
+  <title>Bootstrapping and kernel initialization</title>
+
+  <sect1 id="boot-synopsis">
+    <title>Synopsis</title>
+
+    <para>This chapter is an overview of the boot and system
+      initialization process, starting from the BIOS (firmware) POST,
+      to the first user process creation.  Since the initial steps of
+      system startup are very architecture dependent, the IA-32
+      architecture is used as an example.</para>
+  </sect1>
+
+  <sect1 id="boot-overview">
+    <title>Overview</title>
+
+    <para>A computer running FreeBSD can boot by several methods,
+      although the most common method, booting from a harddisk where
+      the OS is installed, will be discussed here.  The boot process
+      is divided into several steps:</para>
+
+    <itemizedlist>
+      <listitem><para>BIOS POST</para></listitem>
+      <listitem><para><literal>boot0</literal> stage</para></listitem>
+      <listitem><para><literal>boot2</literal> stage</para></listitem>
+      <listitem><para>loader stage</para></listitem>
+      <listitem><para>kernel initialization</para></listitem>
+    </itemizedlist>
+
+    <para>The <literal>boot0</literal> and <literal>boot2</literal>
+      stages are also referred to as <emphasis>bootstrap stages 1 and
+      2</emphasis> in &man.boot.8; as the first steps in FreeBSD's
+      3-stage bootstrapping procedure.  Various information is printed
+      on the screen at each stage, so you may visually recognize them
+      using the table that follows.  Please note that the actual data
+      may differ from machine to machine:</para>
+
+    <informaltable>
+      <tgroup cols="2">
+        <tbody>
+          <row>
+            <entry><para>may vary</para></entry>
+
+	    <entry><para>BIOS (firmware) messages</para></entry>
+          </row>
+
+          <row>
+            <entry><para>
+<screen>F1    FreeBSD
+F2    BSD
+F5    Disk 2</screen>
+            </para></entry>
+
+	    <entry><para><literal>boot0</literal></para></entry>
+          </row>
+
+          <row>
+            <entry><para>
+<screen>>>FreeBSD/i386 BOOT
+Default: 1:ad(1,a)/boot/loader
+boot:</screen>
+            </para></entry>
+
+	    <entry><para><literal>boot2</literal><footnote><para>This
+	      prompt will appear if the user presses a key just after
+	      selecting an OS to boot at the <literal>boot0</literal>
+              stage.</para></footnote></para></entry>
+          </row>
+
+          <row>
+            <entry><para>
+<screen>BTX loader 1.0 BTX version is 1.01
+BIOS drive A: is disk0
+BIOS drive C: is disk1
+BIOS 639kB/64512kB available memory
+FreeBSD/i386 bootstrap loader, Revision 0.8
+Console internal video/keyboard
+(jkh@bento.dragonfly.org, Mon Nov 20 11:41:23 GMT 2000)
+/kernel text=0x1234 data=0x2345 syms=[0x4+0x3456]
+Hit [Enter] to boot immediately, or any other key for command prompt
+Booting [kernel] in 9 seconds..._</screen>
+            </para></entry>
+
+            <entry><para>loader</para></entry>
+          </row>
+
+          <row>
+            <entry><para>
+	      <screen>Copyright (c) 1992-2002 The FreeBSD Project.
+Copyright (c) 1979, 1980, 1983, 1986, 1988, 1989, 1991, 1992, 1993, 1994
+        The Regents of the University of California. All rights reserved.
+FreeBSD 4.6-RC #0: Sat May  4 22:49:02 GMT 2002
+    devnull@kukas:/usr/obj/usr/src/sys/DEVNULL
+Timecounter "i8254"  frequency 1193182 Hz</screen></para></entry>
+
+            <entry><para>kernel</para></entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </sect1>
+
+  <sect1 id="boot-bios">
+    <title>BIOS POST</title>
+
+    <para>When the PC powers on, the processor's registers are set
+      to some predefined values.  One of the registers is the
+      <emphasis>instruction pointer</emphasis> register, and its value
+      after a power on is well defined: it is a 32-bit value of
+      0xfffffff0.  The instruction pointer register points to code to
+      be executed by the processor.  One of the registers is the
+      <literal>cr1</literal> 32-bit control register, and its value
+      just after the reboot is 0.  One of the cr1's bits, the bit PE
+      (Protected Enabled) indicates whether the processor is running
+      in protected or real mode.  Since at boot time this bit is
+      cleared, the processor boots in real mode.  Real mode means,
+      among other things, that linear and physical addresses are
+      identical.</para>
+
+    <para>The value of 0xfffffff0 is slightly less then 4Gb, so unless
+      the machine has 4Gb physical memory, it cannot point to a valid
+      memory address.  The computer's hardware translates this address
+      so that it points to a BIOS memory block.</para>
+
+    <para>BIOS stands for <emphasis>Basic Input Output
+      System</emphasis>, and it is a chip on the motherboard that has
+      a relatively small amount of read-only memory (ROM).  This
+      memory contains various low-level routines that are specific to
+      the hardware supplied with the motherboard.  So, the processor
+      will first jump to the address 0xfffffff0, which really resides
+      in the BIOS's memory.  Usually this address contains a jump
+      instruction to the BIOS's POST routines.</para>
+
+    <para>POST stands for <emphasis>Power On Self Test</emphasis>.
+      This is a set of routines including the memory check, system bus
+      check and other low-level stuff so that the CPU can initialize
+      the computer properly.  The important step on this stage is
+      determining the boot device.  All modern BIOS's allow the boot
+      device to be set manually, so you can boot from a floppy,
+      CD-ROM, harddisk etc.</para>
+
+    <para>The very last thing in the POST is the <literal>INT
+      0x19</literal> instruction.  That instruction reads 512 bytes
+      from the first sector of boot device into the memory at address
+      0x7c00.  The term <emphasis>first sector</emphasis> originates
+      from harddrive architecture, where the magnetic plate is divided
+      to a number of cylindrical tracks.  Tracks are numbered, and
+      every track is divided by a number (usually 64) sectors.  Track
+      number 0 is the outermost on the magnetic plate, and sector 1,
+      the first sector (tracks, or, cylinders, are numbered starting
+      from 0, but sectors - starting from 1), has a special meaning.
+      It is also called Master Boot Record, or MBR.  The remaining
+      sectors on the first track are never used <footnote><para>Some
+      utilities such as &man.disklabel.8; may store the information in
+      this area, mostly in the second
+      sector.</para></footnote>.</para>
+  </sect1>
+
+  <sect1 id="boot-boot0">
+    <title><literal>boot0</literal> stage</title>
+
+    <para>Take a look at the file <filename>/boot/boot0</filename>.
+      This is a small 512-byte file, and it is exactly what FreeBSD's
+      installation procedure wrote to your harddisk's MBR if you chose
+      the <quote>bootmanager</quote> option at installation time.</para>
+
+    <para>As mentioned previously, the <literal>INT 0x19</literal>
+      instruction loads an MBR, i.e. the <filename>boot0</filename>
+      content, into the memory at address 0x7c00.  Taking a look at
+      the file <filename>sys/boot/i386/boot0/boot0.s</filename> can
+      give a guess at what is happening there - this is the boot
+      manager, which is an awesome piece of code written by Robert
+      Nordier.</para>
+
+    <para>The MBR, or, <filename>boot0</filename>, has a special
+      structure starting from offset 0x1be, called the
+      <emphasis>partition table</emphasis>.  It has 4 records of 16
+      bytes each, called <emphasis>partition records</emphasis>, which
+      represent how the harddisk(s) are partitioned, or, in FreeBSD's
+      terminology, sliced.  One byte of those 16 says whether a
+      partition (slice) is bootable or not.  Exactly one record must
+      have that flag set, otherwise <filename>boot0</filename>'s code
+      will refuse to proceed.</para>
+
+    <para>A partition record has the following fields:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>the 1-byte filesystem type</para>
+      </listitem>
+
+      <listitem>
+        <para>the 1-byte bootable flag</para>
+      </listitem>
+
+      <listitem>
+        <para>the 6 byte descriptor in CHS format</para>
+      </listitem>
+
+      <listitem>
+        <para>the 8 byte descriptor in LBA format</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>A partition record descriptor has the information about
+      where exactly the partition resides on the drive.  Both
+      descriptors, LBA and CHS, describe the same information, but in
+      different ways: LBA (Logical Block Addressing) has the starting
+      sector for the partition and the partition's length, while CHS
+      (Cylinder Head Sector) has coordinates for the first and last
+      sectors of the partition.</para>
+
+    <para>The boot manager scans the partition table and prints the
+      menu on the screen so the user can select what disk and what
+      slice to boot.  By pressing an appropriate key,
+      <filename>boot0</filename> performs the following
+      actions:</para>
+
+    <itemizedlist>
+      <listitem>
+	<para>modifies the bootable flag for the selected partition to
+	  make it bootable, and clears the previous</para>
+      </listitem>
+
+      <listitem>
+	<para>saves itself to disk to remember what partition (slice)
+	  has been selected so to use it as the default on the next
+	  boot</para>
+      </listitem>
+
+      <listitem>
+	<para>loads the first sector of the selected partition (slice)
+	  into memory and jumps there</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>What kind of data should reside on the very first sector of
+      a bootable partition (slice), in our case, a FreeBSD slice?  As
+      you may have already guessed, it is
+      <filename>boot2</filename>.</para>
+  </sect1>
+
+  <sect1 id="boot-boot2">
+    <title><literal>boot2</literal> stage</title>
+
+    <para>You might wonder, why <literal>boot2</literal> comes after
+      <literal>boot0</literal>, and not boot1.  Actually, there is a
+      512-byte file called <filename>boot1</filename> in the directory
+      <filename>/boot</filename> as well.  It is used for booting from
+      a floppy.  When booting from a floppy,
+      <filename>boot1</filename> plays the same role as
+      <filename>boot0</filename> for a harddisk: it locates
+      <filename>boot2</filename> and runs it.</para>
+
+    <para>You may have realized that a file
+      <filename>/boot/mbr</filename> exists as well.  It is a
+      simplified version of <filename>boot0</filename>.  The code in
+      <filename>mbr</filename> does not provide a menu for the user,
+      it just blindly boots the partition marked active.</para>
+
+    <para>The code implementing <filename>boot2</filename> resides in
+      <filename>sys/boot/i386/boot2/</filename>, and the executable
+      itself is in <filename>/boot</filename>.  The files
+      <filename>boot0</filename> and <filename>boot2</filename> that
+      are in <filename>/boot</filename> are not used by the bootstrap,
+      but by utilities such as <application>boot0cfg</application>.
+      The actual position for <filename>boot0</filename> is in the
+      MBR.  For <filename>boot2</filename> it is the beginning of a
+      bootable FreeBSD slice.  These locations are not under the
+      filesystem's control, so they are invisible to commands like
+      <application>ls</application>.</para>
+
+    <para>The main task for <literal>boot2</literal> is to load the
+      file <filename>/boot/loader</filename>, which is the third stage
+      in the bootstrapping procedure.  The code in
+      <literal>boot2</literal> cannot use any services like
+      <function>open()</function> and <function>read()</function>,
+      since the kernel is not yet loaded.  It must scan the harddisk,
+      knowing about the filesystem structure, find the file
+      <filename>/boot/loader</filename>, read it into memory using a
+      BIOS service, and then pass the execution to the loader's entry
+      point.</para>
+
+    <para>Besides that, <literal>boot2</literal> prompts for user
+      input so the loader can be booted from different disk, unit,
+      slice and partition.</para>
+
+    <para>The <literal>boot2</literal> binary is created in special
+      way:</para>
+
+    <programlisting><filename>sys/boot/i386/boot2/Makefile</filename>
+boot2: boot2.ldr boot2.bin ${BTX}/btx/btx
+	btxld -v -E ${ORG2} -f bin -b ${BTX}/btx/btx -l boot2.ldr \
+		-o boot2.ld -P 1 boot2.bin</programlisting>
+
+    <para>This Makefile snippet shows that &man.btxld.8; is used to
+      link the binary.  BTX, which stands for BooT eXtender, is a
+      piece of code that provides a protected mode environment for the
+      program, called the client, that it is linked with.  So
+      <literal>boot2</literal> is a BTX client, i.e. it uses the
+      service provided by BTX.</para>
+
+    <para>The <application>btxld</application> utility is the linker.
+      It links two binaries together.  The difference between
+      &man.btxld.8; and &man.ld.1; is that
+      <application>ld</application> usually links object files into a
+      shared object or executable, while
+      <application>btxld</application> links an object file with the
+      BTX, producing the binary file suitable to be put on the
+      beginning of the partition for the system boot.</para>
+
+    <para><literal>boot0</literal> passes the execution to BTX's entry
+      point.  BTX then switches the processor to protected mode, and
+      prepares a simple environment before calling the client.  This
+      includes:</para>
+
+    <itemizedlist>
+      <listitem><para>virtual v86 mode.  That means, the BTX is a v86
+        monitor.  Real mode instructions like pushf, popf, cli, sti, if
+        called by the client, will work.</para></listitem>
+
+      <listitem><para>Interrupt Descriptor Table (IDT) is set up so
+        all hardware interrupts are routed to the default BIOS's
+        handlers, and interrupt 0x30 is set up to be the syscall
+        gate.</para></listitem>
+
+      <listitem><para>Two system calls: <function>exec</function> and
+        <function>exit</function>, are defined:</para>
+
+    <programlisting><filename>sys/boot/i386/btx/lib/btxsys.s:</filename>
+		.set INT_SYS,0x30		# Interrupt number
+#
+# System call: exit
+#
+__exit: 	xorl %eax,%eax			# BTX system
+		int $INT_SYS			#  call 0x0
+#
+# System call: exec
+#
+__exec: 	movl $0x1,%eax			# BTX system
+		int $INT_SYS			#  call 0x1</programlisting></listitem>
+    </itemizedlist>
+
+    <para>BTX creates a Global Descriptor Table (GDT):</para>
+
+    <programlisting><filename>sys/boot/i386/btx/btx/btx.s:</filename>
+gdt:		.word 0x0,0x0,0x0,0x0		# Null entry
+		.word 0xffff,0x0,0x9a00,0xcf	# SEL_SCODE
+		.word 0xffff,0x0,0x9200,0xcf	# SEL_SDATA
+		.word 0xffff,0x0,0x9a00,0x0	# SEL_RCODE
+		.word 0xffff,0x0,0x9200,0x0	# SEL_RDATA
+		.word 0xffff,MEM_USR,0xfa00,0xcf# SEL_UCODE
+		.word 0xffff,MEM_USR,0xf200,0xcf# SEL_UDATA
+		.word _TSSLM,MEM_TSS,0x8900,0x0 # SEL_TSS</programlisting>
+
+    <para>The client's code and data start from address MEM_USR
+      (0xa000), and a selector (SEL_UCODE) points to the client's code
+      segment.  The SEL_UCODE descriptor has Descriptor Privilege
+      Level (DPL) 3, which is the lowest privilege level.  But the
+      <literal>INT 0x30</literal> instruction handler resides in a
+      segment pointed to by the SEL_SCODE (supervisor code) selector,
+      as shown from the code that creates an IDT:</para>
+
+  <programlisting>		mov $SEL_SCODE,%dh		# Segment selector
+init.2: 	shr %bx				# Handle this int?
+		jnc init.3			# No
+		mov %ax,(%di)			# Set handler offset
+		mov %dh,0x2(%di)		#  and selector
+		mov %dl,0x5(%di)		# Set P:DPL:type
+		add $0x4,%ax			# Next handler</programlisting>
+
+    <para>So, when the client calls <function>__exec()</function>, the
+      code will be executed with the highest privileges.  This allows
+      the kernel to change the protected mode data structures, such as
+      page tables, GDT, IDT, etc later, if needed.</para>
+
+    <para><literal>boot2</literal> defines an important structure,
+      <literal>struct bootinfo</literal>.  This structure is
+      initialized by <literal>boot2</literal> and passed to the
+      loader, and then further to the kernel.  Some nodes of this
+      structures are set by <literal>boot2</literal>, the rest by the
+      loader.  This structure, among other information, contains the
+      kernel filename, BIOS harddisk geometry, BIOS drive number for
+      boot device, physical memory available, <literal>envp</literal>
+      pointer etc.  The definition for it is:</para>
+
+    <programlisting><filename>/usr/include/machine/bootinfo.h</filename>
+struct bootinfo {
+	u_int32_t	bi_version;
+	u_int32_t	bi_kernelname;		/* represents a char * */
+	u_int32_t	bi_nfs_diskless;	/* struct nfs_diskless * */
+				/* End of fields that are always present. */
+#define	bi_endcommon	bi_n_bios_used
+	u_int32_t	bi_n_bios_used;
+	u_int32_t	bi_bios_geom[N_BIOS_GEOM];
+	u_int32_t	bi_size;
+	u_int8_t	bi_memsizes_valid;
+	u_int8_t	bi_bios_dev;		/* bootdev BIOS unit number */
+	u_int8_t	bi_pad[2];
+	u_int32_t	bi_basemem;
+	u_int32_t	bi_extmem;
+	u_int32_t	bi_symtab;		/* struct symtab * */
+	u_int32_t	bi_esymtab;		/* struct symtab * */
+				/* Items below only from advanced bootloader */
+	u_int32_t	bi_kernend;		/* end of kernel space */
+	u_int32_t	bi_envp;		/* environment */
+	u_int32_t	bi_modulep;		/* preloaded modules */
+};</programlisting>
+
+  <para><literal>boot2</literal> enters into an infinite loop waiting
+    for user input, then calls <function>load()</function>.  If the
+    user does not press anything, the loop brakes by a timeout, so
+    <function>load()</function> will load the default file
+    (<filename>/boot/loader</filename>).  Functions <function>ino_t
+    lookup(char *filename)</function> and <function>int xfsread(ino_t
+    inode, void *buf, size_t nbyte)</function> are used to read the
+    content of a file into memory.  <filename>/boot/loader</filename>
+    is an ELF binary, but where the ELF header is prepended with
+    a.out's <literal>struct exec</literal> structure.
+    <function>load()</function> scans the loader's ELF header, loading
+    the content of <filename>/boot/loader</filename> into memory, and
+    passing the execution to the loader's entry:</para>
+
+  <programlisting><filename>sys/boot/i386/boot2/boot2.c:</filename>
+    __exec((caddr_t)addr, RB_BOOTINFO | (opts & RBX_MASK),
+	   MAKEBOOTDEV(dev_maj[dsk.type], 0, dsk.slice, dsk.unit, dsk.part),
+	   0, 0, 0, VTOP(&amp;bootinfo));</programlisting>
+  </sect1>
+
+  <sect1 id="boot-loader">
+    <title><application>loader</application> stage</title>
+
+    <para><application>loader</application> is a BTX client as well.
+      I will not describe it here in detail, there is a comprehensive
+      manpage written by Mike Smith, &man.loader.8;.  The underlying
+      mechanisms and BTX were discussed above.</para>
+
+    <para>The main task for the loader is to boot the kernel.  When
+      the kernel is loaded into memory, it is being called by the
+      loader:</para>
+
+  <programlisting><filename>sys/boot/common/boot.c:</filename>
+    /* Call the exec handler from the loader matching the kernel */
+    module_formats[km->m_loader]->l_exec(km);</programlisting>
+  </sect1>
+
+  <sect1 id="boot-kernel">
+    <title>Kernel initialization</title>
+
+    <para>To where exactly is the execution passed by the loader,
+      i.e. what is the kernel's actual entry point.  Let us take a
+      look at the command that links the kernel:</para>
+
+    <programlisting><filename>sys/conf/Makefile.i386:</filename>
+ld -elf -Bdynamic -T /usr/src/sys/conf/ldscript.i386  -export-dynamic \
+-dynamic-linker /red/herring -o kernel -X locore.o \
+&lt;lots of kernel .o files&gt;</programlisting>
+
+    <para>A few interesting things can be seen in this line.  First,
+      the kernel is an ELF dynamically linked binary, but the dynamic
+      linker for kernel is <filename>/red/herring</filename>, which is
+      definitely a bogus file.  Second, taking a look at the file
+      <filename>sys/conf/ldscript.i386</filename> gives an idea about
+      what <application>ld</application> options are used when
+      compiling a kernel.  Reading through the first few lines, the
+      string</para>
+
+  <programlisting><filename>sys/conf/ldscript.i386:</filename>
+ENTRY(btext)</programlisting>
+
+    <para>says that a kernel's entry point is the symbol `btext'.
+      This symbol is defined in <filename>locore.s</filename>:</para>
+
+  <programlisting><filename>sys/i386/i386/locore.s:</filename>
+	.text
+/**********************************************************************
+ *
+ * This is where the bootblocks start us, set the ball rolling...
+ *
+ */
+NON_GPROF_ENTRY(btext)</programlisting>
+
+    <para>First what is done is the register EFLAGS is set to a
+      predefined value of 0x00000002, and then all the segment
+      registers are initialized:</para>
+
+    <programlisting><filename>sys/i386/i386/locore.s</filename>
+/* Don't trust what the BIOS gives for eflags. */
+	pushl	$PSL_KERNEL
+	popfl
+
+/*
+ * Don't trust what the BIOS gives for %fs and %gs.  Trust the bootstrap
+ * to set %cs, %ds, %es and %ss.
+ */
+	mov	%ds, %ax
+	mov	%ax, %fs
+	mov	%ax, %gs</programlisting>
+
+    <para>btext calls the routines
+      <function>recover_bootinfo()</function>,
+      <function>identify_cpu()</function>,
+      <function>create_pagetables()</function>, which are also defined
+      in <filename>locore.s</filename>.  Here is a description of what
+      they do:</para>
+
+    <informaltable>
+      <tgroup cols=2 align=left>
+      <tbody>
+        <row>
+          <entry><function>recover_bootinfo</function></entry>
+
+          <entry>This routine parses the parameters to the kernel
+            passed from the bootstrap.  The kernel may have been
+            booted in 3 ways: by the loader, described above, by the
+            old disk boot blocks, and by the old diskless boot
+            procedure.  This function determines the booting method,
+            and stores the <literal>struct bootinfo</literal>
+            structure into the kernel memory.</entry>
+        </row>
+
+        <row>
+          <entry><function>identify_cpu</function></entry>
+
+	  <entry>This functions tries to find out what CPU it is
+	    running on, storing the value found in a variable
+	    <varname>_cpu</varname>.</entry>
+        </row>
+
+        <row>
+          <entry><function>create_pagetables</function></entry>
+
+	  <entry>This function allocates and fills out a Page Table
+	    Directory at the top of the kernel memory area.</entry>
+        </row>
+       </tbody>
+      </tgroup>
+    </informaltable>
+
+    <para>The next steps are enabling VME, if the CPU supports
+      it:</para>
+
+    <programlisting>	testl	$CPUID_VME, R(_cpu_feature)
+	jz	1f
+	movl	%cr4, %eax
+	orl	$CR4_VME, %eax
+	movl	%eax, %cr4</programlisting>
+
+    <para>Then, enabling paging:</para>
+    <programlisting>/* Now enable paging */
+	movl	R(_IdlePTD), %eax
+	movl	%eax,%cr3			/* load ptd addr into mmu */
+	movl	%cr0,%eax			/* get control word */
+	orl	$CR0_PE|CR0_PG,%eax		/* enable paging */
+	movl	%eax,%cr0			/* and let's page NOW! */</programlisting>
+
+    <para>The next three lines of code are because the paging was set,
+      so the jump is needed to continue the execution in virtualized
+      address space:</para>
+
+    <programlisting>	pushl	$begin				/* jump to high virtualized address */
+	ret
+
+/* now running relocated at KERNBASE where the system is linked to run */
+begin:</programlisting>
+
+    <para>The function <function>init386()</function> is called, with
+      a pointer to the first free physical page, after that
+      <function>mi_startup()</function>.  <function>init386</function>
+      is an architecture dependent initialization function, and
+      <function>mi_startup()</function> is an architecture independent
+      one (the 'mi_' prefix stands for Machine Independent).  The
+      kernel never returns from <function>mi_startup()</function>, and
+      by calling it, the kernel finishes booting:</para>
+
+    <programlisting><filename>sys/i386/i386/locore.s:</filename>
+	movl	physfree, %esi
+	pushl	%esi				/* value of first for init386(first) */
+	call	_init386			/* wire 386 chip for unix operation */
+	call	_mi_startup			/* autoconfiguration, mountroot etc */
+	hlt		/* never returns to here */</programlisting>
+
+    <sect2>
+      <title><function>init386()</function></title>
+
+      <para><function>init386()</function> is defined in
+        <filename>sys/i386/i386/machdep.c</filename> and performs
+        low-level initialization, specific to the i386 chip.  The
+        switch to protected mode was performed by the loader.  The
+        loader has created the very first task, in which the kernel
+        continues to operate.  Before running straight away to the
+        code, I will enumerate the tasks the processor must complete
+        to initialize protected mode execution:</para>
+
+      <itemizedlist>
+        <listitem>
+	  <para>Initialize the kernel tunable parameters, passed from
+	    the bootstrapping program.</para>
+	  </listitem>
+
+        <listitem>
+	  <para>Prepare the GDT.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Prepare the IDT.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Initialize the system console.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Initialize the DDB, if it is compiled into
+	    kernel.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Initialize the TSS.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Prepare the LDT.</para>
+	</listitem>
+
+        <listitem>
+	  <para>Set up proc0's pcb.</para>
+	</listitem>
+      </itemizedlist>
+
+      <para>What <function>init386()</function> first does is
+        initialize the tunable parameters passed from bootstrap.  This
+        is done by setting the environment pointer (envp) and calling
+        <function>init_param1()</function>.  The envp pointer has been
+        passed from loader in the <literal>bootinfo</literal>
+        structure:</para>
+
+      <programlisting><filename>sys/i386/i386/machdep.c:</filename>
+		kern_envp = (caddr_t)bootinfo.bi_envp + KERNBASE;
+
+	/* Init basic tunables, hz etc */
+	init_param1();</programlisting>
+
+      <para><function>init_param1()</function> is defined in
+        <filename>sys/kern/subr_param.c</filename>.  That file has a
+        number of sysctls, and two functions,
+        <function>init_param1()</function> and
+        <function>init_param2()</function>, that are called from
+        <function>init386()</function>:</para>
+
+      <programlisting><filename>sys/kern/subr_param.c</filename>
+	hz = HZ;
+	TUNABLE_INT_FETCH("kern.hz", &amp;hz);</programlisting>
+
+      <para>TUNABLE_&lt;typename&gt;_FETCH is used to fetch the value
+        from the environment:</para>
+
+    <programlisting><filename>/usr/src/sys/sys/kernel.h</filename>
+#define	TUNABLE_INT_FETCH(path, var)	getenv_int((path), (var))
+</programlisting>
+
+      <para>Sysctl <literal>kern.hz</literal> is the system clock tick.  Along with
+        this, the following sysctls are set by
+        <function>init_param1()</function>: <literal>kern.maxswzone,
+        kern.maxbcache, kern.maxtsiz, kern.dfldsiz, kern.dflssiz,
+        kern.maxssiz, kern.sgrowsiz</literal>.</para>
+
+      <para>Then <function>init386()</function> prepares the Global
+        Descriptors Table (GDT).  Every task on an x86 is running in
+        its own virtual address space, and this space is addressed by
+        a segment:offset pair.  Say, for instance, the current
+        instruction to be executed by the processor lies at CS:EIP,
+        then the linear virtual address for that instruction would be
+        <quote>the virtual address of code segment CS</quote> + EIP.  For
+        convenience, segments begin at virtual address 0 and end at a
+        4Gb boundary.  Therefore, the instruction's linear virtual
+        address for this example would just be the value of EIP.
+        Segment registers such as CS, DS etc are the selectors,
+        i.e. indexes, into GDT (to be more precise, an index is not a
+        selector itself, but the INDEX field of a selector).
+        FreeBSD's GDT holds descriptors for 15 selectors per
+        CPU:</para>
+
+      <programlisting><filename>sys/i386/i386/machdep.c:</filename>
+union descriptor gdt[NGDT * MAXCPU];	/* global descriptor table */
+
+<filename>sys/i386/include/segments.h:</filename>
+/*
+ * Entries in the Global Descriptor Table (GDT)
+ */
+#define	GNULL_SEL	0	/* Null Descriptor */
+#define	GCODE_SEL	1	/* Kernel Code Descriptor */
+#define	GDATA_SEL	2	/* Kernel Data Descriptor */
+#define	GPRIV_SEL	3	/* SMP Per-Processor Private Data */
+#define	GPROC0_SEL	4	/* Task state process slot zero and up */
+#define	GLDT_SEL	5	/* LDT - eventually one per process */
+#define	GUSERLDT_SEL	6	/* User LDT */
+#define	GTGATE_SEL	7	/* Process task switch gate */
+#define	GBIOSLOWMEM_SEL	8	/* BIOS low memory access (must be entry 8) */
+#define	GPANIC_SEL	9	/* Task state to consider panic from */
+#define GBIOSCODE32_SEL	10	/* BIOS interface (32bit Code) */
+#define GBIOSCODE16_SEL	11	/* BIOS interface (16bit Code) */
+#define GBIOSDATA_SEL	12	/* BIOS interface (Data) */
+#define GBIOSUTIL_SEL	13	/* BIOS interface (Utility) */
+#define GBIOSARGS_SEL	14	/* BIOS interface (Arguments) */</programlisting>
+
+      <para>Note that those #defines are not selectors themselves, but
+        just a field INDEX of a selector, so they are exactly the
+        indices of the GDT.  for example, an actual selector for the
+        kernel code (GCODE_SEL) has the value 0x08.</para>
+
+      <para>The next step is to initialize the Interrupt Descriptor
+        Table (IDT).  This table is to be referenced by the processor
+        when a software or hardware interrupt occurs.  For example, to
+        make a system call, user application issues the <literal>INT
+        0x80</literal> instruction.  This is a software interrupt, so
+        the processor's hardware looks up a record with index 0x80 in
+        the IDT.  This record points to the routine that handles this
+        interrupt, in this particular case, this will be the kernel's
+        syscall gate.  The IDT may have a maximum of 256 (0x100)
+        records.  The kernel allocates NIDT records for the IDT, where
+        NIDT is the maximum (256):</para>
+
+      <programlisting><filename>sys/i386/i386/machdep.c:</filename>
+static struct gate_descriptor idt0[NIDT];
+struct gate_descriptor *idt = &amp;idt0[0];	/* interrupt descriptor table */
+</programlisting>
+
+      <para>For each interrupt, an appropriate handler is set.  The
+        syscall gate for <literal>INT 0x80</literal> is set as
+        well:</para>
+
+      <programlisting><filename>sys/i386/i386/machdep.c:</filename>
+ 	setidt(0x80, &amp;IDTVEC(int0x80_syscall),
+			SDT_SYS386TGT, SEL_UPL, GSEL(GCODE_SEL, SEL_KPL));</programlisting>
+
+      <para>So when a userland application issues the <literal>INT
+        0x80</literal> instruction, control will transfer to the
+        function <function>_Xint0x80_syscall</function>, which is in
+        the kernel code segment and will be executed with supervisor
+        privileges.</para>
+
+      <para>Console and DDB are then initialized:</para>
+
+      <programlisting><filename>sys/i386/i386/machdep.c:</filename>
+	cninit();
+/* skipped */
+#ifdef DDB
+	kdb_init();
+	if (boothowto & RB_KDB)
+		Debugger("Boot flags requested debugger");
+#endif</programlisting>
+
+      <para>The Task State Segment is another x86 protected mode
+        structure, the TSS is used by the hardware to store task
+        information when a task switch occurs.</para>
+
+      <para>The Local Descriptors Table is used to reference userland
+        code and data.  Several selectors are defined to point to the
+        LDT, they are the system call gates and the user code and data
+        selectors:</para>
+
+      <programlisting><filename>/usr/include/machine/segments.h</filename>
+#define	LSYS5CALLS_SEL	0	/* forced by intel BCS */
+#define	LSYS5SIGR_SEL	1
+#define	L43BSDCALLS_SEL	2	/* notyet */
+#define	LUCODE_SEL	3
+#define LSOL26CALLS_SEL	4	/* Solaris >= 2.6 system call gate */
+#define	LUDATA_SEL	5
+/* separate stack, es,fs,gs sels ? */
+/* #define	LPOSIXCALLS_SEL	5*/	/* notyet */
+#define LBSDICALLS_SEL	16	/* BSDI system call gate */
+#define NLDT		(LBSDICALLS_SEL + 1)
+</programlisting>
+
+    <para>Next, proc0's Process Control Block (<literal>struct
+      pcb</literal>) structure is initialized.  proc0 is a
+      <literal>struct proc</literal> structure that describes a kernel
+      process.  It is always present while the kernel is running,
+      therefore it is declared as global:</para>
+
+    <programlisting><filename>sys/kern/kern_init.c:</filename>
+    struct	proc proc0;</programlisting>
+
+    <para>The structure <literal>struct pcb</literal> is a part of a
+      proc structure.  It is defined in
+      <filename>/usr/include/machine/pcb.h</filename> and has a
+      process's information specific to the i386 architecture, such as
+      registers values.</para>
+    </sect2>
+
+    <sect2>
+      <title><function>mi_startup()</function></title>
+
+      <para>This function performs a bubble sort of all the system
+        initialization objects and then calls the entry of each object
+        one by one:</para>
+
+      <programlisting><filename>sys/kern/init_main.c:</filename>
+	for (sipp = sysinit; *sipp; sipp++) {
+
+		/* ... skipped ... */
+
+		/* Call function */
+		(*((*sipp)->func))((*sipp)->udata);
+		/* ... skipped ... */
+	}</programlisting>
+
+    <para>Although the sysinit framework is described in the
+      Developers' Handbook, I will discuss the internals of it.</para>
+
+    <para>Every system initialization object (sysinit object) is
+      created by calling a SYSINIT() macro.  Let us take as example an
+      <literal>announce</literal> sysinit object.  This object prints
+      the copyright message:</para>
+
+    <programlisting><filename>sys/kern/init_main.c:</filename>
+static void
+print_caddr_t(void *data __unused)
+{
+	printf("%s", (char *)data);
+}
+SYSINIT(announce, SI_SUB_COPYRIGHT, SI_ORDER_FIRST, print_caddr_t, copyright)</programlisting>
+
+    <para>The subsystem ID for this object is SI_SUB_COPYRIGHT
+      (0x0800001), which comes right after the SI_SUB_CONSOLE
+      (0x0800000).  So, the copyright message will be printed out
+      first, just after the console initialization.</para>
+
+    <para>Let us take a look at what exactly the macro
+      <literal>SYSINIT()</literal> does.  It expands to a
+      <literal>C_SYSINIT()</literal> macro.  The
+      <literal>C_SYSINIT()</literal> macro then expands to a static
+      <literal>struct sysinit</literal> structure declaration with
+      another <literal>DATA_SET</literal> macro call:</para>
+      <programlisting><filename>/usr/include/sys/kernel.h:</filename>
+      #define C_SYSINIT(uniquifier, subsystem, order, func, ident) \
+      static struct sysinit uniquifier ## _sys_init = { \ subsystem, \
+      order, \ func, \ ident \ }; \ DATA_SET(sysinit_set,uniquifier ##
+      _sys_init);
+
+#define	SYSINIT(uniquifier, subsystem, order, func, ident)	\
+	C_SYSINIT(uniquifier, subsystem, order,			\
+	(sysinit_cfunc_t)(sysinit_nfunc_t)func, (void *)ident)</programlisting>
+
+    <para>The <literal>DATA_SET()</literal> macro expands to a
+      <literal>MAKE_SET()</literal>, and that macro is the point where
+      the all sysinit magic is hidden:</para>
+
+    <programlisting><filename>/usr/include/linker_set.h</filename>
+#define MAKE_SET(set, sym)						\
+	static void const * const __set_##set##_sym_##sym = &amp;sym;	\
+	__asm(".section .set." #set ",\"aw\"");				\
+	__asm(".long " #sym);						\
+	__asm(".previous")
+#endif
+#define TEXT_SET(set, sym) MAKE_SET(set, sym)
+#define DATA_SET(set, sym) MAKE_SET(set, sym)</programlisting>
+
+    <para>In our case, the following declaration will occur:</para>
+
+    <programlisting>static struct sysinit announce_sys_init = {
+	SI_SUB_COPYRIGHT,
+	SI_ORDER_FIRST,
+	(sysinit_cfunc_t)(sysinit_nfunc_t)  print_caddr_t,
+	(void *) copyright
+};
+
+static void const *const __set_sysinit_set_sym_announce_sys_init =
+    &amp;announce_sys_init;
+__asm(".section .set.sysinit_set" ",\"aw\"");
+__asm(".long " "announce_sys_init");
+__asm(".previous");</programlisting>
+
+    <para>The first <literal>__asm</literal> instruction will create
+      an ELF section within the kernel's executable.  This will happen
+      at kernel link time.  The section will have the name
+      <literal>.set.sysinit_set</literal>.  The content of this section is one 32-bit
+      value, the address of announce_sys_init structure, and that is
+      what the second <literal>__asm</literal> is.  The third
+      <literal>__asm</literal> instruction marks the end of a section.
+      If a directive with the same section name occurred before, the
+      content, i.e. the 32-bit value, will be appended to the existing
+      section, so forming an array of 32-bit pointers.</para>
+
+    <para>Running <application>objdump</application> on a kernel
+      binary, you may notice the presence of such small
+      sections:</para>
+
+    <screen>&prompt.user; <userinput>objdump -h /kernel</userinput>
+  7 .set.cons_set 00000014  c03164c0  c03164c0  002154c0  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  8 .set.kbddriver_set 00000010  c03164d4  c03164d4  002154d4  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+  9 .set.scrndr_set 00000024  c03164e4  c03164e4  002154e4  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 10 .set.scterm_set 0000000c  c0316508  c0316508  00215508  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 11 .set.sysctl_set 0000097c  c0316514  c0316514  00215514  2**2
+                  CONTENTS, ALLOC, LOAD, DATA
+ 12 .set.sysinit_set 00000664  c0316e90  c0316e90  00215e90  2**2
+                  CONTENTS, ALLOC, LOAD, DATA</screen>
+
+    <para>This screen dump shows that the size of .set.sysinit_set
+      section is 0x664 bytes, so <literal>0x664/sizeof(void
+      *)</literal> sysinit objects are compiled into the kernel.  The
+      other sections such as <literal>.set.sysctl_set</literal>
+      represent other linker sets.</para>
+
+    <para>By defining a variable of type <literal>struct
+      linker_set</literal> the content of
+      <literal>.set.sysinit_set</literal> section will be <quote>collected</quote>
+      into that variable:</para>
+      <programlisting><filename>sys/kern/init_main.c:</filename>
+      extern struct linker_set sysinit_set; /* XXX */</programlisting>
+
+    <para>The <literal>struct linker_set</literal> is defined as
+      follows:</para>
+
+    <programlisting><filename>/usr/include/linker_set.h:</filename>
+  struct linker_set {
+	int	ls_length;
+	void	*ls_items[1];		/* really ls_length of them, trailing NULL */
+};</programlisting>
+
+    <para>The first node will be equal to the number of a sysinit
+      objects, and the second node will be a NULL-terminated array of
+      pointers to them.</para>
+
+    <para>Returning to the <function>mi_startup()</function>
+      discussion, it is must be clear now, how the sysinit objects are
+      being organized.  The <function>mi_startup()</function> function
+      sorts them and calls each.  The very last object is the system
+      scheduler:</para>
+
+    <programlisting><filename>/usr/include/sys/kernel.h:</filename>
+enum sysinit_sub_id {
+	SI_SUB_DUMMY		= 0x0000000,	/* not executed; for linker*/
+	SI_SUB_DONE		= 0x0000001,	/* processed*/
+	SI_SUB_CONSOLE		= 0x0800000,	/* console*/
+	SI_SUB_COPYRIGHT	= 0x0800001,	/* first use of console*/
+...
+	SI_SUB_RUN_SCHEDULER	= 0xfffffff	/* scheduler: no return*/
+};</programlisting>
+
+    <para>The system scheduler sysinit object is defined in the file
+      <filename>sys/vm/vm_glue.c</filename>, and the entry point for
+      that object is <function>scheduler()</function>.  That function
+      is actually an infinite loop, and it represents a process with
+      PID 0, the swapper process.  The proc0 structure, mentioned
+      before, is used to describe it.</para>
+
+    <para>The first user process, called <emphasis>init</emphasis>, is
+      created by the sysinit object <literal>init</literal>:</para>
+
+    <programlisting><filename>sys/kern/init_main.c:</filename>
+static void
+create_init(const void *udata __unused)
+{
+	int error;
+	int s;
+
+	s = splhigh();
+	error = fork1(&amp;proc0, RFFDG | RFPROC, &amp;initproc);
+	if (error)
+		panic("cannot fork init: %d\n", error);
+	initproc->p_flag |= P_INMEM | P_SYSTEM;
+	cpu_set_fork_handler(initproc, start_init, NULL);
+	remrunqueue(initproc);
+	splx(s);
+}
+SYSINIT(init,SI_SUB_CREATE_INIT, SI_ORDER_FIRST, create_init, NULL)</programlisting>
+
+  <para>The <function>create_init()</function> allocates a new process
+    by calling <function>fork1()</function>, but does not mark it
+    runnable.  When this new process is scheduled for execution by the
+    scheduler, the <function>start_init()</function> will be called.
+    That function is defined in <filename>init_main.c</filename>.  It
+    tries to load and exec the <filename>init</filename> binary,
+    probing <filename>/sbin/init</filename> first, then
+    <filename>/sbin/oinit</filename>,
+    <filename>/sbin/init.bak</filename>, and finally
+    <filename>/stand/sysinstall</filename>:</para>
+
+  <programlisting><filename>sys/kern/init_main.c:</filename>
+static char init_path[MAXPATHLEN] =
+#ifdef	INIT_PATH
+    __XSTRING(INIT_PATH);
+#else
+    "/sbin/init:/sbin/oinit:/sbin/init.bak:/stand/sysinstall";
+#endif</programlisting>
+
+  </sect2>
+</sect1>
+
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

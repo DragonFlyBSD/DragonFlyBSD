@@ -1,0 +1,24 @@
+<!--
+     Names and email address of contributing authors and CVS committers.
+     Entity names for committers should be the same as their login names on
+     freefall.FreeBSD.org.
+
+     Use these entities when referencing people.
+
+     Please keep this list in alphabetical order by entity names.
+
+     NOTE:  Make use of `foo at bar.com' e-mail format!!
+
+     $DragonFly: doc/en/share/sgml/authors.ent,v 1.1.1.1 2004/04/02 09:36:21 hmp Exp $
+-->
+
+<!ENTITY a.asmodai "Jeroen Ruigrok van der Werven <email>asmodai at dragonflybsd.org</email>">
+<!ENTITY a.cpressey "Chris Pressey <email>cpressey at dragonflybsd.org</email>">
+<!ENTITY a.eirikn "Eirik Nygaard <email>eirikn at dragonflybsd.org</email>">
+<!ENTITY a.dillon "Matthew Dillon <email>dillon at dragonflybsd.org</email>">
+<!ENTITY a.drhodus "David Rhodus <email>drhodus at dragonflybsd.org</email>">
+<!ENTITY a.hmp	  "Hiten Pandya <email>hmp at dragonflybsd.org</email>">
+<!ENTITY a.hsu	  "Jeffrey Hsu <email>hsu at dragonflybsd.org</email>">
+<!ENTITY a.joerg  "J&ouml;rg Sonnenberger <email>joerg at dragonflybsd.org</email>">
+<!ENTITY a.justin "Justin Sherrill <email>justin at dragonflybsd.org</email>">
+<!ENTITY a.rob "Rob Garrett <email>rob at dragonflybsd.org</email>">

@@ -1,0 +1,211 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/book.sgml,v 1.1.1.1 2004/04/02 09:35:47 hmp Exp $
+-->
+
+<!DOCTYPE BOOK PUBLIC "-//DragonFlyBSD//DTD DocBook V4.1-Based Extension//EN" [
+<!ENTITY % bookinfo PUBLIC "-//DragonFlyBSD//ENTITIES DocBook BookInfo Entities//EN">
+%bookinfo;
+<!ENTITY % man PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Manual Page Entities//EN">
+%man;
+<!ENTITY % freebsd PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Miscellaneous FreeBSD Entities//EN">
+%freebsd;
+<!ENTITY % chapters SYSTEM "chapters.ent"> %chapters;
+<!ENTITY % authors PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Author Entities//EN"> %authors
+<!ENTITY % mailing-lists PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Mailing List Entities//EN"> %mailing-lists;
+<!ENTITY % chap.index "IGNORE">
+]>
+
+<book>
+  <bookinfo>
+    <title>&os; Architecture Handbook</title>
+    
+    <corpauthor>The FreeBSD Documentation Project</corpauthor>
+    
+    <pubdate>August 2000</pubdate>
+    
+    <copyright>
+      <year>2000</year>
+      <year>2001</year>
+      <year>2002</year>
+      <year>2003</year>
+      <year>2004</year>
+      <holder>The FreeBSD Documentation Project</holder>
+    </copyright>
+
+    &bookinfo.trademarks;
+    &bookinfo.legalnotice;
+    
+    <abstract>
+      <para>Welcome to the &os; Architecture Handbook.  This manual is a
+	<emphasis>work in progress</emphasis> and is the work of many
+	individuals.  Many sections do not yet exist and some of those
+	that do exist need to be updated.  If you are interested in
+	helping with this project, send email to the &a.doc;.</para>
+
+      <para>The latest version of this document is always available
+        from the <ulink URL="../../../../index.html">FreeBSD World
+        Wide Web server</ulink>.  It may also be downloaded in a
+        variety of formats and compression options from the <ulink
+        url="ftp://ftp.FreeBSD.org/pub/FreeBSD/doc/">FreeBSD FTP
+        server</ulink> or one of the numerous <ulink
+        url="../handbook/mirrors-ftp.html">mirror
+        sites</ulink>.</para>
+    </abstract>
+  </bookinfo>
+
+  <part id="kernel">
+    <title>Kernel</title>
+
+    &chap.boot;
+    &chap.locking;
+    &chap.kobj;
+    &chap.jail;
+    &chap.sysinit;
+    &chap.vm;
+    &chap.smp;
+
+    <chapter id="ufs">
+      <title>* UFS</title>
+
+      <para>UFS, FFS, Ext2FS, JFS, inodes, buffer cache, labeling,
+        locking, metadata, soft-updates, LFS, portalfs, procfs,
+        vnodes, memory sharing, memory objects, TLBs, caching</para>
+
+    </chapter>
+
+    <chapter id="afs">
+      <title>* AFS</title>
+
+      <para>AFS, NFS, SANs, etc.</para>
+
+    </chapter>
+
+    <chapter id="syscons">
+      <title>* Syscons</title>
+
+      <para>Syscons, tty, PCVT, serial console, screen savers,
+        etc.</para>
+
+    </chapter>
+
+    <chapter id="compatibility">
+      <title>* Compatibility Layers</title>
+
+      <sect1 id="linux">
+        <title>* Linux</title>
+
+        <para>Linux, SVR4, etc.</para>
+      </sect1>
+
+    </chapter>
+  </part>
+  
+  <part id="devicedrivers">
+    <title>Device Drivers</title>
+
+    &chap.driverbasics;
+    &chap.isa;
+    &chap.pci;
+    &chap.scsi;
+    &chap.usb;
+    &chap.newbus;
+
+    &chap.snd;
+    &chap.pccard;
+
+  </part>
+  
+<!-- XXX - finish me
+  <part id="architectures">
+    <title>Architectures</title>
+
+    <chapter id="i386">
+      <title>* I386</title>
+
+      <para>Talk about <literal>i386</literal> specific &os;
+        architecture.</para>
+    </chapter>
+
+    <chapter id="alpha">
+      <title>* Alpha</title>
+
+      <para>Talk about the architectural specifics of
+      FreeBSD/alpha.</para>
+    </chapter>
+
+    <chapter id="ia64">
+      <title>* IA-64</title>
+
+      <para>Talk about the architectural specifics of
+      FreeBSD/ia64.</para>
+
+    </chapter>
+
+    <chapter id="sparc64">
+      <title>* SPARC64</title>
+
+      <para>Talk about <literal>SPARC64</literal> specific &os;
+        architecture.</para>
+    </chapter>
+
+    <chapter id="amd64">
+      <title>* AMD64</title>
+
+      <para>Talk about <literal>AMD64</literal> specific &os;
+        architecture.</para>
+    </chapter>
+
+    <chapter id="powerpc">
+      <title>* PowerPC</title>
+
+      <para>Talk about <literal>PowerPC</literal> specific &os;
+        architecture.</para>
+    </chapter>
+  </part>
+-->
+
+  <part id="appendices">
+    <title>Appendices</title>
+
+      <bibliography>
+
+      <biblioentry xreflabel="1">
+        <authorgroup>
+          <author>
+            <firstname>Marshall</firstname>
+            <othername role="Middle">Kirk</othername>
+            <surname>McKusick</surname>
+          </author>
+          <author>
+            <firstname>Keith</firstname>
+            <surname>Bostic</surname>
+          </author>
+          <author>
+            <firstname>Michael</firstname>
+            <othername role="MI">J</othername>
+            <surname>Karels</surname>
+          </author>
+          <author>
+            <firstname>John</firstname>
+            <othername role="MI">S</othername>
+            <surname>Quarterman</surname>
+          </author>
+        </authorgroup>
+        <copyright><year>1996</year><holder>Addison-Wesley Publishing Company,
+        Inc.</holder></copyright>
+        <isbn>0-201-54979-4</isbn>
+        <publisher>
+          <publishername>Addison-Wesley Publishing Company, Inc.</publishername>
+        </publisher>
+        <title>The Design and Implementation of the 4.4 BSD Operating System</title>
+        <pagenums>1-2</pagenums>
+      </biblioentry>
+
+      </bibliography>
+
+      <![ %chap.index;                    [ &chap.index;                ]]>
+  </part>
+
+</book>

@@ -1,0 +1,582 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/driverbasics/chapter.sgml,v 1.1.1.1 2004/04/02 09:35:52 hmp Exp $
+-->
+
+<chapter id="driverbasics">
+  <title>Writing FreeBSD Device Drivers</title>
+
+  <para>This chapter was written by &a.murray; with selections from a
+    variety of sources including the intro(4) manual page by
+    &a.joerg;.</para>
+
+  <sect1 id="driverbasics-intro">
+    <title>Introduction</title>
+    <para>This chapter provides a brief introduction to writing device
+      drivers for FreeBSD.  A device in this context is a term used
+      mostly for hardware-related stuff that belongs to the system,
+      like disks, printers, or a graphics display with its keyboard.
+      A device driver is the software component of the operating
+      system that controls a specific device.  There are also
+      so-called pseudo-devices where a device driver emulates the
+      behavior of a device in software without any particular
+      underlying hardware.  Device drivers can be compiled into the
+      system statically or loaded on demand through the dynamic kernel
+      linker facility `kld'.</para>
+
+    <para>Most devices in a Unix-like operating system are accessed
+      through device-nodes, sometimes also called special files.
+      These files are usually located under the directory
+      <filename>/dev</filename> in the filesystem hierarchy.
+      In releases of FreeBSD older than 5.0-RELEASE, where
+      &man.devfs.5; support is not integrated into FreeBSD,
+      each device node must be
+      created statically and independent of the existence of the
+      associated device driver.  Most device nodes on the system are
+      created by running <command>MAKEDEV</command>.</para>
+
+    <para>Device drivers can roughly be broken down into two 
+      categories; character and network device drivers.</para>
+
+  </sect1>
+
+  <sect1 id="driverbasics-kld">
+    <title>Dynamic Kernel Linker Facility - KLD</title> 
+
+    <para>The kld interface allows system administrators to
+      dynamically add and remove functionality from a running system.
+      This allows device driver writers to load their new changes into
+      a running kernel without constantly rebooting to test
+      changes.</para>
+
+    <para>The kld interface is used through the following
+      privileged commands:
+
+    <itemizedlist>
+      <listitem><simpara><command>kldload</command> - loads a new kernel
+	module</simpara></listitem>
+      <listitem><simpara><command>kldunload</command> - unloads a kernel
+	module</simpara></listitem>
+      <listitem><simpara><command>kldstat</command> - lists the currently loaded
+	modules</simpara></listitem>
+    </itemizedlist>
+    </para>
+
+    <para>Skeleton Layout of a kernel module</para>
+
+<programlisting>/*
+ * KLD Skeleton
+ * Inspired by Andrew Reiter's Daemonnews article
+ */
+
+#include &lt;sys/types.h&gt;
+#include &lt;sys/module.h&gt;
+#include &lt;sys/systm.h&gt;  /* uprintf */ 
+#include &lt;sys/errno.h&gt;
+#include &lt;sys/param.h&gt;  /* defines used in kernel.h */
+#include &lt;sys/kernel.h&gt; /* types used in module initialization */
+
+/* 
+ * Load handler that deals with the loading and unloading of a KLD.
+ */
+
+static int
+skel_loader(struct module *m, int what, void *arg)
+{
+  int err = 0;
+  
+  switch (what) {
+  case MOD_LOAD:                /* kldload */
+    uprintf("Skeleton KLD loaded.\n");
+    break;
+  case MOD_UNLOAD:
+    uprintf("Skeleton KLD unloaded.\n");
+    break;
+  default:
+    err = EINVAL;
+    break;
+  }
+  return(err);
+}
+
+/* Declare this module to the rest of the kernel */
+
+static moduledata_t skel_mod = {
+  "skel",
+  skel_loader,
+  NULL
+};  
+
+DECLARE_MODULE(skeleton, skel_mod, SI_SUB_KLD, SI_ORDER_ANY);</programlisting>
+
+
+    <sect2>
+      <title>Makefile</title>
+
+      <para>FreeBSD provides a makefile include that you can use to
+	quickly compile your kernel addition.</para>
+
+      <programlisting>SRCS=skeleton.c
+KMOD=skeleton
+
+.include &lt;bsd.kmod.mk&gt;</programlisting>
+
+      <para>Simply running <command>make</command> with this makefile
+        will create a file <filename>skeleton.ko</filename> that can
+        be loaded into your system by typing:
+<screen>&prompt.root; <userinput>kldload -v ./skeleton.ko</userinput></screen>
+      </para>
+    </sect2>
+  </sect1>
+
+  <sect1 id="driverbasics-access">
+    <title>Accessing a device driver</title>
+
+    <para>Unix provides a common set of system calls for user
+      applications to use.  The upper layers of the kernel dispatch
+      these calls to the corresponding device driver when a user
+      accesses a device node.  The <command>/dev/MAKEDEV</command>
+      script makes most of the device nodes for your system but if you
+      are doing your own driver development it may be necessary to
+      create your own device nodes with <command>mknod</command>.
+    </para>
+
+    <sect2>
+      <title>Creating static device nodes</title>
+
+      <para>The <command>mknod</command> command requires four
+	arguments to create a device node.  You must specify the name
+	of the device node, the type of device, the major number of
+	the device, and the minor number of the device.</para>
+    </sect2>
+
+    <sect2>
+      <title>Dynamic device nodes</title>
+
+      <para>The device filesystem, or devfs, provides access to the
+	kernel's device namespace in the global filesystem namespace.
+	This eliminates the problems of potentially having a device
+	driver without a static device node, or a device node without
+	an installed device driver.  Devfs is still a work in
+	progress, but it is already working quite nicely.</para>
+    </sect2>
+
+  </sect1>
+
+  <sect1 id="driverbasics-char">
+    <title>Character Devices</title>
+
+    <para>A character device driver is one that transfers data
+      directly to and from a user process.  This is the most common
+      type of device driver and there are plenty of simple examples in
+      the source tree.</para>
+
+    <para>This simple example pseudo-device remembers whatever values
+      you write to it and can then supply them back to you when you
+      read from it.  Two versions are shown, one for &os;&nbsp; 4.X and
+      one for &os;&nbsp; 5.X.</para>
+
+    <example>
+      <title>Example of a Sample Echo Pseudo-Device Driver for
+        &os;&nbsp;4.X</title>
+
+      <programlisting>/*
+ * Simple `echo' pseudo-device KLD
+ *
+ * Murray Stokely
+ */
+
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
+
+#include &lt;sys/types.h&gt;
+#include &lt;sys/module.h&gt;
+#include &lt;sys/systm.h&gt;  /* uprintf */
+#include &lt;sys/errno.h&gt;
+#include &lt;sys/param.h&gt;  /* defines used in kernel.h */
+#include &lt;sys/kernel.h&gt; /* types used in module initialization */
+#include &lt;sys/conf.h&gt;   /* cdevsw struct */
+#include &lt;sys/uio.h&gt;    /* uio struct */
+#include &lt;sys/malloc.h&gt;
+
+#define BUFFERSIZE 256
+
+/* Function prototypes */
+d_open_t	echo_open;
+d_close_t	echo_close;
+d_read_t	echo_read;
+d_write_t	echo_write;
+
+/* Character device entry points */
+static struct cdevsw echo_cdevsw = {
+	echo_open,
+	echo_close,
+	echo_read,
+	echo_write,
+	noioctl,
+	nopoll,
+	nommap,
+	nostrategy,
+	"echo",
+	33,              /* reserved for lkms - /usr/src/sys/conf/majors */
+	nodump,
+	nopsize,
+	D_TTY,
+	-1
+};
+
+struct s_echo {
+	char msg[BUFFERSIZE];
+	int len;
+} t_echo;
+
+/* vars */
+static dev_t sdev;
+static int len;
+static int count;
+static t_echo *echomsg;
+
+MALLOC_DECLARE(M_ECHOBUF);
+MALLOC_DEFINE(M_ECHOBUF, "echobuffer", "buffer for echo module");
+
+/*
+ * This function is called by the kld[un]load(2) system calls to
+ * determine what actions to take when a module is loaded or unloaded.
+ */
+
+static int
+echo_loader(struct module *m, int what, void *arg)
+{
+	int err = 0;
+
+	switch (what) {
+	case MOD_LOAD:                /* kldload */
+		sdev = make_dev(<literal>&</literal>echo_cdevsw,
+		    0,
+		    UID_ROOT,
+		    GID_WHEEL,
+		    0600,
+		    "echo");
+		/* kmalloc memory for use by this driver */
+		MALLOC(echomsg, t_echo *, sizeof(t_echo), M_ECHOBUF, M_WAITOK);
+		printf("Echo device loaded.\n");
+		break;
+	case MOD_UNLOAD:
+		destroy_dev(sdev);
+		FREE(echomsg,M_ECHOBUF);
+		printf("Echo device unloaded.\n");
+		break;
+	default:
+		err = EINVAL;
+		break;
+	}
+	return(err);
+}
+
+int
+echo_open(dev_t dev, int oflags, int devtype, struct proc *p)
+{
+	int err = 0;
+
+	uprintf("Opened device \"echo\" successfully.\n");
+	return(err);
+}
+
+int
+echo_close(dev_t dev, int fflag, int devtype, struct proc *p)
+{
+	uprintf("Closing device \"echo.\"\n");
+	return(0);
+}
+
+/*
+ * The read function just takes the buf that was saved via
+ * echo_write() and returns it to userland for accessing.
+ * uio(9)
+ */
+
+int
+echo_read(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+	int amt;
+
+	/*
+	 * How big is this read operation?  Either as big as the user wants,
+	 * or as big as the remaining data
+	 */
+	amt = MIN(uio->uio_resid, (echomsg->len - uio->uio_offset > 0) ?
+	    echomsg->len - uio->uio_offset : 0);
+	if ((err = uiomove(echomsg->msg + uio->uio_offset,amt,uio)) != 0) {
+		uprintf("uiomove failed!\n");
+	}
+	return(err);
+}
+
+/*
+ * echo_write takes in a character string and saves it
+ * to buf for later accessing.
+ */
+
+int
+echo_write(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+
+	/* Copy the string in from user memory to kernel memory */
+	err = copyin(uio->uio_iov->iov_base, echomsg->msg,
+	    MIN(uio->uio_iov->iov_len,BUFFERSIZE - 1));
+
+	/* Now we need to null terminate, then record the length */
+	*(echomsg->msg + MIN(uio->uio_iov->iov_len,BUFFERSIZE - 1)) = 0;
+	echomsg->len = MIN(uio->uio_iov->iov_len,BUFFERSIZE);
+
+	if (err != 0) {
+		uprintf("Write failed: bad address!\n");
+	}
+	count++;
+	return(err);
+}
+
+DEV_MODULE(echo,echo_loader,NULL);</programlisting>
+    </example>
+
+    <example>
+      <title>Example of a Sample Echo Pseudo-Device Driver for
+        &os;&nbsp;5.X</title>
+
+      <programlisting>/*
+ * Simple `echo' pseudo-device KLD
+ *
+ * Murray Stokely
+ *
+ * Converted to 5.X by Søren (Xride) Straarup
+ */
+
+#include &lt;sys/types.h&gt;
+#include &lt;sys/module.h&gt;
+#include &lt;sys/systm.h&gt;  /* uprintf */
+#include &lt;sys/errno.h&gt;
+#include &lt;sys/param.h&gt;  /* defines used in kernel.h */
+#include &lt;sys/kernel.h&gt; /* types used in module initialization */
+#include &lt;sys/conf.h&gt;   /* cdevsw struct */
+#include &lt;sys/uio.h&gt;    /* uio struct */
+#include &lt;sys/malloc.h&gt;
+
+#define BUFFERSIZE 256
+#define CDEV_MAJOR      33
+
+
+/* Function prototypes */
+static d_open_t      echo_open;
+static d_close_t     echo_close;
+static d_read_t      echo_read;
+static d_write_t     echo_write;
+
+/* Character device entry points */
+static struct cdevsw echo_cdevsw = {
+	.d_open = echo_open,
+	.d_close = echo_close,
+	.d_maj = CDEV_MAJOR,
+	.d_name = "echo",
+	.d_read = echo_read,
+	.d_write = echo_write
+};
+
+typedef struct s_echo {
+	char msg[BUFFERSIZE];
+	int len;
+} t_echo;
+
+/* vars */
+static dev_t echo_dev;
+static int count;
+static t_echo *echomsg;
+
+MALLOC_DECLARE(M_ECHOBUF);
+MALLOC_DEFINE(M_ECHOBUF, "echobuffer", "buffer for echo module");
+
+/*
+ * This function is called by the kld[un]load(2) system calls to
+ * determine what actions to take when a module is loaded or unloaded.
+ */
+
+static int
+echo_loader(struct module *m, int what, void *arg)
+{
+	int err = 0;
+
+	switch (what) {
+	case MOD_LOAD:                /* kldload */
+		echo_dev = make_dev(<literal>&</literal>echo_cdevsw,
+		    0,
+		    UID_ROOT,
+		    GID_WHEEL,
+		    0600,
+		    "echo");
+		/* kmalloc memory for use by this driver */
+		MALLOC(echomsg, t_echo *, sizeof(t_echo), M_ECHOBUF, M_WAITOK);
+		printf("Echo device loaded.\n");
+		break;
+	case MOD_UNLOAD:
+		destroy_dev(echo_dev);
+		FREE(echomsg,M_ECHOBUF);
+		printf("Echo device unloaded.\n");
+		break;
+	default:
+		err = EINVAL;
+		break;
+	}
+	return(err);
+}
+
+static int
+echo_open(dev_t dev, int oflags, int devtype, struct thread *p)
+{
+	int err = 0;
+
+	uprintf("Opened device \"echo\" successfully.\n");
+	return(err);
+}
+
+static int
+echo_close(dev_t dev, int fflag, int devtype, struct thread *p)
+{
+	uprintf("Closing device \"echo.\"\n");
+	return(0);
+}
+
+/*
+ * The read function just takes the buf that was saved via
+ * echo_write() and returns it to userland for accessing.
+ * uio(9)
+ */
+
+static int
+echo_read(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+	int amt;
+
+	/*
+	 * How big is this read operation?  Either as big as the user wants,
+	 * or as big as the remaining data
+	 */
+	 amt = MIN(uio-&gt;uio_resid, (echomsg-&gt;len - uio-&gt;uio_offset &gt; 0) ?
+	     echomsg-&gt;len - uio-&gt;uio_offset : 0);
+	if ((err = uiomove(echomsg-&gt;msg + uio-&gt;uio_offset,amt,uio)) != 0) {
+		uprintf("uiomove failed!\n");
+	}
+	return(err);
+}
+
+/*
+ * echo_write takes in a character string and saves it
+ * to buf for later accessing.
+ */
+
+static int
+echo_write(dev_t dev, struct uio *uio, int ioflag)
+{
+	int err = 0;
+
+	/* Copy the string in from user memory to kernel memory */
+	err = copyin(uio-&gt;uio_iov-&gt;iov_base, echomsg-&gt;msg,
+	    MIN(uio-&gt;uio_iov-&gt;iov_len,BUFFERSIZE));
+
+	/* Now we need to null terminate, then record the length */
+	*(echomsg-&gt;msg + MIN(uio-&gt;uio_iov-&gt;iov_len,BUFFERSIZE)) = 0;
+	echomsg-&gt;len = MIN(uio-&gt;uio_iov-&gt;iov_len,BUFFERSIZE);
+
+	if (err != 0) {
+		uprintf("Write failed: bad address!\n");
+	}
+	count++;
+	return(err);
+}
+
+DEV_MODULE(echo,echo_loader,NULL);</programlisting>
+    </example>
+
+    <para>To install this driver on &os;&nbsp;4.X you will first need to
+      make a node on your filesystem with a command such as:</para>
+
+    <screen>&prompt.root; <userinput>mknod /dev/echo c 33 0</userinput></screen>
+
+    <para>With this driver loaded you should now be able to type
+      something like:</para>
+
+    <screen>&prompt.root; <userinput>echo -n "Test Data" &gt; /dev/echo</userinput>
+&prompt.root; <userinput>cat /dev/echo</userinput>
+Test Data</screen>
+
+    <para>Real hardware devices are described in the next chapter.</para>
+
+    <para>Additional Resources
+    <itemizedlist>
+      <listitem><simpara><ulink
+	url="http://www.daemonnews.org/200010/blueprints.html">Dynamic
+	Kernel Linker (KLD) Facility Programming Tutorial</ulink> -
+	<ulink url="http://www.daemonnews.org/">Daemonnews</ulink> October 2000</simpara></listitem>
+      <listitem><simpara><ulink
+	url="http://www.daemonnews.org/200007/newbus-intro.html">How
+	to Write Kernel Drivers with NEWBUS</ulink> - <ulink
+	url="http://www.daemonnews.org/">Daemonnews</ulink> July
+	2000</simpara></listitem>
+    </itemizedlist>
+    </para>
+  </sect1>
+
+  <sect1 id="driverbasics-block">
+    <title>Block Devices (Are Gone)</title>
+
+    <para>Other &unix; systems may support a second type of disk
+      device known as block devices.  Block devices are disk devices
+      for which the kernel provides caching.  This caching makes
+      block-devices almost unusable, or at least dangerously
+      unreliable.  The caching will reorder the sequence of write
+      operations, depriving the application of the ability to know
+      the exact disk contents at any one instant in time.  This
+      makes predictable and reliable crash recovery of on-disk data
+      structures (filesystems, databases etc.) impossible.
+      Since writes may be delayed, there is no way the kernel can
+      report to the application which particular write operation
+      encountered a write error, this further compounds the
+      consistency problem.  For this reason, no serious applications
+      rely on block devices, and in fact, almost all applications
+      which access disks directly take great pains to specify that
+      character (or <quote>raw</quote>) devices should always be
+      used.  Because the implementation of the aliasing of each disk
+      (partition) to two devices with different semantics significantly
+      complicated the relevant kernel code &os; dropped support for
+      cached disk devices as part of the modernization of the disk I/O
+      infrastructure.
+    </para>
+  </sect1>
+
+  <sect1 id="driverbasics-net">
+    <title>Network Drivers</title>
+
+    <para>Drivers for network devices do not use device nodes in order
+      to be accessed.  Their selection is based on other decisions
+      made inside the kernel and instead of calling open(), use of a
+      network device is generally introduced by using the system call
+      socket(2).</para> 
+
+    <para>man ifnet(), loopback device, Bill Paul's drivers,
+      etc..</para>
+
+  </sect1>
+
+</chapter>
+
+<!-- 
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

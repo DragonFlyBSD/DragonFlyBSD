@@ -1,0 +1,200 @@
+<!--
+     The FreeBSD Documentation Project
+
+     $DragonFly: doc/en/books/arch-handbook/sysinit/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:17 hmp Exp $
+-->
+
+<chapter id="sysinit">
+  <title>The SYSINIT Framework</title>
+
+  <para>SYSINIT is the framework for a generic call sort and dispatch
+    mechanism. FreeBSD currently uses it for the dynamic
+    initialization of the kernel. SYSINIT allows FreeBSD's kernel
+    subsystems to be reordered, and added, removed, and replaced at
+    kernel link time when the kernel or one of its modules is loaded
+    without having to edit a statically ordered initialization routing
+    and recompile the kernel. This system also allows kernel modules,
+    currently called <firstterm>KLD's</firstterm>, to be separately
+    compiled, linked, and initialized at boot time and loaded even
+    later while the system is already running. This is accomplished
+    using the <quote>kernel linker</quote> and <quote>linker
+    sets</quote>.</para>
+
+  <sect1 id="sysinit-term">
+    <title>Terminology</title>
+
+    <variablelist>
+      <varlistentry>
+        <term>Linker Set</term>
+        <listitem>
+          <para>A linker technique in which the linker gathers
+            statically declared data throughout a program's source files
+            into a single contiguously addressable unit of
+            data.</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </sect1>
+
+  <sect1 id="sysinit-operation">
+    <title>SYSINIT Operation</title>
+
+    <para>SYSINIT relies on the ability of the linker to take static
+      data declared at multiple locations throughout a program's
+      source and group it together as a single contiguous chunk of
+      data. This linker technique is called a <quote>linker
+      set</quote>. SYSINIT uses two linker sets to maintain two data
+      sets containing each consumer's call order, function, and a
+      pointer to the data to pass to that function.</para>
+
+    <para>SYSINIT uses two priorities when ordering the functions for
+      execution.  The first priority is a subsystem ID giving an
+      overall order for SYSINIT's dispatch of functions. Current predeclared
+      ID's are in <filename>&lt;sys/kernel.h&gt;</filename> in the enum
+      list <literal>sysinit_sub_id</literal>. The second priority used
+      is an element order within the subsystem. Current predeclared
+      subsystem element orders are in
+      <filename>&lt;sys/kernel.h&gt;</filename> in the enum list
+      <literal>sysinit_elem_order</literal>.</para>
+
+    <para>There are currently two uses for SYSINIT. Function dispatch
+      at system startup and kernel module loads, and function dispatch
+      at system shutdown and kernel module unload.  Kernel subsystems
+      often use system startup SYSINIT's to initialize data
+      structures, for example the process scheduling subsystem
+      uses a SYSINIT to initialize the run queue data structure.
+      Device drivers should avoid using <literal>SYSINIT()</literal>
+      directly.  Instead drivers for real devices that are part of a
+      bus structure should use <literal>DRIVER_MODULE()</literal> to
+      provide a function that detects the device and, if it is present,
+      initializes the device.  It will do a few things specific to
+      devices and then call <literal>SYSINIT()</literal> itself.
+      For pseudo-devices, which are not part of a bus structure,
+      use <literal>DEV_MODULE()</literal>.</para>
+  </sect1>
+
+
+  <sect1 id="sysinit-using">
+    <title>Using SYSINIT</title>
+
+    <sect2>
+      <title>Interface</title>
+
+      <sect3>
+        <title>Headers</title>
+
+          <programlisting>&lt;sys/kernel.h&gt;</programlisting>
+      </sect3>
+
+      <sect3>
+        <title>Macros</title>
+
+        <programlisting>SYSINIT(uniquifier, subsystem, order, func, ident)
+SYSUNINIT(uniquifier, subsystem, order, func, ident)</programlisting>
+      </sect3>
+    </sect2>
+
+    <sect2>
+      <title>Startup</title>
+
+      <para>The <literal>SYSINIT()</literal> macro creates the
+        necessary SYSINIT data in SYSINIT's startup data set for
+        SYSINIT to sort and dispatch a function at system startup and
+        module load.  <literal>SYSINIT()</literal> takes a uniquifier
+        that SYSINIT uses to identify the particular function dispatch
+        data, the subsystem order, the subsystem element order, the
+        function to call, and the data to pass the function. All
+        functions must take a constant pointer argument.
+        </para>
+
+      <example>
+	<title>Example of a <literal>SYSINIT()</literal></title>
+
+	<programlisting>#include &lt;sys/kernel.h&gt;
+
+void foo_null(void *unused)
+{
+        foo_doo();
+}
+SYSINIT(foo, SI_SUB_FOO, SI_ORDER_FOO, foo_null, NULL);
+
+struct foo foo_voodoo = {
+        FOO_VOODOO;
+}
+
+void foo_arg(void *vdata)
+{
+        struct foo *foo = (struct foo *)vdata;
+        foo_data(foo);
+}
+SYSINIT(bar, SI_SUB_FOO, SI_ORDER_FOO, foo_arg, &amp;foo_voodoo);
+	</programlisting>
+      </example>
+
+      <para>Note that <literal>SI_SUB_FOO</literal> and
+	<literal>SI_ORDER_FOO</literal> need to be in the
+	<literal>sysinit_sub_id</literal> and
+	<literal>sysinit_elem_order</literal> enum's as mentioned
+	above.  Either use existing ones or add your own to the
+	enum's.  You can also use math for fine-tuning the order
+	a SYSINIT will run in.  This example shows a SYSINIT that
+	needs to be run just barely before the SYSINIT's that
+	handle tuning kernel parameters.</para>
+
+      <example>
+	<title>Example of Adjusting <literal>SYSINIT()</literal> Order</title>
+
+	<programlisting>static void
+mptable_register(void *dummy __unused)
+{
+
+	apic_register_enumerator(&amp;mptable_enumerator);
+}
+
+SYSINIT(mptable_register, SI_SUB_TUNABLES - 1, SI_ORDER_FIRST,
+    mptable_register, NULL);</programlisting>
+      </example>
+    </sect2>
+
+    <sect2>
+      <title>Shutdown</title>
+
+      <para>The <literal>SYSUNINIT()</literal> macro behaves similarly
+        to the <literal>SYSINIT()</literal> macro except that it adds
+        the SYSINIT data to SYSINIT's shutdown data set.</para>
+
+      <example>
+	<title>Example of a <literal>SYSUNINIT()</literal></title>
+
+	<programlisting>#include &lt;sys/kernel.h&gt;
+
+void foo_cleanup(void *unused)
+{
+        foo_kill();
+}
+SYSUNINIT(foobar, SI_SUB_FOO, SI_ORDER_FOO, foo_cleanup, NULL);
+
+struct foo_stack foo_stack = {
+        FOO_STACK_VOODOO;
+}
+
+void foo_flush(void *vdata)
+{
+}
+SYSUNINIT(barfoo, SI_SUB_FOO, SI_ORDER_FOO, foo_flush, &amp;foo_stack);
+	</programlisting>
+      </example>
+    </sect2>
+  </sect1>
+</chapter>
+
+<!--
+     Local Variables:
+     mode: sgml
+     sgml-declaration: "../chapter.decl"
+     sgml-indent-data: t
+     sgml-omittag: nil
+     sgml-always-quote-attributes: t
+     sgml-parent-document: ("../book.sgml" "part" "chapter")
+     End:
+-->

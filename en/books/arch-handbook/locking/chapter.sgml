@@ -1,0 +1,313 @@
+<!--
+     The FreeBSD Documentation Project
+     The FreeBSD SMP Next Generation Project
+
+     $DragonFly: doc/en/books/arch-handbook/locking/chapter.sgml,v 1.1.1.1 2004/04/02 09:36:02 hmp Exp $
+-->
+
+<chapter id="locking">
+  <title>Locking Notes</title>
+
+  <para><emphasis>This chapter is maintained by the FreeBSD SMP Next
+    Generation Project.  Please direct any comments or suggestions
+    to its &a.smp;.</emphasis></para>
+
+
+  <para>This document outlines the locking used in the FreeBSD kernel
+    to permit effective multi-processing within the kernel.  Locking
+    can be achieved via several means.  Data structures can be
+    protected by mutexes or &man.lockmgr.9; locks.  A few variables
+    are protected simply by always using atomic operations to access
+    them.</para>
+
+  <sect1 id="locking-mutexes">
+    <title>Mutexes</title>
+
+    <para>A mutex is simply a lock used to guarantee mutual exclusion.
+      Specifically, a mutex may only be owned by one entity at a time.
+      If another entity wishes to obtain a mutex that is already
+      owned, it must wait until the mutex is released.  In the FreeBSD
+      kernel, mutexes are owned by processes.</para>
+
+    <para>Mutexes may be recursively acquired, but they are intended
+      to be held for a short period of time.  Specifically, one may
+      not sleep while holding a mutex.  If you need to hold a lock
+      across a sleep, use a &man.lockmgr.9; lock.</para>
+    
+    <para>Each mutex has several properties of interest:</para>
+
+    <variablelist>
+	<varlistentry>
+	<term>Variable Name</term>
+	<listitem>
+	  <para>The name of the <type>struct mtx</type> variable in
+	    the kernel source.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Logical Name</term>
+	<listitem>
+	  <para>The name of the mutex assigned to it by
+	    <function>mtx_init</function>.  This name is displayed in
+	    KTR trace messages and witness errors and warnings and is
+	    used to distinguish mutexes in the witness code.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Type</term>
+	<listitem>
+	  <para>The type of the mutex in terms of the
+	    <constant>MTX_*</constant> flags.  The meaning for each
+	    flag is related to its meaning as documented in
+	    &man.mutex.9;.</para>
+
+	  <variablelist>
+	    <varlistentry>
+	      <term><constant>MTX_DEF</constant></term>
+	      <listitem>
+		<para>A sleep mutex</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><constant>MTX_SPIN</constant></term>
+	      <listitem>
+		<para>A spin mutex</para>
+	      </listitem>
+	    </varlistentry>
+
+	    <varlistentry>
+	      <term><constant>MTX_RECURSE</constant></term>
+	      <listitem>
+		<para>This mutex is allowed to recurse.</para>
+	      </listitem>
+	    </varlistentry>
+	  </variablelist>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Protectees</term>
+	<listitem>
+	  <para>A list of data structures or data structure members
+	    that this entry protects.  For data structure members, the
+	    name will be in the form of
+	    <structname/structure name/.<structfield/member name/.</para>
+	</listitem>
+      </varlistentry>
+
+      <varlistentry>
+	<term>Dependent Functions</term>
+	<listitem>
+	  <para>Functions that can only be called if this mutex is
+	    held.</para>
+	</listitem>
+      </varlistentry>
+    </variablelist>
+
+    <table frame="all" colsep="1" rowsep="1" pgwide="1">
+      <title>Mutex List</title>
+      
+      <tgroup cols="5">
+	<thead>
+	  <row>
+	    <entry>Variable Name</entry>
+	    <entry>Logical Name</entry>
+	    <entry>Type</entry>
+	    <entry>Protectees</entry>
+	    <entry>Dependent Functions</entry>
+	  </row>
+	</thead>
+	
+	<!-- The scheduler lock -->
+	<tbody>
+	  <row>
+	    <entry>sched_lock</entry>
+	    <entry><quote>sched lock</quote></entry>
+	    <entry>
+	      <constant>MTX_SPIN</constant> |
+	      <constant>MTX_RECURSE</constant>
+	    </entry>
+	    <entry>
+	      <varname>_gmonparam</varname>,
+	      <varname>cnt.v_swtch</varname>,
+	      <varname>cp_time</varname>,
+	      <varname>curpriority</varname>,
+	      <structname/mtx/.<structfield/mtx_blocked/,
+	      <structname/mtx/.<structfield/mtx_contested/,
+	      <structname/proc/.<structfield/p_procq/,
+	      <structname/proc/.<structfield/p_slpq/,
+	      <structname/proc/.<structfield/p_sflag/
+	      <structname/proc/.<structfield/p_stat/,
+	      <structname/proc/.<structfield/p_estcpu/,
+	      <structname/proc/.<structfield/p_cpticks/
+	      <structname/proc/.<structfield/p_pctcpu/,
+	      <structname/proc/.<structfield/p_wchan/,
+	      <structname/proc/.<structfield/p_wmesg/,
+	      <structname/proc/.<structfield/p_swtime/,
+	      <structname/proc/.<structfield/p_slptime/,
+	      <structname/proc/.<structfield/p_runtime/,
+	      <structname/proc/.<structfield/p_uu/,
+	      <structname/proc/.<structfield/p_su/,
+	      <structname/proc/.<structfield/p_iu/,
+	      <structname/proc/.<structfield/p_uticks/,
+	      <structname/proc/.<structfield/p_sticks/,
+	      <structname/proc/.<structfield/p_iticks/,
+	      <structname/proc/.<structfield/p_oncpu/,
+	      <structname/proc/.<structfield/p_lastcpu/,
+	      <structname/proc/.<structfield/p_rqindex/,
+	      <structname/proc/.<structfield/p_heldmtx/,
+	      <structname/proc/.<structfield/p_blocked/,
+	      <structname/proc/.<structfield/p_mtxname/,
+	      <structname/proc/.<structfield/p_contested/,
+	      <structname/proc/.<structfield/p_priority/,
+	      <structname/proc/.<structfield/p_usrpri/,
+	      <structname/proc/.<structfield/p_nativepri/,
+	      <structname/proc/.<structfield/p_nice/,
+	      <structname/proc/.<structfield/p_rtprio/,
+	      <varname>pscnt</varname>,
+	      <varname>slpque</varname>,
+	      <varname>itqueuebits</varname>,
+	      <varname>itqueues</varname>,
+	      <varname>rtqueuebits</varname>,
+	      <varname>rtqueues</varname>,
+	      <varname>queuebits</varname>,
+	      <varname>queues</varname>,
+	      <varname>idqueuebits</varname>,
+	      <varname>idqueues</varname>,
+	      <varname>switchtime</varname>,
+	      <varname>switchticks</varname>
+	    </entry>
+	    <entry>
+	      <function>setrunqueue</function>,
+	      <function>remrunqueue</function>,
+	      <function>mi_switch</function>,
+	      <function>chooseproc</function>,
+	      <function>schedclock</function>,
+	      <function>resetpriority</function>,
+	      <function>updatepri</function>,
+	      <function>maybe_resched</function>,
+	      <function>cpu_switch</function>,
+	      <function>cpu_throw</function>,
+	      <function>need_resched</function>,
+	      <function>resched_wanted</function>,
+	      <function>clear_resched</function>,
+	      <function>aston</function>,
+	      <function>astoff</function>,
+	      <function>astpending</function>,
+	      <function>calcru</function>,
+	      <function>proc_compare</function>
+	    </entry>
+	  </row>
+
+	  <!-- The vm86 pcb lock -->
+	  <row>
+	    <entry>vm86pcb_lock</entry>
+	    <entry><quote>vm86pcb lock</quote></entry>
+	    <entry>
+	      <constant>MTX_DEF</constant>
+	    </entry>
+	    <entry>
+	      <varname>vm86pcb</varname>
+	    </entry>
+	    <entry>
+	      <function>vm86_bioscall</function>
+	    </entry>
+	  </row>
+
+	  <!-- Giant -->
+	  <row>
+	    <entry>Giant</entry>
+	    <entry><quote>Giant</quote></entry>
+	    <entry>
+	      <constant>MTX_DEF</constant> |
+	      <constant>MTX_RECURSE</constant>
+	    </entry>
+	    <entry>nearly everything</entry>
+	    <entry>lots</entry>
+	  </row>
+
+	  <!-- The callout lock -->
+	  <row>
+	    <entry>callout_lock</entry>
+	    <entry><quote>callout lock</quote></entry>
+	    <entry>
+	      <constant>MTX_SPIN</constant> |
+	      <constant>MTX_RECURSE</constant>
+	    </entry>
+	    <entry>
+	      <varname>callfree</varname>,
+	      <varname>callwheel</varname>,
+	      <varname>nextsoftcheck</varname>,
+	      <structname/proc/.<structfield/p_itcallout/,
+	      <structname/proc/.<structfield/p_slpcallout/,
+	      <varname>softticks</varname>,
+	      <varname>ticks</varname>
+	    </entry>
+	    <entry>
+	    </entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </table>
+  </sect1>
+
+  <sect1 id="locking-sx">
+    <title>Shared Exclusive Locks</title>
+
+    <para>These locks provide basic reader-writer type functionality
+      and may be held by a sleeping process.  Currently they are
+      backed by &man.lockmgr.9;.</para>
+
+    <table>
+      <title>Shared Exclusive Lock List</title>
+
+      <tgroup cols="2">
+	<thead>
+	  <row>
+	    <entry>Variable Name</entry>
+	    <entry>Protectees</entry>
+	  </row>
+	</thead>
+	<tbody>
+	  <row>
+	    <entry><varname>allproc_lock</varname></entry>
+	    <entry>
+	      <varname>allproc</varname>
+	      <varname>zombproc</varname>
+	      <varname>pidhashtbl</varname>
+	      <structname/proc/.<structfield/p_list/
+	      <structname/proc/.<structfield/p_hash/
+	      <varname>nextpid</varname>
+	    </entry>
+	    <entry><varname>proctree_lock</varname></entry>
+	    <entry>
+	      <structname/proc/.<structfield/p_children/
+	      <structname/proc/.<structfield/p_sibling/
+	    </entry>
+	  </row>
+	</tbody>
+      </tgroup>
+    </table>
+  </sect1>
+
+  <sect1 id="locking-atomic">
+    <title>Atomically Protected Variables</title>
+
+    <para>An atomically protected variable is a special variable that
+      is not protected by an explicit lock.  Instead, all data
+      accesses to the variables use special atomic operations as
+      described in &man.atomic.9;.  Very few variables are treated
+      this way, although other synchronization primitives such as
+      mutexes are implemented with atomically protected
+      variables.</para>
+
+    <itemizedlist>
+      <listitem>
+	<para><structname/mtx/.<structfield/mtx_lock/</para>
+      </listitem>
+    </itemizedlist>
+  </sect1>
+</chapter>

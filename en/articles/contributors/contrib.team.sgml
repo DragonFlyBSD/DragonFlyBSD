@@ -1,0 +1,59 @@
+<!-- $DragonFly: doc/en/articles/contributors/contrib.team.sgml,v 1.1.1.1 2004/04/02 09:35:45 hmp Exp $
+<!--
+	NOTE TO NEW COMMITTERS: Core and committers lists are sorted in
+	alphabetical order by last name. Please keep in mind that fact while
+	adding your entity to the list of developers.
+-->
+
+  <itemizedlist>
+    <listitem>
+      <para>&a.dillon;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.rob;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.hsu;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.eirikn;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.hmp;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.cpressey;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.drhodus;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.asmodai;</para>
+    </listitem>
+    
+    <listitem>
+      <para>&a.justin;</para>
+    </listitem>
+   
+    <listitem>
+      <para>&a.joerg;</para>
+    </listitem>
+  </itemizedlist>
+  
+<!-- 
+  Local Variables:
+  mode: sgml
+  sgml-declaration: "chapter.decl"
+  sgml-indent-data: t
+  sgml-omittag: nil
+  sgml-always-quote-attributes: t
+  sgml-parent-document: ("article.sgml" "part" "sect1")
+  End:
+-->

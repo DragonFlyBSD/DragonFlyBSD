@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- $DragonFly: doc/share/sgml/transtable.xml,v 1.1.1.1 2004/04/02 09:37:16 hmp Exp $
+
+<!--
+
+  This is a translation table used in transtable-common.xsl.
+  For example:
+
+  <group id="country">
+    <word>
+      <orig>word in English</orig>
+      <tran>word in your language</tran>
+    </word>
+  </group>
+
+-->
+
+<transtable>
+  <cvs:keywords xmlns:cvs="http://www.FreeBSD.org/XML/CVS" version="1.0">
+    <cvs:keyword name="freebsd">
+      $DragonFly: doc/share/sgml/transtable.xml,v 1.1.1.1 2004/04/02 09:37:16 hmp Exp $
+    </cvs:keyword>
+  </cvs:keywords>
+
+  <group id="number-month">
+    <word>
+      <orig>1</orig>
+      <tran>January</tran>
+    </word>
+
+    <word>
+      <orig>2</orig>
+      <tran>February</tran>
+    </word>
+
+    <word>
+      <orig>3</orig>
+      <tran>March</tran>
+    </word>
+
+    <word>
+      <orig>4</orig>
+      <tran>April</tran>
+    </word>
+
+    <word>
+      <orig>5</orig>
+      <tran>May</tran>
+    </word>
+
+    <word>
+      <orig>6</orig>
+      <tran>June</tran>
+    </word>
+
+    <word>
+      <orig>7</orig>
+      <tran>July</tran>
+    </word>
+
+    <word>
+      <orig>8</orig>
+      <tran>August</tran>
+    </word>
+
+    <word>
+      <orig>9</orig>
+      <tran>September</tran>
+    </word>
+
+    <word>
+      <orig>10</orig>
+      <tran>October</tran>
+    </word>
+
+    <word>
+      <orig>11</orig>
+      <tran>November</tran>
+    </word>
+
+    <word>
+      <orig>12</orig>
+      <tran>December</tran>
+    </word>
+  </group>
+</transtable>

@@ -1,0 +1,16 @@
+<!-- -*- sgml -*-
+     DocBook Language Neutral Entities for Localization.
+
+     An entity here can be overridden with the localized version
+     when the entity is defined in 
+     PUBLIC "-//DragonFlyBSD//ENTITIES DocBook Language Specific Entities//EN"
+     in language-specific directory.  Otherwise the following entity
+     set is used by default.
+
+     $DragonFly: doc/share/sgml/l10n.ent,v 1.1.1.1 2004/04/02 09:36:40 hmp Exp $
+     $DragonFly: doc/share/sgml/l10n.ent,v 1.1.1.1 2004/04/02 09:36:40 hmp Exp $
+-->
+
+<!-- docformat navi -->
+<!ENTITY docnavi.single-html "Single HTML">
+<!ENTITY docnavi.split-html  "Split HTML">

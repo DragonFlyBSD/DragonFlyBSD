@@ -1,0 +1,14 @@
+This is pdfTeX, Version 3.14159-1.10b (Web2C 7.4.5) (format=pdftex 2004.1.23)  21 MAR 2004 16:13
+**article.tex
+(/usr/local/share/texmf/tex/latex/tools/.tex{/usr/local/share/texmf/pdftex/conf
+ig/pdftex.cfg}
+! Interruption.
+l.2 
+    %% This is file `.tex',
+? 
+! Emergency stop.
+l.2 
+    %% This is file `.tex',
+End of file on the terminal!
+
+No pages of output.

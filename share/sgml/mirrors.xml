@@ -1,0 +1,2116 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<mirrors>
+  <cvs:keywords xmlns:cvs="http://www.FreeBSD.org/XML/CVS" version="1.0">
+    <cvs:keyword name="freebsd">
+      $DragonFly: doc/share/sgml/mirrors.xml,v 1.1.1.1 2004/04/02 09:37:13 hmp Exp $
+    </cvs:keyword>
+  </cvs:keywords>
+
+  <entry id="central">
+    <country role="primary">Central Servers</country>
+    <host type="www">
+      <name>www.FreeBSD.org</name>
+      <url proto="http">http://www.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.FreeBSD.org</name>
+    </host>
+  </entry>
+
+  <entry id="mirrors-primary">
+    <country role="primary">Primary Mirror Sites</country>
+    <host type="ftp">
+      <name>ftp1.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp1.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp9.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp9.FreeBSD.org/pub/os/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp10.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp10.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp11.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp11.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp12.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp12.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp13.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp13.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp14.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp14.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup1.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup8.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup9.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup10.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup11.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup12.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup13.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup14.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup15.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup16.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup18.FreeBSD.org</name>
+    </host>
+
+    <email>mirror-admin@FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ar">
+    <country>Argentina</country>
+    <host type="www">
+      <name>www.ar.FreeBSD.org</name>
+      <url proto="http">http://www.ar.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ar.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ar.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ar.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ar.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-au">
+    <country>Australia</country>
+    <host type="www">
+      <name>www.au.FreeBSD.org</name>
+      <url proto="http">http://www.au.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.au.FreeBSD.org</name>
+      <url proto="http">http://www2.au.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.au.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.au.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.au.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.au.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.au.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.au.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.au.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.au.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@au.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-at">
+    <country>Austria</country>
+    <host type="www">
+      <name>www.at.FreeBSD.org</name>
+      <url proto="http">http://www.at.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.at.FreeBSD.org</name>
+      <url proto="http">http://www2.at.FreeBSD.org/</url>
+      <url proto="httpv6">http://www2.at.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.at.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.at.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.at.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.at.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.at.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp2.at.dragonfly.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.at.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.at.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@at.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-be">
+    <country>Belgium</country>
+    <host type="www">
+      <name>dragonfly.unixtech.be</name>
+      <url proto="http">http://dragonfly.unixtech.be/</url>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-br">
+    <country>Brazil</country>
+    <host type="www">
+      <name>www.br.FreeBSD.org</name>
+      <url proto="http">http://www.br.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.br.FreeBSD.org</name>
+      <url proto="http">http://www2.br.FreeBSD.org/www.dragonfly.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.br.FreeBSD.org</name>
+      <url proto="http">http://www3.br.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.br.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.br.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.br.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.br.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.br.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.br.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.br.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.br.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.br.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.br.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.br.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.br.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.br.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.br.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@br.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ca">
+    <country>Canada</country>
+    <host type="www">
+      <name>www.ca.FreeBSD.org</name>
+      <url proto="http">http://www.ca.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ca.FreeBSD.org</name>
+      <url proto="http">http://www2.ca.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ca.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ca.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ca.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ca.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-cn">
+    <country>China</country>
+    <host type="www">
+      <name>www.cn.FreeBSD.org</name>
+      <url proto="http">http://www.cn.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.cn.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.cn.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.cn.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.cn.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.cn.FreeBSD.org</name>
+    </host>
+
+    <email>phj@cn.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-hr">
+    <country>Croatia</country>
+    <host type="ftp">
+      <name>ftp.hr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.hr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <email>hostmaster@hr.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-cz">
+    <country>Czech Republic</country>
+    <host type="www">
+      <name>www.cz.FreeBSD.org</name>
+      <url proto="http">http://www.cz.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.cz.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.cz.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.cz.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.cz.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@cz.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-dk">
+    <country>Denmark</country>
+    <host type="www">
+      <name>www.dk.FreeBSD.org</name>
+      <url proto="http">http://www.dk.FreeBSD.org/</url>
+      <url proto="httpv6">http://www.dk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.dk.FreeBSD.org</name>
+      <url proto="http">http://www3.dk.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.dk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.dk.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.dk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.dk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.dk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.dk.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@dk.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ee">
+    <country>Estonia</country>
+    <host type="www">
+      <name>www.ee.FreeBSD.org</name>
+      <url proto="http">http://www.ee.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ee.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ee.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ee.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ee.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-fi">
+    <country>Finland</country>
+    <host type="www">
+      <name>www.fi.FreeBSD.org</name>
+      <url proto="http">http://www.fi.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.fi.FreeBSD.org</name>
+      <url proto="http">http://www2.fi.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.fi.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.fi.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.fi.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.fi.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.fi.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.fi.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@fi.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-fr">
+    <country>France</country>
+    <host type="www">
+      <name>www.fr.FreeBSD.org</name>
+      <url proto="http">http://www.fr.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.fr.FreeBSD.org/pub/unix/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.fr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.fr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.fr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.fr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.fr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.fr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.fr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup8.fr.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@fr.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-de">
+    <country>Germany</country>
+    <host type="www">
+      <name>www.de.FreeBSD.org</name>
+      <url proto="http">http://www.de.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www1.de.FreeBSD.org</name>
+      <url proto="http">http://www1.de.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.de.FreeBSD.org</name>
+      <url proto="http">http://www2.de.FreeBSD.org/</url>
+      <url proto="httpv6">http://www2.de.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.de.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.de.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp2.de.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.de.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.de.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp4.de.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.de.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.de.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.de.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.de.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp7.de.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.de.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.de.FreeBSD.org</name>
+    </host>
+
+    <email>de-bsd-hubs@de.FreeBSD.org </email>
+  </entry>
+
+  <entry id="mirrors-gr">
+    <country>Greece</country>
+    <host type="www">
+      <name>www.gr.FreeBSD.org</name>
+      <url proto="http">http://www.gr.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www.FreeBSD.gr</name>
+      <url proto="http">http://www.FreeBSD.gr/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.gr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.gr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.gr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.gr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.gr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.gr.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@gr.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-hk">
+    <country>Hong Kong</country>
+    <host type="www">
+      <name>www.hk.FreeBSD.org</name>
+      <url proto="http">http://www.hk.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.hk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.hk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-hu">
+    <country>Hungary</country>
+    <host type="www">
+      <name>www.hu.FreeBSD.org</name>
+      <url proto="http">http://www.hu.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.hu.FreeBSD.org</name>
+      <url proto="http">http://www2.hu.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.hu.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.hu.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.hu.FreeBSD.org/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.hu.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.hu.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.hu.FreeBSD.org</name>
+    </host>
+
+    <email>mohacsi@ik.bme.hu</email>
+  </entry>
+
+  <entry id="mirrors-is">
+    <country>Iceland</country>
+    <host type="www">
+      <name>www.is.FreeBSD.org</name>
+      <url proto="http">http://www.is.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.is.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.is.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.is.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@is.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ie">
+    <country>Ireland</country>
+    <host type="www">
+      <name>www.ie.FreeBSD.org</name>
+      <url proto="http">http://www.ie.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ie.FreeBSD.org</name>
+      <url proto="http">http://www2.ie.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ie.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ie.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.ie.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.ie.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp2.ie.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.ie.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.ie.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp3.ie.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ie.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ie.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-it">
+    <country>Italy</country>
+    <host type="www">
+      <name>www.it.FreeBSD.org</name>
+      <url proto="http">http://www.it.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www.gufi.org</name>
+      <url proto="http">http://www.gufi.org/mirrors/www.dragonfly.org/data/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.it.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.it.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <email>hostmaster@it.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-jp">
+    <country>Japan</country>
+    <host type="www">
+      <name>www.jp.FreeBSD.org</name>
+      <url proto="http">http://www.jp.FreeBSD.org/www.FreeBSD.org/</url>
+      <url proto="httpv6">http://www.jp.FreeBSD.org/www.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp9.jp.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp9.jp.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.jp.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.jp.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.jp.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.jp.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.jp.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.jp.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@jp.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-kr">
+    <country>Korea</country>
+    <host type="www">
+      <name>www.kr.FreeBSD.org</name>
+      <url proto="http">http://www.kr.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.kr.FreeBSD.org</name>
+      <url proto="http">http://www2.kr.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.kr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.kr.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.kr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.kr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.kr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.kr.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.kr.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@kr.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-kw">
+    <country>Kuwait</country>
+    <host type="www">
+      <name>www.kw.FreeBSD.org</name>
+      <url proto="http">http://www.kw.FreeBSD.org/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup1.kw.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-lv">
+    <country>Latvia</country>
+    <host type="www">
+      <name>www.lv.FreeBSD.org</name>
+      <url proto="http">http://www.lv.FreeBSD.org/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.lv.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-lt">
+    <country>Lithuania</country>
+    <host type="www">
+      <name>www.lt.FreeBSD.org</name>
+      <url proto="http">http://www.lt.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.lt.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.lt.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <email>hostmaster@lt.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-nl">
+    <country>Netherlands</country>
+    <host type="www">
+      <name>www.nl.FreeBSD.org</name>
+      <url proto="http">http://www.nl.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.nl.FreeBSD.org</name>
+      <url proto="http">http://www2.nl.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.nl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.nl.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.nl.FreeBSD.org/os/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.nl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.nl.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.nl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.nl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.nl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.nl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.nl.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@nl.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-nz">
+    <country>New Zealand</country>
+    <host type="www">
+      <name>www.nz.FreeBSD.org</name>
+      <url proto="http">http://www.nz.FreeBSD.org/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.nz.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-no">
+    <country>Norway</country>
+    <host type="www">
+      <name>www.no.FreeBSD.org</name>
+      <url proto="http">http://www.no.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.no.FreeBSD.org</name>
+      <url proto="http">http://www2.no.FreeBSD.org/</url>
+      <url proto="httpv6">http://www2.no.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.no.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.no.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.no.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.no.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.no.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@no.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ph">
+    <country>Philippines</country>
+    <host type="www">
+      <name>www.FreeBSD.org.ph</name>
+      <url proto="http">http://www.FreeBSD.org.ph/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup1.ph.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-pl">
+    <country>Poland</country>
+    <host type="www">
+      <name>www.pl.FreeBSD.org</name>
+      <url proto="http">http://www.pl.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.pl.FreeBSD.org</name>
+      <url proto="http">http://www2.pl.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.pl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.pl.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.pl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.pl.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.pl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.pl.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.pl.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.pl.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.pl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.pl.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.pl.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@pl.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-pt">
+    <country>Portugal</country>
+    <host type="www">
+      <name>www.pt.FreeBSD.org</name>
+      <url proto="http">http://www.pt.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.pt.FreeBSD.org</name>
+      <url proto="http">http://www4.pt.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www5.pt.FreeBSD.org</name>
+      <url proto="http">http://www5.pt.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.pt.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.pt.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.pt.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.pt.FreeBSD.org/pub/freebsd/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.pt.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.pt.FreeBSD.org/pub/ISO/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.pt.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.pt.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@pt.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ro">
+    <country>Romania</country>
+    <host type="www">
+      <name>www.ro.FreeBSD.org</name>
+      <url proto="http">http://www.ro.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ro.FreeBSD.org</name>
+      <url proto="http">http://www2.ro.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.ro.FreeBSD.org</name>
+      <url proto="http">http://www3.ro.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.ro.FreeBSD.org</name>
+      <url proto="http">http://www4.ro.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ro.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ro.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ro.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.ro.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.ro.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ro.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ru">
+    <country>Russia</country>
+    <host type="www">
+      <name>www.ru.FreeBSD.org</name>
+      <url proto="http">http://www.ru.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ru.FreeBSD.org</name>
+      <url proto="http">http://www2.ru.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.ru.FreeBSD.org</name>
+      <url proto="http">http://www3.ru.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.ru.FreeBSD.org</name>
+      <url proto="http">http://www4.ru.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.ru.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.ru.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.ru.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.ru.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.ru.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.ru.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.ru.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.ru.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp9.ru.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp9.ru.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ru.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.ru.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.ru.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.ru.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.ru.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.ru.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ru.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-sm">
+    <country>San Marino</country>
+    <host type="www">
+      <name>www.sm.FreeBSD.org</name>
+      <url proto="http">http://www.sm.FreeBSD.org/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.sm.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-sa">
+    <country>Saudi Arabia</country>
+    <host type="ftp">
+      <name>ftp.isu.net.sa</name>
+      <url proto="ftp">ftp://ftp.isu.net.sa/pub/mirrors/ftp.dragonfly.org/</url>
+    </host>
+
+    <email>ftpadmin@isu.net.sa</email>
+  </entry>
+
+  <entry id="mirrors-sg">
+    <country>Singapore</country>
+    <host type="www">
+      <name>www2.sg.FreeBSD.org</name>
+      <url proto="http">http://www2.sg.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.sg.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.sg.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp.sg.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.sg.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@sg.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-sk">
+    <country>Slovak Republic</country>
+    <host type="www">
+      <name>www.sk.FreeBSD.org</name>
+      <url proto="http">http://www.sk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.sk.FreeBSD.org</name>
+      <url proto="http">http://www2.sk.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.sk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.sk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.sk.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.sk.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@sk.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-si">
+    <country>Slovenia</country>
+    <host type="www">
+      <name>www.si.FreeBSD.org</name>
+      <url proto="http">http://www.si.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.si.FreeBSD.org</name>
+      <url proto="http">http://www2.si.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.si.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.si.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.si.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.si.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.si.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.si.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@si.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-za">
+    <country>South Africa</country>
+    <host type="ftp">
+      <name>ftp.za.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.za.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.za.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.za.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.za.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.za.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.za.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.za.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.za.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.za.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@za.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-es">
+    <country>Spain</country>
+    <host type="www">
+      <name>www.es.FreeBSD.org</name>
+      <url proto="http">http://www.es.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.es.FreeBSD.org</name>
+      <url proto="http">http://www2.es.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.es.FreeBSD.org</name>
+      <url proto="http">http://www3.es.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.es.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.es.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.es.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.es.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.es.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.es.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.es.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.es.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.es.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@es.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-za">
+    <country>South Africa</country>
+    <host type="www">
+      <name>www.za.FreeBSD.org</name>
+      <url proto="http">http://www.za.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.za.FreeBSD.org</name>
+      <url proto="http">http://www2.za.FreeBSD.org/</url>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-se">
+    <country>Sweden</country>
+    <host type="www">
+      <name>www.se.FreeBSD.org</name>
+      <url proto="http">http://www.se.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.se.FreeBSD.org</name>
+      <url proto="http">http://www2.se.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.se.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.se.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.se.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.se.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.se.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.se.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.se.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.se.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp5.se.FreeBSD.org/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.se.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.se.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@se.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-ch">
+    <country>Switzerland</country>
+    <host type="www">
+      <name>www.ch.FreeBSD.org</name>
+      <url proto="http">http://www.ch.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ch.FreeBSD.org</name>
+      <url proto="http">http://www2.ch.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ch.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ch.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.ch.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.ch.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.ch.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@ch.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-tw">
+    <country>Taiwan</country>
+    <host type="www">
+      <name>www.tw.FreeBSD.org</name>
+      <url proto="http">http://www.tw.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.tw.FreeBSD.org</name>
+      <url proto="http">http://www2.tw.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.tw.FreeBSD.org</name>
+      <url proto="http">http://www3.tw.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.tw.FreeBSD.org</name>
+      <url proto="http">http://www4.tw.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.tw.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp2.tw.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.tw.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp6.tw.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp9.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp9.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp10.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp10.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp11.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp11.tw.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp11.tw.FreeBSD.org/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp12.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp12.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp13.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp13.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp14.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp14.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp15.tw.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp15.tw.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup8.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup9.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup10.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup11.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup12.tw.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup13.tw.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@tw.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-th">
+    <country>Thailand</country>
+    <host type="www">
+      <name>www.th.FreeBSD.org</name>
+      <url proto="http">http://www.th.FreeBSD.org/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.th.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@th.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-tr">
+    <country>Turkey</country>
+    <host type="www">
+      <name>www.tr.FreeBSD.org</name>
+      <url proto="http">http://www.tr.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.tr.FreeBSD.org</name>
+      <url proto="http">http://www2.tr.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www.enderunix.org</name>
+      <url proto="http">http://www.enderunix.org/freebsd/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.tr.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.tr.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.tr.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-ua">
+    <country>Ukraine</country>
+    <host type="www">
+      <name>www.ua.FreeBSD.org</name>
+      <url proto="http">http://www.ua.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.ua.FreeBSD.org</name>
+      <url proto="http">http://www2.ua.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www5.ua.FreeBSD.org</name>
+      <url proto="http">http://www5.ua.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.ua.FreeBSD.org</name>
+      <url proto="http">http://www4.ua.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.ua.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.ua.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.ua.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.ua.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.ua.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.ua.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.ua.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.ua.FreeBSD.org</name>
+    </host>
+
+  </entry>
+
+  <entry id="mirrors-uk">
+    <country>United Kingdom</country>
+    <host type="www">
+      <name>www.uk.FreeBSD.org</name>
+      <url proto="http">http://www.uk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www2.uk.FreeBSD.org</name>
+      <url proto="http">http://www2.uk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www3.uk.FreeBSD.org</name>
+      <url proto="http">http://www3.uk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.uk.FreeBSD.org</name>
+      <url proto="http">http://www4.uk.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www1.uk.FreeBSD.org</name>
+      <url proto="http">http://www1.uk.FreeBSD.org/</url>
+      <url proto="httpv6">http://www1.uk.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp.uk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.uk.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp2.uk.FreeBSD.org/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.uk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.uk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.uk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.uk.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.uk.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup.uk.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.uk.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.uk.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.uk.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@uk.FreeBSD.org</email>
+  </entry>
+
+  <entry id="mirrors-us">
+    <country>USA</country>
+    <host type="www">
+      <name>www2.us.FreeBSD.org</name>
+      <url proto="http">http://www2.us.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www4.us.FreeBSD.org</name>
+      <url proto="http">http://www4.us.FreeBSD.org/</url>
+      <url proto="httpv6">http://www4.us.FreeBSD.org/</url>
+    </host>
+
+    <host type="www">
+      <name>www5.us.FreeBSD.org</name>
+      <url proto="http">http://www5.us.FreeBSD.org/</url>
+      <url proto="httpv6">http://www5.us.FreeBSD.org/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp1.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp1.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp2.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp2.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp3.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp3.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp4.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp4.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="ftpv6"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp5.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp5.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp6.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp6.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp6.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp7.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp7.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp7.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp8.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp8.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp9.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp9.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp9.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp10.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp10.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp11.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp11.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp12.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp12.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp13.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp13.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="http">http://ftp13.us.FreeBSD.org/pub/FreeBSD/</url>
+      <url proto="rsync"></url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp14.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp14.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="ftp">
+      <name>ftp15.us.FreeBSD.org</name>
+      <url proto="ftp">ftp://ftp15.us.FreeBSD.org/pub/FreeBSD/</url>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup1.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup2.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup3.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup4.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup5.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup6.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup7.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup8.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup9.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup10.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup11.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup12.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup13.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup14.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup15.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup16.us.FreeBSD.org</name>
+    </host>
+
+    <host type="cvsup">
+      <name>cvsup18.us.FreeBSD.org</name>
+    </host>
+
+    <email>hostmaster@us.FreeBSD.org</email>
+  </entry>
+</mirrors>

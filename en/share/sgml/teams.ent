@@ -1,0 +1,18 @@
+<!--
+     Names and email address of teams of people working on specified
+     tasks. Usally they're just mail aliases.
+
+     Use these entities when referencing appropriate teams.
+
+     Please keep this list in alphabetical order by entity names.
+
+     IMPORTANT:  If you delete names from this file you *must* ensure that
+                 all references to them have been removed from the handbook's
+                 translations.  If they haven't then you *will* break the
+                 builds for the other languages, and we will poke fun of you
+                 in public.
+
+     $DragonFly: doc/en/share/sgml/teams.ent,v 1.1.1.1 2004/04/02 09:36:22 hmp Exp $
+-->
+
+<!ENTITY a.doc-team "DragonFly Documentation Team <email>doc-team@DragonFlyBSD.org</email>">
