@@ -36,7 +36,7 @@
  *
  *	@(#)union_vfsops.c	8.20 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/miscfs/union/union_vfsops.c,v 1.39.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.8 2004/03/01 06:33:24 dillon Exp $
+ * $DragonFly: src/sys/vfs/union/union_vfsops.c,v 1.9 2004/03/29 20:43:52 dillon Exp $
  */
 
 /*
@@ -335,16 +335,7 @@ union_unmount(mp, mntflags, td)
 	 */
 	for (freeing = 0; (error = vflush(mp, 0, flags)) != 0;) {
 		struct vnode *vp;
-		int n;
-
-		/* count #vnodes held on mount list */
-		for (n = 0, vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
-		    vp != NULLVP;
-		    vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
-			if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
-				continue;
-			n++;
-		}
+		int n = mp->mnt_nvnodelistsize;
 
 		/* if this is unchanged then stop */
 		if (n == freeing)
