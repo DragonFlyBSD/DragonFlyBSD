@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.28 2004/03/05 19:29:17 hsu Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.29 2004/03/08 03:05:27 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -367,10 +367,7 @@ sleepinit(void)
  * YYY priority now unused
  */
 int
-tsleep(ident, flags, wmesg, timo)
-	void *ident;
-	int flags, timo;
-	const char *wmesg;
+tsleep(void *ident, int flags, const char *wmesg, int timo)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;		/* may be NULL */
@@ -846,8 +843,7 @@ loadav(void *arg)
 
 /* ARGSUSED */
 static void
-sched_setup(dummy)
-	void *dummy;
+sched_setup(void *dummy)
 {
 
 	callout_init(&loadav_callout);
