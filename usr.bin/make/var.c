@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.84 2005/02/13 10:01:04 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.85 2005/02/13 10:03:11 okumoto Exp $
  */
 
 /*-
@@ -978,50 +978,39 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 	     * Check for bogus D and F forms of local variables since we're
 	     * in a local context and the name is the right length.
 	     */
-	    switch (str[0]) {
-		case '@':
-		case '%':
-		case '*':
-		case '!':
-		case '>':
-		case '<':
-		{
-		    char    vname[2];
-		    char    *val;
+	    if (strchr("!%*<>@", str[0]) != NULL) {
+		char    vname[2];
+		char    *val;
 
+		/*
+		 * Well, it's local -- go look for it.
+		 */
+		vname[0] = str[0];
+		vname[1] = '\0';
+
+		v = VarFind(vname, ctxt, 0);
+		if (v != NULL && !haveModifier) {
 		    /*
-		     * Well, it's local -- go look for it.
+		     * No need for nested expansion or anything, as we're
+		     * the only one who sets these things and we sure don't
+		     * put nested invocations in them...
 		     */
-		    vname[0] = str[0];
-		    vname[1] = '\0';
+		    val = (char *)Buf_GetAll(v->val, (size_t *)NULL);
 
-		    v = VarFind(vname, ctxt, 0);
-		    if (v != NULL && !haveModifier) {
-			/*
-			 * No need for nested expansion or anything, as we're
-			 * the only one who sets these things and we sure don't
-			 * put nested invocations in them...
-			 */
-			val = (char *)Buf_GetAll(v->val, (size_t *)NULL);
-
-			if (str[1] == 'D') {
-			    val = VarModify(val, VarHead, (void *)NULL);
-			} else {
-			    val = VarModify(val, VarTail, (void *)NULL);
-			}
-			/*
-			 * Resulting string is dynamically allocated, so
-			 * tell caller to free it.
-			 */
-			*freePtr = TRUE;
-			*lengthPtr = tstr - start + 1;
-			*tstr = endc;
-			Buf_Destroy(buf, TRUE);
-			return (val);
+		    if (str[1] == 'D') {
+			val = VarModify(val, VarHead, (void *)NULL);
+		    } else {
+			val = VarModify(val, VarTail, (void *)NULL);
 		    }
-		    break;
-		default:
-		    break;
+		    /*
+		     * Resulting string is dynamically allocated, so
+		     * tell caller to free it.
+		     */
+		    *freePtr = TRUE;
+		    *lengthPtr = tstr - start + 1;
+		    *tstr = endc;
+		    Buf_Destroy(buf, TRUE);
+		    return (val);
 		}
 	    }
 	}
@@ -1039,16 +1028,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
 		 * specially as they are the only four that will be set
 		 * when dynamic sources are expanded.
 		 */
-		switch (str[0]) {
-		    case '@':
-		    case '%':
-		    case '*':
-		    case '!':
-			dynamic = TRUE;
-			break;
-		    default:
-			dynamic = FALSE;
-			break;
+		if (strchr("!%*@", str[0]) != NULL) {
+		    dynamic = TRUE;
+		} else {
+		    dynamic = FALSE;
 		}
 	    } else if (((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) &&
 		       (vlen > 2) &&
