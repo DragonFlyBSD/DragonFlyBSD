@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993 Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.4 (Berkeley) 3/1/94
  * $FreeBSD: src/usr.bin/netstat/main.c,v 1.34.2.12 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/main.c,v 1.6 2004/03/08 22:41:05 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/main.c,v 1.7 2004/12/24 02:23:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -307,6 +307,7 @@ int	gflag;		/* show group (multicast) routing or stats */
 int	iflag;		/* show interfaces */
 int	Lflag;		/* show size of listen queues */
 int	mflag;		/* show memory stats */
+int	Pflag;		/* show more protocol info (go past 80 columns) */
 int	numeric_addr;	/* show addresses numerically */
 int	numeric_port;	/* show ports numerically */
 static int pflag;	/* show given protocol */
@@ -332,7 +333,7 @@ main(int argc, char **argv)
 
 	af = AF_UNSPEC;
 
-	while ((ch = getopt(argc, argv, "Aabdf:gI:iLlM:mN:np:rSsBtuWw:z")) != -1)
+	while ((ch = getopt(argc, argv, "Aabdf:gI:iLlM:mN:nPp:rSsBtuWw:z")) != -1)
 		switch(ch) {
 		case 'A':
 			Aflag = 1;
@@ -410,6 +411,9 @@ main(int argc, char **argv)
 			break;
 		case 'n':
 			numeric_addr = numeric_port = 1;
+			break;
+		case 'P':
+			Pflag = 1;
 			break;
 		case 'p':
 			if ((tp = name2protox(optarg)) == NULL) {

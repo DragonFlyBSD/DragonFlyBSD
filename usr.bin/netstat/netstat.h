@@ -32,7 +32,7 @@
  *
  *	@(#)netstat.h	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/usr.bin/netstat/netstat.h,v 1.16.2.7 2001/09/17 15:17:46 ru Exp $
- * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.4 2004/03/08 22:41:05 dillon Exp $
+ * $DragonFly: src/usr.bin/netstat/netstat.h,v 1.5 2004/12/24 02:23:50 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -45,6 +45,7 @@ extern int	gflag;	/* show group (multicast) routing or stats */
 extern int	iflag;	/* show interfaces */
 extern int	Lflag;	/* show size of listen queues */
 extern int	mflag;	/* show memory stats */
+extern int	Pflag;	/* show more protocol info */
 extern int	numeric_addr;	/* show addresses numerically */
 extern int	numeric_port;	/* show ports numerically */
 extern int	rflag;	/* show routing tables (or routing stats) */

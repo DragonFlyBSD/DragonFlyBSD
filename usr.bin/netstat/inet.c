@@ -32,7 +32,7 @@
  *
  * @(#)inet.c	8.5 (Berkeley) 5/24/95
  * $FreeBSD: src/usr.bin/netstat/inet.c,v 1.37.2.11 2003/11/27 14:46:49 ru Exp $
- * $DragonFly: src/usr.bin/netstat/inet.c,v 1.16 2004/12/20 11:03:16 joerg Exp $
+ * $DragonFly: src/usr.bin/netstat/inet.c,v 1.17 2004/12/24 02:23:50 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/socketvar.h>
 #include <sys/sysctl.h>
 #include <sys/protosw.h>
+#include <sys/time.h>
 
 #include <net/route.h>
 #include <netinet/in.h>
@@ -175,6 +176,14 @@ static void
 outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, struct tcpcb *tp)
 {
 	const char *vchar;
+	static struct clockinfo clockinfo;
+
+	if (clockinfo.hz == 0) {
+		int size = sizeof(clockinfo);
+		sysctlbyname("kern.clockrate", &clockinfo, &size, NULL, 0);
+		if (clockinfo.hz == 0)
+			clockinfo.hz = 100;
+	}
 
 	/* Ignore sockets for protocols other than the desired one. */
 	if (so->xso_protocol != (int)proto)
@@ -220,6 +229,8 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 		putchar('\n');
 		if (Aflag)
 			printf("%-8.8s ", "Socket");
+		if (Pflag)
+			printf("%8.8s %8.8s %8.8s ", "TxWin", "Unacked", "RTT/ms");
 		if (Lflag) {
 			printf("%-5.5s %-14.14s %-22.22s\n",
 				"Proto", "Listen", "Local Address");
@@ -240,6 +251,22 @@ outputpcb(int proto, const char *name, struct inpcb *inp, struct xsocket *so, st
 			printf("%8lx ", (u_long)inp->inp_ppcb);
 		else
 			printf("%8lx ", (u_long)so->so_pcb);
+	}
+	if (Pflag) {
+		if (tp) {
+			int window = MIN(tp->snd_cwnd, tp->snd_bwnd);
+			if (window == 1073725440)
+				printf("%8s ", "max");
+			else
+				printf("%8d ", (int)MIN(tp->snd_cwnd, tp->snd_bwnd));
+			printf("%8d ", (int)(tp->snd_max - tp->snd_una));
+			if (tp->t_srtt == 0)
+			    printf("%8s ", "-");
+			else
+			    printf("%8.3f ", (double)tp->t_srtt * 1000.0 / TCP_RTT_SCALE / clockinfo.hz);
+		} else {
+			printf("%8s %8s %8s ", "-", "-", "-");
+		}
 	}
 #ifdef INET6
 	if ((inp->inp_vflag & INP_IPV6) != 0)
