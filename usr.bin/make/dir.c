@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.24 2004/12/17 07:56:08 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.25 2004/12/17 08:06:12 okumoto Exp $
  */
 
 /*-
@@ -1138,8 +1138,8 @@ Dir_Destroy(void *pp)
 	if (p->refCount == 0) {
 		LstNode *ln;
 
-		ln = Lst_Member(openDirectories, p);
-		Lst_Remove(openDirectories, ln);
+		if ((ln = Lst_Member(openDirectories, p)) != NULL)
+			Lst_Remove(openDirectories, ln);
 
 		Hash_DeleteTable(&p->files);
 		free(p->name);
