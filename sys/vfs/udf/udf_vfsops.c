@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vfsops.c,v 1.16 2003/11/05 06:56:08 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.2 2004/03/24 17:39:51 drhodus Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vfsops.c,v 1.3 2004/03/29 16:38:36 dillon Exp $
  */
 
 /* udf_vfsops.c */
@@ -664,6 +664,8 @@ udf_find_partmaps(struct udf_mnt *udfmp, struct logvol_desc *lvd)
 		 */
 		if ((error = udf_readlblks(udfmp, pms->st_loc[0], pms->st_size,
 		    &bp)) != 0) {
+			if (bp)
+				brelse(bp);
 			printf("Failed to read Sparing Table at sector %d\n",
 			    pms->st_loc[0]);
 			return(error);

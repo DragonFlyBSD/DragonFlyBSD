@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/udf/udf_vnops.c,v 1.33 2003/12/07 05:04:49 scottl Exp $
- * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.2 2004/03/24 17:39:51 drhodus Exp $
+ * $DragonFly: src/sys/vfs/udf/udf_vnops.c,v 1.3 2004/03/29 16:38:36 dillon Exp $
  */
 
 /* udf_vnops.c */
@@ -463,9 +463,8 @@ udf_read(struct vop_read_args *a)
 		offset = uio->uio_offset;
 		size = uio->uio_resid;
 		error = udf_readatoffset(node, &size, offset, &bp, &data);
-		if (error)
-			return(error);
-		error = uiomove(data, size, uio);
+		if (error == 0)
+			error = uiomove(data, size, uio);
 		if (bp != NULL)
 			brelse(bp);
 		if (error)
@@ -594,6 +593,8 @@ udf_getfid(struct udf_dirstream *ds)
 	/* Grab the first extent of the directory */
 	if (ds->off == 0) {
 		ds->size = 0;
+		if (ds->bp != NULL)
+			brelse(ds->bp);
 		error = udf_readatoffset(ds->node, &ds->size, ds->offset,
 		    &ds->bp, &ds->data);
 		if (error) {
@@ -1062,6 +1063,9 @@ udf_reclaim(struct vop_reclaim_args *a)
  * offset passed in.  Only read in at most 'size' bytes, and then set 'size'
  * to the number of bytes pointed to.  If 'size' is zero, try to read in a
  * whole extent.
+ *
+ * Note that *bp may be assigned error or not.
+ *
  * XXX 'size' is limited to the logical block size for now due to problems
  * with udf_read()
  */
@@ -1078,6 +1082,7 @@ udf_readatoffset(struct udf_node *node, int *size, int offset, struct buf **bp,
 
 	udfmp = node->udfmp;
 
+	*bp = NULL;
 	error = udf_bmap_internal(node, offset, &sector, &max_size);
 	if (error == UDF_INVALID_BMAP) {
 		/*
@@ -1087,10 +1092,10 @@ udf_readatoffset(struct udf_node *node, int *size, int offset, struct buf **bp,
 		fentry = node->fentry;
 		*data = &fentry->data[fentry->l_ea];
 		*size = fentry->l_ad;
-		*bp = NULL;
 		return(0);
-	} else if (error != 0)
+	} else if (error != 0) {
 		return(error);
+	}
 
 	/* Adjust the size so that it is within range */
 	if (*size == 0 || *size > max_size)
@@ -1099,6 +1104,7 @@ udf_readatoffset(struct udf_node *node, int *size, int offset, struct buf **bp,
 
 	if ((error = udf_readlblks(udfmp, sector, *size, bp))) {
 		printf("warning: udf_readlblks returned error %d\n", error);
+		/* note: *bp may be non-NULL */
 		return(error);
 	}
 
