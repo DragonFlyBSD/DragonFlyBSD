@@ -1,12 +1,13 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.28 2004/09/21 03:25:16 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.29 2004/09/21 21:25:28 joerg Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
 .endif
 
 BINUPDATE= apmd.conf fbtab gettytab network.subr \
+	pf.os \
 	protocols \
 	rc rc.firewall rc.firewall6 \
 	rc.sendmail rc.shutdown \
@@ -22,7 +23,7 @@ BIN1=	${BINUPDATE} \
 	hosts hosts.allow host.conf hosts.equiv hosts.lpd \
 	inetd.conf login.access login.conf \
 	motd modems networks newsyslog.conf \
-	pam.conf phones printcap profile \
+	pam.conf pf.conf phones printcap profile \
 	remote \
 	shells sysctl.conf syslog.conf usbd.conf \
 	etc.${MACHINE_ARCH}/ttys \

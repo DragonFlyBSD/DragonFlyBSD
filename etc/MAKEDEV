@@ -21,7 +21,7 @@
 #
 #	@(#)MAKEDEV	5.2 (Berkeley) 6/22/90
 # $FreeBSD: src/etc/MAKEDEV,v 1.243.2.57 2003/02/10 11:35:53 simokawa Exp $
-# $DragonFly: src/etc/MAKEDEV,v 1.9 2004/07/05 00:22:38 dillon Exp $
+# $DragonFly: src/etc/MAKEDEV,v 1.10 2004/09/21 21:25:28 joerg Exp $
 #
 # Device "make" file.  Valid arguments:
 #	all	makes all known devices, standard number of units (or close)
@@ -160,6 +160,7 @@
 #	agpgart	AGP interface
 #	cfs*	Coda Distributed Filesystem
 #	nsmb*	SMB/CIFS protocol interface
+#	pf	PF packet filter
 #
 
 if [ -n "$MAKEDEVPATH" ]; then
@@ -351,6 +352,7 @@ all)
 	sh MAKEDEV twed0				# 3ware
 	sh MAKEDEV crypto				# cdev, crypto
 	sh MAKEDEV fw0 fw1 fw2 fw3 fwmem0		# cdev, firewire
+	sh MAKEDEV pf					# pf
 	;;
 
 # a much restricted set of the above, to save precious i-nodes on the
@@ -1167,7 +1169,10 @@ crypto)
 	mknod crypto c 70 0 root:operator
 	chmod 666 crypto
 	;;
-
+pf)
+	mknod of c 73 0 root:operator
+	chmod 600 pf
+	;;
 fwmem*)
 	unit=`expr $i : 'fwmem\(.*\)'`
 	mknod fwmem$unit c 127 $((1<<24 | $unit)) root:operator
