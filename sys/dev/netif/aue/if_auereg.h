@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_auereg.h,v 1.17 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.3 2003/12/30 01:01:45 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_auereg.h,v 1.4 2004/02/11 15:05:03 joerg Exp $
  */
 
 /*
@@ -223,7 +223,7 @@ struct aue_cdata {
 #define AUE_INC(x, y)		(x) = (x + 1) % y
 
 struct aue_softc {
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #define GET_MII(sc) (device_get_softc((sc)->aue_miibus))
 #elif defined(__NetBSD__)
 #define GET_MII(sc) (&(sc)->aue_mii)
@@ -243,7 +243,7 @@ struct aue_softc {
 	int			aue_if_flags;
 	struct aue_cdata	aue_cdata;
 	struct callout_handle	aue_stat_ch;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	struct mtx		aue_mtx;
 #endif
 	u_int16_t		aue_flags;

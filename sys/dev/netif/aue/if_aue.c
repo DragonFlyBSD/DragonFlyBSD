@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.6 2003/12/30 01:01:45 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.7 2004/02/11 15:05:03 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
  */
@@ -82,7 +82,7 @@
 
 #include <sys/bus.h>
 #include <machine/bus.h>
-#if __FreeBSD_version < 500000
+#if defined(DragonFly) || __FreeBSD_version < 500000
 #include <machine/clock.h>
 #endif
 
@@ -561,7 +561,7 @@ aue_setmulti(struct aue_softc *sc)
 		aue_csr_write_1(sc, AUE_MAR0 + i, 0);
 
 	/* now program new ones */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	TAILQ_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
 #else
 	LIST_FOREACH(ifma, &ifp->if_multiaddrs, ifma_link)
@@ -716,7 +716,7 @@ USB_ATTACH(aue)
 		}
 	}
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_init(&sc->aue_mtx, device_get_nameunit(self), MTX_NETWORK_LOCK,
 	    MTX_DEF | MTX_RECURSE);
 #endif
@@ -767,7 +767,7 @@ USB_ATTACH(aue)
 	    aue_ifmedia_upd, aue_ifmedia_sts)) {
 		printf("aue%d: MII without any PHY!\n", sc->aue_unit);
 		AUE_UNLOCK(sc);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		mtx_destroy(&sc->aue_mtx);
 #endif
 		USB_ATTACH_ERROR_RETURN;
@@ -779,7 +779,7 @@ USB_ATTACH(aue)
 	/*
 	 * Call MI attach routine.
 	 */
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifattach(ifp, eaddr);
 #else
 	ether_ifattach(ifp, ETHER_BPF_SUPPORTED);
@@ -804,7 +804,7 @@ aue_detach(device_ptr_t dev)
 
 	sc->aue_dying = 1;
 	untimeout(aue_tick, sc, sc->aue_stat_ch);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	ether_ifdetach(ifp);
 #else
 	ether_ifdetach(ifp, ETHER_BPF_SUPPORTED);
@@ -820,7 +820,7 @@ aue_detach(device_ptr_t dev)
 #endif
 
 	AUE_UNLOCK(sc);
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	mtx_destroy(&sc->aue_mtx);
 #endif
 
