@@ -9,7 +9,7 @@
  * Trace and dump the kernel namecache hierarchy.  If a path is specified
  * the trace begins there, otherwise the trace begins at the root.
  *
- * $DragonFly: src/test/debug/ncptrace.c,v 1.2 2004/10/06 05:13:20 dillon Exp $
+ * $DragonFly: src/test/debug/ncptrace.c,v 1.3 2004/10/07 00:05:03 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES_
@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <kvm.h>
 #include <nlist.h>
+#include <getopt.h>
 
 struct nlist Nl[] = {
 #ifdef CINV_PARENT
@@ -49,9 +50,26 @@ main(int ac, char **av)
 {
     struct namecache *ncptr;
     kvm_t *kd;
+    const char *corefile = NULL;
+    const char *sysfile = NULL;
+    int ch;
     int i;
 
-    if ((kd = kvm_open(NULL, NULL, NULL, O_RDONLY, "kvm:")) == NULL) {
+    while ((ch = getopt(ac, av, "M:N:")) != -1) {
+	switch(ch) {
+	case 'M':
+	    corefile = optarg;
+	    break;
+	case 'N':
+	    sysfile = optarg;
+	    break;
+	default:
+	    fprintf(stderr, "%s [-M core] [-N system]\n", av[0]);
+	    exit(1);
+	}
+    }
+
+    if ((kd = kvm_open(sysfile, corefile, NULL, O_RDONLY, "kvm:")) == NULL) {
 	perror("kvm_open");
 	exit(1);
     }
