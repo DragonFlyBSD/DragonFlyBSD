@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)whois.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/whois/whois.c,v 1.15.2.11 2003/02/25 20:59:41 roberto Exp $
- * $DragonFly: src/usr.bin/whois/whois.c,v 1.4 2004/08/19 23:12:10 joerg Exp $
+ * $DragonFly: src/usr.bin/whois/whois.c,v 1.5 2004/10/29 15:44:41 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -64,6 +64,7 @@
 #define	QNICHOST_TAIL	".whois-servers.net"
 #define	SNICHOST	"whois.6bone.net"
 #define IANAHOST	"whois.iana.org"
+#define GERMNICHOST	"de.whois-servers.net"
 #define	BNICHOST	"whois.registro.br"
 #define	WHOIS_SERVER_ID	"Whois Server: "
 #define	WHOIS_ORG_SERVER_ID	"Registrant Street1:Whois Server:"
@@ -275,7 +276,11 @@ whois(const char *query, const char *hostname, int flags)
 	sfo = fdopen(s, "w");
 	if (sfi == NULL || sfo == NULL)
 		err(EX_OSERR, "fdopen()");
-	fprintf(sfo, "%s\r\n", query);
+	if (strcmp(hostname, GERMNICHOST) == 0) {
+		fprintf(sfo, "-T dn,ace -C US-ASCII %s\r\n", query);
+	} else {
+		fprintf(sfo, "%s\r\n", query);
+	}
 	fflush(sfo);
 	nhost = NULL;
 	while ((buf = fgetln(sfi, &len)) != NULL) {
