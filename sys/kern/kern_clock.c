@@ -70,7 +70,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.23 2004/08/02 23:20:30 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.24 2004/09/17 00:18:09 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -288,10 +288,9 @@ hardclock(systimer_t info, struct intrframe *frame)
 	}
 
 	/*
-	 * The system-wide ticks and softticks are only updated by cpu #0.
-	 * Callwheel actions are also (at the moment) only handled by cpu #0.
-	 * Finally, we also do NTP related timedelta/tickdelta adjustments
-	 * by adjusting basetime.
+	 * The system-wide ticks counter and NTP related timedelta/tickdelta
+	 * adjustments only occur on cpu #0.  NTP adjustments are accomplished
+	 * by updating basetime.
 	 */
 	if (gd->gd_cpuid == 0) {
 	    struct timespec nts;
@@ -302,12 +301,6 @@ hardclock(systimer_t info, struct intrframe *frame)
 #ifdef DEVICE_POLLING
 	    hardclock_device_poll();	/* mpsafe, short and quick */
 #endif /* DEVICE_POLLING */
-
-	    if (TAILQ_FIRST(&callwheel[ticks & callwheelmask]) != NULL) {
-		setsoftclock();
-	    } else if (softticks + 1 == ticks) {
-		++softticks;
-	    }
 
 #if 0
 	    if (tco->tc_poll_pps) 
@@ -369,6 +362,11 @@ hardclock(systimer_t info, struct intrframe *frame)
 		nsec_adj /= hz;
 	    }
 	}
+
+	/*
+	 * softticks are handled for all cpus
+	 */
+	hardclock_softtick(gd);
 
 	/*
 	 * ITimer handling is per-tick, per-cpu.  I don't think psignal()

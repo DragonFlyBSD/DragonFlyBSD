@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.65 2004/08/12 19:59:30 eirikn Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.66 2004/09/17 00:18:07 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -66,7 +66,6 @@
 #include <sys/proc.h>
 #include <sys/buf.h>
 #include <sys/reboot.h>
-#include <sys/callout.h>
 #include <sys/mbuf.h>
 #include <sys/msgbuf.h>
 #include <sys/sysent.h>
@@ -253,7 +252,6 @@ static void
 cpu_startup(dummy)
 	void *dummy;
 {
-	unsigned i;
 	caddr_t v;
 	vm_offset_t minaddr;
 	vm_offset_t maxaddr;
@@ -291,15 +289,6 @@ cpu_startup(dummy)
 	}
 
 	/*
-	 * Calculate callout wheel size
-	 */
-	for (callwheelsize = 1, callwheelbits = 0;
-	     callwheelsize < ncallout;
-	     callwheelsize <<= 1, ++callwheelbits)
-		;
-	callwheelmask = callwheelsize - 1;
-
-	/*
 	 * Allocate space for system data structures.
 	 * The first available kernel virtual address is in "v".
 	 * As pages of kernel virtual memory are allocated, "v" is incremented.
@@ -322,9 +311,6 @@ again:
 	    (name) = (type *)v; v = (caddr_t)((name)+(num))
 #define	valloclim(name, type, num, lim) \
 	    (name) = (type *)v; v = (caddr_t)((lim) = ((name)+(num)))
-
-	valloc(callout, struct callout, ncallout);
-	valloc(callwheel, struct callout_tailq, callwheelsize);
 
 	/*
 	 * The nominal buffer size (and minimum KVA allocation) is BKVASIZE.
@@ -400,20 +386,6 @@ again:
 	pager_map->system_map = 1;
 	exec_map = kmem_suballoc(kernel_map, &minaddr, &maxaddr,
 				(16*(ARG_MAX+(PAGE_SIZE*3))));
-
-	/*
-	 * Initialize callouts
-	 */
-	SLIST_INIT(&callfree);
-	for (i = 0; i < ncallout; i++) {
-		callout_init(&callout[i]);
-		callout[i].c_flags = CALLOUT_LOCAL_ALLOC;
-		SLIST_INSERT_HEAD(&callfree, &callout[i], c_links.sle);
-	}
-
-	for (i = 0; i < callwheelsize; i++) {
-		TAILQ_INIT(&callwheel[i]);
-	}
 
 #if defined(USERCONFIG)
 	userconfig();

@@ -37,7 +37,7 @@
  *
  *	@(#)callout.h	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/callout.h,v 1.15.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/sys/callout.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/callout.h,v 1.4 2004/09/17 00:18:10 dillon Exp $
  */
 
 #ifndef _SYS_CALLOUT_H_
@@ -53,31 +53,44 @@ struct callout {
 		SLIST_ENTRY(callout) sle;
 		TAILQ_ENTRY(callout) tqe;
 	} c_links;
-	int	c_time;				/* ticks to the event */
-	void	*c_arg;				/* function argument */
+	int	c_time;			/* ticks to the event */
+	void	*c_arg;			/* function argument */
 	void	(*c_func) (void *);	/* function to call */
-	int	c_flags;			/* state of this entry */
+	int	c_flags;		/* state of this entry */
+#ifdef SMP
+	struct globaldata *c_gd;
+#else
+	void	*c_gd_reserved;
+#endif
 };
 
-#define	CALLOUT_LOCAL_ALLOC	0x0001 /* was allocated from callfree */
-#define	CALLOUT_ACTIVE		0x0002 /* callout is currently active */
-#define	CALLOUT_PENDING		0x0004 /* callout is waiting for timeout */
+#define CALLOUT_LOCAL_ALLOC	0x0001 /* was allocated from callfree */
+#define CALLOUT_ACTIVE		0x0002 /* callout is currently active */
+#define CALLOUT_PENDING		0x0004 /* callout is waiting for timeout */
+#define CALLOUT_MPSAFE		0x0008 /* callout does not need the BGL */
+#define CALLOUT_DID_INIT	0x0008 /* safety check */
 
 struct callout_handle {
 	struct callout *callout;
 };
 
-#ifdef _KERNEL
-extern struct callout_list callfree;
-extern struct callout *callout;
-extern int	ncallout;
-extern struct callout_tailq *callwheel;
-extern int	callwheelsize, callwheelbits, callwheelmask, softticks;
-
+/*
+ * WARNING!  These macros may only be used when the state of the callout
+ * structure is stable, meaning from within the callback function or after
+ * the callback function has been called but the timer has not yet been reset.
+ */
 #define	callout_active(c)	((c)->c_flags & CALLOUT_ACTIVE)
 #define	callout_deactivate(c)	((c)->c_flags &= ~CALLOUT_ACTIVE)
-void	callout_init (struct callout *);
 #define	callout_pending(c)	((c)->c_flags & CALLOUT_PENDING)
+
+#ifdef _KERNEL
+extern int	ncallout;
+
+struct globaldata;
+
+void	hardclock_softtick(struct globaldata *);
+void	callout_init (struct callout *);
+void	callout_init_mp (struct callout *);
 void	callout_reset (struct callout *, int, void (*)(void *), void *);
 int	callout_stop (struct callout *);
 
