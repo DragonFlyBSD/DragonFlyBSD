@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.8 2005/03/01 20:54:53 liamfoy Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.9 2005/03/16 07:08:04 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ main(int argc, char *argv[])
 		exit(linkit(argv[0], argv[1], 0));
 	}
 
-	while ((ch = getopt(argc, argv, "fhinsv")) != -1)
+	while ((ch = getopt(argc, argv, "fhinsv")) != -1) {
 		switch (ch) {
 		case 'f':
 			fflag = 1;
@@ -109,6 +109,7 @@ main(int argc, char *argv[])
 		default:
 			usage();
 		}
+	}
 
 	argv += optind;
 	argc -= optind;
@@ -116,7 +117,7 @@ main(int argc, char *argv[])
 	linkf = sflag ? symlink : link;
 	linkch = sflag ? '-' : '=';
 
-	switch(argc) {
+	switch (argc) {
 	case 0:
 		usage();
 		/* NOTREACHED */
@@ -136,7 +137,7 @@ main(int argc, char *argv[])
 		 */
 		errc(1, ENOTDIR, "%s", sourcedir);
 	}
-	if (stat(sourcedir, &sb))
+	if (stat(sourcedir, &sb) != 0)
 		err(1, "%s", sourcedir);
 	if (!S_ISDIR(sb.st_mode))
 		usage();
@@ -155,7 +156,7 @@ linkit(const char *target, const char *source, int isdir)
 
 	if (!sflag) {
 		/* If target doesn't exist, quit now. */
-		if (stat(target, &sb)) {
+		if (stat(target, &sb) != 0) {
 			warn("%s", target);
 			return (1);
 		}
@@ -187,13 +188,13 @@ linkit(const char *target, const char *source, int isdir)
 		source = path;
 	}
 
-	exists = !lstat(source, &sb);
+	exists = (lstat(source, &sb) == 0);
 	/*
 	 * If the file exists, then unlink it forcibly if -f was specified
 	 * and interactively if -i was specified.
 	 */
 	if (fflag && exists) {
-		if (unlink(source)) {
+		if (unlink(source) != 0) {
 			warn("%s", source);
 			return (1);
 		}
@@ -209,14 +210,14 @@ linkit(const char *target, const char *source, int isdir)
 			return (1);
 		}
 
-		if (unlink(source)) {
+		if (unlink(source) != 0) {
 			warn("%s", source);
 			return (1);
 		}
 	}
 
 	/* Attempt the link. */
-	if ((*linkf)(target, source)) {
+	if ((*linkf)(target, source) != 0) {
 		warn("%s", source);
 		return (1);
 	}
