@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.27 2004/04/12 20:12:31 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.28 2004/07/14 23:59:10 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -43,6 +43,8 @@ static void buildflush(void);
 static const char *choppath(const char *path);
 static const char *filecomp(const char *path);
 static time_t parse_http_date(const char *header);
+
+#define	SITE_ROOT	"http://www.dragonflybsd.org"
 
 char *Main[] = {
     "bugs.cgi",
@@ -238,12 +240,14 @@ main(int ac, char **av)
 
     printf("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>\n");
     printf("<link href=\"/favicon.ico\" rel=\"shortcut icon\"/>\n");
-    printf("<link rel=\"stylesheet\" href=\"/stylesheet.css\" type=\"text/css\"/>");
+    printf("<link rel=\"stylesheet\" href=\"%s/stylesheet.css\" "
+		"type=\"text/css\"/>", SITE_ROOT);
     printf("</head>\n");
     printf("<body>\n");
 
     printf("<table border=\"0\" width=\"760\" bgcolor=\"#FFFFFF\">\n");
-    printf("<tr><td width=\"134\"><img src=\"/smalldf.jpg\" alt=\"\"/></td>\n");
+    printf("<tr><td width=\"134\">"
+		"<img src=\"%s/smalldf.jpg\" alt=\"\"/></td>\n", SITE_ROOT);
     printf("<td valign=\"bottom\">");
 
     if (Title)
@@ -315,8 +319,8 @@ generate_side_headers(char *section1, char *section2, char *files[])
 	fileclass = " class=\"unselected\"";
     }
 
-    printf("<td%s><a href=\"/%s\">%s</a></td></tr>\n",
-	fileclass, section1, section2);
+    printf("<td%s><a href=\"%s/%s\">%s</a></td></tr>\n",
+	fileclass, SITE_ROOT, section1, section2);
 
 	if (files[0] != NULL) {
         printf("\t<tr><td>\n");
@@ -339,7 +343,7 @@ generate_side_headers(char *section1, char *section2, char *files[])
             	printf("\t<tr><td%s>", fileclass);
             	printf("&nbsp;&nbsp;&nbsp;&nbsp;");
             	printf("<a class=\"nounderline\" ");
-            	printf("href=\"/%s/%s\">%*.*s</a></td></tr>\n",
+            	printf("href=\"%s/%s/%s\">%*.*s</a></td></tr>\n", SITE_ROOT,
 			section1, 
 			files[i], len, len, files[i]);
         	}
