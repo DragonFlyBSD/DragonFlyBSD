@@ -34,7 +34,7 @@
 #
 #	@(#)vnode_if.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/tools/vnode_if.awk,v 1.39 2003/06/22 21:20:06 truckman Exp $
-# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.2 2003/11/22 21:01:50 asmodai Exp $
+# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.3 2003/11/22 21:11:31 asmodai Exp $
 #
 # Script to produce VFS front-end sugar.
 #
@@ -72,7 +72,6 @@ function add_debug_code(name, arg, pos)
 		if (arg ~ /^\*/) {
 			printh("\tif ("substr(arg, 2)" != NULL) {");
 		}
-		printh("\tASSERT_VI_UNLOCKED("arg", \""uname"\");");
 		# Add assertions for locking
 		if (lockdata[name, arg, pos] == "L")
 			printh("\tASSERT_VOP_LOCKED("arg", \""uname"\");");
