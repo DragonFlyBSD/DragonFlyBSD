@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.5 2003/07/22 17:03:28 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.6 2004/02/13 01:23:57 joerg Exp $
  */
 
 /*
@@ -115,7 +115,7 @@ int DRM(flags) = 0;
 static int DRM(init)(device_t nbdev);
 static void DRM(cleanup)(device_t nbdev);
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #define DRIVER_SOFTC(unit) \
 	((drm_device_t *) devclass_get_softc(DRM(devclass), unit))
 
@@ -205,7 +205,7 @@ static drm_ioctl_desc_t		  DRM(ioctls)[] = {
 
 const char *DRM(find_description)(int vendor, int device);
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 static struct cdevsw DRM(cdevsw) = {
 	.d_name =	DRIVER_NAME,
 	.d_maj =	CDEV_MAJOR,
@@ -479,13 +479,13 @@ static int DRM(setup)( drm_device_t *dev )
 	dev->irq = 0;
 	dev->context_flag = 0;
 	dev->last_context = 0;
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 	callout_init( &dev->timer, 1 );
 #else
 	callout_init( &dev->timer );
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	dev->buf_sigio = NULL;
 #elif defined(__NetBSD__)
 	dev->buf_pgid = 0;
@@ -562,7 +562,7 @@ static int DRM(takedown)( drm_device_t *dev )
 #if __REALLY_HAVE_MTRR
 				if ( map->mtrr >= 0 ) {
 					int retcode;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 					int act;
 					struct mem_range_desc mrdesc;
 					mrdesc.mr_base = map->offset;
@@ -638,7 +638,7 @@ static int DRM(takedown)( drm_device_t *dev )
 static int DRM(init)( device_t nbdev )
 {
 	int unit;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	drm_device_t *dev;
 #elif defined(__NetBSD__)
 	drm_device_t *dev = nbdev;
@@ -649,7 +649,7 @@ static int DRM(init)( device_t nbdev )
 	DRM_DEBUG( "\n" );
 	DRIVER_PREINIT();
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	unit = device_get_unit(nbdev);
 	dev = device_get_softc(nbdev);
 	memset( (void *)dev, 0, sizeof(*dev) );
@@ -676,7 +676,7 @@ static int DRM(init)( device_t nbdev )
 	if ( dev->agp == NULL ) {
 		DRM_ERROR( "Cannot initialize the agpgart module.\n" );
 		DRM(sysctl_cleanup)( dev );
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		destroy_dev(dev->devnode);
 #endif
 		DRM(takedown)( dev );
@@ -685,7 +685,7 @@ static int DRM(init)( device_t nbdev )
 #endif /* __MUST_HAVE_AGP */
 #if __REALLY_HAVE_MTRR
 	if (dev->agp) {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		int retcode = 0, act;
 		struct mem_range_desc mrdesc;
 		mrdesc.mr_base = dev->agp->info.ai_aperture_base;
@@ -713,7 +713,7 @@ static int DRM(init)( device_t nbdev )
 	if( retcode ) {
 		DRM_ERROR( "Cannot allocate memory for context bitmap.\n" );
 		DRM(sysctl_cleanup)( dev );
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		destroy_dev(dev->devnode);
 #endif
 		DRM(takedown)( dev );
@@ -750,11 +750,11 @@ static void DRM(cleanup)(device_t nbdev)
 
 	DRM_DEBUG( "\n" );
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	dev = device_get_softc(nbdev);
 #endif
 	DRM(sysctl_cleanup)( dev );
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	destroy_dev(dev->devnode);
 #endif
 #if __HAVE_CTX_BITMAP
@@ -831,7 +831,7 @@ int DRM(open)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 	if ( !retcode ) {
 		atomic_inc( &dev->counts[_DRM_STAT_OPENS] );
 		DRM_SPINLOCK( &dev->count_lock );
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		device_busy(dev->device);
 #endif
 		if ( !dev->open_count++ )
@@ -862,7 +862,7 @@ int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 	 * Begin inline drm_release
 	 */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	DRM_DEBUG( "pid = %d, device = 0x%lx, open_count = %d\n",
 		   DRM_CURRENTPID, (long)dev->device, dev->open_count );
 #elif defined(__NetBSD__)
@@ -924,7 +924,7 @@ int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 
 #if defined (__FreeBSD__) && (__FreeBSD_version >= 500000)
 	funsetown(&dev->buf_sigio);
-#elif defined(__FreeBSD__)
+#elif defined(__DragonFly__) || defined(__FreeBSD__)
 	funsetown(dev->buf_sigio);
 #elif defined(__NetBSD__)
 	dev->buf_pgid = 0;
@@ -948,7 +948,7 @@ int DRM(close)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p)
 
 	atomic_inc( &dev->counts[_DRM_STAT_CLOSES] );
 	DRM_SPINLOCK( &dev->count_lock );
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	device_unbusy(dev->device);
 #endif
 	if ( !--dev->open_count ) {
@@ -975,7 +975,7 @@ int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags,
 	atomic_inc( &dev->counts[_DRM_STAT_IOCTLS] );
 	++priv->ioctl_count;
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	DRM_DEBUG( "pid=%d, cmd=0x%02lx, nr=0x%02x, dev 0x%lx, auth=%d\n",
 		 DRM_CURRENTPID, cmd, nr, (long)dev->device, priv->authenticated );
 #elif defined(__NetBSD__)
@@ -991,12 +991,12 @@ int DRM(ioctl)(dev_t kdev, u_long cmd, caddr_t data, int flags,
 		dev->flags |= FASYNC;
 		return 0;
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	case FIOSETOWN:
 		return fsetown(*(int *)data, &dev->buf_sigio);
 
 	case FIOGETOWN:
-#if (__FreeBSD_version >= 500000)
+#if defined(__FreeBSD__) && (__FreeBSD_version >= 500000)
 		*(int *) data = fgetown(&dev->buf_sigio);
 #else
 		*(int *) data = fgetown(dev->buf_sigio);

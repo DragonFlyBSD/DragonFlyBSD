@@ -29,14 +29,14 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_ioctl.h,v 1.4.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_ioctl.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_ioctl.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
 
 int DRM(irq_busid)( DRM_IOCTL_ARGS )
 {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	drm_irq_busid_t id;
 	devclass_t pci;
 	device_t bus, dev;

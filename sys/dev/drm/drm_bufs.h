@@ -28,7 +28,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  * $FreeBSD: src/sys/dev/drm/drm_bufs.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_bufs.h,v 1.3 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_bufs.h,v 1.4 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -116,7 +116,7 @@ int DRM(addmap)( DRM_IOCTL_ARGS )
 #if __REALLY_HAVE_MTRR
 		if ( map->type == _DRM_FRAME_BUFFER ||
 		     (map->flags & _DRM_WRITE_COMBINING) ) {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			int retcode = 0, act;
 			struct mem_range_desc mrdesc;
 			mrdesc.mr_base = map->offset;
@@ -240,7 +240,7 @@ int DRM(rmmap)( DRM_IOCTL_ARGS )
 #if __REALLY_HAVE_MTRR
 			if (map->mtrr >= 0) {
 				int retcode;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 				int act;
 				struct mem_range_desc mrdesc;
 				mrdesc.mr_base = map->offset;
@@ -901,7 +901,7 @@ int DRM(mapbufs)( DRM_IOCTL_ARGS )
 	int retcode = 0;
 	const int zero = 0;
 	vm_offset_t virtual, address;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct vmspace *vms = p->td_proc->p_vmspace;
 #endif /* __FreeBSD__ */
 #ifdef __NetBSD__
@@ -939,7 +939,7 @@ int DRM(mapbufs)( DRM_IOCTL_ARGS )
 				goto done;
 			}
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			virtual = round_page((vm_offset_t)vms->vm_daddr + MAXDSIZ);
 			retcode = vm_mmap(&vms->vm_map,
 					  &virtual,
@@ -959,7 +959,7 @@ int DRM(mapbufs)( DRM_IOCTL_ARGS )
 					   p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur);
 #endif /* __NetBSD__ */
 		} else {
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 			virtual = round_page((vm_offset_t)vms->vm_daddr + MAXDSIZ);
 			retcode = vm_mmap(&vms->vm_map,
 					  &virtual,

@@ -31,7 +31,7 @@
  * Dec 1999, Richard Henderson <rth@twiddle.net>, move to generic cmpxchg.
  *
  * $FreeBSD: src/sys/dev/drm/drm.h,v 1.3.2.1 2003/04/26 07:05:27 anholt Exp $
- * $DragonFly: src/sys/dev/drm/drm.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/drm.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
  */
 
 #ifndef _DRM_H_
@@ -46,8 +46,8 @@
 #define DRM_IOC_WRITE		_IOC_WRITE
 #define DRM_IOC_READWRITE	_IOC_READ|_IOC_WRITE
 #define DRM_IOC(dir, group, nr, size) _IOC(dir, group, nr, size)
-#elif defined(__FreeBSD__) || defined(__NetBSD__)
-#if defined(__FreeBSD__) && defined(XFree86Server)
+#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
+#if (defined(__DragonFly__) || defined(__FreeBSD__)) && defined(XFree86Server)
 /* Prevent name collision when including sys/ioccom.h */
 #undef ioctl
 #include <sys/ioccom.h>

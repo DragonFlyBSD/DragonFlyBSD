@@ -29,12 +29,12 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_memory.h,v 1.8.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__)
 #define malloctype DRM(M_DRM)
 /* The macros conflicted in the MALLOC_DEFINE */
 
@@ -106,7 +106,7 @@ void DRM(mem_uninit)(void)
 	DRM_SPINUNINIT(DRM(mem_lock));
 }
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 /* drm_mem_info is called whenever a process reads /dev/drm/mem. */
 static int
 DRM(_mem_info)(drm_mem_stats_t *stats, struct sysctl_oid *oidp, void *arg1, 
@@ -249,7 +249,7 @@ void *DRM(ioremap)( drm_device_t *dev, drm_local_map_t *map )
 	map->iot = dev->pa.pa_memt;
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	if (!(pt = pmap_mapdev(map->offset, map->size))) {
 #elif defined(__NetBSD__)
 	if (bus_space_map(map->iot, map->offset, map->size, 
@@ -306,7 +306,7 @@ void DRM(ioremapfree)(drm_local_map_t *map)
 		DRM_MEM_ERROR(DRM_MEM_MAPPINGS,
 			      "Attempt to free NULL pointer\n");
 	else
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		pmap_unmapdev((vm_offset_t) map->handle, map->size);
 #elif defined(__NetBSD__)
 		bus_space_unmap(map->iot, map->ioh, map->size);

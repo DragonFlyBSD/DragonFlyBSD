@@ -27,7 +27,7 @@
  *   Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/ati_pcigart.h,v 1.1.2.1 2003/04/26 07:05:27 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/ati_pcigart.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/ati_pcigart.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -107,7 +107,7 @@ int DRM(ati_pcigart_cleanup)( drm_device_t *dev,
 		return 0;
 	}
 
-#if __FreeBSD_version > 500000
+#if defined(__FreeBSD__) && __FreeBSD_version > 500000
 	contigfree( (void *)addr, (1 << ATI_PCIGART_TABLE_ORDER) * PAGE_SIZE, DRM(M_DRM));	/* Not available on 4.x */
 #endif
 	return 1;

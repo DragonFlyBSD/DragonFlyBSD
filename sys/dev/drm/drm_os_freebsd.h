@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/dev/drm/drm_os_freebsd.h,v 1.10.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.7 2003/08/07 21:16:55 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_os_freebsd.h,v 1.8 2004/02/13 01:23:57 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -32,25 +32,25 @@
 #include <sys/rman.h>
 #include <sys/memrange.h>
 #include <bus/pci/pcivar.h>
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/selinfo.h>
 #else
 #include <sys/select.h>
 #endif
 #include <sys/bus.h>
-#if __FreeBSD_version >= 400005
+#if defined(__DragonFly__) || __FreeBSD_version >= 400005
 #include <sys/taskqueue.h>
 #endif
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #include <sys/mutex.h>
 #endif
 
-#if __FreeBSD_version >= 400006
+#if defined(__DragonFly__) || __FreeBSD_version >= 400006
 #define __REALLY_HAVE_AGP	__HAVE_AGP
 #endif
 
 #ifdef __i386__
-#define __REALLY_HAVE_MTRR	(__HAVE_MTRR) && (__FreeBSD_version >= 500000)
+#define __REALLY_HAVE_MTRR	((__HAVE_MTRR) && defined(__FreeBSD__) && __FreeBSD_version >= 500000)
 #else
 #define __REALLY_HAVE_MTRR	0
 #endif
@@ -82,7 +82,7 @@
 #define DRM_DEV_GID	0
 #define CDEV_MAJOR	145
 
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 #define DRM_CURPROC		curthread
 #define DRM_STRUCTPROC		struct thread
 #define DRM_SPINTYPE		struct mtx
@@ -247,7 +247,7 @@ typedef u_int8_t u8;
 
 /* Fake this */
 
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 /* The extra atomic functions from 5.0 haven't been merged to 4.x */
 static __inline int
 atomic_cmpset_int(volatile u_int *dst, u_int exp, u_int src)
@@ -324,7 +324,7 @@ find_first_zero_bit(volatile void *p, int max)
  * Fake out the module macros for versions of FreeBSD where they don't
  * exist.
  */
-#if (__FreeBSD_version < 500002 && __FreeBSD_version > 500000) || __FreeBSD_version < 420000
+#if defined(__FreeBSD__) && ((__FreeBSD_version < 500002 && __FreeBSD_version > 500000) || __FreeBSD_version < 420000)
 #define MODULE_VERSION(a,b)		struct __hack
 #define MODULE_DEPEND(a,b,c,d,e)	struct __hack
 #endif

@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_dma.h,v 1.5.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.3 2003/07/06 21:23:47 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_dma.h,v 1.4 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -191,7 +191,7 @@ int DRM(irq_install)( drm_device_t *dev, int irq )
 
 				/* Install handler */
 	dev->irqrid = 0;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	dev->irqr = bus_alloc_resource(dev->device, SYS_RES_IRQ, &dev->irqrid,
 				      0, ~0, 1, RF_SHAREABLE);
 	if (!dev->irqr) {
@@ -205,8 +205,8 @@ int DRM(irq_install)( drm_device_t *dev, int irq )
 		return ENOENT;
 	}
 	
-#ifdef __FreeBSD__
-#if __FreeBSD_version < 500000
+#if defined(__DragonFly__) || defined(__FreeBSD__)
+#if defined(__DragonFly__) || __FreeBSD_version < 500000
 	retcode = bus_setup_intr(dev->device, dev->irqr, INTR_TYPE_TTY,
 				 DRM(dma_service), dev, &dev->irqh);
 #else
@@ -220,7 +220,7 @@ int DRM(irq_install)( drm_device_t *dev, int irq )
 	if ( !dev->irqh ) {
 #endif
 		DRM_LOCK;
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 		bus_release_resource(dev->device, SYS_RES_IRQ, dev->irqrid, dev->irqr);
 #endif
 		dev->irq = 0;
@@ -254,7 +254,7 @@ int DRM(irq_uninstall)( drm_device_t *dev )
 
 	DRM(driver_irq_uninstall)( dev );
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	bus_teardown_intr(dev->device, dev->irqr, dev->irqh);
 	bus_release_resource(dev->device, SYS_RES_IRQ, irqrid, dev->irqr);
 #elif defined(__NetBSD__)

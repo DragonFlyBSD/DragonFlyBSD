@@ -30,14 +30,14 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_fops.h,v 1.7.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.3 2003/07/21 07:57:40 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_fops.h,v 1.4 2004/02/13 01:23:57 joerg Exp $
  */
 
 #include "dev/drm/drmP.h"
 
 drm_file_t *DRM(find_file_by_proc)(drm_device_t *dev, DRM_STRUCTPROC *p)
 {
-#if __FreeBSD_version >= 500021
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500021
 	uid_t uid = p->td_ucred->cr_svuid;
 	pid_t pid = p->td_proc->p_pid;
 #else
@@ -73,7 +73,7 @@ int DRM(open_helper)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 	} else {
 		priv = (drm_file_t *) DRM(alloc)(sizeof(*priv), DRM_MEM_FILES);
 		bzero(priv, sizeof(*priv));
-#if __FreeBSD_version >= 500000
+#if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 		priv->uid		= p->td_ucred->cr_svuid;
 		priv->pid		= p->td_proc->p_pid;
 #else
@@ -90,7 +90,7 @@ int DRM(open_helper)(dev_t kdev, int flags, int fmt, DRM_STRUCTPROC *p,
 		TAILQ_INSERT_TAIL(&dev->files, priv, link);
 		DRM_UNLOCK;
 	}
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	kdev->si_drv1 = dev;
 #endif
 	return 0;

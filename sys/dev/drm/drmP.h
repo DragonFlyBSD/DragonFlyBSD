@@ -28,7 +28,7 @@
  *    Rickard E. (Rik) Faith <faith@valinux.com>
  *    Gareth Hughes <gareth@valinux.com>
  * $FreeBSD: src/sys/dev/drm/drmP.h,v 1.4.2.1 2003/04/26 07:05:27 anholt Exp $
- * $DragonFly: src/sys/dev/drm/drmP.h,v 1.2 2003/06/17 04:28:24 dillon Exp $
+ * $DragonFly: src/sys/dev/drm/drmP.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
  */
 
 #ifndef _DRM_P_H_
@@ -62,7 +62,7 @@ typedef struct drm_file drm_file_t;
 
 /* There's undoubtably more of this file to go into these OS dependent ones. */
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 #include "dev/drm/drm_os_freebsd.h"
 #elif defined __NetBSD__
 #include "dev/drm/drm_os_netbsd.h"
@@ -310,7 +310,7 @@ struct drm_device {
 	const char	  *name;	/* Simple driver name		   */
 	char		  *unique;	/* Unique identifier: e.g., busid  */
 	int		  unique_len;	/* Length of unique field	   */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	device_t	  device;	/* Device instance from newbus     */
 #endif
 	dev_t		  devnode;	/* Device number for mknod	   */
@@ -348,7 +348,7 @@ struct drm_device {
 				/* Context support */
 	int		  irq;		/* Interrupt used by board	   */
 	int		  irqrid;		/* Interrupt used by board	   */
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct resource   *irqr;	/* Resource for interrupt used by board	   */
 #elif defined(__NetBSD__)
 	struct pci_attach_args  pa;
@@ -358,7 +358,7 @@ struct drm_device {
 	atomic_t	  context_flag;	/* Context swapping flag	   */
 	struct callout    timer;	/* Timer for delaying ctx switch   */
 	int		  last_context;	/* Last current context		   */
-#if __FreeBSD_version >= 400005
+#if defined(__DragonFly__) || __FreeBSD_version >= 400005
 	struct task       task;
 #endif
 #if __HAVE_VBL_IRQ
@@ -370,7 +370,7 @@ struct drm_device {
 #endif
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__DragonFly__) || defined(__FreeBSD__)
 	struct sigio      *buf_sigio;	/* Processes waiting for SIGIO     */
 #elif defined(__NetBSD__)
 	pid_t		  buf_pgid;
