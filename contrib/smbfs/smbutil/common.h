@@ -1,6 +1,6 @@
 
-#define iprintf(ident,args...)	do { printf("%-" # ident "s", ""); \
-				printf(## args);}while(0)
+#define iprintf(ident,...)	do { printf("%-" # ident "s", ""); \
+				printf(__VA_ARGS__);}while(0)
 
 extern int verbose;
 
