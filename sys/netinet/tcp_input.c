@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.26 2004/04/22 04:35:45 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.27 2004/05/20 04:28:52 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -1049,9 +1049,7 @@ after_listen:
 				tcpstat.tcps_rcvackpack++;
 				tcpstat.tcps_rcvackbyte += acked;
 				sbdrop(&so->so_snd, acked);
-				if (SEQ_GT(tp->snd_una, tp->snd_recover) &&
-				    SEQ_LEQ(th->th_ack, tp->snd_recover))
-					tp->snd_recover = th->th_ack - 1;
+				tp->snd_recover = th->th_ack - 1;
 				tp->snd_una = th->th_ack;
 				tp->t_dupacks = 0;
 				m_freem(m);
@@ -1980,14 +1978,14 @@ process_ACK:
 			ourfinisacked = 0;
 		}
 		sowwakeup(so);
-		/* detect una wraparound */
-		if (tcp_do_newreno && !IN_FASTRECOVERY(tp) &&
-		    SEQ_GT(tp->snd_una, tp->snd_recover) &&
-		    SEQ_LEQ(th->th_ack, tp->snd_recover))
-			tp->snd_recover = th->th_ack - 1;
-		if (tcp_do_newreno && IN_FASTRECOVERY(tp) &&
-		    SEQ_GEQ(th->th_ack, tp->snd_recover))
-			EXIT_FASTRECOVERY(tp);
+		if (tcp_do_newreno) {
+			if (IN_FASTRECOVERY(tp)) {
+				if (SEQ_GEQ(th->th_ack, tp->snd_recover))
+					EXIT_FASTRECOVERY(tp);
+			} else {
+				tp->snd_recover = th->th_ack - 1;
+			}
+		}
 		tp->snd_una = th->th_ack;
 		if (SEQ_LT(tp->snd_nxt, tp->snd_una))
 			tp->snd_nxt = tp->snd_una;
