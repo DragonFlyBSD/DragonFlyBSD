@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/istallion.c,v 1.36.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.11 2004/05/19 22:52:50 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/stli/istallion.c,v 1.12 2004/06/01 17:27:44 joerg Exp $
  */
 
 /*****************************************************************************/
@@ -1988,12 +1988,14 @@ static void stli_rxprocess(stlibrd_t *brdp, stliport_t *portp)
 			stlen = MIN(stlen, len);
 			tp->t_state |= TS_TBLOCK;
 		}
-		i = b_to_q((char *) (shbuf + tail), stlen, &tp->t_rawq);
+		i = b_to_q(__DEVOLATILE(char *, shbuf + tail), stlen,
+			   &tp->t_rawq);
 		tail += stlen;
 		len -= stlen;
 		if (tail >= size) {
 			tail = 0;
-			i += b_to_q((char *) shbuf, len, &tp->t_rawq);
+			i += b_to_q(__DEVOLATILE(char *, shbuf), len,
+				    &tp->t_rawq);
 			tail += len;
 		}
 		portp->rxlost += i;
@@ -2015,7 +2017,8 @@ static void stli_rxprocess(stlibrd_t *brdp, stliport_t *portp)
 		}
 		stli_rxtmpport = portp;
 		stli_rxtmplen = len;
-		bcopy((char *) (shbuf + tail), &stli_rxtmpbuf[0], stlen);
+		bcopy(__DEVOLATILE(char *, shbuf + tail), &stli_rxtmpbuf[0],
+		      stlen);
 		len -= stlen;
 		if (len > 0)
 			bcopy(shbuf, &stli_rxtmpbuf[stlen], len);
@@ -2264,8 +2267,8 @@ static __inline void stli_brdpoll(stlibrd_t *brdp, volatile cdkhdr_t *hdrp)
  *	8 service bits at a time in the inner loop, so we can bypass
  *	the lot if none of them want service.
  */
-	bcopy((((unsigned char *) hdrp) + brdp->hostoffset), &hostbits[0],
-		bitsize);
+	bcopy(__DEVOLATILE(unsigned char *, hdrp) + brdp->hostoffset,
+	      &hostbits[0], bitsize);
 
 	bzero(&slavebits[0], bitsize);
 	slavebitchange = 0;
@@ -2294,7 +2297,7 @@ static __inline void stli_brdpoll(stlibrd_t *brdp, volatile cdkhdr_t *hdrp)
 	if (slavebitchange) {
 		hdrp = (volatile cdkhdr_t *)
 			EBRDGETMEMPTR(brdp, CDK_CDKADDR);
-		slavep = ((unsigned char *) hdrp) + brdp->slaveoffset;
+		slavep = __DEVOLATILE(unsigned char *, hdrp) + brdp->slaveoffset;
 		for (bitpos = 0; (bitpos < bitsize); bitpos++) {
 			if (slavebits[bitpos])
 				slavep[bitpos] &= ~slavebits[bitpos];
@@ -3396,13 +3399,13 @@ static int stli_startbrd(stlibrd_t *brdp)
 	brdp->slaveoffset = hdrp->slavep - CDK_CDKADDR;
 	brdp->bitsize = (nrdevs + 7) / 8;
 	memp = (volatile cdkmem_t *) (void *) (uintptr_t) hdrp->memp;
-	if (((uintptr_t) (void *) memp) > brdp->memsize) {
+	if ((uintptr_t)(volatile void *)memp > brdp->memsize) {
 		printf("STALLION: corrupted shared memory region?\n");
 		rc = EIO;
 		goto stli_donestartup;
 	}
 	memp = (volatile cdkmem_t *) EBRDGETMEMPTR(brdp,
-						   (uintptr_t) (void *) memp);
+						   (uintptr_t)(volatile void *)memp);
 	if (memp->dtype != TYP_ASYNCTRL) {
 		printf("STALLION: no slave control device found\n");
 		rc = EIO;
