@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.44 2004/07/13 19:12:20 hmp Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.45 2004/07/14 15:18:14 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -89,7 +89,7 @@ Daily DragonFly events and news are reported at the
 <TD>REL image</TD>
 <TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
-<TR><TD>Starkast.net</TD>
+<TR><TD>Starkast.net (Sweden)</TD>
 <TD>REL image</TD>
 <TD>
 <A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>
@@ -223,7 +223,7 @@ cvsup, <a href="http://dragonfly.the-bofh.org/cgi-bin/cvsweb.cgi/">cvsweb</a>
 </TR>
 
 <TR BGCOLOR="#EEEEEE">
-<TD>Starkast.net</TD>
+<TD>Starkast.net (Sweden)</TD>
 <TD>Code</TD>
 <TD>
 <a href="http://ftp.starkast.net/pub/DragonFly/">HTTP</a>, 
