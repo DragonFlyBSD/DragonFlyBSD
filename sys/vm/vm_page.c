@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.27 2004/10/12 19:29:34 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.28 2004/12/10 23:07:10 dillon Exp $
  */
 
 /*
@@ -363,8 +363,10 @@ vm_page_unhold(vm_page_t mem)
 {
 	--mem->hold_count;
 	KASSERT(mem->hold_count >= 0, ("vm_page_unhold: hold count < 0!!!"));
-	if (mem->hold_count == 0 && mem->queue == PQ_HOLD)
+	if (mem->hold_count == 0 && mem->queue == PQ_HOLD) {
+		vm_page_busy(mem);
 		vm_page_free_toq(mem);
+	}
 }
 
 /*
