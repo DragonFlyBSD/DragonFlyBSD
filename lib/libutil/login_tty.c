@@ -32,7 +32,7 @@
  *
  * @(#)login_tty.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/login_tty.c,v 1.6 1999/08/28 00:05:49 peter Exp $
- * $DragonFly: src/lib/libutil/login_tty.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/login_tty.c,v 1.4 2005/03/04 05:22:57 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -44,8 +44,7 @@
 #include "libutil.h"
 
 int
-login_tty(fd)
-	int fd;
+login_tty(int fd)
 {
 	(void) setsid();
 	if (ioctl(fd, TIOCSCTTY, (char *)NULL) == -1)

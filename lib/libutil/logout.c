@@ -32,7 +32,7 @@
  *
  * @(#)logout.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logout.c,v 1.6.2.2 2000/09/20 09:54:16 jkh Exp $
- * $DragonFly: src/lib/libutil/logout.c,v 1.3 2005/03/04 04:31:11 cpressey Exp $
+ * $DragonFly: src/lib/libutil/logout.c,v 1.4 2005/03/04 05:22:57 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -49,8 +49,7 @@
 typedef struct utmp UTMP;
 
 int
-logout(line)
-	const char *line;
+logout(const char *line)
 {
 	int fd;
 	UTMP ut;
