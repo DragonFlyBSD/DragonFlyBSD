@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.5 2005/03/01 06:54:32 cpressey Exp $
  */
 
 /*
@@ -52,18 +52,18 @@
 #define MAXBR	100	/* Max number of bracket pairs known */
 #define MAXCMDS	500	/* Max number of commands known */
 
-void addcmd(char *);
-void addmac(char *);
-int binsrch(char *);
-void checkknown(char *);
-void chkcmd(char *, char *);
-void complain(int);
-int eq(char *, char *);
-void nomatch(char *);
-void pe(int);
-void process(FILE *);
-void prop(int);
-static void usage(void);
+static void	addcmd(char *);
+static void	addmac(const char *);
+static int	binsrch(const char *);
+static void	checkknown(const char *);
+static void	chkcmd(const char *);
+static void	complain(int);
+static int	eq(const char *, const char *);
+static void	nomatch(const char *);
+static void	pe(int);
+static void	process(FILE *);
+static void	prop(int);
+static void	usage(void);
 
 /*
  * The stack on which we remember what we've seen so far.
@@ -269,10 +269,10 @@ usage(void)
 	exit(1);
 }
 
-void
+static void
 process(FILE *f)
 {
-	register int i, n;
+	int i, n;
 	char mac[5];	/* The current macro or nroff command */
 	int pl;
 
@@ -306,7 +306,7 @@ process(FILE *f)
 			if (eq(mac, "de"))
 				addcmd(line);
 
-			chkcmd(line, mac);
+			chkcmd(mac);
 		}
 
 		/*
@@ -365,7 +365,7 @@ process(FILE *f)
 	}
 }
 
-void
+static void
 complain(int i)
 {
 	pe(stk[i].lno);
@@ -374,7 +374,7 @@ complain(int i)
 	printf("\n");
 }
 
-void
+static void
 prop(int i)
 {
 	if (stk[i].pl == 0)
@@ -392,10 +392,10 @@ prop(int i)
 	}
 }
 
-void
-chkcmd(char *line, char *mac)
+static void
+chkcmd(const char *mac)
 {
-	register int i;
+	int i;
 
 	/*
 	 * Check to see if it matches top of stack.
@@ -428,10 +428,10 @@ chkcmd(char *line, char *mac)
 	}
 }
 
-void
-nomatch(char *mac)
+static void
+nomatch(const char *mac)
 {
-	register int i, j;
+	int i, j;
 
 	/*
 	 * Look for a match further down on stack
@@ -473,23 +473,23 @@ nomatch(char *mac)
 }
 
 /* eq: are two strings equal? */
-int
-eq(char *s1, char *s2)
+static int
+eq(const char *s1, const char *s2)
 {
 	return (strcmp(s1, s2) == 0);
 }
 
 /* print the first part of an error message, given the line number */
-void
-pe(int lineno)
+static void
+pe(int mylineno)
 {
 	if (nfiles > 1)
 		printf("%s: ", cfilename);
-	printf("%d: ", lineno);
+	printf("%d: ", mylineno);
 }
 
-void
-checkknown(char *mac)
+static void
+checkknown(const char *mac)
 {
 
 	if (eq(mac, "."))
@@ -506,18 +506,18 @@ checkknown(char *mac)
 /*
  * We have a .de xx line in "line".  Add xx to the list of known commands.
  */
-void
-addcmd(char *line)
+static void
+addcmd(char *myline)
 {
 	char *mac;
 
 	/* grab the macro being defined */
-	mac = line+4;
+	mac = myline + 4;
 	while (isspace(*mac))
 		mac++;
 	if (*mac == 0) {
 		pe(lineno);
-		printf("illegal define: %s\n", line);
+		printf("illegal define: %s\n", myline);
 		return;
 	}
 	mac[2] = 0;
@@ -535,12 +535,12 @@ addcmd(char *line)
  * structure here but this is a quick-and-dirty job and I just don't
  * have time to mess with it.  (I wonder if this will come back to haunt
  * me someday?)  Anyway, I claim that .de is fairly rare in user
- * nroff programs, and the register loop below is pretty fast.
+ * nroff programs, and the loop below is pretty fast.
  */
-void
-addmac(char *mac)
+static void
+addmac(const char *mac)
 {
-	register char **src, **dest, **loc;
+	char **src, **dest, **loc;
 
 	if (binsrch(mac) >= 0){	/* it's OK to redefine something */
 #ifdef DEBUG
@@ -569,13 +569,13 @@ printf("after: %s %s %s %s %s, %d cmds\n", knowncmds[slot-2], knowncmds[slot-1],
  * Do a binary search in knowncmds for mac.
  * If found, return the index.  If not, return -1.
  */
-int
-binsrch(char *mac)
+static int
+binsrch(const char *mac)
 {
-	register char *p;	/* pointer to current cmd in list */
-	register int d;		/* difference if any */
-	register int mid;	/* mid point in binary search */
-	register int top, bot;	/* boundaries of bin search, inclusive */
+	const char *p;	/* pointer to current cmd in list */
+	int d;		/* difference if any */
+	int mid;	/* mid point in binary search */
+	int top, bot;	/* boundaries of bin search, inclusive */
 
 	top = ncmds-1;
 	bot = 0;
