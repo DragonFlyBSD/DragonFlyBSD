@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.51 2004/04/10 20:55:24 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.52 2004/05/28 08:37:32 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -256,6 +256,7 @@ struct thread {
 #define TDF_PREEMPT_LOCK	0x0004	/* I have been preempted */
 #define TDF_PREEMPT_DONE	0x0008	/* acknowledge preemption complete */
 #define TDF_IDLE_NOHLT		0x0010	/* we need to spin */
+#define TDF_MIGRATING		0x0020	/* thread is being migrated */
 
 #define TDF_SYSTHREAD		0x0100	/* system thread */
 #define TDF_ALLOCATED_THREAD	0x0200	/* zalloc allocated thread */
@@ -358,6 +359,7 @@ extern void lwkt_shunlock(lwkt_rwlock_t lock);
 
 extern void lwkt_setpri(thread_t td, int pri);
 extern void lwkt_setpri_self(int pri);
+extern void lwkt_setcpu_self(struct globaldata *rgd);
 extern int  lwkt_send_ipiq(struct globaldata *targ, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_passive(struct globaldata *targ, ipifunc_t func, void *arg);
 extern int  lwkt_send_ipiq_bycpu(int dcpu, ipifunc_t func, void *arg);

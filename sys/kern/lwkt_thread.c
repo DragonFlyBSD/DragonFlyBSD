@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.60 2004/05/10 10:51:31 hmp Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.61 2004/05/28 08:37:34 dillon Exp $
  */
 
 /*
@@ -131,7 +131,7 @@ static __inline
 void
 _lwkt_enqueue(thread_t td)
 {
-    if ((td->td_flags & TDF_RUNQ) == 0) {
+    if ((td->td_flags & (TDF_RUNQ|TDF_MIGRATING)) == 0) {
 	int nq = td->td_pri & TDPRI_MASK;
 	struct globaldata *gd = td->td_gd;
 
@@ -303,7 +303,13 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
     lwkt_initport(&td->td_msgport, td);
     pmap_init_thread(td);
 #ifdef SMP
-    if (gd == mygd) {
+    /*
+     * Normally initializing a thread for a remote cpu requires sending an
+     * IPI.  However, the idlethread is setup before the other cpus are
+     * activated so we have to treat it as a special case.  XXX manipulation
+     * of gd_tdallq requires the BGL.
+     */
+    if (gd == mygd || td == &gd->gd_idlethread) {
 	crit_enter_gd(mygd);
 	TAILQ_INSERT_TAIL(&gd->gd_tdallq, td, td_allq);
 	crit_exit_gd(mygd);
@@ -929,7 +935,7 @@ lwkt_acquire(thread_t td)
     mygd = mycpu;
     KKASSERT((td->td_flags & TDF_RUNQ) == 0);
     while (td->td_flags & TDF_RUNNING)	/* XXX spin */
-	;
+	cpu_mb1();
     if (gd != mygd) {
 	crit_enter_gd(mygd);
 	TAILQ_REMOVE(&gd->gd_tdallq, td, td_allq);	/* protected by BGL */
@@ -1006,6 +1012,61 @@ lwkt_setpri_self(int pri)
 	td->td_pri = (td->td_pri & ~TDPRI_MASK) + pri;
     }
     crit_exit();
+}
+
+/*
+ * Migrate the current thread to the specified cpu.  The BGL must be held
+ * (for the gd_tdallq manipulation XXX).  This is accomplished by 
+ * descheduling ourselves from the current cpu, moving our thread to the
+ * tdallq of the target cpu, IPI messaging the target cpu, and switching out.
+ * TDF_MIGRATING prevents scheduling races while the thread is being migrated.
+ */
+static void lwkt_setcpu_remote(void *arg);
+
+void
+lwkt_setcpu_self(globaldata_t rgd)
+{
+#ifdef SMP
+    thread_t td = curthread;
+
+    if (td->td_gd != rgd) {
+	crit_enter_quick(td);
+	td->td_flags |= TDF_MIGRATING;
+	lwkt_deschedule_self(td);
+	TAILQ_REMOVE(&td->td_gd->gd_tdallq, td, td_allq); /* protected by BGL */
+	TAILQ_INSERT_TAIL(&rgd->gd_tdallq, td, td_allq); /* protected by BGL */
+	lwkt_send_ipiq(rgd, (ipifunc_t)lwkt_setcpu_remote, td);
+	lwkt_switch();
+	/* we are now on the target cpu */
+	crit_exit_quick(td);
+    }
+#endif
+}
+
+/*
+ * Remote IPI for cpu migration (called while in a critical section so we
+ * do not have to enter another one).  The thread has already been moved to
+ * our cpu's allq, but we must wait for the thread to be completely switched
+ * out on the originating cpu before we schedule it on ours or the stack
+ * state may be corrupt.  We clear TDF_MIGRATING after flushing the GD
+ * change to main memory.
+ *
+ * XXX The use of TDF_MIGRATING might not be sufficient to avoid races
+ * against wakeups.  It is best if this interface is used only when there
+ * are no pending events that might try to schedule the thread.
+ */
+static void
+lwkt_setcpu_remote(void *arg)
+{
+    thread_t td = arg;
+    globaldata_t gd = mycpu;
+
+    while (td->td_flags & TDF_RUNNING)
+	cpu_mb1();
+    td->td_gd = gd;
+    cpu_mb2();
+    td->td_flags &= ~TDF_MIGRATING;
+    _lwkt_enqueue(td);
 }
 
 struct proc *
