@@ -82,7 +82,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.24 2004/07/31 07:58:23 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.25 2004/08/24 21:55:47 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -1129,7 +1129,8 @@ m_copym(const struct mbuf *m, int off0, int len, int wait)
 			n->m_data = m->m_data + off;
 			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
+			n->m_flags |= m->m_flags & 
+					(M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
 		} else {
 			bcopy(mtod(m, caddr_t)+off, mtod(n, caddr_t),
 			    (unsigned)n->m_len);
@@ -1175,7 +1176,7 @@ m_copypacket(struct mbuf *m, int how)
 		n->m_data = m->m_data;
 		m_extref(m);
 		n->m_ext = m->m_ext;
-		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
 	} else {
 		n->m_data = n->m_pktdat + (m->m_data - m->m_pktdat );
 		bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
@@ -1195,7 +1196,8 @@ m_copypacket(struct mbuf *m, int how)
 			n->m_data = m->m_data;
 			m_extref(m);
 			n->m_ext = m->m_ext;
-			n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
+			n->m_flags |= m->m_flags &
+					 (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
 		} else {
 			bcopy(mtod(m, char *), mtod(n, char *), n->m_len);
 		}
@@ -1531,7 +1533,7 @@ extpacket:
 		n->m_data = m->m_data + len;
 		m_extref(m);
 		n->m_ext = m->m_ext;
-		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD);
+		n->m_flags |= m->m_flags & (M_EXT | M_EXT_OLD | M_EXT_CLUSTER);
 	} else {
 		bcopy(mtod(m, caddr_t) + len, mtod(n, caddr_t), remain);
 	}
