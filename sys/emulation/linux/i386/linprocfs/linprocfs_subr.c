@@ -39,7 +39,7 @@
  *	@(#)procfs_subr.c	8.6 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_subr.c,v 1.3.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.13 2004/10/12 19:20:38 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_subr.c,v 1.14 2004/10/19 09:29:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,10 @@
 #include <sys/mount.h>
 #include "linprocfs.h"
 
-static struct pfsnode *pfshead;
+#define PFSHSIZE	256
+#define PFSHMASK	(PFSHSIZE - 1)
+
+static struct pfsnode *pfshead[PFSHSIZE];
 static int pfsvplock;
 
 extern int procfs_domem (struct proc *, struct proc *, struct pfsnode *pfsp, struct uio *uio);
@@ -95,7 +98,7 @@ linprocfs_allocvp(mp, vpp, pid, pfs_type)
 	int error;
 
 loop:
-	for (pfs = pfshead; pfs != 0; pfs = pfs->pfs_next) {
+	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		vp = PFSTOV(pfs);
 		if (pfs->pfs_pid == pid &&
 		    pfs->pfs_type == pfs_type &&
@@ -199,7 +202,7 @@ loop:
 	}
 
 	/* add to procfs vnode list */
-	for (pp = &pfshead; *pp; pp = &(*pp)->pfs_next)
+	for (pp = &pfshead[pid & PFSHMASK]; *pp; pp = &(*pp)->pfs_next)
 		continue;
 	*pp = pfs;
 
@@ -223,15 +226,14 @@ linprocfs_freevp(vp)
 	struct pfsnode **pfspp;
 	struct pfsnode *pfs = VTOPFS(vp);
 
-	for (pfspp = &pfshead; *pfspp != 0; pfspp = &(*pfspp)->pfs_next) {
-		if (*pfspp == pfs) {
-			*pfspp = pfs->pfs_next;
-			break;
-		}
+	pfspp = &pfshead[pfs->pfs_pid & PFSHMASK]; 
+	while (*pfspp != pfs) {
+		KKASSERT(*pfspp != NULL);
+		pfspp = &(*pfspp)->pfs_next;
 	}
-
+	*pfspp = pfs->pfs_next;
 	FREE(vp->v_data, M_TEMP);
-	vp->v_data = 0;
+	vp->v_data = NULL;
 	return (0);
 }
 
@@ -365,32 +367,23 @@ void
 linprocfs_exit(struct thread *td)
 {
 	struct pfsnode *pfs;
-	pid_t pid = (td->td_proc) ? td->td_proc->p_pid : -1; /* YYY */
+	struct vnode *vp;
+	pid_t pid;
+
+	KKASSERT(td->td_proc);
+	pid = td->td_proc->p_pid;
 
 	/*
-	 * The reason for this loop is not obvious -- basicly,
-	 * linprocfs_freevp(), which is called via vgone() (eventually),
-	 * removes the specified procfs node from the pfshead list.
-	 * It does this by *pfsp = pfs->pfs_next, meaning that it
-	 * overwrites the node.  So when we do pfs = pfs->next, we
-	 * end up skipping the node that replaces the one that was
-	 * vgone'd.  Since it may have been the last one on the list,
-	 * it may also have been set to null -- but *our* pfs pointer,
-	 * here, doesn't see this.  So the loop starts from the beginning
-	 * again.
-	 *
-	 * This is not a for() loop because the final event
-	 * would be "pfs = pfs->pfs_next"; in the case where
-	 * pfs is set to pfshead again, that would mean that
-	 * pfshead is skipped over.
-	 *
+	 * Remove all the procfs vnodes associated with an exiting process.
 	 */
-	pfs = pfshead;
-	while (pfs) {
+restart:
+	for (pfs = pfshead[pid & PFSHMASK]; pfs; pfs = pfs->pfs_next) {
 		if (pfs->pfs_pid == pid) {
-			vgone(PFSTOV(pfs));
-			pfs = pfshead;
-		} else
-			pfs = pfs->pfs_next;
+			vp = PFSTOV(pfs);
+			if (vx_get(vp) == 0)
+				vgone(vp);
+			goto restart;
+		}
 	}
 }
+
