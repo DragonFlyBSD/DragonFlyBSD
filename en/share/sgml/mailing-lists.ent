@@ -1,7 +1,7 @@
 <!--
      Names of FreeBSD and DragonFly mailing lists and related software.
 
-     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.2 2004/06/25 15:54:59 justin Exp $
+     $DragonFly: doc/en/share/sgml/mailing-lists.ent,v 1.3 2004/06/25 16:41:44 justin Exp $
 -->
 
 <!ENTITY a.mailman.listinfo "http://lists.FreeBSD.org/mailman/listinfo">
@@ -373,24 +373,26 @@
 -->
 
 <!ENTITY a.bugs.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.bugs "<ulink url='&a.bugs.url;'>DragonFly BSD Bugs mailing list</ulink>">
+<!ENTITY a.bugs "<ulink url='&a.bugs.url;'>&os; Bugs mailing list</ulink>">
 <!ENTITY a.bugs.name "<ulink url='&a.bugs.url;'>dragonflybsd-bugs</ulink>">
 
 <!ENTITY a.commits.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.commits "<ulink url='&a.commits.url;'>DragonFly BSD Commits mailing list</ulink>">
+<!ENTITY a.commits "<ulink url='&a.commits.url;'>&os; Commits mailing list</ulink>">
+
 <!ENTITY a.commits.name "<ulink url='&a.commits.url;'>dragonflybsd-commits</ulink>">
 
 <!ENTITY a.docs.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.docs "<ulink url='&a.docs.url;'>DragonFly BSD Documentation project mailing list</ulink>">
+<!ENTITY a.docs "<ulink url='&a.docs.url;'>&os; Documentation project mailing list</ulink>">
 <!ENTITY a.docs.name "<ulink url='&a.docs.url;'>dragonflybsd-docs</ulink>">
 
 <!ENTITY a.kernel.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.kernel "<ulink url='&a.kernel.url;'>DragonFly BSD Kernel mailing list</ulink>">
+<!ENTITY a.kernel "<ulink url='&a.kernel.url;'>&os; Kernel mailing list</ulink>">
 <!ENTITY a.kernel.name "<ulink url='&a.kernel.url;'>dragonflybsd-kernel</ulink>">
 
 <!ENTITY a.submit.url "http://leaf.dragonflybsd.org/mailarchive/">
-<!ENTITY a.submit "<ulink url='&a.submit.url;'>DragonFly BSD Code Submission mailing list</ulink>">
+<!ENTITY a.submit "<ulink url='&a.submit.url;'>&os; Code Submission mailing list</ulink>">
 <!ENTITY a.submit.name "<ulink url='&a.submit.url;'>dragonflybsd-submit</ulink>">
 
-<!-- test group isn't mentioned because it conflicts with FreeBSD list; can be put -->
-<!-- in once any conflicting metions are rooted out. -->
+<!-- test group isn't mentioned because it conflicts with FreeBSD list; -->
+<!-- can be put in once any conflicting metions are rooted out. -->
+
