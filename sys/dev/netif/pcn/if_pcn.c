@@ -31,7 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.14 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.15 2005/02/03 12:58:44 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
  */
@@ -490,7 +490,7 @@ static int pcn_attach(dev)
 	device_t		dev;
 {
 	int			s;
-	u_int32_t		eaddr[2];
+	uint8_t			eaddr[ETHER_ADDR_LEN];
 	u_int32_t		command;
 	struct pcn_softc	*sc;
 	struct ifnet		*ifp;
@@ -593,8 +593,8 @@ static int pcn_attach(dev)
 	/*
 	 * Get station address from the EEPROM.
 	 */
-	eaddr[0] = CSR_READ_4(sc, PCN_IO32_APROM00);
-	eaddr[1] = CSR_READ_4(sc, PCN_IO32_APROM01);
+	*(uint32_t *)eaddr = CSR_READ_4(sc, PCN_IO32_APROM00);
+	*(uint16_t *)(eaddr + 4) = CSR_READ_2(sc, PCN_IO32_APROM01);
 
 	sc->pcn_unit = unit;
 	callout_init(&sc->pcn_stat_timer);
