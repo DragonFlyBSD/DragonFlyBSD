@@ -28,7 +28,7 @@
  *
  * @(#)rpc_main.c 1.30 89/03/30 (C) 1987 SMI
  * $FreeBSD: src/usr.bin/rpcgen/rpc_main.c,v 1.11 1999/08/28 01:05:16 peter Exp $
- * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rpcgen/rpc_main.c,v 1.4 2003/11/06 19:30:04 eirikn Exp $
  */
 
 
@@ -69,7 +69,7 @@ char * rindex();
 #endif
 
 static void usage( void );
-static void options_usage __P (( void ));
+static void options_usage( void );
 static int do_registers( int, char ** );
 static int parseargs( int, char **, struct commandline * );
 static void svc_output( char *, char *, int, char * );

@@ -1,6 +1,10 @@
 /* @(#)port.h.in	8.13 (Berkeley) 6/12/96 */
 
 /*
+ * $DragonFly: src/usr.bin/vi/port.h,v 1.2 2003/11/06 19:30:04 eirikn Exp $
+ */
+
+/*
  * Declare the basic types, if they aren't already declared.  Named and
  * some system's db.h files protect them with __BIT_TYPES_DEFINED__.
  */
@@ -17,18 +21,6 @@
 
 
 
-
-/*
- * XXX
- * Handle function prototypes.  This steps on name space that vi doesn't
- * control, but all of the other solutions are worse.
- */
-#undef	__P
-#if defined(__STDC__) || defined(__cplusplus)
-#define	__P(protos)	protos		/* ANSI C prototypes */
-#else
-#define	__P(protos)	()		/* K&R C preprocessor */
-#endif
 
 /*
  * XXX

@@ -76,7 +76,7 @@
  *
  *
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.15 1999/11/25 07:28:54 kris Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.4 2003/11/03 19:31:28 eirikn Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.5 2003/11/06 19:30:04 eirikn Exp $
  */
 
 #include <stdio.h>
@@ -110,7 +110,6 @@
 #define SIGTYPE void
 #endif
 
-#undef __P
 #undef __V
 
 #ifdef __STDC__

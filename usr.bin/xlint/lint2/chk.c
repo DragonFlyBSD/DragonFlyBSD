@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $NetBSD: chk.c,v 1.2 1995/07/03 21:24:42 cgd Exp $
- * $DragonFly: src/usr.bin/xlint/lint2/chk.c,v 1.4 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/xlint/lint2/chk.c,v 1.5 2003/11/06 19:30:04 eirikn Exp $
  */
 
 #include <stdlib.h>
@@ -52,14 +52,14 @@ static	void	chkmd(hte_t *);
 static	void	chkvtui(hte_t *, sym_t *, sym_t *);
 static	void	chkvtdi(hte_t *, sym_t *, sym_t *);
 static	void	chkfaui(hte_t *, sym_t *, sym_t *);
-static	void	chkau __P((hte_t *, int, sym_t *, sym_t *, pos_t *,
-			   fcall_t *, fcall_t *, type_t *, type_t *));
+static	void	chkau(hte_t *, int, sym_t *, sym_t *, pos_t *,
+			   fcall_t *, fcall_t *, type_t *, type_t *);
 static	void	chkrvu(hte_t *, sym_t *);
 static	void	chkadecl(hte_t *, sym_t *, sym_t *);
-static	void	printflike __P((hte_t *,fcall_t *, int,
-				const char *, type_t **));
-static	void	scanflike __P((hte_t *, fcall_t *, int,
-			       const char *, type_t **));
+static	void	printflike(hte_t *,fcall_t *, int,
+				const char *, type_t **);
+static	void	scanflike(hte_t *, fcall_t *, int,
+			       const char *, type_t **);
 static	void	badfmt(hte_t *, fcall_t *);
 static	void	inconarg(hte_t *, fcall_t *, int);
 static	void	tofewarg(hte_t *, fcall_t *);

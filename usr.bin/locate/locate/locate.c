@@ -37,7 +37,7 @@
  * @(#) Copyright (c) 1995-1996 Wolfram Schneider, Berlin. @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)locate.c    8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/locate/locate/locate.c,v 1.12.2.1 2001/03/04 08:47:25 kris Exp $
- * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.3 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/locate/locate/locate.c,v 1.4 2003/11/06 19:30:04 eirikn Exp $
  */
 
 /*
@@ -88,9 +88,6 @@
 
 #ifdef sun
 #include <netinet/in.h> /* SunOS byteorder(3) htohl(3) */
-#ifndef __P
-#define __P(x) x
-#endif
 #endif
 
 #include "locate.h"

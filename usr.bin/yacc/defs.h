@@ -35,10 +35,9 @@
  *
  *	@(#)defs.h	5.6 (Berkeley) 5/24/93
  * $FreeBSD: src/usr.bin/yacc/defs.h,v 1.8.2.1 2001/10/05 03:00:19 obrien Exp $
- * $DragonFly: src/usr.bin/yacc/defs.h,v 1.3 2003/11/03 19:31:34 eirikn Exp $
+ * $DragonFly: src/usr.bin/yacc/defs.h,v 1.4 2003/11/06 19:30:05 eirikn Exp $
  */
 
-#include <sys/cdefs.h>	/* for __P macro */
 #include <assert.h>
 #include <ctype.h>
 #include <err.h>
