@@ -1,8 +1,8 @@
 <!-- 
      DragonFlyBSD specific DocBook Entities
 
-     $DragonFly: doc/share/sgml/dragonfly.ent,v 1.1.1.1 2004/04/02 09:37:19 hmp Exp $
-     $DragonFly: doc/share/sgml/dragonfly.ent,v 1.1.1.1 2004/04/02 09:37:19 hmp Exp $
+$FreeBSD: doc/share/sgml/freebsd.ent,v 1.50 2004/02/26 05:36:30 bmah Exp $
+$DragonFly: doc/share/sgml/dragonfly.ent,v 1.2 2004/06/16 18:50:06 justin Exp $
 -->
 
 <!-- These will almost certainly remain the same, but are here for
