@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.129 2005/03/04 23:48:53 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.130 2005/03/04 23:49:20 okumoto Exp $
  */
 
 /*-
@@ -963,28 +963,28 @@ modifier_M(const char mod[], const char value[], char endc, size_t *consumed)
 }
 
 static char *
-modifier_S(char tstr[], char *rw_str, Var *v, GNode *ctxt, Boolean err, size_t *consumed)
+modifier_S(const char mod[], const char value[], Var *v, GNode *ctxt, Boolean err, size_t *consumed)
 {
 	VarPattern	pattern;
 	Buffer		*buf;		/* Buffer for patterns */
 	char		delim;
-	char		*cur;
-	char		*newStr;
+	const char	*cur;
+	char		*newValue;
 
 	pattern.flags = 0;
 	buf = Buf_Init(0);
 
-	delim = tstr[1];	/* used to find end of pattern */
+	delim = mod[1];	/* used to find end of pattern */
 
 	/*
 	 * If pattern begins with '^', it is anchored to the start of the
 	 * word -- skip over it and flag pattern.
 	 */
-	if (tstr[2] == '^') {
+	if (mod[2] == '^') {
 		pattern.flags |= VAR_MATCH_START;
-		cur = tstr + 3;
+		cur = mod + 3;
 	} else {
-		cur = tstr + 2;
+		cur = mod + 2;
 	}
 
 	/*
@@ -1124,7 +1124,7 @@ modifier_S(char tstr[], char *rw_str, Var *v, GNode *ctxt, Boolean err, size_t *
 	if (!pattern.leftLen && pattern.flags == VAR_SUB_GLOBAL)
 		Fatal("Global substitution of the empty string");
 
-	newStr = VarModify(rw_str, VarSubstitute, &pattern);
+	newValue = VarModify(value, VarSubstitute, &pattern);
 
 	/*
 	 * Free the two strings.
@@ -1132,13 +1132,13 @@ modifier_S(char tstr[], char *rw_str, Var *v, GNode *ctxt, Boolean err, size_t *
 	free(pattern.lhs);
 	free(pattern.rhs);
 
-	*consumed += (cur - tstr);
+	*consumed += (cur - mod);
 
 	if (cur[0] == ':') {
 		*consumed += 1;	/* include colin as part of modifier */
 	}
 
-	return (newStr);
+	return (newValue);
 }
 
 /*
