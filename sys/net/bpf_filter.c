@@ -38,14 +38,10 @@
  *      @(#)bpf_filter.c	8.1 (Berkeley) 6/10/93
  *
  * $FreeBSD: src/sys/net/bpf_filter.c,v 1.17 1999/12/29 04:38:31 peter Exp $
- * $DragonFly: src/sys/net/bpf_filter.c,v 1.4 2003/08/26 20:49:47 rob Exp $
+ * $DragonFly: src/sys/net/bpf_filter.c,v 1.5 2004/07/27 01:24:28 cpressey Exp $
  */
 
 #include <sys/param.h>
-
-#ifdef sun
-#include <netinet/in.h>
-#endif
 
 #if defined(sparc) || defined(mips) || defined(ibm032) || defined(__alpha__)
 #define BPF_ALIGN
@@ -71,27 +67,24 @@
 #endif
 #include <net/bpf.h>
 #ifdef _KERNEL
-#define MINDEX(m, k) \
-{ \
-	int len = m->m_len; \
- \
-	while (k >= len) { \
-		k -= len; \
-		m = m->m_next; \
-		if (m == 0) \
-			return 0; \
-		len = m->m_len; \
-	} \
+#define MINDEX(m, k)							\
+{									\
+	int len = m->m_len;						\
+ 									\
+	while (k >= len) {						\
+		k -= len;						\
+		m = m->m_next;						\
+		if (m == 0)						\
+			return 0;					\
+		len = m->m_len;						\
+	}								\
 }
 
 static u_int16_t	m_xhalf (struct mbuf *m, bpf_u_int32 k, int *err);
 static u_int32_t	m_xword (struct mbuf *m, bpf_u_int32 k, int *err);
 
 static u_int32_t
-m_xword(m, k, err)
-	struct mbuf *m;
-	bpf_u_int32 k;
-	int *err;
+m_xword(struct mbuf *m, bpf_u_int32 k, int *err)
 {
 	size_t len;
 	u_char *cp, *np;
@@ -144,10 +137,7 @@ m_xword(m, k, err)
 }
 
 static u_int16_t
-m_xhalf(m, k, err)
-	struct mbuf *m;
-	bpf_u_int32 k;
-	int *err;
+m_xhalf(struct mbuf *m, bpf_u_int32 k, int *err)
 {
 	size_t len;
 	u_char *cp;
@@ -183,21 +173,18 @@ m_xhalf(m, k, err)
  * buflen is the amount of data present
  */
 u_int
-bpf_filter(pc, p, wirelen, buflen)
-	const struct bpf_insn *pc;
-	u_char *p;
-	u_int wirelen;
-	u_int buflen;
+bpf_filter(const struct bpf_insn *pc, u_char *p, u_int wirelen, u_int buflen)
 {
 	u_int32_t A = 0, X = 0;
 	bpf_u_int32 k;
 	int32_t mem[BPF_MEMWORDS];
 
-	if (pc == 0)
+	if (pc == 0) {
 		/*
 		 * No filter means accept all.
 		 */
 		return (u_int)-1;
+	}
 
 	--pc;
 	while (1) {
@@ -518,9 +505,7 @@ bpf_filter(pc, p, wirelen, buflen)
  * Otherwise, a bogus program could easily crash the system.
  */
 int
-bpf_validate(f, len)
-	const struct bpf_insn *f;
-	int len;
+bpf_validate(const struct bpf_insn *f, int len)
 {
 	int i;
 	const struct bpf_insn *p;
