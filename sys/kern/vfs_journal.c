@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/vfs_journal.c,v 1.7 2005/02/28 17:41:00 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_journal.c,v 1.8 2005/03/04 05:25:26 dillon Exp $
  */
 /*
  * Each mount point may have zero or more independantly configured journals
@@ -87,6 +87,7 @@
 #include <sys/journal.h>
 #include <sys/file.h>
 #include <sys/proc.h>
+#include <sys/msfbuf.h>
 
 #include <machine/limits.h>
 
@@ -465,20 +466,41 @@ journal_thread(void *info)
 	    tsleep(&jo->fifo, 0, "jfifo", hz);
 	    continue;
 	}
+
+	/*
+	 * Sleep if we can not go any further due to hitting an incomplete
+	 * record.  This case should occur rarely but may have to be better
+	 * optimized XXX.
+	 */
 	rawp = (void *)(jo->fifo.membase + (jo->fifo.rindex & jo->fifo.mask));
 	if (rawp->begmagic == JREC_INCOMPLETEMAGIC) {
 	    tsleep(&jo->fifo, 0, "jpad", hz);
 	    continue;
 	}
+
+	/*
+	 * Skip any pad records.  We do not write out pad records if we can
+	 * help it. 
+	 *
+	 * If xindex is caught up to rindex it gets incremented along with
+	 * rindex.  XXX
+	 */
 	if (rawp->streamid == JREC_STREAMID_PAD) {
+	    if (jo->fifo.rindex == jo->fifo.xindex)
+		jo->fifo.xindex += (rawp->recsize + 15) & ~15;
 	    jo->fifo.rindex += (rawp->recsize + 15) & ~15;
-	    KKASSERT(jo->fifo.windex - jo->fifo.rindex > 0);
+	    jo->total_acked += bytes;
+	    KKASSERT(jo->fifo.windex - jo->fifo.rindex >= 0);
 	    continue;
 	}
 
 	/*
-	 * Figure out how much we can write out, beware the buffer wrap
-	 * case.
+	 * 'bytes' is the amount of data that can potentially be written out.  
+	 * Calculate 'res', the amount of data that can actually be written
+	 * out.  res is bounded either by hitting the end of the physical
+	 * memory buffer or by hitting an incomplete record.  Incomplete
+	 * records often occur due to the way the space reservation model
+	 * works.
 	 */
 	res = 0;
 	avail = jo->fifo.size - (jo->fifo.rindex & jo->fifo.mask);
@@ -488,6 +510,7 @@ journal_thread(void *info)
 		KKASSERT(res == avail);
 		break;
 	    }
+	    rawp = (void *)((char *)rawp + ((rawp->recsize + 15) & ~15));
 	}
 
 	/*
@@ -497,6 +520,7 @@ journal_thread(void *info)
 	 *
 	 * XXX EWOULDBLOCK/NBIO
 	 * XXX notification on failure
+	 * XXX permanent verses temporary failures
 	 * XXX two-way acknowledgement stream in the return direction / xindex
 	 */
 	printf("write @%d,%d\n", jo->fifo.rindex & jo->fifo.mask, bytes);
@@ -514,12 +538,13 @@ journal_thread(void *info)
 
 	/*
 	 * Advance rindex.  XXX for now also advance xindex, which will
-	 * eventually be advanced when the target acknowledges the sequence
-	 * space.
+	 * eventually be advanced only when the target acknowledges the
+	 * sequence space.
 	 */
 	jo->fifo.rindex += bytes;
 	jo->fifo.xindex += bytes;
 	jo->total_acked += bytes;
+	KKASSERT(jo->fifo.windex - jo->fifo.rindex >= 0);
 	if (jo->flags & MC_JOURNAL_WWAIT) {
 	    jo->flags &= ~MC_JOURNAL_WWAIT;	/* XXX hysteresis */
 	    wakeup(&jo->fifo.windex);
@@ -530,6 +555,11 @@ journal_thread(void *info)
     wakeup(&jo->fifo.windex);
 }
 
+/*
+ * This builds a pad record which the journaling thread will skip over.  Pad
+ * records are required when we are unable to reserve sufficient stream space
+ * due to insufficient space at the end of the physical memory fifo.
+ */
 static __inline
 void
 journal_build_pad(struct journal_rawrecbeg *rawp, int recsize)
@@ -538,7 +568,6 @@ journal_build_pad(struct journal_rawrecbeg *rawp, int recsize)
     
     KKASSERT((recsize & 15) == 0 && recsize >= 16);
 
-    rawp->begmagic = JREC_BEGMAGIC;
     rawp->streamid = JREC_STREAMID_PAD;
     rawp->recsize = recsize;	/* must be 16-byte aligned */
     rawp->seqno = 0;
@@ -547,18 +576,24 @@ journal_build_pad(struct journal_rawrecbeg *rawp, int recsize)
      * allow PAD records to fit in 16 bytes.  Use cpu_mb1() to
      * hopefully cause the compiler to not make any assumptions.
      */
-    cpu_mb1();
     rendp = (void *)((char *)rawp + rawp->recsize - sizeof(*rendp));
     rendp->endmagic = JREC_ENDMAGIC;
     rendp->check = 0;
     rendp->recsize = rawp->recsize;
+
+    /*
+     * Set the begin magic last.  This is what will allow the journal
+     * thread to write the record out.
+     */
+    cpu_mb1();
+    rawp->begmagic = JREC_BEGMAGIC;
 }
 
 /*
  * Wake up the worker thread if the FIFO is more then half full or if
  * someone is waiting for space to be freed up.  Otherwise let the 
  * heartbeat deal with it.  Being able to avoid waking up the worker
- * is the key to the journal's cpu efficiency.
+ * is the key to the journal's cpu performance.
  */
 static __inline
 void
@@ -1053,7 +1088,6 @@ jrecord_leaf(struct jrecord *jrec, int16_t rectype, void *ptr, int bytes)
 {
     jrecord_write(jrec, rectype, bytes);
     jrecord_data(jrec, ptr, bytes);
-    jrecord_done(jrec, 0);
 }
 
 /*
@@ -1143,8 +1177,8 @@ jrecord_data(struct jrecord *jrec, const void *buf, int bytes)
 	buf = (const char *)buf + jrec->stream_residual;
 	bytes -= jrec->stream_residual;
 	/*jrec->stream_ptr += jrec->stream_residual;*/
-	jrec->stream_residual = 0;
 	jrec->residual -= jrec->stream_residual;
+	jrec->stream_residual = 0;
 
 	/*
 	 * Try to extend the current stream record, but no more then 1/4
@@ -1194,9 +1228,16 @@ jrecord_data(struct jrecord *jrec, const void *buf, int bytes)
 }
 
 /*
- * We are finished with a transaction.  If abortit is not set then we must
- * be at the top level with no residual subrecord data left to output.
- * If abortit is set then we can be in any state.
+ * We are finished with the transaction.  This closes the transaction created
+ * by jrecord_init().
+ *
+ * NOTE: If abortit is not set then we must be at the top level with no
+ *	 residual subrecord data left to output.
+ *
+ *	 If abortit is set then we can be in any state, all pushes will be 
+ *	 popped and it is ok for there to be residual data.  This works 
+ *	 because the virtual stream itself is truncated.  Scanners must deal
+ *	 with this situation.
  *
  * The stream record will be committed or aborted as specified and jrecord
  * resources will be cleaned up.
@@ -1331,7 +1372,6 @@ jrecord_write_vattr(struct jrecord *jrec, struct vattr *vat)
 	jrecord_leaf(jrec, JLEAF_FILEREV, &vat->va_filerev, sizeof(vat->va_filerev));
 #endif
     jrecord_pop(jrec, save);
-    jrecord_done(jrec, 0);
 }
 
 /*
@@ -1356,7 +1396,6 @@ jrecord_write_cred(struct jrecord *jrec, struct thread *td, struct ucred *cred)
 	jrecord_leaf(jrec, JLEAF_COMM, p->p_comm, sizeof(p->p_comm));
     }
     jrecord_pop(jrec, save);
-    jrecord_done(jrec, 0);
 }
 
 /*
@@ -1369,12 +1408,37 @@ jrecord_write_vnode_ref(struct jrecord *jrec, struct vnode *vp)
 }
 
 /*
- * Write out the data associated with a UIO
+ * Write out the data represented by a UIO.
  */
+struct jwuio_info {
+    struct jrecord *jrec;
+    int16_t rectype;
+};
+
+static int jrecord_write_uio_callback(void *info, char *buf, int bytes);
+
 static void
 jrecord_write_uio(struct jrecord *jrec, int16_t rectype, struct uio *uio)
 {
-    /* XXX */
+    struct jwuio_info info = { jrec, rectype };
+    int error;
+
+    jrecord_leaf(jrec, JLEAF_SEEKPOS, &uio->uio_offset, 
+		 sizeof(uio->uio_offset));
+    error = msf_uio_iterate(uio, jrecord_write_uio_callback, &info);
+    if (error)
+	printf("XXX warning uio iterate failed %d\n", error);
+}
+
+static int
+jrecord_write_uio_callback(void *info_arg, char *buf, int bytes)
+{
+    struct jwuio_info *info = info_arg;
+
+    printf("UIO CALLBACK %p/%d\n", buf, bytes);
+
+    jrecord_leaf(info->jrec, info->rectype, buf, bytes);
+    return(0);
 }
 
 /************************************************************************
@@ -1448,8 +1512,29 @@ journal_write(struct vop_write_args *ap)
     struct mount *mp;
     struct journal *jo;
     struct jrecord jrec;
+    struct uio uio_copy;
+    struct iovec uio_one_iovec;
     void *save;		/* warning, save pointers do not always remain valid */
     int error;
+
+    /*
+     * This is really nasty.  UIO's don't retain sufficient information to
+     * be reusable once they've gone through the VOP chain.  The iovecs get
+     * cleared, so we have to copy the UIO.
+     *
+     * XXX fix the UIO code to not destroy iov's during a scan so we can
+     *     reuse the uio over and over again.
+     */
+    uio_copy = *ap->a_uio;
+    if (uio_copy.uio_iovcnt == 1) {
+	uio_one_iovec = ap->a_uio->uio_iov[0];
+	uio_copy.uio_iov = &uio_one_iovec;
+    } else {
+	uio_copy.uio_iov = malloc(uio_copy.uio_iovcnt * sizeof(struct iovec),
+				    M_JOURNAL, M_WAITOK);
+	bcopy(ap->a_uio->uio_iov, uio_copy.uio_iov, 
+		uio_copy.uio_iovcnt * sizeof(struct iovec));
+    }
 
     error = vop_journal_operate_ap(&ap->a_head);
     mp = ap->a_head.a_ops->vv_mount;
@@ -1459,11 +1544,17 @@ journal_write(struct vop_write_args *ap)
 	    save = jrecord_push(&jrec, JTYPE_WRITE);
 	    jrecord_write_cred(&jrec, NULL, ap->a_cred);
 	    jrecord_write_vnode_ref(&jrec, ap->a_vp);
-	    jrecord_write_uio(&jrec, JLEAF_FILEDATA, ap->a_uio);
+	    printf("write UIO nvec %d\n", uio_copy.uio_iovcnt);
+	    jrecord_write_uio(&jrec, JLEAF_FILEDATA, &uio_copy);
 	    jrecord_pop(&jrec, save);
 	    jrecord_done(&jrec, 0);
 	}
     }
+
+    if (uio_copy.uio_iov != &uio_one_iovec)
+	free(uio_copy.uio_iov, M_JOURNAL);
+
+
     return (error);
 }
 
