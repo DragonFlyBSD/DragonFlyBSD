@@ -38,7 +38,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.13 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.14 2004/01/07 20:21:46 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -59,6 +59,7 @@
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <machine/cpu.h>
 #include <machine/limits.h>
@@ -605,11 +606,15 @@ void
 microtime(struct timeval *tv)
 {
 	struct timecounter *tc;
+	int delta;
 
 	tc = timecounter;
+	crit_enter();
+	delta = tco_delta(tc);
 	tv->tv_sec = tc->tc_offset_sec;
 	tv->tv_usec = tc->tc_offset_micro;
-	tv->tv_usec += ((u_int64_t)tco_delta(tc) * tc->tc_scale_micro) >> 32;
+	tv->tv_usec += ((u_int64_t)delta * tc->tc_scale_micro) >> 32;
+	crit_exit();
 	tv->tv_usec += boottime.tv_usec;
 	tv->tv_sec += boottime.tv_sec;
 	while (tv->tv_usec < 0) {
@@ -631,9 +636,11 @@ nanotime(struct timespec *ts)
 	struct timecounter *tc;
 
 	tc = timecounter;
+	crit_enter();
 	ts->tv_sec = tc->tc_offset_sec;
 	count = tco_delta(tc);
 	delta = tc->tc_offset_nano;
+	crit_exit();
 	delta += ((u_int64_t)count * tc->tc_scale_nano_f);
 	delta >>= 32;
 	delta += ((u_int64_t)count * tc->tc_scale_nano_i);
