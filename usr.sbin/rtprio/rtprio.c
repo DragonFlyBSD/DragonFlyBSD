@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtprio/rtprio.c,v 1.8.2.1 2001/01/29 08:07:26 kuriyama Exp $
- * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
+ * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.5 2005/02/04 21:32:55 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -46,12 +46,10 @@
 #include <string.h>
 #include <unistd.h>
 
-static void usage();
+static void usage(void);
 
 int
-main(argc, argv)
-	int     argc;
-	char  **argv;
+main(int argc, char **argv)
 {
 	char   *p;
 	int     proc = 0;
@@ -127,7 +125,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: [id|rt]prio",
