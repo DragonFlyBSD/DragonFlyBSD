@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/sys_process.c,v 1.51.2.6 2003/01/08 03:06:45 kan Exp $
- * $DragonFly: src/sys/kern/sys_process.c,v 1.10 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_process.c,v 1.11 2003/08/11 17:07:30 drhodus Exp $
  */
 
 #include <sys/param.h>
@@ -400,7 +400,8 @@ kern_ptrace(struct proc *curp, int req, pid_t pid, void *addr, int data, int *re
 	case PT_STEP:
 	case PT_CONTINUE:
 	case PT_DETACH:
-		if ((req != PT_STEP) && ((unsigned)data > _SIG_MAXSIG))
+		/* Zero means do not send any signal */
+		if (data < 0 || data > _SIG_MAXSIG)
 			return EINVAL;
 
 		PHOLD(p);
