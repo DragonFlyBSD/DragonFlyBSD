@@ -24,7 +24,7 @@
   * Author: Wietse Venema, Eindhoven University of Technology.
   *
   * $FreeBSD: src/lib/libskey/skeyaccess.c,v 1.9.6.2 2002/08/12 19:42:24 iedowse Exp $
-  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.3 2003/11/12 20:21:31 eirikn Exp $
+  * $DragonFly: src/lib/libskey/skeyaccess.c,v 1.4 2005/02/28 13:14:08 joerg Exp $
   */
 
 #include <sys/types.h>
@@ -458,8 +458,8 @@ char   *str;
  * Nuke addrinfo entry from list.
  * XXX: Depending on the implementation of KAME's getaddrinfo(3).
  */
-static void nuke_ai(aip)
-struct addrinfo **aip;
+static void
+nuke_ai(struct addrinfo **aip)
 {
     struct addrinfo *ai;
 
@@ -476,8 +476,8 @@ struct addrinfo **aip;
 
 /* lookup_internet_addr - look up internet addresses with extreme prejudice */
 
-static struct addrinfo *lookup_internet_addr(host)
-char   *host;
+static struct addrinfo *
+lookup_internet_addr(char *host)
 {
     struct addrinfo hints, *res0, *res, **resp;
     char hname[NI_MAXHOST], haddr[NI_MAXHOST];
