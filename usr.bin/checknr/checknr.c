@@ -33,16 +33,9 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)checknr.c	8.1 (Berkeley) 6/6/93
  *
- * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.10 2005/03/02 07:20:44 cpressey Exp $
+ * $DragonFly: src/usr.bin/checknr/checknr.c,v 1.11 2005/03/04 02:53:55 cpressey Exp $
  */
 
-/*
- * checknr: check an nroff/troff input file for matching macro calls.
- * we also attempt to match size and font changes, but only the embedded
- * kind.  These must end in \s0 and \fP resp.  Maybe more sophistication
- * later but for now think of these restrictions as contributions to
- * structured typesetting.
- */
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -180,6 +173,13 @@ int	fflag;		/* -f: ignore \f */
 int	sflag;		/* -s: ignore \s */
 int	ncmds;		/* size of knowncmds */
 
+/*
+ * checknr: check an nroff/troff input file for matching macro calls.
+ * we also attempt to match size and font changes, but only the embedded
+ * kind.  These must end in \s0 and \fP resp.  Maybe more sophistication
+ * later but for now think of these restrictions as contributions to
+ * structured typesetting.
+ */
 int
 main(int argc, char **argv)
 {
@@ -270,7 +270,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: checknr [-sf] [-a.xx.yy.xx.yy...] [-c.xx.xx.xx...] "
+	    "usage: checknr [-fs] [-a.xx.yy.xx.yy...] [-c.xx.xx.xx...] "
 	    "file\n");
 	exit(1);
 }
@@ -540,10 +540,7 @@ addcmd(char *myline)
 
 /*
  * Add mac to the list.  We should really have some kind of tree
- * structure here but this is a quick-and-dirty job and I just don't
- * have time to mess with it.  (I wonder if this will come back to haunt
- * me someday?)  Anyway, I claim that .de is fairly rare in user
- * nroff programs, and the loop below is pretty fast.
+ * structure here, but the loop below is reasonably fast.
  */
 static void
 addmac(const char *mac)
@@ -554,13 +551,13 @@ addmac(const char *mac)
 		errx(1, "Only %d known commands allowed", MAXCMDS);
 	}
 
-	if (binsrch(mac, &slot) >= 0) {	/* it's OK to redefine something */
+	/* Don't try to add it if it's already in the table. */
+	if (binsrch(mac, &slot) >= 0) {
 #ifdef DEBUG
 		printf("binsrch(%s) -> already in table\n", mac);
 #endif DEBUG
 		return;
 	}
-	/* binsrch sets slot as a side effect */
 #ifdef DEBUG
 	printf("binsrch(%s) -> %d\n", mac, slot);
 #endif
