@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/gen/getobjformat.c,v 1.3 1999/12/18 04:47:43 obrien Exp $
- * $DragonFly: src/lib/libc/gen/getobjformat.c,v 1.3 2004/03/20 16:27:39 drhodus Exp $
+ * $DragonFly: src/lib/libc/gen/getobjformat.c,v 1.4 2004/04/25 12:22:14 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -37,9 +37,8 @@
 int
 getobjformat(char *buf, size_t bufsize, int *argcp, char **argv)
 {
-
     if (bufsize < 4)
-       return -1;
+       return(-1);
     strcpy(buf, "elf");
-    return 3;
+    return(3);
 }
