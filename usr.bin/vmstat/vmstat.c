@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)vmstat.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/vmstat/vmstat.c,v 1.38.2.4 2001/07/31 19:52:41 tmm Exp $
- * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.14 2004/12/22 11:01:49 joerg Exp $
+ * $DragonFly: src/usr.bin/vmstat/vmstat.c,v 1.15 2005/01/08 21:33:34 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -133,13 +133,25 @@ struct kinfo_cputime cp_time, old_cp_time, diff_cp_time;
 #define	VMSTAT		0x20
 #define ZMEMSTAT	0x40
 
-void	cpustats(), dointr(), domem(), dosum(), dozmem();
-void	dovmstat(), kread(), usage();
+static void cpustats(void);
+static void dointr(void);
+static void domem(void);
+static void dosum(void);
+static void dozmem(void);
+static void dovmstat(u_int interval, int reps);
+static void kread(int nlx, void *addr, size_t size);
+static void usage(void);
+static char **getdrivedata(char **argv);
+static long getuptime(void);
+static void needhdr(int signo);
+static long pct(long top, long bot);
+
 #ifdef notyet
-void	dotimes(), doforkst();
+static void dotimes(void); /* Not implemented */
+static void doforkst(void);
 #endif
-void printhdr(void);
-static void devstats();
+static void printhdr(void);
+static void devstats(void);
 
 int
 main(int argc, char **argv)
@@ -229,8 +241,7 @@ main(int argc, char **argv)
 	if ((c = kvm_nlist(kd, namelist)) != 0) {
 		if (c > 0) {
 			warnx("undefined symbols:");
-			for (c = 0;
-			    c < sizeof(namelist)/sizeof(namelist[0]); c++)
+			for (c = 0; c < (int)__arysize(namelist); c++)
 				if (namelist[c].n_type == 0)
 					fprintf(stderr, " %s",
 					    namelist[c].n_name);
@@ -241,7 +252,6 @@ main(int argc, char **argv)
 	}
 
 	if (todo & VMSTAT) {
-		char **getdrivedata();
 		struct winsize winsize;
 
 		/*
@@ -297,7 +307,7 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-char **
+static char **
 getdrivedata(char **argv)
 {
 	if ((num_devices = getnumdevs()) < 0)
@@ -362,7 +372,7 @@ getdrivedata(char **argv)
 	return(argv);
 }
 
-long
+static long
 getuptime(void)
 {
 	static time_t now, boottime;
@@ -379,13 +389,12 @@ getuptime(void)
 
 int	hdrcnt;
 
-void
+static void
 dovmstat(u_int interval, int reps)
 {
 	struct vmtotal total;
 	time_t uptime, halfuptime;
 	struct devinfo *tmp_dinfo;
-	void needhdr();
 	int vmm_size = sizeof(vmm);
 	int vms_size = sizeof(vms);
 	int vmt_size = sizeof(total);
@@ -500,7 +509,7 @@ dovmstat(u_int interval, int reps)
 	}
 }
 
-void
+static void
 printhdr(void)
 {
 	int i, num_shown;
@@ -526,14 +535,14 @@ printhdr(void)
 /*
  * Force a header to be prepended to the next output.
  */
-void
-needhdr(void)
+static void
+needhdr(__unused int signo)
 {
 
 	hdrcnt = 1;
 }
 
-long
+static long
 pct(long top, long bot)
 {
 	long ans;
@@ -546,7 +555,7 @@ pct(long top, long bot)
 
 #define	PCT(top, bot) pct((long)(top), (long)(bot))
 
-void
+static void
 dosum(void)
 {
 	struct nchstats *nch_tmp, nchstats;
@@ -657,10 +666,9 @@ doforkst(void)
 static void
 devstats(void)
 {
-	int dn, state;
+	int dn;
 	long double transfers_per_second;
 	long double busy_seconds;
-	long tmp;
 
 	diff_cp_time.cp_user = cp_time.cp_user - old_cp_time.cp_user;
 	diff_cp_time.cp_nice = cp_time.cp_nice - old_cp_time.cp_nice;
@@ -691,25 +699,28 @@ devstats(void)
 	}
 }
 
-void
+static void
 cpustats(void)
 {
 	uint64_t total;
-	double pct;
+	double totusage;
 
 	total = diff_cp_time.cp_user + diff_cp_time.cp_nice +
 	    diff_cp_time.cp_sys + diff_cp_time.cp_intr + diff_cp_time.cp_idle;
 
 	if (total)
-		pct = 100.0 / total;
+		totusage = 100.0 / total;
 	else
-		pct = 0;
-	printf("%2.0f ", (diff_cp_time.cp_user + diff_cp_time.cp_nice) * pct);
-	printf("%2.0f ", (diff_cp_time.cp_sys + diff_cp_time.cp_intr) * pct);
-	printf("%2.0f", diff_cp_time.cp_idle * pct);
+		totusage = 0;
+	printf("%2.0f ",
+	       (diff_cp_time.cp_user + diff_cp_time.cp_nice) * totusage);
+	printf("%2.0f ",
+	       (diff_cp_time.cp_sys + diff_cp_time.cp_intr) * totusage);
+	printf("%2.0f",
+	       diff_cp_time.cp_idle * totusage);
 }
 
-void
+static void
 dointr(void)
 {
 	u_long *intrcnt, uptime;
@@ -756,7 +767,7 @@ cpuagg(long *ary)
     return(ttl);
 }
 
-void
+static void
 domem(void)
 {
 	struct malloc_type *ks;
@@ -774,7 +785,7 @@ domem(void)
 		if (sizeof(buf) !=  kvm_read(kd, 
 	            (u_long)kmemstats[nkms].ks_shortdesc, buf, sizeof(buf)))
 			err(1, "kvm_read(%p)", 
-			    (void *)kmemstats[nkms].ks_shortdesc);
+			    kmemstats[nkms].ks_shortdesc);
 		buf[sizeof(buf) - 1] = '\0';
 		kmemstats[nkms].ks_shortdesc = strdup(buf);
 		kmsp = kmemstats[nkms].ks_next;
@@ -818,7 +829,7 @@ domem(void)
 	     (totuse + 1023) / 1024, (totfree + 1023) / 1024, totreq);
 }
 
-void
+static void
 dozmem(void)
 {
 	char *buf;
@@ -843,7 +854,7 @@ dozmem(void)
 /*
  * kread reads something from the kernel, given its nlist index.
  */
-void
+static void
 kread(int nlx, void *addr, size_t size)
 {
 	const char *sym;
@@ -854,7 +865,7 @@ kread(int nlx, void *addr, size_t size)
 			++sym;
 		errx(1, "symbol %s not defined", sym);
 	}
-	if (kvm_read(kd, namelist[nlx].n_value, addr, size) != size) {
+	if (kvm_read(kd, namelist[nlx].n_value, addr, size) != (ssize_t)size) {
 		sym = namelist[nlx].n_name;
 		if (*sym == '_')
 			++sym;
@@ -862,7 +873,7 @@ kread(int nlx, void *addr, size_t size)
 	}
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "%s%s",
