@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1990, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)rsh.c	8.3 (Berkeley) 4/6/94
  * $FreeBSD: src/usr.bin/rsh/rsh.c,v 1.21.2.4 2002/09/17 15:34:41 nectar Exp $
- * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.3 2003/11/03 19:31:32 eirikn Exp $
+ * $DragonFly: src/usr.bin/rsh/rsh.c,v 1.4 2004/07/22 14:49:15 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -55,7 +55,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <err.h>
 
 #include "pathnames.h"
 
@@ -416,7 +415,7 @@ done:
 			continue;
 		}
 		if (srval == 0)
-			errx(1, "timeout reached (%d seconds)\n", timeout);
+			errx(1, "timeout reached (%d seconds)", timeout);
 		if (FD_ISSET(rfd2, &ready)) {
 			errno = 0;
 #ifdef KERBEROS
