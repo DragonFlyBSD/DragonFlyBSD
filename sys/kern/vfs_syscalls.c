@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.31 2004/04/21 04:47:28 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.32 2004/04/21 04:49:00 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -111,6 +111,7 @@ mount(struct mount_args *uap)
 	lwkt_tokref vlock;
 	lwkt_tokref ilock;
 
+	KKASSERT(p);
 	if (p->p_ucred->cr_prison != NULL)
 		return (EPERM);
 	if (usermount == 0 && (error = suser(td)))
