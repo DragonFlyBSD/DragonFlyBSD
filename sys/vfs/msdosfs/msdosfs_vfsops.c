@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_vfsops.c,v 1.60.2.6 2002/09/12 21:33:38 trhodes Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.11 2004/03/01 06:33:21 dillon Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_vfsops.c,v 1.12 2004/04/17 00:30:17 cpressey Exp $ */
 /*	$NetBSD: msdosfs_vfsops.c,v 1.51 1997/11/17 15:36:58 ws Exp $	*/
 
 /*-
@@ -103,9 +103,7 @@ static int	msdosfs_unmount (struct mount *, int, struct thread *);
 static int	msdosfs_vptofh (struct vnode *, struct fid *);
 
 static int
-update_mp(mp, argp)
-	struct mount *mp;
-	struct msdosfs_args *argp;
+update_mp(struct mount *mp, struct msdosfs_args *argp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	int error;
@@ -157,7 +155,7 @@ update_mp(mp, argp)
 
 #ifndef __DragonFly__
 int
-msdosfs_mountroot()
+msdosfs_mountroot(void)
 {
 	struct mount *mp;
 	struct thread *td = curthread;	/* XXX */
@@ -223,12 +221,8 @@ msdosfs_mountroot()
  * special file to treat as a filesystem.
  */
 static int
-msdosfs_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+msdosfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	      struct thread *td)
 {
 	struct vnode *devvp;	  /* vnode for blk device to mount */
 	struct msdosfs_args args; /* will hold data from mount request */
@@ -363,11 +357,8 @@ msdosfs_mount(mp, path, data, ndp, td)
 }
 
 static int
-mountmsdosfs(devvp, mp, td, argp)
-	struct vnode *devvp;
-	struct mount *mp;
-	struct thread *td;
-	struct msdosfs_args *argp;
+mountmsdosfs(struct vnode *devvp, struct mount *mp, struct thread *td,
+	     struct msdosfs_args *argp)
 {
 	struct msdosfsmount *pmp;
 	struct buf *bp;
@@ -753,10 +744,7 @@ error_exit:
  * Unmount the filesystem described by mp.
  */
 static int
-msdosfs_unmount(mp, mntflags, td)
-	struct mount *mp;
-	int mntflags;
-	struct thread *td;
+msdosfs_unmount(struct mount *mp, int mntflags, struct thread *td)
 {
 	struct msdosfsmount *pmp;
 	int error, flags;
@@ -803,9 +791,7 @@ msdosfs_unmount(mp, mntflags, td)
 }
 
 static int
-msdosfs_root(mp, vpp)
-	struct mount *mp;
-	struct vnode **vpp;
+msdosfs_root(struct mount *mp, struct vnode **vpp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct denode *ndep;
@@ -822,10 +808,7 @@ msdosfs_root(mp, vpp)
 }
 
 static int
-msdosfs_statfs(mp, sbp, td)
-	struct mount *mp;
-	struct statfs *sbp;
-	struct thread *td;
+msdosfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 {
 	struct msdosfsmount *pmp;
 
@@ -857,10 +840,7 @@ static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
 		lwkt_tokref_t vlock, void *data);
 
 static int
-msdosfs_sync(mp, waitfor, td)
-	struct mount *mp;
-	int waitfor;
-	struct thread *td;
+msdosfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct scaninfo scaninfo;
@@ -900,8 +880,9 @@ msdosfs_sync(mp, waitfor, td)
 	return (scaninfo.allerror);
 }
 
-static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
-		lwkt_tokref_t vlock, void *data)
+static int
+msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
+		  lwkt_tokref_t vlock, void *data)
 {
 	struct scaninfo *info = data;
 	struct denode *dep;
@@ -929,10 +910,7 @@ static int msdosfs_sync_scan(struct mount *mp, struct vnode *vp,
 }
 
 static int
-msdosfs_fhtovp(mp, fhp, vpp)
-	struct mount *mp;
-	struct fid *fhp;
-	struct vnode **vpp;
+msdosfs_fhtovp(struct mount *mp, struct fid *fhp, struct vnode **vpp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct defid *defhp = (struct defid *) fhp;
@@ -949,11 +927,8 @@ msdosfs_fhtovp(mp, fhp, vpp)
 }
 
 static int
-msdosfs_checkexp(mp, nam,  exflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *exflagsp;
-	struct ucred **credanonp;
+msdosfs_checkexp(struct mount *mp, struct sockaddr *nam, int *exflagsp,
+		 struct ucred **credanonp)
 {
 	struct msdosfsmount *pmp = VFSTOMSDOSFS(mp);
 	struct netcred *np;
@@ -967,9 +942,7 @@ msdosfs_checkexp(mp, nam,  exflagsp, credanonp)
 }
 
 static int
-msdosfs_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+msdosfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	struct denode *dep;
 	struct defid *defhp;

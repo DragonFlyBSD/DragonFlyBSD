@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/msdosfs/msdosfs_conv.c,v 1.29.2.1 2002/11/08 22:01:22 semenu Exp $ */
-/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.4 2003/08/20 09:56:32 rob Exp $ */
+/* $DragonFly: src/sys/vfs/msdosfs/msdosfs_conv.c,v 1.5 2004/04/17 00:30:17 cpressey Exp $ */
 /*	$NetBSD: msdosfs_conv.c,v 1.25 1997/11/17 15:36:40 ws Exp $	*/
 
 /*-
@@ -96,11 +96,7 @@ static __inline u_int8_t find_lcode (u_int16_t code, u_int16_t *u2w);
  * file timestamps. The passed in unix time is assumed to be in GMT.
  */
 void
-unix2dostime(tsp, ddp, dtp, dhp)
-	struct timespec *tsp;
-	u_int16_t *ddp;
-	u_int16_t *dtp;
-	u_int8_t *dhp;
+unix2dostime(struct timespec *tsp, u_int16_t *ddp, u_int16_t *dtp, u_int8_t *dhp)
 {
 	u_long t;
 	u_long days;
@@ -177,11 +173,7 @@ static u_long  lastseconds;
  * not be too efficient.
  */
 void
-dos2unixtime(dd, dt, dh, tsp)
-	u_int dd;
-	u_int dt;
-	u_int dh;
-	struct timespec *tsp;
+dos2unixtime(u_int dd, u_int dt, u_int dh, struct timespec *tsp)
 {
 	u_long seconds;
 	u_long month;
@@ -395,14 +387,8 @@ l2u[256] = {
  * null.
  */
 int
-dos2unixfn(dn, un, lower, d2u_loaded, d2u, ul_loaded, ul)
-	u_char dn[11];
-	u_char *un;
-	int lower;
-	int d2u_loaded;
-	u_int8_t *d2u;
-	int ul_loaded;
-	u_int8_t *ul;
+dos2unixfn(u_char dn[11], u_char *un, int lower, int d2u_loaded, u_int8_t *d2u,
+	   int ul_loaded, u_int8_t *ul)
 {
 	int i;
 	int thislong = 1;
@@ -469,15 +455,8 @@ dos2unixfn(dn, un, lower, d2u_loaded, d2u, ul_loaded, ul)
  *	3 if conversion was successful and generation number was inserted
  */
 int
-unix2dosfn(un, dn, unlen, gen, u2d_loaded, u2d, lu_loaded, lu)
-	const u_char *un;
-	u_char dn[12];
-	int unlen;
-	u_int gen;
-	int u2d_loaded;
-	u_int8_t *u2d;
-	int lu_loaded;
-	u_int8_t *lu;
+unix2dosfn(const u_char *un, u_char dn[12], int unlen, u_int gen, int u2d_loaded,
+	   u_int8_t *u2d, int lu_loaded, u_int8_t *lu)
 {
 	int i, j, l;
 	int conv = 1;
@@ -651,14 +630,8 @@ unix2dosfn(un, dn, unlen, gen, u2d_loaded, u2d, lu_loaded, lu)
  *	 i.e. doesn't consist solely of blanks and dots
  */
 int
-unix2winfn(un, unlen, wep, cnt, chksum, table_loaded, u2w)
-	const u_char *un;
-	int unlen;
-	struct winentry *wep;
-	int cnt;
-	int chksum;
-	int table_loaded;
-	u_int16_t *u2w;
+unix2winfn(const u_char *un, int unlen, struct winentry *wep, int cnt, int chksum,
+	   int table_loaded, u_int16_t *u2w)
 {
 	const u_int8_t *cp;
 	u_int8_t *wcp;
@@ -734,9 +707,7 @@ done:
 }
 
 static __inline u_int8_t
-find_lcode(code, u2w)
-	u_int16_t code;
-	u_int16_t *u2w;
+find_lcode(u_int16_t code, u_int16_t *u2w)
 {
 	int i;
 
@@ -751,15 +722,8 @@ find_lcode(code, u2w)
  * Returns the checksum or -1 if no match
  */
 int
-winChkName(un, unlen, wep, chksum, u2w_loaded, u2w, ul_loaded, ul)
-	const u_char *un;
-	int unlen;
-	struct winentry *wep;
-	int chksum;
-	int u2w_loaded;
-	u_int16_t *u2w;
-	int ul_loaded;
-	u_int8_t *ul;
+winChkName(const u_char *un, int unlen, struct winentry *wep, int chksum,
+	   int u2w_loaded, u_int16_t *u2w, int ul_loaded, u_int8_t *ul)
 {
 	u_int8_t *cp;
 	int i;
@@ -870,12 +834,8 @@ winChkName(un, unlen, wep, chksum, u2w_loaded, u2w, ul_loaded, ul)
  * Returns the checksum or -1 if impossible
  */
 int
-win2unixfn(wep, dp, chksum, table_loaded, u2w)
-	struct winentry *wep;
-	struct dirent *dp;
-	int chksum;
-	int table_loaded;
-	u_int16_t *u2w;
+win2unixfn(struct winentry *wep, struct dirent *dp, int chksum, int table_loaded,
+	   u_int16_t *u2w)
 {
 	u_int8_t *cp;
 	u_int8_t *np, *ep = dp->d_name + WIN_MAXLEN;
@@ -1009,8 +969,7 @@ win2unixfn(wep, dp, chksum, table_loaded, u2w)
  * Compute the checksum of a DOS filename for Win95 use
  */
 u_int8_t
-winChksum(name)
-	u_int8_t *name;
+winChksum(u_int8_t *name)
 {
 	int i;
 	u_int8_t s;
@@ -1024,9 +983,7 @@ winChksum(name)
  * Determine the number of slots necessary for Win95 names
  */
 int
-winSlotCnt(un, unlen)
-	const u_char *un;
-	int unlen;
+winSlotCnt(const u_char *un, int unlen)
 {
 	unlen = winLenFixup(un, unlen);
 	if (unlen > WIN_MAXLEN)
@@ -1038,9 +995,7 @@ winSlotCnt(un, unlen)
  * Determine the number of bytes neccesary for Win95 names
  */
 int
-winLenFixup(un, unlen)
-	const u_char* un;
-	int unlen;
+winLenFixup(const u_char *un, int unlen)
 {
 	for (un += unlen; unlen > 0; unlen--)
 		if (*--un != ' ' && *un != '.')
