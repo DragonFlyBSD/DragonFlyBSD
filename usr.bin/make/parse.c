@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.31 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.32 2005/01/08 20:17:05 okumoto Exp $
  */
 
 /*-
@@ -187,7 +187,7 @@ static GNode	*predecessor;
  * keyword is used as a source ("0" if the keyword isn't special as a source)
  */
 static struct {
-    char    	  *name;    	/* Name of keyword */
+	const char	*name;	/* Name of keyword */
     ParseSpecial  spec;	    	/* Type when used as a target */
     int	    	  op;	    	/* Operator when used as a source */
 } parseKeywords[] = {
@@ -938,15 +938,15 @@ ParseDoDependency (char *line)
 	 * allow on this line...
 	 */
 	if (specType != Not && specType != ExPath) {
-	    Boolean warn = FALSE;
+	    Boolean warnFlag = FALSE;
 
 	    while ((*cp != '!') && (*cp != ':') && *cp) {
 		if (*cp != ' ' && *cp != '\t') {
-		    warn = TRUE;
+		    warnFlag = TRUE;
 		}
 		cp++;
 	    }
-	    if (warn) {
+	    if (warnFlag) {
 		Parse_Error(PARSE_WARNING, "Extra target ignored");
 	    }
 	} else {

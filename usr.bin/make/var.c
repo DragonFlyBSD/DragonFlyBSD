@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.36 2005/01/08 13:13:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.37 2005/01/08 20:17:05 okumoto Exp $
  */
 
 /*-
@@ -450,7 +450,7 @@ Var_Set(const char *name, const char *val, GNode *ctxt)
 void
 Var_SetEnv(const char *name, GNode *ctxt)
 {
-    Var   *v;
+    Var	*v;
 
     v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
     if (v) {
