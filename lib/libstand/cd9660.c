@@ -30,7 +30,7 @@
  *
  * $NetBSD: cd9660.c,v 1.5 1997/06/26 19:11:33 drochner Exp $
  * $FreeBSD: src/lib/libstand/cd9660.c,v 1.4.2.4 2001/12/21 22:17:44 jhb Exp $
- * $DragonFly: src/lib/libstand/cd9660.c,v 1.3 2003/08/08 04:18:34 dillon Exp $
+ * $DragonFly: src/lib/libstand/cd9660.c,v 1.4 2003/12/01 08:52:20 dillon Exp $
  */
 
 /*
@@ -372,7 +372,13 @@ cd9660_open(const char *path, struct open_file *f)
 		rec = *dp;
 		while (*path && *path != '/') /* look for next component */
 			path++;
-		if (*path) path++; /* skip '/' */
+		if (*path == '/') {	/* skip /, make sure is dir */
+			path++;
+			if (*path && (isonum_711(dp->flags) & 2) == 0) {
+				rc = ENOENT;	/* not directory */
+				goto out;
+			}
+		}
 	}
 
 	/* allocate file system specific data structure */
