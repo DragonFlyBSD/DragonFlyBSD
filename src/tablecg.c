@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.12 2004/02/12 14:28:11 justin Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.13 2004/02/15 19:23:50 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -29,7 +29,7 @@ static int  OSize;
 static int  OMax;
 static char *Title;
 
-static void generate_side_headers(char *, char * []);
+static void generate_side_headers(char *, char *, char * []);
 static void process_vars(const char *ptr, int len);
 static void process_command(char *cmd, char *args);
 static void *safe_malloc(int bytes);
@@ -205,10 +205,10 @@ main(int ac, char **av)
     printf("</TD></TR>\n");
     printf("<TR><TD VALIGN=top WIDTH=\"150\">");
 
-    generate_side_headers("Main", Main);
-    generate_side_headers("Goals", Goals);
-    generate_side_headers("Status", Status);
-    generate_side_headers("Docs", Docs);
+    generate_side_headers("main", "Main", Main);
+    generate_side_headers("goals", "Goals", Goals);
+    generate_side_headers("status", "Status", Status);
+    generate_side_headers("docs", "Docs", Docs);
 
     printf("</TD><TD WIDTH=100%% VALIGN=\"top\" BGCOLOR=\"#ffffff\">");
     fflush(stdout);
@@ -233,7 +233,7 @@ main(int ac, char **av)
  * format accordingly.
  */
 static void
-generate_side_headers(char *section, char *files[])
+generate_side_headers(char *section1, char *section2, char *files[])
 {
     int len;
     const char *ptr;
@@ -242,16 +242,18 @@ generate_side_headers(char *section, char *files[])
 
     printf("\n<TABLE BORDER=\"0\" CELLPADDING=\"4\" WIDTH=\"100%%\">\n");
     printf("\t<TR>");
-    printf("<TD><H2><A HREF=\"../%s\">%s</A></H2>", section, section);
+    printf("<TD><H2><A HREF=\"../%s\">%s</A></H2>", section1, section2);
 
     printf("</TD></TR>\n\t<TR><TD>\n<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n");
 
     for (i = 0; files[i] != NULL; i++) {
         if ((strcmp(files[i], FileName) == 0) &&
-        (strcmp(section, DirName) == 0) )
+	    (strcmp(section1, DirName) == 0) 
+	) {
             fileclass = " CLASS=\"topLevelSelected\"";
-        else
+	} else {
             fileclass = " CLASS=\"topLevel\"";
+	}
       
         if ((ptr = strchr(files[i], '.')) != NULL &&
             (strcmp(ptr + 1, "cgi") == 0 ||
@@ -259,9 +261,9 @@ generate_side_headers(char *section, char *files[])
         ) {
             len = ptr - files[i];
             printf("\t<TR><TD%s><A HREF=\"/%s/%s\">%*.*s</A></TD></TR>\n",
-            fileclass,
-            section, 
-            files[i], len, len, files[i]);
+		fileclass,
+		section1, 
+		files[i], len, len, files[i]);
         }
 
     }
