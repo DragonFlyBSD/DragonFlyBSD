@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 5/31/93
 # $FreeBSD: src/bin/rmail/Makefile,v 1.8.2.6 2002/03/25 21:31:30 gshapiro Exp $
-# $DragonFly: src/bin/rmail/Makefile,v 1.3 2004/01/31 06:56:36 dillon Exp $
+# $DragonFly: src/bin/rmail/Makefile,v 1.4 2004/02/03 18:54:01 dillon Exp $
 
 SENDMAIL_DIR=${.CURDIR}/../../contrib/sendmail
 .PATH:	${SENDMAIL_DIR}/rmail
@@ -9,6 +9,10 @@ PROG=	rmail
 SRCS=	rmail.c
 MAN=	rmail.8
 CFLAGS+=-I${SENDMAIL_DIR}/include -I.
+
+# Fake __FreeBSD__ so sendmail uses a reasonable feature set.  osreldate.h
+# will generate a __FreeBSD_version for us.
+CFLAGS+= -D__FreeBSD__
 
 .if exists(${.OBJDIR}/../../lib/libsm)
 LIBSMDIR:=	${.OBJDIR}/../../lib/libsm
