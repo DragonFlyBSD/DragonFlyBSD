@@ -1,12 +1,12 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.6 2004/03/06 14:39:08 hmp Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.7 2004/03/18 03:05:38 cpressey Exp $
 
 $TITLE(The DragonFly Team)
 
 <p>
 Like many open source projects, DragonFly is a technical project that uses 
-a team of geographically separated people.  There is no restrictions on 
+a team of geographically separated people.  There are no restrictions on 
 who can contribute or how you can contribute, other than peer standards.  
 Listed here are some of the people who have made this project possible.</p>
 
@@ -14,8 +14,8 @@ Listed here are some of the people who have made this project possible.</p>
 <strong>Project Leader</strong>:<br />
 <a href="mailto:dillon 'at' apollo 'dot' backplane 'dot' com">Matt Dillon</a>
 is known for creating the DICE C compiler on the Amiga, and 
-later cofounding BEST Internet in San Francisco.  Matt has also 
-contributed code to the FreeBSD project and Linux kernel for 
+later co-founding BEST Internet in San Francisco.  Matt has also
+contributed code to the FreeBSD project and the Linux kernel for
 systems such as VM and NFS.</p>
 
 <p>
@@ -51,7 +51,7 @@ to the DragonFly project.  Here's a partial list.
 </tr>
 
 <tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:rg70 'at' sbcglobal 'dot' net">Robert Garrett</a> </td>
-<td bgcolor="#DDDDDD" valign="top">__P() removal, RCNG
+<td bgcolor="#DDDDDD" valign="top">RCNG, system installation tool
 (commit access)</td>
 </tr>
 
@@ -81,7 +81,11 @@ to the DragonFly project.  Here's a partial list.
 </tr>
 
 <tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:hmp 'at' backplane 'dot' com">Hiten Pandya</a> </td>
-<td bgcolor="#DDDDDD" valign="top">AMD64, website layout, NFS, tinderbox builds
+<td bgcolor="#DDDDDD" valign="top">Anything and Everything
+(commit access)</td></tr>
+
+<tr><td bgcolor="#DDDDDD" valign="top"><a href="mailto:cpressey 'at' catseye 'dot' mine 'dot' nu">Chris Pressey</a> </td>
+<td bgcolor="#DDDDDD" valign="top">Janitorial work
 (commit access)</td></tr>
 
 <!--
@@ -120,13 +124,13 @@ to the DragonFly project.  Here's a partial list.
 
 <tr><td bgcolor="#DDDDDD" valign="top">
 <a href="mailto: joerg 'at' bec 'dot' de">Joerg Sonnenberger</a></td>
-<td bgcolor="#DDDDDD" valign="top">ports tree, pccard subsystem
+<td bgcolor="#DDDDDD" valign="top">Anything and Everything
 (commit access)
 </td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</a></td>
-<td valign="top">Secretarial work, website cleanup
+<td valign="top">Secretarial work, documentation, website cleanup
 (commit access)</td>
 </tr>
 
