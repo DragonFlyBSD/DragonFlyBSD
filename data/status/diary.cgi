@@ -1,8 +1,22 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.15 2004/06/24 16:30:14 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.16 2004/07/01 14:23:34 dillon Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
+
+<h2>Sun 27 June 2004</h2>
+<ul>
+	<li>We are going to release 1.0RC1 tonight.
+	<li>Implement interrupt livelock detection and rate limiting.  It's
+	    still a bit raw, but it does the job (easily testable by plugging
+	    and unplugging cardbus cards at a high rate).  The intent is to
+	    try to make the system more survivable from interrupt routing and
+	    other boot-time configuration issues, and badly written drivers.
+	<li>Implement an emergency polling mode for the VR device if its
+	    interrupt does not appear to be working.
+	<li>Implement dual console (screen and serial port) support by
+	    default for boot2 and the loader.
+</ul>
 
 <h2>Mon 21 June 2004</h2>
 <ul>
