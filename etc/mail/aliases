@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mail/aliases,v 1.10.4.7 2003/04/04 06:15:55 gshapiro Exp $
-# $DragonFly: src/etc/mail/aliases,v 1.3 2004/09/21 21:25:28 joerg Exp $
+# $DragonFly: src/etc/mail/aliases,v 1.4 2004/11/12 09:37:26 joerg Exp $
 #	@(#)aliases	5.3 (Berkeley) 5/24/90
 #
 #  Aliases in this file will NOT be expanded in the header from
@@ -24,6 +24,7 @@ MAILER-DAEMON: postmaster
 postmaster: root
 
 # General redirections for pseudo accounts
+_ntp:	root
 _pflogd: root
 bin:	root
 bind:	root

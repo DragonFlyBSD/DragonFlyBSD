@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/ftpusers,v 1.6.2.3 2002/06/30 17:57:17 des Exp $
-# $DragonFly: src/etc/ftpusers,v 1.4 2004/09/21 21:25:28 joerg Exp $
+# $DragonFly: src/etc/ftpusers,v 1.5 2004/11/12 09:37:25 joerg Exp $
 #
 # list of users disallowed any ftp access.
 # read by ftpd(8).
@@ -17,6 +17,7 @@ man
 sshd
 bind
 proxy
+_ntp
 _pflogd
 uucp
 xten
