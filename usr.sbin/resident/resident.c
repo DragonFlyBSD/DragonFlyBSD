@@ -23,14 +23,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.4 2004/01/20 21:34:19 dillon Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.5 2004/06/03 16:28:15 hmp Exp $
  */
 
 #include <sys/cdefs.h>
 
 #include <sys/param.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <sys/resident.h>
+#include <sys/sysctl.h>
 
 #include <machine/elf.h>
 #include <a.out.h>
@@ -46,8 +48,59 @@
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: resident [-d] program ...\n");
+	fprintf(stderr, "usage: resident [-l] [-f] [-x id] [-d] [-R] program ...\n");
 	exit(1);
+}
+
+static int
+list_residents(void)
+{
+	const char *mib = "vm.resident";
+	struct xresident *buf;
+	int res_count, res_total;
+	int error, i;
+
+	/* get the number of resident binaries */
+	error = sysctlbyname(mib, NULL, &res_count, NULL, 0);
+	if (error != 0) {
+		perror("sysctl: vm.resident");
+		goto done;
+	}
+
+	if (res_count == 0) {
+		printf("no resident binaries to list\n");
+		goto done;
+	}
+
+	/* allocate memory for the list of binaries */
+	res_total = sizeof(*buf) * res_count;
+	if ((buf = malloc(res_total)) != NULL) {
+		/* retrieve entries via sysctl */
+		error = sysctlbyname(mib, buf, &res_total, NULL, 0);
+		if (error != 0) {
+			perror("sysctl: vm.resident");
+			goto done;
+		}
+	} else {
+		perror("malloc");
+		goto done;
+	}
+	
+	/* print the list of retrieved resident binary */
+	printf("%-4s\t%-30s\t%-15s\t%-12s\n", "Id", "Executable", "Size", "Address");
+	for (i = 0; i < res_count; ++i) {
+		printf("%-4d\t%-30s\t%-15lld\t0x%-12x\n",
+			buf[i].res_id,
+			buf[i].res_file,
+			buf[i].res_stat.st_size,
+			buf[i].res_entry_addr);
+	}
+
+	/* free back the memory */
+	free(buf);
+
+done:
+	return error;
 }
 
 int
@@ -58,11 +111,17 @@ main(int argc, char *argv[])
 	int	doreg = 1;
 	int	force = 0;
 
-	while ((c = getopt(argc, argv, "Rdfx:")) != -1) {
+	while ((c = getopt(argc, argv, "Rdflx:")) != -1) {
 		switch (c) {
 		case 'f':
 			force = 1;
 			break;
+		case 'l':
+			rval = list_residents();
+			if (rval < 0)
+				exit(EXIT_FAILURE);
+			else
+				exit(EXIT_SUCCESS);
 		case 'd':
 			doreg = 0;
 			break;

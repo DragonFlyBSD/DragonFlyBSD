@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/imgact_resident.c,v 1.2 2004/01/20 21:03:23 dillon Exp $
+ * $DragonFly: src/sys/kern/imgact_resident.c,v 1.3 2004/06/03 16:28:15 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -38,16 +38,106 @@
 #include <sys/resourcevar.h>
 #include <sys/sysent.h>
 #include <sys/systm.h>
+#include <sys/stat.h>
 #include <sys/vnode.h>
 #include <sys/inflate.h>
+#include <sys/sysctl.h>
+#include <sys/lock.h>
+#include <sys/resident.h>
 
 #include <vm/vm.h>
 #include <vm/vm_param.h>
-#include <sys/lock.h>
 #include <vm/pmap.h>
 #include <vm/vm_map.h>
 #include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
+
+static int exec_res_id = 0;
+static TAILQ_HEAD(,vmresident) exec_res_list = TAILQ_HEAD_INITIALIZER(exec_res_list);
+
+static MALLOC_DEFINE(M_EXEC_RES, "vmresident", "resident execs");
+
+static int
+fill_xresident(struct vmresident *vr, struct xresident *in, struct thread *td)
+{
+	struct stat st;
+	struct vnode *vrtmp;
+	int error = 0;
+
+	vrtmp = vr->vr_vnode;
+
+	in->res_entry_addr = vr->vr_entry_addr;
+	in->res_id = vr->vr_id;
+	if (vrtmp) {
+		char *freepath, *fullpath;
+		error = vn_fullpath(td->td_proc, vrtmp, &fullpath, &freepath);
+		if (error != 0) {
+			/* could not retrieve cached path, return zero'ed string */
+			bzero(in->res_file, MAXPATHLEN);
+			error = 0;
+		} else {
+			bcopy(fullpath, in->res_file, MAXPATHLEN);
+			free(freepath, M_TEMP);
+		}
+
+		/* indicate that we are using the vnode */
+		error = vget(vrtmp, NULL, LK_EXCLUSIVE, td);
+		if (error)
+			goto done;
+	
+		/* retrieve underlying stat information and release vnode */
+		error = vn_stat(vrtmp, &st, td);
+		vput(vrtmp);
+		if (error)
+			goto done;
+
+		in->res_stat = st;
+	}
+
+done:
+	if (error)
+		printf("fill_xresident, error = %d\n", error);
+	return (error);
+}
+
+static int
+sysctl_vm_resident(SYSCTL_HANDLER_ARGS)
+{
+	struct vmresident *vmres;
+	struct thread *td;
+	int error;
+	int count;
+
+	/* only super-user should call this sysctl */
+	td = req->td;
+	if ((suser(td)) != 0)
+		return EPERM;
+
+	error = count = 0;
+
+	if (exec_res_id == 0)
+	    return error;
+	
+	/* client queried for number of resident binaries */
+	if (!req->oldptr)
+	    return SYSCTL_OUT(req, 0, exec_res_id);
+
+	TAILQ_FOREACH(vmres, &exec_res_list, vr_link) {
+		struct xresident xres;
+		error = fill_xresident(vmres, &xres, td);
+		if (error != 0)
+			break;
+		
+		error = SYSCTL_OUT(req, (void *)&xres,
+				sizeof(struct xresident));
+		if (error != 0)
+			break;
+	}
+
+	return (error);
+}
+SYSCTL_PROC(_vm, OID_AUTO, resident, CTLTYPE_OPAQUE|CTLFLAG_RD, 0, 0,
+  sysctl_vm_resident, "S,xresident", "resident executables (sys/resident.h)");
 
 int
 exec_resident_imgact(struct image_params *imgp)
@@ -66,11 +156,6 @@ exec_resident_imgact(struct image_params *imgp)
 	imgp->entry_addr = vmres->vr_entry_addr;
 	return(0);
 }
-
-static int exec_res_id;
-static TAILQ_HEAD(,vmresident) exec_res_list = TAILQ_HEAD_INITIALIZER(exec_res_list);
-
-static MALLOC_DEFINE(M_EXEC_RES, "vmresident", "resident execs");
 
 /*
  * exec_sys_register(entry)
@@ -151,6 +236,7 @@ restart:
 		vmres->vr_vmspace = NULL;
 	    }
 	    free(vmres, M_EXEC_RES);
+	    exec_res_id--;
 	    error = 0;
 	    ++count;
 	    goto restart;

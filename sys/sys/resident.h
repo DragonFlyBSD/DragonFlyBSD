@@ -3,7 +3,7 @@
  *
  *	Userland system calls for resident executable support.
  *
- * $DragonFly: src/sys/sys/resident.h,v 1.2 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/resident.h,v 1.3 2004/06/03 16:28:15 hmp Exp $
  */
 
 #ifndef _SYS_RESIDENT_H_
@@ -16,5 +16,13 @@ int exec_sys_unregister(int);
 
 #endif
 
+struct stat;
+/* structure exported via sysctl 'vm.resident' for userland */
+struct xresident {
+	intptr_t	res_entry_addr;
+	int     	res_id;
+	char		res_file[MAXPATHLEN];
+	struct stat	res_stat;
+};
 #endif
 

@@ -1,4 +1,4 @@
-.\" $DragonFly: src/usr.sbin/resident/resident.8,v 1.2 2004/01/20 21:14:00 dillon Exp $
+.\" $DragonFly: src/usr.sbin/resident/resident.8,v 1.3 2004/06/03 16:28:15 hmp Exp $
 .\"
 .Dd May 21, 2003
 .Dt RESIDENT 8
@@ -8,11 +8,12 @@
 .Nd Make a dynamic binary resident.
 .Sh SYNOPSIS
 .Nm
+.Op Fl l
 .Op Fl f
 .Op Fl x Ar id
 .Op Fl d
 .Op Fl R
-.Ar [program ...]
+.Ar "program ..."
 .Sh DESCRIPTION
 The
 .Nm
@@ -29,6 +30,8 @@ and binaries.
 .Pp
 The following options are available:
 .Bl -tag -width indent
+.It Fl l
+List binaries that are currently memory-resident.
 .It Fl f
 Force mode, even if the binary does not appear to be a dynamic binary.  This
 way you can run resident through statically compiled wrappers.  The first
