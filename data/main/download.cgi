@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.38 2004/07/09 16:15:15 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.39 2004/07/12 17:41:25 dillon Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -21,8 +21,9 @@ this is not an automated installation.  See the 'Download Site' list below
 for a list of download locations. </p>
 
 <p>
-<B>The DragonFly 1.0-RC2 SNAP is now Ready!</B> (2004-07-04) <br /> 
-MD5 (dfly-1.0RC2.iso.gz) = 9b39227698a0b7a4d4f3d18f7ad6ff75</p>
+<b>The DragonFly 1.0-RELEASE is here!  See below for download sites!  The MD5
+for the release is:<br />MD5 (dfly-1.0REL.iso.gz) = c95a378c13257f39420f5f9e4104bd7b
+</b><br /> 
 
 <h2>Obtaining source via CVS</h2>
 
@@ -44,13 +45,6 @@ file is available.  See below for suitable cvsup locations.</p>
 Daily DragonFly events and news are reported at the 
 <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>.</p>
 
-<h2>Installer</h2>
-<p>
-An <a href="http://www.geekgod.com/dfly/">installer program for DragonFly</a> is in beta, 
-based off of recent DragonFly releases.
-
-
-
 <h2>Download Sites</h2>
 
 <TABLE BORDER="0">
@@ -61,62 +55,75 @@ based off of recent DragonFly releases.
 </TR>
 
 
-<!-- RC2 links are all grouped together here. -->
-<!-- for RC*/1.x releases, please list them here separately, -->
+<!-- REL links are all grouped together here. -->
+<!-- for REL*/1.x releases, please list them here separately, -->
 <!-- even if the site's a regular mirror too. -->
 
-<TR BGCOLOR="#EEEEEE"><TD>Dragonflybsd.org (California, USA)</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
+<TR BGCOLOR="#EEEEEE"><TD>GoBSD.COM</TD>
+<TD>REL image</TD>
+<TD><A HREF="http://gobsd.com/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
-<TR BGCOLOR="#EEEEEE"><TD>The-BOFH.org (Holland)</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://www.the-bofh.org/dfly-1.0RC2.iso.gz">HTTP</A></TD></TR>
+<!-- <TR BGCOLOR="#EEEEEE"><TD>The-BOFH.org (Holland)</TD>
+<TD>REL image</TD>
+<TD><A HREF="http://www.the-bofh.org/dfly-1.0REL.iso.gz">HTTP</A></TD></TR> 
+-->
 
 <!--
 <TR BGCOLOR="#EEEEEE"><TD>Sitetronics.com</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://freebsd0.sitetronics.com/~dodell/dfly-1.0RC2.iso.gz">HTTP</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://freebsd0.sitetronics.com/~dodell/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 -->
 
 <TR BGCOLOR="#EEEEEE"><TD>Fortunaty.net (Europe)</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://ftp.fortunaty.net/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
+<!-- This mirror appears to have an incomplete copy
 <TR><TD>univie.ac.at</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://ftp.univie.ac.at/systems/DragonFly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://ftp.univie.ac.at/systems/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+-->
 
 <TR><TD>hp48.org</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://nibble.hp48.org/dragonfly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
 <TR><TD>Starkast.net</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="ftp://ftp.starkast.net/pub/DragonFlyBSD/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
+<TD>REL image</TD>
+<TD>
+<A HREF="ftp://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>
+<A HREF="http://ftp.starkast.net/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>chlamydia.fs.ei.tum.de (Germany)</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, <A HREF="ftp://chlamydia.fs.ei.tum.de/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>BSDTech.com (Norway)</TD>
-<TD>RC2 image</TD>
+<TD>REL image</TD>
 <TD>
-<A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A>, 
-<A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0RC2.iso.gz">FTP</A></TD></TR>
+<A HREF="http://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
+<A HREF="ftp://dragon.bsdtech.com/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A></TD></TR>
 
 <TR BGCOLOR="#EEEEEE"><TD>AllBSD.org (Japan)</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0RC2.iso.gz">HTTP</A>, 
-<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0RC2.iso.gz">FTP</A>, 
-<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0RC2.iso.gz">rysnc</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://pub.allbsd.org/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A>, 
+<A HREF="ftp://ftp.allbsd.org/pub/DragonFly/iso-images/dfly-1.0REL.iso.gz">FTP</A>, 
+<A HREF="rsync://rsync.allbsd.org/dragonfly-iso-images/dfly-1.0REL.iso.gz">rysnc</A></TD></TR>
+
+<TR><TD>Pieter from Holland</TD>
+<TD>REL image</TD>
+<TD><A HREF="http://15pc221.sshunet.nl/DragonFly/iso-images/dfly-1.0REL.iso.gz">HTTP</A></TD></TR>
+
+<TR BGCOLOR="#EEEEEE"><TD>Dragonflybsd.org (California, USA)</TD>
+<TD>REL image</TD>
+<TD><A HREF="ftp://ftp.dragonflybsd.org/iso-images/dfly-1.0REL.iso.gz">FTP</A>
+(<I>try to find another site first)</I></TD></TR>
 
 <TR><TD>EnergyHQ</TD>
-<TD>RC2 image</TD>
-<TD><A HREF="http://www.energyhq.es.eu.org/files/dfly-1.0RC2.iso.gz.torrent">BitTorrent</A></TD></TR>
+<TD>REL image</TD>
+<TD><A HREF="http://www.energyhq.es.eu.org/files/dfly-1.0REL.iso.gz.torrent">BitTorrent</A></TD></TR>
 
-
-<!-- end of RC2 links -->
+<!-- end of REL links -->
 <TR>
 <TD COLSPAN="3">&nbsp;</TD>
 </TR>
@@ -202,3 +209,29 @@ cvsup, cvsync, rsync, anoncvs
 
 </TABLE>
 
+<h2>Commerce Sites</h2>
+
+<TABLE BORDER="0">
+<TR>
+<TH>Organization</TH>
+<TH>Access methods</TH>
+</TR>
+
+<TR>
+<TD COLSPAN="2">NEW SECTION!  Any commercial site selling DragonFly related material can be listed in
+this section.</TD>
+</TR>
+
+<TR BGCOLOR="#EEEEEE">
+<TD><B>Crescent Anchor.</B>
+Crescent Anchor will be providing DragonFly BSD 1.0 on CD-ROM for a
+nominal fee.  Part of your purchase from Crescent Anchor will be contributed
+back to support continuing DragonFly development via the forthcoming 
+nonprofit
+company.  Please visit the Crescent Anchor site for details, pricing, 
+and other
+offers</TD>
+<TD><A HREF="http://www.crescentanchor.com/">http://www.crescentanchor.com/</A>
+</TR>
+
+</TABLE>
