@@ -1,6 +1,6 @@
-# $DragonFly: src/contrib/less-381/Attic/DRAGONFLY-upgrade,v 1.1.1.1 2004/04/20 17:34:50 eirikn Exp $
+# $DragonFly: src/contrib/less-381/Attic/DRAGONFLY-upgrade,v 1.2 2004/06/23 20:40:50 eirikn Exp $
 
-Import of one-true-awk.
+Import of less.
 
 Original source is availale from:
 http://www.greenwoodsoftware.com/less/
