@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/alpha-fbsd.c,v 1.3.2.2 2001/10/29 20:12:56 des Exp $
- * $DragonFly: src/usr.bin/truss/Attic/alpha-fbsd.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truss/Attic/alpha-fbsd.c,v 1.3 2003/11/04 15:34:41 eirikn Exp $
  */
 
 /*
@@ -59,6 +59,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "extern.h"
 #include "syscall.h"
 
 static int fd = -1;
@@ -113,17 +114,19 @@ clear_fsc() {
 
 void
 alpha_syscall_entry(int pid, int nargs) {
-  char buf[32];
+  char *buf;
   struct reg regs = { { 0 } };
-  int syscall;
-  int i;
+  int i, syscall;
   unsigned int parm_offset;
   struct syscall *sc;
   int indir = 0;	/* indirect system call */
 
   if (fd == -1 || pid != cpid) {
-    sprintf(buf, "/proc/%d/regs", pid);
+    asprintf(&buf, "%s/%d/regs", procfs_path, pid);
+    if (buf == NULL)
+      err(1, "Out of memory");
     fd = open(buf, O_RDWR);
+    free(buf);
     if (fd == -1) {
       fprintf(outfile, "-- CANNOT READ REGISTERS --\n");
       return;
@@ -260,7 +263,7 @@ alpha_syscall_entry(int pid, int nargs) {
 
 void
 alpha_syscall_exit(int pid, int syscall) {
-  char buf[32];
+  char *buf;
   struct reg regs;
   int retval;
   int i;
@@ -268,8 +271,11 @@ alpha_syscall_exit(int pid, int syscall) {
   struct syscall *sc;
 
   if (fd == -1 || pid != cpid) {
-    sprintf(buf, "/proc/%d/regs", pid);
+    asprintf(&buf, "%s/%d/regs", procfs_path, pid);
+    if (buf == NULL)
+      err(1, "Out of memory");
     fd = open(buf, O_RDONLY);
+    free(buf);
     if (fd == -1) {
       fprintf(outfile, "-- CANNOT READ REGISTERS --\n");
       return;

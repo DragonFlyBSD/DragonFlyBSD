@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/setup.c,v 1.10.2.2 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/setup.c,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truss/setup.c,v 1.3 2003/11/04 15:34:41 eirikn Exp $
  */
 
 /*
@@ -65,7 +65,7 @@ static int evflags = 0;
 int
 setup_and_wait(char *command[]) {
   struct procfs_status pfs;
-  char buf[32];
+  char *buf;
   int fd;
   int pid;
   int flags;
@@ -76,9 +76,13 @@ setup_and_wait(char *command[]) {
   }
   if (pid == 0) {	/* Child */
     int mask = S_EXEC | S_EXIT;
-    fd = open("/proc/curproc/mem", O_WRONLY);
+    asprintf(&buf, "%s/curproc/mem", procfs_path);
+    if (buf == NULL)
+      err(1, "Out of memory");
+    fd = open(buf, O_WRONLY);
+    free(buf);
     if (fd == -1)
-      err(2, "cannot open /proc/curproc/mem");
+      err(2, "cannot open %s", buf);
     fcntl(fd, F_SETFD, 1);
     if (ioctl(fd, PIOCBIS, mask) == -1)
       err(3, "PIOCBIS");
@@ -105,8 +109,12 @@ setup_and_wait(char *command[]) {
     exit(1);
   }
 
-  sprintf(buf, "/proc/%d/mem", pid);
-  if ((fd = open(buf, O_RDWR)) == -1)
+  asprintf(&buf, "%s/%d/mem", procfs_path, pid);
+  if (buf == NULL)
+    err(1, "Out of memory");
+  fd = open(buf, O_RDWR);
+  free(buf);
+  if (fd == -1)
     err(5, "cannot open %s", buf);
   if (ioctl(fd, PIOCWAIT, &pfs) == -1)
     err(6, "PIOCWAIT");
@@ -129,11 +137,14 @@ setup_and_wait(char *command[]) {
 int
 start_tracing(int pid, int flags) {
   int fd;
-  char buf[32];
+  char *buf;
   struct procfs_status tmp;
-  sprintf(buf, "/proc/%d/mem", pid);
 
+  asprintf(&buf, "%s/%d/mem", procfs_path, pid);
+  if (buf == NULL)
+    err(1, "Out of memory");
   fd = open(buf, O_RDWR);
+  free(buf);
   if (fd == -1) {
     /*
      * The process may have run away before we could start -- this

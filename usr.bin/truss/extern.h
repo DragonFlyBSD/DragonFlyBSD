@@ -29,8 +29,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/extern.h,v 1.1.2.1 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/extern.h,v 1.2 2003/06/17 04:29:33 dillon Exp $
+ * $DragonFly: src/usr.bin/truss/extern.h,v 1.3 2003/11/04 15:34:41 eirikn Exp $
  */
+
+#include <stdio.h>
+
+char procfs_path[FILENAME_MAX];
+int have_procfs;
 
 extern int setup_and_wait(char **);
 extern int start_tracing(int, int);

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/main.c,v 1.15.2.3 2002/05/16 23:41:23 peter Exp $
- * $DragonFly: src/usr.bin/truss/main.c,v 1.3 2003/08/28 02:42:00 hmp Exp $
+ * $DragonFly: src/usr.bin/truss/main.c,v 1.4 2003/11/04 15:34:41 eirikn Exp $
  */
 
 /*
@@ -41,6 +41,8 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/pioctl.h>
+#include <sys/ucred.h>
+#include <sys/mount.h>
 
 #include <err.h>
 #include <errno.h>
@@ -101,11 +103,13 @@ struct ex_types {
 static struct ex_types *
 set_etype(void) {
   struct ex_types *funcs;
-  char etype[24];
+  char *etype;
   char progt[32];
   int fd;
 
-  sprintf(etype, "/proc/%d/etype", pid);
+  asprintf(&etype, "%s/%d/etype", procfs_path, pid);
+  if (etype == NULL)
+    err(1, "Out of memory");
   if ((fd = open(etype, O_RDONLY)) == -1) {
     strcpy(progt, "FreeBSD a.out");
   } else {
@@ -113,6 +117,7 @@ set_etype(void) {
     progt[len-1] = '\0';
     close(fd);
   }
+  free(etype);
 
   for (funcs = ex_types; funcs->type; funcs++)
     if (!strcmp(funcs->type, progt))
@@ -128,14 +133,29 @@ set_etype(void) {
 
 int
 main(int ac, char **av) {
-  int c;
-  int i;
+  int c, i, mntsize;
   char **command;
   struct procfs_status pfs;
   struct ex_types *funcs;
+  struct statfs *mntbuf;
   int in_exec = 0;
   char *fname = NULL;
   int sigexit = 0;
+
+	/* Check where procfs is mounted if it is mounted */
+	if ((mntsize = getmntinfo(&mntbuf, MNT_NOWAIT)) == 0)
+		err(1, "getmntinfo");
+	for (i = 0; i < mntsize; i++) {
+		if (strcasecmp(mntbuf[i].f_mntfromname, "procfs") == 0) {
+			strlcpy(procfs_path, mntbuf[i].f_mntonname, sizeof(procfs_path));
+			have_procfs = 1;
+			break;
+		}
+	}
+	if (!have_procfs) {
+		errno = 2;
+		err(1, "You must have a mounted procfs to use truss");
+	}
 
   outfile = stderr;
   while ((c = getopt(ac, av, "p:o:S")) != -1) {

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/truss/i386-linux.c,v 1.7.2.4 2002/02/15 11:43:51 des Exp $
- * $DragonFly: src/usr.bin/truss/i386-linux.c,v 1.3 2003/10/04 20:36:53 hmp Exp $
+ * $DragonFly: src/usr.bin/truss/i386-linux.c,v 1.4 2003/11/04 15:34:41 eirikn Exp $
  */
 
 /*
@@ -90,15 +90,18 @@ clear_lsc(void) {
 
 void
 i386_linux_syscall_entry(int pid, int nargs) {
-  char buf[32];
+  char *buf;
   struct reg regs = { 0 };
   int syscall;
   int i;
   struct syscall *sc;
 
   if (fd == -1 || pid != cpid) {
-    sprintf(buf, "/proc/%d/regs", pid);
+    asprintf(&buf, "%s/%d/regs", procfs_path, pid);
+    if (buf == NULL)
+      err(1, "Out of memory");
     fd = open(buf, O_RDWR);
+    free(buf);
     if (fd == -1) {
       fprintf(outfile, "-- CANNOT READ REGISTERS --\n");
       return;
@@ -196,16 +199,19 @@ const int bsd_to_linux_errno[] = {
 
 void
 i386_linux_syscall_exit(int pid, int syscall) {
-  char buf[32];
+  char *buf;
   struct reg regs;
   int retval;
-  int i;
+  int size, i;
   int errorp;
   struct syscall *sc;
 
   if (fd == -1 || pid != cpid) {
-    sprintf(buf, "/proc/%d/regs", pid);
+    asprintf(&buf, "%s/%d/regs", procfs_path, pid);
+    if (buf == NULL)
+      err(1, "Out of memory");
     fd = open(buf, O_RDONLY);
+    free(buf);
     if (fd == -1) {
       fprintf(outfile, "-- CANNOT READ REGISTERS --\n");
       return;
