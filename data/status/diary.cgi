@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.8 2004/02/15 19:41:04 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.9 2004/02/15 20:12:27 hmp Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -31,6 +31,8 @@ $TITLE(DragonFly - Big-Picture Status)
 	<LI>nanosleep() is now a fine-grained sleep.  After all, what's the
 	    point of having a nanosleep() system call which is only capable
 	    of tick granularity?
+	<LI>Critical fixes from FreeBSD RELENG_4 integrated by Hiten Pandya.
+	<LI>Firewire subsystem updated by a patchset from Hidetoshi Shimokawa.
     </UL>
 </UL>
 <P>
