@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.7 2004/02/10 02:59:42 rob Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.8 2004/10/08 09:53:02 dillon Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -376,7 +376,7 @@ vnode_header(void)
 void
 vnode_print(struct vnode *avnode, struct vnode *vp)
 {
-	char *type, flags[16];
+	char *type, flags[32];
 	char *fp = flags;
 	int flag;
 
@@ -417,10 +417,12 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 		*fp++ = 'S';
 	if (flag & VISTTY)
 		*fp++ = 't';
+#ifdef VXLOCK
 	if (flag & VXLOCK)
 		*fp++ = 'L';
 	if (flag & VXWANT)
 		*fp++ = 'W';
+#endif
 	if (flag & VBWAIT)
 		*fp++ = 'B';
 	if (flag & VOBJBUF)
@@ -431,14 +433,22 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 		*fp++ = 'l';
 	if (flag & VOWANT)
 		*fp++ = 'w';
+#ifdef VDOOMED
 	if (flag & VDOOMED)
 		*fp++ = 'D';
+#endif
 	if (flag & VFREE)
 		*fp++ = 'F';
 	if (flag & VONWORKLST)
 		*fp++ = 'O';
 	if (flag & VMOUNT)
 		*fp++ = 'M';
+#ifdef VRECLAIMED
+	if (flag & VINACTIVE)
+		*fp++ = 'I';
+	if (flag & VRECLAIMED)
+		*fp++ = 'X';
+#endif
 
 	if (flag == 0)
 		*fp++ = '-';
