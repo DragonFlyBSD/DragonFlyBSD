@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/prof_machdep.c,v 1.14.2.1 2000/08/03 00:09:30 ps Exp $
- * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/prof_machdep.c,v 1.3 2003/07/20 04:20:32 dillon Exp $
  */
 
 #ifdef GUPROF
@@ -89,7 +89,10 @@ __mcount:							\n\
  	# hasn't changed the stack except to call here, so the	\n\
 	# caller's raddr is above our raddr.			\n\
 	#							\n\
- 	movl	4(%esp),%edx					\n\
+ 	pushl	%eax						\n\
+ 	pushl	%ecx						\n\
+ 	pushl	%edx						\n\
+ 	movl	12+4(%esp),%edx					\n\
  	jmp	.got_frompc					\n\
  								\n\
  	.p2align 4,0x90						\n\
@@ -103,6 +106,9 @@ __mcount:							\n\
 	# raddr is in the caller's frame following the caller's	\n\
 	# caller's frame pointer.				\n\
 	#							\n\
+ 	pushl	%eax						\n\
+ 	pushl	%ecx						\n\
+ 	pushl	%edx						\n\
 	movl	4(%ebp),%edx					\n\
 .got_frompc:							\n\
 	#							\n\
@@ -117,6 +123,9 @@ __mcount:							\n\
 	call	" __XSTRING(CNAME(mcount)) "			\n\
 	addl	$8,%esp						\n\
 	popfl							\n\
+ 	popl	%edx						\n\
+ 	popl	%ecx						\n\
+ 	popl	%eax						\n\
 .mcount_exit:							\n\
 	ret							\n\
 ");
@@ -151,8 +160,9 @@ GMON_PROF_HIRES	=	4					\n\
 	cmpl	$GMON_PROF_HIRES," __XSTRING(CNAME(_gmonparam)) "+GM_STATE \n\
 	jne	.mexitcount_exit				\n\
 	pushl	%edx						\n\
+	pushl	%ecx						\n\
 	pushl	%eax						\n\
-	movl	8(%esp),%eax					\n\
+	movl	12(%esp),%eax					\n\
 	pushfl							\n\
 	pushl	%eax						\n\
 	cli							\n\
@@ -160,6 +170,7 @@ GMON_PROF_HIRES	=	4					\n\
 	addl	$4,%esp						\n\
 	popfl							\n\
 	popl	%eax						\n\
+	popl	%ecx						\n\
 	popl	%edx						\n\
 .mexitcount_exit:						\n\
 	ret							\n\

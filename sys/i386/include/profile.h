@@ -32,7 +32,7 @@
  *
  *	@(#)profile.h	8.1 (Berkeley) 6/11/93
  * $FreeBSD: src/sys/i386/include/profile.h,v 1.20 1999/12/29 04:33:05 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/profile.h,v 1.3 2003/07/20 04:20:32 dillon Exp $
  */
 
 #ifndef _MACHINE_PROFILE_H_
@@ -70,7 +70,7 @@
 			  s_lock_np(&mcount_lock); }
 #define	MCOUNT_EXIT(s)	{ s_unlock_np(&mcount_lock); write_eflags(s); }
 #else
-#define	MCOUNT_ENTER(s)	{ s = read_eflags(); disable_intr(); }
+#define	MCOUNT_ENTER(s)	{ s = read_eflags(); cpu_disable_intr(); }
 #define	MCOUNT_EXIT(s)	(write_eflags(s))
 #endif
 #endif /* GUPROF */

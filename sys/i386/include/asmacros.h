@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/asmacros.h,v 1.18 1999/08/28 00:44:06 peter Exp $
- * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.4 2003/07/01 20:31:34 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/asmacros.h,v 1.5 2003/07/20 04:20:32 dillon Exp $
  */
 
 #ifndef _MACHINE_ASMACROS_H_
@@ -86,8 +86,8 @@
  * but gcc currently generates calls to it at the start of the epilogue to
  * avoid problems with -fpic.
  *
- * [.]mcount and __mcount may clobber the call-used registers and %ef.
- * [.]mexitcount may clobber %ecx and %ef.
+ * [.]mcount and __mcount will not clobber the call-used registers or %ef.
+ * [.]mexitcount will not clobber the call-used registers or %ef.
  *
  * Cross-jumping makes non-statistical profiling timing more complicated.
  * It is handled in many cases by calling [.]mexitcount before jumping.  It
@@ -114,8 +114,8 @@
 #define CROSSJUMPTARGET(label) \
 	ALIGN_TEXT; __CONCAT(to,label): ; MCOUNT; jmp label
 #define ENTRY(name)		GEN_ENTRY(name) ; 9: ; MCOUNT
-#define FAKE_MCOUNT(caller)	pushl caller ; call _mcount ; popl %ecx
-#define MCOUNT			call _mcount
+#define FAKE_MCOUNT(caller)	pushl caller ; call __mcount ; addl $4,%esp
+#define MCOUNT			call __mcount
 #define MCOUNT_LABEL(name)	GEN_ENTRY(name) ; nop ; ALIGN_TEXT
 #define MEXITCOUNT		call HIDENAME(mexitcount)
 #define ret			MEXITCOUNT ; NON_GPROF_RET

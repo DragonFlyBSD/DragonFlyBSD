@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/swtch.s,v 1.89.2.10 2003/01/23 03:36:24 ps Exp $
- * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.24 2003/07/11 17:42:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/swtch.s,v 1.25 2003/07/20 04:20:29 dillon Exp $
  */
 
 #include "npx.h"
@@ -379,8 +379,6 @@ cpu_switch_load_gs:
 1:
 
 	ret
-
-CROSSJUMPTARGET(sw1a)
 
 badsw2:
 	pushl	$sw0_2
