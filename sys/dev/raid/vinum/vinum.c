@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.6 2003/07/21 05:50:38 dillon Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.7 2003/07/31 12:01:38 hmp Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -293,7 +293,7 @@ moduledata_t vinum_mod =
     (modeventhand_t) vinum_modevent,
     0
 };
-DECLARE_MODULE(vinum, vinum_mod, SI_SUB_VINUM, SI_ORDER_MIDDLE);
+DECLARE_MODULE(vinum, vinum_mod, SI_SUB_RAID, SI_ORDER_MIDDLE);
 
 /* ARGSUSED */
 /* Open a vinum object */

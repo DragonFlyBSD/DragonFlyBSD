@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.2 2003/06/17 04:28:58 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.3 2003/07/31 12:01:37 hmp Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -141,8 +141,7 @@ enum sysinit_sub_id {
 	SI_SUB_INT_CONFIG_HOOKS	= 0xa800000,	/* Interrupts enabled config */
 	SI_SUB_ROOT_CONF	= 0xb000000,	/* Find root devices */
 	SI_SUB_DUMP_CONF	= 0xb200000,	/* Find dump devices */
-	SI_SUB_VINUM		= 0xb300000,	/* Configure vinum */
-	SI_SUB_RAID		= 0xb380000,	/* Configure RAIDframe */
+	SI_SUB_RAID		= 0xb300000,	/* Configure vinum */
 	SI_SUB_MOUNT_ROOT	= 0xb400000,	/* root mount*/
 	SI_SUB_SWAP		= 0xc000000,	/* swap*/
 	SI_SUB_INTRINSIC_POST	= 0xd000000,	/* proc 0 cleanup*/
