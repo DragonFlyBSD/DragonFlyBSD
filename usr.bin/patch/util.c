@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: util.c,v 1.28 2004/08/05 21:47:24 deraadt Exp $
- * $DragonFly: src/usr.bin/patch/util.c,v 1.3 2004/12/26 15:55:23 swildner Exp $
+ * $OpenBSD: util.c,v 1.29 2004/11/19 20:00:57 otto Exp $
+ * $DragonFly: src/usr.bin/patch/util.c,v 1.4 2005/01/10 21:45:33 swildner Exp $
  */
 
 /*

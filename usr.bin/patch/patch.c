@@ -1,6 +1,6 @@
 /*
- * $OpenBSD: patch.c,v 1.41 2004/07/09 19:13:46 otto Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.3 2004/12/26 15:55:23 swildner Exp $
+ * $OpenBSD: patch.c,v 1.43 2004/11/19 20:08:11 otto Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.4 2005/01/10 21:45:33 swildner Exp $
  */
 
 /*
