@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2000 Jeroen Ruigrok van der Werven
+.\" Copyright (c) 2000,2004 Jeroen Ruigrok van der Werven
 .\" Copyright (c) 2000,2001,2002 Søren Schmidt
 .\" All rights reserved.
 .\"
@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man4/ata.4,v 1.3.2.18 2002/10/16 13:40:51 fjoe Exp $
-.\" $DragonFly: src/share/man/man4/ata.4,v 1.2 2003/06/17 04:36:58 dillon Exp $
+.\" $DragonFly: src/share/man/man4/ata.4,v 1.3 2004/09/01 14:30:05 asmodai Exp $
 .\"
 .Dd January 27, 2000
 .Dt ATA 4
@@ -36,18 +36,18 @@
 .Nm ad ,
 .Nm afd ,
 .Nm ast
-.Nd generic ATA/ATAPI disk controller driver
+.Nd generic (S)ATA/ATAPI disk controller driver
 .Sh SYNOPSIS
 For ISA based ATA/ATAPI support:
 .Cd device isa
 .Cd device ata0 at isa? port IO_WD1 irq 14
 .Cd device ata1 at isa? port IO_WD2 irq 15
 .Pp
-For PCI based ATA/ATAPI support:
+For PCI based (S)ATA/ATAPI support:
 .Cd device pci
 .Cd device ata
 .Pp
-To support ATA compliant disk drives:
+To support (S)ATA compliant disk drives:
 .Cd device atadisk
 .Pp
 To support ATAPI CD-ROM, CDR, CDRW, DVD-ROM and DVD-RAM drives:
@@ -79,7 +79,7 @@ ZIP drives and tape streamers connected to controllers
 according to the ATA and ATAPI standards.
 These devices are also commonly known as IDE or EIDE devices.
 .Pp
-The currently supported controllers with their maximum speed include:
+The currently supported ATA controllers with their maximum speed include:
 .Pp
 .Bl -tag -width "Promise Ultra/Fasttrak-100 TX2/TX2000" -compact
 .It Acerlabs Aladdin
@@ -88,6 +88,12 @@ Ultra DMA 100 (UDMA5), 100 MB/sec (depending on model, max stated at boot)
 Ultra DMA 66 (UDMA4), 66 MB/sec
 .It AMD 766
 Ultra DMA 100 (UDMA5), 100 MB/sec
+.It AMD 768
+Ultra DMA 100 (UDMA5), 100 MB/sec
+.It AMD 8111
+Ultra DMA 133 (UDMA6), 133 MB/sec
+.It Cenatek Rocket Drive
+Ultra DMA 133 (UDMA6), 133 MB/sec
 .It CMD 646
 DMA 2 (WDMA2), 16 MB/sec
 .It CMD 648
@@ -102,13 +108,9 @@ Ultra DMA 33 (UDMA2), 33 MB/sec
 Ultra DMA 66 (UDMA4), 66 MB/sec
 .It HighPoint HPT370
 Ultra DMA 100 (UDMA5), 100 MB/sec
-.It HighPoint HPT372
+.It HighPoint HPT372/HPT374
 Ultra DMA 133 (UDMA6), 133 MB/sec
-.It HighPoint HPT374
-Ultra DMA 133 (UDMA6), 133 MB/sec
-.It Intel PIIX
-DMA 2 (WDMA2), 16 MB/sec
-.It Intel PIIX3
+.It Intel PIIX/PIIX3
 DMA 2 (WDMA2), 16 MB/sec
 .It Intel PIIX4
 Ultra DMA 33 (UDMA2), 33 MB/sec
@@ -116,19 +118,19 @@ Ultra DMA 33 (UDMA2), 33 MB/sec
 Ultra DMA 33 (UDMA2), 33 MB/sec
 .It Intel ICH
 Ultra DMA 66 (UDMA4), 66 MB/sec
-.It Intel ICH2
+.It Intel ICH2/ICH3/ICH4/ICH5
 Ultra DMA 100 (UDMA5), 100 MB/sec
-.It Intel ICH3
+.It Intel ICH6R/RW
 Ultra DMA 100 (UDMA5), 100 MB/sec
-.It Intel ICH4
+.It NVIDIA nForce ATA100
 Ultra DMA 100 (UDMA5), 100 MB/sec
+.It NVIDIA nForce2/nForce3 ATA133
+Ultra DMA 133 (UDMA6), 133 MB/sec
 .It Promise Ultra/Fasttrak-33
 Ultra DMA 33 (UDMA2), 33 MB/sec
 .It Promise Ultra/Fasttrak-66
 Ultra DMA 66 (UDMA4), 66 MB/sec
-.It Promise Ultra/Fasttrak-100
-Ultra DMA 100 (UDMA5), 100 MB/sec
-.It Promise Ultra/Fasttrak-100 TX2/TX4
+.It Promise Ultra/Fasttrak-100 (TX2/TX4)
 Ultra DMA 100 (UDMA5), 100 MB/sec
 .It Promise Ultra/Fasttrak-133 TX2/TX2000
 Ultra DMA 133 (UDMA6), 133 MB/sec
@@ -136,10 +138,10 @@ Ultra DMA 133 (UDMA6), 133 MB/sec
 Ultra DMA 33 (UDMA2), 33 MB/sec
 .It ServerWorks CSB5
 Ultra DMA 100 (UDMA5), 100 MB/sec (depending on model, max stated at boot)
-.It Sil 0680
+.It SiI 0680
 Ultra DMA 133 (UDMA6), 133 MB/sec (depending on model, max stated at boot)
 .It SiS 5591
-Ultra DMA 100 (UDMA5), 100 MB/sec (depending on model, max stated at boot)
+Ultra DMA 133 (UDMA5), 133 MB/sec (depending on model, max stated at boot)
 .It VIA 82C586
 Ultra DMA 33 (UDMA2), 33 MB/sec
 .It VIA 82C596
@@ -148,8 +150,21 @@ Ultra DMA 66 (UDMA4), 66 MB/sec (depending on model, max stated at boot)
 Ultra DMA 66 (UDMA4), 66 MB/sec
 .It VIA 82C686b
 Ultra DMA 100 (UDMA5), 100 MB/sec
-.It VIA 8233/8235
+.It VIA 8233/8235/8237
 Ultra DMA 133 (UDMA6), 133 MB/sec (depending on model, max stated at boot)
+.El
+.Pp
+The currently supported SATA controllers with their maximum speed include:
+.Pp
+.Bl -tag -width "SiI 3112/3114/3124/3512" -compact
+.It Intel ICH5
+Serial ATA 150, 150 MB/sec
+.It Intel ICH6(R)/(R)W
+Serial ATA 150, 150 MB/sec
+.It SiI 3112/3114/3124/3512
+Serial ATA 150, 150 MB/sec
+.It VIA 8237
+Serial ATA 150, 150 MB/sec
 .El
 .Pp
 All unknown chipsets are supported at the maximum speed of 16 MB/sec.
