@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.4 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.5 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1844,7 +1844,7 @@ int
 ahc_platform_alloc(struct ahc_softc *ahc, void *platform_arg)
 {
 	ahc->platform_data = malloc(sizeof(struct ahc_platform_data), M_DEVBUF,
-				    M_WAITOK | M_ZERO);
+				    M_INTWAIT | M_ZERO);
 	return (0);
 }
 

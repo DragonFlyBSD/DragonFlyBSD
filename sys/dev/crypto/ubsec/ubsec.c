@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ubsec/ubsec.c,v 1.6.2.12 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.4 2003/11/20 22:07:25 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/ubsec/ubsec.c,v 1.5 2004/05/13 19:44:31 dillon Exp $ */
 /*	$OpenBSD: ubsec.c,v 1.115 2002/09/24 18:33:26 jason Exp $	*/
 
 /*
@@ -380,13 +380,7 @@ ubsec_attach(device_t dev)
 	for (i = 0; i < UBS_MAX_NQUEUE; i++, dmap++) {
 		struct ubsec_q *q;
 
-		q = (struct ubsec_q *)malloc(sizeof(struct ubsec_q),
-		    M_DEVBUF, M_NOWAIT);
-		if (q == NULL) {
-			device_printf(dev, "cannot allocate queue buffers\n");
-			break;
-		}
-
+		q = malloc(sizeof(struct ubsec_q), M_DEVBUF, M_WAITOK);
 		if (ubsec_dma_malloc(sc, sizeof(struct ubsec_dmachunk),
 		    &dmap->d_alloc, 0)) {
 			device_printf(dev, "cannot allocate dma buffers\n");
@@ -859,10 +853,8 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 		return (EINVAL);
 
 	if (sc->sc_sessions == NULL) {
-		ses = sc->sc_sessions = (struct ubsec_session *)malloc(
-		    sizeof(struct ubsec_session), M_DEVBUF, M_NOWAIT);
-		if (ses == NULL)
-			return (ENOMEM);
+		ses = sc->sc_sessions = malloc(sizeof(struct ubsec_session),
+						M_DEVBUF, M_INTWAIT);
 		sesn = 0;
 		sc->sc_nsessions = 1;
 	} else {
@@ -875,10 +867,8 @@ ubsec_newsession(void *arg, u_int32_t *sidp, struct cryptoini *cri)
 
 		if (ses == NULL) {
 			sesn = sc->sc_nsessions;
-			ses = (struct ubsec_session *)malloc((sesn + 1) *
-			    sizeof(struct ubsec_session), M_DEVBUF, M_NOWAIT);
-			if (ses == NULL)
-				return (ENOMEM);
+			ses = malloc((sesn + 1) * sizeof(struct ubsec_session),
+					M_DEVBUF, M_INTWAIT);
 			bcopy(sc->sc_sessions, ses, sesn *
 			    sizeof(struct ubsec_session));
 			bzero(sc->sc_sessions, sesn *
@@ -2145,12 +2135,7 @@ ubsec_kprocess_modexp_sw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	int s, err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
-	me = (struct ubsec_q2_modexp *)malloc(sizeof *me, M_DEVBUF, M_NOWAIT);
-	if (me == NULL) {
-		err = ENOMEM;
-		goto errout;
-	}
-	bzero(me, sizeof *me);
+	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
 	me->me_krp = krp;
 	me->me_q.q_type = UBS_CTXOP_MODEXP;
 
@@ -2347,12 +2332,7 @@ ubsec_kprocess_modexp_hw(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 	int s, err = 0;
 	u_int nbits, normbits, mbits, shiftbits, ebits;
 
-	me = (struct ubsec_q2_modexp *)malloc(sizeof *me, M_DEVBUF, M_NOWAIT);
-	if (me == NULL) {
-		err = ENOMEM;
-		goto errout;
-	}
-	bzero(me, sizeof *me);
+	me = malloc(sizeof *me, M_DEVBUF, M_INTWAIT | M_ZERO);
 	me->me_krp = krp;
 	me->me_q.q_type = UBS_CTXOP_MODEXP;
 
@@ -2579,10 +2559,7 @@ ubsec_kprocess_rsapriv(struct ubsec_softc *sc, struct cryptkop *krp, int hint)
 		goto errout;
 	}
 
-	rp = (struct ubsec_q2_rsapriv *)malloc(sizeof *rp, M_DEVBUF, M_NOWAIT);
-	if (rp == NULL)
-		return (ENOMEM);
-	bzero(rp, sizeof *rp);
+	rp = malloc(sizeof *rp, M_DEVBUF, M_INTWAIT | M_ZERO);
 	rp->rpr_krp = krp;
 	rp->rpr_q.q_type = UBS_CTXOP_RSAPRIV;
 

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.5 2003/08/27 10:35:15 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.6 2004/05/13 19:44:28 dillon Exp $
  */
 
 /*
@@ -149,12 +149,7 @@ eni_init_memory ( eup )
 	/*
 	 * Allocate initial element which will hold all of memory
 	 */
-	if ( ( eup->eu_memmap = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF,
-	    M_NOWAIT ) ) == NULL )
-	{
-		/* Memory allocation error */
-		return -1;
-	}
+	eup->eu_memmap = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF, M_WAITOK);
 
 	/*
 	 * Test and size memory
@@ -259,18 +254,7 @@ eni_allocate_buffer ( eup, size )
 			Mbd	*etmp;
 
 			/* Yep - create a new segment */
-			etmp = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF,
-			    M_NOWAIT );
-			if ( etmp == (Mbd *)NULL ) {
-				/*
-				 * Couldn't allocate a new descriptor. Indicate 
-				 * failure and exit now or we'll start losing
-				 * memory.
-				 */
-				eup->eu_stats.eni_st_drv.drv_mm_nodesc++;
-				*size = 0;
-				return ( (caddr_t)NULL );
-			}
+			etmp = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF, M_WAITOK);
 			/* Place it in the list */
 			etmp->next = eptr->next;
 			if ( etmp->next )
@@ -307,17 +291,7 @@ eni_allocate_buffer ( eup, size )
 		Mbd	*etmp;
 		/* larger then we need - split it */
 
-		etmp = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF, M_NOWAIT );
-		if ( etmp == (Mbd *)NULL ) {
-			/*
-			 * Couldn't allocate new descriptor. Indicate
-			 * failure and exit now or we'll start losing
-			 * memory.
-			 */
-			eup->eu_stats.eni_st_drv.drv_mm_nodesc++;
-			*size = 0;
-			return ( (caddr_t)NULL );
-		}
+		etmp = (Mbd *)KM_ALLOC(sizeof(Mbd), M_DEVBUF, M_WAITOK);
 		/* Place new element in list */
 		etmp->next = eptr->next;
 		if ( etmp->next )

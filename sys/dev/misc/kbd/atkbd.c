@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbd.c,v 1.25.2.4 2002/04/08 19:21:38 asmodai Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbd.c,v 1.4 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -358,29 +358,12 @@ atkbd_init(int unit, keyboard_t **kbdp, void *arg, int flags)
 		fkeymap_size =
 			sizeof(default_fkeytab)/sizeof(default_fkeytab[0]);
 	} else if (*kbdp == NULL) {
-		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_NOWAIT);
-		if (kbd == NULL)
-			return ENOMEM;
-		bzero(kbd, sizeof(*kbd));
-		state = malloc(sizeof(*state), M_DEVBUF, M_NOWAIT);
-		keymap = malloc(sizeof(key_map), M_DEVBUF, M_NOWAIT);
-		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_NOWAIT);
-		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_NOWAIT);
+		*kbdp = kbd = malloc(sizeof(*kbd), M_DEVBUF, M_WAITOK|M_ZERO);
+		state = malloc(sizeof(*state), M_DEVBUF, M_WAITOK|M_ZERO);
+		keymap = malloc(sizeof(key_map), M_DEVBUF, M_WAITOK);
+		accmap = malloc(sizeof(accent_map), M_DEVBUF, M_WAITOK);
+		fkeymap = malloc(sizeof(fkey_tab), M_DEVBUF, M_WAITOK);
 		fkeymap_size = sizeof(fkey_tab)/sizeof(fkey_tab[0]);
-		if ((state == NULL) || (keymap == NULL) || (accmap == NULL)
-		     || (fkeymap == NULL)) {
-			if (state != NULL)
-				free(state, M_DEVBUF);
-			if (keymap != NULL)
-				free(keymap, M_DEVBUF);
-			if (accmap != NULL)
-				free(accmap, M_DEVBUF);
-			if (fkeymap != NULL)
-				free(fkeymap, M_DEVBUF);
-			free(kbd, M_DEVBUF);
-			return ENOMEM;
-		}
-		bzero(state, sizeof(*state));
 	} else if (KBD_IS_INITIALIZED(*kbdp) && KBD_IS_CONFIGURED(*kbdp)) {
 		return 0;
 	} else {

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.5 2004/05/13 19:44:33 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -103,8 +103,7 @@ sc_alloc_cut_buffer(scr_stat *scp, int wait)
 	if (p != NULL)
 	    free(p, M_DEVBUF);
 	cut_buffer_size = scp->xsize * scp->ysize + 1;
-	p = (u_char *)malloc(cut_buffer_size, 
-			     M_DEVBUF, (wait) ? M_WAITOK : M_NOWAIT);
+	p = malloc(cut_buffer_size, M_DEVBUF, (wait) ? M_WAITOK : M_NOWAIT);
 	if (p != NULL)
 	    p[0] = '\0';
 	cut_buffer = p;

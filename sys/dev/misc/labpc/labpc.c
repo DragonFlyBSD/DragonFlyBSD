@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.5 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.6 2004/05/13 19:44:32 dillon Exp $
  *
  */
 
@@ -404,10 +404,13 @@ labpcinit(void)
 	if (NLABPC > MAX_UNITS)
 		return 0;
 
-	labpcs = malloc(NLABPC * sizeof(struct ctlr *), M_DEVBUF, M_NOWAIT);
-	if (labpcs)
-	{
-		bzero(labpcs, NLABPC * sizeof(struct ctlr *));
+	labpcs = malloc(NLABPC * sizeof(struct ctlr *), M_DEVBUF, 
+			M_WAITOK | M_ZERO);
+	/*
+	 * XXX this is really odd code, adding the device only if
+	 * the allocation fails?  it could be broken.
+	 */
+	if (labpcs) {
 		return 1;
 	}
 	cdevsw_add(&labpc_cdevsw);
@@ -418,7 +421,7 @@ static int
 labpcprobe(struct isa_device *dev)
 {
 	static int unit;
-	struct ctlr scratch, *ctlr;
+	struct ctlr scratch, *ctlr, *l;
 	u_char status;
 
 	if (!labpcs)
@@ -460,22 +463,14 @@ labpcprobe(struct isa_device *dev)
 	 */
 	reset(ctlr);
 
-	if ( (labpcs[unit] = malloc(sizeof(struct ctlr), M_DEVBUF, M_NOWAIT)) )
-	{
-		struct ctlr *l = labpcs[unit];
+	l = malloc(sizeof(struct ctlr), M_DEVBUF, M_WAITOK | M_ZERO);
+	l->base = ctlr->base;
+	l->unit = unit;
+	labpcs[unit] = l;
+	dev->id_unit = l->unit;
 
-		bzero(l, sizeof(struct ctlr));
-		l->base = ctlr->base;
-		dev->id_unit = l->unit = unit;
-
-		unit++;
-		return 0x20;
-	}
-	else
-	{
-		printf("labpc%d: Can't malloc.\n", unit);
-		return 0;
-	}
+	unit++;
+	return 0x20;
 }
 
 /* attach: Set things in a normal state.

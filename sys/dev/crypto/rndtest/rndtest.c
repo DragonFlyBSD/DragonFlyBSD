@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/rndtest/rndtest.c,v 1.1.4.1 2003/06/04 17:10:30 sam Exp $	*/
-/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.5 2004/02/13 00:40:38 joerg Exp $	*/
+/*	$DragonFly: src/sys/dev/crypto/rndtest/rndtest.c,v 1.6 2004/05/13 19:44:31 dillon Exp $	*/
 /*	$OpenBSD$	*/
 
 /*
@@ -86,22 +86,19 @@ rndtest_attach(device_t dev)
 {
 	struct rndtest_state *rsp;
 
-	rsp = malloc(sizeof (*rsp), M_DEVBUF, M_NOWAIT);
-	if (rsp != NULL) {
-		rsp->rs_begin = rsp->rs_buf;
-		rsp->rs_end = rsp->rs_buf + sizeof(rsp->rs_buf);
-		rsp->rs_current = rsp->rs_begin;
-		rsp->rs_discard = 1;
-		rsp->rs_collect = 1;
-		rsp->rs_parent = dev;
+	rsp = malloc(sizeof (*rsp), M_DEVBUF, M_INTWAIT);
+	rsp->rs_begin = rsp->rs_buf;
+	rsp->rs_end = rsp->rs_buf + sizeof(rsp->rs_buf);
+	rsp->rs_current = rsp->rs_begin;
+	rsp->rs_discard = 1;
+	rsp->rs_collect = 1;
+	rsp->rs_parent = dev;
 #if defined(__DragonFly__) || __FreeBSD_version < 500000
-		callout_init(&rsp->rs_to);
+	callout_init(&rsp->rs_to);
 #else
-		/* NB: 1 means the callout runs w/o Giant locked */
-		callout_init(&rsp->rs_to, 1);
+	/* NB: 1 means the callout runs w/o Giant locked */
+	callout_init(&rsp->rs_to, 1);
 #endif
-	} else
-		device_printf(dev, "rndtest_init: no memory for state block\n");
 	return (rsp);
 }
 

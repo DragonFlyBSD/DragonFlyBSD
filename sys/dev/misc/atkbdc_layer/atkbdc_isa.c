@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/atkbdc_isa.c,v 1.14.2.1 2000/03/31 12:52:05 yokota Exp $
- * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/atkbdc_layer/atkbdc_isa.c,v 1.4 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -147,10 +147,8 @@ atkbdc_add_device(device_t dev, const char *name, int unit)
 	if (resource_int_value(name, unit, "disabled", &t) == 0 && t != 0)
 		return;
 
-	kdev = malloc(sizeof(struct atkbdc_device), M_ATKBDDEV, M_NOWAIT);
-	if (!kdev)
-		return;
-	bzero(kdev, sizeof *kdev);
+	kdev = malloc(sizeof(struct atkbdc_device), M_ATKBDDEV, 
+			M_WAITOK | M_ZERO);
 
 	if (resource_int_value(name, unit, "irq", &t) == 0)
 		kdev->irq = t;

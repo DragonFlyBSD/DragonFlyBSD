@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.6 2004/03/15 01:10:35 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.7 2004/05/13 19:44:31 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -222,7 +222,7 @@ aha_alloc(int unit, bus_space_tag_t tag, bus_space_handle_t bsh)
 		}
 	}
 
-	aha = malloc(sizeof(struct aha_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	aha = malloc(sizeof(struct aha_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	SLIST_INIT(&aha->free_aha_ccbs);
 	LIST_INIT(&aha->pending_ccbs);
 	SLIST_INIT(&aha->sg_maps);
@@ -728,7 +728,7 @@ ahaallocccbs(struct aha_softc *aha)
 
 	next_ccb = &aha->aha_ccb_array[aha->num_ccbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of CCBS */
 	if (bus_dmamem_alloc(aha->sg_dmat, (void **)&sg_map->sg_vaddr,

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.5 2004/02/21 06:37:06 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.6 2004/05/13 19:44:33 dillon Exp $
  */
 
 /*-
@@ -298,9 +298,7 @@ puc_pci_attach(device_t dev)
 			continue;
 		}
 		pdev = malloc(sizeof(struct puc_device), M_DEVBUF,
-		    M_NOWAIT | M_ZERO);
-		if (!pdev)
-			continue;
+				M_WAITOK | M_ZERO);
 		resource_list_init(&pdev->resources);
 
 		/* First fake up an IRQ resource. */

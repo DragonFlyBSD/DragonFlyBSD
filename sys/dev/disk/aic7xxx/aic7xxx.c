@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic7xxx.c#134 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx.c,v 1.41.2.27 2003/06/10 03:26:08 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx.c,v 1.6 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -1562,7 +1562,7 @@ ahc_alloc_tstate(struct ahc_softc *ahc, u_int scsi_id, char channel)
 	 && ahc->enabled_targets[scsi_id] != master_tstate)
 		panic("%s: ahc_alloc_tstate - Target already allocated",
 		      ahc_name(ahc));
-	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_WAITOK);
+	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * If we have allocated a master tstate, copy user settings from
@@ -4244,7 +4244,7 @@ ahc_init_scbdata(struct ahc_softc *ahc)
 
 	/* Allocate SCB resources */
 	scb_data->scbarray = malloc(sizeof(struct scb) * AHC_SCB_MAX_ALLOC,
-				    M_DEVBUF, M_WAITOK | M_ZERO);
+				    M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	/* Determine the number of hardware SCBs and initialize them */
 
@@ -4441,7 +4441,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 
 	next_scb = &scb_data->scbarray[scb_data->numscbs];
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of SCBS */
 	if (ahc_dmamem_alloc(ahc, scb_data->sg_dmat,
@@ -4467,7 +4467,7 @@ ahc_alloc_scbs(struct ahc_softc *ahc)
 #ifndef __linux__
 		int error;
 #endif
-		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_WAITOK);
+		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_INTWAIT);
 		next_scb->platform_data = pdata;
 		next_scb->sg_map = sg_map;
 		next_scb->sg_list = segs;
@@ -6386,7 +6386,7 @@ ahc_loadseq(struct ahc_softc *ahc)
 	ahc->num_critical_sections = cs_count;
 	if (cs_count != 0) {
 		cs_count *= sizeof(struct cs);
-		ahc->critical_sections = malloc(cs_count, M_DEVBUF, M_WAITOK);
+		ahc->critical_sections = malloc(cs_count, M_DEVBUF, M_INTWAIT);
 		memcpy(ahc->critical_sections, cs_table, cs_count);
 	}
 	ahc_outb(ahc, SEQCTL, PERRORDIS|FAILDIS|FASTMODE);
@@ -7001,7 +7001,7 @@ ahc_handle_en_lun(struct ahc_softc *ahc, struct cam_sim *sim, union ccb *ccb)
 				return;
 			}
 		}
-		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_WAITOK | M_ZERO);
+		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_INTWAIT | M_ZERO);
 		status = xpt_create_path(&lstate->path, /*periph*/NULL,
 					 xpt_path_path_id(ccb->ccb_h.path),
 					 xpt_path_target_id(ccb->ccb_h.path),

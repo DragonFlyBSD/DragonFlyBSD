@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/schistory.c,v 1.8.2.1 2001/07/19 06:38:53 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.4 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/schistory.c,v 1.5 2004/05/13 19:44:33 dillon Exp $
  */
 
 #include "use_sc.h"
@@ -114,9 +114,8 @@ sc_alloc_history_buffer(scr_stat *scp, int lines, int prev_ysize, int wait)
 	}
 
 	/* allocate a new buffer */
-	history = (sc_vtb_t *)malloc(sizeof(*history),
-				     M_DEVBUF,
-				     (wait) ? M_WAITOK : M_NOWAIT);
+	history = malloc(sizeof(*history), M_DEVBUF,
+			 (wait) ? M_WAITOK : M_NOWAIT);
 	if (history != NULL) {
 		if (lines > min_lines)
 			extra_history_size -= lines - min_lines;

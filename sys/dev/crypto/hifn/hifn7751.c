@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.5.2.5 2003/06/04 17:56:59 sam Exp $ */
-/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.5 2003/11/20 22:07:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/crypto/hifn/hifn7751.c,v 1.6 2004/05/13 19:44:31 dillon Exp $ */
 /*	$OpenBSD: hifn7751.c,v 1.120 2002/05/17 00:33:34 deraadt Exp $	*/
 
 /*
@@ -2223,12 +2223,7 @@ hifn_process(void *arg, struct cryptop *crp, int hint)
 		goto errout;
 	}
 
-	cmd = malloc(sizeof(struct hifn_command), M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (cmd == NULL) {
-		hifnstats.hst_nomem++;
-		err = ENOMEM;
-		goto errout;
-	}
+	cmd = malloc(sizeof(struct hifn_command), M_DEVBUF, M_INTWAIT | M_ZERO);
 
 	if (crp->crp_flags & CRYPTO_F_IMBUF) {
 		cmd->src_m = (struct mbuf *)crp->crp_buf;

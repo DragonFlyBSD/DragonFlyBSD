@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.7 2003/11/10 06:12:05 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.8 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -84,19 +84,10 @@ kbd_realloc_array(void)
 
 	s = spltty();
 	newsize = ((keyboards + ARRAY_DELTA)/ARRAY_DELTA)*ARRAY_DELTA;
-	new_kbd = malloc(sizeof(*new_kbd)*newsize, M_DEVBUF, M_NOWAIT);
-	if (new_kbd == NULL) {
-		splx(s);
-		return ENOMEM;
-	}
-	new_kbdsw = malloc(sizeof(*new_kbdsw)*newsize, M_DEVBUF, M_NOWAIT);
-	if (new_kbdsw == NULL) {
-		free(new_kbd, M_DEVBUF);
-		splx(s);
-		return ENOMEM;
-	}
-	bzero(new_kbd, sizeof(*new_kbd)*newsize);
-	bzero(new_kbdsw, sizeof(*new_kbdsw)*newsize);
+	new_kbd = malloc(sizeof(*new_kbd) * newsize, M_DEVBUF,
+				M_WAITOK | M_ZERO);
+	new_kbdsw = malloc(sizeof(*new_kbdsw) * newsize, M_DEVBUF,
+				M_WAITOK | M_ZERO);
 	bcopy(keyboard, new_kbd, sizeof(*keyboard)*keyboards);
 	bcopy(kbdsw, new_kbdsw, sizeof(*kbdsw)*keyboards);
 	if (keyboards > 1) {
@@ -481,7 +472,6 @@ kbd_detach(keyboard_t *kbd)
 	if (dev->si_drv1)
 		free(dev->si_drv1, M_DEVBUF);
 	destroy_dev(dev);
-
 	return 0;
 }
 

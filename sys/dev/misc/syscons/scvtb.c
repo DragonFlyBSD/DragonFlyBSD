@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvtb.c,v 1.5.2.1 2001/07/16 05:21:23 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.3 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvtb.c,v 1.4 2004/05/13 19:44:33 dillon Exp $
  */
 
 #include "opt_syscons.h"
@@ -57,10 +57,10 @@ sc_vtb_init(sc_vtb_t *vtb, int type, int cols, int rows, void *buf, int wait)
 	case VTB_MEMORY:
 	case VTB_RINGBUFFER:
 		if ((buf == NULL) && (cols*rows != 0)) {
-			vtb->vtb_buffer =
-				(vm_offset_t)malloc(cols*rows*sizeof(u_int16_t),
-						    M_DEVBUF, 
-						    (wait) ? M_WAITOK : M_NOWAIT);
+			vtb->vtb_buffer = (vm_offset_t)
+			    malloc(cols*rows*sizeof(u_int16_t),
+				    M_DEVBUF, 
+				    (wait) ? M_WAITOK : M_NOWAIT);
 			if (vtb->vtb_buffer != NULL) {
 				bzero((void *)sc_vtb_pointer(vtb, 0),
 				      cols*rows*sizeof(u_int16_t));

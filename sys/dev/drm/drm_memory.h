@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_memory.h,v 1.8.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.3 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_memory.h,v 1.4 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "dev/drm/drmP.h"
@@ -147,9 +147,7 @@ int DRM(mem_info) DRM_SYSCTL_HANDLER_ARGS
 	int ret;
 	drm_mem_stats_t *stats;
 	
-	stats = malloc(sizeof(DRM(mem_stats)), DRM(M_DRM), M_NOWAIT);
-	if (stats == NULL)
-		return ENOMEM;
+	stats = malloc(sizeof(DRM(mem_stats)), DRM(M_DRM), M_WAITOK);
 	
 	DRM_SPINLOCK(&DRM(mem_lock));
 	bcopy(DRM(mem_stats), stats, sizeof(DRM(mem_stats)));

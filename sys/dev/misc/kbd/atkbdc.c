@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/atkbdc.c,v 1.5.2.2 2002/03/31 11:02:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.3 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/atkbdc.c,v 1.4 2004/05/13 19:44:32 dillon Exp $
  * from kbdio.c,v 1.13 1998/09/25 11:55:46 yokota Exp
  */
 
@@ -112,11 +112,8 @@ atkbdc_softc_t
 		return NULL;
 	sc = atkbdc_softc[unit];
 	if (sc == NULL) {
-		sc = atkbdc_softc[unit]
-		   = malloc(sizeof(*sc), M_DEVBUF, M_NOWAIT);
-		if (sc == NULL)
-			return NULL;
-		bzero(sc, sizeof(*sc));
+		sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+		atkbdc_softc[unit] = sc;
 	}
 	return sc;
 }

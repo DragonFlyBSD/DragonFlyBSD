@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.5 2004/03/15 01:10:33 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.6 2004/05/13 19:44:31 dillon Exp $
  */
 /*
  * Ported from:
@@ -163,7 +163,7 @@ adwallocsgmap(struct adw_softc *adw)
 {
 	struct sg_map_node *sg_map;
 
-	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
+	sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 	/* Allocate S/G space for the next batch of ACBS */
 	if (bus_dmamem_alloc(adw->sg_dmat, (void **)&sg_map->sg_vaddr,
@@ -821,7 +821,7 @@ adw_alloc(device_t dev, struct resource *regs, int regs_type, int regs_id)
 	/*
 	 * Allocate a storage area for us
 	 */
-	adw = malloc(sizeof(struct adw_softc), M_DEVBUF, M_WAITOK | M_ZERO);
+	adw = malloc(sizeof(struct adw_softc), M_DEVBUF, M_INTWAIT | M_ZERO);
 	LIST_INIT(&adw->pending_ccbs);
 	SLIST_INIT(&adw->sg_maps);
 	adw->device = dev;
@@ -833,7 +833,7 @@ adw_alloc(device_t dev, struct resource *regs, int regs_type, int regs_id)
 	adw->bsh = rman_get_bushandle(regs);
 	KKASSERT(adw->unit >= 0 && adw->unit < 100);
 	i = adw->unit / 10;
-	adw->name = malloc(sizeof("adw") + i + 1, M_DEVBUF, M_WAITOK);
+	adw->name = malloc(sizeof("adw") + i + 1, M_DEVBUF, M_INTWAIT);
 	sprintf(adw->name, "adw%d", adw->unit);
 	return(adw);
 }

@@ -40,7 +40,7 @@
  * $Id: //depot/aic7xxx/aic7xxx/aic79xx.c#198 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx.c,v 1.3.2.5 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx.c,v 1.6 2004/05/13 19:44:32 dillon Exp $
  */
 
 #include "aic79xx_osm.h"
@@ -2348,7 +2348,7 @@ ahd_alloc_tstate(struct ahd_softc *ahd, u_int scsi_id, char channel)
 	 && ahd->enabled_targets[scsi_id] != master_tstate)
 		panic("%s: ahd_alloc_tstate - Target already allocated",
 		      ahd_name(ahd));
-	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_WAITOK);
+	tstate = malloc(sizeof(*tstate), M_DEVBUF, M_INTWAIT);
 
 	/*
 	 * If we have allocated a master tstate, copy user settings from
@@ -4778,12 +4778,12 @@ ahd_alloc(void *platform_arg, char *name)
 	struct  ahd_softc *ahd;
 
 #if !defined(__DragonFly__) && !defined(__FreeBSD__)
-	ahd = malloc(sizeof(*ahd), M_DEVBUF, M_WAITOK);
+	ahd = malloc(sizeof(*ahd), M_DEVBUF, M_INTWAIT);
 #else
 	ahd = device_get_softc((device_t)platform_arg);
 #endif
 	memset(ahd, 0, sizeof(*ahd));
-	ahd->seep_config = malloc(sizeof(*ahd->seep_config),M_DEVBUF,M_WAITOK);
+	ahd->seep_config = malloc(sizeof(*ahd->seep_config),M_DEVBUF,M_INTWAIT);
 	LIST_INIT(&ahd->pending_scbs);
 	/* We don't know our unit number until the OSM sets it */
 	ahd->name = name;
@@ -5590,7 +5590,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 		hscb = &((struct hardware_scb *)hscb_map->vaddr)[offset];
 		hscb_busaddr = hscb_map->physaddr + (offset * sizeof(*hscb));
 	} else {
-		hscb_map = malloc(sizeof(*hscb_map), M_DEVBUF, M_WAITOK);
+		hscb_map = malloc(sizeof(*hscb_map), M_DEVBUF, M_INTWAIT);
 
 		/* Allocate the next batch of hardware SCBs */
 		if (ahd_dmamem_alloc(ahd, scb_data->hscb_dmat,
@@ -5620,7 +5620,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 		segs = sg_map->vaddr + offset;
 		sg_busaddr = sg_map->physaddr + offset;
 	} else {
-		sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_WAITOK);
+		sg_map = malloc(sizeof(*sg_map), M_DEVBUF, M_INTWAIT);
 
 		/* Allocate the next batch of S/G lists */
 		if (ahd_dmamem_alloc(ahd, scb_data->sg_dmat,
@@ -5654,7 +5654,7 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 		sense_data = sense_map->vaddr + offset;
 		sense_busaddr = sense_map->physaddr + offset;
 	} else {
-		sense_map = malloc(sizeof(*sense_map), M_DEVBUF, M_WAITOK);
+		sense_map = malloc(sizeof(*sense_map), M_DEVBUF, M_INTWAIT);
 
 		/* Allocate the next batch of sense buffers */
 		if (ahd_dmamem_alloc(ahd, scb_data->sense_dmat,
@@ -5692,8 +5692,8 @@ ahd_alloc_scbs(struct ahd_softc *ahd)
 #ifndef __linux__
 		int error;
 #endif
-		next_scb = malloc(sizeof(*next_scb), M_DEVBUF, M_WAITOK);
-		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_WAITOK);
+		next_scb = malloc(sizeof(*next_scb), M_DEVBUF, M_INTWAIT);
+		pdata = malloc(sizeof(*pdata), M_DEVBUF, M_INTWAIT);
 		next_scb->platform_data = pdata;
 		next_scb->hscb_map = hscb_map;
 		next_scb->sg_map = sg_map;
@@ -8182,9 +8182,8 @@ ahd_loadseq(struct ahd_softc *ahd)
 
 	ahd->num_critical_sections = cs_count;
 	if (cs_count != 0) {
-
 		cs_count *= sizeof(struct cs);
-		ahd->critical_sections = malloc(cs_count, M_DEVBUF, M_WAITOK);
+		ahd->critical_sections = malloc(cs_count, M_DEVBUF, M_INTWAIT);
 		memcpy(ahd->critical_sections, cs_table, cs_count);
 	}
 	ahd_outb(ahd, SEQCTL0, PERRORDIS|FAILDIS|FASTMODE);
@@ -9104,7 +9103,7 @@ ahd_handle_en_lun(struct ahd_softc *ahd, struct cam_sim *sim, union ccb *ccb)
 				return;
 			}
 		}
-		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_WAITOK | M_ZERO);
+		lstate = malloc(sizeof(*lstate), M_DEVBUF, M_INTWAIT | M_ZERO);
 		status = xpt_create_path(&lstate->path, /*periph*/NULL,
 					 xpt_path_path_id(ccb->ccb_h.path),
 					 xpt_path_target_id(ccb->ccb_h.path),
