@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.154 2005/03/16 00:13:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.155 2005/03/16 00:13:38 okumoto Exp $
  */
 
 /*-
@@ -1250,9 +1250,8 @@ modifier_C(const char mod[], char value[], Var *v, VarParser *vp, size_t *consum
  * XXXHB update this comment or remove it and point to the man page.
  */
 static char *
-ParseModifier(const char input[], const char tstr[],
-	char startc, char endc, Boolean dynamic, Var *v,
-	VarParser *vp, size_t *lengthPtr, Boolean *freePtr)
+ParseModifier(
+	VarParser *vp, const char tstr[], char startc, char endc, Boolean dynamic, Var *v, size_t *lengthPtr, Boolean *freePtr)
 {
 	char		*value;
 	size_t		used;
@@ -1380,7 +1379,7 @@ ParseModifier(const char input[], const char tstr[],
 
 						delim = '=';
 						if ((pattern.lhs = VarGetPattern(vp, &cp, delim, &pattern.flags, &pattern.leftLen, NULL)) == NULL) {
-							*lengthPtr = cp - input + 1;
+							*lengthPtr = cp - vp->input + 1;
 							if (*freePtr)
 								free(value);
 							if (delim != '\0')
@@ -1392,7 +1391,7 @@ ParseModifier(const char input[], const char tstr[],
 
 						pattern.rhs = VarGetPattern(vp, &cp, delim, NULL, &pattern.rightLen, &pattern);
 						if (pattern.rhs == NULL) {
-							*lengthPtr = cp - input + 1;
+							*lengthPtr = cp - vp->input + 1;
 							if (*freePtr)
 								free(value);
 							if (delim != '\0')
@@ -1490,7 +1489,7 @@ ParseModifier(const char input[], const char tstr[],
 
 						delim = '=';
 						if ((pattern.lhs = VarGetPattern(vp, &cp, delim, &pattern.flags, &pattern.leftLen, NULL)) == NULL) {
-							*lengthPtr = cp - input + 1;
+							*lengthPtr = cp - vp->input + 1;
 							if (*freePtr)
 								free(value);
 							if (delim != '\0')
@@ -1502,7 +1501,7 @@ ParseModifier(const char input[], const char tstr[],
 
 						pattern.rhs = VarGetPattern(vp, &cp, delim, NULL, &pattern.rightLen, &pattern);
 						if (pattern.rhs == NULL) {
-							*lengthPtr = cp - input + 1;
+							*lengthPtr = cp - vp->input + 1;
 							if (*freePtr)
 								free(value);
 							if (delim != '\0')
@@ -1554,7 +1553,7 @@ ParseModifier(const char input[], const char tstr[],
 		}
 	}
 
-	used = tstr - input + 1;
+	used = tstr - vp->input + 1;
 	*lengthPtr = used;
 
 	if (v->flags & VAR_FROM_ENV) {
@@ -1579,7 +1578,7 @@ ParseModifier(const char input[], const char tstr[],
 
 			VarDestroy(v, TRUE);
 			result = emalloc(used + 1);
-			strncpy(result, input, used);
+			strncpy(result, vp->input, used);
 			result[used] = '\0';
 
 			*freePtr = TRUE;
@@ -1596,7 +1595,7 @@ ParseModifier(const char input[], const char tstr[],
 }
 
 static char *
-ParseRestModifier(const char input[], const char ptr[], char startc, char endc, Buffer *buf, VarParser *vp, size_t *lengthPtr, Boolean *freePtr)
+ParseRestModifier(VarParser *vp, const char ptr[], char startc, char endc, Buffer *buf, size_t *lengthPtr, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1612,9 +1611,9 @@ ParseRestModifier(const char input[], const char ptr[], char startc, char endc, 
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
-		return (ParseModifier(input, ptr,
+		return (ParseModifier(vp, ptr,
 				startc, endc, dynamic, v,
-				vp, lengthPtr, freePtr));
+				lengthPtr, freePtr));
 	}
 
 	if ((vp->ctxt == VAR_CMD) || (vp->ctxt == VAR_GLOBAL)) {
@@ -1650,9 +1649,9 @@ ParseRestModifier(const char input[], const char ptr[], char startc, char endc, 
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(input, ptr,
+		return (ParseModifier(vp, ptr,
 				startc, endc, dynamic, v,
-				vp, lengthPtr, freePtr));
+				lengthPtr, freePtr));
 	} else {
 		/*
 		 * Check for D and F forms of local variables since we're in
@@ -1671,9 +1670,9 @@ ParseRestModifier(const char input[], const char ptr[], char startc, char endc, 
 
 			v = VarFind(name, vp->ctxt, 0);
 			if (v != NULL) {
-				return (ParseModifier(input, ptr,
+				return (ParseModifier(vp, ptr,
 						startc, endc, dynamic, v,
-						vp, lengthPtr, freePtr));
+						lengthPtr, freePtr));
 			}
 		}
 
@@ -1683,15 +1682,14 @@ ParseRestModifier(const char input[], const char ptr[], char startc, char endc, 
 		 * the modifications
 		 */
 		v = VarCreate(vname, NULL, VAR_JUNK);
-		return (ParseModifier(input, ptr,
+		return (ParseModifier(vp, ptr,
 				startc, endc, dynamic, v,
-				vp, lengthPtr, freePtr));
+				lengthPtr, freePtr));
 	}
 }
 
 static char *
-ParseRestEnd(const char input[], Buffer *buf,
-	VarParser *vp, size_t *consumed, Boolean *freePtr)
+ParseRestEnd(VarParser *vp, Buffer *buf, size_t *consumed, Boolean *freePtr)
 {
 	const char	*vname;
 	size_t		vlen;
@@ -1727,7 +1725,7 @@ ParseRestEnd(const char input[], Buffer *buf,
 		    ((vlen == 2) && (vname[1] == 'F' || vname[1] == 'D'))) {
 			if (strchr("!%*@", vname[0]) != NULL) {
 				value = emalloc(*consumed + 1);
-				strncpy(value, input, *consumed);
+				strncpy(value, vp->input, *consumed);
 				value[*consumed] = '\0';
 
 				*freePtr = TRUE;
@@ -1742,7 +1740,7 @@ ParseRestEnd(const char input[], Buffer *buf,
 			    (strncmp(vname, ".PREFIX", vlen - 1) == 0) ||
 			    (strncmp(vname, ".MEMBER", vlen - 1) == 0)) {
 				value = emalloc(*consumed + 1);
-				strncpy(value, input, *consumed);
+				strncpy(value, vp->input, *consumed);
 				value[*consumed] = '\0';
 
 				*freePtr = TRUE;
@@ -1820,14 +1818,12 @@ VarParseLong(VarParser *vp, size_t *consumed, Boolean *freePtr)
 	while (*ptr != '\0') {
 		if (*ptr == endc) {
 			*consumed += 1;	/* consume closing paren or brace */
-			result = ParseRestEnd(vp->input, buf, vp, consumed, freePtr);
+			result = ParseRestEnd(vp, buf, consumed, freePtr);
 			Buf_Destroy(buf, TRUE);
 			return (result);
 
 		} else if (*ptr == ':') {
-			result = ParseRestModifier(vp->input, ptr,
-				     startc, endc, buf,
-				     vp, consumed, freePtr);
+			result = ParseRestModifier(vp, ptr, startc, endc, buf, consumed, freePtr);
 			Buf_Destroy(buf, TRUE);
 			return (result);
 
