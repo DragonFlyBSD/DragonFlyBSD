@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_subr.c	8.31 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/kern/vfs_subr.c,v 1.249.2.30 2003/04/04 20:35:57 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_subr.c,v 1.23 2003/11/03 17:11:21 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_subr.c,v 1.24 2004/01/27 23:56:48 dillon Exp $
  */
 
 /*
@@ -1546,9 +1546,6 @@ vget(vp, flags, td)
 	 * return failure. Cleaning is determined by checking that
 	 * the VXLOCK flag is set.
 	 */
-	if ((flags & LK_INTERLOCK) == 0) {
-		lwkt_gettoken(&vp->v_interlock);
-	}
 	if (vp->v_flag & VXLOCK) {
 		if (vp->v_vxproc == curproc) {
 #if 0
@@ -1557,13 +1554,22 @@ vget(vp, flags, td)
 #endif
 		} else {
 			vp->v_flag |= VXWANT;
-			lwkt_reltoken(&vp->v_interlock);
 			tsleep((caddr_t)vp, 0, "vget", 0);
 			return (ENOENT);
 		}
 	}
 
-	vp->v_usecount++;
+	/*
+	 * Bump v_usecount to prevent the vnode from being cleaned.  If the
+	 * vnode gets cleaned unexpectedly we could wind up calling lockmgr
+	 * on a lock embedded in an inode which is then ripped out from
+	 * it.
+	 */
+	vp->v_usecount++;	/* XXX MP */
+
+	if ((flags & LK_INTERLOCK) == 0) {
+		lwkt_gettoken(&vp->v_interlock);
+	}
 
 	if (VSHOULDBUSY(vp))
 		vbusy(vp);
@@ -1594,9 +1600,7 @@ vget(vp, flags, td)
 void
 vref(struct vnode *vp)
 {
-	lwkt_gettoken(&vp->v_interlock);
-	vp->v_usecount++;
-	lwkt_reltoken(&vp->v_interlock);
+	vp->v_usecount++;	/* XXX MP */
 }
 
 /*
