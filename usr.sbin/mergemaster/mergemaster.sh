@@ -9,7 +9,7 @@
 # DougB@FreeBSD.org
 
 # $FreeBSD: src/usr.sbin/mergemaster/mergemaster.sh,v 1.46 2003/05/03 06:35:19 dougb Exp $
-# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.5 2003/12/16 15:03:51 eirikn Exp $
+# $DragonFly: src/usr.sbin/mergemaster/mergemaster.sh,v 1.6 2004/03/14 13:47:12 eirikn Exp $
 
 PATH=/bin:/usr/bin:/usr/sbin
 
@@ -670,10 +670,10 @@ do_install_and_rm () {
 
 # 4095 = "obase=10;ibase=8;07777" | bc
 find_mode () {
-local OCTAL
-  OCTAL=`perl -e 'printf "%04o\n", (((stat("$ARGV[0]"))[2] & 07777) &~ \
-    oct("$ARGV[1]"))' "${1}" "${CONFIRMED_UMASK}"`
-  echo "${OCTAL}"
+  local OCTAL
+  OCTAL=$(( ~$(echo "obase=10;ibase=8; ${CONFIRMED_UMASK}" | bc) & 4095 &
+          $(echo "obase=10; ibase=8; $(stat -f "%OMp%OLp" ${1})" | bc) ))
+  printf "%04o\n" ${OCTAL}
 }
 
 mm_install () {
