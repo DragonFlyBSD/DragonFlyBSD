@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.h,v 1.16 2000/01/24 07:24:00 peter Exp $
- * $DragonFly: src/sys/dev/serial/si/si.h,v 1.3 2004/09/18 19:54:27 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.h,v 1.4 2004/09/19 01:20:42 dillon Exp $
  */
 
 #include <sys/callout.h>
@@ -343,6 +343,7 @@ struct si_port {
 	struct termios	sp_lin;
 	struct termios	sp_lout;
 	struct callout	lstart_ch;	/* For canceling our timeout */
+	struct callout	dtr_ch;		/* DTR wakeup */
 #ifdef	SI_DEBUG
 	int		sp_debug;	/* debug mask */
 #endif

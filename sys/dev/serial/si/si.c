@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.12 2004/09/18 20:02:38 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.13 2004/09/19 01:20:42 dillon Exp $
  */
 
 #ifndef lint
@@ -148,6 +148,7 @@ SYSCTL_INT(_machdep, OID_AUTO, si_debug, CTLFLAG_RW, &si_debug, 0, "");
 static struct tty *si__tty;
 
 static int si_numunits;
+static struct callout poll_ch;
 
 devclass_t si_devclass;
 
@@ -263,6 +264,9 @@ siattach(device_t dev)
 	int nmodule, nport, x, y;
 	int uart_type;
 	int n;
+
+	if ((poll_ch.c_flags & CALLOUT_DID_INIT) == 0)
+		callout_init(&poll_ch);
 
 	sc = device_get_softc(dev);
 	unit = device_get_unit(dev);
@@ -506,8 +510,10 @@ try_next:
 	sc->sc_ports = malloc(sizeof(struct si_port) * nport,
 				M_DEVBUF, M_WAITOK | M_ZERO);
 	sc->sc_nport = nport;
-	for (n = 0; n < nport; ++n)
+	for (n = 0; n < nport; ++n) {
 		callout_init(&sc->sc_ports[n].lstart_ch);
+		callout_init(&sc->sc_ports[n].dtr_ch);
+	}
 
 	/*
 	 * allocate tty structures for ports
@@ -649,7 +655,7 @@ siopen(dev_t dev, int flag, int mode, struct thread *td)
 	 * We've now got a device, so start the poller.
 	 */
 	if (init_finished == 0) {
-		timeout(si_poll, (caddr_t)0L, si_pollrate);
+		callout_reset(&poll_ch, si_pollrate, si_poll, NULL);
 		init_finished = 1;
 	}
 #endif
@@ -858,7 +864,8 @@ sihardclose(struct si_port *pp)
 		(void) si_command(pp, FCLOSE, SI_NOWAIT);
 
 		if (pp->sp_dtr_wait != 0) {
-			timeout(sidtrwakeup, pp, pp->sp_dtr_wait);
+			callout_reset(&pp->dtr_ch, pp->sp_dtr_wait,
+					sidtrwakeup, pp);
 			pp->sp_state |= SS_DTR_OFF;
 		}
 
@@ -1565,7 +1572,7 @@ si_poll(void *nothing)
 out:
 	splx(oldspl);
 
-	timeout(si_poll, (caddr_t)0L, si_pollrate);
+	callout_reset(&poll_ch, si_pollrate, si_poll, NULL);
 }
 #endif	/* ifdef POLL */
 
