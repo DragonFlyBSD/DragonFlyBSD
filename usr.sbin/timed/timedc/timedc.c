@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1985, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)timedc.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/timedc.c,v 1.3 1999/08/28 01:20:21 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/timedc.c,v 1.3 2003/10/11 09:56:48 hmp Exp $
  */
 
 #include "timedc.h"
@@ -50,7 +50,8 @@ int trace = 0;
 FILE *fd = 0;
 int	margc;
 int	fromatty;
-char	*margv[20];
+#define MAX_MARGV	20
+char	*margv[MAX_MARGV];
 char	cmdline[200];
 jmp_buf	toplevel;
 static struct cmd *getcmd __P((char *));
@@ -174,7 +175,7 @@ makeargv()
 	register char **argp = margv;
 
 	margc = 0;
-	for (cp = cmdline; *cp;) {
+	for (cp = cmdline; margv < MAX_MARGV -1 && *cp;) {
 		while (isspace(*cp))
 			cp++;
 		if (*cp == '\0')
