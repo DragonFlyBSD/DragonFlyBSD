@@ -28,7 +28,7 @@
  *	--------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/i4b_l1dmux.c,v 1.3.2.2 2002/04/25 12:29:55 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/i4b_l1dmux.c,v 1.3 2003/07/26 19:20:29 rob Exp $
  *
  *      last edit-date: [Wed Jan 10 16:43:24 2001]
  *
@@ -263,7 +263,7 @@ i4b_l1_set_linktab(int unit, int channel, drvr_link_t *dlt)
 int
 i4b_l1_trace_ind(i4b_trace_hdr_t *hdr, int len, u_char *data)
 {
-	register int *tab;
+	int *tab;
 	
 	if((tab = getl1tab(L0DRVR(hdr->unit))) == NULL)
 		panic("i4b_l1_trace_ind: unknown driver type %d\n", L0DRVR(hdr->unit));
@@ -285,7 +285,7 @@ i4b_l1_trace_ind(i4b_trace_hdr_t *hdr, int len, u_char *data)
 int
 i4b_l1_mph_status_ind(int drv_unit, int status, int parm, struct i4b_l1mux_func *l1mux_func_p)
 {
-	register int *tab;
+	int *tab;
 	
 	/*
 	 * in case the status STI_ATTACH is sent from the hardware, the
@@ -368,7 +368,7 @@ i4b_l1_mph_status_ind(int drv_unit, int status, int parm, struct i4b_l1mux_func 
 int
 i4b_l1_ph_data_ind(int drv_unit, struct mbuf *data)
 {
-	register int *tab;
+	int *tab;
 
 	if((tab = getl1tab(L0DRVR(drv_unit))) == NULL)	
 		panic("i4b_l1_ph_data_ind: unknown driver type %d\n", L0DRVR(drv_unit));
@@ -386,7 +386,7 @@ i4b_l1_ph_data_ind(int drv_unit, struct mbuf *data)
 int
 i4b_l1_ph_activate_ind(int drv_unit)
 {
-	register int *tab;
+	int *tab;
 
 	if((tab = getl1tab(L0DRVR(drv_unit))) == NULL)	
 		panic("i4b_l1_ph_activate_ind: unknown driver type %d\n", L0DRVR(drv_unit));
@@ -402,7 +402,7 @@ i4b_l1_ph_activate_ind(int drv_unit)
 int
 i4b_l1_ph_deactivate_ind(int drv_unit)
 {
-	register int *tab;
+	int *tab;
 	
 	if((tab = getl1tab(L0DRVR(drv_unit))) == NULL)
 		panic("i4b_l1_ph_deactivate_ind: unknown driver type %d\n", L0DRVR(drv_unit));
@@ -418,8 +418,8 @@ i4b_l1_ph_deactivate_ind(int drv_unit)
 int
 i4b_l1_mph_command_req(int unit, int command, void * parm)
 {
-	register int drv_unit = L0DRVR(l1drvunittab[unit]);
-	register int ch_unit = L0UNIT(l1drvunittab[unit]);
+	int drv_unit = L0DRVR(l1drvunittab[unit]);
+	int ch_unit = L0UNIT(l1drvunittab[unit]);
  
 	NDBGL1(L1_PRIM, "unit %d -> drv %d / drvunit %d", unit, drv_unit, ch_unit);
 
@@ -436,8 +436,8 @@ i4b_l1_mph_command_req(int unit, int command, void * parm)
 int
 i4b_l1_ph_data_req(int unit, struct mbuf *data, int flag)
 {
-	register int drv_unit = L0DRVR(l1drvunittab[unit]);
-	register int ch_unit = L0UNIT(l1drvunittab[unit]);
+	int drv_unit = L0DRVR(l1drvunittab[unit]);
+	int ch_unit = L0UNIT(l1drvunittab[unit]);
 
 #if 0
 	NDBGL1(L1_PRIM, "unit %d -> drv %d / drvunit %d", unit, drv_unit, ch_unit);
@@ -456,8 +456,8 @@ i4b_l1_ph_data_req(int unit, struct mbuf *data, int flag)
 int
 i4b_l1_ph_activate_req(int unit)
 {
-	register int drv_unit = L0DRVR(l1drvunittab[unit]);
-	register int ch_unit = L0UNIT(l1drvunittab[unit]);
+	int drv_unit = L0DRVR(l1drvunittab[unit]);
+	int ch_unit = L0UNIT(l1drvunittab[unit]);
  
 	NDBGL1(L1_PRIM, "unit %d -> drv %d / drvunit %d", unit, drv_unit, ch_unit);
 

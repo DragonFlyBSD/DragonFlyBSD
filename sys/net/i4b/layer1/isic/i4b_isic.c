@@ -28,7 +28,7 @@
  *	==============================
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_isic.c,v 1.4.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_isic.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *      last edit-date: [Wed Jan 24 09:29:42 2001]
  *
@@ -96,8 +96,8 @@ isicintr(struct l1_softc *sc)
 		u_char was_hscx_irq = 0;
 		u_char was_isac_irq = 0;
 
-		register u_char hscx_irq_stat;
-		register u_char isac_irq_stat;
+		u_char hscx_irq_stat;
+		u_char isac_irq_stat;
 
 		for(;;)
 		{
@@ -159,8 +159,8 @@ isicintr(struct l1_softc *sc)
 	}
 	else	/* IPAC interrupt routine */
 	{
-		register u_char ipac_irq_stat;
-		register u_char was_ipac_irq = 0;
+		u_char ipac_irq_stat;
+		u_char was_ipac_irq = 0;
 
 		for(;;)
 		{

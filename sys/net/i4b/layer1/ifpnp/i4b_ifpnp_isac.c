@@ -31,7 +31,7 @@
  *	$Ust: src/i4b/layer1-nb/ifpnp/i4b_ifpnp_isac.c,v 1.4 2000/04/18 08:03:05 ust Exp $
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.4.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_isac.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *      last edit-date: [Mon May 29 15:24:49 2000]
  *
@@ -66,8 +66,8 @@
 #include <i4b/include/i4b_global.h>
 #include <i4b/include/i4b_mbuf.h>
 
-static u_char ifpnp_isac_exir_hdlr(register struct l1_softc *sc, u_char exir);
-static void ifpnp_isac_ind_hdlr(register struct l1_softc *sc, int ind);
+static u_char ifpnp_isac_exir_hdlr(struct l1_softc *sc, u_char exir);
+static void ifpnp_isac_ind_hdlr(struct l1_softc *sc, int ind);
 
 /*---------------------------------------------------------------------------*
  *	ISAC interrupt service routine
@@ -75,7 +75,7 @@ static void ifpnp_isac_ind_hdlr(register struct l1_softc *sc, int ind);
 void
 ifpnp_isac_irq(struct l1_softc *sc, int ista)
 {
-	register u_char c = 0;
+	u_char c = 0;
 	NDBGL1(L1_F_MSG, "unit %d: ista = 0x%02x", sc->sc_unit, ista);
 
 	if(ista & ISAC_ISTA_EXI)	/* extended interrupt */
@@ -85,7 +85,7 @@ ifpnp_isac_irq(struct l1_softc *sc, int ista)
 	
 	if(ista & ISAC_ISTA_RME)	/* receive message end */
 	{
-		register int rest;
+		int rest;
 		u_char rsta;
 
 		/* get rx status register */
@@ -277,7 +277,7 @@ ifpnp_isac_irq(struct l1_softc *sc, int ista)
 	
 	if(ista & ISAC_ISTA_CISQ)	/* channel status change CISQ */
 	{
-		register u_char ci;
+		u_char ci;
 	
 		/* get command/indication rx register*/
 	
@@ -305,7 +305,7 @@ ifpnp_isac_irq(struct l1_softc *sc, int ista)
  *	ISAC L1 Extended IRQ handler
  *---------------------------------------------------------------------------*/
 static u_char
-ifpnp_isac_exir_hdlr(register struct l1_softc *sc, u_char exir)
+ifpnp_isac_exir_hdlr(struct l1_softc *sc, u_char exir)
 {
 	u_char c = 0;
 	
@@ -366,9 +366,9 @@ ifpnp_isac_exir_hdlr(register struct l1_softc *sc, u_char exir)
  *	ISAC L1 Indication handler
  *---------------------------------------------------------------------------*/
 static void
-ifpnp_isac_ind_hdlr(register struct l1_softc *sc, int ind)
+ifpnp_isac_ind_hdlr(struct l1_softc *sc, int ind)
 {
-	register int event;
+	int event;
 	
 	switch(ind)
 	{

@@ -30,7 +30,7 @@
  *	$Id: i4b_l2if.c,v 1.23 2000/08/24 11:48:58 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer3/i4b_l2if.c,v 1.6.2.2 2001/12/16 15:12:58 hm Exp $
- * $DragonFly: src/sys/net/i4b/layer3/i4b_l2if.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer3/i4b_l2if.c,v 1.3 2003/07/26 19:20:33 rob Exp $
  *
  *      last edit-date: [Mon May 29 16:56:22 2000]
  *
@@ -88,7 +88,7 @@ int i4b_status_tab[] = {
 static unsigned char
 make_q931_cause(cause_t cause)
 {
-	register unsigned char ret;
+	unsigned char ret;
 	
 	switch(GET_CAUSE_TYPE(cause))
 	{

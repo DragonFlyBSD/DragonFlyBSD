@@ -33,7 +33,7 @@
  *	$Id: i4b_bsdi_ibc.c,v 1.3 2000/08/21 07:21:07 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_bsdi_ibc.c,v 1.3.2.1 2001/08/10 14:08:35 obrien Exp $
- * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/Attic/i4b_bsdi_ibc.c,v 1.3 2003/07/26 19:20:29 rob Exp $
  *
  *	last edit-date: [Tue Dec 14 21:55:24 1999]
  *
@@ -529,7 +529,7 @@ ibc_mdmctl(pp, flag)
 	struct p2pcom *pp;
 	int flag;
 {
-	register struct ifnet *ifp = &pp->p2p_if;
+	struct ifnet *ifp = &pp->p2p_if;
 	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_unit];
 
 	DBG(("ibc%d: ibc_mdmctl called flags=%d\n", IFP2UNIT(ifp), flag));
@@ -549,7 +549,7 @@ ibc_getmdm(pp, arg)
 	struct p2pcom *pp;
 	caddr_t arg;
 {
-	register struct ifnet *ifp = &pp->p2p_if;
+	struct ifnet *ifp = &pp->p2p_if;
 	struct ibc_softc *sc = (struct ibc_softc *)&ibc_softc[ifp->if_unit];
 
 	if (sc->sc_state == ST_CONNECTED)

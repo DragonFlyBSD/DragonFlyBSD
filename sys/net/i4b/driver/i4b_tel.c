@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_tel.c,v 1.10.2.4 2001/12/16 15:12:57 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.5 2003/07/21 07:57:46 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_tel.c,v 1.6 2003/07/26 19:20:29 rob Exp $
  *
  *	last edit-date: [Sat Aug 11 18:07:05 2001]
  *
@@ -494,7 +494,7 @@ i4btelread(dev_t dev, struct uio *uio, int ioflag)
 		
 		if(m && m->m_len > 0)
 		{
-			register int i;
+			int i;
 
 		        for(i = 0; i < m->m_len; i++)
 		        {
@@ -622,7 +622,7 @@ i4btelwrite(dev_t dev, struct uio * uio, int ioflag)
 
 		if((m = i4b_Bgetmbuf(BCH_MAX_DATALEN)) != NULL)
 		{
-			register int i;
+			int i;
 			
 			m->m_len = min(BCH_MAX_DATALEN, uio->uio_resid);
 	

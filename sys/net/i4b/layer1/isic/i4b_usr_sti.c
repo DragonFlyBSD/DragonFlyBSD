@@ -28,7 +28,7 @@
  *	-------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_usr_sti.c,v 1.5.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_usr_sti.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *      last edit-date: [Wed Jan 24 09:28:12 2001]
  *
@@ -86,8 +86,8 @@ int debugcntr;
 static void		
 usrtai_read_fifo(struct l1_softc *sc, int what, void *buf, size_t size)
 {
-	register int offset = 0;
-	register unsigned int base = 0;
+	int offset = 0;
+	unsigned int base = 0;
 
 USRTA_DEBUG(("usrtai_read_fifo: what %d size %d\n", what, size))
 	switch (what)
@@ -118,8 +118,8 @@ USRTA_DEBUG(("usrtai_read_fifo: what %d size %d\n", what, size))
 static void
 usrtai_write_fifo(struct l1_softc *sc, int what, void *data, size_t size)
 {
-	register int offset = 0;
-	register unsigned int base = 0;
+	int offset = 0;
+	unsigned int base = 0;
 
 USRTA_DEBUG(("usrtai_write_fifo: what %d size %d\n", what, size))
 	switch (what)
@@ -151,7 +151,7 @@ USRTA_DEBUG(("usrtai_write_fifo: what %d size %d\n", what, size))
 static void
 usrtai_write_reg(struct l1_softc *sc, int what, bus_size_t offs, u_int8_t data)
 {
-	register unsigned int base = 0;
+	unsigned int base = 0;
 
 USRTA_DEBUG(("usrtai_write_reg: what %d ADDR(%d) %d data %#x\n", what, offs, ADDR(offs), data))
 	switch (what)
@@ -179,7 +179,7 @@ USRTA_DEBUG(("usrtai_write_reg: what %d ADDR(%d) %d data %#x\n", what, offs, ADD
 static u_int8_t
 usrtai_read_reg(struct l1_softc *sc, int what, bus_size_t offs)
 {
-	register unsigned int base = 0;
+	unsigned int base = 0;
 	u_int8_t byte;
 
 USRTA_DEBUG(("usrtai_read_reg: what %d ADDR(%d) %d..", what, offs, ADDR(offs)))

@@ -33,7 +33,7 @@
  *	last edit-date: [Fri Jan 12 17:06:52 2001]
  *
  * $FreeBSD: src/sys/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.9.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ihfc/i4b_ihfc_drv.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *---------------------------------------------------------------------------*/
 
@@ -113,8 +113,8 @@ u_int32_t	ihfc_Dsel_fifo	  (ihfc_sc_t *sc, u_char chan, u_char flag);
 {									\
 	if (GET_STAT & 1)						\
 	{								\
-		register u_char a;					\
-		register u_int to = IHFC_DISBUSYTO;			\
+		u_char a;					\
+		u_int to = IHFC_DISBUSYTO;			\
 									\
 		while(((a = GET_STAT) & 1) && --to);			\
 									\
@@ -137,8 +137,8 @@ u_int32_t	ihfc_Dsel_fifo	  (ihfc_sc_t *sc, u_char chan, u_char flag);
 
 #define WAITBUSY_2(okcmd, tocmd)					\
 	{								\
-		register u_short a;					\
-		register u_int to = IHFC_NONBUSYTO;			\
+		u_short a;					\
+		u_int to = IHFC_NONBUSYTO;			\
 									\
 		while((~(a = READ_BOTH_2) & 0x100) && --to);		\
 									\
@@ -636,7 +636,7 @@ void
 ihfc_sq (ihfc_sc_t *sc)
 {
 	const struct ihfc_SQtable *SQtab;
-	register u_char a = 0;
+	u_char a = 0;
 	BUS_VAR;
 
 	if (S_HFC & HFC_1)
@@ -797,10 +797,10 @@ ihfc_intr2 (ihfc_sc_t *sc)
 u_short
 ihfc_Bsel_fifo(ihfc_sc_t *sc, u_char chan, u_char flag)
 {
-	register u_char	 reg = 0x7e + chan;
-	register u_short tmp = 0x100;
-	register u_short z1;
-	register u_short z2;
+	u_char	 reg = 0x7e + chan;
+	u_short tmp = 0x100;
+	u_short z1;
+	u_short z2;
 
 	BUS_VAR;
 
@@ -858,12 +858,12 @@ ihfc_Bsel_fifo(ihfc_sc_t *sc, u_char chan, u_char flag)
 u_int32_t
 ihfc_Dsel_fifo(ihfc_sc_t *sc, u_char chan, u_char flag)
 {
-	register u_char	 reg = 0x90 + chan;
-	register u_short tmp = 0x100;
-	register u_char  f1;
-	register u_char  f2;
-	register u_short z1;
-	register u_short z2;
+	u_char	 reg = 0x90 + chan;
+	u_short tmp = 0x100;
+	u_char  f1;
+	u_char  f2;
+	u_short z1;
+	u_short z2;
 
 	BUS_VAR;
 
@@ -973,9 +973,9 @@ ihfc_Dsel_fifo(ihfc_sc_t *sc, u_char chan, u_char flag)
 void
 ihfc_hdlc_Dwrite (ihfc_sc_t *sc, u_char chan)
 {
-	register u_int32_t  sendlen;
-	register u_short    len;
-	register u_char	  * src;
+	u_int32_t  sendlen;
+	u_short    len;
+	u_char	  * src;
 
 	BUS_VAR;
 
@@ -1033,12 +1033,12 @@ ihfc_hdlc_Dwrite (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_hdlc_Dread (ihfc_sc_t *sc, u_char chan)
 {
-	register u_char	    tmp = -1;
-	register u_char	    to = 15;
-	register u_int32_t  reclen;
-	register u_short    crc;
-	register u_short    len;
-	register u_char	  * dst;
+	u_char	    tmp = -1;
+	u_char	    to = 15;
+	u_int32_t  reclen;
+	u_short    crc;
+	u_short    len;
+	u_char	  * dst;
 
 	BUS_VAR;
 
@@ -1115,8 +1115,8 @@ ihfc_hdlc_Dread (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_exir_hdlr (ihfc_sc_t *sc, u_char exir)
 {
-	register u_char a;
-	register u_char cmd;
+	u_char a;
+	u_char cmd;
 
 	for (a = 0, cmd = 0; exir; a++, exir >>= 1)
 	{
@@ -1148,10 +1148,10 @@ ihfc_cmdr_hdlr (ihfc_sc_t *sc, u_char cmdr)
 void
 ihfc_isac_Dwrite (ihfc_sc_t *sc, u_char chan)
 {
-	register u_char   sendlen = 32;
-	register u_char   cmd = 0;
-	register u_short  len;
-	register u_char * src;
+	u_char   sendlen = 32;
+	u_char   cmd = 0;
+	u_short  len;
+	u_char * src;
 
 	BUS_VAR;
 
@@ -1199,11 +1199,11 @@ ihfc_isac_Dwrite (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_isac_Dread (ihfc_sc_t *sc, u_char chan)
 {
-	register u_char   cmd = 0;
-	register u_char   reclen;
-	register u_short  tmp;
-	register u_short  len;
-	register u_char * dst;
+	u_char   cmd = 0;
+	u_char   reclen;
+	u_short  tmp;
+	u_short  len;
+	u_char * dst;
 
 	BUS_VAR;
 
@@ -1282,9 +1282,9 @@ ihfc_isac_Dread (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_trans_Bwrite (ihfc_sc_t *sc, u_char chan)
 {
-	register u_short  sendlen;
-	register u_short  len;
-	register u_char * src;
+	u_short  sendlen;
+	u_short  len;
+	u_char * src;
 
 	BUS_VAR;
 
@@ -1331,10 +1331,10 @@ ihfc_trans_Bwrite (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_trans_Bread (ihfc_sc_t *sc, u_char chan)
 {
-	register u_short  reclen;
-	register u_short  tmp;
-	register u_short  len;
-	register u_char	* dst;
+	u_short  reclen;
+	u_short  tmp;
+	u_short  len;
+	u_char	* dst;
 
 	BUS_VAR;
 
@@ -1393,15 +1393,15 @@ ihfc_trans_Bread (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_hdlc_Bwrite (ihfc_sc_t *sc, u_char chan)
 {
-	register u_short  blevel  = S_HDLC_BLEVEL;
-	register u_char   flag    = S_HDLC_FLAG;
-	register u_int    tmp     = S_HDLC_TMP;
-	register u_short  crc     = S_HDLC_CRC;
-	register u_short  ib      = S_HDLC_IB;
-	register u_char * src     = NULL;
-	register u_short  len     = 0;
-	register u_short  sendlen;
-	register u_short  tmp2;
+	u_short  blevel  = S_HDLC_BLEVEL;
+	u_char   flag    = S_HDLC_FLAG;
+	u_int    tmp     = S_HDLC_TMP;
+	u_short  crc     = S_HDLC_CRC;
+	u_short  ib      = S_HDLC_IB;
+	u_char * src     = NULL;
+	u_short  len     = 0;
+	u_short  sendlen;
+	u_short  tmp2;
 
 	BUS_VAR;
 
@@ -1477,15 +1477,15 @@ ihfc_hdlc_Bwrite (ihfc_sc_t *sc, u_char chan)
 void
 ihfc_hdlc_Bread (ihfc_sc_t *sc, u_char chan)
 {
-	register u_char   blevel = S_HDLC_BLEVEL;
+	u_char   blevel = S_HDLC_BLEVEL;
 		 u_char   flag   = S_HDLC_FLAG;
-	register u_short  crc    = S_HDLC_CRC;
-	register u_int    tmp    = S_HDLC_TMP;
-	register u_short  ib     = S_HDLC_IB;
-	register u_char * dst    = NULL;
-	register u_short  tmp2   = 0x100;
-	register u_short  len    = 0;
-	register u_short  reclen;
+	u_short  crc    = S_HDLC_CRC;
+	u_int    tmp    = S_HDLC_TMP;
+	u_short  ib     = S_HDLC_IB;
+	u_char * dst    = NULL;
+	u_short  tmp2   = 0x100;
+	u_short  len    = 0;
+	u_short  reclen;
 
 	BUS_VAR;
 
@@ -1585,9 +1585,9 @@ ihfc_test_Bwrite (ihfc_sc_t *sc, u_char chan)
 {
 	struct mbuf *m;
 
-	register u_char	 fb;
-	register u_short sendlen, tlen;
-	register u_short xlen = S_HDLC_IB;
+	u_char	 fb;
+	u_short sendlen, tlen;
+	u_short xlen = S_HDLC_IB;
 	BUS_VAR;
 
 	goto j0;
@@ -1651,13 +1651,13 @@ ihfc_test_Bread (ihfc_sc_t *sc, u_char chan)
 {
 	static u_short toterrors = 0;
 
-	register u_short reclen, len, tlen;
-	register u_char fb, tmp;
+	u_short reclen, len, tlen;
+	u_char fb, tmp;
 
-	register u_short xlen = S_HDLC_IB;
-	register u_char *dst = NULL;
-	register u_char error = S_HDLC_TMP;
-	register u_char ecount = S_HDLC_FLAG;
+	u_short xlen = S_HDLC_IB;
+	u_char *dst = NULL;
+	u_char error = S_HDLC_TMP;
+	u_char ecount = S_HDLC_FLAG;
 
 	BUS_VAR;
 

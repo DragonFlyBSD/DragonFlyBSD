@@ -28,7 +28,7 @@
  *	-------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ing.c,v 1.10.2.4 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ing.c,v 1.3 2003/07/26 19:20:29 rob Exp $
  *
  *	last edit-date: [Tue Jan  1 10:43:58 2002]
  *
@@ -470,8 +470,8 @@ ing_updown(int unit, int updown)
 static void
 ing_rx_data_rdy(int unit)
 {
-	register struct ing_softc *sc = &ing_softc[unit];
-	register struct mbuf *m;
+	struct ing_softc *sc = &ing_softc[unit];
+	struct mbuf *m;
 	
 	if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 		return;
@@ -495,8 +495,8 @@ ing_rx_data_rdy(int unit)
 static void
 ing_tx_queue_empty(int unit)
 {
-	register struct ing_softc *sc = &ing_softc[unit];
-	register struct mbuf *m;
+	struct ing_softc *sc = &ing_softc[unit];
+	struct mbuf *m;
 	int x = 0;
 
 	if(sc->sc_state != ST_CONNECTED)

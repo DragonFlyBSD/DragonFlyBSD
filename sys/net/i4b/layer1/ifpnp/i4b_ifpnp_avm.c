@@ -34,7 +34,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.5.2.1 2001/08/10 14:08:37 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpnp/i4b_ifpnp_avm.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *      last edit-date: [Fri Jan 12 17:05:28 2001]
  *
@@ -630,7 +630,7 @@ avm_pnp_attach(device_t dev)
 static void
 avm_pnp_hscx_intr(int h_chan, u_int stat, u_int cnt, struct l1_softc *sc)
 {
-	register l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
+	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int activity = -1;
 	
 	NDBGL1(L1_H_IRQ, "%#x", stat);
@@ -669,7 +669,7 @@ avm_pnp_hscx_intr(int h_chan, u_int stat, u_int cnt, struct l1_softc *sc)
 	
 	if(stat & HSCX_INT_RPR)
 	{
-		register int fifo_data_len;
+		int fifo_data_len;
 		int error = 0;
 		/* always have to read the FIFO, so use a scratch buffer */
 		u_char scrbuf[HSCX_FIFO_LEN];
@@ -1092,7 +1092,7 @@ static void
 avm_pnp_bchannel_start(int unit, int h_chan)
 {
 	struct l1_softc *sc = ifpnp_scp[unit];
-	register l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
+	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int s;
 	int activity = -1;
 
@@ -1337,7 +1337,7 @@ avm_pnp_hscx_fifo(l1_bchan_state_t *chan, struct l1_softc *sc)
 static void
 ifpnp_isac_intr(struct l1_softc *sc)
 {
-	register u_char isac_irq_stat;
+	u_char isac_irq_stat;
 
 	for(;;)
 	{

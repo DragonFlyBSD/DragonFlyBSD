@@ -30,7 +30,7 @@
  *      ----------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.7.2.1 2001/08/10 14:08:40 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/iwic/i4b_iwic_bchan.c,v 1.3 2003/07/26 19:20:32 rob Exp $
  *
  *      last edit-date: [Tue Jan 16 13:21:24 2001]
  *
@@ -123,7 +123,7 @@ iwic_bchan_xirq(struct iwic_softc *sc, int chan_no)
 		
 		if(error == 0)
 		{
-			register int fifo_data_len;
+			int fifo_data_len;
 			fifo_data_len = ((IWIC_READ(sc,chan->offset+B_RBCL)) &
 					((IWIC_BCHAN_FIFO_LEN)-1));
 		
@@ -532,9 +532,9 @@ static void
 iwic_bchannel_start(int unit, int chan_no)
 {
 	struct iwic_softc *sc = &iwic_sc[unit];
-	register struct iwic_bchan *chan = &sc->sc_bchan[chan_no];
-	register int next_len;
-	register int len;
+	struct iwic_bchan *chan = &sc->sc_bchan[chan_no];
+	int next_len;
+	int len;
 
 	int s;
 	int activity = -1;

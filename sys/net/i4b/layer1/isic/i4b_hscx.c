@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/isic/i4b_hscx.c,v 1.7.2.1 2001/08/10 14:08:38 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_hscx.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/isic/i4b_hscx.c,v 1.3 2003/07/26 19:20:31 rob Exp $
  *
  *      last edit-date: [Wed Jan 24 09:09:42 2001]
  *
@@ -61,9 +61,9 @@
  *	HSCX IRQ Handler
  *---------------------------------------------------------------------------*/
 void
-isic_hscx_irq(register struct l1_softc *sc, u_char ista, int h_chan, u_char ex_irq)
+isic_hscx_irq(struct l1_softc *sc, u_char ista, int h_chan, u_char ex_irq)
 {
-	register l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
+	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	u_char exir = 0;
 	int activity = -1;
 	u_char cmd = 0;
@@ -101,7 +101,7 @@ isic_hscx_irq(register struct l1_softc *sc, u_char ista, int h_chan, u_char ex_i
 	
 	if(ista & HSCX_ISTA_RME)
 	{
-		register int fifo_data_len;
+		int fifo_data_len;
 		u_char rsta;		
 		int error = 0;
 

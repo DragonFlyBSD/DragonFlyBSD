@@ -30,7 +30,7 @@
  *	$Id: i4b_l4mgmt.c,v 1.34 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer4/i4b_l4mgmt.c,v 1.6.2.2 2001/08/10 14:08:43 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer4/i4b_l4mgmt.c,v 1.3 2003/07/26 19:20:33 rob Exp $
  *
  *      last edit-date: [Fri Oct 13 15:58:34 2000]
  *
@@ -251,7 +251,7 @@ cd_by_unitcr(int unit, int cr, int crf)
 unsigned char
 get_rand_cr(int unit)
 {
-	register int i, j;
+	int i, j;
 	static u_char val, retval;
 	static int called = 42;
 	

@@ -36,7 +36,7 @@
  *	$Id$
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.6.2.2 2002/05/15 08:12:42 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_pci.c,v 1.3 2003/07/26 19:20:30 rob Exp $
  *
  *      last edit-date: [Fri Jan 12 17:01:26 2001]
  *
@@ -636,7 +636,7 @@ avma1pp2_attach_avma1pp(device_t dev)
 static void
 avma1pp2_hscx_intr(int h_chan, u_int stat, struct l1_softc *sc)
 {
-	register l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
+	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int activity = -1;
 	u_int param = 0;
 	
@@ -678,7 +678,7 @@ avma1pp2_hscx_intr(int h_chan, u_int stat, struct l1_softc *sc)
 	
 	if(stat & HSCX_INT_RPR)
 	{
-		register int fifo_data_len;
+		int fifo_data_len;
 		int error = 0;
 		/* always have to read the FIFO, so use a scratch buffer */
 		u_char scrbuf[HSCX_FIFO_LEN];
@@ -1125,7 +1125,7 @@ avma1pp2_bchannel_start(int unit, int h_chan)
 #else
 	struct l1_softc *sc = isic_find_sc(unit);
 #endif
-	register l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
+	l1_bchan_state_t *chan = &sc->sc_chan[h_chan];
 	int s;
 	int activity = -1;
 
@@ -1382,7 +1382,7 @@ avma1pp2_hscx_fifo(l1_bchan_state_t *chan, struct l1_softc *sc)
 static void
 ifpi2_isacsx_intr(struct l1_softc *sc)
 {
-	register u_char isacsx_irq_stat;
+	u_char isacsx_irq_stat;
 
 	for(;;)
 	{

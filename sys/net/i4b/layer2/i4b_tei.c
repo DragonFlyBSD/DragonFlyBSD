@@ -30,7 +30,7 @@
  *	$Id: i4b_tei.c,v 1.25 2000/09/01 14:11:51 hm Exp $ 
  *
  * $FreeBSD: src/sys/i4b/layer2/i4b_tei.c,v 1.6.2.2 2001/08/10 14:08:41 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer2/i4b_tei.c,v 1.3 2003/07/26 19:20:32 rob Exp $
  *
  *      last edit-date: [Fri Oct 13 15:56:35 2000]
  *
@@ -296,8 +296,8 @@ i4b_make_rand_ri(l2_softc_t *l2sc)
 
 #else
 
-	register u_short val;
-	register int i;
+	u_short val;
+	int i;
 	static int called = 42;
 	
 	val = (l2sc->last_rih << 8) | l2sc->last_ril;

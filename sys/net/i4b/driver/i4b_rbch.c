@@ -28,7 +28,7 @@
  *	---------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_rbch.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.5 2003/07/21 07:57:46 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_rbch.c,v 1.6 2003/07/26 19:20:29 rob Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:57 2001]
  *
@@ -920,7 +920,7 @@ rbch_rx_data_rdy(int unit)
 {
 	if(rbch_softc[unit].sc_bprot == BPROT_RHDLC)
 	{
-		register struct mbuf *m;
+		struct mbuf *m;
 		
 		if((m = *isdn_linktab[unit]->rx_mbuf) == NULL)
 			return;

@@ -28,7 +28,7 @@
  *	--------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/layer1/itjc/i4b_itjc_isac.c,v 1.1.2.1 2001/08/10 14:08:39 obrien Exp $
- * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_isac.c,v 1.2 2003/06/17 04:28:40 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/itjc/i4b_itjc_isac.c,v 1.3 2003/07/26 19:20:32 rob Exp $
  *
  *      last edit-date: [Wed Jan 10 17:15:54 2001]
  *
@@ -66,8 +66,8 @@
 #include <i4b/include/i4b_global.h>
 #include <i4b/include/i4b_mbuf.h>
 
-static u_char itjc_isac_exir_hdlr(register struct l1_softc *sc, u_char exir);
-static void itjc_isac_ind_hdlr(register struct l1_softc *sc, int ind);
+static u_char itjc_isac_exir_hdlr(struct l1_softc *sc, u_char exir);
+static void itjc_isac_ind_hdlr(struct l1_softc *sc, int ind);
 
 /*---------------------------------------------------------------------------*
  *	ISAC interrupt service routine
@@ -75,7 +75,7 @@ static void itjc_isac_ind_hdlr(register struct l1_softc *sc, int ind);
 void
 itjc_isac_irq(struct l1_softc *sc, int ista)
 {
-	register u_char c = 0;
+	u_char c = 0;
 	NDBGL1(L1_F_MSG, "unit %d: ista = 0x%02x", sc->sc_unit, ista);
 
 	if(ista & ISAC_ISTA_EXI)	/* extended interrupt */
@@ -85,7 +85,7 @@ itjc_isac_irq(struct l1_softc *sc, int ista)
 	
 	if(ista & ISAC_ISTA_RME)	/* receive message end */
 	{
-		register int rest;
+		int rest;
 		u_char rsta;
 
 		/* get rx status register */
@@ -260,7 +260,7 @@ itjc_isac_irq(struct l1_softc *sc, int ista)
 	
 	if(ista & ISAC_ISTA_CISQ)	/* channel status change CISQ */
 	{
-		register u_char ci;
+		u_char ci;
 	
 		/* get command/indication rx register*/
 	
@@ -288,7 +288,7 @@ itjc_isac_irq(struct l1_softc *sc, int ista)
  *	ISAC L1 Extended IRQ handler
  *---------------------------------------------------------------------------*/
 static u_char
-itjc_isac_exir_hdlr(register struct l1_softc *sc, u_char exir)
+itjc_isac_exir_hdlr(struct l1_softc *sc, u_char exir)
 {
 	u_char c = 0;
 	
@@ -349,9 +349,9 @@ itjc_isac_exir_hdlr(register struct l1_softc *sc, u_char exir)
  *	ISAC L1 Indication handler
  *---------------------------------------------------------------------------*/
 static void
-itjc_isac_ind_hdlr(register struct l1_softc *sc, int ind)
+itjc_isac_ind_hdlr(struct l1_softc *sc, int ind)
 {
-	register int event;
+	int event;
 	
 	switch(ind)
 	{

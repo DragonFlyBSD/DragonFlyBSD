@@ -31,7 +31,7 @@
  *	$Id$ 
  *
  * $FreeBSD: src/sys/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.1.2.1 2002/04/25 20:26:50 gj Exp $
- * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.2 2003/06/17 04:28:39 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/layer1/ifpi2/i4b_ifpi2_isacsx.c,v 1.3 2003/07/26 19:20:30 rob Exp $
  *
  *      last edit-date: [Mon May 29 15:22:52 2000]
  *
@@ -67,8 +67,8 @@
 #include <i4b/include/i4b_global.h>
 #include <i4b/include/i4b_mbuf.h>
 
-static u_char ifpi2_isacsx_exir_hdlr(register struct l1_softc *sc, u_char exir);
-static void ifpi2_isacsx_ind_hdlr(register struct l1_softc *sc, int ind);
+static u_char ifpi2_isacsx_exir_hdlr(struct l1_softc *sc, u_char exir);
+static void ifpi2_isacsx_ind_hdlr(struct l1_softc *sc, int ind);
 
 /* the ISACSX has 2 mask registers of interest - cannot use ISAC_IMASK */
 unsigned char isacsx_imaskd;
@@ -80,8 +80,8 @@ unsigned char isacsx_imask;
 void
 ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
 {
-	register u_char c = 0;
-	register u_char istad = 0;
+	u_char c = 0;
+	u_char istad = 0;
 
 	NDBGL1(L1_F_MSG, "unit %d: ista = 0x%02x", sc->sc_unit, ista);
 
@@ -100,7 +100,7 @@ ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
 	
 	if(istad & ISACSX_ISTAD_RME)	/* receive message end */
 	{
-		register int rest;
+		int rest;
 		u_char rsta;
 
 		/* get rx status register */
@@ -299,7 +299,7 @@ ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
 	
 	if(ista & ISACSX_ISTA_CIC)	/* channel status change CISQ */
 	{
-		register u_char ci;
+		u_char ci;
 	
 		/* get command/indication rx register*/
 	
@@ -321,7 +321,7 @@ ifpi2_isacsx_irq(struct l1_softc *sc, int ista)
  *	ISACSX L1 Extended IRQ handler
  *---------------------------------------------------------------------------*/
 static u_char
-ifpi2_isacsx_exir_hdlr(register struct l1_softc *sc, u_char exir)
+ifpi2_isacsx_exir_hdlr(struct l1_softc *sc, u_char exir)
 {
 	u_char c = 0;
 	
@@ -379,9 +379,9 @@ ifpi2_isacsx_exir_hdlr(register struct l1_softc *sc, u_char exir)
  *	ISACSX L1 Indication handler
  *---------------------------------------------------------------------------*/
 static void
-ifpi2_isacsx_ind_hdlr(register struct l1_softc *sc, int ind)
+ifpi2_isacsx_ind_hdlr(struct l1_softc *sc, int ind)
 {
-	register int event;
+	int event;
 	
 	switch(ind)
 	{

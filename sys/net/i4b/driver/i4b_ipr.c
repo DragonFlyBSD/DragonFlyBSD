@@ -28,7 +28,7 @@
  *	---------------------------------------------------------
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ipr.c,v 1.8.2.3 2001/10/27 15:48:17 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.4 2003/07/21 07:57:46 dillon Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ipr.c,v 1.5 2003/07/26 19:20:29 rob Exp $
  *
  *	last edit-date: [Fri Oct 26 19:32:38 2001]
  *
@@ -903,8 +903,8 @@ ipr_updown(int unit, int updown)
 static void
 ipr_rx_data_rdy(int unit)
 {
-	register struct ipr_softc *sc = &ipr_softc[unit];
-	register struct mbuf *m;
+	struct ipr_softc *sc = &ipr_softc[unit];
+	struct mbuf *m;
 #ifdef IPR_VJ
 #ifdef IPR_VJ_USEBUFFER
 	u_char *cp = sc->sc_cbuf;
@@ -1107,8 +1107,8 @@ error:
 static void
 ipr_tx_queue_empty(int unit)
 {
-	register struct ipr_softc *sc = &ipr_softc[unit];
-	register struct mbuf *m;
+	struct ipr_softc *sc = &ipr_softc[unit];
+	struct mbuf *m;
 #ifdef	IPR_VJ	
 	struct ip *ip;	
 #endif
