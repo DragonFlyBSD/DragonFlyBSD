@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.7 2005/01/11 19:14:58 swildner Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.8 2005/01/11 20:01:07 swildner Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -1350,7 +1350,15 @@ is set to
 .Dq Li YES ,
 these are the flags to pass to the
 .Xr ntpd 8
-daemon.
+daemon. Set to
+.Dq Li -s
+by default which sets the time immediately at startup if the
+local clock is off by more than 180 seconds. To prevent
+.Xr ntpd 8
+from doing this, set
+.Va ntpd_flags
+to
+.Dq Li -S .
 .It Va nis_client_enable
 .Pq Vt bool
 If set to
