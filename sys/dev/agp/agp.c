@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.13 2004/05/19 22:52:40 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.14 2004/07/29 00:48:41 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -495,8 +495,10 @@ agp_generic_bind_memory(device_t dev, struct agp_memory *mem,
 	if (offset < 0
 	    || (offset & (AGP_PAGE_SIZE - 1)) != 0
 	    || offset + mem->am_size > AGP_GET_APERTURE(dev)) {
-		device_printf(dev, "binding memory at bad offset %#x\n",
-			      (int) offset);
+		device_printf(dev, "binding memory at bad offset %#x,%#x,%#x\n",
+			      (int) offset, (int)mem->am_size,
+			      (int)AGP_GET_APERTURE(dev));
+		printf("Check BIOS's aperature size vs X\n");
 		return EINVAL;
 	}
 
