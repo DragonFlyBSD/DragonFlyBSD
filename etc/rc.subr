@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.9 2003/12/13 02:49:07 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.10 2004/01/27 00:59:21 rob Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -61,18 +61,7 @@ RC_DISABLED=2
 RC_IRRELEVANT=3
 RC_CONFIGURED=4
 RC_STOPPED=5
-
-case ${OSTYPE} in
-DragonFly)
-	SYSCTL_W="${SYSCTL}"
-	;;
-FreeBSD)
-	SYSCTL_W="${SYSCTL}"
-	;;
-NetBSD)
-	SYSCTL_W="${SYSCTL} -w"
-	;;
-esac
+SYSCTL_W="${SYSCTL}"
 
 #
 #	functions
@@ -96,20 +85,7 @@ set_rcvar()
 		base_var="$1"
 	fi
 
-	case ${OSTYPE} in
-	DragonFly)
-		echo ${base_var}_enable
-		;;
-	FreeBSD)
-		echo ${base_var}_enable
-		;;
-	NetBSD)
-		echo ${base_var}
-		;;
-	*)
-		echo 'XXX'
-		;;
-	esac
+	echo ${base_var}_enable
 }
 
 # set_provide_list
@@ -1015,8 +991,6 @@ load_rc_config()
 
 	# XXX - Deprecated variable name support
 	#
-	case ${OSTYPE} in
-	FreeBSD)
         	[ -n "$portmap_enable" ] && rpcbind_enable="$portmap_enable"
         	[ -n "$portmap_program" ] && rpcbind_program="$portmap_program"
         	[ -n "$portmap_flags" ] && rpcbind_flags="$portmap_flags"
@@ -1026,19 +1000,6 @@ load_rc_config()
         	[ -n "$xntpd_flags" ] && ntpd_flags="$xntpd_flags"
 		[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
 		[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
-        	;;
-	DragonFly)
-        	[ -n "$portmap_enable" ] && rpcbind_enable="$portmap_enable"
-        	[ -n "$portmap_program" ] && rpcbind_program="$portmap_program"
-        	[ -n "$portmap_flags" ] && rpcbind_flags="$portmap_flags"
-        	[ -n "$single_mountd_enable" ] && mountd_enable="$single_mountd_enable"
-        	[ -n "$xntpd_enable" ] && ntpd_enable="$xntpd_enable"
-        	[ -n "$xntpd_program" ] && ntpd_program="$xntpd_program"
-        	[ -n "$xntpd_flags" ] && ntpd_flags="$xntpd_flags"
-		[ -n "$dhcp_program" ] && dhclient_program="$dhcp_program"
-		[ -n "$dhcp_flags" ] && dhclient_flags="$dhcp_flags"
-        	;;
-	esac
 
 }
 
