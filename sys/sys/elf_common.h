@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/elf_common.h,v 1.5.2.3 2001/02/28 02:30:46 obrien Exp $
- * $DragonFly: src/sys/sys/elf_common.h,v 1.3 2005/02/05 22:54:49 joerg Exp $
+ * $DragonFly: src/sys/sys/elf_common.h,v 1.4 2005/02/06 02:00:23 joerg Exp $
  */
 
 #ifndef _SYS_ELF_COMMON_H_
@@ -236,7 +236,7 @@ typedef struct {
 				   terminationfunctions. */
 #define	DT_RUNPATH	29	/* String table offset of a null-terminated
 				   library search path string. */
-#define	DT_FLAGS	30	/* Object specific flag values.
+#define	DT_FLAGS	30	/* Object specific flag values. */
 #define	DT_ENCODING	32	/* Values greater than or equal to DT_ENCODING
 				   and less than DT_LOOS follow the rules for
 				   the interpretation of the d_un union
