@@ -32,13 +32,14 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.21 2004/04/09 22:34:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.22 2004/04/10 00:07:15 hsu Exp $
  */
 
 #include "opt_compat.h"
 #include "opt_inet6.h"
 #include "opt_ipsec.h"
 #include "opt_tcpdebug.h"
+#include "opt_tcp_input.h"
 
 #include <sys/param.h>
 #include <sys/systm.h>
