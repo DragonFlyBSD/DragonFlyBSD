@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_pcb.c,v 1.10.2.9 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.19 2004/12/21 02:54:47 hsu Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_pcb.c,v 1.20 2004/12/28 19:55:16 hsu Exp $	*/
 /*	$KAME: in6_pcb.c,v 1.31 2001/05/21 05:45:10 jinmei Exp $	*/
   
 /*
@@ -759,7 +759,7 @@ in6_pcbnotify(struct inpcbhead *head, struct sockaddr *dst, u_int fport_arg,
 	u_int32_t flowinfo;
 	int errno, s;
 
-	if ((unsigned)cmd > PRC_NCMDS || dst->sa_family != AF_INET6)
+	if ((unsigned)cmd >= PRC_NCMDS || dst->sa_family != AF_INET6)
 		return;
 
 	sa6_dst = (struct sockaddr_in6 *)dst;
