@@ -2,13 +2,13 @@
      DragonFlyBSD specific DocBook Entities
 
 $FreeBSD: doc/share/sgml/freebsd.ent,v 1.50 2004/02/26 05:36:30 bmah Exp $
-$DragonFly: doc/share/sgml/dragonfly.ent,v 1.3 2004/06/25 15:54:58 justin Exp $
+$DragonFly: doc/share/sgml/dragonfly.ent,v 1.4 2004/07/02 13:24:07 justin Exp $
 -->
 
 <!-- These will almost certainly remain the same, but are here for
      consistency and in case we ever want to make hyperlinks out of
      some of them. -->
-<!ENTITY os "DragonFlyBSD">
+<!ENTITY os "DragonFly">
 <!ENTITY os.current "&os;-CURRENT">
 <!ENTITY os.stable "&os;-STABLE">
 
