@@ -32,19 +32,18 @@
  *
  * @(#)logwtmp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libutil/logwtmp.c,v 1.14 2000/01/15 03:26:54 shin Exp $
- * $DragonFly: src/lib/libutil/logwtmp.c,v 1.2 2003/06/17 04:26:52 dillon Exp $
+ * $DragonFly: src/lib/libutil/logwtmp.c,v 1.3 2004/11/05 17:05:26 dillon Exp $
  */
 
+#include <sys/cdefs.h>
 #include <sys/param.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/file.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <libutil.h>
 #include <netdb.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -55,65 +54,9 @@
 #define	NI_WITHSCOPEID	0
 #endif
 
-void
-trimdomain(char *fullhost, int hostsize)
-{
-    static char domain[MAXHOSTNAMELEN];
-    static int first = 1;
-    static size_t dlen;
-    char *s, *end;
-    int spn, ok;
-
-    if (first) {
-        first = 0;
-        if (gethostname(domain, sizeof(domain) - 1) == 0 &&
-            (s = strchr(domain, '.')))
-            memmove(domain, s + 1, strlen(s + 1) + 1);
-        else
-            domain[0] = '\0';
-        dlen = strlen(domain);
-    }
-
-    if (domain[0] != '\0') {
-	s = fullhost;
-        end = s + hostsize + 1;
-	for (; (s = memchr(s, '.', end - s)) != NULL; s++)
-            if (!strncasecmp(s + 1, domain, dlen)) {
-                if (s[dlen + 1] == '\0') {
-               	    *s = '\0';    /* Found - lose the domain */
-                    break;
-                } else if (s[dlen + 1] == ':') {	/* $DISPLAY ? */
-                    ok = dlen + 2;
-                    spn = strspn(s + ok, "0123456789");
-                    if (spn > 0 && ok + spn - dlen <= end - s) {
-                        ok += spn;
-                        if (s[ok] == '\0') {
-                            /* host.domain:nn */
-                            memmove(s, s + dlen + 1, ok - dlen);
-                            break;
-                        } else if (s[ok] == '.') {
-                            ok++;
-                            spn = strspn(s + ok, "0123456789");
-                            if (spn > 0 && s[ok + spn] == '\0' &&
-                                ok + spn - dlen <= end - s) {
-                                /* host.domain:nn.nn */
-                                memmove(s, s + dlen + 1, ok + spn - dlen);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-    }
-}
-
-#include <stdio.h>
 
 void
-logwtmp(line, name, host)
-	const char *line;
-	const char *name;
-	const char *host;
+logwtmp(const char *line, const char *name, const char *host)
 {
 	struct utmp ut;
 	struct stat buf;

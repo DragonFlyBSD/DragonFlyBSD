@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libutil/libutil.h,v 1.26.2.3 2000/11/22 03:49:49 murray Exp $
- * $DragonFly: src/lib/libutil/libutil.h,v 1.4 2004/09/22 05:06:57 joerg Exp $
+ * $DragonFly: src/lib/libutil/libutil.h,v 1.5 2004/11/05 17:05:26 dillon Exp $
  */
 
 #ifndef _LIBUTIL_H_
@@ -58,6 +58,8 @@ int	openpty (int *_amaster, int *_aslave, char *_name,
 		     struct termios *_termp, struct winsize *_winp);
 int	forkpty (int *_amaster, char *_name,
 		     struct termios *_termp, struct winsize *_winp);
+int	humanize_number(char *_buf, size_t _len, int64_t _number, 
+               const char *_suffix, int _scale, int _flags); 
 const char *uu_lockerr (int _uu_lockresult);
 int	uu_lock (const char *_ttyname);
 int	uu_unlock (const char *_ttyname);
@@ -99,5 +101,13 @@ __END_DECLS
 #define	FPARSELN_UNESCCOMM	0x04
 #define	FPARSELN_UNESCREST	0x08
 #define	FPARSELN_UNESCALL	0x0f
+
+/* humanize_number(3) */ 
+#define HN_DECIMAL		0x01 
+#define HN_NOSPACE		0x02 
+#define HN_B			0x04 
+#define HN_DIVISOR_1000		0x08 
+#define HN_GETSCALE		0x10 
+#define HN_AUTOSCALE		0x20 
 
 #endif /* !_LIBUTIL_H_ */
