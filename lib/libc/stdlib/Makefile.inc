@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.10 2005/03/14 14:26:16 joerg Exp $
+# $DragonFly: src/lib/libc/stdlib/Makefile.inc,v 1.11 2005/03/17 15:09:01 joerg Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libc/stdlib
@@ -8,9 +8,9 @@
 MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c bsearch.c calloc.c div.c \
 	exit.c getenv.c getopt.c getopt_long.c getsubopt.c hcreate.c heapsort.c \
 	labs.c ldiv.c malloc.c merge.c putenv.c qsort.c radixsort.c rand.c \
-	random.c reallocf.c realpath.c setenv.c strtod.c strtol.c strtoll.c \
-	strtonum.c strtoq.c strtoul.c strtoull.c strtouq.c system.c tdelete.c \
-	tfind.c tsearch.c twalk.c
+	random.c reallocf.c realpath.c setenv.c strtod.c strtoimax.c strtol.c \
+	strtoll.c strtonum.c strtoq.c strtoul.c strtoull.c strtoumax.c \
+	strtouq.c system.c tdelete.c tfind.c tsearch.c twalk.c
 
 # machine-dependent stdlib sources
 .if exists(${.CURDIR}/../libc/${MACHINE_ARCH}/stdlib/Makefile.inc)

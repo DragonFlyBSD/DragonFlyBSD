@@ -1,4 +1,4 @@
-/* $DragonFly: src/lib/libc/stdlib/strtoul.c,v 1.4 2005/03/17 15:09:01 joerg Exp $ */
+/* $DragonFly: src/lib/libc/stdlib/strtoumax.c,v 1.1 2005/03/17 15:09:01 joerg Exp $ */
 
 /*-
  * Copyright (c) 2005 The DragonFly Project.  All rigths reserved.
@@ -30,12 +30,13 @@
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-#define	_FUNCNAME	strtoul
-#define	__UINT		unsigned long int
-#define	__UINT_MAX	ULONG_MAX
+#define	_FUNCNAME	strtoumax
+#define	__UINT		uintmax_t
+#define	__UINT_MAX	UINTMAX_MAX
 
 #include "_strtoul.h"
