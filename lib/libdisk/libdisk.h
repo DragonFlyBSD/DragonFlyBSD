@@ -7,7 +7,7 @@
 * ----------------------------------------------------------------------------
 *
 * $FreeBSD: src/lib/libdisk/libdisk.h,v 1.32.2.8 2002/01/07 07:53:29 dillon Exp $
-* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.4 2005/02/26 12:00:54 swildner Exp $
+* $DragonFly: src/lib/libdisk/Attic/libdisk.h,v 1.5 2005/03/13 15:10:03 swildner Exp $
 *
 */
 
@@ -35,15 +35,8 @@ struct disk {
 	u_long		bios_cyl;
 	u_long		bios_hd;
 	u_long		bios_sect;
-#ifdef PC98
-	u_char		*bootipl;
-	size_t		bootipl_size;
-	u_char		*bootmenu;
-	size_t		bootmenu_size;
-#else
 	u_char		*bootmgr;
 	size_t		bootmgr_size;
-#endif
 	u_char		*boot1;
 #if defined(__i386__)		/* the i386 needs extra help... */
 	u_char		*boot2;
@@ -59,9 +52,6 @@ struct chunk {
 	long		offset;
 	u_long		size;
 	u_long		end;
-#ifdef PC98
-	char		*sname;
-#endif
 	char		*name;
 	char		*oname;
 	/* Used during Fixup_Names() to avoid renaming more than
@@ -166,13 +156,8 @@ Collapse_Chunk(struct disk *disk, struct chunk *chunk);
  */
 
 int
-#ifdef PC98
-Create_Chunk(struct disk *disk, u_long offset, u_long size, chunk_e type,
-	int subtype, u_long flags, const char *);
-#else
 Create_Chunk(struct disk *disk, u_long offset, u_long size, chunk_e type,
 	int subtype, u_long flags);
-#endif
 /* Create a chunk with the specified paramters
  */
 
@@ -194,14 +179,8 @@ Disk_Names(void);
  * each pointer, as well as the array by hand
  */
 
-#ifdef PC98
-void
-Set_Boot_Mgr(struct disk *d, const u_char *bootipl, const size_t bootipl_size,
-	     const u_char *bootmenu, const size_t bootmenu_size);
-#else
 void
 Set_Boot_Mgr(struct disk *d, const u_char *bootmgr, const size_t bootmgr_size);
-#endif
 /* Use this boot-manager on this disk.  Gets written when Write_Disk()
  * is called
  */
@@ -281,11 +260,7 @@ ChunkCanBeRoot(struct chunk *c);
 void Debug_Chunk(struct chunk *);
 void Free_Chunk(struct chunk *);
 struct chunk * Clone_Chunk(struct chunk *);
-#ifdef PC98
-int Add_Chunk(struct disk *, long, u_long, const char *, chunk_e, int, u_long, const char *);
-#else
 int Add_Chunk(struct disk *, long, u_long, const char *, chunk_e, int, u_long);
-#endif
 void * read_block(int, daddr_t, u_long);
 int write_block(int, daddr_t, void *, u_long);
 struct disklabel * read_disklabel(int, daddr_t, u_long);

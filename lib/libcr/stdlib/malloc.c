@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libc/stdlib/malloc.c,v 1.49.2.4 2001/12/29 08:10:14 knu Exp $
- * $DragonFly: src/lib/libcr/stdlib/Attic/malloc.c,v 1.5 2004/02/03 07:34:10 dillon Exp $
+ * $DragonFly: src/lib/libcr/stdlib/Attic/malloc.c,v 1.6 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -46,10 +46,6 @@
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #   if defined(__i386__)
 #       define malloc_pageshift		12U
-#       define malloc_minsize		16U
-#   endif
-#   if defined(__alpha__)
-#       define malloc_pageshift		13U
 #       define malloc_minsize		16U
 #   endif
 #   if !defined(__NETBSD_SYSCALLS)

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc_r/uthread/uthread_init.c,v 1.23.2.11 2003/02/24 23:27:32 das Exp $
- * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.3 2004/01/26 17:50:34 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/uthread_init.c,v 1.4 2005/03/13 15:10:03 swildner Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -446,20 +446,5 @@ _thread_init(void)
 	    pthread_cond_init(&_gc_cond,NULL) != 0)
 		PANIC("Failed to initialise garbage collector mutex or condvar");
 }
-
-/*
- * Special start up code for NetBSD/Alpha
- */
-#if	defined(__NetBSD__) && defined(__alpha__)
-int
-main(int argc, char *argv[], char *env);
-
-int
-_thread_main(int argc, char *argv[], char *env)
-{
-	_thread_init();
-	return (main(argc, argv, env));
-}
-#endif
 
 int _thread_autoinit_dummy_decl = 0;

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/tst01.c,v 1.23.2.4 2000/08/07 08:55:19 ps Exp $
- * $DragonFly: src/lib/libdisk/Attic/tst01.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/tst01.c,v 1.3 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -219,24 +219,14 @@ main(int argc, char **argv)
 			free(cp);
 			continue;
 		}
-#ifdef PC98
-		if (!strcasecmp(*cmds,"create") && ncmd == 7) {
-#else
 		if (!strcasecmp(*cmds,"create") && ncmd == 6) {
-#endif
-
 			printf("Create=%d\n",
 				Create_Chunk(d,
 					strtol(cmds[1],0,0),
 					strtol(cmds[2],0,0),
 					strtol(cmds[3],0,0),
 					strtol(cmds[4],0,0),
-#ifdef PC98
-					strtol(cmds[5],0,0),
-					cmds[6]));
-#else
 					strtol(cmds[5],0,0)));
-#endif
 			continue;
 		}
 		if (!strcasecmp(*cmds,"read")) {
@@ -263,12 +253,10 @@ main(int argc, char **argv)
 			Set_Boot_Mgr(d,mbr);
 			continue;
 		}
-#ifndef __alpha__	/* don't think this compiles on i386 either */
 		if (!strcasecmp(*cmds,"boot")) {
 			Set_Boot_Blocks(d,boot1,boot2);
 			continue;
 		}
-#endif
 		if (!strcasecmp(*cmds,"write")) {
 			printf("Write=%d\n",
 				Write_Disk(d));
@@ -287,11 +275,7 @@ main(int argc, char **argv)
 #if 0
 		printf("\tcollapse [pointer]\n");
 #endif
-#ifdef PC98
-		printf("\tcreate offset size enum subtype flags name\n");
-#else
 		printf("\tcreate offset size enum subtype flags\n");
-#endif
 		printf("\t\tsubtype(part): swap=1, ffs=7\n");
 		printf("\tdelete pointer\n");
 		printf("\tlist\n");

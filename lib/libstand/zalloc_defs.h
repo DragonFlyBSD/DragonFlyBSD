@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_defs.h,v 1.6 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_defs.h,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/zalloc_defs.h,v 1.3 2005/03/13 15:10:03 swildner Exp $
  */
 
 /*
@@ -45,10 +45,6 @@
 #ifdef __i386__
 typedef unsigned int iaddr_t;	/* unsigned int same size as pointer	*/
 typedef int saddr_t;		/* signed int same size as pointer	*/
-#endif
-#ifdef __alpha__
-typedef unsigned long iaddr_t;	/* unsigned int same size as pointer	*/
-typedef long saddr_t;		/* signed int same size as pointer	*/
 #endif
 
 #include "zalloc_mem.h"

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/lib/libstand/ufs.c,v 1.5.6.1 2000/05/04 13:47:53 ps Exp $ */
-/* $DragonFly: src/lib/libstand/ufs.c,v 1.4 2004/10/25 19:38:45 drhodus Exp $ */
+/* $DragonFly: src/lib/libstand/ufs.c,v 1.5 2005/03/13 15:10:03 swildner Exp $ */
 /*	$NetBSD: ufs.c,v 1.20 1998/03/01 07:15:39 ross Exp $	*/
 
 /*-
@@ -75,10 +75,6 @@
 #include <vfs/ufs/fs.h>
 #include "stand.h"
 #include "string.h"
-
-#ifdef __alpha__
-#define COMPAT_UFS		/* DUX has old format file systems */
-#endif
 
 static int	ufs_open(const char *path, struct open_file *f);
 static int	ufs_close(struct open_file *f);

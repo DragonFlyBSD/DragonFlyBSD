@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/disk.c,v 1.50.2.15 2001/12/30 09:56:12 phk Exp $
- * $DragonFly: src/lib/libdisk/Attic/disk.c,v 1.3 2003/11/10 06:14:40 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/disk.c,v 1.4 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -47,14 +47,12 @@ Open_Disk(const char *name)
 	return Int_Open_Disk(name, 0);
 }
 
-#ifndef PC98
 static u_int32_t
 Read_Int32(u_int32_t *p)
 {
     u_int8_t *bp = (u_int8_t *)p;
     return bp[0] | (bp[1] << 8) | (bp[2] << 16) | (bp[3] << 24);
 }
-#endif
 
 struct disk *
 Int_Open_Disk(const char *name, u_long size)
@@ -65,12 +63,8 @@ Int_Open_Disk(const char *name, u_long size)
 	char device[64], *buf;
 	struct disk *d;
 	u_long sector_size;
-#ifdef PC98
-	unsigned char *p;
-#else
 	struct dos_partition *dp;
 	void *p;
-#endif
 	u_long offset = 0;
 
 	strcpy(device, _PATH_DEV);
@@ -108,13 +102,8 @@ Int_Open_Disk(const char *name, u_long size)
 #endif
 
 /* XXX --- ds.dss_slice[WHOLE_DISK_SLICE].ds.size of MO disk is wrong!!! */
-#ifdef PC98
-	if (!size)
-		size = dl.d_ncylinders * dl.d_ntracks * dl.d_nsectors;
-#else
 	if (!size)
 		size = ds.dss_slices[WHOLE_DISK_SLICE].ds_size;
-#endif
 
 	/* determine media sector size */
 	if ((buf = malloc(MAX_SEC_SIZE)) == NULL)
@@ -129,9 +118,6 @@ Int_Open_Disk(const char *name, u_long size)
 	if (sector_size > MAX_SEC_SIZE)
 		return NULL; /* could not determine sector size */
 
-#ifdef PC98
-	p = (unsigned char*)read_block(fd, 1, sector_size);
-#else
 	p = read_block(fd, 0, sector_size);
 	dp = (struct dos_partition*)(p + DOSPARTOFF);
 	for (i = 0; i < NDOSPART; i++) {
@@ -149,7 +135,6 @@ Int_Open_Disk(const char *name, u_long size)
 
 	}
 	free(p);
-#endif
 
 	d->bios_sect = dl.d_nsectors;
 	d->bios_hd = dl.d_ntracks;
@@ -160,11 +145,7 @@ Int_Open_Disk(const char *name, u_long size)
 	if (dl.d_ntracks && dl.d_nsectors)
 		d->bios_cyl = size / (dl.d_ntracks * dl.d_nsectors);
 
-#ifdef PC98
-	if (Add_Chunk(d, -offset, size, name, whole, 0, 0, "-"))
-#else
 	if (Add_Chunk(d, -offset, size, name, whole, 0, 0))
-#endif
 #ifdef DEBUG
 		warn("Failed to add 'whole' chunk");
 #else
@@ -172,19 +153,6 @@ Int_Open_Disk(const char *name, u_long size)
 #endif
 
 #ifdef __i386__
-#ifdef PC98
-	/* XXX -- Quick Hack!
-	 * Check MS-DOS MO
-	 */
-	if ((*p == 0xf0 || *p == 0xf8) &&
-	    (*(p+1) == 0xff) &&
-	    (*(p+2) == 0xff)) {
-		Add_Chunk(d, 0, size, name, fat, 0xa0a0, 0, name);
-	    free(p);
-	    goto pc98_mo_done;
-	}
-	free(p);
-#endif /* PC98 */
 	for(i=BASE_SLICE;i<ds.dss_nslices;i++) {
 		char sname[20];
 		chunk_e ce;
@@ -195,21 +163,6 @@ Int_Open_Disk(const char *name, u_long size)
 			continue;
 		ds.dss_slices[i].ds_offset -= offset;
 		sprintf(sname, "%ss%d", name, i - 1);
-#ifdef PC98
-		subtype = ds.dss_slices[i].ds_type |
-			ds.dss_slices[i].ds_subtype << 8;
-		switch (ds.dss_slices[i].ds_type & 0x7f) {
-			case 0x14:
-				ce = freebsd;
-				break;
-			case 0x20:
-			case 0x21:
-			case 0x22:
-			case 0x23:
-			case 0x24:
-				ce = fat;
-				break;
-#else /* IBM-PC */
 		subtype = ds.dss_slices[i].ds_type;
 		switch (ds.dss_slices[i].ds_type) {
 			case 0xa5:
@@ -227,30 +180,19 @@ Int_Open_Disk(const char *name, u_long size)
 			case 0xf:
 				ce = extended;
 				break;
-#endif
 			default:
 				ce = unknown;
 				break;
 		}
-#ifdef PC98
-		if (Add_Chunk(d, ds.dss_slices[i].ds_offset,
-			ds.dss_slices[i].ds_size, sname, ce, subtype, flags,
-			ds.dss_slices[i].ds_name))
-#else
 		if (Add_Chunk(d, ds.dss_slices[i].ds_offset,
 			ds.dss_slices[i].ds_size, sname, ce, subtype, flags))
-#endif
 #ifdef DEBUG
 			warn("failed to add chunk for slice %d", i - 1);
 #else
 			{}
 #endif
 
-#ifdef PC98
-		if ((ds.dss_slices[i].ds_type & 0x7f) != 0x14)
-#else
 		if (ds.dss_slices[i].ds_type != 0xa5)
-#endif
 			continue;
 		{
 		struct disklabel dl;
@@ -298,12 +240,7 @@ Int_Open_Disk(const char *name, u_long size)
 				dl.d_partitions[j].p_size,
 				pname,part,
 				dl.d_partitions[j].p_fstype,
-#ifdef PC98
-				0,
-				ds.dss_slices[i].ds_name) && j != 3)
-#else
 				0) && j != 3)
-#endif
 #ifdef DEBUG
 				warn(
 			"Failed to add chunk for partition %c [%lu,%lu]",
@@ -316,69 +253,6 @@ Int_Open_Disk(const char *name, u_long size)
 		}
 	}
 #endif /* __i386__ */
-#ifdef __alpha__
-	{
-		struct disklabel dl;
-		char pname[20];
-		int j,k;
-
-		strcpy(pname, _PATH_DEV);
-		strcat(pname, name);
-		j = open(pname, O_RDONLY);
-		if (j < 0) {
-#ifdef DEBUG
-			warn("open(%s)", pname);
-#endif
-			goto nolabel;
-		}
-		k = ioctl(j, DIOCGDINFO, &dl);
-		if (k < 0) {
-#ifdef DEBUG
-			warn("ioctl(%s, DIOCGDINFO)", pname);
-#endif
-			close(j);
-			goto nolabel;
-		}
-		close(j);
-		All_FreeBSD(d, 1);
-
-		for(j = 0; j <= dl.d_npartitions; j++) {
-			if (j == RAW_PART)
-				continue;
-			if (j == 3)
-				continue;
-			if (j == dl.d_npartitions) {
-				j = 3;
-				dl.d_npartitions = 0;
-			}
-			if (!dl.d_partitions[j].p_size)
-				continue;
-			if (dl.d_partitions[j].p_size +
-			    dl.d_partitions[j].p_offset >
-			    ds.dss_slices[WHOLE_DISK_SLICE].ds_size)
-				continue;
-			sprintf(pname, "%s%c", name, j + 'a');
-			if (Add_Chunk(d,
-				      dl.d_partitions[j].p_offset,
-				      dl.d_partitions[j].p_size,
-				      pname,part,
-				      dl.d_partitions[j].p_fstype,
-				      0) && j != 3)
-#ifdef DEBUG
-				warn(
-					"Failed to add chunk for partition %c [%lu,%lu]",
-					j + 'a', dl.d_partitions[j].p_offset,
-					dl.d_partitions[j].p_size);
-#else
-			{}
-#endif
-		}
-	nolabel:;
-	}
-#endif /* __alpha__ */
-#ifdef PC98
-pc98_mo_done:
-#endif
 	close(fd);
 	Fixup_Names(d);
 	return d;
@@ -395,15 +269,9 @@ Debug_Disk(struct disk *d)
 	printf("  bios_geom=%lu/%lu/%lu = %lu\n",
 		d->bios_cyl, d->bios_hd, d->bios_sect,
 		d->bios_cyl * d->bios_hd * d->bios_sect);
-#if defined(PC98)
-	printf("  boot1=%p, boot2=%p, bootipl=%p, bootmenu=%p\n",
-		d->boot1, d->boot2, d->bootipl, d->bootmenu);
-#elif defined(__i386__)
+#if defined(__i386__)
 	printf("  boot1=%p, boot2=%p, bootmgr=%p\n",
 		d->boot1, d->boot2, d->bootmgr);
-#elif defined(__alpha__)
-	printf("  boot1=%p, bootmgr=%p\n",
-		d->boot1, d->bootmgr);
 #endif
 	Debug_Chunk(d->chunks);
 }
@@ -413,12 +281,7 @@ Free_Disk(struct disk *d)
 {
 	if(d->chunks) Free_Chunk(d->chunks);
 	if(d->name) free(d->name);
-#ifdef PC98
-	if(d->bootipl) free(d->bootipl);
-	if(d->bootmenu) free(d->bootmenu);
-#else
 	if(d->bootmgr) free(d->bootmgr);
-#endif
 	if(d->boot1) free(d->boot1);
 #if defined(__i386__)
 	if(d->boot2) free(d->boot2);
@@ -436,21 +299,10 @@ Clone_Disk(struct disk *d)
 	*d2 = *d;
 	d2->name = strdup(d2->name);
 	d2->chunks = Clone_Chunk(d2->chunks);
-#ifdef PC98
-	if(d2->bootipl) {
-		d2->bootipl = malloc(d2->bootipl_size);
-		memcpy(d2->bootipl, d->bootipl, d2->bootipl_size);
-	}
-	if(d2->bootmenu) {
-		d2->bootmenu = malloc(d2->bootmenu_size);
-		memcpy(d2->bootmenu, d->bootmenu, d2->bootmenu_size);
-	}
-#else
 	if(d2->bootmgr) {
 		d2->bootmgr = malloc(d2->bootmgr_size);
 		memcpy(d2->bootmgr, d->bootmgr, d2->bootmgr_size);
 	}
-#endif
 #if defined(__i386__)
 	if(d2->boot1) {
 		d2->boot1 = malloc(512);
@@ -459,11 +311,6 @@ Clone_Disk(struct disk *d)
 	if(d2->boot2) {
 		d2->boot2 = malloc(512 * 15);
 		memcpy(d2->boot2, d->boot2, 512 * 15);
-	}
-#elif defined(__alpha__)
-	if(d2->boot1) {
-		d2->boot1 = malloc(512 * 15);
-		memcpy(d2->boot1, d->boot1, 512 * 15);
 	}
 #endif
 	return d2;
@@ -479,11 +326,7 @@ Collapse_Disk(struct disk *d)
 }
 #endif
 
-#ifdef PC98
-static char * device_list[] = {"wd", "aacd", "ad", "da", "afd", "fla", "idad", "mlxd", "amrd", "twed", "ar", "fd", 0};
-#else
 static char * device_list[] = {"aacd", "ad", "da", "afd", "fla", "idad", "mlxd", "amrd", "twed", "ar", "fd", 0};
-#endif
 
 int qstrcmp(const void* a, const void* b) {
 
@@ -509,7 +352,7 @@ Disk_Names()
 
     disks = malloc(sizeof *disks * (1 + MAX_NO_DISKS));
     memset(disks,0,sizeof *disks * (1 + MAX_NO_DISKS));
-#if !defined(PC98) && !defined(KERN_DISKS_BROKEN)
+#if !defined(KERN_DISKS_BROKEN)
     error = sysctlbyname("kern.disks", NULL, &listsize, NULL, 0);
     if (!error) {
 	    disklist = (char *)malloc(listsize);
@@ -546,7 +389,7 @@ Disk_Names()
 				break;
 		}
 	}
-#if !defined(PC98) && !defined(KERN_DISKS_BROKEN)
+#if !defined(KERN_DISKS_BROKEN)
     }
 #endif
     qsort(disks, disk_cnt, sizeof(char*), qstrcmp);
@@ -554,42 +397,9 @@ Disk_Names()
     return disks;
 }
 
-#ifdef PC98
-void
-Set_Boot_Mgr(struct disk *d, const u_char *bootipl, const size_t bootipl_size,
-	     const u_char *bootmenu, const size_t bootmenu_size)
-#else
 void
 Set_Boot_Mgr(struct disk *d, const u_char *b, const size_t s)
-#endif
 {
-#ifdef PC98
-	if (bootipl_size % d->sector_size != 0)
-		return;
-	if (d->bootipl)
-		free(d->bootipl);
-	if (!bootipl) {
-		d->bootipl = NULL;
-	} else {
-		d->bootipl_size = bootipl_size;
-		d->bootipl = malloc(bootipl_size);
-		if(!d->bootipl) return;
-		memcpy(d->bootipl, bootipl, bootipl_size);
-	}
-
-	if (bootmenu_size % d->sector_size != 0)
-		return;
-	if (d->bootmenu)
-		free(d->bootmenu);
-	if (!bootmenu) {
-		d->bootmenu = NULL;
-	} else {
-		d->bootmenu_size = bootmenu_size;
-		d->bootmenu = malloc(bootmenu_size);
-		if(!d->bootmenu) return;
-		memcpy(d->bootmenu, bootmenu, bootmenu_size);
-	}
-#else
 	if (s % d->sector_size != 0)
 		return;
 	if (d->bootmgr)
@@ -602,7 +412,6 @@ Set_Boot_Mgr(struct disk *d, const u_char *b, const size_t s)
 		if(!d->bootmgr) return;
 		memcpy(d->bootmgr, b, s);
 	}
-#endif
 }
 
 int
@@ -617,11 +426,6 @@ Set_Boot_Blocks(struct disk *d, const u_char *b1, const u_char *b2)
 	d->boot2 = malloc(15 * 512);
 	if(!d->boot2) return -1;
 	memcpy(d->boot2, b2, 15 * 512);
-#elif defined(__alpha__)
-	if (d->boot1) free(d->boot1);
-	d->boot1 = malloc(15 * 512);
-	if(!d->boot1) return -1;
-	memcpy(d->boot1, b1, 15 * 512);
 #endif
 	return 0;
 }
@@ -631,7 +435,6 @@ slice_type_name( int type, int subtype )
 {
 	switch (type) {
 		case 0:		return "whole";
-#ifndef	PC98
 		case 1:		switch (subtype) {
 					case 1:		return "fat (12-bit)";
 					case 2:		return "XENIX /";
@@ -663,21 +466,14 @@ slice_type_name( int type, int subtype )
 					case 184:	return "bsd/os swap";
 					default:	return "unknown";
 				}
-#endif
 		case 2:		return "fat";
 		case 3:		switch (subtype) {
-#ifdef	PC98
-					case 0xc494:	return "freebsd";
-#else
 					case 165:	return "freebsd";
-#endif
 					default:	return "unknown";
 				}
-#ifndef	PC98
 		case 4:		return "extended";
 		case 5:		return "part";
 		case 6:		return "unused";
-#endif
 		default:	return "unknown";
 	}
 }

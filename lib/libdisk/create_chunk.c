@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/create_chunk.c,v 1.46.2.8 2001/05/13 21:01:37 jkh Exp $
- * $DragonFly: src/lib/libdisk/Attic/create_chunk.c,v 1.3 2003/11/10 06:14:40 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/create_chunk.c,v 1.4 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -193,50 +193,32 @@ Fixup_Names(struct disk *d)
     for(c2 = c1->part; c2; c2 = c2->next) {
 	if (c2->type == freebsd)
 	    Fixup_FreeBSD_Names(d, c2);
-#ifndef PC98
 	if (c2->type == extended)
 	    Fixup_Extended_Names(d, c2);
-#endif
     }
     return 0;
 }
 
 int
-#ifdef PC98
-Create_Chunk(struct disk *d, u_long offset, u_long size, chunk_e type, int subtype, u_long flags, const char *sname)
-#else
 Create_Chunk(struct disk *d, u_long offset, u_long size, chunk_e type, int subtype, u_long flags)
-#endif
 {
     int i;
     u_long l;
     
     if(!(flags & CHUNK_FORCE_ALL))
     {
-#ifdef PC98
-	/* Never use the first cylinder */
-	if (!offset) {
-	    offset += (d->bios_sect * d->bios_hd);
-	    size -= (d->bios_sect * d->bios_hd);
-	}
-#else
 	/* Never use the first track */
 	if (!offset) {
 	    offset += d->bios_sect;
 	    size -= d->bios_sect;
 	}
-#endif /* PC98 */
 	
 	/* Always end on cylinder boundary */
 	l = (offset+size) % (d->bios_sect * d->bios_hd);
 	size -= l;
     }
     
-#ifdef PC98
-    i = Add_Chunk(d, offset, size, "X", type, subtype, flags, sname);
-#else
     i = Add_Chunk(d, offset, size, "X", type, subtype, flags);
-#endif
     Fixup_Names(d);
     return i;
 }
@@ -258,11 +240,7 @@ Create_Chunk_DWIM(struct disk *d, struct chunk *parent , u_long size, chunk_e ty
     }
     return 0;
  found:
-#ifdef PC98
-    i = Add_Chunk(d, offset, size, "X", type, subtype, flags, "-");
-#else
     i = Add_Chunk(d, offset, size, "X", type, subtype, flags);
-#endif
     if (i)
 	return 0;
     Fixup_Names(d);
@@ -292,10 +270,6 @@ MakeDev(struct chunk *c1, const char *path)
 
     if (!strncmp(p, "ad", 2))
 	cmaj = 116, p += 2;
-#ifdef PC98
-    else if (!strncmp(p, "wd", 2))
-	cmaj = 3, p += 2;
-#endif
     else if (!strncmp(p, "wfd", 3))
 	cmaj = 87, p += 3;
     else if (!strncmp(p, "afd", 3))
@@ -336,7 +310,6 @@ MakeDev(struct chunk *c1, const char *path)
 	unit += (*p - '0');
 	p++;
     }
-#ifndef __alpha__
     if (*p != 's') {
 	msgDebug("MakeDev: `%s' is not a valid slice delimiter\n", p);
 	return 0;
@@ -354,9 +327,6 @@ MakeDev(struct chunk *c1, const char *path)
 	p++;
     }
     slice = slice + 1;
-#else
-    slice = 0;
-#endif
     if (!*p) {
 	part = 2;
 	if(c1->type == freebsd)

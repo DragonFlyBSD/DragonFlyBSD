@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/lib/Makefile,v 1.107.2.16 2002/10/10 19:24:35 kbyanc Exp $
-# $DragonFly: src/lib/Makefile,v 1.16 2005/03/12 19:13:54 eirikn Exp $
+# $DragonFly: src/lib/Makefile,v 1.17 2005/03/13 15:10:02 swildner Exp $
 
 # To satisfy shared library or ELF linkage when only the libraries being
 # built are visible:
@@ -24,7 +24,7 @@ SUBDIR=	${_csu} csu/common libarchive libcom_err libcrypt msun libmd \
 	libncurses libradius libskey libtacplus libutil libsbuf ${_compat} \
 	libalias libatm ${_libbind} libbz2 libc ${_libc_r} libcalendar \
 	libcam libcompat libdevstat libdisk libedit libfetch libftpio \
-	${_libio} libipsec libipx libisc libkcore libkinfo libkvm libmagic \
+	libipsec libipx libisc libkcore libkinfo libkvm libmagic \
 	${_libmilter} ${_libncp} libnetgraph libopie libpam \
 	libpcap libposix1e librpcsvc ${_libsm} ${_libsmb} ${_libsmdb} \
 	${_libsmutil} libstand libtelnet libthread_xu libusbhid ${_libvgl} \
@@ -54,11 +54,6 @@ _compat=	compat
 _libncp=	libncp
 _libsmb=	libsmb
 _libvgl=	libvgl
-.endif
-
-.if ${MACHINE_ARCH} == "alpha"
-_libio=		libio
-_compat=	compat
 .endif
 
 .include <bsd.subdir.mk>

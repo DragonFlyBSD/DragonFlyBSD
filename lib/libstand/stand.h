@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/stand.h,v 1.18.2.8 2002/06/17 11:22:39 sobomax Exp $
- * $DragonFly: src/lib/libstand/stand.h,v 1.5 2005/02/17 13:59:35 joerg Exp $
+ * $DragonFly: src/lib/libstand/stand.h,v 1.6 2005/03/13 15:10:03 swildner Exp $
  * From	$NetBSD: stand.h,v 1.22 1997/06/26 19:17:40 drochner Exp $	
  */
 
@@ -241,9 +241,6 @@ extern void	*calloc(size_t n1, size_t n2);
 extern void	*realloc(void *ptr, size_t size);
 extern void	*reallocf(void *ptr, size_t size);
 extern void	mallocstats(void);
-#ifdef __alpha__
-extern void	free_region(void *start, void *end);
-#endif
 
 /* disklabel support (undocumented, may be junk) */
 struct		disklabel;

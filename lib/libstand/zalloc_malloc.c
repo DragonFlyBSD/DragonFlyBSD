@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libstand/zalloc_malloc.c,v 1.5 1999/08/28 00:05:35 peter Exp $
- * $DragonFly: src/lib/libstand/zalloc_malloc.c,v 1.2 2003/06/17 04:26:51 dillon Exp $
+ * $DragonFly: src/lib/libstand/zalloc_malloc.c,v 1.3 2005/03/13 15:10:03 swildner Exp $
  */
 
 /*
@@ -48,15 +48,6 @@ void mallocstats(void);
 #ifdef malloc
 #undef malloc
 #undef free
-#endif
-
-#ifdef __alpha__
-void
-free_region(void *start, void *end)
-{
-    zextendPool(&MallocPool, start, (caddr_t)end - (caddr_t)start);
-    zfree(&MallocPool, start, (caddr_t)end - (caddr_t)start);
-}
 #endif
 
 void *

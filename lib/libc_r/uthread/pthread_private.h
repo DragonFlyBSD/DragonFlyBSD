@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libc_r/uthread/pthread_private.h,v 1.36.2.21 2002/10/22 14:44:02 fjoe Exp $
- * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.4 2005/03/02 10:38:43 joerg Exp $
+ * $DragonFly: src/lib/libc_r/uthread/pthread_private.h,v 1.5 2005/03/13 15:10:03 swildner Exp $
  */
 
 #ifndef _PTHREAD_PRIVATE_H
@@ -86,21 +86,6 @@
 	__asm__("frstor %0": :"m"(*fdata));		\
 } while (0)
 #define SET_RETURN_ADDR_JB(jb, ra)	(jb)[0]._jb[0] = (int)(ra)
-#elif	defined(__alpha__)
-#include <machine/reg.h>
-#define	GET_STACK_JB(jb)	((unsigned long)((jb)[0]._jb[R_SP + 4]))
-#define	GET_STACK_SJB(sjb)	((unsigned long)((sjb)[0]._sjb[R_SP + 4]))
-#define	GET_STACK_UC(ucp)	((ucp)->uc_mcontext.mc_regs[R_SP])
-#define	SET_STACK_JB(jb, stk)	(jb)[0]._jb[R_SP + 4] = (long)(stk)
-#define	SET_STACK_SJB(sjb, stk)	(sjb)[0]._sjb[R_SP + 4] = (long)(stk)
-#define	SET_STACK_UC(ucp, stk)	(ucp)->uc_mcontext.mc_regs[R_SP] = (unsigned long)(stk)
-#define	FP_SAVE_UC(ucp)
-#define	FP_RESTORE_UC(ucp)
-#define SET_RETURN_ADDR_JB(jb, ra) do {			\
-	(jb)[0]._jb[2] = (long)(ra);			\
-	(jb)[0]._jb[R_RA + 4] = (long)(ra);		\
-	(jb)[0]._jb[R_T12 + 4] = (long)(ra);		\
-} while (0)
 #else
 #error "Don't recognize this architecture!"
 #endif

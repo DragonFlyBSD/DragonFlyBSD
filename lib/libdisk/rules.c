@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/rules.c,v 1.16.2.4 2001/05/13 20:16:32 jkh Exp $
- * $DragonFly: src/lib/libdisk/Attic/rules.c,v 1.3 2003/11/10 06:14:40 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/rules.c,v 1.4 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -81,32 +81,24 @@ Next_Cyl_Aligned(struct disk *d, u_long offset)
 void
 Rule_000(struct disk *d, struct chunk *c, char *msg)
 {
-#ifdef PC98
-	int i=0;
-#else
 	int i=0,j=0;
-#endif
 	struct chunk *c1;
 
 	if (c->type != whole)
 		return;
 	for (c1 = c->part; c1; c1 = c1->next) {
 		if (c1->type != unused) continue;
-#ifndef PC98
 		if (c1->flags & CHUNK_ACTIVE)
 			j++;
-#endif
 		i++;
 	}
 	if (i > NDOSPART)
 		sprintf(msg + strlen(msg),
 	"%d is too many children of the 'whole' chunk.  Max is %d\n",
 			i, NDOSPART);
-#ifndef PC98
 	if (j > 1)
 		sprintf(msg + strlen(msg),
 	"Too many active children of 'whole'");
-#endif
 }
 
 /*
@@ -125,17 +117,9 @@ Rule_001(struct disk *d, struct chunk *c, char *msg)
 	for (i = 0, c1 = c->part; c1; c1 = c1->next) {
 		if (c1->type == unused) continue;
 		c1->flags |= CHUNK_ALIGN;
-#ifdef PC98
-		if (!Cyl_Aligned(d, c1->offset))
-#else
 		if (!Track_Aligned(d, c1->offset))
-#endif
 			sprintf(msg + strlen(msg),
-#ifdef PC98
-		    "chunk '%s' [%ld..%ld] does not start on a cylinder boundary\n",
-#else
 		    "chunk '%s' [%ld..%ld] does not start on a track boundary\n",
-#endif
 				c1->name, c1->offset, c1->end);
 		if ((c->type == whole || c->end == c1->end)
 		    || Cyl_Aligned(d, c1->end + 1))
@@ -154,7 +138,6 @@ Rule_001(struct disk *d, struct chunk *c, char *msg)
 void
 Rule_002(struct disk *d, struct chunk *c, char *msg)
 {
-#ifndef PC98
 	int i;
 	struct chunk *c1;
 
@@ -169,7 +152,6 @@ Rule_002(struct disk *d, struct chunk *c, char *msg)
 		sprintf(msg + strlen(msg),
 		    "Max one 'fat' allowed as child of 'whole'\n");
 	}
-#endif
 }
 
 /*
@@ -179,7 +161,6 @@ Rule_002(struct disk *d, struct chunk *c, char *msg)
 void
 Rule_003(struct disk *d, struct chunk *c, char *msg)
 {
-#ifndef PC98
 	int i;
 	struct chunk *c1;
 
@@ -194,7 +175,6 @@ Rule_003(struct disk *d, struct chunk *c, char *msg)
 		sprintf(msg + strlen(msg),
 		    "Max one 'extended' allowed as child of 'whole'\n");
 	}
-#endif
 }
 
 /*
@@ -276,7 +256,6 @@ ChunkCanBeRoot(struct chunk *c)
 		c1 = c1->part;
 	}
 
-#ifndef PC98
 	if (c1->type != freebsd) {
 		strcat(msg,
 "The root partition must be in a FreeBSD slice, otherwise\n");
@@ -284,7 +263,6 @@ ChunkCanBeRoot(struct chunk *c)
 "the kernel cannot be booted from it\n");
 		return strdup(msg);
 	}
-#endif
 
 	return NULL;
 }

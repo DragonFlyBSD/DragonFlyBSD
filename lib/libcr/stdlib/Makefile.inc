@@ -1,6 +1,6 @@
 #	from @(#)Makefile.inc	8.3 (Berkeley) 2/4/95
 # $FreeBSD: src/lib/libc/stdlib/Makefile.inc,v 1.19.2.4 2001/10/02 11:15:38 ru Exp $
-# $DragonFly: src/lib/libcr/stdlib/Attic/Makefile.inc,v 1.6 2004/03/13 19:46:56 eirikn Exp $
+# $DragonFly: src/lib/libcr/stdlib/Attic/Makefile.inc,v 1.7 2005/03/13 15:10:03 swildner Exp $
 
 # machine-independent stdlib sources
 .PATH: ${.CURDIR}/../libcr/${MACHINE_ARCH}/stdlib ${.CURDIR}/../libcr/stdlib
@@ -8,18 +8,9 @@
 MISRCS+=abort.c abs.c atexit.c atof.c atoi.c atol.c bsearch.c calloc.c div.c \
 	exit.c getenv.c getopt.c getopt_long.c getsubopt.c hcreate.c heapsort.c \
 	labs.c ldiv.c malloc.c merge.c putenv.c qsort.c radixsort.c rand.c \
-	random.c reallocf.c realpath.c setenv.c strtol.c strtoll.c \
+	random.c reallocf.c realpath.c setenv.c strtod.c strtol.c strtoll.c \
 	strtoq.c strtoul.c strtoull.c strtouq.c system.c tdelete.c tfind.c \
 	tsearch.c twalk.c
-
-.if ${MACHINE_ARCH} == "alpha"
-#  XXX Temporary until the assumption that a long is 32-bits is resolved
-#  XXX FreeBSD's code. NetBSD kludged this with Long = int32_t and
-#  XXX ULong = u_int32_t
-SRCS+=	netbsd_strtod.c
-.else
-SRCS+=	strtod.c
-.endif
 
 # machine-dependent stdlib sources
 .if exists(${.CURDIR}/../libcr/${MACHINE_ARCH}/stdlib/Makefile.inc)

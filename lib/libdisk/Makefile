@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libdisk/Makefile,v 1.27.2.7 2002/07/19 18:46:26 ru Exp $
-# $DragonFly: src/lib/libdisk/Attic/Makefile,v 1.2 2003/06/17 04:26:49 dillon Exp $
+# $DragonFly: src/lib/libdisk/Attic/Makefile,v 1.3 2005/03/13 15:10:03 swildner Exp $
 
 LIB=	disk
 SRCS=	blocks.c disklabel.c chunk.c disk.c change.c \
@@ -8,9 +8,6 @@ INCS=	libdisk.h
 
 # Remove KERN_DISKS_BROKEN when kern.disks sysctl returns disks in sorted order
 CFLAGS+= 	-Wall
-.if ${MACHINE} == "pc98"
-CFLAGS+=	-DPC98
-.endif
 CLEANFILES+=	tmp.c tst01 tst01.o
 NOPROFILE=	yes
 NOPIC=		yes

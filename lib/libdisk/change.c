@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/lib/libdisk/change.c,v 1.14.2.5 2002/10/24 13:03:44 nyan Exp $
- * $DragonFly: src/lib/libdisk/Attic/change.c,v 1.2 2003/06/17 04:26:49 dillon Exp $
+ * $DragonFly: src/lib/libdisk/Attic/change.c,v 1.3 2005/03/13 15:10:03 swildner Exp $
  *
  */
 
@@ -34,19 +34,11 @@ Sanitize_Bios_Geom(struct disk *disk)
 
 	sane = 1;
 
-#ifdef PC98
-	if (disk->bios_cyl >= 65536)
-#else
 	if (disk->bios_cyl > 1024)
-#endif
 		sane = 0;
 	if (disk->bios_hd > 16)
 		sane = 0;
-#ifdef PC98
-	if (disk->bios_sect >= 256)
-#else
 	if (disk->bios_sect > 63)
-#endif
 		sane = 0;
 	if (disk->bios_cyl*disk->bios_hd*disk->bios_sect != disk->chunks->size)
 		sane = 0;
@@ -58,21 +50,11 @@ Sanitize_Bios_Geom(struct disk *disk)
 	disk->bios_hd = 16;
 	disk->bios_cyl = disk->chunks->size / (disk->bios_sect*disk->bios_hd);
 
-#ifdef PC98
-	if (disk->bios_cyl < 65536)
-#else
 	if (disk->bios_cyl < 1024)
-#endif
 		return;
 
 	/* Hmm, try harder... */
-#ifdef PC98
-	/* Assume standard SCSI parameter */
-	disk->bios_sect = 128;
-	disk->bios_hd = 8;
-#else
 	disk->bios_hd = 255;
-#endif
 	disk->bios_cyl = disk->chunks->size / (disk->bios_sect*disk->bios_hd);
 
 	return;
@@ -92,19 +74,9 @@ All_FreeBSD(struct disk *d, int force_all)
 	c = d->chunks;
 	if (force_all) {
 		Sanitize_Bios_Geom(d);
-#ifdef PC98
-		Create_Chunk(d, c->offset, c->size, freebsd, 0x494,
-		    CHUNK_FORCE_ALL, "FreeBSD");
-#else
 		Create_Chunk(d, c->offset, c->size, freebsd, 0xa5,
 		    CHUNK_FORCE_ALL);
-#endif
 	} else {
-#ifdef PC98
-		Create_Chunk(d, c->offset, c->size, freebsd, 0x494, 0,
-		    "FreeBSD");
-#else
 		Create_Chunk(d, c->offset, c->size, freebsd, 0xa5, 0);
-#endif
 	}
 }
