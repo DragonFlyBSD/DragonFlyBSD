@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
-# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.4 2003/12/18 19:27:05 drhodus Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.5 2003/12/18 19:46:09 drhodus Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -452,11 +452,11 @@
             ..
             uk_UA.KOI8-U
             ..
-            zh_CN.eucCN
-            ..
             zh_CN.GB18030
             ..
             zh_CN.GBK
+            ..
+            zh_CN.eucCN
             ..
             zh_TW.Big5
             ..
