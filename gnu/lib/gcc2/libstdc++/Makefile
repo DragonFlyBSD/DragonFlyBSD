@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/lib/libstdc++/Makefile,v 1.24.2.1 2001/11/21 18:55:27 obrien Exp $
-# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.3 2004/04/04 21:31:14 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc2/libstdc++/Attic/Makefile,v 1.4 2004/04/05 18:02:51 joerg Exp $
 
 SRCDIR=	${.CURDIR}/../../../../contrib/libstdc++
 
@@ -71,10 +71,11 @@ SRCS+=	cleanup.c filedoalloc.c fileops.c floatconv.c genops.c iofclose.c \
 	peekc.c strops.c
 
 INCSGROUPS=	INCS STDINCS
-INCS=	${HDRS:S;^;${SRCDIR}/;} ${IHDRS:S;^;${SRCDIR}/../libio/;}
+INCS=	_G_config.h ${HDRS:S;^;${SRCDIR}/;} ${IHDRS:S;^;${SRCDIR}/../libio/;} \
+	${STLHDRS:S;^;${SRCDIR}/stl/;}
 INCSDIR=${INCLUDEDIR}/c++/2.95
 
-STDINCS=	${STLHDRS:S;^;${SRCDIR}/stl/;}
+STDINCS=	${STDHDRS:S;^;${SRCDIR}/std/;}
 STDINCSDIR=	${INCLUDEDIR}/c++/2.95/std
 
 CLEANFILES+=	dummy.h dummy.c dummy.C
