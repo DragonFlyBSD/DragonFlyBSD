@@ -2,7 +2,7 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.3 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.4 2003/12/12 16:03:48 eirikn Exp $
 #
 
 # PROVIDE: motd
@@ -43,9 +43,9 @@ motd_start()
 	case ${OSTYPE} in
 	DragonFly)
 		T=`mktemp -t motd`
-                uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T}
-                awk '{if (NR == 1) {if ($1 == "DragonFly") {next} else {print "\n"$0}} else {print}}' < /etc/motd >> ${T}
-                ;;
+		uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T}
+		awk '{if (NR == 1) {if ($1 == "DragonFly") {next} else {print "\n"$0}} else {print}}' < /etc/motd >> ${T}
+		;;
 	FreeBSD)
 		T=`mktemp -t motd`
 		uname -v | sed -e 's,^\([^#]*\) #\(.* [1-2][0-9][0-9][0-9]\).*/\([^\]*\) $,\1 (\3) #\2,' > ${T}
