@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.14 2004/07/27 14:06:14 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an.c,v 1.15 2004/09/14 21:29:25 joerg Exp $
  *
  * $FreeBSD: src/sys/dev/an/if_an.c,v 1.2.2.13 2003/02/11 03:32:48 ambrisko Exp $
  */
@@ -675,6 +675,7 @@ an_attach(sc, unit, flags)
 	struct ifnet		*ifp = &sc->arpcom.ac_if;
 	int			error;
 
+	callout_init(&sc->an_stat_timer);
 	sc->an_gone = 0;
 	sc->an_associated = 0;
 	sc->an_monitor = 0;
@@ -799,7 +800,6 @@ an_attach(sc, unit, flags)
 	 * Call MI attach routine.
 	 */
 	ether_ifattach(ifp, sc->an_caps.an_oemaddr);
-	callout_handle_init(&sc->an_stat_ch);
 
 	return(0);
 }
@@ -1132,7 +1132,7 @@ an_stats_update(xsc)
 
 	/* Don't do this while we're transmitting */
 	if (ifp->if_flags & IFF_OACTIVE) {
-		sc->an_stat_ch = timeout(an_stats_update, sc, hz);
+		callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
 		splx(s);
 		return;
 	}
@@ -1141,7 +1141,7 @@ an_stats_update(xsc)
 	sc->an_stats.an_type = AN_RID_32BITS_CUM;
 	an_read_record(sc, (struct an_ltv_gen *)&sc->an_stats.an_len);
 
-	sc->an_stat_ch = timeout(an_stats_update, sc, hz);
+	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
 	splx(s);
 
 	return;
@@ -2540,7 +2540,7 @@ an_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->an_stat_ch = timeout(an_stats_update, sc, hz);
+	callout_reset(&sc->an_stat_timer, hz, an_stats_update, sc);
 	splx(s);
 
 	return;
@@ -2747,7 +2747,7 @@ an_stop(sc)
 	for (i = 0; i < AN_TX_RING_CNT; i++)
 		an_cmd(sc, AN_CMD_DEALLOC_MEM, sc->an_rdata.an_tx_fids[i]);
 
-	untimeout(an_stats_update, sc, sc->an_stat_ch);
+	callout_stop(&sc->an_stat_timer);
 
 	ifp->if_flags &= ~(IFF_RUNNING|IFF_OACTIVE);
 

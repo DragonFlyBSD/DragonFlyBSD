@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_anreg.h,v 1.1.2.8 2003/02/11 03:32:48 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.3 2003/08/27 09:38:29 rob Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_anreg.h,v 1.4 2004/09/14 21:29:25 joerg Exp $
  */
 
 #define AN_TIMEOUT	65536
@@ -478,7 +478,7 @@ struct an_softc	{
 	int			an_have_rssimap;
 	struct an_ltv_rssi_map	an_rssimap;
 #endif
-	struct callout_handle	an_stat_ch;
+	struct callout		an_stat_timer;
 	device_t		an_dev;
 	struct ifmedia		an_ifmedia;
 	int		        an_monitor;
