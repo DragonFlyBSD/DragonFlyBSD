@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.179 2005/03/20 12:25:40 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.180 2005/03/23 05:02:37 okumoto Exp $
  */
 
 /*-
@@ -588,7 +588,7 @@ Var_Value(const char *name, GNode *ctxt, char **frp)
 		p = NULL;
 		*frp = NULL;
 	} else if (v->flags & VAR_FROM_ENV) {
-		p = Buf_Data(v->val);
+		p = estrdup(Buf_Data(v->val));
 		*frp = p;
 		VarDestroy(v, FALSE);
 	} else {
