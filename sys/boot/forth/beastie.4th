@@ -24,7 +24,7 @@
 \ SUCH DAMAGE.
 \
 \ $FreeBSD: src/sys/boot/forth/beastie.4th,v 1.7 2003/10/28 17:18:42 scottl Exp $
-\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.2 2003/11/10 15:35:34 drhodus Exp $
+\ $DragonFly: src/sys/boot/forth/beastie.4th,v 1.3 2004/01/05 16:34:52 asmodai Exp $
 
 marker task-beastie.4th
 
@@ -73,25 +73,25 @@ at-xy ."         `--{__________) [0m" 1+
 ;
 
 : boring-beastie ( x y -- )
-	2dup at-xy ."              ,        ," 1+
-	2dup at-xy ."             /(        )`" 1+
-	2dup at-xy ."             \ \___   / |" 1+
-	2dup at-xy ."             /- _  `-/  '" 1+
-	2dup at-xy ."            (/\/ \ \   /\" 1+
-	2dup at-xy ."            / /   | `    \" 1+
-	2dup at-xy ."            O O   ) /    |" 1+
-	2dup at-xy ."            `-^--'`<     '" 1+
-	2dup at-xy ."           (_.)  _  )   /" 1+
-	2dup at-xy ."            `.___/`    /" 1+
-	2dup at-xy ."              `-----' /" 1+
-	2dup at-xy ." <----.     __ / __   \" 1+
-	2dup at-xy ." <----|====O)))==) \) /====" 1+
-	2dup at-xy ." <----'    `--' `.__,' \" 1+
-	2dup at-xy ."              |        |" 1+
-	2dup at-xy ."               \       /       /\" 1+
-	2dup at-xy ."          ______( (_  / \______/" 1+
-	2dup at-xy ."        ,'  ,-----'   |" 1+
-	     at-xy ."        `--{__________)"
+	2dup at-xy ." " 1+
+	2dup at-xy ." " 1+
+	2dup at-xy ." ,--,           |           ,--," 1+
+	2dup at-xy ." |   `-,       ,^,       ,-'   |" 1+
+	2dup at-xy ."  `,    `-,   (/ \)   ,-`    ,-'" 1+
+	2dup at-xy ."    `-,    `-,/   \,-`    ,-`" 1+
+	2dup at-xy ."       `------(   )------'" 1+
+	2dup at-xy ."   ,----------(   )-----------," 1+
+	2dup at-xy ."  |        _,-(   )-,_        |" 1+
+	2dup at-xy ."   `-,__,-`   \   /   `-,__,-'" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               | |" 1+
+	2dup at-xy ."               `|'" 1+
+	2dup at-xy ." " 1+
+	     at-xy ."
 ;
 
 : print-beastie ( x y -- )
