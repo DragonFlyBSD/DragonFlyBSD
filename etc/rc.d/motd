@@ -2,7 +2,7 @@
 #
 # $NetBSD: motd,v 1.5 2000/09/19 13:04:38 lukem Exp $
 # $FreeBSD: src/etc/rc.d/motd,v 1.6 2003/06/30 22:06:26 mtm Exp $
-# $DragonFly: src/etc/rc.d/motd,v 1.8 2004/02/03 05:26:48 rob Exp $
+# $DragonFly: src/etc/rc.d/motd,v 1.9 2004/04/08 17:35:22 dillon Exp $
 #
 
 # PROVIDE: motd
@@ -40,7 +40,7 @@ motd_start()
                        rm -f $T2
                }
 	}
-	rm -f $T1
+	rm -f $T1 $T2
 }
 load_rc_config $name
 run_rc_command "$1"
