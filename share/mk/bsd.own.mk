@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.own.mk,v 1.27.2.4 2002/07/22 14:21:51 ru Exp $
-# $DragonFly: src/share/mk/bsd.own.mk,v 1.4 2004/01/23 10:59:53 joerg Exp $
+# $DragonFly: src/share/mk/bsd.own.mk,v 1.5 2004/01/26 15:24:38 joerg Exp $
 #
 # The include file <bsd.own.mk> set common variables for owner,
 # group, mode, and directories. Defaults are in brackets.
@@ -136,6 +136,8 @@ KMODGRP?=	${BINGRP}
 KMODMODE?=	${BINMODE}
 
 CCVER?=	gcc2
+.makeenv	CCVER
+
 .if ${OBJFORMAT} == aout
 LIBDIR?=	/usr/lib/aout
 .else
