@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.25 2004/04/23 06:23:45 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.26 2004/04/26 20:26:59 dillon Exp $
  */
 
 /*
@@ -773,7 +773,7 @@ vm_map_insert(vm_map_t map, int *countp,
 #endif
 
 	if (cow & (MAP_PREFAULT|MAP_PREFAULT_PARTIAL)) {
-		pmap_object_init_pt(map->pmap, start,
+		pmap_object_init_pt(map->pmap, start, prot,
 				    object, OFF_TO_IDX(offset), end - start,
 				    cow & MAP_PREFAULT_PARTIAL);
 	}
@@ -1610,6 +1610,7 @@ vm_map_madvise(vm_map_t map, vm_offset_t start, vm_offset_t end, int behav)
 				pmap_object_init_pt(
 				    map->pmap, 
 				    useStart,
+				    current->protection,
 				    current->object.vm_object,
 				    pindex, 
 				    (count << PAGE_SHIFT),
@@ -3473,7 +3474,7 @@ vm_uiomove(vm_map_t mapa, vm_object_t srcobject, off_t cp, int cnta,
 /*
  * Map the window directly, if it is already in memory
  */
-		pmap_object_init_pt(map->pmap, uaddr,
+		pmap_object_init_pt(map->pmap, uaddr, entry->protection,
 			srcobject, oindex, tcnt, 0);
 
 		map->timestamp++;

@@ -40,7 +40,7 @@
  *
  *	from:	@(#)pmap.c	7.7 (Berkeley)	5/12/91
  * $FreeBSD: src/sys/i386/i386/pmap.c,v 1.250.2.18 2002/03/06 22:48:53 silby Exp $
- * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.33 2004/04/01 17:58:00 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/pmap.c,v 1.34 2004/04/26 20:26:57 dillon Exp $
  */
 
 /*
@@ -2168,15 +2168,16 @@ pmap_kenter_temporary(vm_paddr_t pa, int i)
  * faults on process startup and immediately after an mmap.
  */
 void
-pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_object_t object,
-		    vm_pindex_t pindex, vm_size_t size, int limit)
+pmap_object_init_pt(pmap_t pmap, vm_offset_t addr, vm_prot_t prot,
+		    vm_object_t object, vm_pindex_t pindex, 
+		    vm_size_t size, int limit)
 {
 	vm_offset_t tmpidx;
 	int psize;
 	vm_page_t p, mpte;
 	int objpgs;
 
-	if (pmap == NULL || object == NULL)
+	if ((prot & VM_PROT_READ) == 0 || pmap == NULL || object == NULL)
 		return;
 
 	/*
