@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.6 2004/12/18 22:48:02 swildner Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.7 2005/02/15 20:23:24 cpressey Exp $
  */
 
 #include <sys/cdio.h>
@@ -97,6 +97,7 @@ struct cmdtab {
 { CMD_PLAY,	"play",		1, "[#block [len]]" },
 { CMD_PREVIOUS,	"previous",	2, "" },
 { CMD_QUIT,	"quit",		1, "" },
+{ CMD_QUIT,	"exit",		1, "" },
 { CMD_RESET,	"reset",	4, "" },
 { CMD_RESUME,	"resume",	1, "" },
 { CMD_SET,	"set",		2, "msf | lba" },
