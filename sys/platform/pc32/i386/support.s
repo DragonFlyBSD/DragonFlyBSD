@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/support.s,v 1.67.2.5 2001/08/15 01:23:50 peter Exp $
- * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.11 2004/04/29 17:24:58 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/support.s,v 1.12 2004/04/30 09:44:16 dillon Exp $
  */
 
 #include "use_npx.h"
@@ -174,7 +174,7 @@ ENTRY(copyout)
 	pushl	%esi
 	pushl	%edi
 	pushl	%ebx
-	pushl	$copyout_fault
+	pushl	$copyout_fault2
 	movl	$stack_onfault,PCB_ONFAULT(%eax)
 	movl	4+16(%esp),%esi
 	movl	8+16(%esp),%edi
@@ -194,7 +194,7 @@ ENTRY(copyout)
 	 */
 	movl	%edi,%eax
 	addl	%ebx,%eax
-	jc	copyout_fault
+	jc	copyout_fault1
 /*
  * XXX STOP USING VM_MAXUSER_ADDRESS.
  * It is an end address, not a max, so every time it is used correctly it
@@ -202,7 +202,7 @@ ENTRY(copyout)
  * by one error in several places.
  */
 	cmpl	$VM_MAXUSER_ADDRESS,%eax
-	ja	copyout_fault
+	ja	copyout_fault1
 
 #if defined(I386_CPU)
 
@@ -252,7 +252,7 @@ ENTRY(copyout)
 	popl	%edx
 
 	testl	%eax,%eax			/* if not ok, return EFAULT */
-	jnz	copyout_fault
+	jnz	copyout_fault1
 
 2:
 	addl	$4,%edx
@@ -282,7 +282,9 @@ done_copyout:
 	ret
 
 	ALIGN_TEXT
-copyout_fault:
+copyout_fault1:
+	addl	$4,%esp		/* skip pushed copyout_fault vector */
+copyout_fault2:
 	popl	%ebx
 	popl	%edi
 	popl	%esi
@@ -301,7 +303,7 @@ ENTRY(copyin)
 	movl	TD_PCB(%eax),%eax
 	pushl	%esi
 	pushl	%edi
-	pushl	$copyin_fault
+	pushl	$copyin_fault2
 	movl	$stack_onfault,PCB_ONFAULT(%eax)
 	movl	4+12(%esp),%esi			/* caddr_t from */
 	movl	8+12(%esp),%edi			/* caddr_t to */
@@ -312,9 +314,9 @@ ENTRY(copyin)
 	 */
 	movl	%esi,%edx
 	addl	%ecx,%edx
-	jc	copyin_fault
+	jc	copyin_fault1
 	cmpl	$VM_MAXUSER_ADDRESS,%edx
-	ja	copyin_fault
+	ja	copyin_fault1
 
 	/*
 	 * Call memcpy(destination:%edi, source:%esi, bytes:%ecx)
@@ -337,7 +339,9 @@ ENTRY(copyin)
 	 * return EFAULT
 	 */
 	ALIGN_TEXT
-copyin_fault:
+copyin_fault1:
+	addl	$4,%esp		/* skip pushed copyin_fault vector */
+copyin_fault2:
 	popl	%edi
 	popl	%esi
 	movl	PCPU(curthread),%edx
