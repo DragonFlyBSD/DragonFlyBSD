@@ -6,7 +6,7 @@
  * will become more like that of standard bsd code.
  * lr 970714
  *
- * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/local.h,v 1.3 2005/01/31 23:44:35 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/local.h,v 1.4 2005/02/27 10:57:24 swildner Exp $
  */
 
 /* build hex2hex /tmp/foo.x trix_boot.h trix_boot */
@@ -97,13 +97,6 @@
 #define CONFIG_YM3812
 #endif
 
-#ifdef PC98
-#include "use_nss.h"
-#if NNSS != 0
-#define CONFIG_NSS
-#endif
-#endif
-
 #define ALLOW_POLL
 
 /* #undef  CONFIG_PAS */
@@ -126,11 +119,7 @@
 
 #define CONFIG_MPU_EMU
 
-#ifdef PC98
-#define DSP_BUFFSIZE 61440
-#else
 #define DSP_BUFFSIZE 32768*2
-#endif
 /* #define SELECTED_SOUND_OPTIONS	0x0188090a */
 
 #ifndef TRIX_SB_BASE

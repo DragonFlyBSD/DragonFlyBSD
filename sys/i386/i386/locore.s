@@ -35,7 +35,7 @@
  *
  *	from: @(#)locore.s	7.3 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/locore.s,v 1.132.2.10 2003/02/03 20:54:49 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.9 2003/11/12 22:08:01 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/locore.s,v 1.10 2005/02/27 10:57:24 swildner Exp $
  *
  *		originally from: locore.s, by William F. Jolitz
  *
@@ -146,12 +146,6 @@ vm86pa:		.long	0			/* phys addr of vm86 region */
 bdb_exists:	.long	0
 #endif
 
-#ifdef PC98
-	.globl	pc98_system_parameter
-pc98_system_parameter:
-	.space	0x240
-#endif
-
 /**********************************************************************
  *
  * Some handy macros
@@ -209,15 +203,6 @@ pc98_system_parameter:
  */
 NON_GPROF_ENTRY(btext)
 
-#ifdef PC98
-	/* save SYSTEM PARAMETER for resume (NS/T or other) */
-	movl	$0xa1400,%esi
-	movl	$R(pc98_system_parameter),%edi
-	movl	$0x0240,%ecx
-	cld
-	rep
-	movsb
-#else	/* IBM-PC */
 #ifdef BDE_DEBUGGER
 #ifdef BIOS_STEALS_3K
 	cmpl	$0x0375c339,0x95504
@@ -230,7 +215,6 @@ NON_GPROF_ENTRY(btext)
 #endif
 /* Tell the bios to warmboot next time */
 	movw	$0x1234,0x472
-#endif	/* PC98 */
 
 /* Set up a real frame in case the double return in newboot is executed. */
 	pushl	%ebp
@@ -275,33 +259,6 @@ NON_GPROF_ENTRY(btext)
  * returns via the old frame.
  */
 	movl	$R(.tmpstk),%esp
-
-#ifdef PC98
-	/* pc98_machine_type & M_EPSON_PC98 */
-	testb	$0x02,R(_pc98_system_parameter)+220
-	jz	3f
-	/* epson_machine_id <= 0x0b */
-	cmpb	$0x0b,R(_pc98_system_parameter)+224
-	ja	3f
-
-	/* count up memory */
-	movl	$0x100000,%eax		/* next, talley remaining memory */
-	movl	$0xFFF-0x100,%ecx
-1:	movl	0(%eax),%ebx		/* save location to check */
-	movl	$0xa55a5aa5,0(%eax)	/* write test pattern */
-	cmpl	$0xa55a5aa5,0(%eax)	/* does not check yet for rollover */
-	jne	2f
-	movl	%ebx,0(%eax)		/* restore memory */
-	addl	$PAGE_SIZE,%eax
-	loop	1b
-2:	subl	$0x100000,%eax
-	shrl	$17,%eax
-	movb	%al,R(_pc98_system_parameter)+1
-3:
-
-	movw	R(_pc98_system_parameter+0x86),%ax
-	movw	%ax,R(cpu_id)
-#endif
 
 	call	identify_cpu
 

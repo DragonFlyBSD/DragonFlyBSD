@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.31 2005/02/15 16:47:41 joerg Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/mp_machdep.c,v 1.32 2005/02/27 10:57:24 swildner Exp $
  */
 
 #include "opt_cpu.h"
@@ -77,13 +77,8 @@
 #define WARMBOOT_OFF		(KERNBASE + 0x0467)
 #define WARMBOOT_SEG		(KERNBASE + 0x0469)
 
-#ifdef PC98
-#define BIOS_BASE		(0xe8000)
-#define BIOS_SIZE		(0x18000)
-#else
 #define BIOS_BASE		(0xf0000)
 #define BIOS_SIZE		(0x10000)
-#endif
 #define BIOS_COUNT		(BIOS_SIZE/4)
 
 #define CMOS_REG		(0x70)
@@ -176,7 +171,7 @@ typedef struct BASETABLE_ENTRY {
  * it NORMALLY will never be needed and thus the primitive method for enabling.
  *
  */
-#if defined(CHECK_POINTS) && !defined(PC98)
+#if defined(CHECK_POINTS)
 #define CHECK_READ(A)	 (outb(CMOS_REG, (A)), inb(CMOS_DATA))
 #define CHECK_WRITE(A,D) (outb(CMOS_REG, (A)), outb(CMOS_DATA, (D)))
 
@@ -1983,10 +1978,8 @@ start_all_aps(u_int boot_addr)
 
 	/* save the current value of the warm-start vector */
 	mpbioswarmvec = *((u_long *) WARMBOOT_OFF);
-#ifndef PC98
 	outb(CMOS_REG, BIOS_RESET);
 	mpbiosreason = inb(CMOS_DATA);
-#endif
 
 	/* set up temporary P==V mapping for AP boot */
 	/* XXX this is a hack, we should boot the AP on its own stack/PTD */
@@ -2043,10 +2036,8 @@ start_all_aps(u_int boot_addr)
 		/* setup a vector to our boot code */
 		*((volatile u_short *) WARMBOOT_OFF) = WARMBOOT_TARGET;
 		*((volatile u_short *) WARMBOOT_SEG) = (boot_addr >> 4);
-#ifndef PC98
 		outb(CMOS_REG, BIOS_RESET);
 		outb(CMOS_DATA, BIOS_WARM);	/* 'warm-start' */
-#endif
 
 		/*
 		 * Setup the AP boot stack
@@ -2090,10 +2081,8 @@ start_all_aps(u_int boot_addr)
 
 	/* restore the warmstart vector */
 	*(u_long *) WARMBOOT_OFF = mpbioswarmvec;
-#ifndef PC98
 	outb(CMOS_REG, BIOS_RESET);
 	outb(CMOS_DATA, mpbiosreason);
-#endif
 
 	/*
 	 * NOTE!  The idlestack for the BSP was setup by locore.  Finish

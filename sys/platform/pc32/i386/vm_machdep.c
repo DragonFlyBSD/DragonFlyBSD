@@ -39,14 +39,11 @@
  *	from: @(#)vm_machdep.c	7.3 (Berkeley) 5/13/91
  *	Utah $Hdr: vm_machdep.c 1.16.1.1 89/06/23$
  * $FreeBSD: src/sys/i386/i386/vm_machdep.c,v 1.132.2.9 2003/01/25 19:02:23 dillon Exp $
- * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.33 2005/02/21 21:40:53 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/vm_machdep.c,v 1.34 2005/02/27 10:57:24 swildner Exp $
  */
 
 #include "use_npx.h"
 #include "use_isa.h"
-#ifdef PC98
-#include "opt_pc98.h"
-#endif
 #include "opt_reset.h"
 
 #include <sys/param.h>
@@ -84,11 +81,7 @@
 #include <sys/user.h>
 #include <sys/thread2.h>
 
-#ifdef PC98
-#include <pc98/pc98/pc98.h>
-#else
 #include <bus/isa/i386/isa.h>
-#endif
 
 static void	cpu_reset_real (void);
 #ifdef SMP
@@ -457,18 +450,6 @@ cpu_reset()
 static void
 cpu_reset_real()
 {
-
-#ifdef PC98
-	/*
-	 * Attempt to do a CPU reset via CPU reset port.
-	 */
-	cpu_disable_intr();
-	if ((inb(0x35) & 0xa0) != 0xa0) {
-		outb(0x37, 0x0f);		/* SHUT0 = 0. */
-		outb(0x37, 0x0b);		/* SHUT1 = 0. */
-	}
-	outb(0xf0, 0x00);		/* Reset. */
-#else
 	/*
 	 * Attempt to do a CPU reset via the keyboard controller,
 	 * do not turn of the GateA20, as any machine that fails
@@ -481,7 +462,6 @@ cpu_reset_real()
 	printf("Keyboard reset did not work, attempting CPU shutdown\n");
 	DELAY(1000000);	/* wait 1 sec for printf to complete */
 #endif
-#endif /* PC98 */
 	/* force a shutdown by unmapping entire address space ! */
 	bzero((caddr_t) PTD, PAGE_SIZE);
 

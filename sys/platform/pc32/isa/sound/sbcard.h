@@ -2,7 +2,7 @@
  * file: sbcard.h
  *
  * $FreeBSD: src/sys/i386/isa/sound/sbcard.h,v 1.4 1999/12/27 04:37:19 tanimura Exp $
- * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/sbcard.h,v 1.2 2003/06/17 04:28:38 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/sound/Attic/sbcard.h,v 1.3 2005/02/27 10:57:24 swildner Exp $
  *
  */
 
@@ -11,20 +11,6 @@ extern int sbc_major, sbc_minor ;
  * sound blaster registers
  */
 
-#ifdef PC98
-#define DSP_RESET      (sbc_base + 0x600)
-#define DSP_READ       (sbc_base + 0xA00)
-#define DSP_WRITE      (sbc_base + 0xC00)
-#define DSP_COMMAND    (sbc_base + 0xC00)
-#define DSP_STATUS     (sbc_base + 0xC00)
-#define DSP_DATA_AVAIL (sbc_base + 0xE00)
-#define DSP_DATA_AVL16 (sbc_base + 0xF00)
-#define MIXER_ADDR     (sbc_base + 0x400)
-#define MIXER_DATA     (sbc_base + 0x500)
-#define OPL3_LEFT      (sbc_base + 0x000)
-#define OPL3_RIGHT     (sbc_base + 0x200)
-#define OPL3_BOTH      (sbc_base + 0x800)
-#else
 #define DSP_RESET	(sbc_base + 0x6)
 #define DSP_READ	(sbc_base + 0xA)
 #define DSP_WRITE	(sbc_base + 0xC)
@@ -37,7 +23,6 @@ extern int sbc_major, sbc_minor ;
 #define OPL3_LEFT	(sbc_base + 0x0)
 #define OPL3_RIGHT	(sbc_base + 0x2)
 #define OPL3_BOTH	(sbc_base + 0x8)
-#endif
 
 /*
  * DSP Commands. There are many, and in many cases they are used explicitly

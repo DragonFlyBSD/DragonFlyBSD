@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/nexus.c,v 1.26.2.10 2003/02/22 13:16:45 imp Exp $
- * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.11 2004/10/14 03:05:52 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/nexus.c,v 1.12 2005/02/27 10:57:24 swildner Exp $
  */
 
 /*
@@ -65,11 +65,7 @@
 #endif
 
 #include <bus/isa/isavar.h>
-#ifdef PC98
-#include <pc98/pc98/pc98.h>
-#else
 #include <bus/isa/i386/isa.h>
-#endif
 #include <i386/isa/intr_machdep.h>
 
 static MALLOC_DEFINE(M_NEXUSDEV, "nexusdev", "Nexus device");
@@ -192,17 +188,10 @@ nexus_probe(device_t dev)
 		panic("nexus_probe irq_rman");
 #else
 	irq_rman.rm_end = 15;
-#ifdef PC98
-	if (rman_init(&irq_rman)
-	    || rman_manage_region(&irq_rman,
-				  irq_rman.rm_start, irq_rman.rm_end))
-		panic("nexus_probe irq_rman");
-#else
 	if (rman_init(&irq_rman)
 	    || rman_manage_region(&irq_rman, irq_rman.rm_start, 1)
 	    || rman_manage_region(&irq_rman, 3, irq_rman.rm_end))
 		panic("nexus_probe irq_rman");
-#endif /* PC98 */
 #endif
 
 	/*
@@ -211,11 +200,7 @@ nexus_probe(device_t dev)
 	 * multiple bridges.  (eg: laptops with docking stations)
 	 */
 	drq_rman.rm_start = 0;
-#ifdef PC98
-	drq_rman.rm_end = 3;
-#else
 	drq_rman.rm_end = 7;
-#endif
 	drq_rman.rm_type = RMAN_ARRAY;
 	drq_rman.rm_descr = "DMA request lines";
 	/* XXX drq 0 not available on some machines */
@@ -435,28 +420,11 @@ nexus_alloc_resource(device_t bus, device_t child, int type, int *rid,
 		rman_set_bustag(rv, I386_BUS_SPACE_MEM);
 	} else if (type == SYS_RES_IOPORT) {
 		rman_set_bustag(rv, I386_BUS_SPACE_IO);
-#ifndef PC98
 		rman_set_bushandle(rv, rv->r_start);
-#endif
 	}
-
-#ifdef PC98
-	if ((type == SYS_RES_MEMORY || type == SYS_RES_IOPORT) &&
-	    i386_bus_space_handle_alloc(rv->r_bustag, rv->r_start, count,
-					&rv->r_bushandle) != 0) {
-		rman_release_resource(rv);
-		return 0;
-	}
-#endif
 
 	if (needactivate) {
 		if (bus_activate_resource(child, type, *rid, rv)) {
-#ifdef PC98
-			if (type == SYS_RES_MEMORY || type == SYS_RES_IOPORT) {
-				i386_bus_space_handle_free(rv->r_bustag,
-				  rv->r_bushandle, rv->r_bushandle->bsh_sz);
-			}
-#endif
 			rman_release_resource(rv);
 			return 0;
 		}
@@ -492,13 +460,8 @@ nexus_activate_resource(device_t bus, device_t child, int type, int rid,
 			vaddr = (caddr_t) pmap_mapdev(paddr-poffs, psize+poffs) + poffs;
 		}
 		rman_set_virtual(r, vaddr);
-#ifdef PC98
-		/* PC-98: the type of bus_space_handle_t is the structure. */
-		r->r_bushandle->bsh_base = (bus_addr_t) vaddr;
-#else
 		/* IBM-PC: the type of bus_space_handle_t is u_int */
 		rman_set_bushandle(r, (bus_space_handle_t) vaddr);
-#endif
 	}
 	return (rman_activate_resource(r));
 }
@@ -530,12 +493,6 @@ nexus_release_resource(device_t bus, device_t child, int type, int rid,
 		if (error)
 			return error;
 	}
-#ifdef PC98
-	if (type == SYS_RES_MEMORY || type == SYS_RES_IOPORT) {
-		i386_bus_space_handle_free(r->r_bustag, r->r_bushandle,
-					   r->r_bushandle->bsh_sz);
-	}
-#endif
 	return (rman_release_resource(r));
 }
 

@@ -32,7 +32,7 @@
  *		multiprocessor systems.
  *
  * $FreeBSD: src/sys/i386/i386/mpboot.s,v 1.13.2.3 2000/09/07 01:18:26 tegge Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.7 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mpboot.s,v 1.8 2005/02/27 10:57:24 swildner Exp $
  */
 
 #include <machine/asmacros.h>		/* miscellaneous asm macros */
@@ -52,7 +52,7 @@
 #define CHECK_POINTS
  */
 
-#if defined(CHECK_POINTS) && !defined(PC98)
+#if defined(CHECK_POINTS)
 
 #define CMOS_REG	(0x70)
 #define CMOS_DATA	(0x71)
