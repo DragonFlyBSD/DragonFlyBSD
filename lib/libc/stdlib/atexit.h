@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)atexit.h	8.2 (Berkeley) 7/3/94
- * $DragonFly: src/lib/libc/stdlib/atexit.h,v 1.2 2004/01/22 21:36:10 joerg Exp $
+ * $DragonFly: src/lib/libc/stdlib/atexit.h,v 1.3 2004/01/24 22:18:12 joerg Exp $
  */
 
 /* must be at least 32 to guarantee ANSI conformance */
