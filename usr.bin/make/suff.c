@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.34 2005/02/18 01:23:22 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.35 2005/02/28 12:00:10 okumoto Exp $
  */
 
 /*-
@@ -1296,6 +1296,7 @@ SuffExpandChildren(void *cgnp, void *pgnp)
     LstNode   	*prevLN;    /* Node after which new source should be put */
     LstNode	*ln; 	    /* List element for old source */
     char	*cp;	    /* Expanded value */
+    Buffer	*buf;
 
     /*
      * New nodes effectively take the place of the child, so place them
@@ -1311,12 +1312,9 @@ SuffExpandChildren(void *cgnp, void *pgnp)
      */
     if (strchr(cgn->name, '$') != NULL) {
 	DEBUGF(SUFF, ("Expanding \"%s\"...", cgn->name));
-	{
-	    Buffer	*buf;
-	    buf = Var_Subst(NULL, cgn->name, pgn, TRUE);
-	    cp = Buf_GetAll(buf, NULL);
-	    Buf_Destroy(buf, FALSE);
-	}
+	buf = Var_Subst(NULL, cgn->name, pgn, TRUE);
+	cp = Buf_GetAll(buf, NULL);
+	Buf_Destroy(buf, FALSE);
 
 	if (cp != NULL) {
 	    Lst members = Lst_Initializer(members);

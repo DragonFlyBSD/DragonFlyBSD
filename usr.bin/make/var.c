@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.108 2005/02/26 01:52:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.109 2005/02/28 12:00:10 okumoto Exp $
  */
 
 /*-
@@ -1853,6 +1853,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
     /*
      * Set TRUE if an error has already been reported to prevent a
      * plethora of messages when recursing.
+     * XXXHB this comment sounds wrong.
      */
     errorReported = FALSE;
 
@@ -1871,6 +1872,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 	    char	*val;	/* Value to substitute for a variable */
 	    size_t	length;	/* Length of the variable invocation */
 	    Boolean	doFree;	/* Set true if val should be freed */
+
 	    /*
 	     * Variable invocation.
 	     */

@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.75 2005/02/10 14:32:14 harti Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.43 2005/02/15 01:01:18 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.44 2005/02/28 12:00:10 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -485,6 +485,7 @@ JobPrintCommand(void *cmdp, void *jobp)
     LstNode	*cmdNode;	/* Node for replacing the command */
     char	*cmd = cmdp;
     Job		*job = jobp;
+    Buffer	*buf;
 
     noSpecials = (noExecute && !(job->node->type & OP_MAKE));
 
@@ -509,13 +510,12 @@ JobPrintCommand(void *cmdp, void *jobp)
      * the variables in the command.
      */
     cmdNode = Lst_Member(&job->node->commands, cmd);
-    {
-	Buffer *buf;
-	buf = Var_Subst(NULL, cmd, job->node, FALSE);
-	cmd = Buf_GetAll(buf, NULL);
-	Buf_Destroy(buf, FALSE);
-	cmdStart = cmd;
-    }
+
+    buf = Var_Subst(NULL, cmd, job->node, FALSE);
+    cmd = Buf_GetAll(buf, NULL);
+    Buf_Destroy(buf, FALSE);
+    cmdStart = cmd;
+
     Lst_Replace(cmdNode, cmdStart);
 
     cmdTemplate = "%s\n";

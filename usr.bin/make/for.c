@@ -31,7 +31,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.35 2005/02/10 14:39:05 harti Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.33 2005/02/26 01:52:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.34 2005/02/28 12:00:10 okumoto Exp $
  */
 
 /*-
@@ -120,6 +120,7 @@ For_Eval(char *line)
 		 * maybe start of a for loop
 		 */
 		Buffer	*buf;
+		Buffer	*buf1;
 		size_t	varlen;
 
 		for (ptr++; *ptr && isspace((unsigned char)*ptr); ptr++)
@@ -178,13 +179,10 @@ For_Eval(char *line)
 		 */
 		Lst_Init(&forLst);
 		buf = Buf_Init(0);
-		{
-			Buffer *buf1;
 
-			buf1 = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
-			sub = Buf_GetAll(buf1, NULL);
-			Buf_Destroy(buf1, FALSE);
-		}
+		buf1 = Var_Subst(NULL, ptr, VAR_CMD, FALSE);
+		sub = Buf_GetAll(buf1, NULL);
+		Buf_Destroy(buf1, FALSE);
 
 		for (ptr = sub; *ptr && isspace((unsigned char)*ptr); ptr++)
 			;
@@ -273,7 +271,7 @@ For_Run(int lineno)
 	Buffer		*buf;	/* the contents of the for loop */
 	const char	*val;	/* current value of loop variable */
 	LstNode		*ln;
-	Buffer		*buf2;
+	Buffer		*buf1;
 	char		*str;
 
 	if (forVar == NULL || forBuf == NULL)
@@ -294,11 +292,10 @@ For_Run(int lineno)
 
 		DEBUGF(FOR, ("--- %s = %s\n", var, val));
 
-		buf2 = Var_Subst(var,
-		    (char *)Buf_GetAll(buf, NULL),
+		buf1 = Var_Subst(var, (char *)Buf_GetAll(buf, NULL),
 		    VAR_GLOBAL, FALSE);
-		str = Buf_GetAll(buf2, NULL);
-		Buf_Destroy(buf2, FALSE);
+		str = Buf_GetAll(buf1, NULL);
+		Buf_Destroy(buf1, FALSE);
 
 		Parse_FromString(str, lineno);
 		Var_Delete(var, VAR_GLOBAL);
