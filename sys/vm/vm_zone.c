@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.15 2004/05/11 18:05:08 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.16 2004/09/18 22:00:37 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -269,7 +269,7 @@ zbootinit(vm_zone_t z, char *name, int size, void *item, int nitems)
 		((void **) item)[1] = (void *) ZENTRY_FREE;
 #endif
 		z->zitems = item;
-		(char *) item += z->zsize;
+		item = (uint8_t *)item + z->zsize;
 	}
 	z->zfreecnt = nitems;
 	z->zmax = nitems;
@@ -358,7 +358,7 @@ zget(vm_zone_t z)
 			((void **) item)[1] = (void *) ZENTRY_FREE;
 #endif
 			z->zitems = item;
-			(char *) item += z->zsize;
+			item = (uint8_t *)item + z->zsize;
 		}
 		z->zfreecnt += nitems;
 		z->znalloc++;
