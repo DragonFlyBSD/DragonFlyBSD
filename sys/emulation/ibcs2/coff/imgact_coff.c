@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/imgact_coff.c,v 1.40 1999/12/15 23:01:47 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.10 2004/03/01 06:33:15 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/coff/Attic/imgact_coff.c,v 1.11 2004/06/21 05:58:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -281,7 +281,7 @@ coff_load_file(struct thread *td, char *name)
 	if (vm_map_remove(kernel_map,
 			  (vm_offset_t) ptr,
 			  (vm_offset_t) ptr + PAGE_SIZE))
-    		panic(__FUNCTION__ " vm_map_remove failed");
+    		panic("%s: vm_map_remove failed", __FUNCTION__);
 
  fail:
 	VOP_UNLOCK(vp, NULL, 0, td);

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_ioctl.c,v 1.55.2.11 2003/05/01 20:16:09 anholt Exp $
- * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.12 2004/01/06 03:17:24 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_ioctl.c,v 1.13 2004/06/21 05:58:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1612,8 +1612,7 @@ linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
 	case LINUX_SIOCSPGRP:
 		/* these ioctls don't take an interface name */
 #ifdef DEBUG
-		printf(__FUNCTION__ "(): ioctl %d\n",
-		    args->cmd & 0xffff);
+		printf("%s(): ioctl %d\n", __FUNCTION__, args->cmd & 0xffff);
 #endif
 		break;
 		
@@ -1636,8 +1635,8 @@ linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
 		if (error != 0)
 			return (error);
 #ifdef DEBUG
-		printf(__FUNCTION__ "(): ioctl %d on %.*s\n",
-		    args->cmd & 0xffff, LINUX_IFNAMSIZ, lifname);
+		printf("%s(): ioctl %d on %.*s\n", __FUNCTION__,
+			args->cmd & 0xffff, LINUX_IFNAMSIZ, lifname);
 #endif
 		ifp = ifname_linux_to_bsd(lifname, ifname);
 		if (ifp == NULL)
@@ -1652,8 +1651,8 @@ linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
 		if (error != 0)
 			return (error);
 #ifdef DEBUG
-		printf(__FUNCTION__ "(): %s translated to %s\n",
-		    lifname, ifname);
+		printf("%s(): %s translated to %s\n", __FUNCTION__,
+			lifname, ifname);
 #endif
 		break;
 		
@@ -1781,7 +1780,7 @@ linux_ioctl_socket(struct thread *td, struct linux_ioctl_args *args)
 		copyout(lifname, (char *)args->arg, LINUX_IFNAMSIZ);
 
 #ifdef DEBUG
-	printf(__FUNCTION__ "(): returning %d\n", error);
+	printf("%s(): returning %d\n", __FUNCTION__, error);
 #endif
 	return (error);
 }

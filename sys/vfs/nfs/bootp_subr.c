@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/nfs/bootp_subr.c,v 1.20.2.9 2003/04/24 16:51:08 ambrisko Exp $	*/
-/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.9 2004/06/02 14:43:04 eirikn Exp $	*/
+/* $DragonFly: src/sys/vfs/nfs/bootp_subr.c,v 1.10 2004/06/21 05:58:01 dillon Exp $	*/
 
 /*
  * Copyright (c) 1995 Gordon Ross, Adam Glass
@@ -521,7 +521,9 @@ bootpc_received(struct bootpc_globalcontext *gctx,
 	case DHCP_REQUEST:
 		if (dhcpreplytype != DHCP_ACK)
 			return 0;
+		/* fall through */
 	case DHCP_NOMSG:
+		break;
 	}
 		
 	

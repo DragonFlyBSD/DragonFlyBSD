@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.6 2004/03/15 01:10:44 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.7 2004/06/21 05:58:01 dillon Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -6510,6 +6510,7 @@ out_clrack:
 	OUTL_DSP (SCRIPTA_BA (np, clrack));
 	return;
 out_stuck:
+	;
 }
 
 /*
@@ -6971,9 +6972,8 @@ static void sym_alloc_lcb_tags (hcb_p np, u_char tn, u_char ln)
 	 *  And accept tagged commands now.
 	 */
 	lp->head.itlq_tbl_sa = cpu_to_scr(vtobus(lp->itlq_tbl));
-
-	return;
 fail:
+	;
 }
 
 /*

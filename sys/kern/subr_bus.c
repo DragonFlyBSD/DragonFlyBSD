@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/subr_bus.c,v 1.54.2.9 2002/10/10 15:13:32 jhb Exp $
- * $DragonFly: src/sys/kern/subr_bus.c,v 1.19 2004/06/02 15:25:01 hmp Exp $
+ * $DragonFly: src/sys/kern/subr_bus.c,v 1.20 2004/06/21 05:57:57 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -47,7 +47,7 @@
 MALLOC_DEFINE(M_BUS, "bus", "Bus data structures");
 
 #ifdef BUS_DEBUG
-#define PDEBUG(a)	(printf(__FUNCTION__ ":%d: ", __LINE__), printf a, printf("\n"))
+#define PDEBUG(a)	(printf("%s:%d: ", __FUNCTION__, __LINE__), printf a, printf("\n"))
 #define DEVICENAME(d)	((d)? device_get_name(d): "no device")
 #define DRIVERNAME(d)	((d)? d->name : "no driver")
 #define DEVCLANAME(d)	((d)? d->name : "no devclass")

@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.6 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.7 2004/06/21 05:57:58 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -115,7 +115,7 @@ typedef struct ngt_sc *sc_p;
 	k <= MAX_MBUFQ && *mp;						\
 	k++, mp = &(*mp)->m_nextpkt);					\
       if (k != sc->qlen || k > MAX_MBUFQ || *mp || mp != sc->qtail)	\
-	panic(__FUNCTION__ ": queue");					\
+	panic("%s: queue", __FUNCTION__);				\
     } while (0)
 #else
 #define QUEUECHECK(sc)	do {} while (0)

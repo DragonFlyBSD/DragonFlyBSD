@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.6 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.7 2004/06/21 05:58:01 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -412,15 +412,20 @@ ahbfree(struct ahb_softc *ahb)
 	default:
 	case 4:
 		bus_dmamap_unload(ahb->ecb_dmat, ahb->ecb_dmamap);
+		/* fall through */
 	case 3:
 		bus_dmamem_free(ahb->ecb_dmat, ahb->ecb_array,
 				ahb->ecb_dmamap);
 		bus_dmamap_destroy(ahb->ecb_dmat, ahb->ecb_dmamap);
+		/* fall through */
 	case 2:
 		bus_dma_tag_destroy(ahb->ecb_dmat);
+		/* fall through */
 	case 1:
 		bus_dma_tag_destroy(ahb->buffer_dmat);
+		/* fall through */
 	case 0:
+		break;
 	}
 	free(ahb, M_DEVBUF);
 }
