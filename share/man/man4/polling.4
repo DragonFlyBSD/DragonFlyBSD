@@ -1,6 +1,6 @@
 .\"
 .\" $FreeBSD: src/share/man/man4/polling.4,v 1.1.2.4 2003/04/14 08:58:02 maxim Exp $
-.\" $DragonFly: src/share/man/man4/polling.4,v 1.4 2004/03/11 12:28:55 hmp Exp $
+.\" $DragonFly: src/share/man/man4/polling.4,v 1.5 2004/07/07 11:38:59 joerg Exp $
 .\"
 .Dd February 15, 2002
 .Dt POLLING 4
@@ -92,10 +92,14 @@ requires explicit modifications to the device drivers.
 As of this writing, the
 .Xr dc 4 ,
 .Xr em 4 ,
+.Xr fwe 4 ,
 .Xr fxp 4 ,
+.Xr nge 4 ,
+.Xr re 4 ,
 .Xr rl 4 ,
-and
 .Xr sis 4
+and
+.Xr vr 4
 devices are supported, with other in the works.
 The modifications are rather straightforward, consisting in
 the extraction of the inner part of the interrupt service routine
