@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-all.c,v 1.46.2.18 2002/10/31 23:10:33 thomas Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.11 2004/04/07 06:22:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-all.c,v 1.12 2004/07/06 19:00:06 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -412,7 +412,9 @@ atapi_interrupt(struct atapi_request *request)
 	    break;
 
 	default:
-	    ata_prtdev(atadev, "unknown transfer phase %d\n", reason);
+	    ata_prtdev(atadev, "unknown transfer phase %#x:%#x\n",
+		ATA_INB(atadev->channel->r_io, ATA_IREASON), reason);
+	    request->result = ATA_S_ERROR;
 	}
     }
     untimeout((timeout_t *)atapi_timeout, request, request->timeout_handle);
