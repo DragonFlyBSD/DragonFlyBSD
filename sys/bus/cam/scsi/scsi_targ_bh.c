@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.6 2003/11/14 11:31:25 simokawa Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.5 2003/12/29 06:42:10 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.6 2004/03/02 20:55:10 drhodus Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -448,7 +448,7 @@ targbhdtor(struct cam_periph *periph)
 		/* FALLTHROUGH */
 	default:
 		/* XXX Wait for callback of targbhdislun() */
-		tsleep(softc, PRIBIO, "targbh", hz/2);
+		tsleep(softc, 0, "targbh", hz/2);
 		free(softc, M_DEVBUF);
 		break;
 	}

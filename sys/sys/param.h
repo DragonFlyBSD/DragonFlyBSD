@@ -37,13 +37,13 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.11 2004/01/05 17:36:20 drhodus Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.12 2004/03/02 20:55:10 drhodus Exp $
  */
 
 #ifndef _SYS_PARAM_H_
 #define _SYS_PARAM_H_
 
-#define	BSD	200307		/* XXX kern.osrevision */
+#define BSD	200307		/* XXX kern.osrevision */
 #define BSD4_3	1		/* XXX obsolete */
 #define BSD4_4	1		/* XXX obsolete */
 
@@ -65,7 +65,7 @@
 #define __FreeBSD_version 480101
 
 #ifndef NULL
-#define	NULL	0
+#define NULL	0
 #endif
 
 #ifndef LOCORE
@@ -81,14 +81,14 @@
  */
 #include <sys/syslimits.h>
 
-#define	MAXCOMLEN	16		/* max command name remembered */
-#define	MAXINTERP	32		/* max interpreter file name length */
-#define	MAXLOGNAME	17		/* max login name length (incl. NUL) */
-#define	MAXUPRC		CHILD_MAX	/* max simultaneous processes */
-#define	NCARGS		ARG_MAX		/* max bytes for an exec function */
-#define	NGROUPS		NGROUPS_MAX	/* max number groups */
-#define	NOFILE		OPEN_MAX	/* max open files per process */
-#define	NOGROUP		65535		/* marker for empty group set member */
+#define MAXCOMLEN	16		/* max command name remembered */
+#define MAXINTERP	32		/* max interpreter file name length */
+#define MAXLOGNAME	17		/* max login name length (incl. NUL) */
+#define MAXUPRC		CHILD_MAX	/* max simultaneous processes */
+#define NCARGS		ARG_MAX		/* max bytes for an exec function */
+#define NGROUPS		NGROUPS_MAX	/* max number groups */
+#define NOFILE		OPEN_MAX	/* max open files per process */
+#define NOGROUP		65535		/* marker for empty group set member */
 #define MAXHOSTNAMELEN	256		/* max hostname size */
 
 /* More types and definitions used throughout the kernel. */
@@ -97,8 +97,8 @@
 #include <sys/errno.h>
 #include <sys/time.h>
 
-#define	FALSE	0
-#define	TRUE	1
+#define FALSE	0
+#define TRUE	1
 #endif
 
 #ifndef _KERNEL
@@ -116,29 +116,28 @@
  * Priorities.  Note that with 32 run queues, differences less than 4 are
  * insignificant.
  */
-#define	MAXPRI	127		/* Priorities range from 0 through MAXPRI. */
-#define	PPAUSE			40
+#define MAXPRI	127		/* Priorities range from 0 through MAXPRI. */
+#define PPAUSE			40
 #define PRIMASK	127
 #define PRIBASE_REALTIME	0
 #define PRIBASE_NORMAL		128
 #define PRIBASE_IDLE		256
 #define PRIBASE_THREAD		384	/* huh? */
-#define	PRIBIO			16
 
-#define	PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
+#define PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
 #define PUSRFLAG1	0x0200	/* Subsystem specific flag */
 
-#define	NZERO	0		/* default "nice" */
+#define NZERO	0		/* default "nice" */
 
-#define	NBPW	sizeof(int)	/* number of bytes per word (integer) */
+#define NBPW	sizeof(int)	/* number of bytes per word (integer) */
 
-#define	CMASK	022		/* default file mask: S_IWGRP|S_IWOTH */
+#define CMASK	022		/* default file mask: S_IWGRP|S_IWOTH */
 #ifdef _KERNEL
-#define	NODEV	(dev_t)(-1)	/* non-existent device */
-#define	NOUDEV	(udev_t)(-1)	/* non-existent device */
-#define	NOMAJ	256		/* non-existent device */
+#define NODEV	(dev_t)(-1)	/* non-existent device */
+#define NOUDEV	(udev_t)(-1)	/* non-existent device */
+#define NOMAJ	256		/* non-existent device */
 #else
-#define	NODEV	(dev_t)(-1)	/* non-existent device */
+#define NODEV	(dev_t)(-1)	/* non-existent device */
 #endif
 
 /*
@@ -147,14 +146,14 @@
  * CLSIZE pte's describing PAGE_SIZE (from machine/machparam.h) pages each.
  */
 #if 0
-#define	CLBYTES		(CLSIZE*PAGE_SIZE)
+#define CLBYTES		(CLSIZE*PAGE_SIZE)
 #endif
 
-#define	CBLOCK	128		/* Clist block size, must be a power of 2. */
+#define CBLOCK	128		/* Clist block size, must be a power of 2. */
 #define CBQSIZE	(CBLOCK/NBBY)	/* Quote bytes/cblock - can do better. */
 				/* Data chars/clist. */
-#define	CBSIZE	(CBLOCK - sizeof(struct cblock *) - CBQSIZE)
-#define	CROUND	(CBLOCK - 1)	/* Clist rounding. */
+#define CBSIZE	(CBLOCK - sizeof(struct cblock *) - CBQSIZE)
+#define CROUND	(CBLOCK - 1)	/* Clist rounding. */
 
 /*
  * File system parameters and macros.
@@ -193,27 +192,27 @@
  * It should be set high enough to allow all legitimate uses, but halt
  * infinite loops reasonably quickly.
  */
-#define	MAXPATHLEN	PATH_MAX
+#define MAXPATHLEN	PATH_MAX
 #define MAXSYMLINKS	32
 
 /* Bit map related macros. */
-#define	setbit(a,i)	((a)[(i)/NBBY] |= 1<<((i)%NBBY))
-#define	clrbit(a,i)	((a)[(i)/NBBY] &= ~(1<<((i)%NBBY)))
-#define	isset(a,i)	((a)[(i)/NBBY] & (1<<((i)%NBBY)))
-#define	isclr(a,i)	(((a)[(i)/NBBY] & (1<<((i)%NBBY))) == 0)
+#define setbit(a,i)	((a)[(i)/NBBY] |= 1<<((i)%NBBY))
+#define clrbit(a,i)	((a)[(i)/NBBY] &= ~(1<<((i)%NBBY)))
+#define isset(a,i)	((a)[(i)/NBBY] & (1<<((i)%NBBY)))
+#define isclr(a,i)	(((a)[(i)/NBBY] & (1<<((i)%NBBY))) == 0)
 
 /* Macros for counting and rounding. */
 #ifndef howmany
-#define	howmany(x, y)	(((x)+((y)-1))/(y))
+#define howmany(x, y)	(((x)+((y)-1))/(y))
 #endif
-#define	rounddown(x, y)	(((x)/(y))*(y))
-#define	roundup(x, y)	((((x)+((y)-1))/(y))*(y))  /* to any y */
-#define	roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
+#define rounddown(x, y)	(((x)/(y))*(y))
+#define roundup(x, y)	((((x)+((y)-1))/(y))*(y))  /* to any y */
+#define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #define powerof2(x)	((((x)-1)&(x))==0)
 
 /* Macros for min/max. */
-#define	MIN(a,b) (((a)<(b))?(a):(b))
-#define	MAX(a,b) (((a)>(b))?(a):(b))
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 /*
  * Constants for setting the parameters of the kernel memory allocator.
@@ -248,7 +247,7 @@
  * For the scheduler to maintain a 1:1 mapping of CPU `tick' to `%age',
  * FSHIFT must be at least 11; this gives us a maximum load avg of ~1024.
  */
-#define	FSHIFT	11		/* bits to right of fixed binary point */
+#define FSHIFT	11		/* bits to right of fixed binary point */
 #define FSCALE	(1<<FSHIFT)
 
 #define dbtoc(db)			/* calculates devblks to pages */ \

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/twe/twe.c,v 1.1.2.6 2002/03/07 09:57:02 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.5 2004/01/05 17:40:00 drhodus Exp $
+ *	$DragonFly: src/sys/dev/raid/twe/twe.c,v 1.6 2004/03/02 20:55:10 drhodus Exp $
  */
 
 /*
@@ -560,7 +560,7 @@ twe_ioctl(struct twe_softc *sc, int cmd, void *addr)
     case TWEIO_AEN_WAIT:
 	s = splbio();
 	while ((*arg = twe_dequeue_aen(sc)) == TWE_AEN_QUEUE_EMPTY) {
-	    error = tsleep(&sc->twe_aen_queue, PRIBIO | PCATCH, "tweaen", 0);
+	    error = tsleep(&sc->twe_aen_queue, 0 | PCATCH, "tweaen", 0);
 	    if (error == EINTR)
 		break;
 	}
@@ -900,7 +900,7 @@ twe_wait_request(struct twe_request *tr)
     twe_startio(tr->tr_sc);
     s = splbio();
     while (tr->tr_status == TWE_CMD_BUSY)
-	tsleep(tr, PRIBIO, "twewait", 0);
+	tsleep(tr, 0, "twewait", 0);
     splx(s);
     
     return(0);
@@ -965,7 +965,7 @@ twe_reset(struct twe_softc *sc)
     /*
      * Sleep for a short period to allow AENs to be signalled.
      */
-    tsleep(NULL, PRIBIO, "twereset", hz);
+    tsleep(NULL, 0, "twereset", hz);
 
     /*
      * Disable interrupts from the controller, and mask any accidental entry
