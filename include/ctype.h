@@ -40,7 +40,7 @@
  *
  *	@(#)ctype.h	8.4 (Berkeley) 1/21/94
  *      $FreeBSD: src/include/ctype.h,v 1.16 2000/02/08 07:43:23 obrien Exp $
- *      $DragonFly: src/include/ctype.h,v 1.4 2003/11/14 01:01:43 dillon Exp $
+ *      $DragonFly: src/include/ctype.h,v 1.5 2004/10/29 05:44:40 asmodai Exp $
  */
 
 #ifndef _CTYPE_H_
@@ -70,6 +70,12 @@
 #define	_CTYPE_I	0x00080000L		/* Ideogram */
 #define	_CTYPE_T	0x00100000L		/* Special */
 #define	_CTYPE_Q	0x00200000L		/* Phonogram */
+#define	_CTYPE_SW0	0x20000000L		/* 0 width character */
+#define	_CTYPE_SW1	0x40000000L		/* 1 width character */
+#define	_CTYPE_SW2	0x80000000L		/* 2 width character */
+#define	_CTYPE_SW3	0xc0000000L		/* 3 width character */
+#define	_CTYPE_SWM	0xe0000000L		/* Mask for screen width data */
+#define	_CTYPE_SWS	30			/* Bits to shift to get width */
 
 __BEGIN_DECLS
 int	isalnum (int);
