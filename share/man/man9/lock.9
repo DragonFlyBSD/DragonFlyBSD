@@ -25,7 +25,7 @@
 .\" DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man9/lock.9,v 1.11 2003/09/08 19:57:21 ru Exp $
-.\" $DragonFly: src/share/man/man9/lock.9,v 1.1 2004/03/18 15:18:02 eirikn Exp $
+.\" $DragonFly: src/share/man/man9/lock.9,v 1.2 2004/05/10 13:06:53 hmp Exp $
 .\"
 .Dd July 9, 2001
 .Dt LOCK 9
@@ -143,8 +143,10 @@ Releasing a lock that is not held can cause a
 Wait for all activity on the lock to end, then mark it decommissioned.
 This is used before freeing a lock that is part of a piece of memory that is
 about to be freed.
-(As documented in
-.In sys/lockmgr.h . )
+.Po
+As documented in
+.Pa sys/lockmgr.h .
+.Pc
 .It Dv LK_SLEEPFAIL
 Fail if operation has slept.
 .It Dv LK_NOWAIT
