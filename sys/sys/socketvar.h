@@ -32,7 +32,7 @@
  *
  *	@(#)socketvar.h	8.3 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/socketvar.h,v 1.46.2.10 2003/08/24 08:24:39 hsu Exp $
- * $DragonFly: src/sys/sys/socketvar.h,v 1.6 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/sys/socketvar.h,v 1.7 2003/12/10 22:26:19 hsu Exp $
  */
 
 #ifndef _SYS_SOCKETVAR_H_
@@ -271,10 +271,11 @@ struct sockopt {
 };
 
 struct sf_buf {
-	SLIST_ENTRY(sf_buf) free_list;	/* list of free buffer slots */
-	int		refcnt;		/* reference count */
+	LIST_ENTRY(sf_buf) list_entry;	/* hash chain of active buffers */
+	TAILQ_ENTRY(sf_buf) free_entry;	/* list of free buffers */
 	struct		vm_page *m;	/* currently mapped page */
 	vm_offset_t	kva;		/* va of mapping */
+	int		refcnt;		/* usage of this mapping */
 };
 
 struct accept_filter {
@@ -350,7 +351,7 @@ void	sbtoxsockbuf (struct sockbuf *sb, struct xsockbuf *xsb);
 int	sbwait (struct sockbuf *sb);
 int	sb_lock (struct sockbuf *sb);
 struct sf_buf *
-	sf_buf_alloc(void);
+	sf_buf_alloc(struct vm_page *);
 void	sf_buf_free(caddr_t addr, u_int size);
 void	sf_buf_ref(caddr_t addr, u_int size);
 int	soabort (struct socket *so);

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.20 2003/10/15 08:43:37 daver Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.21 2003/12/10 22:26:19 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -74,10 +74,22 @@
 
 static void sf_buf_init(void *arg);
 SYSINIT(sock_sf, SI_SUB_MBUF, SI_ORDER_ANY, sf_buf_init, NULL)
-static SLIST_HEAD(, sf_buf) sf_freelist;
+
+LIST_HEAD(sf_buf_list, sf_buf);
+
+/*
+ * A hash table of active sendfile(2) buffers
+ */
+static struct sf_buf_list *sf_buf_hashtable;
+static u_long sf_buf_hashmask;
+
+#define	SF_BUF_HASH(m)	(((m) - vm_page_array) & sf_buf_hashmask)
+
+static TAILQ_HEAD(, sf_buf) sf_buf_freelist;
+static u_int sf_buf_alloc_want;
+
 static vm_offset_t sf_base;
 static struct sf_buf *sf_bufs;
-static int sf_buf_alloc_want;
 
 /*
  * System call interface to the socket abstraction.
@@ -1238,13 +1250,14 @@ sf_buf_init(void *arg)
 {
 	int i;
 
-	SLIST_INIT(&sf_freelist);
+	sf_buf_hashtable = hashinit(nsfbufs, M_TEMP, &sf_buf_hashmask);
+	TAILQ_INIT(&sf_buf_freelist);
 	sf_base = kmem_alloc_pageable(kernel_map, nsfbufs * PAGE_SIZE);
-	sf_bufs = malloc(nsfbufs * sizeof(struct sf_buf), M_TEMP, M_NOWAIT);
-	bzero(sf_bufs, nsfbufs * sizeof(struct sf_buf));
+	sf_bufs = malloc(nsfbufs * sizeof(struct sf_buf), M_TEMP,
+	    M_NOWAIT | M_ZERO);
 	for (i = 0; i < nsfbufs; i++) {
 		sf_bufs[i].kva = sf_base + i * PAGE_SIZE;
-		SLIST_INSERT_HEAD(&sf_freelist, &sf_bufs[i], free_list);
+		TAILQ_INSERT_TAIL(&sf_buf_freelist, &sf_bufs[i], free_entry);
 	}
 }
 
@@ -1252,28 +1265,53 @@ sf_buf_init(void *arg)
  * Get an sf_buf from the freelist. Will block if none are available.
  */
 struct sf_buf *
-sf_buf_alloc()
+sf_buf_alloc(struct vm_page *m)
 {
+	struct sf_buf_list *hash_chain;
 	struct sf_buf *sf;
 	int s;
 	int error;
 
 	s = splimp();
-	while ((sf = SLIST_FIRST(&sf_freelist)) == NULL) {
-		sf_buf_alloc_want = 1;
-		error = tsleep(&sf_freelist, PCATCH, "sfbufa", 0);
+	hash_chain = &sf_buf_hashtable[SF_BUF_HASH(m)];
+	LIST_FOREACH(sf, hash_chain, list_entry) {
+		if (sf->m == m) {
+			if (sf->refcnt == 0) {
+				/* reclaim cached entry off freelist */
+				TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
+			}
+			++sf->refcnt;
+			goto done;	/* found existing mapping */
+		}
+	}
+
+	/*
+	 * Didn't find old mapping.  Get a buffer off the freelist.
+	 */
+	while ((sf = TAILQ_FIRST(&sf_buf_freelist)) == NULL) {
+		++sf_buf_alloc_want;
+		error = tsleep(&sf_buf_freelist, PCATCH, "sfbufa", 0);
+		--sf_buf_alloc_want;
+
+		/* If we got a signal, don't risk going back to sleep. */
 		if (error)
-			break;
+			goto done;
 	}
-	if (sf != NULL) {
-		SLIST_REMOVE_HEAD(&sf_freelist, free_list);
-		sf->refcnt = 1;
-	}
+	TAILQ_REMOVE(&sf_buf_freelist, sf, free_entry);
+
+	if (sf->m != NULL)	/* remove previous mapping from hash table */
+		LIST_REMOVE(sf, list_entry);
+	LIST_INSERT_HEAD(hash_chain, sf, list_entry);
+	sf->refcnt = 1;
+	sf->m = m;
+	pmap_qenter(sf->kva, &sf->m, 1);
+done:
 	splx(s);
 	return (sf);
 }
 
 #define dtosf(x)	(&sf_bufs[((uintptr_t)(x) - (uintptr_t)sf_base) >> PAGE_SHIFT])
+
 void
 sf_buf_ref(caddr_t addr, u_int size)
 {
@@ -1303,7 +1341,6 @@ sf_buf_free(caddr_t addr, u_int size)
 		panic("sf_buf_free: freeing free sf_buf");
 	sf->refcnt--;
 	if (sf->refcnt == 0) {
-		pmap_qremove((vm_offset_t)addr, 1);
 		m = sf->m;
 		s = splvm();
 		vm_page_unwire(m, 0);
@@ -1315,12 +1352,10 @@ sf_buf_free(caddr_t addr, u_int size)
 		if (m->wire_count == 0 && m->object == NULL)
 			vm_page_free(m);
 		splx(s);
-		sf->m = NULL;
-		SLIST_INSERT_HEAD(&sf_freelist, sf, free_list);
-		if (sf_buf_alloc_want) {
-			sf_buf_alloc_want = 0;
-			wakeup(&sf_freelist);
-		}
+
+		TAILQ_INSERT_TAIL(&sf_buf_freelist, sf, free_entry);
+		if (sf_buf_alloc_want > 0)
+			wakeup_one(&sf_buf_freelist);
 	}
 }
 
@@ -1607,7 +1642,7 @@ retry_lookup:
 		 * Get a sendfile buf. We usually wait as long as necessary,
 		 * but this wait can be interrupted.
 		 */
-		if ((sf = sf_buf_alloc()) == NULL) {
+		if ((sf = sf_buf_alloc(pg)) == NULL) {
 			s = splvm();
 			vm_page_unwire(pg, 0);
 			if (pg->wire_count == 0 && pg->object == NULL)
@@ -1618,14 +1653,6 @@ retry_lookup:
 			goto done;
 		}
 
-
-		/*
-		 * Allocate a kernel virtual page and insert the physical page
-		 * into it.
-		 */
-
-		sf->m = pg;
-		pmap_qenter(sf->kva, &pg, 1);
 		/*
 		 * Get an mbuf header and set it up as having external storage.
 		 */
