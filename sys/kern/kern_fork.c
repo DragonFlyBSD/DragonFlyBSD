@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.21 2004/03/30 19:14:11 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.22 2004/04/12 17:47:39 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -175,10 +175,7 @@ SYSCTL_PROC(_kern, OID_AUTO, randompid, CTLTYPE_INT|CTLFLAG_RW,
     0, 0, sysctl_kern_randompid, "I", "Random PID modulus");
 
 int
-fork1(p1, flags, procp)
-	struct proc *p1;
-	int flags;
-	struct proc **procp;
+fork1(struct proc *p1, int flags, struct proc **procp)
 {
 	struct proc *p2, *pptr;
 	uid_t uid;
@@ -270,7 +267,7 @@ fork1(p1, flags, procp)
 	/*
 	 * Setup linkage for kernel based threading
 	 */
-	if((flags & RFTHREAD) != 0) {
+	if ((flags & RFTHREAD) != 0) {
 		newproc->p_peers = p1->p_peers;
 		p1->p_peers = newproc;
 		newproc->p_leader = p1->p_leader;
@@ -452,9 +449,9 @@ again:
 	 * (If PL_SHAREMOD is clear, the structure is shared
 	 * copy-on-write.)
 	 */
-	if (p1->p_limit->p_lflags & PL_SHAREMOD)
+	if (p1->p_limit->p_lflags & PL_SHAREMOD) {
 		p2->p_limit = limcopy(p1->p_limit);
-	else {
+	} else {
 		p2->p_limit = p1->p_limit;
 		p2->p_limit->p_refcnt++;
 	}
@@ -573,18 +570,17 @@ again:
  * However first make sure that it's not already there.
  * Returns 0 on success or a standard error number.
  */
-
 int
-at_fork(function)
-	forklist_fn function;
+at_fork(forklist_fn function)
 {
 	struct forklist *ep;
 
 #ifdef INVARIANTS
 	/* let the programmer know if he's been stupid */
-	if (rm_at_fork(function)) 
+	if (rm_at_fork(function)) {
 		printf("WARNING: fork callout entry (%p) already present\n",
 		    function);
+	}
 #endif
 	ep = malloc(sizeof(*ep), M_ATFORK, M_NOWAIT);
 	if (ep == NULL)
@@ -598,10 +594,8 @@ at_fork(function)
  * Scan the exit callout list for the given item and remove it..
  * Returns the number of items removed (0 or 1)
  */
-
 int
-rm_at_fork(function)
-	forklist_fn function;
+rm_at_fork(forklist_fn function)
 {
 	struct forklist *ep;
 
@@ -619,7 +613,6 @@ rm_at_fork(function)
  * Add a forked process to the run queue after any remaining setup, such
  * as setting the fork handler, has been completed.
  */
-
 void
 start_forked_proc(struct proc *p1, struct proc *p2)
 {
