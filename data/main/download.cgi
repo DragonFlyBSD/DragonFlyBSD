@@ -1,10 +1,10 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.10 2003/12/14 18:35:16 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.11 2003/12/16 12:14:45 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <P>
-You can download a live-boot ISO for intel-compatible architectures (Intel,
+You can download a live-boot ISO for Intel-compatible architectures (Intel,
 AMD, etc) via FTP at the address given below.  This should work with most
 machines with IDE CDRom drives but keep in mind that DragonFly is considered
 experimental.  This CD will boot into a full DragonFly base system and give
