@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.36 2005/01/10 12:36:06 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.37 2005/01/11 05:13:33 okumoto Exp $
  */
 
 /*-
@@ -2011,7 +2011,6 @@ ParseSkipLine(int skip, int keep_newline)
 {
     char *line;
     int c, lastc;
-    size_t lineLength = 0;
     Buffer *buf;
 
     buf = Buf_Init(MAKE_BSIZE);
@@ -2055,7 +2054,7 @@ ParseSkipLine(int skip, int keep_newline)
 
         curFile.lineno++;
         Buf_AddByte(buf, (Byte)'\0');
-        line = (char *)Buf_GetAll(buf, &lineLength);
+        line = (char *)Buf_GetAll(buf, NULL);
     } while (skip == 1 && line[0] != '.');
 
     Buf_Destroy(buf, FALSE);
@@ -2093,7 +2092,6 @@ ParseReadLine(void)
 				 * shell command */
     char 	  *line;    	/* Result */
     char          *ep;		/* to strip trailing blanks */
-    size_t lineLength;		/* Length of result */
     int		  lineno;	/* Saved line # */
 
     semiNL = FALSE;
@@ -2252,7 +2250,7 @@ test_char:
 	    Buf_AddByte(buf, (Byte)lastc);
 	}
 	Buf_AddByte(buf, (Byte)'\0');
-	line = (char *)Buf_GetAll(buf, &lineLength);
+	line = (char *)Buf_GetAll(buf, NULL);
 	Buf_Destroy(buf, FALSE);
 
 	/*

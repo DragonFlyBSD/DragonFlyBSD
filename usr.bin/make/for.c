@@ -35,7 +35,7 @@
  *
  * @(#)for.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/for.c,v 1.10 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/for.c,v 1.18 2005/01/06 13:18:58 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.c,v 1.19 2005/01/11 05:13:33 okumoto Exp $
  */
 
 /*-
@@ -255,11 +255,10 @@ ForExec(void *namep, void *argp)
 {
     char *name = namep;
     For *arg = argp;
-    size_t len;
 
     Var_Set(arg->var, name, VAR_GLOBAL);
     DEBUGF(FOR, ("--- %s = %s\n", arg->var, name));
-    Parse_FromString(Var_Subst(arg->var, (char *)Buf_GetAll(arg->buf, &len),
+    Parse_FromString(Var_Subst(arg->var, (char *)Buf_GetAll(arg->buf, NULL),
 			       VAR_GLOBAL, FALSE), arg->lineno);
     Var_Delete(arg->var, VAR_GLOBAL);
 
