@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/meteor.c,v 1.49 1999/09/25 18:24:41 phk Exp $
- * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/meteor/meteor.c,v 1.8 2003/08/11 17:50:15 drhodus Exp $
  */
 
 /*		Change History:
@@ -1387,6 +1387,8 @@ meteor_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		*(u_short *)arg = mtr->fps;
 		break;
 	case METEORSSIGNAL:
+		if (*(int *)arg < 0 || *(int *)arg > _SIG_MAXSIG)
+			return EINVAL;
 		mtr->signal = *(int *) arg;
 		if (mtr->signal) {
 		  mtr->proc = td->td_proc;	/* might be NULL */

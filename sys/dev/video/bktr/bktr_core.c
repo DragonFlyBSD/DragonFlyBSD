@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_core.c,v 1.103.2.4 2000/11/01 09:36:14 roger Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.6 2003/08/11 17:30:31 drhodus Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_core.c,v 1.7 2003/08/11 17:50:15 drhodus Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -1544,7 +1544,7 @@ video_ioctl( bktr_ptr_t bktr, int unit, ioctl_cmd_t cmd, caddr_t arg, struct thr
 		break;
 
 	case METEORSSIGNAL:
-		if(*(int *)arg == 0 || *(int *)arg >= NSIG) {
+		if(*(int *)arg <= 0 || *(int *)arg > _SIG_MAXSIG) {
 			return( EINVAL );
 			break;
 		}

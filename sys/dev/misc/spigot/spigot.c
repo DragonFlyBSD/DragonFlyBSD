@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.7 2003/08/11 17:50:15 drhodus Exp $
  *
  */
 
@@ -224,6 +224,8 @@ struct	spigot_info	*info;
 	if(!data) return(EINVAL);
 	switch(cmd){
 	case	SPIGOT_SETINT:
+		if (*(int *)data < 0 || *(int *)data > _SIG_MAXSIG)
+			return (EINVAL);
 		ss->p = td->td_proc;
 		ss->signal_num = *((int *)data);
 		break;
