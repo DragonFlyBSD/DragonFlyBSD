@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/usr.bin/cc34/g77/Attic/Makefile,v 1.1 2004/06/14 22:27:56 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/g77/Attic/Makefile,v 1.2 2004/06/19 11:13:30 joerg Exp $
 
 .include "../Makefile.inc"
 .include "../cc_tools/Makefile.tools"
@@ -9,7 +9,7 @@
 PROG=	g77
 LINKS=	${BINDIR}/g77 ${BINDIR}/f77
 
-SRCS=	gcc_local.c g77spec.c intl.c prefix.c version_local.c
+SRCS=	gcc.c g77spec.c intl.c prefix.c version_local.c
 SRCS+=	insn-constants.h insn-flags.h specs.h
 SRCS+=	concat.c make-relative-prefix.c lbasename.c lrealpath.c
 SRCS+=	make-temp-file.c obstack.c pex-unix.c safe-ctype.c xexit.c

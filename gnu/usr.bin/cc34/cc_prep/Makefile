@@ -1,12 +1,9 @@
-# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.1 2004/06/14 22:27:53 joerg Exp $
+# $DragonFly: src/gnu/usr.bin/cc34/cc_prep/Makefile,v 1.2 2004/06/19 11:13:29 joerg Exp $
 
 .include "../Makefile.inc"
 
 PATCHES!=	echo ${.CURDIR}/patches/*.patch
 CONTRIBDIR=	${GCCDIR}/gcc
-
-gcc_local.c: gcc.c Makefile
-	sed -e 's%startfile_prefix_1 = "/lib/"%startfile_prefix_1 = STANDARD_STARTFILE_PREFIX_1%' < ${.ALLSRC:M*c} > ${.TARGET}
 
 version_local.c: version.c Makefile
 	sed -e 's/\(const char version.*".*\) (/\1 [DragonFly] (/' < ${.ALLSRC:M*c} > ${.TARGET}
@@ -20,12 +17,12 @@ configargs.h: Makefile
 	echo '  const char *name, *value;' >> configargs.h
 	echo '} configure_default_options[] = { { NULL, NULL} };' >> configargs.h
 
-CLEANFILES+=	gcc_local.c version_local.c configargs.h
+CLEANFILES+=	version_local.c configargs.h
 
 .include <bsd.prog.mk>
 
 # keep this order!
-depend: gcc_local.c version_local.c configargs.h
+depend: version_local.c configargs.h
 
 # we don't use SRCS, so we can't use the normal bsd.dep.mk code
 .for _PSRC in ${PATCHES:M*.patch}
