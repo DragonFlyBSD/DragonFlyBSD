@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.51 2004/05/05 19:26:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.52 2004/06/04 20:35:38 dillon Exp $
  */
 
 /*
@@ -1434,17 +1434,10 @@ sendsys2(struct trapframe frame)
 		}
 		switch(msgsize) {
 		case 0:
-			/*
-			 * Wait on port for message
-			 */
-			sysun = lwkt_getport(&td->td_msgport);
-			/* XXX block */
+			sysun = (void *)sysmsg_wait(p, NULL, 0);
 			break;
 		case -1:
-			/*
-			 * Test port for message
-			 */
-			sysun = lwkt_getport(&td->td_msgport);
+			sysun = (void *)sysmsg_wait(p, NULL, 1);
 			break;
 		default:
 			error = ENOSYS;
@@ -1456,7 +1449,6 @@ sendsys2(struct trapframe frame)
 			frame.tf_eax = (register_t)umsg;
 			if (sysun->sysmsg_copyout)
 				sysun->sysmsg_copyout(sysun);
-			atomic_add_int_nonlocked(&td->td_msgport.mp_refs, -1);
 			sysun->nosys.usrmsg.umsg.u.ms_fds[0] = sysun->lmsg.u.ms_fds[0];
 			sysun->nosys.usrmsg.umsg.u.ms_fds[1] = sysun->lmsg.u.ms_fds[1];
 			sysun->nosys.usrmsg.umsg.ms_error = sysun->lmsg.ms_error;
@@ -1518,7 +1510,6 @@ sendsys2(struct trapframe frame)
 		crit_exit_quick(td);
 		sysun = malloc(sizeof(union sysunion), M_SYSMSG, M_WAITOK);
 	}
-	atomic_add_int_nonlocked(&td->td_msgport.mp_refs, 1);
 
 	/*
 	 * Copy the user request into the kernel copy of the user request.
@@ -1536,10 +1527,14 @@ sendsys2(struct trapframe frame)
 	/*
 	 * Initialize the kernel message from the copied-in data and
 	 * pull in appropriate flags from the userland message.
+	 *
+	 * ms_abort_port is usually initialized in sendmsg/domsg, but since
+	 * we are not calling those functions (yet), we have to do it manually.
 	 */
 	lwkt_initmsg(&sysun->lmsg, &td->td_msgport, 0,
 			sysun->nosys.usrmsg.umsg.ms_cmd,
 			lwkt_cmd_op_none);
+	sysun->lmsg.ms_abort_port = sysun->lmsg.ms_reply_port;
 	sysun->sysmsg_copyout = NULL;
 	sysun->lmsg.opaque.ms_umsg = umsg;
 	sysun->lmsg.ms_flags |= sysun->nosys.usrmsg.umsg.ms_flags & MSGF_ASYNC;
@@ -1588,8 +1583,14 @@ bad1:
 	 *
 	 * YYY Don't writeback message if execve() YYY
 	 */
-	if (error != EASYNC) {
-		atomic_add_int_nonlocked(&td->td_msgport.mp_refs, -1);
+	if (error == EASYNC) {
+		/*
+		 * Since only the current process ever messes with msgq,
+		 * we can safely manipulate it in parallel with the async
+		 * operation.
+		 */
+		TAILQ_INSERT_TAIL(&p->p_sysmsgq, &sysun->sysmsg, msgq);
+	} else {
 		sysun->nosys.usrmsg.umsg.u.ms_fds[0] = sysun->lmsg.u.ms_fds[0];
 		sysun->nosys.usrmsg.umsg.u.ms_fds[1] = sysun->lmsg.u.ms_fds[1];
 		result = sysun->nosys.usrmsg.umsg.u.ms_fds[0]; /* for ktrace */

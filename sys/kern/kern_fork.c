@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.24 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.25 2004/06/04 20:35:36 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -278,6 +278,7 @@ fork1(struct proc *p1, int flags, struct proc **procp)
 
 	newproc->p_wakeup = 0;
 	newproc->p_vmspace = NULL;
+	TAILQ_INIT(&newproc->p_sysmsgq);
 
 	/*
 	 * Find an unused process ID.  We remember a range of unused IDs

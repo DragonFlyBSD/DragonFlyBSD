@@ -3,7 +3,7 @@
  *
  *	Implements LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport.h,v 1.17 2004/04/20 01:52:24 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport.h,v 1.18 2004/06/04 20:35:39 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT_H_
@@ -122,7 +122,7 @@ MALLOC_DECLARE(M_LWKTMSG);
 typedef struct lwkt_port {
     lwkt_msg_queue	mp_msgq;
     int			mp_flags;
-    int			mp_refs;	/* references to port structure */
+    int			mp_unused01;
     struct thread	*mp_td;
     int			(*mp_putport)(lwkt_port_t, lwkt_msg_t);
     void *		(*mp_waitport)(lwkt_port_t, lwkt_msg_t);

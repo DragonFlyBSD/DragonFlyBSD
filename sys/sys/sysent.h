@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/sysent.h,v 1.27.2.5 2002/03/17 11:08:38 alfred Exp $
- * $DragonFly: src/sys/sys/sysent.h,v 1.6 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/sys/sysent.h,v 1.7 2004/06/04 20:35:39 dillon Exp $
  */
 
 #ifndef _SYS_SYSENT_H_
@@ -43,7 +43,8 @@ typedef	int	sy_call_t (void *);
 
 struct sysent {		/* system call table */
 	int	sy_narg;	/* number of arguments */
-	sy_call_t *sy_call;	/* implementing function */
+	sy_call_t *sy_call;	/* start function */
+	sy_call_t *sy_abort;	/* abort function (only if start was async) */
 };
 
 #define SYF_ARGMASK	0x0000FFFF

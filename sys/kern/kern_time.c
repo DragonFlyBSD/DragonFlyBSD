@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.15 2004/04/10 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.16 2004/06/04 20:35:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -320,6 +320,7 @@ nanosleep(struct nanosleep_args *uap)
 				error = EINVAL;
 		} else {
 			uap->sysmsg.copyout = nanosleep_copyout;
+			uap->sysmsg.lmsg.ms_flags &= ~MSGF_DONE;
 			callout_init(&smsleep->timer);
 			callout_reset(&smsleep->timer, ticks, nanosleep_done, uap);
 			error = EASYNC;
@@ -348,8 +349,9 @@ static void
 nanosleep_done(void *arg)
 {
 	struct nanosleep_args *uap = arg;
+	lwkt_msg_t msg = &uap->sysmsg.lmsg;
 
-	lwkt_replymsg(&uap->sysmsg.lmsg, 0);
+	lwkt_replymsg(msg, 0);
 }
 
 /*

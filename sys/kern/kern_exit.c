@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.34 2004/05/13 17:40:15 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.35 2004/06/04 20:35:36 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -124,8 +124,8 @@ exit1(int rv)
 		panic("Going nowhere without my init!");
 	}
 
+	sysmsg_rundown(p, 1);
 	caps_exit(p->p_thread);
-
 	aio_proc_rundown(p);
 
 	/* are we a task leader? */

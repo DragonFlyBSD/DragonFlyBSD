@@ -3,7 +3,7 @@
  *
  *	Implements Inlines for LWKT messages and ports.
  * 
- * $DragonFly: src/sys/sys/msgport2.h,v 1.9 2004/04/20 01:52:24 dillon Exp $
+ * $DragonFly: src/sys/sys/msgport2.h,v 1.10 2004/06/04 20:35:39 dillon Exp $
  */
 
 #ifndef _SYS_MSGPORT2_H_
@@ -22,6 +22,9 @@ typedef int (*lwkt_cmd_func_t)(lwkt_msg_t);
  * an abort MSGF_ABORTABLE must be passed in flags and an abort command
  * supplied.  If abort is not supported then lwkt_cmd_op_none is passed as
  * the abort command argument by convention.
+ *
+ * Note that other areas of the LWKT msg may already be initialized, so we
+ * do not zero the message here.
  */
 static __inline
 void
@@ -107,6 +110,13 @@ void *
 lwkt_waitport(lwkt_port_t port, lwkt_msg_t msg)
 {
     return(port->mp_waitport(port, msg));
+}
+
+static __inline
+int
+lwkt_checkmsg(lwkt_msg_t msg)
+{
+    return(msg->ms_flags & MSGF_DONE);
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
  * SYS/SYSMSG.H
  *
- * $DragonFly: src/sys/sys/sysmsg.h,v 1.4 2003/11/20 06:05:31 dillon Exp $
+ * $DragonFly: src/sys/sys/sysmsg.h,v 1.5 2004/06/04 20:35:39 dillon Exp $
  */
 
 #ifndef _SYS_SYSMSG_H_
@@ -19,13 +19,18 @@
 /*
  * The sysmsg holds the kernelland version of a system call.
  * It typically preceeds the usrmsg and syscall arguments in sysunion
- * (see sys/sysunion.h)
+ * (see sys/sysunion.h).  Note that msgq field is used by the governing
+ * process to record a system call that returns EASYNC in order to be able
+ * to properly abort and/or wait on it in exit1().  This is different from
+ * any localized queueing of the LWKT message that the syscall itself might
+ * do.
  */
 union sysunion;
 
 struct sysmsg {
 	struct lwkt_msg	lmsg;
 	void 		(*copyout)(union sysunion *sysun);
+	TAILQ_ENTRY(sysmsg)	msgq;
 	union {
 	    struct sysmsg_sleep {
 		struct lwkt_msg lmsg;
@@ -35,6 +40,11 @@ struct sysmsg {
 	    } sleep;
 	} sm;
 };
+
+struct proc;
+
+struct sysmsg *sysmsg_wait(struct proc *p, struct sysmsg *sysmsg, int nonblock);
+void sysmsg_rundown(struct proc *p, int doabort);
 
 #endif
 

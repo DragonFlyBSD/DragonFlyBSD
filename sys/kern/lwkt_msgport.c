@@ -26,7 +26,7 @@
  * NOTE! This file may be compiled for userland libraries as well as for
  * the kernel.
  *
- * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.21 2004/04/24 20:59:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_msgport.c,v 1.22 2004/06/04 20:35:36 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -105,6 +105,10 @@ static void lwkt_putport_remote(lwkt_msg_t msg);
  *
  *	NOTE: you cannot safely request an abort until lwkt_sendmsg() returns
  *	to the caller.
+ *
+ *	NOTE: MSGF_DONE is left set.  The target port must clear it if the
+ *	message is to be handled asynchronously, while the synchronous case
+ *	can just ignore it.
  */
 void
 lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
@@ -140,6 +144,10 @@ lwkt_sendmsg(lwkt_port_t port, lwkt_msg_t msg)
  *
  *	NOTE: you cannot safely request an abort until lwkt_domsg() blocks.
  *	XXX this probably needs some work.
+ *
+ *	NOTE: MSGF_DONE is left set.  The target port must clear it if the
+ *	message is to be handled asynchronously, while the synchronous case
+ *	can just ignore it.
  */
 int
 lwkt_domsg(lwkt_port_t port, lwkt_msg_t msg)
@@ -345,6 +353,12 @@ lwkt_default_replyport(lwkt_port_t port, lwkt_msg_t msg)
  *	message port's mp_putport function vector.  Note that we must set
  *	MSGF_QUEUED prior to sending any IPIs in order to interlock against
  *	ABORT requests and other tests that might be performed.
+ *
+ *	Note that messages start out as synchronous entities, and as an
+ *	optimization MSGF_DONE is usually left set (so in the synchronous path
+ *	no modifications to ms_flags are ever required).  If a message becomes
+ *	async, i.e. you return EASYNC, then MSGF_DONE must be cleared or
+ *	lwkt_replymsg() will wind up being a NOP.
  *
  *	The inline must be called from a critical section (the remote function
  *	is called from an IPI and will be in a critical section).
