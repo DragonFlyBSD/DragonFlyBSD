@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_inode.c	8.5 (Berkeley) 12/30/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_inode.c,v 1.24.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.3 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_inode.c,v 1.4 2003/07/26 18:53:21 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -86,7 +86,7 @@ ext2_update(vp, waitfor)
 	struct vnode *vp;
 	int waitfor;
 {
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	struct buf *bp;
 	struct inode *ip;
 	int error;
@@ -134,16 +134,16 @@ ext2_truncate(vp, length, flags, cred, td)
 	struct ucred *cred;
 	struct thread *td;
 {
-	register struct vnode *ovp = vp;
-	register daddr_t lastblock;
-	register struct inode *oip;
+	struct vnode *ovp = vp;
+	daddr_t lastblock;
+	struct inode *oip;
 	daddr_t bn, lbn, lastiblock[NIADDR], indir_lbn[NIADDR];
 	daddr_t oldblks[NDADDR + NIADDR], newblks[NDADDR + NIADDR];
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	struct buf *bp;
 	int offset, size, level;
 	long count, nblocks, blocksreleased = 0;
-	register int i;
+	int i;
 	int aflags, error, allerror;
 	off_t osize;
 /*
@@ -298,7 +298,7 @@ printf("ext2_truncate called %d to %d\n", VTOI(ovp)->i_number, length);
 	 * All whole direct blocks or frags.
 	 */
 	for (i = NDADDR - 1; i > lastblock; i--) {
-		register long bsize;
+		long bsize;
 
 		bn = oip->i_db[i];
 		if (bn == 0)
@@ -378,16 +378,16 @@ done:
 
 static int
 ext2_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
-	register struct inode *ip;
+	struct inode *ip;
 	daddr_t lbn, lastbn;
 	daddr_t dbn;
 	int level;
 	long *countp;
 {
-	register int i;
+	int i;
 	struct buf *bp;
-	register struct ext2_sb_info *fs = ip->i_e2fs;
-	register daddr_t *bap;
+	struct ext2_sb_info *fs = ip->i_e2fs;
+	daddr_t *bap;
 	struct vnode *vp;
 	daddr_t *copy, nb, nlbn, last;
 	long blkcount, factor;

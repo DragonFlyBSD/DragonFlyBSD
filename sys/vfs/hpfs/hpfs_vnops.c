@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vnops.c,v 1.2.2.2 2002/01/15 18:35:09 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.5 2003/07/19 21:14:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vnops.c,v 1.6 2003/07/26 18:51:23 rob Exp $
  */
 
 #include <sys/param.h>
@@ -170,8 +170,8 @@ hpfs_ioctl (
 		struct proc *a_p;
 	} */ *ap)
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 	int error;
 
 	printf("hpfs_ioctl(0x%x, 0x%lx, 0x%p, 0x%x): ",
@@ -307,7 +307,7 @@ hpfs_bmap(ap)
 		int *a_runb;
 	} */ *ap;
 {
-	register struct hpfsnode *hp = VTOHP(ap->a_vp);
+	struct hpfsnode *hp = VTOHP(ap->a_vp);
 	int error;
 
 	if (ap->a_vpp != NULL) 
@@ -335,8 +335,8 @@ hpfs_read(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 	struct uio *uio = ap->a_uio;
 	struct buf *bp;
 	u_int xfersz, toread;
@@ -394,8 +394,8 @@ hpfs_write(ap)
 		struct ucred *a_cred;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 	struct uio *uio = ap->a_uio;
 	struct buf *bp;
 	u_int xfersz, towrite;
@@ -471,9 +471,9 @@ hpfs_getattr(ap)
 		struct proc *a_p;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
-	register struct vattr *vap = ap->a_vap;
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
+	struct vattr *vap = ap->a_vap;
 	int error;
 
 	dprintf(("hpfs_getattr(0x%x):\n", hp->h_no));
@@ -625,8 +625,8 @@ hpfs_inactive(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 	int error;
 
 	dprintf(("hpfs_inactive(0x%x): \n", hp->h_no));
@@ -671,8 +671,8 @@ hpfs_reclaim(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 
 	dprintf(("hpfs_reclaim(0x%x0): \n", hp->h_no));
 
@@ -698,8 +698,8 @@ hpfs_print(ap)
 		struct vnode *a_vp;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 
 	printf("tag VT_HPFS, ino 0x%x",hp->h_no);
 	lockmgr_printinfo(&hp->h_lock);
@@ -720,8 +720,8 @@ hpfs_strategy(ap)
 		struct buf *a_bp;
 	} */ *ap;
 {
-	register struct buf *bp = ap->a_bp;
-	register struct vnode *vp = ap->a_vp;
+	struct buf *bp = ap->a_bp;
+	struct vnode *vp = ap->a_vp;
 	struct vnode *nvp;
 	int error;
 
@@ -766,7 +766,7 @@ hpfs_access(ap)
 	struct hpfsnode *hp = VTOHP(vp);
 	struct ucred *cred = ap->a_cred;
 	mode_t mask, mode = ap->a_mode;
-	register gid_t *gp;
+	gid_t *gp;
 	int i;
 
 	dprintf(("hpfs_access(0x%x):\n", hp->h_no));
@@ -842,8 +842,8 @@ hpfs_open(ap)
 	} */ *ap;
 {
 #if HPFS_DEBUG
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 
 	printf("hpfs_open(0x%x):\n",hp->h_no);
 #endif
@@ -871,8 +871,8 @@ hpfs_close(ap)
 	} */ *ap;
 {
 #if HPFS_DEBUG
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 
 	printf("hpfs_close: %d\n",hp->h_no);
 #endif
@@ -926,8 +926,8 @@ hpfs_readdir(ap)
 		u_int **cookies;
 	} */ *ap;
 {
-	register struct vnode *vp = ap->a_vp;
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct vnode *vp = ap->a_vp;
+	struct hpfsnode *hp = VTOHP(vp);
 	struct hpfsmount *hpmp = hp->h_hpmp;
 	struct uio *uio = ap->a_uio;
 	int ncookies = 0, i, num, cnum;
@@ -1148,8 +1148,8 @@ hpfs_lookup(ap)
 		struct componentname *a_cnp;
 	} */ *ap;
 {
-	register struct vnode *dvp = ap->a_dvp;
-	register struct hpfsnode *dhp = VTOHP(dvp);
+	struct vnode *dvp = ap->a_dvp;
+	struct hpfsnode *dhp = VTOHP(dvp);
 	struct hpfsmount *hpmp = dhp->h_hpmp;
 	struct componentname *cnp = ap->a_cnp;
 	struct ucred *cred = cnp->cn_cred;
@@ -1317,7 +1317,7 @@ hpfs_pathconf(ap)
 	struct vop_pathconf_args /* {
 		struct vnode *a_vp;
 		int a_name;
-		register_t *a_retval;
+		t *a_retval;
 	} */ *ap;
 {
 	switch (ap->a_name) {

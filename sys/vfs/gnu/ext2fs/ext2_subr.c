@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_subr.c	8.2 (Berkeley) 9/21/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_subr.c,v 1.13.2.2 2000/08/03 18:48:27 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.3 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_subr.c,v 1.4 2003/07/26 18:53:21 rob Exp $
  */
 
 #include <sys/param.h>
@@ -73,7 +73,7 @@ ext2_blkatoff(vp, offset, res, bpp)
 	struct buf **bpp;
 {
 	struct inode *ip;
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	struct buf *bp;
 	daddr_t lbn;
 	int bsize, error;
@@ -100,8 +100,8 @@ ext2_checkoverlap(bp, ip)
 	struct buf *bp;
 	struct inode *ip;
 {
-	register struct buf *ebp, *ep;
-	register daddr_t start, last;
+	struct buf *ebp, *ep;
+	daddr_t start, last;
 	struct vnode *vp;
 
 	ebp = &buf[nbuf];

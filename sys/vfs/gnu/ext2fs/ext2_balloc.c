@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_balloc.c	8.4 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_balloc.c,v 1.9.2.1 2000/08/03 00:52:57 peter Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.3 2003/07/21 07:57:42 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_balloc.c,v 1.4 2003/07/26 18:53:21 rob Exp $
  */
 
 #include <sys/param.h>
@@ -64,15 +64,15 @@
  */
 int
 ext2_balloc(ip, bn, size, cred, bpp, flags)
-	register struct inode *ip;
-	register daddr_t bn;
+	struct inode *ip;
+	daddr_t bn;
 	int size;
 	struct ucred *cred;
 	struct buf **bpp;
 	int flags;
 {
-	register struct ext2_sb_info *fs;
-	register daddr_t nb;
+	struct ext2_sb_info *fs;
+	daddr_t nb;
 	struct buf *bp, *nbp;
 	struct vnode *vp = ITOV(ip);
 	struct indir indirs[NIADDR + 2];

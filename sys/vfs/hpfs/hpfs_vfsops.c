@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_vfsops.c,v 1.3.2.2 2001/12/25 01:44:45 dillon Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.5 2003/07/19 21:14:31 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_vfsops.c,v 1.6 2003/07/26 18:51:23 rob Exp $
  */
 
 
@@ -68,7 +68,7 @@ static int	hpfs_statfs __P((struct mount *, struct statfs *,
 static int	hpfs_unmount __P((struct mount *, int, struct proc *));
 static int	hpfs_vget __P((struct mount *mp, ino_t ino,
 			       struct vnode **vpp));
-static int	hpfs_mountfs __P((register struct vnode *, struct mount *, 
+static int	hpfs_mountfs __P((struct vnode *, struct mount *, 
 				  struct hpfs_args *, struct proc *));
 static int	hpfs_vptofh __P((struct vnode *, struct fid *));
 static int	hpfs_fhtovp __P((struct mount *, struct fid *,
@@ -104,19 +104,19 @@ static int	hpfs_checkexp __P((struct mount *, struct mbuf *,
 static int
 hpfs_checkexp(mp, nam, exflagsp, credanonp)
 #if defined(__FreeBSD__)
-	register struct mount *mp;
+	struct mount *mp;
 	struct sockaddr *nam;
 	int *exflagsp;
 	struct ucred **credanonp;
 #else /* defined(__NetBSD__) */
-	register struct mount *mp;
+	struct mount *mp;
 	struct mbuf *nam;
 	int *exflagsp;
 	struct ucred **credanonp;
 #endif
 {
-	register struct netcred *np;
-	register struct hpfsmount *hpm = VFSTOHPFS(mp);
+	struct netcred *np;
+	struct hpfsmount *hpm = VFSTOHPFS(mp);
 
 	/*
 	 * Get the export permission structure for this <mp, client> tuple.
@@ -309,7 +309,7 @@ success:
  */
 int
 hpfs_mountfs(devvp, mp, argsp, p)
-	register struct vnode *devvp;
+	struct vnode *devvp;
 	struct mount *mp;
 	struct hpfs_args *argsp;
 	struct proc *p;
@@ -462,7 +462,7 @@ hpfs_unmount(
 	struct proc *p)
 {
 	int error, flags, ronly;
-	register struct hpfsmount *hpmp = VFSTOHPFS(mp);
+	struct hpfsmount *hpmp = VFSTOHPFS(mp);
 
 	dprintf(("hpfs_unmount():\n"));
 
@@ -604,8 +604,8 @@ hpfs_vptofh(
 	struct vnode *vp,
 	struct fid *fhp)
 {
-	register struct hpfsnode *hpp;
-	register struct hpfid *hpfhp;
+	struct hpfsnode *hpp;
+	struct hpfid *hpfhp;
 
 	hpp = VTOHP(vp);
 	hpfhp = (struct hpfid *)fhp;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_subr.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.3 2003/06/26 05:55:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_subr.c,v 1.4 2003/07/26 18:51:23 rob Exp $
  */
 
 #include <sys/param.h>
@@ -49,7 +49,7 @@ hpfs_checksum(
 	u_int8_t *object,
 	int size)
 {
-	register int i;
+	int i;
 	u_long csum=0L;
 	for (i=0; i < size; i++) {
 		csum += (u_long) *object++;
@@ -153,7 +153,7 @@ hpfs_bminit(
 	 */
 	dbavail = 0;
 	for (i=0; i < hpmp->hpm_su.su_btotal >> 5; i++) {
-		register u_int32_t mask;
+		u_int32_t mask;
 		for (k=0, mask=1; k < 32; k++, mask<<=1)
 			if(((u_int32_t *)hpmp->hpm_bitmap)[i] & mask) 
 				dbavail ++;
@@ -173,7 +173,7 @@ hpfs_cmpfname (
 	int dlen,
 	u_int16_t cp)
 {
-	register int i, res;
+	int i, res;
 
 	for (i = 0; i < ulen && i < dlen; i++) {
 		res = hpfs_toupper(hpmp, hpfs_u2d(hpmp, uname[i]), cp) - 
@@ -328,7 +328,7 @@ hpfs_bmlookup (
 	u_long *lenp)	/* We got this long */
 {
 	u_int32_t * bitmap;
-	register u_int32_t mask;
+	u_int32_t mask;
 	int i,k;
 	int cband, vcband;
 	u_int bandsz;

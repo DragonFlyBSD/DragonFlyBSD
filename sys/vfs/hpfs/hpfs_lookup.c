@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/fs/hpfs/hpfs_lookup.c,v 1.1 1999/12/09 19:09:59 semenu Exp $
- * $DragonFly: src/sys/vfs/hpfs/hpfs_lookup.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/hpfs/hpfs_lookup.c,v 1.3 2003/07/26 18:51:23 rob Exp $
  */
 
 #include <sys/param.h>
@@ -115,7 +115,7 @@ hpfs_makefnode (
 	struct vattr *vap)
 {
 #ifdef HPFS_DEBUG
-	register struct hpfsnode *dhp = VTOHP(dvp);
+	struct hpfsnode *dhp = VTOHP(dvp);
 	dprintf(("hpfs_makefnode(0x%x, %s, %ld): \n",
 		dhp->h_no, cnp->cn_nameptr, cnp->cn_namelen));
 #endif
@@ -202,8 +202,8 @@ hpfs_removefnode (
 	struct componentname *cnp)
 {
 #ifdef HPFS_DEBUG
-	register struct hpfsnode *dhp = VTOHP(dvp);
-	register struct hpfsnode *hp = VTOHP(vp);
+	struct hpfsnode *dhp = VTOHP(dvp);
+	struct hpfsnode *hp = VTOHP(vp);
 	dprintf(("hpfs_removefnode(0x%x, 0x%x, %s, %ld): \n",
 		dhp->h_no, hp->h_no, cnp->cn_nameptr, cnp->cn_namelen));
 #endif

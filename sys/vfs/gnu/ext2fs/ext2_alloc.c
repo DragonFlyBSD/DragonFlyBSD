@@ -38,7 +38,7 @@
  *
  *	@(#)ext2_alloc.c	8.8 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/gnu/ext2fs/ext2_alloc.c,v 1.28.2.2 2002/07/01 00:18:51 iedowse Exp $
- * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.2 2003/06/17 04:28:33 dillon Exp $
+ * $DragonFly: src/sys/vfs/gnu/ext2fs/ext2_alloc.c,v 1.3 2003/07/26 18:53:21 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -100,13 +100,13 @@ ext2_discard_prealloc(ip)
  */
 int
 ext2_alloc(ip, lbn, bpref, size, cred, bnp)
-	register struct inode *ip;
+	struct inode *ip;
 	daddr_t lbn, bpref;
 	int size;
 	struct ucred *cred;
 	daddr_t *bnp;
 {
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	daddr_t bno;
 #if QUOTA
 	int error;
@@ -382,9 +382,9 @@ ext2_valloc(pvp, mode, cred, vpp)
 	struct ucred *cred;
 	struct vnode **vpp;
 {
-	register struct inode *pip;
-	register struct ext2_sb_info *fs;
-	register struct inode *ip;
+	struct inode *pip;
+	struct ext2_sb_info *fs;
+	struct inode *ip;
 	ino_t ino;
 	int i, error;
 	
@@ -490,11 +490,11 @@ ext2_blkpref(ip, lbn, indx, bap, blocknr)
  */
 void
 ext2_blkfree(ip, bno, size)
-	register struct inode *ip;
+	struct inode *ip;
 	daddr_t bno;
 	long size;
 {
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 
 	fs = ip->i_e2fs;
 	/*
@@ -514,9 +514,9 @@ ext2_vfree(pvp, ino, mode)
 	ino_t ino;
 	int mode;
 {
-	register struct ext2_sb_info *fs;
-	register struct inode *pip;
-	register mode_t save_i_mode;
+	struct ext2_sb_info *fs;
+	struct inode *pip;
+	mode_t save_i_mode;
 
 	pip = VTOI(pvp);
 	fs = pip->i_e2fs;

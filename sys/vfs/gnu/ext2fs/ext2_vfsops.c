@@ -38,7 +38,7 @@
  *
  *	@(#)ffs_vfsops.c	8.8 (Berkeley) 4/18/94
  *	$FreeBSD: src/sys/gnu/ext2fs/ext2_vfsops.c,v 1.63.2.7 2002/07/01 00:18:51 iedowse Exp $
- *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.7 2003/07/21 07:57:43 dillon Exp $
+ *	$DragonFly: src/sys/vfs/gnu/ext2fs/ext2_vfsops.c,v 1.8 2003/07/26 18:53:21 rob Exp $
  */
 
 #include "opt_quota.h"
@@ -128,8 +128,8 @@ static int ext2_mountroot __P((void));
 static int
 ext2_mountroot()
 {
-	register struct ext2_sb_info *fs;
-	register struct mount *mp;
+	struct ext2_sb_info *fs;
+	struct mount *mp;
 	struct thread *td = curthread;
 	struct ufsmount *ump;
 	u_int size;
@@ -180,7 +180,7 @@ ext2_mountroot()
  */
 static int
 ext2_mount(mp, path, data, ndp, td)
-	register struct mount *mp;	
+	struct mount *mp;	
 	char *path;
 	caddr_t data;		/* this is actually a (struct ufs_args *) */
 	struct nameidata *ndp;
@@ -189,7 +189,7 @@ ext2_mount(mp, path, data, ndp, td)
 	struct vnode *devvp;
 	struct ufs_args args;
 	struct ufsmount *ump = 0;
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	size_t size;
 	int error, flags;
 	mode_t accessmode;
@@ -522,11 +522,11 @@ static int compute_sb_data(devvp, es, fs)
  */
 static int
 ext2_reload(mountp, cred, td)
-	register struct mount *mountp;
+	struct mount *mountp;
 	struct ucred *cred;
 	struct thread *td;
 {
-	register struct vnode *vp, *nvp, *devvp;
+	struct vnode *vp, *nvp, *devvp;
 	struct inode *ip;
 	struct buf *bp;
 	struct ext2_super_block * es;
@@ -621,13 +621,13 @@ loop:
  */
 static int
 ext2_mountfs(devvp, mp, td)
-	register struct vnode *devvp;
+	struct vnode *devvp;
 	struct mount *mp;
 	struct thread *td;
 {
-	register struct ufsmount *ump;
+	struct ufsmount *ump;
 	struct buf *bp;
-	register struct ext2_sb_info *fs;
+	struct ext2_sb_info *fs;
 	struct ext2_super_block * es;
 	dev_t dev = devvp->v_rdev;
 	struct partinfo dpart;
@@ -767,8 +767,8 @@ ext2_unmount(mp, mntflags, td)
 	int mntflags;
 	struct thread *td;
 {
-	register struct ufsmount *ump;
-	register struct ext2_sb_info *fs;
+	struct ufsmount *ump;
+	struct ext2_sb_info *fs;
 	int error, flags, ronly, i;
 
 	flags = 0;
@@ -818,11 +818,11 @@ ext2_unmount(mp, mntflags, td)
  */
 static int
 ext2_flushfiles(mp, flags, td)
-	register struct mount *mp;
+	struct mount *mp;
 	int flags;
 	struct thread *td;
 {
-	register struct ufsmount *ump;
+	struct ufsmount *ump;
 	int error;
 #if QUOTA
 	int i;
@@ -855,13 +855,13 @@ ext2_flushfiles(mp, flags, td)
 static int
 ext2_statfs(mp, sbp, td)
 	struct mount *mp;
-	register struct statfs *sbp;
+	struct statfs *sbp;
 	struct thread *td;
 {
         unsigned long overhead;
-	register struct ufsmount *ump;
-	register struct ext2_sb_info *fs;
-	register struct ext2_super_block *es;
+	struct ufsmount *ump;
+	struct ext2_sb_info *fs;
+	struct ext2_super_block *es;
 	int i, nsb;
 
 	ump = VFSTOUFS(mp);
@@ -1006,8 +1006,8 @@ ext2_vget(mp, ino, vpp)
 	ino_t ino;
 	struct vnode **vpp;
 {
-	register struct ext2_sb_info *fs;
-	register struct inode *ip;
+	struct ext2_sb_info *fs;
+	struct inode *ip;
 	struct ufsmount *ump;
 	struct buf *bp;
 	struct vnode *vp;
@@ -1154,11 +1154,11 @@ printf("ext2_vget(%d) dbn= %d ", ino, fsbtodb(fs, ino_to_fsba(fs, ino)));
  */
 static int
 ext2_fhtovp(mp, fhp, vpp)
-	register struct mount *mp;
+	struct mount *mp;
 	struct fid *fhp;
 	struct vnode **vpp;
 {
-	register struct ufid *ufhp;
+	struct ufid *ufhp;
 	struct ext2_sb_info *fs;
 
 	ufhp = (struct ufid *)fhp;
@@ -1178,8 +1178,8 @@ ext2_vptofh(vp, fhp)
 	struct vnode *vp;
 	struct fid *fhp;
 {
-	register struct inode *ip;
-	register struct ufid *ufhp;
+	struct inode *ip;
+	struct ufid *ufhp;
 
 	ip = VTOI(vp);
 	ufhp = (struct ufid *)fhp;
@@ -1197,9 +1197,9 @@ ext2_sbupdate(mp, waitfor)
 	struct ufsmount *mp;
 	int waitfor;
 {
-	register struct ext2_sb_info *fs = mp->um_e2fs;
-	register struct ext2_super_block *es = fs->s_es;
-	register struct buf *bp;
+	struct ext2_sb_info *fs = mp->um_e2fs;
+	struct ext2_super_block *es = fs->s_es;
+	struct buf *bp;
 	int error = 0;
 /*
 printf("\nupdating superblock, waitfor=%s\n", waitfor == MNT_WAIT ? "yes":"no");
