@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_namecache.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_namecache.c,v 1.10 1999/08/28 00:40:53 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.5 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_namecache.c,v 1.6 2004/03/31 02:34:37 cpressey Exp $
  * 
  */
 
@@ -170,12 +170,8 @@ coda_nc_init(void)
  */
 
 static struct coda_cache *
-coda_nc_find(dcp, name, namelen, cred, hash)
-	struct cnode *dcp;
-	const char *name;
-	int namelen;
-	struct ucred *cred;
-	int hash;
+coda_nc_find(struct cnode *dcp, const char *name, int namelen,
+	     struct ucred *cred, int hash)
 {
 	/* 
 	 * hash to find the appropriate bucket, look through the chain
@@ -221,12 +217,8 @@ coda_nc_find(dcp, name, namelen, cred, hash)
  * LRU and Hash as needed.
  */
 void
-coda_nc_enter(dcp, name, namelen, cred, cp)
-    struct cnode *dcp;
-    const char *name;
-    int namelen;
-    struct ucred *cred;
-    struct cnode *cp;
+coda_nc_enter(struct cnode *dcp, const char *name, int namelen,
+	      struct ucred *cred, struct cnode *cp)
 {
     struct coda_cache *cncp;
     int hash;
@@ -298,11 +290,8 @@ coda_nc_enter(dcp, name, namelen, cred, cp)
  * matches the input, return it, otherwise return 0
  */
 struct cnode *
-coda_nc_lookup(dcp, name, namelen, cred)
-	struct cnode *dcp;
-	const char *name;
-	int namelen;
-	struct ucred *cred;
+coda_nc_lookup(struct cnode *dcp, const char *name, int namelen,
+	       struct ucred *cred)
 {
 	int hash;
 	struct coda_cache *cncp;
@@ -348,9 +337,7 @@ coda_nc_lookup(dcp, name, namelen, cred)
 }
 
 static void
-coda_nc_remove(cncp, dcstat)
-	struct coda_cache *cncp;
-	enum dc_status dcstat;
+coda_nc_remove(struct coda_cache *cncp, enum dc_status dcstat)
 {
 	/* 
 	 * remove an entry -- vrele(cncp->dcp, cp), crfree(cred),
@@ -388,9 +375,7 @@ coda_nc_remove(cncp, dcstat)
  * Remove all entries with a parent which has the input fid.
  */
 void
-coda_nc_zapParentfid(fid, dcstat)
-	ViceFid *fid;
-	enum dc_status dcstat;
+coda_nc_zapParentfid(ViceFid *fid, enum dc_status dcstat)
 {
 	/* To get to a specific fid, we might either have another hashing
 	   function or do a sequential search through the cache for the
@@ -435,9 +420,7 @@ coda_nc_zapParentfid(fid, dcstat)
  * Remove all entries which have the same fid as the input
  */
 void
-coda_nc_zapfid(fid, dcstat)
-	ViceFid *fid;
-	enum dc_status dcstat;
+coda_nc_zapfid(ViceFid *fid, enum dc_status dcstat)
 {
 	/* See comment for zapParentfid. This routine will be used
 	   if attributes are being cached. 
@@ -473,10 +456,7 @@ coda_nc_zapfid(fid, dcstat)
  * Remove all entries which match the fid and the cred
  */
 void
-coda_nc_zapvnode(fid, cred, dcstat)	
-	ViceFid *fid;
-	struct ucred *cred;
-	enum dc_status dcstat;
+coda_nc_zapvnode(ViceFid *fid, struct ucred *cred, enum dc_status dcstat)	
 {
 	/* See comment for zapfid. I don't think that one would ever
 	   want to zap a file with a specific cred from the kernel.
@@ -495,10 +475,7 @@ coda_nc_zapvnode(fid, cred, dcstat)
  * Remove all entries which have the (dir vnode, name) pair
  */
 void
-coda_nc_zapfile(dcp, name, namelen)
-	struct cnode *dcp;
-	const char *name;
-	int namelen;
+coda_nc_zapfile(struct cnode *dcp, const char *name, int namelen)
 {
 	/* use the hash function to locate the file, then zap all
  	   entries of it regardless of the cred.
@@ -536,9 +513,7 @@ coda_nc_zapfile(dcp, name, namelen)
  * A user is determined by his/her effective user id (id_uid).
  */
 void
-coda_nc_purge_user(uid, dcstat)
-	vuid_t	uid;
-	enum dc_status  dcstat;
+coda_nc_purge_user(vuid_t uid, enum dc_status dcstat)
 {
 	/* 
 	 * I think the best approach is to go through the entire cache
@@ -580,8 +555,7 @@ coda_nc_purge_user(uid, dcstat)
  * Flush the entire name cache. In response to a flush of the Venus cache.
  */
 void
-coda_nc_flush(dcstat)
-	enum dc_status dcstat;
+coda_nc_flush(enum dc_status dcstat)
 {
 	/* One option is to deallocate the current name cache and
 	   call init to start again. Or just deallocate, then rebuild.
@@ -710,9 +684,7 @@ coda_nc_gather_stats(void)
  * is in an improper state (except by turning the cache off).
  */
 int
-coda_nc_resize(hashsize, heapsize, dcstat)
-     int hashsize, heapsize;
-     enum dc_status dcstat;
+coda_nc_resize(int hashsize, int heapsize, enum dc_status dcstat)
 {
     if ((hashsize % 2) || (heapsize % 2)) { /* Illegal hash or cache sizes */
 	return(EINVAL);

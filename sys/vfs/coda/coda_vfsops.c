@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/cfs/coda_vfsops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vfsops.c,v 1.24.2.1 2001/07/26 20:36:45 iedowse Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.12 2004/03/28 00:48:00 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vfsops.c,v 1.13 2004/03/31 02:34:37 cpressey Exp $
  * 
  */
 
@@ -109,12 +109,12 @@ coda_vfsopstats_init(void)
  */
 /*ARGSUSED*/
 int
-coda_mount(vfsp, path, data, ndp, td)
-    struct mount *vfsp;		/* Allocated and initialized by mount(2) */
-    char *path;			/* path covered: ignored by the fs-layer */
-    caddr_t data;		/* Need to define a data type for this in netbsd? */
-    struct nameidata *ndp;	/* Clobber this to lookup the device name */
-    struct thread *td;		/* The ever-famous proc pointer */
+coda_mount(struct mount *vfsp,	/* Allocated and initialized by mount(2) */
+	   char *path,		/* path covered: ignored by the fs-layer */
+	   caddr_t data,	/* Need to define a data type for this in
+				 * netbsd? */
+	   struct nameidata *ndp, /* Clobber this to lookup the device name */
+	   struct thread *td)	/* The ever-famous proc pointer */
 {
     struct vnode *dvp;
     struct cnode *cp;
@@ -237,10 +237,7 @@ coda_mount(vfsp, path, data, ndp, td)
 }
 
 int
-coda_unmount(vfsp, mntflags, td)
-    struct mount *vfsp;
-    int mntflags;
-    struct thread *td;
+coda_unmount(struct mount *vfsp, int mntflags, struct thread *td)
 {
     struct coda_mntinfo *mi = vftomi(vfsp);
     int active, error = 0;
@@ -289,9 +286,7 @@ coda_unmount(vfsp, mntflags, td)
  * find root of cfs
  */
 int
-coda_root(vfsp, vpp)
-	struct mount *vfsp;
-	struct vnode **vpp;
+coda_root(struct mount *vfsp, struct vnode **vpp)
 {
     struct coda_mntinfo *mi = vftomi(vfsp);
     struct vnode **result;
@@ -382,10 +377,7 @@ coda_root(vfsp, vpp)
  * Get file system statistics.
  */
 int
-coda_nb_statfs(vfsp, sbp, td)
-    struct mount *vfsp;
-    struct statfs *sbp;
-    struct thread *td;
+coda_nb_statfs(struct mount *vfsp, struct statfs *sbp, struct thread *td)
 {
     ENTRY;
 /*  MARK_ENTRY(CODA_STATFS_STATS); */
@@ -420,10 +412,7 @@ coda_nb_statfs(vfsp, sbp, td)
  * Flush any pending I/O.
  */
 int
-coda_sync(vfsp, waitfor, td)
-    struct mount *vfsp;
-    int    waitfor;
-    struct thread *td;
+coda_sync(struct mount *vfsp, int waitfor, struct thread *td)
 {
     ENTRY;
     MARK_ENTRY(CODA_SYNC_STATS);
@@ -437,13 +426,8 @@ coda_sync(vfsp, waitfor, td)
  * a type-specific fid.  
  */
 int
-coda_fhtovp(vfsp, fhp, nam, vpp, exflagsp, creadanonp)
-    struct mount *vfsp;    
-    struct fid *fhp;
-    struct mbuf *nam;
-    struct vnode **vpp;
-    int *exflagsp;
-    struct ucred **creadanonp;
+coda_fhtovp(struct mount *vfsp, struct fid *fhp, struct mbuf *nam,
+	    struct vnode **vpp, int *exflagsp, struct ucred **creadanonp)
 {
     struct cfid *cfid = (struct cfid *)fhp;
     struct cnode *cp = 0;
@@ -491,8 +475,7 @@ coda_fhtovp(vfsp, fhp, nam, vpp, exflagsp, creadanonp)
  */
  
 int
-getNewVnode(vpp)
-     struct vnode **vpp;
+getNewVnode(struct vnode **vpp)
 {
     struct cfid cfid;
     struct coda_mntinfo *mi = vftomi((*vpp)->v_mount);
@@ -518,8 +501,7 @@ getNewVnode(vpp)
 /* get the mount structure corresponding to a given device.  Assume 
  * device corresponds to a UFS. Return NULL if no device is found.
  */ 
-struct mount *devtomp(dev)
-    dev_t dev;
+struct mount *devtomp(dev_t dev)
 {
     struct mount *mp;
    

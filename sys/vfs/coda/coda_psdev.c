@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_psdev.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_psdev.c,v 1.13 1999/09/29 15:03:46 marcel Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.7 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_psdev.c,v 1.8 2004/03/31 02:34:37 cpressey Exp $
  * 
  */
 
@@ -109,8 +109,7 @@ struct vmsg {
 
 /* vcodaattach: do nothing */
 void
-vcodaattach(n)
-    int n;
+vcodaattach(int n)
 {
 }
 
@@ -223,10 +222,7 @@ vc_nb_close (dev_t dev, int flag, int mode, d_thread_t *td)
 }
 
 int 
-vc_nb_read(dev, uiop, flag)   
-    dev_t        dev;  
-    struct uio  *uiop; 
-    int          flag;
+vc_nb_read(dev_t dev, struct uio *uiop, int flag)   
 {
     struct vcomm *	vcp;
     struct vmsg *vmp;
@@ -277,10 +273,7 @@ vc_nb_read(dev, uiop, flag)
 }
 
 int
-vc_nb_write(dev, uiop, flag)   
-    dev_t        dev;  
-    struct uio  *uiop; 
-    int          flag;
+vc_nb_write(dev_t dev, struct uio *uiop, int flag)   
 {
     struct vcomm *	vcp;
     struct vmsg *vmp;
@@ -465,8 +458,8 @@ struct coda_clstat coda_clstat;
  */
 
 int
-coda_call(mntinfo, inSize, outSize, buffer) 
-     struct coda_mntinfo *mntinfo; int inSize; int *outSize; caddr_t buffer;
+coda_call(struct coda_mntinfo *mntinfo, int inSize, int *outSize,
+	  caddr_t buffer) 
 {
 	struct vcomm *vcp;
 	struct vmsg *vmp;

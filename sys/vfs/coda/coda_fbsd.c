@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.4 2003/08/07 21:17:40 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.5 2004/03/31 02:34:37 cpressey Exp $
  * 
  */
 
@@ -111,8 +111,7 @@ static moduledata_t codadev_mod = {
 DECLARE_MODULE(codadev, codadev_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE+VC_DEV_NO);
 
 int
-coda_fbsd_getpages(v)
-	void *v;
+coda_fbsd_getpages(void *v)
 {
     struct vop_getpages_args *ap = v;
     int ret = 0;
@@ -182,8 +181,7 @@ printf("error = %d\n", error);
 }
 
 int
-coda_fbsd_putpages(v)
-	void *v;
+coda_fbsd_putpages(void *v)
 {
 	struct vop_putpages_args *ap = v;
 
