@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_vnops.h,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.h,v 1.6 1999/08/28 00:40:58 peter Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.4 2003/08/20 09:56:31 rob Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.h,v 1.5 2004/02/16 19:56:26 dillon Exp $
  * 
   */
 
@@ -81,7 +81,7 @@ int coda_vop_nop   (void *);
 int coda_fbsd_getpages	(void *);
 int coda_fbsd_putpages	(void *);
 
-int (**coda_vnodeop_p)(void *);
+extern int (**coda_vnodeop_p)(void *);
 
 int coda_rdwr(struct vnode *vp, struct uio *uiop, enum uio_rw rw,
     int ioflag, struct ucred *cred, struct thread *p);

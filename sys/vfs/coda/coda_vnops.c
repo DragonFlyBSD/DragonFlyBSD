@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.12 2003/10/09 22:27:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.13 2004/02/16 19:56:26 dillon Exp $
  * 
  */
 
@@ -81,6 +81,8 @@
 int coda_attr_cache  = 1;       /* Set to cache attributes in the kernel */
 int coda_symlink_cache = 1;     /* Set to cache symbolic link information */
 int coda_access_cache = 1;      /* Set to handle some access checks directly */
+
+int (**coda_vnodeop_p)(void *);
 
 /* structure to keep track of vfs calls */
 
