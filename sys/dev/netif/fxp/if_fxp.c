@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fxp/if_fxp.c,v 1.110.2.30 2003/06/12 16:47:05 mux Exp $
- * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.15 2004/09/14 23:04:38 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/fxp/if_fxp.c,v 1.16 2004/09/17 09:49:24 dillon Exp $
  */
 
 /*
@@ -1279,11 +1279,13 @@ fxp_intr_body(struct fxp_softc *sc, u_int8_t statack, int count)
 		for (txp = sc->cbl_first; sc->tx_queued &&
 		    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 		    txp = txp->next) {
-			if (txp->mb_head != NULL) {
-				m_freem(txp->mb_head);
+			if ((m = txp->mb_head) != NULL) {
 				txp->mb_head = NULL;
+				sc->tx_queued--;
+				m_freem(m);
+			} else {
+				sc->tx_queued--;
 			}
-			sc->tx_queued--;
 		}
 		sc->cbl_first = txp;
 		ifp->if_timer = 0;
@@ -1394,6 +1396,7 @@ fxp_tick(void *xsc)
 	struct ifnet *ifp = &sc->sc_if;
 	struct fxp_stats *sp = sc->fxp_stats;
 	struct fxp_cb_tx *txp;
+	struct mbuf *m;
 	int s;
 
 	ifp->if_opackets += sp->tx_good;
@@ -1432,11 +1435,13 @@ fxp_tick(void *xsc)
 	for (txp = sc->cbl_first; sc->tx_queued &&
 	    (txp->cb_status & FXP_CB_STATUS_C) != 0;
 	    txp = txp->next) {
-		if (txp->mb_head != NULL) {
-			m_freem(txp->mb_head);
+		if ((m = txp->mb_head) != NULL) {
 			txp->mb_head = NULL;
+			sc->tx_queued--;
+			m_freem(m);
+		} else {
+			sc->tx_queued--;
 		}
-		sc->tx_queued--;
 	}
 	sc->cbl_first = txp;
 	/*
