@@ -16,7 +16,7 @@
  *
  * @(#)strftime.c	7.38
  * $FreeBSD: src/lib/libc/stdtime/strftime.c,v 1.25.2.4 2002/03/12 17:24:54 phantom Exp $
- * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.3 2005/01/31 22:29:44 dillon Exp $
+ * $DragonFly: src/lib/libc/stdtime/strftime.c,v 1.4 2005/03/16 07:22:07 joerg Exp $
  */
 
 #include "namespace.h"
@@ -34,20 +34,13 @@ static const char	sccsid[] = "@(#)strftime.c	5.4 (Berkeley) 3/14/89";
 #include "un-namespace.h"
 #include "timelocal.h"
 
-static char *	_add P((const char *, char *, const char *));
-static char *	_conv P((int, const char *, char *, const char *));
-static char *	_fmt P((const char *, const struct tm *, char *, const char *));
-
-size_t strftime P((char *, size_t, const char *, const struct tm *));
-
-extern char *	tzname[];
+static char *	_add(const char *, char *, const char *);
+static char *	_conv(int, const char *, char *, const char *);
+static char *	_fmt(const char *, const struct tm *, char *, const char *);
 
 size_t
-strftime(s, maxsize, format, t)
-	char *const s;
-	const size_t maxsize;
-	const char *const format;
-	const struct tm *const t;
+strftime(char *const s, const size_t maxsize, const char * const format,
+	 const struct tm * const t)
 {
 	char *p;
 
@@ -60,11 +53,8 @@ strftime(s, maxsize, format, t)
 }
 
 static char *
-_fmt(format, t, pt, ptlim)
-	const char *format;
-	const struct tm *const t;
-	char *pt;
-	const char *const ptlim;
+_fmt(const char *format, const struct tm * const t, char *pt,
+     const char * const ptlim)
 {
 	int Ealternative, Oalternative;
 	struct lc_time_T *tptr = __get_current_time_locale();
@@ -106,7 +96,7 @@ label:
 				**	_fmt("%a %b %e %X %Y", t);
 				** ...whereas now POSIX 1003.2 calls for
 				** something completely different.
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				*/
 				pt = _conv((t->tm_year + TM_YEAR_BASE) / 100,
 					"%02d", pt, ptlim);
@@ -135,7 +125,7 @@ label:
 				**	%OS %Ou %OU %OV %Ow %OW %Oy
 				** are supposed to provide alternate
 				** representations.
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				**
 				** FreeBSD extensions
 				**      %OB %Ef %EF
@@ -170,7 +160,7 @@ label:
 				** match SunOS 4.1.1 and Arnold Robbins'
 				** strftime version 3.0.  That is, "%k" and
 				** "%l" have been swapped.
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				*/
 				pt = _conv(t->tm_hour, "%2d", pt, ptlim);
 				continue;
@@ -190,7 +180,7 @@ label:
 				** match SunOS 4.1.1 and Arnold Robbin's
 				** strftime version 3.0.  That is, "%k" and
 				** "%l" have been swapped.
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				*/
 				pt = _conv((t->tm_hour % 12) ?
 					(t->tm_hour % 12) : 12,
@@ -252,7 +242,7 @@ label:
 				** From Arnold Robbins' strftime version 3.0:
 				** "ISO 8601: Weekday as a decimal number
 				** [1 (Monday) - 7]"
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				*/
 				pt = _conv((t->tm_wday == 0) ? 7 : t->tm_wday,
 					"%d", pt, ptlim);
@@ -346,7 +336,7 @@ label:
 				/*
 				** From Arnold Robbins' strftime version 3.0:
 				** "date as dd-bbb-YYYY"
-				** (ado, 5/24/93)
+				** (ado, 1993-05-24)
 				*/
 				pt = _fmt("%e-%b-%Y", t, pt, ptlim);
 				continue;
@@ -419,11 +409,8 @@ label:
 }
 
 static char *
-_conv(n, format, pt, ptlim)
-	const int n;
-	const char *const format;
-	char *const pt;
-	const char *const ptlim;
+_conv(const int n, const char * const format, char * const pt,
+      const char * const ptlim)
 {
 	char	buf[INT_STRLEN_MAXIMUM(int) + 1];
 
@@ -432,10 +419,7 @@ _conv(n, format, pt, ptlim)
 }
 
 static char *
-_add(str, pt, ptlim)
-	const char *str;
-	char *pt;
-	const char *const ptlim;
+_add(const char *str, char *pt, const char * const ptlim)
 {
 	while (pt < ptlim && (*pt = *str++) != '\0')
 		++pt;
