@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.14 2004/02/24 18:07:11 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.15 2004/02/24 18:09:12 joerg Exp $
 #
 #        On the handling of kernel options
 #
