@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/ksched.c,v 1.7.2.1 2000/05/16 06:58:13 dillon Exp $
- * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.3 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/emulation/posix4/Attic/ksched.c,v 1.4 2004/03/30 19:14:18 dillon Exp $
  */
 
 /* ksched: Soft real time scheduling based on "rtprio".
@@ -41,8 +41,8 @@
 #include <sys/proc.h>
 #include <sys/kernel.h>
 #include <sys/resource.h>
-#include <machine/cpu.h>	/* For need_resched */
-#include <machine/ipl.h>	/* For need_resched */
+#include <machine/cpu.h>	/* For need_user_resched */
+#include <machine/ipl.h>	/* For need_user_resched */
 
 #include "posix4.h"
 
@@ -172,7 +172,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 				? RTP_PRIO_FIFO : RTP_PRIO_REALTIME;
 
 			p->p_rtprio = rtp;
-			need_resched();
+			need_user_resched();
 		}
 		else
 			e = EPERM;
@@ -192,7 +192,7 @@ int ksched_setscheduler(register_t *ret, struct ksched *ksched,
 			 *     on the scheduling code: You must leave the
 			 *     scheduling info alone.
 			 */
-			need_resched();
+			need_user_resched();
 		}
 		break;
 	}
@@ -209,7 +209,7 @@ int ksched_getscheduler(register_t *ret, struct ksched *ksched, struct proc *p)
  */
 int ksched_yield(register_t *ret, struct ksched *ksched)
 {
-	need_resched();
+	need_user_resched();
 	return 0;
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.28 2004/03/02 06:06:44 hmp Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.29 2004/03/30 19:14:13 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -76,6 +76,9 @@
  * in various vm_map related operations.  gd_vme_avail is *NOT* a count of
  * the number of structures in the cache but is instead a count of the number
  * of unreserved structures in the cache.  See vm_map_entry_reserve().
+ *
+ * gd_uschedcp is internal to the userland scheduler.  It does not represent
+ * the currently running process.
  */
 
 struct sysmsg;
@@ -120,26 +123,30 @@ struct globaldata {
 	struct pipe	*gd_pipeq;		/* cache pipe structures */
 	int		gd_pipeqcount;		/* number of structures */
 	lwkt_tokref_t 	gd_tokreqbase;		/* requests from other cpus */
+	struct proc	*gd_uschedcp;		/* userland scheduler */
 	/* extended by <machine/globaldata.h> */
 };
 
 typedef struct globaldata *globaldata_t;
 
-#define RQB_IPIQ	0
-#define RQB_INTPEND	1
-#define RQB_AST_OWEUPC	2
-#define RQB_AST_SIGNAL	3
-#define RQB_AST_RESCHED	4
-#define RQB_AST_UPCALL	5
+#define RQB_IPIQ		0
+#define RQB_INTPEND		1
+#define RQB_AST_OWEUPC		2
+#define RQB_AST_SIGNAL		3
+#define RQB_AST_USER_RESCHED	4
+#define RQB_AST_LWKT_RESCHED	5
+#define RQB_AST_UPCALL		6
 
-#define RQF_IPIQ	(1 << RQB_IPIQ)
-#define RQF_INTPEND	(1 << RQB_INTPEND)
-#define RQF_AST_OWEUPC	(1 << RQB_AST_OWEUPC)
-#define RQF_AST_SIGNAL	(1 << RQB_AST_SIGNAL)
-#define RQF_AST_RESCHED	(1 << RQB_AST_RESCHED)
-#define RQF_AST_UPCALL	(1 << RQB_AST_UPCALL)
-#define RQF_AST_MASK	(RQF_AST_OWEUPC|RQF_AST_SIGNAL|RQF_AST_RESCHED|\
-			 RQF_AST_UPCALL)
+#define RQF_IPIQ		(1 << RQB_IPIQ)
+#define RQF_INTPEND		(1 << RQB_INTPEND)
+#define RQF_AST_OWEUPC		(1 << RQB_AST_OWEUPC)
+#define RQF_AST_SIGNAL		(1 << RQB_AST_SIGNAL)
+#define RQF_AST_USER_RESCHED	(1 << RQB_AST_USER_RESCHED)
+#define RQF_AST_LWKT_RESCHED	(1 << RQB_AST_LWKT_RESCHED)
+#define RQF_AST_UPCALL		(1 << RQB_AST_UPCALL)
+#define RQF_AST_MASK		(RQF_AST_OWEUPC|RQF_AST_SIGNAL|\
+				RQF_AST_USER_RESCHED|RQF_AST_LWKT_RESCHED|\
+				RQF_AST_UPCALL)
 #define RQF_IDLECHECK_MASK	(RQF_IPIQ|RQF_INTPEND)
 
 #endif

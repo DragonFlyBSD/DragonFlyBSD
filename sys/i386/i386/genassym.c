@@ -35,7 +35,7 @@
  *
  *	from: @(#)genassym.c	5.11 (Berkeley) 5/10/91
  * $FreeBSD: src/sys/i386/i386/genassym.c,v 1.86.2.3 2002/03/03 05:42:49 nyan Exp $
- * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.35 2004/02/21 06:37:07 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/genassym.c,v 1.36 2004/03/30 19:14:04 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -191,7 +191,8 @@ ASSYM(RQF_IPIQ, RQF_IPIQ);
 ASSYM(RQF_INTPEND, RQF_INTPEND);
 ASSYM(RQF_AST_OWEUPC, RQF_AST_OWEUPC);
 ASSYM(RQF_AST_SIGNAL, RQF_AST_SIGNAL);
-ASSYM(RQF_AST_RESCHED, RQF_AST_RESCHED);
+ASSYM(RQF_AST_USER_RESCHED, RQF_AST_USER_RESCHED);
+ASSYM(RQF_AST_LWKT_RESCHED, RQF_AST_LWKT_RESCHED);
 ASSYM(RQF_AST_UPCALL, RQF_AST_UPCALL);
 ASSYM(RQF_AST_MASK, RQF_AST_MASK);
 

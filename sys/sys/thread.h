@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.48 2004/03/14 20:54:02 hmp Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.49 2004/03/30 19:14:13 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -266,6 +266,7 @@ struct thread {
 #define TDF_WAKEREQ		0x4000	/* resume_kproc */
 #define TDF_TIMEOUT		0x8000	/* tsleep timeout */
 #define TDF_INTTHREAD		0x00010000	/* interrupt thread */
+#define TDF_NORESCHED		0x00020000	/* Do not reschedule on wake */
 
 /*
  * Thread priorities.  Typically only one thread from any given
@@ -317,7 +318,6 @@ extern void lwkt_free_thread(struct thread *td);
 extern void lwkt_wait_init(struct lwkt_wait *w);
 extern void lwkt_gdinit(struct globaldata *gd);
 extern void lwkt_switch(void);
-extern void lwkt_maybe_switch(void);
 extern void lwkt_preempt(thread_t ntd, int critpri);
 extern void lwkt_schedule(thread_t td);
 extern void lwkt_schedule_self(void);

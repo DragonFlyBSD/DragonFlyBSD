@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.30 2004/03/20 19:16:24 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.31 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -128,7 +128,7 @@ roundrobin_remote(void *arg)
 {
 	struct proc *p = lwkt_preempted_proc();
  	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
-		need_resched();
+		need_user_resched();
 }
 
 #endif
@@ -138,7 +138,7 @@ roundrobin(void *arg)
 {
 	struct proc *p = lwkt_preempted_proc();
  	if (p == NULL || RTP_PRIO_NEED_RR(p->p_rtprio.type))
-		need_resched();
+		need_user_resched();
 #ifdef SMP
 	lwkt_send_ipiq_mask(mycpu->gd_other_cpus, roundrobin_remote, NULL);
 #endif
@@ -157,23 +157,27 @@ resched_cpus(u_int32_t mask)
 
 /*
  * The load average is scaled by FSCALE (2048 typ).  The estimated cpu is
- * incremented at a rate of ESTCPUFREQ per second, but this is
+ * incremented at a rate of ESTCPUVFREQ per second (40hz typ), but this is
  * divided up across all cpu bound processes running in the system so an
- * individual process will get less under load.
+ * individual process will get less under load.  ESTCPULIM typicaly caps
+ * out at ESTCPUMAX (around 376, or 11 nice levels).
  *
- * We want to decay estcpu by 18% per second, but we have to scale to the
- * load to avoid overpowering the estcpu aggregation.  To stabilize the
- * equation under low loads we make everything relative to a load average
- * of 1.0.
+ * Generally speaking the decay equation needs to break-even on growth
+ * at the limit at all load levels >= 1.0, so if the estimated cpu for
+ * a process increases by (ESTVCPUFREQ / load) per second, then the decay
+ * should reach this value when estcpu reaches ESTCPUMAX.  That calculation
+ * is:
  *
- *	estcpu -= estcpu * 0.18 / loadav			base equation
- *	estcpu -= (estcpu + ESTCPUFREQ) * 0.18 / (loadav + 1)	supplemented
+ *	ESTCPUMAX * decay = ESTCPUVFREQ / load
+ *	decay = ESTCPUVFREQ / (load * ESTCPUMAX)
+ *	decay = estcpu * 0.053 / load
  *
- * Note: 0.18 = 100/555
+ * If the load is less then 1.0 we assume a load of 1.0.
  */
 
+#define cload(loadav)	((loadav) < FSCALE ? FSCALE : (loadav))
 #define decay_cpu(loadav,estcpu)	\
-	(((estcpu + ESTCPUFREQ) * (100 * FSCALE / 555)) / ((loadav) + FSCALE))
+    ((estcpu) * (FSCALE * ESTCPUVFREQ / ESTCPUMAX) / cload(loadav))
 
 /* decay 95% of `p_pctcpu' in 60 seconds; see CCPU_SHIFT before changing */
 static fixpt_t	ccpu = 0.95122942450071400909 * FSCALE;	/* exp(-1/20) */
@@ -198,7 +202,7 @@ SYSCTL_INT(_kern, OID_AUTO, fscale, CTLFLAG_RD, 0, FSCALE, "");
 #define	CCPU_SHIFT	11
 
 /*
- * Recompute process priorities, every hz ticks.
+ * Recompute process priorities, once a second.
  */
 /* ARGSUSED */
 static void
@@ -311,12 +315,8 @@ sleepinit(void)
  * call should be restarted if possible, and EINTR is returned if the system
  * call should be interrupted by the signal (return EINTR).
  *
- * If the process has P_CURPROC set mi_switch() will not re-queue it to
- * the userland scheduler queues because we are in a SSLEEP state.  If
- * we are not the current process then we have to remove ourselves from
- * the scheduler queues.
- *
- * YYY priority now unused
+ * Note that if we are a process, we release_curproc() before messing with
+ * the LWKT scheduler.
  */
 int
 tsleep(void *ident, int flags, const char *wmesg, int timo)
@@ -350,8 +350,12 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 	crit_enter();
 	td->td_wchan = ident;
 	td->td_wmesg = wmesg;
-	if (p) 
+	if (p) {
+		if (flags & PNORESCHED)
+			td->td_flags |= TDF_NORESCHED;
+		release_curproc(p);
 		p->p_slptime = 0;
+	}
 	lwkt_deschedule_self();
 	TAILQ_INSERT_TAIL(&slpque[id], td, td_threadq);
 	if (timo)
@@ -394,7 +398,6 @@ tsleep(void *ident, int flags, const char *wmesg, int timo)
 		 */
 		clrrunnable(p, SSLEEP);
 		p->p_stats->p_ru.ru_nvcsw++;
-		KKASSERT(td->td_release || (p->p_flag & P_CURPROC) == 0);
 		mi_switch();
 		KASSERT(p->p_stat == SRUN, ("tsleep: stat not srun"));
 	} else {
@@ -405,6 +408,7 @@ resume:
 	if (p)
 		p->p_flag &= ~P_SINTR;
 	splx(s);
+	td->td_flags &= ~TDF_NORESCHED;
 	if (td->td_flags & TDF_TIMEOUT) {
 		td->td_flags &= ~TDF_TIMEOUT;
 		if (sig == 0)
@@ -605,7 +609,6 @@ mi_switch()
 	 * actually need splstatclock().
 	 */
 	x = splstatclock();
-	clear_resched();
 
 	/*
 	 * Check if the process exceeds its cpu resource allocation.
@@ -682,25 +685,16 @@ setrunnable(struct proc *p)
 
 /*
  * Change the process state to NOT be runnable, removing it from the run
- * queue.  If P_CURPROC is not set and we are in SRUN the process is on the
- * run queue (If P_INMEM is not set then it isn't because it is swapped).
+ * queue.
  */
 void
 clrrunnable(struct proc *p, int stat)
 {
-	int s;
-
-	s = splhigh();
-	switch(p->p_stat) {
-	case SRUN:
-		if (p->p_flag & P_ONRUNQ)
-			remrunqueue(p);
-		break;
-	default:
-		break;
-	}
+	crit_enter_quick(p->p_thread);
+	if (p->p_stat == SRUN && (p->p_flag & P_ONRUNQ))
+		remrunqueue(p);
 	p->p_stat = stat;
-	splx(s);
+	crit_exit_quick(p->p_thread);
 }
 
 /*
@@ -820,6 +814,12 @@ sched_setup(void *dummy)
  * time in 5 * loadav seconds.  This causes the system to favor processes
  * which haven't run much recently, and to round-robin among other processes.
  *
+ * The actual schedulerclock interrupt rate is ESTCPUFREQ, but we generally
+ * want to ramp-up at a faster rate, ESTCPUVFREQ, so p_estcpu is scaled
+ * by (ESTCPUVFREQ / ESTCPUFREQ).  You can control the ramp-up/ramp-down
+ * rate by adjusting ESTCPUVFREQ in sys/proc.h in integer multiples
+ * of ESTCPUFREQ.
+ *
  * WARNING! called from a fast-int or an IPI, the MP lock MIGHT NOT BE HELD
  * and we cannot block.
  */
@@ -831,9 +831,9 @@ schedulerclock(void *dummy)
 
 	td = curthread;
 	if ((p = td->td_proc) != NULL) {
-		p->p_cpticks++;
-		p->p_estcpu = ESTCPULIM(p->p_estcpu + 1);
-		if ((p->p_estcpu % PPQ) == 0 && try_mplock()) {
+		p->p_cpticks++;		/* cpticks runs at ESTCPUFREQ */
+		p->p_estcpu = ESTCPULIM(p->p_estcpu + ESTCPUVFREQ / ESTCPUFREQ);
+		if (try_mplock()) {
 			resetpriority(p);
 			rel_mplock();
 		}

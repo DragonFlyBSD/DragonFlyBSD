@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.16 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.17 2004/03/30 19:14:08 dillon Exp $
  */
 
 
@@ -137,6 +137,7 @@ doreti_next:
 	cmpl	$1,in_vm86call		/* YYY make per 'cpu'? */
 	jnz	doreti_ast
 1:
+	/* ASTs are only applicable when returning to userland */
 	testb	$SEL_RPL_MASK,TF_CS(%esp)
 	jnz	doreti_ast
 2:

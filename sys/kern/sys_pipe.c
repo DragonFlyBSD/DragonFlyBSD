@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.15 2004/03/28 08:25:48 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.16 2004/03/30 19:14:11 dillon Exp $
  */
 
 /*
@@ -490,7 +490,7 @@ pipe_read(struct file *fp, struct uio *uio, struct ucred *cred,
 				error = EAGAIN;
 			} else {
 				rpipe->pipe_state |= PIPE_WANTR;
-				if ((error = tsleep(rpipe, PCATCH,
+				if ((error = tsleep(rpipe, PCATCH|PNORESCHED,
 				    "piperd", 0)) == 0) {
 					error = pipelock(rpipe, 1);
 				}
@@ -715,7 +715,7 @@ retry:
 			wakeup(wpipe);
 		}
 		pipeselwakeup(wpipe);
-		error = tsleep(wpipe, PCATCH, "pipdwt", 0);
+		error = tsleep(wpipe, PCATCH|PNORESCHED, "pipdwt", 0);
 	}
 
 	pipelock(wpipe,0);
@@ -957,7 +957,7 @@ pipe_write(struct file *fp, struct uio *uio, struct ucred *cred,
 			pipeselwakeup(wpipe);
 
 			wpipe->pipe_state |= PIPE_WANTW;
-			error = tsleep(wpipe, PCATCH, "pipewr", 0);
+			error = tsleep(wpipe, PCATCH|PNORESCHED, "pipewr", 0);
 			if (error != 0)
 				break;
 			/*

@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.57 2004/03/28 08:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.58 2004/03/30 19:14:11 dillon Exp $
  */
 
 /*
@@ -139,13 +139,6 @@ _lwkt_enqueue(thread_t td)
 	TAILQ_INSERT_TAIL(&gd->gd_tdrunq[nq], td, td_threadq);
 	gd->gd_runqmask |= 1 << nq;
     }
-}
-
-static __inline
-int
-_lwkt_wantresched(thread_t ntd, thread_t cur)
-{
-    return((ntd->td_pri & TDPRI_MASK) > (cur->td_pri & TDPRI_MASK));
 }
 
 #ifdef _KERNEL
@@ -406,9 +399,9 @@ lwkt_switch(void)
      * when we block or switch rather then when we enter the kernel).
      * This function is NOT called if we are switching into a preemption
      * or returning from a preemption.  Typically this causes us to lose
-     * our P_CURPROC designation (if we have one) and become a true LWKT
-     * thread, and may also hand P_CURPROC to another process and schedule
-     * its thread.
+     * our current process designation (if we have one) and become a true
+     * LWKT thread, and may also hand the current process designation to
+     * another process and schedule thread.
      */
     if (td->td_release)
 	    td->td_release(td);
@@ -568,21 +561,6 @@ again:
 }
 
 /*
- * Switch if another thread has a higher priority.  Do not switch to other
- * threads at the same priority.
- */
-void
-lwkt_maybe_switch()
-{
-    struct globaldata *gd = mycpu;
-    struct thread *td = gd->gd_curthread;
-
-    if ((td->td_pri & TDPRI_MASK) < bsrl(gd->gd_runqmask)) {
-	lwkt_switch();
-    }
-}
-
-/*
  * Request that the target thread preempt the current thread.  Preemption
  * only works under a specific set of conditions:
  *
@@ -618,7 +596,7 @@ void
 lwkt_preempt(thread_t ntd, int critpri)
 {
     struct globaldata *gd = mycpu;
-    thread_t td = gd->gd_curthread;
+    thread_t td;
 #ifdef SMP
     int mpheld;
     int savecnt;
@@ -627,8 +605,7 @@ lwkt_preempt(thread_t ntd, int critpri)
     /*
      * The caller has put us in a critical section.  We can only preempt
      * if the caller of the caller was not in a critical section (basically
-     * a local interrupt), as determined by the 'critpri' parameter.   If
-     * we are unable to preempt 
+     * a local interrupt), as determined by the 'critpri' parameter. 
      *
      * YYY The target thread must be in a critical section (else it must
      * inherit our critical section?  I dunno yet).
@@ -636,11 +613,14 @@ lwkt_preempt(thread_t ntd, int critpri)
      * Any tokens held by the target may not be held by thread(s) being
      * preempted.  We take the easy way out and do not preempt if
      * the target is holding tokens.
+     *
+     * Set need_lwkt_resched() unconditionally for now YYY.
      */
     KASSERT(ntd->td_pri >= TDPRI_CRIT, ("BADCRIT0 %d", ntd->td_pri));
 
-    need_resched();
-    if (!_lwkt_wantresched(ntd, td)) {
+    td = gd->gd_curthread;
+    need_lwkt_resched();
+    if ((ntd->td_pri & TDPRI_MASK) <= (td->td_pri & TDPRI_MASK)) {
 	++preempt_miss;
 	return;
     }
@@ -813,10 +793,25 @@ lwkt_schedule_self(void)
  * Generic schedule.  Possibly schedule threads belonging to other cpus and
  * deal with threads that might be blocked on a wait queue.
  *
- * YYY this is one of the best places to implement load balancing code.
- * Load balancing can be accomplished by requesting other sorts of actions
- * for the thread in question.
+ * We have a little helper inline function which does additional work after
+ * the thread has been enqueued, including dealing with preemption and
+ * setting need_lwkt_resched() (which prevents the kernel from returning
+ * to userland until it has processed higher priority threads).
  */
+static __inline
+void
+_lwkt_schedule_post(thread_t ntd, int cpri)
+{
+    if (ntd->td_preemptable) {
+	ntd->td_preemptable(ntd, cpri);	/* YYY +token */
+    } else {
+	if ((ntd->td_flags & TDF_NORESCHED) == 0) {
+	    if ((ntd->td_pri & TDPRI_MASK) >= TDPRI_KERN_USER)
+		need_lwkt_resched();
+	}
+    }
+}
+
 void
 lwkt_schedule(thread_t td)
 {
@@ -851,6 +846,10 @@ lwkt_schedule(thread_t td)
 	 * acted upon).
 	 *
 	 * (remember, wait structures use stable storage)
+	 *
+	 * NOTE: tokens no longer enter a critical section, so we only need
+	 * to account for the crit_enter() above when calling
+	 * _lwkt_schedule_post().
 	 */
 	if ((w = td->td_wait) != NULL) {
 	    lwkt_tokref wref;
@@ -862,19 +861,13 @@ lwkt_schedule(thread_t td)
 #ifdef SMP
 		if (td->td_gd == mycpu) {
 		    _lwkt_enqueue(td);
-		    if (td->td_preemptable)
-			td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
-		    else if (_lwkt_wantresched(td, curthread))
-			need_resched();
+		    _lwkt_schedule_post(td, TDPRI_CRIT);
 		} else {
 		    lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 		}
 #else
 		_lwkt_enqueue(td);
-		if (td->td_preemptable)
-		    td->td_preemptable(td, TDPRI_CRIT*2); /* YYY +token */
-		else if (_lwkt_wantresched(td, curthread))
-		    need_resched();
+		_lwkt_schedule_post(td, TDPRI_CRIT);
 #endif
 		lwkt_reltoken(&wref);
 	    } else {
@@ -890,21 +883,13 @@ lwkt_schedule(thread_t td)
 #ifdef SMP
 	    if (td->td_gd == mycpu) {
 		_lwkt_enqueue(td);
-		if (td->td_preemptable) {
-		    td->td_preemptable(td, TDPRI_CRIT);
-		} else if (_lwkt_wantresched(td, curthread)) {
-		    need_resched();
-		}
+		_lwkt_schedule_post(td, TDPRI_CRIT);
 	    } else {
 		lwkt_send_ipiq(td->td_gd, (ipifunc_t)lwkt_schedule, td);
 	    }
 #else
 	    _lwkt_enqueue(td);
-	    if (td->td_preemptable) {
-		td->td_preemptable(td, TDPRI_CRIT);
-	    } else if (_lwkt_wantresched(td, curthread)) {
-		need_resched();
-	    }
+	    _lwkt_schedule_post(td, TDPRI_CRIT);
 #endif
 	}
     }

@@ -39,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.17 2004/03/20 19:21:08 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.18 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -435,7 +435,7 @@ statclock(systimer_t info, struct intrframe *frame)
 }
 
 /*
- * The scheduler clock typically runs at a 10Hz rate.  NOTE! systimer,
+ * The scheduler clock typically runs at a 20Hz rate.  NOTE! systimer,
  * the MP lock might not be held.  We can safely manipulate parts of curproc
  * but that's about it.
  */

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.32 2004/03/20 23:35:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.33 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -374,8 +374,8 @@ exit1(int rv)
 	}
 
 	/*
-	 * Release the P_CURPROC designation on the process so the userland
-	 * scheduler can work in someone else.
+	 * Release the current user process designation on the process so
+	 * the userland scheduler can work in someone else.
 	 */
 	release_curproc(p);
 

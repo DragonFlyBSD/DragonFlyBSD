@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.12 2004/03/02 20:55:10 drhodus Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.13 2004/03/30 19:14:13 dillon Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -126,6 +126,7 @@
 
 #define PCATCH		0x0100	/* OR'd with pri for tsleep to check signals */
 #define PUSRFLAG1	0x0200	/* Subsystem specific flag */
+#define PNORESCHED	0x0400	/* Do not force a reschedule on wakeup */
 
 #define NZERO	0		/* default "nice" */
 

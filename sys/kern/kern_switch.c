@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.19 2004/03/28 08:03:02 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.20 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -74,12 +74,17 @@ static int	 scancpu;
 #endif
 
 SYSCTL_INT(_debug, OID_AUTO, runqcount, CTLFLAG_RD, &runqcount, 0, "");
-static int usched_steal;
-SYSCTL_INT(_debug, OID_AUTO, usched_steal, CTLFLAG_RW,
-        &usched_steal, 0, "Passive Release was nonoptimal");
+#ifdef INVARIANTS
+static int usched_stalls;
+SYSCTL_INT(_debug, OID_AUTO, usched_stalls, CTLFLAG_RW,
+        &usched_stalls, 0, "acquire_curproc() had to stall");
+static int usched_stolen;
+SYSCTL_INT(_debug, OID_AUTO, usched_stolen, CTLFLAG_RW,
+        &usched_stolen, 0, "acquire_curproc() stole the des");
 static int usched_optimal;
 SYSCTL_INT(_debug, OID_AUTO, usched_optimal, CTLFLAG_RW,
-        &usched_optimal, 0, "Passive Release was nonoptimal");
+        &usched_optimal, 0, "acquire_curproc() was optimal");
+#endif
 #ifdef SMP
 static int remote_resched = 1;
 static int remote_resched_nonaffinity;
@@ -94,8 +99,6 @@ SYSCTL_INT(_debug, OID_AUTO, remote_resched_affinity, CTLFLAG_RD,
 SYSCTL_INT(_debug, OID_AUTO, choose_affinity, CTLFLAG_RD,
         &choose_affinity, 0, "chooseproc() was smart");
 #endif
-
-#define USCHED_COUNTER(td)	((td->td_gd == mycpu) ? ++usched_optimal : ++usched_steal)
 
 /*
  * Initialize the run queues at boot time.
@@ -116,10 +119,8 @@ SYSINIT(runqueue, SI_SUB_RUN_QUEUE, SI_ORDER_FIRST, rqinit, NULL)
 
 /*
  * Returns 1 if curp is equal to or better then newp.  Note that
- * lower p_priority values == higher process priorities.
- *
- * This routine is only called when the current process is trying to acquire
- * P_CURPROC.  Since it is already in-context we cut it some slack.
+ * lower p_priority values == higher process priorities.  Assume curp
+ * is in-context and cut it some slack to avoid ping ponging.
  */
 static __inline
 int
@@ -145,7 +146,6 @@ chooseproc(struct proc *chkp)
 	u_int32_t *which;
 	u_int32_t pri;
 
-	clear_resched();
 	if (rtqueuebits) {
 		pri = bsfl(rtqueuebits);
 		q = &rtqueues[pri];
@@ -203,9 +203,9 @@ chooseproc(struct proc *chkp)
  */
 static
 void
-need_resched_remote(void *dummy)
+need_user_resched_remote(void *dummy)
 {
-	need_resched();
+	need_user_resched();
 }
 
 #endif
@@ -218,9 +218,6 @@ need_resched_remote(void *dummy)
  * case when setrunqueue() is called from wakeup() and, in fact wakeup()
  * asserts that P_CP_RELEASED is set.
  *
- * Note that acquire_curproc() already optimizes making the current process
- * P_CURPROC, so setrunqueue() does not need to.
- *
  * If P_CP_RELEASED is not set we place the process on the run queue and we
  * signal other cpus in the system that may need to be woken up to service
  * the new 'user' process.
@@ -228,7 +225,7 @@ need_resched_remote(void *dummy)
  * If P_PASSIVE_ACQ is set setrunqueue() will not wakeup potential target
  * cpus in an attempt to keep the process on the current cpu at least for
  * a little while to take advantage of locality of reference (e.g. fork/exec
- * or short fork/exit).
+ * or short fork/exit, and uio_yield()).
  *
  * CPU AFFINITY: cpu affinity is handled by attempting to either schedule
  * or (user level) preempt on the same cpu that a process was previously
@@ -261,36 +258,46 @@ setrunqueue(struct proc *p)
 
 	crit_enter();
 	KASSERT(p->p_stat == SRUN, ("setrunqueue: proc not SRUN"));
-	KASSERT((p->p_flag & (P_ONRUNQ|P_CURPROC)) == 0,
+	KASSERT((p->p_flag & P_ONRUNQ) == 0,
 	    ("process %d already on runq! flag %08x", p->p_pid, p->p_flag));
 	KKASSERT((p->p_thread->td_flags & TDF_RUNQ) == 0);
 
 	/*
 	 * If we have been released from the userland scheduler we
-	 * directly schedule its thread.
+	 * directly schedule its thread.   If the priority is sufficiently
+	 * high request a user reschedule.   Note that the lwkt_resched
+	 * is not typically set for wakeups of userland threads that happen
+	 * to be sitting in the kernel because their LWKT priorities will
+	 * generally be the same.
 	 */
 	if (p->p_flag & P_CP_RELEASED) {
 		lwkt_schedule(p->p_thread);
+#if 0
+		if (gd->gd_uschedcp && test_resched(p, gd->gd_uschedcp))
+			need_user_resched();
+#endif
 		crit_exit();
 		return;
 	}
 
 	/*
-	 * Check cpu affinity.  The associated thread is stable at the
-	 * moment.  Note that we may be checking another cpu here so we
-	 * have to be careful.  Note that gd_upri only counts when the
-	 * curprocmask bit is set for the cpu in question, and since it is
-	 * only a hint we can modify it on another cpu's globaldata structure.
-	 * We use it to prevent unnecessary IPIs (hence the - PPQ).
+	 * We have not been released, make sure that we are not the currently
+	 * designated process.
 	 */
 	gd = p->p_thread->td_gd;
+	KKASSERT(gd->gd_uschedcp != p);
+
+	/*
+	 * Check cpu affinity.  The associated thread is stable at the
+	 * moment.  Note that we may be checking another cpu here so we
+	 * have to be careful.  We are currently protected by the BGL.
+	 */
 	cpuid = gd->gd_cpuid;
 
 	if ((curprocmask & (1 << cpuid)) == 0) {
 		curprocmask |= 1 << cpuid;
-		p->p_flag |= P_CURPROC;
+		gd->gd_uschedcp = p;
 		gd->gd_upri = p->p_priority;
-		USCHED_COUNTER(p->p_thread);
 		lwkt_schedule(p->p_thread);
 		/* CANNOT TOUCH PROC OR TD AFTER SCHEDULE CALL TO REMOTE CPU */
 		crit_exit();
@@ -345,14 +352,15 @@ setrunqueue(struct proc *p)
 	 * another cpu's gd_upri to avoid sending ipiq storms).
 	 */
 	if (gd == mycpu) {
-		if (p->p_priority - gd->gd_upri <= -PPQ) {
-			need_resched();
+		if ((p->p_thread->td_flags & TDF_NORESCHED) == 0 &&
+		    p->p_priority - gd->gd_upri <= -PPQ) {
+			need_user_resched();
 			--count;
 		}
 	} else if (remote_resched) {
 		if (p->p_priority - gd->gd_upri <= -PPQ) {
 			gd->gd_upri = p->p_priority;
-			lwkt_send_ipiq(gd, need_resched_remote, NULL);
+			lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
 			--count;
 			++remote_resched_affinity;
 		}
@@ -406,15 +414,16 @@ setrunqueue(struct proc *p)
 
 			if (p->p_priority - gd->gd_upri <= -PPQ) {
 				gd->gd_upri = p->p_priority;
-				lwkt_send_ipiq(gd, need_resched_remote, NULL);
+				lwkt_send_ipiq(gd, need_user_resched_remote, NULL);
 				++remote_resched_nonaffinity;
 			}
 		}
 	}
 #else
-	if (p->p_priority - gd->gd_upri <= -PPQ) {
+	if ((p->p_thread->td_flags & TDF_NORESCHED) == 0 &&
+	    p->p_priority - gd->gd_upri <= -PPQ) {
 		/* do not set gd_upri */
-		need_resched();
+		need_user_resched();
 	}
 #endif
 	crit_exit();
@@ -467,8 +476,12 @@ remrunqueue(struct proc *p)
 }
 
 /*
- * Release the P_CURPROC designation on the current process for this cpu
- * and attempt to assign a new current process from the run queue.
+ * Release the current process designation on p.  P MUST BE CURPROC.
+ * Attempt to assign a new current process from the run queue.
+ *
+ * If passive is non-zero, gd_uschedcp may be left set to p, the
+ * fact that P_CP_RELEASED is set will allow it to be overridden at any
+ * time.
  *
  * If we do not have or cannot get the MP lock we just wakeup the userland
  * helper scheduler thread for this cpu.
@@ -484,41 +497,54 @@ release_curproc(struct proc *p)
 {
 	int cpuid;
 	struct proc *np;
+	globaldata_t gd = mycpu;
 
 #ifdef ONLY_ONE_USER_CPU
-	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_gd == mycpu);
+	KKASSERT(gd->gd_cpuid == 0 && p->p_thread->td_gd == gd);
+#else
+	KKASSERT(p->p_thread->td_gd == gd);
 #endif
 	crit_enter();
-	clear_resched();
-	cpuid = p->p_thread->td_gd->gd_cpuid;
+	cpuid = gd->gd_cpuid;
 	if ((p->p_flag & P_CP_RELEASED) == 0) {
 		p->p_flag |= P_CP_RELEASED;
 		lwkt_setpri_self(TDPRI_KERN_USER);
 	}
-	if (p->p_flag & P_CURPROC) {
-		p->p_flag &= ~P_CURPROC;
-		curprocmask &= ~(1 << cpuid);
+	if (gd->gd_uschedcp == p) {
 		if (try_mplock()) {
+			/* 
+			 * YYY when the MP lock is not assumed (see else) we
+			 * will have to check that gd_uschedcp is still == p
+			 * after acquisition of the MP lock
+			 */
 			/*
-			 * Choose the next process to assign P_CURPROC to.
+			 * Choose the next designated current user process.
 			 * Note that we cannot schedule gd_schedthread
 			 * if runqcount is 0 without creating a scheduling
-			 * loop.
+			 * loop. 
+			 *
+			 * We do not clear the user resched request here,
+			 * we need to test it later when we re-acquire.
 			 */
 			if ((np = chooseproc(NULL)) != NULL) {
 				curprocmask |= 1 << cpuid;
-				np->p_flag |= P_CURPROC;
-				mycpu->gd_upri = np->p_priority;
-				USCHED_COUNTER(np->p_thread);
+				gd->gd_upri = np->p_priority;
+				gd->gd_uschedcp = np;
 				lwkt_acquire(np->p_thread);
 				lwkt_schedule(np->p_thread);
 			} else if (runqcount && (rdyprocmask & (1 << cpuid))) {
+				gd->gd_uschedcp = NULL;
+				curprocmask &= ~(1 << cpuid);
 				rdyprocmask &= ~(1 << cpuid);
-				lwkt_schedule(&mycpu->gd_schedthread);
+				lwkt_schedule(&gd->gd_schedthread);
+			} else {
+				gd->gd_uschedcp = NULL;
+				curprocmask &= ~(1 << cpuid);
 			}
 			rel_mplock();
 		} else {
 			KKASSERT(0);	/* MP LOCK ALWAYS HELD AT THE MOMENT */
+			/* YYY uschedcp and curprocmask */
 			if (runqcount && (rdyprocmask & (1 << cpuid))) {
 				rdyprocmask &= ~(1 << cpuid);
 				lwkt_schedule(&mycpu->gd_schedthread);
@@ -529,104 +555,209 @@ release_curproc(struct proc *p)
 }
 
 /*
- * Acquire the P_CURPROC designation on the CURRENT process only.  This
- * function is called prior to returning to userland.  If the system
+ * Acquire the current process designation on the CURRENT process only.  
+ * This function is called prior to returning to userland.  If the system
  * call or trap did not block and if no reschedule was requested it is
- * highly likely that the P_CURPROC flag is still set in the proc, and
- * we do almost nothing here.
+ * highly likely that p is still designated.
+ *
+ * If any reschedule (lwkt or user) was requested, release_curproc() has
+ * already been called and gd_uschedcp will be NULL.  We must be sure not
+ * to return without clearing both the lwkt and user ASTs.
  */
 void
 acquire_curproc(struct proc *p)
 {
 	int cpuid;
+#ifdef INVARIANTS
+	enum { ACQ_OPTIMAL, ACQ_STOLEN, ACQ_STALLED } state;
+#endif
 	struct proc *np;
+	globaldata_t gd = mycpu;
 
+#ifdef ONLY_ONE_USER_CPU
+	KKASSERT(gd->gd_cpuid == 0);
+#endif
 	/*
-	 * Short cut, we've already acquired the designation or we never
-	 * lost it in the first place.  P_CP_RELEASED is cleared, meaning
-	 * that the process is again under the control of the userland 
-	 * scheduler.  We do not have to fiddle with the LWKT priority,
-	 * the trap code (userret/userexit) will do that for us.
+	 * Shortcut the common case where the system call / other kernel entry
+	 * did not block or otherwise release our current process designation.
+	 * If a reschedule was requested the process would have been released
+	 * from <arch>/<arch>/trap.c and gd_uschedcp will be NULL.
 	 */
-	if ((p->p_flag & P_CURPROC) != 0) {
-		p->p_flag &= ~P_CP_RELEASED;
+	if (gd->gd_uschedcp == p && (p->p_flag & P_CP_RELEASED) == 0) {
+#ifdef INVARIANTS
+		++usched_optimal;
+#endif
 		return;
 	}
+	KKASSERT(p == gd->gd_curthread->td_proc);
+	clear_user_resched();
 
 	/*
-	 * Long cut.  This pulls in a bit of the userland scheduler as 
-	 * an optimization.  If our cpu has not scheduled a userland
-	 * process we gladly fill the slot, otherwise we choose the best
-	 * candidate from the run queue and compare it against ourselves,
-	 * scheduling either us or him depending.
+	 * We drop our priority now. 
 	 *
-	 * If our cpu's slot isn't free we put ourselves on the userland
-	 * run queue and switch away.  We should have P_CURPROC when we
-	 * come back.  Note that a cpu change can occur when we come back.
+	 * We must leave P_CP_RELEASED set.  This allows other kernel threads
+	 * exiting to userland to steal our gd_uschedcp.
 	 *
-	 * YYY don't need critical section, we hold giant and no interrupt
-	 * will mess w/ this proc?  Or will it?  What about curprocmask?
+	 * NOTE: If P_CP_RELEASED is not set here, our priority was never
+	 * raised and we therefore do not have to lower it.
 	 */
-#ifdef ONLY_ONE_USER_CPU
-	KKASSERT(mycpu->gd_cpuid == 0 && p->p_thread->td_gd == mycpu);
+	if (p->p_flag & P_CP_RELEASED)
+		lwkt_setpri_self(TDPRI_USER_NORM);
+	else
+		p->p_flag |= P_CP_RELEASED;
+
+#ifdef INVARIANTS
+	state = ACQ_OPTIMAL;
 #endif
 	crit_enter();
 
-	while ((p->p_flag & P_CURPROC) == 0) {
+	/*
+	 * Obtain ownership of gd_uschedcp (the current process designation).
+	 *
+	 * Note: the while never loops be use the construct for the initial
+	 * condition test and break statements.
+	 */
+	while (gd->gd_uschedcp != p) {
 		/*
-		 * reload the cpuid
-		 */
-		cpuid = p->p_thread->td_gd->gd_cpuid;
-
-		/*
-		 * (broken out from setrunqueue() as an optimization that
-		 * allows us to avoid descheduling and rescheduling ourself)
+		 * Choose the next process to become the current process.
 		 *
-		 * Interlock against the helper scheduler thread by setting
-		 * curprocmask while we choose a new process.  Check our
-		 * process against the new process to shortcut setrunqueue()
-		 * and remrunqueue() operations.
+		 * With P_CP_RELEASED set, we can compete for the designation.
+		 * if any_resched_wanted() is set 
 		 */
-		if ((curprocmask & (1 << cpuid)) == 0) {
+		cpuid = gd->gd_cpuid;
+		np = gd->gd_uschedcp;
+		if (np == NULL) {
+			KKASSERT((curprocmask & (1 << cpuid)) == 0);
 			curprocmask |= 1 << cpuid;
-
-			if ((np = chooseproc(p)) != NULL) {
-				KKASSERT((np->p_flag & P_CP_RELEASED) == 0);
-				np->p_flag |= P_CURPROC;
-				mycpu->gd_upri = np->p_priority;
-				USCHED_COUNTER(np->p_thread);
-				lwkt_acquire(np->p_thread);
-				lwkt_schedule(np->p_thread);
-			} else {
-				p->p_flag |= P_CURPROC;
+			if ((np = chooseproc(p)) == NULL) {
+				gd->gd_uschedcp = p;
+				gd->gd_upri = p->p_priority;
+				break;
 			}
+			KKASSERT((np->p_flag & P_CP_RELEASED) == 0);
+			gd->gd_upri = np->p_priority;
+			gd->gd_uschedcp = np;
+			lwkt_acquire(np->p_thread);
+			lwkt_schedule(np->p_thread);
+			/* fall through */
+		} else if ((np->p_flag&P_CP_RELEASED) && !test_resched(np, p)) {
+			/*
+			 * When gd_uschedcp's P_CP_RELEASED flag is set it
+			 * must have just called lwkt_switch() in the post
+			 * acquisition code below.  We can safely dequeue and
+			 * setrunqueue() it.
+			 *
+			 * Note that we reverse the arguments to test_resched()
+			 * and use NOT.  This reverses the hysteresis so we do
+			 * not chain a sequence of steadily worse priorities
+			 * and end up with a very low priority (high p_priority
+			 * value) as our current process.
+			 */
+			KKASSERT(curprocmask & (1 << cpuid));
+			gd->gd_uschedcp = p;
+			gd->gd_upri = p->p_priority;
+
+			lwkt_deschedule(np->p_thread);	/* local to cpu */
+			np->p_flag &= ~P_CP_RELEASED;
+			setrunqueue(np);
+#ifdef INVARIANTS
+			if (state == ACQ_OPTIMAL)
+				state = ACQ_STOLEN;
+#endif
 			break;
 		}
+
+		/*
+		 * We couldn't acquire the designation, put us on
+		 * the userland run queue for selection and block.
+		 * setrunqueue() will call need_user_resched() if
+		 * necessary if the existing current process has a lower
+		 * priority.
+		 */
+		clear_lwkt_resched();
 		lwkt_deschedule_self();
-		p->p_stats->p_ru.ru_nivcsw++;	/* involuntary context sw */
 		p->p_flag &= ~P_CP_RELEASED;
 		setrunqueue(p);
-		lwkt_switch();	/* CPU CAN CHANGE DUE TO SETRUNQUEUE() */
-		KASSERT((p->p_flag & (P_ONRUNQ|P_CURPROC|P_CP_RELEASED)) == P_CURPROC, ("unexpected p_flag %08x acquiring P_CURPROC\n", p->p_flag));
+		lwkt_switch();
+		/*
+		 * WE MAY HAVE BEEN MIGRATED TO ANOTHER CPU
+		 */
+		gd = mycpu;
+		KKASSERT((p->p_flag & (P_ONRUNQ|P_CP_RELEASED)) == 0);
+		break;
 	}
+
+	/*
+	 * We have acquired gd_uschedcp and our priority is correct.
+	 *
+	 * If P_CP_RELEASED is set we have to check lwkt_resched_wanted()
+	 * and lwkt_switch() if it returns TRUE in order to run any pending
+	 * threads before returning to user mode.  
+	 *
+	 * If P_CP_RELEASED is clear we have *ALREADY* done a switch (and
+	 * we were possibly dequeued and setrunqueue()'d, and then woken up
+	 * again via chooseproc()), and since our priority was lowered we
+	 * are guarenteed that no other kernel threads are pending and that
+	 * we are in fact the gd_uschedcp.
+	 */
+	if (p->p_flag & P_CP_RELEASED) {
+		if (lwkt_resched_wanted()) {
+			clear_lwkt_resched();
+			lwkt_switch();
+			gd = mycpu;	/* We may have moved */
+			if ((p->p_flag & P_CP_RELEASED) == 0) {
+				++p->p_stats->p_ru.ru_nivcsw;
+#ifdef INVARIANTS
+				state = ACQ_STALLED;
+				++usched_stalls;
+#endif
+			}
+		}
+		p->p_flag &= ~P_CP_RELEASED;
+	} else {
+		++p->p_stats->p_ru.ru_nivcsw;
+#ifdef INVARIANTS
+		state = ACQ_STALLED;
+		++usched_stalls;
+#endif
+	}
+
+	/*
+	 * That's it.  Cleanup, we are done.  The caller can return to
+	 * user mode now.
+	 */
+	KKASSERT((p->p_flag & P_ONRUNQ) == 0 && gd->gd_uschedcp == p);
 	crit_exit();
+#ifdef INVARIANTS
+	switch(state) {
+	case ACQ_OPTIMAL:
+		++usched_optimal;
+		break;
+	case ACQ_STOLEN:
+		++usched_stolen;
+		break;
+	default:
+		break;
+	}
+#endif
 }
 
 /*
  * Yield / synchronous reschedule.  This is a bit tricky because the trap
  * code might have set a lazy release on the switch function.   Setting
  * P_PASSIVE_ACQ will ensure that the lazy release executes when we call
- * switch, and that we will not be rescheduled to another cpu when we attempt
- * to re-acquire P_CURPROC.  
- *
- * We have to release P_CURPROC (by calling lwkt_switch(), and acquire it
- * again to yield to another user process.  Note that the release will
- * ensure that we are running at a kernel LWKT priority, and this priority
- * is not lowered through the reacquisition and rerelease sequence to ensure
- * that we do not deadlock against a higher priority *user* process.
+ * switch, and that we are given a greater chance of affinity with our
+ * current cpu.
  *
  * We call lwkt_setpri_self() to rotate our thread to the end of the lwkt
- * run queue.
+ * run queue.  lwkt_switch() will also execute any assigned passive release
+ * (which usually calls release_curproc()), allowing a same/higher priority
+ * process to be designated as the current process.  
+ *
+ * While it is possible for a lower priority process to be designated,
+ * it's call to lwkt_maybe_switch() in acquire_curproc() will likely
+ * round-robin back to us and we will be able to re-acquire the current
+ * process designation.
  */
 void
 uio_yield(void)
@@ -657,7 +788,8 @@ uio_yield(void)
 static void
 sched_thread(void *dummy)
 {
-    int cpuid = mycpu->gd_cpuid;	/* doesn't change */
+    globaldata_t gd = mycpu;
+    int cpuid = gd->gd_cpuid;		/* doesn't change */
     u_int32_t cpumask = 1 << cpuid;	/* doesn't change */
 
 #ifdef ONLY_ONE_USER_CPU
@@ -673,9 +805,8 @@ sched_thread(void *dummy)
 	crit_enter();
 	if ((curprocmask & cpumask) == 0 && (np = chooseproc(NULL)) != NULL) {
 	    curprocmask |= cpumask;
-	    np->p_flag |= P_CURPROC;
-	    mycpu->gd_upri = np->p_priority;
-	    USCHED_COUNTER(np->p_thread);
+	    gd->gd_upri = np->p_priority;
+	    gd->gd_uschedcp = np;
 	    lwkt_acquire(np->p_thread);
 	    lwkt_schedule(np->p_thread);
 	}

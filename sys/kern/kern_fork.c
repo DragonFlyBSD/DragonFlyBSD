@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.20 2004/03/20 23:35:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.21 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -360,9 +360,9 @@ again:
 	 * The p_stats and p_sigacts substructs are set in vm_fork.
 	 *
 	 * P_CP_RELEASED indicates that the process is starting out in
-	 * the kernel (in the fork trampoline).  The flag will be converted
-	 * to P_CURPROC when the new process calls userret() and attempts
-	 * to return to userland
+	 * the kernel (in the fork trampoline).  The flag will be cleared
+	 * when the new process calls userret() and acquires its current
+	 * process designation for the return to userland.
 	 */
 	p2->p_flag = P_INMEM | P_CP_RELEASED;
 	if (p1->p_flag & P_PROFIL)

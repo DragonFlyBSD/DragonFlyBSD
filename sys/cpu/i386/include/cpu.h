@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.14 2004/02/17 19:38:53 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/cpu.h,v 1.15 2004/03/30 19:14:06 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -72,8 +72,10 @@
  * atomic instruction because an interrupt on the local cpu can modify
  * the gd_reqflags field.
  */
-#define	need_resched()		\
-    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
+#define	need_lwkt_resched()	\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define	need_user_resched()	\
+    atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
 #define	need_proftick()		\
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_OWEUPC)
 #define	need_ipiq()		\
@@ -82,10 +84,16 @@
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_SIGNAL)
 #define	sigupcall()		\
     atomic_set_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_UPCALL)
-#define	clear_resched()		\
-    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_RESCHED)
-#define	resched_wanted()	\
-    (mycpu->gd_reqflags & RQF_AST_RESCHED)
+#define	clear_user_resched()	\
+    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_USER_RESCHED)
+#define	clear_lwkt_resched()	\
+    atomic_clear_int_nonlocked(&mycpu->gd_reqflags, RQF_AST_LWKT_RESCHED)
+#define	user_resched_wanted()	\
+    (mycpu->gd_reqflags & RQF_AST_USER_RESCHED)
+#define	lwkt_resched_wanted()	\
+    (mycpu->gd_reqflags & RQF_AST_LWKT_RESCHED)
+#define	any_resched_wanted()	\
+    (mycpu->gd_reqflags & (RQF_AST_LWKT_RESCHED|RQF_AST_USER_RESCHED))
 
 /*
  * CTL_MACHDEP definitions.

@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.46 2004/03/20 23:35:17 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.47 2004/03/30 19:14:13 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -263,7 +263,7 @@ struct	proc {
 #define	P_SINTR		0x00080	/* Sleep is interruptible. */
 #define	P_SUGID		0x00100	/* Had set id privileges since last exec. */
 #define	P_SYSTEM	0x00200	/* System proc: no sigs, stats or swapping. */
-#define	P_CURPROC	0x00400	/* 'Current process' on this cpu */
+#define	P_UNUSED00400	0x00400
 #define	P_TRACED	0x00800	/* Debugged process being traced. */
 #define	P_WAITED	0x01000	/* Debugging process has waited for child. */
 #define	P_WEXIT		0x02000	/* Working on exiting. */
@@ -391,12 +391,20 @@ TAILQ_HEAD(rq, proc);
  * ESTCPURAMP determines how slowly estcpu effects the process priority.
  * Higher numbers result in slower ramp-up times because estcpu is incremented
  * once per scheduler tick and maxes out at ESTCPULIM.
+ *
+ * ESTCPULIM = (127 - 2 * 40) * 8 = 376
+ *
+ * NOTE: ESTCPUVFREQ is the 'virtual' estcpu accumulation frequency, whereas
+ * ESTCPUFREQ is the actual interrupt rate.  The ratio is used to scale
+ * both the ramp-up and the decay calculations in kern_synch.c.  
  */
 
 #define ESTCPURAMP	8			/* higher equals slower */
 #define NICE_ADJUST(value)	(((unsigned int)(NICE_WEIGHT * 128) * (value)) / 128)
-#define ESTCPULIM(v)	min((v), (MAXPRI - NICE_ADJUST(PRIO_MAX - PRIO_MIN)) * ESTCPURAMP)
+#define ESTCPUMAX	((MAXPRI - NICE_ADJUST(PRIO_MAX - PRIO_MIN)) * ESTCPURAMP)
+#define ESTCPULIM(v)	min((v), ESTCPUMAX)
 #define ESTCPUFREQ	20			/* estcpu update frequency */
+#define ESTCPUVFREQ	40			/* virtual freq controls ramp*/
 #define	NICE_WEIGHT	2.0			/* priorities per nice level */
 #define	PPQ		((MAXPRI + 1) / NQS)	/* priorities per queue */
 

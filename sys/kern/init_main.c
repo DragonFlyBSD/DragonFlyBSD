@@ -40,7 +40,7 @@
  *
  *	@(#)init_main.c	8.9 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/init_main.c,v 1.134.2.8 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/init_main.c,v 1.28 2004/03/01 06:33:16 dillon Exp $
+ * $DragonFly: src/sys/kern/init_main.c,v 1.29 2004/03/30 19:14:11 dillon Exp $
  */
 
 #include "opt_init_path.h"
@@ -552,8 +552,9 @@ start_init(void *dummy)
 		 * to user mode as init!
 		 *
 		 * WARNING!  We may have been moved to another cpu after
-		 * acquiring P_CURPROC.  The MP lock will migrate with us
-		 * though so we still have to release it.
+		 * acquiring the current user process designation.  The
+		 * MP lock will migrate with us though so we still have to
+		 * release it.
 		 */
 		if ((error = execve(&args)) == 0) {
 			acquire_curproc(p);
