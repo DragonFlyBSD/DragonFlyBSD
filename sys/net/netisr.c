@@ -3,7 +3,7 @@
  * Copyright (c) 2003 Jonathan Lemon
  * Copyright (c) 2003 Matthew Dillon
  *
- * $DragonFly: src/sys/net/netisr.c,v 1.15 2004/04/23 10:21:08 hsu Exp $
+ * $DragonFly: src/sys/net/netisr.c,v 1.16 2004/04/24 06:55:57 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -40,6 +40,31 @@ netisr_autofree_reply(lwkt_port_t port, lwkt_msg_t msg)
     free(msg, M_LWKTMSG);
 }
 
+/*
+ * We must construct a custom putport function (which runs in the context
+ * of the message originator)
+ *
+ * Our custom putport must check for self-referential messages, which can
+ * occur when the so_upcall routine is called (e.g. nfs).  Self referential
+ * messages are executed synchronously.  However, we must panic if the message
+ * is not marked DONE on completion because the self-referential case cannot
+ * block without deadlocking.
+ */
+int
+netmsg_put_port(lwkt_port_t port, lwkt_msg_t lmsg)
+{
+    int error;
+
+    if ((lmsg->ms_flags & MSGF_ASYNC) == 0 && port->mp_td == curthread) {
+	error = lmsg->ms_cmd.cm_func(lmsg);
+	if (error == EASYNC && (lmsg->ms_flags & MSGF_DONE) == 0)
+	    panic("netmsg_put_port: self-referential deadlock on netport");
+	return(error);
+    } else {
+	return(lwkt_default_putport(port, lmsg));
+    }
+}
+
 static void
 netisr_init(void)
 {
@@ -49,6 +74,7 @@ netisr_init(void)
     for (i = 0; i < ncpus; ++i) {
 	lwkt_create(netmsg_service_loop, NULL, NULL, &netisr_cpu[i], 0, i,
 	    "netisr_cpu %d", i);
+	netisr_cpu[i].td_msgport.mp_putport = netmsg_put_port;
     }
     lwkt_initport(&netisr_afree_rport, NULL);
     netisr_afree_rport.mp_replyport = netisr_autofree_reply;

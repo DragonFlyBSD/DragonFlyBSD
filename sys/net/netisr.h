@@ -32,7 +32,7 @@
  *
  *	@(#)netisr.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/net/netisr.h,v 1.21.2.5 2002/02/09 23:02:39 luigi Exp $
- * $DragonFly: src/sys/net/netisr.h,v 1.16 2004/04/21 18:13:51 dillon Exp $
+ * $DragonFly: src/sys/net/netisr.h,v 1.17 2004/04/24 06:55:57 hsu Exp $
  */
 
 #ifndef _NET_NETISR_H_
@@ -164,6 +164,7 @@ void		netisr_dispatch(int, struct mbuf *);
 int		netisr_queue(int, struct mbuf *);
 void		netisr_register(int, lwkt_portfn_t, netisr_fn_t);
 int		netisr_unregister(int);
+int		netmsg_put_port(lwkt_port_t, lwkt_msg_t);
 void		netmsg_service_loop(void *arg);
 void		schednetisr(int);
 
