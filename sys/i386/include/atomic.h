@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.4 2003/07/20 03:55:25 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.5 2004/02/13 18:44:42 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -80,8 +80,12 @@
  * atomic instructions are MP safe, the nonlocked instructions are 
  * local-interrupt-safe (so we don't depend on C 'X |= Y' generating an
  * atomic instruction).
+ *
+ * +m - memory is read and written (=m - memory is only written)
+ * iq - integer constant or %ax/%bx/%cx/%dx (ir = int constant or any reg)
+ *	(Note: byte instructions only work on %ax,%bx,%cx, or %dx).  iq
+ *	is good enough for our needs so don't get fancy.
  */
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 9)
 
 /* egcs 1.1.2+ version */
 #define ATOMIC_ASM(NAME, TYPE, OP, V)			\
@@ -89,39 +93,18 @@ static __inline void					\
 atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(MPLOCKED OP			\
-			 : "=m" (*p)			\
-			 :  "0" (*p), "ir" (V)); 	\
+			 : "+m" (*p)			\
+			 : "iq" (V)); 			\
 }							\
 static __inline void					\
 atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
 {							\
 	__asm __volatile(MPLOCKED OP			\
-			 : "=m" (*p)			\
-			 :  "0" (*p), "ir" (V)); 	\
+			 : "+m" (*p)			\
+			 : "iq" (V)); 			\
 }
 
-#else
-
-/* gcc <= 2.8 version */
-#define ATOMIC_ASM(NAME, TYPE, OP, V)			\
-static __inline void					\
-atomic_##NAME##_##TYPE(volatile u_##TYPE *p, u_##TYPE v)\
-{							\
-	__asm __volatile(MPLOCKED OP			\
-			 : "=m" (*p)			\
-			 : "ir" (V));		 	\
-}							\
-static __inline void					\
-atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
-{							\
-	__asm __volatile(OP				\
-			 : "=m" (*p)			\
-			 : "ir" (V));		 	\
-}
-#endif
 #endif /* KLD_MODULE */
-
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 9)
 
 /* egcs 1.1.2+ version */
 ATOMIC_ASM(set,	     char,  "orb %b2,%0",   v)
@@ -143,30 +126,5 @@ ATOMIC_ASM(set,	     long,  "orl %2,%0",   v)
 ATOMIC_ASM(clear,    long,  "andl %2,%0", ~v)
 ATOMIC_ASM(add,	     long,  "addl %2,%0",  v)
 ATOMIC_ASM(subtract, long,  "subl %2,%0",  v)
-
-#else
-
-/* gcc <= 2.8 version */
-ATOMIC_ASM(set,	     char,  "orb %1,%0",   v)
-ATOMIC_ASM(clear,    char,  "andb %1,%0", ~v)
-ATOMIC_ASM(add,	     char,  "addb %1,%0",  v)
-ATOMIC_ASM(subtract, char,  "subb %1,%0",  v)
-
-ATOMIC_ASM(set,	     short, "orw %1,%0",   v)
-ATOMIC_ASM(clear,    short, "andw %1,%0", ~v)
-ATOMIC_ASM(add,	     short, "addw %1,%0",  v)
-ATOMIC_ASM(subtract, short, "subw %1,%0",  v)
-
-ATOMIC_ASM(set,	     int,   "orl %1,%0",   v)
-ATOMIC_ASM(clear,    int,   "andl %1,%0", ~v)
-ATOMIC_ASM(add,	     int,   "addl %1,%0",  v)
-ATOMIC_ASM(subtract, int,   "subl %1,%0",  v)
-
-ATOMIC_ASM(set,	     long,  "orl %1,%0",   v)
-ATOMIC_ASM(clear,    long,  "andl %1,%0", ~v)
-ATOMIC_ASM(add,	     long,  "addl %1,%0",  v)
-ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
-
-#endif
 
 #endif /* ! _MACHINE_ATOMIC_H_ */
