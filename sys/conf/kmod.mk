@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.3 2003/08/07 21:16:48 dillon Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.4 2003/08/08 03:57:35 dillon Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -68,12 +68,14 @@ KMODUNLOAD?=	/sbin/kldunload
 CFLAGS+=	${COPTS} -D_KERNEL ${CWARNFLAGS}
 CFLAGS+=	-DKLD_MODULE
 
-# Don't use any standard or source-relative include directories.
+# Don't use any standard include directories.
 # Since -nostdinc will annull any previous -I paths, we repeat all
 # such paths after -nostdinc.  It doesn't seem to be possible to
 # add to the front of `make' variable.
+#
+# Don't use -I- anymore, source-relative includes are desireable.
 _ICFLAGS:=	${CFLAGS:M-I*}
-CFLAGS+=	-nostdinc -I- ${_ICFLAGS}
+CFLAGS+=	-nostdinc ${_ICFLAGS}
 
 # Add -I paths for system headers.  Individual KLD makefiles don't
 # need any -I paths for this.  Similar defaults for .PATH can't be
