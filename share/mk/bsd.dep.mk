@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.dep.mk,v 1.27.2.3 2002/12/23 16:33:37 ru Exp $
-# $DragonFly: src/share/mk/bsd.dep.mk,v 1.6 2004/11/13 16:52:36 joerg Exp $
+# $DragonFly: src/share/mk/bsd.dep.mk,v 1.7 2004/11/13 17:31:00 joerg Exp $
 #
 # The include file <bsd.dep.mk> handles Makefile dependencies.
 #
@@ -100,7 +100,7 @@ ${_YC} y.tab.h: ${_YSRC}
 	cp y.tab.c ${_YC}
 SRCS:=	${SRCS} y.tab.h
 CLEANFILES:= ${CLEANFILES} y.tab.c y.tab.h
-.elif !empty({YFLAGS:M-d)
+.elif !empty(YFLAGS:M-d)
 .for _YH in ${_YC:S/.c/.h/}
 .ORDER: ${_YC} ${_YH}
 ${_YC} ${_YH}: ${_YSRC}
