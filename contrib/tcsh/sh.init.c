@@ -1,6 +1,6 @@
 /*
- * $Header: /src/pub/tcsh/sh.init.c,v 3.49 2002/03/08 17:36:46 christos Exp $ */
- * $DragonFly: src/contrib/tcsh/Attic/sh.init.c,v 1.2 2003/10/22 01:00:16 dillon Exp $
+ * $Header: /src/pub/tcsh/sh.init.c,v 3.49 2002/03/08 17:36:46 christos Exp $ 
+ * $DragonFly: src/contrib/tcsh/Attic/sh.init.c,v 1.3 2003/10/22 17:00:53 drhodus Exp $
  */
 /*
  * sh.init.c: Function and signal tables
