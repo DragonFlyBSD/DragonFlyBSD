@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.46 2005/01/12 06:23:18 joerg Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.47 2005/01/12 08:08:09 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -1253,25 +1253,21 @@ getsockaddr(struct sockaddr **namp, caddr_t uaddr, size_t len)
  * will be returned and *fpp will be set to NULL.
  */
 int
-holdsock(fdp, fdes, fpp)
-	struct filedesc *fdp;
-	int fdes;
-	struct file **fpp;
+holdsock(struct filedesc *fdp, int fdes, struct file **fpp)
 {
-	struct file *fp = NULL;
+	struct file *fp;
 	int error = 0;
 
-	if ((unsigned)fdes >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[fdes]) == NULL) {
-		error = EBADF;
-	} else if (fp->f_type != DTYPE_SOCKET) {
-		error = ENOTSOCK;
-		fp = NULL;
-	} else {
-		fhold(fp);
-	}
+	*fpp = NULL;
+	if ((unsigned)fdes >= fdp->fd_nfiles)
+		return EBADF;
+	if ((fp = fdp->fd_ofiles[fdes]) == NULL)
+		return EBADF;
+	if (fp->f_type != DTYPE_SOCKET)
+		return ENOTSOCK;
+	fhold(fp);
 	*fpp = fp;
-	return(error);
+	return (error);
 }
 
 /*
@@ -1436,7 +1432,7 @@ kern_sendfile(struct vnode *vp, int sfd, off_t offset, size_t nbytes,
 	struct proc *p = td->td_proc;
 	struct vm_object *obj;
 	struct socket *so;
-	struct file *fp = NULL;
+	struct file *fp;
 	struct mbuf *m;
 	struct sf_buf *sf;
 	struct sfbuf_mref *sfm;
