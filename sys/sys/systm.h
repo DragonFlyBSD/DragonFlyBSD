@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.13 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.14 2003/11/07 18:28:53 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -189,7 +189,7 @@ void	setstatclockrate (int hzrate);
 
 char	*getenv (const char *name);
 #define	testenv	getenv
-#define	freeenv
+#define	freeenv(p)
 int	getenv_int (const char *name, int *data);
 int	getenv_string (const char *name, char *data, int size);
 int	getenv_quad (const char *name, quad_t *data);

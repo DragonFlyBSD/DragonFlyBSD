@@ -25,15 +25,15 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/bios.c,v 1.29.2.3 2001/07/19 18:07:35 imp Exp $
- * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.5 2003/08/07 21:17:22 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/bios.c,v 1.6 2003/11/07 18:28:52 dillon Exp $
  */
 
 /*
  * Code for dealing with the BIOS in x86 PC systems.
  */
 
-#include "use_isa.h"
 #include "opt_pnp.h"
+/*#include "opt_isa.h"*/
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -51,18 +51,16 @@
 #include <machine/pc/bios.h>
 #include <bus/isa/pnpreg.h>
 #include <bus/isa/pnpvar.h>
-#if NISA > 0
 #include <bus/isa/isavar.h>
-#endif
 
 #define BIOS_START	0xe0000
 #define BIOS_SIZE	0x20000
 
 /* exported lookup results */
-struct bios32_SDentry		PCIbios = {entry : 0};
-struct PnPBIOS_table		*PnPBIOStable = 0;
+struct bios32_SDentry		PCIbios;
+struct PnPBIOS_table		*PnPBIOStable;
 
-static u_int			bios32_SDCI = 0;
+static u_int			bios32_SDCI;
 
 /* start fairly early */
 static void			bios32_init(void *junk);
@@ -81,9 +79,10 @@ bios32_init(void *junk)
     struct PnPBIOS_table	*pt;
     u_int8_t			ck, *cv;
     int				i;
+    char			*p;
     
     /*
-     * BIOS32 Service Directory
+     * BIOS32 Service Directory, PCI BIOS
      */
     
     /* look for the signature */
@@ -95,17 +94,25 @@ bios32_init(void *junk)
 	    ck += cv[i];
 	}
 	/* If checksum is OK, enable use of the entrypoint */
-	if ((ck == 0) && (sdh->entry < (BIOS_START + BIOS_SIZE))) {
+	if ((ck == 0) && BIOS_START <= sdh->entry &&
+	    (sdh->entry < (BIOS_START + BIOS_SIZE))
+	) {
 	    bios32_SDCI = BIOS_PADDRTOVADDR(sdh->entry);
 	    if (bootverbose) {
 		printf("bios32: Found BIOS32 Service Directory header at %p\n", sdh);
 		printf("bios32: Entry = 0x%x (%x)  Rev = %d  Len = %d\n", 
 		       sdh->entry, bios32_SDCI, sdh->revision, sdh->len);
 	    }
-	    /* See if there's a PCI BIOS entrypoint here */
-	    PCIbios.ident.id = 0x49435024;	/* PCI systems should have this */
-	    if (!bios32_SDlookup(&PCIbios) && bootverbose)
-		printf("pcibios: PCI BIOS entry at 0x%x\n", PCIbios.entry);
+
+	    /*  Allow user override of PCI BIOS search */
+	    if (((p = getenv("machdep.bios.pci")) == NULL) || strcmp(p, "disable")) {
+		/* See if there's a PCI BIOS entrypoint here */
+		PCIbios.ident.id = 0x49435024;	/* PCI systems should have this */
+		if (!bios32_SDlookup(&PCIbios) && bootverbose)
+		    printf("pcibios: PCI BIOS entry at 0x%x\n", PCIbios.entry);
+	    }
+	    if (p != NULL)
+		freeenv(p);
 	} else {
 	    printf("bios32: Bad BIOS32 Service Directory\n");
 	}
@@ -113,9 +120,12 @@ bios32_init(void *junk)
 
     /*
      * PnP BIOS
+     *
+     * Allow user override of PnP BIOS search
      */
-    if ((sigaddr = bios_sigsearch(0, "$PnP", 4, 16, 0)) != 0) {
-
+    if (((p = getenv("machdep.bios.pnp")) == NULL || strcmp(p, "disable")) &&
+	(sigaddr = bios_sigsearch(0, "$PnP", 4, 16, 0)) != 0
+    ) {
 	/* get a virtual pointer to the structure */
 	pt = (struct PnPBIOS_table *)(uintptr_t)BIOS_PADDRTOVADDR(sigaddr);
 	for (cv = (u_int8_t *)pt, ck = 0, i = 0; i < pt->len; i++) {
@@ -138,11 +148,11 @@ bios32_init(void *junk)
 	    printf("pnpbios: Bad PnP BIOS data checksum\n");
 	}
     }
-
+    if (p != NULL)
+	freeenv(p);
     if (bootverbose) {
 	    /* look for other know signatures */
 	    printf("Other BIOS signatures found:\n");
-	    printf("ACPI: %08x\n", bios_sigsearch(0, "RSD PTR ", 8, 16, 0));
     }
 }
 
@@ -254,7 +264,7 @@ set_bios_selectors(struct bios_segments *seg, int flags)
     union descriptor *p_gdt;
 
     p_gdt = &gdt[mycpu->gd_cpuid * NGDT];
-	
+
     ssd.ssd_base = seg->code32.base;
     ssd.ssd_limit = seg->code32.limit;
     ssdtosd(&ssd, &p_gdt[GBIOSCODE32_SEL].sd);
@@ -310,7 +320,8 @@ bios16(struct bios_args *args, char *fmt, ...)
     va_list 	ap;
     int 	flags = BIOSCODE_FLAG | BIOSDATA_FLAG;
     u_int 	i, arg_start, arg_end;
-    u_int 	*pte, *ptd;
+    pt_entry_t	*pte;
+    pd_entry_t	*ptd;
 
     arg_start = 0xffffffff;
     arg_end = 0;
@@ -349,8 +360,8 @@ bios16(struct bios_args *args, char *fmt, ...)
 	    stack -= 2;
 	    break;
 	    
-	case 's':			/* 16-bit integer */
-	    i = va_arg(ap, u_short);
+	case 's':			/* 16-bit integer passed as an int */
+	    i = va_arg(ap, int);
 	    stack -= 2;
 	    break;
 
@@ -369,25 +380,25 @@ bios16(struct bios_args *args, char *fmt, ...)
     args->seg.code32.base = (u_int)&bios16_jmp & PG_FRAME;
     args->seg.code32.limit = 0xffff;	
 
-    ptd = (u_int *)rcr3();
-    if (ptd == IdlePTD) {
+    ptd = (pd_entry_t *)rcr3();
+    if ((pd_entry_t)ptd == IdlePTD) {
 	/*
 	 * no page table, so create one and install it.
 	 */
-	pte = (u_int *)malloc(PAGE_SIZE, M_TEMP, M_WAITOK);
-	ptd = (u_int *)((u_int)ptd + KERNBASE);
+	pte = malloc(PAGE_SIZE, M_TEMP, M_WAITOK|M_ZERO);
+	ptd = (pd_entry_t *)((vm_offset_t)ptd + KERNBASE);
 	*ptd = vtophys(pte) | PG_RW | PG_V;
     } else {
 	/*
 	 * this is a user-level page table 
 	 */
-	pte = (u_int *)&PTmap;
+	pte = PTmap;
     }
     /*
-     * install pointer to page 0.  we don't need to flush the tlb,
-     * since there should not be a previous mapping for page 0.
+     * install pointer to page 0.  flush the tlb for safety.
      */
     *pte = (vm86pa - PAGE_SIZE) | PG_RW | PG_V; 
+    invltlb();
 
     stack_top = stack;
     va_start(ap, fmt);
@@ -421,8 +432,8 @@ bios16(struct bios_args *args, char *fmt, ...)
 	    stack += 2;
 	    break;
 
-	case 's':			/* 16-bit integer */
-	    i = va_arg(ap, u_short);
+	case 's':			/* 16-bit integer passed as an int */
+	    i = va_arg(ap, int);
 	    *(u_short *)stack = i;
 	    stack += 2;
 	    break;
@@ -438,18 +449,16 @@ bios16(struct bios_args *args, char *fmt, ...)
 
     i = bios16_call(&args->r, stack_top);
     
-    if (pte == (u_int *)&PTmap) {
+    if (pte == PTmap) {
 	*pte = 0;			/* remove entry */
     } else {
 	*ptd = 0;			/* remove page table */
 	free(pte, M_TEMP);		/* ... and free it */
     }
-
     /*
      * XXX only needs to be invlpg(0) but that doesn't work on the 386 
      */
     invltlb();
-
     return (i);
 }
 
@@ -475,11 +484,12 @@ struct pnp_sysdev
 #define PNPATTR_DOCK		(1<<5)	/* is a docking station */
 #define PNPATTR_REMOVEABLE	(1<<6)	/* device is removeable */
 #define PNPATTR_CONFIG_STATIC	0x00
-#define PNPATTR_CONFIG_DYNAMIC	0x07
-#define PNPATTR_CONFIG_DYNONLY	0x17
+#define PNPATTR_CONFIG_DYNAMIC	0x01
+#define PNPATTR_CONFIG_DYNONLY	0x03
+#define PNPATTR_CONFIG(a)	(((a) >> 7) & 0x03)
     /* device-specific data comes here */
     u_int8_t	devdata[0];
-} __attribute__ ((packed));
+} __packed;
 
 /* We have to cluster arguments within a 64k range for the bios16 call */
 struct pnp_sysdevargs
@@ -517,6 +527,10 @@ pnpbios_identify(driver_t *driver, device_t parent)
     /* no PnP BIOS information */
     if (pt == NULL)
 	return;
+
+    /* ACPI already active */
+    if (devlass_get_softc(devclass_find("ACPI"), 0) != NULL)
+	return;
     
     bzero(&args, sizeof(args));
     args.seg.code16.base = BIOS_PADDRTOVADDR(pt->pmentrybase);
@@ -524,24 +538,22 @@ pnpbios_identify(driver_t *driver, device_t parent)
     args.seg.data.base = BIOS_PADDRTOVADDR(pt->pmdataseg);
     args.seg.data.limit = 0xffff;
     args.entry = pt->pmentryoffset;
-    
+
     if ((error = bios16(&args, PNP_COUNT_DEVNODES, &ndevs, &bigdev)) || (args.r.eax & 0xff))
 	printf("pnpbios: error %d/%x getting device count/size limit\n", error, args.r.eax);
     ndevs &= 0xff;				/* clear high byte garbage */
     if (bootverbose)
 	printf("pnpbios: %d devices, largest %d bytes\n", ndevs, bigdev);
 
-    devnodebuf = malloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)),
-			M_DEVBUF, M_NOWAIT);
+    devnodebuf = malloc(bigdev + (sizeof(struct pnp_sysdevargs) - sizeof(struct pnp_sysdev)), M_DEVBUF, M_NOWAIT);
     pda = (struct pnp_sysdevargs *)devnodebuf;
     pd = &pda->node;
 
     for (currdev = 0, left = ndevs; (currdev != 0xff) && (left > 0); left--) {
-
 	bzero(pd, bigdev);
 	pda->next = currdev;
 	/* get current configuration */
-	if ((error = bios16(&args, PNP_GET_DEVNODE, &pda->next, &pda->node, (u_int16_t)1))) {
+	if ((error = bios16(&args, PNP_GET_DEVNODE, &pda->next, &pda->node, 1))) {
 	    printf("pnpbios: error %d making BIOS16 call\n", error);
 	    break;
 	}
@@ -558,25 +570,37 @@ pnpbios_identify(driver_t *driver, device_t parent)
 	}
 	
 	/*
-	 * If we are in APIC_IO mode, we should ignore the ISA PIC if it
-	 * shows up.  Likewise, in !APIC_IO mode, we should ignore the
-	 * APIC (less important).
-	 * This is significant because the ISA PIC will claim IRQ 2 (which
-	 * it uses for chaining), while in APIC mode this is a valid IRQ
-	 * available for general use.
+	 * Ignore PICs so that we don't have to worry about the PICs
+	 * claiming IRQs to prevent their use.  The PIC drivers
+	 * already ensure that invalid IRQs are not used.
 	 */
-#ifdef APIC_IO
 	if (!strcmp(pnp_eisaformat(pd->devid), "PNP0000"))	/* ISA PIC */
 	    continue;
-#else
 	if (!strcmp(pnp_eisaformat(pd->devid), "PNP0003"))	/* APIC */
 	    continue;
-#endif	
 	
 	/* Add the device and parse its resources */
 	dev = BUS_ADD_CHILD(parent, ISA_ORDER_PNP, NULL, -1);
 	isa_set_vendorid(dev, pd->devid);
 	isa_set_logicalid(dev, pd->devid);
+
+	/*
+	 * It appears that some PnP BIOS doesn't allow us to re-enable
+	 * the embedded system device once it is disabled.  We shall
+	 * mark all system device nodes as "cannot be disabled", regardless
+	 * of actual settings in the device attribute byte.
+	 * XXX
+	isa_set_configattr(dev, 
+	    ((pd->attrib & PNPATTR_NODISABLE) ?  0 : ISACFGATTR_CANDISABLE) |
+	    ((!(pd->attrib & PNPATTR_NOCONFIG) && 
+		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
+		? ISACFGATTR_DYNAMIC : 0));
+	 */
+	isa_set_configattr(dev, 
+	    (!(pd->attrib & PNPATTR_NOCONFIG) && 
+		PNPATTR_CONFIG(pd->attrib) != PNPATTR_CONFIG_STATIC)
+		? ISACFGATTR_DYNAMIC : 0);
+
 	ISA_SET_CONFIG_CALLBACK(parent, dev, pnpbios_set_config, 0);
 	pnp_parse_resources(dev, &pd->devdata[0],
 			    pd->size - sizeof(struct pnp_sysdev));
