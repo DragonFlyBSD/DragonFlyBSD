@@ -1,8 +1,25 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.7 2004/07/14 01:01:05 hmp Exp $
+# $DragonFly: site/data/main/Attic/FAQ.cgi,v 1.8 2004/07/18 04:36:50 justin Exp $
 
 $TITLE(DragonFly Frequently Asked Questions)
+
+<p><b>Is DragonFly ready for production?</b><br/>
+DragonFly is generally stable and speedy at this point.  DragonFly still uses the FreeBSD ports system for third-party software, and some ports may not build correctly on DragonFly.  You are advised to keep a close eye on the <a href="forums.cgi">forums</a>.</p>
+
+<p><b>What are the <i>potential</i> goals for the next release?</b><br/>
+Userland threading and a new packaging system, along with removal of the 
+multiprocessing lock (known as the Big Giant Lock) inherited from 
+FreeBSD-4.  In addition, we plan to implement asynchronous system call messaging, and a threaded VFS.</p>
+
+<p>For DragonFly news and events, keep an eye on Matthew Dillon's <a href="/status/diary.cgi">diary</a>, 
+the <a href="http://www.shiningsilence.com/dbsdlog/">DragonFly BSD Log</a>, and the DragonFly <a href="/main/forums.cgi">mailing lists/newsgroups</a>.</p>
+
+<p><b>I get garbage on the screen when I boot</b> <i>or</i> <b>I can't seem to pause at the initial boot menu.</b><br/>
+DragonFly, when booting, outputs to both video and serial ports.  If the booting computer has a 'noisy' serial device connected, it may read data from it during the boot process.  Serial console activation during boot can be disabled by creating the file /boot.config with the contents: '-V'</p>
+
+<p><b>I can't install the XFree86-4 port; it loops forever.</b><br/>
+Make sure you have the dfports override for XFree86-4-libraries on your DragonFly machine, and install that individual port.  The XFree86-4 metaport should install correctly after that.</p>
 
 <p>
 <b>What will be used to handle third-party applications?
