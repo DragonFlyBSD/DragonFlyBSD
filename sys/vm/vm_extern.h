@@ -32,7 +32,7 @@
  *
  *	@(#)vm_extern.h	8.2 (Berkeley) 1/12/94
  * $FreeBSD: src/sys/vm/vm_extern.h,v 1.46.2.3 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_extern.h,v 1.6 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_extern.h,v 1.7 2004/01/14 23:26:14 dillon Exp $
  */
 
 #ifndef _VM_EXTERN_H_
@@ -63,7 +63,7 @@ int swapon (struct proc *, void *, int *);
 int grow (struct proc *, size_t);
 int grow_stack (struct proc *, size_t);
 int kernacc (caddr_t, int, int);
-vm_offset_t kmem_alloc (vm_map_t, vm_size_t);
+vm_offset_t kmem_alloc3 (vm_map_t, vm_size_t, int flags);
 vm_offset_t kmem_alloc_nofault (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_pageable (vm_map_t, vm_size_t);
 vm_offset_t kmem_alloc_wait (vm_map_t, vm_size_t);
@@ -99,6 +99,13 @@ void vsunlock (caddr_t, u_int);
 void vm_object_print (/* db_expr_t */ long, boolean_t, /* db_expr_t */ long,
 			  char *);
 int vm_fault_quick (caddr_t v, int prot);
+
+static __inline
+vm_offset_t
+kmem_alloc (vm_map_t map, vm_size_t size)
+{
+	return(kmem_alloc3(map, size, 0));
+}
 
 #endif				/* _KERNEL */
 

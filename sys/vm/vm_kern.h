@@ -62,11 +62,17 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.h,v 1.22 2000/02/16 21:11:31 dillon Exp $
- * $DragonFly: src/sys/vm/vm_kern.h,v 1.7 2003/11/03 17:11:23 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.h,v 1.8 2004/01/14 23:26:14 dillon Exp $
  */
 
 #ifndef _VM_VM_KERN_H_
 #define _VM_VM_KERN_H_ 1
+
+/*
+ * kmem_alloc3() flags
+ */
+#define KM_PAGEABLE	0x0001
+#define KM_KRESERVE	0x0002
 
 /* Kernel memory management definitions. */
 extern vm_map_t buffer_map;

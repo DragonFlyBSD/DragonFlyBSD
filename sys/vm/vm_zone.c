@@ -12,7 +12,7 @@
  *	John S. Dyson.
  *
  * $FreeBSD: src/sys/vm/vm_zone.c,v 1.30.2.6 2002/10/10 19:50:16 dillon Exp $
- * $DragonFly: src/sys/vm/vm_zone.c,v 1.11 2003/10/19 00:23:30 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_zone.c,v 1.12 2004/01/14 23:26:14 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -330,7 +330,7 @@ zget(vm_zone_t z)
 		nbytes = z->zalloc * PAGE_SIZE;
 
 		{
-			item = (void *) kmem_alloc(kernel_map, nbytes);
+			item = (void *)kmem_alloc3(kernel_map, nbytes, KM_KRESERVE);
 			lwkt_regettoken(&z->zlock);
 			if (item != NULL)
 				zone_kern_pages += z->zalloc;

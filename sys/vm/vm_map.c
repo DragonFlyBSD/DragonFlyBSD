@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.17 2003/12/27 05:13:32 hsu Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.18 2004/01/14 23:26:14 dillon Exp $
  */
 
 /*
@@ -332,7 +332,9 @@ vm_map_init(struct vm_map *map, vm_offset_t min, vm_offset_t max)
 /*
  *	vm_map_entry_reserve:
  *
- *	Reserves vm_map_entry structures outside of the critical path
+ *	Reserves vm_map_entry structures so code later on can manipulate
+ *	map_entry structures within a locked map without blocking trying
+ *	to allocate a new vm_map_entry.
  */
 int
 vm_map_entry_reserve(int count)
@@ -389,10 +391,12 @@ vm_map_entry_release(int count)
  *
  *	Reserve map entry structures for use in kernel_map or (if it exists)
  *	kmem_map.  These entries have *ALREADY* been reserved on a per-cpu
- *	basis.
+ *	basis when the map was inited.  This function is used by zalloc()
+ *	to avoid a recursion when zalloc() itself needs to allocate additional
+ *	kernel memory.
  *
- *	XXX if multiple kernel map entries are used without any intervening
- *	use by another map the KKASSERT() may assert.
+ *	This function should only be used when the caller intends to later
+ *	call vm_map_entry_reserve() to 'normalize' the reserve cache.
  */
 int
 vm_map_entry_kreserve(int count)
@@ -1850,8 +1854,7 @@ done:
  *	reserve map entries for kernel_map.
  */
 int
-vm_map_wire(vm_map_t map, vm_offset_t start, 
-	vm_offset_t real_end, boolean_t new_pageable)
+vm_map_wire(vm_map_t map, vm_offset_t start, vm_offset_t real_end, int kmflags)
 {
 	vm_map_entry_t entry;
 	vm_map_entry_t start_entry;
@@ -1860,7 +1863,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start,
 	int count;
 	int s;
 
-	if (map == kernel_map)
+	if (kmflags & KM_KRESERVE)
 		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	else
 		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
@@ -1874,7 +1877,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start,
 		rv = KERN_INVALID_ADDRESS;
 		goto failure;
 	}
-	if (new_pageable == 0) {
+	if ((kmflags & KM_PAGEABLE) == 0) {
 		/*
 		 * Wiring.  
 		 *
@@ -2008,7 +2011,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start,
 		 * appropriately.
 		 */
 		if (rv)
-			new_pageable = 1;
+			kmflags |= KM_PAGEABLE;
 
 		/*
 		 * start_entry might have been clipped if we unlocked the
@@ -2018,7 +2021,7 @@ vm_map_wire(vm_map_t map, vm_offset_t start,
 		CLIP_CHECK_BACK(start_entry, start);
 	}
 
-	if (new_pageable) {
+	if (kmflags & KM_PAGEABLE) {
 		/*
 		 * This is the unwiring case.  We must first ensure that the
 		 * range to be unwired is really wired down.  We know there
@@ -2052,7 +2055,7 @@ done:
 	map->timestamp++;
 	vm_map_unlock(map);
 failure:
-	if (map == kernel_map)
+	if (kmflags & KM_KRESERVE)
 		vm_map_entry_krelease(count);
 	else
 		vm_map_entry_release(count);

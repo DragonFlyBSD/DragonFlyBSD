@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_kern.c,v 1.61.2.2 2002/03/12 18:25:26 tegge Exp $
- * $DragonFly: src/sys/vm/vm_kern.c,v 1.12 2004/01/13 08:22:12 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_kern.c,v 1.13 2004/01/14 23:26:14 dillon Exp $
  */
 
 /*
@@ -82,6 +82,7 @@
 #include <vm/vm_object.h>
 #include <vm/vm_page.h>
 #include <vm/vm_pageout.h>
+#include <vm/vm_kern.h>
 #include <vm/vm_extern.h>
 
 vm_map_t kernel_map=0;
@@ -139,7 +140,7 @@ kmem_alloc_nofault(vm_map_t map, vm_size_t size)
  *	or a submap.
  */
 vm_offset_t
-kmem_alloc(vm_map_t map, vm_size_t size)
+kmem_alloc3(vm_map_t map, vm_size_t size, int kmflags)
 {
 	vm_offset_t addr;
 	vm_offset_t offset;
@@ -148,7 +149,10 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 
 	size = round_page(size);
 
-	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
+	if (kmflags & KM_KRESERVE)
+		count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
+	else
+		count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 
 	/*
 	 * Use the kernel object for wired-down kernel pages. Assume that no
@@ -161,7 +165,10 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 	vm_map_lock(map);
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
-		vm_map_entry_krelease(count);
+		if (kmflags & KM_KRESERVE)
+			vm_map_entry_krelease(count);
+		else
+			vm_map_entry_release(count);
 		return (0);
 	}
 	offset = addr - VM_MIN_KERNEL_ADDRESS;
@@ -170,7 +177,10 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 		kernel_object, offset, addr, addr + size,
 		VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
-	vm_map_entry_krelease(count);
+	if (kmflags & KM_KRESERVE)
+		vm_map_entry_krelease(count);
+	else
+		vm_map_entry_release(count);
 
 	/*
 	 * Guarantee that there are pages already in this object before
@@ -206,7 +216,7 @@ kmem_alloc(vm_map_t map, vm_size_t size)
 	 * And finally, mark the data as non-pageable.
 	 */
 
-	(void) vm_map_wire(map, (vm_offset_t) addr, addr + size, FALSE);
+	(void) vm_map_wire(map, (vm_offset_t) addr, addr + size, kmflags);
 
 	return (addr);
 }
@@ -275,10 +285,6 @@ kmem_suballoc(parent, min, max, size)
  * 	kmem_alloc() because we may need to allocate memory at interrupt
  * 	level where we cannot block (canwait == FALSE).
  *
- * 	This routine has its own private kernel submap (kmem_map) and object
- * 	(kmem_object).  This, combined with the fact that only malloc uses
- * 	this routine, ensures that we will never block in map or object waits.
- *
  * 	Note that this still only works in a uni-processor environment and
  * 	when called at splhigh().
  *
@@ -308,11 +314,11 @@ kmem_malloc(vm_map_t map, vm_size_t size, int flags)
 	 * virtual address for the new memory, and thus will tell us the
 	 * offset within the kernel map.
 	 */
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
-	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
 	if (vm_map_findspace(map, vm_map_min(map), size, 1, &addr)) {
 		vm_map_unlock(map);
-		vm_map_entry_krelease(count);
+		vm_map_entry_release(count);
 		if (map == mb_map) {
 			mb_map_full = TRUE;
 			printf("Out of mbuf clusters - adjust NMBCLUSTERS or increase maxusers!\n");
@@ -370,7 +376,7 @@ retry:
 			}
 			vm_map_delete(map, addr, addr + size, &count);
 			vm_map_unlock(map);
-			vm_map_entry_krelease(count);
+			vm_map_entry_release(count);
 			return (0);
 		}
 		vm_page_flag_clear(m, PG_ZERO);
@@ -407,7 +413,7 @@ retry:
 		vm_page_flag_set(m, PG_MAPPED | PG_WRITEABLE | PG_REFERENCED);
 	}
 	vm_map_unlock(map);
-	vm_map_entry_krelease(count);
+	vm_map_entry_release(count);
 
 	return (addr);
 }
@@ -429,7 +435,7 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 
 	size = round_page(size);
 
-	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 
 	for (;;) {
 		/*
@@ -441,7 +447,7 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 			break;
 		/* no space now; see if we can ever get space */
 		if (vm_map_max(map) - vm_map_min(map) < size) {
-			vm_map_entry_krelease(count);
+			vm_map_entry_release(count);
 			vm_map_unlock(map);
 			return (0);
 		}
@@ -452,7 +458,7 @@ kmem_alloc_wait(vm_map_t map, vm_size_t size)
 		    NULL, (vm_offset_t) 0,
 		    addr, addr + size, VM_PROT_ALL, VM_PROT_ALL, 0);
 	vm_map_unlock(map);
-	vm_map_entry_krelease(count);
+	vm_map_entry_release(count);
 	return (addr);
 }
 
@@ -470,12 +476,12 @@ kmem_free_wakeup(map, addr, size)
 {
 	int count;
 
-	count = vm_map_entry_kreserve(MAP_RESERVE_COUNT);
+	count = vm_map_entry_reserve(MAP_RESERVE_COUNT);
 	vm_map_lock(map);
 	(void) vm_map_delete(map, trunc_page(addr), round_page(addr + size), &count);
 	wakeup(map);
 	vm_map_unlock(map);
-	vm_map_entry_krelease(count);
+	vm_map_entry_release(count);
 }
 
 /*

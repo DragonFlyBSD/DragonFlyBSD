@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_glue.c,v 1.94.2.4 2003/01/13 22:51:17 dillon Exp $
- * $DragonFly: src/sys/vm/vm_glue.c,v 1.18 2003/11/03 02:08:38 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_glue.c,v 1.19 2004/01/14 23:26:14 dillon Exp $
  */
 
 #include "opt_vm.h"
@@ -179,7 +179,7 @@ vslock(addr, len)
 	u_int len;
 {
 	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
-	    round_page((vm_offset_t)addr + len), FALSE);
+	    round_page((vm_offset_t)addr + len), 0);
 }
 
 void
@@ -188,7 +188,7 @@ vsunlock(addr, len)
 	u_int len;
 {
 	vm_map_wire(&curproc->p_vmspace->vm_map, trunc_page((vm_offset_t)addr),
-	    round_page((vm_offset_t)addr + len), TRUE);
+	    round_page((vm_offset_t)addr + len), KM_PAGEABLE);
 }
 
 /*
