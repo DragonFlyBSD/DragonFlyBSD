@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # $FreeBSD: src/etc/rc.d/nfsclient,v 1.3 2002/10/12 10:31:31 schweikh Exp $
-# $DragonFly: src/etc/rc.d/nfsclient,v 1.4 2004/01/27 00:42:45 rob Exp $
+# $DragonFly: src/etc/rc.d/nfsclient,v 1.5 2005/03/17 22:25:15 dillon Exp $
 #
 
 # PROVIDE: nfsclient
@@ -33,19 +33,24 @@ nfsclient_start()
 	#
 	# Run nfsiod and set some nfs client related sysctls
 	#
+	echo -n "NFS CLIENT:"
 	if [ -n "${nfs_client_flags}" ]; then
 		echo -n ' nfsiod'
 		nfsiod ${nfs_client_flags}
 	fi
 
 	if [ -n "${nfs_access_cache}" ]; then
-		echo "NFS access cache time=${nfs_access_cache}"
 		sysctl vfs.nfs.access_cache_timeout=${nfs_access_cache} >/dev/null
 	fi
-	if [ -n "${nfs_bufpackets}" ]; then
-		 sysctl vfs.nfs.bufpackets=${nfs_bufpackets} > /dev/null
+	if [ -n "${nfs_neg_cache}" ]; then
+		sysctl vfs.nfs.neg_cache_timeout=${nfs_neg_cache} >/dev/null
 	fi
-
+	if [ -n "${nfs_bufpackets}" ]; then
+		sysctl vfs.nfs.bufpackets=${nfs_bufpackets} > /dev/null
+	fi
+	echo -n " access_cache_timeout=`sysctl -n vfs.nfs.access_cache_timeout`"
+	echo -n " neg_cache_timeout=`sysctl -n vfs.nfs.neg_cache_timeout`"
+	echo ""
 	unmount_all
 }
 

@@ -23,7 +23,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/share/man/man5/rc.conf.5,v 1.197 2003/07/28 13:56:00 mbr Exp $
-.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.9 2005/02/17 22:44:39 liamfoy Exp $
+.\" $DragonFly: src/share/man/man5/rc.conf.5,v 1.10 2005/03/17 22:25:46 dillon Exp $
 .Dd March 3, 2002
 .Dt RC.CONF 5
 .Os
@@ -1169,8 +1169,27 @@ this can be set to
 to disable NFS ACCESS RPC caching, or to the number of seconds for which
 NFS ACCESS
 results should be cached.
+A value of 2-10 seconds will substantially reduce network traffic for
+many NFS operations.  The default is 5 seconds.  Note that the attribute
+cache holds stat information only.  The NFS data cache is independant
+of the attribute cache and is only invalidated when the client detects that
+the server has modified the underlying file.  This value specifies a
+maximum timeout.  The NFS client will automatically use a shorter timeout
+for files which have been recently modified.
+.It Va nfs_neg_cache
+.Pq Vt int
+If
+.Va nfs_client_enable
+is set to
+.Dq Li YES ,
+this can be set to
+.Dq Li 0
+to disable the caching of NEGATIVE LOOKUPS (lookups of non-existant 
+filenames), or to the number of seconds for which negative lookups should
+be cached.
 A value of 2-10 seconds will substantially reduce network
-traffic for many NFS operations.
+traffic for many NFS operations, especially source code builds.  The
+default is 3 seconds.
 .It Va nfs_server_enable
 .Pq Vt bool
 If set to
