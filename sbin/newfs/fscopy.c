@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/fscopy.c,v 1.1 2003/12/01 04:35:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs/fscopy.c,v 1.2 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -191,7 +191,7 @@ FSCopy(fsnode_t *phlinks, const char *path)
 		free(node);
 		node = NULL;
 	    } else if ((n = open(path, O_RDONLY)) < 0) {
-		fprintf(stderr, "Unable to open %s for reading %s\n", path);
+		fprintf(stderr, "Unable to open %s for reading\n", path);
 		free(node->fs_Data);
 		free(node);
 		node = NULL;

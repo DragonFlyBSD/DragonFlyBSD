@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: sysctl.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/sbin/sysctl/sysctl.c,v 1.25.2.11 2003/05/01 22:48:08 trhodes Exp $
- * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.3 2003/06/29 06:48:32 dillon Exp $
+ * $DragonFly: src/sbin/sysctl/sysctl.c,v 1.4 2004/02/04 17:40:01 joerg Exp $
  */
 
 #ifdef __i386__
@@ -407,12 +407,12 @@ struct _foo {
 	int majdev;
 	char *name;
 } maj2name[] = {
-	30,	"ad",
-	0,	"wd",
-	1,	"wfd",
-	2,	"fd",
-	4,	"da",
-	-1,	NULL	/* terminator */
+	{ 30,	"ad" },
+	{ 0,	"wd" },
+	{ 1,	"wfd" },
+	{ 2,	"fd" },
+	{ 4,	"da" },
+	{ -1,	NULL }	/* terminator */
 };
 
 static int
@@ -421,8 +421,8 @@ machdep_bootdev(u_long value)
 	int majdev, unit, slice, part;
 	struct _foo *p;
 
-	if (value & B_MAGICMASK != B_DEVMAGIC) {
-		printf("invalid (0x%08x)", value);
+	if ((value & B_MAGICMASK) != B_DEVMAGIC) {
+		printf("invalid (0x%08lx)", value);
 		return 0;
 	}
 	majdev = B_TYPE(value);

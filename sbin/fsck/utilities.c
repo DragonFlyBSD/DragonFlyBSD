@@ -32,7 +32,7 @@
  *
  * @(#)utilities.c	8.6 (Berkeley) 5/19/95
  * $FreeBSD: src/sbin/fsck/utilities.c,v 1.11.2.3 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/utilities.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/utilities.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -479,6 +479,7 @@ getpathname(char *namebuf, ino_t curdir, ino_t ino)
 	memmove(namebuf, cp, (size_t)(&namebuf[MAXPATHLEN] - cp));
 }
 
+/* ARGSUSED */
 void
 catch(int sig)
 {
@@ -492,6 +493,7 @@ catch(int sig)
  * a special exit after filesystem checks complete
  * so that reboot sequence may be interrupted.
  */
+/* ARGSUSED */
 void
 catchquit(int sig)
 {
@@ -504,6 +506,7 @@ catchquit(int sig)
  * Ignore a single quit signal; wait and flush just in case.
  * Used by child processes in preen.
  */
+/* ARGSUSED */
 void
 voidquit(int sig)
 {
@@ -513,6 +516,7 @@ voidquit(int sig)
 	(void)signal(SIGQUIT, SIG_DFL);
 }
 
+/* ARGSUSED */
 void
 infohandler(int sig)
 {

@@ -32,7 +32,7 @@
  *
  * @(#)inode.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/inode.c,v 1.20 2000/02/28 20:02:41 mckusick Exp $
- * $DragonFly: src/sbin/fsck/inode.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/inode.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -235,8 +235,8 @@ chkrange(ufs_daddr_t blk, int cnt)
 	if (cnt > sblock.fs_frag ||
 	    fragnum(&sblock, blk) + cnt > sblock.fs_frag) {
 		if (debug)
-			printf("bad size: blk %ld, offset %ld, size %ld\n",
-				blk, fragnum(&sblock, blk), cnt);
+			printf("bad size: blk %ld, offset %d, size %d\n",
+				(long)blk, fragnum(&sblock, blk), cnt);
 		return (1);
 	}
 	c = dtog(&sblock, blk);

@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.6 2003/11/03 19:51:04 eirikn Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -609,11 +609,11 @@ loop:
 		    ((off_t)blkno << dev_bshift))) == dev_bsize)
 			continue;
 		if (cnt == -1) {
-			msg("read error from %s: %s: [sector %d]: count=%d\n",
+			msg("read error from %s: %s: [sector %d]: count=%ld\n",
 				disk, strerror(errno), blkno, dev_bsize);
 			continue;
 		}
-		msg("short read error from %s: [sector %d]: count=%d, got=%d\n",
+		msg("short read error from %s: [sector %d]: count=%ld, got=%d\n",
 			disk, blkno, dev_bsize, cnt);
 	}
 }

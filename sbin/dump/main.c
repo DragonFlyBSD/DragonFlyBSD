@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/dump/main.c,v 1.20.2.9 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/main.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/main.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -339,7 +339,7 @@ main(int argc, char **argv)
 	dev_bsize = sblock->fs_fsize / fsbtodb(sblock, 1);
 	dev_bshift = ffs(dev_bsize) - 1;
 	if (dev_bsize != (1 << dev_bshift))
-		quit("dev_bsize (%d) is not a power of 2", dev_bsize);
+		quit("dev_bsize (%ld) is not a power of 2", dev_bsize);
 	tp_bshift = ffs(TP_BSIZE) - 1;
 	if (TP_BSIZE != (1 << tp_bshift))
 		quit("TP_BSIZE (%d) is not a power of 2", TP_BSIZE);
@@ -474,23 +474,23 @@ main(int argc, char **argv)
 		(void)dumpino(dp, ino);
 	}
 
-	(void)time((time_t *)&(tend_writing));
+	time(&tend_writing);
 	spcl.c_type = TS_END;
 	for (i = 0; i < ntrec; i++)
 		writeheader(maxino - 1);
 	if (pipeout)
-		msg("DUMP: %ld tape blocks\n", spcl.c_tapea);
+		msg("DUMP: %ld tape blocks\n", (long)spcl.c_tapea);
 	else
 		msg("DUMP: %ld tape blocks on %d volume%s\n",
-		    spcl.c_tapea, spcl.c_volume,
+		    (long)spcl.c_tapea, spcl.c_volume,
 		    (spcl.c_volume == 1) ? "" : "s");
 
 	/* report dump performance, avoid division through zero */
 	if (tend_writing - tstart_writing == 0)
 		msg("finished in less than a second\n");
 	else
-		msg("finished in %d seconds, throughput %d KBytes/sec\n",
-		    tend_writing - tstart_writing,
+		msg("finished in %ld seconds, throughput %ld KBytes/sec\n",
+		    (long)(tend_writing - tstart_writing),
 		    spcl.c_tapea / (tend_writing - tstart_writing));
 
 	putdumptime();

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.6.2.2 2000/12/11 01:03:24 obrien Exp $
- *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
+ *	@(#) $DragonFly: src/sbin/atm/fore_dnld/fore_dnld.c,v 1.5 2004/02/04 17:39:58 joerg Exp $
  */
 
 /*
@@ -96,6 +96,8 @@ char	line[132];
 int	lineptr = 0;
 
 Mon960 *Uart;
+
+int	sendbinfile(char *, u_char *);
 
 void
 delay(cnt)
@@ -666,8 +668,6 @@ loadmicrocode ( u_char *ucode, int size, u_char *ram )
 		char	c[4];
 	} w1, w2;
 #endif
-	int	n;
-	int	cnt = 0;
 	u_char	*bufp;
 	u_long	*lp;
 
@@ -1315,7 +1315,7 @@ main( int argc, char **argv )
 				hb3 = CP_READ(Mon->mon_bstat);
 				if (hb3 != BOOT_RUNNING) {
 					if (verbose)
-						printf("bstat %x\n", hb3);
+						printf("bstat %lx\n", hb3);
 					continue;
 				}
 
@@ -1323,7 +1323,7 @@ main( int argc, char **argv )
 				delay(1);
 				hb2 = CP_READ(aap->aali_heartbeat);
 				if (verbose)
-					printf("hb %x %x\n", hb1, hb2);
+					printf("hb %lx %lx\n", hb1, hb2);
 				if (hb1 < hb2)
 					break;
 			     }

@@ -37,7 +37,7 @@
  *
  * @(#)tape.c	8.9 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/tape.c,v 1.16.2.8 2002/06/30 22:57:52 iedowse Exp $
- * $DragonFly: src/sbin/restore/tape.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/tape.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -158,7 +158,7 @@ setinput(char *source)
 void
 newtapebuf(long size)
 {
-	static tapebufsize = -1;
+	static long tapebufsize = -1;
 
 	ntrec = size;
 	if (size <= tapebufsize)
@@ -292,7 +292,7 @@ setup(void)
 void
 getvol(long nextvol)
 {
-	long newvol, prevtapea, savecnt, i;
+	long newvol = 0, prevtapea, savecnt, i;
 	union u_spcl tmpspcl;
 #	define tmpbuf tmpspcl.s_spcl
 	char buf[TP_BSIZE];
@@ -395,7 +395,7 @@ gethdr:
 		goto again;
 	}
 	if (tmpbuf.c_volume != volno) {
-		fprintf(stderr, "Wrong volume (%ld)\n", tmpbuf.c_volume);
+		fprintf(stderr, "Wrong volume (%ld)\n", (long)tmpbuf.c_volume);
 		volno = 0;
 		goto again;
 	}
@@ -416,7 +416,7 @@ gethdr:
  	 * of the next record.
  	 */
 	dprintf(stdout, "last rec %ld, tape starts with %ld\n", prevtapea,
-	    tmpbuf.c_tapea);
+	    (long)tmpbuf.c_tapea);
  	if (tmpbuf.c_type == TS_TAPE && (tmpbuf.c_flags & DR_NEWHEADER)) {
  		if (curfile.action != USING) {
 			/*
@@ -513,7 +513,7 @@ printdumpinfo(void)
 	if (spcl.c_host[0] == '\0')
 		return;
 	fprintf(stderr, "Level %ld dump of %s on %s:%s\n",
-		spcl.c_level, spcl.c_filesys, spcl.c_host, spcl.c_dev);
+		(long)spcl.c_level, spcl.c_filesys, spcl.c_host, spcl.c_dev);
 	fprintf(stderr, "Label: %s\n", spcl.c_label);
 }
 
@@ -1157,7 +1157,7 @@ accthdr(struct s_spcl *header)
 		    oldinofmt ? "old" : "new");
  		if (header->c_firstrec)
  			fprintf(stderr, "begins with record %ld",
- 				header->c_firstrec);
+ 				(long)header->c_firstrec);
  		fprintf(stderr, "\n");
 		previno = 0x7fffffff;
 		return;

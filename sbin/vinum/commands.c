@@ -38,7 +38,7 @@
  *
  * $Id: commands.c,v 1.14 2000/11/14 20:01:23 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/commands.c,v 1.31.2.6 2003/06/06 05:13:29 grog Exp $
- * $DragonFly: src/sbin/vinum/commands.c,v 1.4 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sbin/vinum/commands.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -658,6 +658,7 @@ vinum_start(int argc, char *argv[], char *arg0[])
 		    break;
 
 		default:
+		    break;
 		}
 
 		if (doit) {
@@ -1044,6 +1045,7 @@ vinum_attach(int argc, char *argv[], char *argv0[])
 	    break;
 
 	default:					    /* can't get here */
+	    break;
 	}
     }
     checkupdates();					    /* make sure we're updating */
@@ -1654,11 +1656,13 @@ vinum_stripe(int argc, char *argv[], char *argv0[])
     enum objecttype type;
     off_t maxsize;
     int fe;						    /* freelist entry index */
-    struct drive_freelist freelist;
-    struct ferq {					    /* request to pass to ioctl */
-	int driveno;
-	int fe;
-    } *ferq = (struct ferq *) &freelist;
+    union freeunion {
+	struct drive_freelist freelist;
+	struct ferq {					    /* request to pass to ioctl */
+	    int driveno;
+	    int fe;
+	} ferq;
+    } freeunion;
     u_int64_t bigchunk;					    /* biggest chunk in freelist */
 
     maxsize = QUAD_MAX;
@@ -1683,16 +1687,16 @@ vinum_stripe(int argc, char *argv[], char *argv0[])
 	/* Now find the largest chunk available on the drive */
 	bigchunk = 0;					    /* ain't found nothin' yet */
 	for (fe = 0; fe < drive->freelist_entries; fe++) {
-	    ferq->driveno = drive->driveno;
-	    ferq->fe = fe;
-	    if (ioctl(superdev, VINUM_GETFREELIST, &freelist) < 0) {
+	    freeunion.ferq.driveno = drive->driveno;
+	    freeunion.ferq.fe = fe;
+	    if (ioctl(superdev, VINUM_GETFREELIST, &freeunion.freelist) < 0) {
 		fprintf(stderr,
 		    "Can't get free list element %d: %s\n",
 		    fe,
 		    strerror(errno));
 		longjmp(command_fail, -1);
 	    }
-	    bigchunk = bigchunk > freelist.sectors ? bigchunk : freelist.sectors; /* max it */
+	    bigchunk = bigchunk > freeunion.freelist.sectors ? bigchunk : freeunion.freelist.sectors; /* max it */
 	}
 	maxsize = min(maxsize, bigchunk);		    /* this is as much as we can do */
     }
@@ -1798,11 +1802,13 @@ vinum_raid4(int argc, char *argv[], char *argv0[])
     enum objecttype type;
     off_t maxsize;
     int fe;						    /* freelist entry index */
-    struct drive_freelist freelist;
-    struct ferq {					    /* request to pass to ioctl */
-	int driveno;
-	int fe;
-    } *ferq = (struct ferq *) &freelist;
+    union freeunion {
+	struct drive_freelist freelist;
+	struct ferq {					    /* request to pass to ioctl */
+	    int driveno;
+	    int fe;
+	} ferq;
+    } freeunion;
     u_int64_t bigchunk;					    /* biggest chunk in freelist */
 
     maxsize = QUAD_MAX;
@@ -1827,16 +1833,16 @@ vinum_raid4(int argc, char *argv[], char *argv0[])
 	/* Now find the largest chunk available on the drive */
 	bigchunk = 0;					    /* ain't found nothin' yet */
 	for (fe = 0; fe < drive->freelist_entries; fe++) {
-	    ferq->driveno = drive->driveno;
-	    ferq->fe = fe;
-	    if (ioctl(superdev, VINUM_GETFREELIST, &freelist) < 0) {
+	    freeunion.ferq.driveno = drive->driveno;
+	    freeunion.ferq.fe = fe;
+	    if (ioctl(superdev, VINUM_GETFREELIST, &freeunion.freelist) < 0) {
 		fprintf(stderr,
 		    "Can't get free list element %d: %s\n",
 		    fe,
 		    strerror(errno));
 		longjmp(command_fail, -1);
 	    }
-	    bigchunk = bigchunk > freelist.sectors ? bigchunk : freelist.sectors; /* max it */
+	    bigchunk = bigchunk > freeunion.freelist.sectors ? bigchunk : freeunion.freelist.sectors; /* max it */
 	}
 	maxsize = min(maxsize, bigchunk);		    /* this is as much as we can do */
     }
@@ -1942,11 +1948,13 @@ vinum_raid5(int argc, char *argv[], char *argv0[])
     enum objecttype type;
     off_t maxsize;
     int fe;						    /* freelist entry index */
-    struct drive_freelist freelist;
-    struct ferq {					    /* request to pass to ioctl */
-	int driveno;
-	int fe;
-    } *ferq = (struct ferq *) &freelist;
+    union freeunion {
+	struct drive_freelist freelist;
+	struct ferq {					    /* request to pass to ioctl */
+	    int driveno;
+	    int fe;
+	} ferq;
+    } freeunion;
     u_int64_t bigchunk;					    /* biggest chunk in freelist */
 
     maxsize = QUAD_MAX;
@@ -1971,16 +1979,16 @@ vinum_raid5(int argc, char *argv[], char *argv0[])
 	/* Now find the largest chunk available on the drive */
 	bigchunk = 0;					    /* ain't found nothin' yet */
 	for (fe = 0; fe < drive->freelist_entries; fe++) {
-	    ferq->driveno = drive->driveno;
-	    ferq->fe = fe;
-	    if (ioctl(superdev, VINUM_GETFREELIST, &freelist) < 0) {
+	    freeunion.ferq.driveno = drive->driveno;
+	    freeunion.ferq.fe = fe;
+	    if (ioctl(superdev, VINUM_GETFREELIST, &freeunion.freelist) < 0) {
 		fprintf(stderr,
 		    "Can't get free list element %d: %s\n",
 		    fe,
 		    strerror(errno));
 		longjmp(command_fail, -1);
 	    }
-	    bigchunk = bigchunk > freelist.sectors ? bigchunk : freelist.sectors; /* max it */
+	    bigchunk = bigchunk > freeunion.freelist.sectors ? bigchunk : freeunion.freelist.sectors; /* max it */
 	}
 	maxsize = min(maxsize, bigchunk);		    /* this is as much as we can do */
     }
@@ -2092,11 +2100,13 @@ vinum_mirror(int argc, char *argv[], char *argv0[])
     enum objecttype type;
     off_t maxsize[2];					    /* maximum subdisk size for striped plexes */
     int fe;						    /* freelist entry index */
-    struct drive_freelist freelist;
-    struct ferq {					    /* request to pass to ioctl */
-	int driveno;
-	int fe;
-    } *ferq = (struct ferq *) &freelist;
+    union freeunion {
+	struct drive_freelist freelist;
+	struct ferq {					    /* request to pass to ioctl */
+	    int driveno;
+	    int fe;
+	} ferq;
+    } freeunion;
     u_int64_t bigchunk;					    /* biggest chunk in freelist */
 
     if (sflag)						    /* striped, */
@@ -2130,16 +2140,16 @@ vinum_mirror(int argc, char *argv[], char *argv0[])
 	    /* Find the largest chunk available on the drive */
 	    bigchunk = 0;				    /* ain't found nothin' yet */
 	    for (fe = 0; fe < drive->freelist_entries; fe++) {
-		ferq->driveno = drive->driveno;
-		ferq->fe = fe;
-		if (ioctl(superdev, VINUM_GETFREELIST, &freelist) < 0) {
+		freeunion.ferq.driveno = drive->driveno;
+		freeunion.ferq.fe = fe;
+		if (ioctl(superdev, VINUM_GETFREELIST, &freeunion.freelist) < 0) {
 		    fprintf(stderr,
 			"Can't get free list element %d: %s\n",
 			fe,
 			strerror(errno));
 		    longjmp(command_fail, -1);
 		}
-		bigchunk = bigchunk > freelist.sectors ? bigchunk : freelist.sectors; /* max it */
+		bigchunk = bigchunk > freeunion.freelist.sectors ? bigchunk : freeunion.freelist.sectors; /* max it */
 	    }
 	    maxsize[o & 1] = min(maxsize[o & 1], bigchunk); /* get the maximum size of a subdisk  */
 	}

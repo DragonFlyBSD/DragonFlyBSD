@@ -32,7 +32,7 @@
  *
  * @(#)pass2.c	8.9 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/pass2.c,v 1.10.2.2 2001/11/24 15:14:59 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass2.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/pass2.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -131,9 +131,9 @@ pass2(void)
 	inpend = &inpsort[inplast];
 	for (inpp = inpsort; inpp < inpend; inpp++) {
 		if (got_siginfo) {
-			printf("%s: phase 2: dir %d of %d (%d%%)\n", cdevname,
-			    inpp - inpsort, inplast, (inpp - inpsort) * 100 /
-			    inplast);
+			printf("%s: phase 2: dir %d of %ld (%d%%)\n", cdevname,
+			    inpp - inpsort, inplast, (int)((inpp - inpsort) * 100 /
+			    inplast));
 			got_siginfo = 0;
 		}
 		inp = *inpp;

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.51.2.19 2003/01/28 11:02:56 fjoe Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -410,7 +410,7 @@ usage(void)
 }
 
 int
-main(int argc, const char **argv)
+main(int argc, char * const *argv)
 {
 	int c;
 	int all, namesonly, downonly, uponly;

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  *	$NetBSD: rcorder.c,v 1.7 2000/08/04 07:33:55 enami Exp $
- *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.5 2003/12/11 22:08:31 dillon Exp $
+ *	$DragonFly: src/sbin/rcorder/rcorder.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -804,7 +804,6 @@ generate_ordering(void)
 		 */
 		filenode *file;
 		f_provnode *f_prov;
-		provnode *prov;
 
 		for (file = fn_head->next; file; file = file->next) {
 		    for (f_prov = file->prov_list; f_prov; f_prov = f_prov->next) {
@@ -820,7 +819,6 @@ generate_ordering(void)
 		strnodelist *scan;
 		filenode *file;
 		f_provnode *f_prov;
-		provnode *prov;
 
 		for (scan = onetime_list; scan; scan = scan->next) {
 		    for (file = fn_head->next; file; file = file->next) {

@@ -32,7 +32,7 @@
  *
  * @(#)dir.c	8.8 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/dir.c,v 1.15 1999/08/28 00:12:45 peter Exp $
- * $DragonFly: src/sbin/fsck/dir.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/dir.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -102,7 +102,7 @@ dirscan(register struct inodesc *idesc)
 {
 	register struct direct *dp;
 	register struct bufarea *bp;
-	int dsize, n;
+	unsigned int dsize, n;
 	long blksiz;
 	char dbuf[DIRBLKSIZ];
 

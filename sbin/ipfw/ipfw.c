@@ -17,7 +17,7 @@
  * NEW command line interface for IP firewall facility
  *
  * $FreeBSD: src/sbin/ipfw/ipfw.c,v 1.80.2.26 2003/01/14 19:15:58 dillon Exp $
- * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.5 2004/01/22 06:20:08 dillon Exp $
+ * $DragonFly: src/sbin/ipfw/Attic/ipfw.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -193,7 +193,9 @@ show_ipfw(struct ip_fw *chain, int pcwidth, int bcwidth)
 		char timestr[30];
 
 		if (twidth == 0) {
-			strcpy(timestr, ctime((time_t *)&twidth));
+			time_t zerotime = 0;
+
+			strcpy(timestr, ctime(&zerotime));
 			*strchr(timestr, '\n') = '\0';
 			twidth = strlen(timestr);
 		}
@@ -1169,7 +1171,7 @@ fill_tcpopts(u_char *set, u_char *reset, char **vp)
 
 	while (p && *p) {
 		struct tpcopts {
-			char * name;
+			const char * name;
 			u_char value;
 		} opts[] = {
 			{ "mss", IP_FW_TCPOPT_MSS },

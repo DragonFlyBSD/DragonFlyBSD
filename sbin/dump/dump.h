@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.4 2003/11/03 19:51:04 eirikn Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.5 2004/02/04 17:39:59 joerg Exp $
  */
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
@@ -112,6 +112,7 @@ int	mapdirs(ino_t maxino, long *tapesize);
 /* file dumping routines */
 void	blksout(daddr_t *blkp, int frags, ino_t ino);
 void	bread(daddr_t blkno, char *buf, int size);
+ssize_t cread(int fd, void *buf, size_t nbytes, off_t offset);
 void	dumpino(struct dinode *dp, ino_t ino);
 void	dumpmap(char *map, int type, ino_t ino);
 void	writeheader(ino_t ino);

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.6 2003/11/03 19:51:05 eirikn Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.7 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -197,7 +197,7 @@ struct ucred def_anon = {
 int force_v2 = 0;
 int resvport_only = 1;
 int dir_only = 1;
-int log = 0;
+int do_log = 0;
 int opt_flags;
 /* Bits for above */
 #define	OP_MAPROOT	0x01
@@ -256,7 +256,7 @@ main(int argc, char **argv)
 			debug = debug ? 0 : 1;
 			break;
 		case 'l':
-			log = 1;
+			do_log = 1;
 			break;
 		default:
 			usage();
@@ -441,7 +441,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 					dirpath);
 			if (debug)
 				warnx("mount successful");
-			if (log)
+			if (do_log)
 				syslog(LOG_NOTICE,
 				    "mount request succeeded from %s for %s",
 				    inet_ntoa(saddrin), dirpath);
@@ -459,7 +459,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 	case RPCMNT_DUMP:
 		if (!svc_sendreply(transp, xdr_mlist, (caddr_t)NULL))
 			syslog(LOG_ERR, "can't send reply");
-		else if (log)
+		else if (do_log)
 			syslog(LOG_NOTICE,
 			    "dump request succeeded from %s",
 			    inet_ntoa(saddrin));
@@ -489,7 +489,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		if (hp)
 			del_mlist(hp->h_name, dirpath);
 		del_mlist(inet_ntoa(saddrin), dirpath);
-		if (log)
+		if (do_log)
 			syslog(LOG_NOTICE,
 			    "umount request succeeded from %s for %s",
 			    inet_ntoa(saddrin), dirpath);
@@ -508,7 +508,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 		if (hp)
 			del_mlist(hp->h_name, (char *)NULL);
 		del_mlist(inet_ntoa(saddrin), (char *)NULL);
-		if (log)
+		if (do_log)
 			syslog(LOG_NOTICE,
 			    "umountall request succeeded from %s",
 			    inet_ntoa(saddrin));
@@ -516,7 +516,7 @@ mntsrv(struct svc_req *rqstp, SVCXPRT *transp)
 	case RPCMNT_EXPORT:
 		if (!svc_sendreply(transp, xdr_explist, (caddr_t)NULL))
 			syslog(LOG_ERR, "can't send reply");
-		if (log)
+		if (do_log)
 			syslog(LOG_NOTICE,
 			    "export request succeeded from %s",
 			    inet_ntoa(saddrin));

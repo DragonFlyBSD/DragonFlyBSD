@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kget/kget.c,v 1.4.2.2 2001/08/01 08:19:51 obrien Exp $
- * $DragonFly: src/sbin/kget/kget.c,v 1.3 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/kget/kget.c,v 1.4 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <stdio.h>
@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 					id->id_drq);
 			}
 			if(id->id_maddr>0) {
-				fprintf(fout,"iomem %s%d %#x\n",name,id->id_unit,
+				fprintf(fout,"iomem %s%d %p\n",name,id->id_unit,
 					id->id_maddr);
 			}
 			if(id->id_msize>0) {

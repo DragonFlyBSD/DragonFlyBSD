@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)nfsd.c	8.9 (Berkeley) 3/29/95
  * $FreeBSD: src/sbin/nfsd/nfsd.c,v 1.15.2.1 2000/09/16 22:52:23 brian Exp $
- * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/nfsd/nfsd.c,v 1.6 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -128,8 +128,8 @@ main(int argc, char **argv, char **envp)
 	char *cp;
 #endif
 	fd_set ready, sockbits;
-	int ch, cltpflag, connect_type_cnt, i, len, maxsock, msgsock;
-	int nfsdcnt, nfssvc_flag, on, reregister, sock, tcpflag, tcpsock;
+	int ch, cltpflag, connect_type_cnt, i, len, maxsock = -1, msgsock;
+	int nfsdcnt, nfssvc_flag, on, reregister, sock, tcpflag, tcpsock = -1;
 	int tp4cnt, tp4flag, tpipcnt, tpipflag, udpflag;
 	int bindhostc = 0, bindanyflag;
 	char **bindhost = NULL;

@@ -32,7 +32,7 @@
  *
  * @(#)mkfs.c	8.11 (Berkeley) 5/3/95
  * $FreeBSD: src/sbin/newfs/mkfs.c,v 1.29.2.6 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sbin/newfs/mkfs.c,v 1.6 2003/12/01 04:35:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs/mkfs.c,v 1.7 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include "defs.h"
@@ -104,6 +104,8 @@ extern int	avgfilesperdir;	/* expected number of files per directory */
 extern u_long	memleft;	/* virtual memory available */
 extern caddr_t	membase;	/* start address of memory based filesystem */
 extern char *	filename;
+
+extern void fatal(const char *fmt, ...);
 
 union {
 	struct fs fs;

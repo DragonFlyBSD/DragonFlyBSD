@@ -33,7 +33,7 @@
  *	@(#)radix.c	8.4 (Berkeley) 11/2/94
  *
  * $FreeBSD: src/sbin/routed/radix.c,v 1.5 1999/09/05 17:49:11 peter Exp $
- * $DragonFly: src/sbin/routed/radix.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/radix.c,v 1.3 2004/02/04 17:40:01 joerg Exp $
  */
 
 /*
@@ -849,7 +849,7 @@ rn_walktree(struct radix_node_head *h,
 }
 
 int
-rn_inithead(void **head, int off)
+rn_inithead(struct radix_node_head **head, int off)
 {
 	struct radix_node_head *rnh;
 	struct radix_node *t, *tt, *ttt;
@@ -890,7 +890,7 @@ rn_init(void)
 	addmask_key = cplim = rn_ones + max_keylen;
 	while (cp < cplim)
 		*cp++ = -1;
-	if (rn_inithead((void **)&mask_rnhead, 0) == 0)
+	if (rn_inithead(&mask_rnhead, 0) == 0)
 		panic("rn_init 2");
 }
 

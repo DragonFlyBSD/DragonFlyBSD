@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1986, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.6 (Berkeley) 5/14/95
  * $FreeBSD: src/sbin/fsck/main.c,v 1.21.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/main.c,v 1.6 2003/11/03 19:51:04 eirikn Exp $
+ * $DragonFly: src/sbin/fsck/main.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -50,6 +50,7 @@
 #include <errno.h>
 #include <fstab.h>
 #include <paths.h>
+#include <string.h>
 
 #include "fsck.h"
 

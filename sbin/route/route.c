@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/route/route.c,v 1.40.2.11 2003/02/27 23:10:10 ru Exp $
- * $DragonFly: src/sbin/route/route.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/route/route.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -954,6 +954,7 @@ getaddr(int which, char *s, struct hostent **hpp)
 		case RTA_NETMASK:
 		case RTA_GENMASK:
 			/* bzero(su, sizeof(*su)); *//* for readability */
+			break;
 		}
 		return (0);
 	}
@@ -1438,7 +1439,7 @@ print_getmsg(register struct rt_msghdr *rtm, int msglen)
 	register char *cp;
 	register int i;
 
-	(void) printf("   route to: %s\n", routename(&so_dst));
+	(void) printf("   route to: %s\n", routename(&so_dst.sa));
 	if (rtm->rtm_version != RTM_VERSION) {
 		warnx("routing message version %d not understood",
 		     rtm->rtm_version);

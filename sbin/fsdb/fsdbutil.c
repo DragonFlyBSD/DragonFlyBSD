@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdbutil.c,v 1.9.2.2 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.5 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/fsdb/fsdbutil.c,v 1.6 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -233,7 +233,7 @@ static void
 printblocks(ino_t inum, struct dinode *dp)
 {
     char *bufp;
-    int i, j, nfrags;
+    int i, nfrags;
     long ndb, offset;
 
     printf("Blocks for inode %d:\n", inum);

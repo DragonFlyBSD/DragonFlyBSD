@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/kldunload/kldunload.c,v 1.10 1999/09/08 05:46:47 bde Exp $
- * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.2 2003/06/17 04:27:33 dillon Exp $
+ * $DragonFly: src/sbin/kldunload/kldunload.c,v 1.3 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <err.h>
@@ -74,7 +74,7 @@ main(int argc, char** argv)
 	argc--;
     }
     
-    if (argc != 0 || fileid && filename)
+    if (argc != 0 || (fileid && filename))
 	usage();
 
     if (fileid == 0 && filename == 0)

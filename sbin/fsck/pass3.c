@@ -32,7 +32,7 @@
  *
  * @(#)pass3.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/sbin/fsck/pass3.c,v 1.7.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/pass3.c,v 1.4 2003/09/28 14:39:17 hmp Exp $
+ * $DragonFly: src/sbin/fsck/pass3.c,v 1.5 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -56,9 +56,9 @@ pass3(void)
 
 	for (inpindex = inplast - 1; inpindex >= 0; inpindex--) {
 		if (got_siginfo) {
-			printf("%s: phase 3: dir %d of %d (%d%%)\n", cdevname,
+			printf("%s: phase 3: dir %ld of %ld (%d%%)\n", cdevname,
 			    inplast - inpindex - 1, inplast,
-			    (inplast - inpindex - 1) * 100 / inplast);
+			    (int)((inplast - inpindex - 1) * 100 / inplast));
 			got_siginfo = 0;
 		}
 		inp = inpsort[inpindex];

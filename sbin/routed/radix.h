@@ -33,7 +33,7 @@
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  *
  * $FreeBSD: src/sbin/routed/radix.h,v 1.4 1999/08/28 00:14:17 peter Exp $
- * $DragonFly: src/sbin/routed/radix.h,v 1.4 2003/11/03 19:51:05 eirikn Exp $
+ * $DragonFly: src/sbin/routed/radix.h,v 1.5 2004/02/04 17:40:01 joerg Exp $
  */
 
 #ifndef __RADIX_H_
@@ -143,7 +143,7 @@ struct radix_node_head {
 #define Free(p) free((void *)p);
 
 void	 rn_init(void);
-int	 rn_inithead(void **, int);
+int	 rn_inithead(struct radix_node_head **, int);
 int	 rn_refines(void *, void *);
 int	 rn_walktree(struct radix_node_head *,
 		     int (*)(struct radix_node *, struct walkarg *),

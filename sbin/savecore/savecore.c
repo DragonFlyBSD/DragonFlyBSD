@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1986, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)savecore.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/sbin/savecore/savecore.c,v 1.28.2.13 2002/04/07 21:17:50 asmodai Exp $
- * $DragonFly: src/sbin/savecore/savecore.c,v 1.4 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/savecore/savecore.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -339,7 +339,7 @@ dump_exists(void)
 	    (off_t)(dumplo + ok(dump_nl[X_DUMPMAG].n_value)), L_SET);
 	if (newdumpmag != dumpmag) {
 		if (verbose)
-			syslog(LOG_WARNING, "magic number mismatch (%x != %x)",
+			syslog(LOG_WARNING, "magic number mismatch (%lx != %lx)",
 			    newdumpmag, dumpmag);
 		syslog(LOG_WARNING, "no core dump");
 		return (0);
@@ -359,7 +359,7 @@ save_core(void)
 {
 	register FILE *fp;
 	register int bounds, ifd, nr, nw;
-	int hs, he;		/* start and end of hole */
+	int hs, he = 0;		/* start and end of hole */
 	char path[MAXPATHLEN];
 	mode_t oumask;
 
@@ -406,7 +406,7 @@ err1:			syslog(LOG_WARNING, "%s: %m", path);
 	syslog(LOG_NOTICE, "writing %score to %s",
 	    compress ? "compressed " : "", path);
 	for (; dumpsize > 0; dumpsize -= nr) {
-		(void)printf("%6dK\r", dumpsize / 1024);
+		printf("%6ldK\r", (long)(dumpsize / 1024));
 		(void)fflush(stdout);
 		nr = read(dumpfd, buf, MIN(dumpsize, sizeof(buf)));
 		if (nr <= 0) {

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/routed/table.c,v 1.9.2.2 2000/08/14 17:00:04 sheldonh Exp $
- * $DragonFly: src/sbin/routed/table.c,v 1.2 2003/06/17 04:27:34 dillon Exp $
+ * $DragonFly: src/sbin/routed/table.c,v 1.3 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include "defs.h"
@@ -1618,7 +1618,7 @@ rtinit(void)
 	/* Initialize the radix trees */
 	max_keylen = sizeof(struct sockaddr_in);
 	rn_init();
-	rn_inithead((void**)&rhead, 32);
+	rn_inithead(&rhead, 32);
 
 	/* mark all of the slots in the table free */
 	ag_avail = ag_slots;

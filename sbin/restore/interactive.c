@@ -32,7 +32,7 @@
  *
  * @(#)interactive.c	8.5 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/interactive.c,v 1.8.2.1 2001/01/03 14:36:08 iedowse Exp $
- * $DragonFly: src/sbin/restore/interactive.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/interactive.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -488,7 +488,7 @@ canon(char *rawname, char *canonname, int len)
 static void
 printlist(char *name, char *basename)
 {
-	register struct afile *fp, *list, *listp;
+	register struct afile *fp, *list, *listp = NULL;
 	register struct direct *dp;
 	struct afile single;
 	RST_DIR *dirp;
@@ -632,7 +632,7 @@ formatf(register struct afile *list, int nentry)
 {
 	register struct afile *fp, *endlist;
 	int width, bigino, haveprefix, havepostfix;
-	int i, j, w, precision, columns, lines;
+	int i, j, w, precision = 0, columns, lines;
 
 	width = 0;
 	haveprefix = 0;

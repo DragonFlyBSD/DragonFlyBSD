@@ -49,7 +49,7 @@
  *
  * $Id: ip6fw.c,v 1.1.2.2.2.2 1999/05/14 05:13:50 shin Exp $
  * $FreeBSD: src/sbin/ip6fw/ip6fw.c,v 1.1.2.9 2003/04/05 10:54:51 ume Exp $
- * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.6 2004/01/06 03:17:21 dillon Exp $
+ * $DragonFly: src/sbin/ip6fw/ip6fw.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -533,7 +533,7 @@ show_usage(const char *fmt, ...)
 }
 
 static int
-lookup_host (char *host, u_char *addr, int family)
+lookup_host (const char *host, u_char *addr, int family)
 {
 	struct hostent *he;
 
@@ -562,7 +562,7 @@ fill_ip6(struct in6_addr *ipno, struct in6_addr *mask, int *acp, char ***avp)
 			*p++ = '\0';
 		}
 
-		if (lookup_host(*av, ipno, AF_INET6) != 0)
+		if (lookup_host(*av, (u_char *)ipno, AF_INET6) != 0)
 			show_usage("hostname ``%s'' unknown", *av);
 		switch (md) {
 			case '/':
@@ -745,7 +745,7 @@ fill_ip6opt(u_char *set, u_char *reset, char **vp)
 }
 
 void
-fill_icmptypes(u_long *types, char **vp, u_short *fw_flg)
+fill_icmptypes(unsigned *types, char **vp, u_short *fw_flg)
 {
 	char *c = *vp;
 

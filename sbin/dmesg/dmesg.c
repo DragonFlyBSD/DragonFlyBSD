@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)dmesg.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/dmesg/dmesg.c,v 1.11.2.3 2001/08/08 22:32:15 obrien Exp $
- * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.4 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dmesg/dmesg.c,v 1.5 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -71,7 +71,7 @@ main(int argc, char **argv)
 	kvm_t *kd;
 	char buf[5];
 	int all = 0;
-	int pri;
+	int pri = 0;
 	size_t buflen;
 	int bufpos;
 

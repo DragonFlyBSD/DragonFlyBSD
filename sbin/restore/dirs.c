@@ -37,7 +37,7 @@
  *
  * @(#)dirs.c	8.7 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/restore/dirs.c,v 1.14.2.5 2001/10/15 13:44:45 dd Exp $
- * $DragonFly: src/sbin/restore/dirs.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/restore/dirs.c,v 1.6 2004/02/04 17:40:01 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -146,7 +146,7 @@ extractdirs(int genmode)
 	vprintf(stdout, "Extract directories from tape\n");
 	if ((tmpdir = getenv("TMPDIR")) == NULL || tmpdir[0] == '\0')
 		tmpdir = _PATH_TMP;
-	(void) sprintf(dirfile, "%s/rstdir%d", tmpdir, dumpdate);
+	sprintf(dirfile, "%s/rstdir%ld", tmpdir, (long)dumpdate);
 	if (command != 'r' && command != 'R') {
 		(void *) strcat(dirfile, "-XXXXXX");
 		fd = mkstemp(dirfile);
@@ -159,7 +159,7 @@ extractdirs(int genmode)
 		done(1);
 	}
 	if (genmode != 0) {
-		(void) sprintf(modefile, "%s/rstmode%d", tmpdir, dumpdate);
+		sprintf(modefile, "%s/rstmode%ld", tmpdir, (long)dumpdate);
 		if (command != 'r' && command != 'R') {
 			(void *) strcat(modefile, "-XXXXXX");
 			fd = mkstemp(modefile);
@@ -578,7 +578,7 @@ setdirmodes(int flags)
 	if ((tmpdir = getenv("TMPDIR")) == NULL || tmpdir[0] == '\0')
 		tmpdir = _PATH_TMP;
 	if (command == 'r' || command == 'R')
-		(void) sprintf(modefile, "%s/rstmode%d", tmpdir, dumpdate);
+		sprintf(modefile, "%s/rstmode%ld", tmpdir, (long)dumpdate);
 	if (modefile[0] == '#') {
 		panic("modefile not defined\n");
 		fprintf(stderr, "directory mode, owner, and times not set\n");

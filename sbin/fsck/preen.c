@@ -32,7 +32,7 @@
  *
  * @(#)preen.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/sbin/fsck/preen.c,v 1.16 1999/12/30 16:32:40 peter Exp $
- * $DragonFly: src/sbin/fsck/preen.c,v 1.6 2003/11/03 19:51:04 eirikn Exp $
+ * $DragonFly: src/sbin/fsck/preen.c,v 1.7 2004/02/04 17:39:59 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -279,8 +279,8 @@ startdisk(register struct disk *dk, int (*checkit)(char *, char *, long ,int))
 char *
 blockcheck(char *origname)
 {
-	struct stat stslash, stblock, stchar;
-	char *newname, *raw;
+	struct stat stblock;
+	char *newname;
 	struct fstab *fsinfo;
 	int retried = 0, len;
 

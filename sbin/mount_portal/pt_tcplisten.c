@@ -38,7 +38,7 @@
  *
  *  @(#)pt_tcp.c  8.3 (Berkeley) 3/27/94
  *
- * $DragonFly: src/sbin/mount_portal/pt_tcplisten.c,v 1.2 2003/09/28 14:39:19 hmp Exp $
+ * $DragonFly: src/sbin/mount_portal/pt_tcplisten.c,v 1.3 2004/02/04 17:40:00 joerg Exp $
  * pt_tcp.c,v 1.1.1.1 1994/05/26 06:34:34 rgrimes Exp
  */
 
@@ -78,7 +78,7 @@ int portal_tcplisten(struct portal_cred *pcr, char *key, char **v, int kso,
        char *q;
        struct hostent *hp;
        struct servent *sp;
-       struct in_addr **ipp;
+       struct in_addr **ipp = NULL;
        struct in_addr *ip[2];
        struct in_addr ina;
        u_short s_port;

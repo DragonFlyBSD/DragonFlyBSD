@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)newfs.c	8.13 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/newfs/newfs.c,v 1.30.2.9 2003/05/13 12:03:55 joerg Exp $
- * $DragonFly: src/sbin/newfs/newfs.c,v 1.6 2003/12/01 04:35:39 dillon Exp $
+ * $DragonFly: src/sbin/newfs/newfs.c,v 1.7 2004/02/04 17:40:00 joerg Exp $
  */
 
 /*
@@ -202,6 +202,8 @@ int	unlabeled;
 char	device[MAXPATHLEN];
 char	*progname;
 
+struct disklabel *getdisklabel(char *, int);
+static void rewritelabel(char *, int, struct disklabel *);
 static void usage(void);
 
 int
@@ -215,8 +217,8 @@ main(int argc, char **argv)
 	struct partition oldpartition;
 	struct stat st;
 	struct statfs *mp;
-	int fsi, fso, len, n, vflag;
-	char *cp, *s1, *s2, *special, *opstring;
+	int fsi = 0, fso, len, n, vflag;
+	char *cp = NULL, *s1, *s2, *special, *opstring;
 #ifdef MFS
 	struct vfsconf vfc;
 	int error;
@@ -679,7 +681,8 @@ getdisklabel(char *s, int fd)
 	return (&lab);
 }
 
-rewritelabel(char *s, int fd, register struct disklabel *lp)
+static void
+rewritelabel(char *s, int fd, struct disklabel *lp)
 {
 #ifdef COMPAT
 	if (unlabeled)

@@ -41,7 +41,7 @@
  *
  * $Id: list.c,v 1.25 2000/12/20 03:38:43 grog Exp grog $
  * $FreeBSD: src/sbin/vinum/list.c,v 1.25.2.4 2001/05/28 05:58:04 grog Exp $
- * $DragonFly: src/sbin/vinum/list.c,v 1.4 2003/11/21 22:46:13 dillon Exp $
+ * $DragonFly: src/sbin/vinum/list.c,v 1.5 2004/02/04 17:40:01 joerg Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -89,13 +89,13 @@ roughlength(int64_t bytes, int lj)
     static char description[16];
 
     if (bytes > (int64_t) MEGABYTE * 10000)		    /* gigabytes */
-	sprintf(description, lj ? "%lld GB" : "%10d GB", bytes / GIGABYTE);
+	sprintf(description, lj ? "%lld GB" : "%10lld GB", bytes / GIGABYTE);
     else if (bytes > KILOBYTE * 10000)			    /* megabytes */
-	sprintf(description, lj ? "%lld MB" : "%10d MB", bytes / MEGABYTE);
+	sprintf(description, lj ? "%lld MB" : "%10lld MB", bytes / MEGABYTE);
     else if (bytes > 10000)				    /* kilobytes */
-	sprintf(description, lj ? "%lld kB" : "%10d kB", bytes / KILOBYTE);
+	sprintf(description, lj ? "%lld kB" : "%10lld kB", bytes / KILOBYTE);
     else						    /* bytes */
-	sprintf(description, lj ? "%lld  B" : "%10d  B", bytes);
+	sprintf(description, lj ? "%lld  B" : "%10lld  B", bytes);
     return description;
 }
 
@@ -186,18 +186,20 @@ vinum_ldi(int driveno, int recurse)
 		drive.maxactive);
 	    if (Verbose) {				    /* print the free list */
 		int fe;					    /* freelist entry */
-		struct drive_freelist freelist;
-		struct ferq {				    /* request to pass to ioctl */
-		    int driveno;
-		    int fe;
-		} *ferq = (struct ferq *) &freelist;
+		union freeunion {
+		    struct drive_freelist freelist;
+		    struct ferq {				    /* request to pass to ioctl */
+			int driveno;
+			int fe;
+		    } ferq;
+		} freeunion;
 
 		printf("\t\tFree list contains %d entries:\n\t\t   Offset\t     Size\n",
 		    drive.freelist_entries);
 		for (fe = 0; fe < drive.freelist_entries; fe++) {
-		    ferq->driveno = drive.driveno;
-		    ferq->fe = fe;
-		    if (ioctl(superdev, VINUM_GETFREELIST, &freelist) < 0) {
+		    freeunion.ferq.driveno = drive.driveno;
+		    freeunion.ferq.fe = fe;
+		    if (ioctl(superdev, VINUM_GETFREELIST, &freeunion.freelist) < 0) {
 			fprintf(stderr,
 			    "Can't get free list element %d: %s\n",
 			    fe,
@@ -205,8 +207,8 @@ vinum_ldi(int driveno, int recurse)
 			longjmp(command_fail, -1);
 		    }
 		    printf("\t\t%9lld\t%9lld\n",
-			(long long) freelist.offset,
-			(long long) freelist.sectors);
+			(long long) freeunion.freelist.offset,
+			(long long) freeunion.freelist.sectors);
 		}
 	    }
 	} else if (!sflag) {

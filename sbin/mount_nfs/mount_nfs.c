@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1992, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount_nfs.c	8.11 (Berkeley) 5/4/95
  * $FreeBSD: src/sbin/mount_nfs/mount_nfs.c,v 1.36.2.6 2003/05/13 14:45:40 trhodes Exp $
- * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.7 2003/12/29 00:07:44 dillon Exp $
+ * $DragonFly: src/sbin/mount_nfs/mount_nfs.c,v 1.8 2004/02/04 17:40:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -573,7 +573,6 @@ getnfsargs(char *spec, struct nfs_args *nfsargsp)
 	struct sockaddr_in saddr;
 	enum tryret ret;
 	int speclen, remoteerr;
-	int save_retry, save_retrans;
 	char *hostp, *delimp, *errstr;
 #ifdef NFSKERB
 	char *cp;
