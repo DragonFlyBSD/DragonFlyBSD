@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2003 Hiten M. Pandya <hmp@backplane.com>.
+ * Copyright (c) 2003-2004 Hiten Pandya <hmp@backplane.com>.
  *
  * Cascading Style Sheet, version 2.
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.9 2004/03/01 03:39:07 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.10 2004/03/06 15:00:22 hmp Exp $
  *
  */
 
@@ -18,6 +18,7 @@ PRE,CODE,TT {
 BODY {
    font-family: Verdana, Arial, Helvetica, Sans-serif;
    background-color: #ffffff;
+   font-size: 135%;
 }
 
 TD,TH { 
