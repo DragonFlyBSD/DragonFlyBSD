@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/kern_physio.c,v 1.46.2.3 2003/05/29 06:15:35 alc Exp $
- * $DragonFly: src/sys/kern/kern_physio.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_physio.c,v 1.3 2003/06/26 20:27:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -47,9 +47,12 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	u_int iolen;
 	struct buf *bp;
 
-	/* Keep the process UPAGES from being swapped. XXX: why ? */
-	PHOLD(curproc);
-
+	/*
+	 * NOTE: we no longer have to PHOLD() the process, because the
+	 * kernel stack / uarea cannot be swapped, and when it can be in
+	 * the future it will only happen if the process is sleeping on
+	 * a particular address.
+	 */
 	bp = getpbuf(NULL);
 	sa = bp->b_data;
 	error = 0;
@@ -128,6 +131,5 @@ physio(dev_t dev, struct uio *uio, int ioflag)
 	}
 doerror:
 	relpbuf(bp, NULL);
-	PRELE(curproc);
 	return (error);
 }

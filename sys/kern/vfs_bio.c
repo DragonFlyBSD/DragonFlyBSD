@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
  */
 
 /*
@@ -512,8 +512,6 @@ bread(struct vnode * vp, daddr_t blkno, int size, struct buf ** bpp)
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		if (curproc != NULL)
-			curproc->p_stats->p_ru.ru_inblock++;
 		KASSERT(!(bp->b_flags & B_ASYNC), ("bread: illegal async bp %p", bp));
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
@@ -542,8 +540,6 @@ breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
 
 	/* if not found in cache, do some I/O */
 	if ((bp->b_flags & B_CACHE) == 0) {
-		if (curproc != NULL)
-			curproc->p_stats->p_ru.ru_inblock++;
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR | B_INVAL);
 		vfs_busy_pages(bp, 0);
@@ -557,8 +553,6 @@ breadn(struct vnode * vp, daddr_t blkno, int size, daddr_t * rablkno,
 		rabp = getblk(vp, *rablkno, *rabsize, 0, 0);
 
 		if ((rabp->b_flags & B_CACHE) == 0) {
-			if (curproc != NULL)
-				curproc->p_stats->p_ru.ru_inblock++;
 			rabp->b_flags |= B_READ | B_ASYNC;
 			rabp->b_flags &= ~(B_ERROR | B_INVAL);
 			vfs_busy_pages(rabp, 0);
@@ -680,8 +674,6 @@ bwrite(struct buf * bp)
 	bp->b_runningbufspace = bp->b_bufsize;
 	runningbufspace += bp->b_runningbufspace;
 
-	if (curproc != NULL)
-		curproc->p_stats->p_ru.ru_oublock++;
 	splx(s);
 	if (oldflags & B_ASYNC)
 		BUF_KERNPROC(bp);
@@ -2966,6 +2958,21 @@ retry:
 		}
 		if (bogus)
 			pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);
+	}
+
+	/*
+	 * This is the easiest place to put the process accounting for the I/O
+	 * for now.
+	 */
+	{
+		struct proc *p;
+
+		if ((p = curthread->td_proc) != NULL) {
+			if (bp->b_flags & B_READ)
+				p->p_stats->p_ru.ru_inblock++;
+			else
+				p->p_stats->p_ru.ru_oublock++;
+		}
 	}
 }
 

@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_bmap.c	8.7 (Berkeley) 3/21/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_bmap.c,v 1.34.2.1 2000/03/17 10:12:14 ps Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.2 2003/06/17 04:28:59 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_bmap.c,v 1.3 2003/06/26 20:27:53 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -197,7 +197,6 @@ ufs_bmaparray(vp, bn, bnp, ap, nump, runp, runb)
 			bp->b_flags &= ~(B_INVAL|B_ERROR);
 			vfs_busy_pages(bp, 0);
 			VOP_STRATEGY(bp->b_vp, bp);
-			curproc->p_stats->p_ru.ru_inblock++;	/* XXX */
 			error = biowait(bp);
 			if (error) {
 				brelse(bp);

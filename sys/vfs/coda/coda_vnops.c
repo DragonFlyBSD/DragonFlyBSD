@@ -28,7 +28,7 @@
  * 
  *  	@(#) src/sys/coda/coda_vnops.c,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_vnops.c,v 1.22.2.1 2001/06/29 16:26:22 shafeeq Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.5 2003/06/26 05:55:07 dillon Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_vnops.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
  * 
  */
 
@@ -1676,7 +1676,6 @@ coda_bmap(v)
     daddr_t bn __attribute__((unused)) = ap->a_bn;	/* fs block number */
     struct vnode **vpp = ap->a_vpp;			/* RETURN vp of device */
     daddr_t *bnp __attribute__((unused)) = ap->a_bnp;	/* RETURN device block number */
-    struct proc *p __attribute__((unused)) = curproc;
 /* upcall decl */
 /* locals */
 
@@ -1714,7 +1713,6 @@ coda_strategy(v)
 /* true args */
     struct vop_strategy_args *ap = v;
     register struct buf *bp __attribute__((unused)) = ap->a_bp;
-    struct proc *p __attribute__((unused)) = curproc;
 /* upcall decl */
 /* locals */
 

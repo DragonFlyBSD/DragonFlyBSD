@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_alloc.c	8.18 (Berkeley) 5/26/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_alloc.c,v 1.64.2.2 2001/09/21 19:15:21 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.3 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_alloc.c,v 1.4 2003/06/26 20:27:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -1798,8 +1798,14 @@ ffs_fserr(fs, uid, cp)
 	u_int uid;
 	char *cp;
 {
-	struct proc *p = curproc;	/* XXX */
+	struct thread *td = curthread;
+	struct proc *p;
 
-	log(LOG_ERR, "pid %d (%s), uid %d on %s: %s\n", p ? p->p_pid : -1,
-			p ? p->p_comm : "-", uid, fs->fs_fsmnt, cp);
+	if ((p = td->td_proc) != NULL) {
+	    log(LOG_ERR, "pid %d (%s), uid %d on %s: %s\n", p ? p->p_pid : -1,
+		    p ? p->p_comm : "-", uid, fs->fs_fsmnt, cp);
+	} else {
+	    log(LOG_ERR, "system thread %p, uid %d on %s: %s\n",
+		    td, uid, fs->fs_fsmnt, cp);
+	}
 }

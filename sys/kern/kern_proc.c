@@ -32,7 +32,7 @@
  *
  *	@(#)kern_proc.c	8.7 (Berkeley) 2/14/95
  * $FreeBSD: src/sys/kern/kern_proc.c,v 1.63.2.9 2003/05/08 07:47:16 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_proc.c,v 1.5 2003/06/23 23:52:54 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_proc.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -417,7 +417,6 @@ zpfind(pid_t pid)
 			return (p);
 	return (NULL);
 }
-
 
 static int
 sysctl_out_proc(struct proc *p, struct sysctl_req *req, int doingzomb)

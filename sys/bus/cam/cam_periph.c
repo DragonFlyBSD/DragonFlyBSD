@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.2 2003/06/17 04:28:18 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.3 2003/06/26 20:27:44 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -594,12 +594,6 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 	}
 
-	/* this keeps the current process from getting swapped */
-	/*
-	 * XXX KDM should I use P_NOSWAP instead?
-	 */
-	PHOLD(curproc);
-
 	for (i = 0; i < numbufs; i++) {
 		/*
 		 * Get the buffer.
@@ -630,7 +624,6 @@ cam_periph_mapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 				mapinfo->bp[j]->b_flags &= ~B_PHYS;
 				relpbuf(mapinfo->bp[j], NULL);
 			}
-			PRELE(curproc);
 			return(EACCES);
 		}
 
@@ -655,7 +648,6 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 
 	if (mapinfo->num_bufs_used <= 0) {
 		/* allow ourselves to be swapped once again */
-		PRELE(curproc);
 		return;
 	}
 
@@ -677,7 +669,6 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 		break;
 	default:
 		/* allow ourselves to be swapped once again */
-		PRELE(curproc);
 		return;
 		break; /* NOTREACHED */ 
 	}
@@ -697,7 +688,6 @@ cam_periph_unmapmem(union ccb *ccb, struct cam_periph_map_info *mapinfo)
 	}
 
 	/* allow ourselves to be swapped once again */
-	PRELE(curproc);
 }
 
 union ccb *

@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.5 2003/06/26 05:55:14 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.6 2003/06/26 20:27:51 dillon Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -252,7 +252,6 @@ single_block_read:
 		if (bp->b_flags & (B_ASYNC|B_CALL))
 			BUF_KERNPROC(bp);
 		error = VOP_STRATEGY(vp, bp);
-		curproc->p_stats->p_ru.ru_inblock++;
 	}
 
 	/*
@@ -288,7 +287,6 @@ single_block_read:
 			if (rbp->b_flags & (B_ASYNC|B_CALL))
 				BUF_KERNPROC(rbp);
 			(void) VOP_STRATEGY(vp, rbp);
-			curproc->p_stats->p_ru.ru_inblock++;
 		}
 	}
 	if (reqbp)

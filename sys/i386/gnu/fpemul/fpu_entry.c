@@ -56,7 +56,7 @@
  * W. Metzenthen   June 1994.
  *
  * $FreeBSD: src/sys/gnu/i386/fpemul/fpu_entry.c,v 1.23 1999/10/12 02:23:14 msmith Exp $
- * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.2 2003/06/17 04:28:34 dillon Exp $
+ * $DragonFly: src/sys/i386/gnu/fpemul/Attic/fpu_entry.c,v 1.3 2003/06/26 20:27:51 dillon Exp $
  *
  */
 
@@ -210,6 +210,7 @@ math_emulate(struct trapframe * tframe)
 	REENTRANT_CHECK(ON);
 #endif				/* PARANOID */
 
+	KKASSERT(curproc);
 	if ((((struct pcb *) curproc->p_addr)->pcb_flags & FP_SOFTFP) == 0) {
 		finit();
 		control_word = __INITIAL_NPXCW__;

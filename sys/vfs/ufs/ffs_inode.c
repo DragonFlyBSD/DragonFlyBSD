@@ -32,7 +32,7 @@
  *
  *	@(#)ffs_inode.c	8.13 (Berkeley) 4/21/95
  * $FreeBSD: src/sys/ufs/ffs/ffs_inode.c,v 1.56.2.5 2002/02/05 18:35:03 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.4 2003/06/26 05:55:20 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ffs_inode.c,v 1.5 2003/06/26 20:27:52 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -462,7 +462,6 @@ ffs_indirtrunc(ip, lbn, dbn, lastbn, level, countp)
 	vp = ITOV(ip);
 	bp = getblk(vp, lbn, (int)fs->fs_bsize, 0, 0);
 	if ((bp->b_flags & B_CACHE) == 0) {
-		curproc->p_stats->p_ru.ru_inblock++;	/* pay for read */
 		bp->b_flags |= B_READ;
 		bp->b_flags &= ~(B_ERROR|B_INVAL);
 		if (bp->b_bcount > bp->b_bufsize)

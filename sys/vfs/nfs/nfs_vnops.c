@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vnops.c	8.16 (Berkeley) 5/27/95
  * $FreeBSD: src/sys/nfs/nfs_vnops.c,v 1.150.2.5 2001/12/20 19:56:28 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.5 2003/06/26 05:55:18 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vnops.c,v 1.6 2003/06/26 20:27:52 dillon Exp $
  */
 
 
@@ -3095,7 +3095,6 @@ nfs_writebp(bp, force, td)
 	bp->b_flags &= ~(B_READ|B_DONE|B_ERROR);
 
 	bp->b_vp->v_numoutput++;
-	curproc->p_stats->p_ru.ru_oublock++;
 	splx(s);
 
 	/*
