@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/if_le.c,v 1.56.2.4 2002/06/05 23:24:10 paul Exp $
- * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.21 2005/02/21 03:37:44 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/le/if_le.c,v 1.22 2005/02/21 03:38:55 joerg Exp $
  */
 
 /*
@@ -76,7 +76,6 @@ struct le_board {
     int (*bd_probe)(struct le_softc *sc, const struct le_board *bd, int *msize);
 };
 
-#if !defined(LE_NOLEMAC)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -108,9 +107,7 @@ struct le_lemac_info {
 #define	lemac_eeprom		le_un.un_lemac.lemac__eeprom
 #define	lemac_prodname		le_un.un_lemac.lemac__prodname
 };
-#endif /* !defined(LE_NOLEMAC) */
 
-#if !defined(LE_NOLANCE)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -179,7 +176,6 @@ struct le_lance_info {
 #define	lance_rxinfo		le_un.un_lance.lance__rxinfo
 #define	lance_txinfo		le_un.un_lance.lance__txinfo
 };
-#endif /* !defined(LE_NOLANCE) */
 
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -207,12 +203,8 @@ struct le_softc {
     const char *le_prodname;		/* product name DE20x-xx */
     u_char le_hwaddr[6];		/* local copy of hwaddr */
     union {
-#if !defined(LE_NOLEMAC)
 	struct le_lemac_info un_lemac;	/* LEMAC specific information */
-#endif
-#if !defined(LE_NOLANCE)
 	struct le_lance_info un_lance;	/* Am7990 specific information */
-#endif
     } le_un;
 };
 #define	le_if		le_ac.ac_if
@@ -232,12 +224,8 @@ static int le_read_macaddr(struct le_softc *sc, int ioreg, int skippat);
 static struct le_softc le_softc[NLE];
 
 static const struct le_board le_boards[] = {
-#if !defined(LE_NOLEMAC)
     { lemac_probe },			/* DE20[345] */
-#endif
-#if !defined(LE_NOLANCE)
     { depca_probe },			/* DE{20[012],422} */
-#endif
     { NULL }				/* Must Be Last! */
 };
 
@@ -533,7 +521,6 @@ le_multi_op(struct le_softc *sc, const u_char *mca, int enable)
     }
 }
 
-#if !defined(LE_NOLEMAC)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -1037,9 +1024,7 @@ lemac_init_adapmem(struct le_softc *sc)
 
     return;
 }
-#endif /* !defined(LE_NOLEMAC) */
 
-#if !defined(LE_NOLANCE)
 /*
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
  *
@@ -1868,4 +1853,3 @@ lance_tx_intr(struct le_softc *sc)
     LN_MAXSTAT(tx_intr_hidescs, xmits);
     return xmits;
 }
-#endif /* !defined(LE_NOLANCE) */
