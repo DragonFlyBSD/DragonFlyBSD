@@ -33,7 +33,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.17 2004/04/10 00:48:06 hsu Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.18 2004/04/28 06:59:27 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -1367,7 +1367,9 @@ sogetopt(so, sopt)
 	int	error, optval;
 	struct	linger l;
 	struct	timeval tv;
+#ifdef INET
 	struct accept_filter_arg *afap;
+#endif
 
 	error = 0;
 	if (sopt->sopt_level != SOL_SOCKET) {
