@@ -24,13 +24,13 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/sndstat.c,v 1.4.2.2 2002/04/22 15:49:36 cg Exp $
- * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.4 2003/07/21 05:50:36 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.5 2004/05/13 23:49:21 dillon Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
 #include <dev/sound/pcm/vchan.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.4 2003/07/21 05:50:36 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/sndstat.c,v 1.5 2004/05/13 23:49:21 dillon Exp $");
 
 #define	SS_TYPE_MODULE		0
 #define	SS_TYPE_FIRST		1
@@ -48,7 +48,7 @@ static struct cdevsw sndstat_cdevsw = {
 	/* maj */	SND_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	sndstat_open,
 	/* close */	sndstat_close,

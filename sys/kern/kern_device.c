@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/kern_device.c,v 1.9 2004/04/20 01:52:22 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_device.c,v 1.10 2004/05/13 23:49:23 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -51,16 +51,7 @@ static int cdevsw_putport(lwkt_port_t port, lwkt_msg_t msg);
 /*
  * Initialize a message port to serve as the default message-handling port
  * for device operations.  This message port provides compatibility with
- * traditional cdevsw dispatch functions.  There are two primary modes:
- *
- * mp_td is NULL:  The d_autoq mask is ignored and all messages are translated
- * 		   into directly, synchronous cdevsw calls.
- *
- * mp_td not NULL: The d_autoq mask is used to determine which messages should
- *		   be queued and which should be handled synchronously.
- *
- * Don't worry too much about optimizing this code, the critical devices
- * will implement their own port messaging functions directly.
+ * traditional cdevsw dispatch functions by running them synchronously.
  *
  * YYY NOTE: ms_cmd can now hold a function pointer, should this code be
  * converted from an integer op to a function pointer with a flag to
@@ -80,15 +71,6 @@ cdevsw_putport(lwkt_port_t port, lwkt_msg_t lmsg)
     cdevallmsg_t msg = (cdevallmsg_t)lmsg;
     struct cdevsw *csw = msg->am_msg.csw;
     int error;
-
-    /*
-     * If queueable then officially queue the message
-     */
-    if (port->mp_td) {
-	int mask = (1 << (msg->am_lmsg.ms_cmd.cm_op & MSG_SUBCMD_MASK));
-	if (csw->d_autoq & mask) 
-	    return(lwkt_beginmsg(port, &msg->am_lmsg));
-    }
 
     /*
      * Run the device switch function synchronously in the context of the

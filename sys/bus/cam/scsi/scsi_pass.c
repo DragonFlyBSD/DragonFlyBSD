@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.10 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.11 2004/05/13 23:49:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -118,7 +118,7 @@ static struct cdevsw pass_cdevsw = {
 	/* maj */	PASS_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	passopen,
 	/* close */	passclose,

@@ -31,7 +31,7 @@
  * NO EVENT SHALL THE AUTHORS BE LIABLE.
  *
  * $FreeBSD: src/sys/dev/si/si.c,v 1.101.2.1 2001/02/26 04:23:06 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/si/si.c,v 1.8 2003/11/09 02:22:35 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/si/si.c,v 1.9 2004/05/13 23:49:20 dillon Exp $
  */
 
 #ifndef lint
@@ -124,7 +124,7 @@ static struct cdevsw si_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	siopen,
 	/* close */	siclose,

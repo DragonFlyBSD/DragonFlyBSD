@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/md/md.c,v 1.8.2.2 2002/08/19 17:43:34 jdp Exp $
- * $DragonFly: src/sys/dev/disk/md/md.c,v 1.6 2003/07/22 17:03:30 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/md/md.c,v 1.7 2004/05/13 23:49:15 dillon Exp $
  *
  */
 
@@ -70,7 +70,7 @@ static struct cdevsw md_cdevsw = {
         /* maj */       CDEV_MAJOR,
         /* flags */     D_DISK | D_CANFREE | D_MEMDISK,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
         /* open */      mdopen,
         /* close */     nullclose,

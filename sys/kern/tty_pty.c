@@ -32,7 +32,7 @@
  *
  *	@(#)tty_pty.c	8.4 (Berkeley) 2/20/95
  * $FreeBSD: src/sys/kern/tty_pty.c,v 1.74.2.4 2002/02/20 19:58:13 dillon Exp $
- * $DragonFly: src/sys/kern/tty_pty.c,v 1.10 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/tty_pty.c,v 1.11 2004/05/13 23:49:23 dillon Exp $
  */
 
 /*
@@ -82,7 +82,7 @@ static struct cdevsw pts_cdevsw = {
 	/* maj */	CDEV_MAJOR_S,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ptsopen,
 	/* close */	ptsclose,
@@ -103,7 +103,7 @@ static struct cdevsw ptc_cdevsw = {
 	/* maj */	CDEV_MAJOR_C,
 	/* flags */	D_TTY | D_KQFILTER | D_MASTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ptcopen,
 	/* close */	ptcclose,

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.7 2004/02/06 15:26:20 hmp Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.8 2004/05/13 23:49:17 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -65,7 +65,7 @@ static struct cdevsw pps_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ppsopen,
 	/* close */	ppsclose,

@@ -12,7 +12,7 @@
  * without express or implied warranty.
  *
  * $FreeBSD: src/sys/i386/isa/mse.c,v 1.49.2.1 2000/03/20 13:58:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.7 2003/08/27 10:35:17 rob Exp $
+ * $DragonFly: src/sys/dev/misc/mse/mse.c,v 1.8 2004/05/13 23:49:16 dillon Exp $
  */
 /*
  * Driver for the Logitech and ATI Inport Bus mice for use with 386bsd and
@@ -145,7 +145,7 @@ static struct cdevsw mse_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	mseopen,
 	/* close */	mseclose,

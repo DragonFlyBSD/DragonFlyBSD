@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pt.c,v 1.17 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.9 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pt.c,v 1.10 2004/05/13 23:49:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -125,7 +125,7 @@ static struct cdevsw pt_cdevsw = {
 	/* maj */	PT_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	ptopen,
 	/* close */	ptclose,

@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.7 2003/08/07 21:17:10 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.8 2004/05/13 23:49:19 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -239,7 +239,7 @@ static struct cdevsw dgm_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	dgmopen,
 	/* close */	dgmclose,

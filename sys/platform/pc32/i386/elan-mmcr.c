@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.5 2004/01/30 05:42:16 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/elan-mmcr.c,v 1.6 2004/05/13 23:49:23 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -100,7 +100,7 @@ static struct cdevsw elan_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	elan_open,
 	/* close */	elan_close,

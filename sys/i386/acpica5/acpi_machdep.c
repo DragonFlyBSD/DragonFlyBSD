@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/acpica/acpi_machdep.c,v 1.15 2003/11/01 00:18:29 njl Exp $
- * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.1 2004/02/21 06:48:05 dillon Exp $
+ * $DragonFly: src/sys/i386/acpica5/Attic/acpi_machdep.c,v 1.2 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -70,7 +70,7 @@ static struct cdevsw apm_cdevsw = {
         .d_maj  = CDEV_MAJOR,
         .d_flags = 0,
         .d_port = NULL,
-        .d_autoq = 0,
+        .d_clone = NULL,
         .old_open = apmopen,
         .old_close = apmclose,
 	.old_write = apmwrite,

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usb.c,v 1.68 2002/02/20 20:30:12 christos Exp $
  * $FreeBSD: src/sys/dev/usb/usb.c,v 1.95 2003/11/09 23:54:21 joe Exp $
- * $DragonFly: src/sys/bus/usb/usb.c,v 1.12 2004/03/12 03:43:06 dillon Exp $
+ * $DragonFly: src/sys/bus/usb/usb.c,v 1.13 2004/05/13 23:49:14 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -151,7 +151,7 @@ struct cdevsw usb_cdevsw = {
 	/* maj */       USB_CDEV_MAJOR,
 	/* flags */     0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */      usbopen,
 	/* close */     usbclose,

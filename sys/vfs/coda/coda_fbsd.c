@@ -28,7 +28,7 @@
  * 
  * 	@(#) src/sys/coda/coda_fbsd.cr,v 1.1.1.1 1998/08/29 21:14:52 rvb Exp $
  * $FreeBSD: src/sys/coda/coda_fbsd.c,v 1.18 1999/09/25 18:23:43 phk Exp $
- * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.5 2004/03/31 02:34:37 cpressey Exp $
+ * $DragonFly: src/sys/vfs/coda/Attic/coda_fbsd.c,v 1.6 2004/05/13 23:49:26 dillon Exp $
  * 
  */
 
@@ -71,7 +71,7 @@ static struct cdevsw codadevsw = {
 	/* maj */	VC_DEV_NO,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	vc_nb_open,
 	/* close */	vc_nb_close,

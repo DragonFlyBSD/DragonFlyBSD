@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/contrib/dev/fla/fla.c,v 1.16 1999/12/08 04:45:16 ken Exp $ 
- * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.6 2003/08/07 21:16:48 dillon Exp $ 
+ * $DragonFly: src/sys/contrib/dev/fla/Attic/fla.c,v 1.7 2004/05/13 23:49:14 dillon Exp $ 
  *
  */
 
@@ -64,7 +64,7 @@ static struct cdevsw fla_cdevsw = {
         /* maj */       CDEV_MAJOR,
         /* flags */     D_DISK | D_CANFREE,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
         /* open */      flaopen,
         /* close */     flaclose,

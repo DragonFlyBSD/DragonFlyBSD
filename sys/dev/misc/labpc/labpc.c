@@ -39,7 +39,7 @@
  * dufault@hda.com
  *
  * $FreeBSD: src/sys/i386/isa/labpc.c,v 1.35 1999/09/25 18:24:08 phk Exp $
- * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.6 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/labpc/labpc.c,v 1.7 2004/05/13 23:49:16 dillon Exp $
  *
  */
 
@@ -292,7 +292,7 @@ static struct cdevsw labpc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	labpcopen,
 	/* close */	labpcclose,

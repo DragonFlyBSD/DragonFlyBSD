@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/perfmon.c,v 1.21 1999/09/25 18:24:04 phk Exp $
- * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.6 2003/07/21 05:50:39 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/perfmon.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -66,7 +66,7 @@ static struct cdevsw perfmon_cdevsw = {
 	/* maj */       CDEV_MAJOR,
 	/* flags */     0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */      perfmon_open,
 	/* close */     perfmon_close,

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_event.c,v 1.2.2.10 2004/04/04 07:03:14 cperciva Exp $
- * $DragonFly: src/sys/kern/kern_event.c,v 1.11 2004/04/21 04:32:29 hmp Exp $
+ * $DragonFly: src/sys/kern/kern_event.c,v 1.12 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -71,7 +71,7 @@ static void 	kqueue_wakeup(struct kqueue *kq);
 
 static struct fileops kqueueops = {
 	NULL,	/* port */
-	0,	/* autoq */
+	NULL,	/* clone */
 	kqueue_read,
 	kqueue_write,
 	kqueue_ioctl,

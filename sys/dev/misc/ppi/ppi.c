@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ppbus/ppi.c,v 1.21.2.3 2000/08/07 18:24:43 peter Exp $
- * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/ppi/ppi.c,v 1.7 2004/05/13 23:49:17 dillon Exp $
  *
  */
 #include "opt_ppb_1284.h"
@@ -96,7 +96,7 @@ static struct cdevsw ppi_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ppiopen,
 	/* close */	ppiclose,

@@ -29,7 +29,7 @@
  *    Gareth Hughes <gareth@valinux.com>
  *
  * $FreeBSD: src/sys/dev/drm/drm_drv.h,v 1.13.2.1 2003/04/26 07:05:28 anholt Exp $
- * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.6 2004/02/13 01:23:57 joerg Exp $
+ * $DragonFly: src/sys/dev/drm/Attic/drm_drv.h,v 1.7 2004/05/13 23:49:16 dillon Exp $
  */
 
 /*
@@ -211,7 +211,7 @@ static struct cdevsw DRM(cdevsw) = {
 	.d_maj =	CDEV_MAJOR,
 	.d_flags =	D_TTY | D_TRACKCLOSE,
 	.d_port = 	NULL,
-	.d_autoq =	0,
+	.d_clone =	NULL,
 
 	.old_open =	DRM( open ),
 	.old_close =	DRM( close ),

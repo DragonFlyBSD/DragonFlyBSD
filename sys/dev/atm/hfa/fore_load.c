@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.7 2004/02/13 19:06:15 joerg Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.8 2004/05/13 23:49:14 dillon Exp $
  */
 
 /*
@@ -1526,7 +1526,7 @@ static struct cdevsw fore_cdev = {
 	/* maj */	-1,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	noopen,
 	/* close */	noclose,

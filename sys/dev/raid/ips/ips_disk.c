@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ips/ips_disk.c,v 1.4 2003/09/22 04:59:07 njl 
- * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.1 2004/01/15 15:41:23 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/ips/ips_disk.c,v 1.2 2004/05/13 23:49:19 dillon Exp $
  */
 
 #include <sys/cdefs.h>
@@ -47,7 +47,7 @@ static struct cdevsw ipsd_cdevsw = {
 	.d_maj		= IPSD_CDEV_MAJOR,
 	.d_flags	= D_DISK,
 	.d_port		= NULL,
-	.d_autoq	= 0,
+	.d_clone	= NULL,
 	.old_open	= ipsd_open,
 	.old_close	= ipsd_close,
 	.old_strategy	= ipsd_strategy,

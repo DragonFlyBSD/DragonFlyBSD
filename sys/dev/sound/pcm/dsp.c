@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pcm/dsp.c,v 1.15.2.13 2002/08/30 13:53:03 orion Exp $
- * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.4 2003/07/21 05:50:36 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.5 2004/05/13 23:49:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -32,7 +32,7 @@
 
 #include <dev/sound/pcm/sound.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.4 2003/07/21 05:50:36 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pcm/dsp.c,v 1.5 2004/05/13 23:49:21 dillon Exp $");
 
 #define OLDPCM_IOCTL
 
@@ -49,7 +49,7 @@ static struct cdevsw dsp_cdevsw = {
 	/* maj */	SND_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	dsp_open,
 	/* close */	dsp_close,

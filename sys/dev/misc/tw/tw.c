@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/tw.c,v 1.38 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.8 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/tw/tw.c,v 1.9 2004/05/13 23:49:18 dillon Exp $
  *
  */
 
@@ -220,7 +220,7 @@ static struct cdevsw tw_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	twopen,
 	/* close */	twclose,

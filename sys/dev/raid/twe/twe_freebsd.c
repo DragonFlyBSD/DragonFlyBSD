@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/twe/twe_freebsd.c,v 1.2.2.5 2002/03/07 09:57:02 msmith Exp $
- * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.8 2004/01/05 17:40:00 drhodus Exp $
+ * $DragonFly: src/sys/dev/raid/twe/twe_freebsd.c,v 1.9 2004/05/13 23:49:19 dillon Exp $
  */
 
 /*
@@ -76,7 +76,7 @@ static struct cdevsw twe_cdevsw = {
     /* cmaj */	TWE_CDEV_MAJOR,
     /* flags */	0,
     /* port */	NULL,
-    /* autoq */	0,
+    /* clone */	NULL,
 
     twe_open,
     twe_close,
@@ -624,7 +624,7 @@ static struct cdevsw twed_cdevsw = {
     TWED_CDEV_MAJOR,
     D_DISK,
     /* port */	NULL,
-    /* autoq */ 0,
+    /* clone */ NULL,
     twed_open,
     twed_close,
     physread,

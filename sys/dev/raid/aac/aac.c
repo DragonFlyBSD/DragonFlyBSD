@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/aac/aac.c,v 1.9.2.14 2003/04/08 13:22:08 scottl Exp $
- *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.10 2004/02/13 01:33:18 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/aac/aac.c,v 1.11 2004/05/13 23:49:18 dillon Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ static struct cdevsw aac_cdevsw = {
 	AAC_CDEV_MAJOR,		/* major */
 	0,			/* flags */
 	NULL,			/* port */
-	0,			/* autoq */
+	NULL,			/* clone */
 
 	aac_open,		/* open */
 	aac_close,		/* close */

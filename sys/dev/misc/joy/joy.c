@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/joy.c,v 1.38.2.1 2001/09/01 05:55:31 murray Exp $
- * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.5 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/joy/joy.c,v 1.6 2004/05/13 23:49:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -85,7 +85,7 @@ static struct cdevsw joy_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	joyopen,
 	/* close */	joyclose,

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/cam/scsi/scsi_ses.c,v 1.8.2.2 2000/08/08 23:19:21 mjacob Exp $ */
-/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.9 2004/03/15 02:27:56 dillon Exp $ */
+/* $DragonFly: src/sys/bus/cam/scsi/scsi_ses.c,v 1.10 2004/05/13 23:49:11 dillon Exp $ */
 /*
  * Copyright (c) 2000 Matthew Jacob
  * All rights reserved.
@@ -184,7 +184,7 @@ static struct cdevsw ses_cdevsw = {
 	/* maj */	SES_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	sesopen,
 	/* close */	sesclose,

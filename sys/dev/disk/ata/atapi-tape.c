@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-tape.c,v 1.36.2.12 2002/07/31 11:19:26 sos Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.9 2004/02/18 01:35:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-tape.c,v 1.10 2004/05/13 23:49:14 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -59,7 +59,7 @@ static struct cdevsw ast_cdevsw = {
 	/* maj */	119,
 	/* flags */	D_TAPE | D_TRACKCLOSE,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	astopen,
 	/* close */	astclose,

@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/ufm.c,v 1.16 2003/10/04 21:41:01 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.6 2004/02/11 15:13:05 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ufm/ufm.c,v 1.7 2004/05/13 23:49:21 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -97,7 +97,7 @@ Static struct cdevsw ufm_cdevsw = {
 	/* cmaj */	UFM_CDEV_MAJOR,	
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 	ufmopen,	ufmclose,	noread,		nowrite,
  	ufmioctl,	nopoll,		nommap,		nostrategy,
 	nodump,		nopsize

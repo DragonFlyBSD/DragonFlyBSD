@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/sound/soundcard.c,v 1.87 1999/12/20 18:05:01 eivind Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.5 2003/08/27 06:48:15 rob Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/Attic/soundcard.c,v 1.6 2004/05/13 23:49:20 dillon Exp $
  *
  */
 #include "use_snd.h"
@@ -95,7 +95,7 @@ static struct cdevsw snd_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	sndopen,
 	/* close */	sndclose,

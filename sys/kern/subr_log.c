@@ -32,7 +32,7 @@
  *
  *	@(#)subr_log.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/subr_log.c,v 1.39.2.2 2001/06/02 08:11:25 phk Exp $
- * $DragonFly: src/sys/kern/subr_log.c,v 1.5 2003/07/21 05:50:43 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_log.c,v 1.6 2004/05/13 23:49:23 dillon Exp $
  */
 
 /*
@@ -70,7 +70,7 @@ static struct cdevsw log_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	logopen,
 	/* close */	logclose,

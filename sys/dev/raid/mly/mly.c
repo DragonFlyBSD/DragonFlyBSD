@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mly/mly.c,v 1.3.2.3 2001/03/05 20:17:24 msmith Exp $
- *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.7 2004/02/13 01:33:19 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/mly/mly.c,v 1.8 2004/05/13 23:49:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -98,7 +98,7 @@ static struct cdevsw mly_cdevsw = {
     /* cmaj */	MLY_CDEV_MAJOR,
     /* flags */	0,
     /* port */	NULL,
-    /* autoq */	0,
+    /* clone */	NULL,
 
     mly_user_open,
     mly_user_close,

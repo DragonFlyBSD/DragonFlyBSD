@@ -32,7 +32,7 @@
  *
  *	@(#)file.h	8.3 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/file.h,v 1.22.2.7 2002/11/21 23:39:24 sam Exp $
- * $DragonFly: src/sys/sys/file.h,v 1.9 2004/04/21 06:09:53 dillon Exp $
+ * $DragonFly: src/sys/sys/file.h,v 1.10 2004/05/13 23:49:25 dillon Exp $
  */
 
 #ifndef _SYS_FILE_H_
@@ -59,7 +59,7 @@ struct lwkt_port;
 
 struct	fileops {
 	struct lwkt_port *fo_port;
-	u_int	fo_autoq;
+	int	(*fo_clone)(struct file *);	/* additional work after dup */
 
 	int	(*fold_read)	(struct file *fp, struct uio *uio,
 				    struct ucred *cred, int flags,

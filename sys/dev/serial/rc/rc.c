@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/rc.c,v 1.53.2.1 2001/02/26 04:23:10 jlemon Exp $
- * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.9 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rc/rc.c,v 1.10 2004/05/13 23:49:20 dillon Exp $
  *
  */
 
@@ -95,7 +95,7 @@ static struct cdevsw rc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	rcopen,
 	/* close */	rcclose,

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.9 2004/04/24 04:32:19 cpressey Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.10 2004/05/13 23:49:17 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -206,7 +206,7 @@ static struct cdevsw sc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	scopen,
 	/* close */	scclose,

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_target.c,v 1.22.2.7 2003/02/18 22:07:10 njl Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.7 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_target.c,v 1.8 2004/05/13 23:49:11 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -107,7 +107,7 @@ static struct cdevsw targ_cdevsw = {
 	/* maj */	TARG_CDEV_MAJOR,
 	/* flags */	D_KQFILTER,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	targopen,
 	/* close */	targclose,

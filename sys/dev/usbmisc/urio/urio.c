@@ -30,7 +30,7 @@
 
 /*
  * $FreeBSD: src/sys/dev/usb/urio.c,v 1.28 2003/08/25 22:01:06 joe Exp $
- * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/urio/urio.c,v 1.9 2004/05/13 23:49:22 dillon Exp $
  */
 
 /*
@@ -124,7 +124,7 @@ Static struct cdevsw urio_cdevsw = {
 	/* cmaj */	URIO_CDEV_MAJOR,
  	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 	urioopen,	urioclose,	urioread,	uriowrite,
  	urioioctl,	nopoll,		nommap,		nostrategy,
 	nodump,		nopsize

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/fb.c,v 1.11.2.2 2000/08/02 22:35:22 peter Exp $
- * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.7 2003/11/10 06:12:09 dillon Exp $
+ * $DragonFly: src/sys/dev/video/fb/fb.c,v 1.8 2004/05/13 23:49:22 dillon Exp $
  */
 
 #include "opt_fb.h"
@@ -368,7 +368,7 @@ static struct cdevsw fb_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	fbopen,
 	/* close */	fbclose,

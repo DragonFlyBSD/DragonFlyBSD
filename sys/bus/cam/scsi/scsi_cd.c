@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_cd.c,v 1.31.2.16 2003/10/21 22:26:11 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.13 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_cd.c,v 1.14 2004/05/13 23:49:11 dillon Exp $
  */
 /*
  * Portions of this driver taken from the original FreeBSD cd driver.
@@ -302,7 +302,7 @@ static struct cdevsw cd_cdevsw = {
 	/* maj */	SCSICD_CDEV_MAJOR,
 	/* flags */	D_DISK,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	cdopen,
 	/* close */	cdclose,

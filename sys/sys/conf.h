@@ -37,7 +37,7 @@
  *
  *	@(#)conf.h	8.5 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/conf.h,v 1.103.2.6 2002/03/11 01:14:55 dd Exp $
- * $DragonFly: src/sys/sys/conf.h,v 1.5 2003/07/22 17:03:34 dillon Exp $
+ * $DragonFly: src/sys/sys/conf.h,v 1.6 2004/05/13 23:49:25 dillon Exp $
  */
 
 #ifndef _SYS_CONF_H_
@@ -123,6 +123,7 @@ struct thread;
 struct lwkt_port;
 
 typedef struct thread d_thread_t;
+typedef int d_clone_t (dev_t dev);
 typedef int d_open_t (dev_t dev, int oflags, int devtype, d_thread_t *td);
 typedef int d_close_t (dev_t dev, int fflag, int devtype, d_thread_t *td);
 typedef void d_strategy_t (struct buf *bp);
@@ -177,14 +178,16 @@ typedef int l_modem_t (struct tty *tp, int flag);
 #define	D_KQFILTER	0x00200000	/* has kqfilter entry */
 
 /*
- * Character device switch table
+ * Character device switch table.
+ *
+ * NOTE: positions are hard coded for static structure initialization.
  */
 struct cdevsw {
 	const char	*d_name;	/* base device name, e.g. 'vn' */
 	int		d_maj;		/* major (char) device number */
 	u_int		d_flags;	/* D_ flags */
 	struct lwkt_port *d_port;	/* port (template only) */
-	u_int		d_autoq;	/* thread safe (old style) vec mask */
+	d_clone_t	*d_clone;	/* clone from base cdevsw */
 
 	/*
 	 * Old style vectors are used only if d_port is NULL when the cdevsw

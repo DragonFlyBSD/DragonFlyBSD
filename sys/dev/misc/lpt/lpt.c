@@ -49,7 +49,7 @@
  *	From Id: lpt.c,v 1.55.2.1 1996/11/12 09:08:38 phk Exp
  *	From Id: nlpt.c,v 1.14 1999/02/08 13:55:43 des Exp
  * $FreeBSD: src/sys/dev/ppbus/lpt.c,v 1.15.2.3 2000/07/07 00:30:40 obrien Exp $
- * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.7 2003/08/07 21:16:56 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/lpt/lpt.c,v 1.8 2004/05/13 23:49:16 dillon Exp $
  */
 
 /*
@@ -196,7 +196,7 @@ static struct cdevsw lpt_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	lptopen,
 	/* close */	lptclose,

@@ -16,7 +16,7 @@
  * Sep, 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/sys/i386/apm/apm.c,v 1.114.2.5 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.6 2003/08/26 21:42:17 rob Exp $
+ * $DragonFly: src/sys/i386/apm/Attic/apm.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ static struct cdevsw apm_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	apmopen,
 	/* close */	apmclose,

@@ -39,7 +39,7 @@
  *
  *	from: @(#)vn.c	8.6 (Berkeley) 4/1/94
  * $FreeBSD: src/sys/dev/vn/vn.c,v 1.105.2.4 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.8 2004/03/01 06:33:14 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/vn/vn.c,v 1.9 2004/05/13 23:49:15 dillon Exp $
  */
 
 /*
@@ -109,7 +109,7 @@ static struct cdevsw vn_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_DISK|D_CANFREE,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	vnopen,
 	/* close */	vnclose,

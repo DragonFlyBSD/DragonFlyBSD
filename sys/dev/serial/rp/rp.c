@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/rp/rp.c,v 1.45.2.2 2002/11/07 22:26:59 tegge Exp $
- * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.9 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/rp/rp.c,v 1.10 2004/05/13 23:49:20 dillon Exp $
  */
 
 /* 
@@ -576,7 +576,7 @@ struct cdevsw rp_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	rpopen,
 	/* close */	rpclose,

@@ -35,7 +35,7 @@
  */
 /*
  * $FreeBSD: src/sys/i386/isa/asc.c,v 1.42.2.2 2001/03/01 03:22:39 jlemon Exp $
- * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.6 2003/08/07 21:17:23 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/asc.c,v 1.7 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include "use_asc.h"
@@ -191,7 +191,7 @@ static struct cdevsw asc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ascopen,
 	/* close */	ascclose,

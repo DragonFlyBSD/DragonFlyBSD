@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.9 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.10 2004/05/13 23:49:19 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -383,7 +383,7 @@ static struct cdevsw sio_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	sioopen,
 	/* close */	sioclose,

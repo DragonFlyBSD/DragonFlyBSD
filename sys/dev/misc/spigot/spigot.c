@@ -43,7 +43,7 @@
  * Version 1.7, December 1995.
  *
  * $FreeBSD: src/sys/i386/isa/spigot.c,v 1.44 2000/01/29 16:17:36 peter Exp $
- * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.7 2003/08/11 17:50:15 drhodus Exp $
+ * $DragonFly: src/sys/dev/misc/spigot/spigot.c,v 1.8 2004/05/13 23:49:17 dillon Exp $
  *
  */
 
@@ -101,7 +101,7 @@ static struct cdevsw spigot_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	spigot_open,
 	/* close */	spigot_close,

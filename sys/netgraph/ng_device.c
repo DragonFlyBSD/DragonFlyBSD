@@ -29,7 +29,7 @@
  * netgraph node.
  *
  * $FreeBSD: src/sys/netgraph/ng_device.c,v 1.1.2.1 2002/08/23 07:15:44 julian Exp $
- * $DragonFly: src/sys/netgraph/ng_device.c,v 1.3 2003/07/21 05:50:44 dillon Exp $
+ * $DragonFly: src/sys/netgraph/ng_device.c,v 1.4 2004/05/13 23:49:24 dillon Exp $
  *
  */
 
@@ -123,7 +123,7 @@ static struct cdevsw ngd_cdevsw = {
         /* maj */       NGD_CDEV_MAJOR,
         /* flags */     0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
         /* open */      ngdopen,
         /* close */     ngdclose,

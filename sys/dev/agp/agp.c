@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp.c,v 1.3.2.4 2002/08/11 19:58:12 alc Exp $
- *	$DragonFly: src/sys/dev/agp/agp.c,v 1.11 2004/03/24 20:42:12 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp.c,v 1.12 2004/05/13 23:49:14 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -74,7 +74,7 @@ static struct cdevsw agp_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	agp_open,
 	/* close */	agp_close,

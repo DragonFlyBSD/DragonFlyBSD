@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pst/pst-raid.c,v 1.2.2.1 2002/08/18 12:32:36 sos Exp $
- * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.8 2004/02/24 19:46:03 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/pst/pst-raid.c,v 1.9 2004/05/13 23:49:19 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -60,7 +60,7 @@ static struct cdevsw pst_cdevsw = {
     /* maj */	168,
     /* flags */ D_DISK,
     /* port */	NULL,
-    /* autoq */ 0,
+    /* clone */ NULL,
 
     /* open */	nullopen,
     /* close */ nullclose,

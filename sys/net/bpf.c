@@ -38,7 +38,7 @@
  *      @(#)bpf.c	8.2 (Berkeley) 3/28/94
  *
  * $FreeBSD: src/sys/net/bpf.c,v 1.59.2.12 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/bpf.c,v 1.15 2004/04/22 04:21:29 dillon Exp $
+ * $DragonFly: src/sys/net/bpf.c,v 1.16 2004/05/13 23:49:24 dillon Exp $
  */
 
 #include "use_bpf.h"
@@ -143,7 +143,7 @@ static struct cdevsw bpf_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	bpfopen,
 	/* close */	bpfclose,

@@ -37,7 +37,7 @@
  *
  * $Id: vinum.c,v 1.33 2001/01/09 06:19:15 grog Exp grog $
  * $FreeBSD: src/sys/dev/vinum/vinum.c,v 1.38.2.3 2003/01/07 12:14:16 joerg Exp $
- * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.9 2004/05/04 12:06:44 hmp Exp $
+ * $DragonFly: src/sys/dev/raid/vinum/vinum.c,v 1.10 2004/05/13 23:49:19 dillon Exp $
  */
 
 #define STATIC static					    /* nothing while we're testing XXX */
@@ -60,7 +60,7 @@ STATIC struct cdevsw vinum_cdevsw =
     /* cmaj */	VINUM_CDEV_MAJOR, 
     /* flags */ D_DISK,
     /* port */	NULL,
-    /* autoq */	0,
+    /* clone */	NULL,
 
     vinumopen, vinumclose, physread, physwrite,
     vinumioctl, seltrue, nommap, vinumstrategy,

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.13 2004/03/15 05:43:52 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.14 2004/05/13 23:49:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -610,7 +610,7 @@ static struct cdevsw xpt_cdevsw = {
 	/* maj */	XPT_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	xptopen,
 	/* close */	xptclose,

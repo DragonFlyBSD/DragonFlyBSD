@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_dev.c,v 1.2.2.1 2001/05/22 08:32:33 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.7 2004/03/19 17:06:08 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_dev.c,v 1.8 2004/05/13 23:49:25 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/kernel.h>
@@ -91,7 +91,7 @@ static struct cdevsw nsmb_cdevsw = {
 	/* maj */	NSMB_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	nsmb_dev_open,
 	/* close */	nsmb_dev_close,

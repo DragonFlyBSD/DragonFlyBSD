@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.7 2003/08/07 21:17:16 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.8 2004/05/13 23:49:22 dillon Exp $
  *
  */
 
@@ -187,7 +187,7 @@ static struct cdevsw gsc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	gscopen,
 	/* close */	gscclose,

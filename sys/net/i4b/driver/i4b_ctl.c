@@ -30,7 +30,7 @@
  *	$Id: i4b_ctl.c,v 1.37 2000/05/31 08:04:43 hm Exp $
  *
  * $FreeBSD: src/sys/i4b/driver/i4b_ctl.c,v 1.10.2.3 2001/08/12 16:22:48 hm Exp $
- * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.7 2004/02/13 17:45:49 joerg Exp $
+ * $DragonFly: src/sys/net/i4b/driver/i4b_ctl.c,v 1.8 2004/05/13 23:49:24 dillon Exp $
  *
  *	last edit-date: [Sat Aug 11 18:06:38 2001]
  *
@@ -109,7 +109,7 @@ static struct cdevsw i4bctl_cdevsw = {
 	/* maj */       CDEV_MAJOR,
 	/* flags */     0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */      i4bctlopen,
 	/* close */     i4bctlclose,

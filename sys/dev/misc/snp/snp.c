@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.8 2003/08/27 10:35:18 rob Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.9 2004/05/13 23:49:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -44,7 +44,7 @@ static struct cdevsw snp_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	snpopen,
 	/* close */	snpclose,

@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/stallion.c,v 1.39.2.2 2001/08/30 12:29:57 murray Exp $
- * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.8 2003/11/22 19:30:56 asmodai Exp $
+ * $DragonFly: src/sys/dev/serial/stl/stallion.c,v 1.9 2004/05/13 23:49:20 dillon Exp $
  */
 
 /*****************************************************************************/
@@ -750,7 +750,7 @@ static struct cdevsw stl_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	stlopen,
 	/* close */	stlclose,

@@ -16,7 +16,7 @@
  * Version 1.9, Wed Oct  4 18:58:15 MSK 1995
  *
  * $FreeBSD: src/sys/i386/isa/cx.c,v 1.45.2.1 2001/02/26 04:23:09 jlemon Exp $
- * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.10 2004/05/04 12:12:13 hmp Exp $
+ * $DragonFly: src/sys/dev/netif/cx/cx.c,v 1.11 2004/05/13 23:49:18 dillon Exp $
  *
  */
 #undef DEBUG
@@ -94,7 +94,7 @@ struct cdevsw cx_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	cxopen,
 	/* close */	cxclose,

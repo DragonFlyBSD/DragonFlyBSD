@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.19 2004/02/24 11:52:31 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.20 2004/05/13 23:49:13 dillon Exp $
  *
  */
 
@@ -1142,7 +1142,7 @@ static struct cdevsw pcicdev = {
 	/* maj */	PCI_CDEV,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	pci_open,
 	/* close */	pci_close,

@@ -9,7 +9,7 @@
  *	for damages incurred with its use.
  *
  * $FreeBSD: src/sys/i386/isa/ctx.c,v 1.36 2000/01/29 16:17:31 peter Exp $
- * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.6 2003/08/27 06:48:15 rob Exp $
+ * $DragonFly: src/sys/dev/video/ctx/ctx.c,v 1.7 2004/05/13 23:49:22 dillon Exp $
  */
 
 /*
@@ -145,7 +145,7 @@ static struct cdevsw ctx_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ctxopen,
 	/* close */	ctxclose,

@@ -37,7 +37,7 @@
  *
  *	from: @(#)cons.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/kern/tty_cons.c,v 1.81.2.4 2001/12/17 18:44:41 guido Exp $
- * $DragonFly: src/sys/kern/tty_cons.c,v 1.11 2004/04/20 01:52:22 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_cons.c,v 1.12 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include "opt_ddb.h"
@@ -75,7 +75,7 @@ static struct cdevsw cn_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY | D_KQFILTER,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	cnopen,
 	/* close */	cnclose,

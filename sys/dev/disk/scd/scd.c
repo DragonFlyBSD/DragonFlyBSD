@@ -42,7 +42,7 @@
 
 
 /* $FreeBSD: src/sys/i386/isa/scd.c,v 1.54 2000/01/29 16:00:30 peter Exp $ */
-/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.8 2003/11/09 02:22:34 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/scd/Attic/scd.c,v 1.9 2004/05/13 23:49:15 dillon Exp $ */
 
 /* Please send any comments to micke@dynas.se */
 
@@ -186,7 +186,7 @@ static struct cdevsw scd_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_DISK,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	scdopen,
 	/* close */	scdclose,

@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/vga_isa.c,v 1.17 2000/01/29 15:08:56 peter Exp $
- * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.6 2003/08/07 21:16:46 dillon Exp $
+ * $DragonFly: src/sys/bus/isa/vga_isa.c,v 1.7 2004/05/13 23:49:13 dillon Exp $
  */
 
 #include "opt_vga.h"
@@ -93,7 +93,7 @@ static struct cdevsw isavga_cdevsw = {
 	/* maj */	-1,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	isavga_open,
 	/* close */	isavga_close,

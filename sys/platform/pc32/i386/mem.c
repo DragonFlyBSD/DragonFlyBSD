@@ -39,7 +39,7 @@
  *	from: Utah $Hdr: mem.c 1.13 89/10/08$
  *	from: @(#)mem.c	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/i386/mem.c,v 1.79.2.9 2003/01/04 22:58:01 njl Exp $
- * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.9 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/Attic/mem.c,v 1.10 2004/05/13 23:49:23 dillon Exp $
  */
 
 /*
@@ -85,7 +85,7 @@ static struct cdevsw mem_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_MEM,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	mmopen,
 	/* close */	mmclose,

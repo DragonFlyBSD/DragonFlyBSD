@@ -27,7 +27,7 @@
  * Copyright (c) 2000 Andrew Miklic, Andrew Gallatin, and Thomas V. Crimi
  *
  * $FreeBSD: src/sys/dev/tga/tga_pci.c,v 1.1.2.1 2001/11/01 08:33:15 obrien Exp $
- * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.5 2003/08/07 21:17:17 dillon Exp $
+ * $DragonFly: src/sys/dev/video/tga/Attic/tga_pci.c,v 1.6 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -101,7 +101,7 @@ static struct cdevsw tga_cdevsw = {
 	/* maj */	-1,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	pcigfb_open,
 	/* close */	pcigfb_close,

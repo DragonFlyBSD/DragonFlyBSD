@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/cam/scsi/scsi_sa.c,v 1.45.2.13 2002/12/17 17:08:50 trhodes Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.10 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_sa.c,v 1.11 2004/05/13 23:49:11 dillon Exp $
  *
  * Implementation of SCSI Sequential Access Peripheral driver for CAM.
  *
@@ -438,7 +438,7 @@ static struct cdevsw sa_cdevsw = {
 	/* maj */	SA_CDEV_MAJOR,
 	/* flags */	D_TAPE,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	saopen,
 	/* close */	saclose,

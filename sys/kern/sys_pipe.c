@@ -17,7 +17,7 @@
  *    are met.
  *
  * $FreeBSD: src/sys/kern/sys_pipe.c,v 1.60.2.13 2002/08/05 15:05:15 des Exp $
- * $DragonFly: src/sys/kern/sys_pipe.c,v 1.21 2004/05/11 22:48:53 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_pipe.c,v 1.22 2004/05/13 23:49:23 dillon Exp $
  */
 
 /*
@@ -104,7 +104,7 @@ static int pipe_ioctl (struct file *fp, u_long cmd, caddr_t data, struct thread 
 
 static struct fileops pipeops = {
 	NULL,	/* port */
-	0,	/* autoq */
+	NULL,	/* clone */
 	pipe_read, pipe_write, pipe_ioctl, pipe_poll, pipe_kqfilter,
 	pipe_stat, pipe_close
 };

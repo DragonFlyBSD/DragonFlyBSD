@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_da.c,v 1.42.2.46 2003/10/21 22:18:19 thomas Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.15 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_da.c,v 1.16 2004/05/13 23:49:11 dillon Exp $
  */
 
 #ifdef _KERNEL
@@ -476,7 +476,7 @@ static struct cdevsw da_cdevsw = {
 	/* maj */	DA_CDEV_MAJOR,
 	/* flags */	D_DISK,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	daopen,
 	/* close */	daclose,

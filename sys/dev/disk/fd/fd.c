@@ -51,7 +51,7 @@
  *
  *	from:	@(#)fd.c	7.4 (Berkeley) 5/25/91
  * $FreeBSD: src/sys/isa/fd.c,v 1.176.2.8 2002/05/15 21:56:14 joerg Exp $
- * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.14 2004/03/15 01:10:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/fd/fd.c,v 1.15 2004/05/13 23:49:15 dillon Exp $
  *
  */
 
@@ -335,7 +335,7 @@ static struct cdevsw fd_cdevsw = {
 	/* maj */	FD_CDEV_MAJOR,
 	/* flags */	D_DISK,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	Fdopen,
 	/* close */	fdclose,

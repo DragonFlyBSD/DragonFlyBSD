@@ -48,7 +48,7 @@
  * also provided sample code upon which this driver was based.
  *
  * $FreeBSD: src/sys/i386/isa/spic.c,v 1.4.2.1 2002/04/15 00:52:12 will Exp $
- * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.6 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/spic/spic.c,v 1.7 2004/05/13 23:49:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -91,7 +91,7 @@ static struct cdevsw spic_cdevsw = {
         /* maj */       CDEV_MAJOR,
         /* flags */     0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
         /* open */      spicopen,
         /* close */     spicclose,

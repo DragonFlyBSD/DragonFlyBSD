@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi.c,v 1.95.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.4 2004/05/05 22:19:22 dillon Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi.c,v 1.5 2004/05/13 23:49:14 dillon Exp $ 
  */
 
 #include "opt_acpi.h"
@@ -80,7 +80,7 @@ static struct cdevsw acpi_cdevsw = {
        .d_maj     = CDEV_MAJOR,
        .d_flags   = 0,
        .d_port    = NULL,
-       .d_autoq   = 0,
+       .d_clone   = NULL,
        .old_open  = acpiopen,
        .old_close = acpiclose,
        .old_ioctl = acpiioctl,

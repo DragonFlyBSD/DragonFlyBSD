@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.22 2004/04/24 04:32:03 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.23 2004/05/13 23:49:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -81,7 +81,7 @@ static struct cdevsw fildesc_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	fdopen,
 	/* close */	noclose,
@@ -1727,7 +1727,7 @@ fildesc_drvinit(void *unused)
 
 struct fileops badfileops = {
 	NULL,	/* port */
-	0,	/* autoq */
+	NULL,	/* clone */
 	badfo_readwrite,
 	badfo_readwrite,
 	badfo_ioctl,

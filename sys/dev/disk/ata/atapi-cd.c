@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.15 2004/04/07 06:22:15 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.16 2004/05/13 23:49:14 dillon Exp $
  */
 
 #include "opt_ata.h"
@@ -63,7 +63,7 @@ static struct cdevsw acd_cdevsw = {
 	/* maj */	117,
 	/* flags */	D_DISK | D_TRACKCLOSE,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	acdopen,
 	/* close */	acdclose,

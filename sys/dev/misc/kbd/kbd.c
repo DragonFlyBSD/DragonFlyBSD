@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/kbd/kbd.c,v 1.17.2.2 2001/07/30 16:46:43 yokota Exp $
- * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.8 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/kbd/kbd.c,v 1.9 2004/05/13 23:49:16 dillon Exp $
  */
 
 #include "opt_kbd.h"
@@ -423,7 +423,7 @@ static struct cdevsw kbd_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	genkbdopen,
 	/* close */	genkbdclose,

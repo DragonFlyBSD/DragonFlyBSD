@@ -32,7 +32,7 @@
  *
  *	@(#)mfs_vfsops.c	8.11 (Berkeley) 6/19/95
  * $FreeBSD: src/sys/ufs/mfs/mfs_vfsops.c,v 1.81.2.3 2001/07/04 17:35:21 tegge Exp $
- * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.13 2004/04/15 00:59:41 cpressey Exp $
+ * $DragonFly: src/sys/vfs/mfs/mfs_vfsops.c,v 1.14 2004/05/13 23:49:26 dillon Exp $
  */
 
 
@@ -84,7 +84,7 @@ static struct cdevsw mfs_cdevsw = {
 	/* maj */       MFS_CDEV_MAJOR,
 	/* flags */     D_DISK,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */      noopen,
 	/* close */     noclose,

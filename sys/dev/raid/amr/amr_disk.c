@@ -54,7 +54,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/amr/amr_disk.c,v 1.5.2.5 2002/12/20 15:12:04 emoore Exp $
- * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.7 2004/02/13 01:33:19 joerg Exp $
+ * $DragonFly: src/sys/dev/raid/amr/amr_disk.c,v 1.8 2004/05/13 23:49:18 dillon Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ static struct cdevsw amrd_cdevsw = {
 		/* maj */	AMRD_CDEV_MAJOR,
 		/* flags */	D_DISK,
 		/* port */      NULL,
-		/* autoq */	0,
+		/* clone */	NULL,
 
 		/* open */	amrd_open,
 		/* close */	amrd_close,

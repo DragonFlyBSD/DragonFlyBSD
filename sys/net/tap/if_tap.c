@@ -32,7 +32,7 @@
 
 /*
  * $FreeBSD: src/sys/net/if_tap.c,v 1.3.2.3 2002/04/14 21:41:48 luigi Exp $
- * $DragonFly: src/sys/net/tap/if_tap.c,v 1.11 2004/03/23 22:19:07 hsu Exp $
+ * $DragonFly: src/sys/net/tap/if_tap.c,v 1.12 2004/05/13 23:49:24 dillon Exp $
  * $Id: if_tap.c,v 0.21 2000/07/23 21:46:02 max Exp $
  */
 
@@ -101,7 +101,7 @@ static struct cdevsw	tap_cdevsw = {
 	/* dev major */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	tapopen,
 	/* close */	tapclose,

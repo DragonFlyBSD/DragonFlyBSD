@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.7 2003/11/12 04:26:26 mikeh Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.9 2004/02/10 15:56:38 hmp Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.10 2004/05/13 23:49:17 dillon Exp $
  */
 
 /*
@@ -348,7 +348,7 @@ static struct cdevsw psm_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	psmopen,
 	/* close */	psmclose,

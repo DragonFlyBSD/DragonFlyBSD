@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/mlx/mlx.c,v 1.14.2.5 2001/09/11 09:49:53 kris Exp $
- *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.6 2003/08/07 21:17:09 dillon Exp $
+ *	$DragonFly: src/sys/dev/raid/mlx/mlx.c,v 1.7 2004/05/13 23:49:19 dillon Exp $
  */
 
 /*
@@ -61,7 +61,7 @@ static struct cdevsw mlx_cdevsw = {
 		/* maj */	MLX_CDEV_MAJOR,
 		/* flags */	0,
 		/* port */	NULL,
-		/* autoq */	0,
+		/* clone */	NULL,
 
 		/* open */	mlx_open,
 		/* close */	mlx_close,

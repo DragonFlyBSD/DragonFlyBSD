@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.14 2004/03/15 01:10:43 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.15 2004/05/13 23:49:15 dillon Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -177,7 +177,7 @@ static struct cdevsw ccd_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_DISK,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
  
 	/* open */	ccdopen,
 	/* close */	ccdclose,

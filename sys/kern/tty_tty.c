@@ -32,7 +32,7 @@
  *
  *	@(#)tty_tty.c	8.2 (Berkeley) 9/23/93
  * $FreeBSD: src/sys/kern/tty_tty.c,v 1.30 1999/09/25 18:24:24 phk Exp $
- * $DragonFly: src/sys/kern/tty_tty.c,v 1.7 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/tty_tty.c,v 1.8 2004/05/13 23:49:23 dillon Exp $
  */
 
 /*
@@ -61,7 +61,7 @@ struct cdevsw ctty_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	cttyopen,
 	/* close */	nullclose,

@@ -1,7 +1,7 @@
 /* 
  * $NetBSD: uscanner.c,v 1.30 2002/07/11 21:14:36 augustss Exp $
  * $FreeBSD: src/sys/dev/usb/uscanner.c,v 1.48 2003/12/22 19:58:27 sanpei Exp $
- * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.7 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/uscanner/uscanner.c,v 1.8 2004/05/13 23:49:22 dillon Exp $
  */
 
 /* Also already merged from NetBSD:
@@ -270,7 +270,7 @@ Static struct cdevsw uscanner_cdevsw = {
 	/* maj */	USCANNER_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	uscanneropen,
 	/* close */	uscannerclose,

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/bktr/bktr_os.c,v 1.4.2.3 2000/10/27 00:46:09 jhb Exp $ */
-/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.7 2004/02/13 01:45:15 joerg Exp $ */
+/* $DragonFly: src/sys/dev/video/bktr/bktr_os.c,v 1.8 2004/05/13 23:49:22 dillon Exp $ */
 
 /*
  * This is part of the Driver for Video Capture Cards (Frame grabbers)
@@ -237,7 +237,7 @@ static struct cdevsw bktr_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	0,
 	/* port */      NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	bktr_open,
 	/* close */	bktr_close,

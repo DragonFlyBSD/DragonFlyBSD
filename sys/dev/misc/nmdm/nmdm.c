@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.8 2003/08/27 10:35:17 rob Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.9 2004/05/13 23:49:16 dillon Exp $
  */
 
 /*
@@ -72,7 +72,7 @@ static struct cdevsw nmdm_cdevsw = {
 	/* maj */	CDEV_MAJOR,
 	/* flags */	D_TTY,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	nmdmopen,
 	/* close */	nmdmclose,

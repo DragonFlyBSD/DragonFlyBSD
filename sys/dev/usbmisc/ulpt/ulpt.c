@@ -1,7 +1,7 @@
 /*
  * $NetBSD: ulpt.c,v 1.55 2002/10/23 09:14:01 jdolecek Exp $
  * $FreeBSD: src/sys/dev/usb/ulpt.c,v 1.59 2003/09/28 20:48:13 phk Exp $
- * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.8 2004/02/11 15:13:06 joerg Exp $
+ * $DragonFly: src/sys/dev/usbmisc/ulpt/ulpt.c,v 1.9 2004/05/13 23:49:21 dillon Exp $
  */
 
 /*
@@ -152,7 +152,7 @@ Static struct cdevsw ulpt_cdevsw = {
 	/* maj */	ULPT_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */	NULL,
 
 	/* open */	ulptopen,
 	/* close */	ulptclose,

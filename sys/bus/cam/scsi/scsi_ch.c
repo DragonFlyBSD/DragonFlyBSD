@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_ch.c,v 1.20.2.2 2000/10/31 08:09:49 dwmalone Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.8 2004/03/15 02:27:56 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_ch.c,v 1.9 2004/05/13 23:49:11 dillon Exp $
  */
 /*
  * Derived from the NetBSD SCSI changer driver.
@@ -220,7 +220,7 @@ static struct cdevsw ch_cdevsw = {
 	/* maj */	CH_CDEV_MAJOR,
 	/* flags */	0,
 	/* port */	NULL,
-	/* autoq */	0,
+	/* clone */     NULL,
 
 	/* open */	chopen,
 	/* close */	chclose,
