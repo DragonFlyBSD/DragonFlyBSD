@@ -34,7 +34,7 @@
 #
 #	@(#)vnode_if.sh	8.1 (Berkeley) 6/10/93
 # $FreeBSD: src/sys/tools/vnode_if.awk,v 1.39 2003/06/22 21:20:06 truckman Exp $
-# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.4 2003/11/22 21:12:35 asmodai Exp $
+# $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.5 2004/03/07 12:48:34 eirikn Exp $
 #
 # Script to produce VFS front-end sugar.
 #
@@ -143,7 +143,7 @@ common_head = \
     " * This file is produced automatically.\n" \
     " * Do not modify anything in here by hand.\n" \
     " *\n" \
-    " * Created from $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.4 2003/11/22 21:12:35 asmodai Exp $\n" \
+    " * Created from $DragonFly: src/sys/tools/Attic/vnode_if.awk,v 1.5 2004/03/07 12:48:34 eirikn Exp $\n" \
     " */\n" \
     "\n";
 
@@ -255,6 +255,13 @@ while ((getline < srcfile) > 0) {
 		# Print out extern declaration.
 		printh("extern struct vnodeop_desc " name "_desc;");
 
+		# Print out prototype.
+		printh("static __inline int " uname "(");
+		for (i = 0; i < numargs; ++i) {
+			printh("\t" t_spc(types[i]) args[i] \
+			    (i < numargs - 1 ? "," : ");"));
+		}
+
 		# Print out function.
 		printh("static __inline int " uname "(");
 		for (i = 0; i < numargs; ++i) {
@@ -330,7 +337,7 @@ while ((getline < srcfile) > 0) {
 		# cred (if any)
 		printc("\t" find_arg_with_type("struct ucred *") ",");
 		# thread (if any)
-		printc("\t" find_arg_with_type("struct thread *") ",");
+		printc("\t" find_arg_with_type("struct proc *") ",");
 		# componentname
 		printc("\t" find_arg_with_type("struct componentname *") ",");
 		# transport layer information

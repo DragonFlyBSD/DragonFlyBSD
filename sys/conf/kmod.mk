@@ -1,6 +1,6 @@
 #	From: @(#)bsd.prog.mk	5.26 (Berkeley) 6/25/91
 # $FreeBSD: src/sys/conf/kmod.mk,v 1.82.2.15 2003/02/10 13:11:50 nyan Exp $
-# $DragonFly: src/sys/conf/kmod.mk,v 1.9 2004/02/10 07:55:46 joerg Exp $
+# $DragonFly: src/sys/conf/kmod.mk,v 1.10 2004/03/07 12:48:34 eirikn Exp $
 #
 # The include file <bsd.kmod.mk> handles installing Kernel Loadable Device
 # drivers (KLD's).
@@ -233,9 +233,9 @@ CLEANFILES+=	${_src}
 .if !target(${_src})
 ${_src}: @
 .if exists(@)
-${_src}: @/kern/makeobjops.pl @/${_srcsrc}
+${_src}: @/tools/makeobjops.awk @/${_srcsrc}
 .endif
-	perl @/kern/makeobjops.pl -${_ext} @/${_srcsrc}
+	awk -f @/tools/makeobjops.awk -${_ext} @/${_srcsrc}
 .endif
 .endfor # _src
 .endfor # _ext
@@ -246,9 +246,9 @@ ${_src}: @/kern/makeobjops.pl @/${_srcsrc}
 CLEANFILES+=	vnode_if.${_ext}
 vnode_if.${_ext}: @
 .if exists(@)
-vnode_if.${_ext}: @/kern/vnode_if.pl @/kern/vnode_if.src
+vnode_if.${_ext}: @/tools/vnode_if.awk @/kern/vnode_if.src
 .endif
-	perl @/kern/vnode_if.pl -${_ext} @/kern/vnode_if.src
+	awk -f @/tools/vnode_if.awk -${_ext} @/kern/vnode_if.src
 .endif
 .endfor
 
