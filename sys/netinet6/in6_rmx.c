@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/in6_rmx.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/in6_rmx.c,v 1.6 2004/09/16 23:06:42 joerg Exp $	*/
 /*	$KAME: in6_rmx.c,v 1.11 2001/07/26 06:53:16 jinmei Exp $	*/
 
 /*
@@ -99,6 +99,9 @@
 #include <netinet/tcp_seq.h>
 #include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
+
+static struct callout	in6_rtqtimo_ch;
+static struct callout	in6_mtutimo_ch;
 
 extern int	in6_inithead (void **head, int off);
 
@@ -381,7 +384,7 @@ in6_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop;
-	timeout(in6_rtqtimo, rock, tvtohz_high(&atv));
+	callout_reset(&in6_rtqtimo_ch, tvtohz_high(&atv), in6_rtqtimo, rock);
 }
 
 /*
@@ -436,7 +439,7 @@ in6_mtutimo(void *rock)
 		printf("invalid mtu expiration time on routing table\n");
 		arg.nextstop = time_second + 30;	/* last resort */
 	}
-	timeout(in6_mtutimo, rock, tvtohz_high(&atv));
+	callout_reset(&in6_mtutimo_ch, tvtohz_high(&atv), in6_mtutimo, rock);
 }
 
 #if 0
@@ -475,6 +478,8 @@ in6_inithead(void **head, int off)
 	rnh->rnh_addaddr = in6_addroute;
 	rnh->rnh_matchaddr = in6_matroute;
 	rnh->rnh_close = in6_clsroute;
+	callout_init(&in6_mtutimo_ch);
+	callout_init(&in6_rtqtimo_ch);
 	in6_rtqtimo(rnh);	/* kick off timeout first time */
 	in6_mtutimo(rnh);	/* kick off timeout first time */
 	return 1;
