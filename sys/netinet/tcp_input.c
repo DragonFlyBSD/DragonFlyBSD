@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.4 2003/07/24 01:31:07 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.5 2003/07/24 23:33:33 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -129,6 +129,11 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, drop_synfin, CTLFLAG_RW,
 static int tcp_do_limitedtransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, limitedtransmit, CTLFLAG_RW,
     &tcp_do_limitedtransmit, 0, "Enable RFC 3042 (Limited Transmit)");
+
+static int tcp_do_rfc3390 = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
+    &tcp_do_rfc3390, 0,
+    "Enable RFC 3390 (Increasing TCP's Initial Congestion Window)");
 
 struct inpcbhead tcb;
 #define	tcb6	tcb  /* for KAME src sync over BSD*'s */
@@ -2695,10 +2700,12 @@ tcp_mss(tp, offer)
 	 * Set the slow-start flight size depending on whether this
 	 * is a local network or not.
 	 */
-	if ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
-	    (!isipv6 && in_localaddr(inp->inp_faddr)))
+	if (tcp_do_rfc3390)
+		tp->snd_cwnd = min(4 * mss, max(2 * mss, 4380));
+	else if ((isipv6 && in6_localaddr(&inp->in6p_faddr)) ||
+		 (!isipv6 && in_localaddr(inp->inp_faddr)))
 		tp->snd_cwnd = mss * ss_fltsz_local;
-	else 
+	else
 		tp->snd_cwnd = mss * ss_fltsz;
 
 	if (rt->rt_rmx.rmx_ssthresh) {
