@@ -33,7 +33,7 @@
  * @(#)res_query.c	8.1 (Berkeley) 6/4/93
  * $From: Id: res_query.c,v 8.14 1997/06/09 17:47:05 halley Exp $
  * $FreeBSD: src/lib/libc/net/res_query.c,v 1.19.2.2 2002/07/07 11:34:42 robert Exp $
- * $DragonFly: src/lib/libc/net/res_query.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libc/net/res_query.c,v 1.3 2004/04/13 21:53:43 dillon Exp $
  */
 
 /*
@@ -270,11 +270,24 @@ res_search(name, class, type, answer, anslen)
 				/* keep trying */
 				break;
 			case TRY_AGAIN:
-				if (hp->rcode == SERVFAIL) {
-					/* try next search element, if any */
-					got_servfail++;
-					break;
-				}
+				/*
+				 * This can occur due to a server failure
+				 * (that is, all listed servers have failed),
+				 * or all listed servers have timed out.
+				 * hp->rcode may not be set to SERVFAIL in the
+				 * case of a timeout.
+				 *
+				 * Either way we must terminate the search
+				 * and return TRY_AGAIN in order to avoid
+				 * non-deterministic return codes.  For
+				 * example, loaded name servers or races
+				 * against network startup/validation (dhcp,
+				 * ppp, etc) can cause the search to timeout
+				 * on one search element, e.g. 'fu.bar.com',
+				 * and return a definitive failure on the
+				 * next search element, e.g. 'fu.'.
+				 */
+				++got_servfail;
 				/* FALLTHROUGH */
 			default:
 				/* anything else implies that we're done */
