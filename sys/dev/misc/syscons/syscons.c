@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.c,v 1.336.2.15 2002/10/24 00:35:31 kbyanc Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.7 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.8 2004/02/20 17:10:14 dillon Exp $
  */
 
 #include "use_splash.h"
@@ -413,15 +413,15 @@ scmeminit(void *arg)
 	return;
 
     /* copy the temporary buffer to the final buffer */
-    sc_alloc_scr_buffer(sc_console, FALSE, FALSE);
+    sc_alloc_scr_buffer(sc_console, TRUE, FALSE);
 
 #ifndef SC_NO_CUTPASTE
-    sc_alloc_cut_buffer(sc_console, FALSE);
+    sc_alloc_cut_buffer(sc_console, TRUE);
 #endif
 
 #ifndef SC_NO_HISTORY
     /* initialize history buffer & pointers */
-    sc_alloc_history_buffer(sc_console, 0, 0, FALSE);
+    sc_alloc_history_buffer(sc_console, 0, 0, TRUE);
 #endif
 }
 
