@@ -34,7 +34,7 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.12 2004/06/04 20:27:31 dillon Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.13 2004/06/05 05:34:57 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1297,7 +1297,7 @@ spx_accept(struct socket *so, struct sockaddr **nam)
 	sipx->sipx_len = sizeof *sipx;
 	sipx->sipx_family = AF_IPX;
 	sipx->sipx_addr = ipxp->ipxp_faddr;
-	*nam = dup_sockaddr((struct sockaddr *)sipx, 0);
+	*nam = dup_sockaddr((struct sockaddr *)sipx, 1);
 	return (0);
 }
 

@@ -34,7 +34,7 @@
  *	@(#)ipx_usrreq.c
  *
  * $FreeBSD: src/sys/netipx/ipx_usrreq.c,v 1.26.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.7 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_usrreq.c,v 1.8 2004/06/05 05:34:57 dillon Exp $
  */
 
 #include "opt_ipx.h"
@@ -517,7 +517,7 @@ ipx_peeraddr(so, nam)
 {
 	struct ipxpcb *ipxp = sotoipxpcb(so);
 
-	ipx_setpeeraddr(ipxp, nam); /* XXX what if alloc fails? */
+	ipx_setpeeraddr(ipxp, nam);
 	return (0);
 }
 
