@@ -39,7 +39,7 @@
  *	@(#)procfs_status.c	8.4 (Berkeley) 6/15/94
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_misc.c,v 1.3.2.8 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.7 2003/10/12 00:52:48 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_misc.c,v 1.8 2004/08/13 02:50:58 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -486,7 +486,6 @@ linprocfs_doloadavg(struct proc *curp, struct proc *p,
 		    struct pfsnode *pfs, struct uio *uio)
 {
 	char *ps, psbuf[512];
-	int xlen;
 
 	ps = psbuf;
 	ps += sprintf(ps, "%d.%02d %d.%02d %d.%02d %d/%d %d\n",
@@ -500,10 +499,6 @@ linprocfs_doloadavg(struct proc *curp, struct proc *p,
 	    -1,                     /* number of tasks */
 	    nextpid         /* The last pid */
 	);
-	xlen = ps - psbuf;
-	xlen -= uio->uio_offset;
-	ps = psbuf + uio->uio_offset;
-	xlen = imin(xlen, uio->uio_resid);
-	return (xlen <= 0 ? 0 : uiomove(ps, xlen, uio));
+	return(uiomove_frombuf(psbuf, ps - psbuf, uio));
 }
 

@@ -39,7 +39,7 @@
  *	@(#)procfs_vnops.c	8.18 (Berkeley) 5/21/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs_vnops.c,v 1.3.2.5 2001/08/12 14:29:19 rwatson Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.12 2004/06/03 18:09:33 hmp Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs_vnops.c,v 1.13 2004/08/13 02:50:58 dillon Exp $
  */
 
 /*
@@ -1017,37 +1017,37 @@ atopid(b, len)
 /*
  * procfs vnode operations.
  */
-vop_t **linprocfs_vnodeop_p;
+struct vop_ops *linprocfs_vnode_vops;
 static struct vnodeopv_entry_desc linprocfs_vnodeop_entries[] = {
-	{ &vop_default_desc,		(vop_t *) vop_defaultop },
-	{ &vop_access_desc,		(vop_t *) linprocfs_access },
-	{ &vop_advlock_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_bmap_desc,		(vop_t *) linprocfs_bmap },
-	{ &vop_close_desc,		(vop_t *) linprocfs_close },
-	{ &vop_create_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_getattr_desc,		(vop_t *) linprocfs_getattr },
-	{ &vop_inactive_desc,		(vop_t *) linprocfs_inactive },
-	{ &vop_link_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_lookup_desc,		(vop_t *) linprocfs_lookup },
-	{ &vop_mkdir_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_mknod_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_open_desc,		(vop_t *) linprocfs_open },
-	{ &vop_pathconf_desc,		(vop_t *) vop_stdpathconf },
-	{ &vop_print_desc,		(vop_t *) linprocfs_print },
-	{ &vop_read_desc,		(vop_t *) linprocfs_rw },
-	{ &vop_readdir_desc,		(vop_t *) linprocfs_readdir },
-	{ &vop_readlink_desc,		(vop_t *) linprocfs_readlink },
-	{ &vop_reclaim_desc,		(vop_t *) linprocfs_reclaim },
-	{ &vop_remove_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_rename_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_rmdir_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_setattr_desc,		(vop_t *) linprocfs_setattr },
-	{ &vop_symlink_desc,		(vop_t *) linprocfs_badop },
-	{ &vop_write_desc,		(vop_t *) linprocfs_rw },
-	{ &vop_ioctl_desc,		(vop_t *) linprocfs_ioctl },
+	{ &vop_default_desc,		vop_defaultop },
+	{ &vop_access_desc,		(void *) linprocfs_access },
+	{ &vop_advlock_desc,		(void *) linprocfs_badop },
+	{ &vop_bmap_desc,		(void *) linprocfs_bmap },
+	{ &vop_close_desc,		(void *) linprocfs_close },
+	{ &vop_create_desc,		(void *) linprocfs_badop },
+	{ &vop_getattr_desc,		(void *) linprocfs_getattr },
+	{ &vop_inactive_desc,		(void *) linprocfs_inactive },
+	{ &vop_link_desc,		(void *) linprocfs_badop },
+	{ &vop_lookup_desc,		(void *) linprocfs_lookup },
+	{ &vop_mkdir_desc,		(void *) linprocfs_badop },
+	{ &vop_mknod_desc,		(void *) linprocfs_badop },
+	{ &vop_open_desc,		(void *) linprocfs_open },
+	{ &vop_pathconf_desc,		(void *) vop_stdpathconf },
+	{ &vop_print_desc,		(void *) linprocfs_print },
+	{ &vop_read_desc,		(void *) linprocfs_rw },
+	{ &vop_readdir_desc,		(void *) linprocfs_readdir },
+	{ &vop_readlink_desc,		(void *) linprocfs_readlink },
+	{ &vop_reclaim_desc,		(void *) linprocfs_reclaim },
+	{ &vop_remove_desc,		(void *) linprocfs_badop },
+	{ &vop_rename_desc,		(void *) linprocfs_badop },
+	{ &vop_rmdir_desc,		(void *) linprocfs_badop },
+	{ &vop_setattr_desc,		(void *) linprocfs_setattr },
+	{ &vop_symlink_desc,		(void *) linprocfs_badop },
+	{ &vop_write_desc,		(void *) linprocfs_rw },
+	{ &vop_ioctl_desc,		(void *) linprocfs_ioctl },
 	{ NULL, NULL }
 };
 static struct vnodeopv_desc linprocfs_vnodeop_opv_desc =
-	{ &linprocfs_vnodeop_p, linprocfs_vnodeop_entries };
+	{ &linprocfs_vnode_vops, linprocfs_vnodeop_entries };
 
 VNODEOP_SET(linprocfs_vnodeop_opv_desc);

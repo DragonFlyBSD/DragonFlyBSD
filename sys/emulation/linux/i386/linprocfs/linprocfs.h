@@ -39,7 +39,7 @@
  *	@(#)procfs.h	8.9 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/i386/linux/linprocfs/linprocfs.h,v 1.2.2.4 2001/06/25 19:46:47 pirzyk Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.4 2003/08/27 06:30:04 rob Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linprocfs/linprocfs.h,v 1.5 2004/08/13 02:50:58 dillon Exp $
  */
 
 /*
@@ -142,7 +142,7 @@ int linprocfs_validfile (struct proc *);
 #define PROCFS_LOCKED	0x01
 #define PROCFS_WANT	0x02
 
-extern vop_t **linprocfs_vnodeop_p;
+extern struct vop_ops *linprocfs_vnode_vops;
 
 int	linprocfs_root (struct mount *, struct vnode **);
 int	linprocfs_rw (struct vop_read_args *);
