@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.local.dist,v 1.55.2.20 2003/04/10 18:10:28 ru Exp $
-# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.8 2004/09/27 12:54:03 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.local.dist,v 1.9 2004/09/27 14:26:14 asmodai Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -366,6 +366,8 @@
             ..
             en_GB.US-ASCII
             ..
+            en_GB.UTF-8
+	    ..
             en_IE.UTF-8
             ..
             en_NZ.ISO8859-1
