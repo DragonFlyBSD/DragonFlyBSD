@@ -2,10 +2,25 @@
 #
 # Common code used run regression tests for usr.bin/make.
 #
-# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.1 2005/02/25 12:28:13 okumoto Exp $
+# $DragonFly: src/usr.bin/make/tests/common.sh,v 1.2 2005/02/26 10:48:43 okumoto Exp $
 
 MAKE=/usr/bin/make
 IDTAG='$'DragonFly'$'
+
+#
+# Output usage messsage.
+#
+print_usage()
+{
+	echo "Usage: $0 command"
+	echo "	clean	- remove temp files"
+	echo "	compare	- compare result of test to expected"
+	echo "	desc	- print description of test"
+	echo "	diff	- print diffs between results and expected"
+	echo "	run	- run the {test, compare, clean}"
+	echo "	test	- run test case"
+	echo "	update	- update the expected with current results"
+}
 
 #
 # We can't check a file into CVS without a DragonFly RCS Id tag, so
@@ -78,20 +93,30 @@ eval_subdir_cmd()
 eval_cmd()
 {
 	if [ "${DIR}" ]; then
+		#
+		# When there are subdirectories defined, recurse
+		# down into them if the cmd is valid.
+		#
 		case $1 in
-		test|compare|diff|update|clean|run)
+		clean|compare|desc|diff|run|test|update)
 			for d in $DIR; do
 				eval_subdir_cmd $d $1
 			done
 			;;
 		*)
-			echo "Usage: $0 run | compare | update | clean"
+			print_usage;
 			;;
 		esac
 	else
+		#
+		#
+		#
 		case $1 in
-		test)
-			run_test
+		clean)
+			rm -f Makefile
+			rm -f stdout
+			rm -f stderr
+			rm -f status
 			;;
 		compare)
 			hack_cmp expected.stdout stdout || FAIL="stdout "$FAIL
@@ -104,6 +129,10 @@ eval_cmd()
 				echo "Test failed ( $FAIL) `pwd`"
 			fi
 			;;
+		desc)
+			echo -n "$START_BASE: "
+			desc_test
+			;;
 		diff)
 			sh $0 test
 			echo "------------------------"
@@ -112,6 +141,14 @@ eval_cmd()
 			hack_diff expected.stdout stdout
 			hack_diff expected.stderr stderr
 			hack_diff expected.status status
+			;;
+		run)
+			sh $0 test
+			sh $0 compare
+			sh $0 clean
+			;;
+		test)
+			run_test
 			;;
 		update)
 			sh $0 test
@@ -132,19 +169,8 @@ eval_cmd()
 			mv new.expected.stderr expected.stderr
 			mv new.expected.status expected.status
 			;;
-		run)
-			sh $0 test
-			sh $0 compare
-			sh $0 clean
-			;;
-		clean)
-			rm -f Makefile
-			rm -f stdout
-			rm -f stderr
-			rm -f status
-			;;
 		*)
-			echo "Usage: $0 run | compare | update | clean"
+			print_usage
 			;;
 		esac
 	fi
