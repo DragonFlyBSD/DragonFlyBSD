@@ -39,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.16 2004/02/11 21:47:51 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.17 2004/03/20 19:21:08 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -157,7 +157,8 @@ initclocks_pcpu(void)
 	systimer_init_periodic(&gd->gd_hardclock, hardclock, NULL, hz);
 	systimer_init_periodic(&gd->gd_statclock, statclock, NULL, stathz);
 	/* XXX correct the frequency for scheduler / estcpu tests */
-	systimer_init_periodic(&gd->gd_schedclock, schedclock, NULL, 10); 
+	systimer_init_periodic(&gd->gd_schedclock, schedclock, 
+				NULL, ESTCPUFREQ); 
 	crit_exit();
 }
 
