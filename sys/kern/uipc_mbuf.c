@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.13 2003/10/15 16:48:03 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.14 2003/12/28 06:11:32 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -60,6 +60,7 @@ static void mbinit (void *);
 SYSINIT(mbuf, SI_SUB_MBUF, SI_ORDER_FIRST, mbinit, NULL)
 
 struct mbuf *mbutl;
+struct mbuf *mbute;
 char	*mclrefcnt;
 struct mbstat mbstat;
 u_long	mbtypes[MT_NTYPES];
@@ -755,6 +756,8 @@ m_mclalloc(int how)
 		m_clalloc(1, how);
 	mp = (caddr_t)mclfree;
 	if (mp != NULL) {
+		KKASSERT((struct mbuf *)mp >= mbutl &&
+			 (struct mbuf *)mp < mbute);
 		mclrefcnt[mtocl(mp)]++;
 		mbstat.m_clfree--;
 		mclfree = ((union mcluster *)mp)->mcl_next;
@@ -789,6 +792,8 @@ _m_mclfree(caddr_t data)
 	union mcluster *mp = (union mcluster *)data;
 
 	KASSERT(mclrefcnt[mtocl(mp)] > 0, ("freeing free cluster"));
+	KKASSERT((struct mbuf *)mp >= mbutl &&
+		 (struct mbuf *)mp < mbute);
 	if (--mclrefcnt[mtocl(mp)] == 0) {
 		mp->mcl_next = mclfree;
 		mclfree = mp;

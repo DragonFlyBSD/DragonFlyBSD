@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.49 2003/12/20 05:52:25 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.50 2003/12/28 06:11:30 dillon Exp $
  */
 
 #include "use_apm.h"
@@ -257,10 +257,10 @@ cpu_startup(dummy)
 {
 	unsigned i;
 	caddr_t v;
+	vm_offset_t minaddr;
 	vm_offset_t maxaddr;
 	vm_size_t size = 0;
 	int firstaddr;
-	vm_offset_t minaddr;
 
 	if (boothowto & RB_VERBOSE)
 		bootverbose++;
@@ -414,9 +414,11 @@ again:
 		mb_map_size = roundup2(mb_map_size, max(MCLBYTES, PAGE_SIZE));
 		mclrefcnt = malloc(mb_map_size / MCLBYTES, M_MBUF, M_NOWAIT);
 		bzero(mclrefcnt, mb_map_size / MCLBYTES);
-		mb_map = kmem_suballoc(kernel_map, (vm_offset_t *)&mbutl,
-			    &maxaddr, mb_map_size);
+		mb_map = kmem_suballoc(kernel_map, &minaddr, &maxaddr,
+					mb_map_size);
 		mb_map->system_map = 1;
+		mbutl = (void *)mb_map->header.start;
+		mbute = (void *)mb_map->header.end;
 	}
 
 	/*

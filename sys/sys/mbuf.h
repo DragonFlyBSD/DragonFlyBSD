@@ -32,7 +32,7 @@
  *
  *	@(#)mbuf.h	8.5 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/mbuf.h,v 1.44.2.17 2003/04/15 06:15:02 silby Exp $
- * $DragonFly: src/sys/sys/mbuf.h,v 1.7 2003/12/10 23:48:07 hsu Exp $
+ * $DragonFly: src/sys/sys/mbuf.h,v 1.8 2003/12/28 06:11:33 dillon Exp $
  */
 
 #ifndef _SYS_MBUF_H_
@@ -452,6 +452,7 @@ extern	struct mbstat	 mbstat;
 extern	u_long		 mbtypes[MT_NTYPES]; /* per-type mbuf allocations */
 extern	int		 mbuf_wait;	/* mbuf sleep time */
 extern	struct mbuf	*mbutl;		/* virtual address of mclusters */
+extern	struct mbuf	*mbute;		/* ending VA of mclusters */
 extern	char		*mclrefcnt;	/* cluster reference counts */
 extern	union mcluster	*mclfree;
 extern	struct mbuf	*mmbfree;
