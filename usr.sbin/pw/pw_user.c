@@ -25,7 +25,7 @@
  * 
  *
  * $FreeBSD: src/usr.sbin/pw/pw_user.c,v 1.34.2.13 2003/02/01 21:20:10 gad Exp $
- * $DragonFly: src/usr.sbin/pw/pw_user.c,v 1.3 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/pw/pw_user.c,v 1.4 2004/11/30 20:12:21 joerg Exp $
  */
 
 #include <ctype.h>
@@ -393,8 +393,7 @@ pw_user(struct userconf * cnf, int mode, struct cargs * args)
 			 * invalidated by deletion
 			 */
 			sprintf(file, "%s/%s", _PATH_MAILDIR, pwd->pw_name);
-			strncpy(home, pwd->pw_dir, sizeof home);
-			home[sizeof home - 1] = '\0';
+			strlcpy(home, pwd->pw_dir, sizeof home);
 
 			rc = delpwent(pwd);
 			if (rc == -1)
