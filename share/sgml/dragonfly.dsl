@@ -1,4 +1,4 @@
-<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.3 2004/06/26 03:15:46 justin Exp $ -->
+<!-- $DragonFly: doc/share/sgml/dragonfly.dsl,v 1.4 2005/03/16 05:01:45 justin Exp $ -->
 
 <!DOCTYPE style-sheet PUBLIC "-//James Clark//DTD DSSSL Style Sheet//EN" [
 <!ENTITY % output.html		"IGNORE">
@@ -187,8 +187,8 @@
           (let* ((r (select-elements (children n) (normalize "refentrytitle")))
                  (m (select-elements (children n) (normalize "manvolnum")))
                  (v (attribute-string (normalize "vendor") n))
-                 (u (string-append "http://leaf.dragonflybsd.org/cgi/web-man?"
-                         (data r) "+" (data m))))
+                 (u (string-append "http://leaf.dragonflybsd.org/cgi/web-man?command="
+                         (data r) "&" "section=" (data m))))
             (case v
               (("current") (string-append u "&" "manpath=FreeBSD+5.2-current"))
               (("xfree86") (string-append u "&" "manpath=XFree86+4.3.0"))
