@@ -1,0 +1,158 @@
+#!/bin/sh
+
+# $DragonFly: src/nrelease/installer/etc/rc.d/pfi,v 1.1 2004/07/10 22:26:18 dillon Exp $
+#
+
+# PROVIDE: pfi
+# REQUIRE: inetd
+# KEYWORD: DragonFly
+
+. /etc/rc.subr
+
+name=pfi
+start_cmd="pfi_start"
+stop_cmd=":"
+
+get_pfi_config()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	if [ -r $1/pfi.conf ]; then
+		echo " found!"
+		tr -d "\r" < $1/pfi.conf > /etc/pfi.conf
+		echo "pfi_found_on_device='$2'" >> /etc/pfi.conf
+		echo "#@@@@@" >>/etc/rc.conf
+		cat /etc/pfi.conf >>/etc/rc.conf
+		if [ -r /etc/defaults/pfi.conf ]; then
+			. /etc/defaults/pfi.conf
+		fi
+		. /etc/pfi.conf
+		if [ "$pfi_script" != "" -a -x "$1/$pfi_script" ]; then
+			$1/$pfi_script
+		fi
+		return 0
+	else
+		return 1
+	fi
+}
+
+look_for_pfi_config_msdos()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	for try_device in da0s1 da1s1 fd0 fd1; do
+		echo -n "Looking for pfi.conf on /dev/${try_device}..."
+		if [ ! -e /dev/${try_device} ]; then
+			( cd /dev && ./MAKEDEV ${try_device} )
+		fi
+		if mount_msdos -o rdonly /dev/$try_device /mnt ; then
+			echo -n " /dev/$try_device ok..."
+			if get_pfi_config /mnt /dev/$try_device; then
+				umount /mnt
+				return 0
+			fi
+			umount /mnt
+		fi
+		echo " not found"
+	done
+	return 1
+}
+
+look_for_pfi_config_cd9660()
+{
+	[ -r /etc/pfi.conf ] && return 0
+
+	for try_device in acd0c; do
+		echo -n "Looking for pfi.conf on /dev/${try_device}..."
+		if [ ! -e /dev/${try_device} ]; then
+			( cd /dev && ./MAKEDEV ${try_device} )
+		fi
+		if mount_cd9660 /dev/$try_device /mnt ; then
+			echo -n " /dev/$try_device ok..."
+			if get_pfi_config /mnt /dev/$try_device; then
+				umount /mnt
+				return 0
+			fi
+			umount /mnt
+		fi
+		echo " not found"
+	done
+	return 1
+}
+
+pfi_start()
+{
+	echo "Starting pfi..."
+
+	# Get the pfi.conf file off the pfi media and into /etc/pfi.conf.
+
+	look_for_pfi_config_cd9660
+	look_for_pfi_config_msdos
+
+	if [ ! -r /etc/pfi.conf ]; then
+		echo '' >/etc/pfi.conf
+	fi
+
+	if [ -r /etc/defaults/pfi.conf ]; then
+		. /etc/defaults/pfi.conf
+	fi
+	. /etc/pfi.conf
+
+	# We can perform any pre-install tasks here by
+	# examining the contents of pfi_* variables.
+
+	# Interpret pfi_sshd_* options.  These basically add settings
+	# to /etc/ssh/sshd_config; it is assumed "sshd" will appear
+	# in pfi_rc_actions to restart sshd.
+
+	case ${pfi_sshd_permit_root_login} in
+	YES)
+		echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+		;;
+	*)
+		;;
+	esac
+
+	case ${pfi_sshd_permit_empty_passwords} in
+	YES)
+		echo "PermitEmptyPasswords yes" >> /etc/ssh/sshd_config
+		;;
+	*)
+		;;
+	esac
+
+	# Interpret pfi_set_root_password.  If it is not empty, use
+	# it to set root's LiveCD password.
+
+	if [ "X$pfi_set_root_password" != "X" ]; then
+		echo "$pfi_set_root_password" | \
+		    /usr/sbin/pw usermod root -h 0
+	fi
+
+	# Lastly, the most important pre-install task is to restart
+	# any RCNG scripts listed in pfi_rc_actions with any new
+	# settings that might have been set up by pfi.conf.
+
+	if [ "X$pfi_rc_actions" != "X" ]; then
+		rev_actions=`reverse_list $pfi_rc_actions`
+
+		for _rc_elem in ${rev_actions}; do
+			echo "Stopping ${_rc_elem}..."
+			rcstop ${_rc_elem}
+		done
+		for _rc_elem in ${pfi_rc_actions}; do
+			echo "Starting ${_rc_elem}..."
+			rcstart ${_rc_elem}
+		done
+	fi
+
+	# Now remove the copy of pfi.conf that we tacked onto
+	# the end of rc.conf so the above would work
+
+	awk '$1=="#@@@@@" || cut { cut = 1 } !cut { print $0 }' \
+	    </etc/rc.conf >/etc/rc.conf.new
+	mv /etc/rc.conf.new /etc/rc.conf
+}
+
+load_rc_config $name
+run_rc_command "$1"

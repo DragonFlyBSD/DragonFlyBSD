@@ -1,0 +1,10 @@
+# $DragonFly: src/nrelease/installer/etc/fstab,v 1.1 2004/07/10 22:26:16 dillon Exp $
+#
+# Device		Mountpoint	FStype	Options		Dump	Pass#
+/dev/acd0a		/		cd9660	ro,noauto	0	0
+swap			/root		mfs	rw,-C,-s=8192	0	0
+swap			/var		mfs	rw,-C,-s=8192	0	0
+swap			/tmp		mfs	rw,-C,-s=8192	0	0
+swap			/etc		mfs	rw,-C,-s=8192	0	0
+swap			/dev		mfs	rw,-C,-s=8192,-i=512 0	0
+proc			/proc		procfs	rw		0	0

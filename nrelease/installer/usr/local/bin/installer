@@ -1,0 +1,107 @@
+#!/bin/sh
+
+# installer - start installer frontend and backend as per pfi config.
+# $Id: installer,v 1.1 2004/07/09 23:25:40 cpressey Exp $
+# $DragonFly: src/nrelease/installer/usr/local/bin/installer,v 1.1 2004/07/10 22:26:19 dillon Exp $
+
+# auto-login on ttyv0.
+# backend (and all other logging) on ttyv0 (console.)
+# curses frontend starts on ttyv1.
+# use vidcontrol -s 2 to switch to ttyv1.
+
+### SUBS ###
+
+installer_start()
+{
+	echo -n "Starting installer.  "
+
+	if [ -r /etc/defaults/pfi.conf ]; then
+		. /etc/defaults/pfi.conf
+	fi
+
+	if [ -r /etc/pfi.conf ]; then
+		echo "Reading /etc/pfi.conf ..."
+		. /etc/pfi.conf
+	else
+		echo "/etc/pfi.conf not found, starting interactive install."
+	fi
+
+	# We can set up any install variables and such
+	# here by examining pfi_* variables.
+
+	if [ "X$pfi_run" != "X" ]; then
+		pfi_frontend=none
+		$pfi_run
+	fi
+
+	case "X$pfi_dfui_transport" in
+	Xcaps)
+		sysctl kern.caps_enabled=1
+		;;
+	Xnpipe)
+		;;
+	*)
+		echo "Unsupported DFUI transport '$pfi_dfui_transport'."
+		return
+		;;
+	esac
+
+	case "X$pfi_frontend" in
+	Xcgi)
+		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
+		/var/run/dfuibe_installer -r test -t $pfi_dfui_transport
+		RESULT=$?
+		;;
+	Xcurses)
+		sysctl kern.caps_enabled=1
+		ps auwwwxxx > /tmp/ps.txt
+		if grep -q dfuife_curses /tmp/ps.txt; then
+			# Frontend is already running.
+		else
+			/usr/local/sbin/dfuife_curses -r installer \
+			    -t $pfi_dfui_transport \
+			    -b /usr/local/share/dfuife_curses/fred.txt \
+			    2>/dev/ttyv0 </dev/ttyv1 >/dev/ttyv1 &
+		fi
+		sleep 1
+		vidcontrol -s 2
+		cp /usr/local/sbin/dfuibe_installer /var/run/dfuibe_installer
+		/var/run/dfuibe_installer -r installer -t $pfi_dfui_transport
+		RESULT=$?
+		sleep 1
+		killall dfuife_curses
+		vidcontrol -s 1
+		;;
+	Xnone)
+		RESULT=0
+		;;
+	*)
+		echo "Unknown installer frontend '$pfi_frontend'."
+		return
+		;;
+	esac
+
+	case "$RESULT" in
+	0)
+		;;
+	5)
+		echo "Rebooting..."
+		shutdown -r now
+		;;
+	*)
+		;;
+	esac
+}
+
+### MAIN ###
+
+ps auwwwxxx > /tmp/ps.txt
+if grep -q dfuibe_installer /tmp/ps.txt; then
+	# Installer is already running. Log in normally.
+else
+	installer_start
+fi
+
+rm -f /tmp/ps.txt
+
+### END of installer ###
