@@ -37,7 +37,7 @@
 #if 0
 static const char rcsid[] =
   "$FreeBSD: src/libexec/ftpd/ftpd.c,v 1.62.2.48 2003/02/14 12:42:42 yar Exp $";
-  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.4 2004/09/13 23:52:57 drhodus Exp $";
+  "$DragonFly: src/libexec/ftpd/ftpd.c,v 1.5 2004/09/20 00:58:36 dillon Exp $";
 #endif /* not lint */
 
 /*
@@ -528,14 +528,17 @@ main(argc, argv, envp)
 		while (1) {
 			addrlen = server_addr.su_len;
 			fd = accept(ctl_sock, (struct sockaddr *)&his_addr, &addrlen);
-			if (fork() == 0) {
-				/* child */
-				(void) dup2(fd, 0);
-				(void) dup2(fd, 1);
-				close(ctl_sock);
-				break;
+
+			if (fd >= 0) {
+				if (fork() == 0) {
+					/* child */
+					(void) dup2(fd, 0);
+					(void) dup2(fd, 1);
+					close(ctl_sock);
+					break;
+				}
+				close(fd);
 			}
-			close(fd);
 		}
 	} else {
 		addrlen = sizeof(his_addr);
