@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/man/man9/Makefile,v 1.60.2.26 2003/06/13 01:04:17 hmp Exp $
-# $DragonFly: src/share/man/man9/Makefile,v 1.13 2004/07/27 14:50:56 hmp Exp $
+# $DragonFly: src/share/man/man9/Makefile,v 1.14 2004/09/20 20:38:17 eirikn Exp $
 
 MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	MODULE_DEPEND.9 MODULE_VERSION.9 SPLASSERT.9 SYSCALL_MODULE.9 \
@@ -22,7 +22,7 @@ MAN=	DECLARE_MODULE.9 DELAY.9 DEV_MODULE.9 KASSERT.9 MD5.9 \
 	ieee80211.9 ieee80211_crypto.9 ieee80211_input.9 ieee80211_ioctl.9 \
 	ieee80211_node.9 ieee80211_output.9 ieee80211_proto.9 \
 	ieee80211_radiotap.9 \
-	ifnet.9 inittodr.9 intro.9 kernacc.9 lock.9 \
+	ifnet.9 inittodr.9 intro.9 kernacc.9 ktr.9 lock.9 \
 	malloc.9 make_dev.9 mbuf.9 microseq.9 mi_switch.9 module.9 namei.9 \
 	pci.9 panic.9 physio.9 posix4.9 psignal.9 \
 	resettodr.9 \

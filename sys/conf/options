@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.24 2004/09/06 13:52:24 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.25 2004/09/20 20:38:17 eirikn Exp $
 #
 #        On the handling of kernel options
 #
@@ -510,6 +510,14 @@ UBSEC_NO_RNG		opt_ubsec.h
 HIFN_DEBUG		opt_hifn.h
 HIFN_RNDTEST		opt_hifn.h
 HIFN_NO_RNG		opt_hifn.h
+
+# KTR options
+KTR				opt_global.h
+KTR_MASK			opt_ktr.h
+KTR_CPUMASK			opt_ktr.h
+KTR_COMPILE			opt_global.h
+KTR_ENTRIES			opt_global.h
+KTR_VERBOSE			opt_ktr.h
 
 # ed driver
 ED_NO_MIIBUS		opt_ed.h
