@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/dev/ppbus/pps.c,v 1.24.2.1 2000/05/24 00:20:57 n_hibma Exp $
- * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.9 2004/05/19 22:52:43 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/pps/pps.c,v 1.10 2004/05/20 21:44:00 dillon Exp $
  *
  * This driver implements a draft-mogul-pps-api-02.txt PPS source.
  *
@@ -90,7 +90,6 @@ static int
 ppsprobe(device_t ppsdev)
 {
 	struct pps_data *sc;
-	dev_t dev;
 
 	sc = DEVTOSOFTC(ppsdev);
 	bzero(sc, sizeof(struct pps_data));
@@ -103,19 +102,20 @@ ppsprobe(device_t ppsdev)
 }
 
 static int
-ppsattach(device_t dev)
+ppsattach(device_t ppsdev)
 {
-	struct pps_data *sc = DEVTOSOFTC(dev);
-	device_t ppbus = device_get_parent(dev);
-	int irq, zero = 0;
+	struct pps_data *sc = DEVTOSOFTC(ppsdev);
+	device_t ppbus = device_get_parent(ppsdev);
+	int irq;
 	int unit;
+	int zero = 0;
 
 	/* retrieve the ppbus irq */
-	BUS_READ_IVAR(ppbus, dev, PPBUS_IVAR_IRQ, &irq);
+	BUS_READ_IVAR(ppbus, ppsdev, PPBUS_IVAR_IRQ, &irq);
 
 	if (irq > 0) {
 		/* declare our interrupt handler */
-		sc->intr_resource = bus_alloc_resource(dev, SYS_RES_IRQ,
+		sc->intr_resource = bus_alloc_resource(ppsdev, SYS_RES_IRQ,
 				       &zero, irq, irq, 1, RF_SHAREABLE);
 	}
 	/* interrupts seem mandatory */
@@ -124,8 +124,8 @@ ppsattach(device_t dev)
 
 	unit = device_get_unit(ppsdev);
 	cdevsw_add(&pps_cdevsw, -1, unit);
-	dev = make_dev(&pps_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
-			PPS_NAME "%d", unit);
+	make_dev(&pps_cdevsw, unit, UID_ROOT, GID_WHEEL, 0644,
+		    PPS_NAME "%d", unit);
 	return (0);
 }
 
