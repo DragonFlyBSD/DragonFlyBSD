@@ -32,7 +32,7 @@
  *
  * @(#)print.c	8.6 (Berkeley) 4/16/94
  * $FreeBSD: src/bin/ps/print.c,v 1.36.2.4 2002/11/30 13:00:14 tjr Exp $
- * $DragonFly: src/bin/ps/print.c,v 1.10 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/print.c,v 1.11 2004/06/10 22:11:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -186,6 +186,8 @@ state(const KINFO *k, const VARENT *ve)
 	case SSLEEP:
 		if (flag & P_SINTR)	/* interruptable (long) */
 			*cp = p->p_slptime >= MAXSLP ? 'I' : 'S';
+		else if (KI_THREAD(k)->td_flags & TDF_SINTR)
+			*cp = 'S';
 		else
 			*cp = 'D';
 		break;

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.32 2004/04/10 20:55:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.33 2004/06/10 22:11:35 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -744,10 +744,21 @@ loadav(void *arg)
 	avg = &averunnable;
 	nrun = 0;
 	FOREACH_PROC_IN_SYSTEM(p) {
-		switch (p->p_stat) {
-		case SRUN:
-		case SIDL:
-			nrun++;
+		thread_t td;
+		if (p->p_flag & P_CP_RELEASED) {
+		    if ((td = p->p_thread) != NULL) {
+			if (td->td_flags & (TDF_RUNQ|TDF_RUNNING))
+			    nrun++;
+		    }
+		} else {
+		    switch (p->p_stat) {
+		    case SRUN:
+		    case SIDL:
+			    nrun++;
+			    break;
+		    default:
+			    break;
+		    }
 		}
 	}
 	for (i = 0; i < 3; i++)
