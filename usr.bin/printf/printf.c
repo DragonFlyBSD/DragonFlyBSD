@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printf.c	8.1 (Berkeley) 7/20/93
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/usr.bin/printf/printf.c,v 1.27 2004/03/07 22:22:13 cperciva Exp $
- * $DragonFly: src/usr.bin/printf/printf.c,v 1.5 2004/03/19 16:37:24 cpressey Exp $
+ * $DragonFly: src/usr.bin/printf/printf.c,v 1.6 2004/12/31 20:32:59 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -64,15 +64,15 @@
 	char *b = NULL; \
 	if (fieldwidth) \
 		if (precision) \
-			(void)asprintf(&b, f, fieldwidth, precision, func); \
+			asprintf(&b, f, fieldwidth, precision, func); \
 		else \
-			(void)asprintf(&b, f, fieldwidth, func); \
+			asprintf(&b, f, fieldwidth, func); \
 	else if (precision) \
-		(void)asprintf(&b, f, precision, func); \
+		asprintf(&b, f, precision, func); \
 	else \
-		(void)asprintf(&b, f, func); \
+		asprintf(&b, f, func); \
 	if (b) { \
-		(void)fputs(b, stdout); \
+		fputs(b, stdout); \
 		free(b); \
 	} \
 } while (0)
@@ -102,7 +102,7 @@ main(int argc, char **argv)
 	char convch, nextch, *format, *fmt, *start;
 
 #ifndef BUILTIN
-	(void) setlocale(LC_NUMERIC, "");
+	setlocale(LC_NUMERIC, "");
 #endif
 	while ((ch = getopt(argc, argv, "")) != -1)
 		switch (ch) {
@@ -140,7 +140,7 @@ next:		for (start = fmt;; ++fmt) {
 			if (!*fmt) {
 				/* avoid infinite loop */
 				if (chopped) {
-					(void)printf("%s", start);
+					printf("%s", start);
 					return (rval);
 				}
 				if (end == 1) {
@@ -150,7 +150,7 @@ next:		for (start = fmt;; ++fmt) {
 				}
 				end = 1;
 				if (fmt > start)
-					(void)printf("%s", start);
+					printf("%s", start);
 				if (!*gargv)
 					return (rval);
 				fmt = format;
@@ -161,7 +161,7 @@ next:		for (start = fmt;; ++fmt) {
 				if (*++fmt != '%')
 					break;
 				*fmt++ = '\0';
-				(void)printf("%s", start);
+				printf("%s", start);
 				goto next;
 			}
 		}
@@ -308,10 +308,10 @@ mkquad(char *str, int ch)
 }
 
 static int
-escape(register char *fmt)
+escape(char *fmt)
 {
-	register char *store;
-	register int value, c;
+	char *store;
+	int value, c;
 
 	for (store = fmt; (c = *fmt); ++fmt, ++store) {
 		if (c != '\\') {
@@ -477,7 +477,7 @@ getdouble(double *dp)
 static int
 asciicode(void)
 {
-	register int ch;
+	int ch;
 
 	ch = **gargv;
 	if (ch == '\'' || ch == '"')
@@ -489,5 +489,5 @@ asciicode(void)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: printf format [arg ...]\n");
+	fprintf(stderr, "usage: printf format [arg ...]\n");
 }
