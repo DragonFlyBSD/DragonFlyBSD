@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.11 2004/01/11 16:45:17 joerg Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.12 2004/01/24 08:00:45 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -101,7 +101,6 @@
 #ifdef COM_ESP
 #include "../ic_layer/esp.h"
 #endif
-#include "../ic_layer/ns16550.h"
 
 #define	LOTS_OF_EVENTS	64	/* helps separate urgent events from input */
 

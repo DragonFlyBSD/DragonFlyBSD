@@ -32,92 +32,16 @@
  *
  *	from: @(#)comreg.h	7.2 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/isa/sioreg.h,v 1.15.2.3 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.5 2004/01/22 04:19:29 rob Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sioreg.h,v 1.6 2004/01/24 08:00:45 dillon Exp $
  */
+
+#ifndef _DEV_SERIAL_SIO_SIOREG_H_
+#define _DEV_SERIAL_SIO_SIOREG_H_
+
+#include "../ic_layer/ns16550.h"
 
 /* Receiver clock frequency for "standard" pc serial ports. */
 #define	DEFAULT_RCLK	1843200
-
-/* interrupt enable register */
-#define	IER_ERXRDY	0x1
-#define	IER_ETXRDY	0x2
-#define	IER_ERLS	0x4
-#define	IER_EMSC	0x8
-
-/* interrupt identification register */
-#define	IIR_IMASK	0xf
-#define	IIR_RXTOUT	0xc
-#define	IIR_RLS		0x6
-#define	IIR_RXRDY	0x4
-#define	IIR_TXRDY	0x2
-#define	IIR_NOPEND	0x1
-#define	IIR_MLSC	0x0
-#define	IIR_FIFO_MASK	0xc0	/* set if FIFOs are enabled */
-
-/* fifo control register */
-#define	FIFO_ENABLE	0x01
-#define	FIFO_RCV_RST	0x02
-#define	FIFO_XMT_RST	0x04
-#define	FIFO_DMA_MODE	0x08
-#define	FIFO_RX_LOW	0x00
-#define	FIFO_RX_MEDL	0x40
-#define	FIFO_RX_MEDH	0x80
-#define	FIFO_RX_HIGH	0xc0
-
-/* character format control register (aka line control register) */
-#define	CFCR_SBREAK	0x40
-#define	CFCR_PZERO	0x30
-#define	CFCR_PONE	0x20
-#define	CFCR_PEVEN	0x10
-#define	CFCR_PODD	0x00
-#define	CFCR_PENAB	0x08
-#define	CFCR_STOPB	0x04
-#define	CFCR_8BITS	0x03
-#define	CFCR_7BITS	0x02
-#define	CFCR_6BITS	0x01
-#define	CFCR_5BITS	0x00
-
-/* modem control register */
-#define	MCR_PRESCALE	0x80		/* only available on 16650 up */
-#define	MCR_LOOPBACK	0x10
-#define	MCR_IENABLE	0x08
-#define	MCR_DRS		0x04
-#define	MCR_RTS		0x02
-#define	MCR_DTR		0x01
-
-/* line status register */
-#define	LSR_RCV_FIFO	0x80
-#define	LSR_TSRE	0x40
-#define	LSR_TXRDY	0x20
-#define	LSR_BI		0x10
-#define	LSR_FE		0x08
-#define	LSR_PE		0x04
-#define	LSR_OE		0x02
-#define	LSR_RXRDY	0x01
-#define	LSR_RCV_MASK	0x1f
-
-/* modem status register */
-#define	MSR_DCD		0x80
-#define	MSR_RI		0x40
-#define	MSR_DSR		0x20
-#define	MSR_CTS		0x10
-#define	MSR_DDCD	0x08
-#define	MSR_TERI	0x04
-#define	MSR_DDSR	0x02
-#define	MSR_DCTS	0x01
-
-/* enhanced feature register (only available on 16650 up) */
-#define	EFR_EFE		0x10		/* enhanced functions enable */
-
-#ifdef PC98
-/* Hardware extension mode register for RSB-2000/3000. */
-#define	EMR_EXBUFF	0x04
-#define	EMR_CTSFLW	0x08
-#define	EMR_DSRFLW	0x10
-#define	EMR_RTSFLW	0x20
-#define	EMR_DTRFLW	0x40
-#define	EMR_EFMODE	0x80
-#endif
 
 /* speed to initialize to during chip tests */
 #define SIO_TEST_SPEED	9600
@@ -125,4 +49,6 @@
 /* default serial console speed if not set with sysctl or probed from boot */
 #ifndef CONSPEED
 #define CONSPEED 9600
+#endif
+
 #endif
