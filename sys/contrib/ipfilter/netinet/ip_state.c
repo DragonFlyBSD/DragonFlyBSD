@@ -6,7 +6,7 @@
  * @(#)ip_state.c   1.8 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_state.c,v 2.30.2.74 2002/07/27 15:58:10 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.21.2.6 2004/07/04 09:24:39 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.7 2004/07/28 00:22:37 hmp Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_state.c,v 1.8 2004/08/28 07:27:02 dillon Exp $
  */
 
 #if defined(__sgi) && (IRIX > 602)
@@ -612,6 +612,9 @@ u_int flags;
 	is = &ips;
 	bzero((char *)is, sizeof(*is));
 	ips.is_age = 1;
+	ips.is_state[0] = TCPS_CLOSED;
+	ips.is_state[1] = TCPS_CLOSED;
+
 	/*
 	 * Copy and calculate...
 	 */
