@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.6 2005/02/21 04:35:40 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.7 2005/02/21 04:38:21 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -624,7 +624,6 @@ struct _tulip_softc_t {
 #define	TULIP_DO_AUTOSENSE(sc)	(IFM_SUBTYPE((sc)->tulip_ifmedia.ifm_media) == IFM_AUTO)
 
 
-#if defined(TULIP_HDR_DATA)
 static const char * const tulip_chipdescs[] = { 
     "21040 [10Mb/s]",
     "21041 [10Mb/s]",
@@ -751,7 +750,6 @@ static const struct {
     {	TULIP_MEDIA_10BASET,		TULIP_SROM_MEDIA_10BASET	},
     {	TULIP_MEDIA_UNKNOWN						}
 };
-#endif /* TULIP_HDR_DATA */
 
 /*
  * This driver supports a maximum of 32 tulip boards.
@@ -832,9 +830,7 @@ static const struct {
 #define	SIOCGCHIPID		_IOWR('i', 241, struct ifreq)	/* get chipid */
 #endif
 
-#if defined(TULIP_HDR_DATA)
 static tulip_softc_t *tulips[TULIP_MAX_DEVICES];
-#endif
 
 #define	loudprintf			if (bootverbose) printf
 

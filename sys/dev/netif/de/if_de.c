@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.19 2005/02/21 04:35:40 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.20 2005/02/21 04:38:21 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -39,7 +39,6 @@
  *   This driver supports the DEC DE435 or any other PCI
  *   board which support 21040, 21041, or 21140 (mostly).
  */
-#define	TULIP_HDR_DATA
 
 #include <sys/param.h>
 #include <sys/systm.h>
