@@ -22,7 +22,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pdq/pdq_ifsubr.c,v 1.11.2.1 2000/08/02 22:39:30 peter Exp $
- * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.8 2005/01/23 20:21:31 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/pdq_layer/Attic/pdq_ifsubr.c,v 1.9 2005/02/10 00:09:17 joerg Exp $
  *
  */
 
@@ -146,7 +146,6 @@ pdq_ifstart(
     struct ifnet *ifp)
 {
     pdq_softc_t *sc = (pdq_softc_t *) ((caddr_t) ifp - offsetof(pdq_softc_t, sc_ac.ac_if));
-    struct ifqueue *ifq = &ifp->if_snd;
     struct mbuf *m;
     int tx = 0;
 
@@ -161,13 +160,13 @@ pdq_ifstart(
 	return;
     }
     for (;; tx = 1) {
-	IF_DEQUEUE(ifq, m);
+	IF_DEQUEUE(&ifp->if_snd, m);
 	if (m == NULL)
 	    break;
 
 	if (pdq_queue_transmit_data(sc->sc_pdq, m) == PDQ_FALSE) {
 	    ifp->if_flags |= IFF_OACTIVE;
-	    IF_PREPEND(ifq, m);
+	    IF_PREPEND(&ifp->if_snd, m);
 	    break;
 	}
     }
@@ -365,7 +364,7 @@ pdq_ifattach(
 
     ifp->if_ioctl = pdq_ifioctl;
     ifp->if_start = pdq_ifstart;
-    ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+    IFQ_SET_MAXLEN(&ifp->if_snd, IFQ_MAXLEN);
   
     fddi_ifattach(ifp);
 }
