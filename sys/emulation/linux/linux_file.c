@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_file.c,v 1.41.2.6 2003/01/06 09:19:43 fjoe Exp $
- * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.11 2003/10/17 05:25:45 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_file.c,v 1.12 2003/10/21 01:05:09 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -697,6 +697,21 @@ linux_truncate(struct linux_truncate_args *args)
 	error = truncate(&bsd);
 	args->sysmsg_result = bsd.sysmsg_result;
 	return(error);
+}
+
+int
+linux_ftruncate(struct linux_ftruncate_args *args)
+{
+	int error;
+
+#ifdef DEBUG
+	if (ldebug(ftruncate))
+		printf(ARGS(ftruncate, "%d, %ld"), args->fd,
+		    (long)args->length);
+#endif
+	error = kern_ftruncate(args->fd, args->length);
+
+	return error;
 }
 
 int

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.17 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.16 2003/10/15 06:38:46 daver Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.17 2003/10/21 01:05:09 daver Exp $
  */
 
 #include "opt_compat.h"
@@ -670,92 +670,61 @@ close(struct close_args *uap)
 	return (error);
 }
 
-#if defined(COMPAT_43) || defined(COMPAT_SUNOS)
-/*
- * Return status information about a file descriptor.
- */
-/* ARGSUSED */
 int
-ofstat(struct ofstat_args *uap)
+kern_fstat(int fd, struct stat *ub)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 	struct filedesc *fdp;
 	struct file *fp;
-	struct stat ub;
-	struct ostat oub;
 	int error;
 
 	KKASSERT(p);
+
 	fdp = p->p_fd;
-	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
+	if ((unsigned)fd >= fdp->fd_nfiles ||
+	    (fp = fdp->fd_ofiles[fd]) == NULL)
 		return (EBADF);
 	fhold(fp);
-	error = fo_stat(fp, &ub, td);
-	if (error == 0) {
-		cvtstat(&ub, &oub);
-		error = copyout((caddr_t)&oub, (caddr_t)uap->sb, sizeof (oub));
-	}
+	error = fo_stat(fp, ub, td);
 	fdrop(fp, td);
+
 	return (error);
 }
-#endif /* COMPAT_43 || COMPAT_SUNOS */
 
 /*
  * Return status information about a file descriptor.
  */
-/* ARGSUSED */
 int
 fstat(struct fstat_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp = p->p_fd;
-	struct file *fp;
-	struct stat ub;
+	struct stat st;
 	int error;
 
-	KKASSERT(p);
-	fdp = p->p_fd;
-	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
-		return (EBADF);
-	fhold(fp);
-	error = fo_stat(fp, &ub, td);
+	error = kern_fstat(uap->fd, &st);
+
 	if (error == 0)
-		error = copyout((caddr_t)&ub, (caddr_t)uap->sb, sizeof (ub));
-	fdrop(fp, td);
+		error = copyout(&st, uap->sb, sizeof(st));
 	return (error);
 }
 
 /*
- * Return status information about a file descriptor.
+ * XXX: This is for source compatibility with NetBSD.  Probably doesn't
+ * belong here.
  */
-/* ARGSUSED */
 int
 nfstat(struct nfstat_args *uap)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	struct file *fp;
-	struct stat ub;
-	struct nstat nub;
+	struct stat st;
+	struct nstat nst;
 	int error;
 
-	KKASSERT(p);
-	fdp = p->p_fd;
-	if ((unsigned)uap->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[uap->fd]) == NULL)
-		return (EBADF);
-	fhold(fp);
-	error = fo_stat(fp, &ub, td);
+	error = kern_fstat(uap->fd, &st);
+
 	if (error == 0) {
-		cvtnstat(&ub, &nub);
-		error = copyout((caddr_t)&nub, (caddr_t)uap->sb, sizeof (nub));
+		cvtnstat(&st, &nst);
+		error = copyout(&nst, uap->sb, sizeof (nst));
 	}
-	fdrop(fp, td);
 	return (error);
 }
 

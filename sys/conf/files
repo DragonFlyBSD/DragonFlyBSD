@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/files,v 1.340.2.137 2003/06/04 17:10:30 sam Exp $
-# $DragonFly: src/sys/conf/files,v 1.19 2003/10/19 00:23:20 dillon Exp $
+# $DragonFly: src/sys/conf/files,v 1.20 2003/10/21 01:05:09 daver Exp $
 #
 # The long compile-with and dependency lines are required because of
 # limitations in config: backslash-newline doesn't work in strings, and
@@ -1581,3 +1581,5 @@ dev/drm/radeon/radeon_mem.c		optional radeondrm
 dev/drm/radeon/radeon_state.c		optional radeondrm
 dev/drm/tdfx/tdfx_drv.c			optional tdfxdrm
 emulation/43bsd/43bsd_socket.c		optional compat_43
+emulation/43bsd/43bsd_stats.c		optional compat_43
+emulation/43bsd/43bsd_file.c		optional compat_43

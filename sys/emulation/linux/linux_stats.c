@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_stats.c,v 1.22.2.3 2001/11/05 19:08:23 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.9 2003/09/29 18:52:09 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_stats.c,v 1.10 2003/10/21 01:05:09 daver Exp $
  */
 
 #include <sys/param.h>
@@ -44,6 +44,7 @@
 #include <sys/vnode.h>
 #include <sys/device.h>
 #include <sys/file2.h>
+#include <sys/kern_syscall.h>
 
 #include <arch_linux/linux.h>
 #include <arch_linux/linux_proto.h>
@@ -155,29 +156,17 @@ linux_newlstat(struct linux_newlstat_args *args)
 int
 linux_newfstat(struct linux_newfstat_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	struct file *fp;
 	struct stat buf;
 	int error;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(newfstat))
 		printf(ARGS(newfstat, "%d, *"), args->fd);
 #endif
+	error = kern_fstat(args->fd, &buf);
 
-	fdp = p->p_fd;
-	if ((unsigned)args->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[args->fd]) == NULL)
-		return (EBADF);
-
-	error = fo_stat(fp, &buf, td);
-	if (!error)
+	if (error == 0)
 		error = newstat_copyout(&buf, args->buf);
-
 	return (error);
 }
 
@@ -468,29 +457,17 @@ linux_lstat64(struct linux_lstat64_args *args)
 int
 linux_fstat64(struct linux_fstat64_args *args)
 {
-	struct thread *td = curthread;
-	struct proc *p = td->td_proc;
-	struct filedesc *fdp;
-	struct file *fp;
 	struct stat buf;
 	int error;
-
-	KKASSERT(p);
 
 #ifdef DEBUG
 	if (ldebug(fstat64))
 		printf(ARGS(fstat64, "%d, *"), args->fd);
 #endif
+	error = kern_fstat(args->fd, &buf);
 
-	fdp = p->p_fd;
-	if ((unsigned)args->fd >= fdp->fd_nfiles ||
-	    (fp = fdp->fd_ofiles[args->fd]) == NULL)
-		return (EBADF);
-
-	error = fo_stat(fp, &buf, td);
-	if (!error)
+	if (error == 0)
 		error = stat64_copyout(&buf, args->statbuf);
-
 	return (error);
 }
 

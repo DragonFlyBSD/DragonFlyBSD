@@ -1,4 +1,4 @@
- $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.3 2003/08/07 21:17:18 dillon Exp $
+ $DragonFly: src/sys/emulation/linux/i386/syscalls.master,v 1.4 2003/10/21 01:05:09 daver Exp $
 
 ;	@(#)syscalls.master	8.1 (Berkeley) 7/19/93
 ; $FreeBSD: src/sys/i386/linux/syscalls.master,v 1.30.2.8 2003/01/02 20:41:33 kan Exp $
@@ -152,7 +152,7 @@
 90	STD	LINUX	{ int linux_mmap(struct l_mmap_argv *ptr); }
 91	NOPROTO	LINUX	{ int munmap(caddr_t addr, int len); }
 92	STD	LINUX	{ int linux_truncate(char *path, l_ulong length); }
-93	NOPROTO	LINUX	{ int oftruncate(int fd, long length); }
+93	STD	LINUX	{ int linux_ftruncate(int fd, long length); }
 94	NOPROTO	LINUX	{ int fchmod(int fd, int mode); }
 95	NOPROTO	LINUX	{ int fchown(int fd, int uid, int gid); }
 96	NOPROTO	LINUX	{ int getpriority(int which, int who); }

@@ -25,7 +25,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/kern_syscall.h,v 1.7 2003/10/17 05:25:45 daver Exp $
+ * $DragonFly: src/sys/sys/kern_syscall.h,v 1.8 2003/10/21 01:05:09 daver Exp $
  */
 
 #ifndef _SYS_KERN_SYSCALL_H_
@@ -47,6 +47,7 @@ struct vnode;
  */
 int kern_dup(enum dup_type type, int old, int new, int *res);
 int kern_fcntl(int fd, int cmd, union fcntl_dat *dat);
+int kern_fstat(int fd, struct stat *st);
 
 /*
  * Prototypes for syscalls in kern/sys_generic.c
@@ -74,5 +75,10 @@ int kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 int kern_setsockopt(int s, struct sockopt *sopt);
 int kern_socket(int domain, int type, int protocol, int *res);
 int kern_socketpair(int domain, int type, int protocol, int *sockv);
+
+/*
+ * Prototypes for syscalls in kern/vfs_syscalls.c
+ */
+int kern_ftruncate(int fd, off_t length);
 
 #endif /* !_SYS_KERN_SYSCALL_H_ */

@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.20 2003/10/09 22:27:19 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.21 2003/10/21 01:05:09 daver Exp $
  */
 
 /* For 4.3 integer FS ID compatibility */
@@ -62,6 +62,7 @@
 #include <sys/namei.h>
 #include <sys/dirent.h>
 #include <sys/extattr.h>
+#include <sys/kern_syscall.h>
 
 #include <machine/limits.h>
 #include <vfs/union/union.h>
@@ -2188,14 +2189,8 @@ truncate(struct truncate_args *uap)
 	return (error);
 }
 
-/*
- * ftruncate_args(int fd, int pad, off_t length)
- *
- * Truncate a file given a file descriptor.
- */
-/* ARGSUSED */
 int
-ftruncate(struct ftruncate_args *uap)
+kern_ftruncate(int fd, off_t length)
 {
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
@@ -2204,9 +2199,9 @@ ftruncate(struct ftruncate_args *uap)
 	struct file *fp;
 	int error;
 
-	if (uap->length < 0)
+	if (length < 0)
 		return(EINVAL);
-	if ((error = getvnode(p->p_fd, SCARG(uap, fd), &fp)) != 0)
+	if ((error = getvnode(p->p_fd, fd, &fp)) != 0)
 		return (error);
 	if ((fp->f_flag & FWRITE) == 0)
 		return (EINVAL);
@@ -2217,10 +2212,26 @@ ftruncate(struct ftruncate_args *uap)
 		error = EISDIR;
 	else if ((error = vn_writechk(vp)) == 0) {
 		VATTR_NULL(&vattr);
-		vattr.va_size = SCARG(uap, length);
+		vattr.va_size = length;
 		error = VOP_SETATTR(vp, &vattr, fp->f_cred, td);
 	}
 	VOP_UNLOCK(vp, 0, td);
+	return (error);
+}
+
+/*
+ * ftruncate_args(int fd, int pad, off_t length)
+ *
+ * Truncate a file given a file descriptor.
+ */
+/* ARGSUSED */
+int
+ftruncate(struct ftruncate_args *uap)
+{
+	int error;
+
+	error = kern_ftruncate(uap->fd, uap->length);
+
 	return (error);
 }
 
@@ -2243,26 +2254,6 @@ otruncate(struct otruncate_args *uap)
 	SCARG(&nuap, path) = SCARG(uap, path);
 	SCARG(&nuap, length) = SCARG(uap, length);
 	return (truncate(&nuap));
-}
-
-/*
- * oftruncate_args(int fd, long length)
- *
- * Truncate a file given a file descriptor.
- */
-/* ARGSUSED */
-int
-oftruncate(struct oftruncate_args *uap)
-{
-	struct ftruncate_args /* {
-		syscallarg(int) fd;
-		syscallarg(int) pad;
-		syscallarg(off_t) length;
-	} */ nuap;
-
-	SCARG(&nuap, fd) = SCARG(uap, fd);
-	SCARG(&nuap, length) = SCARG(uap, length);
-	return (ftruncate(&nuap));
 }
 #endif /* COMPAT_43 || COMPAT_SUNOS */
 
