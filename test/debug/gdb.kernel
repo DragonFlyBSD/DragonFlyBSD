@@ -1,0 +1,84 @@
+# $DragonFly: src/test/debug/gdb.kernel,v 1.1 2004/06/26 13:09:52 hmp Exp $
+#
+# Command file for the GNU Debugger, for kernel debugging.
+#
+# This file can either be put in your home directory as ~/.gdbinit,
+# or selected at run time as:
+#
+#   	'gdb -k -q -x /usr/src/test/debug/gdb.kernel ...'
+#
+# Here is a list of macros and short one-line descriptions:
+#
+#    kldstat 	- kldstat(1) command style output of loaded modules 
+#    pcomm  	- print command name of arg0's (thread's) process pointer
+#    psx     	- process listing with wchan information
+#
+set print union
+set history expansion on
+
+define pcomm
+	printf "%10s\n",$arg0->td_comm
+end
+
+define kldstat
+	set $kld = linker_files.tqh_first
+	printf "Id Refs Address    Size     Name\n"
+	while ($kld != 0)
+		printf "%2d %4d 0x%08x %-8x %s\n", \
+		$kld->id, $kld->refs, $kld->address, $kld->size, $kld->filename
+		set $kld = $kld->link.tqe_next
+	end
+end
+
+define psx 
+    set $cpu = 0
+    printf "cpu  pid    thread    flags comm       wchan wmesg\n"
+    while ($cpu < ncpus)
+	set $gd = &((struct privatespace *)&CPU_prvspace)[$cpu].mdglobaldata
+	set $td = $gd->mi.gd_tdallq.tqh_first
+	while ( $td != 0 )
+	    if ( $td->td_proc != 0 )
+		set $pid = $td->td_proc->p_pid
+	    else
+		set $pid = -1
+	    end
+	    if ( $td->td_wmesg != 0 )
+		printf "%3d %5d %08x %08x %-10s %08x %s\n",	\
+		    $cpu, $pid, $td, $td->td_flags, $td->td_comm, $td->td_wchan, \
+		    $td->td_wmesg
+	    else
+		printf "%3d %5d %08x %08x %-10s %08x\n",	\
+		    $cpu, $pid, $td, $td->td_flags, $td->td_comm, $td->td_wchan
+	    end
+	    set $td = $td->td_allq.tqe_next
+	end
+	set $cpu = $cpu + 1
+    end
+end
+
+
+define running_threads
+    set $icpu = 0
+	printf "cpu    curthread    wchan\n"
+	while ($icpu < ncpus)
+	    set $ipvspace = (struct privatespace *)&CPU_prvspace
+		set $gd = $ipvspace[$icpu].mdglobaldata.mi
+		set $td = $gd.gd_curthread
+	    printf "%d    %10s    %08x\n", \
+			$gd.gd_cpuid, $td->td_comm, $td->td_wchan
+	    set $icpu = $icpu + 1
+	end
+end
+
+# Documentation, usable within GDB using the 'help' command.
+document kldstat
+Output list of loaded kernel modules in kldstat(1) style.
+end
+
+document pcomm
+Print command name of the given thread pointer (first argument).
+end
+
+document psx
+Output a list of processes with wait-channel (wchan) informaiton.
+end
