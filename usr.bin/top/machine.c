@@ -20,7 +20,7 @@
  *          Wolfram Schneider <wosch@FreeBSD.org>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.5 2003/07/03 18:33:58 dillon Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.6 2003/07/11 23:34:08 dillon Exp $
  */
 
 
@@ -592,11 +592,9 @@ char *(*get_userid)();
     /* generate "STATE" field */
     switch (state = PP(pp, p_stat)) {
 	case SRUN:
-#if 0
-	    if (smpmode && PP(pp, p_oncpu) != 0xff)
-		sprintf(status, "CPU%d", PP(pp, p_oncpu));
+	    if (smpmode && TP(pp, td_flags) & TDF_RUNNING)
+		sprintf(status, "CPU%d", TP(pp, td_cpu));
 	    else
-#endif
 		strcpy(status, "RUN");
 	    break;
 	case SSLEEP:
@@ -648,10 +646,7 @@ char *(*get_userid)();
 	    format_k2(PROCSIZE(pp)),
 	    format_k2(pagetok(VP(pp, vm_rssize))),
 	    status,
-#if 0
-	    smpmode ? PP(pp, p_lastcpu) : 0,
-#endif
-	    0,
+	    smpmode ? TP(pp, td_cpu) : 0,
 	    format_time(cputime),
 	    100.0 * weighted_cpu(pct, pp),
 	    100.0 * pct,
