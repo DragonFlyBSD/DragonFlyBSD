@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/xio.h,v 1.3 2004/05/13 17:40:17 dillon Exp $
+ * $DragonFly: src/sys/sys/xio.h,v 1.4 2004/06/06 19:16:51 dillon Exp $
  */
 
 /*
@@ -68,6 +68,7 @@ typedef struct xio *xio_t;
 
 #if defined(_KERNEL)
 
+void xio_init(xio_t xio);
 int xio_init_ubuf(xio_t xio, void *ubase, size_t ubytes, int vmprot);
 int xio_init_kbuf(xio_t xio, void *kbase, size_t kbytes);
 void xio_release(xio_t xio);
