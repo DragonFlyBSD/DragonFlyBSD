@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.19 2004/06/03 15:54:14 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.20 2004/06/03 18:12:41 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1061,9 +1061,10 @@ vn_fullpath(struct proc *p, struct vnode *vn, char **retbuf, char **freebuf)
 		return (EINVAL);
 
 	/* vn is NULL, client wants us to use p->p_textvp */
-	if (vn == NULL)
+	if (vn == NULL) {
 		if ((vn = p->p_textvp) == NULL)
 			return (EINVAL);
+	}
 
 	buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
 	bp = buf + MAXPATHLEN - 1;
