@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.24 2005/01/27 19:42:32 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.25 2005/02/17 12:22:24 joerg Exp $
 #
 
 ISODIR ?= /usr/release
@@ -12,8 +12,12 @@ KERNCONF ?= GENERIC
 # target, the packages are obtained from PACKAGES_LOC.
 #
 REQ_PACKAGES= cdrtools-2.0.3_3 cvsup-without-gui-16.1h
-PACKAGES?= ${REQ_PACKAGES} ${EXTRA_PACKAGES}
+REL_PACKAGES?= ${REQ_PACKAGES} ${EXTRA_PACKAGES}
+.if defined(PACKAGES)
+PACKAGES_LOC?= ${PACKAGES}/All
+.else
 PACKAGES_LOC?= /usr/ports/packages/All
+.endif
 
 # Specify which root skeletons are required, and let the user include
 # their own.  They are copied into ISODIR during the `pkgcustomizeiso'
@@ -80,7 +84,7 @@ check:
 		echo "this target"; \
 		exit 1; \
 	fi
-.for PKG in ${PACKAGES}
+.for PKG in ${REL_PACKAGES}
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
 		echo "Unable to find ${PACKAGES_LOC}/${PKG}.tgz.  This is"; \
 		echo "typically accomplished by cd'ing into the appropriate"; \
@@ -95,7 +99,7 @@ check:
 	@echo "check: all preqs found"
 
 fetchpkgs:
-.for PKG in ${PACKAGES}
+.for PKG in ${REL_PACKAGES}
 	@if [ ! -f ${PACKAGES_LOC}/${PKG}.tgz ]; then \
 		cd ${PACKAGES_LOC} && \
 		echo "fetching ${PKG}..." && \
@@ -144,7 +148,7 @@ customizeiso:
 pkgcleaniso:
 	rm -f ${ISOROOT}/tmp/chrootscript
 	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
-.for PKG in ${PACKAGES}
+.for PKG in ${REL_PACKAGES}
 	echo "pkg_delete -f ${PKG}" >> ${ISOROOT}/tmp/chrootscript
 .endfor
 	chmod a+x ${ISOROOT}/tmp/chrootscript
@@ -154,7 +158,7 @@ pkgcleaniso:
 pkgaddiso:
 	rm -f ${ISOROOT}/tmp/chrootscript
 	echo "#!/bin/sh" > ${ISOROOT}/tmp/chrootscript
-.for PKG in ${PACKAGES}
+.for PKG in ${REL_PACKAGES}
 	cp ${PACKAGES_LOC}/${PKG}.tgz ${ISOROOT}/tmp/${PKG}.tgz
 	echo "echo 'Installing package ${PKG}...'" >> ${ISOROOT}/tmp/chrootscript
 	echo "pkg_add /tmp/${PKG}.tgz" >> ${ISOROOT}/tmp/chrootscript
@@ -162,7 +166,7 @@ pkgaddiso:
 	chmod a+x ${ISOROOT}/tmp/chrootscript
 	chroot ${ISOROOT}/ /tmp/chrootscript
 	rm ${ISOROOT}/tmp/chrootscript
-.for PKG in ${PACKAGES}
+.for PKG in ${REL_PACKAGES}
 	rm -f ${ISOROOT}/tmp/${PKG}.tgz
 .endfor
 
