@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi.c,v 1.103.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.14 2004/07/23 07:16:29 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi.c,v 1.15 2004/07/27 14:30:10 joerg Exp $
  */
 
 /*
@@ -89,7 +89,9 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
+#include <netproto/802_11/if_wavelan_ieee.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -99,10 +101,11 @@
 
 #include <net/bpf.h>
 
-#include "if_wavelan_ieee.h"
 #include "wi_hostap.h"
 #include "if_wivar.h"
 #include "if_wireg.h"
+
+#define WI_CMD_DEBUG		0x0038 /* prism2 debug */
 
 static void wi_intr(void *);
 static void wi_reset(struct wi_softc *);

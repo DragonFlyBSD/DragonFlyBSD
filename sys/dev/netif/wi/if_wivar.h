@@ -32,35 +32,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wivar.h,v 1.8.2.3 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.3 2004/02/13 02:44:48 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wivar.h,v 1.4 2004/07/27 14:30:10 joerg Exp $
  */
 
 #define WICACHE			/* turn on signal strength cache code */  
 #define	MAXWICACHE	10
-
-struct wi_counters {
-	u_int32_t		wi_tx_unicast_frames;
-	u_int32_t		wi_tx_multicast_frames;
-	u_int32_t		wi_tx_fragments;
-	u_int32_t		wi_tx_unicast_octets;
-	u_int32_t		wi_tx_multicast_octets;
-	u_int32_t		wi_tx_deferred_xmits;
-	u_int32_t		wi_tx_single_retries;
-	u_int32_t		wi_tx_multi_retries;
-	u_int32_t		wi_tx_retry_limit;
-	u_int32_t		wi_tx_discards;
-	u_int32_t		wi_rx_unicast_frames;
-	u_int32_t		wi_rx_multicast_frames;
-	u_int32_t		wi_rx_fragments;
-	u_int32_t		wi_rx_unicast_octets;
-	u_int32_t		wi_rx_multicast_octets;
-	u_int32_t		wi_rx_fcs_errors;
-	u_int32_t		wi_rx_discards_nobuf;
-	u_int32_t		wi_tx_discards_wrong_sa;
-	u_int32_t		wi_rx_WEP_cant_decrypt;
-	u_int32_t		wi_rx_msg_in_msg_frags;
-	u_int32_t		wi_rx_msg_in_bad_msg_frags;
-};
 
 /*
  * Encryption controls. We can enable or disable encryption as
@@ -81,16 +57,6 @@ struct wi_counters {
 #define WI_RID_P2_ENCRYPTION	0xFC28
 #define WI_RID_ROAMING_MODE	0xFC2D
 #define WI_RID_CUR_TX_RATE	0xFD44 /* current TX rate */
-struct wi_key {
-	u_int16_t		wi_keylen;
-	u_int8_t		wi_keydat[14];
-};
-
-struct wi_ltv_keys {
-	u_int16_t		wi_len;
-	u_int16_t		wi_type;
-	struct wi_key		wi_keys[4];
-};
 
 struct wi_softc	{
 	struct arpcom		arpcom;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pccard.c,v 1.8.2.2 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.4 2004/02/12 12:08:54 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pccard.c,v 1.5 2004/07/27 14:30:10 joerg Exp $
  */
 
 /*
@@ -58,12 +58,13 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
+#include <netproto/802_11/if_wavelan_ieee.h>
 
 #include <bus/pccard/pccardvar.h>
 #include <bus/pccard/pccarddevs.h>
 
-#include "if_wavelan_ieee.h"
 #include "wi_hostap.h"
 #include "if_wivar.h"
 #include "if_wireg.h"

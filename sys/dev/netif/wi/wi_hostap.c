@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/wi_hostap.c,v 1.7.2.4 2002/08/02 07:11:34 imp Exp $
- * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.8 2004/06/02 14:42:56 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/wi/Attic/wi_hostap.c,v 1.9 2004/07/27 14:30:10 joerg Exp $
  */
 
 /* This is experimental Host AP software for Prism 2 802.11b interfaces.
@@ -70,7 +70,9 @@
 #include <net/if_dl.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
+#include <netproto/802_11/if_wavelan_ieee.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -78,7 +80,6 @@
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
 
-#include "if_wavelan_ieee.h"
 #include "wi_hostap.h"
 #include "if_wivar.h"
 #include "if_wireg.h"

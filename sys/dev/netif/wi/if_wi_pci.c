@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/wi/if_wi_pci.c,v 1.8.2.3 2002/06/16 18:07:18 nsayer Exp $
- * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.3 2003/08/07 21:17:06 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/wi/if_wi_pci.c,v 1.4 2004/07/27 14:30:10 joerg Exp $
  */
 
 /*
@@ -61,9 +61,10 @@
 #include <net/ethernet.h>
 #include <net/if_media.h>
 #include <net/if_types.h>
-#include <net/if_ieee80211.h>
+#include <netproto/802_11/ieee80211.h>
+#include <netproto/802_11/ieee80211_ioctl.h>
+#include <netproto/802_11/if_wavelan_ieee.h>
 
-#include "if_wavelan_ieee.h"
 #include "wi_hostap.h"
 #include "if_wivar.h"
 #include "if_wireg.h"
