@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/pci.c,v 1.141.2.15 2002/04/30 17:48:18 tmm Exp $
- * $DragonFly: src/sys/bus/pci/pci.c,v 1.12 2004/01/15 21:18:18 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/pci.c,v 1.13 2004/01/16 13:07:18 joerg Exp $
  *
  */
 
@@ -1282,7 +1282,7 @@ pci_add_children(device_t dev, int busno)
 
 	maxslots = PCIB_MAXSLOTS(pcib);
 
-	for (s = 0; s <= max_slots; s++) {
+	for (s = 0; s <= maxslots; s++) {
 		int pcifunchigh = 0;
 		for (f = 0; f <= f; f++) {
 			struct pci_devinfo *dinfo = 
@@ -1547,7 +1547,7 @@ pci_alloc_resource(device_t dev, device_t child, int type, int *rid,
 		    (cfg->intline == 255 || cfg->intline == 0) &&
 		    (cfg->intpin != 0) && (start == 0) && (end == ~0UL)) {
 			cfg->intline = PCIB_ROUTE_INTERRUPT(
-				device_get_parent(dev), pci_get_slot(child),
+				device_get_parent(dev), child,
 				cfg->intpin);
 			if (cfg->intline != 255) {
 				pci_write_config(child, PCIR_INTLINE,
