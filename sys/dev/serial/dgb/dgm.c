@@ -1,6 +1,6 @@
 /*-
  * $FreeBSD: src/sys/dev/dgb/dgm.c,v 1.31.2.3 2001/10/07 09:02:25 brian Exp $
- * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.10 2004/09/18 19:54:26 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/dgb/dgm.c,v 1.11 2004/09/19 01:13:33 dillon Exp $
  *
  *  This driver and the associated header files support the ISA PC/Xem
  *  Digiboards.  Its evolutionary roots are described below.
@@ -174,6 +174,9 @@ struct dgm_p {
 	u_char draining; /* port is being drained now */
 	u_char used;	/* port is being used now */
 	u_char mustdrain; /* data must be waited to drain in dgmparam() */
+
+	struct callout	hc_timeout;
+	struct callout	wf_timeout;
 };
 
 /* Digiboard per-board structure */
@@ -771,8 +774,11 @@ dgmattach(device_t dev)
 	    M_TTYS, M_WAITOK|M_ZERO);
 
 	DPRINT3(DB_INFO, "dgm%d: enable %d ports\n", sc->unit, sc->numports);
-	for (i = 0; i < sc->numports; i++)
+	for (i = 0; i < sc->numports; i++) {
 		sc->ports[i].enabled = 1;
+		callout_init(&sc->ports[i].hc_timeout);
+		callout_init(&sc->ports[i].wf_timeout);
+	}
 
 	/* We should now init per-port structures */
 	setwin(sc, 0);
@@ -1194,7 +1200,7 @@ dgmhardclose(struct dgm_p *port)
 	hidewin(sc);
 	splx(cs);
 
-	timeout(dgm_pause, &port->brdchan, hz/2);
+	callout_reset(&port->hc_timeout, hz / 2, dgm_pause, &port->brdchan);
 	tsleep(&port->brdchan, PCATCH, "dgclo", 0);
 }
 
@@ -1811,7 +1817,7 @@ dgmdrain(struct dgm_p *port)
 
 		hidewin(sc);
 		port->draining = 1;
-		timeout(wakeflush, port, hz);
+		callout_reset(&port->wf_timeout, hz, wakeflush, port);
 		error = tsleep(&port->draining, PCATCH, "dgdrn", 0);
 		port->draining = 0;
 		setwin(sc, 0);
@@ -1869,7 +1875,7 @@ dgm_drain_or_flush(struct dgm_p *port)
 
 		hidewin(sc);
 		port->draining = 1;
-		timeout(wakeflush, port, hz);
+		callout_reset(&port->wf_timeout, hz, wakeflush, port);
 		error = tsleep(&port->draining, PCATCH, "dgfls", 0);
 		port->draining = 0;
 		setwin(sc, 0);
