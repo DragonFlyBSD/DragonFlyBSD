@@ -31,7 +31,7 @@ up-to-date.  Many thanks.
 ******************************************************************/
 /*
  * $FreeBSD: src/lib/libc/nls/msgcat.c,v 1.21.2.6 2002/08/12 11:23:54 ache Exp $
- * $DragonFly: src/lib/libcr/nls/Attic/msgcat.c,v 1.2 2003/06/17 04:26:44 dillon Exp $
+ * $DragonFly: src/lib/libcr/nls/Attic/msgcat.c,v 1.3 2003/08/22 19:31:21 asmodai Exp $
  */
 
 /*
@@ -68,7 +68,7 @@ static void     __nls_free_resources();
 
 nl_catd
 catopen(name, type)
-	__const char    *name;
+	const char      *name;
 	int             type;
 {
 	int             spcleft, saverr;
@@ -277,11 +277,11 @@ catgets(catd, setId, msgId, dflt)
 	nl_catd         catd;
 	int             setId;
 	int             msgId;
-	__const char    *dflt;
+	const char      *dflt;
 {
 	MCMsgT          *msg;
 	MCCatT          *cat = (MCCatT *)catd;
-	__const char    *cptr;
+	const char      *cptr;
 
 	if (catd == NULL || catd == NLERR)
 		return ((char *)dflt);
@@ -354,7 +354,7 @@ __nls_free_resources(cat, i)
 
 static nl_catd
 loadCat(catpath)
-	__const char    *catpath;
+	const char      *catpath;
 {
 	MCHeaderT       header;
 	MCCatT          *cat;

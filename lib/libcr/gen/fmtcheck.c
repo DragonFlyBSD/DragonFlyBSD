@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/lib/libc/gen/fmtcheck.c,v 1.1.2.1 2001/07/05 07:43:42 kris Exp $	*/
-/*	$DragonFly: src/lib/libcr/gen/Attic/fmtcheck.c,v 1.2 2003/06/17 04:26:42 dillon Exp $	*/
+/*	$DragonFly: src/lib/libcr/gen/Attic/fmtcheck.c,v 1.3 2003/08/22 19:31:21 asmodai Exp $	*/
 /*	$NetBSD: fmtcheck.c,v 1.2 2000/11/01 01:17:20 briggs Exp $	*/
 
 /*-
@@ -227,7 +227,7 @@ get_next_format(const char **pf, EFT eft)
 	/*NOTREACHED*/
 }
 
-__const char *
+const char *
 fmtcheck(const char *f1, const char *f2)
 {
 	const char	*f1p, *f2p;
