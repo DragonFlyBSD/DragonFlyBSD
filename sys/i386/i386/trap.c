@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.52 2004/06/04 20:35:38 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.53 2004/07/06 01:52:24 hmp Exp $
  */
 
 /*
@@ -280,7 +280,7 @@ extern int ether_poll (int count);
 #endif /* DEVICE_POLLING */
 
 /*
- * Exception, fault, and trap interface to the FreeBSD kernel.
+ * Exception, fault, and trap interface to the kernel.
  * This common code is called from assembly language IDT gate entry
  * routines that prepare a suitable stack frame, and restore this
  * frame after the exception has been processed.
