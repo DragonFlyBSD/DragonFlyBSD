@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/boot98cfg/boot98cfg.c,v 1.1.2.2 2001/07/30 10:22:58 dd Exp $
- * $DragonFly: src/usr.sbin/boot98cfg/Attic/boot98cfg.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/boot98cfg/Attic/boot98cfg.c,v 1.3 2004/11/12 02:30:29 drhodus Exp $
  */
 
 /*
@@ -123,7 +123,7 @@ main(int argc, char *argv[])
 	int	fd, fd1;
 	int	n;
 	int	secsize = 512;
-	int	v_flag = 0, version;
+	int	v_flag = 0, version = 0;
 
 	while ((c = getopt(argc, argv, "BF:f:i:m:s:v:")) != -1) {
 		switch (c) {
