@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.39 2003/12/27 19:21:05 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.40 2003/12/27 23:58:40 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
