@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile,v 1.234.2.19 2003/04/16 09:59:40 ru Exp $
-# $DragonFly: src/Makefile,v 1.5 2004/03/22 20:57:17 dillon Exp $
+# $DragonFly: src/Makefile,v 1.6 2004/04/02 06:21:36 dillon Exp $
 #
 # The user-driven targets are:
 #
@@ -12,6 +12,7 @@
 # installworld        - Install everything built by "buildworld".
 # world               - buildworld + installworld.
 # buildkernel         - Rebuild the kernel and the kernel-modules.
+# nativekernel        - Rebuild the kernel using native tools via config.
 # installkernel       - Install the kernel and the kernel-modules.
 # reinstallkernel     - Reinstall the kernel and the kernel-modules.
 # kernel              - buildkernel + installkernel.
@@ -95,7 +96,7 @@ TGTS=	all all-man buildkernel buildworld crossworld quickworld \
 	cleandepend cleandir depend distribute distributeworld everything \
 	hierarchy install installcheck installkernel \
 	reinstallkernel installmost installworld libraries lint maninstall \
-	mk most obj objlink regress rerelease tags update
+	mk most nativekernel obj objlink regress rerelease tags update
 
 BITGTS=	files includes
 BITGTS:=${BITGTS} ${BITGTS:S/^/build/} ${BITGTS:S/^/install/}

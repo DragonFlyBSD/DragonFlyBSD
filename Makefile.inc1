@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.26 2004/03/25 20:52:43 dillon Exp $
+# $DragonFly: src/Makefile.inc1,v 1.27 2004/04/02 06:21:36 dillon Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -488,7 +488,15 @@ INSTALLKERNEL= ${_kernel}
 #
 # Builds all kernels defined by BUILDKERNELS.
 #
-buildkernel:
+check_buildworld_tools:
+	@if [ ! -f ${WORLDDEST}/.libraries_done ]; then \
+	    echo "You must buildworld before buildkernel.  If you wish"; \
+	    echo "to build a kernel using native tools, config it manually"; \
+	    echo "or use the nativekernel target if you are in a rush"; \
+	    exit 1; \
+	    fi
+
+buildkernel:	check_buildworld_tools
 .if empty(BUILDKERNELS)
 	@echo ">>> ERROR: Missing kernel configuration file(s) (${KERNCONF})."
 	@false
@@ -505,6 +513,9 @@ buildkernel:
 	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
 	@echo "--------------------------------------------------------------"
 	@echo "===> ${_kernel}"
+	@if [ -f ${KRNLOBJDIR}/${_kernel}/.nativekernel_run ]; then \
+		echo "REMOVING OLD NATIVEKERNEL BUILD"; \
+		rm -rf ${KRNLOBJDIR}/${_kernel}; fi
 	mkdir -p ${KRNLOBJDIR}
 .if !defined(NO_KERNELCONFIG)
 	cd ${KRNLCONFDIR}; \
@@ -512,6 +523,7 @@ buildkernel:
 		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
 			${KERNCONFDIR}/${_kernel}
 .endif
+	touch ${KRNLOBJDIR}/${_kernel}/.buildkernel_run
 .if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN)
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} -DNO_MODULES clean
@@ -529,6 +541,58 @@ buildkernel:
 .endif
 	cd ${KRNLOBJDIR}/${_kernel}; \
 	    ${KMAKEENV} ${MAKE} KERNEL=${INSTKERNNAME} all
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+.endfor
+
+# The nativekernel target is for when you are impatient and want to
+# build a kernel without building the world first.
+#
+nativekernel:
+.if empty(BUILDKERNELS)
+	@echo ">>> ERROR: Missing kernel configuration file(s) (${KERNCONF})."
+	@false
+.endif
+.if defined(KERNWARN)
+	@echo "--------------------------------------------------------------"
+	@echo ">>> WARNING: KERNEL= setting should be changed to KERNCONF="
+	@echo "--------------------------------------------------------------"
+	@sleep 3
+.endif
+	@echo
+.for _kernel in ${BUILDKERNELS}
+	@echo "--------------------------------------------------------------"
+	@echo ">>> Kernel build for ${_kernel} started on `LC_ALL=C date`"
+	@echo "--------------------------------------------------------------"
+	@echo "===> ${_kernel}"
+	@if [ -f ${KRNLOBJDIR}/${_kernel}/.buildkernel_run ]; then \
+		echo "REMOVING OLD BUILDKERNEL BUILD"; \
+		rm -rf ${KRNLOBJDIR}/${_kernel}; fi
+	mkdir -p ${KRNLOBJDIR}
+.if !defined(NO_KERNELCONFIG)
+	cd ${KRNLCONFDIR}; \
+		    config ${CONFIGARGS} -d ${KRNLOBJDIR}/${_kernel} \
+			${KERNCONFDIR}/${_kernel}
+.endif
+	touch ${KRNLOBJDIR}/${_kernel}/.nativekernel_run
+.if !defined(NOCLEAN) && !defined(NO_KERNELCLEAN)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} -DNO_MODULES clean
+.if !defined(MODULES_WITH_WORLD) && !defined(NO_MODULES) && exists(${KRNLSRCDIR}/modules)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} cleandir
+.endif
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    MAKESRCPATH=${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm \
+	    ${MAKE} -DBOOTSTRAPPING -f ${KRNLSRCDIR}/dev/disk/aic7xxx/aicasm/Makefile
+.if !defined(NO_KERNELDEPEND)
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} depend
+.endif
+	cd ${KRNLOBJDIR}/${_kernel}; \
+	    ${MAKE} KERNEL=${INSTKERNNAME} all
 	@echo "--------------------------------------------------------------"
 	@echo ">>> Kernel build for ${_kernel} completed on `LC_ALL=C date`"
 	@echo "--------------------------------------------------------------"
@@ -652,6 +716,7 @@ bootstrap-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
+	touch ${BTOOLSDEST}/.bootstrap_done
 
 # build-tools: Build special purpose build tools.  gcc2 related tools are
 # only built under the i386 architecture.  Other architectures are
@@ -711,6 +776,7 @@ build-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${BTOOLSDEST} install
 .endfor
+	touch ${BTOOLSDEST}/.build_done
 
 #
 # cross-tools: Build cross-building tools
@@ -734,6 +800,7 @@ cross-tools:
 		${MAKE} DIRPRFX=${_tool}/ all; \
 		${MAKE} DIRPRFX=${_tool}/ DESTDIR=${CTOOLSDEST} install
 .endfor
+	touch ${CTOOLSDEST}/.cross_done
 
 #
 # hierarchy - ensure that all the needed directories are present
@@ -758,6 +825,7 @@ libraries:
 	    ${MAKE} -f Makefile.inc1 _startup_libs; \
 	    ${MAKE} -f Makefile.inc1 _prebuild_libs; \
 	    ${MAKE} -f Makefile.inc1 _generic_libs;
+	touch ${WORLDDEST}/.libraries_done
 
 # These dependencies are not automatically generated:
 #
