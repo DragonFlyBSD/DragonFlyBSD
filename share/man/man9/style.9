@@ -44,7 +44,7 @@ is silent on an issue.
  *
  *	@(#)style	1.14 (Berkeley) 4/28/95
  * $FreeBSD: src/share/man/man9/style.9,v 1.32.2.19 2002/04/14 19:28:03 asmodai Exp $
- * $DragonFly: src/share/man/man9/style.9,v 1.16 2004/12/31 21:43:20 cpressey Exp $
+ * $DragonFly: src/share/man/man9/style.9,v 1.17 2005/01/28 09:46:31 okumoto Exp $
  */
 
 /*
@@ -600,6 +600,8 @@ not
 if (!*p)
 .Ed
 .Pp
+Do not cast the unused return value of a function to (void).
+.Pp
 Routines returning
 .Vt "void *"
 should not have their return values cast
@@ -716,7 +718,7 @@ placed in a single set of brackets.
 "usage: f [-a | -b] [-c [-dEe] [-n number]]\en"
 .Ed
 .Bd -literal
-	(void)fprintf(stderr, "usage: f [-ab]\en");
+	fprintf(stderr, "usage: f [-ab]\en");
 	exit(EX_USAGE);
 }
 .Ed
