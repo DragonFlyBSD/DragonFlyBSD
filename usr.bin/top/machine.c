@@ -21,7 +21,7 @@
  *          Hiten Pandya <hmp@backplane.com>
  *
  * $FreeBSD: src/usr.bin/top/machine.c,v 1.29.2.2 2001/07/31 20:27:05 tmm Exp $
- * $DragonFly: src/usr.bin/top/machine.c,v 1.11 2004/05/29 05:11:15 hmp Exp $
+ * $DragonFly: src/usr.bin/top/machine.c,v 1.12 2004/06/04 11:21:53 hmp Exp $
  */
 
 
@@ -471,6 +471,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
     int show_idle;
     int show_self;
     int show_system;
+    int show_only_threads;
     int show_uid;
     int show_command;
 
@@ -491,6 +492,7 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
     show_self = sel->self;
     show_system = sel->system;
     show_threads = sel->threads;
+    show_only_threads = sel->only_threads;
     show_uid = sel->uid != -1;
     show_command = sel->command != NULL;
 
@@ -508,17 +510,17 @@ caddr_t get_process_info(struct system_info *si, struct process_select *sel,
 	 *  processes---these get ignored unless show_sysprocs is set.
 	 */
 	if ((show_threads && (TP(pp, td_proc) == NULL)) ||
-	    PP(pp, p_stat) != 0 &&
+	    (!show_only_threads && (PP(pp, p_stat) != 0 &&
 	    (show_self != PP(pp, p_pid)) &&
-	    (show_system || ((PP(pp, p_flag) & P_SYSTEM) == 0)))
+	    (show_system || ((PP(pp, p_flag) & P_SYSTEM) == 0)))))
 	{
 	    total_procs++;
 	    process_states[(unsigned char) PP(pp, p_stat)]++;
 	    if ((show_threads && (TP(pp, td_proc) == NULL)) ||
-		(PP(pp, p_stat) != SZOMB) &&
+		(!show_only_threads && (PP(pp, p_stat) != SZOMB) &&
 		(show_idle || (PP(pp, p_pctcpu) != 0) ||
 		 (PP(pp, p_stat) == SRUN)) &&
-		(!show_uid || EP(pp, e_ucred.cr_ruid) == (uid_t)sel->uid))
+		(!show_uid || EP(pp, e_ucred.cr_ruid) == (uid_t)sel->uid)))
 	    {
 		*prefp++ = pp;
 		active_procs++;
