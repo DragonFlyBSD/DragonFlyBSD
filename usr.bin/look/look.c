@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)look.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/look/look.c,v 1.11 1999/08/28 01:03:14 peter Exp $
- * $DragonFly: src/usr.bin/look/look.c,v 1.3 2003/10/04 20:36:48 hmp Exp $
+ * $DragonFly: src/usr.bin/look/look.c,v 1.4 2005/01/07 02:43:41 cpressey Exp $
  */
 
 /*
@@ -94,9 +94,10 @@ main(int argc, char **argv)
 {
 	struct stat sb;
 	int ch, fd, termchar, match;
-	unsigned char *back, *file, *front, *string, *p;
+	unsigned char *back, *front, *string, *p;
+	const unsigned char *file;
 
-	(void) setlocale(LC_CTYPE, "");
+	setlocale(LC_CTYPE, "");
 
 	file = _PATH_WORDS;
 	termchar = '\0';
@@ -148,11 +149,11 @@ main(int argc, char **argv)
 int
 look(unsigned char *string, unsigned char *front, unsigned char *back)
 {
-	register int ch;
-	register unsigned char *readp, *writep;
+	int ch;
+	unsigned char *readp, *writep;
 
 	/* Reformat string string to avoid doing it multiple times later. */
-	for (readp = writep = string; ch = *readp++;) {
+	for (readp = writep = string; (ch = *readp++) != '\0';) {
 		if (fflag)
 			ch = FOLD(ch);
 		if (dflag)
@@ -213,10 +214,10 @@ look(unsigned char *string, unsigned char *front, unsigned char *back)
 	while (p < back && *p++ != '\n');
 
 char *
-binary_search(register unsigned char *string, register unsigned char *front,
-              register unsigned char *back)
+binary_search(unsigned char *string, unsigned char *front,
+              unsigned char *back)
 {
-	register unsigned char *p;
+	unsigned char *p;
 
 	p = front + (back - front) / 2;
 	SKIP_PAST_NEWLINE(p, back);
@@ -270,8 +271,8 @@ linear_search(unsigned char *string, unsigned char *front, unsigned char *back)
  * Print as many lines as match string, starting at front.
  */
 void
-print_from(register unsigned char *string, register unsigned char *front,
-           register unsigned char *back)
+print_from(unsigned char *string, unsigned char *front,
+           unsigned char *back)
 {
 	for (; front < back && compare(string, front, back) == EQUAL; ++front) {
 		for (; front < back && *front != '\n'; ++front)
@@ -296,10 +297,10 @@ print_from(register unsigned char *string, register unsigned char *front,
  * "back" terminated).
  */
 int
-compare(register unsigned char *s1, register unsigned char *s2,
-        register unsigned char *back)
+compare(unsigned char *s1, unsigned char *s2,
+        unsigned char *back)
 {
-	register int ch;
+	int ch;
 
 	for (; *s1 && s2 < back && *s2 != '\n'; ++s1, ++s2) {
 		ch = *s2;
@@ -321,6 +322,6 @@ compare(register unsigned char *s1, register unsigned char *s2,
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: look [-df] [-t char] string [file ...]\n");
+	fprintf(stderr, "usage: look [-df] [-t char] string [file ...]\n");
 	exit(2);
 }
