@@ -10,7 +10,7 @@
  * config.c,v 3.8.4.10 1998/01/06 01:57:41 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/config.c,v 1.14 1999/08/28 01:17:03 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/config.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/config.c,v 1.3 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -23,11 +23,11 @@ struct ifconf ifc;
  * and install them in the uvifs array.
  */
 void
-config_vifs_from_kernel()
+config_vifs_from_kernel(void)
 {
     struct ifreq *ifrp, *ifend;
-    register struct uvif *v;
-    register vifi_t vifi;
+    struct uvif *v;
+    vifi_t vifi;
     int n;
     u_int32 addr, mask, subnet;
     short flags;

@@ -10,7 +10,7 @@
  * main.c,v 3.8.4.29 1998/03/01 01:49:00 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/main.c,v 1.16.2.4 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 /*
@@ -123,9 +123,7 @@ static void usage(void);
 int main(int argc, char **argv);
 
 int
-register_input_handler(fd, func)
-    int fd;
-    ihfunc_t func;
+register_input_handler(int fd, ihfunc_t func)
 {
     if (nhandlers >= NHANDLERS)
 	return -1;
@@ -137,11 +135,9 @@ register_input_handler(fd, func)
 }
 
 int
-main(argc, argv)
-    int argc;
-    char *argv[];
+main(int argc, char **argv)
 {
-    register int recvlen;
+    int recvlen;
     int dummy;
     FILE *fp;
     struct timeval tv, difftime, curtime, lasttime, *timeout;
@@ -435,7 +431,7 @@ main(argc, argv)
 	    timeout->tv_usec = 0;
 	}
 #ifdef SNMP
-   THIS IS BROKEN
+#error "THIS IS BROKEN"
    if (nvp->tv_sec > svp->tv_sec
        || (nvp->tv_sec == svp->tv_sec && nvp->tv_usec > svp->tv_usec)){
        alarmTimer(nvp);
@@ -502,7 +498,7 @@ main(argc, argv)
 	}
 
 #ifdef SNMP
-	THIS IS BROKEN
+#error "THIS IS BROKEN"
 	snmp_read(&rfds); 
 	snmp_timeout(); /* poll */
 #endif
@@ -553,7 +549,7 @@ main(argc, argv)
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr,
 		"usage: mrouted [-p] [-c configfile] [-d [debug_level]]\n");
@@ -561,8 +557,7 @@ usage()
 }
 
 static void
-final_init(i)
-    void *i;
+final_init(void *i)
 {
     char *s = (char *)i;
 
@@ -590,20 +585,19 @@ final_init(i)
  * do all the other time-based processing.
  */
 static void
-fasttimer(i)
-    void *i;
+fasttimer(void *i)
 {
     static unsigned int tlast;
     static unsigned int nsent;
-    register unsigned int t = tlast + 1;
-    register int n;
+    unsigned int t = tlast + 1;
+    int n;
 
     /*
      * if we're in the last second, send everything that's left.
      * otherwise send at least the fraction we should have sent by now.
      */
     if (t >= ROUTE_REPORT_INTERVAL) {
-	register int nleft = nroutes - nsent;
+	int nleft = nroutes - nsent;
 	while (nleft > 0) {
 	    if ((n = report_next_chunk()) <= 0)
 		break;
@@ -612,7 +606,7 @@ fasttimer(i)
 	tlast = 0;
 	nsent = 0;
     } else {
-	register unsigned int ncum = nroutes * t / ROUTE_REPORT_INTERVAL;
+	unsigned int ncum = nroutes * t / ROUTE_REPORT_INTERVAL;
 	while (nsent < ncum) {
 	    if ((n = report_next_chunk()) <= 0)
 		break;
@@ -650,8 +644,7 @@ u_long virtual_time = 0;
  * virtual interface data structures.
  */
 static void
-timer(i)
-    void *i;
+timer(void *i)
 {
     age_routes();	/* Advance the timers in the route entries     */
     age_vifs();		/* Advance the timers for neighbors */
@@ -701,7 +694,7 @@ timer(i)
 
 
 static void
-cleanup()
+cleanup(void)
 {
     static in_cleanup = 0;
 
@@ -722,8 +715,7 @@ cleanup()
  * so that the main loop can take care of it.
  */
 static void
-handler(sig)
-    int sig;
+handler(int sig)
 {
     switch (sig) {
 	case SIGINT:
@@ -749,15 +741,14 @@ handler(sig)
  * Dump internal data structures to stderr.
  */
 static void
-dump()
+dump(void)
 {
     dump_vifs(stderr);
     dump_routes(stderr);
 }
 
 static void
-dump_version(fp)
-    FILE *fp;
+dump_version(FILE *fp)
 {
     time_t t;
 
@@ -775,7 +766,7 @@ dump_version(fp)
  * Dump internal data structures to a file.
  */
 static void
-fdump()
+fdump(void)
 {
     FILE *fp;
 
@@ -793,7 +784,7 @@ fdump()
  * Dump local cache contents to a file.
  */
 static void
-cdump()
+cdump(void)
 {
     FILE *fp;
 
@@ -810,7 +801,7 @@ cdump()
  * Restart mrouted
  */
 static void
-restart()
+restart(void)
 {
     char *s;
 
@@ -853,8 +844,7 @@ restart()
 static int log_nmsgs = 0;
 
 static void
-resetlogging(arg)
-    void *arg;
+resetlogging(void *arg)
 {
     int nxttime = 60;
     void *narg = NULL;
@@ -872,8 +862,7 @@ resetlogging(arg)
 }
 
 char *
-scaletime(t)
-    u_long t;
+scaletime(u_long t)
 {
 #define SCALETIMEBUFLEN 20
     static char buf1[20];
@@ -900,7 +889,7 @@ char *logmsg[NLOGMSGS];
 static int logmsgno = 0;
 
 void
-printringbuf()
+printringbuf(void)
 {
     FILE *f;
     int i;
@@ -931,7 +920,7 @@ printringbuf()
  * according to the severity of the message and the current debug level.
  * For errors of severity LOG_ERR or worse, terminate the program.
  */
-#ifdef __STDC__
+
 void
 log(int severity, int syserr, char *format, ...)
 {
@@ -946,27 +935,6 @@ log(int severity, int syserr, char *format, ...)
 #endif
 
     va_start(ap, format);
-#else
-/*VARARGS3*/
-void
-log(severity, syserr, format, va_alist)
-    int severity, syserr;
-    char *format;
-    va_dcl
-{
-    va_list ap;
-    static char fmt[311] = "warning - ";
-    char *msg;
-    char tbuf[20];
-    struct timeval now;
-    time_t now_sec;
-    struct tm *thyme;
-#ifdef RINGBUFFER
-    static int ringbufinit = 0;
-#endif
-
-    va_start(ap);
-#endif
     vsnprintf(&fmt[10], sizeof(fmt) - 10, format, ap);
     va_end(ap);
     msg = (severity == LOG_WARNING) ? fmt : &fmt[10];
@@ -1037,9 +1005,7 @@ log(severity, syserr, format, va_alist)
 
 #ifdef DEBUG_MFC
 void
-md_log(what, origin, mcastgrp)
-    int what;
-    u_int32 origin, mcastgrp;
+md_log(int what, u_int32 origin, u_int32 mcastgrp)
 {
     static FILE *f = NULL;
     struct timeval tv;

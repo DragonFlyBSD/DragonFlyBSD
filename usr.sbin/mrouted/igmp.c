@@ -10,7 +10,7 @@
  * igmp.c,v 3.8.4.19 1998/01/06 01:57:43 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/igmp.c,v 1.16 1999/08/28 01:17:04 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/igmp.c,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/igmp.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -37,7 +37,7 @@ static int	igmp_log_level(u_int type, u_int code);
  * IP header fields in the output packet buffer.
  */
 void
-init_igmp()
+init_igmp(void)
 {
     struct ip *ip;
 
@@ -81,8 +81,7 @@ init_igmp()
 #define PIM_GRAFT_ACK    7
 
 char *
-igmp_packet_kind(type, code)
-     u_int type, code;
+igmp_packet_kind(u_int type, u_int code)
 {
     static char unknown[20];
 
@@ -131,8 +130,7 @@ igmp_packet_kind(type, code)
 }
 
 int
-igmp_debug_kind(type, code)
-     u_int type, code;
+igmp_debug_kind(u_int type, u_int code)
 {
     switch (type) {
 	case IGMP_MEMBERSHIP_QUERY:		return DEBUG_IGMP;
@@ -177,10 +175,9 @@ igmp_debug_kind(type, code)
  * packet buffer.
  */
 void
-accept_igmp(recvlen)
-    int recvlen;
+accept_igmp(int recvlen)
 {
-    register u_int32 src, dst, group;
+    u_int32 src, dst, group;
     struct ip *ip;
     struct igmp *igmp;
     int ipdatalen, iphdrlen, igmpdatalen;
@@ -339,8 +336,7 @@ accept_igmp(recvlen)
  * reachability and someone is trying to, i.e., mrinfo me periodically.
  */
 static int
-igmp_log_level(type, code)
-    u_int type, code;
+igmp_log_level(u_int type, u_int code)
 {
     switch (type) {
 	case IGMP_MTRACE_RESP:
@@ -361,11 +357,8 @@ igmp_log_level(type, code)
  * have already placed data in that buffer, of length 'datalen'.
  */
 void
-build_igmp(src, dst, type, code, group, datalen)
-    u_int32 src, dst;
-    int type, code;
-    u_int32 group;
-    int datalen;
+build_igmp(u_int32 src, u_int32 dst, int type, int code, u_int32 group,
+	   int datalen)
 {
     struct ip *ip;
     struct igmp *igmp;
@@ -399,11 +392,8 @@ build_igmp(src, dst, type, code, group, datalen)
  * destination 'dst'.
  */
 void
-send_igmp(src, dst, type, code, group, datalen)
-    u_int32 src, dst;
-    int type, code;
-    u_int32 group;
-    int datalen;
+send_igmp(u_int32 src, u_int32 dst, int type, int code, u_int32 group,
+	  int datalen)
 {
     struct sockaddr_in sdst;
     int setloop = 0;

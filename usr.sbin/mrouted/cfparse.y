@@ -5,15 +5,11 @@
  * Written by Bill Fenner, NRL, 1994
  *
  * $FreeBSD: src/usr.sbin/mrouted/cfparse.y,v 1.10.2.2 2001/07/19 01:41:11 kris Exp $
- * $DragonFly: src/usr.sbin/mrouted/cfparse.y,v 1.3 2003/11/03 19:31:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/cfparse.y,v 1.4 2004/03/15 18:10:28 dillon Exp $
  * cfparse.y,v 3.8.4.30 1998/03/01 01:48:58 fenner Exp
  */
 #include <stdio.h>
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include "defs.h"
 #include <netdb.h>
 
@@ -654,7 +650,6 @@ filtelem	: ADDRMASK	{
 
 				}
 %%
-#ifdef __STDC__
 static void
 fatal(char *fmt, ...)
 {
@@ -662,25 +657,12 @@ fatal(char *fmt, ...)
 	char buf[MAXHOSTNAMELEN + 100];
 
 	va_start(ap, fmt);
-#else
-/*VARARGS1*/
-static void
-fatal(fmt, va_alist)
-char *fmt;
-va_dcl
-{
-	va_list ap;
-	char buf[MAXHOSTNAMELEN + 100];
-
-	va_start(ap);
-#endif
 	vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
 	log(LOG_ERR,0,"%s: %s near line %d", configfilename, buf, lineno);
 }
 
-#ifdef __STDC__
 static void
 warn(char *fmt, ...)
 {
@@ -688,18 +670,6 @@ warn(char *fmt, ...)
 	char buf[200];
 
 	va_start(ap, fmt);
-#else
-/*VARARGS1*/
-static void
-warn(fmt, va_alist)
-char *fmt;
-va_dcl
-{
-	va_list ap;
-	char buf[200];
-
-	va_start(ap);
-#endif
 	vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
 
@@ -707,14 +677,13 @@ va_dcl
 }
 
 static void
-yyerror(s)
-char *s;
+yyerror(char *s)
 {
 	log(LOG_ERR, 0, "%s: %s near line %d", configfilename, s, lineno);
 }
 
 static char *
-next_word()
+next_word(void)
 {
 	static char buf[1024];
 	static char *p=NULL;
@@ -810,7 +779,7 @@ static struct keyword {
 
 
 static int
-yylex()
+yylex(void)
 {
 	int n;
 	u_int32 addr;
@@ -874,7 +843,7 @@ yylex()
 }
 
 void
-config_vifs_from_file()
+config_vifs_from_file(void)
 {
 	order = 0;
 	state = 0;
@@ -893,11 +862,10 @@ config_vifs_from_file()
 }
 
 static u_int32
-valid_if(s)
-char *s;
+valid_if(char *s)
 {
-	register vifi_t vifi;
-	register struct uvif *v;
+	vifi_t vifi;
+	struct uvif *v;
 
 	for (vifi=0, v=uvifs; vifi<numvifs; vifi++, v++)
 	    if (!strcmp(v->uv_name, s))
@@ -907,9 +875,7 @@ char *s;
 }
 
 static struct ifreq *
-ifconfaddr(ifcp, a)
-    struct ifconf *ifcp;
-    u_int32 a;
+ifconfaddr(struct ifconf *ifcp, u_int32 a)
 {
     int n;
     struct ifreq *ifrp = (struct ifreq *)ifcp->ifc_buf;

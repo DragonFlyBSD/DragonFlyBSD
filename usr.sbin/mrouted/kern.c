@@ -10,16 +10,15 @@
  * kern.c,v 3.8.4.10 1998/01/06 02:00:51 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/kern.c,v 1.12 1999/08/28 01:17:04 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/kern.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/kern.c,v 1.3 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include "defs.h"
 
 int curttl = 0;
 
-void k_set_rcvbuf(bufsize, minsize)
-    int bufsize;
-    int minsize;
+void
+k_set_rcvbuf(int bufsize, int minsize)
 {
     int delta = bufsize / 2;
     int iter = 0;
@@ -58,9 +57,8 @@ void k_set_rcvbuf(bufsize, minsize)
 	    bufsize, iter);
 }
 
-
-void k_hdr_include(bool)
-    int bool;
+void
+k_hdr_include(int bool)
 {
 #ifdef IP_HDRINCL
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_HDRINCL,
@@ -69,9 +67,8 @@ void k_hdr_include(bool)
 #endif
 }
 
-
-void k_set_ttl(t)
-    int t;
+void
+k_set_ttl(int t)
 {
 #ifndef RAW_OUTPUT_IS_RAW
     u_char ttl;
@@ -84,9 +81,8 @@ void k_set_ttl(t)
     curttl = t;
 }
 
-
-void k_set_loop(l)
-    int l;
+void
+k_set_loop(int l)
 {
     u_char loop;
 
@@ -96,9 +92,8 @@ void k_set_loop(l)
 	log(LOG_ERR, errno, "setsockopt IP_MULTICAST_LOOP %u", loop);
 }
 
-
-void k_set_if(ifa)
-    u_int32 ifa;
+void
+k_set_if(u_int32 ifa)
 {
     struct in_addr adr;
 
@@ -109,10 +104,8 @@ void k_set_if(ifa)
 	    		    inet_fmt(ifa, s1));
 }
 
-
-void k_join(grp, ifa)
-    u_int32 grp;
-    u_int32 ifa;
+void
+k_join(u_int32 grp, u_int32 ifa)
 {
     struct ip_mreq mreq;
 
@@ -125,10 +118,8 @@ void k_join(grp, ifa)
 				inet_fmt(grp, s1), inet_fmt(ifa, s2));
 }
 
-
-void k_leave(grp, ifa)
-    u_int32 grp;
-    u_int32 ifa;
+void
+k_leave(u_int32 grp, u_int32 ifa)
 {
     struct ip_mreq mreq;
 
@@ -141,8 +132,8 @@ void k_leave(grp, ifa)
 				inet_fmt(grp, s1), inet_fmt(ifa, s2));
 }
 
-
-void k_init_dvmrp()
+void
+k_init_dvmrp(void)
 {
 #ifdef OLD_KERNEL
     if (setsockopt(igmp_socket, IPPROTO_IP, MRT_INIT,
@@ -156,18 +147,16 @@ void k_init_dvmrp()
 	log(LOG_ERR, errno, "can't enable Multicast routing in kernel");
 }
 
-
-void k_stop_dvmrp()
+void
+k_stop_dvmrp(void)
 {
     if (setsockopt(igmp_socket, IPPROTO_IP, MRT_DONE,
 		   (char *)NULL, 0) < 0)
 	log(LOG_WARNING, errno, "can't disable Multicast routing in kernel");
 }
 
-
-void k_add_vif(vifi, v)
-    vifi_t vifi;
-    struct uvif *v;
+void 
+k_add_vif(vifi_t vifi, struct uvif *v)
 {
     struct vifctl vc;
 
@@ -183,22 +172,20 @@ void k_add_vif(vifi, v)
 	log(LOG_ERR, errno, "setsockopt MRT_ADD_VIF on vif %d", vifi);
 }
 
-
-void k_del_vif(vifi)
-    vifi_t vifi;
+void
+k_del_vif(vifi_t vifi)
 {
+
     if (setsockopt(igmp_socket, IPPROTO_IP, MRT_DEL_VIF,
 		   (char *)&vifi, sizeof(vifi)) < 0)
 	log(LOG_ERR, errno, "setsockopt MRT_DEL_VIF on vif %d", vifi);
 }
 
-
 /*
  * Adds a (source, mcastgrp) entry to the kernel
  */
-void k_add_rg(origin, g)
-    u_int32 origin;
-    struct gtable *g;
+void
+k_add_rg(u_int32 origin, struct gtable *g)
 {
     struct mfcctl mc;
     vifi_t i;
@@ -231,9 +218,8 @@ void k_add_rg(origin, g)
 /*
  * Deletes a (source, mcastgrp) entry from the kernel
  */
-int k_del_rg(origin, g)
-    u_int32 origin;
-    struct gtable *g;
+int
+k_del_rg(u_int32 origin, struct gtable *g)
 {
     struct mfcctl mc;
     int retval;
@@ -264,7 +250,8 @@ int k_del_rg(origin, g)
 /*
  * Get the kernel's idea of what version of mrouted needs to run with it.
  */
-int k_get_version()
+int
+k_get_version(void)
 {
 #ifdef OLD_KERNEL
     return -1;
@@ -280,63 +267,3 @@ int k_get_version()
     return vers;
 #endif
 }
-
-#if 0
-/*
- * Get packet counters
- */
-int
-k_get_vif_count(vifi, icount, ocount, ibytes, obytes)
-    vifi_t vifi;
-    int *icount, *ocount, *ibytes, *obytes;
-{
-    struct sioc_vif_req vreq;
-    int retval = 0;
-
-    vreq.vifi = vifi;
-    if (ioctl(udp_socket, SIOCGETVIFCNT, (char *)&vreq) < 0) {
-	log(LOG_WARNING, errno, "SIOCGETVIFCNT on vif %d", vifi);
-	vreq.icount = vreq.ocount = vreq.ibytes =
-		vreq.obytes = 0xffffffff;
-	retval = 1;
-    }
-    if (icount)
-	*icount = vreq.icount;
-    if (ocount)
-	*ocount = vreq.ocount;
-    if (ibytes)
-	*ibytes = vreq.ibytes;
-    if (obytes)
-	*obytes = vreq.obytes;
-    return retval;
-}
-
-/*
- * Get counters for a desired source and group.
- */
-int
-k_get_sg_count(src, grp, pktcnt, bytecnt, wrong_if)
-    u_int32 src;
-    u_int32 grp;
-    struct sg_count *retval;
-{
-    struct sioc_sg_req sgreq;
-    int retval = 0;
-
-    sgreq.src.s_addr = src;
-    sgreq.grp.s_addr = grp;
-    if (ioctl(udp_socket, SIOCGETSGCNT, (char *)&sgreq) < 0) {
-	log(LOG_WARNING, errno, "SIOCGETSGCNT on (%s %s)",
-	    inet_fmt(src, s1), inet_fmt(grp, s2));
-	sgreq.pktcnt = sgreq.bytecnt = sgreq.wrong_if = 0xffffffff;
-	return 1;
-    }
-    if (pktcnt)
-    	*pktcnt = sgreq.pktcnt;
-    if (bytecnt)
-    	*bytecnt = sgreq.bytecnt;
-    if (wrong_if)
-    	*wrong_if = sgreq.wrong_if;
-    return retval;
-}
-#endif

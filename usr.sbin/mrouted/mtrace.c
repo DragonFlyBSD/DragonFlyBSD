@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.5 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include <ctype.h>
@@ -137,11 +137,7 @@
 #include <sys/sockio.h>
 #endif
 #include <arpa/inet.h>
-#ifdef __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #ifdef SUNOS5
 #include <sys/systeminfo.h>
 #endif
@@ -149,7 +145,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.4 2003/11/06 19:46:42 eirikn Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.5 2004/03/15 18:10:28 dillon Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -359,7 +355,7 @@ int			path_changed(struct resp_buf *base,
 					struct resp_buf *new);
 void			check_vif_state(void);
 
-int			main(int argc, char *argv[]);
+int			main(int argc, char **argv);
 void			log(int, int, char *, ...);
 static void		usage(void);
 
@@ -369,7 +365,7 @@ static void		usage(void);
  * IP header fields in the output packet buffer.
  */
 void
-init_igmp()
+init_igmp(void)
 {
     struct ip *ip;
 
@@ -409,7 +405,7 @@ init_igmp()
 
 #ifdef SUNOS5
 void
-checkforsolarisbug()
+checkforsolarisbug(void)
 {
     u_int32 localhost = htonl(0x7f000001);
 
@@ -478,11 +474,8 @@ checkforsolarisbug()
  * the message from the interface with IP address 'src' to destination 'dst'.
  */
 void
-send_igmp(src, dst, type, code, group, datalen)
-    u_int32 src, dst;
-    int type, code;
-    u_int32 group;
-    int datalen;
+send_igmp(u_int32 src, u_int32 dst, int type, int code, u_int32 group,
+	  int datalen)
 {
     struct sockaddr_in sdst;
     struct ip *ip;
@@ -579,14 +572,12 @@ send_igmp(src, dst, type, code, group, datalen)
  *
  */
 int
-inet_cksum(addr, len)
-	u_short *addr;
-	u_int len;
+inet_cksum(u_short *addr, u_int len)
 {
-	register int nleft = (int)len;
-	register u_short *w = addr;
+	int nleft = (int)len;
+	u_short *w = addr;
 	u_short answer = 0;
-	register int sum = 0;
+	int sum = 0;
 
 	/*
 	 *  Our algorithm is simple, using a 32 bit accumulator (sum),
@@ -615,8 +606,7 @@ inet_cksum(addr, len)
 }
 
 void
-k_set_rcvbuf(bufsize)
-    int bufsize;
+k_set_rcvbuf(int bufsize)
 {
     if (setsockopt(igmp_socket, SOL_SOCKET, SO_RCVBUF,
 		   (char *)&bufsize, sizeof(bufsize)) < 0)
@@ -625,8 +615,7 @@ k_set_rcvbuf(bufsize)
 
 
 void
-k_hdr_include(bool)
-    int bool;
+k_hdr_include(int bool)
 {
 #ifdef IP_HDRINCL
     if (setsockopt(igmp_socket, IPPROTO_IP, IP_HDRINCL,
@@ -636,8 +625,7 @@ k_hdr_include(bool)
 }
 
 void
-k_set_ttl(t)
-    int t;
+k_set_ttl(int t)
 {
     u_char ttl;
 
@@ -649,8 +637,7 @@ k_set_ttl(t)
 
 
 void
-k_set_loop(l)
-    int l;
+k_set_loop(int l)
 {
     u_char loop;
 
@@ -661,8 +648,7 @@ k_set_loop(l)
 }
 
 void
-k_set_if(ifa)
-    u_int32 ifa;
+k_set_if(u_int32 ifa)
 {
     struct in_addr adr;
 
@@ -674,9 +660,7 @@ k_set_if(ifa)
 }
 
 void
-k_join(grp, ifa)
-    u_int32 grp;
-    u_int32 ifa;
+k_join(u_int32 grp, u_int32 ifa)
 {
     struct ip_mreq mreq;
 
@@ -691,9 +675,7 @@ k_join(grp, ifa)
 
 
 void
-k_leave(grp, ifa)
-    u_int32 grp;
-    u_int32 ifa;
+k_leave(u_int32 grp, u_int32 ifa)
 {
     struct ip_mreq mreq;
 
@@ -710,11 +692,9 @@ k_leave(grp, ifa)
  * Convert an IP address in u_long (network) format into a printable string.
  */
 char *
-inet_fmt(addr, s)
-    u_int32 addr;
-    char *s;
+inet_fmt(u_int32 addr, char *s)
 {
-    register u_char *a;
+    u_char *a;
 
     a = (u_char *)&addr;
     sprintf(s, "%u.%u.%u.%u", a[0], a[1], a[2], a[3]);
@@ -727,11 +707,9 @@ inet_fmt(addr, s)
  * string including the netmask as a number of bits.
  */
 char *
-inet_fmts(addr, mask, s)
-    u_int32 addr, mask;
-    char *s;
+inet_fmts(u_int32 addr, u_int32 mask, char *s)
 {
-    register u_char *a, *m;
+    u_char *a, *m;
     int bits;
 
     if ((addr == 0) && (mask == 0)) {
@@ -764,8 +742,7 @@ inet_name(addr)
 
 
 u_int32 
-host_addr(name)
-    char   *name;
+host_addr(char *name)
 {
     struct hostent *e = (struct hostent *)0;
     u_int32  addr;
@@ -809,8 +786,7 @@ host_addr(name)
 
 
 char *
-proto_type(type)
-    u_int type;
+proto_type(u_int type)
 {
     static char buf[80];
 
@@ -847,8 +823,7 @@ proto_type(type)
 
 
 char *
-flag_type(type)
-    u_int type;
+flag_type(u_int type)
 {
     static char buf[80];
 
@@ -893,9 +868,7 @@ flag_type(type)
  * address is valid.
  */
 u_int32
-get_netmask(s, dst)
-    int s;
-    u_int32 *dst;
+get_netmask(int s, u_int32 *dst)
 {
     unsigned int n;
     struct ifconf ifc;
@@ -986,8 +959,7 @@ get_netmask(s, dst)
  * Try to pick a TTL that will get past all the thresholds in the path.
  */
 int
-get_ttl(buf)
-    struct resp_buf *buf;
+get_ttl(struct resp_buf *buf)
 {
     int rno;
     struct tr_resp *b;
@@ -1014,8 +986,7 @@ get_ttl(buf)
  * the result in milliseconds.
  */
 int
-t_diff(a, b)
-    u_long a, b;
+t_diff(u_long a, u_long b)
 {
     int d = a - b;
 
@@ -1026,8 +997,7 @@ t_diff(a, b)
  * Swap bytes for poor little-endian machines that don't byte-swap
  */
 u_long
-byteswap(v)
-    u_long v;
+byteswap(u_long v)
 {
     return ((v << 24) | ((v & 0xff00) << 8) |
 	    ((v >> 8) & 0xff00) | (v >> 24));
@@ -1039,15 +1009,9 @@ byteswap(v)
  * XXX since dst doesn't get passed through?
  */
 int
-neighbors_callback(tmo, buf, buflen, igmp, igmplen, addr, addrlen, ts)
-    int tmo;
-    u_char *buf;
-    int buflen;
-    struct igmp *igmp;
-    int igmplen;
-    struct sockaddr *addr;
-    int *addrlen;
-    struct timeval *ts;
+neighbors_callback(int tmo, u_char *buf, int buflen, struct igmp *igmp,
+		   int igmplen, struct sockaddr *addr, int *addrlen,
+		   struct timeval *ts)
 {
     int len;
     u_int32 dst;
@@ -1084,15 +1048,9 @@ neighbors_callback(tmo, buf, buflen, igmp, igmplen, addr, addrlen, ts)
 #endif
 
 int
-mtrace_callback(tmo, buf, buflen, igmp, igmplen, addr, addrlen, ts)
-    int tmo;
-    u_char *buf;
-    int buflen;
-    struct igmp *igmp;
-    int igmplen;
-    struct sockaddr *addr;
-    int *addrlen;
-    struct timeval *ts;
+mtrace_callback(int tmo, u_char *buf, int buflen, struct igmp *igmp,
+		int igmplen, struct sockaddr *addr, int *addrlen,
+		struct timeval *ts)
 {
     static u_char *savbuf = NULL;
     static int savbuflen;
@@ -1173,11 +1131,8 @@ mtrace_callback(tmo, buf, buflen, igmp, igmplen, addr, addrlen, ts)
 }
 
 int
-send_recv(dst, type, code, tries, save, callback)
-    u_int32 dst;
-    int type, code, tries;
-    struct resp_buf *save;
-    callback_t callback;
+send_recv(u_int32 dst, int type, int code, int tries, struct resp_buf *save,
+	  callback_t callback)
 {
     fd_set  fds;
     struct timeval tq, tr, tv;
@@ -1468,7 +1423,7 @@ send_recv(dst, type, code, tries, save, callback)
  * it just snoops on what traces it can.
  */
 void
-passive_mode()
+passive_mode(void)
 {
     struct timeval tr;
     time_t tr_sec;
@@ -1692,8 +1647,7 @@ passive_mode()
 }
 
 char *
-print_host(addr)
-    u_int32 addr;
+print_host(u_int32 addr)
 {
     return print_host2(addr, 0);
 }
@@ -1705,8 +1659,7 @@ print_host(addr)
  * confusing but should be slightly more helpful than just a "?".
  */
 char *
-print_host2(addr1, addr2)
-    u_int32 addr1, addr2;
+print_host2(u_int32 addr1, u_int32 addr2)
 {
     char *name;
 
@@ -1725,10 +1678,7 @@ print_host2(addr1, addr2)
  * Print responses as received (reverse path from dst to src)
  */
 void
-print_trace(idx, buf, names)
-    int idx;
-    struct resp_buf *buf;
-    char **names;
+print_trace(int idx, struct resp_buf *buf, char **names)
 {
     struct tr_resp *r;
     char *name;
@@ -1777,9 +1727,7 @@ print_trace(idx, buf, names)
  * See what kind of router is the next hop
  */
 int
-what_kind(buf, why)
-    struct resp_buf *buf;
-    char *why;
+what_kind(struct resp_buf *buf, char *why)
 {
     u_int32 smask;
     int retval;
@@ -1831,12 +1779,13 @@ what_kind(buf, why)
 
 
 char *
-scale(hop)
-    int *hop;
+scale(int *hop)
 {
-    if (*hop > -1000 && *hop < 10000) return (" ms");
+    if (*hop > -1000 && *hop < 10000) 
+	    return (" ms");
     *hop /= 1000;
-    if (*hop > -1000 && *hop < 10000) return (" s ");
+    if (*hop > -1000 && *hop < 10000) 
+	    return (" s ");
     return ("s ");
 }
 
@@ -1849,10 +1798,7 @@ scale(hop)
 #define OUTS    2
 #define BOTH    3
 void
-stat_line(r, s, have_next, rst)
-    struct tr_resp *r, *s;
-    int have_next;
-    int *rst;
+stat_line(struct tr_resp *r, struct tr_resp *s, int have_next, int *rst)
 {
     int timediff = (ntohl(s->tr_qarr) - ntohl(r->tr_qarr)) >> 16;
     int v_lost, v_pct;
@@ -2043,9 +1989,8 @@ stat_line(r, s, have_next, rst)
  *     the long term?  (e.g. SAP)
  */
 void
-fixup_stats(base, prev, new, bugs)
-    struct resp_buf *base, *prev, *new;
-    int *bugs;
+fixup_stats(struct resp_buf *base, struct resp_buf *prev, struct resp_buf *new,
+	    int *bugs)
 {
     int rno = base->len;
     struct tr_resp *b = base->resps + rno;
@@ -2189,9 +2134,8 @@ fixup_stats(base, prev, new, bugs)
  * Check per-source losses along path and compare with threshold.
  */
 int
-check_thresh(thresh, base, prev, new)
-    int thresh;
-    struct resp_buf *base, *prev, *new;
+check_thresh(int thresh, struct resp_buf *base, struct resp_buf *prev,
+	     struct resp_buf *new)
 {
     int rno = base->len - 1;
     struct tr_resp *b = base->resps + rno;
@@ -2220,10 +2164,8 @@ check_thresh(thresh, base, prev, new)
  * Print responses with statistics for forward path (from src to dst)
  */
 int
-print_stats(base, prev, new, bugs, names)
-    struct resp_buf *base, *prev, *new;
-    int *bugs;
-    char **names;
+print_stats(struct resp_buf *base, struct resp_buf *prev, struct resp_buf *new,
+	    int *bugs, char **names)
 {
     int rtt, hop;
     char *ms;
@@ -2348,8 +2290,7 @@ print_stats(base, prev, new, bugs, names)
  * Determine whether or not the path has changed.
  */
 int
-path_changed(base, new)
-    struct resp_buf *base, *new;
+path_changed(struct resp_buf *base, struct resp_buf *new)
 {
     int rno = base->len - 1;
     struct tr_resp *b = base->resps + rno;
@@ -2375,9 +2316,7 @@ path_changed(base, new)
  ***************************************************************************/
 
 int
-main(argc, argv)
-int argc;
-char *argv[];
+main(int argc, char **argv)
 {
     int udp;
     struct sockaddr_in addr;
@@ -3104,7 +3043,7 @@ printandcontinue:
 }
 
 static void
-usage()
+usage(void)
 {
 	fprintf(stderr, "%s\n%s\n%s\n",
 	"usage: mtrace [-MUOPTWVlnpvs] [-e extra_hops] [-f first_hop] [-i if_addr]",
@@ -3114,7 +3053,7 @@ usage()
 }
 
 void
-check_vif_state()
+check_vif_state(void)
 {
     log(LOG_WARNING, errno, "sendto");
 }
@@ -3124,7 +3063,6 @@ check_vif_state()
  * of the message and the current debug level.  For errors of severity
  * LOG_ERR or worse, terminate the program.
  */
-#ifdef __STDC__
 void
 log(int severity, int syserr, char *format, ...)
 {
@@ -3132,19 +3070,6 @@ log(int severity, int syserr, char *format, ...)
 	char    fmt[100];
 
 	va_start(ap, format);
-#else
-/*VARARGS3*/
-void 
-log(severity, syserr, format, va_alist)
-	int     severity, syserr;
-	char   *format;
-	va_dcl
-{
-	va_list ap;
-	char    fmt[100];
-
-	va_start(ap);
-#endif
 
     switch (debug) {
 	case 0: if (severity > LOG_WARNING) return;

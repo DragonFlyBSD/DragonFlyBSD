@@ -10,7 +10,7 @@
  * inet.c,v 3.8.4.2 1998/01/06 01:57:44 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/inet.c,v 1.11 1999/08/28 01:17:04 peter Exp $
- * $DragonFly: src/usr.sbin/mrouted/inet.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/inet.c,v 1.3 2004/03/15 18:10:28 dillon Exp $
  */
 
 #include "defs.h"
@@ -30,10 +30,9 @@ char s4[19];
  * {subnet,-1}.)
  */
 int
-inet_valid_host(naddr)
-    u_int32 naddr;
+inet_valid_host(u_int32 naddr)
 {
-    register u_int32 addr;
+    u_int32 addr;
 
     addr = ntohl(naddr);
 
@@ -48,8 +47,7 @@ inet_valid_host(naddr)
  * a series of 0's with no discontiguous 1's.
  */
 int
-inet_valid_mask(mask)
-    u_int32 mask;
+inet_valid_mask(u_int32 mask)
 {
     if (~(((mask & -mask) - 1) | mask) != 0) {
 	/* Mask is not contiguous */
@@ -69,10 +67,9 @@ inet_valid_mask(mask)
  * are all 0.
  */
 int
-inet_valid_subnet(nsubnet, nmask)
-    u_int32 nsubnet, nmask;
+inet_valid_subnet(u_int32 nsubnet, u_int32 nmask)
 {
-    register u_int32 subnet, mask;
+    u_int32 subnet, mask;
 
     subnet = ntohl(nsubnet);
     mask   = ntohl(nmask);
@@ -108,11 +105,9 @@ inet_valid_subnet(nsubnet, nmask)
  * Convert an IP address in u_long (network) format into a printable string.
  */
 char *
-inet_fmt(addr, s)
-    u_int32 addr;
-    char *s;
+inet_fmt(u_int32 addr, char *s)
 {
-    register u_char *a;
+    u_char *a;
 
     a = (u_char *)&addr;
     sprintf(s, "%u.%u.%u.%u", a[0], a[1], a[2], a[3]);
@@ -125,11 +120,9 @@ inet_fmt(addr, s)
  * string including the netmask as a number of bits.
  */
 char *
-inet_fmts(addr, mask, s)
-    u_int32 addr, mask;
-    char *s;
+inet_fmts(u_int32 addr, u_int32 mask, char *s)
 {
-    register u_char *a, *m;
+    u_char *a, *m;
     int bits;
 
     if ((addr == 0) && (mask == 0)) {
@@ -156,9 +149,7 @@ inet_fmts(addr, mask, s)
  * with "255.255.255.255".)
  */
 u_int32
-inet_parse(s,n)
-    char *s;
-    int n;
+inet_parse(char *s, int n)
 {
     u_int32 a = 0;
     u_int a0 = 0, a1 = 0, a2 = 0, a3 = 0;
@@ -197,14 +188,12 @@ inet_parse(s,n)
  *
  */
 int
-inet_cksum(addr, len)
-	u_short *addr;
-	u_int len;
+inet_cksum(u_short *addr, u_int len)
 {
-	register int nleft = (int)len;
-	register u_short *w = addr;
+	int nleft = (int)len;
+	u_short *w = addr;
 	u_short answer = 0;
-	register int sum = 0;
+	int sum = 0;
 
 	/*
 	 *  Our algorithm is simple, using a 32 bit accumulator (sum),

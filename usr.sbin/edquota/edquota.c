@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.5 2004/02/25 11:28:58 joerg Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.6 2004/03/15 18:10:26 dillon Exp $
  */
 
 /*
@@ -319,10 +319,10 @@ getentry(const char *name, int quotatype)
  * Collect the requested quota information.
  */
 struct quotause *
-getprivs(register long id, int quotatype, char *fspath)
+getprivs(long id, int quotatype, char *fspath)
 {
-	register struct fstab *fs;
-	register struct quotause *qup, *quptail;
+	struct fstab *fs;
+	struct quotause *qup, *quptail;
 	struct quotause *quphead;
 	int qcmd, qupsize, fd;
 	char *qfpathname;
@@ -357,9 +357,9 @@ getprivs(register long id, int quotatype, char *fspath)
 				}
 				warnx("creating quota file %s", qfpathname);
 				sleep(3);
-				(void) fchown(fd, getuid(),
+				fchown(fd, getuid(),
 				    getentry(quotagroup, GRPQUOTA));
-				(void) fchmod(fd, 0640);
+				fchmod(fd, 0640);
 			}
 			lseek(fd, (long)(id * sizeof(struct dqblk)), L_SET);
 			switch (read(fd, &qup->dqblk, sizeof(struct dqblk))) {
@@ -402,7 +402,7 @@ getprivs(register long id, int quotatype, char *fspath)
 void
 putprivs(long id, int quotatype, struct quotause *quplist)
 {
-	register struct quotause *qup;
+	struct quotause *qup;
 	int qcmd, fd;
 
 	qcmd = QCMD(Q_SETQUOTA, quotatype);
@@ -412,9 +412,9 @@ putprivs(long id, int quotatype, struct quotause *quplist)
 		if ((fd = open(qup->qfname, O_WRONLY)) < 0) {
 			warn("%s", qup->qfname);
 		} else {
-			lseek(fd, (long)id * (long)sizeof (struct dqblk), 0);
-			if (write(fd, &qup->dqblk, sizeof (struct dqblk)) !=
-			    sizeof (struct dqblk)) {
+			lseek(fd, (long)id * (long)sizeof(struct dqblk), 0);
+			if (write(fd, &qup->dqblk, sizeof(struct dqblk)) !=
+			    sizeof(struct dqblk)) {
 				warn("%s", qup->qfname);
 			}
 			close(fd);
@@ -447,7 +447,7 @@ editit(char *tmpf)
 		return (0);
 	}
 	if (pid == 0) {
-		register const char *ed;
+		const char *ed;
 
 		sigsetmask(omask);
 		setgid(getgid());
@@ -470,7 +470,7 @@ editit(char *tmpf)
 int
 writeprivs(struct quotause *quplist, int outfd, char *name, int quotatype)
 {
-	register struct quotause *qup;
+	struct quotause *qup;
 	FILE *fd;
 
 	ftruncate(outfd, 0);
@@ -500,12 +500,12 @@ writeprivs(struct quotause *quplist, int outfd, char *name, int quotatype)
 int
 readprivs(struct quotause *quplist, char *inname)
 {
-	register struct quotause *qup;
+	struct quotause *qup;
 	FILE *fd;
 	unsigned long bhardlimit, bsoftlimit, curblocks;
 	unsigned long ihardlimit, isoftlimit, curinodes;
 	int cnt;
-	register char *cp;
+	char *cp;
 	struct dqblk dqblk;
 	char *fsp, line1[BUFSIZ], line2[BUFSIZ];
 
@@ -517,9 +517,9 @@ readprivs(struct quotause *quplist, char *inname)
 	/*
 	 * Discard title line, then read pairs of lines to process.
 	 */
-	(void) fgets(line1, sizeof (line1), fd);
-	while (fgets(line1, sizeof (line1), fd) != NULL &&
-	       fgets(line2, sizeof (line2), fd) != NULL) {
+	fgets(line1, sizeof(line1), fd);
+	while (fgets(line1, sizeof(line1), fd) != NULL &&
+	       fgets(line2, sizeof(line2), fd) != NULL) {
 		if ((fsp = strtok(line1, " \t:")) == NULL) {
 			warnx("%s: bad format", line1);
 			return (0);
@@ -608,7 +608,7 @@ readprivs(struct quotause *quplist, char *inname)
 int
 writetimes(struct quotause *quplist, int outfd, int quotatype)
 {
-	register struct quotause *qup;
+	struct quotause *qup;
 	FILE *fd;
 
 	ftruncate(outfd, 0);
@@ -634,10 +634,10 @@ writetimes(struct quotause *quplist, int outfd, int quotatype)
 int
 readtimes(struct quotause *quplist, char *inname)
 {
-	register struct quotause *qup;
+	struct quotause *qup;
 	FILE *fd;
 	int cnt;
-	register char *cp;
+	char *cp;
 	time_t itime, btime, iseconds, bseconds;
 	long l_itime, l_btime;
 	char *fsp, bunits[10], iunits[10], line1[BUFSIZ];
@@ -650,9 +650,9 @@ readtimes(struct quotause *quplist, char *inname)
 	/*
 	 * Discard two title lines, then read lines to process.
 	 */
-	(void) fgets(line1, sizeof (line1), fd);
-	(void) fgets(line1, sizeof (line1), fd);
-	while (fgets(line1, sizeof (line1), fd) != NULL) {
+	fgets(line1, sizeof(line1), fd);
+	fgets(line1, sizeof(line1), fd);
+	while (fgets(line1, sizeof(line1), fd) != NULL) {
 		if ((fsp = strtok(line1, " \t:")) == NULL) {
 			warnx("%s: bad format", line1);
 			return (0);
@@ -750,7 +750,7 @@ cvtatos(time_t period, char *units, time_t *seconds)
 void
 freeprivs(struct quotause *quplist)
 {
-	register struct quotause *qup, *nextqup;
+	struct quotause *qup, *nextqup;
 
 	for (qup = quplist; qup; qup = nextqup) {
 		nextqup = qup->next;
@@ -762,9 +762,9 @@ freeprivs(struct quotause *quplist)
  * Check whether a string is completely composed of digits.
  */
 int
-alldigits(register const char *s)
+alldigits(const char *s)
 {
-	register int c;
+	int c;
 
 	c = *s++;
 	do {
@@ -778,9 +778,9 @@ alldigits(register const char *s)
  * Check to see if a particular quota is to be enabled.
  */
 int
-hasquota(register struct fstab *fs, int type, char **qfnamep)
+hasquota(struct fstab *fs, int type, char **qfnamep)
 {
-	register char *opt;
+	char *opt;
 	char *cp;
 	static char initname, usrname[100], grpname[100];
 	static char buf[BUFSIZ];
@@ -805,7 +805,7 @@ hasquota(register struct fstab *fs, int type, char **qfnamep)
 		*qfnamep = cp;
 		return (1);
 	}
-	(void) sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
+	sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
 	*qfnamep = buf;
 	return (1);
 }
