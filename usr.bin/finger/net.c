@@ -35,7 +35,7 @@
  *
  * @(#)net.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/net.c,v 1.12.2.4 2002/12/16 08:41:28 roam Exp $
- * $DragonFly: src/usr.bin/finger/net.c,v 1.4 2004/07/16 19:07:56 hmp Exp $
+ * $DragonFly: src/usr.bin/finger/net.c,v 1.5 2004/09/03 19:13:23 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -189,7 +189,7 @@ do_protocol(const char *name, const struct addrinfo *ai)
 				c = '\n';
 				lastc = '\r';
 			} else {
-				if (!isprint(c) && !isspace(c)) {
+				if (!(eightflag || isprint(c) || isspace(c))) {
 					c &= 0x7f;
 					c |= 0x40;
 				}

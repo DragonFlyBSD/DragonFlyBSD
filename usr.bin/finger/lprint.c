@@ -35,7 +35,7 @@
  *
  * @(#)lprint.c	8.3 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/finger/lprint.c,v 1.10.2.4 2002/07/03 01:14:24 des Exp $
- * $DragonFly: src/usr.bin/finger/lprint.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/finger/lprint.c,v 1.4 2004/09/03 19:13:23 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -84,12 +84,12 @@ lflag_print(void)
 			putchar('\n');
 		lprint(pn);
 		if (!pplan) {
-			(void)show_text(pn->dir,
+			show_text(pn->dir,
 			    _PATH_FORWARD, "Mail forwarded to");
-			(void)show_text(pn->dir, _PATH_PROJECT, "Project");
+			show_text(pn->dir, _PATH_PROJECT, "Project");
 			if (!show_text(pn->dir, _PATH_PLAN, "Plan"))
 				(void)printf("No Plan.\n");
-			(void)show_text(pn->dir,
+			show_text(pn->dir,
 			    _PATH_PUBKEY, "Public key");
 		}
 	}
@@ -117,9 +117,9 @@ lprint(PERSON *pn)
 	 *	office, office phone, home phone if available
 	 *	mail status
 	 */
-	(void)printf("Login: %-15s\t\t\tName: %s\nDirectory: %-25s",
+	printf("Login: %-15s\t\t\tName: %s\nDirectory: %-25s",
 	    pn->name, pn->realname, pn->dir);
-	(void)printf("\tShell: %-s\n", *pn->shell ? pn->shell : _PATH_BSHELL);
+	printf("\tShell: %-s\n", *pn->shell ? pn->shell : _PATH_BSHELL);
 
 	if (gflag)
 		goto no_gecos;
@@ -133,23 +133,23 @@ lprint(PERSON *pn)
 	if (pn->office && pn->officephone &&
 	    strlen(pn->office) + strlen(pn->officephone) +
 	    sizeof(OFFICE_TAG) + 2 <= 5 * TAB_LEN) {
-		(void)snprintf(tbuf, sizeof(tbuf), "%s: %s, %s",
+		snprintf(tbuf, sizeof(tbuf), "%s: %s, %s",
 		    OFFICE_TAG, pn->office, prphone(pn->officephone));
 		oddfield = demi_print(tbuf, oddfield);
 	} else {
 		if (pn->office) {
-			(void)snprintf(tbuf, sizeof(tbuf), "%s: %s",
+			snprintf(tbuf, sizeof(tbuf), "%s: %s",
 			    OFFICE_TAG, pn->office);
 			oddfield = demi_print(tbuf, oddfield);
 		}
 		if (pn->officephone) {
-			(void)snprintf(tbuf, sizeof(tbuf), "%s: %s",
+			snprintf(tbuf, sizeof(tbuf), "%s: %s",
 			    OFFICE_PHONE_TAG, prphone(pn->officephone));
 			oddfield = demi_print(tbuf, oddfield);
 		}
 	}
 	if (pn->homephone) {
-		(void)snprintf(tbuf, sizeof(tbuf), "%s: %s", "Home Phone",
+		snprintf(tbuf, sizeof(tbuf), "%s: %s", "Home Phone",
 		    prphone(pn->homephone));
 		oddfield = demi_print(tbuf, oddfield);
 	}
@@ -277,13 +277,13 @@ demi_print(char *str, int oddfield)
 				putchar('\t');
 				lenlast += TAB_LEN;
 			}
-			(void)printf("\t%s\n", str);	/* force one tab */
+			printf("\t%s\n", str);	/* force one tab */
 		} else {
-			(void)printf("\n%s", str);	/* go to next line */
+			printf("\n%s", str);	/* go to next line */
 			oddfield = !oddfield;	/* this'll be undone below */
 		}
 	} else
-		(void)printf("%s", str);
+		printf("%s", str);
 	oddfield = !oddfield;			/* toggle odd/even marker */
 	lenlast = lenthis;
 	return(oddfield);
@@ -348,16 +348,17 @@ vputc(unsigned char ch)
 	int meta;
 
 	if (!isprint(ch) && !isascii(ch)) {
-		(void)putchar('M');
-		(void)putchar('-');
+		putchar('M');
+		putchar('-');
 		ch = toascii(ch);
 		meta = 1;
 	} else
 		meta = 0;
-	if (isprint(ch) || (!meta && (ch == ' ' || ch == '\t' || ch == '\n')))
-		(void)putchar(ch);
-	else {
-		(void)putchar('^');
-		(void)putchar(ch == '\177' ? '?' : ch | 0100);
+	if (eightflag || isprint(ch) || 
+	    (!meta && (ch == ' ' || ch == '\t' || ch == '\n'))) {
+		putchar(ch);
+	} else {
+		putchar('^');
+		putchar(ch == '\177' ? '?' : ch | 0100);
 	}
 }

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)finger.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/finger/finger.c,v 1.15.2.9 2002/07/29 18:52:52 ume Exp $
- * $DragonFly: src/usr.bin/finger/finger.c,v 1.4 2004/08/30 18:06:49 eirikn Exp $
+ * $DragonFly: src/usr.bin/finger/finger.c,v 1.5 2004/09/03 19:13:23 dillon Exp $
  */
 
 /*
@@ -81,7 +81,7 @@
 
 DB *db;
 time_t now;
-int entries, gflag, lflag, mflag, pplan, sflag, oflag, Tflag;
+int entries, gflag, lflag, mflag, pplan, sflag, oflag, Tflag, eightflag;
 sa_family_t family = PF_UNSPEC;
 int d_first = -1;
 char tbuf[1024];
@@ -98,13 +98,16 @@ option(int argc, char **argv)
 
 	optind = 1;		/* reset getopt */
 
-	while ((ch = getopt(argc, argv, "46glmpshoT")) != -1)
+	while ((ch = getopt(argc, argv, "468glmpshoT")) != -1)
 		switch(ch) {
 		case '4':
 			family = AF_INET;
 			break;
 		case '6':
 			family = AF_INET6;
+			break;
+		case '8':
+			eightflag = 1;		/* allow 8-bit passthrough */
 			break;
 		case 'g':
 			gflag = 1;
@@ -141,7 +144,7 @@ option(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: finger [-46lmpshoT] [login ...]\n");
+	fprintf(stderr, "usage: finger [-468lmpshoT] [login ...]\n");
 	exit(1);
 }
 
@@ -175,14 +178,14 @@ main(int argc, char **argv)
 		envargc = 2;
 		envargv[0] = myname;
 		envargv[2] = NULL;
-		(void) option(envargc, envargv);
+		option(envargc, envargv);
 	}
 
 	argcnt = option(argc, argv);
 	argc -= argcnt;
 	argv += argcnt;
 
-	(void)time(&now);
+	time(&now);
 	setpassent(1);
 	if (!*argv) {
 		/*
@@ -194,7 +197,7 @@ main(int argc, char **argv)
 			sflag = 1;	/* if -l not explicit, force -s */
 		loginlist();
 		if (entries == 0)
-			(void)printf("No one logged on.\n");
+			printf("No one logged on.\n");
 	} else {
 		userlist(argc, argv);
 		/*
@@ -316,7 +319,7 @@ userlist(int argc, char **argv)
 		    }
 		}
 	    }
-	    (void)fclose(conf_fp);
+	    fclose(conf_fp);
 	}
 
 	/*

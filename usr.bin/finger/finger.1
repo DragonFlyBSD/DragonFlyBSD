@@ -31,9 +31,9 @@
 .\"
 .\"	@(#)finger.1	8.3 (Berkeley) 5/5/94
 .\" $FreeBSD: src/usr.bin/finger/finger.1,v 1.9.2.12 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/finger/finger.1,v 1.3 2004/07/16 19:07:08 hmp Exp $
+.\" $DragonFly: src/usr.bin/finger/finger.1,v 1.4 2004/09/03 19:13:23 dillon Exp $
 .\"
-.Dd July 22, 2002
+.Dd August 30, 2004
 .Dt FINGER 1
 .Os
 .Sh NAME
@@ -41,7 +41,7 @@
 .Nd user information lookup program
 .Sh SYNOPSIS
 .Nm
-.Op Fl 46glmpshoT
+.Op Fl 468glmpshoT
 .Op Ar user ...\&
 .Op Ar user@host ...\&
 .Sh DESCRIPTION
@@ -59,6 +59,13 @@ to use IPv4 addresses only.
 Forces
 .Nm
 to use IPv6 addresses only.
+.It Fl 8
+Pass through 8-bit data.  This option is intended for enabling 8-bit
+data output in the
+.Xr fingerd 8
+service.  Using this from the command line is
+.Em dangerous ,
+as the output data may include control characters for your terminal.
 .It Fl s
 Display the user's login name, real name, terminal name and write
 status (as a ``*'' before the terminal name if write permission is
