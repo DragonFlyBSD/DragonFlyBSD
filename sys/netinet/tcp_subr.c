@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.31 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.32 2004/06/04 04:32:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -46,6 +46,7 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/malloc.h>
+#include <sys/mpipe.h>
 #include <sys/mbuf.h>
 #ifdef INET6
 #include <sys/domain.h>
@@ -173,6 +174,9 @@ static int tcp_inflight_stab = 20;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, inflight_stab, CTLFLAG_RW,
     &tcp_inflight_stab, 0, "Slop in maximal packets / 10 (20 = 2 packets)");
 
+static MALLOC_DEFINE(M_TCPTEMP, "tcptemp", "TCP Templates for Keepalives");
+static struct malloc_pipe tcptemp_mpipe;
+
 static void tcp_cleartaocache (void);
 static void tcp_notify (struct inpcb *, int);
 
@@ -244,6 +248,9 @@ tcp_init()
 	struct vm_zone *ipi_zone;
 	int hashsize = TCBHASHSIZE;
 	int cpu;
+
+	mpipe_init(&tcptemp_mpipe, M_TCPTEMP, sizeof(struct tcptemp),
+		    25, -1, 0, NULL);
 
 	tcp_ccgen = 1;
 	tcp_cleartaocache();
@@ -375,17 +382,18 @@ tcp_fillheaders(struct tcpcb *tp, void *ip_ptr, void *tcp_ptr)
 struct tcptemp *
 tcp_maketemplate(struct tcpcb *tp)
 {
-	struct mbuf *m;
-	struct tcptemp *n;
+	struct tcptemp *tmp;
 
-	m = m_get(MB_DONTWAIT, MT_HEADER);
-	if (m == NULL)
+	if ((tmp = mpipe_alloc_nowait(&tcptemp_mpipe)) == NULL)
 		return (NULL);
-	m->m_len = sizeof(struct tcptemp);
-	n = mtod(m, struct tcptemp *);
+	tcp_fillheaders(tp, (void *)&tmp->tt_ipgen, (void *)&tmp->tt_t);
+	return (tmp);
+}
 
-	tcp_fillheaders(tp, (void *)&n->tt_ipgen, (void *)&n->tt_t);
-	return (n);
+void
+tcp_freetemplate(struct tcptemp *tmp)
+{
+	mpipe_free(&tcptemp_mpipe, tmp);
 }
 
 /*

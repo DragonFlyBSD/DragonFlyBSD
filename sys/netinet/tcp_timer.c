@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.9 2004/06/04 01:46:49 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.10 2004/06/04 04:32:23 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -274,7 +274,7 @@ tcp_timer_keep(void *xtp)
 			tcp_respond(tp, t_template->tt_ipgen,
 				    &t_template->tt_t, (struct mbuf *)NULL,
 				    tp->rcv_nxt, tp->snd_una - 1, 0);
-			(void) m_free(dtom(t_template));
+			tcp_freetemplate(t_template);
 		}
 		callout_reset(tp->tt_keep, tcp_keepintvl, tcp_timer_keep, tp);
 	} else
