@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.20 2004/06/03 18:12:41 hmp Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.21 2004/06/05 09:58:15 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -53,6 +53,7 @@
 #include <sys/filedesc.h>
 #include <sys/fnv_hash.h>
 #include <sys/globaldata.h>
+#include <sys/kern_syscall.h>
 
 /*
  * Random lookups in the cache are accomplished with a hash table using
@@ -954,9 +955,23 @@ static u_long numcwdfound; STATNODE(CTLFLAG_RD, numcwdfound, &numcwdfound);
 int
 __getcwd(struct __getcwd_args *uap)
 {
+	char *buf, *bp;
+	int error;
+
+	bp = buf = malloc(uap->buflen, M_TEMP, M_WAITOK);
+	error = kern_getcwd(buf, uap->buflen);
+	if (error == 0)
+		error = copyout(buf, uap->buf, strlen(buf) + 1);
+	free(bp, M_TEMP);
+	return (error);
+}
+
+int
+kern_getcwd(char *buf, size_t buflen)
+{
 	struct proc *p = curproc;
-	char *bp, *buf;
-	int error, i, slash_prefixed;
+	char *bp;
+	int error = 0, i, slash_prefixed;
 	struct filedesc *fdp;
 	struct namecache *ncp;
 	struct vnode *vp;
@@ -964,19 +979,18 @@ __getcwd(struct __getcwd_args *uap)
 	numcwdcalls++;
 	if (disablecwd)
 		return (ENODEV);
-	if (uap->buflen < 2)
+	if (buflen < 2)
 		return (EINVAL);
-	if (uap->buflen > MAXPATHLEN)
-		uap->buflen = MAXPATHLEN;
-	buf = bp = malloc(uap->buflen, M_TEMP, M_WAITOK);
-	bp += uap->buflen - 1;
+	if (buflen > MAXPATHLEN)
+		buflen = MAXPATHLEN;
+	bp = buf;
+	bp += buflen - 1;
 	*bp = '\0';
 	fdp = p->p_fd;
 	slash_prefixed = 0;
 	for (vp = fdp->fd_cdir; vp != fdp->fd_rdir && vp != rootvnode;) {
 		if (vp->v_flag & VROOT) {
 			if (vp->v_mount == NULL) {	/* forced unmount */
-				free(buf, M_TEMP);
 				return (EBADF);
 			}
 			vp = vp->v_mount->mnt_vnodecovered;
@@ -990,20 +1004,17 @@ __getcwd(struct __getcwd_args *uap)
 		}
 		if (ncp == NULL) {
 			numcwdfail2++;
-			free(buf, M_TEMP);
 			return (ENOENT);
 		}
 		for (i = ncp->nc_nlen - 1; i >= 0; i--) {
 			if (bp == buf) {
 				numcwdfail4++;
-				free(buf, M_TEMP);
 				return (ENOMEM);
 			}
 			*--bp = ncp->nc_name[i];
 		}
 		if (bp == buf) {
 			numcwdfail4++;
-			free(buf, M_TEMP);
 			return (ENOMEM);
 		}
 		*--bp = '/';
@@ -1013,14 +1024,12 @@ __getcwd(struct __getcwd_args *uap)
 	if (!slash_prefixed) {
 		if (bp == buf) {
 			numcwdfail4++;
-			free(buf, M_TEMP);
 			return (ENOMEM);
 		}
 		*--bp = '/';
 	}
 	numcwdfound++;
-	error = copyout(bp, uap->buf, strlen(bp) + 1);
-	free(buf, M_TEMP);
+	bcopy(buf, bp, buflen);
 	return (error);
 }
 
