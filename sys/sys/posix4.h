@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/posix4.h,v 1.6 1999/12/27 10:22:09 bde Exp $
- * $DragonFly: src/sys/sys/posix4.h,v 1.4 2003/08/27 06:30:04 rob Exp $
+ * $DragonFly: src/sys/sys/posix4.h,v 1.5 2003/11/27 19:11:17 dillon Exp $
  */
 
 #include "opt_posix.h"
@@ -42,25 +42,12 @@
 #include <sys/malloc.h>
 #include "sched.h"
 
-/* Generate syscall stubs for when something is optionally
- * loadable as a module.  References "syscall_not_present". 
- * XXX Good candidate for sys/syscall.h
- */
-struct proc;
-struct nosys_args;
-extern int syscall_not_present(struct proc *, const char *, struct nosys_args *);
-
-#define SYSCALL_NOT_PRESENT_GEN(SC) \
-int SC (struct proc *p, struct SC##_args *uap) \
-{ \
-	return syscall_not_present(p, #SC , (struct nosys_args *)uap); \
-}
-
-
 MALLOC_DECLARE(M_P31B);
 
 #define p31b_malloc(SIZE) malloc((SIZE), M_P31B, M_WAITOK)
 #define p31b_free(P) free((P), M_P31B)
+
+struct proc;
 
 int p31b_proc (struct proc *, pid_t, struct proc **);
 

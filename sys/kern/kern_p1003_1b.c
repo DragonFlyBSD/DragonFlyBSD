@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/posix4/p1003_1b.c,v 1.5.2.2 2003/03/25 06:13:35 rwatson Exp $
- * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.6 2003/08/07 21:17:19 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_p1003_1b.c,v 1.7 2003/11/27 19:11:17 dillon Exp $
  */
 
 /* p1003_1b: Real Time common code.
@@ -108,13 +108,18 @@ int p31b_proc(struct proc *p, pid_t pid, struct proc **pp)
 	return ret;
 }
 
+
+#if !defined(_KPOSIX_PRIORITY_SCHEDULING)
+
+int syscall_not_present(const char *s);
+
 /* The system calls return ENOSYS if an entry is called that is
  * not run-time supported.  I am also logging since some programs
  * start to use this when they shouldn't.  That will be removed if annoying.
  */
-int
-syscall_not_present(struct proc *p, const char *s, struct nosys_args *uap)
+int syscall_not_present(const char *s)
 {
+	struct proc *p = curproc;
 	log(LOG_ERR, "cmd %s pid %d tried to use non-present %s\n",
 			p->p_comm, p->p_pid, s);
 
@@ -124,14 +129,18 @@ syscall_not_present(struct proc *p, const char *s, struct nosys_args *uap)
 	return ENOSYS;
 }
 
-#if !defined(_KPOSIX_PRIORITY_SCHEDULING)
-
 /* Not configured but loadable via a module:
  */
 
 static int sched_attach(void)
 {
 	return 0;
+}
+
+#define SYSCALL_NOT_PRESENT_GEN(SC) \
+int SC (struct SC##_args *uap) \
+{ \
+	return syscall_not_present(#SC); \
 }
 
 SYSCALL_NOT_PRESENT_GEN(sched_setparam)
