@@ -28,7 +28,7 @@
  *
  *	@(#)ip_output.c	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/netinet/ip_output.c,v 1.99.2.37 2003/04/15 06:44:45 silby Exp $
- * $DragonFly: src/sys/netinet/ip_output.c,v 1.20 2004/08/26 21:21:46 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_output.c,v 1.21 2004/09/25 17:01:16 joerg Exp $
  */
 
 #define _IP_VHL
@@ -134,13 +134,12 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	struct in_ifaddr *ia = NULL;
 	int isbroadcast, sw_csum;
 	struct in_addr pkt_dst;
-#ifdef IPSEC
 	struct route iproute;
+#ifdef IPSEC
 	struct secpolicy *sp = NULL;
 	struct socket *so = inp ? inp->inp_socket : NULL;
 #endif
 #ifdef FAST_IPSEC
-	struct route iproute;
 	struct m_tag *mtag;
 	struct secpolicy *sp = NULL;
 	struct tdb_ident *tdbi;
@@ -189,10 +188,11 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 	m = m0;
 
 	KASSERT(!m || (m->m_flags & M_PKTHDR) != 0, ("ip_output: no HDR"));
-#ifndef FAST_IPSEC
-	KASSERT(ro != NULL, ("ip_output: no route, proto %d",
-	    mtod(m, struct ip *)->ip_p));
-#endif
+
+	if (ro == NULL) {
+		ro = &iproute;
+		bzero(ro, sizeof(*ro));
+	}
 
 	if (args.rule != NULL) {	/* dummynet already saw us */
 		ip = mtod(m, struct ip *);
@@ -227,12 +227,6 @@ ip_output(struct mbuf *m0, struct mbuf *opt, struct route *ro,
 		hlen = IP_VHL_HL(ip->ip_vhl) << 2;
 	}
 
-#ifdef FAST_IPSEC
-	if (ro == NULL) {
-		ro = &iproute;
-		bzero(ro, sizeof (*ro));
-	}
-#endif /* FAST_IPSEC */
 	dst = (struct sockaddr_in *)&ro->ro_dst;
 	/*
 	 * If there is a cached route,
@@ -1069,11 +1063,11 @@ pass:
 		ipstat.ips_fragmented++;
 
 done:
-#ifdef IPSEC
 	if (ro == &iproute && ro->ro_rt) {
 		RTFREE(ro->ro_rt);
 		ro->ro_rt = NULL;
 	}
+#ifdef IPSEC
 	if (sp != NULL) {
 		KEYDEBUG(KEYDEBUG_IPSEC_STAMP,
 			printf("DP ip_output call free SP:%p\n", sp));
@@ -1081,10 +1075,6 @@ done:
 	}
 #endif
 #ifdef FAST_IPSEC
-	if (ro == &iproute && ro->ro_rt) {
-		RTFREE(ro->ro_rt);
-		ro->ro_rt = NULL;
-	}
 	if (sp != NULL)
 		KEY_FREESP(&sp);
 #endif
