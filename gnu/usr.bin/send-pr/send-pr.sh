@@ -21,7 +21,7 @@
 # the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #
 # $FreeBSD: src/gnu/usr.bin/send-pr/send-pr.sh,v 1.13.2.11 2002/03/19 00:33:35 des Exp $
-# $DragonFly: src/gnu/usr.bin/send-pr/Attic/send-pr.sh,v 1.3 2003/11/04 17:40:05 eirikn Exp $
+# $DragonFly: src/gnu/usr.bin/send-pr/Attic/send-pr.sh,v 1.4 2003/12/01 22:56:22 drhodus Exp $
 
 # The version of this send-pr.
 VERSION=3.113
@@ -263,7 +263,7 @@ TEMP=`mktemp -t pf` || exit 1
 # Catch some signals. ($xs kludge needed by Sun /bin/sh)
 xs=0
 trap 'rm -f $REF $TEMP; exit $xs' 0
-trap 'echo "$COMMAND: Aborting ..."; rm -f $REF $TEMP; xs=1; exit' 1 2 3 13 15
+trap 'echo "$COMMAND: Aborting ... saving unfinished PR into /tmp/pr.$$"; rm -f $REF ; mv $TEMP /tmp/pr.$$; xs=1; exit' 1 2 3 13 15
 
 # If they told us to use a specific file, then do so.
 if [ -n "$IN_FILE" ]; then
