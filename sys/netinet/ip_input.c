@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.38 2004/12/20 01:26:44 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.39 2004/12/20 17:15:40 dillon Exp $
  */
 
 #define	_IP_VHL
@@ -1779,7 +1779,7 @@ ip_srcroute(void)
 	*(mtod(m, struct in_addr *)) = *p--;
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf(" hops %lx", ntohl(mtod(m, struct in_addr *)->s_addr));
+		printf(" hops %x", ntohl(mtod(m, struct in_addr *)->s_addr));
 #endif
 
 	/*
@@ -1799,7 +1799,7 @@ ip_srcroute(void)
 	while (p >= ip_srcrt.route) {
 #ifdef DIAGNOSTIC
 		if (ipprintfs)
-			printf(" %lx", ntohl(q->s_addr));
+			printf(" %x", ntohl(q->s_addr));
 #endif
 		*q++ = *p--;
 	}
@@ -1809,7 +1809,7 @@ ip_srcroute(void)
 	*q = ip_srcrt.dst;
 #ifdef DIAGNOSTIC
 	if (ipprintfs)
-		printf(" %lx\n", ntohl(q->s_addr));
+		printf(" %x\n", ntohl(q->s_addr));
 #endif
 	return (m);
 }
