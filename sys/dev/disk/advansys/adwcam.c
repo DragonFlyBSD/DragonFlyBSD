@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/adwcam.c,v 1.7.2.2 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.6 2004/05/13 19:44:31 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/adwcam.c,v 1.7 2004/09/17 03:39:38 joerg Exp $
  */
 /*
  * Ported from:
@@ -330,9 +330,8 @@ adwexecuteacb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	acb->state |= ACB_ACTIVE;
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&adw->pending_ccbs, &ccb->ccb_h, sim_links.le);
-	ccb->ccb_h.timeout_ch =
-	    timeout(adwtimeout, (caddr_t)acb,
-		    (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	    adwtimeout, acb);
 
 	adw_send_acb(adw, acb, acbvtob(adw, acb));
 
@@ -1293,7 +1292,7 @@ adw_intr(void *arg)
 
 		/* Process CCB */
 		ccb = acb->ccb;
-		untimeout(adwtimeout, acb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 			bus_dmasync_op_t op;
 

@@ -31,7 +31,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic7xxx_osm.c#13 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic7xxx_osm.c,v 1.27.2.6 2003/06/10 03:26:09 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.5 2004/05/13 19:44:32 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic7xxx_osm.c,v 1.6 2004/09/17 03:39:39 joerg Exp $
  */
 
 #include "aic7xxx_osm.h"
@@ -272,7 +272,7 @@ ahc_done(struct ahc_softc *ahc, struct scb *scb)
 		ahc_run_untagged_queue(ahc, untagged_q);
 	}
 
-	untimeout(ahc_timeout, (caddr_t)scb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 
 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		bus_dmasync_op_t op;
@@ -340,8 +340,8 @@ ahc_done(struct ahc_softc *ahc, struct scb *scb)
 			time = ccb->ccb_h.timeout;
 			time *= hz;
 			time /= 1000;
-			ccb->ccb_h.timeout_ch = 
-			    timeout(ahc_timeout, list_scb, time);
+			callout_reset(&ccb->ccb_h.timeout_ch, time,
+			    ahc_timeout, list_scb);
 		}
 
 		if (ahc_get_transaction_status(scb) == CAM_BDR_SENT
@@ -1240,8 +1240,7 @@ ahc_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nsegments,
 		time = ccb->ccb_h.timeout;
 		time *= hz;
 		time /= 1000;
-		ccb->ccb_h.timeout_ch =
-		    timeout(ahc_timeout, (caddr_t)scb, time);
+		callout_reset(&ccb->ccb_h.timeout_ch, time, ahc_timeout, scb);
 	}
 
 	/*
@@ -1429,7 +1428,7 @@ ahc_set_recoveryscb(struct ahc_softc *ahc, struct scb *scb) {
 			union ccb *ccb;
 
 			ccb = list_scb->io_ctx;
-			untimeout(ahc_timeout, list_scb, ccb->ccb_h.timeout_ch);
+			callout_stop(&ccb->ccb_h.timeout_ch);
 		}
 	}
 }
@@ -1544,8 +1543,8 @@ bus_reset:
 				newtimeout *= hz;
 				newtimeout /= 1000;
 				ccbh = &scb->io_ctx->ccb_h;
-				scb->io_ctx->ccb_h.timeout_ch =
-				    timeout(ahc_timeout, scb, newtimeout);
+				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
+				    newtimeout, ahc_timeout, scb);
 				ahc_unpause(ahc);
 				ahc_unlock(ahc, &s);
 				return;
@@ -1577,8 +1576,8 @@ bus_reset:
 			ahc_print_path(ahc, active_scb);
 			printf("BDR message in message buffer\n");
 			active_scb->flags |= SCB_DEVICE_RESET;
-			active_scb->io_ctx->ccb_h.timeout_ch =
-			    timeout(ahc_timeout, (caddr_t)active_scb, 2 * hz);
+			callout_reset(&active_scb->io_ctx->ccb_h.timeout_ch,
+			    2 * hz, ahc_timeout, active_scb);
 			ahc_unpause(ahc);
 		} else {
 			int	 disconnected;
@@ -1671,8 +1670,8 @@ bus_reset:
 				printf("Queuing a BDR SCB\n");
 				ahc_qinfifo_requeue_tail(ahc, scb);
 				ahc_outb(ahc, SCBPTR, saved_scbptr);
-				scb->io_ctx->ccb_h.timeout_ch =
-				    timeout(ahc_timeout, (caddr_t)scb, 2 * hz);
+				callout_reset(&scb->io_ctx->ccb_h.timeout_ch,
+				    2 * hz, ahc_timeout, scb);
 				ahc_unpause(ahc);
 			} else {
 				/* Go "immediatly" to the bus reset */

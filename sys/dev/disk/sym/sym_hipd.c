@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.8 2004/06/21 15:45:42 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.9 2004/09/17 03:39:39 joerg Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -2565,8 +2565,8 @@ static void sym_enqueue_cam_ccb(hcb_p np, union ccb *ccb)
 	assert(!(ccb->ccb_h.status & CAM_SIM_QUEUED));
 	ccb->ccb_h.status = CAM_REQ_INPROG;
 
-	ccb->ccb_h.timeout_ch = timeout(sym_timeout, (caddr_t) ccb,
-				       ccb->ccb_h.timeout*hz/1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, ccb->ccb_h.timeout*hz/1000,
+		      sym_timeout, ccb);
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	ccb->ccb_h.sym_hcb_ptr = np;
 
@@ -2579,7 +2579,7 @@ static void sym_enqueue_cam_ccb(hcb_p np, union ccb *ccb)
 static void sym_xpt_done(hcb_p np, union ccb *ccb)
 {
 	if (ccb->ccb_h.status & CAM_SIM_QUEUED) {
-		untimeout(sym_timeout, (caddr_t) ccb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		sym_remque(sym_qptr(&ccb->ccb_h.sim_links));
 		ccb->ccb_h.status &= ~CAM_SIM_QUEUED;
 		ccb->ccb_h.sym_hcb_ptr = 0;
@@ -7646,7 +7646,7 @@ static int sym_abort_scsiio(hcb_p np, union ccb *ccb, int timed_out)
 	 *  Mark the CCB for abort and allow time for.
 	 */
 	cp->to_abort = timed_out ? 2 : 1;
-	ccb->ccb_h.timeout_ch = timeout(sym_timeout, (caddr_t) ccb, 10*hz);
+	callout_reset(&ccb->ccb_h.timeout_ch, 10 * hz, sym_timeout, ccb);
 
 	/*
 	 *  Tell the SCRIPTS processor to stop and synchronize with us.

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.4 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.5 2004/09/17 03:39:38 joerg Exp $
  */
 /*
  * Ported from:
@@ -1019,9 +1019,7 @@ adv_isr_chip_halted(struct adv_softc *adv)
 		 * Ensure we have enough time to actually
 		 * retrieve the sense.
 		 */
-		untimeout(adv_timeout, (caddr_t)ccb, ccb->ccb_h.timeout_ch);
-		ccb->ccb_h.timeout_ch =
-		    timeout(adv_timeout, (caddr_t)ccb, 5 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 5 * hz, adv_timeout, ccb);
 	} else if (int_halt_code == ADV_HALT_SDTR_REJECTED) {
 		struct	ext_msg out_msg;
 

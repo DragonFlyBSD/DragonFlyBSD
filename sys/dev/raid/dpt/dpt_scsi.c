@@ -44,7 +44,7 @@
  */
 
 #ident "$FreeBSD: src/sys/dev/dpt/dpt_scsi.c,v 1.28.2.3 2003/01/31 02:47:10 grog Exp $"
-#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.7 2004/09/15 15:40:54 joerg Exp $"
+#ident "$DragonFly: src/sys/dev/raid/dpt/dpt_scsi.c,v 1.8 2004/09/17 03:39:39 joerg Exp $"
 
 #define _DPT_C_
 
@@ -786,9 +786,8 @@ dptexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	dccb->state |= DCCB_ACTIVE;
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&dpt->pending_ccb_list, &ccb->ccb_h, sim_links.le);
-	ccb->ccb_h.timeout_ch =
-	    timeout(dpttimeout, (caddr_t)dccb,
-		    (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+		      dpttimeout, dccb);
 	if (dpt_send_eata_command(dpt, &dccb->eata_ccb,
 				  dccb->eata_ccb.cp_busaddr,
 				  EATA_CMD_DMA_SEND_CP, 0, 0, 0, 0) != 0) {
@@ -1596,7 +1595,7 @@ dpt_intr(void *arg)
 		}
 		/* Process CCB */
 		ccb = dccb->ccb;
-		untimeout(dpttimeout, dccb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 			bus_dmasync_op_t op;
 

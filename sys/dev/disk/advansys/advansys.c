@@ -33,7 +33,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advansys.c,v 1.14.2.4 2002/01/06 21:21:42 dwmalone Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.5 2004/04/01 06:52:45 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advansys.c,v 1.6 2004/09/17 03:39:38 joerg Exp $
  */
 /*
  * Ported from:
@@ -163,9 +163,9 @@ adv_clear_state_really(struct adv_softc *adv, union ccb* ccb)
 			 */
 			ccb_h = LIST_FIRST(&adv->pending_ccbs);
 			while (ccb_h != NULL) {
-				ccb_h->timeout_ch =
-				    timeout(adv_timeout, (caddr_t)ccb_h,
-					    (ccb_h->timeout * hz) / 1000);
+				callout_reset(&ccb_h->timeout_ch,
+				    (ccb_h->timeout * hz) / 1000,
+				    adv_timeout, ccb_h);
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 			}
 			adv->state &= ~ADV_IN_TIMEOUT;
@@ -627,8 +627,8 @@ adv_execute_ccb(void *arg, bus_dma_segment_t *dm_segs,
 	ccb_h->status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&adv->pending_ccbs, ccb_h, sim_links.le);
 	/* Schedule our timeout */
-	ccb_h->timeout_ch =
-	    timeout(adv_timeout, csio, (ccb_h->timeout * hz)/1000);
+	callout_reset(&ccb_h->timeout_ch, (ccb_h->timeout * hz)/1000,
+	    adv_timeout, csio);
 	splx(s);
 }
 
@@ -701,7 +701,7 @@ adv_timeout(void *arg)
 
 		ccb_h = LIST_FIRST(&adv->pending_ccbs);
 		while (ccb_h != NULL) {
-			untimeout(adv_timeout, ccb_h, ccb_h->timeout_ch);
+			callout_stop(&ccb_h->timeout_ch);
 			ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		}
 
@@ -712,8 +712,7 @@ adv_timeout(void *arg)
 		adv_abort_ccb(adv, ccb->ccb_h.target_id,
 			      ccb->ccb_h.target_lun, ccb,
 			      CAM_CMD_TIMEOUT, /*queued_only*/FALSE);
-		ccb->ccb_h.timeout_ch =
-		    timeout(adv_timeout, ccb, 2 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, adv_timeout, ccb);
 	} else {
 		/* Our attempt to perform an abort failed, go for a reset */
 		xpt_print_path(ccb->ccb_h.path);
@@ -1129,7 +1128,7 @@ adv_done(struct adv_softc *adv, union ccb *ccb, u_int done_stat,
 
 	cinfo = (struct adv_ccb_info *)ccb->ccb_h.ccb_cinfo_ptr;
 	LIST_REMOVE(&ccb->ccb_h, sim_links.le);
-	untimeout(adv_timeout, ccb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		bus_dmasync_op_t op;
 

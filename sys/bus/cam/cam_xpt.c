@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.16 2004/09/17 02:20:53 joerg Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.17 2004/09/17 03:39:38 joerg Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -4608,7 +4608,7 @@ xpt_get_ccb(struct cam_ed *device)
 	s = splsoftcam();
 	if ((new_ccb = (union ccb *)ccb_freeq.slh_first) == NULL) {
 		new_ccb = malloc(sizeof(*new_ccb), M_DEVBUF, M_INTWAIT);
-		callout_handle_init(&new_ccb->ccb_h.timeout_ch);
+		callout_init(&new_ccb->ccb_h.timeout_ch);
 		SLIST_INSERT_HEAD(&ccb_freeq, &new_ccb->ccb_h,
 				  xpt_links.sle);
 		xpt_ccb_count++;

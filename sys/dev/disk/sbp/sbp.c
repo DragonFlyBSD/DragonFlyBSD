@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.74 2004/01/08 14:58:09 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.11 2004/08/25 19:02:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.12 2004/09/17 03:39:39 joerg Exp $
  *
  */
 
@@ -2614,8 +2614,7 @@ END_DEBUG
 			/* found */
 			STAILQ_REMOVE(&sdev->ocbs, ocb, sbp_ocb, ocb);
 			if (ocb->ccb != NULL)
-				untimeout(sbp_timeout, (caddr_t)ocb,
-						ocb->ccb->ccb_h.timeout_ch);
+				callout_stop(&ocb->ccb->ccb_h.timeout_ch);
 			if (ntohl(ocb->orb[4]) & 0xffff) {
 				bus_dmamap_sync(sdev->target->sbp->dmat,
 					ocb->dmamap,
@@ -2669,8 +2668,8 @@ END_DEBUG
 	STAILQ_INSERT_TAIL(&sdev->ocbs, ocb, ocb);
 
 	if (ocb->ccb != NULL)
-		ocb->ccb->ccb_h.timeout_ch = timeout(sbp_timeout, (caddr_t)ocb,
-					(ocb->ccb->ccb_h.timeout * hz) / 1000);
+		callout_reset(&ocb->ccb->ccb_h.timeout_ch,
+		    (ocb->ccb->ccb_h.timeout * hz) / 1000, sbp_timeout, ocb);
 
 	if (prev != NULL) {
 SBP_DEBUG(2)
@@ -2739,8 +2738,7 @@ END_DEBUG
 		bus_dmamap_unload(sdev->target->sbp->dmat, ocb->dmamap);
 	}
 	if (ocb->ccb != NULL) {
-		untimeout(sbp_timeout, (caddr_t)ocb,
-					ocb->ccb->ccb_h.timeout_ch);
+		callout_stop(&ocb->ccb->ccb_h.timeout_ch);
 		ocb->ccb->ccb_h.status = status;
 		xpt_done(ocb->ccb);
 	}

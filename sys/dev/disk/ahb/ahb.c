@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.7 2004/06/21 05:58:01 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.8 2004/09/17 03:39:38 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -580,8 +580,7 @@ ahbhandleimmed(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 		ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		if (ccb->ccb_h.target_id == target_id
 		 || target_id == ahb->scsi_id) {
-			untimeout(ahbtimeout, pending_ecb,
-				  ccb->ccb_h.timeout_ch);
+			callout_stop(&ccb->ccb_h.timeout_ch);
 			LIST_REMOVE(&ccb->ccb_h, sim_links.le);
 			if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE)
 				bus_dmamap_unload(ahb->buffer_dmat,
@@ -597,9 +596,9 @@ ahbhandleimmed(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 			xpt_done(ccb);
 		} else if (ahb->immed_ecb != NULL) {
 			/* Re-instate timeout */
-			ccb->ccb_h.timeout_ch =
-			    timeout(ahbtimeout, (caddr_t)pending_ecb,
-				    (ccb->ccb_h.timeout * hz) / 1000);
+			callout_reset(&ccb->ccb_h.timeout_ch,
+			    (ccb->ccb_h.timeout * hz) / 1000,
+			    ahbtimeout, pending_ecb);
 		}
 	}
 
@@ -767,7 +766,7 @@ ahbdone(struct ahb_softc *ahb, u_int32_t mbox, u_int intstat)
 	ccb = ecb->ccb;
 
 	if (ccb != NULL) {
-		untimeout(ahbtimeout, ecb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		LIST_REMOVE(&ccb->ccb_h, sim_links.le);
 
 		if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
@@ -954,8 +953,8 @@ ahbexecuteecb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	/* Tell the adapter about this command */
 	ahbqueuembox(ahb, ecb_paddr, ATTN_STARTECB|ccb->ccb_h.target_id);
 
-	ccb->ccb_h.timeout_ch = timeout(ahbtimeout, (caddr_t)ecb,
-					(ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+		      ahbtimeout, ecb);
 	splx(s);
 }
 
@@ -1279,7 +1278,7 @@ ahbtimeout(void *arg)
 			struct ecb *pending_ecb;
 
 			pending_ecb = (struct ecb *)ccb_h->ccb_ecb_ptr;
-			untimeout(ahbtimeout, pending_ecb, ccb_h->timeout_ch);
+			callout_stop(&ccb_h->timeout_ch);
 			ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		}
 
@@ -1300,8 +1299,7 @@ ahbtimeout(void *arg)
 		xpt_print_path(ccb->ccb_h.path);
 		printf("Queuing BDR\n");
 		ecb->state |= ECB_DEVICE_RESET;
-		ccb->ccb_h.timeout_ch =
-		    timeout(ahbtimeout, (caddr_t)ecb, 2 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, ahbtimeout, ecb);
 
 		ahb->immed_cmd = IMMED_RESET;
 		ahbqueuembox(ahb, IMMED_RESET, ATTN_IMMED|ccb->ccb_h.target_id);
@@ -1313,8 +1311,7 @@ ahbtimeout(void *arg)
 		xpt_print_path(ccb->ccb_h.path);
 		printf("Attempting SCSI Bus reset\n");
 		ecb->state |= ECB_SCSIBUS_RESET;
-		ccb->ccb_h.timeout_ch =
-		    timeout(ahbtimeout, (caddr_t)ecb, 2 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, ahbtimeout, ecb);
 		ahb->immed_cmd = IMMED_RESET;
 		ahbqueuembox(ahb, IMMED_RESET, ATTN_IMMED|ahb->scsi_id);
 	} else {

@@ -31,7 +31,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************
  * $FreeBSD: src/sys/pci/amd.c,v 1.3.2.2 2001/06/02 04:32:50 nyan Exp $
- * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.4 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/amd/amd.c,v 1.5 2004/09/17 03:39:39 joerg Exp $
  */
 
 /*
@@ -360,9 +360,8 @@ amdexecutesrb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 #if 0
 	/* XXX Need a timeout handler */
-	ccb->ccb_h.timeout_ch =
-	    timeout(amdtimeout, (caddr_t)srb,
-		    (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	    amdtimeout, srb);
 #endif
 	TAILQ_INSERT_TAIL(&amd->waiting_srbs, srb, links);
 	amdrunwaiting(amd);

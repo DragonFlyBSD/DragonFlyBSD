@@ -33,7 +33,7 @@
  * $Id: //depot/aic7xxx/freebsd/dev/aic7xxx/aic79xx_osm.h#20 $
  *
  * $FreeBSD: src/sys/dev/aic7xxx/aic79xx_osm.h,v 1.4.2.3 2003/06/10 03:26:07 gibbs Exp $
- * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.4 2004/02/13 01:04:14 joerg Exp $
+ * $DragonFly: src/sys/dev/disk/aic7xxx/aic79xx_osm.h,v 1.5 2004/09/17 03:39:39 joerg Exp $
  */
 
 #ifndef _AIC79XX_FREEBSD_H_
@@ -240,9 +240,8 @@ ahd_timer_reset(ahd_timer_t *timer, u_int usec, ahd_callback_t *func, void *arg)
 static __inline void
 ahd_scb_timer_reset(struct scb *scb, u_int usec)
 {
-	untimeout(ahd_timeout, (caddr_t)scb, scb->io_ctx->ccb_h.timeout_ch);
-	scb->io_ctx->ccb_h.timeout_ch =
-	    timeout(ahd_timeout, scb, (usec * hz)/1000000);
+	callout_reset(&scb->io_ctx->ccb_h.timeout_ch, (usec * hz)/1000000,
+		      ahd_timeout, scb);
 }
 
 /*************************** Device Access ************************************/

@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.7 2004/01/30 05:42:09 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.8 2004/09/17 03:39:38 joerg Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -248,7 +248,7 @@ struct ccb_hdr {
 	ccb_spriv_area	sim_priv;
 	u_int32_t	timeout;	/* Timeout value */
 					/* Callout handle used for timeouts */
-	struct		callout_handle timeout_ch;
+	struct		callout timeout_ch;
 };
 
 /* Get Device Information CCB */

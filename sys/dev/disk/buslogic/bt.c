@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.6 2004/03/15 01:10:43 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.7 2004/09/17 03:39:39 joerg Exp $
  */
 
  /*
@@ -1447,9 +1447,8 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&bt->pending_ccbs, &ccb->ccb_h, sim_links.le);
 
-	ccb->ccb_h.timeout_ch =
-	    timeout(bttimeout, (caddr_t)bccb,
-		    (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	    bttimeout, bccb);
 
 	/* Tell the adapter about this command */
 	bt->cur_outbox->ccb_addr = btccbvtop(bt, bccb);
@@ -1465,7 +1464,7 @@ btexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 			      "Encountered busy mailbox with %d out of %d "
 			      "commands active!!!\n", bt->active_ccbs,
 			      bt->max_ccbs);
-		untimeout(bttimeout, bccb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		if (nseg != 0)
 			bus_dmamap_unload(bt->buffer_dmat, bccb->dmamap);
 		btfreeccb(bt, bccb);
@@ -1573,9 +1572,9 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 				btdone(bt, pending_bccb, BMBI_ERROR);
 			} else {
-				ccb_h->timeout_ch =
-				    timeout(bttimeout, (caddr_t)pending_bccb,
-					    (ccb_h->timeout * hz) / 1000);
+				callout_reset(&ccb_h->timeout_ch,
+				    (ccb_h->timeout * hz) / 1000,
+				    bttimeout, pending_bccb);
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 			}
 		}
@@ -1583,7 +1582,7 @@ btdone(struct bt_softc *bt, struct bt_ccb *bccb, bt_mbi_comp_code_t comp_code)
 		return;
 	}
 
-	untimeout(bttimeout, bccb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 
 	switch (comp_code) {
 	case BMBI_FREE:
@@ -2286,7 +2285,7 @@ bttimeout(void *arg)
 			struct bt_ccb *pending_bccb;
 
 			pending_bccb = (struct bt_ccb *)ccb_h->ccb_bccb_ptr;
-			untimeout(bttimeout, pending_bccb, ccb_h->timeout_ch);
+			callout_stop(&ccb_h->timeout_ch);
 			ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		}
 	}
@@ -2323,8 +2322,7 @@ bttimeout(void *arg)
 		 * later which will attempt a bus reset.
 		 */
 		bccb->flags |= BCCB_DEVICE_RESET;
-		ccb->ccb_h.timeout_ch =
-		    timeout(bttimeout, (caddr_t)bccb, 2 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, bttimeout, bccb);
 
 		bt->recovery_bccb->hccb.opcode = INITIATOR_BUS_DEV_RESET;
 

@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/mpt/mpt_freebsd.c,v 1.3.2.3 2002/09/24 21:37:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.4 2004/03/15 01:10:43 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/mpt/mpt_freebsd.c,v 1.5 2004/09/17 03:39:39 joerg Exp $ */
 /*
  * FreeBSD/CAM specific routines for LSI '909 FC  adapters.
  * FreeBSD Version.
@@ -354,11 +354,8 @@ mpt_execute_req(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	MPTLOCK_2_CAMLOCK(mpt);
 	if (ccb->ccb_h.timeout != CAM_TIME_INFINITY) {
-		ccb->ccb_h.timeout_ch =
-			timeout(mpttimeout, (caddr_t)ccb,
-				(ccb->ccb_h.timeout * hz) / 1000);
-	} else {
-		callout_handle_init(&ccb->ccb_h.timeout_ch);
+		callout_reset(&ccb->ccb_h.timeout_ch,
+		    (ccb->ccb_h.timeout * hz) / 1000, mpttimeout, ccb);
 	}
 	if (mpt->verbose > 1)
 		mpt_print_scsi_io_request(mpt_req);
@@ -874,7 +871,7 @@ mpt_done(mpt_softc_t *mpt, u_int32_t reply)
 		goto done;
 	}
 
-	untimeout(mpttimeout, ccb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 
 	if ((ccb->ccb_h.flags & CAM_DIR_MASK) != CAM_DIR_NONE) {
 		bus_dmasync_op_t op;

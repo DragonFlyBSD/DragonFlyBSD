@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.7 2004/05/13 19:44:31 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.8 2004/09/17 03:39:38 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -1181,9 +1181,8 @@ ahaexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	LIST_INSERT_HEAD(&aha->pending_ccbs, &ccb->ccb_h, sim_links.le);
 
-	ccb->ccb_h.timeout_ch =
-	    timeout(ahatimeout, (caddr_t)accb,
-		    (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+	    ahatimeout, accb);
 
 	/* Tell the adapter about this command */
 	if (aha->cur_outbox->action_code != AMBO_FREE) {
@@ -1197,7 +1196,7 @@ ahaexecuteccb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 		printf("%s: Encountered busy mailbox with %d out of %d "
 		       "commands active!!!", aha_name(aha), aha->active_ccbs,
 		       aha->max_ccbs);
-		untimeout(ahatimeout, accb, ccb->ccb_h.timeout_ch);
+		callout_stop(&ccb->ccb_h.timeout_ch);
 		if (nseg != 0)
 			bus_dmamap_unload(aha->buffer_dmat, accb->dmamap);
 		ahafreeccb(aha, accb);
@@ -1307,9 +1306,9 @@ ahadone(struct aha_softc *aha, struct aha_ccb *accb, aha_mbi_comp_code_t comp_co
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 				ahadone(aha, pending_accb, AMBI_ERROR);
 			} else {
-				ccb_h->timeout_ch =
-				    timeout(ahatimeout, (caddr_t)pending_accb,
-					    (ccb_h->timeout * hz) / 1000);
+				callout_reset(&ccb_h->timeout_ch,
+				    (ccb_h->timeout * hz) / 1000,
+				    ahatimeout, pending_accb);
 				ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 			}
 		}
@@ -1317,7 +1316,7 @@ ahadone(struct aha_softc *aha, struct aha_ccb *accb, aha_mbi_comp_code_t comp_co
 		return;
 	}
 
-	untimeout(ahatimeout, accb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 
 	switch (comp_code) {
 	case AMBI_FREE:
@@ -1910,7 +1909,7 @@ ahatimeout(void *arg)
 			struct aha_ccb *pending_accb;
 
 			pending_accb = (struct aha_ccb *)ccb_h->ccb_accb_ptr;
-			untimeout(ahatimeout, pending_accb, ccb_h->timeout_ch);
+			callout_stop(&ccb_h->timeout_ch);
 			ccb_h = LIST_NEXT(ccb_h, sim_links.le);
 		}
 	}
@@ -1939,7 +1938,7 @@ ahatimeout(void *arg)
 		 * later which will attempt a bus reset.
 		 */
 		accb->flags |= ACCB_DEVICE_RESET;
-		ccb->ccb_h.timeout_ch = timeout(ahatimeout, (caddr_t)accb, 2 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 2 * hz, ahatimeout, accb);
 		aha->recovery_accb->hccb.opcode = INITIATOR_BUS_DEV_RESET;
 
 		/* No Data Transfer */

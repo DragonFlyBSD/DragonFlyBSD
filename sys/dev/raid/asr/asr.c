@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/asr/asr.c,v 1.3.2.2 2001/08/23 05:21:29 scottl Exp $ */
-/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.17 2004/08/23 16:13:03 joerg Exp $ */
+/* $DragonFly: src/sys/dev/raid/asr/asr.c,v 1.18 2004/09/17 03:39:39 joerg Exp $ */
 /*
  * Copyright (c) 1996-2000 Distributed Processing Technology Corporation
  * Copyright (c) 2000-2001 Adaptec Corporation
@@ -943,8 +943,8 @@ ASR_ccbAdd (
                          */
                         ccb->ccb_h.timeout = 6 * 60 * 1000;
                 }
-                ccb->ccb_h.timeout_ch = timeout(asr_timeout, (caddr_t)ccb,
-                  (ccb->ccb_h.timeout * hz) / 1000);
+                callout_reset(&ccb->ccb_h.timeout_ch,
+		    (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
         }
         splx(s);
 } /* ASR_ccbAdd */
@@ -960,7 +960,7 @@ ASR_ccbRemove (
         int s;
 
         s = splcam();
-        untimeout(asr_timeout, (caddr_t)ccb, ccb->ccb_h.timeout_ch);
+        callout_stop(&ccb->ccb_h.timeout_ch);
         LIST_REMOVE(&(ccb->ccb_h), sim_links.le);
         splx(s);
 } /* ASR_ccbRemove */
@@ -1525,9 +1525,8 @@ asr_timeout(
                   cam_sim_unit(xpt_path_sim(ccb->ccb_h.path)), s);
                 if (ASR_reset (sc) == ENXIO) {
                         /* Try again later */
-                        ccb->ccb_h.timeout_ch = timeout(asr_timeout,
-                          (caddr_t)ccb,
-                          (ccb->ccb_h.timeout * hz) / 1000);
+                        callout_reset(&ccb->ccb_h.timeout_ch,
+                            (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
                 }
                 return;
         }
@@ -1541,9 +1540,8 @@ asr_timeout(
         if ((ccb->ccb_h.status & CAM_STATUS_MASK) == CAM_CMD_TIMEOUT) {
                 debug_asr_printf (" AGAIN\nreinitializing adapter\n");
                 if (ASR_reset (sc) == ENXIO) {
-                        ccb->ccb_h.timeout_ch = timeout(asr_timeout,
-                          (caddr_t)ccb,
-                          (ccb->ccb_h.timeout * hz) / 1000);
+                        callout_reset(&ccb->ccb_h.timeout_ch,
+                            (ccb->ccb_h.timeout * hz) / 1000, asr_timeout, ccb);
                 }
                 splx(s);
                 return;
@@ -1552,8 +1550,8 @@ asr_timeout(
         /* If the BUS reset does not take, then an adapter reset is next! */
         ccb->ccb_h.status &= ~CAM_STATUS_MASK;
         ccb->ccb_h.status |= CAM_CMD_TIMEOUT;
-        ccb->ccb_h.timeout_ch = timeout(asr_timeout, (caddr_t)ccb,
-          (ccb->ccb_h.timeout * hz) / 1000);
+        callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+		      asr_timeout, ccb);
         ASR_resetBus (sc, cam_sim_bus(xpt_path_sim(ccb->ccb_h.path)));
         xpt_async (AC_BUS_RESET, ccb->ccb_h.path, NULL);
         splx(s);

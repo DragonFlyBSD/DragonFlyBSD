@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/isp/isp_freebsd.c,v 1.32.2.20 2002/10/11 18:49:25 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.10 2004/05/19 22:52:41 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/isp/isp_freebsd.c,v 1.11 2004/09/17 03:39:39 joerg Exp $ */
 /*
  * Platform (FreeBSD) dependent common attachment code for Qlogic adapters.
  *
@@ -1901,7 +1901,8 @@ isp_watchdog(void *arg)
 			ispreq_t local, *mp= &local, *qe;
 
 			XS_CMD_C_WDOG(xs);
-			xs->ccb_h.timeout_ch = timeout(isp_watchdog, xs, hz);
+			callout_reset(&xs->ccb_h.timeout_ch, hz,
+				      isp_watchdog, xs);
 			if (isp_getrqentry(isp, &nxti, &optr, (void **) &qe)) {
 				ISP_UNLOCK(isp);
 				return;
@@ -2047,10 +2048,8 @@ isp_action(struct cam_sim *sim, union ccb *ccb)
 					    "timeout overflow");
 					ticks = 0x7fffffff;
 				}
-				ccb->ccb_h.timeout_ch = timeout(isp_watchdog,
-				    (caddr_t)ccb, (int)ticks);
-			} else {
-				callout_handle_init(&ccb->ccb_h.timeout_ch);
+				callout_reset(&ccb->ccb_h.timeout_ch, ticks,
+				    isp_watchdog, ccb);
 			}
 			ISPLOCK_2_CAMLOCK(isp);
 			break;
@@ -2509,7 +2508,7 @@ isp_done(struct ccb_scsiio *sccb)
 
 	XS_CMD_S_DONE(sccb);
 	if (XS_CMD_WDOG_P(sccb) == 0) {
-		untimeout(isp_watchdog, (caddr_t)sccb, sccb->ccb_h.timeout_ch);
+		callout_stop(&sccb->ccb_h.timeout_ch);
 		if (XS_CMD_GRACE_P(sccb)) {
 			isp_prt(isp, ISP_LOGDEBUG2,
 			    "finished command on borrowed time");

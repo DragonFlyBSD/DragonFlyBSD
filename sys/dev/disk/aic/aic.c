@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic.c,v 1.8 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.5 2004/03/15 01:10:42 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic.c,v 1.6 2004/09/17 03:39:39 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -326,8 +326,8 @@ aic_execute_scb(void *arg, bus_dma_segment_t *dm_segs, int nseg, int error)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 	TAILQ_INSERT_TAIL(&aic->pending_ccbs, &ccb->ccb_h, sim_links.tqe);
 
-	ccb->ccb_h.timeout_ch = timeout(aic_timeout, (caddr_t)scb,
-		(ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+		      aic_timeout, scb);
 
 	aic_start(aic);
 	splx(s);
@@ -1041,7 +1041,7 @@ aic_done(struct aic_softc *aic, struct aic_scb *scb)
 		  ("aic_done - ccb %p status %x resid %d\n",
 		   ccb, ccb->ccb_h.status, ccb->csio.resid));
 
-	untimeout(aic_timeout, (caddr_t)scb, ccb->ccb_h.timeout_ch);
+	callout_stop(&ccb->ccb_h.timeout_ch);
 
 	if ((scb->flags & SCB_DEVICE_RESET) != 0 &&
 	    ccb->ccb_h.func_code != XPT_RESET_DEV) {
@@ -1071,9 +1071,9 @@ aic_done(struct aic_softc *aic, struct aic_scb *scb)
 				    &pending_scb->ccb->ccb_h, sim_links.tqe);
 				aic_done(aic, pending_scb);
 			} else {
-				ccb_h->timeout_ch =
-				    timeout(aic_timeout, (caddr_t)pending_scb,
-					(ccb_h->timeout * hz) / 1000);
+				callout_reset(&ccb_h->timeout_ch,
+				    (ccb_h->timeout * hz) / 1000,
+				    aic_timeout, pending_scb);
 				ccb_h = TAILQ_NEXT(ccb_h, sim_links.tqe);
 			}
 		}
@@ -1090,9 +1090,9 @@ aic_done(struct aic_softc *aic, struct aic_scb *scb)
 				    &nexus_scb->ccb->ccb_h, sim_links.tqe);
 				aic_done(aic, nexus_scb);
 			} else {
-				ccb_h->timeout_ch =
-				    timeout(aic_timeout, (caddr_t)nexus_scb,
-					(ccb_h->timeout * hz) / 1000);
+				callout_reset(&ccb_h->timeout_ch,
+				    (ccb_h->timeout * hz) / 1000,
+				    aic_timeout, nexus_scb);
 				ccb_h = TAILQ_NEXT(ccb_h, sim_links.tqe);
 			}
 		}
@@ -1145,19 +1145,14 @@ aic_timeout(void *arg)
 			ccb_h->status |= CAM_RELEASE_SIMQ;
 		}
 
-		TAILQ_FOREACH(ccb_h, &aic->pending_ccbs, sim_links.tqe) {
-			untimeout(aic_timeout, (caddr_t)ccb_h->ccb_scb_ptr,
-			    ccb_h->timeout_ch);
-		}
+		TAILQ_FOREACH(ccb_h, &aic->pending_ccbs, sim_links.tqe)
+			callout_stop(&ccb_h->timeout_ch);
 
-		TAILQ_FOREACH(ccb_h, &aic->nexus_ccbs, sim_links.tqe) {
-			untimeout(aic_timeout, (caddr_t)ccb_h->ccb_scb_ptr,
-			    ccb_h->timeout_ch);
-		}
+		TAILQ_FOREACH(ccb_h, &aic->nexus_ccbs, sim_links.tqe)
+			callout_stop(&ccb_h->timeout_ch);
 
 		scb->flags |= SCB_DEVICE_RESET;
-		ccb->ccb_h.timeout_ch =
-		    timeout(aic_timeout, (caddr_t)scb, 5 * hz);
+		callout_reset(&ccb->ccb_h.timeout_ch, 5 * hz, aic_timeout, scb);
 		aic_sched_msgout(aic, MSG_BUS_DEV_RESET);
 	} else {
 		if (aic->nexus == scb) {

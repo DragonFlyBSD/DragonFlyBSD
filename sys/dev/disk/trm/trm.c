@@ -45,7 +45,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/trm/trm.c,v 1.2.2.2 2002/12/19 20:34:45 cognet Exp $
- * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.5 2004/03/15 01:10:44 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/trm/trm.c,v 1.6 2004/09/17 03:39:39 joerg Exp $
  */
 
 /*
@@ -442,7 +442,8 @@ trm_ExecuteSRB(void *arg, bus_dma_segment_t *dm_segs, int nseg, int vp)
 	ccb->ccb_h.status |= CAM_SIM_QUEUED;
 #if 0
 	/* XXX Need a timeout handler */
-	ccb->ccb_h.timeout_ch = timeout(trmtimeout, (caddr_t)srb, (ccb->ccb_h.timeout * hz) / 1000);
+	callout_reset(&ccb->ccb_h.timeout_ch, (ccb->ccb_h.timeout * hz) / 1000,
+		      trmtimeout, srb);
 #endif
 	trm_SendSRB(pACB, pSRB);
 	splx(flags);
