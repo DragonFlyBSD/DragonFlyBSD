@@ -38,7 +38,7 @@
  *
  *	from: @(#)job.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/job.h,v 1.11 2000/01/17 06:43:41 kris Exp $
- * $DragonFly: src/usr.bin/make/job.h,v 1.8 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.h,v 1.9 2004/11/24 07:15:46 dillon Exp $
  */
 
 /*-
@@ -204,7 +204,11 @@ typedef struct Shell {
     char          *exit;	/* exit on error */
 }               Shell;
 
-
+/*
+ * If REMOTE is defined then these things need exposed, otherwise they are
+ * static to job.c!
+ */
+#ifdef REMOTE
 extern char 	*targFmt;   	/* Format string for banner that separates
 				 * output from multiple jobs. Contains a
 				 * single %s where the name of the node being
@@ -219,6 +223,7 @@ extern Lst  	jobs;	    	/* List of active job descriptors */
 extern Lst  	stoppedJobs;	/* List of jobs that are stopped or didn't
 				 * quite get started */
 extern Boolean	jobFull;    	/* Non-zero if no more jobs should/will start*/
+#endif
 extern int	maxJobs;        /* Number of jobs that may run */
 
 void Job_Touch(GNode *, Boolean);

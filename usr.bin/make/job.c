@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.16 2004/11/18 02:01:39 dillon Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.17 2004/11/24 07:15:46 dillon Exp $
  */
 
 #ifndef OLD_JOKE
@@ -2645,7 +2645,7 @@ JobInterrupt(int runINTERRUPT, int signo)
 
     aborting = ABORT_INTERRUPT;
 
-   (void) Lst_Open(jobs);
+    (void) Lst_Open(jobs);
     while ((ln = Lst_Next(jobs)) != NULL) {
 	job = (Job *) Lst_Datum(ln);
 
@@ -2686,7 +2686,7 @@ JobInterrupt(int runINTERRUPT, int signo)
     }
 
 #ifdef REMOTE
-   (void)Lst_Open(stoppedJobs);
+    (void)Lst_Open(stoppedJobs);
     while ((ln = Lst_Next(stoppedJobs)) != NULL) {
 	job = (Job *) Lst_Datum(ln);
 

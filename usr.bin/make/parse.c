@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.12 2004/11/13 22:42:39 dillon Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.13 2004/11/24 07:15:46 dillon Exp $
  */
 
 /*-
@@ -1498,6 +1498,10 @@ ParseAddCmd(void *gnp, void *cmd)
     /* if target already supplied, ignore commands */
     if (!(gn->type & OP_HAS_COMMANDS))
 	(void)Lst_AtEnd(gn->commands, cmd);
+    else
+	Parse_Error(PARSE_WARNING,
+		    "duplicate script for target \"%s\" ignored",
+		    gn->name);
     return(0);
 }
 
@@ -2218,11 +2222,7 @@ test_char:
 		break;
 	    case '#':
 		if (!ignComment) {
-		    if (
-#if 0
-		    compatMake &&
-#endif
-		    (lastc != '\\')) {
+		    if (lastc != '\\') {
 			/*
 			 * If the character is a hash mark and it isn't escaped
 			 * (or we're being compatible), the thing is a comment.

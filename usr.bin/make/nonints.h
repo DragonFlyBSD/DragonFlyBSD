@@ -37,7 +37,7 @@
  *
  *	from: @(#)nonints.h	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/nonints.h,v 1.8 1999/08/28 01:03:35 peter Exp $
- * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.12 2004/11/13 07:25:17 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/nonints.h,v 1.13 2004/11/24 07:15:46 dillon Exp $
  */
 
 /* arch.c */
@@ -64,7 +64,6 @@ void For_Run (void);
 
 /* main.c */
 void Main_ParseArgLine(char *);
-int main(int, char **);
 char *Cmd_Exec(char *, char **);
 void Debug(const char *, ...);
 void Error(const char *, ...);

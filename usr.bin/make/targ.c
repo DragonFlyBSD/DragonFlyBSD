@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.10 2004/11/13 22:42:39 dillon Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.11 2004/11/24 07:15:46 dillon Exp $
  */
 
 /*-
@@ -446,7 +446,7 @@ Targ_FmtTime (time_t time)
 
     parts = localtime(&time);
 
-    strftime(buf, sizeof buf, "%k:%M:%S %b %d, %Y", parts);
+    strftime(buf, sizeof buf, "%H:%M:%S %b %d, %Y", parts);
     buf[sizeof(buf) - 1] = '\0';
     return(buf);
 }

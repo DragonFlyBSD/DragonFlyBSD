@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.8 2004/11/12 22:57:04 dillon Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.9 2004/11/24 07:15:46 dillon Exp $
  */
 
 /*-
@@ -226,15 +226,8 @@ Make_OODate (GNode *gn)
 	    DEBUGF(MAKE, (":: operator and no sources..."));
 	}
 	oodate = TRUE;
-    } else {
-#if 0
-	/* WHY? */
-	DEBUGF(MAKE, ("source %smade...", gn->childMade ? "" : "not "));
-	oodate = gn->childMade;
-#else
+    } else
 	oodate = FALSE;
-#endif /* 0 */
-    }
 
     /*
      * If the target isn't out-of-date, the parents need to know its
