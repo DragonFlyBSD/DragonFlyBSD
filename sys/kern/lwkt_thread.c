@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.44 2003/11/24 23:56:07 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.45 2003/12/04 00:12:40 dillon Exp $
  */
 
 /*
@@ -153,6 +153,9 @@ _lwkt_wantresched(thread_t ntd, thread_t cur)
     return((ntd->td_pri & TDPRI_MASK) > (cur->td_pri & TDPRI_MASK));
 }
 
+/* lwkt_gdinit() has a userland override */
+#ifdef _KERNEL
+
 /*
  * LWKTs operate on a per-cpu basis
  *
@@ -168,6 +171,8 @@ lwkt_gdinit(struct globaldata *gd)
     gd->gd_runqmask = 0;
     TAILQ_INIT(&gd->gd_tdallq);
 }
+
+#endif /* _KERNEL */
 
 /*
  * Initialize a thread wait structure prior to first use.
@@ -253,6 +258,9 @@ lwkt_init_thread_remote(void *arg)
     TAILQ_INSERT_TAIL(&td->td_gd->gd_tdallq, td, td_allq);
 }
 
+/* lwkt_init_thread has a userland override */
+#ifdef _KERNEL
+
 void
 lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 {
@@ -271,6 +279,8 @@ lwkt_init_thread(thread_t td, void *stack, int flags, struct globaldata *gd)
 	lwkt_send_ipiq(gd->gd_cpuid, lwkt_init_thread_remote, td);
     }
 }
+
+#endif /* _KERNEL */
 
 void
 lwkt_set_comm(thread_t td, const char *ctl, ...)
@@ -1277,6 +1287,12 @@ lwkt_create(void (*func)(void *), void *arg,
 }
 
 /*
+ * lwkt_exit() has a userland override.
+ * kthread_* is specific to the kernel and is not needed by userland.
+ */
+#ifdef _KERNEL
+
+/*
  * Destroy an LWKT thread.   Warning!  This function is not called when
  * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
  * uses a different reaping mechanism.
@@ -1295,7 +1311,6 @@ lwkt_exit(void)
     cpu_thread_exit();
 }
 
-#ifdef _KERNEL
 /*
  * Create a kernel process/thread/whatever.  It shares it's address space
  * with proc0 - ie: kernel only.  5.x compatible.
@@ -1334,18 +1349,6 @@ kthread_create(void (*func)(void *), void *arg,
     return 0;
 }
 
-#endif
-
-void
-crit_panic(void)
-{
-    thread_t td = curthread;
-    int lpri = td->td_pri;
-
-    td->td_pri = 0;
-    panic("td_pri is/would-go negative! %p %d", td, lpri);
-}
-
 /*
  * Destroy an LWKT thread.   Warning!  This function is not called when
  * a process exits, cpu_proc_exit() directly calls cpu_thread_exit() and
@@ -1357,6 +1360,18 @@ void
 kthread_exit(void)
 {
     lwkt_exit();
+}
+
+#endif /* _KERNEL */
+
+void
+crit_panic(void)
+{
+    thread_t td = curthread;
+    int lpri = td->td_pri;
+
+    td->td_pri = 0;
+    panic("td_pri is/would-go negative! %p %d", td, lpri);
 }
 
 #ifdef SMP
