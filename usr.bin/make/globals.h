@@ -1,7 +1,7 @@
-#ifndef globals_h_1c1edb96
-#define	globals_h_1c1edb96
-/*
- * Copyright (c) 2004, 2005 by Max Okumoto
+/*-
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,8 +35,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/globals.h,v 1.1 2005/01/06 11:41:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/globals.h,v 1.2 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef globals_h_1c1edb96
+#define	globals_h_1c1edb96
 
 /*
  * Global Variables
@@ -45,10 +48,10 @@
 #include <time.h>
 
 #include "lst.h"
-#include "parse.h"
 #include "sprite.h"
 
 struct GNode;
+struct IFile;
 
 /*
  * The list of target names specified on the command line.
@@ -59,7 +62,7 @@ extern Lst create;
 /* The list of directories to search when looking for targets */
 extern Lst dirSearchPath;
 
-extern IFile	curFile;	/* current makefile */
+extern struct IFile curFile;	/* current makefile */
 
 /* The list of directories to search when looking for includes */
 extern Lst parseIncPath;
@@ -71,21 +74,26 @@ extern Boolean	beSilent;	/* True if should print no commands */
 extern Boolean	beVerbose;	/* True if should print extra cruft */
 extern Boolean	noExecute;	/* True if should execute nothing */
 extern Boolean	allPrecious;	/* True if every target is precious */
-extern Boolean	keepgoing;	/* True if should continue on unaffected
-				 * portions of the graph when have an error
-				 * in one portion */
-extern Boolean	touchFlag;	/* TRUE if targets should just be 'touched'
-				 * if out of date. Set by the -t flag */
-extern Boolean	usePipes;	/* TRUE if should capture the output of
-				 * subshells by means of pipes. Otherwise it
-				 * is routed to temporary files from which it
-				 * is retrieved when the shell exits */
-extern Boolean	queryFlag;	/* TRUE if we aren't supposed to really make
-				 * anything, just see if the targets are out-
-				 * of-date */
 
-extern Boolean	checkEnvFirst;	/* TRUE if environment should be searched for
-				 * all variables before the global context */
+/* True if should continue on unaffected portions of the graph
+ * when have an error in one portion */
+extern Boolean	keepgoing;
+
+/* TRUE if targets should just be 'touched'if out of date. Set by the -t flag */
+extern Boolean	touchFlag;
+
+/* TRUE if should capture the output of subshells by means of pipes.
+ * Otherwise it is routed to temporary files from which it is retrieved
+ * when the shell exits */
+extern Boolean	usePipes;
+
+/* TRUE if we aren't supposed to really make anything, just see if the
+ * targets are out-of-date */
+extern Boolean	queryFlag;
+
+/* TRUE if environment should be searched for all variables before
+ * the global context */
+extern Boolean	checkEnvFirst;
 
 /* List of specific variables for which the environment should be
  * searched before the global context */
@@ -93,18 +101,18 @@ extern Lst envFirstVars;
 
 extern struct GNode	*DEFAULT;	/* .DEFAULT rule */
 
-extern struct GNode	*VAR_GLOBAL;	/* Variables defined in a global context, e.g
-					 * in the Makefile itself */
+/* Variables defined in a global context, e.g in the Makefile itself */
+extern struct GNode	*VAR_GLOBAL;
 
-extern struct GNode	*VAR_CMD;	/* Variables defined on the command line */
+/* Variables defined on the command line */
+extern struct GNode	*VAR_CMD;
 
-extern char	var_Error[];	/* Value returned by Var_Parse when an error
-				 * is encountered. It actually points to
-				 * an empty string, so naive callers needn't
-				 * worry about it. */
+/* Value returned by Var_Parse when an error is encountered.  It actually
+ * points to an empty string, so naive callers needn't worry about it. */
+extern char	var_Error[];
 
-extern time_t	now;		/* The time at the start of this whole
-				 * process */
+/* The time at the start of this whole process */
+extern time_t	now;
 
 extern Boolean	oldVars;	/* Do old-style variable substitution */
 

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.12.2.2 2004/06/10 13:07:53 ru Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.30 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.31 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-

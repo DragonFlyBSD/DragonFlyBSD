@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.14 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.15 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /* hash.c --
@@ -53,7 +53,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "buf.h"
 #include "hash.h"
 #include "sprite.h"
 #include "util.h"

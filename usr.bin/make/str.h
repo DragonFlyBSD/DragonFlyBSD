@@ -1,7 +1,7 @@
-#ifndef str_h_44db59e6
-#define	str_h_44db59e6
-/*
- * Copyright (c) 2004, 2005 by Max Okumoto
+/*-
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,8 +35,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/str.h,v 1.3 2005/01/26 09:44:21 joerg Exp $
+ * $DragonFly: src/usr.bin/make/str.h,v 1.4 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef str_h_44db59e6
+#define	str_h_44db59e6
 
 #include "sprite.h"
 

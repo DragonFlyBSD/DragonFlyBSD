@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.26 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.27 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.51 2005/01/31 21:11:26 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.52 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-
@@ -57,13 +57,14 @@
 #include <sys/utsname.h>
 #endif
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/sysctl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <err.h>
 #include <errno.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -75,9 +76,7 @@
 #include "config.h"
 #include "dir.h"
 #include "globals.h"
-#include "GNode.h"
 #include "job.h"
-#include "lst.h"
 #include "make.h"
 #include "nonints.h"
 #include "parse.h"
@@ -98,7 +97,7 @@
 Lst create = Lst_Initializer(create);
 
 time_t			now;		/* Time at start of make */
-GNode			*DEFAULT;	/* .DEFAULT node */
+struct GNode		*DEFAULT;	/* .DEFAULT node */
 Boolean			allPrecious;	/* .PRECIOUS given on line by itself */
 
 static Boolean		noBuiltins;	/* -r flag */

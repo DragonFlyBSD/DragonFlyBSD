@@ -1,7 +1,7 @@
-#ifndef util_h_b7020fdb
-#define	util_h_b7020fdb
-/*
- * Copyright (c) 2004, 2005 by Max Okumoto
+/*-
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,8 +35,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.3 2005/01/22 11:14:30 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.4 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef util_h_b7020fdb
+#define	util_h_b7020fdb
 
 #include <sys/types.h>
 

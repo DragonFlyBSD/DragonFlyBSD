@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -37,7 +37,7 @@
  *
  * @(#)targ.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/targ.c,v 1.10 1999/09/11 13:08:02 hoek Exp $
- * $DragonFly: src/usr.bin/make/targ.c,v 1.23 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/targ.c,v 1.24 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-
@@ -79,6 +79,7 @@
  *	    	  	    	print something for suffixes, too, but...
  */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "dir.h"

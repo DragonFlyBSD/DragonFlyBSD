@@ -1,6 +1,4 @@
-#ifndef lst_h_38f3ead1
-#define	lst_h_38f3ead1
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -40,8 +38,11 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.9 1999/08/28 01:03:32 peter Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.19 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.20 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef lst_h_38f3ead1
+#define	lst_h_38f3ead1
 
 /*-
  * lst.h --
@@ -196,6 +197,5 @@ void		*Lst_DeQueue(Lst *);
  *	TRUE if the list L is empty.
  */
 #define Lst_IsEmpty(L)	(!Lst_Valid(L) || (L)->firstPtr == NULL)
-
 
 #endif /* lst_h_38f3ead1 */

@@ -1,6 +1,4 @@
-#ifndef config_h_efe0765e
-#define	config_h_efe0765e
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -40,8 +38,11 @@
  *
  *	from: @(#)config.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/config.h,v 1.9 1999/09/10 20:51:59 julian Exp $
- * $DragonFly: src/usr.bin/make/config.h,v 1.8 2005/01/06 10:53:00 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/config.h,v 1.9 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef config_h_efe0765e
+#define	config_h_efe0765e
 
 /*
  * DEFMAXJOBS

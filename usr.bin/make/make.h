@@ -1,6 +1,4 @@
-#ifndef make_h_a91074b9
-#define	make_h_a91074b9
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -39,14 +37,16 @@
  *
  *	from: @(#)make.h	8.3 (Berkeley) 6/13/95
  * $FreeBSD: src/usr.bin/make/make.h,v 1.12.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/make.h,v 1.19 2005/01/11 21:27:13 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.h,v 1.20 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef make_h_a91074b9
+#define	make_h_a91074b9
 
 /*-
  * make.h --
  *	The global definitions for pmake
  */
-
 
 #include "sprite.h"
 

@@ -1,5 +1,3 @@
-#ifndef var_h_9cccafce
-#define	var_h_9cccafce
 /*-
  * Copyright (c) 2002 Juli Mallett.
  * Copyright (c) 1988, 1989, 1990, 1993
@@ -39,8 +37,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/var.h,v 1.1 2002/10/28 23:33:57 jmallett Exp $
- * $DragonFly: src/usr.bin/make/var.h,v 1.10 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.h,v 1.11 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef var_h_9cccafce
+#define	var_h_9cccafce
 
 #include <regex.h>
 

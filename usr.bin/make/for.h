@@ -1,7 +1,7 @@
-#ifndef for_h_9d770f33
-#define	for_h_9d770f33
-/*
- * Copyright (c) 2004, 2005 by Max Okumoto
+/*-
+ * Copyright (c) 1988, 1989, 1990, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ * Copyright (c) 1989 by Berkeley Softworks
  * All rights reserved.
  *
  * This code is derived from software contributed to Berkeley by
@@ -35,8 +35,11 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/for.h,v 1.1 2005/01/06 11:41:47 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/for.h,v 1.2 2005/02/01 22:05:36 okumoto Exp $
  */
+
+#ifndef for_h_9d770f33
+#define	for_h_9d770f33
 
 int For_Eval(char *);
 void For_Run(int);

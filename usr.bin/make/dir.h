@@ -1,6 +1,4 @@
-#ifndef dir_h_6002e3b8
-#define	dir_h_6002e3b8
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -40,11 +38,11 @@
  *
  *	from: @(#)dir.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/dir.h,v 1.7 1999/08/28 01:03:29 peter Exp $
- * $DragonFly: src/usr.bin/make/dir.h,v 1.13 2005/01/08 21:58:23 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.h,v 1.14 2005/02/01 22:05:36 okumoto Exp $
  */
 
-/* dir.h --
- */
+#ifndef dir_h_6002e3b8
+#define	dir_h_6002e3b8
 
 #include "hash.h"
 

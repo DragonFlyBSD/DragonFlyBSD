@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1988, 1989 by Adam de Boor
@@ -38,7 +38,7 @@
  *
  * @(#)job.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/job.c,v 1.17.2.2 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/job.c,v 1.40 2005/01/31 08:30:51 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/job.c,v 1.41 2005/02/01 22:05:36 okumoto Exp $
  */
 
 #ifndef OLD_JOKE
@@ -104,19 +104,18 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#ifdef USE_KQUEUE
+#include <sys/event.h>
+#endif
 #include <sys/wait.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <utime.h>
-
-#ifdef USE_KQUEUE
-#include <sys/event.h>
-#endif
 
 #include "arch.h"
 #include "buf.h"

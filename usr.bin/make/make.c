@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -37,7 +37,7 @@
  *
  * @(#)make.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/make.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/make.c,v 1.19 2005/01/09 23:03:28 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/make.c,v 1.20 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-

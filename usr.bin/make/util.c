@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 2002 Juli Mallett.  All rights reserved.
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.5.2.2 2001/02/13 03:13:58 will Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.14 2005/01/31 09:49:14 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.15 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-
@@ -45,8 +45,8 @@
  *	General utilitarian routines for make(1).
  */
 
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <err.h>
 #include <errno.h>
 #include <stdarg.h>

@@ -1,4 +1,4 @@
-/*
+/*-
  * Copyright (c) 1988, 1989, 1990, 1993
  *	The Regents of the University of California.  All rights reserved.
  * Copyright (c) 1989 by Berkeley Softworks
@@ -37,7 +37,7 @@
  *
  * @(#)arch.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/arch.c,v 1.15.2.1 2001/02/13 03:13:57 will Exp $
- * $DragonFly: src/usr.bin/make/arch.c,v 1.28 2005/01/31 21:13:07 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/arch.c,v 1.29 2005/02/01 22:05:36 okumoto Exp $
  */
 
 /*-
@@ -92,6 +92,7 @@
 #include <ctype.h>
 #include <regex.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <utime.h>
 
