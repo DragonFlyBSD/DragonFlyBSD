@@ -18,7 +18,7 @@
 .\"    conditions are met.
 .\"
 .\" $FreeBSD: src/usr.bin/limits/limits.1,v 1.14.2.10 2003/02/25 20:31:18 trhodes Exp $
-.\" $DragonFly: src/usr.bin/limits/limits.1,v 1.3 2004/03/11 12:28:57 hmp Exp $
+.\" $DragonFly: src/usr.bin/limits/limits.1,v 1.4 2004/04/22 17:08:07 dillon Exp $
 .\"
 .Dd January 15, 1996
 .Dt LIMITS 1
@@ -31,11 +31,11 @@
 .Op Fl C Ar class
 .Op Fl SHB
 .Op Fl ea
-.Op Fl cdflmnstuv Op val
+.Op Fl cdfklmnstuv Op val
 .Nm
 .Op Fl C Ar class
 .Op Fl SHB
-.Op Fl cdflmnstuv Op val
+.Op Fl cdfklmnstuv Op val
 .Op Fl E
 .Op Ar name Ns = Ns Ar value ...
 .Op Ar command
@@ -198,6 +198,10 @@ resource limit.
 Select or set the
 .Em filesize
 resource limit.
+.It Fl k Op Ar limit
+Select or set the
+.Em posixlocks
+resource limit.
 .It Fl l Op Ar limit
 Select or set the
 .Em memorylocked
@@ -333,6 +337,7 @@ exits with a status of EXIT_SUCCESS.
 When run in command mode and execution of the command succeeds, the exit status
 will be whatever the executed program returns.
 .Sh SEE ALSO
+.Xr builtin 1 ,
 .Xr csh 1 ,
 .Xr env 1 ,
 .Xr limit 1 ,

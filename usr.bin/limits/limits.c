@@ -21,7 +21,7 @@
  * Display/change(+runprogram)/eval resource limits.
  *
  * $FreeBSD: src/usr.bin/limits/limits.c,v 1.7.2.3 2003/05/22 09:26:57 sheldonh Exp $
- * $DragonFly: src/usr.bin/limits/limits.c,v 1.2 2003/06/17 04:29:28 dillon Exp $
+ * $DragonFly: src/usr.bin/limits/limits.c,v 1.3 2004/04/22 17:08:07 dillon Exp $
  */
 
 #include <err.h>
@@ -85,7 +85,10 @@ static struct {
 	  { "  maxprocesses%-4s %8s", "\n",       1    },
 	  { "  openfiles%-4s    %8s", "\n",       1    },
 	  { "  sbsize%-4s       %8s", " bytes\n", 1    },
-	  { "  vmemoryuse%-4s   %8s", " kb\n",    1024 }
+	  { "  vmemoryuse%-4s   %8s", " kb\n",    1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "  posixlocks%-4s   %8s", "\n",	  1    },
+#endif
       }
     },
     { "sh", "unlimited", "", " -H", " -S", "",
@@ -100,7 +103,10 @@ static struct {
 	  { "ulimit%s -u %s", ";\n",  1    },
 	  { "ulimit%s -n %s", ";\n",  1    },
 	  { "ulimit%s -b %s", ";\n",  1    },
-	  { "ulimit%s -v %s", ";\n",  1024 }
+	  { "ulimit%s -v %s", ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "ulimit%s -k %s", ";\n",  1    },
+#endif
       }
     },
     { "csh", "unlimited", "", " -h", "", NULL,
@@ -115,7 +121,10 @@ static struct {
 	  { "limit%s maxproc %s",      ";\n",  1    },
 	  { "limit%s openfiles %s",    ";\n",  1    },
 	  { "limit%s sbsize %s",       ";\n",  1    },
-	  { "limit%s vmemoryuse %s",   ";\n",  1024 }
+	  { "limit%s vmemoryuse %s",   ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "limit%s advlocks %s",     ";\n",  1    },
+#endif
       }
     },
     { "bash|bash2", "unlimited", "", " -H", " -S", "",
@@ -130,7 +139,10 @@ static struct {
 	  { "ulimit%s -u %s", ";\n",  1    },
 	  { "ulimit%s -n %s", ";\n",  1    },
 	  { "ulimit%s -b %s", ";\n",  1    },
-	  { "ulimit%s -v %s", ";\n",  1024 }
+	  { "ulimit%s -v %s", ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "ulimit%s -k %s", ";\n",  1    },
+#endif
       }
     },
     { "tcsh", "unlimited", "", " -h", "", NULL,
@@ -145,7 +157,10 @@ static struct {
 	  { "limit%s maxproc %s",      ";\n",  1    },
 	  { "limit%s descriptors %s",  ";\n",  1    },
 	  { "limit%s sbsize %s",       ";\n",  1    },
-	  { "limit%s vmemoryuse %s",   ";\n",  1024 }
+	  { "limit%s vmemoryuse %s",   ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "limit%s advlocks %s",      ";\n",  1   },
+#endif
       }
     },
     { "ksh|pdksh", "unlimited", "", " -H", " -S", "",
@@ -160,7 +175,10 @@ static struct {
 	  { "ulimit%s -p %s", ";\n",  1    },
 	  { "ulimit%s -n %s", ";\n",  1    },
 	  { "ulimit%s -b %s", ";\n",  1    },
-	  { "ulimit%s -v %s", ";\n",  1024 }
+	  { "ulimit%s -v %s", ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "ulimit%s -k %s", ";\n",  1    },
+#endif
       }
     },
     { "zsh", "unlimited", "", " -H", " -S", "",
@@ -175,7 +193,10 @@ static struct {
 	  { "ulimit%s -u %s", ";\n",  1    },
 	  { "ulimit%s -n %s", ";\n",  1    },
 	  { "ulimit%s -b %s", ";\n",  1    },
-	  { "ulimit%s -v %s", ";\n",  1024 }
+	  { "ulimit%s -v %s", ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "ulimit%s -k %s", ";\n",  1    },
+#endif
       }
     },
     { "rc|es", "unlimited", "", " -h", "", NULL,
@@ -190,7 +211,10 @@ static struct {
 	  { "limit%s processes %s",    ";\n",  1    },
 	  { "limit%s descriptors %s",  ";\n",  1    },
 	  { "limit%s sbsize %s",       ";\n",  1    },
-	  { "limit%s vmemoryuse %s",   ";\n",  1024 }
+	  { "limit%s vmemoryuse %s",   ";\n",  1024 },
+#ifdef RLIMIT_POSIXLOCKS
+	  { "limit%s advlocks %s",     ";\n",  1    },
+#endif
       }
     },
     { NULL }
@@ -210,7 +234,8 @@ static struct {
     { "maxproc",	login_getcapnum  },
     { "openfiles",	login_getcapnum  },
     { "sbsize",		login_getcapsize },
-    { "vmemoryuse",	login_getcapsize }
+    { "vmemoryuse",	login_getcapsize },
+    { "posixlocks",	login_getcapnum  },
 };
 
 /*
@@ -221,7 +246,7 @@ static struct {
  * to be modified accordingly!
  */
 
-#define RCS_STRING  "tfdscmlunbv"
+#define RCS_STRING  "tfdscmlunbvk"
 
 static rlim_t resource_num(int which, int ch, const char *str);
 static void usage(void);
@@ -253,11 +278,14 @@ main(int argc, char *argv[])
 	which_limits[i] = 0; /* Don't set/display any */
 	set_limits[i] = RLIM_INFINITY;
 	/* Get current resource values */
-	getrlimit(i, &limits[i]);
+	if (getrlimit(i, &limits[i]) < 0) {
+		limits[i].rlim_cur = -1;
+		limits[i].rlim_max = -1;
+	}
     }
 
     optarg = NULL;
-    while ((ch = getopt(argc, argv, ":EeC:U:BSHabc:d:f:l:m:n:s:t:u:v:")) != -1) {
+    while ((ch = getopt(argc, argv, ":EeC:U:BSHabc:d:f:k:l:m:n:s:t:u:v:")) != -1) {
 	switch(ch) {
 	case 'a':
 	    doall = 1;
@@ -294,6 +322,15 @@ main(int argc, char *argv[])
 	case ':': /* Without arg */
 	    if ((p = strchr(rcs_string, optopt)) != NULL) {
 		int rcswhich = p - rcs_string;
+
+		/*
+		 * Backwards compatibility with earlier kernel which might
+		 * support fewer resources.
+		 */
+		if (rcswhich >= RLIM_NLIMITS) {
+		    usage();
+		    break;
+		}
 		if (optarg && *optarg == '-') { /* 'arg' is actually a switch */
 		    --optind;		/* back one arg, and make arg NULL */
 		    optarg = NULL;
@@ -466,7 +503,7 @@ static void
 usage(void)
 {
     (void)fprintf(stderr,
-"usage: limits [-C class|-U user] [-eaSHBE] [-bcdflmnstuv [val]] [[name=val ...] cmd]\n");
+"usage: limits [-C class|-U user] [-eaSHBE] [-bcdflmnstuvk [val]] [[name=val ...] cmd]\n");
     exit(EXIT_FAILURE);
 }
 
