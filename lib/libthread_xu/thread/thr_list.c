@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.2 2005/03/24 12:38:39 davidxu Exp $
  */
 
 #include <sys/cdefs.h>
@@ -140,7 +140,7 @@ struct pthread *
 _thr_alloc(struct pthread *curthread)
 {
 	struct pthread	*thread = NULL;
-	struct tcb	*tcb = NULL;
+	struct tcb	*tcb;
 
 	if (curthread != NULL) {
 		if (GC_NEEDED())
@@ -149,29 +149,29 @@ _thr_alloc(struct pthread *curthread)
 			THR_LOCK_ACQUIRE(curthread, &free_thread_lock);
 			if ((thread = TAILQ_FIRST(&free_threadq)) != NULL) {
 				TAILQ_REMOVE(&free_threadq, thread, tle);
-				tcb = thread->tcb;
 				free_thread_count--;
 			}
 			THR_LOCK_RELEASE(curthread, &free_thread_lock);
 		}
 	}
-	if ((thread == NULL) &&
-	    ((thread = malloc(sizeof(struct pthread))) != NULL)) {
-		if (curthread) {
-			THR_LOCK_ACQUIRE(curthread, &tcb_lock);
-			tcb = _tcb_ctor(thread, 0 /* not initial tls */);
-			THR_LOCK_RELEASE(curthread, &tcb_lock);
-		} else {
-			tcb = _tcb_ctor(thread, 1 /* initial tls */);
-		}
-		if (tcb == NULL) {
-			free(thread);
-			thread = NULL;
-		}
+	if (thread == NULL) {
+		thread = malloc(sizeof(struct pthread));
+		if (thread == NULL)
+			return (NULL);
 	}
-	if (thread) {
+	if (curthread != NULL) {
+		THR_LOCK_ACQUIRE(curthread, &tcb_lock);
+		tcb = _tcb_ctor(thread, 0 /* not initial tls */);
+		THR_LOCK_RELEASE(curthread, &tcb_lock);
+	} else {
+		tcb = _tcb_ctor(thread, 1 /* initial tls */);
+	}
+	if (tcb != NULL) {
 		memset(thread, 0, sizeof(*thread));
 		thread->tcb = tcb;
+	} else {
+		thr_destroy(curthread, thread);
+		thread = NULL;
 	}
 	return (thread);
 }
@@ -184,10 +184,26 @@ _thr_free(struct pthread *curthread, struct pthread *thread)
 		free(thread->name);
 		thread->name = NULL;
 	}
+	/*
+	 * Always free tcb, as we only know it is part of RTLD TLS
+	 * block, but don't know its detail and can not assume how
+	 * it works, so better to avoid caching it here.
+	 */
+	if (curthread != NULL) {
+		THR_LOCK_ACQUIRE(curthread, &tcb_lock);
+		_tcb_dtor(thread->tcb);
+		THR_LOCK_RELEASE(curthread, &tcb_lock);
+	} else {
+		_tcb_dtor(thread->tcb);
+	}
+	thread->tcb = NULL;
 	if ((curthread == NULL) || (free_thread_count >= MAX_CACHED_THREADS)) {
 		thr_destroy(curthread, thread);
 	} else {
-		/* Add the thread to the free thread list. */
+		/*
+		 * Add the thread to the free thread list, this also avoids
+		 * pthread id is reused too quickly, may help some buggy apps.
+		 */
 		THR_LOCK_ACQUIRE(curthread, &free_thread_lock);
 		TAILQ_INSERT_TAIL(&free_threadq, thread, tle);
 		free_thread_count++;
@@ -196,15 +212,8 @@ _thr_free(struct pthread *curthread, struct pthread *thread)
 }
 
 static void
-thr_destroy(struct pthread *curthread, struct pthread *thread)
+thr_destroy(struct pthread *curthread __unused, struct pthread *thread)
 {
-	if (curthread) {
-		THR_LOCK_ACQUIRE(curthread, &tcb_lock);
-		_tcb_dtor(thread->tcb);
-		THR_LOCK_RELEASE(curthread, &tcb_lock);
-	} else {
-		_tcb_dtor(thread->tcb);
-	}
 	free(thread);
 }
 
