@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.8 2004/01/24 05:19:55 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.9 2004/01/24 05:24:15 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -789,7 +789,7 @@ syncache_add(inc, to, th, sop, m)
 	struct syncache_head *sch;
 	struct mbuf *ipopts = NULL;
 	struct rmxp_tao *taop;
-	int i, win;
+	int win;
 
 	so = *sop;
 	tp = sototcpcb(so);
