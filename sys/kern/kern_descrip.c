@@ -37,7 +37,7 @@
  *
  *	@(#)kern_descrip.c	8.6 (Berkeley) 4/19/94
  * $FreeBSD: src/sys/kern/kern_descrip.c,v 1.81.2.19 2004/02/28 00:43:31 tegge Exp $
- * $DragonFly: src/sys/kern/kern_descrip.c,v 1.26 2004/06/12 03:07:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_descrip.c,v 1.27 2004/07/29 20:32:24 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -886,10 +886,10 @@ falloc(struct proc *p, struct file **resultfp, int *resultfd)
 	static int curfail;
 
 	if (nfiles >= maxfiles - maxfilesrootres &&
-	    (p->p_ucred->cr_ruid != 0 || nfiles >= maxfiles)) {
+	    ((p && p->p_ucred->cr_ruid != 0) || nfiles >= maxfiles)) {
 		if (ppsratecheck(&lastfail, &curfail, 1)) {
 			printf("kern.maxfiles limit exceeded by uid %d, please see tuning(7).\n",
-				p->p_ucred->cr_ruid);
+				(p ? p->p_ucred->cr_ruid : -1));
 		}
 		return (ENFILE);
 	}
