@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sbin/newfs/fscopy.c,v 1.2 2004/02/04 17:40:00 joerg Exp $
+ * $DragonFly: src/sbin/newfs/fscopy.c,v 1.3 2004/06/06 05:48:01 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -348,7 +348,7 @@ FSPaste(const char *path, fsnode_t node, fsnode_t hlinks)
 	if (lchmod(path, st->st_mode & ALLPERMS) < 0)
 	    fprintf(stderr, "lchmod failed on %s\n", path);
 	if (chflags(path, st->st_flags) < 0)
-	    fprintf(stderr, "lchflags failed on %s\n", path);
+	    fprintf(stderr, "chflags failed on %s\n", path);
     }
 }
 
