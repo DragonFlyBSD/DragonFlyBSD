@@ -32,7 +32,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.2 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vopops.c,v 1.3 2004/08/25 19:14:39 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -230,6 +230,26 @@ VNODEOP_DESC_INIT_VP_CRED(setextattr);
 VNODEOP_DESC_INIT_VP(createvobject);
 VNODEOP_DESC_INIT_VP(destroyvobject);
 VNODEOP_DESC_INIT_VP(getvobject);
+VNODEOP_DESC_INIT_SIMPLE(vfsset);
+
+/*
+ * The DO_OPS macro basicallys calls ops->blah(&ap) but is also responsible
+ * for checking vv_flags and executing additional hook functions.
+ *
+ * NOTE: vop_vnoperate_ap() rolls its own DO_OPS equivalent.
+ */
+#define DO_OPS(ops, error, ap, vop_field)				\
+	if (ops->vv_flags & VVF_HOOK_MASK) {				\
+		if (ops->vv_flags & VVF_JOURNAL_HOOK) 			\
+			error = ops->vv_jops->vop_field(ap);		\
+		else							\
+			error = 0;					\
+		if (error == 0)						\
+			error = ops->vop_field(ap);			\
+	} else {							\
+		error = ops->vop_field(ap);				\
+	}								\
+
 
 /************************************************************************
  *		PRIMARY HIGH LEVEL VNODE OPERATIONS CALLS		*
@@ -243,12 +263,15 @@ int
 vop_islocked(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 {
 	struct vop_islocked_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_islocked_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
-	return(ops->vop_islocked(&ap));
+
+	DO_OPS(ops, error, &ap, vop_islocked);
+	return(error);
 }
 
 int
@@ -257,6 +280,7 @@ vop_lookup(struct vop_ops *ops, struct vnode *dvp,
 	struct namecache **ncpp, struct componentname *cnp)
 {
 	struct vop_lookup_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_lookup_desc;
 	ap.a_head.a_ops = ops;
@@ -265,7 +289,9 @@ vop_lookup(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vpp = vpp;
 	ap.a_ncpp = ncpp;
 	ap.a_cnp = cnp;
-	return(ops->vop_lookup(&ap));
+
+	DO_OPS(ops, error, &ap, vop_lookup);
+	return(error);
 }
 
 int
@@ -274,6 +300,7 @@ vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp,
 	struct namecache **ncpp, struct componentname *cnp)
 {
 	struct vop_cachedlookup_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_cachedlookup_desc;
 	ap.a_head.a_ops = ops;
@@ -282,7 +309,9 @@ vop_cachedlookup(struct vop_ops *ops, struct vnode *dvp,
 	ap.a_vpp = vpp;
 	ap.a_ncpp = ncpp;
 	ap.a_cnp = cnp;
-	return(ops->vop_cachedlookup(&ap));
+
+	DO_OPS(ops, error, &ap, vop_cachedlookup);
+	return(error);
 }
 
 int
@@ -290,6 +319,7 @@ vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_create_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_create_desc;
 	ap.a_head.a_ops = ops;
@@ -298,7 +328,9 @@ vop_create(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
-	return(ops->vop_create(&ap));
+
+	DO_OPS(ops, error, &ap, vop_create);
+	return(error);
 }
 
 int
@@ -306,6 +338,7 @@ vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct componentname *cnp, int flags)
 {
 	struct vop_whiteout_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_whiteout_desc;
 	ap.a_head.a_ops = ops;
@@ -313,7 +346,9 @@ vop_whiteout(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_par = par;
 	ap.a_cnp = cnp;
 	ap.a_flags = flags;
-	return(ops->vop_whiteout(&ap));
+
+	DO_OPS(ops, error, &ap, vop_whiteout);
+	return(error);
 }
 
 int
@@ -321,6 +356,7 @@ vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_mknod_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_mknod_desc;
 	ap.a_head.a_ops = ops;
@@ -329,7 +365,9 @@ vop_mknod(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
-	return(ops->vop_mknod(&ap));
+
+	DO_OPS(ops, error, &ap, vop_mknod);
+	return(error);
 }
 
 int
@@ -337,6 +375,7 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	struct thread *td)
 {
 	struct vop_open_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_open_desc;
 	ap.a_head.a_ops = ops;
@@ -344,20 +383,25 @@ vop_open(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_open(&ap));
+
+	DO_OPS(ops, error, &ap, vop_open);
+	return(error);
 }
 
 int
 vop_close(struct vop_ops *ops, struct vnode *vp, int fflag, struct thread *td)
 {
 	struct vop_close_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_close_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_fflag = fflag;
 	ap.a_td = td;
-	return(ops->vop_close(&ap));
+
+	DO_OPS(ops, error, &ap, vop_close);
+	return(error);
 }
 
 int
@@ -365,6 +409,7 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	struct thread *td)
 {
 	struct vop_access_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_access_desc;
 	ap.a_head.a_ops = ops;
@@ -372,7 +417,9 @@ vop_access(struct vop_ops *ops, struct vnode *vp, int mode, struct ucred *cred,
 	ap.a_mode = mode;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_access(&ap));
+
+	DO_OPS(ops, error, &ap, vop_access);
+	return(error);
 }
 
 int
@@ -380,13 +427,16 @@ vop_getattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	struct thread *td)
 {
 	struct vop_getattr_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_getattr_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_vap = vap;
 	ap.a_td = td;
-	return(ops->vop_getattr(&ap));
+
+	DO_OPS(ops, error, &ap, vop_getattr);
+	return(error);
 }
 
 int
@@ -394,6 +444,7 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	struct ucred *cred, struct thread *td)
 {
 	struct vop_setattr_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_setattr_desc;
 	ap.a_head.a_ops = ops;
@@ -401,7 +452,9 @@ vop_setattr(struct vop_ops *ops, struct vnode *vp, struct vattr *vap,
 	ap.a_vap = vap;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_setattr(&ap));
+
+	DO_OPS(ops, error, &ap, vop_setattr);
+	return(error);
 }
 
 int
@@ -409,6 +462,7 @@ vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	struct ucred *cred)
 {
 	struct vop_read_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_read_desc;
 	ap.a_head.a_ops = ops;
@@ -416,7 +470,9 @@ vop_read(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
-	return(ops->vop_read(&ap));
+
+	DO_OPS(ops, error, &ap, vop_read);
+	return(error);
 }
 
 int
@@ -424,6 +480,7 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	struct ucred *cred)
 {
 	struct vop_write_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_write_desc;
 	ap.a_head.a_ops = ops;
@@ -431,7 +488,9 @@ vop_write(struct vop_ops *ops, struct vnode *vp, struct uio *uio, int ioflag,
 	ap.a_uio = uio;
 	ap.a_ioflag = ioflag;
 	ap.a_cred = cred;
-	return(ops->vop_write(&ap));
+
+	DO_OPS(ops, error, &ap, vop_write);
+	return(error);
 }
 
 int
@@ -439,6 +498,7 @@ vop_lease(struct vop_ops *ops, struct vnode *vp, struct thread *td,
 	struct ucred *cred, int flag)
 {
 	struct vop_lease_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_lease_desc;
 	ap.a_head.a_ops = ops;
@@ -446,7 +506,9 @@ vop_lease(struct vop_ops *ops, struct vnode *vp, struct thread *td,
 	ap.a_td = td;
 	ap.a_cred = cred;
 	ap.a_flag = flag;
-	return(ops->vop_lease(&ap));
+
+	DO_OPS(ops, error, &ap, vop_lease);
+	return(error);
 }
 
 int
@@ -455,6 +517,7 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	struct thread *td)
 {
 	struct vop_ioctl_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_ioctl_desc;
 	ap.a_head.a_ops = ops;
@@ -464,7 +527,9 @@ vop_ioctl(struct vop_ops *ops, struct vnode *vp, u_long command, caddr_t data,
 	ap.a_fflag = fflag;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_ioctl(&ap));
+
+	DO_OPS(ops, error, &ap, vop_ioctl);
+	return(error);
 }
 
 int
@@ -472,6 +537,7 @@ vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred,
 	struct thread *td)
 {
 	struct vop_poll_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_poll_desc;
 	ap.a_head.a_ops = ops;
@@ -479,31 +545,39 @@ vop_poll(struct vop_ops *ops, struct vnode *vp, int events, struct ucred *cred,
 	ap.a_events = events;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_poll(&ap));
+
+	DO_OPS(ops, error, &ap, vop_poll);
+	return(error);
 }
 
 int
 vop_kqfilter(struct vop_ops *ops, struct vnode *vp, struct knote *kn)
 {
 	struct vop_kqfilter_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_kqfilter_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_kn = kn;
-	return(ops->vop_kqfilter(&ap));
+
+	DO_OPS(ops, error, &ap, vop_kqfilter);
+	return(error);
 }
 
 int
 vop_revoke(struct vop_ops *ops, struct vnode *vp, int flags)
 {
 	struct vop_revoke_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_revoke_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_flags = flags;
-	return(ops->vop_revoke(&ap));
+
+	DO_OPS(ops, error, &ap, vop_revoke);
+	return(error);
 }
 
 int
@@ -511,6 +585,7 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred,
 	struct thread *td)
 {
 	struct vop_mmap_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_mmap_desc;
 	ap.a_head.a_ops = ops;
@@ -518,20 +593,25 @@ vop_mmap(struct vop_ops *ops, struct vnode *vp, int fflags, struct ucred *cred,
 	ap.a_fflags = fflags;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_mmap(&ap));
+
+	DO_OPS(ops, error, &ap, vop_mmap);
+	return(error);
 }
 
 int
 vop_fsync(struct vop_ops *ops, struct vnode *vp, int waitfor, struct thread *td)
 {
 	struct vop_fsync_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_fsync_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_waitfor = waitfor;
 	ap.a_td = td;
-	return(ops->vop_fsync(&ap));
+
+	DO_OPS(ops, error, &ap, vop_fsync);
+	return(error);
 }
 
 int
@@ -539,6 +619,7 @@ vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_remove_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_remove_desc;
 	ap.a_head.a_ops = ops;
@@ -546,7 +627,9 @@ vop_remove(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
-	return(ops->vop_remove(&ap));
+
+	DO_OPS(ops, error, &ap, vop_remove);
+	return(error);
 }
 
 int
@@ -554,6 +637,7 @@ vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_link_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_link_desc;
 	ap.a_head.a_ops = ops;
@@ -561,7 +645,9 @@ vop_link(struct vop_ops *ops, struct vnode *tdvp, struct namecache *par,
 	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
-	return(ops->vop_link(&ap));
+
+	DO_OPS(ops, error, &ap, vop_link);
+	return(error);
 }
 
 int
@@ -571,6 +657,7 @@ vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
 	struct vnode *tvp, struct componentname *tcnp)
 {
 	struct vop_rename_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_rename_desc;
 	ap.a_head.a_ops = ops;
@@ -582,7 +669,9 @@ vop_rename(struct vop_ops *ops, struct vnode *fdvp, struct namecache *fpar,
 	ap.a_tpar = tpar;
 	ap.a_tvp = tvp;
 	ap.a_tcnp = tcnp;
-	return(ops->vop_rename(&ap));
+
+	DO_OPS(ops, error, &ap, vop_rename);
+	return(error);
 }
 
 int
@@ -590,6 +679,7 @@ vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vnode **vpp, struct componentname *cnp, struct vattr *vap)
 {
 	struct vop_mkdir_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_mkdir_desc;
 	ap.a_head.a_ops = ops;
@@ -598,7 +688,9 @@ vop_mkdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_vpp = vpp;
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
-	return(ops->vop_mkdir(&ap));
+
+	DO_OPS(ops, error, &ap, vop_mkdir);
+	return(error);
 }
 
 int
@@ -606,6 +698,7 @@ vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vnode *vp, struct componentname *cnp)
 {
 	struct vop_rmdir_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_rmdir_desc;
 	ap.a_head.a_ops = ops;
@@ -613,7 +706,9 @@ vop_rmdir(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_par = par;
 	ap.a_vp = vp;
 	ap.a_cnp = cnp;
-	return(ops->vop_rmdir(&ap));
+
+	DO_OPS(ops, error, &ap, vop_rmdir);
+	return(error);
 }
 
 int
@@ -622,6 +717,7 @@ vop_symlink(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	struct vattr *vap, char *target)
 {
 	struct vop_symlink_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_symlink_desc;
 	ap.a_head.a_ops = ops;
@@ -631,7 +727,9 @@ vop_symlink(struct vop_ops *ops, struct vnode *dvp, struct namecache *par,
 	ap.a_cnp = cnp;
 	ap.a_vap = vap;
 	ap.a_target = target;
-	return(ops->vop_symlink(&ap));
+
+	DO_OPS(ops, error, &ap, vop_symlink);
+	return(error);
 }
 
 int
@@ -639,6 +737,7 @@ vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	struct ucred *cred, int *eofflag, int *ncookies, u_long **cookies)
 {
 	struct vop_readdir_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_readdir_desc;
 	ap.a_head.a_ops = ops;
@@ -648,7 +747,9 @@ vop_readdir(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	ap.a_eofflag = eofflag;
 	ap.a_ncookies = ncookies;
 	ap.a_cookies = cookies;
-	return(ops->vop_readdir(&ap));
+
+	DO_OPS(ops, error, &ap, vop_readdir);
+	return(error);
 }
 
 int
@@ -656,37 +757,46 @@ vop_readlink(struct vop_ops *ops, struct vnode *vp, struct uio *uio,
 	struct ucred *cred)
 {
 	struct vop_readlink_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_readlink_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_uio = uio;
 	ap.a_cred = cred;
-	return(ops->vop_readlink(&ap));
+
+	DO_OPS(ops, error, &ap, vop_readlink);
+	return(error);
 }
 
 int
 vop_inactive(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 {
 	struct vop_inactive_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_inactive_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
-	return(ops->vop_inactive(&ap));
+
+	DO_OPS(ops, error, &ap, vop_inactive);
+	return(error);
 }
 
 int
 vop_reclaim(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 {
 	struct vop_reclaim_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_reclaim_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
-	return(ops->vop_reclaim(&ap));
+
+	DO_OPS(ops, error, &ap, vop_reclaim);
+	return(error);
 }
 
 int
@@ -694,6 +804,7 @@ vop_lock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	int flags, struct thread *td)
 {
 	struct vop_lock_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_lock_desc;
 	ap.a_head.a_ops = ops;
@@ -701,7 +812,9 @@ vop_lock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	ap.a_vlock = vlock;
 	ap.a_flags = flags;
 	ap.a_td = td;
-	return(ops->vop_lock(&ap));
+
+	DO_OPS(ops, error, &ap, vop_lock);
+	return(error);
 }
 
 int
@@ -709,6 +822,7 @@ vop_unlock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	int flags, struct thread *td)
 {
 	struct vop_unlock_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_unlock_desc;
 	ap.a_head.a_ops = ops;
@@ -716,7 +830,9 @@ vop_unlock(struct vop_ops *ops, struct vnode *vp, struct lwkt_tokref *vlock,
 	ap.a_vlock = vlock;
 	ap.a_flags = flags;
 	ap.a_td = td;
-	return(ops->vop_unlock(&ap));
+
+	DO_OPS(ops, error, &ap, vop_unlock);
+	return(error);
 }
 
 int
@@ -724,6 +840,7 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn, struct vnode **vpp,
 	daddr_t *bnp, int *runp, int *runb)
 {
 	struct vop_bmap_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_bmap_desc;
 	ap.a_head.a_ops = ops;
@@ -733,30 +850,38 @@ vop_bmap(struct vop_ops *ops, struct vnode *vp, daddr_t bn, struct vnode **vpp,
 	ap.a_bnp = bnp;
 	ap.a_runp = runp;
 	ap.a_runb = runb;
-	return(ops->vop_bmap(&ap));
+
+	DO_OPS(ops, error, &ap, vop_bmap);
+	return(error);
 }
 
 int
 vop_strategy(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
 {
 	struct vop_strategy_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_strategy_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_bp = bp;
-	return(ops->vop_strategy(&ap));
+
+	DO_OPS(ops, error, &ap, vop_strategy);
+	return(error);
 }
 
 int
 vop_print(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_print_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_print_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	return(ops->vop_print(&ap));
+
+	DO_OPS(ops, error, &ap, vop_print);
+	return(error);
 }
 
 int
@@ -764,13 +889,16 @@ vop_pathconf(struct vop_ops *ops, struct vnode *vp, int name,
 	register_t *retval)
 {
 	struct vop_pathconf_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_pathconf_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_name = name;
 	ap.a_retval = retval;
-	return(ops->vop_pathconf(&ap));
+
+	DO_OPS(ops, error, &ap, vop_pathconf);
+	return(error);
 }
 
 int
@@ -778,6 +906,7 @@ vop_advlock(struct vop_ops *ops, struct vnode *vp, caddr_t id, int op,
 	struct flock *fl, int flags)
 {
 	struct vop_advlock_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_advlock_desc;
 	ap.a_head.a_ops = ops;
@@ -786,7 +915,9 @@ vop_advlock(struct vop_ops *ops, struct vnode *vp, caddr_t id, int op,
 	ap.a_op = op;
 	ap.a_fl = fl;
 	ap.a_flags = flags;
-	return(ops->vop_advlock(&ap));
+
+	DO_OPS(ops, error, &ap, vop_advlock);
+	return(error);
 }
 
 int
@@ -795,6 +926,7 @@ vop_balloc(struct vop_ops *ops, struct vnode *vp, off_t startoffset,
 	struct buf **bpp)
 {
 	struct vop_balloc_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_balloc_desc;
 	ap.a_head.a_ops = ops;
@@ -804,7 +936,9 @@ vop_balloc(struct vop_ops *ops, struct vnode *vp, off_t startoffset,
 	ap.a_cred = cred;
 	ap.a_flags = flags;
 	ap.a_bpp = bpp;
-	return(ops->vop_balloc(&ap));
+
+	DO_OPS(ops, error, &ap, vop_balloc);
+	return(error);
 }
 
 int
@@ -812,12 +946,15 @@ vop_reallocblks(struct vop_ops *ops, struct vnode *vp,
 	struct cluster_save *buflist)
 {
 	struct vop_reallocblks_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_reallocblks_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_buflist = buflist;
-	return(ops->vop_reallocblks(&ap));
+
+	DO_OPS(ops, error, &ap, vop_reallocblks);
+	return(error);
 }
 
 int
@@ -825,6 +962,7 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	int reqpage, vm_ooffset_t offset)
 {
 	struct vop_getpages_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_getpages_desc;
 	ap.a_head.a_ops = ops;
@@ -833,7 +971,9 @@ vop_getpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_count = count;
 	ap.a_reqpage = reqpage;
 	ap.a_offset = offset;
-	return(ops->vop_getpages(&ap));
+
+	DO_OPS(ops, error, &ap, vop_getpages);
+	return(error);
 }
 
 int
@@ -841,6 +981,7 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	int sync, int *rtvals, vm_ooffset_t offset)
 {
 	struct vop_putpages_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_putpages_desc;
 	ap.a_head.a_ops = ops;
@@ -850,7 +991,9 @@ vop_putpages(struct vop_ops *ops, struct vnode *vp, vm_page_t *m, int count,
 	ap.a_sync = sync;
 	ap.a_rtvals = rtvals;
 	ap.a_offset = offset;
-	return(ops->vop_putpages(&ap));
+
+	DO_OPS(ops, error, &ap, vop_putpages);
+	return(error);
 }
 
 int
@@ -858,25 +1001,31 @@ vop_freeblks(struct vop_ops *ops, struct vnode *vp,
 	daddr_t addr, daddr_t length)
 {
 	struct vop_freeblks_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_freeblks_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_addr = addr;
 	ap.a_length = length;
-	return(ops->vop_freeblks(&ap));
+
+	DO_OPS(ops, error, &ap, vop_freeblks);
+	return(error);
 }
 
 int
 vop_bwrite(struct vop_ops *ops, struct vnode *vp, struct buf *bp)
 {
 	struct vop_bwrite_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_bwrite_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_bp = bp;
-	return(ops->vop_bwrite(&ap));
+
+	DO_OPS(ops, error, &ap, vop_bwrite);
+	return(error);
 }
 
 int
@@ -884,6 +1033,7 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred, struct thread *td)
 {
 	struct vop_getacl_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_getacl_desc;
 	ap.a_head.a_ops = ops;
@@ -892,7 +1042,9 @@ vop_getacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_getacl(&ap));
+
+	DO_OPS(ops, error, &ap, vop_getacl);
+	return(error);
 }
 
 int
@@ -900,6 +1052,7 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred, struct thread *td)
 {
 	struct vop_setacl_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_setacl_desc;
 	ap.a_head.a_ops = ops;
@@ -908,7 +1061,9 @@ vop_setacl(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_setacl(&ap));
+
+	DO_OPS(ops, error, &ap, vop_setacl);
+	return(error);
 }
 
 int
@@ -916,6 +1071,7 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	struct acl *aclp, struct ucred *cred, struct thread *td)
 {
 	struct vop_aclcheck_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_aclcheck_desc;
 	ap.a_head.a_ops = ops;
@@ -924,7 +1080,9 @@ vop_aclcheck(struct vop_ops *ops, struct vnode *vp, acl_type_t type,
 	ap.a_aclp = aclp;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_aclcheck(&ap));
+
+	DO_OPS(ops, error, &ap, vop_aclcheck);
+	return(error);
 }
 
 int
@@ -932,6 +1090,7 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	struct uio *uio, struct ucred *cred, struct thread *td)
 {
 	struct vop_getextattr_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_getextattr_desc;
 	ap.a_head.a_ops = ops;
@@ -940,7 +1099,9 @@ vop_getextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_getextattr(&ap));
+
+	DO_OPS(ops, error, &ap, vop_getextattr);
+	return(error);
 }
 
 int
@@ -948,6 +1109,7 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	struct uio *uio, struct ucred *cred, struct thread *td)
 {
 	struct vop_setextattr_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_setextattr_desc;
 	ap.a_head.a_ops = ops;
@@ -956,42 +1118,68 @@ vop_setextattr(struct vop_ops *ops, struct vnode *vp, char *name,
 	ap.a_uio = uio;
 	ap.a_cred = cred;
 	ap.a_td = td;
-	return(ops->vop_setextattr(&ap));
+
+	DO_OPS(ops, error, &ap, vop_setextattr);
+	return(error);
 }
 
 int
 vop_createvobject(struct vop_ops *ops, struct vnode *vp, struct thread *td)
 {
 	struct vop_createvobject_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_createvobject_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_td = td;
-	return(ops->vop_createvobject(&ap));
+
+	DO_OPS(ops, error, &ap, vop_createvobject);
+	return(error);
 }
 
 int
 vop_destroyvobject(struct vop_ops *ops, struct vnode *vp)
 {
 	struct vop_destroyvobject_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_destroyvobject_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
-	return(ops->vop_destroyvobject(&ap));
+
+	DO_OPS(ops, error, &ap, vop_destroyvobject);
+	return(error);
 }
 
 int
 vop_getvobject(struct vop_ops *ops, struct vnode *vp, struct vm_object **objpp)
 {
 	struct vop_getvobject_args ap;
+	int error;
 
 	ap.a_head.a_desc = &vop_getvobject_desc;
 	ap.a_head.a_ops = ops;
 	ap.a_vp = vp;
 	ap.a_objpp = objpp;
-	return(ops->vop_getvobject(&ap));
+
+	DO_OPS(ops, error, &ap, vop_getvobject);
+	return(error);
+}
+
+int
+vop_vfsset(struct vop_ops *ops, int op, const char *opstr)
+{
+	struct vop_vfsset_args ap;
+	int error;
+
+	ap.a_head.a_desc = &vop_vfsset_desc;
+	ap.a_head.a_ops = ops;
+	ap.a_op = op;
+	ap.a_opstr = opstr;
+
+	DO_OPS(ops, error, &ap, vop_vfsset);
+	return(error);
 }
 
 /************************************************************************
@@ -1007,312 +1195,488 @@ vop_getvobject(struct vop_ops *ops, struct vnode *vp, struct vm_object **objpp)
 int
 vop_vnoperate_ap(struct vop_generic_args *ap)
 {
-	return (VOCALL(ap->a_ops, ap));
+	struct vop_ops *ops;
+	int error;
+
+	ops = ap->a_ops;
+	if (ops->vv_flags & VVF_HOOK_MASK) {
+		if (ops->vv_flags & VVF_JOURNAL_HOOK)
+			error = VOCALL(ops->vv_jops, ap);
+		else
+			error = 0;
+		if (error == 0)
+			error = VOCALL(ops, ap);
+	} else {
+		error = VOCALL(ops, ap);
+	}
+	return (error);
 }
 
 int
 vop_islocked_ap(struct vop_islocked_args *ap)
 {
-	return(ap->a_head.a_ops->vop_islocked(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_islocked);
+	return(error);
 }
 
 int
 vop_lookup_ap(struct vop_lookup_args *ap)
 {
-	return(ap->a_head.a_ops->vop_lookup(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_lookup);
+	return(error);
 }
 
 int
 vop_cachedlookup_ap(struct vop_cachedlookup_args *ap)
 {
-	return(ap->a_head.a_ops->vop_cachedlookup(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_cachedlookup);
+	return(error);
 }
 
 int
 vop_create_ap(struct vop_create_args *ap)
 {
-	return(ap->a_head.a_ops->vop_create(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_create);
+	return(error);
 }
 
 int
 vop_whiteout_ap(struct vop_whiteout_args *ap)
 {
-	return(ap->a_head.a_ops->vop_whiteout(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_whiteout);
+	return(error);
 }
 
 int
 vop_mknod_ap(struct vop_mknod_args *ap)
 {
-	return(ap->a_head.a_ops->vop_mknod(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_mknod);
+	return(error);
 }
 
 int
 vop_open_ap(struct vop_open_args *ap)
 {
-	return(ap->a_head.a_ops->vop_open(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_open);
+	return(error);
 }
 
 int
 vop_close_ap(struct vop_close_args *ap)
 {
-	return(ap->a_head.a_ops->vop_close(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_close);
+	return(error);
 }
 
 int
 vop_access_ap(struct vop_access_args *ap)
 {
-	return(ap->a_head.a_ops->vop_access(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_access);
+	return(error);
 }
 
 int
 vop_getattr_ap(struct vop_getattr_args *ap)
 {
-	return(ap->a_head.a_ops->vop_getattr(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getattr);
+	return(error);
 }
 
 int
 vop_setattr_ap(struct vop_setattr_args *ap)
 {
-	return(ap->a_head.a_ops->vop_setattr(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_setattr);
+	return(error);
 }
 
 int
 vop_read_ap(struct vop_read_args *ap)
 {
-	return(ap->a_head.a_ops->vop_read(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_read);
+	return(error);
 }
 
 int
 vop_write_ap(struct vop_write_args *ap)
 {
-	return(ap->a_head.a_ops->vop_write(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_write);
+	return(error);
 }
 
 int
 vop_lease_ap(struct vop_lease_args *ap)
 {
-	return(ap->a_head.a_ops->vop_lease(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_lease);
+	return(error);
 }
 
 int
 vop_ioctl_ap(struct vop_ioctl_args *ap)
 {
-	return(ap->a_head.a_ops->vop_ioctl(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_ioctl);
+	return(error);
 }
 
 int
 vop_poll_ap(struct vop_poll_args *ap)
 {
-	return(ap->a_head.a_ops->vop_poll(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_poll);
+	return(error);
 }
 
 int
 vop_kqfilter_ap(struct vop_kqfilter_args *ap)
 {
-	return(ap->a_head.a_ops->vop_kqfilter(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_kqfilter);
+	return(error);
 }
 
 int
 vop_revoke_ap(struct vop_revoke_args *ap)
 {
-	return(ap->a_head.a_ops->vop_revoke(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_revoke);
+	return(error);
 }
 
 int
 vop_mmap_ap(struct vop_mmap_args *ap)
 {
-	return(ap->a_head.a_ops->vop_mmap(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_mmap);
+	return(error);
 }
 
 int
 vop_fsync_ap(struct vop_fsync_args *ap)
 {
-	return(ap->a_head.a_ops->vop_fsync(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_fsync);
+	return(error);
 }
 
 int
 vop_remove_ap(struct vop_remove_args *ap)
 {
-	return(ap->a_head.a_ops->vop_remove(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_remove);
+	return(error);
 }
 
 int
 vop_link_ap(struct vop_link_args *ap)
 {
-	return(ap->a_head.a_ops->vop_link(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_link);
+	return(error);
 }
 
 int
 vop_rename_ap(struct vop_rename_args *ap)
 {
-	return(ap->a_head.a_ops->vop_rename(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_rename);
+	return(error);
 }
 
 int
 vop_mkdir_ap(struct vop_mkdir_args *ap)
 {
-	return(ap->a_head.a_ops->vop_mkdir(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_mkdir);
+	return(error);
 }
 
 int
 vop_rmdir_ap(struct vop_rmdir_args *ap)
 {
-	return(ap->a_head.a_ops->vop_rmdir(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_rmdir);
+	return(error);
 }
 
 int
 vop_symlink_ap(struct vop_symlink_args *ap)
 {
-	return(ap->a_head.a_ops->vop_symlink(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_symlink);
+	return(error);
 }
 
 int
 vop_readdir_ap(struct vop_readdir_args *ap)
 {
-	return(ap->a_head.a_ops->vop_readdir(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_readdir);
+	return(error);
 }
 
 int
 vop_readlink_ap(struct vop_readlink_args *ap)
 {
-	return(ap->a_head.a_ops->vop_readlink(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_readlink);
+	return(error);
 }
 
 int
 vop_inactive_ap(struct vop_inactive_args *ap)
 {
-	return(ap->a_head.a_ops->vop_inactive(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_inactive);
+	return(error);
 }
 
 int
 vop_reclaim_ap(struct vop_reclaim_args *ap)
 {
-	return(ap->a_head.a_ops->vop_reclaim(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_reclaim);
+	return(error);
 }
 
 int
 vop_lock_ap(struct vop_lock_args *ap)
 {
-	return(ap->a_head.a_ops->vop_lock(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_lock);
+	return(error);
 }
 
 int
 vop_unlock_ap(struct vop_unlock_args *ap)
 {
-	return(ap->a_head.a_ops->vop_unlock(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_unlock);
+	return(error);
 }
 
 int
 vop_bmap_ap(struct vop_bmap_args *ap)
 {
-	return(ap->a_head.a_ops->vop_bmap(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_bmap);
+	return(error);
 }
 
 int
 vop_strategy_ap(struct vop_strategy_args *ap)
 {
-	return(ap->a_head.a_ops->vop_strategy(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_strategy);
+	return(error);
 }
 
 int
 vop_print_ap(struct vop_print_args *ap)
 {
-	return(ap->a_head.a_ops->vop_print(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_print);
+	return(error);
 }
 
 int
 vop_pathconf_ap(struct vop_pathconf_args *ap)
 {
-	return(ap->a_head.a_ops->vop_pathconf(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_pathconf);
+	return(error);
 }
 
 int
 vop_advlock_ap(struct vop_advlock_args *ap)
 {
-	return(ap->a_head.a_ops->vop_advlock(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_advlock);
+	return(error);
 }
 
 int
 vop_balloc_ap(struct vop_balloc_args *ap)
 {
-	return(ap->a_head.a_ops->vop_balloc(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_balloc);
+	return(error);
 }
 
 int
 vop_reallocblks_ap(struct vop_reallocblks_args *ap)
 {
-	return(ap->a_head.a_ops->vop_reallocblks(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_reallocblks);
+	return(error);
 }
 
 int
 vop_getpages_ap(struct vop_getpages_args *ap)
 {
-	return(ap->a_head.a_ops->vop_getpages(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getpages);
+	return(error);
 }
 
 int
 vop_putpages_ap(struct vop_putpages_args *ap)
 {
-	return(ap->a_head.a_ops->vop_putpages(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_putpages);
+	return(error);
 }
 
 int
 vop_freeblks_ap(struct vop_freeblks_args *ap)
 {
-	return(ap->a_head.a_ops->vop_freeblks(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_freeblks);
+	return(error);
 }
 
 int
 vop_bwrite_ap(struct vop_bwrite_args *ap)
 {
-	return(ap->a_head.a_ops->vop_bwrite(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_bwrite);
+	return(error);
 }
 
 int
 vop_getacl_ap(struct vop_getacl_args *ap)
 {
-	return(ap->a_head.a_ops->vop_getacl(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getacl);
+	return(error);
 }
 
 int
 vop_setacl_ap(struct vop_setacl_args *ap)
 {
-	return(ap->a_head.a_ops->vop_setacl(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_setacl);
+	return(error);
 }
 
 int
 vop_aclcheck_ap(struct vop_aclcheck_args *ap)
 {
-	return(ap->a_head.a_ops->vop_aclcheck(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_aclcheck);
+	return(error);
 }
 
 int
 vop_getextattr_ap(struct vop_getextattr_args *ap)
 {
-	return(ap->a_head.a_ops->vop_getextattr(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getextattr);
+	return(error);
 }
 
 int
 vop_setextattr_ap(struct vop_setextattr_args *ap)
 {
-	return(ap->a_head.a_ops->vop_setextattr(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_setextattr);
+	return(error);
 }
 
 int
 vop_createvobject_ap(struct vop_createvobject_args *ap)
 {
-	return(ap->a_head.a_ops->vop_createvobject(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_createvobject);
+	return(error);
 }
 
 int
 vop_destroyvobject_ap(struct vop_destroyvobject_args *ap)
 {
-	return(ap->a_head.a_ops->vop_destroyvobject(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_destroyvobject);
+	return(error);
 }
 
 int
 vop_getvobject_ap(struct vop_getvobject_args *ap)
 {
-	return(ap->a_head.a_ops->vop_getvobject(ap));
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_getvobject);
+	return(error);
+}
+
+int
+vop_vfsset_ap(struct vop_vfsset_args *ap)
+{
+	int error;
+
+	DO_OPS(ap->a_head.a_ops, error, ap, vop_vfsset);
+	return(error);
 }
 

@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/vfsops.h,v 1.2 2004/08/17 18:57:32 dillon Exp $
+ * $DragonFly: src/sys/sys/vfsops.h,v 1.3 2004/08/25 19:14:40 dillon Exp $
  */
 
 /*
@@ -82,8 +82,9 @@ struct vm_page;
 struct vfscache;
 
 struct vop_generic_args {
-	struct vnodeop_desc *a_desc;
-	struct vop_ops *a_ops;
+	struct vnodeop_desc *a_desc;	/* command descriptor for the call */
+	struct vop_ops *a_ops;		/* operations vector for the call */
+	int a_reserved[4];
 };
 
 struct vop_islocked_args {
@@ -490,6 +491,12 @@ struct vop_getvobject_args {
 	struct vm_object **a_objpp;
 };
 
+struct vop_vfsset_args {
+	struct vop_generic_args a_head;
+	int a_op;
+	const char *a_opstr;
+};
+
 /*
  * This structure is the post-compiled VOP operations vector.  vop_ops are
  * typically per-mount entities.  The first section is used by our vop_*()
@@ -506,10 +513,13 @@ struct vop_ops {
 	int		vv_refs;
 	int		vv_flags;	/* see VVF_* flags below */
 
+	struct vop_ops	*vv_jops;	/* VVF_JOURNAL_HOOK */
+	struct vop_ops	*vv_cops;	/* VVF_CCOHERENCY_HOOK */
+
 	/* XXX Journaling control */
 	/* XXX Cache Coherency functions (local/remote/clustered) */
 	/* XXX Other */
-	int		vv_reserved[64]; /* (temporary) reduce recompile pain */
+	int		vv_reserved[62]; /* (temporary) reduce recompile pain */
 
 #define vop_ops_first_field	vop_default
 	int	(*vop_default)(struct vop_generic_args *);
@@ -564,7 +574,8 @@ struct vop_ops {
 	int	(*vop_createvobject)(struct vop_createvobject_args *);
 	int	(*vop_destroyvobject)(struct vop_destroyvobject_args *);
 	int	(*vop_getvobject)(struct vop_getvobject_args *);
-#define vop_ops_last_field	vop_getvobject
+	int	(*vop_vfsset)(struct vop_vfsset_args *);
+#define vop_ops_last_field	vop_vfsset
 };
 
 #define VVF_JOURNAL_HOOK	0x0001		/* FUTURE */
@@ -576,7 +587,13 @@ struct vop_ops {
 #define VVF_NOCLUSTER		0x0040		/* FUTURE */
 #define VVF_SUIDDIR		0x0080		/* FUTURE */
 
-#define VFF_HOOK_MASK		(VFF_JOURNAL_HOOK|VFF_CCOHERENCY_HOOK)
+#define VVF_HOOK_MASK		(VVF_JOURNAL_HOOK|VVF_CCOHERENCY_HOOK)
+
+/*
+ * vop_vfsset() operations
+ */
+#define VFSSET_DETACH		0
+#define VFSSET_ATTACH		1
 
 /*
  * Kernel VOP arguments union, suitable for malloc / embedding in other
@@ -637,6 +654,7 @@ union vop_args_union {
 	struct vop_createvobject_args vu_createvobject;
 	struct vop_destroyvobject_args vu_destroyvobject;
 	struct vop_getvobject_args vu_getvobject;
+	struct vop_vfsset_args vu_vfsset;
 };
 
 #ifdef _KERNEL
@@ -753,6 +771,7 @@ int vop_createvobject(struct vop_ops *ops,
 int vop_destroyvobject(struct vop_ops *ops, struct vnode *vp);
 int vop_getvobject(struct vop_ops *ops,
 		struct vnode *vp, struct vm_object **objpp);
+int vop_vfsset(struct vop_ops *ops, int op, const char *opstr);
 
 /*
  * Kernel VOP forwarding wrappers.  These are called when a VFS such as
@@ -815,6 +834,7 @@ int vop_setextattr_ap(struct vop_setextattr_args *ap);
 int vop_createvobject_ap(struct vop_createvobject_args *ap);
 int vop_destroyvobject_ap(struct vop_destroyvobject_args *ap);
 int vop_getvobject_ap(struct vop_getvobject_args *ap);
+int vop_vfsset_ap(struct vop_vfsset_args *ap);
 
 /*
  * VOP operations descriptor.  This is used by the vop_ops compiler
@@ -873,6 +893,7 @@ extern struct vnodeop_desc vop_setextattr_desc;
 extern struct vnodeop_desc vop_createvobject_desc;
 extern struct vnodeop_desc vop_destroyvobject_desc;
 extern struct vnodeop_desc vop_getvobject_desc;
+extern struct vnodeop_desc vop_vfsset_desc;
 
 #endif
 
@@ -983,6 +1004,7 @@ extern struct vnodeop_desc vop_getvobject_desc;
 	vop_destroyvobject((vp)->v_ops, vp)
 #define VOP_GETVOBJECT(vp, objpp)			\
 	vop_getvobject((vp)->v_ops, vp, objpp)
+/* no VOP_VFSSET() */
 
 #endif
 
