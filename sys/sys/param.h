@@ -37,7 +37,7 @@
  *
  *	@(#)param.h	8.3 (Berkeley) 4/4/95
  * $FreeBSD: src/sys/sys/param.h,v 1.61.2.38 2003/05/22 17:12:01 fjoe Exp $
- * $DragonFly: src/sys/sys/param.h,v 1.3 2003/07/19 21:14:50 dillon Exp $
+ * $DragonFly: src/sys/sys/param.h,v 1.4 2003/07/27 01:49:53 hmp Exp $
  */
 
 #ifndef _SYS_PARAM_H_
@@ -212,10 +212,8 @@
 #define powerof2(x)	((((x)-1)&(x))==0)
 
 /* Macros for min/max. */
-#ifndef _KERNEL
 #define	MIN(a,b) (((a)<(b))?(a):(b))
 #define	MAX(a,b) (((a)>(b))?(a):(b))
-#endif
 
 /*
  * Constants for setting the parameters of the kernel memory allocator.

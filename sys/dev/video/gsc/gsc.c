@@ -32,7 +32,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/gsc.c,v 1.35.2.1 2000/08/08 19:49:53 peter Exp $
- * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.5 2003/07/21 07:57:44 dillon Exp $
+ * $DragonFly: src/sys/dev/video/gsc/gsc.c,v 1.6 2003/07/27 01:49:51 hmp Exp $
  *
  */
 
@@ -76,8 +76,6 @@
 #else
 #define lprintf(args)
 #endif
-
-#define MIN(a, b)	(((a) < (b)) ? (a) : (b))
 
 #define TIMEOUT (hz*15)  /* timeout while reading a buffer - default value */
 #define LONG    (hz/60)  /* timesteps while reading a buffer */

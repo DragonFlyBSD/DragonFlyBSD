@@ -29,7 +29,7 @@
  * contributed towards power management.
  *
  * $FreeBSD: src/sys/dev/sound/pci/cs4281.c,v 1.2.2.8 2002/08/27 00:25:55 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.3 2003/07/27 01:49:50 hmp Exp $
  */
 
 #include <dev/sound/pcm/sound.h>
@@ -40,7 +40,7 @@
 
 #include <dev/sound/pci/cs4281.h>
 
-SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.2 2003/06/17 04:28:30 dillon Exp $");
+SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.3 2003/07/27 01:49:50 hmp Exp $");
 
 #define CS4281_DEFAULT_BUFSZ 16384
 
@@ -52,9 +52,6 @@ SND_DECLARE_FILE("$DragonFly: src/sys/dev/sound/pci/cs4281.c,v 1.2 2003/06/17 04
 #define CS4281_DMA_REC  1
 
 /* Misc */
-
-#define MIN(x,y) (x) < (y) ? (x) : (y)
-#define MAX(x,y) (x) > (y) ? (x) : (y)
 
 #define inline __inline
 

@@ -30,7 +30,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pccard/pccard.c,v 1.106.2.15 2003/02/26 18:42:00 imp Exp $
- * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.5 2003/07/21 05:50:46 dillon Exp $
+ * $DragonFly: src/sys/bus/pccard/pccard.c,v 1.6 2003/07/27 01:49:53 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -52,8 +52,6 @@
 #include <pccard/pccard_nbk.h>
 
 #include <machine/md_var.h>
-
-#define MIN(a,b)	((a)<(b)?(a):(b))
 
 static int		allocate_driver(struct slot *, struct dev_desc *);
 static void		inserted(void *);

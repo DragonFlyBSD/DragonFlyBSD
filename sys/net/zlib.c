@@ -11,7 +11,7 @@
  * - allow strm->next_out to be NULL, meaning discard the output
  *
  * $FreeBSD: src/sys/net/zlib.c,v 1.10.2.3 2002/03/24 23:12:48 jedgar Exp $
- * $DragonFly: src/sys/net/zlib.c,v 1.3 2003/07/26 20:19:34 rob Exp $
+ * $DragonFly: src/sys/net/zlib.c,v 1.4 2003/07/27 01:49:52 hmp Exp $
  */
 
 /* 
@@ -2059,8 +2059,6 @@ local void send_bits(s, value, length)
 }
 #endif /* DEBUG_ZLIB */
 
-
-#define MAX(a,b) (a >= b ? a : b)
 /* the arguments must not have side effects */
 
 /* ===========================================================================

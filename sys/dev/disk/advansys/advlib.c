@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/advansys/advlib.c,v 1.15.2.1 2000/04/14 13:32:49 nyan Exp $
- * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/advansys/advlib.c,v 1.3 2003/07/27 01:49:49 hmp Exp $
  */
 /*
  * Ported from:
@@ -1171,8 +1171,6 @@ adv_period_offset_to_sdtr(struct adv_softc *adv, u_int *period,
 		dummy_period = 0;
 		period = &dummy_period;
 	}
-
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 	*offset = MIN(ADV_SYN_MAX_OFFSET, *offset);
 	if (*period != 0 && *offset != 0) {

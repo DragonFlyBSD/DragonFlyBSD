@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_targ_bh.c,v 1.4.2.5 2001/07/30 00:15:22 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.2 2003/06/17 04:28:19 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_targ_bh.c,v 1.3 2003/07/27 01:49:48 hmp Exp $
  */
 #include <sys/param.h>
 #include <sys/queue.h>
@@ -69,8 +69,6 @@ typedef enum {
 #define MAX_ACCEPT	8
 #define MAX_IMMEDIATE	16
 #define MAX_BUF_SIZE	256	/* Max inquiry/sense/mode page transfer */
-
-#define MIN(a, b) ((a > b) ? b : a)
 
 /* Offsets into our private CCB area for storing accept information */
 #define ccb_type	ppriv_field0

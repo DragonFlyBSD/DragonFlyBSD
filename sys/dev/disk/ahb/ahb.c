@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ahb/ahb.c,v 1.18.2.3 2001/03/05 13:08:55 obrien Exp $
- * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ahb/ahb.c,v 1.3 2003/07/27 01:49:50 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,6 @@
 
 #define ccb_ecb_ptr spriv_ptr0
 #define ccb_ahb_ptr spriv_ptr1
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 #define ahb_inb(ahb, port)				\
 	bus_space_read_1((ahb)->tag, (ahb)->bsh, port)

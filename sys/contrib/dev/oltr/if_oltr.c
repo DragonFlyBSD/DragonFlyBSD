@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/contrib/dev/oltr/if_oltr.c,v 1.11.2.5 2001/10/20 04:15:21 mdodd Exp $
- * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.4 2003/07/23 02:30:14 dillon Exp $
+ * $DragonFly: src/sys/contrib/dev/oltr/Attic/if_oltr.c,v 1.5 2003/07/27 01:49:48 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -87,7 +87,6 @@
 
 #define PCI_VENDOR_OLICOM 0x108D
 
-#define MIN(A,B) (((A) < (B)) ? (A) : (B))
 #define MIN3(A,B,C) (MIN(A, (MIN(B, C))))
 
 char *AdapterName[] = {

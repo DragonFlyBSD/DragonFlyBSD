@@ -56,7 +56,7 @@
  */
 
 /* $FreeBSD: src/sys/dev/sym/sym_hipd.c,v 1.6.2.12 2001/12/02 19:01:10 groudier Exp $ */
-/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.2 2003/06/17 04:28:31 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/sym/sym_hipd.c,v 1.3 2003/07/27 01:49:51 hmp Exp $ */
 
 #define SYM_DRIVER_NAME	"sym-1.6.5-20000902"
 
@@ -398,13 +398,6 @@ static __inline struct sym_quehead *sym_remque_tail(struct sym_quehead *head)
  *  For this one, we want a short name :-)
  */
 #define MAX_QUEUE	SYM_CONF_MAX_QUEUE
-
-/*
- *  These ones should have been already defined.
- */
-#ifndef MIN
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#endif
 
 /*
  *  Active debugging tags and verbosity.

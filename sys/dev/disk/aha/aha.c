@@ -56,7 +56,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aha/aha.c,v 1.34.2.1 2000/08/02 22:24:39 peter Exp $
- * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aha/aha.c,v 1.3 2003/07/27 01:49:49 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -91,10 +91,6 @@ struct aha_softc *aha_softcs[NAHATOT];
  * did for the CF and CP.
  */
 #define PROBABLY_NEW_BOARD(REV) (REV > 0x43 && REV < 0x56)
-
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
 
 /* MailBox Management functions */
 static __inline void	ahanextinbox(struct aha_softc *aha);

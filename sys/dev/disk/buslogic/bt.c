@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/buslogic/bt.c,v 1.25.2.1 2000/08/02 22:32:26 peter Exp $
- * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.2 2003/06/17 04:28:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/buslogic/bt.c,v 1.3 2003/07/27 01:49:50 hmp Exp $
  */
 
  /*
@@ -77,10 +77,6 @@
 #include <vm/pmap.h>
  
 #include <dev/buslogic/btreg.h>
-
-#ifndef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#endif
 
 /* MailBox Management functions */
 static __inline void	btnextinbox(struct bt_softc *bt);

@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.7 2003/07/26 19:42:11 rob Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.8 2003/07/27 01:49:52 hmp Exp $
  */
 
 #include "opt_compat.h"
@@ -792,9 +792,6 @@ recvit(int s, struct msghdr *mp, caddr_t namelenp, int *res)
 		if (len <= 0 || fromsa == 0)
 			len = 0;
 		else {
-#ifndef MIN
-#define MIN(a,b) ((a)>(b)?(b):(a))
-#endif
 			/* save sa_len before it is destroyed by MSG_COMPAT */
 			len = MIN(len, fromsa->sa_len);
 #ifdef COMPAT_OLDSOCK

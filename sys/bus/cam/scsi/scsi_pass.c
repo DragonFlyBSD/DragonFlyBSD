@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/scsi/scsi_pass.c,v 1.19 2000/01/17 06:27:37 mjacob Exp $
- * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.6 2003/07/21 05:50:24 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/scsi/scsi_pass.c,v 1.7 2003/07/27 01:49:48 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -83,10 +83,6 @@ struct pass_softc {
 	struct devstat	device_stats;
 	dev_t		dev;
 };
-
-#ifndef MIN
-#define MIN(x,y) ((x<y) ? x : y)
-#endif
 
 #define PASS_CDEV_MAJOR 31
 
