@@ -1,5 +1,5 @@
 /*	$NetBSD: pkill.c,v 1.7 2004/02/15 17:03:30 soren Exp $	*/
-/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.3 2004/10/25 21:48:37 liamfoy Exp $ */
+/*	$DragonFly: src/usr.bin/pkill/pkill.c,v 1.4 2004/12/20 20:09:23 cpressey Exp $ */
 
 /*-
  * Copyright (c) 2002 The NetBSD Foundation, Inc.
@@ -83,7 +83,7 @@ SLIST_HEAD(listhead, list);
 
 struct kinfo_proc	*plist;
 char	*selected;
-char	*delim = "\n";
+const char *delim = "\n";
 int	nproc;
 int	pgrep;
 int	signum = SIGTERM;
@@ -111,14 +111,13 @@ void	makelist(struct listhead *, enum listtype, char *);
 int
 main(int argc, char **argv)
 {
-	extern char *optarg;
-	extern int optind;
 	char buf[_POSIX2_LINE_MAX], *mstr, **pargv, *p, *q;
-	int i, j, ch, bestidx, rv, criteria;
+	int i, ch, bestidx, rv, criteria;
+	unsigned int j;
 	void (*action)(struct kinfo_proc *);
 	struct kinfo_proc *kp;
 	struct list *li;
-	u_int32_t bestsec, bestusec;
+	struct timeval best;
 	regex_t reg;
 	regmatch_t regmatch;
 	const char *kvmf = _PATH_DEVNULL;
@@ -315,7 +314,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &ppidlist, li_chain)
-			if (kp->kp_eproc.e_ppid == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_ppid == (pid_t)li->li_number)
 				break;
 		if (SLIST_FIRST(&ppidlist) != NULL && li == NULL) {
 			selected[i] = 0;
@@ -323,7 +322,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &pgrplist, li_chain)
-			if (kp->kp_eproc.e_pgid == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_pgid == (pid_t)li->li_number)
 				break;
 		if (SLIST_FIRST(&pgrplist) != NULL && li == NULL) {
 			selected[i] = 0;
@@ -343,7 +342,7 @@ main(int argc, char **argv)
 		}
 
 		SLIST_FOREACH(li, &sidlist, li_chain)
-			if (kp->kp_eproc.e_sess->s_sid == (uid_t)li->li_number)
+			if (kp->kp_eproc.e_sess->s_sid == (pid_t)li->li_number)
 				break;
 		if (SLIST_FIRST(&sidlist) != NULL && li == NULL) {
 			selected[i] = 0;
@@ -355,19 +354,19 @@ main(int argc, char **argv)
 	}
 
 	if (newest) {
-		bestsec = 0;
-		bestusec = 0;
+		best.tv_sec = 0;
+		best.tv_usec = 0;
 		bestidx = -1;
 
 		for (i = 0, kp = plist; i < nproc; i++, kp++) {
 			if (!selected[i])
 				continue;
 
-			if (kp->kp_thread.td_start.tv_sec > bestsec ||
-			    (kp->kp_thread.td_start.tv_sec == bestsec
-			    && kp->kp_thread.td_start.tv_usec > bestusec)) {
-			    	bestsec = kp->kp_thread.td_start.tv_sec;
-			    	bestusec = kp->kp_thread.td_start.tv_usec;
+			if (kp->kp_thread.td_start.tv_sec > best.tv_sec ||
+			    (kp->kp_thread.td_start.tv_sec == best.tv_sec
+			    && kp->kp_thread.td_start.tv_usec > best.tv_usec)) {
+			    	best.tv_sec = kp->kp_thread.td_start.tv_sec;
+			    	best.tv_usec = kp->kp_thread.td_start.tv_usec;
 				bestidx = i;
 			}
 		}
@@ -455,7 +454,8 @@ makelist(struct listhead *head, enum listtype type, char *src)
 	struct passwd *pw;
 	struct group *gr;
 	struct stat st;
-	char *sp, *p, buf[MAXPATHLEN];
+	const char *sp, *tty_name;
+	char *p, buf[MAXPATHLEN];
 	int empty;
 
 	empty = 1;
@@ -506,16 +506,16 @@ makelist(struct listhead *head, enum listtype type, char *src)
 				li->li_number = -1;
 				break;
 			} else if (strcmp(sp, "co") == 0)
-				p = "console";
+				tty_name = "console";
 			else if (strncmp(sp, "tty", 3) == 0)
-				p = sp;
+				tty_name = sp;
 			else
-				p = NULL;
+				tty_name = NULL;
 
-			if (p == NULL)
+			if (tty_name == NULL)
 				snprintf(buf, sizeof(buf), "/dev/tty%s", sp);
 			else
-				snprintf(buf, sizeof(buf), "/dev/%s", p);
+				snprintf(buf, sizeof(buf), "/dev/%s", tty_name);
 
 			if (stat(buf, &st) < 0) {
 				if (errno == ENOENT)
