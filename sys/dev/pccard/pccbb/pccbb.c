@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/pccbb/pccbb.c,v 1.64 2002/11/23 23:09:45 imp Exp $
- * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.4 2005/02/22 03:01:21 joerg Exp $
+ * $DragonFly: src/sys/dev/pccard/pccbb/pccbb.c,v 1.5 2005/03/31 05:43:34 hsu Exp $
  */
 
 /*
@@ -588,6 +588,7 @@ cbb_attach(device_t brdev)
 		return (ENOMEM);
 #else
 		uint32_t sockbase;
+
 		/*
 		 * Generally, the BIOS will assign this memory for us.
 		 * However, newer BIOSes do not because the MS design
@@ -597,32 +598,25 @@ cbb_attach(device_t brdev)
 		 * does this, we allow CardBus bridges to work on more
 		 * machines.
 		 */
+		pci_write_config(brdev, rid, 0xffffffff, 4);
 		sockbase = pci_read_config(brdev, rid, 4);
-		if (sockbase < 0x100000 || sockbase >= 0xfffffff0) {
-			pci_write_config(brdev, rid, 0xffffffff, 4);
-			sockbase = pci_read_config(brdev, rid, 4);
-			sockbase = (sockbase & 0xfffffff0) &
-			    -(sockbase & 0xfffffff0);
-			sc->base_res = bus_generic_alloc_resource(
-			    device_get_parent(brdev), brdev, SYS_RES_MEMORY,
-			    &rid, cbb_start_mem, ~0, sockbase,
-			    RF_ACTIVE|rman_make_alignment_flags(sockbase));
-			if (!sc->base_res) {
-				device_printf(brdev,
-				    "Could not grab register memory\n");
-				return (ENOMEM);
-			}
-			sc->flags |= CBB_KLUDGE_ALLOC;
-			pci_write_config(brdev, CBBR_SOCKBASE,
-			    rman_get_start(sc->base_res), 4);
-			DEVPRINTF((brdev, "PCI Memory allocated: %08lx\n",
-			    rman_get_start(sc->base_res)));
-		} else {
-			device_printf(brdev, "Could not map register memory\n");
-			goto err;
+		sockbase = (sockbase & 0xfffffff0) & -(sockbase & 0xfffffff0);
+		sc->base_res = bus_generic_alloc_resource(
+		    device_get_parent(brdev), brdev, SYS_RES_MEMORY,
+		    &rid, cbb_start_mem, ~0, sockbase,
+		    RF_ACTIVE|rman_make_alignment_flags(sockbase));
+		if (!sc->base_res) {
+			device_printf(brdev,
+			    "Could not grab register memory\n");
+			return (ENOMEM);
 		}
+		sc->flags |= CBB_KLUDGE_ALLOC;
+		pci_write_config(brdev, CBBR_SOCKBASE,
+		    rman_get_start(sc->base_res), 4);
 #endif
 	}
+	DEVPRINTF((brdev, "PCI Memory allocated: %08lx\n",
+	    rman_get_start(sc->base_res)));
 
 	sc->bst = rman_get_bustag(sc->base_res);
 	sc->bsh = rman_get_bushandle(sc->base_res);
