@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.4 2004/07/12 06:17:03 hmp Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.5 2005/02/28 19:51:57 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -50,6 +50,10 @@
 
 #ifndef _SYS_XIO_H_
 #include <sys/xio.h>
+#endif
+
+#if defined(MALLOC_DECLARE)
+MALLOC_DECLARE(M_MSFBUF);
 #endif
 
 /*
