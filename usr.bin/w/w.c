@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.5 2003/11/21 22:46:15 dillon Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.6 2004/10/25 22:04:18 liamfoy Exp $
  */
 
 /*
@@ -434,7 +434,7 @@ pr_header(time_t *nowp, int nusers)
 
 	/*
 	 * Print how long system has been up.
-	 * (Found by looking getting "boottime" from the kernel)
+	 * (Found by looking at "boottime" from the kernel)
 	 */
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_BOOTTIME;
@@ -463,7 +463,7 @@ pr_header(time_t *nowp, int nusers)
 			(void)printf(" %d sec%s,", secs, secs > 1 ? "s" : "");
 	}
 
-	/* Print number of users logged in to system */
+	/* Print number of users logged in on system */
 	(void)printf(" %d user%s", nusers, nusers == 1 ? "" : "s");
 
 	/*
