@@ -28,7 +28,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sbin/fsdb/fsdb.c,v 1.13.2.3 2002/03/20 13:39:02 joerg Exp $
- * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.3 2003/08/08 04:18:38 dillon Exp $
+ * $DragonFly: src/sbin/fsdb/fsdb.c,v 1.4 2003/08/29 18:40:03 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -871,7 +871,7 @@ badformat:
 
 CMDFUNCSTART(chmtime)
 {
-    if (dotime(argv[1], &curinode->di_ctime))
+    if (dotime(argv[1], &curinode->di_mtime))
 	return 1;
     inodirty();
     printactive(0);
@@ -880,7 +880,7 @@ CMDFUNCSTART(chmtime)
 
 CMDFUNCSTART(chatime)
 {
-    if (dotime(argv[1], &curinode->di_ctime))
+    if (dotime(argv[1], &curinode->di_atime))
 	return 1;
     inodirty();
     printactive(0);
