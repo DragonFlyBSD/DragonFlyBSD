@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/docs/Attic/index.cgi,v 1.6 2004/02/20 18:44:50 justin Exp $
+# $DragonFly: site/data/docs/Attic/index.cgi,v 1.7 2004/02/21 02:34:50 justin Exp $
 
 $TITLE(The DragonFly BSD Project)
 
@@ -8,7 +8,7 @@ $TITLE(The DragonFly BSD Project)
 <P>
 <TABLE>
 <TR>
-    <TD><A HREF="upgrade.html">FreeBSD 4.9 Upgrade Instructions</A></TD>
+    <TD><A HREF="upgrade-freebsd.cgi">FreeBSD 4.9 Upgrade Instructions</A></TD>
     <TD><I>February 2003</I></TD>
 </TR>
 <TR>
