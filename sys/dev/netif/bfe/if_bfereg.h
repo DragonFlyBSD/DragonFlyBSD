@@ -1,6 +1,6 @@
 /* Copyright (c) 2003 Stuart Walsh */
 /* $FreeBSD: src/sys/dev/bfe/if_bfereg.h,v 1.1.4.3 2004/02/13 21:36:34 julian Exp $ */
-/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.2 2004/03/14 14:37:39 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/bfe/if_bfereg.h,v 1.3 2004/09/14 22:21:43 joerg Exp $ */
 
 #ifndef _BFE_H
 #define _BFE_H
@@ -476,7 +476,7 @@ struct bfe_softc
 	void			*bfe_intrhand;
 	struct resource		*bfe_irq;
 	struct resource		*bfe_res;
-	struct callout_handle	bfe_stat_ch;
+	struct callout		bfe_stat_timer;
 	struct bfe_hw_stats	bfe_hwstats;
 	struct bfe_desc		*bfe_tx_list, *bfe_rx_list;
 	struct bfe_data		bfe_tx_ring[BFE_TX_LIST_CNT]; /* XXX */

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/bfe/if_bfe.c 1.4.4.7 2004/03/02 08:41:33 julian Exp  v
- * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.7 2004/07/23 07:16:24 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/bfe/if_bfe.c,v 1.8 2004/09/14 22:21:43 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -311,6 +311,7 @@ bfe_attach(device_t dev)
 	unit = device_get_unit(dev);
 	sc->bfe_dev = dev;
 	sc->bfe_unit = unit;
+	callout_init(&sc->bfe_stat_timer);
 
 	/*
 	 * Handle power management nonsense.
@@ -394,7 +395,6 @@ bfe_attach(device_t dev)
 	}
 
 	ether_ifattach(ifp, sc->arpcom.ac_enaddr);
-	callout_handle_init(&sc->bfe_stat_ch);
 
 	/*
 	 * Hook interrupt last to avoid having to lock softc
@@ -1370,7 +1370,7 @@ bfe_init(void *xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->bfe_stat_ch = timeout(bfe_tick, sc, hz);
+	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 	splx(s);
 }
 
@@ -1504,7 +1504,7 @@ bfe_tick(void *xsc)
 	mii = device_get_softc(sc->bfe_miibus);
 
 	bfe_stats_update(sc);
-	sc->bfe_stat_ch = timeout(bfe_tick, sc, hz);
+	callout_reset(&sc->bfe_stat_timer, hz, bfe_tick, sc);
 
 	if (sc->bfe_link) {
 		splx(s);
@@ -1534,7 +1534,7 @@ bfe_stop(struct bfe_softc *sc)
 
 	s = splimp();
 
-	untimeout(bfe_tick, sc, sc->bfe_stat_ch);
+	callout_stop(&sc->bfe_stat_timer);
 
 	ifp = &sc->arpcom.ac_if;
 
