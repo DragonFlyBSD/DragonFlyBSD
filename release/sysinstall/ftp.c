@@ -5,7 +5,7 @@
  * generation being slated to essentially a complete rewrite.
  *
  * $FreeBSD: src/release/sysinstall/ftp.c,v 1.37.2.8 2002/10/24 13:00:52 nyan Exp $
- * $DragonFly: src/release/sysinstall/Attic/ftp.c,v 1.2 2003/06/17 04:27:21 dillon Exp $
+ * $DragonFly: src/release/sysinstall/Attic/ftp.c,v 1.3 2003/08/06 20:23:19 rob Exp $
  *
  * Copyright (c) 1995
  *	Jordan Hubbard.  All rights reserved.
@@ -55,9 +55,9 @@ const char *ftp_dirs[] = { ".", "releases/pc98", "snapshots/pc98",
     "pub/FreeBSD", "pub/FreeBSD/releases/pc98",
     "pub/FreeBSD/snapshots/pc98", NULL };
 #else
-const char *ftp_dirs[] = { ".", "releases/"MACHINE, "snapshots/"MACHINE,
-    "pub/FreeBSD", "pub/FreeBSD/releases/"MACHINE,
-    "pub/FreeBSD/snapshots/"MACHINE, NULL };
+const char *ftp_dirs[] = { ".", "releases/i386", "snapshots/i386",
+    "pub/FreeBSD", "pub/FreeBSD/releases/i386",
+    "pub/FreeBSD/snapshots/i386", NULL };
 #endif
 
 /* Brings up attached network device, if any - takes FTP device as arg */
