@@ -1,6 +1,6 @@
 /*
  * $Header: /src/pub/tcsh/sh.init.c,v 3.49 2002/03/08 17:36:46 christos Exp $ 
- * $DragonFly: src/contrib/tcsh/Attic/sh.init.c,v 1.4 2003/10/24 17:14:14 dillon Exp $
+ * $DragonFly: src/contrib/tcsh/Attic/sh.init.c,v 1.5 2003/10/27 15:31:19 dillon Exp $
  */
 /*
  * sh.init.c: Function and signal tables
@@ -479,20 +479,6 @@ mesginit()
     }
 # endif /* !SIGPOLL || SIGPOLL != SIGIO */
 #endif /* SIGIO */
-
-#ifdef SIGCKPT
-    if (mesg[SIGCKPT].pname == NULL) {
-	mesg[SIGCKPT].iname = "CKPT";
-	mesg[SIGCKPT].pname = CSAVS(2, 34, "Checkpoint and continue");
-    }
-#endif /* SIGCKPT */
-
-#ifdef SIGCKPTEXIT
-    if (mesg[SIGCKPTEXIT].pname == NULL) {
-	mesg[SIGCKPTEXIT].iname = "CKPTEXIT";
-	mesg[SIGCKPTEXIT].pname = CSAVS(2, 35, "Checkpoint and eXit");
-    }
-#endif /* SIGCKPTEXIT */
 
 #ifdef SIGURG
     if (mesg[SIGURG].pname == NULL) {
@@ -1084,7 +1070,6 @@ mesginit()
 	mesg[SIGXRLG3].pname = CSAVS(2, 108, "exeeded RLG3 limit");
     }
 #endif /* SIGXRLG3 */
-
 
 #ifdef SIGCKPT
     /* DragonFly BSD */
