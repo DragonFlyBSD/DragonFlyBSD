@@ -26,15 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/compat/linux/linux_socket.c,v 1.19.2.8 2001/11/07 20:33:55 marcel Exp $
- * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.13 2003/10/08 01:30:32 daver Exp $
+ * $DragonFly: src/sys/emulation/linux/linux_socket.c,v 1.14 2003/10/13 04:58:13 daver Exp $
  */
-
-/* XXX we use functions that might not exist. */
-#include "opt_compat.h"
-
-#ifndef COMPAT_43
-#error "Unable to compile Linux-emulator due to missing COMPAT_43 option!"
-#endif
 
 #include <sys/param.h>
 #include <sys/proc.h>
@@ -284,51 +277,37 @@ static int
 linux_socket(struct linux_socket_args *args, int *res)
 {
 	struct linux_socket_args linux_args;
-	struct socket_args bsd_args;
-	int error;
-	int retval_socket;
+	struct sockopt sopt;
+	int error, domain, optval;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.protocol = linux_args.protocol;
-	bsd_args.type = linux_args.type;
-	bsd_args.domain = linux_to_bsd_domain(linux_args.domain);
-	if (bsd_args.domain == -1)
+	domain = linux_to_bsd_domain(linux_args.domain);
+	if (domain == -1)
 		return (EINVAL);
 
-	retval_socket = socket(&bsd_args);
-	/* Copy back the return value from socket() */
-	*res = bsd_args.sysmsg_result;
-	if (bsd_args.type == SOCK_RAW
-	    && (bsd_args.protocol == IPPROTO_RAW || bsd_args.protocol == 0)
-	    && bsd_args.domain == AF_INET
-	    && retval_socket >= 0) {
-		/* It's a raw IP socket: set the IP_HDRINCL option. */
-		struct setsockopt_args /* {
-			int s;
-			int level;
-			int name;
-			caddr_t val;
-			int valsize;
-		} */ bsd_setsockopt_args;
-		caddr_t sg;
-		int *hdrincl;
+	error = kern_socket(domain, linux_args.type, linux_args.protocol, res);
 
-		sg = stackgap_init();
-		hdrincl = (int *)stackgap_alloc(&sg, sizeof(*hdrincl));
-		*hdrincl = 1;
-		bsd_setsockopt_args.s = bsd_args.sysmsg_result;
-		bsd_setsockopt_args.level = IPPROTO_IP;
-		bsd_setsockopt_args.name = IP_HDRINCL;
-		bsd_setsockopt_args.val = (caddr_t)hdrincl;
-		bsd_setsockopt_args.valsize = sizeof(*hdrincl);
+	/* Copy back the return value from socket() */
+	if (error == 0 && linux_args.type == SOCK_RAW &&
+	    (linux_args.protocol == IPPROTO_RAW || linux_args.protocol == 0) &&
+	    linux_args.domain == AF_INET) {
+		/* It's a raw IP socket: set the IP_HDRINCL option. */
+		optval = 1;
+		sopt.sopt_dir = SOPT_SET;
+		sopt.sopt_level = IPPROTO_IP;
+		sopt.sopt_name = IP_HDRINCL;
+		sopt.sopt_val = &optval;
+		sopt.sopt_valsize = sizeof(optval);
+		sopt.sopt_td = NULL;
+
 		/* We ignore any error returned by setsockopt() */
-		setsockopt(&bsd_setsockopt_args);
+		kern_setsockopt(*res, &sopt);
 	}
 
-	return (retval_socket);
+	return (error);
 }
 
 struct linux_bind_args {
@@ -1057,21 +1036,15 @@ static int
 linux_shutdown(struct linux_shutdown_args *args, int *res)
 {
 	struct linux_shutdown_args linux_args;
-	struct shutdown_args /* {
-		int s;
-		int how;
-	} */ bsd_args;
 	int error;
 
-	if ((error = copyin(args, &linux_args, sizeof(linux_args))))
+	error = copyin(args, &linux_args, sizeof(linux_args));
+	if (error)
 		return (error);
 
-	bsd_args.sysmsg_result = 0;
-	bsd_args.s = linux_args.s;
-	bsd_args.how = linux_args.how;
-	error = shutdown(&bsd_args);
-	*res = bsd_args.sysmsg_result;
-	return(error);
+	error = kern_shutdown(linux_args.s, linux_args.how);
+
+	return (error);
 }
 
 struct linux_setsockopt_args {
