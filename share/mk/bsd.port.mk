@@ -1,5 +1,5 @@
 # $FreeBSD: src/share/mk/bsd.port.mk,v 1.303.2.2 2002/07/17 19:08:23 ru Exp $
-# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.17 2004/08/14 13:49:41 joerg Exp $
+# $DragonFly: src/share/mk/Attic/bsd.port.mk,v 1.18 2004/10/24 22:40:41 dillon Exp $
 
 PORTSDIR?=	/usr/ports
 DFPORTSDIR?=	/usr/dfports
@@ -90,6 +90,7 @@ ARCH?=			i386
 MACHINE_ARCH?=		i386
 HAVE_GNOME?=
 FILESDIR?=		${.CURDIR}/files
+X_WINDOW_SYSTEM?=	xfree86-4
 
 # WORKAROUND to get portupgrade working
 # Taken from: ${PORTSDIR}/Mk/bsd.port.mk
