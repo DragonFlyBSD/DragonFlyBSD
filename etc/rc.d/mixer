@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $DragonFly: src/etc/rc.d/mixer,v 1.2 2004/02/25 16:16:49 joerg Exp $
+# $DragonFly: src/etc/rc.d/mixer,v 1.3 2004/04/15 12:59:29 joerg Exp $
 #
 
 # PROVIDE: mixer
@@ -17,7 +17,7 @@ mixer_conf=/etc/mixer.conf
 mixer_start()
 {
 	if [ -r $mixer_conf ]; then
-		echo "Setting Volume"
+		echo "Loading mixer settings"
 		cat $mixer_conf| xargs mixer 
 	fi
 }
@@ -26,8 +26,8 @@ mixer_stop()
 {
 	[ -z "$mixer_conf" ] && return
 	if [ -w $mixer_conf -o \( ! -e $mixer_conf -a -w `dirname $mixer_conf` \) ]; then
-		echo "Storing Volume"
-		mixer 2>/dev/null | awk ' /^Mixer/ {print $2 " " $7 }' > $mixer_conf
+		echo "Storing mixer settings"
+		mixer -s > $mixer_conf
 	fi
 }
 
