@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_init.c,v 1.6 1999/08/29 10:28:09 bde Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.4 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.5 2004/09/15 01:51:55 joerg Exp $
  */
 
 /*
@@ -60,9 +60,9 @@ static void	fore_get_prom (Fore_unit *);
  *	none
  */
 void
-fore_initialize(fup)
-	Fore_unit	*fup;
+fore_initialize(void *xfup)
 {
+	Fore_unit	*fup = xfup;
 	Aali		*aap;
 	Init_parms	*inp;
 	caddr_t		errmsg;
@@ -76,12 +76,9 @@ fore_initialize(fup)
 		/*
 		 * Try again later
 		 */
-		fup->fu_thandle = 
-			timeout((KTimeout_ret(*) (void *))fore_initialize,
-				(void *)fup, hz);
+		callout_reset(&fup->fu_init_timer, hz, fore_initialize, fup);
 		return;
-	} else
-		callout_handle_init(&fup->fu_thandle);
+	}
 
 	/*
 	 * Allocate queues and whatever else is needed

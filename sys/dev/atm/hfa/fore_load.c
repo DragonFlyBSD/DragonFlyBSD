@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.8 2004/05/13 23:49:14 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.9 2004/09/15 01:51:55 joerg Exp $
  */
 
 /*
@@ -927,7 +927,7 @@ fore_pci_attach(config_id, unit)
 	fup->fu_openvcc = fore_openvcc;
 	fup->fu_closevcc = fore_closevcc;
 	fup->fu_output = fore_output;
-	callout_handle_init(&fup->fu_thandle);
+	callout_init(&fup->fu_init_timer);
 
 	/*
 	 * Get our device type
@@ -1173,8 +1173,7 @@ fore_unattach(fup)
 	/*
 	 * Remove any pending timeout()'s
 	 */
-	(void)untimeout((KTimeout_ret(*) (void *))fore_initialize,
-		(void *)fup, fup->fu_thandle);
+	callout_stop(&fup->fu_init_timer);
 
 #ifdef sun
 	/*

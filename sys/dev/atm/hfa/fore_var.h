@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_var.h,v 1.2 1999/08/28 00:41:53 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_var.h,v 1.2 2003/06/17 04:28:27 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_var.h,v 1.3 2004/09/15 01:51:55 joerg Exp $
  *
  */
 
@@ -234,7 +234,7 @@ struct fore_unit {
 	Fore_prom	*fu_prom;	/* Device PROM buffer */
 	Fore_prom	*fu_promd;	/* Device PROM buffer (DMA) */
 #endif
-	struct callout_handle fu_thandle;	/* Timer handle */
+	struct callout	fu_init_timer;
 };
 typedef struct fore_unit	Fore_unit;
 

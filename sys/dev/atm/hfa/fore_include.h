@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_include.h,v 1.2 1999/08/28 00:41:50 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.5 2003/08/27 10:35:16 rob Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_include.h,v 1.6 2004/09/15 01:51:55 joerg Exp $
  *
  */
 
@@ -83,7 +83,7 @@ int		fore_atm_ioctl (int, caddr_t, caddr_t);
 void		fore_interface_free (Fore_unit *);
 
 	/* fore_init.c */
-void		fore_initialize (Fore_unit *);
+void		fore_initialize(void *);
 void		fore_initialize_complete (Fore_unit *);
 
 	/* fore_intr.c */
