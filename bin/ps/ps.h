@@ -32,7 +32,7 @@
  *
  *	@(#)ps.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/ps/ps.h,v 1.7 1999/08/27 23:14:52 peter Exp $
- * $DragonFly: src/bin/ps/ps.h,v 1.5 2004/03/19 17:47:49 cpressey Exp $
+ * $DragonFly: src/bin/ps/ps.h,v 1.6 2004/11/06 12:33:11 eirikn Exp $
  */
 
 #define	UNLIMITED	0	/* unlimited terminal width */
@@ -73,9 +73,9 @@ typedef struct var {
 #define	DSIZ	    0x08		/* field size is dynamic*/
 	u_int	    flag;
 					/* output routine */
-	void	    (*oproc) (struct kinfo *, struct varent *);
+	void	    (*oproc) (const struct kinfo *, const struct varent *);
 					/* sizing routine*/
-	int	    (*sproc) (struct kinfo *);
+	int	    (*sproc) (const struct kinfo *);
 	short	    width;		/* printing width */
 	/*
 	 * The following (optional) elements are hooks for passing information
