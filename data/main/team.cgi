@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.3 2004/01/08 15:28:52 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.4 2004/01/11 14:09:35 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -62,7 +62,7 @@ to the DragonFly project.  Here's a partial list.
 (commit access)</TD>
 </TR>
 
-<TR><TD BGCOLOR="#DDDDDD" VALIGN="top">Emiel Kollof</TD>
+<TR><TD BGCOLOR="#DDDDDD" VALIGN="top"><A HREF="mailto:coolvibe 'at' hackerheaven 'dot' org">Emiel Kollof</A></TD>
 <TD BGCOLOR="#DDDDDD" VALIGN="top">NVIDIA binary driver port override
 </TD>
 </TR>
@@ -126,7 +126,6 @@ to the DragonFly project.  Here's a partial list.
 (commit access)
 </TD>
 </TR>
-
 
 <TR><TD VALIGN="top"><A HREF="mailto:justin 'at' shiningsilence 'dot' com">Justin Sherrill</A></TD>
 <TD VALIGN="top">Secretarial work, website cleanup
