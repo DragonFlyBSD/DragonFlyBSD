@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.96 2004/02/27 06:43:14 kan Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.12 2004/12/18 21:43:38 swildner Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.13 2005/01/05 15:14:04 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -420,14 +420,13 @@ main(int argc, char * const *argv)
 {
 	int c;
 	int all, namesonly, downonly, uponly;
-	int foundit = 0, need_nl = 0;
+	int need_nl = 0;
 	const struct afswtch *afp = 0;
-	int addrcount;
+	int addrcount, ifindex;
 	struct	if_msghdr *ifm, *nextifm;
 	struct	ifa_msghdr *ifam;
 	struct	sockaddr_dl *sdl;
 	char	*buf, *lim, *next;
-
 
 	size_t needed;
 	int mib[6];
@@ -498,6 +497,7 @@ main(int argc, char * const *argv)
 		if (argc > 1)
 			usage();
 
+		ifindex = 0;
 		if (argc == 1) {
 			for (afp = afs; afp->af_name; afp++)
 				if (strcmp(afp->af_name, *argv) == 0) {
@@ -531,6 +531,9 @@ main(int argc, char * const *argv)
 			if (argc == 0)
 				goto end;
 		}
+		ifindex = if_nametoindex(name);
+		if (ifindex == 0)
+			errx(1, "interface %s does not exist", name);
 	}
 
 	/* Check for address family */
@@ -547,9 +550,9 @@ main(int argc, char * const *argv)
 	mib[0] = CTL_NET;
 	mib[1] = PF_ROUTE;
 	mib[2] = 0;
-	mib[3] = 0;	/* address family */
+	mib[3] = 0;		/* address family */
 	mib[4] = NET_RT_IFLIST;
-	mib[5] = 0;
+	mib[5] = ifindex;	/* interface index */
 
 	/* if particular family specified, only ask about it */
 	if (afp)
@@ -597,6 +600,9 @@ main(int argc, char * const *argv)
 			addrcount++;
 			next += nextifm->ifm_msglen;
 		}
+		strncpy(name, sdl->sdl_data, sdl->sdl_nlen);
+		name[sdl->sdl_nlen] = '\0';
+
 		if (all || namesonly) {
 			int len;
 
@@ -612,8 +618,6 @@ main(int argc, char * const *argv)
 			if (downonly)
 				if (flags & IFF_UP)
 					continue; /* not down */
-			strncpy(name, sdl->sdl_data, sdl->sdl_nlen);
-			name[sdl->sdl_nlen] = '\0';
 			if (namesonly) {
 				if (afp == NULL ||
 					afp->af_status != link_status ||
@@ -625,22 +629,12 @@ main(int argc, char * const *argv)
 				}
 				continue;
 			}
-		} else {
-			if (strlen(name) != sdl->sdl_nlen)
-				continue; /* not same len */
-			if (strncmp(name, sdl->sdl_data, sdl->sdl_nlen) != 0)
-				continue; /* not same name */
 		}
 
 		if (argc > 0)
 			ifconfig(argc, argv, afp);
 		else
 			status(afp, addrcount, sdl, ifm, ifam);
-
-		if (all == 0 && namesonly == 0) {
-			foundit++; /* flag it as 'done' */
-			break;
-		}
 	}
 	free(buf);
 
@@ -649,10 +643,6 @@ main(int argc, char * const *argv)
 end:
 	if (printname)
 		printf("%s\n", name);
-
-	if (all == 0 && namesonly == 0 && foundit == 0)
-		errx(1, "interface %s does not exist", name);
-
 
 	exit (0);
 }
