@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)quotaon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/quotaon/quotaon.c,v 1.4.2.1 2001/07/19 05:17:06 kris Exp $
- * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/quotaon/quotaon.c,v 1.7 2004/12/18 22:48:04 swildner Exp $
  */
 
 /*
@@ -217,7 +217,7 @@ hasquota(struct fstab *fs, int type, char **qfnamep)
 		*qfnamep = cp;
 		return (1);
 	}
-	(void) sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
+	sprintf(buf, "%s/%s.%s", fs->fs_file, qfname, qfextension[type]);
 	*qfnamep = buf;
 	return (1);
 }

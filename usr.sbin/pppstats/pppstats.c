@@ -31,7 +31,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppstats/pppstats.c,v 1.13 1999/08/28 01:19:11 peter Exp $
- * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.5 2004/05/20 19:24:43 cpressey Exp $
+ * $DragonFly: src/usr.sbin/pppstats/pppstats.c,v 1.6 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -264,9 +264,9 @@ intpr()
 	if (zflag || rflag)
 	    get_ppp_cstats(&ccs);
 
-	(void)signal(SIGALRM, catchalarm);
+	signal(SIGALRM, catchalarm);
 	signalled = 0;
-	(void)alarm(interval);
+	alarm(interval);
 
 	if ((line % 20) == 0) {
 	    if (zflag) {
@@ -393,7 +393,7 @@ intpr()
 	}
 	sigprocmask(SIG_SETMASK, &oldmask, NULL);
 	signalled = 0;
-	(void)alarm(interval);
+	alarm(interval);
 
 	if (!aflag) {
 	    old = cur;

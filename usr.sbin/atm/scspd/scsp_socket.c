@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_socket.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -373,7 +373,7 @@ connect_fail:
 	/*
 	 * Close the socket if something didn't work
 	 */
-	(void)close(sd);
+	close(sd);
 	dcsp->sd_sock = -1;
 	if (rc == 0)
 		rc = EFAULT;
@@ -554,7 +554,7 @@ listen_fail:
 	/*
 	 * Close the socket if anything didn't work
 	 */
-	(void)close(sd);
+	close(sd);
 	if (rc == 0)
 		errno = EFAULT;
 	else
@@ -684,7 +684,7 @@ dcs_accept_fail:
 	/*
 	 * An error has occured--clean up and return
 	 */
-	(void)close(sd);
+	close(sd);
 	return((Scsp_dcs *)0);
 }
 
@@ -844,7 +844,7 @@ scsp_server_listen(void)
 	 */
 	rc = bind(sd, &scsp_addr, sizeof(scsp_addr));
 	if (rc == -1) {
-		(void)close(sd);
+		close(sd);
 		return(-1);
 	}
 
@@ -857,7 +857,7 @@ scsp_server_listen(void)
 		rc = fcntl(sd, F_SETFL, O_NONBLOCK);
 #endif
 	if (rc == -1) {
-		(void)close(sd);
+		close(sd);
 		return(-1);
 	}
 
@@ -865,7 +865,7 @@ scsp_server_listen(void)
 	 * Listen for new connections
 	 */
 	if (listen(sd, 5) < 0) {
-		(void)close(sd);
+		close(sd);
 		return(-1);
 	}
 
@@ -917,7 +917,7 @@ scsp_server_accept(int ls)
 	rc = fcntl(sd, F_SETFL, O_NONBLOCK);
 #endif
 	if (rc == -1) {
-		(void)close(sd);
+		close(sd);
 		rc = errno;
 	}
 
@@ -1300,15 +1300,15 @@ config_reject:
 	msg->si_type = SCSP_CFG_RSP;
 	msg->si_rc = SCSP_RSP_REJ;
 	msg->si_len = sizeof(Scsp_if_msg_hdr);
-	(void)scsp_if_sock_write(ssp->ss_sock, msg);
+	scsp_if_sock_write(ssp->ss_sock, msg);
 
 config_error:
 	if (ssp->ss_sock != -1) {
-		(void)close(ssp->ss_sock);
+		close(ssp->ss_sock);
 		ssp->ss_sock = -1;
 	}
 	if (ssp->ss_dcs_lsock != -1) {
-		(void)close(ssp->ss_dcs_lsock);
+		close(ssp->ss_dcs_lsock);
 		ssp->ss_sock = -1;
 	}
 	ssp->ss_state = SCSP_SS_NULL;
@@ -1320,7 +1320,7 @@ pending_read_fail:
 	/*
 	 * Close the socket and free the pending read block
 	 */
-	(void)close(psp->sp_sock);
+	close(psp->sp_sock);
 	UNLINK(psp, Scsp_pending, scsp_pending_head, sp_next);
 	UM_FREE(psp);
 	if (msg)

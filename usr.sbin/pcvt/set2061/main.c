@@ -29,7 +29,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/main.c,v 1.2 2004/03/24 17:46:23 cpressey Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/main.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
  */
 
 static char *id =
@@ -98,7 +98,7 @@ main(int argc, char **argv)
 
 	AltICD2061SetClock(freq, no);
 
-	(void)ioctl(fd, KDDISABIO, 0);
+	ioctl(fd, KDDISABIO, 0);
 
 	exit(0);
 }

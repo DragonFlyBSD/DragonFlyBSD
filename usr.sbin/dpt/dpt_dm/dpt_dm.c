@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.3 1999/08/28 01:16:07 peter Exp $
- * $DragonFly: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_dm/dpt_dm.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* dpt_dm.c: Dump a DPT metrics structure */
@@ -254,42 +254,42 @@ main(int argc, char **argv, char **argp)
     int ndx;
 
     if ( (fd = open(argv[1], O_RDWR, S_IRUSR | S_IWUSR)) == -1 ) {
-	(void)fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
-		      argv[0], argv[1], strerror(errno));
+	fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
+		argv[0], argv[1], strerror(errno));
 	exit(1);
     }
 
     if ( (result = ioctl(fd, DPT_IOCTL_INTERNAL_METRICS, &metrics)) != 0 ) {
-	(void)fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx - %s\n",
-		      argv[0], DPT_IOCTL_INTERNAL_METRICS,
-		      strerror(errno));
+	fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx - %s\n",
+		argv[0], DPT_IOCTL_INTERNAL_METRICS,
+		strerror(errno));
 	exit(2);
     }
 
     /* Interrupt related measurements */
-    (void)fprintf(stdout, "Interrupts:%u:%u:%s:%u\n\nCommands:\n",
-		  metrics.aborted_interrupts,
-		  metrics.spurious_interrupts,
-		  metrics.min_intr_time == BIG_ENOUGH ?
-		  	"N/A" :
-		  	tmpsprintf(0, "%u", metrics.min_intr_time),
-		  metrics.max_intr_time);
+    fprintf(stdout, "Interrupts:%u:%u:%s:%u\n\nCommands:\n",
+	    metrics.aborted_interrupts,
+	    metrics.spurious_interrupts,
+	    metrics.min_intr_time == BIG_ENOUGH ?
+		"N/A" :
+		tmpsprintf(0, "%u", metrics.min_intr_time),
+	    metrics.max_intr_time);
 
     /* SCSI Commands, can be no more than 256 of them */
     for (ndx = 0; ndx < 256; ndx++) {
 	if (metrics.command_count[ndx] != 0) {
-	    (void)fprintf(stdout, "%u:%s:%u:%s:%d\n",
-			  ndx,
-			  scsi_cmd_name((u_int8_t)ndx), 
-			  metrics.command_count[ndx],
-			  metrics.min_command_time[ndx] == BIG_ENOUGH ?
-			  	"N/A" :
-			  	tmpsprintf(0, "%u", metrics.min_command_time[ndx]),
-			  metrics.max_command_time[ndx]);
+	    fprintf(stdout, "%u:%s:%u:%s:%d\n",
+		    ndx,
+		    scsi_cmd_name((u_int8_t)ndx), 
+		    metrics.command_count[ndx],
+		    metrics.min_command_time[ndx] == BIG_ENOUGH ?
+			"N/A" :
+			tmpsprintf(0, "%u", metrics.min_command_time[ndx]),
+		    metrics.max_command_time[ndx]);
 	}
     }
     
-    (void)fprintf(stdout, "\nREAD by size:\n");
+    fprintf(stdout, "\nREAD by size:\n");
 
     /* READ/WRITE statistics, per block size */
 
@@ -332,14 +332,14 @@ main(int argc, char **argv, char **argp)
 		block_size = "Gcc, shut up!";
 	    }
 	    
-	    (void)fprintf(stdout, "%s:%u:%u:%u\n", block_size,
-			  metrics.read_by_size_count[ndx],
-			  metrics.read_by_size_min_time[ndx],
-			  metrics.read_by_size_max_time[ndx]);
+	    fprintf(stdout, "%s:%u:%u:%u\n", block_size,
+		    metrics.read_by_size_count[ndx],
+		    metrics.read_by_size_min_time[ndx],
+		    metrics.read_by_size_max_time[ndx]);
 	}
     }
 	    
-    (void)fprintf(stdout, "\nWRITE by size:\n");
+    fprintf(stdout, "\nWRITE by size:\n");
 
     for ( ndx = 0; ndx < 10; ndx++) {		
 	if (metrics.write_by_size_count[ndx] != 0) {
@@ -380,38 +380,38 @@ main(int argc, char **argv, char **argp)
 		block_size = "Gcc, shut up!";
 	    }
 	    
-	    (void)fprintf(stdout, "%s:%u:%u:%u\n", block_size,
-			  metrics.write_by_size_count[ndx],
-			  metrics.write_by_size_min_time[ndx],
-			  metrics.write_by_size_max_time[ndx]);
+	    fprintf(stdout, "%s:%u:%u:%u\n", block_size,
+		    metrics.write_by_size_count[ndx],
+		    metrics.write_by_size_min_time[ndx],
+		    metrics.write_by_size_max_time[ndx]);
 	}
 	
     }
     
-    (void)fprintf(stdout, "\nQueues:%u:%s:%u:%u:%s:%u:%u:%s:%u\n", 
-		  metrics.max_waiting_count,
-		  metrics.min_waiting_time == BIG_ENOUGH ?
-		  	"N/A" :
-		  	tmpsprintf(0, "%u", metrics.min_waiting_time),
-		  metrics.max_waiting_time,
-		  metrics.max_submit_count,
-		  metrics.min_submit_time == BIG_ENOUGH ?
-		  	"N/A" :
-		  	tmpsprintf(1, "%u", metrics.min_submit_time),
-		  metrics.max_submit_time,
-		  metrics.max_complete_count,
-		  metrics.min_complete_time == BIG_ENOUGH ?
-		  	"N/A" :
-		  	tmpsprintf(2, "%u", metrics.min_complete_time),
-		  metrics.max_complete_time);
+    fprintf(stdout, "\nQueues:%u:%s:%u:%u:%s:%u:%u:%s:%u\n", 
+	    metrics.max_waiting_count,
+	    metrics.min_waiting_time == BIG_ENOUGH ?
+		"N/A" :
+		tmpsprintf(0, "%u", metrics.min_waiting_time),
+	    metrics.max_waiting_time,
+	    metrics.max_submit_count,
+	    metrics.min_submit_time == BIG_ENOUGH ?
+		"N/A" :
+		tmpsprintf(1, "%u", metrics.min_submit_time),
+	    metrics.max_submit_time,
+	    metrics.max_complete_count,
+	    metrics.min_complete_time == BIG_ENOUGH ?
+		"N/A" :
+		tmpsprintf(2, "%u", metrics.min_complete_time),
+	    metrics.max_complete_time);
 
-    (void)fprintf(stdout, "Hardware Ports:%u:%u:%u:%s\n",
-		  metrics.command_collisions,
-		  metrics.command_too_busy,
-		  metrics.max_eata_tries,
-		  metrics.min_eata_tries == BIG_ENOUGH ?
-		  	"N/A" :
-		    	tmpsprintf(0, "%u", metrics.min_eata_tries));
+    fprintf(stdout, "Hardware Ports:%u:%u:%u:%s\n",
+	    metrics.command_collisions,
+	    metrics.command_too_busy,
+	    metrics.max_eata_tries,
+	    metrics.min_eata_tries == BIG_ENOUGH ?
+		"N/A" :
+		tmpsprintf(0, "%u", metrics.min_eata_tries));
 
     return(0);
 }

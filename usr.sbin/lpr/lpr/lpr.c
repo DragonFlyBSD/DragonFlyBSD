@@ -39,7 +39,7 @@
  * @(#) Copyright (c) 1983, 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: lpr.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpr/lpr.c,v 1.32.2.11 2002/04/28 23:40:23 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.3 2004/03/22 22:32:51 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpr/lpr.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -316,7 +316,7 @@ main(int argc, char *argv[])
 	mktemps(pp);
 	tfd = nfile(tfname);
 	seteuid(euid);
-	(void) fchown(tfd, pp->daemon_user, -1);
+	fchown(tfd, pp->daemon_user, -1);
 	/* owned by daemon for protection */
 	seteuid(uid);
 	card('H', local_host);
@@ -376,8 +376,8 @@ main(int argc, char *argv[])
 			continue;	/* file unreasonable */
 
 		if (sflag && (cp = linked(arg)) != NULL) {
-			(void) snprintf(buf, sizeof(buf), "%d %d", statb.st_dev,
-				statb.st_ino);
+			snprintf(buf, sizeof(buf), "%d %d", statb.st_dev,
+				 statb.st_ino);
 			card('S', buf);
 			if (format == 'p')
 				card('T', title ? title : arg);
@@ -475,14 +475,14 @@ main(int argc, char *argv[])
 			printf("%s: cannot open %s\n", progname, arg);
 		} else {
 			copy(pp, i, arg);
-			(void) close(i);
+			close(i);
 			if (f && unlink(arg) < 0)
 				printf("%s: %s: not removed\n", progname, arg);
 		}
 	}
 
 	if (nact) {
-		(void) close(tfd);
+		close(tfd);
 		tfname[inchar]--;
 		/*
 		 * Touch the control file to fix position in the queue.
@@ -499,7 +499,7 @@ main(int argc, char *argv[])
 				tfname[inchar]++;
 				cleanup(0);
 			}
-			(void) close(tfd);
+			close(tfd);
 		}
 		if (link(tfname, cfname) < 0) {
 			printf("%s: cannot rename %s\n", progname, cfname);
@@ -552,7 +552,7 @@ copy(const struct printer *pp, int f, const char n[])
 			}
 		}
 	}
-	(void) close(fd);
+	close(fd);
 	if (nc==0 && nr==0)
 		printf("%s: %s: empty input file\n", progname,
 		    f ? n : "stdin");
@@ -629,7 +629,7 @@ nfile(char *n)
 
 	seteuid(euid);
 	f = open(n, O_WRONLY | O_EXCL | O_CREAT, FILMOD);
-	(void) umask(oldumask);
+	umask(oldumask);
 	if (f < 0) {
 		printf("%s: cannot create %s\n", progname, n);
 		cleanup(0);
@@ -723,7 +723,7 @@ test(const char *file)
 		printf("%s: %s is an executable program", progname, file);
 		goto error1;
 	}
-	(void) close(fd);
+	close(fd);
 	if (rflag) {
 		/*
 		 * aside: note that 'cp' is technically a 'const char *'
@@ -753,7 +753,7 @@ test(const char *file)
 
 error1:
 	printf(" and is unprintable\n");
-	(void) close(fd);
+	close(fd);
 	return(-1);
 }
 
@@ -834,7 +834,7 @@ mktemps(const struct printer *pp)
 	char *cp;
 	char buf[BUFSIZ];
 
-	(void) snprintf(buf, sizeof(buf), "%s/.seq", pp->spool_dir);
+	snprintf(buf, sizeof(buf), "%s/.seq", pp->spool_dir);
 	seteuid(euid);
 	if ((fd = open(buf, O_RDWR|O_CREAT, 0661)) < 0) {
 		printf("%s: cannot create %s\n", progname, buf);
@@ -859,10 +859,10 @@ mktemps(const struct printer *pp)
 	dfname = lmktemp(pp, "df", n, len);
 	inchar = strlen(pp->spool_dir) + 3;
 	n = (n + 1) % 1000;
-	(void) lseek(fd, (off_t)0, 0);
+	lseek(fd, (off_t)0, 0);
 	snprintf(buf, sizeof(buf), "%03d\n", n);
-	(void) write(fd, buf, strlen(buf));
-	(void) close(fd);	/* unlocks as well */
+	write(fd, buf, strlen(buf));
+	close(fd);	/* unlocks as well */
 }
 
 /*
@@ -875,7 +875,6 @@ lmktemp(const struct printer *pp, const char *id, int num, int len)
 
 	if ((s = malloc(len)) == NULL)
 		errx(1, "out of memory");
-	(void) snprintf(s, len, "%s/%sA%03d%s", pp->spool_dir, id, num,
-	    local_host);
+	snprintf(s, len, "%s/%sA%03d%s", pp->spool_dir, id, num, local_host);
 	return(s);
 }

@@ -32,7 +32,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/auth.c,v 1.24.2.2 2002/03/12 08:55:22 maxim Exp $
- * $DragonFly: src/usr.sbin/pppd/auth.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/auth.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -755,7 +755,7 @@ checkfile(fname, name)
 					break;
 				}
 			}
-		(void) fclose(fd);
+		fclose(fd);
 	} else {
 		return(2);
 	}
@@ -865,7 +865,7 @@ plogin(user, passwd, msg, msglen)
 /*
  * Define the fields for the credintial validation
  */
-    (void) pam_set_item (pamh, PAM_TTY, devnam);
+    pam_set_item (pamh, PAM_TTY, devnam);
     PAM_username = user;
     PAM_password = passwd;
 /*
@@ -877,7 +877,7 @@ plogin(user, passwd, msg, msglen)
 
 	/* start a session for this user. Session closed when link ends. */
 	if (pam_error == PAM_SUCCESS)
-	   (void) pam_open_session (pamh, PAM_SILENT);
+	   pam_open_session (pamh, PAM_SILENT);
     }
 
     *msg = MY_PAM_STRERROR (pam_error);
@@ -887,7 +887,7 @@ plogin(user, passwd, msg, msglen)
 /*
  * Clean up the mess
  */
-    (void) pam_end (pamh, pam_error);
+    pam_end (pamh, pam_error);
 
     if (pam_error != PAM_SUCCESS)
         return UPAP_AUTHNAK;
@@ -955,7 +955,7 @@ plogin(user, passwd, msg, msglen)
 	return (UPAP_AUTHNAK);
 
     if (pw->pw_expire) {
-	(void)gettimeofday(&tp, (struct timezone *)NULL);
+	gettimeofday(&tp, (struct timezone *)NULL);
 	if (tp.tv_sec >= pw->pw_expire) {
 	    syslog(LOG_INFO, "pap user %s account expired", user);
 	    return (UPAP_AUTHNAK);
@@ -983,21 +983,21 @@ plogin(user, passwd, msg, msglen)
 	    int fd;
 
 	    if ((fd = open(_PATH_LASTLOG, O_RDWR, 0)) >= 0) {
-		(void)lseek(fd, (off_t)(pw->pw_uid * sizeof(ll)), SEEK_SET);
+		lseek(fd, (off_t)(pw->pw_uid * sizeof(ll)), SEEK_SET);
 		memset((void *)&ll, 0, sizeof(ll));
-		(void)time(&ll.ll_time);
-		(void)strncpy(ll.ll_line, tty, sizeof(ll.ll_line));
-		(void)write(fd, (char *)&ll, sizeof(ll));
-		(void)close(fd);
+		time(&ll.ll_time);
+		strncpy(ll.ll_line, tty, sizeof(ll.ll_line));
+		write(fd, (char *)&ll, sizeof(ll));
+		close(fd);
 	    }
     }
 #endif
 
     memset((void *)&utmp, 0, sizeof(utmp));
-    (void)time(&utmp.ut_time);
-    (void)strncpy(utmp.ut_name, user, sizeof(utmp.ut_name));
-    (void)strncpy(utmp.ut_host, ":PPP", sizeof(utmp.ut_host));
-    (void)strncpy(utmp.ut_line, tty, sizeof(utmp.ut_line));
+    time(&utmp.ut_time);
+    strncpy(utmp.ut_name, user, sizeof(utmp.ut_name));
+    strncpy(utmp.ut_host, ":PPP", sizeof(utmp.ut_host));
+    strncpy(utmp.ut_line, tty, sizeof(utmp.ut_line));
     login(&utmp);		/* This logs us in wtmp too */
 
 #endif /* #ifdef USE_PAM */
@@ -1028,9 +1028,9 @@ plogout()
 
     pam_error = pam_start ("ppp", user, &pam_conversation, &pamh);
     if (pam_error == PAM_SUCCESS) {
-        (void) pam_set_item (pamh, PAM_TTY, devnam);
-        (void) pam_close_session (pamh, PAM_SILENT);
-	(void) pam_end (pamh, PAM_SUCCESS);
+        pam_set_item (pamh, PAM_TTY, devnam);
+        pam_close_session (pamh, PAM_SILENT);
+	pam_end (pamh, PAM_SUCCESS);
     }
 
 #else

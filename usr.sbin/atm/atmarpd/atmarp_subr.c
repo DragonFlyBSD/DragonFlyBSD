@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_subr.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -526,7 +526,7 @@ atmarp_update_kernel(Atmarp *aap)
 		rc = errno;
 	}
 
-	(void)close(sd);
+	close(sd);
 	return(rc);
 }
 
@@ -929,5 +929,5 @@ atmarp_sigint(int sig)
 	/*
 	 * Close the output file
 	 */
-	(void)fclose(df);
+	fclose(df);
 }

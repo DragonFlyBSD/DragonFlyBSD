@@ -17,7 +17,7 @@
  * Miscellaneous file access utilities.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/lib/file.c,v 1.68 2004/07/28 16:03:13 stefanf Exp $
- * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/file.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/lib/Attic/file.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include "lib.h"
@@ -67,7 +67,7 @@ isemptydir(const char *fname)
 		return FALSE;
 	    }
 	}
-	(void)closedir(dirp);
+	closedir(dirp);
 	return TRUE;
     }
     return FALSE;

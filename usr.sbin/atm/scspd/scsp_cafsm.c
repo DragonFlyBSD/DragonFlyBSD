@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.3 1999/08/28 01:15:32 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.4 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_cafsm.c,v 1.5 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -346,7 +346,7 @@ scsp_ca_act_03(Scsp_dcs *dcsp, void *p)
 		 * Set the new state
 		 */
 		dcsp->sd_ca_state = SCSP_CAFSM_SLAVE;
-		(void)scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM,
+		scsp_cfsm(dcsp, SCSP_CIFSM_CA_SUMM,
 				(Scsp_msg *)0, (Scsp_if_msg *)0);
 
 		/*
@@ -495,7 +495,7 @@ scsp_ca_act_04(Scsp_dcs *dcsp, void *p)
 			 * Go to Cache Update state
 			 */
 			dcsp->sd_ca_state = SCSP_CAFSM_UPDATE;
-			(void)scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
+			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
 					(Scsp_msg *)0,
 					(Scsp_if_msg *)0);
 			rc = scsp_send_csus(dcsp);
@@ -612,7 +612,7 @@ scsp_ca_act_05(Scsp_dcs *dcsp, void *p)
 			HARP_TIMER(&dcsp->sd_ca_rexmt_t,
 					dcsp->sd_ca_rexmt_int,
 					scsp_ca_retran_timeout);
-			(void)scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
+			scsp_cfsm(dcsp, SCSP_CIFSM_CA_UPD,
 					(Scsp_msg *)0,
 					(Scsp_if_msg *)0);
 			rc = scsp_send_csus(dcsp);

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)recvjob.c	8.2 (Berkeley) 4/27/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/recvjob.c,v 1.14.2.13 2002/06/19 01:46:48 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/recvjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/recvjob.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -60,7 +60,7 @@
 #include "extern.h"
 #include "pathnames.h"
 
-#define ack()	(void) write(STDOUT_FILENO, sp, (size_t)1);
+#define ack()	write(STDOUT_FILENO, sp, (size_t)1);
 
 static char	 dfname[NAME_MAX];	/* data files */
 static int	 minfree;       /* keep at least minfree blocks available */
@@ -101,10 +101,10 @@ recvjob(const char *printer)
 		break;
 	}
 	
-	(void) close(2);			/* set up log file */
+	close(2);			/* set up log file */
 	if (open(pp->log_file, O_WRONLY|O_APPEND, 0664) < 0) {
 		syslog(LOG_ERR, "%s: %m", pp->log_file);
-		(void) open(_PATH_DEVNULL, O_WRONLY);
+		open(_PATH_DEVNULL, O_WRONLY);
 	}
 
 	if (chdir(pp->spool_dir) < 0)
@@ -193,7 +193,7 @@ readjob(struct printer *pp)
 			tfname[sizeof (tfname) - 1] = '\0';
 			tfname[0] = 't';
 			if (!chksize(size)) {
-				(void) write(STDOUT_FILENO, "\2", (size_t)1);
+				write(STDOUT_FILENO, "\2", (size_t)1);
 				continue;
 			}
 			if (!readfile(pp, tfname, (size_t)size)) {
@@ -222,13 +222,13 @@ readjob(struct printer *pp)
 				/*NOTREACHED*/
 			}
 			if (!chksize(size)) {
-				(void) write(STDOUT_FILENO, "\2", (size_t)1);
+				write(STDOUT_FILENO, "\2", (size_t)1);
 				continue;
 			}
 			strlcpy(dfname, cp, sizeof(dfname));
 			dfcnt++;
 			trstat_init(pp, dfname, dfcnt);
-			(void) readfile(pp, dfname, (size_t)size);
+			readfile(pp, dfname, (size_t)size);
 			trstat_write(pp, TR_RECVING, (size_t)size, givenid,
 			    from_host, givenhost);
 			continue;
@@ -279,14 +279,14 @@ readfile(struct printer *pp, char *file, size_t size)
 			break;
 		}
 	}
-	(void) close(fd);
+	close(fd);
 	if (err) {
 		frecverr("%s: write error on close(%s)", pp->printer, file);
 		/*NOTREACHED*/
 	}
 	if (noresponse()) {		/* file sent had bad data in it */
 		if (strchr(file, '/') == NULL)
-			(void) unlink(file);
+			unlink(file);
 		return (0);
 	}
 	ack();
@@ -351,11 +351,11 @@ static void
 rcleanup(int signo __unused)
 {
 	if (tfname[0] && strchr(tfname, '/') == NULL)
-		(void) unlink(tfname);
+		unlink(tfname);
 	if (dfname[0] && strchr(dfname, '/') == NULL) {
 		do {
 			do
-				(void) unlink(dfname);
+				unlink(dfname);
 			while (dfname[2]-- != 'A');
 			dfname[2] = 'z';
 		} while (dfname[0]-- != 'd');

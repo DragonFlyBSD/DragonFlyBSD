@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)vipw.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/vipw/vipw.c,v 1.11 1999/10/25 09:46:57 sheldonh Exp $
- * $DragonFly: src/usr.sbin/vipw/vipw.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/vipw/vipw.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -95,9 +95,9 @@ main(argc, argv)
 	pfd = pw_lock();
 	tfd = pw_tmp();
 	copyfile(pfd, tfd);
-	(void)close(tfd);
+	close(tfd);
 	/* Force umask for partial writes made in the edit phase */
-	(void)umask(077);
+	umask(077);
 
 	for (;;) {
 		if (stat(tempname, &begin))
@@ -135,6 +135,6 @@ static void
 usage()
 {
 
-	(void)fprintf(stderr, "usage: vipw [ -d directory ]\n");
+	fprintf(stderr, "usage: vipw [ -d directory ]\n");
 	exit(1);
 }

@@ -32,7 +32,7 @@
  *
  * @(#)rmjob.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/rmjob.c,v 1.12.2.5 2001/06/25 01:00:56 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/rmjob.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -163,12 +163,12 @@ lockchk(struct printer *pp, char *slockf)
 	}
 	seteuid(uid);
 	if (!getline(fp)) {
-		(void) fclose(fp);
+		fclose(fp);
 		return(0);		/* no daemon present */
 	}
 	cur_daemon = atoi(line);
 	if (kill(cur_daemon, 0) < 0 && errno != EPERM) {
-		(void) fclose(fp);
+		fclose(fp);
 		return(0);		/* no daemon present */
 	}
 	for (i = 1; (n = fread(current, sizeof(char), sizeof(current), fp)) <= 0; i++) {
@@ -179,7 +179,7 @@ lockchk(struct printer *pp, char *slockf)
 		sleep(i);
 	}
 	current[n-1] = '\0';
-	(void) fclose(fp);
+	fclose(fp);
 	return(1);
 }
 
@@ -205,7 +205,7 @@ process(const struct printer *pp, char *file)
 			do_unlink(line+1);
 		}
 	}
-	(void) fclose(cfp);
+	fclose(cfp);
 	do_unlink(file);
 }
 
@@ -252,7 +252,7 @@ chk(char *file)
 		if (line[0] == 'P')
 			break;
 	}
-	(void) fclose(cfp);
+	fclose(cfp);
 	if (line[0] != 'P')
 		return(0);
 
@@ -357,7 +357,7 @@ rmremote(const struct printer *pp)
 	savealrm = signal(SIGALRM, alarmhandler);
 	alarm(pp->conn_timeout);
 	rem = getport(pp, pp->remote_host, 0);
-	(void)signal(SIGALRM, savealrm);
+	signal(SIGALRM, savealrm);
 	if (rem < 0) {
 		if (from_host != local_host)
 			printf("%s: ", local_host);
@@ -366,8 +366,8 @@ rmremote(const struct printer *pp)
 		if (writev(rem, iov, niov) != totlen)
 			fatal(pp, "Lost connection");
 		while ((i = read(rem, buf, sizeof(buf))) > 0)
-			(void) fwrite(buf, 1, i, stdout);
-		(void) close(rem);
+			fwrite(buf, 1, i, stdout);
+		close(rem);
 	}
 	for (i = 0; i < requests; i++)
 		free(iov[firstreq + i].iov_base);

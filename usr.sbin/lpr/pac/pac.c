@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)pac.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/lpr/pac/pac.c,v 1.10.2.4 2002/04/26 18:17:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/pac/pac.c,v 1.3 2004/03/22 22:32:51 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/pac/pac.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -158,7 +158,7 @@ main(int argc, char **argv)
 				usage();
 			}
 		}
-		(void) enter(--cp);
+		enter(--cp);
 		allflag = 0;
 	}
 	if (printer == NULL && (printer = getenv("PRINTER")) == NULL)

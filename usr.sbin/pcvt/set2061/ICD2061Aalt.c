@@ -2,7 +2,7 @@
  * This code is derived from code available from the STB bulletin board
  *
  * $FreeBSD: src/usr.sbin/pcvt/set2061/ICD2061Aalt.c,v 1.5 1999/12/29 05:07:54 peter Exp $
- * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/ICD2061Aalt.c,v 1.3 2004/03/24 17:46:23 cpressey Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/ICD2061Aalt.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 /* $XFree86: mit/server/ddx/x386/common_hw/ICD2061Aalt.c,v 2.6 1994/04/15 05:10:30 dawes Exp $ */
@@ -211,7 +211,7 @@ init_clock(unsigned long setup, unsigned short crtcport)
    unsigned char c;
 
 #ifndef PCVT_STANDALONE
-   (void)xf86DisableInterrupts();
+   xf86DisableInterrupts();
 #endif
 
    oldclk = inb(0x3CC);

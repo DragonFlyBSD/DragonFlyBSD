@@ -28,7 +28,7 @@
  *
  * $OpenBSD: pgp_check.c,v 1.2 1999/10/07 16:30:32 espie Exp $
  * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_check.c,v 1.2 2002/04/01 09:39:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_check.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_check.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -134,12 +134,12 @@ new_pgp_checker(h, sign, userid, envp, filename)
 		/*@notreached@*/
 		break;
 	default:
-		(void)close(topgpcheck[0]);
+		close(topgpcheck[0]);
 		break;
 	}
 	n->fdout = topgpcheck[1];
 		/* so that subsequent fork() won't duplicate it inadvertently */
-	(void)fcntl(n->fdout, F_SETFD, FD_CLOEXEC);	
+	fcntl(n->fdout, F_SETFD, FD_CLOEXEC);	
 #ifdef DEBUG_DUMP
 	n->out = fopen("compare", "w");
 #endif

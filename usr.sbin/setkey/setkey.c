@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/setkey.c,v 1.1.2.3 2003/04/26 23:53:54 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.4 2004/03/24 18:23:47 cpressey Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/setkey.c,v 1.5 2004/12/18 22:48:14 swildner Exp $	*/
 /*	$KAME: setkey.c,v 1.18 2001/05/08 04:36:39 itojun Exp $	*/
 
 /*
@@ -594,12 +594,11 @@ printdate(void)
 	if (f_tflag == 1) {
 		/* Default */
 		s = (tp.tv_sec + thiszone ) % 86400;
-		(void)printf("%02d:%02d:%02d.%06u ",
+		printf("%02d:%02d:%02d.%06u ",
 		    s / 3600, (s % 3600) / 60, s % 60, (u_int32_t)tp.tv_usec);
 	} else if (f_tflag > 1) {
 		/* Unix timeval style */
-		(void)printf("%u.%06u ",
-		    (u_int32_t)tp.tv_sec, (u_int32_t)tp.tv_usec);
+		printf("%u.%06u ", (u_int32_t)tp.tv_sec, (u_int32_t)tp.tv_usec);
 	}
 
 	printf("\n");

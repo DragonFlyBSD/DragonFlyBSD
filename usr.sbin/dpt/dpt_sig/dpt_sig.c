@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.3 1999/08/28 01:16:09 peter Exp $
- * $DragonFly: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_sig/dpt_sig.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* dpt_sig.c:  Dunp a DPT Signature */
@@ -59,25 +59,25 @@ hex_dump(u_int8_t * data, int length, char *name, int no)
 {
     int	line, column, ndx;
 	
-    (void)fprintf(stdout, "Kernel Hex Dump for %s-%d at %p (%d bytes)\n",
-				  name, no, data, length);
+    fprintf(stdout, "Kernel Hex Dump for %s-%d at %p (%d bytes)\n",
+	    name, no, data, length);
 	
     /* Zero out all the counters and repeat for as many bytes as we have */
     for (ndx = 0, column = 0, line = 0; ndx < length; ndx++) {
 		/* Print relative offset at the beginning of every line */
 		if (column == 0)
-			(void)fprintf(stdout, "%04x ", ndx);
+			fprintf(stdout, "%04x ", ndx);
 	
 		/* Print the byte as two hex digits, followed by a space */
-		(void)fprintf(stdout, "%02x ", data[ndx]);
+		fprintf(stdout, "%02x ", data[ndx]);
 	
 		/* Split the row of 16 bytes in half */
 		if (++column == 8) {
-			(void)fprintf(stdout, " ");
+			fprintf(stdout, " ");
 		}
 		/* St the end of each row of 16 bytes, put a space ... */
 		if (column == 16) {
-			(void)fprintf(stdout, "	");
+			fprintf(stdout, "	");
 		
 			/* ... and then print the ASCII-visible on a line. */
 			for (column = 0; column < 16; column++) {
@@ -88,13 +88,13 @@ hex_dump(u_int8_t * data, int length, char *name, int no)
 				 * dot. ;-(
 				 */
 				if (IsGraph(data[ascii_pos]))
-					(void)fprintf(stdout, "%c", data[ascii_pos]);
+					fprintf(stdout, "%c", data[ascii_pos]);
 				else
-					(void)fprintf(stdout, ".");
+					fprintf(stdout, ".");
 			}
 		
 			/* Each line ends with a new line */
-			(void)fprintf(stdout, "\n");
+			fprintf(stdout, "\n");
 			column = 0;
 		
 			/*
@@ -104,7 +104,7 @@ hex_dump(u_int8_t * data, int length, char *name, int no)
 			 * page was 256 bytes :-)
 			 */
 			if (++line > 15) {
-				(void)fprintf(stdout, "\n");
+				fprintf(stdout, "\n");
 				line = 0;
 			}
 		}
@@ -122,27 +122,27 @@ hex_dump(u_int8_t * data, int length, char *name, int no)
 		 * ``missing'' ...
 		 */
 		for (skip = 0; skip < spaces; skip++)
-			(void)fprintf(stdout, " ");
+			fprintf(stdout, " ");
 	
 		/* ... And the gap separating the hex dump from the ASCII */
-		(void)fprintf(stdout, "  ");
+		fprintf(stdout, "  ");
 	
 		/*
 		 * Do not forget the extra space that splits the hex dump
 		 * vertically
 		 */
 		if (column < 8)
-	    (void)fprintf(stdout, " ");
+	    fprintf(stdout, " ");
 	
 		for (column = 0; column < (16 - modulus); column++) {
 			int	ascii_pos = ndx - (16 - modulus) + column;
 		
 			if (IsGraph(data[ascii_pos]))
-				(void)fprintf(stdout, "%c", data[ascii_pos]);
+				fprintf(stdout, "%c", data[ascii_pos]);
 			else
-				(void)fprintf(stdout, ".");
+				fprintf(stdout, ".");
 		}
-		(void)fprintf(stdout, "\n");
+		fprintf(stdout, "\n");
     }
 }
 
@@ -164,9 +164,9 @@ main(int argc, char **argv, char **argp)
     sp2 = "Unknown";
     
     if ( (fd = open(argv[1], O_RDWR, S_IRUSR | S_IWUSR)) == -1 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to open \"%s\" "
-			      "- %s\n",
-			      argv[0], argv[1], strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to open \"%s\" "
+			"- %s\n",
+			argv[0], argv[1], strerror(errno));
 		exit(1);
     }
 
@@ -178,18 +178,18 @@ main(int argc, char **argv, char **argp)
     pass_thru.command_buffer = (u_int8_t *)&signature;
 
     if ( (result = ioctl(fd, DPT_IOCTL_SEND, &pass_thru)) != 0 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to send IOCTL "
-			      "%lx - %s\n",
-			      argv[0], DPT_IOCTL_SEND,
-			      strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to send IOCTL "
+			"%lx - %s\n",
+			argv[0], DPT_IOCTL_SEND,
+			strerror(errno));
 		exit(1);
     }
 
     /* dsSignature is not null terminated! */
     for (ndx = 0; ndx < sizeof(signature.dsSignature); ndx++)
-		(void)fputc(signature.dsSignature[ndx], stdout);
+		fputc(signature.dsSignature[ndx], stdout);
     
-    (void)fprintf(stdout, ":%x:", signature.SigVersion);
+    fprintf(stdout, ":%x:", signature.SigVersion);
 
     switch (signature.ProcessorFamily) {
     case PROC_INTEL:
@@ -249,7 +249,7 @@ main(int argc, char **argv, char **argp)
 		break;
     }
     
-    (void)fprintf(stdout, "%s:%s:", sp1, sp2);
+    fprintf(stdout, "%s:%s:", sp1, sp2);
 
     switch ( signature.Filetype ) {
     case FT_EXECUTABLE:
@@ -338,7 +338,7 @@ main(int argc, char **argv, char **argp)
 		break;
     }
     
-    (void)fprintf(stdout, "%s:%s:", sp1, sp2);
+    fprintf(stdout, "%s:%s:", sp1, sp2);
 
     switch ( signature.OEM ) {
     case OEM_DPT:
@@ -433,166 +433,166 @@ main(int argc, char **argv, char **argp)
 		break;
     }
     
-    (void)fprintf(stdout, "%s:%s:\n", sp1, sp2);
+    fprintf(stdout, "%s:%s:\n", sp1, sp2);
 
     if ( signature.Capabilities & CAP_RAID0 )
-		(void)fprintf(stdout, "RAID-0:");
+		fprintf(stdout, "RAID-0:");
     
     if ( signature.Capabilities & CAP_RAID1 )
-		(void)fprintf(stdout, "RAID-1:");
+		fprintf(stdout, "RAID-1:");
     
     if ( signature.Capabilities & CAP_RAID3 )
-		(void)fprintf(stdout, "RAID-3:");
+		fprintf(stdout, "RAID-3:");
     
     if ( signature.Capabilities & CAP_RAID5 )
-		(void)fprintf(stdout, "RAID-5:");
+		fprintf(stdout, "RAID-5:");
     
     if ( signature.Capabilities & CAP_SPAN )
-		(void)fprintf(stdout, "SPAN:");
+		fprintf(stdout, "SPAN:");
     
     if ( signature.Capabilities & CAP_PASS )
-		(void)fprintf(stdout, "PASS:");
+		fprintf(stdout, "PASS:");
     
     if ( signature.Capabilities & CAP_OVERLAP )
-		(void)fprintf(stdout, "OVERLAP:");
+		fprintf(stdout, "OVERLAP:");
     
     if ( signature.Capabilities & CAP_ASPI )
-		(void)fprintf(stdout, "ASPI:");
+		fprintf(stdout, "ASPI:");
     
     if ( signature.Capabilities & CAP_ABOVE16MB )
-		(void)fprintf(stdout, "ISA16MB:");
+		fprintf(stdout, "ISA16MB:");
     
     if ( signature.Capabilities & CAP_EXTEND )
-		(void)fprintf(stdout, "ISA16MB:");
+		fprintf(stdout, "ISA16MB:");
 
-    (void)fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
 
     if ( signature.DeviceSupp & DEV_DASD )
-		(void)fprintf(stdout, "DASD:");
+		fprintf(stdout, "DASD:");
 
     if ( signature.DeviceSupp & DEV_TAPE )
-		(void)fprintf(stdout, "Tape:");
+		fprintf(stdout, "Tape:");
 
     if ( signature.DeviceSupp & DEV_PRINTER )
-		(void)fprintf(stdout, "Printer:");
+		fprintf(stdout, "Printer:");
 
     if ( signature.DeviceSupp & DEV_PROC )
-		(void)fprintf(stdout, "CPU:");
+		fprintf(stdout, "CPU:");
 
     if ( signature.DeviceSupp & DEV_WORM )
-		(void)fprintf(stdout, "WORM:");
+		fprintf(stdout, "WORM:");
 
     if ( signature.DeviceSupp & DEV_CDROM )
-		(void)fprintf(stdout, "CDROM:");
+		fprintf(stdout, "CDROM:");
 
     if ( signature.DeviceSupp & DEV_SCANNER )
-		(void)fprintf(stdout, "Scanner:");
+		fprintf(stdout, "Scanner:");
 
     if ( signature.DeviceSupp & DEV_OPTICAL )
-		(void)fprintf(stdout, "Optical:");
+		fprintf(stdout, "Optical:");
 
     if ( signature.DeviceSupp & DEV_JUKEBOX )
-		(void)fprintf(stdout, "Jukebox:");
+		fprintf(stdout, "Jukebox:");
 
     if ( signature.DeviceSupp & DEV_COMM )
-		(void)fprintf(stdout, "Comm:");
+		fprintf(stdout, "Comm:");
 
     if ( signature.DeviceSupp & DEV_OTHER )
-		(void)fprintf(stdout, "Other:");
+		fprintf(stdout, "Other:");
 
     if ( signature.DeviceSupp & DEV_ALL )
-		(void)fprintf(stdout, "All:");
+		fprintf(stdout, "All:");
 
-    (void)fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
 
     if ( signature.AdapterSupp & ADF_2001 )
-		(void)fprintf(stdout, "PM2001:");
+		fprintf(stdout, "PM2001:");
 
     if ( signature.AdapterSupp & ADF_2012A )
-		(void)fprintf(stdout, "PM2012A:");
+		fprintf(stdout, "PM2012A:");
 
     if ( signature.AdapterSupp & ADF_PLUS_ISA )
-		(void)fprintf(stdout, "PM2011+PM2021:");
+		fprintf(stdout, "PM2011+PM2021:");
 
     if ( signature.AdapterSupp & ADF_PLUS_EISA )
-		(void)fprintf(stdout, "PM2012B+PM2022:");
+		fprintf(stdout, "PM2012B+PM2022:");
 
     if ( signature.AdapterSupp & ADF_SC3_ISA )
-		(void)fprintf(stdout, "PM2021:");
+		fprintf(stdout, "PM2021:");
 
     if ( signature.AdapterSupp & ADF_SC3_EISA )
-		(void)fprintf(stdout, "PM2022+PM2122:");
+		fprintf(stdout, "PM2022+PM2122:");
 
     if ( signature.AdapterSupp & ADF_SC3_PCI )
-		(void)fprintf(stdout, "SmartCache III PCI:");
+		fprintf(stdout, "SmartCache III PCI:");
 
     if ( signature.AdapterSupp & ADF_SC4_ISA )
-		(void)fprintf(stdout, "SmartCache IV ISA:");
+		fprintf(stdout, "SmartCache IV ISA:");
 
     if ( signature.AdapterSupp & ADF_SC4_EISA )
-		(void)fprintf(stdout, "SmartCache IV EISA:");
+		fprintf(stdout, "SmartCache IV EISA:");
 
     if ( signature.AdapterSupp & ADF_SC4_PCI )
-		(void)fprintf(stdout, "SmartCache IV PCI:");
+		fprintf(stdout, "SmartCache IV PCI:");
 
     if ( signature.AdapterSupp & ADF_ALL_MASTER )
-		(void)fprintf(stdout, "All Bus Mastering:");
+		fprintf(stdout, "All Bus Mastering:");
 
     if ( signature.AdapterSupp & ADF_ALL_CACHE )
-		(void)fprintf(stdout, "All Caching:");
+		fprintf(stdout, "All Caching:");
 
     if ( signature.AdapterSupp & ADF_ALL )
-		(void)fprintf(stdout, "All HBAs:");
+		fprintf(stdout, "All HBAs:");
     
-    (void)fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
 
     if ( signature.Application & APP_DPTMGR )
-		(void)fprintf(stdout, "DPTMGR:");
+		fprintf(stdout, "DPTMGR:");
     
     if ( signature.Application & APP_ENGINE )
-		(void)fprintf(stdout, "Engine:");
+		fprintf(stdout, "Engine:");
     
     if ( signature.Application & APP_SYTOS )
-		(void)fprintf(stdout, "Systron Sytos Plus:");
+		fprintf(stdout, "Systron Sytos Plus:");
     
     if ( signature.Application & APP_CHEYENNE )
-		(void)fprintf(stdout, "Cheyenne ARCServe + ARCSolo:");
+		fprintf(stdout, "Cheyenne ARCServe + ARCSolo:");
     
     if ( signature.Application & APP_MSCDEX )
-		(void)fprintf(stdout, "Microsoft CD-ROM extensions:");
+		fprintf(stdout, "Microsoft CD-ROM extensions:");
     
     if ( signature.Application & APP_NOVABACK )
-		(void)fprintf(stdout, "NovaStor Novaback:");
+		fprintf(stdout, "NovaStor Novaback:");
     
     if ( signature.Application & APP_AIM )
-		(void)fprintf(stdout, "Archive Information Manager:");
+		fprintf(stdout, "Archive Information Manager:");
     
-    (void)fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
 
     if ( signature.Requirements & REQ_SMARTROM )
-		(void)fprintf(stdout, "SmartROM:");
+		fprintf(stdout, "SmartROM:");
     
     if ( signature.Requirements & REQ_DPTDDL )
-		(void)fprintf(stdout, "DPTDDL.SYS:");
+		fprintf(stdout, "DPTDDL.SYS:");
     
     if ( signature.Requirements & REQ_HBA_DRIVER )
-		(void)fprintf(stdout, "HBA Driver:");
+		fprintf(stdout, "HBA Driver:");
     
     if ( signature.Requirements & REQ_ASPI_TRAN )
-		(void)fprintf(stdout, "ASPI Transport Modules:");
+		fprintf(stdout, "ASPI Transport Modules:");
     
     if ( signature.Requirements & REQ_ENGINE )
-		(void)fprintf(stdout, "DPT Engine:");
+		fprintf(stdout, "DPT Engine:");
     
     if ( signature.Requirements & REQ_COMM_ENG )
-		(void)fprintf(stdout, "DPT Comm Engine:");
+		fprintf(stdout, "DPT Comm Engine:");
     
-    (void)fprintf(stdout, "\n");
+    fprintf(stdout, "\n");
     
-    (void)fprintf(stdout, "%x.%x.%x:%d.%d.%d\n",
-				  signature.Version, signature.Revision,
-				  signature.SubRevision,
-				  signature.Month, signature.Day, signature.Year + 1980);
+    fprintf(stdout, "%x.%x.%x:%d.%d.%d\n",
+	    signature.Version, signature.Revision,
+	    signature.SubRevision,
+	    signature.Month, signature.Day, signature.Year + 1980);
     
     return(0);
 }

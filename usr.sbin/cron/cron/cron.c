@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/cron.c,v 1.9.2.2 2001/05/28 23:37:26 babkin Exp $
- * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.5 2004/03/10 18:27:26 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/cron.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  */
 
 #define	MAIN_PROGRAM
@@ -77,11 +77,11 @@ main(int argc, char **argv)
 	parse_args(argc, argv);
 
 #ifdef USE_SIGCHLD
-	(void) signal(SIGCHLD, sigchld_handler);
+	signal(SIGCHLD, sigchld_handler);
 #else
-	(void) signal(SIGCLD, SIG_IGN);
+	signal(SIGCLD, SIG_IGN);
 #endif
-	(void) signal(SIGHUP, sighup_handler);
+	signal(SIGHUP, sighup_handler);
 
 	acquire_daemonlock(0);
 	set_cron_uid();
@@ -98,7 +98,7 @@ main(int argc, char **argv)
 # else
 	if (0) {
 # endif
-		(void) fprintf(stderr, "[%d] cron started\n", getpid());
+		fprintf(stderr, "[%d] cron started\n", getpid());
 	} else {
 		if (daemon(1, 0) == -1) {
 			log_it("CRON",getpid(),"DEATH","can't become daemon");
@@ -145,7 +145,7 @@ run_reboot_jobs(cron_db *db)
 			}
 		}
 	}
-	(void) job_runqueue();
+	job_runqueue();
 }
 
 

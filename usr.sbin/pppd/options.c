@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/options.c,v 1.20.2.2 2002/08/31 18:16:01 dwmalone Exp $
- * $DragonFly: src/usr.sbin/pppd/options.c,v 1.4 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/options.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <ctype.h>
@@ -534,7 +534,7 @@ scan_args(argc, argv)
 	}
 
 	/* Check if it's a tty name and copy it if so */
-	(void) setdevname(arg, 1);
+	setdevname(arg, 1);
     }
 }
 
@@ -1688,7 +1688,7 @@ setdevname(cp, quiet)
 	return -1;
     }
 
-    (void) strncpy(devnam, cp, MAXPATHLEN);
+    strncpy(devnam, cp, MAXPATHLEN);
     devnam[MAXPATHLEN-1] = 0;
     default_device = FALSE;
     devnam_info.priv = privileged_option;

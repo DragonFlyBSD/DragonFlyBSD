@@ -21,7 +21,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  *
  * $FreeBSD: src/usr.sbin/pcvt/set2061/compiler.h,v 1.5 1999/08/28 05:11:28 peter Exp $
- * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/compiler.h,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pcvt/set2061/Attic/compiler.h,v 1.3 2004/12/18 22:48:04 swildner Exp $
  */
 
 
@@ -232,7 +232,7 @@ unsigned char ind;
 #endif
 {
 	if (port == 0x3C0)		/* reset attribute flip-flop */
-		(void) inb(0x3DA);
+		inb(0x3DA);
 	outb(port, ind);
 	return(inb(port+1));
 }

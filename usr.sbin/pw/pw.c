@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pw/pw.c,v 1.18.2.5 2001/07/19 01:46:55 kris Exp $
- * $DragonFly: src/usr.sbin/pw/pw.c,v 1.2 2003/06/17 04:30:01 dillon Exp $
+ * $DragonFly: src/usr.sbin/pw/pw.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <err.h>
@@ -130,7 +130,7 @@ main(int argc, char *argv[])
 	umask(0);		/* We wish to handle this manually */
 	LIST_INIT(&arglist);
 
-	(void)setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 
 	/*
 	 * Break off the first couple of words to determine what exactly

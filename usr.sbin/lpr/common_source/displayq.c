@@ -32,7 +32,7 @@
  *
  * @(#)displayq.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/displayq.c,v 1.15.2.8 2001/08/30 09:27:41 kris Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/displayq.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -130,8 +130,8 @@ displayq(struct printer *pp, int format)
 			seteuid(uid);
 			if (fd >= 0) {
 				while ((i = read(fd, line, sizeof(line))) > 0)
-					(void) fwrite(line, 1, i, stdout);
-				(void) close(fd);	/* unlocks as well */
+					fwrite(line, 1, i, stdout);
+				close(fd);	/* unlocks as well */
 			} else
 				putchar('\n');
 		}
@@ -193,7 +193,7 @@ displayq(struct printer *pp, int format)
 				} else
 					putchar('\n');
 			}
-			(void) fclose(fp);
+			fclose(fp);
 		}
 		/*
 		 * Now, examine the control files and print out the jobs to
@@ -220,25 +220,25 @@ displayq(struct printer *pp, int format)
 	 */
 	if (nitems)
 		putchar('\n');
-	(void) snprintf(line, sizeof(line), "%c%s", format ? '\4' : '\3',
-			pp->remote_queue);
+	snprintf(line, sizeof(line), "%c%s", format ? '\4' : '\3',
+		 pp->remote_queue);
 	cp = line;
 	for (i = 0; i < requests && cp-line+10 < sizeof(line) - 1; i++) {
 		cp += strlen(cp);
-		(void) sprintf(cp, " %d", requ[i]);
+		sprintf(cp, " %d", requ[i]);
 	}
 	for (i = 0; i < users && cp - line + 1 + strlen(user[i]) < 
 		sizeof(line) - 1; i++) {
 		cp += strlen(cp);
 		*cp++ = ' ';
-		(void) strcpy(cp, user[i]);
+		strcpy(cp, user[i]);
 	}
 	strcat(line, "\n");
 	savealrm = signal(SIGALRM, alarmhandler);
 	alarm(pp->conn_timeout);
 	fd = getport(pp, pp->remote_host, 0);
 	alarm(0);
-	(void)signal(SIGALRM, savealrm);
+	signal(SIGALRM, savealrm);
 	if (fd < 0) {
 		if (from_host != local_host)
 			printf("%s: ", local_host);
@@ -249,8 +249,8 @@ displayq(struct printer *pp, int format)
 		if (write(fd, line, i) != i)
 			fatal(pp, "Lost connection");
 		while ((i = read(fd, line, sizeof(line))) > 0)
-			(void) fwrite(line, 1, i, stdout);
-		(void) close(fd);
+			fwrite(line, 1, i, stdout);
+		close(fd);
 	}
 }
 
@@ -519,9 +519,9 @@ prank(int n)
 		return;
 	}
 	if ((n/10)%10 == 1)
-		(void)snprintf(rline, sizeof(rline), "%dth", n);
+		snprintf(rline, sizeof(rline), "%dth", n);
 	else
-		(void)snprintf(rline, sizeof(rline), "%d%s", n, r[n%10]);
+		snprintf(rline, sizeof(rline), "%d%s", n, r[n%10]);
 	col += strlen(rline);
 	printf("%s", rline);
 }

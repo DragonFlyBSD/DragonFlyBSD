@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.3.2.1 2001/12/13 01:27:20 iedowse Exp $
- * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.4 2004/06/19 20:38:22 joerg Exp $
+ * $DragonFly: src/usr.sbin/rpc.umntall/rpc.umntall.c,v 1.5 2004/12/18 22:48:13 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -321,7 +321,7 @@ xdr_dir(XDR *xdrsp, char *dirp) {
 
 static void
 usage() {
-	(void)fprintf(stderr, "%s\n",
+	fprintf(stderr, "%s\n",
 	    "usage: rpc.umntall [-kv] [-e expire] [-h host] [-p path]");
 	exit(1);
 }

@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.3.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.6 2004/01/06 03:17:22 dillon Exp $
+ * $DragonFly: src/usr.sbin/ifmcstat/ifmcstat.c,v 1.7 2004/12/18 22:48:03 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -210,8 +210,7 @@ if6_addrlist(struct ifaddr *ifap)
 			KREAD(ifm.ifma_addr, &sa, struct sockaddr);
 			if (sa.sa_family != AF_INET6)
 				goto nextmulti;
-			(void)in6_multientry((struct in6_multi *)
-					     ifm.ifma_protospec);
+			in6_multientry((struct in6_multi *)ifm.ifma_protospec);
 			if (ifm.ifma_lladdr == 0)
 				goto nextmulti;
 			KREAD(ifm.ifma_lladdr, &sdl, struct sockaddr_dl);

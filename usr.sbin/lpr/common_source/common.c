@@ -37,7 +37,7 @@
  *
  * @(#)common.c	8.5 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/common_source/common.c,v 1.12.2.17 2002/07/14 23:58:52 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/common.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/common.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -213,7 +213,7 @@ delay(int millisec)
 		    "unreasonable delay period (%d)", millisec);
 	tdelay.tv_sec = millisec / 1000;
 	tdelay.tv_usec = millisec * 1000 % 1000000;
-	(void) select(0, (fd_set *)0, (fd_set *)0, (fd_set *)0, &tdelay);
+	select(0, (fd_set *)0, (fd_set *)0, (fd_set *)0, &tdelay);
 }
 
 char *
@@ -684,13 +684,13 @@ fatal(const struct printer *pp, const char *msg, ...)
 	va_start(ap, msg);
 	/* this error message is being sent to the 'from_host' */
 	if (from_host != local_host)
-		(void)printf("%s: ", local_host);
-	(void)printf("%s: ", progname);
+		printf("%s: ", local_host);
+	printf("%s: ", progname);
 	if (pp && pp->printer)
-		(void)printf("%s: ", pp->printer);
-	(void)vprintf(msg, ap);
+		printf("%s: ", pp->printer);
+	vprintf(msg, ap);
 	va_end(ap);
-	(void)putchar('\n');
+	putchar('\n');
 	exit(1);
 }
 

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/startup.c,v 1.8.2.1 2000/07/01 10:46:25 ps Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/startup.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/startup.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  *
  * @(#)startup.c	8.1 (Berkeley) 6/5/93
  */
@@ -69,10 +69,10 @@ quit(char *s)
 {
 	int sverrno = errno;
 
-	(void) fprintf(stderr, "IPXroute: ");
+	fprintf(stderr, "IPXroute: ");
 	if (s)
-		(void) fprintf(stderr, "%s: ", s);
-	(void) fprintf(stderr, "%s\n", strerror(sverrno));
+		fprintf(stderr, "%s: ", s);
+	fprintf(stderr, "%s\n", strerror(sverrno));
 	exit(1);
 	/* NOTREACHED */
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)accton.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/accton/accton.c,v 1.5 1999/08/28 01:15:10 peter Exp $
- * $DragonFly: src/usr.sbin/accton/accton.c,v 1.4 2003/11/15 20:33:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/accton/accton.c,v 1.5 2004/12/18 22:48:02 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -77,6 +77,6 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: accton [file]\n");
+	fprintf(stderr, "usage: accton [file]\n");
 	exit(1);
 }

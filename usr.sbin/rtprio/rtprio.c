@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtprio/rtprio.c,v 1.8.2.1 2001/01/29 08:07:26 kuriyama Exp $
- * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.3 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtprio/rtprio.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -129,7 +129,7 @@ main(argc, argv)
 static void
 usage()
 {
-	(void) fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n%s\n%s\n%s\n%s\n",
 		"usage: [id|rt]prio",
 		"       [id|rt]prio [-]pid",
 		"       [id|rt]prio priority command [args]",

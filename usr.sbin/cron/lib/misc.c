@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/misc.c,v 1.8.2.2 2002/04/28 22:45:53 dwmalone Exp $
- * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.4 2004/03/10 18:27:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/misc.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* vix 26jan87 [RCS has the rest of the log]
@@ -240,7 +240,7 @@ acquire_daemonlock(int closeflag)
 		char	buf[MAX_TEMPSTR];
 		int	fd, otherpid;
 
-		(void) sprintf(pidfile, PIDFILE, PIDDIR);
+		sprintf(pidfile, PIDFILE, PIDDIR);
 		if ((-1 == (fd = open(pidfile, O_RDWR|O_CREAT, 0644)))
 		    || (NULL == (fp = fdopen(fd, "r+")))
 		    ) {
@@ -260,13 +260,13 @@ acquire_daemonlock(int closeflag)
 			errx(ERROR_EXIT, "%s", buf);
 		}
 
-		(void) fcntl(fd, F_SETFD, 1);
+		fcntl(fd, F_SETFD, 1);
 	}
 
 	rewind(fp);
 	fprintf(fp, "%d\n", getpid());
 	fflush(fp);
-	(void) ftruncate(fileno(fp), ftell(fp));
+	ftruncate(fileno(fp), ftell(fp));
 
 	/* abandon fd and fp even though the file is open. we need to
 	 * keep it open and locked, but we don't need the handles elsewhere.
@@ -451,7 +451,7 @@ log_it(char *username, int xpid, char *event, char *detail)
 			if (LogFD < OK) {
 				warn("can't open log file %s", LOG_FILE);
 			} else {
-				(void) fcntl(LogFD, F_SETFD, 1);
+				fcntl(LogFD, F_SETFD, 1);
 			}
 		}
 
@@ -606,15 +606,15 @@ arpadate(time_t *clock)
 	if (tm->tm_year >= 100)
 		tm->tm_year += 1900;
 
-	(void) snprintf(ret, sizeof(ret), "%s, %2d %s %d %02d:%02d:%02d %s",
-		       DowNames[tm->tm_wday],
-		       tm->tm_mday,
-		       MonthNames[tm->tm_mon],
-		       tm->tm_year,
-		       tm->tm_hour,
-		       tm->tm_min,
-		       tm->tm_sec,
-		       TZONE(*tm));
+	snprintf(ret, sizeof(ret), "%s, %2d %s %d %02d:%02d:%02d %s",
+		 DowNames[tm->tm_wday],
+		 tm->tm_mday,
+		 MonthNames[tm->tm_mon],
+		 tm->tm_year,
+		 tm->tm_hour,
+		 tm->tm_min,
+		 tm->tm_sec,
+		 TZONE(*tm));
 	return ret;
 }
 #endif /*MAIL_DATE*/

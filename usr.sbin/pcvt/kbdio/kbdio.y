@@ -35,7 +35,7 @@
  */
 
 #ident "$FreeBSD: src/usr.sbin/pcvt/kbdio/kbdio.y,v 1.6 1999/09/06 07:39:30 peter Exp $"
-#ident "$DragonFly: src/usr.sbin/pcvt/kbdio/Attic/kbdio.y,v 1.2 2003/06/17 04:29:59 dillon Exp $"
+#ident "$DragonFly: src/usr.sbin/pcvt/kbdio/Attic/kbdio.y,v 1.3 2004/12/18 22:48:04 swildner Exp $"
 
 /*
  * $Log: kbdio.y,v $
@@ -324,7 +324,7 @@ int main(int argc, char **argv) {
 	}
 	yyparse();
 
-	(void)ioctl(fd, KDDISABIO, 0);
+	ioctl(fd, KDDISABIO, 0);
 	return 0;
 }
 

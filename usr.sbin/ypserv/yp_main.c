@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_main.c,v 1.21.2.3 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_main.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 
 /*
@@ -273,8 +273,8 @@ main(int argc, char **argv)
 			openlog("ypserv", LOG_PID, LOG_DAEMON);
 		}
 		sock = RPC_ANYSOCK;
-		(void) pmap_unset(YPPROG, YPVERS);
-		(void) pmap_unset(YPPROG, 1);
+		pmap_unset(YPPROG, YPVERS);
+		pmap_unset(YPPROG, 1);
 	}
 
 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.lockd/lockd.c,v 1.5.2.1 2001/08/01 06:39:36 alfred Exp $
- * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rpc.lockd/lockd.c,v 1.4 2004/12/18 22:48:13 swildner Exp $
  */
 
 /* main() function for NFS lock daemon.  Most of the code in this	*/
@@ -66,9 +66,9 @@ main(int argc, char **argv)
     if (!debug_level) debug_level = 1;
   }
 
-  (void)pmap_unset(NLM_PROG, NLM_VERS);
-  (void)pmap_unset(NLM_PROG, NLM_VERSX);
-  (void)pmap_unset(NLM_PROG, NLM4_VERS);
+  pmap_unset(NLM_PROG, NLM_VERS);
+  pmap_unset(NLM_PROG, NLM_VERSX);
+  pmap_unset(NLM_PROG, NLM4_VERS);
 
   transp = svcudp_create(RPC_ANYSOCK);
   if (transp == NULL)

@@ -1,5 +1,5 @@
 /*	$OpenBSD: authpf.c,v 1.75 2004/01/29 01:55:10 deraadt Exp $	*/
-/*	$DragonFly: src/usr.sbin/authpf/authpf.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/authpf/authpf.c,v 1.2 2004/12/18 22:48:02 swildner Exp $ */
 
 /*
  * Copyright (C) 1998 - 2002 Bob Beck (beck@openbsd.org).
@@ -266,7 +266,7 @@ main(int argc __unused, char **argv __unused)
 	rewind(pidfp);
 	fprintf(pidfp, "%ld\n%s\n", (long)getpid(), luser);
 	fflush(pidfp);
-	(void) ftruncate(fileno(pidfp), ftell(pidfp));
+	ftruncate(fileno(pidfp), ftell(pidfp));
 
 	if (change_filter(1, luser, ipsrc) == -1) {
 		printf("Unable to modify filters\r\n");

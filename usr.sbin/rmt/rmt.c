@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rmt.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rmt/rmt.c,v 1.7 2000/02/12 01:14:33 mjacob Exp $
- * $DragonFly: src/usr.sbin/rmt/rmt.c,v 1.3 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rmt/rmt.c,v 1.4 2004/12/18 22:48:05 swildner Exp $
  */
 
 /*
@@ -84,7 +84,7 @@ main(argc, argv)
 		debug = fopen(*argv, "w");
 		if (debug == 0)
 			exit(1);
-		(void)setbuf(debug, (char *)0);
+		setbuf(debug, (char *)0);
 	}
 top:
 	errno = 0;
@@ -95,7 +95,7 @@ top:
 
 	case 'O':
 		if (tape >= 0)
-			(void) close(tape);
+			close(tape);
 		getstring(device);
 		getstring(mode);
 		DEBUG2("rmtd: O %s %s\n", device, mode);
@@ -151,9 +151,9 @@ top:
 		rval = read(tape, record, n);
 		if (rval < 0)
 			goto ioerror;
-		(void)sprintf(resp, "A%d\n", rval);
-		(void)write(1, resp, strlen(resp));
-		(void)write(1, record, rval);
+		sprintf(resp, "A%d\n", rval);
+		write(1, resp, strlen(resp));
+		write(1, record, rval);
 		goto top;
 
 	case 'I':
@@ -177,9 +177,9 @@ top:
 		  rval = sizeof (mtget);
 		  if (rval > 24)	/* original mtget structure size */
 			rval = 24;
-		  (void)sprintf(resp, "A%d\n", rval);
-		  (void)write(1, resp, strlen(resp));
-		  (void)write(1, (char *)&mtget, rval);
+		  sprintf(resp, "A%d\n", rval);
+		  write(1, resp, strlen(resp));
+		  write(1, (char *)&mtget, rval);
 		  goto top;
 		}
 
@@ -195,8 +195,8 @@ top:
 	}
 respond:
 	DEBUG1("rmtd: A %d\n", rval);
-	(void)sprintf(resp, "A%d\n", rval);
-	(void)write(1, resp, strlen(resp));
+	sprintf(resp, "A%d\n", rval);
+	write(1, resp, strlen(resp));
 	goto top;
 ioerror:
 	error(errno);
@@ -247,6 +247,6 @@ error(num)
 {
 
 	DEBUG2("rmtd: E %d (%s)\n", num, strerror(num));
-	(void)snprintf(resp, sizeof(resp), "E%d\n%s\n", num, strerror(num));
-	(void)write(1, resp, strlen(resp));
+	snprintf(resp, sizeof(resp), "E%d\n%s\n", num, strerror(num));
+	write(1, resp, strlen(resp));
 }

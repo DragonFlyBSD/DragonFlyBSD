@@ -17,7 +17,7 @@
  * This is the main body of the delete module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/delete/perform.c,v 1.41 2004/06/29 19:06:41 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/perform.c,v 1.3 2004/07/30 04:46:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/perform.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <err.h>
@@ -176,8 +176,8 @@ pkg_do(char *pkg)
     if (Interactive == TRUE) {
 	int first, ch;
 
-	(void)fprintf(stderr, "delete %s? ", pkg);
-	(void)fflush(stderr);
+	fprintf(stderr, "delete %s? ", pkg);
+	fflush(stderr);
 	first = ch = getchar();
 	while (ch != '\n' && ch != EOF)
 	    ch = getchar();

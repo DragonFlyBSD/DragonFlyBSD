@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypserv/yp_dblookup.c,v 1.17.2.1 2002/02/15 00:47:00 des Exp $
- * $DragonFly: src/usr.sbin/ypserv/yp_dblookup.c,v 1.3 2004/03/31 23:20:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypserv/yp_dblookup.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 
 #include <db.h>
@@ -133,7 +133,7 @@ yp_free_qent(struct circleq_entry *q)
 	 * This means we don't have to free q->dbptr->key here.
 	 */
 	if (q->dbptr->dbp) {
-		(void)(q->dbptr->dbp->close)(q->dbptr->dbp);
+		q->dbptr->dbp->close(q->dbptr->dbp);
 		q->dbptr->dbp = NULL;
 	}
 	/*
@@ -362,7 +362,7 @@ yp_open_db_cache(const char *domain, const char *map, const char *key,
 	} else {
 		if ((dbp = yp_open_db(domain, map)) != NULL) {
 			if (yp_cache_db(dbp, (char *)&buf, size)) {
-				(void)(dbp->close)(dbp);
+				dbp->close(dbp);
 				yp_errno = YP_YPERR;
 				return(NULL);
 			}
@@ -481,7 +481,7 @@ yp_get_record(const char *domain, const char *map, const DBT *key,
 #ifdef DB_CACHE
 		qhead.cqh_first->dbptr->size = 0;
 #else
-		(void)(dbp->close)(dbp);
+		dbp->close(dbp);
 #endif
 		if (rval == 1)
 			return(YP_NOKEY);
@@ -501,7 +501,7 @@ yp_get_record(const char *domain, const char *map, const DBT *key,
 #else
 	bcopy((char *)data->data, (char *)&buf, data->size);
 	data->data = (void *)&buf;
-	(void)(dbp->close)(dbp);
+	dbp->close(dbp);
 #endif
 
 	return(YP_TRUE);

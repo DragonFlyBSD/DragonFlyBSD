@@ -32,7 +32,7 @@
  *
  * @(#)startdaemon.c	8.2 (Berkeley) 4/17/94
  * $FreeBSD: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.8.2.2 2002/04/26 18:24:40 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/startdaemon.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -79,7 +79,7 @@ startdaemon(const struct printer *pp)
 	if (connectres < 0) {
 		warn("Unable to connect to %s", _PATH_SOCKETNAME);
 		warnx("Check to see if the master 'lpd' process is running.");
-		(void) close(s);
+		close(s);
 		return(0);
 	}
 
@@ -89,18 +89,18 @@ startdaemon(const struct printer *pp)
 	 */
 	if (writel(s, "\1", pp->printer, "\n", (char *)0) <= 0) {
 		warn("write");
-		(void) close(s);
+		close(s);
 		return(0);
 	}
 	if (read(s, &c, 1) == 1) {
 		if (c == '\0') {		/* everything is OK */
-			(void) close(s);
+			close(s);
 			return(1);
 		}
 		putchar(c);
 	}
 	while ((n = read(s, &c, 1)) > 0)
 		putchar(c);
-	(void) close(s);
+	close(s);
 	return(0);
 }

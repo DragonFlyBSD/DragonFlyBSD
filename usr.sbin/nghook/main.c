@@ -35,7 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/nghook/main.c,v 1.4 1999/11/30 02:09:36 archie Exp $
- * $DragonFly: src/usr.sbin/nghook/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/nghook/main.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
  * $Whistle: main.c,v 1.9 1999/01/20 00:26:26 archie Exp $
  */
 
@@ -204,7 +204,7 @@ WriteAscii(u_char *buf, int len)
 				    sizeof(sbuf) - strlen(sbuf), " ");
 		snprintf(sbuf + strlen(sbuf),
 		    sizeof(sbuf) - strlen(sbuf), "\n");
-		(void) write(1, sbuf, strlen(sbuf));
+		write(1, sbuf, strlen(sbuf));
 	}
 	ch = '\n';
 	write(1, &ch, 1);

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)sliplogin.c        8.2 (Berkeley) 2/1/94
  * $FreeBSD: src/usr.sbin/sliplogin/sliplogin.c,v 1.9.6.2 2001/07/19 05:21:28 kris Exp $
- * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/sliplogin/sliplogin.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -153,7 +153,7 @@ findid(name)
 
 	environ = restricted_environ; /* minimal protection for system() */
 
-	(void)strncpy(loginname, name, sizeof(loginname)-1);
+	strncpy(loginname, name, sizeof(loginname)-1);
 	loginname[sizeof(loginname)-1] = '\0';
 
 	if ((fp = fopen(_PATH_ACCESS, "r")) == NULL) {
@@ -176,7 +176,7 @@ findid(name)
 		if (strcmp(user, name) != 0)
 			continue;
 
-		(void) fclose(fp);
+		fclose(fp);
 
 		slip_mode = 0;
 		for (i = 0; i < n - 4; i++) {
@@ -196,9 +196,9 @@ findid(name)
 		 * one specific to this host.  If none found, try for
 		 * a generic one.
 		 */
-		(void)snprintf(loginfile, sizeof(loginfile), "%s.%s", _PATH_LOGIN, name);
+		snprintf(loginfile, sizeof(loginfile), "%s.%s", _PATH_LOGIN, name);
 		if (access(loginfile, R_OK|X_OK) != 0) {
-			(void)strncpy(loginfile, _PATH_LOGIN, sizeof(loginfile)-1);
+			strncpy(loginfile, _PATH_LOGIN, sizeof(loginfile)-1);
 			loginfile[sizeof(loginfile)-1] = '\0';
 			if (access(loginfile, R_OK|X_OK)) {
 				syslog(LOG_ERR,
@@ -207,9 +207,9 @@ findid(name)
 				exit(5);
 			}
 		}
-		(void)snprintf(slparmsfile, sizeof(slparmsfile), "%s.%s", _PATH_SLPARMS, name);
+		snprintf(slparmsfile, sizeof(slparmsfile), "%s.%s", _PATH_SLPARMS, name);
 		if (access(slparmsfile, R_OK|X_OK) != 0) {
-			(void)strncpy(slparmsfile, _PATH_SLPARMS, sizeof(slparmsfile)-1);
+			strncpy(slparmsfile, _PATH_SLPARMS, sizeof(slparmsfile)-1);
 			slparmsfile[sizeof(slparmsfile)-1] = '\0';
 			if (access(slparmsfile, R_OK|X_OK))
 				*slparmsfile = '\0';
@@ -234,7 +234,7 @@ findid(name)
 					syslog(LOG_ERR, "%s: wrong format\n", slparmsfile);
 					exit(1);
 				}
-				(void) fclose(fp);
+				fclose(fp);
 				break;
 			}
 			if (n == 0)
@@ -289,7 +289,7 @@ sigstr(s)
 	case SIGUSR1:	return("USR1");
 	case SIGUSR2:	return("USR2");
 	}
-	(void)snprintf(buf, sizeof(buf), "sig %d", s);
+	snprintf(buf, sizeof(buf), "sig %d", s);
 	return(buf);
 }
 
@@ -299,18 +299,18 @@ hup_handler(s)
 {
 	char logoutfile[MAXPATHLEN];
 
-	(void) close(0);
+	close(0);
 	seteuid(0);
-	(void)snprintf(logoutfile, sizeof(logoutfile), "%s.%s", _PATH_LOGOUT, loginname);
+	snprintf(logoutfile, sizeof(logoutfile), "%s.%s", _PATH_LOGOUT, loginname);
 	if (access(logoutfile, R_OK|X_OK) != 0) {
-		(void)strncpy(logoutfile, _PATH_LOGOUT, sizeof(logoutfile)-1);
+		strncpy(logoutfile, _PATH_LOGOUT, sizeof(logoutfile)-1);
 		logoutfile[sizeof(logoutfile)-1] = '\0';
 	}
 	if (access(logoutfile, R_OK|X_OK) == 0) {
 		char logincmd[2*MAXPATHLEN+32];
 
-		(void) snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", logoutfile, unit, speed, loginargs);
-		(void) system(logincmd);
+		snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", logoutfile, unit, speed, loginargs);
+		system(logincmd);
 	}
 	syslog(LOG_INFO, "closed %s slip unit %d (%s)\n", loginname, unit,
 	       sigstr(s));
@@ -376,7 +376,7 @@ main(argc, argv)
 		name = argv[0];
 	s = getdtablesize();
 	for (fd = 3 ; fd < s ; fd++)
-		(void) close(fd);
+		close(fd);
 	openlog(name, LOG_PID|LOG_PERROR, LOG_DAEMON);
 	uid = getuid();
 	if (argc > 1) {
@@ -395,7 +395,7 @@ main(argc, argv)
 				syslog(LOG_ERR, "open %s: %m", argv[2]);
 				exit(2);
 			}
-			(void) dup2(fd, 0);
+			dup2(fd, 0);
 			if (fd > 2)
 				close(fd);
 		}
@@ -414,11 +414,11 @@ main(argc, argv)
 		}
 		findid(name);
 	}
-	(void) fchmod(0, 0600);
-	(void) fprintf(stderr, "starting slip login for %s\n", loginname);
-        (void) fprintf(stderr, "your address is %s\n\n", make_ipaddr());
+	fchmod(0, 0600);
+	fprintf(stderr, "starting slip login for %s\n", loginname);
+        fprintf(stderr, "your address is %s\n\n", make_ipaddr());
 
-	(void) fflush(stderr);
+	fflush(stderr);
 	sleep(1);
 
 	/* set up the line parameters */
@@ -448,11 +448,11 @@ main(argc, argv)
 		syslog(LOG_ERR, "ioctl (SLIOCGUNIT): %m");
 		exit(1);
 	}
-	(void) signal(SIGHUP, hup_handler);
-	(void) signal(SIGTERM, hup_handler);
+	signal(SIGHUP, hup_handler);
+	signal(SIGTERM, hup_handler);
 
 	if (keepal > 0) {
-		(void) signal(SIGURG, hup_handler);
+		signal(SIGURG, hup_handler);
 		if (ioctl(0, SLIOCSKEEPAL, &keepal) < 0) {
 			syslog(LOG_ERR, "ioctl(SLIOCSKEEPAL): %m");
 			exit(1);
@@ -465,11 +465,11 @@ main(argc, argv)
 
         /* write pid to file */
 	pid = getpid();
-	(void) sprintf(ifname, "sl%d", unit);
-	(void) sprintf(pidfilename, "%s%s.pid", _PATH_VARRUN, ifname);
+	sprintf(ifname, "sl%d", unit);
+	sprintf(pidfilename, "%s%s.pid", _PATH_VARRUN, ifname);
 	if ((pidfile = fopen(pidfilename, "w")) != NULL) {
 		fprintf(pidfile, "%d\n", pid);
-		(void) fclose(pidfile);
+		fclose(pidfile);
 	} else {
 		syslog(LOG_ERR, "Failed to create pid file %s: %m",
 				pidfilename);
@@ -485,10 +485,10 @@ main(argc, argv)
 			n++;
 			break;
 		}
-	(void) sprintf(iffilename, "%s%s.if", _PATH_VARRUN, &devnam[n]);
+	sprintf(iffilename, "%s%s.if", _PATH_VARRUN, &devnam[n]);
 	if ((iffile = fopen(iffilename, "w")) != NULL) {
 		fprintf(iffile, "sl%d\n", unit); 
-		(void) fclose(iffile);
+		fclose(iffile);
 	} else {
 		syslog(LOG_ERR, "Failed to create if file %s: %m", iffilename);
 		iffilename[0] = 0;  
@@ -496,29 +496,29 @@ main(argc, argv)
 
 
 	syslog(LOG_INFO, "attaching slip unit %d for %s\n", unit, loginname);
-	(void)snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", loginfile, unit, speed,
-		      loginargs);
+	snprintf(logincmd, sizeof(logincmd), "%s %d %ld %s", loginfile, unit, speed,
+		 loginargs);
 	/*
 	 * aim stdout and errout at /dev/null so logincmd output won't
 	 * babble into the slip tty line.
 	 */
-	(void) close(1);
+	close(1);
 	if ((fd = open(_PATH_DEVNULL, O_WRONLY)) != 1) {
 		if (fd < 0) {
 			syslog(LOG_ERR, "open %s: %m", _PATH_DEVNULL);
 			exit(1);
 		}
-		(void) dup2(fd, 1);
-		(void) close(fd);
+		dup2(fd, 1);
+		close(fd);
 	}
-	(void) dup2(1, 2);
+	dup2(1, 2);
 
 	/*
 	 * Run login and logout scripts as root (real and effective);
 	 * current route(8) is setuid root, and checks the real uid
 	 * to see whether changes are allowed (or just "route get").
 	 */
-	(void) setuid(0);
+	setuid(0);
 	if (s = system(logincmd)) {
 		syslog(LOG_ERR, "%s login failed: exit status %d from %s",
 		       loginname, s, loginfile);

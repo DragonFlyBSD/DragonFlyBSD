@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/pccard/pccardd/pccardd.c,v 1.6.2.6 2001/08/02 18:51:38 imp Exp $
- * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/pccardd.c,v 1.2 2003/06/17 04:29:59 dillon Exp $
+ * $DragonFly: src/usr.sbin/pccard/pccardd/Attic/pccardd.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <signal.h>
@@ -117,7 +117,7 @@ restart(void)
 	}
 	strcpy(sun.sun_path, socket_name);
 	slen = SUN_LEN(&sun);
-	(void)unlink(socket_name);
+	unlink(socket_name);
 	if (bind(server_sock, (struct sockaddr *) & sun, slen) < 0)
 		die("bind failed");
 	chown(socket_name, 0, 5);	/* XXX - root.operator */
@@ -130,7 +130,7 @@ static void
 term(int sig)
 {
 	logmsg("pccardd terminated: signal %d received", sig);
-	(void)unlink(pid_file);
+	unlink(pid_file);
 	exit(0);
 }
 
@@ -243,16 +243,16 @@ main(int argc, char *argv[])
 	}
 	strcpy(sun.sun_path, socket_name);
 	slen = SUN_LEN(&sun);
-	(void)unlink(socket_name);
+	unlink(socket_name);
 	if (bind(server_sock, (struct sockaddr *) & sun, slen) < 0)
 		die("bind failed");
 	chown(socket_name, 0, 5);	/* XXX - root.operator */
 	chmod(socket_name, 0660);
 	set_socket(server_sock);
 
-	(void)signal(SIGINT, dodebug ? term : SIG_IGN);
-	(void)signal(SIGTERM, term);
-	(void)signal(SIGHUP, (void (*)(int))restart);
+	signal(SIGINT, dodebug ? term : SIG_IGN);
+	signal(SIGTERM, term);
+	signal(SIGHUP, (void (*)(int))restart);
 
 	for (;;) {
 		fd_set  rmask, emask;

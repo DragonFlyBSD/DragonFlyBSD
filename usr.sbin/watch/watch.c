@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/usr.sbin/watch/watch.c,v 1.18.2.3 2002/08/17 00:59:03 mikeh Exp $
- * $DragonFly: src/usr.sbin/watch/watch.c,v 1.3 2003/11/03 19:31:44 eirikn Exp $
+ * $DragonFly: src/usr.sbin/watch/watch.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -298,7 +298,7 @@ main(ac, av)
 	char            ch, *buf, chb[READB_LEN];
 	fd_set          fd_s;
 
-	(void) setlocale(LC_TIME, "");
+	setlocale(LC_TIME, "");
 
 	if (isatty(std_out))
 		opt_interactive = 1;

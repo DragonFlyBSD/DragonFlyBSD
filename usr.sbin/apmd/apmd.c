@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/apmd/apmd.c,v 1.3.2.1 2001/08/13 17:30:30 nsayer Exp $
- * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/apmd/apmd.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 #include <assert.h>
@@ -113,7 +113,7 @@ event_cmd_exec_act(void *this)
 
 	switch ((pid = fork())) {
 	case -1:
-		(void) warn("cannot fork");
+		warn("cannot fork");
 		goto out;
 	case 0:
 		/* child process */
@@ -194,7 +194,7 @@ clone_event_cmd_list(struct event_cmd *p)
 	for ( ;p; p = p->next) {
 		assert(p->op->clone);
 		if ((q->next = p->op->clone(p)) == NULL)
-			(void) err(1, "out of memory");
+			err(1, "out of memory");
 		q = q->next;
 	}
 	q->next = NULL;
@@ -232,7 +232,7 @@ register_battery_handlers(
 		struct battery_watch_event *we;
 		
 		if ((we = malloc(sizeof(struct battery_watch_event))) == NULL)
-			(void) err(1, "out of memory");
+			err(1, "out of memory");
 
 		we->next = battery_watch_list; /* starts at NULL */
 		battery_watch_list = we;
@@ -263,7 +263,7 @@ register_apm_event_handlers(
 				break;
 			p = events[n].cmdlist;
 			if ((q = clone_event_cmd_list(cmdlist)) == NULL)
-				(void) err(1, "out of memory");
+				err(1, "out of memory");
 			if (p) {
 				while (p->next != NULL)
 					p = p->next;
@@ -309,7 +309,7 @@ exec_event_cmd(struct event_config *ev)
 	status = exec_run_cmd(ev->cmdlist);
 	if (status && ev->rejectable) {
 		syslog(LOG_ERR, "canceled");
-		(void) event_cmd_reject_act(NULL);
+		event_cmd_reject_act(NULL);
 	}
 	return status;
 }
@@ -326,7 +326,7 @@ read_config(void)
 	int i;
 
 	if ((yyin = fopen(apmd_configfile, "r")) == NULL) {
-		(void) err(1, "cannot open config file");
+		err(1, "cannot open config file");
 	}
 
 #ifdef DEBUG
@@ -334,7 +334,7 @@ read_config(void)
 #endif
 
 	if (yyparse() != 0)
-		(void) err(1, "cannot parse config file");
+		err(1, "cannot parse config file");
 
 	fclose(yyin);
 
@@ -343,7 +343,7 @@ read_config(void)
 		if (events[i].cmdlist) {
 			u_int event_type = i;
 			if (write(apmctl_fd, &event_type, sizeof(u_int)) == -1) {
-				(void) err(1, "cannot enable event 0x%x", event_type);
+				err(1, "cannot enable event 0x%x", event_type);
 			}
 		}
 	}
@@ -396,7 +396,7 @@ destroy_config(void)
 		if (events[i].cmdlist) {
 			u_int event_type = i;
 			if (write(apmctl_fd, &event_type, sizeof(u_int)) == -1) {
-				(void) err(1, "cannot disable event 0x%x", event_type);
+				err(1, "cannot disable event 0x%x", event_type);
 			}
 		}
 	}
@@ -448,7 +448,7 @@ void
 enque_signal(int sig)
 {
 	if (write(signal_fd[1], &sig, sizeof sig) != sizeof sig)
-		(void) err(1, "cannot process signal.");
+		err(1, "cannot process signal.");
 }
 
 void
@@ -480,7 +480,7 @@ proc_signal(int fd)
 			wait_child();
 			break;
 		default:
-			(void) warn("unexpected signal(%d) received.", sig);
+			warn("unexpected signal(%d) received.", sig);
 			break;
 		}
 	}
@@ -523,7 +523,7 @@ check_battery(void)
 
 	if (first_time) {
 		if ( ioctl(apmnorm_fd, APMIO_GETINFO, &pw_info) < 0)
-			(void) err(1, "cannot check battery state.");
+			err(1, "cannot check battery state.");
 /*
  * This next statement isn't entirely true. The spec does not tie AC
  * line state to battery charging or not, but this is a bit lazier to do.
@@ -538,7 +538,7 @@ check_battery(void)
 	 * of smoothing or correction?
 	 */
 	if ( ioctl(apmnorm_fd, APMIO_GETINFO, &pw_info) < 0)
-		(void) err(1, "cannot check battery state.");
+		err(1, "cannot check battery state.");
 
 	/*
 	 * If we're not in the state now that we were in last time,
@@ -611,7 +611,7 @@ event_loop(void)
 		sigprocmask(SIG_SETMASK, &osigmask, NULL);
 		if ((res=select(fdmax + 1, &rfds, 0, 0, &to)) < 0) {
 			if (errno != EINTR)
-				(void) err(1, "select");
+				err(1, "select");
 		}
 		sigprocmask(SIG_SETMASK, &sigmask, NULL);
 
@@ -653,7 +653,7 @@ main(int ac, char* av[])
 			verbose = 1;
 			break;
 		default:
-			(void) err(1, "unknown option `%c'", ch);
+			err(1, "unknown option `%c'", ch);
 		}
 	}
 
@@ -661,7 +661,7 @@ main(int ac, char* av[])
 		daemon(0, 0);
 
 #ifdef NICE_INCR
-	(void) nice(NICE_INCR);
+	nice(NICE_INCR);
 #endif
 
 	if (!daemonize)
@@ -673,16 +673,16 @@ main(int ac, char* av[])
 	syslog(LOG_NOTICE, "start");
 
 	if (pipe(signal_fd) < 0)
-		(void) err(1, "pipe");
+		err(1, "pipe");
 	if (fcntl(signal_fd[0], F_SETFL, O_NONBLOCK) < 0)
-		(void) err(1, "fcntl");
+		err(1, "fcntl");
 
 	if ((apmnorm_fd = open(APM_NORM_DEVICEFILE, O_RDWR)) == -1) {
-		(void) err(1, "cannot open device file `%s'", APM_NORM_DEVICEFILE);
+		err(1, "cannot open device file `%s'", APM_NORM_DEVICEFILE);
 	}
 
 	if ((apmctl_fd = open(APM_CTL_DEVICEFILE, O_RDWR)) == -1) {
-		(void) err(1, "cannot open device file `%s'", APM_CTL_DEVICEFILE);
+		err(1, "cannot open device file `%s'", APM_CTL_DEVICEFILE);
 	}
 
 	restart();

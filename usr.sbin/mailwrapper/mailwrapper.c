@@ -1,7 +1,7 @@
 /*	$OpenBSD: mailwrapper.c,v 1.6 1999/12/17 05:06:28 mickey Exp $	*/
 /*	$NetBSD: mailwrapper.c,v 1.3 1999/05/29 18:18:15 christos Exp $	*/
 /* $FreeBSD: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4.2.3 2001/10/01 12:52:47 dd Exp $ */
-/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $ */
+/* $DragonFly: src/usr.sbin/mailwrapper/mailwrapper.c,v 1.5 2004/12/18 22:48:04 swildner Exp $ */
 
 /*
  * Copyright (c) 1998
@@ -162,7 +162,7 @@ main(int argc, char **argv, char **envp)
 		free(line);
 	}
 
-	(void)fclose(config);
+	fclose(config);
 
 	addarg(&al, NULL, 0);
 	execve(to, al.argv, envp);

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/af.c,v 1.6 1999/08/28 01:15:01 peter Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/af.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/af.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  *
  * @(#)af.c	8.1 (Berkeley) 6/5/93
  */
@@ -165,13 +165,13 @@ ipxnet_output(int s, int flags, struct sockaddr_ipx *sipx, int size)
 		for (ifp = ifnet; ifp; ifp = ifp->int_next) {
 			sipx->sipx_addr.x_net = 
 				satoipx_addr(ifp->int_addr).x_net;
-			(void) sendto(s, msg, size, flags,
+			sendto(s, msg, size, flags,
 			    (struct sockaddr *)sipx, sizeof (*sipx));
 		}
 		return;
 	}
 	
-	(void) sendto(s, msg, size, flags,
+	sendto(s, msg, size, flags,
 	    (struct sockaddr *)sipx, sizeof (*sipx));
 }
 

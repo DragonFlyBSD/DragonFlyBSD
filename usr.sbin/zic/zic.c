@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)zic.c	7.96";
 /*
  * @(#)zic.c	7.96
  * $FreeBSD: src/usr.sbin/zic/zic.c,v 1.11 1999/08/28 01:21:20 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zic.c,v 1.5 2004/11/25 01:01:33 joerg Exp $
+ * $DragonFly: src/usr.sbin/zic/zic.c,v 1.6 2004/12/18 22:48:15 swildner Exp $
  */
 #include "private.h"
 #include "tzfile.h"
@@ -403,12 +403,12 @@ error(const char * const string)
 	**	zic ... 2>&1 | error -t "*" -v
 	** on BSD systems.
 	*/
-	(void) fprintf(stderr, _("\"%s\", line %d: %s"),
+	fprintf(stderr, _("\"%s\", line %d: %s"),
 		filename, linenum, string);
 	if (rfilename != NULL)
-		(void) fprintf(stderr, _(" (rule from \"%s\", line %d)"),
+		fprintf(stderr, _(" (rule from \"%s\", line %d)"),
 			rfilename, rlinenum);
-	(void) fprintf(stderr, "\n");
+	fprintf(stderr, "\n");
 	++errors;
 }
 
@@ -427,10 +427,10 @@ warning(const char * const string)
 static void
 usage(void)
 {
-	(void) fprintf(stderr, "%s\n%s\n",
+	fprintf(stderr, "%s\n%s\n",
 _("usage: zic [-s] [-v] [-l localtime] [-p posixrules] [-d directory]"),
 _("           [-L leapseconds] [-y yearistype] [filename ... ]"));
-	(void) exit(EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 }
 
 static const char *	psxrules;
@@ -453,14 +453,14 @@ main(int argc, char *argv[])
 	int c;
 
 #ifdef unix
-	(void) umask(umask(S_IWGRP | S_IWOTH) | (S_IWGRP | S_IWOTH));
+	umask(umask(S_IWGRP | S_IWOTH) | (S_IWGRP | S_IWOTH));
 #endif /* defined unix */
 #if HAVE_GETTEXT - 0
-	(void) setlocale(LC_MESSAGES, "");
+	setlocale(LC_MESSAGES, "");
 #ifdef TZ_DOMAINDIR
-	(void) bindtextdomain(TZ_DOMAIN, TZ_DOMAINDIR);
+	bindtextdomain(TZ_DOMAIN, TZ_DOMAINDIR);
 #endif /* defined TEXTDOMAINDIR */
-	(void) textdomain(TZ_DOMAIN);
+	textdomain(TZ_DOMAIN);
 #endif /* HAVE_GETTEXT - 0 */
 	while ((c = getopt(argc, argv, "Dd:g:l:m:p:L:u:vsy:")) != -1)
 		switch (c) {
@@ -540,7 +540,7 @@ _("more than one -L option specified"));
 	for (i = optind; i < argc; ++i)
 		infile(argv[i]);
 	if (errors)
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	associate();
 	for (i = 0; i < nzones; i = j) {
 		/*
@@ -587,12 +587,12 @@ dolink(const char * const fromfile, const char * const tofile)
 	** there's a fair chance of root running us.
 	*/
 	if (!itsdir(toname))
-		(void) remove(toname);
+		remove(toname);
 	if (link(fromname, toname) != 0) {
 		int	result;
 
 		if (mkdirs(toname) != 0)
-			(void) exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		result = link(fromname, toname);
 #if (HAVE_SYMLINK - 0) 
 		if (result != 0) {
@@ -686,7 +686,7 @@ associate(void)
 	int i, j;
 
 	if (nrules != 0) {
-		(void) qsort((void *) rules, (size_t) nrules,
+		qsort((void *) rules, (size_t) nrules,
 			(size_t) sizeof *rules, rcomp);
 		for (i = 0; i < nrules - 1; ++i) {
 			if (strcmp(rules[i].r_name,
@@ -750,7 +750,7 @@ associate(void)
 		}
 	}
 	if (errors)
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 }
 
 static void
@@ -778,7 +778,7 @@ infile(const char *name)
 		cp = strchr(buf, '\n');
 		if (cp == NULL) {
 			error(_("line too long"));
-			(void) exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 		*cp = '\0';
 		fields = getfields(buf);
@@ -911,7 +911,7 @@ inzone(char ** const fields, const int nfields)
 	}
 	if (strcmp(fields[ZF_NAME], TZDEFAULT) == 0 && lcltime != NULL) {
 		buf = erealloc(buf, (int) (132 + strlen(TZDEFAULT)));
-		(void) sprintf(buf,
+		sprintf(buf,
 _("\"Zone %s\" line and -l option are mutually exclusive"),
 			TZDEFAULT);
 		error(buf);
@@ -919,7 +919,7 @@ _("\"Zone %s\" line and -l option are mutually exclusive"),
 	}
 	if (strcmp(fields[ZF_NAME], TZDEFRULES) == 0 && psxrules != NULL) {
 		buf = erealloc(buf, (int) (132 + strlen(TZDEFRULES)));
-		(void) sprintf(buf,
+		sprintf(buf,
 _("\"Zone %s\" line and -p option are mutually exclusive"),
 			TZDEFRULES);
 		error(buf);
@@ -931,7 +931,7 @@ _("\"Zone %s\" line and -p option are mutually exclusive"),
 				buf = erealloc(buf, (int) (132 +
 					strlen(fields[ZF_NAME]) +
 					strlen(zones[i].z_filename)));
-				(void) sprintf(buf,
+				sprintf(buf,
 _("duplicate zone name %s (file \"%s\", line %d)"),
 					fields[ZF_NAME],
 					zones[i].z_filename,
@@ -1317,7 +1317,7 @@ puttzcode(const long val, FILE * const fp)
 	char	buf[4];
 
 	convert(val, buf);
-	(void) fwrite((void *) buf, (size_t) sizeof buf, (size_t) 1, fp);
+	fwrite((void *) buf, (size_t) sizeof buf, (size_t) 1, fp);
 }
 
 static int
@@ -1347,7 +1347,7 @@ writezone(const char * const name)
 	** Sort.
 	*/
 	if (timecnt > 1)
-		(void) qsort((void *) attypes, (size_t) timecnt,
+		qsort((void *) attypes, (size_t) timecnt,
 			(size_t) sizeof *attypes, atcomp);
 	/*
 	** Optimize.
@@ -1388,7 +1388,7 @@ writezone(const char * const name)
 	}
 	fullname = erealloc(fullname,
 		(int) (strlen(directory) + 1 + strlen(name) + 1));
-	(void) sprintf(fullname, "%s/%s", directory, name);
+	sprintf(fullname, "%s/%s", directory, name);
 
 	/*
 	 * Remove old file, if any, to snap links.
@@ -1398,7 +1398,7 @@ writezone(const char * const name)
 
 	if ((fp = fopen(fullname, "wb")) == NULL) {
 		if (mkdirs(fullname) != 0)
-			(void) exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		if ((fp = fopen(fullname, "wb")) == NULL)
 			err(EXIT_FAILURE, _("can't create %s"), fullname);
 	}
@@ -1408,8 +1408,8 @@ writezone(const char * const name)
 	convert(eitol(timecnt), tzh.tzh_timecnt);
 	convert(eitol(typecnt), tzh.tzh_typecnt);
 	convert(eitol(charcnt), tzh.tzh_charcnt);
-	(void) strncpy(tzh.tzh_magic, TZ_MAGIC, sizeof tzh.tzh_magic);
-#define DO(field)	(void) fwrite((void *) tzh.field, (size_t) sizeof tzh.field, (size_t) 1, fp)
+	strncpy(tzh.tzh_magic, TZ_MAGIC, sizeof tzh.tzh_magic);
+#define DO(field)	fwrite((void *) tzh.field, (size_t) sizeof tzh.field, (size_t) 1, fp)
 	DO(tzh_magic);
 	DO(tzh_reserved);
 	DO(tzh_ttisgmtcnt);
@@ -1429,15 +1429,15 @@ writezone(const char * const name)
 		puttzcode((long) ats[i], fp);
 	}
 	if (timecnt > 0)
-		(void) fwrite((void *) types, (size_t) sizeof types[0],
+		fwrite((void *) types, (size_t) sizeof types[0],
 			(size_t) timecnt, fp);
 	for (i = 0; i < typecnt; ++i) {
 		puttzcode((long) gmtoffs[i], fp);
-		(void) putc(isdsts[i], fp);
-		(void) putc(abbrinds[i], fp);
+		putc(isdsts[i], fp);
+		putc(abbrinds[i], fp);
 	}
 	if (charcnt != 0)
-		(void) fwrite((void *) chars, (size_t) sizeof chars[0],
+		fwrite((void *) chars, (size_t) sizeof chars[0],
 			(size_t) charcnt, fp);
 	for (i = 0; i < leapcnt; ++i) {
 		if (roll[i]) {
@@ -1459,9 +1459,9 @@ writezone(const char * const name)
 		puttzcode((long) corr[i], fp);
 	}
 	for (i = 0; i < typecnt; ++i)
-		(void) putc(ttisstds[i], fp);
+		putc(ttisstds[i], fp);
 	for (i = 0; i < typecnt; ++i)
-		(void) putc(ttisgmts[i], fp);
+		putc(ttisgmts[i], fp);
 	if (ferror(fp) || fclose(fp))
 		errx(EXIT_FAILURE, _("error writing %s"), fullname);
 	if (chmod(fullname, mflag) < 0)
@@ -1479,12 +1479,12 @@ doabbr(char * const abbr, const char * const format,
 {
 	if (strchr(format, '/') == NULL) {
 		if (letters == NULL)
-			(void) strcpy(abbr, format);
-		else	(void) sprintf(abbr, format, letters);
+			strcpy(abbr, format);
+		else	sprintf(abbr, format, letters);
 	} else if (isdst)
-		(void) strcpy(abbr, strchr(format, '/') + 1);
+		strcpy(abbr, strchr(format, '/') + 1);
 	else {
-		(void) strcpy(abbr, format);
+		strcpy(abbr, format);
 		*strchr(abbr, '/') = '\0';
 	}
 }
@@ -1650,7 +1650,7 @@ outzone(const struct zone * const zpfirst, const int zonecount)
 				zp->z_format != NULL &&
 				strchr(zp->z_format, '%') == NULL &&
 				strchr(zp->z_format, '/') == NULL)
-					(void) strcpy(startbuf, zp->z_format);
+					strcpy(startbuf, zp->z_format);
 			eat(zp->z_filename, zp->z_linenum);
 			if (*startbuf == '\0')
 error(_("can't determine time zone abbreviation to use just after until time"));
@@ -1686,7 +1686,7 @@ addtt(const time_t starttime, int type)
 		ttisstds[0] = ttisstds[type];
 		ttisgmts[0] = ttisgmts[type];
 		if (abbrinds[type] != 0)
-			(void) strcpy(chars, &chars[abbrinds[type]]);
+			strcpy(chars, &chars[abbrinds[type]]);
 		abbrinds[0] = 0;
 		charcnt = strlen(chars) + 1;
 		typecnt = 1;
@@ -1695,7 +1695,7 @@ addtt(const time_t starttime, int type)
 	}
 	if (timecnt >= TZ_MAX_TIMES) {
 		error(_("too many transitions?!"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	attypes[timecnt].at = starttime;
 	attypes[timecnt].type = type;
@@ -1710,15 +1710,15 @@ addtype(const long gmtoff, const char * const abbr, const int isdst,
 
 	if (isdst != TRUE && isdst != FALSE) {
 		error(_("internal error - addtype called with bad isdst"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	if (ttisstd != TRUE && ttisstd != FALSE) {
 		error(_("internal error - addtype called with bad ttisstd"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	if (ttisgmt != TRUE && ttisgmt != FALSE) {
 		error(_("internal error - addtype called with bad ttisgmt"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	/*
 	** See if there's already an entry for this zone type.
@@ -1737,7 +1737,7 @@ addtype(const long gmtoff, const char * const abbr, const int isdst,
 	*/
 	if (typecnt >= TZ_MAX_TYPES) {
 		error(_("too many local time types"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	gmtoffs[i] = gmtoff;
 	isdsts[i] = isdst;
@@ -1761,13 +1761,13 @@ leapadd(const time_t t, const int positive, const int rolling, int count)
 
 	if (leapcnt + (positive ? count : 1) > TZ_MAX_LEAPS) {
 		error(_("too many leap seconds"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	for (i = 0; i < leapcnt; ++i)
 		if (t <= trans[i]) {
 			if (t == trans[i]) {
 				error(_("repeated leap second moment"));
-				(void) exit(EXIT_FAILURE);
+				exit(EXIT_FAILURE);
 			}
 			break;
 		}
@@ -1808,7 +1808,7 @@ yearistype(const int year, const char * const type)
 	if (type == NULL || *type == '\0')
 		return TRUE;
 	buf = erealloc(buf, (int) (132 + strlen(yitcommand) + strlen(type)));
-	(void) sprintf(buf, "%s %d %s", yitcommand, year, type);
+	sprintf(buf, "%s %d %s", yitcommand, year, type);
 	result = system(buf);
 	if (result == 0)
 		return TRUE;
@@ -1817,7 +1817,7 @@ yearistype(const int year, const char * const type)
 	error(_("wild result from command execution"));
 	warnx(_("command was '%s', result was %d"), buf, result);
 	for ( ; ; )
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 }
 
 static int
@@ -1920,7 +1920,7 @@ oadd(const long t1, const long t2)
 	t = t1 + t2;
 	if ((t2 > 0 && t <= t1) || (t2 < 0 && t >= t1)) {
 		error(_("time overflow"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	return t;
 }
@@ -1937,7 +1937,7 @@ tadd(const time_t t1, const long t2)
 	t = t1 + t2;
 	if ((t2 > 0 && t <= t1) || (t2 < 0 && t >= t1)) {
 		error(_("time overflow"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
 	return t;
 }
@@ -1982,7 +1982,7 @@ rpytime(const struct rule * const rp, const int wantedy)
 			--i;
 		else {
 			error(_("use of 2/29 in non leap-year"));
-			(void) exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 	}
 	--i;
@@ -2016,7 +2016,7 @@ rpytime(const struct rule * const rp, const int wantedy)
 			}
 		if (i < 0 || i >= len_months[isleap(y)][m]) {
 			error(_("no day in month matches rule"));
-			(void) exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 	}
 	if (dayoff < 0 && !TYPE_SIGNED(time_t))
@@ -2038,9 +2038,9 @@ newabbr(const char * const string)
 	i = strlen(string) + 1;
 	if (charcnt + i > TZ_MAX_CHARS) {
 		error(_("too many, or too long, time zone abbreviations"));
-		(void) exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
-	(void) strcpy(&chars[charcnt], string);
+	strcpy(&chars[charcnt], string);
 	charcnt += eitol(i);
 }
 

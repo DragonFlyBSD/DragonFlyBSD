@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbdelete.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <stdio.h>
@@ -59,7 +59,7 @@ int yp_del_record(dbp,key)
 			break;
 		case -1:
 		default:
-			(void)(dbp->close)(dbp);
+			(dbp->close)(dbp);
 			return(YP_BADDB);
 			break;
 		}

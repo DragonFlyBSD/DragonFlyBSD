@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypxfrd/ypxfrd_main.c,v 1.8.2.3 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_main.c,v 1.3 2004/05/20 19:24:43 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypxfrd/ypxfrd_main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "ypxfrd.h"
@@ -113,8 +113,8 @@ closedown(int sig)
 	if (_rpcsvcstate == _SERVED)
 		_rpcsvcstate = _IDLE;
 
-	(void) signal(SIGALRM, (SIG_PF) closedown);
-	(void) alarm(_RPCSVC_CLOSEDOWN/2);
+	signal(SIGALRM, (SIG_PF) closedown);
+	alarm(_RPCSVC_CLOSEDOWN/2);
 }
 
 
@@ -175,7 +175,7 @@ static void reaper(sig)
 		while (wait3(&status, WNOHANG, NULL) > 0)
 			children--;
 	} else {
-		(void) pmap_unset(YPXFRD_FREEBSD_PROG, YPXFRD_FREEBSD_VERS);
+		pmap_unset(YPXFRD_FREEBSD_PROG, YPXFRD_FREEBSD_VERS);
 		exit(0);
 	}
 
@@ -238,19 +238,19 @@ main(argc, argv)
 			exit(0);
 		size = getdtablesize();
 		for (i = 0; i < size; i++)
-			(void) close(i);
+			close(i);
 		i = open(_PATH_CONSOLE, 2);
-		(void) dup2(i, 1);
-		(void) dup2(i, 2);
+		dup2(i, 1);
+		dup2(i, 2);
 		i = open(_PATH_TTY, 2);
 		if (i >= 0) {
-			(void) ioctl(i, TIOCNOTTY, (char *)NULL);
-			(void) close(i);
+			ioctl(i, TIOCNOTTY, (char *)NULL);
+			close(i);
 		}
 		openlog("rpc.ypxfrd", LOG_PID, LOG_DAEMON);
 #endif
 		sock = RPC_ANYSOCK;
-		(void) pmap_unset(YPXFRD_FREEBSD_PROG, YPXFRD_FREEBSD_VERS);
+		pmap_unset(YPXFRD_FREEBSD_PROG, YPXFRD_FREEBSD_VERS);
 	}
 
 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
@@ -286,15 +286,15 @@ main(argc, argv)
 		exit(1);
 	}
 	if (_rpcpmstart) {
-		(void) signal(SIGALRM, (SIG_PF) closedown);
-		(void) alarm(_RPCSVC_CLOSEDOWN/2);
+		signal(SIGALRM, (SIG_PF) closedown);
+		alarm(_RPCSVC_CLOSEDOWN/2);
 	}
 
-	(void) signal(SIGPIPE, SIG_IGN);
-	(void) signal(SIGCHLD, (SIG_PF) reaper);
-	(void) signal(SIGTERM, (SIG_PF) reaper);
-	(void) signal(SIGINT, (SIG_PF) reaper);
-	(void) signal(SIGHUP, (SIG_PF) reaper);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGCHLD, (SIG_PF) reaper);
+	signal(SIGTERM, (SIG_PF) reaper);
+	signal(SIGINT, (SIG_PF) reaper);
+	signal(SIGHUP, (SIG_PF) reaper);
 
 	ypxfrd_svc_run();
 	_msgout("svc_run returned");

@@ -18,7 +18,7 @@
  * This is the delete module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/delete/main.c,v 1.26 2004/06/29 18:54:47 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.4 2004/07/30 04:46:13 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/delete/Attic/main.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -134,7 +134,7 @@ main(int argc, char **argv)
 	warnx("missing package name(s)"), usage();
     *pkgs = NULL;
     tmp = LOG_DIR;
-    (void) stat(tmp, &stat_s);
+    stat(tmp, &stat_s);
     if (!Fake && getuid() && geteuid() != stat_s.st_uid) {
 	if (!Force)
 	    errx(1, "you do not own %s, use -f to force", tmp);

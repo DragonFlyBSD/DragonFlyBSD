@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.3.2.1 2000/12/11 01:03:29 obrien Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarpd.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -347,7 +347,7 @@ main(int argc, char **argv)
 	 */
 	for (aip = atmarp_intf_head; aip; aip = aip->ai_next) {
 		if (atmarp_if_ready(aip)) {
-			(void)atmarp_scsp_connect(aip);
+			atmarp_scsp_connect(aip);
 		}
 	}
 

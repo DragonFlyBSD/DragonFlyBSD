@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/dpt/dpt_led/dpt_led.c,v 1.3 1999/08/28 01:16:08 peter Exp $
- * $DragonFly: src/usr.sbin/dpt/dpt_led/dpt_led.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_led/dpt_led.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* dpt_led.c:  Show the blinking LED array status of a DPT HBAs */
@@ -56,8 +56,8 @@ main(int argc, char **argv, char **argp)
     int fd;
 
     if ( (fd = open(argv[1], O_RDWR, S_IRUSR | S_IWUSR)) == -1 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
-					  argv[0], argv[1], strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
+			argv[0], argv[1], strerror(errno));
 		exit(1);
     }
 
@@ -69,14 +69,14 @@ main(int argc, char **argv, char **argp)
     pass_thru.command_buffer = (u_int8_t *)&led;
 
     if ( (result = ioctl(fd, DPT_IOCTL_SEND, &pass_thru)) != 0 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx "
-			      "- %s\n",
-			      argv[0], DPT_IOCTL_SEND,
-			      strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx "
+			"- %s\n",
+			argv[0], DPT_IOCTL_SEND,
+			strerror(errno));
 		exit(1);
     }
 
-	(void)fprintf(stdout, "%s\n", i2bin((unsigned int)led, 16));
+	fprintf(stdout, "%s\n", i2bin((unsigned int)led, 16));
     return(0);
 }
 

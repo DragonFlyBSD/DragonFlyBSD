@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_timer.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -88,13 +88,13 @@ atmarp_cache_timeout(Harp_timer *tp)
 			 * a connection to SCSP--make a connection
 			 */
 			if (aip->ai_state == AI_STATE_NULL)
-				(void)atmarp_scsp_connect(aip);
+				atmarp_scsp_connect(aip);
 		} else {
 			/*
 			 * The interface is down--disconnect from SCSP
 			 */
 			if (aip->ai_state != AI_STATE_NULL)
-				(void)atmarp_scsp_disconnect(aip);
+				atmarp_scsp_disconnect(aip);
 		}
 	}
 
@@ -205,7 +205,7 @@ atmarp_keepalive_timeout(Harp_timer *tp)
 	/*
 	 * Send the message to SCSP
 	 */
-	(void)atmarp_scsp_out(aip, (char *)msg, msg->si_len);
+	atmarp_scsp_out(aip, (char *)msg, msg->si_len);
 	UM_FREE(msg);
 
 	/*

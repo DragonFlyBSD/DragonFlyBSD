@@ -29,7 +29,7 @@
  *
  * @(#) Copyright (c) 1994 Christopher G. Demetriou All rights reserved.
  * $FreeBSD: src/usr.sbin/sa/main.c,v 1.8.2.2 2001/07/19 05:20:49 kris Exp $
- * $DragonFly: src/usr.sbin/sa/main.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/sa/main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -286,7 +286,7 @@ main(argc, argv)
 static void
 usage()
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 		"usage: sa [-abcdDfijkKlmnqrstu] [-v cutoff] [file ...]\n");
 	exit(1);
 }

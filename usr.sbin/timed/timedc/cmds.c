@@ -32,7 +32,7 @@
  *
  * @(#)cmds.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timedc/cmds.c,v 1.6.2.2 2001/08/31 08:02:06 kris Exp $
- * $DragonFly: src/usr.sbin/timed/timedc/cmds.c,v 1.3 2004/03/13 21:08:39 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timedc/cmds.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "timedc.h"
@@ -131,7 +131,7 @@ daydiff(char *hostname)
 			}
 			sec -= BU;
 
-			(void)gettimeofday(&now, (struct timezone*)0);
+			gettimeofday(&now, (struct timezone*)0);
 			return (sec - now.tv_sec);
 		}
 	}
@@ -298,7 +298,7 @@ msite(int argc, char *argv[])
 		}
 		bcopy(hp->h_addr, &dest.sin_addr.s_addr, hp->h_length);
 
-		(void)strlcpy(msg.tsp_name, myname, sizeof(msg.tsp_name));
+		strlcpy(msg.tsp_name, myname, sizeof(msg.tsp_name));
 		msg.tsp_type = TSP_MSITE;
 		msg.tsp_vers = TSPVERSION;
 		bytenetorder(&msg);
@@ -402,7 +402,7 @@ testing(int argc, char *argv[])
 		msg.tsp_vers = TSPVERSION;
 		if (gethostname(myname, sizeof(myname) - 1) < 0)
 			err(1, "gethostname");
-		(void)strlcpy(msg.tsp_name, myname, sizeof(msg.tsp_name));
+		strlcpy(msg.tsp_name, myname, sizeof(msg.tsp_name));
 		bytenetorder(&msg);
 		if (sendto(sock, &msg, sizeof(struct tsp), 0,
 			   (struct sockaddr*)&sin,
@@ -455,7 +455,7 @@ tracing(int argc, char *argv[])
 		onflag = OFF;
 	}
 
-	(void)strcpy(msg.tsp_name, myname);
+	strcpy(msg.tsp_name, myname);
 	msg.tsp_vers = TSPVERSION;
 	bytenetorder(&msg);
 	if (sendto(sock, &msg, sizeof(struct tsp), 0,
@@ -525,20 +525,20 @@ priv_resources(void)
 			break;
 		if (errno != EADDRINUSE && errno != EADDRNOTAVAIL) {
 			warn("bind");
-			(void) close(sock);
+			close(sock);
 			return(-1);
 		}
 	}
 	if (port == IPPORT_RESERVED / 2) {
 		warnx("all reserved ports in use");
-		(void) close(sock);
+		close(sock);
 		return(-1);
 	}
 
 	sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if (sock_raw < 0)  {
 		warn("opening raw socket");
-		(void) close(sock);
+		close(sock);
 		return(-1);
 	}
 	return(1);

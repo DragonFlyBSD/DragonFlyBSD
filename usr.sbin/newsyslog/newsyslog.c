@@ -17,7 +17,7 @@
  * warranty.
  *
  * $FreeBSD: src/usr.sbin/newsyslog/newsyslog.c,v 1.25.2.21 2003/05/12 23:41:29 gad Exp $
- * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.3 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/newsyslog/newsyslog.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 /*
@@ -423,11 +423,11 @@ send_signal(const struct conf_entry *ent)
 			warnx("pid file is empty: %s",  ent->pid_file);
 		else
 			warn("can't read from pid file: %s", ent->pid_file);
-		(void) fclose(f);
+		fclose(f);
 		return (did_notify);
 		/* NOTREACHED */
 	}
-	(void) fclose(f);
+	fclose(f);
 
 	target_name = "daemon";
 	minok = MIN_PID;
@@ -496,11 +496,11 @@ parse_args(int argc, char **argv)
 	char *p;
 
 	timenow = time(NULL);
-	(void)strncpy(daytime, ctime(&timenow) + 4, 15);
+	strncpy(daytime, ctime(&timenow) + 4, 15);
 	daytime[15] = '\0';
 
 	/* Let's get our hostname */
-	(void)gethostname(hostname, sizeof(hostname));
+	gethostname(hostname, sizeof(hostname));
 
 	/* Truncate domain */
 	if ((p = strchr(hostname, '.')) != NULL)
@@ -599,7 +599,7 @@ get_worklist(char **files)
 		err(1, "%s", conf);
 
 	parse_file(f, fname, &worklist, &globlist, &defconf);
-	(void) fclose(f);
+	fclose(f);
 
 	/*
 	 * All config-file information has been read in and turned into
@@ -1204,16 +1204,16 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 			strlcpy(namepart, p + 1, sizeof(namepart));
 
 		/* name of oldest log */
-		(void) snprintf(file1, sizeof(file1), "%s/%s.%d", dirpart,
+		snprintf(file1, sizeof(file1), "%s/%s.%d", dirpart,
 		    namepart, numdays);
-		(void) snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
+		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
 		    COMPRESS_POSTFIX);
 		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
 		    BZCOMPRESS_POSTFIX);
 	} else {
 		/* name of oldest log */
-		(void) snprintf(file1, sizeof(file1), "%s.%d", log, numdays);
-		(void) snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
+		snprintf(file1, sizeof(file1), "%s.%d", log, numdays);
+		snprintf(zfile1, sizeof(zfile1), "%s%s", file1,
 		    COMPRESS_POSTFIX);
 		snprintf(jfile1, sizeof(jfile1), "%s%s", file1,
 		    BZCOMPRESS_POSTFIX);
@@ -1224,30 +1224,30 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 		printf("\trm -f %s\n", zfile1);
 		printf("\trm -f %s\n", jfile1);
 	} else {
-		(void) unlink(file1);
-		(void) unlink(zfile1);
-		(void) unlink(jfile1);
+		unlink(file1);
+		unlink(zfile1);
+		unlink(jfile1);
 	}
 
 	/* Move down log files */
 	_numdays = numdays;	/* preserve */
 	while (numdays--) {
 
-		(void) strlcpy(file2, file1, sizeof(file2));
+		strlcpy(file2, file1, sizeof(file2));
 
 		if (archtodir)
-			(void) snprintf(file1, sizeof(file1), "%s/%s.%d",
+			snprintf(file1, sizeof(file1), "%s/%s.%d",
 			    dirpart, namepart, numdays);
 		else
-			(void) snprintf(file1, sizeof(file1), "%s.%d", log,
+			snprintf(file1, sizeof(file1), "%s.%d", log,
 			    numdays);
 
-		(void) strlcpy(zfile1, file1, sizeof(zfile1));
-		(void) strlcpy(zfile2, file2, sizeof(zfile2));
+		strlcpy(zfile1, file1, sizeof(zfile1));
+		strlcpy(zfile2, file2, sizeof(zfile2));
 		if (lstat(file1, &st)) {
-			(void) strlcat(zfile1, COMPRESS_POSTFIX,
+			strlcat(zfile1, COMPRESS_POSTFIX,
 			    sizeof(zfile1));
-			(void) strlcat(zfile2, COMPRESS_POSTFIX,
+			strlcat(zfile2, COMPRESS_POSTFIX,
 			    sizeof(zfile2));
 			if (lstat(zfile1, &st)) {
 				strlcpy(zfile1, file1, sizeof(zfile1));
@@ -1267,7 +1267,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 				printf("\tchown %u:%u %s\n",
 				    ent->uid, ent->gid, zfile2);
 		} else {
-			(void) rename(zfile1, zfile2);
+			rename(zfile1, zfile2);
 			if (chmod(zfile2, ent->permissions))
 				warn("can't chmod %s", file2);
 			if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
@@ -1277,14 +1277,14 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 	}
 	if (!noaction && !(flags & CE_BINARY)) {
 		/* Report the trimming to the old log */
-		(void) log_trim(log, ent);
+		log_trim(log, ent);
 	}
 
 	if (!_numdays) {
 		if (noaction)
 			printf("\trm %s\n", log);
 		else
-			(void) unlink(log);
+			unlink(log);
 	} else {
 		if (noaction)
 			printf("\tmv %s to %s\n", log, file1);
@@ -1293,7 +1293,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 				movefile(log, file1, ent->permissions, ent->uid,
 				    ent->gid);
 			else
-				(void) rename(log, file1);
+				rename(log, file1);
 		}
 	}
 
@@ -1313,7 +1313,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 		if (ent->uid != (uid_t)-1 || ent->gid != (gid_t)-1)
 			if (fchown(fd, ent->uid, ent->gid))
 			    err(1, "can't chown new log file");
-		(void) close(fd);
+		close(fd);
 		if (!(flags & CE_BINARY)) {
 			/* Add status message to new log file */
 			if (log_trim(tfile, ent))
@@ -1324,10 +1324,10 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 		printf("\tchmod %o %s\n", ent->permissions, tfile);
 		printf("\tmv %s %s\n", tfile, log);
 	} else {
-		(void) chmod(tfile, ent->permissions);
+		chmod(tfile, ent->permissions);
 		if (rename(tfile, log) < 0) {
 			err(1, "can't start new log");
-			(void) unlink(tfile);
+			unlink(tfile);
 		}
 	}
 
@@ -1367,7 +1367,7 @@ dotrim(const struct conf_entry *ent, char *log, int numdays, int flags)
 				sleep(10);
 			}
 			if (archtodir) {
-				(void) snprintf(file1, sizeof(file1), "%s/%s",
+				snprintf(file1, sizeof(file1), "%s/%s",
 				    dirpart, namepart);
 				if (flags & CE_COMPACT)
 					compress_log(file1,
@@ -1422,12 +1422,12 @@ compress_log(char *log, int dowait)
 
 	while (dowait && (wait(NULL) > 0 || errno == EINTR))
 		;
-	(void) snprintf(tmp, sizeof(tmp), "%s.0", log);
+	snprintf(tmp, sizeof(tmp), "%s.0", log);
 	pid = fork();
 	if (pid < 0)
 		err(1, "gzip fork");
 	else if (!pid) {
-		(void) execl(_PATH_GZIP, _PATH_GZIP, "-f", tmp, (char *)0);
+		execl(_PATH_GZIP, _PATH_GZIP, "-f", tmp, (char *)0);
 		err(1, _PATH_GZIP);
 	}
 }
@@ -1495,7 +1495,7 @@ age_old_log(char *file)
 		else
 			strlcat(tmp, p + 1, sizeof(tmp));
 	} else {
-		(void) strlcpy(tmp, file, sizeof(tmp));
+		strlcpy(tmp, file, sizeof(tmp));
 	}
 
 	strlcat(tmp, ".0", sizeof(tmp));
@@ -1763,7 +1763,7 @@ createlog(const struct conf_entry *ent)
 			failed = fchown(fd, ent->uid, ent->gid);
 			if (failed)
 				err(1, "can't fchown temp file %s", tempfile);
-			(void) close(fd);
+			close(fd);
 		}
 	}
 

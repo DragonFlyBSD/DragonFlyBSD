@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.14.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.3 2004/05/20 19:24:43 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "yppasswd.h"
@@ -136,8 +136,8 @@ closedown(int sig)
 	if (_rpcsvcstate == _SERVED)
 		_rpcsvcstate = _IDLE;
 
-	(void) signal(SIGALRM, (SIG_PF) closedown);
-	(void) alarm(_RPCSVC_CLOSEDOWN/2);
+	signal(SIGALRM, (SIG_PF) closedown);
+	alarm(_RPCSVC_CLOSEDOWN/2);
 }
 
 static void usage()
@@ -262,8 +262,8 @@ the %s domain -- aborting", yppasswd_domain);
 		}
 		openlog("rpc.yppasswdd", LOG_PID, LOG_DAEMON);
 		sock = RPC_ANYSOCK;
-		(void) pmap_unset(YPPASSWDPROG, YPPASSWDVERS);
-		(void) pmap_unset(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS);
+		pmap_unset(YPPASSWDPROG, YPPASSWDVERS);
+		pmap_unset(MASTER_YPPASSWDPROG, MASTER_YPPASSWDVERS);
 		unlink(sockname);
 	}
 
@@ -314,8 +314,8 @@ the %s domain -- aborting", yppasswd_domain);
 		exit(1);
 	}
 	if (_rpcpmstart) {
-		(void) signal(SIGALRM, (SIG_PF) closedown);
-		(void) alarm(_RPCSVC_CLOSEDOWN/2);
+		signal(SIGALRM, (SIG_PF) closedown);
+		alarm(_RPCSVC_CLOSEDOWN/2);
 	}
 	/* set up resource limits and block signals */
 	pw_init();

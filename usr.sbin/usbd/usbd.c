@@ -1,7 +1,7 @@
 /*
  * $NetBSD: usbd.c,v 1.4 1998/12/09 00:57:19 augustss Exp $
  * $FreeBSD: src/usr.sbin/usbd/usbd.c,v 1.29 2003/10/25 22:03:10 jmg Exp $
- * $DragonFly: src/usr.sbin/usbd/usbd.c,v 1.5 2003/12/30 01:01:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/usbd/usbd.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -780,13 +780,13 @@ execute_command(char *cmd)
 	 * existing signal dispositions.
 	 */
 	ign.sa_handler = SIG_IGN;
-	(void) sigemptyset(&ign.sa_mask);
+	sigemptyset(&ign.sa_mask);
 	ign.sa_flags = 0;
-	(void) sigaction(SIGINT, &ign, &intact);
-	(void) sigaction(SIGQUIT, &ign, &quitact);
-	(void) sigemptyset(&newsigblock);
-	(void) sigaddset(&newsigblock, SIGCHLD);
-	(void) sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
+	sigaction(SIGINT, &ign, &intact);
+	sigaction(SIGQUIT, &ign, &quitact);
+	sigemptyset(&newsigblock);
+	sigaddset(&newsigblock, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &newsigblock, &oldsigblock);
 	pid = fork();
 	if (pid == -1) {
 		fprintf(stderr, "%s: fork failed, %s\n",
@@ -800,9 +800,9 @@ execute_command(char *cmd)
 		close(fd);			/* USBDEV */
 
 		/* Restore original signal dispositions and exec the command. */
-		(void) sigaction(SIGINT, &intact, NULL);
-		(void) sigaction(SIGQUIT,  &quitact, NULL);
-		(void) sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+		sigaction(SIGINT, &intact, NULL);
+		sigaction(SIGQUIT,  &quitact, NULL);
+		sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *)NULL);
 
@@ -814,9 +814,9 @@ execute_command(char *cmd)
 			pid = waitpid(pid, &status, 0);
 		} while (pid == -1 && errno == EINTR);
 	}
-	(void) sigaction(SIGINT, &intact, NULL);
-	(void) sigaction(SIGQUIT,  &quitact, NULL);
-	(void) sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
+	sigaction(SIGINT, &intact, NULL);
+	sigaction(SIGQUIT,  &quitact, NULL);
+	sigprocmask(SIG_SETMASK, &oldsigblock, NULL);
 
 	if (pid == -1) {
 		fprintf(stderr, "%s: waitpid returned: %s\n",

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtsold/rtsold.c,v 1.1.2.4 2002/04/04 11:07:19 ume Exp $
- * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.3 2003/11/03 19:31:43 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtsold/rtsold.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -722,8 +722,8 @@ warnmsg(priority, func, msg, va_alist)
 	va_start(ap, msg);
 	if (fflag) {
 		if (priority <= log_upto) {
-			(void)vfprintf(stderr, msg, ap);
-			(void)fprintf(stderr, "\n");
+			vfprintf(stderr, msg, ap);
+			fprintf(stderr, "\n");
 		}
 	} else {
 		snprintf(buf, sizeof(buf), "<%s> %s", func, msg);

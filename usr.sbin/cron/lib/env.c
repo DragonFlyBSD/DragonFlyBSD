@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/env.c,v 1.7.2.1 2000/07/01 10:35:07 ps Exp $
- * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.4 2004/03/10 18:27:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/env.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include "cron.h"
@@ -60,7 +60,7 @@ env_copy(char **envp)
 	for (i = 0;  i < count;  i++)
 		if ((p[i] = strdup(envp[i])) == NULL) {
 			while (--i >= 0)
-				(void) free(p[i]);
+				free(p[i]);
 			free(p);
 			errno = ENOMEM;
 			return NULL;
@@ -168,7 +168,7 @@ load_env(char *envstr, FILE *f)
 			if (val[0] == '\'' || val[0] == '"') {
 				if (val[len-1] == val[0]) {
 					val[len-1] = '\0';
-					(void) strcpy(val, val+1);
+					strcpy(val, val+1);
 				}
 			}
 		}
@@ -176,7 +176,7 @@ load_env(char *envstr, FILE *f)
 
 	if (strlen(name) + 1 + strlen(val) >= MAX_ENVSTR-1)
 		return (FALSE);
-	(void) sprintf(envstr, "%s=%s", name, val);
+	sprintf(envstr, "%s=%s", name, val);
 	Debug(DPARS, ("load_env, <%s> <%s> -> <%s>\n", name, val, envstr))
 	return (TRUE);
 }

@@ -17,7 +17,7 @@
  * This is the package extraction code for the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/extract.c,v 1.42 2004/07/28 07:19:15 kan Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.3 2004/07/30 04:46:12 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/extract.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <ctype.h>
@@ -61,8 +61,8 @@ rollback(const char *name, const char *home, PackingList start, PackingList stop
 	if (q->type == PLIST_FILE) {
 	    snprintf(try, FILENAME_MAX, "%s/%s", dir, q->name);
 	    if (make_preserve_name(bup, FILENAME_MAX, name, try) && fexists(bup)) {
-		(void)chflags(try, 0);
-		(void)unlink(try);
+		chflags(try, 0);
+		unlink(try);
 		if (rename(bup, try))
 		    warnx("rollback: unable to rename %s back to %s", bup, try);
 	    }
@@ -154,7 +154,7 @@ extract_plist(const char *home, Package *pkg)
 		/* first try to rename it into place */
 		snprintf(try, FILENAME_MAX, "%s/%s", Directory, p->name);
 		if (fexists(try)) {
-		    (void)chflags(try, 0);	/* XXX hack - if truly immutable, rename fails */
+		    chflags(try, 0);	/* XXX hack - if truly immutable, rename fails */
 		    if (preserve && PkgName) {
 			char pf[FILENAME_MAX];
 

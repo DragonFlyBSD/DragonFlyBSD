@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)printjob.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/printjob.c,v 1.22.2.32 2002/06/19 23:58:16 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/printjob.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/printjob.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -153,12 +153,12 @@ printjob(struct printer *pp)
 
 	jobcount = 0;
 	init(pp); /* set up capabilities */
-	(void) write(1, "", 1);	/* ack that daemon is started */
-	(void) close(2);			/* set up log file */
+	write(1, "", 1);	/* ack that daemon is started */
+	close(2);			/* set up log file */
 	if (open(pp->log_file, O_WRONLY|O_APPEND, LOG_FILE_MODE) < 0) {
 		syslog(LOG_ERR, "%s: open(%s): %m", pp->printer,
 		    pp->log_file);
-		(void) open(_PATH_DEVNULL, O_WRONLY);
+		open(_PATH_DEVNULL, O_WRONLY);
 	}
 	setgid(getegid());
 	printpid = getpid();			/* for use with lprm */
@@ -255,8 +255,8 @@ again:
 			continue;
 		errcnt = 0;
 	restart:
-		(void) lseek(lfd, pidoff, 0);
-		(void) snprintf(line, sizeof(line), "%s\n", q->job_cfname);
+		lseek(lfd, pidoff, 0);
+		snprintf(line, sizeof(line), "%s\n", q->job_cfname);
 		i = strlen(line);
 		if (write(lfd, line, i) != i)
 			syslog(LOG_ERR, "%s: write(%s): %m", pp->printer,
@@ -292,7 +292,7 @@ again:
 			syslog(LOG_INFO, "restarting %s", pp->printer);
 			if (of_pid > 0) {
 				kill(of_pid, SIGCONT); /* to be sure */
-				(void) close(ofd);
+				close(ofd);
 				while ((i = wait(NULL)) > 0 && i != of_pid)
 					;
 				if (i < 0)
@@ -300,7 +300,7 @@ again:
 					    pp->printer, of_pid);
 				of_pid = 0;
 			}
-			(void) close(pfd);	/* close printer */
+			close(pfd);	/* close printer */
 			if (ftruncate(lfd, pidoff) < 0)
 				syslog(LOG_WARNING, "%s: ftruncate(%s): %m", 
 				    pp->printer, pp->lock_file);
@@ -313,9 +313,9 @@ again:
 			    q->job_cfname);
 			if (i == REPRINT) {
 				/* ensure we don't attempt this job again */
-				(void) unlink(q->job_cfname);
+				unlink(q->job_cfname);
 				q->job_cfname[0] = 'd';
-				(void) unlink(q->job_cfname);
+				unlink(q->job_cfname);
 				if (logname[0])
 					sendmail(pp, logname, FATALERR);
 			}
@@ -334,15 +334,14 @@ again:
 	done:
 		if (jobcount > 0) {	/* jobs actually printed */
 			if (!pp->no_formfeed && !pp->tof)
-				(void) write(ofd, pp->form_feed,
-					     strlen(pp->form_feed));
+				write(ofd, pp->form_feed,
+				      strlen(pp->form_feed));
 			if (pp->trailer != NULL) /* output trailer */
-				(void) write(ofd, pp->trailer,
-					     strlen(pp->trailer));
+				write(ofd, pp->trailer, strlen(pp->trailer));
 		}
-		(void) close(ofd);
-		(void) wait(NULL);
-		(void) unlink(tempstderr);
+		close(ofd);
+		wait(NULL);
+		unlink(tempstderr);
 		exit(0);
 	}
 	goto again;
@@ -534,7 +533,7 @@ printit(struct printer *pp, char *file)
 					bombed = FATALERR;
 				break;
 			case REPRINT:
-				(void) fclose(cfp);
+				fclose(cfp);
 				return (REPRINT);
 			case FILTERERR:
 			case ACCESS:
@@ -570,13 +569,13 @@ pass2:
 		case 'U':
 			if (strchr(line+1, '/'))
 				continue;
-			(void) unlink(line+1);
+			unlink(line+1);
 		}
 	/*
 	 * clean-up in case another control file exists
 	 */
-	(void) fclose(cfp);
-	(void) unlink(file);
+	fclose(cfp);
+	unlink(file);
 	return (bombed == OK ? OK : ERROR);
 }
 
@@ -621,7 +620,7 @@ print(struct printer *pp, int format, char *file)
 
 	/* everything seems OK, start it up */
 	if (!pp->no_formfeed && !pp->tof) { /* start on a fresh page */
-		(void) write(ofd, pp->form_feed, strlen(pp->form_feed));
+		write(ofd, pp->form_feed, strlen(pp->form_feed));
 		pp->tof = 1;
 	}
 	if (pp->filters[LPF_INPUT] == NULL
@@ -629,10 +628,10 @@ print(struct printer *pp, int format, char *file)
 		pp->tof = 0;
 		while ((n = read(fi, buf, BUFSIZ)) > 0)
 			if (write(ofd, buf, n) != n) {
-				(void) close(fi);
+				close(fi);
 				return (REPRINT);
 			}
-		(void) close(fi);
+		close(fi);
 		return (OK);
 	}
 	switch (format) {
@@ -665,11 +664,11 @@ print(struct printer *pp, int format, char *file)
 			syslog(LOG_ERR, "cannot execl %s", _PATH_PR);
 			exit(2);
 		}
-		(void) close(p[1]);		/* close output side */
-		(void) close(fi);
+		close(p[1]);		/* close output side */
+		close(fi);
 		if (prchild < 0) {
 			prchild = 0;
-			(void) close(p[0]);
+			close(p[0]);
 			return (ERROR);
 		}
 		fi = p[0];			/* use pipe for input */
@@ -708,20 +707,20 @@ print(struct printer *pp, int format, char *file)
 	case 't':	/* print troff output */
 	case 'n':	/* print ditroff output */
 	case 'd':	/* print tex output */
-		(void) unlink(".railmag");
+		unlink(".railmag");
 		if ((fo = creat(".railmag", FILMOD)) < 0) {
 			syslog(LOG_ERR, "%s: cannot create .railmag", 
 			    pp->printer);
-			(void) unlink(".railmag");
+			unlink(".railmag");
 		} else {
 			for (n = 0; n < 4; n++) {
 				if (fonts[n][0] != '/')
-					(void) write(fo, _PATH_VFONT,
-					    sizeof(_PATH_VFONT) - 1);
-				(void) write(fo, fonts[n], strlen(fonts[n]));
-				(void) write(fo, "\n", 1);
+					write(fo, _PATH_VFONT,
+					      sizeof(_PATH_VFONT) - 1);
+				write(fo, fonts[n], strlen(fonts[n]));
+				write(fo, "\n", 1);
 			}
-			(void) close(fo);
+			close(fo);
 		}
 		prog = (format == 't') ? pp->filters[LPF_TROFF] 
 			: ((format == 'n') ? pp->filters[LPF_DITROFF]
@@ -749,13 +748,13 @@ print(struct printer *pp, int format, char *file)
 		n = 3;
 		break;
 	default:
-		(void) close(fi);
+		close(fi);
 		syslog(LOG_ERR, "%s: illegal format character '%c'",
 		    pp->printer, format);
 		return (ERROR);
 	}
 	if (prog == NULL) {
-		(void) close(fi);
+		close(fi);
 		syslog(LOG_ERR,
 		   "%s: no filter found in printcap for format character '%c'",
 		   pp->printer, format);
@@ -782,7 +781,7 @@ print(struct printer *pp, int format, char *file)
 			    "%s: after stopping 'of', wait3() returned: %m",
 			    pp->printer);
 		else if (!WIFSTOPPED(wstatus)) {
-			(void) close(fi);
+			close(fi);
 			syslog(LOG_WARNING, "%s: output filter died "
 			    "(pid=%d retcode=%d termsig=%d)",
 			    pp->printer, of_pid, WEXITSTATUS(wstatus),
@@ -807,7 +806,7 @@ start:
 		    prog);
 		exit(2);
 	}
-	(void) close(fi);
+	close(fi);
 	wstatus_set = 0;
 	if (child < 0)
 		retcode = 100;
@@ -940,7 +939,7 @@ sendit(struct printer *pp, char *file)
 					goto again;
 				break;
 			case REPRINT:
-				(void) fclose(cfp);
+				fclose(cfp);
 				return (REPRINT);
 			case ACCESS:
 				sendmail(pp, logname, ACCESS);
@@ -951,7 +950,7 @@ sendit(struct printer *pp, char *file)
 		}
 	}
 	if (err == OK && sendfile(pp, '\2', file, '\0', 1) > 0) {
-		(void) fclose(cfp);
+		fclose(cfp);
 		return (REPRINT);
 	}
 	/*
@@ -960,12 +959,12 @@ sendit(struct printer *pp, char *file)
 	fseek(cfp, 0L, 0);
 	while (getline(cfp))
 		if (line[0] == 'U' && !strchr(line+1, '/'))
-			(void) unlink(line+1);
+			unlink(line+1);
 	/*
 	 * clean-up in case another control file exists
 	 */
-	(void) fclose(cfp);
-	(void) unlink(file);
+	fclose(cfp);
+	unlink(file);
 	return (err);
 }
 
@@ -1112,10 +1111,10 @@ sendagain:
 	copycnt++;
 
 	if (copycnt < 2)
-		(void) sprintf(buf, "%c%qd %s\n", type, stb.st_size, file);
+		sprintf(buf, "%c%qd %s\n", type, stb.st_size, file);
 	else
-		(void) sprintf(buf, "%c%qd %s_c%d\n", type, stb.st_size,
-		    file, copycnt);
+		sprintf(buf, "%c%qd %s_c%d\n", type, stb.st_size, file,
+			copycnt);
 	amt = strlen(buf);
 	for (i = 0;  ; i++) {
 		if (write(pfd, buf, amt) != amt ||
@@ -1155,7 +1154,7 @@ sendagain:
 	if (sizerr) {
 		syslog(LOG_INFO, "%s: %s: changed size", pp->printer, file);
 		/* tell recvjob to ignore this file */
-		(void) write(pfd, "\1", 1);
+		write(pfd, "\1", 1);
 		sfres = ERROR;
 		goto return_sfres;
 	}
@@ -1190,7 +1189,7 @@ sendagain:
 	sfres = OK;
 
 return_sfres:
-	(void)close(sfd);
+	close(sfd);
 	if (tfd != -1) {
 		/*
 		 * If tfd is set, then it is the same value as sfd, and
@@ -1315,35 +1314,35 @@ banner(struct printer *pp, char *name1, char *name2)
 
 	time(&tvec);
 	if (!pp->no_formfeed && !pp->tof)
-		(void) write(ofd, pp->form_feed, strlen(pp->form_feed));
+		write(ofd, pp->form_feed, strlen(pp->form_feed));
 	if (pp->short_banner) {	/* short banner only */
 		if (class[0]) {
-			(void) write(ofd, class, strlen(class));
-			(void) write(ofd, ":", 1);
+			write(ofd, class, strlen(class));
+			write(ofd, ":", 1);
 		}
-		(void) write(ofd, name1, strlen(name1));
-		(void) write(ofd, "  Job: ", 7);
-		(void) write(ofd, name2, strlen(name2));
-		(void) write(ofd, "  Date: ", 8);
-		(void) write(ofd, ctime(&tvec), 24);
-		(void) write(ofd, "\n", 1);
+		write(ofd, name1, strlen(name1));
+		write(ofd, "  Job: ", 7);
+		write(ofd, name2, strlen(name2));
+		write(ofd, "  Date: ", 8);
+		write(ofd, ctime(&tvec), 24);
+		write(ofd, "\n", 1);
 	} else {	/* normal banner */
-		(void) write(ofd, "\n\n\n", 3);
+		write(ofd, "\n\n\n", 3);
 		scan_out(pp, ofd, name1, '\0');
-		(void) write(ofd, "\n\n", 2);
+		write(ofd, "\n\n", 2);
 		scan_out(pp, ofd, name2, '\0');
 		if (class[0]) {
-			(void) write(ofd,"\n\n\n",3);
+			write(ofd,"\n\n\n",3);
 			scan_out(pp, ofd, class, '\0');
 		}
-		(void) write(ofd, "\n\n\n\n\t\t\t\t\tJob:  ", 15);
-		(void) write(ofd, name2, strlen(name2));
-		(void) write(ofd, "\n\t\t\t\t\tDate: ", 12);
-		(void) write(ofd, ctime(&tvec), 24);
-		(void) write(ofd, "\n", 1);
+		write(ofd, "\n\n\n\n\t\t\t\t\tJob:  ", 15);
+		write(ofd, name2, strlen(name2));
+		write(ofd, "\n\t\t\t\t\tDate: ", 12);
+		write(ofd, ctime(&tvec), 24);
+		write(ofd, "\n", 1);
 	}
 	if (!pp->no_formfeed)
-		(void) write(ofd, pp->form_feed, strlen(pp->form_feed));
+		write(ofd, pp->form_feed, strlen(pp->form_feed));
 	pp->tof = 1;
 }
 
@@ -1389,7 +1388,7 @@ scan_out(struct printer *pp, int scfd, char *scsp, int dlm)
 			;
 		strp++;
 		*strp++ = '\n';
-		(void) write(scfd, outbuf, strp-outbuf);
+		write(scfd, outbuf, strp-outbuf);
 	}
 }
 
@@ -1472,20 +1471,20 @@ sendmail(struct printer *pp, char *userid, int bombed)
 			printf("\nhad the following errors and may not have printed:\n");
 			while ((i = getc(fp)) != EOF)
 				putchar(i);
-			(void) fclose(fp);
+			fclose(fp);
 			break;
 		case ACCESS:
 			cp = "ACCESS";
 			printf("\nwas not printed because it was not linked to the original file\n");
 		}
 		fflush(stdout);
-		(void) close(1);
+		close(1);
 	} else {
 		syslog(LOG_WARNING, "unable to send mail to %s: %m", userid);
 		return;
 	}
-	(void) close(p[0]);
-	(void) close(p[1]);
+	close(p[0]);
+	close(p[1]);
 	wait(NULL);
 	syslog(LOG_INFO, "mail sent to user %s about job %s on printer %s (%s)",
 	    userid, *jobname ? jobname : "<unknown>", pp->printer, cp);
@@ -1579,7 +1578,7 @@ static void
 abortpr(int signo __unused)
 {
 
-	(void) unlink(tempstderr);
+	unlink(tempstderr);
 	kill(0, SIGINT);
 	if (of_pid > 0)
 		kill(of_pid, SIGCONT);
@@ -1686,7 +1685,7 @@ openpr(const struct printer *pp)
 			    pp->filters[LPF_OUTPUT]);
 			exit(1);
 		}
-		(void) close(p[0]);		/* close input side */
+		close(p[0]);		/* close input side */
 		ofd = p[1];			/* use pipe for output */
 	} else {
 		ofd = pfd;
@@ -1721,7 +1720,7 @@ opennet(const struct printer *pp)
 		alarm(pp->conn_timeout);
 		pfd = getport(pp, ep, port);
 		alarm(0);
-		(void)signal(SIGALRM, savealrm);
+		signal(SIGALRM, savealrm);
 		if (pfd < 0 && errno == ECONNREFUSED)
 			resp = 1;
 		else if (pfd >= 0) {
@@ -1792,14 +1791,14 @@ openrem(const struct printer *pp)
 		alarm(pp->conn_timeout);
 		pfd = getport(pp, pp->remote_host, 0);
 		alarm(0);
-		(void)signal(SIGALRM, savealrm);
+		signal(SIGALRM, savealrm);
 		if (pfd >= 0) {
 			if ((writel(pfd, "\2", pp->remote_queue, "\n", 
 				    (char *)0)
 			     == 2 + strlen(pp->remote_queue))
 			    && (resp = response(pp)) == 0)
 				break;
-			(void) close(pfd);
+			close(pfd);
 		}
 		if (i == 1) {
 			if (resp < 0)
@@ -1839,7 +1838,7 @@ setty(const struct printer *pp)
 		char *s = strdup(pp->mode_set), *tmp;
 
 		while ((tmp = strsep(&s, ",")) != NULL) {
-			(void) msearch(tmp, &ttybuf);
+			msearch(tmp, &ttybuf);
 		}
 	}
 	if (pp->mode_set != 0 || pp->baud_rate > 0) {

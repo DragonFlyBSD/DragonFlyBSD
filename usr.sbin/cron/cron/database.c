@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/database.c,v 1.8 1999/08/28 01:15:50 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/database.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* vix 26jan87 [RCS has the log]
@@ -54,7 +54,7 @@ load_database(cron_db *old_db)
 	 */
 	if (stat(SPOOL_DIR, &statbuf) < OK) {
 		log_it("CRON", getpid(), "STAT FAILED", SPOOL_DIR);
-		(void) exit(ERROR_EXIT);
+		exit(ERROR_EXIT);
 	}
 
 	/* track system crontab file
@@ -95,7 +95,7 @@ load_database(cron_db *old_db)
 	 */
 	if (!(dir = opendir(SPOOL_DIR))) {
 		log_it("CRON", getpid(), "OPENDIR FAILED", SPOOL_DIR);
-		(void) exit(ERROR_EXIT);
+		exit(ERROR_EXIT);
 	}
 
 	while (NULL != (dp = readdir(dir))) {
@@ -110,9 +110,9 @@ load_database(cron_db *old_db)
 		if (dp->d_name[0] == '.')
 			continue;
 
-		(void) strncpy(fname, dp->d_name, sizeof(fname));
+		strncpy(fname, dp->d_name, sizeof(fname));
 		fname[sizeof(fname)-1] = '\0';
-		(void) snprintf(tabname, sizeof tabname, CRON_TAB(fname));
+		snprintf(tabname, sizeof tabname, CRON_TAB(fname));
 
 		process_crontab(fname, fname, tabname,
 				&statbuf, &new_db, old_db);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_timer.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -122,7 +122,7 @@ scsp_hello_timeout(Harp_timer *stp)
 	/*
 	 * Call the Hello FSM
 	 */
-	(void)scsp_hfsm(dcsp, SCSP_HFSM_HELLO_T, (Scsp_msg *)0);
+	scsp_hfsm(dcsp, SCSP_HFSM_HELLO_T, (Scsp_msg *)0);
 
 	return;
 }
@@ -156,7 +156,7 @@ scsp_hello_rcv_timeout(Harp_timer *stp)
 	/*
 	 * Call the Hello FSM
 	 */
-	(void)scsp_hfsm(dcsp, SCSP_HFSM_RCV_T, (void *)0);
+	scsp_hfsm(dcsp, SCSP_HFSM_RCV_T, (void *)0);
 
 	return;
 }
@@ -186,7 +186,7 @@ scsp_ca_retran_timeout(Harp_timer *stp)
 	/*
 	 * Call the CA FSM
 	 */
-	(void)scsp_cafsm(dcsp, SCSP_CAFSM_CA_T, (void *)0);
+	scsp_cafsm(dcsp, SCSP_CAFSM_CA_T, (void *)0);
 
 	return;
 }
@@ -216,7 +216,7 @@ scsp_csus_retran_timeout(Harp_timer *stp)
 	/*
 	 * Call the CA FSM
 	 */
-	(void)scsp_cafsm(dcsp, SCSP_CAFSM_CSUS_T, (void *)0);
+	scsp_cafsm(dcsp, SCSP_CAFSM_CSUS_T, (void *)0);
 
 	return;
 }
@@ -248,7 +248,7 @@ scsp_csu_req_retran_timeout(Harp_timer *stp)
 	/*
 	 * Call the CA FSM
 	 */
-	(void)scsp_cafsm(dcsp, SCSP_CAFSM_CSU_T, (void *)rxp);
+	scsp_cafsm(dcsp, SCSP_CAFSM_CSU_T, (void *)rxp);
 
 	return;
 }

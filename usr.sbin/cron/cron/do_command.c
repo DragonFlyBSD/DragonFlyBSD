@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/cron/do_command.c,v 1.15.2.5 2001/05/04 00:59:40 peter Exp $
- * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.5 2004/03/10 18:27:26 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/do_command.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include "cron.h"
@@ -97,13 +97,13 @@ child_process(entry *e, user *u)
 	 * use wait() explictly.  so we have to disable the signal (which
 	 * was inherited from the parent).
 	 */
-	(void) signal(SIGCHLD, SIG_DFL);
+	signal(SIGCHLD, SIG_DFL);
 #else
 	/* on system-V systems, we are ignoring SIGCLD.  we have to stop
 	 * ignoring it now or the wait() in cron_pclose() won't work.
 	 * because of this, we have to wait() for our children here, as well.
 	 */
-	(void) signal(SIGCLD, SIG_DFL);
+	signal(SIGCLD, SIG_DFL);
 #endif /*BSD*/
 
 	/* create some pipes to talk to our future child
@@ -179,7 +179,7 @@ child_process(entry *e, user *u)
 
 		/* get new pgrp, void tty, etc.
 		 */
-		(void) setsid();
+		setsid();
 
 		/* close the pipe ends that we won't use.  this doesn't affect
 		 * the parent, who has to read and write them; it keeps the
@@ -223,10 +223,10 @@ child_process(entry *e, user *u)
 		if (pwd &&
 		    setusercontext(lc, pwd, e->uid,
 			    LOGIN_SETALL & ~(LOGIN_SETPATH|LOGIN_SETENV)) == 0)
-			(void) endpwent();
+			endpwent();
 		else {
 			/* fall back to the old method */
-			(void) endpwent();
+			endpwent();
 # endif
 			/* set our directory, uid and gid.  Set gid first,
 			 * since once we set uid, we've lost root privledges.
@@ -408,12 +408,12 @@ child_process(entry *e, user *u)
 				char mailcmd[MAX_COMMAND];
 				char hostname[MAXHOSTNAMELEN];
 
-				(void) gethostname(hostname, MAXHOSTNAMELEN);
-				(void) snprintf(mailcmd, sizeof(mailcmd),
-					       MAILARGS, MAILCMD);
+				gethostname(hostname, MAXHOSTNAMELEN);
+				snprintf(mailcmd, sizeof(mailcmd),
+					 MAILARGS, MAILCMD);
 				if (!(mail = cron_popen(mailcmd, "w", e))) {
 					warn("%s", MAILCMD);
-					(void) _exit(ERROR_EXIT);
+					_exit(ERROR_EXIT);
 				}
 				fprintf(mail, "From: %s (Cron Daemon)\n", usernm);
 				fprintf(mail, "To: %s\n", mailto);
@@ -522,7 +522,7 @@ do_univ(user *u)
 	int	i;
 
 	p = getpwuid(u->uid);
-	(void) endpwent();
+	endpwent();
 
 	if (p == NULL)
 		return;
@@ -538,6 +538,6 @@ do_univ(user *u)
 	if (strcmp(s, "universe(att)"))
 		return;
 
-	(void) universe(U_ATT);
+	universe(U_ATT);
 #endif
 }

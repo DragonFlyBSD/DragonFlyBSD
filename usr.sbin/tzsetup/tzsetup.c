@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/tzsetup/tzsetup.c,v 1.16.2.2 2002/03/06 06:17:41 obrien Exp $
- * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/tzsetup/tzsetup.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -663,7 +663,7 @@ main(int argc, char **argv)
 		usage();
 
 	/* Override the user-supplied umask. */
-	(void)umask(S_IWGRP|S_IWOTH);
+	umask(S_IWGRP|S_IWOTH);
 
 	read_iso3166_table();
 	read_zones();

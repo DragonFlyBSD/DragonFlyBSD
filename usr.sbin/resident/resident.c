@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/resident/resident.c,v 1.6 2004/06/04 17:30:26 hmp Exp $
+ * $DragonFly: src/usr.sbin/resident/resident.c,v 1.7 2004/12/18 22:48:05 swildner Exp $
  */
 
 #include <sys/cdefs.h>
@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 		}
 		if ((n = read(fd, &hdr, sizeof hdr)) == -1) {
 			warn("%s: can't read program header", *argv);
-			(void)close(fd);
+			close(fd);
 			rval |= 1;
 			continue;
 		}
@@ -234,7 +234,7 @@ main(int argc, char *argv[])
 			warnx("%s: not a dynamic executable", *argv);
 			file_ok = 0;
 		}
-		(void)close(fd);
+		close(fd);
 		if (!file_ok) {
 			rval |= 1;
 			continue;

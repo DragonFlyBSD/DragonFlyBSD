@@ -32,7 +32,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.5 2004/11/16 14:36:01 eirikn Exp $
+ * $DragonFly: src/usr.sbin/traceroute/traceroute.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  */
 
@@ -308,8 +308,7 @@ main(int argc, char *argv[])
 	seteuid(getuid());
 	setuid(getuid());
 
-	(void) sysctl(mib, sizeof(mib)/sizeof(mib[0]), &max_ttl, &size,
-	    NULL, 0);
+	sysctl(mib, sizeof(mib)/sizeof(mib[0]), &max_ttl, &size, NULL, 0);
 
 	while ((ch = getopt(argc, argv, "SDIdg:f:m:np:q:rs:t:w:vlP:c")) != -1)
 		switch (ch) {
@@ -443,7 +442,7 @@ main(int argc, char *argv[])
 
 	setlinebuf (stdout);
 
-	(void) memset(&to, 0, sizeof(struct sockaddr));
+	memset(&to, 0, sizeof(struct sockaddr));
 	to.sin_family = AF_INET;
 	if (inet_aton(*argv, &to.sin_addr) != 0)
 		hostname = *argv;
@@ -491,7 +490,7 @@ main(int argc, char *argv[])
 	outpacket = (u_char *)malloc(datalen);
 	if (outpacket == NULL)
 		err(1, "malloc");
-	(void) memset(outpacket, 0, datalen);
+	memset(outpacket, 0, datalen);
 
 	ip = (struct ip *)outpacket;
 	if (lsrr != 0) {
@@ -522,8 +521,7 @@ main(int argc, char *argv[])
 	usec_perturb = arc4random();
 
 	if (options & SO_DEBUG)
-		(void) setsockopt(s, SOL_SOCKET, SO_DEBUG,
-		    (char *)&on, sizeof(on));
+		setsockopt(s, SOL_SOCKET, SO_DEBUG, (char *)&on, sizeof(on));
 #ifdef SO_SNDBUF
 	if (setsockopt(sndsock, SOL_SOCKET, SO_SNDBUF, (char *)&datalen,
 	    sizeof(datalen)) < 0)
@@ -535,14 +533,14 @@ main(int argc, char *argv[])
 		err(6, "IP_HDRINCL");
 #endif /* IP_HDRINCL */
 	if (options & SO_DEBUG)
-		(void) setsockopt(sndsock, SOL_SOCKET, SO_DEBUG,
+		setsockopt(sndsock, SOL_SOCKET, SO_DEBUG,
 		    (char *)&on, sizeof(on));
 	if (options & SO_DONTROUTE)
-		(void) setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
+		setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
 		    (char *)&on, sizeof(on));
 
 	if (source) {
-		(void) memset(&from, 0, sizeof(struct sockaddr));
+		memset(&from, 0, sizeof(struct sockaddr));
 		from.sin_family = AF_INET;
 		if (inet_aton(source, &from.sin_addr) == 0)
 			errx(1, "unknown host %s", source);
@@ -562,7 +560,7 @@ main(int argc, char *argv[])
 	if (source)
 		fprintf(stderr, " from %s", source);
 	fprintf(stderr, ", %u hops max, %d byte packets\n", max_ttl, datalen);
-	(void) fflush(stderr);
+	fflush(stderr);
 
 	if (first_ttl > 1)
 		printf("Skipping %u intermediate hops\n", first_ttl - 1);
@@ -578,10 +576,10 @@ main(int argc, char *argv[])
 			struct timeval t1, t2;
 			int code;
 
-			(void) gettimeofday(&t1, NULL);
+			gettimeofday(&t1, NULL);
 			send_probe(++seq, ttl, incflag, &to);
 			while ((cc = wait_for_reply(s, &from, &t1))) {
-				(void) gettimeofday(&t2, NULL);
+				gettimeofday(&t2, NULL);
 				if (t2.tv_sec - t1.tv_sec > waittime) {
 					cc = 0;
 					break;
@@ -683,7 +681,7 @@ main(int argc, char *argv[])
 				timeout++;
 				loss++;
 			}
-			(void) fflush(stdout);
+			fflush(stdout);
 		}
 		if (sump)
 			printf(" (%d%% loss)", (loss * 100) / nprobes);
@@ -793,7 +791,7 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 	 * work wants to use them they will have to subtract out the
 	 * perturbation first.
 	 */
-	(void) gettimeofday(&tv, NULL);
+	gettimeofday(&tv, NULL);
 	op->sec = htonl(tv.tv_sec + sec_perturb);
 	op->usec = htonl((tv.tv_usec + usec_perturb) % 1000000);
 
@@ -815,7 +813,7 @@ send_probe(int seq, u_int8_t ttl, int iflag, struct sockaddr_in *to)
 			perror("sendto");
 		printf("traceroute: wrote %s %d chars, ret=%d\n", hostname,
 		    datalen, i);
-		(void) fflush(stdout);
+		fflush(stdout);
 	}
 }
 

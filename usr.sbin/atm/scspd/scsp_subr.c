@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_subr.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -469,7 +469,7 @@ scsp_dcs_delete(Scsp_dcs *dcsp)
 	 * Close the VCC to the DCS, if one is open
 	 */
 	if (dcsp->sd_sock != -1) {
-		(void)close(dcsp->sd_sock);
+		close(dcsp->sd_sock);
 	}
 
 	/*
@@ -566,7 +566,7 @@ scsp_server_shutdown(Scsp_server *ssp)
 	 */
 	for (dcsp = ssp->ss_dcs; dcsp; dcsp = dcsp->sd_next) {
 		if (dcsp->sd_sock != -1) {
-			(void)close(dcsp->sd_sock);
+			close(dcsp->sd_sock);
 			dcsp->sd_sock = -1;
 		}
 		HARP_CANCEL(&dcsp->sd_open_t);
@@ -582,11 +582,11 @@ scsp_server_shutdown(Scsp_server *ssp)
 	 * Clean up the server control block
 	 */
 	if (ssp->ss_sock != -1) {
-		(void)close(ssp->ss_sock);
+		close(ssp->ss_sock);
 		ssp->ss_sock = -1;
 	}
 	if (ssp->ss_dcs_lsock != -1) {
-		(void)close(ssp->ss_dcs_lsock);
+		close(ssp->ss_dcs_lsock);
 		ssp->ss_dcs_lsock = -1;
 	}
 	ssp->ss_state = SCSP_SS_NULL;

@@ -110,7 +110,7 @@
  * The mtrace program is COPYRIGHT 1998 by Xerox Corporation.
  *
  * $FreeBSD: src/usr.sbin/mrouted/mtrace.c,v 1.17.2.3 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.6 2004/12/16 03:39:05 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.7 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <ctype.h>
@@ -145,7 +145,7 @@
 typedef unsigned int u_int32;	/* XXX */
 #include "mtrace.h"
 
-const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.6 2004/12/16 03:39:05 dillon Exp $";
+const char version[] = "$DragonFly: src/usr.sbin/mrouted/mtrace.c,v 1.7 2004/12/18 22:48:04 swildner Exp $";
 
 #define DEFAULT_TIMEOUT	3	/* How long to wait before retrying requests */
 #define DEFAULT_RETRIES 3	/* How many times to try */
@@ -816,7 +816,7 @@ proto_type(u_int type)
       case 0:
 	return ("None");
       default:
-	(void) sprintf(buf, "Unknown protocol code %d", type);
+	sprintf(buf, "Unknown protocol code %d", type);
 	return (buf);
     }
 }
@@ -855,7 +855,7 @@ flag_type(u_int type)
       case TR_ADMIN_PROHIB:
 	return ("Admin. Prohibited");
       default:
-	(void) sprintf(buf, "Unknown error code %d", type);
+	sprintf(buf, "Unknown error code %d", type);
 	return (buf);
     }
 }    
@@ -2186,12 +2186,12 @@ print_stats(struct resp_buf *base, struct resp_buf *prev, struct resp_buf *new,
 	printf("Packet Statistics For     Only For Traffic\n");
     else
 	printf("Overall     Packet Statistics For Traffic From\n");
-    (void)inet_fmt(base->qhdr.tr_src, s1);
+    inet_fmt(base->qhdr.tr_src, s1);
     printf("%-15s %-15s  ",
 	   ((b->tr_inaddr & smask) == (base->qhdr.tr_src & smask)) ?
 		s1 : "   * * *       ",
 	   inet_fmt(base->qhdr.tr_raddr, s2));
-    (void)inet_fmt(base->igmp.igmp_group.s_addr, s2);
+    inet_fmt(base->igmp.igmp_group.s_addr, s2);
     if (tunstats)
 	printf("All Multicast Traffic     From %s\n", s1);
     else

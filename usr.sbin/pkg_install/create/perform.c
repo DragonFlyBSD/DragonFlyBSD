@@ -17,7 +17,7 @@
  * This is the main body of the create module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/create/perform.c,v 1.79 2004/07/28 07:19:15 kan Exp $
- * $DragonFly: src/usr.sbin/pkg_install/create/Attic/perform.c,v 1.3 2004/07/30 04:46:12 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/create/Attic/perform.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include "lib.h"
@@ -209,10 +209,10 @@ pkg_perform(char **pkgs)
 
     /* Make first "real contents" pass over it */
     check_list(home, &plist);
-    (void) umask(022);	/*
-			 * Make sure gen'ed directories, files don't have
-			 * group or other write bits.
-			 */
+    umask(022);	/*
+		 * Make sure gen'ed directories, files don't have
+		 * group or other write bits.
+		 */
     /* copy_plist(home, &plist); */
     /* mark_plist(&plist); */
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mld6query/mld6.c,v 1.1.1.1.2.2 2001/07/03 11:02:06 ume Exp $
- * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.3 2003/11/22 11:38:13 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mld6query/mld6.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 #include <sys/param.h>
 #include <sys/uio.h>
@@ -137,8 +137,8 @@ main(int argc, char *argv[])
 	itimer.it_interval.tv_usec = 0;
 	itimer.it_value.tv_usec = 0;
 
-	(void)signal(SIGALRM, quit);
-	(void)setitimer(ITIMER_REAL, &itimer, NULL);
+	signal(SIGALRM, quit);
+	setitimer(ITIMER_REAL, &itimer, NULL);
 
 	FD_ZERO(&fdset);
 	for (;;) {
@@ -267,6 +267,6 @@ quit(int signum) {
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: mld6query ifname [addr]\n");
+	fprintf(stderr, "usage: mld6query ifname [addr]\n");
 	exit(1);
 }

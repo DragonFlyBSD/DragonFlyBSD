@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pstat.c	8.16 (Berkeley) 5/9/95
  * $FreeBSD: src/usr.sbin/pstat/pstat.c,v 1.49.2.5 2002/07/12 09:12:49 des Exp $
- * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.12 2004/11/27 17:54:10 joerg Exp $
+ * $DragonFly: src/usr.sbin/pstat/pstat.c,v 1.13 2004/12/18 22:48:04 swildner Exp $
  */
 
 #define _KERNEL_STRUCTURES
@@ -267,7 +267,7 @@ main(int argc, char **argv)
 	 * guys can't print interesting stuff from kernel memory.
 	 */
 	if (nlistf != NULL || memf != NULL)
-		(void)setgid(getgid());
+		setgid(getgid());
 
 	if ((kd = kvm_openfiles(nlistf, memf, NULL, O_RDONLY, buf)) == 0)
 		errx(1, "kvm_openfiles: %s", buf);
@@ -325,11 +325,11 @@ vnodemode(void)
 
 	e_vnodebase = loadvnodes(&numvnodes);
 	if (totalflag) {
-		(void)printf("%7d vnodes\n", numvnodes);
+		printf("%7d vnodes\n", numvnodes);
 		return;
 	}
 	endvnode = e_vnodebase + numvnodes;
-	(void)printf("%d active vnodes\n", numvnodes);
+	printf("%d active vnodes\n", numvnodes);
 
 
 #define ST	mp->mnt_stat
@@ -352,7 +352,7 @@ vnodemode(void)
 				nfs_header();
 			else if (!strcmp(ST.f_fstypename, "union"))
 				union_header();
-			(void)printf("\n");
+			printf("\n");
 		}
 		vnode_print(evp->avnode, vp);
 		if (!strcmp(ST.f_fstypename, "ufs") ||
@@ -362,7 +362,7 @@ vnodemode(void)
 			nfs_print(vp);
 		else if (!strcmp(ST.f_fstypename, "union"))
 			union_print(vp);
-		(void)printf("\n");
+		printf("\n");
 	}
 	free(e_vnodebase);
 }
@@ -370,7 +370,7 @@ vnodemode(void)
 void
 vnode_header(void)
 {
-	(void)printf("ADDR     TYP VFLAG  USE HOLD");
+	printf("ADDR     TYP VFLAG  USE HOLD");
 }
 
 void
@@ -454,14 +454,14 @@ vnode_print(struct vnode *avnode, struct vnode *vp)
 	if (flag == 0)
 		*fp++ = '-';
 	*fp = '\0';
-	(void)printf("%8lx %s %5s %4d %4d",
+	printf("%8lx %s %5s %4d %4d",
 	    (u_long)(void *)avnode, type, flags, vp->v_usecount, vp->v_holdcnt);
 }
 
 void
 ufs_header(void)
 {
-	(void)printf(" FILEID IFLAG RDEV|SZ");
+	printf(" FILEID IFLAG RDEV|SZ");
 }
 
 int
@@ -497,23 +497,23 @@ ufs_print(struct vnode *vp)
 		*flags++ = '-';
 	*flags = '\0';
 
-	(void)printf(" %6d %5s", ip->i_number, flagbuf);
+	printf(" %6d %5s", ip->i_number, flagbuf);
 	type = ip->i_mode & S_IFMT;
 	if (S_ISCHR(ip->i_mode) || S_ISBLK(ip->i_mode))
 		if (usenumflag || ((name = devname(ip->i_rdev, type)) == NULL))
-			(void)printf("   %2d,%-2d",
+			printf("   %2d,%-2d",
 			    major(ip->i_rdev), minor(ip->i_rdev));
 		else
-			(void)printf(" %7s", name);
+			printf(" %7s", name);
 	else
-		(void)printf(" %7qd", ip->i_size);
+		printf(" %7qd", ip->i_size);
 	return (0);
 }
 
 void
 nfs_header(void)
 {
-	(void)printf(" FILEID NFLAG RDEV|SZ");
+	printf(" FILEID NFLAG RDEV|SZ");
 }
 
 int
@@ -556,23 +556,23 @@ nfs_print(struct vnode *vp)
 	*flags = '\0';
 
 #define VT	np->n_vattr
-	(void)printf(" %6ld %5s", VT.va_fileid, flagbuf);
+	printf(" %6ld %5s", VT.va_fileid, flagbuf);
 	type = VT.va_mode & S_IFMT;
 	if (S_ISCHR(VT.va_mode) || S_ISBLK(VT.va_mode))
 		if (usenumflag || ((name = devname(VT.va_rdev, type)) == NULL))
-			(void)printf("   %2d,%-2d",
+			printf("   %2d,%-2d",
 			    major(VT.va_rdev), minor(VT.va_rdev));
 		else
-			(void)printf(" %7s", name);
+			printf(" %7s", name);
 	else
-		(void)printf(" %7qd", np->n_size);
+		printf(" %7qd", np->n_size);
 	return (0);
 }
 
 void
 union_header(void)
 {
-	(void)printf("    UPPER    LOWER");
+	printf("    UPPER    LOWER");
 }
 
 int
@@ -582,7 +582,7 @@ union_print(struct vnode *vp)
 
 	KGETRET(VTOUNION(vp), &unode, sizeof(unode), "vnode's unode");
 
-	(void)printf(" %8lx %8lx", (u_long)(void *)up->un_uppervp,
+	printf(" %8lx %8lx", (u_long)(void *)up->un_uppervp,
 	    (u_long)(void *)up->un_lowervp);
 	return (0);
 }
@@ -619,7 +619,7 @@ mount_print(struct mount *mp)
 	int flags;
 
 #define ST	mp->mnt_stat
-	(void)printf("*** MOUNT %s %s on %s", ST.f_fstypename,
+	printf("*** MOUNT %s %s on %s", ST.f_fstypename,
 	    ST.f_mntfromname, ST.f_mntonname);
 	if ((flags = mp->mnt_flag)) {
 		int i;
@@ -627,16 +627,16 @@ mount_print(struct mount *mp)
 
 		for (i = 0; mnt_flags[i].m_flag; i++) {
 			if (flags & mnt_flags[i].m_flag) {
-				(void)printf("%s%s", sep, mnt_flags[i].m_name);
+				printf("%s%s", sep, mnt_flags[i].m_name);
 				flags &= ~mnt_flags[i].m_flag;
 				sep = ",";
 			}
 		}
 		if (flags)
-			(void)printf("%sunknown_flags:%x", sep, flags);
-		(void)printf(")");
+			printf("%sunknown_flags:%x", sep, flags);
+		printf(")");
 	}
-	(void)printf("\n");
+	printf("\n");
 #undef ST
 }
 
@@ -724,7 +724,7 @@ ttymode(void)
 	int error;
 	size_t len, i;
 
-	(void)printf(hdr);
+	printf(hdr);
 	len = sizeof(ttyb);
 	error = sysctlbyname("kern.ttys", &ttyb, &len, 0, 0);
 	if (!error) {
@@ -754,7 +754,7 @@ ttytype(struct tty *tty, const char *name, int type, int number, int indir)
 	if (tty == NULL)
 		return;
 	KGET(number, ntty);
-	(void)printf("%d %s %s\n", ntty, name, (ntty == 1) ? "line" : "lines");
+	printf("%d %s %s\n", ntty, name, (ntty == 1) ? "line" : "lines");
 	if (ntty > ttyspace) {
 		ttyspace = ntty;
 		if ((tty = realloc(tty, ttyspace * sizeof(*tty))) == 0)
@@ -768,7 +768,7 @@ ttytype(struct tty *tty, const char *name, int type, int number, int indir)
 		KGET1(type, tty, (ssize_t)(ntty * sizeof(struct tty)),
 		      "tty structs");
 	}
-	(void)printf(hdr);
+	printf(hdr);
 	for (tp = tty; tp < &tty[ntty]; tp++)
 		ttyprt(tp, tp - tty);
 }
@@ -836,11 +836,11 @@ ttyprt(struct tty *tp, int line)
 
 	if (usenumflag || tp->t_dev == 0 ||
 	   (name = devname(tp->t_dev, S_IFCHR)) == NULL)
-		(void)printf("%7d ", line);
+		printf("%7d ", line);
 	else
-		(void)printf("%7s ", name);
-	(void)printf("%2d %3d ", tp->t_rawq.c_cc, tp->t_canq.c_cc);
-	(void)printf("%3d %5d %5d %4d %3d %7d ", tp->t_outq.c_cc,
+		printf("%7s ", name);
+	printf("%2d %3d ", tp->t_rawq.c_cc, tp->t_canq.c_cc);
+	printf("%3d %5d %5d %4d %3d %7d ", tp->t_outq.c_cc,
 		tp->t_ihiwat, tp->t_ilowat, tp->t_ohiwat, tp->t_olowat,
 		tp->t_column);
 	for (i = j = 0; ttystates[i].flag; i++)
@@ -849,26 +849,26 @@ ttyprt(struct tty *tp, int line)
 	if (j == 0)
 		state[j++] = '-';
 	state[j] = '\0';
-	(void)printf("%-6s %8lx", state, (u_long)(void *)tp->t_session);
+	printf("%-6s %8lx", state, (u_long)(void *)tp->t_session);
 	pgid = 0;
 	if (tp->t_pgrp != NULL)
 		KGET2(&tp->t_pgrp->pg_id, &pgid, sizeof(pid_t), "pgid");
-	(void)printf("%6d ", pgid);
+	printf("%6d ", pgid);
 	switch (tp->t_line) {
 	case TTYDISC:
-		(void)printf("term\n");
+		printf("term\n");
 		break;
 	case NTTYDISC:
-		(void)printf("ntty\n");
+		printf("ntty\n");
 		break;
 	case SLIPDISC:
-		(void)printf("slip\n");
+		printf("slip\n");
 		break;
 	case PPPDISC:
-		(void)printf("ppp\n");
+		printf("ppp\n");
 		break;
 	default:
-		(void)printf("%d\n", tp->t_line);
+		printf("%d\n", tp->t_line);
 		break;
 	}
 }
@@ -887,20 +887,20 @@ filemode(void)
 	if (totalflag) {
 		if (kinfo_get_openfiles(&nfile))
 			err(1, "kinfo_get_openfiles");
-		(void)printf("%3d/%3d files\n", nfile, maxfile);
+		printf("%3d/%3d files\n", nfile, maxfile);
 		return;
 	}
 	if (kinfo_get_files(&fp, &len))
 		err(1, "kinfo_get_files");
 	ofp = fp;
 	
-	(void)printf("%d/%d open files\n", len, maxfile);
-	(void)printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
+	printf("%d/%d open files\n", len, maxfile);
+	printf("   LOC   TYPE    FLG     CNT  MSG    DATA    OFFSET\n");
 	for (; len-- > 0; fp++) {
 		if ((unsigned)fp->f_type > DTYPE_SOCKET)
 			continue;
-		(void)printf("%p ", fp->f_file);
-		(void)printf("%-8.8s", dtypes[fp->f_type]);
+		printf("%p ", fp->f_file);
+		printf("%-8.8s", dtypes[fp->f_type]);
 		fbp = flagbuf;
 		if (fp->f_flag & FREAD)
 			*fbp++ = 'R';
@@ -917,13 +917,13 @@ filemode(void)
 		if (fp->f_flag & FASYNC)
 			*fbp++ = 'I';
 		*fbp = '\0';
-		(void)printf("%6s  %3d", flagbuf, fp->f_count);
-		(void)printf("  %3d", fp->f_msgcount);
-		(void)printf("  %8lx", (u_long)(void *)fp->f_data);
+		printf("%6s  %3d", flagbuf, fp->f_count);
+		printf("  %3d", fp->f_msgcount);
+		printf("  %8lx", (u_long)(void *)fp->f_data);
 		if (fp->f_offset < 0)
-			(void)printf("  %qx\n", fp->f_offset);
+			printf("  %qx\n", fp->f_offset);
 		else
-			(void)printf("  %qd\n", fp->f_offset);
+			printf("  %qd\n", fp->f_offset);
 	}
 	free(ofp);
 }
@@ -954,18 +954,18 @@ swapmode(void)
 
 	header = getbsize(&hlen, &blocksize);
 	if (totalflag == 0) {
-		(void)printf("%-15s %*s %8s %8s %8s  %s\n",
+		printf("%-15s %*s %8s %8s %8s  %s\n",
 		    "Device", hlen, header,
 		    "Used", "Avail", "Capacity", "Type");
 
 		for (i = 0; i < n; ++i) {
-			(void)printf(
+			printf(
 			    "%-15s %*d ",
 			    kswap[i].ksw_devname,
 			    hlen,
 			    CONVERT(kswap[i].ksw_total)
 			);
-			(void)printf(
+			printf(
 			    "%8d %8d %5.0f%%    %s\n",
 			    CONVERT(kswap[i].ksw_used),
 			    CONVERT(kswap[i].ksw_total - kswap[i].ksw_used),
@@ -980,13 +980,13 @@ swapmode(void)
 	if (totalflag) {
 		blocksize = 1024 * 1024;
 
-		(void)printf(
+		printf(
 		    "%dM/%dM swap space\n", 
 		    CONVERT(kswap[n].ksw_used),
 		    CONVERT(kswap[n].ksw_total)
 		);
 	} else if (n > 1) {
-		(void)printf(
+		printf(
 		    "%-15s %*d %8d %8d %5.0f%%\n",
 		    "Total",
 		    hlen, 

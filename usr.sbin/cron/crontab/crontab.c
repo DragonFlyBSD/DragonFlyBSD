@@ -16,7 +16,7 @@
  *
  * From Id: crontab.c,v 2.13 1994/01/17 03:20:37 vixie Exp
  * $FreeBSD: src/usr.sbin/cron/crontab/crontab.c,v 1.12.2.4 2001/06/16 03:18:37 peter Exp $
- * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* crontab - install and manage per-user crontab files
@@ -24,7 +24,7 @@
  * vix 26jan87 [original]
  */
 
-static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $";
+static char version[] = "$DragonFly: src/usr.sbin/cron/crontab/crontab.c,v 1.5 2004/12/18 22:48:03 swildner Exp $";
 
 #define	MAIN_PROGRAM
 
@@ -131,7 +131,7 @@ parse_args(int argc, char **argv)
 
 	if (!(pw = getpwuid(getuid())))
 		errx(ERROR_EXIT, "your UID isn't in the passwd file, bailing out");
-	(void) strncpy(User, pw->pw_name, (sizeof User)-1);
+	strncpy(User, pw->pw_name, (sizeof User)-1);
 	User[(sizeof User)-1] = '\0';
 	strcpy(RealUser, User);
 	Filename[0] = '\0';
@@ -147,7 +147,7 @@ parse_args(int argc, char **argv)
 				errx(ERROR_EXIT, "must be privileged to use -u");
 			if (!(pw = getpwnam(optarg)))
 				errx(ERROR_EXIT, "user `%s' unknown", optarg);
-			(void) strncpy(User, pw->pw_name, (sizeof User)-1);
+			strncpy(User, pw->pw_name, (sizeof User)-1);
 			User[(sizeof User)-1] = '\0';
 			break;
 		case 'l':
@@ -179,7 +179,7 @@ parse_args(int argc, char **argv)
 	} else {
 		if (argv[optind] != NULL) {
 			Option = opt_replace;
-			(void) strncpy (Filename, argv[optind], (sizeof Filename)-1);
+			strncpy (Filename, argv[optind], (sizeof Filename)-1);
 			Filename[(sizeof Filename)-1] = '\0';
 
 		} else {
@@ -225,7 +225,7 @@ list_cmd(void)
 	int	ch, x;
 
 	log_it(RealUser, Pid, "LIST", User);
-	(void) sprintf(n, CRON_TAB(User));
+	sprintf(n, CRON_TAB(User));
 	if (!(f = fopen(n, "r"))) {
 		if (errno == ENOENT)
 			errx(ERROR_EXIT, "no crontab for %s", User);
@@ -267,7 +267,7 @@ delete_cmd(void)
 	int ch, first;
 
 	if (isatty(STDIN_FILENO)) {
-		(void)fprintf(stderr, "remove crontab for %s? ", User);
+		fprintf(stderr, "remove crontab for %s? ", User);
 		first = ch = getchar();
 		while (ch != '\n' && ch != EOF)
 			ch = getchar();
@@ -276,7 +276,7 @@ delete_cmd(void)
 	}
 
 	log_it(RealUser, Pid, "DELETE", User);
-	(void) sprintf(n, CRON_TAB(User));
+	sprintf(n, CRON_TAB(User));
 	if (unlink(n)) {
 		if (errno == ENOENT)
 			errx(ERROR_EXIT, "no crontab for %s", User);
@@ -308,7 +308,7 @@ edit_cmd(void)
 	mode_t		um;
 
 	log_it(RealUser, Pid, "BEGIN EDIT", User);
-	(void) sprintf(n, CRON_TAB(User));
+	sprintf(n, CRON_TAB(User));
 	if (!(f = fopen(n, "r"))) {
 		if (errno != ENOENT)
 			err(ERROR_EXIT, "%s", n);
@@ -318,13 +318,13 @@ edit_cmd(void)
 	}
 
 	um = umask(077);
-	(void) sprintf(Filename, "/tmp/crontab.XXXXXXXXXX");
+	sprintf(Filename, "/tmp/crontab.XXXXXXXXXX");
 	if ((t = mkstemp(Filename)) == -1) {
 		warn("%s", Filename);
-		(void) umask(um);
+		umask(um);
 		goto fatal;
 	}
-	(void) umask(um);
+	umask(um);
 #ifdef HAS_FCHOWN
 	if (fchown(t, getuid(), getgid()) < 0) {
 #else
@@ -456,7 +456,7 @@ edit_cmd(void)
 			printf("Do you want to retry the same edit? ");
 			fflush(stdout);
 			q[0] = '\0';
-			(void) fgets(q, sizeof q, stdin);
+			fgets(q, sizeof q, stdin);
 			switch (islower(q[0]) ? q[0] : tolower(q[0])) {
 			case 'y':
 				goto again;
@@ -501,8 +501,8 @@ replace_cmd(void)
 		return (-2);
 	}
 
-	(void) sprintf(n, "tmp.%d", Pid);
-	(void) sprintf(tn, CRON_TAB(n));
+	sprintf(n, "tmp.%d", Pid);
+	sprintf(tn, CRON_TAB(n));
 	if (!(tmp = fopen(tn, "w+"))) {
 		warn("%s", tn);
 		return (-2);
@@ -589,7 +589,7 @@ replace_cmd(void)
 		return (-2);
 	}
 
-	(void) sprintf(n, CRON_TAB(User));
+	sprintf(n, CRON_TAB(User));
 	if (rename(tn, n)) {
 		warn("error renaming %s to %s", tn, n);
 		unlink(tn);
@@ -610,7 +610,7 @@ poke_daemon(void)
 	struct timeval tvs[2];
 	struct timezone tz;
 
-	(void) gettimeofday(&tvs[0], &tz);
+	gettimeofday(&tvs[0], &tz);
 	tvs[1] = tvs[0];
 	if (utimes(SPOOL_DIR, tvs) < OK) {
 		warn("can't update mtime on spooldir %s", SPOOL_DIR);

@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)lpd.c	8.7 (Berkeley) 5/10/95
  * $FreeBSD: src/usr.sbin/lpr/lpd/lpd.c,v 1.12.2.22 2002/06/30 04:09:11 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.4 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpd/lpd.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -266,7 +266,7 @@ main(int argc, char **argv)
 	openlog("lpd", LOG_PID, LOG_LPR);
 	syslog(LOG_INFO, "lpd startup: logging=%d%s%s", lflag,
 	    socket_debug ? " dbg" : "", sflag ? " net-secure" : "");
-	(void) umask(0);
+	umask(0);
 	/*
 	 * NB: This depends on O_NONBLOCK semantics doing the right thing;
 	 * i.e., applying only to the O_EXLOCK and not to the rest of the
@@ -298,7 +298,7 @@ main(int argc, char **argv)
 	 * Restart all the printers.
 	 */
 	startup();
-	(void) unlink(_PATH_SOCKETNAME);
+	unlink(_PATH_SOCKETNAME);
 	funix = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (funix < 0) {
 		syslog(LOG_ERR, "socket: %m");
@@ -312,7 +312,7 @@ main(int argc, char **argv)
 	sigaddset(&nmask, SIGTERM);
 	sigprocmask(SIG_BLOCK, &nmask, &omask);
 
-	(void) umask(07);
+	umask(07);
 	signal(SIGHUP, mcleanup);
 	signal(SIGINT, mcleanup);
 	signal(SIGQUIT, mcleanup);
@@ -327,7 +327,7 @@ main(int argc, char **argv)
 		syslog(LOG_ERR, "ubind: %m");
 		exit(1);
 	}
-	(void) umask(0);
+	umask(0);
 	sigprocmask(SIG_SETMASK, &omask, (sigset_t *)0);
 	FD_ZERO(&defreadfds);
 	FD_SET(funix, &defreadfds);
@@ -395,13 +395,13 @@ main(int argc, char **argv)
 			signal(SIGINT, SIG_IGN);
 			signal(SIGQUIT, SIG_IGN);
 			signal(SIGTERM, SIG_IGN);
-			(void) close(funix);
+			close(funix);
 			if (sflag == 0 && finet) {
                         	for (i = 1; i <= *finet; i++) 
-					(void)close(finet[i]);
+					close(finet[i]);
 			}
 			dup2(s, 1);
-			(void) close(s);
+			close(s);
 			if (domain == AF_INET) {
 				/* for both AF_INET and AF_INET6 */
 				from_remote = 1;
@@ -412,7 +412,7 @@ main(int argc, char **argv)
 			doit();
 			exit(0);
 		}
-		(void) close(s);
+		close(s);
 	}
 }
 
@@ -753,10 +753,10 @@ chkhost(struct sockaddr *f, int ch_opts)
 again:
 	if (hostf) {
 		if (__ivaliduser_sa(hostf, f, f->sa_len, DUMMY, DUMMY) == 0) {
-			(void) fclose(hostf);
+			fclose(hostf);
 			goto foundhost;
 		}
-		(void) fclose(hostf);
+		fclose(hostf);
 	}
 	if (fpass == 1) {
 		fpass = 2;

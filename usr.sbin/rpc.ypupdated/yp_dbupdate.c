@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/yp_dbupdate.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/fcntl.h>
@@ -132,7 +132,7 @@ int ypmap_update(netname, map, op, keylen, keyval, datlen, datval)
 	}
 
 	if (rval) {
-		(void)(dbp->close)(dbp);
+		(dbp->close)(dbp);
 		return(rval);
 	}
 
@@ -143,10 +143,10 @@ int ypmap_update(netname, map, op, keylen, keyval, datlen, datval)
 	data.size = strlen(yplastbuf);
 	if (yp_put_record(dbp, &key, &data, 1) != YP_TRUE) {
 		yp_error("failed to update timestamp in %s/%s", domptr, map);
-		(void)(dbp->close)(dbp);
+		(dbp->close)(dbp);
 		return(ERR_DBASE);
 	}
 
-	(void)(dbp->close)(dbp);
+	(dbp->close)(dbp);
 	return(yp_domake(map, domptr));
 }

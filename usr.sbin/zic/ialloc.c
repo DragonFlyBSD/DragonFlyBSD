@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)ialloc.c	8.29";
 /*
  * @(#)ialloc.c	8.29
  * $FreeBSD: src/usr.sbin/zic/ialloc.c,v 1.5 1999/08/28 01:21:18 peter Exp $
- * $DragonFly: src/usr.sbin/zic/ialloc.c,v 1.3 2004/02/29 16:55:28 joerg Exp $
+ * $DragonFly: src/usr.sbin/zic/ialloc.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 /*LINTLIBRARY*/
 
@@ -51,7 +51,7 @@ icatalloc(char *const old, const char *new)
 	else	oldsize = strlen(old);
 	if ((result = irealloc(old, oldsize + newsize + 1)) != NULL)
 		if (new != NULL)
-			(void) strcpy(result + oldsize, new);
+			strcpy(result + oldsize, new);
 	return result;
 }
 
@@ -65,12 +65,12 @@ void
 ifree(char * const p)
 {
 	if (p != NULL)
-		(void) free(p);
+		free(p);
 }
 
 void
 icfree(char * const p)
 {
 	if (p != NULL)
-		(void) free(p);
+		free(p);
 }

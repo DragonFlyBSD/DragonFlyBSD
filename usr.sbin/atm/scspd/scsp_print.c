@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_print.c,v 1.3 1999/08/28 01:15:34 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_print.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_print.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -760,7 +760,7 @@ print_scsp_msg(FILE *fp, Scsp_msg *msg)
 	}
 	dec_indent();
 
-	(void)fflush(fp);
+	fflush(fp);
 }
 
 
@@ -873,7 +873,7 @@ print_scsp_if_msg(FILE *fp, Scsp_if_msg *imsg)
 	}
 	dec_indent();
 
-	(void)fflush(fp);
+	fflush(fp);
 }
 
 
@@ -1250,5 +1250,5 @@ print_scsp_dump(void)
 	/*
 	 * Close the output file
 	 */
-	(void)fclose(df);
+	fclose(df);
 }

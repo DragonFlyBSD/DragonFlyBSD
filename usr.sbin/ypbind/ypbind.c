@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ypbind/ypbind.c,v 1.30.2.2 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypbind/ypbind.c,v 1.5 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -894,13 +894,13 @@ void rpc_received(char *dom, struct sockaddr_in *raddrp, int force)
 		ypdb->dom_domain, ypdb->dom_vers);
 #ifdef O_SHLOCK
 	if ((fd = open(path, O_CREAT|O_SHLOCK|O_RDWR|O_TRUNC, 0644)) == -1) {
-		(void)mkdir(BINDINGDIR, 0755);
+		mkdir(BINDINGDIR, 0755);
 		if ((fd = open(path, O_CREAT|O_SHLOCK|O_RDWR|O_TRUNC, 0644)) == -1)
 			return;
 	}
 #else
 	if ((fd = open(path, O_CREAT|O_RDWR|O_TRUNC, 0644)) == -1) {
-		(void)mkdir(BINDINGDIR, 0755);
+		mkdir(BINDINGDIR, 0755);
 		if ((fd = open(path, O_CREAT|O_RDWR|O_TRUNC, 0644)) == -1)
 			return;
 	}

@@ -15,7 +15,7 @@
  * Paul Vixie          <paul@vix.com>          uunet!decwrl!vixie!paul
  *
  * $FreeBSD: src/usr.sbin/cron/lib/compat.c,v 1.6.2.1 2000/12/11 01:03:31 obrien Exp $
- * $DragonFly: src/usr.sbin/cron/lib/compat.c,v 1.3 2003/11/16 11:51:15 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cron/lib/compat.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* vix 30dec93 [broke this out of misc.c - see RCS log for history]
@@ -57,7 +57,7 @@ strdup(char *str)
 		errno = ENOMEM;
 		return NULL;
 	}
-	(void) strcpy(temp, str);
+	strcpy(temp, str);
 	return temp;
 }
 #endif
@@ -108,15 +108,15 @@ setsid(void)
 #  endif
 	if ((fd = open(_PATH_TTY, 2)) >= 0)
 	{
-		(void) ioctl(fd, TIOCNOTTY, (char*)0);
-		(void) close(fd);
+		ioctl(fd, TIOCNOTTY, (char*)0);
+		close(fd);
 	}
 # else /*BSD*/
 	newpgrp = setpgrp();
 
-	(void) close(STDIN);	(void) open(_PATH_DEVNULL, 0);
-	(void) close(STDOUT);	(void) open(_PATH_DEVNULL, 1);
-	(void) close(STDERR);	(void) open(_PATH_DEVNULL, 2);
+	close(STDIN);	open(_PATH_DEVNULL, 0);
+	close(STDOUT);	open(_PATH_DEVNULL, 1);
+	close(STDERR);	open(_PATH_DEVNULL, 2);
 # endif /*BSD*/
 	return newpgrp;
 }

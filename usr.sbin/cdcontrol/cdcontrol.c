@@ -18,7 +18,7 @@
  *              Some code style reformatting.
  *
  * $FreeBSD: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.24.2.11 2002/11/20 00:26:19 njl Exp $
- * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.5 2003/11/15 23:33:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/cdcontrol/cdcontrol.c,v 1.6 2004/12/18 22:48:02 swildner Exp $
  */
 
 #include <sys/cdio.h>
@@ -337,7 +337,7 @@ run(int cmd, char *arg)
 
 		rc = ioctl (fd, CDIOCSTOP);
 
-		(void) ioctl (fd, CDIOCALLOW);
+		ioctl (fd, CDIOCALLOW);
 
 		return (rc);
 
@@ -370,7 +370,7 @@ run(int cmd, char *arg)
 		if (fd < 0 && ! open_cd ())
 			return (0);
 
-		(void) ioctl (fd, CDIOCALLOW);
+		ioctl (fd, CDIOCALLOW);
 		rc = ioctl (fd, CDIOCEJECT);
 		if (rc < 0)
 			return (rc);
@@ -380,7 +380,7 @@ run(int cmd, char *arg)
 		if (fd < 0 && ! open_cd ())
 			return (0);
 
-		(void) ioctl (fd, CDIOCALLOW);
+		ioctl (fd, CDIOCALLOW);
 		rc = ioctl (fd, CDIOCCLOSE);
 		if (rc < 0)
 			return (rc);

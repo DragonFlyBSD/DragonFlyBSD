@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/dpt/dpt_softc/dpt_softc.c,v 1.3.2.1 2001/07/24 09:49:45 dd Exp $
- * $DragonFly: src/usr.sbin/dpt/dpt_softc/dpt_softc.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_softc/dpt_softc.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* dpt_softc.c:  Dunp a DPT control structure */
@@ -101,87 +101,87 @@ main(int argc, char **argv, char **argp)
     int fd;
 
     if ( (fd = open(argv[1], O_RDWR, S_IRUSR | S_IWUSR)) == -1 ) {
-	(void)fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
-		      argv[0], argv[1], strerror(errno));
+	fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
+		argv[0], argv[1], strerror(errno));
 	exit(1);
     }
 
     if ( (result = ioctl(fd, DPT_IOCTL_SOFTC, &udpt)) != 0 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx - %s\n",
-					  argv[0], DPT_IOCTL_SOFTC,
-					  strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to send IOCTL %lx - %s\n",
+			argv[0], DPT_IOCTL_SOFTC,
+			strerror(errno));
 		exit(2);
     }
 
-    (void)fprintf(stdout, "Counters:%d:%d:%d:%d:%d:%d:%d\n",
-		  udpt.total_ccbs_count,
-		  udpt.free_ccbs_count,
-		  udpt.waiting_ccbs_count,
-		  udpt.submitted_ccbs_count,
-		  udpt.completed_ccbs_count,
-		  udpt.commands_processed,
-		  udpt.lost_interrupts);
+    printf(stdout, "Counters:%d:%d:%d:%d:%d:%d:%d\n",
+	   udpt.total_ccbs_count,
+	   udpt.free_ccbs_count,
+	   udpt.waiting_ccbs_count,
+	   udpt.submitted_ccbs_count,
+	   udpt.completed_ccbs_count,
+	   udpt.commands_processed,
+	   udpt.lost_interrupts);
 
-    (void)fprintf(stdout, "Queue Status:%s\n",
-		  i2bin(udpt.queue_status, sizeof(udpt.queue_status) * 8));
+    fprintf(stdout, "Queue Status:%s\n",
+	    i2bin(udpt.queue_status, sizeof(udpt.queue_status) * 8));
     
-    (void)fprintf(stdout, "Free lock:%s\n",
-		  i2bin(udpt.free_lock, sizeof(udpt.free_lock) * 8));
+    fprintf(stdout, "Free lock:%s\n",
+	    i2bin(udpt.free_lock, sizeof(udpt.free_lock) * 8));
     
-    (void)fprintf(stdout, "Waiting lock:%s\n",
-		  i2bin(udpt.waiting_lock, sizeof(udpt.waiting_lock) * 8));
+    fprintf(stdout, "Waiting lock:%s\n",
+	    i2bin(udpt.waiting_lock, sizeof(udpt.waiting_lock) * 8));
     
-    (void)fprintf(stdout, "Submitted lock:%s\n",
-		  i2bin(udpt.submitted_lock, sizeof(udpt.submitted_lock) * 8));
+    fprintf(stdout, "Submitted lock:%s\n",
+	    i2bin(udpt.submitted_lock, sizeof(udpt.submitted_lock) * 8));
     
-    (void)fprintf(stdout, "Completed lock:%s\n",
-		  i2bin(udpt.completed_lock, sizeof(udpt.completed_lock) * 8));
+    fprintf(stdout, "Completed lock:%s\n",
+	    i2bin(udpt.completed_lock, sizeof(udpt.completed_lock) * 8));
     
-    (void)fprintf(stdout, "Configuration:%s:%d:%d:%d:%x:%d:%d\n",
-		  udpt.handle_interrupts ? "Yes" : "No",
-		  udpt.max_id,
-		  udpt.max_lun,
-		  udpt.channels,
-		  udpt.io_base,
-		  udpt.irq,
-		  udpt.dma_channel);
+    fprintf(stdout, "Configuration:%s:%d:%d:%d:%x:%d:%d\n",
+	    udpt.handle_interrupts ? "Yes" : "No",
+	    udpt.max_id,
+	    udpt.max_lun,
+	    udpt.channels,
+	    udpt.io_base,
+	    udpt.irq,
+	    udpt.dma_channel);
     
-    (void)fprintf(stdout, "ID:%x:%x:%s:%s:%s:%s:%x\n",
-		  udpt.board_data.deviceType,
-		  udpt.board_data.rm_dtq,
-		  udpt.board_data.vendor,
-		  udpt.board_data.modelNum,
-		  udpt.board_data.firmware,
-		  udpt.board_data.protocol,
-		  udpt.EATA_revision);
+    fprintf(stdout, "ID:%x:%x:%s:%s:%s:%s:%x\n",
+	    udpt.board_data.deviceType,
+	    udpt.board_data.rm_dtq,
+	    udpt.board_data.vendor,
+	    udpt.board_data.modelNum,
+	    udpt.board_data.firmware,
+	    udpt.board_data.protocol,
+	    udpt.EATA_revision);
 
-    (void)fprintf(stdout,"Capabilities:%x:%d:%s:%s:%s:%s:%s\n",
-		  udpt.bustype,
-		  udpt.channels,
-		  i2bin((u_int32_t)udpt.state, sizeof(udpt.state) * 8),
-		  udpt.primary ? "Yes" : "No",
-		  udpt.more_support ? "Yes" : "No",
-		  udpt.immediate_support ? "Yes" : "No",
-		  udpt.broken_INQUIRY ? "Yes" : "No");
+    fprintf(stdout,"Capabilities:%x:%d:%s:%s:%s:%s:%s\n",
+	    udpt.bustype,
+	    udpt.channels,
+	    i2bin((u_int32_t)udpt.state, sizeof(udpt.state) * 8),
+	    udpt.primary ? "Yes" : "No",
+	    udpt.more_support ? "Yes" : "No",
+	    udpt.immediate_support ? "Yes" : "No",
+	    udpt.broken_INQUIRY ? "Yes" : "No");
 
-    (void)fprintf(stdout,"More Config:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d\n",
-		  udpt.resetlevel[0],
-		  udpt.resetlevel[1],
-		  udpt.resetlevel[2],
-		  udpt.cplen,		
-		  udpt.cppadlen,
-		  udpt.queuesize,
-		  udpt.sgsize,
-		  udpt.hostid[0],
-		  udpt.hostid[1],
-		  udpt.hostid[2]);
+    fprintf(stdout,"More Config:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d\n",
+	    udpt.resetlevel[0],
+	    udpt.resetlevel[1],
+	    udpt.resetlevel[2],
+	    udpt.cplen,		
+	    udpt.cppadlen,
+	    udpt.queuesize,
+	    udpt.sgsize,
+	    udpt.hostid[0],
+	    udpt.hostid[1],
+	    udpt.hostid[2]);
 
-    (void)fprintf(stdout,"Cache:%s:%d\n",
-		  (udpt.cache_type == DPT_NO_CACHE)
-		  ? "None"
-		  : (udpt.cache_type == DPT_CACHE_WRITETHROUGH)
-		  ? "Write-Through" : "Write-Back",
-		  udpt.cache_size);
+    fprintf(stdout,"Cache:%s:%d\n",
+	    (udpt.cache_type == DPT_NO_CACHE)
+	    ? "None"
+	    : (udpt.cache_type == DPT_CACHE_WRITETHROUGH)
+	    ? "Write-Through" : "Write-Back",
+	    udpt.cache_size);
 
     return(0);
 }

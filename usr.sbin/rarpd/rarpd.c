@@ -20,7 +20,7 @@
  *
  * @(#) Copyright (c) 1990, 1991, 1992, 1993, 1996 The Regents of the University of California.  All rights reserved.
  * $FreeBSD: src/usr.sbin/rarpd/rarpd.c,v 1.23.2.4 2002/12/01 19:19:34 dwmalone Exp $
- * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.3 2004/02/10 02:59:43 rob Exp $
+ * $DragonFly: src/usr.sbin/rarpd/rarpd.c,v 1.4 2004/12/18 22:48:05 swildner Exp $
  */
 
 /*
@@ -239,8 +239,7 @@ init_one(struct ifreq *ifrp, char *target)
 #if BSD >= 199100
 	case AF_LINK:
 #endif
-		(void)strncpy(ifr.ifr_name, ifrp->ifr_name,
-		    sizeof(ifrp->ifr_name));
+		strncpy(ifr.ifr_name, ifrp->ifr_name, sizeof(ifrp->ifr_name));
 		if (ioctl(s, SIOCGIFFLAGS, (char *)&ifr) == -1) {
 			logmsg(LOG_ERR,
 			    "SIOCGIFFLAGS: %.*s: %m",
@@ -277,8 +276,7 @@ init_one(struct ifreq *ifrp, char *target)
 		}
 		bzero(ii, sizeof(*ii));
 		ii->ii_fd = -1;
-		(void)strncpy(ii->ii_ifname, ifrp->ifr_name,
-		    sizeof(ifrp->ifr_name));
+		strncpy(ii->ii_ifname, ifrp->ifr_name, sizeof(ifrp->ifr_name));
 		ii->ii_ifname[sizeof(ii->ii_ifname) - 1] = '\0';
 		ii->ii_next = iflist;
 		iflist = ii;
@@ -392,7 +390,7 @@ init(char *target)
 void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: rarpd [-adfsv] [-t directory] [interface]\n");
+	fprintf(stderr, "usage: rarpd [-adfsv] [-t directory] [interface]\n");
 	exit(1);
 }
 
@@ -407,7 +405,7 @@ bpf_open(void)
 	 * Go through all the minors and find one that isn't in use.
 	 */
 	do {
-		(void)sprintf(device, "/dev/bpf%d", n++);
+		sprintf(device, "/dev/bpf%d", n++);
 		fd = open(device, O_RDWR);
 	} while ((fd == -1) && (errno == EBUSY));
 
@@ -453,7 +451,7 @@ rarp_open(char *device)
 		logmsg(LOG_ERR, "BIOCIMMEDIATE: %m");
 		exit(1);
 	}
-	(void)strncpy(ifr.ifr_name, device, sizeof ifr.ifr_name);
+	strncpy(ifr.ifr_name, device, sizeof ifr.ifr_name);
 	if (ioctl(fd, BIOCSETIF, (caddr_t)&ifr) == -1) {
 		logmsg(LOG_ERR, "BIOCSETIF: %m");
 		exit(1);
@@ -587,7 +585,7 @@ rarp_loop(void)
 			if (cc == -1) {
 				if (errno == EINVAL &&
 				    (long)(tell(fd) + bufsize) < 0) {
-					(void)lseek(fd, 0, 0);
+					lseek(fd, 0, 0);
 					goto again;
 				}
 				logmsg(LOG_ERR, "read: %m");
@@ -630,7 +628,7 @@ rarp_bootable(u_long addr)
 	char ipname[9];
 	static DIR *dd = NULL;
 
-	(void)sprintf(ipname, "%08lX", (u_long)ntohl(addr));
+	sprintf(ipname, "%08lX", (u_long)ntohl(addr));
 
 	/*
 	 * If directory is already open, rewind it.  Otherwise, open it.
@@ -981,7 +979,7 @@ eatoa(u_char *ea)
 {
 	static char buf[sizeof("xx:xx:xx:xx:xx:xx")];
 
-	(void)sprintf(buf, "%x:%x:%x:%x:%x:%x",
+	sprintf(buf, "%x:%x:%x:%x:%x:%x",
 	    ea[0], ea[1], ea[2], ea[3], ea[4], ea[5]);
 	return (buf);
 }

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.16.2.2 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.5 2004/05/20 19:24:43 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/yppasswdd_server.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <stdio.h>
@@ -431,7 +431,7 @@ with the same name - continuing");
 		if (yp_put_record(dbp, &key, &data, 1) != YP_TRUE) {
 			yp_error("failed to update record in %s/%s", domain,
 								maps[i]);
-			(void)(dbp->close)(dbp);
+			(dbp->close)(dbp);
 			return(1);
 		}
 
@@ -443,11 +443,11 @@ with the same name - continuing");
 		if (yp_put_record(dbp, &key, &data, 1) != YP_TRUE) {
 			yp_error("failed to update timestamp in %s/%s", domain,
 								maps[i]);
-			(void)(dbp->close)(dbp);
+			(dbp->close)(dbp);
 			return(1);
 		}
 
-		(void)(dbp->close)(dbp);
+		(dbp->close)(dbp);
 	}
 
 	return(0);

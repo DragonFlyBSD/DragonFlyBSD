@@ -28,7 +28,7 @@
  *
  * @(#)keyserv.c	1.15	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/keyserv.c,v 1.3.2.2 2001/07/19 10:58:22 roam Exp $
- * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.5 2004/05/20 19:24:42 cpressey Exp $
+ * $DragonFly: src/usr.sbin/keyserv/keyserv.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -150,7 +150,7 @@ main(int argc, char **argv)
 	/*
 	 * Initialize
 	 */
-	(void) umask(066);	/* paranoia */
+	umask(066);	/* paranoia */
 	if (geteuid() != 0)
 		errx(1, "keyserv must be run as root");
 	setmodulus(HEXMODULUS);
@@ -159,8 +159,8 @@ main(int argc, char **argv)
 
 	/* Create services. */
 
-	(void) pmap_unset(KEY_PROG, KEY_VERS);
-	(void) pmap_unset(KEY_PROG, KEY_VERS2);
+	pmap_unset(KEY_PROG, KEY_VERS);
+	pmap_unset(KEY_PROG, KEY_VERS2);
 	unlink(KEYSERVSOCK);
 
 	transp = svcudp_create(RPC_ANYSOCK);
@@ -215,7 +215,7 @@ randomize(des_block *master)
 
 	seed = 0;
 	for (i = 0; i < 1024; i++) {
-		(void) gettimeofday(&tv, (struct timezone *) NULL);
+		gettimeofday(&tv, (struct timezone *) NULL);
 		shift = i % 8 * sizeof (int);
 		seed ^= (tv.tv_usec << shift) | (tv.tv_usec >> (32 - shift));
 	}
@@ -258,10 +258,10 @@ getrootkey(des_block *master, int prompt)
 		}
 		if (read(fd, secret, HEXKEYBYTES) < HEXKEYBYTES) {
 			warnx("the key read from %s was too short", ROOTKEY);
-			(void) close(fd);
+			close(fd);
 			return (0);
 		}
-		(void) close(fd);
+		close(fd);
 		if (!getnetname(name)) {
 		    warnx(
 	"failed to generate host's netname when establishing root's key");
@@ -290,7 +290,7 @@ getrootkey(des_block *master, int prompt)
 		warnx("password does not decrypt secret key for %s", name);
 		return (0);
 	}
-	(void) pk_setkey(0, secret);
+	pk_setkey(0, secret);
 	/*
 	 * Store it for future use in $ROOTKEY, if possible
 	 */
@@ -331,13 +331,13 @@ key_set_1_svc_prog(uid_t uid, keybuf key)
 	static keystatus status;
 
 	if (debugging) {
-		(void) fprintf(stderr, "set(%ld, %.*s) = ", uid,
+		fprintf(stderr, "set(%ld, %.*s) = ", uid,
 				(int) sizeof (keybuf), key);
 	}
 	status = pk_setkey(uid, key);
 	if (debugging) {
-		(void) fprintf(stderr, "%s\n", strstatus(status));
-		(void) fflush(stderr);
+		fprintf(stderr, "%s\n", strstatus(status));
+		fflush(stderr);
 	}
 	return (&status);
 }
@@ -348,7 +348,7 @@ key_encrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		(void) fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -357,13 +357,13 @@ key_encrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 				&res.cryptkeyres_u.deskey);
 	if (debugging) {
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "%08x%08x\n",
+			fprintf(stderr, "%08x%08x\n",
 					res.cryptkeyres_u.deskey.key.high,
 					res.cryptkeyres_u.deskey.key.low);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -374,7 +374,7 @@ key_decrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		(void) fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -383,13 +383,13 @@ key_decrypt_pk_2_svc_prog(uid_t uid, cryptkeyarg2 *arg)
 				&res.cryptkeyres_u.deskey);
 	if (debugging) {
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "%08x%08x\n",
+			fprintf(stderr, "%08x%08x\n",
 					res.cryptkeyres_u.deskey.key.high,
 					res.cryptkeyres_u.deskey.key.low);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -400,7 +400,7 @@ key_net_put_2_svc_prog(uid_t uid, key_netstarg *arg)
 	static keystatus status;
 
 	if (debugging) {
-		(void) fprintf(stderr, "net_put(%s, %.*s, %.*s) = ",
+		fprintf(stderr, "net_put(%s, %.*s, %.*s) = ",
 			arg->st_netname, (int)sizeof (arg->st_pub_key),
 			arg->st_pub_key, (int)sizeof (arg->st_priv_key),
 			arg->st_priv_key);
@@ -409,8 +409,8 @@ key_net_put_2_svc_prog(uid_t uid, key_netstarg *arg)
 	status = pk_netput(uid, arg);
 
 	if (debugging) {
-		(void) fprintf(stderr, "%s\n", strstatus(status));
-		(void) fflush(stderr);
+		fprintf(stderr, "%s\n", strstatus(status));
+		fflush(stderr);
 	}
 
 	return (&status);
@@ -422,7 +422,7 @@ key_net_get_2_svc_prog(uid_t uid, void *arg)
 	static key_netstres keynetname;
 
 	if (debugging)
-		(void) fprintf(stderr, "net_get(%ld) = ", uid);
+		fprintf(stderr, "net_get(%ld) = ", uid);
 
 	keynetname.status = pk_netget(uid, &keynetname.key_netstres_u.knet);
 	if (debugging) {
@@ -434,9 +434,9 @@ key_net_get_2_svc_prog(uid_t uid, void *arg)
 			(int)sizeof (keynetname.key_netstres_u.knet.st_priv_key),
 			keynetname.key_netstres_u.knet.st_priv_key);
 		} else {
-			(void) fprintf(stderr, "NOT FOUND\n");
+			fprintf(stderr, "NOT FOUND\n");
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 
 	return (&keynetname);
@@ -449,7 +449,7 @@ key_get_conv_2_svc_prog(uid_t uid, keybuf arg)
 	static cryptkeyres  res;
 
 	if (debugging)
-		(void) fprintf(stderr, "get_conv(%ld, %.*s) = ", uid,
+		fprintf(stderr, "get_conv(%ld, %.*s) = ", uid,
 			(int)sizeof (arg), arg);
 
 
@@ -457,13 +457,13 @@ key_get_conv_2_svc_prog(uid_t uid, keybuf arg)
 
 	if (debugging) {
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "%08x%08x\n",
+			fprintf(stderr, "%08x%08x\n",
 				res.cryptkeyres_u.deskey.key.high,
 				res.cryptkeyres_u.deskey.key.low);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -475,7 +475,7 @@ key_encrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		(void) fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "encrypt(%ld, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -484,13 +484,13 @@ key_encrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 				&res.cryptkeyres_u.deskey);
 	if (debugging) {
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "%08x%08x\n",
+			fprintf(stderr, "%08x%08x\n",
 					res.cryptkeyres_u.deskey.key.high,
 					res.cryptkeyres_u.deskey.key.low);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -501,7 +501,7 @@ key_decrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 	static cryptkeyres res;
 
 	if (debugging) {
-		(void) fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
+		fprintf(stderr, "decrypt(%ld, %s, %08x%08x) = ", uid,
 				arg->remotename, arg->deskey.key.high,
 				arg->deskey.key.low);
 	}
@@ -510,13 +510,13 @@ key_decrypt_1_svc_prog(uid_t uid, cryptkeyarg *arg)
 				&res.cryptkeyres_u.deskey);
 	if (debugging) {
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "%08x%08x\n",
+			fprintf(stderr, "%08x%08x\n",
 					res.cryptkeyres_u.deskey.key.high,
 					res.cryptkeyres_u.deskey.key.low);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -529,7 +529,7 @@ key_gen_1_svc_prog(void *v, struct svc_req *s)
 	static des_block keygen;
 	static des_block key;
 
-	(void) gettimeofday(&time, (struct timezone *) NULL);
+	gettimeofday(&time, (struct timezone *) NULL);
 	keygen.key.high += (time.tv_sec ^ time.tv_usec);
 	keygen.key.low += (time.tv_sec ^ time.tv_usec);
 	ecb_crypt((char *)&masterkey, (char *)&keygen, sizeof (keygen),
@@ -537,9 +537,9 @@ key_gen_1_svc_prog(void *v, struct svc_req *s)
 	key = keygen;
 	des_setparity((char *)&key);
 	if (debugging) {
-		(void) fprintf(stderr, "gen() = %08x%08x\n", key.key.high,
+		fprintf(stderr, "gen() = %08x%08x\n", key.key.high,
 					key.key.low);
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&key);
 }
@@ -560,14 +560,14 @@ key_getcred_1_svc_prog(uid_t uid, netnamestr *name)
 		res.status = KEY_SUCCESS;
 	}
 	if (debugging) {
-		(void) fprintf(stderr, "getcred(%s) = ", *name);
+		fprintf(stderr, "getcred(%s) = ", *name);
 		if (res.status == KEY_SUCCESS) {
-			(void) fprintf(stderr, "uid=%d, gid=%d, grouplen=%d\n",
+			fprintf(stderr, "uid=%d, gid=%d, grouplen=%d\n",
 				cred->uid, cred->gid, cred->gids.gids_len);
 		} else {
-			(void) fprintf(stderr, "%s\n", strstatus(res.status));
+			fprintf(stderr, "%s\n", strstatus(res.status));
 		}
-		(void) fflush(stderr);
+		fflush(stderr);
 	}
 	return (&res);
 }
@@ -680,16 +680,15 @@ keyprogram(struct svc_req *rqstp, SVCXPRT *transp)
 	if (check_auth) {
 		if (root_auth(transp, rqstp) == 0) {
 			if (debugging) {
-				(void) fprintf(stderr,
-				"not local privileged process\n");
+				fprintf(stderr,
+					"not local privileged process\n");
 			}
 			svcerr_weakauth(transp);
 			return;
 		}
 		if (rqstp->rq_cred.oa_flavor != AUTH_SYS) {
 			if (debugging) {
-				(void) fprintf(stderr,
-				"not unix authentication\n");
+				fprintf(stderr, "not unix authentication\n");
 			}
 			svcerr_weakauth(transp);
 			return;
@@ -705,13 +704,12 @@ keyprogram(struct svc_req *rqstp, SVCXPRT *transp)
 	result = (*local) (uid, &argument);
 	if (!svc_sendreply(transp, xdr_result, (char *) result)) {
 		if (debugging)
-			(void) fprintf(stderr, "unable to reply\n");
+			fprintf(stderr, "unable to reply\n");
 		svcerr_systemerr(transp);
 	}
 	if (!svc_freeargs(transp, xdr_argument, (caddr_t)&argument)) {
 		if (debugging)
-			(void) fprintf(stderr,
-			"unable to free arguments\n");
+			fprintf(stderr, "unable to free arguments\n");
 		exit(1);
 	}
 	return;
@@ -762,8 +760,7 @@ root_auth(SVCXPRT *trans, struct svc_req *rqstp)
 static void
 usage(void)
 {
-	(void) fprintf(stderr,
-			"usage: keyserv [-n] [-D] [-d] [-v] [-p path]\n");
-	(void) fprintf(stderr, "-d disables the use of default keys\n");
+	fprintf(stderr, "usage: keyserv [-n] [-D] [-d] [-v] [-p path]\n");
+	fprintf(stderr, "-d disables the use of default keys\n");
 	exit(1);
 }

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)syslogd.c	8.3 (Berkeley) 4/4/94
  * $FreeBSD: src/usr.sbin/syslogd/syslogd.c,v 1.130 2004/07/04 19:52:48 cperciva Exp $
- * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.4 2004/10/30 20:26:48 dillon Exp $
+ * $DragonFly: src/usr.sbin/syslogd/syslogd.c,v 1.5 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -433,12 +433,12 @@ main(int argc, char *argv[])
 		endservent();
 
 	consfile.f_type = F_CONSOLE;
-	(void)strlcpy(consfile.f_un.f_fname, ctty + sizeof _PATH_DEV - 1,
+	strlcpy(consfile.f_un.f_fname, ctty + sizeof _PATH_DEV - 1,
 	    sizeof(consfile.f_un.f_fname));
-	(void)strlcpy(bootfile, getbootfile(), sizeof(bootfile));
-	(void)signal(SIGTERM, dodie);
-	(void)signal(SIGINT, Debug ? dodie : SIG_IGN);
-	(void)signal(SIGQUIT, Debug ? dodie : SIG_IGN);
+	strlcpy(bootfile, getbootfile(), sizeof(bootfile));
+	signal(SIGTERM, dodie);
+	signal(SIGINT, Debug ? dodie : SIG_IGN);
+	signal(SIGQUIT, Debug ? dodie : SIG_IGN);
 	/*
 	 * We don't want the SIGCHLD and SIGHUP handlers to interfere
 	 * with each other; they are likely candidates for being called
@@ -450,10 +450,10 @@ main(int argc, char *argv[])
 	sact.sa_handler = reapchild;
 	sact.sa_mask = mask;
 	sact.sa_flags = SA_RESTART;
-	(void)sigaction(SIGCHLD, &sact, NULL);
-	(void)signal(SIGALRM, domark);
-	(void)signal(SIGPIPE, SIG_IGN);	/* We'll catch EPIPE instead. */
-	(void)alarm(TIMERINTVL);
+	sigaction(SIGCHLD, &sact, NULL);
+	signal(SIGALRM, domark);
+	signal(SIGPIPE, SIG_IGN);	/* We'll catch EPIPE instead. */
+	alarm(TIMERINTVL);
 
 	TAILQ_INIT(&deadq_head);
 
@@ -461,17 +461,17 @@ main(int argc, char *argv[])
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nfunix; i++) {
-		(void)unlink(funixn[i]);
+		unlink(funixn[i]);
 		memset(&sunx, 0, sizeof(sunx));
 		sunx.sun_family = AF_UNIX;
-		(void)strlcpy(sunx.sun_path, funixn[i], sizeof(sunx.sun_path));
+		strlcpy(sunx.sun_path, funixn[i], sizeof(sunx.sun_path));
 		funix[i] = socket(AF_UNIX, SOCK_DGRAM, 0);
 		if (funix[i] < 0 ||
 		    bind(funix[i], (struct sockaddr *)&sunx,
 			 SUN_LEN(&sunx)) < 0 ||
 		    chmod(funixn[i], 0666) < 0) {
-			(void)snprintf(line, sizeof line,
-					"cannot create %s", funixn[i]);
+			snprintf(line, sizeof line,
+				 "cannot create %s", funixn[i]);
 			logerror(line);
 			dprintf("cannot create %s (%d)\n", funixn[i], errno);
 			if (i == 0)
@@ -506,7 +506,7 @@ main(int argc, char *argv[])
 	fp = fopen(PidFile, "w");
 	if (fp != NULL) {
 		fprintf(fp, "%d\n", getpid());
-		(void)fclose(fp);
+		fclose(fp);
 	}
 
 	dprintf("off & running....\n");
@@ -518,7 +518,7 @@ main(int argc, char *argv[])
 	sact.sa_handler = init;
 	sact.sa_mask = mask;
 	sact.sa_flags = SA_RESTART;
-	(void)sigaction(SIGHUP, &sact, NULL);
+	sigaction(SIGHUP, &sact, NULL);
 
 	tvp = &tv;
 	tv.tv_sec = tv.tv_usec = 0;
@@ -859,7 +859,7 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 	    msg[9] != ':' || msg[12] != ':' || msg[15] != ' ')
 		flags |= ADDDATE;
 
-	(void)time(&now);
+	time(&now);
 	if (flags & ADDDATE) {
 		timestamp = ctime(&now) + 4;
 	} else {
@@ -904,12 +904,12 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 		f->f_file = open(ctty, O_WRONLY, 0);
 
 		if (f->f_file >= 0) {
-			(void)strlcpy(f->f_lasttime, timestamp,
+			strlcpy(f->f_lasttime, timestamp,
 				sizeof(f->f_lasttime));
 			fprintlog(f, flags, msg);
-			(void)close(f->f_file);
+			close(f->f_file);
 		}
-		(void)sigsetmask(omask);
+		sigsetmask(omask);
 		return;
 	}
 	for (f = Files; f; f = f->f_next) {
@@ -944,7 +944,7 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 		    (flags & MARK) == 0 && msglen == f->f_prevlen &&
 		    !strcmp(msg, f->f_prevline) &&
 		    !strcasecmp(from, f->f_prevhost)) {
-			(void)strlcpy(f->f_lasttime, timestamp,
+			strlcpy(f->f_lasttime, timestamp,
 				sizeof(f->f_lasttime));
 			f->f_prevcount++;
 			dprintf("msg repeated %d times, %ld sec of %d\n",
@@ -966,13 +966,13 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 				fprintlog(f, 0, (char *)NULL);
 			f->f_repeatcount = 0;
 			f->f_prevpri = pri;
-			(void)strlcpy(f->f_lasttime, timestamp,
+			strlcpy(f->f_lasttime, timestamp,
 				sizeof(f->f_lasttime));
-			(void)strlcpy(f->f_prevhost, from,
+			strlcpy(f->f_prevhost, from,
 			    sizeof(f->f_prevhost));
 			if (msglen < MAXSVLINE) {
 				f->f_prevlen = msglen;
-				(void)strlcpy(f->f_prevline, msg, sizeof(f->f_prevline));
+				strlcpy(f->f_prevline, msg, sizeof(f->f_prevline));
 				fprintlog(f, flags, (char *)NULL);
 			} else {
 				f->f_prevline[0] = 0;
@@ -981,7 +981,7 @@ logmsg(int pri, const char *msg, const char *from, int flags)
 			}
 		}
 	}
-	(void)sigsetmask(omask);
+	sigsetmask(omask);
 }
 
 static void
@@ -993,7 +993,7 @@ dofsync(void)
 		if ((f->f_type == F_FILE) &&
 		    (f->f_flags & FFLAG_NEEDSYNC)) {
 			f->f_flags &= ~FFLAG_NEEDSYNC;
-			(void)fsync(f->f_file);
+			fsync(f->f_file);
 		}
 	}
 }
@@ -1172,7 +1172,7 @@ fprintlog(struct filed *f, int flags, const char *msg)
 		v->iov_len = 1;
 		if (writev(f->f_file, iov, 7) < 0) {
 			int e = errno;
-			(void)close(f->f_file);
+			close(f->f_file);
 			f->f_type = F_UNUSED;
 			errno = e;
 			logerror(f->f_un.f_fname);
@@ -1211,7 +1211,7 @@ fprintlog(struct filed *f, int flags, const char *msg)
 		}
 		if (writev(f->f_file, iov, 7) < 0) {
 			int e = errno;
-			(void)close(f->f_file);
+			close(f->f_file);
 			if (f->f_un.f_pipe.f_pid > 0)
 				deadq_enter(f->f_un.f_pipe.f_pid,
 					    f->f_un.f_pipe.f_pname);
@@ -1305,7 +1305,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 			}
 		}
 	}
-	(void)fclose(uf);
+	fclose(uf);
 	reenter = 0;
 }
 
@@ -1329,7 +1329,7 @@ reapchild(int signo __unused)
 		for (f = Files; f; f = f->f_next)
 			if (f->f_type == F_PIPE &&
 			    f->f_un.f_pipe.f_pid == pid) {
-				(void)close(f->f_file);
+				close(f->f_file);
 				f->f_un.f_pipe.f_pid = 0;
 				log_deadchild(pid, status,
 					      f->f_un.f_pipe.f_pname);
@@ -1410,10 +1410,10 @@ logerror(const char *type)
 		return;
 	recursed++;
 	if (errno)
-		(void)snprintf(buf,
+		snprintf(buf,
 		    sizeof buf, "syslogd: %s: %s", type, strerror(errno));
 	else
-		(void)snprintf(buf, sizeof buf, "syslogd: %s", type);
+		snprintf(buf, sizeof buf, "syslogd: %s", type);
 	errno = 0;
 	dprintf("%s\n", buf);
 	logmsg(LOG_SYSLOG|LOG_ERR, buf, LocalHostName, ADDDATE);
@@ -1435,20 +1435,20 @@ die(int signo)
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
 		if (f->f_type == F_PIPE && f->f_un.f_pipe.f_pid > 0) {
-			(void)close(f->f_file);
+			close(f->f_file);
 			f->f_un.f_pipe.f_pid = 0;
 		}
 	}
 	Initialized = was_initialized;
 	if (signo) {
 		dprintf("syslogd: exiting on signal %d\n", signo);
-		(void)snprintf(buf, sizeof(buf), "exiting on signal %d", signo);
+		snprintf(buf, sizeof(buf), "exiting on signal %d", signo);
 		errno = 0;
 		logerror(buf);
 	}
 	for (i = 0; i < nfunix; i++)
 		if (funixn[i] && funix[i] != -1)
-			(void)unlink(funixn[i]);
+			unlink(funixn[i]);
 	exit(1);
 }
 
@@ -1475,7 +1475,7 @@ init(int signo)
 	 * Load hostname (may have changed).
 	 */
 	if (signo != 0)
-		(void)strlcpy(oldLocalHostName, LocalHostName,
+		strlcpy(oldLocalHostName, LocalHostName,
 		    sizeof(oldLocalHostName));
 	if (gethostname(LocalHostName, sizeof(LocalHostName)))
 		err(EX_OSERR, "gethostname() failed");
@@ -1500,11 +1500,11 @@ init(int signo)
 		case F_FORW:
 		case F_CONSOLE:
 		case F_TTY:
-			(void)close(f->f_file);
+			close(f->f_file);
 			break;
 		case F_PIPE:
 			if (f->f_un.f_pipe.f_pid > 0) {
-				(void)close(f->f_file);
+				close(f->f_file);
 				deadq_enter(f->f_un.f_pipe.f_pid,
 					    f->f_un.f_pipe.f_pname);
 			}
@@ -1547,8 +1547,8 @@ init(int signo)
 	 *  Foreach line in the conf table, open that file.
 	 */
 	f = NULL;
-	(void)strlcpy(host, "*", sizeof(host));
-	(void)strlcpy(prog, "*", sizeof(prog));
+	strlcpy(host, "*", sizeof(host));
+	strlcpy(prog, "*", sizeof(prog));
 	while (fgets(cline, sizeof(cline), cf) != NULL) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
@@ -1569,7 +1569,7 @@ init(int signo)
 			while (isspace(*p))
 				p++;
 			if ((!*p) || (*p == '*')) {
-				(void)strlcpy(host, "*", sizeof(host));
+				strlcpy(host, "*", sizeof(host));
 				continue;
 			}
 			if (*p == '@')
@@ -1587,7 +1587,7 @@ init(int signo)
 			p++;
 			while (isspace(*p)) p++;
 			if ((!*p) || (*p == '*')) {
-				(void)strlcpy(prog, "*", sizeof(prog));
+				strlcpy(prog, "*", sizeof(prog));
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
@@ -1611,7 +1611,7 @@ init(int signo)
 	}
 
 	/* close the configuration file */
-	(void)fclose(cf);
+	fclose(cf);
 
 	Initialized = 1;
 
@@ -1662,7 +1662,7 @@ init(int signo)
 	 * Log a change in hostname, but only on a restart.
 	 */
 	if (signo != 0 && strcmp(oldLocalHostName, LocalHostName) != 0) {
-		(void)snprintf(hostMsg, sizeof(hostMsg),
+		snprintf(hostMsg, sizeof(hostMsg),
 		    "syslogd: hostname changed, \"%s\" to \"%s\"",
 		    oldLocalHostName, LocalHostName);
 		logmsg(LOG_SYSLOG|LOG_INFO, hostMsg, LocalHostName, ADDDATE);
@@ -1673,7 +1673,7 @@ init(int signo)
 	 * the prefix, and if this is *not* a restart.
 	 */
 	if (signo == 0 && !use_bootfile) {
-		(void)snprintf(bootfileMsg, sizeof(bootfileMsg),
+		snprintf(bootfileMsg, sizeof(bootfileMsg),
 		    "syslogd: kernel boot file is %s", bootfile);
 		logmsg(LOG_KERN|LOG_INFO, bootfileMsg, LocalHostName, ADDDATE);
 		dprintf("%s\n", bootfileMsg);
@@ -1788,7 +1788,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 
 			pri = decode(buf, prioritynames);
 			if (pri < 0) {
-				(void)snprintf(ebuf, sizeof ebuf,
+				snprintf(ebuf, sizeof ebuf,
 				    "unknown priority name \"%s\"", buf);
 				logerror(ebuf);
 				return;
@@ -1816,7 +1816,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 			} else {
 				i = decode(buf, facilitynames);
 				if (i < 0) {
-					(void)snprintf(ebuf, sizeof ebuf,
+					snprintf(ebuf, sizeof ebuf,
 					    "unknown facility name \"%s\"",
 					    buf);
 					logerror(ebuf);
@@ -1844,7 +1844,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 
 	switch (*p) {
 	case '@':
-		(void)strlcpy(f->f_un.f_forw.f_hname, ++p,
+		strlcpy(f->f_un.f_forw.f_hname, ++p,
 			sizeof(f->f_un.f_forw.f_hname));
 		memset(&hints, 0, sizeof(hints));
 		hints.ai_family = family;
@@ -1872,10 +1872,10 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 				f->f_type = F_CONSOLE;
 			else
 				f->f_type = F_TTY;
-			(void)strlcpy(f->f_un.f_fname, p + sizeof(_PATH_DEV) - 1,
+			strlcpy(f->f_un.f_fname, p + sizeof(_PATH_DEV) - 1,
 			    sizeof(f->f_un.f_fname));
 		} else {
-			(void)strlcpy(f->f_un.f_fname, p, sizeof(f->f_un.f_fname));
+			strlcpy(f->f_un.f_fname, p, sizeof(f->f_un.f_fname));
 			f->f_type = F_FILE;
 		}
 		break;
@@ -1918,7 +1918,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 
 	case '|':
 		f->f_un.f_pipe.f_pid = 0;
-		(void)strlcpy(f->f_un.f_fname, p + 1, sizeof(f->f_un.f_fname));
+		strlcpy(f->f_un.f_fname, p + 1, sizeof(f->f_un.f_fname));
 		f->f_type = F_PIPE;
 		break;
 
@@ -1930,7 +1930,7 @@ cfline(const char *line, struct filed *f, const char *prog, const char *host)
 		for (i = 0; i < MAXUNAMES && *p; i++) {
 			for (q = p; *q && *q != ','; )
 				q++;
-			(void)strncpy(f->f_un.f_uname[i], p, UT_NAMESIZE);
+			strncpy(f->f_un.f_uname[i], p, UT_NAMESIZE);
 			if ((q - p) > UT_NAMESIZE)
 				f->f_un.f_uname[i][UT_NAMESIZE] = '\0';
 			else
@@ -2003,7 +2003,7 @@ markit(void)
 		case 0:
 			/* Already signalled once, try harder now. */
 			if (kill(q->dq_pid, SIGKILL) != 0)
-				(void)deadq_remove(q->dq_pid);
+				deadq_remove(q->dq_pid);
 			break;
 
 		case 1:
@@ -2016,7 +2016,7 @@ markit(void)
 			 * drop it from the dead queue).
 			 */
 			if (kill(q->dq_pid, SIGTERM) != 0)
-				(void)deadq_remove(q->dq_pid);
+				deadq_remove(q->dq_pid);
 			/* FALLTHROUGH */
 
 		default:
@@ -2024,7 +2024,7 @@ markit(void)
 		}
 	}
 	MarkSet = 0;
-	(void)alarm(TIMERINTVL);
+	alarm(TIMERINTVL);
 }
 
 /*
@@ -2066,14 +2066,14 @@ waitdaemon(int nochdir, int noclose, int maxwait)
 		return (-1);
 
 	if (!nochdir)
-		(void)chdir("/");
+		chdir("/");
 
 	if (!noclose && (fd = open(_PATH_DEVNULL, O_RDWR, 0)) != -1) {
-		(void)dup2(fd, STDIN_FILENO);
-		(void)dup2(fd, STDOUT_FILENO);
-		(void)dup2(fd, STDERR_FILENO);
+		dup2(fd, STDIN_FILENO);
+		dup2(fd, STDOUT_FILENO);
+		dup2(fd, STDERR_FILENO);
 		if (fd > 2)
-			(void)close (fd);
+			close (fd);
 	}
 	return (getppid());
 }
@@ -2291,7 +2291,7 @@ validate(struct sockaddr *sa, const char *hname)
 		/* traditional behaviour, allow everything */
 		return (1);
 
-	(void)strlcpy(name, hname, sizeof(name));
+	strlcpy(name, hname, sizeof(name));
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -2425,7 +2425,7 @@ p_open(const char *prog, pid_t *rpid)
 		}
 
 		alarm(0);
-		(void)setsid();	/* Avoid catching SIGHUPs. */
+		setsid();	/* Avoid catching SIGHUPs. */
 
 		/*
 		 * Throw away pending signals, and reset signal
@@ -2443,9 +2443,9 @@ p_open(const char *prog, pid_t *rpid)
 		dup2(nulldesc, STDOUT_FILENO);
 		dup2(nulldesc, STDERR_FILENO);
 		for (i = getdtablesize(); i > 2; i--)
-			(void)close(i);
+			close(i);
 
-		(void)execvp(_PATH_BSHELL, argv);
+		execvp(_PATH_BSHELL, argv);
 		_exit(255);
 	}
 
@@ -2463,10 +2463,10 @@ p_open(const char *prog, pid_t *rpid)
 	 */
 	if (fcntl(pfd[1], F_SETFL, O_NONBLOCK) == -1) {
 		/* This is bad. */
-		(void)snprintf(errmsg, sizeof errmsg,
-			       "Warning: cannot change pipe to PID %d to "
-			       "non-blocking behaviour.",
-			       (int)pid);
+		snprintf(errmsg, sizeof errmsg,
+			 "Warning: cannot change pipe to PID %d to "
+			 "non-blocking behaviour.",
+			 (int)pid);
 		logerror(errmsg);
 	}
 	*rpid = pid;
@@ -2534,9 +2534,9 @@ log_deadchild(pid_t pid, int status, const char *name)
 		if (code == 0)
 			return;
 	}
-	(void)snprintf(buf, sizeof buf,
-		       "Logging subprocess %d (%s) exited %s %d.",
-		       pid, name, reason, code);
+	snprintf(buf, sizeof buf,
+		 "Logging subprocess %d (%s) exited %s %d.",
+		 pid, name, reason, code);
 	logerror(buf);
 }
 

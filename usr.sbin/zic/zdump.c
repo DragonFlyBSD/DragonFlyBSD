@@ -7,7 +7,7 @@ static char	elsieid[] = "@(#)zdump.c	7.28";
 /*
  * @(#)zdump.c	7.28
  * $FreeBSD: src/usr.sbin/zic/zdump.c,v 1.7 1999/08/28 01:21:19 peter Exp $
- * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.3 2004/02/29 16:55:28 joerg Exp $
+ * $DragonFly: src/usr.sbin/zic/zdump.c,v 1.4 2004/12/18 22:48:15 swildner Exp $
  */
 /*
 ** This code has been made independent of the rest of the time
@@ -148,11 +148,11 @@ main(int argc, char *argv[])
 
 	INITIALIZE(cuttime);
 #if HAVE_GETTEXT - 0
-	(void) setlocale(LC_MESSAGES, "");
+	setlocale(LC_MESSAGES, "");
 #ifdef TZ_DOMAINDIR
-	(void) bindtextdomain(TZ_DOMAIN, TZ_DOMAINDIR);
+	bindtextdomain(TZ_DOMAIN, TZ_DOMAINDIR);
 #endif /* defined(TEXTDOMAINDIR) */
-	(void) textdomain(TZ_DOMAIN);
+	textdomain(TZ_DOMAIN);
 #endif /* HAVE_GETTEXT - 0 */
 	vflag = 0;
 	cutoff = NULL;
@@ -173,7 +173,7 @@ main(int argc, char *argv[])
 			cuttime += DAYSPERNYEAR + isleap(y);
 		cuttime *= SECSPERHOUR * HOURSPERDAY;
 	}
-	(void) time(&now);
+	time(&now);
 	longest = 0;
 	for (i = optind; i < argc; ++i)
 		if (strlen(argv[i]) > longest)
@@ -194,7 +194,7 @@ main(int argc, char *argv[])
 					errx(EXIT_FAILURE,
 					     _("malloc() failed"));
 		to = 0;
-		(void) strcpy(fakeenv[to++], "TZ=");
+		strcpy(fakeenv[to++], "TZ=");
 		for (from = 0; environ[from] != NULL; ++from)
 			if (strncmp(environ[from], "TZ=", 3) != 0)
 				fakeenv[to++] = environ[from];
@@ -204,7 +204,7 @@ main(int argc, char *argv[])
 	for (i = optind; i < argc; ++i) {
 		static char	buf[MAX_STRING_LENGTH];
 
-		(void) strcpy(&fakeenv[0][3], argv[i]);
+		strcpy(&fakeenv[0][3], argv[i]);
 		if (!vflag) {
 			show(argv[i], now, FALSE);
 			continue;
@@ -219,7 +219,7 @@ main(int argc, char *argv[])
 		t += SECSPERHOUR * HOURSPERDAY;
 		show(argv[i], t, TRUE);
 		tm = *localtime(&t);
-		(void) strncpy(buf, abbr(&tm), (sizeof buf) - 1);
+		strncpy(buf, abbr(&tm), (sizeof buf) - 1);
 		for ( ; ; ) {
 			if (cutoff != NULL && t >= cuttime)
 				break;
@@ -234,7 +234,7 @@ main(int argc, char *argv[])
 				strcmp(abbr(&newtm), buf) != 0) {
 					newt = hunt(argv[i], t, newt);
 					newtm = *localtime(&newt);
-					(void) strncpy(buf, abbr(&newtm),
+					strncpy(buf, abbr(&newtm),
 						(sizeof buf) - 1);
 			}
 			t = newt;
@@ -276,7 +276,7 @@ hunt(char *name, time_t lot, time_t hit)
 	static char	loab[MAX_STRING_LENGTH];
 
 	lotm = *localtime(&lot);
-	(void) strncpy(loab, abbr(&lotm), (sizeof loab) - 1);
+	strncpy(loab, abbr(&lotm), (sizeof loab) - 1);
 	while ((hit - lot) >= 2) {
 		t = lot / 2 + hit / 2;
 		if (t <= lot)
@@ -326,20 +326,20 @@ show(char *zone, time_t t, int v)
 {
 	struct tm *	tmp;
 
-	(void) printf("%-*s  ", (int) longest, zone);
+	printf("%-*s  ", (int) longest, zone);
 	if (v)
-		(void) printf("%.24s UTC = ", asctime(gmtime(&t)));
+		printf("%.24s UTC = ", asctime(gmtime(&t)));
 	tmp = localtime(&t);
-	(void) printf("%.24s", asctime(tmp));
+	printf("%.24s", asctime(tmp));
 	if (*abbr(tmp) != '\0')
-		(void) printf(" %s", abbr(tmp));
+		printf(" %s", abbr(tmp));
 	if (v) {
-		(void) printf(" isdst=%d", tmp->tm_isdst);
+		printf(" isdst=%d", tmp->tm_isdst);
 #ifdef TM_GMTOFF
-		(void) printf(" gmtoff=%ld", tmp->TM_GMTOFF);
+		printf(" gmtoff=%ld", tmp->TM_GMTOFF);
 #endif /* defined TM_GMTOFF */
 	}
-	(void) printf("\n");
+	printf("\n");
 }
 
 static char *

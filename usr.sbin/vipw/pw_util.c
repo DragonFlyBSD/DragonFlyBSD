@@ -32,7 +32,7 @@
  *
  * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/vipw/pw_util.c,v 1.17.2.4 2002/09/04 15:28:10 des Exp $
- * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.2 2003/06/17 04:30:04 dillon Exp $
+ * $DragonFly: src/usr.sbin/vipw/pw_util.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -81,27 +81,27 @@ pw_init()
 
 	/* Unlimited resource limits. */
 	rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
-	(void)setrlimit(RLIMIT_CPU, &rlim);
-	(void)setrlimit(RLIMIT_FSIZE, &rlim);
-	(void)setrlimit(RLIMIT_STACK, &rlim);
-	(void)setrlimit(RLIMIT_DATA, &rlim);
-	(void)setrlimit(RLIMIT_RSS, &rlim);
+	setrlimit(RLIMIT_CPU, &rlim);
+	setrlimit(RLIMIT_FSIZE, &rlim);
+	setrlimit(RLIMIT_STACK, &rlim);
+	setrlimit(RLIMIT_DATA, &rlim);
+	setrlimit(RLIMIT_RSS, &rlim);
 
 	/* Don't drop core (not really necessary, but GP's). */
 	rlim.rlim_cur = rlim.rlim_max = 0;
-	(void)setrlimit(RLIMIT_CORE, &rlim);
+	setrlimit(RLIMIT_CORE, &rlim);
 
 	/* Turn off signals. */
-	(void)signal(SIGALRM, SIG_IGN);
-	(void)signal(SIGHUP, SIG_IGN);
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGPIPE, SIG_IGN);
-	(void)signal(SIGQUIT, SIG_IGN);
-	(void)signal(SIGTERM, SIG_IGN);
-	(void)signal(SIGCONT, pw_cont);
+	signal(SIGALRM, SIG_IGN);
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTERM, SIG_IGN);
+	signal(SIGCONT, pw_cont);
 
 	/* Create with exact permissions. */
-	(void)umask(0);
+	umask(0);
 }
 
 int
@@ -163,7 +163,7 @@ char *username;
 	int pstat;
 	pid_t pid;
 
-	(void)fflush(stderr);
+	fflush(stderr);
 	if (!(pid = fork())) {
 		if(!username) {
 			warnx("rebuilding the database...");
@@ -199,8 +199,8 @@ pw_edit(notsetuid)
 
 	if (!(editpid = fork())) {
 		if (notsetuid) {
-			(void)setgid(getgid());
-			(void)setuid(getuid());
+			setgid(getgid());
+			setuid(getuid());
 		}
 		errno = 0;
 		execlp(editor, p, tempname, NULL);
@@ -226,8 +226,8 @@ pw_prompt()
 {
 	int c, first;
 
-	(void)printf("re-edit the password file? [y]: ");
-	(void)fflush(stdout);
+	printf("re-edit the password file? [y]: ");
+	fflush(stdout);
 	first = c = getchar();
 	while (c != '\n' && c != EOF)
 		c = getchar();
@@ -255,6 +255,6 @@ pw_error(name, err, eval)
 	else
 #endif /* YP */
 	warnx("%s: unchanged", masterpasswd);
-	(void)unlink(tempname);
+	unlink(tempname);
 	exit(eval);
 }

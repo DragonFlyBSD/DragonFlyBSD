@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)chroot.c	8.1 (Berkeley) 6/9/93
  * $FreeBSD: src/usr.sbin/chroot/chroot.c,v 1.4.2.1 2002/03/15 22:54:59 mikeh Exp $
- * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.6 2004/11/28 16:38:21 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/chroot/chroot.c,v 1.7 2004/12/18 22:48:02 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -169,7 +169,7 @@ main(int argc, char **argv)
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: chroot [-g group] [-G group,group,...] "
+	fprintf(stderr, "usage: chroot [-g group] [-G group,group,...] "
 	    "[-u user] newroot [command]\n");
 	exit(1);
 }

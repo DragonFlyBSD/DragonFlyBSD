@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.statd/statd.c,v 1.6 1999/10/05 14:40:38 marcel Exp $
- * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rpc.statd/statd.c,v 1.4 2004/12/18 22:48:13 swildner Exp $
  */
 
 /* main() function for status monitor daemon.  Some of the code in this	*/
@@ -67,7 +67,7 @@ main(int argc, char **argv)
     debug = 1;
   }
 
-  (void)pmap_unset(SM_PROG, SM_VERS);
+  pmap_unset(SM_PROG, SM_VERS);
 
   transp = svcudp_create(RPC_ANYSOCK);
   if (transp == NULL)

@@ -9,7 +9,7 @@ use and modify. Please send modifications and/or suggestions + bug fixes to
 
 /*
  * $FreeBSD: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.9 1999/08/28 01:15:39 peter Exp $
- * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.4 2003/11/15 23:33:35 eirikn Exp $
+ * $DragonFly: src/usr.sbin/bootparamd/bootparamd/main.c,v 1.5 2004/12/18 22:48:02 swildner Exp $
  */
 #include <ctype.h>
 #include <err.h>
@@ -95,7 +95,7 @@ main(int argc, char **argv)
 	}
 
 
-	(void)pmap_unset(BOOTPARAMPROG, BOOTPARAMVERS);
+	pmap_unset(BOOTPARAMPROG, BOOTPARAMVERS);
 
 	transp = svcudp_create(RPC_ANYSOCK);
 	if (transp == NULL)

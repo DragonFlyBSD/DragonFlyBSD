@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rrenumd/rrenumd.c,v 1.1.2.4 2001/07/09 09:49:49 ume Exp $
- * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rrenumd/rrenumd.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -594,9 +594,9 @@ main(int argc, char *argv[])
 
 	/* set log level */
 	if (flags.debug == 0)
-		(void)setlogmask(LOG_UPTO(LOG_ERR));
+		setlogmask(LOG_UPTO(LOG_ERR));
 	if (flags.debug == 1)
-		(void)setlogmask(LOG_UPTO(LOG_INFO));
+		setlogmask(LOG_UPTO(LOG_INFO));
 
 	/* init global variables */
 	init_globals();

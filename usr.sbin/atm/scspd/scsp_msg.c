@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_msg.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 
@@ -175,7 +175,7 @@ scsp_csus_ack(Scsp_dcs *dcsp, Scsp_msg *msg)
 		 * If the CRL isn't empty, send another CSUS
 		 */
 		if (dcsp->sd_crl) {
-			(void)scsp_send_csus(dcsp);
+			scsp_send_csus(dcsp);
 		}
 	}
 }

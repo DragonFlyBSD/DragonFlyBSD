@@ -27,7 +27,7 @@
  *
  *	From BSDI: daemon.c,v 1.2 1996/08/15 01:11:09 jch Exp
  * $FreeBSD: src/usr.sbin/daemon/daemon.c,v 1.1.2.1 2002/08/28 17:25:54 sheldonh Exp $
- * $DragonFly: src/usr.sbin/daemon/daemon.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/daemon/daemon.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -74,6 +74,6 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	(void)fprintf(stderr, "usage: daemon [-cf] command arguments ...\n");
+	fprintf(stderr, "usage: daemon [-cf] command arguments ...\n");
 	exit(1);
 }

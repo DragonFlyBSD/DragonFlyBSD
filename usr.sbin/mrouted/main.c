@@ -10,7 +10,7 @@
  * main.c,v 3.8.4.29 1998/03/01 01:49:00 fenner Exp
  *
  * $FreeBSD: src/usr.sbin/mrouted/main.c,v 1.16.2.4 2002/09/12 16:27:49 nectar Exp $
- * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.4 2004/03/15 18:10:28 dillon Exp $
+ * $DragonFly: src/usr.sbin/mrouted/main.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
  */
 
 /*
@@ -250,10 +250,10 @@ main(int argc, char **argv)
     }
 
 #ifdef LOG_DAEMON
-    (void)openlog("mrouted", LOG_PID, LOG_DAEMON);
-    (void)setlogmask(LOG_UPTO(LOG_NOTICE));
+    openlog("mrouted", LOG_PID, LOG_DAEMON);
+    setlogmask(LOG_UPTO(LOG_NOTICE));
 #else
-    (void)openlog("mrouted", LOG_PID);
+    openlog("mrouted", LOG_PID);
 #endif
     sprintf(versionstring, "mrouted version %s", todaysversion);
 
@@ -274,13 +274,13 @@ main(int argc, char **argv)
 	fscanf(fp, "%d", &prev_genid);
 	if (prev_genid == dvmrp_genid)
 	    dvmrp_genid++;
-	(void) fclose(fp);
+	fclose(fp);
     }
 
     fp = fopen(genidfilename, "w");
     if (fp != NULL) {
 	fprintf(fp, "%d", dvmrp_genid);
-	(void) fclose(fp);
+	fclose(fp);
     }
 
     /* Start up the log rate-limiter */
@@ -373,20 +373,20 @@ main(int argc, char **argv)
 
 	haveterminal = 0;
 	if (fork()) exit(0);
-	(void)close(0);
-	(void)close(1);
-	(void)close(2);
-	(void)open("/", 0);
-	(void)dup2(0, 1);
-	(void)dup2(0, 2);
+	close(0);
+	close(1);
+	close(2);
+	open("/", 0);
+	dup2(0, 1);
+	dup2(0, 2);
 #if defined(SYSV) || defined(linux)
-	(void)setpgrp();
+	setpgrp();
 #else
 #ifdef TIOCNOTTY
 	t = open(_PATH_TTY, 2);
 	if (t >= 0) {
-	    (void)ioctl(t, TIOCNOTTY, (char *)0);
-	    (void)close(t);
+	    ioctl(t, TIOCNOTTY, (char *)0);
+	    close(t);
 	}
 #else
 	if (setsid() < 0)
@@ -398,7 +398,7 @@ main(int argc, char **argv)
     fp = fopen(pidfilename, "w");		
     if (fp != NULL) {
 	fprintf(fp, "%d\n", (int)getpid());
-	(void) fclose(fp);
+	fclose(fp);
     }
 
     /* XXX HACK
@@ -775,7 +775,7 @@ fdump(void)
 	dump_version(fp);
 	dump_vifs(fp);
 	dump_routes(fp);
-	(void) fclose(fp);
+	fclose(fp);
     }
 }
 
@@ -792,7 +792,7 @@ cdump(void)
     if (fp != NULL) {
 	dump_version(fp);
 	dump_cache(fp); 
-	(void) fclose(fp);
+	fclose(fp);
     }
 }
 

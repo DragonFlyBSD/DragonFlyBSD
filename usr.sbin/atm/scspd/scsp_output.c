@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/scspd/scsp_output.c,v 1.3 1999/08/28 01:15:33 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_output.c,v 1.3 2003/11/15 20:33:43 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/scspd/scsp_output.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -880,14 +880,13 @@ scsp_send_msg(Scsp_dcs *dcsp, Scsp_msg *msg)
 		/*
 		 * There was an error on the write--close the VCC
 		 */
-		(void)close(dcsp->sd_sock);
+		close(dcsp->sd_sock);
 		dcsp->sd_sock = -1;
 
 		/*
 		 * Inform the Hello FSM
 		 */
-		(void)scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED,
-				(Scsp_msg *)0);
+		scsp_hfsm(dcsp, SCSP_HFSM_VC_CLOSED, (Scsp_msg *)0);
 
 		/*
 		 * Set the return code

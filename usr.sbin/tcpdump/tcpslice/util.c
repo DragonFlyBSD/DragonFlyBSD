@@ -19,7 +19,7 @@
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.3 1999/08/28 05:11:32 peter Exp $
- * $DragonFly: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.2 2003/06/17 04:30:03 dillon Exp $
+ * $DragonFly: src/usr.sbin/tcpdump/tcpslice/util.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "tcpslice.h"
@@ -36,18 +36,18 @@ error(fmt, va_alist)
 {
 	va_list ap;
 
-	(void)fprintf(stderr, "tcpslice: ");
+	fprintf(stderr, "tcpslice: ");
 #if __STDC__
 	va_start(ap, fmt);
 #else
 	va_start(ap);
 #endif
-	(void)vfprintf(stderr, fmt, ap);
+	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 	if (*fmt) {
 		fmt += strlen(fmt);
 		if (fmt[-1] != '\n')
-			(void)fputc('\n', stderr);
+			fputc('\n', stderr);
 	}
 	exit(1);
 	/* NOTREACHED */

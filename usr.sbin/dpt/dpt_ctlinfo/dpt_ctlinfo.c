@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/dpt/dpt_ctlinfo/dpt_ctlinfo.c,v 1.3 1999/08/28 01:16:06 peter Exp $
- * $DragonFly: src/usr.sbin/dpt/dpt_ctlinfo/dpt_ctlinfo.c,v 1.2 2003/06/17 04:29:53 dillon Exp $
+ * $DragonFly: src/usr.sbin/dpt/dpt_ctlinfo/dpt_ctlinfo.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* dpt_ctlinfo.c:  Dunp a DPT HBA Information Block */
@@ -60,8 +60,8 @@ main(int argc, char **argv, char **argp)
     int ndx;
     
     if ( (fd = open(argv[1], O_RDWR, S_IRUSR | S_IWUSR)) == -1 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
-					  argv[0], argv[1], strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to open \"%s\" - %s\n",
+			argv[0], argv[1], strerror(errno));
 		exit(1);
     }
 
@@ -73,49 +73,49 @@ main(int argc, char **argv, char **argp)
     pass_thru.command_buffer = (u_int8_t *)&compat_softc;
 
     if ( (result = ioctl(fd, DPT_IOCTL_SEND, &pass_thru)) != 0 ) {
-		(void)fprintf(stderr, "%s ERROR:  Failed to send IOCTL "
-			      "%lx - %s\n",
-			      argv[0], DPT_IOCTL_SEND,
-			      strerror(errno));
+		fprintf(stderr, "%s ERROR:  Failed to send IOCTL "
+			"%lx - %s\n",
+			argv[0], DPT_IOCTL_SEND,
+			strerror(errno));
 		exit(1);
     }
 
-	(void)fprintf(stdout, "%x:", compat_softc.ha_state);
+	fprintf(stdout, "%x:", compat_softc.ha_state);
 
 	for (ndx = 0; ndx < MAX_CHANNELS; ndx++)
-		(void)fprintf(stdout, (ndx == (MAX_CHANNELS - 1)) ? "%d:" :
-			      "%d,",
-			      compat_softc.ha_id[ndx]);
+		fprintf(stdout, (ndx == (MAX_CHANNELS - 1)) ? "%d:" :
+			"%d,",
+			compat_softc.ha_id[ndx]);
 
-	(void)fprintf(stdout, "%d:", compat_softc.ha_vect);
-	(void)fprintf(stdout, "%x:", compat_softc.ha_base);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_max_jobs);
+	fprintf(stdout, "%d:", compat_softc.ha_vect);
+	fprintf(stdout, "%x:", compat_softc.ha_base);
+	fprintf(stdout, "%d:", compat_softc.ha_max_jobs);
 
 	switch (compat_softc.ha_cache) {
 	case DPT_NO_CACHE:
-		(void)fprintf(stdout, "No Cache:");
+		fprintf(stdout, "No Cache:");
 		break;
 	case DPT_CACHE_WRITETHROUGH:
-		(void)fprintf(stdout, "WriteThrough:");
+		fprintf(stdout, "WriteThrough:");
 		break;
 	case DPT_CACHE_WRITEBACK:
-		(void)fprintf(stdout, "WriteBack:");
+		fprintf(stdout, "WriteBack:");
 		break;
 	default:
-		(void)fprintf(stdout, "UnKnown (%d):", compat_softc.ha_cache);
+		fprintf(stdout, "UnKnown (%d):", compat_softc.ha_cache);
 	}
 
-	(void)fprintf(stdout, "%d:", compat_softc.ha_cachesize);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_nbus);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_ntargets);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_nluns);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_tshift);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_bshift);
+	fprintf(stdout, "%d:", compat_softc.ha_cachesize);
+	fprintf(stdout, "%d:", compat_softc.ha_nbus);
+	fprintf(stdout, "%d:", compat_softc.ha_ntargets);
+	fprintf(stdout, "%d:", compat_softc.ha_nluns);
+	fprintf(stdout, "%d:", compat_softc.ha_tshift);
+	fprintf(stdout, "%d:", compat_softc.ha_bshift);
 
-	(void)fprintf(stdout, "%d:", compat_softc.ha_npend);
-	(void)fprintf(stdout, "%d:", compat_softc.ha_active_jobs);
+	fprintf(stdout, "%d:", compat_softc.ha_npend);
+	fprintf(stdout, "%d:", compat_softc.ha_active_jobs);
 
-	(void)fprintf(stdout, "%s\n", compat_softc.ha_fw_version);
+	fprintf(stdout, "%s\n", compat_softc.ha_fw_version);
 
 
 

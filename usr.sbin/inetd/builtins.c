@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/inetd/builtins.c,v 1.19.2.7 2002/07/22 14:05:56 fanf Exp $
- * $DragonFly: src/usr.sbin/inetd/builtins.c,v 1.4 2003/11/16 15:17:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/inetd/builtins.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  *
  */
 
@@ -151,7 +151,7 @@ chargen_dg(int s, struct servtab *sep)		/* Character generator */
 		rs = ring;
 	text[LINESIZ] = '\r';
 	text[LINESIZ + 1] = '\n';
-	(void) sendto(s, text, sizeof(text), 0, (struct sockaddr *)&ss, size);
+	sendto(s, text, sizeof(text), 0, (struct sockaddr *)&ss, size);
 }
 
 /* ARGSUSED */
@@ -209,9 +209,8 @@ daytime_dg(int s, struct servtab *sep)		/* Return human-readable time of day */
 	if (check_loop((struct sockaddr *)&ss, sep))
 		return;
 
-	(void) sprintf(buffer, "%.24s\r\n", ctime(&now));
-	(void) sendto(s, buffer, strlen(buffer), 0,
-		      (struct sockaddr *)&ss, size);
+	sprintf(buffer, "%.24s\r\n", ctime(&now));
+	sendto(s, buffer, strlen(buffer), 0, (struct sockaddr *)&ss, size);
 }
 
 /* ARGSUSED */
@@ -223,8 +222,8 @@ daytime_stream(int s, struct servtab *sep __unused) /* Return human-readable tim
 
 	now = time((time_t *) 0);
 
-	(void) sprintf(buffer, "%.24s\r\n", ctime(&now));
-	(void) send(s, buffer, strlen(buffer), MSG_EOF);
+	sprintf(buffer, "%.24s\r\n", ctime(&now));
+	send(s, buffer, strlen(buffer), MSG_EOF);
 }
 
 /*
@@ -238,7 +237,7 @@ discard_dg(int s, struct servtab *sep __unused) /* Discard service -- ignore dat
 {
 	char buffer[BUFSIZE];
 
-	(void) read(s, buffer, sizeof(buffer));
+	read(s, buffer, sizeof(buffer));
 }
 
 /* ARGSUSED */
@@ -280,7 +279,7 @@ echo_dg(int s, struct servtab *sep) /* Echo service -- echo data back */
 	if (check_loop((struct sockaddr *)&ss, sep))
 		return;
 
-	(void) sendto(s, buffer, i, 0, (struct sockaddr *)&ss, size);
+	sendto(s, buffer, i, 0, (struct sockaddr *)&ss, size);
 }
 
 /* ARGSUSED */
@@ -708,7 +707,7 @@ machtime_dg(int s, struct servtab *sep)
 		return;
 
 	result = machtime();
-	(void) sendto(s, (char *) &result, sizeof(result), 0,
+	sendto(s, (char *) &result, sizeof(result), 0,
 		      (struct sockaddr *)&ss, size);
 }
 
@@ -719,7 +718,7 @@ machtime_stream(int s, struct servtab *sep __unused)
 	unsigned long result;
 
 	result = machtime();
-	(void) send(s, (char *) &result, sizeof(result), MSG_EOF);
+	send(s, (char *) &result, sizeof(result), MSG_EOF);
 }
 
 /*
@@ -731,7 +730,7 @@ machtime_stream(int s, struct servtab *sep __unused)
  */
 
 #define MAX_SERV_LEN	(256+2)		/* 2 bytes for \r\n */
-#define strwrite(fd, buf)	(void) write(fd, buf, sizeof(buf)-1)
+#define strwrite(fd, buf)	write(fd, buf, sizeof(buf)-1)
 
 static int		/* # of characters upto \r,\n or \0 */
 getline(int fd, char *buf, int len)
@@ -786,7 +785,7 @@ tcpmux(int s)
 		for (sep = servtab; sep; sep = sep->se_next) {
 			if (!ISMUX(sep))
 				continue;
-			(void)write(s,sep->se_service,strlen(sep->se_service));
+			write(s,sep->se_service,strlen(sep->se_service));
 			strwrite(s, "\r\n");
 		}
 		return (NULL);

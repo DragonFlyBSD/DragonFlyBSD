@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.3 1999/08/28 01:15:30 peter Exp $
- *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.3 2003/11/15 20:33:42 eirikn Exp $
+ *	@(#) $DragonFly: src/usr.sbin/atm/atmarpd/atmarp_scsp.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -616,8 +616,7 @@ atmarp_scsp_connect(Atmarp_intf *aip)
 	 */
 	strncpy(local_addr.sa_data, ATMARP_SOCK_PREFIX,
 			sizeof(local_addr.sa_data));
-	(void)strncat(local_addr.sa_data, aip->ai_intf,
-			sizeof(local_addr.sa_data));
+	strncat(local_addr.sa_data, aip->ai_intf, sizeof(local_addr.sa_data));
 	sn = strdup(local_addr.sa_data);
 	if (!sn)
 		atmarp_mem_err("atmarp_scsp_connect: strdup");
@@ -696,7 +695,7 @@ atmarp_scsp_connect(Atmarp_intf *aip)
 	return(0);
 
 scsp_connect_fail:
-	(void)close(sd);
+	close(sd);
 	aip->ai_scsp_sock = -1;
 	UM_FREE(sn);
 	aip->ai_scsp_sockname = NULL;
@@ -722,9 +721,9 @@ atmarp_scsp_close(Atmarp_intf *aip)
 	/*
 	 * Close and unlink the SCSP socket
 	 */
-	(void)close(aip->ai_scsp_sock);
+	close(aip->ai_scsp_sock);
 	aip->ai_scsp_sock = -1;
-	(void)unlink(aip->ai_scsp_sockname);
+	unlink(aip->ai_scsp_sockname);
 	UM_FREE(aip->ai_scsp_sockname);
 	aip->ai_scsp_sockname = NULL;
 

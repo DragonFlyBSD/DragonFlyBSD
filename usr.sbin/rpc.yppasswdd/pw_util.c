@@ -32,7 +32,7 @@
  *
  * @(#)pw_util.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_util.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -70,27 +70,27 @@ pw_init()
 
 	/* Unlimited resource limits. */
 	rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
-	(void)setrlimit(RLIMIT_CPU, &rlim);
-	(void)setrlimit(RLIMIT_FSIZE, &rlim);
-	(void)setrlimit(RLIMIT_STACK, &rlim);
-	(void)setrlimit(RLIMIT_DATA, &rlim);
-	(void)setrlimit(RLIMIT_RSS, &rlim);
+	setrlimit(RLIMIT_CPU, &rlim);
+	setrlimit(RLIMIT_FSIZE, &rlim);
+	setrlimit(RLIMIT_STACK, &rlim);
+	setrlimit(RLIMIT_DATA, &rlim);
+	setrlimit(RLIMIT_RSS, &rlim);
 
 	/* Don't drop core (not really necessary, but GP's). */
 	rlim.rlim_cur = rlim.rlim_max = 0;
-	(void)setrlimit(RLIMIT_CORE, &rlim);
+	setrlimit(RLIMIT_CORE, &rlim);
 
 	/* Turn off signals. */
-	/* (void)signal(SIGALRM, SIG_IGN); */
-	(void)signal(SIGHUP, SIG_IGN);
-	(void)signal(SIGINT, SIG_IGN);
-	(void)signal(SIGPIPE, SIG_IGN);
-	(void)signal(SIGQUIT, SIG_IGN);
-	(void)signal(SIGTSTP, SIG_IGN);
-	(void)signal(SIGTTOU, SIG_IGN);
+	/* signal(SIGALRM, SIG_IGN); */
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGQUIT, SIG_IGN);
+	signal(SIGTSTP, SIG_IGN);
+	signal(SIGTTOU, SIG_IGN);
 
 	/* Create with exact permissions. */
-	(void)umask(0);
+	umask(0);
 }
 
 static int lockfd;
@@ -143,7 +143,7 @@ char *username;
 {
 
 	yp_error("rebuilding the database...");
-	(void)fflush(stderr);
+	fflush(stderr);
 	/* Temporarily turn off SIGCHLD catching */
 	install_reaper(0);
 	if (!(pid = vfork())) {
@@ -176,5 +176,5 @@ pw_error(name, err, eval)
 		yp_error("%s", name);
 
 	yp_error("%s: unchanged", passfile);
-	(void)unlink(tempname);
+	unlink(tempname);
 }

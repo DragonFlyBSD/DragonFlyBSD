@@ -1,5 +1,5 @@
 /*	$OpenBSD: pflogd.c,v 1.27 2004/02/13 19:01:57 otto Exp $	*/
-/*	$DragonFly: src/usr.sbin/pflogd/pflogd.c,v 1.1 2004/09/21 21:25:28 joerg Exp $ */
+/*	$DragonFly: src/usr.sbin/pflogd/pflogd.c,v 1.2 2004/12/18 22:48:04 swildner Exp $ */
 
 /*
  * Copyright (c) 2001 Theo de Raadt
@@ -329,7 +329,7 @@ scan_dump(FILE *fp, off_t size)
 	 *
 	 * XXX this may take a long time for large logs.
 	 */
-	(void) fseek(fp, 0L, SEEK_SET);
+	fseek(fp, 0L, SEEK_SET);
 
 	if (fread((char *)&hdr, sizeof(hdr), 1, fp) != 1) {
 		logmsg(LOG_ERR, "Short file header");
@@ -559,7 +559,7 @@ main(int argc, char **argv)
 		pidfile(NULL);
 	}
 
-	(void)umask(S_IRWXG | S_IRWXO);
+	umask(S_IRWXG | S_IRWXO);
 
 	/* filter will be used by the privileged process */
 	if (argc) {

@@ -39,7 +39,7 @@
  *
  * @(#)vnconfig.c	8.1 (Berkeley) 12/15/93
  * $FreeBSD: src/usr.sbin/vnconfig/vnconfig.c,v 1.13.2.7 2003/06/02 09:10:27 maxim Exp $
- * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.8 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/vnconfig/vnconfig.c,v 1.9 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <ctype.h>
@@ -258,7 +258,7 @@ config(struct vndisk *vnp)
 	 * Operate on vnp->dev because it is used later.
 	 */
 	if (vnp->dev[0] != '/' && vnp->dev[0] != '.')
-		(void)asprintf(&vnp->dev, "%s%s", _PATH_DEV, vnp->dev);
+		asprintf(&vnp->dev, "%s%s", _PATH_DEV, vnp->dev);
 	dev = vnp->dev;
 	file = vnp->file;
 	flags = vnp->flags;

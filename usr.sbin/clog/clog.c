@@ -25,7 +25,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $Id: clog.c,v 1.3 2001/10/02 18:51:26 jdw Exp $
- * $DragonFly: src/usr.sbin/clog/clog.c,v 1.1 2004/10/30 20:26:46 dillon Exp $
+ * $DragonFly: src/usr.sbin/clog/clog.c,v 1.2 2004/12/18 22:48:03 swildner Exp $
  */
 
 
@@ -169,8 +169,8 @@ void read_log(const char *lname, int optf) {
 		}
 	}
 	
-	(void)munmap(pbuffer,sb.st_size);
-	(void)close(fd);
+	munmap(pbuffer,sb.st_size);
+	close(fd);
 
 	exit(0);
 }
@@ -185,7 +185,7 @@ void init_log(const char *lname, size_t size) {
 	memcpy(&cf.cf_magic,MAGIC_CONST,4);
 	cf.cf_max = size - sizeof(struct clog_footer);
 
-	(void)memset(buffer,0,BUFFER_SIZE);
+	memset(buffer,0,BUFFER_SIZE);
 
 	fd = open(lname,O_RDWR|O_CREAT,0666); 
 	if (fd==-1) {
@@ -219,7 +219,7 @@ void init_log(const char *lname, size_t size) {
 		fprintf(stderr,"%s: ERROR: could not write magic in %s (%s)\n",pname,lname,strerror(errno));
 		exit(7);
 	}
-	(void)close(fd);
+	close(fd);
 	exit(0);
 }
 

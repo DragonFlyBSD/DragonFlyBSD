@@ -34,7 +34,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)cmds.c	8.2 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.sbin/lpr/lpc/cmds.c,v 1.14.2.16 2002/07/25 23:29:39 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/lpc/cmds.c,v 1.3 2004/03/22 22:32:50 cpressey Exp $
+ * $DragonFly: src/usr.sbin/lpr/lpc/cmds.c,v 1.4 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -301,7 +301,7 @@ kill_qtask(const char *lf)
 	 * XXX - not sure I understand the reasoning behind this...
 	 */
 	lockres = flock(fileno(fp), LOCK_SH|LOCK_NB);
-	(void) fclose(fp);
+	fclose(fp);
 	if (lockres == 0)
 		goto killdone;
 
@@ -369,12 +369,12 @@ upstat(struct printer *pp, const char *msg, int notifyuser)
 		printf("\tcannot create status file: %s\n", strerror(errno));
 		return;
 	}
-	(void) ftruncate(fd, 0);
+	ftruncate(fd, 0);
 	if (msg == (char *)NULL)
-		(void) write(fd, "\n", 1);
+		write(fd, "\n", 1);
 	else
-		(void) write(fd, msg, strlen(msg));
-	(void) close(fd);
+		write(fd, msg, strlen(msg));
+	close(fd);
 	if (notifyuser) {
 		if ((msg == (char *)NULL) || (strcmp(msg, "\n") == 0))
 			printf("\tstatus message is now set to nothing.\n");
@@ -1070,22 +1070,22 @@ status(struct printer *pp)
 		printf("\t%d entries in spool area\n", i);
 	fd = open(file, O_RDONLY);
 	if (fd < 0 || flock(fd, LOCK_SH|LOCK_NB) == 0) {
-		(void) close(fd);	/* unlocks as well */
+		close(fd);	/* unlocks as well */
 		printf("\tprinter idle\n");
 		return;
 	}
-	(void) close(fd);
+	close(fd);
 	/* print out the contents of the status file, if it exists */
 	status_file_name(pp, file, sizeof file);
 	fd = open(file, O_RDONLY|O_SHLOCK);
 	if (fd >= 0) {
-		(void) fstat(fd, &stbuf);
+		fstat(fd, &stbuf);
 		if (stbuf.st_size > 0) {
 			putchar('\t');
 			while ((i = read(fd, line, sizeof(line))) > 0)
-				(void) fwrite(line, 1, i, stdout);
+				fwrite(line, 1, i, stdout);
 		}
-		(void) close(fd);	/* unlocks as well */
+		close(fd);	/* unlocks as well */
 	}
 }
 
@@ -1177,7 +1177,7 @@ topq(int argc, char **argv)
 	 */
 	seteuid(euid);
 	if (changed && stat(pp->lock_file, &stbuf) >= 0)
-		(void) chmod(pp->lock_file, stbuf.st_mode | LFM_RESET_QUE);
+		chmod(pp->lock_file, stbuf.st_mode | LFM_RESET_QUE);
 
 out:
 	seteuid(uid);
@@ -1262,7 +1262,7 @@ doarg(char *job)
 		while (getline(fp) > 0)
 			if (line[0] == 'P')
 				break;
-		(void) fclose(fp);
+		fclose(fp);
 		if (line[0] != 'P' || strcmp(job, line+1) != 0)
 			continue;
 		if (touch(*qq) == 0) {

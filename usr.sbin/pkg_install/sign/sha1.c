@@ -28,7 +28,7 @@
  *
  * $OpenBSD: sha1.c,v 1.1 1999/10/04 21:46:29 espie Exp $
  * $FreeBSD: src/usr.sbin/pkg_install/sign/sha1.c,v 1.5 2004/06/29 19:06:42 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/sha1.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/sha1.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -223,7 +223,7 @@ retrieve_sha1_marker(filename, sign, userid)
 		return 0;
 	}
 
-	(void)sha1_build_checksum(result, checker);
+	sha1_build_checksum(result, checker);
 	fputs(result, stderr);
 	return 1;
 }

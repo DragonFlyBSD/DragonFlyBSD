@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)traceroute.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/traceroute6/traceroute6.c,v 1.4.2.4 2001/07/03 11:02:18 ume Exp $
- * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.5 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/traceroute6/traceroute6.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*-
@@ -288,9 +288,9 @@
 #define FD_ZERO(p)      bzero((char *)(p), sizeof(*(p)))
 #endif
 
-#define Fprintf (void)fprintf
-#define Sprintf (void)sprintf
-#define Printf (void)printf
+#define Fprintf fprintf
+#define Sprintf sprintf
+#define Printf printf
 
 #ifndef HAVE_GETIPNODEBYNAME
 #define getipnodebyname(x, y, z, u)	gethostbyname2((x), (y))
@@ -566,19 +566,17 @@ main(int argc, char **argv)
 	hints.ai_flags = AI_CANONNAME;
 	error = getaddrinfo(*argv, NULL, &hints, &res);
 	if (error) {
-		(void)fprintf(stderr,
-			      "traceroute6: %s\n", gai_strerror(error));
+		fprintf(stderr, "traceroute6: %s\n", gai_strerror(error));
 		exit(1);
 	}
 	if (res->ai_addrlen != sizeof(Dst)) {
-		(void)fprintf(stderr,
-			      "traceroute6: size of sockaddr mismatch\n");
+		fprintf(stderr, "traceroute6: size of sockaddr mismatch\n");
 		exit(1);
 	}
 	memcpy(&Dst, res->ai_addr, res->ai_addrlen);
 	hostname = res->ai_canonname ? strdup(res->ai_canonname) : *argv;
 	if (!hostname) {
-		(void)fprintf(stderr, "traceroute6: not enough core\n");
+		fprintf(stderr, "traceroute6: not enough core\n");
 		exit(1);
 	}
 
@@ -603,7 +601,7 @@ main(int argc, char **argv)
 		perror("malloc");
 		exit(1);
 	}
-	(void) bzero((char *)outpacket, datalen);
+	bzero((char *)outpacket, datalen);
 
 	/* initialize msghdr for receiving packets */
 	rcviov[0].iov_base = (caddr_t)packet;
@@ -622,11 +620,11 @@ main(int argc, char **argv)
 	rcvmhdr.msg_controllen = rcvcmsglen;
 
 	if (options & SO_DEBUG)
-		(void) setsockopt(rcvsock, SOL_SOCKET, SO_DEBUG,
-				  (char *)&on, sizeof(on));
+		setsockopt(rcvsock, SOL_SOCKET, SO_DEBUG,
+			   (char *)&on, sizeof(on));
 	if (options & SO_DONTROUTE)
-		(void) setsockopt(rcvsock, SOL_SOCKET, SO_DONTROUTE,
-				  (char *)&on, sizeof(on));
+		setsockopt(rcvsock, SOL_SOCKET, SO_DONTROUTE,
+			   (char *)&on, sizeof(on));
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
 	/*
@@ -641,20 +639,20 @@ main(int argc, char **argv)
     {
 	int level = IPSEC_LEVEL_NONE;
 
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
-		sizeof(level));
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
-		sizeof(level));
+	setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
+		   sizeof(level));
+	setsockopt(rcvsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
+		   sizeof(level));
 #ifdef IP_AUTH_TRANS_LEVEL
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
+	setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
 		sizeof(level));
 #else
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
-		sizeof(level));
+	setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
+		   sizeof(level));
 #endif
 #ifdef IP_AUTH_NETWORK_LEVEL
-	(void)setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
-		sizeof(level));
+	setsockopt(rcvsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
+		   sizeof(level));
 #endif
     }
 #endif /*IPSEC_POLICY_IPSEC*/
@@ -675,11 +673,11 @@ main(int argc, char **argv)
 	}
 #endif /* SO_SNDBUF */
 	if (options & SO_DEBUG)
-		(void) setsockopt(sndsock, SOL_SOCKET, SO_DEBUG,
-				  (char *)&on, sizeof(on));
+		setsockopt(sndsock, SOL_SOCKET, SO_DEBUG,
+			   (char *)&on, sizeof(on));
 	if (options & SO_DONTROUTE)
-		(void) setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
-				  (char *)&on, sizeof(on));
+		setsockopt(sndsock, SOL_SOCKET, SO_DONTROUTE,
+			   (char *)&on, sizeof(on));
 #ifdef USE_RFC2292BIS
 	if (rth) {/* XXX: there is no library to finalize the header... */
 		rth->ip6r_len = rth->ip6r_segleft * 2;
@@ -715,20 +713,20 @@ main(int argc, char **argv)
     {
 	int level = IPSEC_LEVEL_BYPASS;
 
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
-		sizeof(level));
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
-		sizeof(level));
+	setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_TRANS_LEVEL, &level,
+		   sizeof(level));
+	setsockopt(sndsock, IPPROTO_IPV6, IPV6_ESP_NETWORK_LEVEL, &level,
+		   sizeof(level));
 #ifdef IP_AUTH_TRANS_LEVEL
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
-		sizeof(level));
+	setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_TRANS_LEVEL, &level,
+		   sizeof(level));
 #else
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
-		sizeof(level));
+	setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_LEVEL, &level,
+		   sizeof(level));
 #endif
 #ifdef IP_AUTH_NETWORK_LEVEL
-	(void)setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
-		sizeof(level));
+	setsockopt(sndsock, IPPROTO_IPV6, IPV6_AUTH_NETWORK_LEVEL, &level,
+		   sizeof(level));
 #endif
     }
 #endif /*IPSEC_POLICY_IPSEC*/
@@ -826,7 +824,7 @@ main(int argc, char **argv)
 	Fprintf(stderr,
 		", %d hops max, %d byte packets\n",
 		max_hops, datalen);
-	(void) fflush(stderr);
+	fflush(stderr);
 
 	if (first_hop > 1)
 		Printf("Skipping %d intermediate hops\n", first_hop - 1);
@@ -846,10 +844,10 @@ main(int argc, char **argv)
 			struct timeval t1, t2;
 			struct timezone tz;
 
-			(void) gettimeofday(&t1, &tz);
+			gettimeofday(&t1, &tz);
 			send_probe(++seq, hops);
 			while ((cc = wait_for_reply(rcvsock, &rcvmhdr))) {
-				(void) gettimeofday(&t2, &tz);
+				gettimeofday(&t2, &tz);
 				if ((i = packet_ok(&rcvmhdr, cc, seq))) {
 					if (! IN6_ARE_ADDR_EQUAL(&Rcv.sin6_addr,
 							    &lastaddr)) {
@@ -886,7 +884,7 @@ main(int argc, char **argv)
 			}
 			if (cc == 0)
 				Printf(" *");
-			(void) fflush(stdout);
+			fflush(stdout);
 		}
 		putchar('\n');
 		if (got_there ||
@@ -945,8 +943,8 @@ setpolicy(int so, char *policy)
 		warnx("%s", ipsec_strerror());
 		return -1;
 	}
-	(void)setsockopt(so, IPPROTO_IPV6, IPV6_IPSEC_POLICY,
-		buf, ipsec_get_policylen(buf));
+	setsockopt(so, IPPROTO_IPV6, IPV6_IPSEC_POLICY,
+		   buf, ipsec_get_policylen(buf));
 
 	free(buf);
 
@@ -970,7 +968,7 @@ send_probe(int seq, int hops)
 
 	op->seq = seq;
 	op->hops = hops;
-	(void) gettimeofday(&op->tv, &tz);
+	gettimeofday(&op->tv, &tz);
 
 	i = sendto(sndsock, (char *)outpacket, datalen , 0,
 		   (struct sockaddr *)&Dst, Dst.sin6_len);
@@ -979,7 +977,7 @@ send_probe(int seq, int hops)
 			perror("sendto");
 		Printf("traceroute6: wrote %s %d chars, ret=%d\n", hostname,
 		       datalen, i);
-		(void) fflush(stdout);
+		fflush(stdout);
 	}
 }
 
@@ -1296,7 +1294,7 @@ inetname(struct sockaddr *sa)
 		first = 0;
 		if (gethostname(domain, MAXHOSTNAMELEN) == 0 &&
 		    (cp = strchr(domain, '.')))
-			(void) strlcpy(domain, cp + 1, sizeof(domain));
+			strlcpy(domain, cp + 1, sizeof(domain));
 		else
 			domain[0] = 0;
 	}
@@ -1322,7 +1320,7 @@ inetname(struct sockaddr *sa)
 void
 usage(void)
 {
-	(void)fprintf(stderr,
+	fprintf(stderr,
 "usage: traceroute6 [-dlnrv] [-f firsthop] [-g gateway] [-m hoplimit] [-p port]\n"
 "       [-q probes] [-s src] [-w waittime] target [datalen]\n");
 	exit(1);

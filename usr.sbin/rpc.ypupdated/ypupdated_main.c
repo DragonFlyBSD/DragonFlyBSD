@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4.2.3 2002/02/15 00:46:58 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.3 2004/05/20 19:24:43 cpressey Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/ypupdated_main.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include "ypupdate_prot.h"
@@ -112,8 +112,8 @@ closedown(int sig)
 	if (_rpcsvcstate == _SERVED)
 		_rpcsvcstate = _IDLE;
 
-	(void) signal(SIGALRM, (SIG_PF) closedown);
-	(void) alarm(_RPCSVC_CLOSEDOWN/2);
+	signal(SIGALRM, (SIG_PF) closedown);
+	alarm(_RPCSVC_CLOSEDOWN/2);
 }
 
 static void
@@ -171,7 +171,7 @@ static void reaper(sig)
 		while (wait3(&status, WNOHANG, NULL) > 0)
 			children--;
 	} else {
-		(void) pmap_unset(YPU_PROG, YPU_VERS);
+		pmap_unset(YPU_PROG, YPU_VERS);
 		exit(0);
 	}
 }
@@ -233,7 +233,7 @@ main(argc, argv)
 		openlog("rpc.ypupdated", LOG_PID, LOG_DAEMON);
 #endif
 		sock = RPC_ANYSOCK;
-		(void) pmap_unset(YPU_PROG, YPU_VERS);
+		pmap_unset(YPU_PROG, YPU_VERS);
 	}
 
 	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
@@ -269,15 +269,15 @@ main(argc, argv)
 		exit(1);
 	}
 	if (_rpcpmstart) {
-		(void) signal(SIGALRM, (SIG_PF) closedown);
-		(void) alarm(_RPCSVC_CLOSEDOWN/2);
+		signal(SIGALRM, (SIG_PF) closedown);
+		alarm(_RPCSVC_CLOSEDOWN/2);
 	}
 
-	(void) signal(SIGPIPE, SIG_IGN);
-	(void) signal(SIGCHLD, (SIG_PF) reaper);
-	(void) signal(SIGTERM, (SIG_PF) reaper);
-	(void) signal(SIGINT, (SIG_PF) reaper);
-	(void) signal(SIGHUP, (SIG_PF) reaper);
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGCHLD, (SIG_PF) reaper);
+	signal(SIGTERM, (SIG_PF) reaper);
+	signal(SIGINT, (SIG_PF) reaper);
+	signal(SIGHUP, (SIG_PF) reaper);
 
 	ypupdated_svc_run();
 	_msgout("svc_run returned");

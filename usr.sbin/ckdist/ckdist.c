@@ -25,7 +25,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ckdist/ckdist.c,v 1.3.2.1 2000/07/01 10:37:21 ps Exp $
- * $DragonFly: src/usr.sbin/ckdist/ckdist.c,v 1.2 2003/06/17 04:29:52 dillon Exp $
+ * $DragonFly: src/usr.sbin/ckdist/ckdist.c,v 1.3 2004/12/18 22:48:02 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -193,7 +193,7 @@ ckdist(const char *path, int type)
 	if (!type)
 	    if ((c = fgetc(fp)) != EOF) {
 		type = c == 'M' ? DISTMD5 : c == 'P' ? DISTINF : 0;
-		(void)ungetc(c, fp);
+		ungetc(c, fp);
 	    }
     }
     switch (type) {

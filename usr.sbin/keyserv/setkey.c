@@ -28,7 +28,7 @@
  *
  * @(#)setkey.c	1.11	94/04/25 SMI
  * $FreeBSD: src/usr.sbin/keyserv/setkey.c,v 1.3 1999/08/28 01:16:41 peter Exp $
- * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.6 2004/05/20 19:24:42 cpressey Exp $
+ * $DragonFly: src/usr.sbin/keyserv/setkey.c,v 1.7 2004/12/18 22:48:03 swildner Exp $
  */
 
 /*
@@ -311,7 +311,7 @@ store_netname(uid_t uid, key_netstarg *netstore)
 	} else {
 		new = *l;
 		if (new->keynetdata.st_netname)
-			(void) free (new->keynetdata.st_netname);
+			free(new->keynetdata.st_netname);
 	}
 	memcpy(new->keynetdata.st_priv_key, netstore->st_priv_key,
 		HEXKEYBYTES);

@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1984, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)from: arp.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.sbin/arp/arp.c,v 1.22.2.12 2003/04/16 10:02:37 ru Exp $
- * $DragonFly: src/usr.sbin/arp/arp.c,v 1.5 2004/11/02 23:49:35 dillon Exp $
+ * $DragonFly: src/usr.sbin/arp/arp.c,v 1.6 2004/12/18 22:48:02 swildner Exp $
  */
 
 /*
@@ -178,7 +178,7 @@ main(int argc, char **argv)
 		if (argc < 2 || argc > 6)
 			usage();
 		if (func == F_REPLACE)
-			(void) delete(argv[0], NULL);
+			delete(argv[0], NULL);
 		rtn = set(argc, argv) ? 1 : 0;
 		break;
 	case F_DELETE:

@@ -29,7 +29,7 @@
  *
  * @(#)update.c 1.2 91/03/11 Copyr 1986 Sun Micro
  * $FreeBSD: src/usr.sbin/rpc.ypupdated/update.c,v 1.4.2.1 2002/02/15 00:46:57 des Exp $
- * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.ypupdated/update.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -105,8 +105,8 @@ mapupdate(requester, mapname, op, keylen, key, datalen, data)
 #ifdef DEBUG
 	printf("%s %s\n", key, data);
 #endif
-	(void)sprintf(updater, "make -s -f %s/%s %s", YPDBPATH, /* !!! */
-					UPDATEFILE, mapname);
+	sprintf(updater, "make -s -f %s/%s %s", YPDBPATH, /* !!! */
+		UPDATEFILE, mapname);
 	pid = _openchild(updater, &childargs, &childrslt);
 	if (pid < 0) {
 		return (YPERR_YPERR);
@@ -115,23 +115,23 @@ mapupdate(requester, mapname, op, keylen, key, datalen, data)
 	/*
 	 * Write to child
 	 */
-	(void)fprintf(childargs, "%s\n", requester);
-	(void)fprintf(childargs, "%u\n", op);
-	(void)fprintf(childargs, "%u\n", keylen);
-	(void)fwrite(key, (int)keylen, 1, childargs);
-	(void)fprintf(childargs, "\n");
-	(void)fprintf(childargs, "%u\n", datalen);
-	(void)fwrite(data, (int)datalen, 1, childargs);
-	(void)fprintf(childargs, "\n");
-	(void)fclose(childargs);
+	fprintf(childargs, "%s\n", requester);
+	fprintf(childargs, "%u\n", op);
+	fprintf(childargs, "%u\n", keylen);
+	fwrite(key, (int)keylen, 1, childargs);
+	fprintf(childargs, "\n");
+	fprintf(childargs, "%u\n", datalen);
+	fwrite(data, (int)datalen, 1, childargs);
+	fprintf(childargs, "\n");
+	fclose(childargs);
 
 	/*
 	 * Read from child
 	 */
-	(void)fscanf(childrslt, "%d", &yperrno);
-	(void)fclose(childrslt);
+	fscanf(childrslt, "%d", &yperrno);
+	fclose(childrslt);
 
-	(void)wait(&status);
+	wait(&status);
 #ifdef WEXITSTATUS
 	if (WEXITSTATUS(status) != 0) {
 #else
@@ -176,19 +176,19 @@ _openchild(command, fto, ffrom)
 		/*
 		 * child: read from pdto[0], write into pdfrom[1]
 		 */
-		(void)close(0);
-		(void)dup(pdto[0]);
-		(void)close(1);
-		(void)dup(pdfrom[1]);
+		close(0);
+		dup(pdto[0]);
+		close(1);
+		dup(pdfrom[1]);
 		getrlimit(RLIMIT_NOFILE, &rl);
 		for (i = rl.rlim_max - 1; i >= 3; i--) {
-			(void) close(i);
+			close(i);
 		}
 		com = malloc((unsigned) strlen(command) + 6);
 		if (com == NULL) {
 			_exit(~0);
 		}
-		(void)sprintf(com, "exec %s", command);
+		sprintf(com, "exec %s", command);
 		execl(SHELL, basename(SHELL), "-c", com, NULL);
 		_exit(~0);
 
@@ -197,9 +197,9 @@ _openchild(command, fto, ffrom)
 		 * parent: write into pdto[1], read from pdfrom[0]
 		 */
 		*fto = fdopen(pdto[1], "w");
-		(void)close(pdto[0]);
+		close(pdto[0]);
 		*ffrom = fdopen(pdfrom[0], "r");
-		(void)close(pdfrom[1]);
+		close(pdfrom[1]);
 		break;
 	}
 	return (pid);
@@ -208,11 +208,11 @@ _openchild(command, fto, ffrom)
 	 * error cleanup and return
 	 */
 error3:
-	(void)close(pdfrom[0]);
-	(void)close(pdfrom[1]);
+	close(pdfrom[0]);
+	close(pdfrom[1]);
 error2:
-	(void)close(pdto[0]);
-	(void)close(pdto[1]);
+	close(pdto[0]);
+	close(pdto[1]);
 error1:
 	return (-1);
 }

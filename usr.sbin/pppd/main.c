@@ -17,7 +17,7 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  * $FreeBSD: src/usr.sbin/pppd/main.c,v 1.19.2.1 2002/07/30 03:50:40 peter Exp $
- * $DragonFly: src/usr.sbin/pppd/main.c,v 1.3 2003/11/03 19:31:40 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pppd/main.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <stdio.h>
@@ -375,7 +375,7 @@ main(argc, argv)
 	open_ppp_loopback();
 
 	syslog(LOG_INFO, "Using interface ppp%d", ifunit);
-	(void) sprintf(ifname, "ppp%d", ifunit);
+	sprintf(ifname, "ppp%d", ifunit);
 	script_setenv("IFNAME", ifname);
 
 	create_pidfile();	/* write pid to file */
@@ -520,7 +520,7 @@ main(argc, argv)
 	if (!demand) {
 	    
 	    syslog(LOG_INFO, "Using interface ppp%d", ifunit);
-	    (void) sprintf(ifname, "ppp%d", ifunit);
+	    sprintf(ifname, "ppp%d", ifunit);
 	    
 	    create_pidfile();	/* write pid to file */
 
@@ -530,10 +530,10 @@ main(argc, argv)
 			    n++;
 			    break;
 		    }
-	    (void) sprintf(iffilename, "%s%s.if", _PATH_VARRUN, &devnam[n]);
+	    sprintf(iffilename, "%s%s.if", _PATH_VARRUN, &devnam[n]);
 	    if ((iffile = fopen(iffilename, "w")) != NULL) {
 		fprintf(iffile, "ppp%d\n", ifunit);
-		(void) fclose(iffile);
+		fclose(iffile);
 	    } else {
 		syslog(LOG_ERR, "Failed to create if file %s: %m", iffilename);
 		iffilename[0] = 0;
@@ -669,10 +669,10 @@ create_pidfile()
 {
     FILE *pidfile;
 
-    (void) sprintf(pidfilename, "%s%s.pid", _PATH_VARRUN, ifname);
+    sprintf(pidfilename, "%s%s.pid", _PATH_VARRUN, ifname);
     if ((pidfile = fopen(pidfilename, "w")) != NULL) {
 	fprintf(pidfile, "%d\n", pid);
-	(void) fclose(pidfile);
+	fclose(pidfile);
     } else {
 	syslog(LOG_ERR, "Failed to create pid file %s: %m", pidfilename);
 	pidfilename[0] = 0;
@@ -910,7 +910,7 @@ untimeout(func, arg)
     for (copp = &callout; (freep = *copp); copp = &freep->c_next)
 	if (freep->c_func == func && freep->c_arg == arg) {
 	    *copp = freep->c_next;
-	    (void) free((char *) freep);
+	    free((char *) freep);
 	    break;
 	}
 }
@@ -1181,9 +1181,9 @@ run_program(prog, args, must_exist)
 	int new_fd;
 
 	/* Leave the current location */
-	(void) setsid();    /* No controlling tty. */
-	(void) umask (S_IRWXG|S_IRWXO);
-	(void) chdir ("/"); /* no current directory. */
+	setsid();    /* No controlling tty. */
+	umask (S_IRWXG|S_IRWXO);
+	chdir ("/"); /* no current directory. */
 	setuid(geteuid());
 	setgid(getegid());
 

@@ -28,7 +28,7 @@
  *
  * $OpenBSD: pgp_sign.c,v 1.1 1999/10/04 21:46:29 espie Exp $
  * $FreeBSD: src/usr.sbin/pkg_install/sign/pgp_sign.c,v 1.5 2004/06/29 19:06:42 eik Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_sign.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/pgp_sign.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <sys/types.h>
@@ -125,33 +125,33 @@ retrieve_pgp_signature(filename, sign, userid, envp)
 	}
 	if (pipe(frompgp) == -1) {
 		fclose(orig);
-		(void)close(topgp[0]);
-		(void)close(topgp[1]);
+		close(topgp[0]);
+		close(topgp[1]);
 		return 0;
 	}
 	switch(pgpid = fork()) {
 	case 0:
-		(void)close(topgp[1]);
-		(void)close(frompgp[0]);
+		close(topgp[1]);
+		close(frompgp[0]);
 		pgpsign(topgp[0], frompgp[1], userid, envp);
 		/*NOT REACHED */
 	case -1:
-		(void)close(topgp[0]);
-		(void)close(topgp[1]);
-		(void)close(frompgp[0]);
-		(void)close(frompgp[1]);
+		close(topgp[0]);
+		close(topgp[1]);
+		close(frompgp[0]);
+		close(frompgp[1]);
 		fclose(orig);
 		return 0;
 	default:
-		(void)close(topgp[0]);
-		(void)close(frompgp[1]);
+		close(topgp[0]);
+		close(frompgp[1]);
 	}
 
 	dest = fdopen(topgp[1], "w");
 	if (dest == NULL) {
-		(void)close(topgp[1]);
-		(void)close(frompgp[0]);
-		(void)reap(pgpid);
+		close(topgp[1]);
+		close(frompgp[0]);
+		reap(pgpid);
 		return 0;
 	}
 
@@ -174,7 +174,7 @@ retrieve_pgp_signature(filename, sign, userid, envp)
 
 	signin = fdopen(frompgp[0], "r");
 	if (signin == NULL) {
-		(void)close(frompgp[0]);
+		close(frompgp[0]);
 	} else {
 		enum { NONE, FIRST, DONE, COPY} magic = NONE;
 		int c;
@@ -253,7 +253,7 @@ return;
 		exit(EXIT_FAILURE);
 	case 0:
 		{
-			(void)close(fd[0]);
+			close(fd[0]);
 				/*
 				 * The child fills the pipe with copies of the passphrase.
 				 * Expect violent death when father exits.
@@ -261,8 +261,8 @@ return;
 			printf("Child process %d stuffing passphrase in pipe:\n", getpid());
 			for(;;) {
 				char c = '\n';
-				(void)write(fd[1], p, strlen(p));
-				(void)write(fd[1], &c, 1);
+				write(fd[1], p, strlen(p));
+				write(fd[1], &c, 1);
 				putchar('.'); fflush(stdout);
 			}
 		}
@@ -271,9 +271,9 @@ return;
 			char buf[10];
 
 			sleep(1);
-			(void)close(fd[1]);
-			(void)sprintf(buf, "%d", fd[0]);
-			(void)setenv("PGPPASSFD", buf, 1);
+			close(fd[1]);
+			sprintf(buf, "%d", fd[0]);
+			setenv("PGPPASSFD", buf, 1);
 			printf("Parent process PGPPASSFD=%d.\n", fd[0]);
 		}
 	}

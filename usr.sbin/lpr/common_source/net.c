@@ -38,7 +38,7 @@
  *	From: @(#)common.c	8.5 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/usr.sbin/lpr/common_source/net.c,v 1.3.2.4 2001/06/25 01:00:56 gad Exp $
- * $DragonFly: src/usr.sbin/lpr/common_source/net.c,v 1.2 2003/06/17 04:29:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/lpr/common_source/net.c,v 1.3 2004/12/18 22:48:03 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -136,7 +136,7 @@ retry:
 	}
 	if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 		err = errno;
-		(void) close(s);
+		close(s);
 		errno = err;
 		/*
 		 * This used to decrement lport, but the current semantics

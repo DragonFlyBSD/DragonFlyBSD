@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/setkey/test-pfkey.c,v 1.1.2.1 2000/07/15 07:37:04 kris Exp $	*/
-/*	$DragonFly: src/usr.sbin/setkey/test-pfkey.c,v 1.4 2004/03/24 18:23:47 cpressey Exp $	*/
+/*	$DragonFly: src/usr.sbin/setkey/test-pfkey.c,v 1.5 2004/12/18 22:48:14 swildner Exp $	*/
 /*	$KAME: test-pfkey.c,v 1.4 2000/06/07 00:29:14 itojun Exp $	*/
 
 /*
@@ -126,7 +126,7 @@ sendkeymsg(void)
 	pfkey_sadump((struct sadb_msg *)rbuf);
 
 end:
-	(void)close(so);
+	close(so);
 	return(0);
 }
 

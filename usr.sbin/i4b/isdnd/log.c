@@ -30,7 +30,7 @@
  *	$Id: log.c,v 1.25 2000/10/09 12:53:29 hm Exp $ 
  *
  * $FreeBSD: src/usr.sbin/i4b/isdnd/log.c,v 1.6.2.2 2001/08/01 17:45:03 obrien Exp $
- * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.5 2004/03/26 00:30:12 cpressey Exp $
+ * $DragonFly: src/usr.sbin/i4b/isdnd/log.c,v 1.6 2004/12/18 22:48:03 swildner Exp $
  *
  *      last edit-date: [Mon Dec 13 21:47:28 1999]
  *
@@ -89,13 +89,12 @@ init_log(void)
 	{
 #if DEBUG
 		if(do_debug && do_fork == 0 && do_fullscreen == 0)
-			(void)openlog("isdnd",
+			openlog("isdnd",
 				LOG_PID|LOG_CONS|LOG_NDELAY|LOG_PERROR,
 				logfacility);
 		else
 #endif
-		(void)openlog("isdnd", LOG_PID|LOG_CONS|LOG_NDELAY,
-				logfacility);
+		openlog("isdnd", LOG_PID|LOG_CONS|LOG_NDELAY, logfacility);
 	}
 
 	/* initialize the regexp array */
@@ -134,7 +133,7 @@ finish_log(void)
 	}
 	else
 	{
-		(void)closelog();
+		closelog();
 	}
 }
 

@@ -29,7 +29,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/rtadvd/rtadvd.c,v 1.3.2.4 2003/04/05 10:31:58 ume Exp $
- * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.3 2003/11/03 19:31:42 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rtadvd/rtadvd.c,v 1.4 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -215,9 +215,9 @@ main(argc, argv)
 
 	/* set log level */
 	if (dflag == 0)
-		(void)setlogmask(LOG_UPTO(LOG_ERR));
+		setlogmask(LOG_UPTO(LOG_ERR));
 	if (dflag == 1)
-		(void)setlogmask(LOG_UPTO(LOG_INFO));
+		setlogmask(LOG_UPTO(LOG_INFO));
 
 	/* timer initialization */
 	rtadvd_timer_init();

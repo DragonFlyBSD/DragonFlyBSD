@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/ndp/ndp.c,v 1.2.2.5 2001/08/13 02:58:26 sumikawa Exp $	*/
-/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.4 2004/03/30 01:14:22 cpressey Exp $	*/
+/*	$DragonFly: src/usr.sbin/ndp/ndp.c,v 1.5 2004/12/18 22:48:04 swildner Exp $	*/
 /*	$KAME: ndp.c,v 1.65 2001/05/08 04:36:34 itojun Exp $	*/
 
 /*
@@ -876,7 +876,7 @@ doit:
 		l = read(s, (char *)&m_rtmsg, sizeof(m_rtmsg));
 	} while (l > 0 && (rtm->rtm_seq != seq || rtm->rtm_pid != pid));
 	if (l < 0)
-		(void) fprintf(stderr, "ndp: read from routing socket: %s\n",
+		fprintf(stderr, "ndp: read from routing socket: %s\n",
 		    strerror(errno));
 	return (0);
 }
@@ -1504,6 +1504,6 @@ ts_print(const struct timeval *tvp)
 
 	/* Default */
 	s = (tvp->tv_sec + thiszone) % 86400;
-	(void)printf("%02d:%02d:%02d.%06u ",
+	printf("%02d:%02d:%02d.%06u ",
 	    s / 3600, (s % 3600) / 60, s % 60, (u_int32_t)tvp->tv_usec);
 }

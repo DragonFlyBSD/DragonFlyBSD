@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/usr.sbin/route6d/route6d.c,v 1.2.2.5 2001/07/03 11:02:09 ume Exp $	*/
-/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.6 2004/08/30 19:27:22 eirikn Exp $	*/
+/*	$DragonFly: src/usr.sbin/route6d/route6d.c,v 1.7 2004/12/18 22:48:05 swildner Exp $	*/
 /*	$KAME: route6d.c,v 1.64 2001/05/08 04:36:37 itojun Exp $	*/
 
 /*
@@ -1351,7 +1351,7 @@ riprequest(ifcp, np, nn, sin)
 			else
 				np->rip6_metric = HOPCNT_INFINITY6;
 		}
-		(void)sendpacket(sin, RIPSIZE(nn));
+		sendpacket(sin, RIPSIZE(nn));
 		return;
 	}
 	/* Whole routing table dump */

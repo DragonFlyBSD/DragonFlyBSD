@@ -32,7 +32,7 @@
  *
  * @(#)pw_copy.c	8.4 (Berkeley) 4/2/94
  * $FreeBSD: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.4.2.1 2000/07/12 11:09:40 davidn Exp $
- * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.2 2003/06/17 04:30:02 dillon Exp $
+ * $DragonFly: src/usr.sbin/rpc.yppasswdd/pw_copy.c,v 1.3 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -81,7 +81,7 @@ pw_copy(ffd, tfd, pw)
 			goto err;
 		}
 		if (done) {
-			(void)fprintf(to, "%s", buf);
+			fprintf(to, "%s", buf);
 			if (ferror(to))
 				goto err;
 			continue;
@@ -91,7 +91,7 @@ pw_copy(ffd, tfd, pw)
 		 */
 		p = buf + strspn(buf, " \t\n");
 		if (*p == '\0' || *p == '#') {
-		        (void)fprintf(to, "%s", buf);
+		        fprintf(to, "%s", buf);
 			if (ferror(to))
 				goto err;
 			continue;
@@ -104,12 +104,12 @@ pw_copy(ffd, tfd, pw)
 		*p = '\0';
 		if (strcmp(buf, pw->pw_name)) {
 			*p = ':';
-			(void)fprintf(to, "%s", buf);
+			fprintf(to, "%s", buf);
 			if (ferror(to))
 				goto err;
 			continue;
 		}
-		(void)fprintf(to, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n",
+		fprintf(to, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n",
 		    pw->pw_name, pw->pw_passwd,
 		    pw->pw_fields & _PWF_UID ? uidstr : "",
 		    pw->pw_fields & _PWF_GID ? gidstr : "",
@@ -123,14 +123,14 @@ pw_copy(ffd, tfd, pw)
 	}
 	if (!done) {
 		if (allow_additions) {
-			(void)fprintf(to, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n",
-			pw->pw_name, pw->pw_passwd,
-			pw->pw_fields & _PWF_UID ? uidstr : "",
-			pw->pw_fields & _PWF_GID ? gidstr : "",
-			pw->pw_class,
-			pw->pw_fields & _PWF_CHANGE ? chgstr : "",
-			pw->pw_fields & _PWF_EXPIRE ? expstr : "",
-			pw->pw_gecos, pw->pw_dir, pw->pw_shell);
+			fprintf(to, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n",
+			    pw->pw_name, pw->pw_passwd,
+			    pw->pw_fields & _PWF_UID ? uidstr : "",
+			    pw->pw_fields & _PWF_GID ? gidstr : "",
+			    pw->pw_class,
+			    pw->pw_fields & _PWF_CHANGE ? chgstr : "",
+			    pw->pw_fields & _PWF_EXPIRE ? expstr : "",
+			    pw->pw_gecos, pw->pw_dir, pw->pw_shell);
 		} else {
 			yp_error("user \"%s\" not found in %s -- \
 NIS maps and password file possibly out of sync", pw->pw_name, passfile);
@@ -139,11 +139,11 @@ NIS maps and password file possibly out of sync", pw->pw_name, passfile);
 	}
 	if (ferror(to)) {
 err:		pw_error(NULL, 1, 1);
-		(void)fclose(to);
-		(void)fclose(from);
+		fclose(to);
+		fclose(from);
 		return(-1);
 	}
-	(void)fclose(to);
-	(void)fclose(from);
+	fclose(to);
+	fclose(from);
 	return(0);
 }

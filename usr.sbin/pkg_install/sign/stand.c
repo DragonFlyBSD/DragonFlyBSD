@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/usr.sbin/pkg_install/sign/stand.c,v 1.2 2002/04/01 09:39:07 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/stand.c,v 1.3 2004/07/30 04:46:14 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/sign/Attic/stand.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include "stand.h"
@@ -33,12 +33,12 @@ warn(const char *fmt, ...)
 	va_start(ap, fmt);
 
 	interrno = errno;
-	(void)fprintf(stderr, "%s: ", program_name);
+	fprintf(stderr, "%s: ", program_name);
 	if (fmt != NULL) {
-		(void)vfprintf(stderr, fmt, ap);
-		(void)fprintf(stderr, ": ");
+		vfprintf(stderr, fmt, ap);
+		fprintf(stderr, ": ");
 	}
-	(void)fprintf(stderr, "%s\n", strerror(interrno));
+	fprintf(stderr, "%s\n", strerror(interrno));
 
 	va_end(ap);
 }
@@ -49,10 +49,10 @@ warnx(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	(void)fprintf(stderr, "%s: ", program_name);
+	fprintf(stderr, "%s: ", program_name);
 	if (fmt != NULL) 
-		(void)vfprintf(stderr, fmt, ap);
-	(void)fprintf(stderr, "\n");
+		vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
 	va_end(ap);
 }
 

@@ -17,7 +17,7 @@
  * This is the main body of the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/perform.c,v 1.77 2004/07/28 16:03:13 stefanf Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.4 2004/07/30 04:46:12 dillon Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/perform.c,v 1.5 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <err.h>
@@ -540,7 +540,7 @@ pkg_do(char *pkg)
 	    while (fgets(buf, sizeof(buf), fp))
 		fputs(buf, stdout);
 	    putc('\n', stdout);
-	    (void) fclose(fp);
+	    fclose(fp);
 	} else
 	    warnx("cannot open %s as display file", buf);
     }

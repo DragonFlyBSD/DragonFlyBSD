@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rwhod.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/rwhod/rwhod.c,v 1.13.2.2 2000/12/23 15:28:12 iedowse Exp $
- * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.5 2004/08/30 19:27:22 eirikn Exp $
+ * $DragonFly: src/usr.sbin/rwhod/rwhod.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -202,7 +202,7 @@ main(int argc, char *argv[])
 #ifndef DEBUG
 	daemon(1, 0);
 #endif
-	(void) signal(SIGHUP, getboottime);
+	signal(SIGHUP, getboottime);
 	openlog("rwhod", LOG_PID, LOG_DAEMON);
 	sp = getservbyname("who", "udp");
 	if (sp == NULL) {
@@ -285,7 +285,7 @@ main(int argc, char *argv[])
 			    inet_ntoa(from.sin_addr));
 			continue;
 		}
-		(void) snprintf(path, sizeof path, "whod.%s", wd.wd_hostname);
+		snprintf(path, sizeof path, "whod.%s", wd.wd_hostname);
 		/*
 		 * Rather than truncating and growing the file each time,
 		 * use ftruncate if size is less than previous size.
@@ -314,11 +314,11 @@ main(int argc, char *argv[])
 			}
 		}
 #endif
-		(void) time((time_t *)&wd.wd_recvtime);
-		(void) write(whod, (char *)&wd, cc);
+		time((time_t *)&wd.wd_recvtime);
+		write(whod, (char *)&wd, cc);
 		if (fstat(whod, &st) < 0 || st.st_size > cc)
 			ftruncate(whod, cc);
-		(void) close(whod);
+		close(whod);
 	}
 }
 
@@ -391,7 +391,7 @@ onalrm(int signo)
 	if (alarmcount % 10 == 0)
 		getboottime(0);
 	alarmcount++;
-	(void) fstat(utmpf, &stb);
+	fstat(utmpf, &stb);
 	if ((stb.st_mtime != utmptime) || (stb.st_size > utmpsize)) {
 		utmptime = stb.st_mtime;
 		if (stb.st_size > utmpsize) {
@@ -406,7 +406,7 @@ onalrm(int signo)
 				goto done;
 			}
 		}
-		(void) lseek(utmpf, (off_t)0, L_SET);
+		lseek(utmpf, (off_t)0, L_SET);
 		cc = read(utmpf, (char *)utmp, stb.st_size);
 		if (cc < 0) {
 			syslog(LOG_ERR, "read(%s): %m", _PATH_UTMP);
@@ -443,7 +443,7 @@ onalrm(int signo)
 			we->we_idle = htonl(now - stb.st_atime);
 		we++;
 	}
-	(void)getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0]));
+	getloadavg(avenrun, sizeof(avenrun)/sizeof(avenrun[0]));
 	for (i = 0; i < 3; i++)
 		mywd.wd_loadav[i] = htonl((u_long)(avenrun[i] * 100));
 	cc = (char *)we - (char *)&mywd;
@@ -451,7 +451,7 @@ onalrm(int signo)
 	mywd.wd_vers = WHODVERSION;
 	mywd.wd_type = WHODTYPE_STATUS;
 	if (multicast_mode == SCOPED_MULTICAST) {
-		(void) sendto(s, (char *)&mywd, cc, 0,
+		sendto(s, (char *)&mywd, cc, 0,
 				(struct sockaddr *)&multicast_addr,
 				sizeof(multicast_addr));
 	}
@@ -468,18 +468,18 @@ onalrm(int signo)
 					"setsockopt IP_MULTICAST_IF: %m");
 				exit(1);
 			}
-			(void) sendto(s, (char *)&mywd, cc, 0,
+			sendto(s, (char *)&mywd, cc, 0,
 				(struct sockaddr *)&multicast_addr,
 				sizeof(multicast_addr));
-		} else (void) sendto(s, (char *)&mywd, cc, 0,
-					np->n_addr, np->n_addrlen);
+		} else sendto(s, (char *)&mywd, cc, 0,
+				np->n_addr, np->n_addrlen);
 	}
 	if (utmpent && chdir(_PATH_RWHODIR)) {
 		syslog(LOG_ERR, "chdir(%s): %m", _PATH_RWHODIR);
 		exit(1);
 	}
 done:
-	(void) alarm(AL_INTERVAL);
+	alarm(AL_INTERVAL);
 }
 
 void
@@ -702,17 +702,17 @@ interval(int time, char *updown)
 	int days, hours, minutes;
 
 	if (time < 0 || time > 3*30*24*60*60) {
-		(void) sprintf(resbuf, "   %s ??:??", updown);
+		sprintf(resbuf, "   %s ??:??", updown);
 		return (resbuf);
 	}
 	minutes = (time + 59) / 60;		/* round to minutes */
 	hours = minutes / 60; minutes %= 60;
 	days = hours / 24; hours %= 24;
 	if (days)
-		(void) sprintf(resbuf, "%s %2d+%02d:%02d",
+		sprintf(resbuf, "%s %2d+%02d:%02d",
 		    updown, days, hours, minutes);
 	else
-		(void) sprintf(resbuf, "%s    %2d:%02d",
+		sprintf(resbuf, "%s    %2d:%02d",
 		    updown, hours, minutes);
 	return (resbuf);
 }

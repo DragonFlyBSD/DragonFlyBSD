@@ -32,7 +32,7 @@
  * @(#)from: clnt_udp.c 1.39 87/08/11 Copyr 1984 Sun Micro
  * @(#)from: clnt_udp.c	2.2 88/08/01 4.0 RPCSRC
  * $FreeBSD: src/usr.sbin/ypbind/yp_ping.c,v 1.6.2.1 2002/02/15 00:46:59 des Exp $
- * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.5 2004/03/31 21:03:38 cpressey Exp $
+ * $DragonFly: src/usr.sbin/ypbind/yp_ping.c,v 1.6 2004/12/18 22:48:14 swildner Exp $
  */
 
 /*
@@ -299,7 +299,7 @@ get_reply:
 			}
 			if (reply_msg.acpted_rply.ar_verf.oa_base != NULL) {
 				xdrs->x_op = XDR_FREE;
-				(void)xdr_opaque_auth(xdrs,
+				xdr_opaque_auth(xdrs,
 				    &(reply_msg.acpted_rply.ar_verf));
 			}
 		}  /* end successful completion */
@@ -364,7 +364,7 @@ __pmap_getport(struct sockaddr_in *address,
 		CLNT_DESTROY(client);
 	}
 	if (sock != -1)
-		(void)close(sock);
+		close(sock);
 	address->sin_port = 0;
 	return (port);
 }

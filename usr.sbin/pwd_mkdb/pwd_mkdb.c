@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)pwd_mkdb.c	8.5 (Berkeley) 4/20/94
  * $FreeBSD: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.35 2000/03/09 18:11:16 paul Exp $
- * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.3 2003/11/03 19:31:41 eirikn Exp $
+ * $DragonFly: src/usr.sbin/pwd_mkdb/pwd_mkdb.c,v 1.4 2004/12/18 22:48:04 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -147,10 +147,10 @@ main(argc, argv)
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGTERM);
-	(void)sigprocmask(SIG_BLOCK, &set, (sigset_t *)NULL);
+	sigprocmask(SIG_BLOCK, &set, (sigset_t *)NULL);
 
 	/* We don't care what the user wants. */
-	(void)umask(0);
+	umask(0);
 
 	pname = *argv;
 
@@ -185,11 +185,11 @@ main(argc, argv)
 	}
 
 	/* Open the temporary insecure password database. */
-	(void)snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
-	(void)snprintf(sbuf, sizeof(sbuf), "%s/%s.tmp", prefix, _SMP_DB);
+	snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
+	snprintf(sbuf, sizeof(sbuf), "%s/%s.tmp", prefix, _SMP_DB);
 	if (username) {
-		(void)snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _MP_DB);
-		(void)snprintf(sbuf2, sizeof(sbuf2), "%s/%s", prefix, _SMP_DB);
+		snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _MP_DB);
+		snprintf(sbuf2, sizeof(sbuf2), "%s/%s", prefix, _SMP_DB);
 
 		clean = FILE_INSECURE;
 		cp(buf2, buf, PERM_INSECURE);
@@ -274,7 +274,7 @@ main(argc, argv)
 	 * everyone.
 	 */
 	if (makeold) {
-		(void)snprintf(buf, sizeof(buf), "%s.orig", pname);
+		snprintf(buf, sizeof(buf), "%s.orig", pname);
 		if ((tfd = open(buf,
 		    O_WRONLY|O_CREAT|O_EXCL, PERM_INSECURE)) < 0)
 			error(buf);
@@ -438,24 +438,24 @@ main(argc, argv)
 	if ((sdp->close)(sdp) == -1)
 		error("close");
 	if (makeold) {
-		(void)fflush(oldfp);
+		fflush(oldfp);
 		if (fclose(oldfp) == EOF)
 			error("close old");
 	}
 
 	/* Set master.passwd permissions, in case caller forgot. */
-	(void)fchmod(fileno(fp), S_IRUSR|S_IWUSR);
+	fchmod(fileno(fp), S_IRUSR|S_IWUSR);
 
 	/* Install as the real password files. */
-	(void)snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
-	(void)snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _MP_DB);
+	snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
+	snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _MP_DB);
 	mv(buf, buf2);
-	(void)snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _SMP_DB);
-	(void)snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _SMP_DB);
+	snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _SMP_DB);
+	snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _SMP_DB);
 	mv(buf, buf2);
 	if (makeold) {
-		(void)snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _PASSWD);
-		(void)snprintf(buf, sizeof(buf), "%s.orig", pname);
+		snprintf(buf2, sizeof(buf2), "%s/%s", prefix, _PASSWD);
+		snprintf(buf, sizeof(buf), "%s.orig", pname);
 		mv(buf, buf2);
 	}
 	/*
@@ -464,7 +464,7 @@ main(argc, argv)
 	 * The rename means that everything is unlocked, as the original file
 	 * can no longer be accessed.
 	 */
-	(void)snprintf(buf, sizeof(buf), "%s/%s", prefix, _MASTERPASSWD);
+	snprintf(buf, sizeof(buf), "%s/%s", prefix, _MASTERPASSWD);
 	mv(pname, buf);
 
 	/*
@@ -537,7 +537,7 @@ cp(from, to, mode)
 		if (rcount != wcount || wcount == -1) {
 			int sverrno = errno;
 
-			(void)snprintf(buf, sizeof(buf), "%s to %s", from, to);
+			snprintf(buf, sizeof(buf), "%s to %s", from, to);
 			errno = sverrno;
 			error(buf);
 		}
@@ -545,7 +545,7 @@ cp(from, to, mode)
 	if (rcount < 0) {
 		int sverrno = errno;
 
-		(void)snprintf(buf, sizeof(buf), "%s to %s", from, to);
+		snprintf(buf, sizeof(buf), "%s to %s", from, to);
 		errno = sverrno;
 		error(buf);
 	}
@@ -560,7 +560,7 @@ mv(from, to)
 
 	if (rename(from, to)) {
 		int sverrno = errno;
-		(void)snprintf(buf, sizeof(buf), "%s to %s", from, to);
+		snprintf(buf, sizeof(buf), "%s to %s", from, to);
 		errno = sverrno;
 		error(buf);
 	}
@@ -583,16 +583,16 @@ cleanup()
 
 	switch(clean) {
 	case FILE_ORIG:
-		(void)snprintf(buf, sizeof(buf), "%s.orig", pname);
-		(void)unlink(buf);
+		snprintf(buf, sizeof(buf), "%s.orig", pname);
+		unlink(buf);
 		/* FALLTHROUGH */
 	case FILE_SECURE:
-		(void)snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _SMP_DB);
-		(void)unlink(buf);
+		snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _SMP_DB);
+		unlink(buf);
 		/* FALLTHROUGH */
 	case FILE_INSECURE:
-		(void)snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
-		(void)unlink(buf);
+		snprintf(buf, sizeof(buf), "%s/%s.tmp", prefix, _MP_DB);
+		unlink(buf);
 	}
 }
 
@@ -600,7 +600,7 @@ static void
 usage()
 {
 
-	(void)fprintf(stderr,
+	fprintf(stderr,
 "usage: pwd_mkdb [-C] [-N] [-p] [-d <dest dir>] [-s <cachesize>] [-u <local username>] file\n");
 	exit(1);
 }

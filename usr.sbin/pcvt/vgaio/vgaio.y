@@ -34,7 +34,7 @@
  */
 
 #ident "$FreeBSD: src/usr.sbin/pcvt/vgaio/vgaio.y,v 1.5 1999/09/06 07:39:30 peter Exp $"
-#ident "$DragonFly: src/usr.sbin/pcvt/vgaio/Attic/vgaio.y,v 1.2 2003/06/17 04:29:59 dillon Exp $"
+#ident "$DragonFly: src/usr.sbin/pcvt/vgaio/Attic/vgaio.y,v 1.3 2004/12/18 22:48:04 swildner Exp $"
 
 /*
  * $Log: vgaio.y,v $
@@ -172,7 +172,7 @@ void getreg(struct reg r) {
 
 	case AR:
 		r.num &= 0x1f;
-		(void)inb(vgabase + 0x0a);
+		inb(vgabase + 0x0a);
 		outb(0x3c0, r.num + 0x20);
 		val = inb(0x3c1);
 		break;
@@ -204,7 +204,7 @@ void setreg(struct reg r, int val) {
 
 	case AR:
 		r.num &= 0x1f;
-		(void)inb(vgabase + 0x0a);
+		inb(vgabase + 0x0a);
 		outb(0x3c0, r.num);
 		outb(0x3c0, val);
 		outb(0x3c0, r.num + 0x20);
@@ -247,6 +247,6 @@ int main(int argc, char **argv) {
 	vgabase = (inb(0x3cc) & 1)? 0x3d0: 0x3b0;
 	yyparse();
 
-	(void)ioctl(fd, KDDISABIO, 0);
+	ioctl(fd, KDDISABIO, 0);
 	return 0;
 }

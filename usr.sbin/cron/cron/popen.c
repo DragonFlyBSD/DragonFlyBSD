@@ -19,7 +19,7 @@
  *
  * @(#)popen.c	5.7 (Berkeley) 2/14/89
  * $FreeBSD: src/usr.sbin/cron/cron/popen.c,v 1.7.2.3 2000/12/11 01:03:31 obrien Exp $
- * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.4 2004/03/10 18:27:26 dillon Exp $
+ * $DragonFly: src/usr.sbin/cron/cron/popen.c,v 1.5 2004/12/18 22:48:03 swildner Exp $
  */
 
 /* this came out of the ftpd sources; it's been modified to avoid the
@@ -107,8 +107,8 @@ cron_popen(char *program, char *type, entry *e)
 	iop = NULL;
 	switch(pid = vfork()) {
 	case -1:			/* error */
-		(void)close(pdes[0]);
-		(void)close(pdes[1]);
+		close(pdes[0]);
+		close(pdes[1]);
 		goto pfree;
 		/* NOTREACHED */
 	case 0:				/* child */
@@ -119,29 +119,29 @@ cron_popen(char *program, char *type, entry *e)
 
 			/* get new pgrp, void tty, etc.
 			 */
-			(void) setsid();
+			setsid();
 		}
 		if (*type == 'r') {
 			/* Do not share our parent's stdin */
-			(void)close(0);
-			(void)open(_PATH_DEVNULL, O_RDWR);
+			close(0);
+			open(_PATH_DEVNULL, O_RDWR);
 			if (pdes[1] != 1) {
 				dup2(pdes[1], 1);
 				dup2(pdes[1], 2);	/* stderr, too! */
-				(void)close(pdes[1]);
+				close(pdes[1]);
 			}
-			(void)close(pdes[0]);
+			close(pdes[0]);
 		} else {
 			if (pdes[0] != 0) {
 				dup2(pdes[0], 0);
-				(void)close(pdes[0]);
+				close(pdes[0]);
 			}
 			/* Hack: stdout gets revoked */
-			(void)close(1);
-			(void)open(_PATH_DEVNULL, O_RDWR);
-			(void)close(2);
-			(void)open(_PATH_DEVNULL, O_RDWR);
-			(void)close(pdes[1]);
+			close(1);
+			open(_PATH_DEVNULL, O_RDWR);
+			close(2);
+			open(_PATH_DEVNULL, O_RDWR);
+			close(pdes[1]);
 		}
 # if defined(LOGIN_CAP)
 		if (e != NULL) {
@@ -160,10 +160,10 @@ cron_popen(char *program, char *type, entry *e)
 			if (pwd &&
 			    setusercontext(lc, pwd, e->uid,
 				    LOGIN_SETALL & ~(LOGIN_SETPATH|LOGIN_SETENV)) == 0)
-				(void) endpwent();
+				endpwent();
 			else {
 				/* fall back to the old method */
-				(void) endpwent();
+				endpwent();
 # endif
 				/* set our directory, uid and gid.  Set gid first,
 				 * since once we set uid, we've lost root privledges.
@@ -191,10 +191,10 @@ cron_popen(char *program, char *type, entry *e)
 	/* parent; assume fdopen can't fail...  */
 	if (*type == 'r') {
 		iop = fdopen(pdes[0], type);
-		(void)close(pdes[1]);
+		close(pdes[1]);
 	} else {
 		iop = fdopen(pdes[1], type);
-		(void)close(pdes[0]);
+		close(pdes[0]);
 	}
 	pids[fileno(iop)] = pid;
 
@@ -222,11 +222,11 @@ cron_pclose(FILE *iop)
 	 */
 	if (pids == 0 || pids[fdes = fileno(iop)] == 0)
 		return(-1);
-	(void)fclose(iop);
+	fclose(iop);
 	omask = sigblock(sigmask(SIGINT)|sigmask(SIGQUIT)|sigmask(SIGHUP));
 	while ((pid = wait(&stat_loc)) != pids[fdes] && pid != -1)
 		;
-	(void)sigsetmask(omask);
+	sigsetmask(omask);
 	pids[fdes] = 0;
 	return (pid == -1 ? -1 : WEXITSTATUS(stat_loc));
 }

@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/IPXrouted/trace.c,v 1.6.2.1 2000/07/20 10:35:22 kris Exp $
- * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.3 2004/03/11 09:38:59 hmp Exp $
+ * $DragonFly: src/usr.sbin/IPXrouted/trace.c,v 1.4 2004/12/18 22:48:02 swildner Exp $
  *
  * @(#)trace.c	8.1 (Berkeley) 6/5/93
  */
@@ -465,7 +465,7 @@ ipxdp_nettoa(union ipx_net val)
 	static char buf[100];
 	
 	net.net_e = val;
-	(void)sprintf(buf, "%lx", ntohl(net.long_e));
+	sprintf(buf, "%lx", ntohl(net.long_e));
 	return (buf);
 }
 
@@ -475,7 +475,7 @@ ipxdp_ntoa(struct ipx_addr *addr)
 {
     static char buf[100];
 
-    (void)sprintf(buf, "%s#%x:%x:%x:%x:%x:%x",
+    sprintf(buf, "%s#%x:%x:%x:%x:%x:%x",
 	ipxdp_nettoa(addr->x_net),
 	addr->x_host.c_host[0], addr->x_host.c_host[1], 
 	addr->x_host.c_host[2], addr->x_host.c_host[3], 
