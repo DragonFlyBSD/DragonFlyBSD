@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1981, 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)badsect.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/badsect/badsect.c,v 1.7.2.2 2001/07/30 10:30:04 dd Exp $
- * $DragonFly: src/sbin/badsect/badsect.c,v 1.8 2005/02/14 19:18:53 cpressey Exp $
+ * $DragonFly: src/sbin/badsect/badsect.c,v 1.9 2005/02/14 20:09:43 cpressey Exp $
  */
 
 /*
@@ -111,6 +111,7 @@ main(int argc, char **argv)
 	if ((dirp = opendir(name)) == NULL)
 		err(3, "%s", name);
 	while ((dp = readdir(dirp)) != NULL) {
+		strlcpy(name, _PATH_DEV, sizeof(name));
 		if (strlcat(name, dp->d_name, sizeof(name)) >= sizeof(name)) {
 			errno = ENAMETOOLONG;	
 			err(1, "cannot build path name");
