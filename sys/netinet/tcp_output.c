@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.23 2005/01/08 09:26:32 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.24 2005/02/04 01:49:30 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -136,7 +136,7 @@
 extern struct mbuf *m_copypack();
 #endif
 
-int path_mtu_discovery = 1;
+int path_mtu_discovery = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, path_mtu_discovery, CTLFLAG_RW,
 	&path_mtu_discovery, 1, "Enable Path MTU Discovery");
 
