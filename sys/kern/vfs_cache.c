@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.50 2005/02/02 21:34:18 joerg Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.51 2005/02/12 18:56:46 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -595,15 +595,27 @@ cache_setunresolved(struct namecache *ncp)
  *			  from the leaves up as the recursion backs out.
  *
  * Note that the topology for any referenced nodes remains intact.
+ *
+ * It is possible for cache_inval() to race a cache_resolve(), meaning that
+ * the namecache entry may not actually be invalidated on return if it was
+ * revalidated while recursing down into its children.  This code guarentees
+ * that the node(s) will go through an invalidation cycle, but does not 
+ * guarentee that they will remain in an invalidated state. 
+ *
+ * Returns non-zero if a revalidation was detected during the invalidation
+ * recursion, zero otherwise.  Note that since only the original ncp is
+ * locked the revalidation ultimately can only indicate that the original ncp
+ * *MIGHT* no have been reresolved.
  */
-void
+int
 cache_inval(struct namecache *ncp, int flags)
 {
 	struct namecache *kid;
 	struct namecache *nextkid;
+	int rcnt = 0;
 
 	KKASSERT(ncp->nc_exlocks);
-again:
+
 	cache_setunresolved(ncp);
 	if (flags & CINV_DESTROY)
 		ncp->nc_flag |= NCF_DESTROYED;
@@ -620,36 +632,51 @@ again:
 			    TAILQ_FIRST(&kid->nc_list)
 			) {
 				cache_lock(kid);
-				cache_inval(kid, flags & ~CINV_DESTROY);
+				rcnt += cache_inval(kid, flags & ~CINV_DESTROY);
 				cache_unlock(kid);
 			}
 			cache_drop(kid);
 			kid = nextkid;
 		}
 		cache_lock(ncp);
-
-		/*
-		 * Someone could have gotten in there while ncp was unlocked,
-		 * retry if so.
-		 */
-		if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
-			goto again;
 	}
+
+	/*
+	 * Someone could have gotten in there while ncp was unlocked,
+	 * retry if so.
+	 */
+	if ((ncp->nc_flag & NCF_UNRESOLVED) == 0)
+		++rcnt;
+	return (rcnt);
 }
 
 /*
- * Invalidate a vnode's namecache associations.
+ * Invalidate a vnode's namecache associations.  To avoid races against
+ * the resolver we do not invalidate a node which we previously invalidated
+ * but which was then re-resolved while we were in the invalidation loop.
+ *
+ * Returns non-zero if any namecache entries remain after the invalidation
+ * loop completed.
  */
-void
+int
 cache_inval_vp(struct vnode *vp, int flags)
 {
 	struct namecache *ncp;
+	struct namecache *next;
 
-	while ((ncp = TAILQ_FIRST(&vp->v_namecache)) != NULL) {
-		cache_get(ncp);
+	ncp = TAILQ_FIRST(&vp->v_namecache);
+	if (ncp)
+		cache_hold(ncp);
+	while (ncp) {
+		/* loop entered with ncp held */
+		if ((next = TAILQ_NEXT(ncp, nc_entry)) != NULL)
+			cache_hold(next);
+		cache_lock(ncp);
 		cache_inval(ncp, flags);
-		cache_put(ncp);
+		cache_put(ncp);		/* also releases reference */
+		ncp = next;
 	}
+	return(TAILQ_FIRST(&vp->v_namecache) != NULL);
 }
 
 /*
@@ -673,10 +700,19 @@ void
 cache_rename(struct namecache *fncp, struct namecache *tncp)
 {
 	struct namecache *scan;
+	int didwarn = 0;
 
 	cache_setunresolved(fncp);
 	cache_setunresolved(tncp);
-	cache_inval(tncp, CINV_CHILDREN);
+	while (cache_inval(tncp, CINV_CHILDREN) != 0) {
+		if (didwarn++ % 10 == 0) {
+			printf("Warning: cache_rename: race during "
+				"rename %s->%s\n",
+				fncp->nc_name, tncp->nc_name);
+		}
+		tsleep(tncp, 0, "mvrace", hz / 10);
+		cache_setunresolved(tncp);
+	}
 	while ((scan = TAILQ_FIRST(&fncp->nc_list)) != NULL) {
 		cache_hold(scan);
 		cache_unlink_parent(scan);
