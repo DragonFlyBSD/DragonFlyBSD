@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/comconsole.c,v 1.10 2003/09/16 11:24:23 bde Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.6 2004/06/26 23:41:09 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/comconsole.c,v 1.7 2004/06/27 08:01:06 dillon Exp $
  */
 
 #include <stand.h>
@@ -82,11 +82,16 @@ comc_init(int arg)
     outb(COMPORT + com_cfcr, COMC_FMT);
     outb(COMPORT + com_mcr, MCR_RTS | MCR_DTR);
 
+#if 0
     /*
      * Enable the FIFO so the serial port output in dual console mode doesn't
      * interfere so much with the disk twiddle.
+     *
+     * DISABLED - apparently many new laptops implement only the base 8250,
+     * writing to this port can crash them.
      */
     outb(COMPORT + com_fifo, FIFO_ENABLE);
+#endif
 
     /*
      * Give the serial port a little time to settle after asserting RTS and
