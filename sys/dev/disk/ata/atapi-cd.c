@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/atapi-cd.c,v 1.48.2.20 2002/11/25 05:30:31 njl Exp $
- * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.10 2004/02/18 01:35:59 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/atapi-cd.c,v 1.11 2004/03/08 13:31:57 joerg Exp $
  */
 
 #include "opt_ata.h"
@@ -1712,8 +1712,10 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     ccb[9] = length & 0xff;
     ccb[10] = (ai->agid << 6) | ai->format;
 
-    d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
-    d->length = htons(length - 2);
+    if (length) {
+	d = malloc(length, M_ACD, M_WAITOK | M_ZERO);
+	d->length = htons(length - 2);
+    }
 
     error = atapi_queue_cmd(cdp->device, ccb, (caddr_t)d, length,
 			    ai->format == DVD_INVALIDATE_AGID ? 0 : ATPR_F_READ,
@@ -1761,7 +1763,8 @@ acd_report_key(struct acd_softc *cdp, struct dvd_authinfo *ai)
     default:
 	error = EINVAL;
     }
-    free(d, M_ACD);
+    if (length)
+	free(d, M_ACD);
     return error;
 }
 
