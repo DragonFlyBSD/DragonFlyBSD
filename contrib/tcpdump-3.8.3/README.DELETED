@@ -1,0 +1,15 @@
+mkdep
+win32/
+install-sh
+configure
+configure.in
+aclocal.m4
+Readme.Win32
+config.sub
+config.guess
+config.h.in
+Makefile.in
+Makefile-devel-adds
+INSTALL
+lbl/
+acconfig.h
