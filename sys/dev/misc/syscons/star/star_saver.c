@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/star/star_saver.c,v 1.23.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/star/star_saver.c,v 1.4 2005/02/13 03:02:26 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -41,10 +41,6 @@
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
-
-#ifdef PC98
-#include <pc98/pc98/pc98_machdep.h>
-#endif
 
 #define NUM_STARS	50
 
@@ -61,13 +57,8 @@ star_saver(video_adapter_t *adp, int blank)
 	scr_stat	*scp;
 	int		cell, i;
 	static u_char	pattern[] = {"...........++++***   "};
-#ifndef PC98
 	static char	colors[] = {FG_DARKGREY, FG_LIGHTGREY,
 				    FG_WHITE, FG_LIGHTCYAN};
-#else
-	static char	colors[] = {FG_BLUE, FG_LIGHTGREY,
-				    FG_LIGHTGREY, FG_CYAN};
-#endif /* PC98 */
 	static u_short 	stars[NUM_STARS][2];
 
 	sc = sc_find_softc(adp, NULL);
@@ -79,13 +70,6 @@ star_saver(video_adapter_t *adp, int blank)
 		if (adp->va_info.vi_flags & V_INFO_GRAPHICS)
 			return EAGAIN;
 		if (!blanked) {
-#ifdef PC98
-			if (epson_machine_id == 0x20) {
-				outb(0x43f, 0x42);
-				outb(0x0c17, inb(0xc17) & ~0x08);
-				outb(0x43f, 0x40);
-			}
-#endif /* PC98 */
 			/* clear the screen and set the border color */
 			sc_vtb_clear(&scp->scr, sc->scr_map[0x20],
 				     (FG_LIGHTGREY | BG_BLACK) << 8);
@@ -107,16 +91,9 @@ star_saver(video_adapter_t *adp, int blank)
 			stars[cell][1] = 0;
 		}
 	}
-	else {
-#ifdef PC98
-		if (epson_machine_id == 0x20) {
-			outb(0x43f, 0x42);
-			outb(0x0c17, inb(0xc17) | 0x08);
-			outb(0x43f, 0x40);
-		}
-#endif /* PC98 */
+	else
 		blanked = FALSE;
-	}
+
 	return 0;
 }
 

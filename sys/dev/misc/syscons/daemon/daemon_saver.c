@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/daemon/daemon_saver.c,v 1.18.2.2 2001/05/06 05:44:29 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/daemon/Attic/daemon_saver.c,v 1.3 2003/08/15 08:32:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/daemon/Attic/daemon_saver.c,v 1.4 2005/02/13 03:02:25 swildner Exp $
  */
 
 #include <sys/param.h>
@@ -43,10 +43,6 @@
 #include <dev/video/fb/fbreg.h>
 #include <dev/video/fb/splashreg.h>
 #include "../syscons.h"
-
-#ifdef PC98
-#include <pc98/pc98/pc98_machdep.h>
-#endif
 
 #define DAEMON_MAX_WIDTH	32
 #define DAEMON_MAX_HEIGHT	19
@@ -155,21 +151,12 @@ draw_daemon(sc_softc_t *sc, int xpos, int ypos, int dxdir, int xoff, int yoff,
 			continue;
 		for (x = xoff; (x < xlen) && (daemon_pic[y][px] != '\0'); x++, px++) {
 			switch (daemon_attr[y][px]) {
-#ifndef PC98
 			case 'R': attr = (FG_LIGHTRED|BG_BLACK)<<8; break;
 			case 'Y': attr = (FG_YELLOW|BG_BLACK)<<8; break;
 			case 'B': attr = (FG_LIGHTBLUE|BG_BLACK)<<8; break;
 			case 'W': attr = (FG_LIGHTGREY|BG_BLACK)<<8; break;
 			case 'C': attr = (FG_CYAN|BG_BLACK)<<8; break;
 			default: attr = (FG_WHITE|BG_BLACK)<<8; break;
-#else /* PC98 */
-			case 'R': attr = (FG_RED|BG_BLACK)<<8; break;
-			case 'Y': attr = (FG_BROWN|BG_BLACK)<<8; break;
-			case 'B': attr = (FG_BLUE|BG_BLACK)<<8; break;
-			case 'W': attr = (FG_LIGHTGREY|BG_BLACK)<<8; break;
-			case 'C': attr = (FG_CYAN|BG_BLACK)<<8; break;
-			default: attr = (FG_LIGHTGREY|BG_BLACK)<<8; break;
-#endif /* PC98 */
 			}
 			if (dxdir < 0) {	/* Moving left */
 				sc_vtb_putc(&sc->cur_scp->scr,
@@ -205,15 +192,9 @@ draw_string(sc_softc_t *sc, int xpos, int ypos, int xoff, u_char *s, int len)
 	int x;
 
 	for (x = xoff; x < len; x++) {
-#ifdef PC98
-		sc_vtb_putc(&sc->cur_scp->scr,
-			    ypos*sc->cur_scp->xsize + xpos + x,
-			    sc->scr_map[s[x]], (FG_GREEN | BG_BLACK) << 8);
-#else
 		sc_vtb_putc(&sc->cur_scp->scr,
 			    ypos*sc->cur_scp->xsize + xpos + x,
 			    sc->scr_map[s[x]], (FG_LIGHTGREEN | BG_BLACK) << 8);
-#endif
 	}
 }
 
@@ -240,13 +221,6 @@ daemon_saver(video_adapter_t *adp, int blank)
 		if (adp->va_info.vi_flags & V_INFO_GRAPHICS)
 			return EAGAIN;
 		if (blanked == 0) {
-#ifdef PC98
-			if (epson_machine_id == 0x20) {
-				outb(0x43f, 0x42);
-				outb(0x0c17, inb(0xc17) & ~0x08);
-				outb(0x43f, 0x40);
-			}
-#endif /* PC98 */
 			/* clear the screen and set the border color */
 			sc_vtb_clear(&scp->scr, sc->scr_map[0x20],
 				     (FG_LIGHTGREY | BG_BLACK) << 8);
@@ -367,13 +341,6 @@ daemon_saver(video_adapter_t *adp, int blank)
  		draw_daemon(sc, dxpos, dypos, dxdir, xoff, yoff, xlen, ylen);
 		draw_string(sc, txpos, typos, toff, message, tlen);
 	} else {
-#ifdef PC98
-		if (epson_machine_id == 0x20) {
-			outb(0x43f, 0x42);
-			outb(0x0c17, inb(0xc17) | 0x08);
-			outb(0x43f, 0x40);
-		}
-#endif /* PC98 */
 		blanked = 0;
 	}
 	return 0;

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/dragon/dragon_saver.c,v 1.1.2.1 2003/05/11 01:17:02 murray Exp $
- * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.3 2003/08/15 08:32:30 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/dragon/dragon_saver.c,v 1.4 2005/02/13 03:02:25 swildner Exp $
  */
 
 #include	<sys/param.h>
@@ -48,17 +48,10 @@
 static u_char	*vid;
 static int	blanked;
 
-#ifdef PC98
-#define	VIDEO_MODE	M_PC98_EGC640x400
-#define	VIDEO_MODE_NAME	"M_PC98_EGC640x400"
-#define	SCRW	640
-#define	SCRH	400
-#else
 #define	VIDEO_MODE	M_VGA_CG320
 #define	VIDEO_MODE_NAME	"M_VGA_CG320"
 #define	SCRW	320
 #define	SCRH	200
-#endif
 #define	ORDER	13
 #define	CURVE	3
 #define	OUT	100
@@ -73,11 +66,7 @@ gpset(int x, int y, int val)
 	if (x < 0 || y < 0 || SCRW <= x || SCRH <= y) {
 		return 0;
 	}
-#ifdef PC98
-	vid[(x + y * SCRW) >> 3] = (0x80 >> (x & 7));	/* write new dot */
-#else
 	vid[x + y * SCRW] = val;
-#endif
 	return 1;
 }
 
@@ -87,11 +76,6 @@ gdraw(int dx, int dy, int val)
 	int	i;
 	int	set = 0;
 
-#ifdef PC98
-	outb(0x7c, 0xcc);	/* GRCG on & RMW mode(disable planeI,G) */
-	outb(0x7e, (val & 1) ? 0xff: 0);	/* tile B */
-	outb(0x7e, (val & 2) ? 0xff: 0);	/* tile R */
-#endif
 	if (dx != 0) {
 		i = cur_x;
 		cur_x += dx;
@@ -116,28 +100,7 @@ gdraw(int dx, int dy, int val)
 			set |= gpset(cur_x, i, val);
 		} 
 	}
-#ifdef PC98
-	outb(0x7c, 0);		/* GRCG off */
-#endif
 	return set;
-}
-
-static void
-gcls(void)
-{
-#ifdef PC98
-	outb(0x7c, 0x80);	/* GRCG on & TDW mode */
-	outb(0x7e, 0);			/* tile B */
-	outb(0x7e, 0);			/* tile R */
-	outb(0x7e, 0);			/* tile G */
-	outb(0x7e, 0);			/* tile I */
-
-	fillw(0, vid, 0x8000);
-
-	outb(0x7c, 0);	/* GRCG off */
-#else
-	bzero(vid, SCRW*SCRH);
-#endif
 }
 
 static void
@@ -154,7 +117,7 @@ dragon_update(video_adapter_t *adp)
 	int	tmp;
 
 	if (curve > CURVE) {
-		gcls();
+		bzero(vid, SCRW*SCRH);
 
 		/* set palette of each curves */
 		for (tmp = 0; tmp < 3*CURVE; ++tmp) {

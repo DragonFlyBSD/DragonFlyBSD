@@ -29,19 +29,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/syscons.h,v 1.60.2.6 2002/09/15 22:30:45 dd Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.9 2005/01/28 21:08:38 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.h,v 1.10 2005/02/13 03:02:25 swildner Exp $
  */
 
 #ifndef _DEV_SYSCONS_SYSCONS_H_
 #define	_DEV_SYSCONS_SYSCONS_H_
-
-/* machine-dependent part of the header */
-
-#ifdef PC98
-#include <pc98/pc98/sc_machdep.h>
-#elif defined(__i386__)
-/* nothing for the moment */
-#endif
 
 /* default values for configuration options */
 

@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scvidctl.c,v 1.19.2.2 2000/05/05 09:16:08 nyan Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.7 2005/01/28 20:17:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scvidctl.c,v 1.8 2005/02/13 03:02:25 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -493,12 +493,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
     case SW_ENH_B80x25: case SW_ENH_C80x25:
     case SW_ENH_B80x43: case SW_ENH_C80x43:
     case SW_EGAMONO80x25:
-
-#ifdef PC98
-    /* PC98 TEXT MODES */
-    case SW_PC98_80x25:
-    case SW_PC98_80x30:
-#endif
 	if (!(adp->va_flags & V_ADP_MODECHANGE))
  	    return ENODEV;
 	return sc_set_text_mode(scp, tp, cmd & 0xff, 0, 0, 0);
@@ -509,11 +503,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
     case SW_CG640x350: case SW_ENH_CG640:
     case SW_BG640x480: case SW_CG640x480: case SW_VGA_CG320:
     case SW_VGA_MODEX:
-#ifdef PC98
-    /* PC98 GRAPHICS MODES */
-    case SW_PC98_EGC640x400:	case SW_PC98_PEGC640x400:
-    case SW_PC98_PEGC640x480:
-#endif
 	if (!(adp->va_flags & V_ADP_MODECHANGE))
 	    return ENODEV;
 	return sc_set_graphics_mode(scp, tp, cmd & 0xff);
@@ -551,11 +540,8 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 	    load_palette(adp, scp->sc->palette);
 #endif
 
-#ifndef PC98
 	    /* move hardware cursor out of the way */
 	    (*vidsw[adp->va_index]->set_hw_cursor)(adp, -1, -1);
-#endif
-
 	    /* FALL THROUGH */
 
 	case KD_TEXT1:  	/* switch to TEXT (known) mode */
@@ -570,7 +556,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 		splx(s);
 		return error;
 	    }
-#ifndef PC98
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
 	    splx(s);
 	    /* no restore fonts & palette */
@@ -578,14 +563,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 		set_mode(scp);
 	    sc_clear_screen(scp);
 	    scp->status &= ~UNKNOWN_MODE;
-#else /* PC98 */
-	    scp->status &= ~UNKNOWN_MODE;
-	    /* no restore fonts & palette */
-	    if (scp == scp->sc->cur_scp)
-		set_mode(scp);
-	    sc_clear_screen(scp);
-	    splx(s);
-#endif /* PC98 */
 	    return 0;
 
 #ifdef SC_PIXEL_MODE
@@ -621,10 +598,6 @@ sc_vid_ioctl(struct tty *tp, u_long cmd, caddr_t data, int flag, struct thread *
 	    }
 	    scp->status |= UNKNOWN_MODE | MOUSE_HIDDEN;
 	    splx(s);
-#ifdef PC98
-	    if (scp == scp->sc->cur_scp)
-		set_mode(scp);
-#endif
 	    return 0;
 
 	default:

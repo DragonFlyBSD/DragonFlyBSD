@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/syscons/scmouse.c,v 1.12.2.3 2001/07/28 12:51:47 yokota Exp $
- * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.6 2005/01/28 20:17:18 swildner Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/scmouse.c,v 1.7 2005/02/13 03:02:25 swildner Exp $
  */
 
 #include "opt_syscons.h"
@@ -181,7 +181,6 @@ sc_remove_mouse_image(scr_stat *scp)
     i = scp->mouse_oldpos;
     mark_for_update(scp, i);
     mark_for_update(scp, i);
-#ifndef PC98
     if (i + scp->xsize + 1 < size) {
 	mark_for_update(scp, i + scp->xsize + 1);
     } else if (i + scp->xsize < size) {
@@ -189,7 +188,6 @@ sc_remove_mouse_image(scr_stat *scp)
     } else if (i + 1 < size) {
 	mark_for_update(scp, i + 1);
     }
-#endif /* PC98 */
     scp->status &= ~MOUSE_VISIBLE;
     --scp->sc->videoio_in_progress;
 }

@@ -29,7 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: /usr/local/www/cvsroot/FreeBSD/src/sys/dev/syscons/syscons.c,v 1.336.2.17 2004/03/25 08:41:09 ru Exp $
- * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.15 2005/02/12 02:58:29 joerg Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/syscons.c,v 1.16 2005/02/13 03:02:25 swildner Exp $
  */
 
 #include "use_splash.h"
@@ -273,7 +273,6 @@ static char
 	{ KD_CGA,	{ "CGA",	"CGA" } },
 	{ KD_EGA,	{ "EGA",	"EGA (mono)" } },
 	{ KD_VGA,	{ "VGA",	"VGA (mono)" } },
-	{ KD_PC98,	{ "PC-98x1",	"PC-98x1" } },
 	{ KD_TGA,	{ "TGA",	"TGA" } },
 	{ -1,		{ "Unknown",	"Unknown" } },
     };
