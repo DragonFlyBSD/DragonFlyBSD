@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)kill.c	8.4 (Berkeley) 4/28/95
  * $FreeBSD: src/bin/kill/kill.c,v 1.11.2.2 2002/07/28 10:19:57 tjr Exp $
- * $DragonFly: src/bin/kill/kill.c,v 1.5 2004/11/07 20:54:51 eirikn Exp $
+ * $DragonFly: src/bin/kill/kill.c,v 1.6 2004/11/11 21:16:46 cpressey Exp $
  */
 
 #include <ctype.h>
@@ -50,7 +50,7 @@ static int signame_to_signum(const char *);
 static void usage(void);
 
 int
-main(int argc, char *argv[])
+main(int argc, char **argv)
 {
 	int errors, numsig;
 	pid_t  pid;
@@ -62,7 +62,7 @@ main(int argc, char *argv[])
 	numsig = SIGTERM;
 
 	argc--, argv++;
-	if (!strcmp(*argv, "-l")) {
+	if (strcmp(*argv, "-l") == 0) {
 		argc--, argv++;
 		if (argc > 1)
 			usage();
@@ -70,7 +70,7 @@ main(int argc, char *argv[])
 			if (!isdigit(**argv))
 				usage();
 			numsig = strtol(*argv, &ep, 10);
-			if (!**argv || *ep)
+			if (**argv == '\0' || *ep != '\0')
 				errx(1, "illegal signal number: %s", *argv);
 			if (numsig >= 128)
 				numsig -= 128;
@@ -83,13 +83,13 @@ main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (!strcmp(*argv, "-s")) {
+	if (strcmp(*argv, "-s") == 0) {
 		argc--, argv++;
 		if (argc < 1) {
 			warnx("option requires an argument -- s");
 			usage();
 		}
-		if (strcmp(*argv, "0")) {
+		if (strcmp(*argv, "0") != 0) {
 			if ((numsig = signame_to_signum(*argv)) < 0)
 				nosig(*argv);
 		} else
@@ -102,7 +102,7 @@ main(int argc, char *argv[])
 				nosig(*argv);
 		} else if (isdigit(**argv)) {
 			numsig = strtol(*argv, &ep, 10);
-			if (!**argv || *ep)
+			if (**argv == '\0' || *ep != '\0')
 				errx(1, "illegal signal number: %s", *argv);
 			if (numsig < 0 || numsig >= sys_nsig)
 				nosig(*argv);
@@ -136,19 +136,18 @@ signame_to_signum(const char *sig)
 {
 	int n;
 
-	if (!strncasecmp(sig, "sig", (size_t)3))
+	if (strncasecmp(sig, "sig", (size_t)3) == 0)
 		sig += 3;
 	for (n = 1; n < sys_nsig; n++) {
-		if (!strcasecmp(sys_signame[n], sig))
-			return (n);
+		if (strcasecmp(sys_signame[n], sig) == 0)
+			return(n);
 	}
-	return (-1);
+	return(-1);
 }
 
 static void
 nosig(const char *name)
 {
-
 	warnx("unknown signal %s; valid signals:", name);
 	printsignals(stderr);
 	exit(1);
@@ -171,7 +170,6 @@ printsignals(FILE *fp)
 static void
 usage(void)
 {
-
 	fprintf(stderr, "%s\n%s\n%s\n%s\n",
 		"usage: kill [-s signal_name] pid ...",
 		"       kill -l [exit_status]",
