@@ -41,7 +41,7 @@
  * ``http://www.nominum.com''.
  *
  * $FreeBSD: src/contrib/isc-dhcp/includes/dhcpd.h,v 1.8 2003/09/02 11:13:21 mbr Exp $
- * $DragonFly: src/contrib/isc-dhcp/includes/Attic/dhcpd.h,v 1.2 2003/10/11 21:14:19 dillon Exp $
+ * $DragonFly: src/contrib/isc-dhcp/includes/Attic/dhcpd.h,v 1.3 2004/12/21 14:41:31 joerg Exp $
  */
 
 #ifndef __CYGWIN32__
@@ -270,7 +270,7 @@ typedef struct {
 } dhcp_control_object_t;
 
 /* Lease states: */
-typedef enum {
+typedef enum  {
 	FTS_FREE = 1,
 	FTS_ACTIVE = 2,
 	FTS_EXPIRED = 3,
@@ -278,7 +278,7 @@ typedef enum {
 	FTS_ABANDONED = 5,
 	FTS_RESET = 6,
 	FTS_BACKUP = 7
-} binding_state_t;
+} __packed binding_state_t;
 
 /* FTS_LAST is the highest value that is valid for a lease binding state. */
 #define FTS_LAST FTS_BACKUP
@@ -321,9 +321,9 @@ struct lease {
 #	define EPHEMERAL_FLAGS		(MS_NULL_TERMINATION | \
 					 UNICAST_BROADCAST_HACK)
 
-	binding_state_t __attribute__ ((mode (__byte__))) binding_state;
-	binding_state_t __attribute__ ((mode (__byte__))) next_binding_state;
-	binding_state_t __attribute__ ((mode (__byte__))) desired_binding_state;
+	binding_state_t binding_state;
+	binding_state_t next_binding_state;
+	binding_state_t desired_binding_state;
 	
 	struct lease_state *state;
 
