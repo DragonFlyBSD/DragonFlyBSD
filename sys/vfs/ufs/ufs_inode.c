@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_inode.c	8.9 (Berkeley) 5/14/95
  * $FreeBSD: src/sys/ufs/ufs/ufs_inode.c,v 1.25.2.3 2002/07/05 22:42:31 dillon Exp $
- * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.11 2004/10/12 19:21:12 dillon Exp $
+ * $DragonFly: src/sys/vfs/ufs/ufs_inode.c,v 1.12 2004/12/14 23:59:47 dillon Exp $
  */
 
 #include "opt_quota.h"
@@ -72,7 +72,7 @@ ufs_inactive(struct vop_inactive_args *ap)
 	struct thread *td = ap->a_td;
 	int mode, error = 0;
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_usecount != 1)
 		vprint("ufs_inactive: pushing active", vp);
 
 	/*
@@ -118,7 +118,7 @@ ufs_reclaim(struct vop_reclaim_args *ap)
 	int i;
 #endif
 
-	if (prtactive && vp->v_usecount != 0)
+	if (prtactive && vp->v_usecount != 1)
 		vprint("ufs_reclaim: pushing active", vp);
 	ip = VTOI(vp);
 	if (ip && (ip->i_flag & IN_LAZYMOD)) {
