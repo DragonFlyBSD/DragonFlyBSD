@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/fwohci_pci.c,v 1.38 2004/01/23 17:37:09 simokawa Exp $
- * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.15 2004/07/18 12:37:03 asmodai Exp $
+ * $DragonFly: src/sys/bus/firewire/fwohci_pci.c,v 1.16 2004/11/08 16:50:33 dillon Exp $
  */
 
 #define BOUNCE_BUFFER_TEST	0
@@ -233,12 +233,23 @@ fwohci_pci_init(device_t self)
 	int olatency, latency, ocache_line, cache_line;
 	u_int16_t cmd;
 
+	/*
+	 * Clear PCIM_CMD_MWRICEN as per FreeBSD/1.20, but note that the
+	 * problem may have been related to SERR and PERR being
+	 * unconditionally enabled in that rev.
+	 *
+	 * Do not change the SERRESPEN or PERRESPEN bits.  Use the BIOS
+	 * values (probably off).  This crashes some machines in fwohci_init().
+	 *
+	 * The theory here is that the device may not be properly initializing
+	 * its on-chip memory, leaving some of it in a parity errored state,
+	 * and enabling parity check may result in the device blowing up.
+	 * It's also possible that some hardware is just plain broken.  OpenBSD
+	 * does not turn on SERRESPEN or PERRESPEN so we won't either.
+	 */
 	cmd = pci_read_config(self, PCIR_COMMAND, 2);
-	cmd |= PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN | PCIM_CMD_MWRICEN |
-		PCIM_CMD_SERRESPEN | PCIM_CMD_PERRESPEN;
-#if 1
+	cmd |= PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN;
 	cmd &= ~PCIM_CMD_MWRICEN; 
-#endif
 	pci_write_config(self, PCIR_COMMAND, cmd, 2);
 
 	latency = olatency = pci_read_config(self, PCIR_LATTIMER, 1);
