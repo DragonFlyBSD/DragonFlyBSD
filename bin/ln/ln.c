@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.7 2005/02/28 19:42:12 liamfoy Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.8 2005/03/01 20:54:53 liamfoy Exp $
  */
 
 #include <sys/param.h>
@@ -129,17 +129,15 @@ main(int argc, char *argv[])
 	}
 					/* ln target1 target2 directory */
 	sourcedir = argv[argc - 1];
-
-	if (lstat(sourcedir, &sb))
-		err(1, "%s", sourcedir);
-
-	if (hflag && S_ISLNK(sb.st_mode)) {
+	if (hflag && lstat(sourcedir, &sb) == 0 && S_ISLNK(sb.st_mode)) {
 		/*
 		 * We were asked not to follow symlinks, but found one at
 		 * the target--simulate "not a directory" error
 		 */
 		errc(1, ENOTDIR, "%s", sourcedir);
 	}
+	if (stat(sourcedir, &sb))
+		err(1, "%s", sourcedir);
 	if (!S_ISDIR(sb.st_mode))
 		usage();
 	for (exitval = 0; *argv != sourcedir; ++argv)
