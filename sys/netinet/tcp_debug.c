@@ -32,7 +32,7 @@
  *
  *	@(#)tcp_debug.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp_debug.c,v 1.16.2.1 2000/07/15 07:14:31 kris Exp $
- * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.3 2005/01/06 09:14:13 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_debug.c,v 1.4 2005/01/06 17:54:35 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -143,7 +143,7 @@ tcp_trace(act, ostate, tp, ipgen, th, req)
 #ifdef INET6
 		case AF_INET6:
 			td->td_ti6.th = *th;
-			bzero(&td->td_ti.ti_t, sizeoftd->td_ti.ti_t);
+			bzero(&td->td_ti.ti_t, sizeof td->td_ti.ti_t);
 			break;
 #endif
 		default:
