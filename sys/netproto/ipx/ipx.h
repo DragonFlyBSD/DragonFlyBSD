@@ -34,7 +34,7 @@
  *	@(#)ipx.h
  *
  * $FreeBSD: src/sys/netipx/ipx.h,v 1.15 1999/08/28 18:21:52 jhay Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx.h,v 1.3 2003/08/23 10:06:23 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx.h,v 1.4 2004/07/27 13:50:15 hmp Exp $
  */
 
 #ifndef _NETIPX_IPX_H_
@@ -145,9 +145,6 @@ struct ipx {
 	struct ipx_addr	ipx_sna;	/* Source Network Address */
 };
 
-#ifdef vax
-#define ipx_netof(a) (*(long *) & ((a).x_net)) /* XXX - not needed */
-#endif
 #define ipx_neteqnn(a,b) \
 	(((a).s_net[0] == (b).s_net[0]) && ((a).s_net[1] == (b).s_net[1]))
 #define ipx_neteq(a,b) ipx_neteqnn((a).x_net, (b).x_net)

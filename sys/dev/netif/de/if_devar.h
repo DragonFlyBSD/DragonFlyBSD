@@ -1,7 +1,7 @@
 /*	$NetBSD: if_devar.h,v 1.32 1999/04/01 14:55:25 tsubai Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_devar.h,v 1.23.2.1 2000/08/04 23:25:10 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.3 2004/01/06 03:17:22 dillon Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_devar.h,v 1.4 2004/07/27 13:50:15 hmp Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -131,7 +131,7 @@ typedef struct {
  * architecture which can't handle unaligned accesses) because with
  * 100Mb/s cards the copying is just too much of a hit.
  */
-#if !defined(__i386__) && !defined(__vax__)
+#if !defined(__i386__)
 #define	TULIP_COPY_RXDATA	1
 #endif
 

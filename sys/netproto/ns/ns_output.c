@@ -32,7 +32,7 @@
  *
  *	@(#)ns_output.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_output.c,v 1.7 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_output.c,v 1.6 2004/07/27 13:50:15 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -50,9 +50,6 @@
 #include "idp.h"
 #include "idp_var.h"
 
-#ifdef vax
-#include <machine/mtpr.h>
-#endif
 int ns_hold_output = 0;
 int ns_copy_output = 0;
 int ns_output_cnt = 0;

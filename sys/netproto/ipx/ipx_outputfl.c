@@ -34,7 +34,7 @@
  *	@(#)ipx_outputfl.c
  *
  * $FreeBSD: src/sys/netipx/ipx_outputfl.c,v 1.14.2.1 2000/05/01 01:10:24 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.5 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ipx/ipx_outputfl.c,v 1.6 2004/07/27 13:50:15 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -48,10 +48,6 @@
 #include "ipx.h"
 #include "ipx_if.h"
 #include "ipx_var.h"
-
-#ifdef vax
-#include <machine/mtpr.h>
-#endif
 
 static int ipx_copy_output = 0;
 
