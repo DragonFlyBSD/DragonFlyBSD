@@ -113,7 +113,7 @@
  * such license, approval or letter.
  *
  *****************************************************************************/
-/* $DragonFly: src/sys/contrib/dev/acpica/Attic/acfreebsd.h,v 1.1 2003/09/24 03:32:15 drhodus Exp $                                                               */
+/* $DragonFly: src/sys/contrib/dev/acpica/Attic/acfreebsd.h,v 1.2 2003/11/09 18:59:07 dillon Exp $                                                               */
 
 #ifndef __ACFREEBSD_H__
 #define __ACFREEBSD_H__
@@ -150,7 +150,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/libkern.h>
-#include <machine/stdarg.h>
+#include <stdarg.h>
 
 #ifdef DEBUGGER_THREADING
 #undef DEBUGGER_THREADING
