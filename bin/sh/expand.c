@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.4 2004/02/05 19:07:24 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -469,7 +469,7 @@ expbackq(union node *cmd, int quoted, int flag)
 	}
 
 	/* Eat all trailing newlines */
-	for (p--; lastc == '\n'; lastc = *--p)
+	for ( ; (dest - stackblock()) > startloc && *(dest-1) == '\n'; )
 		STUNPUTC(dest);
 
 	if (in.fd >= 0)
