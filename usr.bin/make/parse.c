@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.22.2.2 2004/07/10 08:14:42 eik Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.25 2004/12/17 00:02:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.26 2004/12/17 08:09:58 okumoto Exp $
  */
 
 /*-
@@ -101,7 +101,6 @@
 #define	CONTINUE	1
 #define	DONE		0
 static Lst          *targets;	/* targets we're working on */
-static Lst    	    *targCmds;	/* command lines for targets */
 static Boolean	    inLine;	/* true if currently in a dependency
 				 * line or its commands */
 static int	    fatals = 0;
@@ -2451,7 +2450,6 @@ Parse_File(char *name, FILE *stream)
 			 * commands of all targets in the dependency spec
 			 */
 			Lst_ForEach(targets, ParseAddCmd, cp);
-			Lst_AtEnd(targCmds, line);
 			continue;
 		    } else {
 			Parse_Error(PARSE_FATAL,
@@ -2549,14 +2547,12 @@ Parse_Init(void)
     parseIncPath = Lst_Init();
     sysIncPath = Lst_Init();
     includes = Lst_Init();
-    targCmds = Lst_Init();
 }
 
 void
 Parse_End(void)
 {
 
-    Lst_Destroy(targCmds, free);
     if (targets)
 	Lst_Destroy(targets, NOFREE);
     Lst_Destroy(sysIncPath, Dir_Destroy);

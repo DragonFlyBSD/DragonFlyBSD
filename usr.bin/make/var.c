@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.25 2004/12/17 07:53:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.26 2004/12/17 08:09:58 okumoto Exp $
  */
 
 /*-
@@ -120,14 +120,12 @@ static char	varNoError[] = "";
  * The four contexts are searched in the reverse order from which they are
  * listed.
  */
-GNode          *VAR_GLOBAL;   /* variables from the makefile */
-GNode          *VAR_CMD;      /* variables defined on the command-line */
+GNode	*VAR_GLOBAL;	/* variables from the makefile */
+GNode	*VAR_CMD;	/* variables defined on the command-line */
 
-static Lst	*allVars;      /* List of all variables */
-
-#define FIND_CMD	0x1   /* look in VAR_CMD when searching */
-#define FIND_GLOBAL	0x2   /* look in VAR_GLOBAL as well */
-#define FIND_ENV  	0x4   /* look in the environment also */
+#define	FIND_CMD	0x1	/* look in VAR_CMD when searching */
+#define	FIND_GLOBAL	0x2	/* look in VAR_GLOBAL as well */
+#define	FIND_ENV	0x4	/* look in the environment also */
 
 static void VarPossiblyExpand(char **, GNode *);
 static Var *VarFind(char *, GNode *, int);
@@ -334,7 +332,6 @@ VarAdd(char *name, char *val, GNode *ctxt)
     v->flags = 0;
 
     Lst_AtFront(ctxt->context, v);
-    Lst_AtEnd(allVars, v);
     DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
 }
 
@@ -381,13 +378,8 @@ Var_Delete(char *name, GNode *ctxt)
     DEBUGF(VAR, ("%s:delete %s\n", ctxt->name, name));
     ln = Lst_Find(ctxt->context, name, VarCmp);
     if (ln != NULL) {
-	Var 	  *v;
-
-	v = Lst_Datum(ln);
+	VarDelete(Lst_Datum(ln));
 	Lst_Remove(ctxt->context, ln);
-	ln = Lst_Member(allVars, v);
-	Lst_Remove(allVars, ln);
-	VarDelete(v);
     }
 }
 
@@ -1946,15 +1938,12 @@ Var_Init(void)
 
     VAR_GLOBAL = Targ_NewGN("Global");
     VAR_CMD = Targ_NewGN("Command");
-    allVars = Lst_Init();
 
 }
 
 void
 Var_End(void)
 {
-
-    Lst_Destroy(allVars, VarDelete);
 }
 
 
