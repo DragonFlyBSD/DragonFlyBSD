@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/cy_pci.c,v 1.17.2.1 2002/03/17 04:14:18 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.4 2003/08/27 06:48:14 rob Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy_pci.c,v 1.5 2004/02/21 17:35:35 dillon Exp $
  */
 
 /*
@@ -37,6 +37,7 @@
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/kernel.h>
+#include <sys/bus.h>
 #include <vm/vm.h>
 #include <vm/pmap.h>
 
