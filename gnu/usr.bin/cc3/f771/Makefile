@@ -1,5 +1,5 @@
 # $FreeBSD: src/gnu/usr.bin/cc/f771/Makefile,v 1.10 2004/01/11 20:45:46 ru Exp $
-# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.5 2004/02/03 03:47:12 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/cc3/f771/Attic/Makefile,v 1.6 2004/02/03 18:06:06 dillon Exp $
 
 .include "${.CURDIR}/../Makefile.inc"
 
@@ -20,9 +20,11 @@ CFLAGS+= -I${GCCDIR}/gcc/f -I.
 DPADD=	${LIBCC_INT} 
 LDADD=	${LIBCC_INT}
 
+DKFLAGS= -Dxmalloc=malloc -Dxrealloc=realloc
+
 build-tools: fini
-fini: fini.o xmalloc.o xexit.o
-	${CC} -static ${CFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
+fini: fini.o
+	${CC} -static ${CFLAGS} ${DKFLAGS} ${LDFLAGS} -o ${.TARGET} ${.ALLSRC}
 
 CLEANFILES=	fini fini.o
 
