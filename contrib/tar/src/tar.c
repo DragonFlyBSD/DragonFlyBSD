@@ -20,7 +20,7 @@
    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
 /* $FreeBSD: src/contrib/tar/src/tar.c,v 1.2.2.1 2002/07/14 13:19:44 sobomax Exp $ */
-/* $DragonFly: src/contrib/tar/src/Attic/tar.c,v 1.2 2003/06/17 04:24:06 dillon Exp $ */
+/* $DragonFly: src/contrib/tar/src/Attic/tar.c,v 1.3 2003/07/27 03:20:17 drhodus Exp $ */
 
 #include "system.h"
 
@@ -550,7 +550,7 @@ decode_options (int argc, char **argv)
       /* Allocate a new argument array, and copy program name in it.  */
 
       new_argc = argc - 1 + strlen (argv[1]);
-      new_argv = xmalloc (new_argc * sizeof (char *));
+      new_argv = xmalloc ((new_argc + 1) * sizeof (char *));
       in = argv;
       out = new_argv;
       *out++ = *in++;
@@ -577,6 +577,9 @@ decode_options (int argc, char **argv)
 
       while (in < argv + argc)
 	*out++ = *in++;
+
+	/* And NULL terminate the argv[] array */
+	*out++ = NULL;
 
       /* Replace the old option list by the new one.  */
 
