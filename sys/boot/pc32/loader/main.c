@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/loader/main.c,v 1.28 2003/08/25 23:28:32 obrien Exp $
- * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/pc32/loader/main.c,v 1.4 2004/06/26 02:26:21 dillon Exp $
  */
 
 /*
@@ -72,10 +72,39 @@ extern	char bootprog_name[], bootprog_rev[], bootprog_date[], bootprog_maker[];
 /* XXX debugging */
 extern char end[];
 
+#ifdef COMCONSOLE_DEBUG
+
+static void
+WDEBUG_INIT(void)
+{
+    isa_outb(0x3f8+3, 0x83);	/* DLAB + 8N1 */
+    isa_outb(0x3f8+0, (115200 / 9600) & 0xFF);
+    isa_outb(0x3f8+1, (115200 / 9600) >> 8);
+    isa_outb(0x3f8+3, 0x03);	/* 8N1 */
+    isa_outb(0x3f8+4, 0x03);	/* RTS+DTR */
+    isa_outb(0x3f8+2, 0x01);	/* FIFO_ENABLE */
+}
+
+static void
+WDEBUG(char c)
+{
+    isa_outb(0x3f8, c);
+}
+
+#else
+
+#define WDEBUG(x)
+#define WDEBUG_INIT()
+
+#endif
+
 int
 main(void)
 {
     int			i;
+
+    WDEBUG_INIT();
+    WDEBUG('X');
 
     /* Pick up arguments */
     kargs = (void *)__args;
@@ -83,21 +112,33 @@ main(void)
     initial_bootdev = kargs->bootdev;
     initial_bootinfo = kargs->bootinfo ? (struct bootinfo *)PTOV(kargs->bootinfo) : NULL;
 
+#ifdef COMCONSOLE_DEBUG
+    printf("args at %p initial_howto = %08x bootdev = %08x bootinfo = %p\n", 
+	kargs, initial_howto, initial_bootdev, initial_bootinfo);
+#endif
+
     /* 
-     * Initialise the heap as early as possible.  Once this is done, malloc() is usable.
+     * Initialize the heap as early as possible.  Once this is done, 
+     * malloc() is usable.
      */
     bios_getmem();
+#if 0	/* FUTURE */
+    if (bios_basemem > 0x9f000)
+	bios_basemem = 0x9f000;
+#endif
 
     setheap((void *)end, (void *)bios_basemem);
 
     /* 
-     * XXX Chicken-and-egg problem; we want to have console output early, but some
-     * console attributes may depend on reading from eg. the boot device, which we
-     * can't do yet.
+     * XXX Chicken-and-egg problem; we want to have console output early, 
+     * but some console attributes may depend on reading from eg. the boot
+     * device, which we can't do yet.
      *
      * We can use printf() etc. once this is done.
      * If the previous boot stage has requested a serial console, prefer that.
      */
+    if (initial_howto & RB_VIDEO)
+	setenv("console", "vidconsole", 1);
     if (initial_howto & RB_SERIAL)
 	setenv("console", "comconsole", 1);
     if (initial_howto & RB_MUTE)
@@ -126,10 +167,13 @@ main(void)
     /*
      * March through the device switch probing for things.
      */
-    for (i = 0; devsw[i] != NULL; i++)
+    for (i = 0; devsw[i] != NULL; i++) {
+	WDEBUG('M' + i);
 	if (devsw[i]->dv_init != NULL)
 	    (devsw[i]->dv_init)();
-    printf("BIOS %dkB/%dkB available memory\n", bios_basemem / 1024, bios_extmem / 1024);
+	WDEBUG('M' + i);
+    }
+    printf("BIOS %dkB/%dkB (method %d) available memory\n", bios_basemem / 1024, bios_extmem / 1024, bios_howmem);
     if (initial_bootinfo != NULL) {
 	initial_bootinfo->bi_basemem = bios_basemem / 1024;
 	initial_bootinfo->bi_extmem = bios_extmem / 1024;

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/common/console.c,v 1.6 2003/08/25 23:30:41 obrien Exp $
- * $DragonFly: src/sys/boot/common/console.c,v 1.4 2004/06/25 05:37:57 dillon Exp $
+ * $DragonFly: src/sys/boot/common/console.c,v 1.5 2004/06/26 02:26:20 dillon Exp $
  */
 
 #include <stand.h>
@@ -123,11 +123,52 @@ ischar(void)
     return(0);
 }
 
+#ifdef COMCONSOLE_DEBUG
+
+static int
+isa_inb(int port)
+{
+    u_char      data;
+
+    if (__builtin_constant_p(port) &&
+        (((port) & 0xffff) < 0x100) &&
+        ((port) < 0x10000)) {
+        __asm __volatile("inb %1,%0" : "=a" (data) : "id" ((u_short)(port)));
+    } else {
+        __asm __volatile("inb %%dx,%0" : "=a" (data) : "d" (port));
+    }
+    return(data);
+}
+
+static void
+isa_outb(int port, int value)
+{
+    u_char      al = value;
+
+    if (__builtin_constant_p(port) &&
+        (((port) & 0xffff) < 0x100) &&
+        ((port) < 0x10000)) {
+        __asm __volatile("outb %0,%1" : : "a" (al), "id" ((u_short)(port)));
+    } else {
+        __asm __volatile("outb %0,%%dx" : : "a" (al), "d" (port));
+    }
+}
+
+#endif
+
 void
 putchar(int c)
 {
     int		cons;
     
+#ifdef COMCONSOLE_DEBUG
+    if ((consoles[1]->c_flags & C_ACTIVEOUT) == 0) {
+	while ((isa_inb(0x3f8+5) & 0x20) == 0)	/* wait tx ready */
+	    ;
+	isa_outb(0x3f8, c);				/* output */
+    }
+#endif
+
     /* Expand newlines */
     if (c == '\n')
 	putchar('\r');

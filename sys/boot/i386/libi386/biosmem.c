@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/boot/i386/libi386/biosmem.c,v 1.7 2003/08/25 23:28:31 obrien Exp $
- * $DragonFly: src/sys/boot/i386/libi386/Attic/biosmem.c,v 1.3 2003/11/10 06:08:36 dillon Exp $
+ * $DragonFly: src/sys/boot/i386/libi386/Attic/biosmem.c,v 1.4 2004/06/26 02:26:22 dillon Exp $
  */
 /*
  * Obtain memory configuration information from the BIOS
@@ -34,7 +34,7 @@
 #include "btxv86.h"
 
 vm_offset_t	memtop;
-u_int32_t	bios_basemem, bios_extmem;
+u_int32_t	bios_basemem, bios_extmem, bios_howmem;
 
 #define SMAPSIG	0x534D4150
 
@@ -53,6 +53,9 @@ bios_getmem(void)
     /* Parse system memory map */
     v86.ebx = 0;
     do {
+#ifdef COMCONSOLE_DEBUG
+	printf("GET SMAP %d: ", v86.ebx);
+#endif
 	v86.ctl = V86_FLAGS;
 	v86.addr = 0x15;		/* int 0x15 function 0xe820*/
 	v86.eax = 0xe820;
@@ -61,11 +64,19 @@ bios_getmem(void)
 	v86.es = VTOPSEG(&smap);
 	v86.edi = VTOPOFF(&smap);
 	v86int();
+#ifdef COMCONSOLE_DEBUG
+	printf("RESULT: EFL=%04x EAX=%08x SMAPTYPE %d BASE %08x%08x LEN %08x%08x\n",
+		v86.efl, v86.eax, smap.type,
+		(int)(smap.base >> 32), (int)smap.base,
+		(int)(smap.length >> 32), (int)smap.length);
+#endif
 	if ((v86.efl & 1) || (v86.eax != SMAPSIG))
 	    break;
 	/* look for a low-memory segment that's large enough */
-	if ((smap.type == 1) && (smap.base == 0) && (smap.length >= (512 * 1024)))
+	if ((smap.type == 1) && (smap.base == 0) && (smap.length >= (512 * 1024))) {
 	    bios_basemem = smap.length;
+	    bios_howmem = 1;
+	}
 	/* look for the first segment in 'extended' memory */
 	if ((smap.type == 1) && (smap.base == 0x100000)) {
 	    bios_extmem = smap.length;
@@ -79,6 +90,7 @@ bios_getmem(void)
 	v86int();
 	
 	bios_basemem = (v86.eax & 0xffff) * 1024;
+	bios_howmem = 2;
     }
 
     /* Fall back through several compatibility functions for extended memory */
