@@ -76,7 +76,7 @@
  *
  *
  * $FreeBSD: src/usr.bin/chat/chat.c,v 1.21 2003/10/31 06:22:03 kientzle Exp $
- * $DragonFly: src/usr.bin/chat/chat.c,v 1.9 2004/12/31 22:31:18 cpressey Exp $
+ * $DragonFly: src/usr.bin/chat/chat.c,v 1.10 2004/12/31 23:30:27 cpressey Exp $
  */
 
 #include <sys/cdefs.h>
@@ -201,11 +201,12 @@ copy_of(char *s)
 }
 
 /*
- * chat [ -v ] [-T number] [-U number] [ -t timeout ] [ -f chat-file ] \
- * [ -r report-file ] \
- *		[...[[expect[-say[-expect...]] say expect[-say[-expect]] ...]]]
+ * chat [-esSvV] [-f chat-file] [-r report-file] [-t timeout]
+ *      [-T phone-number] [-U phone-number2] [chat-script]
+ * where chat-script has the form:
+ *	[...[[expect[-send[-expect...]] send expect[-send[-expect]] ...]]]
  *
- *	Perform a UUCP-dialer-like chat script on stdin and stdout.
+ * Perform a UUCP-dialer-like chat script on stdin and stdout.
  */
 int
 main(int argc, char *argv[])
@@ -397,9 +398,11 @@ do_file(char *chatfile)
 static void
 usage(void)
 {
-    fprintf(stderr, "\
-Usage: chat [-e] [-v] [-V] [-t timeout] [-r report-file] [-T phone-number]\n\
-     [-U phone-number2] {-f chat-file | chat-script}\n");
+    fprintf(stderr,
+      "Usage: chat [-esSvV] [-f chat-file] [-r report-file] [-t timeout]\n"
+      "            [-T phone-number] [-U phone-number2] [chat-script]\n"
+      "where chat-script has the form:\n"
+      "            [...[[expect[-send[-expect...]] send expect[-send[-expect]] ...]]]\n");
     exit(1);
 }
 
