@@ -1,7 +1,8 @@
-/* sasc(1) - utility for the `asc' scanner device driver
- *
- *
+/*
+ * sasc(1) - utility for the `asc' scanner device driver
+ * 
  * Copyright (c) 1995 Gunther Schadow.  All rights reserved.
+ * Copyright (c) 2004 Liam J. Foy. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,135 +30,168 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/sasc/sasc.c,v 1.7.2.1 2000/06/30 09:47:52 ps Exp $
- * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.4 2005/01/05 00:34:36 cpressey Exp $
+ * $DragonFly: src/usr.bin/sasc/sasc.c,v 1.5 2005/01/22 14:01:36 liamfoy Exp $
+ *
  */
 
-#include <err.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <sys/file.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+
 #include <machine/asc_ioctl.h>
+#include <machine/limits.h>
 
-#ifndef DEFAULT_FILE
+#include <err.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #define DEFAULT_FILE "/dev/asc0"
-#endif
-#ifdef FAIL
-#undef FAIL
-#endif
-#define FAIL -1
 
-static void usage(void);
+static int	getnum(const char *);
+static int	asc_get(int, u_long);
+static void	asc_set(int, u_long, int, const char *);
+static void	usage(void);
 
 static void
 usage(void)
 {
 	fprintf(stderr,
-"usage: sasc [-sq] [-f file] [-r dpi] [-w width] [-h height] \
-[-b len] [-t time]\n");
+		"usage: sasc [-sq] [-f file] [-r dpi] [-w width] [-h height]"
+		"[-b len] [-t time]\n");
 	exit(1);
+}
+
+/* Check given numerical arguments */
+static int
+getnum(const char *str)
+{
+        long val;
+        char *ep;
+
+	errno = 0;
+        val = strtol(str, &ep, 10);
+        if (errno)
+                err(1, "strtol failed: %s", str);
+
+        if (str == ep || *ep != '\0')
+                errx(1, "invalid value: %s", str);
+
+	if (val > INT_MAX || val < INT_MIN) {
+		errno = ERANGE;
+		errc(1, errno, "getnum failed:");
+	}
+
+        return((int)val);
+}
+
+static void
+asc_set(int fd, u_long asc_setting, int asc_value, const char *asc_type)
+{
+	if (ioctl(fd, asc_setting, &asc_value) < 0)
+		err(1, "ioctl failed setting %s(%d)", asc_type, asc_value);
+
+	printf("Successfully set\n");
+}
+
+static int
+asc_get(int fd, u_long asc_setting)
+{
+	int asc_value;
+
+	if (ioctl(fd, asc_setting, &asc_value) < 0)
+		err(1, "ioctl failed", asc_value);
+
+	return(asc_value);
 }
 
 int
 main(int argc, char **argv)
 {
-  char c;
-  int fd;
+	const char *file = DEFAULT_FILE;
+	int c, fd;
+	int show_dpi, show_width, show_height;
+	int show_blen, show_btime, show_all;
+	int set_blen, set_dpi, set_width;
+	int set_height, set_btime, set_switch;
 
-  const char *file = DEFAULT_FILE;
-  
-  int show_dpi     = 0;
-  int show_width   = 0;
-  int show_height  = 0;
-  int show_blen    = 0;
-  int show_btime   = 0;
-  int show_all     = 1;
+	show_dpi = show_width = show_height = 0;
+	show_blen = show_btime = show_all = 0;
 
-  int set_blen     = 0;
-  int set_dpi      = 0;
-  int set_width    = 0;
-  int set_height   = 0;
-  int set_btime    = 0;
-  int set_switch   = 0;
+	set_blen = set_dpi = set_width = 0;
+	set_height = set_btime = set_switch = 0;
 
-  if (argc == 0) usage();
+	while ((c = getopt(argc, argv, "sqf:b:r:w:h:t:")) != -1) {
+		switch (c) {
+		case 'f':
+			file = optarg;
+			break;
+		case 'r':
+			set_dpi = getnum(optarg);
+			break;
+		case 'w':
+			set_width = getnum(optarg);
+			break;
+		case 'h':
+			set_height = getnum(optarg);
+			break;
+		case 'b':
+			set_blen = getnum(optarg);
+			break;
+		case 't':
+			set_btime = getnum(optarg);
+			break;
+		case 's':
+			set_switch = 1;
+			break;
+		case 'q':
+			show_all = 1;
+			break;
+		default:
+			usage();
+		}
+	}
 
-  while( (c = getopt(argc, argv, "sqf:b:r:w:h:t:")) != -1)
-    {
-      switch(c) {
-      case 'f': file = optarg; break;
-      case 'r': set_dpi = atoi(optarg); break;
-      case 'w': set_width = atoi(optarg); break;
-      case 'h': set_height = atoi(optarg); break;
-      case 'b': set_blen = atoi(optarg); break;
-      case 't': set_btime = atoi(optarg); break;
-      case 's': set_switch = 1; break;
-      case 'q': show_all = 0; break;
-      default: usage();
-      }
-    }
+	if (argc == 1)
+		show_all = 1;
 
-  fd = open(file, O_RDONLY);
-  if ( fd == FAIL )
-    err(1, "%s", file);
+	if ((fd = open(file, O_RDWR)) == -1)
+		err(1, "Unable to open: %s", file);
 
-  if (set_switch != 0)
-    {
-      if(ioctl(fd, ASC_SRESSW) == FAIL)
-		err(1, "ASC_SRESSW");
-    }
+	if (set_switch) {
+		if (ioctl(fd, ASC_SRESSW) < 0)
+			err(1, "ioctl: ASC_SRESSW failed");
+	}
 
-  if (set_dpi != 0)
-    {
-      if(ioctl(fd, ASC_SRES, &set_dpi) == FAIL)
-		err(1, "ASC_SRES");
-    }
+	if (set_dpi)
+		asc_set(fd, ASC_SRES, set_dpi, "ASC_SRES");
 
-  if (set_width != 0)
-    {
-      if(ioctl(fd, ASC_SWIDTH, &set_width) == FAIL)
-		err(1, "ASC_SWIDTH");
-    }
+	if (set_width)
+		asc_set(fd, ASC_SWIDTH, set_width, "ASC_SWIDTH");
 
-  if (set_height != 0)
-    {
-      if(ioctl(fd, ASC_SHEIGHT, &set_height) == FAIL)
-		err(1, "ASC_SHEIGHT");
-    }
+	if (set_height)
+		asc_set(fd, ASC_SHEIGHT, set_height, "ASC_SHEIGHT");
 
-  if (set_blen != 0)
-    {
-      if(ioctl(fd, ASC_SBLEN, &set_blen) == FAIL)
-		err(1, "ASC_SBLEN");
-    }
+	if (set_blen)
+		asc_set(fd, ASC_SBLEN, set_blen, "ASC_SBLEN");
 
-  if (set_btime != 0)
-    {
-      if(ioctl(fd, ASC_SBTIME, &set_btime) == FAIL)
-		err(1, "ASC_SBTIME");
-    }
+	if (set_btime)
+		asc_set(fd, ASC_SBTIME, set_btime, "ASC_SBTIME");
 
-  if (show_all != 0)
-    {
-      if(ioctl(fd, ASC_GRES,  &show_dpi) == FAIL)
-		err(1, "ASC_GRES");
-      if(ioctl(fd, ASC_GWIDTH,  &show_width) == FAIL)
-		err(1, "ASC_GWIDTH");
-      if(ioctl(fd, ASC_GHEIGHT,  &show_height) == FAIL)
-		err(1, "ASC_GHEIGHT");
-      if(ioctl(fd, ASC_GBLEN, &show_blen) == FAIL)
-		err(1, "ASC_GBLEN");
-      if(ioctl(fd, ASC_GBTIME, &show_btime) == FAIL)
-		err(1, "ASC_GBTIME");
+	if (show_all) {
+		show_dpi = asc_get(fd, ASC_GRES);
+		show_width = asc_get(fd, ASC_GWIDTH);
+		show_height = asc_get(fd, ASC_GHEIGHT);
+		show_blen = asc_get(fd, ASC_GBLEN);
+		show_btime = asc_get(fd, ASC_GBTIME);
 
-      printf("%s:\n", file);
-      printf("resolution\t %d dpi\n", show_dpi);
-      printf("width\t\t %d\n", show_width);
-      printf("height\t\t %d\n",show_height);
-      printf("buffer length\t %d\n", show_blen);
-      printf("buffer timeout\t %d\n", show_btime);
-    }
-
-  return 0;
+		printf("Device: %s\n", file);
+		printf("Resolution: %d dpi\n", show_dpi);
+		printf("Width: %d\n", show_width);
+		printf("Height: %d\n", show_height);
+		printf("Buffer length: %d\n", show_blen);
+		printf("Buffer timeout: %d\n", show_btime);
+	}
+	return 0;
 }
