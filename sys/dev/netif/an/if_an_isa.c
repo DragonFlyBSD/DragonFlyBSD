@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
- * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.5 2004/03/14 15:36:48 joerg Exp $
- *
- * $FreeBSD: src/sys/dev/an/if_an_isa.c,v 1.1.2.5 2003/02/01 03:25:12 ambrisko Exp $
+ * $DragonFly: src/sys/dev/netif/an/if_an_isa.c,v 1.6 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

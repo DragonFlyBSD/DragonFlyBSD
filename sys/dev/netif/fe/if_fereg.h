@@ -22,10 +22,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
+ *
+ * $FreeBSD: src/sys/dev/fe/if_fereg.h,v 1.8.2.1 2000/09/22 10:01:47 nyan Exp $
+ * $DragonFly: src/sys/dev/netif/fe/if_fereg.h,v 1.3 2005/02/21 18:40:36 joerg Exp $
  */
-
-/* $FreeBSD: src/sys/dev/fe/if_fereg.h,v 1.8.2.1 2000/09/22 10:01:47 nyan Exp $ */
-/* $DragonFly: src/sys/dev/netif/fe/if_fereg.h,v 1.2 2003/06/17 04:28:25 dillon Exp $ */
 
 /*
  * Registers on FMV-180 series' ISA bus interface ASIC.

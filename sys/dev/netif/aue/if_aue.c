@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.78 2003/12/17 14:23:07 sanpei Exp $
- * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.17 2005/02/16 22:50:28 joerg Exp $
- *
- * $FreeBSD: src/sys/dev/usb/if_aue.c,v 1.19.2.18 2003/06/14 15:56:48 trhodes Exp $
+ * $DragonFly: src/sys/dev/netif/aue/if_aue.c,v 1.18 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

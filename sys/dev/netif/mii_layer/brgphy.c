@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $
- *
- * $FreeBSD: src/sys/dev/mii/brgphy.c,v 1.1.2.7 2003/05/11 18:00:55 ps Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/brgphy.c,v 1.7 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

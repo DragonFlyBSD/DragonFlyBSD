@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.15 2005/02/20 02:59:57 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_ste.c,v 1.14.2.9 2003/02/05 22:03:57 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/ste/if_ste.c,v 1.16 2005/02/21 18:40:37 joerg Exp $
  */
 
 #include <sys/param.h>

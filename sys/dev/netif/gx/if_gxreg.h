@@ -26,8 +26,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- *	$FreeBSD: src/sys/dev/gx/if_gxreg.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
- *	$DragonFly: src/sys/dev/netif/gx/Attic/if_gxreg.h,v 1.2 2003/06/17 04:28:26 dillon Exp $
+ * $FreeBSD: src/sys/dev/gx/if_gxreg.h,v 1.1.2.1 2001/11/15 03:09:23 jlemon Exp $
+ * $DragonFly: src/sys/dev/netif/gx/Attic/if_gxreg.h,v 1.3 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

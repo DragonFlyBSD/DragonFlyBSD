@@ -31,9 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
- * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.18 2005/02/19 01:07:24 joerg Exp $
- *
- * $FreeBSD: src/sys/dev/nge/if_nge.c,v 1.13.2.13 2003/02/05 22:03:57 mbr Exp $
+ * $DragonFly: src/sys/dev/netif/nge/if_nge.c,v 1.19 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

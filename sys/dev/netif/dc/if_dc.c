@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
- * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.22 2005/02/20 04:29:28 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_dc.c,v 1.9.2.45 2003/06/08 14:31:53 mux Exp $
+ * $DragonFly: src/sys/dev/netif/dc/if_dc.c,v 1.23 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.17 2005/02/20 05:45:38 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_ti.c,v 1.25.2.14 2002/02/15 04:20:20 silby Exp $
+ * $DragonFly: src/sys/dev/netif/ti/if_ti.c,v 1.18 2005/02/21 18:40:37 joerg Exp $
  */
 
 /*

@@ -32,9 +32,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
- * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.25 2005/02/20 01:49:21 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_sk.c,v 1.19.2.9 2003/03/05 18:42:34 njl Exp $
+ * $DragonFly: src/sys/dev/netif/sk/if_sk.c,v 1.26 2005/02/21 18:40:37 joerg Exp $
  */
 
 /*

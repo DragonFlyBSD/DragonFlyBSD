@@ -30,9 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.17 2005/02/12 04:00:13 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_rl.c,v 1.38.2.16 2003/03/05 18:42:33 njl Exp $
+ * $DragonFly: src/sys/dev/netif/rl/if_rl.c,v 1.18 2005/02/21 18:40:37 joerg Exp $
  */
 
 /*

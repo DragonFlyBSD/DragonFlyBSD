@@ -31,9 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
- * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.6 2005/02/14 16:21:34 joerg Exp $
- *
- * $FreeBSD: src/sys/dev/mii/pnaphy.c,v 1.1.2.3 2002/11/08 21:53:49 semenu Exp $
+ * $DragonFly: src/sys/dev/netif/mii_layer/pnaphy.c,v 1.7 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

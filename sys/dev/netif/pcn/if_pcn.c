@@ -31,9 +31,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
- * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.16 2005/02/19 01:16:46 joerg Exp $
- *
- * $FreeBSD: src/sys/pci/if_pcn.c,v 1.5.2.10 2003/03/05 18:42:33 njl Exp $
+ * $DragonFly: src/sys/dev/netif/pcn/if_pcn.c,v 1.17 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*

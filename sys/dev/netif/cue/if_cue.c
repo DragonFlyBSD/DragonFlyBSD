@@ -30,8 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/if_cue.c,v 1.45 2003/12/08 07:54:14 obrien Exp $
- * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.17 2005/02/16 22:50:28 joerg Exp $
- *
+ * $DragonFly: src/sys/dev/netif/cue/if_cue.c,v 1.18 2005/02/21 18:40:36 joerg Exp $
  */
 
 /*
