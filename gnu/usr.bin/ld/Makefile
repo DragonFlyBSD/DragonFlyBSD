@@ -1,12 +1,12 @@
 # $FreeBSD: src/gnu/usr.bin/ld/Makefile,v 1.30.2.1 2001/04/25 12:03:51 ru Exp $
-# $DragonFly: src/gnu/usr.bin/ld/Attic/Makefile,v 1.2 2003/06/17 04:25:46 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/ld/Attic/Makefile,v 1.3 2004/01/16 19:55:46 dillon Exp $
 #
 
 RTLD=	${.CURDIR}/../../../libexec/rtld-aout
 GCCDIR=	${.CURDIR}/../../../contrib/gcc
 
 PROG=	ld
-BINDIR= /usr/libexec/aout
+BINDIR= /usr/libexec/gcc2/aout
 MAN=	ld.1aout
 SRCS=	ld.c symbol.c lib.c shlib.c warnings.c support.c rrs.c xbits.c md.c \
 	cplus-dem.c

@@ -1,9 +1,9 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/strings/Makefile,v 1.3.6.1 2001/04/25 11:29:40 ru Exp $
-# $DragonFly: src/usr.bin/strings/Attic/Makefile,v 1.2 2003/06/17 04:29:31 dillon Exp $
+# $DragonFly: src/usr.bin/strings/Attic/Makefile,v 1.3 2004/01/16 19:55:51 dillon Exp $
 
 PROG=	strings
 MAN=	strings.1aout
-BINDIR= /usr/libexec/aout
+BINDIR= /usr/libexec/gcc2/aout
 
 .include <bsd.prog.mk>

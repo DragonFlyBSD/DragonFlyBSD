@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	6.1 (Berkeley) 3/3/91
 # $FreeBSD: src/gnu/usr.bin/as/Makefile,v 1.18.2.1 2001/04/25 12:03:26 ru Exp $
-# $DragonFly: src/gnu/usr.bin/as/Attic/Makefile,v 1.2 2003/06/17 04:25:44 dillon Exp $
+# $DragonFly: src/gnu/usr.bin/as/Attic/Makefile,v 1.3 2004/01/16 19:55:44 dillon Exp $
 
 .include "config/Makefile.$(MACHINE_ARCH)"
 
@@ -17,7 +17,7 @@ gas_objformat=aout
 ADDINCLUDE=-I${.OBJDIR}
 
 PROG=		as
-BINDIR= /usr/libexec/aout
+BINDIR= /usr/libexec/gcc2/aout
 MAN=		as.1aout
 SRCS+=		app.c as.c atof-generic.c bignum-copy.c \
 		cond.c expr.c flo-const.c flo-copy.c flonum-mult.c \

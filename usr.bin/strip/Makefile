@@ -1,10 +1,10 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/6/93
 # $FreeBSD: src/usr.bin/strip/Makefile,v 1.10.6.3 2002/08/07 16:32:01 ru Exp $
-# $DragonFly: src/usr.bin/strip/Attic/Makefile,v 1.2 2003/06/17 04:29:31 dillon Exp $
+# $DragonFly: src/usr.bin/strip/Attic/Makefile,v 1.3 2004/01/16 19:55:52 dillon Exp $
 
 PROG=	strip
 MAN=	strip.1aout
-BINDIR= /usr/libexec/aout
+BINDIR= /usr/libexec/gcc2/aout
 CLEANFILES += maybe_stripped
 
 all: maybe_stripped
