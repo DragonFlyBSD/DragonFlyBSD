@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/include/rpcsvc/yp_prot.h,v 1.10.2.1 2002/02/15 00:46:53 des Exp $
- * $DragonFly: src/include/rpcsvc/yp_prot.h,v 1.2 2003/06/17 04:25:58 dillon Exp $
+ * $DragonFly: src/include/rpcsvc/yp_prot.h,v 1.3 2004/12/15 09:44:47 dillon Exp $
  */
 
 #ifndef _RPCSVC_YP_PROT_H_
@@ -67,11 +67,6 @@
  * YPPROC_ORDER		takes (struct ypreq_nokey), returns (ypresp_order).
  * YPPROC_MAPLIST	takes (char *), returns (struct ypmaplist *).
  */
-
-#ifndef BOOL_DEFINED
-typedef u_int bool;
-#define BOOL_DEFINED
-#endif
 
 /* Program and version symbols, magic numbers */
 

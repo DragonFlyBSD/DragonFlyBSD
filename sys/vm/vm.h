@@ -60,7 +60,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm.h,v 1.16.2.1 2002/12/28 19:49:41 dillon Exp $
- * $DragonFly: src/sys/vm/vm.h,v 1.3 2003/07/19 21:14:53 dillon Exp $
+ * $DragonFly: src/sys/vm/vm.h,v 1.4 2004/12/15 09:44:45 dillon Exp $
  */
 
 #ifndef VM_H
@@ -101,14 +101,6 @@ struct vm_object_lock;
 typedef struct vm_object_lock *vm_object_lock_t;
 
 #ifndef _KERNEL
-/*
- * This is defined in <sys/types.h> for the kernel so that non-vm kernel
- * sources (mainly Mach-derived ones such as ddb) don't have to include
- * vm stuff.  Defining it there for applications might break things.
- * Define it here for "applications" that include vm headers (e.g.,
- * genassym).
- */
-typedef int boolean_t;
 
 /*
  * This is defined in <sys/types.h> for the kernel so that vnode_if.h
