@@ -35,7 +35,7 @@
  *
  *	@(#)nfsmount.h	8.3 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfsmount.h,v 1.17 1999/12/29 04:54:54 peter Exp $
- * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.4 2003/10/10 22:01:13 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfsmount.h,v 1.5 2004/04/07 05:15:48 dillon Exp $
  */
 
 
@@ -95,6 +95,7 @@ struct	nfsmount {
 	int	nm_bufqiods;		/* number of iods processing queue */
 	u_int64_t nm_maxfilesize;	/* maximum file size */
 	struct ucred *nm_cred;		/* 'root' credential */
+	struct thread *nm_rcvlock_td;	/* debugging */
 };
 
 

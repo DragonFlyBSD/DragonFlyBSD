@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_subs.c  8.8 (Berkeley) 5/22/95
  * $FreeBSD: src/sys/nfs/nfs_subs.c,v 1.90.2.2 2001/10/25 19:18:53 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.12 2004/03/01 06:33:21 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_subs.c,v 1.13 2004/04/07 05:15:48 dillon Exp $
  */
 
 /*
@@ -2138,25 +2138,26 @@ nfs_clearcommit(mp)
 {
 	struct vnode *vp, *nvp;
 	struct buf *bp, *nbp;
+	lwkt_tokref ilock;
 	int s;
 
+	lwkt_gettoken(&ilock, &mntvnode_token);
 	s = splbio();
-loop:
 	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist); vp; vp = nvp) {
 		nvp = TAILQ_NEXT(vp, v_nmntvnodes);	/* ZZZ */
 		if (vp->v_flag & VPLACEMARKER)
 			continue;
-		if (vp->v_mount != mp)	/* Paranoia */
-			goto loop;
 		for (bp = TAILQ_FIRST(&vp->v_dirtyblkhd); bp; bp = nbp) {
 			nbp = TAILQ_NEXT(bp, b_vnbufs);
 			if (BUF_REFCNT(bp) == 0 &&
 			    (bp->b_flags & (B_DELWRI | B_NEEDCOMMIT))
-				== (B_DELWRI | B_NEEDCOMMIT))
+			     == (B_DELWRI | B_NEEDCOMMIT)) {
 				bp->b_flags &= ~(B_NEEDCOMMIT | B_CLUSTEROK);
+			}
 		}
 	}
 	splx(s);
+	lwkt_reltoken(&ilock);
 }
 
 #ifndef NFS_NOSERVER

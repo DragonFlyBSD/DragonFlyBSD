@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.14 2004/03/13 03:13:53 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.15 2004/04/07 05:15:48 dillon Exp $
  */
 
 /*
@@ -1613,17 +1613,25 @@ nfs_sndlock(struct nfsreq *rep)
 {
 	int *statep = &rep->r_nmp->nm_state;
 	struct thread *td;
-	int slpflag = 0, slptimeo = 0;
+	int slptimeo;
+	int slpflag;
+	int error;
 
+	slpflag = 0;
+	slptimeo = 0;
 	td = rep->r_td;
 	if (rep->r_nmp->nm_flag & NFSMNT_INT)
 		slpflag = PCATCH;
+
+	error = 0;
+	crit_enter();
 	while (*statep & NFSSTA_SNDLOCK) {
 		*statep |= NFSSTA_WANTSND;
-		if (nfs_sigintr(rep->r_nmp, rep, td))
-			return (EINTR);
-		(void) tsleep((caddr_t)statep, slpflag,
-			"nfsndlck", slptimeo);
+		if (nfs_sigintr(rep->r_nmp, rep, td)) {
+			error = EINTR;
+			break;
+		}
+		tsleep((caddr_t)statep, slpflag, "nfsndlck", slptimeo);
 		if (slpflag == PCATCH) {
 			slpflag = 0;
 			slptimeo = 2 * hz;
@@ -1631,9 +1639,11 @@ nfs_sndlock(struct nfsreq *rep)
 	}
 	/* Always fail if our request has been cancelled. */
 	if ((rep->r_flags & R_SOFTTERM))
-		return (EINTR);
-	*statep |= NFSSTA_SNDLOCK;
-	return (0);
+		error = EINTR;
+	if (error == 0)
+		*statep |= NFSSTA_SNDLOCK;
+	crit_exit();
+	return (error);
 }
 
 /*
@@ -1647,11 +1657,13 @@ nfs_sndunlock(rep)
 
 	if ((*statep & NFSSTA_SNDLOCK) == 0)
 		panic("nfs sndunlock");
+	crit_enter();
 	*statep &= ~NFSSTA_SNDLOCK;
 	if (*statep & NFSSTA_WANTSND) {
 		*statep &= ~NFSSTA_WANTSND;
 		wakeup((caddr_t)statep);
 	}
+	crit_exit();
 }
 
 static int
@@ -1659,13 +1671,18 @@ nfs_rcvlock(rep)
 	struct nfsreq *rep;
 {
 	int *statep = &rep->r_nmp->nm_state;
-	int slpflag, slptimeo = 0;
+	int slpflag;
+	int slptimeo;
+	int error;
 
 	/*
 	 * Unconditionally check for completion in case another nfsiod
 	 * get the packet while the caller was blocked, before the caller
 	 * called us.  Packet reception is handled by mainline code which
 	 * is protected by the BGL at the moment.
+	 *
+	 * We do not strictly need the second check just before the
+	 * tsleep(), but it's good defensive programming.
 	 */
 	if (rep->r_mrep != NULL)
 		return (EALREADY);
@@ -1674,26 +1691,41 @@ nfs_rcvlock(rep)
 		slpflag = PCATCH;
 	else
 		slpflag = 0;
+	slptimeo = 0;
+	error = 0;
+	crit_enter();
 	while (*statep & NFSSTA_RCVLOCK) {
-		if (nfs_sigintr(rep->r_nmp, rep, rep->r_td))
-			return (EINTR);
+		if (nfs_sigintr(rep->r_nmp, rep, rep->r_td)) {
+			error = EINTR;
+			break;
+		}
+		if (rep->r_mrep != NULL) {
+			error = EALREADY;
+			break;
+		}
 		*statep |= NFSSTA_WANTRCV;
-		(void) tsleep((caddr_t)statep, slpflag, "nfsrcvlk", slptimeo);
+		tsleep((caddr_t)statep, slpflag, "nfsrcvlk", slptimeo);
 		/*
 		 * If our reply was recieved while we were sleeping,
 		 * then just return without taking the lock to avoid a
 		 * situation where a single iod could 'capture' the
 		 * recieve lock.
 		 */
-		if (rep->r_mrep != NULL)
-			return (EALREADY);
+		if (rep->r_mrep != NULL) {
+			error = EALREADY;
+			break;
+		}
 		if (slpflag == PCATCH) {
 			slpflag = 0;
 			slptimeo = 2 * hz;
 		}
 	}
-	*statep |= NFSSTA_RCVLOCK;
-	return (0);
+	if (error == 0) {
+		*statep |= NFSSTA_RCVLOCK;
+		rep->r_nmp->nm_rcvlock_td = curthread;	/* DEBUGGING */
+	}
+	crit_exit();
+	return (error);
 }
 
 /*
@@ -1707,11 +1739,14 @@ nfs_rcvunlock(rep)
 
 	if ((*statep & NFSSTA_RCVLOCK) == 0)
 		panic("nfs rcvunlock");
+	crit_enter();
+	rep->r_nmp->nm_rcvlock_td = (void *)-1;	/* DEBUGGING */
 	*statep &= ~NFSSTA_RCVLOCK;
 	if (*statep & NFSSTA_WANTRCV) {
 		*statep &= ~NFSSTA_WANTRCV;
 		wakeup((caddr_t)statep);
 	}
+	crit_exit();
 }
 
 /*

@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_vfsops.c	8.12 (Berkeley) 5/20/95
  * $FreeBSD: src/sys/nfs/nfs_vfsops.c,v 1.91.2.7 2003/01/27 20:04:08 dillon Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.14 2004/03/10 02:07:52 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_vfsops.c,v 1.15 2004/04/07 05:15:48 dillon Exp $
  */
 
 #include "opt_bootp.h"
@@ -1082,6 +1082,16 @@ nfs_root(mp, vpp)
 
 extern int syncprt;
 
+struct scaninfo {
+	int rescan;
+	thread_t td;
+	int waitfor;
+	int allerror;
+};
+
+static int nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data);
+static int nfs_sync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data);
+
 /*
  * Flush out the buffer cache
  */
@@ -1089,34 +1099,54 @@ extern int syncprt;
 static int
 nfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
-	struct vnode *vp;
-	int error, allerror = 0;
+	struct scaninfo scaninfo;
+	int error;
+
+	scaninfo.rescan = 0;
+	scaninfo.td = td;
+	scaninfo.waitfor = waitfor;
+	scaninfo.allerror = 0;
 
 	/*
 	 * Force stale buffer cache information to be flushed.
 	 */
-loop:
-	for (vp = TAILQ_FIRST(&mp->mnt_nvnodelist);
-	     vp != NULL;
-	     vp = TAILQ_NEXT(vp, v_nmntvnodes)) {
-		if (vp->v_flag & VPLACEMARKER)	/* ZZZ */
-			continue;
-		/*
-		 * If the vnode that we are about to sync is no longer
-		 * associated with this mount point, start over.
-		 */
-		if (vp->v_mount != mp)
-			goto loop;
-		if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd) ||
-		    waitfor == MNT_LAZY)
-			continue;
-		if (vget(vp, NULL, LK_EXCLUSIVE, td))
-			goto loop;
-		error = VOP_FSYNC(vp, waitfor, td);
-		if (error)
-			allerror = error;
-		vput(vp);
+	error = 0;
+	while (error == 0 && scaninfo.rescan) {
+		scaninfo.rescan = 0;
+		error = vmntvnodescan(mp, nfs_sync_scan1,
+					nfs_sync_scan2, &scaninfo);
 	}
-	return (allerror);
+	return(error);
+}
+
+static
+int
+nfs_sync_scan1(struct mount *mp, struct vnode *vp, void *data)
+{
+    struct scaninfo *info = data;
+
+    if (VOP_ISLOCKED(vp, NULL) || TAILQ_EMPTY(&vp->v_dirtyblkhd))
+	return(-1);
+    if (info->waitfor == MNT_LAZY)
+	return(-1);
+    return(0);
+}
+
+static
+int
+nfs_sync_scan2(struct mount *mp, struct vnode *vp, lwkt_tokref_t vlock, void *data)
+{
+    struct scaninfo *info = data;
+    int error;
+
+    if (vget(vp, vlock, LK_EXCLUSIVE | LK_INTERLOCK, info->td)) {
+	info->rescan = 1;
+	return(0);
+    }
+    error = VOP_FSYNC(vp, info->waitfor, info->td);
+    if (error)
+	info->allerror = error;
+    vput(vp);
+    return(0);
 }
 
