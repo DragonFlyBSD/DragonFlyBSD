@@ -1,6 +1,6 @@
 # $NetBSD: rc.subr,v 1.49 2002/05/21 12:31:01 lukem Exp $
 # $FreeBSD: src/etc/rc.subr,v 1.13 2003/06/09 17:31:06 mtm Exp $
-# $DragonFly: src/etc/rc.subr,v 1.7 2003/12/12 00:00:09 dillon Exp $
+# $DragonFly: src/etc/rc.subr,v 1.8 2003/12/12 19:49:03 dillon Exp $
 #
 # Copyright (c) 1997-2002 The NetBSD Foundation, Inc.
 # All rights reserved.
@@ -108,7 +108,8 @@ set_rcvar()
 # set_provide_list
 #
 #	$1	should be $rc_arg (start, stop, restart, reload, etc)
-#	$2	return value 0 success, 1 failed, 2 disabled
+#	$2	return value 0 success, 1 failed, 2 disabled, 
+#			     3 subsystem is not relevant to system
 #
 #	Set the rcng_* variables associated with elements in
 #	provide_list to $1.
@@ -129,6 +130,10 @@ set_provide_list()
 	start2)
 	    varsym -s rcng_$i=disabled
 	    ;;
+	start3)
+	    # XXX fixme
+	    varsym -s rcng_$i=running
+	    ;;
 	stop0)
 	    varsym -s rcng_$i=stopped
 	    ;;
@@ -138,17 +143,32 @@ set_provide_list()
 	stop2)
 	    varsym -s rcng_$i=disabled
 	    ;;
+	stop3)
+	    # XXX fixme
+	    varsym -s rcng_$i=stopped
+	    ;;
 	restart0)
 	    varsym -s rcng_$i=running
 	    ;;
 	restart1)
 	    varsym -s rcng_$i=failed
 	    ;;
+	restart2)
+	    varsym -s rcng_$i=disabled
+	    ;;
+	restart3)
+	    # XXX fixme
+	    varsym -s rcng_$i=running
+	    ;;
 	reload0)
 	    varsym -s rcng_$i=running.reloaded
 	    ;;
 	reload1)
 	    varsym -s rcng_$i=running.reloadfailed
+	    ;;
+	reload2)
+	    ;;
+	reload3)
 	    ;;
 	*)
 	    ;;
@@ -622,6 +642,14 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
 				_return=$?
+				# A return code of 3 indicates that the
+				# subsystem is not relevant, return success
+				# at the moment and do not continue.
+				#
+				if [ $_return = 3 ]; then
+				    set_provide_list $rc_arg 3
+				    return 0
+				fi
 				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
 				    set_provide_list $rc_arg 1
 				    return 1
@@ -632,6 +660,14 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_cmd}()."
 				eval $_cmd
 				_return=$?
+				# A return code of 3 indicates that the
+				# subsystem is not relevant, return success
+				# at the moment and do not continue.
+				#
+				if [ $_return = 3 ]; then
+				    set_provide_list $rc_arg 3
+				    return 0
+				fi
 				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
 				    set_provide_list $rc_arg 1
 				    return 1
@@ -642,6 +678,14 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_postcmd}()."
 				 eval $_postcmd
 				_return=$?
+				# A return code of 3 indicates that the
+				# subsystem is not relevant, return success
+				# at the moment and do not continue.
+				#
+				if [ $_return = 3 ]; then
+				    set_provide_list $rc_arg 3
+				    return 0
+				fi
 			fi
 			set_provide_list $rc_arg $_return
 			return $_return
@@ -708,6 +752,14 @@ run_rc_command()
 				debug "run_rc_command: evaluating ${_precmd}()."
 				eval $_precmd
 				_return=$?
+				# A return code of 3 indicates that the
+				# subsystem is not relevant, return success
+				# at the moment and do not continue.
+				#
+				if [ $_return = 3 ]; then
+				    set_provide_list $rc_arg 3
+				    return 0
+				fi
 				if [ $_return -ne 0 ] && [ -z "$rc_force" ]; then
 				    set_provide_list $rc_arg 1
 				    return 1

@@ -2,7 +2,7 @@
 #
 # $NetBSD: dhclient,v 1.8 2002/03/22 04:33:58 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/dhclient,v 1.6 2003/06/29 05:34:41 mtm Exp $
-# $DragonFly: src/etc/rc.d/dhclient,v 1.2 2003/11/19 10:32:45 eirikn Exp $
+# $DragonFly: src/etc/rc.d/dhclient,v 1.3 2003/12/12 19:49:04 dillon Exp $
 #
 
 # PROVIDE: dhclient
@@ -47,7 +47,7 @@ dhclient_common()
 {
 	dhcp_list="`list_net_interfaces dhcp`"
 	if [ -z "$dhcp_list" ]; then
-		return 1
+		return 3
 	fi
 
 	# Determine the scope of the command
@@ -64,7 +64,7 @@ dhclient_common()
 
 dhclient_prestart()
 {
-	dhclient_common || return 1
+	dhclient_common || return $?
 
 	for ifn in ${_cooked_list}; do
 		ifscript_up ${ifn}
@@ -100,7 +100,7 @@ dhclient_stop()
 
 dhclient_prestop()
 {
-	dhclient_common || return 1
+	dhclient_common || return $?
 
 	for ifn in ${_cooked_list}; do
 		ipx_down ${ifn}
