@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $
- * $DragonFly: src/sbin/ping6/ping6.c,v 1.4 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/ping6/ping6.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -261,8 +261,8 @@ void	 pr_suptypes(struct icmp6_nodeinfo *, size_t);
 void	 pr_nodeaddr(struct icmp6_nodeinfo *, int);
 int	 myechoreply(const struct icmp6_hdr *);
 int	 mynireply(const struct icmp6_nodeinfo *);
-char *dnsdecode __P((const u_char **, const u_char *, const u_char *,
-	u_char *, size_t));
+char *dnsdecode(const u_char **, const u_char *, const u_char *,
+	u_char *, size_t);
 void	 pr_pack(u_char *, int, struct msghdr *);
 void	 pr_exthdrs(struct msghdr *);
 void	 pr_ip6opt(void *);

@@ -32,7 +32,7 @@
  *
  * @(#)traverse.c	8.7 (Berkeley) 6/15/95
  * $FreeBSD: src/sbin/dump/traverse.c,v 1.10.2.6 2003/04/14 20:10:35 johan Exp $
- * $DragonFly: src/sbin/dump/traverse.c,v 1.5 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/traverse.c,v 1.6 2003/11/03 19:51:04 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -70,11 +70,11 @@ typedef	quad_t fsizeT;
 typedef	long fsizeT;
 #endif
 
-static	int dirindir __P((ino_t ino, daddr_t blkno, int level, long *size,
-    long *tapesize, int nodump));
+static	int dirindir(ino_t ino, daddr_t blkno, int level, long *size,
+    long *tapesize, int nodump);
 static	void dmpindir(ino_t ino, daddr_t blk, int level, fsizeT *size);
-static	int searchdir __P((ino_t ino, daddr_t blkno, long size, long filesize,
-    long *tapesize, int nodump));
+static	int searchdir(ino_t ino, daddr_t blkno, long size, long filesize,
+    long *tapesize, int nodump);
 
 /*
  * This is an estimation of the number of TP_BSIZE blocks in the file.

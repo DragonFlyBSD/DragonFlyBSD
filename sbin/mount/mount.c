@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)mount.c	8.25 (Berkeley) 5/8/95
  * $FreeBSD: src/sbin/mount/mount.c,v 1.39.2.3 2001/08/01 08:26:23 obrien Exp $
- * $DragonFly: src/sbin/mount/mount.c,v 1.4 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount/mount.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -69,8 +69,8 @@ int	ismounted(struct fstab *, struct statfs *, int);
 int	isremountable(const char *);
 void	mangle(char *, int *, const char **);
 char   *update_options(char *, char *, int);
-int	mountfs __P((const char *, const char *, const char *,
-			int, const char *, const char *));
+int	mountfs(const char *, const char *, const char *,
+			int, const char *, const char *);
 void	remopt(char *, const char *);
 void	prmount(struct statfs *);
 void	putfsent(const struct statfs *);

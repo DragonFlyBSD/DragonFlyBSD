@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mountd.c	8.15 (Berkeley) 5/1/95
  * $FreeBSD: src/sbin/mountd/mountd.c,v 1.39.2.5 2002/09/13 15:57:43 joerg Exp $
- * $DragonFly: src/sbin/mountd/mountd.c,v 1.5 2003/11/01 17:16:01 drhodus Exp $
+ * $DragonFly: src/sbin/mountd/mountd.c,v 1.6 2003/11/03 19:51:05 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -143,18 +143,18 @@ struct fhreturn {
 
 /* Global defs */
 char	*add_expdir(struct dirlist **, char *, int);
-void	add_dlist __P((struct dirlist **, struct dirlist *,
-				struct grouplist *, int));
+void	add_dlist(struct dirlist **, struct dirlist *,
+				struct grouplist *, int);
 void	add_mlist(char *, char *);
 int	check_dirpath(char *);
 int	check_options(struct dirlist *);
 int	chk_host(struct dirlist *, u_int32_t, int *, int *);
 void	del_mlist(char *, char *);
 struct dirlist *dirp_search(struct dirlist *, char *);
-int	do_mount __P((struct exportlist *, struct grouplist *, int,
-		struct ucred *, char *, int, struct statfs *));
-int	do_opt __P((char **, char **, struct exportlist *, struct grouplist *,
-				int *, int *, struct ucred *));
+int	do_mount(struct exportlist *, struct grouplist *, int,
+		struct ucred *, char *, int, struct statfs *);
+int	do_opt(char **, char **, struct exportlist *, struct grouplist *,
+				int *, int *, struct ucred *);
 struct	exportlist *ex_search(fsid_t *);
 struct	exportlist *get_exp(void);
 void	free_dir(struct dirlist *);
@@ -170,8 +170,8 @@ void	get_mountlist(void);
 int	get_net(char *, struct netmsk *, int);
 void	getexp_err(struct exportlist *, struct grouplist *);
 struct grouplist *get_grp(void);
-void	hang_dirp __P((struct dirlist *, struct grouplist *,
-				struct exportlist *, int));
+void	hang_dirp(struct dirlist *, struct grouplist *,
+				struct exportlist *, int);
 void	mntsrv(struct svc_req *, SVCXPRT *);
 void	nextfield(char **, char **);
 void	out_of_mem(void);

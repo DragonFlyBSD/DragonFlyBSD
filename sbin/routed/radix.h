@@ -33,7 +33,7 @@
  *	@(#)radix.h	8.2 (Berkeley) 10/31/94
  *
  * $FreeBSD: src/sbin/routed/radix.h,v 1.4 1999/08/28 00:14:17 peter Exp $
- * $DragonFly: src/sbin/routed/radix.h,v 1.3 2003/11/01 17:16:02 drhodus Exp $
+ * $DragonFly: src/sbin/routed/radix.h,v 1.4 2003/11/03 19:51:05 eirikn Exp $
  */
 
 #ifndef __RADIX_H_
@@ -114,11 +114,11 @@ struct radix_node_head {
 	int	rnh_addrsize;		/* permit, but not require fixed keys */
 	int	rnh_pktsize;		/* permit, but not require fixed keys */
 	struct	radix_node *(*rnh_addaddr)	/* add based on sockaddr */
-		__P((void *v, void *mask,
-		     struct radix_node_head *head, struct radix_node nodes[]));
+		(void *v, void *mask,
+		     struct radix_node_head *head, struct radix_node nodes[]);
 	struct	radix_node *(*rnh_addpkt)	/* add based on packet hdr */
-		__P((void *v, void *mask,
-		     struct radix_node_head *head, struct radix_node nodes[]));
+		(void *v, void *mask,
+		     struct radix_node_head *head, struct radix_node nodes[]);
 	struct	radix_node *(*rnh_deladdr)	/* remove based on sockaddr */
 	(void *v, void *mask, struct radix_node_head *head);
 	struct	radix_node *(*rnh_delpkt)	/* remove based on packet hdr */
@@ -145,17 +145,17 @@ struct radix_node_head {
 void	 rn_init(void);
 int	 rn_inithead(void **, int);
 int	 rn_refines(void *, void *);
-int	 rn_walktree __P((struct radix_node_head *,
+int	 rn_walktree(struct radix_node_head *,
 		     int (*)(struct radix_node *, struct walkarg *),
-		     struct walkarg *));
+		     struct walkarg *);
 
 struct radix_node
 	 *rn_addmask(void *, int, int),
-	 *rn_addroute __P((void *, void *, struct radix_node_head *,
-			struct radix_node [2])),
+	 *rn_addroute(void *, void *, struct radix_node_head *,
+			struct radix_node [2]),
 	 *rn_delete(void *, void *, struct radix_node_head *),
-	 *rn_insert __P((void *, struct radix_node_head *, int *,
-			struct radix_node [2])),
+	 *rn_insert(void *, struct radix_node_head *, int *,
+			struct radix_node [2]),
 	 *rn_match(void *, struct radix_node_head *),
 	 *rn_newpair(void *, int, struct radix_node[2]),
 	 *rn_search(void *, struct radix_node *),

@@ -37,7 +37,7 @@
  *	@(#)portald.h	8.1 (Berkeley) 6/5/93
  *
  * $FreeBSD: src/sbin/mount_portal/portald.h,v 1.5 1999/08/28 00:13:37 peter Exp $
- * $DragonFly: src/sbin/mount_portal/portald.h,v 1.4 2003/11/01 17:16:00 drhodus Exp $
+ * $DragonFly: src/sbin/mount_portal/portald.h,v 1.5 2003/11/03 19:51:05 eirikn Exp $
  */
 
 #include <sys/cdefs.h>
@@ -60,22 +60,22 @@ struct qelem {
 typedef struct provider provider;
 struct provider {
 	char *pr_match;
-	int (*pr_func) __P((struct portal_cred *,
-				char *key, char **v, int so, int *fdp));
+	int (*pr_func)(struct portal_cred *,
+				char *key, char **v, int so, int *fdp);
 };
 extern provider providers[];
 
 /*
  * Portal providers
  */
-extern int portal_exec __P((struct portal_cred *,
-				char *key, char **v, int so, int *fdp));
-extern int portal_file __P((struct portal_cred *,
-				char *key, char **v, int so, int *fdp));
-extern int portal_tcp __P((struct portal_cred *,
-				char *key, char **v, int so, int *fdp));
-extern int portal_tcplisten __P((struct portal_cred *,
-				char *key, char **v, int so, int *fdp));
+extern int portal_exec(struct portal_cred *,
+				char *key, char **v, int so, int *fdp);
+extern int portal_file(struct portal_cred *,
+				char *key, char **v, int so, int *fdp);
+extern int portal_tcp(struct portal_cred *,
+				char *key, char **v, int so, int *fdp);
+extern int portal_tcplisten(struct portal_cred *,
+				char *key, char **v, int so, int *fdp);
 
 /*
  * Global functions

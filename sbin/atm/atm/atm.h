@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sbin/atm/atm/atm.h,v 1.4 1999/08/28 00:12:17 peter Exp $
- *	@(#) $DragonFly: src/sbin/atm/atm/atm.h,v 1.3 2003/11/01 17:15:57 drhodus Exp $
+ *	@(#) $DragonFly: src/sbin/atm/atm/atm.h,v 1.4 2003/11/03 19:51:04 eirikn Exp $
  *
  */
 
@@ -96,8 +96,8 @@ struct owner {
 	char	*o_name;		/* Owner name */
 	u_int	o_sap;			/* Owner's SAP */
 	void	(*o_pvcadd)		/* PVC ADD processing function */
-			__P((int, char **, struct cmd *, struct atmaddreq *,
-			     struct air_int_rsp *));
+			(int, char **, struct cmd *, struct atmaddreq *,
+			     struct air_int_rsp *);
 };
 
 
@@ -161,8 +161,8 @@ void		print_fore200_aal5(struct air_vinfo_rsp *);
 void		print_fore200_driver(struct air_vinfo_rsp *);
 
 	/* atm_inet.c */
-void		ip_pvcadd __P((int, char **, struct cmd *, struct atmaddreq *,
-			struct air_int_rsp *));
+void		ip_pvcadd (int, char **, struct cmd *, struct atmaddreq *,
+			struct air_int_rsp *);
 
 	/* atm_print.c */
 void		print_arp_info(struct air_arp_rsp *);

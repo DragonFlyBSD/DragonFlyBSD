@@ -33,7 +33,7 @@
  *	@(#)dump.h	8.2 (Berkeley) 4/28/95
  *
  * $FreeBSD: src/sbin/dump/dump.h,v 1.7.6.4 2003/01/25 18:54:59 dillon Exp $
- * $DragonFly: src/sbin/dump/dump.h,v 1.3 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/dump/dump.h,v 1.4 2003/11/03 19:51:04 eirikn Exp $
  */
 
 #define MAXINOPB	(MAXBSIZE / sizeof(struct dinode))
@@ -91,10 +91,6 @@ char	sblock_buf[MAXBSIZE];
 long	dev_bsize;	/* block size of underlying disk device */
 int	dev_bshift;	/* log2(dev_bsize) */
 int	tp_bshift;	/* log2(TP_BSIZE) */
-
-#ifndef __P
-#include <sys/cdefs.h>
-#endif
 
 /* operator interface functions */
 void	broadcast(char *message);

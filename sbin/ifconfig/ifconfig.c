@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ifconfig.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/sbin/ifconfig/ifconfig.c,v 1.51.2.19 2003/01/28 11:02:56 fjoe Exp $
- * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $
+ * $DragonFly: src/sbin/ifconfig/ifconfig.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -141,9 +141,9 @@ void	notealias(const char *, int, int, const struct afswtch *afp);
 void	list_cloners(void);
 void	printb(const char *s, unsigned value, const char *bits);
 void	rt_xaddrs(caddr_t, caddr_t, struct rt_addrinfo *);
-void	status __P((const struct afswtch *afp, int addrcount,
+void	status(const struct afswtch *afp, int addrcount,
 		    struct sockaddr_dl *sdl, struct if_msghdr *ifm,
-		    struct ifa_msghdr *ifam));
+		    struct ifa_msghdr *ifam);
 void	tunnel_status(int s);
 void	usage(void);
 void	ifmaybeload(char *name);

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *      @(#) $FreeBSD: src/sbin/atm/ilmid/ilmid.c,v 1.6.2.2 2001/03/04 07:15:30 kris Exp $
- *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.4 2003/09/28 14:39:16 hmp Exp $
+ *      @(#) $DragonFly: src/sbin/atm/ilmid/ilmid.c,v 1.5 2003/11/03 19:51:04 eirikn Exp $
  */
 
 /*
@@ -330,9 +330,9 @@ char	hostname[80];
 #define	LOG_FILE	"/var/log/ilmid"
 FILE	*Log;			/* File descriptor for log messages */
 
-void	set_reqid __P ( ( u_char *, int ) );
-void	Increment_DL __P ( ( int ) );
-void	Decrement_DL __P ( ( int ) );
+void	set_reqid ( u_char *, int );
+void	Increment_DL ( int );
+void	Decrement_DL ( int );
 
 static char	*Months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 			     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };

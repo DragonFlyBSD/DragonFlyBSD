@@ -32,7 +32,7 @@
  *
  *	@(#)fsck.h	8.4 (Berkeley) 5/9/95
  * $FreeBSD: src/sbin/fsck/fsck.h,v 1.12.2.1 2001/01/23 23:11:07 iedowse Exp $
- * $DragonFly: src/sbin/fsck/fsck.h,v 1.3 2003/11/01 17:15:58 drhodus Exp $
+ * $DragonFly: src/sbin/fsck/fsck.h,v 1.4 2003/11/03 19:51:04 eirikn Exp $
  */
 
 #include <unistd.h>
@@ -252,9 +252,9 @@ void		cacheino(struct dinode *dp, ino_t inumber);
 void		catch(int);
 void		catchquit(int);
 int		changeino(ino_t dir, char *name, ino_t newnum);
-int		checkfstab __P((int preen, int maxrun,
+int		checkfstab(int preen, int maxrun,
 			int (*docheck)(struct fstab *),
-			int (*chkit)(char *, char *, long, int)));
+			int (*chkit)(char *, char *, long, int));
 int		chkrange(ufs_daddr_t blk, int cnt);
 void		ckfini(int markclean);
 int		ckinode(struct dinode *dp, struct inodesc *);

@@ -1,6 +1,6 @@
 /*	$NetBSD: ifconfig.c,v 1.34 1997/04/21 01:17:58 lukem Exp $	*/
 /* $FreeBSD: src/sbin/ifconfig/ifmedia.c,v 1.6.2.3 2001/11/14 04:35:07 yar Exp $ */
-/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.4 2003/11/01 17:15:59 drhodus Exp $ */
+/* $DragonFly: src/sbin/ifconfig/ifmedia.c,v 1.5 2003/11/03 19:51:05 eirikn Exp $ */
 
 /*
  * Copyright (c) 1997 Jason R. Thorpe.
@@ -99,8 +99,8 @@ static void	print_media_word_ifconfig(int);
 
 static struct ifmedia_description *get_toptype_desc(int);
 static struct ifmedia_type_to_subtype *get_toptype_ttos(int);
-static struct ifmedia_description *get_subtype_desc __P((int,
-    struct ifmedia_type_to_subtype *ttos));
+static struct ifmedia_description *get_subtype_desc(int,
+    struct ifmedia_type_to_subtype *ttos);
 
 void
 media_status(int s, struct rt_addrinfo *info __unused)
