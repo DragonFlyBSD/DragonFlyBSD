@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.c,v 1.1.2.5 2003/01/23 21:06:45 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.c,v 1.8 2004/06/03 18:30:03 joerg Exp $	*/
 /*	$KAME: ip_encap.c,v 1.41 2001/03/15 08:35:08 itojun Exp $	*/
 
 /*
@@ -130,13 +130,20 @@ encap_init()
 
 #ifdef INET
 void
-encap4_input(struct mbuf *m, int off, int proto)
+encap4_input(struct mbuf *m, ...)
 {
+	int off, proto;
 	struct ip *ip;
 	struct sockaddr_in s, d;
 	const struct ipprotosw *psw;
 	struct encaptab *ep, *match;
 	int prio, matchprio;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	ip = mtod(m, struct ip *);
 

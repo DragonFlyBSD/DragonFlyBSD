@@ -32,7 +32,7 @@
  *
  *	@(#)ns_ip.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_ip.c,v 1.9 1999/08/28 00:49:50 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.9 2004/06/02 14:43:03 eirikn Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_ip.c,v 1.10 2004/06/03 18:30:04 joerg Exp $
  */
 
 /*
@@ -61,6 +61,7 @@
 #include <netinet/ip_var.h>
 
 #include <machine/mtpr.h>
+#include <machine/stdarg.h>
 
 #include "ns.h"
 #include "ns_if.h"
@@ -156,14 +157,20 @@ struct mbuf *nsip_badlen;
 struct mbuf *nsip_lastin;
 int nsip_hold_input;
 
+#warning "Audit the second argument, this expect ifp, but gets int from netinet"
+
 void
-idpip_input(m, ifp)
-	struct mbuf *m;
-	struct ifnet *ifp;
+idpip_input(struct mbuf *m, ...)
 {
 	struct ip *ip;
 	struct idp *idp;
 	int len, s;
+	struct ifnet *ifp;
+	__va_list ap;
+
+	__va_start(ap, m);
+	ifp = __va_arg(ap, struct ifnet *);
+	__va_end(ap);
 
 	if (nsip_hold_input) {
 		if (nsip_lastin) {

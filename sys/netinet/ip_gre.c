@@ -1,6 +1,6 @@
 /*
  * $NetBSD: ip_gre.c,v 1.21 2002/08/14 00:23:30 itojun Exp $ 
- * $DragonFly: src/sys/netinet/ip_gre.c,v 1.6 2004/02/14 21:12:39 dillon Exp $
+ * $DragonFly: src/sys/netinet/ip_gre.c,v 1.7 2004/06/03 18:30:03 joerg Exp $
  *
  * Copyright (c) 1998 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -107,9 +107,14 @@ static int	gre_input2(struct mbuf *, int, u_char);
  * This really is simple
  */
 void
-gre_input(struct mbuf *m, int off)
+gre_input(struct mbuf *m, ...)
 {
-	int ret, proto;
+	int ret, off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	__va_end(ap);
 
 	proto = (mtod(m, struct ip *))->ip_p;
 
@@ -220,13 +225,18 @@ gre_input2(struct mbuf *m ,int hlen, u_char proto)
  */
 
 void
-gre_mobile_input(struct mbuf *m, int hlen)
+gre_mobile_input(struct mbuf *m, ...)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct mobip_h *mip = mtod(m, struct mobip_h *);
 	struct gre_softc *sc;
 	u_char osrc = 0;
-	int msiz;
+	int msiz, hlen;
+	__va_list ap;
+
+	__va_start(ap, m);
+	hlen = __va_arg(ap, int);
+	__va_end(ap);
 
 	if ((sc = gre_lookup(m, IPPROTO_MOBILE)) == NULL) {
 		/* No matching tunnel or tunnel is down. */

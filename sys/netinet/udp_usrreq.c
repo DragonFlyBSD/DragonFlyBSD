@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.23 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.24 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -52,6 +52,8 @@
 #include <sys/sysctl.h>
 #include <sys/syslog.h>
 #include <sys/in_cksum.h>
+
+#include <machine/stdarg.h>
 
 #include <vm/vm_zone.h>
 
@@ -188,19 +190,24 @@ check_multicast_membership(struct ip *ip, struct inpcb *inp, struct mbuf *m)
 }
 
 void
-udp_input(m, off, proto)
-	struct mbuf *m;
-	int off, proto;
+udp_input(struct mbuf *m, ...)
 {
-	int iphlen = off;
+	int iphlen;
 	struct ip *ip;
 	struct udphdr *uh;
 	struct inpcb *inp;
 	struct mbuf *opts = 0;
-	int len;
+	int len, off, proto;
 	struct ip save_ip;
 	struct sockaddr *append_sa;
+	__va_list ap;
 
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
+
+	iphlen = off;
 	udpstat.udps_ipackets++;
 
 	/*

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet/ip_encap.h,v 1.1.2.2 2002/11/20 23:20:54 luigi Exp $	*/
-/*	$DragonFly: src/sys/netinet/ip_encap.h,v 1.2 2003/06/17 04:28:51 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet/ip_encap.h,v 1.3 2004/06/03 18:30:03 joerg Exp $	*/
 /*	$KAME: ip_encap.h,v 1.7 2000/03/25 07:23:37 sumikawa Exp $	*/
 
 /*
@@ -50,7 +50,7 @@ struct encaptab {
 };
 
 void	encap_init(void);
-void	encap4_input(struct mbuf *, int off, int proto);
+void	encap4_input(struct mbuf *, ...);
 int	encap6_input(struct mbuf **, int *, int);
 const struct encaptab *encap_attach(int, int, const struct sockaddr *,
 	const struct sockaddr *, const struct sockaddr *,

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp.h,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp.h,v 1.5 2004/06/03 18:30:04 joerg Exp $	*/
 /*	$KAME: ipcomp.h,v 1.11 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -65,7 +65,7 @@ struct ipcomp_algorithm {
 
 struct ipsecrequest;
 extern const struct ipcomp_algorithm *ipcomp_algorithm_lookup (int);
-extern void ipcomp4_input (struct mbuf *, int off, int proto);
+extern void ipcomp4_input (struct mbuf *, ...);
 extern int ipcomp4_output (struct mbuf *, struct ipsecrequest *);
 #endif /* KERNEL */
 

@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.27 2004/05/20 04:28:52 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.28 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -56,6 +56,7 @@
 #include <sys/in_cksum.h>
 
 #include <machine/cpu.h>	/* before tcp_seq.h, for tcp_random18() */
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -374,10 +375,10 @@ tcp6_input(mp, offp, proto)
 #endif
 
 void
-tcp_input(m, off0, proto)
-	struct mbuf *m;
-	int off0, proto;
+tcp_input(struct mbuf *m, ...)
 {
+	__va_list ap;
+	int off0, proto;
 	struct tcphdr *th;
 	struct ip *ip = NULL;
 	struct ipovly *ipov;
@@ -406,6 +407,11 @@ tcp_input(m, off0, proto)
 #ifdef TCPDEBUG
 	short ostate = 0;
 #endif
+
+	__va_start(ap, m);
+	off0 = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	tcpstat.tcps_rcvtotal++;
 

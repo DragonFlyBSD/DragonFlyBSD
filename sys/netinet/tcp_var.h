@@ -33,7 +33,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.20 2004/05/20 04:32:59 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.21 2004/06/03 18:30:03 joerg Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -495,7 +495,7 @@ struct rmxp_tao *
 	 tcp_gettaocache (struct in_conninfo *);
 void	 tcp_init (void);
 void	 tcp_thread_init (void);
-void	 tcp_input (struct mbuf *, int, int);
+void	 tcp_input (struct mbuf *, ...);
 void	 tcp_mss (struct tcpcb *, int);
 int	 tcp_mssopt (struct tcpcb *);
 void	 tcp_drop_syn_sent (struct inpcb *, int);

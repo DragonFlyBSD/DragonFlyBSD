@@ -36,7 +36,7 @@
  *
  *	@(#)igmp.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp.c,v 1.29.2.2 2003/01/23 21:06:44 sam Exp $
- * $DragonFly: src/sys/netinet/igmp.c,v 1.8 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/igmp.c,v 1.9 2004/06/03 18:30:03 joerg Exp $
  */
 
 /*
@@ -59,6 +59,8 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
+
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -148,11 +150,9 @@ find_rti(ifp)
 }
 
 void
-igmp_input(m, off, proto)
-	struct mbuf *m;
-	int off, proto;
+igmp_input(struct mbuf *m, ...)
 {
-	int iphlen = off;
+	int iphlen, off, proto;
 	struct igmp *igmp;
 	struct ip *ip;
 	int igmplen;
@@ -162,8 +162,16 @@ igmp_input(m, off, proto)
 	struct in_ifaddr *ia;
 	struct in_multistep step;
 	struct router_info *rti;
+	__va_list ap;
 	
 	int timer; /** timer value in the igmp query header **/
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
+
+	iphlen = off;
 
 	++igmpstat.igps_rcv_total;
 

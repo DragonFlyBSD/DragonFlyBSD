@@ -32,7 +32,7 @@
  *
  *	@(#)ip_var.h	8.2 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/netinet/ip_var.h,v 1.50.2.13 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/ip_var.h,v 1.8 2004/06/03 15:04:51 joerg Exp $
+ * $DragonFly: src/sys/netinet/ip_var.h,v 1.9 2004/06/03 18:30:03 joerg Exp $
  */
 
 #ifndef _NETINET_IP_VAR_H_
@@ -202,19 +202,19 @@ u_int16_t
 int	rip_ctloutput(struct socket *, struct sockopt *);
 void	rip_ctlinput(int, struct sockaddr *, void *);
 void	rip_init(void);
-void	rip_input(struct mbuf *, int, int);
+void	rip_input(struct mbuf *, ...);
 int	rip_output(struct mbuf *, struct socket *, ...);
 extern void	(*ipip_input)(struct mbuf *, int, int);
-void	rsvp_input(struct mbuf *, int, int);
+void	rsvp_input(struct mbuf *, ...);
 int	ip_rsvp_init(struct socket *);
 int	ip_rsvp_done(void);
 extern int	(*ip_rsvp_vif)(struct socket *, struct sockopt *);
 extern void	(*ip_rsvp_force_done)(struct socket *);
-extern void	(*rsvp_input_p)(struct mbuf *m, int off, int proto);
+extern void	(*rsvp_input_p)(struct mbuf *m, ...);
 
 #ifdef IPDIVERT
 void	div_init(void);
-void	div_input(struct mbuf *, int, int);
+void	div_input(struct mbuf *, ...);
 void	divert_packet(struct mbuf *m, int incoming, int port, int rule);
 extern struct pr_usrreqs div_usrreqs;
 #endif

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah_input.c,v 1.1.2.6 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.7 2004/06/02 14:43:01 eirikn Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah_input.c,v 1.8 2004/06/03 18:30:04 joerg Exp $	*/
 /*	$KAME: ah_input.c,v 1.67 2002/01/07 11:39:56 kjc Exp $	*/
 
 /*
@@ -53,6 +53,7 @@
 #include <net/route.h>
 #include <net/netisr.h>
 #include <machine/cpu.h>
+#include <machine/stdarg.h>
 
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
@@ -99,8 +100,9 @@
 extern struct ipprotosw inetsw[];
 
 void
-ah4_input(struct mbuf *m, int off, int proto)
+ah4_input(struct mbuf *m, ...)
 {
+	int off, proto;
 	struct ip *ip;
 	struct ah *ah;
 	u_int32_t spi;
@@ -112,6 +114,12 @@ ah4_input(struct mbuf *m, int off, int proto)
 	u_int16_t nxt;
 	size_t hlen;
 	size_t stripsiz = 0;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 #ifndef PULLDOWN_TEST
 	if (m->m_len < off + sizeof(struct newah)) {

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/net/if_stf.c,v 1.1.2.11 2003/01/23 21:06:44 sam Exp $	*/
-/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.9 2004/06/02 14:42:59 eirikn Exp $	*/
+/*	$DragonFly: src/sys/net/stf/if_stf.c,v 1.10 2004/06/03 18:30:03 joerg Exp $	*/
 /*	$KAME: if_stf.c,v 1.73 2001/12/03 11:08:30 keiichi Exp $	*/
 
 /*
@@ -523,13 +523,20 @@ stf_checkaddr6(sc, in6, inifp)
 }
 
 void
-in_stf_input(struct mbuf *m, int off, int proto)
+in_stf_input(struct mbuf *m, ...)
 {
 	struct stf_softc *sc;
 	struct ip *ip;
 	struct ip6_hdr *ip6;
 	u_int8_t otos, itos;
 	struct ifnet *ifp;
+	int off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	if (proto != IPPROTO_IPV6) {
 		m_freem(m);

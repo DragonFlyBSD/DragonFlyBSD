@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ipcomp_input.c,v 1.1.2.3 2002/04/28 05:40:27 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.5 2004/05/20 18:30:36 cpressey Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ipcomp_input.c,v 1.6 2004/06/03 18:30:04 joerg Exp $	*/
 /*	$KAME: ipcomp_input.c,v 1.25 2001/03/01 09:12:09 itojun Exp $	*/
 
 /*
@@ -88,8 +88,9 @@
 extern struct ipprotosw inetsw[];
 
 void
-ipcomp4_input(struct mbuf *m, int off, int proto)
+ipcomp4_input(struct mbuf *m, ...)
 {
+	int off, proto;
 	struct mbuf *md;
 	struct ip *ip;
 	struct ipcomp *ipcomp;
@@ -100,6 +101,12 @@ ipcomp4_input(struct mbuf *m, int off, int proto)
 	int error;
 	size_t newlen, olen;
 	struct secasvar *sav = NULL;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	if (m->m_pkthdr.len < off + sizeof(struct ipcomp)) {
 		ipseclog((LOG_DEBUG, "IPv4 IPComp input: assumption failed "

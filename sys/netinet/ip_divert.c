@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/ip_divert.c,v 1.42.2.6 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/ip_divert.c,v 1.12 2004/04/13 00:14:01 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_divert.c,v 1.13 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_inet.h"
@@ -134,7 +134,7 @@ div_init(void)
  * with that protocol number to enter the system from the outside.
  */
 void
-div_input(struct mbuf *m, int off, int proto)
+div_input(struct mbuf *m, ...)
 {
 	ipstat.ips_noproto++;
 	m_freem(m);

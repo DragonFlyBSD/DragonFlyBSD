@@ -18,7 +18,7 @@
  * bandwidth metering and signaling
  *
  * $FreeBSD: src/sys/netinet/ip_mroute.c,v 1.56.2.10 2003/08/24 21:37:34 hsu Exp $
- * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.11 2004/06/02 14:42:58 eirikn Exp $
+ * $DragonFly: src/sys/net/ip_mroute/ip_mroute.c,v 1.12 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_mrouting.h"
@@ -41,6 +41,9 @@
 #include <sys/systm.h>
 #include <sys/time.h>
 #include <sys/in_cksum.h>
+
+#include <machine/stdarg.h>
+
 #include <net/if.h>
 #include <net/netisr.h>
 #include <net/route.h>
@@ -2100,13 +2103,20 @@ X_ip_rsvp_force_done(struct socket *so)
 }
 
 static void
-X_rsvp_input(struct mbuf *m, int off, int proto)
+X_rsvp_input(struct mbuf *m, ...)
 {
     int vifi;
     struct ip *ip = mtod(m, struct ip *);
     struct sockaddr_in rsvp_src = { sizeof rsvp_src, AF_INET };
     int s;
     struct ifnet *ifp;
+    int off, proto;
+    __va_list ap;
+
+    __va_start(ap, m);
+    off = __va_arg(ap, int);
+    proto = __va_arg(ap, int);
+    __va_end(ap);
 
     if (rsvpdebug)
 	printf("rsvp_input: rsvp_on %d\n",rsvp_on);
@@ -2979,15 +2989,24 @@ pim_register_send_rp(struct ip *ip, struct vif *vifp,
  * is passed to if_simloop().
  */
 void
-pim_input(struct mbuf *m, int off, int proto)
+pim_input(struct mbuf *m, ...)
 {
+    int off, proto;
     struct ip *ip = mtod(m, struct ip *);
     struct pim *pim;
     int minlen;
     int datalen = ip->ip_len;
     int ip_tos;
-    int iphlen = off;
-    
+    int iphlen;
+    __va_list ap;
+
+    __va_start(ap, m);
+    off = __va_arg(ap, int);
+    proto = __va_arg(ap, int);
+    __va_end(ap);
+
+    iphlen = off;
+
     /* Keep statistics */
     pimstat.pims_rcv_total_msgs++;
     pimstat.pims_rcv_total_bytes += datalen;

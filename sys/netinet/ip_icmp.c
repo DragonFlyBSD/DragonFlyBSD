@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.8 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.9 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_ipsec.h"
@@ -46,6 +46,8 @@
 #include <sys/kernel.h>
 #include <sys/sysctl.h>
 #include <sys/in_cksum.h>
+
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -246,18 +248,24 @@ static struct sockaddr_in icmpgw = { sizeof (struct sockaddr_in), AF_INET };
  * Process a received ICMP message.
  */
 void
-icmp_input(m, off, proto)
-	struct mbuf *m;
-	int off, proto;
+icmp_input(struct mbuf *m, ...)
 {
-	int hlen = off;
+	int hlen;
 	struct icmp *icp;
 	struct ip *ip = mtod(m, struct ip *);
 	int icmplen = ip->ip_len;
 	int i;
 	struct in_ifaddr *ia;
 	void (*ctlfunc) (int, struct sockaddr *, void *);
-	int code;
+	int code, off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
+
+	hlen = off;
 
 	/*
 	 * Locate icmp structure in mbuf, and check

@@ -1,6 +1,6 @@
 /*
  * $FreeBSD: src/sys/netinet/in_gif.c,v 1.5.2.11 2003/01/23 21:06:45 sam Exp $
- * $DragonFly: src/sys/netinet/in_gif.c,v 1.9 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/in_gif.c,v 1.10 2004/06/03 18:30:03 joerg Exp $
  * $KAME: in_gif.c,v 1.54 2001/05/14 14:02:16 itojun Exp $
  */
 /*
@@ -46,6 +46,8 @@
 #include <sys/protosw.h>
 
 #include <sys/malloc.h>
+
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -212,15 +214,19 @@ in_gif_output(ifp, family, m)
 }
 
 void
-in_gif_input(m, off, proto)
-	struct mbuf *m;
-	int off;
-	int proto;
+in_gif_input(struct mbuf *m, ...)
 {
 	struct ifnet *gifp = NULL;
 	struct ip *ip;
 	int af;
 	u_int8_t otos;
+	int off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	ip = mtod(m, struct ip *);
 

@@ -32,7 +32,7 @@
  *
  *	@(#)raw_ip.c	8.7 (Berkeley) 5/15/95
  * $FreeBSD: src/sys/netinet/raw_ip.c,v 1.64.2.16 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netinet/raw_ip.c,v 1.14 2004/06/03 15:04:51 joerg Exp $
+ * $DragonFly: src/sys/netinet/raw_ip.c,v 1.15 2004/06/03 18:30:03 joerg Exp $
  */
 
 #include "opt_inet6.h"
@@ -101,7 +101,7 @@ int (*mrt_ioctl)(int, caddr_t);
 int (*legal_vif_num)(int);
 u_long (*ip_mcast_src)(int);
 
-void (*rsvp_input_p)(struct mbuf *m, int off, int proto);
+void (*rsvp_input_p)(struct mbuf *m, ...);
 int (*ip_rsvp_vif)(struct socket *, struct sockopt *);
 void (*ip_rsvp_force_done)(struct socket *);
 
@@ -147,12 +147,19 @@ static struct	sockaddr_in ripsrc = { sizeof(ripsrc), AF_INET };
  * mbuf chain.
  */
 void
-rip_input(struct mbuf *m, int off, int proto)
+rip_input(struct mbuf *m, ...)
 {
 	struct ip *ip = mtod(m, struct ip *);
 	struct inpcb *inp;
 	struct inpcb *last = NULL;
 	struct mbuf *opts = NULL;
+	int off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
 
 	ripsrc.sin_addr = ip->ip_src;
 	LIST_FOREACH(inp, &ripcbinfo.listhead, inp_list) {

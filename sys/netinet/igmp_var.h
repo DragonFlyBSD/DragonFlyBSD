@@ -36,7 +36,7 @@
  *
  *	from: @(#)igmp_var.h	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/sys/netinet/igmp_var.h,v 1.17 1999/12/29 04:40:59 peter Exp $
- * $DragonFly: src/sys/netinet/igmp_var.h,v 1.3 2003/08/23 11:18:00 rob Exp $
+ * $DragonFly: src/sys/netinet/igmp_var.h,v 1.4 2004/06/03 18:30:03 joerg Exp $
  */
 
 #ifndef _NETINET_IGMP_VAR_H_
@@ -87,7 +87,7 @@ struct igmpstat {
 #define IGMP_AGE_THRESHOLD			540
 
 void	igmp_init (void);
-void	igmp_input (struct mbuf *, int, int);
+void	igmp_input (struct mbuf *, ...);
 void	igmp_joingroup (struct in_multi *);
 void	igmp_leavegroup (struct in_multi *);
 void	igmp_fasttimo (void);

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ah.h,v 1.3.2.3 2002/04/28 05:40:26 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ah.h,v 1.4 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ah.h,v 1.5 2004/06/03 18:30:04 joerg Exp $	*/
 /*	$KAME: ah.h,v 1.16 2001/09/04 08:43:19 itojun Exp $	*/
 
 /*
@@ -86,7 +86,7 @@ extern const struct ah_algorithm *ah_algorithm_lookup (int);
 extern int ah_hdrlen (struct secasvar *);
 
 extern size_t ah_hdrsiz (struct ipsecrequest *);
-extern void ah4_input (struct mbuf *, int off, int proto);
+extern void ah4_input (struct mbuf *, ...);
 extern int ah4_output (struct mbuf *, struct ipsecrequest *);
 extern int ah4_calccksum (struct mbuf *, caddr_t, size_t,
 	const struct ah_algorithm *, struct secasvar *);

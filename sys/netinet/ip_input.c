@@ -32,7 +32,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.27 2004/06/02 14:43:01 eirikn Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.28 2004/06/03 18:30:03 joerg Exp $
  */
 
 #define	_IP_VHL
@@ -64,6 +64,8 @@
 
 #include <sys/thread2.h>
 #include <sys/msgport2.h>
+
+#include <machine/stdarg.h>
 
 #include <net/if.h>
 #include <net/if_types.h>
@@ -2237,8 +2239,16 @@ ip_rsvp_done(void)
 }
 
 void
-rsvp_input(struct mbuf *m, int off, int proto)	/* XXX must fixup manually */
+rsvp_input(struct mbuf *m, ...)	/* XXX must fixup manually */
 {
+	int off, proto;
+	__va_list ap;
+
+	__va_start(ap, m);
+	off = __va_arg(ap, int);
+	proto = __va_arg(ap, int);
+	__va_end(ap);
+
 	if (rsvp_input_p) { /* call the real one if loaded */
 		rsvp_input_p(m, off, proto);
 		return;
