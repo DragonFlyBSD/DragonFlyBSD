@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * @(#)getgrouplist.c	8.2 (Berkeley) 12/8/94
- * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.4 2004/06/19 18:55:47 joerg Exp $
+ * $DragonFly: src/lib/libc/gen/getgrouplist.c,v 1.5 2004/09/19 17:25:42 joerg Exp $
  */
 
 /*
@@ -42,11 +42,7 @@
 #include <grp.h>
 
 int
-getgrouplist(uname, agroup, groups, grpcnt)
-	const char *uname;
-	int agroup;
-	int *groups;
-	int *grpcnt;
+getgrouplist(const char *uname, gid_t agroup, gid_t *groups, int *grpcnt)
 {
 	struct group *grp;
 	int i, ngroups;

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  * 
  * $FreeBSD: src/usr.sbin/jail/jail.c,v 1.5.2.2 2003/05/08 13:04:24 maxim Exp $
- * $DragonFly: src/usr.sbin/jail/jail.c,v 1.2 2003/06/17 04:29:55 dillon Exp $
+ * $DragonFly: src/usr.sbin/jail/jail.c,v 1.3 2004/09/19 17:25:42 joerg Exp $
  * 
  */
 
@@ -31,11 +31,12 @@ static void	usage(void);
 int
 main(int argc, char **argv)
 {
-	login_cap_t *lcap;
+	login_cap_t *lcap = NULL;
 	struct jail j;
-	struct passwd *pwd;
+	struct passwd *pwd = NULL;
 	struct in_addr in;
-	int ch, groups[NGROUPS], ngroups;
+	gid_t groups[NGROUPS];
+	int ch, ngroups;
 	char *username;
 
 	username = NULL;

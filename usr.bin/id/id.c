@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1991, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)id.c	8.2 (Berkeley) 2/16/94
  * $FreeBSD: src/usr.bin/id/id.c,v 1.12.2.3 2001/12/20 12:09:03 ru Exp $
- * $DragonFly: src/usr.bin/id/id.c,v 1.4 2003/11/03 19:31:30 eirikn Exp $
+ * $DragonFly: src/usr.bin/id/id.c,v 1.5 2004/09/19 17:25:42 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -252,7 +252,8 @@ user(struct passwd *pw)
 {
 	struct group *gr;
 	const char *fmt;
-	int cnt, gid, lastgid, ngroups, groups[NGROUPS + 1];
+	int cnt, ngroups;
+	gid_t gid, lastgid, groups[NGROUPS + 1];
 
 	(void)printf("uid=%u(%s)", pw->pw_uid, pw->pw_name);
 	gid = pw->pw_gid;

@@ -32,7 +32,7 @@
  *
  *	@(#)unistd.h	8.12 (Berkeley) 4/27/95
  * $FreeBSD: src/include/unistd.h,v 1.35.2.10 2002/04/15 12:52:28 nectar Exp $
- * $DragonFly: src/include/unistd.h,v 1.7 2004/02/26 13:58:25 joerg Exp $
+ * $DragonFly: src/include/unistd.h,v 1.8 2004/09/19 17:25:42 joerg Exp $
  */
 
 #ifndef _UNISTD_H_
@@ -139,7 +139,7 @@ int	 ftruncate(int, off_t);
 #endif
 int	 getdomainname(char *, int);
 int	 getdtablesize(void);
-int	 getgrouplist(const char *, int, int *, int *);
+int	 getgrouplist(const char *, gid_t, gid_t *, int *);
 long	 gethostid(void);
 int	 gethostname(char *, int);
 int	 getlogin_r(char *, int);
