@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/diary.cgi,v 1.10 2004/02/16 05:07:50 dillon Exp $
+# $DragonFly: site/data/status/Attic/diary.cgi,v 1.11 2004/02/16 21:06:08 joerg Exp $
 
 $TITLE(DragonFly - Big-Picture Status)
 
@@ -33,6 +33,8 @@ $TITLE(DragonFly - Big-Picture Status)
 	    of tick granularity?
 	<LI>Critical fixes from FreeBSD RELENG_4 integrated by Hiten Pandya.
 	<LI>Firewire subsystem updated by a patchset from Hidetoshi Shimokawa.
+	<LI>USB subsystem has been synced with FreeBSD 5 and NetBSD.
+	<LI>GCC 3.3.3 and Binutils 2.14 have been integrated into base.
 	<LI>An aggregated Client/Server Directory Services syscall API has
 	    been completed
     </UL>
