@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/atomic.h,v 1.9.2.1 2000/07/07 00:38:47 obrien Exp $
- * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.5 2004/02/13 18:44:42 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/atomic.h,v 1.6 2004/02/13 19:37:16 dillon Exp $
  */
 #ifndef _MACHINE_ATOMIC_H_
 #define _MACHINE_ATOMIC_H_
@@ -107,24 +107,24 @@ atomic_##NAME##_##TYPE##_nonlocked(volatile u_##TYPE *p, u_##TYPE v)\
 #endif /* KLD_MODULE */
 
 /* egcs 1.1.2+ version */
-ATOMIC_ASM(set,	     char,  "orb %b2,%0",   v)
-ATOMIC_ASM(clear,    char,  "andb %b2,%0", ~v)
-ATOMIC_ASM(add,	     char,  "addb %b2,%0",  v)
-ATOMIC_ASM(subtract, char,  "subb %b2,%0",  v)
+ATOMIC_ASM(set,	     char,  "orb %b1,%0",   v)
+ATOMIC_ASM(clear,    char,  "andb %b1,%0", ~v)
+ATOMIC_ASM(add,	     char,  "addb %b1,%0",  v)
+ATOMIC_ASM(subtract, char,  "subb %b1,%0",  v)
 
-ATOMIC_ASM(set,	     short, "orw %w2,%0",   v)
-ATOMIC_ASM(clear,    short, "andw %w2,%0", ~v)
-ATOMIC_ASM(add,	     short, "addw %w2,%0",  v)
-ATOMIC_ASM(subtract, short, "subw %w2,%0",  v)
+ATOMIC_ASM(set,	     short, "orw %w1,%0",   v)
+ATOMIC_ASM(clear,    short, "andw %w1,%0", ~v)
+ATOMIC_ASM(add,	     short, "addw %w1,%0",  v)
+ATOMIC_ASM(subtract, short, "subw %w1,%0",  v)
 
-ATOMIC_ASM(set,	     int,   "orl %2,%0",   v)
-ATOMIC_ASM(clear,    int,   "andl %2,%0", ~v)
-ATOMIC_ASM(add,	     int,   "addl %2,%0",  v)
-ATOMIC_ASM(subtract, int,   "subl %2,%0",  v)
+ATOMIC_ASM(set,	     int,   "orl %1,%0",   v)
+ATOMIC_ASM(clear,    int,   "andl %1,%0", ~v)
+ATOMIC_ASM(add,	     int,   "addl %1,%0",  v)
+ATOMIC_ASM(subtract, int,   "subl %1,%0",  v)
 
-ATOMIC_ASM(set,	     long,  "orl %2,%0",   v)
-ATOMIC_ASM(clear,    long,  "andl %2,%0", ~v)
-ATOMIC_ASM(add,	     long,  "addl %2,%0",  v)
-ATOMIC_ASM(subtract, long,  "subl %2,%0",  v)
+ATOMIC_ASM(set,	     long,  "orl %1,%0",   v)
+ATOMIC_ASM(clear,    long,  "andl %1,%0", ~v)
+ATOMIC_ASM(add,	     long,  "addl %1,%0",  v)
+ATOMIC_ASM(subtract, long,  "subl %1,%0",  v)
 
 #endif /* ! _MACHINE_ATOMIC_H_ */
