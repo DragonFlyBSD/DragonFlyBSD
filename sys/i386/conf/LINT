@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.37 2004/09/20 20:38:17 eirikn Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.38 2004/09/23 06:52:05 simokawa Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -2686,6 +2686,14 @@ makeoptions	UKBD_DFLT_KEYMAP=it.iso
 device		firewire	# Firewire bus code
 device		sbp		# SCSI over Firewire (Requires scbus and da)
 device		fwe		# Ethernet over Firewire (non-standard!)
+
+# dcons support (Dumb Console Device)
+device		dcons			# dumb console driver
+device		dcons_crom		# FireWire attachment
+options		DCONS_BUF_SIZE=16384	# buffer size
+options		DCONS_POLL_HZ=100	# polling rate
+options		DCONS_FORCE_CONSOLE=1	# force to be the primary console
+options		DCONS_FORCE_GDB=1	# force to be the gdb device
 
 #####################################################################
 # crypto subsystem
