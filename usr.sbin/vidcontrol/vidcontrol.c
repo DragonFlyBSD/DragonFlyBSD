@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.32.2.7 2002/09/15 22:31:50 dd Exp $
- * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.8 2004/11/13 23:23:08 dillon Exp $
+ * $DragonFly: src/usr.sbin/vidcontrol/vidcontrol.c,v 1.9 2005/02/19 01:42:16 swildner Exp $
  */
 
 #include <machine/console.h>
@@ -871,7 +871,6 @@ adapter_name(int type)
 		     { KD_CGA,      "CGA" },
 		     { KD_EGA,      "EGA" },
 		     { KD_VGA,      "VGA" },
-		     { KD_PC98,     "PC-98xx" },
 		     { KD_TGA,      "TGA" },
 		     { -1,          "Unknown" },
 	};
