@@ -32,7 +32,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 7/19/93
  * $FreeBSD: src/games/snake/snake/move.c,v 1.5.2.1 2000/08/17 06:21:44 jhb Exp $
- * $DragonFly: src/games/snake/snake/Attic/move.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/snake/snake/Attic/move.c,v 1.3 2004/07/27 07:37:39 asmodai Exp $
  */
 
 /*************************************************************************
@@ -92,11 +92,7 @@
  ******************************************************************************/
 
 #include <errno.h>
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 #include <string.h>
 #include <unistd.h>
 
@@ -395,46 +391,25 @@ pch(c)
 }
 
 void
-#if __STDC__
 apr(struct point *ps, const char *fmt, ...)
-#else
-apr(ps, fmt, va_alist)
-	struct point *ps;
-	char *fmt;
-	va_dcl
-#endif
 {
 	struct point p;
 	va_list ap;
 
 	p.line = ps->line+1; p.col = ps->col+1;
 	move(&p);
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vsprintf(str, fmt, ap);
 	va_end(ap);
 	pstring(str);
 }
 
 void
-#if __STDC__
 pr(const char *fmt, ...)
-#else
-pr(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vsprintf(str, fmt, ap);
 	va_end(ap);
 	pstring(str);

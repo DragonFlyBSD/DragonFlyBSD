@@ -32,7 +32,7 @@
  *
  * @(#)io.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/cribbage/io.c,v 1.5.2.2 2001/02/18 02:20:31 kris Exp $
- * $DragonFly: src/games/cribbage/io.c,v 1.2 2003/06/17 04:25:23 dillon Exp $
+ * $DragonFly: src/games/cribbage/io.c,v 1.3 2004/07/27 07:37:39 asmodai Exp $
  */
 
 #include <ctype.h>
@@ -43,11 +43,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#if __STDC__
 #include <stdarg.h>
-#else
-#include <varargs.h>
-#endif
 
 #include "deck.h"
 #include "cribbage.h"
@@ -385,21 +381,11 @@ int     Mpos = 0;
 static int Newpos = 0;
 
 void
-#if __STDC__
 msg(const char *fmt, ...)
-#else
-msg(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
 	va_end(ap);
 	endmsg();
@@ -410,21 +396,11 @@ msg(fmt, va_alist)
  *	Add things to the current message
  */
 void
-#if __STDC__
 addmsg(const char *fmt, ...)
-#else
-addmsg(fmt, va_alist)
-	char *fmt;
-	va_dcl
-#endif
 {
 	va_list ap;
 
-#if __STDC__
 	va_start(ap, fmt);
-#else
-	va_start(ap);
-#endif
 	(void)vsprintf(&Msgbuf[Newpos], fmt, ap);
 	va_end(ap);
 }
