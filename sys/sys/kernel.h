@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.13 2005/02/04 02:55:38 dillon Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.14 2005/03/19 18:57:34 swildner Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -110,9 +110,9 @@ extern int tickpll;			/* scaled tick adjustment */
 enum sysinit_sub_id {
 	SI_SUB_DUMMY		= 0x0000000,	/* not executed; for linker*/
 	SI_SUB_DONE		= 0x0000001,	/* processed*/
+	SI_SUB_TUNABLES		= 0x0700000,	/* establish tunable values */
 	SI_SUB_CONSOLE		= 0x0800000,	/* console*/
 	SI_SUB_COPYRIGHT	= 0x0800001,	/* first use of console*/
-	SI_SUB_TUNABLES		= 0x0700000,	/* establish tunable values */
 	SI_SUB_LOCK		= 0x0900000,	/* lockmgr locks and tokens */
 	SI_SUB_VM		= 0x1000000,	/* virtual memory system init*/
 	SI_SUB_KMEM		= 0x1800000,	/* kernel memory*/
