@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libdevstat/devstat.c,v 1.6 1999/08/28 00:04:26 peter Exp $
- * $DragonFly: src/lib/libdevstat/devstat.c,v 1.4 2004/12/22 11:01:48 joerg Exp $
+ * $DragonFly: src/lib/libdevstat/devstat.c,v 1.5 2005/01/08 19:19:26 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -879,25 +879,34 @@ compare_select(const void *arg1, const void *arg2)
  * device matching expression from it.
  */
 int
-buildmatch(char *match_str, struct devstat_match **matches, int *num_matches)
+buildmatch(const char *match_str, struct devstat_match **matches,
+	   int *num_matches)
 {
 	char *tstr[5];
 	char **tempstr;
+	char *matchbuf_orig;	/* strdup of match_str */
+	char *matchbuf;		/* allow strsep to clobber */
 	int num_args;
 	int i, j;
-	char *func_name = "buildmatch";
+	int retval = -1;
 
 	/* We can't do much without a string to parse */
 	if (match_str == NULL) {
-		sprintf(devstat_errbuf, "%s: no match expression", func_name);
+		sprintf(devstat_errbuf, "%s: no match expression", __func__);
 		return(-1);
 	}
 
 	/*
 	 * Break the (comma delimited) input string out into separate strings.
+	 * strsep is destructive, so copy the string first.
 	 */
+	matchbuf = matchbuf_orig = strdup(match_str);
+	if (matchbuf == NULL) {
+		sprintf(devstat_errbuf, "%s: out of memory", __func__);
+		return(-1);
+	}
 	for (tempstr = tstr, num_args  = 0; 
-	     (*tempstr = strsep(&match_str, ",")) != NULL && (num_args < 5); 
+	     (*tempstr = strsep(&matchbuf, ",")) != NULL && (num_args < 5); 
 	     num_args++)
 		if (**tempstr != '\0')
 			if (++tempstr >= &tstr[5])
@@ -906,8 +915,8 @@ buildmatch(char *match_str, struct devstat_match **matches, int *num_matches)
 	/* The user gave us too many type arguments */
 	if (num_args > 3) {
 		sprintf(devstat_errbuf, "%s: too many type arguments",
-			func_name);
-		return(-1);
+			__func__);
+		goto cleanup;
 	}
 
 	/*
@@ -974,8 +983,8 @@ buildmatch(char *match_str, struct devstat_match **matches, int *num_matches)
 					sprintf(devstat_errbuf,
 						"%s: cannot have more than "
 						"one match item in a single "
-						"category", func_name);
-					return(-1);
+						"category", __func__);
+					goto cleanup;
 				}
 				/*
 				 * If we've gotten this far, we have a
@@ -997,15 +1006,17 @@ buildmatch(char *match_str, struct devstat_match **matches, int *num_matches)
 		 */
 		if ((*matches)[*num_matches].num_match_categories != (i + 1)) {
 			snprintf(devstat_errbuf, sizeof(devstat_errbuf),
-				"%s: unknown match item \"%s\"", func_name,
+				"%s: unknown match item \"%s\"", __func__,
 				tstr[i]);
-			return(-1);
+			goto cleanup;
 		}
 	}
 
 	(*num_matches)++;
-
-	return(0);
+	retval = 0;
+cleanup:
+	free(matchbuf_orig);
+	return(retval);
 }
 
 /*
@@ -1026,14 +1037,13 @@ compute_stats(struct devstat *current, struct devstat *previous,
 	      long double *ms_per_transaction)
 {
 	u_int64_t totalbytes, totaltransfers, totalblocks;
-	char *func_name = "compute_stats";
 
 	/*
 	 * current is the only mandatory field.
 	 */
 	if (current == NULL) {
 		sprintf(devstat_errbuf, "%s: current stats structure was NULL",
-			func_name);
+			__func__);
 		return(-1);
 	}
 

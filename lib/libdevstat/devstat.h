@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libdevstat/devstat.h,v 1.3 1999/08/28 00:04:27 peter Exp $
- * $DragonFly: src/lib/libdevstat/devstat.h,v 1.3 2004/12/22 11:01:48 joerg Exp $
+ * $DragonFly: src/lib/libdevstat/devstat.h,v 1.4 2005/01/08 19:19:26 joerg Exp $
  */
 
 #ifndef _DEVSTAT_H
@@ -98,7 +98,7 @@ int selectdevs(struct device_selection **dev_select, int *num_selected,
 	       char **dev_selections, int num_dev_selections,
 	       devstat_select_mode select_mode, int maxshowdevs,
 	       int perf_select);
-int buildmatch(char *match_str, struct devstat_match **matches,
+int buildmatch(const char *match_str, struct devstat_match **matches,
 	       int *num_matches);
 int compute_stats(struct devstat *current, struct devstat *previous,
 		  long double etime, u_int64_t *total_bytes,

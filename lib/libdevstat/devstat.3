@@ -26,7 +26,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\" $FreeBSD: src/lib/libdevstat/devstat.3,v 1.7.2.8 2001/12/17 10:08:29 ru Exp $
-.\" $DragonFly: src/lib/libdevstat/devstat.3,v 1.3 2004/12/22 11:01:48 joerg Exp $
+.\" $DragonFly: src/lib/libdevstat/devstat.3,v 1.4 2005/01/08 19:19:26 joerg Exp $
 .\"
 .Dd May 21, 1998
 .Dt DEVSTAT 3
@@ -76,7 +76,7 @@
 .Fc
 .Ft int
 .Fo buildmatch
-.Fa "char *match_str"
+.Fa "const char *match_str"
 .Fa "struct devstat_match **matches"
 .Fa "int *num_matches"
 .Fc
