@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.19 2004/11/14 16:48:36 eirikn Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.20 2005/02/01 22:41:19 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -1372,8 +1372,8 @@ xpt_init(dummy)
 	}
 
 	/* Install our software interrupt handlers */
-	register_swi(SWI_CAMNET, swi_camnet, NULL, "swi_camnet");
-	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio");
+	register_swi(SWI_CAMNET, swi_camnet, NULL, "swi_camnet", NULL);
+	register_swi(SWI_CAMBIO, swi_cambio, NULL, "swi_cambio", NULL);
 }
 
 static cam_status

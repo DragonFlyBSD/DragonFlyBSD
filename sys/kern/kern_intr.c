@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.18 2004/06/28 05:02:56 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.19 2005/02/01 22:41:26 dillon Exp $
  *
  */
 
@@ -45,6 +45,7 @@
 typedef struct intrec {
     struct intrec *next;
     inthand2_t	*handler;
+    intrmask_t	*maskptr;	/* LEGACY */
     void	*argument;
     const char	*name;
     int		intr;
@@ -61,6 +62,7 @@ static u_int ill_delta[NHWI+NSWI];	/* track elapsed to calculate freq */
 static int ill_state[NHWI+NSWI];	/* current state */
 static struct systimer ill_timer[NHWI+NSWI];	/* enforced freq. timer */
 static struct systimer ill_rtimer[NHWI+NSWI];	/* recovery timer */
+static intrmask_t dummy_intr_mask;
 
 #define LIVELOCK_NONE		0
 #define LIVELOCK_LIMITED	1
@@ -72,18 +74,38 @@ SYSCTL_INT(_kern, OID_AUTO, livelock_limit,
 SYSCTL_INT(_kern, OID_AUTO, livelock_fallback,
         CTLFLAG_RW, &livelock_fallback, 0, "Livelock interrupt fallback rate");
 
+/*
+ * TEMPORARY sysctl to allow interrupt handlers to run without the critical
+ * section (if set to 0).
+ *
+ * SEQUENCE OF EVENTS: default to prior operation, testing, change default
+ * to 0, lots more testing, then make operation without a critical section
+ * mandatory and remove the sysctl code and variable.
+ */
+static int int_use_crit_section = 1;
+SYSCTL_INT(_kern, OID_AUTO, int_use_crit_section,
+        CTLFLAG_RW, &int_use_crit_section, 0, "Run interrupts entirely within a critical section");
+
 static void ithread_handler(void *arg);
 
+/*
+ * Register an SWI or INTerrupt handler.
+ *
+ * Note that maskptr exists to support legacy spl handling and is not intended
+ * to be permanent (because spls are not compatible with BGL removal).
+ */
 thread_t
-register_swi(int intr, inthand2_t *handler, void *arg, const char *name)
+register_swi(int intr, inthand2_t *handler, void *arg, const char *name,
+	intrmask_t *maskptr)
 {
     if (intr < NHWI || intr >= NHWI + NSWI)
 	panic("register_swi: bad intr %d", intr);
-    return(register_int(intr, handler, arg, name));
+    return(register_int(intr, handler, arg, name, maskptr));
 }
 
 thread_t
-register_int(int intr, inthand2_t *handler, void *arg, const char *name)
+register_int(int intr, inthand2_t *handler, void *arg, const char *name,
+	intrmask_t *maskptr)
 {
     intrec_t **list;
     intrec_t *rec;
@@ -91,11 +113,14 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 
     if (intr < 0 || intr >= NHWI + NSWI)
 	panic("register_int: bad intr %d", intr);
+    if (maskptr == NULL)
+	maskptr = &dummy_intr_mask;
 
     rec = malloc(sizeof(intrec_t), M_DEVBUF, M_NOWAIT);
     if (rec == NULL)
 	panic("register_swi: malloc failed");
     rec->handler = handler;
+    rec->maskptr = maskptr;
     rec->argument = arg;
     rec->name = name;
     rec->intr = intr;
@@ -105,9 +130,7 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 
     /*
      * Create an interrupt thread if necessary, leave it in an unscheduled
-     * state.  The kthread restore function exits a critical section before
-     * starting the function so we need *TWO* critical sections in order
-     * for the handler to begin running in one.
+     * state.
      */
     if ((td = ithreads[intr]) == NULL) {
 	lwkt_create((void *)ithread_handler, (void *)intr, &ithreads[intr],
@@ -115,9 +138,9 @@ register_int(int intr, inthand2_t *handler, void *arg, const char *name)
 	    "ithread %d", intr);
 	td = ithreads[intr];
 	if (intr >= NHWI && intr < NHWI + NSWI)
-	    lwkt_setpri(td, TDPRI_SOFT_NORM + TDPRI_CRIT * 2);
+	    lwkt_setpri(td, TDPRI_SOFT_NORM);
 	else
-	    lwkt_setpri(td, TDPRI_INT_MED + TDPRI_CRIT * 2);
+	    lwkt_setpri(td, TDPRI_INT_MED);
     }
 
     /*
@@ -246,15 +269,21 @@ ithread_livelock_wakeup(systimer_t info)
 
 
 /*
- * Interrupt threads run this as their main loop.  The handler should be
- * in a critical section on entry and the BGL is usually left held (for now).
+ * Interrupt threads run this as their main loop.
+ *
+ * The handler begins execution outside a critical section and with the BGL
+ * held.
  *
  * The irunning state starts at 0.  When an interrupt occurs, the hardware
  * interrupt is disabled and sched_ithd() The HW interrupt remains disabled
  * until all routines have run.  We then call ithread_done() to reenable 
- * the HW interrupt and deschedule us until the next interrupt.
+ * the HW interrupt and deschedule us until the next interrupt. 
+ *
+ * We are responsible for atomically checking irunning[] and ithread_done()
+ * is responsible for atomically checking for platform-specific delayed
+ * interrupts.  irunning[] for our irq is only set in the context of our cpu,
+ * so a critical section is a sufficient interlock.
  */
-
 #define LIVELOCK_TIMEFRAME(freq)	((freq) >> 2)	/* 1/4 second */
 
 static void
@@ -268,19 +297,39 @@ ithread_handler(void *arg)
     intrec_t *rec;
     intrec_t *nrec;
     struct random_softc *sc = &irandom_ary[intr];
+    globaldata_t gd = mycpu;
+    int in_crit_section;	/* REMOVE WHEN TESTING COMPLETE */
+    intrmask_t s;
 
-    KKASSERT(curthread->td_pri >= TDPRI_CRIT);
+    /*
+     * The loop must be entered with one critical section held.
+     */
+    crit_enter_gd(gd);
+
     for (;;) {
 	/*
+	 * Deal with the sysctl variable allowing the interrupt thread to run
+	 * without a critical section.  Once this is proven out it will
+	 * become the default.  Note that a critical section is always
+	 * held as of the top of the loop.
+	 */
+	in_crit_section = int_use_crit_section;
+	if (in_crit_section == 0)
+	    crit_exit_gd(gd);
+
+	/*
 	 * We can get woken up by the livelock periodic code too, run the 
-	 * handlers only if there is a real interrupt pending.  Clear
-	 * irunning[] prior to running the handlers to interlock new
-	 * events.
+	 * handlers only if there is a real interrupt pending.  XXX
+	 *
+	 * Clear irunning[] prior to running the handlers to interlock
+	 * again new events occuring during processing of existing events.
 	 */
 	irunning[intr] = 0;
 	for (rec = *list; rec; rec = nrec) {
 	    nrec = rec->next;
+	    s = splq(*rec->maskptr);
 	    rec->handler(rec->argument);
+	    splx(s);
 	}
 
 	/*
@@ -292,8 +341,11 @@ ithread_handler(void *arg)
 
 	/*
 	 * This is our livelock test.  If we hit the rate limit we
-	 * limit ourselves to 10000 interrupts/sec until the rate
+	 * limit ourselves to X interrupts/sec until the rate
 	 * falls below 50% of that value, then we unlimit again.
+	 *
+	 * XXX calling cputimer_count() is expensive but a livelock may
+	 * prevent other interrupts from occuring so we cannot use ticks.
 	 */
 	cputicks = cputimer_count();
 	++ill_count[intr];
@@ -352,11 +404,21 @@ ithread_handler(void *arg)
 	}
 
 	/*
-	 * If another interrupt has not been queued we can reenable the
-	 * hardware interrupt and go to sleep.
+	 * There are two races here.  irunning[] is set by sched_ithd()
+	 * in the context of our cpu and is critical-section safe.  We
+	 * are responsible for checking it.  ipending is not critical
+	 * section safe and must be handled by the platform specific
+	 * ithread_done() routine.
 	 */
-	if (irunning[intr] == 0)
-	    ithread_done(intr);
+	if (in_crit_section) {
+	    if (irunning[intr] == 0)
+		ithread_done(intr);
+	} else {
+	    crit_enter_gd(gd);
+	    if (irunning[intr] == 0)
+		ithread_done(intr);
+	}
+	/* must be in critical section on loop */
     }
 }
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	 $FreeBSD: src/sys/kern/subr_taskqueue.c,v 1.1.2.3 2003/09/10 00:40:39 ken Exp $
- *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.4 2003/12/29 06:42:06 dillon Exp $
+ *	$DragonFly: src/sys/kern/subr_taskqueue.c,v 1.5 2005/02/01 22:41:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -224,7 +224,7 @@ taskqueue_thread_enqueue(void *context)
 }
 
 TASKQUEUE_DEFINE(swi, taskqueue_swi_enqueue, 0,
-		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq"));
+		 register_swi(SWI_TQ, taskqueue_swi_run, NULL, "swi_taskq", NULL));
 TASKQUEUE_DEFINE(thread, taskqueue_thread_enqueue, 0,
 		 kthread_create(taskqueue_kthread, NULL,
 		 &taskqueue_thread_td, "taskqueue"));

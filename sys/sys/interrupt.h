@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/sys/interrupt.h,v 1.9.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/sys/interrupt.h,v 1.8 2004/02/25 17:38:51 joerg Exp $
+ * $DragonFly: src/sys/sys/interrupt.h,v 1.9 2005/02/01 22:41:31 dillon Exp $
  */
 
 #ifndef _SYS_INTERRUPT_H_
@@ -39,9 +39,9 @@ typedef void ointhand2_t (int);
 
 struct thread;
 struct thread *register_swi(int intr, inthand2_t *handler, void *arg,
-			    const char *name);
+			    const char *name, intrmask_t *maskptr);
 struct thread *register_int(int intr, inthand2_t *handler, void *arg,
-			    const char *name);
+			    const char *name, intrmask_t *maskptr);
 void register_randintr(int intr);
 
 void swi_setpriority(int intr, int pri);

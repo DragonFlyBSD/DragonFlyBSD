@@ -35,7 +35,7 @@
  *
  *	from: @(#)isa.c	7.2 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/isa/intr_machdep.c,v 1.29.2.5 2001/10/14 06:54:27 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.23 2004/07/24 20:21:34 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.c,v 1.24 2005/02/01 22:41:25 dillon Exp $
  */
 /*
  * This file contains an aggregated module marked:
@@ -815,7 +815,7 @@ add_intrdesc(intrec *idesc)
 
 		intr_info[irq].mihandler_installed = 1;
 		intr_info[irq].irq = irq;
-		td = register_int(irq, intr_mux, &intreclist_head[irq], idesc->name);
+		td = register_int(irq, intr_mux, &intreclist_head[irq], idesc->name, idesc->maskptr);
 		td->td_info.intdata = &intr_info[irq];
 		td->td_preemptable = cpu_intr_preempt;
 		printf("installed MI handler for int %d\n", irq);

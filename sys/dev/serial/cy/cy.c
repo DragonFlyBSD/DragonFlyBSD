@@ -28,7 +28,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/cy.c,v 1.97.2.2 2001/08/22 13:04:58 bde Exp $
- * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.14 2004/09/19 01:24:28 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/cy/cy.c,v 1.15 2005/02/01 22:41:20 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -620,7 +620,7 @@ cyattach_common(cy_iobase, cy_align)
 
 	if (!sio_registered) {
 		callout_init(&sio_timeout_handle);
-		register_swi(SWI_TTY, siopoll, NULL, "cy");
+		register_swi(SWI_TTY, siopoll, NULL, "cy", NULL);
 		sio_registered = TRUE;
 	}
 	minorbase = UNIT_TO_MINOR(unit);

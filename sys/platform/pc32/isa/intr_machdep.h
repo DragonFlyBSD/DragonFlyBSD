@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/intr_machdep.h,v 1.19.2.2 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.11 2004/02/21 06:37:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/intr_machdep.h,v 1.12 2005/02/01 22:41:25 dillon Exp $
  */
 
 #ifndef _I386_ISA_INTR_MACHDEP_H_
@@ -214,8 +214,6 @@ int	icu_setup (int intr, inthand2_t *func, void *arg,
 int	icu_unset (int intr, inthand2_t *handler);
 void	icu_reinit (void);
 int	update_intr_masks (void);
-
-intrmask_t splq (intrmask_t mask);
 
 /*
  * WARNING: These are internal functions and not to be used by device drivers!

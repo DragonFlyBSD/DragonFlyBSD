@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.26 2005/01/14 02:20:24 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.27 2005/02/01 22:41:31 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -286,7 +286,8 @@ intrmask_t	splsofttq (void);
 intrmask_t	splstatclock (void);
 intrmask_t	spltty (void);
 intrmask_t	splvm (void);
-void		splx (intrmask_t ipl);
+void		splx (intrmask_t);
+intrmask_t	splq (intrmask_t);
 void		splz (void);
 #endif /* __i386__ */
 
