@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/ciss/ciss.c,v 1.2.2.6 2003/02/18 22:27:41 ps Exp $
- *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.10 2004/09/15 16:02:41 joerg Exp $
+ *	$DragonFly: src/sys/dev/raid/ciss/ciss.c,v 1.11 2004/09/17 03:25:43 joerg Exp $
  */
 
 /*
@@ -298,7 +298,6 @@ ciss_attach(device_t dev)
     int			i, error;
 
     debug_called(1);
-    callout_init(&sc->ciss_periodic);
 
 #ifdef CISS_DEBUG
     /* print structure/union sizes */
@@ -342,6 +341,7 @@ ciss_attach(device_t dev)
 
     sc = device_get_softc(dev);
     sc->ciss_dev = dev;
+    callout_init(&sc->ciss_periodic);
 
     /*
      * Work out adapter type.
