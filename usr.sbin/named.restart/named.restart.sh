@@ -1,14 +1,8 @@
 #!/bin/sh -
 #
-#	from named.restart	5.4 (Berkeley) 6/27/89
-# $FreeBSD: src/usr.sbin/named.restart/named.restart.sh,v 1.2.2.1 2001/07/19 05:11:06 kris Exp $
-# $DragonFly: src/usr.sbin/named.restart/named.restart.sh,v 1.3 2004/05/27 18:15:43 dillon Exp $
+# $DragonFly: src/usr.sbin/named.restart/named.restart.sh,v 1.4 2004/05/31 17:52:30 dillon Exp $
 #
+# RNDC does not support 'restart' yet, so do it using RCNG.
 
-if [ -r /etc/defaults/rc.conf ]; then
-        . /etc/defaults/rc.conf
-        source_rc_confs
-elif [ -r /etc/rc.conf ]; then
-        . /etc/rc.conf
-fi
-exec %DESTSBIN%/%INDOT%rndc -n ${named_program} restart ${named_flags}
+/sbin/rcrestart named
+
