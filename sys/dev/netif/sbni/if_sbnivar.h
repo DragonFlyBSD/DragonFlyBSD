@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbnivar.h,v 1.1.2.3 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbnivar.h,v 1.2 2003/06/17 04:28:29 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbnivar.h,v 1.3 2004/09/15 00:39:53 joerg Exp $
  */
 
 /*
@@ -111,7 +111,7 @@ struct sbni_softc {
 	struct	sbni_csr1 csr1;			/* current value of CSR1 */
 	struct	sbni_in_stats in_stats; 	/* internal statistics */ 
 
-	struct	callout_handle wch;
+	struct	callout	sbni_stat_timer;
 
 	struct	sbni_softc *slave_sc;
 

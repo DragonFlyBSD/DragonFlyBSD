@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sbni/if_sbni.c,v 1.1.2.4 2002/08/11 09:32:00 fjoe Exp $
- * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.15 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sbni/if_sbni.c,v 1.16 2004/09/15 00:39:53 joerg Exp $
  */
 
 /*
@@ -226,7 +226,7 @@ sbni_attach(struct sbni_softc *sc, int unit, struct sbni_flags flags)
 	sbni_outb(sc, CSR0, 0);
 	set_initial_values(sc, flags);
 
-	callout_handle_init(&sc->wch);
+	callout_init(&sc->sbni_stat_timer);
 	/* Initialize ifnet structure */
 	ifp->if_softc	= sc;
 	if_initname(ifp, "sbni", unit);
@@ -279,7 +279,7 @@ sbni_init(void *xsc)
 	s = splimp();
 	ifp->if_timer = 0;
 	card_start(sc);
-	sc->wch = timeout(sbni_timeout, sc, hz/SBNI_HZ);
+	callout_reset(&sc->sbni_stat_timer,hz / SBNI_HZ, sbni_timeout, sc);
 
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
@@ -310,8 +310,7 @@ sbni_stop(struct sbni_softc *sc)
 		sc->rx_buf_p = NULL;
 	}
 
-	untimeout(sbni_timeout, sc, sc->wch);
-	sc->wch.callout = NULL;
+	callout_stop(&sc->sbni_stat_timer);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -897,7 +896,7 @@ sbni_timeout(void *xsc)
 	}
 
 	sbni_outb(sc, CSR0, csr0 | RC_CHK); 
-	sc->wch = timeout(sbni_timeout, sc, hz/SBNI_HZ);
+	callout_reset(&sc->sbni_stat_timer, hz / SBNI_HZ, sbni_timeout, sc);
 	splx(s);
 }
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.11 2004/07/23 07:16:28 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sf.c,v 1.12 2004/09/15 00:41:53 joerg Exp $
  *
  * $FreeBSD: src/sys/pci/if_sf.c,v 1.18.2.8 2001/12/16 15:46:07 luigi Exp $
  */
@@ -767,7 +767,7 @@ static int sf_attach(dev)
 		goto fail;
 	}
 
-	callout_handle_init(&sc->sf_stat_ch);
+	callout_init(&sc->sf_stat_timer);
 
 	/* Reset the adapter. */
 	sf_reset(sc);
@@ -1125,8 +1125,7 @@ static void sf_intr(arg)
 
 		if (status & SF_ISR_ABNORMALINTR) {
 			if (status & SF_ISR_STATSOFLOW) {
-				untimeout(sf_stats_update, sc,
-				    sc->sf_stat_ch);
+				callout_stop(&sc->sf_stat_timer);
 				sf_stats_update(sc);
 			} else
 				sf_init(sc);
@@ -1250,7 +1249,7 @@ static void sf_init(xsc)
 	ifp->if_flags |= IFF_RUNNING;
 	ifp->if_flags &= ~IFF_OACTIVE;
 
-	sc->sf_stat_ch = timeout(sf_stats_update, sc, hz);
+	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 
 	splx(s);
 
@@ -1402,7 +1401,7 @@ static void sf_stop(sc)
 
 	ifp = &sc->arpcom.ac_if;
 
-	untimeout(sf_stats_update, sc, sc->sf_stat_ch);
+	callout_stop(&sc->sf_stat_timer);
 
 	csr_write_4(sc, SF_GEN_ETH_CTL, 0);
 	csr_write_4(sc, SF_CQ_CONSIDX, 0);
@@ -1481,7 +1480,7 @@ static void sf_stats_update(xsc)
 				sf_start(ifp);
 	}
 
-	sc->sf_stat_ch = timeout(sf_stats_update, sc, hz);
+	callout_reset(&sc->sf_stat_timer, hz, sf_stats_update, sc);
 
 	splx(s);
 

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_sfreg.h,v 1.6.2.1 2001/08/16 20:35:04 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.2 2003/06/17 04:28:57 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/sf/if_sfreg.h,v 1.3 2004/09/15 00:41:53 joerg Exp $
  */
 
 /*
@@ -1045,7 +1045,7 @@ struct sf_softc {
 	int			sf_tx_cnt;
 	u_int8_t		sf_link;
 	int			sf_if_flags;
-	struct callout_handle	sf_stat_ch;
+	struct callout		sf_stat_timer;
 };
 
 #define SF_TIMEOUT	1000
