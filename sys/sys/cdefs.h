@@ -35,7 +35,7 @@
  *
  *	@(#)cdefs.h	8.8 (Berkeley) 1/9/95
  * $FreeBSD: src/sys/sys/cdefs.h,v 1.28.2.8 2002/09/18 04:05:13 mikeh Exp $
- * $DragonFly: src/sys/sys/cdefs.h,v 1.4 2003/08/20 20:22:43 dillon Exp $
+ * $DragonFly: src/sys/sys/cdefs.h,v 1.5 2003/08/27 17:13:22 hmp Exp $
  */
 
 #ifndef	_SYS_CDEFS_H_
@@ -48,6 +48,20 @@
 #define	__BEGIN_DECLS
 #define	__END_DECLS
 #endif
+
+/*
+ * The VM_CACHELINE_SIZE macro defines the common cache line alignment
+ * size that can be found across most recent and somewhat latest Intel
+ * hardware, i.e. L1 cache sizes etc.
+ *
+ * If needed, this value can be TUNED.  Suitable values for this macro
+ * are 32, 64 and 128 bytes.  The unit of measurement for this macro is
+ * bytes.
+ * 
+ * XXX: This macro and related macros will eventually move to a MD
+ * header, but currently, we do need such a hierarchy.
+ */
+#define	VM_CACHELINE_SIZE	32
 
 /*
  * The __CONCAT macro is used to concatenate parts of symbol names, e.g.
@@ -174,6 +188,43 @@
 	    __attribute__((__format__ (__printf0__, fmtarg, firstvararg)))
 #else
 #define	__printf0like(fmtarg, firstvararg)
+#endif
+
+/*
+ * Handy GCC based macros:
+ *
+ * 	__cachealign:
+ * 	
+ * 	The __cachealign macro can be used for cache line aligning structures
+ * 	of small to medium size.  It aligns the particular structure or
+ * 	storage type to a system default cache line alignment, thus giving us
+ * 	a much more better cache utilization by making the hardware work at
+ * 	its best burst speeds.
+ *
+ * 	__usereg:
+ * 	
+ * 	The __usereg macro can/should be used when a function contains
+ * 	arguments not more than 3.  It can be very useful to us due to the
+ * 	message-passing nature of the kernel.
+ *
+ * !!NOTE - USAGE INFORMATION!!
+ *
+ * The __cachealign macro should not be used for data structures that are
+ * as big struct proc, struct vnode, struct thread, and other structs which
+ * are as big as them; simply because it will be useless in that case.
+ *
+ * The __usereg macro should be used whenever possible, i.e., when a function
+ * does not exceed more than 3 arguments, and should not be used for vararg
+ * type functions.
+ *
+ * In other words, AVOID MISUSE OF THESE MACROS. :-)
+ */
+#ifdef __GNUC__
+#define	__cachealign	__attribute__((aligned(VM_CACHELINE_SIZE)))
+#define	__usereg     	__attribute__((regparm(3)))
+#else
+#define	__cachealign
+#define	__usereg
 #endif
 
 #ifdef __GNUC__
