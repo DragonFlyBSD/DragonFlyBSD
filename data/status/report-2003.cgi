@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.1 2004/01/07 18:15:30 justin Exp $
+# $DragonFly: site/data/status/Attic/report-2003.cgi,v 1.2 2004/01/11 15:08:01 justin Exp $
 
 $TITLE(DragonFly - Activity Summary)
 
@@ -85,7 +85,7 @@ A number of improvements to AGP support from FreeBSD 5 were added by Craig Doole
 
 <H2>Cleanup</H2>
 <BLOCKQUOTE>
-	Eirik Nygaard and Craig Dooley have been cleaning up the old K7R-style functions
+	Eirik Nygaard and Craig Dooley have been cleaning up the old K&amp;R-style functions
 	into ANSI code, along with removal of the __P() macro use from the userland. Robert
 	Garrett removed the __P() macro inside the kernel source.  Jeroen Ruigrok has been
 	working on the removal of perl from the kernel build process.  David Rhodus and
