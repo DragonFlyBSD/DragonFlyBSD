@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.45 2005/01/08 22:27:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.46 2005/01/10 01:07:42 okumoto Exp $
  */
 
 /*-
@@ -460,7 +460,8 @@ int
 main(int argc, char **argv)
 {
 	Boolean outOfDate = TRUE; 	/* FALSE if all targets up to date */
-	char *p, *p1, *pathp;
+	char *p, *p1;
+	const char *pathp;
 	const char *path;
 	char mdpath[MAXPATHLEN];
 	char obpath[MAXPATHLEN];
