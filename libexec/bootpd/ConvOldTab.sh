@@ -1,4 +1,5 @@
 #!/bin/sh
+# $DragonFly: src/libexec/bootpd/ConvOldTab.sh,v 1.2 2004/04/09 13:06:15 joerg Exp $
 #   convert_bootptab	Jeroen.Scheerder@let.ruu.nl 02/25/94
 #	This script can be used to convert bootptab files in old format
 #	to new (termcap-like) bootptab files
@@ -111,7 +112,7 @@ END_OF_HEADER
 # Fix up HW addresses in aa:bb:cc:dd:ee:ff and aa-bb-cc-dd-ee-ff style first
 # Then awk our stuff together
 sed -e  's/[:-]//g' < $OLDTAB | \
-nawk 'BEGIN	{ PART = 0 ; FIELD=0 ; BOOTPATH="unset" ; BOOTFILE="unset" }
+awk 'BEGIN	{ PART = 0 ; FIELD=0 ; BOOTPATH="unset" ; BOOTFILE="unset" }
 	/^%%/	{
 				PART = 1
 				printf ".default:\\\n\t:ht=ether:\\\n\t:hn:\\\n\t:dn=your.domain.name:\\\n\t:ds=your,dns,servers:\\\n\t:sm=255.255.0.0:\\\n\t:hd=%s:\\\n\t:rp=%s:\\\n\t:td=%s:\\\n\t:bf=%s:\\\n\t:to=auto:\n\n", BOOTPATH, BOOTPATH, BOOTPATH, BOOTFILE
