@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.55 2005/02/01 22:05:36 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.56 2005/02/04 21:16:44 okumoto Exp $
  */
 
 /*-
@@ -168,6 +168,7 @@ static int VarPrintVar(void *, void *);
 static int
 VarCmp(const void *v, const void *name)
 {
+
     return (strcmp(name, ((const Var *)v)->name));
 }
 
@@ -664,6 +665,7 @@ VarSortWords(char *str, int (*cmp)(const void *, const void *))
 static int
 SortIncreasing(const void *l, const void *r)
 {
+
 	return (strcmp(*(const char* const*)l, *(const char* const*)r));
 }
 
@@ -1926,6 +1928,7 @@ Var_Subst(const char *var, const char *str, GNode *ctxt, Boolean undefErr)
 char *
 Var_GetTail(char *file)
 {
+
     return (VarModify(file, VarTail, (void *)NULL));
 }
 
@@ -1966,6 +1969,7 @@ Var_GetHead(char *file)
 void
 Var_Init(void)
 {
+
     VAR_GLOBAL = Targ_NewGN("Global");
     VAR_CMD = Targ_NewGN("Command");
 }
