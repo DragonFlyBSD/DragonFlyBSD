@@ -86,7 +86,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/tcp_syncache.c,v 1.5.2.14 2003/02/24 04:02:27 silby Exp $
- * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.18 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_syncache.c,v 1.19 2004/11/14 00:49:08 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -816,6 +816,8 @@ syncache_socket(sc, lso)
 		tp->cc_send = sc->sc_cc_send;
 		tp->cc_recv = sc->sc_cc_recv;
 	}
+	if (sc->sc_flags & SCF_SACK_PERMITTED)
+		tp->t_flags |= TF_SACK_PERMITTED;
 
 	tcp_mss(tp, sc->sc_peer_mss);
 
@@ -948,8 +950,8 @@ syncache_add(inc, to, th, sop, m)
 	 * If we do, resend the SYN,ACK, and reset the retransmit timer.
 	 *
 	 * XXX
-	 * should the syncache be re-initialized with the contents
-	 * of the new SYN here (which may have different options?)
+	 * The syncache should be re-initialized with the contents
+	 * of the new SYN which may have different options.
 	 */
 	sc = syncache_lookup(inc, &sch);
 	if (sc != NULL) {
@@ -968,6 +970,13 @@ syncache_add(inc, to, th, sop, m)
 		 */
 		if (sc->sc_flags & SCF_TIMESTAMP)
 			sc->sc_tsrecent = to->to_tsval;
+
+		/* Just update the TOF_SACK_PERMITTED for now. */
+		if (tcp_do_sack && (to->to_flags & TOF_SACK_PERMITTED))
+			sc->sc_flags |= SCF_SACK_PERMITTED;
+		else
+			sc->sc_flags &= ~SCF_SACK_PERMITTED;
+
 		/*
 		 * PCB may have changed, pick up new values.
 		 */
@@ -1057,6 +1066,8 @@ syncache_add(inc, to, th, sop, m)
 			sc->sc_flags |= SCF_CC;
 		}
 	}
+	if (tcp_do_sack && (to->to_flags & TOF_SACK_PERMITTED))
+		sc->sc_flags |= SCF_SACK_PERMITTED;
 	if (tp->t_flags & TF_NOOPT)
 		sc->sc_flags = SCF_NOOPT;
 
@@ -1163,7 +1174,9 @@ syncache_respond(sc, m)
 		optlen = TCPOLEN_MAXSEG +
 		    ((sc->sc_flags & SCF_WINSCALE) ? 4 : 0) +
 		    ((sc->sc_flags & SCF_TIMESTAMP) ? TCPOLEN_TSTAMP_APPA : 0) +
-		    ((sc->sc_flags & SCF_CC) ? TCPOLEN_CC_APPA * 2 : 0);
+		    ((sc->sc_flags & SCF_CC) ? TCPOLEN_CC_APPA * 2 : 0) +
+		    ((sc->sc_flags & SCF_SACK_PERMITTED) ?
+		        TCPOLEN_SACK_PERMITTED_ALIGNED : 0);
 	}
 	tlen = hlen + sizeof(struct tcphdr) + optlen;
 
@@ -1275,6 +1288,11 @@ syncache_respond(sc, m)
 		*lp++ = htonl(TCPOPT_CC_HDR(TCPOPT_CCECHO));
 		*lp   = htonl(sc->sc_cc_recv);
 		optp += TCPOLEN_CC_APPA * 2;
+	}
+
+	if (sc->sc_flags & SCF_SACK_PERMITTED) {
+		*((u_int32_t *)optp) = htonl(TCPOPT_SACK_PERMITTED_ALIGNED);
+		optp += TCPOLEN_SACK_PERMITTED_ALIGNED;
 	}
 
 no_options:

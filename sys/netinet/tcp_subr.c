@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_subr.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_subr.c,v 1.73.2.31 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.39 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_subr.c,v 1.40 2004/11/14 00:49:08 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -377,6 +377,7 @@ tcp_init()
 #endif
 
 	syncache_init();
+	tcp_sack_init();
 	tcp_thread_init();
 }
 
@@ -699,6 +700,7 @@ tcp_newtcpcb(struct inpcb *inp)
 	 */
 	inp->inp_ip_ttl = ip_defttl;
 	inp->inp_ppcb = (caddr_t)tp;
+	tcp_sack_tcpcb_init(tp);
 	return (tp);		/* XXX */
 }
 
@@ -926,6 +928,9 @@ no_valid_rt:
 		FREE(q, M_TSEGQ);
 		tcp_reass_qsize--;
 	}
+	/* throw away SACK blocks in scoreboard*/
+	if (TCP_DO_SACK(tp))
+		tcp_sack_cleanup(&tp->scb);
 
 	inp->inp_ppcb = NULL;
 	soisdisconnected(so);

@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_seq.h	8.3 (Berkeley) 6/21/95
  * $FreeBSD: src/sys/netinet/tcp_seq.h,v 1.11.2.7 2003/02/03 02:33:10 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.5 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_seq.h,v 1.6 2004/11/14 00:49:08 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_SEQ_H_
@@ -96,6 +96,18 @@
 #define	SEQ_LEQ(a,b)	((int)((a)-(b)) <= 0)
 #define	SEQ_GT(a,b)	((int)((a)-(b)) > 0)
 #define	SEQ_GEQ(a,b)	((int)((a)-(b)) >= 0)
+
+static __inline tcp_seq
+seq_max(tcp_seq a, tcp_seq b)
+{
+	return (SEQ_GT(a, b) ? a : b);
+}
+
+static __inline tcp_seq
+seq_min(tcp_seq a, tcp_seq b)
+{
+	return (SEQ_LT(a, b) ? a : b);
+}
 
 /* for modulo comparisons of timestamps */
 #define TSTMP_LT(a,b)	((int)((a)-(b)) < 0)

@@ -32,13 +32,14 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp.h,v 1.3 2004/09/23 16:44:32 joerg Exp $
+ * $DragonFly: src/sys/netinet/tcp.h,v 1.4 2004/11/14 00:49:08 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_H_
 #define _NETINET_TCP_H_
 
 typedef	u_int32_t tcp_seq;
+typedef int32_t	  tcp_seq_diff_t;
 typedef u_int32_t tcp_cc;		/* connection count per rfc1644 */
 
 #define tcp6_seq	tcp_seq	/* for KAME src sync over BSD*'s */
@@ -80,26 +81,33 @@ struct tcphdr {
 
 #define	TCPOPT_EOL		0
 #define	TCPOPT_NOP		1
+#define TCPOPT_2NOPs		(TCPOPT_NOP << 24 | TCPOPT_NOP << 16)
 #define	TCPOPT_MAXSEG		2
 #define    TCPOLEN_MAXSEG		4
 #define TCPOPT_WINDOW		3
 #define    TCPOLEN_WINDOW		3
-#define TCPOPT_SACK_PERMITTED	4		/* Experimental */
-#define    TCPOLEN_SACK_PERMITTED	2
-#define TCPOPT_SACK		5		/* Experimental */
+#define TCPOPT_SACK_PERMITTED	4
+#define    TCPOLEN_SACK_PERMITTED		2
+#define	   TCPOPT_SACK_PERMITTED_ALIGNED	\
+    (TCPOPT_2NOPs | TCPOPT_SACK_PERMITTED << 8 | TCPOLEN_SACK_PERMITTED)
+#define    TCPOLEN_SACK_PERMITTED_ALIGNED	4
+#define TCPOPT_SACK		5
+#define	   TCPOLEN_SACK		2
+#define	   TCPOLEN_SACK_BLOCK	8
+#define TCPOPT_SACK_ALIGNED	(TCPOPT_2NOPs | TCPOPT_SACK << 8)
+#define	   TCPOLEN_SACK_ALIGNED	4
 #define TCPOPT_TIMESTAMP	8
 #define    TCPOLEN_TIMESTAMP		10
 #define    TCPOLEN_TSTAMP_APPA		(TCPOLEN_TIMESTAMP+2) /* appendix A */
 #define    TCPOPT_TSTAMP_HDR		\
-    (TCPOPT_NOP<<24|TCPOPT_NOP<<16|TCPOPT_TIMESTAMP<<8|TCPOLEN_TIMESTAMP)
-
+    (TCPOPT_2NOPs | TCPOPT_TIMESTAMP << 8 | TCPOLEN_TIMESTAMP)
 #define	TCPOPT_CC		11		/* CC options: RFC-1644 */
 #define TCPOPT_CCNEW		12
 #define TCPOPT_CCECHO		13
 #define	   TCPOLEN_CC			6
 #define	   TCPOLEN_CC_APPA		(TCPOLEN_CC+2)
 #define	   TCPOPT_CC_HDR(ccopt)		\
-    (TCPOPT_NOP<<24|TCPOPT_NOP<<16|(ccopt)<<8|TCPOLEN_CC)
+    (TCPOPT_2NOPs | (ccopt) << 8 | TCPOLEN_CC)
 
 /*
  * Default maximum segment size for TCP.

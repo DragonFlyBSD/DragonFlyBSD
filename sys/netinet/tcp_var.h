@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_var.h	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_var.h,v 1.56.2.13 2003/02/03 02:34:07 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_var.h,v 1.25 2004/08/03 00:04:13 dillon Exp $
+ * $DragonFly: src/sys/netinet/tcp_var.h,v 1.26 2004/11/14 00:49:08 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_VAR_H_
@@ -95,6 +95,8 @@
  */
 extern int	tcp_do_rfc1323;
 extern int	tcp_do_rfc1644;
+extern int	tcp_do_sack;
+extern int	tcp_do_smartsack;
 
 /* TCP segment queue entry */
 struct tseg_qent {
@@ -116,6 +118,23 @@ struct tcptemp {
 };
 
 #define tcp6cb		tcpcb  /* for KAME src sync over BSD*'s */
+
+struct raw_sackblock {				/* covers [start, end) */
+	tcp_seq rblk_start;
+	tcp_seq rblk_end;
+};
+
+/* maximum number of SACK blocks that will fit in the TCP option space */
+#define	MAX_SACK_REPORT_BLOCKS	4
+
+TAILQ_HEAD(sackblock_list, sackblock);
+
+struct scoreboard {
+	int nblocks;
+	struct sackblock_list sackblocks;
+	tcp_seq lostseq;			/* passed SACK lost test */
+	struct sackblock *lastfound;		/* search hint */
+};
 
 /*
  * Tcp control block, one per tcp; fields:
@@ -144,7 +163,7 @@ struct tcpcb {
 #define	TF_RCVD_SCALE	0x00000040	/* other side has requested scaling */
 #define	TF_REQ_TSTMP	0x00000080	/* have/will request timestamps */
 #define	TF_RCVD_TSTMP	0x00000100	/* a timestamp was received in SYN */
-#define	TF_SACK_PERMIT	0x00000200	/* other side said I could SACK */
+#define	TF_SACK_PERMITTED 0x00000200	/* other side said I could SACK */
 #define	TF_NEEDSYN	0x00000400	/* send SYN (implicit state) */
 #define	TF_NEEDFIN	0x00000800	/* send FIN (implicit state) */
 #define	TF_NOPUSH	0x00001000	/* don't push */
@@ -162,6 +181,9 @@ struct tcpcb {
 #define	TF_EARLYREXMT	0x01000000	/* Did Early (Fast) Retransmit. */
 #define	TF_FORCE	0x02000000	/* Set if forcing out a byte */
 #define TF_ONOUTPUTQ	0x04000000	/* on t_outputq list */
+#define TF_DUPSEG	0x08000000	/* last seg a duplicate */
+#define TF_ENCLOSESEG	0x10000000	/* enclosing SACK block */
+#define TF_SACKLEFT	0x20000000	/* send SACK blocks from left side */
 	tcp_seq	snd_up;			/* send urgent pointer */
 
 	tcp_seq	snd_una;		/* send unacknowledged */
@@ -236,6 +258,14 @@ struct tcpcb {
 	u_long	t_badrxtwin;		/* window for retransmit recovery */
 	u_long	t_rexmtTS;		/* timestamp of last retransmit */
 	u_char	snd_limited;		/* segments limited transmitted */
+
+	tcp_seq	rexmt_high;		/* highest seq # retransmitted + 1 */
+	tcp_seq	snd_max_rexmt;		/* snd_max when rexmting snd_una */
+	struct scoreboard scb;		/* sack scoreboard */
+	struct raw_sackblock reportblk; /* incoming segment or D-SACK block */
+	struct raw_sackblock encloseblk;
+	int	nsackhistory;
+	struct raw_sackblock sackhistory[MAX_SACK_REPORT_BLOCKS]; /* reported */
 	TAILQ_ENTRY(tcpcb) t_outputq;	/* tcp_output needed list */
 };
 
@@ -254,6 +284,8 @@ struct tcpcb {
 
 struct tcp_stats;
 extern struct tcp_stats 	tcpstats_ary[MAXCPU];
+
+static const int tcprexmtthresh = 3;
 #endif
 
 /*
@@ -296,6 +328,10 @@ struct tcp_stats {
 	u_long	tcps_sndurg;		/* packets sent with URG only */
 	u_long	tcps_sndwinup;		/* window update-only packets sent */
 	u_long	tcps_sndctrl;		/* control (SYN|FIN|RST) packets sent */
+	u_long	tcps_sndsackpack;	/* packets sent by SACK recovery alg */
+	u_long	tcps_sndsackbyte;	/* bytes sent by SACK recovery */
+	u_long	tcps_snduna3;		/* re-retransmit snd_una on 3 new seg */
+	u_long	tcps_snduna1;		/* re-retransmit snd_una on 1 new seg */
 
 	u_long	tcps_rcvtotal;		/* total packets received */
 	u_long	tcps_rcvpack;		/* packets received in sequence */
@@ -359,12 +395,14 @@ struct tcp_stats {
  */
 struct tcpopt {
 	u_long		to_flags;	/* which options are present */
-#define TOF_TS		0x0001		/* timestamp */
-#define TOF_CC		0x0002		/* CC and CCnew are exclusive */
-#define TOF_CCNEW	0x0004
-#define	TOF_CCECHO	0x0008
-#define	TOF_MSS		0x0010
-#define	TOF_SCALE	0x0020
+#define	TOF_TS			0x0001		/* timestamp */
+#define	TOF_CC			0x0002		/* CC and CCnew are exclusive */
+#define	TOF_CCNEW		0x0004
+#define	TOF_CCECHO		0x0008
+#define	TOF_MSS			0x0010
+#define	TOF_SCALE		0x0020
+#define	TOF_SACK_PERMITTED	0x0040
+#define	TOF_SACK		0x0080
 	u_int32_t	to_tsval;
 	u_int32_t	to_tsecr;
 	tcp_cc		to_cc;		/* holds CC or CCnew */
@@ -372,6 +410,8 @@ struct tcpopt {
 	u_int16_t	to_mss;
 	u_int8_t 	to_requested_s_scale;
 	u_int8_t 	to_pad;
+	int		to_nsackblocks;
+	struct raw_sackblock *to_sackblocks;
 };
 
 struct syncache {
@@ -399,6 +439,7 @@ struct syncache {
 #define SCF_CC		0x08			/* negotiated CC */
 #define SCF_UNREACH	0x10			/* icmp unreachable received */
 #define SCF_KEEPROUTE	0x20			/* keep cloned route */
+#define	SCF_SACK_PERMITTED 0x40			/* saw SACK permitted option */
 	TAILQ_ENTRY(syncache)	sc_hash;
 	TAILQ_ENTRY(syncache)	sc_timerq;
 };
@@ -518,6 +559,8 @@ struct	xtcpcb {
 SYSCTL_DECL(_net_inet_tcp);
 #endif
 
+#define TCP_DO_SACK(tp)		((tp)->t_flags & TF_SACK_PERMITTED)
+
 TAILQ_HEAD(tcpcbackqhead,tcpcb);
 
 extern	struct inpcbinfo tcbinfo[];
@@ -563,6 +606,25 @@ void	 tcp_respond (struct tcpcb *, void *,
 	    struct tcphdr *, struct mbuf *, tcp_seq, tcp_seq, int);
 struct rtentry *
 	 tcp_rtlookup (struct in_conninfo *);
+void	 tcp_sack_cleanup(struct scoreboard *scb);
+int	 tcp_sack_ndsack_blocks(struct raw_sackblock *blocks,
+	    const int numblocks, tcp_seq snd_una);
+void	 tcp_sack_fill_report(struct tcpcb *tp, u_char *opt, u_int *plen);
+boolean_t
+	 tcp_sack_has_sacked(struct scoreboard *scb, u_int amount);
+void	 tcp_sack_init(void);
+void	 tcp_sack_tcpcb_init(struct tcpcb *tp);
+uint32_t tcp_sack_compute_pipe(struct tcpcb *tp);
+boolean_t
+	 tcp_sack_nextseg(struct tcpcb *tp, tcp_seq *nextrexmt, uint32_t *len,
+			  boolean_t *losdup);
+#ifdef later
+void	 tcp_sack_revert_scoreboard(struct scoreboard *scb, tcp_seq snd_una,
+				    u_int maxseg);
+void	 tcp_sack_save_scoreboard(struct scoreboard *scb);
+#endif
+void	 tcp_sack_skip_sacked(struct scoreboard *scb, tcp_seq *prexmt);
+void	 tcp_sack_update_scoreboard(struct tcpcb *tp, struct tcpopt *to);
 void	 tcp_save_congestion_state(struct tcpcb *tp);
 void	 tcp_revert_congestion_state(struct tcpcb *tp);
 void	 tcp_setpersist (struct tcpcb *);

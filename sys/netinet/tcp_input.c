@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.37 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.38 2004/11/14 00:49:08 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -151,7 +151,6 @@ struct tcphdr tcp_savetcp;
 
 MALLOC_DEFINE(M_TSEGQ, "tseg_qent", "TCP segment queue entry");
 
-static const int tcprexmtthresh = 3;
 tcp_cc	tcp_ccgen;
 static int log_in_vain = 0;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, log_in_vain, CTLFLAG_RW,
@@ -176,7 +175,7 @@ static int tcp_do_limitedtransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, limitedtransmit, CTLFLAG_RW,
     &tcp_do_limitedtransmit, 0, "Enable RFC 3042 (Limited Transmit)");
 
-static int tcp_do_early_retransmit = 0;
+static int tcp_do_early_retransmit = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, earlyretransmit, CTLFLAG_RW,
     &tcp_do_early_retransmit, 0, "Early retransmit");
 
@@ -188,6 +187,19 @@ SYSCTL_INT(_net_inet_tcp, OID_AUTO, rfc3390, CTLFLAG_RW,
 static int tcp_do_eifel_detect = 1;
 SYSCTL_INT(_net_inet_tcp, OID_AUTO, eifel, CTLFLAG_RW,
     &tcp_do_eifel_detect, 0, "Eifel detection algorithm (RFC 3522)");
+
+/*
+ * Define as tunable for easy testing with SACK on and off.
+ * Warning:  do not change setting in the middle of an existing active TCP flow,
+ *   else strange things might happen to that flow.
+ */
+int tcp_do_sack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, sack, CTLFLAG_RW,
+    &tcp_do_sack, 0, "Enable SACK Algorithms");
+
+int tcp_do_smartsack = 1;
+SYSCTL_INT(_net_inet_tcp, OID_AUTO, smartsack, CTLFLAG_RW,
+    &tcp_do_smartsack, 0, "Enable Smart SACK Algorithms");
 
 SYSCTL_NODE(_net_inet_tcp, OID_AUTO, reass, CTLFLAG_RW, 0,
     "TCP Segment Reassembly Queue");
@@ -213,7 +225,8 @@ static void	 tcp_pulloutofband(struct socket *,
 static int	 tcp_reass(struct tcpcb *, struct tcphdr *, int *,
 		     struct mbuf *);
 static void	 tcp_xmit_timer(struct tcpcb *, int);
-static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *);
+static void	 tcp_newreno_partial_ack(struct tcpcb *, struct tcphdr *, int);
+static void	 tcp_sack_rexmt(struct tcpcb *, struct tcphdr *);
 
 /* Neighbor Discovery, Neighbor Unreachability Detection Upper layer hint. */
 #ifdef INET6
@@ -244,7 +257,6 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 {
 	struct tseg_qent *q;
 	struct tseg_qent *p = NULL;
-	struct tseg_qent *nq;
 	struct tseg_qent *te;
 	struct socket *so = tp->t_inpcb->inp_socket;
 	int flags;
@@ -268,6 +280,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 		tcp_reass_overflows++;
 		tcpstat.tcps_rcvmemdrop++;
 		m_freem(m);
+		/* no SACK block to report */
+		tp->reportblk.rblk_start = tp->reportblk.rblk_end;
 		return (0);
 	}
 
@@ -277,6 +291,8 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	if (te == NULL) {
 		tcpstat.tcps_rcvmemdrop++;
 		m_freem(m);
+		/* no SACK block to report */
+		tp->reportblk.rblk_start = tp->reportblk.rblk_end;
 		return (0);
 	}
 	tcp_reass_qsize++;
@@ -297,10 +313,17 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	 */
 	if (p != NULL) {
 		int i;
+
 		/* conversion to int (in i) handles seq wraparound */
 		i = p->tqe_th->th_seq + p->tqe_len - th->th_seq;
-		if (i > 0) {
+		if (i > 0) {		/* overlaps preceding segment */
+			tp->t_flags |= (TF_DUPSEG | TF_ENCLOSESEG);
+			/* enclosing block starts w/ preceding segment */
+			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
 			if (i >= *tlenp) {
+				/* preceding encloses incoming segment */
+				tp->encloseblk.rblk_end = p->tqe_th->th_seq +
+				    p->tqe_len;
 				tcpstat.tcps_rcvduppack++;
 				tcpstat.tcps_rcvdupbyte += *tlenp;
 				m_freem(m);
@@ -317,6 +340,11 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 			m_adj(m, i);
 			*tlenp -= i;
 			th->th_seq += i;
+			/* incoming segment end is enclosing block end */
+			tp->encloseblk.rblk_end = th->th_seq + *tlenp +
+			    ((th->th_flags & TH_FIN) != 0);
+			/* trim end of reported D-SACK block */
+			tp->reportblk.rblk_end = th->th_seq;
 		}
 	}
 	tcpstat.tcps_rcvoopack++;
@@ -328,8 +356,22 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	 */
 	while (q) {
 		int i = (th->th_seq + *tlenp) - q->tqe_th->th_seq;
+		tcp_seq qend = q->tqe_th->th_seq + q->tqe_len;
+		struct tseg_qent *nq;
+
 		if (i <= 0)
 			break;
+		if (!(tp->t_flags & TF_DUPSEG)) {    /* first time through */
+			tp->t_flags |= (TF_DUPSEG | TF_ENCLOSESEG);
+			tp->encloseblk = tp->reportblk;
+			/* report trailing duplicate D-SACK segment */
+			tp->reportblk.rblk_start = q->tqe_th->th_seq;
+		}
+		if ((tp->t_flags & TF_ENCLOSESEG) &&
+		    SEQ_GT(qend, tp->encloseblk.rblk_end)) {
+			/* extend enclosing block if one exists */
+			tp->encloseblk.rblk_end = qend;
+		}
 		if (i < q->tqe_len) {
 			q->tqe_th->th_seq += i;
 			q->tqe_len -= i;
@@ -350,10 +392,41 @@ tcp_reass(struct tcpcb *tp, struct tcphdr *th, int *tlenp, struct mbuf *m)
 	te->tqe_th = th;
 	te->tqe_len = *tlenp;
 
+	/* check if can coalesce with following segment */
+	if (q != NULL && (th->th_seq + *tlenp == q->tqe_th->th_seq)) {
+		tcp_seq tend = te->tqe_th->th_seq + te->tqe_len;
+
+		te->tqe_len += q->tqe_len;
+		m_cat(te->tqe_m, q->tqe_m);
+		tp->encloseblk.rblk_end = tend;
+		/*
+		 * When not reporting a duplicate segment, use
+		 * the larger enclosing block as the SACK block.
+		 */
+		if (!(tp->t_flags & TF_DUPSEG))
+			tp->reportblk.rblk_end = tend;
+		LIST_REMOVE(q, tqe_q);
+		free(q, M_TSEGQ);
+		tcp_reass_qsize--;
+	}
+
 	if (p == NULL) {
 		LIST_INSERT_HEAD(&tp->t_segq, te, tqe_q);
 	} else {
-		LIST_INSERT_AFTER(p, te, tqe_q);
+		/* check if can coalesce with preceding segment */
+		if (p->tqe_th->th_seq + p->tqe_len == th->th_seq) {
+			p->tqe_len += *tlenp;
+			m_cat(p->tqe_m, m);
+			tp->encloseblk.rblk_start = p->tqe_th->th_seq;
+			/*
+			 * When not reporting a duplicate segment, use
+			 * the larger enclosing block as the SACK block.
+			 */
+			if (!(tp->t_flags & TF_DUPSEG))
+				tp->reportblk.rblk_start = p->tqe_th->th_seq;
+			free(te, M_TSEGQ); tcp_reass_qsize--;
+		} else
+			LIST_INSERT_AFTER(p, te, tqe_q);
 	}
 
 present:
@@ -366,19 +439,24 @@ present:
 	q = LIST_FIRST(&tp->t_segq);
 	if (q == NULL || q->tqe_th->th_seq != tp->rcv_nxt)
 		return (0);
-	do {
-		tp->rcv_nxt += q->tqe_len;
-		flags = q->tqe_th->th_flags & TH_FIN;
-		nq = LIST_NEXT(q, tqe_q);
-		LIST_REMOVE(q, tqe_q);
-		if (so->so_state & SS_CANTRCVMORE)
-			m_freem(q->tqe_m);
-		else
-			sbappend(&so->so_rcv, q->tqe_m);
-		free(q, M_TSEGQ);
-		tcp_reass_qsize--;
-		q = nq;
-	} while (q && q->tqe_th->th_seq == tp->rcv_nxt);
+	tp->rcv_nxt += q->tqe_len;
+	if (!(tp->t_flags & TF_DUPSEG))	{
+		/* no SACK block to report since ACK advanced */
+		tp->reportblk.rblk_start = tp->reportblk.rblk_end;
+	}
+	/* no enclosing block to report since ACK advanced */
+	tp->t_flags &= ~TF_ENCLOSESEG;
+	flags = q->tqe_th->th_flags & TH_FIN;
+	LIST_REMOVE(q, tqe_q);
+	KASSERT(LIST_EMPTY(&tp->t_segq) ||
+		LIST_FIRST(&tp->t_segq)->tqe_th->th_seq != tp->rcv_nxt,
+		("segment not coalesced"));
+	if (so->so_state & SS_CANTRCVMORE)
+		m_freem(q->tqe_m);
+	else
+		sbappend(&so->so_rcv, q->tqe_m);
+	free(q, M_TSEGQ);
+	tcp_reass_qsize--;
 	ND6_HINT(tp);
 	sorwakeup(so);
 	return (flags);
@@ -995,6 +1073,13 @@ after_listen:
 			tp->t_flags |= TF_RCVD_CC;
 		if (to.to_flags & TOF_MSS)
 			tcp_mss(tp, to.to_mss);
+		/*
+		 * Only set the TF_SACK_PERMITTED per-connection flag
+		 * if we got a SACK_PERMITTED option from the other side
+		 * and the global tcp_do_sack variable is true.
+		 */
+		if (tcp_do_sack && (to.to_flags & TOF_SACK_PERMITTED))
+			tp->t_flags |= TF_SACK_PERMITTED;
 	}
 
 	/*
@@ -1277,6 +1362,7 @@ after_listen:
 
 			tp->rcv_adv += tp->rcv_wnd;
 			tp->snd_una++;		/* SYN is acked */
+			callout_stop(tp->tt_rexmt);
 			/*
 			 * If there's data, delay ACK; if there's also a FIN
 			 * ACKNOW will be turned on later.
@@ -1433,7 +1519,7 @@ trimthenstep6:
 	 * Note: this does not take into account delayed ACKs, so
 	 *   we should test against last_ack_sent instead of rcv_nxt.
 	 *   The sequence number in the reset segment is normally an
-	 *   echo of our outgoing acknowlegement numbers, but some hosts
+	 *   echo of our outgoing acknowledgement numbers, but some hosts
 	 *   send a reset with the sequence number at the rightmost edge
 	 *   of our receive window, and we have to handle this case.
 	 * If we have multiple segments in flight, the intial reset
@@ -1448,7 +1534,7 @@ trimthenstep6:
 	 *    DISCUSSION
 	 *	   It has been suggested that a RST segment could contain
 	 *	   ASCII text that encoded and explained the cause of the
-	 *	   RST.	 No standard has yet been established for such
+	 *	   RST.  No standard has yet been established for such
 	 *	   data.
 	 *
 	 * If the reset segment passes the sequence number test examine
@@ -1551,6 +1637,16 @@ trimthenstep6:
 
 	todrop = tp->rcv_nxt - th->th_seq;
 	if (todrop > 0) {
+		if (TCP_DO_SACK(tp)) {
+			/* Report duplicate segment at head of packet. */
+			tp->reportblk.rblk_start = th->th_seq;
+			tp->reportblk.rblk_end = th->th_seq + tlen;
+			if (thflags & TH_FIN)
+				++tp->reportblk.rblk_end;
+			if (SEQ_GT(tp->reportblk.rblk_end, tp->rcv_nxt))
+				tp->reportblk.rblk_end = tp->rcv_nxt;
+			tp->t_flags |= (TF_DUPSEG | TF_SACKLEFT | TF_ACKNOW);
+		}
 		if (thflags & TH_SYN) {
 			thflags &= ~TH_SYN;
 			th->th_seq++;
@@ -1686,7 +1782,7 @@ trimthenstep6:
 	 */
 	switch (tp->t_state) {
 	/*
-	 * In SYN_RECEIVED state, the ack ACKs our SYN, so enter
+	 * In SYN_RECEIVED state, the ACK acknowledges our SYN, so enter
 	 * ESTABLISHED state and continue processing.
 	 * The ACK was checked above.
 	 */
@@ -1748,57 +1844,67 @@ trimthenstep6:
 	case TCPS_TIME_WAIT:
 
 		if (SEQ_LEQ(th->th_ack, tp->snd_una)) {
+			if (TCP_DO_SACK(tp))
+				tcp_sack_update_scoreboard(tp, &to);
 			if (tlen != 0 || tiwin != tp->snd_wnd) {
 				tp->t_dupacks = 0;
 				break;
 			}
 			tcpstat.tcps_rcvdupack++;
-			/*
-			 * If we have outstanding data (other than
-			 * a window probe), this is a completely
-			 * duplicate ack (ie, window info didn't
-			 * change), the ack is the biggest we've
-			 * seen and we've seen exactly our rexmt
-			 * threshhold of them, assume a packet
-			 * has been dropped and retransmit it.
-			 * Kludge snd_nxt & the congestion
-			 * window so we send only this one
-			 * packet.
-			 *
-			 * We know we're losing at the current
-			 * window size so do congestion avoidance
-			 * (set ssthresh to half the current window
-			 * and pull our congestion window back to
-			 * the new ssthresh).
-			 *
-			 * Dup acks mean that packets have left the
-			 * network (they're now cached at the receiver)
-			 * so bump cwnd by the amount in the receiver
-			 * to keep a constant cwnd packets in the
-			 * network.
-			 */
 			if (!callout_active(tp->tt_rexmt) ||
 			    th->th_ack != tp->snd_una) {
 				tp->t_dupacks = 0;
 				break;
 			}
+			/*
+			 * We have outstanding data (other than
+			 * a window probe), this is a completely
+			 * duplicate ack (ie, window info didn't
+			 * change), the ack is the biggest we've
+			 * seen and we've seen exactly our rexmt
+			 * threshhold of them, so assume a packet
+			 * has been dropped and retransmit it.
+			 * Kludge snd_nxt & the congestion
+			 * window so we send only this one
+			 * packet.
+			 */
 			if (IN_FASTRECOVERY(tp)) {
-				tp->snd_cwnd += tp->t_maxseg;
-				(void) tcp_output(tp);
+				if (TCP_DO_SACK(tp)) {
+					/* No artifical cwnd inflation. */
+					tcp_sack_rexmt(tp, th);
+				} else {
+					/*
+					 * Dup acks mean that packets
+					 * have left the network
+					 * (they're now cached at the
+					 * receiver) so bump cwnd by
+					 * the amount in the receiver
+					 * to keep a constant cwnd
+					 * packets in the network.
+					 */
+					tp->snd_cwnd += tp->t_maxseg;
+					(void) tcp_output(tp);
+				}
+			} else if (SEQ_LT(th->th_ack, tp->snd_recover)) {
+				tp->t_dupacks = 0;
+				break;
 			} else if (++tp->t_dupacks == tcprexmtthresh) {
-				tcp_seq onxt;
+				tcp_seq old_snd_nxt;
 				u_int win;
 
-				if (SEQ_LEQ(th->th_ack, tp->snd_recover)) {
-					tp->t_dupacks = 0;
-					break;
-				}
 fastretransmit:
 				if (tcp_do_eifel_detect &&
 				    (tp->t_flags & TF_RCVD_TSTMP)) {
 					tcp_save_congestion_state(tp);
 					tp->t_flags |= TF_FASTREXMT;
 				}
+				/*
+				 * We know we're losing at the current
+				 * window size, so do congestion avoidance:
+				 * set ssthresh to half the current window
+				 * and pull our congestion window back to the
+				 * new ssthresh.
+				 */
 				win = min(tp->snd_wnd, tp->snd_cwnd) / 2 /
 				    tp->t_maxseg;
 				if (win < 2)
@@ -1808,18 +1914,22 @@ fastretransmit:
 				tp->snd_recover = tp->snd_max;
 				callout_stop(tp->tt_rexmt);
 				tp->t_rtttime = 0;
-				onxt = tp->snd_nxt;
+				old_snd_nxt = tp->snd_nxt;
 				tp->snd_nxt = th->th_ack;
 				tp->snd_cwnd = tp->t_maxseg;
 				(void) tcp_output(tp);
 				++tcpstat.tcps_sndfastrexmit;
+				tp->snd_cwnd = tp->snd_ssthresh;
+				tp->rexmt_high = tp->snd_nxt;
+				if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
+					tp->snd_nxt = old_snd_nxt;
 				KASSERT(tp->snd_limited <= 2,
 				    ("tp->snd_limited too big"));
-				tp->snd_cwnd = tp->snd_ssthresh +
-				    (tp->t_maxseg *
-				     (tp->t_dupacks - tp->snd_limited));
-				if (SEQ_GT(onxt, tp->snd_nxt))
-					tp->snd_nxt = onxt;
+				if (TCP_DO_SACK(tp))
+					tcp_sack_rexmt(tp, th);
+				else
+					tp->snd_cwnd += tp->t_maxseg *
+					    (tp->t_dupacks - tp->snd_limited);
 			} else if (tcp_do_limitedtransmit) {
 				u_long oldcwnd = tp->snd_cwnd;
 				tcp_seq oldsndmax = tp->snd_max;
@@ -1856,8 +1966,13 @@ fastretransmit:
 				} else if (tcp_do_early_retransmit &&
 				    (tcp_do_eifel_detect &&
 				     (tp->t_flags & TF_RCVD_TSTMP)) &&
+				    ownd < 4 * tp->t_maxseg &&
 				    tp->t_dupacks + 1 >=
-				      iceildiv(ownd, tp->t_maxseg)) {
+				      iceildiv(ownd, tp->t_maxseg) &&
+				    (!TCP_DO_SACK(tp) ||
+				     ownd <= tp->t_maxseg || 
+				     tcp_sack_has_sacked(&tp->scb,
+				         ownd - tp->t_maxseg))) {
 					++tcpstat.tcps_sndearlyrexmit;
 					tp->t_flags |= TF_EARLYREXMT;
 					goto fastretransmit;
@@ -1867,31 +1982,6 @@ fastretransmit:
 		}
 
 		KASSERT(SEQ_GT(th->th_ack, tp->snd_una), ("th_ack <= snd_una"));
-
-		/*
-		 * If the congestion window was inflated to account
-		 * for the other side's cached packets, retract it.
-		 */
-		if (IN_FASTRECOVERY(tp)) {
-			if (SEQ_LT(th->th_ack, tp->snd_recover)) {
-				tcp_newreno_partial_ack(tp, th);
-			} else {
-				/*
-				 * Window inflation should have left us
-				 * with approximately snd_ssthresh
-				 * outstanding data.
-				 * But in case we would be inclined to
-				 * send a burst, better to do it via
-				 * the slow start mechanism.
-				 */
-				if (SEQ_GT(th->th_ack + tp->snd_ssthresh,
-					   tp->snd_max))
-					tp->snd_cwnd = tp->snd_max -
-					    th->th_ack + tp->t_maxseg;
-				else
-					tp->snd_cwnd = tp->snd_ssthresh;
-			}
-		}
 		tp->t_dupacks = 0;
 		if (SEQ_GT(th->th_ack, tp->snd_max)) {
 			/*
@@ -1946,7 +2036,7 @@ process_ACK:
 			 * If we just performed our first retransmit,
 			 * and the ACK arrives within our recovery window,
 			 * then it was a mistake to do the retransmit
-			 * in the first place.	Recover our original cwnd
+			 * in the first place.  Recover our original cwnd
 			 * and ssthresh, and proceed to transmit where we
 			 * left off.
 			 */
@@ -1974,6 +2064,104 @@ process_ACK:
 		tcp_xmit_bandwidth_limit(tp, th->th_ack);
 
 		/*
+		 * If no data (only SYN) was ACK'd,
+		 *    skip rest of ACK processing.
+		 */
+		if (acked == 0)
+			goto step6;
+
+		/* Stop looking for an acceptable ACK since one was received. */
+		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
+
+		if (acked > so->so_snd.sb_cc) {
+			tp->snd_wnd -= so->so_snd.sb_cc;
+			sbdrop(&so->so_snd, (int)so->so_snd.sb_cc);
+			ourfinisacked = TRUE;
+		} else {
+			sbdrop(&so->so_snd, acked);
+			tp->snd_wnd -= acked;
+			ourfinisacked = FALSE;
+		}
+		sowwakeup(so);
+
+		/*
+		 * Update window information.
+		 * Don't look at window if no ACK:
+		 * TAC's send garbage on first SYN.
+		 */
+		if (SEQ_LT(tp->snd_wl1, th->th_seq) ||
+		    (tp->snd_wl1 == th->th_seq &&
+		     (SEQ_LT(tp->snd_wl2, th->th_ack) ||
+		      (tp->snd_wl2 == th->th_ack && tiwin > tp->snd_wnd)))) {
+			/* keep track of pure window updates */
+			if (tlen == 0 && tp->snd_wl2 == th->th_ack &&
+			    tiwin > tp->snd_wnd)
+				tcpstat.tcps_rcvwinupd++;
+			tp->snd_wnd = tiwin;
+			tp->snd_wl1 = th->th_seq;
+			tp->snd_wl2 = th->th_ack;
+			if (tp->snd_wnd > tp->max_sndwnd)
+				tp->max_sndwnd = tp->snd_wnd;
+			needoutput = TRUE;
+		}
+
+		tp->snd_una = th->th_ack;
+		if (TCP_DO_SACK(tp))
+			tcp_sack_update_scoreboard(tp, &to);
+		if (IN_FASTRECOVERY(tp)) {
+			if (SEQ_GEQ(th->th_ack, tp->snd_recover)) {
+				EXIT_FASTRECOVERY(tp);
+				needoutput = TRUE;
+				/*
+				 * If the congestion window was inflated
+				 * to account for the other side's
+				 * cached packets, retract it.
+				 *
+				 * Window inflation should have left us
+				 * with approximately snd_ssthresh outstanding
+				 * data.  But, in case we would be inclined
+				 * to send a burst, better do it using
+				 * slow start.
+				 */
+				if (!TCP_DO_SACK(tp))
+					tp->snd_cwnd = tp->snd_ssthresh;
+
+				if (SEQ_GT(th->th_ack + tp->snd_cwnd,
+					   tp->snd_max + 2 * tp->t_maxseg))
+					tp->snd_cwnd =
+					    (tp->snd_max - tp->snd_una) +
+					    2 * tp->t_maxseg;
+			} else {
+				if (TCP_DO_SACK(tp)) {
+					tp->snd_max_rexmt = tp->snd_max;
+					tcp_sack_rexmt(tp, th);
+				} else {
+					tcp_newreno_partial_ack(tp, th, acked);
+				}
+				needoutput = FALSE;
+			}
+		} else {
+			/*
+			 * When new data is acked, open the congestion window.
+			 * If the window gives us less than ssthresh packets
+			 * in flight, open exponentially (maxseg per packet).
+			 * Otherwise open linearly: maxseg per window
+			 * (maxseg^2 / cwnd per packet).
+			 */
+			u_int cw = tp->snd_cwnd;
+			u_int incr;
+
+			if (cw > tp->snd_ssthresh)
+				incr = tp->t_maxseg * tp->t_maxseg / cw;
+			else
+				incr = tp->t_maxseg;
+			tp->snd_cwnd = min(cw+incr, TCP_MAXWIN<<tp->snd_scale);
+			tp->snd_recover = th->th_ack - 1;
+		}
+		if (SEQ_LT(tp->snd_nxt, tp->snd_una))
+			tp->snd_nxt = tp->snd_una;
+
+		/*
 		 * If all outstanding data is acked, stop retransmit
 		 * timer and remember to restart (more output or persist).
 		 * If there is more data to be acked, restart retransmit
@@ -1985,51 +2173,6 @@ process_ACK:
 		} else if (!callout_active(tp->tt_persist))
 			callout_reset(tp->tt_rexmt, tp->t_rxtcur,
 				      tcp_timer_rexmt, tp);
-
-		/*
-		 * If no data (only SYN) was ACK'd,
-		 *    skip rest of ACK processing.
-		 */
-		if (acked == 0)
-			goto step6;
-
-		/* Stop looking for an acceptable ACK since one was received. */
-		tp->t_flags &= ~(TF_FIRSTACCACK | TF_FASTREXMT | TF_EARLYREXMT);
-
-		/*
-		 * When new data is acked, open the congestion window.
-		 * If the window gives us less than ssthresh packets
-		 * in flight, open exponentially (maxseg per packet).
-		 * Otherwise open linearly: maxseg per window
-		 * (maxseg^2 / cwnd per packet).
-		 */
-		if (!IN_FASTRECOVERY(tp)) {
-			u_int cw = tp->snd_cwnd;
-			u_int incr = tp->t_maxseg;
-
-			if (cw > tp->snd_ssthresh)
-				incr = incr * incr / cw;
-			tp->snd_cwnd = min(cw+incr, TCP_MAXWIN<<tp->snd_scale);
-		}
-		if (acked > so->so_snd.sb_cc) {
-			tp->snd_wnd -= so->so_snd.sb_cc;
-			sbdrop(&so->so_snd, (int)so->so_snd.sb_cc);
-			ourfinisacked = TRUE;
-		} else {
-			sbdrop(&so->so_snd, acked);
-			tp->snd_wnd -= acked;
-			ourfinisacked = FALSE;
-		}
-		sowwakeup(so);
-		if (IN_FASTRECOVERY(tp)) {
-			if (SEQ_GEQ(th->th_ack, tp->snd_recover))
-				EXIT_FASTRECOVERY(tp);
-		} else {
-			tp->snd_recover = th->th_ack - 1;
-		}
-		tp->snd_una = th->th_ack;
-		if (SEQ_LT(tp->snd_nxt, tp->snd_una))
-			tp->snd_nxt = tp->snd_una;
 
 		switch (tp->t_state) {
 		/*
@@ -2226,6 +2369,12 @@ dodata:							/* XXX */
 				sbappend(&so->so_rcv, m);
 			sorwakeup(so);
 		} else {
+			if (!(tp->t_flags & TF_DUPSEG)) {
+				/* Initialize SACK report block. */
+				tp->reportblk.rblk_start = th->th_seq;
+				tp->reportblk.rblk_end = th->th_seq + tlen +
+				    ((thflags & TH_FIN) != 0);
+			}
 			thflags = tcp_reass(tp, th, &tlen, m);
 			tp->t_flags |= TF_ACKNOW;
 		}
@@ -2427,7 +2576,7 @@ drop:
 static void
 tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 {
-	int opt, optlen;
+	int opt, optlen, i;
 
 	to->to_flags = 0;
 	for (; cnt > 0; cnt -= optlen, cp += optlen) {
@@ -2494,6 +2643,26 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			to->to_flags |= TOF_CCECHO;
 			bcopy(cp + 2, &to->to_ccecho, sizeof(to->to_ccecho));
 			to->to_ccecho = ntohl(to->to_ccecho);
+			break;
+		case TCPOPT_SACK_PERMITTED:
+			if (optlen != TCPOLEN_SACK_PERMITTED)
+				continue;
+			if (!is_syn)
+				continue;
+			to->to_flags |= TOF_SACK_PERMITTED;
+			break;
+		case TCPOPT_SACK:
+			if ((optlen - 2) & 0x07)	/* not multiple of 8 */
+				continue;
+			to->to_nsackblocks = (optlen - 2) / 8;
+			to->to_sackblocks = (struct raw_sackblock *) (cp + 2);
+			to->to_flags |= TOF_SACK;
+			for (i = 0; i < to->to_nsackblocks; i++) {
+				struct raw_sackblock *r = &to->to_sackblocks[i];
+
+				r->rblk_start = ntohl(r->rblk_start);
+				r->rblk_end = ntohl(r->rblk_end);
+			}
 			break;
 		default:
 			continue;
@@ -2861,32 +3030,77 @@ tcp_mssopt(struct tcpcb *tp)
 
 /*
  * When a partial ack arrives, force the retransmission of the
- * next unacknowledged segment.  Do not clear tp->t_dupacks.
- * By setting snd_nxt to th_ack, this forces retransmission timer to
- * be started again.
+ * next unacknowledged segment.  Do not exit Fast Recovery.
+ *
+ * Implement the Slow-but-Steady variant of NewReno by restarting the
+ * the retransmission timer.  Turn it off here so it can be restarted
+ * later in tcp_output().
  */
 static void
-tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th)
+tcp_newreno_partial_ack(struct tcpcb *tp, struct tcphdr *th, int acked)
 {
-	tcp_seq onxt = tp->snd_nxt;
-	u_long  ocwnd = tp->snd_cwnd;
+	tcp_seq old_snd_nxt = tp->snd_nxt;
+	u_long ocwnd = tp->snd_cwnd;
 
 	callout_stop(tp->tt_rexmt);
 	tp->t_rtttime = 0;
 	tp->snd_nxt = th->th_ack;
-	/*
-	 * Set snd_cwnd to one segment beyond acknowledged offset
-	 * (tp->snd_una has not yet been updated when this function is called.)
-	 */
-	tp->snd_cwnd = tp->t_maxseg + (th->th_ack - tp->snd_una);
+	/* Set snd_cwnd to one segment beyond acknowledged offset. */
+	tp->snd_cwnd = tp->t_maxseg;
 	tp->t_flags |= TF_ACKNOW;
 	(void) tcp_output(tp);
+	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
+		tp->snd_nxt = old_snd_nxt;
+	/* partial window deflation */
+	tp->snd_cwnd = ocwnd - acked + tp->t_maxseg;
+}
+
+/*
+ * In contrast to the Slow-but-Steady NewReno variant,
+ * we do not reset the retransmission timer for SACK retransmissions,
+ * except when retransmitting snd_una.
+ */
+static void
+tcp_sack_rexmt(struct tcpcb *tp, struct tcphdr *th)
+{
+	uint32_t pipe, seglen;
+	tcp_seq nextrexmt;
+	boolean_t lostdup;
+	tcp_seq old_snd_nxt = tp->snd_nxt;
+	u_long ocwnd = tp->snd_cwnd;
+	int nseg = 0;		/* consecutive new segments */
+#define MAXBURST 4		/* limit burst of new packets on partial ack */
+
+	tp->t_rtttime = 0;
+	pipe = tcp_sack_compute_pipe(tp);
+	while ((tcp_seq_diff_t)(ocwnd - pipe) >= (tcp_seq_diff_t)tp->t_maxseg &&
+	    (!tcp_do_smartsack || nseg < MAXBURST) &&
+	    tcp_sack_nextseg(tp, &nextrexmt, &seglen, &lostdup)) {
+		uint32_t sent;
+		tcp_seq old_snd_max;
+		int error;
+
+		if (nextrexmt == tp->snd_max) ++nseg;
+		tp->snd_nxt = nextrexmt;
+		tp->snd_cwnd = nextrexmt - tp->snd_una + seglen;
+		old_snd_max = tp->snd_max;
+		if (nextrexmt == tp->snd_una)
+			callout_stop(tp->tt_rexmt);
+		error = tcp_output(tp);
+		if (error != 0)
+			break;
+		sent = tp->snd_nxt - nextrexmt;
+		if (sent <= 0)
+			break;
+		if (!lostdup)
+			pipe += sent;
+		tcpstat.tcps_sndsackpack++;
+		tcpstat.tcps_sndsackbyte += sent;
+		if (SEQ_LT(nextrexmt, old_snd_max) &&
+		    SEQ_LT(tp->rexmt_high, tp->snd_nxt))
+			tp->rexmt_high = seq_min(tp->snd_nxt, old_snd_max);
+	}
+	if (SEQ_GT(old_snd_nxt, tp->snd_nxt))
+		tp->snd_nxt = old_snd_nxt;
 	tp->snd_cwnd = ocwnd;
-	if (SEQ_GT(onxt, tp->snd_nxt))
-		tp->snd_nxt = onxt;
-	/*
-	 * Partial window deflation.  Relies on fact that tp->snd_una
-	 * not updated yet.
-	 */
-	tp->snd_cwnd -= (th->th_ack - tp->snd_una - tp->t_maxseg);
 }

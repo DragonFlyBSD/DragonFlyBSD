@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_output.c	8.4 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_output.c,v 1.39.2.20 2003/01/29 22:45:36 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_output.c,v 1.19 2004/10/15 22:59:10 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_output.c,v 1.20 2004/11/14 00:49:08 hsu Exp $
  */
 
 #include "opt_inet6.h"
@@ -168,7 +168,7 @@ tcp_output(tp)
 	struct ipovly *ipov = NULL;
 	struct tcphdr *th;
 	u_char opt[TCP_MAXOLEN];
-	unsigned ipoptlen, optlen, hdrlen;
+	unsigned int ipoptlen, optlen, hdrlen;
 	int idle;
 	boolean_t sendalot;
 	struct ip6_hdr *ip6 = NULL;
@@ -208,6 +208,11 @@ tcp_output(tp)
 		tp->t_flags &= ~TF_LASTIDLE;
 
 again:
+	/* Make use of SACK information when slow-starting after a RTO. */
+	if (TCP_DO_SACK(tp) && tp->snd_nxt != tp->snd_max &&
+	    !IN_FASTRECOVERY(tp))
+		tcp_sack_skip_sacked(&tp->scb, &tp->snd_nxt);
+
 	sendalot = FALSE;
 	off = tp->snd_nxt - tp->snd_una;
 	sendwin = min(tp->snd_wnd, tp->snd_cwnd);
@@ -448,8 +453,8 @@ again:
 	 * if window is nonzero, transmit what we can,
 	 * otherwise force out a byte.
 	 */
-	if (so->so_snd.sb_cc && !callout_active(tp->tt_rexmt) &&
-	    !callout_active(tp->tt_persist)) {
+	if (so->so_snd.sb_cc > 0 &&
+	    !callout_active(tp->tt_rexmt) && !callout_active(tp->tt_persist)) {
 		tp->t_rxtshift = 0;
 		tcp_setpersist(tp);
 	}
@@ -493,6 +498,14 @@ send:
 					TCPOLEN_WINDOW << 8 |
 					tp->request_r_scale);
 				optlen += 4;
+			}
+
+			if ((tcp_do_sack && !(flags & TH_ACK)) ||
+			    tp->t_flags & TF_SACK_PERMITTED) {
+				uint32_t *lp = (uint32_t *)(opt + optlen);
+
+				*lp = htonl(TCPOPT_SACK_PERMITTED_ALIGNED);
+				optlen += TCPOLEN_SACK_PERMITTED_ALIGNED;
 			}
 		}
 	}
@@ -582,6 +595,17 @@ send:
 		}
 	}
 
+	/*
+	 * If this is a SACK connection and we have a block to report,
+	 * fill in the SACK blocks in the TCP options.
+	 */
+	if ((tp->t_flags & (TF_SACK_PERMITTED | TF_NOOPT)) ==
+		TF_SACK_PERMITTED &&
+	    (!LIST_EMPTY(&tp->t_segq) ||
+	     tp->reportblk.rblk_start != tp->reportblk.rblk_end))
+		tcp_sack_fill_report(tp, opt, &optlen);
+
+	KASSERT(optlen <= TCP_MAXOLEN, ("too many TCP options"));
 	hdrlen += optlen;
 
 	if (isipv6) {
@@ -628,6 +652,8 @@ send:
 		if ((tp->t_flags & TF_FORCE) && len == 1)
 			tcpstat.tcps_sndprobe++;
 		else if (SEQ_LT(tp->snd_nxt, tp->snd_max)) {
+			if (tp->snd_nxt == tp->snd_una)
+				tp->snd_max_rexmt = tp->snd_max;
 			tcpstat.tcps_sndrexmitpack++;
 			tcpstat.tcps_sndrexmitbyte += len;
 		} else {

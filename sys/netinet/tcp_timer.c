@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_timer.c	8.2 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_timer.c,v 1.34.2.14 2003/02/03 02:33:41 hsu Exp $
- * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.11 2004/07/08 22:07:35 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_timer.c,v 1.12 2004/11/14 00:49:08 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -412,6 +412,9 @@ tcp_save_congestion_state(struct tcpcb *tp)
 		tp->t_rexmtTS = ticks;
 		tp->t_flags |= TF_FIRSTACCACK;
 	}
+#ifdef later
+	tcp_sack_save_scoreboard(&tp->scb);
+#endif
 }
 
 void
@@ -431,6 +434,9 @@ tcp_revert_congestion_state(struct tcpcb *tp)
 	tp->t_badrxtwin = 0;
 	tp->t_rxtshift = 0;
 	tp->snd_nxt = tp->snd_max;
+#ifdef later
+	tcp_sack_revert_scoreboard(&tp->scb, tp->snd_una);
+#endif
 }
 
 void
@@ -476,6 +482,8 @@ tcp_timer_rexmt(void *xtp)
 		tcp_save_congestion_state(tp);
 		tp->t_flags &= ~(TF_FASTREXMT | TF_EARLYREXMT);
 	}
+	/* Throw away SACK blocks on a RTO, as specified by RFC2018. */
+	tcp_sack_cleanup(&tp->scb);
 	tcpstat.tcps_rexmttimeo++;
 	if (tp->t_state == TCPS_SYN_SENT)
 		rexmt = TCP_REXMTVAL(tp) * tcp_syn_backoff[tp->t_rxtshift];
@@ -511,6 +519,7 @@ tcp_timer_rexmt(void *xtp)
 		tp->t_srtt = 0;
 	}
 	tp->snd_nxt = tp->snd_una;
+	tp->rexmt_high = tp->snd_una;
 	tp->snd_recover = tp->snd_max;
 	/*
 	 * Force a segment to be sent.
