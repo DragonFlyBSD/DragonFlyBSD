@@ -32,7 +32,7 @@
  *
  * @(#)getguess.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/getguess.c,v 1.6 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/getguess.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/getguess.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include <sys/ttydefaults.h>
@@ -43,7 +43,7 @@
  *	Get another guess
  */
 void
-getguess()
+getguess(void)
 {
 	int	i;
 	int	ch;
@@ -51,7 +51,7 @@ getguess()
 
 	leaveok(stdscr, FALSE);
 	for (;;) {
-		move(PROMPTY, PROMPTX + sizeof "Guess: ");
+		move(PROMPTY, PROMPTX + sizeof("Guess: "));
 		refresh();
 		ch = readch();
 		if (isalpha(ch)) {
@@ -74,11 +74,12 @@ getguess()
 
 	Guessed[ch - 'a'] = TRUE;
 	correct = FALSE;
-	for (i = 0; Word[i] != '\0'; i++)
+	for (i = 0; Word[i] != '\0'; i++) {
 		if (Word[i] == ch) {
 			Known[i] = ch;
 			correct = TRUE;
 		}
+	}
 	if (!correct)
 		Errors++;
 }
@@ -88,23 +89,22 @@ getguess()
  *	Read a character from the input
  */
 char
-readch()
+readch(void)
 {
 	int	cnt;
-	auto char	ch;
+	char	ch;
+	int	x, y;
 
 	cnt = 0;
 	for (;;) {
-		if (read(0, &ch, sizeof ch) <= 0)
-		{
+		if (read(0, &ch, sizeof(ch)) <= 0) {
 			if (++cnt > 100)
 				die(0);
-		}
-		else if (ch == CTRL('L')) {
+		} else if (ch == CTRL('L')) {
 			wrefresh(curscr);
-			mvcur(0, 0, curscr->_cury, curscr->_curx);
-		}
-		else
+			getyx(curscr, y, x);
+			mvcur(0, 0, y, x);
+		} else
 			return ch;
 	}
 }

@@ -32,16 +32,17 @@
  *
  * @(#)extern.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/extern.c,v 1.2 1999/11/30 03:48:54 billf Exp $
- * $DragonFly: src/games/hangman/extern.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/extern.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
-# include	"hangman.h"
+#include "hangman.h"
 
 bool	Guessed[26];
 
 char	Word[BUFSIZ],
-	Known[BUFSIZ],
-	*Noose_pict[] = {
+	Known[BUFSIZ];
+
+const char *Noose_pict[] = {
 		"     ______",
 		"     |    |",
 		"     |",

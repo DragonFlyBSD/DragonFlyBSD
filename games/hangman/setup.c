@@ -32,7 +32,7 @@
  *
  * @(#)setup.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/setup.c,v 1.6 1999/12/10 03:23:01 billf Exp $
- * $DragonFly: src/games/hangman/setup.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/setup.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 # include       <stdlib.h>
@@ -43,10 +43,10 @@
  *	Set up the strings on the screen.
  */
 void
-setup()
+setup(void)
 {
-	char		**sp;
-	static struct stat	sbuf;
+	const char		**sp;
+	static struct stat	  sbuf;
 
 	noecho();
 	crmode();

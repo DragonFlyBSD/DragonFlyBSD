@@ -32,28 +32,30 @@
  *
  * @(#)prdata.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/prdata.c,v 1.5 1999/12/10 03:23:00 billf Exp $
- * $DragonFly: src/games/hangman/prdata.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/prdata.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
-# include	"hangman.h"
+#include "hangman.h"
 
 /*
  * prdata:
  *	Print out the current guesses
  */
 void
-prdata()
+prdata(void)
 {
 	bool	*bp;
 
-	move(GUESSY, GUESSX + sizeof "Guessed: ");
+	move(GUESSY, GUESSX + sizeof("Guessed: "));
 	bp = Guessed;
 	while (bp < &Guessed[26])
-		if (*bp++)
+		if (*bp++ != '\0')
 			addch((bp - Guessed) + 'a' - 1);
 	clrtoeol();
-	mvprintw(NUMBERY, NUMBERX + sizeof "Word #:          ", "%d", Wordnum);
-	mvprintw(AVGY, AVGX + sizeof       "Current Average: ", "%.3f",
-				(Average * (Wordnum - 1) + Errors) / Wordnum);
-	mvprintw(AVGY + 1, AVGX + sizeof   "Overall Average: ", "%.3f", Average);
+	mvprintw(NUMBERY, NUMBERX + sizeof("Word #:          "),
+		 "%d", Wordnum);
+	mvprintw(AVGY, AVGX +       sizeof("Current Average: "),
+		 "%.3f", (Average * (Wordnum - 1) + Errors) / Wordnum);
+	mvprintw(AVGY + 1, AVGX +   sizeof("Overall Average: "),
+		 "%.3f", Average);
 }

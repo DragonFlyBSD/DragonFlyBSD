@@ -32,7 +32,7 @@
  *
  * @(#)getword.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/getword.c,v 1.6 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/getword.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/getword.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
 #include "hangman.h"
@@ -43,11 +43,11 @@
  *	Get a valid word out of the dictionary file
  */
 void
-getword()
+getword(void)
 {
-	FILE		*inf;
-	char		*wp, *gp;
-	long		 pos;
+	FILE	*inf;
+	char	*wp, *gp;
+	long	 pos;
 
 	inf = Dict;
 	for (;;) {
@@ -60,15 +60,15 @@ getword()
 		Word[strlen(Word) - 1] = '\0';
 		if (strlen(Word) < MINLEN)
 			continue;
-		for (wp = Word; *wp; wp++)
+		for (wp = Word; *wp != '\0'; wp++) {
 			if (!islower(*wp))
-				goto cont;
+				continue;
+		}
 		break;
-cont:		;
 	}
 	gp = Known;
 	wp = Word;
-	while (*wp) {
+	while (*wp != '\0') {
 		*gp++ = '-';
 		wp++;
 	}

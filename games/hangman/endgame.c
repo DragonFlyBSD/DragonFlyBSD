@@ -32,17 +32,17 @@
  *
  * @(#)endgame.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/hangman/endgame.c,v 1.5 1999/12/10 03:22:59 billf Exp $
- * $DragonFly: src/games/hangman/endgame.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/hangman/endgame.c,v 1.3 2005/02/13 18:57:30 cpressey Exp $
  */
 
-# include	"hangman.h"
+#include "hangman.h"
 
 /*
  * endgame:
  *	Do what's necessary at the end of the game
  */
 void
-endgame()
+endgame(void)
 {
 	char	ch;
 
@@ -74,13 +74,3 @@ endgame()
 	deleteln();
 	deleteln();
 }
-
-
-
-
-
-
-
-
-
-

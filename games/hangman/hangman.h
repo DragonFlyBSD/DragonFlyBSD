@@ -32,34 +32,36 @@
  *
  *	@(#)hangman.h	8.1 (Berkeley) 5/31/93
  *	$FreeBSD: src/games/hangman/hangman.h,v 1.3 1999/12/10 03:22:59 billf Exp $
- *	$DragonFly: src/games/hangman/hangman.h,v 1.3 2003/11/12 14:53:53 eirikn Exp $
+ *	$DragonFly: src/games/hangman/hangman.h,v 1.4 2005/02/13 18:57:30 cpressey Exp $
  */
 
-# include	<stdlib.h>
-# include	<string.h>
-# include	<curses.h>
-# include	<sys/types.h>
-# include	<sys/stat.h>
-# include	<ctype.h>
-# include	<signal.h>
-# include	<unistd.h>
-# include	"pathnames.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
-# define	MINLEN	6
-# define	MAXERRS	7
+#include <ctype.h>
+#include <curses.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-# define	MESGY	12
-# define	MESGX	0
-# define	PROMPTY	11
-# define	PROMPTX	0
-# define	KNOWNY	10
-# define	KNOWNX	1
-# define	NUMBERY	4
-# define	NUMBERX	(COLS - 1 - 26)
-# define	AVGY	5
-# define	AVGX	(COLS - 1 - 26)
-# define	GUESSY	2
-# define	GUESSX	(COLS - 1 - 26)
+#include "pathnames.h"
+
+#define	MINLEN	6
+#define	MAXERRS	7
+
+#define	MESGY	12
+#define	MESGX	0
+#define	PROMPTY	11
+#define	PROMPTX	0
+#define	KNOWNY	10
+#define	KNOWNX	1
+#define	NUMBERY	4
+#define	NUMBERX	(COLS - 1 - 26)
+#define	AVGY	5
+#define	AVGX	(COLS - 1 - 26)
+#define	GUESSY	2
+#define	GUESSX	(COLS - 1 - 26)
 
 
 typedef struct {
@@ -69,7 +71,8 @@ typedef struct {
 
 extern bool	Guessed[];
 
-extern char	Word[], Known[], *Noose_pict[];
+extern char	Word[], Known[];
+extern const char *Noose_pict[];
 
 extern int	Errors, Wordnum;
 
@@ -81,13 +84,13 @@ extern FILE	*Dict;
 
 extern off_t	Dict_size;
 
-void	die (int);
-void	endgame (void);
-void	getguess (void);
-void	getword (void);
-void	playgame (void);
-void	prdata (void);
-void	prman (void);
-void	prword (void);
-char	readch (void);
-void	setup (void);
+void	die(int);
+void	endgame(void);
+void	getguess(void);
+void	getword(void);
+void	playgame(void);
+void	prdata(void);
+void	prman(void);
+void	prword(void);
+char	readch(void);
+void	setup(void);
