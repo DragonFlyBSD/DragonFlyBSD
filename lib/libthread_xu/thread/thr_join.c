@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_join.c,v 1.28 2003/12/09 02:20:56 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_join.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
@@ -40,7 +43,7 @@ __weak_reference(_pthread_join, pthread_join);
 
 static void backout_join(void *arg)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct pthread *pthread = (struct pthread *)arg;
 
 	THREAD_LIST_LOCK(curthread);
@@ -51,7 +54,7 @@ static void backout_join(void *arg)
 int
 _pthread_join(pthread_t pthread, void **thread_return)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	void *tmp;
 	long state;
 	int oldcancel;

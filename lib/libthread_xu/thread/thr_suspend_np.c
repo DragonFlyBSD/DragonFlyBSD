@@ -30,8 +30,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_suspend_np.c,v 1.19 2003/05/04 16:17:01 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_suspend_np.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_suspend_np.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
@@ -45,11 +47,11 @@ __weak_reference(_pthread_suspend_all_np, pthread_suspend_all_np);
 int
 _pthread_suspend_np(pthread_t thread)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int ret;
 
 	/* Suspending the current thread doesn't make sense. */
-	if (thread == _get_curthread())
+	if (thread == curthread)
 		ret = EDEADLK;
 
 	/* Add a reference to the thread: */
@@ -70,7 +72,7 @@ _pthread_suspend_np(pthread_t thread)
 void
 _pthread_suspend_all_np(void)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	struct pthread	*thread;
 
 	/* Take the thread list lock: */

@@ -28,10 +28,13 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_sem.c,v 1.16 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sem.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <sys/queue.h>
+
+#include <machine/tls.h>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -180,7 +183,7 @@ _sem_wait(sem_t *sem)
 	if (sem_check_validity(sem) != 0)
 		return (-1);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	_pthread_testcancel();
 	do {
 		while ((val = (*sem)->count) > 0) {
@@ -205,7 +208,7 @@ _sem_timedwait(sem_t * __restrict sem, struct timespec * __restrict abstime)
 	if (sem_check_validity(sem) != 0)
 		return (-1);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	/*
 	 * The timeout argument is only supposed to

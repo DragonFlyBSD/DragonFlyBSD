@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_exit.c,v 1.39 2004/10/23 23:37:54 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_exit.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -65,7 +68,7 @@ _thread_exit(char *fname, int lineno, char *msg)
 void
 _thr_exit_cleanup(void)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 
 	/*
 	 * POSIX states that cancellation/termination of a thread should
@@ -86,7 +89,7 @@ _thr_exit_cleanup(void)
 void
 _pthread_exit(void *status)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 
 	/* Check if this thread is already in the process of exiting: */
 	if ((curthread->cancelflags & THR_CANCEL_EXITING) != 0) {

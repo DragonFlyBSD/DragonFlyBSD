@@ -32,7 +32,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_create.c,v 1.58 2004/10/23 23:28:36 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_create.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 #include <errno.h>
 #include <stdlib.h>
@@ -42,6 +42,8 @@
 #include <stddef.h>
 #include <sys/time.h>
 #include <machine/reg.h>
+#include <machine/tls.h>
+
 #include <pthread.h>
 #include <sys/signalvar.h>
 
@@ -78,7 +80,7 @@ _pthread_create(pthread_t * thread, const pthread_attr_t * attr,
 	if (_thr_isthreaded() == 0 && _thr_setthreaded(1))
 		return (EAGAIN);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if ((new_thread = _thr_alloc(curthread)) == NULL)
 		return (EAGAIN);
 
@@ -234,7 +236,7 @@ thread_start(void *arg)
 
 	curthread = start_arg->thread;
 	curthread->tid = _thr_get_tid();
-	_tcb_set(curthread->tcb);
+	tls_set_tcb(curthread->tcb);
 	start_arg->started = 1;
 	_thr_umtx_wake(&start_arg->started, 1);
 

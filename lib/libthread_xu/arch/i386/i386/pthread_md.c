@@ -24,21 +24,22 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.5 2005/03/28 03:33:14 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.6 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <sys/tls.h>
+
+#include <machine/tls.h>
+
 #include <stdlib.h>
 
-#include "rtld_tls.h"
 #include "pthread_md.h"
 
-struct tcb *
+struct tls_tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
-	struct tcb *old_tcb;
-	struct tcb *tcb;
+	struct tls_tcb *old_tcb, *tcb;
 	int flags;
 
 	old_tcb = 0;
@@ -55,28 +56,16 @@ _tcb_ctor(struct pthread *thread, int initial)
 			flags = RTLD_ALLOC_TLS_FREE_OLD;
 		}
 	}
-	tcb = _rtld_allocate_tls(old_tcb, sizeof(struct tcb), flags);
-	if (tcb) {
-		tcb->tcb_thread = thread;
-		tcb->tcb_seg = -1;
-	}
+	tcb = _rtld_allocate_tls(old_tcb, sizeof(*tcb), flags);
+
+	if (tcb)
+		tcb->tcb_pthread = thread;
+
 	return (tcb);
 }
 
 void
-_tcb_set(struct tcb *tcb)
+_tcb_dtor(struct tls_tcb *tcb)
 {
-	struct tls_info info;
-	int seg;
-
-	info.base = tcb;
-	info.size = sizeof(*tcb);
-	seg = tcb->tcb_seg = sys_set_tls_area(0, &info, sizeof(info));
-	__asm __volatile("movl %0, %%gs" : : "r" (seg));
-}
-
-void
-_tcb_dtor(struct tcb *tcb)
-{
-	_rtld_free_tls(tcb, sizeof(struct tcb));
+	_rtld_free_tls(tcb, sizeof(*tcb));
 }

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/include/pthread_md.h,v 1.10 2004/08/25 23:42:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.3 2005/03/15 15:09:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/include/pthread_md.h,v 1.4 2005/03/29 19:26:20 joerg Exp $
  */
 
 /*
@@ -36,76 +36,16 @@
 
 #include <stddef.h>
 #include <sys/types.h>
-#include <machine/sysarch.h>
 
-#define	DTV_OFFSET		offsetof(struct tcb, tcb_dtv)
+#include <machine/sysarch.h>
+#include <machine/tls.h>
 
 struct pthread;
 
 /*
- * Variant II tcb, %fs points to the struct. 
- */
-
-struct tcb {
-	struct tcb		*tcb_self;	/* required by rtld */
-	void			*tcb_dtv;	/* required by rtld */
-	struct pthread		*tcb_thread;
-	void			*tcb_spare[1];	/* align tcb_tmbx to 16 bytes */
-};
-
-/*
- * Evaluates to the byte offset of the per-tcb variable name.
- */
-#define	__tcb_offset(name)	__offsetof(struct tcb, name)
-
-/*
- * Evaluates to the type of the per-tcb variable name.
- */
-#define	__tcb_type(name)	__typeof(((struct tcb *)0)->name)
-
-/*
- * Evaluates to the value of the per-tcb variable name.
- */
-#define	TCB_GET64(name) ({					\
-	__tcb_type(name) __result;				\
-								\
-	u_long __i;						\
-	__asm __volatile("movq %%fs:%1, %0"			\
-	    : "=r" (__i)					\
-	    : "m" (*(u_long *)(__tcb_offset(name))));		\
-	__result = (__tcb_type(name))__i;			\
-								\
-	__result;						\
-})
-
-/*
  * The constructors.
  */
-struct tcb	*_tcb_ctor(struct pthread *, int);
-void		_tcb_dtor(struct tcb *tcb);
+struct tls_tcb	*_tcb_ctor(struct pthread *, int);
+void		_tcb_dtor(struct tls_tcb *tcb);
 
-/* Thread calls this function to set its private data. */
-static __inline void
-_tcb_set(struct tcb *tcb)
-{
-	amd64_set_fsbase(tcb);
-}
-
-/* Get the current kcb. */
-static __inline struct tcb *
-_tcb_get(void)
-{
-	return (TCB_GET64(tcb_self));
-}
-
-extern struct pthread *_thr_initial;
-
-/* Get the current thread. */
-static __inline struct pthread *
-_get_curthread(void)
-{
-	if (_thr_initial)
-		return (TCB_GET64(tcb_thread));
-	return (NULL);
-}
 #endif

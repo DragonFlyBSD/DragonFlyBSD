@@ -1,13 +1,10 @@
-/*-
+/*
  * Copyright (c) 2005 The DragonFly Project.  All rights reserved.
- *
- * This code is derived from software contributed to The DragonFly Project
- * by David Xu.
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
- *
+ * 
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
@@ -31,21 +28,84 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/lib/libc/i386/gen/Attic/_set_tp.c,v 1.2 2005/03/08 13:17:03 davidxu Exp $
+ * $DragonFly: src/sys/i386/include/Attic/tls.h,v 1.1 2005/03/29 19:26:20 joerg Exp $
  */
 
+#ifndef	_MACHINE_TLS_H_
+#define	_MACHINE_TLS_H_
+
+#include <sys/types.h>
 #include <sys/tls.h>
 
-#include "libc_private.h"
+struct tls_tcb {
+	struct tls_tcb *tcb_self;	/* pointer to self*/
+	void *tcb_dtv;			/* Dynamic Thread Vector */
+	void *tcb_pthread;		/* thread library's data*/
+};
 
-void
-_set_tp(void *tp, int size)
+struct tls_dtv {
+	uintptr_t dtv_generation;
+	uintptr_t dtv_max_index;
+	void *dtv_offset[__ARRAY_ZERO];
+};
+
+#define	RTLD_TCB_HAS_SELF_POINTER
+#define	RTLD_STATIC_TLS_ALIGN           16
+#define	RTLD_STATIC_TLS_ALIGN_MASK      (RTLD_STATIC_TLS_ALIGN - 1)
+#define RTLD_STATIC_TLS_VARIANT_II
+
+/* Get the current TCB. */
+static __inline struct tls_tcb *
+tls_get_tcb(void)
 {
-	struct tls_info t;
+	void *self;
+
+#if 0
+	__asm __volatile ("movl %%gs:%1, %0"
+	    : "=r" (self)
+	    : "i" (__offsetof(struct tls_tcb, tcb_self)));
+#else
+	__asm __volatile ("movl %%gs:0, %0" : "=r" (self));
+#endif
+
+	return(self);
+}
+
+/* Get the current thread. */
+static __inline void *
+tls_get_curthread(void)
+{
+	void *self;
+
+#if 0
+	__asm __volatile ("movl %%gs:%1, %0"
+	    : "=r" (self)
+	    : "i" (__offsetof(struct tls_tcb, tcb_pthread)));
+#else
+	__asm __volatile ("movl %%gs:8, %0" : "=r" (self));
+#endif
+
+	return(self);
+}
+
+static __inline void
+tls_set_tcb(struct tls_tcb *tcb)
+{
+	struct tls_info info;
 	int seg;
 
-	t.base = tp;
-	t.size = size;
-	seg = sys_set_tls_area(0, &t, sizeof(t));
+	info.base = tcb;
+	info.size = -1;
+	seg = sys_set_tls_area(0, &info, sizeof(info));
 	__asm __volatile("movl %0, %%gs" : : "r" (seg));
 }
+
+/*
+ * flags for _rtld_allocate_tls() and allocate_tls()
+ */
+#define RTLD_ALLOC_TLS_FREE_OLD		0x0001
+
+struct tls_tcb	*_rtld_allocate_tls(struct tls_tcb *, size_t, int);
+void		 _rtld_free_tls(struct tls_tcb *, size_t);
+
+#endif	/* !_MACHINE_TLS_H_ */

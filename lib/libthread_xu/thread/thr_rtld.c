@@ -26,9 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rtld.c,v 1.5 2003/11/05 18:19:24 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rtld.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rtld.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
-#include <sys/cdefs.h>
+#include <machine/tls.h>
+
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -96,7 +97,7 @@ _thr_rtld_set_flag(int mask)
 	struct pthread *curthread;
 	int bits;
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if (curthread != NULL) {
 		bits = curthread->rtld_bits;
 		curthread->rtld_bits |= mask;
@@ -114,7 +115,7 @@ _thr_rtld_clr_flag(int mask)
 	struct pthread *curthread;
 	int bits;
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if (curthread != NULL) {
 		bits = curthread->rtld_bits;
 		curthread->rtld_bits &= ~mask;

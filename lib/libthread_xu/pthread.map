@@ -1,5 +1,5 @@
 # $FreeBSD: src/lib/libpthread/pthread.map,v 1.13 2004/09/26 06:50:14 deischen Exp $
-# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.1 2005/02/01 12:38:26 davidxu Exp $
+# $DragonFly: src/lib/libthread_xu/pthread.map,v 1.2 2005/03/29 19:26:20 joerg Exp $
 
 LIBTHREAD_1_0 {
 global:
@@ -353,7 +353,6 @@ global:
 	_thread_list;
 	_thread_max_keys;
 	_thread_off_attr_flags;
-	_thread_off_dtv;
 	_thread_off_linkmap;
 	_thread_off_next;
 	_thread_off_tcb;

@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_barrier.c,v 1.1 2003/09/04 14:06:43 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.3 2005/03/23 11:21:02 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_barrier.c,v 1.4 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -78,7 +80,7 @@ _pthread_barrier_init(pthread_barrier_t *barrier,
 int
 _pthread_barrier_wait(pthread_barrier_t *barrier)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_barrier_t bar;
 	long cycle;
 	int ret;

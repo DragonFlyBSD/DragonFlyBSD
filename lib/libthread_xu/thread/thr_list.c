@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.2 2005/03/24 12:38:39 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_list.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <sys/cdefs.h>
@@ -140,7 +140,7 @@ struct pthread *
 _thr_alloc(struct pthread *curthread)
 {
 	struct pthread	*thread = NULL;
-	struct tcb	*tcb;
+	struct tls_tcb	*tcb;
 
 	if (curthread != NULL) {
 		if (GC_NEEDED())

@@ -23,8 +23,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.3 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cond.c,v 1.4 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -113,7 +115,7 @@ int
 _pthread_cond_destroy(pthread_cond_t *cond)
 {
 	struct pthread_cond	*cv;
-	struct pthread		*curthread = _get_curthread();
+	struct pthread		*curthread = tls_get_curthread();
 	int			rval = 0;
 
 	if (*cond == NULL)
@@ -159,7 +161,7 @@ struct cond_cancel_info
 static void
 cond_cancel_handler(void *arg)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct cond_cancel_info *cci = (struct cond_cancel_info *)arg;
 	pthread_cond_t cv;
 
@@ -183,7 +185,7 @@ static int
 cond_wait_common(pthread_cond_t *cond, pthread_mutex_t *mutex,
 	const struct timespec *abstime, int cancel)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	struct timespec ts, ts2, *tsp;
 	struct cond_cancel_info cci;
 	pthread_cond_t  cv;
@@ -299,7 +301,7 @@ __pthread_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex,
 static int
 cond_signal_common(pthread_cond_t *cond, int broadcast)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	pthread_cond_t	cv;
 	int		ret = 0;
 

@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_getschedparam.c,v 1.10 2003/07/07 04:28:23 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_getschedparam.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_getschedparam.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <errno.h>
 #include <pthread.h>
 #include "thr_private.h"
@@ -42,7 +45,7 @@ int
 _pthread_getschedparam(pthread_t pthread, int *policy, 
 	struct sched_param *param)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int ret, tmp;
 
 	if ((param == NULL) || (policy == NULL))

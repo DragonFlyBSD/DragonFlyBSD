@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.19 2005/03/28 03:33:16 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.20 2005/03/29 19:26:20 joerg Exp $
  */
 
 /*
@@ -43,6 +43,8 @@
 #include <sys/resident.h>
 #include <sys/tls.h>
 
+#include <machine/tls.h>
+
 #include <dlfcn.h>
 #include <err.h>
 #include <errno.h>
@@ -55,7 +57,6 @@
 
 #include "debug.h"
 #include "rtld.h"
-#include "rtld_tls.h"
 
 #define PATH_RTLD	"/usr/libexec/ld-elf.so.1"
 #define LD_ARY_CACHE	16
@@ -2607,16 +2608,7 @@ tls_get_addr_common(void **dtvp, int index, size_t offset)
     return (void*) (dtv[index + 1] + offset);
 }
 
-/* XXX not sure what variants to use for arm. */
-
-#if defined(__ia64__) || defined(__powerpc__)
-
-#error x
-
-#endif
-
-#if defined(__i386__) || defined(__amd64__) || defined(__sparc64__) || \
-    defined(__arm__)
+#if defined(RTLD_STATIC_TLS_VARIANT_II)
 
 /*
  * Allocate the static TLS area.  Return a pointer to the TCB.  The 
@@ -2645,14 +2637,16 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb,
     full_size = data_size + tcb_size;
     tcb = malloc(full_size);
     tcb = (void *)((char *)tcb + data_size);	/* actual tcb location */
-    bzero(tcb, tcb_size);
 
     dtv_size = (tls_max_index + 2) * sizeof(Elf_Addr);
     dtv = malloc(dtv_size);
     bzero(dtv, dtv_size);
 
-    tcb->tcb_base = tcb;
-    tcb->dtv_base = dtv;
+#ifdef RTLD_TCB_HAS_SELF_POINTER
+    tcb->tcb_self = tcb;
+#endif
+    tcb->tcb_dtv = dtv;
+    tcb->tcb_pthread = NULL;
 
     dtv[0] = tls_dtv_generation;
     dtv[1] = tls_max_index;
@@ -2671,7 +2665,7 @@ allocate_tls(Obj_Entry *objs, struct tls_tcb *old_tcb,
 	 * If any dynamic TLS blocks have been created tls_get_addr(),
 	 * move them over.
 	 */
-	old_dtv = old_tcb->dtv_base;
+	old_dtv = old_tcb->tcb_dtv;
 	for (i = 0; i < old_dtv[1]; i++) {
 	    if (old_dtv[i+2] < (Elf_Addr)((char *)old_tcb - data_size) ||
 		old_dtv[i+2] >= (Elf_Addr)((char *)old_tcb)
@@ -2707,7 +2701,7 @@ free_tls(struct tls_tcb *tcb, size_t tcb_size)
 
     data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		~RTLD_STATIC_TLS_ALIGN_MASK;
-    dtv = tcb->dtv_base;
+    dtv = tcb->tcb_dtv;
     dtv_size = dtv[1];
     tls_end = (Elf_Addr)tcb;
     tls_start = (Elf_Addr)tcb - data_size;
@@ -2719,6 +2713,8 @@ free_tls(struct tls_tcb *tcb, size_t tcb_size)
     free((void *)tls_start);
 }
 
+#else
+#error "Unsupported TLS layout"
 #endif
 
 /*
@@ -2786,8 +2782,7 @@ allocate_tls_offset(Obj_Entry *obj)
 void
 free_tls_offset(Obj_Entry *obj)
 {
-#if defined(__i386__) || defined(__amd64__) || defined(__sparc64__) || \
-    defined(__arm__)
+#ifdef RTLD_STATIC_TLS_VARIANT_II
     /*
      * If we were the last thing to allocate out of the static TLS
      * block, we give our space back to the 'allocator'. This is a

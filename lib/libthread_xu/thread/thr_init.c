@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_init.c,v 1.66 2004/08/21 11:49:19 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.2 2005/02/21 13:47:21 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_init.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 
 /* Allocate space for global thread variables here: */
@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/signalvar.h>
 #include <machine/reg.h>
+#include <machine/tls.h>
 
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -54,6 +55,7 @@
 #include <sys/ttycom.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -289,7 +291,7 @@ _libpthread_init(struct pthread *curthread)
 	_thread_active_threads = 1;
 
 	/* Setup the thread specific data */
-	_tcb_set(curthread->tcb);
+	tls_set_tcb(curthread->tcb);
 
 	if (first) {
 		SIGFILLSET(sigset);

@@ -59,8 +59,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_fork.c,v 1.34 2003/11/05 18:18:45 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_fork.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -86,7 +89,7 @@ _pthread_atfork(void (*prepare)(void), void (*parent)(void),
 	if ((af = malloc(sizeof(struct pthread_atfork))) == NULL)
 		return (ENOMEM);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	af->prepare = prepare;
 	af->parent = parent;
 	af->child = child;
@@ -122,7 +125,7 @@ _fork(void)
 	if (!_thr_is_inited())
 		return (__sys_fork());
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	THR_UMTX_LOCK(curthread, &_thr_atfork_lock);
 	tmp = inprogress;

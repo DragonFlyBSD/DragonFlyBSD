@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_mutex.c,v 1.46 2004/10/31 05:03:50 green Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.2 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_mutex.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -277,7 +280,7 @@ _mutex_fork(struct pthread *curthread)
 int
 _pthread_mutex_destroy(pthread_mutex_t *mutex)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_mutex_t m;
 	int ret = 0;
 
@@ -453,7 +456,7 @@ mutex_trylock_common(struct pthread *curthread, pthread_mutex_t *mutex)
 int
 __pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int ret = 0;
 
 	/*
@@ -470,7 +473,7 @@ __pthread_mutex_trylock(pthread_mutex_t *mutex)
 int
 _pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	int	ret = 0;
 
 	/*
@@ -755,7 +758,7 @@ __pthread_mutex_lock(pthread_mutex_t *m)
 
 	_thr_check_init();
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
@@ -777,7 +780,7 @@ _pthread_mutex_lock(pthread_mutex_t *m)
 
 	_thr_check_init();
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
@@ -799,7 +802,7 @@ __pthread_mutex_timedlock(pthread_mutex_t *m,
 
 	_thr_check_init();
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
@@ -820,7 +823,7 @@ _pthread_mutex_timedlock(pthread_mutex_t *m,
 
 	_thr_check_init();
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 
 	/*
 	 * If the mutex is statically initialized, perform the dynamic
@@ -853,7 +856,7 @@ _mutex_cv_lock(pthread_mutex_t *m)
 	struct  pthread *curthread;
 	int	ret;
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if ((ret = _pthread_mutex_lock(m)) == 0)
 		(*m)->m_refcount--;
 	return (ret);
@@ -955,7 +958,7 @@ mutex_self_lock(struct pthread *curthread, pthread_mutex_t m,
 static int
 mutex_unlock_common(pthread_mutex_t *m, int add_reference)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	long tid = -1;
 	int ret = 0;
 

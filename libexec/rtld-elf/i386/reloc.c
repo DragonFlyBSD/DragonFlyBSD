@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/reloc.c,v 1.6.2.2 2002/06/16 20:02:09 dillon Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.5 2005/03/28 03:33:20 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/reloc.c,v 1.6 2005/03/29 19:26:20 joerg Exp $
  */
 
 /*
@@ -35,6 +35,8 @@
 #include <sys/param.h>
 #include <sys/mman.h>
 #include <sys/tls.h>
+
+#include <machine/tls.h>
 
 #include <dlfcn.h>
 #include <err.h>
@@ -329,7 +331,6 @@ allocate_initial_tls(Obj_Entry *objs)
     struct tls_info ti;
     int flags;
     void *tls;
-    int sel;
 
     /*
      * Fix the size of the static TLS block by using the maximum
@@ -350,10 +351,7 @@ allocate_initial_tls(Obj_Entry *objs)
 		flags = 0;
 	}
 	tls = allocate_tls(objs, old_tcb, sizeof(struct tls_tcb), flags);
-	ti.base = tls;
-	ti.size = -1;
-	sel = sys_set_tls_area(0, &ti, sizeof(ti));
-	__asm __volatile("movl %0,%%gs" : : "rm" (sel));
+	tls_set_tcb(tls);
     }
 }
 
@@ -364,8 +362,8 @@ ___tls_get_addr(tls_index *ti)
 {
     struct tls_tcb *tcb;
 
-    __asm __volatile("movl %%gs:0, %0" : "=r" (tcb));
-    return tls_get_addr_common(&tcb->dtv_base, ti->ti_module, ti->ti_offset);
+    tcb = tls_get_tcb();
+    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
 
 /* Sun ABI */
@@ -374,7 +372,7 @@ __tls_get_addr(tls_index *ti)
 {
     struct tls_tcb *tcb;
 
-    __asm __volatile("movl %%gs:0, %0" : "=r" (tcb));
-    return tls_get_addr_common(&tcb->dtv_base, ti->ti_module, ti->ti_offset);
+    tcb = tls_get_tcb();
+    return tls_get_addr_common(&tcb->tcb_dtv, ti->ti_module, ti->ti_offset);
 }
 

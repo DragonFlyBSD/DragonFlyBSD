@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_spec.c,v 1.22 2004/07/13 22:49:58 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_spec.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +54,7 @@ __weak_reference(_pthread_setspecific, pthread_setspecific);
 int
 _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int i;
 
 	/* Lock the key table: */
@@ -78,7 +81,7 @@ _pthread_key_create(pthread_key_t *key, void (*destructor) (void *))
 int
 _pthread_key_delete(pthread_key_t key)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int ret = 0;
 
 	if ((unsigned int)key < PTHREAD_KEYS_MAX) {
@@ -100,7 +103,7 @@ _pthread_key_delete(pthread_key_t key)
 void 
 _thread_cleanupspecific(void)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	void		(*destructor)( void *);
 	void		*data = NULL;
 	int		key;
@@ -174,7 +177,7 @@ _pthread_setspecific(pthread_key_t key, const void *value)
 	int		ret = 0;
 
 	/* Point to the running thread: */
-	pthread = _get_curthread();
+	pthread = tls_get_curthread();
 
 	if ((pthread->specific) ||
 	    (pthread->specific = pthread_key_allocate_data())) {
@@ -205,7 +208,7 @@ _pthread_getspecific(pthread_key_t key)
 	void		*data;
 
 	/* Point to the running thread: */
-	pthread = _get_curthread();
+	pthread = tls_get_curthread();
 
 	/* Check if there is specific data: */
 	if (pthread->specific != NULL && (unsigned int)key < PTHREAD_KEYS_MAX) {

@@ -30,11 +30,12 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_spinlock.c,v 1.21 2003/12/09 02:37:40 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_spinlock.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_spinlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <sys/types.h>
 #include <machine/atomic.h>
+#include <machine/tls.h>
 #include <pthread.h>
 #include <libc_private.h>
 #include "spinlock.h"
@@ -65,19 +66,25 @@ static void	init_spinlock(spinlock_t *lck);
 void
 _spinunlock(spinlock_t *lck)
 {
-	THR_UMTX_UNLOCK(_get_curthread(), (umtx_t *)&lck->access_lock);
+	struct pthread *curthread = tls_get_curthread();
+
+	THR_UMTX_UNLOCK(curthread, (umtx_t *)&lck->access_lock);
 }
 
 void
 _spinlock(spinlock_t *lck)
 {
+	struct pthread *curthread;
+
 	if (!__isthreaded)
 		PANIC("Spinlock called when not threaded.");
 	if (!initialized)
 		PANIC("Spinlocks not initialized.");
 	if (lck->fname == NULL)
 		init_spinlock(lck);
-	THR_UMTX_LOCK(_get_curthread(), (umtx_t *)&lck->access_lock);
+
+	curthread = tls_get_curthread();
+	THR_UMTX_LOCK(curthread, (umtx_t *)&lck->access_lock);
 }
 
 void
@@ -90,14 +97,15 @@ static void
 init_spinlock(spinlock_t *lck)
 {
 	static int count = 0;
+	struct pthread *curthread = tls_get_curthread();
 
-	THR_UMTX_LOCK(_get_curthread(), &spinlock_static_lock);
+	THR_UMTX_LOCK(curthread, &spinlock_static_lock);
 	if ((lck->fname == NULL) && (spinlock_count < MAX_SPINLOCKS)) {
 		lck->fname = (char *)&extra[spinlock_count];
 		extra[spinlock_count].owner = lck;
 		spinlock_count++;
 	}
-	THR_UMTX_UNLOCK(_get_curthread(), &spinlock_static_lock);
+	THR_UMTX_UNLOCK(curthread, &spinlock_static_lock);
 	if (lck->fname == NULL && ++count < 5)
 		stderr_debug("Warning: exceeded max spinlocks");
 }

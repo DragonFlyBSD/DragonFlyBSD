@@ -23,8 +23,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_cancel.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_cancel.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 
 #include <pthread.h>
 #include "thr_private.h"
@@ -39,7 +41,7 @@ int _pthread_setcanceltype(int type, int *oldtype);
 int
 _pthread_cancel(pthread_t pthread)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int oldval, newval = 0;
 	int oldtype;
 	int ret;
@@ -82,7 +84,7 @@ testcancel(struct pthread *curthread)
 int
 _pthread_setcancelstate(int state, int *oldstate)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	int oldval, ret;
 
 	oldval = curthread->cancelflags;
@@ -109,7 +111,7 @@ _pthread_setcancelstate(int state, int *oldstate)
 int
 _pthread_setcanceltype(int type, int *oldtype)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	int oldval, ret;
 
 	oldval = curthread->cancelflags;
@@ -137,7 +139,7 @@ _pthread_setcanceltype(int type, int *oldtype)
 void
 _pthread_testcancel(void)
 {
-	testcancel(_get_curthread());
+	testcancel(tls_get_curthread());
 }
 
 int

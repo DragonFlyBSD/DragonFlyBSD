@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/amd64/amd64/pthread_md.c,v 1.4 2004/11/06 03:33:19 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.2 2005/03/28 03:33:13 dillon Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/amd64/amd64/pthread_md.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <stdlib.h>
@@ -35,11 +35,10 @@
 /*
  * The constructors.
  */
-struct tcb *
+struct tls_tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
-	struct tcb *old_tcb;
-	struct tcb *tcb;
+	struct tls_tcb *old_tcb, *tcb;
 	int flags;
 
 	old_tcb = NULL;
@@ -57,15 +56,14 @@ _tcb_ctor(struct pthread *thread, int initial)
 		}
 	}
 	tcb = _rtld_allocate_tls(old_tcb, sizeof(struct tcb), flags);
-	if (tcb) {
-		tcb->tcb_thread = thread;
-	}
+	if (tcb)
+		tcb->tcb_pthread = thread;
 
 	return (tcb);
 }
 
 void
-_tcb_dtor(struct tcb *tcb)
+_tcb_dtor(struct tls_tcb *tcb)
 {
-	_rtld_free_tls(tcb, sizeof(struct tcb), 16);
+	_rtld_free_tls(tcb, sizeof(struct tcb));
 }

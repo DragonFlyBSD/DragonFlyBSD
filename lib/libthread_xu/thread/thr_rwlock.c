@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_rwlock.c,v 1.14 2004/01/08 15:37:09 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_rwlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 
 #include <errno.h>
 #include <limits.h>
@@ -144,7 +146,7 @@ _pthread_rwlock_init (pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr
 static int
 rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_rwlock_t prwlock;
 	int ret;
 
@@ -171,7 +173,7 @@ rwlock_rdlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 		return (EAGAIN);
 	}
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if ((curthread->rdlock_count > 0) && (prwlock->state > 0)) {
 		/*
 		 * To avoid having to track all the rdlocks held by
@@ -236,7 +238,7 @@ _pthread_rwlock_timedrdlock (pthread_rwlock_t *rwlock,
 int
 _pthread_rwlock_tryrdlock (pthread_rwlock_t *rwlock)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_rwlock_t prwlock;
 	int ret;
 
@@ -257,7 +259,7 @@ _pthread_rwlock_tryrdlock (pthread_rwlock_t *rwlock)
 	if ((ret = _pthread_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if (prwlock->state == MAX_READ_LOCKS)
 		ret = EAGAIN;
 	else if ((curthread->rdlock_count > 0) && (prwlock->state > 0)) {
@@ -282,7 +284,7 @@ _pthread_rwlock_tryrdlock (pthread_rwlock_t *rwlock)
 int
 _pthread_rwlock_trywrlock (pthread_rwlock_t *rwlock)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_rwlock_t prwlock;
 	int ret;
 
@@ -334,7 +336,7 @@ _pthread_rwlock_unlock (pthread_rwlock_t *rwlock)
 	if ((ret = _thr_mutex_lock(&prwlock->lock)) != 0)
 		return (ret);
 
-	curthread = _get_curthread();
+	curthread = tls_get_curthread();
 	if (prwlock->state > 0) {
 		curthread->rdlock_count--;
 		prwlock->state--;
@@ -361,7 +363,7 @@ __strong_reference(_pthread_rwlock_unlock, _thr_rwlock_unlock);
 static int
 rwlock_wrlock_common (pthread_rwlock_t *rwlock, const struct timespec *abstime)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	pthread_rwlock_t prwlock;
 	int ret;
 

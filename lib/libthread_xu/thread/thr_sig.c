@@ -29,12 +29,14 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.3 2005/03/15 11:24:23 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_sig.c,v 1.4 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/signalvar.h>
+
+#include <machine/tls.h>
+
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -54,7 +56,7 @@
 static void
 sigcancel_handler(int sig, siginfo_t *info, ucontext_t *ucp)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 
 	if (curthread->cancelflags & THR_CANCEL_AT_POINT)
 		pthread_testcancel();
@@ -154,7 +156,7 @@ __weak_reference(_sigsuspend, sigsuspend);
 int
 _sigsuspend(const sigset_t * set)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;
@@ -182,7 +184,7 @@ int
 __sigtimedwait(const sigset_t *set, siginfo_t *info,
 	const struct timespec * timeout)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;
@@ -203,7 +205,7 @@ __sigtimedwait(const sigset_t *set, siginfo_t *info,
 int
 __sigwaitinfo(const sigset_t *set, siginfo_t *info)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	sigset_t newset;
 	const sigset_t *pset;
 	int oldcancel;

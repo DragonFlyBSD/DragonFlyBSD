@@ -30,8 +30,11 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_clean.c,v 1.9 2004/12/18 18:07:37 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_clean.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
+
 #include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -44,7 +47,7 @@ __weak_reference(_pthread_cleanup_pop, pthread_cleanup_pop);
 void
 _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	struct pthread_cleanup *new;
 
 	if ((new = (struct pthread_cleanup *)
@@ -61,7 +64,7 @@ _pthread_cleanup_push(void (*routine) (void *), void *routine_arg)
 void
 _pthread_cleanup_pop(int execute)
 {
-	struct pthread	*curthread = _get_curthread();
+	struct pthread	*curthread = tls_get_curthread();
 	struct pthread_cleanup *old;
 
 	if ((old = curthread->cleanup) != NULL) {

@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/arch/i386/include/pthread_md.h,v 1.13 2004/11/06 03:35:51 peter Exp $
- * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.4 2005/03/15 11:26:34 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/include/pthread_md.h,v 1.5 2005/03/29 19:26:20 joerg Exp $
  */
 
 /*
@@ -36,45 +36,9 @@
 
 #include <stddef.h>
 #include <sys/types.h>
-
-#define	DTV_OFFSET		offsetof(struct tcb, tcb_dtv)
+#include <machine/tls.h>
 
 struct pthread;
-
-/*
- * Variant II tcb, %gs points to the struct.
- */
-struct tcb {
-	struct tcb		*tcb_self;	/* required by rtld */
-	void			*tcb_dtv;	/* required by rtld */
-	struct pthread		*tcb_thread;
-	int			tcb_seg;
-};
-
-/*
- * Evaluates to the byte offset of the per-tcb variable name.
- */
-#define	__tcb_offset(name)	__offsetof(struct tcb, name)
-
-/*
- * Evaluates to the type of the per-tcb variable name.
- */
-#define	__tcb_type(name)	__typeof(((struct tcb *)0)->name)
-
-/*
- * Evaluates to the value of the per-tcb variable name.
- */
-#define	TCB_GET32(name) ({					\
-	__tcb_type(name) __result;				\
-								\
-	u_int __i;						\
-	__asm __volatile("movl %%gs:%1, %0"			\
-	    : "=r" (__i)					\
-	    : "m" (*(u_int *)(__tcb_offset(name))));		\
-	__result = (__tcb_type(name))__i;			\
-								\
-	__result;						\
-})
 
 static __inline int
 atomic_cmpset_int(volatile int *dst, int exp, int src)
@@ -100,27 +64,7 @@ atomic_cmpset_int(volatile int *dst, int exp, int src)
 /*
  * The constructors.
  */
-struct tcb	*_tcb_ctor(struct pthread *, int);
-void		_tcb_dtor(struct tcb *tcb);
+struct tls_tcb	*_tcb_ctor(struct pthread *, int);
+void		_tcb_dtor(struct tls_tcb *tcb);
 
-/* Called from the thread to set its private data. */
-void		_tcb_set(struct tcb *tcb);
-
-/* Get the current kcb. */
-static __inline struct tcb *
-_tcb_get(void)
-{
-	return (TCB_GET32(tcb_self));
-}
-
-extern struct pthread *_thr_initial;
-
-/* Get the current thread. */
-static __inline struct pthread *
-_get_curthread(void)
-{
-	if (_thr_initial)
-		return (TCB_GET32(tcb_thread));
-	return (NULL);
-}
 #endif

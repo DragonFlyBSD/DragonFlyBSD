@@ -25,11 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_stack.c,v 1.9 2004/10/06 08:11:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.2 2005/02/21 13:47:21 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_stack.c,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
+
+#include <machine/tls.h>
+
 #include <stdlib.h>
 #include <pthread.h>
 #include "thr_private.h"
@@ -130,7 +133,7 @@ round_up(size_t size)
 int
 _thr_stack_alloc(struct pthread_attr *attr)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct stack *spare_stack;
 	size_t stacksize;
 	size_t guardsize;

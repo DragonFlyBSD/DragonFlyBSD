@@ -32,7 +32,7 @@
  * Private thread definitions for the uthread kernel.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_private.h,v 1.120 2004/11/01 10:49:34 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.2 2005/02/21 13:47:21 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_private.h,v 1.3 2005/03/29 19:26:20 joerg Exp $
  */
 
 #ifndef _THR_PRIVATE_H
@@ -499,7 +499,7 @@ struct pthread {
 	int			rtld_bits;
 
 	/* Thread control block */
-	struct tcb		*tcb;
+	struct tls_tcb		*tcb;
 
 	/* Cleanup handlers Link List */
 	struct pthread_cleanup *cleanup;

@@ -32,8 +32,9 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/sys/thr_error.c,v 1.7 2003/04/23 21:46:50 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/sys/Attic/thr_error.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/sys/Attic/thr_error.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+#include <machine/tls.h>
 #include <pthread.h>
 #include "libc_private.h"
 #include "thr_private.h"
@@ -44,9 +45,9 @@ extern	int	errno;
 int *
 __error(void)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 
-	if (curthread != NULL && curthread != _thr_initial)
+	if (curthread != _thr_initial)
 		return (&curthread->error);
 	else
 		return (&errno);

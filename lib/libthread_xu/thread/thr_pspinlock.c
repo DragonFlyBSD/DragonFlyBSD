@@ -24,8 +24,10 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_pspinlock.c,v 1.2 2003/11/04 19:56:12 deischen Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_pspinlock.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
+
+#include <machine/tls.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -78,7 +80,7 @@ _pthread_spin_destroy(pthread_spinlock_t *lock)
 int
 _pthread_spin_trylock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct pthread_spinlock	*lck;
 	int ret;
 
@@ -92,7 +94,7 @@ _pthread_spin_trylock(pthread_spinlock_t *lock)
 int
 _pthread_spin_lock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct pthread_spinlock	*lck;
 	int ret, count;
 
@@ -121,7 +123,7 @@ _pthread_spin_lock(pthread_spinlock_t *lock)
 int
 _pthread_spin_unlock(pthread_spinlock_t *lock)
 {
-	struct pthread *curthread = _get_curthread();
+	struct pthread *curthread = tls_get_curthread();
 	struct pthread_spinlock	*lck;
 	int ret;
 

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/lib/libc/gen/tls.c,v 1.7 2005/03/01 23:42:00 davidxu Exp $
- *	$DragonFly: src/lib/libc/gen/tls.c,v 1.4 2005/03/28 03:33:12 dillon Exp $
+ *	$DragonFly: src/lib/libc/gen/tls.c,v 1.5 2005/03/29 19:26:19 joerg Exp $
  */
 
 /*
@@ -35,6 +35,9 @@
 
 #include <sys/cdefs.h>
 #include <sys/tls.h>
+
+#include <machine/tls.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <elf.h>
@@ -49,18 +52,12 @@ __weak_reference(___libc_tls_get_addr, ___tls_get_addr);
 #endif
 __weak_reference(__libc_tls_get_addr, __tls_get_addr);
 
-struct tls_tcb *_rtld_allocate_tls(struct tls_tcb *, size_t tcbsize, int flags);
-void _rtld_free_tls(struct tls_tcb *tcb, size_t tcb_size);
 struct tls_tcb *__libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcbsize,
 				    int flags);
 void __libc_free_tls(struct tls_tcb *tcb, size_t tcb_size);
 
-#if defined(__ia64__) || defined(__powerpc__)
-#define TLS_VARIANT_I
-#endif
-#if defined(__i386__) || defined(__amd64__) || defined(__sparc64__) || \
-    defined(__arm__)
-#define TLS_VARIANT_II
+#if !defined(RTLD_STATIC_TLS_VARIANT_II)
+#error "Unsupported TLS layout"
 #endif
 
 #ifndef PIC
@@ -106,8 +103,8 @@ __libc_free_tls(struct tls_tcb *tcb, size_t tcb_size __unused)
 {
 	size_t data_size;
 
-	if (tcb->dtv_base)
-		free(tcb->dtv_base);
+	if (tcb->tcb_dtv)
+		free(tcb->tcb_dtv);
 	data_size = (tls_static_space + RTLD_STATIC_TLS_ALIGN_MASK) &
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
 	free((char *)tcb - data_size);
@@ -127,10 +124,13 @@ __libc_allocate_tls(struct tls_tcb *old_tcb, size_t tcb_size, int flags)
 		    ~RTLD_STATIC_TLS_ALIGN_MASK;
 	tcb = malloc(data_size + tcb_size);
 	tcb = (struct tls_tcb *)((char *)tcb + data_size);
-	bzero(tcb, tcb_size);
 	dtv = malloc(3 * sizeof(Elf_Addr));
-	tcb->tcb_base = tcb;
-	tcb->dtv_base = dtv;
+
+#ifdef RTLD_TCB_HAS_SELF_POINTER
+	tcb->tcb_self = tcb;
+#endif
+	tcb->tcb_dtv = dtv;
+	tcb->tcb_pthread = NULL;
 
 	dtv[0] = 1;
 	dtv[1] = 1;
@@ -222,7 +222,7 @@ _init_tls()
 
 	if (tls_static_space) {
 		tcb = _rtld_allocate_tls(NULL, sizeof(struct tls_tcb), 0);
-		_set_tp(tcb, (size_t)-1);
+		tls_set_tcb(tcb);
 	}
 #endif
 }

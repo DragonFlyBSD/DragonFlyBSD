@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libpthread/thread/thr_symbols.c,v 1.1 2004/08/16 03:25:07 davidxu Exp $
- * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.1 2005/02/01 12:38:27 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/thread/thr_symbols.c,v 1.2 2005/03/29 19:26:20 joerg Exp $
  */
 
 #include <stddef.h>
@@ -53,7 +53,6 @@ int _thread_size_key = sizeof(struct pthread_key);
 int _thread_off_key_allocated = offsetof(struct pthread_key, allocated);
 int _thread_off_key_destructor = offsetof(struct pthread_key, destructor);
 int _thread_max_keys = PTHREAD_KEYS_MAX;
-int _thread_off_dtv = DTV_OFFSET;
 int _thread_off_state = offsetof(struct pthread, state);
 int _thread_state_running = PS_RUNNING;
 int _thread_state_zoombie = PS_DEAD;
