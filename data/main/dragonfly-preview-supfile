@@ -1,0 +1,48 @@
+# $DragonFly: site/data/main/dragonfly-preview-supfile,v 1.1 2004/10/06 19:02:56 dillon Exp $
+#
+# DRAGONFLY-STABLE-SUPFILE
+#
+# This file will by default maintain the DragonFly source code in /usr/src/
+# by tracking the DragonFly_Stable tag.  This tag represents a 'reasonably
+# stable' snapshot of the current development tree.
+#
+# If not running X, or invoking cvsup from a non-interactive script, then
+# run it as follows:
+#
+#	cvsup -g -L 2 DragonFly-stable-supfile
+#
+# You may wish to change some of the settings in this file to better
+# suit your system:
+#
+# host=<mirror_site>
+#		This specifies the server host which will supply the
+#		file updates.  If you leave it at its default a random
+#		mirror site will be used.
+#
+# base=/usr
+#		This specifies the root where CVSup will store information
+#		about the collections you have transferred to your system.
+#		A setting of "/usr" will generate this information in
+#		/usr/sup.  Even if you are CVSupping a large number of
+#		collections, you will be hard pressed to generate more than
+#		~1MB of data in this directory.  You can override the
+#		"base" setting on the command line with cvsup's "-b base"
+#		option.  This directory must exist in order to run CVSup.
+#
+# prefix=/usr
+#		This specifies where to place the requested files.  A
+#		setting of "/usr" will place all of the files
+#		requested in /usr (e.g., "/usr/src/bin",
+#		"/usr/ports/archivers").  The prefix directory
+#		must exist in order to run CVSup.
+#
+#
+*default host=cvsup.dragonflybsd.org
+*default base=/usr
+*default prefix=/usr
+*default release=cvs tag=DragonFly_Stable
+*default delete use-rel-suffix
+*default compress
+
+cvs-src
+
