@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.11 2002/11/13 21:40:40 peter Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.6 2004/01/15 20:41:57 joerg Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.7 2004/01/15 20:45:09 joerg Exp $
  *
  */
 
@@ -60,6 +60,9 @@ nexus_pcib_read_config(device_t dev, int bus, int slot, int func,
 	return (pci_cfgregread(bus, slot, func, reg, bytes));
 }
 
+/*
+ * Write configuration space register.
+ */
 static void
 nexus_pcib_write_config(device_t dev, int bus, int slot, int func,
 			int reg, u_int32_t data, int bytes)
