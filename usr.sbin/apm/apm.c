@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.3 2004/08/13 18:41:45 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.4 2004/08/13 18:44:11 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -60,7 +60,7 @@ usage(void)
 		"usage: apm [-ablstzZ] [-d enable ] [ -e enable ] "
 		"[ -h enable ] [-r delta]",
 		"       zzz");
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 /*
@@ -520,5 +520,5 @@ finish_option:
 			apm_display(fd, display);
 	}
 	close(fd);
-	exit(0);
+	exit(EXIT_SUCCESS);
 }
