@@ -37,7 +37,7 @@
  *
  *	@(#)kern_prot.c	8.6 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_prot.c,v 1.53.2.9 2002/03/09 05:20:26 dd Exp $
- * $DragonFly: src/sys/kern/kern_prot.c,v 1.17 2004/05/07 10:09:25 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_prot.c,v 1.18 2004/05/09 11:51:10 joerg Exp $
  */
 
 /*
@@ -1088,9 +1088,11 @@ change_euid(uid_t euid)
 	struct	ucred *cr;
 
 	KKASSERT(p != NULL);
+	lf_count_adjust(p, 0);
 	cr = cratom(&p->p_ucred);
 	cr->cr_uid = euid;
 	uireplace(&cr->cr_uidinfo, uifind(euid));
+	lf_count_adjust(p, 1);
 }
 
 /*
@@ -1109,10 +1111,8 @@ change_ruid(uid_t ruid)
 
 	cr = cratom(&p->p_ucred);
 	(void)chgproccnt(cr->cr_ruidinfo, -1, 0);
-	lf_count_adjust(p, 0);
 	/* It is assumed that pcred is not shared between processes */
 	cr->cr_ruid = ruid;
 	uireplace(&cr->cr_ruidinfo, uifind(ruid));
-	lf_count_adjust(p, 1);
 	(void)chgproccnt(cr->cr_ruidinfo, 1, 0);
 }

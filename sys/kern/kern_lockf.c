@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.11 2004/05/07 10:09:25 joerg Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.12 2004/05/09 11:51:10 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -420,6 +420,7 @@ restart:
 		first_match->lf_start = start;
 		first_match->lf_end = end;
 		first_match->lf_flags |= flags & F_NOEND;
+		first_match->lf_type = type;
 		lock_needed = 0;		
 	}
 
