@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fsync/fsync.c,v 1.1.2.2 2000/07/25 07:48:25 ps Exp $
- * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.3 2003/10/04 20:36:44 hmp Exp $
+ * $DragonFly: src/usr.bin/fsync/fsync.c,v 1.4 2004/12/12 17:01:05 liamfoy Exp $
  */
 
 #include <err.h>
@@ -33,29 +33,35 @@
 #include <sysexits.h>
 #include <unistd.h>
 
-void	usage(void);
+static void	usage(void);
 
 int
 main(int argc, char *argv[])
 {
 	int fd;
 	int i;
+	int rval = 0;
 	
 	if (argc < 2)
 		usage();
 	
 	for (i = 1; i < argc; ++i) {
-		if ((fd = open(argv[i], O_RDONLY)) < 0)
-			err(1, "open %s", argv[i]);
+		if ((fd = open(argv[i], O_RDONLY)) < 0) {
+			warn("open failed %s", argv[i]);
+			rval = 1;
+			continue;
+		}
 
-		if (fsync(fd) != 0)
-			err(1, "fsync %s", argv[1]);
+		if (fsync(fd) != 0) {
+			warn("failed to fsync %s", argv[i]);
+			rval = 1;
+		}
 		close(fd);
 	}
-	return(0);
+	return(rval);
 }
 
-void
+static void
 usage(void)
 {
 	fprintf(stderr, "usage: fsync file ...\n");
