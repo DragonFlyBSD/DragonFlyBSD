@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netncp/ncp_sock.c,v 1.2 1999/10/12 10:36:59 bp Exp $
- * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.8 2004/01/07 11:04:25 dillon Exp $
+ * $DragonFly: src/sys/netproto/ncp/ncp_sock.c,v 1.9 2004/03/04 10:29:23 hsu Exp $
  *
  * Low level socket routines
  */
@@ -47,9 +47,10 @@
 #include <sys/malloc.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
-#include <sys/protosw.h>
+#include <sys/socketops.h>
 #include <sys/kernel.h>
 #include <sys/uio.h>
 #include <sys/syslog.h>
@@ -122,7 +123,7 @@ ncp_getsockname(struct socket *so, caddr_t asa, int *alen) {
 	int len=0, error;
 
 	sa = 0;
-	error = (*so->so_proto->pr_usrreqs->pru_sockaddr)(so, &sa);
+	error = so_pru_sockaddr(so, &sa);
 	if (error==0) {
 		if (sa) {
 			len = min(len, sa->sa_len);
@@ -145,10 +146,8 @@ int ncp_sock_recv(struct socket *so, struct mbuf **mp, int *rlen)
 	auio.uio_td = td;
 	flags = MSG_DONTWAIT;
 
-/*	error = so->so_proto->pr_usrreqs->pru_soreceive(so, 0, &auio,
-	    (struct mbuf **)0, (struct mbuf **)0, &flags);*/
-	error = so->so_proto->pr_usrreqs->pru_soreceive(so, 0, &auio,
-	    mp, (struct mbuf **)0, &flags);
+/*	error = so_pru_soreceive(so, NULL, &auio, NULL, NULL, &flags); */
+	error = so_pru_soreceive(so, NULL, &auio, mp, NULL, &flags);
 	*rlen = len - auio.uio_resid;
 /*	if (!error) {
 	    *rlen=iov.iov_len;
@@ -174,7 +173,7 @@ ncp_sock_send(struct socket *so, struct mbuf *top, struct ncp_rq *rqp)
 	for(;;) {
 		m = m_copym(top, 0, M_COPYALL, M_WAIT);
 /*		NCPDDEBUG(m);*/
-		error = so->so_proto->pr_usrreqs->pru_sosend(so, to, 0, m, 0, flags, td);
+		error = so_pru_sosend(so, to, NULL, m, NULL, flags, td);
 		if (error == 0 || error == EINTR || error == ENETDOWN)
 			break;
 		if (rqp->rexmit == 0) break;
@@ -193,7 +192,7 @@ int
 ncp_poll(struct socket *so, int events){
     struct thread *td = curthread; /* XXX */
     struct ucred *cred=NULL;
-    return so->so_proto->pr_usrreqs->pru_sopoll(so, events, cred, td);
+    return so_pru_sopoll(so, events, cred, td);
 }
 
 int
@@ -411,8 +410,8 @@ ncp_watchdog(struct ncp_conn *conn) {
 		auio.uio_resid = len = 1000000;
 		auio.uio_td = curthread;
 		flags = MSG_DONTWAIT;
-		error = so->so_proto->pr_usrreqs->pru_soreceive(so, 
-		    (struct sockaddr**)&sa, &auio, &m, (struct mbuf**)0, &flags);
+		error = so_pru_soreceive(so, (struct sockaddr**)&sa, &auio, &m,
+		    NULL, &flags);
 		if (error) break;
 		len -= auio.uio_resid;
 		NCPSDEBUG("got watch dog %d\n",len);
@@ -420,7 +419,7 @@ ncp_watchdog(struct ncp_conn *conn) {
 		buf = mtod(m, char*);
 		if (buf[1] != '?') break;
 		buf[1] = 'Y';
-		error = so->so_proto->pr_usrreqs->pru_sosend(so, (struct sockaddr*)sa, 0, m, 0, 0, curthread);
+		error = so_pru_sosend(so, sa, NULL, m, NULL, 0, curthread);
 		NCPSDEBUG("send watch dog %d\n",error);
 		break;
 	}

@@ -30,7 +30,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netsmb/smb_trantcp.c,v 1.3.2.1 2001/05/22 08:32:34 bp Exp $
- * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.7 2004/01/07 11:04:27 dillon Exp $
+ * $DragonFly: src/sys/netproto/smb/smb_trantcp.c,v 1.8 2004/03/04 10:29:24 hsu Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -41,6 +41,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/poll.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
@@ -70,8 +71,8 @@ SYSCTL_DECL(_net_smb);
 SYSCTL_INT(_net_smb, OID_AUTO, tcpsndbuf, CTLFLAG_RW, &smb_tcpsndbuf, 0, "");
 SYSCTL_INT(_net_smb, OID_AUTO, tcprcvbuf, CTLFLAG_RW, &smb_tcprcvbuf, 0, "");
 
-#define nb_sosend(so,m,flags,p)	(so)->so_proto->pr_usrreqs->pru_sosend( \
-				    so, NULL, 0, m, 0, flags, td)
+#define nb_sosend(so,m,flags,p)					\
+    so_pru_sosend(so, NULL, NULL, m, NULL, flags, td)
 
 static int  nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 	u_int8_t *rpcodep, struct thread *td);
@@ -93,8 +94,7 @@ nb_setsockopt_int(struct socket *so, int level, int name, int val)
 static __inline int
 nb_poll(struct nbpcb *nbp, int events, struct thread *td)
 {
-	return nbp->nbp_tso->so_proto->pr_usrreqs->pru_sopoll(nbp->nbp_tso,
-	    events, NULL, td);
+	return so_pru_sopoll(nbp->nbp_tso, events, NULL, td);
 }
 
 static int
@@ -337,9 +337,7 @@ nbssn_recvhdr(struct nbpcb *nbp, int *lenp,
 	auio.uio_offset = 0;
 	auio.uio_resid = sizeof(len);
 	auio.uio_td = td;
-	error = so->so_proto->pr_usrreqs->pru_soreceive
-	    (so, (struct sockaddr **)NULL, &auio,
-	    (struct mbuf **)NULL, (struct mbuf **)NULL, &flags);
+	error = so_pru_soreceive(so, NULL, &auio, NULL, NULL, &flags);
 	if (error)
 		return error;
 	if (auio.uio_resid > 0) {
@@ -393,9 +391,8 @@ nbssn_recv(struct nbpcb *nbp, struct mbuf **mpp, int *lenp,
 		auio.uio_td = td;
 		do {
 			rcvflg = MSG_WAITALL;
-			error = so->so_proto->pr_usrreqs->pru_soreceive
-			    (so, (struct sockaddr **)NULL,
-			    &auio, &m, (struct mbuf **)NULL, &rcvflg);
+			error = so_pru_soreceive(so, NULL, &auio, &m, NULL,
+			    &rcvflg);
 		} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
 		if (error)

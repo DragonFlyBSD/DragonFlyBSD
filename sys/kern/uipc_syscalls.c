@@ -35,7 +35,7 @@
  *
  *	@(#)uipc_syscalls.c	8.4 (Berkeley) 2/21/94
  * $FreeBSD: src/sys/kern/uipc_syscalls.c,v 1.65.2.17 2003/04/04 17:11:16 tegge Exp $
- * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.24 2004/03/01 06:33:17 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_syscalls.c,v 1.25 2004/03/04 10:29:23 hsu Exp $
  */
 
 #include "opt_ktrace.h"
@@ -57,7 +57,7 @@
 #include <sys/sfbuf.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
-#include <sys/signalvar.h>
+#include <sys/socketops.h>
 #include <sys/uio.h>
 #include <sys/vnode.h>
 #include <sys/lock.h>
@@ -126,6 +126,7 @@ socket(struct socket_args *uap)
 
 	return (error);
 }
+
 int
 kern_bind(int s, struct sockaddr *sa)
 {
@@ -543,8 +544,7 @@ kern_sendmsg(int s, struct sockaddr *sa, struct uio *auio,
 #endif
 	len = auio->uio_resid;
 	so = (struct socket *)fp->f_data;
-	error = so->so_proto->pr_usrreqs->pru_sosend(so, sa, auio, NULL,
-	    control, flags, td);
+	error = so_pru_sosend(so, sa, auio, NULL, control, flags, td);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -715,8 +715,7 @@ kern_recvmsg(int s, struct sockaddr **sa, struct uio *auio,
 #endif
 	len = auio->uio_resid;
 	so = (struct socket *)fp->f_data;
-	error = so->so_proto->pr_usrreqs->pru_soreceive(so, sa, auio, NULL,
-	    control, flags);
+	error = so_pru_soreceive(so, sa, auio, NULL, control, flags);
 	if (error) {
 		if (auio->uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -1065,7 +1064,7 @@ kern_getsockname(int s, struct sockaddr **name, int *namelen)
 		return (EINVAL);
 	}
 	so = (struct socket *)fp->f_data;
-	error = (*so->so_proto->pr_usrreqs->pru_sockaddr)(so, &sa);
+	error = so_pru_sockaddr(so, &sa);
 	if (error == 0) {
 		if (sa == 0) {
 			*namelen = 0;
@@ -1133,7 +1132,7 @@ kern_getpeername(int s, struct sockaddr **name, int *namelen)
 		fdrop(fp, td);
 		return (ENOTCONN);
 	}
-	error = (*so->so_proto->pr_usrreqs->pru_peeraddr)(so, &sa);
+	error = so_pru_peeraddr(so, &sa);
 	if (error == 0) {
 		if (sa == 0) {
 			*namelen = 0;
@@ -1596,8 +1595,7 @@ retry_space:
 			}
 			goto retry_space;
 		}
-		error = 
-		    (*so->so_proto->pr_usrreqs->pru_send)(so, 0, m, 0, 0, td);
+		error = so_pru_send(so, NULL, m, NULL, NULL, td);
 		splx(s);
 		if (error) {
 			sbunlock(&so->so_snd);

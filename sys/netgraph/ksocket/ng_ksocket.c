@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ksocket.c,v 1.5.2.14 2003/08/24 08:24:38 hsu Exp $
- * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.6 2003/08/24 23:07:07 hsu Exp $
+ * $DragonFly: src/sys/netgraph/ksocket/ng_ksocket.c,v 1.7 2004/03/04 10:29:23 hsu Exp $
  * $Whistle: ng_ksocket.c,v 1.1 1999/11/16 20:04:40 archie Exp $
  */
 
@@ -57,6 +57,7 @@
 #include <sys/errno.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/uio.h>
 #include <sys/un.h>
 
@@ -747,7 +748,6 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 		case NGM_KSOCKET_GETNAME:
 		case NGM_KSOCKET_GETPEERNAME:
 		    {
-			int (*func)(struct socket *so, struct sockaddr **nam);
 			struct sockaddr *sa = NULL;
 			int len;
 
@@ -762,12 +762,12 @@ ng_ksocket_rcvmsg(node_p node, struct ng_mesg *msg,
 				if ((so->so_state
 				    & (SS_ISCONNECTED|SS_ISCONFIRMING)) == 0) 
 					ERROUT(ENOTCONN);
-				func = so->so_proto->pr_usrreqs->pru_peeraddr;
+				error = so_pru_peeraddr(so, &sa);
 			} else
-				func = so->so_proto->pr_usrreqs->pru_sockaddr;
+				error = so_pru_sockaddr(so, &sa);
 
 			/* Get local or peer address */
-			if ((error = (*func)(so, &sa)) != 0)
+			if (error != 0)
 				goto bail;
 			len = (sa == NULL) ? 0 : sa->sa_len;
 
@@ -916,7 +916,7 @@ ng_ksocket_rcvdata(hook_p hook, struct mbuf *m, meta_p meta)
 
 	/* Send packet */
 	priv->flags |= KSF_SENDING;
-	error = (*so->so_proto->pr_usrreqs->pru_sosend)(so, sa, 0, m, 0, 0, td);
+	error = so_pru_sosend(so, sa, NULL, m, NULL, 0, td);
 	priv->flags &= ~KSF_SENDING;
 
 	/* Clean up and exit */
@@ -1059,8 +1059,8 @@ ng_ksocket_incoming(struct socket *so, void *arg, int waitflag)
 		struct mbuf *n;
 
 		/* Try to get next packet from socket */
-		if ((error = (*so->so_proto->pr_usrreqs->pru_soreceive)
-		    (so, (so->so_state & SS_ISCONNECTED) ? NULL : &sa,
+		if ((error = so_pru_soreceive(so,
+		    (so->so_state & SS_ISCONNECTED) ? NULL : &sa,
 		    &auio, &m, (struct mbuf **)0, &flags)) != 0)
 			break;
 

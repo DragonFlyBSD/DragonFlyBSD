@@ -32,7 +32,7 @@
  *
  *	@(#)sys_socket.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/sys_socket.c,v 1.28.2.2 2001/02/26 04:23:16 jlemon Exp $
- * $DragonFly: src/sys/kern/sys_socket.c,v 1.5 2003/07/29 20:03:05 dillon Exp $
+ * $DragonFly: src/sys/kern/sys_socket.c,v 1.6 2004/03/04 10:29:23 hsu Exp $
  */
 
 #include <sys/param.h>
@@ -41,6 +41,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/filio.h>			/* XXX */
 #include <sys/sockio.h>
 #include <sys/stat.h>
@@ -60,29 +61,22 @@ struct	fileops socketops = {
 
 /* ARGSUSED */
 int
-soo_read(
-	struct file *fp,
-	struct uio *uio,
-	struct ucred *cred,
-	int flags,
-	struct thread *td
-) {
+soo_read(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
+    struct thread *td)
+{
 	struct socket *so = (struct socket *)fp->f_data;
-	return so->so_proto->pr_usrreqs->pru_soreceive(so, 0, uio, 0, 0, 0);
+
+	return (so_pru_soreceive(so, NULL, uio, NULL, NULL, NULL));
 }
 
 /* ARGSUSED */
 int
-soo_write(
-	struct file *fp,
-	struct uio *uio,
-	struct ucred *cred,
-	int flags,
-	struct thread *td
-) {
+soo_write(struct file *fp, struct uio *uio, struct ucred *cred, int flags,
+    struct thread *td)
+{
 	struct socket *so = (struct socket *)fp->f_data;
-	return so->so_proto->pr_usrreqs->pru_sosend(so, 0, uio, 0, 0, 0,
-						    uio->uio_td);
+
+	return (so_pru_sosend(so, NULL, uio, NULL, NULL, 0, uio->uio_td));
 }
 
 int
@@ -142,14 +136,14 @@ soo_ioctl(struct file *fp, u_long cmd, caddr_t data, struct thread *td)
 		return (ifioctl(so, cmd, data, td));
 	if (IOCGROUP(cmd) == 'r')
 		return (rtioctl(cmd, data, td));
-	return ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd, data, 0, td));
+	return (so_pru_control(so, cmd, data, NULL, td));
 }
 
 int
 soo_poll(struct file *fp, int events, struct ucred *cred, struct thread *td)
 {
 	struct socket *so = (struct socket *)fp->f_data;
-	return so->so_proto->pr_usrreqs->pru_sopoll(so, events, cred, td);
+	return (so_pru_sopoll(so, events, cred, td));
 }
 
 int
@@ -171,7 +165,7 @@ soo_stat(struct file *fp, struct stat *ub, struct thread *td)
 	ub->st_size = so->so_rcv.sb_cc;
 	ub->st_uid = so->so_cred->cr_uid;
 	ub->st_gid = so->so_cred->cr_gid;
-	return ((*so->so_proto->pr_usrreqs->pru_sense)(so, ub));
+	return (so_pru_sense(so, ub));
 }
 
 /* ARGSUSED */

@@ -32,7 +32,7 @@
  *
  *	@(#)uipc_socket.c	8.3 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/uipc_socket.c,v 1.68.2.24 2003/11/11 17:18:18 silby Exp $
- * $DragonFly: src/sys/kern/uipc_socket.c,v 1.13 2004/02/10 15:45:43 hmp Exp $
+ * $DragonFly: src/sys/kern/uipc_socket.c,v 1.14 2004/03/04 10:29:23 hsu Exp $
  */
 
 #include "opt_inet.h"
@@ -52,6 +52,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/resourcevar.h>
 #include <sys/signalvar.h>
 #include <sys/sysctl.h>
@@ -156,7 +157,7 @@ socreate(int dom, struct socket **aso, int type,
 	so->so_type = type;
 	so->so_cred = crhold(p->p_ucred);
 	so->so_proto = prp;
-	error = (*prp->pr_usrreqs->pru_attach)(so, proto, td);
+	error = so_pru_attach(so, proto, td);
 	if (error) {
 		so->so_state |= SS_NOFDREF;
 		sofree(so);
@@ -172,7 +173,7 @@ sobind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int s = splnet();
 	int error;
 
-	error = (*so->so_proto->pr_usrreqs->pru_bind)(so, nam, td);
+	error = so_pru_bind(so, nam, td);
 	splx(s);
 	return (error);
 }
@@ -209,13 +210,12 @@ solisten(struct socket *so, int backlog, struct thread *td)
 	int s, error;
 
 	s = splnet();
-
  	if (so->so_state & (SS_ISCONNECTED | SS_ISCONNECTING)) {
  		splx(s);
  		return (EINVAL);
  	}
 
-	error = (*so->so_proto->pr_usrreqs->pru_listen)(so, td);
+	error = so_pru_listen(so, td);
 	if (error) {
 		splx(s);
 		return (error);
@@ -311,7 +311,9 @@ soclose(struct socket *so)
 	}
 drop:
 	if (so->so_pcb) {
-		int error2 = (*so->so_proto->pr_usrreqs->pru_detach)(so);
+		int error2;
+
+		error2 = so_pru_detach(so);
 		if (error == 0)
 			error = error2;
 	}
@@ -333,7 +335,7 @@ soabort(so)
 {
 	int error;
 
-	error = (*so->so_proto->pr_usrreqs->pru_abort)(so);
+	error = so_pru_abort(so);
 	if (error) {
 		sofree(so);
 		return error;
@@ -350,7 +352,7 @@ soaccept(struct socket *so, struct sockaddr **nam)
 	if ((so->so_state & SS_NOFDREF) == 0)
 		panic("soaccept: !NOFDREF");
 	so->so_state &= ~SS_NOFDREF;
-	error = (*so->so_proto->pr_usrreqs->pru_accept)(so, nam);
+	error = so_pru_accept(so, nam);
 	splx(s);
 	return (error);
 }
@@ -375,7 +377,7 @@ soconnect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	    (error = sodisconnect(so))))
 		error = EISCONN;
 	else
-		error = (*so->so_proto->pr_usrreqs->pru_connect)(so, nam, td);
+		error = so_pru_connect(so, nam, td);
 	splx(s);
 	return (error);
 }
@@ -386,7 +388,7 @@ soconnect2(struct socket *so1, struct socket *so2)
 	int s = splnet();
 	int error;
 
-	error = (*so1->so_proto->pr_usrreqs->pru_connect2)(so1, so2);
+	error = so_pru_connect2(so1, so2);
 	splx(s);
 	return (error);
 }
@@ -405,7 +407,7 @@ sodisconnect(struct socket *so)
 		error = EALREADY;
 		goto bad;
 	}
-	error = (*so->so_proto->pr_usrreqs->pru_disconnect)(so);
+	error = so_pru_disconnect(so);
 bad:
 	splx(s);
 	return (error);
@@ -439,6 +441,7 @@ sosend(struct socket *so, struct sockaddr *addr, struct uio *uio,
 	long space, len, resid;
 	int clen = 0, error, s, dontroute, mlen;
 	int atomic = sosendallatonce(so) || top;
+	int pru_flags;
 
 	if (uio)
 		resid = uio->uio_resid;
@@ -577,6 +580,23 @@ nopages:
 		    } while (space > 0 && atomic);
 		    if (dontroute)
 			    so->so_options |= SO_DONTROUTE;
+		    if (flags & MSG_OOB) {
+		    	    pru_flags = PRUS_OOB;
+		    } else if ((flags & MSG_EOF) &&
+		    	       (so->so_proto->pr_flags & PR_IMPLOPCL) &&
+		    	       (resid <= 0)) {
+			    /*
+			     * If the user set MSG_EOF, the protocol
+			     * understands this flag and nothing left to
+			     * send then use PRU_SEND_EOF instead of PRU_SEND.
+			     */
+		    	    pru_flags = PRUS_EOF;
+		    } else if (resid > 0 && space > 0) {
+			    /* If there is more to send, set PRUS_MORETOCOME */
+		    	    pru_flags = PRUS_MORETOCOME;
+		    } else {
+		    	    pru_flags = 0;
+		    }
 		    s = splnet();				/* XXX */
 		    /*
 		     * XXX all the SS_CANTSENDMORE checks previously
@@ -587,20 +607,7 @@ nopages:
 		     * here, but there are probably other places that this
 		     * also happens.  We must rethink this.
 		     */
-		    error = (*so->so_proto->pr_usrreqs->pru_send)(so,
-			(flags & MSG_OOB) ? PRUS_OOB :
-			/*
-			 * If the user set MSG_EOF, the protocol
-			 * understands this flag and nothing left to
-			 * send then use PRU_SEND_EOF instead of PRU_SEND.
-			 */
-			((flags & MSG_EOF) &&
-			 (so->so_proto->pr_flags & PR_IMPLOPCL) &&
-			 (resid <= 0)) ?
-				PRUS_EOF :
-			/* If there is more to send set PRUS_MORETOCOME */
-			(resid > 0 && space > 0) ? PRUS_MORETOCOME : 0,
-			top, addr, control, td);
+		    error = so_pru_send(so, pru_flags, top, addr, control, td);
 		    splx(s);
 		    if (dontroute)
 			    so->so_options &= ~SO_DONTROUTE;
@@ -609,7 +616,7 @@ nopages:
 		    top = 0;
 		    mp = &top;
 		    if (error)
-			goto release;
+			    goto release;
 		} while (resid && space > 0);
 	} while (resid);
 
@@ -668,7 +675,7 @@ soreceive(so, psa, uio, mp0, controlp, flagsp)
 		m = m_get(M_WAIT, MT_DATA);
 		if (m == NULL)
 			return (ENOBUFS);
-		error = (*pr->pr_usrreqs->pru_rcvoob)(so, m, flags & MSG_PEEK);
+		error = so_pru_rcvoob(so, m, flags & MSG_PEEK);
 		if (error)
 			goto bad;
 		do {
@@ -684,7 +691,7 @@ bad:
 	if (mp)
 		*mp = (struct mbuf *)0;
 	if (so->so_state & SS_ISCONFIRMING && uio->uio_resid)
-		(*pr->pr_usrreqs->pru_rcvd)(so, 0);
+		so_pru_rcvd(so, 0);
 
 restart:
 	error = sblock(&so->so_rcv, SBLOCKWAIT(flags));
@@ -730,7 +737,7 @@ restart:
 				goto dontblock;
 			}
 		if ((so->so_state & (SS_ISCONNECTED|SS_ISCONNECTING)) == 0 &&
-		    (so->so_proto->pr_flags & PR_CONNREQUIRED)) {
+		    (pr->pr_flags & PR_CONNREQUIRED)) {
 			error = ENOTCONN;
 			goto release;
 		}
@@ -895,7 +902,7 @@ dontblock:
 			 * the idle takes over (5 seconds).
 			 */
 			if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
-				(*pr->pr_usrreqs->pru_rcvd)(so, flags);
+				so_pru_rcvd(so, flags);
 			error = sbwait(&so->so_rcv);
 			if (error) {
 				sbunlock(&so->so_rcv);
@@ -917,7 +924,7 @@ dontblock:
 		if (m == 0)
 			so->so_rcv.sb_mb = nextrecord;
 		if (pr->pr_flags & PR_WANTRCVD && so->so_pcb)
-			(*pr->pr_usrreqs->pru_rcvd)(so, flags);
+			so_pru_rcvd(so, flags);
 	}
 	if (orig_resid == uio->uio_resid && orig_resid &&
 	    (flags & MSG_EOR) == 0 && (so->so_state & SS_CANTRCVMORE) == 0) {
@@ -939,15 +946,13 @@ soshutdown(so, how)
 	struct socket *so;
 	int how;
 {
-	struct protosw *pr = so->so_proto;
-
 	if (!(how == SHUT_RD || how == SHUT_WR || how == SHUT_RDWR))
 		return (EINVAL);
 
 	if (how != SHUT_WR)
 		sorflush(so);
 	if (how != SHUT_RD)
-		return ((*pr->pr_usrreqs->pru_shutdown)(so));
+		return (so_pru_shutdown(so));
 	return (0);
 }
 
@@ -1102,9 +1107,9 @@ sosetopt(so, sopt)
 
 	error = 0;
 	if (sopt->sopt_level != SOL_SOCKET) {
-		if (so->so_proto && so->so_proto->pr_ctloutput)
-			return ((*so->so_proto->pr_ctloutput)
-				  (so, sopt));
+		if (so->so_proto && so->so_proto->pr_ctloutput) {
+			return (so_pr_ctloutput(so, sopt));
+		}
 		error = ENOPROTOOPT;
 	} else {
 		switch (sopt->sopt_name) {
@@ -1229,8 +1234,7 @@ sosetopt(so, sopt)
 			break;
 		}
 		if (error == 0 && so->so_proto && so->so_proto->pr_ctloutput) {
-			(void) ((*so->so_proto->pr_ctloutput)
-				  (so, sopt));
+			(void) so_pr_ctloutput(so, sopt);
 		}
 	}
 bad:
@@ -1279,8 +1283,7 @@ sogetopt(so, sopt)
 	error = 0;
 	if (sopt->sopt_level != SOL_SOCKET) {
 		if (so->so_proto && so->so_proto->pr_ctloutput) {
-			return ((*so->so_proto->pr_ctloutput)
-				  (so, sopt));
+			return (so_pr_ctloutput(so, sopt));
 		} else
 			return (ENOPROTOOPT);
 	} else {

@@ -32,7 +32,7 @@
  *
  *	@(#)if.c	8.3 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/net/if.c,v 1.85.2.23 2003/04/15 18:11:19 fjoe Exp $
- * $DragonFly: src/sys/net/if.c,v 1.12 2004/01/06 03:17:25 dillon Exp $
+ * $DragonFly: src/sys/net/if.c,v 1.13 2004/03/04 10:29:23 hsu Exp $
  */
 
 #include "opt_compat.h"
@@ -44,8 +44,10 @@
 #include <sys/mbuf.h>
 #include <sys/systm.h>
 #include <sys/proc.h>
+#include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/protosw.h>
 #include <sys/kernel.h>
 #include <sys/sockio.h>
@@ -1202,9 +1204,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		if (so->so_proto == 0)
 			return (EOPNOTSUPP);
 #ifndef COMPAT_43
-		error = ((*so->so_proto->pr_usrreqs->pru_control)(so, cmd,
-								 data,
-								 ifp, td));
+		error = so_pru_control(so, cmd, data, ifp, td);
 #else
 	    {
 		int ocmd = cmd;
@@ -1242,8 +1242,7 @@ ifioctl(struct socket *so, u_long cmd, caddr_t data, struct thread *td)
 		case OSIOCGIFNETMASK:
 			cmd = SIOCGIFNETMASK;
 		}
-		error =  ((*so->so_proto->pr_usrreqs->pru_control)
-				(so, cmd, data, ifp, td));
+		error =  so_pru_control(so, cmd, data, ifp, td);
 		switch (ocmd) {
 
 		case OSIOCGIFADDR:

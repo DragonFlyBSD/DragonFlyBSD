@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/svr4/svr4_stream.c,v 1.12.2.2 2000/11/26 04:42:27 dillon Exp $
- * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.11 2004/01/08 18:48:07 asmodai Exp $
+ * $DragonFly: src/sys/emulation/svr4/Attic/svr4_stream.c,v 1.12 2004/03/04 10:29:23 hsu Exp $
  */
 
 /*
@@ -51,6 +51,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <sys/mbuf.h>
@@ -227,8 +228,7 @@ svr4_sendit(td, s, mp, flags, retval)
 #endif
 	len = auio.uio_resid;
 	so = (struct socket *)fp->f_data;
-	error = so->so_proto->pr_usrreqs->pru_sosend
-		    (so, to, &auio, 0, control, flags, td);
+	error = so_pru_sosend(so, to, &auio, NULL, control, flags, td);
 	if (error) {
 		if (auio.uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -308,9 +308,8 @@ svr4_recvit(td, s, mp, namelenp, retval)
 #endif
 	len = auio.uio_resid;
 	so = (struct socket *)fp->f_data;
-	error = so->so_proto->pr_usrreqs->pru_soreceive(so, &fromsa, &auio,
-	    (struct mbuf **)0, mp->msg_control ? &control : (struct mbuf **)0,
-	    &mp->msg_flags);
+	error = so_pru_soreceive(so, &fromsa, &auio, NULL,
+	    mp->msg_control ? &control : NULL, &mp->msg_flags);
 	if (error) {
 		if (auio.uio_resid != len && (error == ERESTART ||
 		    error == EINTR || error == EWOULDBLOCK))
@@ -1901,8 +1900,8 @@ svr4_sys_putmsg(struct svr4_sys_putmsg_args *uap)
 			aiov.iov_base = dat.buf;
 			aiov.iov_len = dat.len;
 #if 0
-			error = so->so_proto->pr_usrreqs->pru_sosend
-				    (so, 0, uio, 0, 0, 0, uio->uio_td);
+			error = so_pru_sosend(so, NULL, uio, NULL, NULL, 0,
+			    uio->uio_td);
 #endif
 			error = svr4_sendit(td, SCARG(uap, fd), &msg,
 				       SCARG(uap, flags), retval);

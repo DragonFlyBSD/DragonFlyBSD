@@ -35,7 +35,7 @@
  *
  *	@(#)nfs_socket.c	8.5 (Berkeley) 3/30/95
  * $FreeBSD: src/sys/nfs/nfs_socket.c,v 1.60.2.6 2003/03/26 01:44:46 alfred Exp $
- * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.11 2004/02/10 07:28:41 dillon Exp $
+ * $DragonFly: src/sys/vfs/nfs/nfs_socket.c,v 1.12 2004/03/04 10:29:24 hsu Exp $
  */
 
 /*
@@ -53,6 +53,7 @@
 #include <sys/protosw.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
+#include <sys/socketops.h>
 #include <sys/syslog.h>
 #include <sys/tprintf.h>
 #include <sys/sysctl.h>
@@ -482,8 +483,8 @@ nfs_send(so, nam, top, rep)
 	else
 		flags = 0;
 
-	error = so->so_proto->pr_usrreqs->pru_sosend
-		    (so, sendnam, 0, top, 0, flags, curthread /*XXX*/);
+	error = so_pru_sosend(so, sendnam, NULL, top, NULL, flags,
+	    curthread /*XXX*/);
 	/*
 	 * ENOBUFS for dgram sockets is transient and non fatal.
 	 * No need to log, and no need to break a soft mount.
@@ -608,10 +609,8 @@ tryagain:
 			auio.uio_td = td;
 			do {
 			   rcvflg = MSG_WAITALL;
-			   error = so->so_proto->pr_usrreqs->pru_soreceive
-				   (so, (struct sockaddr **)0, &auio,
-				    (struct mbuf **)0, (struct mbuf **)0,
-				    &rcvflg);
+			   error = so_pru_soreceive(so, NULL, &auio, NULL,
+			       NULL, &rcvflg);
 			   if (error == EWOULDBLOCK && rep) {
 				if (rep->r_flags & R_SOFTTERM)
 					return (EINTR);
@@ -650,9 +649,8 @@ tryagain:
 			auio.uio_resid = len;
 			do {
 			    rcvflg = MSG_WAITALL;
-			    error =  so->so_proto->pr_usrreqs->pru_soreceive
-				    (so, (struct sockaddr **)0,
-				     &auio, mp, (struct mbuf **)0, &rcvflg);
+			    error =  so_pru_soreceive(so, NULL, &auio, mp,
+			        NULL, &rcvflg);
 			} while (error == EWOULDBLOCK || error == EINTR ||
 				 error == ERESTART);
 			if (!error && auio.uio_resid > 0) {
@@ -676,9 +674,8 @@ tryagain:
 			auio.uio_td = td;
 			do {
 			    rcvflg = 0;
-			    error =  so->so_proto->pr_usrreqs->pru_soreceive
-				    (so, (struct sockaddr **)0,
-				&auio, mp, &control, &rcvflg);
+			    error =  so_pru_soreceive(so, NULL, &auio, mp,
+			        &control, &rcvflg);
 			    if (control)
 				m_freem(control);
 			    if (error == EWOULDBLOCK && rep) {
@@ -722,9 +719,8 @@ errout:
 		auio.uio_td = td;
 		do {
 			rcvflg = 0;
-			error =  so->so_proto->pr_usrreqs->pru_soreceive
-				(so, getnam, &auio, mp,
-				(struct mbuf **)0, &rcvflg);
+			error =  so_pru_soreceive(so, getnam, &auio, mp, NULL,
+			    &rcvflg);
 			if (error == EWOULDBLOCK &&
 			    (rep->r_flags & R_SOFTTERM))
 				return (EINTR);
@@ -1452,13 +1448,11 @@ nfs_timer(arg)
 		    nmp->nm_sent < nmp->nm_cwnd) &&
 		   (m = m_copym(rep->r_mreq, 0, M_COPYALL, M_DONTWAIT))){
 			if ((nmp->nm_flag & NFSMNT_NOCONN) == 0)
-			    error = (*so->so_proto->pr_usrreqs->pru_send)
-				    (so, 0, m, (struct sockaddr *)0,
+			    error = so_pru_send(so, 0, m, (struct sockaddr *)0,
 				     (struct mbuf *)0, td);
 			else
-			    error = (*so->so_proto->pr_usrreqs->pru_send)
-				    (so, 0, m, nmp->nm_nam, (struct mbuf *)0,
-				     td);
+			    error = so_pru_send(so, 0, m, nmp->nm_nam,
+			        (struct mbuf *)0, td);
 			if (error) {
 				if (NFSIGNORE_SOERROR(nmp->nm_soflags, error))
 					so->so_error = 0;
@@ -2066,8 +2060,7 @@ nfsrv_rcv(so, arg, waitflag)
 		 */
 		auio.uio_resid = 1000000000;
 		flags = MSG_DONTWAIT;
-		error = so->so_proto->pr_usrreqs->pru_soreceive
-			(so, &nam, &auio, &mp, (struct mbuf **)0, &flags);
+		error = so_pru_soreceive(so, &nam, &auio, &mp, NULL, &flags);
 		if (error || mp == (struct mbuf *)0) {
 			if (error == EWOULDBLOCK)
 				slp->ns_flag |= SLP_NEEDQ;
@@ -2101,9 +2094,8 @@ nfsrv_rcv(so, arg, waitflag)
 		do {
 			auio.uio_resid = 1000000000;
 			flags = MSG_DONTWAIT;
-			error = so->so_proto->pr_usrreqs->pru_soreceive
-				(so, &nam, &auio, &mp,
-						(struct mbuf **)0, &flags);
+			error = so_pru_soreceive(so, &nam, &auio, &mp, NULL,
+			    &flags);
 			if (mp) {
 				struct nfsrv_rec *rec;
 				int mf = (waitflag & M_DONTWAIT) ?
