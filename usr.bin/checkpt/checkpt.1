@@ -1,0 +1,59 @@
+.\" 
+.\" Copyright (c) 2003 Matthew Dillon, All Rights Reserved.
+.\" 
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\" 
+.\" $DragonFly: src/usr.bin/checkpt/checkpt.1,v 1.1 2003/10/20 04:46:14 dillon Exp $
+.\"
+.Dd October 19, 2003
+.Dt CHECKPT 1
+.Os
+.Sh NAME
+.Nm checkpt
+.Nd resume checkpointed program
+.Sh SYNOPSIS
+.Nm
+.Op Fl r Ar file.ckpt
+.Ar
+.Sh DESCRIPTION
+The
+.Nm
+utility will resume the checkpointed program from the specified checkpoint
+file.  Programs can be checkpointed using ^E.
+.Pp
+The checkpt.ko module must be loaded for checkpointing to work.  By default,
+only members of the wheel group can checkpoint a program.  The group can be
+changed with the sysctl kern.ckptgroup.  The checkpoint file template can be
+changed with the sysctl kern.ckptfile. 
+.Pp
+The checkpointing utility is currently very primitive.  Only programs 
+operating on normal files can be properly restored.  Programs which operate
+on devices, sockets, or pipes (including piped commands) cannot be restored.
+File descriptors 0, 1, and 2, are not saved and the restored program will
+inherit the descriptors from
+.Nm
+.Sh SEE ALSO
+.Xr stty 1
+.Sh HISTORY
+The
+.Nm
+command first appeared in DragonFly .
