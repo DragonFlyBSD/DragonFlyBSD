@@ -31,7 +31,7 @@
 .\"
 .\"     From: @(#)send.2	8.2 (Berkeley) 2/21/94
 .\" $FreeBSD: src/lib/libc/sys/send.2,v 1.10.2.6 2001/12/14 18:34:01 ru Exp $
-.\" $DragonFly: src/lib/libc/sys/send.2,v 1.5 2004/08/27 21:55:16 asmodai Exp $
+.\" $DragonFly: src/lib/libc/sys/send.2,v 1.6 2005/04/02 16:22:41 liamfoy Exp $
 .\"
 .Dd February 15, 1995
 .Dt SEND 2
@@ -145,8 +145,9 @@ for a description of the
 .Fa msghdr
 structure.
 .Sh RETURN VALUES
-The call returns the number of characters sent, or -1
-if an error occurred.
+Upon successful completion the number of characters which were sent is
+returned.  Otherwise -1 is returned and the global variable errno is
+set to indicate the error.
 .Sh ERRORS
 .Fn Send ,
 .Fn sendto ,
