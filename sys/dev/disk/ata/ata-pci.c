@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-pci.c,v 1.32.2.15 2003/06/06 13:27:05 fjoe Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.14 2004/06/17 16:51:56 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-pci.c,v 1.15 2004/06/23 06:53:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -263,13 +263,13 @@ ata_pci_match(device_t dev)
     	return "AMD 8111 UltraATA/133 controller";
 
     case 0x01bc10de:
-	return "nVIDIA nForce ATA100 controller";
+	return "nVIDIA nForce1 ATA100 controller";
 
     case 0x006510de:
-	return "nVIDIA nForce ATA133 controller";
+	return "nVIDIA nForce2 ATA133 controller";
 
     case 0x00d510de:
-	return "nVIDIA nForce2 ATA133 controller";
+	return "nVIDIA nForce3 ATA133 controller";
 
     case 0x02111166:
 	return "ServerWorks ROSB4 ATA33 controller";
@@ -411,6 +411,7 @@ ata_pci_attach(device_t dev)
     u_int8_t class, subclass;
     u_int32_t type, cmd;
     int rid;
+    int flags;
 
     /* set up vendor-specific stuff */
     type = pci_get_devid(dev);
@@ -438,6 +439,8 @@ ata_pci_attach(device_t dev)
 	device_printf(dev, "Busmastering DMA not supported\n");
 
     /* do extra chipset specific setups */
+    flags = 0;
+
     switch (type) {
     case 0x522910b9: /* Aladdin need to activate the ATAPI FIFO */
 	pci_write_config(dev, 0x53, 
@@ -503,22 +506,6 @@ ata_pci_attach(device_t dev)
 	if (ata_find_dev(dev, 0x06861106, 0x40) ||
 	    ata_find_dev(dev, 0x82311106, 0x10))
 	    ata_via_southbridge_fixup(dev);
-	/* FALLTHROUGH */
-
-    case 0x74091022: /* AMD 756 default setup */
-    case 0x74111022: /* AMD 766 default setup */
-    case 0x74411022: /* AMD 768 default setup */
-    case 0x746d1022: /* AMD 8111 default setup */
-    case 0x01bc10de: /* NVIDIA nForce default setup */
-    case 0x006510de: /* NVIDIA nForce2 default setup */
-	/*
-	 * set prefetch, postwrite.  Note: do not set this mode on VIA
-	 * chipsets, it causes problems on newer chips and ATAPI devices.
-	 */
-	if ((type & 0xFFFF) != 0x1106) {
-		pci_write_config(dev, 0x41, 
-				pci_read_config(dev, 0x41, 1) | 0xf0, 1);
-	}
 
 	/* set fifo configuration half'n'half */
 	pci_write_config(dev, 0x43, 
@@ -534,6 +521,33 @@ ata_pci_attach(device_t dev)
 	/* set sector size */
 	pci_write_config(dev, 0x60, DEV_BSIZE, 2);
 	pci_write_config(dev, 0x68, DEV_BSIZE, 2);
+	break;
+    case 0x74111022: /* AMD 766 default setup */
+	flags = 1;	/* bugged */
+	/* fall through */
+    case 0x74091022: /* AMD 756 default setup */
+    case 0x74411022: /* AMD 768 default setup */
+    case 0x746d1022: /* AMD 8111 default setup */
+	if (flags) {
+		pci_write_config(dev, 0x41,  
+				pci_read_config(dev, 0x41, 1) & 0x0f, 1);
+	} else {
+		pci_write_config(dev, 0x41, 
+				pci_read_config(dev, 0x41, 1) | 0xf0, 1);
+	}
+	break;
+    case 0x01bc10de: /* NVIDIA nForce1 default setup */
+    case 0x006510de: /* NVIDIA nForce2 default setup */
+	flags = 1;
+	/* fall through */
+    case 0x00d510de: /* NVIDIA nForce3 default setup */
+	if (flags) {
+		pci_write_config(dev, 0x51, 
+				pci_read_config(dev, 0x51, 1) & 0x0f, 1);  
+	} else {
+		pci_write_config(dev, 0x51,
+				pci_read_config(dev, 0x51, 1) | 0xf0, 1);  
+	}
 	break;
 
     case 0x02111166: /* ServerWorks ROSB4 enable UDMA33 */

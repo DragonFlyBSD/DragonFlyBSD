@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/ata/ata-dma.c,v 1.35.2.31 2003/05/07 16:46:11 jhb Exp $
- * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.21 2004/03/29 16:22:23 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/ata/ata-dma.c,v 1.22 2004/06/23 06:53:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -458,8 +458,9 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 	/* we could set PIO mode timings, but we assume the BIOS did that */
 	break;
 
-    case 0x01bc10de:	/* NVIDIA nForce */
+    case 0x01bc10de:	/* NVIDIA nForce1 */
     case 0x006510de:	/* NVIDIA nForce2 */
+    case 0x00d510de:	/* NVIDIA nForce3 */
     case 0x74691022:   /* AMD 8111 */
     case 0x74411022:	/* AMD 768 */
     case 0x74111022:	/* AMD 766 */
@@ -515,7 +516,7 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 		reg_val = via_modes[4];
 		chip = "AMD";
 	    }
-	    else if (chiptype == 0x01bc10de) {		/* nForce */
+	    else if (chiptype == 0x01bc10de) {		/* nForce1 */
 		udmamode = imin(udmamode, 5);
 		reg_val = via_modes[4];
 #if !defined(NO_ATANG)
@@ -523,7 +524,8 @@ ata_dmainit(struct ata_device *atadev, int apiomode, int wdmamode, int udmamode)
 #endif
 		chip = "nVIDIA";
 	    }
-	    else if (chiptype == 0x006510de) {		/* nForce2 */
+	    else if (chiptype == 0x006510de ||		/* nForce2 */
+		     chiptype == 0x00d510de) {		/* nForce3 */
 		udmamode = imin(udmamode, 6);
 		reg_val = via_modes[4];
 #if !defined(NO_ATANG)
