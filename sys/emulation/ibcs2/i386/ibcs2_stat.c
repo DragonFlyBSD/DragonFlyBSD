@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/ibcs2/ibcs2_stat.c,v 1.10 1999/12/15 23:01:45 eivind Exp $
- * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.10 2004/11/12 00:09:16 dillon Exp $
+ * $DragonFly: src/sys/emulation/ibcs2/i386/Attic/ibcs2_stat.c,v 1.11 2005/01/31 21:55:18 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -126,6 +126,7 @@ ibcs2_statfs(struct ibcs2_statfs_args *uap)
 		}
 	}
 	nlookup_done(&nd);
+	return(error);
 }
 
 int
