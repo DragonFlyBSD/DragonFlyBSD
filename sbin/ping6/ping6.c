@@ -31,7 +31,7 @@
  * @(#) Copyright (c) 1989, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)ping.c	8.1 (Berkeley) 6/5/93
  * $FreeBSD: src/sbin/ping6/ping6.c,v 1.4.2.10 2002/12/09 03:04:44 suz Exp $
- * $DragonFly: src/sbin/ping6/ping6.c,v 1.7 2004/12/18 21:43:39 swildner Exp $
+ * $DragonFly: src/sbin/ping6/ping6.c,v 1.8 2005/03/05 22:27:08 cpressey Exp $
  */
 
 /*	BSDI	ping.c,v 2.3 1996/01/21 17:56:50 jch Exp	*/
@@ -114,9 +114,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__)
 #include <math.h>
-#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -128,11 +126,7 @@
 #include <netinet6/ipsec.h>
 #endif
 
-#if defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #include <md5.h>
-#else
-#include "md5.h"
-#endif
 
 #define MAXPACKETLEN	131072
 #define	IP6LEN		40
@@ -224,9 +218,7 @@ int timing;			/* flag to do timing */
 double tmin = 999999999.0;	/* minimum round trip time */
 double tmax = 0.0;		/* maximum round trip time */
 double tsum = 0.0;		/* sum of all times, for doing average */
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__)
 double tsumsq = 0.0;		/* sum of all times squared, for std. dev. */
-#endif
 
 /* for node addresses */
 u_short naflags;
@@ -246,8 +238,19 @@ volatile sig_atomic_t seeninfo;
 int	 main(int, char *[]);
 void	 fill(char *, char *);
 int	 get_hoplim(struct msghdr *);
+
+#ifdef IPV6_RECVPATHMTU
 int	 get_pathmtu(struct msghdr *);
+#else
+#define get_pathmtu(mhdr) (0)
+#endif
+
+#ifdef IPV6_USE_MTU
 void	 set_pathmtu(int);
+#else
+#define set_pathmtu(mtu)
+#endif
+
 struct in6_pktinfo *get_rcvpktinfo(struct msghdr *);
 void	 onsignal(int);
 void	 retransmit(void);
@@ -284,7 +287,7 @@ main(int argc, char **argv)
 	struct addrinfo hints;
 	fd_set *fdmaskp;
 	int fdmasks;
-	register int cc, i;
+	int cc, i;
 	int ch, fromlen, hold, packlen, preload, optval, ret_ga;
 	u_char *datap, *packet;
 	char *e, *target, *ifname = NULL;
@@ -619,7 +622,7 @@ main(int argc, char **argv)
 		errx(1, "-f and -i incompatible options");
 
 	if ((options & F_NOUSERDATA) == 0) {
-		if (datalen >= sizeof(struct timeval)) {
+		if (datalen >= (int)sizeof(struct timeval)) {
 			/* we can time transfer */
 			timing = 1;
 		} else
@@ -647,7 +650,7 @@ main(int argc, char **argv)
 	gettimeofday(&timeout, NULL);
 	srand((unsigned int)(timeout.tv_sec ^ timeout.tv_usec ^ (long)ident));
 	memset(nonce, 0, sizeof(nonce));
-	for (i = 0; i < sizeof(nonce); i += sizeof(int))
+	for (i = 0; i < (int)sizeof(nonce); i += sizeof(int))
 		*((int *)&nonce[i]) = rand();
 #else
 	memset(nonce, 0, sizeof(nonce));
@@ -1296,7 +1299,7 @@ char *
 dnsdecode(const u_char **sp, const u_char *ep, const u_char *base, u_char *buf,
           size_t bufsiz)
 {
-	int i;
+	int i = 0;
 	const u_char *cp;
 	char cresult[MAXDNAME + 1];
 	const u_char *comp;
@@ -1335,7 +1338,7 @@ dnsdecode(const u_char **sp, const u_char *ep, const u_char *base, u_char *buf,
 			while (i-- > 0 && cp < ep) {
 				l = snprintf(cresult, sizeof(cresult),
 				    isprint(*cp) ? "%c" : "\\%03o", *cp & 0xff);
-				if (l >= sizeof(cresult))
+				if (l >= (int)sizeof(cresult))
 					return NULL;
 				if (strlcat(buf, cresult, bufsiz) >= bufsiz)
 					return NULL;	/*result overrun*/
@@ -1389,7 +1392,7 @@ pr_pack(u_char *buf, int cc, struct msghdr *mhdr)
 	}
 	from = (struct sockaddr *)mhdr->msg_name;
 	fromlen = mhdr->msg_namelen;
-	if (cc < sizeof(struct icmp6_hdr)) {
+	if (cc < (int)sizeof(struct icmp6_hdr)) {
 		if (options & F_VERBOSE)
 			warnx("packet too short (%d bytes) from %s\n", cc,
 			    pr_addr(from, fromlen));
@@ -1417,9 +1420,7 @@ pr_pack(u_char *buf, int cc, struct msghdr *mhdr)
 			triptime = ((double)tv.tv_sec) * 1000.0 +
 			    ((double)tv.tv_usec) / 1000.0;
 			tsum += triptime;
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__)
 			tsumsq += triptime * triptime;
-#endif
 			if (triptime < tmin)
 				tmin = triptime;
 			if (triptime > tmax)
@@ -1717,7 +1718,7 @@ pr_ip6opt(void *extbuf)
 #else  /* !USE_RFC2292BIS */
 /* ARGSUSED */
 void
-pr_ip6opt(void *extbuf)
+pr_ip6opt(void *extbuf __unused)
 {
 	putchar('\n');
 	return;
@@ -1761,7 +1762,7 @@ pr_rthdr(void *extbuf)
 #else  /* !USE_RFC2292BIS */
 /* ARGSUSED */
 void
-pr_rthdr(void *extbuf)
+pr_rthdr(void *extbuf __unused)
 {
 	putchar('\n');
 	return;
@@ -1769,7 +1770,7 @@ pr_rthdr(void *extbuf)
 #endif /* USE_RFC2292BIS */
 
 int
-pr_bitrange(u_int32_t v, int s, int ii)
+pr_bitrange(u_int32_t v, int ss, int ii)
 {
 	int off;
 	int i;
@@ -1807,7 +1808,7 @@ pr_bitrange(u_int32_t v, int s, int ii)
 				break;
 		}
 		if (!ii)
-			printf(" %u", s + off);
+			printf(" %u", ss + off);
 		ii += i;
 		v >>= i; off += i;
 	}
@@ -1984,10 +1985,10 @@ get_rcvpktinfo(struct msghdr *mhdr)
 	return(NULL);
 }
 
+#ifdef IPV6_RECVPATHMTU
 int
 get_pathmtu(struct msghdr *mhdr)
 {
-#ifdef IPV6_RECVPATHMTU
 	struct cmsghdr *cm;
 	struct ip6_mtuinfo *mtuctl = NULL;
 
@@ -2035,14 +2036,14 @@ get_pathmtu(struct msghdr *mhdr)
 			return((int)mtuctl->ip6m_mtu);
 		}
 	}
-#endif
 	return(0);
 }
+#endif
 
+#ifdef IPV6_USE_MTU
 void
 set_pathmtu(int mtu)
 {
-#ifdef IPV6_USE_MTU
 	static int firsttime = 1;
 	struct cmsghdr *cm;
 
@@ -2089,8 +2090,8 @@ set_pathmtu(int mtu)
 		errx(1, "set_pathmtu: internal error: no space for path MTU");
 
 	*(int *)CMSG_DATA(cm) = mtu;
-#endif
 }
+#endif
 
 /*
  * tvsub --
@@ -2098,7 +2099,7 @@ set_pathmtu(int mtu)
  * be >= in.
  */
 void
-tvsub(register struct timeval *out, register struct timeval *in)
+tvsub(struct timeval *out, struct timeval *in)
 {
 	if ((out->tv_usec -= in->tv_usec) < 0) {
 		--out->tv_sec;
@@ -2113,7 +2114,7 @@ tvsub(register struct timeval *out, register struct timeval *in)
  */
 /* ARGSUSED */
 void
-onint(int notused)
+onint(int sig __unused)
 {
 	signal(SIGINT, SIG_IGN);
 	signal(SIGALRM, SIG_IGN);
@@ -2149,30 +2150,24 @@ summary(void)
 		/* Only display average to microseconds */
 		double num = nreceived + nrepeats;
 		double avg = tsum / num;
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__)
 		double dev = sqrt(tsumsq / num - avg * avg);
 		printf(
 		    "round-trip min/avg/max/std-dev = %.3f/%.3f/%.3f/%.3f ms\n",
 		    tmin, avg, tmax, dev);
-#else
-		printf(
-		    "round-trip min/avg/max = %.3f/%.3f/%.3f ms\n",
-		    tmin, avg, tmax);
-#endif
 		fflush(stdout);
 	}
 	fflush(stdout);
 }
 
 /*subject type*/
-static char *niqcode[] = {
+static const char *niqcode[] = {
 	"IPv6 address",
 	"DNS label",	/*or empty*/
 	"IPv4 address",
 };
 
 /*result code*/
-static char *nircode[] = {
+static const char *nircode[] = {
 	"Success", "Refused", "Unknown",
 };
 
@@ -2467,7 +2462,7 @@ pr_retip(struct ip6_hdr *ip6, u_char *end)
 	u_char *cp = (u_char *)ip6, nh;
 	int hlen;
 
-	if (end - (u_char *)ip6 < sizeof(*ip6)) {
+	if (end - (u_char *)ip6 < (int)sizeof(*ip6)) {
 		printf("IP6");
 		goto trunc;
 	}
@@ -2544,7 +2539,7 @@ pr_retip(struct ip6_hdr *ip6, u_char *end)
 void
 fill(char *bp, char *patp)
 {
-	register int ii, jj, kk;
+	int ii, jj, kk;
 	int pat[16];
 	char *cp;
 
@@ -2560,7 +2555,7 @@ fill(char *bp, char *patp)
 /* xxx */
 	if (ii > 0)
 		for (kk = 0;
-		    kk <= MAXDATALEN - (8 + sizeof(struct timeval) + ii);
+		    kk <= MAXDATALEN - (8 + (int)sizeof(struct timeval) + ii);
 		    kk += ii)
 			for (jj = 0; jj < ii; ++jj)
 				bp[jj + kk] = pat[jj];
@@ -2575,7 +2570,7 @@ fill(char *bp, char *patp)
 #ifdef IPSEC
 #ifdef IPSEC_POLICY_IPSEC
 int
-setpolicy(int so, char *policy)
+setpolicy(int so __unused, char *policy)
 {
 	char *buf;
 
