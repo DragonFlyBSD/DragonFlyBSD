@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/dir.c,v 1.47 2005/02/04 07:50:59 harti Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.32 2005/02/23 10:02:27 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.33 2005/03/16 20:03:00 okumoto Exp $
  */
 
 /*-
@@ -918,9 +918,7 @@ Dir_MTime(GNode *gn)
 /*-
  *-----------------------------------------------------------------------
  * Dir_AddDir --
- *	Add the given name to the end of the given path. The order of
- *	the arguments is backwards so ParseDoDependency can do a
- *	Lst_ForEach of its list of paths...
+ *	Add the given name to the end of the given path.
  *
  * Results:
  *	none

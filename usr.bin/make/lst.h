@@ -38,7 +38,7 @@
  *
  *	from: @(#)lst.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/lst.h,v 1.28 2005/02/10 14:25:12 harti Exp $
- * $DragonFly: src/usr.bin/make/lst.h,v 1.24 2005/03/12 10:39:02 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/lst.h,v 1.25 2005/03/16 20:03:00 okumoto Exp $
  */
 
 #ifndef lst_h_38f3ead1
@@ -57,21 +57,9 @@
 struct LstNode {
 	struct LstNode	*prevPtr;   /* previous element in list */
 	struct LstNode	*nextPtr;   /* next in list */
-	int	useCount:8; /* Count of functions using the node. Node may not
-			     * be deleted until count goes to 0 */
- 	int	flags:8;    /* Node status flags */
-	void	*datum;	    /* datum associated with this element */
+	void		*datum;	    /* datum associated with this element */
 };
 typedef	struct	LstNode	LstNode;
-
-/*
- * Flags required for synchronization
- */
-#define	LN_DELETED  	0x0001      /* List node should be removed when done */
-
-typedef enum {
-	LstHead, LstMiddle, LstTail, LstUnknown
-} LstWhere;
 
 /*
  * The list itself
@@ -83,7 +71,6 @@ struct Lst {
 typedef	struct	Lst Lst;
 
 typedef	int CompareProc(const void *, const void *);
-typedef	int DoProc(void *, void *);
 typedef	void *DuplicateProc(void *);
 typedef	void FreeProc(void *);
 
@@ -160,20 +147,10 @@ LstNode		*Lst_FindFrom(Lst *, LstNode *, const void *, CompareProc *);
  * the datum
  */
 LstNode		*Lst_Member(Lst *, void *);
-/* Apply a function to all elements of a lst */
-void		Lst_ForEach(Lst *, DoProc *, void *);
-#define	Lst_ForEach(LST, FN, D)	(Lst_ForEachFrom((LST), Lst_First(LST), \
-				    (FN), (D)))
 
+/* Loop through a list. Note, that you may not delete the list element. */
 #define	LST_FOREACH(PTR, LST)						\
 	for ((PTR) = (LST)->firstPtr; (PTR) != NULL; (PTR) = (PTR)->nextPtr)
-
-/*
- * Apply a function to all elements of a lst starting from a certain point.
- * If the list is circular, the application will wrap around to the
- * beginning of the list again.
- */
-void		Lst_ForEachFrom(Lst *, LstNode *, DoProc *, void *);
 
 /*
  * for using the list as a queue

@@ -37,7 +37,7 @@
  *
  * @(#)parse.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/parse.c,v 1.75 2005/02/07 11:27:47 harti Exp $
- * $DragonFly: src/usr.bin/make/parse.c,v 1.53 2005/03/15 23:36:57 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/parse.c,v 1.54 2005/03/16 20:03:00 okumoto Exp $
  */
 
 /*-
@@ -226,14 +226,8 @@ static struct {
 };
 
 static int ParseFindKeyword(char *);
-static int ParseDoOp(void *, void *);
-static int ParseAddDep(void *, void *);
 static void ParseDoSrc(int, char *, Lst *);
-static int ParseFindMain(void *, void *);
-static int ParseAddDir(void *, void *);
-static int ParseClearPath(void *, void *);
 static void ParseDoDependency(char *);
-static int ParseAddCmd(void *, void *);
 static int ParseReadc(void);
 static void ParseUnreadc(int);
 static void ParseHasCommands(void *);
@@ -351,115 +345,79 @@ ParseLinkSrc(Lst *parents, GNode *cgn)
 /*-
  *---------------------------------------------------------------------
  * ParseDoOp  --
- *	Apply the parsed operator to the given target node. Used in a
- *	Lst_ForEach call by ParseDoDependency once all targets have
- *	been found and their operator parsed. If the previous and new
- *	operators are incompatible, a major error is taken.
- *
- * Results:
- *	Always 0
+ *	Apply the parsed operator to all target nodes. Used in
+ *	ParseDoDependency once all targets have been found and their
+ *	operator parsed. If the previous and new operators are incompatible,
+ *	a major error is taken.
  *
  * Side Effects:
  *	The type field of the node is altered to reflect any new bits in
  *	the op.
  *---------------------------------------------------------------------
  */
-static int
-ParseDoOp(void *gnp, void *opp)
+static void
+ParseDoOp(int op)
 {
-    GNode *gn = gnp;
-    int op = *(int *)opp;
+	GNode	*cohort;
+	LstNode	*ln;
+	GNode	*gn;
 
-    /*
-     * If the dependency mask of the operator and the node don't match and
-     * the node has actually had an operator applied to it before, and
-     * the operator actually has some dependency information in it, complain.
-     */
-    if (((op & OP_OPMASK) != (gn->type & OP_OPMASK)) &&
-	!OP_NOP(gn->type) && !OP_NOP(op))
-    {
-	Parse_Error(PARSE_FATAL, "Inconsistent operator for %s", gn->name);
-	return (1);
-    }
+	LST_FOREACH(ln, &targets) {
+		gn = Lst_Datum(ln);
 
-    if ((op == OP_DOUBLEDEP) && ((gn->type & OP_OPMASK) == OP_DOUBLEDEP)) {
-	/*
-	 * If the node was the object of a :: operator, we need to create a
-	 * new instance of it for the children and commands on this dependency
-	 * line. The new instance is placed on the 'cohorts' list of the
-	 * initial one (note the initial one is not on its own cohorts list)
-	 * and the new instance is linked to all parents of the initial
-	 * instance.
-	 */
-	GNode *cohort;
-	LstNode *ln;
+		/*
+		 * If the dependency mask of the operator and the node don't
+		 * match and the node has actually had an operator applied to
+		 * it before, and the operator actually has some dependency
+		 * information in it, complain.
+		 */
+		if ((op & OP_OPMASK) != (gn->type & OP_OPMASK) &&
+		    !OP_NOP(gn->type) && !OP_NOP(op)) {
+			Parse_Error(PARSE_FATAL, "Inconsistent operator for %s",
+			    gn->name);
+			return;
+		}
 
-	cohort = Targ_NewGN(gn->name);
-	/*
-	 * Duplicate links to parents so graph traversal is simple. Perhaps
-	 * some type bits should be duplicated?
-	 *
-	 * Make the cohort invisible as well to avoid duplicating it into
-	 * other variables. True, parents of this target won't tend to do
-	 * anything with their local variables, but better safe than
-	 * sorry.
-	 */
-	ParseLinkSrc(&gn->parents, cohort);
-	cohort->type = OP_DOUBLEDEP|OP_INVISIBLE;
-	Lst_AtEnd(&gn->cohorts, cohort);
+		if (op == OP_DOUBLEDEP &&
+		    (gn->type & OP_OPMASK) == OP_DOUBLEDEP) {
+			/*
+			 * If the node was the object of a :: operator, we need
+			 * to create a new instance of it for the children and
+			 * commands on this dependency line. The new instance
+			 * is placed on the 'cohorts' list of the initial one
+			 * (note the initial one is not on its own cohorts list)
+			 * and the new instance is linked to all parents of the
+			 * initial instance.
+			 */
+			cohort = Targ_NewGN(gn->name);
 
-	/*
-	 * Replace the node in the targets list with the new copy
-	 */
-	ln = Lst_Member(&targets, gn);
-	Lst_Replace(ln, cohort);
-	gn = cohort;
-    }
-    /*
-     * We don't want to nuke any previous flags (whatever they were) so we
-     * just OR the new operator into the old
-     */
-    gn->type |= op;
+			/*
+			 * Duplicate links to parents so graph traversal is
+			 * simple. Perhaps some type bits should be duplicated?
+			 *
+			 * Make the cohort invisible as well to avoid
+			 * duplicating it into other variables. True, parents
+			 * of this target won't tend to do anything with their
+			 * local variables, but better safe than sorry.
+			 */
+			ParseLinkSrc(&gn->parents, cohort);
+			cohort->type = OP_DOUBLEDEP|OP_INVISIBLE;
+			Lst_AtEnd(&gn->cohorts, cohort);
 
-    return (0);
+			/*
+			 * Replace the node in the targets list with the
+			 * new copy
+			 */
+			Lst_Replace(ln, cohort);
+			gn = cohort;
+		}
+		/*
+		 * We don't want to nuke any previous flags (whatever they were)
+		 * so we just OR the new operator into the old
+		 */
+		gn->type |= op;
+	}
 }
-
-/*-
- *---------------------------------------------------------------------
- * ParseAddDep  --
- *	Check if the pair of GNodes given needs to be synchronized.
- *	This has to be when two nodes are on different sides of a
- *	.WAIT directive.
- *
- * Results:
- *	Returns 1 if the two targets need to be ordered, 0 otherwise.
- *	If it returns 1, the search can stop
- *
- * Side Effects:
- *	A dependency can be added between the two nodes.
- *
- *---------------------------------------------------------------------
- */
-static int
-ParseAddDep(void *pp, void *sp)
-{
-    GNode *p = pp;
-    GNode *s = sp;
-
-    if (p->order < s->order) {
-	/*
-	 * XXX: This can cause loops, and loops can cause unmade targets,
-	 * but checking is tedious, and the debugging output can show the
-	 * problem
-	 */
-	Lst_AtEnd(&p->successors, s);
-	Lst_AtEnd(&s->preds, p);
-	return (0);
-    }
-    else
-	return (1);
-}
-
 
 /*-
  *---------------------------------------------------------------------
@@ -486,9 +444,8 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
     if (*src == '.' && isupper ((unsigned char) src[1])) {
 	int keywd = ParseFindKeyword(src);
 	if (keywd != -1) {
-	    int op = parseKeywords[keywd].op;
-	    if (op != 0) {
-		Lst_ForEach(&targets, ParseDoOp, &op);
+	    if(parseKeywords[keywd].op != 0) {
+		ParseDoOp(parseKeywords[keywd].op);
 		return;
 	    }
 	    if (parseKeywords[keywd].spec == Wait) {
@@ -569,80 +526,44 @@ ParseDoSrc(int tOp, char *src, Lst *allsrc)
     gn->order = waiting;
     Lst_AtEnd(allsrc, gn);
     if (waiting) {
-	Lst_ForEach(allsrc, ParseAddDep, gn);
+	LstNode	*ln;
+	GNode	*p;
+
+	/*
+	 * Check if GNodes needs to be synchronized.
+	 * This has to be when two nodes are on different sides of a
+	 * .WAIT directive.
+	 */
+	LST_FOREACH(ln, allsrc) {
+		p = Lst_Datum(ln);
+
+		if (p->order >= gn->order)
+			break;
+		/*
+		 * XXX: This can cause loops, and loops can cause
+		 * unmade targets, but checking is tedious, and the
+		 * debugging output can show the problem
+		 */
+		Lst_AtEnd(&p->successors, gn);
+		Lst_AtEnd(&gn->preds, p);
+	}
     }
 }
 
-/*-
- *-----------------------------------------------------------------------
- * ParseFindMain --
- *	Find a real target in the list and set it to be the main one.
- *	Called by ParseDoDependency when a main target hasn't been found
- *	yet.
- *
- * Results:
- *	0 if main not found yet, 1 if it is.
- *
- * Side Effects:
- *	mainNode is changed and Targ_SetMain is called.
- *
- *-----------------------------------------------------------------------
- */
-static int
-ParseFindMain(void *gnp, void *dummy __unused)
+static char *
+stripvarname(char *cp)
 {
-    GNode *gn = gnp;
+    char *cp2;
 
-    if ((gn->type & (OP_NOTMAIN | OP_USE | OP_EXEC | OP_TRANSFORM)) == 0) {
-	mainNode = gn;
-	Targ_SetMain(gn);
-	return (1);
-    } else {
-	return (0);
-    }
+    while (isspace((unsigned char)*cp))
+	++cp;
+    cp2 = cp;
+    while (*cp2 && !isspace((unsigned char)*cp2))
+	++cp2;
+    *cp2 = 0;
+    return(cp);
 }
 
-/*-
- *-----------------------------------------------------------------------
- * ParseAddDir --
- *	Front-end for Dir_AddDir to make sure Lst_ForEach keeps going
- *
- * Results:
- *	=== 0
- *
- * Side Effects:
- *	See Dir_AddDir.
- *
- *-----------------------------------------------------------------------
- */
-static int
-ParseAddDir(void *path, void *name)
-{
-
-    Dir_AddDir(path, name);
-    return(0);
-}
-
-/*-
- *-----------------------------------------------------------------------
- * ParseClearPath --
- *	Front-end for Dir_ClearPath to make sure Lst_ForEach keeps going
- *
- * Results:
- *	=== 0
- *
- * Side Effects:
- *	See Dir_ClearPath
- *
- *-----------------------------------------------------------------------
- */
-static int
-ParseClearPath(void *path, void *dummy __unused)
-{
-
-    Dir_ClearPath(path);
-    return (0);
-}
 
 /*-
  *---------------------------------------------------------------------
@@ -687,6 +608,7 @@ ParseDoDependency(char *line)
     char            savec;	/* a place to save a character */
     Lst paths;	/* Search paths to alter when parsing a list of .PATH targets */
     int	    	    tOp;    	/* operator from special target */
+    LstNode	    *ln;
 
     tOp = 0;
 
@@ -997,7 +919,7 @@ ParseDoDependency(char *line)
 
     cp++;			/* Advance beyond operator */
 
-    Lst_ForEach(&targets, ParseDoOp, &op);
+    ParseDoOp(op);
 
     /*
      * Get to the first source
@@ -1031,7 +953,8 @@ ParseDoDependency(char *line)
 		beSilent = TRUE;
 		break;
 	    case ExPath:
-		Lst_ForEach(&paths, ParseClearPath, NULL);
+		LST_FOREACH(ln, &paths)
+		    Dir_ClearPath(Lst_Datum(ln));
 		break;
 	    case Posix:
 		Var_Set("%POSIX", "1003.2", VAR_GLOBAL);
@@ -1100,7 +1023,8 @@ ParseDoDependency(char *line)
 		    Suff_AddSuffix(line);
 		    break;
 		case ExPath:
-		    Lst_ForEach(&paths, ParseAddDir, line);
+		    LST_FOREACH(ln, &paths)
+			Dir_AddDir(Lst_Datum(ln), line);
 		    break;
 		case Includes:
 		    Suff_AddInclude(line);
@@ -1187,7 +1111,15 @@ ParseDoDependency(char *line)
 	 * the first dependency line that is actually a real target
 	 * (i.e. isn't a .USE or .EXEC rule) to be made.
 	 */
-	Lst_ForEach(&targets, ParseFindMain, NULL);
+	LST_FOREACH(ln, &targets) {
+	    gn = Lst_Datum(ln);
+	    if ((gn->type & (OP_NOTMAIN | OP_USE |
+		OP_EXEC | OP_TRANSFORM)) == 0) {
+		mainNode = gn;
+		Targ_SetMain(gn);
+		break;
+	    }
+	}
     }
 }
 
@@ -1466,31 +1398,6 @@ Parse_DoVar(char *line, GNode *ctxt)
 	 */
 	Var_Set(line, cp, ctxt);
     }
-}
-
-/*-
- * ParseAddCmd  --
- *	Lst_ForEach function to add a command line to all targets
- *
- * Results:
- *	Always 0
- *
- * Side Effects:
- *	A new element is added to the commands list of the node.
- */
-static int
-ParseAddCmd(void *gnp, void *cmd)
-{
-    GNode *gn = gnp;
-
-    /* if target already supplied, ignore commands */
-    if (!(gn->type & OP_HAS_COMMANDS))
-	Lst_AtEnd(&gn->commands, cmd);
-    else
-	Parse_Error(PARSE_WARNING,
-		    "duplicate script for target \"%s\" ignored",
-		    gn->name);
-    return (0);
 }
 
 /*-
@@ -2378,20 +2285,6 @@ ParseFinishLine(void)
 	}
 }
 
-static char *
-stripvarname(char *cp)
-{
-    char *cp2;
-
-    while (isspace((unsigned char)*cp))
-	++cp;
-    cp2 = cp;
-    while (*cp2 && !isspace((unsigned char)*cp2))
-	++cp2;
-    *cp2 = 0;
-    return(cp);
-}
-
 
 /*-
  *---------------------------------------------------------------------
@@ -2471,12 +2364,24 @@ Parse_File(char *name, FILE *stream)
 		}
 		if (*cp) {
 		    if (inLine) {
+			LstNode	*ln;
+			GNode	*gn;
+
 			/*
 			 * So long as it's not a blank line and we're actually
 			 * in a dependency spec, add the command to the list of
 			 * commands of all targets in the dependency spec
 			 */
-			Lst_ForEach(&targets, ParseAddCmd, cp);
+			LST_FOREACH(ln, &targets) {
+			    gn = Lst_Datum(ln);
+
+			    /* if target already supplied, ignore commands */
+			    if (!(gn->type & OP_HAS_COMMANDS))
+				Lst_AtEnd(&gn->commands, cp);
+			    else
+				Parse_Error(PARSE_WARNING, "duplicate script "
+				    "for target \"%s\" ignored", gn->name);
+			}
 			continue;
 		    } else {
 			Parse_Error(PARSE_FATAL,
