@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.52 2004/02/12 06:57:48 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.53 2004/02/14 02:18:25 dillon Exp $
  */
 
 /*
@@ -1247,7 +1247,7 @@ lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg)
     mask &= ~stopped_cpus;
     while (mask) {
 	    cpuid = bsfl(mask);
-	    lwkt_send_ipiq(cpuid, func, arg);
+	    lwkt_send_ipiq(globaldata_find(cpuid), func, arg);
 	    mask &= ~(1 << cpuid);
     }
 }
