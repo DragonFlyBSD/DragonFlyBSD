@@ -31,6 +31,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)timed.h	8.1 (Berkeley) 6/2/93
+ * $DragonFly: src/include/protocols/timed.h,v 1.2 2004/09/26 16:09:48 joerg Exp $
  */
 
 #ifndef	_PROTOCOLS_TIMED_H_
@@ -89,7 +90,7 @@ struct tsp {
 #define	TSPTYPENUMBER		25
 
 #ifdef TSPTYPES
-char *tsptype[TSPTYPENUMBER] =
+const char *tsptype[TSPTYPENUMBER] =
   { "ANY", "ADJTIME", "ACK", "MASTERREQ", "MASTERACK", "SETTIME", "MASTERUP",
   "SLAVEUP", "ELECTION", "ACCEPT", "REFUSE", "CONFLICT", "RESOLVE", "QUIT",
   "DATE", "DATEREQ", "DATEACK", "TRACEON", "TRACEOFF", "MSITE", "MSITEREQ",
