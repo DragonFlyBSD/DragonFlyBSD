@@ -14,7 +14,7 @@
 #
 
 # $FreeBSD: src/sys/boot/i386/btx/btx/btx.s,v 1.32 2002/10/08 18:19:02 jhb Exp $
-# $DragonFly: src/sys/boot/pc32/btx/btx/btx.S,v 1.3 2003/11/10 06:08:35 dillon Exp $
+# $DragonFly: src/sys/boot/pc32/btx/btx/btx.S,v 1.4 2004/06/24 23:31:06 dillon Exp $
 
 #
 # Memory layout.
@@ -297,7 +297,7 @@ exit.2: 	xor %ax,%ax			# Real mode segment
 		testb $0x1,btx_hdr+0x7		# Reboot?
 exit.3:		jz exit.3			# No
 		movw $0x1234, BDA_BOOT		# Do a warm boot
-		ljmp $0xffff,$0x0		# reboot the machine
+		ljmp $0xf000,$0xfff0		# reboot the machine
 #
 # Set IRQ offsets by reprogramming 8259A PICs.
 #
