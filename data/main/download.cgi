@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.55 2004/08/25 20:54:48 justin Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.56 2004/08/31 19:13:11 justin Exp $
 
 $TITLE(DragonFly - Download)
 <h1>Obtaining DragonFly for your system</h1>
@@ -309,7 +309,7 @@ rsync, cvsup, cvsync, cvsweb
 <TD>dragon.BSDTech.com (Norway)</TD>
 <TD>Code</TD>
 <TD>
-cvsup</TD>
+cvsup, <a href="http://dragon.BSDTech.com/DragonFly/">source/dfports snapshots</a></TD>
 </TR>
 
 <TR>
