@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.9 2004/11/08 19:58:12 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.10 2004/12/20 10:28:41 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -52,7 +52,7 @@ static void	print_all_info(int, apm_info_t, int);
 static void	print_batt_life(u_int);
 static void	print_batt_stat(u_int);
 static void	print_batt_time(int);
-static void	usage(void);
+static void	usage(void) __dead2;
 
 int cmos_wall = 0;	/* True when wall time is in cmos clock, else UTC */
 
@@ -210,7 +210,7 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 {
 	struct apm_bios_arg args;
 	int apmerr;
-	char *line_msg[] = { "off-line", "on-line" };
+	const char *line_msg[] = { "off-line", "on-line" };
 
 	printf("APM version: %d.%d\n", aip->ai_major, aip->ai_minor);
 	printf("APM Management: %s\n", (aip->ai_status ? "Enabled" : "Disabled"));
@@ -231,7 +231,7 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 		if (aip->ai_batteries == (u_int) -1)
 			printf("unknown\n");
 		else {
-			int i;
+			u_int i;
 			struct apm_pwstatus aps;
 
 			printf("%d\n", aip->ai_batteries);
@@ -398,10 +398,10 @@ int
 main(int argc, char *argv[])
 {
 	int	c, fd;
-	int     sleep = 0, all_info = 1, apm_status = 0, batt_status = 0;
+	int     apm_sleep = 0, all_info = 1, apm_status = 0, batt_status = 0;
 	int     display = -1, batt_life = 0, ac_status = 0, standby = 0;
 	int	batt_time = 0, delta = 0, enable = -1, haltcpu = -1;
-	char	*cmdname;
+	const char	*cmdname;
 	int	bioscall_available = 0;
 	size_t	cmos_wall_len = sizeof(cmos_wall);
 
@@ -414,7 +414,7 @@ main(int argc, char *argv[])
 		cmdname = argv[0];
 
 	if (strcmp(cmdname, "zzz") == 0) {
-		sleep = 1;
+		apm_sleep = 1;
 		all_info = 0;
 		goto finish_option;
 	}
@@ -459,7 +459,7 @@ main(int argc, char *argv[])
 			all_info = 0;
 			break;
 		case 'z':
-			sleep = 1;
+			apm_sleep = 1;
 			all_info = 0;
 			break;
 		case 'Z':
@@ -473,7 +473,7 @@ main(int argc, char *argv[])
 		argv += optind;
 	}
 finish_option:
-	if (haltcpu != -1 || enable != -1 || display != -1 || delta || sleep || standby) {
+	if (haltcpu != -1 || enable != -1 || display != -1 || delta || apm_sleep || standby) {
 		fd = open(APMDEV, O_RDWR);
 		bioscall_available = 1;
 	} else if ((fd = open(APMDEV, O_RDWR)) >= 0)
@@ -488,7 +488,7 @@ finish_option:
 		apm_haltcpu(fd, haltcpu);
 	if (delta)
 		apm_set_timer(fd, delta);
-	if (sleep)
+	if (apm_sleep)
 		apm_suspend(fd);
 	else if (standby)
 		apm_standby(fd);
