@@ -38,7 +38,7 @@
  *
  * @(#)dir.c	8.2 (Berkeley) 1/2/94
  * $$FreeBSD: src/usr.bin/make/dir.c,v 1.10.2.2 2003/10/08 08:14:22 ru Exp $
- * $DragonFly: src/usr.bin/make/dir.c,v 1.14 2004/11/30 15:22:46 joerg Exp $
+ * $DragonFly: src/usr.bin/make/dir.c,v 1.15 2004/11/30 15:52:57 joerg Exp $
  */
 
 /*-
@@ -679,7 +679,7 @@ Dir_FindFile (char *name, Lst path)
     LstNode       ln;	    /* a list element */
     char          *file;    /* the current filename to check */
     Path          *p;	    /* current path member */
-    char          *cp;	    /* index of first slash, if any */
+    char          *cp;	    /* final component of the name */
     Boolean	  hasSlash; /* true if 'name' contains a / */
     struct stat	  stb;	    /* Buffer for stat, if necessary */
     Hash_Entry	  *entry;   /* Entry for mtimes table */
@@ -766,9 +766,14 @@ Dir_FindFile (char *name, Lst path)
 		continue;
 	    }
 	    if (*p1 == '\0' && p2 == cp - 1) {
-		DEBUGF(DIR, ("must be here but isn't -- returing NULL\n"));
 		Lst_Close (path);
-		return ((char *) NULL);
+		if (*cp == '\0' || ISDOT(cp) || ISDOTDOT(cp)) {
+		    DEBUGF(DIR, ("returning %s\n", name));
+		    return (estrdup(name));
+		} else {
+		    DEBUGF(DIR, ("must be here but isn't -- returning NULL\n"));
+		    return ((char *) NULL);
+		}
 	    }
 	}
     }

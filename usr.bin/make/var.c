@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.14 2004/11/30 14:27:25 joerg Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.15 2004/11/30 15:52:57 joerg Exp $
  */
 
 /*-
@@ -816,7 +816,8 @@ VarQuote(char *str)
  *	The (possibly-modified) value of the variable or var_Error if the
  *	specification is invalid. The length of the specification is
  *	placed in *lengthPtr (for invalid specifications, this is just
- *	2...?).
+ *	2 to skip the '$' and the following letter, or 1 if '$' was the
+ *	last character in the string).
  *	A Boolean in *freePtr telling whether the returned string should
  *	be freed by the caller.
  *
@@ -865,7 +866,10 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 
 	v = VarFind (name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v == (Var *)NULL) {
-	    *lengthPtr = 2;
+	    if (str[1] != '\0')
+		*lengthPtr = 2;
+	    else
+		*lengthPtr = 1;
 
 	    if ((ctxt == VAR_CMD) || (ctxt == VAR_GLOBAL)) {
 		/*

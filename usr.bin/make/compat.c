@@ -38,7 +38,7 @@
  *
  * @(#)compat.c	8.2 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/compat.c,v 1.16.2.2 2000/07/01 12:24:21 ps Exp $
- * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.11 2004/11/24 07:19:14 dillon Exp $
+ * $DragonFly: src/usr.bin/make/Attic/compat.c,v 1.12 2004/11/30 15:52:57 joerg Exp $
  */
 
 /*-
@@ -457,7 +457,7 @@ CompatMake (void *gnp, void *pgnp)
 	 * to tell him/her "yes".
 	 */
 	if (queryFlag) {
-	    exit (-1);
+	    exit (1);
 	}
 
 	/*

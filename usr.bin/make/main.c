@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.20 2004/11/30 15:22:46 joerg Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.21 2004/11/30 15:52:57 joerg Exp $
  */
 
 /*-
@@ -873,6 +873,7 @@ main(int argc, char **argv)
 			 * well as initializing the module.
 			 */
 			Compat_Run(targs);
+			outOfDate = 0;
 		}
 		Lst_Destroy(targs, NOFREE);
 	}
