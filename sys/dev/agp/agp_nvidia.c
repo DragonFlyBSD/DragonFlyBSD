@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * Based on FreeBSD v1.2.
- * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.2 2003/12/09 19:40:56 dillon Exp $
+ * $DragonFly: src/sys/dev/agp/agp_nvidia.c,v 1.3 2004/07/04 00:24:52 dillon Exp $
  */
 
 /*
@@ -173,10 +173,6 @@ agp_nvidia_attach (device_t dev)
 		return (error);
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
-	if (sc->initial_aperture == 0) {
-		device_printf(dev, "bad initial aperture size, disabling\n");
-		return ENXIO;
-	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);

@@ -1,4 +1,4 @@
-/*-
+/*
  * Copyright (c) 2000 Doug Rabson
  * Copyright (c) 2000 Ruslan Ermilov
  * All rights reserved.
@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_i810.c,v 1.1.2.5 2002/09/15 08:45:41 anholt Exp $
- *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.7 2004/05/13 14:33:14 joerg Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_i810.c,v 1.8 2004/07/04 00:24:52 dillon Exp $
  */
 
 /*
@@ -64,7 +64,8 @@ MALLOC_DECLARE(M_AGP);
 #define WRITE4(off,v)	bus_space_write_4(sc->bst, sc->bsh, off, v)
 
 #define CHIP_I810 0	/* i810/i815 */
-#define CHIP_I830 1	/* i830/i845 */
+#define CHIP_I830 1	/* 830M/845G */
+#define CHIP_I855 2	/* 852GM/855GM/865G */
 
 struct agp_i810_softc {
 	struct agp_softc agp;
@@ -100,13 +101,32 @@ agp_i810_match(device_t dev)
 		return ("Intel 82815 (i815 GMCH) SVGA controller");
 
 	case 0x35778086:
-		return ("Intel 82830 (i830M GMCH) SVGA controller");
+		return ("Intel 82830M (i830M GMCH) SVGA controller");
 
 	case 0x25628086:
-		return ("Intel 82845 (i845 GMCH) SVGA controller");
+		return ("Intel 82845G (i845 GMCH) SVGA controller");
 
 	case 0x25728086:
-		return ("Intel 82865 (i865 GMCH) SVGA controller");
+		return ("Intel 82865G (i865 GMCH) SVGA controller");
+
+	case 0x35828086:
+		switch (pci_read_config(dev, AGP_I85X_CAPID, 1)) {
+		case AGP_I855_GME:
+			return ("Intel 82855GME (855GME GMCH) SVGA controller");
+
+		case AGP_I855_GM:
+			return ("Intel 82855GM (855GM GMCH) SVGA controller");
+
+		case AGP_I852_GME:
+			return ("Intel 82852GME (852GME GMCH) SVGA controller");
+
+		case AGP_I852_GM:
+			return ("Intel 82852GM (852GM GMCH) SVGA controller");
+
+		default:
+			return ("Intel 8285xM (85xGM GMCH) SVGA controller");
+		}
+		/* not reached */
 	};
 
 	return NULL;
@@ -164,6 +184,7 @@ agp_i810_probe(device_t dev)
 	if (desc) {
 		device_t bdev;
 		u_int8_t smram;
+		unsigned int gcc1;
 		int devid = pci_get_devid(dev);
 
 		bdev = agp_i810_find_bridge(dev);
@@ -176,9 +197,12 @@ agp_i810_probe(device_t dev)
 		/*
 		 * checking whether internal graphics device has been activated.
 		 */
-		if ( (devid != 0x35778086 ) &&
-		     (devid != 0x25628086 ) &&
-		     (devid != 0x25728086 ) ) {
+		switch(devid) {
+		case 0x71218086:
+		case 0x71238086:
+		case 0x71258086:
+		case 0x11328086:
+			/* i810 */
 			smram = pci_read_config(bdev, AGP_I810_SMRAM, 1);
 			if ((smram & AGP_I810_SMRAM_GMS)
 			    == AGP_I810_SMRAM_GMS_DISABLED) {
@@ -186,14 +210,21 @@ agp_i810_probe(device_t dev)
 					printf("I810: disabled, not probing\n");
 				return ENXIO;
 			}
-		} else {	/* I830MG */
-			unsigned int gcc1;
+			break;
+		case 0x35778086:
+		case 0x35828086:
+		case 0x25628086:
+		case 0x25728086:
+			/* i830 */
 			gcc1 = pci_read_config(bdev, AGP_I830_GCC1, 1);
 			if ((gcc1 & AGP_I830_GCC1_DEV2) == AGP_I830_GCC1_DEV2_DISABLED) {
 				if (bootverbose)
 					printf("I830: disabled, not probing\n");
 					return ENXIO;
 			}
+			break;
+		default:
+			return ENXIO;
 		}
 
 		device_verbose(dev);
@@ -228,8 +259,11 @@ agp_i810_attach(device_t dev)
 		break;
 	case 0x35778086:
 	case 0x25628086:
-	case 0x25728086:
 		sc->chiptype = CHIP_I830;
+		break;
+	case 0x25728086:
+	case 0x35828086:
+		sc->chiptype = CHIP_I855;
 		break;
 	};
 
@@ -278,7 +312,7 @@ agp_i810_attach(device_t dev)
 		agp_flush_cache();
 		/* Install the GATT. */
 		WRITE4(AGP_I810_PGTBL_CTL, gatt->ag_physical | 1);
-	} else {
+	} else if (sc->chiptype == CHIP_I830) {
 		/* The i830 automatically initializes the 128k gatt on boot. */
 		unsigned int gcc1, pgtblctl;
 		
@@ -299,26 +333,60 @@ agp_i810_attach(device_t dev)
 				agp_generic_detach(dev);
 				return EINVAL;
 		}
-		if (sc->stolen > 0)
-			device_printf(dev, "detected %dk stolen memory\n", sc->stolen * 4);
+		if (sc->stolen > 0) {
+			device_printf(dev,
+				"detected %dk stolen memory\n", sc->stolen * 4);
+		}
 		device_printf(dev, "aperture size is %dM\n", sc->initial_aperture / 1024 / 1024);
 
 		/* GATT address is already in there, make sure it's enabled */
 		pgtblctl = READ4(AGP_I810_PGTBL_CTL);
-#if 0
-		device_printf(dev, "PGTBL_CTL is 0x%08x\n", pgtblctl);
-#endif
 		pgtblctl |= 1;
 		WRITE4(AGP_I810_PGTBL_CTL, pgtblctl);
 
 		gatt->ag_physical = pgtblctl & ~1;
-	}
+	} else {	/* CHIP_I855 */
+		/* The i855 automatically initializes the 128k gatt on boot. */
+		unsigned int gcc1, pgtblctl;
 
-	/*
-	 * Make sure the chipset can see everything.
-	 */
-	agp_flush_cache();
+		gcc1 = pci_read_config(sc->bdev, AGP_I855_GCC1, 1);
+		switch (gcc1 & AGP_I855_GCC1_GMS) {
+		case AGP_I855_GCC1_GMS_STOLEN_1M:
+			sc->stolen = (1024 - 132) * 1024 / 4096;  
+			break;
+		case AGP_I855_GCC1_GMS_STOLEN_4M:
+			sc->stolen = (4096 - 132) * 1024 / 4096;
+			break;
+		case AGP_I855_GCC1_GMS_STOLEN_8M:
+			sc->stolen = (8192 - 132) * 1024 / 4096;
+			break;
+		case AGP_I855_GCC1_GMS_STOLEN_16M:
+			sc->stolen = (16384 - 132) * 1024 / 4096;
+			break;
+		case AGP_I855_GCC1_GMS_STOLEN_32M:
+			sc->stolen = (32768 - 132) * 1024 / 4096;
+			break;
+		default:
+			sc->stolen = 0;
+			device_printf(dev,
+			    "unknown memory configuration, disabling\n");
+			agp_generic_detach(dev);
+			return EINVAL;
+		}
+		if (sc->stolen > 0) {
+			device_printf(dev, "detected %dk stolen memory\n",
+			    		sc->stolen * 4);
+		}
+		device_printf(dev, "aperture size is %dM\n", 
+				sc->initial_aperture / 1024 / 1024);
 
+		/* GATT address is already in there, make sure it's enabled */
+		pgtblctl = READ4(AGP_I810_PGTBL_CTL);
+		pgtblctl |= 1;
+		WRITE4(AGP_I810_PGTBL_CTL, pgtblctl);
+
+		gatt->ag_physical = pgtblctl & ~1;
+        }
 	return 0;
 }
 

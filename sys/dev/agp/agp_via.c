@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/pci/agp_via.c,v 1.1.2.2 2001/10/04 09:53:04 ru Exp $
- *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.4 2003/12/09 19:40:56 dillon Exp $
+ *	$DragonFly: src/sys/dev/agp/agp_via.c,v 1.5 2004/07/04 00:24:52 dillon Exp $
  */
 
 #include "opt_bus.h"
@@ -46,11 +46,21 @@
 #include <vm/vm_object.h>
 #include <vm/pmap.h>
 
+#define		REG_GARTCTRL	0
+#define		REG_APSIZE	1
+#define		REG_ATTBASE	2
+
 struct agp_via_softc {
 	struct agp_softc agp;
 	u_int32_t	initial_aperture; /* aperture size at startup */
 	struct agp_gatt *gatt;
+	int		*regs;
 };
+
+static int via_v2_regs[] = { AGP_VIA_GARTCTRL, AGP_VIA_APSIZE,
+			    AGP_VIA_ATTBASE };
+static int via_v3_regs[] = { AGP3_VIA_GARTCTRL, AGP3_VIA_APSIZE,
+			    AGP3_VIA_ATTBASE };
 
 static const char*
 agp_via_match(device_t dev)
@@ -75,6 +85,8 @@ agp_via_match(device_t dev)
 		return ("VIA 82C694X (Apollo Pro 133A) host to PCI bridge");
 	case 0x06911106:
 		return ("VIA 82C691 (Apollo Pro) host to PCI bridge");
+	case 0x31881106:
+		return ("VIA 8385 host to PCI bridge");
 	};
 
 	if (pci_get_vendor(dev) == 0x1106)
@@ -105,15 +117,20 @@ agp_via_attach(device_t dev)
 	struct agp_gatt *gatt;
 	int error;
 
+	switch (pci_get_devid(dev)) {
+	case 0x31881106:
+		sc->regs = via_v3_regs;
+		break;
+	default:
+		sc->regs = via_v2_regs;
+		break;
+	}
+
 	error = agp_generic_attach(dev);
 	if (error)
 		return error;
 
 	sc->initial_aperture = AGP_GET_APERTURE(dev);
-	if (sc->initial_aperture == 0) {
-		device_printf(dev, "bad initial aperture size, disabling\n");
-		return ENXIO;
-	}
 
 	for (;;) {
 		gatt = agp_alloc_gatt(dev);
@@ -132,10 +149,10 @@ agp_via_attach(device_t dev)
 	sc->gatt = gatt;
 
 	/* Install the gatt. */
-	pci_write_config(dev, AGP_VIA_ATTBASE, gatt->ag_physical | 3, 4);
+	pci_write_config(dev, sc->regs[REG_ATTBASE], gatt->ag_physical | 3, 4);
 	
 	/* Enable the aperture. */
-	pci_write_config(dev, AGP_VIA_GARTCTRL, 0x0f, 4);
+	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
 
 	return 0;
 }
@@ -150,8 +167,8 @@ agp_via_detach(device_t dev)
 	if (error)
 		return error;
 
-	pci_write_config(dev, AGP_VIA_GARTCTRL, 0, 4);
-	pci_write_config(dev, AGP_VIA_ATTBASE, 0, 4);
+	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0, 4);
+	pci_write_config(dev, sc->regs[REG_ATTBASE], 0, 4);
 	AGP_SET_APERTURE(dev, sc->initial_aperture);
 	agp_free_gatt(sc->gatt);
 
@@ -161,9 +178,10 @@ agp_via_detach(device_t dev)
 static u_int32_t
 agp_via_get_aperture(device_t dev)
 {
+	struct agp_via_softc *sc = device_get_softc(dev);
 	u_int32_t apsize;
 
-	apsize = pci_read_config(dev, AGP_VIA_APSIZE, 1) & 0x1f;
+	apsize = pci_read_config(dev, sc->regs[REG_APSIZE], 1) & 0x1f;
 
 	/*
 	 * The size is determined by the number of low bits of
@@ -178,6 +196,7 @@ agp_via_get_aperture(device_t dev)
 static int
 agp_via_set_aperture(device_t dev, u_int32_t aperture)
 {
+	struct agp_via_softc *sc = device_get_softc(dev);
 	u_int32_t apsize;
 
 	/*
@@ -191,7 +210,7 @@ agp_via_set_aperture(device_t dev, u_int32_t aperture)
 	if ((((apsize ^ 0xff) << 20) | ((1 << 20) - 1)) + 1 != aperture)
 		return EINVAL;
 
-	pci_write_config(dev, AGP_VIA_APSIZE, apsize, 1);
+	pci_write_config(dev, sc->regs[REG_APSIZE], apsize, 1);
 
 	return 0;
 }
@@ -223,8 +242,10 @@ agp_via_unbind_page(device_t dev, int offset)
 static void
 agp_via_flush_tlb(device_t dev)
 {
-	pci_write_config(dev, AGP_VIA_GARTCTRL, 0x8f, 4);
-	pci_write_config(dev, AGP_VIA_GARTCTRL, 0x0f, 4);
+	struct agp_via_softc *sc = device_get_softc(dev);
+
+	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x8f, 4);
+	pci_write_config(dev, sc->regs[REG_GARTCTRL], 0x0f, 4);
 }
 
 static device_method_t agp_via_methods[] = {
