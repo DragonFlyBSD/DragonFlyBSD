@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ls.c	8.5 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/ls/ls.c,v 1.32.2.8 2002/11/17 10:27:34 tjr Exp $
- * $DragonFly: src/bin/ls/ls.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ls/ls.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -707,7 +707,7 @@ display(FTSENT *p, FTSENT *list)
 		d.s_inode = strlen(buf);
 		(void)snprintf(buf, sizeof(buf), "%lu", maxnlink);
 		d.s_nlink = strlen(buf);
-		(void)snprintf(buf, sizeof(buf), "%qu", maxsize);
+		(void)snprintf(buf, sizeof(buf), "%llu", maxsize);
 		d.s_size = strlen(buf);
 		d.s_user = maxuser;
 	}

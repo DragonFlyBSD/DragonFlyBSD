@@ -5,7 +5,7 @@
  * Largely rewritten by J.T. Conklin (jtc@wimsey.com)
  *
  * $FreeBSD: src/bin/expr/expr.y,v 1.14.2.3 2001/08/01 02:37:46 obrien Exp $
- * $DragonFly: src/bin/expr/expr.y,v 1.3 2003/09/21 04:21:56 drhodus Exp $
+ * $DragonFly: src/bin/expr/expr.y,v 1.4 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -175,7 +175,7 @@ struct val *vp;
 
 	/* vp->type == numeric_string, make it numeric */
 	errno = 0;
-	i  = strtoq(vp->u.s, (char**)NULL, 10);
+	i  = strtoll(vp->u.s, (char**)NULL, 10);
 	if (errno != 0) {
 		errx (2, "overflow");
 	}

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1988, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)hostname.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/bin/hostname/hostname.c,v 1.10.2.1 2001/08/01 02:40:23 obrien Exp $
- * $DragonFly: src/bin/hostname/hostname.c,v 1.6 2004/01/20 00:54:09 dillon Exp $
+ * $DragonFly: src/bin/hostname/hostname.c,v 1.7 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -107,13 +107,13 @@ main(int argc, char **argv)
 {
 	int ch,sflag,rflag,ret,flag6,iflag;
 	char hostname[MAXHOSTNAMELEN];
-	char *srflag,*siflag;
+	char *srflag, *siflag = NULL;
 	struct hostent *hst;
 	struct in_addr ia;
 	struct in6_addr ia6;
 
 	int mib[6];
-	int needed;
+	size_t needed;
 	char *buf,*lim,*next,*p;
 	int idx;
 	struct sockaddr_dl *sdl;
@@ -294,7 +294,7 @@ main(int argc, char **argv)
 	} else if (rflag) {
 		ret = inet_pton(AF_INET, srflag, &ia);
 		if (ret != 1) {
-			// check IPV6
+			/* check IPV6 */
 			ret = inet_pton(AF_INET6, srflag, &ia6);
 
 			if (ret != 1) {

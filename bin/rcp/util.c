@@ -32,7 +32,7 @@
  *
  * @(#)util.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/util.c,v 1.9.2.3 2002/07/19 07:54:51 jmallett Exp $
- * $DragonFly: src/bin/rcp/util.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/rcp/util.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -150,6 +150,7 @@ allocbuf(BUF *bp, int fd, int blksize)
 	return (bp);
 }
 
+/* ARGSUSED */
 void
 lostconn(int signo)
 {

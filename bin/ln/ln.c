@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)ln.c	8.2 (Berkeley) 3/31/94
  * $FreeBSD: src/bin/ln/ln.c,v 1.15.2.4 2002/07/12 07:34:38 tjr Exp $
- * $DragonFly: src/bin/ln/ln.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/ln/ln.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -181,7 +181,7 @@ linkit(const char *target, const char *source, int isdir)
 		else
 			++p;
 		if (snprintf(path, sizeof(path), "%s/%s", source, p) >=
-		    sizeof(path)) {
+		    (int)sizeof(path)) {
 			errno = ENAMETOOLONG;
 			warn("%s", target);
 			return (1);

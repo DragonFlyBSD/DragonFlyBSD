@@ -36,7 +36,7 @@
  *
  * @(#)args.c	8.3 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/dd/args.c,v 1.25.2.2 2001/01/23 14:20:03 asmodai Exp $
- * $DragonFly: src/bin/dd/args.c,v 1.4 2003/09/28 14:39:13 hmp Exp $
+ * $DragonFly: src/bin/dd/args.c,v 1.5 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -164,7 +164,7 @@ jcl(char **argv)
 	 * Bail out if the calculation of a file offset would overflow.
 	 */
 	if (in.offset > QUAD_MAX / in.dbsz || out.offset > QUAD_MAX / out.dbsz)
-		errx(1, "seek offsets cannot be larger than %qd", QUAD_MAX);
+		errx(1, "seek offsets cannot be larger than %lld", QUAD_MAX);
 }
 
 static int
@@ -340,7 +340,7 @@ get_num(char *val)
 	char *expr;
 
 	errno = 0;
-	num = strtoq(val, &expr, 0);
+	num = strtoll(val, &expr, 0);
 	if (errno != 0)				/* Overflow or underflow. */
 		err(1, "%s", oper);
 	

@@ -10,7 +10,7 @@
  * This program is in the Public Domain.
  *
  * $FreeBSD: src/bin/test/test.c,v 1.29.2.7 2002/09/10 09:10:57 maxim Exp $
- * $DragonFly: src/bin/test/test.c,v 1.4 2003/09/28 14:39:15 hmp Exp $
+ * $DragonFly: src/bin/test/test.c,v 1.5 2004/03/19 17:17:45 cpressey Exp $
  */
 
 #include <sys/types.h>
@@ -178,7 +178,7 @@ static int	binop (void);
 static int	equalf (const char *, const char *);
 static int	filstat (char *, enum token);
 static int	getn (const char *);
-static quad_t	getq (const char *);
+static long long getll (const char *);
 static int	intcmp (const char *, const char *);
 static int	isoperand (void);
 static int	newerf (const char *, const char *);
@@ -486,14 +486,14 @@ getn(const char *s)
 }
 
 /* atoi with error detection and 64 bit range */
-static quad_t
-getq(const char *s)
+static long long
+getll(const char *s)
 {
 	char *p;
-	quad_t r;
+	long long r;
 
 	errno = 0;
-	r = strtoq(s, &p, 10);
+	r = strtoll(s, &p, 10);
 
 	if (errno != 0)
 		error((errno == EINVAL) ? "%s: bad number" :
@@ -511,11 +511,11 @@ getq(const char *s)
 static int
 intcmp (const char *s1, const char *s2)
 {
-	quad_t q1, q2;
+	long long q1, q2;
 
 
-	q1 = getq(s1);
-	q2 = getq(s2);
+	q1 = getll(s1);
+	q2 = getll(s2);
 
 	if (q1 > q2)
 		return 1;

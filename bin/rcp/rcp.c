@@ -40,7 +40,7 @@
  * @(#) Copyright (c) 1983, 1990, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)rcp.c	8.2 (Berkeley) 4/2/94
  * $FreeBSD: src/bin/rcp/rcp.c,v 1.26.2.5 2002/08/16 20:06:34 ume Exp $
- * $DragonFly: src/bin/rcp/rcp.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/rcp/rcp.c,v 1.3 2004/03/19 17:17:46 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -578,7 +578,8 @@ sink(int argc, char *argv[])
 	enum { YES, NO, DISPLAYED } wrerr;
 	BUF *bp;
 	off_t i, j, size;
-	int amt, count, exists, first, mask, mode, ofd, omode;
+	size_t amt, count;
+	int exists, first, mask, mode, ofd, omode;
 	int setimes, targisdir, wrerrno = 0;
 	char ch, *cp, *np, *targ, *why, *vect[1], buf[BUFSIZ];
 
