@@ -6,7 +6,7 @@
  *	to track selections by modifying embedded LOCALLINK() directives.
  *
  *
- * $DragonFly: site/src/tablecg.c,v 1.13 2004/02/15 19:23:50 dillon Exp $
+ * $DragonFly: site/src/tablecg.c,v 1.14 2004/02/15 19:29:41 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -44,7 +44,6 @@ char *Main[] = {
     "bugs.cgi",
     "download.cgi",
     "forums.cgi",
-    "index.cgi",
     "mascot.cgi",
     "team.cgi",
     "FAQ.cgi",
@@ -53,7 +52,6 @@ char *Main[] = {
 
 char *Goals[] = {
     "caching.cgi",
-    "index.cgi",
     "iomodel.cgi",
     "messaging.cgi",
     "packages.cgi",
@@ -64,15 +62,13 @@ char *Goals[] = {
 };
 
 char *Status[] = {
-        "diary.cgi",
-        "index.cgi",
-	"report-2003.cgi",
-        NULL
+    "diary.cgi",
+    "report-2003.cgi",
+    NULL
 };
 
 char *Docs[] = {
-	"index.cgi",
-	NULL
+    NULL
 };
 
 
@@ -231,6 +227,9 @@ main(int ac, char **av)
  * we want to have available in the side menu.  A peek at the 
  * filesystem is needed so we know where we are, and how to 
  * format accordingly.
+ *
+ * files[] never includes index.cgi.  We highlight the section name
+ * instead.
  */
 static void
 generate_side_headers(char *section1, char *section2, char *files[])
@@ -242,7 +241,17 @@ generate_side_headers(char *section1, char *section2, char *files[])
 
     printf("\n<TABLE BORDER=\"0\" CELLPADDING=\"4\" WIDTH=\"100%%\">\n");
     printf("\t<TR>");
-    printf("<TD><H2><A HREF=\"../%s\">%s</A></H2>", section1, section2);
+
+    if (strcmp(FileName, "index.cgi") == 0 &&
+	strcmp(section1, DirName) == 0
+    ) {
+	fileclass = " CLASS=\"selected\"";
+    } else {
+	fileclass = "";
+    }
+
+    printf("<TD%s><H2><A HREF=\"../%s\">%s</A></H2>",
+	fileclass, section1, section2);
 
     printf("</TD></TR>\n\t<TR><TD>\n<TABLE BORDER=\"0\" WIDTH=\"100%%\">\n");
 

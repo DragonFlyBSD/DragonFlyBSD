@@ -5,7 +5,7 @@
  *
  * DragonFly WWW Site: http://www.dragonflybsd.org/
  *
- * $DragonFly: site/data/stylesheet.css,v 1.4 2004/01/18 22:42:40 justin Exp $
+ * $DragonFly: site/data/stylesheet.css,v 1.5 2004/02/15 19:29:40 dillon Exp $
  *
  */
 
@@ -163,6 +163,13 @@ A:hover  {
    font-family: Verdana, Arial, Helvetica, Sans-serif;
    background-color : #ffcc66; 
    text-align : right; 
+}
+
+.selected {
+   font-weight : 600; 
+   font-size : 11px; 
+   font-family: Verdana, Arial, Helvetica, Sans-serif;
+   background-color : #ffcc66; 
 }
 
 .sublist { 
