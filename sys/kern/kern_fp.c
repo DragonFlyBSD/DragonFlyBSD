@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/kern_fp.c,v 1.6 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fp.c,v 1.7 2004/07/29 20:32:59 dillon Exp $
  */
 
 /*
@@ -88,7 +88,10 @@ typedef struct file *file_t;
  *	Open a file as specified.  Use O_* flags for flags.
  *
  *	NOTE! O_ROOTCRED not quite working yet, vn_open() asserts that the
- *	cred must match the process's cred.
+ *	cred must match the process's cred. XXX
+ *
+ *	NOTE! when fp_open() is called from a pure thread, root creds are
+ *	used.
  */
 int
 fp_open(const char *path, int flags, int mode, file_t *fpp)
@@ -102,10 +105,13 @@ fp_open(const char *path, int flags, int mode, file_t *fpp)
 	return (error);
     fp = *fpp;
     td = curthread;
-    if ((flags & O_ROOTCRED) == 0 && td->td_proc)
-	fsetcred(fp, td->td_proc->p_ucred);
-
-    NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
+    if (td->td_proc) {
+	if ((flags & O_ROOTCRED) == 0 && td->td_proc)
+	    fsetcred(fp, td->td_proc->p_ucred);
+	NDINIT(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td);
+    } else {
+	NDINIT2(&nd, NAMEI_LOOKUP, 0, UIO_SYSSPACE, path, td, proc0.p_ucred);
+    }
     flags = FFLAGS(flags);
     if ((error = vn_open(&nd, flags, mode)) == 0) {
 	NDFREE(&nd, NDF_ONLY_PNBUF);
