@@ -32,11 +32,13 @@
  *
  *	@(#)ns_cksum.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_cksum.c,v 1.7 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_cksum.c,v 1.3 2003/07/26 21:10:52 rob Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_cksum.c,v 1.4 2004/06/02 14:19:11 joerg Exp $
  */
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
+#include <sys/socketvar.h>
+#include "ns.h"
 
 /*
  * Checksum routine for Network Systems Protocol Packets (Big-Endian).
