@@ -32,7 +32,7 @@
  *
  *	@(#)if_ether.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/if_ether.c,v 1.64.2.23 2003/04/11 07:23:15 fjoe Exp $
- * $DragonFly: src/sys/netinet/if_ether.c,v 1.14 2004/07/17 09:43:05 joerg Exp $
+ * $DragonFly: src/sys/netinet/if_ether.c,v 1.15 2004/09/16 23:14:29 joerg Exp $
  */
 
 /*
@@ -131,6 +131,8 @@ static struct llinfo_arp
 static void	in_arpinput (struct mbuf *);
 #endif
 
+static struct callout	arptimer_ch;
+
 /*
  * Timeout routine.  Age arp_tab entries periodically.
  */
@@ -143,13 +145,13 @@ arptimer(ignored_arg)
 	struct llinfo_arp *la = LIST_FIRST(&llinfo_arp);
 	struct llinfo_arp *ola;
 
-	timeout(arptimer, (caddr_t)0, arpt_prune * hz);
 	while ((ola = la) != 0) {
 		struct rtentry *rt = la->la_rt;
 		la = LIST_NEXT(la, la_le);
 		if (rt->rt_expire && rt->rt_expire <= time_second)
 			arptfree(ola); /* timer has expired, clear */
 	}
+	callout_reset(&arptimer_ch, arpt_prune * hz, arptimer, NULL);
 	splx(s);
 }
 
@@ -168,7 +170,8 @@ arp_rtrequest(req, rt, info)
 
 	if (!arpinit_done) {
 		arpinit_done = 1;
-		timeout(arptimer, (caddr_t)0, hz);
+		callout_init(&arptimer_ch);
+		callout_reset(&arptimer_ch, hz, arptimer, NULL);
 	}
 	if (rt->rt_flags & RTF_GATEWAY)
 		return;

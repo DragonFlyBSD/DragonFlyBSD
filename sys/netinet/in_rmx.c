@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netinet/in_rmx.c,v 1.37.2.3 2002/08/09 14:49:23 ru Exp $
- * $DragonFly: src/sys/netinet/in_rmx.c,v 1.4 2004/01/07 11:04:23 dillon Exp $
+ * $DragonFly: src/sys/netinet/in_rmx.c,v 1.5 2004/09/16 23:14:29 joerg Exp $
  */
 
 /*
@@ -56,6 +56,8 @@
 #include <netinet/in.h>
 #include <netinet/in_var.h>
 #include <netinet/ip_var.h>
+
+static struct callout	in_rtqtimo_ch;
 
 extern int	in_inithead (void **head, int off);
 
@@ -325,7 +327,7 @@ in_rtqtimo(void *rock)
 
 	atv.tv_usec = 0;
 	atv.tv_sec = arg.nextstop - time_second;
-	timeout(in_rtqtimo, rock, tvtohz_high(&atv));
+	callout_reset(&in_rtqtimo_ch, tvtohz_high(&atv), in_rtqtimo, rock);
 }
 
 void
@@ -362,6 +364,7 @@ in_inithead(void **head, int off)
 	rnh->rnh_addaddr = in_addroute;
 	rnh->rnh_matchaddr = in_matroute;
 	rnh->rnh_close = in_clsroute;
+	callout_init(&in_rtqtimo_ch);
 	in_rtqtimo(rnh);	/* kick off timeout first time */
 	return 1;
 }
