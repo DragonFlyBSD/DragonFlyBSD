@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_pager.c,v 1.54.2.2 2001/11/18 07:11:00 dillon Exp $
- * $DragonFly: src/sys/vm/vm_pager.c,v 1.10 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_pager.c,v 1.11 2004/07/14 03:10:17 hmp Exp $
  */
 
 /*
@@ -313,6 +313,7 @@ initpbuf(struct buf *bp)
 	bp->b_xflags = 0;
 	bp->b_flags = 0;
 	bp->b_error = 0;
+	xio_init(&bp->b_xio);
 	BUF_LOCK(bp, LK_EXCLUSIVE);
 }
 

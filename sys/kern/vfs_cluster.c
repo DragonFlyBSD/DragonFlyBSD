@@ -34,7 +34,7 @@
  *
  *	@(#)vfs_cluster.c	8.7 (Berkeley) 2/13/94
  * $FreeBSD: src/sys/kern/vfs_cluster.c,v 1.92.2.9 2001/11/18 07:10:59 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.10 2004/06/01 22:19:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cluster.c,v 1.11 2004/07/14 03:10:17 hmp Exp $
  */
 
 #include "opt_debug_cluster.h"
@@ -353,12 +353,12 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 
 	bp->b_bcount = 0;
 	bp->b_bufsize = 0;
-	bp->b_npages = 0;
+	bp->b_xio.xio_npages = 0;
 
 	inc = btodb(size);
 	for (bn = blkno, i = 0; i < run; ++i, bn += inc) {
 		if (i != 0) {
-			if ((bp->b_npages * PAGE_SIZE) +
+			if ((bp->b_xio.xio_npages * PAGE_SIZE) +
 			    round_page(size) > vp->v_mount->mnt_iosize_max) {
 				break;
 			}
@@ -373,12 +373,12 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 					break;
 				BUF_UNLOCK(tbp);
 
-				for (j = 0; j < tbp->b_npages; j++) {
-					if (tbp->b_pages[j]->valid)
+				for (j = 0; j < tbp->b_xio.xio_npages; j++) {
+					if (tbp->b_xio.xio_pages[j]->valid)
 						break;
 				}
 				
-				if (j != tbp->b_npages)
+				if (j != tbp->b_xio.xio_npages)
 					break;
 	
 				if (tbp->b_bcount != size)
@@ -405,11 +405,11 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 			 * take part in the cluster.  If it is partially valid
 			 * then we stop.
 			 */
-			for (j = 0;j < tbp->b_npages; j++) {
-				if (tbp->b_pages[j]->valid)
+			for (j = 0;j < tbp->b_xio.xio_npages; j++) {
+				if (tbp->b_xio.xio_pages[j]->valid)
 					break;
 			}
-			if (j != tbp->b_npages) {
+			if (j != tbp->b_xio.xio_npages) {
 				bqrelse(tbp);
 				break;
 			}
@@ -442,18 +442,18 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 		BUF_KERNPROC(tbp);
 		TAILQ_INSERT_TAIL(&bp->b_cluster.cluster_head,
 			tbp, b_cluster.cluster_entry);
-		for (j = 0; j < tbp->b_npages; j += 1) {
+		for (j = 0; j < tbp->b_xio.xio_npages; j += 1) {
 			vm_page_t m;
-			m = tbp->b_pages[j];
+			m = tbp->b_xio.xio_pages[j];
 			vm_page_io_start(m);
 			vm_object_pip_add(m->object, 1);
-			if ((bp->b_npages == 0) ||
-				(bp->b_pages[bp->b_npages-1] != m)) {
-				bp->b_pages[bp->b_npages] = m;
-				bp->b_npages++;
+			if ((bp->b_xio.xio_npages == 0) ||
+				(bp->b_xio.xio_pages[bp->b_xio.xio_npages-1] != m)) {
+				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
+				bp->b_xio.xio_npages++;
 			}
 			if ((m->valid & VM_PAGE_BITS_ALL) == VM_PAGE_BITS_ALL)
-				tbp->b_pages[j] = bogus_page;
+				tbp->b_xio.xio_pages[j] = bogus_page;
 		}
 		/*
 		 * XXX shouldn't this be += size for both, like in 
@@ -475,10 +475,10 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 	 * Fully valid pages in the cluster are already good and do not need
 	 * to be re-read from disk.  Replace the page with bogus_page
 	 */
-	for (j = 0; j < bp->b_npages; j++) {
-		if ((bp->b_pages[j]->valid & VM_PAGE_BITS_ALL) ==
+	for (j = 0; j < bp->b_xio.xio_npages; j++) {
+		if ((bp->b_xio.xio_pages[j]->valid & VM_PAGE_BITS_ALL) ==
 		    VM_PAGE_BITS_ALL) {
-			bp->b_pages[j] = bogus_page;
+			bp->b_xio.xio_pages[j] = bogus_page;
 		}
 	}
 	if (bp->b_bufsize > bp->b_kvasize)
@@ -487,7 +487,7 @@ cluster_rbuild(struct vnode *vp, u_quad_t filesize, daddr_t lbn,
 	bp->b_kvasize = bp->b_bufsize;
 
 	pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
-		(vm_page_t *)bp->b_pages, bp->b_npages);
+		(vm_page_t *)bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 	return (bp);
 }
 
@@ -509,7 +509,7 @@ cluster_callback(struct buf *bp)
 	if (bp->b_flags & B_ERROR)
 		error = bp->b_error;
 
-	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_npages);
+	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	/*
 	 * Move memory from the large cluster buffer into the component
 	 * buffers and mark IO as done on these.
@@ -781,7 +781,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		TAILQ_INIT(&bp->b_cluster.cluster_head);
 		bp->b_bcount = 0;
 		bp->b_bufsize = 0;
-		bp->b_npages = 0;
+		bp->b_xio.xio_npages = 0;
 		bp->b_blkno = tbp->b_blkno;
 		bp->b_lblkno = tbp->b_lblkno;
 		bp->b_offset = tbp->b_offset;
@@ -840,7 +840,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				if ((tbp->b_bcount != size) ||
 				  ((bp->b_blkno + (dbsize * i)) !=
 				    tbp->b_blkno) ||
-				  ((tbp->b_npages + bp->b_npages) >
+				  ((tbp->b_xio.xio_npages + bp->b_xio.xio_npages) >
 				    (vp->v_mount->mnt_iosize_max / PAGE_SIZE))) {
 					BUF_UNLOCK(tbp);
 					splx(s);
@@ -871,8 +871,8 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 				vm_page_t m;
 
 				if (i != 0) { /* if not first buffer */
-					for (j = 0; j < tbp->b_npages; j += 1) {
-						m = tbp->b_pages[j];
+					for (j = 0; j < tbp->b_xio.xio_npages; j += 1) {
+						m = tbp->b_xio.xio_pages[j];
 						if (m->flags & PG_BUSY) {
 							bqrelse(tbp);
 							goto finishcluster;
@@ -880,14 +880,14 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 					}
 				}
 					
-				for (j = 0; j < tbp->b_npages; j += 1) {
-					m = tbp->b_pages[j];
+				for (j = 0; j < tbp->b_xio.xio_npages; j += 1) {
+					m = tbp->b_xio.xio_pages[j];
 					vm_page_io_start(m);
 					vm_object_pip_add(m->object, 1);
-					if ((bp->b_npages == 0) ||
-					  (bp->b_pages[bp->b_npages - 1] != m)) {
-						bp->b_pages[bp->b_npages] = m;
-						bp->b_npages++;
+					if ((bp->b_xio.xio_npages == 0) ||
+					  (bp->b_xio.xio_pages[bp->b_xio.xio_npages - 1] != m)) {
+						bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
+						bp->b_xio.xio_npages++;
 					}
 				}
 			}
@@ -907,7 +907,7 @@ cluster_wbuild(struct vnode *vp, long size, daddr_t start_lbn, int len)
 		}
 	finishcluster:
 		pmap_qenter(trunc_page((vm_offset_t) bp->b_data),
-			(vm_page_t *) bp->b_pages, bp->b_npages);
+			(vm_page_t *) bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 		if (bp->b_bufsize > bp->b_kvasize)
 			panic(
 			    "cluster_wbuild: b_bufsize(%ld) > b_kvasize(%d)\n",

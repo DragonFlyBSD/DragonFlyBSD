@@ -12,7 +12,7 @@
  *		John S. Dyson.
  *
  * $FreeBSD: src/sys/kern/vfs_bio.c,v 1.242.2.20 2003/05/28 18:38:10 alc Exp $
- * $DragonFly: src/sys/kern/vfs_bio.c,v 1.28 2004/06/01 22:19:30 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_bio.c,v 1.29 2004/07/14 03:10:17 hmp Exp $
  */
 
 /*
@@ -403,6 +403,7 @@ bufinit(void)
 		bp->b_dev = NODEV;
 		bp->b_qindex = QUEUE_EMPTY;
 		bp->b_xflags = 0;
+		xio_init(&bp->b_xio);
 		LIST_INIT(&bp->b_dep);
 		BUF_LOCKINIT(bp);
 		TAILQ_INSERT_TAIL(&bufqueues[QUEUE_EMPTY], bp, b_freelist);
@@ -1105,7 +1106,7 @@ brelse(struct buf * bp)
 		 * Get the base offset and length of the buffer.  Note that 
 		 * in the VMIO case if the buffer block size is not
 		 * page-aligned then b_data pointer may not be page-aligned.
-		 * But our b_pages[] array *IS* page aligned.
+		 * But our b_xio->xio_pages array *IS* page aligned.
 		 *
 		 * block sizes less then DEV_BSIZE (usually 512) are not 
 		 * supported due to the page granularity bits (m->valid,
@@ -1117,8 +1118,8 @@ brelse(struct buf * bp)
 		resid = bp->b_bufsize;
 		foff = bp->b_offset;
 
-		for (i = 0; i < bp->b_npages; i++) {
-			m = bp->b_pages[i];
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			m = bp->b_xio.xio_pages[i];
 			vm_page_flag_clear(m, PG_ZERO);
 			/*
 			 * If we hit a bogus page, fixup *all* of them
@@ -1131,23 +1132,24 @@ brelse(struct buf * bp)
 				VOP_GETVOBJECT(vp, &obj);
 				poff = OFF_TO_IDX(bp->b_offset);
 
-				for (j = i; j < bp->b_npages; j++) {
+				for (j = i; j < bp->b_xio.xio_npages; j++) {
 					vm_page_t mtmp;
 
-					mtmp = bp->b_pages[j];
+					mtmp = bp->b_xio.xio_pages[j];
 					if (mtmp == bogus_page) {
 						mtmp = vm_page_lookup(obj, poff + j);
 						if (!mtmp) {
 							panic("brelse: page missing");
 						}
-						bp->b_pages[j] = mtmp;
+						bp->b_xio.xio_pages[j] = mtmp;
 					}
 				}
 
 				if ((bp->b_flags & B_INVAL) == 0) {
-					pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);
+					pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+						bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 				}
-				m = bp->b_pages[i];
+				m = bp->b_xio.xio_pages[i];
 			}
 
 			/*
@@ -1375,9 +1377,9 @@ vfs_vmio_release(struct buf *bp)
 	vm_page_t m;
 
 	s = splvm();
-	for (i = 0; i < bp->b_npages; i++) {
-		m = bp->b_pages[i];
-		bp->b_pages[i] = NULL;
+	for (i = 0; i < bp->b_xio.xio_npages; i++) {
+		m = bp->b_xio.xio_pages[i];
+		bp->b_xio.xio_pages[i] = NULL;
 		/*
 		 * In order to keep page LRU ordering consistent, put
 		 * everything on the inactive queue.
@@ -1410,12 +1412,12 @@ vfs_vmio_release(struct buf *bp)
 		}
 	}
 	splx(s);
-	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_npages);
+	pmap_qremove(trunc_page((vm_offset_t) bp->b_data), bp->b_xio.xio_npages);
 	if (bp->b_bufsize) {
 		bufspacewakeup();
 		bp->b_bufsize = 0;
 	}
-	bp->b_npages = 0;
+	bp->b_xio.xio_npages = 0;
 	bp->b_flags &= ~B_VMIO;
 	if (bp->b_vp)
 		brelvp(bp);
@@ -1720,7 +1722,7 @@ restart:
 		bp->b_error = 0;
 		bp->b_resid = 0;
 		bp->b_bcount = 0;
-		bp->b_npages = 0;
+		bp->b_xio.xio_npages = 0;
 		bp->b_dirtyoff = bp->b_dirtyend = 0;
 
 		LIST_INIT(&bp->b_dep);
@@ -2052,7 +2054,7 @@ vfs_setdirty(struct buf *bp)
 	if ((bp->b_flags & B_VMIO) == 0)
 		return;
 
-	object = bp->b_pages[0]->object;
+	object = bp->b_xio.xio_pages[0]->object;
 
 	if ((object->flags & OBJ_WRITEABLE) && !(object->flags & OBJ_MIGHTBEDIRTY))
 		printf("Warning: object %p writeable but not mightbedirty\n", object);
@@ -2067,9 +2069,9 @@ vfs_setdirty(struct buf *bp)
 		 * test the pages to see if they have been modified directly
 		 * by users through the VM system.
 		 */
-		for (i = 0; i < bp->b_npages; i++) {
-			vm_page_flag_clear(bp->b_pages[i], PG_ZERO);
-			vm_page_test_dirty(bp->b_pages[i]);
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_flag_clear(bp->b_xio.xio_pages[i], PG_ZERO);
+			vm_page_test_dirty(bp->b_xio.xio_pages[i]);
 		}
 
 		/*
@@ -2077,14 +2079,14 @@ vfs_setdirty(struct buf *bp)
 		 * (eoffset - boffset) bytes.
 		 */
 
-		for (i = 0; i < bp->b_npages; i++) {
-			if (bp->b_pages[i]->dirty)
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			if (bp->b_xio.xio_pages[i]->dirty)
 				break;
 		}
 		boffset = (i << PAGE_SHIFT) - (bp->b_offset & PAGE_MASK);
 
-		for (i = bp->b_npages - 1; i >= 0; --i) {
-			if (bp->b_pages[i]->dirty) {
+		for (i = bp->b_xio.xio_npages - 1; i >= 0; --i) {
+			if (bp->b_xio.xio_pages[i]->dirty) {
 				break;
 			}
 		}
@@ -2530,25 +2532,25 @@ allocbuf(struct buf *bp, int size)
 			 * DEV_BSIZE aligned existing buffer size.  Figure out
 			 * if we have to remove any pages.
 			 */
-			if (desiredpages < bp->b_npages) {
-				for (i = desiredpages; i < bp->b_npages; i++) {
+			if (desiredpages < bp->b_xio.xio_npages) {
+				for (i = desiredpages; i < bp->b_xio.xio_npages; i++) {
 					/*
 					 * the page is not freed here -- it
 					 * is the responsibility of 
 					 * vnode_pager_setsize
 					 */
-					m = bp->b_pages[i];
+					m = bp->b_xio.xio_pages[i];
 					KASSERT(m != bogus_page,
 					    ("allocbuf: bogus page found"));
 					while (vm_page_sleep_busy(m, TRUE, "biodep"))
 						;
 
-					bp->b_pages[i] = NULL;
+					bp->b_xio.xio_pages[i] = NULL;
 					vm_page_unwire(m, 0);
 				}
 				pmap_qremove((vm_offset_t) trunc_page((vm_offset_t)bp->b_data) +
-				    (desiredpages << PAGE_SHIFT), (bp->b_npages - desiredpages));
-				bp->b_npages = desiredpages;
+				    (desiredpages << PAGE_SHIFT), (bp->b_xio.xio_npages - desiredpages));
+				bp->b_xio.xio_npages = desiredpages;
 			}
 		} else if (size > bp->b_bcount) {
 			/*
@@ -2576,11 +2578,11 @@ allocbuf(struct buf *bp, int size)
 			VOP_GETVOBJECT(vp, &obj);
 
 			s = splbio();
-			while (bp->b_npages < desiredpages) {
+			while (bp->b_xio.xio_npages < desiredpages) {
 				vm_page_t m;
 				vm_pindex_t pi;
 
-				pi = OFF_TO_IDX(bp->b_offset) + bp->b_npages;
+				pi = OFF_TO_IDX(bp->b_offset) + bp->b_xio.xio_npages;
 				if ((m = vm_page_lookup(obj, pi)) == NULL) {
 					/*
 					 * note: must allocate system pages
@@ -2591,13 +2593,14 @@ allocbuf(struct buf *bp, int size)
 					m = vm_page_alloc(obj, pi, VM_ALLOC_NORMAL | VM_ALLOC_SYSTEM);
 					if (m == NULL) {
 						vm_wait();
-						vm_pageout_deficit += desiredpages - bp->b_npages;
+						vm_pageout_deficit += desiredpages -
+							bp->b_xio.xio_npages;
 					} else {
 						vm_page_wire(m);
 						vm_page_wakeup(m);
 						bp->b_flags &= ~B_CACHE;
-						bp->b_pages[bp->b_npages] = m;
-						++bp->b_npages;
+						bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
+						++bp->b_xio.xio_npages;
 					}
 					continue;
 				}
@@ -2629,8 +2632,8 @@ allocbuf(struct buf *bp, int size)
 				}
 				vm_page_flag_clear(m, PG_ZERO);
 				vm_page_wire(m);
-				bp->b_pages[bp->b_npages] = m;
-				++bp->b_npages;
+				bp->b_xio.xio_pages[bp->b_xio.xio_npages] = m;
+				++bp->b_xio.xio_npages;
 			}
 			splx(s);
 
@@ -2666,7 +2669,7 @@ allocbuf(struct buf *bp, int size)
 				    bp->b_offset,
 				    toff, 
 				    tinc, 
-				    bp->b_pages[pi]
+				    bp->b_xio.xio_pages[pi]
 				);
 				toff += tinc;
 				tinc = PAGE_SIZE;
@@ -2682,8 +2685,8 @@ allocbuf(struct buf *bp, int size)
 			    trunc_page((vm_offset_t)bp->b_data);
 			pmap_qenter(
 			    (vm_offset_t)bp->b_data,
-			    bp->b_pages, 
-			    bp->b_npages
+			    bp->b_xio.xio_pages, 
+			    bp->b_xio.xio_npages
 			);
 			bp->b_data = (caddr_t)((vm_offset_t)bp->b_data | 
 			    (vm_offset_t)(bp->b_offset & PAGE_MASK));
@@ -2820,9 +2823,9 @@ biodone(struct buf *bp)
 			panic("biodone: no object");
 		}
 #if defined(VFS_BIO_DEBUG)
-		if (obj->paging_in_progress < bp->b_npages) {
-			printf("biodone: paging in progress(%d) < bp->b_npages(%d)\n",
-			    obj->paging_in_progress, bp->b_npages);
+		if (obj->paging_in_progress < bp->b_xio.xio_npages) {
+			printf("biodone: paging in progress(%d) < bp->b_xio.xio_npages(%d)\n",
+			    obj->paging_in_progress, bp->b_xio.xio_npages);
 		}
 #endif
 
@@ -2836,7 +2839,7 @@ biodone(struct buf *bp)
 			bp->b_flags |= B_CACHE;
 		}
 
-		for (i = 0; i < bp->b_npages; i++) {
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			int bogusflag = 0;
 			int resid;
 
@@ -2850,14 +2853,15 @@ biodone(struct buf *bp)
 			 * to worry about interrupt/freeing races destroying
 			 * the VM object association.
 			 */
-			m = bp->b_pages[i];
+			m = bp->b_xio.xio_pages[i];
 			if (m == bogus_page) {
 				bogusflag = 1;
 				m = vm_page_lookup(obj, OFF_TO_IDX(foff));
 				if (m == NULL)
 					panic("biodone: page disappeared");
-				bp->b_pages[i] = m;
-				pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);
+				bp->b_xio.xio_pages[i] = m;
+				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
 #if defined(VFS_BIO_DEBUG)
 			if (OFF_TO_IDX(foff) != m->pindex) {
@@ -2892,11 +2896,11 @@ biodone(struct buf *bp)
 					printf(" iosize: %ld, lblkno: %d, flags: 0x%lx, npages: %d\n",
 					    bp->b_vp->v_mount->mnt_stat.f_iosize,
 					    (int) bp->b_lblkno,
-					    bp->b_flags, bp->b_npages);
+					    bp->b_flags, bp->b_xio.xio_npages);
 				else
 					printf(" VDEV, lblkno: %d, flags: 0x%lx, npages: %d\n",
 					    (int) bp->b_lblkno,
-					    bp->b_flags, bp->b_npages);
+					    bp->b_flags, bp->b_xio.xio_npages);
 				printf(" valid: 0x%x, dirty: 0x%x, wired: %d\n",
 				    m->valid, m->dirty, m->wire_count);
 				panic("biodone: page busy < 0");
@@ -2944,8 +2948,8 @@ vfs_unbusy_pages(struct buf *bp)
 
 		VOP_GETVOBJECT(vp, &obj);
 
-		for (i = 0; i < bp->b_npages; i++) {
-			vm_page_t m = bp->b_pages[i];
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 
 			/*
 			 * When restoring bogus changes the original pages
@@ -2958,8 +2962,9 @@ vfs_unbusy_pages(struct buf *bp)
 				if (!m) {
 					panic("vfs_unbusy_pages: page missing");
 				}
-				bp->b_pages[i] = m;
-				pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);
+				bp->b_xio.xio_pages[i] = m;
+				pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+					bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 			}
 			vm_object_pip_subtract(obj, 1);
 			vm_page_flag_clear(m, PG_ZERO);
@@ -3035,15 +3040,15 @@ vfs_busy_pages(struct buf *bp, int clear_modify)
 		vfs_setdirty(bp);
 
 retry:
-		for (i = 0; i < bp->b_npages; i++) {
-			vm_page_t m = bp->b_pages[i];
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 			if (vm_page_sleep_busy(m, FALSE, "vbpage"))
 				goto retry;
 		}
 
 		bogus = 0;
-		for (i = 0; i < bp->b_npages; i++) {
-			vm_page_t m = bp->b_pages[i];
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 
 			vm_page_flag_clear(m, PG_ZERO);
 			if ((bp->b_flags & B_CLUSTER) == 0) {
@@ -3072,13 +3077,14 @@ retry:
 				vfs_page_set_valid(bp, foff, i, m);
 			else if (m->valid == VM_PAGE_BITS_ALL &&
 				(bp->b_flags & B_CACHE) == 0) {
-				bp->b_pages[i] = bogus_page;
+				bp->b_xio.xio_pages[i] = bogus_page;
 				bogus++;
 			}
 			foff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 		}
 		if (bogus)
-			pmap_qenter(trunc_page((vm_offset_t)bp->b_data), bp->b_pages, bp->b_npages);
+			pmap_qenter(trunc_page((vm_offset_t)bp->b_data),
+				bp->b_xio.xio_pages, bp->b_xio.xio_npages);
 	}
 
 	/*
@@ -3116,8 +3122,8 @@ vfs_clean_pages(struct buf *bp)
 		foff = bp->b_offset;
 		KASSERT(bp->b_offset != NOOFFSET,
 		    ("vfs_clean_pages: no buffer offset"));
-		for (i = 0; i < bp->b_npages; i++) {
-			vm_page_t m = bp->b_pages[i];
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 			vm_ooffset_t noff = (foff + PAGE_SIZE) & ~(off_t)PAGE_MASK;
 			vm_ooffset_t eoff = noff;
 
@@ -3154,8 +3160,8 @@ vfs_bio_set_validclean(struct buf *bp, int base, int size)
 		base += (bp->b_offset & PAGE_MASK);
 		n = PAGE_SIZE - (base & PAGE_MASK);
 
-		for (i = base / PAGE_SIZE; size > 0 && i < bp->b_npages; ++i) {
-			vm_page_t m = bp->b_pages[i];
+		for (i = base / PAGE_SIZE; size > 0 && i < bp->b_xio.xio_npages; ++i) {
+			vm_page_t m = bp->b_xio.xio_pages[i];
 
 			if (n > size)
 				n = size;
@@ -3185,44 +3191,44 @@ vfs_bio_clrbuf(struct buf *bp)
 	caddr_t sa, ea;
 	if ((bp->b_flags & (B_VMIO | B_MALLOC)) == B_VMIO) {
 		bp->b_flags &= ~(B_INVAL|B_ERROR);
-		if ((bp->b_npages == 1) && (bp->b_bufsize < PAGE_SIZE) &&
+		if ((bp->b_xio.xio_npages == 1) && (bp->b_bufsize < PAGE_SIZE) &&
 		    (bp->b_offset & PAGE_MASK) == 0) {
 			mask = (1 << (bp->b_bufsize / DEV_BSIZE)) - 1;
-			if ((bp->b_pages[0]->valid & mask) == mask) {
+			if ((bp->b_xio.xio_pages[0]->valid & mask) == mask) {
 				bp->b_resid = 0;
 				return;
 			}
-			if (((bp->b_pages[0]->flags & PG_ZERO) == 0) &&
-			    ((bp->b_pages[0]->valid & mask) == 0)) {
+			if (((bp->b_xio.xio_pages[0]->flags & PG_ZERO) == 0) &&
+			    ((bp->b_xio.xio_pages[0]->valid & mask) == 0)) {
 				bzero(bp->b_data, bp->b_bufsize);
-				bp->b_pages[0]->valid |= mask;
+				bp->b_xio.xio_pages[0]->valid |= mask;
 				bp->b_resid = 0;
 				return;
 			}
 		}
 		ea = sa = bp->b_data;
-		for(i=0;i<bp->b_npages;i++,sa=ea) {
+		for(i=0;i<bp->b_xio.xio_npages;i++,sa=ea) {
 			int j = ((vm_offset_t)sa & PAGE_MASK) / DEV_BSIZE;
 			ea = (caddr_t)trunc_page((vm_offset_t)sa + PAGE_SIZE);
 			ea = (caddr_t)(vm_offset_t)ulmin(
 			    (u_long)(vm_offset_t)ea,
 			    (u_long)(vm_offset_t)bp->b_data + bp->b_bufsize);
 			mask = ((1 << ((ea - sa) / DEV_BSIZE)) - 1) << j;
-			if ((bp->b_pages[i]->valid & mask) == mask)
+			if ((bp->b_xio.xio_pages[i]->valid & mask) == mask)
 				continue;
-			if ((bp->b_pages[i]->valid & mask) == 0) {
-				if ((bp->b_pages[i]->flags & PG_ZERO) == 0) {
+			if ((bp->b_xio.xio_pages[i]->valid & mask) == 0) {
+				if ((bp->b_xio.xio_pages[i]->flags & PG_ZERO) == 0) {
 					bzero(sa, ea - sa);
 				}
 			} else {
 				for (; sa < ea; sa += DEV_BSIZE, j++) {
-					if (((bp->b_pages[i]->flags & PG_ZERO) == 0) &&
-						(bp->b_pages[i]->valid & (1<<j)) == 0)
+					if (((bp->b_xio.xio_pages[i]->flags & PG_ZERO) == 0) &&
+						(bp->b_xio.xio_pages[i]->valid & (1<<j)) == 0)
 						bzero(sa, DEV_BSIZE);
 				}
 			}
-			bp->b_pages[i]->valid |= mask;
-			vm_page_flag_clear(bp->b_pages[i], PG_ZERO);
+			bp->b_xio.xio_pages[i]->valid |= mask;
+			vm_page_flag_clear(bp->b_xio.xio_pages[i], PG_ZERO);
 		}
 		bp->b_resid = 0;
 	} else {
@@ -3267,10 +3273,10 @@ tryagain:
 		p->valid = VM_PAGE_BITS_ALL;
 		vm_page_flag_clear(p, PG_ZERO);
 		pmap_kenter(pg, VM_PAGE_TO_PHYS(p));
-		bp->b_pages[index] = p;
+		bp->b_xio.xio_pages[index] = p;
 		vm_page_wakeup(p);
 	}
-	bp->b_npages = index;
+	bp->b_xio.xio_npages = index;
 }
 
 void
@@ -3285,20 +3291,20 @@ vm_hold_free_pages(struct buf *bp, vm_offset_t from, vm_offset_t to)
 	newnpages = index = (from - trunc_page((vm_offset_t)bp->b_data)) >> PAGE_SHIFT;
 
 	for (pg = from; pg < to; pg += PAGE_SIZE, index++) {
-		p = bp->b_pages[index];
-		if (p && (index < bp->b_npages)) {
+		p = bp->b_xio.xio_pages[index];
+		if (p && (index < bp->b_xio.xio_npages)) {
 			if (p->busy) {
 				printf("vm_hold_free_pages: blkno: %d, lblkno: %d\n",
 					bp->b_blkno, bp->b_lblkno);
 			}
-			bp->b_pages[index] = NULL;
+			bp->b_xio.xio_pages[index] = NULL;
 			pmap_kremove(pg);
 			vm_page_busy(p);
 			vm_page_unwire(p, 0);
 			vm_page_free(p);
 		}
 	}
-	bp->b_npages = newnpages;
+	bp->b_xio.xio_npages = newnpages;
 }
 
 /*
@@ -3335,8 +3341,8 @@ retry:
 			(bp->b_flags&B_READ)?(VM_PROT_READ|VM_PROT_WRITE):VM_PROT_READ);
 		if (i < 0) {
 			for (i = 0; i < pidx; ++i) {
-			    vm_page_unhold(bp->b_pages[i]);
-			    bp->b_pages[i] = NULL;
+			    vm_page_unhold(bp->b_xio.xio_pages[i]);
+			    bp->b_xio.xio_pages[i] = NULL;
 			}
 			return(-1);
 		}
@@ -3356,14 +3362,14 @@ retry:
 		}
 		m = PHYS_TO_VM_PAGE(pa);
 		vm_page_hold(m);
-		bp->b_pages[pidx] = m;
+		bp->b_xio.xio_pages[pidx] = m;
 	}
 	if (pidx > btoc(MAXPHYS))
 		panic("vmapbuf: mapped more than MAXPHYS");
-	pmap_qenter((vm_offset_t)bp->b_saveaddr, bp->b_pages, pidx);
+	pmap_qenter((vm_offset_t)bp->b_saveaddr, bp->b_xio.xio_pages, pidx);
 	
 	kva = bp->b_saveaddr;
-	bp->b_npages = pidx;
+	bp->b_xio.xio_npages = pidx;
 	bp->b_saveaddr = bp->b_data;
 	bp->b_data = kva + (((vm_offset_t) bp->b_data) & PAGE_MASK);
 	return(0);
@@ -3383,10 +3389,10 @@ vunmapbuf(struct buf *bp)
 	if ((bp->b_flags & B_PHYS) == 0)
 		panic("vunmapbuf");
 
-	npages = bp->b_npages;
+	npages = bp->b_xio.xio_npages;
 	pmap_qremove(trunc_page((vm_offset_t)bp->b_data),
 		     npages);
-	m = bp->b_pages;
+	m = bp->b_xio.xio_pages;
 	for (pidx = 0; pidx < npages; pidx++)
 		vm_page_unhold(*m++);
 
@@ -3414,15 +3420,16 @@ DB_SHOW_COMMAND(buffer, db_show_buffer)
 		  bp->b_error, bp->b_bufsize, bp->b_bcount, bp->b_resid,
 		  major(bp->b_dev), minor(bp->b_dev),
 		  bp->b_data, bp->b_blkno, bp->b_pblkno);
-	if (bp->b_npages) {
+	if (bp->b_xio.xio_npages) {
 		int i;
-		db_printf("b_npages = %d, pages(OBJ, IDX, PA): ", bp->b_npages);
-		for (i = 0; i < bp->b_npages; i++) {
+		db_printf("b_xio.xio_npages = %d, pages(OBJ, IDX, PA): ",
+			bp->b_xio.xio_npages);
+		for (i = 0; i < bp->b_xio.xio_npages; i++) {
 			vm_page_t m;
-			m = bp->b_pages[i];
+			m = bp->b_xio.xio_pages[i];
 			db_printf("(%p, 0x%lx, 0x%lx)", (void *)m->object,
 			    (u_long)m->pindex, (u_long)VM_PAGE_TO_PHYS(m));
-			if ((i + 1) < bp->b_npages)
+			if ((i + 1) < bp->b_xio.xio_npages)
 				db_printf(",");
 		}
 		db_printf("\n");

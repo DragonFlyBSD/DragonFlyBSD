@@ -65,7 +65,7 @@
  *	@(#)swap_pager.c	8.9 (Berkeley) 3/21/94
  *
  * $FreeBSD: src/sys/vm/swap_pager.c,v 1.130.2.12 2002/08/31 21:15:55 dillon Exp $
- * $DragonFly: src/sys/vm/swap_pager.c,v 1.12 2004/05/20 22:42:25 dillon Exp $
+ * $DragonFly: src/sys/vm/swap_pager.c,v 1.13 2004/07/14 03:10:17 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -277,8 +277,8 @@ swap_pager_swap_init(void)
 	 * initialize workable values (0 will work for hysteresis
 	 * but it isn't very efficient).
 	 *
-	 * The nsw_cluster_max is constrained by the bp->b_pages[]
-	 * array (MAXPHYS/PAGE_SIZE) and our locally defined
+	 * The nsw_cluster_max is constrained by the number of pages an XIO
+	 * holds, i.e., (MAXPHYS/PAGE_SIZE) and our locally defined
 	 * MAX_PAGEOUT_CLUSTER.   Also be aware that swap ops are
 	 * constrained by the swap device interleave stripe size.
 	 *
@@ -1104,23 +1104,23 @@ swap_pager_getpages(vm_object_t object, vm_page_t *m, int count, int reqpage)
 		int k;
 
 		for (k = i; k < j; ++k) {
-			bp->b_pages[k - i] = m[k];
+			bp->b_xio.xio_pages[k - i] = m[k];
 			vm_page_flag_set(m[k], PG_SWAPINPROG);
 		}
 	}
-	bp->b_npages = j - i;
+	bp->b_xio.xio_npages = j - i;
 
 	pbgetvp(swapdev_vp, bp);
 
 	mycpu->gd_cnt.v_swapin++;
-	mycpu->gd_cnt.v_swappgsin += bp->b_npages;
+	mycpu->gd_cnt.v_swappgsin += bp->b_xio.xio_npages;
 
 	/*
 	 * We still hold the lock on mreq, and our automatic completion routine
 	 * does not remove it.
 	 */
 
-	vm_object_pip_add(mreq->object, bp->b_npages);
+	vm_object_pip_add(mreq->object, bp->b_xio.xio_npages);
 	lastpindex = m[j-1]->pindex;
 
 	/*
@@ -1355,9 +1355,9 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 			rtvals[i+j] = VM_PAGER_OK;
 
 			vm_page_flag_set(mreq, PG_SWAPINPROG);
-			bp->b_pages[j] = mreq;
+			bp->b_xio.xio_pages[j] = mreq;
 		}
-		bp->b_npages = n;
+		bp->b_xio.xio_npages = n;
 		/*
 		 * Must set dirty range for NFS to work.
 		 */
@@ -1365,7 +1365,7 @@ swap_pager_putpages(vm_object_t object, vm_page_t *m, int count, boolean_t sync,
 		bp->b_dirtyend = bp->b_bcount;
 
 		mycpu->gd_cnt.v_swapout++;
-		mycpu->gd_cnt.v_swappgsout += bp->b_npages;
+		mycpu->gd_cnt.v_swappgsout += bp->b_xio.xio_npages;
 		swapdev_vp->v_numoutput++;
 
 		splx(s);
@@ -1485,15 +1485,15 @@ swp_pager_async_iodone(struct buf *bp)
 	 * set object, raise to splvm().
 	 */
 
-	if (bp->b_npages)
-		object = bp->b_pages[0]->object;
+	if (bp->b_xio.xio_npages)
+		object = bp->b_xio.xio_pages[0]->object;
 	s = splvm();
 
 	/*
 	 * remove the mapping for kernel virtual
 	 */
 
-	pmap_qremove((vm_offset_t)bp->b_data, bp->b_npages);
+	pmap_qremove((vm_offset_t)bp->b_data, bp->b_xio.xio_npages);
 
 	/*
 	 * cleanup pages.  If an error occurs writing to swap, we are in
@@ -1504,8 +1504,8 @@ swp_pager_async_iodone(struct buf *bp)
 	 * never reallocated as swap.  Redirty the page and continue.
 	 */
 
-	for (i = 0; i < bp->b_npages; ++i) {
-		vm_page_t m = bp->b_pages[i];
+	for (i = 0; i < bp->b_xio.xio_npages; ++i) {
+		vm_page_t m = bp->b_xio.xio_pages[i];
 
 		vm_page_flag_clear(m, PG_SWAPINPROG);
 
@@ -1625,7 +1625,7 @@ swp_pager_async_iodone(struct buf *bp)
 	 */
 
 	if (object)
-		vm_object_pip_wakeupn(object, bp->b_npages);
+		vm_object_pip_wakeupn(object, bp->b_xio.xio_npages);
 
 	/*
 	 * release the physical I/O buffer
