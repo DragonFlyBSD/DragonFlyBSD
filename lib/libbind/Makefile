@@ -1,10 +1,16 @@
 # $FreeBSD: src/lib/libbind/Makefile,v 1.5.2.2 2002/07/19 18:46:25 ru Exp $
-# $DragonFly: src/lib/libbind/Makefile,v 1.3 2003/11/22 19:30:55 asmodai Exp $
+# $DragonFly: src/lib/libbind/Makefile,v 1.4 2004/02/03 05:12:51 dillon Exp $
 
 BIND_DIR=${.CURDIR}/../../contrib/bind
 
 LIB=	bind
 WANT_IRS=	for now
+
+# Required to avoid a setpwent() prototype conflict.  This is normally
+# set in the freebsd port subdir header files in contrib/bind, but it's
+# conditionalized on __FreeBSD__.
+#
+CFLAGS += -DSETPWENT_VOID
 
 # This may or may not work yet.  It's not compatible with the core
 # system components since it overrides the master.passwd handling etc.
