@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.15 2004/01/07 20:21:20 dillon Exp $
+ * $DragonFly: src/sys/i386/icu/Attic/icu_vector.s,v 1.16 2004/01/30 05:42:16 dillon Exp $
  */
 
 /*
@@ -256,10 +256,8 @@ IDTVEC(vec_name) ;							\
 	popl %ebp ;							\
 	ret ;								\
 
-#define	CLKINTR_PENDING	movl $1,CNAME(clkintr_pending)
-
 MCOUNT_LABEL(bintr)
-	FAST_INTR(0,fastintr0, IO_ICU1, ENABLE_ICU1, CLKINTR_PENDING)
+	FAST_INTR(0,fastintr0, IO_ICU1, ENABLE_ICU1,)
 	FAST_INTR(1,fastintr1, IO_ICU1, ENABLE_ICU1,)
 	FAST_INTR(2,fastintr2, IO_ICU1, ENABLE_ICU1,)
 	FAST_INTR(3,fastintr3, IO_ICU1, ENABLE_ICU1,)
@@ -276,7 +274,7 @@ MCOUNT_LABEL(bintr)
 	FAST_INTR(14,fastintr14, IO_ICU2, ENABLE_ICU1_AND_2,)
 	FAST_INTR(15,fastintr15, IO_ICU2, ENABLE_ICU1_AND_2,)
 
-	INTR(0,intr0, IO_ICU1, ENABLE_ICU1, al, CLKINTR_PENDING)
+	INTR(0,intr0, IO_ICU1, ENABLE_ICU1, al,)
 	INTR(1,intr1, IO_ICU1, ENABLE_ICU1, al,)
 	INTR(2,intr2, IO_ICU1, ENABLE_ICU1, al,)
 	INTR(3,intr3, IO_ICU1, ENABLE_ICU1, al,)

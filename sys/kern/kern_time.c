@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.13 2004/01/07 11:08:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.14 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -52,6 +52,7 @@
 #include <vm/vm.h>
 #include <vm/vm_extern.h>
 #include <sys/msgport2.h>
+#include <sys/thread2.h>
 
 struct timezone tz;
 
@@ -71,8 +72,8 @@ static int	settime (struct timeval *);
 static void	timevalfix (struct timeval *);
 static void	no_lease_updatetime (int);
 
-static int	sleep_hardloop = 0;
-SYSCTL_INT(_kern, OID_AUTO, sleep_hardloop, CTLFLAG_RW, &sleep_hardloop, 0, "");
+static int     sleep_hard_us = 100;
+SYSCTL_INT(_kern, OID_AUTO, sleep_hard_us, CTLFLAG_RW, &sleep_hard_us, 0, "")
 
 static void 
 no_lease_updatetime(deltat)
@@ -89,9 +90,8 @@ settime(tv)
 	struct timeval delta, tv1, tv2;
 	static struct timeval maxtime, laststep;
 	struct timespec ts;
-	int s;
 
-	s = splclock();
+	crit_enter();
 	microtime(&tv1);
 	delta = *tv;
 	timevalsub(&delta, &tv1);
@@ -122,7 +122,7 @@ settime(tv)
 			}
 		} else {
 			if (tv1.tv_sec == laststep.tv_sec) {
-				splx(s);
+				crit_exit();
 				return (EPERM);
 			}
 			if (delta.tv_sec > 1) {
@@ -135,10 +135,9 @@ settime(tv)
 
 	ts.tv_sec = tv->tv_sec;
 	ts.tv_nsec = tv->tv_usec * 1000;
-	set_timecounter(&ts);
-	(void) splsoftclock();
+	set_timeofday(&ts);
 	lease_updatetime(delta.tv_sec);
-	splx(s);
+	crit_exit();
 	resettodr();
 	return (0);
 }
@@ -195,20 +194,45 @@ clock_getres(struct clock_getres_args *uap)
 		 * Rounding up is especially important if rounding down
 		 * would give 0.  Perfect rounding is unimportant.
 		 */
-		ts.tv_nsec = 1000000000 / timecounter->tc_frequency + 1;
+		ts.tv_nsec = 1000000000 / cputimer_freq + 1;
 		error = copyout(&ts, SCARG(uap, tp), sizeof(ts));
 	}
 	return (error);
 }
 
-static int nanowait;
+/*
+ * nanosleep1()
+ *
+ *	This is a general helper function for nanosleep() (aka sleep() aka
+ *	usleep()).
+ *
+ *	If there is less then one tick's worth of time left and
+ *	we haven't done a yield, or the remaining microseconds is
+ *	ridiculously low, do a yield.  This avoids having
+ *	to deal with systimer overheads when the system is under
+ *	heavy loads.  If we have done a yield already then use
+ *	a systimer and an uninterruptable thread wait.
+ *
+ *	If there is more then a tick's worth of time left,
+ *	calculate the baseline ticks and use an interruptable
+ *	tsleep, then handle the fine-grained delay on the next
+ *	loop.  This usually results in two sleeps occuring, a long one
+ *	and a short one.
+ */
+static void
+ns1_systimer(systimer_t info)
+{
+	lwkt_schedule(info->data);
+}
 
 static int
 nanosleep1(struct timespec *rqt, struct timespec *rmt)
 {
+	static int nanowait;
 	struct timespec ts, ts2, ts3;
 	struct timeval tv;
 	int error;
+	int tried_yield;
 
 	if (rqt->tv_nsec < 0 || rqt->tv_nsec >= 1000000000)
 		return (EINVAL);
@@ -217,34 +241,36 @@ nanosleep1(struct timespec *rqt, struct timespec *rmt)
 	nanouptime(&ts);
 	timespecadd(&ts, rqt);		/* ts = target timestamp compare */
 	TIMESPEC_TO_TIMEVAL(&tv, rqt);	/* tv = sleep interval */
-	for (;;) {
-		/*
-		 * If hard looping is allowed and the interval is too short,
-		 * hard loop with a yield, otherwise sleep with a conservative
-		 * tick count.  In normal mode sleep with one extra tick count
-		 * which will be sufficient for most sleep values.  If it
-		 * isn't sufficient in normal mode we will wind up doing an
-		 * extra loop.
-		 *
-		 * sleep_hardloop = 0	Normal mode
-		 * sleep_hardloop = 1	Strict hard loop
-		 * sleep_hardloop = 2	Hard loop on < 1 tick requests only
-		 */
-		int ticks = tvtohz_low(&tv);
+	tried_yield = 0;
 
-		if (sleep_hardloop) {
-			if (ticks == 0) {
+	for (;;) {
+		int ticks;
+		struct systimer info;
+
+		ticks = tv.tv_usec / tick;	/* approximate */
+
+		if (tv.tv_sec == 0 && ticks == 0) {
+			if (tried_yield || tv.tv_usec < sleep_hard_us) {
+				tried_yield = 0;
 				uio_yield();
-				error = iscaught(curproc);
 			} else {
-				error = tsleep(&nanowait, PCATCH, "nanslp", 
-						ticks + sleep_hardloop - 1);
+				crit_enter();
+				systimer_init_oneshot(&info, ns1_systimer,
+						curthread, tv.tv_usec);
+				lwkt_deschedule_self();
+				crit_exit();
+				lwkt_switch();
+				systimer_del(&info); /* make sure it's gone */
 			}
+			error = iscaught(curproc);
+		} else if (tv.tv_sec == 0) {
+			error = tsleep(&nanowait, PCATCH, "nanslp", ticks);
 		} else {
-			error = tsleep(&nanowait, PCATCH, "nanslp", ticks + 1);
+			ticks = tvtohz_low(&tv); /* also handles overflow */
+			error = tsleep(&nanowait, PCATCH, "nanslp", ticks);
 		}
 		nanouptime(&ts2);
-		if (error != EWOULDBLOCK) {
+		if (error && error != EWOULDBLOCK) {
 			if (error == ERESTART)
 				error = EINTR;
 			if (rmt != NULL) {
@@ -403,7 +429,7 @@ adjtime(struct adjtime_args *uap)
 	struct thread *td = curthread;
 	struct timeval atv;
 	long ndelta, ntickdelta, odelta;
-	int s, error;
+	int error;
 
 	if ((error = suser(td)))
 		return (error);
@@ -433,11 +459,14 @@ adjtime(struct adjtime_args *uap)
 	 */
 	if (ndelta < 0)
 		ntickdelta = -ntickdelta;
-	s = splclock();
+	/* 
+	 * XXX not MP safe , but will probably work anyway.
+	 */
+	crit_enter();
 	odelta = timedelta;
 	timedelta = ndelta;
 	tickdelta = ntickdelta;
-	splx(s);
+	crit_exit();
 
 	if (uap->olddelta) {
 		atv.tv_sec = odelta / 1000000;
@@ -476,11 +505,10 @@ getitimer(struct getitimer_args *uap)
 	struct proc *p = curproc;
 	struct timeval ctv;
 	struct itimerval aitv;
-	int s;
 
 	if (uap->which > ITIMER_PROF)
 		return (EINVAL);
-	s = splclock(); /* XXX still needed ? */
+	crit_enter();
 	if (uap->which == ITIMER_REAL) {
 		/*
 		 * Convert from absolute to relative time in .it_value
@@ -496,9 +524,10 @@ getitimer(struct getitimer_args *uap)
 			else
 				timevalsub(&aitv.it_value, &ctv);
 		}
-	} else
+	} else {
 		aitv = p->p_stats->p_timer[uap->which];
-	splx(s);
+	}
+	crit_exit();
 	return (copyout((caddr_t)&aitv, (caddr_t)uap->itv,
 	    sizeof (struct itimerval)));
 }
@@ -511,7 +540,7 @@ setitimer(struct setitimer_args *uap)
 	struct timeval ctv;
 	struct itimerval *itvp;
 	struct proc *p = curproc;
-	int s, error;
+	int error;
 
 	if (uap->which > ITIMER_PROF)
 		return (EINVAL);
@@ -530,7 +559,7 @@ setitimer(struct setitimer_args *uap)
 		timevalclear(&aitv.it_interval);
 	else if (itimerfix(&aitv.it_interval))
 		return (EINVAL);
-	s = splclock(); /* XXX: still needed ? */
+	crit_enter();
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
 			untimeout(realitexpire, (caddr_t)p, p->p_ithandle);
@@ -540,9 +569,10 @@ setitimer(struct setitimer_args *uap)
 		getmicrouptime(&ctv);
 		timevaladd(&aitv.it_value, &ctv);
 		p->p_realtimer = aitv;
-	} else
+	} else {
 		p->p_stats->p_timer[uap->which] = aitv;
-	splx(s);
+	}
+	crit_exit();
 	return (0);
 }
 
@@ -564,7 +594,6 @@ realitexpire(arg)
 {
 	struct proc *p;
 	struct timeval ctv, ntv;
-	int s;
 
 	p = (struct proc *)arg;
 	psignal(p, SIGALRM);
@@ -573,7 +602,7 @@ realitexpire(arg)
 		return;
 	}
 	for (;;) {
-		s = splclock(); /* XXX: still neeeded ? */
+		crit_enter();
 		timevaladd(&p->p_realtimer.it_value,
 		    &p->p_realtimer.it_interval);
 		getmicrouptime(&ctv);
@@ -582,10 +611,10 @@ realitexpire(arg)
 			timevalsub(&ntv, &ctv);
 			p->p_ithandle = timeout(realitexpire, (caddr_t)p,
 			    tvtohz_low(&ntv));
-			splx(s);
+			crit_exit();
 			return;
 		}
-		splx(s);
+		crit_exit();
 	}
 }
 

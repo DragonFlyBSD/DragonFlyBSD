@@ -5,7 +5,7 @@
  * modified for FreeBSD by Andrew A. Chernov <ache@astral.msk.su>
  *
  * $FreeBSD: src/sys/i386/isa/spkr.c,v 1.45 2000/01/29 16:00:32 peter Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.8 2003/08/27 06:48:15 rob Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/spkr/Attic/spkr.c,v 1.9 2004/01/30 05:42:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -15,6 +15,7 @@
 #include <sys/uio.h>
 #include <sys/conf.h>
 #include <sys/ctype.h>
+#include <sys/systimer.h>
 #include <bus/isa/i386/isa.h>
 #include <i386/isa/timerreg.h>
 #include <machine/clock.h>
@@ -79,26 +80,22 @@ tone(thz, ticks)
 	unsigned int thz, ticks;
 {
     unsigned int divisor;
-    int sps;
 
     if (thz <= 0)
 	return;
 
-    divisor = timer_freq / thz;
+    divisor = cputimer_freq / thz;
 
 #ifdef DEBUG
     (void) printf("tone: thz=%d ticks=%d\n", thz, ticks);
 #endif /* DEBUG */
 
     /* set timer to generate clicks at given frequency in Hertz */
-    sps = splclock();
 
     if (acquire_timer2(TIMER_SEL2 | TIMER_SQWAVE | TIMER_16BIT)) {
 	/* enter list of waiting procs ??? */
-	splx(sps);
 	return;
     }
-    splx(sps);
     clock_lock();
     outb(TIMER_CNTR2, (divisor & 0xff));	/* send lo byte */
     outb(TIMER_CNTR2, (divisor >> 8));	/* send hi byte */
@@ -115,9 +112,7 @@ tone(thz, ticks)
     if (ticks > 0)
 	tsleep((caddr_t)&endtone, PCATCH, "spkrtn", ticks);
     outb(IO_PPI, inb(IO_PPI) & ~PPI_SPKR);
-    sps = splclock();
     release_timer2();
-    splx(sps);
 }
 
 /* rest for given number of ticks */

@@ -23,7 +23,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/mp_machdep.c,v 1.115.2.15 2003/03/14 21:22:35 jhb Exp $
- * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.20 2004/01/09 20:49:39 drhodus Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/mp_machdep.c,v 1.21 2004/01/30 05:42:16 dillon Exp $
  */
 
 #include "opt_cpu.h"
@@ -2452,10 +2452,8 @@ ap_init(void)
 	 */
 	kmem_cpu_init();
 
-	/*
-	 * Startup helper thread(s) one per cpu.
-	 */
-	sched_thread_init();
+	sched_thread_init();	/* startup helper thread(s) one per cpu */
+	initclocks_pcpu();	/* clock interrupts (via IPIs) */
 
 	/*
 	 * The idle loop doesn't expect the BGL to be held and while
@@ -2503,6 +2501,7 @@ addupc_intr_forwarded(struct proc *p, int id, int *astmap)
 }
 #endif
 
+#if 0
 static void
 forwarded_statclock(int id, int pscnt, int *astmap)
 {
@@ -2595,7 +2594,9 @@ forwarded_statclock(int id, int pscnt, int *astmap)
 	}
 #endif
 }
+#endif
 
+#if 0
 void
 forward_statclock(int pscnt)
 {
@@ -2655,7 +2656,9 @@ forward_statclock(int pscnt)
 	if (map != 0)
 		resched_cpus(map);
 }
+#endif
 
+#if 0
 void 
 forward_hardclock(int pscnt)
 {
@@ -2739,6 +2742,7 @@ forward_hardclock(int pscnt)
 	if (map != 0) 
 		resched_cpus(map);
 }
+#endif
 
 #endif /* BETTER_CLOCK */
 

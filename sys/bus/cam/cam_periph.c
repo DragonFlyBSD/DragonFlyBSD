@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_periph.c,v 1.24.2.3 2003/01/25 19:04:40 dillon Exp $
- * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.6 2003/11/10 06:12:00 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_periph.c,v 1.7 2004/01/30 05:42:09 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -1071,11 +1071,8 @@ cam_periph_freeze_after_event(struct cam_periph *periph,
 {
 	struct timeval delta;
 	struct timeval duration_tv;
-	int s;
 
-	s = splclock();
-	microtime(&delta);
-	splx(s);
+	microuptime(&delta);
 	timevalsub(&delta, event_time);
 	duration_tv.tv_sec = duration_ms / 1000;
 	duration_tv.tv_usec = (duration_ms % 1000) * 1000;

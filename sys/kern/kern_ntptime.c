@@ -29,7 +29,7 @@
  * confusing and/or plain wrong in that context.
  *
  * $FreeBSD: src/sys/kern/kern_ntptime.c,v 1.32.2.2 2001/04/22 11:19:46 jhay Exp $
- * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.7 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_ntptime.c,v 1.8 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -43,6 +43,7 @@
 #include <sys/timex.h>
 #include <sys/timepps.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 /*
  * Single-precision macros for 64-bit machines
@@ -271,7 +272,6 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 	struct timex ntv;	/* temporary structure */
 	long freq;		/* frequency ns/s) */
 	int modes;		/* mode bits from structure */
-	int s;			/* caller priority */
 	int error;
 
 	error = copyin((caddr_t)uap->tp, (caddr_t)&ntv, sizeof(ntv));
@@ -292,7 +292,7 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 		error = suser(td);
 	if (error)
 		return (error);
-	s = splclock();
+	crit_enter();
 	if (modes & MOD_MAXERROR)
 		time_maxerror = ntv.maxerror;
 	if (modes & MOD_ESTERROR)
@@ -344,6 +344,11 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 		else
 			hardupdate(ntv.offset * 1000);
 	}
+	/*
+	 * Note: the userland specified frequency is in seconds per second
+	 * times 65536e+6.  Multiply by a thousand and divide by 65336 to
+	 * get nanoseconds.
+	 */
 	if (modes & MOD_FREQUENCY) {
 		freq = (ntv.freq * 1000LL) >> 16;
 		if (freq > MAXFREQ)
@@ -388,7 +393,7 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 	ntv.jitcnt = pps_jitcnt;
 	ntv.stbcnt = pps_stbcnt;
 #endif /* PPS_SYNC */
-	splx(s);
+	crit_exit();
 
 	error = copyout((caddr_t)&ntv, (caddr_t)uap->tp, sizeof(ntv));
 	if (error)
@@ -415,18 +420,16 @@ ntp_adjtime(struct ntp_adjtime_args *uap)
 /*
  * second_overflow() - called after ntp_tick_adjust()
  *
- * This routine is ordinarily called immediately following the above
- * routine ntp_tick_adjust(). While these two routines are normally
- * combined, they are separated here only for the purposes of
- * simulation.
+ * This routine is ordinarily called from hardclock() whenever the seconds
+ * hand rolls over.  It returns leap seconds to add or drop, and sets nsec_adj
+ * to the total adjustment to make over the next second in (ns << 32).
  */
-void
-ntp_update_second(struct timecounter *tcp)
+int
+ntp_update_second(time_t newsec, int64_t *nsec_adj)
 {
-	u_int32_t *newsec;
 	l_fp ftemp;		/* 32/64-bit temporary */
+	int  adjsec = 0;
 
-	newsec = &tcp->tc_offset_sec;
 	/*
 	 * On rollover of the second both the nanosecond and microsecond
 	 * clocks are updated and the state machine cranked as
@@ -463,8 +466,8 @@ ntp_update_second(struct timecounter *tcp)
 		case TIME_INS:
 		if (!(time_status & STA_INS))
 			time_state = TIME_OK;
-		else if ((*newsec) % 86400 == 0) {
-			(*newsec)--;
+		else if ((newsec) % 86400 == 0) {
+			--adjsec;
 			time_state = TIME_OOP;
 		}
 		break;
@@ -475,8 +478,8 @@ ntp_update_second(struct timecounter *tcp)
 		case TIME_DEL:
 		if (!(time_status & STA_DEL))
 			time_state = TIME_OK;
-		else if (((*newsec) + 1) % 86400 == 0) {
-			(*newsec)++;
+		else if (((newsec) + 1) % 86400 == 0) {
+			++adjsec;
 			time_tai--;
 			time_state = TIME_WAIT;
 		}
@@ -499,33 +502,35 @@ ntp_update_second(struct timecounter *tcp)
 	}
 
 	/*
-	 * Compute the total time adjustment for the next second
-	 * in ns. The offset is reduced by a factor depending on
-	 * whether the PPS signal is operating. Note that the
-	 * value is in effect scaled by the clock frequency,
-	 * since the adjustment is added at each tick interrupt.
+	 * time_offset represents the total time adjustment we wish to
+	 * make (over no particular period of time).  time_freq represents
+	 * the frequency compensation we wish to apply.
+	 *
+	 * time_adj represents the total adjustment we wish to make over
+	 * one full second.  hardclock usually applies this adjustment in
+	 * time_adj / hz jumps, hz times a second.
 	 */
 	ftemp = time_offset;
 #ifdef PPS_SYNC
 	/* XXX even if PPS signal dies we should finish adjustment ? */
-	if (time_status & STA_PPSTIME && time_status &
-	    STA_PPSSIGNAL)
+	if ((time_status & STA_PPSTIME( && (time_status & STA_PPSSIGNAL))
 		L_RSHIFT(ftemp, pps_shift);
 	else
 		L_RSHIFT(ftemp, SHIFT_PLL + time_constant);
 #else
 		L_RSHIFT(ftemp, SHIFT_PLL + time_constant);
 #endif /* PPS_SYNC */
-	time_adj = ftemp;
+	time_adj = ftemp;		/* adjustment for part of the offset */
 	L_SUB(time_offset, ftemp);
-	L_ADD(time_adj, time_freq);
-	tcp->tc_adjustment = time_adj;
+	L_ADD(time_adj, time_freq);	/* add frequency correction */
+	*nsec_adj = time_adj;
 #ifdef PPS_SYNC
 	if (pps_valid > 0)
 		pps_valid--;
 	else
 		time_status &= ~STA_PPSSIGNAL;
 #endif /* PPS_SYNC */
+	return(adjsec);
 }
 
 /*
@@ -594,6 +599,9 @@ hardupdate(offset)
 {
 	long mtemp;
 	l_fp ftemp;
+	globaldata_t gd;
+
+	gd = mycpu;
 
 	/*
 	 * Select how the phase is to be controlled and from which
@@ -603,8 +611,7 @@ hardupdate(offset)
 	 */
 	if (!(time_status & STA_PLL))
 		return;
-	if (!(time_status & STA_PPSTIME && time_status &
-	    STA_PPSSIGNAL)) {
+	if (!((time_status & STA_PPSTIME) && (time_status & STA_PPSSIGNAL))) {
 		if (offset > MAXPHASE)
 			time_monitor = MAXPHASE;
 		else if (offset < -MAXPHASE)
@@ -619,6 +626,9 @@ hardupdate(offset)
 	 * mode (PLL or FLL). If the PPS signal is present and enabled
 	 * to discipline the frequency, the PPS frequency is used;
 	 * otherwise, the argument offset is used to compute it.
+	 *
+	 * gd_time_seconds is basically an uncompensated uptime.  We use
+	 * this for consistency.
 	 */
 	if (time_status & STA_PPSFREQ && time_status & STA_PPSSIGNAL) {
 		time_reftime = time_second;
@@ -632,8 +642,7 @@ hardupdate(offset)
 	L_MPY(ftemp, mtemp);
 	L_ADD(time_freq, ftemp);
 	time_status &= ~STA_MODE;
-	if (mtemp >= MINSEC && (time_status & STA_FLL || mtemp >
-	    MAXSEC)) {
+	if (mtemp >= MINSEC && (time_status & STA_FLL || mtemp > MAXSEC)) {
 		L_LINT(ftemp, (time_monitor << 4) / mtemp);
 		L_RSHIFT(ftemp, SHIFT_FLL + 4);
 		L_ADD(time_freq, ftemp);

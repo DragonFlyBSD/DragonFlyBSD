@@ -37,7 +37,7 @@
  *
  *	From: @(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_timeout.c,v 1.59.2.1 2001/11/13 18:24:52 archie Exp $
- * $DragonFly: src/sys/kern/kern_timeout.c,v 1.6 2003/08/26 21:09:02 rob Exp $
+ * $DragonFly: src/sys/kern/kern_timeout.c,v 1.7 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -46,6 +46,7 @@
 #include <sys/kernel.h>
 #include <sys/interrupt.h>
 #include <sys/thread.h>
+#include <sys/thread2.h>
 #include <machine/ipl.h>
 
 /*
@@ -83,7 +84,6 @@ swi_softclock(void *dummy)
 {
 	struct callout *c;
 	struct callout_tailq *bucket;
-	int s;
 	int curticks;
 	int steps;	/* #steps since we last allowed interrupts */
 
@@ -92,7 +92,7 @@ swi_softclock(void *dummy)
 #endif /* MAX_SOFTCLOCK_STEPS */
 
 	steps = 0;
-	s = splhigh();
+	crit_enter();
 	while (softticks != ticks) {
 		softticks++;
 		/*
@@ -109,8 +109,8 @@ swi_softclock(void *dummy)
 				if (steps >= MAX_SOFTCLOCK_STEPS) {
 					nextsoftcheck = c;
 					/* Give interrupts a chance. */
-					splx(s);
-					s = splhigh();
+					crit_exit();
+					crit_enter();
 					c = nextsoftcheck;
 					steps = 0;
 				}
@@ -131,16 +131,16 @@ swi_softclock(void *dummy)
 					c->c_flags =
 					    (c->c_flags & ~CALLOUT_PENDING);
 				}
-				splx(s);
+				crit_exit();
 				c_func(c_arg);
-				s = splhigh();
+				crit_enter();
 				steps = 0;
 				c = nextsoftcheck;
 			}
 		}
 	}
 	nextsoftcheck = NULL;
-	splx(s);
+	crit_exit();
 }
 
 /*

@@ -35,7 +35,7 @@
  *
  *	from: @(#)frame.h	5.2 (Berkeley) 1/18/91
  * $FreeBSD: src/sys/i386/include/frame.h,v 1.20 1999/09/29 15:06:22 marcel Exp $
- * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.3 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/cpu/i386/include/frame.h,v 1.4 2004/01/30 05:42:16 dillon Exp $
  */
 
 #ifndef _MACHINE_FRAME_H_
@@ -127,33 +127,6 @@ struct intrframe {
 	/* below only when crossing rings (e.g. user to kernel) */
 	int	if_esp;
 	int	if_ss;
-};
-
-/* frame of clock (same as interrupt frame) */
-
-struct clockframe {
-	int	cf_vec;
-	int	cf_ppl;
-	int	cf_fs;
-	int	cf_es;
-	int	cf_ds;
-	int	cf_edi;
-	int	cf_esi;
-	int	cf_ebp;
-	int	:32;
-	int	cf_ebx;
-	int	cf_edx;
-	int	cf_ecx;
-	int	cf_eax;
-	int	:32;		/* for compat with trap frame - trapno */
-	int	:32;		/* for compat with trap frame - err */
-	/* below portion defined in 386 hardware */
-	int	cf_eip;
-	int	cf_cs;
-	int	cf_eflags;
-	/* below only when crossing rings (e.g. user to kernel) */
-	int	cf_esp;
-	int	cf_ss;
 };
 
 int	kdb_trap (int, int, struct trapframe *);

@@ -4,7 +4,7 @@
  * This file is in the public domain.
  *
  * $FreeBSD: src/sys/i386/include/clock.h,v 1.38.2.1 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.4 2003/08/26 21:42:18 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/include/clock.h,v 1.5 2004/01/30 05:42:16 dillon Exp $
  */
 
 #ifndef _MACHINE_CLOCK_H_
@@ -30,19 +30,12 @@ extern int	apic_8254_intr;
 /*
  * Driver to clock driver interface.
  */
-struct clockframe;
 
-int	acquire_timer0 (int rate,
-			    void (*function)(struct clockframe *frame));
-int	acquire_timer2 (int mode);
-int	release_timer0 (void);
-int	release_timer2 (void);
 #ifndef PC98
 int	rtcin (int val);
-#else
-int	acquire_timer1 (int mode);
-int	release_timer1 (void);
 #endif
+int	acquire_timer2 (int mode);
+int	release_timer2 (void);
 int	sysbeep (int pitch, int period);
 void	timer_restore (void);
 

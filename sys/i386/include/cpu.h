@@ -35,7 +35,7 @@
  *
  *	from: @(#)cpu.h	5.4 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/cpu.h,v 1.43.2.2 2001/06/15 09:37:57 scottl Exp $
- * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.12 2003/11/21 05:29:08 dillon Exp $
+ * $DragonFly: src/sys/i386/include/Attic/cpu.h,v 1.13 2004/01/30 05:42:16 dillon Exp $
  */
 
 #ifndef _MACHINE_CPU_H_
@@ -59,10 +59,10 @@
 #define cpu_setstack(p, ap)		((p)->p_md.md_regs[SP] = (ap))
 
 #define	CLKF_USERMODE(framep) \
-	((ISPL((framep)->cf_cs) == SEL_UPL) || (framep->cf_eflags & PSL_VM))
+	((ISPL((framep)->if_cs) == SEL_UPL) || (framep->if_eflags & PSL_VM))
 
 #define CLKF_INTR(framep)	(mycpu->gd_intr_nesting_level > 1 || (curthread->td_flags & TDF_INTTHREAD))
-#define	CLKF_PC(framep)		((framep)->cf_eip)
+#define	CLKF_PC(framep)		((framep)->if_eip)
 
 /*
  * Preempt the current process if in interrupt from user mode,

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcaudio.c,v 1.58 2000/01/25 21:58:43 dfr Exp $
- * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.7 2003/08/27 06:48:15 rob Exp $
+ * $DragonFly: src/sys/dev/sound/isa/i386/pca/Attic/pcaudio.c,v 1.8 2004/01/30 05:42:16 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -147,7 +147,7 @@ static unsigned char alaw_linear[] = {
 static int pca_sleep = 0;
 static int pca_initialized = 0;
 
-static void pcaintr(struct clockframe *frame);
+static void pcaintr(struct intrframe *frame);
 
 static	d_open_t	pcaopen;
 static	d_close_t	pcaclose;
@@ -532,7 +532,7 @@ pcaioctl(dev_t dev, u_long cmd, caddr_t data, int flag, struct thread *td)
 
 
 static void
-pcaintr(struct clockframe *frame)
+pcaintr(struct intrframe *frame)
 {
 	if (pca_status.index < pca_status.in_use[pca_status.current]) {
 		cpu_disable_intr();

@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.26 2004/01/07 11:04:18 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.27 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include "opt_ktrace.h"
@@ -161,7 +161,7 @@ resched_cpus(u_int32_t mask)
  *          Note that, as ps(1) mentions, this can let percentages
  *          total over 100% (I've seen 137.9% for 3 processes).
  *
- * Note that schedclock() updates p_estcpu and p_cpticks asynchronously.
+ * Note that schedulerclock() updates p_estcpu and p_cpticks asynchronously.
  *
  * We wish to decay away 90% of p_estcpu in (5 * loadavg) seconds.
  * That is, the system wants to compute a value of decay such
@@ -871,10 +871,11 @@ sched_setup(dummy)
  * time in 5 * loadav seconds.  This causes the system to favor processes
  * which haven't run much recently, and to round-robin among other processes.
  *
- * WARNING!
+ * WARNING! called from a fast-int or an IPI, the MP lock MIGHT NOT BE HELD
+ * and we cannot block.
  */
 void
-schedclock(void *dummy)
+schedulerclock(void *dummy)
 {
 	struct thread *td;
 	struct proc *p;

@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/pci/xrpu.c,v 1.19.2.1 2000/08/02 22:19:57 peter Exp $
- * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.5 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/xrpu/Attic/xrpu.c,v 1.6 2004/01/30 05:42:15 dillon Exp $
  *
  * A very simple device driver for PCI cards based on Xilinx 6200 series
  * FPGA/RPU devices.  Current Functionality is to allow you to open and
@@ -73,11 +73,15 @@ struct softc {
 	enum { NORMAL, TIMECOUNTER } mode;
 	vm_offset_t virbase, physbase;
 	u_int	*virbase62;
+#if 0
 	struct timecounter tc;
+#endif
 	u_int *trigger, *latch, dummy;
 	struct pps_state pps[XRPU_MAX_PPS];
 	u_int *assert[XRPU_MAX_PPS], *clear[XRPU_MAX_PPS];
 };
+
+#if 0
 
 static unsigned         
 xrpu_get_timecount(struct timecounter *tc)
@@ -116,6 +120,8 @@ xrpu_poll_pps(struct timecounter *tc)
 		}
 	}
 }
+
+#endif
 
 static int
 xrpu_open(dev_t dev, int flag, int mode, struct thread *td)
@@ -157,6 +163,7 @@ xrpu_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		return (error);
 	}
 		
+#if 0
 	if (cmd == XRPU_IOC_TIMECOUNTING) {
 		struct xrpu_timecounting *xt = (struct xrpu_timecounting *)arg;
 
@@ -194,6 +201,7 @@ xrpu_ioctl(dev_t dev, u_long cmd, caddr_t arg, int flag, struct thread *td)
 		init_timecounter(&sc->tc);
 		return (0);
 	}
+#endif
 	error = ENOTTY;
 	return (error);
 }

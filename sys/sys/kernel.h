@@ -40,7 +40,7 @@
  *
  *	@(#)kernel.h	8.3 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/sys/kernel.h,v 1.63.2.9 2002/07/02 23:00:30 archie Exp $
- * $DragonFly: src/sys/sys/kernel.h,v 1.7 2003/11/22 19:30:57 asmodai Exp $
+ * $DragonFly: src/sys/sys/kernel.h,v 1.8 2004/01/30 05:42:17 dillon Exp $
  */
 
 #ifndef _SYS_KERNEL_H_
@@ -64,7 +64,8 @@ extern int domainnamelen;
 extern char kernelname[MAXPATHLEN];
 
 /* 1.2 */
-extern struct timeval boottime;
+extern struct timespec boottime;
+extern struct timespec basetime;
 
 extern struct timezone tz;			/* XXX */
 
@@ -76,8 +77,9 @@ extern int stathz;			/* statistics clock's frequency */
 extern int profhz;			/* profiling clock's frequency */
 extern int ticks;
 extern int lbolt;			/* once a second sleep address */
-extern int tickdelta;
-extern long timedelta;
+extern int tickdelta;			/* make this correction */
+extern long timedelta;			/* until this aggregate is exhausted */
+extern int tickpll;			/* scaled tick adjustment */
 
 #endif /* _KERNEL */
 

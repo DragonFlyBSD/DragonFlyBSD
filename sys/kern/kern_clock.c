@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2004, Matthew Dillon <dillon@backplane.com>
  * Copyright (c) 1997, 1998 Poul-Henning Kamp <phk@FreeBSD.org>
  * Copyright (c) 1982, 1986, 1991, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -38,7 +39,7 @@
  *
  *	@(#)kern_clock.c	8.5 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/kern_clock.c,v 1.105.2.10 2002/10/17 13:19:40 maxim Exp $
- * $DragonFly: src/sys/kern/kern_clock.c,v 1.14 2004/01/07 20:21:46 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_clock.c,v 1.15 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include "opt_ntp.h"
@@ -74,22 +75,8 @@ extern void init_device_poll(void);
 extern void hardclock_device_poll(void);
 #endif /* DEVICE_POLLING */
 
-/*
- * Number of timecounters used to implement stable storage
- */
-#ifndef NTIMECOUNTER
-#define NTIMECOUNTER	5
-#endif
-
-static MALLOC_DEFINE(M_TIMECOUNTER, "timecounter", 
-	"Timecounter stable storage");
-
 static void initclocks (void *dummy);
 SYSINIT(clocks, SI_SUB_CLOCKS, SI_ORDER_FIRST, initclocks, NULL)
-
-static void tco_forward (int force);
-static void tco_setscales (struct timecounter *tc);
-static __inline unsigned tco_delta (struct timecounter *tc);
 
 /*
  * Some of these don't belong here, but it's easiest to concentrate them.
@@ -106,165 +93,372 @@ long tk_nin;
 long tk_nout;
 long tk_rawcc;
 
-time_t time_second;
+/*
+ * boottime is used to calculate the 'real' uptime.  Do not confuse this with
+ * microuptime().  microtime() is not drift compensated.  The real uptime
+ * with compensation is nanotime() - bootime.
+ *
+ * basetime is used to calculate the compensated real time of day.  Chunky
+ * changes to the time, aka settimeofday(), are made by modifying basetime.
+ *
+ * The gd_time_seconds and gd_cpuclock_base fields remain fairly monotonic.
+ * Slight adjustments to gd_cpuclock_base are made to phase-lock it to
+ * the real time.
+ */
+struct timespec boottime;	/* boot time (realtime) for reference only */
+struct timespec basetime;	/* base time adjusts uptime -> realtime */
+time_t time_second;		/* read-only 'passive' uptime in seconds */
 
-struct	timeval boottime;
 SYSCTL_STRUCT(_kern, KERN_BOOTTIME, boottime, CTLFLAG_RD,
     &boottime, timeval, "System boottime");
+SYSCTL_STRUCT(_kern, OID_AUTO, basetime, CTLFLAG_RD,
+    &basetime, timeval, "System basetime");
+
+static void hardclock(systimer_t info, struct intrframe *frame);
+static void statclock(systimer_t info, struct intrframe *frame);
+static void schedclock(systimer_t info, struct intrframe *frame);
+
+int	ticks;			/* system master ticks at hz */
+int64_t	nsec_adj;		/* ntpd per-tick adjustment in nsec << 32 */
+int64_t	nsec_acc;		/* accumulator */
 
 /*
- * Which update policy to use.
- *   0 - every tick, bad hardware may fail with "calcru negative..."
- *   1 - more resistent to the above hardware, but less efficient.
- */
-static int tco_method;
-
-/*
- * Implement a dummy timecounter which we can use until we get a real one
- * in the air.  This allows the console and other early stuff to use
- * timeservices.
- */
-
-static unsigned 
-dummy_get_timecount(struct timecounter *tc)
-{
-	static unsigned now;
-	return (++now);
-}
-
-static struct timecounter dummy_timecounter = {
-	dummy_get_timecount,
-	0,
-	~0u,
-	1000000,
-	"dummy"
-};
-
-struct timecounter *timecounter = &dummy_timecounter;
-
-/*
- * Clock handling routines.
- *
- * This code is written to operate with two timers that run independently of
- * each other.
- *
- * The main timer, running hz times per second, is used to trigger interval
- * timers, timeouts and rescheduling as needed.
- *
- * The second timer handles kernel and user profiling,
- * and does resource use estimation.  If the second timer is programmable,
- * it is randomized to avoid aliasing between the two clocks.  For example,
- * the randomization prevents an adversary from always giving up the cpu
- * just before its quantum expires.  Otherwise, it would never accumulate
- * cpu ticks.  The mean frequency of the second timer is stathz.
- *
- * If no second timer exists, stathz will be zero; in this case we drive
- * profiling and statistics off the main clock.  This WILL NOT be accurate;
- * do not do it unless absolutely necessary.
- *
- * The statistics clock may (or may not) be run at a higher rate while
- * profiling.  This profile clock runs at profhz.  We require that profhz
- * be an integral multiple of stathz.
- *
- * If the statistics clock is running fast, it must be divided by the ratio
- * profhz/stathz for statistics.  (For profiling, every tick counts.)
- *
- * Time-of-day is maintained using a "timecounter", which may or may
- * not be related to the hardware generating the above mentioned
- * interrupts.
- */
-
-int	stathz;
-int	profhz;
-static int profprocs;
-int	ticks;
-static int psticks;			/* profiler ticks */
-static int psdiv;			/* prof / stat divider */
-int	psratio;			/* ratio: prof * 100 / stat */
-
-/*
- * Initialize clock frequencies and start both clocks running.
+ * Finish initializing clock frequencies and start all clocks running.
  */
 /* ARGSUSED*/
 static void
-initclocks(dummy)
-	void *dummy;
+initclocks(void *dummy)
 {
-	int i;
-
-	/*
-	 * Set divisors to 1 (normal case) and let the machine-specific
-	 * code do its bit.
-	 */
-	psdiv = 1;
 	cpu_initclocks();
-
 #ifdef DEVICE_POLLING
 	init_device_poll();
 #endif
-
-	/*
-	 * Compute profhz/stathz, and fix profhz if needed.
-	 */
-	i = stathz ? stathz : hz;
-	if (profhz == 0)
-		profhz = i;
-	psratio = profhz / i;
+	/*psratio = profhz / stathz;*/
+	initclocks_pcpu();
 }
 
 /*
- * The real-time timer, interrupting hz times per second.  This is implemented
- * as a FAST interrupt so it is in the context of the thread it interrupted,
- * and not in an interrupt thread.  YYY needs help.
+ * Called on a per-cpu basis
  */
 void
-hardclock(frame)
-	struct clockframe *frame;
+initclocks_pcpu(void)
 {
+	struct globaldata *gd = mycpu;
+
+	crit_enter();
+	if (gd->gd_cpuid == 0) {
+	    gd->gd_time_seconds = 1;
+	    gd->gd_cpuclock_base = cputimer_count();
+	} else {
+	    /* XXX */
+	    gd->gd_time_seconds = globaldata_find(0)->gd_time_seconds;
+	    gd->gd_cpuclock_base = globaldata_find(0)->gd_cpuclock_base;
+	}
+	systimer_init_periodic(&gd->gd_hardclock, hardclock, NULL, hz);
+	systimer_init_periodic(&gd->gd_statclock, statclock, NULL, stathz);
+	/* XXX correct the frequency for scheduler / estcpu tests */
+	systimer_init_periodic(&gd->gd_schedclock, schedclock, NULL, 10); 
+	crit_exit();
+}
+
+/*
+ * This sets the current real time of day.  Timespecs are in seconds and
+ * nanoseconds.  We do not mess with gd_time_seconds and gd_cpuclock_base,
+ * instead we adjust basetime so basetime + gd_* results in the current
+ * time of day.  This way the gd_* fields are guarenteed to represent
+ * a monotonically increasing 'uptime' value.
+ */
+void
+set_timeofday(struct timespec *ts)
+{
+	struct timespec ts2;
+
+	/*
+	 * XXX SMP / non-atomic basetime updates
+	 */
+	crit_enter();
+	nanouptime(&ts2);
+	basetime.tv_sec = ts->tv_sec - ts2.tv_sec;
+	basetime.tv_nsec = ts->tv_nsec - ts2.tv_nsec;
+	if (basetime.tv_nsec < 0) {
+	    basetime.tv_nsec += 1000000000;
+	    --basetime.tv_sec;
+	}
+	if (boottime.tv_sec == 0)
+		boottime = basetime;
+	timedelta = 0;
+	crit_exit();
+}
+	
+/*
+ * Each cpu has its own hardclock, but we only increments ticks and softticks
+ * on cpu #0.
+ *
+ * NOTE! systimer! the MP lock might not be held here.  We can only safely
+ * manipulate objects owned by the current cpu.
+ */
+static void
+hardclock(systimer_t info, struct intrframe *frame)
+{
+	sysclock_t cputicks;
 	struct proc *p;
+	struct pstats *pstats;
+	struct globaldata *gd = mycpu;
 
-	p = curproc;
-	if (p) {
-		struct pstats *pstats;
+	/*
+	 * Realtime updates are per-cpu.  Note that timer corrections as
+	 * returned by microtime() and friends make an additional adjustment
+	 * using a system-wise 'basetime', but the running time is always
+	 * taken from the per-cpu globaldata area.  Since the same clock
+	 * is distributing (XXX SMP) to all cpus, the per-cpu timebases
+	 * stay in synch.
+	 *
+	 * Note that we never allow info->time (aka gd->gd_hardclock.time)
+	 * to reverse index gd_cpuclock_base.
+	 */
+	cputicks = info->time - gd->gd_cpuclock_base;
+	if (cputicks > cputimer_freq) {
+		++gd->gd_time_seconds;
+		gd->gd_cpuclock_base += cputimer_freq;
+	}
 
-		/*
-		 * Run current process's virtual and profile time, as needed.
-		 */
+	/*
+	 * The system-wide ticks and softticks are only updated by cpu #0.
+	 * Callwheel actions are also (at the moment) only handled by cpu #0.
+	 * Finally, we also do NTP related timedelta/tickdelta adjustments
+	 * by adjusting basetime.
+	 */
+	if (gd->gd_cpuid == 0) {
+	    struct timespec nts;
+	    int leap;
+
+	    ++ticks;
+
+#ifdef DEVICE_POLLING
+	    hardclock_device_poll();	/* mpsafe, short and quick */
+#endif /* DEVICE_POLLING */
+
+	    if (TAILQ_FIRST(&callwheel[ticks & callwheelmask]) != NULL) {
+		setsoftclock();
+	    } else if (softticks + 1 == ticks) {
+		++softticks;
+	    }
+
+#if 0
+	    if (tco->tc_poll_pps) 
+		tco->tc_poll_pps(tco);
+#endif
+	    /*
+	     * Apply adjtime corrections.  At the moment only do this if 
+	     * we can get the MP lock to interlock with adjtime's modification
+	     * of these variables.  Note that basetime adjustments are not
+	     * MP safe either XXX.
+	     */
+	    if (timedelta != 0 && try_mplock()) {
+		basetime.tv_nsec += tickdelta * 1000;
+		if (basetime.tv_nsec >= 1000000000) {
+		    basetime.tv_nsec -= 1000000000;
+		    ++basetime.tv_sec;
+		} else if (basetime.tv_nsec < 0) {
+		    basetime.tv_nsec += 1000000000;
+		    --basetime.tv_sec;
+		}
+		timedelta -= tickdelta;
+		rel_mplock();
+	    }
+
+	    /*
+	     * Apply per-tick compensation.  ticks_adj adjusts for both
+	     * offset and frequency, and could be negative.
+	     */
+	    if (nsec_adj != 0 && try_mplock()) {
+		nsec_acc += nsec_adj;
+		if (nsec_acc >= 0x100000000LL) {
+		    basetime.tv_nsec += nsec_acc >> 32;
+		    nsec_acc = (nsec_acc & 0xFFFFFFFFLL);
+		} else if (nsec_acc <= -0x100000000LL) {
+		    basetime.tv_nsec -= -nsec_acc >> 32;
+		    nsec_acc = -(-nsec_acc & 0xFFFFFFFFLL);
+		}
+		if (basetime.tv_nsec >= 1000000000) {
+		    basetime.tv_nsec -= 1000000000;
+		    ++basetime.tv_sec;
+		} else if (basetime.tv_nsec < 0) {
+		    basetime.tv_nsec += 1000000000;
+		    --basetime.tv_sec;
+		}
+		rel_mplock();
+	    }
+
+	    /*
+	     * If the realtime-adjusted seconds hand rolls over then tell
+	     * ntp_update_second() what we did in the last second so it can
+	     * calculate what to do in the next second.  It may also add
+	     * or subtract a leap second.
+	     */
+	    getnanotime(&nts);
+	    if (time_second != nts.tv_sec) {
+		leap = ntp_update_second(time_second, &nsec_adj);
+		basetime.tv_sec += leap;
+		time_second = nts.tv_sec + leap;
+		nsec_adj /= hz;
+	    }
+	}
+
+	/*
+	 * ITimer handling is per-tick, per-cpu.  I don't think psignal()
+	 * is mpsafe on curproc, so XXX get the mplock.
+	 */
+	if ((p = curproc) != NULL && try_mplock()) {
 		pstats = p->p_stats;
-		if (CLKF_USERMODE(frame) &&
+		if (frame && CLKF_USERMODE(frame) &&
 		    timevalisset(&pstats->p_timer[ITIMER_VIRTUAL].it_value) &&
 		    itimerdecr(&pstats->p_timer[ITIMER_VIRTUAL], tick) == 0)
 			psignal(p, SIGVTALRM);
 		if (timevalisset(&pstats->p_timer[ITIMER_PROF].it_value) &&
 		    itimerdecr(&pstats->p_timer[ITIMER_PROF], tick) == 0)
 			psignal(p, SIGPROF);
+		rel_mplock();
 	}
+}
 
-#if 0 /* SMP and BETTER_CLOCK */
-	forward_hardclock(pscnt);
+/*
+ * The statistics clock typically runs at a 125Hz rate, and is intended
+ * to be frequency offset from the hardclock (typ 100Hz).  It is per-cpu.
+ *
+ * NOTE! systimer! the MP lock might not be held here.  We can only safely
+ * manipulate objects owned by the current cpu.
+ *
+ * The stats clock is responsible for grabbing a profiling sample.
+ * Most of the statistics are only used by user-level statistics programs.
+ * The main exceptions are p->p_uticks, p->p_sticks, p->p_iticks, and
+ * p->p_estcpu.
+ *
+ * Like the other clocks, the stat clock is called from what is effectively
+ * a fast interrupt, so the context should be the thread/process that got
+ * interrupted.
+ */
+static void
+statclock(systimer_t info, struct intrframe *frame)
+{
+#ifdef GPROF
+	struct gmonparam *g;
+	int i;
 #endif
+	thread_t td;
+	struct proc *p;
+	int bump;
+	struct timeval tv;
+	struct timeval *stv;
 
 	/*
-	 * If no separate statistics clock is available, run it from here.
+	 * How big was our timeslice relative to the last time?
 	 */
-	if (stathz == 0)
-		statclock(frame);
+	microuptime(&tv);	/* mpsafe */
+	stv = &mycpu->gd_stattv;
+	if (stv->tv_sec == 0) {
+	    bump = 1;
+	} else {
+	    bump = tv.tv_usec - stv->tv_usec +
+		(tv.tv_sec - stv->tv_sec) * 1000000;
+	    if (bump < 0)
+		bump = 0;
+	    if (bump > 1000000)
+		bump = 1000000;
+	}
+	*stv = tv;
 
-	tco_forward(0);
-	ticks++;
+	td = curthread;
+	p = td->td_proc;
 
-#ifdef DEVICE_POLLING
-	hardclock_device_poll();	/* this is very short and quick */
-#endif /* DEVICE_POLLING */
+	if (frame && CLKF_USERMODE(frame)) {
+		/*
+		 * Came from userland, handle user time and deal with
+		 * possible process.
+		 */
+		if (p && (p->p_flag & P_PROFIL))
+			addupc_intr(p, CLKF_PC(frame), 1);
+		td->td_uticks += bump;
 
-	/*
-	 * Process callouts at a very low cpu priority, so we don't keep the
-	 * relatively high clock interrupt priority any longer than necessary.
-	 */
-	if (TAILQ_FIRST(&callwheel[ticks & callwheelmask]) != NULL) {
-		setsoftclock();
-	} else if (softticks + 1 == ticks) {
-		++softticks;
+		/*
+		 * Charge the time as appropriate
+		 */
+		if (p && p->p_nice > NZERO)
+			cp_time[CP_NICE] += bump;
+		else
+			cp_time[CP_USER] += bump;
+	} else {
+#ifdef GPROF
+		/*
+		 * Kernel statistics are just like addupc_intr, only easier.
+		 */
+		g = &_gmonparam;
+		if (g->state == GMON_PROF_ON && frame) {
+			i = CLKF_PC(frame) - g->lowpc;
+			if (i < g->textsize) {
+				i /= HISTFRACTION * sizeof(*g->kcount);
+				g->kcount[i]++;
+			}
+		}
+#endif
+		/*
+		 * Came from kernel mode, so we were:
+		 * - handling an interrupt,
+		 * - doing syscall or trap work on behalf of the current
+		 *   user process, or
+		 * - spinning in the idle loop.
+		 * Whichever it is, charge the time as appropriate.
+		 * Note that we charge interrupts to the current process,
+		 * regardless of whether they are ``for'' that process,
+		 * so that we know how much of its real time was spent
+		 * in ``non-process'' (i.e., interrupt) work.
+		 *
+		 * XXX assume system if frame is NULL.  A NULL frame 
+		 * can occur if ipi processing is done from an splx().
+		 */
+		if (frame && CLKF_INTR(frame))
+			td->td_iticks += bump;
+		else
+			td->td_sticks += bump;
+
+		if (frame && CLKF_INTR(frame)) {
+			cp_time[CP_INTR] += bump;
+		} else {
+			if (td == &mycpu->gd_idlethread)
+				cp_time[CP_IDLE] += bump;
+			else
+				cp_time[CP_SYS] += bump;
+		}
+	}
+}
+
+/*
+ * The scheduler clock typically runs at a 10Hz rate.  NOTE! systimer,
+ * the MP lock might not be held.  We can safely manipulate parts of curproc
+ * but that's about it.
+ */
+static void
+schedclock(systimer_t info, struct intrframe *frame)
+{
+	struct proc *p;
+	struct pstats *pstats;
+	struct rusage *ru;
+	struct vmspace *vm;
+	long rss;
+
+	schedulerclock(NULL);	/* mpsafe */
+	if ((p = curproc) != NULL) {
+		/* Update resource usage integrals and maximums. */
+		if ((pstats = p->p_stats) != NULL &&
+		    (ru = &pstats->p_ru) != NULL &&
+		    (vm = p->p_vmspace) != NULL) {
+			ru->ru_ixrss += pgtok(vm->vm_tsize);
+			ru->ru_idrss += pgtok(vm->vm_dsize);
+			ru->ru_isrss += pgtok(vm->vm_ssize);
+			rss = pgtok(vmspace_resident_count(vm));
+			if (ru->ru_maxrss < rss)
+				ru->ru_maxrss = rss;
+		}
 	}
 }
 
@@ -350,19 +544,18 @@ tvtohz_low(struct timeval *tv)
  * keeps the profile clock running constantly.
  */
 void
-startprofclock(p)
-	struct proc *p;
+startprofclock(struct proc *p)
 {
-	int s;
-
 	if ((p->p_flag & P_PROFIL) == 0) {
 		p->p_flag |= P_PROFIL;
+#if 0	/* XXX */
 		if (++profprocs == 1 && stathz != 0) {
 			s = splstatclock();
 			psdiv = psratio;
 			setstatclockrate(profhz);
 			splx(s);
 		}
+#endif
 	}
 }
 
@@ -370,169 +563,18 @@ startprofclock(p)
  * Stop profiling on a process.
  */
 void
-stopprofclock(p)
-	struct proc *p;
+stopprofclock(struct proc *p)
 {
-	int s;
-
 	if (p->p_flag & P_PROFIL) {
 		p->p_flag &= ~P_PROFIL;
+#if 0	/* XXX */
 		if (--profprocs == 0 && stathz != 0) {
 			s = splstatclock();
 			psdiv = 1;
 			setstatclockrate(stathz);
 			splx(s);
 		}
-	}
-}
-
-/*
- * Statistics clock.  Grab profile sample, and if divider reaches 0,
- * do process and kernel statistics.  Most of the statistics are only
- * used by user-level statistics programs.  The main exceptions are
- * p->p_uticks, p->p_sticks, p->p_iticks, and p->p_estcpu.
- *
- * The statclock should be called from an exclusive, fast interrupt,
- * so the context should be the thread/process that got interrupted and
- * not an interrupt thread.
- */
-void
-statclock(frame)
-	struct clockframe *frame;
-{
-#ifdef GPROF
-	struct gmonparam *g;
-	int i;
 #endif
-	thread_t td;
-	struct pstats *pstats;
-	long rss;
-	struct rusage *ru;
-	struct vmspace *vm;
-	struct proc *p;
-	int bump;
-	struct timeval tv;
-	struct timeval *stv;
-
-	/*
-	 * How big was our timeslice relative to the last time
-	 */
-	microuptime(&tv);
-	stv = &mycpu->gd_stattv;
-	if (stv->tv_sec == 0) {
-	    bump = 1;
-	} else {
-	    bump = tv.tv_usec - stv->tv_usec +
-		(tv.tv_sec - stv->tv_sec) * 1000000;
-	    if (bump < 0)
-		bump = 0;
-	    if (bump > 1000000)
-		bump = 1000000;
-	}
-	*stv = tv;
-
-	td = curthread;
-	p = td->td_proc;
-
-	if (CLKF_USERMODE(frame)) {
-		/*
-		 * Came from userland, handle user time and deal with
-		 * possible process.
-		 */
-		if (p && (p->p_flag & P_PROFIL))
-			addupc_intr(p, CLKF_PC(frame), 1);
-#if 0	/* SMP and BETTER_CLOCK */
-		if (stathz != 0)
-			forward_statclock(pscnt);
-#endif
-		td->td_uticks += bump;
-
-		/*
-		 * Charge the time as appropriate
-		 */
-		if (p && p->p_nice > NZERO)
-			cp_time[CP_NICE] += bump;
-		else
-			cp_time[CP_USER] += bump;
-	} else {
-#ifdef GPROF
-		/*
-		 * Kernel statistics are just like addupc_intr, only easier.
-		 */
-		g = &_gmonparam;
-		if (g->state == GMON_PROF_ON) {
-			i = CLKF_PC(frame) - g->lowpc;
-			if (i < g->textsize) {
-				i /= HISTFRACTION * sizeof(*g->kcount);
-				g->kcount[i]++;
-			}
-		}
-#endif
-#if 0	/* SMP and BETTER_CLOCK */
-		if (stathz != 0)
-			forward_statclock(pscnt);
-#endif
-		/*
-		 * Came from kernel mode, so we were:
-		 * - handling an interrupt,
-		 * - doing syscall or trap work on behalf of the current
-		 *   user process, or
-		 * - spinning in the idle loop.
-		 * Whichever it is, charge the time as appropriate.
-		 * Note that we charge interrupts to the current process,
-		 * regardless of whether they are ``for'' that process,
-		 * so that we know how much of its real time was spent
-		 * in ``non-process'' (i.e., interrupt) work.
-		 */
-		if (CLKF_INTR(frame))
-			td->td_iticks += bump;
-		else
-			td->td_sticks += bump;
-
-		if (CLKF_INTR(frame)) {
-			cp_time[CP_INTR] += bump;
-		} else {
-			if (td == &mycpu->gd_idlethread)
-				cp_time[CP_IDLE] += bump;
-			else
-				cp_time[CP_SYS] += bump;
-		}
-	}
-
-	/*
-	 * bump psticks and check against gd_psticks.  When we hit the
-	 * 1*hz mark (psdiv ticks) we do the more expensive stuff.  If
-	 * psdiv changes we reset everything to avoid confusion.
-	 */
-	++psticks;
-	if (psticks < mycpu->gd_psticks && psdiv == mycpu->gd_psdiv)
-		return;
-
-	mycpu->gd_psdiv = psdiv;
-	mycpu->gd_psticks = psticks + psdiv;
-
-	/*
-	 * XXX YYY DragonFly... need to rewrite all of this,
-	 * only schedclock is distributed at the moment
-	 */
-	schedclock(NULL);
-#ifdef SMP
-	if (smp_started && invltlb_ok && !cold && !panicstr) /* YYY */
-		lwkt_send_ipiq_mask(mycpu->gd_other_cpus, schedclock, NULL);
-#endif
-
-	if (p != NULL) {
-		/* Update resource usage integrals and maximums. */
-		if ((pstats = p->p_stats) != NULL &&
-		    (ru = &pstats->p_ru) != NULL &&
-		    (vm = p->p_vmspace) != NULL) {
-			ru->ru_ixrss += pgtok(vm->vm_tsize);
-			ru->ru_idrss += pgtok(vm->vm_dsize);
-			ru->ru_isrss += pgtok(vm->vm_ssize);
-			rss = pgtok(vmspace_resident_count(vm));
-			if (ru->ru_maxrss < rss)
-				ru->ru_maxrss = rss;
-		}
 	}
 }
 
@@ -557,14 +599,6 @@ sysctl_kern_clockrate(SYSCTL_HANDLER_ARGS)
 SYSCTL_PROC(_kern, KERN_CLOCKRATE, clockrate, CTLTYPE_STRUCT|CTLFLAG_RD,
 	0, 0, sysctl_kern_clockrate, "S,clockinfo","");
 
-static __inline unsigned
-tco_delta(struct timecounter *tc)
-{
-
-	return ((tc->tc_get_timecount(tc) - tc->tc_offset_count) & 
-	    tc->tc_counter_mask);
-}
-
 /*
  * We have eight functions for looking at the clock, four for
  * microseconds and four for nanoseconds.  For each there is fast
@@ -574,394 +608,162 @@ tco_delta(struct timecounter *tc)
  * which is as precise as possible.  The "up" variants return the
  * time relative to system boot, these are well suited for time
  * interval measurements.
+ *
+ * Each cpu independantly maintains the current time of day, so all
+ * we need to do to protect ourselves from changes is to do a loop
+ * check on the seconds field changing out from under us.
  */
-
-void
-getmicrotime(struct timeval *tvp)
-{
-	struct timecounter *tc;
-
-	if (!tco_method) {
-		tc = timecounter;
-		*tvp = tc->tc_microtime;
-	} else {
-		microtime(tvp);
-	}
-}
-
-void
-getnanotime(struct timespec *tsp)
-{
-	struct timecounter *tc;
-
-	if (!tco_method) {
-		tc = timecounter;
-		*tsp = tc->tc_nanotime;
-	} else {
-		nanotime(tsp);
-	}
-}
-
-void
-microtime(struct timeval *tv)
-{
-	struct timecounter *tc;
-	int delta;
-
-	tc = timecounter;
-	crit_enter();
-	delta = tco_delta(tc);
-	tv->tv_sec = tc->tc_offset_sec;
-	tv->tv_usec = tc->tc_offset_micro;
-	tv->tv_usec += ((u_int64_t)delta * tc->tc_scale_micro) >> 32;
-	crit_exit();
-	tv->tv_usec += boottime.tv_usec;
-	tv->tv_sec += boottime.tv_sec;
-	while (tv->tv_usec < 0) {
-		tv->tv_usec += 1000000;
-		if (tv->tv_sec > 0)
-			tv->tv_sec--;
-	}
-	while (tv->tv_usec >= 1000000) {
-		tv->tv_usec -= 1000000;
-		tv->tv_sec++;
-	}
-}
-
-void
-nanotime(struct timespec *ts)
-{
-	unsigned count;
-	u_int64_t delta;
-	struct timecounter *tc;
-
-	tc = timecounter;
-	crit_enter();
-	ts->tv_sec = tc->tc_offset_sec;
-	count = tco_delta(tc);
-	delta = tc->tc_offset_nano;
-	crit_exit();
-	delta += ((u_int64_t)count * tc->tc_scale_nano_f);
-	delta >>= 32;
-	delta += ((u_int64_t)count * tc->tc_scale_nano_i);
-	delta += boottime.tv_usec * 1000;
-	ts->tv_sec += boottime.tv_sec;
-	while (delta < 0) {
-		delta += 1000000000;
-		if (ts->tv_sec > 0)
-			ts->tv_sec--;
-	}
-	while (delta >= 1000000000) {
-		delta -= 1000000000;
-		ts->tv_sec++;
-	}
-	ts->tv_nsec = delta;
-}
-
 void
 getmicrouptime(struct timeval *tvp)
 {
-	struct timecounter *tc;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	if (!tco_method) {
-		tc = timecounter;
-		tvp->tv_sec = tc->tc_offset_sec;
-		tvp->tv_usec = tc->tc_offset_micro;
-	} else {
-		microuptime(tvp);
+	do {
+		tvp->tv_sec = gd->gd_time_seconds;
+		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
+	} while (tvp->tv_sec != gd->gd_time_seconds);
+	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
+	if (tvp->tv_usec >= 1000000) {
+		tvp->tv_usec -= 1000000;
+		++tvp->tv_sec;
 	}
 }
 
 void
 getnanouptime(struct timespec *tsp)
 {
-	struct timecounter *tc;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	if (!tco_method) {
-		tc = timecounter;
-		tsp->tv_sec = tc->tc_offset_sec;
-		tsp->tv_nsec = tc->tc_offset_nano >> 32;
-	} else {
-		nanouptime(tsp);
+	do {
+		tsp->tv_sec = gd->gd_time_seconds;
+		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
+	} while (tsp->tv_sec != gd->gd_time_seconds);
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+	if (tsp->tv_nsec >= 1000000000) {
+		tsp->tv_nsec -= 1000000000;
+		++tsp->tv_sec;
 	}
 }
 
 void
-microuptime(struct timeval *tv)
+microuptime(struct timeval *tvp)
 {
-	struct timecounter *tc;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	tc = timecounter;
-	tv->tv_sec = tc->tc_offset_sec;
-	tv->tv_usec = tc->tc_offset_micro;
-	tv->tv_usec += ((u_int64_t)tco_delta(tc) * tc->tc_scale_micro) >> 32;
-	while (tv->tv_usec < 0) {
-		tv->tv_usec += 1000000;
-		if (tv->tv_sec > 0)
-			tv->tv_sec--;
-	}
-	while (tv->tv_usec >= 1000000) {
-		tv->tv_usec -= 1000000;
-		tv->tv_sec++;
+	do {
+		tvp->tv_sec = gd->gd_time_seconds;
+		delta = cputimer_count() - gd->gd_cpuclock_base;
+	} while (tvp->tv_sec != gd->gd_time_seconds);
+	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
+	if (tvp->tv_usec >= 1000000) {
+		tvp->tv_usec -= 1000000;
+		++tvp->tv_sec;
 	}
 }
 
 void
-nanouptime(struct timespec *ts)
+nanouptime(struct timespec *tsp)
 {
-	unsigned count;
-	u_int64_t delta;
-	struct timecounter *tc;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	tc = timecounter;
-	ts->tv_sec = tc->tc_offset_sec;
-	count = tco_delta(tc);
-	delta = tc->tc_offset_nano;
-	delta += ((u_int64_t)count * tc->tc_scale_nano_f);
-	delta >>= 32;
-	delta += ((u_int64_t)count * tc->tc_scale_nano_i);
-	while (delta < 0) {
-		delta += 1000000000;
-		if (ts->tv_sec > 0)
-			ts->tv_sec--;
+	do {
+		tsp->tv_sec = gd->gd_time_seconds;
+		delta = cputimer_count() - gd->gd_cpuclock_base;
+	} while (tsp->tv_sec != gd->gd_time_seconds);
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+	if (tsp->tv_nsec >= 1000000000) {
+		tsp->tv_nsec -= 1000000000;
+		++tsp->tv_sec;
 	}
-	while (delta >= 1000000000) {
-		delta -= 1000000000;
-		ts->tv_sec++;
-	}
-	ts->tv_nsec = delta;
 }
 
-static void
-tco_setscales(struct timecounter *tc)
-{
-	u_int64_t scale;
+/*
+ * realtime routines
+ */
 
-	scale = 1000000000LL << 32;
-	scale += tc->tc_adjustment;
-	scale /= tc->tc_tweak->tc_frequency;
-	tc->tc_scale_micro = scale / 1000;
-	tc->tc_scale_nano_f = scale & 0xffffffff;
-	tc->tc_scale_nano_i = scale >> 32;
+void
+getmicrotime(struct timeval *tvp)
+{
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
+
+	do {
+		tvp->tv_sec = gd->gd_time_seconds;
+		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
+	} while (tvp->tv_sec != gd->gd_time_seconds);
+	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
+
+	tvp->tv_sec += basetime.tv_sec;
+	tvp->tv_usec += basetime.tv_nsec / 1000;
+	while (tvp->tv_usec >= 1000000) {
+		tvp->tv_usec -= 1000000;
+		++tvp->tv_sec;
+	}
 }
 
 void
-update_timecounter(struct timecounter *tc)
+getnanotime(struct timespec *tsp)
 {
-	tco_setscales(tc);
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
+
+	do {
+		tsp->tv_sec = gd->gd_time_seconds;
+		delta = gd->gd_hardclock.time - gd->gd_cpuclock_base;
+	} while (tsp->tv_sec != gd->gd_time_seconds);
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+
+	tsp->tv_sec += basetime.tv_sec;
+	tsp->tv_nsec += basetime.tv_nsec;
+	while (tsp->tv_nsec >= 1000000000) {
+		tsp->tv_nsec -= 1000000000;
+		++tsp->tv_sec;
+	}
 }
 
 void
-init_timecounter(struct timecounter *tc)
+microtime(struct timeval *tvp)
 {
-	struct timespec ts1;
-	struct timecounter *t1, *t2, *t3;
-	unsigned u;
-	int i;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	u = tc->tc_frequency / tc->tc_counter_mask;
-	if (u > hz) {
-		printf("Timecounter \"%s\" frequency %lu Hz"
-		       " -- Insufficient hz, needs at least %u\n",
-		       tc->tc_name, (u_long) tc->tc_frequency, u);
-		return;
+	do {
+		tvp->tv_sec = gd->gd_time_seconds;
+		delta = cputimer_count() - gd->gd_cpuclock_base;
+	} while (tvp->tv_sec != gd->gd_time_seconds);
+	tvp->tv_usec = (cputimer_freq64_usec * delta) >> 32;
+
+	tvp->tv_sec += basetime.tv_sec;
+	tvp->tv_usec += basetime.tv_nsec / 1000;
+	while (tvp->tv_usec >= 1000000) {
+		tvp->tv_usec -= 1000000;
+		++tvp->tv_sec;
 	}
-
-	tc->tc_adjustment = 0;
-	tc->tc_tweak = tc;
-	tco_setscales(tc);
-	tc->tc_offset_count = tc->tc_get_timecount(tc);
-	if (timecounter == &dummy_timecounter)
-		tc->tc_avail = tc;
-	else {
-		tc->tc_avail = timecounter->tc_tweak->tc_avail;
-		timecounter->tc_tweak->tc_avail = tc;
-	}
-	MALLOC(t1, struct timecounter *, sizeof *t1, M_TIMECOUNTER, M_WAITOK);
-	tc->tc_other = t1;
-	*t1 = *tc;
-	t2 = t1;
-	for (i = 1; i < NTIMECOUNTER; i++) {
-		MALLOC(t3, struct timecounter *, sizeof *t3,
-		    M_TIMECOUNTER, M_WAITOK);
-		*t3 = *tc;
-		t3->tc_other = t2;
-		t2 = t3;
-	}
-	t1->tc_other = t3;
-	tc = t1;
-
-	printf("Timecounter \"%s\"  frequency %lu Hz\n", 
-	    tc->tc_name, (u_long)tc->tc_frequency);
-
-	/* XXX: For now always start using the counter. */
-	tc->tc_offset_count = tc->tc_get_timecount(tc);
-	nanouptime(&ts1);
-	tc->tc_offset_nano = (u_int64_t)ts1.tv_nsec << 32;
-	tc->tc_offset_micro = ts1.tv_nsec / 1000;
-	tc->tc_offset_sec = ts1.tv_sec;
-	timecounter = tc;
 }
 
 void
-set_timecounter(struct timespec *ts)
+nanotime(struct timespec *tsp)
 {
-	struct timespec ts2;
+	struct globaldata *gd = mycpu;
+	sysclock_t delta;
 
-	nanouptime(&ts2);
-	boottime.tv_sec = ts->tv_sec - ts2.tv_sec;
-	boottime.tv_usec = (ts->tv_nsec - ts2.tv_nsec) / 1000;
-	if (boottime.tv_usec < 0) {
-		boottime.tv_usec += 1000000;
-		boottime.tv_sec--;
+	do {
+		tsp->tv_sec = gd->gd_time_seconds;
+		delta = cputimer_count() - gd->gd_cpuclock_base;
+	} while (tsp->tv_sec != gd->gd_time_seconds);
+	tsp->tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+
+	tsp->tv_sec += basetime.tv_sec;
+	tsp->tv_nsec += basetime.tv_nsec;
+	while (tsp->tv_nsec >= 1000000000) {
+		tsp->tv_nsec -= 1000000000;
+		++tsp->tv_sec;
 	}
-	/* fiddle all the little crinkly bits around the fiords... */
-	tco_forward(1);
 }
-
-static void
-switch_timecounter(struct timecounter *newtc)
-{
-	int s;
-	struct timecounter *tc;
-	struct timespec ts;
-
-	s = splclock();
-	tc = timecounter;
-	if (newtc->tc_tweak == tc->tc_tweak) {
-		splx(s);
-		return;
-	}
-	newtc = newtc->tc_tweak->tc_other;
-	nanouptime(&ts);
-	newtc->tc_offset_sec = ts.tv_sec;
-	newtc->tc_offset_nano = (u_int64_t)ts.tv_nsec << 32;
-	newtc->tc_offset_micro = ts.tv_nsec / 1000;
-	newtc->tc_offset_count = newtc->tc_get_timecount(newtc);
-	tco_setscales(newtc);
-	timecounter = newtc;
-	splx(s);
-}
-
-static struct timecounter *
-sync_other_counter(void)
-{
-	struct timecounter *tc, *tcn, *tco;
-	unsigned delta;
-
-	tco = timecounter;
-	tc = tco->tc_other;
-	tcn = tc->tc_other;
-	*tc = *tco;
-	tc->tc_other = tcn;
-	delta = tco_delta(tc);
-	tc->tc_offset_count += delta;
-	tc->tc_offset_count &= tc->tc_counter_mask;
-	tc->tc_offset_nano += (u_int64_t)delta * tc->tc_scale_nano_f;
-	tc->tc_offset_nano += (u_int64_t)delta * tc->tc_scale_nano_i << 32;
-	return (tc);
-}
-
-static void
-tco_forward(int force)
-{
-	struct timecounter *tc, *tco;
-	struct timeval tvt;
-
-	tco = timecounter;
-	tc = sync_other_counter();
-	/*
-	 * We may be inducing a tiny error here, the tc_poll_pps() may
-	 * process a latched count which happens after the tco_delta()
-	 * in sync_other_counter(), which would extend the previous
-	 * counters parameters into the domain of this new one.
-	 * Since the timewindow is very small for this, the error is
-	 * going to be only a few weenieseconds (as Dave Mills would
-	 * say), so lets just not talk more about it, OK ?
-	 */
-	if (tco->tc_poll_pps) 
-		tco->tc_poll_pps(tco);
-	if (timedelta != 0) {
-		tvt = boottime;
-		tvt.tv_usec += tickdelta;
-		if (tvt.tv_usec >= 1000000) {
-			tvt.tv_sec++;
-			tvt.tv_usec -= 1000000;
-		} else if (tvt.tv_usec < 0) {
-			tvt.tv_sec--;
-			tvt.tv_usec += 1000000;
-		}
-		boottime = tvt;
-		timedelta -= tickdelta;
-	}
-
-	while (tc->tc_offset_nano >= 1000000000ULL << 32) {
-		tc->tc_offset_nano -= 1000000000ULL << 32;
-		tc->tc_offset_sec++;
-		ntp_update_second(tc);	/* XXX only needed if xntpd runs */
-		tco_setscales(tc);
-		force++;
-	}
-
-	if (tco_method && !force)
-		return;
-
-	tc->tc_offset_micro = (tc->tc_offset_nano / 1000) >> 32;
-
-	/* Figure out the wall-clock time */
-	tc->tc_nanotime.tv_sec = tc->tc_offset_sec + boottime.tv_sec;
-	tc->tc_nanotime.tv_nsec = 
-	    (tc->tc_offset_nano >> 32) + boottime.tv_usec * 1000;
-	tc->tc_microtime.tv_usec = tc->tc_offset_micro + boottime.tv_usec;
-	while (tc->tc_nanotime.tv_nsec >= 1000000000) {
-		tc->tc_nanotime.tv_nsec -= 1000000000;
-		tc->tc_microtime.tv_usec -= 1000000;
-		tc->tc_nanotime.tv_sec++;
-	}
-	time_second = tc->tc_microtime.tv_sec = tc->tc_nanotime.tv_sec;
-
-	timecounter = tc;
-}
-
-SYSCTL_NODE(_kern, OID_AUTO, timecounter, CTLFLAG_RW, 0, "");
-
-SYSCTL_INT(_kern_timecounter, OID_AUTO, method, CTLFLAG_RW, &tco_method, 0,
-    "This variable determines the method used for updating timecounters. "
-    "If the default algorithm (0) fails with \"calcru negative...\" messages "
-    "try the alternate algorithm (1) which handles bad hardware better."
-
-);
-
-static int
-sysctl_kern_timecounter_hardware(SYSCTL_HANDLER_ARGS)
-{
-	char newname[32];
-	struct timecounter *newtc, *tc;
-	int error;
-
-	tc = timecounter->tc_tweak;
-	strncpy(newname, tc->tc_name, sizeof(newname));
-	error = sysctl_handle_string(oidp, &newname[0], sizeof(newname), req);
-	if (error == 0 && req->newptr != NULL &&
-	    strcmp(newname, tc->tc_name) != 0) {
-		for (newtc = tc->tc_avail; newtc != tc;
-		    newtc = newtc->tc_avail) {
-			if (strcmp(newname, newtc->tc_name) == 0) {
-				/* Warm up new timecounter. */
-				(void)newtc->tc_get_timecount(newtc);
-
-				switch_timecounter(newtc);
-				return (0);
-			}
-		}
-		return (EINVAL);
-	}
-	return (error);
-}
-
-SYSCTL_PROC(_kern_timecounter, OID_AUTO, hardware, CTLTYPE_STRING | CTLFLAG_RW,
-    0, 0, sysctl_kern_timecounter_hardware, "A", "");
-
 
 int
 pps_ioctl(u_long cmd, caddr_t data, struct pps_state *pps)
@@ -1031,13 +833,22 @@ pps_init(struct pps_state *pps)
 }
 
 void
-pps_event(struct pps_state *pps, struct timecounter *tc, unsigned count, int event)
+pps_event(struct pps_state *pps, sysclock_t count, int event)
 {
-	struct timespec ts, *tsp, *osp;
-	u_int64_t delta;
-	unsigned tcount, *pcount;
-	int foff, fhard;
-	pps_seq_t	*pseq;
+	struct globaldata *gd;
+	struct timespec *tsp;
+	struct timespec *osp;
+	struct timespec ts;
+	sysclock_t *pcount;
+#ifdef PPS_SYNC
+	sysclock_t tcount;
+#endif
+	sysclock_t delta;
+	pps_seq_t *pseq;
+	int foff;
+	int fhard;
+
+	gd = mycpu;
 
 	/* Things would be easier with arrays... */
 	if (event == PPS_CAPTUREASSERT) {
@@ -1056,36 +867,27 @@ pps_event(struct pps_state *pps, struct timecounter *tc, unsigned count, int eve
 		pseq = &pps->ppsinfo.clear_sequence;
 	}
 
-	/* The timecounter changed: bail */
-	if (!pps->ppstc || 
-	    pps->ppstc->tc_name != tc->tc_name || 
-	    tc->tc_name != timecounter->tc_name) {
-		pps->ppstc = tc;
-		*pcount = count;
-		return;
-	}
-
 	/* Nothing really happened */
 	if (*pcount == count)
 		return;
 
 	*pcount = count;
 
-	/* Convert the count to timespec */
-	ts.tv_sec = tc->tc_offset_sec;
-	tcount = count - tc->tc_offset_count;
-	tcount &= tc->tc_counter_mask;
-	delta = tc->tc_offset_nano;
-	delta += ((u_int64_t)tcount * tc->tc_scale_nano_f);
-	delta >>= 32;
-	delta += ((u_int64_t)tcount * tc->tc_scale_nano_i);
-	delta += boottime.tv_usec * 1000;
-	ts.tv_sec += boottime.tv_sec;
-	while (delta >= 1000000000) {
-		delta -= 1000000000;
-		ts.tv_sec++;
+	do {
+		ts.tv_sec = gd->gd_time_seconds;
+		delta = count - gd->gd_cpuclock_base;
+	} while (ts.tv_sec != gd->gd_time_seconds);
+	if (delta > cputimer_freq) {
+		ts.tv_sec += delta / cputimer_freq;
+		delta %= cputimer_freq;
 	}
-	ts.tv_nsec = delta;
+	ts.tv_nsec = (cputimer_freq64_nsec * delta) >> 32;
+	ts.tv_sec += basetime.tv_sec;
+	ts.tv_nsec += basetime.tv_nsec;
+	while (ts.tv_nsec >= 1000000000) {
+		ts.tv_nsec -= 1000000000;
+		++ts.tv_sec;
+	}
 
 	(*pseq)++;
 	*tsp = ts;
@@ -1102,11 +904,9 @@ pps_event(struct pps_state *pps, struct timecounter *tc, unsigned count, int eve
 		/* magic, at its best... */
 		tcount = count - pps->ppscount[2];
 		pps->ppscount[2] = count;
-		tcount &= tc->tc_counter_mask;
-		delta = ((u_int64_t)tcount * tc->tc_tweak->tc_scale_nano_f);
-		delta >>= 32;
-		delta += ((u_int64_t)tcount * tc->tc_tweak->tc_scale_nano_i);
+		delta = (cputimer_freq64_nsec * tcount) >> 32;
 		hardpps(tsp, delta);
 	}
 #endif
 }
+

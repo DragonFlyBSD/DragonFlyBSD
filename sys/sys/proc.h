@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.41 2004/01/04 22:14:39 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.42 2004/01/30 05:42:18 dillon Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -420,7 +420,7 @@ int	p_trespass (struct ucred *cr1, struct ucred *cr2);
 void	resetpriority (struct proc *);
 int	roundrobin_interval (void);
 void	resched_cpus(u_int32_t mask);
-void	schedclock (void *dummy);
+void	schedulerclock (void *dummy);
 void	setrunnable (struct proc *);
 void	clrrunnable (struct proc *, int stat);
 void	setrunqueue (struct proc *);

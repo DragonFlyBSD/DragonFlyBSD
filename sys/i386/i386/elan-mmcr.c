@@ -7,7 +7,7 @@
  * ----------------------------------------------------------------------------
  *
  * $FreeBSD: src/sys/i386/i386/elan-mmcr.c,v 1.6.2.1 2002/09/17 22:39:53 sam Exp $
- * $DragonFly: src/sys/i386/i386/Attic/elan-mmcr.c,v 1.4 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/elan-mmcr.c,v 1.5 2004/01/30 05:42:16 dillon Exp $
  * The AMD Elan sc520 is a system-on-chip gadget which is used in embedded
  * kind of things, see www.soekris.com for instance, and it has a few quirks
  * we need to deal with.
@@ -34,6 +34,7 @@
 
 uint16_t *elan_mmcr;
 
+#if 0
 
 static unsigned
 elan_get_timecount(struct timecounter *tc)
@@ -48,6 +49,8 @@ static struct timecounter elan_timecounter = {
 	33333333 / 4,
 	"ELAN"
 };
+
+#endif
 
 void
 init_AMD_Elan_sc520(void)
@@ -74,9 +77,11 @@ init_AMD_Elan_sc520(void)
 	if (bootverbose)
 		printf("sysctl machdep.i8254_freq=%d returns %d\n", new, i);
 
+#if 0
 	/* Start GP timer #2 and use it as timecounter, hz permitting */
 	elan_mmcr[0xc82 / 2] = 0xc001;
 	init_timecounter(&elan_timecounter);
+#endif
 }
 
 

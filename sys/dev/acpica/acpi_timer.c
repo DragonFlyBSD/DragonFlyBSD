@@ -25,8 +25,11 @@
  * SUCH DAMAGE.
  *
  *	$FreeBSD: src/sys/dev/acpica/acpi_timer.c,v 1.24.2.1 2003/08/22 20:49:20 jhb Exp $
- *      $DragonFly: src/sys/dev/acpica/Attic/acpi_timer.c,v 1.1 2003/09/24 03:32:16 drhodus Exp $ 
+ *      $DragonFly: src/sys/dev/acpica/Attic/acpi_timer.c,v 1.2 2004/01/30 05:42:15 dillon Exp $ 
  */
+
+#ifdef NOTDEF	/* Disabled */
+
 #include "opt_acpi.h"
 #include <sys/param.h>
 #include <sys/bus.h>
@@ -387,4 +390,6 @@ acpi_timer_pci_probe(device_t dev)
 
     return(ENXIO);		/* we never match anything */
 }
+#endif
+
 #endif

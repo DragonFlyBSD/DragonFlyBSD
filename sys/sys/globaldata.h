@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/include/globaldata.h,v 1.11.2.1 2000/05/16 06:58:10 dillon Exp $
- * $DragonFly: src/sys/sys/globaldata.h,v 1.22 2003/12/30 03:19:04 dillon Exp $
+ * $DragonFly: src/sys/sys/globaldata.h,v 1.23 2004/01/30 05:42:17 dillon Exp $
  */
 
 #ifndef _SYS_GLOBALDATA_H_
@@ -46,6 +46,9 @@
 #endif
 #ifndef _SYS_SLABALLOC_H_
 #include <sys/slaballoc.h> /* SLGlobalData */
+#endif
+#ifndef _SYS_SYSTIMER_H_
+#include <sys/systimer.h> /* fine-grained system timers */
 #endif
 
 /*
@@ -93,8 +96,6 @@ struct globaldata {
 	__uint32_t	gd_other_cpus;		/* mask of 'other' cpus */
 	struct timeval	gd_stattv;
 	int		gd_intr_nesting_level;	/* (for interrupts) */
-	int		gd_psticks;		/* profile kern/kern_clock.c */
-	int		gd_psdiv;		/* profile kern/kern_clock.c */
 	struct vmmeter	gd_cnt;
 	struct lwkt_ipiq *gd_ipiq;
 	short		gd_upri;		/* userland scheduler helper */
@@ -105,6 +106,14 @@ struct globaldata {
 	int		gd_vme_kdeficit;	/* vm_map_entry reservation */
 	int		gd_vme_avail;		/* vm_map_entry reservation */
 	struct vm_map_entry *gd_vme_base;	/* vm_map_entry reservation */
+	struct systimerq gd_systimerq;		/* per-cpu system timers */
+	int		gd_syst_nest;
+	sysclock_t	gd_nextclock;		/* next best-case clock req */
+	struct systimer gd_hardclock;		/* scheduler periodic */
+	struct systimer gd_statclock;		/* statistics periodic */
+	struct systimer gd_schedclock;		/* scheduler periodic */
+	volatile __uint32_t gd_time_seconds;	/* uptime in seconds */
+	volatile sysclock_t gd_cpuclock_base;	/* cpuclock relative base */
 	/* extended by <machine/pcpu.h> */
 };
 

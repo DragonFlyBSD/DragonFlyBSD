@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/icmp6.c,v 1.6.2.13 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.6 2003/08/23 11:02:45 rob Exp $	*/
+/*	$DragonFly: src/sys/netinet6/icmp6.c,v 1.7 2004/01/30 05:42:17 dillon Exp $	*/
 /*	$KAME: icmp6.c,v 1.211 2001/04/04 05:56:20 itojun Exp $	*/
 
 /*
@@ -2809,11 +2809,9 @@ ppsratecheck(lasttime, curpps, maxpps)
 	int maxpps;	/* maximum pps allowed */
 {
 	struct timeval tv, delta;
-	int s, rv;
+	int rv;
 
-	s = splclock(); 
 	microtime(&tv);
-	splx(s);
 
 	timersub(&tv, lasttime, &delta);
 

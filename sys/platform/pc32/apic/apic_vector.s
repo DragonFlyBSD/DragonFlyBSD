@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/apic_vector.s,v 1.47.2.5 2001/09/01 22:33:38 tegge Exp $
- * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.14 2003/09/25 23:49:08 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/apic/apic_vector.s,v 1.15 2004/01/30 05:42:16 dillon Exp $
  */
 
 
@@ -484,11 +484,13 @@ Xipiq:
 	movl	PCPU(curthread),%ebx
 	cmpl	$TDPRI_CRIT,TD_PRI(%ebx)
 	jge	1f
+	subl	$8,%esp			/* make same as interrupt frame */
 	incl	PCPU(intr_nesting_level)
 	addl	$TDPRI_CRIT,TD_PRI(%ebx)
-	call	lwkt_process_ipiq
+	call	lwkt_process_ipiq_frame
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)
 	decl	PCPU(intr_nesting_level)
+	addl	$8,%esp
 	pushl	TD_CPL(%ebx)
 	MEXITCOUNT
 	jmp	doreti
@@ -525,12 +527,8 @@ MCOUNT_LABEL(bintr)
 	FAST_INTR(23,fastintr23)
 	
 	/* YYY what is this garbage? */
-#define	CLKINTR_PENDING							\
-	call	clock_lock ;						\
-	movl $1,CNAME(clkintr_pending) ;				\
-	call	clock_unlock ;						\
 
-	INTR(0,intr0, CLKINTR_PENDING)
+	INTR(0,intr0,)
 	INTR(1,intr1,)
 	INTR(2,intr2,)
 	INTR(3,intr3,)

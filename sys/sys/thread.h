@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.39 2004/01/18 12:29:50 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.40 2004/01/30 05:42:18 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -62,6 +62,11 @@ typedef TAILQ_HEAD(lwkt_queue, thread) lwkt_queue;
 #ifndef _MACHINE_THREAD_H_
 #include <machine/thread.h>		/* md_thread */
 #endif
+#ifndef _MACHINE_FRAME_H_
+#include <machine/frame.h>
+#endif
+#else
+struct intrframe;
 #endif
 
 /*
@@ -90,13 +95,19 @@ typedef struct lwkt_wait {
 #define MAXCPUFIFO      16	/* power of 2 */
 #define MAXCPUFIFO_MASK	(MAXCPUFIFO - 1)
 
+/*
+ * Always cast to ipifunc_t when registering an ipi.  The actual ipi function
+ * is called with both the data and an interrupt frame, but the ipi function
+ * that is registered might only declare a data argument.
+ */
 typedef void (*ipifunc_t)(void *arg);
+typedef void (*ipifunc2_t)(void *arg, struct intrframe *frame);
 
 typedef struct lwkt_ipiq {
     int		ip_rindex;      /* only written by target cpu */
     int		ip_xindex;      /* writte by target, indicates completion */
     int		ip_windex;      /* only written by source cpu */
-    ipifunc_t	ip_func[MAXCPUFIFO];
+    ipifunc2_t	ip_func[MAXCPUFIFO];
     void	*ip_arg[MAXCPUFIFO];
 } lwkt_ipiq;
 
@@ -284,6 +295,9 @@ extern int  lwkt_send_ipiq(int dcpu, ipifunc_t func, void *arg);
 extern void lwkt_send_ipiq_mask(u_int32_t mask, ipifunc_t func, void *arg);
 extern void lwkt_wait_ipiq(int dcpu, int seq);
 extern void lwkt_process_ipiq(void);
+#ifdef _KERNEL
+extern void lwkt_process_ipiq_frame(struct intrframe frame);
+#endif
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 

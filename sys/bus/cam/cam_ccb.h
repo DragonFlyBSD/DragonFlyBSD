@@ -26,7 +26,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_ccb.h,v 1.15.2.3 2003/07/29 04:00:34 njl Exp $
- * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.6 2003/12/29 23:30:58 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_ccb.h,v 1.7 2004/01/30 05:42:09 dillon Exp $
  */
 
 #ifndef _CAM_CAM_CCB_H
@@ -276,7 +276,7 @@ struct ccb_getdevstats {
 				 * tagged operations
 				 */
 	int	mintags;
-	struct	timeval last_reset;	/* Time of last bus reset/loop init */
+	struct	timeval last_reset;  /* Uptime of last bus reset/loop init */
 };
 
 typedef enum {
@@ -512,7 +512,7 @@ struct ccb_pathinq {
 /* Path Statistics CCB */
 struct ccb_pathstats {
 	struct	ccb_hdr	ccb_h;
-	struct	timeval last_reset;	/* Time of last bus reset/loop init */
+	struct	timeval last_reset;	/* Uptime of last bus reset/loop init */
 };
 
 typedef union {

@@ -37,7 +37,7 @@
  *
  *	@(#)param.c	8.3 (Berkeley) 8/20/94
  * $FreeBSD: src/sys/kern/subr_param.c,v 1.42.2.10 2002/03/09 21:05:47 silby Exp $
- * $DragonFly: src/sys/kern/subr_param.c,v 1.2 2003/06/17 04:28:41 dillon Exp $
+ * $DragonFly: src/sys/kern/subr_param.c,v 1.3 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include "opt_param.h"
@@ -68,6 +68,8 @@
 #endif
 
 int	hz;
+int	stathz;
+int	profhz;
 int	tick;
 int	tickadj;			 /* can adjust 30ms in 60s */
 int	maxusers;			/* base tunable */
@@ -106,6 +108,8 @@ init_param1(void)
 {
 	hz = HZ;
 	TUNABLE_INT_FETCH("kern.hz", &hz);
+	stathz = hz * 128 / 100;
+	profhz = stathz;
 	tick = 1000000 / hz;
 	tickadj = howmany(30000, 60 * hz);	/* can adjust 30ms in 60s */
 

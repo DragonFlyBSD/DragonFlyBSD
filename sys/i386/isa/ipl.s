@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.15 2003/11/21 05:29:08 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/ipl.s,v 1.16 2004/01/30 05:42:16 dillon Exp $
  */
 
 
@@ -273,7 +273,9 @@ doreti_ast:
 doreti_ipiq:
 	incl	PCPU(intr_nesting_level)
 	andl	$~RQF_IPIQ,PCPU(reqflags)
-	call	lwkt_process_ipiq
+	subl	$8,%esp			/* add dummy vec and ppl */
+	call	lwkt_process_ipiq_frame
+	addl	$8,%esp
 	decl	PCPU(intr_nesting_level)
 	movl	TD_CPL(%ebx),%eax	/* retrieve cpl again for loop */
 	jmp	doreti_next

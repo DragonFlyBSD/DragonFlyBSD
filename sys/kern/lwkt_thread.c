@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.48 2004/01/18 12:29:49 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_thread.c,v 1.49 2004/01/30 05:42:17 dillon Exp $
  */
 
 /*
@@ -1502,6 +1502,10 @@ lwkt_wait_ipiq(int dcpu, int seq)
  * us in a critical section.  The MP lock may or may not be held.
  * May also be called from doreti or splz, or be reentrantly called
  * indirectly through the ip_func[] we run.
+ *
+ * There are two versions, one where no interrupt frame is available (when
+ * called from the send code and from splz, and one where an interrupt
+ * frame is available.
  */
 void
 lwkt_process_ipiq(void)
@@ -1528,7 +1532,39 @@ lwkt_process_ipiq(void)
 	while (ip->ip_rindex != ip->ip_windex) {
 	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
 	    ++ip->ip_rindex;
-	    ip->ip_func[ri](ip->ip_arg[ri]);
+	    ip->ip_func[ri](ip->ip_arg[ri], NULL);
+	    /* YYY memory barrier */
+	    ip->ip_xindex = ip->ip_rindex;
+	}
+    }
+}
+
+void
+lwkt_process_ipiq_frame(struct intrframe frame)
+{
+    int n;
+    int cpuid = mycpu->gd_cpuid;
+
+    for (n = 0; n < ncpus; ++n) {
+	lwkt_ipiq_t ip;
+	int ri;
+
+	if (n == cpuid)
+	    continue;
+	ip = globaldata_find(n)->gd_ipiq;
+	if (ip == NULL)
+	    continue;
+	ip = &ip[cpuid];
+
+	/*
+	 * Note: xindex is only updated after we are sure the function has
+	 * finished execution.  Beware lwkt_process_ipiq() reentrancy!  The
+	 * function may send an IPI which may block/drain.
+	 */
+	while (ip->ip_rindex != ip->ip_windex) {
+	    ri = ip->ip_rindex & MAXCPUFIFO_MASK;
+	    ++ip->ip_rindex;
+	    ip->ip_func[ri](ip->ip_arg[ri], &frame);
 	    /* YYY memory barrier */
 	    ip->ip_xindex = ip->ip_rindex;
 	}

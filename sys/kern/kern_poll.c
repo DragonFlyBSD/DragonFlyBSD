@@ -25,7 +25,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_poll.c,v 1.2.2.4 2002/06/27 23:26:33 luigi Exp $
- * $DragonFly: src/sys/kern/kern_poll.c,v 1.6 2003/11/08 07:57:41 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_poll.c,v 1.7 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -201,6 +201,8 @@ init_device_poll(void)
  * The first part of the code is just for debugging purposes, and tries
  * to count how often hardclock ticks are shorter than they should,
  * meaning either stray interrupts or delayed events.
+ *
+ * WARNING! called from fastint or IPI, the MP lock might not be held.
  */
 void
 hardclock_device_poll(void)

@@ -37,7 +37,7 @@
  *
  *	@(#)systm.h	8.7 (Berkeley) 3/29/95
  * $FreeBSD: src/sys/sys/systm.h,v 1.111.2.18 2002/12/17 18:04:02 sam Exp $
- * $DragonFly: src/sys/sys/systm.h,v 1.16 2003/11/15 21:05:43 dillon Exp $
+ * $DragonFly: src/sys/sys/systm.h,v 1.17 2004/01/30 05:42:18 dillon Exp $
  */
 
 #ifndef _SYS_SYSTM_H_
@@ -104,7 +104,7 @@ extern int ncpus;		/* total number of cpus (real, hyper, virtual)*/
  * General function declarations.
  */
 
-struct clockframe;
+struct intrframe;
 struct malloc_type;
 struct proc;
 struct xwait;
@@ -186,8 +186,6 @@ int	susword (void *base, int word);
 
 void	realitexpire (void *);
 void	DELAY(int usec);
-void	hardclock (struct clockframe *frame);
-void	statclock (struct clockframe *frame);
 
 void	startprofclock (struct proc *);
 void	stopprofclock (struct proc *);

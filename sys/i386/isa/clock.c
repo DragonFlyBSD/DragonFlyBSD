@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.10 2004/01/08 08:11:12 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.11 2004/01/30 05:42:16 dillon Exp $
  */
 
 /*
@@ -62,6 +62,10 @@
 #endif
 #include <sys/sysctl.h>
 #include <sys/cons.h>
+#include <sys/systimer.h>
+#include <sys/globaldata.h>
+#include <sys/thread2.h>
+#include <sys/systimer.h>
 
 #include <machine/clock.h>
 #ifdef CLK_CALIBRATION_LOOP
@@ -98,6 +102,7 @@ int apic_8254_intr;
 static u_long read_intr_count (int vec);
 static void setup_8254_mixed_mode (void);
 #endif
+static void i8254_restore(void);
 
 /*
  * 32-bit time_t's can't reach leap years before 1904 or after 2036, so we
@@ -106,201 +111,73 @@ static void setup_8254_mixed_mode (void);
 #define	LEAPYEAR(y) ((u_int)(y) % 4 == 0)
 #define DAYSPERYEAR   (31+28+31+30+31+30+31+31+30+31+30+31)
 
-#define	TIMER_DIV(x) (timer_freq / (x))
-#define FRAC_ADJUST(x) (timer_freq - ((timer_freq / (x)) * (x)))
-
-/*
- * Time in timer cycles that it takes for microtime() to disable interrupts
- * and latch the count.  microtime() currently uses "cli; outb ..." so it
- * normally takes less than 2 timer cycles.  Add a few for cache misses.
- * Add a few more to allow for latency in bogus calls to microtime() with
- * interrupts already disabled.
- */
-#define	TIMER0_LATCH_COUNT	20
-
-/*
- * Maximum frequency that we are willing to allow for timer0.  Must be
- * low enough to guarantee that the timer interrupt handler returns
- * before the next timer interrupt.
- */
-#define	TIMER0_MAX_FREQ		20000
-
-int	adjkerntz;		/* local offset from GMT in seconds */
-int	clkintr_pending;
-int	disable_rtc_set;	/* disable resettodr() if != 0 */
-volatile u_int	idelayed;
-int	statclock_disable;
-u_int	stat_imask = SWI_CLOCK_MASK;
 #ifndef TIMER_FREQ
 #define TIMER_FREQ   1193182
 #endif
-u_int	timer_freq = TIMER_FREQ;
-int	timer0_max_count;
-u_int	timer0_frac_freq;
+
+#define TIMER_SELX	TIMER_SEL2
+#define TIMER_CNTRX	TIMER_CNTR2
+
+int	adjkerntz;		/* local offset from GMT in seconds */
+int	disable_rtc_set;	/* disable resettodr() if != 0 */
+volatile u_int	idelayed;
+int	statclock_disable = 1;	/* we don't use the statclock right now */
+u_int	stat_imask = SWI_CLOCK_MASK;
+u_int	cputimer_freq = TIMER_FREQ;
+#if 0
+int64_t	cputimer_freq64_usec = ((int64_t)TIMER_FREQ << 32) / 1000000;
+int64_t	cputimer_freq64_nsec = ((int64_t)TIMER_FREQ << 32) / 1000000000LL;
+#endif
+int64_t	cputimer_freq64_usec = (1000000LL << 32) / TIMER_FREQ;
+int64_t	cputimer_freq64_nsec = (1000000000LL << 32) / TIMER_FREQ;
 u_int	tsc_freq;
 int	tsc_is_broken;
 int	wall_cmos_clock;	/* wall CMOS clock assumed if != 0 */
+int	timer0_running;
+enum tstate { RELEASED, ACQUIRED };
+enum tstate timer0_state;
+enum tstate timer1_state;
+enum tstate timer2_state;
 
 static	int	beeping = 0;
 static	u_int	clk_imask = HWI_MASK | SWI_MASK;
 static	const u_char daysinmonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
-static	u_int	hardclock_max_count;
-static	u_int32_t i8254_lastcount;
-static	u_int32_t i8254_offset;
-static	int	i8254_ticked;
-/*
- * XXX new_function and timer_func should not handle clockframes, but
- * timer_func currently needs to hold hardclock to handle the
- * timer0_state == 0 case.  We should use inthand_add()/inthand_remove()
- * to switch between clkintr() and a slightly different timerintr().
- */
-static	void	(*new_function) (struct clockframe *frame);
-static	u_int	new_rate;
 static	u_char	rtc_statusa = RTCSA_DIVIDER | RTCSA_NOPROF;
 static	u_char	rtc_statusb = RTCSB_24HR | RTCSB_PINTR;
-static	u_int	timer0_prescaler_count;
-
-/* Values for timerX_state: */
-#define	RELEASED	0
-#define	RELEASE_PENDING	1
-#define	ACQUIRED	2
-#define	ACQUIRE_PENDING	3
-
-static	u_char	timer0_state;
-static	u_char	timer2_state;
-static	void	(*timer_func) (struct clockframe *frame) = hardclock;
 static	u_int	tsc_present;
 
-static	unsigned i8254_get_timecount (struct timecounter *tc);
-static	unsigned tsc_get_timecount (struct timecounter *tc);
-static	void	set_timer_freq(u_int freq, int intr_freq);
-
-static struct timecounter tsc_timecounter = {
-	tsc_get_timecount,	/* get_timecount */
-	0,			/* no poll_pps */
- 	~0u,			/* counter_mask */
-	0,			/* frequency */
-	 "TSC"			/* name */
-};
-
-SYSCTL_OPAQUE(_debug, OID_AUTO, tsc_timecounter, CTLFLAG_RD, 
-	&tsc_timecounter, sizeof(tsc_timecounter), "S,timecounter", "");
-
-static struct timecounter i8254_timecounter = {
-	i8254_get_timecount,	/* get_timecount */
-	0,			/* no poll_pps */
-	~0u,			/* counter_mask */
-	0,			/* frequency */
-	"i8254"			/* name */
-};
-
-SYSCTL_OPAQUE(_debug, OID_AUTO, i8254_timecounter, CTLFLAG_RD, 
-	&i8254_timecounter, sizeof(i8254_timecounter), "S,timecounter", "");
-
+/*
+ * timer0 clock interrupt.  Timer0 is in one-shot mode and has stopped
+ * counting as of this interrupt.  We use timer1 in free-running mode (not
+ * generating any interrupts) as our main counter.  Each cpu has timeouts
+ * pending.
+ */
 static void
-clkintr(struct clockframe frame)
+clkintr(struct intrframe frame)
 {
-	int phase;
-	int delta;
-
-	if (timecounter->tc_get_timecount == i8254_get_timecount) {
-		clock_lock();
-		if (i8254_ticked) {
-			i8254_ticked = 0;
-		} else {
-			i8254_offset += timer0_max_count;
-			i8254_lastcount = 0;
-		}
-		/*
-		 * Lets say we are running at 100Hz.  Our counter load will
-		 * be 1193182 / 100 = 11931.82, which is really only 11931.
-		 * The fractional code accounts for the .82 count.  When it
-		 * exceeds 1.00 count we adjust the reload register by + 1
-		 * to compensate for the error.  We must also adjust 
-		 * i8254_offset.
-		 *
-		 * If we did not do this a high frequency would cause the
-		 * actual interrupt rate to seriously diverge from 'hz'.
-		 */
-		clkintr_pending = 0;
-		clock_unlock();
-	}
+	static sysclock_t timer1_count;
+	struct globaldata *gd = mycpu;
+	struct globaldata *gscan;
+	int n;
 
 	/*
-	 * Use the previously synchronized timecounter value to phase-sync
-	 * our hz clock interrupt.  We do this by reloading the initial count
-	 * register of timer0, which takes effect the next time it reloads.
+	 * SWSTROBE mode is a one-shot, the timer is no longer running
 	 */
-	phase = 1000000 / timer0_frac_freq;
-	delta = timecounter->tc_microtime.tv_usec % phase;
-#if 1
-	clock_lock();
-	if (delta < (phase >> 1)) {
-		/*
-		 * Current time is a bit past what we expect, speed up the
-		 * clock interrupt.
-		 */
-		outb(TIMER_CNTR0, timer0_max_count & 0xff);
-		outb(TIMER_CNTR0, timer0_max_count >> 8);
-	} else {
-		/*
-		 * Current time is a bit before what we expect, slow down
-		 * the clock interrupt.
-		 */
-		outb(TIMER_CNTR0, (timer0_max_count + 1) & 0xff);
-		outb(TIMER_CNTR0, (timer0_max_count + 1) >> 8);
-		++i8254_offset;	/* take into account extra count for tc==8254*/
-	}
-	clock_unlock();
-#endif
+	timer0_running = 0;
 
-	timer_func(&frame);
-
-	switch (timer0_state) {
-	case RELEASED:
-		setdelayed();
-		break;
-	case ACQUIRED:
-		timer0_prescaler_count += timer0_max_count;
-		if (timer0_prescaler_count >= hardclock_max_count) {
-			timer0_prescaler_count -= hardclock_max_count;
-			hardclock(&frame);
-			setdelayed();
-		}
-		break;
-	case ACQUIRE_PENDING:
-		clock_lock();
-		i8254_offset = i8254_get_timecount(NULL);
-		i8254_lastcount = 0;
-		timer0_max_count = TIMER_DIV(new_rate);
-		timer0_frac_freq = new_rate;
-		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
-		outb(TIMER_CNTR0, timer0_max_count & 0xff);
-		outb(TIMER_CNTR0, timer0_max_count >> 8);
-		clock_unlock();
-		timer_func = new_function;
-		timer0_state = ACQUIRED;
-		setdelayed();
-		break;
-	case RELEASE_PENDING:
-		timer0_prescaler_count += timer0_max_count;
-		if (timer0_prescaler_count >= hardclock_max_count) {
-			clock_lock();
-			i8254_offset = i8254_get_timecount(NULL);
-			i8254_lastcount = 0;
-			timer0_max_count = hardclock_max_count;
-			outb(TIMER_MODE,
-			     TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
-			outb(TIMER_CNTR0, timer0_max_count & 0xff);
-			outb(TIMER_CNTR0, timer0_max_count >> 8);
-			clock_unlock();
-			timer0_prescaler_count = 0;
-			timer_func = hardclock;
-			timer0_state = RELEASED;
-			hardclock(&frame);
-			setdelayed();
-		}
-		break;
+	/*
+	 * XXX this could be done more efficiently by using a bitmask?
+	 */
+	timer1_count = cputimer_count();
+	for (n = 0; n < ncpus; ++n) {
+	    gscan = globaldata_find(n);
+	    if (gscan->gd_nextclock == 0)
+		continue;
+	    if (gscan != gd) {
+		lwkt_send_ipiq(gscan->gd_cpuid, (ipifunc_t)systimer_intr, &timer1_count);
+	    } else {
+		systimer_intr(&timer1_count, &frame);
+	    }
 	}
 #if NMCA > 0
 	/* Reset clock interrupt by asserting bit 7 of port 0x61 */
@@ -309,46 +186,16 @@ clkintr(struct clockframe frame)
 #endif
 }
 
+
 /*
- * The acquire and release functions must be called at ipl >= splclock().
+ * NOTE! not MP safe.
  */
-int
-acquire_timer0(int rate, void (*function) (struct clockframe *frame))
-{
-	static int old_rate;
-
-	if (rate <= 0 || rate > TIMER0_MAX_FREQ)
-		return (-1);
-	switch (timer0_state) {
-
-	case RELEASED:
-		timer0_state = ACQUIRE_PENDING;
-		break;
-
-	case RELEASE_PENDING:
-		if (rate != old_rate)
-			return (-1);
-		/*
-		 * The timer has been released recently, but is being
-		 * re-acquired before the release completed.  In this
-		 * case, we simply reclaim it as if it had not been
-		 * released at all.
-		 */
-		timer0_state = ACQUIRED;
-		break;
-
-	default:
-		return (-1);	/* busy */
-	}
-	new_function = function;
-	old_rate = new_rate = rate;
-	return (0);
-}
-
 int
 acquire_timer2(int mode)
 {
-
+	/* Timer2 is being used for time count operation */
+	return(-1);
+#if 0
 	if (timer2_state != RELEASED)
 		return (-1);
 	timer2_state = ACQUIRED;
@@ -356,43 +203,20 @@ acquire_timer2(int mode)
 	/*
 	 * This access to the timer registers is as atomic as possible
 	 * because it is a single instruction.  We could do better if we
-	 * knew the rate.  Use of splclock() limits glitches to 10-100us,
-	 * and this is probably good enough for timer2, so we aren't as
-	 * careful with it as with timer0.
+	 * knew the rate.
 	 */
 	outb(TIMER_MODE, TIMER_SEL2 | (mode & 0x3f));
-
 	return (0);
-}
-
-int
-release_timer0()
-{
-	switch (timer0_state) {
-
-	case ACQUIRED:
-		timer0_state = RELEASE_PENDING;
-		break;
-
-	case ACQUIRE_PENDING:
-		/* Nothing happened yet, release quickly. */
-		timer0_state = RELEASED;
-		break;
-
-	default:
-		return (-1);
-	}
-	return (0);
+#endif
 }
 
 int
 release_timer2()
 {
-
 	if (timer2_state != ACQUIRED)
 		return (-1);
-	timer2_state = RELEASED;
 	outb(TIMER_MODE, TIMER_SEL2 | TIMER_SQWAVE | TIMER_16BIT);
+	timer2_state = RELEASED;
 	return (0);
 }
 
@@ -418,10 +242,11 @@ release_timer2()
  * in the statistics, but the stat clock will no longer stop.
  */
 static void
-rtcintr(struct clockframe frame)
+rtcintr(struct intrframe frame)
 {
 	while (rtcin(RTC_INTR) & RTCIR_PERIOD)
-		statclock(&frame);
+		;
+		/* statclock(&frame); no longer used */
 }
 
 #include "opt_ddb.h"
@@ -437,26 +262,82 @@ DB_SHOW_COMMAND(rtc, rtc)
 }
 #endif /* DDB */
 
-static int
-getit(void)
+/*
+ * Convert a frequency to a cpu timer count.
+ */
+sysclock_t
+cputimer_fromhz(int freq)
 {
-	int high, low;
+	return(cputimer_freq / freq + 1);
+}
+
+sysclock_t
+cputimer_fromus(int us)
+{
+	return((int64_t)cputimer_freq * us / 1000000);
+}
+
+/*
+ * Return the current cpu timer count as a 32 bit integer.
+ */
+sysclock_t
+cputimer_count(void)
+{
+	static sysclock_t cputimer_base;
+	static __uint16_t cputimer_last;
+	__uint16_t count;
+	sysclock_t ret;
 
 	clock_lock();
-
-	/* Select timer0 and latch counter value. */
-	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);
-
-	low = inb(TIMER_CNTR0);
-	high = inb(TIMER_CNTR0);
-
+	outb(TIMER_MODE, TIMER_SELX | TIMER_LATCH);
+	count = (__uint8_t)inb(TIMER_CNTRX);		/* get countdown */
+	count |= ((__uint8_t)inb(TIMER_CNTRX) << 8);
+	count = -count;					/* -> countup */
+	if (count < cputimer_last)			/* rollover */
+		cputimer_base += 0x00010000;
+	ret = cputimer_base | count;
+	cputimer_last = count;
 	clock_unlock();
-	return ((high << 8) | low);
+	return(ret);
+}
+
+/*
+ * Reload for the next timeout.  It is possible for the reload value
+ * to be 0 or negative, indicating that an immediate timer interrupt
+ * is desired.  For now make the minimum 2 ticks.
+ */
+void
+cputimer_intr_reload(sysclock_t reload)
+{
+    __uint16_t count;
+
+    if ((int)reload < 2)
+	reload = 2;
+
+    clock_lock();
+    if (timer0_running) {
+	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);	/* count-down timer */
+	count = (__uint8_t)inb(TIMER_CNTR0);		/* lsb */
+	count |= ((__uint8_t)inb(TIMER_CNTR0) << 8);	/* msb */
+	if (reload < count) {
+	    outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
+	    outb(TIMER_CNTR0, (__uint8_t)reload); 	/* lsb */
+	    outb(TIMER_CNTR0, (__uint8_t)(reload >> 8)); /* msb */
+	}
+    } else {
+	timer0_running = 1;
+	if (reload > 0xFFFF)
+	    reload = 0;		/* full count */
+	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
+	outb(TIMER_CNTR0, (__uint8_t)reload); 		/* lsb */
+	outb(TIMER_CNTR0, (__uint8_t)(reload >> 8));	/* msb */
+    }
+    clock_unlock();
 }
 
 /*
  * Wait "n" microseconds.
- * Relies on timer 1 counting down from (timer_freq / hz)
+ * Relies on timer 1 counting down from (cputimer_freq / hz)
  * Note: timer had better have been programmed before this is first used!
  */
 void
@@ -482,8 +363,8 @@ DELAY(int n)
 	 * Guard against the timer being uninitialized if we are called
 	 * early for console i/o.
 	 */
-	if (timer0_max_count == 0)
-		set_timer_freq(timer_freq, hz);
+	if (timer0_state == RELEASED)
+		i8254_restore();
 
 	/*
 	 * Read the counter first, so that the rest of the setup overhead is
@@ -492,15 +373,15 @@ DELAY(int n)
 	 * takes about 6 usec on a 486/33 and 13 usec on a 386/20.  The
 	 * multiplications and divisions to scale the count take a while).
 	 */
-	prev_tick = getit();
+	prev_tick = cputimer_count();
 	n -= 0;			/* XXX actually guess no initial overhead */
 	/*
-	 * Calculate (n * (timer_freq / 1e6)) without using floating point
+	 * Calculate (n * (cputimer_freq / 1e6)) without using floating point
 	 * and without any avoidable overflows.
 	 */
-	if (n <= 0)
+	if (n <= 0) {
 		ticks_left = 0;
-	else if (n < 256)
+	} else if (n < 256) {
 		/*
 		 * Use fixed point to avoid a slow division by 1000000.
 		 * 39099 = 1193182 * 2^15 / 10^6 rounded to nearest.
@@ -508,34 +389,26 @@ DELAY(int n)
 		 * for n between 0 and 256.
 		 */
 		ticks_left = ((u_int)n * 39099 + (1 << 15) - 1) >> 15;
-	else
+	} else {
 		/*
 		 * Don't bother using fixed point, although gcc-2.7.2
 		 * generates particularly poor code for the long long
 		 * division, since even the slow way will complete long
 		 * before the delay is up (unless we're interrupted).
 		 */
-		ticks_left = ((u_int)n * (long long)timer_freq + 999999)
+		ticks_left = ((u_int)n * (long long)cputimer_freq + 999999)
 			     / 1000000;
+	}
 
 	while (ticks_left > 0) {
-		tick = getit();
+		tick = cputimer_count();
 #ifdef DELAYDEBUG
 		++getit_calls;
 #endif
-		delta = prev_tick - tick;
+		delta = tick - prev_tick;
 		prev_tick = tick;
-		if (delta < 0) {
-			delta += timer0_max_count;
-			/*
-			 * Guard against timer0_max_count being wrong.
-			 * This shouldn't happen in normal operation,
-			 * but it may happen if set_timer_freq() is
-			 * traced.
-			 */
-			if (delta < 0)
-				delta = 0;
-		}
+		if (delta < 0)
+			delta = 0;
 		ticks_left -= delta;
 	}
 #ifdef DELAYDEBUG
@@ -549,32 +422,26 @@ static void
 sysbeepstop(void *chan)
 {
 	outb(IO_PPI, inb(IO_PPI)&0xFC);	/* disable counter2 output to speaker */
-	release_timer2();
 	beeping = 0;
+	release_timer2();
 }
 
 int
 sysbeep(int pitch, int period)
 {
-	int x = splclock();
-
 	if (acquire_timer2(TIMER_SQWAVE|TIMER_16BIT))
-		if (!beeping) {
-			/* Something else owns it. */
-			splx(x);
-			return (-1); /* XXX Should be EBUSY, but nobody cares anyway. */
-		}
-	clock_lock();
+		return(-1);
+	/*
+	 * Nobody else is using timer2, we do not need the clock lock
+	 */
 	outb(TIMER_CNTR2, pitch);
 	outb(TIMER_CNTR2, (pitch>>8));
-	clock_unlock();
 	if (!beeping) {
 		/* enable counter2 output to speaker */
 		outb(IO_PPI, inb(IO_PPI) | 3);
 		beeping = period;
 		timeout(sysbeepstop, (void *)NULL, period);
 	}
-	splx(x);
 	return (0);
 }
 
@@ -654,9 +521,7 @@ calibrate_clocks(void)
 	}
 
 	/* Start keeping track of the i8254 counter. */
-	prev_count = getit();
-	if (prev_count == 0 || prev_count > timer0_max_count)
-		goto fail;
+	prev_count = cputimer_count();
 	tot_count = 0;
 
 	if (tsc_present) 
@@ -678,13 +543,8 @@ calibrate_clocks(void)
 	for (;;) {
 		if (!(rtcin(RTC_STATUSA) & RTCSA_TUP))
 			sec = rtcin(RTC_SEC);
-		count = getit();
-		if (count == 0 || count > timer0_max_count)
-			goto fail;
-		if (count > prev_count)
-			tot_count += prev_count - (count - timer0_max_count);
-		else
-			tot_count += prev_count - count;
+		count = cputimer_count();
+		tot_count += (int)(count - prev_count);
 		prev_count = count;
 		if (sec != start_sec)
 			break;
@@ -709,42 +569,29 @@ calibrate_clocks(void)
 fail:
 	if (bootverbose)
 	        printf("failed, using default i8254 clock of %u Hz\n",
-		       timer_freq);
-	return (timer_freq);
-}
-
-static void
-set_timer_freq(u_int freq, int intr_freq)
-{
-	int new_timer0_max_count;
-
-	clock_lock();
-	timer_freq = freq;
-	new_timer0_max_count = hardclock_max_count = TIMER_DIV(intr_freq);
-	timer0_frac_freq = intr_freq;
-	if (new_timer0_max_count != timer0_max_count) {
-		timer0_max_count = new_timer0_max_count;
-		outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
-		outb(TIMER_CNTR0, timer0_max_count & 0xff);
-		outb(TIMER_CNTR0, timer0_max_count >> 8);
-	}
-	clock_unlock();
+		       cputimer_freq);
+	return (cputimer_freq);
 }
 
 static void
 i8254_restore(void)
 {
+	timer0_state = ACQUIRED;
+	timer1_state = ACQUIRED;
 	clock_lock();
-	outb(TIMER_MODE, TIMER_SEL0 | TIMER_RATEGEN | TIMER_16BIT);
-	outb(TIMER_CNTR0, timer0_max_count & 0xff);
-	outb(TIMER_CNTR0, timer0_max_count >> 8);
+	outb(TIMER_MODE, TIMER_SEL0 | TIMER_SWSTROBE | TIMER_16BIT);
+	outb(TIMER_CNTR0, 2);	/* lsb */
+	outb(TIMER_CNTR0, 0);	/* msb */
+	outb(TIMER_MODE, TIMER_SELX | TIMER_RATEGEN | TIMER_16BIT);
+	outb(TIMER_CNTRX, 0);	/* lsb */
+	outb(TIMER_CNTRX, 0);	/* msb */
+	outb(IO_PPI, inb(IO_PPI) | 1);	/* bit 0: enable gate, bit 1: spkr */
 	clock_unlock();
 }
 
 static void
 rtc_restore(void)
 {
-
 	/* Restore all of the RTC's "status" (actually, control) registers. */
 	writertc(RTC_STATUSB, RTCSB_24HR);
 	writertc(RTC_STATUSA, rtc_statusa);
@@ -761,29 +608,41 @@ rtc_restore(void)
 void
 timer_restore(void)
 {
-
 	i8254_restore();		/* restore timer_freq and hz */
 	rtc_restore();			/* reenable RTC interrupts */
 }
 
 /*
  * Initialize 8254 timer 0 early so that it can be used in DELAY().
- * XXX initialization of other timers is unintentionally left blank.
  */
 void
 startrtclock()
 {
 	u_int delta, freq;
 
+	/* 
+	 * Can we use the TSC?
+	 */
 	if (cpu_feature & CPUID_TSC)
 		tsc_present = 1;
 	else
 		tsc_present = 0;
 
+	/*
+	 * Initial RTC state, don't do anything unexpected
+	 */
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
-	set_timer_freq(timer_freq, hz);
+	/*
+	 * Set the 8254 timer0 in TIMER_SWSTROBE mode and cause it to 
+	 * generate an interrupt, which we will ignore for now.
+	 *
+	 * Set the 8254 timer1 in TIMER_RATEGEN mode and load 0x0000
+	 * (so it counts a full 2^16 and repeats).  We will use this timer
+	 * for our counting.
+	 */
+	i8254_restore();
 	freq = calibrate_clocks();
 #ifdef CLK_CALIBRATION_LOOP
 	if (bootverbose) {
@@ -799,26 +658,25 @@ startrtclock()
 	 * Otherwise use the default, and don't use the calibrated i586
 	 * frequency.
 	 */
-	delta = freq > timer_freq ? freq - timer_freq : timer_freq - freq;
-	if (delta < timer_freq / 100) {
+	delta = freq > cputimer_freq ? 
+			freq - cputimer_freq : cputimer_freq - freq;
+	if (delta < cputimer_freq / 100) {
 #ifndef CLK_USE_I8254_CALIBRATION
 		if (bootverbose)
 			printf(
 "CLK_USE_I8254_CALIBRATION not specified - using default frequency\n");
-		freq = timer_freq;
+		freq = cputimer_freq;
 #endif
-		timer_freq = freq;
+		cputimer_freq = freq;
+		cputimer_freq64_usec = (1000000LL << 32) / freq;
+		cputimer_freq64_nsec = (1000000000LL << 32) / freq;
 	} else {
 		if (bootverbose)
 			printf(
 		    "%d Hz differs from default of %d Hz by more than 1%%\n",
-			       freq, timer_freq);
+			       freq, cputimer_freq);
 		tsc_freq = 0;
 	}
-
-	set_timer_freq(timer_freq, hz);
-	i8254_timecounter.tc_frequency = timer_freq;
-	init_timecounter(&i8254_timecounter);
 
 #ifndef CLK_USE_TSC_CALIBRATION
 	if (tsc_freq != 0) {
@@ -866,11 +724,6 @@ startrtclock()
 	return;
 #endif /* NAPM > 0 */
 
-	if (tsc_present && tsc_freq != 0 && !tsc_is_broken) {
-		tsc_timecounter.tc_frequency = tsc_freq;
-		init_timecounter(&tsc_timecounter);
-	}
-
 #endif /* !defined(SMP) */
 }
 
@@ -884,15 +737,13 @@ inittodr(time_t base)
 	unsigned long	sec, days;
 	int		yd;
 	int		year, month;
-	int		y, m, s;
+	int		y, m;
 	struct timespec ts;
 
 	if (base) {
-		s = splclock();
 		ts.tv_sec = base;
 		ts.tv_nsec = 0;
-		set_timecounter(&ts);
-		splx(s);
+		set_timeofday(&ts);
 	}
 
 	/* Look if we have a RTC present and the time is valid */
@@ -901,10 +752,10 @@ inittodr(time_t base)
 
 	/* wait for time update to complete */
 	/* If RTCSA_TUP is zero, we have at least 244us before next update */
-	s = splhigh();
+	crit_enter();
 	while (rtcin(RTC_STATUSA) & RTCSA_TUP) {
-		splx(s);
-		s = splhigh();
+		crit_exit();
+		crit_enter();
 	}
 
 	days = 0;
@@ -916,7 +767,7 @@ inittodr(time_t base)
 		year += 100;
 #endif
 	if (year < 1970) {
-		splx(s);
+		crit_exit();
 		goto wrong_time;
 	}
 	month = readrtc(RTC_MONTH);
@@ -942,9 +793,9 @@ inittodr(time_t base)
 		/* badly off, adjust it */
 		ts.tv_sec = sec;
 		ts.tv_nsec = 0;
-		set_timecounter(&ts);
+		set_timeofday(&ts);
 	}
-	splx(s);
+	crit_exit();
 	return;
 
 wrong_time:
@@ -959,15 +810,14 @@ void
 resettodr()
 {
 	unsigned long	tm;
-	int		y, m, s;
+	int		y, m;
 
 	if (disable_rtc_set)
 		return;
 
-	s = splclock();
 	tm = time_second;
-	splx(s);
 
+	crit_enter();
 	/* Disable RTC updates and interrupts. */
 	writertc(RTC_STATUSB, RTCSB_HALT | RTCSB_24HR);
 
@@ -1007,11 +857,14 @@ resettodr()
 
 	/* Reenable RTC updates and interrupts. */
 	writertc(RTC_STATUSB, rtc_statusb);
+	crit_exit();
 }
 
 
 /*
- * Start both clocks running.
+ * Start both clocks running.  DragonFly note: the stat clock is no longer
+ * used.  Instead, 8254 based systimers are used for all major clock
+ * interrupts.  statclock_disable is set by default.
  */
 void
 cpu_initclocks()
@@ -1070,36 +923,44 @@ cpu_initclocks()
 	writertc(RTC_STATUSA, rtc_statusa);
 	writertc(RTC_STATUSB, RTCSB_24HR);
 
-	/* Don't bother enabling the statistics clock. */
-	if (statclock_disable)
-		return;
-	diag = rtcin(RTC_DIAG);
-	if (diag != 0)
-		printf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
+	if (statclock_disable == 0) {
+		diag = rtcin(RTC_DIAG);
+		if (diag != 0)
+			printf("RTC BIOS diagnostic error %b\n", diag, RTCDG_BITS);
 
 #ifdef APIC_IO
-	if (isa_apic_irq(8) != 8)
-		panic("APIC RTC != 8");
+		if (isa_apic_irq(8) != 8)
+			panic("APIC RTC != 8");
 #endif /* APIC_IO */
 
-	inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL, &stat_imask,
-		    INTR_EXCL | INTR_FAST);
+		inthand_add("rtc", 8, (inthand2_t *)rtcintr, NULL, &stat_imask,
+			    INTR_EXCL | INTR_FAST);
 
 #ifdef APIC_IO
-	INTREN(APIC_IRQ8);
+		INTREN(APIC_IRQ8);
 #else
-	INTREN(IRQ8);
+		INTREN(IRQ8);
 #endif /* APIC_IO */
 
-	writertc(RTC_STATUSB, rtc_statusb);
+		writertc(RTC_STATUSB, rtc_statusb);
+	}
 
 #ifdef APIC_IO
 	if (apic_8254_trial) {
-		
+		sysclock_t base;
+		int lastcnt = read_intr_count(apic_8254_intr);
+
+		/*
+		 * XXX this assumes the 8254 is the cpu timer.  Force an
+		 * 8254 Timer0 interrupt and wait 1/100s for it to happen,
+		 * then see if we got it.
+		 */
 		printf("APIC_IO: Testing 8254 interrupt delivery\n");
-		while (read_intr_count(8) < 6)
+		cputimer_intr_reload(2);	/* XXX assumes 8254 */
+		base = cputimer_count();
+		while (cputimer_count() - base < cputimer_freq / 100)
 			;	/* nothing */
-		if (read_intr_count(apic_8254_intr) < 3) {
+		if (read_intr_count(apic_8254_intr) - lastcnt == 0) {
 			/* 
 			 * The MP table is broken.
 			 * The 8254 was not connected to the specified pin
@@ -1135,13 +996,14 @@ cpu_initclocks()
 	}
 	if (apic_int_type(0, 0) != 3 ||
 	    int_to_apicintpin[apic_8254_intr].ioapic != 0 ||
-	    int_to_apicintpin[apic_8254_intr].int_pin != 0)
+	    int_to_apicintpin[apic_8254_intr].int_pin != 0) {
 		printf("APIC_IO: routing 8254 via IOAPIC #%d intpin %d\n",
 		       int_to_apicintpin[apic_8254_intr].ioapic,
 		       int_to_apicintpin[apic_8254_intr].int_pin);
-	else
+	} else {
 		printf("APIC_IO: "
 		       "routing 8254 via 8259 and IOAPIC #0 intpin 0\n");
+	}
 #endif
 	
 }
@@ -1187,97 +1049,13 @@ setstatclockrate(int newhz)
 	writertc(RTC_STATUSA, rtc_statusa);
 }
 
-static int
-sysctl_machdep_i8254_freq(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-	u_int freq;
-
-	/*
-	 * Use `i8254' instead of `timer' in external names because `timer'
-	 * is is too generic.  Should use it everywhere.
-	 */
-	freq = timer_freq;
-	error = sysctl_handle_int(oidp, &freq, sizeof(freq), req);
-	if (error == 0 && req->newptr != NULL) {
-		if (timer0_state != RELEASED)
-			return (EBUSY);	/* too much trouble to handle */
-		set_timer_freq(freq, hz);
-		i8254_timecounter.tc_frequency = freq;
-		update_timecounter(&i8254_timecounter);
-	}
-	return (error);
-}
-
-SYSCTL_PROC(_machdep, OID_AUTO, i8254_freq, CTLTYPE_INT | CTLFLAG_RW,
-    0, sizeof(u_int), sysctl_machdep_i8254_freq, "IU", "");
-
-static int
-sysctl_machdep_tsc_freq(SYSCTL_HANDLER_ARGS)
-{
-	int error;
-	u_int freq;
-
-	if (tsc_timecounter.tc_frequency == 0)
-		return (EOPNOTSUPP);
-	freq = tsc_freq;
-	error = sysctl_handle_int(oidp, &freq, sizeof(freq), req);
-	if (error == 0 && req->newptr != NULL) {
-		tsc_freq = freq;
-		tsc_timecounter.tc_frequency = tsc_freq;
-		update_timecounter(&tsc_timecounter);
-	}
-	return (error);
-}
-
-SYSCTL_PROC(_machdep, OID_AUTO, tsc_freq, CTLTYPE_INT | CTLFLAG_RW,
-    0, sizeof(u_int), sysctl_machdep_tsc_freq, "IU", "");
-
-static unsigned
-i8254_get_timecount(struct timecounter *tc)
-{
-	u_int count;
-	u_long ef;
-	u_int high, low;
-
-	ef = read_eflags();
-	clock_lock();
-
-	/* 
-	 * Select timer0 and latch counter value.   Because we may reload
-	 * the counter with timer0_max_count + 1 to correct the frequency
-	 * our delta count calculation must use timer0_max_count + 1.
-	 */
-	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);
-
-	low = inb(TIMER_CNTR0);
-	high = inb(TIMER_CNTR0);
-	count = timer0_max_count + 1 - ((high << 8) | low);
-	if (count < i8254_lastcount ||
-	    (!i8254_ticked && (clkintr_pending ||
-	    ((count < 20 || (!(ef & PSL_I) && count < timer0_max_count / 2u)) &&
-#ifdef APIC_IO
-#define	lapic_irr1	((volatile u_int *)&lapic)[0x210 / 4]	/* XXX XXX */
-	    /* XXX this assumes that apic_8254_intr is < 24. */
-	    (lapic_irr1 & (1 << apic_8254_intr))))
-#else
-	    (inb(IO_ICU1) & 1)))
-#endif
-	    )) {
-		i8254_ticked = 1;
-		i8254_offset += timer0_max_count;
-	}
-	i8254_lastcount = count;
-	count += i8254_offset;
-	clock_unlock();
-	return (count);
-}
-
+#if 0
 static unsigned
 tsc_get_timecount(struct timecounter *tc)
 {
 	return (rdtsc());
 }
+#endif
 
 #ifdef KERN_TIMESTAMP
 #define KERN_TIMESTAMP_SIZE 16384

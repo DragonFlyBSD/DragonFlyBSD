@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/cam/cam_xpt.c,v 1.80.2.18 2002/12/09 17:31:55 gibbs Exp $
- * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.8 2003/12/29 08:37:38 dillon Exp $
+ * $DragonFly: src/sys/bus/cam/cam_xpt.c,v 1.9 2004/01/30 05:42:09 dillon Exp $
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -162,7 +162,7 @@ struct cam_et {
 	target_id_t	target_id;
 	u_int32_t	refcount;	
 	u_int		generation;
-	struct		timeval last_reset;
+	struct		timeval last_reset;	/* uptime of last reset */
 };
 
 /*
@@ -175,7 +175,7 @@ struct cam_eb {
 	TAILQ_ENTRY(cam_eb)  links;
 	path_id_t	     path_id;
 	struct cam_sim	     *sim;
-	struct timeval	     last_reset;
+	struct timeval	     last_reset;	/* uptime of last reset */
 	u_int32_t	     flags;
 #define	CAM_EB_RUNQ_SCHEDULED	0x01
 	u_int32_t	     refcount;
@@ -4233,12 +4233,8 @@ xpt_async(u_int32_t async_code, struct cam_path *path, void *async_arg)
 	bus = path->bus;
 
 	if (async_code == AC_BUS_RESET) { 
-		int s;
-
-		s = splclock();
 		/* Update our notion of when the last reset occurred */
-		microtime(&bus->last_reset);
-		splx(s);
+		microuptime(&bus->last_reset);
 	}
 
 	for (target = TAILQ_FIRST(&bus->et_entries);
@@ -4253,12 +4249,8 @@ xpt_async(u_int32_t async_code, struct cam_path *path, void *async_arg)
 			continue;
 
 		if (async_code == AC_SENT_BDR) {
-			int s;
-
 			/* Update our notion of when the last reset occurred */
-			s = splclock();
-			microtime(&path->target->last_reset);
-			splx(s);
+			microuptime(&path->target->last_reset);
 		}
 
 		for (device = TAILQ_FIRST(&target->ed_entries);

@@ -32,7 +32,7 @@
  *
  *	from: Header: timerreg.h,v 1.2 93/02/28 15:08:58 mccanne Exp
  * $FreeBSD: src/sys/i386/isa/timerreg.h,v 1.6 1999/08/28 00:45:04 peter Exp $
- * $DragonFly: src/sys/platform/pc32/isa/timerreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/timerreg.h,v 1.3 2004/01/30 05:42:16 dillon Exp $
  */
 
 /*
@@ -79,6 +79,45 @@
  *
  * Timer 0 is used to call hardclock.
  * Timer 1 is used to generate console beeps.
+ *
+ * TIMER_INTTC:		Interrupt on Terminal Count.  OUT initially low,
+ *				goes high on terminal count and remains
+ *				high until a new count or a mode 0 control
+ *				word is written.
+ *
+ * TIMER_ONESHOT:	Hardware Retriggerable One Shot.  Out initially high,
+ *			out goes low following the trigger and remains low
+ *			until terminal count, then goes high and remains
+ *			high until the next trigger.
+ *
+ * TIMER_RATEGEN:	Rate Generator.  OUT is initially high.  When the
+ *			count has decremented to 1 OUT goes low for one CLK
+ *			pulse, then goes high again.  Counter reloads and
+ *			the sequence is repeated.
+ *
+ * TIMER_SQWAVE:	Square Wave Generator.  OUT is initially high.  When
+ *			half the count is expired, OUT goes low.  Counter
+ *			reloads, OUT goes high, and the sequence repepats.
+ *
+ * TIMER_SWSTROBE:	S/W Triggered Strobe.  OUT initially high.  On 
+ *			terminal count OUT goes low for one CLK pulse
+ *			and then goes high again.  Counting stops.
+ *			The counting sequence is 'triggered' by writing 
+ *			the initial count.  Writing a control word and
+ *			initial count resets and reloads the counter.
+ *
+ * TIMER_HWSTROBE:	H/W Triggered Strobe.  OUT initially high.  A rising
+ *			edge on GATE loads the counter and counting begins.
+ *			On terminal count OUT goes low for one CLK and then
+ *			high again.
+ *
+ * NOTE: the largest possible initial count is 0x0000.  This is equivalent
+ * to 2^16 binary and 10^4 BCD counts.  The counter does not stop when it
+ * reaches zero.  In Modes INTTC, ONESHOT, SWSTROBE, and HWSTROBE the 
+ * counter wraps aroudn to the highest count (0xFFFF or 9999bcd) and
+ * continues counting.  In MODES RATEGEN and SQWAVE (which are periodic)
+ * the counter reloads itself with the initial count and continues counting
+ * from there.
  */
 
 /*

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_error.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_error.c,v 1.9 1999/08/28 00:49:49 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.5 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_error.c,v 1.6 2004/01/30 05:42:17 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -293,19 +293,6 @@ ns_err_input(m)
 freeit:
 	m_freem(m);
 }
-
-#ifdef notdef
-u_long
-nstime()
-{
-	int s = splclock();
-	u_long t;
-
-	t = (time.tv_sec % (24*60*60)) * 1000 + time.tv_usec / 1000;
-	splx(s);
-	return (htonl(t));
-}
-#endif
 
 int
 ns_echo(m)

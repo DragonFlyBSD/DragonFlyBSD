@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/dec/mcclock.c,v 1.5.2.2 2001/12/17 14:03:15 gallatin Exp $ */
-/* $DragonFly: src/sys/dev/misc/dec/Attic/mcclock.c,v 1.3 2003/08/07 21:16:56 dillon Exp $ */
+/* $DragonFly: src/sys/dev/misc/dec/Attic/mcclock.c,v 1.4 2004/01/30 05:42:15 dillon Exp $ */
 /* $NetBSD: mcclock.c,v 1.11 1998/04/19 07:50:25 jonathan Exp $ */
 
 /*
@@ -72,11 +72,10 @@ void
 mcclock_get(device_t dev, time_t base, struct clocktime *ct)
 {
 	mc_todregs regs;
-	int s;
 
-	s = splclock();
+	crit_enter();
 	MC146818_GETTOD(dev, &regs)
-	splx(s);
+	crit_exit();
 
 	ct->sec = regs[MC_SEC];
 	ct->min = regs[MC_MIN];
@@ -94,11 +93,10 @@ void
 mcclock_set(device_t dev, struct clocktime *ct)
 {
 	mc_todregs regs;
-	int s;
 
-	s = splclock();
+	crit_enter();
 	MC146818_GETTOD(dev, &regs);
-	splx(s);
+	crit_exit();
 
 	regs[MC_SEC] = ct->sec;
 	regs[MC_MIN] = ct->min;
@@ -108,9 +106,9 @@ mcclock_set(device_t dev, struct clocktime *ct)
 	regs[MC_MONTH] = ct->mon;
 	regs[MC_YEAR] = ct->year;
 
-	s = splclock();
+	crit_enter();
 	MC146818_PUTTOD(dev, &regs);
-	splx(s);
+	crit_exit();
 }
 
 int
@@ -118,23 +116,22 @@ mcclock_getsecs(device_t dev, int *secp)
 {
 	int timeout = 100000000;
 	int sec;
-	int s;
 
-	s = splclock();
 	for (;;) {
+		crit_enter();
 		if (!(MCCLOCK_READ(dev, MC_REGA) & MC_REGA_UIP)) {
 			sec = MCCLOCK_READ(dev, MC_SEC);
+			crit_exit();
 			break;
 		}
-		if (--timeout == 0)
+		if (--timeout == 0) {
+			crit_exit();
 			goto fail;
+		}
 	}
-
-	splx(s);
 	*secp = sec;
 	return 0;
-
  fail:
-	splx(s);
 	return ETIMEDOUT;
 }
+

@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/sio.c,v 1.291.2.35 2003/05/18 08:51:15 murray Exp $
- * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.12 2004/01/24 08:00:45 dillon Exp $
+ * $DragonFly: src/sys/dev/serial/sio/sio.c,v 1.13 2004/01/30 05:42:15 dillon Exp $
  *	from: @(#)com.c	7.5 (Berkeley) 5/16/91
  *	from: i386/isa sio.c,v 1.234
  */
@@ -1751,7 +1751,6 @@ siointr1(com)
 	u_char	recv_data;
 	u_char	int_ctl;
 	u_char	int_ctl_new;
-	struct	timecounter *tc;
 	u_int	count;
 
 	int_ctl = inb(com->intr_ctl_port);
@@ -1761,9 +1760,8 @@ siointr1(com)
 		if (com->pps.ppsparam.mode & PPS_CAPTUREBOTH) {
 			modem_status = inb(com->modem_status_port);
 		        if ((modem_status ^ com->last_modem_status) & MSR_DCD) {
-				tc = timecounter;
-				count = tc->tc_get_timecount(tc);
-				pps_event(&com->pps, tc, count, 
+				count = cputimer_count();
+				pps_event(&com->pps, count, 
 				    (modem_status & MSR_DCD) ? 
 				    PPS_CAPTUREASSERT : PPS_CAPTURECLEAR);
 			}
