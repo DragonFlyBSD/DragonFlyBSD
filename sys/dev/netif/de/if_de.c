@@ -1,7 +1,7 @@
 /*	$NetBSD: if_de.c,v 1.86 1999/06/01 19:17:59 thorpej Exp $	*/
 
 /* $FreeBSD: src/sys/pci/if_de.c,v 1.123.2.4 2000/08/04 23:25:09 peter Exp $ */
-/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.7 2004/02/13 02:44:47 joerg Exp $ */
+/* $DragonFly: src/sys/dev/netif/de/if_de.c,v 1.8 2004/03/12 15:42:49 joerg Exp $ */
 
 /*-
  * Copyright (c) 1994-1997 Matt Thomas (matt@3am-software.com)
@@ -4839,6 +4839,7 @@ tulip_attach(
 {
     struct ifnet * const ifp = &sc->tulip_if;
 
+    if_initname(ifp, sc->tulip_name, sc->tulip_unit);
     ifp->if_flags = IFF_BROADCAST|IFF_SIMPLEX|IFF_MULTICAST;
     ifp->if_ioctl = tulip_ifioctl;
     ifp->if_start = tulip_ifstart;
