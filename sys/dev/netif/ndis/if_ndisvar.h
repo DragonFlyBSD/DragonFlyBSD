@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndisvar.h,v 1.15 2004/07/11 00:19:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndisvar.h,v 1.1 2004/07/29 20:51:36 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndisvar.h,v 1.2 2004/09/14 23:57:00 joerg Exp $
  */
 
 #define NDIS_DEFAULT_NODENAME	"FreeBSD NDIS node"
@@ -102,7 +102,7 @@ struct ndis_softc {
 	ndis_miniport_block	ndis_block;
 	ndis_miniport_characteristics	ndis_chars;
 	interface_type		ndis_type;
-	struct callout_handle	ndis_stat_ch;
+	struct callout		ndis_stat_timer;
 	int			ndis_maxpkts;
 	ndis_oid		*ndis_oids;
 	int			ndis_oidcnt;

@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/if_ndis/if_ndis.c,v 1.65 2004/07/07 17:46:30 wpaul Exp $
- * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.1 2004/07/29 20:51:36 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/ndis/if_ndis.c,v 1.2 2004/09/14 23:57:00 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -371,6 +371,7 @@ ndis_attach(dev)
 
 	sc = device_get_softc(dev);
 
+	callout_init(&sc->ndis_stat_timer);
 	NDIS_LOCK_INIT(&sc->ndis_lock);
 	NDIS_LOCK_INIT(&sc->ndis_intrlock);
 
@@ -1034,10 +1035,8 @@ ndis_tick(xsc)
 	sc = xsc;
 
 	ndis_sched(ndis_ticktask, sc, NDIS_TASKQUEUE);
-	sc->ndis_stat_ch = timeout(ndis_tick, sc, hz *
-	    sc->ndis_block.nmb_checkforhangsecs);
-
-	return;
+	callout_reset(&sc->ndis_stat_timer,
+		      hz *sc->ndis_block.nmb_checkforhangsecs, ndis_tick, sc);
 }
 
 static void
@@ -1344,10 +1343,8 @@ ndis_init(xsc)
 	if (sc->ndis_block.nmb_checkforhangsecs == 0)
 		sc->ndis_block.nmb_checkforhangsecs = 3;
 
-	sc->ndis_stat_ch = timeout(ndis_tick, sc,
-	    hz * sc->ndis_block.nmb_checkforhangsecs);
-
-	return;
+	callout_reset(&sc->ndis_stat_timer,
+		      hz * sc->ndis_block.nmb_checkforhangsecs, ndis_tick, sc);
 }
 
 /*
@@ -2101,7 +2098,7 @@ ndis_stop(sc)
 	NDIS_LOCK_INFO;
 
 	ifp = &sc->arpcom.ac_if;
-	untimeout(ndis_tick, sc, sc->ndis_stat_ch);
+	callout_stop(&sc->ndis_stat_timer);
 
 	ndis_halt_nic(sc);
 
