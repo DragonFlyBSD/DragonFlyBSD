@@ -37,7 +37,7 @@
  *
  * @(#)suff.c	8.4 (Berkeley) 3/21/94
  * $FreeBSD: src/usr.bin/make/suff.c,v 1.43 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/suff.c,v 1.49 2005/03/19 00:19:55 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/suff.c,v 1.50 2005/03/31 21:47:19 okumoto Exp $
  */
 
 /*-
@@ -166,31 +166,6 @@ static Suff	*emptySuff;
 static void SuffFindDeps(GNode *, Lst *);
 
 
-	/*************** Lst Predicates ****************/
-/*-
- *-----------------------------------------------------------------------
- * SuffStrIsPrefix  --
- *	See if pref is a prefix of str.
- *
- * Results:
- *	NULL if it ain't, pointer to character in str after prefix if so
- *
- * Side Effects:
- *	None
- *-----------------------------------------------------------------------
- */
-static char *
-SuffStrIsPrefix(const char *pref, char *str)
-{
-
-	while (*str && *pref == *str) {
-		pref++;
-		str++;
-	}
-
-	return (*pref ? NULL : str);
-}
-
 /*-
  *-----------------------------------------------------------------------
  * SuffSuffIsSuffix  --
@@ -226,72 +201,50 @@ SuffSuffIsSuffix(const Suff *s, char *str)
 
 /*-
  *-----------------------------------------------------------------------
- * SuffSuffHasNameP --
- *	Callback procedure for finding a suffix based on its name. Used by
- *	Suff_GetPath.
+ * SuffSuffFind --
+ *	Find a suffix given its name.
  *
  * Results:
- *	0 if the suffix is of the given name. non-zero otherwise.
+ *	The suffix or NULL.
  *
  * Side Effects:
  *	None
  *-----------------------------------------------------------------------
  */
-static int
-SuffSuffHasNameP(const void *s, const void *sname)
+static Suff *
+SuffSuffFind(const char *s)
 {
+	LstNode	*ln;
 
-	return (strcmp(sname, ((const Suff *)s)->name));
-}
-
-/*-
- *-----------------------------------------------------------------------
- * SuffSuffIsPrefix  --
- *	See if the suffix described by s is a prefix of the string. Care
- *	must be taken when using this to search for transformations and
- *	what-not, since there could well be two suffixes, one of which
- *	is a prefix of the other...
- *
- * Results:
- *	0 if s is a prefix of str. non-zero otherwise
- *
- * Side Effects:
- *	None
- *
- * XXX use the function above once constification is complete.
- *-----------------------------------------------------------------------
- */
-static int
-SuffSuffIsPrefix(const void *s, const void *istr)
-{
-	const char *pref = ((const Suff *)s)->name;
-	const char *str = istr;
-
-	while (*str != '\0' && *pref == *str) {
-		pref++;
-		str++;
+	LST_FOREACH(ln, &sufflist) {
+		if (strcmp(s, ((const Suff *)Lst_Datum(ln))->name) == 0)
+			return (Lst_Datum(ln));
 	}
-
-	return (*pref != '\0');
+	return (NULL);
 }
 
 /*-
  *-----------------------------------------------------------------------
- * SuffGNHasNameP  --
- *	See if the graph node has the desired name
+ * SuffTransFind
+ *	Find a transform.
  *
  * Results:
- *	0 if it does. non-zero if it doesn't
+ *	transform or NULL.
  *
  * Side Effects:
  *	None
  *-----------------------------------------------------------------------
  */
-static int
-SuffGNHasNameP(const void *gn, const void *name)
+static GNode *
+SuffTransFind(const char *name)
 {
+	LstNode	*ln;
 
-	return (strcmp(name, ((const GNode *)gn)->name));
+	LST_FOREACH(ln, &transforms) {
+		if (strcmp(name, ((const GNode *)Lst_Datum(ln))->name) == 0)
+			return (Lst_Datum(ln));
+	}
+	return (NULL);
 }
 
  	    /*********** Maintenance Functions ************/
@@ -454,14 +407,12 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 {
 	LstNode	*srcLn;		/* element in suffix list of trans source*/
 	Suff	*src;		/* Source of transformation */
-	LstNode	*targLn;	/* element in suffix list of trans target*/
 	char	*str2;		/* Extra pointer (maybe target suffix) */
 	LstNode	*singleLn;	/* element in suffix list of any suffix
 				 * that exactly matches str */
 	Suff	*single = NULL;	/* Source of possible transformation to
 				 * null suffix */
 
-	srcLn = NULL;
 	singleLn = NULL;
 
 	/*
@@ -470,13 +421,16 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 	 * we can find two that meet these criteria, we've successfully
 	 * parsed the string.
 	 */
+	srcLn = Lst_First(&sufflist);
 	for (;;) {
-		if (srcLn == NULL) {
-			srcLn = Lst_Find(&sufflist, str, SuffSuffIsPrefix);
-		} else {
-			srcLn = Lst_FindFrom(&sufflist, Lst_Succ(srcLn), str,
-			    SuffSuffIsPrefix);
+		/* advance to next possible suffix */
+		while (srcLn != NULL) {
+			src = Lst_Datum(srcLn);
+			if (strncmp(str, src->name, strlen(src->name)) == 0)
+				break;
+			srcLn = LST_NEXT(srcLn);
 		}
+
 		if (srcLn == NULL) {
 			/*
 			 * Ran out of source suffixes -- no such rule
@@ -498,19 +452,20 @@ SuffParseTransform(char *str, Suff **srcPtr, Suff **targPtr)
 			}
 			return (FALSE);
 		}
-		src = Lst_Datum(srcLn);
 		str2 = str + src->nameLen;
 		if (*str2 == '\0') {
 			single = src;
 			singleLn = srcLn;
 		} else {
-			targLn = Lst_Find(&sufflist, str2, SuffSuffHasNameP);
-			if (targLn != NULL) {
+
+			*targPtr = SuffSuffFind(str2);
+			if (*targPtr != NULL) {
 				*srcPtr = src;
-				*targPtr = Lst_Datum(targLn);
 				return (TRUE);
 			}
 		}
+		/* next one */
+		srcLn = LST_NEXT(srcLn);
 	}
 }
 
@@ -556,10 +511,9 @@ Suff_AddTransform(char *line)
 	GNode	*gn;	/* GNode of transformation rule */
 	Suff	*s;	/* source suffix */
 	Suff	*t;	/* target suffix */
-	LstNode	*ln;	/* Node for existing transformation */
 
-	ln = Lst_Find(&transforms, line, SuffGNHasNameP);
-	if (ln == NULL) {
+	gn = SuffTransFind(line);
+	if (gn == NULL) {
 		/*
 		 * Make a new graph node for the transformation.
 		 * It will be filled in by the Parse module.
@@ -574,7 +528,6 @@ Suff_AddTransform(char *line)
 		 * given command can be attached to several different
 		 * transformations.
 		 */
-		gn = Lst_Datum(ln);
 		Lst_Destroy(&gn->commands, NOFREE);
 		Lst_Destroy(&gn->children, NOFREE);
 	}
@@ -664,21 +617,18 @@ static void
 SuffRebuildGraph(const GNode *transform, Suff *s)
 {
 	char	*cp;
-	LstNode	*ln;
 	Suff	*s2 = NULL;
 
 	/*
 	 * First see if it is a transformation from this suffix.
 	 */
-	cp = SuffStrIsPrefix(s->name, transform->name);
-	if (cp != NULL) {
+	if (strncmp(transform->name, s->name, strlen(s->name)) == 0) {
+		cp = transform->name + strlen(s->name);
+
 		if (cp[0] == '\0')  /* null rule */
 			s2 = suffNull;
-		else {
-			ln = Lst_Find(&sufflist, cp, SuffSuffHasNameP);
-			if (ln != NULL)
-				s2 = Lst_Datum(ln);
-		}
+		else
+			s2 = SuffSuffFind(cp);
 		if (s2 != NULL) {
 			/*
 			 * Found target. Link in and return, since it can't be
@@ -699,16 +649,16 @@ SuffRebuildGraph(const GNode *transform, Suff *s)
 		 * Null-terminate the source suffix in order to find it.
 		 */
 		cp[1] = '\0';
-		ln = Lst_Find(&sufflist, transform->name, SuffSuffHasNameP);
+		s2 = SuffSuffFind(transform->name);
+
 		/*
 		 * Replace the start of the target suffix
 		 */
 		cp[1] = s->name[0];
-		if (ln != NULL) {
+		if (s2 != NULL) {
 			/*
 			 * Found it -- establish the proper relationship
 			 */
-			s2 = Lst_Datum(ln);
 			SuffInsert(&s->children, s2);
 			SuffInsert(&s2->parents, s);
 		}
@@ -735,8 +685,7 @@ Suff_AddSuffix(char *str)
 	Suff	*s;	/* new suffix descriptor */
 	LstNode	*ln;
 
-	ln = Lst_Find(&sufflist, str, SuffSuffHasNameP);
-	if (ln != NULL)
+	if (SuffSuffFind(str) != NULL)
 		/*
 		 * Already known
 		 */
@@ -780,16 +729,12 @@ Suff_AddSuffix(char *str)
 Lst *
 Suff_GetPath(char *sname)
 {
-	LstNode	*ln;
 	Suff	*s;
 
-	ln = Lst_Find(&sufflist, sname, SuffSuffHasNameP);
-	if (ln == NULL) {
+	s = SuffSuffFind(sname);
+	if (s == NULL)
 		return (NULL);
-	} else {
-		s = Lst_Datum(ln);
-		return (&s->searchPath);
-	}
+	return (&s->searchPath);
 }
 
 /*-
@@ -872,14 +817,10 @@ Suff_DoPaths(void)
 void
 Suff_AddInclude(char *sname)
 {
-	LstNode	*ln;
 	Suff	*s;
 
-	ln = Lst_Find(&sufflist, sname, SuffSuffHasNameP);
-	if (ln != NULL) {
-		s = Lst_Datum(ln);
+	if ((s = SuffSuffFind(sname)) != NULL)
 		s->flags |= SUFF_INCLUDE;
-	}
 }
 
 /*-
@@ -901,14 +842,10 @@ Suff_AddInclude(char *sname)
 void
 Suff_AddLib(char *sname)
 {
-	LstNode	*ln;
 	Suff	*s;
 
-	ln = Lst_Find(&sufflist, sname, SuffSuffHasNameP);
-	if (ln != NULL) {
-		s = Lst_Datum(ln);
+	if ((s = SuffSuffFind(sname)) != NULL)
 		s->flags |= SUFF_LIBRARY;
-	}
 }
 
 /*
@@ -1166,12 +1103,10 @@ SuffFindCmds(Src *targ, Lst *slst)
 		if (strncmp(cp, targ->pref, prefLen) == 0) {
 			/*
 			 * The node matches the prefix ok, see if it has
-			 * a known
-			 * suffix.
+			 * a known suffix.
 			 */
-			ln = Lst_Find(&sufflist, &cp[prefLen],
-			    SuffSuffHasNameP);
-			if (ln != NULL) {
+			suff = SuffSuffFind(&cp[prefLen]);
+			if (suff != NULL) {
 				/*
 				 * It even has a known suffix, see if there's
 				 * a transformation defined between the node's
@@ -1180,8 +1115,6 @@ SuffFindCmds(Src *targ, Lst *slst)
 				 * XXX: Handle multi-stage transformations
 				 * here, too.
 				 */
-				suff = Lst_Datum(ln);
-
 				if (Lst_Member(&suff->parents,
 				    targ->suff) != NULL) {
 					/*
@@ -1512,10 +1445,10 @@ SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 	 * Locate the transformation rule itself
 	 */
 	tname = str_concat(s->name, t->name, 0);
-	ln = Lst_Find(&transforms, tname, SuffGNHasNameP);
+	gn = SuffTransFind(tname);
 	free(tname);
 
-	if (ln == NULL) {
+	if (gn == NULL) {
 		/*
 		 * Not really such a transformation rule (can happen when we're
 		 * called to link an OP_MEMBER and OP_ARCHV node), so return
@@ -1523,8 +1456,6 @@ SuffApplyTransform(GNode *tGn, GNode *sGn, Suff *t, Suff *s)
 		 */
 		return (FALSE);
 	}
-
-	gn = Lst_Datum(ln);
 
 	DEBUGF(SUFF, ("\tapplying %s -> %s to \"%s\"\n",
 	    s->name, t->name, tGn->name));
@@ -2125,14 +2056,13 @@ SuffFindDeps(GNode *gn, Lst *slst)
 		* so we just set the TARGET variable to the node's name in order
 		* to give it a value).
 		*/
-		LstNode	*ln;
 		Suff	*s;
 
-		ln = Lst_Find(&sufflist, LIBSUFF, SuffSuffHasNameP);
+		s = SuffSuffFind(LIBSUFF);
 		if (gn->suffix)
 			gn->suffix->refCount--;
-		if (ln != NULL) {
-			gn->suffix = s = Lst_Datum(ln);
+		if (s != NULL) {
+			gn->suffix = s;
 			gn->suffix->refCount++;
 			Arch_FindLib(gn, &s->searchPath);
 		} else {
@@ -2173,24 +2103,23 @@ void
 Suff_SetNull(char *name)
 {
 	Suff	*s;
-	LstNode	*ln;
 
-	ln = Lst_Find(&sufflist, name, SuffSuffHasNameP);
-	if (ln != NULL) {
-		s = Lst_Datum(ln);
-		if (suffNull != NULL) {
-			suffNull->flags &= ~SUFF_NULL;
-		}
-		s->flags |= SUFF_NULL;
-		/*
-		 * XXX: Here's where the transformation mangling
-		 * would take place
-		 */
-		suffNull = s;
-	} else {
+	if ((s = SuffSuffFind(name)) == NULL) {
 		Parse_Error(PARSE_WARNING, "Desired null suffix %s "
 		    "not defined.", name);
+		return;
 	}
+
+	if (suffNull != NULL) {
+		suffNull->flags &= ~SUFF_NULL;
+	}
+	s->flags |= SUFF_NULL;
+
+	/*
+	 * XXX: Here's where the transformation mangling
+	 * would take place
+	 */
+	suffNull = s;
 }
 
 /*-
