@@ -35,7 +35,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/nghook/main.c,v 1.4 1999/11/30 02:09:36 archie Exp $
- * $DragonFly: src/usr.sbin/nghook/main.c,v 1.3 2004/12/18 22:48:04 swildner Exp $
+ * $DragonFly: src/usr.sbin/nghook/main.c,v 1.4 2005/03/16 05:27:27 joerg Exp $
  * $Whistle: main.c,v 1.9 1999/01/20 00:26:26 archie Exp $
  */
 
@@ -69,7 +69,7 @@ int
 main(int ac, char *av[])
 {
 	struct ngm_connect ngc;
-	char   *path = NULL, *hook = DEFAULT_HOOKNAME;
+	const char   *path = NULL, *hook = DEFAULT_HOOKNAME;
 	int     csock, dsock;
 	int     asciiFlag = 0;
 	int	ch;
