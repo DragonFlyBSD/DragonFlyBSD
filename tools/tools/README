@@ -1,5 +1,5 @@
 # $FreeBSD: src/tools/tools/README,v 1.18.2.2 2003/02/24 22:52:36 sam Exp $
-# $DragonFly: src/tools/tools/README,v 1.3 2005/01/10 22:13:45 joerg Exp $
+# $DragonFly: src/tools/tools/README,v 1.4 2005/01/10 22:20:27 joerg Exp $
 
 This directory is for tools.
 
@@ -24,6 +24,9 @@ local_syms	Shellscript to find symbols not referenced by other files.
 mid	 	Create a Message-ID database for mailing lists.
 portsinfo 	Generate list of new ports for last two weeks.
 scsi-defects	Get at the primary or grown defect list of a SCSI disk.
+splitpatch	Python script to split a large patch file into independent
+		patches.  Default name convention is compatible with
+		the patch framework.
 tcl_bmake	Generates a bmake Makefile for src/lib/libtcl.
 upgrade         Scripts used for upgrading an installed system.
 vop_table	Generates a HTML document that shows all the VOP's in
