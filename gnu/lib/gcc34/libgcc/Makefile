@@ -1,4 +1,4 @@
-# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.1 2004/06/14 22:27:52 joerg Exp $
+# $DragonFly: src/gnu/lib/gcc34/libgcc/Makefile,v 1.2 2004/06/20 20:54:09 joerg Exp $
 
 .include "../Makefile.inc"
 .include "${STOPDIR}/cc_tools/Makefile.tools"
@@ -42,5 +42,11 @@ ${F}.c:
 ${F:R:S/$/.o/}: ${F}
 	${CC} ${CFLAGS} -fnon-call-exceptions -c ${.IMPSRC}
 .endfor
+
+depend: cc_prep
+.ORDER: cc_prep ${SRCS}
+
+cc_prep: .PHONY
+	cd ${STOPDIR}/cc_prep; make depend
 
 .include <bsd.lib.mk>
