@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/mtree/excludes.c,v 1.1.2.4 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/excludes.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/mtree/excludes.c,v 1.3 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,6 +57,7 @@ static LIST_HEAD(, exclude) excludes;
 void
 init_excludes(void)
 {
+
 	LIST_INIT(&excludes);
 }
 

@@ -32,7 +32,7 @@
  *
  * @(#)spec.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/spec.c,v 1.13.2.1 2000/06/28 02:33:17 joe Exp $
- * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/spec.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/types.h>
@@ -57,8 +57,8 @@ static void	 unset(char *, NODE *);
 NODE *
 spec(void)
 {
-	register NODE *centry, *last;
-	register char *p;
+	NODE *centry, *last;
+	char *p;
 	NODE ginfo, *root;
 	int c_cur, c_next;
 	char buf[2048];
@@ -93,7 +93,7 @@ spec(void)
 			continue;
 
 #ifdef DEBUG
-		(void)fprintf(stderr, "line %d: {%s}\n", lineno, p);
+		fprintf(stderr, "line %d: {%s}\n", lineno, p);
 #endif
 		if (c_cur) {
 			set(p, centry);
@@ -168,7 +168,7 @@ noparent:		errx(1, "line %d: no parent node", lineno);
 static void
 set(char *t, NODE *ip)
 {
-	register int type;
+	int type;
 	char *kw, *val = NULL;
 	struct group *gr;
 	struct passwd *pw;
@@ -306,9 +306,9 @@ set(char *t, NODE *ip)
 }
 
 static void
-unset(char *t, register NODE *ip)
+unset(char *t, NODE *ip)
 {
-	register char *p;
+	char *p;
 
 	while ((p = strtok(t, "\n\t ")))
 		ip->flags &= ~parsekey(p, NULL);

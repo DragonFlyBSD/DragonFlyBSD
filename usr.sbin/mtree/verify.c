@@ -32,7 +32,7 @@
  *
  * @(#)verify.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/verify.c,v 1.10.2.2 2001/01/12 19:17:18 phk Exp $
- * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/verify.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -73,9 +73,9 @@ verify(void)
 static int
 vwalk(void)
 {
-	register FTS *t;
-	register FTSENT *p;
-	register NODE *ep, *level;
+	FTS *t;
+	FTSENT *p;
+	NODE *ep, *level;
 	int specdepth, rval;
 	char *argv[2];
 
@@ -122,7 +122,7 @@ vwalk(void)
 				    compare(ep->name, ep, p))
 					rval = MISMATCHEXIT;
 				if (ep->flags & F_IGN)
-					(void)fts_set(t, p, FTS_SKIP);
+					fts_set(t, p, FTS_SKIP);
 				else if (ep->child && ep->type == F_DIR &&
 				    p->fts_info == FTS_D) {
 					level = ep->child;
@@ -135,36 +135,36 @@ vwalk(void)
 			continue;
 extra:
 		if (!eflag) {
-			(void)printf("%s extra", RP(p));
+			printf("%s extra", RP(p));
 			if (rflag) {
 				if ((S_ISDIR(p->fts_statp->st_mode)
 				    ? rmdir : unlink)(p->fts_accpath)) {
-					(void)printf(", not removed: %s",
+					printf(", not removed: %s",
 					    strerror(errno));
 				} else
-					(void)printf(", removed");
+					printf(", removed");
 			}
-			(void)putchar('\n');
+			putchar('\n');
 		}
-		(void)fts_set(t, p, FTS_SKIP);
+		fts_set(t, p, FTS_SKIP);
 	}
-	(void)fts_close(t);
+	fts_close(t);
 	if (sflag)
 		warnx("%s checksum: %lu", fullpath, crc_total);
 	return (rval);
 }
 
 static void
-miss(register NODE *p, register char *tail)
+miss(NODE *p, char *tail)
 {
-	register int create;
-	register char *tp;
+	int create;
+	char *tp;
 	const char *type;
 
 	for (; p; p = p->next) {
 		if (p->type != F_DIR && (dflag || p->flags & F_VISIT))
 			continue;
-		(void)strcpy(tail, p->name);
+		strcpy(tail, p->name);
 		if (!(p->flags & F_VISIT)) {
 			/* Don't print missing message if file exists as a
 			   symbolic link and the -q flag is set. */
@@ -173,7 +173,7 @@ miss(register NODE *p, register char *tail)
 			if (qflag && stat(path, &statbuf) == 0)
 				p->flags |= F_VISIT;
 			else
-				(void)printf("%s missing", path);
+				printf("%s missing", path);
 		}
 		if (p->type != F_DIR && p->type != F_LINK) {
 			putchar('\n');
@@ -187,31 +187,31 @@ miss(register NODE *p, register char *tail)
 			type = "directory";
 		if (!(p->flags & F_VISIT) && uflag) {
 			if (!(p->flags & (F_UID | F_UNAME)))
-				(void)printf(" (%s not created: user not specified)", type);
+				printf(" (%s not created: user not specified)", type);
 			else if (!(p->flags & (F_GID | F_GNAME)))
-				(void)printf(" (%s not created: group not specified)", type);
+				printf(" (%s not created: group not specified)", type);
 			else if (p->type == F_LINK) {
 				if (symlink(p->slink, path))
-					(void)printf(" (symlink not created: %s)\n",
+					printf(" (symlink not created: %s)\n",
 					    strerror(errno));
 				else
-					(void)printf(" (created)\n");
+					printf(" (created)\n");
 				if (lchown(path, p->st_uid, p->st_gid))
-					(void)printf("%s: user/group not modified: %s\n",
+					printf("%s: user/group not modified: %s\n",
 					    path, strerror(errno));
 				continue;
 			} else if (!(p->flags & F_MODE))
-			    (void)printf(" (directory not created: mode not specified)");
+			    printf(" (directory not created: mode not specified)");
 			else if (mkdir(path, S_IRWXU))
-				(void)printf(" (directory not created: %s)",
+				printf(" (directory not created: %s)",
 				    strerror(errno));
 			else {
 				create = 1;
-				(void)printf(" (created)");
+				printf(" (created)");
 			}
 		}
 		if (!(p->flags & F_VISIT))
-			(void)putchar('\n');
+			putchar('\n');
 
 		for (tp = tail; *tp; ++tp);
 		*tp = '/';
@@ -221,18 +221,18 @@ miss(register NODE *p, register char *tail)
 		if (!create)
 			continue;
 		if (chown(path, p->st_uid, p->st_gid)) {
-			(void)printf("%s: user/group/mode not modified: %s\n",
+			printf("%s: user/group/mode not modified: %s\n",
 			    path, strerror(errno));
-			(void)printf("%s: warning: file mode %snot set\n", path,
+			printf("%s: warning: file mode %snot set\n", path,
 			    (p->flags & F_FLAGS) ? "and file flags " : "");
 			continue;
 		}
 		if (chmod(path, p->st_mode))
-			(void)printf("%s: permissions not set: %s\n",
+			printf("%s: permissions not set: %s\n",
 			    path, strerror(errno));
 		if ((p->flags & F_FLAGS) && p->st_flags &&
 		    chflags(path, p->st_flags))
-			(void)printf("%s: file flags not set: %s\n",
+			printf("%s: file flags not set: %s\n",
 			    path, strerror(errno));
 	}
 }

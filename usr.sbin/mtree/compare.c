@@ -32,7 +32,7 @@
  *
  * @(#)compare.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/mtree/compare.c,v 1.15.2.4 2003/05/07 17:55:17 tobez Exp $
- * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.4 2003/11/22 11:38:13 eirikn Exp $
+ * $DragonFly: src/usr.sbin/mtree/compare.c,v 1.5 2004/03/15 16:24:22 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -69,7 +69,7 @@ static char *ftype(u_int);
 	}
 
 int
-compare(char *name, register NODE *s, register FTSENT *p)
+compare(char *name, NODE *s, FTSENT *p)
 {
 	extern int uflag;
 	u_long len, val;
@@ -106,7 +106,7 @@ compare(char *name, register NODE *s, register FTSENT *p)
 	case F_SOCK:
 		if (!S_ISSOCK(p->fts_statp->st_mode)) {
 typeerr:		LABEL;
-			(void)printf("\ttype expected %s found %s\n",
+			printf("\ttype expected %s found %s\n",
 			    ftype(s->type), inotype(p->fts_statp->st_mode));
 			return (label);
 		}
@@ -115,59 +115,59 @@ typeerr:		LABEL;
 	/* Set the uid/gid first, then set the mode. */
 	if (s->flags & (F_UID | F_UNAME) && s->st_uid != p->fts_statp->st_uid) {
 		LABEL;
-		(void)printf("%suser expected %lu found %lu",
+		printf("%suser expected %lu found %lu",
 		    tab, (u_long)s->st_uid, (u_long)p->fts_statp->st_uid);
 		if (uflag)
 			if (chown(p->fts_accpath, s->st_uid, -1))
-				(void)printf(" not modified: %s\n",
+				printf(" not modified: %s\n",
 				    strerror(errno));
 			else
-				(void)printf(" modified\n");
+				printf(" modified\n");
 		else
-			(void)printf("\n");
+			printf("\n");
 		tab = "\t";
 	}
 	if (s->flags & (F_GID | F_GNAME) && s->st_gid != p->fts_statp->st_gid) {
 		LABEL;
-		(void)printf("%sgid expected %lu found %lu",
+		printf("%sgid expected %lu found %lu",
 		    tab, (u_long)s->st_gid, (u_long)p->fts_statp->st_gid);
 		if (uflag)
 			if (chown(p->fts_accpath, -1, s->st_gid))
-				(void)printf(" not modified: %s\n",
+				printf(" not modified: %s\n",
 				    strerror(errno));
 			else
-				(void)printf(" modified\n");
+				printf(" modified\n");
 		else
-			(void)printf("\n");
+			printf("\n");
 		tab = "\t";
 	}
 	if (s->flags & F_MODE &&
 	    !S_ISLNK(p->fts_statp->st_mode) &&
 	    s->st_mode != (p->fts_statp->st_mode & MBITS)) {
 		LABEL;
-		(void)printf("%spermissions expected %#o found %#o",
+		printf("%spermissions expected %#o found %#o",
 		    tab, s->st_mode, p->fts_statp->st_mode & MBITS);
 		if (uflag)
 			if (chmod(p->fts_accpath, s->st_mode))
-				(void)printf(" not modified: %s\n",
+				printf(" not modified: %s\n",
 				    strerror(errno));
 			else
-				(void)printf(" modified\n");
+				printf(" modified\n");
 		else
-			(void)printf("\n");
+			printf("\n");
 		tab = "\t";
 	}
 	if (s->flags & F_NLINK && s->type != F_DIR &&
 	    s->st_nlink != p->fts_statp->st_nlink) {
 		LABEL;
-		(void)printf("%slink_count expected %u found %u\n",
+		printf("%slink_count expected %u found %u\n",
 		    tab, s->st_nlink, p->fts_statp->st_nlink);
 		tab = "\t";
 	}
 	if (s->flags & F_SIZE && s->st_size != p->fts_statp->st_size &&
 		!S_ISDIR(p->fts_statp->st_mode)) {
 		LABEL;
-		(void)printf("%ssize expected %qd found %qd\n",
+		printf("%ssize expected %qd found %qd\n",
 		    tab, s->st_size, p->fts_statp->st_size);
 		tab = "\t";
 	}
@@ -179,29 +179,29 @@ typeerr:		LABEL;
 	     ((s->st_mtimespec.tv_sec != p->fts_statp->st_mtimespec.tv_sec) ||
 	     (s->st_mtimespec.tv_nsec != p->fts_statp->st_mtimespec.tv_nsec))) {
 		LABEL;
-		(void)printf("%smodification time expected %.24s ",
+		printf("%smodification time expected %.24s ",
 		    tab, ctime(&s->st_mtimespec.tv_sec));
-		(void)printf("found %.24s\n",
+		printf("found %.24s\n",
 		    ctime(&p->fts_statp->st_mtimespec.tv_sec));
 		tab = "\t";
 	}
 	if (s->flags & F_CKSUM) {
 		if ((fd = open(p->fts_accpath, O_RDONLY, 0)) < 0) {
 			LABEL;
-			(void)printf("%scksum: %s: %s\n",
+			printf("%scksum: %s: %s\n",
 			    tab, p->fts_accpath, strerror(errno));
 			tab = "\t";
 		} else if (crc(fd, &val, &len)) {
-			(void)close(fd);
+			close(fd);
 			LABEL;
-			(void)printf("%scksum: %s: %s\n",
+			printf("%scksum: %s: %s\n",
 			    tab, p->fts_accpath, strerror(errno));
 			tab = "\t";
 		} else {
-			(void)close(fd);
+			close(fd);
 			if (s->cksum != val) {
 				LABEL;
-				(void)printf("%scksum expected %lu found %lu\n",
+				printf("%scksum expected %lu found %lu\n",
 				    tab, s->cksum, val);
 				tab = "\t";
 			}
@@ -216,21 +216,21 @@ typeerr:		LABEL;
 	if ((s->flags & F_FLAGS) && s->st_flags != p->fts_statp->st_flags) {
 		LABEL;
 		fflags = flags_to_string(s->st_flags);
-		(void)printf("%sflags expected \"%s\"", tab, fflags);
+		printf("%sflags expected \"%s\"", tab, fflags);
 		free(fflags);
 
 		fflags = flags_to_string(p->fts_statp->st_flags);
-		(void)printf(" found \"%s\"", fflags);
+		printf(" found \"%s\"", fflags);
 		free(fflags);
 
 		if (uflag)
 			if (chflags(p->fts_accpath, s->st_flags))
-				(void)printf(" not modified: %s\n",
+				printf(" not modified: %s\n",
 				    strerror(errno));
 			else
-				(void)printf(" modified\n");
+				printf(" modified\n");
 		else
-			(void)printf("\n");
+			printf("\n");
 		tab = "\t";
 	}
 #ifdef MD5
@@ -291,7 +291,7 @@ typeerr:		LABEL;
 	if (s->flags & F_SLINK &&
 	    strcmp(cp = rlink(p->fts_accpath), s->slink)) {
 		LABEL;
-		(void)printf("%slink_ref expected %s found %s\n",
+		printf("%slink_ref expected %s found %s\n",
 		      tab, s->slink, cp);
 	}
 	return (label);
@@ -349,7 +349,7 @@ char *
 rlink(char *name)
 {
 	static char lbuf[MAXPATHLEN];
-	register int len;
+	int len;
 
 	if ((len = readlink(name, lbuf, sizeof(lbuf) - 1)) == -1)
 		err(1, "line %d: %s", lineno, name);
