@@ -1,22 +1,18 @@
-# $FreeBSD: src/usr.sbin/nslookup/Makefile,v 1.10.2.2 2002/02/18 16:24:26 ru Exp $
-# $DragonFly: src/usr.sbin/nslookup/Makefile,v 1.3 2004/01/24 20:23:41 joerg Exp $
+# $FreeBSD: src/usr.bin/dig/Makefile,v 1.7 1999/11/30 06:25:16 peter Exp $
+# $DragonFly: src/usr.sbin/nslookup/Makefile,v 1.4 2004/05/27 18:15:43 dillon Exp $
 
 USE_LIBBIND=	yes
-.include "${.CURDIR}/../named/Makefile.inc"
+USE_LIBISC=	yes
+.include "${.CURDIR}/../../usr.sbin/named/Makefile.inc"
 
-.PATH:	${BIND_DIR}/bin/nslookup
+.PATH:	${BIND_DIR}/bin/dig
 .PATH:	${BIND_DIR}/doc/man
 
 PROG=	nslookup
-SRCS=	main.c getinfo.c debug.c send.c skip.c list.c subr.c commands.l
-MAN=	nslookup.8
+SRCS=	nslookup.c dighost.c
+MAN=
 
-CFLAGS+=-I${BIND_DIR}/bin/nslookup
-CFLAGS+=-D_PATH_HELPFILE=\"${DESTHELP}/nslookup.help\"
-LDADD+=	-ll -ledit -ltermcap
-DPADD+=	${LIBL} ${LIBEDIT} ${LIBTERMCAP}
-
-FILES=	nslookup.help
-FILESDIR=	${DESTHELP}
+CFLAGS+= -I${.CURDIR}/../../usr.sbin/named \
+	-I${BIND_DIR}/bin/dig/include
 
 .include <bsd.prog.mk>

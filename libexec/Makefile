@@ -1,6 +1,6 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/4/93
 # $FreeBSD: src/libexec/Makefile,v 1.42.2.5 2002/11/12 17:32:48 obrien Exp $
-# $DragonFly: src/libexec/Makefile,v 1.7 2004/03/25 18:05:48 joerg Exp $
+# $DragonFly: src/libexec/Makefile,v 1.8 2004/05/27 18:15:41 dillon Exp $
 
 # Present but disabled: kpasswdd
 SUBDIR=	atrun \
@@ -30,10 +30,6 @@ SUBDIR=	atrun \
 	tftpd \
 	xtend \
 	ypxfr
-
-.if !defined(NO_BIND)
-SUBDIR+=named-xfer
-.endif
 
 .if !defined(NO_SENDMAIL)
 SUBDIR+=mail.local smrsh

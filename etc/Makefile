@@ -1,6 +1,6 @@
 #	from: @(#)Makefile	5.11 (Berkeley) 5/21/91
 # $FreeBSD: src/etc/Makefile,v 1.219.2.38 2003/03/04 09:49:00 ru Exp $
-# $DragonFly: src/etc/Makefile,v 1.19 2004/05/17 01:03:52 dillon Exp $
+# $DragonFly: src/etc/Makefile,v 1.20 2004/05/27 18:15:37 dillon Exp $
 
 .if !defined(NO_SENDMAIL)
 SUBDIR=	sendmail
@@ -49,7 +49,7 @@ MTREE+=	BSD.sendmail.dist
 .endif
 
 NAMEDB=	PROTO.localhost.rev PROTO.localhost-v6.rev named.conf named.root \
-	make-localhost
+	make-localhost getroot README
 
 PPPCNF=	ppp.conf
 
@@ -97,6 +97,12 @@ upgrade_etc:
 	rm -f ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	ln -s "../dev/video/bktr/ioctl_bt848.h" ${DESTDIR}/usr/include/machine/ioctl_bt848.h
 	ln -s "../dev/video/meteor/ioctl_meteor.h" ${DESTDIR}/usr/include/machine/ioctl_meteor.h
+.if exists(${DESTDIR}/usr/sbin/named-checkzone)
+	rm -f ${DESTDIR}/usr/libexec/named-xfer
+	rm -f ${DESTDIR}/usr/bin/dnsquery
+	rm -f ${DESTDIR}/usr/bin/dnskeygen
+	rm -f ${DESTDIR}/usr/sbin/ndc
+.endif
 .if exists(${DESTDIR}/usr/libexec/binutils212/elf/as)
 	ldconfig -m ${DESTDIR}/usr/lib/gcc2
 	rm -rf ${DESTDIR}/usr/libdata/ldscripts
@@ -248,6 +254,7 @@ distrib-dirs:
 .if !defined(NO_SENDMAIL)
 	mtree -deU -f ${.CURDIR}/mtree/BSD.sendmail.dist -p ${DESTDIR}/
 .endif
+	cd ${DESTDIR}/etc/namedb; rm -f etc/namedb; ln -s ".." etc/namedb
 	cd ${DESTDIR}/; rm -f ${DESTDIR}/sys; ln -s usr/src/sys sys
 	cd ${DESTDIR}/usr/share/man/en.ISO8859-1; ln -sf ../man* .
 	cd ${DESTDIR}/usr/share/man; \

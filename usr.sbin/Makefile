@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	5.20 (Berkeley) 6/12/93
 # $FreeBSD: src/usr.sbin/Makefile,v 1.183.2.14 2003/04/16 11:01:51 ru Exp $
-# $DragonFly: src/usr.sbin/Makefile,v 1.8 2004/05/20 19:09:27 cpressey Exp $
+# $DragonFly: src/usr.sbin/Makefile,v 1.9 2004/05/27 18:15:42 dillon Exp $
 
 # XXX MISSING:		mkproto
 SUBDIR=	IPXrouted \
@@ -132,7 +132,10 @@ SUBDIR+=ipftest \
 SUBDIR+=named \
 	named.reload \
 	named.restart \
-	ndc \
+	named-checkconf \
+	named-checkzone \
+	rndc \
+	rndc-confgen \
 	nslookup \
 	nsupdate
 .endif

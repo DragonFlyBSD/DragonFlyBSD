@@ -2,7 +2,7 @@
 #
 # $NetBSD: named,v 1.10 2002/03/22 04:33:59 thorpej Exp $
 # $FreeBSD: src/etc/rc.d/named,v 1.6 2003/01/12 04:53:54 mtm Exp $
-# $DragonFly: src/etc/rc.d/named,v 1.3 2004/03/26 13:32:27 drhodus Exp $
+# $DragonFly: src/etc/rc.d/named,v 1.4 2004/05/27 18:15:40 dillon Exp $
 #
 
 # PROVIDE: named
@@ -20,71 +20,18 @@ required_dirs="$named_chrootdir"	# if it is set, it must exist
 extra_commands="reload"
 
 nuser=bind
-ngroup=bind
-
-# If running in a chroot cage, ensure that the appropriate files
-# exist inside the cage, as well as helper symlinks into the cage
-# from outside.
-#
-# As this is called after the is_running and required_dir checks
-# are made in run_rc_command(), we can safely assume ${named_chrootdir}
-# exists and named isn't running at this point (unless forcestart
-# is used).
-#
-chroot_autoupdate()
-{
-	# If the named-xfer in the system is newer than the one in the
-	# chroot directory or if it (in the chrootdir) doesn't exist
-	# copy it over
-	#
-	if [ ! -x "${named_chrootdir}/usr/libexec/named-xfer" -o \
-	    "${named_chrootdir}/usr/libexec/named-xfer" -ot \
-	    /usr/libexec/named-xfer ]; then
-		rm -f "${named_chrootdir}/usr/libexec/named-xfer"
-		cp -p /usr/libexec/named-xfer "${named_chrootdir}/usr/libexec"
-	fi
-
-	# Copy /dev/null over, if neccessary. Preserve everything (perms,
-	# ownership, mod times).
-	#
-	if [ ! -c "${named_chrootdir}/dev/null" ]; then
-	rm -f "${named_chrootdir}/dev/null"
-		( cd /dev ; /bin/pax -rw -pe null "${named_chrootdir}/dev" )
-	fi
-
-	# Copy local timezone information if it's not up-to-date.
-	#
-	if [ -f /etc/localtime ]; then
-		cmp -s /etc/localtime "${named_chrootdir}/etc/localtime" || \
-		cp -p /etc/localtime "${named_chrootdir}/etc/localtime"
-	fi
-}
-
-# Make symlinks to the correct pid and ndc socket files
-#
-make_symlinks()
-{
-	ln -fs "${named_chrootdir}${named_pidfile}" ${named_pidfile}
-	ln -fs "${named_chrootdir}/var/run/ndc" /var/run/ndc
-
-}
 
 named_precmd()
 {
-	! checkyesno named_rcng && return 0
 	# Is the user using a sandbox?
 	if [ -z "$named_chrootdir" ]; then
-		rc_flags="-u $nuser -g $ngroup $rc_flags"
+		rc_flags="-u $nuser $rc_flags"
 		return 0
 	fi
-	# Do the following checks only if the user wants them done
-	checkyesno named_chroot_autoupdate && chroot_autoupdate
-        checkyesno named_symlink_enable && make_symlinks
 
 	#       Change run_rc_commands()'s internal copy of $named_flags
 	#
-	! checkyesno named_rcng && return
-	rc_flags="-u $nuser -g $ngroup -t ${named_chrootdir} $rc_flags"
+	rc_flags="-u $nuser -t ${named_chrootdir} $rc_flags"
 }
 
 load_rc_config $name

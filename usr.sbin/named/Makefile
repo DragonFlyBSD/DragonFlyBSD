@@ -1,24 +1,28 @@
 # $FreeBSD: src/usr.sbin/named/Makefile,v 1.25.2.5 2002/07/07 08:17:07 dougb Exp $
-# $DragonFly: src/usr.sbin/named/Makefile,v 1.3 2004/01/24 20:16:24 joerg Exp $
+# $DragonFly: src/usr.sbin/named/Makefile,v 1.4 2004/05/27 18:15:42 dillon Exp $
 
 USE_LIBBIND=	true
 .include "${.CURDIR}/Makefile.inc"
 
 .PATH: ${BIND_DIR}/bin/named
+.PATH: ${BIND_DIR}/bin/nsupdate
 .PATH: ${BIND_DIR}/doc/man
 
 PROG=	named
-MAN=	named.conf.5 named.8 named-bootconf.8 nsupdate.8
-SRCS=	tmp_version.c pathnames.h \
-	db_dump.c db_load.c db_lookup.c db_save.c db_update.c \
-	db_glue.c db_ixfr.c db_sec.c db_tsig.c \
-	ns_parser.y ns_lexer.c ns_parseutil.c ns_ctl.c \
-	ns_forw.c ns_init.c ns_main.c ns_maint.c ns_req.c \
-	ns_resp.c ns_stats.c ns_ncache.c ns_xfr.c ns_glue.c \
-	ns_udp.c ns_config.c ns_update.c ns_ixfr.c ns_signal.c \
-	ns_sort.c ns_notify.c
+# named.conf.5 named-bootconf.8
+MAN=	named.8 nsupdate.8
+SRCS=	aclconf.c client.c config.c control.c controlconf.c interfacemgr.c \
+	listenlist.c log.c logconf.c main.c notify.c \
+	query.c server.c sortlist.c \
+	tkeyconf.c tsigconf.c update.c xfrout.c \
+	zoneconf.c \
+	lwaddr.c lwresd.c lwdclient.c lwderror.c lwdgabn.c \
+	lwdgnba.c lwdgrbn.c lwdnoop.c lwsearch.c \
 
-CFLAGS+=	-I${BIND_DIR}/bin/named
+.PATH: ${BIND_DIR}/bin/named/unix
+SRCS+=	os.c
+
+CFLAGS+= -I${BIND_DIR}/bin/named/include
 
 .if exists(${.OBJDIR}/../../lib/libisc)
 LIBISCDIR:=    ${.OBJDIR}/../../lib/libisc
@@ -30,11 +34,13 @@ LIBISC:=       ${LIBISCDIR}/libisc.a
 DPADD+=         ${LIBISC}
 LDADD+=         ${LIBISC}
 
-HTMLS=	acl.html address_list.html comments.html config.html controls.html \
-	docdef.html example.html include.html index.html key.html \
-	logging.html master.html options.html server.html trusted-keys.html \
-	zone.html
-MISCS=	DynamicUpdate FAQ.1of2 FAQ.2of2 rfc2317-notes.txt style.txt
+#HTMLS=	acl.html address_list.html comments.html config.html controls.html \
+#	docdef.html example.html include.html index.html key.html \
+#	logging.html master.html options.html server.html trusted-keys.html \
+#	zone.html
+HTMLS=
+#MISCS=	DynamicUpdate FAQ.1of2 FAQ.2of2 rfc2317-notes.txt style.txt
+MISCS=
 FILES=	${HTMLS} ${MISCS}
 .PATH: ${BIND_DIR}/doc/html ${BIND_DIR}/doc/misc
 

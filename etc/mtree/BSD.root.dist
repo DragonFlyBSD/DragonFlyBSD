@@ -1,5 +1,5 @@
 # $FreeBSD: src/etc/mtree/BSD.root.dist,v 1.45.2.4 2002/06/10 15:33:27 obrien Exp $
-# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.4 2003/08/05 07:45:39 asmodai Exp $
+# $DragonFly: src/etc/mtree/BSD.root.dist,v 1.5 2004/05/27 18:15:40 dillon Exp $
 #
 # Please see the file src/etc/mtree/README before making changes to this file.
 #
@@ -30,10 +30,14 @@
         mtree
         ..
         namedb
-# leave commented out until buildworld/installworld can
-# handle new user ids
-#             s               uname=bind gname=bind mode=0750
-#             ..
+	    etc
+	    ..
+	    var
+		run	uname=bind gname=bind mode=0750
+		..
+	    ..
+	    s		uname=bind gname=bind mode=0750
+	    ..
         ..
         periodic
             daily

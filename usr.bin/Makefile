@@ -1,6 +1,6 @@
 #	From: @(#)Makefile	8.3 (Berkeley) 1/7/94
 # $FreeBSD: src/usr.bin/Makefile,v 1.144.2.17 2003/01/04 17:17:07 obrien Exp $
-# $DragonFly: src/usr.bin/Makefile,v 1.11 2004/03/25 18:05:48 joerg Exp $
+# $DragonFly: src/usr.bin/Makefile,v 1.12 2004/05/27 18:15:41 dillon Exp $
 
 # XXX MISSING:		deroff diction graph learn plot
 #			spell spline struct xsend
@@ -216,9 +216,11 @@ SUBDIR+=telnet
 
 .if !defined(NO_BIND)
 SUBDIR+=dig \
-	dnskeygen \
-	dnsquery \
-	host
+	host \
+	dnssec-keygen \
+	dnssec-makekeyset \
+	dnssec-signkey \
+	dnssec-signzone
 .endif
 
 .if !defined(NO_SENDMAIL)

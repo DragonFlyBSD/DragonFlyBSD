@@ -1,13 +1,13 @@
 # From: Id: Makefile.inc,v 8.4 1996/03/03 17:42:43 vixie Exp
 # $FreeBSD: src/usr.sbin/named/Makefile.inc,v 1.12.2.3 2001/07/22 18:57:06 dillon Exp $
-# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.3 2004/01/25 22:16:45 drhodus Exp $
+# $DragonFly: src/usr.sbin/named/Makefile.inc,v 1.4 2004/05/27 18:15:42 dillon Exp $
 
 .ifndef (Mk.Inc)
 Mk.Inc?=defined
 
-BIND_DIR=	${.CURDIR}/../../contrib/bind
+BIND_DIR?=	${.CURDIR}/../../contrib/bind-9.2.4rc4
 
-VER!=		cat ${BIND_DIR}/Version
+VER=		9.2.4rc4
 
 PS=		ps
 PIDDIR=		/var/run
@@ -17,13 +17,30 @@ DESTRUN=	/var/run
 DESTSBIN=	/usr/sbin
 DESTHELP=	/usr/share/misc
 
-CFLAGS+=	-I${BIND_DIR}/port/freebsd/include
+# note: lib/bind/include not included here because we may want to
+# use the system resolv.h and friends instead of the one in libbind.
+#
+CFLAGS+=	-I${BIND_DIR}/port/freebsd/include \
+		-I${BIND_DIR}/lib/dns/include \
+		-I${BIND_DIR}/lib/isc/nothreads/include \
+		-I${BIND_DIR}/lib/isc/unix/include \
+		-I${BIND_DIR}/lib/isc/include \
+		-I${BIND_DIR}/lib/isccc/include \
+		-I${BIND_DIR}/lib/lwres/unix/include \
+		-I${BIND_DIR}/lib/lwres/include \
+		-I${BIND_DIR}/lib/isccfg/include \
+		-I${BIND_DIR}/lib/dns/sec/dst/include \
+		-I${BIND_DIR}/lib/dns
 
-# This is mostly for named and named-xfer
+CFLAGS+=	-I. -I${.CURDIR}
+
+CFLAGS+=	-DVERSION=\"${VER}\" \
+		-DNS_LOCALSTATEDIR=\"/var\" \
+		-DNS_SYSCONFDIR=\"${DESTETC}\"
+
+# This is for dig and other utilities
+#
 .if defined(USE_LIBBIND)
-# Sadly, mkdep doesn't know about -idirafter, which would be ideal here.
-#CFLAGS+=	-I${.CURDIR}/../../include -I${BIND_DIR}/include
-CFLAGS+=	-I${BIND_DIR}/include
 
 .if exists(${.OBJDIR}/../../lib/libbind)
 LIBBINDDIR:=	${.OBJDIR}/../../lib/libbind
@@ -35,23 +52,23 @@ LIBBIND:=	${LIBBINDDIR}/libbind.a
 DPADD+=		${LIBBIND}
 LDADD+=		${LIBBIND}
 
-CLEANFILES+=	tmp_version.c pathnames.h
-CFLAGS+=	-I.
+CLEANFILES+=
 
-tmp_version.c:	version.c ${BIND_DIR}/Version
-	(u=$${USER-root} d=`pwd` h=`hostname` t=`LC_ALL=C date`; \
-	sed -e "s|%WHEN%|$${t}|" -e "s|%VERSION%|"${VER}"|" \
-	    -e "s|%WHOANDWHERE%|$${u}@$${h}:$${d}|" \
-	    < ${BIND_DIR}/bin/named/version.c > tmp_version.c)
-	
-pathnames.h:	${BIND_DIR}/bin/named/pathtemplate.h \
-		${.CURDIR}/../../usr.sbin/named/Makefile.inc
-	rm -f pathnames.h
-	sed -e "s|%DESTSBIN%|${DESTSBIN}|" \
-	    -e "s|%DESTEXEC%|${DESTEXEC}|" \
-	    -e "s|%DESTETC%|${DESTETC}|" \
-	    -e "s|%DESTRUN%|${DESTRUN}|" \
-	    < ${BIND_DIR}/bin/named/pathtemplate.h > pathnames.h
+.endif
+
+.if defined(USE_LIBISC)
+
+.if exists(${.OBJDIR}/../../lib/libisc)
+LIBISCDIR:=	${.OBJDIR}/../../lib/libisc
+.else
+LIBISCDIR!=	cd ${.CURDIR}/../../lib/libisc; make -V .OBJDIR
+.endif
+LIBISC:=	${LIBISCDIR}/libisc.a
+
+DPADD+=		${LIBISC}
+LDADD+=		${LIBISC}
+
+CLEANFILES+=
 
 .endif
 

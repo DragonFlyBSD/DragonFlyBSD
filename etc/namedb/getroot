@@ -1,0 +1,37 @@
+#!/bin/tcsh -f
+#
+# If you are running named and using root.zone as a master, the root.zone
+# file should be updated periodicly from ftp.rs.internic.net.
+#
+# $DragonFly: src/etc/namedb/getroot,v 1.1 2004/05/27 18:15:40 dillon Exp $
+
+umask 027
+
+set hostname = 'ftp.rs.internic.net'
+set remfile = domain/root.zone.gz
+set locfile = root.zone.gz
+set path = ( /bin /usr/bin /sbin /usr/sbin )
+
+fetch ftp://${hostname}:/${remfile}
+if ( $status != 0) then
+    rm -f ${locfile}
+    echo "Download failed"
+else
+    gunzip < ${locfile} > root.zone.new
+    if ( $status == 0 ) then
+	rm -f ${locfile}
+	if ( -f root.zone ) then
+	    mv -f root.zone root.zone.bak
+	endif
+	chmod 644 root.zone.new
+	mv -f root.zone.new root.zone
+	echo "Download succeeded, restarting named"
+	rndc reload
+	sleep 1
+	rndc status
+    else
+	echo "Download failed: gunzip returned an error"
+	rm -f ${locfile}
+    endif
+endif
+

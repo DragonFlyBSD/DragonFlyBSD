@@ -1,0 +1,67 @@
+$DragonFly: src/etc/namedb/README,v 1.1 2004/05/27 18:15:40 dillon Exp $
+
+			Running BIND-9's NAMED 
+
+    First, note that if all you want to do is list a set of name servers,
+    you can simply edit /etc/resolv.conf.  There is no need to run named.
+
+    An example /etc/resolv.conf file might be:
+
+    ---- cut here ----
+    domain your.domain.blah
+    search your.domain.blah someother.domain.blah
+    nameserver 192.168.5.5		<<<< IP addresses of nameservers
+    nameserver 192.168.5.10
+    ---- cut here ----
+
+    If you want to run named the 'named' and 'named.conf' manual pages,
+    and other manual pages, should be helpful.  
+
+    To get a basic named running you have to follow these steps:
+
+    * Generate an rndc.key file in /etc/namedb so 'rndc' works
+    * Generate localhost.rev and localhost-v6.rev
+    * Obtain the latest root.zone file or use named.root.
+    * Edit named.conf as appropriate for what you are trying to do.
+    * Start named with rndc and enable it in /etc/rc.conf
+
+    (1) Generating rndc.key
+
+	cd /etc/namedb; rndc-confgen -a; chown bind rndc.key
+
+	The default named.conf already contains the appropriate include
+	line and controls { } directive to allow rndc to access named
+	once a key has been generated.  This program should generate
+	a 'rndc.key' file.  Since we run named as user 'bind' by default,
+	the rndc.key file must be owned by the 'bind' user.
+
+    (2) Running './make-localhost' in /etc/namedb will generate
+	"localhost.rev" and "localhost-v6.rev".  The default named.conf
+	file references these files.  It is important for your named.conf
+	to be a master for localhost lookups to avoid certain types of
+	spoofing attacks.
+
+    (3) Obtain the latest root.zone file.  Running "./getroot" in 
+	/etc/namedb will download the latest root.zone file.  Edit
+	your named.conf to comment out the named.root hint directive and
+	uncomment the root.zone master directive.
+
+	Using a root.zone file is more reliable then using a hint file.
+	It is a good idea to run the getroot script once a week from a
+	cron job to keep your root.zone file up-to-date.
+
+    (4) Edit named.conf.  If you want to run named it must be for a reason,
+	so you need to edit named.conf to set up the desired environment.
+	named is typically used as a caching forwarding server, or a 
+	straight caching server.
+
+    (5) Start named.  named is typically started using the
+	/usr/sbin/named.restart script.  This script will pull in 
+	rc.conf to figure out the appropriate arguments and then run rndc
+	with the appropriate options to [re]start named.
+
+    Always test your running named to make sure it is operating as advertised.
+    Run 'rndc status' to double check rndc's access to the named process,
+    and use 'dig @localhost some.domain.name' to run a test lookup on a
+    domain using your name server to make sure it works properly.
+
