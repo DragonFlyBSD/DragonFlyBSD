@@ -23,10 +23,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/atrun/gloadavg.c,v 1.5 1999/08/28 00:09:12 peter Exp $
- * $DragonFly: src/libexec/atrun/gloadavg.c,v 1.2 2003/06/17 04:27:07 dillon Exp $
+ * $DragonFly: src/libexec/atrun/gloadavg.c,v 1.3 2004/02/03 23:24:50 rob Exp $
  */
 
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
 #define _POSIX_SOURCE 1
 
 /* System Headers */
@@ -51,7 +51,7 @@ gloadavg(void)
  */
 {
     double result;
-#ifndef __FreeBSD__
+#ifndef __DragonFly__
     FILE *fp;
     
     if((fp=fopen(PROC_DIR "loadavg","r")) == NULL)

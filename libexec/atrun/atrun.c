@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/atrun/atrun.c,v 1.14.2.1 2001/03/05 10:53:23 kris Exp $
- * $DragonFly: src/libexec/atrun/atrun.c,v 1.3 2003/11/14 03:54:29 dillon Exp $
+ * $DragonFly: src/libexec/atrun/atrun.c,v 1.4 2004/02/03 23:24:50 rob Exp $
  */
 
 /* System Headers */
@@ -47,7 +47,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <utmp.h>
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 #include <paths.h>
 #else
 #include <getopt.h>
@@ -164,7 +164,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 
     PRIV_END
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
     if (pentry->pw_expire && time(NULL) >= pentry->pw_expire)
     {
 	syslog(LOG_ERR, "Userid %lu is expired - aborting job %s",
@@ -339,7 +339,7 @@ run_file(const char *filename, uid_t uid, gid_t gid)
 	if (chdir(pentry->pw_dir))
 		chdir("/");
 
-#ifdef __FreeBSD__
+#ifdef __DragonFly__
 	execl(_PATH_SENDMAIL, "sendmail", "-F", "Atrun Service",
 			"-odi", "-oem",
 			mailname, (char *) NULL);
