@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_sem.c,v 1.24.2.8 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.7 2003/07/26 19:42:11 rob Exp $ */
+/* $DragonFly: src/sys/kern/sysv_sem.c,v 1.8 2003/07/28 23:28:57 dillon Exp $ */
 
 /*
  * Implementation of SVID semaphores
@@ -207,13 +207,16 @@ int
 semsys(struct semsys_args *uap)
 {
 	struct proc *p = curproc;
+	int which = uap->which;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (uap->which >= sizeof(semcalls)/sizeof(semcalls[0]))
+	if (which >= sizeof(semcalls)/sizeof(semcalls[0]))
 		return (EINVAL);
-	return ((*semcalls[uap->which])(&uap->a2));
+	bcopy(&uap->a2, &uap->which,
+	    sizeof(struct semsys_args) - offsetof(struct semsys_args, a2));
+	return ((*semcalls[which])(&uap));
 }
 
 /*

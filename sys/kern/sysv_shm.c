@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/kern/sysv_shm.c,v 1.45.2.6 2002/10/22 20:45:03 fjoe Exp $ */
-/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.7 2003/07/26 18:12:44 dillon Exp $ */
+/* $DragonFly: src/sys/kern/sysv_shm.c,v 1.8 2003/07/28 23:28:57 dillon Exp $ */
 /*	$NetBSD: sysv_shm.c,v 1.23 1994/07/04 23:25:12 glass Exp $	*/
 
 /*
@@ -328,6 +328,7 @@ struct oshmid_ds {
 };
 
 struct oshmctl_args {
+	struct lwkt_msg lmsg;
 	int shmid;
 	int cmd;
 	struct oshmid_ds *ubuf;
@@ -581,13 +582,18 @@ int
 shmsys(struct shmsys_args *uap)
 {
 	struct proc *p = curproc;
+	int which = uap->which;
+	int error;
 
 	if (!jail_sysvipc_allowed && p->p_ucred->cr_prison != NULL)
 		return (ENOSYS);
 
-	if (uap->which >= sizeof(shmcalls)/sizeof(shmcalls[0]))
+	if (which >= sizeof(shmcalls)/sizeof(shmcalls[0]))
 		return EINVAL;
-	return ((*shmcalls[uap->which])(&uap->a2));
+	bcopy(&uap->a2, &uap->which,
+		sizeof(struct shmsys_args) - offsetof(struct shmsys_args, a2));
+	error = ((*shmcalls[which])(uap));
+	return(error);
 }
 
 void
