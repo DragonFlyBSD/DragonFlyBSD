@@ -26,7 +26,7 @@
  * Written by: yen_cw@myson.com.tw  available at: http://www.myson.com.tw/
  *
  * $FreeBSD: src/sys/dev/my/if_my.c,v 1.2.2.4 2002/04/17 02:05:27 julian Exp $
- * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.15 2005/02/14 16:21:34 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/my/if_my.c,v 1.16 2005/02/19 00:40:45 joerg Exp $
  *
  * Myson fast ethernet PCI NIC driver
  *
@@ -47,6 +47,7 @@
 #define NBPFILTER	1
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_media.h>
@@ -989,7 +990,8 @@ my_attach(device_t dev)
 	ifp->if_watchdog = my_watchdog;
 	ifp->if_init = my_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	if (sc->my_info->my_did == MTD803ID)
 		sc->my_pinfo = my_phys;
@@ -1385,7 +1387,7 @@ my_intr(void *arg)
 
 	/* Re-enable interrupts. */
 	CSR_WRITE_4(sc, MY_IMR, MY_INTRS);
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		my_start(ifp);
 	MY_UNLOCK(sc);
 	return;
@@ -1477,7 +1479,7 @@ my_start(struct ifnet * ifp)
 	}
 	start_tx = sc->my_cdata.my_tx_free;
 	while (sc->my_cdata.my_tx_free->my_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1765,7 +1767,7 @@ my_watchdog(struct ifnet * ifp)
 	my_stop(sc);
 	my_reset(sc);
 	my_init(sc);
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		my_start(ifp);
 	MY_LOCK(sc);
 	return;
