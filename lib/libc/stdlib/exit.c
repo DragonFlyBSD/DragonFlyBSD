@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdlib/exit.c,v 1.3.6.1 2001/03/05 11:33:57 obrien Exp $
- * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.3 2003/09/06 08:10:46 asmodai Exp $
+ * $DragonFly: src/lib/libc/stdlib/exit.c,v 1.4 2004/01/22 21:36:10 joerg Exp $
  *
  * @(#)exit.c	8.1 (Berkeley) 6/4/93
  */
@@ -58,18 +58,14 @@ void
 exit(status)
 	int status;
 {
-	struct atexit *p;
-	int n;
-
 #ifdef	_THREAD_SAFE
 	extern int _thread_autoinit_dummy_decl;
 	/* Ensure that the auto-initialization routine is linked in: */
 	_thread_autoinit_dummy_decl = 1;
 #endif
 
-	for (p = __atexit; p; p = p->next)
-		for (n = p->ind; --n >= 0;)
-			(*p->fns[n])();
+	__cxa_finalize(NULL);
+
 	if (__cleanup)
 		(*__cleanup)();
 	_exit(status);

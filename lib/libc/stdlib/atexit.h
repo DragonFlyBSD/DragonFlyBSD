@@ -31,15 +31,10 @@
  * SUCH DAMAGE.
  *
  *	@(#)atexit.h	8.2 (Berkeley) 7/3/94
+ * $DragonFly: src/lib/libc/stdlib/atexit.h,v 1.2 2004/01/22 21:36:10 joerg Exp $
  */
 
 /* must be at least 32 to guarantee ANSI conformance */
 #define	ATEXIT_SIZE	32
 
-struct atexit {
-	struct atexit *next;		/* next in list */
-	int ind;			/* next index in this table */
-	void (*fns[ATEXIT_SIZE])();	/* the table itself */
-};
-
-extern struct atexit *__atexit;	/* points to head of LIFO stack */
+void __cxa_finalize(void *dso);
