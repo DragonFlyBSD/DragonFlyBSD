@@ -1,4 +1,3 @@
-
 /*
  * name.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/name.c,v 1.1 1999/10/21 09:06:07 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/name.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/name.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int NameCmd(int ac, char **av);
+static int NameCmd(int ac, const char **av);
 
 const struct ngcmd name_cmd = {
 	NameCmd,
@@ -50,10 +49,10 @@ const struct ngcmd name_cmd = {
 };
 
 static int
-NameCmd(int ac, char **av)
+NameCmd(int ac, const char **av)
 {
 	struct ngm_name name;
-	char *path;
+	const char *path;
 
 	/* Get arguments */
 	switch (ac) {
@@ -73,4 +72,3 @@ NameCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-

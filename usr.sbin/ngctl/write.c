@@ -1,4 +1,3 @@
-
 /*
  * write.c
  *
@@ -31,14 +30,14 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/write.c,v 1.1.2.1 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/write.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/write.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
 #define BUF_SIZE	8192
 
-static int WriteCmd(int ac, char **av);
+static int WriteCmd(int ac, const char **av);
 
 const struct ngcmd write_cmd = {
 	WriteCmd,
@@ -50,7 +49,7 @@ const struct ngcmd write_cmd = {
 };
 
 static int
-WriteCmd(int ac, char **av)
+WriteCmd(int ac, const char **av)
 {
 	u_int32_t sagbuf[64];
 	struct sockaddr_ng *sag = (struct sockaddr_ng *)sagbuf;
@@ -109,4 +108,3 @@ WriteCmd(int ac, char **av)
 	/* Done */
 	return(CMDRTN_OK);
 }
-

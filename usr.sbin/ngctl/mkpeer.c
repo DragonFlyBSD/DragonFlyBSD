@@ -1,4 +1,3 @@
-
 /*
  * mkpeer.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/mkpeer.c,v 1.1 1999/10/21 09:06:07 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/mkpeer.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/mkpeer.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int MkPeerCmd(int ac, char **av);
+static int MkPeerCmd(int ac, const char **av);
 
 const struct ngcmd mkpeer_cmd = {
 	MkPeerCmd,
@@ -54,10 +53,10 @@ const struct ngcmd mkpeer_cmd = {
 };
 
 static int
-MkPeerCmd(int ac, char **av)
+MkPeerCmd(int ac, const char **av)
 {
 	struct ngm_mkpeer mkp;
-	char *path = ".";
+	const char *path = ".";
 
 	/* Get arguments */
 	switch (ac) {
@@ -83,4 +82,3 @@ MkPeerCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-

@@ -1,4 +1,3 @@
-
 /*
  * types.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/types.c,v 1.1.4.1 2000/05/05 02:54:16 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/types.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/types.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int TypesCmd(int ac, char **av);
+static int TypesCmd(int ac, const char **av);
 
 const struct ngcmd types_cmd = {
 	TypesCmd,
@@ -50,7 +49,7 @@ const struct ngcmd types_cmd = {
 };
 
 static int
-TypesCmd(int ac, char **av)
+TypesCmd(int ac, const char **av)
 {
 	u_char rbuf[16 * 1024];
 	struct ng_mesg *const resp = (struct ng_mesg *) rbuf;
@@ -90,4 +89,3 @@ TypesCmd(int ac, char **av)
 	/* Done */
 	return (rtn);
 }
-

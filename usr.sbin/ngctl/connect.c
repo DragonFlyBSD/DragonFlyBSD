@@ -1,4 +1,3 @@
-
 /*
  * connect.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/connect.c,v 1.2 1999/11/30 02:45:30 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/connect.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/connect.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int ConnectCmd(int ac, char **av);
+static int ConnectCmd(int ac, const char **av);
 
 const struct ngcmd connect_cmd = {
 	ConnectCmd,
@@ -55,10 +54,10 @@ const struct ngcmd connect_cmd = {
 };
 
 static int
-ConnectCmd(int ac, char **av)
+ConnectCmd(int ac, const char **av)
 {
 	struct ngm_connect con;
-	char *path = ".";
+	const char *path = ".";
 
 	/* Get arguments */
 	switch (ac) {
@@ -84,4 +83,3 @@ ConnectCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-

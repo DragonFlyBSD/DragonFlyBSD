@@ -1,4 +1,3 @@
-
 /*
  * status.c
  *
@@ -35,14 +34,14 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/status.c,v 1.1 1999/10/21 09:06:09 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/status.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/status.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
 #define NOSTATUS	"<no status>"
 
-static int StatusCmd(int ac, char **av);
+static int StatusCmd(int ac, const char **av);
 
 const struct ngcmd status_cmd = {
 	StatusCmd,
@@ -52,12 +51,12 @@ const struct ngcmd status_cmd = {
 };
 
 static int
-StatusCmd(int ac, char **av)
+StatusCmd(int ac, const char **av)
 {
 	u_char sbuf[sizeof(struct ng_mesg) + NG_TEXTRESPONSE];
 	struct ng_mesg *const resp = (struct ng_mesg *) sbuf;
 	char *const status = (char *) resp->data;
-	char *path;
+	const char *path;
 	int nostat = 0;
 
 	/* Get arguments */
@@ -93,4 +92,3 @@ StatusCmd(int ac, char **av)
 		printf("Status for \"%s\":\n%s\n", path, status);
 	return(CMDRTN_OK);
 }
-

@@ -1,4 +1,3 @@
-
 /*
  * shutdown.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/shutdown.c,v 1.2 1999/11/30 02:45:32 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/shutdown.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/shutdown.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int ShutdownCmd(int ac, char **av);
+static int ShutdownCmd(int ac, const char **av);
 
 const struct ngcmd shutdown_cmd = {
 	ShutdownCmd,
@@ -51,9 +50,9 @@ const struct ngcmd shutdown_cmd = {
 };
 
 static int
-ShutdownCmd(int ac, char **av)
+ShutdownCmd(int ac, const char **av)
 {
-	char *path;
+	const char *path;
 
 	/* Get arguments */
 	switch (ac) {
@@ -72,5 +71,3 @@ ShutdownCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-
-

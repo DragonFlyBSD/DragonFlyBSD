@@ -1,4 +1,3 @@
-
 /*
  * list.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/list.c,v 1.2 1999/11/30 02:45:30 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/list.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int ListCmd(int ac, char **av);
+static int ListCmd(int ac, const char **av);
 
 const struct ngcmd list_cmd = {
 	ListCmd,
@@ -53,7 +52,7 @@ const struct ngcmd list_cmd = {
 };
 
 static int
-ListCmd(int ac, char **av)
+ListCmd(int ac, const char **av)
 {
 	u_char rbuf[16 * 1024];
 	struct ng_mesg *const resp = (struct ng_mesg *) rbuf;
@@ -63,7 +62,7 @@ ListCmd(int ac, char **av)
 
 	/* Get options */
 	optind = 1;
-	while ((ch = getopt(ac, av, "n")) != EOF) {
+	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != EOF) {
 		switch (ch) {
 		case 'n':
 			named_only = 1;
@@ -101,7 +100,7 @@ ListCmd(int ac, char **av)
 	    nlist->numnames, named_only ? "named " : "");
 	for (k = 0; k < nlist->numnames; k++) {
 		char	path[NG_PATHLEN+1];
-		char	*av[3] = { "list", "-n", path };
+		const char *av[3] = { "list", "-n", path };
 
 		snprintf(path, sizeof(path),
 		    "[%lx]:", (u_long) nlist->nodeinfo[k].id);
@@ -112,4 +111,3 @@ ListCmd(int ac, char **av)
 	/* Done */
 	return (rtn);
 }
-

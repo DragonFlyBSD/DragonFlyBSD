@@ -1,4 +1,3 @@
-
 /*
  * ngctl.h
  *
@@ -35,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/ngctl.h,v 1.6.2.3 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/ngctl.h,v 1.3 2003/08/08 04:18:46 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/ngctl.h,v 1.4 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include <sys/types.h>
@@ -62,7 +61,7 @@
 
 /* Command descriptors */
 struct ngcmd {
-	  int		(*func)(int ac, char **av);	/* command function */
+	  int		(*func)(int ac, const char **av); /* command function */
 	  const char	*cmd;				/* command usage */
 	  const char	*desc;				/* description */
 	  const char	*help;				/* help text */
@@ -99,4 +98,3 @@ extern int	csock, dsock;
 /* Misc functions */
 extern void	MsgRead(void);
 extern void	DumpAscii(const u_char *buf, int len);
-

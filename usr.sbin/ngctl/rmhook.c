@@ -1,4 +1,3 @@
-
 /*
  * rmhook.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/rmhook.c,v 1.2 1999/11/30 02:45:31 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/rmhook.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/rmhook.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int RmHookCmd(int ac, char **av);
+static int RmHookCmd(int ac, const char **av);
 
 const struct ngcmd rmhook_cmd = {
 	RmHookCmd,
@@ -53,10 +52,10 @@ const struct ngcmd rmhook_cmd = {
 };
 
 static int
-RmHookCmd(int ac, char **av)
+RmHookCmd(int ac, const char **av)
 {
 	struct ngm_rmhook rmh;
-	char *path = ".";
+	const char *path = ".";
 
 	/* Get arguments */
 	switch (ac) {
@@ -80,4 +79,3 @@ RmHookCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-

@@ -34,14 +34,14 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/config.c,v 1.2.2.1 2001/01/09 06:52:25 phk Exp $
- * $DragonFly: src/usr.sbin/ngctl/config.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/config.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
 #define NOCONFIG	"<no config>"
 
-static int ConfigCmd(int ac, char **av);
+static int ConfigCmd(int ac, const char **av);
 
 const struct ngcmd config_cmd = {
 	ConfigCmd,
@@ -51,12 +51,12 @@ const struct ngcmd config_cmd = {
 };
 
 static int
-ConfigCmd(int ac, char **av)
+ConfigCmd(int ac, const char **av)
 {
 	u_char sbuf[sizeof(struct ng_mesg) + NG_TEXTRESPONSE];
 	struct ng_mesg *const resp = (struct ng_mesg *) sbuf;
 	char *const status = (char *) resp->data;
-	char *path;
+	const char *path;
 	char buf[NG_TEXTRESPONSE];
 	int nostat = 0, i;
 
@@ -101,4 +101,3 @@ ConfigCmd(int ac, char **av)
 		printf("Config for \"%s\":\n%s\n", path, status);
 	return(CMDRTN_OK);
 }
-

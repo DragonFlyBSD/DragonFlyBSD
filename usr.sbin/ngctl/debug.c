@@ -1,4 +1,3 @@
-
 /*
  * debug.c
  *
@@ -35,12 +34,12 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/debug.c,v 1.1 1999/10/21 09:06:07 julian Exp $
- * $DragonFly: src/usr.sbin/ngctl/debug.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/debug.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
-static int DebugCmd(int ac, char **av);
+static int DebugCmd(int ac, const char **av);
 
 const struct ngcmd debug_cmd = {
 	DebugCmd,
@@ -53,7 +52,7 @@ const struct ngcmd debug_cmd = {
 };
 
 static int
-DebugCmd(int ac, char **av)
+DebugCmd(int ac, const char **av)
 {
 	int level;
 
@@ -76,4 +75,3 @@ DebugCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-

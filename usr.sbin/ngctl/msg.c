@@ -1,4 +1,3 @@
-
 /*
  * msg.c
  *
@@ -36,14 +35,14 @@
  *
  * $Whistle: msg.c,v 1.2 1999/11/29 23:38:35 archie Exp $
  * $FreeBSD: src/usr.sbin/ngctl/msg.c,v 1.1.4.1 2000/07/27 22:05:36 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/msg.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
 
 #define BUF_SIZE	4096
 
-static int MsgCmd(int ac, char **av);
+static int MsgCmd(int ac, const char **av);
 
 const struct ngcmd msg_cmd = {
 	MsgCmd,
@@ -57,10 +56,10 @@ const struct ngcmd msg_cmd = {
 };
 
 static int
-MsgCmd(int ac, char **av)
+MsgCmd(int ac, const char **av)
 {
 	char buf[BUF_SIZE];
-	char *path, *cmdstr;
+	const char *path, *cmdstr;
 	int i;
 
 	/* Get arguments */
@@ -144,4 +143,3 @@ MsgRead()
 	else
 		printf("No arguments\n");
 }
-

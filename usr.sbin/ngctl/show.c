@@ -1,4 +1,3 @@
-
 /*
  * show.c
  *
@@ -35,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/show.c,v 1.2 1999/11/30 02:45:31 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/show.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  */
 
 #include "ngctl.h"
@@ -44,7 +43,7 @@
 #define UNNAMED		"<unnamed>"
 #define NOSTATUS	"<no status>"
 
-static int ShowCmd(int ac, char **av);
+static int ShowCmd(int ac, const char **av);
 
 const struct ngcmd show_cmd = {
 	ShowCmd,
@@ -55,9 +54,9 @@ const struct ngcmd show_cmd = {
 };
 
 static int
-ShowCmd(int ac, char **av)
+ShowCmd(int ac, const char **av)
 {
-	char *path;
+	const char *path;
 	u_char rbuf[16 * 1024];
 	struct ng_mesg *const resp = (struct ng_mesg *) rbuf;
 	struct hooklist *const hlist = (struct hooklist *) resp->data;
@@ -66,7 +65,7 @@ ShowCmd(int ac, char **av)
 
 	/* Get options */
 	optind = 1;
-	while ((ch = getopt(ac, av, "n")) != EOF) {
+	while ((ch = getopt(ac, __DECONST(char **, av), "n")) != EOF) {
 		switch (ch) {
 		case 'n':
 			no_hooks = 1;
@@ -128,5 +127,3 @@ ShowCmd(int ac, char **av)
 	}
 	return(CMDRTN_OK);
 }
-
-

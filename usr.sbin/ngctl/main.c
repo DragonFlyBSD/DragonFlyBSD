@@ -1,4 +1,3 @@
-
 /*
  * main.c
  *
@@ -35,7 +34,7 @@
  * OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.sbin/ngctl/main.c,v 1.4.2.4 2002/02/01 18:17:43 archie Exp $
- * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.2 2003/06/17 04:29:57 dillon Exp $
+ * $DragonFly: src/usr.sbin/ngctl/main.c,v 1.3 2005/03/16 04:45:07 joerg Exp $
  * $Whistle: main.c,v 1.12 1999/11/29 19:17:46 archie Exp $
  */
 
@@ -49,14 +48,14 @@
 /* Internal functions */
 static int	ReadFile(FILE *fp);
 static int	DoParseCommand(char *line);
-static int	DoCommand(int ac, char **av);
+static int	DoCommand(int ac, const char **av);
 static int	DoInteractive(void);
 static const	struct ngcmd *FindCommand(const char *string);
 static int	MatchCommand(const struct ngcmd *cmd, const char *s);
 static void	Usage(const char *msg);
-static int	ReadCmd(int ac, char **av);
-static int	HelpCmd(int ac, char **av);
-static int	QuitCmd(int ac, char **av);
+static int	ReadCmd(int ac, const char **av);
+static int	HelpCmd(int ac, const char **av);
+static int	QuitCmd(int ac, const char **av);
 
 /* List of commands */
 static const struct ngcmd *const cmds[] = {
@@ -156,7 +155,7 @@ main(int ac, char *av[])
 		} else
 			Usage("no command specified");
 	} else {
-		rtn = DoCommand(ac, av);
+		rtn = DoCommand(ac, (const char **)av);
 	}
 
 	/* Convert command return code into system exit code */
@@ -273,7 +272,7 @@ DoInteractive(void)
 static int
 DoParseCommand(char *line)
 {
-	char *av[MAX_ARGS];
+	const char *av[MAX_ARGS];
 	int ac;
 
 	/* Parse line */
@@ -289,7 +288,7 @@ DoParseCommand(char *line)
  * Execute the command
  */
 static int
-DoCommand(int ac, char **av)
+DoCommand(int ac, const char **av)
 {
 	const struct ngcmd *cmd;
 	int rtn;
@@ -357,7 +356,7 @@ MatchCommand(const struct ngcmd *cmd, const char *s)
  * ReadCmd()
  */
 static int
-ReadCmd(int ac, char **av)
+ReadCmd(int ac, const char **av)
 {
 	FILE *fp;
 	int rtn;
@@ -384,7 +383,7 @@ ReadCmd(int ac, char **av)
  * HelpCmd()
  */
 static int
-HelpCmd(int ac, char **av)
+HelpCmd(int ac, const char **av)
 {
 	const struct ngcmd *cmd;
 	int k;
@@ -453,7 +452,7 @@ HelpCmd(int ac, char **av)
  * QuitCmd()
  */
 static int
-QuitCmd(int ac, char **av)
+QuitCmd(int ac, const char **av)
 {
 	return(CMDRTN_QUIT);
 }
@@ -505,4 +504,3 @@ Usage(const char *msg)
 		warnx("%s", msg);
 	errx(EX_USAGE, "usage: ngctl [-d] [-f file] [-n name] [command ...]");
 }
-
