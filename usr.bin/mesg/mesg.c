@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1987, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)mesg.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/usr.bin/mesg/mesg.c,v 1.4 1999/08/28 01:03:59 peter Exp $
- * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.4 2005/02/19 19:39:05 liamfoy Exp $
+ * $DragonFly: src/usr.bin/mesg/mesg.c,v 1.5 2005/03/04 10:34:39 liamfoy Exp $
  */
 
 #include <sys/types.h>
@@ -67,17 +67,19 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if ((tty = ttyname(STDERR_FILENO)) == NULL)
+	if ((tty = ttyname(STDIN_FILENO)) == NULL &&
+	    (tty = ttyname(STDOUT_FILENO)) == NULL &&
+	    (tty = ttyname(STDERR_FILENO)) == NULL)
 		err(2, "ttyname failed");
 	if (stat(tty, &sb) < 0)
 		err(2, "%s", tty);
 
 	if (*argv == NULL) {
 		if (sb.st_mode & S_IWGRP) {
-			fprintf(stderr, "is y\n");
+			fprintf(stdout, "is y\n");
 			exit(0);
 		}
-		fprintf(stderr, "is n\n");
+		fprintf(stdout, "is n\n");
 		exit(1);
 	}
 
