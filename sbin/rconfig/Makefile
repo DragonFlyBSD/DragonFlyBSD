@@ -1,6 +1,6 @@
-# $DragonFly: src/sbin/rconfig/Makefile,v 1.2 2005/04/02 22:15:19 dillon Exp $
+# $DragonFly: src/sbin/rconfig/Makefile,v 1.3 2005/04/04 10:41:11 liamfoy Exp $
 
-WARNS		= 6
+WARNS?		= 6
 PROG		= rconfig
 SRCS		= rconfig.c subs.c server.c client.c
 MAN		= rconfig.8
