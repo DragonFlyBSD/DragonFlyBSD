@@ -7,7 +7,7 @@
  * Types which must already be defined when this header is included by
  * userland:	struct md_thread
  * 
- * $DragonFly: src/sys/sys/thread.h,v 1.44 2004/02/15 02:14:42 dillon Exp $
+ * $DragonFly: src/sys/sys/thread.h,v 1.45 2004/02/15 05:15:27 dillon Exp $
  */
 
 #ifndef _SYS_THREAD_H_
@@ -126,7 +126,9 @@ struct lwkt_cpusync {
     cpusync_func_t cs_fin1_func;	/* fin1 (synchronized) */
     cpusync_func2_t cs_fin2_func;	/* fin2 (tandem w/ release) */
     void	*cs_data;
+    int		cs_maxcount;
     volatile int cs_count;
+    cpumask_t	cs_mask;
 };
 
 /*
@@ -317,9 +319,11 @@ extern void lwkt_process_ipiq(void);
 #ifdef _KERNEL
 extern void lwkt_process_ipiq_frame(struct intrframe frame);
 #endif
-extern void lwkt_cpusync_simple(cpumask_t mask, cpusync_func2_t func, void *data);
-extern int lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll);
-extern void lwkt_cpusync_finish(lwkt_cpusync_t poll, int count);
+extern void lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *data);
+extern void lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data);
+extern void lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll);
+extern void lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll);
+extern void lwkt_cpusync_finish(lwkt_cpusync_t poll);
 extern void crit_panic(void);
 extern struct proc *lwkt_preempted_proc(void);
 

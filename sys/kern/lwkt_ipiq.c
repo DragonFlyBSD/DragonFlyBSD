@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.1 2004/02/15 02:14:41 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_ipiq.c,v 1.2 2004/02/15 05:15:25 dillon Exp $
  */
 
 /*
@@ -306,42 +306,106 @@ lwkt_process_ipiq1(lwkt_ipiq_t ip, struct intrframe *frame)
 
 /*
  * CPU Synchronization Support
+ *
+ * lwkt_cpusync_simple()
+ *
+ *	The function is executed synchronously before return on remote cpus.
+ *	A lwkt_cpusync_t pointer is passed as an argument.  The data can
+ *	be accessed via arg->cs_data.
+ *
+ *	XXX should I just pass the data as an argument to be consistent?
  */
 
 void
-lwkt_cpusync_simple(cpumask_t mask, cpusync_func2_t func, void *data)
+lwkt_cpusync_simple(cpumask_t mask, cpusync_func_t func, void *data)
 {
     struct lwkt_cpusync cmd;
-    int count;
+
+    cmd.cs_run_func = NULL;
+    cmd.cs_fin1_func = func;
+    cmd.cs_fin2_func = NULL;
+    cmd.cs_data = data;
+    lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
+    if (mask & (1 << mycpu->gd_cpuid))
+	func(&cmd);
+    lwkt_cpusync_finish(&cmd);
+}
+
+/*
+ * lwkt_cpusync_fastdata()
+ *
+ *	The function is executed in tandem with return on remote cpus.
+ *	The data is directly passed as an argument.  Do not pass pointers to
+ *	temporary storage as the storage might have
+ *	gone poof by the time the target cpu executes
+ *	the function.
+ *
+ *	At the moment lwkt_cpusync is declared on the stack and we must wait
+ *	for all remote cpus to ack in lwkt_cpusync_finish(), but as a future
+ *	optimization we should be able to put a counter in the globaldata
+ *	structure (if it is not otherwise being used) and just poke it and
+ *	return without waiting. XXX
+ */
+void
+lwkt_cpusync_fastdata(cpumask_t mask, cpusync_func2_t func, void *data)
+{
+    struct lwkt_cpusync cmd;
 
     cmd.cs_run_func = NULL;
     cmd.cs_fin1_func = NULL;
     cmd.cs_fin2_func = func;
-    cmd.cs_data = data;
-    count = lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
+    cmd.cs_data = NULL;
+    lwkt_cpusync_start(mask & mycpu->gd_other_cpus, &cmd);
     if (mask & (1 << mycpu->gd_cpuid))
 	func(data);
-    lwkt_cpusync_finish(&cmd, count);
+    lwkt_cpusync_finish(&cmd);
 }
 
 /*
- * Start synchronization with a set of target cpus, return once they are
- * known to be in a synchronization loop.  The target cpus will execute
- * poll->cs_run_func() IN TANDEM WITH THE RETURN.
+ * lwkt_cpusync_start()
+ *
+ *	Start synchronization with a set of target cpus, return once they are
+ *	known to be in a synchronization loop.  The target cpus will execute
+ *	poll->cs_run_func() IN TANDEM WITH THE RETURN.
+ *
+ *	XXX future: add lwkt_cpusync_start_quick() and require a call to
+ *	lwkt_cpusync_add() or lwkt_cpusync_wait(), allowing the caller to
+ *	potentially absorb the IPI latency doing something useful.
  */
-int
+void
 lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
 {
-    int count;
-
     poll->cs_count = 0;
-    count = lwkt_send_ipiq_mask(mask, (ipifunc_t)lwkt_cpusync_remote1, poll);
-    while (poll->cs_count != count) {
+    poll->cs_mask = mask;
+    poll->cs_maxcount = lwkt_send_ipiq_mask(mask & mycpu->gd_other_cpus,
+				(ipifunc_t)lwkt_cpusync_remote1, poll);
+    if (mask & (1 << mycpu->gd_cpuid)) {
+	if (poll->cs_run_func)
+	    poll->cs_run_func(poll);
+    }
+    while (poll->cs_count != poll->cs_maxcount) {
 	crit_enter();
 	lwkt_process_ipiq();
 	crit_exit();
     }
-    return(count);
+}
+
+void
+lwkt_cpusync_add(cpumask_t mask, lwkt_cpusync_t poll)
+{
+    mask &= ~poll->cs_mask;
+    poll->cs_mask |= mask;
+    poll->cs_maxcount += lwkt_send_ipiq_mask(mask & mycpu->gd_other_cpus,
+				(ipifunc_t)lwkt_cpusync_remote1, poll);
+    if (mask & (1 << mycpu->gd_cpuid)) {
+	if (poll->cs_run_func)
+	    poll->cs_run_func(poll);
+    }
+    while (poll->cs_count != poll->cs_maxcount) {
+	crit_enter();
+	lwkt_process_ipiq();
+	crit_exit();
+    }
 }
 
 /*
@@ -350,10 +414,18 @@ lwkt_cpusync_start(cpumask_t mask, lwkt_cpusync_t poll)
  * execute cs_fin2_func(data) IN TANDEM WITH THIS FUNCTION'S RETURN.
  */
 void
-lwkt_cpusync_finish(lwkt_cpusync_t poll, int count)
+lwkt_cpusync_finish(lwkt_cpusync_t poll)
 {
-    count = -(count + 1);
+    int count;
+
+    count = -(poll->cs_maxcount + 1);
     poll->cs_count = -1;
+    if (poll->cs_mask & (1 << mycpu->gd_cpuid)) {
+	if (poll->cs_fin1_func)
+	    poll->cs_fin1_func(poll);
+	if (poll->cs_fin2_func)
+	    poll->cs_fin2_func(poll->cs_data);
+    }
     while (poll->cs_count != count) {
 	crit_enter();
 	lwkt_process_ipiq();
