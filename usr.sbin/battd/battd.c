@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/usr.sbin/battd/battd.c,v 1.3 2005/02/01 19:51:28 liamfoy Exp $
+ * $DragonFly: src/usr.sbin/battd/battd.c,v 1.4 2005/02/02 15:21:21 liamfoy Exp $
  */
 
 #include <sys/file.h>
@@ -196,7 +196,7 @@ main(int argc, char **argv)
 	int per_warn_cont, time_warn_cont, stat_warn_cont;
 	int check_sec, time_def_alert, def_warn_cont;
 	int c, tmp;
-	char msg[1024];
+	char msg[80];
 
 	opts = &battd_options;
 
@@ -306,20 +306,20 @@ main(int argc, char **argv)
 	/* Start test */
 	get_apm_info(&ai, fp_device, opts->apm_dev, ERR_OUT);
 
-	if (opts->alert_per >= 0)
+	if (opts->alert_per)
 		if (check_percent(ai.ai_batt_life))
-			errx(1, "invalid/unknown percentage(%d) returned from apm device",
-				ai.ai_batt_life);
+			errx(1, "invalid/unknown percentage(%d) returned from %s",
+				ai.ai_batt_life, opts->apm_dev);
 
 	if (opts->alert_time)
 		if (check_time(ai.ai_batt_time))
-			errx(1, "invalid/unknown time(%d) returned from apm device",
-				ai.ai_batt_time);
+			errx(1, "invalid/unknown time(%d) returned from %s",
+				ai.ai_batt_time, opts->apm_dev);
 
 	if (opts->alert_status)
 		if (check_stat(ai.ai_batt_stat))
-			errx(1, "invalid/unknown status(%d) returned from apm device",
-				ai.ai_batt_stat);
+			errx(1, "invalid/unknown status(%d) returned from %s",
+				ai.ai_batt_stat, opts->apm_dev);
 	/* End test */
 
 	if (f_debug == 0) {
@@ -428,7 +428,7 @@ main(int argc, char **argv)
 				}
 
 				if (ai.ai_batt_stat >= (u_int)opts->alert_status) {
-					const char *batt_status[] = {"'high'", "'low'", "'critical'"};
+					const char *batt_status[] = {"high", "low", "critical"};
 
 					tmp = (ai.ai_batt_stat == (u_int)opts->alert_status);
 					snprintf(msg, sizeof(msg), "battery has %s '%s' status\n",
