@@ -1,8 +1,8 @@
 # $FreeBSD: src/usr.bin/fetch/Makefile,v 1.3.6.4 2003/01/09 11:54:58 des Exp $
-# $DragonFly: src/usr.bin/fetch/Makefile,v 1.4 2004/01/31 06:56:43 dillon Exp $
+# $DragonFly: src/usr.bin/fetch/Makefile,v 1.5 2005/01/04 23:08:13 dillon Exp $
 
 PROG=		fetch
-WARNS?=		2
+WARNS?=		6
 DPADD=		${LIBFETCH}
 LDADD=		-lfetch
 .if !defined(NOCRYPT) && !defined(NO_OPENSSL)

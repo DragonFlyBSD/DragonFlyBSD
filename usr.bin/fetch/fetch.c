@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/fetch/fetch.c,v 1.10.2.21 2003/06/06 06:48:42 des Exp $
- * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.4 2004/11/18 12:08:01 asmodai Exp $
+ * $DragonFly: src/usr.bin/fetch/fetch.c,v 1.5 2005/01/04 23:08:13 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -331,8 +331,8 @@ fetch(char *URL, const char *path)
 	}
 
 	/* if no scheme was specified, take a guess */
-	if (!*url->scheme) {
-		if (!*url->host)
+	if (*url->scheme == 0) {
+		if (*url->host == 0)
 			strcpy(url->scheme, SCHEME_FILE);
 		else if (strncasecmp(url->host, "ftp.", 4) == 0)
 			strcpy(url->scheme, SCHEME_FTP);
