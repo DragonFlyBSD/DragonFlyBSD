@@ -37,7 +37,7 @@
  *
  *	@(#)ufs_lockf.c	8.3 (Berkeley) 1/6/94
  * $FreeBSD: src/sys/kern/kern_lockf.c,v 1.25 1999/11/16 16:28:56 phk Exp $
- * $DragonFly: src/sys/kern/kern_lockf.c,v 1.13 2004/05/11 00:06:20 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_lockf.c,v 1.14 2004/05/11 02:11:36 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -730,13 +730,21 @@ lf_overlap_embedded(const struct lockf_range *range, off_t start, off_t end)
 		return(0);
 }
 
+/*
+ * Allocate a range structure and initialize it sufficiently such that
+ * lf_destroy_range() does not barf.
+ */
 static struct lockf_range *
 lf_alloc_range(void)
 {
+	struct lockf_range *range;
+
 #ifdef INVARIANTS
 	lf_global_counter++;
 #endif
-	return(malloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK));
+	range = malloc(sizeof(struct lockf_range), M_LOCKF, M_WAITOK);
+	range->lf_owner = NULL;
+	return(range);
 }
 
 static void
