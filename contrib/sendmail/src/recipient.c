@@ -9,12 +9,11 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
- * $DragonFly: src/contrib/sendmail/src/Attic/recipient.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
 
-SM_RCSID("@(#)$Id: recipient.c,v 8.330.2.1 2002/08/27 20:21:02 gshapiro Exp $")
+SM_RCSID("@(#)$Id: recipient.c,v 8.330.2.2 2003/09/16 19:56:25 ca Exp $")
 
 static void	includetimeout __P((void));
 static ADDRESS	*self_reference __P((ADDRESS *));

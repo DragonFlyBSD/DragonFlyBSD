@@ -9,11 +9,10 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
- * $DragonFly: src/contrib/sendmail/src/Attic/version.c,v 1.2 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sm/gen.h>
 
-SM_RCSID("@(#)$Id: version.c,v 8.104.2.15 2003/03/19 21:19:53 ca Exp $")
+SM_RCSID("@(#)$Id: version.c,v 8.104.2.22 2003/09/16 20:02:04 ca Exp $")
 
-char	Version[] = "8.12.9p2";
+char	Version[] = "8.12.10";

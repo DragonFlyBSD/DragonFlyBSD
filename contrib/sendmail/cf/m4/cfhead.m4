@@ -1,5 +1,5 @@
 #
-# Copyright (c) 1998-2002 Sendmail, Inc. and its suppliers.
+# Copyright (c) 1998-2003 Sendmail, Inc. and its suppliers.
 #	All rights reserved.
 # Copyright (c) 1983, 1995 Eric P. Allman.  All rights reserved.
 # Copyright (c) 1988, 1993
@@ -10,7 +10,7 @@
 # the sendmail distribution.
 #
 # $FreeBSD: src/contrib/sendmail/cf/m4/cfhead.m4,v 1.3.6.8 2003/03/29 19:33:14 gshapiro Exp $
-# $DragonFly: src/contrib/sendmail/cf/m4/Attic/cfhead.m4,v 1.2 2003/06/17 04:24:06 dillon Exp $
+# $DragonFly: src/contrib/sendmail/cf/m4/Attic/cfhead.m4,v 1.3 2003/12/22 04:04:21 drhodus Exp $
 #
 
 ######################################################################
@@ -308,4 +308,4 @@ define(`confMILTER_MACROS_ENVRCPT', ``{rcpt_mailer}, {rcpt_host}, {rcpt_addr}'')
 
 
 divert(0)dnl
-VERSIONID(`$Id: cfhead.m4,v 8.108.2.2 2003/03/11 21:24:20 ca Exp $')
+VERSIONID(`$Id: cfhead.m4,v 8.108.2.3 2003/04/03 17:51:51 ca Exp $')

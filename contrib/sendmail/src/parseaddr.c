@@ -9,12 +9,11 @@
  * forth in the LICENSE file which can be found at the top level of
  * the sendmail distribution.
  *
- * $DragonFly: src/contrib/sendmail/src/Attic/parseaddr.c,v 1.3 2003/10/12 16:56:26 drhodus Exp $
  */
 
 #include <sendmail.h>
 
-SM_RCSID("@(#)$Id: parseaddr.c,v 8.359.2.6 2003/03/27 02:39:53 ca Exp $")
+SM_RCSID("@(#)$Id: parseaddr.c,v 8.359.2.9 2003/09/16 18:07:50 ca Exp $")
 
 static void	allocaddr __P((ADDRESS *, int, char *, ENVELOPE *));
 static int	callsubr __P((char**, int, ENVELOPE *));
@@ -701,11 +700,11 @@ prescan(addr, delim, pvpbuf, pvpbsize, delimptr, toktab)
 						addr[MAXNAME] = '\0';
 	returnnull:
 					if (delimptr != NULL)
-					     {
+					{
 						if (p > addr)
-							p--;
+							--p;
 						*delimptr = p;
-					      }
+					}
 					CurEnv->e_to = saveto;
 					return NULL;
 				}
@@ -886,9 +885,12 @@ prescan(addr, delim, pvpbuf, pvpbsize, delimptr, toktab)
 		}
 	} while (c != '\0' && (c != delim || anglecnt > 0));
 	*avp = NULL;
-	p--;
 	if (delimptr != NULL)
+	{
+		if (p > addr)
+			p--;
 		*delimptr = p;
+	}
 	if (tTd(22, 12))
 	{
 		sm_dprintf("prescan==>");
@@ -970,6 +972,11 @@ rewrite(pvp, ruleset, reclevel, e, maxatom)
 	char *npvp[MAXATOM + 1];	/* temporary space for rebuild */
 	char buf[MAXLINE];
 	char name[6];
+
+	/*
+	**  mlp will not exceed mlist[] because readcf enforces
+	**	the upper limit of entries when reading rulesets.
+	*/
 
 	if (ruleset < 0 || ruleset >= MAXRWSETS)
 	{
@@ -1446,7 +1453,8 @@ rewrite(pvp, ruleset, reclevel, e, maxatom)
 			{
 				int nodetype = **rvp & 0377;
 
-				if (nodetype != CANONHOST && nodetype != CANONUSER)
+				if (nodetype != CANONHOST &&
+				    nodetype != CANONUSER)
 				{
 					rvp++;
 					continue;
@@ -1678,7 +1686,7 @@ callsubr(pvp, reclevel, e)
 
 		/*
 		**  Now we need to call the ruleset specified for
-		**  the subroutine. we can do this inplace since
+		**  the subroutine. We can do this in place since
 		**  we call the "last" subroutine first.
 		*/
 
@@ -2183,7 +2191,7 @@ cataddr(pvp, evp, buf, sz, spacesub)
 			break;
 	}
 #if _FFR_CATCH_LONG_STRINGS
-	/* Don't silently truncate long strings */
+	/* Don't silently truncate long strings; broken for evp != NULL */
 	if (*pvp != NULL)
 		syserr("cataddr: string too long");
 #endif /* _FFR_CATCH_LONG_STRINGS */
@@ -2476,8 +2484,7 @@ emptyaddr(a)
 **
 **	Parameters:
 **		name -- the name to translate.
-**		m -- the mailer that we want to do rewriting relative
-**			to.
+**		m -- the mailer that we want to do rewriting relative to.
 **		flags -- fine tune operations.
 **		pstat -- pointer to status word.
 **		e -- the current envelope.
@@ -3125,6 +3132,7 @@ rscheck(rwset, p1, p2, e, flags, logl, host, logid)
 **		e -- the current envelope.
 **		pvp -- pointer to token vector.
 **		pvpbuf -- buffer space.
+**		size -- size of buffer space.
 **
 **	Returns:
 **		EX_UNAVAILABLE -- ruleset doesn't exist.
