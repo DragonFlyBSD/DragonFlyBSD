@@ -32,7 +32,7 @@
  *
  *	@(#)spp_usrreq.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_usrreq.c,v 1.11 1999/08/28 00:49:53 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.7 2004/03/05 19:17:25 hsu Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_usrreq.c,v 1.8 2004/05/04 11:56:54 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -1266,6 +1266,7 @@ spp_ctloutput(req, so, level, name, value)
 		return (error);
 }
 
+#warning "spp_usrreq not converted to FreeBSD usrreq style! watch out!"
 /*ARGSUSED*/
 int
 spp_usrreq(so, req, m, nam, controlp)
@@ -1273,14 +1274,15 @@ spp_usrreq(so, req, m, nam, controlp)
 	int req;
 	struct mbuf *m, *nam, *controlp;
 {
+	int error = 0;
+#ifdef OBSOLETE		/* not converted to FreeBSD usrreq style XXX */
 	struct nspcb *nsp = sotonspcb(so);
 	struct sppcb *cb = NULL;
 	int s = splnet();
-	int error = 0, ostate;
+	int ostate;
 	struct mbuf *mm;
 	struct sockbuf *sb;
 
-#ifdef OBSOLETE		/* not converted to FreeBSD usrreq style XXX */
 	if (req == PRU_CONTROL)
                 return (ns_control(so, (int)m, (caddr_t)nam,
 			(struct ifnet *)controlp));

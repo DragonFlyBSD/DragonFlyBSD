@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.6 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.7 2004/05/04 11:56:54 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -96,9 +96,9 @@ ns_pcbbind(nsp, nam)
 	}
 	lport = sns->sns_port;
 	if (lport) {
+#ifdef	NS_PRIV_SOCKETS
 		u_short aport = ntohs(lport);
 
-#ifdef	NS_PRIV_SOCKETS
 		if (aport < NSPORT_RESERVED &&
 		    (nsp->nsp_socket->so_state & SS_PRIV) == 0)
 			return (EACCES);
