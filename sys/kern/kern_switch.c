@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_switch.c,v 1.3.2.1 2000/05/16 06:58:12 dillon Exp $
- * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.12 2003/10/17 07:44:18 dillon Exp $
+ * $DragonFly: src/sys/kern/Attic/kern_switch.c,v 1.13 2003/10/21 04:14:55 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -596,16 +596,15 @@ acquire_curproc(struct proc *p)
 
 /*
  * Yield / synchronous reschedule.  This is a bit tricky because the trap
- * code might have set a lazy release on the switch function.  The first
- * thing we do is call lwkt_switch() to resolve the lazy release (if any).
- * Then, if we are a process, we want to allow another process to run.
+ * code might have set a lazy release on the switch function.  The lazy
+ * release normally doesn't release the P_CURPROC designation unless we
+ * are blocking at the time of the switch (no longer on the run queue), which
+ * we aren't.  We need to release our P_CURPROC designation in order to
+ * properly allow another user process to run.  This is done by creating
+ * a special case by setting P_PASSIVE_ACQ prior to calling lwkt_switch().
  *
- * The only way to do that is to acquire and then release P_CURPROC.  We
- * have to release it because the kernel expects it to be released as a
- * sanity check when it goes to sleep.
- *
- * XXX we need a way to ensure that we wake up eventually from a yield,
- * even if we are an idprio process.
+ * This code is confusing and really needs to be cleaned up.  Plus I don't
+ * think it actually works as expected.
  */
 void
 uio_yield(void)
@@ -613,12 +612,14 @@ uio_yield(void)
 	struct thread *td = curthread;
 	struct proc *p = td->td_proc;
 
-	lwkt_switch();
 	if (p) {
 		p->p_flag |= P_PASSIVE_ACQ;
+		lwkt_switch();
 		acquire_curproc(p);
 		release_curproc(p);
 		p->p_flag &= ~P_PASSIVE_ACQ;
+	} else {
+		lwkt_switch();
 	}
 }
 

@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.36 2003/10/17 07:30:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/trap.c,v 1.37 2003/10/21 04:14:58 dillon Exp $
  */
 
 /*
@@ -167,6 +167,12 @@ SYSCTL_INT(_machdep, OID_AUTO, fast_release, CTLFLAG_RW,
 static int slow_release;
 SYSCTL_INT(_machdep, OID_AUTO, slow_release, CTLFLAG_RW,
 	&slow_release, 0, "Passive Release was nonoptimal");
+static int pass_release;
+SYSCTL_INT(_machdep, OID_AUTO, pass_release, CTLFLAG_RW,
+	&pass_release, 0, "Passive Release on switch");
+static int pass_hold;
+SYSCTL_INT(_machdep, OID_AUTO, pass_hold, CTLFLAG_RW,
+	&pass_hold, 0, "Passive Held on switch");
 
 MALLOC_DEFINE(M_SYSMSG, "sysmsg", "sysmsg structure");
 
@@ -193,6 +199,12 @@ passive_release(struct thread *td)
 	if ((p->p_flag & P_CURPROC) && (td->td_flags & TDF_RUNQ) == 0) {
 		td->td_release = NULL;
 		release_curproc(p);
+		++pass_release;
+	} else if ((p->p_flag & (P_CURPROC|P_PASSIVE_ACQ)) == (P_CURPROC|P_PASSIVE_ACQ)) {
+		td->td_release = NULL;
+		release_curproc(p);
+	} else {
+		++pass_hold;
 	}
 }
 
