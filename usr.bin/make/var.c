@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.74 2005/02/09 20:55:15 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.75 2005/02/09 22:10:08 okumoto Exp $
  */
 
 /*-
@@ -885,18 +885,18 @@ char *
 Var_Parse(char *str, GNode *ctxt, Boolean err, size_t *lengthPtr,
     Boolean *freePtr)
 {
-    char	    *tstr;    	/* Pointer into str */
-    Var	    	    *v;	    	/* Variable in invocation */
-    char	    *cp;    	/* Secondary pointer into str (place marker
+    char	*tstr;		/* Pointer into str */
+    Var		*v;		/* Variable in invocation */
+    char	 *cp;		/* Secondary pointer into str (place marker
 				 * for tstr) */
-    Boolean 	    haveModifier;/* TRUE if have modifiers for the variable */
-    char	    endc;    	/* Ending character when variable in parens
+    Boolean	haveModifier;	/* TRUE if have modifiers for the variable */
+    char	endc;		/* Ending character when variable in parens
 				 * or braces */
-    char	    startc;	/* Starting character when variable in parens
+    char	startc;		/* Starting character when variable in parens
 				 * or braces */
-    char    	    *start;
-    char	     delim;
-    Boolean 	    dynamic;	/* TRUE if the variable is local and we're
+    char	*start;
+    char	delim;
+    Boolean	dynamic;	/* TRUE if the variable is local and we're
 				 * expanding it in a non-local context. This
 				 * is done to support dynamic sources. The
 				 * result is just the invocation, unaltered */
