@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/upcall.h,v 1.1 2003/11/21 05:29:02 dillon Exp $
+ * $DragonFly: src/sys/sys/upcall.h,v 1.2 2003/11/21 06:41:58 dillon Exp $
  */
 
 #ifndef _SYS_UPCALL_H_
@@ -46,6 +46,8 @@ struct upcall {
 #define UPC_CONTROL_DELETE		3
 #define UPC_CONTROL_POLL		4
 #define UPC_CONTROL_POLLANDCLEAR	5
+
+#define UPC_CRITADD			32	/* NOTE! same as TDPRI_CRIT */
 
 #if defined(_KERNEL)
 
