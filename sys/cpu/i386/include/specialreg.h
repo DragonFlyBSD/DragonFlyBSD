@@ -32,7 +32,7 @@
  *
  *	from: @(#)specialreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/include/specialreg.h,v 1.19.2.3 2003/01/22 17:24:28 jhb Exp $
- * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.2 2003/06/17 04:28:36 dillon Exp $
+ * $DragonFly: src/sys/cpu/i386/include/specialreg.h,v 1.3 2004/07/27 08:09:56 asmodai Exp $
  */
 
 #ifndef _MACHINE_SPECIALREG_H_
@@ -169,6 +169,10 @@
 #define MSR_MC3_STATUS		0x411
 #define MSR_MC3_ADDR		0x412
 #define MSR_MC3_MISC		0x413
+#define MSR_THERM_CONTROL	0x19a
+#define MSR_THERM_INTERRUPT	0x19b
+#define MSR_THERM_STATUS	0x19c
+
 
 /*
  * Constants related to MTRRs
