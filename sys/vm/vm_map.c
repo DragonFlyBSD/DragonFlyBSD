@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.29 2004/07/21 01:25:18 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.30 2004/07/24 20:25:47 dillon Exp $
  */
 
 /*
@@ -358,18 +358,18 @@ vm_map_entry_reserve(int count)
 	vm_map_entry_t entry;
 
 	crit_enter();
-	gd->gd_vme_avail -= count;
 
 	/*
 	 * Make sure we have enough structures in gd_vme_base to handle
 	 * the reservation request.
 	 */
-	while (gd->gd_vme_avail < 0) {
+	while (gd->gd_vme_avail < count) {
 		entry = zalloc(mapentzone);
 		entry->next = gd->gd_vme_base;
 		gd->gd_vme_base = entry;
 		++gd->gd_vme_avail;
 	}
+	gd->gd_vme_avail -= count;
 	crit_exit();
 	return(count);
 }
