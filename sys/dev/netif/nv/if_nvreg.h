@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $Id: if_nvreg.h,v 1.3 2003/11/08 13:03:01 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.4 2004/09/15 01:32:07 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nvreg.h,v 1.5 2004/11/05 17:13:44 dillon Exp $
  */
  
 #ifndef _IF_NVREG_H_
@@ -41,6 +41,10 @@
 #define NFORCE_MCPNET1_DEVICEID 0x01C3
 #define NFORCE_MCPNET2_DEVICEID 0x0066
 #define NFORCE_MCPNET3_DEVICEID 0x00D6
+#define NFORCE_MCPNET4_DEVICEID 0x0086
+#define NFORCE_MCPNET5_DEVICEID 0x008C
+#define NFORCE_MCPNET6_DEVICEID 0x00E6
+#define NFORCE_MCPNET7_DEVICEID 0x00DF
 
 #define NV_RID		0x10
 

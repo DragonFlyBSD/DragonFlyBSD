@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.6 2004/10/14 18:31:02 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.7 2004/11/05 17:13:44 dillon Exp $
  */
 
 /*
@@ -188,13 +188,21 @@ DRIVER_MODULE(nv, pci, nv_driver, nv_devclass, 0, 0);
 DRIVER_MODULE(miibus, nv, miibus_driver, miibus_devclass, 0, 0);
 
 static struct nv_type nv_devs[] = {
-	{NVIDIA_VENDORID, NFORCE_MCPNET1_DEVICEID,
-	"NVIDIA nForce MCP Networking Adapter"},
-	{NVIDIA_VENDORID, NFORCE_MCPNET2_DEVICEID,
-	"NVIDIA nForce MCP2 Networking Adapter"},
-	{NVIDIA_VENDORID, NFORCE_MCPNET3_DEVICEID,
-	"NVIDIA nForce MCP3 Networking Adapter"},
-	{0, 0, NULL}
+        {NVIDIA_VENDORID, NFORCE_MCPNET1_DEVICEID,
+                "NVIDIA nForce MCP Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET2_DEVICEID,
+                "NVIDIA nForce MCP2 Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET3_DEVICEID,
+                "NVIDIA nForce MCP3 Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET4_DEVICEID,
+                "NVIDIA nForce MCP4 Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET5_DEVICEID,
+                "NVIDIA nForce MCP5 Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET6_DEVICEID,
+                "NVIDIA nForce MCP6 Networking Adapter"},
+        {NVIDIA_VENDORID, NFORCE_MCPNET7_DEVICEID,
+                "NVIDIA nForce MCP7 Networking Adapter"},
+        {0, 0, NULL}
 };
 
 /* DMA MEM map callback function to get data segment physical address */
