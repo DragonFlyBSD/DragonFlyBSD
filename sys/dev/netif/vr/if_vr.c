@@ -30,7 +30,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/if_vr.c,v 1.26.2.13 2003/02/06 04:46:20 silby Exp $
- * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.19 2005/02/21 18:40:37 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/vr/if_vr.c,v 1.20 2005/03/07 17:16:01 joerg Exp $
  */
 
 /*
@@ -69,6 +69,7 @@
 #include <sys/socket.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -837,7 +838,8 @@ vr_attach(device_t dev)
 	ifp->if_watchdog = vr_watchdog;
 	ifp->if_init = vr_init;
 	ifp->if_baudrate = 10000000;
-	ifp->if_snd.ifq_maxlen = VR_TX_LIST_CNT - 1;
+	ifq_set_maxlen(&ifp->if_snd, VR_TX_LIST_CNT - 1);
+	ifq_set_ready(&ifp->if_snd);
 
 	/*
 	 * Do MII setup.
@@ -1295,7 +1297,7 @@ vr_intr(void *arg)
 	if ((ifp->if_flags & IFF_POLLING) == 0)
 		CSR_WRITE_2(sc, VR_IMR, VR_INTRS);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		vr_start(ifp);
 }
 
@@ -1386,7 +1388,7 @@ vr_start(struct ifnet *ifp)
 	start_tx = sc->vr_cdata.vr_tx_free;
 
 	while(sc->vr_cdata.vr_tx_free->vr_mbuf == NULL) {
-		IF_DEQUEUE(&ifp->if_snd, m_head);
+		m_head = ifq_poll(&ifp->if_snd);
 		if (m_head == NULL)
 			break;
 
@@ -1396,12 +1398,12 @@ vr_start(struct ifnet *ifp)
 
 		/* Pack the data into the descriptor. */
 		if (vr_encap(sc, cur_tx, m_head)) {
-			IF_PREPEND(&ifp->if_snd, m_head);
 			ifp->if_flags |= IFF_OACTIVE;
 			cur_tx = NULL;
 			break;
 		}
 
+		m_head = ifq_dequeue(&ifp->if_snd);
 		if (cur_tx != start_tx)
 			VR_TXOWN(cur_tx) = VR_TXSTAT_OWN;
 
@@ -1639,7 +1641,7 @@ vr_watchdog(struct ifnet *ifp)
 		vr_init(sc);
 	}
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		vr_start(ifp);
 }
 
