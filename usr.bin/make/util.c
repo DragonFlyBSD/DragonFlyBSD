@@ -37,7 +37,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/usr.bin/make/util.c,v 1.16 2005/02/04 13:23:39 harti Exp $
- * $DragonFly: src/usr.bin/make/util.c,v 1.18 2005/03/12 09:52:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.c,v 1.19 2005/03/12 11:31:30 okumoto Exp $
  */
 
 /*-
@@ -290,3 +290,23 @@ eunlink(const char *file)
 	return (unlink(file));
 }
 
+/*
+ * Convert a flag word to a printable thing and print it
+ */
+void
+print_flags(FILE *fp, const struct flag2str *tab, u_int flags)
+{
+	int first = 1;
+
+	fprintf(fp, "(");
+	while (tab->str != NULL) {
+		if (flags & tab->flag) {
+			if (!first)
+				fprintf(fp, "|");
+			first = 0;
+			fprintf(fp, "%s", tab->str);
+		}
+		tab++;
+	}
+	fprintf(fp, ")");
+}

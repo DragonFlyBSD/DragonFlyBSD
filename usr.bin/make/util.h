@@ -35,15 +35,21 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/usr.bin/make/util.h,v 1.6 2005/03/12 09:52:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/util.h,v 1.7 2005/03/12 11:31:30 okumoto Exp $
  */
 
 #ifndef util_h_b7020fdb
 #define	util_h_b7020fdb
 
 #include <sys/types.h>
+#include <stdio.h>
 
 #define	CONCAT(a,b)	a##b
+
+struct flag2str {
+	u_int		flag;
+	const char	*str;
+};
 
 /*
  * debug control:
@@ -90,5 +96,6 @@ char *estrdup(const char *);
 void *emalloc(size_t);
 void *erealloc(void *, size_t);
 int eunlink(const char *);
+void print_flags(FILE *, const struct flag2str *, u_int);
 
 #endif /* util_h_b7020fdb */
