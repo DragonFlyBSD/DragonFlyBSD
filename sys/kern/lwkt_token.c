@@ -31,7 +31,7 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  * 
- * $DragonFly: src/sys/kern/lwkt_token.c,v 1.9 2004/07/16 05:51:10 dillon Exp $
+ * $DragonFly: src/sys/kern/lwkt_token.c,v 1.10 2004/09/21 18:46:00 joerg Exp $
  */
 
 #ifdef _KERNEL
@@ -80,6 +80,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <machine/lock.h>
+#include <machine/cpu.h>
 
 #endif
 
