@@ -82,7 +82,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.30 2004/12/29 01:19:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.31 2004/12/29 03:26:42 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -128,11 +128,11 @@
 
 #ifdef FAST_IPSEC
 #include <netproto/ipsec/ipsec.h>
-#endif /*FAST_IPSEC*/
+#endif
 
 #ifdef IPSEC
 #include <netinet6/ipsec.h>
-#endif /*IPSEC*/
+#endif
 
 /*
  * UDP protocol implementation.
@@ -168,13 +168,13 @@ struct	udpstat udpstat;	/* from udp_var.h */
 SYSCTL_STRUCT(_net_inet_udp, UDPCTL_STATS, stats, CTLFLAG_RW,
     &udpstat, udpstat, "UDP statistics (struct udpstat, netinet/udp_var.h)");
 
-static struct	sockaddr_in udp_in = { sizeof(udp_in), AF_INET };
+static struct	sockaddr_in udp_in = { sizeof udp_in, AF_INET };
 #ifdef INET6
 struct udp_in6 {
 	struct sockaddr_in6	uin6_sin;
 	u_char			uin6_init_done : 1;
 } udp_in6 = {
-	{ sizeof(udp_in6.uin6_sin), AF_INET6 },
+	{ sizeof udp_in6.uin6_sin, AF_INET6 },
 	0
 };
 struct udp_ip6 {
@@ -245,7 +245,7 @@ udp_input(struct mbuf *m, ...)
 	struct ip *ip;
 	struct udphdr *uh;
 	struct inpcb *inp;
-	struct mbuf *opts = 0;
+	struct mbuf *opts = NULL;
 	int len, off, proto;
 	struct ip save_ip;
 	struct sockaddr *append_sa;
@@ -265,7 +265,7 @@ udp_input(struct mbuf *m, ...)
 	 * but we don't yet have a way to check the checksum
 	 * with options still present.
 	 */
-	if (iphlen > sizeof (struct ip)) {
+	if (iphlen > sizeof(struct ip)) {
 		ip_stripoptions(m);
 		iphlen = sizeof(struct ip);
 	}
@@ -317,10 +317,11 @@ udp_input(struct mbuf *m, ...)
 			uh->uh_sum ^= 0xffff;
 		} else {
 			char b[9];
+
 			bcopy(((struct ipovly *)ip)->ih_x1, b, 9);
 			bzero(((struct ipovly *)ip)->ih_x1, 9);
 			((struct ipovly *)ip)->ih_len = uh->uh_ulen;
-			uh->uh_sum = in_cksum(m, len + sizeof (struct ip));
+			uh->uh_sum = in_cksum(m, len + sizeof(struct ip));
 			bcopy(b, ((struct ipovly *)ip)->ih_x1, 9);
 		}
 		if (uh->uh_sum) {
@@ -334,6 +335,7 @@ udp_input(struct mbuf *m, ...)
 	if (IN_MULTICAST(ntohl(ip->ip_dst.s_addr)) ||
 	    in_broadcast(ip->ip_dst, m->m_pkthdr.rcvif)) {
 		struct inpcb *last;
+
 		/*
 		 * Deliver a multicast or broadcast datagram to *all* sockets
 		 * for which the local and remote addresses and ports match
@@ -367,7 +369,7 @@ udp_input(struct mbuf *m, ...)
 			if (inp->inp_flags & INP_PLACEMARKER)
 				continue;
 #ifdef INET6
-			if ((inp->inp_vflag & INP_IPV4) == 0)
+			if (!(inp->inp_vflag & INP_IPV4))
 				continue;
 #endif
 			if (inp->inp_lport != uh->uh_dport)
@@ -417,7 +419,8 @@ udp_input(struct mbuf *m, ...)
 			 * port.  It * assumes that an application will never
 			 * clear these options after setting them.
 			 */
-			if ((last->inp_socket->so_options&(SO_REUSEPORT|SO_REUSEADDR)) == 0)
+			if (!(last->inp_socket->so_options &
+			    (SO_REUSEPORT | SO_REUSEADDR)))
 				break;
 		}
 
@@ -493,8 +496,8 @@ udp_input(struct mbuf *m, ...)
 	 */
 	udp_in.sin_port = uh->uh_sport;
 	udp_in.sin_addr = ip->ip_src;
-	if (inp->inp_flags & INP_CONTROLOPTS
-	    || inp->inp_socket->so_options & SO_TIMESTAMP) {
+	if ((inp->inp_flags & INP_CONTROLOPTS) ||
+	    (inp->inp_socket->so_options & SO_TIMESTAMP)) {
 #ifdef INET6
 		if (inp->inp_vflag & INP_IPV6) {
 			int savedflags;
@@ -515,7 +518,7 @@ udp_input(struct mbuf *m, ...)
 		append_sa = (struct sockaddr *)&udp_in6;
 	} else
 #endif
-	append_sa = (struct sockaddr *)&udp_in;
+		append_sa = (struct sockaddr *)&udp_in;
 	if (sbappendaddr(&inp->inp_socket->so_rcv, append_sa, m, opts) == 0) {
 		udpstat.udps_fullsock++;
 		goto bad;
@@ -535,7 +538,7 @@ ip_2_ip6_hdr(ip6, ip)
 	struct ip6_hdr *ip6;
 	struct ip *ip;
 {
-	bzero(ip6, sizeof(*ip6));
+	bzero(ip6, sizeof *ip6);
 
 	ip6->ip6_vfc = IPV6_VERSION;
 	ip6->ip6_plen = ip->ip_len;
@@ -560,7 +563,7 @@ udp_append(last, ip, n, off)
 	int off;
 {
 	struct sockaddr *append_sa;
-	struct mbuf *opts = 0;
+	struct mbuf *opts = NULL;
 
 	if (last->inp_flags & INP_CONTROLOPTS ||
 	    last->inp_socket->so_options & SO_TIMESTAMP) {
@@ -589,7 +592,7 @@ udp_append(last, ip, n, off)
 		append_sa = (struct sockaddr *)&udp_in6.uin6_sin;
 	} else
 #endif
-	append_sa = (struct sockaddr *)&udp_in;
+		append_sa = (struct sockaddr *)&udp_in;
 	m_adj(n, off);
 	if (sbappendaddr(&last->inp_socket->so_rcv, append_sa, n, opts) == 0) {
 		m_freem(n);
@@ -632,10 +635,10 @@ udp_ctlinput(cmd, sa, vip)
 		return;
 
 	if (PRC_IS_REDIRECT(cmd)) {
-		ip = 0;
+		ip = NULL;
 		notify = in_rtchange;
 	} else if (cmd == PRC_HOSTDEAD)
-		ip = 0;
+		ip = NULL;
 	else if ((unsigned)cmd >= PRC_NCMDS || inetctlerrmap[cmd] == 0)
 		return;
 	if (ip) {
@@ -730,7 +733,7 @@ udp_output(inp, m, dstaddr, control, td)
 	 * for UDP and IP headers.
 	 */
 	M_PREPEND(m, sizeof(struct udpiphdr), MB_DONTWAIT);
-	if (m == 0) {
+	if (m == NULL) {
 		error = ENOBUFS;
 		goto release;
 	}
@@ -740,7 +743,7 @@ udp_output(inp, m, dstaddr, control, td)
 	 * and addresses and length put into network format.
 	 */
 	ui = mtod(m, struct udpiphdr *);
-	bzero(ui->ui_x1, sizeof(ui->ui_x1));	/* XXX still needed? */
+	bzero(ui->ui_x1, sizeof ui->ui_x1);	/* XXX still needed? */
 	ui->ui_pr = IPPROTO_UDP;
 
 	/*
@@ -788,7 +791,7 @@ udp_output(inp, m, dstaddr, control, td)
 	} else {
 		ui->ui_sum = 0;
 	}
-	((struct ip *)ui)->ip_len = sizeof (struct udpiphdr) + len;
+	((struct ip *)ui)->ip_len = sizeof(struct udpiphdr) + len;
 	((struct ip *)ui)->ip_ttl = inp->inp_ip_ttl;	/* XXX */
 	((struct ip *)ui)->ip_tos = inp->inp_ip_tos;	/* XXX */
 	udpstat.udps_opackets++;
@@ -826,7 +829,7 @@ udp_abort(struct socket *so)
 	int s;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;	/* ??? possible? panic instead? */
 	soisdisconnected(so);
 	s = splnet();
@@ -842,7 +845,7 @@ udp_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 	int s, error;
 
 	inp = sotoinpcb(so);
-	if (inp != 0)
+	if (inp != NULL)
 		return EINVAL;
 
 	error = soreserve(so, udp_sendspace, udp_recvspace, ai->sb_rlimit);
@@ -868,7 +871,7 @@ udp_bind(struct socket *so, struct sockaddr *nam, struct thread *td)
 	int s, error;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	s = splnet();
 	error = in_pcbbind(inp, nam, td);
@@ -889,7 +892,7 @@ udp_connect(struct socket *so, struct sockaddr *nam, struct thread *td)
 	struct sockaddr_in *sin;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	if (inp->inp_faddr.s_addr != INADDR_ANY)
 		return EISCONN;
@@ -929,7 +932,7 @@ udp_detach(struct socket *so)
 	int s;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	s = splnet();
 	in_pcbdetach(inp);
@@ -944,7 +947,7 @@ udp_disconnect(struct socket *so)
 	int s;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	if (inp->inp_faddr.s_addr == INADDR_ANY)
 		return ENOTCONN;
@@ -963,7 +966,7 @@ udp_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 	struct inpcb *inp;
 
 	inp = sotoinpcb(so);
-	if (inp == 0) {
+	if (inp == NULL) {
 		m_freem(m);
 		return EINVAL;
 	}
@@ -976,7 +979,7 @@ udp_shutdown(struct socket *so)
 	struct inpcb *inp;
 
 	inp = sotoinpcb(so);
-	if (inp == 0)
+	if (inp == NULL)
 		return EINVAL;
 	socantsendmore(so);
 	return 0;

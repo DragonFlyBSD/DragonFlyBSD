@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netipsec/ipsec.c,v 1.2.2.1 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.8 2004/12/29 01:19:53 hsu Exp $	*/
+/*	$DragonFly: src/sys/netproto/ipsec/ipsec.c,v 1.9 2004/12/29 03:26:42 hsu Exp $	*/
 /*	$KAME: ipsec.c,v 1.103 2001/05/24 07:14:18 sakane Exp $	*/
 
 /*
@@ -1822,20 +1822,6 @@ vshiftl(bitmap, nbit, wsize)
 	return;
 }
 
-/* Return a printable string for the IPv4 address. */
-static char *
-inet_ntoa4(struct in_addr ina)
-{
-	static char buf[4][sizeof "aaa.bbb.ccc.ddd"];
-	unsigned char *ucp = (unsigned char *) &ina;
-	static int i = 3;
-
-	i = (i + 1) % 4;
-	sprintf(buf[i], "%d.%d.%d.%d", ucp[0] & 0xff, ucp[1] & 0xff,
-	    ucp[2] & 0xff, ucp[3] & 0xff);
-	return (buf[i]);
-}
-
 /* Return a printable string for the address. */
 char *
 ipsec_address(union sockaddr_union* sa)
@@ -1843,7 +1829,7 @@ ipsec_address(union sockaddr_union* sa)
 	switch (sa->sa.sa_family) {
 #if INET
 	case AF_INET:
-		return inet_ntoa4(sa->sin.sin_addr);
+		return inet_ntoa(sa->sin.sin_addr);
 #endif /* INET */
 
 #if INET6

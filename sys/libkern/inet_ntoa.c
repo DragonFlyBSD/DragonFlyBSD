@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/libkern/inet_ntoa.c,v 1.2.16.1 2000/08/03 01:03:45 peter Exp $
- * $DragonFly: src/sys/libkern/inet_ntoa.c,v 1.3 2004/12/29 01:19:53 hsu Exp $
+ * $DragonFly: src/sys/libkern/inet_ntoa.c,v 1.4 2004/12/29 03:26:42 hsu Exp $
  */
 
 #include <sys/param.h>

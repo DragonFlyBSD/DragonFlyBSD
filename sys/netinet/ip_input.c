@@ -82,7 +82,7 @@
  *
  *	@(#)ip_input.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_input.c,v 1.130.2.52 2003/03/07 07:01:28 silby Exp $
- * $DragonFly: src/sys/netinet/ip_input.c,v 1.42 2004/12/29 01:19:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_input.c,v 1.43 2004/12/29 03:26:42 hsu Exp $
  */
 
 #define	_IP_VHL
@@ -399,7 +399,6 @@ ip_init(void)
  * when a new route is successfully created.
  */
 struct route ipforward_rt;
-static struct sockaddr_in ipaddr = { sizeof(ipaddr), AF_INET };
 
 /* Do transport protocol processing. */
 static void
@@ -1442,6 +1441,7 @@ ip_drain(void)
 static int
 ip_dooptions(struct mbuf *m, int pass, struct sockaddr_in *next_hop)
 {
+	struct sockaddr_in ipaddr = { sizeof ipaddr, AF_INET };
 	struct ip *ip = mtod(m, struct ip *);
 	u_char *cp;
 	struct in_ifaddr *ia;

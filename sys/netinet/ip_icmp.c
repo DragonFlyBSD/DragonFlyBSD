@@ -32,7 +32,7 @@
  *
  *	@(#)ip_icmp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/netinet/ip_icmp.c,v 1.39.2.19 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.16 2004/12/29 01:19:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/ip_icmp.c,v 1.17 2004/12/29 03:26:42 hsu Exp $
  */
 
 #include "opt_ipsec.h"
@@ -232,7 +232,7 @@ icmp_error(n, type, code, dest, destifp)
 	m->m_pkthdr.len = m->m_len;
 	m->m_pkthdr.rcvif = n->m_pkthdr.rcvif;
 	nip = mtod(m, struct ip *);
-	bcopy((caddr_t)oip, (caddr_t)nip, sizeof(struct ip));
+	bcopy(oip, nip, sizeof(struct ip));
 	nip->ip_len = m->m_len;
 	nip->ip_vhl = IP_VHL_BORING;
 	nip->ip_p = IPPROTO_ICMP;
@@ -454,7 +454,7 @@ icmp_input(struct mbuf *m, ...)
 		ctlfunc = inetsw[ip_protox[icp->icmp_ip.ip_p]].pr_ctlinput;
 		if (ctlfunc)
 			(*ctlfunc)(code, (struct sockaddr *)&icmpsrc,
-				   (void *)&icp->icmp_ip);
+				   &icp->icmp_ip);
 		break;
 
 	badcode:
@@ -636,7 +636,7 @@ icmp_reflect(m)
 	t = ip->ip_dst;
 	ip->ip_dst = ip->ip_src;
 	ro = &rt;
-	bzero(ro, sizeof(*ro));
+	bzero(ro, sizeof *ro);
 	/*
 	 * If the incoming packet was addressed directly to us,
 	 * use dst as the src for the reply.  Otherwise (broadcast
@@ -697,10 +697,10 @@ match:
 				if (opt == IPOPT_NOP)
 					len = 1;
 				else {
-					if (cnt < IPOPT_OLEN + sizeof(*cp))
+					if (cnt < IPOPT_OLEN + sizeof *cp)
 						break;
 					len = cp[IPOPT_OLEN];
-					if (len < IPOPT_OLEN + sizeof(*cp) ||
+					if (len < IPOPT_OLEN + sizeof *cp ||
 					    len > cnt)
 					break;
 				}
@@ -710,7 +710,7 @@ match:
 				 */
 				if (opt == IPOPT_RR || opt == IPOPT_TS ||
 				    opt == IPOPT_SECURITY) {
-					bcopy((caddr_t)cp,
+					bcopy(cp,
 					      mtod(opts, caddr_t) + opts->m_len,
 					      len);
 					opts->m_len += len;
@@ -740,8 +740,8 @@ match:
 		if (m->m_flags & M_PKTHDR)
 			m->m_pkthdr.len -= optlen;
 		optlen += sizeof(struct ip);
-		bcopy((caddr_t)ip + optlen, (caddr_t)(ip + 1),
-			 (unsigned)(m->m_len - sizeof(struct ip)));
+		bcopy((caddr_t)ip + optlen, ip + 1,
+		      m->m_len - sizeof(struct ip));
 	}
 	m->m_pkthdr.pf_flags &= PF_MBUF_GENERATED;
 	m->m_flags &= ~(M_BCAST|M_MCAST);

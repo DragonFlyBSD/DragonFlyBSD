@@ -82,7 +82,7 @@
  *
  *	@(#)tcp_input.c	8.12 (Berkeley) 5/24/95
  * $FreeBSD: src/sys/netinet/tcp_input.c,v 1.107.2.38 2003/05/21 04:46:41 cjc Exp $
- * $DragonFly: src/sys/netinet/tcp_input.c,v 1.47 2004/12/29 01:19:53 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp_input.c,v 1.48 2004/12/29 03:26:42 hsu Exp $
  */
 
 #include "opt_ipfw.h"		/* for ipfw_fwd		*/
@@ -560,7 +560,7 @@ tcp_input(struct mbuf *m, ...)
 	if (isipv6) {
 		/* IP6_EXTHDR_CHECK() is already done at tcp6_input() */
 		ip6 = mtod(m, struct ip6_hdr *);
-		tlen = sizeof(*ip6) + ntohs(ip6->ip6_plen) - off0;
+		tlen = (sizeof *ip6) + ntohs(ip6->ip6_plen) - off0;
 		if (in6_cksum(m, IPPROTO_TCP, off0, tlen)) {
 			tcpstat.tcps_rcvbadsum++;
 			goto drop;
@@ -611,7 +611,7 @@ tcp_input(struct mbuf *m, ...)
 			 * Checksum extended TCP header and data.
 			 */
 			len = sizeof(struct ip) + tlen;
-			bzero(ipov->ih_x1, sizeof(ipov->ih_x1));
+			bzero(ipov->ih_x1, sizeof ipov->ih_x1);
 			ipov->ih_len = (u_short)tlen;
 			ipov->ih_len = htons(ipov->ih_len);
 			th->th_sum = in_cksum(m, len);
@@ -840,7 +840,7 @@ findpcb:
 	}
 #endif
 
-	bzero(&to, sizeof(to));
+	bzero(&to, sizeof to);
 
 	if (so->so_options & SO_ACCEPTCONN) {
 		struct in_conninfo inc;
@@ -1319,7 +1319,7 @@ after_listen:
 	case TCPS_SYN_SENT:
 		if ((taop = tcp_gettaocache(&inp->inp_inc)) == NULL) {
 			taop = &tao_noncached;
-			bzero(taop, sizeof(*taop));
+			bzero(taop, sizeof *taop);
 		}
 
 		if ((thflags & TH_ACK) &&
@@ -2617,7 +2617,7 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			if (!is_syn)
 				continue;
 			to->to_flags |= TOF_MSS;
-			bcopy(cp + 2, &to->to_mss, sizeof(to->to_mss));
+			bcopy(cp + 2, &to->to_mss, sizeof to->to_mss);
 			to->to_mss = ntohs(to->to_mss);
 			break;
 		case TCPOPT_WINDOW:
@@ -2632,16 +2632,16 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			if (optlen != TCPOLEN_TIMESTAMP)
 				continue;
 			to->to_flags |= TOF_TS;
-			bcopy(cp + 2, &to->to_tsval, sizeof(to->to_tsval));
+			bcopy(cp + 2, &to->to_tsval, sizeof to->to_tsval);
 			to->to_tsval = ntohl(to->to_tsval);
-			bcopy(cp + 6, &to->to_tsecr, sizeof(to->to_tsecr));
+			bcopy(cp + 6, &to->to_tsecr, sizeof to->to_tsecr);
 			to->to_tsecr = ntohl(to->to_tsecr);
 			break;
 		case TCPOPT_CC:
 			if (optlen != TCPOLEN_CC)
 				continue;
 			to->to_flags |= TOF_CC;
-			bcopy(cp + 2, &to->to_cc, sizeof(to->to_cc));
+			bcopy(cp + 2, &to->to_cc, sizeof to->to_cc);
 			to->to_cc = ntohl(to->to_cc);
 			break;
 		case TCPOPT_CCNEW:
@@ -2650,7 +2650,7 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			if (!is_syn)
 				continue;
 			to->to_flags |= TOF_CCNEW;
-			bcopy(cp + 2, &to->to_cc, sizeof(to->to_cc));
+			bcopy(cp + 2, &to->to_cc, sizeof to->to_cc));
 			to->to_cc = ntohl(to->to_cc);
 			break;
 		case TCPOPT_CCECHO:
@@ -2659,7 +2659,7 @@ tcp_dooptions(struct tcpopt *to, u_char *cp, int cnt, boolean_t is_syn)
 			if (!is_syn)
 				continue;
 			to->to_flags |= TOF_CCECHO;
-			bcopy(cp + 2, &to->to_ccecho, sizeof(to->to_ccecho));
+			bcopy(cp + 2, &to->to_ccecho, sizeof to->to_ccecho);
 			to->to_ccecho = ntohl(to->to_ccecho);
 			break;
 		case TCPOPT_SACK_PERMITTED:
