@@ -32,7 +32,7 @@
  *
  * @(#)route.c	8.6 (Berkeley) 4/28/95
  * $FreeBSD: src/usr.bin/netstat/route.c,v 1.41.2.14 2002/07/17 02:22:22 kbyanc Exp $
- * $DragonFly: src/usr.bin/netstat/route.c,v 1.6 2004/09/14 00:27:18 drhodus Exp $
+ * $DragonFly: src/usr.bin/netstat/route.c,v 1.7 2004/12/15 09:27:05 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -471,7 +471,7 @@ p_rtnode(void)
 		    p_sockaddr(kgetsa((struct sockaddr *)rmask.rm_mask),
 				NULL, 0, -1);
 		putchar('}');
-		if ((rm = rmask.rm_mklist))
+		if ((rm = rmask.rm_next))
 			printf(" ->");
 	}
 	putchar('\n');
