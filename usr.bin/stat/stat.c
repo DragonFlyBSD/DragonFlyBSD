@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* $DragonFly: src/usr.bin/stat/stat.c,v 1.2 2003/07/29 00:22:37 rob Exp $	
+/* $DragonFly: src/usr.bin/stat/stat.c,v 1.3 2003/07/29 00:27:49 rob Exp $	
 */
 #include <sys/cdefs.h>
 #if 0
@@ -61,9 +61,9 @@ __FBSDID("$FreeBSD: src/usr.bin/stat/stat.c,v 1.5 2003/05/11 23:02:09 dougb Exp 
 
 #define DEF_FORMAT \
 	"%d %i %Sp %l %Su %Sg %r %z %a %m %c %k %b %N"
-#define RAW_FORMAT	"%d %i %#p %l %u %g %r %z %a %m %c %B %k %b %N"
-#define LS_FORMAT	"%Sp %l %Su %Sg %Z %Sm %N%SY"
-#define LSF_FORMAT	"%Sp %l %Su %Sg %Z %Sm %N%T%SY"
+#define RAW_FORMAT	"%d %i %#p %l %u %g %r %z %a %m %c  %k %b %N"
+#define LS_FORMAT	"%Sp %l %Su %Sg %Z %m %N%SY"
+#define LSF_FORMAT	"%Sp %l %Su %Sg %Z %m %N%T%SY"
 #define SHELL_FORMAT \
 	"st_dev=%d st_ino=%i st_mode=%#p st_nlink=%l " \
 	"st_uid=%u st_gid=%g st_rdev=%r st_size=%z " \
@@ -74,9 +74,9 @@ __FBSDID("$FreeBSD: src/usr.bin/stat/stat.c,v 1.5 2003/05/11 23:02:09 dougb Exp 
 	"  Size: %-11z  FileType: %HT%n" \
 	"  Mode: (%04OLp/%.10Sp)         Uid: (%5u/%8Su)  Gid: (%5g/%8Sg)%n" \
 	"Device: %Hd,%Ld   Inode: %i    Links: %l%n" \
-	"Access: %Sa%n" \
-	"Modify: %Sm%n" \
-	"Change: %Sc"
+	"Access: %a%n" \
+	"Modify: %m%n" \
+	"Change: %c"
 
 #define TIME_FORMAT	"%b %e %T %Y"
 
