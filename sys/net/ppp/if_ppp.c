@@ -70,7 +70,7 @@
  */
 
 /* $FreeBSD: src/sys/net/if_ppp.c,v 1.67.2.4 2002/04/14 21:41:48 luigi Exp $ */
-/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.13 2004/03/23 22:19:06 hsu Exp $ */
+/* $DragonFly: src/sys/net/ppp/if_ppp.c,v 1.14 2004/04/02 12:32:27 hmp Exp $ */
 /* from if_sl.c,v 1.11 84/10/04 12:54:47 rick Exp */
 /* from NetBSD: if_ppp.c,v 1.15.2.2 1994/07/28 05:17:58 cgd Exp */
 
@@ -140,7 +140,6 @@ PSEUDO_SET(pppattach, if_ppp);
 
 static int	pppsioctl (struct ifnet *ifp, u_long cmd, caddr_t data,
 			   struct ucred *);
-static void	pppintr (struct netmsg *msg);
 
 static void	ppp_requeue (struct ppp_softc *);
 static void	ppp_ccp (struct ppp_softc *, struct mbuf *m, int rcvd);
@@ -189,6 +188,39 @@ static struct compressor *ppp_compressors[8] = {
     NULL
 };
 #endif /* PPP_COMPRESS */
+
+/*
+ * Software interrupt routine, called at spl[soft]net.
+ */
+static int
+pppintr(struct netmsg *msg)
+{
+    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
+    struct ppp_softc *sc;
+    int i, s;
+
+    sc = ppp_softc;
+    for (i = 0; i < NPPP; ++i, ++sc) {
+	s = splimp();
+	if (!(sc->sc_flags & SC_TBUSY)
+	    && (sc->sc_if.if_snd.ifq_head || sc->sc_fastq.ifq_head)) {
+	    sc->sc_flags |= SC_TBUSY;
+	    splx(s);
+	    (*sc->sc_start)(sc);
+	} else
+	    splx(s);
+	for (;;) {
+	    s = splimp();
+	    IF_DEQUEUE(&sc->sc_rawq, m);
+	    splx(s);
+	    if (m == NULL)
+		break;
+	    ppp_inproc(sc, m);
+	}
+    }
+
+	return 0;
+}
 
 /*
  * Called from boot code to establish ppp interfaces.
@@ -1053,37 +1085,6 @@ ppp_dequeue(sc)
     }
 
     return m;
-}
-
-/*
- * Software interrupt routine, called at spl[soft]net.
- */
-static void
-pppintr(struct netmsg *msg)
-{
-    struct mbuf *m = ((struct netmsg_packet *)msg)->nm_packet;
-    struct ppp_softc *sc;
-    int i, s;
-
-    sc = ppp_softc;
-    for (i = 0; i < NPPP; ++i, ++sc) {
-	s = splimp();
-	if (!(sc->sc_flags & SC_TBUSY)
-	    && (sc->sc_if.if_snd.ifq_head || sc->sc_fastq.ifq_head)) {
-	    sc->sc_flags |= SC_TBUSY;
-	    splx(s);
-	    (*sc->sc_start)(sc);
-	} else
-	    splx(s);
-	for (;;) {
-	    s = splimp();
-	    IF_DEQUEUE(&sc->sc_rawq, m);
-	    splx(s);
-	    if (m == NULL)
-		break;
-	    ppp_inproc(sc, m);
-	}
-    }
 }
 
 #ifdef PPP_COMPRESS
