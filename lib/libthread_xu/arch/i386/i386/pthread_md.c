@@ -24,26 +24,32 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.3 2005/02/22 14:56:22 davidxu Exp $
+ * $DragonFly: src/lib/libthread_xu/arch/i386/i386/pthread_md.c,v 1.4 2005/03/22 23:07:24 davidxu Exp $
  */
 
 #include <sys/types.h>
 #include <sys/tls.h>
 #include <stdlib.h>
 
+#include "rtld_tls.h"
 #include "pthread_md.h"
 
 struct tcb *
 _tcb_ctor(struct pthread *thread, int initial)
 {
 	struct tcb *tcb;
+	void *oldtls;
 
-	if ((tcb = malloc(sizeof(struct tcb))) == NULL)
-		return (NULL);
-	tcb->tcb_self = tcb;
-	tcb->tcb_dtv = NULL;
-	tcb->tcb_thread = thread;
-	tcb->tcb_seg = -1;
+	if (initial)
+		__asm __volatile("movl %%gs:0, %0" : "=r" (oldtls));
+	else
+		oldtls = NULL;
+
+	tcb = _rtld_allocate_tls(oldtls, sizeof(struct tcb), 16);
+	if (tcb) {
+		tcb->tcb_thread = thread;
+		tcb->tcb_seg = -1;
+	}
 	return (tcb);
 }
 
@@ -62,5 +68,5 @@ _tcb_set(struct tcb *tcb)
 void
 _tcb_dtor(struct tcb *tcb)
 {
-	free(tcb);
+	_rtld_free_tls(tcb, sizeof(struct tcb), 16);
 }
