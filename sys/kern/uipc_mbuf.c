@@ -33,7 +33,7 @@
  *
  * @(#)uipc_mbuf.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/sys/kern/uipc_mbuf.c,v 1.51.2.24 2003/04/15 06:59:29 silby Exp $
- * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.18 2004/06/04 01:46:47 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_mbuf.c,v 1.19 2004/06/06 11:49:54 hmp Exp $
  */
 
 #include "opt_param.h"
@@ -628,7 +628,7 @@ m_getclr(int how, int type)
  */
 static struct mbuf *mcl_pool;
 static int mcl_pool_now;
-static int mcl_pool_max = 0;
+static int mcl_pool_max = 10;
  
 SYSCTL_INT(_kern_ipc, OID_AUTO, mcl_pool_max, CTLFLAG_RW, &mcl_pool_max, 0,
            "Maximum number of mbufs+cluster in free list");
