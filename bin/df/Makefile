@@ -1,9 +1,11 @@
 #	@(#)Makefile	8.3 (Berkeley) 5/8/95
 # $FreeBSD: src/bin/df/Makefile,v 1.9.2.3 2002/04/05 00:19:21 iedowse Exp $
-# $DragonFly: src/bin/df/Makefile,v 1.2 2003/06/17 04:22:49 dillon Exp $
+# $DragonFly: src/bin/df/Makefile,v 1.3 2004/09/26 15:38:44 asmodai Exp $
 
 PROG=	df
 SRCS=	df.c vfslist.c
+
+WARNS?=	6
 
 MOUNT=	${.CURDIR}/../../sbin/mount
 CFLAGS+= -I${MOUNT}
@@ -11,7 +13,5 @@ CFLAGS+= -I${MOUNT}
 
 DPADD=	${LIBM}
 LDADD=	-lm
-
-WARNS?=	2
 
 .include <bsd.prog.mk>
