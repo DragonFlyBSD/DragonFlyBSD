@@ -18,7 +18,7 @@
  * This is the add module.
  *
  * $FreeBSD: src/usr.sbin/pkg_install/add/main.c,v 1.60 2004/10/17 14:36:30 obrien Exp $
- * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.9 2005/03/08 19:11:30 joerg Exp $
+ * $DragonFly: src/usr.sbin/pkg_install/add/Attic/main.c,v 1.10 2005/03/17 20:53:55 drhodus Exp $
  */
 
 #include <err.h>
@@ -75,7 +75,7 @@ struct {
 	{ 502100, 502128, "/packages-5-current" },
 	{ 503000, 599000, "/packages-5-stable" },
 	{ 600000, 699000, "/packages-6-current" },
-	{ 0, 9999999, "/packages-current" },
+	{ 0, 9999999, "/" },
 	{ 0, 0, NULL }
 };
 
