@@ -1,6 +1,6 @@
 /*
  * $OpenBSD: patch.c,v 1.41 2004/07/09 19:13:46 otto Exp $
- * $DragonFly: src/usr.bin/patch/patch.c,v 1.1 2004/09/24 18:44:28 joerg Exp $
+ * $DragonFly: src/usr.bin/patch/patch.c,v 1.2 2004/10/02 05:52:06 dillon Exp $
  */
 
 /*
@@ -436,7 +436,7 @@ reinitialize_almost_everything(void)
 static void
 get_some_switches(void)
 {
-	const char *options = "b::B:cCd:D:eEfF:i:lnNo:p:r:RstuvV:x:z:";
+	const char *options = "b:B:cCd:D:eEfF:i:lnNo:p:r:RstuvV:x:z:";
 	static struct option longopts[] = {
 		{"backup",		no_argument,		0,	'b'},
 		{"batch",		no_argument,		0,	't'},
