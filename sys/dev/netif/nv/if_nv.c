@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.7 2004/11/05 17:13:44 dillon Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.8 2005/02/20 01:26:05 joerg Exp $
  */
 
 /*
@@ -74,6 +74,7 @@
 #include <sys/module.h>
 
 #include <net/if.h>
+#include <net/ifq_var.h>
 #include <net/if_arp.h>
 #include <net/ethernet.h>
 #include <net/if_dl.h>
@@ -464,7 +465,7 @@ nv_attach(device_t dev)
 	ifp->if_init = nv_init;
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_baudrate = IF_Mbps(100);
-	ifp->if_snd.ifq_maxlen = IFQ_MAXLEN;
+	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
 
 	/* Attach to OS's managers. */
 	ether_ifattach(ifp, sc->sc_macaddr);
@@ -770,7 +771,7 @@ nv_ifstart(struct ifnet *ifp)
 	DEBUGOUT(NV_DEBUG_RUNNING, "nv: nv_ifstart - entry\n");
 
 	/* If link is down/busy or queue is empty do nothing */
-	if (ifp->if_flags & IFF_OACTIVE || ifp->if_snd.ifq_head == NULL)
+	if (ifp->if_flags & IFF_OACTIVE)
 		return;
 
 	/* Transmit queued packets until sent or TX ring is full */
@@ -958,7 +959,7 @@ nv_intr(void *arg)
 		sc->hwapi->pfnHandleInterrupt(sc->hwapi->pADCX);
 		sc->hwapi->pfnEnableInterrupts(sc->hwapi->pADCX);
 	}
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		nv_ifstart(ifp);
 
 	/* If no pending packets we don't need a timeout */
@@ -1090,7 +1091,7 @@ nv_tick(void *xsc)
 
 	if (mii->mii_media_status & IFM_ACTIVE &&
 	    IFM_SUBTYPE(mii->mii_media_active) != IFM_NONE) {
-		if (ifp->if_snd.ifq_head != NULL)
+		if (!ifq_is_empty(&ifp->if_snd))
 			nv_ifstart(ifp);
 	}
 	callout_reset(&sc->nv_stat_timer, hz, nv_tick, sc);
@@ -1179,7 +1180,7 @@ nv_watchdog(struct ifnet *ifp)
 	ifp->if_flags &= ~IFF_RUNNING;
 	nv_init(sc);
 
-	if (ifp->if_snd.ifq_head != NULL)
+	if (!ifq_is_empty(&ifp->if_snd))
 		nv_ifstart(ifp);
 
 	return;
@@ -1414,7 +1415,7 @@ nv_ospackettx(void *ctx, void *id, unsigned long success)
 
 	sc->pending_txs--;
 
-	if (ifp->if_snd.ifq_head != NULL && sc->pending_txs < TX_RING_SIZE)
+	if (!ifq_is_empty(&ifp->if_snd) && sc->pending_txs < TX_RING_SIZE)
 		nv_ifstart(ifp);
 
 fail:
