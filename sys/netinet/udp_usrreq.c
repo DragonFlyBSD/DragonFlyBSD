@@ -33,7 +33,7 @@
  *
  *	@(#)udp_usrreq.c	8.6 (Berkeley) 5/23/95
  * $FreeBSD: src/sys/netinet/udp_usrreq.c,v 1.64.2.18 2003/01/24 05:11:34 sam Exp $
- * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.15 2004/03/07 18:38:38 hsu Exp $
+ * $DragonFly: src/sys/netinet/udp_usrreq.c,v 1.16 2004/03/17 02:27:59 dillon Exp $
  */
 
 #include "opt_ipsec.h"
@@ -752,6 +752,7 @@ udp_output(inp, m, dstaddr, control, td)
 			error = ENOTCONN;
 			goto release;
 		}
+		sin = NULL;
 	}
 
 	/*
@@ -784,12 +785,27 @@ udp_output(inp, m, dstaddr, control, td)
 	}
 
 	/*
-	 * Set source address.
+	 * Set source address.  If the source address is INADDR_ANY we
+	 * have to lookup the outgoing interface based on the target address
+	 * and assign the source address from that.
+	 *
+	 * If dstaddr is NULL the socket is connected and we have to use the
+	 * connected target (in_faddr) as the target address, otherwise we
+	 * just use dstaddr.
 	 */
 	if (inp->inp_laddr.s_addr == INADDR_ANY) { /* need to pick an address */
 		struct sockaddr_in *if_sin;
+		struct sockaddr_in sin_tmp;
 
-		error = in_pcbladdr(inp, dstaddr, &if_sin);
+		if (dstaddr == NULL) {
+			sin_tmp.sin_len = sizeof(sin_tmp);
+			sin_tmp.sin_family = AF_INET;
+			sin_tmp.sin_port = inp->inp_fport;
+			sin_tmp.sin_addr = inp->inp_faddr;
+			error = in_pcbladdr(inp, (void *)&sin_tmp, &if_sin);
+		} else {
+			error = in_pcbladdr(inp, dstaddr, &if_sin);
+		}
 		if (error)
 			goto release;
 		ui->ui_src = if_sin->sin_addr;
