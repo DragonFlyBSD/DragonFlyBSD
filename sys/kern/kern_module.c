@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_module.c,v 1.21 1999/11/08 06:53:30 peter Exp $
- * $DragonFly: src/sys/kern/kern_module.c,v 1.6 2004/01/17 03:24:50 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_module.c,v 1.7 2004/03/01 20:45:57 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -38,7 +38,7 @@
 #include <sys/linker.h>
 #include <sys/proc.h>
 
-#define M_MODULE	M_TEMP		/* XXX */
+MALLOC_DEFINE(M_MODULE, "module", "module data structures");
 
 typedef TAILQ_HEAD(, module) modulelist_t;
 struct module {
