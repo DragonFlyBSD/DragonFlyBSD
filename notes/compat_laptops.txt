@@ -1,0 +1,39 @@
+$DragonFly: doc/notes/compat_laptops.txt,v 1.1 2005/01/07 19:08:17 dillon Exp $
+
+			    Compatible laptops
+
+    This file contains a very incomplete list of laptops known to work 
+    reasonably well with DragonFly.
+
+Craig Dooley:
+    I have an hp pavilion zt3020us (also sold as the hp pavilion nx7000 i
+    believe and a compaq x1000).  3+ hours battery life, 15.4" wxga,
+    radeon 9200 (not really since the intel chipset doesn't support agp
+    8x, and thats the only difference between the 9200 and the 9100 i
+    believe).  A little heavier than I'd like at about 6 lbs, but
+    everything works except suspend.  Wireless is supported through a
+    third party driver, or the ndis wrapper.  Also, it has one firewire
+    port than is mini, but it does work to mount my ipod off of. 
+
+Paul Grunwald:
+    For what it is worth, my IBM r32 seems to be well supported.  I got this 
+    refurb'd with a 3 Year IBM warranty for $800 from off-leasecomputers.com.  
+    I have wireless, Xfree86, and sound working,  I have not had time to play 
+    with sleep/suspend, firewire, etc. but it all seems to be seen.  Battery 
+    life is about 2 hours.  
+
+    In general, I think the IBM laptops are well supported (and well 
+    supported in Linux).  TechBargains had a good deal on a t42 a couple of 
+    days ago.
+    "IBM Thinkpad t42 Centrino $1199 - January 5, 2005
+    IBM has the light 4.5lb Thinkpad t42 Centrino Notebook Pentium M 1.6Ghz 
+    256MB/40GB, DVD/CDRW, 14.1in screen, 802.11g, Gigabit Ethernet $1199.20 
+    shipped free, save $300. $29.99 upgrade to Office 2003 Basic.  "
+
+Matt Dillon:
+    I've had good success with my Sony VAIO TR3A, and my older 
+    Sony VAIO PCG-F560.  I haven't tried sleep mode on the TR3A and the
+    Sony BIOS does not have any modes that use the full width of its
+    screen (why Sony would not include such a mode is beyond me), but 
+    everything else appears to work pretty well.
+
