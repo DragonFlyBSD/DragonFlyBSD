@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1991, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)w.c	8.4 (Berkeley) 4/16/94
  * $FreeBSD: src/usr.bin/w/w.c,v 1.38.2.6 2002/03/12 19:51:51 phantom Exp $
- * $DragonFly: src/usr.bin/w/w.c,v 1.6 2004/10/25 22:04:18 liamfoy Exp $
+ * $DragonFly: src/usr.bin/w/w.c,v 1.7 2005/03/25 14:15:23 liamfoy Exp $
  */
 
 /*
@@ -343,7 +343,7 @@ main(int argc, char **argv)
 	}
 
 	if (!nflag) {
-		if (gethostname(domain, sizeof(domain) - 1) < 0 ||
+		if (gethostname(domain, sizeof(domain)) < 0 ||
 		    (p = strchr(domain, '.')) == NULL)
 			domain[0] = '\0';
 		else {
