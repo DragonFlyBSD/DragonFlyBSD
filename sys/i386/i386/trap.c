@@ -36,7 +36,7 @@
  *
  *	from: @(#)trap.c	7.4 (Berkeley) 5/13/91
  * $FreeBSD: src/sys/i386/i386/trap.c,v 1.147.2.11 2003/02/27 19:09:59 luoqi Exp $
- * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.24 2003/07/12 17:54:32 dillon Exp $
+ * $DragonFly: src/sys/i386/i386/Attic/trap.c,v 1.25 2003/07/20 07:14:23 dillon Exp $
  */
 
 /*
@@ -249,12 +249,13 @@ userret(struct proc *p, struct trapframe *frame, u_quad_t oticks)
 
 	/*
 	 * If a reschedule has been requested then the easiest solution
-	 * is to run our passive release function which will shift our
-	 * P_CURPROC designation to another user process.  We don't actually
-	 * switch here because that would be a waste of cycles (the newly 
-	 * scheduled user process would just switch back to us since we are
-	 * running at a kernel priority).  Instead we fall through and will
-	 * switch away when we attempt to reacquire our P_CURPROC designation.
+	 * is to run our passive release function which will possibly
+	 * shift our P_CURPROC designation to another user process.
+	 * We don't actually switch here because that would be a waste
+	 * of cycles (the newly scheduled user process would just switch
+	 * back to us since we might be running at a kernel priority).
+	 * Instead we fall through and will switch away when we attempt
+	 * to reacquire our P_CURPROC designation.
 	 */
 	if (resched_wanted()) {
 		if (curthread->td_release)

@@ -37,7 +37,7 @@
  *	@(#)ipl.s
  *
  * $FreeBSD: src/sys/i386/isa/ipl.s,v 1.32.2.3 2002/05/16 16:03:56 bde Exp $
- * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.10 2003/07/12 17:54:35 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/isa/ipl.s,v 1.11 2003/07/20 07:14:27 dillon Exp $
  */
 
 
@@ -118,14 +118,16 @@ doreti_next:
 2:
 	/*
 	 * Nothing left to do, finish up.  Interrupts are still disabled.
-	 * If our temporary cpl mask is 0 then we have processed everything
-	 * (including any pending fast ints requiring the MP lock), and
-	 * we can clear reqflags.
+	 * If our temporary cpl mask is 0 then we have processed all pending
+	 * fast and normal ints including those requiring the MP lock,
+	 * and we have processed as many of the reqflags as possible based
+	 * on whether we came from user mode or not.   So if %eax is 0 we
+	 * can clear the interrupt-related reqflags.
 	 */
 	subl	$TDPRI_CRIT,TD_PRI(%ebx)	/* interlocked with cli */
 	testl	%eax,%eax
 	jnz	5f
-	movl	$0,PCPU(reqflags)
+	andl	$~RQF_INTPEND,PCPU(reqflags)
 5:
 	decl	PCPU(intr_nesting_level)
 	MEXITCOUNT
