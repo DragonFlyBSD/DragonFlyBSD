@@ -25,11 +25,14 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sound/pci/ich.h,v 1.1.2.3 2002/08/22 16:38:21 orion Exp $
- * $DragonFly: src/sys/dev/sound/pci/ich.h,v 1.2 2003/06/17 04:28:30 dillon Exp $
+ * $DragonFly: src/sys/dev/sound/pci/ich.h,v 1.3 2003/08/24 17:55:21 drhodus Exp $
  */
 
 #define PCIR_NAMBAR 0x10
 #define PCIR_NABMBAR 0x14
+
+#define PCIR_MMBAR 0x18
+#define PCIR_MBBAR 0x1C
 
 #define PCIR_ICH_LEGACY 0x41
 #define ICH_LEGACY_ENABLE	0x01
