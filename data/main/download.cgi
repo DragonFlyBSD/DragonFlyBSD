@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/download.cgi,v 1.15 2004/01/18 19:34:35 dillon Exp $
+# $DragonFly: site/data/main/Attic/download.cgi,v 1.16 2004/02/09 17:51:07 hmp Exp $
 
 $TITLE(DragonFly - Download)
 <P>
@@ -56,7 +56,7 @@ CVS tree.
 <P>
 You can browse the CVS archive via cvsweb:
 <UL>
-    <P><A HREF="http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi">http://www.dragonflybsd.org/cgi-bin/cvsweb.cgi</A>    
+    <P><A HREF="http://www.dragonflybsd.org/cvsweb">http://www.dragonflybsd.org/cvsweb</A>    
 </UL>
 <P>
 <CENTER><H2>News Sites</H2></CENTER>
