@@ -39,7 +39,7 @@
  *	Copyright (c) 1998 David Greenman.  All rights reserved.
  *	src/sys/sys/sfbuf.h,v 1.4 2004/04/01 17:58:06 dillon
  *
- * $DragonFly: src/sys/sys/msfbuf.h,v 1.9 2005/03/04 05:20:29 dillon Exp $
+ * $DragonFly: src/sys/sys/msfbuf.h,v 1.10 2005/03/04 17:21:14 hmp Exp $
  */
 #ifndef _SYS_MSFBUF_H_
 #define _SYS_MSFBUF_H_
@@ -101,6 +101,8 @@ struct msf_buf {
 #define	MSF_ONFREEQ 	0x0001	/* currently on the freelist */
 #define	MSF_CATCH   	0x0004	/* allow interruption */
 #define	MSF_CPUPRIVATE	0x0008	/* sync mapping to current cpu only */
+
+typedef struct msf_buf	*msf_t;
 
 #if defined(_KERNEL)
 
