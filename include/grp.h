@@ -36,7 +36,7 @@
  * SUCH DAMAGE.
  *
  *	@(#)grp.h	8.2 (Berkeley) 1/21/94
- * $DragonFly: src/include/grp.h,v 1.2 2003/11/14 01:01:43 dillon Exp $
+ * $DragonFly: src/include/grp.h,v 1.3 2004/10/31 19:01:00 liamfoy Exp $
  */
 
 #ifndef _GRP_H_
@@ -49,7 +49,7 @@
 struct group {
 	char	*gr_name;		/* group name */
 	char	*gr_passwd;		/* group password */
-	int	gr_gid;			/* group id */
+	gid_t	gr_gid;			/* group id */
 	char	**gr_mem;		/* group members */
 };
 
