@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_tty.c,v 1.7.2.3 2002/02/13 00:43:12 dillon Exp $
- * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.7 2004/06/21 05:57:58 dillon Exp $
+ * $DragonFly: src/sys/netgraph/tty/ng_tty.c,v 1.8 2004/09/16 03:43:09 dillon Exp $
  * $Whistle: ng_tty.c,v 1.21 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -96,7 +96,7 @@ struct ngt_sc {
 	short	qlen;			/* Length of queue */
 	short	hotchar;		/* Hotchar, or -1 if none */
 	u_int	flags;			/* Flags */
-	struct	callout_handle chand;	/* See man timeout(9) */
+	struct	callout	ctimeout;	/* See man timeout(9) */
 };
 typedef struct ngt_sc *sc_p;
 
@@ -220,7 +220,7 @@ ngt_open(dev_t dev, struct tty *tp)
 	sc->hotchar = NG_TTY_DFL_HOTCHAR;
 	sc->qtail = &sc->qhead;
 	QUEUECHECK(sc);
-	callout_handle_init(&sc->chand);
+	callout_init(&sc->ctimeout);
 
 	/* Setup netgraph node */
 	ngt_nodeop_ok = 1;
@@ -278,7 +278,7 @@ ngt_close(struct tty *tp, int flag)
 	tp->t_line = 0;
 	if (sc != NULL) {
 		if (sc->flags & FLG_TIMEOUT) {
-			untimeout(ngt_timeout, sc, sc->chand);
+			callout_stop(&sc->ctimeout);
 			sc->flags &= ~FLG_TIMEOUT;
 		}
 		ngt_nodeop_ok = 1;
@@ -461,7 +461,7 @@ ngt_start(struct tty *tp)
 	/* This timeout is needed for operation on a pseudo-tty, because the
 	 * pty code doesn't call pppstart after it has drained the t_outq. */
 	if (sc->qhead && (sc->flags & FLG_TIMEOUT) == 0) {
-		sc->chand = timeout(ngt_timeout, sc, 1);
+		callout_reset(&sc->ctimeout, 1, ngt_timeout, sc);
 		sc->flags |= FLG_TIMEOUT;
 	}
 	splx(s);

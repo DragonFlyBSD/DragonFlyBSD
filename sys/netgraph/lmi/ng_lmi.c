@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_lmi.c,v 1.5.2.3 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.4 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/lmi/ng_lmi.c,v 1.5 2004/09/16 03:43:09 dillon Exp $
  * $Whistle: ng_lmi.c,v 1.38 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -127,7 +127,7 @@ struct nglmi_softc {
 	u_char  local_seq;	/* last sequence number we sent */
 	u_char  protoID;	/* 9 for group of 4, 8 otherwise */
 	u_long  seq_retries;	/* sent this how many time so far */
-	struct callout_handle handle;	/* see timeout(9) */
+	struct callout timeout;	/* see timeout(9) */
 	int     liv_per_full;
 	int     liv_rate;
 	int     livs;
@@ -196,7 +196,7 @@ nglmi_constructor(node_p *nodep)
 		return (ENOMEM);
 	bzero(sc, sizeof(*sc));
 
-	callout_handle_init(&sc->handle);
+	callout_init(&sc->timeout);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
 		FREE(sc, M_NETGRAPH);
 		return (error);
@@ -278,7 +278,8 @@ LMI_ticker(void *arg)
 
 	if (sc->flags & SCF_AUTO) {
 		ngauto_state_machine(sc);
-		sc->handle = timeout(LMI_ticker, sc, NG_LMI_POLL_RATE * hz);
+		callout_reset(&sc->timeout, NG_LMI_POLL_RATE * hz,
+				LMI_ticker, sc);
 	} else {
 		if (sc->livs++ >= sc->liv_per_full) {
 			nglmi_inquire(sc, 1);
@@ -286,7 +287,7 @@ LMI_ticker(void *arg)
 		} else {
 			nglmi_inquire(sc, 0);
 		}
-		sc->handle = timeout(LMI_ticker, sc, sc->liv_rate * hz);
+		callout_reset(&sc->timeout, sc->liv_rate * hz, LMI_ticker, sc);
 	}
 	splx(s);
 }
@@ -316,7 +317,7 @@ nglmi_startup(sc_p sc)
 	sc->seq_retries = 0;
 	sc->livs = sc->liv_per_full - 1;
 	/* start off the ticker in 1 sec */
-	sc->handle = timeout(LMI_ticker, sc, hz);
+	callout_reset(&sc->timeout, hz, LMI_ticker, sc);
 }
 
 #define META_PAD 16
@@ -1084,7 +1085,7 @@ nglmi_disconnect(hook_p hook)
 
 	/* Stop timer if it's currently active */
 	if (sc->flags & SCF_CONNECTED)
-		untimeout(LMI_ticker, sc, sc->handle);
+		callout_stop(&sc->timeout);
 
 	/* Self-destruct */
 	ng_rmnode(hook->node);

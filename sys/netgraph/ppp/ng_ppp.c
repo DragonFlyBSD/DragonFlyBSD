@@ -37,7 +37,7 @@
  * Author: Archie Cobbs <archie@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_ppp.c,v 1.15.2.10 2003/03/10 17:55:48 archie Exp $
- * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.6 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/ppp/ng_ppp.c,v 1.7 2004/09/16 03:43:09 dillon Exp $
  * $Whistle: ng_ppp.c,v 1.24 1999/11/01 09:24:52 julian Exp $
  */
 
@@ -202,7 +202,7 @@ struct ng_ppp_private {
 	CIRCLEQ_HEAD(ng_ppp_fraglist, ng_ppp_frag)	/* fragment queue */
 				frags;
 	int			qlen;			/* fraq queue length */
-	struct callout_handle	fragTimer;		/* fraq queue check */
+	struct callout		fragTimer;		/* fraq queue check */
 };
 typedef struct ng_ppp_private *priv_p;
 
@@ -400,7 +400,7 @@ ng_ppp_constructor(node_p *nodep)
 	CIRCLEQ_INIT(&priv->frags);
 	for (i = 0; i < NG_PPP_MAX_LINKS; i++)
 		priv->links[i].seq = MP_NOSEQ;
-	callout_handle_init(&priv->fragTimer);
+	callout_init(&priv->fragTimer);
 
 	/* Done */
 	return (0);
@@ -2022,8 +2022,8 @@ ng_ppp_start_frag_timer(node_p node)
 	const priv_p priv = node->private;
 
 	if (!priv->timerActive) {
-		priv->fragTimer = timeout(ng_ppp_frag_timeout,
-		    node, MP_FRAGTIMER_INTERVAL);
+		callout_reset(&priv->fragTimer, MP_FRAGTIMER_INTERVAL,
+				ng_ppp_frag_timeout, node);
 		priv->timerActive = 1;
 		node->refs++;
 	}
@@ -2038,7 +2038,7 @@ ng_ppp_stop_frag_timer(node_p node)
 	const priv_p priv = node->private;
 
 	if (priv->timerActive) {
-		untimeout(ng_ppp_frag_timeout, node, priv->fragTimer);
+		callout_stop(&priv->fragTimer);
 		priv->timerActive = 0;
 		KASSERT(node->refs > 1,
 		    ("%s: refs=%d", __FUNCTION__, node->refs));

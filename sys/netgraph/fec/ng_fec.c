@@ -33,7 +33,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/netgraph/ng_fec.c,v 1.1.2.1 2002/11/01 21:39:31 julian Exp $
- * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.8 2004/07/23 07:16:31 joerg Exp $
+ * $DragonFly: src/sys/netgraph/fec/ng_fec.c,v 1.9 2004/09/16 03:43:09 dillon Exp $
  */
 /*
  * Copyright (c) 1996-1999 Whistle Communications, Inc.
@@ -163,7 +163,7 @@ struct ng_fec_private {
 	int	unit;			/* Interface unit number */
 	node_p	node;			/* Our netgraph node */
 	struct ng_fec_bundle fec_bundle;/* Aggregate bundle */
-	struct callout_handle fec_ch;	/* callout handle for ticker */
+	struct callout fec_timeout;	/* callout for ticker */
 	int	(*real_if_output)(struct ifnet *, struct mbuf *,
 				  struct sockaddr *, struct rtentry *);
 };
@@ -518,9 +518,7 @@ ng_fec_init(void *arg)
 		p->fec_ifstat = -1;
 	}
 
-	priv->fec_ch = timeout(ng_fec_tick, priv, hz);
-
-	return;
+	callout_reset(&priv->fec_timeout, hz, ng_fec_tick, priv);
 }
 
 static void
@@ -540,9 +538,7 @@ ng_fec_stop(struct ifnet *ifp)
                 (*bifp->if_ioctl)(bifp, SIOCSIFFLAGS, NULL, NULL);
 	}
 
-	untimeout(ng_fec_tick, priv, priv->fec_ch);
-
-	return;
+	callout_stop(&priv->fec_timeout);
 }
 
 static void
@@ -593,9 +589,7 @@ ng_fec_tick(void *arg)
 
 	ifp = &priv->arpcom.ac_if;
 	if (ifp->if_flags & IFF_RUNNING)
-		priv->fec_ch = timeout(ng_fec_tick, priv, hz);
-
-	return;
+		callout_reset(&priv->fec_timeout, hz, ng_fec_tick, priv);
 }
 
 static int
@@ -621,8 +615,6 @@ static void ng_fec_ifmedia_sts(struct ifnet *ifp,
 			break;
 		}
 	}
-
-	return;
 }
 
 /*
@@ -767,8 +759,6 @@ ng_fec_input(struct ifnet *ifp, struct mbuf **m0,
 		mh.mh_len = ETHER_HDR_LEN;
 		bpf_mtap(bifp, (struct mbuf *)&mh);
 	}
-
-	return;
 }
 
 /*
@@ -996,7 +986,6 @@ ng_fec_start(struct ifnet *ifp)
 	ifp->if_opackets++;
 
 	priv->if_error = ether_output_frame(oifp, m0);
-	return;
 }
 
 #ifdef DEBUG
@@ -1113,7 +1102,7 @@ ng_fec_constructor(node_p *nodep)
 	ether_ifattach(ifp, priv->arpcom.ac_enaddr);
 	priv->real_if_output = ifp->if_output;
 	ifp->if_output = ng_fec_output;
-	callout_handle_init(&priv->fec_ch);
+	callout_init(&priv->fec_timeout);
 
 	TAILQ_INIT(&b->ng_fec_ports);
 	b->fec_ifcnt = 0;

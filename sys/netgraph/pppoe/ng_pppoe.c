@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_pppoe.c,v 1.23.2.17 2002/07/02 22:17:18 archie Exp $
- * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/pppoe/ng_pppoe.c,v 1.6 2004/09/16 03:43:09 dillon Exp $
  * $Whistle: ng_pppoe.c,v 1.10 1999/11/01 09:24:52 julian Exp $
  */
 #if 0
@@ -122,7 +122,7 @@ enum state {
 struct sess_neg {
 	struct mbuf 		*m; /* holds cluster with last sent packet */
 	union	packet		*pkt; /* points within the above cluster */
-	struct callout_handle	timeout_handle;   /* see timeout(9) */
+	struct callout		timeout_ch;
 	u_int			timeout; /* 0,1,2,4,8,16 etc. seconds */
 	u_int			numtags;
 	const struct pppoe_tag	*tags[NUMTAGS];
@@ -675,7 +675,7 @@ AAA
 				LEAVE(ENOBUFS);
 			}
 			sp->neg = neg;
-			callout_handle_init( &neg->timeout_handle);
+			callout_init(&neg->timeout_ch);
 			neg->m->m_len = sizeof(struct pppoe_full_hdr);
 			neg->pkt = mtod(neg->m, union packet*);
 			neg->pkt->pkt_header.eh = eh_prototype;
@@ -1026,8 +1026,7 @@ AAA
 					LEAVE(ENETUNREACH);
 				}
 				neg = sp->neg;
-				untimeout(pppoe_ticker, sendhook,
-				    neg->timeout_handle);
+				callout_stop(&neg->timeout_ch);
 
 				/*
 				 * This is the first time we hear
@@ -1093,8 +1092,7 @@ AAA
 					break;
 				}
 				neg = sp->neg;
-				untimeout(pppoe_ticker, sendhook,
-				    neg->timeout_handle);
+				callout_stop(&neg->timeout_ch);
 				neg->pkt->pkt_header.ph.code = PADS_CODE;
 				if (sp->Session_ID == 0)
 					neg->pkt->pkt_header.ph.sid =
@@ -1164,8 +1162,7 @@ AAA
 					LEAVE(ENETUNREACH);
 				}
 				neg = sp->neg;
-				untimeout(pppoe_ticker, sendhook,
-				    neg->timeout_handle);
+				callout_stop(&neg->timeout_ch);
 				neg->pkt->pkt_header.ph.sid = wh->ph.sid;
 				sp->Session_ID = ntohs(wh->ph.sid);
 				send_sessionid(sp);
@@ -1244,8 +1241,7 @@ AAA
 					 * whether there may be a timeout.
 					 */
 					m_freem(sp->neg->m);
-					untimeout(pppoe_ticker, sendhook,
-				    		sp->neg->timeout_handle);
+					callout_stop(&sp->neg->timeout_ch);
 					FREE(sp->neg, M_NETGRAPH);
 					sp->neg = NULL;
 				} else {
@@ -1323,8 +1319,7 @@ AAA
 			if ( code != PADI_CODE) {
 				LEAVE(EINVAL);
 			};
-			untimeout(pppoe_ticker, hook,
-				    neg->timeout_handle);
+			callout_stop(&neg->timeout_ch);
 
 			/*
 			 * This is the first time we hear
@@ -1497,7 +1492,7 @@ AAA
 		 * we may have a timeout pending.. get rid of it.
 		 */
 		if (sp->neg) {
-			untimeout(pppoe_ticker, hook, sp->neg->timeout_handle);
+			callout_stop(&sp->neg->timeout_ch);
 			if (sp->neg->m)
 				m_freem(sp->neg->m);
 			FREE(sp->neg, M_NETGRAPH);
@@ -1541,8 +1536,8 @@ AAA
 		/* timeouts on these produce resends */
 		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
-		neg->timeout_handle = timeout(pppoe_ticker,
-					hook, neg->timeout * hz);
+		callout_reset(&neg->timeout_ch, neg->timeout * hz,
+				pppoe_ticker, hook);
 		if ((neg->timeout <<= 1) > PPPOE_TIMEOUT_LIMIT) {
 			if (sp->state == PPPOE_SREQ) {
 				/* revert to SINIT mode */
@@ -1592,8 +1587,8 @@ AAA
 
 	case	PPPOE_PRIMED:
 		/* No packet to send, but set up the timeout */
-		neg->timeout_handle = timeout(pppoe_ticker,
-					hook, PPPOE_OFFER_TIMEOUT * hz);
+		callout_reset(&neg->timeout_ch, PPPOE_OFFER_TIMEOUT * hz,
+				pppoe_ticker, hook);
 		break;
 
 	case	PPPOE_SOFFER:
@@ -1603,16 +1598,16 @@ AAA
 		 */
 		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
-		neg->timeout_handle = timeout(pppoe_ticker,
-					hook, PPPOE_OFFER_TIMEOUT * hz);
+		callout_reset(&neg->timeout_ch, PPPOE_OFFER_TIMEOUT * hz,
+				pppoe_ticker, hook);
 		break;
 
 	case	PPPOE_SINIT:
 	case	PPPOE_SREQ:
 		m0 = m_copypacket(sp->neg->m, MB_DONTWAIT);
 		NG_SEND_DATA( error, privp->ethernet_hook, m0, dummy);
-		neg->timeout_handle = timeout(pppoe_ticker, hook,
-					(hz * PPPOE_INITIAL_TIMEOUT));
+		callout_reset(&neg->timeout_ch, PPPOE_INITIAL_TIMEOUT * hz,
+				pppoe_ticker, hook);
 		neg->timeout = PPPOE_INITIAL_TIMEOUT * 2;
 		break;
 

@@ -37,7 +37,7 @@
  * Author: Julian Elischer <julian@freebsd.org>
  *
  * $FreeBSD: src/sys/netgraph/ng_cisco.c,v 1.4.2.6 2002/07/02 23:44:02 archie Exp $
- * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.5 2004/06/02 14:43:00 eirikn Exp $
+ * $DragonFly: src/sys/netgraph/cisco/ng_cisco.c,v 1.6 2004/09/16 03:43:07 dillon Exp $
  * $Whistle: ng_cisco.c,v 1.25 1999/11/01 09:24:51 julian Exp $
  */
 
@@ -104,7 +104,7 @@ struct cisco_priv {
 	u_long  seqRetries;	/* how many times we've been here throwing out
 				 * the same sequence number without ack */
 	node_p  node;
-	struct callout_handle handle;
+	struct callout timeout;
 	struct protoent downstream;
 	struct protoent inet;		/* IP information */
 	struct in_addr localip;
@@ -202,7 +202,7 @@ cisco_constructor(node_p *nodep)
 		return (ENOMEM);
 	bzero(sc, sizeof(struct cisco_priv));
 
-	callout_handle_init(&sc->handle);
+	callout_init(&sc->timeout);
 	if ((error = ng_make_node_common(&typestruct, nodep))) {
 		FREE(sc, M_NETGRAPH);
 		return (error);
@@ -232,7 +232,8 @@ cisco_newhook(node_p node, hook_p hook, const char *name)
 		hook->private = &sc->downstream;
 
 		/* Start keepalives */
-		sc->handle = timeout(cisco_keepalive, sc, hz * KEEPALIVE_SECS);
+		callout_reset(&sc->timeout, hz * KEEPALIVE_SECS, 
+				cisco_keepalive, sc);
 	} else if (strcmp(name, NG_CISCO_HOOK_INET) == 0) {
 		sc->inet.hook = hook;
 		hook->private = &sc->inet;
@@ -437,7 +438,7 @@ cisco_disconnect(hook_p hook)
 		pep->hook = NULL;
 		if (pep->af == 0xffff) {
 			/* If it is the downstream hook, stop the timers */
-			untimeout(cisco_keepalive, sc, sc->handle);
+			callout_stop(&sc->timeout);
 		}
 	}
 
@@ -591,7 +592,8 @@ cisco_keepalive(void *arg)
 	cisco_send(sc, CISCO_KEEPALIVE_REQ, sc->local_seq, sc->remote_seq);
 	sc->seqRetries++;
 	splx(s);
-	sc->handle = timeout(cisco_keepalive, sc, hz * KEEPALIVE_SECS);
+	callout_reset(&sc->timeout, hz * KEEPALIVE_SECS, 
+			cisco_keepalive, sc);
 }
 
 /*
