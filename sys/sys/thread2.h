@@ -8,7 +8,7 @@
  *	on a different cpu will not be immediately scheduled by a yield() on
  *	this cpu.
  *
- * $DragonFly: src/sys/sys/thread2.h,v 1.15 2004/05/04 17:13:04 dillon Exp $
+ * $DragonFly: src/sys/sys/thread2.h,v 1.16 2004/07/29 08:55:48 dillon Exp $
  */
 
 #ifndef _SYS_THREAD2_H_
@@ -141,6 +141,18 @@ static __inline int
 lwkt_runnable(void)
 {
     return (mycpu->gd_runqmask != 0);
+}
+
+static __inline int
+lwkt_getpri(thread_t td)
+{
+    return(td->td_pri & TDPRI_MASK);
+}
+
+static __inline int
+lwkt_getpri_self(void)
+{
+    return(lwkt_getpri(curthread));
 }
 
 #endif
