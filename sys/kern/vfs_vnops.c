@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_vnops.c	8.2 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/vfs_vnops.c,v 1.87.2.13 2002/12/29 18:19:53 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.25 2004/11/12 00:09:24 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_vnops.c,v 1.26 2004/11/22 00:53:54 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -273,8 +273,10 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 		 * code from trying to close and release the vnode, since
 		 * the open failed we do not want to call close.
 		 */
-		fp->f_data = NULL;
-		fp->f_ops = &badfileops;
+		if (fp) {
+			fp->f_data = NULL;
+			fp->f_ops = &badfileops;
+		}
 		goto bad;
 	}
 	if (fmode & FWRITE)
@@ -287,8 +289,10 @@ vn_open(struct nlookupdata *nd, struct file *fp, int fmode, int cmode)
 	 */
 	if (vn_canvmio(vp) == TRUE) {
 		if ((error = vfs_object_create(vp, td)) != 0) {
-			fp->f_data = NULL;
-			fp->f_ops = &badfileops;
+			if (fp) {
+				fp->f_data = NULL;
+				fp->f_ops = &badfileops;
+			}
 			VOP_CLOSE(vp, fmode, td);
 			goto bad;
 		}
