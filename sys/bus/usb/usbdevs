@@ -35,7 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/usb/usbdevs,v 1.203 2004/09/20 04:56:13 sanpei Exp $
- * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.9 2004/09/26 17:58:02 asmodai Exp $
+ * $DragonFly: src/sys/bus/usb/Attic/usbdevs,v 1.10 2004/09/26 18:18:13 asmodai Exp $
  */
 
 
@@ -62,18 +62,35 @@
  * make the device recognised by the appropriate device driver.
  */
 
+vendor LTS		0x0386	LTS
 vendor AOX		0x03e8	AOX
+vendor THESYS		0x03e9	Thesys Microelectronics
+vendor DATABROADCAST	0x03ea	Data Broadcasting Corp.
 vendor ATMEL		0x03eb	Atmel
+vendor IWATSU		0x03ec	Iwatsu America, Inc.
+vendor MITEL		0x03ee	Mitel Corp.
 vendor MITSUMI		0x03ee	Mitsumi
 vendor HP		0x03f0	Hewlett Packard
+vendor GENOA		0x03f1	Genoa Technology
 vendor OAK		0x03f2	Oak Technology
 vendor ADAPTEC		0x03f3	Adaptec
 vendor DIEBOLD		0x03f4	Diebold
+vendor SIEMENSELECTRO	0x03f5	Siemens Electromechanical
+vendor EPSONIMAGING	0x03f8	Epson Imaging Technology Center
 vendor KEYTRONIC	0x03f9	KeyTronic
+vendor OPTI		0x03fb	OPTi, Inc.
 vendor ELITEGROUP	0x03fc	Elitegroup Computer Systems
+vendor XILINX		0x03fd	Xilinx, Inc.
+vendor FARALLON		0x03fe	Farallon Communications
 vendor NATIONAL		0x0400	National Semiconductor
+vendor NATIONALREG	0x0401	National Registry, Inc.
 vendor ACERLABS		0x0402	Acer Labs
 vendor FTDI		0x0403	Future Technology Devices
+vendor NCR		0x0404	NCR Corp.
+vendor SYNOPSYS		0x0405	Synopsys, Inc.
+vendor FUJITSUICL	0x0406	Fujitsu-ICL Computers
+vendor FUJITSU2		0x0407	Fujitsu Personal Systems, Inc.
+vendor QUANTA		0x0408	Quanta Computer, Inc.
 vendor NEC		0x0409	NEC
 vendor KODAK		0x040a	Eastman Kodak
 vendor WELTREND		0x040b	Weltrend Semiconductor
@@ -827,11 +844,15 @@ product HP 880C			0x0104	DeskJet 880C
 product HP 4200C		0x0105	ScanJet 4200C
 product HP CDWRITERPLUS		0x0107	CD-Writer Plus
 product HP KBDHUB		0x010c	Multimedia Keyboard Hub
+product HP G55XI		0x0111	OfficeJet G55xi
+product HP HN210W		0x011c	HN210W 802.11b WLAN
+product HP 49GPLUS		0x0121	49g+ graphing calculator
 product HP 6200C		0x0201	ScanJet 6200C
 product HP S20b			0x0202	PhotoSmart S20
 product HP 815C			0x0204	DeskJet 815C
 product HP 3300C		0x0205	ScanJet 3300C
 product HP CDW8200		0x0207	CD-Writer Plus 8200e
+product HP MMKEYB		0x020c	Multimedia keyboard
 product HP 1220C		0x0212	DeskJet 1220C
 product HP 810C			0x0304	DeskJet 810C/812C
 product HP 4300C		0x0305	Scanjet 4300C
