@@ -37,7 +37,7 @@
  *
  *	@(#)kern_exit.c	8.7 (Berkeley) 2/12/94
  * $FreeBSD: src/sys/kern/kern_exit.c,v 1.92.2.11 2003/01/13 22:51:16 dillon Exp $
- * $DragonFly: src/sys/kern/kern_exit.c,v 1.37 2004/06/23 16:45:23 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_exit.c,v 1.38 2004/09/17 01:29:45 joerg Exp $
  */
 
 #include "opt_compat.h"
@@ -173,7 +173,7 @@ exit1(int rv)
 	p->p_flag |= P_WEXIT;
 	SIGEMPTYSET(p->p_siglist);
 	if (timevalisset(&p->p_realtimer.it_value))
-		untimeout(realitexpire, (caddr_t)p, p->p_ithandle);
+		callout_stop(&p->p_ithandle);
 
 	/*
 	 * Reset any sigio structures pointing to us as a result of

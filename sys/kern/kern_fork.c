@@ -37,7 +37,7 @@
  *
  *	@(#)kern_fork.c	8.6 (Berkeley) 4/8/94
  * $FreeBSD: src/sys/kern/kern_fork.c,v 1.72.2.14 2003/06/26 04:15:10 silby Exp $
- * $DragonFly: src/sys/kern/kern_fork.c,v 1.28 2004/07/24 20:21:35 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_fork.c,v 1.29 2004/09/17 01:29:45 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -490,6 +490,7 @@ again:
 	LIST_INSERT_HEAD(&pptr->p_children, p2, p_sibling);
 	LIST_INIT(&p2->p_children);
 	varsymset_init(&p2->p_varsymset, &p1->p_varsymset);
+	callout_init(&p2->p_ithandle);
 
 #ifdef KTRACE
 	/*

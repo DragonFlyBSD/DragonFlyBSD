@@ -32,7 +32,7 @@
  *
  *	@(#)kern_time.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/kern/kern_time.c,v 1.68.2.1 2002/10/01 08:00:41 bde Exp $
- * $DragonFly: src/sys/kern/kern_time.c,v 1.16 2004/06/04 20:35:36 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_time.c,v 1.17 2004/09/17 01:29:45 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -565,10 +565,10 @@ setitimer(struct setitimer_args *uap)
 	crit_enter();
 	if (uap->which == ITIMER_REAL) {
 		if (timevalisset(&p->p_realtimer.it_value))
-			untimeout(realitexpire, (caddr_t)p, p->p_ithandle);
+			callout_stop(&p->p_ithandle);
 		if (timevalisset(&aitv.it_value)) 
-			p->p_ithandle = timeout(realitexpire, (caddr_t)p,
-						tvtohz_high(&aitv.it_value));
+			callout_reset(&p->p_ithandle,
+			    tvtohz_high(&aitv.it_value), realitexpire, p);
 		getmicrouptime(&ctv);
 		timevaladd(&aitv.it_value, &ctv);
 		p->p_realtimer = aitv;
@@ -612,8 +612,8 @@ realitexpire(arg)
 		if (timevalcmp(&p->p_realtimer.it_value, &ctv, >)) {
 			ntv = p->p_realtimer.it_value;
 			timevalsub(&ntv, &ctv);
-			p->p_ithandle = timeout(realitexpire, (caddr_t)p,
-			    tvtohz_low(&ntv));
+			callout_reset(&p->p_ithandle, tvtohz_low(&ntv),
+				      realitexpire, p);
 			crit_exit();
 			return;
 		}

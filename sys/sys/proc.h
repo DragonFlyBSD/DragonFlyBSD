@@ -37,7 +37,7 @@
  *
  *	@(#)proc.h	8.15 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/sys/proc.h,v 1.99.2.9 2003/06/06 20:21:32 tegge Exp $
- * $DragonFly: src/sys/sys/proc.h,v 1.55 2004/09/13 16:22:41 dillon Exp $
+ * $DragonFly: src/sys/sys/proc.h,v 1.56 2004/09/17 01:29:45 joerg Exp $
  */
 
 #ifndef _SYS_PROC_H_
@@ -160,7 +160,7 @@ struct	proc {
 	struct	proc *p_pptr;	 	/* Pointer to parent process. */
 	LIST_ENTRY(proc) p_sibling;	/* List of sibling processes. */
 	LIST_HEAD(, proc) p_children;	/* Pointer to list of children. */
-	struct callout_handle p_ithandle; /* for scheduling p_realtimer */
+	struct callout p_ithandle; /* for scheduling p_realtimer */
 	struct	varsymset p_varsymset;
 
 /* The following fields are all zeroed upon creation in fork. */
