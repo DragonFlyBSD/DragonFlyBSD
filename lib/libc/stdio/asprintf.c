@@ -27,7 +27,7 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/asprintf.c,v 1.6 1999/08/28 00:00:55 peter Exp $
- * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.3 2004/06/07 16:53:40 hmp Exp $
+ * $DragonFly: src/lib/libc/stdio/asprintf.c,v 1.4 2004/06/07 17:59:42 hmp Exp $
  */
 
 #include <stdio.h>
@@ -42,7 +42,6 @@ asprintf(char **str, char const *fmt, ...)
 	va_list ap;
 	FILE f;
 
-	va_start(ap, fmt);
 	f._file = -1;
 	f._flags = __SWR | __SSTR | __SALC;
 	f._bf._base = f._p = (unsigned char *)malloc(128);
@@ -52,14 +51,16 @@ asprintf(char **str, char const *fmt, ...)
 		return (-1);
 	}
 	f._bf._size = f._w = 127;		/* Leave room for the NUL */
+	va_start(ap, fmt);
 	ret = vfprintf(&f, fmt, ap);
-	*f._p = '\0';
 	va_end(ap);
-	f._bf._base = reallocf(f._bf._base, f._bf._size + 1);
-	if (f._bf._base == NULL) {
+	if (ret < 0) {
+		free(f._bf._base);
+		*str = NULL;
 		errno = ENOMEM;
-		ret = -1;
+		return (-1);
 	}
+	*f._p = '\0';
 	*str = (char *)f._bf._base;
 	return (ret);
 }
