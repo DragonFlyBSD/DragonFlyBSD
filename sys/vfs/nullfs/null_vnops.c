@@ -38,7 +38,7 @@
  * Ancestors:
  *	@(#)lofs_vnops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vnops.c,v 1.38.2.6 2002/07/31 00:32:28 semenu Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.9 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vnops.c,v 1.10 2004/04/21 16:55:09 cpressey Exp $
  *	...and...
  *	@(#)null_vnodeops.c 1.20 92/07/07 UCLA Ficus project
  *
@@ -230,13 +230,11 @@ static int	null_unlock(struct vop_unlock_args *ap);
  *   to determine what implementation of the op should be invoked
  * - all mapped vnodes are of our vnode-type (NEEDSWORK:
  *   problems on rmdir'ing mount points and renaming?)
+ *
+ * null_bypass(struct vnodeop_desc *a_desc, ...)
  */
 int
-null_bypass(ap)
-	struct vop_generic_args /* {
-		struct vnodeop_desc *a_desc;
-		<other random data follows, presumably>
-	} */ *ap;
+null_bypass(struct vop_generic_args *ap)
 {
 	register struct vnode **this_vp_p;
 	int error;
@@ -352,14 +350,12 @@ null_bypass(ap)
  * We have to carry on the locking protocol on the null layer vnodes
  * as we progress through the tree. We also have to enforce read-only
  * if this layer is mounted read-only.
+ *
+ * null_lookup(struct vnode *a_dvp, struct vnode **a_vpp,
+ *		struct componentname *a_cnp)
  */
 static int
-null_lookup(ap)
-	struct vop_lookup_args /* {
-		struct vnode * a_dvp;
-		struct vnode ** a_vpp;
-		struct componentname * a_cnp;
-	} */ *ap;
+null_lookup(struct vop_lookup_args *ap)
 {
 	struct componentname *cnp = ap->a_cnp;
 	struct vnode *dvp = ap->a_dvp;
@@ -405,16 +401,13 @@ null_lookup(ap)
 
 /*
  * Setattr call. Disallow write attempts if the layer is mounted read-only.
+ *
+ * null_setattr(struct vnodeop_desc *a_desc, struct vnode *a_vp,
+ *		struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 int
-null_setattr(ap)
-	struct vop_setattr_args /* {
-		struct vnodeop_desc *a_desc;
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+null_setattr(struct vop_setattr_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vattr *vap = ap->a_vap;
@@ -452,15 +445,12 @@ null_setattr(ap)
 
 /*
  *  We handle getattr only to change the fsid.
+ *
+ * null_getattr(struct vnode *a_vp, struct vattr *a_vap, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-null_getattr(ap)
-	struct vop_getattr_args /* {
-		struct vnode *a_vp;
-		struct vattr *a_vap;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+null_getattr(struct vop_getattr_args *ap)
 {
 	int error;
 
@@ -473,15 +463,12 @@ null_getattr(ap)
 
 /*
  * Handle to disallow write access if mounted read-only.
+ *
+ * null_access(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *		struct thread *a_td)
  */
 static int
-null_access(ap)
-	struct vop_access_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+null_access(struct vop_access_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	mode_t mode = ap->a_mode;
@@ -508,15 +495,12 @@ null_access(ap)
 
 /*
  * We must handle open to be able to catch MNT_NODEV and friends.
+ *
+ * null_open(struct vnode *a_vp, int a_mode, struct ucred *a_cred,
+ *	     struct thread *a_td)
  */
 static int
-null_open(ap)
-	struct vop_open_args /* {
-		struct vnode *a_vp;
-		int  a_mode;
-		struct ucred *a_cred;
-		struct thread *a_td;
-	} */ *ap;
+null_open(struct vop_open_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *lvp = NULLVPTOLOWERVP(ap->a_vp);
@@ -532,17 +516,13 @@ null_open(ap)
  * We handle this to eliminate null FS to lower FS
  * file moving. Don't know why we don't allow this,
  * possibly we should.
+ *
+ * null_rename(struct vnode *a_fdvp, struct vnode *a_fvp,
+ *		struct componentname *a_fcnp, struct vnode *a_tdvp,
+ *		struct vnode *a_tvp, struct componentname *a_tcnp)
  */
 static int
-null_rename(ap)
-	struct vop_rename_args /* {
-		struct vnode *a_fdvp;
-		struct vnode *a_fvp;
-		struct componentname *a_fcnp;
-		struct vnode *a_tdvp;
-		struct vnode *a_tvp;
-		struct componentname *a_tcnp;
-	} */ *ap;
+null_rename(struct vop_rename_args *ap)
 {
 	struct vnode *tdvp = ap->a_tdvp;
 	struct vnode *fvp = ap->a_fvp;
@@ -570,15 +550,12 @@ null_rename(ap)
  * We need to process our own vnode lock and then clear the
  * interlock flag as it applies only to our vnode, not the
  * vnodes below us on the stack.
+ *
+ * null_lock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
+ *	     struct thread *a_td)
  */
 static int
-null_lock(ap)
-	struct vop_lock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+null_lock(struct vop_lock_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int flags = ap->a_flags;
@@ -647,15 +624,12 @@ null_lock(ap)
  * We need to process our own vnode unlock and then clear the
  * interlock flag as it applies only to our vnode, not the
  * vnodes below us on the stack.
+ *
+ * null_unlock(struct vnode *a_vp, lwkt_tokref_t a_vlock, int a_flags,
+ *		struct thread *a_td)
  */
 static int
-null_unlock(ap)
-	struct vop_unlock_args /* {
-		struct vnode *a_vp;
-		lwkt_tokref_t a_vlock;
-		int a_flags;
-		struct thread *a_td;
-	} */ *ap;
+null_unlock(struct vop_unlock_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	int flags = ap->a_flags;
@@ -685,12 +659,11 @@ null_unlock(ap)
 	return (lockmgr(&np->null_lock, flags | LK_RELEASE, ap->a_vlock, ap->a_td));
 }
 
+/*
+ * null_islocked(struct vnode *a_vp, struct thread *a_td)
+ */
 static int
-null_islocked(ap)
-	struct vop_islocked_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+null_islocked(struct vop_islocked_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -704,13 +677,11 @@ null_islocked(ap)
  * There is no way to tell that someone issued remove/rmdir operation
  * on the underlying filesystem. For now we just have to release lowevrp
  * as soon as possible.
+ *
+ * null_inactive(struct vnode *a_vp, struct thread *a_td)
  */
 static int
-null_inactive(ap)
-	struct vop_inactive_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+null_inactive(struct vop_inactive_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct null_node *xp = VTONULL(vp);
@@ -740,13 +711,11 @@ null_inactive(ap)
 /*
  * We can free memory in null_inactive, but we do this
  * here. (Possible to guard vp->v_data to point somewhere)
+ *
+ * null_reclaim(struct vnode *a_vp, struct thread *a_td)
  */
 static int
-null_reclaim(ap)
-	struct vop_reclaim_args /* {
-		struct vnode *a_vp;
-		struct thread *a_td;
-	} */ *ap;
+null_reclaim(struct vop_reclaim_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	void *vdata = vp->v_data;
@@ -757,11 +726,11 @@ null_reclaim(ap)
 	return (0);
 }
 
+/*
+ * null_print(struct vnode *a_vp)
+ */
 static int
-null_print(ap)
-	struct vop_print_args /* {
-		struct vnode *a_vp;
-	} */ *ap;
+null_print(struct vop_print_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -779,14 +748,11 @@ null_print(ap)
 
 /*
  * Let an underlying filesystem do the work
+ *
+ * null_createvobject(struct vnode *vp, struct ucred *cred, struct proc *p)
  */
 static int
-null_createvobject(ap)
-	struct vop_createvobject_args /* {
-		struct vnode *vp;
-		struct ucred *cred;
-		struct proc *p;
-	} */ *ap;
+null_createvobject(struct vop_createvobject_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 	struct vnode *lowervp = VTONULL(vp) ? NULLVPTOLOWERVP(vp) : NULL;
@@ -803,12 +769,11 @@ null_createvobject(ap)
 
 /*
  * We have nothing to destroy and this operation shouldn't be bypassed.
+ *
+ * null_destroyvobject(struct vnode *vp)
  */
 static int
-null_destroyvobject(ap)
-	struct vop_destroyvobject_args /* {
-		struct vnode *vp;
-	} */ *ap;
+null_destroyvobject(struct vop_destroyvobject_args *ap)
 {
 	struct vnode *vp = ap->a_vp;
 
@@ -816,12 +781,11 @@ null_destroyvobject(ap)
 	return (0);
 }
 
+/*
+ * null_getvobject(struct vnode *vp, struct vm_object **objpp)
+ */
 static int
-null_getvobject(ap)
-	struct vop_getvobject_args /* {
-		struct vnode *vp;
-		struct vm_object **objpp;
-	} */ *ap;
+null_getvobject(struct vop_getvobject_args *ap)
 {
 	struct vnode *lvp = NULLVPTOLOWERVP(ap->a_vp);
 

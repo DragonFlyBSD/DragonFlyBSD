@@ -37,7 +37,7 @@
  *
  * @(#)lofs_vfsops.c	1.2 (Berkeley) 6/18/92
  * $FreeBSD: src/sys/miscfs/nullfs/null_vfsops.c,v 1.35.2.3 2001/07/26 20:37:11 iedowse Exp $
- * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.7 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/null_vfsops.c,v 1.8 2004/04/21 16:55:09 cpressey Exp $
  */
 
 /*
@@ -80,12 +80,8 @@ static int	nullfs_extattrctl(struct mount *mp, int cmd,
  * Mount null layer
  */
 static int
-nullfs_mount(mp, path, data, ndp, td)
-	struct mount *mp;
-	char *path;
-	caddr_t data;
-	struct nameidata *ndp;
-	struct thread *td;
+nullfs_mount(struct mount *mp, char *path, caddr_t data, struct nameidata *ndp,
+	     struct thread *td)
 {
 	int error = 0;
 	struct null_args args;
@@ -273,12 +269,8 @@ nullfs_root(struct mount *mp, struct vnode **vpp)
 }
 
 static int
-nullfs_quotactl(mp, cmd, uid, arg, td)
-	struct mount *mp;
-	int cmd;
-	uid_t uid;
-	caddr_t arg;
-	struct thread *td;
+nullfs_quotactl(struct mount *mp, int cmd, uid_t uid, caddr_t arg,
+		struct thread *td)
 {
 	return VFS_QUOTACTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, uid, arg, td);
 }
@@ -318,10 +310,7 @@ nullfs_statfs(struct mount *mp, struct statfs *sbp, struct thread *td)
 }
 
 static int
-nullfs_sync(mp, waitfor, td)
-	struct mount *mp;
-	int waitfor;
-	struct thread *td;
+nullfs_sync(struct mount *mp, int waitfor, struct thread *td)
 {
 	/*
 	 * XXX - Assumes no data cached at null layer.
@@ -330,31 +319,22 @@ nullfs_sync(mp, waitfor, td)
 }
 
 static int
-nullfs_vget(mp, ino, vpp)
-	struct mount *mp;
-	ino_t ino;
-	struct vnode **vpp;
+nullfs_vget(struct mount *mp, ino_t ino, struct vnode **vpp)
 {
 
 	return VFS_VGET(MOUNTTONULLMOUNT(mp)->nullm_vfs, ino, vpp);
 }
 
 static int
-nullfs_fhtovp(mp, fidp, vpp)
-	struct mount *mp;
-	struct fid *fidp;
-	struct vnode **vpp;
+nullfs_fhtovp(struct mount *mp, struct fid *fidp, struct vnode **vpp)
 {
 
 	return VFS_FHTOVP(MOUNTTONULLMOUNT(mp)->nullm_vfs, fidp, vpp);
 }
 
 static int
-nullfs_checkexp(mp, nam, extflagsp, credanonp)
-	struct mount *mp;
-	struct sockaddr *nam;
-	int *extflagsp; 
-	struct ucred **credanonp;
+nullfs_checkexp(struct mount *mp, struct sockaddr *nam, int *extflagsp,
+		struct ucred **credanonp)
 {
 
 	return VFS_CHECKEXP(MOUNTTONULLMOUNT(mp)->nullm_vfs, nam, 
@@ -362,20 +342,14 @@ nullfs_checkexp(mp, nam, extflagsp, credanonp)
 }
 
 static int
-nullfs_vptofh(vp, fhp)
-	struct vnode *vp;
-	struct fid *fhp;
+nullfs_vptofh(struct vnode *vp, struct fid *fhp)
 {
 	return VFS_VPTOFH(NULLVPTOLOWERVP(vp), fhp);
 }
 
 static int                        
-nullfs_extattrctl(mp, cmd, attrname, arg, td)
-	struct mount *mp;
-	int cmd;
-	const char *attrname;
-	caddr_t arg;
-	struct thread *td;
+nullfs_extattrctl(struct mount *mp, int cmd, const char *attrname, caddr_t arg,
+		  struct thread *td)
 {
 	return VFS_EXTATTRCTL(MOUNTTONULLMOUNT(mp)->nullm_vfs, cmd, attrname,
 	    arg, td);

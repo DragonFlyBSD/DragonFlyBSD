@@ -36,7 +36,7 @@
  *	@(#)null_subr.c	8.7 (Berkeley) 5/14/95
  *
  * $FreeBSD: src/sys/miscfs/nullfs/null_subr.c,v 1.21.2.4 2001/06/26 04:20:09 bp Exp $
- * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.7 2004/03/01 06:33:22 dillon Exp $
+ * $DragonFly: src/sys/vfs/nullfs/Attic/null_subr.c,v 1.8 2004/04/21 16:55:09 cpressey Exp $
  */
 
 #include <sys/param.h>
@@ -78,10 +78,8 @@ static struct vnode *
  * Initialise cache headers
  */
 int
-nullfs_init(vfsp)
-	struct vfsconf *vfsp;
+nullfs_init(struct vfsconf *vfsp)
 {
-
 	NULLFSDEBUG("nullfs_init\n");		/* printed during system boot */
 	null_node_hashtbl = hashinit(NNULLNODECACHE, M_NULLFSHASH, &null_node_hash);
 	lockinit(&null_hashlock, 0, "nullhs", 0, 0);
@@ -89,10 +87,8 @@ nullfs_init(vfsp)
 }
 
 int
-nullfs_uninit(vfsp)
-	struct vfsconf *vfsp;
+nullfs_uninit(struct vfsconf *vfsp)
 {
-
         if (null_node_hashtbl) {
 		free(null_node_hashtbl, M_NULLFSHASH);
 	}
@@ -104,9 +100,7 @@ nullfs_uninit(vfsp)
  * Lower vnode should be locked on entry and will be left locked on exit.
  */
 static struct vnode *
-null_node_find(mp, lowervp)
-	struct mount *mp;
-	struct vnode *lowervp;
+null_node_find(struct mount *mp, struct vnode *lowervp)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct null_node_hashhead *hd;
@@ -151,10 +145,7 @@ loop:
  * Maintain a reference to (lowervp).
  */
 static int
-null_node_alloc(mp, lowervp, vpp)
-	struct mount *mp;
-	struct vnode *lowervp;
-	struct vnode **vpp;
+null_node_alloc(struct mount *mp, struct vnode *lowervp, struct vnode **vpp)
 {
 	struct thread *td = curthread;	/* XXX */
 	struct null_node_hashhead *hd;
@@ -237,10 +228,7 @@ null_node_alloc(mp, lowervp, vpp)
  * vnode which contains a reference to the lower vnode.
  */
 int
-null_node_create(mp, lowervp, newvpp)
-	struct mount *mp;
-	struct vnode *lowervp;
-	struct vnode **newvpp;
+null_node_create(struct mount *mp, struct vnode *lowervp, struct vnode **newvpp)
 {
 	struct vnode *aliasvp;
 
@@ -302,10 +290,7 @@ null_node_create(mp, lowervp, newvpp)
 #endif
 
 struct vnode *
-null_checkvp(vp, fil, lno)
-	struct vnode *vp;
-	char *fil;
-	int lno;
+null_checkvp(struct vnode *vp, char *fil, int lno)
 {
 	struct null_node *a = VTONULL(vp);
 #ifdef notyet
