@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  * 
  * $Id: if_nv.c,v 1.9 2003/12/13 15:27:40 q Exp $
- * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.8 2005/02/20 01:26:05 joerg Exp $
+ * $DragonFly: src/sys/dev/netif/nv/Attic/if_nv.c,v 1.9 2005/02/20 04:52:22 joerg Exp $
  */
 
 /*
@@ -466,6 +466,7 @@ nv_attach(device_t dev)
 	ifp->if_mtu = ETHERMTU;
 	ifp->if_baudrate = IF_Mbps(100);
 	ifq_set_maxlen(&ifp->if_snd, IFQ_MAXLEN);
+	ifq_set_ready(&ifp->if_snd);
 
 	/* Attach to OS's managers. */
 	ether_ifattach(ifp, sc->sc_macaddr);
@@ -780,7 +781,7 @@ nv_ifstart(struct ifnet *ifp)
 		buf = &desc->buf;
 
 		/* Get next packet to send. */
-		IF_DEQUEUE(&ifp->if_snd, m0);
+		m0 = ifq_dequeue(&ifp->if_snd);
 
 		/* If nothing to send, return. */
 		if (m0 == NULL)
@@ -846,7 +847,6 @@ nv_ifstart(struct ifnet *ifp)
 			device_printf(sc->dev, "nv_ifstart: transmit queue is full\n");
 			ifp->if_flags |= IFF_OACTIVE;
 			bus_dmamap_unload(sc->mtag, buf->map);
-			IF_PREPEND(&ifp->if_snd, buf->mbuf);
 			buf->mbuf = NULL;
 			return;
 
