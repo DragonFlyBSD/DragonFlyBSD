@@ -1,16 +1,17 @@
 #	@(#)Makefile	8.1 (Berkeley) 6/5/93
 # $FreeBSD: src/sbin/route/Makefile,v 1.11.2.3 2002/12/04 14:05:42 ru Exp $
-# $DragonFly: src/sbin/route/Makefile,v 1.4 2004/03/24 07:04:28 dillon Exp $
+# $DragonFly: src/sbin/route/Makefile,v 1.5 2005/03/16 04:18:35 cpressey Exp $
 
 PROG=	route
+WARNS?=	6
 MAN=	route.8
 SRCS=	route.c show.c keywords.h keywords.c
-CFLAGS+=-I. -Wall -DNS
+CFLAGS+=-I. -DNS
 CFLAGS+=-DINET6
 CLEANFILES+=keywords.h keywords.c _keywords.tmp
 
 keywords.h:
-	echo -e "extern struct keytab {\n\tchar\t*kt_cp;\n\tint\t kt_i;\n} keywords[];\n\n" > ${.TARGET}
+	echo -e "extern struct keytab {\n\tconst char\t*kt_cp;\n\tint\t\t kt_i;\n} keywords[];\n\n" > ${.TARGET}
 	sed -e '/^#/d' -e '/^$$/d' ${.CURDIR}/keywords > _keywords.tmp
 	tr a-z A-Z < _keywords.tmp | paste _keywords.tmp - | \
 	    awk '{ \

@@ -1,6 +1,6 @@
 /*
  * $NetBSD: extern.h,v 1.2 2001/10/24 16:05:06 atatat Exp $
- * $DragonFly: src/sbin/route/extern.h,v 1.2 2004/03/23 18:25:51 dillon Exp $
+ * $DragonFly: src/sbin/route/extern.h,v 1.3 2005/03/16 04:18:35 cpressey Exp $
  */
 
 /*
@@ -33,14 +33,18 @@
  */
 
 struct sockaddr;
-struct sockaddr_x25;
 struct sockaddr_ns;
 
 /* show.c */
-void show(int, char **);
+void	 show(int, char **);
 
 /* route.c */
-extern int nflag, wflag;
-char *routename(struct sockaddr *);
-char *netname(struct sockaddr *);
-char *ns_print(struct sockaddr_ns *);
+extern int	nflag, wflag;
+
+char	*routename(struct sockaddr *);
+char	*netname(struct sockaddr *);
+int	 keyword(const char *);
+void	 usage(const char *) __dead2;
+#ifdef NS
+char	*ns_print(struct sockaddr_ns *);
+#endif

@@ -1,7 +1,7 @@
 /*
  * $OpenBSD: show.c,v 1.26 2003/08/26 08:33:12 itojun Exp $
  * $NetBSD: show.c,v 1.1 1996/11/15 18:01:41 gwr Exp $
- * $DragonFly: src/sbin/route/show.c,v 1.3 2004/03/23 18:25:51 dillon Exp $
+ * $DragonFly: src/sbin/route/show.c,v 1.4 2005/03/16 04:18:35 cpressey Exp $
  */
 /*
  * Copyright (c) 1983, 1988, 1993
@@ -84,18 +84,14 @@ static const struct bits bits[] = {
 	{ RTF_PROTO1,	'1' },
 	{ RTF_PROTO2,	'2' },
 	{ RTF_PROTO3,	'3' },
-	{ 0 }
+	{ 0, 0 }
 };
 
-static void p_rtentry(struct rt_msghdr *);
-static int p_sockaddr(struct sockaddr *, int, int);
-static void p_flags(int, char *);
-static void pr_rthdr(void);
-static void pr_family(int);
-
-int	keyword(char *);
-void	usage(char *);
-void	show(int argc, char *argv[]);
+static void	p_rtentry(struct rt_msghdr *);
+static int	p_sockaddr(struct sockaddr *, int, int);
+static void	p_flags(int, const char *);
+static void	pr_rthdr(void);
+static void	pr_family(int);
 
 /*
  * Print routing tables.
@@ -247,7 +243,7 @@ p_rtentry(struct rt_msghdr *rtm)
 static void
 pr_family(int af)
 {
-	char *afname;
+	const char *afname;
 
 	switch (af) {
 	case AF_INET:
@@ -286,8 +282,9 @@ pr_family(int af)
 static int
 p_sockaddr(struct sockaddr *sa, int flags, int width)
 {
-	char workbuf[128], *cplim;
+	char workbuf[128];
 	char *cp = workbuf;
+	const char *cplim;
 	int len = sizeof(workbuf);
 	int count;
 
@@ -331,11 +328,12 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 
 	case AF_INET:
 	    {
-		struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+		struct sockaddr_in *in = (struct sockaddr_in *)sa;
 
-		if (sin->sin_addr.s_addr == 0)
-			cp = "default";
-		else
+		if (in->sin_addr.s_addr == 0) {
+			/* cp points to workbuf */
+			strncpy(cp, "default", len);
+		} else
 			cp = (flags & RTF_HOST) ? routename(sa) : netname(sa);
 		break;
 	    }
@@ -343,12 +341,18 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 #ifdef INET6
 	case AF_INET6:
 	    {
-		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+		struct sockaddr_in6 *in6 = (struct sockaddr_in6 *)sa;
 
-		cp = IN6_IS_ADDR_UNSPECIFIED(&sin->sin6_addr) ? "default" :
-			((flags & RTF_HOST) ?  routename(sa) :	netname(sa));
+		if (IN6_IS_ADDR_UNSPECIFIED(&in6->sin6_addr)) {
+			/* cp points to workbuf */
+			strncpy(cp, "default", len);
+		} else {
+			cp = ((flags & RTF_HOST) ? routename(sa)
+						 : netname(sa));
+		}
 		/* make sure numeric address is not truncated */
-		if (strchr(cp, ':') != NULL && strlen(cp) > width)
+		if (strchr(cp, ':') != NULL &&
+		    (width < 0 || strlen(cp) > (size_t)width))
 			width = strlen(cp);
 		break;
 	    }
@@ -400,7 +404,7 @@ p_sockaddr(struct sockaddr *sa, int flags, int width)
 }
 
 static void
-p_flags(int f, char *format)
+p_flags(int f, const char *format)
 {
 	char name[33], *flags;
 	const struct bits *p = bits;
