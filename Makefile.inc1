@@ -1,6 +1,6 @@
 #
 # $FreeBSD: src/Makefile.inc1,v 1.141.2.62 2003/04/06 19:54:00 dwmalone Exp $
-# $DragonFly: src/Makefile.inc1,v 1.51 2005/01/04 19:14:18 joerg Exp $
+# $DragonFly: src/Makefile.inc1,v 1.52 2005/01/05 22:03:51 joerg Exp $
 #
 # Make command line options:
 #	-DMAKE_KERBEROS5 to build Kerberos5
@@ -261,7 +261,6 @@ CROSSENV=	MAKEOBJDIRPREFIX=${WORLDDEST} \
 		MACHINE_ARCH=${TARGET_ARCH} \
 		MACHINE=${TARGET} \
 		OBJFORMAT_PATH=${CTOOLSDEST} \
-		PERL5LIB=${WORLDDEST}/usr/libdata/perl/5.00503 \
 		GROFF_BIN_PATH=${BTOOLSDEST}/usr/bin \
 		GROFF_FONT_PATH=${BTOOLSDEST}/usr/share/groff_font \
 		GROFF_TMAC_PATH=${BTOOLSDEST}/usr/share/tmac
@@ -830,10 +829,6 @@ _fortran= gnu/usr.bin/cc34/f771
 .endif
 .endif
 
-.if !defined(NOPERL)
-_perl=	gnu/usr.bin/perl/miniperl
-.endif
-
 .if exists(${.CURDIR}/kerberos5) && exists(${.CURDIR}/crypto) && \
     !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
 _libkrb5= kerberos5/lib/libroken kerberos5/lib/libvers \
@@ -846,7 +841,7 @@ _sysinstall= release/sysinstall
 
 build-tools:
 .for _tool in ${_gcc2_tools} ${_gcc34_tools} \
-	      ${_fortran} ${_perl} ${_libroken4} ${_libkrb5} \
+	      ${_fortran} ${_libroken4} ${_libkrb5} \
 	      ${_share} ${_sysinstall}
 	${ECHODIR} "===> ${_tool} (build-tools)"; \
 		cd ${.CURDIR}/${_tool}; \
@@ -926,10 +921,6 @@ _startup_libs+=	lib/csu/common lib/libc
 _prebuild_libs=	lib/libarchive
 
 _generic_libs=	gnu/lib
-
-.if !defined(NOPERL)
-_generic_libs+=	gnu/usr.bin/perl/libperl
-.endif
 
 .if !defined(NOCRYPT) && defined(MAKE_KERBEROS5)
 _prebuild_libs+=	kerberos5/lib/libasn1
