@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1983, 1992, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)kgmon.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/kgmon/kgmon.c,v 1.9 1999/08/28 01:16:42 peter Exp $
- * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.5 2004/04/21 21:29:55 cpressey Exp $
+ * $DragonFly: src/usr.sbin/kgmon/kgmon.c,v 1.6 2004/12/22 01:28:39 joerg Exp $
  */
 
 #include <sys/param.h>
@@ -56,8 +56,6 @@
 struct nlist nl[] = {
 #define	N_GMONPARAM	0
 	{ "__gmonparam" },
-#define	N_PROFHZ	1
-	{ "_profhz" },
 	{ NULL },
 };
 
@@ -69,7 +67,6 @@ struct kvmvars {
 int	Bflag, bflag, hflag, kflag, rflag, pflag;
 int	debug = 0;
 int	getprof(struct kvmvars *);
-int	getprofhz(struct kvmvars *);
 void	kern_readonly(int);
 int	openfiles(char *, char *, struct kvmvars *);
 void	setprof(struct kvmvars *kvp, int state);
@@ -326,8 +323,6 @@ dumpstate(struct kvmvars *kvp)
 	h.ncnt = kvp->gpm.kcountsize + sizeof(h);
 	h.version = GMONVERSION;
 	h.profrate = kvp->gpm.profrate;
-	if (h.profrate == 0)
-		h.profrate = getprofhz(kvp);	/* ancient kernel */
 	fwrite((char *)&h, sizeof(h), 1, fp);
 
 	/*
@@ -409,31 +404,6 @@ dumpstate(struct kvmvars *kvp)
 		}
 	}
 	fclose(fp);
-}
-
-/*
- * Get the profiling rate.
- */
-int
-getprofhz(struct kvmvars *kvp)
-{
-	int mib[2], size, profrate;
-	struct clockinfo clockrate;
-
-	if (kflag) {
-		profrate = 1;
-		if (kvm_read(kvp->kd, nl[N_PROFHZ].n_value, &profrate,
-		    sizeof profrate) != sizeof profrate)
-			warnx("get clockrate: %s", kvm_geterr(kvp->kd));
-		return (profrate);
-	}
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_CLOCKRATE;
-	clockrate.profhz = 1;
-	size = sizeof clockrate;
-	if (sysctl(mib, 2, &clockrate, &size, NULL, 0) < 0)
-		warn("get clockrate");
-	return (clockrate.profhz);
 }
 
 /*
