@@ -37,7 +37,7 @@
  *
  *	@(#)kern_synch.c	8.9 (Berkeley) 5/19/95
  * $FreeBSD: src/sys/kern/kern_synch.c,v 1.87.2.6 2002/10/13 07:29:53 kbyanc Exp $
- * $DragonFly: src/sys/kern/kern_synch.c,v 1.35 2004/09/16 05:01:17 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_synch.c,v 1.36 2004/09/17 01:08:13 joerg Exp $
  */
 
 #include "opt_ktrace.h"
@@ -71,6 +71,8 @@ int	ncpus;
 int	ncpus2, ncpus2_shift, ncpus2_mask;
 
 static struct callout loadav_callout;
+static struct callout roundrobin_callout;
+static struct callout schedcpu_callout;
 
 struct loadavg averunnable =
 	{ {0, 0, 0}, FSCALE };	/* load average, of runnable procs */
@@ -142,7 +144,7 @@ roundrobin(void *arg)
 #ifdef SMP
 	lwkt_send_ipiq_mask(mycpu->gd_other_cpus, roundrobin_remote, NULL);
 #endif
- 	timeout(roundrobin, NULL, sched_quantum);
+ 	callout_reset(roundrobin_callout, sched_quantum, roundrobin, NULL);
 }
 
 #ifdef SMP
@@ -272,7 +274,7 @@ schedcpu(void *arg)
 		splx(s);
 	}
 	wakeup((caddr_t)&lbolt);
-	timeout(schedcpu, (void *)0, hz);
+	callout_reset(&schedcpu_callout, hz, schedcpu, NULL);
 }
 
 /*
@@ -827,8 +829,9 @@ loadav(void *arg)
 static void
 sched_setup(void *dummy)
 {
-
 	callout_init(&loadav_callout);
+	callout_init(&roundrobin_callout);
+	callout_init(&schedcpu_callout);
 
 	/* Kick off timeout driven events by calling first time. */
 	roundrobin(NULL);
