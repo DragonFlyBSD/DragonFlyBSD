@@ -1,0 +1,115 @@
+<HTML>
+<HEAD>
+<TITLE>BestServ Documentation - Help file for users</TITLE>
+</HEAD>
+<BODY>
+<P><H3><CENTER>BestServ Documentation - Help file for users</CENTER></H3>
+<P><H3>(I) Synopsis of BestServ list aliases</H3>
+<UL>
+    <BR><B><I>listname</I></B> - post to the list
+    <BR><B><I>listname</I>-response</B> - authentication responses sent here
+    <BR><B><I>listname</I>-request</B> - send subscribe/unsubscribe/etc...	
+    <BR><B><I>listname</I>-command</B> - send moderator command requests
+    <BR><B><I>listname</I>-errors</B> - (error return for bounces, invisible)
+    <BR><B><I>listname</I>-owner</B> - send mail to the moderator of the list
+    <P>
+    <BR><B>bestserv-owner</B> - moderator of the whole mailing list manager
+    <BR><B>bestserv-errors</B> - (error return for bounces, invisible)
+    <P>
+</UL>
+<P><H3>(II) Getting This Help File</H3>
+<UL>
+    <P>
+    Email a message to the request address of the list.  For example, if 
+    the list is called 'test', you would email a message to
+    'test-request@hostname.domain'.  On this server, it would be
+    'test-request@lists.dragonflybsd.org'. 
+    <P>
+    The body of the message should contain a single line, left justified,
+    containing the keyword 'help' in lower case.
+    <P>
+    The list server will generally respond with this help file.
+    <P>
+</UL>
+<P><H3>(III) Authentication</H3>
+<UL>
+    <P>
+    Many of the requests you make to the list server requires authentication.
+    The list server authenticates a request by emailing a message back to you
+    with a special Subject: line.  The message contains complete iunstructions.
+    You normally <B>Reply</B> the message (such that the original Subject
+    is still in the Subject: header, possibly with an <B>Re:</B> in front of
+    it).  You must edit the <B>REJECT</B> clause in the Subject line to
+    say <B>ACCEPT</B> if you want to go ahead and run your original command.
+    <P>
+    You must be sure to leave the ID clause intact or the list manager will
+    not be able to authenticate your request.
+    <P>
+    The purpose of authentication is to ensure that a valid return email
+    address exists and to disuade spammers from crashing the list.  The
+    moderator has the ability to turn on authentication AND moderation for
+    any request, so you may not get an immediate response.
+    <P>
+</UL>
+<P><H3>(IV) Subscribing</H3>
+<UL>
+    <P>
+    To subscribe to a list you normally send email to the -request address
+    of the list, as in 'test-request@hostname.domain'.  The body of the
+    message should contain the keyword 'subscribe' alone or, if you want
+    to subscribe a third party address, the subscribe keyword may be followed
+    by an email address.
+    <P>subscribe
+    <P>or
+    <P>subscribe email-address
+    <P>
+    Unless the list is a digest-only list you will receive an email for
+    each posting to the list.  If you wish to receive a digest version of
+    the list (which could be delayed by a few hours) use the <B>subdigest</B>
+    command instead of <B>subscribe</B>.
+</UL>
+<P><H3>(V) Third Party Subscribes</H3>
+<UL>
+    <P>
+    A <I>Third Party Subscribe</I> occurs when person A subscribes person B
+    rather then just himself.  This is normally allowed.  The list manager
+    will most likely have recipient verification turned on, which means
+    that person B will be sent an email asking him or her to acknowledge
+    the subscription before that person is actually added to the list.
+    <P>
+    If you receive a third party verification request and you do not want to
+    be on the list, simply ignore the mail.
+</UL>
+
+<P><H3>(VI) Posting from multiple email addresses </H3>
+<UL>
+    <P>
+    By default, most lists only allow subscribed addresses to post to 
+    the list.  You can add other addresses to the list with the 
+    'alias' command.
+    <P>alias email-address
+    <P>This allows you to post to the list from another email-address
+    without the list distribution being sent to that address.  You can add
+    as many aliases as you like.
+</UL>
+
+<P><H3>(VII) Unsubscribing</H3>
+<UL>
+    <P>
+    To unsubscribe from a list, send the 'unsubscribe' command.  You can
+    also unsubscribe third parties by adding an email address.
+    <P>unsubscribe
+    <P>or
+    <P>unsubscribe email-address
+    <P>Note that if you have several list aliases, you should unsubscribe
+    from those aliases as well as the one you are receiving the list on.
+</UL>
+
+<P><H3>(VIII) List Information</H3>
+<UL>
+    <P>
+    You can request list-specific information with the 'info' command.
+    <P>
+</UL>
+</BODY>
+</HTML>

@@ -1,0 +1,123 @@
+Subject: Call for Developers!  Userland threading
+Date: Tue, 22 Jul 2003 11:55:58 -0700 (PDT)
+To: kernel@crater.dragonflybsd.org
+
+    Ok, this is an official call for developers to begin working on userland
+    threading.  I've come up with a timetable and infrastructure that
+    should be sufficient for those developers interested in the work to 
+    actually begin working!  I would like to hand-out some commit bits for
+    those doing the work, and I would like to find someone to head up this
+    sub-project (i.e. not me, I will be focusing on the kernel-side support).
+
+    I was kinda thinking of Peter da Silva or Jeffrey Hsu to lead this effort,
+    but I don't know what kind of time commitment people have.
+
+    Here's the infrastructure idea I've come up with:
+
+	* We throw away libc_r.  Er, that is, we keep it around but base all
+	  new development on a copy of the original libc.  We would call
+	  it, oh, libcr (as a pun on libc_r).  It wouldn't be an 'alias' 
+	  of libc like libc_r is, it would be an actual physical copy of
+	  libc.
+
+	  When all is said and done, several months from now, the new libcr
+	  will *become* our libc, i.e. it will be responsible for both 
+	  non-threaded and threaded programs.  Don't worry about non-threaded
+	  overhead, it won't be that big a deal because LWKTs can be made
+	  quite optimal in non-threaded environments.
+
+	* We (temporarily) throw away POSIX compatibility.  I believe that
+	  the userland threading implementation should be based around LWKTs
+	  and LWKT messaging - i.e. a direct port of the LWKT modules now
+	  in the kernel.  The problem with trying to maintain the POSIX
+	  infrastructure is that the signal handling will bog down the
+	  development.  I believe the signal handling can be dealt with with
+	  supporting kernel infrastructure that does not yet exist.  So for
+	  now we throw away POSIX.  Later on we will re-implement it.
+
+	  Direct LWKT port but: maybe rename struct thread to struct
+	  userthread?
+
+	  I will happily provide the userland assembly bits for I386 for
+	  the initial entry and switching functions for LWKTs.  They're
+	  really easy to do, basically just pushal, stack switch, popal, ret.
+
+	* We (temporarily) build the new system call emulation layer into
+	  libcr with an eye towards eventually separating it out into its own
+	  independant library.
+
+	  This new layer is very simple in concept.  Basically you will begin
+	  implementing system calls which convert to messages.  For example,
+	  in libcr read() would be:
+
+	  ssize_t
+	  read(int fd, void *buf, size_t nbytes)
+	  {
+	      syscall_any_msg_t msg;
+	      int error;
+
+	      /*
+	       * Use the convenient mostly pre-built message stored in the
+	       * userthread structure
+	       */
+	      msg = &curthread->td_sysmsg;
+	      msg->fd = fd;
+	      msg->buf = buf;
+	      msg->nbytes = bytes;
+	      error = lwkt_domsg(&syscall_port, msg);
+	      curthread->td_errno = error;
+	      if (error)
+		  msg->result = -1;
+	      return(msg->result);
+	  }
+
+	  The actual int 0x80 would be done by syscall_port's beginmsg
+	  function (it would point to a bit of assembly).  And, yes, that
+	  means you can theoretically shim the syscall port if you want
+	  (mantra fodder: flexibility!), and it also means that errno
+	  handling is done in userland (more mantra fodder: flexibility!).
+
+    I think this would be a great project for developers to really sink their
+    teeth into, because there is so much to do it can be worked on by 
+    several people in parallel, and because the breakages will not effect
+    the stability of the development environment, and for all the reasons
+    above it means I can start handing out commit bits. 
+
+    I would like to find one developer to act as the head-honcho for the
+    userland work, and any number of developers to work on the pieces.  The
+    piecemeal work is:
+
+	* Messaging for individual syscalls (i.e. each system call, like
+	  read() above, needs to be coded for the messaging interface).
+
+	* The LWKT threading port (I can help with the assembly bits).
+
+	* Implementation of the per-cpu-area abstraction (becomes per-rfork).
+
+	* (later on) Use %fs or %gs (kernel-supported?) to aid in access 
+	  to per-cpu areas?  Anyone have any ideas here?  It isn't necessary
+	  for the initial threading work.
+
+	* (later on) Thread migration between rforks (i.e. more sophisticated
+	  scheduling actions).
+
+	* (later on) development of a kernel-supported signal infrastructure
+	  for proper POSIX signal handling.
+
+    I will be focusing on the kernel side of things.  I would like those
+    interested in doing the userland threading project to focus on the
+    userland side of things.
+
+    I have decided to forego the VFS work for a few weeks and instead focus on
+    implementing the new system call messaging system calls, messaging for
+    the struct file ops, and asychronization of key system calls like
+    select(), kqueue(), usleep(), etc... all with an eye towards
+    asynchronizing enough syscall messages that the userland threading work
+    can do real testing with real results.  Basically I will be doing work
+    on the kernel side specifically to support the userland threading effort.
+
+    I should have a basic syscall messaging syscall working this week,
+    even though it will initially operate synchronously.
+
+						-Matt
+
