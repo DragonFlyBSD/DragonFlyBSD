@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nspvar.h,v 1.1.2.4 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nspvar.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nspvar.h,v 1.3 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: nspvar.h,v 1.7.14.5 2001/06/29 06:27:54 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -101,10 +101,10 @@ struct nsp_targ_info {
 /*****************************************************************
  * Proto
  *****************************************************************/
-int nspprobesubr __P((bus_space_tag_t, bus_space_handle_t, u_int));
-void nspattachsubr __P((struct nsp_softc *));
-int nspprint __P((void *, const char *));
-int nspintr __P((void *));
+int nspprobesubr (bus_space_tag_t, bus_space_handle_t, u_int);
+void nspattachsubr (struct nsp_softc *);
+int nspprint (void *, const char *);
+int nspintr (void *);
 
 #if	defined(i386)
 #define	SOFT_INTR_REQUIRED(slp)	(softintr((slp)->sl_irq))

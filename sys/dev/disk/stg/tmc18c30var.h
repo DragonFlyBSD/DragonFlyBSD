@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30var.h,v 1.1.2.4 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30var.h,v 1.2 2003/06/17 04:28:31 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30var.h,v 1.3 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: tmc18c30var.h,v 1.12.18.2 2001/06/13 05:51:23 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -99,10 +99,10 @@ struct stg_targ_info {
 /*****************************************************************
  * Proto
  *****************************************************************/
-int stgprobesubr __P((bus_space_tag_t, bus_space_handle_t, u_int));
-void stgattachsubr __P((struct stg_softc *));
-int stgprint __P((void *, const char *));
-int stgintr __P((void *));
+int stgprobesubr (bus_space_tag_t, bus_space_handle_t, u_int);
+void stgattachsubr (struct stg_softc *);
+int stgprint (void *, const char *);
+int stgintr (void *);
 
 #if	defined(i386)
 #define	SOFT_INTR_REQUIRED(slp)	(softintr((slp)->sl_irq))

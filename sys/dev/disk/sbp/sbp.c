@@ -32,7 +32,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  * 
  * $FreeBSD: src/sys/dev/firewire/sbp.c,v 1.5.2.19 2003/05/12 04:16:30 simokawa Exp $
- * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.3 2003/08/07 21:16:53 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/sbp/sbp.c,v 1.4 2003/08/27 10:35:17 rob Exp $
  *
  */
 
@@ -312,23 +312,23 @@ struct sbp_softc {
 #define SBP_RESOURCE_SHORTAGE 0x10
 	unsigned char flags;
 };
-static void sbp_post_explore __P((void *));
-static void sbp_recv __P((struct fw_xfer *));
-static void sbp_mgm_callback __P((struct fw_xfer *));
-static void sbp_cmd_callback __P((struct fw_xfer *));
-static void sbp_orb_pointer __P((struct sbp_dev *, struct sbp_ocb *));
-static void sbp_execute_ocb __P((void *,  bus_dma_segment_t *, int, int));
-static void sbp_free_ocb __P((struct sbp_dev *, struct sbp_ocb *));
-static void sbp_abort_ocb __P((struct sbp_ocb *, int));
-static void sbp_abort_all_ocbs __P((struct sbp_dev *, int));
-static struct fw_xfer * sbp_write_cmd __P((struct sbp_dev *, int, int));
-static struct sbp_ocb * sbp_get_ocb __P((struct sbp_dev *));
-static struct sbp_ocb * sbp_enqueue_ocb __P((struct sbp_dev *, struct sbp_ocb *));
-static struct sbp_ocb * sbp_dequeue_ocb __P((struct sbp_dev *, struct sbp_status *));
-static void sbp_cam_detach_target __P((struct sbp_target *));
-static void sbp_mgm_timeout __P((void *arg));
-static void sbp_timeout __P((void *arg));
-static void sbp_mgm_orb __P((struct sbp_dev *, int, struct sbp_ocb *));
+static void sbp_post_explore (void *);
+static void sbp_recv (struct fw_xfer *);
+static void sbp_mgm_callback (struct fw_xfer *);
+static void sbp_cmd_callback (struct fw_xfer *);
+static void sbp_orb_pointer (struct sbp_dev *, struct sbp_ocb *);
+static void sbp_execute_ocb (void *,  bus_dma_segment_t *, int, int);
+static void sbp_free_ocb (struct sbp_dev *, struct sbp_ocb *);
+static void sbp_abort_ocb (struct sbp_ocb *, int);
+static void sbp_abort_all_ocbs (struct sbp_dev *, int);
+static struct fw_xfer * sbp_write_cmd (struct sbp_dev *, int, int);
+static struct sbp_ocb * sbp_get_ocb (struct sbp_dev *);
+static struct sbp_ocb * sbp_enqueue_ocb (struct sbp_dev *, struct sbp_ocb *);
+static struct sbp_ocb * sbp_dequeue_ocb (struct sbp_dev *, struct sbp_status *);
+static void sbp_cam_detach_target (struct sbp_target *);
+static void sbp_mgm_timeout (void *arg);
+static void sbp_timeout (void *arg);
+static void sbp_mgm_orb (struct sbp_dev *, int, struct sbp_ocb *);
 #define sbp_login(sdev) \
 	callout_reset(&(sdev)->login_callout, LOGIN_DELAY * hz, \
 			sbp_login_callout, (void *)(sdev));

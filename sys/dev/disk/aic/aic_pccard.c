@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_pccard.c,v 1.1 2000/01/14 23:42:36 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_pccard.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 #include <sys/param.h>
@@ -48,10 +48,10 @@ struct aic_pccard_softc {
 	void	*sc_ih;
 };
 
-static int aic_pccard_alloc_resources __P((device_t));
-static void aic_pccard_release_resources __P((device_t));
-static int aic_pccard_probe __P((device_t));
-static int aic_pccard_attach __P((device_t));
+static int aic_pccard_alloc_resources (device_t);
+static void aic_pccard_release_resources (device_t);
+static int aic_pccard_probe (device_t);
+static int aic_pccard_attach (device_t);
 
 #define	AIC_PCCARD_PORTSIZE 0x20
 

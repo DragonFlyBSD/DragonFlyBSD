@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_receive.c,v 1.5.2.2 2003/01/23 21:06:43 sam Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_receive.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 /*
@@ -40,7 +40,7 @@
 /*
  * Local functions
  */
-static void	fore_recv_stack __P((void *, KBuffer *));
+static void	fore_recv_stack (void *, KBuffer *);
 
 
 /*

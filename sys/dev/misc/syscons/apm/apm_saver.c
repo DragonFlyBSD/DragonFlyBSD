@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/modules/syscons/apm/apm_saver.c,v 1.1.4.2 2001/03/07 21:47:24 nsayer Exp $
- * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.3 2003/08/15 08:32:29 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/syscons/apm/apm_saver.c,v 1.4 2003/08/27 10:35:18 rob Exp $
  */
 
 #include <sys/param.h>
@@ -50,7 +50,7 @@
 #include <i386/apm/apm.h>
 #endif
 
-extern int apm_display __P((int newstate));                                     
+extern int apm_display (int newstate);                                     
 
 extern struct apm_softc apm_softc;
 

@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/nsp/nsp_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.3 2003/08/07 21:16:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/nsp/nsp_pccard.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: nsp_pisa.c,v 1.4 1999/04/15 01:35:54 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -75,7 +75,7 @@
 static int nspprobe(DEVPORT_PDEVICE devi);
 static int nspattach(DEVPORT_PDEVICE devi);
 
-static	void	nsp_card_unload	__P((DEVPORT_PDEVICE));
+static	void	nsp_card_unload	(DEVPORT_PDEVICE);
 
 /*
  * Additional code for FreeBSD new-bus PCCard frontend

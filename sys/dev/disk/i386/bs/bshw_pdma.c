@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/i386/isa/bs/bshw_pdma.c,v 1.6.6.1 2000/10/21 07:44:26 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_pdma.c,v 1.2 2003/06/17 04:28:37 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw_pdma.c,v 1.3 2003/08/27 10:35:16 rob Exp $ */
 /*	$NecBSD: bshw_pdma.c,v 1.4 1997/10/31 17:43:39 honda Exp $	*/
 /*	$NetBSD$	*/
 /*
@@ -36,9 +36,9 @@
 
 #define	LC_SMIT_TIMEOUT	2	/* 2 sec: timeout for a fifo status ready */
 
-static BS_INLINE void bshw_lc_smit_start __P((struct bs_softc *, int, u_int));
-static int bshw_lc_smit_fstat __P((struct bs_softc *, int, int));
-static void bshw_lc_smit_stop __P((struct bs_softc *));
+static BS_INLINE void bshw_lc_smit_start (struct bs_softc *, int, u_int);
+static int bshw_lc_smit_fstat (struct bs_softc *, int, int);
+static void bshw_lc_smit_stop (struct bs_softc *);
 
 /*********************************************************
  * SM FIFO (GENERIC)

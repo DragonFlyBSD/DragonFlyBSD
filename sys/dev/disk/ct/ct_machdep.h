@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct_machdep.h,v 1.2.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_machdep.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_machdep.h,v 1.3 2003/08/27 10:35:16 rob Exp $ */
 /*	$NecBSD: ct_machdep.h,v 1.4.12.2 2001/06/20 06:13:34 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -74,21 +74,21 @@
  * All port accesses primitive methods
  */
 static __inline u_int8_t ct_stat_read_1
-	__P((struct ct_bus_access_handle *));
+	(struct ct_bus_access_handle *);
 static __inline u_int8_t ct_cmdp_read_1
-	__P((struct ct_bus_access_handle *));
+	(struct ct_bus_access_handle *);
 static __inline void ct_cmdp_write_1
-	__P((struct ct_bus_access_handle *, u_int8_t));
+	(struct ct_bus_access_handle *, u_int8_t);
 static __inline u_int8_t ct_cr_read_1
-	__P((struct ct_bus_access_handle *, bus_addr_t));
+	(struct ct_bus_access_handle *, bus_addr_t);
 static __inline void ct_cr_write_1
-	__P((struct ct_bus_access_handle *, bus_addr_t, u_int8_t));
+	(struct ct_bus_access_handle *, bus_addr_t, u_int8_t);
 static __inline void ct_write_cmds
-	__P((struct ct_bus_access_handle *, u_int8_t *, int));
+	(struct ct_bus_access_handle *, u_int8_t *, int);
 static __inline u_int cthw_get_count
-	__P((struct ct_bus_access_handle *));
+	(struct ct_bus_access_handle *);
 static __inline void cthw_set_count
-	__P((struct ct_bus_access_handle *, u_int));
+	(struct ct_bus_access_handle *, u_int);
 
 static __inline u_int8_t
 ct_stat_read_1(chp)

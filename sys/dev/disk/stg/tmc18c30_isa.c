@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_isa.c,v 1.2.2.4 2001/09/04 04:45:23 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.3 2003/08/07 21:16:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_isa.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -82,7 +82,7 @@
 static	int	stgprobe(device_t devi);
 static	int	stgattach(device_t devi);
 
-static	void	stg_isa_unload	__P((device_t));
+static	void	stg_isa_unload	(device_t);
 
 static void
 stg_isa_intr(void * arg)

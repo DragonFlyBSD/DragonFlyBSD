@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ctvar.h,v 1.2.2.1 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ctvar.h,v 1.2 2003/06/17 04:28:23 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ctvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $ */
 /*	$NecBSD: ctvar.h,v 1.4.14.3 2001/06/20 06:13:34 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -55,7 +55,7 @@ struct ct_bus_access_handle {
 	bus_space_handle_t ch_datah;
 	bus_space_handle_t ch_memh;
 
-	void (*ch_bus_weight) __P((struct ct_bus_access_handle *));
+	void (*ch_bus_weight) (struct ct_bus_access_handle *);
 
 #ifdef	CT_USE_RELOCATE_OFFSET
 	bus_addr_t ch_offset[4];
@@ -119,12 +119,12 @@ struct ct_softc {
 	 * Machdep stuff.
 	 */
 	void *ct_hw;			/* point to bshw_softc etc ... */
-	int (*ct_dma_xfer_start) __P((struct ct_softc *));
-	int (*ct_pio_xfer_start) __P((struct ct_softc *));
-	void (*ct_dma_xfer_stop) __P((struct ct_softc *));
-	void (*ct_pio_xfer_stop) __P((struct ct_softc *));
-	void (*ct_bus_reset) __P((struct ct_softc *));
-	void (*ct_synch_setup) __P((struct ct_softc *, struct targ_info *));
+	int (*ct_dma_xfer_start) (struct ct_softc *);
+	int (*ct_pio_xfer_start) (struct ct_softc *);
+	void (*ct_dma_xfer_stop) (struct ct_softc *);
+	void (*ct_pio_xfer_stop) (struct ct_softc *);
+	void (*ct_bus_reset) (struct ct_softc *);
+	void (*ct_synch_setup) (struct ct_softc *, struct targ_info *);
 };
 
 /*****************************************************************
@@ -139,8 +139,8 @@ struct ct_targ_info {
 /*****************************************************************
  * PROTO
  *****************************************************************/
-int ctprobesubr __P((struct ct_bus_access_handle *, u_int, int, u_int, int *));
-void ctattachsubr __P((struct ct_softc *));
-int ctprint __P((void *, const char *));
-int ctintr __P((void *));
+int ctprobesubr (struct ct_bus_access_handle *, u_int, int, u_int, int *);
+void ctattachsubr (struct ct_softc *);
+int ctprint (void *, const char *);
+int ctintr (void *);
 #endif	/* !_CTVAR_H_ */

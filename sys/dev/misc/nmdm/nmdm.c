@@ -31,7 +31,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/nmdm/nmdm.c,v 1.5.2.1 2001/08/11 00:54:14 mp Exp $
- * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.7 2003/07/26 14:25:23 rob Exp $
+ * $DragonFly: src/sys/dev/misc/nmdm/nmdm.c,v 1.8 2003/08/27 10:35:17 rob Exp $
  */
 
 /*
@@ -55,10 +55,10 @@
 
 MALLOC_DEFINE(M_NLMDM, "nullmodem", "nullmodem data structures");
 
-static void nmdmstart __P((struct tty *tp));
-static void nmdmstop __P((struct tty *tp, int rw));
-static void wakeup_other __P((struct tty *tp, int flag));
-static void nmdminit __P((int n));
+static void nmdmstart (struct tty *tp);
+static void nmdmstop (struct tty *tp, int rw);
+static void wakeup_other (struct tty *tp, int flag);
+static void nmdminit (int n);
 
 static	d_open_t	nmdmopen;
 static	d_close_t	nmdmclose;
@@ -559,7 +559,7 @@ nmdm_crossover(struct nm_softc *pti,
 
 
 
-static void nmdm_drvinit __P((void *unused));
+static void nmdm_drvinit (void *unused);
 
 static void
 nmdm_drvinit(unused)

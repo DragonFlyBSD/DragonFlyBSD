@@ -13,7 +13,7 @@
  * Snoop stuff.
  *
  * $FreeBSD: src/sys/dev/snp/snp.c,v 1.69.2.2 2002/05/06 07:30:02 dd Exp $
- * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.7 2003/07/23 02:30:17 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/snp/snp.c,v 1.8 2003/08/27 10:35:18 rob Exp $
  */
 
 #include <sys/param.h>
@@ -112,11 +112,11 @@ static int snooplinedisc;
 
 static LIST_HEAD(, snoop) snp_sclist = LIST_HEAD_INITIALIZER(&snp_sclist);
 
-static struct tty	*snpdevtotty __P((dev_t dev));
-static int		snp_detach __P((struct snoop *snp));
-static int		snp_down __P((struct snoop *snp));
-static int		snp_in __P((struct snoop *snp, char *buf, int n));
-static int		snp_modevent __P((module_t mod, int what, void *arg));
+static struct tty	*snpdevtotty (dev_t dev);
+static int		snp_detach (struct snoop *snp);
+static int		snp_down (struct snoop *snp);
+static int		snp_in (struct snoop *snp, char *buf, int n);
+static int		snp_modevent (module_t mod, int what, void *arg);
 
 static int
 snplclose(tp, flag)

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_isa.c,v 1.3 2000/01/14 23:42:35 imp Exp $
- * $DragonFly: src/sys/dev/disk/aic/aic_isa.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aic_isa.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 #include <sys/param.h>
@@ -50,10 +50,10 @@ struct aic_isa_softc {
 	void	*sc_ih;
 };
 
-static int aic_isa_alloc_resources __P((device_t));
-static void aic_isa_release_resources __P((device_t));
-static int aic_isa_probe __P((device_t));
-static int aic_isa_attach __P((device_t));
+static int aic_isa_alloc_resources (device_t);
+static void aic_isa_release_resources (device_t);
+static int aic_isa_probe (device_t);
+static int aic_isa_attach (device_t);
 
 static u_int aic_isa_ports[] = { 0x340, 0x140 };
 #define	AIC_ISA_NUMPORTS (sizeof(aic_isa_ports) / sizeof(aic_isa_ports[0]))

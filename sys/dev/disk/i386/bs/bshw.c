@@ -1,5 +1,6 @@
 /*	$NecBSD: bshw.c,v 1.1 1997/07/18 09:19:03 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
+/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.4 2003/08/27 10:35:16 rob Exp $	*/
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -32,7 +33,7 @@
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bshw.c,v 1.7.2.1 2001/07/26 02:32:18 nyan Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 #ifdef	__NetBSD__
@@ -54,7 +55,7 @@ static struct bs_softc *gbsc;
 /**************************************************
  * DECLARATION
  **************************************************/
-static void bshw_force_bsmode __P((struct bs_softc *));
+static void bshw_force_bsmode (struct bs_softc *);
 
 /**************************************************
  * STATIC VAL
@@ -186,7 +187,7 @@ twiddle_wait(void)
 	delay(TWIDDLEWAIT);
 }
 
-static void bshw_set_vsp __P((struct bs_softc *, u_int, u_int8_t));
+static void bshw_set_vsp (struct bs_softc *, u_int, u_int8_t);
 
 static void
 bshw_set_vsp(bsc, chan, spva)

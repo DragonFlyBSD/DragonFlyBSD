@@ -1,6 +1,6 @@
 /*	$NecBSD: bsif.h,v 1.5 1997/10/23 20:52:34 honda Exp $	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsif.h,v 1.12.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.4 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.h,v 1.5 2003/08/27 10:35:16 rob Exp $ */
 /*
  * Copyright (c) HONDA Naofumi, KATO Takenori, 1996.  All rights reserved.
  * 
@@ -188,10 +188,10 @@
  * declare
  ***************************************************/
 /* (I) common declare */
-void bs_alloc_buf __P((struct targ_info *));
+void bs_alloc_buf (struct targ_info *);
 #ifdef __NetBSD__
-XSBS_INT32T bs_target_open __P((struct scsi_link *, struct cfdata *));
-XSBS_INT32T bs_scsi_cmd __P((struct scsi_xfer *));
+XSBS_INT32T bs_target_open (struct scsi_link *, struct cfdata *);
+XSBS_INT32T bs_scsi_cmd (struct scsi_xfer *);
 #endif
 #ifdef __FreeBSD__
 void bs_scsi_cmd(struct cam_sim *sim, union ccb *ccb);
@@ -200,13 +200,13 @@ extern int delaycount;
 
 /* (II) os depend declare */
 #ifdef __NetBSD__
-int bsintr __P((void *));
-int bsprint __P((void *, const char *));
+int bsintr (void *);
+int bsprint (void *, const char *);
 #endif	/* __NetBSD__ */
 
 #ifdef __FreeBSD__
-static BS_INLINE void memcopy __P((void *from, void *to, register size_t len));
-u_int32_t bs_adapter_info __P((int));
+static BS_INLINE void memcopy (void *from, void *to, register size_t len);
+u_int32_t bs_adapter_info (int);
 #define delay(y) DELAY(y)
 extern int dma_init_flag;
 #ifdef SMP

@@ -1,7 +1,7 @@
 /*	$NecBSD: bsfunc.c,v 1.2 1997/10/31 17:43:37 honda Exp $	*/
 /*	$NetBSD$	*/
 /* $FreeBSD: src/sys/i386/isa/bs/bsfunc.c,v 1.7.2.2 2001/07/26 02:32:18 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.3 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsfunc.c,v 1.4 2003/08/27 10:35:16 rob Exp $ */
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -51,12 +51,12 @@ u_int bs_bounce_used[NTARGETS];
 int bs_debug_flag = 0;
 #endif	/* BS_DEBUG */
 
-static void bs_print_syncmsg __P((struct targ_info *, char*));
-static void bs_timeout_target __P((struct targ_info *));
-static void bs_kill_msg __P((struct bsccb *cb));
+static void bs_print_syncmsg (struct targ_info *, char*);
+static void bs_timeout_target (struct targ_info *);
+static void bs_kill_msg (struct bsccb *cb);
 
-static int bs_start_target __P((struct targ_info *));
-static int bs_check_target __P((struct targ_info *));
+static int bs_start_target (struct targ_info *);
+static int bs_check_target (struct targ_info *);
 
 /*************************************************************
  * CCB

@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/pci/simos.c,v 1.7 1999/08/28 00:51:06 peter Exp $
- * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.3 2003/08/07 21:16:54 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/simos/Attic/simos.c,v 1.4 2003/08/27 10:35:17 rob Exp $
  */
 
 #include <sys/param.h>
@@ -71,10 +71,10 @@ struct simos_softc* simosp[10];
 
 static u_long simos_unit;
 
-static const char *simos_probe __P((pcici_t tag, pcidi_t type));
-static void simos_attach __P((pcici_t config_d, int unit));
-static void simos_action __P((struct cam_sim *sim, union ccb *ccb));
-static void simos_poll __P((struct cam_sim *sim));
+static const char *simos_probe (pcici_t tag, pcidi_t type);
+static void simos_attach (pcici_t config_d, int unit);
+static void simos_action (struct cam_sim *sim, union ccb *ccb);
+static void simos_poll (struct cam_sim *sim);
 
 struct pci_device simos_driver = {
 	"simos",

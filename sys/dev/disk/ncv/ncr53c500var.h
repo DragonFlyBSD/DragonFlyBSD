@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500var.h,v 1.1.2.4 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500var.h,v 1.2 2003/06/17 04:28:28 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500var.h,v 1.3 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: ncr53c500var.h,v 1.11.18.1 2001/06/08 06:27:45 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -91,10 +91,10 @@ struct ncv_targ_info {
 /*****************************************************************
  * Proto
  *****************************************************************/
-int ncvprobesubr __P((bus_space_tag_t, bus_space_handle_t ioh, u_int, int));
-void ncvattachsubr __P((struct ncv_softc *));
-int ncvprint __P((void *, const char *));
-int ncvintr __P((void *));
+int ncvprobesubr (bus_space_tag_t, bus_space_handle_t ioh, u_int, int);
+void ncvattachsubr (struct ncv_softc *);
+int ncvprint (void *, const char *);
+int ncvintr (void *);
 
 #if	defined(i386)
 #define	SOFT_INTR_REQUIRED(slp)	(softintr((slp)->sl_irq))

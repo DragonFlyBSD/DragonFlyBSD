@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ispfw/ispfw.c,v 1.2.2.5 2002/10/12 00:13:09 mjacob Exp $ */
-/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.3 2003/08/07 21:16:53 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ispfw/ispfw.c,v 1.4 2003/08/27 10:35:17 rob Exp $ */
 /*
  * ISP Firmware Helper Pseudo Device for FreeBSD
  *
@@ -56,9 +56,9 @@
 #define	PCI_PRODUCT_QLOGIC_ISP2300	0x2300
 #define	PCI_PRODUCT_QLOGIC_ISP2312	0x2312
 
-typedef void ispfwfunc __P((int, int, int, const u_int16_t **));
+typedef void ispfwfunc (int, int, int, const u_int16_t **);
 extern ispfwfunc *isp_get_firmware_p;
-static void isp_get_firmware __P((int, int, int, const u_int16_t **));
+static void isp_get_firmware (int, int, int, const u_int16_t **);
 
 static int ncallers = 0;
 static const u_int16_t ***callp = NULL;

@@ -33,7 +33,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/en/midway.c,v 1.19.2.1 2003/01/23 21:06:42 sam Exp $
- * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.4 2003/08/07 21:54:27 dillon Exp $
+ * $DragonFly: src/sys/dev/atm/en/midway.c,v 1.5 2003/08/27 10:35:15 rob Exp $
  */
 
 /*
@@ -265,36 +265,36 @@ static struct en_dmatab *en_dmaplan = en_dma_planB;
  * prototypes
  */
 
-STATIC INLINE	int en_b2sz __P((int)) __attribute__ ((unused));
+STATIC INLINE	int en_b2sz (int) __attribute__ ((unused));
 #ifdef EN_DDBHOOK
-		int en_dump __P((int,int));
-		int en_dumpmem __P((int,int,int));
+		int en_dump (int,int);
+		int en_dumpmem (int,int,int);
 #endif
-STATIC		void en_dmaprobe __P((struct en_softc *));
-STATIC		int en_dmaprobe_doit __P((struct en_softc *, u_int8_t *, 
-		    u_int8_t *, int));
-STATIC INLINE	int en_dqneed __P((struct en_softc *, caddr_t, u_int,
-		    u_int)) __attribute__ ((unused));
-STATIC		void en_init __P((struct en_softc *));
-STATIC		int en_ioctl __P((struct ifnet *, EN_IOCTL_CMDT, caddr_t));
-STATIC INLINE	int en_k2sz __P((int)) __attribute__ ((unused));
-STATIC		void en_loadvc __P((struct en_softc *, int));
-STATIC		int en_mfix __P((struct en_softc *, struct mbuf **,
-		    struct mbuf *));
-STATIC INLINE	struct mbuf *en_mget __P((struct en_softc *, u_int,
-		    u_int *)) __attribute__ ((unused));
-STATIC INLINE	u_int32_t en_read __P((struct en_softc *,
-		    u_int32_t)) __attribute__ ((unused));
-STATIC		int en_rxctl __P((struct en_softc *, struct atm_pseudoioctl *,
-		    int));
-STATIC		void en_txdma __P((struct en_softc *, int));
-STATIC		void en_txlaunch __P((struct en_softc *, int,
-		    struct en_launch *));
-STATIC		void en_service __P((struct en_softc *));
-STATIC		void en_start __P((struct ifnet *));
-STATIC INLINE	int en_sz2b __P((int)) __attribute__ ((unused));
-STATIC INLINE	void en_write __P((struct en_softc *, u_int32_t,
-		    u_int32_t)) __attribute__ ((unused));
+STATIC		void en_dmaprobe (struct en_softc *);
+STATIC		int en_dmaprobe_doit (struct en_softc *, u_int8_t *, 
+		    u_int8_t *, int);
+STATIC INLINE	int en_dqneed (struct en_softc *, caddr_t, u_int,
+		    u_int) __attribute__ ((unused));
+STATIC		void en_init (struct en_softc *);
+STATIC		int en_ioctl (struct ifnet *, EN_IOCTL_CMDT, caddr_t);
+STATIC INLINE	int en_k2sz (int) __attribute__ ((unused));
+STATIC		void en_loadvc (struct en_softc *, int);
+STATIC		int en_mfix (struct en_softc *, struct mbuf **,
+		    struct mbuf *);
+STATIC INLINE	struct mbuf *en_mget (struct en_softc *, u_int,
+		    u_int *) __attribute__ ((unused));
+STATIC INLINE	u_int32_t en_read (struct en_softc *,
+		    u_int32_t) __attribute__ ((unused));
+STATIC		int en_rxctl (struct en_softc *, struct atm_pseudoioctl *,
+		    int);
+STATIC		void en_txdma (struct en_softc *, int);
+STATIC		void en_txlaunch (struct en_softc *, int,
+		    struct en_launch *);
+STATIC		void en_service (struct en_softc *);
+STATIC		void en_start (struct ifnet *);
+STATIC INLINE	int en_sz2b (int) __attribute__ ((unused));
+STATIC INLINE	void en_write (struct en_softc *, u_int32_t,
+		    u_int32_t) __attribute__ ((unused));
 
 /*
  * macros/inline

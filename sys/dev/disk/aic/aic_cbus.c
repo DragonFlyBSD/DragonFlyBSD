@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aic_cbus.c,v 1.1.2.2 2000/06/21 09:37:09 nyan Exp $
- * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.3 2003/08/07 21:16:50 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/Attic/aic_cbus.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 #include <sys/param.h>
@@ -50,10 +50,10 @@ struct aic_isa_softc {
 	void	*sc_ih;
 };
 
-static int aic_isa_alloc_resources __P((device_t));
-static void aic_isa_release_resources __P((device_t));
-static int aic_isa_probe __P((device_t));
-static int aic_isa_attach __P((device_t));
+static int aic_isa_alloc_resources (device_t);
+static void aic_isa_release_resources (device_t);
+static int aic_isa_probe (device_t);
+static int aic_isa_attach (device_t);
 
 #ifdef PC98
 static u_int aic_isa_ports[] = { 0x1840 };

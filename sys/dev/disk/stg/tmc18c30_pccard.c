@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/stg/tmc18c30_pccard.c,v 1.2.2.6 2001/12/17 13:30:19 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.3 2003/08/07 21:16:54 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/stg/tmc18c30_pccard.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: tmc18c30_pisa.c,v 1.22 1998/11/26 01:59:21 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -78,7 +78,7 @@
 static	int	stgprobe(DEVPORT_PDEVICE devi);
 static	int	stgattach(DEVPORT_PDEVICE devi);
 
-static	void	stg_card_unload	__P((DEVPORT_PDEVICE));
+static	void	stg_card_unload	(DEVPORT_PDEVICE);
 
 /*
  * Additional code for FreeBSD new-bus PCCard frontend

@@ -1,7 +1,7 @@
 /*
  * $NetBSD: puc.c,v 1.7 2000/07/29 17:43:38 jlam Exp $
  * $FreeBSD: src/sys/dev/puc/puc.c,v 1.3.2.5 2003/04/04 08:42:17 sobomax Exp $
- * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.3 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/puc/puc.c,v 1.4 2003/08/27 10:35:18 rob Exp $
  */
 
 /*-
@@ -119,7 +119,7 @@ struct puc_softc {
         struct {
 		struct device	*dev;
 		/* filled in by bus_setup_intr() */
-		void		(*ihand) __P((void *));
+		void		(*ihand) (void *);
 		void		*ihandarg;
         } sc_ports[PUC_MAX_PORTS];
 };

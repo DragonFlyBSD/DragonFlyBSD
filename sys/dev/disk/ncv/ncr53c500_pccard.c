@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/dev/ncv/ncr53c500_pccard.c,v 1.2.2.5 2001/12/17 13:30:18 non Exp $	*/
-/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.3 2003/08/07 21:16:53 dillon Exp $	*/
+/*	$DragonFly: src/sys/dev/disk/ncv/ncr53c500_pccard.c,v 1.4 2003/08/27 10:35:17 rob Exp $	*/
 /*	$NecBSD: ncr53c500_pisa.c,v 1.28 1998/11/26 01:59:11 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -78,7 +78,7 @@
 static int ncvprobe(DEVPORT_PDEVICE devi);
 static int ncvattach(DEVPORT_PDEVICE devi);
 
-static void	ncv_card_unload __P((DEVPORT_PDEVICE));
+static void	ncv_card_unload (DEVPORT_PDEVICE);
 
 /*
  * Additional code for FreeBSD new-bus PCCard frontend

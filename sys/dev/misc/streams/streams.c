@@ -31,7 +31,7 @@
  * in 3.0-980524-SNAP then hacked a bit (but probably not enough :-).
  *
  * $FreeBSD: src/sys/dev/streams/streams.c,v 1.16.2.1 2001/02/26 04:23:07 jlemon Exp $
- * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.9 2003/08/07 21:16:59 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/streams/Attic/streams.c,v 1.10 2003/08/27 10:35:18 rob Exp $
  */
 
 #include <sys/param.h>
@@ -62,8 +62,8 @@
 #include <emulation/svr4/svr4_stropts.h>
 #include <emulation/svr4/svr4_socket.h>
 
-static int svr4_soo_close __P((struct file *, struct thread *));
-static int svr4_ptm_alloc __P((struct thread *));
+static int svr4_soo_close (struct file *, struct thread *);
+static int svr4_ptm_alloc (struct thread *);
 static  d_open_t	streamsopen;
 
 struct svr4_sockcache_entry {

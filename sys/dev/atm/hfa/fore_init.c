@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_init.c,v 1.6 1999/08/29 10:28:09 bde Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_init.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
  * Local functions
  */
 #ifdef FORE_PCI
-static void	fore_get_prom __P((Fore_unit *));
+static void	fore_get_prom (Fore_unit *);
 #endif
 
 
@@ -77,7 +77,7 @@ fore_initialize(fup)
 		 * Try again later
 		 */
 		fup->fu_thandle = 
-			timeout((KTimeout_ret(*) __P((void *)))fore_initialize,
+			timeout((KTimeout_ret(*) (void *))fore_initialize,
 				(void *)fup, hz);
 		return;
 	} else

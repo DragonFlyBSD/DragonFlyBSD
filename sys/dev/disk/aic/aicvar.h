@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/aic/aicvar.h,v 1.2.2.1 2000/08/08 23:51:23 peter Exp $
- * $DragonFly: src/sys/dev/disk/aic/aicvar.h,v 1.2 2003/06/17 04:28:21 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/aic/aicvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $
  */
 
 struct aic_transinfo {
@@ -145,7 +145,7 @@ struct aic_softc {
 	bus_space_write_multi_4((aic)->tag, (aic)->bsh, (port), \
 		(u_int32_t *)(addr), (count))
 
-extern int aic_probe __P((struct aic_softc *));
-extern int aic_attach __P((struct aic_softc *));
-extern int aic_detach __P((struct aic_softc *));
-extern void aic_intr __P((void *));
+extern int aic_probe (struct aic_softc *);
+extern int aic_attach (struct aic_softc *);
+extern int aic_detach (struct aic_softc *);
+extern void aic_intr (void *);

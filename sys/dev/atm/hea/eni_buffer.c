@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_buffer.c,v 1.5 1999/08/28 00:41:43 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_buffer.c,v 1.5 2003/08/27 10:35:15 rob Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include "eni.h"
 #include "eni_var.h"
 
-static int	eni_test_memory __P((Eni_unit *));
+static int	eni_test_memory (Eni_unit *);
 
 /*
  * The host is going to manage (that is, allocate and free) buffers

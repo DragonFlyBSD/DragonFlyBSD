@@ -35,7 +35,7 @@
  *
  *	from: @(#)wdreg.h	7.1 (Berkeley) 5/9/91
  * $FreeBSD: src/sys/i386/isa/wdreg.h,v 1.30 1999/12/29 04:33:16 peter Exp $
- * $DragonFly: src/sys/dev/disk/wd/Attic/wdreg.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/wd/Attic/wdreg.h,v 1.3 2003/08/27 10:35:17 rob Exp $
  */
 
 /*
@@ -263,26 +263,26 @@ struct wdparams {
  */
 struct wddma {
 	void	*(*wdd_candma)		/* returns a cookie if PCI */
-		__P((int iobase_wd, int ctlr, int unit));
+		(int iobase_wd, int ctlr, int unit);
 	int	(*wdd_dmaverify)	/* verify that request is DMA-able */
-		__P((void *cookie, char *vaddr, u_long len, int direction));
+		(void *cookie, char *vaddr, u_long len, int direction);
 	int	(*wdd_dmaprep)		/* prepare DMA hardware */
-		__P((void *cookie, char *vaddr, u_long len, int direction));
+		(void *cookie, char *vaddr, u_long len, int direction);
 	void	(*wdd_dmastart)		/* begin DMA transfer */
-		__P((void *cookie));
+		(void *cookie);
 	int	(*wdd_dmadone)		/* DMA transfer completed */
-		__P((void *cookie));
+		(void *cookie);
 	int	(*wdd_dmastatus)	/* return status of DMA */
-		__P((void *cookie));
+		(void *cookie);
 	int	(*wdd_dmainit)		/* initialize controller and drive */
-		__P((void *cookie, 
+		(void *cookie, 
 		     struct wdparams *wp, 
-		     int(wdcmd)__P((int mode, void *wdinfo)),
-		     void *wdinfo));
+		     int(wdcmd)(int mode, void *wdinfo),
+		     void *wdinfo);
 	int	(*wdd_iobase)		/* returns iobase address */
-		__P((void *cookie));
+		(void *cookie);
 	int	(*wdd_altiobase)	/* returns altiobase address */
-		__P((void *cookie));
+		(void *cookie);
 };
 
 /* logical status bits returned by wdd_dmastatus */
@@ -316,6 +316,6 @@ void	wdc_pci(int quirks);
 
 extern struct wddma wddma[];
 
-void	wdintr __P((void *unit));
+void	wdintr (void *unit);
 
 #endif /* _KERNEL */

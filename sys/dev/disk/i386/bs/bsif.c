@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsif.c,v 1.10.2.1 2000/08/24 08:06:08 kato Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.3 2003/08/07 21:16:52 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsif.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 #if	0
@@ -58,7 +58,7 @@
  * DEVICE DECLARE
  **************************************************/
 #ifdef __NetBSD__
-static void bs_scsi_minphys __P((struct buf *));
+static void bs_scsi_minphys (struct buf *);
 
 struct cfdriver bs_cd = {
 	NULL, "bs", DV_DULL
@@ -80,11 +80,11 @@ struct scsi_adapter pc98texa55bs = {
 #endif	/* __NetBSD__ */
 
 #ifdef __FreeBSD__
-static int bsprobe __P((struct isa_device *));
+static int bsprobe (struct isa_device *);
 static void bs_poll(struct cam_sim *sim);
 static int bsattach(struct isa_device *);
 static ointhand2_t bsintr;
-static int bs_dmarangecheck __P((caddr_t, unsigned));
+static int bs_dmarangecheck (caddr_t, unsigned);
 
 struct isa_driver bsdriver = {
 	bsprobe,

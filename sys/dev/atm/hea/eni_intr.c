@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_intr.c,v 1.4 1999/08/28 00:41:44 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_intr.c,v 1.5 2003/08/27 10:35:15 rob Exp $
  */
 
 /*
@@ -42,7 +42,7 @@
 #include "eni_suni.h"
 #include "eni_var.h"
 
-static void	eni_suni_intr __P((Eni_unit *));
+static void	eni_suni_intr (Eni_unit *);
 
 /*
  * SUNI Interrupt processing

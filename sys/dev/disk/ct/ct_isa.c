@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ct/ct_isa.c,v 1.3.2.3 2003/06/01 04:26:44 nyan Exp $ */
-/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_isa.c,v 1.3 2003/08/07 21:16:52 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ct/Attic/ct_isa.c,v 1.4 2003/08/27 10:35:16 rob Exp $ */
 /*	$NecBSD: ct_isa.c,v 1.6 1999/07/26 06:32:01 honda Exp $	*/
 /*	$NetBSD$	*/
 
@@ -104,9 +104,9 @@ static int ct_space_map(device_t, struct bshw *,
 static void ct_space_unmap(device_t, struct ct_softc *);
 static struct bshw *ct_find_hw(device_t);
 static void ct_dmamap(void *, bus_dma_segment_t *, int, int);
-static void ct_isa_bus_access_weight __P((struct ct_bus_access_handle *));
-static void ct_isa_dmasync_before __P((struct ct_softc *));
-static void ct_isa_dmasync_after __P((struct ct_softc *));
+static void ct_isa_bus_access_weight (struct ct_bus_access_handle *);
+static void ct_isa_dmasync_before (struct ct_softc *);
+static void ct_isa_dmasync_after (struct ct_softc *);
 
 struct ct_isa_softc {
 	struct ct_softc sc_ct;

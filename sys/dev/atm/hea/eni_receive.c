@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni_receive.c,v 1.5 1999/08/28 00:41:45 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni_receive.c,v 1.5 2003/08/27 10:35:15 rob Exp $
  */
 
 /*
@@ -41,7 +41,7 @@
 #include "eni.h"
 #include "eni_var.h"
 
-static void	eni_recv_stack __P((void *, KBuffer *));
+static void	eni_recv_stack (void *, KBuffer *);
 
 #ifdef	DIAGNOSTIC
 extern int	eni_pdu_print;

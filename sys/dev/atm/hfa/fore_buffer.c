@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_buffer.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_buffer.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 /*
@@ -40,9 +40,9 @@
 /*
  * Local functions
  */
-static void	fore_buf_drain __P((Fore_unit *));
-static void	fore_buf_supply_1s __P((Fore_unit *));
-static void	fore_buf_supply_1l __P((Fore_unit *));
+static void	fore_buf_drain (Fore_unit *);
+static void	fore_buf_supply_1s (Fore_unit *);
+static void	fore_buf_supply_1l (Fore_unit *);
 
 
 /*

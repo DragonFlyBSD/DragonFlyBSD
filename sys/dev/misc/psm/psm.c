@@ -21,7 +21,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/isa/psm.c,v 1.23.2.6 2002/03/27 16:53:35 pb Exp $
- * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.7 2003/08/07 21:16:58 dillon Exp $
+ * $DragonFly: src/sys/dev/misc/psm/psm.c,v 1.8 2003/08/27 10:35:18 rob Exp $
  */
 
 /*
@@ -230,14 +230,14 @@ typedef struct old_mousemode {
 } old_mousemode_t;
 
 /* packet formatting function */
-typedef int packetfunc_t __P((struct psm_softc *, unsigned char *,
-			      int *, int, mousestatus_t *));
+typedef int packetfunc_t (struct psm_softc *, unsigned char *,
+			      int *, int, mousestatus_t *);
 
 /* function prototypes */
-static int psmprobe __P((device_t));
-static int psmattach __P((device_t));
-static int psmdetach __P((device_t));
-static int psmresume __P((device_t));
+static int psmprobe (device_t);
+static int psmattach (device_t);
+static int psmdetach (device_t);
+static int psmresume (device_t);
 
 static d_open_t psmopen;
 static d_close_t psmclose;
@@ -245,30 +245,30 @@ static d_read_t psmread;
 static d_ioctl_t psmioctl;
 static d_poll_t psmpoll;
 
-static int enable_aux_dev __P((KBDC));
-static int disable_aux_dev __P((KBDC));
-static int get_mouse_status __P((KBDC, int *, int, int));
-static int get_aux_id __P((KBDC));
-static int set_mouse_sampling_rate __P((KBDC, int));
-static int set_mouse_scaling __P((KBDC, int));
-static int set_mouse_resolution __P((KBDC, int));
-static int set_mouse_mode __P((KBDC));
-static int get_mouse_buttons __P((KBDC));
-static int is_a_mouse __P((int));
-static void recover_from_error __P((KBDC));
-static int restore_controller __P((KBDC, int));
-static int doinitialize __P((struct psm_softc *, mousemode_t *));
-static int doopen __P((struct psm_softc *, int));
-static int reinitialize __P((struct psm_softc *, int));
-static char *model_name __P((int));
-static void psmintr __P((void *));
-static void psmtimeout __P((void *));
+static int enable_aux_dev (KBDC);
+static int disable_aux_dev (KBDC);
+static int get_mouse_status (KBDC, int *, int, int);
+static int get_aux_id (KBDC);
+static int set_mouse_sampling_rate (KBDC, int);
+static int set_mouse_scaling (KBDC, int);
+static int set_mouse_resolution (KBDC, int);
+static int set_mouse_mode (KBDC);
+static int get_mouse_buttons (KBDC);
+static int is_a_mouse (int);
+static void recover_from_error (KBDC);
+static int restore_controller (KBDC, int);
+static int doinitialize (struct psm_softc *, mousemode_t *);
+static int doopen (struct psm_softc *, int);
+static int reinitialize (struct psm_softc *, int);
+static char *model_name (int);
+static void psmintr (void *);
+static void psmtimeout (void *);
 
 /* vendor specific features */
-typedef int probefunc_t __P((struct psm_softc *));
+typedef int probefunc_t (struct psm_softc *);
 
-static int mouse_id_proc1 __P((KBDC, int, int, int *));
-static int mouse_ext_command __P((KBDC, int));
+static int mouse_id_proc1 (KBDC, int, int, int *);
+static int mouse_ext_command (KBDC, int);
 static probefunc_t enable_groller;
 static probefunc_t enable_gmouse;
 static probefunc_t enable_aglide; 
@@ -279,7 +279,7 @@ static probefunc_t enable_4dmouse;
 static probefunc_t enable_4dplus;
 static probefunc_t enable_mmanplus;
 static probefunc_t enable_versapad;
-static int tame_mouse __P((struct psm_softc *, mousestatus_t *, unsigned char *));
+static int tame_mouse (struct psm_softc *, mousestatus_t *, unsigned char *);
 
 static struct {
     int                 model;

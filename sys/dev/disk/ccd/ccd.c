@@ -1,5 +1,5 @@
 /* $FreeBSD: src/sys/dev/ccd/ccd.c,v 1.73.2.1 2001/09/11 09:49:52 kris Exp $ */
-/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.10 2003/08/07 21:54:29 dillon Exp $ */
+/* $DragonFly: src/sys/dev/disk/ccd/ccd.c,v 1.11 2003/08/27 10:35:16 rob Exp $ */
 
 /*	$NetBSD: ccd.c,v 1.22 1995/12/08 19:13:26 thorpej Exp $	*/
 
@@ -192,26 +192,26 @@ static struct cdevsw ccd_cdevsw = {
 };
 
 /* called during module initialization */
-static	void ccdattach __P((void));
-static	int ccd_modevent __P((module_t, int, void *));
+static	void ccdattach (void);
+static	int ccd_modevent (module_t, int, void *);
 
 /* called by biodone() at interrupt time */
-static	void ccdiodone __P((struct ccdbuf *cbp));
+static	void ccdiodone (struct ccdbuf *cbp);
 
-static	void ccdstart __P((struct ccd_softc *, struct buf *));
-static	void ccdinterleave __P((struct ccd_softc *, int));
-static	void ccdintr __P((struct ccd_softc *, struct buf *));
-static	int ccdinit __P((struct ccddevice *, char **, struct thread *));
-static	int ccdlookup __P((char *, struct thread *td, struct vnode **));
-static	void ccdbuffer __P((struct ccdbuf **ret, struct ccd_softc *,
-		struct buf *, daddr_t, caddr_t, long));
-static	void ccdgetdisklabel __P((dev_t));
-static	void ccdmakedisklabel __P((struct ccd_softc *));
-static	int ccdlock __P((struct ccd_softc *));
-static	void ccdunlock __P((struct ccd_softc *));
+static	void ccdstart (struct ccd_softc *, struct buf *);
+static	void ccdinterleave (struct ccd_softc *, int);
+static	void ccdintr (struct ccd_softc *, struct buf *);
+static	int ccdinit (struct ccddevice *, char **, struct thread *);
+static	int ccdlookup (char *, struct thread *td, struct vnode **);
+static	void ccdbuffer (struct ccdbuf **ret, struct ccd_softc *,
+		struct buf *, daddr_t, caddr_t, long);
+static	void ccdgetdisklabel (dev_t);
+static	void ccdmakedisklabel (struct ccd_softc *);
+static	int ccdlock (struct ccd_softc *);
+static	void ccdunlock (struct ccd_softc *);
 
 #ifdef DEBUG
-static	void printiinfo __P((struct ccdiinfo *));
+static	void printiinfo (struct ccdiinfo *);
 #endif
 
 /* Non-private for the benefit of libkvm. */

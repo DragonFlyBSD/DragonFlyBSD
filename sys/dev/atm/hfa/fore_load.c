@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_load.c,v 1.13 1999/09/25 18:23:49 phk Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.5 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_load.c,v 1.6 2003/08/27 10:35:16 rob Exp $
  */
 
 /*
@@ -40,25 +40,25 @@
 /*
  * Local functions
  */
-static int	fore_start __P((void));
+static int	fore_start (void);
 #ifdef sun
-static int	fore_stop __P((void));
-static int	fore_doload __P((void));
-static int	fore_dounload __P((void));
-static int	fore_identify __P((char *));
-static int	fore_attach __P((struct devinfo *));
+static int	fore_stop (void);
+static int	fore_doload (void);
+static int	fore_dounload (void);
+static int	fore_identify (char *);
+static int	fore_attach (struct devinfo *);
 #endif
 #ifdef __FreeBSD__
-static const char *	fore_pci_probe __P((pcici_t, pcidi_t));
-static void	fore_pci_attach __P((pcici_t, int));
+static const char *	fore_pci_probe (pcici_t, pcidi_t);
+static void	fore_pci_attach (pcici_t, int);
 #if BSD < 199506
-static int	fore_pci_shutdown __P((struct kern_devconf *, int));
+static int	fore_pci_shutdown (struct kern_devconf *, int);
 #else
-static void	fore_pci_shutdown __P((void *, int));
+static void	fore_pci_shutdown (void *, int);
 #endif
 #endif
-static void	fore_unattach __P((Fore_unit *));
-static void	fore_reset __P((Fore_unit *));
+static void	fore_unattach (Fore_unit *);
+static void	fore_reset (Fore_unit *);
 
 
 /*
@@ -1173,7 +1173,7 @@ fore_unattach(fup)
 	/*
 	 * Remove any pending timeout()'s
 	 */
-	(void)untimeout((KTimeout_ret(*) __P((void *)))fore_initialize,
+	(void)untimeout((KTimeout_ret(*) (void *))fore_initialize,
 		(void *)fup, fup->fu_thandle);
 
 #ifdef sun

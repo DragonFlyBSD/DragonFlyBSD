@@ -1,5 +1,6 @@
 /*	$NecBSD: bshw.lst,v 1.1 1997/07/18 09:19:05 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
+/*	$DragonFly: src/sys/dev/disk/i386/bs/Attic/bshw.lst,v 1.2 2003/08/27 10:35:16 rob Exp $	*/
 /*
  * [NetBSD for NEC PC98 series]
  *  Copyright (c) 1994, 1995, 1996 NetBSD/pc98 porting staff.
@@ -42,9 +43,9 @@ static struct bshw bshw_generic = {
 	NULL,
 };
 
-static int bshw_dma_init_sc98 __P((struct bs_softc *));
-static void bshw_dma_start_sc98 __P((struct bs_softc *));
-static void bshw_dma_stop_sc98 __P((struct bs_softc *));
+static int bshw_dma_init_sc98 (struct bs_softc *);
+static void bshw_dma_start_sc98 (struct bs_softc *);
+static void bshw_dma_stop_sc98 (struct bs_softc *);
 static struct bshw bshw_sc98 = {
 	BSHW_DOUBLE_DMACHAN,
 
@@ -55,7 +56,7 @@ static struct bshw bshw_sc98 = {
 	bshw_dma_stop_sc98,
 };
 
-static int bshw_dma_init_texa __P((struct bs_softc *));
+static int bshw_dma_init_texa (struct bs_softc *);
 static struct bshw bshw_texa = {
 	BSHW_DOUBLE_DMACHAN,
 
@@ -66,8 +67,8 @@ static struct bshw bshw_texa = {
 	NULL,
 };
 
-static void bshw_dma_start_elecom __P((struct bs_softc *));
-static void bshw_dma_stop_elecom __P((struct bs_softc *));
+static void bshw_dma_start_elecom (struct bs_softc *);
+static void bshw_dma_stop_elecom (struct bs_softc *);
 static struct bshw bshw_elecom = {
 	0,
 

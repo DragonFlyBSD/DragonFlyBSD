@@ -29,7 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/bs/bsvar.h,v 1.6.6.1 2000/03/22 03:36:45 nyan Exp $
- * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsvar.h,v 1.2 2003/06/17 04:28:37 dillon Exp $
+ * $DragonFly: src/sys/dev/disk/i386/bs/Attic/bsvar.h,v 1.3 2003/08/27 10:35:16 rob Exp $
  */
 /*
  * Copyright (c) 1994, 1995, 1996 Naofumi HONDA.  All rights reserved.
@@ -503,12 +503,12 @@ extern int bs_debug_flag;
 /*************************************************
  * Function declare
  *************************************************/
-int bs_scsi_cmd_internal __P((struct bsccb *, u_int));
-struct bsccb *bscmddone __P((struct targ_info *));
-int bscmdstart __P((struct targ_info *, int));
-int bs_scsi_cmd_poll __P((struct targ_info *, struct bsccb *));
-int bs_sequencer __P((struct bs_softc *));
-void bs_poll_timeout __P((struct bs_softc *, char *));
+int bs_scsi_cmd_internal (struct bsccb *, u_int);
+struct bsccb *bscmddone (struct targ_info *);
+int bscmdstart (struct targ_info *, int);
+int bs_scsi_cmd_poll (struct targ_info *, struct bsccb *);
+int bs_sequencer (struct bs_softc *);
+void bs_poll_timeout (struct bs_softc *, char *);
 
 /*************************************************
  * XXX

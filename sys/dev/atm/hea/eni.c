@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hea/eni.c,v 1.10 1999/08/28 00:41:42 peter Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.4 2003/08/07 21:54:28 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hea/eni.c,v 1.5 2003/08/27 10:35:15 rob Exp $
  */
 
 /*
@@ -44,18 +44,18 @@
 /*
  * Typedef local functions
  */
-static const char	*eni_pci_probe __P((pcici_t, pcidi_t));
-static void	eni_pci_attach __P((pcici_t, int));
-static int 	eni_get_ack __P((Eni_unit *));
-static int	eni_get_sebyte __P((Eni_unit *));
-static void	eni_read_seeprom __P((Eni_unit *));
+static const char	*eni_pci_probe (pcici_t, pcidi_t);
+static void	eni_pci_attach (pcici_t, int);
+static int 	eni_get_ack (Eni_unit *);
+static int	eni_get_sebyte (Eni_unit *);
+static void	eni_read_seeprom (Eni_unit *);
 #ifdef	__FreeBSD__
 #if BSD < 199506
-static int	eni_pci_shutdown __P((struct kern_devconf *, int));
+static int	eni_pci_shutdown (struct kern_devconf *, int);
 #else
-static void	eni_pci_shutdown __P((void *, int));
+static void	eni_pci_shutdown (void *, int);
 #endif
-static void	eni_pci_reset __P((Eni_unit *));
+static void	eni_pci_reset (Eni_unit *);
 #endif	/* __FreeBSD__ */
 
 /*

@@ -24,7 +24,7 @@
  * notice must be reproduced on all copies.
  *
  *	@(#) $FreeBSD: src/sys/dev/hfa/fore_output.c,v 1.5 2000/01/15 21:01:04 mks Exp $
- *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.3 2003/08/07 21:16:49 dillon Exp $
+ *	@(#) $DragonFly: src/sys/dev/atm/hfa/fore_output.c,v 1.4 2003/08/27 10:35:16 rob Exp $
  */
 
 /*
@@ -40,9 +40,9 @@
 /*
  * Local functions
  */
-static KBuffer *	fore_xmit_segment __P((Fore_unit *, KBuffer *,
-				H_xmit_queue *, int *, int *));
-static void		fore_seg_dma_free __P((H_xmit_queue *, KBuffer *, int));
+static KBuffer *	fore_xmit_segment (Fore_unit *, KBuffer *,
+				H_xmit_queue *, int *, int *);
+static void		fore_seg_dma_free (H_xmit_queue *, KBuffer *, int);
 
 
 /*
