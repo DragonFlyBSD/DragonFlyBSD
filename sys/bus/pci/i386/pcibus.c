@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/isa/pcibus.c,v 1.57.2.12 2003/08/07 06:19:26 imp Exp $
- * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.10 2004/02/21 06:37:06 dillon Exp $
+ * $DragonFly: src/sys/bus/pci/i386/pcibus.c,v 1.11 2004/03/25 01:39:27 dillon Exp $
  *
  */
 
@@ -489,9 +489,15 @@ DRIVER_MODULE(pcib, nexus, nexus_pcib_driver, pcib_devclass, 0, 0);
 
 
 /*
+ * XXX may have to disable the registration entirely to support module-loaded
+ * bridges such as agp.ko.
+ * 
  * Provide a device to "eat" the host->pci bridges that we dug up above
  * and stop them showing up twice on the probes.  This also stops them
  * showing up as 'none' in pciconf -l.
+ *
+ * Return an ultra-low priority so other devices can attach the bus before
+ * our dummy attach.
  */
 static int
 pci_hostb_probe(device_t dev)
@@ -500,7 +506,7 @@ pci_hostb_probe(device_t dev)
 	    pci_get_subclass(dev) == PCIS_BRIDGE_HOST) {
 		device_set_desc(dev, "Host to PCI bridge");
 		device_quiet(dev);
-		return 0;
+		return -10000;
 	}
 	return (ENXIO);
 }
