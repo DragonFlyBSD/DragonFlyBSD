@@ -1,5 +1,5 @@
 # $FreeBSD: src/sbin/dhclient/Makefile.inc,v 1.2.2.1 2002/04/11 10:21:20 murray Exp $
-# $DragonFly: src/sbin/dhclient/Attic/Makefile.inc,v 1.4 2004/02/04 00:48:39 rob Exp $
+# $DragonFly: src/sbin/dhclient/Attic/Makefile.inc,v 1.5 2004/07/21 02:07:23 dillon Exp $
 
 WARNS=		0
 CFLAGS+= -I${DIST_DIR}/includes
@@ -10,7 +10,7 @@ RUNDIR=		/var/run
 ETCDIR=		/etc
 DBDIR=		/var/db
 
-MANFILTER= perl -pe 's\#DBDIR\#${DBDIR}\#g;s\#ETCDIR\#${ETCDIR}\#g;s\#CLIENTBINDIR\#${CLIENTBINDIR}\#g;s\#RUNDIR\#${RUNDIR}\#g;'
+MANFILTER= sed -e 's\#DBDIR\#${DBDIR}\#g;s\#ETCDIR\#${ETCDIR}\#g;s\#CLIENTBINDIR\#${CLIENTBINDIR}\#g;s\#RUNDIR\#${RUNDIR}\#g;'
 
 .if exists(${.OBJDIR}/../common)
 LIBDHCP=	${.OBJDIR}/../common/libdhcp.a
