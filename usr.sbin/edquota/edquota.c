@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1980, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)edquota.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/edquota/edquota.c,v 1.9.2.6 2002/10/31 22:38:43 iedowse Exp $
- * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.4 2003/11/16 14:10:45 eirikn Exp $
+ * $DragonFly: src/usr.sbin/edquota/edquota.c,v 1.5 2004/02/25 11:28:58 joerg Exp $
  */
 
 /*
@@ -101,7 +101,7 @@ main(int argc, char **argv)
 	char *protoname, *cp, *oldoptarg, ch;
 	int eflag = 0, tflag = 0, pflag = 0;
 	char *fspath = NULL;
-	char buf[30];
+	char buf[MAXLOGNAME];
 
 	if (argc < 2)
 		usage();
