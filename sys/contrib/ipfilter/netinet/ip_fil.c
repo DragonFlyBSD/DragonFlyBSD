@@ -6,7 +6,7 @@
  * @(#)ip_fil.c     2.41 6/5/96 (C) 1993-2000 Darren Reed
  * @(#)$Id: ip_fil.c,v 2.42.2.60 2002/08/28 12:40:39 darrenr Exp $
  * $FreeBSD: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.25.2.7 2004/07/04  09:24:38 darrenr Exp $
- * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.15 2004/09/16 23:40:24 joerg Exp $
+ * $DragonFly: src/sys/contrib/ipfilter/netinet/ip_fil.c,v 1.16 2005/02/01 19:39:07 hrs Exp $
  */
 #ifndef	SOLARIS
 #define	SOLARIS	(defined(sun) && (defined(__svr4__) || defined(__SVR4)))
@@ -2087,7 +2087,11 @@ frdest_t *fdp;
 		error = ip6_getpmtu(ro_pmtu, ro, ifp, &finaldst, &mtu);
 		if (error == 0) {
 #else
+#ifdef ND_IFINFO
+			mtu = ND_IFINFO(ifp)->linkmtu;
+#else
 			mtu = nd_ifinfo[ifp->if_index].linkmtu;
+#endif
 #endif
 			if (m0->m_pkthdr.len <= mtu)
 				error = nd6_output(ifp, fin->fin_ifp, m0,
