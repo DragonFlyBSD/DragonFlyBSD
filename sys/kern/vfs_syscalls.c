@@ -37,7 +37,7 @@
  *
  *	@(#)vfs_syscalls.c	8.13 (Berkeley) 4/15/94
  * $FreeBSD: src/sys/kern/vfs_syscalls.c,v 1.151.2.18 2003/04/04 20:35:58 tegge Exp $
- * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.40 2004/09/30 18:59:48 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_syscalls.c,v 1.41 2004/10/02 03:18:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -363,6 +363,7 @@ update:
 		nlc.nlc_namelen = 0;
 		mp->mnt_ncp = cache_nlookup(ncp, &nlc);
 		mp->mnt_ncp->nc_flag |= NCF_MOUNTPT;
+		mp->mnt_ncp->nc_mount = mp;
 		cache_drop(ncp);
 		/* XXX get the root of the fs and cache_setvp(mnt_ncp...) */
 		lwkt_gettoken(&vlock, vp->v_interlock);

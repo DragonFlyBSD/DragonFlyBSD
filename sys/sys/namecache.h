@@ -62,7 +62,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
- * $DragonFly: src/sys/sys/namecache.h,v 1.10 2004/09/30 18:59:50 dillon Exp $
+ * $DragonFly: src/sys/sys/namecache.h,v 1.11 2004/10/02 03:18:28 dillon Exp $
  */
 
 #ifndef _SYS_NAMECACHE_H_
@@ -109,6 +109,7 @@ struct namecache {
     int		nc_timeout;		/* compared against ticks, or 0 */
     int		nc_exlocks;		/* namespace locking */
     struct thread *nc_locktd;		/* namespace locking */
+    struct mount *nc_mount;
 };
 
 typedef struct namecache *namecache_t;

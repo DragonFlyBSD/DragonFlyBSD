@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.30 2004/10/01 07:08:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.31 2004/10/02 03:18:26 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -128,6 +128,8 @@ SYSCTL_ULONG(_debug, OID_AUTO, numunres, CTLFLAG_RD, &numunres, 0, "");
 
 SYSCTL_INT(_debug, OID_AUTO, vnsize, CTLFLAG_RD, 0, sizeof(struct vnode), "");
 SYSCTL_INT(_debug, OID_AUTO, ncsize, CTLFLAG_RD, 0, sizeof(struct namecache), "");
+
+static int cache_resolve_mp(struct namecache *ncp);
 
 /*
  * The new name cache statistics
@@ -749,12 +751,110 @@ cache_resolve(struct namecache *ncp, struct ucred *cred)
 {
 	struct namecache *par;
 
-	if ((par = ncp->nc_parent) == NULL) {
+	/*
+	 * Mount points need special handling because the parent does not
+	 * belong to the same filesystem as the ncp.
+	 */
+	if (ncp->nc_flag & NCF_MOUNTPT) {
+		return (cache_resolve_mp(ncp));
+	}
+
+	/*
+	 * We expect an unbroken chain of ncps to at least the mount point,
+	 * and even all the way to root (but this code doesn't have to go
+	 * past the mount point).
+	 */
+	if (ncp->nc_parent == NULL) {
+		printf("EXDEV case 1 %*.*s\n",
+			ncp->nc_nlen, ncp->nc_nlen, ncp->nc_name);
 		ncp->nc_error = EXDEV;
-	} else if (par->nc_vp == NULL) {
-		ncp->nc_error = EXDEV;
+		return(ncp->nc_error);
+	}
+
+	/*
+	 * The vp's of the parent directories in the chain are held via vhold()
+	 * due to the existance of the child, and should not disappear. 
+	 * However, there are cases where they can disappear:
+	 *
+	 *	- due to filesystem I/O errors.
+	 *	- due to NFS being stupid about tracking the namespace and
+	 *	  destroys the namespace for entire directories quite often.
+	 *	- due to forced unmounts.
+	 *
+	 * When this occurs we have to track the chain backwards and resolve
+	 * it, looping until the resolver catches up to the current node.  We
+	 * could recurse here but we might run ourselves out of kernel stack
+	 * so we do it in a more painful manner.  This situation really should
+	 * not occur all that often, or if it does not have to go back too
+	 * many nodes to resolve the ncp.
+	 */
+	while (ncp->nc_parent->nc_vp == NULL) {
+		par = ncp->nc_parent;
+		while (par->nc_parent && par->nc_parent->nc_vp == NULL)
+			par = par->nc_parent;
+		if (par->nc_parent == NULL) {
+			printf("EXDEV case 2 %*.*s\n",
+				par->nc_nlen, par->nc_nlen, par->nc_name);
+			return (EXDEV);
+		}
+		printf("[diagnostic] cache_resolve: had to recurse on %*.*s\n",
+			par->nc_nlen, par->nc_nlen, par->nc_name);
+		/*
+		 * The leaf prevents the parent from going away, but a
+		 * separate ref is still required to lock it.  Use cache_get()
+		 * instead of cache_lock().
+		 */
+		cache_get(par);
+		if (par->nc_flag & NCF_MOUNTPT) {
+			cache_resolve_mp(par);
+		} else {
+			par->nc_error = 
+			    vop_resolve(par->nc_parent->nc_vp->v_ops, par, cred);
+		}
+		cache_put(par);
+		if (par->nc_error) {
+			printf("EXDEV case 3 %*.*s error %d\n",
+				par->nc_nlen, par->nc_nlen, par->nc_name,
+				par->nc_error);
+			return(par->nc_error);
+		}
+	}
+	if (ncp->nc_flag & NCF_MOUNTPT) {
+		cache_resolve_mp(ncp);
 	} else {
-		ncp->nc_error = vop_resolve(par->nc_vp->v_ops, ncp, cred);
+		ncp->nc_error = 
+			vop_resolve(ncp->nc_parent->nc_vp->v_ops, ncp, cred);
+	}
+	return(ncp->nc_error);
+}
+
+/*
+ * Resolve the ncp associated with a mount point.  Such ncp's almost always
+ * remain resolved and this routine is rarely called.  NFS MPs tends to force
+ * re-resolution more often due to its mac-truck-smash-the-namecache
+ * method of tracking namespace changes.
+ *
+ * The passed ncp must be locked.
+ */
+static int
+cache_resolve_mp(struct namecache *ncp)
+{
+	struct vnode *vp;
+	struct mount *mp = ncp->nc_mount;
+
+	KKASSERT(mp != NULL);
+	if (ncp->nc_flag & NCF_UNRESOLVED) {
+		while (vfs_busy(mp, 0, NULL, curthread))
+			;
+		ncp->nc_error = VFS_ROOT(mp, &vp);
+		if (ncp->nc_error == 0) {
+			cache_setvp(ncp, vp);
+			vput(vp);
+		} else {
+			printf("[diagnostic] cache_resolve_mp: failed to resolve mount %p\n", mp);
+			cache_setvp(ncp, NULL);
+		}
+		vfs_unbusy(mp, curthread);
 	}
 	return(ncp->nc_error);
 }
