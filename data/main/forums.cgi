@@ -1,11 +1,32 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/forums.cgi,v 1.12 2004/10/11 13:23:27 justin Exp $
+# $DragonFly: site/data/main/Attic/forums.cgi,v 1.13 2005/02/03 01:33:01 drhodus Exp $
 
-$TITLE(DragonFly - Forums)
+$TITLE(DragonFly - Mailing Lists - Forums)
 <p>
-The DragonFly project has several forums for discussions.  These forums
-may be accessed through newsgroups or mailing lists.  Posts to newsgroups
+The DragonFly project has several mailing lists for discussion.
+</p>
+
+
+<p>
+To subscribe to a mailing list, send an email to the one of the following addresses
+listed below with the word 'subscribe' in the body.  If you need additional help
+please read <a href="misc/bestserv1.html">bestserv1.html</a>, then send a subscription request
+to the appropriate list email address as shown below.  Please use the test
+list for experimentation and remember to unsubscribe from it when you are done
+(unless you want to see other people's test messages!).  Messages that 
+include HTML sent to any of the lists will be blocked as spam.</p>
+<ul>
+    <li>Bug Reporting - <A HREF=mailto:bugs-request@lists.dragonflybsd.org>bugs-request@lists.dragonflybsd.org</A></li>
+    <li>General/User - <A HREF=mailto:users-request@lists.dragonflybsd.org>users-request@lists.dragonflybsd.org</A></li>
+    <li>Kernel Related - <A HREF=mailto:kernel-request@lists.dragonflybsd.org>kernel-request@lists.dragonflybsd.org</A></li>
+    <li>Patch Submissions - <A HREF=mailto:submit-request@lists.dragonflybsd.org>submit-request@lists.dragonflybsd.org</A></li>
+    <li>Commit Messages - <A HREF=mailto:commits-request@lists.dragonflybsd.org>commits-request@lists.dragonflybsd.org</A></li>
+    <li>Documentation Related - <A HREF=mailto:docs-request@lists.dragonflybsd.org>docs-request@lists.dragonflybsd.org</A></li>
+    <li>Test Postings - <A HREF=mailto:test-request@lists.dragonflybsd.org>test-request@lists.dragonflybsd.org</A></li>
+</ul>
+
+These mailing lists may also be accessed through newsgroups or nntp.  Posts to newsgroups
 will be forwarded to the appropriate mailing list and vice versa.
 When testing newsgroup access, be aware that posts may be delayed up to
 5 minutes.  Please use the 'test' newsgroup for any test postings / 
@@ -33,22 +54,6 @@ experimentation.</p>
     <li>Test Postings -
 	<a href="news://nntp.dragonflybsd.org/dragonfly.test">
 		news://nntp.dragonflybsd.org/dragonfly.test</a></li>
-</ul>
-<p>
-To subscribe to a mailing list, please read
-<a href="misc/bestserv1.html">bestserv1.html</a>, then send a subscription request
-to the appropriate list email address as shown below.  Please use the test
-list for experimentation and remember to unsubscribe from it when you are done
-(unless you want to see other people's test messages!).  Messages that 
-include HTML sent to any of the lists will be blocked as spam.</p>
-<ul>
-    <li>Bug Reporting - bugs-request at lists.dragonflybsd.org</li>
-    <li>General/User - users-request at lists.dragonflybsd.org</li>
-    <li>Kernel Related - kernel-request at lists.dragonflybsd.org</li>
-    <li>Patch Submissions - submit-request at lists.dragonflybsd.org</li>
-    <li>Commit Messages - commits-request at lists.dragonflybsd.org</li>
-    <li>Documentation Related - docs-request at lists.dragonflybsd.org</li>
-    <li>Test Postings - test-request at lists.dragonflybsd.org</li>
 </ul>
 
 <p>
