@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.152 2005/03/16 00:09:46 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.153 2005/03/16 00:13:04 okumoto Exp $
  */
 
 /*-
@@ -1873,17 +1873,16 @@ VarParseLong(const char input[], VarParser *vp,
  * Parse a single letter variable name, and return it's value.
  */
 static char *
-VarParseShort(const char input[], VarParser *vp,
-	size_t *consumed, Boolean *freeResult)
+VarParseShort(VarParser *vp, Boolean *freeResult)
 {
 	char	vname[2];
 	Var	*v;
 	char	*value;
 
-	vname[0] = input[0];
+	vname[0] = vp->ptr[0];
 	vname[1] = '\0';
 
-	*consumed += 1;	/* consume single letter */
+	vp->ptr++;	/* consume single letter */
 
 	v = VarFind(vname, vp->ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
 	if (v != NULL) {
@@ -1941,13 +1940,13 @@ VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 
 	/* assert(vp->ptr[0] == '$'); */
 
-	vp->ptr += 1;	/* consume '$' */
+	vp->ptr++;	/* consume '$' */
 
 	if (vp->ptr[0] == '\0') {
-		*consumed += 1;	/* consume '$' */
 		/* Error, there is only a dollar sign in the input string. */
-		*freeResult = FALSE;
 		value = vp->err ? var_Error : varNoError;
+		*consumed += vp->ptr - vp->input;
+		*freeResult = FALSE;
 
 	} else if (vp->ptr[0] == OPEN_PAREN || vp->ptr[0] == OPEN_BRACE) {
 		*consumed += 1;	/* consume '$' */
@@ -1955,9 +1954,9 @@ VarParse(VarParser *vp, size_t *consumed, Boolean *freeResult)
 		value = VarParseLong(vp->ptr, vp, consumed, freeResult);
 
 	} else {
-		*consumed += 1;	/* consume '$' */
 		/* single letter variable name */
-		value = VarParseShort(vp->ptr, vp, consumed, freeResult);
+		value = VarParseShort(vp, freeResult);
+		*consumed += vp->ptr - vp->input;
 	}
 	return (value);
 }
@@ -1996,8 +1995,10 @@ Var_Parse(const char input[], GNode *ctxt, Boolean err,
 		ctxt,
 		err
 	};
+	char		*value;
 
-	return VarParse(&vp, consumed, freeResult);
+	value = VarParse(&vp, consumed, freeResult);
+	return (value);
 }
 
 /*-
