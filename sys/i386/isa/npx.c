@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.19 2004/05/05 19:26:44 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.20 2004/05/09 22:56:22 hmp Exp $
  */
 
 #include "opt_cpu.h"
@@ -153,6 +153,11 @@ int	hw_float;		/* XXX currently just alias for npx_exists */
 SYSCTL_INT(_hw,HW_FLOATINGPT, floatingpoint,
 	CTLFLAG_RD, &hw_float, 0, 
 	"Floatingpoint instructions executed in hardware");
+#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
+int mmxopt = 0;
+SYSCTL_INT(_kern, OID_AUTO, mmxopt, CTLFLAG_RD, &mmxopt, 0,
+	"MMX/XMM optimized bcopy/copyin/copyout support");
+#endif
 
 #ifndef SMP
 static	u_int			npx0_imask = SWI_CLOCK_MASK;
@@ -426,9 +431,6 @@ int
 npx_attach(device_t dev)
 {
 	int flags;
-#if (defined(I586_CPU) || defined(I686_CPU)) && !defined(CPU_DISABLE_SSE)
-	int mmxopt = 0;
-#endif
 
 	if (resource_int_value("npx", 0, "flags", &flags) != 0)
 		flags = 0;
