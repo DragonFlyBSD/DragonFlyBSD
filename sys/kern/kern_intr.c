@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/kern/kern_intr.c,v 1.24.2.1 2001/10/14 20:05:50 luigi Exp $
- * $DragonFly: src/sys/kern/kern_intr.c,v 1.17 2004/06/28 02:57:11 drhodus Exp $
+ * $DragonFly: src/sys/kern/kern_intr.c,v 1.18 2004/06/28 05:02:56 dillon Exp $
  *
  */
 
@@ -277,12 +277,10 @@ ithread_handler(void *arg)
 	 * irunning[] prior to running the handlers to interlock new
 	 * events.
 	 */
-	if (irunning[intr]) {
-	    irunning[intr] = 0;
-	    for (rec = *list; rec; rec = nrec) {
-		nrec = rec->next;
-		rec->handler(rec->argument);
-	    }
+	irunning[intr] = 0;
+	for (rec = *list; rec; rec = nrec) {
+	    nrec = rec->next;
+	    rec->handler(rec->argument);
 	}
 
 	/*
