@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.83 2005/02/11 10:49:01 harti Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.135 2005/03/07 20:04:34 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.136 2005/03/09 22:54:19 okumoto Exp $
  */
 
 /*-
@@ -375,7 +375,6 @@ VarAdd(const char *name, const char *val, GNode *ctxt)
 {
 
     Lst_AtFront(&ctxt->context, VarCreate(name, val, 0));
-
     DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
 }
 
