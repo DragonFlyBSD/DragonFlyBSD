@@ -35,7 +35,7 @@
  *
  * @(#)inventory.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/inventory.c,v 1.4 1999/11/30 03:49:23 billf Exp $
- * $DragonFly: src/games/rogue/inventory.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/inventory.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -411,14 +411,13 @@ int ch;
 mix_colors()
 {
 	short i, j, k;
-	char *t;
+	char *t[MAX_ID_TITLE_LEN];
 
 	for (i = 0; i <= 32; i++) {
 		j = get_rand(0, (POTIONS - 1));
 		k = get_rand(0, (POTIONS - 1));
-		t = id_potions[j].title;
-		id_potions[j].title = id_potions[k].title;
-		id_potions[k].title = t;
+		memcpy(t, id_potions[j].title, MAX_ID_TITLE_LEN);
+		memcpy(id_potions[j].title, id_potions[k].title, MAX_ID_TITLE_LEN);
 	}
 }
 

@@ -35,7 +35,7 @@
  *
  * @(#)score.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/score.c,v 1.4 1999/11/30 03:49:27 billf Exp $
- * $DragonFly: src/games/rogue/score.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/score.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -54,7 +54,6 @@
 #include "rogue.h"
 #include "pathnames.h"
 
-extern char login_name[];
 extern char *m_names[];
 extern short max_level;
 extern boolean score_only, no_skull, msg_cleared;

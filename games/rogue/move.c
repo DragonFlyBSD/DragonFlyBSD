@@ -35,7 +35,7 @@
  *
  * @(#)move.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/move.c,v 1.7 1999/11/30 03:49:24 billf Exp $
- * $DragonFly: src/games/rogue/move.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/move.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -60,7 +60,6 @@ extern short cur_room, halluc, blind, levitate;
 extern short cur_level, max_level;
 extern short bear_trap, haste_self, confused;
 extern short e_rings, regeneration, auto_search;
-extern char hunger_str[];
 extern boolean being_held, interrupted, r_teleport, passgo;
 
 one_move_rogue(dirch, pickup)

@@ -35,7 +35,7 @@
  *
  * @(#)message.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/message.c,v 1.7.2.1 2000/07/20 10:35:07 kris Exp $
- * $DragonFly: src/games/rogue/message.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/rogue/message.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -56,7 +56,7 @@
 char msgs[NMESSAGES][DCOLS] = {"", "", "", "", ""};
 short msg_col = 0, imsg = -1;
 boolean msg_cleared = 1, rmsg = 0;
-char hunger_str[8] = "";
+char hunger_str[HUNGER_STR_LEN] = "";
 const char *more = "-more-";
 
 extern boolean cant_int, did_int, interrupted, save_is_interactive, flush;

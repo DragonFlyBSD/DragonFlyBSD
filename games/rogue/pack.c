@@ -35,7 +35,7 @@
  *
  * @(#)pack.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/pack.c,v 1.8 1999/11/30 03:49:25 billf Exp $
- * $DragonFly: src/games/rogue/pack.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/pack.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -338,7 +338,7 @@ wear()
 	char desc[DCOLS];
 
 	if (rogue.armor) {
-		message("your already wearing some", 0);
+		message("you're already wearing some", 0);
 		return;
 	}
 	ch = pack_letter("wear what?", ARMOR);

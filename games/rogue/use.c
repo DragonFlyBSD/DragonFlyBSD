@@ -35,7 +35,7 @@
  *
  * @(#)use.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/use.c,v 1.4 1999/11/30 03:49:29 billf Exp $
- * $DragonFly: src/games/rogue/use.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/use.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -64,7 +64,6 @@ boolean con_mon = 0;
 const char *strange_feeling = "you have a strange feeling for a moment, then it passes";
 
 extern short bear_trap;
-extern char hunger_str[];
 extern short cur_room;
 extern long level_points[];
 extern boolean being_held;

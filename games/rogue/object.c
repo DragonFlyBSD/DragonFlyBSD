@@ -35,7 +35,7 @@
  *
  * @(#)object.c	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/object.c,v 1.5 1999/11/30 03:49:25 billf Exp $
- * $DragonFly: src/games/rogue/object.c,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/object.c,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 /*
@@ -155,7 +155,6 @@ struct id id_rings[RINGS] = {
 
 extern short cur_level, max_level;
 extern short party_room;
-extern char *error_file;
 extern boolean is_wood[];
 
 put_objects()

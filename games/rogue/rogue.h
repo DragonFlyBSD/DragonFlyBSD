@@ -35,7 +35,7 @@
  *
  *	@(#)rogue.h	8.1 (Berkeley) 5/31/93
  * $FreeBSD: src/games/rogue/rogue.h,v 1.3.2.1 2001/12/17 12:43:23 phantom Exp $
- * $DragonFly: src/games/rogue/rogue.h,v 1.2 2003/06/17 04:25:25 dillon Exp $
+ * $DragonFly: src/games/rogue/rogue.h,v 1.3 2003/08/26 23:52:50 drhodus Exp $
  */
 
 #include <curses.h>
@@ -195,9 +195,13 @@
 
 #define MAX_OPT_LEN 40
 
+#define HUNGER_STR_LEN 8
+
+#define MAX_ID_TITLE_LEN 64
+
 struct id {
 	short value;
-	char *title;
+	char title[MAX_ID_TITLE_LEN];
 	char *real;
 	unsigned short id_status;
 };
@@ -472,4 +476,9 @@ struct rogue_time {
 	short minute;	/* 0 - 59 */
 	short second;	/* 0 - 59 */
 };
-
+/*
+ * external variable declarations.
+ */
+extern  char    hunger_str[HUNGER_STR_LEN];
+extern  char    login_name[MAX_OPT_LEN];
+extern  const char   *error_file;
