@@ -27,10 +27,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * $DragonFly: src/sys/kern/uipc_msg.c,v 1.3 2004/03/06 23:19:01 dillon Exp $
+ * $DragonFly: src/sys/kern/uipc_msg.c,v 1.4 2004/03/19 17:00:04 dillon Exp $
  */
-
-#if defined(SMP) || defined(ALWAYS_MSG)
 
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -640,4 +638,3 @@ netmsg_pr_dispatcher(struct netmsg *msg)
 	return(error);
 }
 
-#endif
