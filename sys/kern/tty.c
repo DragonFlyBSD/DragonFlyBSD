@@ -37,7 +37,7 @@
  *
  *	@(#)tty.c	8.8 (Berkeley) 1/21/94
  * $FreeBSD: src/sys/kern/tty.c,v 1.129.2.5 2002/03/11 01:32:31 dd Exp $
- * $DragonFly: src/sys/kern/tty.c,v 1.9 2004/05/04 23:22:43 dillon Exp $
+ * $DragonFly: src/sys/kern/tty.c,v 1.10 2004/05/17 02:44:31 dillon Exp $
  */
 
 /*-
@@ -92,6 +92,7 @@
 #include <sys/malloc.h>
 #include <sys/filedesc.h>
 #include <sys/sysctl.h>
+#include <sys/thread2.h>
 
 #include <vm/vm.h>
 #include <sys/lock.h>
@@ -2315,15 +2316,35 @@ ttyinfo(tp)
 	else if ((p = LIST_FIRST(&tp->t_pgrp->pg_members)) == 0)
 		ttyprintf(tp, "empty foreground process group\n");
 	else {
-		/* Pick interesting process. */
-		for (pick = NULL; p != 0; p = LIST_NEXT(p, p_pglist))
+		/*
+		 * Pick an interesting process.  Our spl protection may
+		 * not be sufficient to pick out the process's p_wmesg
+		 * (which is really p_thread->td_wmesg) so a critical section
+		 * and a copy is required.
+		 *
+		 * YYY not MP safe.
+		 */
+		char wmesg[16];
+		const char *str;
+
+		crit_enter();
+		for (pick = NULL; p != 0; p = LIST_NEXT(p, p_pglist)) {
 			if (proc_compare(pick, p))
 				pick = p;
+		}
+		if (pick->p_thread == NULL)
+			str = "exiting";
+		else if (pick->p_stat == SRUN)
+			str = "running";
+		else if (pick->p_wmesg)	/* p_thread must not be NULL */
+			str = pick->p_wmesg;
+		else
+			str = "iowait";
+		snprintf(wmesg, sizeof(wmesg), "%s", str);
+		crit_exit();
 
-		ttyprintf(tp, " cmd: %s %d [%s] ", pick->p_comm, pick->p_pid,
-		    pick->p_thread == NULL ? "exiting" :
-		    pick->p_stat == SRUN ? "running" :
-		    pick->p_wmesg ? pick->p_wmesg : "iowait");
+		ttyprintf(tp, " cmd: %s %d [%s] ", 
+			pick->p_comm, pick->p_pid, wmesg);
 
 		if (pick->p_flag & P_INMEM) {
 			calcru(pick, &utime, &stime, NULL);
@@ -2335,8 +2356,9 @@ ttyinfo(tp)
 			/* Print system time. */
 			ttyprintf(tp, "%ld.%02lds ",
 			    stime.tv_sec, stime.tv_usec / 10000);
-		} else
+		} else {
 			ttyprintf(tp, "?.??u ?.??s ");
+		}
 
 		/* Print percentage cpu, resident set size. */
 		tmp = (pick->p_pctcpu * 10000 + FSCALE / 2) >> FSHIFT;
