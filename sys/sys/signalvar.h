@@ -32,7 +32,7 @@
  *
  *	@(#)signalvar.h	8.6 (Berkeley) 2/19/95
  * $FreeBSD: src/sys/sys/signalvar.h,v 1.34.2.1 2000/05/16 06:58:05 dillon Exp $
- * $DragonFly: src/sys/sys/signalvar.h,v 1.5 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/signalvar.h,v 1.6 2003/10/13 18:12:07 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNALVAR_H_		/* tmp for user.h */
@@ -190,6 +190,8 @@ __sigseteq(sigset_t *set1, sigset_t *set2)
 
 #ifdef _KERNEL
 
+typedef void (*proc_func_t)(struct proc *);
+
 struct pgrp;
 struct proc;
 struct sigio;
@@ -211,6 +213,8 @@ void	psignal (struct proc *p, int sig);
 void	siginit (struct proc *p);
 void	trapsignal (struct proc *p, int sig, u_long code);
 int	__cursig (struct proc *p);
+proc_func_t register_ckpt_func(proc_func_t func);
+
 
 /*
  * Machine-dependent functions:

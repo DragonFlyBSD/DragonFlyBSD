@@ -37,7 +37,7 @@
  *
  *	@(#)kern_sig.c	8.7 (Berkeley) 4/18/94
  * $FreeBSD: src/sys/kern/kern_sig.c,v 1.72.2.17 2003/05/16 16:34:34 obrien Exp $
- * $DragonFly: src/sys/kern/kern_sig.c,v 1.20 2003/09/29 18:52:06 dillon Exp $
+ * $DragonFly: src/sys/kern/kern_sig.c,v 1.21 2003/10/13 18:12:05 dillon Exp $
  */
 
 #include "opt_compat.h"
@@ -136,6 +136,8 @@ SYSCTL_INT(_kern, OID_AUTO, coredump, CTLFLAG_RW,
 #define	SA_IGNORE	0x10		/* ignore by default */
 #define	SA_CONT		0x20		/* continue if suspended */
 #define	SA_CANTMASK	0x40		/* non-maskable, catchable */
+#define SA_CKPT         0x80            /* checkpoint process */
+
 
 static int sigproptbl[NSIG] = {
         SA_KILL,                /* SIGHUP */
@@ -169,6 +171,40 @@ static int sigproptbl[NSIG] = {
         SA_IGNORE,              /* SIGINFO */
         SA_KILL,                /* SIGUSR1 */
         SA_KILL,                /* SIGUSR2 */
+	SA_IGNORE,              /* SIGTHR */
+	SA_CKPT,                /* SIGCKPT */ 
+	SA_KILL|SA_CKPT,        /* SIGCKPTEXIT */  
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+	SA_IGNORE,
+
 };
 
 static __inline int
@@ -883,6 +919,23 @@ trapsignal(p, sig, code)
  * Other ignored signals are discarded immediately.
  */
 
+/*
+ * temporary hack to allow checkpoint code to continue to
+ * be in a module for the moment
+ */
+
+static proc_func_t ckpt_func;
+
+proc_func_t
+register_ckpt_func(proc_func_t func) 
+{
+	proc_func_t old_func;
+
+	old_func = ckpt_func;
+	ckpt_func = func;
+	return (old_func);
+}
+
 void
 psignal(p, sig)
 	struct proc *p;
@@ -933,6 +986,7 @@ psignal(p, sig)
 
 	if (prop & SA_CONT)
 		SIG_STOPSIGMASK(p->p_siglist);
+	
 
 	if (prop & SA_STOP) {
 		/*
@@ -947,6 +1001,14 @@ psignal(p, sig)
 		SIG_CONTSIGMASK(p->p_siglist);
 	}
 	SIGADDSET(p->p_siglist, sig);
+
+	if (prop & SA_CKPT && action == SIG_DFL) {
+		SIGDELSET(p->p_siglist, sig);		
+		if (ckpt_func) 
+			ckpt_func(p);
+		if (prop & SA_KILL) 
+			SIGADDSET(p->p_siglist, SIGKILL);		
+	}
 
 	/*
 	 * Defer further processing for signals which are held,

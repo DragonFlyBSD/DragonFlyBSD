@@ -37,7 +37,7 @@
  *
  *	@(#)signal.h	8.4 (Berkeley) 5/4/95
  * $FreeBSD: src/sys/sys/signal.h,v 1.23.2.2 2001/04/19 01:38:35 alfred Exp $
- * $DragonFly: src/sys/sys/signal.h,v 1.3 2003/08/20 07:31:21 rob Exp $
+ * $DragonFly: src/sys/sys/signal.h,v 1.4 2003/10/13 18:12:07 dillon Exp $
  */
 
 #ifndef	_SYS_SIGNAL_H_
@@ -103,6 +103,11 @@
 #endif
 #define	SIGUSR1		30	/* user defined signal 1 */
 #define	SIGUSR2		31	/* user defined signal 2 */
+#if __BSD_VISIBLE
+#define SIGTHR          32      /* Thread interrupt (FreeBSD-5 reserved) */
+#define SIGCKPT         33      /* checkpoint and continue */
+#define SIGCKPTEXIT     34      /* checkpoint and exit */
+#endif
 
 /*-
  * Type of a signal handling function.
@@ -214,7 +219,7 @@ struct	sigaction {
 #define	SA_USERTRAMP	0x0100	/* do not bounce off kernel's sigtramp */
 #endif
 
-#define NSIG		32	/* number of old signals (counting 0) */
+#define NSIG		64	/* size of sigptbl */
 
 /* POSIX 1003.1b required values. */
 #define SI_USER		0x10001
