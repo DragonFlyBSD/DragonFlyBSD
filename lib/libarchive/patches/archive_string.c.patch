@@ -1,4 +1,4 @@
-$DragonFly: src/lib/libarchive/patches/Attic/archive_string.c.patch,v 1.1 2004/11/14 18:45:55 joerg Exp $
+$DragonFly: src/lib/libarchive/patches/Attic/archive_string.c.patch,v 1.2 2004/11/24 10:20:45 joerg Exp $
 
 Index: archive_string.c
 ===================================================================
@@ -7,6 +7,16 @@ retrieving revision 1.5
 diff -u -r1.5 archive_string.c
 --- archive_string.c	14 Aug 2004 03:45:45 -0000	1.5
 +++ archive_string.c	11 Nov 2004 06:54:41 -0000
+@@ -35,8 +35,8 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
+-#include "archive_private.h"
+ #include "archive_string.h"
++#include "archive_private.h"
+ 
+ struct archive_string *
+ __archive_string_append(struct archive_string *as, const char *p, size_t s)
 @@ -96,3 +96,18 @@
  {
  	return (__archive_string_append(as, &c, 1));
