@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.10 2005/02/04 01:06:05 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.11 2005/02/04 01:23:16 joerg Exp $
  */
 
 /*
@@ -371,6 +371,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
       strcmp(obj_main->interp, obj_rtld.path) != 0) {
 	free(obj_rtld.path);
 	obj_rtld.path = xstrdup(obj_main->interp);
+	__progname = obj_rtld.path;
     }
 
     digest_dynamic(obj_main);
