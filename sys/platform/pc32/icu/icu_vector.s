@@ -1,7 +1,7 @@
 /*
  *	from: vector.s, 386BSD 0.1 unknown origin
  * $FreeBSD: src/sys/i386/isa/icu_vector.s,v 1.14.2.2 2000/07/18 21:12:42 dfr Exp $
- * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.14 2003/08/25 19:50:32 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/icu/icu_vector.s,v 1.15 2004/01/07 20:21:20 dillon Exp $
  */
 
 /*
@@ -111,12 +111,13 @@
  *	prefixes.
  */
 
-#define	FAST_INTR(irq_num, vec_name, icu, enable_icus) 			\
+#define	FAST_INTR(irq_num, vec_name, icu, enable_icus, maybe_extra_ipending) \
 	.text ; 							\
 	SUPERALIGN_TEXT ; 						\
 IDTVEC(vec_name) ; 							\
 	PUSH_FRAME ;							\
 	FAKE_MCOUNT(13*4(%esp)) ; 					\
+	maybe_extra_ipending ;						\
 	MASK_IRQ(icu, irq_num) ;					\
 	enable_icus ;							\
 	movl	PCPU(curthread),%ebx ;					\
@@ -255,25 +256,26 @@ IDTVEC(vec_name) ;							\
 	popl %ebp ;							\
 	ret ;								\
 
-MCOUNT_LABEL(bintr)
-	FAST_INTR(0,fastintr0, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(1,fastintr1, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(2,fastintr2, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(3,fastintr3, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(4,fastintr4, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(5,fastintr5, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(6,fastintr6, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(7,fastintr7, IO_ICU1, ENABLE_ICU1)
-	FAST_INTR(8,fastintr8, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(9,fastintr9, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(10,fastintr10, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(11,fastintr11, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(12,fastintr12, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(13,fastintr13, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(14,fastintr14, IO_ICU2, ENABLE_ICU1_AND_2)
-	FAST_INTR(15,fastintr15, IO_ICU2, ENABLE_ICU1_AND_2)
-
 #define	CLKINTR_PENDING	movl $1,CNAME(clkintr_pending)
+
+MCOUNT_LABEL(bintr)
+	FAST_INTR(0,fastintr0, IO_ICU1, ENABLE_ICU1, CLKINTR_PENDING)
+	FAST_INTR(1,fastintr1, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(2,fastintr2, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(3,fastintr3, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(4,fastintr4, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(5,fastintr5, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(6,fastintr6, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(7,fastintr7, IO_ICU1, ENABLE_ICU1,)
+	FAST_INTR(8,fastintr8, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(9,fastintr9, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(10,fastintr10, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(11,fastintr11, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(12,fastintr12, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(13,fastintr13, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(14,fastintr14, IO_ICU2, ENABLE_ICU1_AND_2,)
+	FAST_INTR(15,fastintr15, IO_ICU2, ENABLE_ICU1_AND_2,)
+
 	INTR(0,intr0, IO_ICU1, ENABLE_ICU1, al, CLKINTR_PENDING)
 	INTR(1,intr1, IO_ICU1, ENABLE_ICU1, al,)
 	INTR(2,intr2, IO_ICU1, ENABLE_ICU1, al,)

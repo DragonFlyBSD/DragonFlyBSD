@@ -35,7 +35,7 @@
  *
  *	from: @(#)clock.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/clock.c,v 1.149.2.6 2002/11/02 04:41:50 iwasaki Exp $
- * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.8 2004/01/07 10:59:09 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/clock.c,v 1.9 2004/01/07 20:21:20 dillon Exp $
  */
 
 /*
@@ -1226,12 +1226,16 @@ i8254_get_timecount(struct timecounter *tc)
 	ef = read_eflags();
 	clock_lock();
 
-	/* Select timer0 and latch counter value. */
+	/* 
+	 * Select timer0 and latch counter value.   Because we may reload
+	 * the counter with timer0_max_count + 1 to correct the frequency
+	 * our delta count calculation must use timer0_max_count + 1.
+	 */
 	outb(TIMER_MODE, TIMER_SEL0 | TIMER_LATCH);
 
 	low = inb(TIMER_CNTR0);
 	high = inb(TIMER_CNTR0);
-	count = timer0_max_count - ((high << 8) | low);
+	count = timer0_max_count + 1 - ((high << 8) | low);
 	if (count < i8254_lastcount ||
 	    (!i8254_ticked && (clkintr_pending ||
 	    ((count < 20 || (!(ef & PSL_I) && count < timer0_max_count / 2u)) &&
