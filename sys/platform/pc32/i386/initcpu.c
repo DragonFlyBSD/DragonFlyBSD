@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/i386/initcpu.c,v 1.19.2.9 2003/04/05 13:47:19 dwmalone Exp $
- * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.4 2003/07/21 07:57:43 dillon Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/initcpu.c,v 1.5 2003/08/01 10:58:59 rob Exp $
  */
 
 #include "opt_cpu.h"
@@ -69,7 +69,7 @@ static int	hw_instruction_sse;
 SYSCTL_INT(_hw, OID_AUTO, instruction_sse, CTLFLAG_RD,
     &hw_instruction_sse, 0, "SIMD/MMX2 instructions available in CPU");
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 u_int	cpu_fxsr;		/* SSE enabled */
 #endif
 
@@ -519,8 +519,8 @@ init_mendocino(void)
 void
 enable_sse(void)
 {
-#if defined(CPU_ENABLE_SSE)
-	if ((cpu_feature & CPUID_XMM) && (cpu_feature & CPUID_FXSR)) {
+#ifndef CPU_DISABLE_SSE
+	if ((cpu_feature & CPUID_SSE) && (cpu_feature & CPUID_FXSR)) {
 		load_cr4(rcr4() | CR4_FXSR | CR4_XMM);
 		cpu_fxsr = hw_instruction_sse = 1;
 	}

@@ -33,7 +33,7 @@
  *
  *	from: @(#)npx.c	7.2 (Berkeley) 5/12/91
  * $FreeBSD: src/sys/i386/isa/npx.c,v 1.80.2.3 2001/10/20 19:04:38 tegge Exp $
- * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.10 2003/07/23 02:30:19 dillon Exp $
+ * $DragonFly: src/sys/i386/isa/Attic/npx.c,v 1.11 2003/08/01 10:58:59 rob Exp $
  */
 
 #include "opt_cpu.h"
@@ -99,7 +99,7 @@
 #define	fnstsw(addr)		__asm __volatile("fnstsw %0" : "=m" (*(addr)))
 #define	fp_divide_by_0()	__asm("fldz; fld1; fdiv %st,%st(1); fnop")
 #define	frstor(addr)		__asm("frstor %0" : : "m" (*(addr)))
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 #define	fxrstor(addr)		__asm("fxrstor %0" : : "m" (*(addr)))
 #define	fxsave(addr)		__asm __volatile("fxsave %0" : "=m" (*(addr)))
 #endif
@@ -118,7 +118,7 @@ void	fnstcw		__P((caddr_t addr));
 void	fnstsw		__P((caddr_t addr));
 void	fp_divide_by_0	__P((void));
 void	frstor		__P((caddr_t addr));
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 void	fxsave		__P((caddr_t addr));
 void	fxrstor		__P((caddr_t addr));
 #endif
@@ -127,15 +127,15 @@ void	stop_emulating	__P((void));
 
 #endif	/* __GNUC__ */
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 #define GET_FPU_EXSW_PTR(pcb) \
 	(cpu_fxsr ? \
 		&(pcb)->pcb_save.sv_xmm.sv_ex_sw : \
 		&(pcb)->pcb_save.sv_87.sv_ex_sw)
-#else /* CPU_ENABLE_SSE */
+#else /* CPU_DISABLE_SSE */
 #define GET_FPU_EXSW_PTR(pcb) \
 	(&(pcb)->pcb_save.sv_87.sv_ex_sw)
-#endif /* CPU_ENABLE_SSE */
+#endif /* CPU_DISABLE_SSE */
 
 typedef u_char bool_t;
 
@@ -508,7 +508,7 @@ npxinit(control)
 	 */
 	npxsave(&dummy);
 	stop_emulating();
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 	/* XXX npxsave() doesn't actually initialize the fpu in the SSE case. */
 	if (cpu_fxsr)
 		fninit();
@@ -871,7 +871,7 @@ void
 npxsave(addr)
 	union savefpu *addr;
 {
-#if defined(SMP) || defined(CPU_ENABLE_SSE)
+#if defined(SMP) || !defined(CPU_DISABLE_SSE)
 
 	stop_emulating();
 	fpusave(addr);
@@ -880,7 +880,7 @@ npxsave(addr)
 	start_emulating();
 	mdcpu->gd_npxthread = NULL;
 
-#else /* SMP or CPU_ENABLE_SSE */
+#else /* SMP or !CPU_DISABLE_SSE */
 
 	u_char	icu1_mask;
 	u_char	icu2_mask;
@@ -922,7 +922,7 @@ fpusave(addr)
       union savefpu *addr;
 {
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxsave(addr);
 	else
@@ -935,7 +935,7 @@ fpurstor(addr)
       union savefpu *addr;
 {
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr)
 		fxrstor(addr);
 	else

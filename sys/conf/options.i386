@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options.i386,v 1.132.2.18 2003/03/14 21:22:35 jhb Exp $
-# $DragonFly: src/sys/conf/Attic/options.i386,v 1.2 2003/06/17 04:28:20 dillon Exp $
+# $DragonFly: src/sys/conf/Attic/options.i386,v 1.3 2003/08/01 10:58:59 rob Exp $
 
 DISABLE_PSE
 IDE_DELAY
@@ -65,7 +65,7 @@ CPU_WT_ALLOC			opt_cpu.h
 CYRIX_CACHE_WORKS		opt_cpu.h
 CYRIX_CACHE_REALLY_WORKS	opt_cpu.h
 NO_MEMORY_HOLE			opt_cpu.h
-CPU_ENABLE_SSE			opt_cpu.h
+CPU_DISABLE_SSE			opt_cpu.h
 CPU_ATHLON_SSE_HACK		opt_cpu.h
 
 # The CPU type affects the endian conversion functions all over the kernel.

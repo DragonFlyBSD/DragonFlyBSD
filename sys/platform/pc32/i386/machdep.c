@@ -36,7 +36,7 @@
  *
  *	from: @(#)machdep.c	7.4 (Berkeley) 6/3/91
  * $FreeBSD: src/sys/i386/i386/machdep.c,v 1.385.2.30 2003/05/31 08:48:05 alc Exp $
- * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.30 2003/07/26 19:07:47 rob Exp $
+ * $DragonFly: src/sys/platform/pc32/i386/machdep.c,v 1.31 2003/08/01 10:58:59 rob Exp $
  */
 
 #include "apm.h"
@@ -128,10 +128,10 @@ extern void panicifcpuunsupported(void);
 extern void initializecpu(void);
 
 static void cpu_startup __P((void *));
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 static void set_fpregs_xmm __P((struct save87 *, struct savexmm *));
 static void fill_fpregs_xmm __P((struct savexmm *, struct save87 *));
-#endif /* CPU_ENABLE_SSE */
+#endif /* CPU_DISABLE_SSE */
 #ifdef DIRECTIO
 extern void ffs_rawread_setup(void);
 #endif /* DIRECTIO */
@@ -2263,7 +2263,7 @@ set_regs(p, regs)
 	return (0);
 }
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 static void
 fill_fpregs_xmm(sv_xmm, sv_87)
 	struct savexmm *sv_xmm;
@@ -2315,20 +2315,20 @@ set_fpregs_xmm(sv_87, sv_xmm)
 
 	sv_xmm->sv_ex_sw = sv_87->sv_ex_sw;
 }
-#endif /* CPU_ENABLE_SSE */
+#endif /* CPU_DISABLE_SSE */
 
 int
 fill_fpregs(p, fpregs)
 	struct proc *p;
 	struct fpreg *fpregs;
 {
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		fill_fpregs_xmm(&p->p_thread->td_pcb->pcb_save.sv_xmm,
 						(struct save87 *)fpregs);
 		return (0);
 	}
-#endif /* CPU_ENABLE_SSE */
+#endif /* CPU_DISABLE_SSE */
 	bcopy(&p->p_thread->td_pcb->pcb_save.sv_87, fpregs, sizeof *fpregs);
 	return (0);
 }
@@ -2338,13 +2338,13 @@ set_fpregs(p, fpregs)
 	struct proc *p;
 	struct fpreg *fpregs;
 {
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 	if (cpu_fxsr) {
 		set_fpregs_xmm((struct save87 *)fpregs,
 				       &p->p_thread->td_pcb->pcb_save.sv_xmm);
 		return (0);
 	}
-#endif /* CPU_ENABLE_SSE */
+#endif /* CPU_DISABLE_SSE */
 	bcopy(fpregs, &p->p_thread->td_pcb->pcb_save.sv_87, sizeof *fpregs);
 	return (0);
 }

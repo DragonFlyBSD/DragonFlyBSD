@@ -3,7 +3,7 @@
 #	as much of the source tree as it can.
 #
 # $FreeBSD: src/sys/i386/conf/LINT,v 1.749.2.144 2003/06/04 17:56:59 sam Exp $
-# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.2 2003/06/17 04:28:35 dillon Exp $
+# $DragonFly: src/sys/i386/conf/Attic/LINT,v 1.3 2003/08/01 10:58:59 rob Exp $
 #
 # NB: You probably don't want to try running a kernel built from this
 # file.  Instead, you should start from GENERIC, and add options from
@@ -177,7 +177,7 @@ cpu		I686_CPU		# aka Pentium Pro(tm)
 # reorder).  This option should not be used if you use memory mapped
 # I/O device(s).
 #
-# CPU_ENABLE_SSE enables SSE/MMX2 instructions support.
+# CPU_DISABLE_SSE disables SSE/MMX2 instructions support.
 #
 # CPU_FASTER_5X86_FPU enables faster FPU exception handler.
 #
@@ -244,7 +244,7 @@ options 	CPU_BTB_EN
 options 	CPU_DIRECT_MAPPED_CACHE
 options 	CPU_DISABLE_5X86_LSSER
 options 	CPU_ELAN
-options 	CPU_ENABLE_SSE
+options 	CPU_DISABLE_SSE
 options 	CPU_FASTER_5X86_FPU
 options 	CPU_I486_ON_386
 options 	CPU_IORT

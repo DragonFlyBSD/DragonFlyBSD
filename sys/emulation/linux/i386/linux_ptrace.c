@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/i386/linux/linux_ptrace.c,v 1.7.4.3 2003/01/03 17:13:23 kan Exp $
- * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.6 2003/07/30 00:19:14 dillon Exp $
+ * $DragonFly: src/sys/emulation/linux/i386/linux_ptrace.c,v 1.7 2003/08/01 10:58:59 rob Exp $
  */
 
 #include "opt_cpu.h"
@@ -215,7 +215,7 @@ struct linux_pt_fpxreg {
 	l_long		padding[56];
 };
 
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 static int
 linux_proc_read_fpxregs(struct proc *p, struct linux_pt_fpxreg *fpxregs)
 {
@@ -339,7 +339,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 		}
 		break;
 	case PTRACE_SETFPXREGS:
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 		error = copyin((caddr_t)uap->data, &r.fpxreg,
 		    sizeof(r.fpxreg));
 		if (error)
@@ -347,7 +347,7 @@ linux_ptrace(struct linux_ptrace_args *uap)
 #endif
 		/* FALL THROUGH */
 	case PTRACE_GETFPXREGS: {
-#ifdef CPU_ENABLE_SSE
+#ifndef CPU_DISABLE_SSE
 		struct proc *p;
 
 		if (sizeof(struct linux_pt_fpxreg) != sizeof(struct savexmm)) {
