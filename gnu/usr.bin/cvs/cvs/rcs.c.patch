@@ -1,0 +1,13 @@
+$DragonFly: src/gnu/usr.bin/cvs/cvs/Attic/rcs.c.patch,v 1.1 2005/03/13 11:43:07 corecode Exp $
+--- /usr/src/contrib/cvs-1.12.11/src/rcs.c	2005-01-05 22:17:44.000000000 +0100
++++ rcs.c	2005-03-08 14:20:41.000000000 +0100
+@@ -3463,6 +3463,9 @@
+     KEYWORD_INIT (new, KEYWORD_SOURCE, "Source");
+     KEYWORD_INIT (new, KEYWORD_STATE, "State");
+ 
++    /* Per default, expand local keyword like Id */
++    new[KEYWORD_LOCALID].expandto = KEYWORD_ID;
++
+     return new;
+ }
+ 
