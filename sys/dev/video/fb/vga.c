@@ -27,7 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/fb/vga.c,v 1.9.2.1 2001/08/11 02:58:44 yokota Exp $
- * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.9 2005/02/01 16:30:02 joerg Exp $
+ * $DragonFly: src/sys/dev/video/fb/vga.c,v 1.10 2005/02/14 23:05:30 swildner Exp $
  */
 
 #include "opt_vga.h"
@@ -1081,6 +1081,8 @@ probe_adapters(void)
     if (adp != NULL) {
 	if (adp->va_type == KD_VGA) {
 	    vga_save_state(adp, &adpstate, sizeof(adpstate));
+	    for(i = 0; i < 16; i++)
+		adp->va_palette_regs[i] = adpstate.regs[35 + i];
 #if defined(VGA_NO_BIOS) || defined(VGA_NO_MODE_CHANGE)
 	    mode_map[adp->va_initial_mode] = adpstate.regs;
 	    rows_offset = 1;
