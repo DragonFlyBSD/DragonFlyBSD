@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.13 2004/05/20 22:40:29 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.14 2004/05/31 01:51:23 hmp Exp $
  */
 
 /*
@@ -223,8 +223,6 @@ extern struct vpgqueues vm_page_queues[PQ_COUNT];
 
 /*
  * These are the flags defined for vm_page.
- *
- * Note: PG_FILLED and PG_DIRTY are added for the filesystems.
  *
  * Note: PG_UNMANAGED (used by OBJT_PHYS) indicates that the page is
  * 	 not under PV management but otherwise should be treated as a
