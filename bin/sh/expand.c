@@ -35,7 +35,7 @@
  *
  * @(#)expand.c	8.5 (Berkeley) 5/15/95
  * $FreeBSD: src/bin/sh/expand.c,v 1.31.2.5 2003/01/17 07:44:01 tjr Exp $
- * $DragonFly: src/bin/sh/expand.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/expand.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -85,11 +85,11 @@ struct ifsregion {
 };
 
 
-char *expdest;			/* output of current string */
-struct nodelist *argbackq;	/* list of back quote expressions */
-struct ifsregion ifsfirst;	/* first struct in list of ifs regions */
-struct ifsregion *ifslastp;	/* last struct in list */
-struct arglist exparg;		/* holds expanded arg list */
+STATIC char *expdest;			/* output of current string */
+STATIC struct nodelist *argbackq;	/* list of back quote expressions */
+STATIC struct ifsregion ifsfirst;	/* first struct in list of ifs regions */
+STATIC struct ifsregion *ifslastp;	/* last struct in list */
+STATIC struct arglist exparg;		/* holds expanded arg list */
 
 STATIC void argstr(char *, int);
 STATIC char *exptilde(char *, int);
@@ -1042,7 +1042,7 @@ ifsbreakup(char *string, struct arglist *arglist)
  * should be escapes.  The results are stored in the list exparg.
  */
 
-char *expdir;
+STATIC char *expdir;
 
 
 STATIC void

@@ -35,7 +35,7 @@
  *
  * @(#)input.c	8.3 (Berkeley) 6/9/95
  * $FreeBSD: src/bin/sh/input.c,v 1.14.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/input.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/input.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <stdio.h>	/* defines BUFSIZ */
@@ -98,7 +98,7 @@ MKINIT int parselleft;		/* copy of parsefile->lleft */
 char *parsenextc;		/* copy of parsefile->nextc */
 MKINIT struct parsefile basepf;	/* top level input file */
 char basebuf[BUFSIZ];		/* buffer for top level input file */
-struct parsefile *parsefile = &basepf;	/* current input file */
+STATIC struct parsefile *parsefile = &basepf;	/* current input file */
 int init_editline = 0;		/* editline library initialized? */
 int whichprompt;		/* 1 == PS1, 2 == PS2 */
 

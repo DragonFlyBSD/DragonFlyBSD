@@ -35,7 +35,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/var.c,v 1.15.2.2 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/var.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/var.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <unistd.h>
@@ -92,11 +92,11 @@ struct var vps1;
 struct var vps2;
 struct var vvers;
 #if ATTY
-struct var vterm;
+STATIC struct var vterm;
 #endif
-struct var voptind;
+STATIC struct var voptind;
 
-const struct varinit varinit[] = {
+STATIC const struct varinit varinit[] = {
 #if ATTY
 	{ &vatty,	VSTRFIXED|VTEXTFIXED|VUNSET,	"ATTY=",
 	  NULL },
@@ -130,7 +130,7 @@ const struct varinit varinit[] = {
 	  NULL }
 };
 
-struct var *vartab[VTABSIZE];
+STATIC struct var *vartab[VTABSIZE];
 
 STATIC struct var **hashvar(char *);
 STATIC int varequal(char *, char *);

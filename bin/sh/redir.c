@@ -35,7 +35,7 @@
  *
  * @(#)redir.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/redir.c,v 1.12.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/redir.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/redir.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -80,7 +80,7 @@ MKINIT struct redirtab *redirlist;
  * background commands, where we want to redirect fd0 to /dev/null only
  * if it hasn't already been redirected.
 */
-int fd0_redirected = 0;
+STATIC int fd0_redirected = 0;
 
 STATIC void openredirect(union node *, char[10 ]);
 STATIC int openhere(union node *);

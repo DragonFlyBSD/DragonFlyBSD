@@ -35,7 +35,7 @@
  *
  * @(#)cd.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/cd.c,v 1.20.2.3 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/cd.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/cd.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -70,8 +70,8 @@ STATIC int docd(char *, int, int);
 STATIC char *getcomponent(void);
 STATIC int updatepwd(char *);
 
-char *curdir = NULL;		/* current working directory */
-char *prevdir;			/* previous working directory */
+STATIC char *curdir = NULL;	/* current working directory */
+STATIC char *prevdir;		/* previous working directory */
 STATIC char *cdcomppath;
 
 int

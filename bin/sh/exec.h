@@ -35,7 +35,7 @@
  *
  *	@(#)exec.h	8.3 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.h,v 1.9.2.1 2002/07/19 04:38:51 tjr Exp $
- * $DragonFly: src/bin/sh/exec.h,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/exec.h,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 /* values of cmdtype */
@@ -65,7 +65,6 @@ int find_builtin(char *);
 void hashcd(void);
 void changepath(const char *);
 void deletefuncs(void);
-void getcmdentry(char *, struct cmdentry *);
 void addcmdentry(char *, struct cmdentry *);
 void defun(char *, union node *);
 int unsetfunc(char *);

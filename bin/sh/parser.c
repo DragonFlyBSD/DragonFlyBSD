@@ -35,7 +35,7 @@
  *
  * @(#)parser.c	8.7 (Berkeley) 5/16/95
  * $FreeBSD: src/bin/sh/parser.c,v 1.29.2.9 2002/10/18 11:24:04 tjr Exp $
- * $DragonFly: src/bin/sh/parser.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/parser.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <stdlib.h>
@@ -80,19 +80,19 @@ struct heredoc {
 
 
 
-struct heredoc *heredoclist;	/* list of here documents to read */
-int parsebackquote;		/* nonzero if we are inside backquotes */
-int doprompt;			/* if set, prompt the user */
-int needprompt;			/* true if interactive and at start of line */
-int lasttoken;			/* last token read */
+STATIC struct heredoc *heredoclist;	/* list of here documents to read */
+STATIC int parsebackquote;	/* nonzero if we are inside backquotes */
+STATIC int doprompt;		/* if set, prompt the user */
+STATIC int needprompt;		/* true if interactive and at start of line */
+STATIC int lasttoken;		/* last token read */
 MKINIT int tokpushback;		/* last token pushed back */
-char *wordtext;			/* text of last word returned by readtoken */
+STATIC char *wordtext;		/* text of last word returned by readtoken */
 MKINIT int checkkwd;            /* 1 == check for kwds, 2 == also eat newlines */
-struct nodelist *backquotelist;
-union node *redirnode;
-struct heredoc *heredoc;
-int quoteflag;			/* set if (part of) last token was quoted */
-int startlinno;			/* line # where last token started */
+STATIC struct nodelist *backquotelist;
+STATIC union node *redirnode;
+STATIC struct heredoc *heredoc;
+STATIC int quoteflag;		/* set if (part of) last token was quoted */
+STATIC int startlinno;		/* line # where last token started */
 
 /* XXX When 'noaliases' is set to one, no alias expansion takes place. */
 static int noaliases = 0;

@@ -35,7 +35,7 @@
  *
  *	@(#)nodes.c.pat	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/nodes.c.pat,v 1.7.2.1 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/nodes.c.pat,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/nodes.c.pat,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <stdlib.h>
@@ -50,10 +50,10 @@
 #include "mystring.h"
 
 
-int     funcblocksize;		/* size of structures in function */
-int     funcstringsize;		/* size of strings in node */
-pointer funcblock;		/* block to allocate function from */
-char   *funcstring;		/* block to allocate strings from */
+STATIC int     funcblocksize;	/* size of structures in function */
+STATIC int     funcstringsize;	/* size of strings in node */
+STATIC pointer funcblock;	/* block to allocate function from */
+STATIC char   *funcstring;	/* block to allocate strings from */
 
 %SIZES
 

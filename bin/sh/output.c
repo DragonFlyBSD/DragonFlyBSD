@@ -35,7 +35,7 @@
  *
  * @(#)output.c	8.2 (Berkeley) 5/4/95
  * $FreeBSD: src/bin/sh/output.c,v 1.10.2.2 2002/07/19 04:38:52 tjr Exp $
- * $DragonFly: src/bin/sh/output.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/output.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 /*
@@ -160,7 +160,7 @@ outqstr(const char *p, struct output *file)
 	out1c('\'');
 }
 
-char out_junk[16];
+STATIC char out_junk[16];
 
 void
 emptyoutbuf(struct output *dest)

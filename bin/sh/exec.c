@@ -35,7 +35,7 @@
  *
  * @(#)exec.c	8.4 (Berkeley) 6/8/95
  * $FreeBSD: src/bin/sh/exec.c,v 1.14.2.4 2002/08/27 01:36:28 tjr Exp $
- * $DragonFly: src/bin/sh/exec.c,v 1.2 2003/06/17 04:22:50 dillon Exp $
+ * $DragonFly: src/bin/sh/exec.c,v 1.3 2003/08/24 16:26:00 drhodus Exp $
  */
 
 #include <sys/types.h>
@@ -589,7 +589,7 @@ deletefuncs(void)
  * entry.
  */
 
-struct tblentry **lastcmdentry;
+STATIC struct tblentry **lastcmdentry;
 
 
 STATIC struct tblentry *
