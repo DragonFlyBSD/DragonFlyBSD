@@ -1,6 +1,6 @@
 #!/usr/local/www/cgi-bin/tablecg
 #
-# $DragonFly: site/data/main/Attic/team.cgi,v 1.17 2004/08/10 16:39:38 justin Exp $
+# $DragonFly: site/data/main/Attic/team.cgi,v 1.18 2004/09/09 18:38:14 justin Exp $
 
 $TITLE(The DragonFly Team)
 
@@ -50,7 +50,7 @@ style="border-style: flat; border-collapse: collapse; border-color: #BEBEBE;">
 </tr>
 
 <tr><td valign="top"><a href="mailto:liamfoy 'at' kerneled 'dot' org">Liam Foy</a></td>
-<td valign="top">POSIX and SUSv3 updates, general standardization.</td>
+<td valign="top">Code cleanness and userland utilities</td>
 </tr>
 
 <tr><td valign="top"><a href="mailto:rgarrett24 'at' cox  'dot' net">Robert Garrett</a> </td>
