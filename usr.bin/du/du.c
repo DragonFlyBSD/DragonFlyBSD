@@ -36,7 +36,7 @@
  * @(#) Copyright (c) 1989, 1993, 1994 The Regents of the University of California.  All rights reserved.
  * @(#)du.c	8.5 (Berkeley) 5/4/95
  * $FreeBSD: src/usr.bin/du/du.c,v 1.17.2.4 2002/12/12 16:29:39 trhodes Exp $
- * $DragonFly: src/usr.bin/du/du.c,v 1.5 2004/07/04 10:28:38 eirikn Exp $
+ * $DragonFly: src/usr.bin/du/du.c,v 1.6 2004/07/04 10:34:47 eirikn Exp $
  */
 
 #include <sys/param.h>
@@ -89,7 +89,7 @@ struct ignentry {
 	SLIST_ENTRY(ignentry)	next;
 };
 
-int		linkchk(FTSENT *);
+static int	linkchk(FTSENT *);
 static void	usage(void);
 void		prthumanval(double);
 unit_t		unit_adjust(double *);
@@ -300,47 +300,136 @@ main(int argc, char **argv)
 	exit(rval);
 }
 
-
-typedef struct _ID {
-	dev_t	dev;
-	ino_t	inode;
-} ID;
-
-
-int
+static int
 linkchk(FTSENT *p)
 {
-	static ID **files;
-	static int *maxfiles, *nfiles;
-	static ID *filesph[HASHSIZE];
-	static int maxfilesh[HASHSIZE], nfilesh[HASHSIZE];
-	ID *fp, *start;
-	ino_t ino;
-	dev_t dev;
-	int index;
+	struct links_entry {
+		struct links_entry *next;
+		struct links_entry *previous;
+		int		links;
+		dev_t		dev;
+		ino_t		ino;
+	};
 
-	ino = p->fts_statp->st_ino;
-	index = ino & HASHMASK;
-	files = &filesph[index];
-	maxfiles = &maxfilesh[index];
-	nfiles = &nfilesh[index];
+	static const size_t links_hash_initial_size = 8192;
+	static struct links_entry **buckets;
+	static struct links_entry *free_list;
+	static size_t number_buckets;
+	static unsigned long number_entries;
+	static char stop_allocating;
+	struct links_entry *le, **new_buckets;
+	struct stat *st;
+	size_t i, new_size;
+	int count, hash;
+
+	st = p->fts_statp;
+
+	/* If necessary, initialize the hash table. */
+	if (buckets == NULL) {
+		number_buckets = links_hash_initial_size;
+		buckets = malloc(number_buckets * sizeof(buckets[0]));
+		if (buckets == NULL)
+			errx(1, "No memory for hardlink detection");
+		for (i = 0; i < number_buckets; i++)
+			buckets[i] = NULL;
+	}
+
+	/* If the hash table is getting too full, enlarge it. */
+	if (number_entries > number_buckets * 10 && !stop_allocating) {
+		new_size = number_buckets * 2;
+		new_buckets = malloc(new_size * sizeof(struct links_entry *));
+		count = 0;
+
+		/* Try releasing the free list to see if that helps. */
+		if (new_buckets == NULL && free_list != NULL) {
+			while (free_list != NULL) {
+				le = free_list;
+				free_list = le->next;
+				free(le);
+			}
+			new_buckets = malloc(new_size * sizeof(new_buckets[0]));
+		}
+
+		if (new_buckets == NULL) {
+			stop_allocating = 1;
+			warnx("No more memory for tracking hard links");
+		} else {
+			memset(new_buckets, 0, new_size * sizeof(struct links_entry *));
+			for (i = 0; i < number_buckets; i++) {
+				while (buckets[i] != NULL) {
+					/* Remove entry from old bucket. */
+					le = buckets[i];
+					buckets[i] = le->next;
 	
-	dev = p->fts_statp->st_dev;
-	if ((start = *files) != NULL) {
-		for (fp = start + *nfiles - 1; fp >= start; --fp)
-			if (ino == fp->inode && dev == fp->dev)
-				return (1);
+					/* Add entry to new bucket. */
+					hash = (le->dev ^ le->ino) % new_size;
+	
+					if (new_buckets[hash] != NULL)
+						new_buckets[hash]->previous = le;
+					le->next = new_buckets[hash];
+					le->previous = NULL;
+					new_buckets[hash] = le;
+				}
+			}
+			free(buckets);
+			buckets = new_buckets;
+			number_buckets = new_size;
+		}
 	}
 
-	if (*nfiles == *maxfiles) {
-		*maxfiles = (*maxfiles + 128) + (*maxfiles / 2);
-		*files = realloc((char *)*files, sizeof(ID) * *maxfiles);
-		if (*files == NULL)
-			errx(1, "can't allocate memory");
+	/* Try to locate this entry in the hash table. */
+	hash = ( st->st_dev ^ st->st_ino ) % number_buckets;
+	for (le = buckets[hash]; le != NULL; le = le->next) {
+		if (le->dev == st->st_dev && le->ino == st->st_ino) {
+			/*
+			 * Save memory by releasing an entry when we've seen
+			 * all of it's links.
+			 */
+			if (--le->links <= 0) {
+				if (le->previous != NULL)
+					le->previous->next = le->next;
+				if (le->next != NULL)
+					le->next->previous = le->previous;
+				if (buckets[hash] == le)
+					buckets[hash] = le->next;
+				number_entries--;
+				/* Recycle this node through the free list */
+				if (stop_allocating) {
+					free(le);
+				} else {
+					le->next = free_list;
+					free_list = le;
+				}
+			}
+			return (1);
+		}
 	}
-	(*files)[*nfiles].inode = ino;
-	(*files)[*nfiles].dev = dev;
-	++(*nfiles);
+
+	if (stop_allocating)
+		return (0);
+
+	/* Add this entry to the links cache. */
+	if (free_list != NULL) {
+		/* Pull a node from the free list if we can. */
+		le = free_list;
+		free_list = le->next;
+	} else
+		/* Malloc one if we have to. */
+		le = malloc(sizeof(struct links_entry));
+	if (le == NULL) {
+		stop_allocating = 1;
+		warnx("No more memory for tracking hard links");
+		return (0);
+	}
+	le->dev = st->st_dev;
+	le->ino = st->st_ino;
+	le->links = st->st_nlink - 1;
+	number_entries++;
+	le->next = buckets[hash];
+	le->previous = NULL;
+	if (buckets[hash] != NULL)
+		buckets[hash]->previous = le;
+	buckets[hash] = le;
 	return (0);
 }
 
