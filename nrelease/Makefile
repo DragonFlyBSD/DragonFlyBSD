@@ -1,4 +1,4 @@
-# $DragonFly: src/nrelease/Makefile,v 1.18 2004/10/15 02:43:48 dillon Exp $
+# $DragonFly: src/nrelease/Makefile,v 1.19 2004/11/11 19:45:19 cpressey Exp $
 #
 
 ISODIR ?= /usr/release
@@ -48,7 +48,7 @@ realquickrel:	check clean \
 #########################################################################
 
 INSTALLER_PKGS= libaura-1.0 libdfui-2.0 libinstaller-2.0 \
-		dfuibe_installer-1.1.1 dfuife_curses-1.1 \
+		dfuibe_installer-1.1.2 dfuife_curses-1.1 \
 		thttpd-notimeout-2.24 dfuife_cgi-1.1
 INSTALLER_SKELS= installer
 
@@ -124,6 +124,7 @@ buildiso:
 	if [ ! -d ${NRLOBJDIR}/nrelease ]; then mkdir -p ${NRLOBJDIR}/nrelease; fi
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} installworld )
 	( cd ${.CURDIR}/../etc; MAKEOBJDIRPREFIX=${NRLOBJDIR}/nrelease make DESTDIR=${ISOROOT} distribution )
+	cpdup ${ISOROOT}/etc ${ISOROOT}/etc.hdd
 	( cd ${.CURDIR}/..; make DESTDIR=${ISOROOT} \
 		installkernel KERNCONF=${KERNCONF} )
 	ln -s kernel ${ISOROOT}/kernel.BOOTP
@@ -136,6 +137,7 @@ customizeiso:
 	cpdup -X cpignore -o ${ROOTSKEL} ${ISOROOT}
 .endfor
 	rm -rf `find ${ISOROOT} -type d -name CVS -print`
+	rm -rf ${ISOROOT}/usr/local/share/pristine
 	pwd_mkdb -p -d ${ISOROOT}/etc ${ISOROOT}/etc/master.passwd
 
 pkgcleaniso:

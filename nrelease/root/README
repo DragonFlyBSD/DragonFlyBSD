@@ -151,9 +151,14 @@
 
 	# Copy the CDRom onto the target.  cpdup won't cross mount boundaries
 	# on the source (e.g. the MFS remounts) so it takes a few commands.
+	#
+	# Note that /etc contains the config files used for booting from the
+	# CDROM itself, and /etc.hdd contains those for booting off a
+	# hard disk.  So it's the latter that you want to copy to /mnt/etc.
+	#
 	cpdup / /mnt
 	cpdup /var /mnt/var
-	cpdup /etc /mnt/etc
+	cpdup /etc.hdd /mnt/etc
 	cpdup /dev /mnt/dev
 	cpdup /usr /mnt/usr
 
@@ -170,18 +175,6 @@
 	#
 	mv /mnt/etc/fstab.example /mnt/etc/fstab
 	vi /mnt/etc/fstab
-
-	# Edit /mnt/etc/ttys, adding ttyv1 back in (it is left out on the CD
-	# so the installer has a low numbered vty to play with)
-	#
-	vi /mnt/etc/ttys
-
-	# chroot into the HD and edit the password file to remove the
-	# 'installer' user.
-	#
-	chroot /mnt /bin/csh
-	% vipw	(remove 'installer' user, :wq out)
-	% ^D	(exit the chroot)
 
 	# save out your disklabel just in case.  It's a good idea to save
 	# it to /etc so you can get at it from your backups.  You do intend
@@ -326,5 +319,5 @@
     what they are, simply cat /mnt/etc/fstab after mounting the root
     partition.
 
-$DragonFly: src/nrelease/root/README,v 1.16 2004/07/12 20:02:23 drhodus Exp $
+$DragonFly: src/nrelease/root/README,v 1.17 2004/11/11 19:45:19 cpressey Exp $
 
