@@ -32,7 +32,7 @@
  *
  * @(#)measure.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/measure.c,v 1.6 1999/08/28 01:20:17 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.3 2004/03/13 21:08:38 eirikn Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/measure.c,v 1.4 2004/09/05 02:02:25 dillon Exp $
  */
 
 #include "globals.h"
@@ -61,7 +61,7 @@ int					/* status val defined in globals.h */
 measure(u_long maxmsec,			/* wait this many msec at most */
 	u_long wmsec,			/* msec to wait for an answer */
 	char *hname, struct sockaddr_in *addr,
-	int print)			/* print complaints on stderr */
+	int printerr)			/* print complaints on stderr */
 {
 	int length;
 	int measure_status;
@@ -266,7 +266,7 @@ quit:
 			   	measure_delta, trials,
 				inet_ntoa(addr->sin_addr), hname);
 		}
-	} else if (print) {
+	} else if (printerr) {
 		if (errno != 0)
 			warn("measure %s", hname);
 	} else {

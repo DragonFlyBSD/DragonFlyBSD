@@ -32,7 +32,7 @@
  *
  * @(#)slave.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/timed/timed/slave.c,v 1.7 1999/08/28 01:20:18 peter Exp $
- * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.5 2004/09/05 01:59:44 dillon Exp $
+ * $DragonFly: src/usr.sbin/timed/timed/slave.c,v 1.6 2004/09/05 02:02:25 dillon Exp $
  */
 
 #include "globals.h"
@@ -63,7 +63,7 @@ int
 slave(void)
 {
 	int tries;
-	long electiontime, refusetime, looktime, looptime, adjtime;
+	long electiontime, refusetime, looktime, looptime, adjusttime;
 	u_short seq;
 	long fastelection;
 #define FASTTOUT 3
@@ -85,7 +85,7 @@ slave(void)
 	old_slavenet = 0;
 	seq = 0;
 	refusetime = 0;
-	adjtime = 0;
+	adjusttime = 0;
 
 	(void)gettimeofday(&ntime, 0);
 	electiontime = ntime.tv_sec + delay2;
@@ -230,7 +230,7 @@ loop:
 			 * is found.
 			 */
 			(void)gettimeofday(&otime, 0);
-			if (adjtime < otime.tv_sec)
+			if (adjusttime < otime.tv_sec)
 				looptime -= (looptime-otime.tv_sec)/2 + 1;
 
 			setmaster(msg);
@@ -241,7 +241,7 @@ loop:
 			(void)gettimeofday(&ntime, 0);
 			electiontime = ntime.tv_sec + delay2;
 			fastelection = ntime.tv_sec + FASTTOUT;
-			adjtime = ntime.tv_sec + SAMPLEINTVL*2;
+			adjusttime = ntime.tv_sec + SAMPLEINTVL*2;
 			break;
 
 		case TSP_SETTIME:
