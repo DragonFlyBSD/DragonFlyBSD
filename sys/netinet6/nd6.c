@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/nd6.c,v 1.2.2.15 2003/05/06 06:46:58 suz Exp $	*/
-/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.9 2004/08/13 14:27:29 drhodus Exp $	*/
+/*	$DragonFly: src/sys/netinet6/nd6.c,v 1.10 2004/09/17 00:07:27 dillon Exp $	*/
 /*	$KAME: nd6.c,v 1.144 2001/05/24 07:44:00 itojun Exp $	*/
 
 /*
@@ -143,6 +143,7 @@ nd6_init(void)
 	nd6_init_done = 1;
 
 	/* start timer */
+	callout_init(&nd6_slowtimo_ch);
 	callout_reset(&nd6_slowtimo_ch, ND6_SLOWTIMER_INTERVAL * hz,
 	    nd6_slowtimo, NULL);
 }

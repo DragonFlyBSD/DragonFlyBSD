@@ -1,5 +1,5 @@
 /*	$FreeBSD: src/sys/netinet6/ip6_input.c,v 1.11.2.15 2003/01/24 05:11:35 sam Exp $	*/
-/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.19 2004/06/24 08:15:18 dillon Exp $	*/
+/*	$DragonFly: src/sys/netinet6/ip6_input.c,v 1.20 2004/09/17 00:07:27 dillon Exp $	*/
 /*	$KAME: ip6_input.c,v 1.259 2002/01/21 04:58:09 jinmei Exp $	*/
 
 /*
@@ -228,6 +228,7 @@ ip6_init2(void *dummy)
 	callout_reset(&in6_rr_timer_ch, hz, in6_rr_timer, NULL);
 
 	/* timer for regeneranation of temporary addresses randomize ID */
+	callout_init(&in6_tmpaddrtimer_ch);
 	callout_reset(&in6_tmpaddrtimer_ch,
 		      (ip6_temp_preferred_lifetime - ip6_desync_factor -
 		       ip6_temp_regen_advance) * hz,
