@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.15 2005/02/24 15:46:24 joerg Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.16 2005/02/24 16:05:22 joerg Exp $
  */
 
 /*
@@ -1261,14 +1261,19 @@ load_object(char *path)
 
     obj = find_object(path);
     if (obj != NULL) {
+	obj->refcount++;
 	free(path);
 	return(obj);
     }
 
     obj = find_object2(path, &fd, &sb);
-    if (obj != NULL || fd == -1) {
+    if (obj != NULL) {
+	obj->refcount++;
 	free(path);
 	return(obj);
+    } else if (fd == -1) {
+	free(path);
+	return(NULL);
     }
 
     dbg("loading \"%s\"", path);
