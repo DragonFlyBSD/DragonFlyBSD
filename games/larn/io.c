@@ -1,6 +1,6 @@
 /* io.c			 Larn is copyrighted 1986 by Noah Morgan.
  * $FreeBSD: src/games/larn/io.c,v 1.7 1999/11/16 02:57:22 billf Exp $
- * $DragonFly: src/games/larn/io.c,v 1.2 2003/06/17 04:25:24 dillon Exp $
+ * $DragonFly: src/games/larn/io.c,v 1.3 2004/01/24 21:00:14 joerg Exp $
  *
  *	Below are the functions in this file:
  *
@@ -82,7 +82,7 @@ static char saveeof,saveeol;
 #endif not SYSV
 
 #ifndef NOVARARGS	/* if we have varargs */
-#include <varargs.h>
+#include <stdarg.h>
 #else NOVARARGS	/* if we don't have varargs */
 typedef char *va_list;
 #define va_dcl int va_alist;
@@ -193,19 +193,16 @@ sprintf(str)
 	str2 = str;
 	str = str2; /* to make lint happy */
 	}
-#else lint
+#else
 /*VARARGS*/
-lprintf(va_alist)
-va_dcl
+lprintf(const char *fmt, ...)
     {
 	va_list ap;	/* pointer for variable argument list */
-	char *fmt;
 	char *outb,*tmpb;
 	long wide,left,cont,n;		/* data for lprintf	*/
 	char db[12];			/* %d buffer in lprintf	*/
 
-	va_start(ap);	/* initialize the var args pointer */
-	fmt = va_arg(ap, char *);	/* pointer to format string */
+	va_start(ap, fmt);	/* initialize the var args pointer */
 	if (lpnt >= lpend) lflush();
 	outb = lpnt;
 	for ( ; ; )
