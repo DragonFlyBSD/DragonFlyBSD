@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/alpha/rtld_machdep.h,v 1.3.2.2 2002/09/02 02:10:20 obrien Exp $
- * $DragonFly: src/libexec/rtld-elf/alpha/Attic/rtld_machdep.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/alpha/Attic/rtld_machdep.h,v 1.3 2003/09/18 21:22:58 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -43,5 +43,11 @@ int cmp0_and_store_int(volatile int *, int);
 void atomic_add_int(volatile int *, int);
 void atomic_incr_int(volatile int *);
 void atomic_decr_int(volatile int *);
+
+static inline u_int32_t
+uniqid_hash_block(u_int32_t hash, u_int32_t key, u_int32_t block)
+{
+    return ((u_int64_t)hash * key + block) % 0xfffffffb;
+}
 
 #endif

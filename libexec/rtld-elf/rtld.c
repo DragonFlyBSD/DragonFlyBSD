@@ -24,7 +24,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.c,v 1.43.2.15 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.c,v 1.3 2003/09/18 21:22:56 dillon Exp $
  */
 
 /*
@@ -74,13 +74,13 @@ typedef struct Struct_DoneList {
 /*
  * Function declarations.
  */
-static const char *basename(const char *);
 static void die(void);
 static void digest_dynamic(Obj_Entry *);
 static Obj_Entry *digest_phdr(const Elf_Phdr *, int, caddr_t, const char *);
 static Obj_Entry *dlcheck(void *);
 static int do_search_info(const Obj_Entry *obj, int, struct dl_serinfo *);
 static bool donelist_check(DoneList *, const Obj_Entry *);
+static u_int32_t elf_uniqid(u_int32_t, const void *, size_t);
 static void errmsg_restore(char *);
 static char *errmsg_save(void);
 static void *fill_search_info(const char *, size_t, void *);
@@ -138,7 +138,8 @@ static char *ld_debug;		/* Environment variable for debugging */
 static char *ld_library_path;	/* Environment variable for search path */
 static char *ld_preload;	/* Environment variable for libraries to
 				   load first */
-static char *ld_tracing;	/* Called from ldd to print libs */
+static char *ld_tracing;	/* Called from ldd(1) to print libs */
+static char *ld_prebind;	/* Called from prebind(1) to prebind libs */
 static Obj_Entry *obj_list;	/* Head of linked list of shared objects */
 static Obj_Entry **obj_tail;	/* Link field of last object in list */
 static Obj_Entry *obj_main;	/* The main program shared object */
@@ -256,6 +257,7 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
     Obj_Entry *obj;
     Obj_Entry **preload_tail;
     Objlist initlist;
+    int prebind_disable = 0;
 
     /*
      * On entry, the dynamic linker itself has not been relocated yet.
@@ -291,6 +293,8 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 
     trust = geteuid() == getuid() && getegid() == getgid();
 
+    prebind_disable = getenv("LD_PREBIND_DISABLE") != NULL;
+
     ld_bind_now = getenv("LD_BIND_NOW");
     if (trust) {
 	ld_debug = getenv("LD_DEBUG");
@@ -298,6 +302,14 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	ld_preload = getenv("LD_PRELOAD");
     }
     ld_tracing = getenv("LD_TRACE_LOADED_OBJECTS");
+
+    if (trust) {
+	ld_prebind = getenv("LD_PREBIND");
+	if (ld_prebind != NULL && *ld_prebind != '\0') {
+	    ld_bind_now = ld_prebind;
+	    prebind_disable = 1;
+	}
+    }
 
     if (ld_debug != NULL && *ld_debug != '\0')
 	debug = 1;
@@ -385,13 +397,18 @@ _rtld(Elf_Addr *sp, func_ptr_type *exit_proc, Obj_Entry **objp)
 	exit(0);
     }
 
-    if (relocate_objects(obj_main,
-	ld_bind_now != NULL && *ld_bind_now != '\0') == -1)
-	die();
+    if (prebind_disable || prebind_load(&obj_rtld, obj_main)) {
+	if (relocate_objects(obj_main,
+	    ld_bind_now != NULL && *ld_bind_now != '\0') == -1)
+	    die();
 
-    dbg("doing copy relocations");
-    if (do_copy_relocations(obj_main) == -1)
-	die();
+	dbg("doing copy relocations");
+	if (do_copy_relocations(obj_main) == -1)
+	    die();
+    }
+
+    if (ld_prebind != NULL && *ld_prebind != '\0')
+	exit (prebind_save(&obj_rtld, obj_main));
 
     dbg("initializing key program variables");
     set_program_var("__progname", argv[0] != NULL ? basename(argv[0]) : "");
@@ -492,7 +509,7 @@ errmsg_restore(char *saved_msg)
     }
 }
 
-static const char *
+const char *
 basename(const char *name)
 {
     const char *p = strrchr(name, '/');
@@ -647,6 +664,12 @@ digest_dynamic(Obj_Entry *obj)
     }
 
     obj->traced = false;
+    obj->uniqid = 1;
+
+    if (obj->pltrelsize)
+    	obj->uniqid = elf_uniqid(obj->uniqid, obj->pltrel, obj->pltrelsize);
+    if (obj->symtab)
+	obj->uniqid = elf_uniqid(obj->uniqid, obj->symtab, obj->nchains * sizeof(*obj->symtab));
 
     if (plttype == DT_RELA) {
 	obj->pltrela = (const Elf_Rela *) obj->pltrel;
@@ -775,6 +798,45 @@ elf_hash(const char *name)
 	h &= ~g;
     }
     return h;
+}
+
+/*
+ * Hash function to get an unique ID from an ELF object file
+ * needs to be fast and small
+ *
+ * This one is after Krovetz, Rogaway: The PolyR construction,
+ * http://www.cs.ucdavis.edu/~rogaway/papers/poly.htm
+ *
+ * If called for the first time on a block, pass hash = 1
+ */
+static u_int32_t
+elf_uniqid(u_int32_t hash, const void *data, size_t len)
+{
+    const u_int32_t p = 0xfffffffb;	/* The largest prime smaller than 2^32 */
+    const u_int32_t offset = 5;		/* Constant for translating out-of-range words */
+    const u_int32_t marker = 0xfffffffa;    /* Constant for indicating out-of-range words */
+    const u_int32_t key = RTLD_TS;	/* Hash key XXX */
+    u_int32_t n = len / 4;		/* 32 bit blocks */
+    u_int32_t remainder = 0;
+    const u_int32_t *block;
+
+    for (block = data; n; --n, ++block)
+uniqid_hash:
+	if (*block >= p - 1) {		/* If word is not in range, then */
+	    hash = uniqid_hash_block(hash, key, marker);	/* Maker indicates out-of-range */
+	    hash = uniqid_hash_block(hash, key, *block - offset);	/* Offset m back into range */
+	} else
+	    hash = uniqid_hash_block(hash, key, *block);
+
+    if (len % 4) {	/* we got some remainder */
+	memcpy(&remainder, block, len % 4);	/* copy remaining bytes into 0-padded block */
+	block = &remainder;	/* set up pointer */
+	n = 1;			/* one block to process */
+	len = 0;		/* we've done the remainder */
+	goto uniqid_hash;	/* run once again */
+    }
+
+    return hash;
 }
 
 /*
@@ -980,6 +1042,8 @@ init_rtld(caddr_t mapbase)
 
     /* Replace the path with a dynamically allocated copy. */
     obj_rtld.path = xstrdup(obj_rtld.path);
+
+    obj_rtld.uniqid = RTLD_TS;
 
     r_debug.r_brk = r_debug_state;
     r_debug.r_state = RT_CONSISTENT;

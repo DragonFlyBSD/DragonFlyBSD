@@ -24,7 +24,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3.2.2 2002/07/02 04:10:51 jdp Exp $
- * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/i386/rtld_machdep.h,v 1.3 2003/09/18 21:23:02 dillon Exp $
  */
 
 #ifndef RTLD_MACHDEP_H
@@ -61,6 +61,28 @@ atomic_add_int(volatile int *p, int val)
 	: "+m"(*p)
 	: "ri"(val)
 	: "cc");
+}
+
+/*
+ * Optimized version of the calculation y = ky + m (mod p)
+ * See elf_uniqid() for details
+ */
+static inline u_int32_t
+uniqid_hash_block(u_int32_t hash, u_int32_t key, u_int32_t block)
+{
+    int ret;
+
+    __asm __const (	"mull	%2\n\t"
+			"lea	(%%edx,%%edx,4),%%edx\n\t"
+			"addl	%%edx,%%eax\n\t"
+			"lea	0x5(%%eax),%%edx\n\t"
+			"cmovcl	%%edx,%%eax\n\t"
+			"addl	%3,%%eax\n\t"
+			"lea	0x5(%%eax),%%edx\n\t"
+			"cmovcl	%%edx,%%eax\n\t"
+	: "=a"(ret) : "a"(hash), "rm"(key), "g"(block) : "cc", "dx");
+
+    return ret;
 }
 
 #endif

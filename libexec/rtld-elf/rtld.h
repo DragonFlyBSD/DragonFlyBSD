@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/rtld.h,v 1.15.2.6 2003/02/20 20:42:46 kan Exp $
- * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/rtld.h,v 1.3 2003/09/18 21:22:56 dillon Exp $
  */
 
 #ifndef RTLD_H /* { */
@@ -161,6 +161,8 @@ typedef struct Struct_Obj_Entry {
     Objlist dldags;		/* Object belongs to these dlopened DAGs (%) */
     Objlist dagmembers;		/* DAG has these members (%) */
     dev_t dev;			/* Object's filesystem's device */
+
+    u_int32_t uniqid;		/* Unique ID (hash) of the object */
     ino_t ino;			/* Object's inode number */
 } Obj_Entry;
 
@@ -180,12 +182,17 @@ extern void _rtld_error(const char *, ...) __printflike(1, 2);
 extern Obj_Entry *map_object(int, const char *, const struct stat *);
 extern void *xcalloc(size_t);
 extern void *xmalloc(size_t);
+extern void *xrealloc(void *, size_t);
 extern char *xstrdup(const char *);
 extern Elf_Addr _GLOBAL_OFFSET_TABLE_[];
+
+extern int prebind_load (Obj_Entry *, Obj_Entry *);
+extern int prebind_save (Obj_Entry *, Obj_Entry *);
 
 /*
  * Function declarations.
  */
+const char *basename(const char *);
 int do_copy_relocations(Obj_Entry *);
 unsigned long elf_hash(const char *);
 const Elf_Sym *find_symdef(unsigned long, const Obj_Entry *,

@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * $FreeBSD: src/libexec/rtld-elf/xmalloc.c,v 1.2 1999/08/28 00:10:11 peter Exp $
- * $DragonFly: src/libexec/rtld-elf/xmalloc.c,v 1.2 2003/06/17 04:27:08 dillon Exp $
+ * $DragonFly: src/libexec/rtld-elf/xmalloc.c,v 1.3 2003/09/18 21:22:56 dillon Exp $
  */
 
 #include <err.h>
@@ -43,6 +43,15 @@ void *
 xmalloc(size_t size)
 {
     void *p = malloc(size);
+    if (p == NULL)
+	err(1, "Out of memory");
+    return p;
+}
+
+void *
+xrealloc (void *cp, size_t nbytes)
+{
+    void *p = realloc(cp, nbytes);
     if (p == NULL)
 	err(1, "Out of memory");
     return p;
