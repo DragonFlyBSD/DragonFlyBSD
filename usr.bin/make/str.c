@@ -37,7 +37,7 @@
  *
  * @(#)str.c	5.8 (Berkeley) 6/1/90
  * $FreeBSD: src/usr.bin/make/str.c,v 1.12.2.2 2004/02/23 12:10:57 ru Exp $
- * $DragonFly: src/usr.bin/make/str.c,v 1.10 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/str.c,v 1.11 2004/12/16 00:17:05 okumoto Exp $
  */
 
 #include "make.h"
@@ -55,7 +55,7 @@ str_init(void)
 {
     char *p1;
 
-    argv = (char **)emalloc(((argmax = 50) + 1) * sizeof(char *));
+    argv = emalloc(((argmax = 50) + 1) * sizeof(char *));
     argv[0] = Var_Value(".MAKE", VAR_GLOBAL, &p1);
 }
 
@@ -96,7 +96,7 @@ str_concat(const char *s1, const char *s2, int flags)
 	len2 = strlen(s2);
 
 	/* allocate length plus separator plus EOS */
-	result = emalloc((u_int)(len1 + len2 + 2));
+	result = emalloc(len1 + len2 + 2);
 
 	/* copy first string into place */
 	memcpy(result, s1, len1);
@@ -161,7 +161,7 @@ brk_string(char *str, int *store_argc, Boolean expand)
 				if (!start)
 					start = t;
 			} else
-				inquote = (char) ch;
+				inquote = (char)ch;
 			if (expand)
 				continue;
 			break;
@@ -184,11 +184,11 @@ brk_string(char *str, int *store_argc, Boolean expand)
 			*t++ = '\0';
 			if (argc == argmax) {
 				argmax *= 2;		/* ramp up fast */
-				argv = (char **)erealloc(argv,
+				argv = erealloc(argv,
 				    (argmax + 1) * sizeof(char *));
 			}
 			argv[argc++] = start;
-			start = (char *)NULL;
+			start = NULL;
 			if (ch == '\n' || ch == '\0')
 				goto done;
 			continue;
@@ -234,7 +234,7 @@ brk_string(char *str, int *store_argc, Boolean expand)
 			start = t;
 		*t++ = (char)ch;
 	}
-done:	argv[argc] = (char *)NULL;
+done:	argv[argc] = NULL;
 	*store_argc = argc;
 	return (argv);
 }

@@ -38,7 +38,7 @@
  *
  * @(#)buf.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/buf.c,v 1.11 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/buf.c,v 1.7 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/buf.c,v 1.8 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /*-
@@ -64,7 +64,7 @@
 #define	BufExpand(bp,nb) \
  	if (bp->left < (nb)+1) {\
 	    int newSize = (bp)->size + max((nb) + 1, BUF_ADD_INC); \
-	    Byte  *newBuf = (Byte *)erealloc((bp)->buffer, newSize); \
+	    Byte  *newBuf = erealloc((bp)->buffer, newSize); \
 	    \
 	    (bp)->inPtr = newBuf + ((bp)->inPtr - (bp)->buffer); \
 	    (bp)->outPtr = newBuf + ((bp)->outPtr - (bp)->buffer);\
@@ -93,6 +93,7 @@
 void
 Buf_OvAddByte(Buffer bp, int byte)
 {
+
     bp->left = 0;
     BufExpand(bp, 1);
 
@@ -169,12 +170,11 @@ Buf_UngetByte(Buffer bp, int byte)
 	int 	  numBytes = bp->inPtr - bp->outPtr;
 	Byte	  *newBuf;
 
-	newBuf = (Byte *)emalloc(bp->size + BUF_UNGET_INC);
-	memcpy((char *)(newBuf+BUF_UNGET_INC), (char *)bp->outPtr,
-	    numBytes + 1);
+	newBuf = emalloc(bp->size + BUF_UNGET_INC);
+	memcpy(newBuf + BUF_UNGET_INC, bp->outPtr, numBytes + 1);
 	bp->outPtr = newBuf + BUF_UNGET_INC;
 	bp->inPtr = bp->outPtr + numBytes;
-	free((char *)bp->buffer);
+	free(bp->buffer);
 	bp->buffer = newBuf;
 	bp->size += BUF_UNGET_INC;
 	bp->left = bp->size - (bp->inPtr - bp->buffer);
@@ -210,16 +210,16 @@ Buf_UngetBytes(Buffer bp, int numBytes, Byte *bytesPtr)
 	Byte	  *newBuf;
 	int 	  newBytes = max(numBytes,BUF_UNGET_INC);
 
-	newBuf = (Byte *)emalloc (bp->size + newBytes);
-	memcpy((char *)(newBuf+newBytes), (char *)bp->outPtr, curNumBytes + 1);
+	newBuf = emalloc(bp->size + newBytes);
+	memcpy(newBuf + newBytes, bp->outPtr, curNumBytes + 1);
 	bp->outPtr = newBuf + newBytes;
 	bp->inPtr = bp->outPtr + curNumBytes;
-	free((char *)bp->buffer);
+	free(bp->buffer);
 	bp->buffer = newBuf;
 	bp->size += newBytes;
 	bp->left = bp->size - (bp->inPtr - bp->buffer);
 	bp->outPtr -= numBytes;
-	memcpy((char *)bp->outPtr, (char *)bytesPtr, numBytes);
+	memcpy(bp->outPtr, bytesPtr, numBytes);
     }
 }
 
@@ -305,7 +305,7 @@ Byte *
 Buf_GetAll(Buffer bp, int *numBytesPtr)
 {
 
-    if (numBytesPtr != (int *)NULL) {
+    if (numBytesPtr != NULL) {
 	*numBytesPtr = bp->inPtr - bp->outPtr;
     }
 
@@ -355,6 +355,7 @@ Buf_Discard(Buffer bp, int numBytes)
 int
 Buf_Size(Buffer buf)
 {
+
     return (buf->inPtr - buf->outPtr);
 }
 
@@ -378,13 +379,13 @@ Buf_Init(int size)
 {
     Buffer bp;	  	/* New Buffer */
 
-    bp = (Buffer)emalloc(sizeof(*bp));
+    bp = emalloc(sizeof(*bp));
 
     if (size <= 0) {
 	size = BUF_DEF_SIZE;
     }
     bp->left = bp->size = size;
-    bp->buffer = (Byte *)emalloc(size);
+    bp->buffer = emalloc(size);
     bp->inPtr = bp->outPtr = bp->buffer;
     *bp->inPtr = 0;
 
@@ -409,9 +410,9 @@ Buf_Destroy(Buffer buf, Boolean freeData)
 {
 
     if (freeData) {
-	free((char *)buf->buffer);
+	free(buf->buffer);
     }
-    free((char *)buf);
+    free(buf);
 }
 
 /*-

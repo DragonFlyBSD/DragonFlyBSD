@@ -38,7 +38,7 @@
  *
  *	from: @(#)hash.h	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.h,v 1.8 1999/08/28 01:03:30 peter Exp $
- * $DragonFly: src/usr.bin/make/hash.h,v 1.7 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.h,v 1.8 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /* hash.h --
@@ -100,7 +100,7 @@ typedef struct Hash_Search {
  *     char *val;
  */
 
-#define	Hash_SetValue(h, val) ((h)->clientData = (void *)(val))
+#define	Hash_SetValue(h, val) ((h)->clientData = (val))
 
 /*
  * Hash_Size(n) returns the number of words in an object of n bytes

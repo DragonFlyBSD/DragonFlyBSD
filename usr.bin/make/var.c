@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/var.c,v 1.20 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/var.c,v 1.21 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /*-
@@ -157,7 +157,7 @@ static int
 VarCmp(void *v, void *name)
 {
 
-    return (strcmp((char *)name, ((Var *)v)->name));
+    return (strcmp(name, ((Var *)v)->name));
 }
 
 /*-
@@ -248,9 +248,7 @@ VarFind(char *name, GNode *ctxt, int flags)
      * Note whether this is one of the specific variables we were told through
      * the -E flag to use environment-variable-override for.
      */
-    if (Lst_Find(envFirstVars, (void *)name,
-		  (int (*)(void *, void *)) strcmp) != NULL)
-    {
+    if (Lst_Find(envFirstVars, name, (CompareProc *)strcmp) != NULL) {
 	localCheckEnvFirst = TRUE;
     } else {
 	localCheckEnvFirst = FALSE;
@@ -261,15 +259,15 @@ VarFind(char *name, GNode *ctxt, int flags)
      * look for it in VAR_CMD, VAR_GLOBAL and the environment, in that order,
      * depending on the FIND_* flags in 'flags'
      */
-    var = Lst_Find(ctxt->context, (void *)name, VarCmp);
+    var = Lst_Find(ctxt->context, name, VarCmp);
 
     if ((var == NULL) && (flags & FIND_CMD) && (ctxt != VAR_CMD)) {
-	var = Lst_Find(VAR_CMD->context, (void *)name, VarCmp);
+	var = Lst_Find(VAR_CMD->context, name, VarCmp);
     }
     if ((var == NULL) && (flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL) &&
 	!checkEnvFirst && !localCheckEnvFirst)
     {
-	var = Lst_Find(VAR_GLOBAL->context, (void *)name, VarCmp);
+	var = Lst_Find(VAR_GLOBAL->context, name, VarCmp);
     }
     if ((var == NULL) && (flags & FIND_ENV)) {
 	char *env;
@@ -277,7 +275,7 @@ VarFind(char *name, GNode *ctxt, int flags)
 	if ((env = getenv(name)) != NULL) {
 	    int	  	len;
 
-	    v = (Var *)emalloc(sizeof(Var));
+	    v = emalloc(sizeof(Var));
 	    v->name = estrdup(name);
 
 	    len = strlen(env);
@@ -290,19 +288,19 @@ VarFind(char *name, GNode *ctxt, int flags)
 	} else if ((checkEnvFirst || localCheckEnvFirst) &&
 		   (flags & FIND_GLOBAL) && (ctxt != VAR_GLOBAL))
 	{
-	    var = Lst_Find(VAR_GLOBAL->context, (void *)name, VarCmp);
+	    var = Lst_Find(VAR_GLOBAL->context, name, VarCmp);
 	    if (var == NULL) {
-		return ((Var *)NULL);
+		return (NULL);
 	    } else {
-		return ((Var *)Lst_Datum(var));
+		return (Lst_Datum(var));
 	    }
 	} else {
-	    return ((Var *)NULL);
+	    return (NULL);
 	}
     } else if (var == NULL) {
-	return ((Var *)NULL);
+	return (NULL);
     } else {
-	return ((Var *)Lst_Datum(var));
+	return (Lst_Datum(var));
     }
 }
 
@@ -326,7 +324,7 @@ VarAdd(char *name, char *val, GNode *ctxt)
     Var		  *v;
     int	    	  len;
 
-    v = (Var *)emalloc(sizeof(Var));
+    v = emalloc(sizeof(Var));
 
     v->name = estrdup(name);
 
@@ -336,8 +334,8 @@ VarAdd(char *name, char *val, GNode *ctxt)
 
     v->flags = 0;
 
-    Lst_AtFront(ctxt->context, (void *)v);
-    Lst_AtEnd(allVars, (void *)v);
+    Lst_AtFront(ctxt->context, v);
+    Lst_AtEnd(allVars, v);
     DEBUGF(VAR, ("%s:%s = %s\n", ctxt->name, name, val));
 }
 
@@ -356,7 +354,7 @@ VarAdd(char *name, char *val, GNode *ctxt)
 static void
 VarDelete(void *vp)
 {
-    Var *v = (Var *)vp;
+    Var *v = vp;
 
     free(v->name);
     Buf_Destroy(v->val, TRUE);
@@ -382,15 +380,15 @@ Var_Delete(char *name, GNode *ctxt)
     LstNode 	  ln;
 
     DEBUGF(VAR, ("%s:delete %s\n", ctxt->name, name));
-    ln = Lst_Find(ctxt->context, (void *)name, VarCmp);
+    ln = Lst_Find(ctxt->context, name, VarCmp);
     if (ln != NULL) {
 	Var 	  *v;
 
-	v = (Var *)Lst_Datum(ln);
+	v = Lst_Datum(ln);
 	Lst_Remove(ctxt->context, ln);
 	ln = Lst_Member(allVars, v);
 	Lst_Remove(allVars, ln);
-	VarDelete((void *)v);
+	VarDelete(v);
     }
 }
 
@@ -427,7 +425,7 @@ Var_Set(char *name, char *val, GNode *ctxt)
      */
     VarPossiblyExpand(&name, ctxt);
     v = VarFind(name, ctxt, 0);
-    if (v == (Var *)NULL) {
+    if (v == NULL) {
 	VarAdd(name, val, ctxt);
     } else {
 	Buf_Discard(v->val, Buf_Size(v->val));
@@ -495,7 +493,7 @@ Var_Append(char *name, char *val, GNode *ctxt)
     VarPossiblyExpand(&name, ctxt);
     v = VarFind(name, ctxt, (ctxt == VAR_GLOBAL) ? FIND_ENV : 0);
 
-    if (v == (Var *)NULL) {
+    if (v == NULL) {
 	VarAdd(name, val, ctxt);
     } else {
 	Buf_AddByte(v->val, (Byte)' ');
@@ -512,7 +510,7 @@ Var_Append(char *name, char *val, GNode *ctxt)
 	     * export other variables...)
 	     */
 	    v->flags &= ~VAR_FROM_ENV;
-	    Lst_AtFront(ctxt->context, (void *)v);
+	    Lst_AtFront(ctxt->context, v);
 	}
     }
     free(name);
@@ -540,12 +538,12 @@ Var_Exists(char *name, GNode *ctxt)
     v = VarFind(name, ctxt, FIND_CMD|FIND_GLOBAL|FIND_ENV);
     free(name);
 
-    if (v == (Var *)NULL) {
+    if (v == NULL) {
 	return (FALSE);
     } else if (v->flags & VAR_FROM_ENV) {
 	free(v->name);
 	Buf_Destroy(v->val, TRUE);
-	free((char *)v);
+	free(v);
     }
     return (TRUE);
 }
@@ -571,8 +569,9 @@ Var_Value(char *name, GNode *ctxt, char **frp)
     v = VarFind(name, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
     free(name);
     *frp = NULL;
-    if (v != (Var *) NULL) {
-	char *p = ((char *)Buf_GetAll(v->val, (int *)NULL));
+    if (v != NULL) {
+	char *p = (char *)Buf_GetAll(v->val, (int *)NULL);
+
 	if (v->flags & VAR_FROM_ENV) {
 	    Buf_Destroy(v->val, FALSE);
 	    free(v);
@@ -580,7 +579,7 @@ Var_Value(char *name, GNode *ctxt, char **frp)
 	}
 	return (p);
     } else {
-	return ((char *)NULL);
+	return (NULL);
     }
 }
 
@@ -675,7 +674,7 @@ VarSortWords(char *str, int (*cmp)(const void *, const void *))
 
 	buf = Buf_Init(0);
 	av = brk_string(str, &ac, FALSE);
-	qsort((void*)(av + 1), ac - 1, sizeof(char*), cmp);
+	qsort(av + 1, ac - 1, sizeof(char *), cmp);
 	for (i = 1; i < ac; i++) {
 		Buf_AddBytes(buf, strlen(av[i]), (Byte *)av[i]);
 		Buf_AddByte(buf, (Byte)((i < ac - 1) ? ' ' : '\0'));
@@ -988,7 +987,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 	*tstr = '\0';
 
 	Buf_AddByte(buf, (Byte)'\0');
-	str = Buf_GetAll(buf, NULL);
+	str = Buf_GetAll(buf, (int *)NULL);
 	vlen = strlen(str);
 
 	v = VarFind(str, ctxt, FIND_ENV | FIND_GLOBAL | FIND_CMD);
@@ -1017,7 +1016,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    vname[1] = '\0';
 		    v = VarFind(vname, ctxt, 0);
 
-		    if (v != (Var *)NULL && !haveModifier) {
+		    if (v != NULL && !haveModifier) {
 			/*
 			 * No need for nested expansion or anything, as we're
 			 * the only one who sets these things and we sure don't
@@ -1026,9 +1025,9 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			val = (char *)Buf_GetAll(v->val, (int *)NULL);
 
 			if (str[1] == 'D') {
-			    val = VarModify(val, VarHead, (void *)0);
+			    val = VarModify(val, VarHead, (void *)NULL);
 			} else {
-			    val = VarModify(val, VarTail, (void *)0);
+			    val = VarModify(val, VarTail, (void *)NULL);
 			}
 			/*
 			 * Resulting string is dynamically allocated, so
@@ -1110,7 +1109,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		 * Still need to get to the end of the variable specification,
 		 * so kludge up a Var structure for the modifications
 		 */
-		v = (Var *)emalloc(sizeof(Var));
+		v = emalloc(sizeof(Var));
 		v->name = estrdup(str);
 		v->val = Buf_Init(1);
 		v->flags = VAR_JUNK;
@@ -1163,7 +1162,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
      *		  :U		Converts variable to upper-case.
      *		  :L		Converts variable to lower-case.
      */
-    if ((str != (char *)NULL) && haveModifier) {
+    if ((str != NULL) && haveModifier) {
 	/*
 	 * Skip initial colon while putting it back.
 	 */
@@ -1217,9 +1216,9 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			pattern = &tstr[1];
 		    }
 		    if (*tstr == 'M' || *tstr == 'm') {
-			newStr = VarModify(str, VarMatch, (void *)pattern);
+			newStr = VarModify(str, VarMatch, pattern);
 		    } else {
-			newStr = VarModify(str, VarNoMatch, (void *)pattern);
+			newStr = VarModify(str, VarNoMatch, pattern);
 		    }
 		    if (copy) {
 			free(pattern);
@@ -1389,7 +1388,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			Fatal("Global substitution of the empty string");
 
 		    termc = *cp;
-		    newStr = VarModify(str, VarSubstitute, (void *)&pattern);
+		    newStr = VarModify(str, VarSubstitute, &pattern);
 		    /*
 		     * Free the two strings.
 		     */
@@ -1467,8 +1466,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			pattern.nsub = 10;
 		    pattern.matches = emalloc(pattern.nsub *
 					      sizeof(regmatch_t));
-		    newStr = VarModify(str, VarRESubstitute,
-				       (void *) &pattern);
+		    newStr = VarModify(str, VarRESubstitute, &pattern);
 		    regfree(&pattern.re);
 		    free(pattern.replace);
 		    free(pattern.matches);
@@ -1508,7 +1506,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    /*FALLTHRU*/
 		case 'T':
 		    if (tstr[1] == endc || tstr[1] == ':') {
-			newStr = VarModify(str, VarTail, (void *)0);
+			newStr = VarModify(str, VarTail, (void *)NULL);
 			cp = tstr + 1;
 			termc = *cp;
 			break;
@@ -1532,7 +1530,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    /* FALLTHROUGH */
 		case 'H':
 		    if (tstr[1] == endc || tstr[1] == ':') {
-			newStr = VarModify(str, VarHead, (void *)0);
+			newStr = VarModify(str, VarHead, (void *)NULL);
 			cp = tstr + 1;
 			termc = *cp;
 			break;
@@ -1540,7 +1538,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    /*FALLTHRU*/
 		case 'E':
 		    if (tstr[1] == endc || tstr[1] == ':') {
-			newStr = VarModify(str, VarSuffix, (void *)0);
+			newStr = VarModify(str, VarSuffix, (void *)NULL);
 			cp = tstr + 1;
 			termc = *cp;
 			break;
@@ -1548,7 +1546,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 		    /*FALLTHRU*/
 		case 'R':
 		    if (tstr[1] == endc || tstr[1] == ':') {
-			newStr = VarModify(str, VarRoot, (void *)0);
+			newStr = VarModify(str, VarRoot, (void *)NULL);
 			cp = tstr + 1;
 			termc = *cp;
 			break;
@@ -1640,7 +1638,7 @@ Var_Parse(char *str, GNode *ctxt, Boolean err, int *lengthPtr, Boolean *freePtr)
 			 */
 			termc = *--cp;
 			delim = '\0';
-			newStr = VarModify(str, VarSYSVMatch, (void *)&pattern);
+			newStr = VarModify(str, VarSYSVMatch, &pattern);
 
 			free(pattern.lhs);
 			free(pattern.rhs);
@@ -1904,7 +1902,7 @@ char *
 Var_GetTail(char *file)
 {
 
-    return (VarModify(file, VarTail, (void *)0));
+    return (VarModify(file, VarTail, (void *)NULL));
 }
 
 /*-
@@ -1926,7 +1924,7 @@ char *
 Var_GetHead(char *file)
 {
 
-    return (VarModify(file, VarHead, (void *)0));
+    return (VarModify(file, VarHead, (void *)NULL));
 }
 
 /*-
@@ -1979,5 +1977,5 @@ void
 Var_Dump(GNode *ctxt)
 {
 
-    Lst_ForEach (ctxt->context, VarPrintVar, (void *)0);
+    Lst_ForEach (ctxt->context, VarPrintVar, (void *)NULL);
 }

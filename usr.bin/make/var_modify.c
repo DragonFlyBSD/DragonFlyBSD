@@ -37,7 +37,7 @@
  *
  * @(#)var.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/var.c,v 1.16.2.3 2002/02/27 14:18:57 cjc Exp $
- * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.6 2004/12/16 00:03:54 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/Attic/var_modify.c,v 1.7 2004/12/16 00:17:05 okumoto Exp $
  */
 
 #include    <ctype.h>
@@ -248,7 +248,7 @@ VarSYSVMatch(const char *word, Boolean addSpace, Buffer buf, void *patp)
     if ((ptr = Str_SYSVMatch(word, pat->lhs, &len)) != NULL)
 	Str_SYSVSubst(buf, pat->rhs, ptr, len);
     else
-	Buf_AddBytes(buf, strlen(word), (Byte *) word);
+	Buf_AddBytes(buf, strlen(word), (Byte *)word);
 
     return (addSpace);
 }
@@ -305,7 +305,7 @@ VarSubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 {
     int		  	wordLen;    /* Length of word */
     const char	 	*cp;	    /* General pointer */
-    VarPattern	*pattern = (VarPattern *)patternp;
+    VarPattern	*pattern = patternp;
 
     wordLen = strlen(word);
     if (1) { /* substitute in each word of the variable */
@@ -473,17 +473,17 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
     int added;
     int flags = 0;
 
-#define	MAYBE_ADD_SPACE()		\
-	if (addSpace && !added)		\
-	    Buf_AddByte(buf, ' ');	\
+#define	MAYBE_ADD_SPACE()			\
+	if (addSpace && !added)			\
+	    Buf_AddByte(buf, (Byte)' ');	\
 	added = 1
 
     added = 0;
     wp = word;
     pat = patternp;
 
-    if ((pat->flags & (VAR_SUB_ONE|VAR_SUB_MATCHED)) ==
-	(VAR_SUB_ONE|VAR_SUB_MATCHED))
+    if ((pat->flags & (VAR_SUB_ONE | VAR_SUB_MATCHED)) ==
+	(VAR_SUB_ONE | VAR_SUB_MATCHED))
 	xrv = REG_NOMATCH;
     else {
     tryagain:
@@ -495,13 +495,13 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	pat->flags |= VAR_SUB_MATCHED;
 	if (pat->matches[0].rm_so > 0) {
 	    MAYBE_ADD_SPACE();
-	    Buf_AddBytes(buf, pat->matches[0].rm_so, wp);
+	    Buf_AddBytes(buf, pat->matches[0].rm_so, (Byte *)wp);
 	}
 
 	for (rp = pat->replace; *rp; rp++) {
 	    if ((*rp == '\\') && ((rp[1] == '&') || (rp[1] == '\\'))) {
 		MAYBE_ADD_SPACE();
-		Buf_AddByte(buf,rp[1]);
+		Buf_AddByte(buf, (Byte)rp[1]);
 		rp++;
 	    }
 	    else if ((*rp == '&') ||
@@ -539,11 +539,11 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 
 		if (sublen > 0) {
 		    MAYBE_ADD_SPACE();
-		    Buf_AddBytes(buf, sublen, subbuf);
+		    Buf_AddBytes(buf, sublen, (Byte *)subbuf);
 		}
 	    } else {
 		MAYBE_ADD_SPACE();
-		Buf_AddByte(buf, *rp);
+		Buf_AddByte(buf, (Byte)*rp);
 	    }
 	}
 	wp += pat->matches[0].rm_eo;
@@ -551,7 +551,7 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	    flags |= REG_NOTBOL;
 	    if (pat->matches[0].rm_so == 0 && pat->matches[0].rm_eo == 0) {
 		MAYBE_ADD_SPACE();
-		Buf_AddByte(buf, *wp);
+		Buf_AddByte(buf, (Byte)*wp);
 		wp++;
 
 	    }
@@ -560,7 +560,7 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
 	}
 	if (*wp) {
 	    MAYBE_ADD_SPACE();
-	    Buf_AddBytes(buf, strlen(wp), wp);
+	    Buf_AddBytes(buf, strlen(wp), (Byte *)wp);
 	}
 	break;
     default:
@@ -569,10 +569,10 @@ VarRESubstitute(const char *word, Boolean addSpace, Buffer buf, void *patternp)
     case REG_NOMATCH:
 	if (*wp) {
 	    MAYBE_ADD_SPACE();
-	    Buf_AddBytes(buf,strlen(wp),wp);
+	    Buf_AddBytes(buf, strlen(wp), (Byte *)wp);
 	}
 	break;
     }
-    return (addSpace||added);
+    return (addSpace || added);
 }
 

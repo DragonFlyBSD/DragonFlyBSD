@@ -38,7 +38,7 @@
  *
  * @(#)cond.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/usr.bin/make/cond.c,v 1.12.2.1 2003/07/22 08:03:13 ru Exp $
- * $DragonFly: src/usr.bin/make/cond.c,v 1.13 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/cond.c,v 1.14 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /*-
@@ -156,6 +156,7 @@ static Boolean	  skipLine = FALSE; 	/* Whether the parse module is skipping
 static void
 CondPushBack(Token t)
 {
+
     condPushBack = t;
 }
 
@@ -212,7 +213,7 @@ CondGetArg(char **linePtr, char **argPtr, char *func, Boolean parens)
      */
     buf = Buf_Init(16);
 
-    while ((strchr(" \t)&|", *cp) == (char *)NULL) && (*cp != '\0')) {
+    while ((strchr(" \t)&|", *cp) == NULL) && (*cp != '\0')) {
 	if (*cp == '$') {
 	    /*
 	     * Parse the variable spec and install it as part of the argument
@@ -280,7 +281,7 @@ CondDoDefined(int argLen, char *arg)
     Boolean result;
 
     arg[argLen] = '\0';
-    if (Var_Value(arg, VAR_CMD, &p1) != (char *)NULL) {
+    if (Var_Value(arg, VAR_CMD, &p1) != NULL) {
 	result = TRUE;
     } else {
 	result = FALSE;
@@ -307,6 +308,7 @@ CondDoDefined(int argLen, char *arg)
 static int
 CondStrMatch(void *string, void *pattern)
 {
+
     return (!Str_Match((char *)string, (char *)pattern));
 }
 
@@ -330,7 +332,7 @@ CondDoMake(int argLen, char *arg)
     Boolean result;
 
     arg[argLen] = '\0';
-    if (Lst_Find(create, (void *)arg, CondStrMatch) == NULL) {
+    if (Lst_Find(create, arg, CondStrMatch) == NULL) {
 	result = FALSE;
     } else {
 	result = TRUE;
@@ -361,7 +363,7 @@ CondDoExists(int argLen, char *arg)
 
     arg[argLen] = '\0';
     path = Dir_FindFile(arg, dirSearchPath);
-    if (path != (char *)NULL) {
+    if (path != NULL) {
 	result = TRUE;
 	free(path);
     } else {
@@ -435,7 +437,7 @@ CondCvtArg(char *str, double *value)
 		x = 10 + *str - isupper((unsigned char)*str) ? 'A' : 'a';
 	    else {
 		*value = (double)i;
-		return str;
+		return (str);
 	    }
 	    i = (i << 4) + x;
 	}
@@ -638,7 +640,7 @@ do_string_compare:
 
 		    Buf_AddByte(buf, (Byte)0);
 
-		    string = (char *)Buf_GetAll(buf, (int *)0);
+		    string = (char *)Buf_GetAll(buf, (int *)NULL);
 		    Buf_Destroy(buf, FALSE);
 
 		    DEBUGF(COND, ("lhs = \"%s\", rhs = \"%s\", op = %.2s\n",
@@ -1094,13 +1096,13 @@ Cond_Eval(char *line)
      * Figure out what sort of conditional it is -- what its default
      * function is, etc. -- by looking in the table of valid "ifs"
      */
-    for (ifp = ifs; ifp->form != (char *)0; ifp++) {
+    for (ifp = ifs; ifp->form != NULL; ifp++) {
 	if (strncmp(ifp->form, line, ifp->formlen) == 0) {
 	    break;
 	}
     }
 
-    if (ifp->form == (char *)0) {
+    if (ifp->form == NULL) {
 	/*
 	 * Nothing fit. If the first word on the line is actually
 	 * "else", it's a valid conditional whose value is the inverse

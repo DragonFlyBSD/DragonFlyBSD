@@ -38,7 +38,7 @@
  * @(#) Copyright (c) 1988, 1989, 1990, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.3 (Berkeley) 3/19/94
  * $FreeBSD: src/usr.bin/make/main.c,v 1.35.2.10 2003/12/16 08:34:11 des Exp $
- * $DragonFly: src/usr.bin/make/main.c,v 1.31 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/main.c,v 1.32 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /*-
@@ -251,7 +251,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 		case 'E':
 			p = emalloc(strlen(optarg) + 1);
 			strcpy(p, optarg);
-			Lst_AtEnd(envFirstVars, (void *)p);
+			Lst_AtEnd(envFirstVars, p);
 			MFLAGS_append("-E", optarg);
 			break;
 		case 'e':
@@ -259,7 +259,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 			MFLAGS_append("-e", NULL);
 			break;
 		case 'f':
-			Lst_AtEnd(makefiles, (void *)optarg);
+			Lst_AtEnd(makefiles, optarg);
 			break;
 		case 'i':
 			ignoreErrors = TRUE;
@@ -342,7 +342,7 @@ rearg:	while((c = getopt(argc, argv, OPTFLAGS)) != -1) {
 					optind = 1;     /* - */
 				goto rearg;
 			}
-			Lst_AtEnd(create, (void *)estrdup(*argv));
+			Lst_AtEnd(create, estrdup(*argv));
 		}
 }
 
@@ -580,7 +580,6 @@ main(int argc, char **argv)
 	forceJobs = FALSE;              /* No -j flag */
 	compatMake = FALSE;		/* No compat mode */
 
-
 	/*
 	 * Initialize the parsing, directory and variable modules to prepare
 	 * for the reading of inclusion paths and variable settings on the
@@ -707,9 +706,8 @@ main(int argc, char **argv)
 	if (!Lst_IsEmpty(create)) {
 		LstNode ln;
 
-		for (ln = Lst_First(create); ln != NULL;
-		    ln = Lst_Succ(ln)) {
-			char *name = (char *)Lst_Datum(ln);
+		for (ln = Lst_First(create); ln != NULL; ln = Lst_Succ(ln)) {
+			char *name = Lst_Datum(ln);
 
 			Var_Append(".TARGETS", name, VAR_GLOBAL);
 		}
@@ -747,7 +745,7 @@ main(int argc, char **argv)
 		Dir_Expand(_PATH_DEFSYSMK, sysIncPath, sysMkPath);
 		if (Lst_IsEmpty(sysMkPath))
 			Fatal("make: no system rules (%s).", _PATH_DEFSYSMK);
-		ln = Lst_Find(sysMkPath, (void *)NULL, ReadMakefile);
+		ln = Lst_Find(sysMkPath, NULL, ReadMakefile);
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	}
@@ -755,7 +753,7 @@ main(int argc, char **argv)
 	if (!Lst_IsEmpty(makefiles)) {
 		LstNode ln;
 
-		ln = Lst_Find(makefiles, (void *)NULL, ReadMakefile);
+		ln = Lst_Find(makefiles, NULL, ReadMakefile);
 		if (ln != NULL)
 			Fatal("make: cannot open %s.", (char *)Lst_Datum(ln));
 	} else if (!ReadMakefile("BSDmakefile", NULL))
@@ -819,12 +817,12 @@ main(int argc, char **argv)
 		    ln = Lst_Succ(ln)) {
 			char *value;
 			if (expandVars) {
-				p1 = emalloc(strlen((char *)Lst_Datum(ln)) + 1 + 3);
+				p1 = emalloc(strlen(Lst_Datum(ln)) + 1 + 3);
 				/* This sprintf is safe, because of the malloc above */
 				sprintf(p1, "${%s}", (char *)Lst_Datum(ln));
 				value = Var_Subst(NULL, p1, VAR_GLOBAL, FALSE);
 			} else {
-				value = Var_Value((char *)Lst_Datum(ln),
+				value = Var_Value(Lst_Datum(ln),
 						  VAR_GLOBAL, &p1);
 			}
 			printf("%s\n", value ? value : "");

@@ -38,7 +38,7 @@
  *
  * @(#)hash.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.bin/make/hash.c,v 1.9 1999/09/11 13:08:01 hoek Exp $
- * $DragonFly: src/usr.bin/make/hash.c,v 1.9 2004/12/10 19:22:24 okumoto Exp $
+ * $DragonFly: src/usr.bin/make/hash.c,v 1.10 2004/12/16 00:17:05 okumoto Exp $
  */
 
 /* hash.c --
@@ -104,7 +104,7 @@ Hash_InitTable(Hash_Table *t, int numBuckets)
 	t->numEntries = 0;
 	t->size = i;
 	t->mask = i - 1;
-	t->bucketPtr = hp = (struct Hash_Entry **)emalloc(sizeof(*hp) * i);
+	t->bucketPtr = hp = emalloc(sizeof(*hp) * i);
 	while (--i >= 0)
 		*hp++ = NULL;
 }
@@ -126,7 +126,6 @@ Hash_InitTable(Hash_Table *t, int numBuckets)
  *
  *---------------------------------------------------------
  */
-
 void
 Hash_DeleteTable(Hash_Table *t)
 {
@@ -136,10 +135,10 @@ Hash_DeleteTable(Hash_Table *t)
 	for (hp = t->bucketPtr, i = t->size; --i >= 0;) {
 		for (h = *hp++; h != NULL; h = nexth) {
 			nexth = h->next;
-			free((char *)h);
+			free(h);
 		}
 	}
-	free((char *)t->bucketPtr);
+	free(t->bucketPtr);
 
 	/*
 	 * Set up the hash table to cause memory faults on any future access
@@ -165,7 +164,6 @@ Hash_DeleteTable(Hash_Table *t)
  *
  *---------------------------------------------------------
  */
-
 Hash_Entry *
 Hash_FindEntry(Hash_Table *t, char *key)
 {
@@ -200,7 +198,6 @@ Hash_FindEntry(Hash_Table *t, char *key)
  *	Memory may be allocated, and the hash buckets may be modified.
  *---------------------------------------------------------
  */
-
 Hash_Entry *
 Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
 {
@@ -233,7 +230,7 @@ Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
 	 */
 	if (t->numEntries >= rebuildLimit * t->size)
 		RebuildTable(t);
-	e = (Hash_Entry *)emalloc(sizeof(*e) + keylen);
+	e = emalloc(sizeof(*e) + keylen);
 	hp = &t->bucketPtr[h & t->mask];
 	e->next = *hp;
 	*hp = e;
@@ -263,7 +260,6 @@ Hash_CreateEntry(Hash_Table *t, char *key, Boolean *newPtr)
  *
  *---------------------------------------------------------
  */
-
 void
 Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
 {
@@ -275,7 +271,7 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
 	     (p = *hp) != NULL; hp = &p->next) {
 		if (p == e) {
 			*hp = p->next;
-			free((char *)p);
+			free(p);
 			t->numEntries--;
 			return;
 		}
@@ -302,7 +298,6 @@ Hash_DeleteEntry(Hash_Table *t, Hash_Entry *e)
  *
  *---------------------------------------------------------
  */
-
 Hash_Entry *
 Hash_EnumFirst(Hash_Table *t, Hash_Search *searchPtr)
 {
@@ -330,7 +325,6 @@ Hash_EnumFirst(Hash_Table *t, Hash_Search *searchPtr)
  *
  *---------------------------------------------------------
  */
-
 Hash_Entry *
 Hash_EnumNext(Hash_Search *searchPtr)
 {
@@ -374,7 +368,6 @@ Hash_EnumNext(Hash_Search *searchPtr)
  *
  *---------------------------------------------------------
  */
-
 static void
 RebuildTable(Hash_Table *t)
 {
@@ -388,7 +381,7 @@ RebuildTable(Hash_Table *t)
 	i <<= 1;
 	t->size = i;
 	t->mask = mask = i - 1;
-	t->bucketPtr = hp = (struct Hash_Entry **)emalloc(sizeof(*hp) * i);
+	t->bucketPtr = hp = emalloc(sizeof(*hp) * i);
 	while (--i >= 0)
 		*hp++ = NULL;
 	for (hp = oldhp, i = oldsize; --i >= 0;) {
@@ -399,5 +392,5 @@ RebuildTable(Hash_Table *t)
 			*xp = e;
 		}
 	}
-	free((char *)oldhp);
+	free(oldhp);
 }
