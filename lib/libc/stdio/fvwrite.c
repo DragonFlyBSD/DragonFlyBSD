@@ -35,7 +35,7 @@
  *
  * @(#)fvwrite.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fvwrite.c,v 1.10 1999/08/28 00:01:06 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fvwrite.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <stdio.h>
@@ -52,13 +52,13 @@
  */
 int
 __sfvwrite(fp, uio)
-	register FILE *fp;
-	register struct __suio *uio;
+	FILE *fp;
+	struct __suio *uio;
 {
-	register size_t len;
-	register char *p;
-	register struct __siov *iov;
-	register int w, s;
+	size_t len;
+	char *p;
+	struct __siov *iov;
+	int w, s;
 	char *nl;
 	int nlknown, nldist;
 

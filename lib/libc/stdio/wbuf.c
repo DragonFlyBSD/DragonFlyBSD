@@ -35,7 +35,7 @@
  *
  * @(#)wbuf.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/wbuf.c,v 1.6 1999/08/28 00:01:22 peter Exp $
- * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/wbuf.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <stdio.h>
@@ -48,10 +48,10 @@
  */
 int
 __swbuf(c, fp)
-	register int c;
-	register FILE *fp;
+	int c;
+	FILE *fp;
 {
-	register int n;
+	int n;
 
 	/*
 	 * In case we cannot write, or longjmp takes us out early,

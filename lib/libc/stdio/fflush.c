@@ -35,7 +35,7 @@
  *
  * @(#)fflush.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fflush.c,v 1.7 1999/08/28 00:00:58 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fflush.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <errno.h>
@@ -46,7 +46,7 @@
 /* Flush a single file, or (if fp is NULL) all files.  */
 int
 fflush(fp)
-	register FILE *fp;
+	FILE *fp;
 {
 	int retval;
 
@@ -65,10 +65,10 @@ fflush(fp)
 
 int
 __sflush(fp)
-	register FILE *fp;
+	FILE *fp;
 {
-	register unsigned char *p;
-	register int n, t;
+	unsigned char *p;
+	int n, t;
 
 	t = fp->_flags;
 	if ((t & __SWR) == 0)

@@ -35,7 +35,7 @@
  *
  * @(#)refill.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/refill.c,v 1.8.2.1 2001/03/05 11:27:49 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/refill.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/refill.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <errno.h>
@@ -60,7 +60,7 @@ lflush(FILE *fp)
  */
 int
 __srefill(fp)
-	register FILE *fp;
+	FILE *fp;
 {
 
 	/* make sure stdio is set up */

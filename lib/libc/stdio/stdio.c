@@ -35,7 +35,7 @@
  *
  * @(#)stdio.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/stdio.c,v 1.9 2000/01/27 23:06:46 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/stdio.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <fcntl.h>
@@ -53,8 +53,8 @@ __sread(cookie, buf, n)
 	char *buf;
 	int n;
 {
-	register FILE *fp = cookie;
-	register int ret;
+	FILE *fp = cookie;
+	int ret;
 
 	ret = _read(fp->_file, buf, (size_t)n);
 	/* if the read succeeded, update the current offset */
@@ -71,7 +71,7 @@ __swrite(cookie, buf, n)
 	char const *buf;
 	int n;
 {
-	register FILE *fp = cookie;
+	FILE *fp = cookie;
 
 	if (fp->_flags & __SAPP)
 		(void) lseek(fp->_file, (off_t)0, SEEK_END);
@@ -85,8 +85,8 @@ __sseek(cookie, offset, whence)
 	fpos_t offset;
 	int whence;
 {
-	register FILE *fp = cookie;
-	register off_t ret;
+	FILE *fp = cookie;
+	off_t ret;
 
 	ret = lseek(fp->_file, (off_t)offset, whence);
 	if (ret == -1)

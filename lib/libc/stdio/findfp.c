@@ -35,7 +35,7 @@
  *
  * @(#)findfp.c	8.2 (Berkeley) 1/4/94
  * $FreeBSD: src/lib/libc/stdio/findfp.c,v 1.7.2.3 2001/08/17 02:56:31 peter Exp $
- * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/findfp.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <sys/param.h>
@@ -89,10 +89,10 @@ static spinlock_t thread_lock = _SPINLOCK_INITIALIZER;
 
 static struct glue *
 moreglue(n)
-	register int n;
+	int n;
 {
-	register struct glue *g;
-	register FILE *p;
+	struct glue *g;
+	FILE *p;
 	static FILE empty;
 
 	g = (struct glue *)malloc(sizeof(*g) + ALIGNBYTES + n * sizeof(FILE));
@@ -113,9 +113,9 @@ moreglue(n)
 FILE *
 __sfp()
 {
-	register FILE *fp;
-	register int n;
-	register struct glue *g;
+	FILE *fp;
+	int n;
+	struct glue *g;
 
 	if (!__sdidinit)
 		__sinit();
@@ -157,7 +157,7 @@ __warn_references(f_prealloc,
 void
 f_prealloc()
 {
-	register struct glue *g;
+	struct glue *g;
 	int n;
 
 	n = getdtablesize() - FOPEN_MAX + 20;		/* 20 for slop. */

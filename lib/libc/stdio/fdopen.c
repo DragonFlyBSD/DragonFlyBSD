@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/lib/libc/stdio/fdopen.c,v 1.3 2000/01/27 23:06:44 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fdopen.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  *
  * @(#)fdopen.c	8.1 (Berkeley) 6/4/93
  */
@@ -51,7 +51,7 @@ fdopen(fd, mode)
 	int fd;
 	const char *mode;
 {
-	register FILE *fp;
+	FILE *fp;
 	static int nofile;
 	int flags, oflags, fdflags, tmp;
 

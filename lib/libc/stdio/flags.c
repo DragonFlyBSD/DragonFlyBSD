@@ -35,7 +35,7 @@
  *
  * @(#)flags.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/flags.c,v 1.6.2.1 2001/03/05 10:51:22 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/flags.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/flags.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -52,10 +52,10 @@
  */
 int
 __sflags(mode, optr)
-	register const char *mode;
+	const char *mode;
 	int *optr;
 {
-	register int ret, m, o;
+	int ret, m, o;
 
 	switch (*mode++) {
 

@@ -35,7 +35,7 @@
  *
  * @(#)gets.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/gets.c,v 1.9 2000/01/27 23:06:45 jasone Exp $
- * $DragonFly: src/lib/libc/stdio/gets.c,v 1.2 2003/06/17 04:26:46 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/gets.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <unistd.h>
@@ -48,8 +48,8 @@ char *
 gets(buf)
 	char *buf;
 {
-	register int c;
-	register char *s;
+	int c;
+	char *s;
 	static int warned;
 	static char w[] =
 	    "warning: this program uses gets(), which is unsafe.\n";

@@ -32,7 +32,7 @@
  *
  * @(#)mktemp.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/mktemp.c,v 1.19.2.3 2002/06/18 09:53:07 robert Exp $
- * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/mktemp.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -98,11 +98,11 @@ mktemp(path)
 static int
 _gettemp(path, doopen, domkdir, slen)
 	char *path;
-	register int *doopen;
+	int *doopen;
 	int domkdir;
 	int slen;
 {
-	register char *start, *trv, *suffp;
+	char *start, *trv, *suffp;
 	char *pad;
 	struct stat sbuf;
 	int rval;

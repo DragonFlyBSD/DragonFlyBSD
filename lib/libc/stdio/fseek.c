@@ -35,7 +35,7 @@
  *
  * @(#)fseek.c	8.3 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fseek.c,v 1.9.2.1 2001/03/05 10:56:58 obrien Exp $
- * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.3 2003/11/12 20:21:25 eirikn Exp $
+ * $DragonFly: src/lib/libc/stdio/fseek.c,v 1.4 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <sys/types.h>
@@ -51,7 +51,7 @@
 
 int
 fseek(fp, offset, whence)
-	register FILE *fp;
+	FILE *fp;
 	long offset;
 	int whence;
 {
@@ -68,7 +68,7 @@ fseeko(fp, offset, whence)
 	off_t offset;
 	int whence;
 {
-	register fpos_t (*seekfn) (void *, fpos_t, int);
+	fpos_t (*seekfn) (void *, fpos_t, int);
 	fpos_t target, curoff;
 	size_t n;
 	struct stat st;
@@ -206,7 +206,7 @@ fseeko(fp, offset, whence)
 	 */
 	if ((fp->_flags & __SMOD) == 0 &&
 	    target >= curoff && target < curoff + n) {
-		register int o = target - curoff;
+		int o = target - curoff;
 
 		fp->_p = fp->_bf._base + o;
 		fp->_r = n - o;

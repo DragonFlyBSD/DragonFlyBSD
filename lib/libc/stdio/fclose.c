@@ -35,7 +35,7 @@
  *
  * @(#)fclose.c	8.1 (Berkeley) 6/4/93
  * $FreeBSD: src/lib/libc/stdio/fclose.c,v 1.8 1999/11/21 22:34:57 dt Exp $
- * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fclose.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <errno.h>
@@ -46,9 +46,9 @@
 
 int
 fclose(fp)
-	register FILE *fp;
+	FILE *fp;
 {
-	register int r;
+	int r;
 
 	if (fp->_flags == 0) {	/* not open! */
 		errno = EBADF;

@@ -35,7 +35,7 @@
  *
  * @(#)fgetln.c	8.2 (Berkeley) 1/2/94
  * $FreeBSD: src/lib/libc/stdio/fgetln.c,v 1.6 1999/08/28 00:00:59 peter Exp $
- * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.2 2003/06/17 04:26:45 dillon Exp $
+ * $DragonFly: src/lib/libc/stdio/fgetln.c,v 1.3 2004/06/07 16:31:02 hmp Exp $
  */
 
 #include <stdio.h>
@@ -78,11 +78,11 @@ __slbexpand(fp, newsize)
  */
 char *
 fgetln(fp, lenp)
-	register FILE *fp;
+	FILE *fp;
 	size_t *lenp;
 {
-	register unsigned char *p;
-	register size_t len;
+	unsigned char *p;
+	size_t len;
 	size_t off;
 
 	/* make sure there is input */
@@ -93,7 +93,7 @@ fgetln(fp, lenp)
 
 	/* look for a newline in the input */
 	if ((p = memchr((void *)fp->_p, '\n', (size_t)fp->_r)) != NULL) {
-		register char *ret;
+		char *ret;
 
 		/*
 		 * Found one.  Flag buffer as modified to keep fseek from
@@ -120,7 +120,7 @@ fgetln(fp, lenp)
 #define OPTIMISTIC 80
 
 	for (len = fp->_r, off = 0;; len += fp->_r) {
-		register size_t diff;
+		size_t diff;
 
 		/*
 		 * Make sure there is room for more bytes.  Copy data from
