@@ -34,11 +34,12 @@
  *	@(#)spx_usrreq.h
  *
  * $FreeBSD: src/sys/netipx/spx_usrreq.c,v 1.27.2.1 2001/02/22 09:44:18 bp Exp $
- * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.11 2004/06/04 07:45:46 hmp Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx_usrreq.c,v 1.12 2004/06/04 20:27:31 dillon Exp $
  */
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/kernel.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
 #include <sys/proc.h>
@@ -80,7 +81,7 @@ static	struct spxpcb *spx_close(struct spxpcb *cb);
 static	struct spxpcb *spx_disconnect(struct spxpcb *cb);
 static	struct spxpcb *spx_drop(struct spxpcb *cb, int errno);
 static	int spx_output(struct spxpcb *cb, struct mbuf *m0);
-static	int spx_reass(struct spxpcb *cb, struct spx *si);
+static	int spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m);
 static	void spx_setpersist(struct spxpcb *cb);
 static	void spx_template(struct spxpcb *cb);
 static	struct spxpcb *spx_timers(struct spxpcb *cb, int timer);
@@ -122,6 +123,8 @@ struct	pr_usrreqs spx_usrreq_sps = {
 	ipx_sockaddr, sosend, soreceive, sopoll
 };
 
+static MALLOC_DEFINE(M_SPX_Q, "ipx_spx_q", "IPX Packet Management");
+
 void
 spx_init(void)
 {
@@ -133,7 +136,7 @@ void
 spx_input(struct mbuf *m, struct ipxpcb *ipxp)
 {
 	struct spxpcb *cb;
-	struct spx *si = mtod(m, struct spx *);
+	struct spx *si;
 	struct socket *so;
 	int dropsocket = 0;
 	short ostate = 0;
@@ -148,13 +151,13 @@ spx_input(struct mbuf *m, struct ipxpcb *ipxp)
 	if (cb == NULL)
 		goto bad;
 
-	if (m->m_len < sizeof(*si)) {
+	if (m->m_len < sizeof(struct spx)) {
 		if ((m = m_pullup(m, sizeof(*si))) == NULL) {
 			spxstat.spxs_rcvshort++;
 			return;
 		}
-		si = mtod(m, struct spx *);
 	}
+	si = mtod(m, struct spx *);
 	si->si_seq = ntohs(si->si_seq);
 	si->si_ack = ntohs(si->si_ack);
 	si->si_alo = ntohs(si->si_alo);
@@ -302,7 +305,7 @@ spx_input(struct mbuf *m, struct ipxpcb *ipxp)
 	m->m_pkthdr.len -= sizeof(struct ipx);
 	m->m_data += sizeof(struct ipx);
 
-	if (spx_reass(cb, si)) {
+	if (spx_reass(cb, si, m)) {
 		m_freem(m);
 	}
 	if (cb->s_force || (cb->s_flags & (SF_ACKNOW|SF_WIN|SF_RXT)))
@@ -316,7 +319,7 @@ dropwithreset:
 	si->si_seq = ntohs(si->si_seq);
 	si->si_ack = ntohs(si->si_ack);
 	si->si_alo = ntohs(si->si_alo);
-	m_freem(dtom(si));
+	m_freem(m);
 	if (cb->s_ipxpcb->ipxp_socket->so_options & SO_DEBUG || traceallspxs)
 		spx_trace(SA_DROP, (u_char)ostate, cb, &spx_savesi, 0);
 	return;
@@ -337,16 +340,17 @@ static int spxrexmtthresh = 3;
  * packets up, and suppresses duplicates.
  */
 static int
-spx_reass(struct spxpcb *cb, struct spx *si)
+spx_reass(struct spxpcb *cb, struct spx *si, struct mbuf *si_m)
 {
 	struct spx_q *q;
+	struct spx_q *nq;
 	struct mbuf *m;
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
 	char packetp = cb->s_flags & SF_HI;
 	int incr;
 	char wakeup = 0;
 
-	if (si == SI(0))
+	if (si == NULL)
 		goto present;
 	/*
 	 * Update our news from them.
@@ -492,7 +496,7 @@ update_window:
 			spxstat.spxs_rcvpackafterwin++;
 		if (si->si_cc & SPX_OB) {
 			if (SSEQ_GT(si->si_seq, cb->s_alo + 60)) {
-				m_freem(dtom(si));
+				m_freem(si_m);
 				return (0);
 			} /* else queue this packet; */
 		} else {
@@ -502,7 +506,7 @@ update_window:
 			} else
 				       would crash system*/
 			spx_istat.notyet++;
-			m_freem(dtom(si));
+			m_freem(si_m);
 			return (0);
 		}
 	}
@@ -537,7 +541,13 @@ update_window:
 			break;
 		}
 	}
-	insque(si, q->si_prev);
+	nq = malloc(sizeof(struct spx_q), M_SPX_Q, M_INTNOWAIT);
+	if (nq == NULL) {
+		m_freem(si_m);
+		return (0);
+	}
+	insque(nq, q->si_prev);
+	nq->si_mbuf = si_m;
 	/*
 	 * If this packet is urgent, inform process
 	 */
@@ -556,7 +566,7 @@ present:
 	for (q = cb->s_q.si_next; q != &cb->s_q; q = q->si_next) {
 		  if (SI(q)->si_seq == cb->s_ack) {
 			cb->s_ack++;
-			m = dtom(q);
+			m = q->si_mbuf;
 			if (SI(q)->si_cc & SPX_OB) {
 				cb->s_oobflags &= ~SF_IOOB;
 				if (so->so_rcv.sb_cc)
@@ -564,8 +574,10 @@ present:
 				else
 					so->so_state |= SS_RCVATMARK;
 			}
+			nq = q;
 			q = q->si_prev;
-			remque(q->si_next);
+			remque(nq);
+			free(nq, M_SPX_Q);
 			wakeup = 1;
 			spxstat.spxs_rcvpack++;
 #ifdef SF_NEWCALL
@@ -680,7 +692,7 @@ spx_fixmtu(struct ipxpcb *ipxp)
 		 ep = (struct ipx_errp *)ipxp->ipxp_notify_param;
 		 sb = &ipxp->ipxp_socket->so_snd;
 		 cb->s_mtu = ep->ipx_err_param;
-		 badseq = SI(&ep->ipx_err_ipx)->si_seq;
+		 badseq = ep->ipx_err_ipx.si_seq;
 		 for (m = sb->sb_mb; m != NULL; m = m->m_nextpkt) {
 			si = mtod(m, struct spx *);
 			if (si->si_seq == badseq)
@@ -705,8 +717,8 @@ static int
 spx_output(struct spxpcb *cb, struct mbuf *m0)
 {
 	struct socket *so = cb->s_ipxpcb->ipxp_socket;
-	struct mbuf *m;
-	struct spx *si = (struct spx *)NULL;
+	struct mbuf *m = NULL;
+	struct spx *si = NULL;
 	struct sockbuf *sb = &so->so_snd;
 	int len = 0, win, rcv_win;
 	short span, off, recordp = 0;
@@ -952,7 +964,7 @@ send:
 	/*
 	 * Find requested packet.
 	 */
-	si = 0;
+	si = NULL;
 	if (len > 0) {
 		cb->s_want = cb->s_snxt;
 		for (m = sb->sb_mb; m != NULL; m = m->m_nextpkt) {
@@ -982,7 +994,7 @@ send:
 		 * must make a copy of this packet for
 		 * ipx_output to monkey with
 		 */
-		m = m_copy(dtom(si), 0, (int)M_COPYALL);
+		m = m_copy(m, 0, (int)M_COPYALL);
 		if (m == NULL) {
 			return (ENOBUFS);
 		}
@@ -1325,6 +1337,7 @@ spx_attach(struct socket *so, int proto, struct pru_attach_info *ai)
 		error = ENOBUFS;
 		goto spx_attach_end;
 	}
+	cb->s_ipx_m = mm;
 	cb->s_ipx = mtod(mm, struct ipx *);
 	cb->s_state = TCPS_LISTEN;
 	cb->s_smax = -1;
@@ -1620,19 +1633,22 @@ spx_template(struct spxpcb *cb)
 static struct spxpcb *
 spx_close(struct spxpcb *cb)
 {
-	struct spx_q *s;
+	struct spx_q *q;
+	struct spx_q *oq;
 	struct ipxpcb *ipxp = cb->s_ipxpcb;
 	struct socket *so = ipxp->ipxp_socket;
 	struct mbuf *m;
 
-	s = cb->s_q.si_next;
-	while (s != &(cb->s_q)) {
-		s = s->si_next;
-		m = dtom(s->si_prev);
-		remque(s->si_prev);
+	q = cb->s_q.si_next;
+	while (q != &(cb->s_q)) {
+		oq = q;
+		q = q->si_next;
+		m = oq->si_mbuf;
+		remque(oq);
 		m_freem(m);
+		free(oq, M_SPX_Q);
 	}
-	m_free(dtom(cb->s_ipx));
+	m_free(cb->s_ipx_m);
 	FREE(cb, M_PCB);
 	ipxp->ipxp_pcb = 0;
 	soisdisconnected(so);

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_pcb.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_pcb.c,v 1.9 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.10 2004/06/04 04:59:57 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_pcb.c,v 1.11 2004/06/04 20:27:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -45,7 +45,6 @@
 #include <sys/protosw.h>
 #include <sys/module.h>
 #include <sys/malloc.h>
-#include <sys/mpipe.h>
 
 #include <net/if.h>
 #include <net/route.h>
@@ -58,22 +57,13 @@ struct	ns_addr zerons_addr;
 struct nspcb nspcb;		/* head of list */
 
 static MALLOC_DEFINE(M_NSPCB, "nspcb", "NS PCB Management");
-static struct malloc_pipe nspcb_mpipe;
-
-void
-ns_pcb_init(void)
-{
-	mpipe_init(&nspcb_mpipe, M_NSPCB, sizeof(struct nspcb),
-			32, -1, 0, NULL);
-}
 
 int
 ns_pcballoc(struct socket *so, struct nspcb *head)
 {
 	struct nspcb *nsp;
 
-	if ((nsp = mpipe_alloc_nowait(&nspcb_mpipe)) == NULL)
-		return (ENOBUFS);
+	nsp = malloc(sizeof(struct nspcb), M_NSPCB, M_WAITOK|M_ZERO);
 	nsp->nsp_socket = so;
 	insque(nsp, head);
 	so->so_pcb = (caddr_t)nsp;
@@ -248,7 +238,7 @@ ns_pcbdetach(struct nspcb *nsp)
 	if (nsp->nsp_route.ro_rt)
 		rtfree(nsp->nsp_route.ro_rt);
 	remque(nsp);
-	mpipe_free(&nspcb_mpipe, nsp);
+	free(nsp, M_NSPCB);
 }
 
 void

@@ -32,7 +32,7 @@
  *
  *	@(#)ns_input.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_input.c,v 1.13 2000/02/13 03:32:04 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.14 2004/06/04 04:59:57 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_input.c,v 1.15 2004/06/04 20:27:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -86,7 +86,6 @@ static int nsintr(struct netmsg *msg);
 void
 ns_init()
 {
-	ns_pcb_init();
 	ns_broadhost = * (union ns_host *) allones;
 	ns_broadnet = * (union ns_net *) allones;
 	nspcb.nsp_next = nspcb.nsp_prev = &nspcb;

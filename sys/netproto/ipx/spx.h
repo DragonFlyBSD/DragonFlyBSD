@@ -34,7 +34,7 @@
  *	@(#)spx.h
  *
  * $FreeBSD: src/sys/netipx/spx.h,v 1.16 1999/12/29 04:46:09 peter Exp $
- * $DragonFly: src/sys/netproto/ipx/spx.h,v 1.3 2003/08/23 10:06:23 rob Exp $
+ * $DragonFly: src/sys/netproto/ipx/spx.h,v 1.4 2004/06/04 20:27:31 dillon Exp $
  */
 
 #ifndef _NETIPX_SPX_H_
@@ -69,8 +69,9 @@ struct spx {
 struct spx_q {
 	struct spx_q	*si_next;
 	struct spx_q	*si_prev;
+	struct mbuf	*si_mbuf;
 };
-#define SI(x)	((struct spx *)x)
+#define SI(x)   mtod((x)->si_mbuf, struct spx *)
 #define si_sum	si_i.ipx_sum
 #define si_len	si_i.ipx_len
 #define si_tc	si_i.ipx_tc
@@ -105,6 +106,7 @@ struct spxpcb {
 	u_short s_mtu;			/* Max packet size for this stream */
 /* use sequence fields in headers to store sequence numbers for this
    connection */
+	struct	mbuf	*s_ipx_m;
 	struct	ipx	*s_ipx;
 	struct	spxhdr	s_shdr;		/* prototype header to transmit */
 #define s_cc s_shdr.spx_cc		/* connection control (for EM bit) */

@@ -32,7 +32,7 @@
  *
  *	@(#)spp_var.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spp_var.h,v 1.11 1999/12/29 04:46:21 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.4 2004/02/16 20:37:20 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spp_var.h,v 1.5 2004/06/04 20:27:32 dillon Exp $
  */
 
 #ifndef _NETNS_SPP_VAR_H_
@@ -207,7 +207,7 @@ int spp_usrreq_sp (struct socket *, int, struct mbuf *, struct mbuf *,
 void spp_fasttimo (void);
 void spp_slowtimo (void);
 void spp_template (struct sppcb *);
-int spp_reass (struct sppcb *, struct spidp *);
+int spp_reass (struct sppcb *, struct spidp *, struct mbuf *);
 int spp_output (struct sppcb *, struct mbuf *);
 void spp_quench (struct nspcb *);
 void spp_abort (struct nspcb *);

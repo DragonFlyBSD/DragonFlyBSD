@@ -32,7 +32,7 @@
  *
  *	From: @(#)ns_proto.c	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/ns_proto.c,v 1.10 1999/08/28 00:49:51 peter Exp $
- * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.4 2003/09/06 21:51:12 drhodus Exp $
+ * $DragonFly: src/sys/netproto/ns/ns_proto.c,v 1.5 2004/06/04 20:27:32 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -64,37 +64,45 @@ void spp_slowtimo(void);
  * NS protocol family: IDP, ERR, PE, SPP, ROUTE.
  */
 
+static  struct pr_usrreqs nousrreqs;
+
 struct protosw nssw[] = {
 { 0,		&nsdomain,	0,		0,
   0,		idp_output,	0,		0,
   0,
   ns_init,	0,		0,		0,
+  &nousrreqs
 },
 { SOCK_DGRAM,	&nsdomain,	0,		PR_ATOMIC|PR_ADDR,
   0,		0,		idp_ctlinput,	idp_ctloutput,
   idp_usrreq,
   0,		0,		0,		0,
+  &nousrreqs
 },
 { SOCK_STREAM,	&nsdomain,	NSPROTO_SPP,	PR_CONNREQUIRED|PR_WANTRCVD,
   spp_input,	0,		spp_ctlinput,	spp_ctloutput,
   spp_usrreq,
   spp_init,	spp_fasttimo,	spp_slowtimo,	0,
+  &nousrreqs
 },
 { SOCK_SEQPACKET,&nsdomain,	NSPROTO_SPP,	PR_CONNREQUIRED|PR_WANTRCVD|PR_ATOMIC,
   spp_input,	0,		spp_ctlinput,	spp_ctloutput,
   spp_usrreq_sp,
   0,		0,		0,		0,
+  &nousrreqs
 },
 { SOCK_RAW,	&nsdomain,	NSPROTO_RAW,	PR_ATOMIC|PR_ADDR,
   idp_input,	idp_output,	0,		idp_ctloutput,
   idp_raw_usrreq,
   0,		0,		0,		0,
+  &nousrreqs
 },
 { SOCK_RAW,	&nsdomain,	NSPROTO_ERROR,	PR_ATOMIC|PR_ADDR,
   idp_ctlinput,	idp_output,	0,		idp_ctloutput,
   idp_raw_usrreq,
   0,		0,		0,		0,
-},
+  &nousrreqs
+}
 };
 
 struct domain nsdomain =

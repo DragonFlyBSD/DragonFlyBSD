@@ -32,7 +32,7 @@
  *
  *	@(#)spidp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netns/spidp.h,v 1.8 1999/08/28 00:49:52 peter Exp $
- * $DragonFly: src/sys/netproto/ns/spidp.h,v 1.2 2003/06/17 04:28:53 dillon Exp $
+ * $DragonFly: src/sys/netproto/ns/spidp.h,v 1.3 2004/06/04 20:27:32 dillon Exp $
  */
 
 #ifndef _NETNS_SPIDP_H_
@@ -49,8 +49,9 @@ struct spidp {
 struct spidp_q {
 	struct spidp_q	*si_next;
 	struct spidp_q	*si_prev;
+	struct mbuf	*si_mbuf;	/* BAD HACK */
 };
-#define SI(x)	((struct spidp *)x)
+#define SI(x)	mtod((x)->si_mbuf, struct spidp *)
 #define si_sum	si_i.idp_sum
 #define si_len	si_i.idp_len
 #define si_tc	si_i.idp_tc
