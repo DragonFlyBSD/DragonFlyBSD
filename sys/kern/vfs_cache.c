@@ -67,7 +67,7 @@
  *
  *	@(#)vfs_cache.c	8.5 (Berkeley) 3/22/95
  * $FreeBSD: src/sys/kern/vfs_cache.c,v 1.42.2.6 2001/10/05 20:07:03 dillon Exp $
- * $DragonFly: src/sys/kern/vfs_cache.c,v 1.52 2005/03/09 05:16:23 dillon Exp $
+ * $DragonFly: src/sys/kern/vfs_cache.c,v 1.53 2005/04/03 01:59:10 dillon Exp $
  */
 
 #include <sys/param.h>
@@ -682,7 +682,8 @@ restart:
 			printf("Warning: cache_inval_vp: race-A detected on "
 				"%s\n", ncp->nc_name);
 			cache_put(ncp);
-			cache_drop(next);
+			if (next)
+				cache_drop(next);
 			goto restart;
 		}
 		cache_inval(ncp, flags);
