@@ -1,5 +1,9 @@
-.\" Copyright (c) 1983, 1987, 1991, 1993
-.\"	The Regents of the University of California.  All rights reserved.
+.\"	$KAME: inet6_rthdr_space.3,v 1.11 2005/01/05 03:00:44 itojun Exp $
+.\"	$FreeBSD: src/lib/libc/net/inet6_rthdr_space.3,v 1.14 2005/01/23 16:02:48 gnn Exp $
+.\"	$DragonFly: src/lib/libc/net/inet6_rthdr_space.3,v 1.3 2005/01/23 17:03:13 hrs Exp $
+.\"
+.\" Copyright (C) 2004 WIDE Project.
+.\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
@@ -9,18 +13,14 @@
 .\" 2. Redistributions in binary form must reproduce the above copyright
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
-.\" 3. All advertising materials mentioning features or use of this software
-.\"    must display the following acknowledgement:
-.\"	This product includes software developed by the University of
-.\"	California, Berkeley and its contributors.
-.\" 4. Neither the name of the University nor the names of its contributors
+.\" 3. Neither the name of the project nor the names of its contributors
 .\"    may be used to endorse or promote products derived from this software
 .\"    without specific prior written permission.
 .\"
-.\" THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+.\" THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
 .\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 .\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
 .\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
 .\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
 .\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
@@ -29,11 +29,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"     $Id: inet6_rthdr_space.3,v 1.5 2000/02/05 13:19:07 jinmei Exp $
-.\" $FreeBSD: src/lib/libc/net/inet6_rthdr_space.3,v 1.1.2.6 2001/12/14 18:33:55 ru Exp $
-.\" $DragonFly: src/lib/libc/net/inet6_rthdr_space.3,v 1.2 2003/06/17 04:26:44 dillon Exp $
-.\"
-.Dd December 10, 1999
+.Dd December 27, 2004
 .Dt INET6_RTHDR_SPACE 3
 .Os
 .\"
@@ -46,7 +42,7 @@
 .Nm inet6_rthdr_segments ,
 .Nm inet6_rthdr_getaddr ,
 .Nm inet6_rthdr_getflags
-.Nd IPv6 Routing Header Options manipulation
+.Nd IPv6 Routing Header Options Manipulation
 .\"
 .Sh LIBRARY
 .Lb libc
@@ -71,223 +67,211 @@
 .Fn inet6_rthdr_getflags "const struct cmsghdr *cmsg" "int index"
 .\"
 .Sh DESCRIPTION
-RFC2292 IPv6 advanced API defines eight
-functions that the application calls to build and examine a Routing
-header.  Four functions build a Routing header:
-.Bl -hang
-.It Fn inet6_rthdr_space
-return #bytes required for ancillary data
-.It Fn inet6_rthdr_init
-initialize ancillary data for Routing header
-.It Fn inet6_rthdr_add
-add IPv6 address & flags to Routing header
-.It Fn inet6_rthdr_lasthop
-specify the flags for the final hop
-.El
-.Pp
-Four functions deal with a returned Routing header:
-.Bl -hang
-.It Fn inet6_rthdr_reverse
-reverse a Routing header
-.It Fn inet6_rthdr_segments
-return #segments in a Routing header
-.It Fn inet6_rthdr_getaddr
-fetch one address from a Routing header
-.It Fn inet6_rthdr_getflags
-fetch one flag from a Routing header
-.El
-.Pp
+.\"The RFC 2292 IPv6 Advanced API has been deprecated in favor of the
+.\"newer, RFC 3542 APIs.
+.\"On platforms that support it, currently only
+.\"FreeBSD, please use the newer API to manipulate routing header
+.\"options.
+.\".Pp
+The RFC 2292 IPv6 Advanced API defined eight functions for
+applications to use for building and parsing routing headers.
+The
+eight functions are split into two groups, the first of which builds
+the header and the second of which can parse it.
 The function prototypes for these functions are all in the
-.Aq Li netinet/in.h
+.In netinet/in.h
 header.
+Although direct manipulation of a routing header is possible
+this set of APIs make it unnecessary and such direct manipulation
+should be avoided so that changes to the underlying structures do not
+break applications.
+.Pp
+Please note that RFC 2292 uses the term
+.Dq segments
+instead of the term
+.Dq addresses
+but they are considered equivalent for this manual page.
 .\"
 .Ss inet6_rthdr_space
-This function returns the number of bytes required to hold a Routing
-header of the specified
+The
+.Fn inet6_rthdr_space
+function returns the number of bytes required to hold a routing header
+of the specified
 .Fa type
-containing the specified number of
-.Fa segments
-(addresses).
-For an IPv6 Type 0 Routing header, the number
-of segments must be between 1 and 23, inclusive.  The return value
-includes the size of the cmsghdr structure that precedes the Routing
-header, and any required padding.
+and containing the specified number of
+.Fa segments .
+Only one
+.Fa type
+is supported,
+.Dv IPV6_RTHDR_TYPE_0 ,
+and it can hold from 1 to 23 segments.
+The return value includes the
+size of the cmsghdr structure that precedes the routing header, and
+any required padding.
 .Pp
-If the return value is 0, then either the type of the Routing header
-is not supported by this implementation or the number of segments is
-invalid for this type of Routing header.
+A return value of 0 indicates an error.
+Either the type was specified
+incorrectly, or the number of segments was less than one or greater
+than 23.
 .Pp
-Note: This function returns the size but does not allocate the space
-required for the ancillary data.
-This allows an application to
-allocate a larger buffer, if other ancillary data objects are
-desired, since all the ancillary data objects must be specified to
-.Xr sendmsg 2
-as a single
-.Li msg_control
-buffer.
+Note: The
+.Fn inet6_rthdr_space
+function only returns the size required by the routing header and does
+not allocate memory for the caller.
 .\"
 .Ss inet6_rthdr_init
-This function initializes the buffer pointed to by
+The
+.Fn inet6_rthdr_init
+function initializes a buffer, pointed to by
 .Fa bp
-to contain a
+with an appropriate
 .Li cmsghdr
-structure followed by a Routing header of the specified
+structure followed by a routing header of the specified
 .Fa type .
-The
-.Li cmsg_len
-member of the
+.Pp
+The caller must use the
+.Fn inet6_rthdr_space
+function to determine the size of the buffer, and then allocate that
+buffer before calling
+.Fn inet6_rthdr_init .
+.Pp
+The return value is a pointer to a
 .Li cmsghdr
-structure is initialized to the
-size of the structure plus the amount of space required by the
-Routing header.
-The
-.Li cmsg_level
+structure, which is used as the first argument to the
+.Fn inet6_rthdr_add
 and
-.Li cmsg_type
-members are also initialized as required.
-.Pp
-The caller must allocate the buffer and its size can be determined by
-calling
-.Fn inet6_rthdr_space .
-.Pp
-Upon success the return value is the pointer to the
-.Li cmsghdr
-structure, and this is then used as the first argument to the next
-two functions.
-Upon an error the return value is
+.Fn inet6_rthdr_lasthop
+functions in order to construct the routing header.
+When an error occurs the return value is
 .Dv NULL .
 .\"
 .Ss inet6_rthdr_add
-This function adds the address pointed to by
+The
+.Fn inet6_rthdr_add
+function adds the IPv6 address pointed to by
 .Fa addr
 to the end of the
-Routing header being constructed and sets the type of this hop to the
+routing header being constructed and sets the type of this address to the
 value of
 .Fa flags .
-For an IPv6 Type 0 Routing header,
+The
 .Fa flags
-must be
-either
+must be either
 .Dv IPV6_RTHDR_LOOSE
 or
-.Dv IPV6_RTHDR_STRICT .
+.Dv IPV6_RTHDR_STRICT
+indicating whether loose or strict source routing is required.
 .Pp
-If successful, the
-.Li cmsg_len
-member of the
-.Li cmsghdr
-structure is
-updated to account for the new address in the Routing header and the
-return value of the function is 0.
-Upon an error the return value of
-the function is -1.
+When the function succeeds it returns 0, otherwise \-1 is returned.
 .\"
 .Ss inet6_rthdr_lasthop
-This function specifies the Strict/Loose flag for the final hop of a
-Routing header.
-For an IPv6 Type 0 Routing header,
+The
+.Fn inet6_rthdr_lasthop
+function specifies the strict or loose flag for the final hop of a
+routing header.
+The
 .Fa flags
 must be either
 .Dv IPV6_RTHDR_LOOSE
 or
 .Dv IPV6_RTHDR_STRICT .
 .Pp
-The return value of the function is 0 upon success, or -1 upon an error.
+The return value of the function is 0 upon success, and \-1 when an
+error has occurred.
 .Pp
-Notice that a Routing header specifying
+Please note that a routing header specifying
 .Li N
 intermediate nodes requires
 .Li N+1
-Strict/Loose flags.
-This requires
-.Li N
-calls to
+strict or loose flags meaning that
 .Fn inet6_rthdr_add
-followed by one call to
-.Fn inet6_rthdr_lasthop .
+must be called
+.Li N
+times and then
+.Fn inet6_rthdr_lasthop
+must be called once.
 .\"
 .Ss inet6_rthdr_reverse
-This function is not yet implemented.
-When implemented, this should behave as follows.
+This function was never implemented.
 .Pp
-This function takes a Routing header that was received as ancillary
-data
-(pointed to by the first argument,
-.Fa in )
-and writes a new Routing
-header that sends datagrams along the reverse of that route.
-Both
-arguments are allowed to point to the same buffer
-(that is, the reversal can occur in place).
-.Pp
-The return value of the function is 0 on success, or -1 upon an
-error.
+The following four functions provide an API for parsing a received
+routing header.
 .\"
 .Ss inet6_rthdr_segments
-This function returns the number of segments
-(addresses)
-contained in
-the Routing header described by
-.Fa cmsg .
-On success the return value is
-between 1 and 23, inclusive.
-The return value of the function is -1 upon an error.
+The
+.Fn inet6_rthdr_segments
+function returns the number of segments contained in the Routing
+header pointed to by the
+.Fa cmsg
+argument.
+On success the return value is from 1 to 23.
+When an error occurs \-1 is returned.
 .\"
 .Ss inet6_rthdr_getaddr
-This function returns a pointer to the IPv6 address specified by
+The
+.Fn inet6_rthdr_getaddr
+function returns a pointer to the IPv6 address specified by the
 .Fa index
-(which must have a value between 1 and the value returned by
-.Fn inet6_rthdr_segments )
-in the Routing header described by
+argument from the routing header pointed to by
 .Fa cmsg .
-An
-application should first call
+The index must be between 1 and the number returned by
 .Fn inet6_rthdr_segments
-to obtain the number of segments in the Routing header.
+described above.
+An application must call
+.Fn inet6_rthdr_segments
+to obtain the number of segments in the routing header.
 .Pp
-Upon an error the return value of the function is
-.Dv NULL .
+If an error occurs the
+.Dv NULL
+is returned.
 .\"
 .Ss inet6_rthdr_getflags
-This function returns the flags value specified by
+The
+.Fn inet6_rthdr_getflags
+function returns the flags value of the segment specified by
 .Fa index
-(which must
-have a value between 0 and the value returned by
-.Fn inet6_rthdr_segments )
-in the Routing header described by
+of the routing header pointed to by
 .Fa cmsg .
-For an IPv6 Type 0 Routing header the return value will be either
+The
+.Fa index
+argument must be between 0 and the value returned by
+.Fn inet6_rthdr_segments .
+The return value will be either
 .Dv IPV6_RTHDR_LOOSE
 or
-.Dv IPV6_RTHDR_STRICT .
+.Dv IPV6_RTHDR_STRICT
+indicating whether loose or strict source routing was requested for
+that segment.
 .Pp
-Upon an error the return value of the function is -1.
+When an error occurs \-1 is returned.
 .Pp
-Note: Addresses are indexed starting at 1, and flags starting at 0,
-to maintain consistency with the terminology and figures in RFC2460.
+Note: Flags begin at index 0 while segments begin at index 1, to
+maintain consistency with the terminology and figures in RFC2460.
 .\"
 .Sh DIAGNOSTICS
+The
 .Fn inet6_rthdr_space
-returns 0 on errors.
+function returns 0 when an error occurs.
 .Pp
+The
 .Fn inet6_rthdr_add ,
 .Fn inet6_rthdr_lasthop
-and
-.Fn inet6_rthdr_reverse
-return 0 on success, and returns -1 on error.
+functions return 0 on success, and \-1 on error.
 .Pp
+The
 .Fn inet6_rthdr_init
 and
 .Fn inet6_rthdr_getaddr
+functions
 return
 .Dv NULL
 on error.
 .Pp
+The
 .Fn inet6_rthdr_segments
 and
 .Fn inet6_rthdr_getflags
-return -1 on error.
+functions return -1 on error.
 .\"
 .Sh EXAMPLES
 RFC2292 gives comprehensive examples in chapter 8.
@@ -311,14 +295,12 @@ RFC2292 gives comprehensive examples in chapter 8.
 .Sh HISTORY
 The implementation first appeared in KAME advanced networking kit.
 .\"
-.Sh STANDARDS
-The functions
-are documented in
-.Dq Advanced Sockets API for IPv6
-(RFC2292).
-.\"
 .Sh BUGS
-The text was shamelessly copied from RFC2292.
-.Pp
+The
 .Fn inet6_rthdr_reverse
-is not implemented yet.
+function was never implemented.
+.\".Pp
+.\"This API is deprecated in favor of
+.\".Xr inet6_rth_space 3
+.\".Sh SEE ALSO
+.\".Xr inet6_rth_space 3
