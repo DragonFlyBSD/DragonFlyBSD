@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_map.c,v 1.187.2.19 2003/05/27 00:47:02 alc Exp $
- * $DragonFly: src/sys/vm/vm_map.c,v 1.30 2004/07/24 20:25:47 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_map.c,v 1.31 2004/07/28 20:40:35 dillon Exp $
  */
 
 /*
@@ -2165,8 +2165,8 @@ vm_map_clean(vm_map_t map, vm_offset_t start, vm_offset_t end, boolean_t syncio,
 		 * may start out with a NULL object.
 		 */
 		while (object && object->backing_object) {
-			object = object->backing_object;
 			offset += object->backing_object_offset;
+			object = object->backing_object;
 			if (object->size < OFF_TO_IDX( offset + size))
 				size = IDX_TO_OFF(object->size) - offset;
 		}

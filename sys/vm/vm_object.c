@@ -62,7 +62,7 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_object.c,v 1.171.2.8 2003/05/26 19:17:56 alc Exp $
- * $DragonFly: src/sys/vm/vm_object.c,v 1.16 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_object.c,v 1.17 2004/07/28 20:40:35 dillon Exp $
  */
 
 /*
@@ -1011,10 +1011,10 @@ shadowlookup:
 			 * next object
 			 */
 			splx(s);
-			tobject = tobject->backing_object;
-			if (tobject == NULL)
+			if (tobject->backing_object == NULL)
 				continue;
 			tpindex += OFF_TO_IDX(tobject->backing_object_offset);
+			tobject = tobject->backing_object;
 			goto shadowlookup;
 		}
 
