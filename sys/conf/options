@@ -1,5 +1,5 @@
 # $FreeBSD: src/sys/conf/options,v 1.191.2.53 2003/06/04 17:56:58 sam Exp $
-# $DragonFly: src/sys/conf/options,v 1.20 2004/05/15 17:54:12 joerg Exp $
+# $DragonFly: src/sys/conf/options,v 1.21 2004/05/20 21:40:52 dillon Exp $
 #
 #        On the handling of kernel options
 #
@@ -412,11 +412,6 @@ VM_KMEM_SIZE		opt_vm.h
 VM_KMEM_SIZE_SCALE	opt_vm.h
 VM_KMEM_SIZE_MAX	opt_vm.h
 NO_SWAPPING		opt_vm.h
-PQ_NOOPT		opt_vmpage.h
-PQ_NORMALCACHE		opt_vmpage.h
-PQ_MEDIUMCACHE		opt_vmpage.h
-PQ_LARGECACHE		opt_vmpage.h
-PQ_HUGECACHE		opt_vmpage.h
 PQ_CACHESIZE		opt_vmpage.h
 
 # Standard SMP options

@@ -35,7 +35,7 @@
  *
  *	from: @(#)vm_page.c	7.4 (Berkeley) 5/7/91
  * $FreeBSD: src/sys/vm/vm_page.c,v 1.147.2.18 2002/03/10 05:03:19 alc Exp $
- * $DragonFly: src/sys/vm/vm_page.c,v 1.21 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.c,v 1.22 2004/05/20 21:40:50 dillon Exp $
  */
 
 /*
@@ -91,6 +91,7 @@
 
 static void	vm_page_queue_init (void);
 static vm_page_t vm_page_select_cache (vm_object_t, vm_pindex_t);
+static vm_page_t _vm_page_list_find2(int basequeue, int index);
 
 /*
  *	Associated with page of user-allocatable memory is a
@@ -634,11 +635,27 @@ vm_page_unqueue(vm_page_t m)
  *	This routine must be called at splvm().
  *	This routine may not block.
  *
- *	This routine may only be called from the vm_page_list_find() macro
- *	in vm_page.h
+ *	Note that this routine is carefully inlined.  A non-inlined version
+ *	is available for outside callers but the only critical path is
+ *	from within this source file.
  */
+static __inline
 vm_page_t
-_vm_page_list_find(int basequeue, int index)
+_vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
+{
+	vm_page_t m;
+
+	if (prefer_zero)
+		m = TAILQ_LAST(&vm_page_queues[basequeue+index].pl, pglist);
+	else
+		m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
+	if (m == NULL)
+		m = _vm_page_list_find2(basequeue, index);
+	return(m);
+}
+
+static vm_page_t
+_vm_page_list_find2(int basequeue, int index)
 {
 	int i;
 	vm_page_t m = NULL;
@@ -660,6 +677,12 @@ _vm_page_list_find(int basequeue, int index)
 			break;
 	}
 	return(m);
+}
+
+vm_page_t
+vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
+{
+	return(_vm_page_list_find(basequeue, index, prefer_zero));
 }
 
 #endif

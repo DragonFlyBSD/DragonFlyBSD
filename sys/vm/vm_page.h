@@ -62,15 +62,15 @@
  * rights to redistribute these changes.
  *
  * $FreeBSD: src/sys/vm/vm_page.h,v 1.75.2.8 2002/03/06 01:07:09 dillon Exp $
- * $DragonFly: src/sys/vm/vm_page.h,v 1.11 2004/05/13 17:40:19 dillon Exp $
+ * $DragonFly: src/sys/vm/vm_page.h,v 1.12 2004/05/20 21:40:50 dillon Exp $
  */
 
 /*
  *	Resident memory system definitions.
  */
 
-#ifndef	_VM_PAGE_
-#define	_VM_PAGE_
+#ifndef	_VM_PAGE_H_
+#define	_VM_PAGE_H_
 
 #if !defined(KLD_MODULE)
 #include "opt_vmpage.h"
@@ -145,28 +145,19 @@ struct vm_page {
 #define SWAPBLK_MASK	((daddr_t)((u_daddr_t)-1 >> 1))		/* mask */
 #define SWAPBLK_NONE	((daddr_t)((u_daddr_t)SWAPBLK_MASK + 1))/* flag */
 
-#if !defined(KLD_MODULE)
-
 /*
- * Page coloring parameters
+ * Page coloring parameters.  We default to a middle of the road optimization.
+ * Larger selections would not really hurt us but if a machine does not have
+ * a lot of memory it could cause vm_page_alloc() to eat more cpu cycles 
+ * looking for free pages.
+ *
+ * Page coloring cannot be disabled.  Modules do not have access to most PQ
+ * constants because they can change between builds.
  */
-/* Each of PQ_FREE, and PQ_CACHE have PQ_HASH_SIZE entries */
+#if defined(_KERNEL) && !defined(KLD_MODULE)
 
-/* Backward compatibility for existing PQ_*CACHE config options. */
 #if !defined(PQ_CACHESIZE)
-#if defined(PQ_HUGECACHE)
-#define PQ_CACHESIZE 1024
-#elif defined(PQ_LARGECACHE)
-#define PQ_CACHESIZE 512
-#elif defined(PQ_MEDIUMCACHE)
-#define PQ_CACHESIZE 256
-#elif defined(PQ_NORMALCACHE)
-#define PQ_CACHESIZE 64
-#elif defined(PQ_NOOPT)
-#define PQ_CACHESIZE 0
-#else
-#define PQ_CACHESIZE 128
-#endif
+#define PQ_CACHESIZE 256	/* max is 1024 (MB) */
 #endif
 
 #if PQ_CACHESIZE >= 1024
@@ -189,27 +180,35 @@ struct vm_page {
 #define PQ_PRIME2 5	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 32	/* A number of colors opt for 128k cache */
 
-#elif PQ_CACHESIZE >= 64
+#else
 #define PQ_PRIME1 5	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_PRIME2 3	/* Prime number somewhat less than PQ_HASH_SIZE */
 #define PQ_L2_SIZE 16	/* A reasonable number of colors (opt for 64K cache) */
 
-#else
-#define PQ_PRIME1 1	/* Disable page coloring. */
-#define PQ_PRIME2 1
-#define PQ_L2_SIZE 1
-
 #endif
 
-#define PQ_L2_MASK (PQ_L2_SIZE - 1)
+#define PQ_L2_MASK	(PQ_L2_SIZE - 1)
 
-#define PQ_NONE 0
-#define PQ_FREE	1
-#define PQ_INACTIVE (1 + 1*PQ_L2_SIZE)
-#define PQ_ACTIVE (2 + 1*PQ_L2_SIZE)
-#define PQ_CACHE (3 + 1*PQ_L2_SIZE)
-#define PQ_HOLD  (3 + 2*PQ_L2_SIZE)
-#define PQ_COUNT (4 + 2*PQ_L2_SIZE)
+#endif /* KERNEL && !KLD_MODULE */
+
+/*
+ *
+ * The queue array is always based on PQ_MAXL2_SIZE regardless of the actual
+ * cache size chosen in order to present a uniform interface for modules.
+ */
+#define PQ_MAXL2_SIZE	256	/* fixed maximum (in pages) / module compat */
+
+#if PQ_L2_SIZE > PQ_MAXL2_SIZE
+#error "Illegal PQ_L2_SIZE"
+#endif
+
+#define PQ_NONE		0
+#define PQ_FREE		1
+#define PQ_INACTIVE	(1 + 1*PQ_MAXL2_SIZE)
+#define PQ_ACTIVE	(2 + 1*PQ_MAXL2_SIZE)
+#define PQ_CACHE	(3 + 1*PQ_MAXL2_SIZE)
+#define PQ_HOLD		(3 + 2*PQ_MAXL2_SIZE)
+#define PQ_COUNT	(4 + 2*PQ_MAXL2_SIZE)
 
 struct vpgqueues {
 	struct pglist pl;
@@ -219,8 +218,6 @@ struct vpgqueues {
 };
 
 extern struct vpgqueues vm_page_queues[PQ_COUNT];
-
-#endif
 
 /*
  * These are the flags defined for vm_page.
@@ -361,11 +358,6 @@ vm_page_wakeup(vm_page_t m)
 	vm_page_flash(m);
 }
 
-/*
- *
- *
- */
-
 static __inline void
 vm_page_io_start(vm_page_t m)
 {
@@ -435,7 +427,7 @@ static __inline boolean_t vm_page_zero_fill (vm_page_t);
 int vm_page_is_valid (vm_page_t, int, int);
 void vm_page_test_dirty (vm_page_t);
 int vm_page_bits (int, int);
-vm_page_t _vm_page_list_find (int, int);
+vm_page_t vm_page_list_find(int basequeue, int index, boolean_t prefer_zero);
 void vm_page_zero_invalid(vm_page_t m, boolean_t setvalid);
 void vm_page_free_toq(vm_page_t m);
 
@@ -589,9 +581,8 @@ vm_page_sleep_busy(vm_page_t m, int also_m_busy, const char *msg)
 static __inline void
 vm_page_dirty(vm_page_t m)
 {
-#if !defined(KLD_MODULE)
-	KASSERT(m->queue - m->pc != PQ_CACHE, ("vm_page_dirty: page in cache!"));
-#endif
+	KASSERT(m->queue - m->pc != PQ_CACHE,
+		("vm_page_dirty: page in cache!"));
 	m->dirty = VM_PAGE_BITS_ALL;
 }
 
@@ -606,33 +597,6 @@ vm_page_undirty(vm_page_t m)
 {
 	m->dirty = 0;
 }
-
-#if !defined(KLD_MODULE)
-
-static __inline vm_page_t
-vm_page_list_find(int basequeue, int index, boolean_t prefer_zero)
-{
-	vm_page_t m;
-
-#if PQ_L2_SIZE > 1
-	if (prefer_zero) {
-		m = TAILQ_LAST(&vm_page_queues[basequeue+index].pl, pglist);
-	} else {
-		m = TAILQ_FIRST(&vm_page_queues[basequeue+index].pl);
-	}
-	if (m == NULL)
-		m = _vm_page_list_find(basequeue, index);
-#else
-	if (prefer_zero) {
-		m = TAILQ_LAST(&vm_page_queues[basequeue].pl, pglist);
-	} else {
-		m = TAILQ_FIRST(&vm_page_queues[basequeue].pl);
-	}
-#endif
-	return(m);
-}
-
-#endif
 
 #endif				/* _KERNEL */
 #endif				/* !_VM_PAGE_ */
