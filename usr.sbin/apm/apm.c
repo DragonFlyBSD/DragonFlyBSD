@@ -13,7 +13,7 @@
  * Sep., 1994	Implemented on FreeBSD 1.1.5.1R (Toshiba AVS001WD)
  *
  * $FreeBSD: src/usr.sbin/apm/apm.c,v 1.22.2.6 2003/04/29 08:53:04 maxim Exp $
- * $DragonFly: src/usr.sbin/apm/apm.c,v 1.5 2004/08/13 18:48:29 asmodai Exp $
+ * $DragonFly: src/usr.sbin/apm/apm.c,v 1.6 2004/08/13 18:58:55 asmodai Exp $
  */
 
 #include <sys/file.h>
@@ -49,6 +49,9 @@ static int	bcd2int(int);
 static int	int2bcd(int);
 static int	is_true(const char *);
 static void	print_all_info(int, apm_info_t, int);
+static void	print_batt_life(u_int);
+static void	print_batt_stat(u_int);
+static void	print_batt_time(int);
 static void	usage(void);
 
 int cmos_wall = 0;	/* True when wall time is in cmos clock, else UTC */
@@ -156,11 +159,56 @@ apm_enable(int fd, int enable) {
 	}
 }
 
+static void
+print_batt_life(u_int batt_life)
+{
+	printf("Remaining battery life: ");
+	if (batt_life >= 255)
+		printf("unknown\n");
+	else if (batt_life <= 100)
+		printf("%d%%\n", batt_life);
+	else
+		printf("invalid value (0x%x)\n", batt_life);
+}
+
+static void
+print_batt_stat(u_int batt_stat)
+{
+	const char *batt_msg[] = { "high", "low", "critical", "charging" };
+
+	printf("Battery Status: ");
+	if (batt_stat >= 255)
+		printf("unknown\n");
+	else if (batt_stat > 3)
+		printf("invalid value (0x%x)\n", batt_stat);
+	else
+		printf("%s\n", batt_msg[batt_stat]);
+}
+
+static void
+print_batt_time(int batt_time)
+{
+	printf("Remaining battery time: ");
+	if (batt_time == -1)
+		printf("unknown\n");
+	else {
+		int h, m, s;
+
+		h = batt_time;
+		s = h % 60;
+		h /= 60;
+		m = h % 60;
+		h /= 60;
+		printf("%2d:%02d:%02d\n", h, m, s);
+	}
+}
+
 static void 
 print_all_info(int fd, apm_info_t aip, int bioscall_available)
 {
 	struct apm_bios_arg args;
 	int apmerr;
+	char *line_msg[] = { "off-line", "on-line" };
 
 	printf("APM version: %d.%d\n", aip->ai_major, aip->ai_minor);
 	printf("APM Management: %s\n", (aip->ai_status ? "Enabled" : "Disabled"));
@@ -169,42 +217,13 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 		printf("unknown");
 	else if (aip->ai_acline > 1)
 		printf("invalid value (0x%x)", aip->ai_acline);
-	else {
-		char *messages[] = { "off-line", "on-line" };
-		printf("%s", messages[aip->ai_acline]);
-	}
-	printf("\n");
-	printf("Battery status: ");
-	if (aip->ai_batt_stat == 255)
-		printf("unknown");
-	else if (aip->ai_batt_stat > 3)
-			printf("invalid value (0x%x)", aip->ai_batt_stat);
-	else {
-		char *messages[] = { "high", "low", "critical", "charging" };
-		printf("%s", messages[aip->ai_batt_stat]);
-	}
-	printf("\n");
-	printf("Remaining battery life: ");
-	if (aip->ai_batt_life == 255)
-		printf("unknown\n");
-	else if (aip->ai_batt_life <= 100)
-		printf("%d%%\n", aip->ai_batt_life);
 	else
-		printf("invalid value (0x%x)\n", aip->ai_batt_life);
-	printf("Remaining battery time: ");
-	if (aip->ai_batt_time == -1)
-		printf("unknown\n");
-	else {
-		int t, h, m, s;
+		printf("%s", line_msg[aip->ai_acline]);
 
-		t = aip->ai_batt_time;
-		s = t % 60;
-		t /= 60;
-		m = t % 60;
-		t /= 60;
-		h = t;
-		printf("%2d:%02d:%02d\n", h, m, s);
-	}
+	print_batt_stat(aip->ai_batt_stat);
+	print_batt_life(aip->ai_batt_life);
+	print_batt_life(aip->ai_batt_life);
+
 	if (aip->ai_infoversion >= 1) {
 		printf("Number of batteries: ");
 		if (aip->ai_batteries == (u_int) -1)
@@ -220,47 +239,18 @@ print_all_info(int fd, apm_info_t aip, int bioscall_available)
 				if (ioctl(fd, APMIO_GETPWSTATUS, &aps) == -1)
 					continue;
 				printf("Battery %d:\n", i);
-				printf("\tBattery status: ");
 				if (aps.ap_batt_flag != 255 &&
 				    (aps.ap_batt_flag & APM_BATT_NOT_PRESENT)) {
 					printf("not present\n");
 					continue;
 				}
-				if (aps.ap_batt_stat == 255)
-					printf("unknown\n");
-				else if (aps.ap_batt_stat > 3)
-					printf("invalid value (0x%x)\n",
-					       aps.ap_batt_stat);
-				else {
-					char *messages[] = { "high",
-							     "low",
-							     "critical",
-							     "charging" };
-					printf("%s\n",
-					       messages[aps.ap_batt_stat]);
-				}
-				printf("\tRemaining battery life: ");
-				if (aps.ap_batt_life == 255)
-					printf("unknown\n");
-				else if (aps.ap_batt_life <= 100)
-					printf("%d%%\n", aps.ap_batt_life);
-				else
-					printf("invalid value (0x%x)\n",
-					       aps.ap_batt_life);
-				printf("\tRemaining battery time: ");
-				if (aps.ap_batt_time == -1)
-					printf("unknown\n");
-				else {
-					int t, h, m, s;
 
-					t = aps.ap_batt_time;
-					s = t % 60;
-					t /= 60;
-					m = t % 60;
-					t /= 60;
-					h = t;
-					printf("%2d:%02d:%02d\n", h, m, s);
-				}
+				printf("\t");
+				print_batt_stat(aps.ap_batt_stat);
+				printf("\t");
+				print_batt_life(aps.ap_batt_life);
+				printf("\t");
+				print_batt_time(aps.ap_batt_time);
 			}
 		}
 	}
