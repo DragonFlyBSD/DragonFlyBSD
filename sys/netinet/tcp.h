@@ -32,7 +32,7 @@
  *
  *	@(#)tcp.h	8.1 (Berkeley) 6/10/93
  * $FreeBSD: src/sys/netinet/tcp.h,v 1.13.2.3 2001/03/01 22:08:42 jlemon Exp $
- * $DragonFly: src/sys/netinet/tcp.h,v 1.5 2004/12/21 02:54:15 hsu Exp $
+ * $DragonFly: src/sys/netinet/tcp.h,v 1.6 2005/01/08 09:50:17 hsu Exp $
  */
 
 #ifndef _NETINET_TCP_H_
@@ -114,8 +114,9 @@ struct tcphdr {
  * With an IP MSS of 576, this is 536,
  * but 512 is probably more convenient.
  * This should be defined as MIN(512, IP_MSS - sizeof (struct tcpiphdr)).
+ * The modern consensus is that 1500 is a safe MTU to use for the Internet.
  */
-#define	TCP_MSS	512
+#define	TCP_MSS	1460
 
 /*
  * Default maximum segment size for TCP6.
