@@ -83,7 +83,7 @@
  *
  *	@(#)config.y	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/config.y,v 1.42.2.1 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/config.y,v 1.4 2004/01/31 03:26:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/config.y,v 1.5 2004/03/04 20:29:45 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -396,8 +396,7 @@ Info:
 %%
 
 static void
-yyerror(s)
-	char *s;
+yyerror(char *s)
 {
 
 	errx(1, "line %d: %s", yyline + 1, s);
@@ -407,10 +406,9 @@ yyerror(s)
  * add a device to the list of devices
  */
 static void
-newdev(dp)
-	register struct device *dp;
+newdev(struct device *dp)
 {
-	register struct device *np, *xp;
+	struct device *np, *xp;
 
 	if (dp->d_unit >= 0) {
 		for (xp = dtab; xp != 0; xp = xp->d_next) {
@@ -438,11 +436,9 @@ newdev(dp)
  * returns 0 if no such device and prints an error message
  */
 static int
-connect(dev, num)
-	register char *dev;
-	register int num;
+connect(char *dev, int num)
 {
-	register struct device *dp;
+	struct device *dp;
 
 	if (num == QUES) {
 		for (dp = dtab; dp != 0; dp = dp->d_next)
@@ -473,8 +469,7 @@ connect(dev, num)
 }
 
 void
-init_dev(dp)
-	register struct device *dp;
+init_dev(struct device *dp)
 {
 
 	dp->d_name = "OHNO!!!";

@@ -33,7 +33,7 @@
  * @(#) Copyright (c) 1980, 1993 The Regents of the University of California.  All rights reserved.
  * @(#)main.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/main.c,v 1.37.2.3 2001/06/13 00:25:53 cg Exp $
- * $DragonFly: src/usr.sbin/config/main.c,v 1.7 2004/01/31 03:26:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/main.c,v 1.8 2004/03/04 20:29:45 eirikn Exp $
  */
 
 #include <sys/types.h>
@@ -246,11 +246,11 @@ usage(void)
  *	pointer to the word otherwise
  */
 char *
-get_word(register FILE *fp)
+get_word(FILE *fp)
 {
 	static char line[80];
-	register int ch;
-	register char *cp;
+	int ch;
+	char *cp;
 	int escaped_nl = 0;
 
 begin:
@@ -291,11 +291,11 @@ begin:
  *	(to allow embedded spaces).
  */
 char *
-get_quoted_word(register FILE *fp)
+get_quoted_word(FILE *fp)
 {
 	static char line[256];
-	register int ch;
-	register char *cp;
+	int ch;
+	char *cp;
 	int escaped_nl = 0;
 
 begin:
@@ -318,7 +318,7 @@ begin:
 	}
 	cp = line;
 	if (ch == '"' || ch == '\'') {
-		register int quote = ch;
+		int quote = ch;
 
 		while ((ch = getc(fp)) != EOF) {
 			if (ch == quote)
@@ -353,7 +353,7 @@ begin:
 char *
 path(char *file)
 {
-	register char *cp;
+	char *cp;
 
 	cp = malloc((size_t)(strlen(destdir) + (file ? strlen(file) : 0) + 2));
 	(void) strcpy(cp, destdir);

@@ -32,7 +32,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkheaders.c,v 1.14.2.2 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.5 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkheaders.c,v 1.6 2004/03/04 20:29:45 eirikn Exp $
  */
 
 /*
@@ -55,7 +55,7 @@ static char *tomacro(char *);
 void
 headers(void)
 {
-	register struct file_list *fl;
+	struct file_list *fl;
 	struct device *dp;
 
 	for (fl = ftab; fl != 0; fl = fl->f_next)
@@ -84,10 +84,10 @@ headers(void)
  * whatever the device is connected to
  */
 static void
-do_count(register char *dev, register char *hname, int search)
+do_count(char *dev, char *hname, int search)
 {
-	register struct device *dp;
-	register int count, hicount;
+	struct device *dp;
+	int count, hicount;
 	char *mp;
 
 	/*
@@ -229,10 +229,10 @@ toheader(char *dev)
  * convert a dev name to a macro name
  */
 static char *
-tomacro(register char *dev)
+tomacro(char *dev)
 {
 	static char mbuf[20];
-	register char *cp;
+	char *cp;
 
 	cp = mbuf;
 	*cp++ = 'N';

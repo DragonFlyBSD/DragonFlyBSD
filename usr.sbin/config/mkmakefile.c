@@ -32,7 +32,7 @@
  *
  * @(#)mkmakefile.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkmakefile.c,v 1.51.2.3 2001/01/23 00:09:32 peter Exp $
- * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.4 2003/11/16 11:51:14 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/mkmakefile.c,v 1.5 2004/03/04 20:29:45 eirikn Exp $
  */
 
 /*
@@ -50,19 +50,25 @@
 #include "config.h"
 #include "configvers.h"
 
-#define next_word(fp, wd) \
-	{ register char *word = get_word(fp); \
-	  if (word == (char *)EOF) \
-		return; \
-	  else \
-		wd = word; \
+#define next_word(fp, wd)						\
+	{								\
+		char *word;						\
+									\
+		word = get_word(fp);					\
+		if (word == (char *)EOF)				\
+			return;						\
+		else							\
+			wd = word;					\
 	}
-#define next_quoted_word(fp, wd) \
-	{ register char *word = get_quoted_word(fp); \
-	  if (word == (char *)EOF) \
-		return; \
-	  else \
-		wd = word; \
+#define next_quoted_word(fp, wd)					\
+	{								\
+		char *word;						\
+									\
+		word = get_quoted_word(fp);				\
+		if (word == (char *)EOF)				\
+			return;						\
+		else							\
+			wd = word;					\
 	}
 
 static struct file_list *fcur;
@@ -82,9 +88,9 @@ static void read_files(void);
  * Lookup a file, by name.
  */
 static struct file_list *
-fl_lookup(register char *file)
+fl_lookup(char *file)
 {
-	register struct file_list *fp;
+	struct file_list *fp;
 
 	for (fp = ftab ; fp != 0; fp = fp->f_next) {
 		if (eq(fp->f_fn, file))
@@ -97,9 +103,9 @@ fl_lookup(register char *file)
  * Lookup a file, by final component name.
  */
 static struct file_list *
-fltail_lookup(register char *file)
+fltail_lookup(char *file)
 {
-	register struct file_list *fp;
+	struct file_list *fp;
 
 	for (fp = ftab ; fp != 0; fp = fp->f_next) {
 		if (eq(tail(fp->f_fn), tail(file)))
@@ -114,7 +120,7 @@ fltail_lookup(register char *file)
 static struct file_list *
 new_fent(void)
 {
-	register struct file_list *fp;
+	struct file_list *fp;
 
 	fp = (struct file_list *) malloc(sizeof *fp);
 	bzero(fp, sizeof *fp);
@@ -223,10 +229,10 @@ static void
 read_files(void)
 {
 	FILE *fp;
-	register struct file_list *tp, *pf;
-	register struct device *dp;
+	struct file_list *tp, *pf;
+	struct device *dp;
 	struct device *save_dp;
-	register struct opt *op;
+	struct opt *op;
 	char *wd, *this, *needs, *special, *depends, *clean, *warn;
 	char fname[MAXPATHLEN];
 	int nreqs, first = 1, configdep, isdup, std, filetype,
@@ -523,8 +529,8 @@ opteq(char *cp, char *dp)
 static void
 do_before_depend(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
+	struct file_list *tp;
+	int lpos, len;
 
 	fputs("BEFORE_DEPEND=", fp);
 	lpos = 15;
@@ -548,9 +554,9 @@ do_before_depend(FILE *fp)
 static void
 do_objs(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
-	register char *cp, och, *sp;
+	struct file_list *tp;
+	int lpos, len;
+	char *cp, och, *sp;
 
 	fprintf(fp, "OBJS=");
 	lpos = 6;
@@ -576,8 +582,8 @@ do_objs(FILE *fp)
 static void
 do_cfiles(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
+	struct file_list *tp;
+	int lpos, len;
 
 	fputs("CFILES=", fp);
 	lpos = 8;
@@ -604,8 +610,8 @@ do_cfiles(FILE *fp)
 static void
 do_mfiles(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
+	struct file_list *tp;
+	int lpos, len;
 
 	fputs("MFILES=", fp);
 	lpos = 8;
@@ -628,8 +634,8 @@ do_mfiles(FILE *fp)
 static void
 do_sfiles(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
+	struct file_list *tp;
+	int lpos, len;
 
 	fputs("SFILES=", fp);
 	lpos = 8;
@@ -653,7 +659,7 @@ do_sfiles(FILE *fp)
 static char *
 tail(char *fn)
 {
-	register char *cp;
+	char *cp;
 
 	cp = rindex(fn, '/');
 	if (cp == 0)
@@ -671,8 +677,8 @@ tail(char *fn)
 static void
 do_rules(FILE *f)
 {
-	register char *cp, *np, och, *tp;
-	register struct file_list *ftp;
+	char *cp, *np, och, *tp;
+	struct file_list *ftp;
 	char *special;
 
 	for (ftp = ftab; ftp != 0; ftp = ftp->f_next) {
@@ -736,8 +742,8 @@ do_rules(FILE *f)
 static void
 do_clean(FILE *fp)
 {
-	register struct file_list *tp;
-	register int lpos, len;
+	struct file_list *tp;
+	int lpos, len;
 
 	fputs("CLEAN=", fp);
 	lpos = 7;
@@ -756,9 +762,9 @@ do_clean(FILE *fp)
 }
 
 char *
-raisestr(register char *str)
+raisestr(char *str)
 {
-	register char *cp = str;
+	char *cp = str;
 
 	while (*str) {
 		if (islower(*str))

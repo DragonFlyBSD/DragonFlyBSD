@@ -33,7 +33,7 @@
  *
  * @(#)mkheaders.c	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/mkoptions.c,v 1.17.2.3 2001/12/13 19:18:01 dillon Exp $
- * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.5 2004/01/31 03:26:56 dillon Exp $
+ * $DragonFly: src/usr.sbin/config/mkoptions.c,v 1.6 2004/03/04 20:29:45 eirikn Exp $
  */
 
 /*
@@ -356,9 +356,9 @@ next:
 }
 
 static char *
-lower(register char *str)
+lower(char *str)
 {
-	register char *cp = str;
+	char *cp = str;
 
 	while (*str) {
 		if (isupper(*str))

@@ -33,7 +33,7 @@
  *
  *	@(#)lang.l	8.1 (Berkeley) 6/6/93
  * $FreeBSD: src/usr.sbin/config/lang.l,v 1.27 1999/11/09 07:20:22 peter Exp $
- * $DragonFly: src/usr.sbin/config/lang.l,v 1.3 2003/11/03 19:31:36 eirikn Exp $
+ * $DragonFly: src/usr.sbin/config/lang.l,v 1.4 2004/03/04 20:29:45 eirikn Exp $
  */
 
 #include <ctype.h>
@@ -178,10 +178,9 @@ ID	[A-Za-z_][-A-Za-z_0-9]*
  */
 
 int
-kw_lookup(word)
-register char *word;
+kw_lookup(char *word)
 {
-	register struct kt *kp;
+	struct kt *kp;
 
 	for (kp = key_words; kp->kt_name != 0; kp++)
 		if (eq(word, kp->kt_name))
@@ -194,8 +193,7 @@ register char *word;
  */
 
 int
-octal(str)
-char *str;
+octal(char *str)
 {
 	int num;
 
@@ -204,8 +202,7 @@ char *str;
 }
 
 int
-hex(str)
-char *str;
+hex(char *str)
 {
 	int num;
 
