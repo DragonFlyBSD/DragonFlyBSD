@@ -28,7 +28,7 @@
  * SUCH DAMAGE.
  *
  * $FreeBSD: src/sys/dev/sr/if_sr.c,v 1.48.2.1 2002/06/17 15:10:58 jhay Exp $
- * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.10 2004/06/02 14:42:55 eirikn Exp $
+ * $DragonFly: src/sys/dev/netif/sr/if_sr.c,v 1.11 2004/09/15 00:49:46 joerg Exp $
  */
 
 /*
@@ -153,9 +153,7 @@ struct sr_softc {
 #define	SCF_RUNNING	0x01		/* board is active */
 #define	SCF_OACTIVE	0x02		/* output is active */
 	int		out_dog;	/* watchdog cycles output count-down */
-#if defined(__DragonFly__) || ( __FreeBSD__ >= 3 )
-	struct callout_handle handle;	/* timeout(9) handle */
-#endif
+	struct callout	sr_timer;	/* timeout(9) handle */
 	u_long		inbytes, outbytes;	/* stats */
 	u_long		lastinbytes, lastoutbytes; /* a second ago */
 	u_long		inrate, outrate;	/* highest rate seen */
@@ -444,7 +442,7 @@ sr_attach(device_t device)
 		if (ng_make_node_common(&typestruct, &sc->node) != 0)
 			goto errexit;
 		sc->node->private = sc;
-		callout_handle_init(&sc->handle);
+		callout_init(&sc->sr_timer);
 		sc->xmitq.ifq_maxlen = IFQ_MAXLEN;
 		sc->xmitq_hipri.ifq_maxlen = IFQ_MAXLEN;
 		sprintf(sc->nodename, "%s%d", NG_SR_NODE_TYPE, sc->unit);
@@ -1217,8 +1215,7 @@ sr_up(struct sr_softc *sc)
 		sr_modemck(NULL);
 #endif
 #else	/* NETGRAPH */
-	untimeout(ngsr_watchdog_frame, sc, sc->handle);
-	sc->handle = timeout(ngsr_watchdog_frame, sc, hz);
+	callout_reset(&sc->sr_timer, hz, ngsr_watchdog_frame, sc);
 	sc->running = 1;
 #endif /* NETGRAPH */
 }
@@ -1235,7 +1232,7 @@ sr_down(struct sr_softc *sc)
 	printf("sr_down(sc=%08x)\n", sc);
 #endif
 #ifdef NETGRAPH
-	untimeout(ngsr_watchdog_frame, sc, sc->handle);
+	callout_stop(&sc->sr_timer);
 	sc->running = 0;
 #endif /* NETGRAPH */
 
@@ -2741,7 +2738,7 @@ ngsr_watchdog_frame(void * arg)
 		}
 	}
 	sr_modemck(sc); 	/* update the DCD status */
-	sc->handle = timeout(ngsr_watchdog_frame, sc, hz);
+	callout_reset(&sc->sr_timer, hz, ngsr_watchdog_frame, sc);
 }
 
 /***********************************************************************
